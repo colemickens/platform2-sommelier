@@ -133,6 +133,8 @@ class HomeDirsTest
       base::Time t = base::Time::FromUTCExploded(hd.time);
       homedir_times_.push_back(t);
     }
+    EXPECT_CALL(platform_, HasExtendedFileAttribute(_, kRemovableFileAttribute))
+        .WillRepeatedly(Return(false));
   }
 
   void TearDown() {
@@ -490,10 +492,10 @@ class FreeDiskSpaceTest : public HomeDirsTest {
     EXPECT_CALL(platform_, GetFileEnumerator(_, false, _))
       .Times(user_count * 2)
       .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
-    // N users * (1 GCache files dir + 1 Android cache dir)
+    // N users * (2 GCache files dir + 1 Android cache dir)
     EXPECT_CALL(platform_, GetFileEnumerator(_, true, _))
-      .Times(user_count * 2)
-      .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
+        .Times(user_count * 3)
+        .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
 
     ExpectTrackedDirectoriesEnumeration();
   }
@@ -554,6 +556,11 @@ TEST_P(FreeDiskSpaceTest, InitializeTimeCacheWithNoTime) {
         true, _))
     .Times(4)
     .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
+  EXPECT_CALL(platform_, GetFileEnumerator(Property(&FilePath::value,
+                                                    EndsWith("user/GCache/v2")),
+                                           true, _))
+      .Times(4)
+      .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
   EXPECT_CALL(
       platform_,
       GetFileEnumerator(
@@ -638,6 +645,16 @@ TEST_P(FreeDiskSpaceTest, InitializeTimeCacheWithOneTime) {
                    EndsWith(std::string(ShouldTestEcryptfs() ? kEcryptfsVaultDir
                                                              : kMountDir) +
                             "/user/GCache/v1")),
+          true, _))
+      .Times(4)
+      .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
+  EXPECT_CALL(
+      platform_,
+      GetFileEnumerator(
+          Property(&FilePath::value,
+                   EndsWith(std::string(ShouldTestEcryptfs() ? kEcryptfsVaultDir
+                                                             : kMountDir) +
+                            "/user/GCache/v2")),
           true, _))
       .Times(4)
       .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
@@ -786,21 +803,6 @@ TEST_P(FreeDiskSpaceTest, GCacheCleanup) {
     .Times(4)
     .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
 
-  // DeleteGCacheTmpCallback enumerate all directories to find GCache files
-  // directory.
-  NiceMock<MockFileEnumerator>* fe[arraysize(kHomedirs)];
-  EXPECT_CALL(
-      platform_,
-      GetFileEnumerator(
-          Property(&FilePath::value,
-                   EndsWith(std::string(ShouldTestEcryptfs() ? kEcryptfsVaultDir
-                                                             : kMountDir) +
-                            "/user/GCache/v1")),
-          true, base::FileEnumerator::DIRECTORIES))
-      .WillOnce(Return(fe[0] = new NiceMock<MockFileEnumerator>))
-      .WillOnce(Return(fe[1] = new NiceMock<MockFileEnumerator>))
-      .WillOnce(Return(fe[2] = new NiceMock<MockFileEnumerator>))
-      .WillOnce(Return(fe[3] = new NiceMock<MockFileEnumerator>));
   EXPECT_CALL(platform_,
       GetFileEnumerator(
         Property(&FilePath::value, EndsWith("/GCache/v1/tmp")),
@@ -808,42 +810,33 @@ TEST_P(FreeDiskSpaceTest, GCacheCleanup) {
       .Times(4)
       .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
 
-  EXPECT_CALL(*fe[0], Next())
-    .WillOnce(Return(homedir_paths_[0].Append("irrelevant_dir")))
-    .WillOnce(Return(homedir_paths_[0].Append("GCache/v1/files")))
-    .WillRepeatedly(Return(FilePath()));
-  // Do nothing for users 1-3.
-  for (size_t f = 1; f < arraysize(fe); ++f) {
-    EXPECT_CALL(*fe[f], Next()).WillRepeatedly(Return(FilePath()));
-  }
   // Irrelevant directory without +d file attribute.
-  EXPECT_CALL(platform_,
-      HasNoDumpFileAttribute(
-        Property(&FilePath::value, EndsWith("irrelevant_dir"))))
-    .WillOnce(Return(false));
-  // GCache file directory has +d file attribute and the appropriate
-  // extended file attribute.
-  EXPECT_CALL(platform_,
-      HasNoDumpFileAttribute(
-        Property(&FilePath::value, EndsWith("GCache/v1/files"))))
-    .WillOnce(Return(true));
-  EXPECT_CALL(platform_,
-      HasExtendedFileAttribute(
-        Property(&FilePath::value, EndsWith("GCache/v1/files")),
-        kGCacheFilesAttribute))
-    .WillOnce(Return(true));
+  EXPECT_CALL(platform_, HasNoDumpFileAttribute(Property(
+                             &FilePath::value, EndsWith("irrelevant_dir"))))
+      .WillRepeatedly(Return(false));
 
-  NiceMock<MockFileEnumerator>* fe2 = new NiceMock<MockFileEnumerator>;
+  // Enumerate user 0, do nothing for users 1-3.
+  NiceMock<MockFileEnumerator>* fe_v1_2 = new NiceMock<MockFileEnumerator>;
+  NiceMock<MockFileEnumerator>* fe_v2_2 = new NiceMock<MockFileEnumerator>;
   // The cache directory contains removable (having +d) and unremovable files.
-  EXPECT_CALL(platform_,
-      GetFileEnumerator(
-        Property(&FilePath::value, EndsWith("GCache/v1/files")),
-        false, _))
-    .WillOnce(Return(fe2));
-  EXPECT_CALL(*fe2, Next())
-    .WillOnce(Return(homedir_paths_[0].Append("GCache/v1/files/removable")))
-    .WillOnce(Return(homedir_paths_[0].Append("GCache/v1/files/unremovable")))
-    .WillRepeatedly(Return(FilePath()));
+  EXPECT_CALL(platform_, GetFileEnumerator(
+                             Property(&FilePath::value, EndsWith("GCache/v1")),
+                             true, base::FileEnumerator::FILES))
+      .WillOnce(Return(fe_v1_2))
+      .WillOnce(InvokeWithoutArgs(CreateMockFileEnumerator))
+      .WillOnce(InvokeWithoutArgs(CreateMockFileEnumerator))
+      .WillOnce(InvokeWithoutArgs(CreateMockFileEnumerator));
+  EXPECT_CALL(platform_, GetFileEnumerator(
+                             Property(&FilePath::value, EndsWith("GCache/v2")),
+                             true, base::FileEnumerator::FILES))
+      .WillOnce(Return(fe_v2_2))
+      .WillOnce(InvokeWithoutArgs(CreateMockFileEnumerator))
+      .WillOnce(InvokeWithoutArgs(CreateMockFileEnumerator))
+      .WillOnce(InvokeWithoutArgs(CreateMockFileEnumerator));
+  EXPECT_CALL(*fe_v1_2, Next())
+      .WillOnce(Return(homedir_paths_[0].Append("GCache/v1/files/removable")))
+      .WillOnce(Return(homedir_paths_[0].Append("GCache/v1/files/unremovable")))
+      .WillRepeatedly(Return(FilePath()));
   EXPECT_CALL(platform_,
       HasNoDumpFileAttribute(
         Property(&FilePath::value,
@@ -854,6 +847,19 @@ TEST_P(FreeDiskSpaceTest, GCacheCleanup) {
         Property(&FilePath::value,
           EndsWith("GCache/v1/files/unremovable"))))
     .WillOnce(Return(false));
+  EXPECT_CALL(*fe_v2_2, Next())
+      .WillOnce(Return(homedir_paths_[0].Append("GCache/v2/foobar/removable")))
+      .WillOnce(
+          Return(homedir_paths_[0].Append("GCache/v2/foobar/unremovable")))
+      .WillRepeatedly(Return(FilePath()));
+  EXPECT_CALL(platform_,
+              HasNoDumpFileAttribute(Property(
+                  &FilePath::value, EndsWith("GCache/v2/foobar/removable"))))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+              HasNoDumpFileAttribute(Property(
+                  &FilePath::value, EndsWith("GCache/v2/foobar/unremovable"))))
+      .WillOnce(Return(false));
 
   ExpectTrackedDirectoriesEnumeration();
 
@@ -864,6 +870,11 @@ TEST_P(FreeDiskSpaceTest, GCacheCleanup) {
           EndsWith("/GCache/v1/files/removable")),
         _))
     .WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+              DeleteFile(Property(&FilePath::value,
+                                  EndsWith("/GCache/v2/foobar/removable")),
+                         _))
+      .WillOnce(Return(true));
 
   homedirs_.FreeDiskSpace();
 
@@ -894,8 +905,8 @@ TEST_P(FreeDiskSpaceTest, CacheAndGCacheCleanup) {
     .Times(4)
     .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
 
-  // DeleteGCacheTmpCallback enumerate all directories to find GCache files
-  // directory.
+  // DeleteGCacheTmpCallback enumerate all GCache directories to find removable
+  // files.
   EXPECT_CALL(
       platform_,
       GetFileEnumerator(
@@ -903,7 +914,17 @@ TEST_P(FreeDiskSpaceTest, CacheAndGCacheCleanup) {
                    EndsWith(std::string(ShouldTestEcryptfs() ? kEcryptfsVaultDir
                                                              : kMountDir) +
                             "/user/GCache/v1")),
-          true, base::FileEnumerator::DIRECTORIES))
+          true, base::FileEnumerator::FILES))
+      .Times(4)
+      .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
+  EXPECT_CALL(
+      platform_,
+      GetFileEnumerator(
+          Property(&FilePath::value,
+                   EndsWith(std::string(ShouldTestEcryptfs() ? kEcryptfsVaultDir
+                                                             : kMountDir) +
+                            "/user/GCache/v2")),
+          true, base::FileEnumerator::FILES))
       .Times(4)
       .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
   EXPECT_CALL(platform_, GetFileEnumerator(
@@ -966,7 +987,17 @@ TEST_P(FreeDiskSpaceTest, CacheAndGCacheAndAndroidCleanup) {
                    EndsWith(std::string(ShouldTestEcryptfs() ? kEcryptfsVaultDir
                                                              : kMountDir) +
                             "/user/GCache/v1")),
-          true, base::FileEnumerator::DIRECTORIES))
+          true, base::FileEnumerator::FILES))
+      .Times(4)
+      .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
+  EXPECT_CALL(
+      platform_,
+      GetFileEnumerator(
+          Property(&FilePath::value,
+                   EndsWith(std::string(ShouldTestEcryptfs() ? kEcryptfsVaultDir
+                                                             : kMountDir) +
+                            "/user/GCache/v2")),
+          true, base::FileEnumerator::FILES))
       .Times(4)
       .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
   EXPECT_CALL(platform_, GetFileEnumerator(
@@ -1397,9 +1428,10 @@ TEST_P(FreeDiskSpaceTest, DontCleanUpMountedUser) {
   // 3 users * (1 Cache dir + 1 GCache tmp dir)
   EXPECT_CALL(platform_, GetFileEnumerator(_, false, _))
     .Times(6).WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
-  // 3 users * (1 GCache files dir + 1 Android cache)
+  // 3 users * (2 GCache files dir + 1 Android cache)
   EXPECT_CALL(platform_, GetFileEnumerator(_, true, _))
-    .Times(6).WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
+      .Times(9)
+      .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
 
   ExpectTrackedDirectoriesEnumeration();
 

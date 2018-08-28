@@ -43,10 +43,6 @@ namespace cryptohome {
 
 const char *kShadowRoot = "/home/.shadow";
 const char *kEmptyOwner = "";
-// xattr used to mark Google Drive cache files, should match the
-// constant in Chrome Browser in
-// src/components/drive/chromeos/file_cache.cc
-const char kGCacheFilesAttribute[] = "user.GCacheFiles";
 // xattr used for ARC++ M. No longer used since end of 2017, should be removed.
 const char kAndroidCacheFilesAttribute[] = "user.AndroidCache";
 // Each xattr is set to Android app internal data directory, contains
@@ -55,6 +51,7 @@ const char kAndroidCacheFilesAttribute[] = "user.AndroidCache";
 const char kAndroidCacheInodeAttribute[] = "user.inode_cache";
 const char kAndroidCodeCacheInodeAttribute[] = "user.inode_code_cache";
 const char kTrackedDirectoryNameAttribute[] = "user.TrackedDirectoryName";
+const char kRemovableFileAttribute[] = "user.GCacheRemovable";
 // Name of the vault directory which is used with eCryptfs cryptohome.
 const char kEcryptfsVaultDir[] = "vault";
 // Name of the mount directory.
@@ -73,6 +70,20 @@ std::string GetSerializedKeysetLabel(const SerializedVaultKeyset& serialized,
     return base::StringPrintf("%s%d", kKeyLegacyPrefix, key_index);
   }
   return serialized.key_data().label();
+}
+
+void RemoveAllRemovableFiles(Platform* platform, const FilePath& dir) {
+  std::unique_ptr<FileEnumerator> file_enumerator(
+      platform->GetFileEnumerator(dir, true, base::FileEnumerator::FILES));
+  for (FilePath file = file_enumerator->Next(); !file.empty();
+       file = file_enumerator->Next()) {
+    if (platform->HasNoDumpFileAttribute(file)
+        || platform->HasExtendedFileAttribute(file, kRemovableFileAttribute) ) {
+      if (!platform->DeleteFile(file, false)) {
+        PLOG(WARNING) << "DeleteFile: " << file.value();
+      }
+    }
+  }
 }
 
 }  // namespace
@@ -1109,58 +1120,40 @@ void HomeDirs::DeleteCacheCallback(const FilePath& user_dir) {
   DeleteDirectoryContents(cache);
 }
 
-bool HomeDirs::FindGCacheFilesDir(const FilePath& user_dir, FilePath* dir) {
-  // Start search from GCache/v1.
-  base::FilePath gcache_dir;
-  if (!GetTrackedDirectory(user_dir,
-                           FilePath(kUserHomeSuffix)
-                               .Append(kGCacheDir)
-                               .Append(kGCacheVersion1Dir),
-                           &gcache_dir)) {
-    return false;
-  }
-  std::unique_ptr<FileEnumerator> enumerator(
-      platform_->GetFileEnumerator(gcache_dir, true,
-                                   base::FileEnumerator::DIRECTORIES));
-  for (FilePath current = enumerator->Next();
-       !current.empty();
-       current = enumerator->Next()) {
-    if (platform_->HasNoDumpFileAttribute(current) &&
-        platform_->HasExtendedFileAttribute(current, kGCacheFilesAttribute)) {
-      *dir = current;
-      return true;
-    }
-  }
-  return false;
-}
-
 void HomeDirs::DeleteGCacheTmpCallback(const FilePath& user_dir) {
-  FilePath gcachetmp;
-  if (!GetTrackedDirectory(user_dir,
-                           FilePath(kUserHomeSuffix)
-                               .Append(kGCacheDir)
-                               .Append(kGCacheVersion1Dir)
-                               .Append(kGCacheTmpDir),
-                           &gcachetmp)) {
-    LOG(ERROR) << "Failed to locate the GCache tmp directory.";
-    return;
-  }
-  LOG(WARNING) << "Deleting GCache " << gcachetmp.value();
-  DeleteDirectoryContents(gcachetmp);
+  // GCache dirs that can be completely removed on low space.
+  const FilePath kRemovableGCacheDirs[] = {
+      FilePath(kUserHomeSuffix)
+          .Append(kGCacheDir)
+          .Append(kGCacheVersion1Dir)
+          .Append(kGCacheTmpDir),
+  };
 
-  FilePath cacheDir;
-  if (!FindGCacheFilesDir(user_dir, &cacheDir)) return;
-
-  std::unique_ptr<FileEnumerator> enumerator(platform_->GetFileEnumerator(
-      cacheDir, false, base::FileEnumerator::FILES));
-  for (FilePath current = enumerator->Next();
-       !current.empty();
-       current = enumerator->Next()) {
-    if (platform_->HasNoDumpFileAttribute(current)) {
-      if (!platform_->DeleteFile(current, false)) {
-        PLOG(WARNING) << "DeleteFile: " << current.value();
-      }
+  for (const auto& dir : kRemovableGCacheDirs) {
+    FilePath gcachetmp;
+    if (!GetTrackedDirectory(user_dir, dir, &gcachetmp)) {
+      LOG(ERROR) << "Failed to locate GCache temp directory " << dir.value();
+      continue;
     }
+    LOG(WARNING) << "Deleting GCache " << gcachetmp.value();
+    DeleteDirectoryContents(gcachetmp);
+  }
+
+  // GCache dirs that contain files marked as removable.
+  const FilePath kCleanableGCacheDirs[] = {
+      FilePath(kUserHomeSuffix).Append(kGCacheDir).Append(kGCacheVersion1Dir),
+      FilePath(kUserHomeSuffix).Append(kGCacheDir).Append(kGCacheVersion2Dir),
+  };
+
+  for (const auto& dir : kCleanableGCacheDirs) {
+    FilePath gcache_dir;
+    if (!GetTrackedDirectory(user_dir, dir, &gcache_dir)) {
+      LOG(ERROR) << "Failed to locate GCache directory " << dir.value();
+      continue;
+    }
+
+    LOG(WARNING) << "Cleaning removable files in " << gcache_dir.value();
+    RemoveAllRemovableFiles(platform_, gcache_dir);
   }
 }
 

@@ -40,11 +40,11 @@ const uid_t kArcContainerShiftUid = 655360;
 const gid_t kArcContainerShiftGid = 655360;
 const int64_t kFreeSpaceThresholdToTriggerCleanup = 1LL << 30;
 const int64_t kTargetFreeSpaceAfterCleanup = 2LL << 30;
-extern const char kGCacheFilesAttribute[];
 extern const char kAndroidCacheFilesAttribute[];
 extern const char kAndroidCacheInodeAttribute[];
 extern const char kAndroidCodeCacheInodeAttribute[];
 extern const char kTrackedDirectoryNameAttribute[];
+extern const char kRemovableFileAttribute[];
 extern const char kEcryptfsVaultDir[];
 extern const char kMountDir[];
 
@@ -301,8 +301,6 @@ class HomeDirs {
   void RemoveNonOwnerCryptohomesCallback(const base::FilePath& user_dir);
   // Callback used during FreeDiskSpace().
   void DeleteCacheCallback(const base::FilePath& user_dir);
-  // Finds Drive cache directory.
-  bool FindGCacheFilesDir(const base::FilePath& user_dir, base::FilePath* dir);
   // Callback used during FreeDiskSpace().
   void DeleteGCacheTmpCallback(const base::FilePath& user_dir);
   // Callback used during FreeDiskSpace().
