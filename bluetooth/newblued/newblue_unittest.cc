@@ -16,6 +16,7 @@
 
 using ::testing::_;
 using ::testing::AnyNumber;
+using ::testing::ElementsAre;
 using ::testing::Pair;
 using ::testing::Return;
 using ::testing::SaveArg;
@@ -28,8 +29,18 @@ namespace {
 constexpr uniq_t kDiscoveryHandle = 11;
 // A random handle value.
 constexpr uniq_t kPairStateChangeHandle = 3;
+constexpr uniq_t kPasskeyDisplayObserverHandle = 4;
 
 }  // namespace
+
+class TestPairingAgent : public PairingAgent {
+ public:
+  void DisplayPasskey(const std::string& device_address,
+                      uint32_t passkey) override {
+    displayed_passkeys.push_back({device_address, passkey});
+  }
+  std::vector<std::pair<std::string, uint32_t>> displayed_passkeys;
+};
 
 class NewblueTest : public ::testing::Test {
  public:
@@ -85,11 +96,14 @@ class NewblueTest : public ::testing::Test {
     EXPECT_CALL(*libnewblue_, GattProfileInit()).WillOnce(Return(true));
     EXPECT_CALL(*libnewblue_, GattBuiltinInit()).WillOnce(Return(true));
     EXPECT_CALL(*libnewblue_, SmInit()).WillOnce(Return(true));
-    pair_state_changed_callback_data_ = newblue_.get();
     EXPECT_CALL(*libnewblue_, SmRegisterPairStateObserver(_, _))
         .WillOnce(DoAll(SaveArg<0>(&pair_state_changed_callback_data_),
                         SaveArg<1>(&pair_state_changed_callback_),
                         Return(kPairStateChangeHandle)));
+    EXPECT_CALL(*libnewblue_, SmRegisterPasskeyDisplayObserver(_, _))
+        .WillOnce(DoAll(SaveArg<0>(&passkey_display_callback_data_),
+                        SaveArg<1>(&passkey_display_callback_),
+                        Return(kPasskeyDisplayObserverHandle)));
     EXPECT_TRUE(newblue_->BringUp());
   }
 
@@ -101,6 +115,8 @@ class NewblueTest : public ::testing::Test {
   std::vector<MockDevice> discovered_devices_;
   smPairStateChangeCbk pair_state_changed_callback_;
   void* pair_state_changed_callback_data_ = nullptr;
+  smPasskeyDisplayCbk passkey_display_callback_;
+  void* passkey_display_callback_data_ = nullptr;
 };
 
 TEST_F(NewblueTest, ListenReadyForUp) {
@@ -598,6 +614,23 @@ TEST_F(NewblueTest, CancelPairingWithUnknownDevice) {
 
   std::string device_addr("06:05:04:03:02:01");
   EXPECT_FALSE(newblue_->CancelPair(device_addr));
+}
+
+TEST_F(NewblueTest, PasskeyDisplayObserver) {
+  ExpectBringUp();
+
+  TestPairingAgent pairing_agent;
+  newblue_->RegisterPairingAgent(&pairing_agent);
+
+  struct bt_addr peer_addr = {.type = BT_ADDR_TYPE_LE_RANDOM,
+                              .addr = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}};
+  struct smPasskeyDisplay passkey_display = {
+      .valid = true, .passkey = 123456, .peerAddr = peer_addr};
+  passkey_display_callback_(passkey_display_callback_data_, &passkey_display,
+                            kPasskeyDisplayObserverHandle);
+  message_loop_.RunUntilIdle();
+  EXPECT_THAT(pairing_agent.displayed_passkeys,
+              ElementsAre(Pair("06:05:04:03:02:01", 123456)));
 }
 
 }  // namespace bluetooth

@@ -108,6 +108,16 @@ struct Device {
   DISALLOW_COPY_AND_ASSIGN(Device);
 };
 
+// Agent to receive pairing user interaction events.
+class PairingAgent {
+ public:
+  virtual void DisplayPasskey(const std::string& device_address,
+                              uint32_t passkey) = 0;
+  // TODO(sonnysasaka): Add other methods:
+  // RequestPinCode, DisplayPinCode, RequestPasskey, RequestConfirmation,
+  // RequestAuthorization, AuthorizeService.
+};
+
 // A higher-level API wrapper of the low-level libnewblue C interface.
 // This class abstracts away the C interface details of libnewblue and provides
 // event handling model that is compatible with libchrome's main loop.
@@ -130,6 +140,12 @@ class Newblue {
   // Initializes the LE stack (blocking call).
   // Returns true if initialization succeeds, false otherwise.
   virtual bool Init();
+
+  // Registers/Unregisters pairing agent which handles user interactions during
+  // pairing process.
+  // |pairing_agent| not owned, must outlive this object.
+  virtual void RegisterPairingAgent(PairingAgent* pairing_agent);
+  virtual void UnregisterPairingAgent();
 
   // Listens to reset complete event from the chip. This is useful to detect
   // when NewBlue is ready to bring up the stack.
@@ -212,6 +228,13 @@ class Newblue {
   // Called when pairing state changed events are received.
   void PairStateCallback(const smPairStateChange& change, uniq_t observer_id);
 
+  static void PasskeyDisplayObserverCallbackThunk(
+      void* data,
+      const struct smPasskeyDisplay* passkey_display,
+      uniq_t observer_id);
+  void PasskeyDisplayObserverCallback(struct smPasskeyDisplay passkey_display,
+                                      uniq_t observer_id);
+
   // Determines the security requirements based on the appearance of a device.
   // Returns true if determined. The default security requirements
   // (bond:true MITM:false) are used.
@@ -231,6 +254,10 @@ class Newblue {
   DeviceDiscoveredCallback device_discovered_callback_;
   uniq_t discovery_handle_ = 0;
   std::map<std::string, std::unique_ptr<Device>> discovered_devices_;
+
+  uniq_t passkey_display_observer_id_ = 0;
+
+  PairingAgent* pairing_agent_ = nullptr;
 
   // Handle from security manager of being a central pairing observer. We are
   // responsible of receiving pairing state changed events and informing clients

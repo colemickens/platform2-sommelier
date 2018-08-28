@@ -208,6 +208,14 @@ bool Newblue::Init() {
   return true;
 }
 
+void Newblue::RegisterPairingAgent(PairingAgent* pairing_agent) {
+  pairing_agent_ = pairing_agent;
+}
+
+void Newblue::UnregisterPairingAgent() {
+  pairing_agent_ = nullptr;
+}
+
 bool Newblue::ListenReadyForUp(base::Closure callback) {
   // Dummy MAC address. NewBlue doesn't actually use the MAC address as it's
   // exclusively controlled by BlueZ.
@@ -250,6 +258,13 @@ bool Newblue::BringUp() {
     LOG(ERROR) << "Failed to init SM";
     return false;
   }
+
+  // Always register passkey display observer, assuming that our UI always
+  // supports this.
+  // TODO(sonnysasaka): We may optimize this by registering passkey display
+  // observer only if there is currently a default agent registered.
+  passkey_display_observer_id_ = libnewblue_->SmRegisterPasskeyDisplayObserver(
+      this, &Newblue::PasskeyDisplayObserverCallbackThunk);
 
   pair_state_handle_ = libnewblue_->SmRegisterPairStateObserver(
       this, &Newblue::PairStateCallbackThunk);
@@ -617,6 +632,39 @@ void Newblue::PairStateCallbackThunk(void* data,
   newblue->PostTask(
       FROM_HERE, base::Bind(&Newblue::PairStateCallback, newblue->GetWeakPtr(),
                             *change, observer_id));
+}
+
+void Newblue::PasskeyDisplayObserverCallbackThunk(
+    void* data,
+    const struct smPasskeyDisplay* passkey_display,
+    uniq_t observer_id) {
+  if (!passkey_display) {
+    LOG(WARNING) << "passkey display is not given";
+    return;
+  }
+
+  Newblue* newblue = static_cast<Newblue*>(data);
+  newblue->PostTask(
+      FROM_HERE,
+      base::Bind(&Newblue::PasskeyDisplayObserverCallback,
+                 newblue->GetWeakPtr(), *passkey_display, observer_id));
+}
+
+void Newblue::PasskeyDisplayObserverCallback(
+    struct smPasskeyDisplay passkey_display, uniq_t observer_id) {
+  if (observer_id != passkey_display_observer_id_) {
+    LOG(WARNING) << "passkey display observer id mismatch";
+    return;
+  }
+
+  if (passkey_display.valid) {
+    CHECK(pairing_agent_);
+    pairing_agent_->DisplayPasskey(
+        ConvertBtAddrToString(passkey_display.peerAddr),
+        passkey_display.passkey);
+  } else {
+    VLOG(1) << "The passkey session expired with the device";
+  }
 }
 
 void Newblue::PairStateCallback(const smPairStateChange& change,
