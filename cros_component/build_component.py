@@ -82,17 +82,18 @@ def CheckGsBucket(gsbucket):
   Returns:
     [str]: a list of folder paths.
   """
-  ctx = gs.GSContext(False)
+  ctx = gs.GSContext()
   dirs = ctx.LS(gsbucket)
 
   return [x for x in dirs if x != gsbucket]
 
 
-def GetCurrentVersion(paths):
+def GetCurrentVersion(paths, platform):
   """Find the current component version by iterating gsbucket root folder.
 
   Args:
     paths: ([str]) a list of folder paths strings.
+    platform: (str) the platform for which the component is being built
 
   Returns:
     str: current component version.
@@ -107,10 +108,17 @@ def GetCurrentVersion(paths):
       continue
     version = os.path.basename(version_path[:-1])
     if len(ParseVersion(version)) < 3:
-      # path does not contain a component version
+      # Path does not contain a component version.
       continue
+
     v = LooseVersion(version)
     if v > current_version:
+      # Skip the version if the path for the target platform does not exist.
+      ctx = gs.GSContext()
+      src = os.path.join(version_path, platform, COMPONENT_ZIP)
+      if not ctx.Exists(src):
+        continue
+
       current_version = v
       current_version_path = version_path
   return str(current_version), current_version_path
@@ -225,7 +233,7 @@ def UploadComponent(component_dir, gsbucket):
     gsbucket: (str) gs bucket to upload.
   """
   logger.info('upload %s to %s', component_dir, gsbucket)
-  ctx = gs.GSContext(False)
+  ctx = gs.GSContext()
   # Upload component to gs.
   ctx.DoCommand(['cp', '-r', component_dir, gsbucket])
 
@@ -288,7 +296,7 @@ def GetCurrentPackageVersion(current_version_path, platform):
     str: package version of current component.
   """
   if current_version_path:
-    ctx = gs.GSContext(False)
+    ctx = gs.GSContext()
     src = os.path.join(current_version_path, platform, COMPONENT_ZIP)
     if ctx.Exists(src):
       with osutils.TempDir(prefix='component_') as tempdir:
@@ -387,7 +395,8 @@ def BuildComponent(component_to_build, components, board, platform,
         if len(dirs) == 0:
           cros_build_lib.Die('gsbucket %s has no subfolders', gsbucket)
         logger.info('Dirs in gsbucket:%s', dirs)
-        current_version, current_version_path = GetCurrentVersion(dirs)
+        current_version, current_version_path = GetCurrentVersion(dirs,
+                                                                  platform)
         logger.info('latest component version on Omaha gs: %s', current_version)
         # Get package version of current component.
         current_package_version = GetCurrentPackageVersion(current_version_path,
