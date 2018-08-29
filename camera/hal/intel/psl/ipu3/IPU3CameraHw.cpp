@@ -252,6 +252,10 @@ IPU3CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
         activeStreams[i]->max_buffers = maxBufs;
         activeStreams[i]->usage |= usage;
 
+        if (activeStreams[i]->stream_type == CAMERA3_STREAM_INPUT) {
+            continue;
+        }
+
         mActiveStreams.push_back(activeStreams[i]);
     }
 
