@@ -381,6 +381,20 @@
     </method>
 
     <!--
+        RetrievePrimarySession:
+        @username: username of the primary session.
+        @sanitized_username: sanitized username of the primary session.
+
+        Return primary user session, if existent; otherwise return two empty
+        strings.
+    -->
+    <method name="RetrievePrimarySession">
+      <arg type="s" name="username" direction="out" />
+      <arg type="s" name="sanitized_username" direction="out" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+    </method>
+
+    <!--
         IsGuestSessionActive:
         @is_guest: Whether a guest session is active and running.
 

@@ -1849,6 +1849,53 @@ TEST_F(SessionManagerImplTest, RetrieveActiveSessions) {
   }
 }
 
+TEST_F(SessionManagerImplTest, RetrievePrimarySession) {
+  ExpectGuestSession();
+  {
+    brillo::ErrorPtr error;
+    EXPECT_TRUE(impl_->StartSession(&error, kGuestUserName, kNothing));
+    EXPECT_FALSE(error.get());
+  }
+  {
+    std::string username;
+    std::string sanitized_username;
+    impl_->RetrievePrimarySession(&username, &sanitized_username);
+    EXPECT_EQ(username, "");
+    EXPECT_EQ(sanitized_username, "");
+  }
+  VerifyAndClearExpectations();
+
+  ExpectStartSession(kSaneEmail);
+  {
+    brillo::ErrorPtr error;
+    EXPECT_TRUE(impl_->StartSession(&error, kSaneEmail, kNothing));
+    EXPECT_FALSE(error.get());
+  }
+  {
+    std::string username;
+    std::string sanitized_username;
+    impl_->RetrievePrimarySession(&username, &sanitized_username);
+    EXPECT_EQ(username, kSaneEmail);
+    EXPECT_EQ(sanitized_username, SanitizeUserName(kSaneEmail));
+  }
+  VerifyAndClearExpectations();
+
+  constexpr char kEmail2[] = "user2@somewhere";
+  ExpectStartSession(kEmail2);
+  {
+    brillo::ErrorPtr error;
+    EXPECT_TRUE(impl_->StartSession(&error, kEmail2, kNothing));
+    EXPECT_FALSE(error.get());
+  }
+  {
+    std::string username;
+    std::string sanitized_username;
+    impl_->RetrievePrimarySession(&username, &sanitized_username);
+    EXPECT_EQ(username, kSaneEmail);
+    EXPECT_EQ(sanitized_username, SanitizeUserName(kSaneEmail));
+  }
+}
+
 TEST_F(SessionManagerImplTest, IsGuestSessionActive) {
   EXPECT_FALSE(impl_->IsGuestSessionActive());
   ExpectAndRunGuestSession();

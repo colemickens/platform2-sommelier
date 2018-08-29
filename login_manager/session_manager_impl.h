@@ -257,6 +257,8 @@ class SessionManagerImpl
 
   std::string RetrieveSessionState() override;
   std::map<std::string, std::string> RetrieveActiveSessions() override;
+  void RetrievePrimarySession(std::string* out_username,
+                              std::string* out_sanitized_username) override;
   bool IsGuestSessionActive() override;
 
   void HandleSupervisedUserCreationStarting() override;
@@ -465,6 +467,9 @@ class SessionManagerImpl
 
   // Map of the currently signed-in users to their state.
   UserSessionMap user_sessions_;
+
+  // Primary user is the first non-incognito user.
+  std::string primary_user_account_id_;
 
   std::unique_ptr<password_provider::PasswordProviderInterface>
       password_provider_;

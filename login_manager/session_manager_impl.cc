@@ -568,6 +568,10 @@ bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
   manager_->SetBrowserSessionForUser(actual_account_id, user_session->userhash);
   session_started_ = true;
   user_sessions_[actual_account_id] = std::move(user_session);
+  if (is_first_real_user) {
+    DCHECK(primary_user_account_id_.empty());
+    primary_user_account_id_ = actual_account_id;
+  }
   DLOG(INFO) << "Emitting D-Bus signal SessionStateChanged:" << kStarted;
   adaptor_.SendSessionStateChangedSignal(kStarted);
 
@@ -780,6 +784,17 @@ SessionManagerImpl::RetrieveActiveSessions() {
     result[entry.second->username] = entry.second->userhash;
   }
   return result;
+}
+
+void SessionManagerImpl::RetrievePrimarySession(
+    std::string* out_username, std::string* out_sanitized_username) {
+  out_username->clear();
+  out_sanitized_username->clear();
+  if (user_sessions_.count(primary_user_account_id_) > 0) {
+    out_username->assign(user_sessions_[primary_user_account_id_]->username);
+    out_sanitized_username->assign(
+        user_sessions_[primary_user_account_id_]->userhash);
+  }
 }
 
 bool SessionManagerImpl::IsGuestSessionActive() {
