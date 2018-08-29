@@ -99,9 +99,8 @@ void PopulateCredential(const SmbCredential& credential,
   }
 }
 
-// Gets a password_provider::Password object from |password_fd|. The data has to
-// be in the format of "{password_length}{password}". If the read fails, this
-// returns an empty unique_ptr.
+}  // namespace
+
 std::unique_ptr<password_provider::Password> GetPassword(
     const base::ScopedFD& password_fd) {
   size_t password_length = 0;
@@ -123,8 +122,6 @@ std::unique_ptr<password_provider::Password> GetPassword(
   return password_provider::Password::CreateFromFileDescriptor(
       password_fd.get(), password_length);
 }
-
-}  // namespace
 
 MountManager::MountManager(std::unique_ptr<base::TickClock> tick_clock,
                            SambaInterfaceFactory samba_interface_factory)

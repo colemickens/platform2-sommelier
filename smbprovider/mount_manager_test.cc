@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/test/simple_test_tick_clock.h>
@@ -430,6 +431,65 @@ TEST_F(MountManagerTest, TestRemountWithCredential) {
   EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
   EXPECT_TRUE(mounts_->IsAlreadyMounted(root_path));
   ExpectCredentialsEqual(mount_id, workgroup, username, password);
+}
+
+TEST_F(MountManagerTest, TestReturnsEmptyPasswordWithInvalidFd) {
+  std::unique_ptr<password_provider::Password> password =
+      GetPassword(base::ScopedFD());
+  EXPECT_FALSE(password);
+}
+
+TEST_F(MountManagerTest, TestReturnsEmptyPasswordWithEmptyPassword) {
+  base::ScopedFD password_fd =
+      WritePasswordToFile(&temp_files_, "" /* password */);
+  EXPECT_TRUE(password_fd.is_valid());
+
+  // password_fd should be false since the password was empty.
+  std::unique_ptr<password_provider::Password> password =
+      GetPassword(password_fd);
+  EXPECT_FALSE(password);
+}
+
+TEST_F(MountManagerTest, TestPasswordLengthHeaderLongerThanContent) {
+  const std::string password = "a";
+  const size_t password_length = 8;
+
+  std::vector<uint8_t> password_data(sizeof(password_length) + password.size());
+
+  std::memcpy(password_data.data(), &password_length, sizeof(password_length));
+  std::memcpy(password_data.data() + sizeof(password_length), password.c_str(),
+              password.size());
+
+  base::ScopedFD password_fd = temp_files_.CreateTempFile(password_data);
+  std::unique_ptr<password_provider::Password> password_ptr =
+      GetPassword(password_fd);
+
+  // password_ptr should be false since length header of password_data exceeds
+  // the size of the password string.
+  EXPECT_FALSE(password_ptr);
+}
+
+TEST_F(MountManagerTest, TestEmptyPasswordFile) {
+  base::ScopedFD password_fd = temp_files_.CreateTempFile();
+
+  std::unique_ptr<password_provider::Password> password_ptr =
+      GetPassword(password_fd);
+
+  // password_ptr should be false since empty_password has no data.
+  EXPECT_FALSE(password_ptr);
+}
+
+TEST_F(MountManagerTest, TestGetPasswordGetsValidPassword) {
+  const std::string password = "test123";
+  base::ScopedFD password_fd = WritePasswordToFile(&temp_files_, password);
+  EXPECT_TRUE(password_fd.is_valid());
+
+  std::unique_ptr<password_provider::Password> password_ptr =
+      GetPassword(password_fd);
+  EXPECT_TRUE(password_ptr);
+
+  EXPECT_EQ(password_ptr->size(), password.size());
+  EXPECT_EQ(std::string(password_ptr->GetRaw()), password);
 }
 
 }  // namespace smbprovider
