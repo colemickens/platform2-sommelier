@@ -43,8 +43,10 @@ namespace {
 // IcmpTest.ComputeIcmpChecksum.
 const uint8_t kIcmpEchoRequestEvenLen[] = {0x08, 0x00, 0x00, 0x00,
                                            0x71, 0x50, 0x00, 0x00};
-const uint8_t kIcmpEchoRequestEvenLenChecksum[] = {0x86, 0xaf};
-const uint8_t kIcmpEchoRequestOddLen[] = {0x08, 0x00, 0x00, 0x00, 0xac, 0x51,
+alignas(struct icmphdr) const uint8_t kIcmpEchoRequestEvenLenChecksum[] = {
+                                          0x86, 0xaf};
+alignas(struct icmphdr) const uint8_t kIcmpEchoRequestOddLen[] = {
+                                          0x08, 0x00, 0x00, 0x00, 0xac, 0x51,
                                           0x00, 0x00, 0x00, 0x00, 0x01};
 const uint8_t kIcmpEchoRequestOddLenChecksum[] = {0x4a, 0xae};
 
