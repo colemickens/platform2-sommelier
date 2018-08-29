@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <base/optional.h>
 #include <base/time/time.h>
 
 namespace login_manager {
@@ -53,9 +54,8 @@ class Subprocess : public SubprocessInterface {
   void ClearPid() override;
 
  private:
-  // The pid of the managed subprocess, when running. Set to -1 when
-  // cleared, or not yet set by ForkAndExec().
-  pid_t pid_;
+  // The pid of the managed subprocess, when running.
+  base::Optional<pid_t> pid_;
   // The uid the subprocess should be run as.
   const uid_t desired_uid_;
   SystemUtils* const system_;  // weak; owned by embedder.

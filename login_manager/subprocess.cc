@@ -95,7 +95,7 @@ int SetIDs(uid_t uid, gid_t gid, const std::vector<gid_t>& gids) {
 }  // namespace
 
 Subprocess::Subprocess(uid_t desired_uid, SystemUtils* system)
-    : pid_(-1), desired_uid_(desired_uid), system_(system) {}
+    : desired_uid_(desired_uid), system_(system) {}
 
 Subprocess::~Subprocess() {}
 
@@ -142,8 +142,8 @@ bool Subprocess::ForkAndExec(const std::vector<std::string>& args,
   sigset_t new_sigset, old_sigset;
   sigfillset(&new_sigset);
   CHECK_EQ(0, sigprocmask(SIG_SETMASK, &new_sigset, &old_sigset));
-  pid_ = system_->fork();
-  if (pid_ == 0) {
+  pid_t fork_ret = system_->fork();
+  if (fork_ret == 0) {
     // Reset signal handlers to default and masks to none per 'man 7 daemon'.
     struct sigaction action = {};
     action.sa_handler = SIG_DFL;
@@ -176,32 +176,35 @@ bool Subprocess::ForkAndExec(const std::vector<std::string>& args,
     return false;  // To make the compiler happy.
   }
   CHECK_EQ(0, sigprocmask(SIG_SETMASK, &old_sigset, nullptr));
-  return pid_ > 0;
+  if (fork_ret > 0) {
+    pid_ = fork_ret;
+  }
+  return pid_.has_value();
 }
 
 void Subprocess::KillEverything(int signal) {
-  DCHECK_GT(pid_, 0);
-  if (system_->kill(-pid_, desired_uid_, signal) == 0)
+  DCHECK(pid_.has_value());
+  if (system_->kill(-pid_.value(), desired_uid_, signal) == 0)
     return;
 
   // If we failed to kill the process group (maybe it doesn't exist yet because
   // the forked process hasn't had a chance to call setsid()), just kill the
   // child directly. If it hasn't called setsid() yet, then it hasn't called
   // setuid() either, so kill it as root instead of as |desired_uid_|.
-  system_->kill(pid_, 0, signal);
+  system_->kill(pid_.value(), 0, signal);
 }
 
 void Subprocess::Kill(int signal) {
-  DCHECK_GT(pid_, 0);
-  system_->kill(pid_, desired_uid_, signal);
+  DCHECK(pid_.has_value());
+  system_->kill(pid_.value(), desired_uid_, signal);
 }
 
 pid_t Subprocess::GetPid() const {
-  return pid_;
+  return pid_.value_or(-1);
 }
 
 void Subprocess::ClearPid() {
-  pid_ = -1;
+  pid_.reset();
 }
 
 };  // namespace login_manager
