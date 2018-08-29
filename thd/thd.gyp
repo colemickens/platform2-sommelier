@@ -1,6 +1,3 @@
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'variables': {
@@ -38,8 +35,8 @@
             ],
           },
           'sources': [
-            'mechanism/file_write_mechanism_unittest.cc',
-            'source/file_source_unittest.cc',
+            'mechanism/file_write_mechanism_test.cc',
+            'source/file_source_test.cc',
             'test_runner.cc',
           ],
         },
