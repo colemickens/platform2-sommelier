@@ -58,7 +58,7 @@
 #include "shill/mock_ppp_device_factory.h"
 #include "shill/mock_process_manager.h"
 #include "shill/net/mock_rtnl_handler.h"
-#include "shill/property_store_unittest.h"
+#include "shill/property_store_test.h"
 #include "shill/rpc_task.h"  // for RpcTaskDelegate
 #include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"

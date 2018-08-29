@@ -19,7 +19,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/property_store_unittest.h"
+#include "shill/property_store_test.h"
 
 namespace shill {
 

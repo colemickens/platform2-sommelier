@@ -31,7 +31,7 @@
 #include "shill/mock_log.h"
 #include "shill/net/ieee80211.h"
 #include "shill/net/mock_netlink_manager.h"
-#include "shill/property_store_unittest.h"
+#include "shill/property_store_test.h"
 #include "shill/refptr_types.h"
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/tethering.h"

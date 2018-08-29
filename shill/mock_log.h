@@ -60,7 +60,7 @@
 //     DoSomething();
 //   }
 //
-// For some examples, see mock_log_unittest.cc.
+// For some examples, see mock_log_test.cc.
 
 #include <string>
 #include <gmock/gmock.h>

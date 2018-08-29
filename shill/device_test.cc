@@ -59,7 +59,7 @@
 #include "shill/net/mock_time.h"
 #include "shill/net/ndisc.h"
 #include "shill/portal_detector.h"
-#include "shill/property_store_unittest.h"
+#include "shill/property_store_test.h"
 #include "shill/static_ip_parameters.h"
 #include "shill/technology.h"
 #include "shill/testing.h"

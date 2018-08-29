@@ -35,7 +35,7 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_process_manager.h"
 #include "shill/mock_store.h"
-#include "shill/property_store_unittest.h"
+#include "shill/property_store_test.h"
 #include "shill/testing.h"
 
 using base::Bind;

@@ -40,7 +40,7 @@ To keep the shill source code consistent, please follow the conventions below:
             Keep the values sorted as instructed in the header file.
         2.  Add the corresponding scope name to the `kScopeNames` array in
             `scope_logger.cc`.
-        3.  Update the `GetAllScopeNames` test in `scope_logger_unittest.cc`.
+        3.  Update the `GetAllScopeNames` test in `scope_logger_test.cc`.
 
 *   When adding externally visible (i.e. via RPC) properties to an object,
     make sure that a) its setter emits any change notification required by

@@ -65,7 +65,7 @@
 #include "shill/net/nl80211_attribute.h"
 #include "shill/net/nl80211_message.h"
 #include "shill/nice_mock_control.h"
-#include "shill/property_store_unittest.h"
+#include "shill/property_store_test.h"
 #include "shill/supplicant/mock_supplicant_bss_proxy.h"
 #include "shill/supplicant/mock_supplicant_eap_state_handler.h"
 #include "shill/supplicant/mock_supplicant_interface_proxy.h"

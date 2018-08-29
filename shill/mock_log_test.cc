@@ -66,7 +66,7 @@ TEST_F(MockLogTest, MatchSeverityAndFileAndMessage) {
   ScopedMockLog log;
   const string kMessage("Something");
   EXPECT_CALL(log, Log(logging::LOG_INFO,
-              ::testing::EndsWith("mock_log_unittest.cc"), kMessage));
+              ::testing::EndsWith("mock_log_test.cc"), kMessage));
   LogSomething(kMessage);
 }
 

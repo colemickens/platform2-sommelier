@@ -16,7 +16,7 @@
 
 #include "shill/property_store.h"
 
-#include "shill/property_store_unittest.h"
+#include "shill/property_store_test.h"
 
 #include <string>
 #include <utility>

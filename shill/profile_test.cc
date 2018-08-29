@@ -32,7 +32,7 @@
 #include "shill/mock_profile.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
-#include "shill/property_store_unittest.h"
+#include "shill/property_store_test.h"
 #include "shill/service_under_test.h"
 
 using base::FilePath;

@@ -18,7 +18,7 @@
 #define SHILL_MOBILE_OPERATOR_DB_TEST_PROTOS_INIT_TEST_MULTIPLE_DB_INIT_2_H_
 
 #ifndef IN_MOBILE_OPERATOR_INFO_UNITTEST_CC
-  #error "Must be included only from mobile_operator_info_unittest.cc."
+  #error "Must be included only from mobile_operator_info_test.cc."
 #endif
 
 // Following is the binary protobuf for the following (text representation)

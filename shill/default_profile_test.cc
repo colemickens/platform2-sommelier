@@ -35,7 +35,7 @@
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
 #include "shill/portal_detector.h"
-#include "shill/property_store_unittest.h"
+#include "shill/property_store_test.h"
 #include "shill/resolver.h"
 
 #if !defined(DISABLE_WIFI)

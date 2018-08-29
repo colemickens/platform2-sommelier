@@ -23,7 +23,7 @@
 #include "shill/mock_adaptors.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_store.h"
-#include "shill/property_store_unittest.h"
+#include "shill/property_store_test.h"
 #include "shill/refptr_types.h"
 #include "shill/service_property_change_test.h"
 

@@ -48,7 +48,7 @@ bool ScopedMockLog::HandleLogMessages(int severity,
   CHECK(instance_);
 
   // |full_message| looks like this if it came through MemoryLog:
-  //   "[0514/165501:INFO:mock_log_unittest.cc(22)] Some message\n"
+  //   "[0514/165501:INFO:mock_log_test.cc(22)] Some message\n"
   // The user wants to match just the substring "Some message".  Strip off the
   // extra stuff.  |message_start| is the position where "Some message" begins.
   //
