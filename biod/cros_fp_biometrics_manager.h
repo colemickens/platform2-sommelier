@@ -101,11 +101,13 @@ class CrosFpBiometricsManager : public BiometricsManager {
   bool RequestEnrollImage(InternalRecord record);
   bool RequestEnrollFingerUp(InternalRecord record);
   bool RequestMatch(int attempt = 0);
+  bool RequestMatchFingerUp();
 
   // Actions taken when the corresponding Fingerprint MKBP events happen.
-  void DoMatchEvent(int attempt, uint32_t event);
   void DoEnrollImageEvent(InternalRecord record, uint32_t event);
   void DoEnrollFingerUpEvent(InternalRecord record, uint32_t event);
+  void DoMatchEvent(int attempt, uint32_t event);
+  void DoMatchFingerUpEvent(uint32_t event);
 
   void KillMcuSession();
 

@@ -680,6 +680,17 @@ bool CrosFpBiometricsManager::RequestMatch(int attempt) {
   return true;
 }
 
+bool CrosFpBiometricsManager::RequestMatchFingerUp() {
+  next_session_action_ = base::Bind(
+      &CrosFpBiometricsManager::DoMatchFingerUpEvent, base::Unretained(this));
+  if (!cros_dev_->FpMode(FP_MODE_FINGER_UP)) {
+    next_session_action_ = SessionAction();
+    LOG(ERROR) << "Failed to request finger up event";
+    return false;
+  }
+  return true;
+}
+
 void CrosFpBiometricsManager::DoEnrollImageEvent(InternalRecord record,
                                                  uint32_t event) {
   if (!(event & EC_MKBP_FP_ENROLL)) {
@@ -759,6 +770,17 @@ void CrosFpBiometricsManager::DoEnrollFingerUpEvent(InternalRecord record,
     OnSessionFailed();
 }
 
+void CrosFpBiometricsManager::DoMatchFingerUpEvent(uint32_t event) {
+  if (!(event & EC_MKBP_FP_FINGER_UP)) {
+    LOG(WARNING) << "Unexpected MKBP event: 0x" << std::hex << event;
+    // Continue waiting for the proper event, do not abort session.
+    return;
+  }
+  // The user has lifted their finger, try to match the next touch.
+  if (!RequestMatch())
+    OnSessionFailed();
+}
+
 void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
   if (!(event & EC_MKBP_FP_MATCH)) {
     LOG(WARNING) << "Unexpected MKBP event: 0x" << std::hex << event;
@@ -789,10 +811,19 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
     return;
   }
 
+  // Don't try to match again until the user has lifted their finger from the
+  // sensor. Request the FingerUp event as soon as the HW signaled a match so it
+  // doesn't attempt a new match while the host is processing the first
+  // match event.
+  if (!RequestMatchFingerUp()) {
+    OnSessionFailed();
+    return;
+  }
+
   std::vector<int> dirty_list;
   if (match_result == EC_MKBP_FP_ERR_MATCH_YES_UPDATED) {
     std::bitset<32> dirty_bitmap(0);
-    // Retrieve which templates have been updates.
+    // Retrieve which templates have been updated.
     if (!cros_dev_->GetDirtyMap(&dirty_bitmap))
       LOG(ERROR) << "Failed to get updated templates map";
     // Create a list of modified template indexes from the bitmap.
@@ -871,10 +902,6 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
                  << " in storage during AuthSession because writing failed.";
     }
   }
-
-  // Continue trying to match fingers
-  if (!RequestMatch())
-    OnSessionFailed();
 }
 
 void CrosFpBiometricsManager::OnTaskComplete() {
