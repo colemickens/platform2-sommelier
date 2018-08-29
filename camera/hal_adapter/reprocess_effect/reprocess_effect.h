@@ -51,6 +51,7 @@ class ReprocessEffect {
   //    |input_buffer|: input buffer
   //    |width|: width of input buffer
   //    |height|: height of input buffer
+  //    |orientation|: clockwise rotation angle in degrees to be viewed upright
   //    |v4l2_format|: format of input buffer
   //    |result_metadata|: output result metadata
   //    |output_buffer|: output buffer
@@ -60,6 +61,7 @@ class ReprocessEffect {
                                    buffer_handle_t input_buffer,
                                    uint32_t width,
                                    uint32_t height,
+                                   uint32_t orientation,
                                    uint32_t v4l2_format,
                                    android::CameraMetadata* result_metadata,
                                    buffer_handle_t output_buffer) = 0;

@@ -37,6 +37,7 @@ class PortraitModeEffect final : public ReprocessEffect {
                            buffer_handle_t input_buffer,
                            uint32_t width,
                            uint32_t height,
+                           uint32_t orientation,
                            uint32_t v4l2_format,
                            android::CameraMetadata* result_metadata,
                            buffer_handle_t output_buffer);
@@ -46,7 +47,8 @@ class PortraitModeEffect final : public ReprocessEffect {
                                         int output_rgb_buf_fd,
                                         int result_report_fd,
                                         uint32_t width,
-                                        uint32_t height);
+                                        uint32_t height,
+                                        uint32_t orientation);
 
   int ConvertYUVToRGB(uint32_t v4l2_format,
                       const android_ycbcr& ycbcr,

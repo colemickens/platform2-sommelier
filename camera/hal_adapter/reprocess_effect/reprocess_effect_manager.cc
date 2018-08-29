@@ -81,9 +81,14 @@ int32_t ReprocessEffectManager::ReprocessRequest(
     android::CameraMetadata* result_metadata,
     buffer_handle_t output_buffer) {
   VLOGF_ENTER();
+  uint32_t orientation = 0;
+  camera_metadata_ro_entry_t entry;
+  if (find_camera_metadata_ro_entry(&settings, ANDROID_JPEG_ORIENTATION,
+                                    &entry) == 0) {
+    orientation = entry.data.i32[0];
+  }
   // TODO(hywu): enable cascading effects
   for (uint32_t tag = VENDOR_GOOGLE_START; tag < max_vendor_tag_; tag++) {
-    camera_metadata_ro_entry_t entry;
     if (find_camera_metadata_ro_entry(&settings, tag, &entry) == 0) {
       DCHECK(vendor_tag_info_map_.find(tag) != vendor_tag_info_map_.end());
       if (!vendor_tag_info_map_.at(tag).effect) {
@@ -94,8 +99,8 @@ int32_t ReprocessEffectManager::ReprocessRequest(
       int result = 0;
       uint32_t v4l2_format = buffer_manager_->GetV4L2PixelFormat(output_buffer);
       result = vendor_tag_info_map_.at(tag).effect->ReprocessRequest(
-          settings, input_buffer, width, height, v4l2_format, result_metadata,
-          output_buffer);
+          settings, input_buffer, width, height, orientation, v4l2_format,
+          result_metadata, output_buffer);
       if (result != 0) {
         LOGF(ERROR) << "Failed to handle reprocess request on vendor tag 0x"
                     << std::hex << tag;

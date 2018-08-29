@@ -85,6 +85,7 @@ int32_t PortraitModeEffect::ReprocessRequest(
     buffer_handle_t input_buffer,
     uint32_t width,
     uint32_t height,
+    uint32_t orientation,
     uint32_t v4l2_format,
     android::CameraMetadata* result_metadata,
     buffer_handle_t output_buffer) {
@@ -145,7 +146,7 @@ int32_t PortraitModeEffect::ReprocessRequest(
 
     base::Process process = LaunchPortraitProcessor(
         input_rgb_shm.handle().fd, output_rgb_shm.handle().fd,
-        result_report_shm.handle().fd, width, height);
+        result_report_shm.handle().fd, width, height, orientation);
     if (!process.IsValid()) {
       LOGF(ERROR) << "Failed to launch portrait processor";
       return -EINVAL;
@@ -247,11 +248,13 @@ int32_t PortraitModeEffect::ReprocessRequest(
   return 0;
 }
 
-base::Process PortraitModeEffect::LaunchPortraitProcessor(int input_rgb_buf_fd,
-                                                          int output_rgb_buf_fd,
-                                                          int result_report_fd,
-                                                          uint32_t width,
-                                                          uint32_t height) {
+base::Process PortraitModeEffect::LaunchPortraitProcessor(
+    int input_rgb_buf_fd,
+    int output_rgb_buf_fd,
+    int result_report_fd,
+    uint32_t width,
+    uint32_t height,
+    uint32_t orientation) {
   int dup_input_rgb_buf_fd = dup(input_rgb_buf_fd);
   int dup_output_rgb_buf_fd = dup(output_rgb_buf_fd);
   int dup_result_report_fd = dup(result_report_fd);
@@ -266,6 +269,7 @@ base::Process PortraitModeEffect::LaunchPortraitProcessor(int input_rgb_buf_fd,
                             std::to_string(dup_output_rgb_buf_fd));
   cmdline.AppendSwitchASCII("width", std::to_string(width));
   cmdline.AppendSwitchASCII("height", std::to_string(height));
+  cmdline.AppendSwitchASCII("orientation", std::to_string(orientation));
   cmdline.AppendSwitchASCII("result_report_fd",
                             std::to_string(dup_result_report_fd));
   VLOGF(1) << cmdline.GetCommandLineString();
