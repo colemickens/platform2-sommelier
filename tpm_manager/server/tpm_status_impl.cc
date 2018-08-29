@@ -19,6 +19,7 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <tpm_manager/server/tpm_util.h>
 #include <trousers/tss.h>
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha)
 
@@ -29,6 +30,10 @@ const size_t kMinimumDaInfoSize = 21;
 // Minimum size of TPM_CAP_VERSION_INFO struct.
 const size_t kMinimumVersionInfoSize = 17;
 
+TpmStatusImpl::TpmStatusImpl(
+    const OwnershipTakenCallBack& ownership_taken_callback)
+    : ownership_taken_callback_(ownership_taken_callback) {}
+
 bool TpmStatusImpl::IsTpmEnabled() {
   if (!is_enable_initialized_) {
     RefreshOwnedEnabledInfo();
@@ -36,11 +41,29 @@ bool TpmStatusImpl::IsTpmEnabled() {
   return is_enabled_;
 }
 
-bool TpmStatusImpl::IsTpmOwned() {
+bool TpmStatusImpl::CheckAndNotifyIfTpmOwned() {
+  if (is_fully_initialized_) {
+    return true;
+  }
+
   if (!is_owned_) {
+    // update is_owned_
     RefreshOwnedEnabledInfo();
   }
-  return is_owned_;
+
+  if (!is_owned_) {
+    // We even haven't tried to take ownership yet.
+    return false;
+  }
+
+  is_fully_initialized_ = !TestTpmWithDefaultOwnerPassword();
+  if (is_fully_initialized_ && !ownership_taken_callback_.is_null()) {
+    // Sends out the ownership taken signal when the value of
+    // is_fully_initialized_ changes from false to true.
+    ownership_taken_callback_.Run();
+  }
+
+  return is_fully_initialized_;
 }
 
 bool TpmStatusImpl::GetDictionaryAttackInfo(int* counter,
@@ -124,6 +147,30 @@ bool TpmStatusImpl::GetVersionInfo(uint32_t* family,
   }
   free(tpm_version.vendorSpecific);
   return true;
+}
+
+bool TpmStatusImpl::TestTpmWithDefaultOwnerPassword() {
+  if (!is_owner_password_state_dirty_) {
+    return is_owner_password_default_;
+  }
+
+  TpmConnection connection(GetDefaultOwnerPassword());
+  TSS_HTPM tpm_handle = connection.GetTpm();
+  if (tpm_handle == 0) {
+    return false;
+  }
+
+  // Call Tspi_TPM_GetStatus to test the default owner password.
+  TSS_BOOL current_status = false;
+  TSS_RESULT result = Tspi_TPM_GetStatus(
+      tpm_handle, TSS_TPMSTATUS_DISABLED, &current_status);
+
+  // TODO(garryxiao): tell the difference between invalid owner password and TPM
+  // communication errors.
+  is_owner_password_default_ = !TPM_ERROR(result);
+  is_owner_password_state_dirty_ = false;
+
+  return is_owner_password_default_;
 }
 
 void TpmStatusImpl::RefreshOwnedEnabledInfo() {

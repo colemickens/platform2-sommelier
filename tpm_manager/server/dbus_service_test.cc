@@ -52,6 +52,9 @@ class DBusServiceTest : public testing::Test {
         .WillByDefault(Return(mock_exported_object_.get()));
     dbus_service_.reset(new DBusService(mock_bus_, &mock_nvram_service_,
                                         &mock_ownership_service_));
+  }
+
+  void RegisterDBusObjectsAsync() {
     scoped_refptr<brillo::dbus_utils::AsyncEventSequencer> sequencer(
         new brillo::dbus_utils::AsyncEventSequencer());
     dbus_service_->RegisterDBusObjectsAsync(sequencer.get());
@@ -67,7 +70,7 @@ class DBusServiceTest : public testing::Test {
     dbus::MessageWriter writer(call.get());
     writer.AppendProtoAsArrayOfBytes(request);
     auto response = brillo::dbus_utils::testing::CallMethod(
-        dbus_service_->dbus_object_, call.get());
+        *dbus_service_->dbus_object_, call.get());
     dbus::MessageReader reader(response.get());
     EXPECT_TRUE(reader.PopArrayOfBytesAsProto(reply));
   }
@@ -90,6 +93,8 @@ class DBusServiceTest : public testing::Test {
 };
 
 TEST_F(DBusServiceTest, CopyableCallback) {
+  RegisterDBusObjectsAsync();
+
   EXPECT_CALL(mock_ownership_service_, GetTpmStatus(_, _))
       .WillOnce(WithArgs<1>(Invoke(
           [](const TpmOwnershipInterface::GetTpmStatusCallback& callback) {
@@ -104,6 +109,8 @@ TEST_F(DBusServiceTest, CopyableCallback) {
 }
 
 TEST_F(DBusServiceTest, GetTpmStatus) {
+  RegisterDBusObjectsAsync();
+
   GetTpmStatusRequest request;
   EXPECT_CALL(mock_ownership_service_, GetTpmStatus(_, _))
       .WillOnce(Invoke(
@@ -131,6 +138,8 @@ TEST_F(DBusServiceTest, GetTpmStatus) {
 }
 
 TEST_F(DBusServiceTest, TakeOwnership) {
+  RegisterDBusObjectsAsync();
+
   EXPECT_CALL(mock_ownership_service_, TakeOwnership(_, _))
       .WillOnce(Invoke(
           [](const TakeOwnershipRequest& request,
@@ -146,6 +155,8 @@ TEST_F(DBusServiceTest, TakeOwnership) {
 }
 
 TEST_F(DBusServiceTest, RemoveOwnerDependency) {
+  RegisterDBusObjectsAsync();
+
   std::string owner_dependency("owner_dependency");
   RemoveOwnerDependencyRequest request;
   request.set_owner_dependency(owner_dependency);
@@ -167,6 +178,8 @@ TEST_F(DBusServiceTest, RemoveOwnerDependency) {
 }
 
 TEST_F(DBusServiceTest, ClearStoredOwnerPassword) {
+  RegisterDBusObjectsAsync();
+
   ClearStoredOwnerPasswordRequest request;
   EXPECT_CALL(mock_ownership_service_, ClearStoredOwnerPassword(_, _))
       .WillOnce(Invoke([](
@@ -184,6 +197,8 @@ TEST_F(DBusServiceTest, ClearStoredOwnerPassword) {
 }
 
 TEST_F(DBusServiceTest, DefineSpace) {
+  RegisterDBusObjectsAsync();
+
   uint32_t nvram_index = 5;
   size_t nvram_length = 32;
   DefineSpaceRequest request;
@@ -207,6 +222,8 @@ TEST_F(DBusServiceTest, DefineSpace) {
 }
 
 TEST_F(DBusServiceTest, DestroySpace) {
+  RegisterDBusObjectsAsync();
+
   uint32_t nvram_index = 5;
   DestroySpaceRequest request;
   request.set_index(nvram_index);
@@ -226,6 +243,8 @@ TEST_F(DBusServiceTest, DestroySpace) {
 }
 
 TEST_F(DBusServiceTest, WriteSpace) {
+  RegisterDBusObjectsAsync();
+
   uint32_t nvram_index = 5;
   std::string nvram_data("nvram_data");
   WriteSpaceRequest request;
@@ -249,6 +268,8 @@ TEST_F(DBusServiceTest, WriteSpace) {
 }
 
 TEST_F(DBusServiceTest, ReadSpace) {
+  RegisterDBusObjectsAsync();
+
   uint32_t nvram_index = 5;
   std::string nvram_data("nvram_data");
   ReadSpaceRequest request;
@@ -272,6 +293,8 @@ TEST_F(DBusServiceTest, ReadSpace) {
 }
 
 TEST_F(DBusServiceTest, LockSpace) {
+  RegisterDBusObjectsAsync();
+
   uint32_t nvram_index = 5;
   LockSpaceRequest request;
   request.set_index(nvram_index);
@@ -295,6 +318,8 @@ TEST_F(DBusServiceTest, LockSpace) {
 }
 
 TEST_F(DBusServiceTest, ListSpaces) {
+  RegisterDBusObjectsAsync();
+
   constexpr uint32_t nvram_index_list[] = {3, 4, 5};
   ListSpacesRequest request;
   EXPECT_CALL(mock_nvram_service_, ListSpaces(_, _))
@@ -318,6 +343,8 @@ TEST_F(DBusServiceTest, ListSpaces) {
 }
 
 TEST_F(DBusServiceTest, GetSpaceInfo) {
+  RegisterDBusObjectsAsync();
+
   uint32_t nvram_index = 5;
   size_t nvram_size = 32;
   GetSpaceInfoRequest request;
@@ -342,6 +369,32 @@ TEST_F(DBusServiceTest, GetSpaceInfo) {
   EXPECT_EQ(nvram_size, reply.size());
   EXPECT_TRUE(reply.is_read_locked());
   EXPECT_TRUE(reply.is_write_locked());
+}
+
+TEST_F(DBusServiceTest, SendOwnershipTakenSignalAfterNotification) {
+  RegisterDBusObjectsAsync();
+
+  EXPECT_FALSE(dbus_service_->MaybeSendOwnershipTakenSignal());
+  dbus_service_->NotifyOwnershipIsTaken();
+  EXPECT_TRUE(dbus_service_->MaybeSendOwnershipTakenSignal());
+}
+
+TEST_F(DBusServiceTest, SendOwnershipTakenSignalError) {
+  ON_CALL(*mock_bus_, GetExportedObject(_)).WillByDefault(Return(nullptr));
+
+  RegisterDBusObjectsAsync();
+  dbus_service_->NotifyOwnershipIsTaken();
+
+  EXPECT_FALSE(dbus_service_->MaybeSendOwnershipTakenSignal());
+}
+
+TEST_F(DBusServiceTest, SendOwnershipTakenSignalAfterRegistration) {
+  dbus_service_->NotifyOwnershipIsTaken();
+  EXPECT_FALSE(dbus_service_->MaybeSendOwnershipTakenSignal());
+
+  RegisterDBusObjectsAsync();
+
+  EXPECT_TRUE(dbus_service_->MaybeSendOwnershipTakenSignal());
 }
 
 }  // namespace tpm_manager

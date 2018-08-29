@@ -19,6 +19,8 @@
 
 #include "tpm_manager/server/tpm_status.h"
 
+#include <vector>
+
 #include <gmock/gmock.h>
 
 namespace tpm_manager {
@@ -29,7 +31,7 @@ class MockTpmStatus : public TpmStatus {
   ~MockTpmStatus() override;
 
   MOCK_METHOD0(IsTpmEnabled, bool());
-  MOCK_METHOD0(IsTpmOwned, bool());
+  MOCK_METHOD0(CheckAndNotifyIfTpmOwned, bool());
   MOCK_METHOD4(GetDictionaryAttackInfo,
                bool(int* counter,
                     int* threshold,
@@ -42,6 +44,8 @@ class MockTpmStatus : public TpmStatus {
                     uint32_t* tpm_model,
                     uint64_t* firmware_version,
                     std::vector<uint8_t>* vendor_specific));
+  MOCK_METHOD0(TestTpmWithDefaultOwnerPassword, bool());
+  MOCK_METHOD0(MarkOwnerPasswordStateDirty, void());
 };
 
 }  // namespace tpm_manager

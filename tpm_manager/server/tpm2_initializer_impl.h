@@ -19,12 +19,13 @@
 
 #include "tpm_manager/server/tpm_initializer.h"
 
-#include <string>
 #include <memory>
+#include <string>
 
 #include <base/macros.h>
 #include <trunks/trunks_factory.h>
 
+#include "tpm_manager/server/dbus_service.h"
 #include "tpm_manager/server/local_data_store.h"
 #include "tpm_manager/server/openssl_crypto_util.h"
 #include "tpm_manager/server/tpm_status.h"
@@ -35,22 +36,29 @@ namespace tpm_manager {
 // this class is:
 // LocalDataStore data_store;
 // Tpm2StatusImpl status;
-// Tpm2InitializerImpl initializer(&data_store, &status);
+// OwnershipTakenCallBack callback;
+// Tpm2InitializerImpl initializer(&data_store, &status, callback);
 // initializer.InitializeTpm();
+//
 // If the tpm is unowned, InitializeTpm injects random owner, endorsement and
 // lockout passwords, intializes the SRK with empty authorization, and persists
 // the passwords to disk until all the owner dependencies are satisfied.
+//
+// The ownership taken callback must be provided when the tpm initializer is
+// constructed and stay alive during the entire lifetime of the tpm initializer.
 class Tpm2InitializerImpl : public TpmInitializer {
  public:
   // Does not take ownership of arguments.
   Tpm2InitializerImpl(const trunks::TrunksFactory& factory,
                       LocalDataStore* local_data_store,
-                      TpmStatus* tpm_status);
+                      TpmStatus* tpm_status,
+                      const OwnershipTakenCallBack& ownership_taken_callback);
   // Does not take ownership of arguments.
   Tpm2InitializerImpl(const trunks::TrunksFactory& factory,
                       OpensslCryptoUtil* openssl_util,
                       LocalDataStore* local_data_store,
-                      TpmStatus* tpm_status);
+                      TpmStatus* tpm_status,
+                      const OwnershipTakenCallBack& ownership_taken_callback);
   ~Tpm2InitializerImpl() override = default;
 
   // TpmInitializer methods.
@@ -72,6 +80,9 @@ class Tpm2InitializerImpl : public TpmInitializer {
   OpensslCryptoUtil* openssl_util_;
   LocalDataStore* local_data_store_;
   TpmStatus* tpm_status_;
+
+  // Callback function called after TPM ownership is taken.
+  const OwnershipTakenCallBack& ownership_taken_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(Tpm2InitializerImpl);
 };

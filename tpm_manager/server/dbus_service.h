@@ -22,6 +22,7 @@
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/dbus/dbus_object.h>
+#include <brillo/dbus/dbus_signal.h>
 #include <dbus/bus.h>
 
 #include "tpm_manager/common/tpm_nvram_interface.h"
@@ -30,6 +31,10 @@
 namespace tpm_manager {
 
 using brillo::dbus_utils::DBusMethodResponse;
+using brillo::dbus_utils::DBusObject;
+using brillo::dbus_utils::DBusSignal;
+
+using OwnershipTakenCallBack = base::Callback<void()>;
 
 // Handles D-Bus communication with the TpmManager daemon.
 class DBusService : public brillo::DBusServiceDaemon {
@@ -48,6 +53,19 @@ class DBusService : public brillo::DBusServiceDaemon {
   // Registers objects exported by this service.
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
+
+  // Callback function being called when ownership is (already) taken in
+  // TpmInitializer.
+  void NotifyOwnershipIsTaken();
+
+  // Sends ownership taken signal to D-Bus if all the following conditions are
+  // true:
+  //  1. The signal has never been sent before.
+  //  2. The signal is successfully registered in the TPM ownership interface.
+  //  3. TPM ownership is already taken.
+  //
+  // Returns whether the signal was successfully sent.
+  bool MaybeSendOwnershipTakenSignal();
 
  private:
   friend class DBusServiceTest;
@@ -78,9 +96,17 @@ class DBusService : public brillo::DBusServiceDaemon {
       std::unique_ptr<DBusMethodResponse<const ReplyProtobufType&>> response,
       const RequestProtobufType& request);
 
-  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
+  std::unique_ptr<DBusObject> dbus_object_;
   TpmNvramInterface* nvram_service_;
   TpmOwnershipInterface* ownership_service_;
+
+  bool ownership_already_taken_ = false;
+  bool already_sent_ownership_taken_signal_ = false;
+
+  // Pointer of the ownership taken signal. The signal is indirectly owned by
+  // dbus_object_.
+  std::weak_ptr<DBusSignal<bool>> ownership_taken_signal_;
+
   DISALLOW_COPY_AND_ASSIGN(DBusService);
 };
 

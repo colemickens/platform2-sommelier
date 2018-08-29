@@ -21,23 +21,28 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/macros.h>
 #include <trousers/tss.h>
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha)
 
+#include <tpm_manager/server/dbus_service.h>
 #include <tpm_manager/server/tpm_connection.h>
 
 namespace tpm_manager {
 
 class TpmStatusImpl : public TpmStatus {
  public:
-  TpmStatusImpl() = default;
+  // |ownership_taken_callback| must stay alive during the entire lifetime of
+  // the TpmStatus object.
+  explicit TpmStatusImpl(
+      const OwnershipTakenCallBack& ownership_taken_callback);
   ~TpmStatusImpl() override = default;
 
   // TpmState methods.
   bool IsTpmEnabled() override;
-  bool IsTpmOwned() override;
+  bool CheckAndNotifyIfTpmOwned() override;
   bool GetDictionaryAttackInfo(int* counter,
                                int* threshold,
                                bool* lockout,
@@ -48,6 +53,12 @@ class TpmStatusImpl : public TpmStatus {
                       uint32_t* tpm_model,
                       uint64_t* firmware_version,
                       std::vector<uint8_t>* vendor_specific) override;
+
+  bool TestTpmWithDefaultOwnerPassword() override;
+
+  inline void MarkOwnerPasswordStateDirty() override {
+    is_owner_password_state_dirty_ = true;
+  }
 
  private:
   // This method refreshes the |is_owned_| and |is_enabled_| status of the
@@ -63,8 +74,28 @@ class TpmStatusImpl : public TpmStatus {
 
   TpmConnection tpm_connection_;
   bool is_enabled_{false};
+
+  // Whether the TPM ownership has been taken with the default owner password.
+  // Note that a true value doesn't necessary mean the entire TPM initialization
+  // process has finished.
   bool is_owned_{false};
+
+  // Whether the entire TPM initialization process has finished, i.e., ownership
+  // has been taken and the owner password is no longer the default one.
+  bool is_fully_initialized_{false};
+
   bool is_enable_initialized_{false};
+
+  // Callback function called after TPM ownership is taken.
+  const OwnershipTakenCallBack& ownership_taken_callback_;
+
+  // Whether we should query the TPM again with the default password or use the
+  // cached result in is_owner_password_default_. We should query the TPM for
+  // the first time TestTpmWithDefaultOwnerPassword is called.
+  bool is_owner_password_state_dirty_ = true;
+
+  // Whether current owner password in the TPM is the default one.
+  bool is_owner_password_default_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(TpmStatusImpl);
 };

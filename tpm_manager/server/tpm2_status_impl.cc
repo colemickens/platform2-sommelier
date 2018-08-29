@@ -16,6 +16,8 @@
 
 #include "tpm_manager/server/tpm2_status_impl.h"
 
+#include <string>
+
 #include <base/logging.h>
 #include <trunks/error_codes.h>
 #include <trunks/tpm_generated.h>
@@ -26,9 +28,12 @@ using trunks::TPM_RC_SUCCESS;
 
 namespace tpm_manager {
 
-Tpm2StatusImpl::Tpm2StatusImpl(const trunks::TrunksFactory& factory)
+Tpm2StatusImpl::Tpm2StatusImpl(
+    const trunks::TrunksFactory& factory,
+    const OwnershipTakenCallBack& ownership_taken_callback)
     : trunks_factory_(factory),
-      trunks_tpm_state_(trunks_factory_.GetTpmState()) {}
+      trunks_tpm_state_(trunks_factory_.GetTpmState()),
+      ownership_taken_callback_(ownership_taken_callback) {}
 
 bool Tpm2StatusImpl::IsTpmEnabled() {
   if (!initialized_) {
@@ -37,11 +42,20 @@ bool Tpm2StatusImpl::IsTpmEnabled() {
   return trunks_tpm_state_->IsEnabled();
 }
 
-bool Tpm2StatusImpl::IsTpmOwned() {
-  if (!is_owned_) {
-    Refresh();
+bool Tpm2StatusImpl::CheckAndNotifyIfTpmOwned() {
+  if (is_owned_) {
+    return true;
   }
+
+  Refresh();
+
   is_owned_ = trunks_tpm_state_->IsOwned();
+  if (is_owned_ && !ownership_taken_callback_.is_null()) {
+    // Sends out the ownership taken signal when the value of is_owned_ changes
+    // from false to true.
+    ownership_taken_callback_.Run();
+  }
+
   return is_owned_;
 }
 

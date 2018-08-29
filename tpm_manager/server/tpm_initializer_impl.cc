@@ -23,35 +23,28 @@
 #include <base/strings/string_number_conversions.h>
 #include <trousers/scoped_tss_type.h>
 
+#include "tpm_manager/common/tpm_manager_constants.h"
 #include "tpm_manager/server/local_data_store.h"
 #include "tpm_manager/server/tpm_connection.h"
-#include "tpm_manager/common/tpm_manager_constants.h"
 #include "tpm_manager/server/tpm_status.h"
 #include "tpm_manager/server/tpm_util.h"
 
 namespace {
 
-// Don't use directly, use GetDefaultOwnerPassword().
-const char kDefaultOwnerPassword[] = TSS_WELL_KNOWN_SECRET;
-// Owner password is human-readable, so produce N random bytes and then
-// hexdump them into N*2 password bytes. For other passwords, just generate
-// N*2 random bytes.
-const size_t kOwnerPasswordRandomBytes = 10;
-const size_t kDefaultPasswordSize = kOwnerPasswordRandomBytes * 2;
 const int kMaxOwnershipTimeoutRetries = 5;
 const char* kWellKnownSrkSecret = "well_known_srk_secret";
-
-std::string GetDefaultOwnerPassword() {
-  return std::string(kDefaultOwnerPassword, kDefaultPasswordSize);
-}
 
 }  // namespace
 
 namespace tpm_manager {
 
-TpmInitializerImpl::TpmInitializerImpl(LocalDataStore* local_data_store,
-                                       TpmStatus* tpm_status)
-    : local_data_store_(local_data_store), tpm_status_(tpm_status) {}
+TpmInitializerImpl::TpmInitializerImpl(
+    LocalDataStore* local_data_store,
+    TpmStatus* tpm_status,
+    const OwnershipTakenCallBack& ownership_taken_callback)
+    : local_data_store_(local_data_store),
+      tpm_status_(tpm_status),
+      ownership_taken_callback_(ownership_taken_callback) {}
 
 bool TpmInitializerImpl::PreInitializeTpm() {
   // No pre-initialization steps are performed for 1.2.
@@ -59,7 +52,7 @@ bool TpmInitializerImpl::PreInitializeTpm() {
 }
 
 bool TpmInitializerImpl::InitializeTpm() {
-  if (tpm_status_->IsTpmOwned() && !TestTpmAuth(GetDefaultOwnerPassword())) {
+  if (tpm_status_->CheckAndNotifyIfTpmOwned()) {
     // Tpm is already owned, so we do not need to do anything.
     VLOG(1) << "Tpm already owned.";
     return true;
@@ -87,6 +80,11 @@ bool TpmInitializerImpl::InitializeTpm() {
   }
   if (!ChangeOwnerPassword(&connection, owner_password)) {
     return false;
+  }
+  tpm_status_->MarkOwnerPasswordStateDirty();
+
+  if (!ownership_taken_callback_.is_null()) {
+    ownership_taken_callback_.Run();
   }
   return true;
 }
@@ -126,7 +124,7 @@ bool TpmInitializerImpl::InitializeEndorsementKey(TpmConnection* connection) {
 }
 
 bool TpmInitializerImpl::TakeOwnership(TpmConnection* connection) {
-  if (TestTpmAuth(GetDefaultOwnerPassword())) {
+  if (tpm_status_->TestTpmWithDefaultOwnerPassword()) {
     VLOG(1) << "The Tpm already has the default owner password.";
     return true;
   }
@@ -171,6 +169,7 @@ bool TpmInitializerImpl::TakeOwnership(TpmConnection* connection) {
                            << retry_count;
     return false;
   }
+
   return true;
 }
 
@@ -249,22 +248,6 @@ bool TpmInitializerImpl::ChangeOwnerPassword(
     return false;
   }
 
-  return true;
-}
-
-bool TpmInitializerImpl::TestTpmAuth(const std::string& owner_password) {
-  TpmConnection connection(owner_password);
-  TSS_HTPM tpm_handle = connection.GetTpm();
-  if (tpm_handle == 0) {
-    return false;
-  }
-  // Call Tspi_TPM_GetStatus to test the |owner_password| provided.
-  TSS_RESULT result;
-  TSS_BOOL current_status = false;
-  if (TPM_ERROR(result = Tspi_TPM_GetStatus(tpm_handle, TSS_TPMSTATUS_DISABLED,
-                                            &current_status))) {
-    return false;
-  }
   return true;
 }
 

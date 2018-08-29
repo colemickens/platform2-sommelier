@@ -17,6 +17,8 @@
 #include "tpm_manager/server/tpm_manager_service.h"
 
 #include <memory>
+#include <string>
+#include <vector>
 
 #include <base/callback.h>
 #include <base/command_line.h>
@@ -90,21 +92,22 @@ void TpmManagerService::InitializeTask() {
       base::PlatformThread::Sleep(kTrunksDaemonInitAttemptDelay);
     }
     local_data_store_ = &default_local_data_store_;
-    default_tpm_status_ =
-        std::make_unique<Tpm2StatusImpl>(default_trunks_factory_);
+    default_tpm_status_ = std::make_unique<Tpm2StatusImpl>(
+        default_trunks_factory_, ownership_taken_callback_);
     tpm_status_ = default_tpm_status_.get();
     default_tpm_initializer_ = std::make_unique<Tpm2InitializerImpl>(
-        default_trunks_factory_, local_data_store_, tpm_status_);
+        default_trunks_factory_, local_data_store_, tpm_status_,
+        ownership_taken_callback_);
     tpm_initializer_ = default_tpm_initializer_.get();
     default_tpm_nvram_ = std::make_unique<Tpm2NvramImpl>(
         default_trunks_factory_, local_data_store_);
     tpm_nvram_ = default_tpm_nvram_.get();
 #else
     default_tpm_status_ =
-        std::make_unique<TpmStatusImpl>();
+        std::make_unique<TpmStatusImpl>(ownership_taken_callback_);
     tpm_status_ = default_tpm_status_.get();
-    default_tpm_initializer_ =
-        std::make_unique<TpmInitializerImpl>(local_data_store_, tpm_status_);
+    default_tpm_initializer_ = std::make_unique<TpmInitializerImpl>(
+        local_data_store_, tpm_status_, ownership_taken_callback_);
     tpm_initializer_ = default_tpm_initializer_.get();
     default_tpm_nvram_ = std::make_unique<TpmNvramImpl>(local_data_store_);
     tpm_nvram_ = default_tpm_nvram_.get();
@@ -115,6 +118,15 @@ void TpmManagerService::InitializeTask() {
     return;
   }
   tpm_initializer_->VerifiedBootHelper();
+
+  // CheckAndNotifyIfTpmOwned() sends a signal if the TPM is already owned at
+  // boot time and needs to be called no matter what value wait_for_ownership_
+  // is.
+  if (tpm_status_->CheckAndNotifyIfTpmOwned()) {
+    VLOG(1) << "Tpm is already owned.";
+    return;
+  }
+
   if (!wait_for_ownership_) {
     VLOG(1) << "Initializing TPM.";
     if (!tpm_initializer_->InitializeTpm()) {
@@ -138,7 +150,7 @@ void TpmManagerService::GetTpmStatusTask(
     const std::shared_ptr<GetTpmStatusReply>& reply) {
   VLOG(1) << __func__;
   reply->set_enabled(tpm_status_->IsTpmEnabled());
-  reply->set_owned(tpm_status_->IsTpmOwned());
+  reply->set_owned(tpm_status_->CheckAndNotifyIfTpmOwned());
   LocalData local_data;
   if (local_data_store_ && local_data_store_->Read(&local_data)) {
     *reply->mutable_local_data() = local_data;
@@ -432,9 +444,10 @@ template <typename ReplyProtobufType,
           typename RequestProtobufType,
           typename ReplyCallbackType,
           typename TaskType>
-void TpmManagerService::PostTaskToWorkerThread(RequestProtobufType& request,
-                                               ReplyCallbackType& callback,
-                                               TaskType task) {
+void TpmManagerService::PostTaskToWorkerThread(
+    const RequestProtobufType& request,
+    const ReplyCallbackType& callback,
+    TaskType task) {
   auto result = std::make_shared<ReplyProtobufType>();
   base::Closure background_task =
       base::Bind(task, base::Unretained(this), request, result);

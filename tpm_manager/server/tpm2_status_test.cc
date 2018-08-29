@@ -20,6 +20,7 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <tpm_manager/server/dbus_service.h>
 #include <trunks/mock_tpm_state.h>
 #include <trunks/trunks_factory_for_test.h>
 
@@ -37,13 +38,21 @@ class Tpm2StatusTest : public testing::Test {
 
   void SetUp() override {
     factory_.set_tpm_state(&mock_tpm_state_);
-    tpm_status_.reset(new Tpm2StatusImpl(factory_));
+    ownership_callback_ = base::Bind(
+        &Tpm2StatusTest::OwnershipCallback, base::Unretained(this));
+    tpm_status_.reset(new Tpm2StatusImpl(factory_, ownership_callback_));
   }
 
  protected:
+  // Mock ownership taken callback.
+  void OwnershipCallback() { ++ownership_call_count_; }
+
   NiceMock<trunks::MockTpmState> mock_tpm_state_;
   trunks::TrunksFactoryForTest factory_;
   std::unique_ptr<TpmStatus> tpm_status_;
+
+  OwnershipTakenCallBack ownership_callback_;
+  int ownership_call_count_ = 0;
 };
 
 TEST_F(Tpm2StatusTest, IsEnabledSuccess) {
@@ -68,12 +77,14 @@ TEST_F(Tpm2StatusTest, IsOwnedSuccess) {
   EXPECT_CALL(mock_tpm_state_, Initialize())
       .WillRepeatedly(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_tpm_state_, IsOwned()).WillRepeatedly(Return(true));
-  EXPECT_TRUE(tpm_status_->IsTpmOwned());
+  EXPECT_TRUE(tpm_status_->CheckAndNotifyIfTpmOwned());
+  EXPECT_EQ(ownership_call_count_, 1);
 }
 
 TEST_F(Tpm2StatusTest, IsOwnedFailure) {
   EXPECT_CALL(mock_tpm_state_, IsOwned()).WillRepeatedly(Return(false));
-  EXPECT_FALSE(tpm_status_->IsTpmOwned());
+  EXPECT_FALSE(tpm_status_->CheckAndNotifyIfTpmOwned());
+  EXPECT_EQ(ownership_call_count_, 0);
 }
 
 TEST_F(Tpm2StatusTest, IsOwnedRepeatedInitializationOnFalse) {
@@ -81,16 +92,19 @@ TEST_F(Tpm2StatusTest, IsOwnedRepeatedInitializationOnFalse) {
       .Times(2)
       .WillRepeatedly(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_tpm_state_, IsOwned()).WillOnce(Return(false));
-  EXPECT_FALSE(tpm_status_->IsTpmOwned());
+  EXPECT_FALSE(tpm_status_->CheckAndNotifyIfTpmOwned());
+  EXPECT_EQ(ownership_call_count_, 0);
   EXPECT_CALL(mock_tpm_state_, IsOwned()).WillRepeatedly(Return(true));
-  EXPECT_TRUE(tpm_status_->IsTpmOwned());
+  EXPECT_TRUE(tpm_status_->CheckAndNotifyIfTpmOwned());
+  EXPECT_EQ(ownership_call_count_, 1);
 }
 
 TEST_F(Tpm2StatusTest, IsOwnedNoRepeatedInitializationOnTrue) {
   EXPECT_CALL(mock_tpm_state_, Initialize()).WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_tpm_state_, IsOwned()).WillRepeatedly(Return(true));
-  EXPECT_TRUE(tpm_status_->IsTpmOwned());
-  EXPECT_TRUE(tpm_status_->IsTpmOwned());
+  EXPECT_TRUE(tpm_status_->CheckAndNotifyIfTpmOwned());
+  EXPECT_TRUE(tpm_status_->CheckAndNotifyIfTpmOwned());
+  EXPECT_EQ(ownership_call_count_, 1);
 }
 
 TEST_F(Tpm2StatusTest, GetDictionaryAttackInfoInitializeFailure) {

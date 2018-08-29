@@ -18,6 +18,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <brillo/bind_lambda.h>
 #include <brillo/daemons/dbus_daemon.h>
@@ -84,6 +85,9 @@ void DBusService::RegisterDBusObjectsAsync(
           ClearStoredOwnerPasswordRequest, ClearStoredOwnerPasswordReply,
           &TpmOwnershipInterface::ClearStoredOwnerPassword>);
 
+  ownership_taken_signal_ =
+      ownership_dbus_interface->RegisterSignal<bool>(kOwnershipTakenSignal);
+
   brillo::dbus_utils::DBusInterface* nvram_dbus_interface =
       dbus_object_->AddOrGetInterface(kTpmNvramInterface);
 
@@ -126,6 +130,41 @@ void DBusService::RegisterDBusObjectsAsync(
 
   dbus_object_->RegisterAsync(
       sequencer->GetHandler("Failed to register D-Bus object.", true));
+}
+
+void DBusService::NotifyOwnershipIsTaken() {
+  ownership_already_taken_ = true;
+
+  // Send the signal if it's registered in the ownership dbus interface.
+  MaybeSendOwnershipTakenSignal();
+}
+
+bool DBusService::MaybeSendOwnershipTakenSignal() {
+  if (already_sent_ownership_taken_signal_) {
+    return false;
+  }
+
+  if (!ownership_already_taken_) {
+    return false;
+  }
+
+  // We have to check if ownership_taken_signal_ is ready here because
+  // TpmInitializer may try to take TPM ownership in another thread before
+  // RegisterDBusObjectsAsync is called.
+  auto signal = ownership_taken_signal_.lock();
+  if (!signal) {
+    LOG(INFO) << "Ownership taken signal has not been initialized yet.";
+    return false;
+  }
+
+  if (!signal->Send(true)) {
+    LOG(ERROR) << "Failed to send ownership taken signal!";
+    return false;
+  }
+
+  already_sent_ownership_taken_signal_ = true;
+  LOG(INFO) << "Ownership taken signal is sent.";
+  return true;
 }
 
 template <typename RequestProtobufType,

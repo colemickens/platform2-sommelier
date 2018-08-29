@@ -20,8 +20,11 @@
 #include "tpm_manager/server/tpm_status.h"
 
 #include <memory>
+#include <vector>
 
+#include <base/logging.h>
 #include <base/macros.h>
+#include <tpm_manager/server/dbus_service.h>
 #include <trunks/tpm_state.h>
 #include <trunks/trunks_factory.h>
 
@@ -30,12 +33,17 @@ namespace tpm_manager {
 class Tpm2StatusImpl : public TpmStatus {
  public:
   // Does not take ownership of |factory|.
-  explicit Tpm2StatusImpl(const trunks::TrunksFactory& factory);
+  //
+  // |ownership_taken_callback| must stay alive during the entire lifetime of
+  // the TpmStatus object.
+  explicit Tpm2StatusImpl(
+      const trunks::TrunksFactory& factory,
+      const OwnershipTakenCallBack& ownership_taken_callback);
   ~Tpm2StatusImpl() override = default;
 
   // TpmStatus methods.
   bool IsTpmEnabled() override;
-  bool IsTpmOwned() override;
+  bool CheckAndNotifyIfTpmOwned() override;
   bool GetDictionaryAttackInfo(int* counter,
                                int* threshold,
                                bool* lockout,
@@ -47,6 +55,15 @@ class Tpm2StatusImpl : public TpmStatus {
                       uint64_t* firmware_version,
                       std::vector<uint8_t>* vendor_specific) override;
 
+  inline void MarkOwnerPasswordStateDirty() override {
+    LOG(ERROR) << __func__ << ": Not implemented";
+  }
+
+  bool TestTpmWithDefaultOwnerPassword() override {
+    LOG(ERROR) << __func__ << ": Not implemented";
+    return false;
+  }
+
  private:
   // Refreshes the Tpm state information. Can be called as many times as needed
   // to refresh the cached information in this class. Return true if the
@@ -57,6 +74,9 @@ class Tpm2StatusImpl : public TpmStatus {
   bool is_owned_{false};
   const trunks::TrunksFactory& trunks_factory_;
   std::unique_ptr<trunks::TpmState> trunks_tpm_state_;
+
+  // Callback function called after TPM ownership is taken.
+  const OwnershipTakenCallBack& ownership_taken_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(Tpm2StatusImpl);
 };

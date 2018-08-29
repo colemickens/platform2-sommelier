@@ -18,6 +18,7 @@
 #define TPM_MANAGER_SERVER_TPM_MANAGER_SERVICE_H_
 
 #include <memory>
+#include <string>
 
 #include <base/callback.h>
 #include <base/macros.h>
@@ -28,6 +29,7 @@
 
 #include "tpm_manager/common/tpm_nvram_interface.h"
 #include "tpm_manager/common/tpm_ownership_interface.h"
+#include "tpm_manager/server/dbus_service.h"
 #include "tpm_manager/server/local_data_store.h"
 #include "tpm_manager/server/local_data_store_impl.h"
 #include "tpm_manager/server/tpm_initializer.h"
@@ -121,6 +123,10 @@ class TpmManagerService : public TpmNvramInterface,
   void GetSpaceInfo(const GetSpaceInfoRequest& request,
                     const GetSpaceInfoCallback& callback) override;
 
+  inline void SetOwnershipTakenCallback(OwnershipTakenCallBack callback) {
+    ownership_taken_callback_ = callback;
+  }
+
  private:
   // A relay callback which allows the use of weak pointer semantics for a reply
   // to TaskRunner::PostTaskAndReply.
@@ -136,8 +142,8 @@ class TpmManagerService : public TpmNvramInterface,
             typename RequestProtobufType,
             typename ReplyCallbackType,
             typename TaskType>
-  void PostTaskToWorkerThread(RequestProtobufType& request,
-                              ReplyCallbackType& callback,
+  void PostTaskToWorkerThread(const RequestProtobufType& request,
+                              const ReplyCallbackType& callback,
                               TaskType task);
 
   // Synchronously initializes the TPM according to the current configuration.
@@ -246,6 +252,10 @@ class TpmManagerService : public TpmNvramInterface,
   std::unique_ptr<base::Thread> worker_thread_;
   // Declared last so any weak pointers are destroyed first.
   base::WeakPtrFactory<TpmManagerService> weak_factory_{this};
+
+  // Function that's called after TPM ownership is taken by tpm_initializer_.
+  // It's value should be set by SetOwnershipTakenCallback() before being used.
+  OwnershipTakenCallBack ownership_taken_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(TpmManagerService);
 };

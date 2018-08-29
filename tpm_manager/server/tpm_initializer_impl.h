@@ -23,6 +23,7 @@
 #include <trousers/tss.h>
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha)
 
+#include "tpm_manager/server/dbus_service.h"
 #include "tpm_manager/server/openssl_crypto_util_impl.h"
 #include "tpm_manager/server/tpm_connection.h"
 #include "tpm_manager/server/tpm_initializer.h"
@@ -36,15 +37,22 @@ class TpmStatus;
 // this class is:
 // LocalDataStore data_store;
 // TpmStatusImpl status;
-// TpmInitializerImpl initializer(&data_store, &status);
+// OwnershipTakenCallBack callback;
+// TpmInitializerImpl initializer(&data_store, &status, callback);
 // initializer.InitializeTpm();
+//
 // If the tpm is unowned, InitializeTpm injects a random owner password,
 // initializes and unrestricts the SRK, and persists the owner password to disk
 // until all the owner dependencies are satisfied.
+//
+// The ownership taken callback must be provided when the tpm initializer is
+// constructed and stay alive during the entire lifetime of the tpm initializer.
 class TpmInitializerImpl : public TpmInitializer {
  public:
   // Does not take ownership of |local_data_store| or |tpm_status|.
-  TpmInitializerImpl(LocalDataStore* local_data_store, TpmStatus* tpm_status);
+  TpmInitializerImpl(LocalDataStore* local_data_store,
+                     TpmStatus* tpm_status,
+                     const OwnershipTakenCallBack& ownership_taken_callback);
   ~TpmInitializerImpl() override = default;
 
   // TpmInitializer methods.
@@ -76,14 +84,12 @@ class TpmInitializerImpl : public TpmInitializer {
   bool ChangeOwnerPassword(TpmConnection* connection,
                            const std::string& owner_password);
 
-  // This method return true iff the provided |owner_password| is the current
-  // owner password in the Tpm. This method can also return false if there was
-  // an error communicating with the Tpm.
-  bool TestTpmAuth(const std::string& owner_password);
-
   OpensslCryptoUtilImpl openssl_util_;
   LocalDataStore* local_data_store_;
   TpmStatus* tpm_status_;
+
+  // Callback function called after TPM ownership is taken.
+  const OwnershipTakenCallBack& ownership_taken_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(TpmInitializerImpl);
 };

@@ -26,6 +26,7 @@
 
 #include "tpm_manager/common/tpm_manager.pb.h"
 #include "tpm_manager/common/tpm_manager_constants.h"
+#include "tpm_manager/common/tpm_ownership_dbus_interface.h"
 #include "tpm_manager/server/openssl_crypto_util_impl.h"
 
 using trunks::TPM_RC;
@@ -41,22 +42,28 @@ const size_t kDefaultPasswordSize = kOwnerPasswordRandomBytes * 2;
 
 namespace tpm_manager {
 
-Tpm2InitializerImpl::Tpm2InitializerImpl(const trunks::TrunksFactory& factory,
-                                         LocalDataStore* local_data_store,
-                                         TpmStatus* tpm_status)
+Tpm2InitializerImpl::Tpm2InitializerImpl(
+    const trunks::TrunksFactory& factory,
+    LocalDataStore* local_data_store,
+    TpmStatus* tpm_status,
+    const OwnershipTakenCallBack& ownership_taken_callback)
     : trunks_factory_(factory),
       openssl_util_(new OpensslCryptoUtilImpl()),
       local_data_store_(local_data_store),
-      tpm_status_(tpm_status) {}
+      tpm_status_(tpm_status),
+      ownership_taken_callback_(ownership_taken_callback) {}
 
-Tpm2InitializerImpl::Tpm2InitializerImpl(const trunks::TrunksFactory& factory,
-                                         OpensslCryptoUtil* openssl_util,
-                                         LocalDataStore* local_data_store,
-                                         TpmStatus* tpm_status)
+Tpm2InitializerImpl::Tpm2InitializerImpl(
+    const trunks::TrunksFactory& factory,
+    OpensslCryptoUtil* openssl_util,
+    LocalDataStore* local_data_store,
+    TpmStatus* tpm_status,
+    const OwnershipTakenCallBack& ownership_taken_callback)
     : trunks_factory_(factory),
       openssl_util_(openssl_util),
       local_data_store_(local_data_store),
-      tpm_status_(tpm_status) {}
+      tpm_status_(tpm_status),
+      ownership_taken_callback_(ownership_taken_callback) {}
 
 bool Tpm2InitializerImpl::PreInitializeTpm() {
   TPM_RC result = trunks_factory_.GetTpmUtility()->PrepareForOwnership();
@@ -72,7 +79,7 @@ bool Tpm2InitializerImpl::InitializeTpm() {
   if (!SeedTpmRng()) {
     return false;
   }
-  if (tpm_status_->IsTpmOwned()) {
+  if (tpm_status_->CheckAndNotifyIfTpmOwned()) {
     // Tpm is already owned, so we do not need to do anything.
     VLOG(1) << "Tpm already owned.";
     return true;
@@ -131,6 +138,9 @@ bool Tpm2InitializerImpl::InitializeTpm() {
     return false;
   }
 
+  if (!ownership_taken_callback_.is_null()) {
+    ownership_taken_callback_.Run();
+  }
   return true;
 }
 

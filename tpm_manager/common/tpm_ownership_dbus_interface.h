@@ -27,6 +27,9 @@ constexpr char kTakeOwnership[] = "TakeOwnership";
 constexpr char kRemoveOwnerDependency[] = "RemoveOwnerDependency";
 constexpr char kClearStoredOwnerPassword[] = "ClearStoredOwnerPassword";
 
+// Signal registered by tpm_manager ownership D-Bus interface.
+constexpr char kOwnershipTakenSignal[] = "SignalOwnershipTaken";
+
 }  // namespace tpm_manager
 
 #endif  // TPM_MANAGER_COMMON_TPM_OWNERSHIP_DBUS_INTERFACE_H_
