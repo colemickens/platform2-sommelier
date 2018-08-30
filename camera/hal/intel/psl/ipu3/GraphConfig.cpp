@@ -1278,20 +1278,6 @@ status_t GraphConfig::getNodeInfo(const ia_uid uid, const Node &parent, int* wid
     return status;
 }
 
-bool GraphConfig::doesStillSettingExist(Node *imgu)
-{
-    Node *stillPipe = nullptr;
-    int isEnabled = 1;
-    int ret = imgu->getDescendant(GCSS_KEY_IMGU_STILL, &stillPipe);
-    if (ret != css_err_none) {
-        LOGD("<%u> node is not present in graph settings)", GCSS_KEY_IMGU_STILL);
-        return false;
-    }
-
-    stillPipe->getValue(GCSS_KEY_ENABLED, isEnabled);
-    return !!isEnabled;
-}
-
 /*
  * Imgu specific function
  */
@@ -1309,12 +1295,12 @@ status_t GraphConfig::getImguMediaCtlData(int32_t cameraId,
     int width = 0, height = 0, format = 0;
     int enabled = 1;
 
-    string imgu_index = enableStill ? "1" : "0";
-    string kImguName = imguWithoutPort + imgu_index;
-    string inputName = imguWithoutPort + imgu_index + MEDIACTL_INPUTNAME;
-    string statName = imguWithoutPort + imgu_index + MEDIACTL_STATNAME;
-    string parameterName = imguWithoutPort + imgu_index + MEDIACTL_PARAMETERNAME;
-    string outputName = imguWithoutPort + imgu_index + MEDIACTL_VIDEONAME;
+    string imguIndex = enableStill ? "1" : "0";
+    string kImguName = imguWithoutPort + imguIndex;
+    string inputName = imguWithoutPort + imguIndex + MEDIACTL_INPUTNAME;
+    string statName = imguWithoutPort + imguIndex + MEDIACTL_STATNAME;
+    string parameterName = imguWithoutPort + imguIndex + MEDIACTL_PARAMETERNAME;
+    string outputName = imguWithoutPort + imguIndex + MEDIACTL_VIDEONAME;
 
     ret = mSettings->getDescendant(GCSS_KEY_IMGU, &imgu);
     if (ret != css_err_none) {
@@ -1322,10 +1308,12 @@ status_t GraphConfig::getImguMediaCtlData(int32_t cameraId,
         return UNKNOWN_ERROR;
     }
 
-    bool hasStillSetting = doesStillSettingExist(imgu);
-
     for (size_t i = 0; i < mLut.size(); i++) {
         Node *pipe = nullptr;
+        struct v4l2_subdev_selection cropSelect, composeSelect;
+        CLEAR(cropSelect);
+        CLEAR(composeSelect);
+
         ret = imgu->getDescendant(mLut[i].uid, &pipe);
         if (ret != css_err_none) {
             LOGD("<%u> node is not present in graph (descriptor or settings) - continuing.", mLut[i].uid);
@@ -1396,17 +1384,16 @@ status_t GraphConfig::getImguMediaCtlData(int32_t cameraId,
                 LOGE("pipe log name: %s can't get info!", mLut[i].nodeName.c_str());
                 return UNKNOWN_ERROR;
             }
-            struct v4l2_subdev_selection select;
-            CLEAR(select);
-            select.which = V4L2_SUBDEV_FORMAT_ACTIVE;
-            select.target = V4L2_SEL_TGT_CROP;
-            select.pad = 0;
-            select.flags = 0;
-            select.r.left = 0;
-            select.r.top = 0;
-            select.r.width = nodeWidth;
-            select.r.height = nodeHeight;
-            addSelectionVideoParams(inputName, select, mediaCtlConfig);
+
+            cropSelect.which = V4L2_SUBDEV_FORMAT_ACTIVE;
+            cropSelect.target = V4L2_SEL_TGT_CROP;
+            cropSelect.pad = 0;
+            cropSelect.flags = 0;
+            cropSelect.r.left = 0;
+            cropSelect.r.top = 0;
+            cropSelect.r.width = nodeWidth;
+            cropSelect.r.height = nodeHeight;
+            addSelectionVideoParams(inputName, cropSelect, mediaCtlConfig);
             LOG2("pipe log name: %s  if size %dx%d", mLut[i].nodeName.c_str(), nodeWidth, nodeHeight);
 
             // Get BDS info
@@ -1415,32 +1402,21 @@ status_t GraphConfig::getImguMediaCtlData(int32_t cameraId,
                 LOGE("pipe log name: %s can't get info!", mLut[i].nodeName.c_str());
                 return UNKNOWN_ERROR;
             }
-            CLEAR(select);
-            select.which = V4L2_SUBDEV_FORMAT_ACTIVE;
-            select.target = V4L2_SEL_TGT_COMPOSE;
-            select.pad = 0;
-            select.flags = 0;
-            select.r.left = 0;
-            select.r.top = 0;
-            select.r.width = nodeWidth;
-            select.r.height = nodeHeight;
-            addSelectionVideoParams(inputName, select, mediaCtlConfig);
+
+            composeSelect.which = V4L2_SUBDEV_FORMAT_ACTIVE;
+            composeSelect.target = V4L2_SEL_TGT_COMPOSE;
+            composeSelect.pad = 0;
+            composeSelect.flags = 0;
+            composeSelect.r.left = 0;
+            composeSelect.r.top = 0;
+            composeSelect.r.width = nodeWidth;
+            composeSelect.r.height = nodeHeight;
+            addSelectionVideoParams(inputName, composeSelect, mediaCtlConfig);
             LOG2("pipe log name: %s  bds size %dx%d", mLut[i].nodeName.c_str(), nodeWidth, nodeHeight);
         }
 
         /* if node active add it to mediactl config */
         if (width != 0) {
-            /* W/A: still pipe must outputs data through viewfinder node, currently its settings is aqcuired
-            * from setting of key <preview>, need to convert its name to still for ImguUnit processing, will remove
-            * this workaround after GCSS xml files are sorted */
-            if ((mLut[i].uid == GCSS_KEY_IMGU_PREVIEW || mLut[i].uid == GCSS_KEY_IMGU_VIDEO)
-                   && enableStill && hasStillSetting) {
-                mLut[i].pad = MEDIACTL_PAD_OUTPUT_NUM;
-                mLut[i].nodeName = outputName;
-                mLut[i].ipuNodeName = IMGU_NODE_VIDEO;
-            } else if (mLut[i].pad == MEDIACTL_PAD_VF_NUM && enableStill && !hasStillSetting) {
-                mLut[i].ipuNodeName = IMGU_NODE_STILL;
-            }
             LOG2("Adding video node: %d %s %s", mLut[i].ipuNodeName, NODE_NAME(pipe), mLut[i].nodeName.c_str());
             addImguVideoNode(mLut[i].ipuNodeName, mLut[i].nodeName, mediaCtlConfig);
         }
@@ -1458,6 +1434,16 @@ status_t GraphConfig::getImguMediaCtlData(int32_t cameraId,
 
         if (mLut[i].uidStr != GC_INPUT) {
             addLinkParams(kImguName, mLut[i].pad, mLut[i].nodeName, 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
+            /* the output node of imgu for still pipe should be configured the same as vf node */
+            if (mLut[i].uidStr == GC_STILL) {
+                LOG2("Adding video node: %d %s %s", IMGU_NODE_VIDEO, "video", outputName.c_str());
+                addSelectionVideoParams(inputName, cropSelect, mediaCtlConfig);
+                addSelectionVideoParams(inputName, composeSelect, mediaCtlConfig);
+                addImguVideoNode(IMGU_NODE_VIDEO, outputName, mediaCtlConfig);
+                addFormatParams(outputName, width, height, 1, format, 0, mediaCtlConfig);
+                addLinkParams(kImguName, MEDIACTL_PAD_OUTPUT_NUM, outputName,
+                    0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
+            }
         } else {
             addLinkParams(mLut[i].nodeName, 0, kImguName, mLut[i].pad, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
         }
@@ -1484,43 +1470,46 @@ void GraphConfig::setMediaCtlConfig(std::shared_ptr<MediaController> mediaCtl,
     mMediaCtl = mediaCtl;
 
     // imgu 0 for video pipe, imgu 1 for still pipe
-    string imgu_index = enableStill ? "1" : "0";
-    const string stillName = imguWithoutPort + imgu_index + MEDIACTL_STILLNAME;
-    const string inputName = imguWithoutPort + imgu_index + MEDIACTL_INPUTNAME;
-    const string videoName = imguWithoutPort + imgu_index + MEDIACTL_VIDEONAME;
-    const string previewName = imguWithoutPort + imgu_index + MEDIACTL_PREVIEWNAME;
+    string imguIndex = enableStill ? "1" : "0";
+    const string stillName = imguWithoutPort + imguIndex + MEDIACTL_STILLNAME;
+    const string inputName = imguWithoutPort + imguIndex + MEDIACTL_INPUTNAME;
+    const string videoName = imguWithoutPort + imguIndex + MEDIACTL_VIDEONAME;
+    const string previewName = imguWithoutPort + imguIndex + MEDIACTL_PREVIEWNAME;
 
-    const int mainPad = !swapVideoPreview ? MEDIACTL_PAD_OUTPUT_NUM : MEDIACTL_PAD_VF_NUM;
-    const int secondPad = swapVideoPreview ? MEDIACTL_PAD_OUTPUT_NUM : MEDIACTL_PAD_VF_NUM;
     mLut.clear();
     MediaCtlLut lut;
     lut.ipuNodeName = IMGU_NODE_NULL;
 
-    lut.uid = GCSS_KEY_IMGU_VIDEO;
-    lut.uidStr = GCSS::ItemUID::key2str(lut.uid);
-    lut.pad = mainPad;
-    lut.nodeName = (lut.pad == MEDIACTL_PAD_OUTPUT_NUM) ? videoName : previewName;
-    LOG2("save graph setting nodes: %s, pad: %d, nodename: %s", lut.uidStr.c_str(), lut.pad, lut.nodeName.c_str());
-    mLut.push_back(lut);
+    if (enableStill) {
+        lut.uid = GCSS_KEY_IMGU_STILL;
+        lut.uidStr = GCSS::ItemUID::key2str(lut.uid);
+        lut.pad = MEDIACTL_PAD_VF_NUM;
+        lut.nodeName = stillName;
+        LOG2("save graph setting nodes: %s, pad: %d, nodename: %s", lut.uidStr.c_str(), lut.pad, lut.nodeName.c_str());
+        mLut.push_back(lut);
+    } else {
+        const int mainPad = !swapVideoPreview ? MEDIACTL_PAD_OUTPUT_NUM : MEDIACTL_PAD_VF_NUM;
+        const int secondPad = swapVideoPreview ? MEDIACTL_PAD_OUTPUT_NUM : MEDIACTL_PAD_VF_NUM;
+
+        lut.uid = GCSS_KEY_IMGU_VIDEO;
+        lut.uidStr = GCSS::ItemUID::key2str(lut.uid);
+        lut.pad = mainPad;
+        lut.nodeName = (lut.pad == MEDIACTL_PAD_OUTPUT_NUM) ? videoName : previewName;
+        LOG2("save graph setting nodes: %s, pad: %d, nodename: %s", lut.uidStr.c_str(), lut.pad, lut.nodeName.c_str());
+        mLut.push_back(lut);
+
+        lut.uid = GCSS_KEY_IMGU_PREVIEW;
+        lut.uidStr = GCSS::ItemUID::key2str(lut.uid);
+        lut.pad = secondPad;
+        lut.nodeName = (lut.pad == MEDIACTL_PAD_OUTPUT_NUM) ? videoName : previewName;
+        LOG2("save graph setting nodes: %s, pad: %d, nodename: %s", lut.uidStr.c_str(), lut.pad, lut.nodeName.c_str());
+        mLut.push_back(lut);
+    }
 
     lut.uid = GCSS_KEY_INPUT;
     lut.uidStr = GCSS::ItemUID::key2str(lut.uid);
     lut.pad = 0;
     lut.nodeName = inputName;
-    LOG2("save graph setting nodes: %s, pad: %d, nodename: %s", lut.uidStr.c_str(), lut.pad, lut.nodeName.c_str());
-    mLut.push_back(lut);
-
-    lut.uid = GCSS_KEY_IMGU_PREVIEW;
-    lut.uidStr = GCSS::ItemUID::key2str(lut.uid);
-    lut.pad = secondPad;
-    lut.nodeName = (lut.pad == MEDIACTL_PAD_OUTPUT_NUM) ? videoName : previewName;
-    LOG2("save graph setting nodes: %s, pad: %d, nodename: %s", lut.uidStr.c_str(), lut.pad, lut.nodeName.c_str());
-    mLut.push_back(lut);
-
-    lut.uid = GCSS_KEY_IMGU_STILL;
-    lut.uidStr = GCSS::ItemUID::key2str(lut.uid);
-    lut.pad = MEDIACTL_PAD_VF_NUM;
-    lut.nodeName = stillName;
     LOG2("save graph setting nodes: %s, pad: %d, nodename: %s", lut.uidStr.c_str(), lut.pad, lut.nodeName.c_str());
     mLut.push_back(lut);
 

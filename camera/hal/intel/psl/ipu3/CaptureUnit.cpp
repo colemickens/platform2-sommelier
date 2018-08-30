@@ -333,17 +333,19 @@ status_t CaptureUnit::handleConfigStreams(MessageConfig msg)
     unsigned short ifWidth, ifHeight;
     unsigned short inputWidth, inputHeight;
 
-    if(baseConfig->doesNodeExist(baseNode + GC_PREVIEW + ":if")) {
-      node = baseNode + GC_PREVIEW + ":if";
+    if (baseConfig->doesNodeExist(baseNode + GC_PREVIEW + ":if")) {
+        node = baseNode + GC_PREVIEW + ":if";
     } else if (baseConfig->doesNodeExist(baseNode + GC_VIDEO + ":if")) {
-      node = baseNode + GC_VIDEO + ":if";
+        node = baseNode + GC_VIDEO + ":if";
+    } else if (baseConfig->doesNodeExist(baseNode + GC_STILL + ":if")) {
+        node = baseNode + GC_STILL + ":if";
     }
     status = baseConfig->graphGetDimensionsByName(node, ifWidth, ifHeight);
 
     node = baseNode + GC_INPUT;
     status |= baseConfig->graphGetDimensionsByName(node, inputWidth, inputHeight);
 
-    if(status == OK) {
+    if (status == OK) {
         desc->line_periods_vertical_blanking += (inputHeight - ifHeight);
     } else {
         LOGE("@%s: get input or IF size error", __FUNCTION__);

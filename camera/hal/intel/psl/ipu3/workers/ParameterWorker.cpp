@@ -108,6 +108,14 @@ status_t ParameterWorker::configure(std::shared_ptr<GraphConfig> &config)
         }
         overrideCPFFMode(&pipeConfig, config);
         fillAicInputParams(sensorParams, pipeConfig, mRuntimeParams);
+    } else if (config->doesNodeExist("imgu:still")) {
+        ret = getPipeConfig(pipeConfig, config, GC_STILL);
+        if (ret != OK) {
+            LOGE("Failed to get pipe config still pipe");
+            return ret;
+        }
+        overrideCPFFMode(&pipeConfig, config);
+        fillAicInputParams(sensorParams, pipeConfig, mRuntimeParams);
     } else {
         LOGE("PipeType %d config is wrong", mPipeType);
         return BAD_VALUE;

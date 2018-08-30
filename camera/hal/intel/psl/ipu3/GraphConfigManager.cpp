@@ -244,57 +244,6 @@ bool GraphConfigManager::needSwapVideoPreview(GCSS::GraphConfigNode* graphCfgNod
     return swapVideoPreview;
 }
 
-bool GraphConfigManager::needSwapStillPreview(GCSS::GraphConfigNode* graphCfgNode, int32_t id)
-{
-    bool swapStillPreview = false;
-    int previewWidth = 0;
-    int previewHeight = 0;
-    int stillWidth = 0;
-    int stillHeight = 0;
-    status_t ret1 = OK;
-    status_t ret2 = OK;
-
-    GraphConfigNode* node = nullptr;
-    std::string nodeName = GC_PREVIEW;
-    graphCfgNode->getDescendantByString(nodeName, &node);
-    if (node) {
-        ret1 = node->getValue(GCSS_KEY_WIDTH, previewWidth);
-        ret2 = node->getValue(GCSS_KEY_HEIGHT, previewHeight);
-        if (ret1 != OK || ret2 != OK) {
-            LOGE("@%s, fail to get width or height for node %s, ret1:%d, ret2:%d",
-                __FUNCTION__, nodeName.c_str(), ret1, ret2);
-            return swapStillPreview;
-        }
-    }
-    LOG2("@%s, settings id:%d, for %s, width:%d, height:%d",
-        __FUNCTION__, id, nodeName.c_str(), previewWidth, previewHeight);
-
-    node = nullptr;
-    nodeName = GC_STILL;
-    graphCfgNode->getDescendantByString(nodeName, &node);
-    if (node) {
-        ret1 = node->getValue(GCSS_KEY_WIDTH, stillWidth);
-        ret2 = node->getValue(GCSS_KEY_HEIGHT, stillHeight);
-        if (ret1 != OK || ret2 != OK) {
-            LOGE("@%s, fail to get width or height for node %s, ret1:%d, ret2:%d",
-                __FUNCTION__, nodeName.c_str(), ret1, ret2);
-            return swapStillPreview;
-        }
-    }
-    LOG2("@%s, settings id:%d, for %s, width:%d, height:%d",
-        __FUNCTION__, id, nodeName.c_str(), stillWidth, stillHeight);
-
-    if (previewWidth != 0 && previewHeight != 0
-        && stillWidth != 0 && stillHeight != 0) {
-        if (previewWidth > stillWidth
-            && previewHeight > stillHeight)
-            swapStillPreview = true;
-    }
-    LOG2("@%s :%d", __FUNCTION__, swapStillPreview);
-
-    return swapStillPreview;
-}
-
 void GraphConfigManager::handleVideoStream(ResolutionItem& res, PlatformGraphConfigKey& streamKey)
 {
     res = mVideoStreamResolutions[0];
@@ -421,8 +370,8 @@ status_t GraphConfigManager::mapStreamToKey(const std::vector<camera3_stream_t*>
         // store active output number for still pipe
         mQueryStill[streamCount] = std::to_string(MIN_GRAPH_SETTING_STREAM);
 
-        memset(&streamKey, 0, sizeof(PlatformGraphConfigKey));
-        memset(&res, 0, sizeof(ResolutionItem));
+        CLEAR(streamKey);
+        CLEAR(res);
         handleStillStream(res, streamKey);
         handleStillMap(stillStream[0], res, streamKey);
         LOG2("@%s, still pipe: %p", __func__, stillStream[0]);
@@ -554,7 +503,6 @@ status_t GraphConfigManager::matchQueryResultByCsiSetting(int *videoResultIdx,
     if (*stillResultIdx >= 0) {
         mStillQueryResults[*stillResultIdx]->getValue(GCSS_KEY_KEY, id);
         LOG1("@%s, Still graph config settings id %d", __func__, id);
-        mNeedSwapStillPreview = needSwapStillPreview(mStillQueryResults[*stillResultIdx], id);
     }
 
     return status;

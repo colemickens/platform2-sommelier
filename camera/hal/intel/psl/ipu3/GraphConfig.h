@@ -47,8 +47,6 @@ const int32_t MAX_STREAMS = 4; // max number of streams
 const uint32_t MAX_KERNEL_COUNT = 30; // max number of kernels in the kernel list
 // Declare string consts
 const std::string CSI_BE = "ipu3-cio2 ";
-const std::string CSI_RECEIVER = "ipu3-csi2 0";
-
 const std::string GC_INPUT = "input";
 const std::string GC_PREVIEW = "preview";
 const std::string GC_VIDEO = "video";
@@ -312,7 +310,6 @@ private:
     // Disable copy constructor and assignment operator
     GraphConfig(const GraphConfig &);
     GraphConfig& operator=(const GraphConfig &);
-    bool doesStillSettingExist(Node *imgu);
 
 private:
     GCSS::GraphConfigNode *mSettings;
