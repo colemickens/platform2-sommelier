@@ -133,16 +133,15 @@ def _SetTemplateVars(template_input, template_vars):
     template_input: A mapping object to be walked.
     template_vars: A mapping object built up while walking the template_input.
   """
-  to_walk = []
+  to_add = {}
   for key, val in template_input.iteritems():
     if isinstance(val, collections.Mapping):
-      to_walk.append(val)
+      _SetTemplateVars(val, template_vars)
     elif type(val) is not list:
-      template_vars[key] = val
+      to_add[key] = val
 
-  # Do this last so all variables from the parent are in scope first.
-  for val in to_walk:
-    _SetTemplateVars(val, template_vars)
+  # Do this last so all variables from the parent scope win.
+  template_vars.update(to_add)
 
 
 def _GetVarTemplateValue(val, template_input, template_vars):
