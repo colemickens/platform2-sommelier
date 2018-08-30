@@ -27,7 +27,10 @@
         {
           'target_name': 'thd_unittests',
           'type': 'executable',
-          'dependencies': ['libthd',],
+          'dependencies': [
+            'libthd',
+            '../common-mk/testrunner.gyp:testrunner',
+          ],
           'includes': ['../common-mk/common_test.gypi'],
           'variables': {
             'deps': [
@@ -37,7 +40,6 @@
           'sources': [
             'mechanism/file_write_mechanism_test.cc',
             'source/file_source_test.cc',
-            'test_runner.cc',
           ],
         },
       ],
