@@ -1,6 +1,3 @@
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'variables': {
@@ -74,16 +71,16 @@
           'dependencies': ['libchromeos-dbus-bindings'],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
-            'adaptor_generator_unittest.cc',
-            'dbus_signature_unittest.cc',
-            'indented_text_unittest.cc',
-            'method_name_generator_unittest.cc',
-            'name_parser_unittest.cc',
-            'proxy_generator_mock_unittest.cc',
-            'proxy_generator_unittest.cc',
+            'adaptor_generator_test.cc',
+            'dbus_signature_test.cc',
+            'indented_text_test.cc',
+            'method_name_generator_test.cc',
+            'name_parser_test.cc',
+            'proxy_generator_mock_test.cc',
+            'proxy_generator_test.cc',
             'test_utils.cc',
             'testrunner.cc',
-            'xml_interface_parser_unittest.cc',
+            'xml_interface_parser_test.cc',
           ],
         },
       ],
