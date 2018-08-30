@@ -32,7 +32,7 @@ namespace camera2 {
 LensHw::LensHw(int cameraId, std::shared_ptr<MediaController> mediaCtl):
     mCameraId(cameraId),
     mMediaCtl(mediaCtl),
-    mLastLensPosition(0),
+    mLastLensPosition(-1),
     mCurrentOisState(false),
     mLensMovementStartTime(0)
 {
@@ -91,12 +91,18 @@ status_t LensHw::setLens(std::shared_ptr<MediaEntity> entity)
 int LensHw::moveFocusToPosition(int position)   // focus with absolute value
 {
     LOG2("@%s: %d", __FUNCTION__, position);
+
+    if (position == mLastLensPosition) return NO_ERROR;
+
+    status_t status = mLensSubdev->SetControl(V4L2_CID_FOCUS_ABSOLUTE, position);
+    CheckError(status != NO_ERROR, status, "failed to set focus position %d", position);
+
     mLastLensPosition = position;
     // we use same clock as the timestamps from the buffers where
     // the statistics are provided. This is a monotonic clock in microsenconds
     mLensMovementStartTime = systemTime()/1000;
 
-    return mLensSubdev->SetControl(V4L2_CID_FOCUS_ABSOLUTE, position);
+    return NO_ERROR;
 }
 
 int LensHw::moveFocusToBySteps(int steps)      // focus with relative value
