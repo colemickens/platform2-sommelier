@@ -1,6 +1,3 @@
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'variables': {
@@ -101,14 +98,14 @@
           },
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
-            'avahi_client_unittest.cc',
-            'avahi_service_publisher_unittest.cc',
-            'discovered_peer_unittest.cc',
-            'manager_unittest.cc',
-            'peer_manager_impl_unittest.cc',
-            'peer_unittest.cc',
-            'published_peer_unittest.cc',
-            'service_unittest.cc',
+            'avahi_client_test.cc',
+            'avahi_service_publisher_test.cc',
+            'discovered_peer_test.cc',
+            'manager_test.cc',
+            'peer_manager_impl_test.cc',
+            'peer_test.cc',
+            'published_peer_test.cc',
+            'service_test.cc',
             'test_util.cc',
           ],
         },
