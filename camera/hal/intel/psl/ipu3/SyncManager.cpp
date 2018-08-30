@@ -819,7 +819,7 @@ status_t SyncManager::notifyPollEvent(PollEventMessage *pollEventMsg)
                  pollEventMsg->data.reqId, event.sequence, event.u.frame_sync.frame_sequence);
 
             // notify SOF event
-            mSofListener->notifySofEvent(event.u.frame_sync.frame_sequence);
+            mSofListener->notifySofEvent(event.u.frame_sync.frame_sequence, event.timestamp);
         } while (event.pending > 0);
     }
     return OK;

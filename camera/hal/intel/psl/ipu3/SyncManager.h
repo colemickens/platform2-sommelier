@@ -55,7 +55,7 @@ enum {
 class ISofListener {
 public:
     virtual ~ISofListener() {}
-    virtual bool notifySofEvent(uint32_t sequence) = 0;
+    virtual bool notifySofEvent(uint32_t sequence, struct timespec &time) = 0;
 };
 
 class ISettingsSyncListener {

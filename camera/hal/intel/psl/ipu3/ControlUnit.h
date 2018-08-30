@@ -18,6 +18,7 @@
 #define CAMERA3_HAL_CONTROLUNIT_H_
 #include <memory>
 #include <vector>
+#include <map>
 #include "ImguUnit.h"
 #include "CaptureUnit.h"
 #include "SharedItemPool.h"
@@ -152,10 +153,9 @@ private:  /* Members */
     AAARunner *m3ARunner;
     LensHw *mLensController;
 
-    /* Using for Af sync */
-    bool mAfFirstRun;
-    uint32_t mAfApplySequence;
-    uint32_t mSofSequence;
+    std::mutex mSofDataLock;
+    std::map<uint32_t, unsigned long long> mSofDataMap;
+
     static const int16_t AWB_CONVERGENCE_WAIT_COUNT = 2;
 };  // class ControlUnit
 

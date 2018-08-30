@@ -332,7 +332,7 @@ status_t AAARunner::run2A(RequestCtrlState &reqState, bool forceUpdated)
  *
  * The AF algorithm state is used to determine whether we need to run or not.
  */
-void AAARunner::runAf(RequestCtrlState &reqState, bool bypass)
+void AAARunner::runAf(RequestCtrlState &reqState)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
 
@@ -378,13 +378,7 @@ void AAARunner::runAf(RequestCtrlState &reqState, bool bypass)
     // Uncomment for debugging
     Intel3aHelper::dumpAfInputParams(&reqState.aiqInputParams.afParams);
 
-    if (bypass) {
-        *afResults = mLatestResults.afResults;
-        status = OK;
-    } else {
-        status = m3aWrapper->runAf(nullptr, afInputParams, afResults);
-    }
-
+    status = m3aWrapper->runAf(nullptr, afInputParams, afResults);
     if (status == OK) {
         reqState.afState = ALGORITHM_RUN;
         // Uncomment for debugging

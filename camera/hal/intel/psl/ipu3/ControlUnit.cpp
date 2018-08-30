@@ -55,10 +55,7 @@ ControlUnit::ControlUnit(ImguUnit *thePU,
         mSettingsProcessor(nullptr),
         mMetadata(nullptr),
         m3ARunner(nullptr),
-        mLensController(nullptr),
-        mAfFirstRun(true),
-        mAfApplySequence(0),
-        mSofSequence(0)
+        mLensController(nullptr)
 {
 }
 
@@ -547,21 +544,7 @@ ControlUnit::processRequestForCapture(std::shared_ptr<RequestCtrlState> &reqStat
 
     mMetadata->writeLSCMetadata(reqState);
 
-    // always runAf in manual focus mode
-    // and also when an AF trigger has been issued
-    bool bypass = ((!reqState->aiqInputParams.afParams.manual_focus_parameters)
-        && (reqState->aaaControls.af.afTrigger != ANDROID_CONTROL_AF_TRIGGER_START));
-
-    if (mAfFirstRun || (stats != nullptr && stats->frameSequence >= mAfApplySequence)) {
-        if (stats != nullptr) {
-            LOG2("%s, mAfApplySequence %u, frame sequence %u, mSofSequence %u",
-                  __FUNCTION__, mAfApplySequence, stats->frameSequence, mSofSequence);
-        }
-        mAfApplySequence = mSofSequence + 1;
-        mAfFirstRun = false;
-        bypass = false;
-    }
-    m3ARunner->runAf(*reqState, bypass);
+    m3ARunner->runAf(*reqState);
 
     // Latest results are saved for the next frame calculation if we do not
     // find the correct results.
@@ -860,7 +843,6 @@ status_t ControlUnit::handleFlush(void)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
 
-    mAfApplySequence = 0;
     mWaitingForCapture.clear();
     mPendingRequests.clear();
     mSettingsHistory.clear();
@@ -936,9 +918,17 @@ ControlUnit::notifyCaptureEvent(CaptureMessage *captureMsg)
             break;
         }
         case CAPTURE_EVENT_NEW_SOF:
-            mSofSequence = captureMsg->data.event.sequence;
-            LOG2("sof event sequence = %u", mSofSequence);
+        {
+            std::lock_guard<std::mutex> l(mSofDataLock);
+            if (mSofDataMap.size() >= MAX_SETTINGS_HISTORY_SIZE) {
+                mSofDataMap.erase(mSofDataMap.begin());
+            }
+            mSofDataMap[captureMsg->data.event.sequence] =
+                      captureMsg->data.event.timestamp.tv_sec * 1000000
+                      + captureMsg->data.event.timestamp.tv_usec;
+            LOG2("sof event sequence = %u", captureMsg->data.event.sequence);
             break;
+        }
         default:
             LOGW("Unsupported Capture event ");
             break;
@@ -983,6 +973,14 @@ void ControlUnit::prepareStats(RequestCtrlState &reqState,
     params->external_histograms = nullptr;
     params->num_external_histograms = 0;
 
+    {
+    std::lock_guard<std::mutex> l(mSofDataLock);
+    if (mSofDataMap.find(params->frame_id) != mSofDataMap.end()) {
+        LOG2("frame timestamp %lld to %lld, sequence %llu", params->frame_timestamp,
+              mSofDataMap.at(params->frame_id), params->frame_id);
+        params->frame_timestamp = mSofDataMap.at(params->frame_id);
+    }
+    }
     settingsInEffect = findSettingsInEffect(params->frame_id);
     if (settingsInEffect.get()) {
         params->frame_ae_parameters = &settingsInEffect->aiqResults.aeResults;

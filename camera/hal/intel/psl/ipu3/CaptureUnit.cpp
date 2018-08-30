@@ -854,13 +854,15 @@ status_t CaptureUnit::notifyListeners(ICaptureEventListener::CaptureMessage *msg
     return ret;
 }
 
-bool CaptureUnit::notifySofEvent(uint32_t sequence)
+bool CaptureUnit::notifySofEvent(uint32_t sequence, struct timespec &time)
 {
     LOG2("%s, sof event sequence %u", __FUNCTION__, sequence);
     ICaptureEventListener::CaptureMessage outMsg;
     outMsg.id = ICaptureEventListener::CAPTURE_MESSAGE_ID_EVENT;
 
     outMsg.data.event.sequence = sequence;
+    outMsg.data.event.timestamp.tv_sec = time.tv_sec;
+    outMsg.data.event.timestamp.tv_usec = time.tv_nsec / 1000;
     outMsg.data.event.type = ICaptureEventListener::CAPTURE_EVENT_NEW_SOF;
 
     return notifyListeners(&outMsg);

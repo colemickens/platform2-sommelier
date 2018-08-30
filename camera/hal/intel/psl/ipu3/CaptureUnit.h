@@ -155,7 +155,7 @@ public:
     void cleanListeners();
 
     /* ISofListener interface */
-    virtual bool notifySofEvent(uint32_t sequence);
+    virtual bool notifySofEvent(uint32_t sequence, struct timespec &time);
 
     int64_t getRollingShutterSkew();
 private:
