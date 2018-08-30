@@ -332,5 +332,28 @@
         '<(SHARED_INTERMEDIATE_DIR)/include/seneschal/proto_bindings/seneschal_service.pb.cc',
       ]
     },
+    {
+      'target_name': 'system_api-oobe_config-protos-gen',
+      'type': 'none',
+      'variables': {
+        'proto_in_dir': 'dbus/oobe_config',
+        'proto_out_dir': 'include/oobe_config/proto_bindings',
+      },
+      'sources': [
+        '<(proto_in_dir)/oobe_config.proto',
+      ],
+      'includes': ['../../platform2/common-mk/protoc.gypi'],
+    },
+    {
+      'target_name': 'system_api-oobe_config-protos',
+      'type': 'static_library',
+      'standalone_static_library': 1,
+      'dependencies': [
+        'system_api-oobe_config-protos-gen',
+      ],
+      'sources': [
+        '<(SHARED_INTERMEDIATE_DIR)/include/oobe_config/proto_bindings/oobe_config.pb.cc',
+      ]
+    },
   ],
 }

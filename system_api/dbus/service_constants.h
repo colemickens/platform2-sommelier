@@ -21,6 +21,7 @@
 #include "hammerd/dbus-constants.h"
 #include "login_manager/dbus-constants.h"
 #include "lorgnette/dbus-constants.h"
+#include "oobe_config/dbus-constants.h"
 #include "permission_broker/dbus-constants.h"
 #include "power_manager/dbus-constants.h"
 #include "seneschal/dbus-constants.h"
