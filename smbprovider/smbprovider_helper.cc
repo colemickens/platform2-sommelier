@@ -73,7 +73,7 @@ ErrorType GetErrorFromErrno(int32_t error_code) {
       error = ERROR_INVALID_OPERATION;
       break;
     case ECONNABORTED:
-      error = ERROR_ABORT;
+      error = ERROR_SMB1_UNSUPPORTED;
       break;
     default:
       error = ERROR_FAILED;
