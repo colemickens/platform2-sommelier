@@ -1093,6 +1093,10 @@ bool SessionManagerImpl::StartArcMiniContainer(
       base::StringPrintf("CHROMEOS_INSIDE_VM=%d", IsInsideVm(system_)),
       base::StringPrintf("NATIVE_BRIDGE_EXPERIMENT=%d",
                          request.native_bridge_experiment())};
+  if (request.lcd_density() > 0) {
+    env_vars.push_back(
+        base::StringPrintf("ARC_LCD_DENSITY=%d", request.lcd_density()));
+  }
 
   std::string container_instance_id = StartArcContainer(env_vars, error);
   if (container_instance_id.empty()) {
