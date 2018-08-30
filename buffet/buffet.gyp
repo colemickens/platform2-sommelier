@@ -1,6 +1,3 @@
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'variables': {
@@ -100,9 +97,9 @@
           },
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
-            'buffet_config_unittest.cc',
-            'dbus_command_proxy_unittest.cc',
-            'dbus_conversion_unittest.cc',
+            'buffet_config_test.cc',
+            'dbus_command_proxy_test.cc',
+            'dbus_conversion_test.cc',
           ],
         },
       ],
