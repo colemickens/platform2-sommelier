@@ -368,6 +368,7 @@ void Service::LxdContainerDownloading(const uint32_t cid,
 
   dbus::Signal signal(kVmCiceroneInterface, kLxdContainerDownloadingSignal);
   vm_tools::cicerone::LxdContainerDownloadingSignal proto;
+  proto.set_container_name(std::move(container_name));
   proto.set_vm_name(std::move(vm_name));
   proto.set_download_progress(std::move(download_progress));
   proto.set_owner_id(std::move(owner_id));
