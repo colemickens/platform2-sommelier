@@ -31,7 +31,9 @@ class JpegMaker : public JpegMakerCore {
 public: /* Methods */
     explicit JpegMaker(int cameraid);
     virtual ~JpegMaker();
-    status_t setupExifWithMetaData(ImgEncoder::EncodePackage & package, ExifMetaData& metaData);
+    status_t setupExifWithMetaData(ImgEncoder::EncodePackage & package,
+        ExifMetaData& metaData,
+        const Camera3Request& request);
     status_t makeJpeg(ImgEncoder::EncodePackage & package, std::shared_ptr<CameraBuffer> dest = nullptr);
 };
 } NAMESPACE_DECLARATION_END

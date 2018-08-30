@@ -20,6 +20,7 @@
 #include "EXIFMaker.h"
 #include "EXIFMetaData.h"
 #include "ImgEncoderCore.h"
+#include "Camera3Request.h"
 
 NAMESPACE_DECLARATION {
 // Android requires that camera HAL to include the final size of the compressed
@@ -46,7 +47,8 @@ public: /* Methods */
     virtual ~JpegMakerCore();
     status_t init();
     status_t setupExifWithMetaData(ImgEncoderCore::EncodePackage & package,
-                                   ExifMetaData& metaData);
+                                   ExifMetaData& metaData,
+                                   const Camera3Request& request);
     status_t makeJpeg(ImgEncoderCore::EncodePackage & package);
 
 private:  /* Methods */
@@ -55,7 +57,9 @@ private:  /* Methods */
     JpegMakerCore& operator=(const JpegMakerCore& other);
 
     status_t processExifSettings(const CameraMetadata  *settings, ExifMetaData& metaData);
-    status_t processJpegSettings(ImgEncoderCore::EncodePackage & package, ExifMetaData& metaData);
+    status_t processJpegSettings(ImgEncoderCore::EncodePackage & package,
+                                 ExifMetaData& metaData,
+                                 const Camera3Request& request);
     status_t processGpsSettings(const CameraMetadata &settings, ExifMetaData& metaData);
     status_t processAwbSettings(const CameraMetadata &settings, ExifMetaData& metaData);
     status_t processScalerCropSettings(const CameraMetadata &settings, ExifMetaData& metaData);

@@ -249,15 +249,12 @@ void EXIFMaker::pictureTaken(ExifMetaData& exifmetadata)
     }
 
     int rotation = exifmetadata.mJpegSetting.orientation;
-    exifAttributes.orientation = EXIF_ORIENTATION_UP;
-    if (0 == rotation)
-        exifAttributes.orientation = EXIF_ORIENTATION_UP;
-    else if (90 == rotation)
-        exifAttributes.orientation = EXIF_ORIENTATION_90;
-    else if (180 == rotation)
-        exifAttributes.orientation = EXIF_ORIENTATION_180;
-    else if (270 == rotation)
-        exifAttributes.orientation = EXIF_ORIENTATION_270;
+    // Since hal will correct rotation for image, no need to assign orientation
+    exifAttributes.orientation = EXIF_ORIENTATION_UNDEFINED;
+    // However, we need to swap the width and height if the orientation is 90 / 270
+    if (90 == rotation || 270 == rotation) {
+        std::swap(exifAttributes.width, exifAttributes.height);
+    }
 
     exifAttributes.zoom_ratio.num = exifmetadata.mZoomRatio;
     exifAttributes.zoom_ratio.den = 100;

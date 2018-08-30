@@ -53,13 +53,14 @@ status_t JpegMakerCore::init(void)
 }
 
 status_t JpegMakerCore::setupExifWithMetaData(ImgEncoderCore::EncodePackage & package,
-                                              ExifMetaData& metaData)
+                                              ExifMetaData& metaData,
+                                              const Camera3Request& request)
 {
     LOG2("@%s", __FUNCTION__);
 
     status_t status = NO_ERROR;
 
-    status = processJpegSettings(package, metaData);
+    status = processJpegSettings(package, metaData, request);
 
     processExifSettings(package.settings, metaData);
 
@@ -174,7 +175,8 @@ status_t JpegMakerCore::processExifSettings(const CameraMetadata  *settings,
  *
  */
 status_t JpegMakerCore::processJpegSettings(ImgEncoderCore::EncodePackage & package,
-                                            ExifMetaData& metaData)
+                                            ExifMetaData& metaData,
+                                            const Camera3Request& request)
 {
     LOG2("@%s:", __FUNCTION__);
     status_t status = NO_ERROR;
@@ -201,8 +203,13 @@ status_t JpegMakerCore::processJpegSettings(ImgEncoderCore::EncodePackage & pack
     tag = ANDROID_JPEG_THUMBNAIL_SIZE;
     entry = settings->find(tag);
     if (entry.count == 2) {
-        metaData.mJpegSetting.thumbWidth = entry.data.i32[0];
-        metaData.mJpegSetting.thumbHeight = entry.data.i32[1];
+        if (request.shouldSwapWidthHeight()) {
+            metaData.mJpegSetting.thumbWidth = entry.data.i32[1];
+            metaData.mJpegSetting.thumbHeight = entry.data.i32[0];
+        } else {
+            metaData.mJpegSetting.thumbWidth = entry.data.i32[0];
+            metaData.mJpegSetting.thumbHeight = entry.data.i32[1];
+        }
     }
 
     //# METADATA_Control jpeg.orientation done

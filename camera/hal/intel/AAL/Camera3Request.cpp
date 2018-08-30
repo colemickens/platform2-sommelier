@@ -192,8 +192,17 @@ Camera3Request::init(camera3_capture_request* req,
     mCallback = cb;
     mSettings = settings;   // Read only setting metadata buffer
     mInitialized = true;
+
+    camera_metadata_entry_t entry = mSettings.find(ANDROID_JPEG_ORIENTATION);
+    mShouldSwapWidthHeight = entry.count > 0 && entry.data.i32[0] % 180 == 90;
+
     LOG2("<Request %d> camera id %d successfully initialized", mRequestId, mCameraId);
     return NO_ERROR;
+}
+
+bool Camera3Request::shouldSwapWidthHeight() const
+{
+    return mShouldSwapWidthHeight;
 }
 
 int Camera3Request::getBufferCountOfFormat(int format) const

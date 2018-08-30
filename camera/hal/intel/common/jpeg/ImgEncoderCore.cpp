@@ -35,13 +35,11 @@ ImgEncoderCore::ImgEncoderCore() :
     mMainScaled(nullptr),
     mThumbScaled(nullptr),
     mJpegSetting(nullptr),
+    mInternalYU12(new YU12Buffer(RESOLUTION_14MP_WIDTH, RESOLUTION_14MP_HEIGHT)),
+    mTmpBuffer(new YU12Buffer(0, 0)),
     mJpegCompressor(cros::JpegCompressor::GetInstance())
 {
     LOG1("@%s", __FUNCTION__);
-
-    mInternalYU12Size =
-        RESOLUTION_14MP_WIDTH * RESOLUTION_14MP_HEIGHT * 3 / 2;
-    mInternalYU12.reset(new char[mInternalYU12Size]);
 }
 
 ImgEncoderCore::~ImgEncoderCore()
@@ -279,34 +277,109 @@ status_t ImgEncoderCore::getJpegSettings(EncodePackage & pkg, ExifMetaData& meta
     return status;
 }
 
-bool ImgEncoderCore::convertToP411(std::shared_ptr<CommonBuffer> srcBuf)
+bool ImgEncoderCore::convertToP411WithCorrectOrientation(
+    std::shared_ptr<CommonBuffer> srcBuf)
 {
     int width = srcBuf->width();
     int height = srcBuf->height();
-    int stride = srcBuf->stride();
-    void* srcY = srcBuf->data();
-    void* srcUV = static_cast<unsigned char*>(srcBuf->data()) + stride * height;
 
-    if (width * height * 3 / 2 > mInternalYU12Size) {
-        mInternalYU12Size = width * height * 3 / 2;
-        mInternalYU12.reset(new char[mInternalYU12Size]);
+    libyuv::RotationModeEnum rotationMode = getRotationInfo();
+    if (rotationMode == libyuv::kRotate90 || rotationMode == libyuv::kRotate270) {
+        mInternalYU12->reset(height, width);
+    } else {
+        mInternalYU12->reset(width, height);
     }
-    void* tempBuf = mInternalYU12.get();
+    mTmpBuffer->reset(width, height);
 
-    switch (srcBuf->v4l2Fmt()) {
+    bool isConverted = convertToP411UsingLibYUV(srcBuf,
+        mTmpBuffer, srcBuf->v4l2Fmt());
+    CheckError(isConverted == false,
+        false, "@%s, Error when convert image format", __FUNCTION__);
+
+    int status = libyuv::I420Rotate(
+        mTmpBuffer->y(), mTmpBuffer->ystride(),
+        mTmpBuffer->cb(), mTmpBuffer->cstride(),
+        mTmpBuffer->cr(), mTmpBuffer->cstride(),
+        mInternalYU12->y(), mInternalYU12->ystride(),
+        mInternalYU12->cb(), mInternalYU12->cstride(),
+        mInternalYU12->cr(), mInternalYU12->cstride(),
+        mTmpBuffer->width(), mTmpBuffer->height(),
+        rotationMode
+    );
+    CheckError(status != 0,
+        false , "@%s, Failed to rotate I420 image", __FUNCTION__);
+
+    LOG1("%s Successfully correct the orientation", __FUNCTION__);
+    return true;
+}
+
+libyuv::RotationModeEnum ImgEncoderCore::getRotationInfo()
+{
+    switch (mJpegSetting->orientation) {
+        case 0:
+            LOG1("%s No need to correct orientation", __FUNCTION__);
+            return libyuv::kRotate0;
+        case 90:
+            return libyuv::kRotate90;
+        case 180:
+            return libyuv::kRotate180;
+        case 270:
+            return libyuv::kRotate270;
+        default:
+            LOGE("%s Unsupported orientation to correct: %d", __FUNCTION__,
+                mJpegSetting->orientation);
+            return libyuv::kRotate0;
+    }
+}
+
+bool ImgEncoderCore::convertToP411UsingLibYUV(std::shared_ptr<CommonBuffer> src,
+    std::shared_ptr<YU12Buffer> dst, int format)
+{
+    CheckError(src->width() != dst->width() || src->height() != dst->height(),
+        false, "@%s, Image size not matched: %d:%d / %lu:%lu", __FUNCTION__,
+        src->width(), src->height(), dst->width(), dst->height());
+
+    uint8_t* srcY = static_cast<uint8_t*>(src->data());
+    uint8_t* srcUV = srcY + src->stride() * src->height();
+    int src_stride = src->stride();
+    int ystride = dst->ystride();
+    int cstride = dst->cstride();
+
+    int status;
+    switch (format) {
         case V4L2_PIX_FMT_YUYV:
-            YUY2ToP411(width, height, stride, srcY, tempBuf);
+            status = libyuv::YUY2ToI420(
+                srcY, src_stride,
+                dst->y(), ystride,
+                dst->cb(), cstride,
+                dst->cr(), cstride,
+                src->width(), src->height());
             break;
         case V4L2_PIX_FMT_NV12:
-            NV12ToP411Separate(width, height, stride, srcY, srcUV, tempBuf);
+            status = libyuv::NV12ToI420(
+                srcY, src_stride,
+                srcUV, src_stride,
+                dst->y(), ystride,
+                dst->cb(), cstride,
+                dst->cr(), cstride,
+                src->width(), src->height());
             break;
         case V4L2_PIX_FMT_NV21:
-            NV21ToP411Separate(width, height, stride, srcY, srcUV, tempBuf);
+            status = libyuv::NV21ToI420(
+                srcY, src_stride,
+                srcUV, src_stride,
+                dst->y(), ystride,
+                dst->cb(), cstride,
+                dst->cr(), cstride,
+                src->width(), src->height());
             break;
         default:
-            LOGE("%s Unsupported format %d", __FUNCTION__, srcBuf->v4l2Fmt());
+            LOGE("%s Unsupported format %d", __FUNCTION__, format);
             return false;
     }
+    CheckError(status != 0,
+        false, "@%s, Failed to convert to YUV420", __FUNCTION__);
+
     return true;
 }
 
@@ -317,12 +390,12 @@ int ImgEncoderCore::doEncode(std::shared_ptr<CommonBuffer> srcBuf,
 {
     LOG2("@%s", __FUNCTION__);
 
-    if (!convertToP411(srcBuf)) {
+    if (!convertToP411WithCorrectOrientation(srcBuf)) {
         return 0;
     }
-    void* tempBuf = mInternalYU12.get();
-    int width = srcBuf->width();
-    int height = srcBuf->height();
+    void* tempBuf = mInternalYU12->data();
+    int width = mInternalYU12->width();
+    int height = mInternalYU12->height();
 
     uint32_t outSize = 0;
     nsecs_t startTime = systemTime();
@@ -378,21 +451,21 @@ status_t ImgEncoderCore::encodeSync(EncodePackage & package, ExifMetaData& metaD
     allocateBufferAndDownScale(package);
 
     if (package.thumb && mThumbOutBuf) {
-        if (!convertToP411(package.thumb)) {
+        if (!convertToP411WithCorrectOrientation(package.thumb)) {
             thumbSize = 0;
         } else {
             do {
                 LOG2("Encoding thumbnail with quality %d",
                     mJpegSetting->jpegThumbnailQuality);
-                mJpegCompressor->GenerateThumbnail(mInternalYU12.get(),
-                                                   package.thumb->width(),
-                                                   package.thumb->height(),
-                                                   package.thumb->width(),
-                                                   package.thumb->height(),
-                                                   mJpegSetting->jpegThumbnailQuality,
-                                                   mThumbOutBuf->size(),
-                                                   mThumbOutBuf->data(),
-                                                   &thumbSize);
+                mJpegCompressor->GenerateThumbnail(
+                    mInternalYU12->data(),
+                    mInternalYU12->width(),
+                    mInternalYU12->height(),
+                    mInternalYU12->width(),
+                    mInternalYU12->height(),
+                    mJpegSetting->jpegThumbnailQuality,
+                    mThumbOutBuf->size(),
+                    mThumbOutBuf->data(), &thumbSize);
                 mJpegSetting->jpegThumbnailQuality -= 5;
             } while (thumbSize > 0 && mJpegSetting->jpegThumbnailQuality > 0 &&
                      thumbSize > THUMBNAIL_SIZE_LIMITATION);

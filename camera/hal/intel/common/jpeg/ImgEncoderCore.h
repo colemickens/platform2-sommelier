@@ -19,6 +19,7 @@
 
 #include <memory>
 #include <mutex>
+#include <libyuv.h>
 #include "CommonBuffer.h"
 #include "EXIFMaker.h"
 #include "base/macros.h"
@@ -95,6 +96,51 @@ private: /* Internal types */
 
     };
 
+    class YU12Buffer {
+    public:
+        YU12Buffer(size_t width, size_t height) : mSize(0) {
+            reset(width, height);
+        }
+
+        void reset(size_t width, size_t height) {
+            mWidth = width;
+            mHeight = height;
+            size_t newSize = ystride() * height + cstride() * half_height() * 2;
+            if (newSize > mSize) {
+                mData.reset(new uint8_t[newSize]);
+            }
+            mSize = newSize;
+        }
+
+        size_t width() const { return mWidth; }
+
+        size_t height() const { return mHeight; }
+
+        size_t half_height() const { return (mHeight + 1) / 2; }
+
+        size_t ystride() const { return mWidth; }
+
+        size_t cstride() const { return (ystride() + 1) / 2; }
+
+        size_t size() const { return mSize; }
+
+        uint8_t* data() { return mData.get(); }
+
+        uint8_t* y() { return mData.get(); }
+
+        uint8_t* cb() { return y() + ysize(); }
+
+        uint8_t* cr() { return cb() + cstride() * half_height(); }
+
+        size_t ysize() const { return ystride() * mHeight; }
+
+    private:
+        std::unique_ptr<uint8_t[]> mData;
+        size_t mWidth;
+        size_t mHeight;
+        size_t mSize;
+    };
+
 public: /* Methods */
     ImgEncoderCore();
     virtual ~ImgEncoderCore();
@@ -103,7 +149,7 @@ public: /* Methods */
     void deInit(void);
     status_t encodeSync(EncodePackage & package, ExifMetaData& metaData);
 
-private:  /* Methods */
+private: /* Methods */
     status_t allocateBufferAndDownScale(EncodePackage & pkg);
     void thumbBufferDownScale(EncodePackage & pkg);
     void mainBufferDownScale(EncodePackage & pkg);
@@ -113,7 +159,11 @@ private:  /* Methods */
                  unsigned int destOffset = 0);
     // Converts |srcBuf| to plain YUV420 format. The result will be in
     // |mInternalYU12|.
-    bool convertToP411(std::shared_ptr<CommonBuffer> srcBuf);
+    bool convertToP411WithCorrectOrientation(
+        std::shared_ptr<CommonBuffer> srcBuf);
+    libyuv::RotationModeEnum getRotationInfo();
+    bool convertToP411UsingLibYUV(std::shared_ptr<CommonBuffer> src,
+        std::shared_ptr<YU12Buffer> dst, int format);
     status_t getJpegSettings(EncodePackage & pkg, ExifMetaData& metaData);
     DISALLOW_COPY_AND_ASSIGN(ImgEncoderCore);
 
@@ -130,8 +180,8 @@ private:  /* Members */
     // cros::JpegCompressor needs YU12 format
     // and the ISP doesn't output YU12 directly.
     // so a temporary intermediate buffer is needed.
-    std::unique_ptr<char[]> mInternalYU12;
-    unsigned int mInternalYU12Size;
+    std::unique_ptr<YU12Buffer> mInternalYU12;
+    std::shared_ptr<YU12Buffer> mTmpBuffer;
 
     std::unique_ptr<cros::JpegCompressor> mJpegCompressor;
 };

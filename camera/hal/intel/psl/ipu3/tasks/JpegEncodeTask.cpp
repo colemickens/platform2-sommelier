@@ -276,7 +276,7 @@ JpegEncodeTask::handleMessageNewJpegInput(ITaskEventListener::PUTaskEvent &msg)
 
     handleJpegSettings(exifData, exifCache);
 
-    status = mJpegMaker->setupExifWithMetaData(package, exifData);
+    status = mJpegMaker->setupExifWithMetaData(package, exifData, *msg.request);
     // Do sw or HW encoding. Also create Thumb buffer if needed
     status = mImgEncoder->encodeSync(package, exifData);
     if (package.thumbOut == nullptr) {

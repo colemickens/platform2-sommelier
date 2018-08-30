@@ -133,10 +133,11 @@
 NAMESPACE_DECLARATION {
 
 typedef enum {
-    EXIF_ORIENTATION_UP     = 1,
-    EXIF_ORIENTATION_90     = 6,
-    EXIF_ORIENTATION_180    = 3,
-    EXIF_ORIENTATION_270    = 8,
+    EXIF_ORIENTATION_UNDEFINED      = 0,
+    EXIF_ORIENTATION_UP             = 1,
+    EXIF_ORIENTATION_90             = 6,
+    EXIF_ORIENTATION_180            = 3,
+    EXIF_ORIENTATION_270            = 8,
 } ExifOrientationType;
 
 typedef enum {

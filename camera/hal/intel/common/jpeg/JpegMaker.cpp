@@ -33,13 +33,14 @@ JpegMaker::~JpegMaker()
 }
 
 status_t JpegMaker::setupExifWithMetaData(ImgEncoder::EncodePackage & package,
-                                          ExifMetaData& metaData)
+                                          ExifMetaData& metaData,
+                                          const Camera3Request& request)
 {
     LOG2("@%s", __FUNCTION__);
     ImgEncoderCore::EncodePackage corePackage;
 
     ImgEncoder::convertEncodePackage(package, corePackage);
-    return JpegMakerCore::setupExifWithMetaData(corePackage, metaData);
+    return JpegMakerCore::setupExifWithMetaData(corePackage, metaData, request);
 }
 
 /**

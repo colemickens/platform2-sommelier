@@ -126,6 +126,7 @@ public:
     const CameraStreamNode* getInputStream();
     std::shared_ptr<CameraBuffer> findBuffer(const CameraStreamNode* stream, bool warn = true);
     bool  isInputBuffer(std::shared_ptr<CameraBuffer> buffer);
+    bool shouldSwapWidthHeight() const;
 
     void setSeqenceId(int seqenceId) {mSeqenceId = seqenceId; }
     int seqenceId() const {return mSeqenceId; }
@@ -176,6 +177,7 @@ private:  /* types and members */
     std::map<int, int>      mBuffersPerFormat;
     /* Partial result support */
     bool mResultBufferAllocated;
+    bool mShouldSwapWidthHeight;
    /**
     * \struct MemoryManagedMetadata
     * This struct is used to store the metadata buffers that are created from

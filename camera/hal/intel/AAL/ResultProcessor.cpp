@@ -524,6 +524,13 @@ status_t ResultProcessor::returnResult(RequestState_t* reqState, int returnIndex
         LOGE("Cannot get partial result buffer");
         return UNKNOWN_ERROR;
     }
+
+    // Swap thumbnail width/height in metadata if necessary
+    camera_metadata_entry entry = resultMetadata->find(ANDROID_JPEG_THUMBNAIL_SIZE);
+    if (entry.count >= 2 && reqState->request->shouldSwapWidthHeight()) {
+        std::swap(entry.data.i32[0], entry.data.i32[1]);
+    }
+
     // This value should be between 1 and android.request.partialResultCount
     // The index goes between 0-partialResultCount -1
     result.partial_result = returnIndex + 1;
