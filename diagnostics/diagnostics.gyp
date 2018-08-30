@@ -63,22 +63,25 @@
       ],
     },
     {
+      'target_name': 'diagnostics_mojo_bindings',
+      'type': 'static_library',
+      'sources': ['mojo/diagnosticsd.mojom'],
+      'includes': ['../common-mk/mojom_bindings_generator.gypi'],
+    },
+    {
       'target_name': 'diagnosticsd',
       'type': 'executable',
       'dependencies': [
         'diagnostics-grpc-protos',
+        'diagnostics_mojo_bindings',
         'libgrpc_async_adapter',
       ],
-      'includes': ['mojom_generator.gypi'],
       'variables': {
         'deps': [
           'libbrillo-<(libbase_ver)',
         ],
       },
-      'sources': [
-        'diagnosticsd/main.cc',
-        'mojo/diagnosticsd.mojom',
-      ],
+      'sources': ['diagnosticsd/main.cc'],
     },
     {
       'target_name': 'diagnostics_processor',
