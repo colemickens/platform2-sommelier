@@ -1,6 +1,3 @@
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'variables': {
@@ -222,9 +219,9 @@
             '../common-mk/testrunner.gyp:testrunner',
           ],
           'sources': [
-            'common/server_message_unittest.cc',
-            'common/struct_serializer_unittest.cc',
-            'common/testutil_unittest.cc',
+            'common/server_message_test.cc',
+            'common/struct_serializer_test.cc',
+            'common/testutil_test.cc',
           ],
         },
         # p2p-client tests
@@ -239,7 +236,7 @@
           ],
           'sources': [
             'client/fake_service_finder.cc',
-            'client/peer_selector_unittest.cc',
+            'client/peer_selector_test.cc',
           ],
         },
         # p2p-server tests
@@ -253,9 +250,9 @@
             '../common-mk/testrunner.gyp:testrunner',
           ],
           'sources': [
-            'server/file_watcher_unittest.cc',
-            'server/http_server_unittest.cc',
-            'server/peer_update_manager_unittest.cc',
+            'server/file_watcher_test.cc',
+            'server/http_server_test.cc',
+            'server/peer_update_manager_test.cc',
           ],
         },
         # p2p-http-server tests
@@ -269,8 +266,8 @@
             '../common-mk/testrunner.gyp:testrunner',
           ],
           'sources': [
-            'http_server/connection_delegate_unittest.cc',
-            'http_server/server_unittest.cc',
+            'http_server/connection_delegate_test.cc',
+            'http_server/server_test.cc',
           ],
         },
       ],
