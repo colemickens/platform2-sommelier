@@ -1,6 +1,3 @@
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'variables': {
@@ -54,7 +51,7 @@
             ],
           },
           'sources': [
-            'easy_unlock_unittest.cc',
+            'easy_unlock_test.cc',
           ],
         },
       ],
