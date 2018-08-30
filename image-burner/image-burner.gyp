@@ -1,6 +1,3 @@
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'link_settings': {
@@ -73,8 +70,8 @@
             '../common-mk/testrunner.gyp:testrunner',
           ],
           'sources': [
-            'image_burner_impl_unittest.cc',
-            'image_burner_utils_unittest.cc',
+            'image_burner_impl_test.cc',
+            'image_burner_utils_test.cc',
           ],
         },
       ],
