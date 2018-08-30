@@ -14,7 +14,6 @@
 //
 // [1] https://www.intel.com/content/www/us/en/architecture-and-technology/64-ia-32-architectures-software-developer-vol-3b-part-2-manual.html
 
-#include <asm/msr-index.h>
 #include <math.h>
 
 #include <base/cpu.h>
@@ -28,6 +27,17 @@
 #include <brillo/syslog_logging.h>
 
 #define CPU_MODEL_KABYLAKE 142
+
+// MSR values found from "Intel 64 and IA-32 Architectures Software Developer’s
+// Manual Volume 4: Model-Specifi Register", e.g.:
+//
+// https://software.intel.com/en-us/download/intel-64-and-ia-32-architectures-software-developers-manual-volume-4-model-specific-registers
+#define MSR_RAPL_POWER_UNIT 0x00000606
+
+#define MSR_PKG_ENERGY_STATUS 0x00000611
+#define MSR_DRAM_ENERGY_STATUS 0x00000619
+#define MSR_PP0_ENERGY_STATUS 0x00000639
+#define MSR_PP1_ENERGY_STATUS 0x00000641
 
 // MSR_RAPL_POWER_UNIT registers bits containing the energy units scaler.
 #define MSR_ENERGY_UNIT_OFFSET 0x08
