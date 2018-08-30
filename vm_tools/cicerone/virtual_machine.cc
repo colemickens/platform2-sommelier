@@ -37,8 +37,9 @@ constexpr int64_t kSetUpUserTimeoutSeconds = 15;
 // How long to wait while creating a container.
 constexpr int64_t kCreateLxdContainerTimeoutSeconds = 30;
 
-// How long to wait while starting a container.
-constexpr int64_t kStartLxdContainerTimeoutSeconds = 30;
+// How long to wait while starting a container. This can take over 30 seconds on
+// Braswell boards when starting it for the first time.
+constexpr int64_t kStartLxdContainerTimeoutSeconds = 60;
 
 }  // namespace
 
