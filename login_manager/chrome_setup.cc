@@ -482,6 +482,10 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   // http://crbug.com/814097
   builder->AddVmodulePattern("*/assistant/*=1");
 
+  // TODO(https://crbug.com/844537): Needed for investigating issues with
+  // disappearing device-wide certificates.
+  builder->AddVmodulePattern("nss_cert_database_chromeos=1");
+
   if (builder->UseFlagIsSet("cheets"))
     builder->AddVmodulePattern("*arc/*=1");
 }
