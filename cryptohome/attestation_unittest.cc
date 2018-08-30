@@ -836,7 +836,8 @@ class AttestationEnrollmentIdTest : public AttestationBaseTest {
 TEST_F(AttestationEnrollmentIdTest, GetEnterpriseEnrollmentId) {
   brillo::SecureBlob pubek(GetValidEndorsementKey());
   EXPECT_CALL(tpm_, GetEndorsementPublicKey(_))
-      .WillRepeatedly(DoAll(SetArgPointee<0>(pubek), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<0>(pubek),
+                            Return(Tpm::kTpmRetryNone)));
   brillo::SecureBlob blob;
   EXPECT_TRUE(attestation_.GetEnterpriseEnrollmentId(&blob));
   EXPECT_EQ(kEID,
@@ -846,7 +847,8 @@ TEST_F(AttestationEnrollmentIdTest, GetEnterpriseEnrollmentId) {
 TEST_F(AttestationEnrollmentIdTest, GetEnterpriseEnrollmentIdCached) {
   brillo::SecureBlob pubek(GetValidEndorsementKey());
   EXPECT_CALL(tpm_, GetEndorsementPublicKey(_))
-      .WillRepeatedly(DoAll(SetArgPointee<0>(pubek), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<0>(pubek),
+                            Return(Tpm::kTpmRetryNone)));
   attestation_.PrepareForEnrollment();
   SecureBlob enroll_blob;
   EXPECT_TRUE(attestation_.CreateEnrollRequest(Attestation::kDefaultPCA,
@@ -863,7 +865,8 @@ TEST_F(AttestationEnrollmentIdTest, GetEnterpriseEnrollmentIdCached) {
             base::ToLowerASCII(base::HexEncode(blob.data(), blob.size())));
   // The EID should be different if recomputed since the abe_data has changed.
   EXPECT_CALL(tpm_, GetEndorsementPublicKeyWithDelegate(_, _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<0>(pubek), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<0>(pubek),
+                            Return(Tpm::kTpmRetryNone)));
   EXPECT_TRUE(attestation_.ComputeEnterpriseEnrollmentId(&blob));
   EXPECT_NE(kEID,
             base::ToLowerASCII(base::HexEncode(blob.data(), blob.size())));
@@ -872,7 +875,8 @@ TEST_F(AttestationEnrollmentIdTest, GetEnterpriseEnrollmentIdCached) {
 TEST_F(AttestationEnrollmentIdTest, ComputeEnterpriseEnrollmentId) {
   brillo::SecureBlob pubek(GetValidEndorsementKey());
   EXPECT_CALL(tpm_, GetEndorsementPublicKey(_))
-      .WillOnce(DoAll(SetArgPointee<0>(pubek), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(pubek),
+                      Return(Tpm::kTpmRetryNone)));
   brillo::SecureBlob blob;
   EXPECT_TRUE(ComputeEnterpriseEnrollmentId(&blob));
   EXPECT_EQ(kEID,
@@ -883,11 +887,76 @@ TEST_F(AttestationEnrollmentIdTest, ComputeEnterpriseEnrollmentIdHasDelegate) {
   attestation_.PrepareForEnrollment();
   brillo::SecureBlob pubek(GetValidEndorsementKey());
   EXPECT_CALL(tpm_, GetEndorsementPublicKeyWithDelegate(_, _, _))
-      .WillOnce(DoAll(SetArgPointee<0>(pubek), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(pubek), Return(Tpm::kTpmRetryNone)));
   brillo::SecureBlob blob;
   EXPECT_TRUE(ComputeEnterpriseEnrollmentId(&blob));
   EXPECT_EQ(kEID,
             base::ToLowerASCII(base::HexEncode(blob.data(), blob.size())));
+}
+
+TEST_F(AttestationEnrollmentIdTest,
+       ComputeEnterpriseEnrollmentIdHasDelegateWithTemporaryFailure) {
+  attestation_.PrepareForEnrollment();
+  brillo::SecureBlob pubek_empty("");
+  brillo::SecureBlob pubek(GetValidEndorsementKey());
+  EXPECT_CALL(tpm_, GetEndorsementPublicKeyWithDelegate(_, _, _))
+      .WillOnce(DoAll(SetArgPointee<0>(pubek_empty),
+                      Return(Tpm::kTpmRetryLater)))
+      .WillOnce(DoAll(SetArgPointee<0>(pubek), Return(Tpm::kTpmRetryNone)));
+  brillo::SecureBlob blob;
+  EXPECT_FALSE(ComputeEnterpriseEnrollmentId(&blob));   // Initial try.
+  EXPECT_TRUE(blob.empty());
+  EXPECT_TRUE(ComputeEnterpriseEnrollmentId(&blob));    // Retry.
+  EXPECT_EQ(kEID,
+            base::ToLowerASCII(base::HexEncode(blob.data(), blob.size())));
+}
+
+TEST_F(AttestationEnrollmentIdTest,
+       ComputeEnterpriseEnrollmentIdHasDelegateWithoutPermissions) {
+  attestation_.PrepareForEnrollment();
+  GetMutableDatabase().mutable_delegate()->clear_can_read_internal_pub();
+  brillo::SecureBlob pubek("");
+  EXPECT_CALL(tpm_, GetEndorsementPublicKeyWithDelegate(_, _, _))
+      .WillOnce(DoAll(SetArgPointee<0>(pubek),
+                      Return(Tpm::kTpmRetryFailNoRetry)));
+  brillo::SecureBlob blob;
+  EXPECT_TRUE(ComputeEnterpriseEnrollmentId(&blob));
+  EXPECT_TRUE(blob.empty());
+  EXPECT_TRUE(GetPersistentDatabase().delegate().has_can_read_internal_pub());
+  EXPECT_FALSE(GetPersistentDatabase().delegate().can_read_internal_pub());
+}
+
+TEST_F(AttestationEnrollmentIdTest,
+       ComputeEnterpriseEnrollmentIdHasDelegateWithoutPermissionsButNoOwner) {
+  attestation_.PrepareForEnrollment();
+  GetMutableDatabase().mutable_delegate()->clear_can_read_internal_pub();
+  brillo::SecureBlob pubek_empty("");
+  brillo::SecureBlob pubek(GetValidEndorsementKey());
+  EXPECT_CALL(tpm_, GetEndorsementPublicKeyWithDelegate(_, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<0>(pubek_empty),
+                            Return(Tpm::kTpmRetryFailNoRetry)));
+  EXPECT_CALL(tpm_, GetEndorsementPublicKey(_))
+      .WillOnce(DoAll(SetArgPointee<0>(pubek),
+                      Return(Tpm::kTpmRetryNone)));
+  brillo::SecureBlob blob;
+  EXPECT_TRUE(ComputeEnterpriseEnrollmentId(&blob));  // Owner succeeds.
+  EXPECT_EQ(kEID,
+            base::ToLowerASCII(base::HexEncode(blob.data(), blob.size())));
+  EXPECT_TRUE(GetPersistentDatabase().delegate().has_can_read_internal_pub());
+  EXPECT_FALSE(GetPersistentDatabase().delegate().can_read_internal_pub());
+}
+
+TEST_F(AttestationEnrollmentIdTest,
+       ComputeEnterpriseEnrollmentIdHasDelegateKnownToBeWithoutPermissions) {
+  attestation_.PrepareForEnrollment();
+  GetMutableDatabase().mutable_delegate()->set_can_read_internal_pub(false);
+  brillo::SecureBlob pubek("");
+  EXPECT_CALL(tpm_, GetEndorsementPublicKey(_))
+      .WillOnce(DoAll(SetArgPointee<0>(pubek),
+                      Return(Tpm::kTpmRetryFailNoRetry)));
+  brillo::SecureBlob blob;
+  EXPECT_TRUE(ComputeEnterpriseEnrollmentId(&blob));
+  EXPECT_TRUE(blob.empty());
 }
 
 TEST_F(AttestationEnrollmentIdTest, ComputeEnterpriseEnrollmentIdEmptyAbeData) {
@@ -896,24 +965,27 @@ TEST_F(AttestationEnrollmentIdTest, ComputeEnterpriseEnrollmentIdEmptyAbeData) {
                           false /* retain_endorsement_data */);
   brillo::SecureBlob blob;
   EXPECT_TRUE(ComputeEnterpriseEnrollmentId(&blob));
-  EXPECT_EQ("", base::HexEncode(blob.data(), blob.size()));
+  EXPECT_TRUE(blob.empty());
 }
 
 TEST_F(AttestationEnrollmentIdTest, ComputeEnterpriseEnrollmentIdEmptyEkm) {
   brillo::SecureBlob pubek("");
   EXPECT_CALL(tpm_, GetEndorsementPublicKey(_))
-      .WillRepeatedly(DoAll(SetArgPointee<0>(pubek), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<0>(pubek),
+                            Return(Tpm::kTpmRetryNone)));
   brillo::SecureBlob blob;
   EXPECT_TRUE(ComputeEnterpriseEnrollmentId(&blob));
-  EXPECT_EQ("", base::HexEncode(blob.data(), blob.size()));
+  EXPECT_TRUE(blob.empty());
 }
 
 TEST_F(AttestationEnrollmentIdTest, ComputeEnterpriseEnrollmentIdFailToGetEkm) {
   brillo::SecureBlob pubek("ek");
   EXPECT_CALL(tpm_, GetEndorsementPublicKey(_))
-      .WillOnce(DoAll(SetArgPointee<0>(pubek), Return(false)));
+      .WillOnce(DoAll(SetArgPointee<0>(pubek),
+                      Return(Tpm::kTpmRetryFailNoRetry)));
   brillo::SecureBlob blob;
-  EXPECT_FALSE(ComputeEnterpriseEnrollmentId(&blob));
+  EXPECT_TRUE(ComputeEnterpriseEnrollmentId(&blob));
+  EXPECT_TRUE(blob.empty());
 }
 
 TEST_F(AttestationEnrollmentIdTest, CreateEnrollRequestCheckNonce) {
@@ -1063,20 +1135,19 @@ class AttestationWithAbeDataTest
   }
 
  protected:
-  bool VerifyAttestationEnrollmentRequest(const SecureBlob& request) {
+  void VerifyAttestationEnrollmentRequest(const SecureBlob& request) {
     AttestationEnrollmentRequest request_pb;
-    if (!request_pb.ParseFromArray(request.data(), request.size())) {
-      return false;
-    }
+    EXPECT_TRUE(request_pb.ParseFromArray(request.data(), request.size()));
     const AbeDataParam& param = GetParam().abe_data;
     if (param.data == nullptr) {
-      return !request_pb.has_enterprise_enrollment_nonce();
+      EXPECT_FALSE(request_pb.has_enterprise_enrollment_nonce());
+      return;
     }
     SecureBlob expected;
     EXPECT_TRUE(
         base::HexStringToBytes(param.enterprise_enrollment_nonce, &expected));
     std::string nonce = request_pb.enterprise_enrollment_nonce();
-    return expected == SecureBlob(nonce.begin(), nonce.end());
+    EXPECT_EQ(expected, SecureBlob(nonce.begin(), nonce.end()));
   }
 
   Attestation::PCAType pca_type_;
@@ -1118,7 +1189,7 @@ TEST_P(AttestationWithAbeDataTest, Enroll) {
   EXPECT_FALSE(attestation_.HasIdentityCertificate(Attestation::kFirstIdentity,
                                                    pca_type_));
   EXPECT_TRUE(attestation_.CreateEnrollRequest(pca_type_, &blob));
-  EXPECT_TRUE(VerifyAttestationEnrollmentRequest(blob));
+  VerifyAttestationEnrollmentRequest(blob);
   EXPECT_TRUE(attestation_.Enroll(pca_type_, GetEnrollBlob()));
   EXPECT_TRUE(attestation_.HasIdentityCertificate(
                          Attestation::kFirstIdentity, pca_type_));
@@ -1130,7 +1201,8 @@ TEST_P(AttestationWithAbeDataTest, Enroll) {
 TEST_P(AttestationWithAbeDataTest, GetEnterpriseEnrollmentIdCached) {
   brillo::SecureBlob pubek(GetValidEndorsementKey());
   EXPECT_CALL(tpm_, GetEndorsementPublicKey(_))
-      .WillRepeatedly(DoAll(SetArgPointee<0>(pubek), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<0>(pubek),
+                            Return(Tpm::kTpmRetryNone)));
   attestation_.PrepareForEnrollment();
   SecureBlob enroll_blob;
   EXPECT_TRUE(attestation_.CreateEnrollRequest(Attestation::kDefaultPCA,

@@ -81,6 +81,8 @@ message Delegation {
   optional bytes secret = 2;
   // Whether this delegate has permissions to call TPM_ResetLockValue.
   optional bool has_reset_lock_permissions = 3;
+  // Whether this delegate has permissions TPM_DELEGATE_OwnerReadInternalPub.
+  optional bool can_read_internal_pub = 4;
 }
 
 enum TpmVersion {

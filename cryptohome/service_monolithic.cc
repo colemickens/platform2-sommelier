@@ -557,7 +557,7 @@ void ServiceMonolithic::DoGetEndorsementInfo(const brillo::SecureBlob& request,
   brillo::SecureBlob public_key;
   brillo::SecureBlob certificate;
   if (attestation_->GetCachedEndorsementData(&public_key, &certificate) ||
-      (tpm_->GetEndorsementPublicKey(&public_key) &&
+      (tpm_->GetEndorsementPublicKey(&public_key) == Tpm::kTpmRetryNone &&
        tpm_->GetEndorsementCredential(&certificate))) {
     GetEndorsementInfoReply* extension = reply.MutableExtension(
         GetEndorsementInfoReply::reply);

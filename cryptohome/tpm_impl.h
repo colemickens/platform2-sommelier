@@ -65,8 +65,9 @@ class TpmImpl : public Tpm {
   bool IsNvramLocked(uint32_t index) override;
   bool WriteLockNvram(uint32_t index) override;
   unsigned int GetNvramSize(uint32_t index) override;
-  bool GetEndorsementPublicKey(brillo::SecureBlob* ek_public_key) override;
-  bool GetEndorsementPublicKeyWithDelegate(
+  TpmRetryAction GetEndorsementPublicKey(
+      brillo::SecureBlob* ek_public_key) override;
+  TpmRetryAction GetEndorsementPublicKeyWithDelegate(
       brillo::SecureBlob* ek_public_key,
       const brillo::SecureBlob& delegate_blob,
       const brillo::SecureBlob& delegate_secret) override;
@@ -181,11 +182,11 @@ class TpmImpl : public Tpm {
                                 TSS_HTPM* tpm_handle);
 
   // Wrapper for Tspi_GetAttribData.
-  bool GetDataAttribute(TSS_HCONTEXT context,
-                        TSS_HOBJECT object,
-                        TSS_FLAG flag,
-                        TSS_FLAG sub_flag,
-                        brillo::SecureBlob* data) const;
+  TpmRetryAction GetDataAttribute(TSS_HCONTEXT context,
+                                  TSS_HOBJECT object,
+                                  TSS_FLAG flag,
+                                  TSS_FLAG sub_flag,
+                                  brillo::SecureBlob* data) const;
 
   // Creates Trousers key object for the RSA public key, given its public
   // modulus in |key_modulus|, creation flags in |key_flags|, signature scheme
@@ -327,9 +328,10 @@ class TpmImpl : public Tpm {
 
   // Get the endorsement public key based on context and tpm handle previously
   // obtained. Returns true on success.
-  bool GetEndorsementPublicKeyInternal(brillo::SecureBlob* ek_public_key,
-                                       TSS_HCONTEXT* context_handle,
-                                       TSS_HTPM* tpm_handle);
+  TpmRetryAction GetEndorsementPublicKeyInternal(
+      brillo::SecureBlob* ek_public_key,
+      TSS_HCONTEXT* context_handle,
+      TSS_HTPM* tpm_handle);
 
   // Member variables
   bool initialized_;

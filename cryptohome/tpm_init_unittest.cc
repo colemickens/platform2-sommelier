@@ -375,8 +375,6 @@ TEST_F(TpmInitTest, LoadCryptohomeKeyTransientFailure) {
   EXPECT_CALL(tpm_, LoadWrappedKey(_, _))
     .WillOnce(Return(Tpm::kTpmRetryCommFailure))
     .WillOnce(LoadWrappedKeyToHandle(kTestKeyHandle));
-  EXPECT_CALL(tpm_, IsTransient(Tpm::kTpmRetryCommFailure))
-    .WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, WrapRsaKey(_, _, _))
     .Times(0);
   tpm_init_.SetupTpm(true);
@@ -395,8 +393,6 @@ TEST_F(TpmInitTest, ReCreateCryptohomeKeyAfterLoadFailure) {
   EXPECT_CALL(tpm_, LoadWrappedKey(_, _))
     .WillOnce(Return(Tpm::kTpmRetryFailNoRetry))
     .WillOnce(LoadWrappedKeyToHandle(kTestKeyHandle));
-  EXPECT_CALL(tpm_, IsTransient(Tpm::kTpmRetryFailNoRetry))
-    .WillRepeatedly(Return(false));
   EXPECT_CALL(tpm_, WrapRsaKey(_, _, _))
     .WillOnce(GenerateWrappedKey("new-key"));
   tpm_init_.SetupTpm(true);
@@ -412,8 +408,6 @@ TEST_F(TpmInitTest, ReCreateCryptohomeKeyFailureDuringKeyCreation) {
   FileWriteString(kDefaultCryptohomeKeyFile, "old-key");
   EXPECT_CALL(tpm_, LoadWrappedKey(_, _))
     .WillOnce(Return(Tpm::kTpmRetryFailNoRetry));
-  EXPECT_CALL(tpm_, IsTransient(Tpm::kTpmRetryFailNoRetry))
-    .WillRepeatedly(Return(false));
   EXPECT_CALL(tpm_, WrapRsaKey(_, _, _))
     .WillOnce(Return(false));
   tpm_init_.SetupTpm(true);
@@ -432,8 +426,6 @@ TEST_F(TpmInitTest, ReCreateCryptohomeKeyFailureDuringKeyLoading) {
     .WillOnce(Return(Tpm::kTpmRetryFailNoRetry))
     .WillOnce(Return(Tpm::kTpmRetryFailNoRetry))
     .WillOnce(LoadWrappedKeyToHandle(kTestKeyHandle));
-  EXPECT_CALL(tpm_, IsTransient(Tpm::kTpmRetryFailNoRetry))
-    .WillRepeatedly(Return(false));
   EXPECT_CALL(tpm_, WrapRsaKey(_, _, _))
     .WillOnce(GenerateWrappedKey("new-key"));
   tpm_init_.SetupTpm(true);

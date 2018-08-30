@@ -258,7 +258,7 @@ bool Tpm2Impl::GetOwnerPassword(brillo::Blob* owner_password) {
 }
 
 void Tpm2Impl::SetOwnerPassword(const SecureBlob& /* owner_password */) {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
+  LOG(ERROR) << __func__ << ": Not implemented.";
 }
 
 bool Tpm2Impl::IsEnabled() {
@@ -269,7 +269,7 @@ bool Tpm2Impl::IsEnabled() {
 }
 
 void Tpm2Impl::SetIsEnabled(bool /* enabled */) {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
+  LOG(ERROR) << __func__ << ": Not implemented.";
 }
 
 bool Tpm2Impl::IsOwned() {
@@ -280,7 +280,7 @@ bool Tpm2Impl::IsOwned() {
 }
 
 void Tpm2Impl::SetIsOwned(bool /* owned */) {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
+  LOG(ERROR) << __func__ << ": Not implemented.";
 }
 
 bool Tpm2Impl::PerformEnabledOwnedCheck(bool* enabled, bool* owned) {
@@ -301,7 +301,7 @@ bool Tpm2Impl::IsInitialized() {
 }
 
 void Tpm2Impl::SetIsInitialized(bool done) {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
+  LOG(ERROR) << __func__ << ": Not implemented.";
 }
 
 bool Tpm2Impl::IsBeingOwned() {
@@ -539,30 +539,31 @@ unsigned int Tpm2Impl::GetNvramSize(uint32_t index) {
 }
 
 bool Tpm2Impl::IsEndorsementKeyAvailable() {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
+  LOG(ERROR) << __func__ << ": Not implemented.";
   return true;
 }
 
 bool Tpm2Impl::CreateEndorsementKey() {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
+  LOG(ERROR) << __func__ << ": Not implemented.";
   return false;
 }
 
-bool Tpm2Impl::GetEndorsementPublicKey(SecureBlob* ek_public_key) {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
-  return false;
+Tpm::TpmRetryAction Tpm2Impl::GetEndorsementPublicKey(
+    SecureBlob* ek_public_key) {
+  LOG(ERROR) << __func__ << ": Not implemented.";
+  return Tpm::kTpmRetryFailNoRetry;
 }
 
-bool Tpm2Impl::GetEndorsementPublicKeyWithDelegate(
+Tpm::TpmRetryAction Tpm2Impl::GetEndorsementPublicKeyWithDelegate(
     brillo::SecureBlob* ek_public_key,
     const brillo::SecureBlob& delegate_blob,
     const brillo::SecureBlob& delegate_secret) {
-  LOG(ERROR) << __func__ << ": Not supported.";
-  return false;
+  LOG(ERROR) << __func__ << ": Not implemented.";
+  return Tpm::kTpmRetryFailNoRetry;
 }
 
 bool Tpm2Impl::GetEndorsementCredential(SecureBlob* credential) {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
+  LOG(ERROR) << __func__ << ": Not implemented.";
   return false;
 }
 
@@ -575,7 +576,7 @@ bool Tpm2Impl::MakeIdentity(SecureBlob* identity_public_key_der,
                             SecureBlob* endorsement_credential,
                             SecureBlob* platform_credential,
                             SecureBlob* conformance_credential) {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
+  LOG(ERROR) << __func__ << ": Not implemented.";
   return false;
 }
 
@@ -585,7 +586,7 @@ bool Tpm2Impl::QuotePCR(uint32_t pcr_index,
                         Blob* pcr_value,
                         SecureBlob* quoted_data,
                         SecureBlob* quote) {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
+  LOG(ERROR) << __func__ << ": Not implemented.";
   return false;
 }
 
@@ -659,7 +660,7 @@ bool Tpm2Impl::CreateCertifiedKey(const SecureBlob& identity_key_blob,
                                   SecureBlob* certified_key_blob,
                                   SecureBlob* certified_key_info,
                                   SecureBlob* certified_key_proof) {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
+  LOG(ERROR) << __func__ << ": Not implemented.";
   return false;
 }
 
@@ -668,7 +669,7 @@ bool Tpm2Impl::CreateDelegate(const std::set<uint32_t>& bound_pcrs,
                               uint8_t delegate_label,
                               SecureBlob* delegate_blob,
                               SecureBlob* delegate_secret) {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
+  LOG(ERROR) << __func__ << ": Not implemented.";
   return false;
 }
 
@@ -678,7 +679,7 @@ bool Tpm2Impl::ActivateIdentity(const SecureBlob& delegate_blob,
                                 const SecureBlob& encrypted_asym_ca,
                                 const SecureBlob& encrypted_sym_ca,
                                 SecureBlob* identity_credential) {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
+  LOG(ERROR) << __func__ << ": Not implemented.";
   return false;
 }
 
@@ -697,18 +698,18 @@ bool Tpm2Impl::TakeOwnership(int max_timeout_tries,
 
 bool Tpm2Impl::InitializeSrk(const SecureBlob& owner_password) {
   // Not necessary, tpm_managerd takes care of all this.
-  LOG(WARNING) << __func__ << ": Not Implemented.";
+  LOG(WARNING) << __func__ << ": Not implemented.";
   return true;
 }
 
 bool Tpm2Impl::ChangeOwnerPassword(const SecureBlob& previous_owner_password,
                                    const SecureBlob& owner_password) {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
+  LOG(ERROR) << __func__ << ": Not implemented.";
   return false;
 }
 
 bool Tpm2Impl::TestTpmAuth(const SecureBlob& owner_password) {
-  LOG(ERROR) << __func__ << ": Not Implemented.";
+  LOG(ERROR) << __func__ << ": Not implemented.";
   return false;
 }
 

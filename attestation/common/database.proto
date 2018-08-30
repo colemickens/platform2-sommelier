@@ -62,6 +62,8 @@ message IdentityBinding {
 
 // Holds owner delegation information.
 message Delegation {
+  reserved 4;
+  reserved "can_read_internal_pub";
   // The delegate owner blob.
   optional bytes blob = 1;
   // The authorization secret.

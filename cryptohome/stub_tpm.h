@@ -72,13 +72,13 @@ class StubTpm : public Tpm {
     { return false; }
   bool WriteLockNvram(uint32_t index) override
     { return false; }
-  bool GetEndorsementPublicKey(SecureBlob* ek_public_key) override
-    { return false; }
-  bool GetEndorsementPublicKeyWithDelegate(
+  TpmRetryAction GetEndorsementPublicKey(SecureBlob* ek_public_key) override
+    { return Tpm::kTpmRetryFailNoRetry; }
+  Tpm::TpmRetryAction GetEndorsementPublicKeyWithDelegate(
       brillo::SecureBlob* ek_public_key,
       const brillo::SecureBlob& delegate_blob,
       const brillo::SecureBlob& delegate_secret) override
-    { return false; }
+    { return Tpm::kTpmRetryFailNoRetry; }
   bool GetEndorsementCredential(SecureBlob* credential) override
     { return false; }
   bool MakeIdentity(SecureBlob* identity_public_key_der,
@@ -159,7 +159,6 @@ class StubTpm : public Tpm {
     { return false; }
   bool TestTpmAuth(const SecureBlob& owner_password) override { return false; }
   void SetOwnerPassword(const SecureBlob& owner_password) override {}
-  bool IsTransient(TpmRetryAction retry_action) override { return false; }
   bool WrapRsaKey(const SecureBlob& public_modulus,
                   const SecureBlob& prime_factor,
                   SecureBlob* wrapped_key) override { return false; }

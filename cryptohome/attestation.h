@@ -124,15 +124,21 @@ class Attestation : public base::PlatformThread::Delegate,
   // is endorsed for that configuration.
   virtual bool VerifyEK(bool is_cros_core);
 
-  // Retrieves the EID for the device.  The EID is cached as needed.
-  // Returns true on success.
+  // Retrieves the EID for the device. The EID is computed and cached as
+  // needed.
+  // Returns false if a transient error prevents the obtention of the EID,
+  // and true if the EID is successfully obtained or definitely cannot be
+  // obtained.
   virtual bool GetEnterpriseEnrollmentId(
       brillo::SecureBlob* enterprise_enrollment_id);
 
   // Computes the enrollment id and populates the result in
-  // |enterprise_enrollment_id|. If |abe_data_| or endorsement pulic key is
-  // empty, the |enterprise_enrollment_id| is cleared. Returns true on success.
-  bool ComputeEnterpriseEnrollmentId(
+  // |enterprise_enrollment_id|. If |abe_data_| or endorsement public key is
+  // empty, the |enterprise_enrollment_id| is cleared.
+  // Returns false if a transient error prevents the computation of the EID,
+  // and true if the EID is successfully computed or definitely cannot be
+  // computed.
+  virtual bool ComputeEnterpriseEnrollmentId(
       brillo::SecureBlob* enterprise_enrollment_id);
 
   // Creates an enrollment request to be sent to the Privacy CA. This request
@@ -618,6 +624,17 @@ class Attestation : public base::PlatformThread::Delegate,
   // Ensures permissions of the database file are correct.
   void CheckDatabasePermissions();
 
+  // Retrieves the EID for the device.  The EID is cached as needed.
+  // Returns true on success.
+  Tpm::TpmRetryAction GetEnterpriseEnrollmentIdInternal(
+      brillo::SecureBlob* enterprise_enrollment_id);
+
+  // Computes the enrollment id and populates the result in
+  // |enterprise_enrollment_id|. If |abe_data_| or endorsement public key is
+  // empty, the |enterprise_enrollment_id| is cleared.
+  Tpm::TpmRetryAction ComputeEnterpriseEnrollmentIdInternal(
+      brillo::SecureBlob* enterprise_enrollment_id);
+
   // Creates a new identity and returns its index, or -1 if it could not be
   // created.
   int CreateIdentity(const int identity_features,
@@ -798,12 +815,14 @@ class Attestation : public base::PlatformThread::Delegate,
   // Creates a PCA URL for the given |pca_type| and |request_type|.
   std::string GetPCAURL(PCAType pca_type, PCARequestType request_type) const;
 
-  // Retrieves the endorsement public key.
-  bool GetEndorsementPublicKey(brillo::SecureBlob* ek_public_key) const;
+  // Retrieves the endorsement public key from cache or by asking the TPM if
+  // possible.
+  Tpm::TpmRetryAction GetTpmEndorsementPublicKey(
+      brillo::SecureBlob* ek_public_key);
 
   // Computes the enterprise DEN for attestation-based enrollment and
   // stores it in |enterprise_enrollment_nonce|.
-  bool ComputeEnterpriseEnrollmentNonce(
+  void ComputeEnterpriseEnrollmentNonce(
       brillo::SecureBlob* enterprise_enrollment_nonce);
 
   // Injects a TpmInit object to be used for RemoveTpmOwnerDependency

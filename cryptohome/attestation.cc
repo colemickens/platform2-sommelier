@@ -512,7 +512,7 @@ void Attestation::PrepareForEnrollment() {
   base::TimeTicks start = base::TimeTicks::Now();
   LOG(INFO) << "Attestation: Preparing for enrollment...";
   SecureBlob ek_public_key;
-  if (!tpm_->GetEndorsementPublicKey(&ek_public_key)) {
+  if (tpm_->GetEndorsementPublicKey(&ek_public_key) != Tpm::kTpmRetryNone) {
     LOG(ERROR) << "Attestation: Failed to get EK public key.";
     return;
   }
@@ -521,7 +521,7 @@ void Attestation::PrepareForEnrollment() {
 
   // Compute and store the device EID if needed.
   if (!database_pb_.has_enrollment_id()) {
-    ComputeEnterpriseEnrollmentId(&enterprise_enrollment_id_);
+    ComputeEnterpriseEnrollmentIdInternal(&enterprise_enrollment_id_);
     database_pb_.set_enrollment_id(enterprise_enrollment_id_.data(),
                                    enterprise_enrollment_id_.size());
   }
@@ -565,6 +565,7 @@ void Attestation::PrepareForEnrollment() {
   delegate_pb->set_blob(delegate_blob.data(), delegate_blob.size());
   delegate_pb->set_secret(delegate_secret.data(), delegate_secret.size());
   delegate_pb->set_has_reset_lock_permissions(true);
+  delegate_pb->set_can_read_internal_pub(true);
 
   if (!PersistDatabaseChanges())
     return;
@@ -581,7 +582,7 @@ int Attestation::CreateIdentity(int identity_features) {
     return -1;
   }
   SecureBlob ek_public_key;
-  if (!GetEndorsementPublicKey(&ek_public_key)) {
+  if (GetTpmEndorsementPublicKey(&ek_public_key) != Tpm::kTpmRetryNone) {
     return -1;
   }
   return CreateIdentity(identity_features, ek_public_key);
@@ -768,7 +769,7 @@ bool Attestation::Verify(bool is_cros_core) {
   if (credentials.has_endorsement_public_key()) {
     ek_public_key = SecureBlob(credentials.endorsement_public_key());
   } else {
-    if (!tpm_->GetEndorsementPublicKey(&ek_public_key)) {
+    if (tpm_->GetEndorsementPublicKey(&ek_public_key) != Tpm::kTpmRetryNone) {
       LOG(ERROR) << "Attestation: Endorsement key not available.";
       return false;
     }
@@ -847,7 +848,7 @@ bool Attestation::VerifyEK(bool is_cros_core) {
     return false;
   }
   if (ek_public_key.size() == 0 &&
-      !tpm_->GetEndorsementPublicKey(&ek_public_key)) {
+      tpm_->GetEndorsementPublicKey(&ek_public_key) != Tpm::kTpmRetryNone) {
     LOG(ERROR) << __func__ << ": Failed to get EK public key.";
     return false;
   }
@@ -856,22 +857,28 @@ bool Attestation::VerifyEK(bool is_cros_core) {
 
 bool Attestation::GetEnterpriseEnrollmentId(
     SecureBlob* enterprise_enrollment_id) {
+  return !tpm_->IsTransient(GetEnterpriseEnrollmentIdInternal(
+      enterprise_enrollment_id));
+}
+
+Tpm::TpmRetryAction Attestation::GetEnterpriseEnrollmentIdInternal(
+    SecureBlob* enterprise_enrollment_id) {
   if (!enterprise_enrollment_id_.empty()) {
     *enterprise_enrollment_id = enterprise_enrollment_id_;
-    return true;
+    return Tpm::kTpmRetryNone;
   }
   if (database_pb_.has_enrollment_id()) {
     enterprise_enrollment_id_ = SecureBlob(database_pb_.enrollment_id());
     *enterprise_enrollment_id = enterprise_enrollment_id_;
-    return true;
+    return Tpm::kTpmRetryNone;
   }
-  if (ComputeEnterpriseEnrollmentId(enterprise_enrollment_id) &&
-      !enterprise_enrollment_id->empty()) {
+  Tpm::TpmRetryAction action = ComputeEnterpriseEnrollmentIdInternal(
+      enterprise_enrollment_id);
+  if (action == Tpm::kTpmRetryNone) {
     // Cache the computed value.
     enterprise_enrollment_id_ = *enterprise_enrollment_id;
-    return true;
   }
-  return false;
+  return action;
 }
 
 bool Attestation::CreateEnrollRequest(PCAType pca_type,
@@ -903,12 +910,11 @@ bool Attestation::CreateEnrollRequest(PCAType pca_type,
 
   if (identity_data.features() & IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID) {
     SecureBlob enterprise_enrollment_nonce;
-    if (!ComputeEnterpriseEnrollmentNonce(&enterprise_enrollment_nonce)) {
-      LOG(ERROR)
+    ComputeEnterpriseEnrollmentNonce(&enterprise_enrollment_nonce);
+    if (enterprise_enrollment_nonce.empty()) {
+      LOG(WARNING)
           << "Attestation: Failed to compute enterprise enrollment nonce.";
-      return false;
-    }
-    if (!enterprise_enrollment_nonce.empty()) {
+    } else {
       request_pb.set_enterprise_enrollment_nonce(
           enterprise_enrollment_nonce.data(),
           enterprise_enrollment_nonce.size());
@@ -2635,7 +2641,7 @@ void Attestation::CacheEndorsementData() {
     return;
   }
   SecureBlob public_key_blob;
-  if (!tpm_->GetEndorsementPublicKey(&public_key_blob)) {
+  if (tpm_->GetEndorsementPublicKey(&public_key_blob) != Tpm::kTpmRetryNone) {
     LOG(WARNING) << "TPM is not owned but failed to cache EK public key.";
     return;
   }
@@ -2729,13 +2735,13 @@ std::string Attestation::GetPCAURL(PCAType pca_type,
   return url;
 }
 
-bool Attestation::ComputeEnterpriseEnrollmentNonce(
+void Attestation::ComputeEnterpriseEnrollmentNonce(
     brillo::SecureBlob* enterprise_enrollment_nonce) {
   if (abe_data_.empty()) {
-    // If there is no device secret we cannot compute the DEN. We do not
+    // If there is no ABE data we cannot compute the DEN. We do not
     // want to fail attestation for those devices.
     enterprise_enrollment_nonce->clear();
-    return true;
+    return;
   }
   const uint8_t* context_name = reinterpret_cast<const uint8_t*>(
       kAttestationBasedEnterpriseEnrollmentContextName);
@@ -2743,46 +2749,74 @@ bool Attestation::ComputeEnterpriseEnrollmentNonce(
       + sizeof(kAttestationBasedEnterpriseEnrollmentContextName) - 1);
   SecureBlob nonce = CryptoLib::HmacSha256(context_key, abe_data_);
   enterprise_enrollment_nonce->swap(nonce);
-  return true;
 }
 
-bool Attestation::GetEndorsementPublicKey(SecureBlob* ek_public_key) const {
+Tpm::TpmRetryAction Attestation::GetTpmEndorsementPublicKey(
+    SecureBlob* ek_public_key) {
+  Tpm::TpmRetryAction action = Tpm::kTpmRetryFailNoRetry;
   if (database_pb_.has_delegate()) {
-    SecureBlob delegate_blob(database_pb_.delegate().blob());
-    SecureBlob delegate_secret(database_pb_.delegate().secret());
-    if (!tpm_->GetEndorsementPublicKeyWithDelegate(ek_public_key, delegate_blob,
-                                                   delegate_secret)) {
-      ek_public_key->clear();
-      return false;
-    }
-  } else {
-    if (!tpm_->GetEndorsementPublicKey(ek_public_key)) {
-      ek_public_key->clear();
-      return false;
+    // Try to call using the delegate unless we know that it does not have
+    // proper permissions.
+    if (!database_pb_.delegate().has_can_read_internal_pub()
+        || database_pb_.delegate().can_read_internal_pub())  {
+      SecureBlob delegate_blob(database_pb_.delegate().blob());
+      SecureBlob delegate_secret(database_pb_.delegate().secret());
+      action = tpm_->GetEndorsementPublicKeyWithDelegate(
+          ek_public_key, delegate_blob, delegate_secret);
+      // Warn if we know we will not be able to compute the EID. We can't
+      // say no for sure because if the TPM becomes unowned then the EID
+      // can be computed, but that will not happen without specific action
+      // and the attestation database will not be in a great state then.
+      if (!tpm_->IsTransient(action) && action != Tpm::kTpmRetryNone) {
+        LOG(WARNING) << "Attestation: Computing the EID is likely to fail."
+                     << " Request an enrollment certificate instead.";
+      }
+      if (tpm_->IsTransient(action)) {
+        // Return so that the caller can retry. Otherwise, we will fall
+        // through.
+        return action;
+      } else if (!database_pb_.delegate().has_can_read_internal_pub()) {
+        // If the results are definitively success or a final failure, record
+        // whether the delegate had permission or not.
+        database_pb_.mutable_delegate()->set_can_read_internal_pub(
+            action == Tpm::kTpmRetryNone);
+        PersistDatabaseChanges();
+      }
     }
   }
-  return true;
+  // Always calling this if we fail with the delegate allows us to retrieve
+  // the key in situations where we have a database with a delegate but we
+  // cleared the owner password later.
+  action = tpm_->GetEndorsementPublicKey(ek_public_key);
+  if (action != Tpm::kTpmRetryNone) {
+    ek_public_key->clear();
+  }
+  return action;
 }
 
 bool Attestation::ComputeEnterpriseEnrollmentId(
+    SecureBlob* enterprise_enrollment_id) {
+  return !tpm_->IsTransient(ComputeEnterpriseEnrollmentIdInternal(
+      enterprise_enrollment_id));
+}
+
+Tpm::TpmRetryAction Attestation::ComputeEnterpriseEnrollmentIdInternal(
     brillo::SecureBlob* enterprise_enrollment_id) {
   brillo::SecureBlob den;
-  if (!ComputeEnterpriseEnrollmentNonce(&den)) {
-    return false;
-  }
+  ComputeEnterpriseEnrollmentNonce(&den);
   if (den.empty()) {
     enterprise_enrollment_id->clear();
-    return true;
+    return Tpm::kTpmRetryNone;
   }
 
   SecureBlob ek_public_key;
-  if (!GetEndorsementPublicKey(&ek_public_key)) {
-    return false;
+  Tpm::TpmRetryAction action = GetTpmEndorsementPublicKey(&ek_public_key);
+  if (tpm_->IsTransient(action)) {
+    return action;
   }
-
   if (ek_public_key.empty()) {
     enterprise_enrollment_id->clear();
-    return true;
+    return action;
   }
 
   // Extract the modulus from the public key.
@@ -2792,20 +2826,20 @@ bool Attestation::ComputeEnterpriseEnrollmentId(
       d2i_RSAPublicKey(nullptr, &asn1_ptr, ek_public_key.size()));
   if (!public_key.get()) {
     LOG(ERROR) << "Attestation: Failed to decode public endorsement key.";
-    return false;
+    return Tpm::kTpmRetryFailNoRetry;
   }
   brillo::Blob modulus(BN_num_bytes(public_key.get()->n), 0);
   int length = BN_bn2bin(public_key.get()->n, modulus.data());
   if (length <= 0) {
     LOG(ERROR)
         << "Attestation: Failed to extract public endorsement key modulus.";
-    return false;
+    return Tpm::kTpmRetryFailNoRetry;
   }
   modulus.resize(length);
 
   // Compute the EID based on den and modulus.
   *enterprise_enrollment_id = CryptoLib::HmacSha256(den, modulus);
-  return true;
+  return Tpm::kTpmRetryNone;
 }
 
 void Attestation::RSADeleter::operator()(void* ptr) const {

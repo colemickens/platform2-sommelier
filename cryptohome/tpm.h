@@ -362,15 +362,15 @@ class Tpm {
   //   ek_public_key - The EK public key in DER encoded form.
   //
   // Returns true on success.
-  virtual bool GetEndorsementPublicKey(brillo::SecureBlob* ek_public_key) = 0;
+  virtual TpmRetryAction GetEndorsementPublicKey(
+      brillo::SecureBlob* ek_public_key) = 0;
 
-  // Get the endorsement public key. This method assumes the TPM is locked.
+  // Get the endorsement public key through the TPM delegate. This method
+  // assumes the TPM is locked.
   //
   // Parameters
   //   ek_public_key - The EK public key in DER encoded form.
-  //
-  // Returns true on success.
-  virtual bool GetEndorsementPublicKeyWithDelegate(
+  virtual TpmRetryAction GetEndorsementPublicKeyWithDelegate(
       brillo::SecureBlob* ek_public_key,
       const brillo::SecureBlob& delegate_blob,
       const brillo::SecureBlob& delegate_secret) = 0;
@@ -599,7 +599,7 @@ class Tpm {
   //
   // Parameters
   //   retry_action - The result of a performed action.
-  virtual bool IsTransient(TpmRetryAction retry_action) {
+  static bool IsTransient(TpmRetryAction retry_action) {
     return !(retry_action == kTpmRetryNone ||
              retry_action == kTpmRetryFailNoRetry);
   }

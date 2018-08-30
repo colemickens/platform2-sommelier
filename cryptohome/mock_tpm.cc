@@ -24,7 +24,9 @@ MockTpm::MockTpm() {
   ON_CALL(*this, GetPublicKeyHash(_, _))
       .WillByDefault(Return(kTpmRetryNone));
   ON_CALL(*this, GetEndorsementPublicKey(_))
-      .WillByDefault(Return(true));
+      .WillByDefault(Return(Tpm::kTpmRetryNone));
+  ON_CALL(*this, GetEndorsementPublicKeyWithDelegate(_, _, _))
+      .WillByDefault(Return(Tpm::kTpmRetryNone));
   ON_CALL(*this, GetEndorsementCredential(_))
       .WillByDefault(DoAll(SetArgPointee<0>(brillo::SecureBlob("test")),
                            Return(true)));
