@@ -1,6 +1,3 @@
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'variables': {
@@ -173,8 +170,8 @@
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
-            'webservd/config_unittest.cc',
-            'webservd/log_manager_unittest.cc',
+            'webservd/config_test.cc',
+            'webservd/log_manager_test.cc',
             'webservd/webservd_testrunner.cc',
           ],
         },
