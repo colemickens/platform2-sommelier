@@ -18,7 +18,7 @@ allow kernel device:dir { search read write getattr };
 allow kernel cros_dev_type:chr_file { create setattr getattr };
 allow kernel cros_labeled_dev_type:chr_file write;
 allow kernel device:dir add_name; # for dm-X device.
-allow kernel device:blk_file create_file_perms;
+allow kernel device:blk_file { rw_file_perms create setattr };
 allow kernel device:dir open;
 
 allow kernel self:global_capability_class_set sys_nice;
