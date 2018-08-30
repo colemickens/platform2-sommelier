@@ -167,12 +167,12 @@
           'type': 'executable',
           'dependencies': [
             'webservd_common',
+            '../common-mk/testrunner.gyp:testrunner',
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'webservd/config_test.cc',
             'webservd/log_manager_test.cc',
-            'webservd/webservd_testrunner.cc',
           ],
         },
       ],
