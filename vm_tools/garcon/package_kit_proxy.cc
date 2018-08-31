@@ -72,6 +72,9 @@ constexpr uint32_t kPackageKitStatusInstall = 9;
 // See:
 // https://www.freedesktop.org/software/PackageKit/gtk-doc/PackageKit-Enumerations.html#PkFilterEnum
 constexpr uint32_t kPackageKitFilterInstalled = 2;
+// See:
+// https://www.freedesktop.org/software/PackageKit/gtk-doc/PackageKit-Enumerations.html#PkInfoEnum
+constexpr uint32_t kPackageKitInfoSecurity = 8;
 
 // Timeout for when we are querying for package information in case PackageKit
 // dies.
@@ -93,8 +96,10 @@ constexpr size_t kMaxConfigFileSize = 10 * 1024;  // 10 KB
 constexpr char kXdgConfigHomeEnvVar[] = "XDG_CONFIG_HOME";
 constexpr char kDefaultConfigDir[] = ".config";
 constexpr char kConfigFilename[] = "cros-garcon.conf";
-constexpr char kDisableAutoUpdatesSetting[] =
+constexpr char kDisableAutoCrosUpdatesSetting[] =
     "DisableAutomaticCrosPackageUpdates";
+constexpr char kDisableAutoSecurityUpdatesSetting[] =
+    "DisableAutomaticSecurityUpdates";
 
 // Bitmask values for all the signals from PackageKit
 constexpr uint32_t kErrorCodeSignalMask = 1 << 0;
@@ -105,6 +110,39 @@ constexpr uint32_t kPropertiesSignalMask = 1 << 4;
 constexpr uint32_t kValidSignalMask =
     kErrorCodeSignalMask | kFinishedSignalMask | kPackageSignalMask |
     kDetailsSignalMask | kPropertiesSignalMask;
+
+// Parses the configuration file and returns the results through the parameters.
+void CheckDisabledUpdates(bool* disable_cros_updates_out,
+                          bool* disable_security_updates_out) {
+  DCHECK(disable_cros_updates_out);
+  DCHECK(disable_security_updates_out);
+  *disable_cros_updates_out = false;
+  *disable_security_updates_out = false;
+  base::FilePath config_dir;
+  const char* xdg_config_dir = getenv(kXdgConfigHomeEnvVar);
+  if (!xdg_config_dir || strlen(xdg_config_dir) == 0) {
+    config_dir = base::GetHomeDir().Append(kDefaultConfigDir);
+  } else {
+    config_dir = base::FilePath(xdg_config_dir);
+  }
+  base::FilePath config_file = config_dir.Append(kConfigFilename);
+  // First read in the file as a string.
+  std::string config_contents;
+  if (!ReadFileToStringWithMaxSize(config_file, &config_contents,
+                                   kMaxConfigFileSize)) {
+    LOG(ERROR) << "Failed reading in config file: " << config_file.value();
+    return;
+  }
+  base::StringPairs config_pairs;
+  base::SplitStringIntoKeyValuePairs(config_contents, '=', '\n', &config_pairs);
+  for (auto entry : config_pairs) {
+    if (entry.first == kDisableAutoCrosUpdatesSetting) {
+      *disable_cros_updates_out = (entry.second == "true");
+    } else if (entry.first == kDisableAutoSecurityUpdatesSetting) {
+      *disable_security_updates_out = (entry.second == "true");
+    }
+  }
+}
 
 struct PackageKitTransactionProperties : public dbus::PropertySet {
   // These are the only 2 properties we care about.
@@ -675,7 +713,9 @@ class GetUpdatesTransaction : public PackageKitTransaction {
             bus,
             packagekit_proxy,
             packagekit_service_proxy,
-            kErrorCodeSignalMask | kFinishedSignalMask | kPackageSignalMask) {}
+            kErrorCodeSignalMask | kFinishedSignalMask | kPackageSignalMask) {
+    CheckDisabledUpdates(&cros_updates_disabled_, &security_updates_disabled_);
+  }
 
   void GeneralError(const std::string& details) override {
     LOG(ERROR) << "Error occurred with GetUpdates: " << details;
@@ -700,9 +740,14 @@ class GetUpdatesTransaction : public PackageKitTransaction {
   void PackageReceived(uint32_t code,
                        const std::string& package_id,
                        const std::string& /* summary */) override {
-    if (base::EndsWith(package_id, kManagedPackageIdSuffix,
+    if (!cros_updates_disabled_ &&
+        base::EndsWith(package_id, kManagedPackageIdSuffix,
                        base::CompareCase::SENSITIVE)) {
       LOG(INFO) << "Found managed package that is upgradeable, add it to the "
+                << "list: " << package_id;
+      package_ids_.emplace_back(package_id);
+    } else if (!security_updates_disabled_ && code == kPackageKitInfoSecurity) {
+      LOG(INFO) << "Found package with security update, add it to the "
                 << "list: " << package_id;
       package_ids_.emplace_back(package_id);
     }
@@ -727,6 +772,8 @@ class GetUpdatesTransaction : public PackageKitTransaction {
 
  private:
   std::vector<std::string> package_ids_;
+  bool cros_updates_disabled_;
+  bool security_updates_disabled_;
 };
 
 // Sublcass for handling RefreshCache transaction.
@@ -740,37 +787,13 @@ class RefreshCacheTransaction : public PackageKitTransaction {
                               packagekit_service_proxy,
                               kErrorCodeSignalMask | kFinishedSignalMask) {}
 
-  static bool AreAutoUpdatesDisabled() {
-    base::FilePath config_dir;
-    const char* xdg_config_dir = getenv(kXdgConfigHomeEnvVar);
-    if (!xdg_config_dir || strlen(xdg_config_dir) == 0) {
-      config_dir = base::GetHomeDir().Append(kDefaultConfigDir);
-    } else {
-      config_dir = base::FilePath(xdg_config_dir);
-    }
-    base::FilePath config_file = config_dir.Append(kConfigFilename);
-    // First read in the file as a string.
-    std::string config_contents;
-    if (!ReadFileToStringWithMaxSize(config_file, &config_contents,
-                                     kMaxConfigFileSize)) {
-      LOG(ERROR) << "Failed reading in config file: " << config_file.value();
-      return false;
-    }
-    base::StringPairs config_pairs;
-    base::SplitStringIntoKeyValuePairs(config_contents, '=', '\n',
-                                       &config_pairs);
-    for (auto entry : config_pairs) {
-      if (entry.first == kDisableAutoUpdatesSetting) {
-        return entry.second == "true";
-      }
-    }
-    return false;
-  }
-
   static void RefreshCacheNow(scoped_refptr<dbus::Bus> bus,
                               base::WeakPtr<PackageKitProxy> packagekit_proxy,
                               dbus::ObjectProxy* packagekit_service_proxy) {
-    if (AreAutoUpdatesDisabled()) {
+    bool disable_cros_updates;
+    bool disable_security_updates;
+    CheckDisabledUpdates(&disable_cros_updates, &disable_security_updates);
+    if (disable_cros_updates && disable_security_updates) {
       // Don't do the update now, but schedule another one for later and we will
       // check the setting again then.
       LOG(INFO) << "Not performing automatic update because they are disabled";

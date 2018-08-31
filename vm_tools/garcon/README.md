@@ -94,3 +94,7 @@ configuration settings that can affect how garcon operates.
 DisableAutomaticCrosPackageUpdates is a boolean setting of false or true. If set
 to true it will prevent garcon from regularly checking for and installing
 updates to the Google provided 'cros' packages.
+
+DisableAutomaticSecurityUpdates is a boolean setting of false or true. If set to
+true it will prevent garcon from regularly checking for and installing security
+updates for packages that are currently installed.
