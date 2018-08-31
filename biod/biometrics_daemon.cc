@@ -453,10 +453,9 @@ BiometricsDaemon::BiometricsDaemon() {
       login_manager::kSessionManagerServiceName,
       dbus::ObjectPath(login_manager::kSessionManagerServicePath));
 
-  std::unordered_set<std::string> new_active_users;
-  if (RetrieveNewActiveSessions(&new_active_users)) {
+  if (RetrievePrimarySession()) {
     for (const auto& biometrics_manager_wrapper : biometrics_managers_) {
-      biometrics_manager_wrapper->get().ReadRecords(new_active_users);
+      biometrics_manager_wrapper->get().ReadRecordsForSingleUser(primary_user_);
       biometrics_manager_wrapper->RefreshRecordObjects();
     }
   }
@@ -472,46 +471,36 @@ BiometricsDaemon::BiometricsDaemon() {
                                        dbus::Bus::REQUIRE_PRIMARY));
 }
 
-bool BiometricsDaemon::RetrieveNewActiveSessions(
-    std::unordered_set<std::string>* new_active_users) {
+bool BiometricsDaemon::RetrievePrimarySession() {
+  primary_user_.clear();
   dbus::MethodCall method_call(
       login_manager::kSessionManagerInterface,
-      login_manager::kSessionManagerRetrieveActiveSessions);
+      login_manager::kSessionManagerRetrievePrimarySession);
   std::unique_ptr<dbus::Response> response =
       session_manager_proxy_->CallMethodAndBlock(
           &method_call, dbus_constants::kDbusTimeoutMs);
   if (!response.get()) {
-    LOG(ERROR) << "Cannot retrieve usernames for active sessions.";
+    LOG(ERROR) << "Cannot retrieve username for primary session.";
     return false;
   }
   dbus::MessageReader response_reader(response.get());
-  dbus::MessageReader array_reader(nullptr);
-  if (!response_reader.PopArray(&array_reader))
+  std::string username;
+  if (!response_reader.PopString(&username)) {
+    LOG(ERROR) << "Primary session username bad format.";
     return false;
-  bool read_all_usernames = true;
-  while (array_reader.HasMoreData()) {
-    dbus::MessageReader dict_entry_reader(nullptr);
-    if (!array_reader.PopDictEntry(&dict_entry_reader)) {
-      read_all_usernames = false;
-      continue;
-    }
-    std::string username;
-    if (!dict_entry_reader.PopString(&username)) {
-      read_all_usernames = false;
-      continue;
-    }
-    std::string sanitized_username;
-    if (!dict_entry_reader.PopString(&sanitized_username)) {
-      read_all_usernames = false;
-      continue;
-    }
-    if (current_active_users_.count(sanitized_username) == 0) {
-      new_active_users->insert(sanitized_username);
-      // Assuming that log out will always log out all users at the same time.
-      current_active_users_.insert(sanitized_username);
-    }
   }
-  return read_all_usernames;
+  std::string sanitized_username;
+  if (!response_reader.PopString(&sanitized_username)) {
+    LOG(ERROR) << "Primary session sanitized username bad format.";
+    return false;
+  }
+  if (sanitized_username.empty()) {
+    LOG(INFO) << "Primary session does not exist.";
+    return false;
+  }
+  LOG(INFO) << "Primary user updated to " << sanitized_username << ".";
+  primary_user_.assign(sanitized_username);
+  return true;
 }
 
 void BiometricsDaemon::OnSessionStateChanged(dbus::Signal* signal) {
@@ -523,10 +512,14 @@ void BiometricsDaemon::OnSessionStateChanged(dbus::Signal* signal) {
   LOG(INFO) << "Session state changed to " << state << ".";
 
   if (state == dbus_constants::kSessionStateStarted) {
-    std::unordered_set<std::string> new_active_users;
-    if (RetrieveNewActiveSessions(&new_active_users)) {
+    if (!primary_user_.empty()) {
+      LOG(INFO) << "Primary user already exists. Not updating primary user.";
+      return;
+    }
+    if (RetrievePrimarySession()) {
       for (const auto& biometrics_manager_wrapper : biometrics_managers_) {
-        biometrics_manager_wrapper->get().ReadRecords(new_active_users);
+        biometrics_manager_wrapper->get().ReadRecordsForSingleUser(
+            primary_user_);
         biometrics_manager_wrapper->RefreshRecordObjects();
         biometrics_manager_wrapper->get().SendStatsOnLogin();
       }
@@ -537,7 +530,7 @@ void BiometricsDaemon::OnSessionStateChanged(dbus::Signal* signal) {
       biometrics_manager_wrapper->get().RemoveRecordsFromMemory();
       biometrics_manager_wrapper->RefreshRecordObjects();
     }
-    current_active_users_.clear();
+    primary_user_.clear();
   }
 }
 }  // namespace biod

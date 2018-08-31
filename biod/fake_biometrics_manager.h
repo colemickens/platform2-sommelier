@@ -39,6 +39,7 @@ class FakeBiometricsManager : public BiometricsManager,
   bool DestroyAllRecords() override;
   void RemoveRecordsFromMemory() override;
   bool ReadRecords(const std::unordered_set<std::string>& user_ids) override;
+  bool ReadRecordsForSingleUser(const std::string& user_id) override;
 
   void SetEnrollScanDoneHandler(const BiometricsManager::EnrollScanDoneCallback&
                                     on_enroll_scan_done) override;

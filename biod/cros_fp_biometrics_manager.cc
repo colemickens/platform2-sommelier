@@ -470,20 +470,16 @@ bool CrosFpBiometricsManager::Record::Remove() {
       biometrics_manager_->records_.begin() + index_;
   std::string user_id = record->user_id;
 
+  // TODO(mqg): only delete record if user_id is primary user.
   if (!biometrics_manager_->biod_storage_.DeleteRecord(user_id,
                                                        record->record_id))
     return false;
 
   // We cannot remove only one record if we want to stay in sync with the MCU,
   // Clear and reload everything.
-  // TODO(vpalatin): as per b/77568272, proper multi-user support
-  // for now, arbitrarily use the first one in the set.
-  std::unordered_set<std::string> user_ids;
-  user_ids.emplace(user_id);
-
   biometrics_manager_->records_.clear();
   biometrics_manager_->cros_dev_->SetContext(user_id);
-  return biometrics_manager_->biod_storage_.ReadRecords(user_ids);
+  return biometrics_manager_->biod_storage_.ReadRecordsForSingleUser(user_id);
 }
 
 std::unique_ptr<BiometricsManager> CrosFpBiometricsManager::Create() {
@@ -557,14 +553,15 @@ void CrosFpBiometricsManager::RemoveRecordsFromMemory() {
 
 bool CrosFpBiometricsManager::ReadRecords(
     const std::unordered_set<std::string>& user_ids) {
-  // TODO(vpalatin): as per b/77568272, proper multi-user support
-  // for now, arbitrarily use the first one in the set.
-  std::string current_user;
-  if (user_ids.size())
-    current_user = *user_ids.begin();
-  cros_dev_->SetContext(current_user);
+  // TODO(mqg): delete this function and adjust parent class accordingly.
+  LOG(WARNING) << __func__ << " should not be used.";
+  return false;
+}
 
-  return biod_storage_.ReadRecords(user_ids);
+bool CrosFpBiometricsManager::ReadRecordsForSingleUser(
+    const std::string& user_id) {
+  cros_dev_->SetContext(user_id);
+  return biod_storage_.ReadRecordsForSingleUser(user_id);
 }
 
 void CrosFpBiometricsManager::SetEnrollScanDoneHandler(
@@ -882,7 +879,7 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
   if (cros_dev_->GetFpStats(&capture_ms, &matcher_ms, &overall_ms)) {
     // SCAN_RESULT_SUCCESS and EC_MKBP_FP_ERR_MATCH_NO means "no match".
     bool matched = (result == ScanResult::SCAN_RESULT_SUCCESS &&
-        match_result != EC_MKBP_FP_ERR_MATCH_NO);
+                    match_result != EC_MKBP_FP_ERR_MATCH_NO);
     biod_metrics_->SendFpLatencyStats(matched, capture_ms, matcher_ms,
                                       overall_ms);
   }

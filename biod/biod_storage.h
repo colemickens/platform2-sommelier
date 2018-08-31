@@ -46,6 +46,11 @@ class BiodStorage {
   // starts or when a new user logs in.
   bool ReadRecords(const std::unordered_set<std::string>& user_ids);
 
+  // Read all records from disk for a single user. Uses a file enumerator to
+  // enumerate through all record files. Called whenever biod starts or when
+  // a new user logs in.
+  bool ReadRecordsForSingleUser(const std::string& user_id);
+
   // Delete one record file. User will be able to do this via UI. True if
   // this record does not exist on disk.
   bool DeleteRecord(const std::string& user_id, const std::string& record_id);
@@ -59,11 +64,6 @@ class BiodStorage {
   base::FilePath root_path_;
   std::string biometrics_manager_name_;
   ReadRecordsCallback load_record_;
-
-  // Read all records from disk for a single user. Uses a file enumerator to
-  // enumerate through all record files. Called whenever biod starts or when
-  // a new user logs in.
-  bool ReadRecordsForSingleUser(const std::string& user_id);
 };
 }  // namespace biod
 

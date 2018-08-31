@@ -116,9 +116,9 @@ class BiometricsDaemon {
   BiometricsDaemon();
 
  private:
-  // Gets the set of active users since the last time this method was called.
-  bool RetrieveNewActiveSessions(
-      std::unordered_set<std::string>* new_active_users);
+  // Query session manager for the current primary user. Return true and update
+  // primary_user_if primary user exists. Otherwise return false.
+  bool RetrievePrimarySession();
 
   // Read or delete records in memory when users log in or out.
   void OnSessionStateChanged(dbus::Signal* signal);
@@ -129,8 +129,8 @@ class BiometricsDaemon {
 
   // Proxy for dbus communication with session manager / login.
   scoped_refptr<dbus::ObjectProxy> session_manager_proxy_;
-  // Keep track of currently logged in users.
-  std::unordered_set<std::string> current_active_users_;
+  // Sanitized username of the primary user. Empty if no primary user present.
+  std::string primary_user_;
 
   DISALLOW_COPY_AND_ASSIGN(BiometricsDaemon);
 };

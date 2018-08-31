@@ -364,6 +364,11 @@ bool FpcBiometricsManager::ReadRecords(
   return biod_storage_.ReadRecords(user_ids);
 }
 
+bool FpcBiometricsManager::ReadRecordsForSingleUser(
+    const std::string& user_id) {
+  return biod_storage_.ReadRecordsForSingleUser(user_id);
+}
+
 void FpcBiometricsManager::SetEnrollScanDoneHandler(
     const BiometricsManager::EnrollScanDoneCallback& on_enroll_scan_done) {
   on_enroll_scan_done_ = on_enroll_scan_done;
