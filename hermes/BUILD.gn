@@ -1,0 +1,65 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":hermes",
+    ":libhermes",
+  ]
+  if (use.test) {
+    deps += [ ":hermes_test" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+  ]
+  libs = [ "-lqrtr" ]
+}
+
+static_library("libhermes") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "esim_qmi_impl.cc",
+    "lpd.cc",
+    "qmi_uim.c",
+    "smdp_impl.cc",
+  ]
+}
+
+executable("hermes") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "main.cc",
+  ]
+  deps = [
+    ":libhermes",
+  ]
+}
+
+if (use.test) {
+  pkg_config("test_config") {
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+  }
+
+  executable("hermes_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
+    ]
+    sources = [
+      "esim_qmi_test.cc",
+      "smdp_test.cc",
+    ]
+    deps = [
+      ":libhermes",
+      "//common-mk/testrunner",
+    ]
+  }
+}
