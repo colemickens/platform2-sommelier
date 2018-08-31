@@ -24,6 +24,12 @@ std::unique_ptr<SambaInterface> SambaInterfaceFactoryFunction(
   return std::make_unique<FakeSambaProxy>(fake_samba);
 }
 
+constexpr char kMountRoot[] = "smb://192.168.0.1/test";
+constexpr char kWorkgroup[] = "domain";
+constexpr char kUsername[] = "user1";
+constexpr char kPassword[] = "admin";
+
+constexpr int32_t kBufferSize = 256;
 }  // namespace
 
 class MountManagerTest : public testing::Test {
@@ -369,6 +375,23 @@ TEST_F(MountManagerTest, TestAddMountWithEmptyCredential) {
   ExpectCredentialsEqual(mount_id, workgroup, username, password);
 }
 
+TEST_F(MountManagerTest, TestAddMountWithoutWorkgroup) {
+  const std::string root_path = "smb://server/share1";
+  const std::string workgroup = "";
+  const std::string username = "user1";
+  const std::string password = "admin";
+  int32_t mount_id;
+
+  EXPECT_TRUE(AddMount(root_path, workgroup, username, password, &mount_id));
+
+  EXPECT_GE(mount_id, 0);
+  EXPECT_EQ(1, mounts_->MountCount());
+  EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
+  EXPECT_TRUE(mounts_->IsAlreadyMounted(root_path));
+
+  ExpectCredentialsEqual(mount_id, "" /* workgroup */, username, password);
+}
+
 TEST_F(MountManagerTest, TestAddMountWithEmptyPassword) {
   const std::string root_path = "smb://server/share1";
   const std::string workgroup = "google";
@@ -393,6 +416,26 @@ TEST_F(MountManagerTest, TestCantAddMountWithSamePath) {
 
   // Should return false since |root_path| is already mounted.
   EXPECT_FALSE(AddMount(root_path, &mount_id));
+}
+
+TEST_F(MountManagerTest, TestCantAddSameMount) {
+  const std::string workgroup2 = "workgroup2";
+  const std::string username2 = "user2";
+  const std::string password2 = "root2";
+  int32_t mount_id;
+
+  EXPECT_TRUE(
+      AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id));
+
+  EXPECT_EQ(1, mounts_->MountCount());
+
+  // Should return false since the credential is already added for that
+  // mount.
+  EXPECT_FALSE(
+      AddMount(kMountRoot, workgroup2, username2, password2, &mount_id));
+  EXPECT_EQ(1, mounts_->MountCount());
+  EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
+  ExpectCredentialsEqual(mount_id, kWorkgroup, kUsername, kPassword);
 }
 
 TEST_F(MountManagerTest, TestCantRemountWithSamePath) {
@@ -492,4 +535,99 @@ TEST_F(MountManagerTest, TestGetPasswordGetsValidPassword) {
   EXPECT_EQ(std::string(password_ptr->GetRaw()), password);
 }
 
+TEST_F(MountManagerTest, TestBufferNullTerminatedWhenLengthTooSmall) {
+  int32_t mount_id;
+
+  EXPECT_TRUE(
+      AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id));
+  EXPECT_EQ(1, mounts_->MountCount());
+  EXPECT_TRUE(mounts_->IsAlreadyMounted(kMountRoot));
+
+  // Initialize buffers with 1.
+  char workgroup_buffer[kBufferSize] = {1};
+  char username_buffer[kBufferSize] = {1};
+  char password_buffer[kBufferSize] = {1};
+
+  SambaInterface* samba_interface = nullptr;
+  EXPECT_TRUE(mounts_->GetSambaInterface(mount_id, &samba_interface));
+
+  // Call the authentication function while passing 1 as the buffer sizes. This
+  // should return false since the buffer sizes are too small.
+  EXPECT_FALSE(mounts_->GetAuthentication(
+      samba_interface->GetSambaInterfaceId(), kMountRoot, workgroup_buffer,
+      1 /* workgroup_length */, username_buffer, 1 /* username_length */,
+      password_buffer, 1 /* password_length */));
+
+  // Buffers should be null-terminated.
+  EXPECT_EQ('\0', workgroup_buffer[0]);
+  EXPECT_EQ('\0', username_buffer[0]);
+  EXPECT_EQ('\0', password_buffer[0]);
+
+  EXPECT_TRUE(mounts_->RemoveMount(mount_id));
+}
+
+TEST_F(MountManagerTest, TestBufferNullTerminatedWhenNoCredsFound) {
+  // Initialize buffers with 1.
+  char workgroup_buffer[kBufferSize] = {1};
+  char username_buffer[kBufferSize] = {1};
+  char password_buffer[kBufferSize] = {1};
+
+  // This should return false when no credential are found.
+  EXPECT_FALSE(mounts_->GetAuthentication(
+      -2 /* non-existing samba_interface_id */, kMountRoot, workgroup_buffer,
+      kBufferSize, username_buffer, kBufferSize, password_buffer, kBufferSize));
+
+  // Buffers should be null-terminated.
+  EXPECT_EQ('\0', workgroup_buffer[0]);
+  EXPECT_EQ('\0', username_buffer[0]);
+  EXPECT_EQ('\0', password_buffer[0]);
+}
+
+TEST_F(MountManagerTest, TestAddingRemovingMultipleCredentials) {
+  const std::string mount_root2 = "smb://192.168.0.1/share";
+  const std::string workgroup2 = "workgroup2";
+  const std::string username2 = "user2";
+  const std::string password2 = "root";
+  int32_t mount_id1;
+  int32_t mount_id2;
+
+  EXPECT_TRUE(
+      AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id1));
+  EXPECT_TRUE(
+      AddMount(mount_root2, workgroup2, username2, password2, &mount_id2));
+
+  EXPECT_EQ(2, mounts_->MountCount());
+  EXPECT_TRUE(mounts_->IsAlreadyMounted(kMountRoot));
+  EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_root2));
+  ExpectCredentialsEqual(mount_id1, kWorkgroup, kUsername, kPassword);
+  ExpectCredentialsEqual(mount_id2, workgroup2, username2, password2);
+
+  EXPECT_TRUE(mounts_->RemoveMount(mount_id1));
+  EXPECT_TRUE(mounts_->RemoveMount(mount_id2));
+}
+
+TEST_F(MountManagerTest, TestRemoveCredentialFromMultiple) {
+  const std::string mount_root2 = "smb://192.168.0.1/share";
+  const std::string workgroup2 = "workgroup2";
+  const std::string username2 = "user2";
+  const std::string password2 = "root";
+  int32_t mount_id1;
+  int32_t mount_id2;
+
+  EXPECT_TRUE(
+      AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id1));
+  EXPECT_TRUE(
+      AddMount(mount_root2, workgroup2, username2, password2, &mount_id2));
+  EXPECT_EQ(2, mounts_->MountCount());
+
+  EXPECT_TRUE(mounts_->RemoveMount(mount_id1));
+
+  EXPECT_EQ(1, mounts_->MountCount());
+  EXPECT_FALSE(mounts_->IsAlreadyMounted(kMountRoot));
+  EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_root2));
+  ExpectCredentialsEqual(mount_id2, workgroup2, username2, password2);
+
+  EXPECT_TRUE(mounts_->RemoveMount(mount_id2));
+  EXPECT_EQ(0, mounts_->MountCount());
+}
 }  // namespace smbprovider
