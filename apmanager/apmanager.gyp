@@ -1,6 +1,3 @@
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'variables': {
@@ -128,15 +125,15 @@
           'dependencies': ['libapmanager'],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
-            'config_unittest.cc',
-            'device_info_unittest.cc',
-            'device_unittest.cc',
-            'dhcp_server_unittest.cc',
-            'error_unittest.cc',
+            'config_test.cc',
+            'device_info_test.cc',
+            'device_test.cc',
+            'dhcp_server_test.cc',
+            'error_test.cc',
             'fake_config_adaptor.cc',
             'fake_device_adaptor.cc',
-            'hostapd_monitor_unittest.cc',
-            'manager_unittest.cc',
+            'hostapd_monitor_test.cc',
+            'manager_test.cc',
             'mock_config.cc',
             'mock_control.cc',
             'mock_device.cc',
@@ -149,7 +146,7 @@
             'mock_process_factory.cc',
             'mock_service.cc',
             'mock_service_adaptor.cc',
-            'service_unittest.cc',
+            'service_test.cc',
             'testrunner.cc',
           ],
         },
