@@ -253,7 +253,9 @@
         "firmware": {
           "bcs-overlay": "overlay-another-private",
           "build-targets": {
+            "base": "another_base",
             "coreboot": "another",
+            "cr50": "another_cr50",
             "depthcharge": "another",
             "ec": "another",
             "libpayload": "another"

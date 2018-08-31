@@ -287,6 +287,7 @@ The schema definition is below:
 ### build-targets
 | Attribute | Type   | RegEx     | Required | Oneof Group |  Description |
 | --------- | ------ | --------- | -------- | ----------- |  ----------- |
+| base | string |  | False |  | Build target of the base EC firmware for a detachable device, that will be considered dirty when building/testing |
 | coreboot | string |  | False |  | Build target that will be considered dirty when building/testing locally. |
 | cr50 | string |  | False |  | Build target that will be considered dirty when building/testing locally. |
 | depthcharge | string |  | False |  | Build target that will be considered dirty when building/testing locally. |

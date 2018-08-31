@@ -366,8 +366,9 @@ class CrosConfigBaseImpl(object):
       if target_type in device_targets:
         build_targets.append(device_targets[target_type])
       if target_type == 'ec':
-        if 'cr50' in device_targets:
-          build_targets.append(device_targets['cr50'])
+        for ec_extra in ('base', 'cr50'):
+          if ec_extra in device_targets:
+            build_targets.append(device_targets[ec_extra])
     return sorted(set(build_targets))
 
   def GetFirmwareBuildCombinations(self, components):

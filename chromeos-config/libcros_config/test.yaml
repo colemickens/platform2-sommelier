@@ -169,7 +169,9 @@ chromeos:
                 - "${FILESDIR}/tools1"
                 - "${FILESDIR}/tools2"
               build-targets:
+                base: "another_base"
                 coreboot: "another"
+                cr50: "another_cr50"
                 ec: "another"
                 depthcharge: "another"
                 libpayload: "another"

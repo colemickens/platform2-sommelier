@@ -106,6 +106,8 @@ class CommonTests(object):
     os.environ['FW_NAME'] = 'another'
     self.assertSequenceEqual(config.GetFirmwareBuildTargets('coreboot'),
                              ['another'])
+    self.assertSequenceEqual(config.GetFirmwareBuildTargets('ec'),
+                             ['another', 'another_base', 'another_cr50'])
     del os.environ['FW_NAME']
 
   def testFileTree(self):
