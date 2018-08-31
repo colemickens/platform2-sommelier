@@ -1,0 +1,56 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":goldfishd",
+    ":libgoldfishd",
+  ]
+  if (use.test) {
+    deps += [ ":goldfishd_test_runner" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+  ]
+}
+
+static_library("libgoldfishd") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "goldfish_library.cc",
+  ]
+}
+
+executable("goldfishd") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "main.cc",
+  ]
+  deps = [
+    ":libgoldfishd",
+  ]
+}
+
+if (use.test) {
+  executable("goldfishd_test_runner") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+    sources = [
+      "goldfish_library_test.cc",
+    ]
+    deps = [
+      ":libgoldfishd",
+      "//common-mk/testrunner",
+    ]
+  }
+}
