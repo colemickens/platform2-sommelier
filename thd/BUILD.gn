@@ -1,0 +1,55 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":libthd",
+  ]
+  if (use.test) {
+    deps += [ ":thd_unittests" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+  ]
+}
+
+static_library("libthd") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "mechanism/fake_mechanism.cc",
+    "mechanism/file_write_mechanism.cc",
+    "mechanism/mechanism.cc",
+    "source/ectool_temps_source.cc",
+    "source/fake_source.cc",
+    "source/file_source.cc",
+  ]
+}
+
+if (use.test) {
+  pkg_config("test_config") {
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+  }
+
+  executable("thd_unittests") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
+    ]
+    sources = [
+      "mechanism/file_write_mechanism_test.cc",
+      "source/file_source_test.cc",
+    ]
+    deps = [
+      ":libthd",
+      "//common-mk/testrunner",
+    ]
+  }
+}
