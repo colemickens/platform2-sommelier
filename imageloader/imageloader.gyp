@@ -91,6 +91,7 @@
           'includes': ['../common-mk/common_test.gypi'],
           'dependencies': [
             'libimageloader_static',
+            '../common-mk/testrunner.gyp:testrunner',
           ],
           'sources': [
             'component.h',
@@ -100,7 +101,6 @@
             'imageloader.h',
             'imageloader_test.cc',
             'mock_helper_process_proxy.h',
-            'run_tests.cc',
             'test_utilities.cc',
             'test_utilities.h',
             'verity_mounter_test.cc',
