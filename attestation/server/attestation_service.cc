@@ -324,7 +324,8 @@ std::string GetACAName(attestation::ACAType aca_type) {
   }
 }
 
-std::string GetIdentityFeaturesNames(int identity_features) {
+std::string GetIdentityFeaturesString(int identity_features) {
+  unsigned features_count = 0;
   std::ostringstream stream;
   if (identity_features == attestation::NO_IDENTITY_FEATURES) {
     stream << "NO_IDENTITY_FEATURES";
@@ -333,6 +334,7 @@ std::string GetIdentityFeaturesNames(int identity_features) {
     // adding a new enum value.
     if (identity_features &
         attestation::IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID) {
+      ++features_count;
       if (stream.tellp() > 0) {
         stream << ", ";
       }
@@ -342,13 +344,15 @@ std::string GetIdentityFeaturesNames(int identity_features) {
     }
     // Print other bits which may have been forgotten above.
     if (identity_features) {
+      features_count += 2;        // Forces plural.
       if (stream.tellp() > 0) {
         stream << ", ";
       }
       stream << "(undecoded features: " << identity_features << ")";
     }
   }
-  return stream.str();
+  return std::string("identity feature") + (features_count != 1 ? "s " : " ")
+      + stream.str();
 }
 
 }  // namespace
@@ -1602,9 +1606,8 @@ int AttestationService::CreateIdentity(int identity_features,
   // The identity we're creating will have the next index in identities.
   auto* database_pb = database_->GetMutableProtobuf();
   const int identity = database_pb->identities().size();
-  LOG(INFO) << "Attestation: Creating identity " << identity
-            << " with identity feature(s) "
-            << GetIdentityFeaturesNames(identity_features) << ".";
+  LOG(INFO) << "Attestation: Creating identity " << identity << " with "
+            << GetIdentityFeaturesString(identity_features) << ".";
   // Create an identity key.
   std::string rsa_identity_public_key;
   std::string rsa_identity_key_blob;

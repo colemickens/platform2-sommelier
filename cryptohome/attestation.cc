@@ -75,7 +75,8 @@ std::string GetPCAName(cryptohome::Attestation::PCAType pca_type) {
   }
 }
 
-std::string GetIdentityFeaturesNames(int identity_features) {
+std::string GetIdentityFeaturesString(int identity_features) {
+  unsigned features_count = 0;
   std::ostringstream stream;
   if (identity_features == cryptohome::NO_IDENTITY_FEATURES) {
     stream << cryptohome::IdentityFeatures_Name(
@@ -86,6 +87,7 @@ std::string GetIdentityFeaturesNames(int identity_features) {
     for (int i = 0, count = desc->value_count(); i < count; ++i) {
       const google::protobuf::EnumValueDescriptor* value_desc = desc->value(i);
       if (identity_features & value_desc->number()) {
+        ++features_count;
         if (stream.tellp() > 0) {
           stream << ", ";
         }
@@ -93,7 +95,8 @@ std::string GetIdentityFeaturesNames(int identity_features) {
       }
     }
   }
-  return stream.str();
+  return std::string("identity feature") + (features_count != 1 ? "s " : " ")
+      + stream.str();
 }
 
 }  // namespace
@@ -588,9 +591,8 @@ int Attestation::CreateIdentity(int identity_features,
                                 const SecureBlob& ek_public_key) {
   // The identity we're creating will have the next index in identities.
   const int identity = database_pb_.identities().size();
-  LOG(INFO) << "Attestation: Creating identity " << identity
-            << " with identity feature(s) "
-            << GetIdentityFeaturesNames(identity_features) << ".";
+  LOG(INFO) << "Attestation: Creating identity " << identity << " with "
+            << GetIdentityFeaturesString(identity_features) << ".";
   // Create the AIK.
   SecureBlob identity_public_key_der;
   SecureBlob identity_public_key;
