@@ -122,7 +122,10 @@
         {
           'target_name': 'apmanager_testrunner',
           'type': 'executable',
-          'dependencies': ['libapmanager'],
+          'dependencies': [
+            'libapmanager',
+            '../common-mk/testrunner.gyp:testrunner',
+          ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'config_test.cc',
@@ -147,7 +150,6 @@
             'mock_service.cc',
             'mock_service_adaptor.cc',
             'service_test.cc',
-            'testrunner.cc',
           ],
         },
       ],
