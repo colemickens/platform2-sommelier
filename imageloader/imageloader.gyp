@@ -2,9 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'variables': {
@@ -97,16 +94,16 @@
           ],
           'sources': [
             'component.h',
-            'component_unittest.cc',
-            'dlc_unittest.cc',
+            'component_test.cc',
+            'dlc_test.cc',
             'imageloader.cc',
             'imageloader.h',
-            'imageloader_unittest.cc',
+            'imageloader_test.cc',
             'mock_helper_process_proxy.h',
             'run_tests.cc',
             'test_utilities.cc',
             'test_utilities.h',
-            'verity_mounter_unittest.cc',
+            'verity_mounter_test.cc',
           ],
         },
       ],
