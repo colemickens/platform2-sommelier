@@ -10,7 +10,7 @@
 
 module chromeos.machine_learning.mojom;
 
-import "mojom/tensor.mojom";
+import "ml/mojom/tensor.mojom";
 
 enum ExecuteResult {
   OK = 0,

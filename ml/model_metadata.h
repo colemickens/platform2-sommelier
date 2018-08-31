@@ -8,7 +8,7 @@
 #include <map>
 #include <string>
 
-#include "mojom/model.mojom.h"
+#include "ml/mojom/model.mojom.h"
 
 namespace ml {
 

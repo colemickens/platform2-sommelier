@@ -20,6 +20,7 @@
     'mojom_bindings_generator': '<(sysroot)/usr/src/libmojo-<(libbase_ver)/mojo/mojom_bindings_generator.py',
     'mojo_templates_dir': '<(SHARED_INTERMEDIATE_DIR)/templates',
     'mojo_extra_args%': [],
+    'mojo_root%': '.',
     'exported_deps': [
       'libchrome-<(libbase_ver)',
       'libmojo-<(libbase_ver)',
@@ -71,18 +72,25 @@
         '<(mojom_bindings_generator)',
         '<(mojo_templates_dir)/cpp_templates.zip',
       ],
+      'variables': {
+        'mojo_path': '<!(["realpath", "--relative-to=<(mojo_root)", "<(RULE_INPUT_PATH)"])',
+        # Workaround. gyp looks to have an issue to expand variables in action.
+        'mojo_include_path': '<(mojo_root)',
+        'mojo_depth': '<(mojo_root)',
+      },
       'outputs': [
-        '<(mojo_output_dir)/<(RULE_INPUT_PATH)-internal.h',
-        '<(mojo_output_dir)/<(RULE_INPUT_PATH).cc',
-        '<(mojo_output_dir)/<(RULE_INPUT_PATH).h',
+        '<(mojo_output_dir)/>(mojo_path)-internal.h',
+        '<(mojo_output_dir)/>(mojo_path).cc',
+        '<(mojo_output_dir)/>(mojo_path).h',
       ],
-      'message': 'Generating mojo C++ bindings from <(RULE_INPUT_PATH)',
+      'message': 'Generating mojo C++ bindings from >(mojo_path)',
       'action': [
         'python', '<(mojom_bindings_generator)', '--use_bundled_pylibs',
         'generate', '<(RULE_INPUT_PATH)',
         '--output_dir', '<(mojo_output_dir)',
         '--bytecode_path', '<(mojo_templates_dir)',
-        '-I', '.',
+        '-I', '>(mojo_include_path)',
+        '-d', '>(mojo_depth)',
         '--generators', 'c++',
         '<@(mojo_extra_args)',
       ],

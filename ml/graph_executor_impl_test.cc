@@ -17,10 +17,10 @@
 #include <tensorflow/contrib/lite/interpreter.h>
 
 #include "ml/graph_executor_impl.h"
+#include "ml/mojom/graph_executor.mojom.h"
+#include "ml/mojom/tensor.mojom.h"
 #include "ml/tensor_view.h"
 #include "ml/test_utils.h"
-#include "mojom/graph_executor.mojom.h"
-#include "mojom/tensor.mojom.h"
 
 namespace ml {
 namespace {

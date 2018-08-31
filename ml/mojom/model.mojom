@@ -12,7 +12,7 @@
 
 module chromeos.machine_learning.mojom;
 
-import "mojom/graph_executor.mojom";
+import "ml/mojom/graph_executor.mojom";
 
 enum ModelId {
   UNKNOWN,

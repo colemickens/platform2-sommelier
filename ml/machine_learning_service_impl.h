@@ -13,7 +13,7 @@
 #include <mojo/public/cpp/bindings/binding.h>
 
 #include "ml/model_metadata.h"
-#include "mojom/machine_learning_service.mojom.h"
+#include "ml/mojom/machine_learning_service.mojom.h"
 
 namespace ml {
 

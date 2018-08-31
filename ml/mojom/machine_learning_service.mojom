@@ -12,7 +12,7 @@
 
 module chromeos.machine_learning.mojom;
 
-import "mojom/model.mojom";
+import "ml/mojom/model.mojom";
 
 enum LoadModelResult {
   OK = 0,

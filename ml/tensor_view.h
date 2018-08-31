@@ -4,7 +4,7 @@
 
 #include <mojo/public/cpp/bindings/array.h>
 
-#include "mojom/tensor.mojom.h"
+#include "ml/mojom/tensor.mojom.h"
 
 #ifndef ML_TENSOR_VIEW_H_
 #define ML_TENSOR_VIEW_H_

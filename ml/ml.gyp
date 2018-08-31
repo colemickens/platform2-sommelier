@@ -3,6 +3,9 @@
     {
       'target_name': 'ml_mojo_bindings',
       'type': 'static_library',
+      'variables': {
+        'mojo_root': '<(platform2_root)',
+      },
       'sources': [
         'mojom/graph_executor.mojom',
         'mojom/machine_learning_service.mojom',

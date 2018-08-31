@@ -16,7 +16,7 @@
 #include <mojo/public/cpp/bindings/map.h>
 #include <tensorflow/contrib/lite/model.h>
 
-#include "mojom/graph_executor.mojom.h"
+#include "ml/mojom/graph_executor.mojom.h"
 
 namespace ml {
 

@@ -12,7 +12,7 @@
 #include <tensorflow/contrib/lite/model.h>
 
 #include "ml/model_impl.h"
-#include "mojom/model.mojom.h"
+#include "ml/mojom/model.mojom.h"
 
 namespace ml {
 

@@ -10,7 +10,7 @@
 #include <brillo/daemons/dbus_daemon.h>
 #include <dbus/exported_object.h>
 
-#include "mojom/machine_learning_service.mojom.h"
+#include "ml/mojom/machine_learning_service.mojom.h"
 
 namespace dbus {
 class MethodCall;

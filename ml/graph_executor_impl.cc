@@ -7,8 +7,8 @@
 #include <set>
 #include <utility>
 
+#include "ml/mojom/tensor.mojom.h"
 #include "ml/tensor_view.h"
-#include "mojom/tensor.mojom.h"
 
 namespace ml {
 
