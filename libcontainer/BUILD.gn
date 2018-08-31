@@ -1,0 +1,79 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":libcontainer",
+  ]
+  if (use.test) {
+    deps += [ ":libcontainer_test" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libminijail",
+    "libchrome-${libbase_ver}",
+  ]
+  defines = [ "USE_device_mapper=${use.device_mapper}" ]
+  if (use.device_mapper) {
+    pkg_deps += [ "devmapper" ]
+  }
+}
+
+shared_library("libcontainer") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "cgroup.cc",
+    "config.cc",
+    "container.cc",
+    "libcontainer.cc",
+    "libcontainer_util.cc",
+  ]
+}
+
+if (use.test) {
+  pkg_config("test_config") {
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+  }
+
+  executable("libcontainer_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
+    ]
+    sources = [
+      "cgroup.cc",
+      "cgroup_test.cc",
+      "config.cc",
+      "container.cc",
+      "libcontainer.cc",
+      "libcontainer_test.cc",
+      "libcontainer_util.cc",
+    ]
+    defines = [ "UNIT_TEST" ]
+    ldflags = [
+      "-Wl,-wrap=chmod",
+      "-Wl,-wrap=chown",
+      "-Wl,-wrap=getuid",
+      "-Wl,-wrap=kill",
+      "-Wl,-wrap=mkdir",
+      "-Wl,-wrap=mkdtemp",
+      "-Wl,-wrap=mount",
+      "-Wl,-wrap=rmdir",
+      "-Wl,-wrap=setns",
+      "-Wl,-wrap=umount",
+      "-Wl,-wrap=umount2",
+      "-Wl,-wrap=unlink",
+      "-Wl,-wrap=__xmknod",
+      "-Wl,-wrap=__xstat",
+    ]
+    deps = [
+      "//common-mk/testrunner",
+    ]
+  }
+}
