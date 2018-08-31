@@ -37,7 +37,7 @@ class SocketQrtr : public SocketInterface,
   // If the metadata ptr is not null, it must point to a
   // SocketQrtr::PacketMetadata instance.
   int Recv(void* buf, size_t size, void* metadata) override;
-  int Send(const void* data, size_t size) override;
+  int Send(const void* data, size_t size, const void* metadata) override;
 
  private:
   // base::MesageLoopForIO::Watcher methods.
@@ -45,8 +45,6 @@ class SocketQrtr : public SocketInterface,
   void OnFileCanWriteWithoutBlocking(int socket) override;
 
  private:
-  uint32_t node_;
-  uint32_t port_;
   base::ScopedFD socket_;
 
   DataAvailableCallback cb_;

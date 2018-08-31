@@ -15,9 +15,7 @@ constexpr uint8_t kQrtrPort = 0;
 namespace hermes {
 
 SocketQrtr::SocketQrtr()
-    : node_(0),
-      port_(0),
-      watcher_(FROM_HERE) {}
+    : watcher_(FROM_HERE) {}
 
 void SocketQrtr::SetDataAvailableCallback(DataAvailableCallback cb) {
   cb_ = cb;
@@ -64,17 +62,26 @@ bool SocketQrtr::StopService(uint32_t service, uint16_t version_major,
 }
 
 int SocketQrtr::Recv(void* buf, size_t size, void* metadata) {
-  int ret = qrtr_recvfrom(socket_.get(), buf, size, &node_, &port_);
+  uint32_t node, port;
+  int ret = qrtr_recvfrom(socket_.get(), buf, size, &node, &port);
+  LOG(INFO) << node << ", " << port;
   if (metadata) {
     PacketMetadata* data = reinterpret_cast<PacketMetadata*>(metadata);
-    data->node = node_;
-    data->port = port_;
+    data->node = node;
+    data->port = port;
   }
   return ret;
 }
 
-int SocketQrtr::Send(const void* data, size_t size) {
-  return qrtr_sendto(socket_.get(), node_, port_, data, size);
+int SocketQrtr::Send(const void* data, size_t size, const void* metadata) {
+  uint32_t node = 0, port = 0;
+  if (metadata) {
+    const PacketMetadata* data =
+      reinterpret_cast<const PacketMetadata*>(metadata);
+    node = data->node;
+    port = data->port;
+  }
+  return qrtr_sendto(socket_.get(), node, port, data, size);
 }
 
 void SocketQrtr::OnFileCanReadWithoutBlocking(int socket) {

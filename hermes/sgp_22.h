@@ -6,8 +6,12 @@
 #define HERMES_SGP_22_H_
 
 #include <array>
+#include <cstdint>
 
 namespace hermes {
+
+constexpr uint8_t kLpaTerminalCapabilityTag = 0x83;
+constexpr uint8_t kLpaTerminalCapabilityValue = 0x07;
 
 // Application identifier for the eUICC's ISD-R, as per SGP.02 2.2.3
 extern const std::array<uint8_t, 16> kAidIsdr;

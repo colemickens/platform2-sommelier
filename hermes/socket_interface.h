@@ -54,7 +54,7 @@ class SocketInterface {
   virtual int Recv(void* buf, size_t size, void* metadata) = 0;
   // Sends provided data buffer. On success, returns the bytes sent out. On
   // failure, returns -1.
-  virtual int Send(const void* data, size_t size) = 0;
+  virtual int Send(const void* data, size_t size, const void* metadata) = 0;
 };
 
 }  // namespace hermes

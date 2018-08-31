@@ -16,6 +16,7 @@ group("all") {
 
 pkg_config("target_defaults") {
   pkg_deps = [
+    "google-lpa",
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
   ]
@@ -26,6 +27,7 @@ static_library("libhermes") {
   configs += [ ":target_defaults" ]
   sources = [
     "apdu.cc",
+    "card_qrtr.cc",
     "qmi_uim.cc",
     "sgp_22.cc",
     "smdp.cc",
