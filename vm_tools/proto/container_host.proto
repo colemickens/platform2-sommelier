@@ -51,6 +51,10 @@ message Application {
   bool no_display = 5;
   string startup_wm_class = 6;
   bool startup_notify = 7;
+
+  // If set, the package_id of the installed package that owns the .desktop
+  // file. Allows for operations like uninstalling the related application.
+  string package_id = 8;
 }
 
 // Request protobuf for notifying the host of our list of installed

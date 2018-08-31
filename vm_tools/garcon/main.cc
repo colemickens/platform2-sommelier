@@ -229,7 +229,8 @@ int main(int argc, char** argv) {
   }
 
   host_notifier->set_grpc_server(server_copy);
-  if (!host_notifier->Init(static_cast<uint32_t>(vsock_listen_port))) {
+  if (!host_notifier->Init(static_cast<uint32_t>(vsock_listen_port),
+                           pk_proxy->GetWeakPtr())) {
     LOG(ERROR) << "Failed to set up host notifier";
     return -1;
   }

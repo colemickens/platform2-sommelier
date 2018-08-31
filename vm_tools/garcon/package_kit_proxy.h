@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include <base/callback_forward.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <base/message_loop/message_loop.h>
@@ -44,6 +45,12 @@ class PackageKitProxy {
     std::string summary;
   };
 
+  typedef base::Callback<void(bool success,
+                              bool pkg_found,
+                              const LinuxPackageInfo& pkg_info,
+                              const std::string& error)>
+      PackageSearchCallback;
+
   // Creates an instance of PackageKitProxy that will use the calling thread for
   // its message loop for D-Bus communication. Returns nullptr if there was a
   // failure.
@@ -52,6 +59,9 @@ class PackageKitProxy {
 
   ~PackageKitProxy();
 
+  // Returns a WeakPtr reference to this object.
+  base::WeakPtr<PackageKitProxy> GetWeakPtr();
+
   // Gets the information about a local Linux package file located at
   // |file_path| and populates |out_pkg_info| with the details on success.
   // Returns true on success, and false otherwise. On failure, |out_error| will
@@ -59,6 +69,28 @@ class PackageKitProxy {
   bool GetLinuxPackageInfo(const base::FilePath& file_path,
                            std::shared_ptr<LinuxPackageInfo> out_pkg_info,
                            std::string* out_error);
+
+  // Gets information about the Linux package (if any) which owns the file
+  // located at |file_path|. Once the transaction is complete, |callback| will
+  // be called. If a package which owns the file is found, |success| and
+  // |pkg_found| will be true and |pkg_info| will be filled in with some package
+  // details. If there is no such package, |pkg_found| will be set
+  // to false, |pkg_info| will be empty, but |success| will be true --
+  // this is not an error. On error, |success| will be false and |error| will be
+  // populated with the error details. Regardless, |callback| will be called
+  // only once.
+  //
+  // The returned LinuxPackageInfo will only have package_id and summary filled
+  // in.
+  //
+  // Only installed packages are considered. This function is intended for use
+  // by uninstallers and similar systems that care only about .desktop files
+  // that are on the local files system, so we don't care about uninstalled
+  // packages.
+  //
+  // Should only be called on D-Bus thread. Caller must not block D-Bus thread.
+  void SearchLinuxPackagesForFile(const base::FilePath& file_path,
+                                  PackageSearchCallback callback);
 
   // Requests that installation of the Linux package located at |file_path| be
   // performed. Returns the result which corresponds to the
@@ -111,7 +143,7 @@ class PackageKitProxy {
   dbus::ObjectProxy* packagekit_service_proxy_;  // Owned by |bus_|.
 
   base::WeakPtr<PackageKitObserver> observer_;
-  scoped_refptr<base::SequencedTaskRunner> task_runner_;
+  scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
 
   // Ensure calls are made on the right thread.
   base::SequenceChecker sequence_checker_;

@@ -45,6 +45,7 @@ constexpr char kPackageKitTransactionInterface[] =
 constexpr char kSetHintsMethod[] = "SetHints";
 constexpr char kCreateTransactionMethod[] = "CreateTransaction";
 constexpr char kGetDetailsLocalMethod[] = "GetDetailsLocal";
+constexpr char kSearchFilesMethod[] = "SearchFiles";
 constexpr char kInstallFilesMethod[] = "InstallFiles";
 constexpr char kRefreshCacheMethod[] = "RefreshCache";
 constexpr char kGetUpdatesMethod[] = "GetUpdates";
@@ -553,6 +554,99 @@ class GetDetailsLocalTransaction : public PackageKitTransaction {
   std::shared_ptr<PackageKitProxy::PackageInfoTransactionData> data_;
 };
 
+// Subclass for handling SearchFiles transaction. Different from GetDetailsLocal
+// in that we do a callback on the current thread instead of saving the
+// information to a structure in order to return it on a different thread.
+class SearchFilesTransaction : public PackageKitTransaction {
+ public:
+  SearchFilesTransaction(scoped_refptr<dbus::Bus> bus,
+                         base::WeakPtr<PackageKitProxy> packagekit_proxy,
+                         dbus::ObjectProxy* packagekit_service_proxy,
+                         const base::FilePath& file_path,
+                         PackageKitProxy::PackageSearchCallback callback)
+      : PackageKitTransaction(
+            bus,
+            packagekit_proxy,
+            packagekit_service_proxy,
+            kErrorCodeSignalMask | kFinishedSignalMask | kPackageSignalMask),
+        file_path_(file_path),
+        callback_(std::move(callback)),
+        callback_called_(false),
+        weak_ptr_factory_(this) {}
+
+  bool ExecuteRequest(dbus::ObjectProxy* transaction_proxy) override {
+    dbus::MethodCall method_call(kPackageKitTransactionInterface,
+                                 kSearchFilesMethod);
+    dbus::MessageWriter writer(&method_call);
+    // As explained in the comments for
+    // PackageKitProxy::SearchLinuxPackagesForFile, we only consider installed
+    // packages.
+    writer.AppendUint64(kPackageKitFilterInstalled);
+    writer.AppendArrayOfStrings({file_path_.value()});
+    std::unique_ptr<dbus::Response> dbus_response =
+        transaction_proxy->CallMethodAndBlock(
+            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+    return !!dbus_response;
+  }
+
+  void GeneralError(const std::string& details) override {
+    LOG(ERROR) << "Problem with SearchFiles transaction for file "
+               << file_path_.value() << ": " << details;
+    // Check if we've already done the callback.
+    if (callback_called_)
+      return;
+    callback_called_ = true;
+    callback_.Run(false /*success*/, false /*pkg_found*/,
+                  PackageKitProxy::LinuxPackageInfo(), details);
+  }
+
+  void ErrorReceived(uint32_t error_code, const std::string& details) override {
+    LOG(ERROR) << "Failure searching local Linux Packages by file "
+               << file_path_.value() << ": " << details;
+    // Check if we've already done the callback.
+    if (callback_called_)
+      return;
+    callback_called_ = true;
+    // We will still get a Finished signal where we finalize everything, but
+    // no need to wait for it.
+    callback_.Run(false /*success*/, false /*pkg_found*/,
+                  PackageKitProxy::LinuxPackageInfo(), details);
+  }
+
+  void PackageReceived(uint32_t code,
+                       const std::string& package_id,
+                       const std::string& summary) override {
+    LOG(INFO) << "Got a package for local file " << file_path_.value();
+    // Check if we've already done the callback.
+    if (callback_called_)
+      return;
+    callback_called_ = true;
+    PackageKitProxy::LinuxPackageInfo pkg_info;
+    pkg_info.package_id = package_id;
+    pkg_info.summary = summary;
+    callback_.Run(true /*success*/, true /*pkg_found*/, pkg_info, "");
+  }
+
+  void FinishedReceived(uint32_t exit_code) override {
+    LOG(INFO) << "Finished with SearchFiles transaction for local file "
+              << file_path_.value();
+    if (callback_called_)
+      return;
+    callback_called_ = true;
+
+    // If we got here without calling the callback, PackageKit couldn't find a
+    // package corresponding to the file.
+    callback_.Run(true /*success*/, false /*pkg_found*/,
+                  PackageKitProxy::LinuxPackageInfo(), "");
+  }
+
+ private:
+  base::FilePath file_path_;
+  PackageKitProxy::PackageSearchCallback callback_;
+  bool callback_called_;
+  base::WeakPtrFactory<SearchFilesTransaction> weak_ptr_factory_;
+};
+
 // This is for tracking if an install is currently in progress.
 bool install_active = false;
 
@@ -918,6 +1012,10 @@ bool PackageKitProxy::Init() {
   return true;
 }
 
+base::WeakPtr<PackageKitProxy> PackageKitProxy::GetWeakPtr() {
+  return weak_ptr_factory_.GetWeakPtr();
+}
+
 bool PackageKitProxy::GetLinuxPackageInfo(
     const base::FilePath& file_path,
     std::shared_ptr<LinuxPackageInfo> out_pkg_info,
@@ -957,6 +1055,19 @@ int PackageKitProxy::InstallLinuxPackage(const base::FilePath& file_path,
                             &status, out_error));
   event.Wait();
   return status;
+}
+
+void PackageKitProxy::SearchLinuxPackagesForFile(
+    const base::FilePath& file_path, PackageSearchCallback callback) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Searching for local Linux package that owns "
+            << file_path.value();
+  // This object is intentionally leaked and will clean itself up when done
+  // with all the D-Bus communication.
+  SearchFilesTransaction* transaction = new SearchFilesTransaction(
+      bus_, weak_ptr_factory_.GetWeakPtr(), packagekit_service_proxy_,
+      file_path, std::move(callback));
+  transaction->StartTransaction();
 }
 
 void PackageKitProxy::AddPackageKitDeathObserver(

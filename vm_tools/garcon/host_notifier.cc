@@ -160,6 +160,7 @@ bool HostNotifier::OpenTerminal(std::vector<std::string> args) {
 
 HostNotifier::HostNotifier(base::Closure shutdown_closure)
     : update_app_list_posted_(false),
+      send_app_list_to_host_in_progress_(false),
       update_mime_types_posted_(false),
       shutdown_closure_(std::move(shutdown_closure)),
       signal_controller_(FROM_HERE),
@@ -228,7 +229,9 @@ void HostNotifier::OnInstallProgress(
   }
 }
 
-bool HostNotifier::Init(uint32_t vsock_port) {
+bool HostNotifier::Init(uint32_t vsock_port,
+                        base::WeakPtr<PackageKitProxy> package_kit_proxy) {
+  package_kit_proxy_ = package_kit_proxy;
   std::string host_ip = GetHostIp();
   token_ = GetSecurityToken();
   if (token_.empty() || host_ip.empty()) {
@@ -348,12 +351,22 @@ void HostNotifier::NotifyHostOfContainerShutdown() {
 }
 
 void HostNotifier::SendAppListToHost() {
-  // Generate the protobufs for the list of all the installed applications and
-  // make the gRPC call to the host to update them.
+  if (send_app_list_to_host_in_progress_) {
+    // Don't have multiple SendAppListToHost callback chains happening at the
+    // same time. Delay the next run a little longer.
+    //
+    // Checking a boolean isn't a race condition because all the callbacks are
+    // on the same thread.
+    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+        FROM_HERE,
+        base::Bind(&HostNotifier::SendAppListToHost,
+                   weak_ptr_factory_.GetWeakPtr()),
+        kFilesystemChangeCoalesceTime);
+    return;
+  }
 
-  vm_tools::container::UpdateApplicationListRequest request;
-  request.set_token(token_);
-  vm_tools::EmptyMessage empty;
+  auto callback_state = std::make_unique<AppListBuilderState>();
+  callback_state->request.set_token(token_);
 
   // If we hit duplicate IDs, then we are supposed to use the first one only.
   std::set<std::string> unique_app_ids;
@@ -394,7 +407,8 @@ void HostNotifier::SendAppListToHost() {
       }
       // Add this app to the list in the protobuf and populate all of its
       // fields.
-      vm_tools::container::Application* app = request.add_application();
+      vm_tools::container::Application* app =
+          callback_state->request.add_application();
       app->set_desktop_file_id(desktop_file->app_id());
       const std::map<std::string, std::string>& name_map =
           desktop_file->locale_name_map();
@@ -422,19 +436,87 @@ void HostNotifier::SendAppListToHost() {
       app->set_no_display(desktop_file->no_display());
       app->set_startup_wm_class(desktop_file->startup_wm_class());
       app->set_startup_notify(desktop_file->startup_notify());
+
+      callback_state->desktop_files_for_application.push_back(enum_path);
     }
   }
 
+  CHECK_EQ(callback_state->desktop_files_for_application.size(),
+           callback_state->request.application_size());
+
+  // We now want to query all the .desktop files to see what package owns them.
+  // Unforuntately, this requires D-Bus calls to the PackageKit, and we are on
+  // the D-Bus thread. So we can't receive the results until this function
+  // returns, so we need to set up a series of callbacks.
+  //
+  // Query each .desktop file in turn. The callback will record the info for
+  // that file and also kick off the query for the next file until all files
+  // have been queried.
+  callback_state->num_package_id_queries_completed = 0;
+
   // Clear this in case it was set, this all happens on the same thread.
+  // Clear this now, not when the package_id callbacks are complete, in case
+  // we get another notification while this is still in flight; we'd want to run
+  // this function again in that case.
   update_app_list_posted_ = false;
 
-  // Now make the gRPC call to send this list to the host.
-  grpc::ClientContext ctx;
-  grpc::Status status = stub_->UpdateApplicationList(&ctx, request, &empty);
-  if (!status.ok()) {
-    LOG(WARNING) << "Failed to notify host of the application list: "
-                 << status.error_message();
+  // Don't start another round of callbacks while still trying to finish this
+  // round.
+  send_app_list_to_host_in_progress_ = true;
+
+  RequestNextPackageIdOrCompleteUpdateApplicationList(
+      std::move(callback_state));
+}
+
+void HostNotifier::RequestNextPackageIdOrCompleteUpdateApplicationList(
+    std::unique_ptr<AppListBuilderState> state) {
+  if ((state->num_package_id_queries_completed >=
+       state->desktop_files_for_application.size()) ||
+      !package_kit_proxy_) {
+    // We have finished all package_id queries. (Or we can't do any more because
+    // the package_kit_proxy_ has vanished) This data is ready to send to the
+    // host.
+    send_app_list_to_host_in_progress_ = false;
+    vm_tools::EmptyMessage empty;
+    grpc::ClientContext ctx;
+    grpc::Status status =
+        stub_->UpdateApplicationList(&ctx, state->request, &empty);
+    VLOG(3) << "UpdatedApplicationList\n" << state->request.DebugString();
+    if (!status.ok()) {
+      LOG(WARNING) << "Failed to notify host of the application list: "
+                   << status.error_message();
+    }
+    return;
   }
+  // else we still need to do more package_id queries
+  package_kit_proxy_->SearchLinuxPackagesForFile(
+      state->desktop_files_for_application
+          [state->num_package_id_queries_completed],
+      base::Bind(&HostNotifier::PackageIdCallback,
+                 weak_ptr_factory_.GetWeakPtr(), base::Passed(&state)));
+}
+
+void HostNotifier::PackageIdCallback(
+    std::unique_ptr<AppListBuilderState> state,
+    bool success,
+    bool pkg_found,
+    const PackageKitProxy::LinuxPackageInfo& pkg_info,
+    const std::string& error) {
+  // The data passed in the parameters is for the Application at
+  // state->request.application[state->num_package_id_queries_completed]
+  CHECK_LT(state->num_package_id_queries_completed,
+           state->request.application_size());
+  if (success && pkg_found) {
+    vm_tools::container::Application* application =
+        state->request.mutable_application(
+            state->num_package_id_queries_completed);
+    application->set_package_id(pkg_info.package_id);
+  } else if (!success) {
+    LOG(ERROR) << "Failed to get Package Info: " << error;
+  }
+
+  state->num_package_id_queries_completed++;
+  RequestNextPackageIdOrCompleteUpdateApplicationList(std::move(state));
 }
 
 void HostNotifier::SendMimeTypesToHost() {
