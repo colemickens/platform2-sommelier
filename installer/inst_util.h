@@ -56,12 +56,6 @@ T* end(T (&ra)[N]) {
   return ra + N;
 }
 
-// Return true if |s| starts with |prefix|.
-bool StartsWith(const std::string& s, const std::string& prefix);
-
-// Return true if |s| ends with |suffix|.
-bool EndsWith(const std::string& s, const std::string& suffix);
-
 // Start a timer (there can only be one active).
 void LoggingTimerStart();
 

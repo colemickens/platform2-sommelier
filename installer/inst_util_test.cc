@@ -215,24 +215,6 @@ TEST(UtilTest, LsbReleaseValueTest) {
   EXPECT_EQ(result_string, "http://blah.blah:8080/update");
 }
 
-TEST(UtilTest, StartsWith) {
-  EXPECT_EQ(StartsWith("", "abc"), false);
-  EXPECT_EQ(StartsWith("a", "abc"), false);
-  EXPECT_EQ(StartsWith("ab", "abc"), false);
-  EXPECT_EQ(StartsWith("abc", "abc"), true);
-  EXPECT_EQ(StartsWith("abcd", "abc"), true);
-  EXPECT_EQ(StartsWith("dabc", "abc"), false);
-}
-
-TEST(UtilTest, EndsWith) {
-  EXPECT_EQ(EndsWith("", "abc"), false);
-  EXPECT_EQ(EndsWith("a", "abc"), false);
-  EXPECT_EQ(EndsWith("ab", "abc"), false);
-  EXPECT_EQ(EndsWith("abc", "abc"), true);
-  EXPECT_EQ(EndsWith("abcd", "abc"), false);
-  EXPECT_EQ(EndsWith("dabc", "abc"), true);
-}
-
 TEST(UtilTest, GetBlockDevFromPartitionDev) {
   EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/sda3"), "/dev/sda");
   EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/sda321"), "/dev/sda");

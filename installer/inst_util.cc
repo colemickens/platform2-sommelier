@@ -29,6 +29,7 @@ extern "C" {
 }
 
 #include <base/files/scoped_file.h>
+#include <base/strings/string_util.h>
 
 using std::string;
 using std::vector;
@@ -336,20 +337,11 @@ bool LsbReleaseValue(const string& file, const string& key, string* result) {
 // which use the 'p' notation to denote partitions.
 const char* numbered_devices[] = {"/dev/loop", "/dev/mmcblk", "/dev/nvme"};
 
-bool StartsWith(const string& s, const string& prefix) {
-  return s.compare(0, prefix.length(), prefix) == 0;
-}
-
-bool EndsWith(const string& s, const string& suffix) {
-  if (s.length() < suffix.length()) {
-    return false;
-  }
-  return s.compare(s.length() - suffix.length(), suffix.length(), suffix) == 0;
-}
-
 string GetBlockDevFromPartitionDev(const string& partition_dev) {
-  if (StartsWith(partition_dev, "/dev/mtd") ||
-      StartsWith(partition_dev, "/dev/ubi")) {
+  if (base::StartsWith(partition_dev, "/dev/mtd",
+                       base::CompareCase::SENSITIVE) ||
+      base::StartsWith(partition_dev, "/dev/ubi",
+                       base::CompareCase::SENSITIVE)) {
     return "/dev/mtd0";
   }
 
@@ -379,7 +371,7 @@ string GetBlockDevFromPartitionDev(const string& partition_dev) {
 
 int GetPartitionFromPartitionDev(const string& partition_dev) {
   size_t i = partition_dev.length();
-  if (EndsWith(partition_dev, "_0")) {
+  if (base::EndsWith(partition_dev, "_0", base::CompareCase::SENSITIVE)) {
     i -= 2;
   }
 
@@ -408,7 +400,8 @@ int GetPartitionFromPartitionDev(const string& partition_dev) {
 }
 
 string MakePartitionDev(const string& block_dev, int partition) {
-  if (StartsWith(block_dev, "/dev/mtd") || StartsWith(block_dev, "/dev/ubi")) {
+  if (base::StartsWith(block_dev, "/dev/mtd", base::CompareCase::SENSITIVE) ||
+      base::StartsWith(block_dev, "/dev/ubi", base::CompareCase::SENSITIVE)) {
     return MakeNandPartitionDevForMounting(partition);
   }
 
@@ -675,7 +668,8 @@ bool SetKernelArg(const string& key,
 // For the purposes of ChromeOS, devices that start with
 // "/dev/dm" are to be treated as read-only.
 bool IsReadonly(const string& device) {
-  return StartsWith(device, "/dev/dm") || StartsWith(device, "/dev/ubi");
+  return base::StartsWith(device, "/dev/dm", base::CompareCase::SENSITIVE) ||
+         base::StartsWith(device, "/dev/ubi", base::CompareCase::SENSITIVE);
 }
 
 bool GetKernelInfo(std::string* result) {
