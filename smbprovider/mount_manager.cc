@@ -154,9 +154,7 @@ bool MountManager::IsAlreadyMounted(const std::string& mount_root) const {
 }
 
 bool MountManager::AddMount(const std::string& mount_root,
-                            const std::string& workgroup,
-                            const std::string& username,
-                            const base::ScopedFD& password_fd,
+                            SmbCredential credential,
                             int32_t* mount_id) {
   DCHECK(mount_id);
 
@@ -166,7 +164,6 @@ bool MountManager::AddMount(const std::string& mount_root,
 
   can_remount_ = false;
 
-  SmbCredential credential(workgroup, username, GetPassword(password_fd));
   *mount_id =
       mounts_.Insert(CreateMountInfo(mount_root, std::move(credential)));
 
@@ -177,9 +174,7 @@ bool MountManager::AddMount(const std::string& mount_root,
 
 bool MountManager::Remount(const std::string& mount_root,
                            int32_t mount_id,
-                           const std::string& workgroup,
-                           const std::string& username,
-                           const base::ScopedFD& password_fd) {
+                           SmbCredential credential) {
   DCHECK(can_remount_);
   DCHECK(!IsAlreadyMounted(mount_id));
   DCHECK_GE(mount_id, 0);
@@ -188,7 +183,6 @@ bool MountManager::Remount(const std::string& mount_root,
     return false;
   }
 
-  SmbCredential credential(workgroup, username, GetPassword(password_fd));
   mounts_.InsertWithSpecificId(
       mount_id, CreateMountInfo(mount_root, std::move(credential)));
 
@@ -324,13 +318,6 @@ bool MountManager::GetAuthentication(
 
   PopulateCredential(credential, workgroup, username, password);
   return true;
-}
-
-const SmbCredential& MountManager::GetCredentialFromMountIdForTesting(
-    int32_t mount_id) const {
-  auto mount_iter = mounts_.Find(mount_id);
-  DCHECK(mount_iter != mounts_.End());
-  return mount_iter->second.credential;
 }
 
 MountManager::MountInfo MountManager::CreateMountInfo(

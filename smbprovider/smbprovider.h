@@ -17,6 +17,7 @@
 #include "smbprovider/kerberos_artifact_synchronizer.h"
 #include "smbprovider/proto.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
+#include "smbprovider/smb_credential.h"
 #include "smbprovider/smbprovider_helper.h"
 #include "smbprovider/temp_file_manager.h"
 

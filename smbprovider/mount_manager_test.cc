@@ -49,49 +49,56 @@ class MountManagerTest : public testing::Test {
   ~MountManagerTest() override = default;
 
   bool AddMount(const std::string& root_path, int32_t* mount_id) {
-    return AddMount(root_path, "" /* workgroup */, "" /* username */,
-                    "" /* password */, mount_id);
+    return AddMount(root_path, SmbCredential(), mount_id);
   }
 
   bool AddMount(const std::string& root_path,
-                const std::string& workgroup,
-                const std::string& username,
-                const std::string& password,
+                SmbCredential credential,
                 int32_t* mount_id) {
-    base::ScopedFD password_fd = WritePasswordToFile(&temp_files_, password);
-    return mounts_->AddMount(root_path, workgroup, username, password_fd,
-                             mount_id);
+    return mounts_->AddMount(root_path, std::move(credential), mount_id);
   }
 
   bool Remount(const std::string& root_path, int32_t mount_id) {
-    return Remount(root_path, mount_id, "" /* workgroup */, "" /* username */,
-                   "" /* password */);
+    return Remount(root_path, mount_id, SmbCredential());
   }
 
   bool Remount(const std::string& root_path,
                int32_t mount_id,
-               const std::string& workgroup,
-               const std::string& username,
-               const std::string& password) {
-    base::ScopedFD password_fd = WritePasswordToFile(&temp_files_, password);
-    return mounts_->Remount(root_path, mount_id, workgroup, username,
-                            password_fd);
+               SmbCredential credential) {
+    return mounts_->Remount(root_path, mount_id, std::move(credential));
   }
 
   void ExpectCredentialsEqual(int32_t mount_id,
+                              const std::string& root_path,
                               const std::string& workgroup,
                               const std::string& username,
                               const std::string& password) {
-    const SmbCredential& cred =
-        mounts_->GetCredentialFromMountIdForTesting(mount_id);
-    EXPECT_EQ(cred.workgroup, workgroup);
-    EXPECT_EQ(cred.username, username);
-    if (!password.empty()) {
-      EXPECT_EQ(std::string(cred.password->GetRaw()), password);
-    } else {
-      // Password is empty but Credential.Password isn't.
-      EXPECT_TRUE(cred.password.get() == nullptr);
-    }
+    constexpr size_t kComparisonBufferSize = 256;
+    char workgroup_buffer[kComparisonBufferSize];
+    char username_buffer[kComparisonBufferSize];
+    char password_buffer[kComparisonBufferSize];
+
+    SambaInterface* samba_interface;
+    EXPECT_TRUE(mounts_->GetSambaInterface(mount_id, &samba_interface));
+
+    const SambaInterface::SambaInterfaceId samba_interface_id =
+        samba_interface->GetSambaInterfaceId();
+
+    EXPECT_TRUE(mounts_->GetAuthentication(
+        samba_interface_id, root_path, workgroup_buffer, kComparisonBufferSize,
+        username_buffer, kComparisonBufferSize, password_buffer,
+        kComparisonBufferSize));
+
+    EXPECT_EQ(std::string(workgroup_buffer), workgroup);
+    EXPECT_EQ(std::string(username_buffer), username);
+    EXPECT_EQ(std::string(password_buffer), password);
+  }
+
+  SmbCredential CreateCredential(const std::string& workgroup,
+                                 const std::string& username,
+                                 const std::string& password) {
+    base::ScopedFD password_fd = WritePasswordToFile(&temp_files_, password);
+    return SmbCredential(workgroup, username, GetPassword(password_fd));
   }
 
  protected:
@@ -350,13 +357,15 @@ TEST_F(MountManagerTest, TestAddMountWithCredential) {
   const std::string password = "admin";
   int32_t mount_id;
 
-  EXPECT_TRUE(AddMount(root_path, workgroup, username, password, &mount_id));
+  SmbCredential credential = CreateCredential(workgroup, username, password);
+  EXPECT_TRUE(AddMount(root_path, std::move(credential), &mount_id));
 
   EXPECT_GE(mount_id, 0);
   EXPECT_EQ(1, mounts_->MountCount());
   EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
   EXPECT_TRUE(mounts_->IsAlreadyMounted(root_path));
-  ExpectCredentialsEqual(mount_id, workgroup, username, password);
+
+  ExpectCredentialsEqual(mount_id, root_path, workgroup, username, password);
 }
 
 TEST_F(MountManagerTest, TestAddMountWithEmptyCredential) {
@@ -372,7 +381,7 @@ TEST_F(MountManagerTest, TestAddMountWithEmptyCredential) {
   EXPECT_EQ(1, mounts_->MountCount());
   EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
   EXPECT_TRUE(mounts_->IsAlreadyMounted(root_path));
-  ExpectCredentialsEqual(mount_id, workgroup, username, password);
+  ExpectCredentialsEqual(mount_id, root_path, workgroup, username, password);
 }
 
 TEST_F(MountManagerTest, TestAddMountWithoutWorkgroup) {
@@ -382,14 +391,16 @@ TEST_F(MountManagerTest, TestAddMountWithoutWorkgroup) {
   const std::string password = "admin";
   int32_t mount_id;
 
-  EXPECT_TRUE(AddMount(root_path, workgroup, username, password, &mount_id));
+  SmbCredential credential = CreateCredential(workgroup, username, password);
+
+  EXPECT_TRUE(AddMount(root_path, std::move(credential), &mount_id));
 
   EXPECT_GE(mount_id, 0);
   EXPECT_EQ(1, mounts_->MountCount());
   EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
   EXPECT_TRUE(mounts_->IsAlreadyMounted(root_path));
 
-  ExpectCredentialsEqual(mount_id, "" /* workgroup */, username, password);
+  ExpectCredentialsEqual(mount_id, root_path, workgroup, username, password);
 }
 
 TEST_F(MountManagerTest, TestAddMountWithEmptyPassword) {
@@ -399,13 +410,15 @@ TEST_F(MountManagerTest, TestAddMountWithEmptyPassword) {
   const std::string password = "";
   int32_t mount_id;
 
-  EXPECT_TRUE(AddMount(root_path, workgroup, username, password, &mount_id));
+  SmbCredential credential = CreateCredential(workgroup, username, password);
+  EXPECT_TRUE(AddMount(root_path, std::move(credential), &mount_id));
 
   EXPECT_GE(mount_id, 0);
   EXPECT_EQ(1, mounts_->MountCount());
   EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
   EXPECT_TRUE(mounts_->IsAlreadyMounted(root_path));
-  ExpectCredentialsEqual(mount_id, workgroup, username, password);
+
+  ExpectCredentialsEqual(mount_id, root_path, workgroup, username, password);
 }
 
 TEST_F(MountManagerTest, TestCantAddMountWithSamePath) {
@@ -424,18 +437,23 @@ TEST_F(MountManagerTest, TestCantAddSameMount) {
   const std::string password2 = "root2";
   int32_t mount_id;
 
-  EXPECT_TRUE(
-      AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id));
+  SmbCredential credential = CreateCredential(kWorkgroup, kUsername, kPassword);
+
+  EXPECT_TRUE(AddMount(kMountRoot, std::move(credential), &mount_id));
 
   EXPECT_EQ(1, mounts_->MountCount());
+
+  SmbCredential credential2 =
+      CreateCredential(workgroup2, username2, password2);
 
   // Should return false since the credential is already added for that
   // mount.
-  EXPECT_FALSE(
-      AddMount(kMountRoot, workgroup2, username2, password2, &mount_id));
+  EXPECT_FALSE(AddMount(kMountRoot, std::move(credential2), &mount_id));
   EXPECT_EQ(1, mounts_->MountCount());
   EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
-  ExpectCredentialsEqual(mount_id, kWorkgroup, kUsername, kPassword);
+
+  ExpectCredentialsEqual(mount_id, kMountRoot, kWorkgroup, kUsername,
+                         kPassword);
 }
 
 TEST_F(MountManagerTest, TestCantRemountWithSamePath) {
@@ -468,12 +486,15 @@ TEST_F(MountManagerTest, TestRemountWithCredential) {
   EXPECT_EQ(0, mounts_->MountCount());
   EXPECT_FALSE(mounts_->IsAlreadyMounted(mount_id));
 
-  EXPECT_TRUE(Remount(root_path, mount_id, workgroup, username, password));
+  SmbCredential credential = CreateCredential(workgroup, username, password);
+
+  EXPECT_TRUE(Remount(root_path, mount_id, std::move(credential)));
 
   EXPECT_EQ(1, mounts_->MountCount());
   EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
   EXPECT_TRUE(mounts_->IsAlreadyMounted(root_path));
-  ExpectCredentialsEqual(mount_id, workgroup, username, password);
+
+  ExpectCredentialsEqual(mount_id, root_path, workgroup, username, password);
 }
 
 TEST_F(MountManagerTest, TestReturnsEmptyPasswordWithInvalidFd) {
@@ -538,8 +559,9 @@ TEST_F(MountManagerTest, TestGetPasswordGetsValidPassword) {
 TEST_F(MountManagerTest, TestBufferNullTerminatedWhenLengthTooSmall) {
   int32_t mount_id;
 
-  EXPECT_TRUE(
-      AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id));
+  SmbCredential credential = CreateCredential(kWorkgroup, kUsername, kPassword);
+
+  EXPECT_TRUE(AddMount(kMountRoot, std::move(credential), &mount_id));
   EXPECT_EQ(1, mounts_->MountCount());
   EXPECT_TRUE(mounts_->IsAlreadyMounted(kMountRoot));
 
@@ -591,16 +613,23 @@ TEST_F(MountManagerTest, TestAddingRemovingMultipleCredentials) {
   int32_t mount_id1;
   int32_t mount_id2;
 
-  EXPECT_TRUE(
-      AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id1));
-  EXPECT_TRUE(
-      AddMount(mount_root2, workgroup2, username2, password2, &mount_id2));
+  SmbCredential credential = CreateCredential(kWorkgroup, kUsername, kPassword);
+
+  SmbCredential credential2 =
+      CreateCredential(workgroup2, username2, password2);
+
+  EXPECT_TRUE(AddMount(kMountRoot, std::move(credential), &mount_id1));
+  EXPECT_TRUE(AddMount(mount_root2, std::move(credential2), &mount_id2));
 
   EXPECT_EQ(2, mounts_->MountCount());
   EXPECT_TRUE(mounts_->IsAlreadyMounted(kMountRoot));
   EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_root2));
-  ExpectCredentialsEqual(mount_id1, kWorkgroup, kUsername, kPassword);
-  ExpectCredentialsEqual(mount_id2, workgroup2, username2, password2);
+
+  ExpectCredentialsEqual(mount_id1, kMountRoot, kWorkgroup, kUsername,
+                         kPassword);
+
+  ExpectCredentialsEqual(mount_id2, mount_root2, workgroup2, username2,
+                         password2);
 
   EXPECT_TRUE(mounts_->RemoveMount(mount_id1));
   EXPECT_TRUE(mounts_->RemoveMount(mount_id2));
@@ -614,10 +643,13 @@ TEST_F(MountManagerTest, TestRemoveCredentialFromMultiple) {
   int32_t mount_id1;
   int32_t mount_id2;
 
-  EXPECT_TRUE(
-      AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id1));
-  EXPECT_TRUE(
-      AddMount(mount_root2, workgroup2, username2, password2, &mount_id2));
+  SmbCredential credential = CreateCredential(kWorkgroup, kUsername, kPassword);
+
+  SmbCredential credential2 =
+      CreateCredential(workgroup2, username2, password2);
+
+  EXPECT_TRUE(AddMount(kMountRoot, std::move(credential), &mount_id1));
+  EXPECT_TRUE(AddMount(mount_root2, std::move(credential2), &mount_id2));
   EXPECT_EQ(2, mounts_->MountCount());
 
   EXPECT_TRUE(mounts_->RemoveMount(mount_id1));
@@ -625,7 +657,9 @@ TEST_F(MountManagerTest, TestRemoveCredentialFromMultiple) {
   EXPECT_EQ(1, mounts_->MountCount());
   EXPECT_FALSE(mounts_->IsAlreadyMounted(kMountRoot));
   EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_root2));
-  ExpectCredentialsEqual(mount_id2, workgroup2, username2, password2);
+
+  ExpectCredentialsEqual(mount_id2, mount_root2, workgroup2, username2,
+                         password2);
 
   EXPECT_TRUE(mounts_->RemoveMount(mount_id2));
   EXPECT_EQ(0, mounts_->MountCount());

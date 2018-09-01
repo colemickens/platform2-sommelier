@@ -62,9 +62,7 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
   // even if it is relatively large. It may already be enforced at a higher
   // level.
   bool AddMount(const std::string& mount_root,
-                const std::string& workgroup,
-                const std::string& username,
-                const base::ScopedFD& password_fd,
+                SmbCredential credential,
                 int32_t* mount_id);
 
   // Adds |mount_root| to the |mounts_| map with a specific mount_id. Must not
@@ -74,9 +72,7 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
   // mount.
   bool Remount(const std::string& mount_root,
                int32_t mount_id,
-               const std::string& workgroup,
-               const std::string& username,
-               const base::ScopedFD& password_fd);
+               SmbCredential credential);
 
   // Returns true if |mount_id| was mounted and removes the mount.
   bool RemoveMount(int32_t mount_id);
@@ -116,10 +112,6 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
                          int32_t username_length,
                          char* password,
                          int32_t password_length) const;
-
-  // For testing purposes only. Returns the credential for a given |mount_id|.
-  const SmbCredential& GetCredentialFromMountIdForTesting(
-      int32_t mount_id) const;
 
  private:
   // Maintains the state of a single mount. Contains the mount root path and

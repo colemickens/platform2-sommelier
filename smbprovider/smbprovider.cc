@@ -688,8 +688,9 @@ bool SmbProvider::AddMount(const std::string& mount_root,
                            const base::ScopedFD& password_fd,
                            int32_t* error_code,
                            int32_t* mount_id) {
-  bool added = mount_manager_->AddMount(mount_root, workgroup, username,
-                                        password_fd, mount_id);
+  SmbCredential credential(workgroup, username, GetPassword(password_fd));
+  bool added =
+      mount_manager_->AddMount(mount_root, std::move(credential), mount_id);
   if (!added) {
     *error_code = static_cast<int32_t>(ERROR_IN_USE);
   }
@@ -703,8 +704,9 @@ bool SmbProvider::Remount(const std::string& mount_root,
                           const std::string& username,
                           const base::ScopedFD& password_fd,
                           int32_t* error_code) {
-  bool remounted = mount_manager_->Remount(mount_root, mount_id, workgroup,
-                                           username, password_fd);
+  SmbCredential credential(workgroup, username, GetPassword(password_fd));
+  bool remounted =
+      mount_manager_->Remount(mount_root, mount_id, std::move(credential));
   if (!remounted) {
     *error_code = static_cast<int32_t>(ERROR_IN_USE);
   }
