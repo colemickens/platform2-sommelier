@@ -4,7 +4,6 @@
 
 #include "installer/nand_partition.h"
 
-#include <base/logging.h>
 #include <fcntl.h>
 #include <linux/blkpg.h>
 #include <stdio.h>
@@ -14,7 +13,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "installer/inst_util.h"
+#include <base/files/scoped_file.h>
+#include <base/logging.h>
 
 using std::string;
 
@@ -29,8 +29,8 @@ bool RemoveNandPartition(const string& dev, int partno) {
     return false;
   }
 
-  ScopedFileDescriptor fd(open(dev.c_str(), O_RDWR | O_CLOEXEC));
-  if (fd < 0) {
+  base::ScopedFD fd(open(dev.c_str(), O_RDWR | O_CLOEXEC));
+  if (!fd.is_valid()) {
     PLOG(ERROR) << "Cannot open " << dev;
     return false;
   }
@@ -45,7 +45,7 @@ bool RemoveNandPartition(const string& dev, int partno) {
   arg.datalen = sizeof(part);
   arg.data = &part;
 
-  int r = ioctl(fd, BLKPG, &arg);
+  int r = ioctl(fd.get(), BLKPG, &arg);
   if (r) {
     PLOG(ERROR) << "Cannot remove partition " << partno << " from " << dev;
   }
@@ -62,8 +62,8 @@ bool AddNandPartition(const std::string& dev,
     return false;
   }
 
-  ScopedFileDescriptor fd(open(dev.c_str(), O_RDWR | O_CLOEXEC));
-  if (fd < 0) {
+  base::ScopedFD fd(open(dev.c_str(), O_RDWR | O_CLOEXEC));
+  if (!fd.is_valid()) {
     PLOG(ERROR) << "Cannot open " << dev;
     return false;
   }
@@ -81,7 +81,7 @@ bool AddNandPartition(const std::string& dev,
   arg.datalen = sizeof(part);
   arg.data = &part;
 
-  int r = ioctl(fd, BLKPG, &arg);
+  int r = ioctl(fd.get(), BLKPG, &arg);
   if (r) {
     PLOG(ERROR) << "Cannot add another partition to " << dev;
   }

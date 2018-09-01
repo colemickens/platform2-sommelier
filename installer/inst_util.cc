@@ -28,6 +28,8 @@ extern "C" {
 #include <vboot/vboot_host.h>
 }
 
+#include <base/files/scoped_file.h>
+
 using std::string;
 using std::vector;
 
@@ -63,26 +65,6 @@ int RemoveFileOrDir(const char* fpath,
 }
 
 }  // namespace
-
-ScopedFileDescriptor::~ScopedFileDescriptor() {
-  if (fd_ >= 0) {
-    if (::close(fd_)) {
-      fprintf(stderr, "Cannot automatically close file descriptor: %s\n",
-              strerror(errno));
-    }
-  }
-}
-
-int ScopedFileDescriptor::release() {
-  int cur = fd_;
-  fd_ = -1;
-  return cur;
-}
-
-int ScopedFileDescriptor::close() {
-  int cur = release();
-  return ::close(cur);
-}
 
 ScopedPathRemover::~ScopedPathRemover() {
   if (root_.empty()) {
@@ -531,16 +513,20 @@ void ReplaceAll(string* target, const string& pattern, const string& value) {
 bool MakeFileSystemRw(const string& dev_name) {
   const int offset = 0x464 + 3;  // Set 'highest' byte
 
-  ScopedFileDescriptor fd(open(dev_name.c_str(), O_RDWR));
+  base::ScopedFD fd(open(dev_name.c_str(), O_RDWR));
+  if (!fd.is_valid()) {
+    printf("Failed to open %s\n", dev_name.c_str());
+    return false;
+  }
 
   const off_t magic_offset = 0x438;
-  if (lseek(fd, magic_offset, SEEK_SET) != magic_offset) {
+  if (lseek(fd.get(), magic_offset, SEEK_SET) != magic_offset) {
     printf("Failed to seek\n");
     return false;
   }
 
   uint16_t fs_id;
-  if (read(fd, &fs_id, sizeof(fs_id)) != sizeof(fs_id)) {
+  if (read(fd.get(), &fs_id, sizeof(fs_id)) != sizeof(fs_id)) {
     printf("Can't read the filesystem identifier\n");
     return false;
   }
@@ -551,25 +537,21 @@ bool MakeFileSystemRw(const string& dev_name) {
     return false;
   }
 
-  if (fd == -1) {
-    printf("Failed to open\n");
-    return false;
-  }
-
   // Write out stuff
-  if (lseek(fd, offset, SEEK_SET) != offset) {
+  if (lseek(fd.get(), offset, SEEK_SET) != offset) {
     printf("Failed to seek\n");
     return false;
   }
 
   unsigned char buff = 0;  // rw enabled.  0xFF for disable_rw_mount
 
-  if (write(fd, &buff, 1) != 1) {
+  if (write(fd.get(), &buff, 1) != 1) {
     printf("Failed to write\n");
     return false;
   }
 
-  return (fd.close() == 0);
+  fd.reset();
+  return true;
 }
 
 extern "C" {

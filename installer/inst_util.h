@@ -20,29 +20,6 @@ enum partition_nums_t {
   PART_NUM_EFI_SYSTEM = 12
 };
 
-// A class to automatically close a pure file descriptor. A ScopedFileDescriptor
-// object can be treated as any regular file descriptor. You can call read(),
-// write(), etc. on these objects.
-// This is NOT the same as update_engine::ScopedFileDescriptorCloser because
-// that other class wraps an update_engine::FileDescriptor.
-class ScopedFileDescriptor {
- public:
-  explicit ScopedFileDescriptor(int fd) : fd_(fd) {}
-  virtual ~ScopedFileDescriptor();
-
-  // Release the file descriptor, no longer manage it.
-  int release();
-  // Release and close the file descriptor.
-  int close();
-  operator int() { return fd_; }
-
- private:
-  int fd_;
-
-  ScopedFileDescriptor(const ScopedFileDescriptor& other) {}
-  void operator=(const ScopedFileDescriptor& other) {}
-};
-
 // A class to automatically remove directories/files with nftw().
 // The removal is done at object destruction time and hence no error will be
 // boubled up. If need to, use release() and handle the deletion yourself.

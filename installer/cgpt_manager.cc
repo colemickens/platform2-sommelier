@@ -13,6 +13,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <base/files/scoped_file.h>
+
 #include "installer/inst_util.h"
 
 extern "C" {
@@ -49,24 +51,21 @@ bool ReadGptFromNor(string* file_name) {
 // Write |data| to NOR flash at FMAP |region|. Return true on success.
 bool WriteToNor(const string& data, const string& region) {
   char tmp_name[] = "/tmp/cgptmanagerXXXXXX";
-  ScopedFileDescriptor fd(mkstemp(tmp_name));
-  if (fd < 0) {
+  base::ScopedFD fd(mkstemp(tmp_name));
+  if (!fd.is_valid()) {
     warn("Cannot create temp file to write to NOR flash");
     return false;
   }
 
   // Extra parens to work around the compiler parser.
   ScopedPathRemover remover((string(tmp_name)));
-  if (!WriteFullyToFileDescriptor(data, fd)) {
+  if (!WriteFullyToFileDescriptor(data, fd.get())) {
     warnx("Cannot write data to temp file %s.\n", tmp_name);
     return false;
   }
 
   // Close fd so that flashrom can open it right after.
-  if (fd.close() != 0) {
-    warn("Cannot close file %s", tmp_name);
-    return false;
-  }
+  fd.reset();
 
   string cmd = StringPrintf("flashrom -i \"%s:%s\" -w --fast-verify",
                             region.c_str(), tmp_name);
