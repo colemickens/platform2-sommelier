@@ -62,9 +62,6 @@ void LoggingTimerStart();
 // Log how long since LoggingTimerStart was last called.
 void LoggingTimerFinish();
 
-__attribute__((format(printf, 1, 2))) std::string StringPrintf(
-    const char* format, ...);
-
 void SplitString(const std::string& str,
                  char split,
                  std::vector<std::string>* output);

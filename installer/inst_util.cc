@@ -48,13 +48,13 @@ string MakeNandPartitionDevForMounting(int partition) {
   }
   if (partition == PART_NUM_KERN_A || partition == PART_NUM_KERN_B ||
       partition == PART_NUM_KERN_C) {
-    return StringPrintf("/dev/mtd%d", partition);
+    return "/dev/mtd" + std::to_string(partition);
   }
   if (partition == PART_NUM_ROOT_A || partition == PART_NUM_ROOT_B ||
       partition == PART_NUM_ROOT_C) {
-    return StringPrintf("/dev/ubiblock%d_0", partition);
+    return "/dev/ubiblock" + std::to_string(partition) + "_0";
   }
-  return StringPrintf("/dev/ubi%d_0", partition);
+  return "/dev/ubi" + std::to_string(partition) + "_0";
 }
 
 // Callback used by nftw().
@@ -103,42 +103,6 @@ void LoggingTimerStart() {
 void LoggingTimerFinish() {
   time_t finish_time = time(NULL);
   printf("Finished after %.f seconds.\n", difftime(finish_time, START_TIME));
-}
-
-string StringPrintf(const char* format, ...) {
-  va_list ap;
-
-  va_start(ap, format);
-  int v_result = vsnprintf(NULL, 0, format, ap);
-  va_end(ap);
-
-  if (v_result < 0) {
-    printf("Error in SpringPrintf - sizing\n");
-    return "";
-  }
-
-  const int size = v_result + 1;
-
-  char* sprintf_buffer = reinterpret_cast<char*>(malloc(size));
-
-  if (!sprintf_buffer) {
-    printf("Error in SpringPrintf - memory allocation\n");
-    return "";
-  }
-
-  va_start(ap, format);
-  v_result = vsnprintf(sprintf_buffer, size, format, ap);
-  va_end(ap);
-
-  if (v_result < 0 || v_result >= size) {
-    free(sprintf_buffer);
-    printf("Error in SpringPrintf - formatting\n");
-    return "";
-  }
-
-  string result(sprintf_buffer);
-  free(sprintf_buffer);
-  return result;
 }
 
 void SplitString(const string& str, char split, vector<string>* output) {
@@ -409,10 +373,10 @@ string MakePartitionDev(const string& block_dev, int partition) {
        nd++) {
     size_t nd_len = strlen(*nd);
     if (block_dev.compare(0, nd_len, *nd) == 0)
-      return StringPrintf("%sp%d", block_dev.c_str(), partition);
+      return block_dev + "p" + std::to_string(partition);
   }
 
-  return StringPrintf("%s%d", block_dev.c_str(), partition);
+  return block_dev + std::to_string(partition);
 }
 
 // Convert /blah/file to /blah
@@ -658,7 +622,7 @@ bool SetKernelArg(const string& key,
   string adjusted_value = value;
 
   if (value.find(" ") != string::npos) {
-    adjusted_value = StringPrintf("\"%s\"", value.c_str());
+    adjusted_value = "\"" + value + "\"";
   }
 
   kernel_config->replace(value_offset, value_length, adjusted_value);

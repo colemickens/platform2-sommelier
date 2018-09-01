@@ -484,11 +484,11 @@ bool RunPostInstall(const string& install_dev,
 
   string cmd;
 
-  cmd = StringPrintf("/bin/mkdir -p %s", install_config.boot.mount().c_str());
+  cmd = "/bin/mkdir -p " + install_config.boot.mount();
   RUN_OR_RETURN_FALSE(cmd);
 
-  cmd = StringPrintf("/bin/mount %s %s", install_config.boot.device().c_str(),
-                     install_config.boot.mount().c_str());
+  cmd = "/bin/mount " + install_config.boot.device() + " " +
+        install_config.boot.mount();
   RUN_OR_RETURN_FALSE(cmd);
 
   bool success = true;
@@ -524,7 +524,7 @@ bool RunPostInstall(const string& install_dev,
       break;
   }
 
-  cmd = StringPrintf("/bin/umount %s", install_config.boot.device().c_str());
+  cmd = "/bin/umount " + install_config.boot.device();
   if (RunCommand(cmd.c_str()) != 0) {
     printf("Cmd: '%s' failed.\n", cmd.c_str());
     success = false;

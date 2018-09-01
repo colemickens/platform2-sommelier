@@ -25,13 +25,6 @@ const string GetSourceFile(const string& file) {
   return srcdir ? string(srcdir) + "/" + file : file;
 }
 
-TEST(UtilTest, StringPrintfTest) {
-  EXPECT_EQ(StringPrintf("Stuff"), "Stuff");
-  EXPECT_EQ(StringPrintf("%s", "Stuff"), "Stuff");
-  EXPECT_EQ(StringPrintf("%d", 3), "3");
-  EXPECT_EQ(StringPrintf("%s %d", "Stuff", 3), "Stuff 3");
-}
-
 TEST(UtilTest, SplitStringTest) {
   vector<string> result;
 

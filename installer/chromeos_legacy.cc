@@ -12,6 +12,7 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/strings/stringprintf.h>
 
 #include "installer/inst_util.h"
 
@@ -19,14 +20,14 @@ using std::string;
 using std::vector;
 
 bool UpdateLegacyKernel(const InstallConfig& install_config) {
-  string kernel_from =
-      StringPrintf("%s/boot/vmlinuz", install_config.root.mount().c_str());
+  const base::FilePath root_mount(install_config.root.mount());
+  const base::FilePath boot_mount(install_config.boot.mount());
 
-  string kernel_to = StringPrintf("%s/syslinux/vmlinuz.%s",
-                                  install_config.boot.mount().c_str(),
-                                  install_config.slot.c_str());
+  const base::FilePath kernel_from = root_mount.Append("boot/vmlinuz");
+  const base::FilePath kernel_to =
+      boot_mount.Append("syslinux").Append("vmlinuz." + install_config.slot);
 
-  return CopyFile(kernel_from, kernel_to);
+  return CopyFile(kernel_from.value(), kernel_to.value());
 }
 
 string ExplandVerityArguments(const string& kernel_config,
@@ -46,11 +47,15 @@ string ExplandVerityArguments(const string& kernel_config,
 }
 
 bool RunLegacyPostInstall(const InstallConfig& install_config) {
+  const base::FilePath root_mount(install_config.root.mount());
+  const base::FilePath root_syslinux = root_mount.Append("boot/syslinux");
+  const base::FilePath boot_mount(install_config.boot.mount());
+  const base::FilePath boot_syslinux = boot_mount.Append("syslinux");
   printf("Running LegacyPostInstall\n");
 
-  string cmd = StringPrintf("cp -nR '%s/boot/syslinux' '%s'",
-                            install_config.root.mount().c_str(),
-                            install_config.boot.mount().c_str());
+  string cmd =
+      base::StringPrintf("cp -nR '%s' '%s'", root_syslinux.value().c_str(),
+                         boot_mount.value().c_str());
   if (RunCommand(cmd.c_str()) != 0) {
     printf("Cmd: '%s' failed.\n", cmd.c_str());
     return false;
@@ -67,30 +72,27 @@ bool RunLegacyPostInstall(const InstallConfig& install_config) {
   string verity_enabled =
       (IsReadonly(kernel_config_root) ? "chromeos-vhd" : "chromeos-hd");
 
-  string default_syslinux_cfg = StringPrintf(
+  string default_syslinux_cfg = base::StringPrintf(
       "DEFAULT %s.%s\n", verity_enabled.c_str(), install_config.slot.c_str());
 
-  if (!WriteStringToFile(default_syslinux_cfg,
-                         StringPrintf("%s/syslinux/default.cfg",
-                                      install_config.boot.mount().c_str())))
+  const base::FilePath syslinux_cfg = boot_syslinux.Append("default.cfg");
+  if (!WriteStringToFile(default_syslinux_cfg, syslinux_cfg.value()))
     return false;
 
   // Prepare the new root.A/B.cfg
 
-  string root_cfg_file = StringPrintf("%s/syslinux/root.%s.cfg",
-                                      install_config.boot.mount().c_str(),
-                                      install_config.slot.c_str());
+  const base::FilePath old_root_cfg_file =
+      root_syslinux.Append("root." + install_config.slot + ".cfg");
+  const base::FilePath new_root_cfg_file =
+      boot_syslinux.Append(old_root_cfg_file.BaseName());
 
   // Copy over the unmodified version for this release...
-  if (!CopyFile(StringPrintf("%s/boot/syslinux/root.%s.cfg",
-                             install_config.root.mount().c_str(),
-                             install_config.slot.c_str()),
-                root_cfg_file))
+  if (!CopyFile(old_root_cfg_file.value(), new_root_cfg_file.value()))
     return false;
 
   // Insert the proper root device for non-verity boots
-  if (!ReplaceInFile(StringPrintf("HDROOT%s", install_config.slot.c_str()),
-                     install_config.root.device(), root_cfg_file))
+  if (!ReplaceInFile("HDROOT" + install_config.slot,
+                     install_config.root.device(), new_root_cfg_file.value()))
     return false;
 
   string kernel_config_dm =
@@ -102,8 +104,8 @@ bool RunLegacyPostInstall(const InstallConfig& install_config) {
   }
 
   // Insert the proper verity options for verity boots
-  if (!ReplaceInFile(StringPrintf("DMTABLE%s", install_config.slot.c_str()),
-                     kernel_config_dm, root_cfg_file))
+  if (!ReplaceInFile("DMTABLE" + install_config.slot, kernel_config_dm,
+                     new_root_cfg_file.value()))
     return false;
 
   return true;
@@ -111,20 +113,21 @@ bool RunLegacyPostInstall(const InstallConfig& install_config) {
 
 // Copy a file from the root partition to the boot partition.
 bool CopyBootFile(const InstallConfig& install_config,
-                  const char* src,
-                  const char* dst) {
+                  const std::string& src,
+                  const std::string& dst) {
   bool result = true;
-  string src_path =
-      StringPrintf("%s/%s", install_config.root.mount().c_str(), src);
-  string dst_path =
-      StringPrintf("%s/%s", install_config.boot.mount().c_str(), dst);
+  const base::FilePath root_mount(install_config.root.mount());
+  const base::FilePath boot_mount(install_config.boot.mount());
+  const base::FilePath src_path = root_mount.Append(src);
+  const base::FilePath dst_path = boot_mount.Append(dst);
 
   // If the source file file exists, copy it into place, else do nothing.
-  if (access(src_path.c_str(), R_OK) == 0) {
-    printf("Copying '%s' to '%s'\n", src_path.c_str(), dst_path.c_str());
-    result = CopyFile(src_path, dst_path);
+  if (base::PathExists(src_path)) {
+    printf("Copying '%s' to '%s'\n", src_path.value().c_str(),
+           dst_path.value().c_str());
+    result = CopyFile(src_path.value(), dst_path.value());
   } else {
-    printf("Not present to install: '%s'\n", src_path.c_str());
+    printf("Not present to install: '%s'\n", src_path.value().c_str());
   }
   return result;
 }
@@ -133,15 +136,11 @@ bool RunLegacyUBootPostInstall(const InstallConfig& install_config) {
   bool result = true;
   printf("Running LegacyUBootPostInstall\n");
 
+  result &= CopyBootFile(install_config,
+                         "boot/boot-" + install_config.slot + ".scr.uimg",
+                         "u-boot/boot.scr.uimg");
   result &= CopyBootFile(
-      install_config,
-      StringPrintf("boot/boot-%s.scr.uimg", install_config.slot.c_str())
-          .c_str(),
-      "u-boot/boot.scr.uimg");
-  result &= CopyBootFile(
-      install_config,
-      StringPrintf("boot/uEnv.%s.txt", install_config.slot.c_str()).c_str(),
-      "uEnv.txt");
+      install_config, "boot/uEnv." + install_config.slot + ".txt", "uEnv.txt");
   result &= CopyBootFile(install_config, "boot/MLO", "MLO");
   result &= CopyBootFile(install_config, "boot/u-boot.img", "u-boot.img");
 
@@ -179,8 +178,7 @@ bool RunEfiPostInstall(const InstallConfig& install_config) {
   string root_uuid = install_config.root.uuid();
   string kernel_config_dm = ExplandVerityArguments(kernel_config, root_uuid);
 
-  string grub_filename =
-      StringPrintf("%s/efi/boot/grub.cfg", install_config.boot.mount().c_str());
+  string grub_filename = install_config.boot.mount() + "/efi/boot/grub.cfg";
 
   // Read in the grub.cfg to be updated.
   string grub_src;
@@ -215,16 +213,14 @@ bool EfiGrubUpdate(const string& input,
   SplitString(input, '\n', &file_lines);
 
   // Search pattern for lines are related to our slot.
-  string kernel_pattern = StringPrintf("/syslinux/vmlinuz.%s", slot.c_str());
+  string kernel_pattern = "/syslinux/vmlinuz." + slot;
 
   for (vector<string>::iterator line = file_lines.begin();
        line < file_lines.end(); line++) {
     if (line->find(kernel_pattern) != string::npos) {
       if (ExtractKernelArg(*line, "dm").empty()) {
         // If it's an unverified boot line, just set the root partition to boot.
-        if (!SetKernelArg("root",
-                          StringPrintf("PARTUUID=%s", root_uuid.c_str()),
-                          &(*line))) {
+        if (!SetKernelArg("root", "PARTUUID=" + root_uuid, &(*line))) {
           printf("Unable to update unverified root flag in %s.\n",
                  line->c_str());
           return false;
