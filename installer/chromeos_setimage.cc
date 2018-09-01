@@ -103,10 +103,10 @@ bool SetImage(const InstallConfig& install_config) {
 
   printf("Setting up verity.\n");
   LoggingTimerStart();
-  int result = chromeos_verity(
-      verity_algorithm.c_str(), install_config.root.device().c_str(),
-      getpagesize(), (uint64_t)(atoi(rootfs_sectors.c_str()) / 8), salt.c_str(),
-      expected_hash.c_str(), enable_rootfs_verification);
+  int result = chromeos_verity(verity_algorithm, install_config.root.device(),
+                               getpagesize(),
+                               (uint64_t)(atoi(rootfs_sectors.c_str()) / 8),
+                               salt, expected_hash, enable_rootfs_verification);
   LoggingTimerFinish();
 
   return result == 0;

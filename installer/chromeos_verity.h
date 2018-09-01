@@ -6,11 +6,9 @@
 #ifndef INSTALLER_CHROMEOS_VERITY_H_
 #define INSTALLER_CHROMEOS_VERITY_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
+
+#include <string>
 
 /* chromeos_verity
  * This calculated the verity hash-trie for a filesystem and places it
@@ -22,20 +20,17 @@ extern "C" {
  * @blocksize - size of block to hash on.  Usually page size - 4k on x86.
  * @salt - ascii string with a salt value to add before calculating each hash
  * @expected - ascii string with the exptected final root hash value
- * @warn - bool indicating whether we should complain if expected doesn't match
+ * @enforce_rootfs_verification - bool indicating whether we should complain if
+ *   expected doesn't match
  * return - 0 for success, non-zero indicates failure
  *
  */
-int chromeos_verity(const char* alg,
-                    const char* device,
+int chromeos_verity(const std::string& alg,
+                    const std::string& device,
                     unsigned blocksize,
                     uint64_t fs_blocks,
-                    const char* salt,
-                    const char* expected,
-                    int warn);
-
-#ifdef __cplusplus
-}
-#endif
+                    const std::string& salt,
+                    const std::string& expected,
+                    bool enforce_rootfs_verification);
 
 #endif  // INSTALLER_CHROMEOS_VERITY_H_

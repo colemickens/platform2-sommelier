@@ -29,7 +29,7 @@
         'chromeos_legacy.cc',
         'chromeos_postinst.cc',
         'chromeos_setimage.cc',
-        'chromeos_verity.c',
+        'chromeos_verity.cc',
         'inst_util.cc',
       ],
     },
