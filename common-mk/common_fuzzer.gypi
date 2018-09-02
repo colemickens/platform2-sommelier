@@ -8,15 +8,15 @@
 
 {
   'conditions': [
-   ['USE_asan == 1', {
+    ['USE_asan == 1', {
       'cflags': [
         '-fsanitize=address',
       ],
       'ldflags': [
         '-fsanitize=address',
-        ],
+      ],
     }],
-   ['USE_coverage == 1', {
+    ['USE_coverage == 1', {
       'cflags': [
         '-fprofile-instr-generate',
         '-fcoverage-mapping',
@@ -24,15 +24,15 @@
       'ldflags': [
         '-fprofile-instr-generate',
         '-fcoverage-mapping',
-        ],
+      ],
     }],
     ['USE_fuzzer == 1', {
-       'cflags': [
-         '-fsanitize=fuzzer-no-link',
-       ],
-       'ldflags': [
-         '-fsanitize=fuzzer',
-       ],
+      'cflags': [
+        '-fsanitize=fuzzer-no-link',
+      ],
+      'ldflags': [
+        '-fsanitize=fuzzer',
+      ],
     }],
     ['USE_msan == 1', {
       'cflags': [
@@ -40,7 +40,7 @@
       ],
       'ldflags': [
         '-fsanitize=memory',
-        ],
+      ],
     }],
     ['USE_ubsan == 1', {
       'cflags': [
@@ -50,7 +50,7 @@
       'ldflags': [
         '-fsanitize=undefined',
         '-fno-sanitize=vptr',
-        ],
+      ],
     }],
-  ]
+  ],
 }
