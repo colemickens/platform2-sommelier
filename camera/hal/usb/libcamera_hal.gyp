@@ -25,6 +25,7 @@
       'target_name': 'libcamera_hal',
       'type': 'shared_library',
       'sources': [
+        '../../common/utils/test_config.cc',
         'cached_frame.cc',
         'camera_characteristics.cc',
         'camera_client.cc',

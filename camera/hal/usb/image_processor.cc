@@ -10,12 +10,11 @@
 #include <time.h>
 #include <vector>
 
-#include <base/files/file_path.h>
-#include <base/files/file_util.h>
 #include <base/memory/ptr_util.h>
 
 #include <hardware/camera3.h>
 
+#include "common/utils/test_config.h"
 #include "cros-camera/common.h"
 #include "cros-camera/constants.h"
 #include "cros-camera/exif_utils.h"
@@ -72,12 +71,14 @@ static bool SetExifTags(const android::CameraMetadata& metadata,
 // How precise the float-to-rational conversion for EXIF tags would be.
 static const int kRationalPrecision = 10000;
 
-ImageProcessor::ImageProcessor() :
-    jpeg_compressor_(JpegCompressor::GetInstance()) {
-  const base::FilePath kCrosCameraTestModePath(
-      constants::kCrosCameraTestModePathString);
-  test_enabled_ = base::PathExists(kCrosCameraTestModePath);
-  LOGF(INFO) << "Test mode enabled: " << test_enabled_;
+ImageProcessor::ImageProcessor()
+    : jpeg_compressor_(JpegCompressor::GetInstance()) {
+  force_jpeg_hw_encode_ = TestConfig().GetBoolean(
+      constants::kCrosForceJpegHardwareEncodeOption, false);
+  force_jpeg_hw_decode_ = TestConfig().GetBoolean(
+      constants::kCrosForceJpegHardwareDecodeOption, false);
+  LOGF(INFO) << "Force JPEG Hareware encode: " << force_jpeg_hw_encode_;
+  LOGF(INFO) << "Force JPEG Hareware decode: " << force_jpeg_hw_decode_;
 
   jda_ = JpegDecodeAccelerator::CreateInstance();
   jda_available_ = jda_->Start();
@@ -405,7 +406,7 @@ int ImageProcessor::MJPGToI420(const FrameBuffer& in_frame,
       }
       LOGF(WARNING) << "JDA Fail: " << error;
       // Don't fallback in test mode. So we can know the JDA is not working.
-      if (test_enabled_)
+      if (force_jpeg_hw_decode_)
         return -EINVAL;
     }
   }
@@ -491,8 +492,8 @@ bool ImageProcessor::ConvertToJpeg(const android::CameraMetadata& metadata,
           in_frame.GetData(), in_frame.GetWidth(), in_frame.GetHeight(),
           jpeg_quality, utils.GetApp1Buffer(), utils.GetApp1Length(),
           out_frame->GetBufferSize(), out_frame->GetData(), &jpeg_data_size,
-          test_enabled_ ? JpegCompressor::Mode::kHwOnly :
-                          JpegCompressor::Mode::kDefault)) {
+          force_jpeg_hw_encode_ ? JpegCompressor::Mode::kHwOnly
+                                : JpegCompressor::Mode::kDefault)) {
     LOGF(ERROR) << "JPEG image compression failed";
     return false;
   }

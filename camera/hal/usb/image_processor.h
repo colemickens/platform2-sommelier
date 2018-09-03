@@ -80,8 +80,10 @@ class ImageProcessor {
 
   std::unique_ptr<JpegCompressor> jpeg_compressor_;
 
-  // If test mode enabled or not.
-  bool test_enabled_;
+  // Set in hardware test for disable fallback to SW encode/decode when HW
+  // encode/decode failed.
+  bool force_jpeg_hw_encode_;
+  bool force_jpeg_hw_decode_;
 };
 
 }  // namespace cros

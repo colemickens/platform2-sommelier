@@ -12,7 +12,13 @@ namespace constants {
 
 const char kCrosCameraAlgoSocketPathString[] = "/run/camera/camera-algo.sock";
 const char kCrosCameraSocketPathString[] = "/run/camera/camera3.sock";
-const char kCrosCameraTestModePathString[] = "/run/camera/enable_test";
+const char kCrosCameraTestConfigPathString[] = "/run/camera/test_config.json";
+
+// Options for |TestConfigParser|:
+// boolean value used in test mode for forcing hardware jpeg encode/decode in
+// USB HAL (won't fallback to SW encode/decode).
+const char kCrosForceJpegHardwareEncodeOption[] = "force_jpeg_hw_enc";
+const char kCrosForceJpegHardwareDecodeOption[] = "force_jpeg_hw_dec";
 
 }  // namespace constants
 }  // namespace cros
