@@ -1,0 +1,131 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":btdispatch",
+    ":libcommon",
+    ":libdispatcher",
+    ":libnewblued",
+    ":newblued",
+  ]
+  if (use.test) {
+    deps += [ ":btdispatch_test" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "dbus-1",
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "newblue",
+
+    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # before protobuf here or the linker flags won't be in the right
+    # order.
+    "system_api",
+    "protobuf-lite",
+  ]
+}
+
+static_library("libcommon") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "common/dbus_daemon.cc",
+    "common/exported_object_manager_wrapper.cc",
+    "common/property.cc",
+  ]
+}
+
+static_library("libdispatcher") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "dispatcher/bluez_interface_handler.cc",
+    "dispatcher/catch_all_forwarder.cc",
+    "dispatcher/client_manager.cc",
+    "dispatcher/dbus_connection_factory.cc",
+    "dispatcher/dbus_util.cc",
+    "dispatcher/dispatcher.cc",
+    "dispatcher/dispatcher_client.cc",
+    "dispatcher/dispatcher_daemon.cc",
+    "dispatcher/impersonation_object_manager_interface.cc",
+    "dispatcher/object_manager_interface_multiplexer.cc",
+    "dispatcher/service_watcher.cc",
+    "dispatcher/suspend_manager.cc",
+  ]
+}
+
+static_library("libnewblued") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "newblued/agent_manager_interface_handler.cc",
+    "newblued/newblue.cc",
+    "newblued/newblue_daemon.cc",
+    "newblued/stack_sync_monitor.cc",
+    "newblued/util.cc",
+    "newblued/uuid.cc",
+  ]
+}
+
+executable("btdispatch") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "dispatcher/main.cc",
+  ]
+  deps = [
+    ":libcommon",
+    ":libdispatcher",
+  ]
+}
+
+executable("newblued") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "newblued/main.cc",
+  ]
+  deps = [
+    ":libcommon",
+    ":libnewblued",
+  ]
+}
+
+if (use.test) {
+  pkg_config("test_config") {
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+  }
+  executable("btdispatch_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
+    ]
+    sources = [
+      "common/exported_object_manager_wrapper_unittest.cc",
+      "common/property_unittest.cc",
+      "dispatcher/catch_all_forwarder_unittest.cc",
+      "dispatcher/dispatcher_client_unittest.cc",
+      "dispatcher/dispatcher_unittest.cc",
+      "dispatcher/impersonation_object_manager_interface_unittest.cc",
+      "dispatcher/object_manager_interface_multiplexer_unittest.cc",
+      "dispatcher/suspend_manager_unittest.cc",
+      "dispatcher/test_helper.cc",
+      "newblued/agent_manager_interface_handler_test.cc",
+      "newblued/newblue_daemon_unittest.cc",
+      "newblued/newblue_unittest.cc",
+      "newblued/property_unittest.cc",
+      "newblued/stack_sync_monitor_unittest.cc",
+      "newblued/util_unittest.cc",
+      "newblued/uuid_unittest.cc",
+    ]
+    deps = [
+      ":libcommon",
+      ":libdispatcher",
+      ":libnewblued",
+      "//common-mk/testrunner",
+    ]
+  }
+}
