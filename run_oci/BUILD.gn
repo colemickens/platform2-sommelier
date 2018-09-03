@@ -1,0 +1,92 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":container_config_parser",
+    ":run_oci",
+  ]
+  if (use.test) {
+    deps += [
+      ":container_config_parser_test",
+      ":run_oci_test",
+    ]
+  }
+}
+
+pkg_config("target_defaults") {
+  libs = [ "-lmount" ]
+
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libcap",
+    "libchrome-${libbase_ver}",
+    "libminijail",
+  ]
+}
+
+shared_library("container_config_parser") {
+  configs += [ ":target_defaults" ]
+  configs -= [ "//common-mk:no_exceptions" ]
+  sources = [
+    "container_config_parser.cc",
+  ]
+}
+
+pkg_config("run_oci_config") {
+  pkg_deps = [ "libcontainer" ]
+}
+
+executable("run_oci") {
+  configs += [
+    ":run_oci_config",
+    ":target_defaults",
+  ]
+  configs -= [ "//common-mk:no_exceptions" ]
+  sources = [
+    "container_config_parser.cc",
+    "run_oci.cc",
+    "run_oci_utils.cc",
+  ]
+}
+
+if (use.test) {
+  pkg_config("test_config") {
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+  }
+
+  executable("container_config_parser_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
+    ]
+    configs -= [ "//common-mk:no_exceptions" ]
+    sources = [
+      "container_config_parser.cc",
+      "container_config_parser_test.cc",
+    ]
+    deps = [
+      "//common-mk/testrunner",
+    ]
+  }
+
+  executable("run_oci_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
+    ]
+    configs -= [ "//common-mk:no_exceptions" ]
+    sources = [
+      "run_oci_test.cc",
+      "run_oci_utils.cc",
+    ]
+    deps = [
+      "//common-mk/testrunner",
+    ]
+  }
+}
