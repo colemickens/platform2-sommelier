@@ -1,3 +1,5 @@
+# Caution!: GYP to GN migration is happening. If you update this file, please
+# update common-mk/generate-dbus-adaptors.gni too accordingly.
 {
   'variables': {
     'h_dir': '<(SHARED_INTERMEDIATE_DIR)/<(dbus_adaptors_out_dir)',

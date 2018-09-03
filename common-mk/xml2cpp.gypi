@@ -1,3 +1,5 @@
+# Caution!: GYP to GN migration is happening. If you update this file, please
+# update common-mk/xml2cpp.gni too accordingly.
 {
   'variables': {
     'h_dir': '<(SHARED_INTERMEDIATE_DIR)/<(xml2cpp_out_dir)',
