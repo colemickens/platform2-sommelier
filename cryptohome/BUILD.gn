@@ -386,6 +386,7 @@ if (use.test) {
       "homedirs_unittest.cc",
       "install_attributes_unittest.cc",
       "le_credential_manager_unittest.cc",
+      "lockbox-cache-unittest.cc",
       "lockbox_unittest.cc",
       "make_tests.cc",
       "mock_chaps_client_factory.cc",

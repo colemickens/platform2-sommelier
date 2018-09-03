@@ -11,6 +11,7 @@
 #include <base/logging.h>
 
 #include "cryptohome/lockbox.h"
+#include "cryptohome/lockbox-cache-tpm.h"
 
 using base::FilePath;
 
@@ -20,6 +21,19 @@ const mode_t kCacheFilePermissions = 0644;
 }
 
 namespace cryptohome {
+
+bool CacheLockbox(cryptohome::Platform* platform,
+                  const base::FilePath& nvram_path,
+                  const base::FilePath& lockbox_path,
+                  const base::FilePath& cache_path) {
+  static const uint32_t kBogusNvramIndex = 0;
+  cryptohome::LockboxCacheTpm cache_tpm(kBogusNvramIndex, nvram_path);
+  cache_tpm.Init(platform, false);
+  cryptohome::LockboxCache cache;
+  return cache.Initialize(platform, &cache_tpm) &&
+         cache.LoadAndVerify(kBogusNvramIndex, lockbox_path) &&
+         cache.Write(cache_path);
+}
 
 bool LockboxCache::Initialize(Platform* platform, Tpm* tpm) {
   platform_ = platform;
