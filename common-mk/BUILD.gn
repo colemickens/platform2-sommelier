@@ -114,8 +114,14 @@ config("pie") {
 
 # Use thin archive. It makes sense only for static libraries.
 # This is a default config for static libraries.
+# Remove this and add ":nouse_thin_archive" to unuse thin archive.
 config("use_thin_archive") {
   arflags = [ "rcsT" ]
+}
+
+# Don't use thin archive. It makes sense only for static libraries.
+config("nouse_thin_archive") {
+  arflags = [ "rcs" ]
 }
 
 # Generates position independent code.
