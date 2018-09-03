@@ -1,0 +1,54 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+group("all") {
+  deps = [
+    ":arc-networkd",
+  ]
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "libndp",
+    "libshill-client",
+    "protobuf-lite",
+  ]
+}
+
+proto_library("protos") {
+  configs = [ ":target_defaults" ]
+  proto_in_dir = "."
+  proto_out_dir = "include/arc/network"
+  sources = [
+    "${proto_in_dir}/ipc.proto",
+  ]
+}
+
+executable("arc-networkd") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "arc_ip_config.cc",
+    "dns/big_endian.cc",
+    "dns/dns_response.cc",
+    "dns/io_buffer.cc",
+    "helper_process.cc",
+    "ip_helper.cc",
+    "main.cc",
+    "manager.cc",
+    "multicast_forwarder.cc",
+    "multicast_socket.cc",
+    "ndp_handler.cc",
+    "neighbor_finder.cc",
+    "router_finder.cc",
+    "shill_client.cc",
+  ]
+  deps = [
+    ":protos",
+  ]
+}
