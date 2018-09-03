@@ -23,7 +23,6 @@ namespace {
 const char kCmdCat[] = "/bin/cat";
 const char kCmdEcho[] = "/bin/echo";
 const char kCmdFalse[] = "/bin/false";
-const char kCmdGrep[] = "/bin/grep";
 const char kCmdTee[] = "/usr/bin/tee";
 const char kCmdPrintEnv[] = "/usr/bin/printenv";
 const char kEnvVar[] = "PROCESS_EXECUTOR_TEST_ENV_VAR";
@@ -31,8 +30,7 @@ const char kEnvVar2[] = "PROCESS_EXECUTOR_TEST_2_ENV_VAR";
 const char kWhitelistedEnvVar[] = "ASAN_OPTIONS";
 const char kShortenedWhitelistedEnvVar[] = "ASAN_OPT";
 const char kExtendedWhitelistedEnvVar[] = "ASAN_OPTIONS_123";
-const char kGrepTestText[] = "This is a test.\n";
-const char kGrepTestToken[] = "test";
+const char kCatTestText[] = "This is a test.\n";
 const char kFileDoesNotExist[] = "does_not_exist_khsdgviu";
 const char kLargeTestString[] = "I like recursion because ";
 
@@ -168,12 +166,11 @@ TEST_F(ProcessExecutorTest, ReadFromStdout) {
 
 // Reading output from stderr.
 TEST_F(ProcessExecutorTest, ReadFromStderr) {
-  ProcessExecutor cmd({kCmdGrep, "--invalid_arg"});
+  ProcessExecutor cmd({kCmdCat, "--invalid_arg"});
   EXPECT_FALSE(cmd.Execute());
   EXPECT_NE(cmd.GetExitCode(), 0);
   EXPECT_TRUE(cmd.GetStdout().empty());
-  EXPECT_TRUE(base::StartsWith(cmd.GetStderr(), kCmdGrep,
-                               base::CompareCase::SENSITIVE));
+  EXPECT_NE(std::string::npos, cmd.GetStderr().find("--invalid_arg"));
 }
 
 // Reading large amounts of output from stdout to test piping (triggers pipe
@@ -219,15 +216,15 @@ TEST_F(ProcessExecutorTest, SetInputFile) {
   EXPECT_TRUE(base::CreateLocalNonBlockingPipe(input_pipes));
   base::ScopedFD stdin_read_end(input_pipes[0]);
   base::ScopedFD stdin_write_end(input_pipes[1]);
-  size_t num_chars = strlen(kGrepTestText);
-  EXPECT_EQ(write(stdin_write_end.get(), kGrepTestText, num_chars), num_chars);
+  size_t num_chars = strlen(kCatTestText);
+  EXPECT_EQ(write(stdin_write_end.get(), kCatTestText, num_chars), num_chars);
   stdin_write_end.reset();
-  // Note: grep reads from stdin if no file arg is specified.
-  ProcessExecutor cmd({kCmdGrep, kGrepTestToken});
+  // Note: cat reads from stdin if no file arg is specified.
+  ProcessExecutor cmd({kCmdCat});
   cmd.SetInputFile(stdin_read_end.get());
   EXPECT_TRUE(cmd.Execute());
   EXPECT_EQ(cmd.GetExitCode(), 0);
-  EXPECT_EQ(cmd.GetStdout(), kGrepTestText);
+  EXPECT_EQ(cmd.GetStdout(), kCatTestText);
   EXPECT_TRUE(cmd.GetStderr().empty());
 }
 
