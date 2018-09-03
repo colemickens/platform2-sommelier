@@ -1,0 +1,71 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":arc-appfuse-provider",
+    ":arc-appfuse-provider-adaptors",
+    ":libarcappfuse",
+  ]
+  if (use.test) {
+    deps += [ ":arc-appfuse_testrunner" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "fuse",
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+  ]
+  defines = [ "FUSE_USE_VERSION=26" ]
+}
+
+static_library("libarcappfuse") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "appfuse_mount.cc",
+    "data_filter.cc",
+  ]
+}
+
+generate_dbus_adaptors("arc-appfuse-provider-adaptors") {
+  new_fd_bindings = true
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+  dbus_adaptors_out_dir = "include/appfuse/dbus_adaptors"
+  sources = [
+    "dbus_bindings/org.chromium.ArcAppfuseProvider.xml",
+  ]
+}
+
+executable("arc-appfuse-provider") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "arc_appfuse_provider.cc",
+  ]
+  deps = [
+    ":arc-appfuse-provider-adaptors",
+    ":libarcappfuse",
+  ]
+}
+
+if (use.test) {
+  executable("arc-appfuse_testrunner") {
+    configs += [
+      ":target_defaults",
+      "//common-mk:test",
+    ]
+    sources = [
+      "data_filter_test.cc",
+    ]
+    defines = [ "UNIT_TEST" ]
+    deps = [
+      ":libarcappfuse",
+      "//common-mk/testrunner",
+    ]
+  }
+}
