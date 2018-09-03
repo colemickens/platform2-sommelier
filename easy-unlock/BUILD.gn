@@ -1,0 +1,70 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":easy_unlock",
+    ":libeasyunlock",
+  ]
+  if (use.test) {
+    deps += [ ":easy_unlock_test_runner" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "easy-unlock-crypto",
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+  ]
+}
+
+static_library("libeasyunlock") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "dbus_adaptor.cc",
+    "dbus_adaptor.h",
+    "easy_unlock_service.cc",
+    "easy_unlock_service.h",
+  ]
+  if (use.test) {
+    sources += [
+      "fake_easy_unlock_service.cc",
+      "fake_easy_unlock_service.h",
+    ]
+  }
+}
+
+executable("easy_unlock") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "main.cc",
+  ]
+  deps = [
+    ":libeasyunlock",
+  ]
+}
+
+if (use.test) {
+  pkg_config("test_config") {
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+  }
+
+  executable("easy_unlock_test_runner") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
+    ]
+    sources = [
+      "easy_unlock_test.cc",
+    ]
+    deps = [
+      ":libeasyunlock",
+      "//common-mk/testrunner",
+    ]
+  }
+}
