@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <set>
+#include <unordered_map>
 #include <vector>
 
 #include <camera/camera_metadata.h>
@@ -95,6 +96,9 @@ class Camera3Device {
                        int width,
                        int height,
                        camera3_stream_rotation_t crop_rotate_scale_degrees);
+
+  // Add input stream in preparation for stream configuration
+  void AddInputStream(int format, int width, int height);
 
   // Add output stream with raw |crop_rotate_scale_degrees| values. This
   // function should be used for testing invalid values only.
@@ -202,6 +206,17 @@ class Camera3Device::StaticInfo {
 
   // Get the image output resolutions in this stream configuration
   std::vector<ResolutionInfo> GetSortedOutputResolutions(int32_t format) const;
+
+  // Get the image input resolutions in this stream configuration
+  std::vector<ResolutionInfo> GetSortedInputResolutions(int32_t format) const;
+
+  // Get the image resolutions in this stream configuration
+  std::vector<ResolutionInfo> GetSortedResolutions(int32_t format,
+                                                   bool is_output) const;
+
+  // Get avaliable input format to output format
+  bool GetInputOutputConfigurationMap(
+      std::unordered_map<int32_t, std::vector<int32_t>>* config_map) const;
 
   // Determine if camera device support AE lock control
   bool IsAELockSupported() const;

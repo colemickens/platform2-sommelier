@@ -46,6 +46,9 @@ class ResolutionInfo {
 
   bool operator<(const ResolutionInfo& resolution) const;
 
+  friend std::ostream& operator<<(std::ostream& out,
+                                  const ResolutionInfo& info);
+
  private:
   int32_t width_, height_;
 };

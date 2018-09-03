@@ -93,6 +93,11 @@ bool ResolutionInfo::operator<(const ResolutionInfo& resolution) const {
          (Area() == resolution.Area() && width_ < resolution.Width());
 }
 
+std::ostream& operator<<(std::ostream& out, const ResolutionInfo& info) {
+  out << info.width_ << 'x' << info.height_;
+  return out;
+}
+
 static void InitCameraModuleOnThread(camera_module_t* cam_module) {
   static CameraModuleCallbacksAux* callbacks = []() {
     auto* aux = new CameraModuleCallbacksAux();

@@ -337,7 +337,7 @@ double Camera3FrameFixture::ComputeSsim(const Image& buffer_a,
 }
 
 // Get real-time clock time after waiting for given timeout
-static void GetTimeOfTimeout(int32_t ms, struct timespec* ts) {
+void GetTimeOfTimeout(int32_t ms, struct timespec* ts) {
   memset(ts, 0, sizeof(*ts));
   if (clock_gettime(CLOCK_REALTIME, ts)) {
     LOG(ERROR) << "Failed to get clock time";
@@ -370,10 +370,10 @@ TEST_P(Camera3SingleFrameTest, GetFrame) {
   if (cam_device_.GetStaticInfo()->IsFormatAvailable(format)) {
     ResolutionInfo resolution(0, 0);
     if (std::get<3>(GetParam())) {
-      ASSERT_EQ(0, GetMaxResolution(format, &resolution))
+      ASSERT_EQ(0, GetMaxResolution(format, &resolution, true))
           << "Failed to get max resolution for format " << format;
     } else {
-      ASSERT_EQ(0, GetMinResolution(format, &resolution))
+      ASSERT_EQ(0, GetMinResolution(format, &resolution, true))
           << "Failed to get min resolution for format " << format;
     }
     VLOGF(1) << "Device " << cam_id_;
@@ -606,8 +606,8 @@ TEST_P(Camera3MultiStreamFrameTest, GetFrame) {
   // Preview stream with large size no bigger than 1080p
   ResolutionInfo limit_resolution(1920, 1080);
   ResolutionInfo preview_resolution(0, 0);
-  ASSERT_EQ(
-      0, GetMaxResolution(HAL_PIXEL_FORMAT_YCbCr_420_888, &preview_resolution))
+  ASSERT_EQ(0, GetMaxResolution(HAL_PIXEL_FORMAT_YCbCr_420_888,
+                                &preview_resolution, true))
       << "Failed to get max resolution for implementation defined format";
   preview_resolution = CapResolution(preview_resolution, limit_resolution);
   cam_device_.AddOutputStream(
@@ -621,7 +621,8 @@ TEST_P(Camera3MultiStreamFrameTest, GetFrame) {
 
   // Capture stream with largest size
   ResolutionInfo capture_resolution(0, 0);
-  ASSERT_EQ(0, GetMaxResolution(HAL_PIXEL_FORMAT_BLOB, &capture_resolution))
+  ASSERT_EQ(0,
+            GetMaxResolution(HAL_PIXEL_FORMAT_BLOB, &capture_resolution, true))
       << "Failed to get max resolution for YCbCr 420 format";
   cam_device_.AddOutputStream(HAL_PIXEL_FORMAT_BLOB, capture_resolution.Width(),
                               capture_resolution.Height(),

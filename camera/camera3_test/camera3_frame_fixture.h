@@ -146,6 +146,8 @@ class Camera3FrameFixture : public Camera3StreamFixture {
   DISALLOW_COPY_AND_ASSIGN(Camera3FrameFixture);
 };
 
+void GetTimeOfTimeout(int32_t ms, struct timespec* ts);
+
 }  // namespace camera3_test
 
 #endif  // CAMERA3_TEST_CAMERA3_FRAME_FIXTURE_H_

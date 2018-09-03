@@ -108,15 +108,16 @@ const camera_metadata_t* Camera3DeviceImpl::ConstructDefaultRequestSettings(
   return metadata;
 }
 
-void Camera3DeviceImpl::AddOutputStream(int format,
-                                        int width,
-                                        int height,
-                                        int crop_rotate_scale_degrees) {
+void Camera3DeviceImpl::AddStream(int format,
+                                  int width,
+                                  int height,
+                                  int crop_rotate_scale_degrees,
+                                  camera3_stream_type_t type) {
   VLOGF_ENTER();
   hal_thread_.PostTaskSync(
-      FROM_HERE, base::Bind(&Camera3DeviceImpl::AddOutputStreamOnThread,
-                            base::Unretained(this), format, width, height,
-                            crop_rotate_scale_degrees));
+      FROM_HERE,
+      base::Bind(&Camera3DeviceImpl::AddStreamOnThread, base::Unretained(this),
+                 format, width, height, crop_rotate_scale_degrees, type));
 }
 
 int Camera3DeviceImpl::ConfigureStreams(
@@ -295,20 +296,22 @@ void Camera3DeviceImpl::ConstructDefaultRequestSettingsOnThread(
   }
 }
 
-void Camera3DeviceImpl::AddOutputStreamOnThread(int format,
-                                                int width,
-                                                int height,
-                                                int crop_rotate_scale_degrees) {
+void Camera3DeviceImpl::AddStreamOnThread(int format,
+                                          int width,
+                                          int height,
+                                          int crop_rotate_scale_degrees,
+                                          camera3_stream_type_t type) {
   DCHECK(thread_checker_.CalledOnValidThread());
   if (initialized_) {
+    auto& cur_stream = cam_stream_[!cam_stream_idx_];
     // Push to the bin that is not used currently
     camera3_stream_t stream = {};
-    stream.stream_type = CAMERA3_STREAM_OUTPUT;
+    stream.stream_type = type;
     stream.width = width;
     stream.height = height;
     stream.format = format;
     stream.crop_rotate_scale_degrees = crop_rotate_scale_degrees;
-    cam_stream_[!cam_stream_idx_].push_back(stream);
+    cur_stream.push_back(stream);
   }
 }
 
@@ -363,12 +366,14 @@ void Camera3DeviceImpl::ConfigureStreamsOnThread(
 }
 
 void Camera3DeviceImpl::AllocateOutputStreamBuffersOnThread(
-    std::vector<camera3_stream_buffer_t>* output_buffers,
-    int32_t* result) {
+    std::vector<camera3_stream_buffer_t>* output_buffers, int32_t* result) {
   DCHECK(thread_checker_.CalledOnValidThread());
   std::vector<const camera3_stream_t*> streams;
   for (const auto& it : cam_stream_[cam_stream_idx_]) {
-    streams.push_back(&it);
+    if (it.stream_type == CAMERA3_STREAM_OUTPUT ||
+        it.stream_type == CAMERA3_STREAM_BIDIRECTIONAL) {
+      streams.push_back(&it);
+    }
   }
   AllocateOutputBuffersByStreamsOnThread(&streams, output_buffers, result);
 }

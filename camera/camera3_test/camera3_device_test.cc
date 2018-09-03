@@ -63,17 +63,21 @@ void Camera3Device::AddOutputStream(
     int height,
     camera3_stream_rotation_t crop_rotate_scale_degrees) {
   DCHECK(impl_);
-  impl_->AddOutputStream(format, width, height,
-                         static_cast<int>(crop_rotate_scale_degrees));
+  impl_->AddStream(format, width, height,
+                   static_cast<int>(crop_rotate_scale_degrees),
+                   CAMERA3_STREAM_OUTPUT);
+}
+
+void Camera3Device::AddInputStream(int format, int width, int height) {
+  DCHECK(impl_);
+  impl_->AddStream(format, width, height, 0, CAMERA3_STREAM_INPUT);
 }
 
 void Camera3Device::AddOutputStreamWithRawDegrees(
-    int format,
-    int width,
-    int height,
-    int crop_rotate_scale_degrees) {
+    int format, int width, int height, int crop_rotate_scale_degrees) {
   DCHECK(impl_);
-  impl_->AddOutputStream(format, width, height, crop_rotate_scale_degrees);
+  impl_->AddStream(format, width, height, crop_rotate_scale_degrees,
+                   CAMERA3_STREAM_OUTPUT);
 }
 
 int Camera3Device::ConfigureStreams(
@@ -355,9 +359,22 @@ bool Camera3Device::StaticInfo::IsFormatAvailable(int format) const {
 
 std::vector<ResolutionInfo>
 Camera3Device::StaticInfo::GetSortedOutputResolutions(int32_t format) const {
+  return GetSortedResolutions(format, true);
+}
+
+std::vector<ResolutionInfo>
+Camera3Device::StaticInfo::GetSortedInputResolutions(int32_t format) const {
+  return GetSortedResolutions(format, false);
+}
+
+std::vector<ResolutionInfo> Camera3Device::StaticInfo::GetSortedResolutions(
+    int32_t format, bool is_output) const {
   camera_metadata_ro_entry_t available_config = {};
   GetStreamConfigEntry(&available_config);
   std::vector<ResolutionInfo> available_resolutions;
+  const int32_t direction =
+      is_output ? ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT
+                : ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_INPUT;
   for (uint32_t i = 0; i < available_config.count;
        i += kNumOfElementsInStreamConfigEntry) {
     int32_t fmt = available_config.data.i32[i + STREAM_CONFIG_FORMAT_INDEX];
@@ -365,13 +382,37 @@ Camera3Device::StaticInfo::GetSortedOutputResolutions(int32_t format) const {
     int32_t height = available_config.data.i32[i + STREAM_CONFIG_HEIGHT_INDEX];
     int32_t in_or_out =
         available_config.data.i32[i + STREAM_CONFIG_DIRECTION_INDEX];
-    if ((fmt == format) &&
-        (in_or_out == ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT)) {
+    if (fmt == format && in_or_out == direction) {
       available_resolutions.emplace_back(width, height);
     }
   }
   std::sort(available_resolutions.begin(), available_resolutions.end());
   return available_resolutions;
+}
+
+bool Camera3Device::StaticInfo::GetInputOutputConfigurationMap(
+    std::unordered_map<int32_t, std::vector<int32_t>>* config_map) const {
+  camera_metadata_ro_entry_t entry = {};
+  if (find_camera_metadata_ro_entry(
+          characteristics_, ANDROID_SCALER_AVAILABLE_INPUT_OUTPUT_FORMATS_MAP,
+          &entry)) {
+    ADD_FAILURE() << "Cannot find the metadata "
+                     "ANDROID_SCALER_AVAILABLE_INPUT_OUTPUT_FORMATS_MAP";
+    return false;
+  }
+
+  /* format of the map is : input format, num_output_formats,
+   * outputFormat1,..,outputFormatN */
+  uint32_t num_out;
+  const int32_t* p = entry.data.i32;
+  for (const int32_t* end = p + entry.count; p < end; p += num_out) {
+    int32_t in_format = *(p++);
+    num_out = *(p++);
+    config_map->emplace(std::piecewise_construct,
+                        std::forward_as_tuple(in_format),
+                        std::forward_as_tuple(p, p + num_out));
+  }
+  return true;
 }
 
 bool Camera3Device::StaticInfo::IsAELockSupported() const {

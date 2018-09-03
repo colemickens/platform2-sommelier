@@ -43,10 +43,11 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
 
   bool IsTemplateSupported(int32_t type);
 
-  void AddOutputStream(int format,
-                       int width,
-                       int height,
-                       int crop_rotate_scale_degrees);
+  void AddStream(int format,
+                 int width,
+                 int height,
+                 int crop_rotate_scale_degrees,
+                 camera3_stream_type_t type);
 
   const camera_metadata_t* ConstructDefaultRequestSettings(int type);
 
@@ -90,10 +91,11 @@ class Camera3DeviceImpl : protected camera3_callback_ops {
 
   void IsTemplateSupportedOnThread(int32_t type, bool* result);
 
-  void AddOutputStreamOnThread(int format,
-                               int width,
-                               int height,
-                               int crop_rotate_scale_degrees);
+  void AddStreamOnThread(int format,
+                         int width,
+                         int height,
+                         int crop_rotate_scale_degrees,
+                         camera3_stream_type_t output);
 
   void ConstructDefaultRequestSettingsOnThread(
       int type,

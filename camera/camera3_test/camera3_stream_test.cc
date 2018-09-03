@@ -26,13 +26,14 @@ void Camera3StreamFixture::TearDown() {
 }
 
 int32_t Camera3StreamFixture::GetMinResolution(int32_t format,
-                                               ResolutionInfo* resolution) {
+                                               ResolutionInfo* resolution,
+                                               bool is_output) {
   if (!resolution) {
     return -EINVAL;
   }
 
   std::vector<ResolutionInfo> resolutions =
-      cam_device_.GetStaticInfo()->GetSortedOutputResolutions(format);
+      cam_device_.GetStaticInfo()->GetSortedResolutions(format, is_output);
   if (resolutions.empty()) {
     return -EIO;
   }
@@ -48,13 +49,14 @@ int32_t Camera3StreamFixture::GetMinResolution(int32_t format,
 }
 
 int32_t Camera3StreamFixture::GetMaxResolution(int32_t format,
-                                               ResolutionInfo* resolution) {
+                                               ResolutionInfo* resolution,
+                                               bool is_output) {
   if (!resolution) {
     return -EINVAL;
   }
 
   std::vector<ResolutionInfo> resolutions =
-      cam_device_.GetStaticInfo()->GetSortedOutputResolutions(format);
+      cam_device_.GetStaticInfo()->GetSortedResolutions(format, is_output);
   if (resolutions.empty()) {
     return -EIO;
   }
@@ -132,8 +134,8 @@ TEST_P(Camera3MultiStreamTest, CreateStream) {
   // Preview stream with large size no bigger than 1080p
   ResolutionInfo limit_resolution(1920, 1080);
   ResolutionInfo preview_resolution(0, 0);
-  ASSERT_EQ(
-      0, GetMaxResolution(HAL_PIXEL_FORMAT_YCbCr_420_888, &preview_resolution))
+  ASSERT_EQ(0, GetMaxResolution(HAL_PIXEL_FORMAT_YCbCr_420_888,
+                                &preview_resolution, true))
       << "Failed to get max resolution for implementation defined format";
   preview_resolution = CapResolution(preview_resolution, limit_resolution);
   cam_device_.AddOutputStream(
@@ -147,7 +149,8 @@ TEST_P(Camera3MultiStreamTest, CreateStream) {
 
   // Capture stream with largest size
   ResolutionInfo capture_resolution(0, 0);
-  ASSERT_EQ(0, GetMaxResolution(HAL_PIXEL_FORMAT_BLOB, &capture_resolution))
+  ASSERT_EQ(0,
+            GetMaxResolution(HAL_PIXEL_FORMAT_BLOB, &capture_resolution, true))
       << "Failed to get max resolution for YCbCr 420 format";
   cam_device_.AddOutputStream(HAL_PIXEL_FORMAT_BLOB, capture_resolution.Width(),
                               capture_resolution.Height(),
@@ -162,7 +165,7 @@ TEST_P(Camera3MultiStreamTest, DifferentRotation) {
   ResolutionInfo limit_resolution(1920, 1080);
   ResolutionInfo preview_resolution(0, 0);
   ASSERT_EQ(0, GetMaxResolution(HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
-                                &preview_resolution))
+                                &preview_resolution, true))
       << "Failed to get max resolution for implementation defined format";
   preview_resolution = CapResolution(preview_resolution, limit_resolution);
   cam_device_.AddOutputStream(
@@ -171,8 +174,8 @@ TEST_P(Camera3MultiStreamTest, DifferentRotation) {
 
   // Capture stream with largest size
   ResolutionInfo capture_resolution(0, 0);
-  ASSERT_EQ(
-      0, GetMaxResolution(HAL_PIXEL_FORMAT_YCbCr_420_888, &capture_resolution))
+  ASSERT_EQ(0, GetMaxResolution(HAL_PIXEL_FORMAT_YCbCr_420_888,
+                                &capture_resolution, true))
       << "Failed to get max resolution for YCbCr 420 format";
   cam_device_.AddOutputStream(
       HAL_PIXEL_FORMAT_YCbCr_420_888, capture_resolution.Width(),

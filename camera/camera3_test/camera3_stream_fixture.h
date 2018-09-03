@@ -29,10 +29,14 @@ class Camera3StreamFixture : public Camera3DeviceFixture {
   void TearDown() override;
 
   // Select minimal size by number of pixels.
-  int32_t GetMinResolution(int32_t format, ResolutionInfo* resolution);
+  int32_t GetMinResolution(int32_t format,
+                           ResolutionInfo* resolution,
+                           bool is_output);
 
   // Select maximal size by number of pixels.
-  int32_t GetMaxResolution(int32_t format, ResolutionInfo* resolution);
+  int32_t GetMaxResolution(int32_t format,
+                           ResolutionInfo* resolution,
+                           bool is_output);
 
   // Get resolution under limit
   ResolutionInfo CapResolution(ResolutionInfo input,
