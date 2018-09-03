@@ -1,0 +1,201 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/deps.gni")
+import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/generate-dbus-proxies.gni")
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":libwebserv-${libbase_ver}",
+    ":libwebserv_common",
+    ":webservd",
+    ":webservd_common",
+  ]
+  if (use.test) {
+    deps += [
+      ":libwebserv_testrunner",
+      ":webservd_testrunner",
+    ]
+  }
+}
+
+default_pkg_deps = [
+  "libbrillo-${libbase_ver}",
+  "libchrome-${libbase_ver}",
+  "libpermission_broker-client",
+]
+
+pkg_config("target_defaults") {
+  include_dirs = [ "." ]
+
+  pkg_deps = default_pkg_deps
+}
+
+generate_dbus_adaptors("generate_webservd_adaptors") {
+  new_fd_bindings = true
+
+  # Not using dbus_service_config here deliberately in order not to
+  # get tied to some constant service name, since it will be
+  # provided by the consumer of libwebserv library.
+  dbus_service_config = ""
+  dbus_adaptors_out_dir = "include/dbus_bindings"
+  sources = [
+    "libwebserv/dbus_bindings/org.chromium.WebServer.RequestHandler.dbus-xml",
+  ]
+}
+
+generate_dbus_proxies("generate_webservd_proxies") {
+  dbus_service_config = "webservd/dbus_bindings/dbus-service-config.json"
+  mock_output_file = "include/webservd/dbus-mocks.h"
+  proxy_output_file = "include/webservd/dbus-proxies.h"
+  sources = [
+    "webservd/dbus_bindings/org.chromium.WebServer.ProtocolHandler.dbus-xml",
+    "webservd/dbus_bindings/org.chromium.WebServer.Server.dbus-xml",
+  ]
+}
+
+static_library("libwebserv_common") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "libwebserv/dbus_protocol_handler.cc",
+    "libwebserv/dbus_response.cc",
+    "libwebserv/dbus_server.cc",
+    "libwebserv/protocol_handler.cc",
+    "libwebserv/request.cc",
+    "libwebserv/request_handler_callback.cc",
+    "libwebserv/request_utils.cc",
+    "libwebserv/response.cc",
+    "libwebserv/server.cc",
+  ]
+  deps = [
+    ":generate_webservd_adaptors",
+    ":generate_webservd_proxies",
+  ]
+
+  # This static library is used in libwebserv shared library, which means
+  # we must generate position-independent code for the files comprising
+  # this library. Since this option is disabled by default for targets
+  # other than 'shared_library', turn it on explicitly for this lib.
+  # Override the default -fPIE flag (which is set for static_library
+  # in //common-mk/BUILDCONFIG.gn) with -fPIC.
+  configs -= [ "//common-mk:pie" ]
+  configs += [ "//common-mk:pic" ]
+}
+
+pkg_config("webservd_common_config") {
+  pkg_deps = [
+    "libmicrohttpd",
+    "openssl",
+  ]
+}
+
+generate_dbus_adaptors("generate_libwebserv_adaptors") {
+  new_fd_bindings = true
+  dbus_service_config = "webservd/dbus_bindings/dbus-service-config.json"
+  dbus_adaptors_out_dir = "include/dbus_bindings"
+  sources = [
+    "webservd/dbus_bindings/org.chromium.WebServer.ProtocolHandler.dbus-xml",
+    "webservd/dbus_bindings/org.chromium.WebServer.Server.dbus-xml",
+  ]
+}
+
+generate_dbus_proxies("generate_libwebserv_proxies") {
+  # Not using dbus_service_config here deliberately in order not to
+  # get tied to some constant service name, since it will be
+  # provided by the consumer of libwebserv library.
+  dbus_service_config = ""
+  mock_output_file = "include/libwebserv/dbus-mocks.h"
+  proxy_output_file = "include/libwebserv/dbus-proxies.h"
+  new_fd_bindings = true
+  sources = [
+    "libwebserv/dbus_bindings/org.chromium.WebServer.RequestHandler.dbus-xml",
+  ]
+}
+
+static_library("webservd_common") {
+  configs += [ ":target_defaults" ]
+  all_dependent_configs = [ ":webservd_common_config" ]
+
+  deps = [
+    ":generate_libwebserv_adaptors",
+    ":generate_libwebserv_proxies",
+  ]
+
+  sources = [
+    "webservd/config.cc",
+    "webservd/dbus_protocol_handler.cc",
+    "webservd/dbus_request_handler.cc",
+    "webservd/error_codes.cc",
+    "webservd/fake_encryptor.cc",
+    "webservd/log_manager.cc",
+    "webservd/permission_broker_firewall.cc",
+    "webservd/protocol_handler.cc",
+    "webservd/request.cc",
+    "webservd/server.cc",
+    "webservd/temp_file_manager.cc",
+    "webservd/utils.cc",
+  ]
+}
+
+write_deps("write_libwebserv_deps") {
+  pkg_deps = default_pkg_deps
+  target = "libwebserv-${libbase_ver}"
+}
+
+shared_library("libwebserv-${libbase_ver}") {
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":libwebserv_common",
+    ":write_libwebserv_deps",
+  ]
+}
+
+pkg_config("webservd_config") {
+  pkg_deps = [ "libminijail" ]
+}
+
+executable("webservd") {
+  configs += [
+    ":target_defaults",
+    ":webservd_config",
+  ]
+  sources = [
+    "webservd/main.cc",
+  ]
+  deps = [
+    ":webservd_common",
+  ]
+}
+
+if (use.test) {
+  executable("libwebserv_testrunner") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    sources = [
+      "libwebserv/libwebserv_testrunner.cc",
+    ]
+    deps = [
+      ":libwebserv_common",
+    ]
+  }
+
+  executable("webservd_testrunner") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    sources = [
+      "webservd/config_test.cc",
+      "webservd/log_manager_test.cc",
+    ]
+    deps = [
+      ":webservd_common",
+      "//common-mk/testrunner",
+    ]
+  }
+}
