@@ -1,0 +1,124 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+group("all") {
+  deps = [
+    ":finish_oobe_auto_config",
+    ":liboobeconfig",
+    ":oobe_config_restore",
+    ":oobe_config_save",
+  ]
+  if (use.test) {
+    deps += [ ":oobe_config_test" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+
+    # system_api depends on protobuf (or protobuf-lite). It must
+    # appear before protobuf or the linker flags won't be in the right
+    # order.
+    "system_api",
+    "protobuf-lite",
+  ]
+}
+
+generate_dbus_adaptors("oobe_config_restore_adaptors") {
+  dbus_adaptors_out_dir = "include/dbus_adaptors"
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+  new_fd_bindings = true
+  sources = [
+    "dbus_bindings/org.chromium.OobeConfigRestore.xml",
+  ]
+}
+
+pkg_config("liboobeconfig_config") {
+  pkg_deps = [ "dbus-1" ]
+}
+
+# oobe_config library.
+static_library("liboobeconfig") {
+  configs += [
+    ":liboobeconfig_config",
+    ":target_defaults",
+  ]
+  sources = [
+    "load_oobe_config_usb.cc",
+    "oobe_config.cc",
+    "usb_common.cc",
+    "utils.cc",
+  ]
+  libs = [ "-lpolicy-${libbase_ver}" ]
+  deps = [
+    ":oobe_config_proto",
+  ]
+}
+
+executable("finish_oobe_auto_config") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "finish_oobe_auto_config.cc",
+    "usb_common.cc",
+    "utils.cc",
+  ]
+}
+
+executable("oobe_config_save") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "oobe_config_save_main.cc",
+  ]
+  deps = [
+    ":liboobeconfig",
+  ]
+}
+
+executable("oobe_config_restore") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "oobe_config_restore_main.cc",
+    "oobe_config_restore_service.cc",
+  ]
+  deps = [
+    ":liboobeconfig",
+    ":oobe_config_restore_adaptors",
+  ]
+}
+
+proto_library("oobe_config_proto") {
+  proto_in_dir = "."
+  proto_out_dir = "include/oobe_config"
+  sources = [
+    "rollback_data.proto",
+  ]
+}
+
+if (use.test) {
+  pkg_config("test_config") {
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+  }
+
+  executable("oobe_config_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
+    ]
+    sources = [
+      "load_oobe_config_usb_test.cc",
+      "oobe_config_test.cc",
+    ]
+    deps = [
+      ":liboobeconfig",
+      "//common-mk/testrunner",
+    ]
+  }
+}
