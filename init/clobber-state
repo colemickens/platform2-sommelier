@@ -29,6 +29,7 @@ FACTORY_WIPE=$(echo "$@" | grep -sqw factory && echo "factory")
 FAST_WIPE=$(echo "$@" | grep -sqw fast && echo "fast")
 KEEPIMG=$(echo "$@" | grep -sqw keepimg && echo "keepimg")
 SAFE_WIPE=$(echo "$@" | grep -sqw safe && echo "safe")
+ROLLBACK_WIPE=$(echo "$@" | grep -sqw rollback && echo "rollback")
 
 PRESERVED_TAR="/tmp/preserve.tar"
 LABMACHINE=".labmachine"
@@ -81,6 +82,20 @@ preserve_files() {
       unencrypted/cros-components/demo_mode_resources/imageloader.sig.2
       unencrypted/cros-components/demo_mode_resources/table
     "
+
+    # For rollback wipes, we also preserve rollback data. This is an encrypted
+    # proto which contains install attributes, device policy and owner.key (used
+    # to keep the enrollment), also other device-level configurations e.g. shill
+    # configuration to restore network connection after rollback.
+    # We also preserve the attestation DB (needed because we don't do TPM clear
+    # in this case).
+    if [ "${ROLLBACK_WIPE}" = "rollback" ]; then
+      ROLLBACK_FILES="
+        unencrypted/preserve/attestation.epb
+        unencrypted/preserve/rollback_data
+      "
+      PRESERVED_FILES="${PRESERVED_FILES} ${ROLLBACK_FILES}"
+    fi
 
     # Powerwash count is only preserved for "safe" powerwashes.
     COUNT=1
@@ -509,8 +524,10 @@ main() {
 
   # Most effective means of destroying user data is run at the start: Throwing
   # away the key to encrypted stateful by requesting the TPM to be cleared at
-  # next boot.
-  crossystem clear_tpm_owner_request=1
+  # next boot. We shouldn't do this for rollback wipes.
+  if [ "${ROLLBACK_WIPE}" != "rollback" ]; then
+    crossystem clear_tpm_owner_request=1
+  fi
 
   preserve_files
   detect_system_config
