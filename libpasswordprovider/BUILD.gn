@@ -1,0 +1,49 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":libpasswordprovider",
+  ]
+  if (use.test) {
+    deps += [ ":password_provider_test" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [ "libchrome-${libbase_ver}" ]
+}
+
+shared_library("libpasswordprovider") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "password.cc",
+    "password.h",
+    "password_provider.cc",
+    "password_provider.h",
+  ]
+  libs = [ "-lkeyutils" ]
+}
+
+if (use.test) {
+  executable("password_provider_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    sources = [
+      "password.cc",
+      "password_provider.cc",
+      "password_provider_test.cc",
+      "password_test.cc",
+    ]
+    libs = [ "-lkeyutils" ]
+    deps = [
+      ":libpasswordprovider",
+      "//common-mk/testrunner",
+    ]
+  }
+}
