@@ -1,0 +1,128 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":cros-disks",
+    ":libdisks",
+    ":libdisks-adaptors",
+  ]
+  if (use.test) {
+    deps += [ ":disks_testrunner" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "blkid",
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "libmetrics-${libbase_ver}",
+    "libminijail",
+    "libsession_manager-client",
+    "libudev",
+  ]
+  libs = [ "-lrootdev" ]
+}
+
+generate_dbus_adaptors("libdisks-adaptors") {
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+  dbus_adaptors_out_dir = "include/cros-disks/dbus_adaptors"
+  sources = [
+    "dbus_bindings/org.chromium.CrosDisks.xml",
+  ]
+}
+
+static_library("libdisks") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "archive_manager.cc",
+    "cros_disks_server.cc",
+    "daemon.cc",
+    "device_ejector.cc",
+    "device_event.cc",
+    "device_event_moderator.cc",
+    "device_event_queue.cc",
+    "disk.cc",
+    "disk_manager.cc",
+    "drivefs_helper.cc",
+    "drivefs_helper.h",
+    "exfat_mounter.cc",
+    "file_reader.cc",
+    "filesystem.cc",
+    "format_manager.cc",
+    "fuse_helper.cc",
+    "fuse_mount_manager.cc",
+    "fuse_mounter.cc",
+    "metrics.cc",
+    "mount_info.cc",
+    "mount_manager.cc",
+    "mount_options.cc",
+    "mounter.cc",
+    "ntfs_mounter.cc",
+    "platform.cc",
+    "process.cc",
+    "rename_manager.cc",
+    "sandboxed_process.cc",
+    "session_manager_proxy.cc",
+    "sshfs_helper.cc",
+    "system_mounter.cc",
+    "udev_device.cc",
+    "uri.cc",
+    "usb_device_info.cc",
+  ]
+  deps = [
+    ":libdisks-adaptors",
+  ]
+}
+
+executable("cros-disks") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "main.cc",
+  ]
+  deps = [
+    ":libdisks",
+  ]
+}
+
+if (use.test) {
+  executable("disks_testrunner") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    sources = [
+      "archive_manager_test.cc",
+      "device_event_moderator_test.cc",
+      "device_event_queue_test.cc",
+      "disk_manager_test.cc",
+      "disk_test.cc",
+      "drivefs_helper_test.cc",
+      "file_reader_test.cc",
+      "format_manager_test.cc",
+      "fuse_helper_test.cc",
+      "fuse_mount_manager_test.cc",
+      "metrics_test.cc",
+      "mount_info_test.cc",
+      "mount_manager_test.cc",
+      "mount_options_test.cc",
+      "mounter_test.cc",
+      "platform_test.cc",
+      "process_test.cc",
+      "rename_manager_test.cc",
+      "sshfs_helper_test.cc",
+      "system_mounter_test.cc",
+      "udev_device_test.cc",
+      "usb_device_info_test.cc",
+    ]
+    deps = [
+      ":libdisks",
+      "//common-mk/testrunner",
+    ]
+  }
+}
