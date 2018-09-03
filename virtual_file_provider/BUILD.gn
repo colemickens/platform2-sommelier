@@ -1,0 +1,73 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":libvirtual-file-provider",
+    ":virtual-file-provider",
+  ]
+  if (use.test) {
+    deps += [ ":virtual-file-provider_testrunner" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+
+    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # before protobuf here or the linker flags won't be in the right
+    # order.
+    "system_api",
+    "protobuf-lite",
+  ]
+}
+
+pkg_config("virtual-file-provider_config") {
+  pkg_deps = [
+    "libcap",
+    "fuse",
+  ]
+}
+
+executable("virtual-file-provider") {
+  configs += [
+    ":target_defaults",
+    ":virtual-file-provider_config",
+  ]
+  sources = [
+    "virtual_file_provider.cc",
+  ]
+  deps = [
+    ":libvirtual-file-provider",
+  ]
+}
+
+static_library("libvirtual-file-provider") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "fuse_main.cc",
+    "operation_throttle.cc",
+    "service.cc",
+    "size_map.cc",
+    "util.cc",
+  ]
+  defines = [ "FUSE_USE_VERSION=26" ]
+}
+
+if (use.test) {
+  executable("virtual-file-provider_testrunner") {
+    configs += [ ":target_defaults" ]
+    sources = [
+      "operation_throttle_test.cc",
+    ]
+    deps = [
+      ":libvirtual-file-provider",
+      "//common-mk/testrunner",
+    ]
+  }
+}
