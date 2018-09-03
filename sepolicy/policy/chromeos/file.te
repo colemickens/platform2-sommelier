@@ -1,21 +1,33 @@
-# TODO(fqj): add exec_type attribute and neverallow non-exec to be entrypoint.
 # TODO(fqj): go over files of cros_system_file, and to label exec only and rename with _exec suffix.
 type cros_system_file, exec_type, file_type;
-type cros_crash_reporter_exec, exec_type, file_type;
-type cros_shill_exec, exec_type, file_type;
-type cros_modprobe_exec, exec_type, file_type;
-type cros_wpa_supplicant_exec, exec_type, file_type;
-type cros_minijail_exec, exec_type, file_type;
-type cros_debugd_exec, exec_type, file_type;
-type upstart_socket_bridge_exec, exec_type, file_type;
-type chrome_browser_exec, exec_type, file_type;
-type sh_exec, exec_type, file_type;
-type frecon_exec, exec_type, file_type;
+type cros_anomaly_collector_exec, exec_type, file_type;
+type cros_avahi_daemon_exec, exec_type, file_type;
+type cros_chapsd_exec, exec_type, file_type;
 type cros_chrt_exec, exec_type, file_type;
+type cros_crash_reporter_exec, exec_type, file_type;
+type cros_cryptohomed_exec, exec_type, file_type;
+type cros_dbus_daemon_exec, exec_type, file_type;
+type cros_debugd_exec, exec_type, file_type;
+type cros_metrics_daemon_exec, exec_type, file_type;
+type cros_minijail_exec, exec_type, file_type;
+type cros_modprobe_exec, exec_type, file_type;
+type cros_periodic_scheduler_exec, exec_type, file_type;
+type cros_session_manager_exec, exec_type, file_type;
+type cros_shill_exec, exec_type, file_type;
+type cros_udevd_exec, exec_type, file_type;
+type cros_update_engine_exec, exec_type, file_type;
+type cros_wpa_supplicant_exec, exec_type, file_type;
+
+type frecon_exec, exec_type, file_type;
+type sh_exec, exec_type, file_type;
+type upstart_socket_bridge_exec, exec_type, file_type;
+
+type chrome_browser_exec, exec_type, file_type;
 
 type cros_unconfined_exec, exec_type, file_type;
 
 type cros_init_shell_scripts, exec_type, file_type;
+type cros_ionice_exec, exec_type, file_type;
 
 type cros_init_conf_file, file_type;
 type cros_selinux_config_file, file_type;

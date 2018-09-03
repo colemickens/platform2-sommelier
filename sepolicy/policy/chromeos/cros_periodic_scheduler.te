@@ -1,0 +1,9 @@
+type cros_periodic_scheduler, chromeos_domain, domain, mlstrustedobject;
+
+permissive cros_periodic_scheduler;
+
+domain_auto_trans(cros_init, cros_periodic_scheduler_exec, cros_periodic_scheduler);
+
+# TODO(fqj): use audit log to find out non-init executing periodic_scheduler
+domain_auto_trans(chromeos_domain, cros_periodic_scheduler_exec, cros_periodic_scheduler);
+auditallow { chromeos_domain -cros_init } cros_periodic_scheduler_exec:file execute;

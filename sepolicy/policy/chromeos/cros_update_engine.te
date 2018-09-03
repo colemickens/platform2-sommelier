@@ -1,0 +1,5 @@
+type cros_update_engine, chromeos_domain, domain, mlstrustedobject;
+
+permissive cros_update_engine;
+
+domain_auto_trans(cros_init, cros_update_engine_exec, cros_update_engine);

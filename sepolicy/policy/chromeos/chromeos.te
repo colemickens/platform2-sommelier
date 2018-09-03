@@ -6,6 +6,7 @@ permissive chromeos;
 
 domain_auto_trans(cros_init, cros_unconfined_exec, chromeos);
 domain_auto_trans(cros_init_scripts, cros_unconfined_exec, chromeos);
+domain_auto_trans(cros_session_manager, cros_unconfined_exec, chromeos);
 
 r_dir_file(chromeos, sysfs);
 

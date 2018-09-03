@@ -1,0 +1,5 @@
+type cros_anomaly_collector, chromeos_domain, domain, mlstrustedobject;
+
+permissive cros_anomaly_collector;
+
+domain_auto_trans(cros_init, cros_anomaly_collector_exec, cros_anomaly_collector);

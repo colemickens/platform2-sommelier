@@ -11,6 +11,8 @@ include(sepolicy/file_contexts/chromeos_unconfined)
 /sbin/minijail0                 u:object_r:cros_minijail_exec:s0
 /sbin/modprobe                  u:object_r:cros_modprobe_exec:s0
 /sbin/rmmod                     u:object_r:cros_modprobe_exec:s0
+/sbin/session_manager           u:object_r:cros_session_manager_exec:s0
+/sbin/udevd                     u:object_r:cros_udevd_exec:s0
 /sbin/upstart-socket-bridge     u:object_r:upstart_socket_bridge_exec:s0
 
 /bin/bash                       u:object_r:sh_exec:s0
@@ -18,9 +20,18 @@ include(sepolicy/file_contexts/chromeos_unconfined)
 /bin/kmod                       u:object_r:cros_modprobe_exec:s0
 /bin/sh                         u:object_r:sh_exec:s0
 
+/usr/bin/anomaly_collector      u:object_r:cros_anomaly_collector_exec:s0
 /usr/bin/chrt                   u:object_r:cros_chrt_exec:s0
+/usr/bin/dbus-daemon            u:object_r:cros_dbus_daemon_exec:s0
+/usr/bin/ionice                 u:object_r:cros_ionice_exec:s0
+/usr/bin/metrics_daemon         u:object_r:cros_metrics_daemon_exec:s0
+/usr/bin/periodic_scheduler     u:object_r:cros_periodic_scheduler_exec:s0
 /usr/bin/shill                  u:object_r:cros_shill_exec:s0
 
+/usr/sbin/avahi-daemon          u:object_r:cros_avahi_daemon_exec:s0
+/usr/sbin/chapsd                u:object_r:cros_chapsd_exec:s0
+/usr/sbin/cryptohomed           u:object_r:cros_cryptohomed_exec:s0
+/usr/sbin/update_engine         u:object_r:cros_update_engine_exec:s0
 /usr/sbin/wpa_supplicant        u:object_r:cros_wpa_supplicant_exec:s0
 
 /usr/share/cros/init/.*         u:object_r:cros_init_shell_scripts:s0

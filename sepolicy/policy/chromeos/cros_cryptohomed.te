@@ -1,0 +1,7 @@
+type cros_cryptohomed, chromeos_domain, domain, mlstrustedobject;
+
+permissive cros_cryptohomed;
+
+domain_auto_trans(cros_init_scripts, cros_cryptohomed_exec, cros_cryptohomed);
+
+allow domain cros_cryptohomed:key search;

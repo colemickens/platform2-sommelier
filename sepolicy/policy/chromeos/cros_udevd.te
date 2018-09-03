@@ -1,0 +1,5 @@
+type cros_udevd, chromeos_domain, domain, mlstrustedobject;
+
+permissive cros_udevd;
+
+domain_auto_trans(cros_init, cros_udevd_exec, cros_udevd);
