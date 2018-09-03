@@ -1,0 +1,68 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":libportier",
+  ]
+  if (use.test) {
+    deps += [ ":portier_test" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+  ]
+}
+
+pkg_config("libportier_config") {
+  pkg_deps = [ "libshill-net-${libbase_ver}" ]
+}
+
+static_library("libportier") {
+  configs += [
+    ":libportier_config",
+    ":target_defaults",
+  ]
+  sources = [
+    "ether_socket.cc",
+    "group.cc",
+    "icmpv6_socket.cc",
+    "ipv6_util.cc",
+    "ll_address.cc",
+    "nd_bpf.cc",
+    "nd_msg.cc",
+    "neighbor_cache.cc",
+    "network_socket.cc",
+    "proxy_interface.cc",
+    "status.cc",
+  ]
+}
+
+if (use.test) {
+  executable("portier_test") {
+    configs += [
+      "//common-mk:test",
+      ":libportier_config",
+      ":target_defaults",
+    ]
+    sources = [
+      "group_manager_test.cc",
+      "group_test.cc",
+      "ipv6_util_test.cc",
+      "ll_address_test.cc",
+      "nd_msg_test.cc",
+      "neighbor_cache_test.cc",
+      "status_test.cc",
+    ]
+    deps = [
+      ":libportier",
+      "//common-mk/testrunner",
+    ]
+  }
+}
