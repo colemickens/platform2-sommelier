@@ -1,0 +1,51 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":ippusb_manager",
+  ]
+  if (use.test) {
+    deps += [ ":ippusb_manager_testrunner" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "libminijail",
+    "libusb-1.0",
+  ]
+}
+
+executable("ippusb_manager") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "ippusb_manager.cc",
+    "socket_connection.cc",
+    "usb.cc",
+  ]
+}
+
+if (use.test) {
+  pkg_config("test_config") {
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+  }
+  executable("ippusb_manager_testrunner") {
+    configs += [
+      ":target_defaults",
+      ":test_config",
+    ]
+    sources = [
+      "usb.cc",
+      "usb_test.cc",
+    ]
+    deps = [
+      "//common-mk/testrunner",
+    ]
+  }
+}
