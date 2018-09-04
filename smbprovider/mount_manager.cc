@@ -300,7 +300,8 @@ bool MountManager::GetAuthentication(
   DCHECK_GT(password_length, 0);
 
   if (samba_interface_map_.count(samba_interface_id) == 0) {
-    LOG(ERROR) << "Credentials not found for " << share_path;
+    LOG(ERROR) << "Credential not found for SambaInterfaceId: "
+               << samba_interface_id;
 
     SetBufferEmpty(workgroup);
     SetBufferEmpty(username);
@@ -312,7 +313,8 @@ bool MountManager::GetAuthentication(
 
   if (!CanInputCredential(workgroup_length, username_length, password_length,
                           credential)) {
-    LOG(ERROR) << "Buffers cannot support credentials for " << share_path;
+    LOG(ERROR) << "Buffers cannot support a credential for SambaInterfaceId: "
+               << samba_interface_id;
 
     SetBufferEmpty(workgroup);
     SetBufferEmpty(username);
