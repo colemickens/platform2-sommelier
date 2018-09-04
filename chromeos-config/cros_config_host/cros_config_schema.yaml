@@ -139,6 +139,11 @@ properties:
                       description: Build target of the base EC firmware for a detachable device,
                         that will be considered dirty when building/testing
                       type: string
+                    ec_extras:
+                      type: array
+                      items:
+                        type: string
+                        description: Extra EC build targets to build within chromeos-ec.
                     coreboot: *firmware_build_target
                     cr50: *firmware_build_target
                     depthcharge: *firmware_build_target

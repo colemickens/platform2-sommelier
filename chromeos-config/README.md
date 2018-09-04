@@ -292,6 +292,7 @@ The schema definition is below:
 | cr50 | string |  | False |  | Build target that will be considered dirty when building/testing locally. |
 | depthcharge | string |  | False |  | Build target that will be considered dirty when building/testing locally. |
 | ec | string |  | False |  | Build target that will be considered dirty when building/testing locally. |
+| ec_extras | array - string |  | False |  | Extra EC build targets to build within chromeos-ec. |
 | libpayload | string |  | False |  | Build target that will be considered dirty when building/testing locally. |
 | u-boot | string |  | False |  | Build target that will be considered dirty when building/testing locally. |
 

@@ -258,6 +258,10 @@
             "cr50": "another_cr50",
             "depthcharge": "another",
             "ec": "another",
+            "ec_extras": [
+              "extra1",
+              "extra2"
+            ],
             "libpayload": "another"
           },
           "ec-image": "bcs://Another_EC.1111.11.1.tbz2",

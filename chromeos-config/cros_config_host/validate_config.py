@@ -465,6 +465,7 @@ BUILD_TARGETS_SCHEMA = NodeDesc('build-targets', True, elements=[
     PropString('u-boot'),
     PropString('cr50'),
     PropString('base'),
+    PropStringList('ec_extras')
 ], conditional_props={'shares': False, '../whitelabel': False})
 
 BASE_AUDIO_SCHEMA = [

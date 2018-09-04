@@ -167,6 +167,7 @@
 			tools = "${FILESDIR}/tools1", "${FILESDIR}/tools2";
 			build-targets {
 				base = "another_base";
+				ec_extras = "extra1", "extra2";
 				coreboot = "another";
 				cr50 = "another_cr50";
 				ec = "another";
