@@ -24,6 +24,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/values.h>
@@ -73,9 +74,9 @@ bool FromValue(const base::Value& in_value, std::vector<T, Alloc>* out_value) {
     return false;
   out_value->clear();
   out_value->reserve(list->GetSize());
-  for (const base::Value* item : *list) {
+  for (const base::Value& item : base::ValueReferenceAdapter(*list)) {
     T value{};
-    if (!FromValue(*item, &value))
+    if (!FromValue(item, &value))
       return false;
     out_value->push_back(std::move(value));
   }

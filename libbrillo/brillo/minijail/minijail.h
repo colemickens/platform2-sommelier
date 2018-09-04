@@ -108,7 +108,7 @@ class Minijail {
   Minijail();
 
  private:
-  friend struct base::DefaultLazyInstanceTraits<Minijail>;
+  friend base::LazyInstanceTraitsBase<Minijail>;
 
   DISALLOW_COPY_AND_ASSIGN(Minijail);
 };
