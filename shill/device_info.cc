@@ -295,15 +295,21 @@ bool DeviceInfo::GetDeviceInfoSymbolicLink(const string& iface_name,
                                 path_out);
 }
 
+int DeviceInfo::GetDeviceArpType(const string& iface_name) {
+  string type_string;
+  int arp_type;
+
+  if (!GetDeviceInfoContents(iface_name, kInterfaceType, &type_string) ||
+      !base::TrimString(type_string, "\n", &type_string) ||
+      !base::StringToInt(type_string, &arp_type)) {
+    return ARPHRD_VOID;
+  }
+  return arp_type;
+}
+
 Technology::Identifier DeviceInfo::GetDeviceTechnology(
     const string& iface_name) {
-  string type_string;
-  int arp_type = ARPHRD_VOID;
-  if (GetDeviceInfoContents(iface_name, kInterfaceType, &type_string) &&
-      base::TrimString(type_string, "\n", &type_string) &&
-      !base::StringToInt(type_string, &arp_type)) {
-    arp_type = ARPHRD_VOID;
-  }
+  int arp_type = GetDeviceArpType(iface_name);
 
   string contents;
   if (!GetDeviceInfoContents(iface_name, kInterfaceUevent, &contents)) {
@@ -1222,9 +1228,12 @@ void DeviceInfo::DelayedDeviceCreationTask() {
     }
 
     string address = infos_[dev_index].mac_address.HexEncode();
+    int arp_type = GetDeviceArpType(link_name);
 
+    // NB: ARHRD_RAWIP was introduced in kernel 4.14.
     if (technology != Technology::kTunnel &&
-        technology != Technology::kUnknown) {
+        technology != Technology::kUnknown &&
+        arp_type != ARPHRD_RAWIP) {
       DCHECK(!address.empty());
     }
 

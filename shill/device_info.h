@@ -185,6 +185,9 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
                                     int interface_index,
                                     Technology::Identifier technology);
 
+  // Return the ARP type (ARPHRD_* from <net/if_arp.h>) of interface
+  // |iface_name|.
+  int GetDeviceArpType(const std::string& iface_name);
   // Return the FilePath for a given |path_name| in the device sysinfo for
   // a specific interface |iface_name|.
   base::FilePath GetDeviceInfoPath(const std::string& iface_name,
