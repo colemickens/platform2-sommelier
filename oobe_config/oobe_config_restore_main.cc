@@ -3,9 +3,15 @@
 // found in the LICENSE file.
 
 #include <base/logging.h>
+#include <brillo/daemons/dbus_daemon.h>
 #include <brillo/syslog_logging.h>
+#include <dbus/oobe_config/dbus-constants.h>
 
 #include "oobe_config/oobe_config.h"
+#include "oobe_config/oobe_config_restore_service.h"
+
+using brillo::dbus_utils::AsyncEventSequencer;
+using brillo::dbus_utils::DBusObject;
 
 namespace oobe_config {
 
@@ -20,11 +26,48 @@ void InitLog() {
 
 }  // namespace
 
+class OobeConfigRestoreDaemon : public brillo::DBusServiceDaemon {
+ public:
+  OobeConfigRestoreDaemon()
+      : DBusServiceDaemon(kOobeConfigRestoreServiceName) {}
+
+ protected:
+  void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
+    auto dbus_object = std::make_unique<DBusObject>(
+        nullptr, bus_,
+        org::chromium::OobeConfigRestoreAdaptor::GetObjectPath());
+
+    service_ =
+        std::make_unique<OobeConfigRestoreService>(std::move(dbus_object));
+    service_->RegisterAsync(sequencer->GetHandler(
+        "OobeConfigRestoreService.RegisterAsync() failed.", true));
+  }
+
+  void OnShutdown(int* return_code) override {
+    DBusServiceDaemon::OnShutdown(return_code);
+    service_.reset();
+  }
+
+ private:
+  std::unique_ptr<OobeConfigRestoreService> service_;
+  DISALLOW_COPY_AND_ASSIGN(OobeConfigRestoreDaemon);
+};
+
+// Runs OobeConfigRestoreDaemon.
+int RunDaemon() {
+  OobeConfigRestoreDaemon daemon;
+
+  LOG(INFO) << "Starting oobe_config_restore daemon";
+  int res = daemon.Run();
+
+  LOG(INFO) << "oobe_config_restore stopping with exit code " << res;
+  return res;
+}
+
 }  // namespace oobe_config
 
 int main(int argc, char* argv[]) {
   oobe_config::InitLog();
 
-  // TODO(zentaro): Replace with real implementation.
-  LOG(INFO) << oobe_config::Hello() << " restore.";
+  return oobe_config::RunDaemon();
 }
