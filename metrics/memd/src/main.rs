@@ -59,7 +59,13 @@ const COLLECTION_DELAY_MS: i64 = 5_000;       // Wait after event of interest.
 const CLIP_COLLECTION_SPAN_MS: i64 = 10_000;  // ms worth of samples in a clip.
 const SAMPLES_PER_SECOND: i64 = 10;           // Rate of fast sample collection.
 const SAMPLING_PERIOD_MS: i64 = 1000 / SAMPLES_PER_SECOND;
-const LOW_MEM_SAFETY_FACTOR: u32 = 3;         // Low-mem margin multiplier for polling.
+// Danger threshold.  When the distance between "available" and "margin" is
+// greater than LOW_MEM_DANGER_THRESHOLD_MB, we assume that there's no danger
+// of "interesting" events (such as a discard) happening in the next
+// SLOW_POLL_PERIOD_DURATION.  In other words, we expect that an allocation of
+// more than LOW_MEM_DANGER_THRESHOLD_MB in a SLOW_POLL_PERIOD_DURATION will be
+// rare.
+const LOW_MEM_DANGER_THRESHOLD_MB: u32 = 600;  // Poll fast when closer to margin than this.
 const SLOW_POLL_PERIOD_DURATION: Duration = Duration::from_secs(2); // Sleep in slow-poll mode.
 const FAST_POLL_PERIOD_DURATION: Duration =
     Duration::from_millis(SAMPLING_PERIOD_MS as u64); // Sleep duration in fast-poll mode.
@@ -723,6 +729,9 @@ impl<'a> Sampler<'a> {
         low_mem_file_flags.read(true);
         let low_mem_file_option = open_with_flags_maybe(&paths.low_mem_device, &low_mem_file_flags)
             .expect("error opening low-mem file");
+        if low_mem_file_option.is_none() {
+            warn!("low-mem device: cannot open and will not use");
+        }
         let mut watcher = FileWatcher::new();
         let mut low_mem_watcher = FileWatcher::new();
 
@@ -894,11 +903,16 @@ impl<'a> Sampler<'a> {
 
     // Returns true if the program should go back to slow-polling mode (or stay
     // in that mode).  Returns false otherwise.  Relies on |self.collecting|
-    // and |self.current_available| being up-to-date.
+    // and |self.current_available| being up-to-date.  If the kernel does not
+    // have the cros low-mem notifier, "margin" and "available" are both 0, and
+    // this always returns false. (XXX should use a different way of detecting
+    // medium pressure, but it's not critical since all cros devices have a
+    // low-mem device.)
     fn should_poll_slowly(&self) -> bool {
         !self.collecting &&
             !self.always_poll_fast &&
-            self.current_available > LOW_MEM_SAFETY_FACTOR * self.low_mem_margin
+            self.low_mem_margin > 0 &&
+            self.current_available > self.low_mem_margin + LOW_MEM_DANGER_THRESHOLD_MB
     }
 
     // Sits mostly idle and checks available RAM at low frequency.  Returns
