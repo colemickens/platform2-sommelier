@@ -126,6 +126,12 @@ const char kLivenessServiceInterface[] =
     "org.chromium.LivenessServiceInterface";
 const char kLivenessServiceCheckLivenessMethod[] = "CheckLiveness";
 
+const char kMetricsEventServiceName[] = "org.chromium.MetricsEventService";
+const char kMetricsEventServicePath[] = "/org/chromium/MetricsEventService";
+const char kMetricsEventServiceInterface[] =
+    "org.chromium.MetricsEventServiceInterface";
+const char kMetricsEventServiceChromeEventSignal[] = "ChromeEvent";
+
 const char kComponentUpdaterServiceName[] =
     "org.chromium.ComponentUpdaterService";
 const char kComponentUpdaterServicePath[] =
