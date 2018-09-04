@@ -2,7 +2,7 @@
   'targets': [
     # Library with generated gRPC API definitions.
     {
-      'target_name': 'diagnostics-grpc-protos',
+      'target_name': 'diagnostics_grpc_protos',
       'type': 'static_library',
       'variables': {
         'proto_in_dir': 'grpc',
@@ -30,7 +30,7 @@
         '../common-mk/protoc.gypi',
       ],
     },
-    # The diagnosticsd daemon executable.
+    # Library that adopts gRPC core async interface to a libchrome-friendly one.
     {
       'target_name': 'libgrpc_async_adapter',
       'type': 'static_library',
@@ -62,27 +62,45 @@
         'grpc_async_adapter/rpc_state.cc',
       ],
     },
+    # Library with generated Mojo API definitions.
     {
       'target_name': 'diagnostics_mojo_bindings',
       'type': 'static_library',
+      'direct_dependent_settings': {
+        'variables': {
+          'deps': [
+            'libchrome-<(libbase_ver)',
+            'libmojo-<(libbase_ver)',
+          ],
+        },
+      },
       'sources': ['mojo/diagnosticsd.mojom'],
       'includes': ['../common-mk/mojom_bindings_generator.gypi'],
     },
+    # The diagnosticsd daemon executable.
     {
       'target_name': 'diagnosticsd',
       'type': 'executable',
       'dependencies': [
-        'diagnostics-grpc-protos',
+        'diagnostics_grpc_protos',
         'diagnostics_mojo_bindings',
         'libgrpc_async_adapter',
       ],
       'variables': {
         'deps': [
           'libbrillo-<(libbase_ver)',
+          'system_api',
         ],
       },
-      'sources': ['diagnosticsd/main.cc'],
+      'sources': [
+        'diagnosticsd/diagnosticsd_daemon.cc',
+        'diagnosticsd/diagnosticsd_dbus_service.cc',
+        'diagnosticsd/diagnosticsd_grpc_service.cc',
+        'diagnosticsd/diagnosticsd_mojo_service.cc',
+        'diagnosticsd/main.cc',
+      ],
     },
+    # The diagnostics_processor daemon executable.
     {
       'target_name': 'diagnostics_processor',
       'type': 'executable',
