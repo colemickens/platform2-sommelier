@@ -87,17 +87,17 @@ class ArchiveManager : public MountManager {
   std::string GetAVFSPath(const std::string& path,
                           const std::string& extension) const;
 
-  // Starts AVFS daemons to initialize AVFS mounts. Returns true on success or
-  // if the AVFS daemons have started.
-  bool StartAVFS();
+  // Starts AVFS daemons to initialize AVFS mounts. Returns MOUNT_ERROR_NONE on
+  // success or if the daemons have already been started.
+  MountErrorType StartAVFS();
 
   // Stops AVFS daemons and unmounts AVFS mounts. Returns true on success or if
   // the AVFS daemons have not yet started.
   bool StopAVFS();
 
-  // Mounts |base_path| to |avfs_path| via AVFS. Return true on success.
-  bool MountAVFSPath(const std::string& base_path,
-                     const std::string& avfs_path) const;
+  // Mounts |base_path| to |avfs_path| via AVFS.
+  MountErrorType MountAVFSPath(const std::string& base_path,
+                               const std::string& avfs_path) const;
 
   // Adds a mapping of |mount_path| to |virtual_path| to |virtual_paths_|.
   // An existing mapping of |mount_path| is overwritten.

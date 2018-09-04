@@ -135,9 +135,10 @@ MountErrorType ArchiveManager::DoMount(const string& source_path,
     return MOUNT_ERROR_UNSUPPORTED_ARCHIVE;
   }
 
-  if (!StartAVFS()) {
+  MountErrorType avfs_start_error = StartAVFS();
+  if (avfs_start_error != MOUNT_ERROR_NONE) {
     LOG(ERROR) << "Failed to start AVFS mounts.";
-    return MOUNT_ERROR_INTERNAL;
+    return avfs_start_error;
   }
 
   // Perform a bind mount from the archive path under the AVFS mount
@@ -270,9 +271,9 @@ string ArchiveManager::GetAVFSPath(const string& path,
   return string();
 }
 
-bool ArchiveManager::StartAVFS() {
+MountErrorType ArchiveManager::StartAVFS() {
   if (avfs_started_)
-    return true;
+    return MOUNT_ERROR_NONE;
 
   // As cros-disks is now an non-privileged process, the directory tree under
   // |kAVFSRootDirectory| is created by the pre-start script of the cros-disks
@@ -290,7 +291,7 @@ bool ArchiveManager::StartAVFS() {
       (dir_user_id != avfs_user_id) || (dir_group_id != avfs_group_id) ||
       ((dir_mode & 07777) != kAVFSDirectoryPermissions)) {
     LOG(ERROR) << kAVFSRootDirectory << " isn't created properly";
-    return false;
+    return MOUNT_ERROR_INTERNAL;
   }
 
   // Set the AVFS_LOGFILE environment variable so that the AVFS daemon
@@ -309,14 +310,20 @@ bool ArchiveManager::StartAVFS() {
         !platform()->GetOwnership(avfs_path, &dir_user_id, &dir_group_id) ||
         !platform()->GetPermissions(avfs_path, &dir_mode) ||
         (dir_user_id != avfs_user_id) || (dir_group_id != avfs_group_id) ||
-        ((dir_mode & 07777) != kAVFSDirectoryPermissions) ||
-        !MountAVFSPath(mapping.base_path, avfs_path)) {
+        ((dir_mode & 07777) != kAVFSDirectoryPermissions)) {
       LOG(ERROR) << avfs_path << " isn't created properly";
       StopAVFS();
-      return false;
+      return MOUNT_ERROR_INTERNAL;
+    }
+
+    MountErrorType mount_error = MountAVFSPath(mapping.base_path, avfs_path);
+    if (mount_error != MOUNT_ERROR_NONE) {
+      LOG(ERROR) << "Failed to mount AVFS path " << avfs_path;
+      StopAVFS();
+      return mount_error;
     }
   }
-  return true;
+  return MOUNT_ERROR_NONE;
 }
 
 bool ArchiveManager::StopAVFS() {
@@ -337,22 +344,25 @@ bool ArchiveManager::StopAVFS() {
   return all_unmounted;
 }
 
-bool ArchiveManager::MountAVFSPath(const string& base_path,
-                                   const string& avfs_path) const {
+MountErrorType ArchiveManager::MountAVFSPath(const string& base_path,
+                                             const string& avfs_path) const {
   MountInfo mount_info;
   if (!mount_info.RetrieveFromCurrentProcess())
-    return false;
+    return MOUNT_ERROR_INTERNAL;
 
   if (mount_info.HasMountPath(avfs_path)) {
     LOG(WARNING) << "Path '" << avfs_path << "' is already mounted.";
-    return false;
+    // Not using MOUNT_ERROR_PATH_ALREADY_MOUNTED here because that implies an
+    // error on the user-requested mount. The error here is for the avfsd
+    // daemon.
+    return MOUNT_ERROR_INTERNAL;
   }
 
   uid_t user_id;
   gid_t group_id;
   if (!platform()->GetUserAndGroupId(kAVFSMountUser, &user_id, nullptr) ||
       !platform()->GetGroupId(kAVFSMountGroup, &group_id)) {
-    return false;
+    return MOUNT_ERROR_INTERNAL;
   }
 
   SandboxedProcess mount_process;
@@ -368,16 +378,21 @@ bool ArchiveManager::MountAVFSPath(const string& base_path,
   // supports it.
   mount_process.SetUserId(user_id);
   mount_process.SetGroupId(group_id);
-  if (mount_process.Run() != 0 || !mount_info.RetrieveFromCurrentProcess() ||
+  int return_code = mount_process.Run();
+  if (return_code != 0) {
+    LOG(WARNING) << "AVFS program failed with a return code " << return_code;
+    return MOUNT_ERROR_MOUNT_PROGRAM_FAILED;
+  }
+  if (!mount_info.RetrieveFromCurrentProcess() ||
       !mount_info.HasMountPath(avfs_path)) {
     LOG(WARNING) << "Failed to mount '" << base_path << "' to '" << avfs_path
                  << "' via AVFS";
-    return false;
+    return MOUNT_ERROR_INTERNAL;
   }
 
   LOG(INFO) << "Mounted '" << base_path << "' to '" << avfs_path
             << "' via AVFS";
-  return true;
+  return MOUNT_ERROR_NONE;
 }
 
 void ArchiveManager::AddMountVirtualPath(const string& mount_path,
