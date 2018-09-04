@@ -1,0 +1,137 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Compile protocol buffers.
+#
+# Paramaeters:
+#   proto_in_dir
+#       Input directory.
+#   proto_out_dir
+#       Output directory.
+#   sources
+#       The proto file paths.
+#   configs (optional)
+#       Configs applied to the generated library.
+#   deps (optional)
+#       Deps applied to the generated library.
+#   gen_python (optional)
+#       If true, generates Python binding.
+#   gen_go (optional)
+#       If true, generates Go binding.
+#   gen_go_grpc (optional)
+#       If true, generates Go GRPC.
+#   gen_grpc (optional)
+#       If true, generates C++ GRPC.
+#   use_shared_library (optional)
+#       If true, generates a shared library instead of a static library.
+template("proto_library") {
+  action_name = "${target_name}_gen"
+  action_foreach(action_name) {
+    visibility = [ ":*" ]
+
+    forward_variables_from(invoker,
+                           [
+                             "proto_in_dir",
+                             "proto_out_dir",
+                             "gen_python",
+                             "gen_go",
+                             "gen_go_grpc",
+                             "gen_grpc",
+                           ])
+
+    proto_in_dir = rebase_path(proto_in_dir)
+    proto_out_dir = rebase_path(proto_out_dir)
+    cc_dir = "${target_gen_dir}/${proto_out_dir}"
+
+    if (!defined(gen_python)) {
+      gen_python = false
+    }
+    if (!defined(gen_go)) {
+      gen_go = false
+    }
+    if (!defined(gen_go_grpc)) {
+      gen_go_grpc = false
+    }
+    if (!defined(gen_grpc)) {
+      gen_grpc = false
+    }
+    sources = invoker.sources
+
+    script = "//common-mk/file_generator_wrapper.py"
+    args = [
+      "protoc",
+      "--proto_path",
+      "${proto_in_dir}",
+      "--proto_path",
+      "${sysroot}/usr/share/proto",
+      "${proto_in_dir}/{{source_name_part}}.proto",
+    ]
+    outputs = []
+    if (gen_go) {
+      go_dir = "${target_gen_dir}/${proto_out_dir}"
+      args += [
+        "--go_out",
+        "${go_dir}",
+      ]
+      outputs += [ "${go_dir}/{{source_name_part}}.pb.go" ]
+    }
+    if (gen_python) {
+      python_dir = "${target_gen_dir}/${proto_out_dir}/py"
+      args += [
+        "--python_out",
+        "${python_dir}",
+      ]
+      outputs += [ "${python_dir}/{{source_name_part}}_pb.py" ]
+    }
+    if (gen_grpc == 1) {
+      args += [
+        "--grpc_out=${cc_dir}",
+        "--plugin=protoc-gen-grpc=${grpc_cpp_plugin}",
+        "--cpp_out=${cc_dir}",
+      ]
+      outputs += [
+        "${cc_dir}/{{source_name_part}}.grpc.pb.cc",
+        "${cc_dir}/{{source_name_part}}.grpc.pb.h",
+        "${cc_dir}/{{source_name_part}}.pb.cc",
+        "${cc_dir}/{{source_name_part}}.pb.h",
+      ]
+    }
+    if (gen_go_grpc) {
+      args += [ "--go_out=plugins=grpc:${go_dir}" ]
+      outputs += [ "${go_dir}/{{source_name_part}}.pb.go" ]
+    }
+    if (!gen_grpc && !gen_go_grpc && !gen_go && !gen_python) {
+      args += [
+        "--cpp_out",
+        "${cc_dir}",
+      ]
+      outputs += [
+        "${cc_dir}/{{source_name_part}}.pb.cc",
+        "${cc_dir}/{{source_name_part}}.pb.h",
+      ]
+    }
+  }
+
+  my_type = "static_library"
+  if (defined(invoker.use_shared_library) && invoker.use_shared_library) {
+    my_type = "shared_library"
+  }
+  target(my_type, target_name) {
+    forward_variables_from(invoker,
+                           [
+                             "defines",
+                             "visibility",
+                           ])
+    if (defined(invoker.configs)) {
+      configs += invoker.configs
+    }
+    sources = get_target_outputs(":${action_name}")
+    deps = [
+      ":${action_name}",
+    ]
+    if (defined(invoker.deps)) {
+      deps += invoker.deps
+    }
+  }
+}

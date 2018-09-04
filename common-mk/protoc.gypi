@@ -1,3 +1,5 @@
+# Caution!: GYP to GN migration is happening. If you update this file, please
+# update common-mk/proto_library.gni too accordingly.
 {
   'variables': {
     'cc_dir': '<(SHARED_INTERMEDIATE_DIR)/<(proto_out_dir)',
