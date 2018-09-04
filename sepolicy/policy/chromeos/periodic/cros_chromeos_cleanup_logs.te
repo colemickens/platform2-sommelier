@@ -1,0 +1,5 @@
+type cros_chromeos_cleanup_logs, chromeos_domain, domain, mlstrustedobject;
+
+permissive cros_chromeos_cleanup_logs;
+
+domain_auto_trans(cros_periodic_scheduler, cros_chromeos_cleanup_logs_exec, cros_chromeos_cleanup_logs);

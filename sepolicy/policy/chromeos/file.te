@@ -1,13 +1,18 @@
 # TODO(fqj): go over files of cros_system_file, and to label exec only and rename with _exec suffix.
 type cros_system_file, exec_type, file_type;
+
 type cros_anomaly_collector_exec, exec_type, file_type;
 type cros_avahi_daemon_exec, exec_type, file_type;
 type cros_chapsd_exec, exec_type, file_type;
+type cros_chromeos_cleanup_logs_exec, exec_type, file_type;
+type cros_chromeos_trim_exec, exec_type, file_type;
 type cros_chrt_exec, exec_type, file_type;
 type cros_crash_reporter_exec, exec_type, file_type;
+type cros_crash_sender_exec, exec_type, file_type;
 type cros_cryptohomed_exec, exec_type, file_type;
 type cros_dbus_daemon_exec, exec_type, file_type;
 type cros_debugd_exec, exec_type, file_type;
+type cros_machine_id_regen_exec, exec_type, file_type;
 type cros_metrics_daemon_exec, exec_type, file_type;
 type cros_minijail_exec, exec_type, file_type;
 type cros_modprobe_exec, exec_type, file_type;

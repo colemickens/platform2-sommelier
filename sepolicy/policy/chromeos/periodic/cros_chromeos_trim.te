@@ -1,0 +1,5 @@
+type cros_chromeos_trim, chromeos_domain, domain, mlstrustedobject;
+
+permissive cros_chromeos_trim;
+
+domain_auto_trans(cros_periodic_scheduler, cros_chromeos_trim_exec, cros_chromeos_trim);
