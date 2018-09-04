@@ -63,6 +63,7 @@
       ],
       'sources': [
         'oobe_config_restore_main.cc',
+        'oobe_config_restore_service.cc',
       ],
     },
   ],
