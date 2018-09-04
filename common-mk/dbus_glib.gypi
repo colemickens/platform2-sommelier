@@ -1,3 +1,5 @@
+# Caution!: GYP to GN migration is happening. If you update this file, please
+# update common-mk/dbus_glib.gni too accordingly.
 {
   'variables': {
     # Use nested variables section, so that default values are evaluated
