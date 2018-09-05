@@ -733,14 +733,16 @@ void Metrics::Start() {
   };
   base::FilePath backing_path(kMetricCumulativeDirectory);
   cumulative_metrics_.reset(
-    new chromeos_metrics::CumulativeMetrics(
-      backing_path,
-      technology_names,
-      base::TimeDelta::FromMinutes(5),
-      base::Bind(&AccumulateTimeOnTechnology, this),
-      base::TimeDelta::FromDays(1),
-      base::Bind(&ReportTimeOnTechnology,
-                 base::Unretained(&metrics_library_))));
+      new chromeos_metrics::CumulativeMetrics(
+          backing_path,
+          technology_names,
+          base::TimeDelta::FromSeconds(
+              kMetricsCumulativeTimeOnlineSamplePeriod),
+          base::Bind(&AccumulateTimeOnTechnology, this),
+          base::TimeDelta::FromSeconds(
+              kMetricsCumulativeTimeOnlineAccumulationPeriod),
+          base::Bind(&ReportTimeOnTechnology,
+                     base::Unretained(&metrics_library_))));
 }
 
 void Metrics::Stop() {
