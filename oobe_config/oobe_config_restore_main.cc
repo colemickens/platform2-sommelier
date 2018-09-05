@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <base/command_line.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/syslog_logging.h>
@@ -66,8 +68,16 @@ int RunDaemon() {
 
 }  // namespace oobe_config
 
+const char kTestUnencrypted[] = "test-unencrypted";
+
 int main(int argc, char* argv[]) {
   oobe_config::InitLog();
 
-  return oobe_config::RunDaemon();
+  base::CommandLine::Init(argc, argv);
+  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
+  if (cl->HasSwitch(kTestUnencrypted)) {
+    return oobe_config::OobeConfig().UnencryptedRollbackRestore();
+  } else {
+    return oobe_config::RunDaemon();
+  }
 }

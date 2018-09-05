@@ -4,6 +4,7 @@
       'deps': [
         'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
+        'protobuf-lite',
       ],
     },
   },
@@ -26,6 +27,7 @@
       'target_name': 'liboobeconfig',
       'type': 'static_library',
       'dependencies': [
+        'oobe_config_proto',
       ],
       'variables': {
         'gen_src_in_dir': '<(SHARED_INTERMEDIATE_DIR)/include/bindings',
@@ -36,6 +38,11 @@
       'sources': [
         'oobe_config.cc',
       ],
+      'link_settings': {
+        'libraries': [
+          '-lpolicy-<(libbase_ver)',
+        ],
+      },
     },
     {
       'target_name': 'finish_oobe_auto_config',
@@ -66,6 +73,21 @@
         'oobe_config_restore_service.cc',
       ],
     },
+    {
+      'target_name': 'oobe_config_proto',
+      'type': 'static_library',
+      'variables': {
+        'proto_in_dir': '.',
+        'proto_out_dir': 'include/oobe_config',
+      },
+      'sources': [
+        '<(proto_in_dir)/rollback_data.proto',
+      ],
+      'includes': [
+        '../common-mk/protoc.gypi',
+      ],
+    },
+
   ],
   # Unit tests.
   'conditions': [

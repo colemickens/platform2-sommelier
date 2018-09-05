@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <base/command_line.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <brillo/syslog_logging.h>
 
@@ -22,9 +24,17 @@ void InitLog() {
 
 }  // namespace oobe_config
 
+const char kTestUnencrypted[] = "test-unencrypted";
+
 int main(int argc, char* argv[]) {
   oobe_config::InitLog();
 
-  // TODO(zentaro): Replace with real implementation.
-  LOG(INFO) << oobe_config::Hello() << " save.";
+  base::CommandLine::Init(argc, argv);
+  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
+  if (cl->HasSwitch(kTestUnencrypted)) {
+    oobe_config::OobeConfig().UnencryptedRollbackSave();
+  } else {
+    // Encrypted data save is not supported yet.
+    LOG(INFO) << "Not supported yet.";
+  }
 }

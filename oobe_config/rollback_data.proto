@@ -1,0 +1,28 @@
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+syntax = "proto3";
+option optimize_for = LITE_RUNTIME;
+
+package oobe_config;
+
+// Policy data which might include multiple files.
+message PolicyData {
+  // Contents of the policy files.
+  repeated bytes policy_file = 1;
+  // Indices of the policy files in the respective order.
+  repeated int32 policy_index = 2;
+}
+
+// Data we want to save before rollback and restore after it happened.
+message RollbackData {
+  // Install attributes file (/home/.shadow/install_attributes.pb)
+  bytes install_attributes = 1;
+  // Owner key file (/var/lib/whitelist/owner.key)
+  bytes owner_key = 2;
+  // Policy data (/var/lib/whitelist/policy*)
+  PolicyData device_policy = 3;
+  // Shill default profile (/var/cache/shill/default.profile)
+  bytes shill_default_profile = 4;
+}

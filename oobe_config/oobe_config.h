@@ -5,12 +5,71 @@
 #ifndef OOBE_CONFIG_OOBE_CONFIG_H_
 #define OOBE_CONFIG_OOBE_CONFIG_H_
 
+#include <base/files/file_path.h>
 #include <string>
 
 namespace oobe_config {
 
-// TODO(zentaro): Stub method. Remove with first real commit.
-std::string Hello();
+class RollbackData;
+
+class OobeConfig {
+ public:
+  OobeConfig() {}
+
+  // Saves the rollback data into an unencrypted file. Only use for testing.
+  bool UnencryptedRollbackSave();
+
+  // Restores the rollback data from an unencrypted file. Only use for testing.
+  bool UnencryptedRollbackRestore();
+
+  // Sets a prefix path which is used as file system root when testing. Setting
+  // to an empty path removes the prefix.
+  void set_prefix_path_for_testing(const base::FilePath& prefix_path) {
+    prefix_path_for_testing_ = prefix_path;
+  }
+
+  // Reads the content of the file at |file_path| (inside the testing prefix if
+  // set) and returns it in |out_content|.
+  // Returns true if reading the file succeeded.
+  // Returns false if the file doesn't exist or reading it fails, |out_content|
+  // is set to empty string in this case.
+  bool ReadFile(const base::FilePath& file_path, std::string* out_content);
+
+  // Writes |data| into a file at |file_path| (inside the testing prefix if
+  // set).
+  // Returns true if writing the file succeeded, false otherwise.
+  bool WriteFile(const base::FilePath& file_path, const std::string& data);
+
+ private:
+  // Returns the file path of |file_path| which includes the prefix if set.
+  // |file_path| must be an absolute path starting with "/".
+  base::FilePath GetPrefixedFilePath(const base::FilePath& file_path);
+
+  // Reads the content of the file at |file_path| and returns it in
+  // |out_content|. Doesn't respect the testing prefix. Returns true if reading
+  // the file succeeded. Returns false if the file doesn't exist or reading it
+  // fails, |out_content| is set to empty string in this case.
+  bool ReadFileWithoutPrefix(const base::FilePath& file_path,
+                             std::string* out_content);
+  // Writes |data| into a file at |file_path|. Doesn't respect the testing
+  // prefix. Returns true if the write succeeded, false otherwise.
+  bool WriteFileWithoutPrefix(const base::FilePath& file_path,
+                              const std::string& data);
+
+  // Gets the files needed for rollback and returns them in |rollback_data|.
+  // Returns true if succeeded, false otherwise.
+  bool GetRollbackData(RollbackData* rollback_data);
+
+  // Restores the files stored in |rollback_data|. Returns true if succeeded,
+  // false otherwise.
+  bool RestoreRollbackData(const RollbackData& rollback_data);
+
+  // We're prefixing all paths for testing with a temp directory. Empty (no
+  // prefix) by default.
+  base::FilePath prefix_path_for_testing_;
+
+  DISALLOW_COPY_AND_ASSIGN(OobeConfig);
+};
 
 }  // namespace oobe_config
 
