@@ -1,6 +1,3 @@
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'variables': {
@@ -39,7 +36,7 @@
           },
           'sources': [
             'usb.cc',
-            'usb_unittest.cc',
+            'usb_test.cc',
           ],
         },
       ],
