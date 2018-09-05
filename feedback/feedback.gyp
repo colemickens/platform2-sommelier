@@ -1,6 +1,3 @@
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'variables': {
@@ -115,7 +112,7 @@
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
-            'feedback_service_unittest.cc',
+            'feedback_service_test.cc',
           ],
         },
       ],
