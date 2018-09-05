@@ -1,6 +1,3 @@
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'variables': {
@@ -47,7 +44,7 @@
     ['USE_test == 1', {
       'targets': [
         {
-          'target_name': 'cros_config_unittest',
+          'target_name': 'cros_config_test',
           'type': 'executable',
           'includes': ['../common-mk/common_test.gypi'],
           'include_dirs': [
@@ -57,11 +54,11 @@
             'libcros_config',
           ],
           'sources': [
-            'libcros_config/cros_config_unittest.cc',
+            'libcros_config/cros_config_test.cc',
           ],
         },
         {
-          'target_name': 'cros_config_json_unittest',
+          'target_name': 'cros_config_json_test',
           'type': 'executable',
           'defines': [
             'USE_JSON',
@@ -74,22 +71,22 @@
             'libcros_config',
           ],
           'sources': [
-            'libcros_config/cros_config_unittest.cc',
+            'libcros_config/cros_config_test.cc',
           ],
         },
         {
-          'target_name': 'cros_config_main_unittest',
+          'target_name': 'cros_config_main_test',
           'type': 'executable',
           'includes': ['../common-mk/common_test.gypi'],
           'dependencies': [
             'cros_config',
           ],
           'sources': [
-            'cros_config_main_unittest.cc',
+            'cros_config_main_test.cc',
           ],
         },
         {
-          'target_name': 'cros_config_main_json_unittest',
+          'target_name': 'cros_config_main_json_test',
           'type': 'executable',
           'defines': [
             'USE_JSON',
@@ -99,11 +96,11 @@
             'cros_config',
           ],
           'sources': [
-            'cros_config_main_unittest.cc',
+            'cros_config_main_test.cc',
           ],
         },
         {
-          'target_name': 'fake_cros_config_unittest',
+          'target_name': 'fake_cros_config_test',
           'type': 'executable',
           'includes': ['../common-mk/common_test.gypi'],
           'include_dirs': [
@@ -113,7 +110,7 @@
             'libcros_config',
           ],
           'sources': [
-            'libcros_config/fake_cros_config_unittest.cc',
+            'libcros_config/fake_cros_config_test.cc',
           ],
         },
       ],
