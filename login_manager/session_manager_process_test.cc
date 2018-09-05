@@ -18,6 +18,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/strings/string_util.h>
 #include <brillo/message_loops/fake_message_loop.h>
+#include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -216,6 +217,42 @@ inline testing::Matcher<dbus::MethodCall*> HandleSuspendReadinessMethod(
       new HandleSuspendReadinessMethodMatcher(delay_id, suspend_id));
 }
 
+class StopAllVmsMethodMatcher
+    : public ::testing::MatcherInterface<dbus::MethodCall*> {
+ public:
+  StopAllVmsMethodMatcher() = default;
+
+  bool MatchAndExplain(
+      dbus::MethodCall* method_call,
+      ::testing::MatchResultListener* listener) const override {
+    // Make sure we've got the right kind of method call.
+    if (method_call->GetInterface() !=
+        vm_tools::concierge::kVmConciergeInterface) {
+      *listener << "interface was " << method_call->GetInterface();
+      return false;
+    }
+
+    if (method_call->GetMember() != vm_tools::concierge::kStopAllVmsMethod) {
+      *listener << "method name was " << method_call->GetMember();
+      return false;
+    }
+
+    return true;
+  }
+
+  void DescribeTo(::std::ostream* os) const override {
+    *os << "StopAllVms method call";
+  }
+
+  void DescribeNegationTo(::std::ostream* os) const override {
+    *os << "non-StopAllVms method call";
+  }
+};
+
+inline testing::Matcher<dbus::MethodCall*> StopAllVmsMethod() {
+  return MakeMatcher(new StopAllVmsMethodMatcher());
+}
+
 // Browser processes get correctly terminated.
 TEST_F(SessionManagerProcessTest, CleanupBrowser) {
   FakeBrowserJob* job = CreateMockJobAndInitManager(false);
@@ -352,6 +389,22 @@ TEST_F(SessionManagerProcessTest, TestAbortedBrowserPidWritten) {
   ASSERT_TRUE(base::ReadFileToString(aborted_browser_pid_path_, &read_pid_str));
   int read_pid = atoi(read_pid_str.c_str());
   EXPECT_EQ(kDummyPid, read_pid);
+}
+
+// When the vm_concierge service is running, stop all vms when chrome exits.
+TEST_F(SessionManagerProcessTest, StopAllVms) {
+  FakeBrowserJob* job = CreateMockJobAndInitManager(true);
+  scoped_refptr<MockObjectProxy> vm_concierge_proxy(new MockObjectProxy());
+  manager_->test_api().set_vm_concierge_proxy(vm_concierge_proxy.get());
+  manager_->test_api().set_vm_concierge_available(true);
+
+  EXPECT_CALL(*vm_concierge_proxy.get(), CallMethod(StopAllVmsMethod(), _, _))
+      .Times(2);
+
+  ExpectLivenessChecking();
+  ExpectOneJobReRun(job, PackSignal(0));
+
+  SimpleRunManager();
 }
 
 }  // namespace login_manager

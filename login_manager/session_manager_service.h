@@ -93,6 +93,12 @@ class SessionManagerService
     void set_aborted_browser_pid_path(const base::FilePath& path) {
       session_manager_service_->aborted_browser_pid_path_ = path;
     }
+    void set_vm_concierge_proxy(dbus::ObjectProxy* proxy) {
+      session_manager_service_->vm_concierge_dbus_proxy_ = proxy;
+    }
+    void set_vm_concierge_available(bool available) {
+      session_manager_service_->vm_concierge_available_ = available;
+    }
 
     // Executes the CleanupChildren() method on the manager.
     void CleanupChildren(int timeout_sec) {
@@ -208,14 +214,28 @@ class SessionManagerService
   // Callback when receiving a termination signal.
   bool OnTerminationSignal(const struct signalfd_siginfo& info);
 
+  // Called when the owner of the vm_concierge D-Bus service changes.
+  void VmConciergeOwnerChanged(const std::string& old_owner,
+                               const std::string& new_owner);
+
+  // Called when the vm_concierge D-Bus service becomes available.
+  void VmConciergeAvailable(bool is_available);
+
+  // Stops all running VMs if the vm_concierge D-Bus service is available.
+  void MaybeStopAllVms();
+
   std::unique_ptr<BrowserJobInterface> browser_;
   bool exit_on_child_done_;
   const base::TimeDelta kill_timeout_;
 
   scoped_refptr<dbus::Bus> bus_;
   const std::string match_rule_;
-  dbus::ObjectProxy* screen_lock_dbus_proxy_;  // Owned by |bus_|.
-  dbus::ObjectProxy* powerd_dbus_proxy_;       // Owned by |bus_|.
+  dbus::ObjectProxy* screen_lock_dbus_proxy_;   // Owned by |bus_|.
+  dbus::ObjectProxy* powerd_dbus_proxy_;        // Owned by |bus_|.
+  dbus::ObjectProxy* vm_concierge_dbus_proxy_;  // Owned by |bus_|.
+
+  // True when the vm_concierge service is available.
+  bool vm_concierge_available_;
 
   LoginMetrics* login_metrics_;  // Owned by the caller.
   SystemUtils* system_;          // Owned by the caller.

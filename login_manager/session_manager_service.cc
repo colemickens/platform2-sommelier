@@ -61,8 +61,17 @@ const char kContainerInstallDirectory[] = "/opt/google/containers";
 // session_manager.
 const char kAbortedBrowserPidPath[] = "/run/chrome/aborted_browser_pid";
 
+// How long to wait before timing out on a StopAllVms message.  Wait up to 2
+// minutes as there may be multiple VMs and they may each take some time to
+// cleanly shut down.
+constexpr int kStopAllVmsTimeoutMs = 120000;
+
 // I need a do-nothing action for SIGALRM, or using alarm() will kill me.
 void DoNothing(int signal) {}
+
+// Nothing to do for handling a response to a StopAllVms D-Bus request. We
+// should replace this with base::DoNothing() if we ever uprev libchrome.
+void HandleStopAllVmsResponse(dbus::Response*) {}
 
 const char* ExitCodeToString(SessionManagerService::ExitCode code) {
   switch (code) {
@@ -121,6 +130,8 @@ SessionManagerService::SessionManagerService(
                                      kSessionManagerInterface)),
       screen_lock_dbus_proxy_(nullptr),
       powerd_dbus_proxy_(nullptr),
+      vm_concierge_dbus_proxy_(nullptr),
+      vm_concierge_available_(false),
       login_metrics_(metrics),
       system_(utils),
       nss_(NssUtil::Create()),
@@ -155,6 +166,15 @@ bool SessionManagerService::Initialize() {
   powerd_dbus_proxy_ = bus_->GetObjectProxy(
       power_manager::kPowerManagerServiceName,
       dbus::ObjectPath(power_manager::kPowerManagerServicePath));
+
+  vm_concierge_dbus_proxy_ = bus_->GetObjectProxy(
+      vm_tools::concierge::kVmConciergeServiceName,
+      dbus::ObjectPath(vm_tools::concierge::kVmConciergeServicePath));
+
+  vm_concierge_dbus_proxy_->SetNameOwnerChangedCallback(base::Bind(
+      &SessionManagerService::VmConciergeOwnerChanged, base::Unretained(this)));
+  vm_concierge_dbus_proxy_->WaitForServiceToBeAvailable(base::Bind(
+      &SessionManagerService::VmConciergeAvailable, base::Unretained(this)));
 
   dbus::ObjectProxy* system_clock_proxy = bus_->GetObjectProxy(
       system_clock::kSystemClockServiceName,
@@ -305,6 +325,9 @@ bool SessionManagerService::HandleExit(const siginfo_t& status) {
   // Also ensure all containers are gone.
   android_container_->RequestJobExit(ArcContainerStopReason::BROWSER_SHUTDOWN);
   android_container_->EnsureJobExit(SessionManagerImpl::kContainerTimeout);
+
+  // Stop any running VMs.
+  MaybeStopAllVms();
 
   // Do nothing if already shutting down.
   if (shutting_down_)
@@ -498,6 +521,30 @@ bool SessionManagerService::OnTerminationSignal(
     const struct signalfd_siginfo& info) {
   ScheduleShutdown();
   return true;
+}
+
+void SessionManagerService::VmConciergeOwnerChanged(
+    const std::string& old_owner, const std::string& new_owner) {
+  vm_concierge_available_ = !new_owner.empty();
+}
+
+void SessionManagerService::VmConciergeAvailable(bool is_available) {
+  vm_concierge_available_ = is_available;
+}
+
+void SessionManagerService::MaybeStopAllVms() {
+  if (!vm_concierge_available_) {
+    // The vm_concierge D-Bus service is not running so there are no VMs to
+    // stop.
+    return;
+  }
+
+  // Stop all running VMs.  We do this asynchronously as we don't need to wait
+  // for the VMs to exit before restarting chrome.
+  dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
+                               vm_tools::concierge::kStopAllVmsMethod);
+  vm_concierge_dbus_proxy_->CallMethod(&method_call, kStopAllVmsTimeoutMs,
+                                       base::Bind(&HandleStopAllVmsResponse));
 }
 
 }  // namespace login_manager
