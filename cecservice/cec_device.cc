@@ -268,7 +268,7 @@ bool CecDeviceImpl::ProcessWrite() {
 
   struct cec_msg message = message_queue_.front();
   const CecFd::TransmitResult ret = SendMessage(&message);
-  if (ret == CecFd::TransmitResult::kWouldBlock) {
+  if (ret == CecFd::TransmitResult::kBusy) {
     return true;
   }
 

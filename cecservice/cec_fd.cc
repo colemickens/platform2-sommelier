@@ -64,8 +64,8 @@ CecFd::TransmitResult CecFdImpl::TransmitMessage(
     switch (errno) {
       case ENONET:
         return TransmitResult::kNoNet;
-      case EWOULDBLOCK:
-        return TransmitResult::kWouldBlock;
+      case EBUSY:
+        return TransmitResult::kBusy;
       case EINVAL:
         return TransmitResult::kInvalidValue;
       default:

@@ -397,7 +397,7 @@ TEST_F(CecDeviceTest, TestFailureToSendMessageDisablesDevice) {
   EXPECT_TRUE(Mock::VerifyAndClearExpectations(cec_fd_mock_));
 }
 
-TEST_F(CecDeviceTest, TestErrorWouldBlockRetries) {
+TEST_F(CecDeviceTest, TestErrorBusyRetries) {
   Init();
   Connect();
 
@@ -408,7 +408,7 @@ TEST_F(CecDeviceTest, TestErrorWouldBlockRetries) {
   EXPECT_CALL(*cec_fd_mock_, TransmitMessage(_))
       .Times(2)
       .WillRepeatedly(DoAll(SaveArgPointee<0>(&sent_message_),
-                            Return(CecFd::TransmitResult::kWouldBlock)));
+                            Return(CecFd::TransmitResult::kBusy)));
   device_->SetWakeUp();
   event_callback_.Run(CecFd::EventType::kWrite);
 

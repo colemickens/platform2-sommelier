@@ -35,7 +35,7 @@ class CecFd {
   enum class TransmitResult {
     kOk,            // Operation succeeded.
     kNoNet,         // Operation failed, ENONET reported.
-    kWouldBlock,    // Operation failed, EWOULDBLOCK reported.
+    kBusy,          // Operation failed, no space in output buffer.
     kInvalidValue,  // Operation failed, EINVAL reported.
     kError,         // Operation failed, not recoverable error.
   };
