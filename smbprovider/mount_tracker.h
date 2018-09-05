@@ -7,12 +7,15 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 #include <base/callback.h>
 #include <base/macros.h>
 
 #include "smbprovider/constants.h"
+#include "smbprovider/id_map.h"
 #include "smbprovider/metadata_cache.h"
 #include "smbprovider/samba_interface.h"
 #include "smbprovider/smb_credential.h"
@@ -55,6 +58,16 @@ class MountTracker {
 
     DISALLOW_COPY_AND_ASSIGN(MountInfo);
   };
+
+  // Maps MountId to MountInfo.
+  IdMap<MountInfo> mounts_;
+
+  // Maps SambaInterfaceId to MountId.
+  std::unordered_map<SambaInterface::SambaInterfaceId, int32_t>
+      samba_interface_map_;
+
+  // Keeps track of share paths that have been mounted.
+  std::unordered_set<std::string> mounted_share_paths_;
 
   DISALLOW_COPY_AND_ASSIGN(MountTracker);
 };
