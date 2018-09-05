@@ -550,6 +550,16 @@ class Metrics {
     kDarkResumeScanRetryResultMax
   };
 
+  // Identifiers for indices in cumulative name arrays.  The FRACTION entries
+  // must be last.
+  enum CumulativeName {
+    CHOSEN_ANY = 0,
+    CHOSEN_CELLULAR = 1,
+    CHOSEN_WIFI = 2,
+    CHOSEN_FRACTION_CELLULAR = 3,
+    CHOSEN_FRACTION_WIFI = 4,
+  };
+
   static const char kMetricDisconnectSuffix[];
   static const int kMetricDisconnectMax;
   static const int kMetricDisconnectMin;
@@ -598,13 +608,22 @@ class Metrics {
   static const int kMetricTimeToConnectMillisecondsMin;
   static const int kMetricTimeToConnectMillisecondsNumBuckets;
   static const char kMetricTimeToScanAndConnectMillisecondsSuffix[];
-  static const char kMetricCumulativeDirectory[];
-  static const char kMetricCumulativeTimeOnlineAny[];
-  static const char kMetricCumulativeTimeOnlineCellular[];
-  static const char kMetricCumulativeTimeOnlineWifi[];
-  static const int kMetricsCumulativeTimeOnlineSamplePeriod;
-  static const int kMetricsCumulativeTimeOnlineAccumulationPeriod;
+  static const char kMetricsCumulativeDirectory[];
   static const int kMetricsCumulativeTimeOnlineBucketCount;
+  static const char kMetricsDailyChosenTimeOnlineAny[];
+  static const char kMetricsDailyChosenTimeOnlineCellular[];
+  static const char kMetricsDailyChosenTimeOnlineWifi[];
+  static const char kMetricsDailyChosenFractionOnlineCellular[];
+  static const char kMetricsDailyChosenFractionOnlineWifi[];
+  static const int kMetricsDailyTimeOnlineSamplePeriod;
+  static const int kMetricsDailyTimeOnlineAccumulationPeriod;
+  static const char kMetricsMonthlyChosenTimeOnlineAny[];
+  static const char kMetricsMonthlyChosenTimeOnlineCellular[];
+  static const char kMetricsMonthlyChosenTimeOnlineWifi[];
+  static const char kMetricsMonthlyChosenFractionOnlineCellular[];
+  static const char kMetricsMonthlyChosenFractionOnlineWifi[];
+  static const int kMetricsMonthlyTimeOnlineSamplePeriod;
+  static const int kMetricsMonthlyTimeOnlineAccumulationPeriod;
   static const char kMetricTimeToDropSeconds[];
   static const int kMetricTimeToDropSecondsMax;
   static const int kMetricTimeToDropSecondsMin;
@@ -918,11 +937,19 @@ class Metrics {
 
   // Callback for accumulating per-technology connected time.
   static void AccumulateTimeOnTechnology(
-      const Metrics* metrics, chromeos_metrics::CumulativeMetrics* cm);
+      const Metrics* metrics,
+      std::vector<std::string> cumulative_names,
+      chromeos_metrics::CumulativeMetrics* cm);
 
-  // Callback for reporting UMA stats on connected time per device per day.
+  // Callback for reporting UMA stats on connected time per device per time
+  // period.
   static void ReportTimeOnTechnology(
-      MetricsLibrary* ml, chromeos_metrics::CumulativeMetrics* cm);
+      MetricsLibrary* ml,
+      const std::vector<std::string> histogram_names,
+      const int min,
+      const int max,
+      const std::vector<std::string> cumulative_names,
+      chromeos_metrics::CumulativeMetrics* cm);
 
   // Starts this object.  Call this during initialization.
   virtual void Start();
@@ -1326,6 +1353,10 @@ class Metrics {
   // technology type.
   void NotifyDeviceRemovedEvent(Technology::Identifier technology_id);
 
+  // Returns |true| if and only if a device that supports |technology_id| is
+  // registered.
+  bool IsTechnologyPresent(Technology::Identifier technology_id) const;
+
   // For unit test purposes.
   void set_library(MetricsLibraryInterface* library);
   void set_time_online_timer(chromeos_metrics::Timer* timer) {
@@ -1386,7 +1417,8 @@ class Metrics {
   bool wake_on_wifi_throttled_;
   bool wake_reason_received_;
   int dark_resume_scan_retries_;
-  std::unique_ptr<chromeos_metrics::CumulativeMetrics> cumulative_metrics_;
+  std::unique_ptr<chromeos_metrics::CumulativeMetrics> daily_metrics_;
+  std::unique_ptr<chromeos_metrics::CumulativeMetrics> monthly_metrics_;
 
   DISALLOW_COPY_AND_ASSIGN(Metrics);
 };
