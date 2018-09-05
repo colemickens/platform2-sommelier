@@ -697,10 +697,14 @@ TEST_F(DaemonTest, DontResetForceLidOpenWhenNotUsingLid) {
 
 TEST_F(DaemonTest, FactoryMode) {
   prefs_->SetInt64(kFactoryModePref, 1);
+  prefs_->SetInt64(kUseLidPref, 1);
   prefs_->SetInt64(kHasAmbientLightSensorPref, 1);
   prefs_->SetInt64(kHasKeyboardBacklightPref, 1);
 
   Init();
+
+  // kNoForceLidOpenCommand shouldn't be executed at startup in factory mode.
+  EXPECT_EQ(std::vector<std::string>(), async_commands_);
 
   // Check that Daemon didn't initialize most objects related to adjusting the
   // display or keyboard backlights.
