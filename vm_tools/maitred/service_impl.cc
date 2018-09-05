@@ -360,8 +360,8 @@ grpc::Status ServiceImpl::StartTermina(grpc::ServerContext* ctx,
   // mkfs.btrfs will fail if the disk is already formatted as btrfs.
   // Optimistically continue on - if the mount fails, then return an error.
 
-  int ret =
-      mount("/dev/vdb", "/mnt/stateful", "btrfs", 0, "user_subvol_rm_allowed");
+  int ret = mount("/dev/vdb", "/mnt/stateful", "btrfs", 0,
+                  "user_subvol_rm_allowed,discard");
   if (ret != 0) {
     int saved_errno = errno;
     PLOG(ERROR) << "Failed to mount stateful disk";
