@@ -115,8 +115,14 @@ class CecDeviceImpl : public CecDevice {
   // Sends provided message.
   CecFd::TransmitResult SendMessage(struct cec_msg* msg);
 
-  // Sets logical address on the adapter (if it has not been yet configured),
-  // returns false if the operation failed.
+  // Sets the type of logical address on the adapter (if it has not been yet
+  // configured), returns false if the operation failed. Here we are only
+  // choosing the type of the address, the kernel will then do the probing and
+  // try to allocate first free address of the chosen type. The address type
+  // selection is permanent and survives device reconnects (every time EDID
+  // shows up, kernel will redo the probing and potentially can end up selecting
+  // different logical address). Since this selection is permanent it is
+  // sufficient to do it only once when we create the device.
   bool SetLogicalAddress();
 
   // Handles fd event.

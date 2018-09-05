@@ -62,6 +62,12 @@ bool CecDeviceImpl::Init() {
     DisableDevice();
     return false;
   }
+
+  if (!SetLogicalAddress()) {
+    DisableDevice();
+    return false;
+  }
+
   return true;
 }
 
@@ -203,7 +209,7 @@ bool CecDeviceImpl::ProcessStateChangeEvent(
     const struct cec_event_state_change& event) {
   switch (UpdateState(event)) {
     case State::kNoLogicalAddress:
-      return SetLogicalAddress();
+      return true;
     case State::kStart:
       RespondToAllPendingQueries(kTvPowerStatusAdapterNotConfigured);
       message_queue_.clear();

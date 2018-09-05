@@ -83,6 +83,13 @@ CecDeviceTest::CecDeviceTest() {
 void CecDeviceTest::Init() {
   ON_CALL(*cec_fd_mock_, SetEventCallback(_))
       .WillByDefault(DoAll(SaveArg<0>(&event_callback_), Return(true)));
+
+  ON_CALL(*cec_fd_mock_, GetLogicalAddresses(_))
+      .WillByDefault(Invoke([](struct cec_log_addrs* address) {
+        address->num_log_addrs = 1;
+        return true;
+      }));
+
   device_->Init();
   ASSERT_FALSE(event_callback_.is_null());
 }
@@ -123,10 +130,34 @@ TEST_F(CecDeviceTest, TestInitFail) {
   EXPECT_TRUE(Mock::VerifyAndClearExpectations(cec_fd_mock_));
 }
 
+TEST_F(CecDeviceTest, TestLogicalAddressGetFail) {
+  EXPECT_CALL(*cec_fd_mock_, SetEventCallback(_)).WillOnce(Return(true));
+  EXPECT_CALL(*cec_fd_mock_, GetLogicalAddresses(_)).WillOnce(Return(false));
+  EXPECT_CALL(*cec_fd_mock_, SetLogicalAddresses(_)).Times(0);
+  EXPECT_CALL(*cec_fd_mock_, CecFdDestructorCalled());
+  EXPECT_FALSE(device_->Init());
+  // Verify that the fd has been destroyed at this point, i.e.
+  // object has entered disabled state.
+  EXPECT_TRUE(Mock::VerifyAndClearExpectations(cec_fd_mock_));
+}
+
+TEST_F(CecDeviceTest, TestLogicalAddressSetFail) {
+  EXPECT_CALL(*cec_fd_mock_, SetEventCallback(_)).WillOnce(Return(true));
+  EXPECT_CALL(*cec_fd_mock_, GetLogicalAddresses(_))
+      .WillOnce(Invoke([](struct cec_log_addrs* address) {
+        address->num_log_addrs = 0;
+        return true;
+      }));
+  EXPECT_CALL(*cec_fd_mock_, SetLogicalAddresses(_)).WillOnce(Return(false));
+  EXPECT_CALL(*cec_fd_mock_, CecFdDestructorCalled());
+  EXPECT_FALSE(device_->Init());
+  // Verify that the fd has been destroyed at this point, i.e.
+  // object has entered disabled state.
+  EXPECT_TRUE(Mock::VerifyAndClearExpectations(cec_fd_mock_));
+}
+
 // Test the basic logical address configuration flow.
 TEST_F(CecDeviceTest, TestConnect) {
-  Init();
-
   EXPECT_CALL(*cec_fd_mock_, GetLogicalAddresses(_))
       .WillOnce(Invoke([](struct cec_log_addrs* address) {
         address->num_log_addrs = 0;
@@ -143,6 +174,8 @@ TEST_F(CecDeviceTest, TestConnect) {
           Field(&cec_log_addrs::osd_name, StrEq("Chrome OS")),
           Field(&cec_log_addrs::flags, CEC_LOG_ADDRS_FL_ALLOW_UNREG_FALLBACK))))
       .WillOnce(Return(true));
+
+  Init();
 
   SendStateUpdateEvent(kPhysicalAddress, 0);
   SendStateUpdateEvent(kPhysicalAddress, kLogicalAddressMask);
