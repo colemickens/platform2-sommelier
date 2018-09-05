@@ -1,6 +1,3 @@
-# TODO: Rename these files to pass this check.
-# gyplint: disable=GypLintSourceFileNames
-
 {
   'target_defaults': {
     'variables': {
@@ -138,7 +135,7 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'metrics_library_test.cc',
-            'serialization/serialization_utils_unittest.cc',
+            'serialization/serialization_utils_test.cc',
           ],
           'link_settings': {
             'libraries': [
@@ -160,8 +157,8 @@
           'type': 'executable',
           'sources': [
             'persistent_integer.cc',
-            'uploader/metrics_hashes_unittest.cc',
-            'uploader/metrics_log_base_unittest.cc',
+            'uploader/metrics_hashes_test.cc',
+            'uploader/metrics_log_base_test.cc',
             'uploader/mock/sender_mock.cc',
             'uploader/upload_service_test.cc',
           ],
