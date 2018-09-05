@@ -2183,14 +2183,6 @@ TEST_F(SessionManagerImplTest, StartArcMiniContainer) {
                   SessionManagerImpl::kStopArcInstanceImpulse, ElementsAre(),
                   InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-  // StartArcInstance does not emit kStartArcNetworkImpulse for login screen.
-  // Its OnStop closure does emit kStartArcNetworkStopImpulse but Upstart will
-  // ignore it.
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(SessionManagerImpl::kStopArcNetworkImpulse,
-                                     ElementsAre(),
-                                     InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   EXPECT_CALL(*exported_object(),
               SendSignal(SignalEq(login_manager::kArcInstanceStopped,
                                   ArcContainerStopReason::USER_REQUEST,
@@ -2247,19 +2239,6 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainer) {
                   SessionManagerImpl::kStopArcInstanceImpulse, ElementsAre(),
                   InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStartArcNetworkImpulse,
-                  ElementsAre(std::string("CONTAINER_NAME=") +
-                                  SessionManagerImpl::kArcContainerName,
-                              "CONTAINER_PID=" + std::to_string(kAndroidPid)),
-                  InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(Return(nullptr));
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(SessionManagerImpl::kStopArcNetworkImpulse,
-                                     ElementsAre(),
-                                     InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
   auto upgrade_request = CreateUpgradeArcContainerRequest();
   upgrade_request.set_scan_vendor_priv_app(true);
@@ -2304,14 +2283,6 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainerWithChild) {
           UpgradeContainerExpectationsBuilder(this).SetIsChild(true).Build(),
           InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStartArcNetworkImpulse,
-                  ElementsAre(std::string("CONTAINER_NAME=") +
-                                  SessionManagerImpl::kArcContainerName,
-                              "CONTAINER_PID=" + std::to_string(kAndroidPid)),
-                  InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(Return(nullptr));
 
   auto upgrade_request = CreateUpgradeArcContainerRequest();
   upgrade_request.set_is_child(true);
@@ -2339,14 +2310,6 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainerWithSupervisionTransition) {
                                  .Build(),
                              InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStartArcNetworkImpulse,
-                  ElementsAre(std::string("CONTAINER_NAME=") +
-                                  SessionManagerImpl::kArcContainerName,
-                              "CONTAINER_PID=" + std::to_string(kAndroidPid)),
-                  InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(Return(nullptr));
 
   auto upgrade_request = CreateUpgradeArcContainerRequest();
   upgrade_request.set_supervision_transition(
@@ -2411,19 +2374,6 @@ TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
               TriggerImpulseInternal(
                   SessionManagerImpl::kStopArcInstanceImpulse, ElementsAre(),
                   InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStartArcNetworkImpulse,
-                  ElementsAre(std::string("CONTAINER_NAME=") +
-                                  SessionManagerImpl::kArcContainerName,
-                              "CONTAINER_PID=" + std::to_string(kAndroidPid)),
-                  InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(Return(nullptr));
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(SessionManagerImpl::kStopArcNetworkImpulse,
-                                     ElementsAre(),
-                                     InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
   auto upgrade_request = CreateUpgradeArcContainerRequest();
@@ -2490,19 +2440,6 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainerForDemoSession) {
                   SessionManagerImpl::kStopArcInstanceImpulse, ElementsAre(),
                   InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStartArcNetworkImpulse,
-                  ElementsAre(std::string("CONTAINER_NAME=") +
-                                  SessionManagerImpl::kArcContainerName,
-                              "CONTAINER_PID=" + std::to_string(kAndroidPid)),
-                  InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(Return(nullptr));
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(SessionManagerImpl::kStopArcNetworkImpulse,
-                                     ElementsAre(),
-                                     InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
   auto upgrade_request = CreateUpgradeArcContainerRequest();
   upgrade_request.set_is_demo_session(true);
@@ -2560,19 +2497,6 @@ TEST_F(SessionManagerImplTest,
               TriggerImpulseInternal(
                   SessionManagerImpl::kStopArcInstanceImpulse, ElementsAre(),
                   InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStartArcNetworkImpulse,
-                  ElementsAre(std::string("CONTAINER_NAME=") +
-                                  SessionManagerImpl::kArcContainerName,
-                              "CONTAINER_PID=" + std::to_string(kAndroidPid)),
-                  InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(Return(nullptr));
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(SessionManagerImpl::kStopArcNetworkImpulse,
-                                     ElementsAre(),
-                                     InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
   auto upgrade_request = CreateUpgradeArcContainerRequest();
@@ -2691,19 +2615,6 @@ TEST_F(SessionManagerImplTest, ArcUpgradeCrash) {
                   SessionManagerImpl::kStopArcInstanceImpulse, ElementsAre(),
                   InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStartArcNetworkImpulse,
-                  ElementsAre(std::string("CONTAINER_NAME=") +
-                                  SessionManagerImpl::kArcContainerName,
-                              "CONTAINER_PID=" + std::to_string(kAndroidPid)),
-                  InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(Return(nullptr));
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(SessionManagerImpl::kStopArcNetworkImpulse,
-                                     ElementsAre(),
-                                     InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
   std::string container_instance_id;
   {
@@ -2783,14 +2694,6 @@ TEST_F(SessionManagerImplTest, LocaleAndPreferredLanguages) {
                                  .Build(),
                              InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStartArcNetworkImpulse,
-                  ElementsAre(std::string("CONTAINER_NAME=") +
-                                  SessionManagerImpl::kArcContainerName,
-                              "CONTAINER_PID=" + std::to_string(kAndroidPid)),
-                  InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(Return(nullptr));
 
   auto upgrade_request = CreateUpgradeArcContainerRequest();
   upgrade_request.set_locale("fr_FR");
@@ -2958,14 +2861,6 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning_Stateful) {
                              UpgradeContainerExpectationsBuilder(this).Build(),
                              InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStartArcNetworkImpulse,
-                  ElementsAre(std::string("CONTAINER_NAME=") +
-                                  SessionManagerImpl::kArcContainerName,
-                              "CONTAINER_PID=" + std::to_string(kAndroidPid)),
-                  InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(Return(nullptr));
   {
     brillo::ErrorPtr error;
     UpgradeArcContainerRequest request = CreateUpgradeArcContainerRequest();
@@ -3001,14 +2896,6 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
                              UpgradeContainerExpectationsBuilder(this).Build(),
                              InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStartArcNetworkImpulse,
-                  ElementsAre(std::string("CONTAINER_NAME=") +
-                                  SessionManagerImpl::kArcContainerName,
-                              "CONTAINER_PID=" + std::to_string(kAndroidPid)),
-                  InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(Return(nullptr));
 
   {
     brillo::ErrorPtr error;
@@ -3025,11 +2912,6 @@ TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
               TriggerImpulseInternal(
                   SessionManagerImpl::kStopArcInstanceImpulse, ElementsAre(),
                   InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(SessionManagerImpl::kStopArcNetworkImpulse,
-                                     ElementsAre(),
-                                     InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   EXPECT_CALL(*exported_object(),
               SendSignal(SignalEq(login_manager::kArcInstanceStopped,

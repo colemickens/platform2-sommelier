@@ -95,7 +95,6 @@ constexpr char SessionManagerImpl::kStatefulPreservationRequestFile[] =
 constexpr char SessionManagerImpl::kStartUserSessionImpulse[] =
     "start-user-session";
 
-constexpr char SessionManagerImpl::kArcContainerName[] = "android";
 constexpr char SessionManagerImpl::kArcBridgeSocketPath[] =
     "/run/chrome/arc_bridge.sock";
 constexpr char SessionManagerImpl::kArcBridgeSocketGroup[] = "arc-bridge";
@@ -107,10 +106,6 @@ constexpr char SessionManagerImpl::kStopArcInstanceImpulse[] =
     "stop-arc-instance";
 constexpr char SessionManagerImpl::kContinueArcBootImpulse[] =
     "continue-arc-boot";
-constexpr char SessionManagerImpl::kStartArcNetworkImpulse[] =
-    "start-arc-network";
-constexpr char SessionManagerImpl::kStopArcNetworkImpulse[] =
-    "stop-arc-network";
 constexpr char SessionManagerImpl::kArcBootedImpulse[] = "arc-booted";
 constexpr char SessionManagerImpl::kRemoveOldArcDataImpulse[] =
     "remove-old-arc-data";
@@ -1204,12 +1199,6 @@ bool SessionManagerImpl::UpgradeArcContainer(
     return false;
   }
 
-  init_controller_->TriggerImpulse(
-      kStartArcNetworkImpulse,
-      {base::StringPrintf("CONTAINER_NAME=%s", kArcContainerName),
-       base::StringPrintf("CONTAINER_PID=%d", pid)},
-      InitDaemonController::TriggerMode::ASYNC);
-
   login_metrics_->StartTrackingArcUseTime();
 
   *out_fd = server_socket.get();
@@ -1788,12 +1777,6 @@ void SessionManagerImpl::OnAndroidContainerStopped(
           kStopArcInstanceImpulse, {},
           InitDaemonController::TriggerMode::SYNC)) {
     LOG(ERROR) << "Emitting stop-arc-instance impulse failed.";
-  }
-
-  if (!init_controller_->TriggerImpulse(
-          kStopArcNetworkImpulse, {},
-          InitDaemonController::TriggerMode::SYNC)) {
-    LOG(ERROR) << "Emitting stop-arc-network impulse failed.";
   }
 
   adaptor_.SendArcInstanceStoppedSignal(static_cast<uint32_t>(reason),

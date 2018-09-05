@@ -93,9 +93,6 @@ class SessionManagerImpl
   // Name of impulse emitted when user session starts.
   static const char kStartUserSessionImpulse[];
 
-  // Name of the Android container.
-  static const char kArcContainerName[];
-
   // A UNIX domain server socket path for communicating with the container.
   static const char kArcBridgeSocketPath[];
 
@@ -106,8 +103,6 @@ class SessionManagerImpl
   static const char kStartArcInstanceImpulse[];
   static const char kStopArcInstanceImpulse[];
   static const char kContinueArcBootImpulse[];
-  static const char kStartArcNetworkImpulse[];
-  static const char kStopArcNetworkImpulse[];
   static const char kArcBootedImpulse[];
   static const char kRemoveOldArcDataImpulse[];
 
