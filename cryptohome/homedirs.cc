@@ -267,6 +267,7 @@ int HomeDirs::DeleteUserProfiles() {
       } else {
         LOG(INFO) << "Freeing disk space by deleting user "
                   << deleted_user_dir.value();
+        RemoveLECredentials(deleted_user_dir.BaseName().value());
         platform_->DeleteFile(deleted_user_dir, true);
         ++deleted_users_count;
         if (platform_->AmountOfFreeDiskSpace(shadow_root_) >=
@@ -949,6 +950,7 @@ void HomeDirs::RemoveNonOwnerCryptohomesCallback(const FilePath& user_dir) {
     return;
   }
   // Once we're sure this is not the owner's cryptohome, delete it.
+  RemoveLECredentials(user_dir.BaseName().value());
   platform_->DeleteFile(user_dir, true);
 }
 
@@ -1298,6 +1300,8 @@ bool HomeDirs::GetSystemSalt(SecureBlob* blob) {
 
 bool HomeDirs::Remove(const std::string& username) {
   std::string obfuscated = BuildObfuscatedUsername(username, system_salt_);
+  RemoveLECredentials(obfuscated);
+
   FilePath user_dir = shadow_root_.Append(obfuscated);
   FilePath user_path = brillo::cryptohome::home::GetUserPath(username);
   FilePath root_path = brillo::cryptohome::home::GetRootPath(username);
@@ -1602,6 +1606,34 @@ void HomeDirs::ResetLECredentials(const Credentials& creds) {
         LOG(WARNING) << "Failed to clear auth_locked in VaultKeyset on disk.";
       }
     }
+  }
+}
+
+void HomeDirs::RemoveLECredentials(const std::string& obfuscated_username) {
+  std::vector<int> key_indices;
+  if (!GetVaultKeysets(obfuscated_username, &key_indices)) {
+    LOG(WARNING) << "No valid keysets on disk for " << obfuscated_username;
+    return;
+  }
+
+  std::unique_ptr<VaultKeyset> vk_remove(
+      vault_keyset_factory()->New(platform_, crypto_));
+  for (int index : key_indices) {
+    base::FilePath vk_path = GetVaultKeysetPath(obfuscated_username, index);
+    if (!vk_remove->Load(vk_path))
+      continue;
+    // Skip non-LE Credentials.
+    if (!vk_remove->IsLECredential())
+      continue;
+
+    uint64_t label = vk_remove->serialized().le_label();
+    if (!crypto_->RemoveLECredential(label)) {
+      LOG(WARNING) << "Failed to remove an LE credential, label: " << label;
+      continue;
+    }
+
+    // Remove the cryptohome VaultKeyset data.
+    platform_->DeleteFile(vk_path, true);
   }
 }
 

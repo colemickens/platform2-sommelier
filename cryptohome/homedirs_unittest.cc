@@ -497,6 +497,17 @@ class FreeDiskSpaceTest : public HomeDirsTest {
 
     ExpectTrackedDirectoriesEnumeration();
   }
+
+  // Whenever a user is removed, its shadow directory is searched for LE
+  // credentials so that they can be removed from the LE backend as well.
+  void ExpectDeletedLECredentialEnumeration(
+      const base::FilePath& homedir_path) {
+    EXPECT_CALL(platform_,
+                GetFileEnumerator(homedirs_.shadow_root().Append(
+                                      homedir_path.BaseName().value()),
+                                  false, _))
+        .WillOnce(InvokeWithoutArgs(CreateMockFileEnumerator));
+  }
 };
 
 INSTANTIATE_TEST_CASE_P(WithEcryptfs, FreeDiskSpaceTest,
@@ -1055,6 +1066,7 @@ TEST_P(FreeDiskSpaceTest, CleanUpOneUser) {
     .WillOnce(Return(true));
 
   ExpectCacheDirCleanupCalls(4);
+  ExpectDeletedLECredentialEnumeration(homedir_paths_[0]);
 
   homedirs_.FreeDiskSpace();
 
@@ -1085,6 +1097,8 @@ TEST_P(FreeDiskSpaceTest, CleanUpMultipleUsers) {
     .WillOnce(Return(true));
 
   ExpectCacheDirCleanupCalls(4);
+  ExpectDeletedLECredentialEnumeration(homedir_paths_[0]);
+  ExpectDeletedLECredentialEnumeration(homedir_paths_[1]);
 
   homedirs_.FreeDiskSpace();
 
@@ -1115,6 +1129,9 @@ TEST_P(FreeDiskSpaceTest, EnterpriseCleanUpAllUsersButLast_LoginScreen) {
               IsDirectoryMounted(_)).WillRepeatedly(Return(false));
 
   ExpectCacheDirCleanupCalls(4);
+  ExpectDeletedLECredentialEnumeration(homedir_paths_[0]);
+  ExpectDeletedLECredentialEnumeration(homedir_paths_[1]);
+  ExpectDeletedLECredentialEnumeration(homedir_paths_[2]);
 
   homedirs_.FreeDiskSpace();
 
@@ -1163,6 +1180,10 @@ TEST_P(FreeDiskSpaceTest, EnterpriseCleanUpAllUsersButLast_UserLoggedIn) {
 
   ExpectCacheDirCleanupCalls(3);
 
+  ExpectDeletedLECredentialEnumeration(homedir_paths_[0]);
+  ExpectDeletedLECredentialEnumeration(homedir_paths_[1]);
+  ExpectDeletedLECredentialEnumeration(homedir_paths_[3]);
+
   homedirs_.FreeDiskSpace();
 
   EXPECT_FALSE(homedirs_.HasTargetFreeSpace());
@@ -1202,6 +1223,8 @@ TEST_P(FreeDiskSpaceTest, CleanUpMultipleNonadjacentUsers) {
 
   ExpectCacheDirCleanupCalls(4);
 
+  ExpectDeletedLECredentialEnumeration(homedir_paths_[0]);
+  ExpectDeletedLECredentialEnumeration(homedir_paths_[1]);
   homedirs_.FreeDiskSpace();
 
   EXPECT_TRUE(homedirs_.HasTargetFreeSpace());

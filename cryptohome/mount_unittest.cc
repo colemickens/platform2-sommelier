@@ -2731,6 +2731,15 @@ TEST_P(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
 
   ExpectEphemeralCryptohomeMount(*user);
 
+  // Deleting users will cause each user's shadow root subdir to be
+  // searched for LE credentials.
+  for (const auto& user : helper_.users) {
+    EXPECT_CALL(
+        platform_,
+        GetFileEnumerator(kImageDir.Append(user.obfuscated_username), false, _))
+        .WillOnce(Return(new NiceMock<MockFileEnumerator>()));
+  }
+
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
   mount_args.is_ephemeral = true;
@@ -2835,6 +2844,16 @@ TEST_P(EphemeralExistingUserSystemTest, MountRemoveTest) {
     .WillOnce(Return(true));
 
   ExpectEphemeralCryptohomeMount(*user);
+
+  // Deleting users will cause "going-to-be-deleted" users' shadow root
+  // subdir to be searched for LE credentials.
+  for (int i = 0; i < helper_.users.size() - 1; i++) {
+    TestUser* cur_user = &helper_.users[i];
+    EXPECT_CALL(platform_,
+                GetFileEnumerator(
+                    kImageDir.Append(cur_user->obfuscated_username), false, _))
+        .WillOnce(Return(new NiceMock<MockFileEnumerator>()));
+  }
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;

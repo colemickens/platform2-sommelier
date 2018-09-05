@@ -240,6 +240,9 @@ class HomeDirs {
   // a credential |cred|.
   virtual void ResetLECredentials(const Credentials& creds);
 
+  // Removes all LE credentials for a user with |obfuscated_username|.
+  virtual void RemoveLECredentials(const std::string& obfuscated_username);
+
   // Get the number of unmounted android-data directory. Each android users
   // that is not currently logged in should have exactly one android-data
   // directory.

@@ -1275,6 +1275,17 @@ bool Crypto::ResetLECredential(const SerializedVaultKeyset& serialized_reset,
 }
 
 bool Crypto::RemoveLECredential(uint64_t label) const {
+  if (!use_tpm_ || !tpm_) {
+    LOG(WARNING) << "No TPM instance for RemoveLECredential.";
+    return false;
+  }
+
+  // Bail immediately if we don't have a valid LECredentialManager.
+  if (!le_manager_) {
+    LOG(ERROR) << "No LECredentialManager instance for RemoveLECredential.";
+    return false;
+  }
+
   return le_manager_->RemoveCredential(label) == LE_CRED_SUCCESS;
 }
 
