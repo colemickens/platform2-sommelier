@@ -4,6 +4,7 @@
 
 #include "metrics/persistent_integer.h"
 
+#include <algorithm>
 #include <fcntl.h>
 
 #include <base/files/file.h>
@@ -44,6 +45,10 @@ int64_t PersistentInteger::GetAndClear() {
 
 void PersistentInteger::Add(int64_t x) {
   Set(Get() + x);
+}
+
+void PersistentInteger::Max(int64_t x) {
+  Set(std::max(Get(), x));
 }
 
 void PersistentInteger::Write() {

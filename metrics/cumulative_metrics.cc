@@ -152,6 +152,15 @@ void CumulativeMetrics::Add(const std::string& name, int64_t value) {
   }
 }
 
+void CumulativeMetrics::Max(const std::string& name, int64_t value) {
+  PersistentInteger* pip = Find(name);
+  if (pip != nullptr) {
+    pip->Max(value);
+  } else {
+    PanicFromBadName("MAX", name);
+  }
+}
+
 int64_t CumulativeMetrics::GetAndClear(const std::string& name) {
   PersistentInteger* pip = Find(name);
   if (pip != nullptr)

@@ -42,6 +42,10 @@ class PersistentInteger {
   // Virtual only because of mock.
   virtual void Add(int64_t x);
 
+  // Convenience function for v = Get, Set(max(v, x)).
+  // Virtual only because of mock.
+  virtual void Max(int64_t x);
+
  private:
   static const int kVersion = 1001;
 

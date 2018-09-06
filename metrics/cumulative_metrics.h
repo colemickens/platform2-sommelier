@@ -105,6 +105,8 @@ class CumulativeMetrics {
   void Set(const std::string& name, int64_t value);
   // Adds |value| to the current value of |name|.
   void Add(const std::string& name, int64_t value);
+  // Sets |name| to the max of its current value and the specified |value|.
+  void Max(const std::string& name, int64_t value);
   // Gets the value of |name|
   int64_t Get(const std::string& name) const;
   // Returns the value of |name| and sets it to 0.

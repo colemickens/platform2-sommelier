@@ -30,6 +30,13 @@ TEST_F(PersistentIntegerTest, BasicChecks) {
   pi->Add(3);
   EXPECT_EQ(5, pi->Get());
 
+  // Test max.
+  pi->Set(4);
+  pi->Max(5);
+  EXPECT_EQ(5, pi->Get());
+  pi->Max(2);
+  EXPECT_EQ(5, pi->Get());
+
   // Test persistence.
   pi.reset(new PersistentInteger(backing_path));
   EXPECT_EQ(5, pi->Get());

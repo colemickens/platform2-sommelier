@@ -21,6 +21,7 @@ namespace {
 
 constexpr char kMetricNameX[] = "x.pi";
 constexpr char kMetricNameY[] = "y.pi";
+constexpr char kMetricNameZ[] = "z.pi";
 constexpr int kTotalReportCount = 3;
 
 static int accumulator_update_partial_count = 0;
@@ -34,6 +35,7 @@ class CumulativeMetricsTest : public testing::Test {};
 static void UpdateAccumulators(CumulativeMetrics *cm) {
   cm->Add(kMetricNameX, 111);
   cm->Add(kMetricNameY, 222);
+  cm->Max(kMetricNameZ, 333);
   accumulator_update_partial_count++;
   accumulator_update_total_count++;
 }
@@ -45,6 +47,7 @@ static void ReportAccumulators(CumulativeMetrics *cm) {
   if (accumulator_report_count >= 1) {
     EXPECT_EQ(cm->Get(kMetricNameX), 111 * accumulator_update_partial_count);
     EXPECT_EQ(cm->Get(kMetricNameY), 222 * accumulator_update_partial_count);
+    EXPECT_EQ(cm->Get(kMetricNameZ), 333);
   }
   // Quit loop.
   if (accumulator_report_count == kTotalReportCount) {
@@ -61,7 +64,7 @@ TEST_F(CumulativeMetricsTest, TestLoop) {
   const base::FilePath pi_path = temp_dir.GetPath().Append("cumulative");
   ASSERT_TRUE(base::CreateDirectory(pi_path));
 
-  std::vector<std::string> names = {kMetricNameX, kMetricNameY};
+  std::vector<std::string> names = {kMetricNameX, kMetricNameY, kMetricNameZ};
   CumulativeMetrics cm(
       pi_path,
       names,
