@@ -78,8 +78,13 @@ config("compiler_defaults") {
 
   # Remove no_exceptions flags given as arguments making the config pluggable.
   # See BUILDCONFIG.gn.
-  cflags_cc -= _cflags_no_exceptions
-  cflags_c -= _cflags_no_exceptions
+  # If enable_exceptions is true, the given flags should not contain those flags
+  # at the beginning, hence the if statment to avoid errors of removing
+  # non-existing values.
+  if (!enable_exceptions) {
+    cflags_cc -= _cflags_no_exceptions
+    cflags_c -= _cflags_no_exceptions
+  }
 
   if (!use.cros_host) {
     include_dirs += [ "${sysroot}/usr/include" ]
