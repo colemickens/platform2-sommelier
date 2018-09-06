@@ -16,8 +16,8 @@ import os
 
 from chromite.lib import commandline
 from chromite.lib import cros_build_lib
-from chromite.lib import cros_logging as logging
 from chromite.lib import osutils
+from chromite.lib import portage_util
 
 import common_utils
 
@@ -86,7 +86,7 @@ class Platform2(object):
     if use_flags is not None:
       self.use_flags = use_flags
     else:
-      self.use_flags = self.get_platform2_use_flags()
+      self.use_flags = portage_util.GetBoardUseFlags(self.board)
 
     if enable_tests:
       self.use_flags.add('test')
@@ -167,32 +167,8 @@ class Platform2(object):
     # walking all of the repos.  Clear it and let the value be repopulated.
     os.environ.pop('PORTDIR_OVERLAY', None)
 
-    portageq_bin = 'portageq' if not board else 'portageq-%s' % board
-    cmd = [portageq_bin, 'envvar', '-v']
-    cmd += varnames
-
-    # If a variable isn't found in the config files, portageq will exit 1,
-    # so ignore that.  We already hve fallbacks variables.
-    ret = cros_build_lib.RunCommand(cmd, redirect_stdout=True,
-                                    redirect_stderr=True, error_code_ok=True,
-                                    debug_level=logging.DEBUG)
-    if ret.returncode > 1 or ret.error:
-      raise cros_build_lib.RunCommandError('unknown error', ret)
-
-    output_lines = [x for x in ret.output.splitlines() if x]
-    output_items = [x.split('=', 1) for x in output_lines]
-    board_vars = dict(dict((k, cros_build_lib.ShellUnquote(v))
-                           for k, v in output_items))
-
-    return board_vars if len(board_vars) > 1 else board_vars.values()[0]
-
-  def get_platform2_use_flags(self):
-    """Returns the set of USE flags set for the Platform2 package."""
-    portageq_bin = 'portageq' if not self.board else 'portageq-%s' % self.board
-    cmd = [portageq_bin, 'envvar', 'USE']
-
-    ret = cros_build_lib.RunCommand(cmd, redirect_stdout=True)
-    return set(x for x in ret.output.splitlines() if x)
+    return portage_util.PortageqEnvvars(varnames, board=board,
+                                        allow_undefined=True)
 
   def get_build_environment(self):
     """Returns a dict containing environment variables we will use to run GYP.
