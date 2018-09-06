@@ -95,6 +95,9 @@ constexpr char kCameraProfileDir[] =
     "/mnt/stateful_partition/encrypted/var/cache/camera";
 constexpr char kCrasSocketDirectory[] = "/run/cras";
 constexpr char kDebugfsDirectory[] = "/run/arc/debugfs";
+constexpr char kDefaultAppsBoardDirectory[] = "/var/cache/arc_default_apps";
+constexpr char kDefaultAppsDirectory[] =
+    "/usr/share/google-chrome/extensions/arc";
 constexpr char kFakeKptrRestrict[] = "/run/arc/fake_kptr_restrict";
 constexpr char kFakeMmapRndBits[] = "/run/arc/fake_mmap_rnd_bits";
 constexpr char kFakeMmapRndCompatBits[] = "/run/arc/fake_mmap_rnd_compat_bits";
@@ -161,6 +164,9 @@ constexpr char kArcContainerIPv4Address[] = "100.115.92.2/30";
 // The IPV4 address of the gateway inside the container. This corresponds to the
 // address of "br0".
 constexpr char kArcGatewayIPv4Address[] = "100.115.92.1";
+
+// Property name for fingerprint.
+constexpr char kFingerprintProp[] = "ro.build.fingerprint";
 
 // System salt and arc salt file size.
 constexpr size_t kSaltFileSize = 16;
@@ -536,8 +542,7 @@ ArcSetup::ArcSetup(Mode mode, const base::FilePath& config_json)
       config_(config_json, base::WrapUnique(base::Environment::Create())),
       arc_mounter_(GetDefaultMounter()),
       arc_paths_(ArcPaths::Create(mode_, config_)),
-      arc_setup_metrics_(std::make_unique<ArcSetupMetrics>()),
-      sdk_version_(GetSdkVersion()) {}
+      arc_setup_metrics_(std::make_unique<ArcSetupMetrics>()) {}
 
 ArcSetup::~ArcSetup() = default;
 
@@ -688,7 +693,7 @@ void ArcSetup::SetUpAndroidData() {
     SetUpGservicesCache();
   }
 
-  if (sdk_version() == AndroidSdkVersion::ANDROID_P)
+  if (GetSdkVersion() == AndroidSdkVersion::ANDROID_P)
     SetUpNetwork();
 }
 
@@ -727,8 +732,8 @@ bool ArcSetup::SetUpPackagesCache() {
   std::string content;
   std::string new_content;
   EXIT_IF(!base::ReadFileToString(source_cache, &content));
-  SetFingerprintsForPackagesCache(content, GetSystemImageFingerprint(),
-                                  &new_content);
+  SetFingerprintsForPackagesCache(
+      content, GetSystemBuildProperyOrDie(kFingerprintProp), &new_content);
 
   EXIT_IF(!base::WriteFile(packages_cache, new_content.c_str(),
                            new_content.length()));
@@ -1025,7 +1030,7 @@ bool ArcSetup::GenerateHostSideCodeInternal(
   *result = ArcCodeRelocationResult::ERROR_UNABLE_TO_RELOCATE;
   base::ElapsedTimer timer;
   std::unique_ptr<ArtContainer> art_container =
-      ArtContainer::CreateContainer(arc_mounter_.get(), sdk_version());
+      ArtContainer::CreateContainer(arc_mounter_.get(), GetSdkVersion());
   if (!art_container) {
     LOG(ERROR) << "Failed to create art container";
     return false;
@@ -1036,8 +1041,8 @@ bool ArcSetup::GenerateHostSideCodeInternal(
     return false;
   }
 
-  const uint64_t offset_seed =
-      GetArtCompilationOffsetSeed(GetSystemImageFingerprint(), salt);
+  const uint64_t offset_seed = GetArtCompilationOffsetSeed(
+      GetSystemBuildProperyOrDie(kFingerprintProp), salt);
   if (!art_container->PatchImage(offset_seed)) {
     LOG(ERROR) << "Failed to relocate boot images";
     return false;
@@ -1551,6 +1556,40 @@ void ArcSetup::SetUpCameraProperty() {
   EXIT_IF(!WriteToFile(camera_prop_file, 0644, camera_properties));
 }
 
+void ArcSetup::SetUpDefaultApps() {
+  // This sets up default apps customization for the current board. Unibuild
+  // may contain default apps the for particular board only. Default apps that
+  // are shared for all boards of the same image exist in
+  // /usr/share/google-chrome/extensions/arc
+  // If customization exists it is located in
+  // /usr/share/google-chrome/extensions/arc/BOARD_NAME.
+  // Last folder is mapped using symbolic link to /var/cache/arc_default_apps.
+
+  constexpr char kProductBoardProp[] = "ro.product.board";
+  const std::string board = GetSystemBuildProperyOrDie(kProductBoardProp);
+
+  const base::FilePath default_apps_root =
+      base::FilePath(kDefaultAppsDirectory);
+  const base::FilePath default_apps_board = default_apps_root.Append(board);
+  if (!base::PathExists(default_apps_board)) {
+    LOG(INFO) << "Board default app customization does not exist: "
+              << default_apps_board.value();
+    return;
+  }
+
+  // The DeleteFile call is to make sure that the link is created even if
+  // |link_to_default_apps_board| exists as a file.
+  const base::FilePath link_to_default_apps_board =
+      base::FilePath(kDefaultAppsBoardDirectory);
+  IGNORE_ERRORS(
+      base::DeleteFile(link_to_default_apps_board, false /* recursive */));
+  EXIT_IF(!base::CreateSymbolicLink(default_apps_board,
+                                    link_to_default_apps_board));
+  LOG(INFO) << "Board default app customization created: "
+            << default_apps_board.value() << " -> "
+            << link_to_default_apps_board.value();
+}
+
 void ArcSetup::SetUpSharedApkDirectory() {
   // TODO(yusuks): Remove the migration code in M68.
   if (base::PathExists(arc_paths_->old_apk_cache_dir)) {
@@ -1587,18 +1626,8 @@ void ArcSetup::CleanUpBinFmtMiscSetUp() {
 }
 
 AndroidSdkVersion ArcSetup::GetSdkVersion() {
-  const base::FilePath build_prop =
-      arc_paths_->android_rootfs_directory.Append("system/build.prop");
-  if (!base::PathExists(build_prop)) {
-    // --onetime-setup always takes this path.
-    LOG(INFO) << "SDK version unknown: " << build_prop.value()
-              << " does not exist.";
-    return AndroidSdkVersion::UNKNOWN;
-  }
-
-  std::string version_str;
-  EXIT_IF(
-      !GetPropertyFromFile(build_prop, "ro.build.version.sdk", &version_str));
+  const std::string version_str =
+      GetSystemBuildProperyOrDie("ro.build.version.sdk");
   LOG(INFO) << "SDK version string: " << version_str;
 
   const AndroidSdkVersion version = SdkVersionFromString(version_str);
@@ -1649,24 +1678,10 @@ void ArcSetup::RemoveAndroidKmsgFifo() {
       base::DeleteFile(arc_paths_->android_kmsg_fifo, false /* recursive */));
 }
 
-std::string ArcSetup::GetSystemImageFingerprint() {
-  if (!system_fingerprint_.empty())
-    return system_fingerprint_;
-
-  constexpr char kFingerprintProp[] = "ro.build.fingerprint";
-
-  const base::FilePath build_prop =
-      arc_paths_->android_generated_properties_directory.Append("build.prop");
-
-  EXIT_IF(
-      !GetPropertyFromFile(build_prop, kFingerprintProp, &system_fingerprint_));
-  EXIT_IF(system_fingerprint_.empty());
-  return system_fingerprint_;
-}
-
 void ArcSetup::GetBootTypeAndDataSdkVersion(
     ArcBootType* out_boot_type, AndroidSdkVersion* out_data_sdk_version) {
-  const std::string system_fingerprint = GetSystemImageFingerprint();
+  const std::string system_fingerprint =
+      GetSystemBuildProperyOrDie(kFingerprintProp);
 
   // Note: The XML file name has to match com.android.server.pm.Settings's
   // mSettingsFilename. This will be very unlikely to change, but we still need
@@ -1707,7 +1722,7 @@ void ArcSetup::GetBootTypeAndDataSdkVersion(
               << system_fingerprint << ", data=" << data_fingerprint;
   }
   LOG(INFO) << "Data SDK version: " << data_sdk_version;
-  LOG(INFO) << "System SDK version: " << static_cast<int>(sdk_version_);
+  LOG(INFO) << "System SDK version: " << static_cast<int>(GetSdkVersion());
   *out_boot_type = ota_detected ? ArcBootType::FIRST_BOOT_AFTER_UPDATE
                                 : ArcBootType::REGULAR_BOOT;
   *out_data_sdk_version = SdkVersionFromString(data_sdk_version);
@@ -1737,8 +1752,8 @@ std::string ArcSetup::GetSerialNumber() {
 }
 
 void ArcSetup::DeleteUnusedCacheDirectory() {
-  if (sdk_version() == AndroidSdkVersion::ANDROID_M ||
-      sdk_version() == AndroidSdkVersion::ANDROID_N_MR1) {
+  if (GetSdkVersion() == AndroidSdkVersion::ANDROID_M ||
+      GetSdkVersion() == AndroidSdkVersion::ANDROID_N_MR1) {
     return;
   }
   // /home/.../android-data/cache is bind-mounted to /cache on N in
@@ -1764,7 +1779,7 @@ void ArcSetup::MountSharedAndroidDirectories() {
                               shared_data_directory));
   }
 
-  if (sdk_version() == AndroidSdkVersion::ANDROID_N_MR1 &&
+  if (GetSdkVersion() == AndroidSdkVersion::ANDROID_N_MR1 &&
       !base::PathExists(shared_cache_directory)) {
     EXIT_IF(!InstallDirectory(0700, kHostRootUid, kHostRootGid,
                               shared_cache_directory));
@@ -1779,7 +1794,7 @@ void ArcSetup::MountSharedAndroidDirectories() {
       !arc_mounter_->Remount(data_directory, MS_NOSUID | MS_NODEV, "seclabel"));
 
   // Then, bind-mount /cache to the shared mount point on N.
-  if (sdk_version() == AndroidSdkVersion::ANDROID_N_MR1)
+  if (GetSdkVersion() == AndroidSdkVersion::ANDROID_N_MR1)
     EXIT_IF(!arc_mounter_->BindMount(cache_directory, shared_cache_directory));
 
   // Finally, bind-mount /data to the shared mount point.
@@ -2032,7 +2047,7 @@ void ArcSetup::OnSetup() {
   CleanUpStaleMountPoints();
   RestoreContext();
   SetUpGraphicsSysfsContext();
-  if (sdk_version() == AndroidSdkVersion::ANDROID_P)
+  if (GetSdkVersion() == AndroidSdkVersion::ANDROID_P)
     SetUpPowerSysfsContext();
   MakeMountPointsReadOnly();
   SetUpCameraProperty();
@@ -2054,9 +2069,9 @@ void ArcSetup::OnBootContinue() {
   GetBootTypeAndDataSdkVersion(&boot_type, &data_sdk_version);
 
   arc_setup_metrics_->SendSdkVersionUpgradeType(
-      GetUpgradeType(sdk_version_, data_sdk_version));
+      GetUpgradeType(GetSdkVersion(), data_sdk_version));
 
-  if (ShouldDeleteAndroidData(sdk_version_, data_sdk_version)) {
+  if (ShouldDeleteAndroidData(GetSdkVersion(), data_sdk_version)) {
     EXIT_IF(!MoveDirIntoDataOldDir(arc_paths_->android_data_directory,
                                    arc_paths_->android_data_old_directory));
   }
@@ -2127,6 +2142,10 @@ void ArcSetup::OnOnetimeSetup() {
   // Build properties are needed to finish booting the container, so we need
   // to set them up here instead of in the per-board setup.
   CreateBuildProperties();
+
+  // Setup per-board default apps. This has to be called after
+  // CreateBuildProperties because CreateBuildProperties sets the name of board.
+  SetUpDefaultApps();
 }
 
 void ArcSetup::OnOnetimeStop() {
@@ -2186,7 +2205,7 @@ void ArcSetup::OnUpdateRestoreconLast() {
   std::vector<base::FilePath> target_directories = {
       arc_paths_->android_mutable_source.Append("data")};
 
-  switch (sdk_version()) {
+  switch (GetSdkVersion()) {
     case AndroidSdkVersion::ANDROID_N_MR1:
       context_files.push_back(
           arc_paths_->android_rootfs_directory.Append("file_contexts.bin"));
@@ -2211,6 +2230,19 @@ void ArcSetup::OnUpdateRestoreconLast() {
   for (const auto& target : target_directories) {
     EXIT_IF(!SetXattr(target, kRestoreconLastXattr, hash));
   }
+}
+
+std::string ArcSetup::GetSystemBuildProperyOrDie(const std::string& name) {
+  if (system_properties_.empty()) {
+    const base::FilePath build_prop =
+        arc_paths_->android_generated_properties_directory.Append("build.prop");
+    EXIT_IF(!GetPropertiesFromFile(build_prop, &system_properties_));
+  }
+  DCHECK(!system_properties_.empty());
+  const auto it = system_properties_.find(name);
+  CHECK(system_properties_.end() != it) << "Failed to read property: " << name;
+  CHECK(!it->second.empty());
+  return it->second;
 }
 
 void ArcSetup::Run() {

@@ -205,6 +205,29 @@ bool FindFingerprintAndSdkVersion(std::string* out_fingerprint,
   return true;
 }
 
+// A callback function that parses all lines and put key/value pair into the
+// |out_properties|. Returns true in case line cannot be parsed in order to stop
+// processing next lines.
+bool FindAllProperties(std::map<std::string, std::string>* out_properties,
+                       const std::string& line) {
+  // Ignore empty lines and comments.
+  if (line.empty() || line.at(0) == '#') {
+    // Continue reading next lines.
+    return false;
+  }
+
+  std::string::size_type separator = line.find('=');
+  if (separator == std::string::npos) {
+    LOG(WARNING) << "Failed to parse: " << line;
+    // Stop reading next lines on error.
+    return true;
+  }
+
+  (*out_properties)[line.substr(0, separator)] = line.substr(separator + 1);
+  // Continue reading next lines.
+  return false;
+}
+
 // Sets the permission of the given |fd|.
 bool SetPermissions(base::PlatformFile fd, mode_t mode) {
   struct stat st;
@@ -729,6 +752,18 @@ bool GetPropertyFromFile(const base::FilePath& prop_file_path,
   }
   LOG(WARNING) << prop_name << " is not in " << prop_file_path.value();
   return false;
+}
+
+bool GetPropertiesFromFile(const base::FilePath& prop_file_path,
+                           std::map<std::string, std::string>* out_properties) {
+  if (FindLine(prop_file_path,
+               base::Bind(&FindAllProperties, out_properties))) {
+    // Failed to parse the file.
+    out_properties->clear();
+    return false;
+  }
+
+  return true;
 }
 
 bool GetFingerprintAndSdkVersionFromPackagesXml(

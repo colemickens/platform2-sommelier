@@ -5,6 +5,7 @@
 #ifndef ARC_SETUP_ARC_SETUP_H_
 #define ARC_SETUP_ARC_SETUP_H_
 
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -82,8 +83,6 @@ class ArcSetup {
   // The return value is void because the function aborts when one or more of
   // the operations fail.
   void Run();
-
-  AndroidSdkVersion sdk_version() const { return sdk_version_; }
 
   void set_arc_mounter_for_testing(std::unique_ptr<ArcMounter> mounter) {
     arc_mounter_ = std::move(mounter);
@@ -233,6 +232,9 @@ class ArcSetup {
   // Sets up a subset property file for camera.
   void SetUpCameraProperty();
 
+  // Sets up a default apps.
+  void SetUpDefaultApps();
+
   // Cleans up binfmt_misc handlers that run arm binaries on x86.
   void CleanUpBinFmtMiscSetUp();
 
@@ -248,10 +250,6 @@ class ArcSetup {
 
   // Removes the FIFO file for emulating /dev/kmsg.
   void RemoveAndroidKmsgFifo();
-
-  // Gets a fingerprint in the build.prop file. Since the file is in our system
-  // image, the operation should never fail.
-  std::string GetSystemImageFingerprint();
 
   // Fills |out_boot_type| with the boot type.
   // If Android's packages.xml exists, fills |out_data_sdk_version| with the SDK
@@ -364,15 +362,19 @@ class ArcSetup {
   // Called when arc-setup is called with --mode=update-restorecon-last.
   void OnUpdateRestoreconLast();
 
+  // Returns system build property.
+  std::string GetSystemBuildProperyOrDie(const std::string& name);
+
   const Mode mode_;
   const Config config_;
   std::unique_ptr<ArcMounter> arc_mounter_;
   std::unique_ptr<ArcPaths> arc_paths_;
   std::unique_ptr<ArcSetupMetrics> arc_setup_metrics_;
-  const AndroidSdkVersion sdk_version_;
-  // Used to prevent multiple recalculation of system fingerprint. Once
-  // system fingerprint is calculated it is cached in |system_fingerprint_|.
-  std::string system_fingerprint_;
+
+  // Used to prevent multiple reading system properties file. Once this file is
+  // read, it's content is stored here. If map is empty this indicates that
+  // properties file was never read.
+  std::map<std::string, std::string> system_properties_;
 
   DISALLOW_COPY_AND_ASSIGN(ArcSetup);
 };

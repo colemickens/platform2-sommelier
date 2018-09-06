@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #include <initializer_list>
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -175,6 +176,11 @@ bool WriteToFile(const base::FilePath& file_path,
 bool GetPropertyFromFile(const base::FilePath& prop_file_path,
                          const std::string& prop_name,
                          std::string* out_prop);
+
+// Reads |prop_file_path| and fills property map |out_properties|. Returns true
+// if property file was correctly read and parsed.
+bool GetPropertiesFromFile(const base::FilePath& prop_file_path,
+                           std::map<std::string, std::string>* out_properties);
 
 // Reads Android's packages.xml at |packages_xml_path|, fills
 // |out_fingerprint| and |out_sdk_version| with the OS fingerprint and the SDK

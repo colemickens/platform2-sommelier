@@ -74,6 +74,21 @@ void ValidateResourcesMatch(const base::FilePath& path1,
   }
 }
 
+constexpr char kTestProperitesFromFileContent[] =
+    ""
+    "# begin build properties\n"
+    "\n"
+    "ro.build.version.sdk=25\n"
+    "ro.product.board=board\n"
+    "ro.build.fingerprint=fingerprint\n";
+
+constexpr char kTestProperitesFromFileContentBad[] =
+    ""
+    "# begin build properties\n"
+    "\n"
+    "ro.build.version.sdk=25\n"
+    "ro.product.board board\n";  // no '=' separator
+
 }  // namespace
 
 TEST(ArcSetupUtil, TestCreateOrTruncate) {
@@ -259,6 +274,33 @@ TEST(ArcSetupUtil, TestGetPropertyFromFile) {
   EXPECT_FALSE(GetPropertyFromFile(prop_file, "1", &v));
   EXPECT_FALSE(GetPropertyFromFile(prop_file, "k", &v));
   EXPECT_FALSE(GetPropertyFromFile(prop_file, "k4", &v));
+}
+
+TEST(ArcSetupUtil, TestGetPropertiesFromFile) {
+  base::ScopedTempDir temp_directory;
+  ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
+  base::FilePath prop_file = temp_directory.GetPath().Append("test.prop");
+
+  // Create a new prop file and read it.
+  ASSERT_TRUE(WriteToFile(prop_file, 0700, kTestProperitesFromFileContent));
+  std::map<std::string, std::string> properties;
+  EXPECT_TRUE(GetPropertiesFromFile(prop_file, &properties));
+  EXPECT_EQ(3U, properties.size());
+  EXPECT_EQ("25", properties["ro.build.version.sdk"]);
+  EXPECT_EQ("board", properties["ro.product.board"]);
+  EXPECT_EQ("fingerprint", properties["ro.build.fingerprint"]);
+}
+
+TEST(ArcSetupUtil, TestGetPropertiesFromFileBad) {
+  base::ScopedTempDir temp_directory;
+  ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
+  base::FilePath prop_file = temp_directory.GetPath().Append("test.prop");
+
+  // Create a new prop file and read it.
+  ASSERT_TRUE(WriteToFile(prop_file, 0700, kTestProperitesFromFileContentBad));
+  std::map<std::string, std::string> properties;
+  EXPECT_FALSE(GetPropertiesFromFile(prop_file, &properties));
+  EXPECT_TRUE(properties.empty());
 }
 
 TEST(ArcSetupUtil, TestGetFingerprintAndSdkVersionFromPackagesXml) {
