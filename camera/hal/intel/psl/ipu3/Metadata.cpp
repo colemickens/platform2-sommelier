@@ -236,8 +236,8 @@ void Metadata::writeSensorMetadata(RequestCtrlState &reqState)
     camera_metadata_ro_entry entry;
     int64_t exposureTime = 0;
     int32_t sensitivity = 0;
-    uint16_t pixels_per_line = 0;
-    uint16_t lines_per_frame = 0;
+    int64_t pixels_per_line = 0;
+    int64_t lines_per_frame = 0;
     int64_t manualExpTime = 1;
     ia_aiq_ae_exposure_result *AeExpResult = nullptr;
 
@@ -266,9 +266,9 @@ void Metadata::writeSensorMetadata(RequestCtrlState &reqState)
     /*
      * Android wants the frame duration in nanoseconds
      */
-    int64_t frameDuration = (pixels_per_line * lines_per_frame) /
+    int64_t frameDuration = (pixels_per_line * lines_per_frame * 1000) /
                             mSensorDescriptor.pixel_clock_freq_mhz;
-    frameDuration *= 1000;
+
     reqState.ctrlUnitResult->update(ANDROID_SENSOR_FRAME_DURATION,
                                          &frameDuration, 1);
 

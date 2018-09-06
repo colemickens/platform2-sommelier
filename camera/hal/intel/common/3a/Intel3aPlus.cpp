@@ -617,14 +617,20 @@ status_t Intel3aPlus::fillAeInputParams(const CameraMetadata *settings,
         if (entry.count == 2) {
             int32_t minFps = MIN(entry.data.i32[0], maxSupportedFps);
             int32_t maxFps = MIN(entry.data.i32[1], maxSupportedFps);
-
             aeCtrl->aeTargetFpsRange[0] = minFps;
             aeCtrl->aeTargetFpsRange[1] = maxFps;
-
+            /*
+             * There is computational accuracy in 3a library, we can not get the perfectly matched frame
+             * duration if the fps range is a fix value(eg:30~30). So we calulate the frame length line
+             * align to one whole line to add a margin value for manual_frame_time_us_max.
+             */
             aiqInputParams->aeInputParams.manual_limits->manual_frame_time_us_min =
-                    (long) ((1.0f / maxFps) * 1000000);
+                    (long) std::ceil((1.0f / maxFps) * 1000000);
+            float lineDurationUs = sensorDescriptor->pixel_periods_per_line
+                    / sensorDescriptor->pixel_clock_freq_mhz;
+            float marginFll = std::ceil((1.0f / minFps) * 1000000 / lineDurationUs);
             aiqInputParams->aeInputParams.manual_limits->manual_frame_time_us_max =
-                    (long) ((1.0f / minFps) * 1000000);
+                    (long) std::ceil(marginFll * lineDurationUs);
         }
 
         //# METADATA_Control control.aePrecaptureTrigger done
