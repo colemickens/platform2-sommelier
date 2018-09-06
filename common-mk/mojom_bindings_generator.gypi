@@ -20,11 +20,27 @@
     'mojom_bindings_generator': '<(sysroot)/usr/src/libmojo-<(libbase_ver)/mojo/mojom_bindings_generator.py',
     'mojo_templates_dir': '<(SHARED_INTERMEDIATE_DIR)/templates',
     'mojo_extra_args%': [],
-    'deps': [
+    'exported_deps': [
       'libchrome-<(libbase_ver)',
       'libmojo-<(libbase_ver)',
     ],
+    'deps': ['<@(exported_deps)'],
   },
+  'all_dependent_settings': {
+    'variables': {
+      'deps': ['<@(exported_deps)'],
+    },
+  },
+
+  # mojom generates header file, so dependency between static libs is also
+  # needed.
+  'hard_dependency': 1,
+
+  # This gypi generates header files under <(SHARED_INTERMEDIATE_DIR)/include.
+  'direct_dependent_settings': {
+    'include_dirs': ['<(SHARED_INTERMEDIATE_DIR)/include'],
+  },
+
   'actions': [
     {
       'action_name': 'mojo_templates_dir',
