@@ -25,6 +25,7 @@
 
 #include <base/bind.h>
 #include <base/command_line.h>
+#include <base/compiler_specific.h>
 #include <base/environment.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
@@ -289,14 +290,14 @@ bool ShouldDeleteAndroidData(AndroidSdkVersion system_sdk_version,
   return false;
 }
 
-void CheckProcessIsAliveOrDie(const std::string& pid_str) {
+NOINLINE void CheckProcessIsAliveOrDie(const std::string& pid_str) {
   pid_t pid;
   EXIT_IF(!base::StringToInt(pid_str, &pid));
   EXIT_IF(!IsProcessAlive(pid));
   LOG(INFO) << "Process " << pid << " is still alive, at least as a zombie";
 }
 
-void CheckNamespacesAvailableOrDie(const std::string& pid_str) {
+NOINLINE void CheckNamespacesAvailableOrDie(const std::string& pid_str) {
   const base::FilePath proc("/proc");
   const base::FilePath ns = proc.Append(pid_str).Append("ns");
   EXIT_IF(!base::PathExists(ns));
@@ -312,7 +313,7 @@ void CheckNamespacesAvailableOrDie(const std::string& pid_str) {
   LOG(INFO) << "Process " << pid_str << " still has all namespace entries";
 }
 
-void CheckOtherProcEntriesOrDie(const std::string& pid_str) {
+NOINLINE void CheckOtherProcEntriesOrDie(const std::string& pid_str) {
   const base::FilePath proc("/proc");
   const base::FilePath proc_pid = proc.Append(pid_str);
   for (const char* entry : {"cwd", "root"}) {
