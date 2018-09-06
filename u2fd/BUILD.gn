@@ -1,0 +1,35 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":u2fd",
+  ]
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "libpower_manager-client",
+    "libtrunks",
+    "system_api",
+  ]
+}
+
+executable("u2fd") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "main.cc",
+    "tpm_vendor_cmd.cc",
+    "u2fhid.cc",
+    "uhid_device.cc",
+  ]
+  libs = [ "-lpolicy-${libbase_ver}" ]
+  deps = [
+    "//common-mk/external_dependencies:policy-protos",
+  ]
+}
