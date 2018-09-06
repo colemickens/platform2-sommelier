@@ -293,7 +293,9 @@ prepare_disk() {
   fi
   # Often times, nothing is mounted, so swallow the warnings.
   umount -f /media/*/* 2>&1 | \
-    grep -v -i \
+    grep -v -i -F \
+      -e 'no mount point specified' \
+      -e 'not mounted' \
       -e 'No such file or directory' \
       -e 'not found' || true
 }
