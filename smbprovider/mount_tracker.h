@@ -31,6 +31,12 @@ class MountTracker {
   MountTracker();
   ~MountTracker();
 
+  // Returns true if |mount_id| is already mounted.
+  bool IsAlreadyMounted(int32_t mount_id) const;
+
+  // Returns true if |mount_root| is already mounted.
+  bool IsAlreadyMounted(const std::string& mount_root) const;
+
  private:
   // Maintains the state of a single mount. Contains the mount root path and
   // the metadata cache.
@@ -58,6 +64,14 @@ class MountTracker {
 
     DISALLOW_COPY_AND_ASSIGN(MountInfo);
   };
+
+  // Returns true if |mount_root| exists as a value in |mounts_|. This method is
+  // only used for DCHECK to ensure that mounts_ is in sync with
+  // mounted_shares_.
+  bool ExistsInMounts(const std::string& mount_root) const;
+
+  // Returns true if |mount_root| is already mounted.
+  bool ExistsInMountedSharePaths(const std::string& mount_root) const;
 
   // Maps MountId to MountInfo.
   IdMap<MountInfo> mounts_;
