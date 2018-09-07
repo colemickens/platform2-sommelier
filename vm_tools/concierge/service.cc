@@ -1290,9 +1290,10 @@ std::unique_ptr<dbus::Response> Service::ListVmDisks(
     }
     std::string* name = response.add_images();
     *name = std::move(image_name);
-    int64_t file_size;
-    if (base::GetFileSize(path, &file_size))
-      total_size += file_size;
+    struct stat st;
+    if (stat(path.value().c_str(), &st) == 0) {
+      total_size += st.st_blocks * 512;
+    }
   }
   response.set_total_size(total_size);
 
