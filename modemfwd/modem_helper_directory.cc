@@ -31,11 +31,15 @@ class ModemHelperDirectoryImpl : public ModemHelperDirectory {
       if (entry.filename().empty())
         continue;
 
-      base::FilePath helper_path = directory.Append(entry.filename());
-      auto helper = CreateModemHelper(helper_path);
+      HelperInfo helper_info(directory.Append(entry.filename()));
+      for (const std::string& extra_argument : entry.extra_argument()) {
+        helper_info.extra_arguments.push_back(extra_argument);
+      }
+
+      auto helper = CreateModemHelper(helper_info);
       for (const std::string& device_id : entry.device_id()) {
-        DLOG(INFO) << "Adding helper " << helper_path.value() << " for ["
-                   << device_id << "]";
+        DLOG(INFO) << "Adding helper " << helper_info.executable_path.value()
+                   << " for [" << device_id << "]";
         helpers_by_id_[device_id] = helper.get();
       }
       available_helpers_.push_back(std::move(helper));

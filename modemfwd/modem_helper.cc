@@ -16,6 +16,8 @@
 #include <brillo/process.h>
 #include <chromeos/switches/modemfwd_switches.h>
 
+namespace modemfwd {
+
 namespace {
 
 // This lock file prevents powerd from suspending the system. Take it
@@ -23,12 +25,15 @@ namespace {
 constexpr char kPowerOverrideLockFilePath[] =
     "/run/lock/power_override/modemfwd.lock";
 
-bool RunHelperProcess(const base::FilePath& helper_path,
-                      const std::string& arg,
+bool RunHelperProcess(const HelperInfo& helper_info,
+                      const std::string& argument,
                       std::string* output) {
   brillo::ProcessImpl helper;
-  helper.AddArg(helper_path.value());
-  helper.AddArg("--" + arg);
+  helper.AddArg(helper_info.executable_path.value());
+  helper.AddArg("--" + argument);
+  for (const std::string& extra_argument : helper_info.extra_arguments) {
+    helper.AddArg(extra_argument);
+  }
 
   // Set up output redirection, if requested. We keep the file open
   // across the process lifetime to ensure nobody is swapping out the
@@ -61,7 +66,7 @@ bool RunHelperProcess(const base::FilePath& helper_path,
   }
 
   if (exit_code != 0) {
-    LOG(ERROR) << "Failed to perform \"" << arg << "\" on the modem";
+    LOG(ERROR) << "Failed to perform \"" << argument << "\" on the modem";
     return false;
   }
 
@@ -73,7 +78,7 @@ bool RunHelperProcess(const base::FilePath& helper_path,
 // middle of flashing and ensures it's cleaned up later.
 class FlashMode {
  public:
-  static std::unique_ptr<FlashMode> Create(const base::FilePath& helper_path) {
+  static std::unique_ptr<FlashMode> Create(const HelperInfo& helper_info) {
     const base::FilePath lock_path(kPowerOverrideLockFilePath);
     // If the lock directory doesn't exist, then powerd is probably not running.
     // Don't worry about it in that case.
@@ -86,45 +91,43 @@ class FlashMode {
       }
     }
 
-    if (!RunHelperProcess(helper_path, modemfwd::kPrepareToFlash, nullptr)) {
+    if (!RunHelperProcess(helper_info, kPrepareToFlash, nullptr)) {
       base::DeleteFile(lock_path, false /* recursive */);
       return nullptr;
     }
 
-    return base::WrapUnique(new FlashMode(helper_path));
+    return base::WrapUnique(new FlashMode(helper_info));
   }
 
   ~FlashMode() {
-    RunHelperProcess(helper_path_, modemfwd::kReboot, nullptr);
+    RunHelperProcess(helper_info_, kReboot, nullptr);
     base::DeleteFile(base::FilePath(kPowerOverrideLockFilePath),
                      false /* recursive */);
   }
 
  private:
   // Use the static factory method above.
-  explicit FlashMode(const base::FilePath& helper_path)
-      : helper_path_(helper_path) {}
+  explicit FlashMode(const HelperInfo& helper_info)
+      : helper_info_(helper_info) {}
 
-  base::FilePath helper_path_;
+  HelperInfo helper_info_;
 
   DISALLOW_COPY_AND_ASSIGN(FlashMode);
 };
 
 }  // namespace
 
-namespace modemfwd {
-
 class ModemHelperImpl : public ModemHelper {
  public:
-  explicit ModemHelperImpl(const base::FilePath& helper_path)
-      : helper_path_(helper_path) {}
+  explicit ModemHelperImpl(const HelperInfo& helper_info)
+      : helper_info_(helper_info) {}
   ~ModemHelperImpl() override = default;
 
   bool GetFirmwareInfo(FirmwareInfo* out_info) override {
     CHECK(out_info);
 
     std::string helper_output;
-    if (!RunHelperProcess(helper_path_, kGetFirmwareInfo, &helper_output))
+    if (!RunHelperProcess(helper_info_, kGetFirmwareInfo, &helper_output))
       return false;
 
     std::vector<std::string> parsed_output = base::SplitString(
@@ -142,36 +145,35 @@ class ModemHelperImpl : public ModemHelper {
 
   // modemfwd::ModemHelper overrides.
   bool FlashMainFirmware(const base::FilePath& path_to_fw) override {
-    auto flash_mode = FlashMode::Create(helper_path_);
+    auto flash_mode = FlashMode::Create(helper_info_);
     if (!flash_mode)
       return false;
 
-    return RunHelperProcess(helper_path_,
+    return RunHelperProcess(helper_info_,
                             base::StringPrintf("%s=%s", kFlashMainFirmware,
                                                path_to_fw.value().c_str()),
                             nullptr);
   }
 
   bool FlashCarrierFirmware(const base::FilePath& path_to_fw) override {
-    auto flash_mode = FlashMode::Create(helper_path_);
+    auto flash_mode = FlashMode::Create(helper_info_);
     if (!flash_mode)
       return false;
 
-    return RunHelperProcess(helper_path_,
+    return RunHelperProcess(helper_info_,
                             base::StringPrintf("%s=%s", kFlashCarrierFirmware,
                                                path_to_fw.value().c_str()),
                             nullptr);
   }
 
  private:
-  base::FilePath helper_path_;
+  HelperInfo helper_info_;
 
   DISALLOW_COPY_AND_ASSIGN(ModemHelperImpl);
 };
 
-std::unique_ptr<ModemHelper> CreateModemHelper(
-    const base::FilePath& helper_path) {
-  return std::make_unique<ModemHelperImpl>(helper_path);
+std::unique_ptr<ModemHelper> CreateModemHelper(const HelperInfo& helper_info) {
+  return std::make_unique<ModemHelperImpl>(helper_info);
 }
 
 }  // namespace modemfwd

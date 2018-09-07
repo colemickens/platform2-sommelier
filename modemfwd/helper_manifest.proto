@@ -9,6 +9,7 @@ package modemfwd;
 message HelperEntry {
   string filename = 1;
   repeated string device_id = 2;
+  repeated string extra_argument = 3;
 }
 
 message HelperManifest {

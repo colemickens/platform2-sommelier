@@ -27,6 +27,14 @@ struct FirmwareInfo {
   std::string carrier_version;
 };
 
+struct HelperInfo {
+  explicit HelperInfo(const base::FilePath executable_path)
+      : executable_path(executable_path) {}
+
+  base::FilePath executable_path;
+  std::vector<std::string> extra_arguments;
+};
+
 class ModemHelper {
  public:
   virtual ~ModemHelper() = default;
@@ -37,8 +45,7 @@ class ModemHelper {
   virtual bool FlashCarrierFirmware(const base::FilePath& path_to_fw) = 0;
 };
 
-std::unique_ptr<ModemHelper> CreateModemHelper(
-    const base::FilePath& helper_path);
+std::unique_ptr<ModemHelper> CreateModemHelper(const HelperInfo& helper_info);
 
 }  // namespace modemfwd
 
