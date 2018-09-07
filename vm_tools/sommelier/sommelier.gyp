@@ -102,5 +102,40 @@
         'DARK_FRAME_COLOR=<@(dark_frame_color)',
       ],
     },
+    {
+      'target_name': 'wayland_demo',
+      'type': 'executable',
+      'variables': {
+        'deps': [
+          'libchrome-<(libbase_ver)',
+          'wayland-client',
+        ],
+      },
+      'link_settings': {
+        'libraries': [
+          '-lwayland-client',
+        ],
+      },
+      'sources': [
+        'demos/wayland_demo.cc',
+      ],
+    },
+    {
+      'target_name': 'x11_demo',
+      'type': 'executable',
+      'variables': {
+        'deps': [
+          'libchrome-<(libbase_ver)',
+        ],
+      },
+      'link_settings': {
+        'libraries': [
+          '-lX11',
+        ],
+      },
+      'sources': [
+        'demos/x11_demo.cc',
+      ],
+    },
   ],
 }
