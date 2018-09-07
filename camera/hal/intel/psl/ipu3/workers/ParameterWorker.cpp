@@ -119,6 +119,12 @@ status_t ParameterWorker::configure(std::shared_ptr<GraphConfig> &config)
 
     ia_cmc_t* cmc = reinterpret_cast<ia_cmc_t*>(cmcHandle);
 
+    if (mPipeType == GraphConfig::PIPE_STILL) {
+        mRuntimeParams.frame_use = ia_aiq_frame_use_still;
+    } else {
+        mRuntimeParams.frame_use = ia_aiq_frame_use_preview;
+    }
+
     AicMode aicMode = mPipeType == GraphConfig::PIPE_STILL ? AIC_MODE_STILL : AIC_MODE_VIDEO;
     if (mSkyCamAIC == nullptr) {
         mSkyCamAIC = SkyCamProxy::createProxy(mCameraId, aicMode, mIspPipes, NUM_ISP_PIPES, cmc, &mCpfData, &mRuntimeParams, 0, 0);
@@ -186,6 +192,7 @@ status_t ParameterWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
     }
 
     updateAicInputParams(mMsg, mRuntimeParams);
+    LOG2("frame use %d, timestamp %lld", mRuntimeParams.frame_use, mRuntimeParams.time_stamp);
     if (mSkyCamAIC)
         mSkyCamAIC->Run(mRuntimeParams);
     mAicConfig = mSkyCamAIC->GetAicConfig();
@@ -238,6 +245,7 @@ status_t ParameterWorker::postRun()
 
 void ParameterWorker::updateAicInputParams(std::shared_ptr<DeviceMessage> msg, IPU3AICRuntimeParams &runtimeParams) const
 {
+    runtimeParams.time_stamp = msg->pMsg.processingSettings->captureSettings->timestamp / 1000; //microsecond unit
     runtimeParams.manual_brightness = msg->pMsg.processingSettings->captureSettings->ispSettings.manualSettings.manualBrightness;
     runtimeParams.manual_contrast = msg->pMsg.processingSettings->captureSettings->ispSettings.manualSettings.manualContrast;
     runtimeParams.manual_hue = msg->pMsg.processingSettings->captureSettings->ispSettings.manualSettings.manualHue;
