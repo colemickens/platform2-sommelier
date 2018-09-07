@@ -33,7 +33,7 @@ class ModemHelperDirectoryImpl : public ModemHelperDirectory {
 
       base::FilePath helper_path = directory.Append(entry.filename());
       auto helper = CreateModemHelper(helper_path);
-      for (const std::string device_id : entry.device_id()) {
+      for (const std::string& device_id : entry.device_id()) {
         DLOG(INFO) << "Adding helper " << helper_path.value() << " for ["
                    << device_id << "]";
         helpers_by_id_[device_id] = helper.get();
