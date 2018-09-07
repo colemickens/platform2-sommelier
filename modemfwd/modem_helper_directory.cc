@@ -25,8 +25,8 @@ namespace modemfwd {
 
 class ModemHelperDirectoryImpl : public ModemHelperDirectory {
  public:
-  explicit ModemHelperDirectoryImpl(const HelperManifest& manifest,
-                                    const base::FilePath& directory) {
+  ModemHelperDirectoryImpl(const HelperManifest& manifest,
+                           const base::FilePath& directory) {
     for (const HelperEntry& entry : manifest.helper()) {
       if (entry.filename().empty())
         continue;

@@ -25,8 +25,8 @@ const char FirmwareDirectory::kGenericCarrierId[] = "generic";
 
 class FirmwareDirectoryImpl : public FirmwareDirectory {
  public:
-  explicit FirmwareDirectoryImpl(const FirmwareManifest& manifest,
-                                 const base::FilePath& directory)
+  FirmwareDirectoryImpl(const FirmwareManifest& manifest,
+                        const base::FilePath& directory)
       : manifest_(manifest), directory_(directory) {}
 
   // modemfwd::FirmwareDirectory overrides.
