@@ -165,4 +165,15 @@ TEST_F(IdMapTest, TestInsertWithSpecificId) {
   EXPECT_EQ(specific_id, id3);
 }
 
+TEST_F(IdMapTest, TestInsertAndAt) {
+  const std::string expected = "Foo";
+  const int32_t id = map_.Insert(expected);
+
+  EXPECT_GE(id, 0);
+  // Ensure At() is safe to use.
+  ExpectFound(id, expected);
+  EXPECT_EQ(expected, map_.At(id));
+  EXPECT_EQ(1, map_.Count());
+}
+
 }  // namespace smbprovider

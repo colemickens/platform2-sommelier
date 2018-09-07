@@ -45,6 +45,8 @@ class IdMap {
     return ids_.find(id);
   }
 
+  const T& At(int32_t id) const { return ids_.at(id); }
+
   bool Contains(int32_t id) const { return ids_.count(id) > 0; }
 
   bool Remove(int32_t id) {
