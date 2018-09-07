@@ -1,0 +1,104 @@
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "media_perception/producer_impl.h"
+
+#include <mojo/edk/embedder/embedder.h>
+#include <mojo/edk/embedder/platform_channel_pair.h>
+#include <mojo/edk/embedder/platform_channel_utils_posix.h>
+#include <mojo/edk/embedder/platform_handle_vector.h>
+#include <mojo/edk/embedder/scoped_platform_handle.h>
+#include <stdlib.h>
+#include <utility>
+
+#include "base/logging.h"
+#include "mojom/constants.mojom.h"
+
+namespace mri {
+
+video_capture::mojom::ProducerPtr ProducerImpl::CreateInterfacePtr() {
+  return binding_.CreateInterfacePtrAndBind();
+}
+
+void ProducerImpl::RegisterVirtualDeviceAtFactory(
+    video_capture::mojom::DeviceFactoryPtr* factory,
+    media::mojom::VideoCaptureDeviceInfoPtr info) {
+  (*factory)->AddSharedMemoryVirtualDevice(std::move(info),
+                                           CreateInterfacePtr(), true,
+                                           mojo::GetProxy(&virtual_device_));
+}
+
+void ProducerImpl::OnNewBuffer(int32_t buffer_id,
+                               media::mojom::VideoBufferHandlePtr buffer_handle,
+                               const mojo::Callback<void()>& callback) {
+  CHECK(buffer_handle->is_shared_memory_via_raw_file_descriptor());
+  std::unique_ptr<SharedMemoryProvider> shared_memory_provider =
+      SharedMemoryProvider::CreateFromRawFileDescriptor(
+          false /*read_only*/,
+          std::move(buffer_handle->get_shared_memory_via_raw_file_descriptor()
+                        ->file_descriptor_handle),
+          buffer_handle->get_shared_memory_via_raw_file_descriptor()
+              ->shared_memory_size_in_bytes);
+  if (!shared_memory_provider) {
+    LOG(ERROR) << "SharedMemoryProvider is nullptr.";
+    return;
+  }
+  outgoing_buffer_id_to_buffer_map_.insert(
+      std::make_pair(buffer_id, std::move(shared_memory_provider)));
+  std::move(callback).Run();
+}
+
+void ProducerImpl::OnBufferRetired(int32_t buffer_id) {
+  outgoing_buffer_id_to_buffer_map_.erase(buffer_id);
+}
+
+void ProducerImpl::PushNextFrame(
+    base::TimeDelta timestamp, std::unique_ptr<const uint8_t[]> data,
+    int data_size, media::mojom::VideoCapturePixelFormat pixel_format,
+    int width, int height) {
+  gfx::mojom::SizePtr size = gfx::mojom::Size::New();
+  size->width = width;
+  size->height = height;
+  virtual_device_->RequestFrameBuffer(
+      std::move(size), pixel_format,
+      base::Bind(&ProducerImpl::OnFrameBufferReceived, base::Unretained(this),
+                 timestamp, base::Passed(&data), data_size, pixel_format, width,
+                 height));
+}
+
+void ProducerImpl::OnFrameBufferReceived(
+    base::TimeDelta timestamp, std::unique_ptr<const uint8_t[]> data,
+    int data_size, media::mojom::VideoCapturePixelFormat pixel_format,
+    int width, int height, int32_t buffer_id) {
+  if (buffer_id == video_capture::mojom::kInvalidBufferId) {
+    LOG(ERROR) << "Got invalid buffer id.";
+    return;
+  }
+
+  media::mojom::VideoFrameInfoPtr info = media::mojom::VideoFrameInfo::New();
+  info->timestamp = mojo_base::mojom::TimeDelta::New();
+  info->timestamp->microseconds = timestamp.InMicroseconds();
+  info->pixel_format = pixel_format;
+  gfx::mojom::SizePtr size = gfx::mojom::Size::New();
+  size->width = width;
+  size->height = height;
+  info->coded_size = std::move(size);
+  gfx::mojom::RectPtr rect = gfx::mojom::Rect::New();
+  rect->width = width;
+  rect->height = height;
+  info->visible_rect = std::move(rect);
+  info->metadata = mojo_base::mojom::DictionaryValue::New();
+  info->metadata->storage =
+      mojo::Map<mojo::String, mojo::StructPtr<mojo_base::mojom::Value>>();
+
+  SharedMemoryProvider* outgoing_buffer =
+      outgoing_buffer_id_to_buffer_map_.at(buffer_id).get();
+
+  auto memory = static_cast<uint8_t*>(
+      outgoing_buffer->GetSharedMemoryForInProcessAccess()->memory());
+  memcpy(memory, data.get(), outgoing_buffer->GetMemorySizeInBytes());
+  virtual_device_->OnFrameReadyInBuffer(buffer_id, std::move(info));
+}
+
+}  // namespace mri
