@@ -48,6 +48,9 @@ class MountTracker {
                 std::unique_ptr<SambaInterface> samba_interface,
                 int32_t* mount_id);
 
+  // Returns the number of mounts.
+  size_t MountCount() const { return mounts_.Count(); }
+
  private:
   // Maintains the state of a single mount. Contains the mount root path and
   // the metadata cache.

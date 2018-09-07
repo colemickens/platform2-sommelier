@@ -88,6 +88,8 @@ TEST_F(MountTrackerTest, TestAddMount) {
   int32_t mount_id;
   EXPECT_TRUE(AddMountWithEmptyCredential(root_path, &mount_id));
 
+  EXPECT_EQ(1, mount_tracker_->MountCount());
+
   EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(root_path));
   EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id));
 }
@@ -101,6 +103,7 @@ TEST_F(MountTrackerTest, TestAddSameMount) {
 
   EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(root_path));
   EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id));
+  EXPECT_EQ(1, mount_tracker_->MountCount());
 
   // Ensure IsAlreadyMounted is working after adding a mount.
   const std::string root_path2 = "smb://server/share2";
@@ -113,6 +116,28 @@ TEST_F(MountTrackerTest, TestAddSameMount) {
 
   EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(root_path));
   EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id));
+
+  EXPECT_FALSE(AddMountWithEmptyCredential(root_path, &mount_id));
+
+  EXPECT_EQ(1, mount_tracker_->MountCount());
+}
+
+TEST_F(MountTrackerTest, TestMountCount) {
+  const std::string root_path = "smb://server/share1";
+  const std::string root_path2 = "smb://server/share2";
+
+  EXPECT_EQ(0, mount_tracker_->MountCount());
+
+  int32_t mount_id1;
+  EXPECT_TRUE(AddMountWithEmptyCredential(root_path, &mount_id1));
+
+  EXPECT_EQ(1, mount_tracker_->MountCount());
+
+  int32_t mount_id2;
+  EXPECT_TRUE(AddMountWithEmptyCredential(root_path2, &mount_id2));
+
+  EXPECT_EQ(2, mount_tracker_->MountCount());
+  EXPECT_NE(mount_id1, mount_id2);
 }
 
 TEST_F(MountTrackerTest, TestAddMultipleDifferentMountId) {
