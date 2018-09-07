@@ -21,13 +21,13 @@ use Dbus;
 use errno;
 use FileWatcher;
 use get_runnables;
+use open_with_flags;
 use PAGE_SIZE;
 use Paths;
 use Result;
 use Sampler;
 use strerror;
 use Timer;
-use write_string;
 
 // Different levels of emulated available RAM in MB.
 const LOW_MEM_LOW_AVAILABLE: usize = 150;
@@ -48,6 +48,17 @@ macro_rules! print_to_path {
 
 fn duration_to_millis(duration: &Duration) -> i64 {
     duration.as_secs() as i64 * 1000 + duration.subsec_nanos() as i64 / 1_000_000
+}
+
+// Writes |string| to file |path|.  If |append| is true, seeks to end first.
+// If |append| is false, truncates the file first.
+fn write_string(string: &str, path: &Path, append: bool) -> Result<()> {
+    let mut f = open_with_flags(&path, OpenOptions::new().write(true).append(append))?;
+    if !append {
+        f.set_len(0)?;
+    }
+    f.write_all(string.as_bytes())?;
+    Ok(())
 }
 
 fn read_nonblocking_pipe(file: &mut File, mut buf: &mut [u8]) -> Result<usize> {
@@ -97,7 +108,6 @@ enum TestEventType {
     EnterLowPressure,     // enter high available RAM state
     EnterMediumPressure,  // set enough memory pressure to trigger fast sampling
     OomKillBrowser,       // fake browser report of OOM kill
-    OomKillKernel,        // fake kernel report of OOM kill
     TabDiscard,           // fake browser report of tab discard
 }
 
@@ -117,7 +127,6 @@ impl TestEvent {
             TestEventType::EnterHighPressure =>
                 self.low_mem_notify(LOW_MEM_LOW_AVAILABLE, &paths, low_mem_device),
             TestEventType::OomKillBrowser => self.send_signal("oom-kill", time, dbus_fifo),
-            TestEventType::OomKillKernel => self.mock_kill(&paths.trace_pipe),
             TestEventType::TabDiscard => self.send_signal("tab-discard", time, dbus_fifo),
         }
     }
@@ -138,14 +147,6 @@ impl TestEvent {
     fn send_signal(&self, signal: &str, time: i64, dbus_fifo: &mut File) {
         write!(dbus_fifo, "{} {}\n", signal, time).expect("mock dbus: write failed");
     }
-
-    fn mock_kill(&self, path: &PathBuf) {
-        // example string (8 spaces before the first non-space):
-        // chrome-13700 [001] .... 867348.061651: oom_kill_process <-out_of_memory
-        let s = format!("chrome-13700 [001] .... {}.{:06}: oom_kill_process <-out_of_memory\n",
-                        self.time / 1000, (self.time % 1000) * 1000);
-        write_string(&s, path, true).expect("mock trace_pipe: write failed");
-    }
 }
 
 // Real time mock, for testing only.  It removes time races (for better or
@@ -164,7 +165,6 @@ struct MockTimer {
     dbus_fifo_out: File,       // for mock dbus event delivery
     low_mem_device: File,      // for delivery of low-mem notifications
     quit_request: bool,        // for termination
-    _trace_pipe_aux: File,     // to avoid EOF on trace pipe, which fires select
 }
 
 impl MockTimer {
@@ -174,16 +174,6 @@ impl MockTimer {
             .read(true)
             .write(true)
             .open(&paths.low_mem_device).expect("low-mem-device: cannot setup");
-        // We need to open the fifo one extra time because otherwise the fifo
-        // is still ready-to-read after consuming all data in its buffer, even
-        // though the following read will return EOF.  The ready-to-read status
-        // will cause the select() to fire incorrectly.  By having another open
-        // write descriptor, there is no EOF, and the select does not fire.
-        let _trace_pipe_aux = OpenOptions::new()
-            .custom_flags(libc::O_NONBLOCK)
-            .read(true)
-            .write(true)
-            .open(&paths.trace_pipe).expect("trace_pipe: cannot setup");
         MockTimer {
             current_time: 0,
             test_events,
@@ -192,7 +182,6 @@ impl MockTimer {
             dbus_fifo_out,
             low_mem_device,
             quit_request: false,
-            _trace_pipe_aux,
         }
     }
 }
@@ -422,7 +411,7 @@ const TEST_DESCRIPTORS: &[&str] = &[
     // Two full disjoint clips.  Also tests kernel-reported and chrome-reported OOM
     // kills.
     "
-    .M......K.............k.....
+    .M......k.............k.....
     ...0000000000....1111111111.
     ",
 
@@ -490,7 +479,6 @@ fn events_from_test_descriptor(descriptor: &str) -> Vec<TestEvent> {
                     b'M' => opt_type = Some(TestEventType::EnterMediumPressure),
                     b'L' => opt_type = Some(TestEventType::EnterLowPressure),
                     b'k' => opt_type = Some(TestEventType::OomKillBrowser),
-                    b'K' => opt_type = Some(TestEventType::OomKillKernel),
                     b'.' | b' ' | b'|' => {},
                     x => panic!("unexpected character {} in descriptor '{}'", &x, descriptor),
                 }
@@ -600,8 +588,6 @@ fn check_clip(clip_times: (i64, i64), clip_path: PathBuf, events: &Vec<TestEvent
             0
         } else {
             match e.event_type {
-                // OomKillKernel generates two samples.
-                TestEventType::OomKillKernel => 2,
                 // These generate 1 sample only when moving out of high pressure.
                 TestEventType::EnterLowPressure |
                 TestEventType::EnterMediumPressure => if in_low_mem { 1 } else { 0 },
@@ -671,8 +657,6 @@ pub fn setup_test_environment(paths: &Paths) {
         .expect("cannot create /proc");
     create_dir_all(paths.available.parent().unwrap())
         .expect("cannot create ../chromeos-low-mem");
-    create_dir_all(paths.trace_pipe.parent().unwrap())
-        .expect("cannot create ../tracing");
     let sys_vm = paths.testing_root.join("proc/sys/vm");
     create_dir_all(&sys_vm).expect("cannot create /proc/sys/vm");
     create_dir_all(paths.low_mem_device.parent().unwrap()).expect("cannot create /dev");
@@ -685,13 +669,8 @@ pub fn setup_test_environment(paths: &Paths) {
         .expect("cannot initialize available");
     print_to_path!(&paths.runnables, "0.16 0.18 0.22 4/981 8504")
         .expect("cannot initialize runnables");
-    print_to_path!(&paths.tracing_enabled, "1\n").expect("cannot initialize tracing_enabled");
-    print_to_path!(&paths.tracing_on, "1\n").expect("cannot initialize tracing_on");
-    print_to_path!(&paths.set_ftrace_filter, "").expect("cannot initialize set_ftrace_filter");
-    print_to_path!(&paths.current_tracer, "").expect("cannot initialize current_tracer");
     print_to_path!(&paths.low_mem_margin, "{}", LOW_MEM_MARGIN)
         .expect("cannot initialize low_mem_margin");
-    mkfifo(&paths.trace_pipe).expect("could not make mock trace_pipe");
 
     print_to_path!(sys_vm.join("min_filelist_kbytes"), "100000\n")
         .expect("cannot initialize min_filelist_kbytes");

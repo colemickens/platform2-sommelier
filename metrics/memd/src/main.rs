@@ -56,7 +56,6 @@ const PAGE_SIZE: usize =            4096;   // old friend
 const LOG_DIRECTORY: &str =         "/var/log/memd";
 const STATIC_PARAMETERS_LOG: &str = "memd.parameters";
 const LOW_MEM_SYSFS: &str =         "/sys/kernel/mm/chromeos-low_mem";
-const TRACING_SYSFS: &str =         "/sys/kernel/debug/tracing";
 const LOW_MEM_DEVICE: &str =        "/dev/chromeos-low-mem";
 const MAX_CLIP_COUNT: usize =       20;
 
@@ -502,17 +501,6 @@ fn parse_int_prefix(s: &str) -> Result<(u32, usize)> {
     }
 }
 
-// Writes |string| to file |path|.  If |append| is true, seeks to end first.
-// If |append| is false, truncates the file first.
-fn write_string(string: &str, path: &Path, append: bool) -> Result<()> {
-    let mut f = open_with_flags(&path, OpenOptions::new().write(true).append(append))?;
-    if !append {
-        f.set_len(0)?;
-    }
-    f.write_all(string.as_bytes())?;
-    Ok(())
-}
-
 // Reads selected values from |file| (which should be opened to /proc/vmstat)
 // as specified in |VMSTATS|, and stores them in |vmstat_values|.  The format of
 // the vmstat file is (<name> <integer-value>\n)+.
@@ -746,15 +734,11 @@ impl<'a> Sampler<'a> {
             watcher.set_fd(*fd).expect("cannot watch dbus fd");
         }
 
-        let trace_pipe_file = oom_trace_setup(&paths).expect("trace setup error");
-        watcher.set(&trace_pipe_file).expect("cannot watch trace_pipe");
-
         let files = Files {
             vmstat_file: open(&paths.vmstat).expect("cannot open vmstat"),
             runnables_file: open(&paths.runnables).expect("cannot open loadavg"),
             available_file_option: open_maybe(&paths.available)
                 .expect("error opening available file"),
-            trace_pipe_file,
             low_mem_file_option,
         };
 
@@ -816,73 +800,6 @@ impl<'a> Sampler<'a> {
         }
         self.refresh_time();
         Ok(())
-    }
-
-    // Reads oom-kill events from trace_pipe (passed as |fd|) and adds them to
-    // the sample queue.  Returns true if clip collection must be started.
-    //
-    // TODO(semenzato will open bug): trace pipe can only be used by a single
-    // process, so this needs to be demonized.
-    fn process_oom_traces(&mut self) -> Result<bool> {
-        // It is safe to leave the content of |buffer| uninitialized because we
-        // read into it.
-        let mut buffer: [u8; PAGE_SIZE] = unsafe { mem::uninitialized() };
-        // Safe because we're reading into a valid buffer up to its size.
-        let length = unsafe {
-            libc::read(self.files.trace_pipe_file.as_raw_fd(),
-                       &mut buffer[0] as *mut u8 as *mut c_void, buffer.len())
-        };
-        if length < 0 {
-            return Err("error reading trace pipe".into());
-        }
-        if length == 0 {
-            return Err("unexpected empty trace pipe".into());
-        }
-        let ul = length as usize;
-        // Note: the following assertion is necessary because if the trace output
-        // with the oom kill event straddles two buffers, the parser can fail in
-        // mysterious ways.
-        if ul >= PAGE_SIZE {
-            return Err("unexpectedly large input from trace_pipe".into());
-        }
-        // We trust the kernel to only produce valid utf8 strings.
-        let mut rest = unsafe { str::from_utf8_unchecked(&buffer[..ul]) };
-        let mut oom_happened = false;
-
-        // Parse output of trace_pipe.  There may be multiple oom kills, and who
-        // knows what else.
-        loop {
-            /* The oom line from trace_pipe looks like this (including the 8
-             * initial spaces):
-            chrome-13700 [001] .... 867348.061651: oom_kill_process <-out_of_memory
-             */
-            let oom_kill_function_name = "oom_kill_process";
-            if let Some(function_index) = rest.find(oom_kill_function_name) {
-                oom_happened = true;
-                let slice = &rest[..function_index - 2];
-                rest = &rest[function_index + oom_kill_function_name.len() ..];
-                // Grab event time.
-                let reported_time: f64 = match slice.rfind(' ') {
-                    Some(time_index) => {
-                        let time_string = &slice[time_index + 1 ..];
-                        match time_string.parse() {
-                            Ok(value) => value,
-                            Err(_) => return Err("cannot parse float from trace pipe".into())
-                        }
-                    },
-                    None => return Err("cannot find space in trace pipe".into())
-                };
-                // Add two samples, one with the OOM time as reported by the kernel, the
-                // other with the current time (firing of the trace event).  Collecting the
-                // data twice is a waste, but this is a rare event.
-                let time =  (reported_time * 1000.0) as i64;
-                self.enqueue_sample_external(SampleType::OomKillKernel, time)?;
-                self.enqueue_sample(SampleType::OomKillTrace)?;
-            } else {
-                break;
-            }
-        }
-        Ok(oom_happened)
     }
 
     // Creates or overwrites a file in the memd log directory containing
@@ -1054,14 +971,6 @@ impl<'a> Sampler<'a> {
                     debug!("enqueue {:?}, {:?}", sample_type, event.1);
                     self.enqueue_sample_external(sample_type, event.1)?;
                 }
-
-                // Check for OOM-kill event.
-                if self.watcher.has_fired(&self.files.trace_pipe_file)? {
-                    if self.process_oom_traces()? {
-                        debug!("oom trace at {}", self.current_time);
-                        event_is_interesting = true;
-                    }
-                }
             }
 
             // Arrange future saving of samples around interesting events.
@@ -1177,30 +1086,6 @@ impl<'a> Sampler<'a> {
     }
 }
 
-// Sets up tracing system to report OOM-kills.  Returns file to monitor for
-// OOM-kill events.
-//
-// TODO(crbug.com/840574): change this to get events from tracing daemon
-// instead (probably via D-Bus).
-fn oom_trace_setup(paths: &Paths) -> Result<File> {
-    write_string("function", &paths.current_tracer, false)?;
-    write_string("oom_kill_process", &paths.set_ftrace_filter, true)?;
-    write_string("1", &paths.tracing_enabled, false)?;
-    write_string("1", &paths.tracing_on, false)?;
-    let tracing_enabled_file = open(&paths.tracing_enabled)?;
-    if pread_u32(&tracing_enabled_file)? != 1 {
-        return Err("tracing is disabled".into());
-    }
-    let tracing_on_file = open(&paths.tracing_on)?;
-    if pread_u32(&tracing_on_file)? != 1 {
-        return Err("tracing is off".into());
-    }
-    Ok(OpenOptions::new()
-       .custom_flags(libc::O_NONBLOCK)
-       .read(true)
-       .open(&paths.trace_pipe)?)
-}
-
 // Prints |name| and value of entry /pros/sys/vm/|name| (or 0, if the entry is
 // missing) to file |out|.
 fn log_from_procfs(out: &mut File, dir: &Path, name: &str) -> Result<()> {
@@ -1222,8 +1107,6 @@ enum SampleType {
     EnterLowMem,        // Entering low-memory state, from the kernel low-mem notifier.
     LeaveLowMem,        // Leaving low-memory state, from the kernel low-mem notifier.
     OomKillBrowser,     // Chrome browser letting us know it detected OOM kill.
-    OomKillKernel,      // OOM kill notification from kernel (using kernel time stamp).
-    OomKillTrace,       // OOM kill notification from kernel (using current time).
     Sleeper,            // Memd was not running for a long time.
     TabDiscard,         // Chrome browser letting us know about a tab discard.
     Timer,              // Event was generated after FAST_POLL_PERIOD_DURATION with no other events.
@@ -1248,8 +1131,7 @@ impl SampleType {
     // because the timestamps of samples generated externally may be skewed.
     fn has_internal_timestamp(&self) -> bool {
         match self {
-            &SampleType::TabDiscard | &SampleType::OomKillBrowser |
-            &SampleType::OomKillKernel => false,
+            &SampleType::TabDiscard | &SampleType::OomKillBrowser => false,
             _ => true
         }
     }
@@ -1262,8 +1144,6 @@ impl SampleType {
             SampleType::EnterLowMem => "lowmem",
             SampleType::LeaveLowMem => "lealow",
             SampleType::OomKillBrowser => "oomkll",  // OOM from chrome
-            SampleType::OomKillKernel => "keroom",   // OOM from kernel, with kernel time stamp
-            SampleType::OomKillTrace => "traoom",    // OOM from kernel, with current time stamp
             SampleType::Sleeper => "sleepr",
             SampleType::TabDiscard => "discrd",
             SampleType::Timer => "timer",
@@ -1281,11 +1161,6 @@ pub struct Paths {
     runnables: PathBuf,
     low_mem_margin: PathBuf,
     low_mem_device: PathBuf,
-    current_tracer: PathBuf,
-    set_ftrace_filter: PathBuf,
-    tracing_enabled: PathBuf,
-    tracing_on: PathBuf,
-    trace_pipe: PathBuf,
     log_directory: PathBuf,
     static_parameters: PathBuf,
     zoneinfo: PathBuf,
@@ -1321,7 +1196,6 @@ macro_rules! make_paths {
 struct Files {
     vmstat_file: File,
     runnables_file: File,
-    trace_pipe_file: File,
     // These files might not exist.
     available_file_option: Option<File>,
     low_mem_file_option: Option<File>,
@@ -1383,11 +1257,6 @@ fn run_memory_daemon(always_poll_fast: bool) {
         runnables:         "/proc/loadavg",
         low_mem_margin:    LOW_MEM_SYSFS.to_string() + "/margin",
         low_mem_device:    LOW_MEM_DEVICE,
-        current_tracer:    TRACING_SYSFS.to_string() + "/current_tracer",
-        set_ftrace_filter: TRACING_SYSFS.to_string() + "/set_ftrace_filter",
-        tracing_enabled:   TRACING_SYSFS.to_string() + "/tracing_enabled",
-        tracing_on:        TRACING_SYSFS.to_string() + "/tracing_on",
-        trace_pipe:        TRACING_SYSFS.to_string() + "/trace_pipe",
         log_directory:     LOG_DIRECTORY,
         static_parameters: LOG_DIRECTORY.to_string() + "/" + STATIC_PARAMETERS_LOG,
         zoneinfo:          "/proc/zoneinfo",
