@@ -16,9 +16,9 @@ namespace smbprovider {
 
 class FileCopyProgressTest : public testing::Test {
  public:
-  FileCopyProgressTest() {
-    fake_samba_ = std::make_unique<FakeSambaInterface>();
-  }
+  FileCopyProgressTest()
+      : fake_samba_(std::make_unique<FakeSambaInterface>()) {}
+
   ~FileCopyProgressTest() override = default;
 
  protected:
