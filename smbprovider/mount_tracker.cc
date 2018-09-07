@@ -18,14 +18,17 @@ bool MountTracker::IsAlreadyMounted(int32_t mount_id) const {
   }
 
   // Check if |mounted_share_paths_| and |mounts_| are in sync.
-  DCHECK(ExistsInMountedSharePaths(mount_iter->second.mount_root));
+  DCHECK(ExistsInMounts(mount_iter->second.mount_root));
   return true;
 }
 
 bool MountTracker::IsAlreadyMounted(const std::string& mount_root) const {
-  bool has_credential = ExistsInMountedSharePaths(mount_root);
-  if (!has_credential) {
+  bool exists_in_mounted_share_paths =
+      mounted_share_paths_.count(mount_root) == 1;
+
+  if (!exists_in_mounted_share_paths) {
     DCHECK(!ExistsInMounts(mount_root));
+
     return false;
   }
 
@@ -44,11 +47,6 @@ bool MountTracker::ExistsInMounts(const std::string& mount_root) const {
   return false;
 }
 
-bool MountTracker::ExistsInMountedSharePaths(
-    const std::string& mount_root) const {
-  return mounted_share_paths_.count(mount_root) == 1;
-}
-
 bool MountTracker::AddMount(const std::string& mount_root,
                             SmbCredential credential,
                             std::unique_ptr<SambaInterface> samba_interface,
@@ -63,6 +61,26 @@ bool MountTracker::AddMount(const std::string& mount_root,
                                              std::move(samba_interface)));
 
   AddSambaInterfaceIdToSambaInterfaceMap(*mount_id);
+  mounted_share_paths_.insert(mount_root);
+  return true;
+}
+
+bool MountTracker::AddMountWithId(
+    const std::string& mount_root,
+    SmbCredential credential,
+    std::unique_ptr<SambaInterface> samba_interface,
+    int32_t mount_id) {
+  DCHECK_GE(mount_id, 0);
+
+  if (IsAlreadyMounted(mount_id) || IsAlreadyMounted(mount_root)) {
+    return false;
+  }
+
+  mounts_.InsertWithSpecificId(
+      mount_id, CreateMountInfo(mount_root, std::move(credential),
+                                std::move(samba_interface)));
+
+  AddSambaInterfaceIdToSambaInterfaceMap(mount_id);
   mounted_share_paths_.insert(mount_root);
   return true;
 }

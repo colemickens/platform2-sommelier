@@ -48,6 +48,15 @@ class MountTracker {
                 std::unique_ptr<SambaInterface> samba_interface,
                 int32_t* mount_id);
 
+  // Adds |mount_root| to the |mounts_| map with a specific |mount_id| and adds
+  // SambaInterfaceId to |samba_interface_map_|. Also adds |mount_root| to
+  // |mounted_root_shares_|. Returns false if |mount_root| already
+  // exists in |mounted_share_paths_| or |mount_id| exists in |mounts_|.
+  bool AddMountWithId(const std::string& mount_root,
+                      SmbCredential credential,
+                      std::unique_ptr<SambaInterface> samba_interface,
+                      int32_t mount_id);
+
   // Returns the number of mounts.
   size_t MountCount() const { return mounts_.Count(); }
 
@@ -83,9 +92,6 @@ class MountTracker {
   // only used for DCHECK to ensure that mounts_ is in sync with
   // mounted_shares_.
   bool ExistsInMounts(const std::string& mount_root) const;
-
-  // Returns true if |mount_root| is already mounted.
-  bool ExistsInMountedSharePaths(const std::string& mount_root) const;
 
   // Returns a new MountInfo.
   MountInfo CreateMountInfo(const std::string& mount_root,

@@ -52,6 +52,18 @@ class MountTrackerTest : public testing::Test {
                                     CreateSambaInterface(), mount_id);
   }
 
+  bool RemountWithEmptyCredential(const std::string& root_path,
+                                  int32_t mount_id) {
+    base::ScopedFD password_fd =
+        WritePasswordToFile(&temp_files_, "" /* password */);
+
+    SmbCredential credential("" /* workgroup */, "" /* username */,
+                             GetPassword(password_fd));
+
+    return mount_tracker_->AddMountWithId(root_path, std::move(credential),
+                                          CreateSambaInterface(), mount_id);
+  }
+
   std::unique_ptr<SambaInterface> CreateSambaInterface() {
     return samba_interface_factory_.Run();
   }
@@ -152,6 +164,69 @@ TEST_F(MountTrackerTest, TestAddMultipleDifferentMountId) {
   EXPECT_GE(mount_id1, 0);
   EXPECT_GE(mount_id2, 0);
   EXPECT_NE(mount_id1, mount_id2);
+}
+
+TEST_F(MountTrackerTest, TestRemountSucceeds) {
+  const std::string root_path = "smb://server/share1";
+  const int32_t mount_id = 9;
+
+  EXPECT_TRUE(RemountWithEmptyCredential(root_path, mount_id));
+
+  EXPECT_EQ(1, mount_tracker_->MountCount());
+  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id));
+}
+
+TEST_F(MountTrackerTest, TestRemountFailsWithSameMountPath) {
+  const std::string root_path = "smb://server/share1";
+  const int32_t mount_id = 9;
+
+  EXPECT_TRUE(RemountWithEmptyCredential(root_path, mount_id));
+
+  EXPECT_EQ(1, mount_tracker_->MountCount());
+  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id));
+
+  const int32_t mount_id2 = 10;
+  // Should be false since the same path cannot be mounted twice.
+  EXPECT_FALSE(RemountWithEmptyCredential(root_path, mount_id2));
+}
+
+TEST_F(MountTrackerTest, TestRemountFailsWithSameMountId) {
+  const std::string root_path = "smb://server/share1";
+  const int32_t mount_id = 9;
+
+  EXPECT_TRUE(RemountWithEmptyCredential(root_path, mount_id));
+
+  EXPECT_EQ(1, mount_tracker_->MountCount());
+  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id));
+
+  const std::string root_path2 = "smb://server/share2";
+  const int32_t mount_id2 = 9;
+  // Should be false since the same id cannot be mounted twice.
+  EXPECT_FALSE(RemountWithEmptyCredential(root_path2, mount_id2));
+}
+
+TEST_F(MountTrackerTest, TestMountAfterRemounts) {
+  const std::string root_path_1 = "smb://server/share1";
+  const int32_t mount_id_1 = 9;
+
+  const std::string root_path_2 = "smb://server/share2";
+  const int32_t mount_id_2 = 4;
+
+  const std::string new_root_path = "smb://server/share3";
+
+  EXPECT_TRUE(RemountWithEmptyCredential(root_path_1, mount_id_1));
+  EXPECT_TRUE(RemountWithEmptyCredential(root_path_2, mount_id_2));
+
+  EXPECT_EQ(2, mount_tracker_->MountCount());
+  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id_1));
+  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id_2));
+
+  int32_t mount_id_3;
+  EXPECT_TRUE(AddMountWithEmptyCredential(new_root_path, &mount_id_3));
+
+  EXPECT_EQ(3, mount_tracker_->MountCount());
+  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id_3));
+  EXPECT_GT(mount_id_3, mount_id_1);
 }
 
 }  // namespace smbprovider
