@@ -9,7 +9,7 @@
 namespace shill {
 
 MockHttpRequest::MockHttpRequest(ConnectionRefPtr connection)
-    : HttpRequest(connection, nullptr, nullptr) {}
+    : HttpRequest(connection, nullptr) {}
 
 MockHttpRequest::~MockHttpRequest() {}
 

@@ -9,6 +9,8 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <brillo/http/mock_connection.h>
+#include <brillo/http/mock_transport.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -55,9 +57,14 @@ class ConnectivityTrialTest : public Test {
       : device_info_(
             new NiceMock<MockDeviceInfo>(&control_, nullptr, nullptr, nullptr)),
         connection_(new StrictMock<MockConnection>(device_info_.get())),
-        connectivity_trial_(new ConnectivityTrial(
-            connection_.get(), &dispatcher_, kTrialTimeout,
-            callback_target_.result_callback())),
+        transport_(std::make_shared<brillo::http::MockTransport>()),
+        brillo_connection_(
+            std::make_shared<brillo::http::MockConnection>(transport_)),
+        connectivity_trial_(
+            new ConnectivityTrial(connection_.get(),
+                                  &dispatcher_,
+                                  kTrialTimeout,
+                                  callback_target_.result_callback())),
         interface_name_(kInterfaceName),
         dns_servers_(kDNSServers, kDNSServers + 2),
         http_request_(nullptr) {
@@ -84,6 +91,10 @@ class ConnectivityTrialTest : public Test {
       // Delete the ConnectivityTrial while expectations still exist.
       connectivity_trial_.reset();
     }
+    testing::Mock::VerifyAndClearExpectations(brillo_connection_.get());
+    brillo_connection_.reset();
+    testing::Mock::VerifyAndClearExpectations(transport_.get());
+    transport_.reset();
   }
 
  protected:
@@ -146,7 +157,6 @@ class ConnectivityTrialTest : public Test {
   ConnectivityTrial* connectivity_trial() { return connectivity_trial_.get(); }
   MockEventDispatcher& dispatcher() { return dispatcher_; }
   CallbackTarget& callback_target() { return callback_target_; }
-  ByteString& response_data() { return response_data_; }
 
   void ExpectReset() {
     EXPECT_TRUE(callback_target_.result_callback().
@@ -182,9 +192,13 @@ class ConnectivityTrialTest : public Test {
     connectivity_trial()->StartTrialTask();
   }
 
-  void AppendReadData(const string& read_data) {
-    response_data_.Append(ByteString(read_data, false));
-    connectivity_trial_->RequestReadCallback(response_data_);
+  void ExpectRequestSuccessWithStatus(int status_code) {
+    EXPECT_CALL(*brillo_connection_, GetResponseStatusCode())
+        .WillOnce(Return(status_code));
+
+    auto response =
+        std::make_shared<brillo::http::Response>(brillo_connection_);
+    connectivity_trial_->RequestSuccessCallback(response);
   }
 
  private:
@@ -197,13 +211,14 @@ class ConnectivityTrialTest : public Test {
   MockControl control_;
   unique_ptr<MockDeviceInfo> device_info_;
   scoped_refptr<MockConnection> connection_;
+  std::shared_ptr<brillo::http::MockTransport> transport_;
+  std::shared_ptr<brillo::http::MockConnection> brillo_connection_;
   CallbackTarget callback_target_;
   unique_ptr<ConnectivityTrial> connectivity_trial_;
   StrictMock<MockTime> time_;
   struct timeval current_time_;
   const string interface_name_;
   vector<string> dns_servers_;
-  ByteString response_data_;
   MockHttpRequest* http_request_;
 };
 
@@ -249,13 +264,12 @@ TEST_F(ConnectivityTrialTest, StartAttemptFailed) {
 
   // Expect that the request will be started -- return failure.
   EXPECT_CALL(*http_request(), Start(_, _, _))
-      .WillOnce(Return(HttpRequest::kResultConnectionFailure));
+      .WillOnce(Return(HttpRequest::kResultDNSFailure));
   // Expect a failure to be relayed to the caller.
-  EXPECT_CALL(callback_target(),
-              ResultCallback(IsResult(
-                  ConnectivityTrial::Result(
-                      ConnectivityTrial::kPhaseConnection,
-                      ConnectivityTrial::kStatusFailure))))
+  EXPECT_CALL(
+      callback_target(),
+      ResultCallback(IsResult(ConnectivityTrial::Result(
+          ConnectivityTrial::kPhaseDNS, ConnectivityTrial::kStatusFailure))))
       .Times(1);
 
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0)).Times(0);
@@ -336,29 +350,15 @@ TEST_F(ConnectivityTrialTest, ReadBadHeadersRetry) {
 
   // Expect the ConnectivityTrial to stop the current request each time, plus
   // an extra time in ConnectivityTrial::Stop().
-  ByteString response_data("X", 1);
 
   for (int i = 0; i < num_failures; ++i) {
     connectivity_trial()->StartTrialTask();
     AdvanceTime(sec_between_attempts * 1000);
     EXPECT_CALL(*http_request(), Stop()).Times(2);
     EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0)).Times(1);
-    connectivity_trial()->RequestReadCallback(response_data);
+    ExpectRequestSuccessWithStatus(123);
     EXPECT_TRUE(connectivity_trial()->Retry(0));
   }
-}
-
-
-TEST_F(ConnectivityTrialTest, ReadBadHeader) {
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
-  EXPECT_TRUE(StartTrial(kURL));
-
-  StartTrialTask();
-
-  ExpectTrialReturn(ConnectivityTrial::Result(
-      ConnectivityTrial::kPhaseContent,
-      ConnectivityTrial::kStatusFailure));
-  AppendReadData("X");
 }
 
 TEST_F(ConnectivityTrialTest, RequestTimeout) {
@@ -371,54 +371,10 @@ TEST_F(ConnectivityTrialTest, RequestTimeout) {
       ConnectivityTrial::kPhaseUnknown,
       ConnectivityTrial::kStatusTimeout));
 
-  EXPECT_CALL(*http_request(), response_data())
-      .WillOnce(ReturnRef(response_data()));
-
   TimeoutTrial();
 }
 
-TEST_F(ConnectivityTrialTest, ReadPartialHeaderTimeout) {
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
-  EXPECT_TRUE(StartTrial(kURL));
-
-  StartTrialTask();
-
-
-  const string response_expected(ConnectivityTrial::kResponseExpected);
-  const size_t partial_size = response_expected.length() / 2;
-  AppendReadData(response_expected.substr(0, partial_size));
-
-  ExpectTrialReturn(ConnectivityTrial::Result(
-      ConnectivityTrial::kPhaseContent,
-      ConnectivityTrial::kStatusTimeout));
-
-  EXPECT_CALL(*http_request(), response_data())
-      .WillOnce(ReturnRef(response_data()));
-
-  TimeoutTrial();
-}
-
-TEST_F(ConnectivityTrialTest, ReadCompleteHeader) {
-  const string response_expected(ConnectivityTrial::kResponseExpected);
-  const size_t partial_size = response_expected.length() / 2;
-
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
-  EXPECT_TRUE(StartTrial(kURL));
-
-  StartTrialTask();
-
-  AppendReadData(response_expected.substr(0, partial_size));
-
-  ExpectTrialReturn(ConnectivityTrial::Result(
-      ConnectivityTrial::kPhaseContent,
-      ConnectivityTrial::kStatusSuccess));
-
-  AppendReadData(response_expected.substr(partial_size));
-}
-
-TEST_F(ConnectivityTrialTest, ReadMatchingHeader) {
-  const string kResponse("HTTP/9.8 204");
-
+TEST_F(ConnectivityTrialTest, RequestSuccess) {
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
   EXPECT_TRUE(StartTrial(kURL));
 
@@ -428,7 +384,19 @@ TEST_F(ConnectivityTrialTest, ReadMatchingHeader) {
       ConnectivityTrial::kPhaseContent,
       ConnectivityTrial::kStatusSuccess));
 
-  AppendReadData(kResponse);
+  ExpectRequestSuccessWithStatus(204);
+}
+
+TEST_F(ConnectivityTrialTest, RequestFail) {
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
+  EXPECT_TRUE(StartTrial(kURL));
+
+  StartTrialTask();
+
+  ExpectTrialReturn(ConnectivityTrial::Result(
+      ConnectivityTrial::kPhaseContent, ConnectivityTrial::kStatusFailure));
+
+  ExpectRequestSuccessWithStatus(123);
 }
 
 struct ResultMapping {
@@ -455,50 +423,37 @@ TEST_P(ConnectivityTrialResultMappingTest, MapResult) {
 INSTANTIATE_TEST_CASE_P(
     TrialResultMappingTest,
     ConnectivityTrialResultMappingTest,
-    ::testing::Values(
-        ResultMapping(
-            HttpRequest::kResultUnknown,
-            ConnectivityTrial::Result(ConnectivityTrial::kPhaseUnknown,
-                                      ConnectivityTrial::kStatusFailure)),
-        ResultMapping(
-            HttpRequest::kResultInProgress,
-            ConnectivityTrial::Result(ConnectivityTrial::kPhaseUnknown,
-                                      ConnectivityTrial::kStatusFailure)),
-        ResultMapping(
-            HttpRequest::kResultDNSFailure,
-            ConnectivityTrial::Result(ConnectivityTrial::kPhaseDNS,
-                                      ConnectivityTrial::kStatusFailure)),
-        ResultMapping(
-            HttpRequest::kResultDNSTimeout,
-            ConnectivityTrial::Result(ConnectivityTrial::kPhaseDNS,
-                                      ConnectivityTrial::kStatusTimeout)),
-        ResultMapping(
-            HttpRequest::kResultConnectionFailure,
-            ConnectivityTrial::Result(ConnectivityTrial::kPhaseConnection,
-                                      ConnectivityTrial::kStatusFailure)),
-        ResultMapping(
-            HttpRequest::kResultConnectionTimeout,
-            ConnectivityTrial::Result(ConnectivityTrial::kPhaseConnection,
-                                      ConnectivityTrial::kStatusTimeout)),
-        ResultMapping(
-            HttpRequest::kResultRequestFailure,
-            ConnectivityTrial::Result(ConnectivityTrial::kPhaseHTTP,
-                                      ConnectivityTrial::kStatusFailure)),
-        ResultMapping(
-            HttpRequest::kResultRequestTimeout,
-            ConnectivityTrial::Result(ConnectivityTrial::kPhaseHTTP,
-                                      ConnectivityTrial::kStatusTimeout)),
-        ResultMapping(
-            HttpRequest::kResultResponseFailure,
-            ConnectivityTrial::Result(ConnectivityTrial::kPhaseHTTP,
-                                      ConnectivityTrial::kStatusFailure)),
-        ResultMapping(
-            HttpRequest::kResultResponseTimeout,
-            ConnectivityTrial::Result(ConnectivityTrial::kPhaseHTTP,
-                                      ConnectivityTrial::kStatusTimeout)),
-        ResultMapping(
-            HttpRequest::kResultSuccess,
-            ConnectivityTrial::Result(ConnectivityTrial::kPhaseContent,
-                                      ConnectivityTrial::kStatusFailure))));
+    ::testing::Values(ResultMapping(HttpRequest::kResultUnknown,
+                                    ConnectivityTrial::Result(
+                                        ConnectivityTrial::kPhaseUnknown,
+                                        ConnectivityTrial::kStatusFailure)),
+                      ResultMapping(HttpRequest::kResultInProgress,
+                                    ConnectivityTrial::Result(
+                                        ConnectivityTrial::kPhaseUnknown,
+                                        ConnectivityTrial::kStatusFailure)),
+                      ResultMapping(HttpRequest::kResultDNSFailure,
+                                    ConnectivityTrial::Result(
+                                        ConnectivityTrial::kPhaseDNS,
+                                        ConnectivityTrial::kStatusFailure)),
+                      ResultMapping(HttpRequest::kResultDNSTimeout,
+                                    ConnectivityTrial::Result(
+                                        ConnectivityTrial::kPhaseDNS,
+                                        ConnectivityTrial::kStatusTimeout)),
+                      ResultMapping(HttpRequest::kResultConnectionFailure,
+                                    ConnectivityTrial::Result(
+                                        ConnectivityTrial::kPhaseConnection,
+                                        ConnectivityTrial::kStatusFailure)),
+                      ResultMapping(HttpRequest::kResultHTTPFailure,
+                                    ConnectivityTrial::Result(
+                                        ConnectivityTrial::kPhaseHTTP,
+                                        ConnectivityTrial::kStatusFailure)),
+                      ResultMapping(HttpRequest::kResultHTTPTimeout,
+                                    ConnectivityTrial::Result(
+                                        ConnectivityTrial::kPhaseHTTP,
+                                        ConnectivityTrial::kStatusTimeout)),
+                      ResultMapping(HttpRequest::kResultSuccess,
+                                    ConnectivityTrial::Result(
+                                        ConnectivityTrial::kPhaseContent,
+                                        ConnectivityTrial::kStatusFailure))));
 
 }  // namespace shill

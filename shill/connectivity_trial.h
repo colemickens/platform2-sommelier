@@ -12,6 +12,7 @@
 #include <base/cancelable_callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
+#include <brillo/http/http_request.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/http_request.h"
@@ -65,7 +66,6 @@ class ConnectivityTrial {
   };
 
   static const char kDefaultURL[];
-  static const char kResponseExpected[];
 
   ConnectivityTrial(ConnectionRefPtr connection,
                     EventDispatcher* dispatcher,
@@ -136,11 +136,10 @@ class ConnectivityTrial {
   void StartTrialTask();
 
   // Callback used to return data read from the HttpRequest.
-  void RequestReadCallback(const ByteString& response_data);
+  void RequestSuccessCallback(std::shared_ptr<brillo::http::Response> response);
 
-  // Callback used to return the result of the HttpRequest.
-  void RequestResultCallback(HttpRequest::Result result,
-                             const ByteString& response_data);
+  // Callback used to return the error from the HttpRequest.
+  void RequestErrorCallback(HttpRequest::Result result);
 
   // Internal method used to clean up state and call the original caller that
   // created and triggered this ConnectivityTrial.
@@ -160,9 +159,9 @@ class ConnectivityTrial {
   int trial_timeout_seconds_;
   base::Callback<void(Result)> trial_callback_;
   base::WeakPtrFactory<ConnectivityTrial> weak_ptr_factory_;
-  base::Callback<void(const ByteString&)> request_read_callback_;
-  base::Callback<void(HttpRequest::Result, const ByteString&)>
-        request_result_callback_;
+  base::Callback<void(std::shared_ptr<brillo::http::Response>)>
+      request_success_callback_;
+  base::Callback<void(HttpRequest::Result)> request_error_callback_;
   std::unique_ptr<HttpRequest> request_;
 
   Sockets sockets_;

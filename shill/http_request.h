@@ -12,8 +12,11 @@
 #include <base/cancelable_callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
+#include <brillo/errors/error.h>
+#include <brillo/http/http_transport.h>
 
 #include "shill/net/byte_string.h"
+
 #include "shill/net/shill_time.h"
 #include "shill/refptr_types.h"
 
@@ -40,90 +43,60 @@ class HttpRequest {
     kResultDNSFailure,
     kResultDNSTimeout,
     kResultConnectionFailure,
-    kResultConnectionTimeout,
-    kResultRequestFailure,
-    kResultRequestTimeout,
-    kResultResponseFailure,
-    kResultResponseTimeout,
+    kResultHTTPFailure,
+    kResultHTTPTimeout,
     kResultSuccess
   };
 
-  HttpRequest(ConnectionRefPtr connection,
-              EventDispatcher* dispatcher,
-              Sockets* sockets);
+  HttpRequest(ConnectionRefPtr connection, EventDispatcher* dispatcher);
   virtual ~HttpRequest();
 
-  // Start an http GET request to the URL |url|.  Whenever any data is
-  // read from the server, |read_event_callback| is called with the
-  // current contents of the response data coming from the server.
-  // This callback could be called more than once as data arrives.
+  // Start an http GET request to the URL |url|. If the request succeeds,
+  // |request_success_callback| is called with the response data.
+  // Otherwise, request_error_callback is called with the error reason.
   //
-  // When the transaction completes, |result_callback| will be called with
-  // the final status from the transaction.  It is valid for the callback
-  // function to destroy this HttpRequest object, because at this time all
-  // object state has already been cleaned up.  |result_callback| will not be
-  // called if either the Start() call fails or if Stop() is called before
-  // the transaction completes.
-  //
-  // This (Start) function returns a failure result if the request
-  // failed during initialization, or kResultInProgress if the request
+  // This (Start) function returns kResultDNSFailure  if the request fails to
+  // initialize the DNS client, or kResultInProgress if the request
   // has started successfully and is now in progress.
   virtual Result Start(
       const HttpUrl& url,
-      const base::Callback<void(const ByteString&)>& read_event_callback,
-      const base::Callback<void(Result, const ByteString&)>& result_callback);
+      const base::Callback<void(std::shared_ptr<brillo::http::Response>)>&
+          request_success_callback,
+      const base::Callback<void(Result)>& request_error_callback);
 
   // Stop the current HttpRequest.  No callback is called as a side
   // effect of this function.
   virtual void Stop();
 
-  // Returns the data received so far from the server in the current
-  // request.  This data is available only while the request is active,
-  // and before the result callback is called.
-  virtual const ByteString& response_data() const { return response_data_; }
-
  private:
   friend class HttpRequestTest;
 
-  // Time to wait for connection to remote server.
-  static const int kConnectTimeoutSeconds;
-  // Time to wait for any input from server.
-  static const int kInputTimeoutSeconds;
+  // Time to wait for HTTP request.
+  static const int kRequestTimeoutSeconds;
 
-  static const char kHttpRequestTemplate[];
-
-  bool ConnectServer(const IPAddress& address, int port);
   void GetDNSResult(const Error& error, const IPAddress& address);
-  void OnConnectCompletion(bool success, int fd);
-  void OnServerReadError(const std::string& error_msg);
-  void ReadFromServer(InputData* data);
+  void StartRequest(const std::string& host, int port, const std::string& path);
+  void SuccessCallback(brillo::http::RequestID request_id,
+                       std::unique_ptr<brillo::http::Response> response);
+  void ErrorCallback(brillo::http::RequestID request_id,
+                     const brillo::Error* error);
   void SendStatus(Result result);
-  void StartIdleTimeout(int timeout_seconds, Result timeout_result);
-  void TimeoutTask();
-  void WriteToServer(int fd);
 
   ConnectionRefPtr connection_;
-  EventDispatcher* dispatcher_;
-  Sockets* sockets_;
 
   base::WeakPtrFactory<HttpRequest> weak_ptr_factory_;
-  base::Callback<void(bool, int)> connect_completion_callback_;
   base::Callback<void(const Error&, const IPAddress&)> dns_client_callback_;
-  base::Callback<void(InputData*)> read_server_callback_;
-  base::Callback<void(int)> write_server_callback_;
-  base::Callback<void(Result, const ByteString&)> result_callback_;
-  base::Callback<void(const ByteString&)> read_event_callback_;
-  std::unique_ptr<IOHandler> read_server_handler_;
-  std::unique_ptr<IOHandler> write_server_handler_;
+  base::Callback<void(Result)> request_error_callback_;
+  base::Callback<void(std::shared_ptr<brillo::http::Response>)>
+      request_success_callback_;
+  brillo::http::SuccessCallback success_callback_;
+  brillo::http::ErrorCallback error_callback_;
   std::unique_ptr<DnsClient> dns_client_;
-  std::unique_ptr<AsyncConnection> server_async_connection_;
+  std::shared_ptr<brillo::http::Transport> transport_;
+  brillo::http::RequestID request_id_;
   std::string server_hostname_;
   int server_port_;
-  int server_socket_;
-  base::CancelableClosure timeout_closure_;
-  Result timeout_result_;
-  ByteString request_data_;
-  ByteString response_data_;
+  std::string server_path_;
   bool is_running_;
 
   DISALLOW_COPY_AND_ASSIGN(HttpRequest);

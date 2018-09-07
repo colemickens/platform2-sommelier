@@ -5,6 +5,8 @@
 #ifndef SHILL_MOCK_HTTP_REQUEST_H_
 #define SHILL_MOCK_HTTP_REQUEST_H_
 
+#include <memory>
+
 #include <base/macros.h>
 #include <gmock/gmock.h>
 
@@ -18,12 +20,14 @@ class MockHttpRequest : public HttpRequest {
   explicit MockHttpRequest(ConnectionRefPtr connection);
   ~MockHttpRequest() override;
 
-  MOCK_METHOD3(Start, HttpRequest::Result(
-      const HttpUrl& url,
-      const base::Callback<void(const ByteString&)>& read_event_callback,
-      const base::Callback<void(Result, const ByteString&)>& result_callback));
+  MOCK_METHOD3(
+      Start,
+      HttpRequest::Result(
+          const HttpUrl& url,
+          const base::Callback<void(std::shared_ptr<brillo::http::Response>)>&
+              read_event_callback,
+          const base::Callback<void(Result)>& result_callback));
   MOCK_METHOD0(Stop, void());
-  MOCK_CONST_METHOD0(response_data, const ByteString& ());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockHttpRequest);

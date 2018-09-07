@@ -14,7 +14,6 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "shill/async_connection.h"
 #include "shill/connection.h"
 #include "shill/dns_client.h"
 #include "shill/event_dispatcher.h"
@@ -61,25 +60,21 @@ static string ObjectID(Connection* c) { return c->interface_name(); }
 
 const char ConnectivityTrial::kDefaultURL[] =
     "http://www.gstatic.com/generate_204";
-const char ConnectivityTrial::kResponseExpected[] = "HTTP/?.? 204";
 
-ConnectivityTrial::ConnectivityTrial(
-    ConnectionRefPtr connection,
-    EventDispatcher* dispatcher,
-    int trial_timeout_seconds,
-    const Callback<void(Result)>& callback)
+ConnectivityTrial::ConnectivityTrial(ConnectionRefPtr connection,
+                                     EventDispatcher* dispatcher,
+                                     int trial_timeout_seconds,
+                                     const Callback<void(Result)>& callback)
     : connection_(connection),
       dispatcher_(dispatcher),
       trial_timeout_seconds_(trial_timeout_seconds),
       trial_callback_(callback),
       weak_ptr_factory_(this),
-      request_read_callback_(
-          Bind(&ConnectivityTrial::RequestReadCallback,
-               weak_ptr_factory_.GetWeakPtr())),
-      request_result_callback_(
-          Bind(&ConnectivityTrial::RequestResultCallback,
-               weak_ptr_factory_.GetWeakPtr())),
-      is_active_(false) { }
+      request_success_callback_(Bind(&ConnectivityTrial::RequestSuccessCallback,
+                                     weak_ptr_factory_.GetWeakPtr())),
+      request_error_callback_(Bind(&ConnectivityTrial::RequestErrorCallback,
+                                   weak_ptr_factory_.GetWeakPtr())),
+      is_active_(false) {}
 
 ConnectivityTrial::~ConnectivityTrial() {
   Stop();
@@ -111,7 +106,7 @@ bool ConnectivityTrial::Start(const string& url_string,
   if (request_.get()) {
     CleanupTrial(false);
   } else {
-    request_.reset(new HttpRequest(connection_, dispatcher_, &sockets_));
+    request_.reset(new HttpRequest(connection_, dispatcher_));
   }
   StartTrialAfterDelay(start_delay_milliseconds);
   return true;
@@ -146,7 +141,7 @@ void ConnectivityTrial::StartTrialTask() {
   }
 
   HttpRequest::Result result =
-      request_->Start(url, request_read_callback_, request_result_callback_);
+      request_->Start(url, request_success_callback_, request_error_callback_);
   if (result != HttpRequest::kResultInProgress) {
     CompleteTrial(ConnectivityTrial::GetPortalResultForRequestResult(result));
     return;
@@ -163,35 +158,17 @@ bool ConnectivityTrial::IsActive() {
   return is_active_;
 }
 
-void ConnectivityTrial::RequestReadCallback(const ByteString& response_data) {
-  const string response_expected(kResponseExpected);
-  bool expected_length_received = false;
-  int compare_length = 0;
-  if (response_data.GetLength() < response_expected.length()) {
-    // There isn't enough data yet for a final decision, but we can still
-    // test to see if the partial string matches so far.
-    expected_length_received = false;
-    compare_length = response_data.GetLength();
-  } else {
-    expected_length_received = true;
-    compare_length = response_expected.length();
-  }
-
-  if (base::MatchPattern(
-          string(reinterpret_cast<const char*>(response_data.GetConstData()),
-                 compare_length),
-          response_expected.substr(0, compare_length))) {
-    if (expected_length_received) {
-      CompleteTrial(Result(kPhaseContent, kStatusSuccess));
-    }
-    // Otherwise, we wait for more data from the server.
+void ConnectivityTrial::RequestSuccessCallback(
+    std::shared_ptr<brillo::http::Response> response) {
+  // TODO(matthewmwang): check for 0 length data as well
+  if (response->GetStatusCode() == brillo::http::status_code::NoContent) {
+    CompleteTrial(Result(kPhaseContent, kStatusSuccess));
   } else {
     CompleteTrial(Result(kPhaseContent, kStatusFailure));
   }
 }
 
-void ConnectivityTrial::RequestResultCallback(
-    HttpRequest::Result result, const ByteString& /*response_data*/) {
+void ConnectivityTrial::RequestErrorCallback(HttpRequest::Result result) {
   CompleteTrial(GetPortalResultForRequestResult(result));
 }
 
@@ -220,13 +197,8 @@ void ConnectivityTrial::CleanupTrial(bool reset_request) {
 
 void ConnectivityTrial::TimeoutTrialTask() {
   LOG(ERROR) << "Connectivity Trial - Request timed out";
-  if (request_->response_data().GetLength()) {
-    CompleteTrial(ConnectivityTrial::Result(ConnectivityTrial::kPhaseContent,
-                                            ConnectivityTrial::kStatusTimeout));
-  } else {
-    CompleteTrial(ConnectivityTrial::Result(ConnectivityTrial::kPhaseUnknown,
-                                            ConnectivityTrial::kStatusTimeout));
-  }
+  CompleteTrial(ConnectivityTrial::Result(ConnectivityTrial::kPhaseUnknown,
+                                          ConnectivityTrial::kStatusTimeout));
 }
 
 // statiic
@@ -271,13 +243,9 @@ ConnectivityTrial::Result ConnectivityTrial::GetPortalResultForRequestResult(
       return Result(kPhaseDNS, kStatusTimeout);
     case HttpRequest::kResultConnectionFailure:
       return Result(kPhaseConnection, kStatusFailure);
-    case HttpRequest::kResultConnectionTimeout:
-      return Result(kPhaseConnection, kStatusTimeout);
-    case HttpRequest::kResultRequestFailure:
-    case HttpRequest::kResultResponseFailure:
+    case HttpRequest::kResultHTTPFailure:
       return Result(kPhaseHTTP, kStatusFailure);
-    case HttpRequest::kResultRequestTimeout:
-    case HttpRequest::kResultResponseTimeout:
+    case HttpRequest::kResultHTTPTimeout:
       return Result(kPhaseHTTP, kStatusTimeout);
     case HttpRequest::kResultUnknown:
     default:
