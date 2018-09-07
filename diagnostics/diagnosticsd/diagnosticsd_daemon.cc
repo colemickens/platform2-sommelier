@@ -4,11 +4,13 @@
 
 #include "diagnostics/diagnosticsd/diagnosticsd_daemon.h"
 
-#include <base/bind.h>
+#include <sysexits.h>
+
 #include <base/logging.h>
-#include <brillo/dbus/async_event_sequencer.h>
+#include <base/run_loop.h>
+#include <base/threading/thread_task_runner_handle.h>
 #include <dbus/diagnosticsd/dbus-constants.h>
-#include <dbus/object_path.h>
+#include <mojo/edk/embedder/embedder.h>
 
 namespace diagnostics {
 
@@ -17,18 +19,33 @@ DiagnosticsdDaemon::DiagnosticsdDaemon()
 
 DiagnosticsdDaemon::~DiagnosticsdDaemon() = default;
 
+int DiagnosticsdDaemon::OnInit() {
+  VLOG(0) << "Starting";
+  const int exit_code = DBusServiceDaemon::OnInit();
+  if (exit_code != EX_OK)
+    return exit_code;
+  // Init the Mojo Embedder API. The call to InitIPCSupport() is balanced with
+  // the ShutdownIPCSupport() one in OnShutdown().
+  mojo::edk::Init();
+  mojo::edk::InitIPCSupport(
+      base::ThreadTaskRunnerHandle::Get() /* io_thread_task_runner */);
+  return EX_OK;
+}
+
 void DiagnosticsdDaemon::RegisterDBusObjectsAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
   DCHECK(bus_);
-  dbus_object_ = std::make_unique<brillo::dbus_utils::DBusObject>(
-      nullptr /* object_manager */, bus_,
-      dbus::ObjectPath(kDiagnosticsdServicePath));
-  brillo::dbus_utils::DBusInterface* dbus_interface =
-      dbus_object_->AddOrGetInterface(kDiagnosticsdServiceInterface);
-  dbus_interface->AddSimpleMethodHandler(
-      kDiagnosticsdBootstrapMojoConnectionMethod,
-      base::Unretained(&dbus_service_),
-      &DiagnosticsdDbusService::BootstrapMojoConnection);
+  diagnosticsd_core_.RegisterDBusObjectsAsync(bus_, sequencer);
+}
+
+void DiagnosticsdDaemon::OnShutdown(int* error_code) {
+  // Gracefully tear down the Mojo Embedder API.
+  VLOG(1) << "Tearing down Mojo";
+  base::RunLoop run_loop;
+  mojo::edk::ShutdownIPCSupport(run_loop.QuitClosure());
+  run_loop.Run();
+
+  VLOG(0) << "Shutting down";
 }
 
 }  // namespace diagnostics

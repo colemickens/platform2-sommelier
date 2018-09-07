@@ -4,6 +4,8 @@
 
 #include "diagnostics/diagnosticsd/diagnosticsd_mojo_service.h"
 
+#include <utility>
+
 #include <base/logging.h>
 
 namespace diagnostics {
@@ -15,10 +17,14 @@ DiagnosticsdMojoService::DiagnosticsdMojoService(Delegate* delegate)
 
 DiagnosticsdMojoService::~DiagnosticsdMojoService() = default;
 
-void DiagnosticsdMojoService::Init(
-    chromeos::diagnostics::mojom::DiagnosticsdServiceClientPtr client_ptr,
-    const InitCallback& callback) {
-  NOTIMPLEMENTED();
+void DiagnosticsdMojoService::Init(MojomDiagnosticsdServiceClientPtr client_ptr,
+                                   const InitCallback& callback) {
+  VLOG(0) << "Received Init Mojo request";
+  if (!client_ptr)
+    LOG(ERROR) << "Invalid Mojo client interface pointer passed to Init";
+  else
+    client_ptr_ = std::move(client_ptr);
+  callback.Run();
 }
 
 void DiagnosticsdMojoService::SendUiMessageToDiagnosticsProcessor(

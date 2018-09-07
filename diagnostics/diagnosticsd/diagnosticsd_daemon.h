@@ -5,37 +5,30 @@
 #ifndef DIAGNOSTICS_DIAGNOSTICSD_DIAGNOSTICSD_DAEMON_H_
 #define DIAGNOSTICS_DIAGNOSTICSD_DIAGNOSTICSD_DAEMON_H_
 
-#include <memory>
-
 #include <base/macros.h>
 #include <brillo/daemons/dbus_daemon.h>
-#include <brillo/dbus/dbus_object.h>
 
-#include "diagnostics/diagnosticsd/diagnosticsd_dbus_service.h"
-#include "diagnostics/diagnosticsd/diagnosticsd_grpc_service.h"
-#include "diagnostics/diagnosticsd/diagnosticsd_mojo_service.h"
+#include "diagnostics/diagnosticsd/diagnosticsd_core.h"
+#include "diagnostics/diagnosticsd/diagnosticsd_core_delegate_impl.h"
 
 namespace diagnostics {
 
-// Daemon class for the diagnosticsd daemon. Integrates together all pieces
-// which implement separate IPC services and clients.
-class DiagnosticsdDaemon final : public brillo::DBusServiceDaemon,
-                                 public DiagnosticsdDbusService::Delegate,
-                                 public DiagnosticsdGrpcService::Delegate,
-                                 public DiagnosticsdMojoService::Delegate {
+// Daemon class for the diagnosticsd daemon.
+class DiagnosticsdDaemon final : public brillo::DBusServiceDaemon {
  public:
   DiagnosticsdDaemon();
   ~DiagnosticsdDaemon() override;
 
  private:
-  // DBusServiceDaemon overrides:
+  // brillo::DBusServiceDaemon overrides:
+  int OnInit() override;
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
+  void OnShutdown(int* error_code) override;
 
-  DiagnosticsdDbusService dbus_service_{this /* delegate */};
-  DiagnosticsdGrpcService grpc_service_{this /* delegate */};
-  std::unique_ptr<DiagnosticsdMojoService> mojo_service_;
-  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
+  DiagnosticsdCoreDelegateImpl diagnosticsd_core_delegate_impl_{
+      this /* daemon */};
+  DiagnosticsdCore diagnosticsd_core_{&diagnosticsd_core_delegate_impl_};
 
   DISALLOW_COPY_AND_ASSIGN(DiagnosticsdDaemon);
 };

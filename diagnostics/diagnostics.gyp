@@ -77,26 +77,56 @@
       'sources': ['mojo/diagnosticsd.mojom'],
       'includes': ['../common-mk/mojom_bindings_generator.gypi'],
     },
-    # The diagnosticsd daemon executable.
+    # Library that provides core functionality for the diagnosticsd daemon.
     {
-      'target_name': 'diagnosticsd',
-      'type': 'executable',
+      'target_name': 'libdiagnosticsd',
+      'type': 'static_library',
       'dependencies': [
         'diagnostics_grpc_protos',
         'diagnostics_mojo_bindings',
         'libgrpc_async_adapter',
       ],
       'variables': {
-        'deps': [
+        'exported_deps': [
+          'dbus-1',
           'libbrillo-<(libbase_ver)',
+          'libchrome-<(libbase_ver)',
+          'libmojo-<(libbase_ver)',
           'system_api',
         ],
+        'deps': [
+          '<@(exported_deps)',
+        ],
+      },
+      'all_dependent_settings': {
+        'variables': {
+          'deps': [
+            '<@(exported_deps)',
+          ],
+        },
       },
       'sources': [
+        'diagnosticsd/diagnosticsd_core.cc',
+        'diagnosticsd/diagnosticsd_core_delegate_impl.cc',
         'diagnosticsd/diagnosticsd_daemon.cc',
         'diagnosticsd/diagnosticsd_dbus_service.cc',
         'diagnosticsd/diagnosticsd_grpc_service.cc',
         'diagnosticsd/diagnosticsd_mojo_service.cc',
+      ],
+    },
+    # The diagnosticsd daemon executable.
+    {
+      'target_name': 'diagnosticsd',
+      'type': 'executable',
+      'dependencies': [
+        'libdiagnosticsd',
+      ],
+      'variables': {
+        'deps': [
+          'libbrillo-<(libbase_ver)',
+        ],
+      },
+      'sources': [
         'diagnosticsd/main.cc',
       ],
     },
@@ -120,7 +150,7 @@
   'conditions': [
     ['USE_test == 1', {
       'targets': [
-        # Unit tests.
+        # Libraries for unit tests.
         {
           'target_name': 'libgrpc_async_adapter_test_rpcs',
           'type': 'static_library',
@@ -148,6 +178,7 @@
             '../common-mk/protoc.gypi',
           ],
         },
+        # Unit tests.
         {
           'target_name': 'libgrpc_async_adapter_test',
           'type': 'executable',
@@ -180,6 +211,12 @@
           'includes': ['../common-mk/common_test.gypi'],
           'dependencies': [
             '../common-mk/testrunner.gyp:testrunner',
+            'libdiagnosticsd',
+          ],
+          'sources': [
+            'diagnosticsd/diagnosticsd_core_test.cc',
+            'diagnosticsd/diagnosticsd_dbus_service_test.cc',
+            'diagnosticsd/mojo_test_utils.cc',
           ],
           'variables': {
             'deps': [

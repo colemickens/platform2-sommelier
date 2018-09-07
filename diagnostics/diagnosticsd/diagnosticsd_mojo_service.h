@@ -18,6 +18,9 @@ namespace diagnostics {
 class DiagnosticsdMojoService final
     : public chromeos::diagnostics::mojom::DiagnosticsdService {
  public:
+  using MojomDiagnosticsdServiceClientPtr =
+      chromeos::diagnostics::mojom::DiagnosticsdServiceClientPtr;
+
   class Delegate {
    public:
     virtual ~Delegate() = default;
@@ -27,9 +30,8 @@ class DiagnosticsdMojoService final
   ~DiagnosticsdMojoService();
 
   // chromeos::diagnostics::mojom::DiagnosticsdService overrides:
-  void Init(
-      chromeos::diagnostics::mojom::DiagnosticsdServiceClientPtr client_ptr,
-      const InitCallback& callback) override;
+  void Init(MojomDiagnosticsdServiceClientPtr client_ptr,
+            const InitCallback& callback) override;
   void SendUiMessageToDiagnosticsProcessor(
       mojo::ScopedSharedBufferHandle json_message,
       const SendUiMessageToDiagnosticsProcessorCallback& callback) override;
@@ -37,6 +39,12 @@ class DiagnosticsdMojoService final
  private:
   // Unowned. The delegate should outlive this instance.
   Delegate* const delegate_;
+
+  // Interface to the DiagnosticsdServiceClient endpoint. This field becomes
+  // initialized after the Init() call.
+  //
+  // In production this interface is implemented in the Chrome browser process.
+  MojomDiagnosticsdServiceClientPtr client_ptr_;
 
   DISALLOW_COPY_AND_ASSIGN(DiagnosticsdMojoService);
 };
