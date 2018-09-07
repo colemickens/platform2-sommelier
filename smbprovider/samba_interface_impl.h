@@ -109,6 +109,9 @@ class SambaInterfaceImpl : public SambaInterface {
   // Inserts the |file| pointer into the map and returns a new FD.
   int32_t NewFd(SMBCFILE* file);
 
+  // Releases a file descriptor back to the pool.
+  void ReleaseFd(int32_t fd);
+
   // Returns the SMBCFILE pointer for |fd| or nullptr if it doesn't exist.
   SMBCFILE* GetFile(int32_t fd);
 

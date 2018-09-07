@@ -81,6 +81,7 @@ int32_t SambaInterfaceImpl::CloseFile(int32_t file_id) {
     return EBADF;
   }
 
+  ReleaseFd(file_id);
   return smbc_close_ctx_(context_, file) >= 0 ? 0 : errno;
 }
 
@@ -121,6 +122,7 @@ int32_t SambaInterfaceImpl::CloseDirectory(int32_t dir_id) {
     return EBADF;
   }
 
+  ReleaseFd(dir_id);
   return smbc_closedir_ctx_(context_, dir) >= 0 ? 0 : errno;
 }
 
@@ -346,16 +348,23 @@ void SambaInterfaceImpl::CloseCopySourceAndTarget(int32_t source_fd,
                                                   int32_t target_fd) {
   if (source_fd >= 0) {
     smbc_close_ctx_(context_, MustGetFile(source_fd));
+    ReleaseFd(source_fd);
   }
 
   if (target_fd >= 0) {
     smbc_close_ctx_(context_, MustGetFile(target_fd));
+    ReleaseFd(target_fd);
   }
 }
 
 int32_t SambaInterfaceImpl::NewFd(SMBCFILE* file) {
   DCHECK(file);
   return fds_.Insert(file);
+}
+
+void SambaInterfaceImpl::ReleaseFd(int32_t fd) {
+  bool result = fds_.Remove(fd);
+  DCHECK(result);
 }
 
 SMBCFILE* SambaInterfaceImpl::GetFile(int32_t fd) {
