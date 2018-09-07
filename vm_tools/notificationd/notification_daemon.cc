@@ -31,10 +31,12 @@ namespace notificationd {
 
 // static
 std::unique_ptr<NotificationDaemon> NotificationDaemon::Create(
-    const std::string& display_name, base::Closure quit_closure) {
+    const std::string& display_name,
+    const std::string& virtwl_device,
+    base::Closure quit_closure) {
   auto daemon = base::WrapUnique(new NotificationDaemon());
 
-  if (!daemon->Init(display_name, std::move(quit_closure))) {
+  if (!daemon->Init(display_name, virtwl_device, std::move(quit_closure))) {
     LOG(ERROR) << "Failed to initialize notification daemon";
     return nullptr;
   }
@@ -43,9 +45,10 @@ std::unique_ptr<NotificationDaemon> NotificationDaemon::Create(
 }
 
 bool NotificationDaemon::Init(const std::string& display_name,
+                              const std::string& virtwl_device,
                               base::Closure quit_closure) {
-  notification_shell_client_ =
-      NotificationShellClient::Create(display_name, std::move(quit_closure));
+  notification_shell_client_ = NotificationShellClient::Create(
+      display_name, virtwl_device, std::move(quit_closure));
   if (!notification_shell_client_) {
     LOG(ERROR) << "Failed to create notification shell client";
     return false;

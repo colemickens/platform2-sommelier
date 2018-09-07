@@ -27,7 +27,9 @@ class NotificationDaemon : public DBusInterface {
   // Creates and returns a NotificationDaemon. Returns nullptr if the the daemon
   // failed to be initialized for any reason.
   static std::unique_ptr<NotificationDaemon> Create(
-      const std::string& display_name, base::Closure quit_closure);
+      const std::string& display_name,
+      const std::string& virtwl_device,
+      base::Closure quit_closure);
 
   ~NotificationDaemon() override = default;
 
@@ -40,7 +42,9 @@ class NotificationDaemon : public DBusInterface {
   NotificationDaemon() = default;
 
   // Initializes the notification daemon. Returns true on success.
-  bool Init(const std::string& display_name, base::Closure quit_closure);
+  bool Init(const std::string& display_name,
+            const std::string& virtwl_device,
+            base::Closure quit_closure);
 
   std::unique_ptr<NotificationShellClient> notification_shell_client_;
   std::unique_ptr<DBusService> dbus_service_;

@@ -16,6 +16,7 @@ int main(int argc, char** argv) {
 
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
   DEFINE_string(display_name, "", "Wayland display to connect to");
+  DEFINE_string(virtwl_device, "", "VirtWL device to use");
 
   brillo::FlagHelper::Init(argc, argv, "notification daemon");
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
@@ -27,7 +28,7 @@ int main(int argc, char** argv) {
   base::RunLoop run_loop;
 
   auto daemon = vm_tools::notificationd::NotificationDaemon::Create(
-      FLAGS_display_name, run_loop.QuitClosure());
+      FLAGS_display_name, FLAGS_virtwl_device, run_loop.QuitClosure());
 
   if (!daemon) {
     LOG(ERROR) << "Failed to initialize notification daemon";

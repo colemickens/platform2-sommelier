@@ -25,7 +25,9 @@ class NotificationShellClient : public base::MessageLoopForIO::Watcher {
   // client failed to be initialized and be connected to the compositor for any
   // reason.
   static std::unique_ptr<NotificationShellClient> Create(
-      const std::string& display_name, base::Closure quit_closure);
+      const std::string& display_name,
+      const std::string& virtwl_device,
+      base::Closure quit_closure);
 
   ~NotificationShellClient() = default;
 
@@ -63,7 +65,11 @@ class NotificationShellClient : public base::MessageLoopForIO::Watcher {
   explicit NotificationShellClient(base::Closure quit_closure);
 
   // Initializes the Wayland client. Returns true on success.
-  bool Init(const char* display_name);
+  bool Init(const char* display_name, const char* virtwl_device);
+
+  // Requests the server to emit sync event and blocks until receiving the event
+  // while handling event loop.
+  void WaitForSync();
 
   // base::MessageLoopForIO::Watcher overrides.
   void OnFileCanReadWithoutBlocking(int fd) override;
@@ -82,6 +88,16 @@ class NotificationShellClient : public base::MessageLoopForIO::Watcher {
   // which is compatible with wayland-client library's callback signature.
   int HandleEvent(uint32_t mask);
 
+  // Handles virtwl socket events. Called from the wrapper
+  // (HandleVirtwlSocketEventCallback), which is compatible with wayland-client
+  // library's callback signature.
+  void HandleVirtwlSocketEvent();
+
+  // Handles virtwl context events. Called from the wrapper
+  // (HandleVirtwlCtxEventCallback), which is compatible with wayland-client
+  // library's callback signature.
+  void HandleVirtwlCtxEvent();
+
   // Wrapper for wayland event handlers. Called from wayland-client library.
   static int HandleEventCallback(int fd, uint32_t mask, void* data);
   static void HandleRegistryCallback(void* data,
@@ -89,6 +105,8 @@ class NotificationShellClient : public base::MessageLoopForIO::Watcher {
                                      uint32_t id,
                                      const char* interface,
                                      uint32_t version);
+  static int HandleVirtwlSocketEventCallback(int fd, uint32_t mask, void* data);
+  static int HandleVirtwlCtxEventCallback(int fd, uint32_t mask, void* data);
 
   const wl_registry_listener registry_listener_ = {HandleRegistryCallback,
                                                    nullptr};
@@ -99,6 +117,13 @@ class NotificationShellClient : public base::MessageLoopForIO::Watcher {
   // File discriptor of the wayland event loop.
   base::ScopedFD event_loop_fd_;
   base::MessageLoopForIO::FileDescriptorWatcher watcher_;
+
+  // File discriptor of the socket connected to the Wayland display. Handles
+  // socket events from Wayland display by observing this.
+  base::ScopedFD virtwl_socket_fd_;
+
+  // File discriptor of the context of Wayland connection created by virtwl.
+  base::ScopedFD virtwl_ctx_fd_;
 
   // Wayland display for the host.
   WlDisplay display_;
