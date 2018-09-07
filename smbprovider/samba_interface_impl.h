@@ -17,9 +17,6 @@
 namespace smbprovider {
 
 // Implements SambaInterface and calls libsmbclient's smbc_* methods 1:1.
-//
-// TODO(zentaro): WIP for crbug/857487.
-//   - Switch remaining implementation to call new functions
 class SambaInterfaceImpl : public SambaInterface {
  public:
   // SMB authentication callback.
