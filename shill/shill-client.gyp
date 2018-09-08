@@ -25,7 +25,7 @@
           ],
           'includes': ['../common-mk/generate-dbus-proxies.gypi'],
         },
-      ]
+      ],
     },
   ],
 }

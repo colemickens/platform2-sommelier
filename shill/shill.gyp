@@ -14,6 +14,12 @@
 # limitations under the License.
 #
 
+# This file needs a lotta love.
+# gyplint: disable=GypLintOrderedFiles
+# gyplint: disable=GypLintSourceFileNames
+# gyplint: disable=LinesLintDanglingCommas
+# gyplint: disable=LinesLintIndent
+
 {
   'target_defaults': {
     'variables': {
