@@ -48,10 +48,10 @@ namespace attestation {
 
 namespace {
 
-#ifndef USE_TPM2
-constexpr TpmVersion kTpmVersionUnderTest = TPM_1_2;
-#else
+#if USE_TPM2
 constexpr TpmVersion kTpmVersionUnderTest = TPM_2_0;
+#else
+constexpr TpmVersion kTpmVersionUnderTest = TPM_1_2;
 #endif
 
 std::string CreateChallenge(const std::string& prefix) {
@@ -244,6 +244,10 @@ class AttestationServiceBaseTest : public testing::Test {
         ->set_identity_public_key("public_key_tpm");
     (*identity_data->mutable_pcr_quotes())[0].set_quote("pcr0");
     (*identity_data->mutable_pcr_quotes())[1].set_quote("pcr1");
+#if USE_TPM2
+    (*identity_data->mutable_nvram_quotes())[BOARD_ID].set_quote("board_id");
+    (*identity_data->mutable_nvram_quotes())[SN_BITS].set_quote("sn_bits");
+#endif
   }
 
   // Generate a unique name for a certificate from an ACA.
@@ -1843,6 +1847,12 @@ TEST_P(AttestationServiceTest, PrepareForEnrollment) {
   EXPECT_TRUE(identity_data.has_identity_key());
   EXPECT_EQ(1, identity_data.pcr_quotes().count(0));
   EXPECT_EQ(1, identity_data.pcr_quotes().count(1));
+#if USE_TPM2
+  EXPECT_EQ(1, identity_data.nvram_quotes().count(BOARD_ID));
+  EXPECT_EQ(1, identity_data.nvram_quotes().count(SN_BITS));
+#else
+  EXPECT_TRUE(identity_data.nvram_quotes().empty());
+#endif
   EXPECT_EQ(IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID,
             identity_data.features());
   // Deprecated identity-related values have not been set.
@@ -1857,6 +1867,31 @@ TEST_P(AttestationServiceTest, PrepareForEnrollment) {
   EXPECT_FALSE(mock_database_.GetProtobuf().credentials()
                .has_default_encrypted_endorsement_credential());
 }
+
+#if USE_TPM2
+
+TEST_P(AttestationServiceTest, PrepareForEnrollmentCannotQuoteNvram) {
+  // Start with an empty database.
+  mock_database_.GetMutableProtobuf()->Clear();
+  EXPECT_CALL(mock_tpm_utility_, CertifyNV(_, _, _, _, _))
+      .WillRepeatedly(Return(false));
+  // Schedule initialization again to make sure it runs after this point.
+  CHECK(service_->Initialize());
+  WaitUntilIdleForTesting();
+  // One identity has been created.
+  EXPECT_EQ(1, mock_database_.GetProtobuf().identities().size());
+  const AttestationDatabase::Identity& identity_data =
+      mock_database_.GetProtobuf().identities().Get(0);
+  EXPECT_TRUE(identity_data.has_identity_binding());
+  EXPECT_TRUE(identity_data.has_identity_key());
+  EXPECT_EQ(1, identity_data.pcr_quotes().count(0));
+  EXPECT_EQ(1, identity_data.pcr_quotes().count(1));
+  EXPECT_TRUE(identity_data.nvram_quotes().empty());
+  EXPECT_EQ(IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID,
+            identity_data.features());
+}
+
+#endif
 
 TEST_P(AttestationServiceTest, PrepareForEnrollmentNoPublicKey) {
   // Start with an empty database.
@@ -2254,6 +2289,16 @@ TEST_P(AttestationServiceTest, CreateEnrollRequestSuccessWithoutAbeData) {
     EXPECT_EQ("public_key_tpm", pca_request.identity_public_key());
     EXPECT_EQ("pcr0", pca_request.pcr0_quote().quote());
     EXPECT_EQ("pcr1", pca_request.pcr1_quote().quote());
+#if USE_TPM2
+    EXPECT_NE(pca_request.nvram_quotes().end(),
+              pca_request.nvram_quotes().find(BOARD_ID));
+    EXPECT_EQ("board_id", pca_request.nvram_quotes().at(BOARD_ID).quote());
+    EXPECT_NE(pca_request.nvram_quotes().end(),
+              pca_request.nvram_quotes().find(SN_BITS));
+    EXPECT_EQ("sn_bits", pca_request.nvram_quotes().at(SN_BITS).quote());
+#else
+  EXPECT_TRUE(pca_request.nvram_quotes().empty());
+#endif
     EXPECT_FALSE(pca_request.has_enterprise_enrollment_nonce());
     quit_closure.Run();
   };

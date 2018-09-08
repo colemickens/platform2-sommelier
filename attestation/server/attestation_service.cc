@@ -31,6 +31,9 @@
 #include <brillo/mime_utils.h>
 #include <crypto/sha2.h>
 extern "C" {
+#if USE_TPM2
+#include <trunks/cr50_headers/virtual_nvmem.h>
+#endif
 #include <vboot/crossystem.h>
 }
 
@@ -358,6 +361,34 @@ std::string GetIdentityFeaturesString(int identity_features) {
 }  // namespace
 
 namespace attestation {
+
+// Last PCR index to quote (we start at 0).
+constexpr int kLastPcrToQuote = 1;
+
+#if USE_TPM2
+
+// Description of the NVRAM indices used for attestation.
+const struct {
+  NVRAMQuoteType quote_type;
+  const char* quote_name;
+  uint32_t nv_index;            // From CertifyNV().
+  int nv_size;                  // From CertifyNV().
+} kNvramIndexData[] = {
+  {
+    BOARD_ID,
+    "BoardId",
+    VIRTUAL_NV_INDEX_BOARD_ID,
+    VIRTUAL_NV_INDEX_BOARD_ID_SIZE
+  },
+  {
+    SN_BITS,
+    "SN Bits",
+    VIRTUAL_NV_INDEX_SN_DATA,
+    VIRTUAL_NV_INDEX_SN_DATA_SIZE
+  }
+};
+
+#endif
 
 using QuoteMap = google::protobuf::Map<int, Quote>;
 
@@ -1624,43 +1655,6 @@ int AttestationService::CreateIdentity(int identity_features,
     return -1;
   }
 
-  // Quote PCRs. These quotes are intended to be valid for the lifetime of the
-  // identity key so they do not need external data. This only works when
-  // firmware ensures that these PCRs will not change unless the TPM owner is
-  // cleared.
-  std::string quoted_pcr_value0;
-  std::string quoted_data0;
-  std::string quote0;
-  if (!tpm_utility_->QuotePCR(0, rsa_identity_key_blob, &quoted_pcr_value0,
-                              &quoted_data0, &quote0)) {
-    LOG(ERROR) << "Attestation: Failed to generate quote for PCR0.";
-    return -1;
-  }
-  std::string quoted_pcr_value1;
-  std::string quoted_data1;
-  std::string quote1;
-  if (!tpm_utility_->QuotePCR(1, rsa_identity_key_blob, &quoted_pcr_value1,
-                              &quoted_data1, &quote1)) {
-    LOG(ERROR) << "Attestation: Failed to generate quote for PCR1.";
-    return -1;
-  }
-  // Certify device-specific NV data. This is an almost identical process
-  // to the PCR quotes above.
-  std::string certified_board_id;
-  std::string board_id_signature;
-  if (!tpm_utility_->CertifyNV(0x013fff00 /* board_id */, 12 /* size */,
-                               rsa_identity_key_blob,
-                               &certified_board_id, &board_id_signature)) {
-    LOG(WARNING) << "Attestation: Failed to certify board id NV data";
-  }
-  std::string certified_sn_bits;
-  std::string sn_bits_signature;
-  if (!tpm_utility_->CertifyNV(0x013fff01 /* sn_bits */, 16 /* size */,
-                               rsa_identity_key_blob,
-                               &certified_sn_bits, &sn_bits_signature)) {
-    LOG(WARNING) << "Attestation: Failed to certify sn bits NV data";
-  }
-
   AttestationDatabase::Identity* identity_data =
       database_pb->mutable_identities()->Add();
   identity_data->set_features(identity_features);
@@ -1675,59 +1669,74 @@ int AttestationService::CreateIdentity(int identity_features,
   binding_pb->set_identity_public_key_der(rsa_identity_public_key_der);
   binding_pb->set_identity_public_key(rsa_identity_public_key);
 
-  // Store PCR quotes in the identity.
+  // Quote PCRs and store them in the identity. These quotes are intended to
+  // be valid for the lifetime of the identity key so they do not need
+  // external data. This only works when firmware ensures that these PCRs
+  // will not change unless the TPM owner is cleared.
   auto* pcr_quote_map = identity_data->mutable_pcr_quotes();
 
-  Quote quote_pb0;
-  quote_pb0.set_quote(quote0);
-  quote_pb0.set_quoted_data(quoted_data0);
-  quote_pb0.set_quoted_pcr_value(quoted_pcr_value0);
-  auto in0 = pcr_quote_map->insert(QuoteMap::value_type(0, quote_pb0));
-  if (!in0.second) {
-    LOG(ERROR) << "Attestation: Failed to store PCR0 quote for identity "
-               << identity << ".";
-    return false;
+  for (int pcr = 0; pcr <= kLastPcrToQuote; ++pcr) {
+    std::string quoted_pcr_value;
+    std::string quoted_data;
+    std::string quote;
+    if (tpm_utility_->QuotePCR(pcr, rsa_identity_key_blob, &quoted_pcr_value,
+                              &quoted_data, &quote)) {
+      Quote quote_pb;
+      quote_pb.set_quote(quote);
+      quote_pb.set_quoted_data(quoted_data);
+      quote_pb.set_quoted_pcr_value(quoted_pcr_value);
+      switch (pcr) {
+        case 1:
+          quote_pb.set_pcr_source_hint(hwid_);
+          break;
+      }
+      auto in = pcr_quote_map->insert(QuoteMap::value_type(pcr, quote_pb));
+      if (!in.second) {
+        LOG(ERROR) << "Attestation: Failed to store PCR" << pcr
+                   << " quote for identity " << identity << ".";
+        return -1;
+      }
+    } else {
+      LOG(ERROR) << "Attestation: Failed to generate quote for PCR" << pcr
+                 << ".";
+      return -1;
+    }
   }
 
-  Quote quote_pb1;
-  quote_pb1.set_quote(quote1);
-  quote_pb1.set_quoted_data(quoted_data1);
-  quote_pb1.set_quoted_pcr_value(quoted_pcr_value1);
-  quote_pb1.set_pcr_source_hint(hwid_);
+#if USE_TPM2
 
-  auto in1 = pcr_quote_map->insert(QuoteMap::value_type(1, quote_pb1));
-  if (!in1.second) {
-    LOG(ERROR) << "Attestation: Failed to store PCR1 quote for identity "
-               << identity << ".";
-    return false;
-  }
-
+  // Certify device-specific NV data and insert them in the identity when
+  // we can certify them. This is an almost identical process to the PCR
+  // quotes above.
   auto* nv_quote_map = identity_data->mutable_nvram_quotes();
 
-  // The map keys used here correspond to the NVRAMQuoteType enum in
-  // attestation_ca.proto
+  for (int i = 0; i < arraysize(kNvramIndexData); ++i) {
+    std::string certified_value;
+    std::string signature;
+    if (tpm_utility_->CertifyNV(kNvramIndexData[i].nv_index,
+                                kNvramIndexData[i].nv_size,
+                                rsa_identity_key_blob,
+                                &certified_value,
+                                &signature)) {
+      Quote pb;
+      pb.set_quote(signature);
+      pb.set_quoted_data(certified_value);
 
-  Quote board_id_pb;
-  board_id_pb.set_quote(board_id_signature);
-  board_id_pb.set_quoted_data(certified_board_id);
-
-  auto in_bid = nv_quote_map->insert(QuoteMap::value_type(0, board_id_pb));
-  if (!in_bid.second) {
-    LOG(ERROR) << "Attestation: Failed to store board id quote for identity "
-               << identity << ".";
-    return false;
+      auto in_bid = nv_quote_map->insert(QuoteMap::value_type(
+         kNvramIndexData[i].quote_type , pb));
+      if (!in_bid.second) {
+        LOG(ERROR) << "Attestation: Failed to store "
+                   << kNvramIndexData[i].quote_name
+                   << " quote for identity " << identity << ".";
+        return -1;
+      }
+    } else {
+      LOG(WARNING) << "Attestation: Failed to certify "
+                   << kNvramIndexData[i].quote_name << " NV data.";
+    }
   }
 
-  Quote sn_bits_pb;
-  sn_bits_pb.set_quote(sn_bits_signature);
-  sn_bits_pb.set_quoted_data(certified_sn_bits);
-
-  auto in_snbits = nv_quote_map->insert(QuoteMap::value_type(1, sn_bits_pb));
-  if (!in_snbits.second) {
-    LOG(ERROR) << "Attestation: Failed to store sn bits quote for identity "
-               << identity << ".";
-    return false;
-  }
+#endif
 
   // Return the index of the newly created identity.
   return database_pb->identities().size() - 1;
