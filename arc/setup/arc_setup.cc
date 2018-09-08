@@ -2153,6 +2153,9 @@ void ArcSetup::OnOnetimeStop() {
 }
 
 void ArcSetup::OnPreChroot() {
+  // Note: Do not try to create a directory in tmpfs here. Recent (4.8+)
+  // kernel doesn't allow us to do so and returns EOVERFLOW. b/78262683
+
   // binfmt_misc setup has to be done before entering container
   // namespace below (namely before CreateScopedMountNamespaceForPid).
   ArcBinaryTranslationType binary_translation_type =
