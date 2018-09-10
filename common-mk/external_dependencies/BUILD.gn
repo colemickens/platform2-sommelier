@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//common-mk/proto_library.gni")
 import("//common-mk/xml2cpp.gni")
 
 genxml2cpp("modemmanager-dbus-adaptors") {
@@ -32,4 +33,68 @@ genxml2cpp("modemmanager-dbus-adaptors") {
     "${xml2cpp_in_dir}/org.freedesktop.ModemManager1.Sim.xml",
     "${xml2cpp_in_dir}/org.freedesktop.ModemManager1.xml",
   ]
+}
+
+genxml2cpp("dbus-proxies") {
+  xml2cpp_type = "proxy"
+  xml2cpp_in_dir = "${sysroot}/usr/share/dbus-1/interfaces/"
+  xml2cpp_out_dir = "include/dbus_proxies"
+  sources = [
+    "${xml2cpp_in_dir}/org.freedesktop.DBus.Properties.xml",
+  ]
+}
+
+action("cloud_policy_proto_generator") {
+  policy_resources_dir = "${sysroot}/usr/share/policy_resources"
+  proto_out_dir = "${target_gen_dir}/proto"
+  policy_tools_dir = "${sysroot}/usr/share/policy_tools"
+
+  script = "${policy_tools_dir}/generate_policy_source.py"
+  sources = [
+    "${policy_resources_dir}/VERSION",
+    "${policy_resources_dir}/policy_templates.json",
+  ]
+  outputs = ["${proto_out_dir}/cloud_policy.proto"]
+  args = [
+    "--cloud-policy-protobuf=${proto_out_dir}/cloud_policy.proto",
+    "${policy_resources_dir}/VERSION",
+    "${OS}",
+    "1",         # chromeos-flag
+    "${policy_resources_dir}/policy_templates.json",
+  ]
+}
+
+proto_library("policy-protos") {
+  proto_in_dir = "${sysroot}/usr/include/proto"
+  proto_out_dir = "include/bindings"
+  sources = [
+    "${proto_in_dir}/chrome_device_policy.proto",
+    "${proto_in_dir}/chrome_extension_policy.proto",
+    "${proto_in_dir}/device_management_backend.proto",
+  ]
+  # policy-protos.a is used by a shared_libary object: https://crbug.com/715795
+  # Build it with '-fPIC' instead of '-fPIE'.
+  configs = [ "//common-mk:pic" ]
+}
+
+proto_library("user_policy-protos") {
+  proto_in_dir = "${target_gen_dir}/proto"
+  proto_out_dir = "include/bindings"
+  sources = [
+    "${proto_in_dir}/cloud_policy.proto",
+  ]
+  deps = [
+    ":cloud_policy_proto_generator",
+  ]
+}
+
+proto_library("install_attributes-proto") {
+  proto_in_dir = "${sysroot}/usr/include/proto"
+  proto_out_dir = "include/bindings"
+  sources = [
+    "${proto_in_dir}/install_attributes.proto",
+  ]
+  # install_attributes-proto.a is used by a shared_libary.
+  # Build it with '-fPIC' instead of '-fPIE'.
+  configs = [ "//common-mk:pic" ]
 }

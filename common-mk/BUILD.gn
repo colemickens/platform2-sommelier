@@ -117,7 +117,8 @@ config("use_thin_archive") {
   arflags = [ "rcsT" ]
 }
 
-config("shared_library_config") {
+# Generates position independent code.
+config("pic") {
   cflags = [ "-fPIC" ]
 }
 

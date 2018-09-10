@@ -78,7 +78,7 @@ set_defaults("static_library") {
 }
 set_defaults("shared_library") {
   configs = _binary_target_configs
-  configs += [ "//common-mk:shared_library_config" ]
+  configs += [ "//common-mk:pic" ]
 }
 set_defaults("source_set") {
   configs = _binary_target_configs

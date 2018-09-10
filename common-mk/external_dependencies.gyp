@@ -1,3 +1,5 @@
+# Caution!: GYP to GN migration is happening. If you update this file, please
+# update common-mk/external_dependencies/BUILD.gn too accordingly.
 {
   'targets': [
     {
