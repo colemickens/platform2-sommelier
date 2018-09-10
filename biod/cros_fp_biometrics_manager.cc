@@ -21,6 +21,8 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_piece.h>
 #include <base/strings/stringprintf.h>
+#include <base/threading/platform_thread.h>
+#include <base/time/time.h>
 #include <crypto/random.h>
 #include <metrics/metrics_library.h>
 
@@ -87,6 +89,7 @@ class EcCommand {
 
   I* Resp() { return &data_.resp; }
   O* Req() { return &data_.req; }
+  uint16_t Result() { return data_.cmd.result; }
 
  private:
   struct {
@@ -242,7 +245,20 @@ bool CrosFpBiometricsManager::CrosFpDevice::FpFrame(
     uint32_t len = std::min(max_read_size_, frame->end() - pos);
     cmd.SetReq({.offset = offset, .size = len});
     cmd.SetRespSize(len);
-    if (!cmd.Run(cros_fd_.get())) {
+    int retries = 0;
+    const int max_retries = 50, delay_ms = 100;
+    while (!cmd.Run(cros_fd_.get())) {
+      if (!(offset & FP_FRAME_OFFSET_MASK)) {
+        // On the first request, the EC might still be rate-limiting. Retry in
+        // that case.
+        if (cmd.Result() == EC_RES_BUSY && retries < max_retries) {
+          retries++;
+          LOG(INFO) << "Retrying FP_FRAME, attempt " << retries;
+          base::PlatformThread::Sleep(
+              base::TimeDelta::FromMilliseconds(delay_ms));
+          continue;
+        }
+      }
       LOG(ERROR) << "FP_FRAME command failed @ 0x" << std::hex << offset;
       return false;
     }
