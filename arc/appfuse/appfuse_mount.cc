@@ -79,7 +79,6 @@ bool AppfuseMount::Unmount() {
     PLOG(ERROR) << "Failed to delete " << mount_point_.value();
     return false;
   }
-  delegate_->OnUnmounted(this);
   return true;
 }
 
@@ -89,7 +88,7 @@ base::ScopedFD AppfuseMount::OpenFile(int file_id, int flags) {
 }
 
 void AppfuseMount::OnDataFilterStopped() {
-  Unmount();
+  delegate_->OnAppfuseMountAborted(this);
 }
 
 }  // namespace appfuse

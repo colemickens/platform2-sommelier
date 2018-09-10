@@ -125,7 +125,7 @@ class DBusAdaptor : public org::chromium::ArcAppfuseProviderAdaptor,
   }
 
   // AppfuseMount::Delegate override:
-  void OnUnmounted(arc::appfuse::AppfuseMount* mount) override {
+  void OnAppfuseMountAborted(arc::appfuse::AppfuseMount* mount) override {
     mounts_.erase(std::make_pair(mount->uid(), mount->mount_id()));
   }
 

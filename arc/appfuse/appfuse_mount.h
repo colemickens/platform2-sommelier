@@ -24,8 +24,8 @@ class AppfuseMount {
    public:
     virtual ~Delegate() = default;
 
-    // Called when this mount is unmounted.
-    virtual void OnUnmounted(AppfuseMount* mount) = 0;
+    // Called when this mount stops functioning because of an error.
+    virtual void OnAppfuseMountAborted(AppfuseMount* mount) = 0;
   };
 
   AppfuseMount(const base::FilePath& mount_root,
