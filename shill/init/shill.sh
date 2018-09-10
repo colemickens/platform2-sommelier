@@ -62,8 +62,10 @@ if [ ! -f /home/chronos/.oobe_completed ]; then
 fi
 
 if [ -e /var/lib/shill/shill_sandboxing_disabled ]; then
+  /usr/bin/metrics_client -e Network.Shill.SandboxingEnabled 0 1 &
   exec /usr/bin/shill ${ARGS}
 else
+  /usr/bin/metrics_client -e Network.Shill.SandboxingEnabled 1 1 &
   ARGS="${ARGS} --jail-vpn-clients"
   # Run shill as shill user/group in a minijail:
   #   -G so shill programs can inherit supplementary groups.
