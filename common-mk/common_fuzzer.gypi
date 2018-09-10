@@ -2,6 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# Caution!: GYP to GN migration is happening. If you update this file, please
+# update common-mk/common_fuzzer/BUILD.gn too accordingly.
+
 # This file is included for every fuzz target.
 # You can add anything in here that's valid in a target dictionary.
 # Fuzzing only works for amd64 boards at this point.
