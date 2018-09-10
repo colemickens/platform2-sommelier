@@ -28,6 +28,7 @@ BUILD_ONLY_ELEMENTS = [
     '/firmware', '/firmware-signing', '/audio/main/files', '/touch/files',
     '/arc/files', '/thermal/files'
 ]
+BUILD_SETTINGS = 'build-settings'
 BRAND_ELEMENTS = ['brand-code', 'firmware-signing', 'wallpaper']
 TEMPLATE_PATTERN = re.compile('{{([^}]*)}}')
 
@@ -299,9 +300,18 @@ def TransformConfig(config):
   else:
     configs = json_config[CHROMEOS][CONFIGS]
 
+  build_settings = {}
+  if BUILD_SETTINGS in json_config[CHROMEOS]:
+    build_settings = json_config[CHROMEOS][BUILD_SETTINGS]
+
   # Drop everything except for configs since they were just used as shared
   # config in the source yaml.
-  json_config = {CHROMEOS: {CONFIGS: configs}}
+  json_config = {
+    CHROMEOS: {
+      CONFIGS: configs,
+      BUILD_SETTINGS: build_settings,
+    },
+  }
 
   return _FormatJson(json_config)
 
@@ -407,6 +417,8 @@ def FilterBuildElements(config):
   json_config = json.loads(config)
   for config in json_config[CHROMEOS][CONFIGS]:
     _FilterBuildElements(config, '')
+
+  json_config[CHROMEOS].pop(BUILD_SETTINGS)
 
   return _FormatJson(json_config)
 

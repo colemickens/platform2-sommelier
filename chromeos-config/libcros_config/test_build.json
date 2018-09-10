@@ -1,5 +1,8 @@
 {
   "chromeos": {
+    "build-settings": {
+      "firmware-updater-script": "updater4.sh"
+    },
     "configs": [
       {
         "arc": {

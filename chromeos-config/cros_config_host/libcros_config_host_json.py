@@ -181,5 +181,11 @@ class CrosConfigJson(CrosConfigBaseImpl):
               config.firmware_info[sig_id] = info._replace(
                   model=sig_id, key_id=key_id, have_image=False, sig_id=sig_id)
 
+  def GetFirmwareScript(self):
+    """Return the YAML build setting for the updater script
+    """
+    return self._json['chromeos'].get('build-settings', {}).get(
+        'firmware-updater-script', 'updater4.sh')
+
   def GetDeviceConfigs(self):
     return self._configs

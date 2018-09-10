@@ -118,6 +118,8 @@ some_touch_config: &some_touch_config
       symlink: "{{$fw_root}}/some_touch_vendorts_i2c_some-other-pid.bin"
 
 chromeos:
+  build-settings:
+    firmware-updater-script: "updater4.sh"
   devices:
     - $name: "some"
       products:
