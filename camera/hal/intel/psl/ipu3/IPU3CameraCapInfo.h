@@ -43,6 +43,7 @@ public:
     int frameInitialSkip(void) const { return mFrameInitialSkip; };
     int getCITMaxMargin(void) const { return mCITMaxMargin; };
     bool getSupportIsoMap(void) const { return mSupportIsoMap; }
+    const int getMaxNvmDataSize(void) const { return mMaxNvmDataSize; };
     const char* getNvmDirectory(void) const { return mNvmDirectory.c_str(); };
     const char* getSensorName(void) const { return mSensorName.c_str(); };
     const ia_binary_data getNvmData(void) const { return mNvmData; };
@@ -66,6 +67,7 @@ public:
     int mStatisticsInitialSkip;
     int mCITMaxMargin;
     bool mSupportIsoMap;
+    int mMaxNvmDataSize;
     std::string mNvmDirectory;
     std::string mSensorName;
     ia_binary_data mNvmData;

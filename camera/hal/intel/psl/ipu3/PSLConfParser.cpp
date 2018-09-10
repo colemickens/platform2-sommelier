@@ -555,6 +555,8 @@ void PSLConfParser::handleSensorInfo(const char *name, const char **atts)
         info->mFrameInitialSkip = atoi(atts[1]);
     } else if (strcmp(name, "cITMaxMargin") == 0) {
         info->mCITMaxMargin = atoi(atts[1]);
+    } else if (strcmp(name, "maxNvmDataSize") == 0) {
+        info->mMaxNvmDataSize = atoi(atts[1]);
     } else if (strcmp(name, "nvmDirectory") == 0) {
         info->mNvmDirectory = atts[1];
         readNvmData();
@@ -1003,6 +1005,7 @@ int PSLConfParser::getIsysNodeNameAsValue(const char* isysNodeName)
 int PSLConfParser::readNvmData()
 {
     LOG1("@%s", __FUNCTION__);
+    int nvmDataSize = 0;
     std::string sensorName;
     std::string nvmDirectory;
     ia_binary_data nvmData;
@@ -1017,6 +1020,7 @@ int PSLConfParser::readNvmData()
 
     sensorName = info->getSensorName();
     nvmDirectory = info->getNvmDirectory();
+    nvmDataSize = info->getMaxNvmDataSize();
 
     if (nvmDirectory.length() == 0) {
         LOGW("NVM dirctory from config is null");
@@ -1047,9 +1051,12 @@ int PSLConfParser::readNvmData()
     nvmData.size = ftell(nvmFile);
     fseek(nvmFile, 0, SEEK_SET);
 
+    if (nvmDataSize > 0)
+        nvmData.size = MIN(nvmDataSize, nvmData.size);
+
     nvmData.data = ::operator new(nvmData.size);
 
-    LOG1("NVM file size: %d bytes", nvmData.size);
+    LOG1("NVM data size: %d bytes", nvmData.size);
     int ret = fread(nvmData.data, nvmData.size, 1, nvmFile);
     if (ret == 0) {
         LOGE("Cannot read nvm data");

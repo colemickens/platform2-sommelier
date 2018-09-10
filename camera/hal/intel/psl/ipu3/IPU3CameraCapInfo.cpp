@@ -33,6 +33,7 @@ IPU3CameraCapInfo::IPU3CameraCapInfo(SensorType type):
     mStatisticsInitialSkip(0),
     mCITMaxMargin(0),
     mSupportIsoMap(false),
+    mMaxNvmDataSize(0),
     mNvmDirectory(""),
     mSensorName(""),
     mNvmData({nullptr,0}),
