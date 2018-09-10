@@ -973,14 +973,6 @@ void ControlUnit::prepareStats(RequestCtrlState &reqState,
     params->external_histograms = nullptr;
     params->num_external_histograms = 0;
 
-    {
-    std::lock_guard<std::mutex> l(mSofDataLock);
-    if (mSofDataMap.find(params->frame_id) != mSofDataMap.end()) {
-        LOG2("frame timestamp %lld to %lld, sequence %llu", params->frame_timestamp,
-              mSofDataMap.at(params->frame_id), params->frame_id);
-        params->frame_timestamp = mSofDataMap.at(params->frame_id);
-    }
-    }
     settingsInEffect = findSettingsInEffect(params->frame_id);
     if (settingsInEffect.get()) {
         params->frame_ae_parameters = &settingsInEffect->aiqResults.aeResults;
@@ -998,6 +990,16 @@ void ControlUnit::prepareStats(RequestCtrlState &reqState,
         params->awb_results = &latestResults.awbResults;
         params->frame_sa_parameters = &latestResults.saResults;
         params->frame_pa_parameters = &latestResults.paResults;
+    }
+
+    {
+    std::lock_guard<std::mutex> l(mSofDataLock);
+    if (mSofDataMap.find(params->frame_id) != mSofDataMap.end()) {
+        params->frame_timestamp = mSofDataMap.at(params->frame_id)
+              - params->frame_ae_parameters->exposures[0].exposure->exposure_time_us;
+        LOG2("frame expo start timestamp %lld, sequence %llu", params->frame_timestamp,
+              params->frame_id);
+    }
     }
 
     /**
