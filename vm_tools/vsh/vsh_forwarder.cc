@@ -42,6 +42,7 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/asynchronous_signal_handler.h>
 #include <brillo/flag_helper.h>
+#include <brillo/key_value_store.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <brillo/syslog_logging.h>
 
@@ -63,29 +64,19 @@ constexpr char kChromeosReleaseTrackKey[] = "CHROMEOS_RELEASE_TRACK";
 constexpr char kTestImageChannel[] = "testimage-channel";
 
 bool IsTestImage() {
-  std::string lsb_release;
-  if (!base::ReadFileToString(base::FilePath(kLsbReleasePath), &lsb_release)) {
+  brillo::KeyValueStore store;
+  if (!store.Load(base::FilePath(kLsbReleasePath))) {
     LOG(ERROR) << "Could not read lsb-release";
     return false;
   }
 
-  std::vector<base::StringPiece> lines = base::SplitStringPiece(
-      lsb_release, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-
-  for (auto& line : lines) {
-    std::vector<base::StringPiece> components = base::SplitStringPiece(
-        line, "=", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-    if (components.size() != 2)
-      continue;
-
-    // An image is only a test image if it's on the testimage-channel release
-    // track.
-    if (components[0] == kChromeosReleaseTrackKey &&
-        components[1] == kTestImageChannel)
-      return true;
+  std::string release;
+  if (!store.GetString(kChromeosReleaseTrackKey, &release)) {
+    // If the key isn't set, then assume not a test image.
+    return false;
   }
 
-  return false;
+  return release == kTestImageChannel;
 }
 
 }  // namespace
