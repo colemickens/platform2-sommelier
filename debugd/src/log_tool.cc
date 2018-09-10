@@ -24,6 +24,9 @@
 #include "debugd/src/constants.h"
 #include "debugd/src/process_with_output.h"
 
+#include "brillo/key_value_store.h"
+#include <brillo/osrelease_reader.h>
+
 namespace debugd {
 
 using std::string;
@@ -34,6 +37,7 @@ namespace {
 
 const char kRoot[] = "root";
 const char kShell[] = "/bin/sh";
+constexpr char kLsbReleasePath[] = "/etc/lsb-release";
 
 // Minimum time in seconds needed to allow shill to test active connections.
 const int kConnectionTesterTimeoutSeconds = 5;
@@ -440,6 +444,40 @@ void GetLogsFrom(const struct Log* logs, LogTool::LogMap* map) {
     (*map)[logs[i].name] = Run(logs[i]);
 }
 
+void GetLsbReleaseInfo(LogTool::LogMap* map) {
+  const base::FilePath lsb_release(kLsbReleasePath);
+  brillo::KeyValueStore store;
+  if (!store.Load(lsb_release)) {
+    // /etc/lsb-release might not be present (cros deploying a new
+    // configuration or no fields set at all). Just print a debug
+    // message and continue.
+    DLOG(INFO) << "Could not load fields from " << lsb_release.value();
+  } else {
+    for (const auto& key : store.GetKeys()) {
+      std::string value;
+      store.GetString(key, &value);
+      (*map)[key] = value;
+    }
+  }
+}
+
+void GetOsReleaseInfo(LogTool::LogMap* map) {
+  brillo::OsReleaseReader reader;
+  reader.Load();
+  for (const auto& key : reader.GetKeys()) {
+    std::string value;
+    reader.GetString(key, &value);
+    (*map)["os-release " + key] = value;
+  }
+}
+
+void PopulateDictionaryValue(const LogTool::LogMap& map,
+                             base::DictionaryValue* dictionary) {
+  for (const auto& kv : map) {
+    dictionary->SetString(kv.first, kv.second);
+  }
+}
+
 }  // namespace
 
 void LogTool::CreateConnectivityReport() {
@@ -466,6 +504,8 @@ LogTool::LogMap LogTool::GetAllLogs() {
   LogMap result;
   GetLogsFrom(kCommandLogs, &result);
   GetLogsFrom(kExtraLogs, &result);
+  GetLsbReleaseInfo(&result);
+  GetOsReleaseInfo(&result);
   return result;
 }
 
@@ -475,6 +515,8 @@ LogTool::LogMap LogTool::GetAllDebugLogs() {
   GetLogsFrom(kCommandLogs, &result);
   GetLogsFrom(kExtraLogs, &result);
   GetLogsFrom(kBigFeedbackLogs, &result);
+  GetLsbReleaseInfo(&result);
+  GetOsReleaseInfo(&result);
   return result;
 }
 
@@ -486,6 +528,8 @@ LogTool::LogMap LogTool::GetFeedbackLogs() {
     result.erase(key);
   }
   GetLogsFrom(kFeedbackLogs, &result);
+  GetLsbReleaseInfo(&result);
+  GetOsReleaseInfo(&result);
   AnonymizeLogMap(&result);
   return result;
 }
@@ -499,6 +543,10 @@ void LogTool::GetBigFeedbackLogs(const base::ScopedFD& fd) {
   }
   GetLogsInDictionary(kFeedbackLogs, &anonymizer_, &dictionary);
   GetLogsInDictionary(kBigFeedbackLogs, &anonymizer_, &dictionary);
+  LogMap map;
+  GetLsbReleaseInfo(&map);
+  GetOsReleaseInfo(&map);
+  PopulateDictionaryValue(map, &dictionary);
   SerializeLogsAsJSON(dictionary, fd);
 }
 
