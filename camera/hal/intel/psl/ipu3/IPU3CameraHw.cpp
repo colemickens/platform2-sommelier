@@ -16,6 +16,7 @@
 
 #define LOG_TAG "IPU3CameraHw"
 
+#include <algorithm>
 #include "IPU3CameraHw.h"
 #include "LogHelper.h"
 #include "CameraMetadataHelper.h"
@@ -205,19 +206,37 @@ status_t IPU3CameraHw::checkStreamSizes(std::vector<camera3_stream_t*> &activeSt
 
 status_t IPU3CameraHw::checkStreamRotation(const std::vector<camera3_stream_t*> activeStreams)
 {
-    for (const auto* stream : activeStreams) {
-        if (stream->stream_type != CAMERA3_STREAM_OUTPUT)
+    int s0Degree = CAMERA3_STREAM_ROTATION_0;
+    for (size_t i = 0; i < activeStreams.size(); i++) {
+        if (activeStreams[i]->stream_type != CAMERA3_STREAM_OUTPUT) {
             continue;
+        }
 
-        if (stream->crop_rotate_scale_degrees != CAMERA3_STREAM_ROTATION_0
-            && stream->crop_rotate_scale_degrees != CAMERA3_STREAM_ROTATION_90
-            && stream->crop_rotate_scale_degrees != CAMERA3_STREAM_ROTATION_270) {
-            LOGE("Invalid rotation value %d", stream->crop_rotate_scale_degrees);
+        if (activeStreams[i]->crop_rotate_scale_degrees != CAMERA3_STREAM_ROTATION_0 &&
+            activeStreams[i]->crop_rotate_scale_degrees != CAMERA3_STREAM_ROTATION_90 &&
+            activeStreams[i]->crop_rotate_scale_degrees != CAMERA3_STREAM_ROTATION_270) {
+            LOGE("@%s, Invalid rotation value %d",
+            __FUNCTION__, activeStreams[i]->crop_rotate_scale_degrees);
             return BAD_VALUE;
+        }
+
+        if (!i) {
+            s0Degree = activeStreams[i]->crop_rotate_scale_degrees;
+        } else {
+            if (s0Degree != activeStreams[i]->crop_rotate_scale_degrees) {
+                LOGE("@%s, s0Degree:%d, stream[%lu] degree:%d, not the same",
+                __FUNCTION__, s0Degree, i, activeStreams[i]->crop_rotate_scale_degrees);
+                return BAD_VALUE;
+            }
         }
     }
 
     return OK;
+}
+
+static bool compFun(camera3_stream_t* s1, camera3_stream_t* s2)
+{
+    return streamSizeGE(s1, s2);
 }
 
 status_t
@@ -258,6 +277,9 @@ IPU3CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
 
         mActiveStreams.push_back(activeStreams[i]);
     }
+
+    // let the mActiveStreams to be from big to small
+    std::sort(mActiveStreams.begin(), mActiveStreams.end(), compFun);
 
     return configStreamsPrivate();
 }

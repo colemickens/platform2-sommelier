@@ -196,7 +196,16 @@ status_t ImguUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams)
         mImguPipe[i] = nullptr;
     }
 
-    for (unsigned int i = 0; i < activeStreams.size(); ++i) {
+    bool hasIMPL = false;
+    for (size_t i = 0; i < activeStreams.size(); ++i) {
+        if (activeStreams[i]->stream_type == CAMERA3_STREAM_OUTPUT &&
+            activeStreams[i]->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) {
+            hasIMPL = true;
+            break;
+        }
+    }
+
+    for (size_t i = 0; i < activeStreams.size(); ++i) {
         if (activeStreams.at(i)->stream_type == CAMERA3_STREAM_INPUT) {
             mActiveStreams.inputStream = activeStreams.at(i);
             continue;
@@ -204,12 +213,20 @@ status_t ImguUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams)
 
         switch (activeStreams.at(i)->format) {
         case HAL_PIXEL_FORMAT_BLOB:
-             mActiveStreams.blobStreams.push_back(activeStreams.at(i));
-             break;
+            mActiveStreams.blobStreams.push_back(activeStreams.at(i));
+            break;
         case HAL_PIXEL_FORMAT_YCbCr_420_888:
+            if (hasIMPL &&
+                activeStreams.at(i)->width > RESOLUTION_1080P_WIDTH &&
+                activeStreams.at(i)->height > RESOLUTION_1080P_HEIGHT) {
+                mActiveStreams.blobStreams.push_back(activeStreams.at(i));
+            } else {
+                mActiveStreams.yuvStreams.push_back(activeStreams.at(i));
+            }
+            break;
         case HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED:
-             mActiveStreams.yuvStreams.push_back(activeStreams.at(i));
-             break;
+            mActiveStreams.yuvStreams.push_back(activeStreams.at(i));
+            break;
         default:
             LOGW("Unsupported stream format %x", activeStreams.at(i)->format);
             break;
@@ -218,7 +235,7 @@ status_t ImguUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams)
     int blobNum = mActiveStreams.blobStreams.size();
     int yuvNum = mActiveStreams.yuvStreams.size();
 
-    CheckError(blobNum > 1, BAD_VALUE, "Don't support blobNum %d", blobNum);
+    CheckError(blobNum > 2, BAD_VALUE, "Don't support blobNum %d", blobNum);
     CheckError(yuvNum > 2, BAD_VALUE, "Don't support yuvNum %d", yuvNum);
 
     status_t status = OK;
@@ -411,7 +428,7 @@ status_t ImguUnit::ImguPipe::configStreams(std::vector<camera3_stream_t*> &strea
                        std::shared_ptr<SharedItemPool<ia_aiq_af_grid>> afGridBuffPool,
                        std::shared_ptr<SharedItemPool<ia_aiq_rgbs_grid>> rgbsGridBuffPool)
 {
-    LOG1("%s, Pipe Type %d", __FUNCTION__, mPipeType);
+    LOG1("%s, Pipe Type %d, streams number:%lu", __FUNCTION__, mPipeType, streams.size());
     mFirstRequest = true;
 
     IStreamConfigProvider::MediaType mediaType = GraphConfig::PIPE_STILL == mPipeType ?
@@ -456,23 +473,18 @@ status_t ImguUnit::ImguPipe::startWorkers()
     return OK;
 }
 
-#define streamSizeGE(s1, s2) (((s1)->width * (s1)->height) >= ((s2)->width * (s2)->height))
-
 status_t ImguUnit::ImguPipe::mapStreamWithDeviceNode(std::vector<camera3_stream_t*> &streams)
 {
     int streamNum = streams.size();
     LOG1("%s pipe type %d, streamNum %d", __FUNCTION__, mPipeType, streamNum);
-    mStreamNodeMapping.clear();
-
     CheckError(streamNum == 0, UNKNOWN_ERROR, "streamNum is 0");
 
+    mStreamNodeMapping.clear();
+    mStreamListenerMapping.clear();
+
     if (GraphConfig::PIPE_VIDEO == mPipeType) {
-        int videoIdx = -1;
-        int previewIdx = 0;
-        if (streamNum == 2) {
-            videoIdx = (streamSizeGE(streams[0], streams[1])) ? 0 : 1;
-            previewIdx = videoIdx ? 0 : 1;
-        }
+        int videoIdx = (streamNum == 2) ? 0 : -1;
+        int previewIdx = (streamNum == 2) ? 1 : 0;
 
         mStreamNodeMapping[IMGU_NODE_PREVIEW] = streams[previewIdx];
         LOG1("@%s, %d stream %p size preview: %dx%d, format %s", __FUNCTION__,
@@ -494,6 +506,10 @@ status_t ImguUnit::ImguPipe::mapStreamWithDeviceNode(std::vector<camera3_stream_
              streams[0], streams[0]->width, streams[0]->height,
              METAID2STR(android_scaler_availableFormats_values,
                         streams[0]->format));
+
+        if (streams.size() == 2) {
+            mStreamListenerMapping[streams[1]] = IMGU_NODE_STILL;
+        }
     }
 
     return OK;
@@ -548,6 +564,13 @@ status_t ImguUnit::ImguPipe::createProcessingTasks(std::shared_ptr<GraphConfig> 
             mPipeConfig.deviceWorkers.push_back(outWorker);
             mPipeConfig.pollableWorkers.push_back(outWorker);
             mPipeConfig.nodes.push_back(outWorker->getNode());
+
+            for (const auto& l : mStreamListenerMapping) {
+                if (l.second == it.first) {
+                    LOG1("@%s stream %p listen to nodeName 0x%x", __FUNCTION__, l.first, it.first);
+                    outWorker->addListener(l.first);
+                }
+            }
         } else if (it.first == IMGU_NODE_RAW) {
             LOGW("RAW is not implemented"); // raw
             continue;

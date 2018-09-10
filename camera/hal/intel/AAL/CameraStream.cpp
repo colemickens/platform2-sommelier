@@ -86,7 +86,7 @@ status_t CameraStream::capture(std::shared_ptr<CameraBuffer> aBuffer,
 status_t CameraStream::captureDone(std::shared_ptr<CameraBuffer> aBuffer,
                                    Camera3Request* request)
 {
-    LOG2("@%s, line:%d", __FUNCTION__, __LINE__);
+    LOG2("@%s", __FUNCTION__);
     std::lock_guard<std::mutex> l(mPendingLock);
     /* Usually the correct request is found at index 0 in the mPendingRequests
      * Vector, but reprocessing requests are allowed to deviate from the FIFO

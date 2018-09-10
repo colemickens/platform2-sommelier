@@ -87,6 +87,10 @@
 #define MIN(a,b) ((a)<(b)?(a):(b))
 #define LIMIT(x, min, max) ((x) < (min) ? (min) : ((x) > (max) ? (max) : (x)))
 
+#define streamSizeGT(s1, s2) (((s1)->width * (s1)->height) > ((s2)->width * (s2)->height))
+#define streamSizeEQ(s1, s2) (((s1)->width * (s1)->height) == ((s2)->width * (s2)->height))
+#define streamSizeGE(s1, s2) (((s1)->width * (s1)->height) >= ((s2)->width * (s2)->height))
+
 #ifdef __GNUC__
 #define INDEXED_FIELD_INITIALIZER(x) [x]=
 #define NAMED_FIELD_INITIALIZER(x) .x=

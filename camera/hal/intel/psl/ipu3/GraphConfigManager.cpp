@@ -339,10 +339,6 @@ void GraphConfigManager::handleStillMap(camera3_stream_t* stream, ResolutionItem
     mQueryStill[h] = std::to_string(rotate ? stream->width : stream->height);
 }
 
-#define streamSizeGT(s1, s2) (((s1)->width * (s1)->height) > ((s2)->width * (s2)->height))
-#define streamSizeEQ(s1, s2) (((s1)->width * (s1)->height) == ((s2)->width * (s2)->height))
-#define streamSizeGE(s1, s2) (((s1)->width * (s1)->height) >= ((s2)->width * (s2)->height))
-
 status_t GraphConfigManager::mapStreamToKey(const std::vector<camera3_stream_t*> &streams,
                                             int *hasVideoStream, int *hasStillStream)
 {
@@ -351,19 +347,38 @@ status_t GraphConfigManager::mapStreamToKey(const std::vector<camera3_stream_t*>
     int yuvNum = 0;
     int blobNum = 0;
 
-    for (int i = 0; i < streams.size(); i++) {
+    bool hasIMPL = false;
+    for (size_t i = 0; i < streams.size(); ++i) {
+        if (streams[i]->stream_type == CAMERA3_STREAM_OUTPUT &&
+            streams[i]->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) {
+            hasIMPL = true;
+            break;
+        }
+    }
+
+    for (size_t i = 0; i < streams.size(); i++) {
         if ( streams[i]->stream_type != CAMERA3_STREAM_OUTPUT) {
-            LOGE("@%s, the streamd[%d] is not CAMERA3_STREAM_OUTPUT, it's:%d",
-                __FUNCTION__, i, streams[i]->stream_type);
+            LOGE("@%s, stream[%lu] is not output, %d", __FUNCTION__, i, streams[i]->stream_type);
             return UNKNOWN_ERROR;
         }
 
-        if (streams[i]-> format == HAL_PIXEL_FORMAT_BLOB) {
+        if (streams[i]->format == HAL_PIXEL_FORMAT_BLOB) {
             stillStream.push_back(streams[i]);
             *hasStillStream = true;
             blobNum++;
-        } else if (streams[i]->format == HAL_PIXEL_FORMAT_YCbCr_420_888 ||
-            streams[i]->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) {
+        } else if (streams[i]->format == HAL_PIXEL_FORMAT_YCbCr_420_888) {
+            if (hasIMPL &&
+                streams[i]->width > RESOLUTION_1080P_WIDTH &&
+                streams[i]->height > RESOLUTION_1080P_HEIGHT) {
+                stillStream.push_back(streams[i]);
+                *hasStillStream = true;
+                blobNum++;
+            } else {
+                videoStreams.push_back(streams[i]);
+                *hasVideoStream = true;
+                yuvNum++;
+            }
+        } else if (streams[i]->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) {
             videoStreams.push_back(streams[i]);
             *hasVideoStream = true;
             yuvNum++;
@@ -387,16 +402,9 @@ status_t GraphConfigManager::mapStreamToKey(const std::vector<camera3_stream_t*>
 
         // Main output produces full size frames
         // Secondary output produces small size frames
-        int mainOutputIndex = -1;
-        int secondaryOutputIndex = -1;
+        int mainOutputIndex = 0;
+        int secondaryOutputIndex = (videoStreams.size() == 2) ? 1 : -1;
 
-        if (videoStreams.size() == 1) {
-            mainOutputIndex = 0;
-        } else if (videoStreams.size() == 2) {
-            // compare both streams and select the one with larger size as mainOutput
-            mainOutputIndex = (streamSizeGE(videoStreams[0], videoStreams[1])) ? 0 : 1;
-            secondaryOutputIndex = mainOutputIndex ? 0 : 1;
-        }
         // map video stream settings
         handleVideoStream(res, streamKey);
         handleVideoMap(videoStreams[mainOutputIndex], res, streamKey);

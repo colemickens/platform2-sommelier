@@ -139,6 +139,7 @@ private:
         pthread_cond_t mFirstCond;
 
         std::map<IPU3NodeNames, camera3_stream_t *> mStreamNodeMapping; /* mStreamNodeMapping doesn't own camera3_stream_t objects */
+        std::map<camera3_stream_t*, IPU3NodeNames> mStreamListenerMapping;
     };
 
     int mCameraId;
