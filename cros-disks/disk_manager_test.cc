@@ -4,7 +4,9 @@
 
 #include "cros-disks/disk_manager.h"
 
+#include <stdlib.h>
 #include <sys/mount.h>
+#include <time.h>
 
 #include <memory>
 
@@ -97,7 +99,7 @@ TEST_F(DiskManagerTest, CreateNTFSMounter) {
   EXPECT_EQ("rw,nodev,noexec,nosuid", mounter->mount_options().ToString());
 }
 
-TEST_F(DiskManagerTest, CreateSystemMounter) {
+TEST_F(DiskManagerTest, CreateVFATSystemMounter) {
   Disk disk;
   disk.device_file = "/dev/sda1";
 
@@ -107,14 +109,38 @@ TEST_F(DiskManagerTest, CreateSystemMounter) {
   string target_path = "/media/disk";
   vector<string> options = {"rw", "nodev", "noexec", "nosuid"};
 
+  // Override the time zone to make this test deterministic.
+  // This test uses AWST (Perth, Australia), which is UTC+8, as the test time
+  // zone. However, the TZ environment variable is the time to be added to local
+  // time to get to UTC, hence the negative.
+  setenv("TZ", "UTC-8", 1);
+
   unique_ptr<Mounter> mounter(
       manager_.CreateMounter(disk, filesystem, target_path, options));
   EXPECT_NE(nullptr, mounter.get());
   EXPECT_EQ(filesystem.mount_type, mounter->filesystem_type());
   EXPECT_EQ(disk.device_file, mounter->source_path());
   EXPECT_EQ(target_path, mounter->target_path());
-  EXPECT_EQ("utf8,shortname=mixed,rw,nodev,noexec,nosuid",
+  EXPECT_EQ("utf8,shortname=mixed,time_offset=480,rw,nodev,noexec,nosuid",
             mounter->mount_options().ToString());
+}
+
+TEST_F(DiskManagerTest, CreateExt4SystemMounter) {
+  Disk disk;
+  disk.device_file = "/dev/sda1";
+
+  string target_path = "/media/disk";
+  // "mand" is not a whitelisted option, so it should be skipped.
+  vector<string> options = {"rw", "nodev", "noexec", "nosuid", "mand"};
+
+  Filesystem filesystem("ext4");
+  unique_ptr<Mounter> mounter(
+      manager_.CreateMounter(disk, filesystem, target_path, options));
+  EXPECT_NE(nullptr, mounter.get());
+  EXPECT_EQ(filesystem.mount_type, mounter->filesystem_type());
+  EXPECT_EQ(disk.device_file, mounter->source_path());
+  EXPECT_EQ(target_path, mounter->target_path());
+  EXPECT_EQ("rw,nodev,noexec,nosuid", mounter->mount_options().ToString());
 }
 
 TEST_F(DiskManagerTest, EnumerateDisks) {

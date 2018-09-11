@@ -4,9 +4,11 @@
 
 #include "cros-disks/disk_manager.h"
 
+#include <inttypes.h>
 #include <libudev.h>
 #include <string.h>
 #include <sys/mount.h>
+#include <time.h>
 
 #include <memory>
 #include <utility>
@@ -16,6 +18,7 @@
 #include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 
 #include "cros-disks/exfat_mounter.h"
 #include "cros-disks/filesystem.h"
@@ -407,6 +410,30 @@ unique_ptr<Mounter> DiskManager::CreateMounter(
   extended_options.assign(options.begin(), options.end());
   extended_options.insert(extended_options.end(), extra_options.begin(),
                           extra_options.end());
+
+  if (filesystem.type == "vfat") {
+    // FAT32 stores times as local time instead of UTC. By default, the vfat
+    // kernel module will use the kernel's time zone, which is set using
+    // settimeofday(), to interpret time stamps as local time. However, time
+    // zones are complicated and generally a user-space concern in modern Linux.
+    // The man page for {get,set}timeofday comments that the |timezone| fields
+    // of these functions is obsolete. Chrome OS doesn't appear to set these
+    // either. Instead, we pass the time offset explicitly as a mount option so
+    // that the user can see file time stamps as local time. This mirrors what
+    // the user will see in other operating systems.
+    // TODO(amistry): Consider moving this code into a FATMounter.
+    time_t now = base::Time::Now().ToTimeT();
+    struct tm timestruct;
+    // The time zone might have changed since cros-disks was started. Force a
+    // re-read of the time zone to ensure the local time is what the user
+    // expects.
+    tzset();
+    localtime_r(&now, &timestruct);
+    // tm_gmtoff is a glibc extension.
+    int64_t offset_minutes = static_cast<int64_t>(timestruct.tm_gmtoff) / 60;
+    extended_options.push_back(
+        base::StringPrintf("time_offset=%" PRId64, offset_minutes));
+  }
 
   string default_user_id, default_group_id;
   if (filesystem.accepts_user_and_group_id) {
