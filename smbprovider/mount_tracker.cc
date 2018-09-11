@@ -138,6 +138,33 @@ std::string MountTracker::GetRelativePath(int32_t mount_id,
   return full_path.substr(mounts_.At(mount_id).mount_root.length());
 }
 
+const SmbCredential& MountTracker::GetCredential(
+    SambaInterface::SambaInterfaceId samba_interface_id) const {
+  DCHECK_NE(samba_interface_map_.count(samba_interface_id), 0);
+
+  // Double lookup of SambaInterfaceId => MountId followed by MountId =>
+  // MountInfo.credential
+  const int32_t mount_id = samba_interface_map_.at(samba_interface_id);
+  DCHECK(mounts_.Contains(mount_id));
+
+  return mounts_.At(mount_id).credential;
+}
+
+bool MountTracker::GetSambaInterface(int32_t mount_id,
+                                     SambaInterface** samba_interface) const {
+  DCHECK(samba_interface);
+
+  auto mount_iter = mounts_.Find(mount_id);
+  if (mount_iter == mounts_.End()) {
+    return false;
+  }
+
+  *samba_interface = mount_iter->second.samba_interface.get();
+  DCHECK(*samba_interface);
+
+  return true;
+}
+
 MountTracker::MountInfo MountTracker::CreateMountInfo(
     const std::string& mount_root,
     SmbCredential credential,

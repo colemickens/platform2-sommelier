@@ -78,6 +78,19 @@ class MountTracker {
   // Returns the number of mounts.
   size_t MountCount() const { return mounts_.Count(); }
 
+  // Returns the SmbCredential for |samba_interface_id|. A SambaInterfaceId must
+  // exist for this function.
+  // TODO(jimmyxgong): Change this function to return a bool and have an out
+  // parameter for an SmbCredential.
+  const SmbCredential& GetCredential(
+      SambaInterface::SambaInterfaceId samba_interface_id) const;
+
+  // Gives a pointer to the SambaInterface corresponding to |mount_id|.
+  // Returns true if |samba_interface| points to an existing SambaInterface
+  // pointer. Returns false if |mount_id| does not exist in |mounts_|.
+  bool GetSambaInterface(int32_t mount_id,
+                         SambaInterface** samba_interface) const;
+
  private:
   // Maintains the state of a single mount. Contains the mount root path and
   // the metadata cache.
