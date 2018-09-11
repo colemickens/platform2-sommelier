@@ -11,3 +11,7 @@ define(`execute_file_follow_link', `
 allow $1 $2:file rx_file_perms;
 allow $1 $2:lnk_file r_file_perms;
 ')
+
+define(`exec_coreutils', `
+execute_file_follow_link($1, cros_coreutils_exec)
+')
