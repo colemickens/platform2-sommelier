@@ -111,6 +111,20 @@ bool MountTracker::RemoveMount(int32_t mount_id) {
   return true;
 }
 
+bool MountTracker::GetFullPath(int32_t mount_id,
+                               const std::string& entry_path,
+                               std::string* full_path) const {
+  DCHECK(full_path);
+
+  auto mount_iter = mounts_.Find(mount_id);
+  if (mount_iter == mounts_.End()) {
+    return false;
+  }
+
+  *full_path = AppendPath(mounts_.At(mount_id).mount_root, entry_path);
+  return true;
+}
+
 MountTracker::MountInfo MountTracker::CreateMountInfo(
     const std::string& mount_root,
     SmbCredential credential,

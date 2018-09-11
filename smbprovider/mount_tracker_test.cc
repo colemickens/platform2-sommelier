@@ -342,4 +342,68 @@ TEST_F(MountTrackerTest, TestRemoveInvalidMountId) {
   EXPECT_EQ(0, mount_tracker_->MountCount());
 }
 
+TEST_F(MountTrackerTest, TestGetFullPath) {
+  // Add a new mount.
+  const std::string root_path = "smb://server/share";
+  int32_t mount_id;
+
+  EXPECT_TRUE(AddMountWithEmptyCredential(root_path, &mount_id));
+
+  // Verify the full path is as expected.
+  const std::string entry_path = "/foo/bar";
+  const std::string expected_full_path = root_path + entry_path;
+
+  std::string actual_full_path;
+  EXPECT_TRUE(
+      mount_tracker_->GetFullPath(mount_id, entry_path, &actual_full_path));
+
+  EXPECT_EQ(expected_full_path, actual_full_path);
+}
+
+TEST_F(MountTrackerTest, TestGetFullPathWithInvalidId) {
+  // Add a new mount.
+  const std::string root_path = "smb://server/share";
+  int32_t mount_id;
+
+  EXPECT_TRUE(AddMountWithEmptyCredential(root_path, &mount_id));
+
+  // Verify calling GetFullPath() with an invalid id fails.
+  const int32_t invalid_mount_id = mount_id + 1;
+
+  EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(invalid_mount_id));
+  std::string full_path;
+  EXPECT_FALSE(
+      mount_tracker_->GetFullPath(invalid_mount_id, "/foo/bar", &full_path));
+}
+
+TEST_F(MountTrackerTest, TestGetFullPathMultipleMounts) {
+  // Add two mounts with different roots.
+  const std::string root_path_1 = "smb://server/share1";
+  const std::string root_path_2 = "smb://server/share2";
+
+  ASSERT_NE(root_path_1, root_path_2);
+
+  int32_t mount_id_1;
+  int32_t mount_id_2;
+
+  EXPECT_TRUE(AddMountWithEmptyCredential(root_path_1, &mount_id_1));
+  EXPECT_TRUE(AddMountWithEmptyCredential(root_path_2, &mount_id_2));
+
+  // Verify correct ids map to the correct paths.
+  std::string actual_full_path;
+  const std::string entry_path = "/foo/bar";
+  const std::string expected_full_path_1 = root_path_1 + entry_path;
+  const std::string expected_full_path_2 = root_path_2 + entry_path;
+
+  EXPECT_TRUE(
+      mount_tracker_->GetFullPath(mount_id_1, entry_path, &actual_full_path));
+
+  EXPECT_EQ(expected_full_path_1, actual_full_path);
+
+  EXPECT_TRUE(
+      mount_tracker_->GetFullPath(mount_id_2, entry_path, &actual_full_path));
+
+  EXPECT_EQ(expected_full_path_2, actual_full_path);
+}
+
 }  // namespace smbprovider

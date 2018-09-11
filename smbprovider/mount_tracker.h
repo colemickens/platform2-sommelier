@@ -21,6 +21,7 @@
 #include "smbprovider/metadata_cache.h"
 #include "smbprovider/samba_interface.h"
 #include "smbprovider/smb_credential.h"
+#include "smbprovider/smbprovider_helper.h"
 
 namespace smbprovider {
 
@@ -60,6 +61,14 @@ class MountTracker {
   // Returns true if |mount_id| was mounted and removes the mount. Returns false
   // if |mount_id| does not exist in |mounts_|.
   bool RemoveMount(int32_t mount_id);
+
+  // Uses the mount root associated with |mount_id| and appends |entry_path|
+  // to form |full_path|. Returns true if |full_path| has been properly appended
+  // with the full path. Returns false if |mount_id| does not exist in
+  // |mounts_|.
+  bool GetFullPath(int32_t mount_id,
+                   const std::string& entry_path,
+                   std::string* full_path) const;
 
   // Returns the number of mounts.
   size_t MountCount() const { return mounts_.Count(); }
