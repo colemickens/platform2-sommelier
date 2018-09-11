@@ -1,4 +1,4 @@
-type minijail, chromeos_domain, domain, mlstrustedobject;
+type minijail, cros_miscdomain, chromeos_domain, domain, mlstrustedobject;
 
 permissive minijail;
 
