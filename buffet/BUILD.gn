@@ -1,0 +1,117 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/generate-dbus-proxies.gni")
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":buffet",
+    ":buffet_client",
+    ":buffet_common",
+  ]
+  if (use.test) {
+    deps += [ ":buffet_testrunner" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  include_dirs = [ "." ]
+
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "system_api",
+  ]
+}
+
+pkg_config("buffet_common_config") {
+  pkg_deps = [
+    "libshill-client",
+    "libweave-${libbase_ver}",
+  ]
+}
+
+generate_dbus_adaptors("generate_buffet_adaptors") {
+  dbus_adaptors_out_dir = "include/buffet"
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+  sources = [
+    "dbus_bindings/org.chromium.Buffet.Command.xml",
+    "dbus_bindings/org.chromium.Buffet.Manager.xml",
+  ]
+}
+
+generate_dbus_proxies("generate_buffet_proxies") {
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+  proxy_output_file = "include/buffet/dbus-proxies.h"
+  sources = [
+    "dbus_bindings/org.chromium.Buffet.Command.xml",
+    "dbus_bindings/org.chromium.Buffet.Manager.xml",
+  ]
+}
+
+static_library("buffet_common") {
+  configs += [ ":target_defaults" ]
+  all_dependent_configs = [ ":buffet_common_config" ]
+  deps = [
+    ":generate_buffet_adaptors",
+    ":generate_buffet_proxies",
+  ]
+  sources = [
+    "buffet_config.cc",
+    "dbus_command_dispatcher.cc",
+    "dbus_command_proxy.cc",
+    "dbus_constants.cc",
+    "dbus_conversion.cc",
+    "http_transport_client.cc",
+    "manager.cc",
+    "shill_client.cc",
+    "socket_stream.cc",
+  ]
+}
+
+executable("buffet") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "main.cc",
+  ]
+  deps = [
+    ":buffet_common",
+  ]
+}
+
+executable("buffet_client") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "buffet_client.cc",
+  ]
+}
+
+if (use.test) {
+  pkg_config("buffet_testrunner_config") {
+    pkg_deps = [
+      "libbrillo-test-${libbase_ver}",
+      "libchrome-test-${libbase_ver}",
+      "libweave-test-${libbase_ver}",
+    ]
+  }
+
+  executable("buffet_testrunner") {
+    configs += [
+      "//common-mk:test",
+      ":buffet_testrunner_config",
+      ":target_defaults",
+    ]
+    sources = [
+      "buffet_config_test.cc",
+      "dbus_command_proxy_test.cc",
+      "dbus_conversion_test.cc",
+    ]
+    deps = [
+      ":buffet_common",
+      "//common-mk/testrunner",
+    ]
+  }
+}
