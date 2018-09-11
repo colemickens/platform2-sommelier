@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <fcntl.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,6 +11,7 @@
 #include <string>
 
 #include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/flag_helper.h>
@@ -28,6 +30,11 @@ const char kUsageMessage[] =
 // Checks if rootfs verification has been removed by testing if / is writable.
 // Must be called as root since / is never writable by the debugd user.
 bool IsRootfsVerificationRemoved() {
+  base::ScopedFD init_ns_fd(open("/proc/1/ns/mnt", O_CLOEXEC));
+  // Since debugd is running in a sandboxed envrionment, the check
+  // whether '/' is writable needs to be done in the init namespace,
+  // instead of the debugd sandboxed namespace.
+  setns(init_ns_fd.get(), CLONE_NEWNS);
   return base::PathIsWritable(base::FilePath("/"));
 }
 
