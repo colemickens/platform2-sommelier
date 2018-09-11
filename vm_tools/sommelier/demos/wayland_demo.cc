@@ -54,7 +54,10 @@ void keyboard_key(void* data,
                   uint32_t key,
                   uint32_t state) {
   struct demo_data* data_ptr = reinterpret_cast<struct demo_data*>(data);
-  data_ptr->done = true;
+  // Key pressed.
+  if (state == 1) {
+    data_ptr->done = true;
+  }
 }
 
 void keyboard_modifiers(void* data,
@@ -78,21 +81,21 @@ void demo_registry_listener(void* data,
   struct demo_data* data_ptr = reinterpret_cast<struct demo_data*>(data);
   if (!strcmp("wl_compositor", interface)) {
     data_ptr->compositor = reinterpret_cast<struct wl_compositor*>(
-        wl_registry_bind(registry, id, &wl_compositor_interface, 1));
+        wl_registry_bind(registry, id, &wl_compositor_interface, version));
   } else if (!strcmp("wl_shell", interface)) {
     data_ptr->shell = reinterpret_cast<struct wl_shell*>(
-        wl_registry_bind(registry, id, &wl_shell_interface, 1));
+        wl_registry_bind(registry, id, &wl_shell_interface, version));
   } else if (!strcmp("wl_shm", interface)) {
     data_ptr->shm = reinterpret_cast<struct wl_shm*>(
-        wl_registry_bind(registry, id, &wl_shm_interface, 1));
+        wl_registry_bind(registry, id, &wl_shm_interface, version));
   } else if (!strcmp("wl_output", interface)) {
     data_ptr->output = reinterpret_cast<struct wl_output*>(
-        wl_registry_bind(registry, id, &wl_output_interface, 1));
+        wl_registry_bind(registry, id, &wl_output_interface, version));
     wl_output_add_listener(data_ptr->output, data_ptr->output_listener,
                            data_ptr);
   } else if (!strcmp("wl_seat", interface)) {
     struct wl_seat* seat = reinterpret_cast<struct wl_seat*>(
-        wl_registry_bind(registry, id, &wl_seat_interface, 1));
+        wl_registry_bind(registry, id, &wl_seat_interface, version));
     wl_keyboard_add_listener(wl_seat_get_keyboard(seat),
                              data_ptr->keyboard_listener, data_ptr);
   }
@@ -201,6 +204,10 @@ int main(int argc, char* argv[]) {
     LOG(ERROR) << "Failed to get output";
     return -1;
   }
+
+  // Do another roundtrip to ensure we get the wl_output callbacks.
+  wl_display_roundtrip(display);
+
   data.surface = wl_compositor_create_surface(data.compositor);
   if (!data.surface) {
     LOG(ERROR) << "Failed creating surface";
