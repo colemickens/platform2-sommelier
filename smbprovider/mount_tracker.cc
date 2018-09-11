@@ -4,6 +4,8 @@
 
 #include "smbprovider/mount_tracker.h"
 
+#include <base/strings/string_util.h>
+
 namespace smbprovider {
 
 MountTracker::MountTracker(std::unique_ptr<base::TickClock> tick_clock)
@@ -123,6 +125,17 @@ bool MountTracker::GetFullPath(int32_t mount_id,
 
   *full_path = AppendPath(mounts_.At(mount_id).mount_root, entry_path);
   return true;
+}
+
+std::string MountTracker::GetRelativePath(int32_t mount_id,
+                                          const std::string& full_path) const {
+  auto mount_iter = mounts_.Find(mount_id);
+  DCHECK(mount_iter != mounts_.End());
+
+  DCHECK(StartsWith(full_path, mount_iter->second.mount_root,
+                    base::CompareCase::INSENSITIVE_ASCII));
+
+  return full_path.substr(mounts_.At(mount_id).mount_root.length());
 }
 
 MountTracker::MountInfo MountTracker::CreateMountInfo(

@@ -70,6 +70,11 @@ class MountTracker {
                    const std::string& entry_path,
                    std::string* full_path) const;
 
+  // Uses the mount root associated with |mount_id| to remove the root path
+  // from |full_path| to yield a relative path.
+  std::string GetRelativePath(int32_t mount_id,
+                              const std::string& full_path) const;
+
   // Returns the number of mounts.
   size_t MountCount() const { return mounts_.Count(); }
 
