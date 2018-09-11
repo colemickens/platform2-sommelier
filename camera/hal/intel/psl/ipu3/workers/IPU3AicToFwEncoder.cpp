@@ -437,6 +437,7 @@ ispAwbFrEncode(aic_config *config, ipu3_uapi_params *params)
 void
 ispIefdEncode(aic_config *config, ipu3_uapi_params *params)
 {
+    CLEAR(params->acc_param.iefd);
     params->acc_param.iefd.control.iefd_en = config->yuvp1_c0_2500_config.iefd.control.iefd_en ? 1 : 0;
     params->acc_param.iefd.control.rad_en = config->yuvp1_c0_2500_config.iefd.control.iefd_radial_en ? 1 : 0;
     params->acc_param.iefd.control.denoise_en = config->yuvp1_c0_2500_config.iefd.control.iefd_denoise_en ? 1 : 0;
@@ -638,6 +639,7 @@ ispYds2Encode(aic_config *config, ipu3_uapi_params *params)
 void
 ispChnrEncode(aic_config *config, ipu3_uapi_params *params)
 {
+    CLEAR(params->acc_param.chnr);
     params->acc_param.chnr.coring.u = config->yuvp1_2500_config.chnr.coring.u;
     params->acc_param.chnr.coring.v = config->yuvp1_2500_config.chnr.coring.v;
 
@@ -659,6 +661,7 @@ ispChnrEncode(aic_config *config, ipu3_uapi_params *params)
 void
 ispChnrC0Encode(aic_config *config, ipu3_uapi_params *params)
 {
+    CLEAR(params->acc_param.chnr_c0);
     params->acc_param.chnr_c0.coring.u = config->yuvp1_c0_2500_config.chnr_c0.coring.u;
     params->acc_param.chnr_c0.coring.v = config->yuvp1_c0_2500_config.chnr_c0.coring.v;
 
@@ -680,6 +683,7 @@ ispChnrC0Encode(aic_config *config, ipu3_uapi_params *params)
 void
 ispYEeNrEncode(aic_config *config, ipu3_uapi_params *params)
 {
+    CLEAR(params->acc_param.y_ee_nr);
     params->acc_param.y_ee_nr.lpf.enable = config->yuvp1_2500_config.y_ee_nr.lpf.y_ee_nr_en;
     params->acc_param.y_ee_nr.lpf.a_diag = config->yuvp1_2500_config.y_ee_nr.lpf.a_diag;
     params->acc_param.y_ee_nr.lpf.a_cent = config->yuvp1_2500_config.y_ee_nr.lpf.a_cent;
@@ -857,6 +861,7 @@ copyColoreRg(ipu3_uapi_anr_plain_color *to, plain_color_w_matrix_t *from)
 void
 ispAnrEncode(aic_config *config, ipu3_uapi_params *params)
 {
+    CLEAR(params->acc_param.anr);
     short sqrt_lut[] = SQRT_LUT;
     params->acc_param.anr.transform.enable = 1;
     params->acc_param.anr.transform.adaptive_treshhold_en = config->anr_2500_config.anr.transform.ADAPTIVE_TRESHHOLD_EN & 0x1;
@@ -873,6 +878,9 @@ ispAnrEncode(aic_config *config, ipu3_uapi_params *params)
     copyColoreRg(&params->acc_param.anr.transform.color[2], &config->anr_2500_config.anr.transform.plane_2.color_reg_w);
 
     MEMCPY_S(params->acc_param.anr.transform.sqrt_lut, sizeof(params->acc_param.anr.transform.sqrt_lut), &sqrt_lut, sizeof(sqrt_lut));
+
+    params->acc_param.anr.transform.xreset = config->anr_2500_config.anr.transform.CALC.Xreset;
+    params->acc_param.anr.transform.yreset = config->anr_2500_config.anr.transform.CALC.Yreset;
 
     params->acc_param.anr.transform.x_sqr_reset = config->anr_2500_config.anr.transform.CALC.X_sqr_reset;
     if (config->anr_2500_config.anr.transform.CALC.X_sqr_reset & ~(X_SQR_RESET_MAX))
@@ -914,6 +922,7 @@ ispAnrEncode(aic_config *config, ipu3_uapi_params *params)
 void
 ispBnrEncode(aic_config *config, ipu3_uapi_params *params)
 {
+    CLEAR(params->acc_param.bnr);
     params->acc_param.bnr.wb_gains.gr = config->bnr_2500_config.bnr.wb_gains.gr;
     params->acc_param.bnr.wb_gains.r = config->bnr_2500_config.bnr.wb_gains.r;
     params->acc_param.bnr.wb_gains.b = config->bnr_2500_config.bnr.wb_gains.b;
@@ -966,6 +975,7 @@ ispBnrEncode(aic_config *config, ipu3_uapi_params *params)
 void
 ispXnr3Encode(aic_config *config, ipu3_uapi_params *params)
 {
+    CLEAR(params->xnr3_dmem_params);
     struct ipu3_uapi_isp_xnr3_params *to = &params->xnr3_dmem_params;
     const struct ia_css_xnr3_config *from = &config->xnr_2500_config;
 
@@ -1019,6 +1029,7 @@ void
 ispXnr3VmemEncode(aic_config *config, ipu3_uapi_params *params)
 {
     struct ipu3_uapi_isp_xnr3_vmem_params *to = &params->xnr3_vmem_params;
+    CLEAR(params->xnr3_vmem_params);
 
     unsigned i, j, base;
     const unsigned total_blocks = 4;
@@ -1067,6 +1078,7 @@ ispXnr3VmemEncode(aic_config *config, ipu3_uapi_params *params)
 void
 ispBnrGreenDisparityEncode(aic_config *config, ipu3_uapi_params *params)
 {
+    CLEAR(params->acc_param.green_disparity);
     params->acc_param.green_disparity.gd_red = config->bnr_2500_config.green_disparity.GD_Red;
     params->acc_param.green_disparity.gd_green = config->bnr_2500_config.green_disparity.GD_Green;
     params->acc_param.green_disparity.gd_blue = config->bnr_2500_config.green_disparity.GD_Blue;
@@ -1183,6 +1195,7 @@ ispTnr3VmemEncode(aic_config *config, ipu3_uapi_params *params)
 void
 ispTnr3DmemEncode(aic_config *config, ipu3_uapi_params *params)
 {
+    CLEAR(params->tnr3_dmem_params);
     params->tnr3_dmem_params.knee_y1 = config->tnr3_2500_config.knee_y[0];
     params->tnr3_dmem_params.knee_y2 = config->tnr3_2500_config.knee_y[1];
     params->tnr3_dmem_params.maxfb_y = config->tnr3_2500_config.maxfb_y;
