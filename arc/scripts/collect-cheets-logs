@@ -5,14 +5,22 @@
 
 dump_var_log() {
   local filename="$1"
+  local size="$2"
 
   echo "################################"
   echo "### ${filename}"
   echo "################################"
-  tail -c 30k "/var/log/${filename}" || echo "No ${filename}"
+  tail -c "${size}" "/var/log/${filename}" || echo "No ${filename}"
 }
 
-dump_var_log arc.log
+dump_var_log arc.log 400k
+
+if [ -d /var/log/android ] ; then
+  # Dump only the last 3 log files.
+  for f in `ls -1tr /var/log/android | tail -3` ; do
+    dump_var_log "android/${f}" 30k
+  done
+fi
 
 # TODO(hidehiko): Remove these in M71.
 rm -f /var/log/arc-adbd.log
@@ -34,10 +42,3 @@ rm -f /var/log/arc-stop-sysctl.log
 rm -f /var/log/arc-system-mount.log
 rm -f /var/log/arc-ureadahead.log
 rm -f /var/log/arc-ureadahead-trace.log
-
-if [ -d /var/log/android ] ; then
-  # Dump only the last 3 log files.
-  for f in `ls -1tr /var/log/android | tail -3` ; do
-    dump_var_log android/$f
-  done
-fi
