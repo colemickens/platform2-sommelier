@@ -229,4 +229,117 @@ TEST_F(MountTrackerTest, TestMountAfterRemounts) {
   EXPECT_GT(mount_id_3, mount_id_1);
 }
 
+TEST_F(MountTrackerTest, TestAddRemoveMount) {
+  // Add a new mount.
+  const std::string root_path = "smb://server/share";
+  int32_t mount_id;
+
+  EXPECT_TRUE(AddMountWithEmptyCredential(root_path, &mount_id));
+
+  EXPECT_EQ(1, mount_tracker_->MountCount());
+  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(root_path));
+
+  // Verify the mount can be removed.
+  EXPECT_TRUE(mount_tracker_->RemoveMount(mount_id));
+  EXPECT_EQ(0, mount_tracker_->MountCount());
+
+  EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(mount_id));
+  EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(root_path));
+}
+
+TEST_F(MountTrackerTest, TestAddThenRemoveWrongMount) {
+  // Add a new mount.
+  const std::string root_path = "smb://server/share";
+  int32_t mount_id;
+
+  EXPECT_TRUE(AddMountWithEmptyCredential(root_path, &mount_id));
+
+  // Verify RemoveMount fails with an invalid id and nothing is removed.
+  const int32_t invalid_mount_id = mount_id + 1;
+  EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(invalid_mount_id));
+
+  EXPECT_FALSE(mount_tracker_->RemoveMount(invalid_mount_id));
+
+  EXPECT_EQ(1, mount_tracker_->MountCount());
+
+  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id));
+  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(root_path));
+
+  // Verify the valid id can still be removed.
+  EXPECT_TRUE(mount_tracker_->RemoveMount(mount_id));
+
+  EXPECT_EQ(0, mount_tracker_->MountCount());
+
+  EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(mount_id));
+  EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(root_path));
+}
+
+TEST_F(MountTrackerTest, TestAddRemoveMultipleMounts) {
+  const std::string root_path1 = "smb://server/share1";
+  const std::string root_path2 = "smb://server/share2";
+
+  // Add two mounts and verify they were both added.
+  int32_t mount_id_1;
+  int32_t mount_id_2;
+
+  EXPECT_TRUE(AddMountWithEmptyCredential(root_path1, &mount_id_1));
+  EXPECT_TRUE(AddMountWithEmptyCredential(root_path2, &mount_id_2));
+
+  EXPECT_EQ(2, mount_tracker_->MountCount());
+
+  // Remove the second id, verify it is removed, and the first remains.
+  EXPECT_TRUE(mount_tracker_->RemoveMount(mount_id_2));
+
+  EXPECT_EQ(1, mount_tracker_->MountCount());
+
+  EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(mount_id_2));
+  EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(root_path2));
+
+  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id_1));
+  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(root_path1));
+
+  // Remove the first id and verify it is also removed.
+  EXPECT_TRUE(mount_tracker_->RemoveMount(mount_id_1));
+
+  EXPECT_EQ(0, mount_tracker_->MountCount());
+
+  EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(mount_id_1));
+  EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(root_path1));
+}
+
+TEST_F(MountTrackerTest, TestRemovedMountCanBeRemounted) {
+  const std::string root_path = "smb://server/share1";
+
+  int32_t mount_id;
+  EXPECT_TRUE(AddMountWithEmptyCredential(root_path, &mount_id));
+
+  EXPECT_TRUE(mount_tracker_->RemoveMount(mount_id));
+
+  EXPECT_EQ(0, mount_tracker_->MountCount());
+
+  // Should be able to be remounted again.
+  EXPECT_TRUE(AddMountWithEmptyCredential(root_path, &mount_id));
+
+  EXPECT_EQ(1, mount_tracker_->MountCount());
+}
+
+TEST_F(MountTrackerTest, TestRemoveInvalidMountId) {
+  const int32_t mount_id = 5;
+
+  EXPECT_FALSE(mount_tracker_->RemoveMount(mount_id));
+
+  // Ensure AddMount still works.
+  const std::string root_path = "smb://server/share";
+
+  int32_t mount_id1;
+  EXPECT_TRUE(AddMountWithEmptyCredential(root_path, &mount_id1));
+
+  EXPECT_EQ(1, mount_tracker_->MountCount());
+
+  // Ensure RemoveMount still works.
+  EXPECT_TRUE(mount_tracker_->RemoveMount(mount_id1));
+
+  EXPECT_EQ(0, mount_tracker_->MountCount());
+}
+
 }  // namespace smbprovider

@@ -47,6 +47,16 @@ bool MountTracker::ExistsInMounts(const std::string& mount_root) const {
   return false;
 }
 
+bool MountTracker::ExistsInSambaInterfaceMap(const int32_t mount_id) const {
+  for (const auto& samba_iter : samba_interface_map_) {
+    if (samba_iter.second == mount_id) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 bool MountTracker::AddMount(const std::string& mount_root,
                             SmbCredential credential,
                             std::unique_ptr<SambaInterface> samba_interface,
@@ -85,6 +95,22 @@ bool MountTracker::AddMountWithId(
   return true;
 }
 
+bool MountTracker::RemoveMount(int32_t mount_id) {
+  auto mount_iter = mounts_.Find(mount_id);
+  if (mount_iter == mounts_.End()) {
+    DCHECK(!ExistsInSambaInterfaceMap(mount_id));
+    return false;
+  }
+  DeleteSambaInterfaceIdFromSambaInterfaceMap(mount_id);
+
+  const bool path_removed =
+      mounted_share_paths_.erase(mount_iter->second.mount_root);
+  DCHECK(path_removed);
+
+  mounts_.Remove(mount_iter->first);
+  return true;
+}
+
 MountTracker::MountInfo MountTracker::CreateMountInfo(
     const std::string& mount_root,
     SmbCredential credential,
@@ -107,6 +133,15 @@ SambaInterface::SambaInterfaceId MountTracker::GetSambaInterfaceIdForMountId(
 
   const MountTracker::MountInfo& mount_info = mounts_.At(mount_id);
   return mount_info.samba_interface->GetSambaInterfaceId();
+}
+
+void MountTracker::DeleteSambaInterfaceIdFromSambaInterfaceMap(
+    int32_t mount_id) {
+  const SambaInterface::SambaInterfaceId samba_interface_id =
+      GetSambaInterfaceIdForMountId(mount_id);
+  DCHECK_NE(0, samba_interface_map_.count(samba_interface_id));
+
+  samba_interface_map_.erase(samba_interface_id);
 }
 
 }  // namespace smbprovider

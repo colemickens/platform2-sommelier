@@ -57,6 +57,10 @@ class MountTracker {
                       std::unique_ptr<SambaInterface> samba_interface,
                       int32_t mount_id);
 
+  // Returns true if |mount_id| was mounted and removes the mount. Returns false
+  // if |mount_id| does not exist in |mounts_|.
+  bool RemoveMount(int32_t mount_id);
+
   // Returns the number of mounts.
   size_t MountCount() const { return mounts_.Count(); }
 
@@ -93,6 +97,11 @@ class MountTracker {
   // mounted_shares_.
   bool ExistsInMounts(const std::string& mount_root) const;
 
+  // Returns true if |mount_id| exists as a value in |samba_interface_map_|.
+  // This method is only used for DCHECK to ensure that |mounts_| is in sync
+  // |samba_interface_map_|
+  bool ExistsInSambaInterfaceMap(const int32_t mount_id) const;
+
   // Returns a new MountInfo.
   MountInfo CreateMountInfo(const std::string& mount_root,
                             SmbCredential credential,
@@ -104,6 +113,9 @@ class MountTracker {
   // Returns the SambaInterfaceId corresponding to the |mount_id|.
   SambaInterface::SambaInterfaceId GetSambaInterfaceIdForMountId(
       int32_t mount_id) const;
+
+  // Removes |samba_interface_id| from |samba_interface_map_|.
+  void DeleteSambaInterfaceIdFromSambaInterfaceMap(int32_t mount_id);
 
   // Maps MountId to MountInfo.
   IdMap<MountInfo> mounts_;
