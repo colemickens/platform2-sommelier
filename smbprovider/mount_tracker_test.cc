@@ -45,7 +45,8 @@ class MountTrackerTest : public testing::Test {
     samba_interface_factory_ =
         base::Bind(&SambaInterfaceFactoryFunction, fake_samba_.get());
 
-    mount_tracker_ = std::make_unique<MountTracker>(std::move(tick_clock));
+    mount_tracker_ = std::make_unique<MountTracker>(
+        std::move(tick_clock), false /* metadata_cache_enabled */);
   }
 
   ~MountTrackerTest() override = default;

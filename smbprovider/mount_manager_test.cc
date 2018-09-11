@@ -37,7 +37,8 @@ class MountManagerTest : public testing::Test {
   MountManagerTest() {
     auto tick_clock = std::make_unique<base::SimpleTestTickClock>();
 
-    auto mount_tracker = std::make_unique<MountTracker>(std::move(tick_clock));
+    auto mount_tracker = std::make_unique<MountTracker>(
+        std::move(tick_clock), false /* metadata_cache_enabled */);
 
     auto fake_samba_ = std::make_unique<FakeSambaInterface>();
     auto samba_interface_factory =

@@ -8,8 +8,10 @@
 
 namespace smbprovider {
 
-MountTracker::MountTracker(std::unique_ptr<base::TickClock> tick_clock)
-    : tick_clock_(std::move(tick_clock)) {}
+MountTracker::MountTracker(std::unique_ptr<base::TickClock> tick_clock,
+                           bool metadata_cache_enabled)
+    : tick_clock_(std::move(tick_clock)),
+      metadata_cache_enabled_(metadata_cache_enabled) {}
 
 MountTracker::~MountTracker() = default;
 
@@ -197,7 +199,7 @@ MountTracker::MountInfo MountTracker::CreateMountInfo(
     SmbCredential credential,
     std::unique_ptr<SambaInterface> samba_interface) {
   return MountInfo(mount_root, tick_clock_.get(), std::move(credential),
-                   std::move(samba_interface));
+                   std::move(samba_interface), metadata_cache_enabled_);
 }
 
 void MountTracker::AddSambaInterfaceIdToSambaInterfaceMap(int32_t mount_id) {

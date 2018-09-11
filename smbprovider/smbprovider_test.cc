@@ -183,7 +183,8 @@ class SmbProviderTest : public testing::Test {
     auto tick_clock = std::make_unique<base::SimpleTestTickClock>();
     fake_tick_clock_ = tick_clock.get();
 
-    auto mount_tracker = std::make_unique<MountTracker>(std::move(tick_clock));
+    auto mount_tracker = std::make_unique<MountTracker>(std::move(tick_clock),
+                                                        enable_metadata_cache);
 
     auto samba_interface_factory =
         base::Bind(&SambaInterfaceFactoryFunction, fake_samba_.get());

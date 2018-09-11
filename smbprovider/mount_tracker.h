@@ -27,7 +27,8 @@ namespace smbprovider {
 
 class MountTracker {
  public:
-  explicit MountTracker(std::unique_ptr<base::TickClock> tick_clock);
+  MountTracker(std::unique_ptr<base::TickClock> tick_clock,
+               bool metadata_cache_enabled);
   ~MountTracker();
 
   // Returns true if |mount_id| is already mounted.
@@ -107,14 +108,17 @@ class MountTracker {
     MountInfo(const std::string& mount_root,
               base::TickClock* tick_clock,
               SmbCredential credential,
-              std::unique_ptr<SambaInterface> samba_interface)
+              std::unique_ptr<SambaInterface> samba_interface,
+              bool metadata_cache_enabled)
         : mount_root(mount_root),
           credential(std::move(credential)),
           samba_interface(std::move(samba_interface)) {
+      auto cache_mode = metadata_cache_enabled ? MetadataCache::Mode::kStandard
+                                               : MetadataCache::Mode::kDisabled;
       cache = std::make_unique<MetadataCache>(
           tick_clock,
           base::TimeDelta::FromMicroseconds(kMetadataCacheLifetimeMicroseconds),
-          MetadataCache::Mode::kStandard);
+          cache_mode);
     }
 
     MountInfo& operator=(MountInfo&& other) = default;
@@ -163,6 +167,7 @@ class MountTracker {
   std::unordered_set<std::string> mounted_share_paths_;
 
   std::unique_ptr<base::TickClock> tick_clock_;
+  bool metadata_cache_enabled_;
 
   DISALLOW_COPY_AND_ASSIGN(MountTracker);
 };

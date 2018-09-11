@@ -157,7 +157,8 @@ class SmbProviderDaemon : public brillo::DBusServiceDaemon {
 
     auto tick_clock = std::make_unique<base::DefaultTickClock>();
 
-    auto mount_tracker = std::make_unique<MountTracker>(std::move(tick_clock));
+    auto mount_tracker = std::make_unique<MountTracker>(
+        std::move(tick_clock), true /* enable_metadata_cache*/);
 
     auto samba_interface_factory = base::Bind(&SambaInterfaceFactoryFunction);
 
