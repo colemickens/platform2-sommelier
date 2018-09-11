@@ -41,6 +41,14 @@ constexpr char kSmbUrlScheme[] = "smb://";
 // operates without a mount.
 constexpr int32_t kInternalMountId = -2;
 
+// Initial number of entries to send during read directory. This number is
+// smaller than kReadDirectoryMaxBatchSize since we want the initial page to
+// load as quickly as possible.
+constexpr uint32_t kReadDirectoryInitialBatchSize = 64;
+
+// Maximum number of entries to send at a time for read directory.
+constexpr uint32_t kReadDirectoryMaxBatchSize = 2048;
+
 // Entries returned by smbc_getdents() that we ignore.
 extern const char kEntryParent[];
 extern const char kEntrySelf[];
