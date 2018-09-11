@@ -1912,21 +1912,6 @@ TEST_F(CellularCapabilityUniversalMainTest, OnModemCurrentCapabilitiesChanged) {
   EXPECT_TRUE(cellular_->scanning_supported());
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, GetNetworkTechnologyStringOnE362) {
-  cellular_->set_model_id("");;
-  capability_->access_technologies_ = 0;
-  EXPECT_TRUE(capability_->GetNetworkTechnologyString().empty());
-
-  cellular_->set_mm_plugin(CellularCapabilityUniversal::kNovatelLTEMMPlugin);
-  EXPECT_EQ(kNetworkTechnologyLte, capability_->GetNetworkTechnologyString());
-
-  capability_->access_technologies_ = MM_MODEM_ACCESS_TECHNOLOGY_GPRS;
-  EXPECT_EQ(kNetworkTechnologyLte, capability_->GetNetworkTechnologyString());
-
-  cellular_->set_mm_plugin("");
-  EXPECT_EQ(kNetworkTechnologyGprs, capability_->GetNetworkTechnologyString());
-}
-
 TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusToProperty) {
   Error error;
   KeyValueStore store = capability_->SimLockStatusToProperty(&error);

@@ -86,6 +86,7 @@ const char kVzwIdentifier[] = "c83d6597-dc91-4d48-a3a7-d86b80123751";
 const size_t kVzwMdnLength = 10;
 
 string AccessTechnologyToString(uint32_t access_technologies) {
+  // Order is important. Return the highest radio access technology.
   if (access_technologies & MM_MODEM_ACCESS_TECHNOLOGY_LTE)
     return kNetworkTechnologyLte;
   if (access_technologies & (MM_MODEM_ACCESS_TECHNOLOGY_EVDO0 |
@@ -1139,19 +1140,6 @@ CellularBearer* CellularCapabilityUniversal::GetActiveBearer() const {
 }
 
 string CellularCapabilityUniversal::GetNetworkTechnologyString() const {
-  // If we know that the modem is an E362 modem supported by the Novatel LTE
-  // plugin, return LTE here to make sure that Chrome sees LTE as the network
-  // technology even if the actual technology is unknown.
-  //
-  // This hack will cause the UI to display LTE even if the modem doesn't
-  // support it at a given time. This might be problematic if we ever want to
-  // support switching between access technologies (e.g. falling back to 3G
-  // when LTE is not available).
-  if (cellular()->mm_plugin() == kNovatelLTEMMPlugin)
-    return kNetworkTechnologyLte;
-
-  // Order is important.  Return the highest speed technology
-  // TODO(jglasgow): change shill interfaces to a capability model
   return AccessTechnologyToString(access_technologies_);
 }
 
@@ -1329,16 +1317,7 @@ void CellularCapabilityUniversal::OnPropertiesChanged(
 
 bool CellularCapabilityUniversal::RetriableConnectError(
     const Error& error) const {
-  if (error.type() == Error::kInvalidApn)
-    return true;
-
-  // ModemManager does not ever return kInvalidApn for an E362 modem (with
-  // firmware version 1.41) supported by the Novatel LTE plugin.
-  if ((cellular()->mm_plugin() == kNovatelLTEMMPlugin) &&
-      (error.type() == Error::kOperationFailed)) {
-    return true;
-  }
-  return false;
+  return error.type() == Error::kInvalidApn;
 }
 
 bool CellularCapabilityUniversal::IsValidSimPath(const string& sim_path) const {
