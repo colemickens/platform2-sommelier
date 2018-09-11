@@ -560,7 +560,7 @@ void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,
   CHECK(builder.SetUpChromium());
 
   // Please add new code to the most-appropriate helper function instead of
-  // putting it here. Things that to all Chromium-derived binaries (e.g.
+  // putting it here. Things that apply to all Chromium-derived binaries (e.g.
   // app_shell, content_shell, etc.) rather than just to Chrome belong in the
   // ChromiumCommandBuilder class instead.
   CreateDirectories(&builder);

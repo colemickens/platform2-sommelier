@@ -5,11 +5,15 @@
 #include "login_manager/system_utils_impl.h"
 
 #include <errno.h>
+#include <grp.h>
+#include <pwd.h>
+#include <sched.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <sys/errno.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
@@ -34,6 +38,8 @@
 #include <brillo/process.h>
 #include <brillo/userdb_utils.h>
 #include <chromeos/dbus/service_constants.h>
+
+#include "login_manager/child_job.h"  // For ChildJobInterface exit codes.
 
 using std::string;
 using std::vector;
@@ -357,6 +363,74 @@ bool SystemUtilsImpl::GetGroupInfo(const std::string& group_name,
   return brillo::userdb::GetGroupInfo(group_name, out_gid);
 }
 
+bool SystemUtilsImpl::GetGidAndGroups(uid_t uid,
+                                      gid_t* out_gid,
+                                      std::vector<gid_t>* out_groups) {
+  DCHECK(out_gid);
+  DCHECK(out_groups);
+  // First, get the pwent for |uid|, which gives us the related gid and
+  // username.
+  ssize_t buf_len = std::max(sysconf(_SC_GETPW_R_SIZE_MAX), 16384L);
+  passwd pwd_buf = {};
+  passwd* pwd = nullptr;
+  std::vector<char> buf(buf_len);
+  for (int i : {1, 2, 3, 4}) {
+    buf_len = buf_len * i;
+    buf.resize(buf_len);
+    if (getpwuid_r(uid, &pwd_buf, buf.data(), buf_len, &pwd) == 0 ||
+        errno != ERANGE) {
+      break;
+    }
+  }
+  if (!pwd) {
+    PLOG(ERROR) << "Unable to find user " << uid;
+    return false;
+  }
+  *out_gid = pwd->pw_gid;
+
+  // Now, use the gid and username to find the list of all uid's groups.
+  // Calling getgrouplist() with ngroups=0 causes it to set ngroups to the
+  // number of groups available for the given username, including the provided
+  // gid. So do that first, then reserve the right amount of space in
+  // out_groups, then call getgrouplist() for realz.
+  int ngroups = 0;
+  CHECK_EQ(getgrouplist(pwd->pw_name, pwd->pw_gid, nullptr, &ngroups), -1);
+  out_groups->resize(ngroups, pwd->pw_gid);
+  int actual_ngroups =
+      getgrouplist(pwd->pw_name, pwd->pw_gid, out_groups->data(), &ngroups);
+  if (actual_ngroups == -1) {
+    PLOG(ERROR) << "Even after querying number of groups, still failed!";
+    return false;
+  } else if (actual_ngroups < ngroups) {
+    LOG(WARNING) << "Oddly, found fewer groups than initial call to"
+                 << "getgrouplist() indicated.";
+    out_groups->resize(actual_ngroups);
+  }
+  return true;
+}
+
+// This function will:
+// 1) try to setgid to |gid|
+// 2) try to setgroups to |gids|
+// 3) try to setuid to |uid|
+// 4) try to make a new session, with the current process as leader.
+//
+// Returns 0 on success, the appropriate exit code (defined above) if a
+// call fails.
+int SystemUtilsImpl::SetIDs(uid_t uid,
+                            gid_t gid,
+                            const std::vector<gid_t>& gids) {
+  if (setgroups(gids.size(), gids.data()) == -1)
+    return ChildJobInterface::kCantSetGroups;
+  if (setgid(gid) == -1)
+    return ChildJobInterface::kCantSetGid;
+  if (setuid(uid) == -1)
+    return ChildJobInterface::kCantSetUid;
+  if (setsid() == -1)
+    RAW_LOG(ERROR, "Can't setsid");
+  return 0;
+}
+
 bool SystemUtilsImpl::ChangeOwner(const base::FilePath& filename,
                                   pid_t pid,
                                   gid_t gid) {
@@ -403,7 +477,7 @@ bool SystemUtilsImpl::ChangeBlockedSignals(int how,
 
   for (int signal : signals) {
     if (sigaddset(&sigset, signal)) {
-      PLOG(ERROR) << "Failed to set signal " << signal << " to sigset";
+      PLOG(ERROR) << "Failed to add signal " << signal << " to sigset";
       return false;
     }
   }

@@ -165,6 +165,14 @@ class SystemUtils {
   // Calls brillo::userdb::GetGroupInfo().
   virtual bool GetGroupInfo(const std::string& group_name, gid_t* out_gid) = 0;
 
+  // Gets the matching group ID for a user ID, as well as supplementary groups.
+  virtual bool GetGidAndGroups(uid_t uid,
+                               gid_t* out_gid,
+                               std::vector<gid_t>* out_groups) = 0;
+
+  // Sets user ID, group ID, supplementary groups, and starts a new session.
+  virtual int SetIDs(uid_t uid, gid_t gid, const std::vector<gid_t>& gids) = 0;
+
   // Changes ownership of |filename|. When |pid| or |gid| is -1, that ID is
   // not changed. Returns true upon success.
   virtual bool ChangeOwner(const base::FilePath& filename,
@@ -187,7 +195,7 @@ class SystemUtils {
   virtual bool WriteStringToFile(const base::FilePath& path,
                                  const std::string& data) = 0;
 
-  // Changes blocked signals. |how| takes one of |SIG_BLOCK|, |SIG_UNBLOCK| and
+  // Changes blocked signals. |how| takes one of |SIG_BLOCK|, |SIG_UNBLOCK|, and
   // |SIG_SETMASK|. See man page of sigprocmask(2) for more details. |signals|
   // contains all signals to operate on.
   virtual bool ChangeBlockedSignals(int how,

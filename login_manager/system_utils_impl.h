@@ -71,6 +71,10 @@ class SystemUtilsImpl : public SystemUtils {
                        const std::string& data) override;
   int64_t AmountOfFreeDiskSpace(const base::FilePath& path) override;
   bool GetGroupInfo(const std::string& group_name, gid_t* out_gid) override;
+  bool GetGidAndGroups(uid_t uid,
+                       gid_t* out_gid,
+                       std::vector<gid_t>* out_groups) override;
+  int SetIDs(uid_t uid, gid_t gid, const std::vector<gid_t>& gids) override;
   bool ChangeOwner(const base::FilePath& filename,
                    pid_t pid,
                    gid_t gid) override;

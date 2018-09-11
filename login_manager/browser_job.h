@@ -69,13 +69,13 @@ class BrowserJobInterface : public ChildJobInterface {
   // Throw away the pid of the currently-tracked browser job.
   virtual void ClearPid() = 0;
 
-  // The flag to pass to chrome to tell it to behave as the login manager.
+  // The flag to pass to Chrome to tell it to behave as the login manager.
   static const char kLoginManagerFlag[];
 
-  // The flag to pass to chrome to tell it which user has signed in.
+  // The flag to pass to Chrome to tell it which user has signed in.
   static const char kLoginUserFlag[];
 
-  // The flag to pass to chrome to tell it the hash of the user who's signed in.
+  // The flag to pass to Chrome to tell it the hash of the user who's signed in.
   static const char kLoginProfileFlag[];
 };
 

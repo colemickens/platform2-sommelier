@@ -111,6 +111,7 @@ TEST_F(BrowserJobTest, InitializationTest) {
 
 TEST_F(BrowserJobTest, WaitAndAbort) {
   pid_t kDummyPid = 4;
+  EXPECT_CALL(utils_, GetGidAndGroups(_, _, _)).WillOnce(Return(true));
   EXPECT_CALL(utils_, fork()).WillOnce(Return(kDummyPid));
   EXPECT_CALL(utils_, kill(-kDummyPid, _, SIGABRT)).Times(1);
   EXPECT_CALL(utils_, time(NULL)).WillRepeatedly(Return(0));
@@ -125,6 +126,7 @@ TEST_F(BrowserJobTest, WaitAndAbort) {
 
 TEST_F(BrowserJobTest, WaitAndAbort_AlreadyGone) {
   pid_t kDummyPid = 4;
+  EXPECT_CALL(utils_, GetGidAndGroups(_, _, _)).WillOnce(Return(true));
   EXPECT_CALL(utils_, fork()).WillOnce(Return(kDummyPid));
   EXPECT_CALL(utils_, time(NULL)).WillRepeatedly(Return(0));
   EXPECT_CALL(utils_, ProcessGroupIsGone(kDummyPid, _)).WillOnce(Return(true));
@@ -191,6 +193,7 @@ TEST_F(BrowserJobTest, NullFileCheckerTest) {
 // On the job's first run, it should have a one-time-flag.  That
 // should get cleared and not used again.
 TEST_F(BrowserJobTest, OneTimeBootFlags) {
+  EXPECT_CALL(utils_, GetGidAndGroups(_, _, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(utils_, fork()).WillRepeatedly(Return(1));
   EXPECT_CALL(utils_, time(NULL)).WillRepeatedly(Return(0));
 
@@ -211,6 +214,7 @@ TEST_F(BrowserJobTest, OneTimeBootFlags) {
 TEST_F(BrowserJobTest, RunBrowserTermMessage) {
   pid_t kDummyPid = 4;
   int signal = SIGKILL;
+  EXPECT_CALL(utils_, GetGidAndGroups(_, _, _)).WillOnce(Return(true));
   EXPECT_CALL(utils_, fork()).WillOnce(Return(kDummyPid));
   EXPECT_CALL(utils_, kill(kDummyPid, _, signal)).Times(1);
   EXPECT_CALL(utils_, time(NULL)).WillRepeatedly(Return(0));

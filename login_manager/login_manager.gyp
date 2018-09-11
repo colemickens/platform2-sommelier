@@ -103,6 +103,7 @@
       'target_name': 'keygen',
       'type': 'executable',
       'sources': [
+        'child_job.cc',
         'keygen.cc',
         'keygen_worker.cc',
         'named_platform_handle_utils_posix.cc',
@@ -175,6 +176,7 @@
             'server_backed_state_key_generator_test.cc',
             'session_manager_impl_test.cc',
             'session_manager_process_test.cc',
+            'subprocess_test.cc',
             'system_utils_test.cc',
             'user_policy_service_test.cc',
             'validator_utils_test.cc',
