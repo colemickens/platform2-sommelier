@@ -42,6 +42,7 @@ char *selinux_audit_name;
 char *selinux_audit_scontext;
 char *selinux_audit_tcontext;
 char *selinux_audit_permission;
+bool selinux_audit_granted;
 
 int ReportServiceFailure(const char *service_name, const int exit_status);
 int ReportSELinuxViolation(void);
@@ -80,6 +81,7 @@ void CleanUpSELinuxVariables() {
   selinux_audit_tcontext = NULL;
   free(selinux_audit_permission);
   selinux_audit_permission = NULL;
+  selinux_audit_granted = false;
 }
 
 #define YY_INPUT(buf, result, max_size) CollectorInput(buf, &result, max_size)
@@ -177,6 +179,10 @@ SELINUX_AUDIT_PREFIX {PREFIX}" audit: "
                                 }
 <SELINUX_AUDIT>[{][ ][^ ]*      {
                                   selinux_audit_permission = strdup(yytext + 2);
+                                  AppendSELinuxText();
+                                }
+<SELINUX_AUDIT>avc:[ ]*granted  {
+                                  selinux_audit_granted = true;
                                   AppendSELinuxText();
                                 }
 <SELINUX_AUDIT>\n               {
@@ -356,6 +362,8 @@ int ReportSELinuxViolation(void) {
     return 0;
 
   char *selinux_violation_sig = NULL;
+  if (selinux_audit_granted)
+    AppendToString(&selinux_violation_sig, "granted-");
   if (selinux_audit_scontext != NULL)
     AppendToString(&selinux_violation_sig, selinux_audit_scontext);
   AppendToString(&selinux_violation_sig, "-");
