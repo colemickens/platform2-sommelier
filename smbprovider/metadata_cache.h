@@ -29,8 +29,15 @@ namespace smbprovider {
 // requests for metadata.
 class MetadataCache {
  public:
+  enum class Mode {
+    kStandard,  // Standard Cache behavior.
+    kDisabled   // All lookups are cache misses.
+  };
+
   // |entry_lifetime| determines how long an entry remains valid in the cache.
-  MetadataCache(base::TickClock* tick_clock, base::TimeDelta entry_lifetime);
+  MetadataCache(base::TickClock* tick_clock,
+                base::TimeDelta entry_lifetime,
+                Mode mode);
   ~MetadataCache();
 
   MetadataCache& operator=(MetadataCache&& other) = default;
@@ -76,10 +83,14 @@ class MetadataCache {
   // Returns true if all the entries in the cache are expired.
   bool AreAllEntriesExpired() const;
 
+  // Returns true if the cache should act as a cache.
+  bool IsEnabled() const;
+
   std::unordered_map<std::string, CacheEntry> cache_;
   base::TickClock* tick_clock_;  // Not owned
   base::TimeDelta entry_lifetime_;
   base::TimeTicks max_expiration_time_;
+  Mode mode_;
   DISALLOW_COPY_AND_ASSIGN(MetadataCache);
 };
 

@@ -112,8 +112,9 @@ class MountTracker {
           credential(std::move(credential)),
           samba_interface(std::move(samba_interface)) {
       cache = std::make_unique<MetadataCache>(
-          tick_clock, base::TimeDelta::FromMicroseconds(
-                          kMetadataCacheLifetimeMicroseconds));
+          tick_clock,
+          base::TimeDelta::FromMicroseconds(kMetadataCacheLifetimeMicroseconds),
+          MetadataCache::Mode::kStandard);
     }
 
     MountInfo& operator=(MountInfo&& other) = default;

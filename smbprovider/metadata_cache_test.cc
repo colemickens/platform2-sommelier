@@ -27,8 +27,8 @@ class MetadataCacheTest : public testing::Test {
     cache_lifetime_ =
         base::TimeDelta::FromMicroseconds(kMetadataCacheLifetimeMicroseconds);
     tick_clock_ = std::make_unique<base::SimpleTestTickClock>();
-    cache_ =
-        std::make_unique<MetadataCache>(tick_clock_.get(), cache_lifetime_);
+    cache_ = std::make_unique<MetadataCache>(tick_clock_.get(), cache_lifetime_,
+                                             MetadataCache::Mode::kStandard);
   }
 
   ~MetadataCacheTest() override = default;

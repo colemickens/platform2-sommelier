@@ -9,8 +9,9 @@
 namespace smbprovider {
 
 MetadataCache::MetadataCache(base::TickClock* tick_clock,
-                             base::TimeDelta entry_lifetime)
-    : tick_clock_(tick_clock), entry_lifetime_(entry_lifetime) {}
+                             base::TimeDelta entry_lifetime,
+                             Mode mode)
+    : tick_clock_(tick_clock), entry_lifetime_(entry_lifetime), mode_(mode) {}
 
 MetadataCache::~MetadataCache() = default;
 
@@ -23,6 +24,10 @@ void MetadataCache::AddEntry(const DirectoryEntry& entry) {
 
 bool MetadataCache::FindEntry(const std::string& full_path,
                               DirectoryEntry* out_entry) {
+  if (!IsEnabled()) {
+    return false;
+  }
+
   auto entry_iter = cache_.find(full_path);
   if (entry_iter == cache_.end()) {
     return false;
@@ -86,6 +91,10 @@ bool MetadataCache::IsExpired(
 
 bool MetadataCache::AreAllEntriesExpired() const {
   return tick_clock_->NowTicks() > max_expiration_time_;
+}
+
+bool MetadataCache::IsEnabled() const {
+  return mode_ != Mode::kDisabled;
 }
 
 }  // namespace smbprovider
