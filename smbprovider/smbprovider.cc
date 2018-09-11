@@ -17,7 +17,6 @@
 #include "smbprovider/iterator/caching_iterator.h"
 #include "smbprovider/iterator/directory_iterator.h"
 #include "smbprovider/iterator/post_depth_first_iterator.h"
-#include "smbprovider/iterator/share_iterator.h"
 #include "smbprovider/mount_manager.h"
 #include "smbprovider/netbios_packet_parser.h"
 #include "smbprovider/proto.h"
@@ -28,11 +27,38 @@
 
 namespace smbprovider {
 
-template <typename Proto, typename Iterator>
-bool GetEntries(const Proto& options,
-                Iterator iterator,
+bool GetEntries(const ReadDirectoryOptionsProto& options,
+                CachingIterator<DirectoryIterator> iterator,
                 int32_t* error_code,
                 ProtoBlob* out_entries) {
+  DCHECK(error_code);
+  DCHECK(out_entries);
+
+  DirectoryEntryListProto directory_entries;
+
+  int32_t result = iterator.Init();
+  while (result == 0) {
+    if (iterator.IsDone()) {
+      *error_code = static_cast<int32_t>(
+          SerializeProtoToBlob(directory_entries, out_entries));
+      return true;
+    }
+    AddDirectoryEntry(iterator.Get(), &directory_entries);
+    result = iterator.Next();
+  }
+
+  // The while-loop is only exited if there is an error. A full successful
+  // execution will return from inside the above while-loop.
+  *error_code = GetErrorFromErrno(result);
+  LogOperationError(GetMethodName(options), GetMountId(options),
+                    static_cast<ErrorType>(*error_code));
+  return false;
+}
+
+bool GetShareEntries(const GetSharesOptionsProto& options,
+                     ShareIterator iterator,
+                     int32_t* error_code,
+                     ProtoBlob* out_entries) {
   DCHECK(error_code);
   DCHECK(out_entries);
 
@@ -139,13 +165,10 @@ void SmbProvider::ReadDirectory(const ProtoBlob& options_blob,
   DCHECK(error_code);
   DCHECK(out_entries);
 
-  ReadDirectoryEntries<ReadDirectoryOptionsProto, DirectoryIterator>(
-      options_blob, true /* include_metadata */, error_code, out_entries);
+  ReadDirectoryEntries(options_blob, error_code, out_entries);
 }
 
-template <typename Proto, typename Iterator>
 void SmbProvider::ReadDirectoryEntries(const ProtoBlob& options_blob,
-                                       bool include_metadata,
                                        int32_t* error_code,
                                        ProtoBlob* out_entries) {
   DCHECK(error_code);
@@ -153,28 +176,39 @@ void SmbProvider::ReadDirectoryEntries(const ProtoBlob& options_blob,
   out_entries->clear();
 
   std::string full_path;
-  Proto options;
+  ReadDirectoryOptionsProto options;
   if (ParseOptionsAndPath(options_blob, &options, &full_path, error_code)) {
     MetadataCache* cache = nullptr;
-    if (include_metadata) {
-      bool got_cache =
-          mount_manager_->GetMetadataCache(GetMountId(options), &cache);
-      DCHECK(got_cache);
-      DCHECK(cache);
-    }
+    bool got_cache =
+        mount_manager_->GetMetadataCache(GetMountId(options), &cache);
+    DCHECK(got_cache);
+    DCHECK(cache);
 
     SambaInterface* samba_interface = GetSambaInterface(GetMountId(options));
-    if (include_metadata && cache) {
       // Purge the cache of expired entries before reading next directory.
-      cache->PurgeExpiredEntries();
-      GetEntries(
-          options,
-          GetCachingIterator<Iterator>(full_path, samba_interface, cache),
-          error_code, out_entries);
-    } else {
-      GetEntries(options, GetIterator<Iterator>(full_path, samba_interface),
-                 error_code, out_entries);
-    }
+    cache->PurgeExpiredEntries();
+    GetEntries(options,
+               GetCachingIterator<DirectoryIterator>(full_path, samba_interface,
+                                                     cache),
+               error_code, out_entries);
+  }
+}
+
+void SmbProvider::ReadShareEntries(const ProtoBlob& options_blob,
+                                   int32_t* error_code,
+                                   ProtoBlob* out_entries) {
+  DCHECK(error_code);
+  DCHECK(out_entries);
+  out_entries->clear();
+
+  std::string full_path;
+  GetSharesOptionsProto options;
+  if (ParseOptionsAndPath(options_blob, &options, &full_path, error_code)) {
+    SambaInterface* samba_interface = GetSambaInterface(GetMountId(options));
+
+    GetShareEntries(options,
+                    GetIterator<ShareIterator>(full_path, samba_interface),
+                    error_code, out_entries);
   }
 }
 
@@ -411,8 +445,7 @@ void SmbProvider::GetShares(const ProtoBlob& options_blob,
   DCHECK(error_code);
   DCHECK(shares);
 
-  ReadDirectoryEntries<GetSharesOptionsProto, ShareIterator>(
-      options_blob, false /* include_metadata */, error_code, shares);
+  ReadShareEntries(options_blob, error_code, shares);
 }
 
 void SmbProvider::SetupKerberos(SetupKerberosCallback callback,

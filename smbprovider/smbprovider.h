@@ -14,6 +14,8 @@
 
 #include "smbprovider/copy_progress_interface.h"
 #include "smbprovider/id_map.h"
+#include "smbprovider/iterator/caching_iterator.h"
+#include "smbprovider/iterator/share_iterator.h"
 #include "smbprovider/kerberos_artifact_synchronizer.h"
 #include "smbprovider/proto.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
@@ -33,11 +35,18 @@ class SambaInterface;
 // Helper method that reads entries using an |iterator| and outputs them to
 // |out_entries|. Returns true on success and sets |error_code| on failure.
 // |options| is used for logging purposes.
-template <typename Proto, typename Iterator>
-bool GetEntries(const Proto& options,
-                Iterator iterator,
+bool GetEntries(const ReadDirectoryOptionsProto& options,
+                CachingIterator<DirectoryIterator> iterator,
                 int32_t* error_code,
                 ProtoBlob* out_entries);
+
+// Helper method that reads shares on a host using a Share Iterator and outputs
+// them to |out_entries|. Returns true on success and sets |error_code| on
+// failure. |options| is used for logging purposes.
+bool GetShareEntries(const GetSharesOptionsProto& options,
+                     ShareIterator iterator,
+                     int32_t* error_code,
+                     ProtoBlob* out_entries);
 
 // Implementation of smbprovider's DBus interface. Mostly routes stuff between
 // DBus and samba_interface.
@@ -368,11 +377,16 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   // outputs the entries in |out_entries|. |options_blob| is parsed into a
   // |Proto| object and is used as input for the iterator. |error_code| is set
   // on failure.
-  template <typename Proto, typename Iterator>
   void ReadDirectoryEntries(const ProtoBlob& options_blob,
-                            bool include_metadata,
                             int32_t* error_code,
                             ProtoBlob* out_entries);
+
+  // Reads the shares on a host and outputs the shares in |out_entries|.
+  // |options_blob| is used as input for the ShareIterator. |error_code| is set
+  // on failure.
+  void ReadShareEntries(const ProtoBlob& options_blob,
+                        int32_t* error_code,
+                        ProtoBlob* out_entries);
 
   // Populates |delete_list| with an ordered list of relative paths of entries
   // that must be deleted in order to recursively delete |full_path|.
