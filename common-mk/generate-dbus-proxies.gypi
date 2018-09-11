@@ -1,3 +1,5 @@
+# Caution!: GYP to GN migration is happening. If you update this file, please
+# update common-mk/generate-dbus-proxies.gni too accordingly.
 {
   'variables': {
     'dbus_service_config%': '',
