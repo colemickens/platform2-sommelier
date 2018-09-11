@@ -295,7 +295,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   bool RetriableConnectError(const Error& error) const;
 
   // Signal callbacks
-  void OnNetworkModeSignal(uint32_t mode);
   void OnModemStateChangedSignal(int32_t old_state,
                                  int32_t new_state,
                                  uint32_t reason);

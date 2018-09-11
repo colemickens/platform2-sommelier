@@ -1353,11 +1353,6 @@ bool CellularCapabilityUniversal::RetriableConnectError(
   return false;
 }
 
-void CellularCapabilityUniversal::OnNetworkModeSignal(uint32_t /*mode*/) {
-  // TODO(petkov): Implement this.
-  NOTIMPLEMENTED();
-}
-
 bool CellularCapabilityUniversal::IsValidSimPath(const string& sim_path) const {
   return !sim_path.empty() && sim_path != kRootPath;
 }
