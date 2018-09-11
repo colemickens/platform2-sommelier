@@ -79,6 +79,7 @@ const Log kCommandLogs[] = {
   { "clobber.log", "cat /var/log/clobber.log 2>/dev/null" },
   { "clobber-state.log", "cat /var/log/clobber-state.log 2>/dev/null" },
   { "chrome_system_log", "cat /var/log/chrome/chrome" },
+  { "chrome_system_log.PREVIOUS", "cat /var/log/chrome/chrome.PREVIOUS" },
   // There might be more than one record, so grab them all.
   // Plus, for <linux-3.19, it's named "console-ramoops", but for newer
   // versions, it's named "console-ramoops-#".
