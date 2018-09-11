@@ -111,37 +111,9 @@ enable_debug() {
   fi
 }
 
-is_lumpy() {
-  crossystem hwid | grep -q 'LUMPY'
-}
-
 # Checks if the system has a Novatel Wireless Gobi 3000 E396/E396U modem.
 has_gobi_modem() {
   lsusb -d 1410:a021 || lsusb -d 1410:a023
-}
-
-# Toggles the power and off GPIOs connected to gobi modem in order to
-# revive it.
-do_lumpy_gobi_modem_revive() {
-  cd /sys/class/gpio
-
-  # TODO(snanda): Get the gpio base from crossystem instead of assuming
-  # that it will always be 160 for lumpy.
-  if [ ! -d gpio198 ]; then
-    echo 198 > export
-  fi
-  if [ ! -d gpio203 ]; then
-    echo 203 > export
-  fi
-
-  echo out > gpio198/direction
-  echo out > gpio203/direction
-
-  echo 1 > gpio203/value
-  echo 0 > gpio198/value
-
-  echo 0 > gpio203/value
-  echo 1 > gpio198/value
 }
 
 # Blaze modems need to be powered off (MODEM_EN low) when suspending and
@@ -373,13 +345,6 @@ else
   echo OnAC > "${POWER_STATUS_ON_SUSPEND_FILE}"
 fi
 
-# Is this a Lumpy system with Gobi modem?
-lumpy_with_gobi_modem=0
-if is_lumpy && has_gobi_modem; then
-  log_msg "Lumpy with gobi modem"
-  lumpy_with_gobi_modem=1
-fi
-
 # Is this a Blaze system with Huawei modem?
 blaze_with_huawei_modem=0
 if is_blaze && has_huawei_modem; then
@@ -473,15 +438,6 @@ else
 
     # Send UMA metrics.
     send_metrics_on_resume &
-
-    # Revive the modem if it was present prior to suspending but is absent
-    # now.
-    if [ "${lumpy_with_gobi_modem}" -eq 1 ]; then
-      if ! has_gobi_modem; then
-        log_msg "Reviving lumpy gobi modem"
-        do_lumpy_gobi_modem_revive
-      fi
-    fi
   else
     # The write will fail with EBUSY if additional wakeup events have
     # occurred since the earlier write to /sys/power/wakeup_count.
