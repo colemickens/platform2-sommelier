@@ -200,30 +200,6 @@ TEST_F(DirectoryIteratorTest, NextReturnsMultipleEntries) {
   EXPECT_TRUE(it.IsDone());
 }
 
-// DirectoryIterator does not iterate over non-file, non-directories.
-TEST_F(DirectoryIteratorTest, NextDoesNotGetNonFileNonDirectory) {
-  CreateDefaultMountRoot();
-  const std::string printer_path = "/path/canon.cn";
-
-  fake_samba_.AddDirectory(GetAddedFullDirectoryPath());
-  fake_samba_.AddFile(GetAddedFullFilePath());
-  fake_samba_.AddEntry(GetDefaultFullPath(printer_path), SMBC_PRINTER_SHARE);
-  fake_samba_.AddDirectory(GetDefaultFullPath("/path/cats"));
-
-  DirectoryIterator it(GetAddedFullDirectoryPath(), &fake_samba_);
-
-  EXPECT_EQ(0, it.Init());
-  EXPECT_FALSE(it.IsDone());
-  EXPECT_EQ("dog.jpg", it.Get().name);
-
-  EXPECT_EQ(0, it.Next());
-  EXPECT_EQ("cats", it.Get().name);
-  EXPECT_FALSE(it.IsDone());
-
-  EXPECT_EQ(0, it.Next());
-  EXPECT_TRUE(it.IsDone());
-}
-
 // DirectoryIterator does not iterate over '.' and '..' directory entries.
 TEST_F(DirectoryIteratorTest, DirItOmitsSelfAndParentEntries) {
   CreateDefaultMountRoot();

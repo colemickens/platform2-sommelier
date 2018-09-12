@@ -661,33 +661,6 @@ TEST_F(SmbProviderTest, ReadDirectoryFailsWithNonFileNonDirectory) {
   EXPECT_EQ(ERROR_NOT_A_DIRECTORY, CastError(error_code));
 }
 
-// Read directory succeeds and omits non files / non directories.
-TEST_F(SmbProviderTest, ReadDirectoryDoesNotReturnNonFileNonDir) {
-  int32_t mount_id = PrepareMount();
-
-  fake_samba_->AddDirectory(GetAddedFullDirectoryPath());
-  fake_samba_->AddFile(GetDefaultFullPath("/path/file.jpg"));
-  fake_samba_->AddEntry(GetDefaultFullPath("/path/canon.cn"),
-                        SMBC_PRINTER_SHARE);
-
-  ProtoBlob results;
-  int32_t error_code;
-  ProtoBlob read_directory_blob =
-      CreateReadDirectoryOptionsBlob(mount_id, GetDefaultDirectoryPath());
-  smbprovider_->ReadDirectory(read_directory_blob, &error_code, &results);
-
-  DirectoryEntryListProto entries;
-  const std::string parsed_proto(results.begin(), results.end());
-  EXPECT_TRUE(entries.ParseFromString(parsed_proto));
-
-  EXPECT_EQ(ERROR_OK, CastError(error_code));
-  EXPECT_EQ(1, entries.entries_size());
-
-  const DirectoryEntryProto& entry = entries.entries(0);
-  EXPECT_FALSE(entry.is_directory());
-  EXPECT_EQ("file.jpg", entry.name());
-}
-
 // GetMetadata fails on non files/dirs. Overall, other types
 // are treated as if they do not exist.
 TEST_F(SmbProviderTest, GetMetadataFailsWithNonFileNonDir) {
