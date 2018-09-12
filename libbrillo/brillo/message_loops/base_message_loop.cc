@@ -47,12 +47,14 @@ BaseMessageLoop::BaseMessageLoop() {
   CHECK(!base::MessageLoop::current())
       << "You can't create a base::MessageLoopForIO when another "
          "base::MessageLoop is already created for this thread.";
-  owned_base_loop_.reset(new base::MessageLoopForIO);
+  owned_base_loop_.reset(new base::MessageLoopForIO());
   base_loop_ = owned_base_loop_.get();
+  watcher_ = std::make_unique<base::FileDescriptorWatcher>(base_loop_);
 }
 
 BaseMessageLoop::BaseMessageLoop(base::MessageLoopForIO* base_loop)
-    : base_loop_(base_loop) {}
+    : base_loop_(base_loop),
+      watcher_(std::make_unique<base::FileDescriptorWatcher>(base_loop_)) {}
 
 BaseMessageLoop::~BaseMessageLoop() {
   for (auto& io_task : io_tasks_) {

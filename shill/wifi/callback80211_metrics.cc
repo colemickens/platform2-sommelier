@@ -95,7 +95,7 @@ void Callback80211Metrics::CollectDisconnectStatistics(
           NL80211_ATTR_DISCONNECTED_BY_AP) ? Metrics::kDisconnectedByAp :
           Metrics::kDisconnectedNotByAp;
   SLOG(this, 1) << "Notify80211Disconnect by " << (by_whom ? "station" : "AP")
-                << " because:" << reason_enum;
+                << " because:" << static_cast<int>(reason_enum);
   metrics_->Notify80211Disconnect(by_whom, reason_enum);
 }
 

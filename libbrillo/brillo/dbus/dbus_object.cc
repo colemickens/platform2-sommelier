@@ -127,7 +127,7 @@ void DBusInterface::ClaimInterface(
     return;
   }
   object_manager->ClaimInterface(object_path, interface_name_, writer);
-  release_interface_cb_.ResetAndRun();
+  release_interface_cb_.RunAndReset();
   release_interface_cb_.ReplaceClosure(
       base::Bind(&ExportedObjectManager::ReleaseInterface,
                  object_manager, object_path, interface_name_));

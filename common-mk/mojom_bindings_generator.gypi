@@ -18,6 +18,7 @@
   'variables': {
     'mojo_output_dir': '<(SHARED_INTERMEDIATE_DIR)/include',
     'mojom_bindings_generator': '<(sysroot)/usr/src/libmojo-<(libbase_ver)/mojo/mojom_bindings_generator.py',
+    'mojom_bindings_generator_wrapper': '<(platform2_root)/common-mk/mojom_bindings_generator_wrapper.py',
     'mojo_templates_dir': '<(SHARED_INTERMEDIATE_DIR)/templates',
     'mojo_extra_args%': [],
     'mojo_root%': '.',
@@ -79,13 +80,16 @@
         'mojo_depth': '<(mojo_root)',
       },
       'outputs': [
-        '<(mojo_output_dir)/>(mojo_path)-internal.h',
-        '<(mojo_output_dir)/>(mojo_path).cc',
-        '<(mojo_output_dir)/>(mojo_path).h',
+        '<(mojo_output_dir)/<(mojo_path)-internal.h',
+        '<(mojo_output_dir)/<(mojo_path)-shared.cc',
+        '<(mojo_output_dir)/<(mojo_path)-shared.h',
+        '<(mojo_output_dir)/<(mojo_path).cc',
+        '<(mojo_output_dir)/<(mojo_path).h',
       ],
       'message': 'Generating mojo C++ bindings from >(mojo_path)',
       'action': [
-        'python', '<(mojom_bindings_generator)', '--use_bundled_pylibs',
+        'python', '<(mojom_bindings_generator_wrapper)',
+        '<(mojom_bindings_generator)', '--use_bundled_pylibs',
         'generate', '<(RULE_INPUT_PATH)',
         '--output_dir', '<(mojo_output_dir)',
         '--bytecode_path', '<(mojo_templates_dir)',

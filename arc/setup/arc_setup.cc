@@ -545,7 +545,7 @@ struct ArcPaths {
 
 ArcSetup::ArcSetup(Mode mode, const base::FilePath& config_json)
     : mode_(mode),
-      config_(config_json, base::WrapUnique(base::Environment::Create())),
+      config_(config_json, base::Environment::Create()),
       arc_mounter_(GetDefaultMounter()),
       arc_paths_(ArcPaths::Create(mode_, config_)),
       arc_setup_metrics_(std::make_unique<ArcSetupMetrics>()) {}

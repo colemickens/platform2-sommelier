@@ -51,7 +51,7 @@ class IconFinderTest : public ::testing::Test {
   void ValidateIconIndexDirsWithXDGDataDir(
       const std::string& xdg_data_dirs_value,
       const std::vector<base::FilePath>& expected_dirs) {
-    base::Environment* env = base::Environment::Create();
+    std::unique_ptr<base::Environment> env = base::Environment::Create();
     env->SetVar("XDG_DATA_DIRS", xdg_data_dirs_value);
     EXPECT_TRUE(expected_dirs == GetPathsForIconIndexDirs());
   }
@@ -116,7 +116,7 @@ TEST_F(IconFinderTest, NoDesktopfileNoDir) {
 
 // This test verifies that correct icon file path is returned.
 TEST_F(IconFinderTest, HappyCase) {
-  base::Environment* env = base::Environment::Create();
+  std::unique_ptr<base::Environment> env = base::Environment::Create();
   env->SetVar("XDG_DATA_DIRS", data_dir().value());
   WriteDesktopFile("gimp.desktop",
                    "[Desktop Entry]\n"

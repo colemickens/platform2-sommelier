@@ -53,7 +53,7 @@ class DesktopFileTest : public ::testing::Test {
     // Set the XDG_DATA_DIRS env var to be the one we created as our
     // temp dir. Also add a 'path' subdir which we will add to the system
     // path env var.
-    base::Environment* env = base::Environment::Create();
+    std::unique_ptr<base::Environment> env = base::Environment::Create();
     env->SetVar("XDG_DATA_DIRS", temp_dir_.GetPath().value());
     base::FilePath sys_path = temp_dir_.GetPath().Append("path");
     CHECK(base::CreateDirectory(sys_path));

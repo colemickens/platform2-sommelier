@@ -71,7 +71,7 @@ class BiometricsManager {
       return *this;
     }
 
-    explicit operator bool() const { return biometrics_manager_; }
+    explicit operator bool() const { return biometrics_manager_.get(); }
 
     // Has the same effect of letting this object go out of scope, but allows
     // one to reuse the storage of this object.

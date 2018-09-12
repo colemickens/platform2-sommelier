@@ -40,7 +40,8 @@ namespace feedback {
 
 Daemon::Daemon(const std::string& url)
     : loop_(base::MessageLoop::TYPE_IO),
-      pool_(new base::SequencedWorkerPool(kMaxPoolThreads, kPoolName)),
+      pool_(new base::SequencedWorkerPool(
+          kMaxPoolThreads, kPoolName, base::TaskPriority::BACKGROUND)),
       uploader_(new FeedbackUploaderHttp(base::FilePath(kFeedbackReportPath),
                                          pool_.get(), url)) {}
 

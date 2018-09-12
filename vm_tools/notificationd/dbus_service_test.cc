@@ -127,7 +127,7 @@ class DBusServiceTest : public ::testing::Test {
 // data from notification daemon.
 TEST_F(DBusServiceTest, GetCapabilities) {
   MockNotificationDaemon daemon;
-  auto dbus_service = DBusService(&daemon);
+  DBusService dbus_service(&daemon);
 
   const std::vector<std::string> expected_data = {"body", "actions",
                                                   "action-icons"};
@@ -159,7 +159,7 @@ TEST_F(DBusServiceTest, GetCapabilities) {
 // recieve the data from notification daemon.
 TEST_F(DBusServiceTest, GetServerInformation) {
   MockNotificationDaemon daemon;
-  auto dbus_service = DBusService(&daemon);
+  DBusService dbus_service(&daemon);
 
   const NotificationDaemon::ServerInformation expected_data = {
       .name = "NameTest",
@@ -192,7 +192,7 @@ TEST_F(DBusServiceTest, GetServerInformation) {
 // from notification daemon.
 TEST_F(DBusServiceTest, Notify) {
   MockNotificationDaemon daemon;
-  auto dbus_service = DBusService(&daemon);
+  DBusService dbus_service(&daemon);
 
   const NotificationDaemon::NotifyArgument expected_data = {
       .app_name = "AppNameTest",
@@ -247,7 +247,7 @@ TEST_F(DBusServiceTest, Notify) {
 // Test if dbus adaptor can properly call CloseNotification method.
 TEST_F(DBusServiceTest, CloseNotification) {
   MockNotificationDaemon daemon;
-  auto dbus_service = DBusService(&daemon);
+  DBusService dbus_service(&daemon);
 
   const uint32_t expected_data = 777;
   auto method_call = CreateMockMethodCall("CloseNotification");
@@ -269,7 +269,7 @@ TEST_F(DBusServiceTest, CloseNotification) {
 
 // Test if dbus adaptor can properly send NotificationClosed signal.
 TEST_F(DBusServiceTest, NotificationClosedSignal) {
-  auto dbus_service = DBusService(nullptr);
+  DBusService dbus_service(nullptr);
 
   // Prepare mock exported object
   const dbus::ObjectPath kObjectPath("/org/example/TestService");
@@ -302,7 +302,7 @@ TEST_F(DBusServiceTest, NotificationClosedSignal) {
 
 // Test if dbus adaptor can properly send ActionInvoked signal.
 TEST_F(DBusServiceTest, ActionInvokedSignal) {
-  auto dbus_service = DBusService(nullptr);
+  DBusService dbus_service(nullptr);
 
   // Prepare mock exported object
   const dbus::ObjectPath kObjectPath("/org/example/TestService");

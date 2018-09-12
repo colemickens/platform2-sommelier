@@ -94,7 +94,7 @@ void LegacyDarkResume::Init(PowerSupplyInterface* power_supply,
   prefs_ = prefs;
 
   auto timer = std::make_unique<timers::SimpleAlarmTimer>();
-  if (timer->can_wake_from_suspend())
+  if (timer->CanWakeFromSuspend())
     timer_ = std::move(timer);
 
   enabled_ = ReadSuspendDurationsPref();

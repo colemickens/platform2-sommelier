@@ -140,8 +140,8 @@ VideoDevice ToProto(
   if (device_ptr.is_null())
     return device;
   device.set_id(device_ptr->id);
-  device.set_display_name(device_ptr->display_name);
-  device.set_model_id(device_ptr->model_id);
+  device.set_display_name(*device_ptr->display_name);
+  device.set_model_id(*device_ptr->model_id);
   for (int i = 0; i < device_ptr->supported_configurations.size(); i++) {
     mri::VideoStreamParams* params = device.add_supported_configurations();
     *params = ToProto(device_ptr->supported_configurations[i]);
@@ -185,7 +185,7 @@ AudioDevice ToProto(
     return device;
 
   device.set_id(device_ptr->id);
-  device.set_display_name(device_ptr->display_name);
+  device.set_display_name(*device_ptr->display_name);
   for (int i = 0; i < device_ptr->supported_configurations.size(); i++) {
     mri::AudioStreamParams* params = device.add_supported_configurations();
     *params = ToProto(device_ptr->supported_configurations[i]);

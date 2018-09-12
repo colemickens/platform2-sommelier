@@ -10,6 +10,7 @@
 #include <set>
 #include <string>
 
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/message_loop/message_loop.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
@@ -1143,6 +1144,7 @@ class WakeOnWiFiTestWithMockDispatcher : public WakeOnWiFiTest {
   // TODO(zqiu): message loop is needed by AlarmTimer, should restructure the
   // code so that it can be mocked out.
   base::MessageLoopForIO message_loop_;
+  base::FileDescriptorWatcher watcher_{&message_loop_};
   MockEventDispatcher mock_dispatcher_;
 };
 

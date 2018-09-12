@@ -17,6 +17,7 @@
 #include <base/files/file_util.h>
 #include <base/files/important_file_writer.h>
 #include <base/guid.h>
+#include <base/json/json_reader.h>
 #include <base/json/json_string_value_serializer.h>
 #include <base/message_loop/message_loop.h>
 #include <base/strings/string_util.h>
@@ -129,8 +130,8 @@ bool BiodStorage::ReadRecordsForSingleUser(const std::string& user_id) {
       continue;
     }
 
-    JSONStringValueDeserializer json_deserializer(json_string);
-    json_deserializer.set_allow_trailing_comma(true);
+    JSONStringValueDeserializer json_deserializer(
+        json_string, base::JSON_ALLOW_TRAILING_COMMAS);
     int error_code;
     std::string error_message;
     std::unique_ptr<base::Value> record_value(

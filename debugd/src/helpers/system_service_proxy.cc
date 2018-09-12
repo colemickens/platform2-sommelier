@@ -52,10 +52,7 @@ std::unique_ptr<base::Value> SystemServiceProxy::CallMethodAndGetResponse(
     return nullptr;
 
   dbus::MessageReader reader(response.get());
-  // TODO(benchan): Remove base::WrapUnique() once dbus::PopDataAsValue()
-  // returns std::unique_ptr<base::Value> instead of base::Value* when we
-  // update libchrome to a new revision.
-  return base::WrapUnique(dbus::PopDataAsValue(&reader));
+  return dbus::PopDataAsValue(&reader);
 }
 
 std::unique_ptr<base::DictionaryValue> SystemServiceProxy::GetProperties(

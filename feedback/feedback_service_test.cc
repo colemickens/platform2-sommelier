@@ -97,7 +97,8 @@ class FeedbackServiceTest : public testing::Test {
     EXPECT_TRUE(temp_dir_.CreateUniqueTempDir());
     CreateDirectory(temp_dir_.GetPath().Append(kFeedbackReportPath));
 
-    pool_ = new base::SequencedWorkerPool(kMaxPoolThreads, kPoolName);
+    pool_ = new base::SequencedWorkerPool(kMaxPoolThreads, kPoolName,
+                                          base::TaskPriority::BACKGROUND);
   }
 
   virtual void TearDown() {
