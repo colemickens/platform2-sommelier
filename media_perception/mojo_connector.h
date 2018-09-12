@@ -14,10 +14,11 @@
 #include <memory>
 #include <string>
 
+#include "media_perception/media_perception_service_impl.h"
 #include "media_perception/producer_impl.h"
 #include "media_perception/receiver_impl.h"
 #include "media_perception/video_capture_service_client.h"
-#include "mojom/connector.mojom.h"
+#include "mojom/media_perception_service.mojom.h"
 
 
 namespace mri {
@@ -109,8 +110,8 @@ class MojoConnector : public mojo::edk::ProcessDelegate {
   // by default.
   base::Thread ipc_thread_;
 
-  // Mojo object for connecting to the video capture service.
-  ::chromeos::media_perception::mojom::ConnectorPtr connector_;
+  // Implementation for the media perception service Mojo interface.
+  std::unique_ptr<MediaPerceptionServiceImpl> media_perception_service_impl_;
 
   // Entry point Mojo object for talking to the video capture service API.
   video_capture::mojom::DeviceFactoryPtr device_factory_;

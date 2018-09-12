@@ -88,11 +88,10 @@ void MojoConnector::AcceptConnectionOnIpcThread(base::ScopedFD fd) {
   if (!child_pipe.is_valid()) {
     LOG(ERROR) << "child_pipe is not valid";
   }
-  ::chromeos::media_perception::mojom::ConnectorPtrInfo ptr_info(
-      std::move(child_pipe), 0u);
-  connector_.Bind(std::move(ptr_info), base::ThreadTaskRunnerHandle::Get());
-  connector_.set_connection_error_handler(base::Bind(
-      &MojoConnector::OnConnectionErrorOrClosed, base::Unretained(this)));
+  media_perception_service_impl_ = std::make_unique<MediaPerceptionServiceImpl>(
+      std::move(child_pipe),
+      base::Bind(&MojoConnector::OnConnectionErrorOrClosed,
+                 base::Unretained(this)));
 }
 
 void MojoConnector::ConnectToVideoCaptureService() {
@@ -103,7 +102,8 @@ void MojoConnector::ConnectToVideoCaptureService() {
 }
 
 void MojoConnector::ConnectToVideoCaptureServiceOnIpcThread() {
-  connector_->ConnectToVideoCaptureService(mojo::GetProxy(&device_factory_));
+  media_perception_service_impl_->ConnectToVideoCaptureService(
+      mojo::GetProxy(&device_factory_));
 }
 
 void MojoConnector::GetDevices(

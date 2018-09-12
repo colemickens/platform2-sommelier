@@ -15,7 +15,7 @@
 
 #include "media_perception/mojo_connector.h"
 #include "media_perception/producer_impl.h"
-#include "mojom/connector.mojom.h"
+#include "mojom/media_perception_service.mojom.h"
 
 namespace mri {
 

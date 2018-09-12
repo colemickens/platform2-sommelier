@@ -4,7 +4,7 @@
       'target_name': 'media_perception_mojo_bindings',
       'type': 'static_library',
       'sources': [
-        'mojom/connector.mojom',
+        'mojom/color_space.mojom',
         'mojom/constants.mojom',
         'mojom/device.mojom',
         'mojom/device_factory.mojom',
@@ -12,6 +12,8 @@
         'mojom/image_capture.mojom',
         'mojom/mailbox.mojom',
         'mojom/mailbox_holder.mojom',
+        'mojom/media_perception.mojom',
+        'mojom/media_perception_service.mojom',
         'mojom/producer.mojom',
         'mojom/receiver.mojom',
         'mojom/scoped_access_permission.mojom',
@@ -46,6 +48,9 @@
       },
       'sources': [
         'cras_client_impl.cc',
+        'media_perception_controller_impl.cc',
+        'media_perception_impl.cc',
+        'media_perception_service_impl.cc',
         'mojo_connector.cc',
         'producer_impl.cc',
         'receiver_impl.cc',

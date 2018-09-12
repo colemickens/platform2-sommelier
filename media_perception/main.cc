@@ -23,7 +23,7 @@
 #include "media_perception/dbus_service.h"
 #include "media_perception/mojo_connector.h"
 #include "media_perception/video_capture_service_client_impl.h"
-#include "mojom/connector.mojom.h"
+#include "mojom/media_perception_service.mojom.h"
 
 namespace {
 
