@@ -17,11 +17,29 @@ type shm, fs_type;
 type mqueue, fs_type;
 type sysfs, fs_type, sysfs_type, mlstrustedobject;
 
-allow file_type labeledfs:filesystem associate;
-allow file_type tmpfs:filesystem associate;
-allow file_type rootfs:filesystem associate;
-allow dev_type tmpfs:filesystem associate;
-allow dev_type device:filesystem associate;
-allow debugfs_type debugfs:filesystem associate;
-neverallow fs_type file_type:filesystem associate;
 
+type cgroup, fs_type;
+type configfs, fs_type;
+type debugfs_tracing, fs_type, debugfs_type;
+type debugfs_sync, fs_type, debugfs_type;
+type debugfs_trace_marker, fs_type;
+type functionfs, fs_type;
+type fuse, fs_type;
+type inotify, fs_type;
+type proc_cpuinfo, fs_type, proc_type;
+type proc_drop_caches, fs_type, proc_type;
+type proc_iomem, fs_type, proc_type;
+type proc_meminfo, fs_type, proc_type;
+type proc_net, fs_type, proc_type;
+type proc_security, fs_type, proc_type;
+type proc_sysrq, fs_type, proc_type;
+type proc_uid_cputime_removeuid, fs_type, proc_type;
+type proc_uid_cputime_showstat, fs_type, proc_type;
+type pstorefs, fs_type;
+type qtaguid_proc, fs_type;
+type usbfs, fs_type;
+type usermodehelper, fs_type, proc_type;
+type vfat, fs_type;
+
+
+type sysfs_devices_system_cpu, fs_type, sysfs_type;
