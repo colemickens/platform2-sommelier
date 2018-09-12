@@ -60,13 +60,11 @@ bool GetEntries(const Proto& options,
 SmbProvider::SmbProvider(
     std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
     std::unique_ptr<MountManager> mount_manager,
-    std::unique_ptr<KerberosArtifactSynchronizer> kerberos_synchronizer,
-    bool enable_metadata_cache)
+    std::unique_ptr<KerberosArtifactSynchronizer> kerberos_synchronizer)
     : org::chromium::SmbProviderAdaptor(this),
       dbus_object_(std::move(dbus_object)),
       mount_manager_(std::move(mount_manager)),
-      kerberos_synchronizer_(std::move(kerberos_synchronizer)),
-      metadata_cache_enabled_(enable_metadata_cache) {}
+      kerberos_synchronizer_(std::move(kerberos_synchronizer)) {}
 
 void SmbProvider::RegisterAsync(
     const AsyncEventSequencer::CompletionAction& completion_callback) {
@@ -142,7 +140,7 @@ void SmbProvider::ReadDirectory(const ProtoBlob& options_blob,
   DCHECK(out_entries);
 
   ReadDirectoryEntries<ReadDirectoryOptionsProto, DirectoryIterator>(
-      options_blob, metadata_cache_enabled_, error_code, out_entries);
+      options_blob, true /* include_metadata */, error_code, out_entries);
 }
 
 template <typename Proto, typename Iterator>
@@ -193,9 +191,8 @@ void SmbProvider::GetMetadataEntry(const ProtoBlob& options_blob,
     return;
   }
 
-  // If the cache is enabled and we have the result, then return it.
-  if (metadata_cache_enabled_ &&
-      GetCachedEntry(GetMountId(options), full_path, out_entry)) {
+  // If we have the result cached, then return it.
+  if (GetCachedEntry(GetMountId(options), full_path, out_entry)) {
     *error_code = static_cast<int32_t>(ERROR_OK);
     return;
   }

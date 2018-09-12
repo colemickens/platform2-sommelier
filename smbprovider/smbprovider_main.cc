@@ -167,8 +167,7 @@ class SmbProviderDaemon : public brillo::DBusServiceDaemon {
 
     smb_provider_ = std::make_unique<SmbProvider>(
         std::move(dbus_object), std::move(mount_manager),
-        std::move(kerberos_artifact_synchronizer),
-        true /* enable_metadata_cache */);
+        std::move(kerberos_artifact_synchronizer));
     smb_provider_->RegisterAsync(
         sequencer->GetHandler("SmbProvider.RegisterAsync() failed.", true));
   }

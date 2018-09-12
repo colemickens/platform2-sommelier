@@ -50,8 +50,7 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   SmbProvider(
       std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
       std::unique_ptr<MountManager> mount_manager,
-      std::unique_ptr<KerberosArtifactSynchronizer> kerberos_synchronizer,
-      bool enable_metadata_cache);
+      std::unique_ptr<KerberosArtifactSynchronizer> kerberos_synchronizer);
 
   // org::chromium::SmbProviderInterface: (see org.chromium.SmbProvider.xml).
   void Mount(const ProtoBlob& options_blob,
@@ -452,7 +451,6 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   // Keeps track of in-progress copy operations. Maps a copy token to a
   // CopyProgress.
   IdMap<std::unique_ptr<CopyProgressInterface>> copy_tracker_;
-  bool metadata_cache_enabled_;
 
   DISALLOW_COPY_AND_ASSIGN(SmbProvider);
 };

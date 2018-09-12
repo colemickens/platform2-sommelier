@@ -216,8 +216,8 @@ class SmbProviderTest : public testing::Test {
     const dbus::ObjectPath object_path("/object/path");
     smbprovider_ = std::make_unique<SmbProvider>(
         std::make_unique<DBusObject>(nullptr, mock_bus_, object_path),
-        std::move(mount_manager_ptr), std::move(kerberos_artifact_synchronizer),
-        enable_metadata_cache);
+        std::move(mount_manager_ptr),
+        std::move(kerberos_artifact_synchronizer));
   }
 
   // Sets up the SmbProvider with caching disabled. This is the default
