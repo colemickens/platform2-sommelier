@@ -2273,6 +2273,8 @@ void SambaInterface::ReloadDebugFlags() {
     flags_container.Dump();
   }
   flags_ = flags_container.Get();
+  if (disable_seccomp_for_testing_)
+    flags_.set_disable_seccomp(true);
 
   // Toggle anonymizer.
   anonymizer_->set_disabled(flags_.disable_anonymizer());

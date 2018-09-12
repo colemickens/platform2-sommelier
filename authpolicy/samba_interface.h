@@ -166,6 +166,8 @@ class SambaInterface : public TgtManager::Delegate {
   // Disable retry sleep for unit tests.
   void DisableRetrySleepForTesting();
 
+  void DisableSeccompForTesting() { disable_seccomp_for_testing_ = true; }
+
   void SetFixedAuthTriesForTesting(int auth_tries) {
     auth_tries_for_testing_ = auth_tries;
   }
@@ -516,6 +518,8 @@ class SambaInterface : public TgtManager::Delegate {
 
   // Keeps track of whether AutoCheckMachinePasswordChange() ran or not.
   bool did_password_change_check_run_for_testing_ = false;
+
+  bool disable_seccomp_for_testing_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(SambaInterface);
 };

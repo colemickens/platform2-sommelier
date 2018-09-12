@@ -441,6 +441,10 @@ class AuthPolicyTest : public testing::Test {
 
     // Don't sleep for kinit/smbclient retries, it just prolongs our tests.
     samba().DisableRetrySleepForTesting();
+
+    // Unit tests usually run code that only exists in tests (like the
+    // framework), so disable the seccomp filters.
+    samba().DisableSeccompForTesting();
   }
 
   // Stub method called by the Session Manager mock to store policy. Validates
