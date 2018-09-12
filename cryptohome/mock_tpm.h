@@ -144,6 +144,7 @@ class MockTpm : public Tpm {
   MOCK_METHOD1(SetUserType, bool(Tpm::UserType));
   MOCK_METHOD0(GetLECredentialBackend, LECredentialBackend*());
   MOCK_METHOD0(GetSignatureSealingBackend, SignatureSealingBackend*());
+  MOCK_METHOD0(HandleOwnershipTakenSignal, void());
 
  private:
   TpmRetryAction XorDecrypt(TpmKeyHandle _key,

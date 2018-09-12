@@ -702,6 +702,10 @@ class Tpm {
   // implementation does not support signature-sealing operations.
   virtual SignatureSealingBackend* GetSignatureSealingBackend() = 0;
 
+  // Callback function that is called after receiving the ownership taken signal
+  // from tpm_managerd.
+  virtual void HandleOwnershipTakenSignal() = 0;
+
  private:
   static Tpm* singleton_;
   static base::Lock singleton_lock_;

@@ -701,4 +701,9 @@ gboolean ServiceMonolithic::TpmAttestationGetEnrollmentId(
   return TRUE;
 }
 
+void ServiceMonolithic::ConnectOwnershipTakenSignal() {
+  // Not supported by ServiceMonolithic, either because tpm_managerd doesn't
+  // exist or cryptohomed doesn't talk to tpm_managerd.
+}
+
 }  // namespace cryptohome

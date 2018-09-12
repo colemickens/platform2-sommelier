@@ -9,6 +9,8 @@
 #include "attestation/client/dbus_proxy.h"
 #include "cryptohome/attestation.h"
 #include "cryptohome/cryptolib.h"
+#include "tpm_manager/common/tpm_manager_constants.h"
+#include "tpm_manager/common/tpm_ownership_dbus_interface.h"
 
 using attestation::AttestationInterface;
 using attestation::AttestationStatus;
@@ -1062,5 +1064,38 @@ gboolean ServiceDistributed::TpmAttestationGetEnrollmentId(
                       reply.enrollment_id().size());
   return TRUE;
 }
+
+void ServiceDistributed::ConnectOwnershipTakenSignal() {
+  brillo::dbus::BusConnection connection =
+      brillo::dbus::GetSystemBusConnection();
+
+  tpm_manager_proxy_ = std::make_unique<brillo::dbus::Proxy>(
+      connection,
+      tpm_manager::kTpmManagerServiceName,
+      tpm_manager::kTpmManagerServicePath,
+      tpm_manager::kTpmOwnershipInterface);
+  auto tpm_manager_gproxy = tpm_manager_proxy_->gproxy();
+  DCHECK(tpm_manager_gproxy) << "Failed to acquire tpm_manager proxy";
+
+  dbus_g_proxy_add_signal(
+      tpm_manager_gproxy,
+      tpm_manager::kOwnershipTakenSignal,
+      G_TYPE_BOOLEAN,
+      G_TYPE_INVALID);
+
+  dbus_g_proxy_connect_signal(
+      tpm_manager_gproxy,
+      tpm_manager::kOwnershipTakenSignal,
+      G_CALLBACK(ServiceDistributed::OwnershipTakenSignalCallback),
+      tpm_,
+      NULL);
+}
+
+void ServiceDistributed::OwnershipTakenSignalCallback(
+    DBusGProxy* proxy, bool is_ownership_taken, gpointer data) {
+  LOG(INFO) << __func__ << ", ownership is taken: " << is_ownership_taken;
+  reinterpret_cast<Tpm*>(data)->HandleOwnershipTakenSignal();
+}
+
 
 }  // namespace cryptohome

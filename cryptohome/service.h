@@ -688,6 +688,12 @@ class Service : public brillo::dbus::AbstractDbusService,
   // Keeps track of whether the device is enterprise-owned.
   bool enterprise_owned_;
 
+  // Should we skip the ownership taken signal connection. This value shouldn't
+  // be true unless it's for testing purposes.
+  //
+  // TODO(garryxiao): remove this after we migrate to the new dbus librabry.
+  bool skip_ownership_taken_signal_connection_;
+
   virtual GMainLoop *main_loop() { return loop_; }
 
   // Called periodically from LowDiskCallback to initiate automatic disk
@@ -778,6 +784,9 @@ class Service : public brillo::dbus::AbstractDbusService,
       DircryptoMigrationStatus status,
       uint64_t current_bytes,
       uint64_t total_bytes);
+
+  // Listens to the ownership taken signal sent from tpm manager.
+  virtual void ConnectOwnershipTakenSignal() = 0;
 
   // Stop processing tasks on dbus and mount threads.
   // Must be called from derived destructors. Otherwise, after derived

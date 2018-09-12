@@ -206,6 +206,8 @@ class Tpm2Impl : public Tpm {
                              trunks::AuthorizationDelegate* session_delegate,
                              ScopedKeyHandle* key_handle);
 
+  void HandleOwnershipTakenSignal() override;
+
  private:
   // This method given a Tpm generated public area, returns the DER encoded
   // public key.
@@ -248,6 +250,12 @@ class Tpm2Impl : public Tpm {
 
   // Indicates if the TPM is being owned
   bool is_being_owned_ = false;
+
+  // Indicates if the TPM is already owned.
+  bool is_owned_ = false;
+
+  // Indicates if we've already checked whether the TPM is owned from TPM status
+  bool has_checked_owned_ = false;
 
   // Specifies the currently set user type.
   Tpm::UserType cur_user_type_ = Tpm::UserType::Unknown;

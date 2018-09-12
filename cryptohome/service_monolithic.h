@@ -180,6 +180,8 @@ class ServiceMonolithic : public Service {
   static bool GetAttestationBasedEnterpriseEnrollmentData(
       const std::string& data, brillo::SecureBlob* abe_data);
 
+  void ConnectOwnershipTakenSignal() override;
+
   FRIEND_TEST_ALL_PREFIXES(ServiceTest, ValidAbeDataTest);
   FRIEND_TEST_ALL_PREFIXES(ServiceTest, ValidAbeDataTestTrailingNewlines);
   FRIEND_TEST_ALL_PREFIXES(ServiceTest, ValidAbeDataTestEmpty);

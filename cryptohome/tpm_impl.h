@@ -159,6 +159,8 @@ class TpmImpl : public Tpm {
   LECredentialBackend* GetLECredentialBackend() override;
   SignatureSealingBackend* GetSignatureSealingBackend() override;
 
+  void HandleOwnershipTakenSignal() override;
+
   bool CreatePolicyWithRandomPassword(TSS_HCONTEXT context_handle,
                                       TSS_FLAG policy_type,
                                       TSS_HPOLICY* policy_handle);

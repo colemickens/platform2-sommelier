@@ -1244,6 +1244,19 @@ TEST_F(Tpm2Test, ClearStoredPasswordFailure) {
   EXPECT_FALSE(tpm_->ClearStoredPassword());
 }
 
+TEST_F(Tpm2Test, HandleOwnershipTakenSignal) {
+  tpm_status_.set_owned(false);
+
+  EXPECT_CALL(mock_tpm_owner_, GetTpmStatus(_, _)).Times(1);
+
+  EXPECT_FALSE(tpm_->IsOwned());
+  EXPECT_FALSE(tpm_->IsOwned());
+
+  tpm_->HandleOwnershipTakenSignal();
+  EXPECT_TRUE(tpm_->IsOwned());
+  EXPECT_TRUE(tpm_->IsOwned());
+}
+
 namespace {
 
 struct Tpm2RsaSignatureSecretSealingTestParam {

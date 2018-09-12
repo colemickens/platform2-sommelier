@@ -207,6 +207,10 @@ class ServiceDistributed : public Service {
   static void ReportUnsupportedPCAType(GError** error, int pca_type);
   static void ReportUnsupportedVAType(GError** error, int type);
 
+  // Callback called after receiving the ownership taken signal from tpm_manager
+  static void OwnershipTakenSignalCallback(
+      DBusGProxy* proxy, bool is_ownership_taken, gpointer data);
+
   std::unique_ptr<attestation::AttestationInterface>
       default_attestation_interface_;
   attestation::AttestationInterface* attestation_interface_;
@@ -242,6 +246,8 @@ class ServiceDistributed : public Service {
   // Does PCR0 contain the value that indicates the verified mode.
   bool IsVerifiedModeMeasured();
 
+  void ConnectOwnershipTakenSignal() override;
+
   base::WeakPtr<ServiceDistributed> GetWeakPtr();
 
   // Message loop thread servicing dbus communications with attestationd.
@@ -249,6 +255,9 @@ class ServiceDistributed : public Service {
 
   // Declared last, so that weak pointers are destroyed first.
   base::WeakPtrFactory<ServiceDistributed> weak_factory_;
+
+  // dbus proxy that handles the ownership taken signal registration.
+  std::unique_ptr<brillo::dbus::Proxy> tpm_manager_proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(ServiceDistributed);
 };

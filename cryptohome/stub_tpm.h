@@ -191,6 +191,7 @@ class StubTpm : public Tpm {
   SignatureSealingBackend* GetSignatureSealingBackend() override {
     return nullptr;
   }
+  void HandleOwnershipTakenSignal() override {}
 };
 
 }  // namespace cryptohome

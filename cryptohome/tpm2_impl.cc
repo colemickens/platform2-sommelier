@@ -273,10 +273,17 @@ void Tpm2Impl::SetIsEnabled(bool /* enabled */) {
 }
 
 bool Tpm2Impl::IsOwned() {
+  if (is_owned_ || has_checked_owned_) {
+    return is_owned_;
+  }
+
   if (!UpdateTpmStatus(RefreshType::REFRESH_IF_NEEDED)) {
     return false;
   }
-  return tpm_status_.owned();
+
+  has_checked_owned_ = true;
+  is_owned_ = tpm_status_.owned();
+  return is_owned_;
 }
 
 void Tpm2Impl::SetIsOwned(bool /* owned */) {
@@ -1285,6 +1292,11 @@ bool Tpm2Impl::LoadPublicKeyFromSpki(
   }
   key_handle->reset(this, key_handle_raw);
   return true;
+}
+
+void Tpm2Impl::HandleOwnershipTakenSignal() {
+  is_owned_ = true;
+  has_checked_owned_ = true;
 }
 
 bool Tpm2Impl::PublicAreaToPublicKeyDER(const trunks::TPMT_PUBLIC& public_area,

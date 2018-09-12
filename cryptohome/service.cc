@@ -14,8 +14,12 @@
 #include <sys/types.h>
 
 #include <algorithm>
+#include <map>
 #include <memory>
+#include <set>
+#include <string>
 #include <utility>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/callback.h>
@@ -33,10 +37,6 @@
 #include <brillo/secure_blob.h>
 #include <chaps/isolate.h>
 #include <chaps/token_manager_client.h>
-#include <map>
-#include <set>
-#include <string>
-#include <vector>
 
 #include "cryptohome/bootlockbox/boot_attributes.h"
 #include "cryptohome/bootlockbox/boot_lockbox.h"
@@ -529,6 +529,18 @@ bool Service::Initialize() {
 
   arc_disk_quota_->Initialize();
 
+  // Install the type-info for the service with dbus.
+  dbus_g_object_type_install_info(gobject::cryptohome_get_type(),
+                                  &gobject::dbus_glib_cryptohome_object_info);
+  if (!Reset()) {
+    result = false;
+  }
+
+  // This ownership taken signal registration should be done before any
+  // Tpm::IsOwned() call so that Tpm can cache and update the ownership state
+  // correctly without keeping requesting for the TPM status.
+  ConnectOwnershipTakenSignal();
+
   // If the TPM is unowned or doesn't exist, it's safe for
   // this function to be called again. However, it shouldn't
   // be called across multiple threads in parallel.
@@ -538,13 +550,6 @@ bool Service::Initialize() {
   CleanUpStaleMounts(false);
 
   AttestationInitialize();
-
-  // Install the type-info for the service with dbus.
-  dbus_g_object_type_install_info(gobject::cryptohome_get_type(),
-                                  &gobject::dbus_glib_cryptohome_object_info);
-  if (!Reset()) {
-    result = false;
-  }
 
   async_complete_signal_ = g_signal_lookup("async_call_status",
                                            gobject::cryptohome_get_type());
