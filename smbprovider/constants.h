@@ -31,6 +31,9 @@ constexpr mode_t kCreateEntryPermissions = 0755;
 // Windows/DOS file attribute for a directory.
 constexpr uint16_t kFileAttributeDirectory = 0x10;
 
+// Windows/DOS file attribute for a symlink.
+constexpr uint16_t kFileAttributeReparsePoint = 0x400;
+
 // SMB Url scheme
 constexpr char kSmbUrlScheme[] = "smb://";
 

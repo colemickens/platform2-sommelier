@@ -49,6 +49,10 @@ bool IsFile(const struct stat& stat_info);
 // Helper method to check if the entry is an SMB share.
 bool IsSmbShare(uint32_t smbc_type);
 
+// Helper method to check if MS/DOS file attributes |file_attrs| correspond to a
+// symlink.
+bool IsSymlink(uint16_t file_attrs);
+
 void LogAndSetError(const char* operation_name,
                     int32_t mount_id,
                     ErrorType error_received,

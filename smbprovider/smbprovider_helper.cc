@@ -40,6 +40,10 @@ bool IsSmbShare(uint32_t smbc_type) {
   return smbc_type == SMBC_FILE_SHARE;
 }
 
+bool IsSymlink(uint16_t file_attrs) {
+  return file_attrs & kFileAttributeReparsePoint;
+}
+
 ErrorType GetErrorFromErrno(int32_t error_code) {
   DCHECK_GT(error_code, 0);
   ErrorType error;

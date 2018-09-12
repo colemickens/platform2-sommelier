@@ -210,14 +210,15 @@ void BaseDirectoryIterator::AddEntryIfValid(const smbc_dirent& dirent) {
 void BaseDirectoryIterator::AddEntryIfValid(
     const struct libsmb_file_info& file_info) {
   const std::string name(file_info.name);
-  // Ignore "." and ".." entries.
+  const uint16_t attrs(file_info.attrs);
+  // Ignore "." and ".." entries as well as symlinks.
   // TODO(zentaro): Investigate how this API deals with directories that are
   // file shares.
-  if (IsSelfOrParentDir(name)) {
+  if (IsSelfOrParentDir(name) || IsSymlink(file_info.attrs)) {
     return;
   }
 
-  bool is_directory = file_info.attrs & kFileAttributeDirectory;
+  bool is_directory = attrs & kFileAttributeDirectory;
   entries_.emplace_back(is_directory, name, AppendPath(dir_path_, name),
                         file_info.size, file_info.mtime_ts.tv_sec);
 }
