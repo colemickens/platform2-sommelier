@@ -63,6 +63,10 @@ class NewblueDaemonTest : public ::testing::Test {
     newblue_daemon_ = std::make_unique<NewblueDaemon>(std::move(newblue));
     SetupBluezObjectProxy();
     SetupBluezObjectManager();
+    // Force MessageLoop to run all pending tasks as an effect of instantiating
+    // MockObjectManager. This is needed to avoid memory leak as pending tasks
+    // hold pointers.
+    message_loop_.RunUntilIdle();
   }
 
   // The mocked dbus::ExportedObject::ExportMethod needs to call its callback.
