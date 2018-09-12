@@ -415,9 +415,6 @@ def BuildComponent(component_to_build, components, board, platform,
             logger.info('current package version: %s', package_version)
             logger.info('package version of current component: %s',
                         current_package_version)
-            if package_version == current_package_version:
-              logger.info('component on Omaha is already up to date.')
-              return
             version = DecideVersion(package_version, current_version)
             logger.info('next component version on Omaha gs: %s', version)
 
