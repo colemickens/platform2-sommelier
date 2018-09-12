@@ -234,8 +234,12 @@ def UploadComponent(component_dir, gsbucket):
   """
   logger.info('upload %s to %s', component_dir, gsbucket)
   ctx = gs.GSContext()
-  # Upload component to gs.
-  ctx.DoCommand(['cp', '-r', component_dir, gsbucket])
+  if cros_build_lib.BooleanPrompt(
+      prompt='Are you sure you want to upload component to official gs bucket',
+      default=False,
+      prolog='Once component is uploaded, it can not be modified again.'):
+    # Upload component to gs.
+    ctx.Copy(component_dir, gsbucket, recursive=True)
 
 
 def CreateComponent(manifest_path, version, package_name, package_version,
