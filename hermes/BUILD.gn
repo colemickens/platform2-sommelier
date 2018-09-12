@@ -65,6 +65,7 @@ if (use.test) {
     ]
     sources = [
       "apdu_test.cc",
+      "card_qrtr_test.cc",
     ]
     deps = [
       ":libhermes",

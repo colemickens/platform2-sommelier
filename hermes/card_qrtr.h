@@ -96,6 +96,8 @@ class CardQrtr : public lpa::card::EuiccCard {
   lpa::util::Executor* executor() override { return executor_; }
 
  private:
+  friend class CardQrtrTest;
+
   ///////////////////
   // State Diagram //
   ///////////////////
