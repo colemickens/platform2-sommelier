@@ -36,7 +36,7 @@ class SambaInterface;
 // |out_entries|. Returns true on success and sets |error_code| on failure.
 // |options| is used for logging purposes.
 bool GetEntries(const ReadDirectoryOptionsProto& options,
-                CachingIterator<DirectoryIterator> iterator,
+                CachingIterator iterator,
                 int32_t* error_code,
                 ProtoBlob* out_entries);
 

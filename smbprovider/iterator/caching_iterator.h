@@ -16,13 +16,17 @@
 
 namespace smbprovider {
 
-// Iterator class that wraps another iterator and stores each
+// Iterator class that wraps a directory iterator and stores each
 // entry in a cache as it is iterated over.
-template <typename Iterator>
 class CachingIterator {
  public:
-  CachingIterator(Iterator it, MetadataCache* cache)
+  CachingIterator(DirectoryIterator it, MetadataCache* cache)
       : inner_it_(std::move(it)), cache_(cache) {}
+
+  CachingIterator(const std::string& full_path,
+                  SambaInterface* samba_interface,
+                  MetadataCache* cache)
+      : CachingIterator(DirectoryIterator(full_path, samba_interface), cache) {}
 
   CachingIterator(CachingIterator&& other) = default;
 
@@ -47,19 +51,11 @@ class CachingIterator {
   bool IsDone() WARN_UNUSED_RESULT { return inner_it_.IsDone(); }
 
  private:
-  Iterator inner_it_;
+  DirectoryIterator inner_it_;
   MetadataCache* cache_ = nullptr;  // Not owned.
 
   DISALLOW_COPY_AND_ASSIGN(CachingIterator);
 };
-
-template <typename Iterator>
-CachingIterator<Iterator> GetCachingIterator(const std::string& full_path,
-                                             SambaInterface* samba_interface,
-                                             MetadataCache* cache) {
-  return CachingIterator<Iterator>(
-      GetMetadataIterator<Iterator>(full_path, samba_interface), cache);
-}
 
 }  // namespace smbprovider
 

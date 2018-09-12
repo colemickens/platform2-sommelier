@@ -218,6 +218,11 @@ class SmbProviderTest : public testing::Test {
         std::make_unique<DBusObject>(nullptr, mock_bus_, object_path),
         std::move(mount_manager_ptr),
         std::move(kerberos_artifact_synchronizer));
+
+    metadata_cache_ = std::make_unique<MetadataCache>(
+        fake_tick_clock_,
+        base::TimeDelta::FromMicroseconds(kMetadataCacheLifetimeMicroseconds),
+        MetadataCache::Mode::kDisabled);
   }
 
   // Sets up the SmbProvider with caching disabled. This is the default
@@ -268,6 +273,8 @@ class SmbProviderTest : public testing::Test {
   TempFileManager temp_file_manager_;
   FakeKerberosArtifactClient* kerberos_client_;
   KerberosArtifactSynchronizer* kerberos_synchronizer_;
+  // |metadata_cache| is used to test the GetEntries method
+  std::unique_ptr<MetadataCache> metadata_cache_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SmbProviderTest);
@@ -2587,8 +2594,8 @@ TEST_F(SmbProviderTest, GetEntriesFailsWithNonExistentDirectory) {
   ReadDirectoryOptionsProto proto =
       CreateReadDirectoryOptionsProto(mount_id, GetDefaultDirectoryPath());
   GetEntries(proto,
-             GetIterator<DirectoryIterator>(GetAddedFullDirectoryPath(),
-                                            fake_samba_.get()),
+             CachingIterator(GetAddedFullDirectoryPath(), fake_samba_.get(),
+                             metadata_cache_.get()),
              &error_code, &entries);
 
   DirectoryEntryListProto entry_list =
@@ -2605,8 +2612,8 @@ TEST_F(SmbProviderTest, GetEntriesSucceedsWithEmptyDirectory) {
   ReadDirectoryOptionsProto proto =
       CreateReadDirectoryOptionsProto(mount_id, GetDefaultDirectoryPath());
   GetEntries(proto,
-             GetIterator<DirectoryIterator>(GetAddedFullDirectoryPath(),
-                                            fake_samba_.get()),
+             CachingIterator(GetAddedFullDirectoryPath(), fake_samba_.get(),
+                             metadata_cache_.get()),
              &error_code, &entries);
 
   DirectoryEntryListProto entry_list =
@@ -2626,8 +2633,8 @@ TEST_F(SmbProviderTest, GetEntriesSucceedsWithMultipleEntries) {
   ReadDirectoryOptionsProto proto =
       CreateReadDirectoryOptionsProto(mount_id, GetDefaultDirectoryPath());
   GetEntries(proto,
-             GetIterator<DirectoryIterator>(GetAddedFullDirectoryPath(),
-                                            fake_samba_.get()),
+             CachingIterator(GetAddedFullDirectoryPath(), fake_samba_.get(),
+                             metadata_cache_.get()),
              &error_code, &entries);
 
   DirectoryEntryListProto entry_list =

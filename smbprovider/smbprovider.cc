@@ -28,7 +28,7 @@
 namespace smbprovider {
 
 bool GetEntries(const ReadDirectoryOptionsProto& options,
-                CachingIterator<DirectoryIterator> iterator,
+                CachingIterator iterator,
                 int32_t* error_code,
                 ProtoBlob* out_entries) {
   DCHECK(error_code);
@@ -187,9 +187,7 @@ void SmbProvider::ReadDirectoryEntries(const ProtoBlob& options_blob,
     SambaInterface* samba_interface = GetSambaInterface(GetMountId(options));
       // Purge the cache of expired entries before reading next directory.
     cache->PurgeExpiredEntries();
-    GetEntries(options,
-               GetCachingIterator<DirectoryIterator>(full_path, samba_interface,
-                                                     cache),
+    GetEntries(options, CachingIterator(full_path, samba_interface, cache),
                error_code, out_entries);
   }
 }
@@ -206,8 +204,7 @@ void SmbProvider::ReadShareEntries(const ProtoBlob& options_blob,
   if (ParseOptionsAndPath(options_blob, &options, &full_path, error_code)) {
     SambaInterface* samba_interface = GetSambaInterface(GetMountId(options));
 
-    GetShareEntries(options,
-                    GetIterator<ShareIterator>(full_path, samba_interface),
+    GetShareEntries(options, ShareIterator(full_path, samba_interface),
                     error_code, out_entries);
   }
 }

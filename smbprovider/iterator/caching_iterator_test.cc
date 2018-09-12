@@ -33,9 +33,8 @@ class CachingIteratorTest : public testing::Test {
     fake_samba_.AddDirectory(GetDefaultMountRoot());
   }
 
-  CachingIterator<DirectoryIterator> GetIterator(const std::string& full_path) {
-    return GetCachingIterator<DirectoryIterator>(full_path, &fake_samba_,
-                                                 cache_.get());
+  CachingIterator GetIterator(const std::string& full_path) {
+    return CachingIterator(full_path, &fake_samba_, cache_.get());
   }
 
   FakeSambaInterface fake_samba_;
