@@ -67,7 +67,7 @@ if (!enable_exceptions) {
 
 set_defaults("executable") {
   configs = _binary_target_configs
-  configs += [ "//common-mk:executable_config" ]
+  configs += [ "//common-mk:pie" ]
 }
 
 set_defaults("static_library") {

@@ -101,22 +101,25 @@ config("compiler_defaults") {
   }
 }
 
-config("executable_config") {
+# Generates position independent executable.
+# This is a default config for executables and static libraries.
+config("pie") {
   cflags = [ "-fPIE" ]
+
+  # ldflags are not pushed to dependents, so applying ldflags to source sets or
+  # static libraries will be a no-op. You can just remove "pie" config from an
+  # executable to make the executable not position independent.
   ldflags = [ "-pie" ]
 }
 
-# Generates position independent executable.
-config("pie") {
-  cflags = [ "-fPIE" ]
-}
-
 # Use thin archive. It makes sense only for static libraries.
+# This is a default config for static libraries.
 config("use_thin_archive") {
   arflags = [ "rcsT" ]
 }
 
 # Generates position independent code.
+# This is a default config for shared libraries.
 config("pic") {
   cflags = [ "-fPIC" ]
 }
@@ -128,6 +131,7 @@ if (use.test) {
   # TODO(crbug.com/887845): Remove this note after library order issue is resolved.
   config("test") {
     libs = []
+
     # Don't worry about overlinking, ld.gold's --as-needed will
     # deal with that.
     libs += exec_script("//common-mk/args_generator_wrapper.py",

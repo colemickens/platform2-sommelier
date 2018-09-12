@@ -1,0 +1,230 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/lex.gni")
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":anomaly_collector",
+    ":crash_reporter",
+    ":crash_sender",
+    ":libcrash",
+    ":libcrash_reporter",
+    ":list_proxies",
+  ]
+  if (use.cheets) {
+    deps += [ ":core_collector" ]
+  }
+  if (use.test) {
+    deps += [
+      ":anomaly_collector_test",
+      ":crash_reporter_test",
+    ]
+  }
+}
+
+pkg_config("libcrash_config") {
+  pkg_deps = [ "libchrome-${libbase_ver}" ]
+}
+
+static_library("libcrash") {
+  all_dependent_configs = [ ":libcrash_config" ]
+  sources = [
+    "paths.cc",
+    "util.cc",
+  ]
+}
+
+pkg_config("libcrash_reporter_config") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "libdebugd-client",
+    "libpcrecpp",
+    "libsession_manager-client",
+  ]
+}
+
+static_library("libcrash_reporter") {
+  all_dependent_configs = [ ":libcrash_reporter_config" ]
+  sources = [
+    "chrome_collector.cc",
+    "crash_collector.cc",
+    "ec_collector.cc",
+    "kernel_collector.cc",
+    "kernel_warning_collector.cc",
+    "selinux_violation_collector.cc",
+    "service_failure_collector.cc",
+    "udev_collector.cc",
+    "unclean_shutdown_collector.cc",
+    "user_collector.cc",
+    "user_collector_base.cc",
+  ]
+  defines = [ "USE_DIRENCRYPTION=${use.direncryption}" ]
+
+  if (use.cheets) {
+    sources += [ "arc_collector.cc" ]
+  }
+
+  if (use.direncryption) {
+    libs = [ "-lkeyutils" ]
+  }
+}
+
+pkg_config("crash_reporter_config") {
+  pkg_deps = [
+    "dbus-1",
+    "libmetrics-${libbase_ver}",
+    "libminijail",
+  ]
+}
+
+executable("crash_reporter") {
+  configs += [ ":crash_reporter_config" ]
+  sources = [
+    "crash_reporter.cc",
+  ]
+  defines = [ "USE_CHEETS=${use.cheets}" ]
+  deps = [
+    ":libcrash",
+    ":libcrash_reporter",
+  ]
+}
+
+pkg_config("crash_sender_config") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "libminijail",
+  ]
+}
+
+executable("crash_sender") {
+  configs += [ ":crash_sender_config" ]
+  sources = [
+    "crash_sender.cc",
+    "crash_sender_util.cc",
+  ]
+  deps = [
+    ":libcrash",
+  ]
+}
+
+pkg_config("list_proxies_config") {
+  pkg_deps = [
+    "dbus-1",
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+  ]
+}
+
+executable("list_proxies") {
+  configs += [ ":list_proxies_config" ]
+  sources = [
+    "list_proxies.cc",
+  ]
+}
+
+pkg_config("anomaly_collector_config") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "libmetrics-${libbase_ver}",
+  ]
+}
+
+lex("anomaly_collector_lex") {
+  lexer_out_dir = "crash-reporter"
+  sources = [
+    "anomaly_collector.l",
+  ]
+
+  # -D_GNU_SOURCE is needed for asprintf in anomaly_collector.l
+  defines = [ "_GNU_SOURCE" ]
+}
+
+executable("anomaly_collector") {
+  configs += [ ":anomaly_collector_config" ]
+  deps = [
+    ":anomaly_collector_lex",
+  ]
+  sources = [
+    "anomaly_collector.cc",
+  ]
+  libs = [ "-lfl" ]
+}
+
+if (use.cheets) {
+  pkg_config("core_collector_config") {
+    pkg_deps = [ "breakpad-client" ]
+  }
+
+  executable("core_collector") {
+    configs += [ ":core_collector_config" ]
+    sources = [
+      "core-collector/core_collector.cc",
+      "core-collector/coredump_writer.cc",
+      "core-collector/coredump_writer.h",
+    ]
+
+    # This condition matches the "use_i686" helper in the "cros-i686"
+    # eclass. The "amd64" check allows the "cros_i686" USE flag to be
+    # enabled for an overlay inherited by non-x86 boards.
+    if (use.cros_i686 && use.amd64) {
+      configs -= [ "//common-mk:pie" ]
+    }
+  }
+}
+
+if (use.test) {
+  executable("crash_reporter_test") {
+    configs += [ "//common-mk:test" ]
+    sources = [
+      "chrome_collector_test.cc",
+      "crash_collector_test.cc",
+      "crash_collector_test.h",
+      "crash_reporter_logs_test.cc",
+      "crash_sender_util.cc",
+      "crash_sender_util_test.cc",
+      "ec_collector_test.cc",
+      "kernel_collector_test.cc",
+      "kernel_collector_test.h",
+      "kernel_warning_collector_test.cc",
+      "paths_test.cc",
+      "selinux_violation_collector_test.cc",
+      "service_failure_collector_test.cc",
+      "test_util.cc",
+      "testrunner.cc",
+      "udev_collector_test.cc",
+      "unclean_shutdown_collector_test.cc",
+      "user_collector_test.cc",
+      "util_test.cc",
+    ]
+    deps = [
+      ":libcrash",
+      ":libcrash_reporter",
+    ]
+
+    if (use.cheets) {
+      sources += [ "arc_collector_test.cc" ]
+    }
+  }
+
+  copy("anomaly_collector_test") {
+    sources = [
+      "TEST_SELINUX",
+      "TEST_SERVICE_FAILURE",
+      "TEST_WARNING",
+      "TEST_WARNING_OLD",
+      "TEST_WARNING_OLD_ARM64",
+      "anomaly_collector_test.sh",
+      "anomaly_collector_test_reporter.sh",
+      "crash_reporter_logs.conf",
+    ]
+    outputs = [
+      "${root_out_dir}/{{source_file_part}}",
+    ]
+  }
+}
