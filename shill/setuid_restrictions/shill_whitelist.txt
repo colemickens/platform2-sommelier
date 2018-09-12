@@ -1,0 +1,12 @@
+# shill spawns dhcpcd as 'dhcp' user
+20104:224
+# shill spawns openvpn as 'openvpn' user
+20104:217
+# charon daemon (part of strongswan IPSec package) drops to 'ipsec' user
+20104:212
+# shill spawns logger as 'syslog' user
+20104:202
+# shill spawns tc as 'nobody' user
+20104:65534
+# pppd calls setuid to root user
+20104:0
