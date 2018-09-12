@@ -14,10 +14,6 @@ executable just for performance and better testability.
 `config.json` is the configuration file for `arc-setup`. Currently, the
 following configurations are in the file:
 
-### `ARC_LCD_DENSITY` and `ARC_UI_SCALE`
-
-The device's display density and scale in dp.
-
 ### `USE_ESDFS`
 
 Setting this value to `true` will switch the implementation of the sdcard mount
@@ -49,8 +45,8 @@ the default format (squashfs).
 
 Several scripts modify the variables in `config.json`:
 
-* `arc-setup-9999.ebuild` rewrites `ARC_LCD_DENSITY`, `ARC_UI_SCALE`, and
-  `USE_ESDFS` at package build time depending on the type of the BOARD.
+* `arc-setup-9999.ebuild` rewrites `USE_ESDFS` at package build time depending
+   on the type of the BOARD.
 * `board_specific_setup.sh` rewrites `ANDROID_DEBUGGABLE` at image build time.
 * `setup_writable_android_mount.sh` which is a debug script in Android master
   rewrites `WRITABLE_MOUNT`.
