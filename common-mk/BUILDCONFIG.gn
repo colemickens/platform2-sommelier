@@ -69,6 +69,7 @@ set_defaults("executable") {
   configs = _binary_target_configs
   configs += [ "//common-mk:executable_config" ]
 }
+
 set_defaults("static_library") {
   configs = _binary_target_configs
   configs += [
@@ -76,10 +77,12 @@ set_defaults("static_library") {
     "//common-mk:use_thin_archive",
   ]
 }
+
 set_defaults("shared_library") {
   configs = _binary_target_configs
   configs += [ "//common-mk:pic" ]
 }
+
 set_defaults("source_set") {
   configs = _binary_target_configs
 }

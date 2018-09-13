@@ -21,16 +21,53 @@ from chromite.lib import osutils
 
 import common_utils
 
-
 # List of all USE flags that can be used in BUILD.gn.
-_IUSE = ['amd64', 'arm', 'attestation', 'binder', 'buffet', 'cellular',
-         'cfm_enabled_device', 'cheets', 'chromeos_dbus', 'containers',
-         'cros_host', 'dbus', 'device_mapper', 'dhcpv6', 'direncryption',
-         'feedback', 'ftdi_tpm', 'fuzzer', 'gdmwimax', 'hammerd_api',
-         'iwlwifi_dump', 'kvm_host', 'metrics_uploader', 'mtd', 'opengles',
-         'passive_metrics', 'power_management', 'pppoe', 'profiling', 'systemd',
-         'tcmalloc', 'test', 'tpm2_simulator', 'tpm2', 'tpm', 'vpn',
-         'wake_on_wifi', 'wifi', 'wimax', 'wired_8021x']
+_IUSE = [
+    'amd64',
+    'arm',
+    'asan',
+    'attestation',
+    'binder',
+    'buffet',
+    'cellular',
+    'cfm_enabled_device',
+    'cheets',
+    'chromeos_dbus',
+    'containers',
+    'coverage',
+    'cros_host',
+    'dbus',
+    'device_mapper',
+    'dhcpv6',
+    'direncryption',
+    'feedback',
+    'ftdi_tpm',
+    'fuzzer',
+    'gdmwimax',
+    'hammerd_api',
+    'iwlwifi_dump',
+    'kvm_host',
+    'metrics_uploader',
+    'msan',
+    'mtd',
+    'opengles',
+    'passive_metrics',
+    'power_management',
+    'pppoe',
+    'profiling',
+    'systemd',
+    'tcmalloc',
+    'test',
+    'tpm',
+    'tpm2',
+    'tpm2_simulator',
+    'ubsan',
+    'vpn',
+    'wake_on_wifi',
+    'wifi',
+    'wimax',
+    'wired_8021x',
+]
 
 
 class Platform2(object):

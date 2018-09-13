@@ -1,3 +1,8 @@
+# Caution!: GYP to GN migration is happening. If you update this file, please
+# update the corresponding GN portion in common-mk/BUILD.gn or
+# common-mk/BUILDCONFIG.gn .
+#
+
 # This file is included for every single target.
 
 # Use it to define Platform2 wide settings and defaults.
@@ -21,6 +26,7 @@
     # DON'T EDIT BELOW THIS LINE.
     # You can declare new variables, but you shouldn't be changing their
     # default settings.  The platform python build helpers set them up.
+    # Caution!: please keep it in sync with _IUSE in common-mk/platform2.py .
     'USE_cheets%': 0,
     'USE_amd64%': 0,
     'USE_arm%': 0,
@@ -87,6 +93,8 @@
       },
     }],
   ],
+  # Caution!: please keep it in sync with "compiler_defaults" config in
+  # common-mk/BUILD.gn .
   'target_defaults': {
     'include_dirs': [
       '<(INTERMEDIATE_DIR)/include',

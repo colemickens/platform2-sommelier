@@ -1,3 +1,5 @@
+# Caution!: GYP to GN migration is happening. If you update this file, please
+# update common-mk/testrunner/BUILD.gn too accordingly.
 {
   'conditions': [
     ['USE_test == 1', {

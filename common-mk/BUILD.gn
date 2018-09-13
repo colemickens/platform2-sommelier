@@ -37,7 +37,6 @@ config("compiler_defaults") {
   include_dirs = [
     "${root_gen_dir}/include",
     "${platform2_root}",
-    "${platform2_root}/../platform",
   ]
   cflags = [
     "-Wall",
@@ -125,6 +124,8 @@ config("pic") {
 if (use.test) {
   config("test") {
     libs = []
+    # Don't worry about overlinking, ld.gold's --as-needed will
+    # deal with that.
     libs += exec_script("//common-mk/args_generator_wrapper.py",
                         [
                           "gtest-config",
