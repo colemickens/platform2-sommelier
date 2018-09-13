@@ -1762,11 +1762,20 @@ void Metrics::NotifyUserInitiatedConnectionFailureReason(
     case Service::kFailureEAPRemoteTLS:
       reason = kUserInitiatedConnectionFailureReasonEAPRemoteTLS;
       break;
+    case Service::kFailureNotAssociated:
+      reason = kUserInitiatedConnectionFailureReasonNotAssociated;
+      break;
+    case Service::kFailureNotAuthenticated:
+      reason = kUserInitiatedConnectionFailureReasonNotAuthenticated;
+      break;
     case Service::kFailureOutOfRange:
       reason = kUserInitiatedConnectionFailureReasonOutOfRange;
       break;
     case Service::kFailurePinMissing:
       reason = kUserInitiatedConnectionFailureReasonPinMissing;
+      break;
+    case Service::kFailureTooManySTAs:
+      reason = kUserInitiatedConnectionFailureReasonTooManySTAs;
       break;
     default:
       reason = kUserInitiatedConnectionFailureReasonUnknown;
@@ -2133,6 +2142,12 @@ void Metrics::SendServiceFailure(const Service& service) {
     case Service::kFailureNeedHomeNetwork:
       error = kNetworkServiceErrorNeedHomeNetwork;
       break;
+    case Service::kFailureNotAssociated:
+      error = kNetworkServiceErrorNotAssociated;
+      break;
+    case Service::kFailureNotAuthenticated:
+      error = kNetworkServiceErrorNotAuthenticated;
+      break;
     case Service::kFailureOTASP:
       error = kNetworkServiceErrorOTASP;
       break;
@@ -2144,6 +2159,9 @@ void Metrics::SendServiceFailure(const Service& service) {
       break;
     case Service::kFailurePinMissing:
       error = kNetworkServiceErrorPinMissing;
+      break;
+    case Service::kFailureTooManySTAs:
+      error = kNetworkServiceErrorTooManySTAs;
       break;
     case Service::kFailureUnknown:
     case Service::kFailureMax:

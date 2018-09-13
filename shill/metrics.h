@@ -405,6 +405,7 @@ class Metrics {
     kUserInitiatedEventMax
   };
 
+  // Result of a connection initiated by Service::UserInitiatedConnect.
   enum UserInitiatedConnectionResult {
     kUserInitiatedConnectionResultSuccess = 0,
     kUserInitiatedConnectionResultFailure = 1,
@@ -433,6 +434,7 @@ class Metrics {
     kConnectionStatusMax
   };
 
+  // Reason when a connection initiated by Service::UserInitiatedConnect fails.
   enum UserInitiatedConnectionFailureReason {
     kUserInitiatedConnectionFailureReasonBadPassphrase = 1,
     kUserInitiatedConnectionFailureReasonBadWEPKey = 2,
@@ -446,6 +448,9 @@ class Metrics {
     kUserInitiatedConnectionFailureReasonPinMissing = 10,
     kUserInitiatedConnectionFailureReasonUnknown = 11,
     kUserInitiatedConnectionFailureReasonNone = 12,
+    kUserInitiatedConnectionFailureReasonNotAssociated = 13,
+    kUserInitiatedConnectionFailureReasonNotAuthenticated = 14,
+    kUserInitiatedConnectionFailureReasonTooManySTAs = 15,
     kUserInitiatedConnectionFailureReasonMax
   };
 
@@ -519,6 +524,9 @@ class Metrics {
     kNetworkServiceErrorPPPAuth = 19,
     kNetworkServiceErrorPinMissing = 20,
     kNetworkServiceErrorUnknown = 21,
+    kNetworkServiceErrorNotAssociated = 22,
+    kNetworkServiceErrorNotAuthenticated = 23,
+    kNetworkServiceErrorTooManySTAs = 24,
     kNetworkServiceErrorMax
   };
 

@@ -107,6 +107,11 @@ class Service : public base::RefCounted<Service> {
     kFailurePPPAuth,
     kFailurePinMissing,
     kFailureUnknown,
+    // WiFi association failure that doesn't correspond to any other failure
+    kFailureNotAssociated,
+    // WiFi authentication failure that doesn't correspond to any other failure
+    kFailureNotAuthenticated,
+    kFailureTooManySTAs,
     kFailureMax
   };
   enum ConnectState {

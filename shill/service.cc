@@ -891,6 +891,12 @@ const char* Service::ConnectFailureToString(const ConnectFailure& state) {
       return kErrorPppAuthFailed;
     case kFailureUnknown:
       return kErrorUnknownFailure;
+    case kFailureNotAssociated:
+      return kErrorNotAssociated;
+    case kFailureNotAuthenticated:
+      return kErrorNotAuthenticated;
+    case kFailureTooManySTAs:
+      return kErrorTooManySTAs;
     case kFailureMax:
       NOTREACHED();
   }
