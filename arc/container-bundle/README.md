@@ -129,6 +129,11 @@ There are several ways in which resources are mounted inside the container:
   any mount changes under that mount point to propagate to other shared
   subtrees.
 
+On stock Android, its init's first stage sets up several mount points such as
+`/dev` and `/mnt`, but ARC does not use the init's feature at all. Instead,
+on ARC, `config.json` sets up these standard Android mount points as well as
+several ARC specific ones.
+
 All mounts are performed in the `/opt/google/container/android/rootfs/root`
 subtree. Given that `run_oci` does not modify the init mount namespace, any
 mounts that span user sessions (such as the `system.raw.img` loop mount) should
@@ -240,6 +245,10 @@ ignore all other flags).
 * `/vendor`: This is loop-mounted from host's
   `/opt/google/containers/android/vendor.raw.img`. The directory may have
   graphic drivers, Houdini, board-specific APKs, and so on.
+* `/mnt`: This is a tmpfs mount point. Note that we should NOT mount any other
+  file system in /mnt in `config.json` even if it is an empty tmpfs. Doing so
+  will make our container less compatible with stock Android and may even break
+  CTS.
 
 ## Capabilities
 
