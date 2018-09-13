@@ -522,6 +522,20 @@ int32_t SmbProvider::ContinueCopy(int32_t mount_id, int32_t copy_token) {
   return static_cast<int32_t>(error);
 }
 
+void SmbProvider::StartReadDirectory(const ProtoBlob& options_blob,
+                                     int32_t* error_code,
+                                     ProtoBlob* out_entries,
+                                     int32_t* read_dir_token) {
+  NOTIMPLEMENTED();
+}
+
+void SmbProvider::ContinueReadDirectory(int32_t mount_id,
+                                        int32_t read_dir_token,
+                                        int32_t* error_code,
+                                        ProtoBlob* out_entries) {
+  NOTIMPLEMENTED();
+}
+
 HostnamesProto SmbProvider::BuildHostnamesProto(
     const std::vector<std::string>& hostnames) const {
   HostnamesProto hostnames_proto;

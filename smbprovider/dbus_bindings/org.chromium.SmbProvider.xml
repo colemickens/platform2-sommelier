@@ -441,5 +441,59 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
 
+    <method name="StartReadDirectory">
+      <tp:docstring>
+        Starts a ReadDirectory operation.
+      </tp:docstring>
+      <arg name="options_blob" type="ay" direction="in">
+        <tp:docstring>
+          Serialized ReadDirectoryOptions protobuf.
+        </tp:docstring>
+      </arg>
+      <arg name="error_code" type="i" direction="out">
+        <tp:docstring>
+          Returned error code. See ErrorType enum.
+        </tp:docstring>
+      </arg>
+      <arg name="entries" type="ay" direction="out">
+        <tp:docstring>
+          Serialized DirectoryEntryList protobuf.
+        </tp:docstring>
+      </arg>
+      <arg name="read_dir_token" type="i" direction="out">
+        <tp:docstring>
+          Unique identifier of the in-progress read directory operation. Used to call ContinueReadDirectory.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+
+    <method name="ContinueReadDirectory">
+      <tp:docstring>
+        Continues a ReadDirectory operation.
+      </tp:docstring>
+      <arg name="mount_id" type="i" direction="in">
+        <tp:docstring>
+          Unique identifier of the mounted share.
+        </tp:docstring>
+      </arg>
+      <arg name="read_dir_token" type="i" direction="in">
+        <tp:docstring>
+          Unique identifier of the in-progress read directory operation.
+        </tp:docstring>
+      </arg>
+      <arg name="error_code" type="i" direction="out">
+        <tp:docstring>
+          Returned error code. See ErrorType enum.
+        </tp:docstring>
+      </arg>
+      <arg name="entries" type="ay" direction="out">
+        <tp:docstring>
+          Serialized DirectoryEntryList protobuf.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+
   </interface>
 </node>

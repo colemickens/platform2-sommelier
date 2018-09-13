@@ -126,6 +126,16 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
 
   int32_t ContinueCopy(int32_t mount_id, int32_t copy_token) override;
 
+  void StartReadDirectory(const ProtoBlob& options_blob,
+                          int32_t* error_code,
+                          ProtoBlob* out_entries,
+                          int32_t* read_dir_token) override;
+
+  void ContinueReadDirectory(int32_t mount_id,
+                             int32_t read_dir_token,
+                             int32_t* error_code,
+                             ProtoBlob* out_entries) override;
+
   // Register DBus object and interfaces.
   void RegisterAsync(
       const AsyncEventSequencer::CompletionAction& completion_callback);
