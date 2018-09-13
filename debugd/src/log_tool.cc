@@ -5,6 +5,7 @@
 #include "debugd/src/log_tool.h"
 
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <base/base64.h>
@@ -13,6 +14,8 @@
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
+#include <base/strings/utf_string_conversion_utils.h>
 #include <base/values.h>
 
 #include <chromeos/dbus/service_constants.h>
@@ -35,12 +38,16 @@ const char kShell[] = "/bin/sh";
 // Minimum time in seconds needed to allow shill to test active connections.
 const int kConnectionTesterTimeoutSeconds = 5;
 
+// Default maximum size of a log entry.
+constexpr const char kDefaultSizeCap[] = "512K";
+
 struct Log {
-  const char *name;
-  const char *command;
-  const char *user;
-  const char *group;
-  const char *size_cap;  // passed as arg to 'tail'
+  const char* name;
+  const char* command;
+  const char* user = nullptr;
+  const char* group = nullptr;
+  const char* size_cap = kDefaultSizeCap;  // passed as arg to 'tail -c'
+  LogTool::Encoding encoding = LogTool::Encoding::kAutodetect;
 };
 
 #define CMD_KERNEL_MODULE_PARAMS(module_name) \
@@ -128,6 +135,8 @@ const Log kCommandLogs[] = {
     "/usr/bin/xz -c /sys/kernel/debug/dri/0/i915_error_state 2>/dev/null",
     SandboxedProcess::kDefaultUser,
     kDebugfsGroup,
+    kDefaultSizeCap,
+    LogTool::Encoding::kBinary,
   },
   { "ifconfig", "/bin/ifconfig -a" },
   { "input_devices", "cat /proc/bus/input/devices" },
@@ -144,6 +153,8 @@ const Log kCommandLogs[] = {
     "/usr/sbin/android-sh -c '/system/bin/logcat -d'",
     kRoot,
     kRoot,
+    kDefaultSizeCap,
+    LogTool::Encoding::kUtf8,
   },
   { "lsmod", "lsmod" },
   { "lspci", "/usr/sbin/lspci" },
@@ -348,6 +359,7 @@ const Log kBigFeedbackLogs[] = {
     kRoot,
     kRoot,
     "10M",
+    LogTool::Encoding::kUtf8,
   },
   { nullptr, nullptr }
 };
@@ -363,23 +375,12 @@ const Log kUserLogs[] = {
   { nullptr, nullptr}
 };
 
-// Returns |value| if |value| is a valid UTF-8 string or a base64-encoded
-// string of |value| otherwise.
-string EnsureUTF8String(const string& value) {
-  if (base::IsStringUTF8(value))
-    return value;
-
-  string encoded_value;
-  base::Base64Encode(value, &encoded_value);
-  return "<base64>: " + encoded_value;
-}
-
 // TODO(ellyjones): sandbox. crosbug.com/35122
 string Run(const Log& log) {
   string output;
   ProcessWithOutput p;
-  string tailed_cmdline = string(log.command) + " | tail -c " +
-                          (log.size_cap ? log.size_cap : "512K");
+  string tailed_cmdline =
+      base::StringPrintf("%s | tail -c %s", log.command, log.size_cap);
   if (log.user && log.group)
     p.SandboxAs(log.user, log.group);
   if (!p.Init())
@@ -391,7 +392,7 @@ string Run(const Log& log) {
   p.GetOutput(&output);
   if (!output.size())
     return "<empty>";
-  return EnsureUTF8String(output);
+  return LogTool::EnsureUTF8String(output, log.encoding);
 }
 
 // Fills |dictionary| with the anonymized contents of the logs in |logs|.
@@ -499,6 +500,38 @@ LogTool::LogMap LogTool::GetUserLogFiles() {
   for (size_t i = 0; kUserLogs[i].name; ++i)
     result[kUserLogs[i].name] = kUserLogs[i].command;
   return result;
+}
+
+// static
+string LogTool::EnsureUTF8String(const string& value,
+                                 LogTool::Encoding source_encoding) {
+  if (source_encoding == LogTool::Encoding::kAutodetect) {
+    if (base::IsStringUTF8(value))
+      return value;
+    source_encoding = LogTool::Encoding::kBinary;
+  }
+
+  if (source_encoding == LogTool::Encoding::kUtf8) {
+    string output;
+    const char* src = value.data();
+    int32_t src_len = static_cast<int32_t>(value.length());
+
+    output.reserve(value.size());
+    for (int32_t char_index = 0; char_index < src_len; char_index++) {
+      uint32_t code_point;
+      if (!base::ReadUnicodeCharacter(src, src_len, &char_index, &code_point) ||
+          !base::IsValidCharacter(code_point)) {
+        // Replace invalid characters with U+FFFD REPLACEMENT CHARACTER.
+        code_point = 0xFFFD;
+      }
+      base::WriteUnicodeCharacter(code_point, &output);
+    }
+    return output;
+  } else {
+    string encoded_value;
+    base::Base64Encode(value, &encoded_value);
+    return "<base64>: " + encoded_value;
+  }
 }
 
 void LogTool::AnonymizeLogMap(LogMap* log_map) {

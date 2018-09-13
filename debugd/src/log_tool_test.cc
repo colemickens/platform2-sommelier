@@ -37,4 +37,35 @@ TEST_F(LogToolTest, AnonymizeLogMap) {
   EXPECT_EQ(kAnonymousMAC, log_map[kKey2]);
 }
 
+TEST_F(LogToolTest, EnsureUTF8String) {
+  // U+1F600 GRINNING FACE
+  constexpr const char kGrinningFaceUTF8[] = "\xF0\x9F\x98\x80";
+  constexpr const char kGrinningFaceBase64[] = "<base64>: 8J+YgA==";
+  EXPECT_EQ(kGrinningFaceUTF8,
+            LogTool::EnsureUTF8String(kGrinningFaceUTF8,
+                                      LogTool::Encoding::kAutodetect));
+  EXPECT_EQ(
+      kGrinningFaceUTF8,
+      LogTool::EnsureUTF8String(kGrinningFaceUTF8, LogTool::Encoding::kUtf8));
+  EXPECT_EQ(
+      kGrinningFaceBase64,
+      LogTool::EnsureUTF8String(kGrinningFaceUTF8, LogTool::Encoding::kBinary));
+
+  // .xz Stream Header Magic Bytes
+  constexpr const char kXzStreamHeaderMagicBytes[] = "\xFD\x37\x7A\x58\x5A\x00";
+  constexpr const char kXzStreamHeaderMagicUTF8[] =
+      "\xEF\xBF\xBD"
+      "7zXZ";
+  constexpr const char kXzStreamHeaderMagicBase64[] = "<base64>: /Td6WFo=";
+  EXPECT_EQ(kXzStreamHeaderMagicBase64,
+            LogTool::EnsureUTF8String(kXzStreamHeaderMagicBytes,
+                                      LogTool::Encoding::kAutodetect));
+  EXPECT_EQ(kXzStreamHeaderMagicUTF8,
+            LogTool::EnsureUTF8String(kXzStreamHeaderMagicBytes,
+                                      LogTool::Encoding::kUtf8));
+  EXPECT_EQ(kXzStreamHeaderMagicBase64,
+            LogTool::EnsureUTF8String(kXzStreamHeaderMagicBytes,
+                                      LogTool::Encoding::kBinary));
+}
+
 }  // namespace debugd
