@@ -526,14 +526,74 @@ void SmbProvider::StartReadDirectory(const ProtoBlob& options_blob,
                                      int32_t* error_code,
                                      ProtoBlob* out_entries,
                                      int32_t* read_dir_token) {
-  NOTIMPLEMENTED();
+  DCHECK(error_code);
+  DCHECK(out_entries);
+  DCHECK(read_dir_token);
+
+  std::string directory_path;
+  ReadDirectoryOptionsProto options;
+
+  if (!ParseOptionsAndPath(options_blob, &options, &directory_path,
+                           error_code)) {
+    return;
+  }
+
+  DirectoryEntryListProto entries;
+  ErrorType error =
+      StartReadDirectory(options, directory_path, &entries, read_dir_token);
+
+  if (error != ERROR_OK && error != ERROR_OPERATION_PENDING) {
+    LogAndSetError(options, error, error_code);
+    return;
+  }
+
+  ErrorType serialize_error = SerializeProtoToBlob(entries, out_entries);
+  if (serialize_error != ERROR_OK) {
+    LogAndSetError(options, serialize_error, error_code);
+    return;
+  }
+
+  *error_code = static_cast<int32_t>(error);
 }
 
 void SmbProvider::ContinueReadDirectory(int32_t mount_id,
                                         int32_t read_dir_token,
                                         int32_t* error_code,
                                         ProtoBlob* out_entries) {
-  NOTIMPLEMENTED();
+  DCHECK_GE(mount_id, 0);
+  DCHECK_GE(read_dir_token, 0);
+  DCHECK(error_code);
+  DCHECK(out_entries);
+
+  if (!read_dir_tracker_.Contains(read_dir_token)) {
+    LogAndSetError(kContinueReadDirectoryMethod, mount_id,
+                   ERROR_OPERATION_FAILED, error_code);
+    return;
+  }
+
+  if (!mount_manager_->IsAlreadyMounted(mount_id)) {
+    read_dir_tracker_.Remove(read_dir_token);
+    LogAndSetError(kContinueReadDirectoryMethod, mount_id,
+                   ERROR_OPERATION_FAILED, error_code);
+    return;
+  }
+
+  DirectoryEntryListProto entries;
+  ErrorType error = ContinueReadDirectory(read_dir_token, &entries);
+
+  if (error != ERROR_OK && error != ERROR_OPERATION_PENDING) {
+    LogAndSetError(kContinueReadDirectoryMethod, mount_id, error, error_code);
+    return;
+  }
+
+  ErrorType serialize_error = SerializeProtoToBlob(entries, out_entries);
+  if (serialize_error != ERROR_OK) {
+    LogAndSetError(kContinueReadDirectoryMethod, mount_id, serialize_error,
+                   error_code);
+    return;
+  }
+
+  *error_code = static_cast<int32_t>(error);
 }
 
 HostnamesProto SmbProvider::BuildHostnamesProto(

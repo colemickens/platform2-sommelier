@@ -3024,4 +3024,221 @@ TEST_F(SmbProviderTest, ContinueCopyFailsWhenCalledWithInvalidToken) {
   EXPECT_EQ(ERROR_COPY_FAILED, error_code);
 }
 
+TEST_F(SmbProviderTest, StartReadDirectoryFailsOnNonExistantSource) {
+  const int32_t mount_id = PrepareMount();
+
+  ProtoBlob read_dir_blob =
+      CreateReadDirectoryOptionsBlob(mount_id, "/non_existent.txt");
+
+  int32_t error_code;
+  ProtoBlob results;
+  int32_t read_dir_token;
+  smbprovider_->StartReadDirectory(read_dir_blob, &error_code, &results,
+                                   &read_dir_token);
+
+  EXPECT_EQ(ERROR_NOT_FOUND, error_code);
+}
+
+TEST_F(SmbProviderTest, StartReadDirectoryFailsOnUnmountedShare) {
+  ProtoBlob read_dir_blob =
+      CreateReadDirectoryOptionsBlob(999 /* mount_id */, "/non_existent.txt");
+
+  int32_t error_code;
+  ProtoBlob results;
+  int32_t read_dir_token;
+  smbprovider_->StartReadDirectory(read_dir_blob, &error_code, &results,
+                                   &read_dir_token);
+
+  EXPECT_EQ(ERROR_NOT_FOUND, error_code);
+}
+
+TEST_F(SmbProviderTest, StartReadDirectorySucceedsOnEmptyDir) {
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetAddedFullDirectoryPath());
+
+  ProtoBlob read_dir_blob =
+      CreateReadDirectoryOptionsBlob(mount_id, GetDefaultDirectoryPath());
+
+  int32_t error_code;
+  ProtoBlob results;
+  int32_t read_dir_token;
+  smbprovider_->StartReadDirectory(read_dir_blob, &error_code, &results,
+                                   &read_dir_token);
+
+  DirectoryEntryListProto entries;
+  const std::string parsed_proto(results.begin(), results.end());
+  EXPECT_TRUE(entries.ParseFromString(parsed_proto));
+
+  EXPECT_EQ(ERROR_OK, error_code);
+  EXPECT_EQ(0, entries.entries_size());
+}
+
+TEST_F(SmbProviderTest, StartReadDirectorySucceedsOnNonEmptyDir) {
+  int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetAddedFullDirectoryPath());
+  fake_samba_->AddFile(GetDefaultFullPath("/path/file.jpg"));
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path/images"));
+
+  LOG(ERROR) << GetDefaultFullPath("/path/file.jpg");
+
+  ProtoBlob read_dir_blob =
+      CreateReadDirectoryOptionsBlob(mount_id, GetDefaultDirectoryPath());
+
+  int32_t error_code;
+  ProtoBlob results;
+  int32_t read_dir_token;
+  smbprovider_->StartReadDirectory(read_dir_blob, &error_code, &results,
+                                   &read_dir_token);
+
+  DirectoryEntryListProto entries;
+  const std::string parsed_proto(results.begin(), results.end());
+  EXPECT_TRUE(entries.ParseFromString(parsed_proto));
+
+  EXPECT_EQ(ERROR_OK, error_code);
+  EXPECT_EQ(2, entries.entries_size());
+
+  const DirectoryEntryProto& entry1 = entries.entries(0);
+  EXPECT_FALSE(entry1.is_directory());
+  EXPECT_EQ("file.jpg", entry1.name());
+
+  const DirectoryEntryProto& entry2 = entries.entries(1);
+  EXPECT_TRUE(entry2.is_directory());
+  EXPECT_EQ("images", entry2.name());
+}
+
+TEST_F(SmbProviderTest, StartReadDirectoryDoesntReturnSelfAndParentEntries) {
+  int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetAddedFullDirectoryPath());
+  fake_samba_->AddFile(GetDefaultFullPath("/path/file.jpg"));
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path/."));
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path/.."));
+
+  ProtoBlob read_dir_blob =
+      CreateReadDirectoryOptionsBlob(mount_id, GetDefaultDirectoryPath());
+
+  int32_t error_code;
+  ProtoBlob results;
+  int32_t read_dir_token;
+  smbprovider_->StartReadDirectory(read_dir_blob, &error_code, &results,
+                                   &read_dir_token);
+
+  DirectoryEntryListProto entries;
+  const std::string parsed_proto(results.begin(), results.end());
+  EXPECT_TRUE(entries.ParseFromString(parsed_proto));
+
+  EXPECT_EQ(ERROR_OK, error_code);
+  EXPECT_EQ(1, entries.entries_size());
+
+  const DirectoryEntryProto& entry1 = entries.entries(0);
+  EXPECT_FALSE(entry1.is_directory());
+  EXPECT_EQ("file.jpg", entry1.name());
+}
+
+TEST_F(SmbProviderTest, StartReadDirectoryCacheEnabledPopulatesMetadata) {
+  SetUpSmbProvider(true /* enable_metadata_cache */);
+  int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetAddedFullDirectoryPath());
+  fake_samba_->AddFile(GetDefaultFullPath("/path/file.jpg"), kFileSize,
+                       kFileDate);
+  fake_samba_->AddDirectory(GetDefaultFullPath("/path/images"),
+                            false /* is_locked */, SMBC_DIR, kFileDate);
+
+  ProtoBlob read_dir_blob =
+      CreateReadDirectoryOptionsBlob(mount_id, GetDefaultDirectoryPath());
+
+  // Get the cache which should initially be empty.
+  MetadataCache* cache = nullptr;
+  mount_manager_->GetMetadataCache(mount_id, &cache);
+  EXPECT_TRUE(cache->IsEmpty());
+
+  int32_t error_code;
+  ProtoBlob results;
+  int32_t read_dir_token;
+  smbprovider_->StartReadDirectory(read_dir_blob, &error_code, &results,
+                                   &read_dir_token);
+
+  // The cache should now be populated.
+  EXPECT_FALSE(cache->IsEmpty());
+
+  // Check the cache entries.
+  DirectoryEntry cache_entry1;
+  EXPECT_TRUE(
+      cache->FindEntry(GetDefaultFullPath("/path/file.jpg"), &cache_entry1));
+  EXPECT_FALSE(cache_entry1.is_directory);
+  EXPECT_EQ("file.jpg", cache_entry1.name);
+  EXPECT_EQ(kFileSize, cache_entry1.size);
+  EXPECT_EQ(kFileDate, cache_entry1.last_modified_time);
+
+  DirectoryEntry cache_entry2;
+  EXPECT_TRUE(
+      cache->FindEntry(GetDefaultFullPath("/path/images"), &cache_entry2));
+  EXPECT_TRUE(cache_entry2.is_directory);
+  EXPECT_EQ("images", cache_entry2.name);
+  EXPECT_EQ(0, cache_entry2.size);
+  EXPECT_EQ(kFileDate, cache_entry2.last_modified_time);
+
+  // Check the metadata in the response.
+  DirectoryEntryListProto entries;
+  const std::string parsed_proto(results.begin(), results.end());
+  EXPECT_TRUE(entries.ParseFromString(parsed_proto));
+
+  EXPECT_EQ(ERROR_OK, CastError(error_code));
+  EXPECT_EQ(2, entries.entries_size());
+
+  const DirectoryEntryProto& entry1 = entries.entries(0);
+  EXPECT_FALSE(entry1.is_directory());
+  EXPECT_EQ("file.jpg", entry1.name());
+  EXPECT_EQ(kFileSize, entry1.size());
+  EXPECT_EQ(kFileDate, entry1.last_modified_time());
+
+  const DirectoryEntryProto& entry2 = entries.entries(1);
+  EXPECT_TRUE(entry2.is_directory());
+  EXPECT_EQ("images", entry2.name());
+  EXPECT_EQ(0, entry2.size());
+  EXPECT_EQ(kFileDate, entry2.last_modified_time());
+}
+
+TEST_F(SmbProviderTest, StartReadDirectoryCacheEnabledPurgesBeforeRead) {
+  SetUpSmbProvider(true /* enable_metadata_cache */);
+  int32_t mount_id = PrepareMount();
+
+  // Setup an empty directory so that the new ReadDirectory won't add
+  // to the cache.
+  fake_samba_->AddDirectory(GetAddedFullDirectoryPath());
+
+  // Get the cache.
+  MetadataCache* cache = nullptr;
+  EXPECT_TRUE(mount_manager_->GetMetadataCache(mount_id, &cache));
+  EXPECT_NE(nullptr, cache);
+
+  // Add an entry to the cache.
+  DirectoryEntry cached_entry(false /* is_directory */, "dog.jpg",
+                              GetAddedFullFilePath(), kFileSize, kFileDate);
+  cache->AddEntry(cached_entry);
+  EXPECT_FALSE(cache->IsEmpty());
+
+  // Advance the clock so that the entry is expired. The clock doesn't
+  // cause the entry to be removed. It is only removed when it is accessed
+  // or PurgeExpiredEntries() is called.
+  fake_tick_clock_->Advance(base::TimeDelta::FromMicroseconds(
+      kMetadataCacheLifetimeMicroseconds + 1));
+  EXPECT_FALSE(cache->IsEmpty());
+
+  ProtoBlob read_dir_blob =
+      CreateReadDirectoryOptionsBlob(mount_id, GetDefaultDirectoryPath());
+
+  int32_t error_code;
+  ProtoBlob results;
+  int32_t read_dir_token;
+
+  // Read an empty directory and the cache should be purged.
+  smbprovider_->StartReadDirectory(read_dir_blob, &error_code, &results,
+                                   &read_dir_token);
+  EXPECT_TRUE(cache->IsEmpty());
+}
+
 }  // namespace smbprovider
