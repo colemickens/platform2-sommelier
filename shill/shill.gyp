@@ -14,12 +14,6 @@
 # limitations under the License.
 #
 
-# This file needs a lotta love.
-# gyplint: disable=GypLintOrderedFiles
-# gyplint: disable=GypLintSourceFileNames
-# gyplint: disable=LinesLintDanglingCommas
-# gyplint: disable=LinesLintIndent
-
 {
   'target_defaults': {
     'variables': {
@@ -102,11 +96,10 @@
       'type': 'static_library',
       'variables': {
         'proto_in_dir': 'mobile_operator_db',
-        'proto_out_dir':
-            'include/shill/mobile_operator_db'
+        'proto_out_dir': 'include/shill/mobile_operator_db',
       },
       'sources': [
-        '<(proto_in_dir)/mobile_operator_db.proto'
+        '<(proto_in_dir)/mobile_operator_db.proto',
       ],
       'includes': ['../common-mk/protoc.gypi'],
     },
@@ -246,7 +239,7 @@
           '-lbootstat',
           '-lpolicy-<(libbase_ver)',
           '-lrootdev',
-          '-lrt'
+          '-lrt',
         ],
       },
       'conditions': [
@@ -304,9 +297,6 @@
                 'modemmanager_in_dir': '<(sysroot)/usr/share/dbus-1/interfaces/',
               },
               'sources': [
-                'dbus_bindings/dbus-objectmanager.dbus-xml',
-                'dbus_bindings/dbus-properties.dbus-xml',
-                'dbus_bindings/modem-gobi.dbus-xml',
                 '<(modemmanager_in_dir)/org.freedesktop.ModemManager.Modem.Cdma.xml',
                 '<(modemmanager_in_dir)/org.freedesktop.ModemManager.Modem.Gsm.Card.xml',
                 '<(modemmanager_in_dir)/org.freedesktop.ModemManager.Modem.Gsm.Network.xml',
@@ -319,6 +309,9 @@
                 '<(modemmanager_in_dir)/org.freedesktop.ModemManager1.Modem.Simple.xml',
                 '<(modemmanager_in_dir)/org.freedesktop.ModemManager1.Modem.xml',
                 '<(modemmanager_in_dir)/org.freedesktop.ModemManager1.Sim.xml',
+                'dbus_bindings/dbus-objectmanager.dbus-xml',
+                'dbus_bindings/dbus-properties.dbus-xml',
+                'dbus_bindings/modem-gobi.dbus-xml',
               ],
               'includes': ['../common-mk/generate-dbus-proxies.gypi'],
             },
@@ -592,7 +585,7 @@
       },
       'sources': [
         'shill_main.cc',
-      ]
+      ],
     },
     {
       'target_name': 'crypto-util',
@@ -606,7 +599,7 @@
       },
       'sources': [
         'shims/crypto_util.cc',
-      ]
+      ],
     },
     {
       'target_name': 'netfilter-queue-helper',
@@ -620,7 +613,7 @@
       'sources': [
         'shims/netfilter_queue_helper.cc',
         'shims/netfilter_queue_processor.cc',
-      ]
+      ],
     },
     {
       'target_name': 'openvpn-script',
@@ -634,7 +627,7 @@
         'shims/environment.cc',
         'shims/openvpn_script.cc',
         'shims/task_proxy.cc',
-      ]
+      ],
     },
   ],
   'conditions': [
@@ -645,8 +638,8 @@
           'type': 'executable',
           'variables': {
             'deps': [
-              'dbus-glib-1'
-            ]
+              'dbus-glib-1',
+            ],
           },
           'sources': [
             'shims/set_apn_helper.c',
@@ -717,8 +710,8 @@
             'connection_health_checker_test.cc',
             'connection_info_reader_test.cc',
             'connection_info_test.cc',
-            'connection_tester_test.cc',
             'connection_test.cc',
+            'connection_tester_test.cc',
             'connectivity_trial_test.cc',
             'crypto_des_cbc_test.cc',
             'crypto_provider_test.cc',
@@ -753,8 +746,8 @@
             'hook_table_test.cc',
             'http_request_test.cc',
             'http_url_test.cc',
-            'icmp_test.cc',
             'icmp_session_test.cc',
+            'icmp_test.cc',
             'ip_address_store_test.cc',
             'ipconfig_test.cc',
             'key_value_store_test.cc',
@@ -809,8 +802,8 @@
             'mock_throttler.cc',
             'mock_traffic_monitor.cc',
             'mock_virtual_device.cc',
-            'net/arp_client_test_helper.cc',
             'net/arp_client_test.cc',
+            'net/arp_client_test_helper.cc',
             'net/arp_packet_test.cc',
             'net/attribute_list_test.cc',
             'net/byte_string_test.cc',
@@ -840,8 +833,8 @@
             'rpc_task_test.cc',
             'scope_logger_test.cc',
             'service_property_change_test.cc',
-            'service_under_test.cc',
             'service_test.cc',
+            'service_under_test.cc',
             'shims/netfilter_queue_processor.cc',
             'shims/netfilter_queue_processor_test.cc',
             'socket_info_reader_test.cc',
@@ -1005,7 +998,7 @@
             ],
           },
           'sources': [
-            'setup_wifi/main.cc'
+            'setup_wifi/main.cc',
           ],
         },
       ],
