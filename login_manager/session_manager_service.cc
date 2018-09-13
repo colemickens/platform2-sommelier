@@ -90,15 +90,8 @@ const char* ExitCodeToString(SessionManagerService::ExitCode code) {
 
 }  // anonymous namespace
 
-// TODO(mkrebs): Remove CollectChrome timeout and file when
-// crosbug.com/5872 is fixed.
-// When crash-reporter based crash reporting of Chrome is enabled
-// (which should only be during test runs) we use
-// kKillTimeoutCollectChrome instead of the kill timeout specified at
-// the command line.
-const int SessionManagerService::kKillTimeoutCollectChrome = 60;
-const char SessionManagerService::kCollectChromeFile[] =
-    "/mnt/stateful_partition/etc/collect_chrome_crashes";
+constexpr base::TimeDelta SessionManagerService::kKillTimeoutCollectChrome;
+constexpr char SessionManagerService::kCollectChromeFile[];
 
 void SessionManagerService::TestApi::ScheduleChildExit(pid_t pid, int status) {
   siginfo_t info;
@@ -433,7 +426,7 @@ void SessionManagerService::RevertHandlers() {
 
 base::TimeDelta SessionManagerService::GetKillTimeout() {
   if (base::PathExists(base::FilePath(kCollectChromeFile)))
-    return base::TimeDelta::FromSeconds(kKillTimeoutCollectChrome);
+    return kKillTimeoutCollectChrome;
   else
     return kill_timeout_;
 }

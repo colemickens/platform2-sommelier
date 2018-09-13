@@ -170,8 +170,13 @@ class SessionManagerService
   static void RevertHandlers();
 
  private:
-  static const int kKillTimeoutCollectChrome;
-  static const char kCollectChromeFile[];
+  // When Chrome is configured to write core files (which only happens during
+  // testing), give it extra time to exit. Note that this must be less than the
+  // 20-second kill timeout granted to session_manager in ui.conf.
+  static constexpr base::TimeDelta kKillTimeoutCollectChrome =
+      base::TimeDelta::FromSeconds(12);
+  static constexpr char kCollectChromeFile[] =
+      "/mnt/stateful_partition/etc/collect_chrome_crashes";
 
   // |data| is a SessionManagerService*.
   static DBusHandlerResult FilterMessage(DBusConnection* conn,
