@@ -42,13 +42,17 @@ class LibNewblue {
   // hci.h
   LIBNEWBLUE_METHOD3(HciUp,
                      hciUp,
+                     /* NOLINTNEXTLINE(readability/casting) */
                      bool(const uint8_t*, hciReadyForUpCbk, void*));
   LIBNEWBLUE_METHOD0(HciDown, hciDown, void());
   LIBNEWBLUE_METHOD0(HciIsUp, hciIsUp, bool());
   LIBNEWBLUE_METHOD4(HciDiscoverLeStart,
                      hciDiscoverLeStart,
                      uniq_t(hciDeviceDiscoveredLeCbk, void*, bool, bool));
-  LIBNEWBLUE_METHOD1(HciDiscoverLeStop, hciDiscoverLeStop, bool(uniq_t));
+  LIBNEWBLUE_METHOD1(HciDiscoverLeStop,
+                     hciDiscoverLeStop,
+                     /* NOLINTNEXTLINE(readability/casting) */
+                     bool(uniq_t));
 
   // l2cap.h
   LIBNEWBLUE_METHOD0(L2cInit, l2cInit, int());
