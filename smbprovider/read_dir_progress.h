@@ -48,9 +48,13 @@ class ReadDirProgress {
   bool ContinueReadDir(int32_t* error, DirectoryEntryListProto* out_entries);
 
  private:
+  // Increments |batch_size_|.
+  void IncreaseBatchSize();
+
   SambaInterface* samba_interface_;  // Not owned.
   uint32_t batch_size_;
   std::unique_ptr<CachingIterator> iterator_;
+  bool is_started_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(ReadDirProgress);
 };
