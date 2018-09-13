@@ -45,6 +45,8 @@ $(<"${TESTLOG}")"
   fi
 }
 
+# Executes "cleanup" when exiting normally (i.e. not from a signal).
+# The exit code is saved and restored around execution of "cleanup"
 trap cleanup EXIT
 
 SRC="$(readlink -f "$(dirname "$0")")"
@@ -134,5 +136,4 @@ cat "${SRC}/TEST_SELINUX" >> messages
 sleep 1
 check_log 10 selinux
 
-# Success!
 exit 0

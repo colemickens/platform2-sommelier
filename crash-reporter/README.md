@@ -48,10 +48,10 @@ to gather up any previous crashes in the system.
 For example, if the system had rebooted due to a kernel panic, or some firmware
 (like the [EC]) had crashed.
 
-We background the [anomaly_collector] to monitor for system "anomalies" that
-cannot be triggered on demand.
-This watches syslog messages via [inotify] for specific events that aren't logged
-or triggered via any other event or means.
+We background the [anomaly_collector] to monitor for system "anomalies" for
+which a notification mechanism is not available.
+This daemon operates by monitoring syslog messages via [inotify].
+Depending on the anomaly, it generates crashes, UMA stats, and D-Bus signals.
 
 We also background the [crash_sender] service to periodically upload crashes.
 See [Uploading Crashes] for more details.

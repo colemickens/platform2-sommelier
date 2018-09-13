@@ -49,6 +49,7 @@ static int ReportSELinuxViolation(void);
 static int KernelWarnStart(void);
 static void KernelWarnEnd(void);
 static void CollectorInput(char *buf, yy_size_t *result, size_t max_size);
+static void SendOomKillSignal(void);
 
 static void AppendToString(char** strp, const char *to_append) {
   if (*strp == NULL) {
@@ -193,6 +194,8 @@ SELINUX_AUDIT_PREFIX {PREFIX}" audit: "
                                 }
 <SELINUX_AUDIT>.                AppendSELinuxText();
 
+ /* Detect OOM kill attempt. */
+{PREFIX}" Out of memory: Kill process"      SendOomKillSignal();
 
 .|\n                            /* ignore all other input in state 0 */
 
@@ -278,6 +281,28 @@ static void SetHashSeen(uint32_t *hash_bitmap, uint32_t hash) {
   int word_index = (hash & HASH_BITMAP_MASK) / 32;
   int bit_index = (hash & HASH_BITMAP_MASK) % 32;
   hash_bitmap[word_index] |= 1 << bit_index;
+}
+
+static void SendOomKillSignal(void) {
+  const char prefix[] = "kernel: [";
+  char *start = strstr(yytext, prefix);
+  if (start == NULL) {
+    errx(1, "lex: fail at input: %s", yytext);
+  }
+  start += sizeof(prefix) - 1;  // subtract 1 for null byte
+  char *endptr;
+  long int seconds = strtol(start, &endptr, 10);
+  if (endptr == start) {
+    errx(1, "lex: no digits at input: %s", start);
+  }
+  // Skip decimal point.
+  start = endptr + 1;
+  long int microseconds = strtol(start, &endptr, 10);
+  if (endptr == start) {
+    errx(1, "lex: no microseconds at input: %s", start);
+  }
+  int64_t uptime_milliseconds = seconds * 1000 + microseconds / 1000;
+  CDBusSendOomSignal(uptime_milliseconds);
 }
 
 static int AnomalyStart(const char *histogram_name, uint32_t *hash_bitmap,

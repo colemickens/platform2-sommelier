@@ -9,30 +9,43 @@
 
 #include <string>
 
+#include <base/at_exit.h>
+#include <base/memory/ref_counted.h>
+#include <base/message_loop/message_loop.h>
 #include <brillo/flag_helper.h>
 #include <brillo/process.h>
 #include <brillo/syslog_logging.h>
+#include <chromeos/dbus/service_constants.h>
+#include <dbus/bus.h>
+#include <dbus/exported_object.h>
+#include <dbus/message.h>
+
+#include "metrics_event/proto_bindings/metrics_event.pb.h"
 
 namespace {
 
-// Path to crash-reporter.
+// D-Bus handle for sending OOM-kill signals.  This is owned by |dbus| in
+// main().
+dbus::ExportedObject* g_dbus_exported_object = nullptr;
+
+// Path to crash_reporter.
 const char* crash_reporter_path = "/sbin/crash_reporter";
 
-// Set up all the state dirs.
-void Initialize() {
-  if (0) {
-    // TODO(semenzato): put this back in once we decide it's safe
-    // to make /var/spool/crash rwxrwxrwx root, or use a different
-    // owner and setuid for the crash reporter as well.
-    struct passwd* user;
-
-    // Get low privilege uid, gid.
-    user = getpwnam("chronos");  // NOLINT(runtime/threadsafe_fn)
-    CHECK_NE(nullptr, user);
-
-    // Drop privileges.
-    CHECK_EQ(0, setuid(user->pw_uid));
-  }
+// Prepares for sending D-Bus signals.  Returns a D-Bus object, which provides
+// a handle for sending signals.
+scoped_refptr<dbus::Bus> SetUpDBus(void) {
+  // Connect the bus.
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+  scoped_refptr<dbus::Bus> dbus(new dbus::Bus(options));
+  CHECK(dbus);
+  CHECK(dbus->Connect()) << "Failed to connect to D-Bus";
+  // Export a bus object so that other processes can register signal handlers
+  // (this service only sends signals, no methods are exported).
+  g_dbus_exported_object = dbus->GetExportedObject(
+      dbus::ObjectPath(anomaly_collector::kAnomalyEventServicePath));
+  CHECK(g_dbus_exported_object);
+  return dbus;
 }
 
 }  // namespace
@@ -47,7 +60,25 @@ void RunCrashReporter(int filter, const char* flag, const char* input_path) {
   CHECK_EQ(0, cmd.Run());
 }
 
+void CDBusSendOomSignal(const int64_t oom_timestamp_ms) {
+  dbus::Signal signal(anomaly_collector::kAnomalyEventServiceInterface,
+                      anomaly_collector::kAnomalyEventSignalName);
+  dbus::MessageWriter writer(&signal);
+  metrics_event::Event payload;
+  payload.set_type(metrics_event::Event_Type_OOM_KILL_KERNEL);
+  payload.set_timestamp(oom_timestamp_ms);
+  writer.AppendProtoAsArrayOfBytes(payload);
+  CHECK(g_dbus_exported_object);
+  g_dbus_exported_object->SendSignal(&signal);
+}
+
 int main(int argc, char* argv[]) {
+  // Sim sala bim!  These are needed to send D-Bus signals.  Even though they
+  // are not used directly, they set up some global state needed by the D-Bus
+  // library.
+  base::MessageLoop message_loop;
+  base::AtExitManager at_exit_manager;
+
   DEFINE_bool(filter, false, "Input is stdin and output is stdout");
   DEFINE_bool(test, false, "Run self-tests");
 
@@ -60,8 +91,9 @@ int main(int argc, char* argv[]) {
   else if (FLAGS_test)
     crash_reporter_path = "./anomaly_collector_test_reporter.sh";
 
-  if (!FLAGS_filter && !FLAGS_test)
-    Initialize();
+  scoped_refptr<dbus::Bus> dbus;
+  if (!FLAGS_test)
+    dbus = SetUpDBus();
 
   return AnomalyLexer(FLAGS_filter, FLAGS_test);
 }

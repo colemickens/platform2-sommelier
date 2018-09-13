@@ -192,7 +192,7 @@ fn modulo(e: isize, n: usize) -> usize {
 }
 
 // Reads a string from the file named by |path|, representing a u32, and
-// returns the value the strings represents.
+// returns the value the strings it represents.
 fn read_int(path: &Path) -> Result<u32> {
     let mut file = open(path)?;
     let mut content = String::new();

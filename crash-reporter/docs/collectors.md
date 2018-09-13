@@ -201,17 +201,34 @@ otherwise unceremoniously killed.
 
 # Anomaly Collectors
 
-Here are the collectors that [anomaly_collector] runs on syslog.
-That service is spawned early during boot via [anomaly-collector.conf].
+The [anomaly_collector] service is spawned early during boot via
+[anomaly-collector.conf].  It runs a lexer on the syslog stream, and tries to
+match a set of regexes. A match triggers a collection or a D-Bus signal,
+depending on the regex.
 
-*   The [anomaly_collector] program runs a lexer on the syslog stream.
-*   When certain regexes match, the lines get packaged up and saved to a temp
-    file under `/tmp`.
-*   crash_reporter is invoked for the specific collector.
-    *   The temp files are read via stdin.
-    *   See sections below for more details.
-*   [anomaly_collector] runs only one collector at a time, and waits for it to
-    finish running fully before processing more syslog entries.
+*   Collection:
+
+    *   The matching lines are saved to a temp file under `/tmp`.
+    *   [crash_reporter] is invoked for a specific collector.
+    *   The temp file is read via stdin.
+
+*   Signal:
+
+    *   A D-Bus signal is emitted on a specific service.  Other processes may
+        register for delivery of this signal. The service offers no
+        methods.
+
+See sections below for more details on each collector and signal.
+
+The anomaly collector runs one collector at a time, and waits for it to
+finish running fully before processing more syslog entries.
+
+The anomaly collector rescans `/var/log/messages` from the beginning at
+reboot (or restart).  Thus the same anomaly may be reported more than once.
+
+As a special case, only the first instance of each kernel warning is collected
+during a session (from boot to shutdown or crash).  A count of each warning is
+reported separately via a sparse UMA histogram.
 
 ## kernel_warning_collector
 
@@ -252,9 +269,18 @@ The program name is `service-failure`.
 *   All non-normal exits are recorded this way.
 *   The signature is constructed from the exit status and service name.
 
+## Out-Of-Memory kill signal (OOM kill)
+
+On detection of OOM-kill attempts in the kernel, [anomaly_collector] sends a
+D-Bus signal on /org/chromium/AnomalyEventService.  This is currently used by
+[memd] to collect a number of memory-manager related stats and events.
+
+[anomaly_collector] does not try to confirm that the kill is successful.
+
 [ARC++]: ../../arc/
 [EC]: https://chromium.googlesource.com/chromiumos/platform/ec
 [Google Breakpad]: https://chromium.googlesource.com/breakpad/breakpad
+[memd]: ../../metrics/memd/
 [mosys]: https://chromium.googlesource.com/chromiumos/platform/mosys/
 [pstore]: https://chromium.googlesource.com/chromiumos/third_party/kernel/+/v4.17/Documentation/admin-guide/ramoops.rst
 [SELinux]: https://en.wikipedia.org/wiki/Security-Enhanced_Linux
