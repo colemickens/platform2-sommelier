@@ -395,6 +395,11 @@ void ParameterWorker::overrideCPFFMode(PipeConfig *pipeCfg, std::shared_ptr<Grap
     if (pipeCfg == nullptr)
         return;
 
+    if (mPipeType == GraphConfig::PIPE_STILL) {
+        pipeCfg->cpff_mode_hint = CPFF_MAIN;
+        return;
+    }
+
     /* Due to suppport 360 degree orientation, so width is less than
      * height in portrait mode, need to use max length between width
      * and height to do comparison.
