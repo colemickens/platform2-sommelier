@@ -12,7 +12,6 @@
 #include <base/files/scoped_file.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>
-#include <mojo/edk/embedder/process_delegate.h>
 
 #include "midis/client.h"
 #include "midis/device_tracker.h"
@@ -20,7 +19,7 @@
 
 namespace midis {
 
-class ClientTracker : public mojo::edk::ProcessDelegate {
+class ClientTracker {
  public:
   ClientTracker();
   ~ClientTracker();
@@ -33,9 +32,6 @@ class ClientTracker : public mojo::edk::ProcessDelegate {
   // via D-Bus. The net result of this function should be the creation
   // of a MidisHostImpl object which ClientTracker manages.
   void AcceptProxyConnection(base::ScopedFD fd);
-
-  // mojo::edk::ProcessDelegate:
-  void OnShutdownComplete() override;
 
   // Helper function to check whether a |midis_host_| object is
   // already associated with ClientTracker.

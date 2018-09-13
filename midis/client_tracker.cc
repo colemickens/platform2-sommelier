@@ -89,13 +89,14 @@ ClientTracker::~ClientTracker() {
     device_tracker_->RemoveClientFromDevices(client.first);
   }
   clients_.clear();
+  mojo::edk::ShutdownIPCSupport(base::Bind(&base::DoNothing));
 }
 
 void ClientTracker::InitClientTracker() {
   VLOG(1) << "Start client Mojo server.";
 
   mojo::edk::Init();
-  mojo::edk::InitIPCSupport(this, base::ThreadTaskRunnerHandle::Get());
+  mojo::edk::InitIPCSupport(base::ThreadTaskRunnerHandle::Get());
 }
 
 void ClientTracker::RemoveClient(uint32_t client_id) {
@@ -116,11 +117,6 @@ void ClientTracker::AcceptProxyConnection(base::ScopedFD fd) {
 
 bool ClientTracker::IsProxyConnected() {
   return midis_host_ != nullptr;
-}
-
-void ClientTracker::OnShutdownComplete() {
-  DCHECK(sequence_checker_.CalledOnValidSequence());
-  mojo::edk::ShutdownIPCSupport();
 }
 
 }  // namespace midis

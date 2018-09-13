@@ -29,7 +29,7 @@ class DeviceTracker {
   void AddDevice(std::unique_ptr<Device> dev);
   void RemoveDevice(uint32_t sys_num, uint32_t dev_num);
   bool InitDeviceTracker();
-  void ListDevices(mojo::Array<arc::mojom::MidisDeviceInfoPtr>* list);
+  void ListDevices(std::vector<arc::mojom::MidisDeviceInfoPtr>* list);
 
   class Observer {
    public:

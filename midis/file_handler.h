@@ -19,8 +19,6 @@
 
 namespace midis {
 
-class Device;
-
 // Class which handles file reading and input data handling functionality for a
 // particular subdevice.
 class FileHandler {
@@ -55,7 +53,6 @@ class FileHandler {
   base::ScopedFD fd_;
   brillo::MessageLoop::TaskId taskid_;
   std::string path_;
-  const Device* device_;
   DeviceDataCallback device_data_cb_;
   base::WeakPtrFactory<FileHandler> weak_factory_;
 

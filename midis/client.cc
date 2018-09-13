@@ -62,7 +62,7 @@ void Client::OnDeviceAddedOrRemoved(const Device& dev, bool added) {
 
 void Client::ListDevices(const ListDevicesCallback& callback) {
   // Get all the device information from device_tracker.
-  mojo::Array<arc::mojom::MidisDeviceInfoPtr> device_list;
+  std::vector<arc::mojom::MidisDeviceInfoPtr> device_list;
   device_tracker_->ListDevices(&device_list);
   callback.Run(std::move(device_list));
 }

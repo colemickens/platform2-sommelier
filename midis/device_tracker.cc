@@ -52,7 +52,7 @@ void DeviceTracker::RemoveDevice(uint32_t sys_num, uint32_t dev_num) {
 }
 
 void DeviceTracker::ListDevices(
-    mojo::Array<arc::mojom::MidisDeviceInfoPtr>* list) {
+    std::vector<arc::mojom::MidisDeviceInfoPtr>* list) {
   for (const auto& dev : devices_) {
     arc::mojom::MidisDeviceInfoPtr dev_info =
         arc::mojom::MidisDeviceInfo::New();
@@ -61,7 +61,7 @@ void DeviceTracker::ListDevices(
     dev_info->num_subdevices = dev.second->GetNumSubdevices();
     dev_info->name = dev.second->GetName();
     dev_info->manufacturer = dev.second->GetManufacturer();
-    list->push_back(std::move(dev_info));
+    list->emplace_back(std::move(dev_info));
   }
 }
 

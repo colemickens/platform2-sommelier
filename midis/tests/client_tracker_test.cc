@@ -33,7 +33,7 @@ TEST_F(ClientTrackerTest, AddClientPositive) {
 
   arc::mojom::MidisServerPtr server;
   mojo::InterfaceRequest<arc::mojom::MidisServer> request =
-      mojo::GetProxy(&server);
+      mojo::MakeRequest(&server);
 
   auto client_pointer = std::make_unique<arc::mojom::MidisClientPtr>();
   cli_tracker.MakeMojoClient(std::move(request), std::move(*client_pointer));
