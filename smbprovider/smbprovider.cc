@@ -1321,6 +1321,72 @@ bool SmbProvider::IsMounted(const Proto& options, int32_t* error_code) const {
   return is_valid;
 }
 
+ErrorType SmbProvider::StartReadDirectory(
+    const ReadDirectoryOptionsProto& options,
+    const std::string& directory_path,
+    DirectoryEntryListProto* entries,
+    int32_t* read_dir_token) {
+  DCHECK(entries);
+  DCHECK(read_dir_token);
+
+  SambaInterface* samba_interface = GetSambaInterface(GetMountId(options));
+  auto read_dir_progress = std::make_unique<ReadDirProgress>(samba_interface);
+
+  MetadataCache* cache = nullptr;
+  bool got_cache =
+      mount_manager_->GetMetadataCache(GetMountId(options), &cache);
+  DCHECK(got_cache);
+  DCHECK(cache);
+
+  int32_t read_dir_result;
+  const bool should_continue_read_dir = read_dir_progress->StartReadDir(
+      directory_path, cache, &read_dir_result, entries);
+
+  if (should_continue_read_dir) {
+    DCHECK_EQ(0, read_dir_result);
+    // The read directory needs to be continued.
+    *read_dir_token = read_dir_tracker_.Insert(std::move(read_dir_progress));
+    return ERROR_OPERATION_PENDING;
+  }
+
+  if (read_dir_result == 0) {
+    // The readdir is complete.
+    return ERROR_OK;
+  }
+
+  return GetErrorFromErrno(read_dir_result);
+}
+
+ErrorType SmbProvider::ContinueReadDirectory(int32_t read_dir_token,
+                                             DirectoryEntryListProto* entries) {
+  DCHECK(entries);
+
+  DCHECK_GE(read_dir_token, 0);
+  DCHECK(read_dir_tracker_.Contains(read_dir_token));
+
+  int32_t read_dir_result;
+  const bool should_continue_read_dir =
+      read_dir_tracker_.Find(read_dir_token)
+          ->second->ContinueReadDir(&read_dir_result, entries);
+
+  if (should_continue_read_dir) {
+    DCHECK_EQ(0, read_dir_result);
+    // The read directory needs to be continued.
+    return ERROR_OPERATION_PENDING;
+  }
+
+  // The read directory no longer needs to be continued as it has either
+  // completed successfully or it failed so remove it for |read_dir_tracker_|.
+  read_dir_tracker_.Remove(read_dir_token);
+
+  if (read_dir_result == 0) {
+    // The readdir is complete.
+    return ERROR_OK;
+  }
+
+  return GetErrorFromErrno(read_dir_result);
+}
+
 // These are required to explicitly instantiate the template functions.
 template ErrorType SmbProvider::StartCopyProgress<FileCopyProgress>(
     const CopyEntryOptionsProto&,

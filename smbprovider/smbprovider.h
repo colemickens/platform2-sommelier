@@ -19,6 +19,7 @@
 #include "smbprovider/kerberos_artifact_synchronizer.h"
 #include "smbprovider/proto.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
+#include "smbprovider/read_dir_progress.h"
 #include "smbprovider/smb_credential.h"
 #include "smbprovider/smbprovider_helper.h"
 #include "smbprovider/temp_file_manager.h"
@@ -463,6 +464,22 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   // successfully, and any other ErrorType if an error is encountered.
   ErrorType ContinueCopy(int32_t copy_token);
 
+  // Starts a read directory of the directory at |directory_path|.
+  // Returns ERROR_OPERATION_PENDING and sets |read_dir_token| if the read dir
+  // must be continued, ERROR_OK if the read directory was completed
+  // successfully, and any other ErrorType if an error is encountered.
+  ErrorType StartReadDirectory(const ReadDirectoryOptionsProto& options,
+                               const std::string& directory_path,
+                               DirectoryEntryListProto* entries,
+                               int32_t* read_dir_token);
+
+  // Continues the read directory mapped to |read_dir_token|. Returns
+  // ERROR_OPERATION_PENDING if the read directory must be continued, ERROR_OK
+  // if the read directory was completed successfully, and any other ErrorType
+  // if an error is encountered.
+  ErrorType ContinueReadDirectory(int32_t read_dir_token,
+                                  DirectoryEntryListProto* entries);
+
   // Returns true if |mount_id_| corresponds to a valid mount. Returns false and
   // sets |error_code| to ERROR_NOT_FOUND otherwise.
   template <typename Proto>
@@ -472,9 +489,14 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   std::unique_ptr<MountManager> mount_manager_;
   std::unique_ptr<KerberosArtifactSynchronizer> kerberos_synchronizer_;
   TempFileManager temp_file_manager_;
+  // TODO(baileyberro): Add metrics for |copy_tracker_| and |read_dir_tracker_|
+  // https://crbug.com/887606.
   // Keeps track of in-progress copy operations. Maps a copy token to a
   // CopyProgress.
   IdMap<std::unique_ptr<CopyProgressInterface>> copy_tracker_;
+  // Keeps track of in-progress copy operations. Maps a read dir token to a
+  // ReadDirProgress.
+  IdMap<std::unique_ptr<ReadDirProgress>> read_dir_tracker_;
 
   DISALLOW_COPY_AND_ASSIGN(SmbProvider);
 };
