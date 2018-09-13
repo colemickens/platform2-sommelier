@@ -30,6 +30,10 @@ namespace {
 // How long to wait before timing out on regular RPCs.
 constexpr int64_t kDefaultTimeoutSeconds = 2;
 
+// How long to wait before timing out on a package info call which may take
+// longer due to PackageKit startup time on slower boards.
+constexpr int64_t kPackageInfoTimeoutSeconds = 10;
+
 }  // namespace
 
 Container::Container(const std::string& name,
@@ -173,7 +177,7 @@ bool Container::GetLinuxPackageInfo(const std::string& file_path,
   grpc::ClientContext ctx;
   ctx.set_deadline(gpr_time_add(
       gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+      gpr_time_from_seconds(kPackageInfoTimeoutSeconds, GPR_TIMESPAN)));
 
   grpc::Status status = garcon_stub_->GetLinuxPackageInfo(
       &ctx, container_request, &container_response);

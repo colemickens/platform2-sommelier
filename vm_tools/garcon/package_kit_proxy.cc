@@ -78,7 +78,7 @@ constexpr uint32_t kPackageKitInfoSecurity = 8;
 
 // Timeout for when we are querying for package information in case PackageKit
 // dies.
-constexpr int kGetLinuxPackageInfoTimeoutSeconds = 5;
+constexpr int kGetLinuxPackageInfoTimeoutSeconds = 10;
 constexpr base::TimeDelta kGetLinuxPackageInfoTimeout =
     base::TimeDelta::FromSeconds(kGetLinuxPackageInfoTimeoutSeconds);
 
