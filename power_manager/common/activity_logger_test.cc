@@ -214,4 +214,27 @@ TEST_F(ActivityLoggerTest, PeriodicWithOngoing) {
   EXPECT_EQ(base::TimeDelta(), logger.GetOngoingTimerDelayForTest());
 }
 
+TEST_F(ActivityLoggerTest, OngoingState) {
+  const base::TimeDelta kOngoingDelay = base::TimeDelta::FromSeconds(10);
+  OngoingStateActivityLogger logger(kOngoingDelay);
+  Init(&logger);
+  EXPECT_EQ("", PopMessage());
+
+  logger.OnStateChanged("a");
+  EXPECT_EQ("", PopMessage());
+  EXPECT_EQ(kOngoingDelay, logger.GetOngoingTimerDelayForTest());
+  AdvanceTime(kOngoingDelay);
+  ASSERT_TRUE(logger.TriggerOngoingTimerForTest());
+  EXPECT_EQ("a", PopMessage());
+
+  AdvanceTime(kOngoingDelay / 2);
+  logger.OnStateChanged("b");
+  AdvanceTime(kOngoingDelay / 2);
+  ASSERT_TRUE(logger.TriggerOngoingTimerForTest());
+  EXPECT_EQ("b", PopMessage());
+
+  logger.OnStateChanged("");
+  EXPECT_EQ(base::TimeDelta(), logger.GetOngoingTimerDelayForTest());
+}
+
 }  // namespace power_manager

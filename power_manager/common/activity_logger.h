@@ -172,6 +172,41 @@ class StartStopActivityLogger : public BaseActivityLogger {
   DISALLOW_COPY_AND_ASSIGN(StartStopActivityLogger);
 };
 
+// OngoingStateActivityLogger periodically logs a caller-provided state.
+// The state is logged verbatim and can be changed.
+//
+// For example, with an ongoing interval of 10 seconds:
+//
+// :00 state "a"
+// :10           -> "a"
+// :20           -> "a"
+// :26 state "b"
+// :30           -> "b"
+// :33 state ""
+// :45 state "c"
+// :55           -> "c"
+class OngoingStateActivityLogger : public BaseActivityLogger {
+ public:
+  // |ongoing_interval| contains the interval between log messages while
+  // |state_| is non-empty.
+  explicit OngoingStateActivityLogger(base::TimeDelta ongoing_interval);
+  ~OngoingStateActivityLogger() override;
+
+  // Should be called when the state to log has changed.
+  // When |state| transitions from empty to non-empty, a message will be logged
+  // after |ongoing_interval| and then every |ongoing_interval|.
+  // An empty string stops logging.
+  void OnStateChanged(const std::string& state);
+
+ private:
+  void LogOngoing();
+
+  // Current state message to log.
+  std::string state_;
+
+  DISALLOW_COPY_AND_ASSIGN(OngoingStateActivityLogger);
+};
+
 }  // namespace power_manager
 
 #endif  // POWER_MANAGER_COMMON_ACTIVITY_LOGGER_H_

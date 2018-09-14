@@ -40,6 +40,10 @@ constexpr base::TimeDelta kInitialStateTimeout =
 constexpr base::TimeDelta kUpdateEngineDBusTimeout =
     base::TimeDelta::FromSeconds(3);
 
+// Interval between logging the list of current wake locks.
+constexpr base::TimeDelta kWakeLocksLoggingInterval =
+    base::TimeDelta::FromMinutes(5);
+
 // Returns |time_ms|, a time in milliseconds, as a
 // util::TimeDeltaToString()-style string.
 std::string MsToString(int64_t time_ms) {
@@ -143,6 +147,26 @@ std::string GetPolicyDelaysDebugString(
   if (delays.has_idle_ms())
     str += prefix + "_idle=" + MsToString(delays.idle_ms()) + " ";
   return str;
+}
+
+// Returns a string describing the wake locks in |policy|, or an empty string if
+// no wake locks are held.
+std::string GetWakeLocksLogString(const PowerManagementPolicy& policy) {
+  std::string msg;
+  if (policy.screen_wake_lock())
+    msg += " screen";
+  if (policy.dim_wake_lock())
+    msg += " dim";
+  if (policy.system_wake_lock())
+    msg += " system";
+
+  if (msg.empty())
+    return std::string();
+
+  msg = "Active wake locks:" + msg;
+  if (policy.has_reason())
+    msg += " (" + policy.reason() + ")";
+  return msg;
 }
 
 }  // namespace
@@ -289,6 +313,7 @@ StateController::StateController()
       screen_wake_lock_(std::make_unique<ActivityInfo>()),
       dim_wake_lock_(std::make_unique<ActivityInfo>()),
       system_wake_lock_(std::make_unique<ActivityInfo>()),
+      wake_lock_logger_(kWakeLocksLoggingInterval),
       weak_ptr_factory_(this) {}
 
 StateController::~StateController() {
@@ -444,6 +469,9 @@ void StateController::HandlePolicyChange(const PowerManagementPolicy& policy) {
   system_wake_lock_->SetActive(policy.system_wake_lock(), now);
 
   UpdateSettingsAndState();
+
+  // Update the message that periodically lists active wake locks.
+  wake_lock_logger_.OnStateChanged(GetWakeLocksLogString(policy));
 }
 
 void StateController::HandleUserActivity() {

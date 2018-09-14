@@ -15,6 +15,7 @@
 #include <base/timer/timer.h>
 #include <dbus/exported_object.h>
 
+#include "power_manager/common/activity_logger.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs_observer.h"
 #include "power_manager/proto_bindings/policy.pb.h"
@@ -493,6 +494,12 @@ class StateController : public PrefsObserver {
   // by UpdateSettingsAndState() and logged by UpdateState() when the action
   // would actually be performed.
   std::string reason_for_ignoring_idle_action_;
+
+  // Periodically logs active wake locks to aid in debugging.
+  // HandlePolicyChange() logs changes to the wake lock state, but it can be
+  // hard find and interpret these messages when the last policy change happened
+  // long ago.
+  OngoingStateActivityLogger wake_lock_logger_;
 
   base::WeakPtrFactory<StateController> weak_ptr_factory_;
 

@@ -165,4 +165,25 @@ void StartStopActivityLogger::LogOngoing() {
   log_callback_.Run(activity_name_ + " ongoing");
 }
 
+OngoingStateActivityLogger::OngoingStateActivityLogger(
+    base::TimeDelta ongoing_interval)
+    : BaseActivityLogger(std::string(), base::TimeDelta(), ongoing_interval) {}
+
+OngoingStateActivityLogger::~OngoingStateActivityLogger() {}
+
+void OngoingStateActivityLogger::OnStateChanged(const std::string& state) {
+  state_ = state;
+  if (state_.empty()) {
+    ongoing_timer_.Stop();
+  } else if (!ongoing_timer_.IsRunning()) {
+    ongoing_timer_.Start(FROM_HERE, ongoing_interval_, this,
+                         &OngoingStateActivityLogger::LogOngoing);
+  }
+}
+
+void OngoingStateActivityLogger::LogOngoing() {
+  DCHECK(!state_.empty());
+  log_callback_.Run(state_);
+}
+
 }  // namespace power_manager
