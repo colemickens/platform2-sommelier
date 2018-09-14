@@ -308,6 +308,24 @@ status_t OutputFrameWorker::handlePostRun()
                                          processingData.mMsg->pMsg.processingSettings,
                                          request);
         CheckError(status != OK, status, "@%s, postprocess failed! [%d]!", __FUNCTION__, status);
+    } else {
+        bool hasInputBuf = request->hasInputBuf();
+        if (hasInputBuf) {
+            const camera3_stream_buffer* inputBuf = request->getInputBuffer();
+            CheckError(!inputBuf, UNKNOWN_ERROR, "@%s, getInputBuffer fails", __FUNCTION__);
+
+            int fmt = inputBuf->stream->format;
+            CheckError((fmt != HAL_PIXEL_FORMAT_YCbCr_420_888), UNKNOWN_ERROR,
+                "@%s, input stream is not YCbCr_420_888, format:%x", __FUNCTION__, fmt);
+
+            const CameraStreamNode* s = request->getInputStream();
+            CheckError(!s, UNKNOWN_ERROR, "@%s, getInputStream fails", __FUNCTION__);
+
+            std::shared_ptr<CameraBuffer> buf = request->findBuffer(s);
+            CheckError((buf == nullptr), UNKNOWN_ERROR, "@%s, findBuffer fails", __FUNCTION__);
+
+            buf->getOwner()->captureDone(buf, request);
+        }
     }
 
     // Dump the buffers if enabled in flags
