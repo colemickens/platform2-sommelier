@@ -198,6 +198,14 @@ bool VshForwarder::Init() {
     return false;
   }
 
+  // Block SIGCHLD until the parent is ready to handle it with the
+  // RegisterHandler() call below. At that point any queued SIGCHLD
+  // signals will be handled.
+  sigset_t mask;
+  sigemptyset(&mask);
+  sigaddset(&mask, SIGCHLD);
+  sigprocmask(SIG_BLOCK, &mask, nullptr);
+
   // fork() a child process that will exec the target process/shell.
   int pid = fork();
   if (pid == 0) {
@@ -228,6 +236,9 @@ bool VshForwarder::Init() {
 
   SendConnectionResponse(READY, "vsh ready");
 
+  // Add the SIGCHLD handler. This will block SIGCHLD again, which has no
+  // effect since it was blocked before the fork(), but the underlying
+  // signalfd will still have any queued SIGCHLD.
   signal_handler_.Init();
   signal_handler_.RegisterHandler(
       SIGCHLD,
@@ -363,6 +374,11 @@ void VshForwarder::PrepareExec(
         [](const string& arg) -> const char* { return arg.c_str(); });
     executable = argv[0];
   }
+
+  sigset_t mask;
+  sigemptyset(&mask);
+  sigaddset(&mask, SIGCHLD);
+  sigprocmask(SIG_UNBLOCK, &mask, nullptr);
 
   if (execvpe(executable, const_cast<char* const*>(argv.data()), envp.data()) <
       0) {
