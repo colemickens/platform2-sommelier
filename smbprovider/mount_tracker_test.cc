@@ -670,4 +670,28 @@ TEST_F(MountTrackerTest, TestNonExistantSambaInterfaceId) {
   EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(non_existent_id));
 }
 
+TEST_F(MountTrackerTest, TestGetCacheNoMounts) {
+  MetadataCache* cache = nullptr;
+
+  EXPECT_FALSE(mount_tracker_->GetMetadataCache(0, &cache));
+}
+
+TEST_F(MountTrackerTest, TestGetCache) {
+  int32_t mount_id;
+  EXPECT_TRUE(AddMountWithEmptyCredential("smb://server/share", &mount_id));
+
+  MetadataCache* cache = nullptr;
+  EXPECT_TRUE(mount_tracker_->GetMetadataCache(mount_id, &cache));
+  EXPECT_NE(nullptr, cache);
+}
+
+TEST_F(MountTrackerTest, TestGetCacheForInvalidMount) {
+  int32_t mount_id;
+  EXPECT_TRUE(AddMountWithEmptyCredential("smb://server/share", &mount_id));
+
+  // mount_id + 1 does not exist.
+  MetadataCache* cache = nullptr;
+  EXPECT_FALSE(mount_tracker_->GetMetadataCache(mount_id + 1, &cache));
+}
+
 }  // namespace smbprovider

@@ -95,6 +95,9 @@ class MountTracker {
   bool GetSambaInterface(int32_t mount_id,
                          SambaInterface** samba_interface) const;
 
+  // Gets a pointer to the metadata cache for |mount_id|.
+  bool GetMetadataCache(int32_t mount_id, MetadataCache** cache) const;
+
  private:
   // Maintains the state of a single mount. Contains the mount root path and
   // the metadata cache.

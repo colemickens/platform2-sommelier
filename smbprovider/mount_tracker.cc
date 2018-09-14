@@ -178,6 +178,20 @@ bool MountTracker::GetSambaInterface(int32_t mount_id,
   return true;
 }
 
+bool MountTracker::GetMetadataCache(int32_t mount_id,
+                                    MetadataCache** cache) const {
+  DCHECK(cache);
+
+  auto mount_iter = mounts_.Find(mount_id);
+  if (mount_iter == mounts_.End()) {
+    return false;
+  }
+
+  *cache = mount_iter->second.cache.get();
+  DCHECK(*cache);
+  return true;
+}
+
 MountTracker::MountInfo MountTracker::CreateMountInfo(
     const std::string& mount_root,
     SmbCredential credential,
