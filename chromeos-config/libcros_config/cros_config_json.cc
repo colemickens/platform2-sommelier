@@ -25,7 +25,7 @@
 
 namespace brillo {
 
-CrosConfigJson::CrosConfigJson() : model_dict_(nullptr) {}
+CrosConfigJson::CrosConfigJson() : config_dict_(nullptr) {}
 
 CrosConfigJson::~CrosConfigJson() {}
 
@@ -44,15 +44,14 @@ bool CrosConfigJson::SelectConfigByIdentity(
   if (json_config_->GetAsDictionary(&root_dict)) {
     const base::DictionaryValue* chromeos = nullptr;
     if (root_dict->GetDictionary("chromeos", &chromeos)) {
-      const base::ListValue* models_list = nullptr;
-      if (chromeos->GetList("configs", &models_list) ||
-          chromeos->GetList("models", &models_list)) {
-        size_t num_models = models_list->GetSize();
-        for (size_t i = 0; i < num_models; ++i) {
-          const base::DictionaryValue* model_dict = nullptr;
-          if (models_list->GetDictionary(i, &model_dict)) {
+      const base::ListValue* configs_list = nullptr;
+      if (chromeos->GetList("configs", &configs_list)) {
+        size_t num_configs = configs_list->GetSize();
+        for (size_t i = 0; i < num_configs; ++i) {
+          const base::DictionaryValue* config_dict = nullptr;
+          if (configs_list->GetDictionary(i, &config_dict)) {
             const base::DictionaryValue* identity_dict = nullptr;
-            if (model_dict->GetDictionary("identity", &identity_dict)) {
+            if (config_dict->GetDictionary("identity", &identity_dict)) {
               bool platform_specific_match = false;
               if (identity_x86) {
                 const std::string& find_name = identity_x86->GetName();
@@ -96,7 +95,7 @@ bool CrosConfigJson::SelectConfigByIdentity(
               }
 
               if (platform_specific_match && vpd_tag_match) {
-                model_dict_ = model_dict;
+                config_dict_ = config_dict;
                 break;
               }
             }
@@ -105,7 +104,7 @@ bool CrosConfigJson::SelectConfigByIdentity(
       }
     }
   }
-  if (!model_dict_) {
+  if (!config_dict_) {
     if (identity_arm) {
       CROS_CONFIG_LOG(ERROR)
           << "Failed to find config for device-tree compatible string: "
@@ -150,7 +149,7 @@ bool CrosConfigJson::GetString(const std::string& path,
   }
 
   bool valid_path = true;
-  const base::DictionaryValue* attr_dict = model_dict_;
+  const base::DictionaryValue* attr_dict = config_dict_;
 
   if (path.length() > 1) {
     std::vector<std::string> path_tokens = base::SplitString(

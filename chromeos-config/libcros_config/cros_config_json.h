@@ -39,7 +39,7 @@ class CrosConfigJson : public CrosConfigImpl {
                               const CrosConfigIdentityX86* identity_x86);
   std::unique_ptr<const base::Value> json_config_;
   // Owned by json_config_
-  const base::DictionaryValue* model_dict_;  // Model root
+  const base::DictionaryValue* config_dict_;  // Root of configs
 
   DISALLOW_COPY_AND_ASSIGN(CrosConfigJson);
 };
