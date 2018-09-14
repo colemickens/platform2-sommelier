@@ -230,6 +230,7 @@ int main(int argc, char* argv[]) {
 
   wl_shell_surface_set_toplevel(data.shell_surface);
   wl_shell_surface_set_maximized(data.shell_surface, nullptr);
+  wl_shell_surface_set_class(data.shell_surface, "wayland_demo");
   data.callback = wl_surface_frame(data.surface);
   struct wl_callback_listener callback_listener = {demo_draw};
   data.callback_listener = &callback_listener;

@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <X11/Xlib.h>
+#include <X11/Xutil.h>
 
 #include "base/logging.h"
 
@@ -34,6 +35,11 @@ int main(int argc, char* argv[]) {
   }
   win = XCreateSimpleWindow(dpy, RootWindow(dpy, screen), x, y, width, height,
                             0, 0 /* black */, bgcolor);
+
+  XClassHint* wmclass_hint = XAllocClassHint();
+  char class_name[] = "x11_demo";
+  wmclass_hint->res_name = wmclass_hint->res_class = class_name;
+  XSetClassHint(dpy, win, wmclass_hint);
   XSelectInput(dpy, win, KeyPressMask);
   XMapWindow(dpy, win);
 
