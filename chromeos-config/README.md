@@ -312,7 +312,7 @@ The schema definition is below:
 | smbios-name-match | string |  | False | x86 | [x86] Firmware name built into the firmware and reflected back out in the SMBIOS tables. |
 | whitelabel-tag | string |  | False | x86 | 'whitelabel-tag' value set in the VPD for Whitelabels. |
 | customization-id | string |  | False | ARM | 'customization-id' value set in the VPD for Zergs and older Whitelabels. |
-| device-tree-compatible-match | string |  | False | ARM | [ARM] String pattern (partial) that is matched against the contents of /proc/device-tree/compatible on ARM devices. |
+| device-tree-compatible-match | string |  | False | ARM | [ARM] Simple substring match value or a POSIX regex pattern that is matched against the contents of /proc/device-tree/compatible on ARM devices. |
 | platform-name | string |  | False | ARM | Defines the name that is reported by 'mosys platform name' This is typically the reference design name with the first letter capitalized |
 | whitelabel-tag | string |  | False | ARM | 'whitelabel-tag' value set in the VPD for Whitelabels. |
 
