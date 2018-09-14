@@ -11,6 +11,7 @@
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/errno.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -21,6 +22,7 @@
 #include <algorithm>
 #include <limits>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_enumerator.h>
@@ -45,6 +47,31 @@ using std::string;
 using std::vector;
 
 namespace login_manager {
+
+namespace {
+
+// Sets the signal mask of child processes spawned by
+// SystemUtilsImpl::LaunchAndWait() to have the default signal mask instead of
+// [HUP INT TERM].
+class ResetSigmaskDelegate : public base::LaunchOptions::PreExecDelegate {
+ public:
+  ResetSigmaskDelegate() = default;
+  ~ResetSigmaskDelegate() override = default;
+
+  void RunAsyncSafe() override {
+    sigset_t new_sigset;
+    sigemptyset(&new_sigset);
+    // We cannot use PCHECK() here since that's not async-signal safe. Do the
+    // next best thing which is call abort(3).
+    if (sigprocmask(SIG_SETMASK, &new_sigset, nullptr) != 0)
+      abort();
+  }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(ResetSigmaskDelegate);
+};
+
+}  // namespace
 
 SystemUtilsImpl::SystemUtilsImpl()
     : dev_mode_state_(DevModeState::DEV_MODE_UNKNOWN),
@@ -494,7 +521,13 @@ bool SystemUtilsImpl::LaunchAndWait(const std::vector<std::string>& argv,
                                     int* exit_code_out) {
   DCHECK(!argv.empty());
 
-  base::Process process(base::LaunchProcess(argv, base::LaunchOptions()));
+  // base::LaunchProcess() sets the signal mask of the child process to be the
+  // same one as the parent process. ResetSigmaskDelegate will take care of that
+  // and clear the child's process mask before calling execve(2).
+  ResetSigmaskDelegate reset_sigmask_delegate;
+  base::LaunchOptions options;
+  options.pre_exec_delegate = &reset_sigmask_delegate;
+  base::Process process(base::LaunchProcess(argv, std::move(options)));
   if (!process.IsValid()) {
     PLOG(ERROR) << "Failed to create a process for '"
                 << base::JoinString(argv, " ") << "'";
