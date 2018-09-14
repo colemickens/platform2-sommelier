@@ -65,6 +65,7 @@ const string MEDIACTL_PREVIEWNAME = " viewfinder";
 const string MEDIACTL_STATNAME = " 3a stat";
 
 GraphConfig::GraphConfig() :
+        mSettings(nullptr),
         mReqId(0),
         mPipeType(PIPE_VIDEO),
         mSourceType(SRC_NONE)
