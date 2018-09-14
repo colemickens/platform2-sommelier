@@ -123,9 +123,9 @@ std::unique_ptr<password_provider::Password> GetPassword(
       password_fd.get(), password_length);
 }
 
-MountManager::MountManager(std::unique_ptr<base::TickClock> tick_clock,
+MountManager::MountManager(std::unique_ptr<MountTracker> mount_tracker,
                            SambaInterfaceFactory samba_interface_factory)
-    : tick_clock_(std::move(tick_clock)),
+    : mount_tracker_(std::move(mount_tracker)),
       samba_interface_factory_(std::move(samba_interface_factory)) {
   system_samba_interface_ = CreateSambaInterface();
 }
@@ -133,24 +133,13 @@ MountManager::MountManager(std::unique_ptr<base::TickClock> tick_clock,
 MountManager::~MountManager() = default;
 
 bool MountManager::IsAlreadyMounted(int32_t mount_id) const {
-  auto mount_iter = mounts_.Find(mount_id);
-  if (mount_iter == mounts_.End()) {
-    return false;
-  }
+  DCHECK_GE(mount_id, 0);
 
-  DCHECK_EQ(mounted_share_paths_.count(mount_iter->second.mount_root), 1);
-  return true;
+  return mount_tracker_->IsAlreadyMounted(mount_id);
 }
 
 bool MountManager::IsAlreadyMounted(const std::string& mount_root) const {
-  bool has_credential = mounted_share_paths_.count(mount_root) > 0;
-  if (!has_credential) {
-    DCHECK(!ExistsInMounts(mount_root));
-    return false;
-  }
-
-  DCHECK(ExistsInMounts(mount_root));
-  return true;
+  return mount_tracker_->IsAlreadyMounted(mount_root);
 }
 
 bool MountManager::AddMount(const std::string& mount_root,
@@ -158,51 +147,31 @@ bool MountManager::AddMount(const std::string& mount_root,
                             int32_t* mount_id) {
   DCHECK(mount_id);
 
-  if (IsAlreadyMounted(mount_root)) {
-    return false;
+  bool mount_succeeded = mount_tracker_->AddMount(
+      mount_root, std::move(credential), CreateSambaInterface(), mount_id);
+  if (mount_succeeded) {
+    // After adding a new mount, remounts are disabled. This is only used as a
+    // DCHECK to ensure remounts are not called after a new mount.
+    can_remount_ = false;
   }
 
-  can_remount_ = false;
-
-  *mount_id =
-      mounts_.Insert(CreateMountInfo(mount_root, std::move(credential)));
-
-  AddSambaInterfaceIdToSambaInterfaceMap(*mount_id);
-  mounted_share_paths_.insert(mount_root);
-  return true;
+  return mount_succeeded;
 }
 
 bool MountManager::Remount(const std::string& mount_root,
                            int32_t mount_id,
                            SmbCredential credential) {
   DCHECK(can_remount_);
-  DCHECK(!IsAlreadyMounted(mount_id));
   DCHECK_GE(mount_id, 0);
 
-  if (IsAlreadyMounted(mount_root)) {
-    return false;
-  }
-
-  mounts_.InsertWithSpecificId(
-      mount_id, CreateMountInfo(mount_root, std::move(credential)));
-
-  AddSambaInterfaceIdToSambaInterfaceMap(mount_id);
-  mounted_share_paths_.insert(mount_root);
-  return true;
+  return mount_tracker_->AddMountWithId(mount_root, std::move(credential),
+                                        CreateSambaInterface(), mount_id);
 }
 
 bool MountManager::RemoveMount(int32_t mount_id) {
-  auto mount_iter = mounts_.Find(mount_id);
-  if (mount_iter == mounts_.End()) {
-    return false;
-  }
-  DeleteSambaInterfaceIdFromSambaInterfaceMap(mount_id);
+  DCHECK_GE(mount_id, 0);
 
-  bool path_removed = mounted_share_paths_.erase(mount_iter->second.mount_root);
-  DCHECK(path_removed);
-
-  mounts_.Remove(mount_iter->first);
-  return true;
+  return mount_tracker_->RemoveMount(mount_id);
 }
 
 bool MountManager::GetFullPath(int32_t mount_id,
@@ -210,70 +179,30 @@ bool MountManager::GetFullPath(int32_t mount_id,
                                std::string* full_path) const {
   DCHECK(full_path);
 
-  auto mount_iter = mounts_.Find(mount_id);
-  if (mount_iter == mounts_.End()) {
-    return false;
-  }
-
-  *full_path = AppendPath(mount_iter->second.mount_root, entry_path);
-  return true;
+  return mount_tracker_->GetFullPath(mount_id, entry_path, full_path);
 }
 
 bool MountManager::GetMetadataCache(int32_t mount_id,
                                     MetadataCache** cache) const {
   DCHECK(cache);
 
-  auto mount_iter = mounts_.Find(mount_id);
-  if (mount_iter == mounts_.End()) {
-    return false;
-  }
-
-  *cache = mount_iter->second.cache.get();
-  DCHECK(*cache);
-  return true;
+  return mount_tracker_->GetMetadataCache(mount_id, cache);
 }
 
 std::string MountManager::GetRelativePath(int32_t mount_id,
                                           const std::string& full_path) const {
-  auto mount_iter = mounts_.Find(mount_id);
-  DCHECK(mount_iter != mounts_.End());
-
-  DCHECK(StartsWith(full_path, mount_iter->second.mount_root,
-                    base::CompareCase::INSENSITIVE_ASCII));
-
-  return full_path.substr(mount_iter->second.mount_root.length());
+  return mount_tracker_->GetRelativePath(mount_id, full_path);
 }
 
 bool MountManager::GetSambaInterface(int32_t mount_id,
                                      SambaInterface** samba_interface) const {
   DCHECK(samba_interface);
 
-  auto mount_iter = mounts_.Find(mount_id);
-  if (mount_iter == mounts_.End()) {
-    return false;
-  }
-
-  *samba_interface = mount_iter->second.samba_interface.get();
-  DCHECK(*samba_interface);
-
-  return true;
+  return mount_tracker_->GetSambaInterface(mount_id, samba_interface);
 }
 
 SambaInterface* MountManager::GetSystemSambaInterface() const {
   return system_samba_interface_.get();
-}
-
-const SmbCredential& MountManager::GetCredential(
-    SambaInterface::SambaInterfaceId samba_interface_id) const {
-  DCHECK_NE(samba_interface_map_.count(samba_interface_id), 0);
-
-  // Double lookup of SambaInterfaceId => MountId followed by MountId =>
-  // MountInfo.credential
-  const int32_t mount_id = samba_interface_map_.at(samba_interface_id);
-
-  DCHECK(mounts_.Contains(mount_id));
-
-  return mounts_.Find(mount_id)->second.credential;
 }
 
 std::unique_ptr<SambaInterface> MountManager::CreateSambaInterface() {
@@ -293,7 +222,7 @@ bool MountManager::GetAuthentication(
   DCHECK_GT(username_length, 0);
   DCHECK_GT(password_length, 0);
 
-  if (samba_interface_map_.count(samba_interface_id) == 0) {
+  if (!mount_tracker_->IsAlreadyMounted(samba_interface_id)) {
     LOG(ERROR) << "Credential not found for SambaInterfaceId: "
                << samba_interface_id;
 
@@ -303,7 +232,8 @@ bool MountManager::GetAuthentication(
     return false;
   }
 
-  const SmbCredential& credential = GetCredential(samba_interface_id);
+  const SmbCredential& credential =
+      mount_tracker_->GetCredential(samba_interface_id);
 
   if (!CanInputCredential(workgroup_length, username_length, password_length,
                           credential)) {
@@ -320,50 +250,8 @@ bool MountManager::GetAuthentication(
   return true;
 }
 
-MountManager::MountInfo MountManager::CreateMountInfo(
-    const std::string& mount_root, SmbCredential credential) {
-  return MountInfo(mount_root, tick_clock_.get(), std::move(credential),
-                   CreateSambaInterface());
-}
-
 SambaInterface::SambaInterfaceId MountManager::GetSystemSambaInterfaceId() {
   return system_samba_interface_->GetSambaInterfaceId();
-}
-
-SambaInterface::SambaInterfaceId MountManager::GetSambaInterfaceIdForMountId(
-    int32_t mount_id) const {
-  DCHECK(mounts_.Contains(mount_id));
-
-  auto mount_iter = mounts_.Find(mount_id);
-  return mount_iter->second.samba_interface->GetSambaInterfaceId();
-}
-
-void MountManager::AddSambaInterfaceIdToSambaInterfaceMap(int32_t mount_id) {
-  const SambaInterface::SambaInterfaceId samba_interface_id =
-      GetSambaInterfaceIdForMountId(mount_id);
-  DCHECK_EQ(0, samba_interface_map_.count(samba_interface_id));
-
-  samba_interface_map_[samba_interface_id] = mount_id;
-}
-
-void MountManager::DeleteSambaInterfaceIdFromSambaInterfaceMap(
-    int32_t mount_id) {
-  SambaInterface::SambaInterfaceId samba_interface_id =
-      GetSambaInterfaceIdForMountId(mount_id);
-  DCHECK_NE(0, samba_interface_map_.count(samba_interface_id));
-
-  samba_interface_map_.erase(samba_interface_id);
-}
-
-bool MountManager::ExistsInMounts(const std::string& mount_root) const {
-  for (auto mount_iter = mounts_.Begin(); mount_iter != mounts_.End();
-       ++mount_iter) {
-    if (mount_iter->second.mount_root == mount_root) {
-      return true;
-    }
-  }
-
-  return false;
 }
 
 }  // namespace smbprovider

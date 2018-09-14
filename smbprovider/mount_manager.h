@@ -20,6 +20,7 @@
 #include "smbprovider/constants.h"
 #include "smbprovider/id_map.h"
 #include "smbprovider/metadata_cache.h"
+#include "smbprovider/mount_tracker.h"
 #include "smbprovider/samba_interface.h"
 #include "smbprovider/smb_credential.h"
 
@@ -42,7 +43,7 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
   using SambaInterfaceFactory =
       base::Callback<std::unique_ptr<SambaInterface>(MountManager*)>;
 
-  MountManager(std::unique_ptr<base::TickClock> tick_clock,
+  MountManager(std::unique_ptr<MountTracker> mount_tracker,
                SambaInterfaceFactory samba_interface_factory);
   ~MountManager();
 
@@ -78,7 +79,7 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
   bool RemoveMount(int32_t mount_id);
 
   // Returns the number of mounts.
-  size_t MountCount() const { return mounts_.Count(); }
+  size_t MountCount() const { return mount_tracker_->MountCount(); }
 
   // Uses the mount root associated with |mount_id| and appends |entry_path|
   // to form |full_path|.
@@ -114,70 +115,19 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
                          int32_t password_length) const;
 
  private:
-  // Maintains the state of a single mount. Contains the mount root path and
-  // the metadata cache.
-  struct MountInfo {
-    MountInfo() = default;
-    MountInfo(MountInfo&& other) = default;
-    MountInfo(const std::string& mount_root,
-              base::TickClock* tick_clock,
-              SmbCredential credential,
-              std::unique_ptr<SambaInterface> samba_interface)
-        : mount_root(mount_root),
-          credential(std::move(credential)),
-          samba_interface(std::move(samba_interface)) {
-      cache = std::make_unique<MetadataCache>(
-          tick_clock, base::TimeDelta::FromMicroseconds(
-                          kMetadataCacheLifetimeMicroseconds));
-    }
-
-    MountInfo& operator=(MountInfo&& other) = default;
-
-    std::string mount_root;
-    SmbCredential credential;
-    std::unique_ptr<SambaInterface> samba_interface;
-    std::unique_ptr<MetadataCache> cache;
-
-    DISALLOW_COPY_AND_ASSIGN(MountInfo);
-  };
-
   // Runs |samba_interface_factory_|.
   std::unique_ptr<SambaInterface> CreateSambaInterface();
 
-  // Returns a new MountInfo.
-  MountInfo CreateMountInfo(const std::string& mount_root,
-                            SmbCredential credential);
-
   // Returns the SambaInterfaceId from |system_samba_interface_|.
   SambaInterface::SambaInterfaceId GetSystemSambaInterfaceId();
-
-  // Returns the SambaInterfaceId corresponding to the |mount_id|.
-  SambaInterface::SambaInterfaceId GetSambaInterfaceIdForMountId(
-      int32_t mount_id) const;
-
-  // Adds |samba_interface_id| to |mount_id| mapping to |samba_interface_map_|.
-  void AddSambaInterfaceIdToSambaInterfaceMap(int32_t mount_id);
-
-  // Removes |samba_interface_id| from |samba_interface_map_|.
-  void DeleteSambaInterfaceIdFromSambaInterfaceMap(int32_t mount_id);
 
   // Returns the SmbCredential for |samba_interface_id|.
   const SmbCredential& GetCredential(
       SambaInterface::SambaInterfaceId samba_interface_id) const;
 
-  // Returns true if |mount_root| exists as a value in mounts_. This method is
-  // only used for DCHECK to ensure that credential_store_ is in sync with
-  // MountManager.
-  bool ExistsInMounts(const std::string& mount_root) const;
-
   bool can_remount_ = true;
-  IdMap<MountInfo> mounts_;
 
-  // Maps SambaInterfaceId to MountId.
-  std::unordered_map<SambaInterface::SambaInterfaceId, int32_t>
-      samba_interface_map_;
-  std::unordered_set<std::string> mounted_share_paths_;
-  std::unique_ptr<base::TickClock> tick_clock_;
+  std::unique_ptr<MountTracker> mount_tracker_;
   std::unique_ptr<SambaInterface> system_samba_interface_;
   SambaInterfaceFactory samba_interface_factory_;
 

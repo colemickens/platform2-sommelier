@@ -36,14 +36,15 @@ class MountManagerTest : public testing::Test {
  public:
   MountManagerTest() {
     auto tick_clock = std::make_unique<base::SimpleTestTickClock>();
-    tick_clock_ = tick_clock.get();
+
+    auto mount_tracker = std::make_unique<MountTracker>(std::move(tick_clock));
 
     auto fake_samba_ = std::make_unique<FakeSambaInterface>();
     auto samba_interface_factory =
         base::Bind(&SambaInterfaceFactoryFunction, fake_samba_.get());
 
     mounts_ = std::make_unique<MountManager>(
-        std::move(tick_clock), std::move(samba_interface_factory));
+        std::move(mount_tracker), std::move(samba_interface_factory));
   }
 
   ~MountManagerTest() override = default;
@@ -104,7 +105,6 @@ class MountManagerTest : public testing::Test {
  protected:
   std::unique_ptr<MountManager> mounts_;
   TempFileManager temp_files_;
-  base::SimpleTestTickClock* tick_clock_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MountManagerTest);
