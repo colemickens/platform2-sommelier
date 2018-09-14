@@ -107,8 +107,7 @@ constexpr char SessionManagerImpl::kStopArcInstanceImpulse[] =
 constexpr char SessionManagerImpl::kContinueArcBootImpulse[] =
     "continue-arc-boot";
 constexpr char SessionManagerImpl::kArcBootedImpulse[] = "arc-booted";
-constexpr char SessionManagerImpl::kRemoveOldArcDataImpulse[] =
-    "remove-old-arc-data";
+constexpr char SessionManagerImpl::kRemoveArcDataImpulse[] = "remove-arc-data";
 
 // Lock state related impulse (systemd unit start or Upstart signal).
 constexpr char SessionManagerImpl::kScreenLockedImpulse[] = "screen-locked";
@@ -1268,10 +1267,7 @@ bool SessionManagerImpl::EmitArcBooted(brillo::ErrorPtr* error,
       DCHECK(*error);
       return false;
     }
-    const base::FilePath android_data_old_dir =
-        GetAndroidDataOldDirForUser(actual_account_id);
-    env_vars.emplace_back("ANDROID_DATA_OLD_DIR=" +
-                          android_data_old_dir.value());
+    env_vars.emplace_back("CHROMEOS_USER=" + actual_account_id);
   }
 
   init_controller_->TriggerImpulse(kArcBootedImpulse, env_vars,
@@ -1301,99 +1297,25 @@ bool SessionManagerImpl::GetArcStartTimeTicks(brillo::ErrorPtr* error,
 bool SessionManagerImpl::RemoveArcData(brillo::ErrorPtr* error,
                                        const std::string& in_account_id) {
 #if USE_CHEETS
-  pid_t pid = 0;
-  if (android_container_->GetContainerPID(&pid) &&
-      android_container_->GetStatefulMode() != StatefulMode::STATELESS) {
-    *error = CreateError(dbus_error::kArcInstanceRunning,
-                         "ARC is currently running in a stateful mode.");
-    return false;
-  }
-
   std::string actual_account_id;
   if (!NormalizeAccountId(in_account_id, &actual_account_id, error)) {
     DCHECK(*error);
     return false;
   }
-  const base::FilePath android_data_dir =
-      GetAndroidDataDirForUser(actual_account_id);
-  const base::FilePath android_data_old_dir =
-      GetAndroidDataOldDirForUser(actual_account_id);
-
-  if (RemoveArcDataInternal(android_data_dir, android_data_old_dir))
-    return true;  // all done.
-
-  PLOG(WARNING) << "Failed to rename " << android_data_dir.value()
-                << "; directly deleting it instead";
-  // As a last resort, directly delete the directory although it's not always
-  // safe to do. If session_manager is killed or the device is shut down while
-  // doing the removal, the directory will have an unusual set of files which
-  // may confuse ARC and prevent it from booting.
-  system_->RemoveDirTree(android_data_dir);
-  LOG(INFO) << "Finished removing " << android_data_dir.value();
+  if (!init_controller_->TriggerImpulse(
+          kRemoveArcDataImpulse, {"CHROMEOS_USER=" + actual_account_id},
+          InitDaemonController::TriggerMode::SYNC)) {
+    constexpr char kMessage[] = "Emitting remove-arc-data impulse failed.";
+    LOG(ERROR) << kMessage;
+    *error = CreateError(dbus_error::kEmitFailed, kMessage);
+    return false;
+  }
   return true;
 #else
   *error = CreateError(dbus_error::kNotAvailable, "ARC not supported.");
   return false;
 #endif  // USE_CHEETS
 }
-
-#if USE_CHEETS
-bool SessionManagerImpl::RemoveArcDataInternal(
-    const base::FilePath& android_data_dir,
-    const base::FilePath& android_data_old_dir) {
-  // It should never happen, but in case |android_data_old_dir| is a file,
-  // remove it. RemoveFile() immediately returns false (i.e. no-op) when
-  // |android_data_old_dir| is a directory.
-  system_->RemoveFile(android_data_old_dir);
-
-  // Create |android_data_old_dir| if it doesn't exist.
-  if (!system_->DirectoryExists(android_data_old_dir)) {
-    if (!system_->CreateDir(android_data_old_dir)) {
-      PLOG(ERROR) << "Failed to create " << android_data_old_dir.value();
-      return false;
-    }
-  }
-
-  if (!system_->DirectoryExists(android_data_dir) &&
-      system_->IsDirectoryEmpty(android_data_old_dir)) {
-    return true;  // nothing to do.
-  }
-
-  // Create a random temporary directory in |android_data_old_dir|.
-  // Note: Renaming a directory to an existing empty directory works.
-  base::FilePath target_dir_name;
-  if (!system_->CreateTemporaryDirIn(android_data_old_dir, &target_dir_name)) {
-    LOG(WARNING) << "Failed to create a temporary directory in "
-                 << android_data_old_dir.value();
-    return false;
-  }
-  LOG(INFO) << "Renaming " << android_data_dir.value() << " to "
-            << target_dir_name.value();
-
-  // Does the actual renaming here with rename(2). Note that if the process
-  // (or the device itself) is killed / turned off right before the rename(2)
-  // operation, both |android_data_dir| and |android_data_old_dir| will remain
-  // while ARC is disabled in the browser side. In that case, the browser will
-  // call RemoveArcData() later as needed, and both directories will disappear.
-  if (system_->DirectoryExists(android_data_dir)) {
-    if (!system_->RenameDir(android_data_dir, target_dir_name)) {
-      LOG(WARNING) << "Failed to rename " << android_data_dir.value() << " to "
-                   << target_dir_name.value();
-      return false;
-    }
-  }
-
-  // Ask init to remove all files and directories in |android_data_old_dir|.
-  // Note that the init job never deletes |android_data_old_dir| itself so the
-  // rename() operation above never fails.
-  LOG(INFO) << "Removing contents in " << android_data_old_dir.value();
-  init_controller_->TriggerImpulse(
-      kRemoveOldArcDataImpulse,
-      {"ANDROID_DATA_OLD_DIR=" + android_data_old_dir.value()},
-      InitDaemonController::TriggerMode::ASYNC);
-  return true;
-}
-#endif  // USE_CHEETS
 
 void SessionManagerImpl::OnPolicyPersisted(bool success) {
   device_local_account_manager_->UpdateDeviceSettings(

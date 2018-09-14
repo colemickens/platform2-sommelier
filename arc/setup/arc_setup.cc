@@ -40,6 +40,7 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
+#include <brillo/cryptohome.h>
 #include <brillo/file_utils.h>
 #include <chromeos-config/libcros_config/cros_config.h>
 #include <crypto/random.h>
@@ -2185,6 +2186,19 @@ void ArcSetup::OnReadAhead() {
   EmulateArcUreadahead(arc_paths_->android_rootfs_directory, kReadAheadTimeout);
 }
 
+void ArcSetup::OnRemoveData() {
+  const std::string chromeos_user = config_.GetStringOrDie("CHROMEOS_USER");
+  const base::FilePath root_path =
+      brillo::cryptohome::home::GetRootPath(chromeos_user);
+  // Ensure the user directory exists.
+  EXIT_IF(!base::DirectoryExists(root_path));
+
+  const base::FilePath android_data = root_path.Append("android-data");
+  const base::FilePath android_data_old = root_path.Append("android-data-old");
+
+  EXIT_IF(!MoveDirIntoDataOldDir(android_data, android_data_old));
+}
+
 void ArcSetup::OnMountSdcard() {
   // Set up sdcard asynchronously from arc-sdcard so that waiting on installd
   // does not add latency to boot-continue (and result in session-manager
@@ -2275,6 +2289,9 @@ void ArcSetup::Run() {
       break;
     case Mode::READ_AHEAD:
       OnReadAhead();
+      break;
+    case Mode::REMOVE_DATA:
+      OnRemoveData();
       break;
     case Mode::MOUNT_SDCARD:
       OnMountSdcard();

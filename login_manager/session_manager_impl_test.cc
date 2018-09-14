@@ -203,17 +203,6 @@ MATCHER(IsComponentNamespace, "") {
 
 constexpr pid_t kAndroidPid = 10;
 
-enum class DataDirType {
-  DATA_DIR_AVAILABLE = 0,
-  DATA_DIR_MISSING = 1,
-};
-
-enum class OldDataDirType {
-  OLD_DATA_DIR_NOT_EMPTY = 0,
-  OLD_DATA_DIR_EMPTY = 1,
-  OLD_DATA_FILE_EXISTS = 2,
-};
-
 constexpr char kSaneEmail[] = "user@somewhere.com";
 constexpr char kDeviceLocalAccountsDir[] = "device_local_accounts";
 
@@ -606,21 +595,6 @@ class SessionManagerImplTest : public ::testing::Test,
     ExpectStartSessionUnownedBoilerplate(account_id_string,
                                          false,   // mitigating
                                          false);  // key_gen
-  }
-  void ExpectRemoveArcData(DataDirType data_dir_type,
-                           OldDataDirType old_data_dir_type) {
-#if USE_CHEETS
-    if (data_dir_type == DataDirType::DATA_DIR_MISSING &&
-        old_data_dir_type == OldDataDirType::OLD_DATA_DIR_EMPTY) {
-      return;  // RemoveArcDataInternal does nothing in this case.
-    }
-    EXPECT_CALL(
-        *init_controller_,
-        TriggerImpulseInternal(SessionManagerImpl::kRemoveOldArcDataImpulse,
-                               ElementsAre(StartsWith("ANDROID_DATA_OLD_DIR=")),
-                               InitDaemonController::TriggerMode::ASYNC))
-        .WillOnce(Return(nullptr));
-#endif
   }
 
   void ExpectLockScreen() { expected_locks_ = 1; }
@@ -2709,229 +2683,15 @@ TEST_F(SessionManagerImplTest, LocaleAndPreferredLanguages) {
 }
 
 TEST_F(SessionManagerImplTest, ArcRemoveData) {
-  // Test that RemoveArcData() removes |android_data_dir_| and reports success
-  // even if the directory is not empty.
-  ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
-  ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
-  ASSERT_FALSE(utils_.Exists(android_data_old_dir_));
-  ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
-                      OldDataDirType::OLD_DATA_DIR_EMPTY);
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_->RemoveArcData(&error, kSaneEmail));
-  EXPECT_FALSE(error.get());
-  EXPECT_FALSE(utils_.Exists(android_data_dir_));
-}
-
-TEST_F(SessionManagerImplTest, ArcRemoveData_NoSourceDirectory) {
-  // Test that RemoveArcData() reports success when the directory does not
-  // exist.
-  ASSERT_FALSE(utils_.Exists(android_data_dir_));
-  ASSERT_FALSE(utils_.Exists(android_data_old_dir_));
-  ExpectRemoveArcData(DataDirType::DATA_DIR_MISSING,
-                      OldDataDirType::OLD_DATA_DIR_EMPTY);
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_->RemoveArcData(&error, kSaneEmail));
-  EXPECT_FALSE(error.get());
-  EXPECT_FALSE(utils_.Exists(android_data_dir_));
-}
-
-TEST_F(SessionManagerImplTest, ArcRemoveData_OldDirectoryExists) {
-  // Test that RemoveArcData() can remove |android_data_dir_| and
-  // reports success even if the "old" directory already exists.
-  ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
-  ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
-  ASSERT_TRUE(utils_.CreateDir(android_data_old_dir_));
-  ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
-                      OldDataDirType::OLD_DATA_DIR_EMPTY);
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_->RemoveArcData(&error, kSaneEmail));
-  EXPECT_FALSE(error.get());
-  EXPECT_FALSE(utils_.Exists(android_data_dir_));
-}
-
-TEST_F(SessionManagerImplTest, ArcRemoveData_NonEmptyOldDirectoryExists) {
-  // Test that RemoveArcData() can remove |android_data_dir_| and
-  // reports success even if the "old" directory already exists and is not
-  // empty.
-  ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
-  ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
-  ASSERT_TRUE(utils_.CreateDir(android_data_old_dir_));
-  ASSERT_TRUE(
-      utils_.AtomicFileWrite(android_data_old_dir_.Append("bar"), "test2"));
-  ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
-                      OldDataDirType::OLD_DATA_DIR_NOT_EMPTY);
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_->RemoveArcData(&error, kSaneEmail));
-  EXPECT_FALSE(error.get());
-  EXPECT_FALSE(utils_.Exists(android_data_dir_));
-}
-
-TEST_F(SessionManagerImplTest,
-       ArcRemoveData_NoSourceDirectoryButOldDirectoryExists) {
-  // Test that RemoveArcData() removes the "old" directory and reports success
-  // even when |android_data_dir_| does not exist at all.
-  ASSERT_FALSE(utils_.Exists(android_data_dir_));
-  ASSERT_TRUE(utils_.CreateDir(android_data_old_dir_));
-  ExpectRemoveArcData(DataDirType::DATA_DIR_MISSING,
-                      OldDataDirType::OLD_DATA_DIR_EMPTY);
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_->RemoveArcData(&error, kSaneEmail));
-  EXPECT_FALSE(error.get());
-  EXPECT_FALSE(utils_.Exists(android_data_dir_));
-}
-
-TEST_F(SessionManagerImplTest,
-       ArcRemoveData_NoSourceDirectoryButNonEmptyOldDirectoryExists) {
-  // Test that RemoveArcData() removes the "old" directory and returns
-  // true even when |android_data_dir_| does not exist at all.
-  ASSERT_FALSE(utils_.Exists(android_data_dir_));
-  ASSERT_TRUE(utils_.CreateDir(android_data_old_dir_));
-  ASSERT_TRUE(
-      utils_.AtomicFileWrite(android_data_old_dir_.Append("foo"), "test"));
-  ExpectRemoveArcData(DataDirType::DATA_DIR_MISSING,
-                      OldDataDirType::OLD_DATA_DIR_NOT_EMPTY);
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_->RemoveArcData(&error, kSaneEmail));
-  EXPECT_FALSE(error.get());
-  EXPECT_FALSE(utils_.Exists(android_data_dir_));
-}
-
-TEST_F(SessionManagerImplTest, ArcRemoveData_OldFileExists) {
-  // Test that RemoveArcData() can remove |android_data_dir_| and
-  // returns true even if the "old" path exists as a file. This should never
-  // happen, but RemoveArcData() can handle the case.
-  ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
-  ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
-  ASSERT_TRUE(utils_.AtomicFileWrite(android_data_old_dir_, "test2"));
-  ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
-                      OldDataDirType::OLD_DATA_FILE_EXISTS);
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_->RemoveArcData(&error, kSaneEmail));
-  EXPECT_FALSE(error.get());
-  EXPECT_FALSE(utils_.Exists(android_data_dir_));
-}
-
-TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning_Stateless) {
-  // Test that RemoveArcData proceeds when ARC is running in a stateless mode.
-  ExpectAndRunStartSession(kSaneEmail);
-  ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
-  ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
-  ASSERT_FALSE(utils_.Exists(android_data_old_dir_));
-
+  // Test that RemoveArcData() triggers Upstart event.
   EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStartArcInstanceImpulse,
-                  ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                              "NATIVE_BRIDGE_EXPERIMENT=0"),
-                  InitDaemonController::TriggerMode::ASYNC))
+              TriggerImpulseInternal(SessionManagerImpl::kRemoveArcDataImpulse,
+                                     ElementsAre(StartsWith("CHROMEOS_USER=")),
+                                     InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-  {
-    brillo::ErrorPtr error;
-    EXPECT_CALL(utils_, CreateServerHandle(_)).Times(0);
-    std::string container_instance_id;
-    EXPECT_TRUE(impl_->StartArcMiniContainer(
-        &error, SerializeAsBlob(StartArcMiniContainerRequest()),
-        &container_instance_id));
-    EXPECT_FALSE(error.get());
-    EXPECT_FALSE(container_instance_id.empty());
-  }
-
-  ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
-                      OldDataDirType::OLD_DATA_DIR_NOT_EMPTY);
-  {
-    brillo::ErrorPtr error;
-    EXPECT_TRUE(impl_->RemoveArcData(&error, kSaneEmail));
-    ASSERT_FALSE(error.get());
-  }
-  EXPECT_FALSE(utils_.Exists(android_data_dir_));
-}
-
-TEST_F(SessionManagerImplTest, ArcRemoveData_ArcRunning_Stateful) {
-  // Test that RemoveArcData does nothing when ARC is running.
-  ExpectAndRunStartSession(kSaneEmail);
-  ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
-  ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
-  ASSERT_FALSE(utils_.Exists(android_data_old_dir_));
-
-  SetUpArcMiniContainer();
-
-  EXPECT_CALL(
-      *init_controller_,
-      TriggerImpulseInternal(SessionManagerImpl::kContinueArcBootImpulse,
-                             UpgradeContainerExpectationsBuilder(this).Build(),
-                             InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-  {
-    brillo::ErrorPtr error;
-    UpgradeArcContainerRequest request = CreateUpgradeArcContainerRequest();
-    ExpectUpgradeArcContainer();
-    brillo::dbus_utils::FileDescriptor server_socket_fd;
-    EXPECT_TRUE(impl_->UpgradeArcContainer(&error, SerializeAsBlob(request),
-                                           &server_socket_fd));
-    EXPECT_FALSE(error.get());
-    EXPECT_LE(0, server_socket_fd.get());
-  }
-  {
-    brillo::ErrorPtr error;
-    EXPECT_FALSE(impl_->RemoveArcData(&error, kSaneEmail));
-    ASSERT_TRUE(error.get());
-    EXPECT_EQ(dbus_error::kArcInstanceRunning, error->GetCode());
-    EXPECT_TRUE(utils_.Exists(android_data_dir_));
-  }
-}
-
-TEST_F(SessionManagerImplTest, ArcRemoveData_ArcStopped) {
-  ExpectAndRunStartSession(kSaneEmail);
-  ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
-  ASSERT_TRUE(utils_.AtomicFileWrite(android_data_dir_.Append("foo"), "test"));
-  ASSERT_TRUE(utils_.CreateDir(android_data_old_dir_));
-  ASSERT_TRUE(
-      utils_.AtomicFileWrite(android_data_old_dir_.Append("bar"), "test2"));
-
-  std::string container_instance_id = SetUpArcMiniContainer();
-
-  EXPECT_CALL(
-      *init_controller_,
-      TriggerImpulseInternal(SessionManagerImpl::kContinueArcBootImpulse,
-                             UpgradeContainerExpectationsBuilder(this).Build(),
-                             InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-
-  {
-    brillo::ErrorPtr error;
-    UpgradeArcContainerRequest request = CreateUpgradeArcContainerRequest();
-    ExpectUpgradeArcContainer();
-    brillo::dbus_utils::FileDescriptor server_socket_fd;
-    EXPECT_TRUE(impl_->UpgradeArcContainer(&error, SerializeAsBlob(request),
-                                           &server_socket_fd));
-    EXPECT_FALSE(error.get());
-    EXPECT_LE(0, server_socket_fd.get());
-  }
-
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(
-                  SessionManagerImpl::kStopArcInstanceImpulse, ElementsAre(),
-                  InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-  EXPECT_CALL(*exported_object(),
-              SendSignal(SignalEq(login_manager::kArcInstanceStopped,
-                                  ArcContainerStopReason::USER_REQUEST,
-                                  container_instance_id)))
-      .Times(1);
-  {
-    brillo::ErrorPtr error;
-    EXPECT_TRUE(impl_->StopArcInstance(&error));
-    EXPECT_FALSE(error.get());
-  }
-
-  ExpectRemoveArcData(DataDirType::DATA_DIR_AVAILABLE,
-                      OldDataDirType::OLD_DATA_DIR_NOT_EMPTY);
-  {
-    brillo::ErrorPtr error;
-    EXPECT_TRUE(impl_->RemoveArcData(&error, kSaneEmail));
-    EXPECT_FALSE(error.get());
-  }
-  EXPECT_FALSE(utils_.Exists(android_data_dir_));
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_->RemoveArcData(&error, kSaneEmail));
+  EXPECT_FALSE(error.get());
 }
 #else  // !USE_CHEETS
 
@@ -2976,11 +2736,11 @@ TEST_F(SessionManagerImplTest, SetArcCpuRestrictionFails) {
 
 TEST_F(SessionManagerImplTest, EmitArcBooted) {
 #if USE_CHEETS
-  EXPECT_CALL(
-      *init_controller_,
-      TriggerImpulseInternal(SessionManagerImpl::kArcBootedImpulse,
-                             ElementsAre(StartsWith("ANDROID_DATA_OLD_DIR=")),
-                             InitDaemonController::TriggerMode::ASYNC))
+  ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulseInternal(SessionManagerImpl::kArcBootedImpulse,
+                                     ElementsAre(StartsWith("CHROMEOS_USER=")),
+                                     InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(Return(nullptr));
   {
     brillo::ErrorPtr error;

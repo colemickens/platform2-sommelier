@@ -104,7 +104,7 @@ class SessionManagerImpl
   static const char kStopArcInstanceImpulse[];
   static const char kContinueArcBootImpulse[];
   static const char kArcBootedImpulse[];
-  static const char kRemoveOldArcDataImpulse[];
+  static const char kRemoveArcDataImpulse[];
 
   // Lock screen state messages.
   static const char kScreenLockedImpulse[];

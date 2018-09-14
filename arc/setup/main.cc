@@ -33,6 +33,7 @@ arc::Mode GetMode(const std::string& mode) {
       {"onetime-stop", arc::Mode::ONETIME_STOP},
       {"pre-chroot", arc::Mode::PRE_CHROOT},
       {"read-ahead", arc::Mode::READ_AHEAD},
+      {"remove-data", arc::Mode::REMOVE_DATA},
       {"mount-sdcard", arc::Mode::MOUNT_SDCARD},
       {"unmount-sdcard", arc::Mode::UNMOUNT_SDCARD},
       {"update-restorecon-last", arc::Mode::UPDATE_RESTORECON_LAST},
