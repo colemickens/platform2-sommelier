@@ -13,9 +13,9 @@ std::map<ModelId, ModelMetadata> GetModelMetadata() {
     {
       ModelId::TEST_MODEL, {
         ModelId::TEST_MODEL,
-        "mlservice-model-tab_discarder-quantized-20180704.tflite",
-        {{"input", 4}},
-        {{"output", 5}},
+        "mlservice-model-test_add-20180914.tflite",
+        {{"x", 1}, {"y", 2}},
+        {{"z", 0}},
       },
     },
   };

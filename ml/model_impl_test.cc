@@ -38,7 +38,7 @@ class ModelImplTest : public testing::Test {
   // A simple model that adds up two tensors. Inputs and outputs are 1x1 float
   // tensors.
   const std::string model_path_ =
-      getenv("SRC") + std::string("/testdata/add.tflite");
+      GetTestModelDir() + "mlservice-model-test_add-20180914.tflite";
   const std::map<std::string, int> model_inputs_ = {{"x", 1}, {"y", 2}};
   const std::map<std::string, int> model_outputs_ = {{"z", 0}};
 };

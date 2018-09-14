@@ -74,6 +74,7 @@
             'graph_executor_impl_test.cc',
             'machine_learning_service_impl_test.cc',
             'model_impl_test.cc',
+            'test_utils.cc',
             'testrunner.cc',
           ],
         },

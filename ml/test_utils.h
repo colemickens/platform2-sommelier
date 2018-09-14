@@ -5,8 +5,10 @@
 #ifndef ML_TEST_UTILS_H_
 #define ML_TEST_UTILS_H_
 
+#include <string>
 #include <vector>
 
+#include "ml/tensor_view.h"
 #include "mojom/tensor.mojom.h"
 
 namespace ml {
@@ -32,6 +34,9 @@ chromeos::machine_learning::mojom::TensorPtr NewTensor(
 
   return tensor;
 }
+
+// Return the model directory for tests (or die if it cannot be obtained).
+std::string GetTestModelDir();
 
 }  // namespace ml
 
