@@ -36,6 +36,10 @@ class MountTracker {
   // Returns true if |mount_root| is already mounted.
   bool IsAlreadyMounted(const std::string& mount_root) const;
 
+  // Return true if |samba_interface_id| is already mounted.
+  bool IsAlreadyMounted(
+      const SambaInterface::SambaInterfaceId samba_interface_id) const;
+
   // Adds |mount_root| to the |mounts_| map and adds SambaInterfaceId to
   // |samba_interface_map_|. Also adds |mount_root| to |mounted_root_shares_|.
   // Ids are >=0 and are not re-used within the lifetime of this class. Returns

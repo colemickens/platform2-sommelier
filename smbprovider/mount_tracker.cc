@@ -38,6 +38,19 @@ bool MountTracker::IsAlreadyMounted(const std::string& mount_root) const {
   return true;
 }
 
+bool MountTracker::IsAlreadyMounted(
+    const SambaInterface::SambaInterfaceId samba_interface_id) const {
+  const bool id_exist = samba_interface_map_.count(samba_interface_id) > 0;
+  if (!id_exist) {
+    return false;
+  }
+
+  // Ensure |samba_interface_map_| and |mounts_| are in sync.
+  DCHECK(IsAlreadyMounted(samba_interface_map_.at(samba_interface_id)));
+
+  return true;
+}
+
 bool MountTracker::ExistsInMounts(const std::string& mount_root) const {
   for (auto mount_iter = mounts_.Begin(); mount_iter != mounts_.End();
        ++mount_iter) {
@@ -140,7 +153,7 @@ std::string MountTracker::GetRelativePath(int32_t mount_id,
 
 const SmbCredential& MountTracker::GetCredential(
     SambaInterface::SambaInterfaceId samba_interface_id) const {
-  DCHECK_NE(samba_interface_map_.count(samba_interface_id), 0);
+  DCHECK(IsAlreadyMounted(samba_interface_id));
 
   // Double lookup of SambaInterfaceId => MountId followed by MountId =>
   // MountInfo.credential
@@ -176,7 +189,7 @@ MountTracker::MountInfo MountTracker::CreateMountInfo(
 void MountTracker::AddSambaInterfaceIdToSambaInterfaceMap(int32_t mount_id) {
   const SambaInterface::SambaInterfaceId samba_interface_id =
       GetSambaInterfaceIdForMountId(mount_id);
-  DCHECK_EQ(0, samba_interface_map_.count(samba_interface_id));
+  DCHECK(!IsAlreadyMounted(samba_interface_id));
 
   samba_interface_map_[samba_interface_id] = mount_id;
 }
@@ -193,9 +206,10 @@ void MountTracker::DeleteSambaInterfaceIdFromSambaInterfaceMap(
     int32_t mount_id) {
   const SambaInterface::SambaInterfaceId samba_interface_id =
       GetSambaInterfaceIdForMountId(mount_id);
-  DCHECK_NE(0, samba_interface_map_.count(samba_interface_id));
 
-  samba_interface_map_.erase(samba_interface_id);
+  bool erase_succeeded = samba_interface_map_.erase(samba_interface_id);
+
+  DCHECK(erase_succeeded);
 }
 
 }  // namespace smbprovider

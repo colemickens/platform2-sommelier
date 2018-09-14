@@ -101,11 +101,8 @@ class MountTrackerTest : public testing::Test {
                               const std::string& workgroup,
                               const std::string& username,
                               const std::string& password) {
-    SambaInterface* samba_interface;
-    EXPECT_TRUE(mount_tracker_->GetSambaInterface(mount_id, &samba_interface));
-
     const SambaInterface::SambaInterfaceId samba_interface_id =
-        samba_interface->GetSambaInterfaceId();
+        GetSambaInterfaceId(mount_id);
 
     const SmbCredential& cred =
         mount_tracker_->GetCredential(samba_interface_id);
@@ -119,6 +116,13 @@ class MountTrackerTest : public testing::Test {
       // Password is empty but check if credential-stored password is empty too.
       EXPECT_TRUE(cred.password.get() == nullptr);
     }
+  }
+
+  SambaInterface::SambaInterfaceId GetSambaInterfaceId(const int32_t mount_id) {
+    SambaInterface* samba_interface;
+    EXPECT_TRUE(mount_tracker_->GetSambaInterface(mount_id, &samba_interface));
+
+    return samba_interface->GetSambaInterfaceId();
   }
 
  protected:
@@ -613,6 +617,57 @@ TEST_F(MountTrackerTest, TestAddRemoveRemountWithCredential) {
   EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id));
 
   ExpectCredentialsEqual(mount_id, kWorkgroup, kUsername, kPassword);
+}
+
+TEST_F(MountTrackerTest, TestIsSambaInterfaceIdMounted) {
+  int32_t mount_id;
+  EXPECT_TRUE(
+      AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id));
+
+  EXPECT_EQ(1, mount_tracker_->MountCount());
+
+  SambaInterface::SambaInterfaceId samba_interface_id =
+      GetSambaInterfaceId(mount_id);
+
+  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(samba_interface_id));
+}
+
+TEST_F(MountTrackerTest, TestAddRemoveSambaInterfaceId) {
+  int32_t mount_id;
+  EXPECT_TRUE(
+      AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id));
+
+  EXPECT_EQ(1, mount_tracker_->MountCount());
+
+  SambaInterface::SambaInterfaceId samba_interface_id =
+      GetSambaInterfaceId(mount_id);
+
+  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(samba_interface_id));
+
+  EXPECT_TRUE(mount_tracker_->RemoveMount(mount_id));
+
+  EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(samba_interface_id));
+}
+
+TEST_F(MountTrackerTest, TestIsSambaInterfaceIdMountedWithRemount) {
+  int32_t mount_id = 9;
+  EXPECT_TRUE(Remount(kMountRoot, kWorkgroup, kUsername, kPassword, mount_id));
+
+  EXPECT_EQ(1, mount_tracker_->MountCount());
+  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id));
+
+  SambaInterface::SambaInterfaceId samba_interface_id =
+      GetSambaInterfaceId(mount_id);
+
+  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(samba_interface_id));
+}
+
+TEST_F(MountTrackerTest, TestNonExistantSambaInterfaceId) {
+  uintptr_t samba_interface_id = 1;
+  SambaInterface::SambaInterfaceId non_existent_id =
+      reinterpret_cast<SambaInterface::SambaInterfaceId>(samba_interface_id);
+
+  EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(non_existent_id));
 }
 
 }  // namespace smbprovider
