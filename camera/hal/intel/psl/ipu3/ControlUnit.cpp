@@ -986,16 +986,21 @@ void ControlUnit::prepareStats(RequestCtrlState &reqState,
         params->frame_pa_parameters = &latestResults.paResults;
     }
 
+    unsigned long long sofTimestamp = 0;
     {
     std::lock_guard<std::mutex> l(mSofDataLock);
     if (mSofDataMap.find(params->frame_id) != mSofDataMap.end()) {
-        params->frame_timestamp = mSofDataMap.at(params->frame_id)
+        sofTimestamp = mSofDataMap.at(params->frame_id);
+    } else {
+        LOG2("frame timestamp %llu us, rolling shutter time %ld us", params->frame_timestamp,
+              mCaptureUnit->getRollingShutterSkew() / 1000);
+        sofTimestamp = params->frame_timestamp - mCaptureUnit->getRollingShutterSkew() / 1000;
+    }
+    }
+    params->frame_timestamp = sofTimestamp
               - params->frame_ae_parameters->exposures[0].exposure->exposure_time_us;
-        LOG2("frame expo start timestamp %lld, sequence %llu", params->frame_timestamp,
+    LOG2("frame expo start timestamp %lld, sequence %llu", params->frame_timestamp,
               params->frame_id);
-    }
-    }
-
     /**
      * Pass stats to all 3A algorithms
      * Since at the moment we do not have separate events for AF and AA stats

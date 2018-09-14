@@ -169,7 +169,8 @@ status_t StatisticsWorker::run()
 
     stats->aiqStatsInputParams.frame_id = mMsg->pMsg.rawNonScaledBuffer->Sequence();
     stats->aiqStatsInputParams.frame_timestamp
-        = (buf.Timestamp().tv_sec * 1000000) + buf.Timestamp().tv_usec;
+        = mMsg->pMsg.rawNonScaledBuffer->Timestamp().tv_sec * 1000000
+          + mMsg->pMsg.rawNonScaledBuffer->Timestamp().tv_usec;
 
     stats->frameSequence = mMsg->pMsg.rawNonScaledBuffer->Sequence();
     LOG2("sensor frame sequence %u", stats->frameSequence);
