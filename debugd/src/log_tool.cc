@@ -54,7 +54,13 @@ struct Log {
     "cd /sys/module/" #module_name "/parameters 2>/dev/null && grep -sH ^ *"
 
 const Log kCommandLogs[] = {
-  { "CLIENT_ID", "/usr/bin/metrics_client -i"},
+  // We need to enter init's mount namespace because it has /home/chronos
+  // mounted which is where the consent knob lives.  We don't have that mount
+  // in our own mount namespace (by design).  https://crbug.com/884249
+  { "CLIENT_ID", "/usr/bin/nsenter -t1 -m /usr/bin/metrics_client -i",
+    kRoot,
+    kDebugfsGroup,
+  },
   { "LOGDATE", "/bin/date" },
   { "atrus_logs", "cat /var/log/atrus.log 2>/dev/null" },
   { "authpolicy", "cat /var/log/authpolicy.log" },
