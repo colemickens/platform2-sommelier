@@ -53,9 +53,12 @@ void Container::ConnectToGarcon(const std::string& addr) {
       std::make_unique<vm_tools::container::Garcon::Stub>(garcon_channel_);
 }
 
-bool Container::LaunchContainerApplication(const std::string& desktop_file_id,
-                                           std::vector<std::string> files,
-                                           std::string* out_error) {
+bool Container::LaunchContainerApplication(
+    const std::string& desktop_file_id,
+    std::vector<std::string> files,
+    vm_tools::container::LaunchApplicationRequest::DisplayScaling
+        display_scaling,
+    std::string* out_error) {
   CHECK(out_error);
   vm_tools::container::LaunchApplicationRequest container_request;
   vm_tools::container::LaunchApplicationResponse container_response;
@@ -64,6 +67,7 @@ bool Container::LaunchContainerApplication(const std::string& desktop_file_id,
             std::make_move_iterator(files.end()),
             google::protobuf::RepeatedFieldBackInserter(
                 container_request.mutable_files()));
+  container_request.set_display_scaling(display_scaling);
 
   grpc::ClientContext ctx;
   ctx.set_deadline(gpr_time_add(

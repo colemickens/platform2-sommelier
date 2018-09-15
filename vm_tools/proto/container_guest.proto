@@ -12,6 +12,15 @@ package vm_tools.container;
 
 // Request protobuf for launching an application in the container.
 message LaunchApplicationRequest {
+  // Display scaling of the app windows.
+  enum DisplayScaling {
+    // Default scaling.
+    UNSCALED = 0;
+    // Windows scaled. Used to scale up older app windows that don't show well
+    // with HiDPI display otherwise.
+    SCALED = 1;
+  }
+
   // The ID of the application to launch. This should correspond to an
   // identifier for a .desktop file available in the container.
   string desktop_file_id = 1;
@@ -19,6 +28,9 @@ message LaunchApplicationRequest {
   // Files to pass as arguments when launching the application, if any, given
   // as absolute paths within the container's filesystem.
   repeated string files = 2;
+
+  // Display scaling requested.
+  DisplayScaling display_scaling = 3;
 }
 
 // Response protobuf for launching an application.

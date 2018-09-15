@@ -1088,13 +1088,21 @@ std::unique_ptr<dbus::Response> Service::LaunchContainerApplication(
     return dbus_response;
   }
 
+  vm_tools::container::LaunchApplicationRequest::DisplayScaling display_scaling;
+  if (request.display_scaling() ==
+      vm_tools::cicerone::LaunchContainerApplicationRequest::UNSCALED) {
+    display_scaling = vm_tools::container::LaunchApplicationRequest::UNSCALED;
+  } else {
+    display_scaling = vm_tools::container::LaunchApplicationRequest::SCALED;
+  }
+
   std::string error_msg;
   response.set_success(container->LaunchContainerApplication(
       request.desktop_file_id(),
       std::vector<string>(
           std::make_move_iterator(request.mutable_files()->begin()),
           std::make_move_iterator(request.mutable_files()->end())),
-      &error_msg));
+      display_scaling, &error_msg));
   response.set_failure_reason(error_msg);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;

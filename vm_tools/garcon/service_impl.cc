@@ -16,6 +16,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <cstdlib>
 #include <limits>
 #include <map>
 #include <memory>
@@ -42,6 +43,10 @@ namespace {
 
 constexpr char kForkedProcessConsole[] = "/dev/null";
 constexpr char kStartupIDEnv[] = "DESKTOP_STARTUP_ID";
+constexpr char kXDisplayEnv[] = "DISPLAY";
+constexpr char kXLowDensityDisplayEnv[] = "DISPLAY_LOW_DENSITY";
+constexpr char kWaylandDisplayEnv[] = "WAYLAND_DISPLAY";
+constexpr char kWaylandLowDensityDisplayEnv[] = "WAYLAND_DISPLAY_LOW_DENSITY";
 constexpr size_t kMaxIconSize = 1048576;  // 1MB, very large for an icon
 
 // Information about any errors that happen in the child process before the exec
@@ -469,6 +474,12 @@ grpc::Status ServiceImpl::LaunchApplication(
   std::map<std::string, std::string> env;
   if (desktop_file->startup_notify()) {
     env[kStartupIDEnv] = request->desktop_file_id();
+  }
+
+  if (request->display_scaling() ==
+      vm_tools::container::LaunchApplicationRequest::SCALED) {
+    env[kXDisplayEnv] = std::getenv(kXLowDensityDisplayEnv);
+    env[kWaylandDisplayEnv] = std::getenv(kWaylandLowDensityDisplayEnv);
   }
 
   if (!Spawn(std::move(argv), std::move(env), desktop_file->path())) {

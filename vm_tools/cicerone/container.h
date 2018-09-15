@@ -60,9 +60,12 @@ class Container {
 
   void ConnectToGarcon(const std::string& addr);
 
-  bool LaunchContainerApplication(const std::string& desktop_file_id,
-                                  std::vector<std::string> files,
-                                  std::string* out_error);
+  bool LaunchContainerApplication(
+      const std::string& desktop_file_id,
+      std::vector<std::string> files,
+      vm_tools::container::LaunchApplicationRequest::DisplayScaling
+          display_scaling,
+      std::string* out_error);
 
   bool LaunchVshd(uint32_t port, std::string* out_error);
 
