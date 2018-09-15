@@ -1295,9 +1295,11 @@ void ArcSetup::MountDemoApps(const base::FilePath& demo_apps_image,
   EXIT_IF(!InstallDirectory(0700, kHostRootUid, kHostRootGid,
                             demo_apps_mount_directory));
 
+  // imageloader securely verifies images before mounting them, so we can trust
+  // the provided image and can mount it without MS_NOEXEC.
   EXIT_IF(!arc_mounter_->LoopMount(demo_apps_image.value(),
                                    demo_apps_mount_directory,
-                                   MS_RDONLY | MS_NODEV | MS_NOEXEC));
+                                   MS_RDONLY | MS_NODEV));
 }
 
 void ArcSetup::SetUpMountPointForRemovableMedia() {
