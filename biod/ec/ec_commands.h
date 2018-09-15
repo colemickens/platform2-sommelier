@@ -596,7 +596,7 @@ enum host_event_code {
 	/* EC desires to change state of host-controlled USB mux */
 	EC_HOST_EVENT_USB_MUX = 28,
 
-	/* TABLET/LAPTOP mode event*/
+	/* TABLET/LAPTOP mode or detachable base attach/detach event */
 	EC_HOST_EVENT_MODE_CHANGE = 29,
 
 	/* Keyboard recovery combo with hardware reinitialization */
@@ -3285,6 +3285,7 @@ struct __ec_align1 ec_response_get_next_event_v1 {
 /* Switches */
 #define EC_MKBP_LID_OPEN	0
 #define EC_MKBP_TABLET_MODE	1
+#define EC_MKBP_BASE_ATTACHED	2
 
 /* Run keyboard factory test scanning */
 #define EC_CMD_KEYBOARD_FACTORY_TEST 0x0068
@@ -4871,6 +4872,31 @@ enum add_entropy_action {
 struct __ec_align1 ec_params_rollback_add_entropy {
 	uint8_t action;
 };
+
+/*
+ * Perform a single read of a given ADC channel.
+ */
+#define EC_CMD_ADC_READ		0x0123
+
+struct __ec_align1 ec_params_adc_read {
+	uint8_t adc_channel;
+};
+
+struct __ec_align4 ec_response_adc_read {
+	int32_t adc_value;
+};
+
+/*
+ * Read back rollback info
+ */
+#define EC_CMD_ROLLBACK_INFO		0x0124
+
+struct __ec_align4 ec_response_rollback_info {
+	int32_t id; /* Incrementing number to indicate which region to use. */
+	int32_t rollback_min_version;
+	int32_t rw_rollback_version;
+};
+
 
 /*****************************************************************************/
 /* The command range 0x200-0x2FF is reserved for Rotor. */

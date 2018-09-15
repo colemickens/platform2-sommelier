@@ -84,6 +84,7 @@ class EcCommand {
   void SetReq(const O& req) { data_.req = req; }
 
   bool Run(int ec_fd) {
+    data_.cmd.result = 0xff;
     return ioctl(ec_fd, CROS_EC_DEV_IOCXCMD_V2, &data_) == data_.cmd.insize;
   }
 
@@ -135,6 +136,10 @@ class CrosFpBiometricsManager::CrosFpDevice : public MessageLoopForIO::Watcher {
 
   bool EcDevInit();
   bool EcProtoInfo(ssize_t* max_read, ssize_t* max_write);
+  bool WaitOnEcBoot(ec_current_image expected_image);
+  bool EcReboot(ec_current_image to_image);
+  bool AddEntropy();
+  bool SetUpFp();
   bool FpFrame(int index, std::vector<uint8_t>* frame);
   bool UpdateFpInfo();
 
@@ -297,6 +302,140 @@ bool CrosFpBiometricsManager::CrosFpDevice::GetFpStats(int* capture_ms,
   return true;
 }
 
+bool CrosFpBiometricsManager::CrosFpDevice::WaitOnEcBoot(
+    ec_current_image expected_image) {
+  int tries = 50;
+  ec_current_image image = EC_IMAGE_UNKNOWN;
+
+  while (tries) {
+    tries--;
+    // Check the EC has the right image.
+    EcCommand<EmptyParam, struct ec_response_get_version> cmd(
+        EC_CMD_GET_VERSION);
+    if (!cmd.Run(cros_fd_.get())) {
+      LOG(ERROR) << "Failed to retrieve cros_fp firmware version.";
+      base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(500));
+      continue;
+    }
+    image = static_cast<ec_current_image>(cmd.Resp()->current_image);
+    if (image == expected_image) {
+      LOG(INFO) << "EC image is " << (image == EC_IMAGE_RO ? "RO" : "RW")
+                << ".";
+      return true;
+    }
+    base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(100));
+  }
+  LOG(ERROR) << "EC rebooted to incorrect image " << image;
+  return false;
+}
+
+bool CrosFpBiometricsManager::CrosFpDevice::EcReboot(
+    ec_current_image to_image) {
+  DCHECK(to_image == EC_IMAGE_RO || to_image == EC_IMAGE_RW);
+
+  EcCommand<EmptyParam, EmptyParam> cmd_reboot(EC_CMD_REBOOT);
+  // Don't expect a return code, cros_fp has rebooted.
+  cmd_reboot.Run(cros_fd_.get());
+
+  if (!WaitOnEcBoot(EC_IMAGE_RO)) {
+    LOG(ERROR) << "EC did not come back up after reboot.";
+    return false;
+  }
+
+  if (to_image == EC_IMAGE_RO) {
+    // Tell the EC to remain in RO.
+    EcCommand<struct ec_params_rwsig_action, EmptyParam> cmd_rwsig(
+        EC_CMD_RWSIG_ACTION);
+    cmd_rwsig.SetReq({.action = RWSIG_ACTION_ABORT});
+    if (!cmd_rwsig.Run(cros_fd_.get())) {
+      LOG(ERROR) << "Failed to keep cros_fp in RO.";
+      return false;
+    }
+  }
+
+  // EC jumps to RW after 1 second. Wait enough time in case we want to reboot
+  // to RW. In case we wanted to remain in RO, wait anyway to ensure that the EC
+  // received the instructions.
+  base::PlatformThread::Sleep(base::TimeDelta::FromSeconds(3));
+
+  if (!WaitOnEcBoot(to_image)) {
+    LOG(ERROR) << "EC did not load the right image.";
+    return false;
+  }
+
+  return true;
+}
+
+bool CrosFpBiometricsManager::CrosFpDevice::AddEntropy() {
+  // Create the secret.
+  EcCommand<struct ec_params_rollback_add_entropy, EmptyParam> cmd_add_entropy(
+      EC_CMD_ADD_ENTROPY);
+  cmd_add_entropy.SetReq({.action = ADD_ENTROPY_ASYNC});
+  if (!cmd_add_entropy.Run(cros_fd_.get())) {
+    LOG(ERROR) << "Failed to send command to add entropy.";
+    return false;
+  }
+  int tries = 20;
+  while (tries) {
+    tries--;
+    base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(100));
+    cmd_add_entropy.SetReq({.action = ADD_ENTROPY_GET_RESULT});
+    // EC will return EC_RES_BUSY initially, ignore the return code.
+    cmd_add_entropy.Run(cros_fd_.get());
+    if (cmd_add_entropy.Result() == EC_RES_SUCCESS) {
+      LOG(INFO) << "Entropy has been successfully added.";
+      return true;
+    }
+  }
+  LOG(ERROR) << "Failed to check status of entropy command.";
+  return false;
+}
+
+bool CrosFpBiometricsManager::CrosFpDevice::SetUpFp() {
+  EcCommand<EmptyParam, struct ec_response_rollback_info> cmd_rb_info(
+      EC_CMD_ROLLBACK_INFO);
+  if (!cmd_rb_info.Run(cros_fd_.get())) {
+    LOG(ERROR) << "Failed to verify if entropy had been initialized.";
+    return false;
+  }
+  if (cmd_rb_info.Resp()->id != 0) {
+    // Secret has been set.
+    LOG(INFO) << "Entropy source had been initialized previously.";
+    return true;
+  }
+  LOG(INFO) << "Entropy source has not been initialized yet.";
+
+  // Reboot the EC to RO.
+  if (!EcReboot(EC_IMAGE_RO)) {
+    LOG(ERROR) << "Failed to reboot cros_fp to initialise entropy.";
+    return false;
+  }
+
+  // Initialize the secret.
+  if (!AddEntropy()) {
+    LOG(ERROR) << "Failed to add entropy.";
+    return false;
+  }
+
+  // Entropy added, reboot cros_fp to RW.
+  if (!EcReboot(EC_IMAGE_RW)) {
+    LOG(ERROR) << "Failed to reboot cros_fp after initializing entropy.";
+    return false;
+  }
+
+  // Verify that the secret has been set.
+  if (!cmd_rb_info.Run(cros_fd_.get())) {
+    LOG(ERROR) << "Failed to verify that entropy has been initialized.";
+    return false;
+  }
+  if (cmd_rb_info.Resp()->id == 0) {
+    LOG(ERROR) << "Entropy source has not been initialized.";
+    return false;
+  }
+  LOG(INFO) << "Entropy source has been successfully initialized.";
+  return true;
+}
+
 bool CrosFpBiometricsManager::CrosFpDevice::Init() {
   cros_fd_ = base::ScopedFD(open(kCrosFpPath, O_RDWR));
   if (cros_fd_.get() < 0) {
@@ -306,6 +445,10 @@ bool CrosFpBiometricsManager::CrosFpDevice::Init() {
 
   if (!EcDevInit())
     return false;
+
+  if (!SetUpFp()) {
+    return false;
+  }
 
   // Clean MCU memory if anything is remaining from aborted sessions
   ResetContext();
