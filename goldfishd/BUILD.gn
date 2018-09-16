@@ -39,12 +39,15 @@ executable("goldfishd") {
 }
 
 if (use.test) {
+  pkg_config("test_config") {
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+  }
   executable("goldfishd_test_runner") {
     configs += [
       "//common-mk:test",
       ":target_defaults",
+      ":test_config",
     ]
-    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
     sources = [
       "goldfish_library_test.cc",
     ]
