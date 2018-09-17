@@ -687,8 +687,11 @@ copy_partition() {
       ${src_offset} ${src} ${dst}
     ;;
   *)
-    local dst_part_size=$(partsize ${dst} ${part_num})
-    if [ ${part_size} -ne ${dst_part_size} -o ${part_size} -le 4096 ]; then
+    local src_part_size="$((part_size * SRC_BLKSIZE))"
+    local dst_part_size="$(partsize ${dst} ${part_num})"
+    dst_part_size="$((dst_part_size * DST_BLKSIZE))"
+    if [ "${src_part_size}" -ne "${dst_part_size}" -o \
+         "${src_part_size}" -le 4096 ]; then
       # We only copy partitions that are equally sized and greater than the
       # min fs block size. This matches the build_image logic.
       return
