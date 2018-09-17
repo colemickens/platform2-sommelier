@@ -109,6 +109,7 @@ copies.
 | [trim](./trim/) | Service to manage filesystem trim operations in the background |
 | [trunks](./trunks/) | Middleware and resource manager for interfacing with TPM 2.0 hardware |
 | [u2fd](./u2fd/) | U2FHID emulation daemon for systems with secure elements (not TPMs) |
+| [usb_bouncer](./usb_bouncer/) | Tools for managing USBGuard white-lists and configuration on Chrome OS |
 | [userfeedback](./userfeedback/) | Various utilities to gather extended data for user feedback reports |
 | [userspace_touchpad](./userspace_touchpad/) ||
 | [virtual_file_provider](./virtual_file_provider/) ||
