@@ -34,11 +34,6 @@ namespace {
 constexpr int kDbPermissions =
     base::FILE_PERMISSION_READ_BY_USER | base::FILE_PERMISSION_WRITE_BY_USER;
 
-constexpr uid_t kRootUid = 0;
-
-constexpr char kDefaultDbName[] = "devices.proto";
-constexpr char kUserDbParentDir[] = "/run/daemon-store/usb_bouncer/";
-
 // Returns base64 encoded strings since proto strings must be valid UTF-8.
 std::string EncodeDigest(const std::vector<uint8_t>& digest) {
   std::string result;
@@ -101,10 +96,18 @@ bool SetupPermissionsFor(const base::FilePath& path) {
     LOG(ERROR) << "Failed to touch file \"" << path.value() << "\"";
     return false;
   }
-  if (proc_uid == kRootUid && chown(path.value().c_str(), uid, gid) < 0) {
-    LOG(ERROR) << "chown for \"" << path.value()
-               << "\" failed because: " << std::strerror(errno);
-    return false;
+  if (proc_uid == kRootUid) {
+    base::FilePath parent_dir = path.DirName();
+    if (chown(parent_dir.value().c_str(), uid, gid) < 0) {
+      PLOG(ERROR) << "chown for \"" << parent_dir.value()
+                  << "\" failed because: " << std::strerror(errno);
+      return false;
+    }
+    if (chown(path.value().c_str(), uid, gid) < 0) {
+      PLOG(ERROR) << "chown for \"" << path.value()
+                  << "\" failed because: " << std::strerror(errno);
+      return false;
+    }
   }
   if (!base::VerifyPathControlledByUser(path, path, uid, {gid})) {
     LOG(ERROR) << "Wrong permissions \"" << path.value() << "\"";

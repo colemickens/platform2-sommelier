@@ -26,7 +26,6 @@ constexpr TimeDelta kModeSwitchThreshold = TimeDelta::FromMilliseconds(1000);
 
 constexpr TimeDelta kCleanupThreshold = TimeDelta::FromDays(365 / 4);
 
-constexpr char kDefaultGlobalDir[] = "run/usb_bouncer/";
 constexpr char kDevpathRoot[] = "sys/devices";
 
 }  // namespace
@@ -38,6 +37,12 @@ EntryManager* EntryManager::GetInstance() {
     return nullptr;
   }
   return &instance;
+}
+
+bool EntryManager::CreateDefaultGlobalDB() {
+  base::FilePath db_path;
+  return GetDBFromPath(base::FilePath("/").Append(kDefaultGlobalDir),
+                       &db_path) != nullptr;
 }
 
 EntryManager::EntryManager()

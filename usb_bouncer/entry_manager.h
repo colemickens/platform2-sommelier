@@ -21,6 +21,7 @@ namespace usb_bouncer {
 using DevpathToRuleCallback =
     std::function<std::string(const std::string& devpath)>;
 
+constexpr char kDefaultGlobalDir[] = "run/usb_bouncer/";
 constexpr char kUsbguardPolicyDir[] = "etc/usbguard/rules.d";
 
 // Keep track of white-list rules needed for trusted USB devices for
@@ -37,6 +38,7 @@ class EntryManager {
   enum class UdevAction { kAdd = 0, kRemove = 1 };
 
   static EntryManager* GetInstance();
+  static bool CreateDefaultGlobalDB();
 
   ~EntryManager();
 

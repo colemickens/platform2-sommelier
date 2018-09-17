@@ -25,8 +25,13 @@ namespace usb_bouncer {
 using google::protobuf::Timestamp;
 using EntryMap = google::protobuf::Map<google::protobuf::string, RuleEntry>;
 
-constexpr char kUsbBouncerUser[] = "usbguard";
-constexpr char kUsbBouncerGroup[] = "usbguard";
+constexpr char kUsbBouncerUser[] = "usb_bouncer";
+constexpr char kUsbBouncerGroup[] = "usb_bouncer";
+
+constexpr char kDefaultDbName[] = "devices.proto";
+constexpr char kUserDbParentDir[] = "/run/daemon-store/usb_bouncer";
+
+constexpr uid_t kRootUid = 0;
 
 std::string Hash(const std::string& content);
 std::string Hash(const google::protobuf::RepeatedPtrField<std::string>& rules);

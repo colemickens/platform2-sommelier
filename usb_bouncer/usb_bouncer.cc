@@ -7,6 +7,9 @@
 
 #include <base/command_line.h>
 #include <brillo/syslog_logging.h>
+#include <libminijail.h>
+#include <scoped_minijail.h>
+#include <sys/mount.h>
 
 #include "usb_bouncer/entry_manager.h"
 #include "usb_bouncer/util.h"
@@ -25,7 +28,74 @@ void PrintUsage() {
 )");
 }
 
+void DropPrivileges() {
+  ScopedMinijail j(minijail_new());
+  minijail_change_user(j.get(), usb_bouncer::kUsbBouncerUser);
+  minijail_change_group(j.get(), usb_bouncer::kUsbBouncerGroup);
+  minijail_inherit_usergroups(j.get());
+  minijail_no_new_privs(j.get());
+
+  minijail_namespace_ipc(j.get());
+  minijail_namespace_net(j.get());
+  minijail_namespace_pids(j.get());
+  minijail_namespace_uts(j.get());
+  minijail_namespace_vfs(j.get());
+  if (minijail_enter_pivot_root(j.get(), "/var/empty") != 0) {
+    PLOG(FATAL) << "minijail_enter_pivot_root() failed.";
+  }
+  if (minijail_bind(j.get(), "/", "/", 0 /*writable*/)) {
+    PLOG(FATAL) << "minijail_bind(\"/\") failed.";
+  }
+  if (minijail_bind(j.get(), "/proc", "/proc", 0 /*writable*/)) {
+    PLOG(FATAL) << "minijail_bind(\"/\") failed.";
+  }
+
+  // "usb_bouncer genrules" writes to stdout.
+  minijail_preserve_fd(j.get(), STDOUT_FILENO, STDOUT_FILENO);
+
+  minijail_mount_dev(j.get());
+  minijail_mount_tmp(j.get());
+  if (minijail_bind(j.get(), "/sys", "/sys", 0 /*writable*/) != 0) {
+    PLOG(FATAL) << "minijail_bind(\"/sys\") failed.";
+  }
+  if (minijail_mount_with_data(j.get(), "tmpfs", "/run", "tmpfs",
+                               MS_NOSUID | MS_NOEXEC | MS_NODEV,
+                               "mode=0755,size=10M") != 0) {
+    PLOG(FATAL) << "minijail_mount_with_data(\"/run\") failed.";
+  }
+  std::string global_db_path("/");
+  global_db_path.append(usb_bouncer::kDefaultGlobalDir);
+  if (minijail_bind(j.get(), global_db_path.c_str(), global_db_path.c_str(),
+                    1 /*writable*/) != 0) {
+    PLOG(FATAL) << "minijail_bind(\"" << global_db_path << "\") failed.";
+  }
+  constexpr char dbus_path[] = "/run/dbus";
+  if (minijail_bind(j.get(), dbus_path, dbus_path, 0 /*writable*/) != 0) {
+    PLOG(FATAL) << "minijail_bind(\"" << dbus_path << "\") failed.";
+  }
+
+  minijail_remount_mode(j.get(), MS_SLAVE);
+  // minijail_bind was not used because the MS_REC flag is needed.
+  if (minijail_mount(j.get(), usb_bouncer::kUserDbParentDir,
+                     usb_bouncer::kUserDbParentDir, "none",
+                     MS_BIND | MS_REC) != 0) {
+    PLOG(FATAL) << "minijail_mount(\"/" << usb_bouncer::kUserDbParentDir
+                << "\") failed";
+  }
+
+  minijail_forward_signals(j.get());
+  pid_t pid = minijail_fork(j.get());
+  if (pid != 0) {
+    exit(minijail_wait(j.get()));
+  }
+  umask(0077);
+}
+
 EntryManager* GetEntryManagerOrDie() {
+  if (!EntryManager::CreateDefaultGlobalDB()) {
+    LOG(FATAL) << "Unable to create default global DB";
+  }
+  DropPrivileges();
   EntryManager* entry_manager = EntryManager::GetInstance();
   if (!entry_manager) {
     LOG(FATAL) << "EntryManager::GetInstance() failed!";
