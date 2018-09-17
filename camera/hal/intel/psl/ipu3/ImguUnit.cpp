@@ -293,10 +293,14 @@ status_t ImguUnit::completeRequest(std::shared_ptr<ProcUnitSettings> &processing
         bool hasStillBuffer = false;
         for (camera3_stream_buffer buf : *outBufs) {
             CameraStream *s = reinterpret_cast<CameraStream *>(buf.stream->priv);
-            if (s->getStream() == mActiveStreams.blobStreams[0]) {
-                std::shared_ptr<CameraBuffer> buffer = request->findBuffer(s, false);
-                if (buffer != nullptr) {
-                    hasStillBuffer = true;
+            for (size_t index = 0; index < mActiveStreams.blobStreams.size(); ++index) {
+                if (s->getStream() == mActiveStreams.blobStreams[index]) {
+                    std::shared_ptr<CameraBuffer> buffer = request->findBuffer(s, false);
+                    if (buffer != nullptr) {
+                        hasStillBuffer = true;
+                    } else {
+                        LOGE("@%s, stream %p not found buffer", __FUNCTION__, s);
+                    }
                 }
             }
         }
