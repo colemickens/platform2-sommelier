@@ -44,9 +44,9 @@ template("proto_library") {
                              "deps",
                            ])
 
+    cc_dir = "${root_gen_dir}/${proto_out_dir}"
     proto_in_dir = rebase_path(proto_in_dir)
     proto_out_dir = rebase_path(proto_out_dir)
-    cc_dir = "${target_gen_dir}/${proto_out_dir}"
 
     if (!defined(gen_python)) {
       gen_python = false
@@ -73,7 +73,7 @@ template("proto_library") {
     ]
     outputs = []
     if (gen_go) {
-      go_dir = "${target_gen_dir}/${proto_out_dir}"
+      go_dir = "${root_gen_dir}/${proto_out_dir}"
       args += [
         "--go_out",
         "${go_dir}",
@@ -81,7 +81,7 @@ template("proto_library") {
       outputs += [ "${go_dir}/{{source_name_part}}.pb.go" ]
     }
     if (gen_python) {
-      python_dir = "${target_gen_dir}/${proto_out_dir}/py"
+      python_dir = "${root_gen_dir}/${proto_out_dir}/py"
       args += [
         "--python_out",
         "${python_dir}",
