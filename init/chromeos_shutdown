@@ -95,29 +95,41 @@ dev_unmount_packages
 # runtime data) through /var.
 umount -n /var/run /var/lock
 
+# Unmount /var, /usr/local, /home and encrypted mountpoints, then try to
+# unmount /mnt/stateful_partition.  Log to /mnt/stateful_partition if any of
+# them failed to unmount.
+# Note that the other mounts are submounts of /mnt/stateful_partition on
+# regular images, but not always true on factory images.  To handle both, we
+# should unmount /mnt/stateful_partition only if the others successfully
+# unmounted, otherwise system may fail to log.  See crbug.com/835557.
+rc=0
 if [ -e /dev/mapper/encstateful ]; then
   # Give mount-encrypted umount 10 times to retry, otherwise
   # it will fail with 'device is busy' because lazy umount does not finish
   # clearing all reference points yet. Check crosbug.com/p/21345.
-  rc=0
   for i in 1 2 3 4 5 6 7 8 9 10; do
     mount-encrypted umount
     rc=$?
-    if [ $rc -eq 0 ]; then
+    if [ ${rc} -eq 0 ]; then
       break
     fi
     sleep 0.1
   done
-  umount -n /usr/local /home /mnt/stateful_partition
+  umount -n /usr/local /home
   # Merge the exit status with the earlier mount-encrypted call.
-  exit $(( rc | $? ))
+  : $(( rc |= $? ))
 else
-  umount -n /var /usr/local /home /mnt/stateful_partition
-  exit $?
+  umount -n /var /usr/local /home
+  rc=$?
 fi
+# Unmount /mnt/stateful_partition only if the previous unmounts succeeded.
+if [ ${rc} -eq 0 ]; then
+  umount -n /mnt/stateful_partition
+fi
+exit $(( rc | $? ))
 ) >/tmp/umount-encrypted.log 2>&1
 
-if [ $? -ne 0 ] ; then
+if [ $? -ne 0 ]; then
   mv /tmp/umount-encrypted.log /mnt/stateful_partition/
   (
     set -x
