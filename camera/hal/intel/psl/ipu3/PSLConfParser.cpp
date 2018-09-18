@@ -192,18 +192,41 @@ camera_metadata_t* PSLConfParser::constructDefaultMetadata(int cameraId, int req
     uint8_t aeMode = ANDROID_CONTROL_AE_MODE_ON;
     uint8_t awbMode = ANDROID_CONTROL_AWB_MODE_AUTO;
     uint8_t nrMode = ANDROID_NOISE_REDUCTION_MODE_OFF;
+    uint8_t eeMode = ANDROID_EDGE_MODE_OFF;
     camera_metadata_entry entry;
 
     switch (requestTemplate) {
     case ANDROID_CONTROL_CAPTURE_INTENT_PREVIEW:
         intent = ANDROID_CONTROL_CAPTURE_INTENT_PREVIEW;
+        entry = metadata.find(ANDROID_NOISE_REDUCTION_AVAILABLE_NOISE_REDUCTION_MODES);
+        if (entry.count > 0) {
+            nrMode = entry.data.u8[0];
+            for (size_t i = 0; i < entry.count; i++) {
+                if (entry.data.u8[i]
+                        == ANDROID_NOISE_REDUCTION_MODE_FAST) {
+                    nrMode = ANDROID_NOISE_REDUCTION_MODE_FAST;
+                    break;
+                }
+            }
+        }
+        entry = metadata.find(ANDROID_EDGE_AVAILABLE_EDGE_MODES);
+        if (entry.count > 0) {
+            eeMode = entry.data.u8[0];
+            for (size_t i = 0; i < entry.count; i++) {
+                if (entry.data.u8[i]
+                        == ANDROID_EDGE_MODE_FAST) {
+                    eeMode = ANDROID_EDGE_MODE_FAST;
+                    break;
+                }
+            }
+        }
         break;
     case ANDROID_CONTROL_CAPTURE_INTENT_STILL_CAPTURE:
         intent = ANDROID_CONTROL_CAPTURE_INTENT_STILL_CAPTURE;
         entry = metadata.find(ANDROID_NOISE_REDUCTION_AVAILABLE_NOISE_REDUCTION_MODES);
         if (entry.count > 0) {
             nrMode = entry.data.u8[0];
-            for (uint32_t i = 0; i < entry.count; i++) {
+            for (size_t i = 0; i < entry.count; i++) {
                 if (entry.data.u8[i]
                         == ANDROID_NOISE_REDUCTION_MODE_HIGH_QUALITY) {
                     nrMode = ANDROID_NOISE_REDUCTION_MODE_HIGH_QUALITY;
@@ -211,9 +234,42 @@ camera_metadata_t* PSLConfParser::constructDefaultMetadata(int cameraId, int req
                 }
             }
         }
+        entry = metadata.find(ANDROID_EDGE_AVAILABLE_EDGE_MODES);
+        if (entry.count > 0) {
+            eeMode = entry.data.u8[0];
+            for (size_t i = 0; i < entry.count; i++) {
+                if (entry.data.u8[i]
+                        == ANDROID_EDGE_MODE_HIGH_QUALITY) {
+                    eeMode = ANDROID_EDGE_MODE_HIGH_QUALITY;
+                    break;
+                }
+            }
+        }
         break;
     case ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_RECORD:
         intent = ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_RECORD;
+        entry = metadata.find(ANDROID_NOISE_REDUCTION_AVAILABLE_NOISE_REDUCTION_MODES);
+        if (entry.count > 0) {
+            nrMode = entry.data.u8[0];
+            for (size_t i = 0; i < entry.count; i++) {
+                if (entry.data.u8[i]
+                        == ANDROID_NOISE_REDUCTION_MODE_FAST) {
+                    nrMode = ANDROID_NOISE_REDUCTION_MODE_FAST;
+                    break;
+                }
+            }
+        }
+        entry = metadata.find(ANDROID_EDGE_AVAILABLE_EDGE_MODES);
+        if (entry.count > 0) {
+            eeMode = entry.data.u8[0];
+            for (size_t i = 0; i < entry.count; i++) {
+                if (entry.data.u8[i]
+                        == ANDROID_EDGE_MODE_FAST) {
+                    eeMode = ANDROID_EDGE_MODE_FAST;
+                    break;
+                }
+            }
+        }
         break;
     case ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_SNAPSHOT:
         intent = ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_SNAPSHOT;
@@ -223,7 +279,7 @@ camera_metadata_t* PSLConfParser::constructDefaultMetadata(int cameraId, int req
         entry = metadata.find(ANDROID_NOISE_REDUCTION_AVAILABLE_NOISE_REDUCTION_MODES);
         if (entry.count > 0) {
             nrMode = entry.data.u8[0];
-            for (uint32_t i = 0; i < entry.count; i++) {
+            for (size_t i = 0; i < entry.count; i++) {
                 if (entry.data.u8[i]
                         == ANDROID_NOISE_REDUCTION_MODE_ZERO_SHUTTER_LAG) {
                     nrMode = ANDROID_NOISE_REDUCTION_MODE_ZERO_SHUTTER_LAG;
@@ -231,6 +287,18 @@ camera_metadata_t* PSLConfParser::constructDefaultMetadata(int cameraId, int req
                 }
             }
         }
+        entry = metadata.find(ANDROID_EDGE_AVAILABLE_EDGE_MODES);
+        if (entry.count > 0) {
+            eeMode = entry.data.u8[0];
+            for (size_t i = 0; i < entry.count; i++) {
+                if (entry.data.u8[i]
+                        == ANDROID_EDGE_MODE_ZERO_SHUTTER_LAG) {
+                    eeMode = ANDROID_EDGE_MODE_ZERO_SHUTTER_LAG;
+                    break;
+                }
+            }
+        }
+
         break;
     case ANDROID_CONTROL_CAPTURE_INTENT_MANUAL:
         controlMode = ANDROID_CONTROL_MODE_OFF;
@@ -389,6 +457,7 @@ camera_metadata_t* PSLConfParser::constructDefaultMetadata(int cameraId, int req
     }
 
     TAGINFO(ANDROID_NOISE_REDUCTION_MODE, nrMode);
+    TAGINFO(ANDROID_EDGE_MODE, eeMode);
 
     float colorTransform[9] = {1.0, 0.0, 0.0,
                                0.0, 1.0, 0.0,

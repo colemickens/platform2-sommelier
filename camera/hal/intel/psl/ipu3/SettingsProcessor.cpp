@@ -193,6 +193,10 @@ status_t SettingsProcessor::processIspSettings(const CameraMetadata &settings,
         ispSettings->eeSetting.strength = 0;
     }
 
+    //ANDROID_METADATA_Control edge.mode
+    entry = settings.find(ANDROID_EDGE_MODE);
+    reqAiqCfg.captureSettings->ispControls.ee.mode = (entry.count == 1) ? entry.data.u8[0] : 0;
+
     //# ANDROID_METADATA_Control android.noiseReduction.mode done
     entry = settings.find(ANDROID_NOISE_REDUCTION_MODE);
     uint8_t noiseReductionMode = 0;
