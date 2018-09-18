@@ -192,8 +192,8 @@ class CameraHalAdapter : public vendor_tag_ops_t {
   // the same thread (i.e. the mojo IPC handler thread in |module_delegate_|).
   std::map<int32_t, std::unique_ptr<CameraDeviceAdapter>> device_adapters_;
 
-  // The vendor tag names and types. The key of the map is vendor tag id.
-  std::unordered_map<uint32_t, std::pair<std::string, uint8_t>> vendor_tag_map_;
+  // The map of vendor tag information with tag id as the key
+  std::unordered_map<uint32_t, VendorTagInfo> vendor_tag_map_;
 
   // The reprocess effect manager.
   ReprocessEffectManager reprocess_effect_manager_;

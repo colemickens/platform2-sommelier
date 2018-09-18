@@ -39,7 +39,7 @@ namespace {
 // |module_delegates_| and |callbacks_delegates_| maps.
 const uint32_t kIdAll = 0xFFFFFFFF;
 
-const char kVendorGoogleSectionName[] = "vendor.google";
+const char kVendorGoogleSectionName[] = "com.google";
 
 }  // namespace
 
@@ -227,6 +227,33 @@ int32_t CameraHalAdapter::GetCameraInfo(int32_t camera_id,
     if (metadata.update(it, keys.data(), keys.size()) != 0) {
       LOGF(ERROR) << "Failed to add vendor tags to "
                   << get_camera_metadata_tag_name(it);
+    }
+  }
+  // Update vendor tag default values into camera characteristics
+  for (const auto& it : vendor_tag_map_) {
+    switch (it.second.type) {
+      case TYPE_BYTE:
+        metadata.update(it.first, &it.second.data.u8, 1);
+        break;
+      case TYPE_INT32:
+        metadata.update(it.first, &it.second.data.i32, 1);
+        break;
+      case TYPE_FLOAT:
+        metadata.update(it.first, &it.second.data.f, 1);
+        break;
+      case TYPE_INT64:
+        metadata.update(it.first, &it.second.data.i64, 1);
+        break;
+      case TYPE_DOUBLE:
+        metadata.update(it.first, &it.second.data.d, 1);
+        break;
+      case TYPE_RATIONAL:
+        metadata.update(it.first, &it.second.data.r, 1);
+        break;
+      default:
+        LOGF(ERROR) << "Invalid vendor tag type";
+        camera_info->reset();
+        return -EINVAL;
     }
   }
 
@@ -688,7 +715,7 @@ const char* CameraHalAdapter::GetTagName(const vendor_tag_ops_t* v,
   if (d->vendor_tag_map_.find(tag) == d->vendor_tag_map_.end()) {
     return nullptr;
   }
-  return d->vendor_tag_map_.at(tag).first.c_str();
+  return d->vendor_tag_map_.at(tag).name;
 }
 
 int CameraHalAdapter::GetTagType(const vendor_tag_ops_t* v, uint32_t tag) {
@@ -701,7 +728,7 @@ int CameraHalAdapter::GetTagType(const vendor_tag_ops_t* v, uint32_t tag) {
   if (d->vendor_tag_map_.find(tag) == d->vendor_tag_map_.end()) {
     return -1;
   }
-  return d->vendor_tag_map_.at(tag).second;
+  return d->vendor_tag_map_.at(tag).type;
 }
 
 }  // namespace cros

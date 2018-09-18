@@ -34,13 +34,13 @@ const char kPortraitProcessorBinary[] = "/usr/bin/portrait_processor_shm";
 
 // 1: enable portrait processing
 // 0: disable portrait processing; apps should not set this value
-const std::pair<std::string, uint8_t> kRequestVendorTag[] = {
-    {"vendor.google.effect.portraitMode", TYPE_BYTE}};
+const VendorTagInfo kRequestVendorTag[] = {
+    {"com.google.effect.portraitMode", TYPE_BYTE, {.u8 = 0}}};
 
 // SegmentationResult::kSuccess: portrait mode segmentation succeeds
 // SegmentationResult::kFailure: portrait mode segmentation fails
-const std::pair<std::string, uint8_t> kResultVendorTag[] = {
-    {"vendor.google.effect.portraitModeSegmentationResult", TYPE_BYTE}};
+const VendorTagInfo kResultVendorTag[] = {
+    {"com.google.effect.portraitModeSegmentationResult", TYPE_BYTE, {.u8 = 0}}};
 
 PortraitModeEffect::PortraitModeEffect()
     : enable_vendor_tag_(0),
@@ -48,8 +48,8 @@ PortraitModeEffect::PortraitModeEffect()
       buffer_manager_(CameraBufferManager::GetInstance()) {}
 
 int32_t PortraitModeEffect::InitializeAndGetVendorTags(
-    std::vector<std::pair<std::string, uint8_t>>* request_vendor_tags,
-    std::vector<std::pair<std::string, uint8_t>>* result_vendor_tags) {
+    std::vector<VendorTagInfo>* request_vendor_tags,
+    std::vector<VendorTagInfo>* result_vendor_tags) {
   VLOGF_ENTER();
   if (!request_vendor_tags || !result_vendor_tags) {
     return -EINVAL;

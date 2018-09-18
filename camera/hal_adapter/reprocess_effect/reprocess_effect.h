@@ -18,6 +18,19 @@
 
 #include "hal_adapter/scoped_yuv_buffer_handle.h"
 
+struct VendorTagInfo {
+  const char* name;
+  uint8_t type;
+  union {
+    uint8_t u8;
+    int32_t i32;
+    float f;
+    int64_t i64;
+    double d;
+    camera_metadata_rational_t r;
+  } data;
+};
+
 namespace cros {
 
 class ReprocessEffect {
@@ -30,8 +43,8 @@ class ReprocessEffect {
   // Returns:
   //    0 on success; corresponding error code on failure.
   virtual int32_t InitializeAndGetVendorTags(
-      std::vector<std::pair<std::string, uint8_t>>* request_vendor_tags,
-      std::vector<std::pair<std::string, uint8_t>>* result_vendor_tags) = 0;
+      std::vector<VendorTagInfo>* request_vendor_tags,
+      std::vector<VendorTagInfo>* result_vendor_tags) = 0;
 
   // Sets the vendor tags that are allocated for the reprocessing effects.
   // Args:

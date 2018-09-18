@@ -27,8 +27,8 @@ ReprocessEffectManager::ReprocessEffectManager()
 int32_t ReprocessEffectManager::Initialize() {
   VLOGF_ENTER();
   portrait_mode_ = std::make_unique<PortraitModeEffect>();
-  std::vector<std::pair<std::string, uint8_t>> request_vendor_tags;
-  std::vector<std::pair<std::string, uint8_t>> result_vendor_tags;
+  std::vector<VendorTagInfo> request_vendor_tags;
+  std::vector<VendorTagInfo> result_vendor_tags;
   if (portrait_mode_->InitializeAndGetVendorTags(&request_vendor_tags,
                                                  &result_vendor_tags) != 0) {
     LOGF(ERROR) << "Failed to initialize portrait mode effect";
@@ -37,15 +37,14 @@ int32_t ReprocessEffectManager::Initialize() {
   if (!request_vendor_tags.empty() || !result_vendor_tags.empty()) {
     uint32_t request_vendor_tag_start = max_vendor_tag_;
     for (const auto& it : request_vendor_tags) {
-      vendor_tag_info_map_.emplace(
-          max_vendor_tag_,
-          VendorTagInfo(it.first, it.second, portrait_mode_.get()));
+      vendor_tag_effect_info_map_.emplace(
+          max_vendor_tag_, VendorTagEffectInfo(it, portrait_mode_.get()));
       max_vendor_tag_++;
     }
     uint32_t result_vendor_tag_start = max_vendor_tag_;
     for (const auto& it : result_vendor_tags) {
-      vendor_tag_info_map_.emplace(max_vendor_tag_,
-                                   VendorTagInfo(it.first, it.second, nullptr));
+      vendor_tag_effect_info_map_.emplace(max_vendor_tag_,
+                                          VendorTagEffectInfo(it, nullptr));
       max_vendor_tag_++;
     }
     if (portrait_mode_->SetVendorTags(
@@ -61,14 +60,12 @@ int32_t ReprocessEffectManager::Initialize() {
 }
 
 int32_t ReprocessEffectManager::GetAllVendorTags(
-    std::unordered_map<uint32_t, std::pair<std::string, uint8_t>>*
-        vendor_tag_map) {
+    std::unordered_map<uint32_t, VendorTagInfo>* vendor_tag_map) {
   if (!vendor_tag_map) {
     return -EINVAL;
   }
-  for (const auto& it : vendor_tag_info_map_) {
-    vendor_tag_map->emplace(it.first,
-                            std::make_pair(it.second.name, it.second.type));
+  for (const auto& it : vendor_tag_effect_info_map_) {
+    vendor_tag_map->emplace(it.first, it.second.vendor_tag_info);
   }
   return 0;
 }
@@ -79,8 +76,9 @@ bool ReprocessEffectManager::HasReprocessEffectVendorTag(
   for (uint32_t tag = VENDOR_GOOGLE_START; tag < max_vendor_tag_; tag++) {
     camera_metadata_ro_entry_t entry;
     if (find_camera_metadata_ro_entry(&settings, tag, &entry) == 0) {
-      DCHECK(vendor_tag_info_map_.find(tag) != vendor_tag_info_map_.end());
-      if (!vendor_tag_info_map_.at(tag).effect) {
+      DCHECK(vendor_tag_effect_info_map_.find(tag) !=
+             vendor_tag_effect_info_map_.end());
+      if (!vendor_tag_effect_info_map_.at(tag).effect) {
         LOGF(WARNING) << "Received result vendor tag 0x" << std::hex << tag
                       << " in request";
         continue;
@@ -111,8 +109,9 @@ int32_t ReprocessEffectManager::ReprocessRequest(
   // TODO(hywu): enable cascading effects
   for (uint32_t tag = VENDOR_GOOGLE_START; tag < max_vendor_tag_; tag++) {
     if (find_camera_metadata_ro_entry(&settings, tag, &entry) == 0) {
-      DCHECK(vendor_tag_info_map_.find(tag) != vendor_tag_info_map_.end());
-      if (!vendor_tag_info_map_.at(tag).effect) {
+      DCHECK(vendor_tag_effect_info_map_.find(tag) !=
+             vendor_tag_effect_info_map_.end());
+      if (!vendor_tag_effect_info_map_.at(tag).effect) {
         LOGF(WARNING) << "Received result vendor tag 0x" << std::hex << tag
                       << " in request";
         continue;
@@ -120,7 +119,7 @@ int32_t ReprocessEffectManager::ReprocessRequest(
       int result = 0;
       uint32_t v4l2_format =
           buffer_manager_->GetV4L2PixelFormat(*output_buffer->GetHandle());
-      result = vendor_tag_info_map_.at(tag).effect->ReprocessRequest(
+      result = vendor_tag_effect_info_map_.at(tag).effect->ReprocessRequest(
           settings, input_buffer, width, height, orientation, v4l2_format,
           result_metadata, output_buffer);
       if (result != 0) {

@@ -25,8 +25,8 @@ class PortraitModeEffect final : public ReprocessEffect {
   ~PortraitModeEffect() = default;
 
   int32_t InitializeAndGetVendorTags(
-      std::vector<std::pair<std::string, uint8_t>>* request_vendor_tags,
-      std::vector<std::pair<std::string, uint8_t>>* result_vendor_tags);
+      std::vector<VendorTagInfo>* request_vendor_tags,
+      std::vector<VendorTagInfo>* result_vendor_tags);
 
   int32_t SetVendorTags(uint32_t request_vendor_tag_start,
                         uint32_t request_vendor_tag_count,
