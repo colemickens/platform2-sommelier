@@ -427,7 +427,7 @@ Check out the their [docs][1] for more details (especially on minidumps).
 [Proxies]: #Proxies
 [Uploading Crashes]: #Uploading-Crashes
 
-[anomaly_collector]: ./anomaly_collector.l
+[anomaly_collector]: ./anomaly_collector.cc
 [anomaly-collector.conf]: ./init/anomaly-collector.conf
 [core_collector]: ./core-collector/
 [crash-boot-collect.conf]: ./init/crash-boot-collect.conf

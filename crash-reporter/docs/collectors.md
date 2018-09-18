@@ -260,7 +260,7 @@ The program name is `service-failure`.
 [SELinux]: https://en.wikipedia.org/wiki/Security-Enhanced_Linux
 [udev]: https://en.wikipedia.org/wiki/Udev
 
-[anomaly_collector]: ../anomaly_collector.l
+[anomaly_collector]: ../anomaly_collector.cc
 [anomaly-collector.conf]: ../init/anomaly-collector.conf
 [arc_collector]: ../arc_collector.cc
 [chrome_collector]: ../chrome_collector.cc

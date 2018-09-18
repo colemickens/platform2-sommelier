@@ -189,7 +189,7 @@ There are a few class fixes that would help with this:
     Rewrite crash_sender in C++ to avoid all usage of external programs like
     `sed` or `awk` and thus any arbitrary code execution they introduce.
 
-[anomaly_collector]: ../anomaly_collector.l
+[anomaly_collector]: ../anomaly_collector.cc
 [crash_reporter]: ../crash_reporter.cc
 [crash_reporter_logs.conf]: ../crash_reporter_logs.conf
 [crash_sender]: ../crash_sender.cc
