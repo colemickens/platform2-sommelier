@@ -265,6 +265,10 @@ status_t SettingsProcessor::processIspSettings(const CameraMetadata &settings,
             LOGE("ERROR: Unknown effect mode %d", effectMode);
             return BAD_VALUE;
     }
+    //# ANDROID_REPROCESS_EFFECTIVE_EXPOSURE_FACTOR reprocess.effectiveExposureFactor done
+    entry = settings.find(ANDROID_REPROCESS_EFFECTIVE_EXPOSURE_FACTOR);
+    reqAiqCfg.captureSettings->effectiveExposureFactor = (entry.count == 1) ? entry.data.f[0] : 0.0;
+
     return OK;
 }
 

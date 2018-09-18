@@ -88,6 +88,8 @@ struct CaptureUnitSettings {
 
     bool dump; /**< 'true' if (PAL) dump needs to be done */
 
+    float effectiveExposureFactor;    /**< ANDROID_REPROCESS_EFFECTIVE_EXPOSURE_FACTOR */
+
     /*
      * ispControl is just a struct to keep the values found in the request
      * metadata settings and not having to search again.
@@ -125,6 +127,7 @@ struct CaptureUnitSettings {
         flashFired(false),
         torchAsked(false),
         dump(false),
+        effectiveExposureFactor(0.0),
         inEffectFrom(0),
         timestamp(0),
         settingsIdentifier(0) {

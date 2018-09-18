@@ -934,6 +934,11 @@ ImguUnit::ImguPipe::updateMiscMetadata(CameraMetadata &procUnitResults,
     //# ANDROID_METADATA_Dynamic android.edge.mode done
     procUnitResults.update(ANDROID_EDGE_MODE,
                            &settings->captureSettings->ispControls.ee.mode, 1);
+    //# ANDROID_REPROCESS_EFFECTIVE_EXPOSURE_FACTOR reprocess.effectiveExposureFactor done
+    if (settings->captureSettings->effectiveExposureFactor > 0.0) {
+        procUnitResults.update(ANDROID_REPROCESS_EFFECTIVE_EXPOSURE_FACTOR,
+                           &settings->captureSettings->effectiveExposureFactor, 1);
+    }
 }
 
 /**
