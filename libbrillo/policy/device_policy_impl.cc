@@ -5,6 +5,7 @@
 #include "policy/device_policy_impl.h"
 
 #include <algorithm>
+#include <map>
 #include <memory>
 #include <set>
 #include <string>
@@ -554,9 +555,9 @@ bool DevicePolicyImpl::GetDeviceUpdateStagingSchedule(
   if (!list_val)
     return false;
 
-  for (base::Value* const& pair_value : *list_val) {
-    base::DictionaryValue* day_percentage_pair;
-    if (!pair_value->GetAsDictionary(&day_percentage_pair))
+  for (const auto& pair_value : base::ValueReferenceAdapter(*list_val)) {
+    const base::DictionaryValue* day_percentage_pair;
+    if (!pair_value.GetAsDictionary(&day_percentage_pair))
       return false;
     int days, percentage;
     if (!day_percentage_pair->GetInteger("days", &days) ||
@@ -648,14 +649,14 @@ bool DevicePolicyImpl::GetDisallowedTimeIntervals(
   if (!list_val)
     return false;
 
-  for (base::Value* const& interval_value : *list_val) {
-    base::DictionaryValue* interval_dict;
-    if (!interval_value->GetAsDictionary(&interval_dict)) {
+  for (const auto& interval_value : base::ValueReferenceAdapter(*list_val)) {
+    const base::DictionaryValue* interval_dict;
+    if (!interval_value.GetAsDictionary(&interval_dict)) {
       LOG(ERROR) << "Invalid JSON string given. Interval is not a dict.";
       return false;
     }
-    base::DictionaryValue* start;
-    base::DictionaryValue* end;
+    const base::DictionaryValue* start;
+    const base::DictionaryValue* end;
     if (!interval_dict->GetDictionary("start", &start) ||
         !interval_dict->GetDictionary("end", &end)) {
       LOG(ERROR) << "Interval is missing start/end.";

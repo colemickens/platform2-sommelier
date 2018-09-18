@@ -267,12 +267,14 @@ ArcSdkVersionUpgradeType GetUpgradeType(AndroidSdkVersion system_sdk_version,
     return ArcSdkVersionUpgradeType::N_TO_P;
   }
   if (data_sdk_version < system_sdk_version) {
-    LOG(ERROR) << "Unexpected Upgrade: data_sdk_version=" << data_sdk_version
-               << " system_sdk_version=" << system_sdk_version;
+    LOG(ERROR) << "Unexpected Upgrade: data_sdk_version="
+               << static_cast<int>(data_sdk_version) << " system_sdk_version="
+               << static_cast<int>(system_sdk_version);
     return ArcSdkVersionUpgradeType::UNKNOWN_UPGRADE;
   }
-  LOG(ERROR) << "Unexpected Downgrade: data_sdk_version=" << data_sdk_version
-             << " system_sdk_version=" << system_sdk_version;
+  LOG(ERROR) << "Unexpected Downgrade: data_sdk_version="
+             << static_cast<int>(data_sdk_version)
+             << " system_sdk_version=" << static_cast<int>(system_sdk_version);
   return ArcSdkVersionUpgradeType::UNKNOWN_DOWNGRADE;
 }
 

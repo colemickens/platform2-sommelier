@@ -40,9 +40,9 @@ bool ParseIntFromDict(const base::DictionaryValue& dict,
 // Parse a ListValue structure as vector of integers.
 template <typename T>
 bool ParseIntList(const base::ListValue& list_val, std::vector<T>* val_out) {
-  for (const base::Value* entry : list_val) {
+  for (const base::Value& entry : base::ValueReferenceAdapter(list_val)) {
     double double_val;
-    if (!entry->GetAsDouble(&double_val)) {
+    if (!entry.GetAsDouble(&double_val)) {
       return false;
     }
     val_out->emplace_back(static_cast<T>(double_val));

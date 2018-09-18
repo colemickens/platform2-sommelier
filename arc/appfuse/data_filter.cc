@@ -27,6 +27,8 @@ constexpr size_t kMaxFuseDataSize = 256 * 1024;
 
 DataFilter::DataFilter()
     : watch_thread_("DataFilter"),
+      watcher_dev_(FROM_HERE),
+      watcher_socket_(FROM_HERE),
       origin_task_runner_(base::ThreadTaskRunnerHandle::Get()) {}
 
 DataFilter::~DataFilter() {
