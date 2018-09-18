@@ -516,8 +516,9 @@ bool CrosFpBiometricsManager::CrosFpDevice::GetTemplate(int index,
   }
   out->resize(static_cast<size_t>(info_.template_size));
   // In the EC_CMD_FP_FRAME host command, the templates are indexed starting
-  // from 1, as 0 (aka FP_FRAME_INDEX_RAW_IMAGE) is used for the finger image.
-  return FpFrame(index + 1, out);
+  // from 1 (aka FP_FRAME_INDEX_TEMPLATE), as 0 (aka FP_FRAME_INDEX_RAW_IMAGE)
+  // is used for the finger image.
+  return FpFrame(index + FP_FRAME_INDEX_TEMPLATE, out);
 }
 
 bool CrosFpBiometricsManager::CrosFpDevice::UploadTemplate(
@@ -557,12 +558,9 @@ bool CrosFpBiometricsManager::CrosFpDevice::SetContext(std::string user_hex) {
       memcpy(ctxt.userid, user_id.data(),
              std::min(user_id.size(), sizeof(ctxt.userid)));
   }
-
-  crypto::RandBytes(ctxt.nonce, sizeof(ctxt.nonce));
-  EcCommand<struct ec_params_fp_context, struct ec_response_fp_context> cmd(
-      EC_CMD_FP_CONTEXT, 0, ctxt);
+  EcCommand<struct ec_params_fp_context, EmptyParam> cmd(EC_CMD_FP_CONTEXT, 0,
+                                                         ctxt);
   return cmd.Run(cros_fd_.get());
-  // Ignore the returned nonce for now.
 }
 
 bool CrosFpBiometricsManager::CrosFpDevice::ResetContext() {
