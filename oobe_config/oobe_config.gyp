@@ -4,6 +4,10 @@
       'deps': [
         'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
+        # system_api depends on protobuf (or protobuf-lite). It must
+        # appear before protobuf or the linker flags won't be in the right
+        # order.
+        'system_api',
         'protobuf-lite',
       ],
     },

@@ -14,6 +14,9 @@
 
 namespace oobe_config {
 
+// Used as buffer for serialized protobufs.
+using ProtoBlob = std::vector<uint8_t>;
+
 // Implementation of OobeConfigRestore D-Bus interface.
 class OobeConfigRestoreService
     : public org::chromium::OobeConfigRestoreAdaptor,
@@ -30,8 +33,8 @@ class OobeConfigRestoreService
 
   // org::chromium::OobeConfigRestoreInterface
   //   - See org.chromium.OobeConfigRestoreInterface.xml
-  void ProcessAndGetOobeAutoConfig(
-      int32_t* error, std::vector<uint8_t>* oobe_config_blob) override;
+  void ProcessAndGetOobeAutoConfig(int32_t* error,
+                                   ProtoBlob* oobe_config_blob) override;
 
  private:
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
