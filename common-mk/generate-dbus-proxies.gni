@@ -34,7 +34,7 @@ template("generate_dbus_proxies") {
     script = "//common-mk/file_generator_wrapper.py"
     outputs = []
     args = [ "generate-chromeos-dbus-bindings" ] +
-           rebase_path(sources, target_gen_dir) +
+           rebase_path(sources, root_build_dir) +
            [ "--service-config=${service_config}" ]
     if (proxy_output_file != "") {
       outputs += [ "${root_gen_dir}/${proxy_output_file}" ]
