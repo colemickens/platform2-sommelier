@@ -22,4 +22,4 @@ xrandr,/usr/bin/xrandr --verbose
 debugd,/usr/bin/dbus-send --system --print-reply --dest=org.chromium.debugd /org/chromium/debugd org.chromium.debugd.GetFeedbackLogs
 chrome_user_log,/bin/cat /home/chronos/user/log/chrome
 logout-times,/bin/cat /home/chronos/user/logout-times
-cheets-logs,/usr/bin/collect-cheets-logs
+cheets-logs,/bin/cat /var/log/arc.log 2>/dev/null || /bin/true

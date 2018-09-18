@@ -79,7 +79,7 @@ const Log kCommandLogs[] = {
     "/usr/share/userfeedback/scripts/get_board_specific_info" },
   { "buddyinfo", "cat /proc/buddyinfo" },
   { "cbi_info", "/usr/share/userfeedback/scripts/cbi_info", kRoot, },
-  { "cheets_log", "/usr/bin/collect-cheets-logs 2>&1" },
+  { "cheets_log", "cat /var/log/arc.log 2>/dev/null" },
   { "clobber.log", "cat /var/log/clobber.log 2>/dev/null" },
   { "clobber-state.log", "cat /var/log/clobber-state.log 2>/dev/null" },
   { "chrome_system_log", "cat /var/log/chrome/chrome" },
