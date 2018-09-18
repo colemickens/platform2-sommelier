@@ -302,9 +302,21 @@ camera_metadata_t* PSLConfParser::constructDefaultMetadata(int cameraId, int req
         staticMeta, ANDROID_CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES,
         &fpsRangesEntry);
     if ((fpsRangesEntry.count >= 2) && (fpsRangesEntry.count % 2 == 0)) {
-      // The first one in the entry list is used
-      fpsRange[0] = fpsRangesEntry.data.i32[0];
-      fpsRange[1] = fpsRangesEntry.data.i32[1];
+      //choose closest (15,30) range
+      size_t fpsNums = fpsRangesEntry.count / 2;
+      int32_t delta = INT32_MAX;
+
+      for (size_t i = 0; i < fpsNums; i += 2) {
+          int32_t diff = abs(fpsRangesEntry.data.i32[i] - 15) +
+            abs(fpsRangesEntry.data.i32[i+1] - 30);
+
+          if (delta > diff) {
+              fpsRange[0] = fpsRangesEntry.data.i32[i];
+              fpsRange[1] = fpsRangesEntry.data.i32[i+1];
+
+              delta = diff;
+          }
+      }
     } else {
       LOGW("No AE FPS range found in profile, use default [15, 30]");
     }
