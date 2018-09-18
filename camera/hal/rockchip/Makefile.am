@@ -106,7 +106,7 @@ CPPHACKS = \
    -DDUMP_IMAGE
 
 STRICTED_CPPFLAGS = \
-    -std=c++11 \
+    -std=c++14 \
     -Wall -Werror -Wno-unused-function -Wno-unused-value \
     -fstack-protector -fPIE -fPIC -D_FORTIFY_SOURCE=2 \
     -Wformat -Wformat-security

@@ -5,7 +5,7 @@
 include common.mk
 include pc_utils.mk
 
-CXXFLAGS += -std=c++11 -Wall -Wpointer-arith
+CXXFLAGS += -std=c++14 -Wall -Wpointer-arith
 
 ### Rules to generate the mojom header and source files.
 
