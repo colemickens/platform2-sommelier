@@ -29,7 +29,6 @@ const char kLoginConsumerAllowsNewUsersMetric[] =
 const char kLoginPolicyFilesMetric[] = "Login.PolicyFilesStatePerBoot";
 const char kLoginUserTypeMetric[] = "Login.UserType";
 const char kLoginStateKeyGenerationStatus[] = "Login.StateKeyGenerationStatus";
-const char kLoginViewsLoginCrash[] = "Login.ViewsLoginCrash";
 const char kInvalidDevicePolicyFilesDetected[] =
     "Enterprise.InvalidDevicePolicyFiles";
 const int kMaxPolicyFilesValue = 64;
@@ -92,12 +91,6 @@ void LoginMetrics::SendStateKeyGenerationStatus(
     StateKeyGenerationStatus status) {
   metrics_lib_.SendEnumToUMA(kLoginStateKeyGenerationStatus, status,
                              STATE_KEY_STATUS_COUNT);
-}
-
-void LoginMetrics::SendViewsLoginCrash() {
-  enum MetricType { CRASH = 0, COUNT };
-  metrics_lib_.SendEnumToUMA(kLoginViewsLoginCrash, MetricType::CRASH,
-                             MetricType::COUNT);
 }
 
 void LoginMetrics::RecordStats(const char* tag) {

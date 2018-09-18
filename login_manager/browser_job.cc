@@ -278,26 +278,6 @@ std::vector<std::string> BrowserJob::ExportArgv() const {
   MergeSwitches(&to_return, kEnableBlinkFeaturesFlag, ",",
                 true /* keep_existing */);
 
-  // Add --show-webui-login if we are not in a session and Chrome has crashed.
-  //
-  // TODO(jdufault): Remove this logic after views-based login is stable. See
-  // https://crbug.com/822434.
-  constexpr char kShowWebUiLogin[] = "--show-webui-login";
-  if (!session_already_started_ &&
-      base::STLCount(to_return, kShowWebUiLogin) == 0) {
-    // The start_times_ recording happens after this call, which means all
-    // entries will be 0 on the first run.
-    int crash_count = std::count_if(start_times_.begin(), start_times_.end(),
-                                    [](int value) { return value != 0; });
-    if (crash_count > 0) {
-      to_return.push_back(kShowWebUiLogin);
-      // Only the first crash would have been using views login.
-      if (crash_count == 1) {
-        login_metrics_->SendViewsLoginCrash();
-      }
-    }
-  }
-
   return to_return;
 }
 
