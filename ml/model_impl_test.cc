@@ -15,10 +15,10 @@
 #include <tensorflow/contrib/lite/model.h>
 
 #include "ml/model_impl.h"
+#include "ml/mojom/graph_executor.mojom.h"
+#include "ml/mojom/model.mojom.h"
 #include "ml/tensor_view.h"
 #include "ml/test_utils.h"
-#include "mojom/graph_executor.mojom.h"
-#include "mojom/model.mojom.h"
 
 namespace ml {
 namespace {
@@ -115,8 +115,8 @@ TEST_F(ModelImplTest, TestExampleModel) {
         EXPECT_TRUE(out_tensor.IsValidFormat());
 
         // Check the output tensor has the expected shape and values.
-        EXPECT_THAT(out_tensor.GetShape().storage(), ElementsAre(1));
-        EXPECT_THAT(out_tensor.GetValues().storage(), ElementsAre(0.75));
+        EXPECT_THAT(out_tensor.GetShape(), ElementsAre(1));
+        EXPECT_THAT(out_tensor.GetValues(), ElementsAre(0.75));
 
         exe_callback_done = true;
       });

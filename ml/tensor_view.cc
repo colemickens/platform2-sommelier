@@ -14,7 +14,7 @@ using ::chromeos::machine_learning::mojom::Int64List;
 using ::chromeos::machine_learning::mojom::ValueList;
 
 template <>
-mojo::Array<int64_t>& TensorView<int64_t>::GetValues() {
+std::vector<int64_t>& TensorView<int64_t>::GetValues() {
   return tensor_->data->get_int64_list()->value;
 }
 
@@ -26,10 +26,13 @@ bool TensorView<int64_t>::IsValidType() const {
 template <>
 void TensorView<int64_t>::AllocateValues() {
   tensor_->data->set_int64_list(Int64List::New());
+  // TODO(hidehiko): assigning std::vector<>() to |value| is unneeded
+  // on libmojo uprev. Remove them after the uprev.
+  tensor_->data->get_int64_list()->value = std::vector<int64_t>();
 }
 
 template <>
-mojo::Array<double>& TensorView<double>::GetValues() {
+std::vector<double>& TensorView<double>::GetValues() {
   return tensor_->data->get_float_list()->value;
 }
 
@@ -41,6 +44,9 @@ bool TensorView<double>::IsValidType() const {
 template <>
 void TensorView<double>::AllocateValues() {
   tensor_->data->set_float_list(FloatList::New());
+  // TODO(hidehiko): assigning std::vector<>() to |value| is unneeded
+  // on libmojo uprev. Remove them after the uprev.
+  tensor_->data->get_float_list()->value = std::vector<double>();
 }
 
 }  // namespace ml

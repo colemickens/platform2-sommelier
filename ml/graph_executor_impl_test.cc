@@ -107,8 +107,8 @@ TEST(GraphExecutorTest, TestOk) {
           EXPECT_TRUE(out_tensor.IsValidFormat());
 
           // Check the output tensor has the expected shape and values.
-          EXPECT_THAT(out_tensor.GetShape().storage(), ElementsAre(1));
-          EXPECT_THAT(out_tensor.GetValues().storage(), ElementsAre(0.5));
+          EXPECT_THAT(out_tensor.GetShape(), ElementsAre(1));
+          EXPECT_THAT(out_tensor.GetValues(), ElementsAre(0.5));
 
           callback_done = true;
         });
@@ -139,8 +139,8 @@ TEST(GraphExecutorTest, TestOk) {
           EXPECT_TRUE(out_tensor.IsValidFormat());
 
           // Check the output tensor has the expected shape and values.
-          EXPECT_THAT(out_tensor.GetShape().storage(), ElementsAre(1));
-          EXPECT_THAT(out_tensor.GetValues().storage(), ElementsAre(0.75));
+          EXPECT_THAT(out_tensor.GetShape(), ElementsAre(1));
+          EXPECT_THAT(out_tensor.GetValues(), ElementsAre(0.75));
 
           callback_done = true;
         });
@@ -217,8 +217,8 @@ TEST(GraphExecutorTest, TestNarrowing) {
         EXPECT_TRUE(out_tensor.IsValidFormat());
 
         // Check the output tensor has the expected shape and values.
-        EXPECT_THAT(out_tensor.GetShape().storage(), ElementsAre(1));
-        EXPECT_THAT(out_tensor.GetValues().storage(), ElementsAre(1));
+        EXPECT_THAT(out_tensor.GetShape(), ElementsAre(1));
+        EXPECT_THAT(out_tensor.GetValues(), ElementsAre(1));
 
         callback_done = true;
       });

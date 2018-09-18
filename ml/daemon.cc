@@ -17,7 +17,6 @@
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <mojo/edk/embedder/embedder.h>
-#include <mojo/edk/embedder/process_delegate.h>
 
 #include "ml/machine_learning_service_impl.h"
 
@@ -25,17 +24,9 @@ namespace ml {
 
 namespace {
 
-// A ProcessDelegate that does nothing upon IPC system shutdown.
-class DoNothingProcessDelegate : public mojo::edk::ProcessDelegate {
- public:
-  void OnShutdownComplete() override {}
-};
-
 void InitMojo() {
   mojo::edk::Init();
-  static DoNothingProcessDelegate process_delegate;
-  mojo::edk::InitIPCSupport(&process_delegate,
-                            base::ThreadTaskRunnerHandle::Get());
+  mojo::edk::InitIPCSupport(base::ThreadTaskRunnerHandle::Get());
 }
 
 }  // namespace

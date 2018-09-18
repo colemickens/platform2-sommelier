@@ -15,11 +15,11 @@
 #include <mojo/public/cpp/bindings/interface_request.h>
 
 #include "ml/machine_learning_service_impl.h"
+#include "ml/mojom/graph_executor.mojom.h"
+#include "ml/mojom/machine_learning_service.mojom.h"
+#include "ml/mojom/model.mojom.h"
 #include "ml/tensor_view.h"
 #include "ml/test_utils.h"
-#include "mojom/graph_executor.mojom.h"
-#include "mojom/machine_learning_service.mojom.h"
-#include "mojom/model.mojom.h"
 
 namespace ml {
 namespace {
@@ -128,9 +128,8 @@ TEST(MachineLearningServiceImplTest, TestInference) {
         EXPECT_TRUE(out_tensor.IsValidFormat());
 
         // Check the output tensor has the expected shape and values.
-        EXPECT_THAT(out_tensor.GetShape().storage(), ElementsAre(1));
-        EXPECT_THAT(out_tensor.GetValues().storage(),
-                    ElementsAre(DoubleEq(0.75)));
+        EXPECT_THAT(out_tensor.GetShape(), ElementsAre(1));
+        EXPECT_THAT(out_tensor.GetValues(), ElementsAre(DoubleEq(0.75)));
 
         infer_callback_done = true;
       });

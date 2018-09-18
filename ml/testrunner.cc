@@ -8,13 +8,6 @@
 #include <brillo/message_loops/base_message_loop.h>
 #include <brillo/test_helpers.h>
 #include <mojo/edk/embedder/embedder.h>
-#include <mojo/edk/embedder/process_delegate.h>
-
-// A ProcessDelegate that does nothing upon IPC system shutdown.
-class DoNothingProcessDelegate : public mojo::edk::ProcessDelegate {
- public:
-  void OnShutdownComplete() override {}
-};
 
 int main(int argc, char** argv) {
   SetUpTests(&argc, argv, true);
@@ -22,8 +15,7 @@ int main(int argc, char** argv) {
   (new brillo::BaseMessageLoop())->SetAsCurrent();
 
   mojo::edk::Init();
-  mojo::edk::InitIPCSupport(new DoNothingProcessDelegate(),
-                            base::ThreadTaskRunnerHandle::Get());
+  mojo::edk::InitIPCSupport(base::ThreadTaskRunnerHandle::Get());
 
   return RUN_ALL_TESTS();
 }

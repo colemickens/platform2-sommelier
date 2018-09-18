@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <mojo/public/cpp/bindings/array.h>
-
 #include "ml/mojom/tensor.mojom.h"
+
+#include <vector>
 
 #ifndef ML_TENSOR_VIEW_H_
 #define ML_TENSOR_VIEW_H_
@@ -36,17 +36,17 @@ class TensorView {
       : tensor_(tensor) {}
 
   // Return the shape array of the tensor.
-  mojo::Array<int64_t>& GetShape() { return tensor_->shape->value; }
+  std::vector<int64_t>& GetShape() { return tensor_->shape->value; }
 
-  const mojo::Array<int64_t>& GetShape() const {
-    return const_cast<TensorView<T>*>(this)->GetShape();
+  const std::vector<int64_t>& GetShape() const {
+    return tensor_->shape->value;
   }
 
-  // Return the value array of the tensor. Should be specialized for each tensor
-  // data type T.
-  mojo::Array<T>& GetValues() { return mojo::Array<T>(nullptr); }
+  // Return the value array of the tensor.
+  // Defined only in each specialization for T.
+  std::vector<T>& GetValues();
 
-  const mojo::Array<T>& GetValues() const {
+  const std::vector<T>& GetValues() const {
     return const_cast<TensorView<T>*>(this)->GetValues();
   }
 
@@ -57,7 +57,7 @@ class TensorView {
   // Return true if the tensor is in a valid format (i.e. valid dimensions and
   // the right number of entries for its shape).
   bool IsValidFormat() const {
-    const mojo::Array<int64_t>& dims = GetShape();
+    const std::vector<int64_t>& dims = GetShape();
 
     // Special case: no entries.
     if (dims.empty())
@@ -77,17 +77,17 @@ class TensorView {
   // Allocate memory for the members of the tensor object (including values).
   void Allocate() {
     tensor_->shape = chromeos::machine_learning::mojom::Int64List::New();
-    GetShape().SetToEmpty();
-
+    // TODO(hidehiko): assigning std::vector<>() to |value| is unneeded
+    // on libmojo uprev. Remove them after the uprev.
+    tensor_->shape->value = std::vector<int64_t>();
     tensor_->data = chromeos::machine_learning::mojom::ValueList::New();
     AllocateValues();
-    GetValues().SetToEmpty();
   }
 
  private:
-  // Allocate memory for the value array of this tensor. Should be specialized
-  // for each tensor data type T.
-  void AllocateValues() {}
+  // Allocate memory for the value array of this tensor.
+  // Defined only in each specialization for T.
+  void AllocateValues();
 
   const chromeos::machine_learning::mojom::TensorPtr& tensor_;
 
@@ -96,7 +96,7 @@ class TensorView {
 
 // Specializations for int tensors.
 template <>
-mojo::Array<int64_t>& TensorView<int64_t>::GetValues();
+std::vector<int64_t>& TensorView<int64_t>::GetValues();
 template <>
 bool TensorView<int64_t>::IsValidType() const;
 template <>
@@ -104,7 +104,7 @@ void TensorView<int64_t>::AllocateValues();
 
 // Specializations for float tensors.
 template <>
-mojo::Array<double>& TensorView<double>::GetValues();
+std::vector<double>& TensorView<double>::GetValues();
 template <>
 bool TensorView<double>::IsValidType() const;
 template <>

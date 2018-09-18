@@ -11,9 +11,7 @@
 
 #include <base/callback_forward.h>
 #include <base/macros.h>
-#include <mojo/public/cpp/bindings/array.h>
 #include <mojo/public/cpp/bindings/binding.h>
-#include <mojo/public/cpp/bindings/map.h>
 #include <tensorflow/contrib/lite/model.h>
 
 #include "ml/mojom/graph_executor.mojom.h"

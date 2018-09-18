@@ -8,8 +8,8 @@
 #include <string>
 #include <vector>
 
+#include "ml/mojom/tensor.mojom.h"
 #include "ml/tensor_view.h"
-#include "mojom/tensor.mojom.h"
 
 namespace ml {
 
@@ -21,16 +21,8 @@ chromeos::machine_learning::mojom::TensorPtr NewTensor(
   auto tensor(chromeos::machine_learning::mojom::Tensor::New());
   TensorView<T> tensor_view(tensor);
   tensor_view.Allocate();
-
-  mojo::Array<int64_t>& tensor_shape = tensor_view.GetShape();
-  for (const int64_t dim : shape) {
-    tensor_shape.push_back(dim);
-  }
-
-  mojo::Array<T>& tensor_values = tensor_view.GetValues();
-  for (const T& value : values) {
-    tensor_values.push_back(value);
-  }
+  tensor_view.GetShape() = shape;
+  tensor_view.GetValues() = values;
 
   return tensor;
 }

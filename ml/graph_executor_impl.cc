@@ -6,6 +6,7 @@
 
 #include <set>
 #include <utility>
+#include <vector>
 
 #include "ml/mojom/tensor.mojom.h"
 #include "ml/tensor_view.h"
@@ -39,7 +40,7 @@ ExecuteResult PopulateInput(const TensorPtr& tensor,
   // Check that given input shape matches that expected by TF lite.
 
   const TfLiteIntArray& expected_dims = *interpreter->tensor(index)->dims;
-  const mojo::Array<int64_t>& actual_dims = tensor_view.GetShape();
+  const std::vector<int64_t>& actual_dims = tensor_view.GetShape();
 
   bool shape_matches = expected_dims.size == actual_dims.size();
   for (int i = 0; shape_matches && i < expected_dims.size; ++i) {
@@ -50,7 +51,7 @@ ExecuteResult PopulateInput(const TensorPtr& tensor,
     return ExecuteResult::INPUT_SHAPE_ERROR;
 
   MemoryType* const input_memory = interpreter->typed_tensor<MemoryType>(index);
-  const mojo::Array<TensorType>& tensor_values = tensor_view.GetValues();
+  const std::vector<TensorType>& tensor_values = tensor_view.GetValues();
   for (int i = 0; i < tensor_values.size(); ++i) {
     input_memory[i] = tensor_values[i];
   }
@@ -100,7 +101,7 @@ ExecuteResult PopulateOutput(const int index,
   // Copy across size information and calculate the number of elements being
   // output.
   int64_t num_entries = 1;
-  mojo::Array<int64_t>& tensor_dims = tensor_view.GetShape();
+  std::vector<int64_t>& tensor_dims = tensor_view.GetShape();
   tensor_dims.resize(dims.size);
   for (int i = 0; i < dims.size; ++i) {
     const int64_t dim_length = dims.data[i];
@@ -115,7 +116,7 @@ ExecuteResult PopulateOutput(const int index,
   // Populate tensor values.
   const MemoryType* const output_memory =
       interpreter.typed_tensor<MemoryType>(index);
-  mojo::Array<TensorType>& tensor_values = tensor_view.GetValues();
+  std::vector<TensorType>& tensor_values = tensor_view.GetValues();
   tensor_values.resize(num_entries);
   for (int i = 0; i < num_entries; ++i) {
     tensor_values[i] = output_memory[i];
@@ -144,11 +145,6 @@ constexpr decltype(&InvalidOutput) kPopulateOutputFns[] = {
     &PopulateOutput<int64_t, bool>,     // kTfLiteBool
 };
 
-// For making callback invocations nicer.
-mojo::Array<TensorPtr> NullArray() {
-  return mojo::Array<TensorPtr>(nullptr);
-}
-
 }  // namespace
 
 GraphExecutorImpl::GraphExecutorImpl(
@@ -167,50 +163,50 @@ void GraphExecutorImpl::set_connection_error_handler(
 }
 
 void GraphExecutorImpl::Execute(
-    const mojo::Map<mojo::String, TensorPtr> tensors,
-    const mojo::Array<mojo::String> outputs,
+    mojo::Map<mojo::String, TensorPtr> tensors,
+    mojo::Array<mojo::String> outputs,
     const ExecuteCallback& callback) {
   // Validate input and output names (before executing graph, for efficiency).
 
   for (const auto& kv : tensors) {
-    const std::string& cur_input_name = kv.first.get();
+    const std::string& cur_input_name = kv.first;
 
     const auto name_lookup = required_inputs_.find(cur_input_name);
     if (name_lookup == required_inputs_.end() ||
         name_lookup->second >= interpreter_->tensors_size()) {
-      callback.Run(ExecuteResult::UNKNOWN_INPUT_ERROR, NullArray());
+      callback.Run(ExecuteResult::UNKNOWN_INPUT_ERROR, base::nullopt);
       return;
     }
   }
   if (tensors.size() != required_inputs_.size()) {
-    callback.Run(ExecuteResult::INPUT_MISSING_ERROR, NullArray());
+    callback.Run(ExecuteResult::INPUT_MISSING_ERROR, base::nullopt);
     return;
   }
 
   std::set<std::string> seen_outputs;
   for (const mojo::String& cur_output_name : outputs) {
-    const auto name_lookup = required_outputs_.find(cur_output_name.get());
+    const auto name_lookup = required_outputs_.find(cur_output_name);
     if (name_lookup == required_outputs_.end() ||
         name_lookup->second >= interpreter_->tensors_size()) {
-      callback.Run(ExecuteResult::UNKNOWN_OUTPUT_ERROR, NullArray());
+      callback.Run(ExecuteResult::UNKNOWN_OUTPUT_ERROR, base::nullopt);
       return;
     }
 
     // Specifying the same output twice is an error.
-    const auto insert_result = seen_outputs.insert(cur_output_name.get());
+    const auto insert_result = seen_outputs.insert(cur_output_name);
     if (!insert_result.second) {
-      callback.Run(ExecuteResult::DUPLICATE_OUTPUT_ERROR, NullArray());
+      callback.Run(ExecuteResult::DUPLICATE_OUTPUT_ERROR, base::nullopt);
       return;
     }
   }
   if (outputs.size() != required_outputs_.size()) {
-    callback.Run(ExecuteResult::OUTPUT_MISSING_ERROR, NullArray());
+    callback.Run(ExecuteResult::OUTPUT_MISSING_ERROR, base::nullopt);
     return;
   }
 
   // Copy input data into the interpreter.
   for (const auto& kv : tensors) {
-    const std::string& cur_input_name = kv.first.get();
+    const std::string& cur_input_name = kv.first;
     const TensorPtr& cur_input = kv.second;
 
     // Always valid, by the input name check at the start of this function.
@@ -221,7 +217,7 @@ void GraphExecutorImpl::Execute(
     if (cur_input_type >= arraysize(kPopulateInputFns)) {
       LOG(ERROR) << "TF lite graph contains invalid input node " << cur_input_id
                  << " of type " << cur_input_type << ".";
-      callback.Run(ExecuteResult::EXECUTION_ERROR, NullArray());
+      callback.Run(ExecuteResult::EXECUTION_ERROR, base::nullopt);
       return;
     }
 
@@ -230,7 +226,7 @@ void GraphExecutorImpl::Execute(
         (*kPopulateInputFns[cur_input_type])(cur_input, cur_input_id,
                                              interpreter_.get());
     if (populate_input_result != ExecuteResult::OK) {
-      callback.Run(populate_input_result, NullArray());
+      callback.Run(populate_input_result, base::nullopt);
       return;
     }
   }
@@ -238,7 +234,7 @@ void GraphExecutorImpl::Execute(
   // Execute graph.
   if (interpreter_->Invoke() != kTfLiteOk) {
     LOG(ERROR) << "TF lite graph execution failed unexpectedly.";
-    callback.Run(ExecuteResult::EXECUTION_ERROR, NullArray());
+    callback.Run(ExecuteResult::EXECUTION_ERROR, base::nullopt);
     return;
   }
 
@@ -249,14 +245,14 @@ void GraphExecutorImpl::Execute(
 
     // Always valid, by the output name check at the start of this function.
     const int cur_output_id =
-        required_outputs_.find(cur_output_name.get())->second;
+        required_outputs_.find(cur_output_name)->second;
 
     // Check that the current output node is a supported type.
     const uint32_t cur_output_type = interpreter_->tensor(cur_output_id)->type;
     if (cur_output_type >= arraysize(kPopulateOutputFns)) {
       LOG(ERROR) << "TF lite graph contains invalid output node "
                  << cur_output_id << " of type " << cur_output_type << ".";
-      callback.Run(ExecuteResult::EXECUTION_ERROR, NullArray());
+      callback.Run(ExecuteResult::EXECUTION_ERROR, base::nullopt);
       return;
     }
 
@@ -265,7 +261,7 @@ void GraphExecutorImpl::Execute(
         (*kPopulateOutputFns[cur_output_type])(cur_output_id, *interpreter_,
                                                *--output_tensors.end());
     if (populate_output_result != ExecuteResult::OK) {
-      callback.Run(populate_output_result, NullArray());
+      callback.Run(populate_output_result, base::nullopt);
       return;
     }
   }
