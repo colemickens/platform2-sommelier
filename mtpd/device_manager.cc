@@ -596,6 +596,10 @@ void DeviceManager::AddOrUpdateDevices(
   int raw_devices_count = 0;
   LIBMTP_error_number_t err =
       LIBMTP_Detect_Raw_Devices(&raw_devices, &raw_devices_count);
+  if (err == LIBMTP_ERROR_NO_DEVICE_ATTACHED) {
+    LOG(INFO) << "LIBMTP_Detect_Raw_Devices failed with NO_DEVICE_ATTACHED";
+    return;
+  }
   if (err != LIBMTP_ERROR_NONE) {
     LOG(ERROR) << "LIBMTP_Detect_Raw_Devices failed with " << err;
     return;
