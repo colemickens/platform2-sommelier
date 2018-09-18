@@ -88,7 +88,6 @@ const Log kCommandLogs[] = {
   // Plus, for <linux-3.19, it's named "console-ramoops", but for newer
   // versions, it's named "console-ramoops-#".
   { "console-ramoops", "cat /sys/fs/pstore/console-ramoops* 2>/dev/null" },
-  { "cpu", "/usr/bin/uname -p" },
   { "cpuinfo", "cat /proc/cpuinfo" },
   { "cr50_version", "cat /var/cache/cr50-version" },
   { "cros_ec",
@@ -128,7 +127,6 @@ const Log kCommandLogs[] = {
   { "sensor_info", "/usr/share/userfeedback/scripts/sensor_info" },
   { "hardware_class", "/usr/bin/crossystem hwid" },
   { "hostname", "/bin/hostname" },
-  { "hw_platform", "/usr/bin/uname -i" },
   {
     "i915_gem_gtt",
     "cat /sys/kernel/debug/dri/0/i915_gem_gtt 2>/dev/null",
