@@ -7,8 +7,6 @@
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "mtpd/string_helpers.h"
-
 namespace {
 
 MtpFileEntry_FileType LibmtpFileTypeToProtoFileType(

@@ -7,7 +7,6 @@
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "mtpd/string_helpers.h"
 #include "system_api/proto_bindings/mtp_storage_info.pb.h"
 
 namespace mtpd {

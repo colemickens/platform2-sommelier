@@ -40,7 +40,6 @@
         'file_entry.cc',
         'mtpd_server_impl.cc',
         'storage_info.cc',
-        'string_helpers.cc',
       ],
     },
     {
