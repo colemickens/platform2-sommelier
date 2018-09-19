@@ -5,6 +5,7 @@
 #ifndef VM_TOOLS_NOTIFICATIOND_NOTIFICATION_DAEMON_H_
 #define VM_TOOLS_NOTIFICATIOND_NOTIFICATION_DAEMON_H_
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -43,8 +44,17 @@ class NotificationDaemon : public DBusInterface,
 
   // NotificationShellInterface overrides.
   void OnClosed(const std::string& notification_key, bool by_user) override;
+  void OnClicked(const std::string& notification_key,
+                 int32_t button_index) override;
 
  private:
+  // Used for conversion from the events of notification-shell (clicking buttons
+  // and body) to those of org.freedesktop.Notifications (ActionInvoled).
+  struct ClickAction {
+    std::vector<std::string> action_keys_for_buttons;
+    bool default_action_enabled = false;
+  };
+
   NotificationDaemon() = default;
 
   // Initializes the notification daemon. Returns true on success.
@@ -57,6 +67,9 @@ class NotificationDaemon : public DBusInterface,
 
   // Incremental notification id handled by this daemon.
   uint32_t id_count_ = 0;
+
+  // Clicking action conversion mapping for each notification id.
+  std::map<uint32_t, ClickAction> click_actions;
 
   FRIEND_TEST(DBusServiceTest, GetCapabilities);
   FRIEND_TEST(DBusServiceTest, Notify);

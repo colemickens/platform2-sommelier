@@ -300,5 +300,38 @@ TEST_F(DBusServiceTest, NotificationClosedSignal) {
   dbus_service.SendNotificationClosedSignal(expected_id, expected_reason);
 }
 
+// Test if dbus adaptor can properly send ActionInvoked signal.
+TEST_F(DBusServiceTest, ActionInvokedSignal) {
+  auto dbus_service = DBusService(nullptr);
+
+  // Prepare mock exported object
+  const dbus::ObjectPath kObjectPath("/org/example/TestService");
+  auto mock_exported_object =
+      make_scoped_refptr(new dbus::MockExportedObject(nullptr, kObjectPath));
+  dbus_service.exported_object_ = mock_exported_object.get();
+
+  // Expected data
+  const uint32_t expected_id = 456;
+  const std::string expected_action_key = "Test action key";
+
+  // Test if SendSignal is called once with expected args
+  EXPECT_CALL(*mock_exported_object.get(), SendSignal(_))
+      .WillOnce(Invoke([&](dbus::Signal* signal) {
+        dbus::MessageReader reader(signal);
+
+        uint32_t id = -1;
+        std::string action_key;
+        ASSERT_TRUE(reader.PopUint32(&id));
+        ASSERT_TRUE(reader.PopString(&action_key));
+        ASSERT_FALSE(reader.HasMoreData());
+
+        EXPECT_EQ(id, expected_id);
+        EXPECT_EQ(action_key, expected_action_key);
+      }));
+
+  // Send signal
+  dbus_service.SendActionInvokedSignal(expected_id, expected_action_key);
+}
+
 }  // namespace notificationd
 }  // namespace vm_tools

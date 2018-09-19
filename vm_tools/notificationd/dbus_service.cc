@@ -94,6 +94,15 @@ void DBusService::SendNotificationClosedSignal(uint32_t id,
   exported_object_->SendSignal(&signal);
 }
 
+void DBusService::SendActionInvokedSignal(uint32_t id,
+                                          const std::string& action_key) {
+  dbus::Signal signal(kNotificationsServiceName, "ActionInvoked");
+  dbus::MessageWriter writer(&signal);
+  writer.AppendUint32(id);
+  writer.AppendString(action_key);
+  exported_object_->SendSignal(&signal);
+}
+
 bool DBusService::RegisterMethods() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (DBusService::*)(dbus::MethodCall*);

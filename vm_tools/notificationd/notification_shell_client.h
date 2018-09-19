@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
@@ -41,7 +42,8 @@ class NotificationShellClient : public base::MessageLoopForIO::Watcher {
   bool CreateNotification(const std::string& title,
                           const std::string& message,
                           const std::string& display_source,
-                          const std::string& notification_key);
+                          const std::string& notification_key,
+                          const std::vector<std::string>& buttons);
 
   // Sends a close notification request from the notification interface
   // associated with a given notification key. Returns true on success.
@@ -98,14 +100,24 @@ class NotificationShellClient : public base::MessageLoopForIO::Watcher {
     // wayland-client library's callback signature.
     void HandleNotificationClosedEvent(bool by_user);
 
+    // Handles clicked events. Called from the wrapper
+    // (HandleNotificationClickedEventCallback), which is compatible with
+    // wayland-client library's callback signature.
+    void HandleNotificationClickedEvent(int32_t button_index);
+
     // Wrapper for wayland event handlers. Called from wayland-client library.
     static void HandleNotificationClosedEventCallback(
         void* data,
         zcr_notification_shell_notification_v1* notification_proxy,
         uint32_t by_user);
+    static void HandleNotificationClickedEventCallback(
+        void* data,
+        zcr_notification_shell_notification_v1* notification_proxy,
+        int32_t button_index);
 
     const zcr_notification_shell_notification_v1_listener
-        notification_listener_ = {HandleNotificationClosedEventCallback};
+        notification_listener_ = {HandleNotificationClosedEventCallback,
+                                  HandleNotificationClickedEventCallback};
 
     // Wayland proxy for notification interface.
     NotificationProxy proxy_;
@@ -135,6 +147,10 @@ class NotificationShellClient : public base::MessageLoopForIO::Watcher {
   // Handles notification closed event.
   void HandleNotificationClosedEvent(const std::string& notification_key,
                                      bool by_user);
+
+  // Handles notification closed event.
+  void HandleNotificationClickedEvent(const std::string& notification_key,
+                                      int32_t button_index);
 
   // Handles registry event. Called from event handler for wayland-client
   // library. Called from the wrapper (HandleRegistryCallback), which is

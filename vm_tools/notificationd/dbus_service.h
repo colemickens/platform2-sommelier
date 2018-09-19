@@ -6,6 +6,7 @@
 #define VM_TOOLS_NOTIFICATIOND_DBUS_SERVICE_H_
 
 #include <memory>
+#include <string>
 
 #include <dbus/bus.h>
 #include <dbus/exported_object.h>
@@ -44,6 +45,9 @@ class DBusService {
   // Sends the D-Bus signal out to indicate the notification is closed.
   void SendNotificationClosedSignal(uint32_t id, ClosedReason reason);
 
+  // Sends the D-Bus signal out to indicate the action is invoked.
+  void SendActionInvokedSignal(uint32_t id, const std::string& action_key);
+
  private:
   explicit DBusService(DBusInterface* interface);
 
@@ -71,6 +75,7 @@ class DBusService {
   FRIEND_TEST(DBusServiceTest, GetServerInformation);
   FRIEND_TEST(DBusServiceTest, CloseNotification);
   FRIEND_TEST(DBusServiceTest, NotificationClosedSignal);
+  FRIEND_TEST(DBusServiceTest, ActionInvokedSignal);
 
   DISALLOW_COPY_AND_ASSIGN(DBusService);
 };

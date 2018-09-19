@@ -19,6 +19,10 @@ class NotificationShellInterface {
   // Callback for closed event in notification shell.
   virtual void OnClosed(const std::string& notification_key, bool by_user) = 0;
 
+  // Callback for clicked event in notification shell.
+  virtual void OnClicked(const std::string& notification_key,
+                         int32_t button_index) = 0;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(NotificationShellInterface);
 };
