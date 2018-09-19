@@ -14,6 +14,7 @@ from __future__ import print_function
 
 import argparse
 import json
+import os
 import sys
 
 from libcros_config_host import CrosConfig
@@ -224,7 +225,8 @@ def GetParser(description):
                       help='Override the master config file path. Use - for '
                            'stdin.')
   parser.add_argument('-m', '--model', type=str,
-                      help='Which model to run the subcommand on.')
+                      help='Which model to run the subcommand on. Defaults to '
+                           'CROS_CONFIG_MODEL environment variable.')
   subparsers = parser.add_subparsers(dest='subcommand')
   subparsers.add_parser(
       'dump-config',
@@ -319,6 +321,10 @@ def main(argv=None):
   if argv is None:
     argv = sys.argv[1:]
   opts = parser.parse_args(argv)
+
+  if not opts.model and 'CROS_CONFIG_MODEL' in os.environ:
+    opts.model = os.environ['CROS_CONFIG_MODEL']
+
   if opts.subcommand == 'write-target-dirs':
     WriteTargetDirectories()
     return

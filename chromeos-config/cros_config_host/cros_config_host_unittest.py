@@ -52,6 +52,14 @@ class CommonTests(object):
     output = subprocess.check_output(call_args)
     self.assertEqual("another\n", output)
 
+  def testListModelsWithEnvFilter(self):
+    call_args = '{} -c {} list-models'.format(
+        CLI_FILE, self.conf_file).split()
+    os.environ['CROS_CONFIG_MODEL'] = 'another'
+    output = subprocess.check_output(call_args)
+    del os.environ['CROS_CONFIG_MODEL']
+    self.assertEqual("another\n", output)
+
   def testGetPropSingle(self):
     call_args = '{} -c {} --model=another get / wallpaper'.format(
         CLI_FILE, self.conf_file).split()
