@@ -18,7 +18,7 @@ namespace imageloader {
 
 namespace {
 constexpr char kSeccompFilterPath[] =
-    "/opt/google/imageloader/imageloader-seccomp.policy";
+    "/usr/share/policy/imageloader-seccomp.policy";
 }  // namespace
 
 // static

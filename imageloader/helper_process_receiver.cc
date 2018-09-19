@@ -28,7 +28,7 @@ namespace imageloader {
 
 namespace {
 constexpr char kSeccompFilterPath[] =
-    "/opt/google/imageloader/imageloader-helper-seccomp.policy";
+    "/usr/share/policy/imageloader-helper-seccomp.policy";
 }  // namespace
 
 HelperProcessReceiver::HelperProcessReceiver(base::ScopedFD control_fd)
