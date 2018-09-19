@@ -39,6 +39,7 @@ class NotificationDaemon : public DBusInterface,
   bool GetCapabilities(std::vector<std::string>* out_capabilities) override;
   bool Notify(const NotifyArgument& input, uint32_t* out_id) override;
   bool GetServerInformation(ServerInformation* output) override;
+  bool CloseNotification(uint32_t id) override;
 
   // NotificationShellInterface overrides.
   void OnClosed(const std::string& notification_key, bool by_user) override;

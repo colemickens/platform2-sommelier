@@ -72,7 +72,7 @@ bool NotificationDaemon::GetCapabilities(
 
 bool NotificationDaemon::Notify(const NotifyArgument& input, uint32_t* out_id) {
   // Forward notification request to host via Wayland.
-  if (!notification_shell_client_->SendNotification(
+  if (!notification_shell_client_->CreateNotification(
           input.summary, input.body, input.app_name,
           std::to_string(id_count_))) {
     LOG(ERROR) << "Failed to request create_notification to host";
@@ -89,6 +89,15 @@ bool NotificationDaemon::GetServerInformation(ServerInformation* output) {
   output->version = kNotificationsVersion;
   output->spec_version = kNotificationsSpecVersion;
 
+  return true;
+}
+
+bool NotificationDaemon::CloseNotification(uint32_t id) {
+  // Forward closing request to host via Wayland.
+  if (!notification_shell_client_->CloseNotification(std::to_string(id))) {
+    LOG(ERROR) << "Failed to request to close notification";
+    return false;
+  }
   return true;
 }
 

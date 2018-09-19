@@ -58,6 +58,8 @@ class DBusService {
   std::unique_ptr<dbus::Response> CallNotify(dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> CallGetServerInformation(
       dbus::MethodCall* method_call);
+  std::unique_ptr<dbus::Response> CallCloseNotification(
+      dbus::MethodCall* method_call);
 
   DBusInterface* const interface_;
 
@@ -67,6 +69,7 @@ class DBusService {
   FRIEND_TEST(DBusServiceTest, GetCapabilities);
   FRIEND_TEST(DBusServiceTest, Notify);
   FRIEND_TEST(DBusServiceTest, GetServerInformation);
+  FRIEND_TEST(DBusServiceTest, CloseNotification);
   FRIEND_TEST(DBusServiceTest, NotificationClosedSignal);
 
   DISALLOW_COPY_AND_ASSIGN(DBusService);

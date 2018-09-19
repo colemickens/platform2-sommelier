@@ -101,6 +101,7 @@ bool DBusService::RegisterMethods() {
       {"GetCapabilities", &DBusService::CallGetCapabilities},
       {"Notify", &DBusService::CallNotify},
       {"GetServerInformation", &DBusService::CallGetServerInformation},
+      {"CloseNotification", &DBusService::CallCloseNotification},
   };
 
   for (const auto& iter : kServiceMethods) {
@@ -190,6 +191,27 @@ std::unique_ptr<dbus::Response> DBusService::CallGetServerInformation(
   writer.AppendString(std::move(output.vendor));
   writer.AppendString(std::move(output.version));
   writer.AppendString(std::move(output.spec_version));
+
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> DBusService::CallCloseNotification(
+    dbus::MethodCall* method_call) {
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+
+  uint32_t id = 0;
+  if (!reader.PopUint32(&id)) {
+    return GetErrorResponseWithLog(method_call, DBUS_ERROR_INVALID_ARGS,
+                                   "Invalid args for CloseNotification");
+  }
+
+  if (!interface_->CloseNotification(id)) {
+    return GetErrorResponseWithLog(method_call, DBUS_ERROR_FAILED,
+                                   "Failed to call CloseNotification");
+  }
 
   return dbus_response;
 }

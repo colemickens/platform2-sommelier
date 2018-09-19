@@ -38,10 +38,14 @@ class NotificationShellClient : public base::MessageLoopForIO::Watcher {
   // is connected to. Returns true on success. Arguments for this method must be
   // synchronized with the notification shell spec in
   // vm_tools/notificationd/protocol/notification-shell-unstable-v1.xml.
-  bool SendNotification(const std::string& title,
-                        const std::string& message,
-                        const std::string& display_source,
-                        const std::string& notification_key);
+  bool CreateNotification(const std::string& title,
+                          const std::string& message,
+                          const std::string& display_source,
+                          const std::string& notification_key);
+
+  // Sends a close notification request from the notification interface
+  // associated with a given notification key. Returns true on success.
+  bool CloseNotification(const std::string& notification_key);
 
  private:
   struct WlEventLoopDeleter {
@@ -71,6 +75,10 @@ class NotificationShellClient : public base::MessageLoopForIO::Watcher {
     NotificationClient(zcr_notification_shell_notification_v1* proxy,
                        const std::string& notification_key,
                        NotificationShellClient* shell_client);
+
+    // Sends a close notification request to Wayland server which this client
+    // is connected to.
+    void Close();
 
    private:
     struct NotificationProxyDeleter {

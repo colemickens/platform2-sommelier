@@ -45,6 +45,11 @@ class MockNotificationDaemon : public vm_tools::notificationd::DBusInterface {
     return true;
   }
 
+  bool CloseNotification(uint32_t id) override {
+    received_close_notification_id_ = id;
+    return true;
+  }
+
   void SetCapabilities(const std::vector<std::string>& capabilities) {
     capabilities_ = capabilities;
   }
@@ -59,17 +64,23 @@ class MockNotificationDaemon : public vm_tools::notificationd::DBusInterface {
     return received_notify_arg_;
   }
 
+  uint32_t received_close_notification_id() const {
+    return received_close_notification_id_;
+  }
+
  private:
   std::vector<std::string> capabilities_;
   ServerInformation server_info_;
   NotifyArgument received_notify_arg_;
   uint32_t notify_out_id_;
+  uint32_t received_close_notification_id_;
 
   std::unique_ptr<vm_tools::notificationd::DBusService> dbus_service;
 
   FRIEND_TEST(DBusServiceTest, GetCapabilities);
   FRIEND_TEST(DBusServiceTest, Notify);
   FRIEND_TEST(DBusServiceTest, GetServerInformation);
+  FRIEND_TEST(DBusServiceTest, CloseNotification);
 };
 
 }  // namespace
@@ -231,6 +242,29 @@ TEST_F(DBusServiceTest, Notify) {
 
   // Test response
   EXPECT_EQ(received_out_id, expected_out_id);
+}
+
+// Test if dbus adaptor can properly call CloseNotification method.
+TEST_F(DBusServiceTest, CloseNotification) {
+  MockNotificationDaemon daemon;
+  auto dbus_service = DBusService(&daemon);
+
+  const uint32_t expected_data = 777;
+  auto method_call = CreateMockMethodCall("CloseNotification");
+
+  // Prepare args for the method call
+  dbus::MessageWriter writer(method_call.get());
+  writer.AppendUint32(expected_data);
+
+  auto response = dbus_service.CallCloseNotification(method_call.get());
+  ASSERT_TRUE(response.get() != nullptr);
+
+  // Test received data
+  EXPECT_EQ(daemon.received_close_notification_id(), expected_data);
+
+  // Parse response (expects no data in response)
+  dbus::MessageReader reader(response.get());
+  ASSERT_FALSE(reader.HasMoreData());
 }
 
 // Test if dbus adaptor can properly send NotificationClosed signal.

@@ -59,6 +59,10 @@ class DBusInterface {
   // true on success.
   virtual bool GetServerInformation(ServerInformation* output) = 0;
 
+  // Callback for CloseNotification in org.freedesktop.notifications. Returns
+  // true on success.
+  virtual bool CloseNotification(uint32_t id) = 0;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(DBusInterface);
 };
