@@ -11,8 +11,11 @@ group("all") {
     ":finish_oobe_auto_config",
     ":liboobeconfig",
     ":libload_oobe_config_usb",
-    ":oobe_config_restore",
+    ":librollback_helper",
+    ":rollback_prepare_save",
     ":oobe_config_save",
+    ":oobe_config_restore",
+    ":rollback_finish_restore",
   ]
   if (use.test) {
     deps += [ ":oobe_config_test" ]
@@ -53,6 +56,7 @@ static_library("liboobeconfig") {
   ]
   sources = [
     "oobe_config.cc",
+    "rollback_constants.cc",
   ]
   libs = [ "-lpolicy-${libbase_ver}" ]
   deps = [
@@ -112,6 +116,40 @@ executable("oobe_config_restore") {
   ]
 }
 
+# rollback_helper library.
+# Used by rollback_prepare_save and rollback_finish_restore.
+static_library("librollback_helper") {
+  configs += [
+    ":target_defaults",
+  ]
+  sources = [
+    "rollback_helper.cc",
+    "rollback_constants.cc",
+  ]
+}
+
+# Helper running as root before oobe_config_save.
+executable("rollback_prepare_save") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "rollback_prepare_save_main.cc",
+  ]
+  deps = [
+    ":librollback_helper",
+  ]
+}
+
+# Helper running as root after oobe_config_restore.
+executable("rollback_finish_restore") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "rollback_finish_restore_main.cc",
+  ]
+  deps = [
+    ":librollback_helper",
+  ]
+}
+
 proto_library("oobe_config_proto") {
   proto_in_dir = "."
   proto_out_dir = "include/oobe_config"
@@ -134,12 +172,14 @@ if (use.test) {
     ]
     sources = [
       "load_oobe_config_usb_test.cc",
+      "rollback_helper_test.cc",
       "oobe_config_test.cc",
       "utils_test.cc",
     ]
     deps = [
       ":liboobeconfig",
       ":libload_oobe_config_usb",
+      ":librollback_helper",
       "//common-mk/testrunner",
     ]
   }

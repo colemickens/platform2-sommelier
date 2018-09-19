@@ -9,7 +9,7 @@
 #include <map>
 #include <policy/resilient_policy_util.h>
 
-#include "oobe_config/oobe_config_constants.h"
+#include "oobe_config/rollback_constants.h"
 #include "oobe_config/rollback_data.pb.h"
 
 namespace oobe_config {
@@ -62,17 +62,17 @@ bool OobeConfig::WriteFile(const base::FilePath& file_path,
 
 bool OobeConfig::GetRollbackData(RollbackData* rollback_data) {
   std::string file_content;
-  ReadFile(kInstallAttributesPath, &file_content);
+  ReadFile(kSaveTempPath.Append(kInstallAttributesFileName), &file_content);
   rollback_data->set_install_attributes(file_content);
-  ReadFile(kOwnerKeyPath, &file_content);
+  ReadFile(kSaveTempPath.Append(kOwnerKeyFileName), &file_content);
   rollback_data->set_owner_key(file_content);
-  ReadFile(kShillDefaultProfilePath, &file_content);
+  ReadFile(kSaveTempPath.Append(kShillDefaultProfileFileName), &file_content);
   rollback_data->set_shill_default_profile(file_content);
 
   PolicyData* policy_data = rollback_data->mutable_device_policy();
   std::map<int, base::FilePath> policy_paths =
       policy::GetSortedResilientPolicyFilePaths(
-          GetPrefixedFilePath(kPolicyPath));
+          GetPrefixedFilePath(kSaveTempPath.Append(kPolicyFileName)));
   for (auto entry : policy_paths) {
     policy_data->add_policy_index(entry.first);
     ReadFileWithoutPrefix(entry.second, &file_content);
@@ -82,9 +82,12 @@ bool OobeConfig::GetRollbackData(RollbackData* rollback_data) {
 }
 
 bool OobeConfig::RestoreRollbackData(const RollbackData& rollback_data) {
-  WriteFile(kInstallAttributesPath, rollback_data.install_attributes());
-  WriteFile(kOwnerKeyPath, rollback_data.owner_key());
-  WriteFile(kShillDefaultProfilePath, rollback_data.shill_default_profile());
+  WriteFile(kRestoreTempPath.Append(kInstallAttributesFileName),
+            rollback_data.install_attributes());
+  WriteFile(kRestoreTempPath.Append(kOwnerKeyFileName),
+            rollback_data.owner_key());
+  WriteFile(kRestoreTempPath.Append(kShillDefaultProfileFileName),
+            rollback_data.shill_default_profile());
 
   if (rollback_data.device_policy().policy_file_size() !=
       rollback_data.device_policy().policy_index_size()) {
@@ -93,7 +96,7 @@ bool OobeConfig::RestoreRollbackData(const RollbackData& rollback_data) {
   }
   for (int i = 0; i < rollback_data.device_policy().policy_file_size(); ++i) {
     base::FilePath policy_path = policy::GetResilientPolicyFilePathForIndex(
-        GetPrefixedFilePath(kPolicyPath),
+        GetPrefixedFilePath(kRestoreTempPath.Append(kPolicyFileName)),
         rollback_data.device_policy().policy_index(i));
     WriteFileWithoutPrefix(policy_path,
                            rollback_data.device_policy().policy_file(i));

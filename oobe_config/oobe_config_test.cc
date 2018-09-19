@@ -9,7 +9,7 @@
 #include <gtest/gtest.h>
 #include <string>
 
-#include "oobe_config/oobe_config_constants.h"
+#include "oobe_config/rollback_constants.h"
 
 namespace oobe_config {
 
@@ -21,11 +21,14 @@ TEST(OobeConfigTest, SaveAndRestoreTest) {
   ASSERT_TRUE(tempdir_before.CreateUniqueTempDir());
   oobe_config.set_prefix_path_for_testing(tempdir_before.GetPath());
 
-  oobe_config.WriteFile(kInstallAttributesPath, "install_attributes");
-  oobe_config.WriteFile(kOwnerKeyPath, "owner");
-  oobe_config.WriteFile(kPolicyPath, "policy0");
-  oobe_config.WriteFile(kPolicyDotOnePathForTesting, "policy1");
-  oobe_config.WriteFile(kShillDefaultProfilePath, "shill");
+  oobe_config.WriteFile(kSaveTempPath.Append(kInstallAttributesFileName),
+                        "install_attributes");
+  oobe_config.WriteFile(kSaveTempPath.Append(kOwnerKeyFileName), "owner");
+  oobe_config.WriteFile(kSaveTempPath.Append(kPolicyFileName), "policy0");
+  oobe_config.WriteFile(kSaveTempPath.Append(kPolicyDotOneFileNameForTesting),
+                        "policy1");
+  oobe_config.WriteFile(kSaveTempPath.Append(kShillDefaultProfileFileName),
+                        "shill");
 
   // Saving rollback data.
   ASSERT_TRUE(oobe_config.UnencryptedRollbackSave());
@@ -51,15 +54,20 @@ TEST(OobeConfigTest, SaveAndRestoreTest) {
 
   // Verify that the config files are restored.
   std::string file_content;
-  EXPECT_TRUE(oobe_config.ReadFile(kInstallAttributesPath, &file_content));
+  EXPECT_TRUE(oobe_config.ReadFile(
+      kRestoreTempPath.Append(kInstallAttributesFileName), &file_content));
   EXPECT_EQ("install_attributes", file_content);
-  EXPECT_TRUE(oobe_config.ReadFile(kOwnerKeyPath, &file_content));
+  EXPECT_TRUE(oobe_config.ReadFile(kRestoreTempPath.Append(kOwnerKeyFileName),
+                                   &file_content));
   EXPECT_EQ("owner", file_content);
-  EXPECT_TRUE(oobe_config.ReadFile(kPolicyPath, &file_content));
+  EXPECT_TRUE(oobe_config.ReadFile(kRestoreTempPath.Append(kPolicyFileName),
+                                   &file_content));
   EXPECT_EQ("policy0", file_content);
-  EXPECT_TRUE(oobe_config.ReadFile(kPolicyDotOnePathForTesting, &file_content));
+  EXPECT_TRUE(oobe_config.ReadFile(
+      kRestoreTempPath.Append(kPolicyDotOneFileNameForTesting), &file_content));
   EXPECT_EQ("policy1", file_content);
-  EXPECT_TRUE(oobe_config.ReadFile(kShillDefaultProfilePath, &file_content));
+  EXPECT_TRUE(oobe_config.ReadFile(
+      kRestoreTempPath.Append(kShillDefaultProfileFileName), &file_content));
   EXPECT_EQ("shill", file_content);
 }
 
