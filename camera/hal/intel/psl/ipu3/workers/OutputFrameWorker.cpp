@@ -302,6 +302,22 @@ status_t OutputFrameWorker::handlePostRun()
     }
 
     if (processingData.mOutputBuffer == nullptr) {
+        if (request->hasInputBuf()) {
+            const camera3_stream_buffer* inputBuf = request->getInputBuffer();
+            CheckError(!inputBuf, UNKNOWN_ERROR, "@%s, getInputBuffer fails", __FUNCTION__);
+
+            int fmt = inputBuf->stream->format;
+            CheckError((fmt != HAL_PIXEL_FORMAT_YCbCr_420_888), UNKNOWN_ERROR,
+            "@%s, input stream is not YCbCr_420_888, format:%x", __FUNCTION__, fmt);
+
+            const CameraStreamNode* s = request->getInputStream();
+            CheckError(!s, UNKNOWN_ERROR, "@%s, getInputStream fails", __FUNCTION__);
+
+            std::shared_ptr<CameraBuffer> buf = request->findBuffer(s);
+            CheckError((buf == nullptr), UNKNOWN_ERROR, "@%s, findBuffer fails", __FUNCTION__);
+
+            buf->getOwner()->captureDone(buf, request);
+        }
         LOG2("No buffer provided for captureDone");
         return OK;
     }

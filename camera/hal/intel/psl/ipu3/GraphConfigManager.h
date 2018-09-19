@@ -181,6 +181,7 @@ private:
     void handleStillStream(ResolutionItem& res, PlatformGraphConfigKey& streamKey);
     void handleVideoMap(camera3_stream_t* stream, ResolutionItem& res, PlatformGraphConfigKey& streamKey);
     void handleStillMap(camera3_stream_t* stream, ResolutionItem& res, PlatformGraphConfigKey& streamKey);
+    bool isRepeatedStream(camera3_stream_t* curStream, const std::vector<camera3_stream_t*> &streams);
     status_t mapStreamToKey(const std::vector<camera3_stream_t*> &streams,
                             int *hasVideoStream, int *hasStillStream);
     status_t queryVideoGraphSettings();

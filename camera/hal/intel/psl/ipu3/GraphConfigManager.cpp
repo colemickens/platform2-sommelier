@@ -33,7 +33,7 @@ namespace camera2 {
 
 #define MIN_GRAPH_SETTING_STREAM 1
 #define MAX_GRAPH_SETTING_STREAM 2
-#define MAX_NUM_STREAMS    3
+#define MAX_NUM_STREAMS    4
 const char *GraphConfigManager::DEFAULT_DESCRIPTOR_FILE = "/etc/camera/graph_descriptor.xml";
 const char *GraphConfigManager::DEFAULT_SETTINGS_FILE = "/etc/camera/graph_settings.xml";
 
@@ -288,6 +288,22 @@ void GraphConfigManager::handleStillMap(camera3_stream_t* stream, ResolutionItem
     mQueryStill[h] = std::to_string(rotate ? stream->width : stream->height);
 }
 
+bool GraphConfigManager::isRepeatedStream(camera3_stream_t* curStream,
+                                            const std::vector<camera3_stream_t*> &streams)
+{
+    //The streams are already sorted by dimensions in IPU3CameraHw.
+    if (!streams.empty() &&
+        curStream->width == streams.back()->width &&
+        curStream->height == streams.back()->height &&
+        curStream->format == streams.back()->format &&
+        curStream->usage == streams.back()->usage) {
+        LOG1("%dx%d(fmt:%s) is a repeating stream.",curStream->width,curStream->height,
+        METAID2STR(android_scaler_availableFormats_values, curStream->format));
+        return true;
+    }
+    return false;
+}
+
 status_t GraphConfigManager::mapStreamToKey(const std::vector<camera3_stream_t*> &streams,
                                             int *hasVideoStream, int *hasStillStream)
 {
@@ -322,7 +338,7 @@ status_t GraphConfigManager::mapStreamToKey(const std::vector<camera3_stream_t*>
                 stillStream.push_back(streams[i]);
                 *hasStillStream = true;
                 blobNum++;
-            } else {
+            } else if (!isRepeatedStream(streams[i], videoStreams)) {
                 videoStreams.push_back(streams[i]);
                 *hasVideoStream = true;
                 yuvNum++;

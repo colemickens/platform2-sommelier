@@ -183,6 +183,19 @@ void ImguUnit::freePublicStatBuffers()
     }
 }
 
+bool ImguUnit::isRepeatedStream(camera3_stream_t* curStream,
+                                   const std::vector<camera3_stream_t*> &streams)
+{
+   //The streams are already sorted by dimensions in IPU3CameraHw.
+   if (!streams.empty() &&
+       curStream->width == streams.back()->width &&
+       curStream->height == streams.back()->height &&
+       curStream->format == streams.back()->format &&
+       curStream->usage == streams.back()->usage)
+       return true;
+    return false;
+}
+
 status_t ImguUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
@@ -197,6 +210,7 @@ status_t ImguUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams)
     }
 
     bool hasIMPL = false;
+    int repeatedStreamIndex = -1;
     for (size_t i = 0; i < activeStreams.size(); ++i) {
         if (activeStreams[i]->stream_type == CAMERA3_STREAM_OUTPUT &&
             activeStreams[i]->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) {
@@ -221,7 +235,11 @@ status_t ImguUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams)
                 activeStreams.at(i)->height > RESOLUTION_1080P_HEIGHT) {
                 mActiveStreams.blobStreams.push_back(activeStreams.at(i));
             } else {
-                mActiveStreams.yuvStreams.push_back(activeStreams.at(i));
+                if (isRepeatedStream(activeStreams.at(i), mActiveStreams.yuvStreams)) {
+                    repeatedStreamIndex = i;
+                } else {
+                    mActiveStreams.yuvStreams.push_back(activeStreams.at(i));
+                }
             }
             break;
         case HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED:
@@ -232,11 +250,18 @@ status_t ImguUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams)
             break;
         }
     }
+
+    //The last stream of yuvStreams is directly placed into the mStreamListenerMapping
+    //for mapStreamWithDeviceNode function.
+    if (repeatedStreamIndex != -1) {
+        mActiveStreams.yuvStreams.push_back(activeStreams.at(repeatedStreamIndex));
+    }
+
     int blobNum = mActiveStreams.blobStreams.size();
     int yuvNum = mActiveStreams.yuvStreams.size();
 
     CheckError(blobNum > 2, BAD_VALUE, "Don't support blobNum %d", blobNum);
-    CheckError(yuvNum > 2, BAD_VALUE, "Don't support yuvNum %d", yuvNum);
+    CheckError(yuvNum > 3, BAD_VALUE, "Don't support yuvNum %d", yuvNum);
 
     status_t status = OK;
     if (yuvNum > 0) {
@@ -489,8 +514,8 @@ status_t ImguUnit::ImguPipe::mapStreamWithDeviceNode(std::vector<camera3_stream_
     mStreamListenerMapping.clear();
 
     if (GraphConfig::PIPE_VIDEO == mPipeType) {
-        int videoIdx = (streamNum == 2) ? 0 : -1;
-        int previewIdx = (streamNum == 2) ? 1 : 0;
+        int videoIdx = (streamNum >= 2) ? 0 : -1;
+        int previewIdx = (streamNum >= 2) ? 1 : 0;
 
         mStreamNodeMapping[IMGU_NODE_PREVIEW] = streams[previewIdx];
         LOG1("@%s, %d stream %p size preview: %dx%d, format %s", __FUNCTION__,
@@ -505,6 +530,9 @@ status_t ImguUnit::ImguPipe::mapStreamWithDeviceNode(std::vector<camera3_stream_
                  streams[videoIdx]->width, streams[videoIdx]->height,
                  METAID2STR(android_scaler_availableFormats_values,
                             streams[videoIdx]->format));
+        }
+        if (streams.size() == 3) {
+            mStreamListenerMapping[streams.back()] = IMGU_NODE_VIDEO;
         }
     } else if (GraphConfig::PIPE_STILL == mPipeType) {
         mStreamNodeMapping[IMGU_NODE_STILL] = streams[0];
