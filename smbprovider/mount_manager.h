@@ -20,6 +20,7 @@
 #include "smbprovider/constants.h"
 #include "smbprovider/id_map.h"
 #include "smbprovider/metadata_cache.h"
+#include "smbprovider/mount_config.h"
 #include "smbprovider/mount_tracker.h"
 #include "smbprovider/samba_interface.h"
 #include "smbprovider/smb_credential.h"
@@ -55,15 +56,15 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
 
   // Adds |mount_root| to the |mounts_| map and outputs the |mount_id|
   // that was assigned to this mount. Ids are >=0 and are not
-  // re-used within the lifetime of this class. If |mount_root| is already
-  // mounted, this returns false and |mount_id| will be unmodified. If
-  // |workgroup|, |username|, and |password_fd| are provided, they will be used
-  // as a credential when interacting with the mount.
+  // re-used within the lifetime of this class. |mount_config| holds the mount
+  // options set by the client. If |mount_root| is already mounted, this
+  // returns false and |mount_id| will be unmodified.
   // TODO(zentaro): Review if this should have a maximum number of mounts,
   // even if it is relatively large. It may already be enforced at a higher
   // level.
   bool AddMount(const std::string& mount_root,
                 SmbCredential credential,
+                const MountConfig& mount_config,
                 int32_t* mount_id);
 
   // Adds |mount_root| to the |mounts_| map with a specific mount_id. Must not

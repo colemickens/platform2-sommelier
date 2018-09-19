@@ -12,6 +12,7 @@
 
 #include "smbprovider/fake_samba_interface.h"
 #include "smbprovider/fake_samba_proxy.h"
+#include "smbprovider/mount_config.h"
 #include "smbprovider/mount_manager.h"
 #include "smbprovider/smbprovider_test_helper.h"
 #include "smbprovider/temp_file_manager.h"
@@ -57,7 +58,8 @@ class MountManagerTest : public testing::Test {
   bool AddMount(const std::string& root_path,
                 SmbCredential credential,
                 int32_t* mount_id) {
-    return mounts_->AddMount(root_path, std::move(credential), mount_id);
+    return mounts_->AddMount(root_path, std::move(credential),
+                             MountConfig(true /* enable_ntlm */), mount_id);
   }
 
   bool Remount(const std::string& root_path, int32_t mount_id) {

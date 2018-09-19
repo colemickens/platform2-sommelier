@@ -144,6 +144,7 @@ bool MountManager::IsAlreadyMounted(const std::string& mount_root) const {
 
 bool MountManager::AddMount(const std::string& mount_root,
                             SmbCredential credential,
+                            const MountConfig& mount_config,
                             int32_t* mount_id) {
   DCHECK(mount_id);
 

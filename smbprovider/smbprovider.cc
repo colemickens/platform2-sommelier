@@ -787,8 +787,11 @@ bool SmbProvider::AddMount(const std::string& mount_root,
                            int32_t* error_code,
                            int32_t* mount_id) {
   SmbCredential credential(workgroup, username, GetPassword(password_fd));
-  bool added =
-      mount_manager_->AddMount(mount_root, std::move(credential), mount_id);
+  // TODO(jimmyxgong): Remove once AddMount has a MountConfig as an input
+  // parameter.
+  MountConfig mount_config(true /* enable_ntlm */);
+  bool added = mount_manager_->AddMount(mount_root, std::move(credential),
+                                        mount_config, mount_id);
   if (!added) {
     *error_code = static_cast<int32_t>(ERROR_IN_USE);
   }
