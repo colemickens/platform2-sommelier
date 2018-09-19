@@ -27,7 +27,7 @@ gettimeofday: 1
 getuid: 1
 ioctl: arg1 == TCGETS || arg1 == FIOCLEX
 lseek: 1
-mmap: arg1 in 0xfffffffb || arg1 in 0xfffffffd
+mmap: arg2 in 0xfffffffb || arg2 in 0xfffffffd
 mprotect: arg2 in 0xfffffffb || arg2 in 0xfffffffd
 munmap: 1
 nanosleep: 1
