@@ -107,11 +107,16 @@ class CrosConfigJson(CrosConfigBaseImpl):
 
   Properties:
     _json: Root json for the entire config.
-    _configs: List of DeviceConfigJson instances.
+    _configs: List of DeviceConfigJson instances
   """
 
-  def __init__(self, infile):
-    self._json = json.loads(TransformConfig(infile.read()))
+  def __init__(self, infile, model_filter_regex=None):
+    """
+    Args:
+      model_filter_regex: Only returns configs that match the filter.
+    """
+    self._json = json.loads(
+        TransformConfig(infile.read(), model_filter_regex=model_filter_regex))
     self._configs = []
     for config in self._json['chromeos']['configs']:
       self._configs.append(DeviceConfigJson(config))

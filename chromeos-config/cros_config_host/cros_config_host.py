@@ -325,26 +325,24 @@ def main(argv=None):
   elif opts.subcommand == 'write-phandle-properties':
     WritePhandleProperties()
     return
-  config = CrosConfig(opts.config)
+  config = CrosConfig(opts.config, model_filter_regex=opts.model)
   # Get all models we are invoking on (if any).
-  model = None
-  if opts.model:
-    for device in config.GetDeviceConfigs():
-      if device.GetName() == opts.model:
-        model = device
-    if not model:
-      print("Unknown model '%s'" % opts.model, file=sys.stderr)
-      return
+  if opts.model and not config.GetDeviceConfigs():
+    print("Unknown model '%s'" % opts.model, file=sys.stderr)
+    return
   # Main command branch
   if opts.subcommand == 'list-models':
     ListModels(config)
   elif opts.subcommand == 'dump-config':
     DumpConfig(config)
   elif opts.subcommand == 'get':
-    if not model:
+    if not opts.model:
       print('You must specify --model for this command. See --help for more '
             'info.', file=sys.stderr)
       return
+    # There are multiple configs per model. Not sure how correct it is to pick
+    # just the first one.
+    model = config.GetDeviceConfigs()[0]
     GetProperty(model, opts.path, opts.prop)
   elif opts.subcommand == 'get-touch-firmware-files':
     GetTouchFirmwareFiles(config)

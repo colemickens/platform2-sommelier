@@ -21,7 +21,7 @@ UNIBOARD_CONFIG_INSTALL_DIR = 'usr/share/chromeos-config'
 # We support two configuration file format
 (FORMAT_FDT, FORMAT_YAML) = range(2)
 
-def CrosConfig(fname=None):
+def CrosConfig(fname=None, model_filter_regex=None):
   """Create a new CrosConfigBaseImpl object
 
   This is in a separate function to allow us to (in the future) support YAML,
@@ -29,6 +29,7 @@ def CrosConfig(fname=None):
 
   Args:
     fname: Filename of config file
+    model_filter_regex: Only returns configs that match the filter
   """
   if fname and ('.yaml' in fname or '.json' in fname):
     config_format = FORMAT_YAML
@@ -55,8 +56,10 @@ def CrosConfig(fname=None):
     infile = open(fname)
 
   if config_format == FORMAT_FDT:
-    return libcros_config_host_fdt.CrosConfigFdt(infile)
+    return libcros_config_host_fdt.CrosConfigFdt(
+        infile, model_filter_regex=model_filter_regex)
   elif config_format == FORMAT_YAML:
-    return libcros_config_host_json.CrosConfigJson(infile)
+    return libcros_config_host_json.CrosConfigJson(
+        infile, model_filter_regex=model_filter_regex)
   else:
     raise ValueError("Invalid config format '%s' requested" % config_format)

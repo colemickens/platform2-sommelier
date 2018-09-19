@@ -46,6 +46,12 @@ class CommonTests(object):
     output = subprocess.check_output(call_args)
     self.CheckManyLinesWithoutSpaces(output, lines=2)
 
+  def testListModelsWithFilter(self):
+    call_args = '{} -c {} --model=another list-models'.format(
+        CLI_FILE, self.conf_file).split()
+    output = subprocess.check_output(call_args)
+    self.assertEqual("another\n", output)
+
   def testGetPropSingle(self):
     call_args = '{} -c {} --model=another get / wallpaper'.format(
         CLI_FILE, self.conf_file).split()

@@ -13,6 +13,7 @@ from __future__ import print_function
 from collections import OrderedDict
 
 import os
+import re
 import fdt
 import validate_config
 
@@ -75,7 +76,12 @@ class CrosConfigFdt(CrosConfigBaseImpl):
     root: Root node (CrosConigImpl.Node object)
     validator: Validator for the config (CrosConfigValidator object)
   """
-  def __init__(self, infile):
+  def __init__(self, infile, model_filter_regex=None):
+    """
+    Args:
+      model_filter_regex: Only returns configs that match the filter.
+    """
+
     self.infile = infile
     self.models = OrderedDict()
     self.validator = validate_config.GetValidator()
@@ -83,7 +89,14 @@ class CrosConfigFdt(CrosConfigBaseImpl):
     self._fdt = fdt.Fdt(self.infile)
     self._fdt.Scan()
     self.phandle_to_node = {}
-    self.root = CrosConfigFdt.MakeNode(self, self._fdt.GetRoot())
+
+    if model_filter_regex:
+      matcher = re.compile(model_filter_regex)
+    else:
+      matcher = None
+
+    self.root = CrosConfigFdt.MakeNode(
+        self, self._fdt.GetRoot(), model_name_matcher=matcher)
     self.family = self.root.subnodes['chromeos'].subnodes['family']
 
   def GetDeviceConfigs(self):
@@ -678,7 +691,7 @@ class CrosConfigFdt(CrosConfigBaseImpl):
       return wallpapers
 
   @staticmethod
-  def MakeNode(cros_config, fdt_node):
+  def MakeNode(cros_config, fdt_node, model_name_matcher=None):
     """Make a new Node in the tree
 
     This create a new Node or Model object in the tree and recursively adds all
@@ -687,16 +700,23 @@ class CrosConfigFdt(CrosConfigBaseImpl):
     Args:
       cros_config: CrosConfig object
       fdt_node: fdt.Node object containing the device-tree node
+      model_name_matcher: Only returns model nodes that match the filter.
     """
     node = CrosConfigFdt.Node(cros_config, fdt_node)
     if fdt_node.parent and fdt_node.parent.name == 'models':
+      if model_name_matcher and not model_name_matcher.match(node.name):
+        return None
       cros_config.models[node.name] = node
     if 'phandle' in node.properties:
       phandle = fdt_node.props['phandle'].GetPhandle()
       cros_config.phandle_to_node[phandle] = node
     node.default = node.FollowPhandle('default')
     for subnode in fdt_node.subnodes.values():
-      node.subnodes[subnode.name] = CrosConfigFdt.MakeNode(cros_config, subnode)
+      new_subnode = CrosConfigFdt.MakeNode(
+          cros_config, subnode, model_name_matcher=model_name_matcher)
+
+      if new_subnode:
+        node.subnodes[subnode.name] = new_subnode
     node.ScanSubnodes()
     return node
 

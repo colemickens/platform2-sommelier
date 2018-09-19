@@ -126,6 +126,66 @@ class TransformConfigTests(unittest.TestCase):
     self.assertEqual('/etc/cras/basking/dsp.ini',
                      model.audio.main.files[0].destination)
 
+  def testTransformConfig_NoMatch(self):
+    result = cros_config_schema.TransformConfig(
+        BASIC_CONFIG, model_filter_regex='abc123')
+    json_dict = json.loads(result)
+    json_obj = cros_config_schema.GetNamedTuple(json_dict)
+    self.assertEqual(0, len(json_obj.chromeos.configs))
+
+  def testTransformConfig_FilterMatch(self):
+    scoped_config = """
+reef-9042-fw: &reef-9042-fw
+  bcs-overlay: 'overlay-reef-private'
+  ec-image: 'Reef_EC.9042.87.1.tbz2'
+  main-image: 'Reef.9042.87.1.tbz2'
+  main-rw-image: 'Reef.9042.110.0.tbz2'
+  build-targets:
+    coreboot: 'reef'
+chromeos:
+  devices:
+    - $name: 'foo'
+      products:
+        - $key-id: 'OEM2'
+      skus:
+        - config:
+            identity:
+              sku-id: 0
+            audio:
+              main:
+                cras-config-dir: '{{$name}}'
+                ucm-suffix: '{{$name}}'
+            name: '{{$name}}'
+            firmware: *reef-9042-fw
+            firmware-signing:
+              key-id: '{{$key-id}}'
+              signature-id: '{{$name}}'
+    - $name: 'bar'
+      products:
+        - $key-id: 'OEM2'
+      skus:
+        - config:
+            identity:
+              sku-id: 0
+            audio:
+              main:
+                cras-config-dir: '{{$name}}'
+                ucm-suffix: '{{$name}}'
+            name: '{{$name}}'
+            firmware: *reef-9042-fw
+            firmware-signing:
+              key-id: '{{$key-id}}'
+              signature-id: '{{$name}}'
+"""
+
+    result = cros_config_schema.TransformConfig(
+        scoped_config, model_filter_regex='bar')
+    json_dict = json.loads(result)
+    json_obj = cros_config_schema.GetNamedTuple(json_dict)
+    self.assertEqual(1, len(json_obj.chromeos.configs))
+    model = json_obj.chromeos.configs[0]
+    self.assertEqual('bar', model.name)
+
   def testTemplateVariableScope(self):
     scoped_config = """
 audio_common: &audio_common

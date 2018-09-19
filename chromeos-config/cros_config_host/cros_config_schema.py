@@ -263,7 +263,7 @@ def _HasTemplateVariables(template_vars):
       return True
 
 
-def TransformConfig(config):
+def TransformConfig(config, model_filter_regex=None):
   """Transforms the source config (YAML) to the target system format (JSON)
 
   Applies consistent transforms to covert a source YAML configuration into
@@ -271,6 +271,7 @@ def TransformConfig(config):
 
   Args:
     config: Config that will be transformed.
+    model_filter_regex: Only returns configs that match the filter
 
   Returns:
     Resulting JSON output from the transform.
@@ -299,6 +300,12 @@ def TransformConfig(config):
           configs.append(config)
   else:
     configs = json_config[CHROMEOS][CONFIGS]
+
+  if model_filter_regex:
+    matcher = re.compile(model_filter_regex)
+    configs = [
+        config for config in configs if matcher.match(config['name'])
+    ]
 
   build_settings = {}
   if BUILD_SETTINGS in json_config[CHROMEOS]:
