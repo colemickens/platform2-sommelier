@@ -362,7 +362,6 @@ status_t IPU3CameraHw::configStreamsPrivate()
     mControlUnit->flush();
 
     mMediaCtl->resetLinks();
-    mImguMediaCtl->resetLinks();
 
     status_t status = mGCM.configStreams(mActiveStreams, mOperationMode, mTestPatternMode);
     if (status != NO_ERROR) {
