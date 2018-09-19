@@ -418,8 +418,17 @@ void VshForwarder::HandleVsockReadable() {
       DataMessage data_message = guest_message.data_message();
       DCHECK_EQ(data_message.stream(), STDIN_STREAM);
 
-      if (!base::WriteFileDescriptor(ptm_fd_.get(), data_message.data().data(),
-                                     data_message.data().size())) {
+      const string& data = data_message.data();
+      // On EOF, send EOT character. This will be interpreted by the tty
+      // driver/line discipline and generate an EOF.
+      if (data.size() == 0) {
+        if (!base::WriteFileDescriptor(ptm_fd_.get(), "\004", 1)) {
+          PLOG(ERROR) << "Failed to write EOF to ptm";
+        }
+        return;
+      }
+
+      if (!base::WriteFileDescriptor(ptm_fd_.get(), data.data(), data.size())) {
         PLOG(ERROR) << "Failed to write data to ptm";
         return;
       }

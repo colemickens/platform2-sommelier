@@ -11,6 +11,7 @@
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
 #include <brillo/asynchronous_signal_handler.h>
+#include <brillo/message_loops/message_loop.h>
 #include <google/protobuf/message_lite.h>
 
 #include "vm_tools/vsh/scoped_termios.h"
@@ -40,6 +41,7 @@ class VshClient {
   bool SendCurrentWindowSize();
 
   base::ScopedFD sock_fd_;
+  brillo::MessageLoop::TaskId stdin_task_;
 
   brillo::AsynchronousSignalHandler signal_handler_;
 

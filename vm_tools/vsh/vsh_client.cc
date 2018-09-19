@@ -58,7 +58,9 @@ std::unique_ptr<VshClient> VshClient::Create(base::ScopedFD sock_fd,
   return client;
 }
 
-VshClient::VshClient(base::ScopedFD sock_fd) : sock_fd_(std::move(sock_fd)) {}
+VshClient::VshClient(base::ScopedFD sock_fd)
+    : sock_fd_(std::move(sock_fd)),
+      stdin_task_(brillo::MessageLoop::kTaskIdNull) {}
 
 bool VshClient::Init(const std::string& user, const std::string& container) {
   // Set up the connection with the guest. The setup process is:
@@ -134,7 +136,7 @@ bool VshClient::Init(const std::string& user, const std::string& container) {
       FROM_HERE, sock_fd_.get(), brillo::MessageLoop::WatchMode::kWatchRead,
       true,
       base::Bind(&VshClient::HandleVsockReadable, base::Unretained(this)));
-  message_loop->WatchFileDescriptor(
+  stdin_task_ = message_loop->WatchFileDescriptor(
       FROM_HERE, STDIN_FILENO, brillo::MessageLoop::WatchMode::kWatchRead, true,
       base::Bind(&VshClient::HandleStdinReadable, base::Unretained(this)));
 
@@ -228,7 +230,9 @@ void VshClient::HandleStdinReadable() {
     PLOG(ERROR) << "Failed to read from stdin";
     Shutdown();
   } else if (count == 0) {
-    return;
+    brillo::MessageLoop* message_loop = brillo::MessageLoop::current();
+    message_loop->CancelTask(stdin_task_);
+    stdin_task_ = brillo::MessageLoop::kTaskIdNull;
   }
 
   data_message->set_stream(STDIN_STREAM);
