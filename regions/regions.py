@@ -466,6 +466,9 @@ REGIONS_LIST = [
     Region(
         'jp.us', 'xkb:us::eng', 'Asia/Tokyo', 'ja', KML.ANSI,
         'Japan with US keyboard'),
+    Region(
+        'is', 'xkb:is::ice', 'Atlantic/Reykjavik', ['is', 'en-GB'], KML.ISO,
+        'Iceland'),
     ]
 
 """A list of :py:class:`regions.Region` objects for
@@ -1060,9 +1063,6 @@ UNCONFIRMED_REGIONS_LIST = [
     Region(
         'vi', 'xkb:vi::eng', 'America/St_Thomas', 'en-VI', KML.ANSI,
         'U.S. Virgin Islands'),
-    Region(
-        'is', 'xkb:is::ice', 'Atlantic/Reykjavik', ['is', 'en-GB'], KML.ISO,
-        'Iceland'),
     Region(
         'ir', 'xkb:ir::fas', 'Asia/Tehran', ['fa-IR', 'ku'], KML.ANSI,
         'Iran'),
