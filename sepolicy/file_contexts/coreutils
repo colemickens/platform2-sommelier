@@ -124,3 +124,7 @@
 /usr/bin/who u:object_r:cros_coreutils_exec:s0
 /usr/bin/whoami u:object_r:cros_coreutils_exec:s0
 /usr/bin/yes u:object_r:cros_coreutils_exec:s0
+
+/etc/localtime u:object_r:cros_tz_data_file:s0
+/var/lib/timezone(/.*)? u:object_r:cros_tz_data_file:s0
+/usr/share/zoneinfo(/.*)? u:object_r:cros_tz_data_file:s0

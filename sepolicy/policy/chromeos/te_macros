@@ -14,4 +14,23 @@ allow $1 $2:lnk_file r_file_perms;
 
 define(`exec_coreutils', `
 execute_file_follow_link($1, cros_coreutils_exec)
+execute_file_follow_link($1, sh_exec)
+r_dir_file($1, cros_tz_data_file)
+allow $1 cros_var_lib:dir search; # date
+')
+
+define(`use_init_fd', `
+allow $1 cros_init:fd use;
+allow $1 cros_init_scripts:fd use;
+')
+
+define(`filetrans_pattern', `
+allow $1 $2:dir rw_dir_perms;
+type_transition $1 $2:$4 $3 $5;
+')
+
+define(`log_writer', `
+allow $1 cros_logger_exec:file { rx_file_perms };
+allow $1 cros_rsyslogd:unix_dgram_socket { sendto };
+allow $1 logger_device:sock_file write;
 ')

@@ -31,6 +31,7 @@ allow chromeos_domain self:unix_stream_socket { create_stream_socket_perms conne
 allow chromeos_domain self:{ fifo_file file } rw_file_perms;
 
 allow chromeos_domain rootfs:dir search;
+allow chromeos_domain cros_var:dir search;
 allow chromeos_domain rootfs:lnk_file r_file_perms;
 
 allow chromeos_domain device:dir search;

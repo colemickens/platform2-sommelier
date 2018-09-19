@@ -3,6 +3,7 @@ include(sepolicy/file_contexts/coreutils)
 
 # Chrome OS file contexts.
 /                               u:object_r:rootfs:s0
+/(usr/)?[^/]+                   u:object_r:rootfs:s0
 /sbin/init                      u:object_r:chromeos_init_exec:s0
 
 /sbin/crash_reporter            u:object_r:cros_crash_reporter_exec:s0
@@ -27,6 +28,7 @@ include(sepolicy/file_contexts/coreutils)
 /usr/bin/cras                   u:object_r:cros_cras_exec:s0
 /usr/bin/dbus-daemon            u:object_r:cros_dbus_daemon_exec:s0
 /usr/bin/ionice                 u:object_r:cros_ionice_exec:s0
+/usr/bin/logger                 u:object_r:cros_logger_exec:s0
 /usr/bin/memd                   u:object_r:cros_memd_exec:s0
 /usr/bin/metrics_daemon         u:object_r:cros_metrics_daemon_exec:s0
 /usr/bin/midis                  u:object_r:cros_midis_exec:s0
@@ -51,7 +53,12 @@ include(sepolicy/file_contexts/coreutils)
 /usr/share/cros/init/.*         u:object_r:cros_init_shell_scripts:s0
 /usr/bin/start_bluetooth.sh     u:object_r:cros_init_shell_scripts:s0
 
+/var                            u:object_r:cros_var:s0
+/var/log                        u:object_r:cros_var_log:s0
 /var/log/messages               u:object_r:cros_syslog:s0
+/var/spool                      u:object_r:cros_var_spool:s0
+/var/spool/cron-lite(/.*)?      u:object_r:cros_periodic_scheduler_cache_t:s0
+/var/lib                        u:object_r:cros_var_lib:s0
 
 # /opt/google
 /opt/google/chrome/chrome       u:object_r:chrome_browser_exec:s0
@@ -59,6 +66,8 @@ include(sepolicy/file_contexts/coreutils)
 # /etc
 /etc/init(/.*)?                 u:object_r:cros_init_conf_file:s0
 /etc/selinux(/.*)?              u:object_r:cros_selinux_config_file:s0
+
+/etc/ld.so.*                    u:object_r:cros_ld_conf_cache:s0
 
 # These files are mounted into the mini-container before real /data, /cache are
 # available.
@@ -79,11 +88,11 @@ has_arc(`
 
 include(sepolicy/file_contexts/sysfs_contexts)
 
-# Chrome OS shared memory files.
-/dev/shm(/.*)?                  u:object_r:cros_shm:s0
 /dev/console                    u:object_r:console_device:s0
+/dev/logger                     u:object_r:logger_device:s0
 /dev/null                       u:object_r:null_device:s0
 /dev/random                     u:object_r:random_device:s0
+/dev/shm(/.*)?                  u:object_r:cros_shm:s0
 /dev/urandom                    u:object_r:urandom_device:s0
 /dev/zero                       u:object_r:zero_device:s0
 
