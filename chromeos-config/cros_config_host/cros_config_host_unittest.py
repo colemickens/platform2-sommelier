@@ -72,7 +72,7 @@ class CommonTests(object):
     self.assertEqual(output, os.linesep)
 
   def testGetFirmwareUris(self):
-    call_args = '{} -c {} --model=another get-firmware-uris'.format(
+    call_args = '{} -c {} get-firmware-uris'.format(
         CLI_FILE, self.conf_file).split()
     output = subprocess.check_output(call_args)
     self.CheckManyLines(output)
