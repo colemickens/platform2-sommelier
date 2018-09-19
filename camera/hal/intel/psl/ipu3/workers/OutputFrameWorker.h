@@ -47,7 +47,7 @@ private:
             // Processe frame in order
             PROCESS_NONE = 0,
             PROCESS_ROTATE = 1<<0,
-            PROCESS_SCALING= 1<<1,
+            PROCESS_SCALING = 1<<1,
             PROCESS_JPEG_ENCODING = 1<<2
         };
 

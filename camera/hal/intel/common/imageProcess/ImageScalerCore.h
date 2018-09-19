@@ -23,6 +23,54 @@ NAMESPACE_DECLARATION {
 class ImageScalerCore {
 public:
     template<typename T>
+    static status_t cropFrame(std::shared_ptr<T> srcBuf, std::shared_ptr<T> dstBuf) {
+        int srcW = srcBuf->stride();
+        int srcH = srcBuf->height();
+        int dstW = dstBuf->stride();
+        int dstH = dstBuf->height();
+
+        std::unique_ptr<uint8_t[]> srcI420Buf;
+        unsigned int srcI420BufSize = srcW * srcH * 3 / 2;
+        srcI420Buf.reset(new uint8_t[srcI420BufSize]);
+
+        const uint8_t* srcBufY = static_cast<uint8_t*>(srcBuf->data());
+        const uint8_t* srcBufUV = srcBufY + srcW * srcH;
+        uint8_t* srcI420BufY = static_cast<uint8_t*>(srcI420Buf.get());
+        uint8_t* srcI420BufU = srcI420BufY + srcW * srcH;
+        uint8_t* srcI420BufV = srcI420BufU + srcW * srcH / 4;
+        int ret = libyuv::NV12ToI420(srcBufY, srcW,
+                                     srcBufUV, srcW,
+                                     srcI420BufY, srcW,
+                                     srcI420BufU, srcW / 2,
+                                     srcI420BufV, srcW / 2,
+                                     srcW, srcH);
+        CheckError((ret != 0), UNKNOWN_ERROR, "@%s, NV12ToI420 fails", __FUNCTION__);
+
+        std::unique_ptr<uint8_t[]> dstI420BufUV;
+        unsigned int dstI420BufUVSize = dstW * dstH / 2;
+        dstI420BufUV.reset(new uint8_t[dstI420BufUVSize]);
+
+        uint8_t* dstI420BufU = static_cast<uint8_t*>(dstI420BufUV.get());
+        uint8_t* dstI420BufV = dstI420BufU + dstW * dstH / 4;
+        ret = libyuv::ConvertToI420(static_cast<uint8_t*>(srcI420Buf.get()), srcI420BufSize,
+                                    static_cast<uint8_t*>(dstBuf->data()), dstW,
+                                    dstI420BufU, (dstW + 1) / 2,
+                                    dstI420BufV, (dstW + 1) / 2,
+                                    (srcW - dstW) / 2, (srcH - dstH) / 2,
+                                    srcW, srcH, dstW, dstH,
+                                    libyuv::RotationMode::kRotate0, libyuv::FourCC::FOURCC_I420);
+        CheckError(ret != 0, UNKNOWN_ERROR, "@%s, ConvertToI420 fails", __FUNCTION__);
+
+        uint8_t* dstBufUV = static_cast<uint8_t*>(dstBuf->data()) + dstW * dstH;
+        libyuv::MergeUVPlane(dstI420BufU, (dstW + 1) / 2,
+                             dstI420BufV, (dstW + 1) / 2,
+                             dstBufUV, dstW,
+                             (dstW + 1) / 2, (dstH + 1) / 2);
+
+        return NO_ERROR;
+    }
+
+    template<typename T>
     static void scaleFrame(std::shared_ptr<T> input, std::shared_ptr<T> output) {
         // Y plane
         libyuv::ScalePlane(static_cast<uint8_t*>(input->data()),

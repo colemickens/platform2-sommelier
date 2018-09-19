@@ -590,6 +590,38 @@ status_t OutputFrameWorker::SWPostProcessor::processFrame(
             mPostProcessBufs.push_back(buf);
         }
 
+        // check if it needs to do crop
+        bool needCrop = false;
+        std::shared_ptr<CameraBuffer> srcBuf = mPostProcessBufs.back();
+        if (srcBuf->width() * output->height() != srcBuf->height() * output->width()) {
+            needCrop = true;
+        }
+
+        if (needCrop) {
+            uint32_t w = 0;
+            uint32_t h = 0;
+            if (srcBuf->width() * output->height() < srcBuf->height() * output->width()) {
+                w = srcBuf->width();
+                h = srcBuf->width() * output->height() / output->width();
+            } else {
+                w = srcBuf->height() * output->width() / output->height();
+                h = srcBuf->height();
+            }
+            LOG2("@%s, src w:%d, h:%d; out W:%d, h:%d; crop to w:%d, h:%d", __FUNCTION__,
+            srcBuf->width(), srcBuf->height(), output->width(), output->height(), w, h);
+
+            std::shared_ptr<CameraBuffer> dstBuf = MemoryUtils::allocateHeapBuffer(w, h, w,
+                                    srcBuf->v4l2Fmt(), mCameraId, PAGE_ALIGN(w * h * 3 / 2));
+            CheckError((dstBuf.get() == nullptr), NO_MEMORY, "@%s, no memory for crop", __FUNCTION__);
+            status = dstBuf->lock();
+            CheckError(status != NO_ERROR, status, "@%s, Failed to lock", __FUNCTION__);
+
+            status = ImageScalerCore::cropFrame(srcBuf, dstBuf);
+            CheckError(status != NO_ERROR, status, "@%s, cropFrame fails", __FUNCTION__);
+
+            mPostProcessBufs.push_back(dstBuf);
+        }
+
         mPostProcessBufs.back()->setRequestId(request->getId());
 
         mPostProcessBufs.back()->dumpImage(CAMERA_DUMP_JPEG, "before_nv12_to_jpeg.nv12");
@@ -602,6 +634,12 @@ status_t OutputFrameWorker::SWPostProcessor::processFrame(
         status = convertJpeg(mPostProcessBufs.back(), output, request);
         if (status != OK) {
             LOGE("@%s, convertJpeg fails, status:%d", __FUNCTION__, status);
+        }
+
+        if (needCrop) {
+            std::shared_ptr<CameraBuffer> dstBuf = mPostProcessBufs.back();
+            dstBuf.reset();
+            mPostProcessBufs.pop_back();
         }
 
         if (hasInputBuf) {
