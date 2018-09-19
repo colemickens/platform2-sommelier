@@ -126,6 +126,7 @@ const Log kCommandLogs[] = {
   },
   { "font_info", "/usr/share/userfeedback/scripts/font_info" },
   { "sensor_info", "/usr/share/userfeedback/scripts/sensor_info" },
+  { "hammerd", "cat /var/log/hammerd.log 2>/dev/null" },
   { "hardware_class", "/usr/bin/crossystem hwid" },
   { "hostname", "/bin/hostname" },
   {
