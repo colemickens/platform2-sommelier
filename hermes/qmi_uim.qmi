@@ -1,6 +1,6 @@
 package uim;
 
-const ARRAY_SIZE = 256;
+const kBufferDataSize = 260;
 
 struct qmi_result {
   u16 result;
@@ -14,14 +14,14 @@ struct card_result_t {
 
 request open_logical_channel_req {
   required u8 slot = 0x01;
-  optional u8 aid(255) = 0x10;
+  optional u8 aid(u8 : kBufferDataSize) = 0x10;
 } = 0x42;
 
 response open_logical_channel_resp {
   required qmi_result result = 0x2;
   optional u8 channel_id = 0x10;
   optional card_result_t card_result = 0x11;
-  optional u8 select_response(255) = 0x12;
+  optional u8 select_response(u8 : kBufferDataSize) = 0x12;
 } = 0x42;
 
 request reset_req {
@@ -33,11 +33,11 @@ response reset_resp {
 
 request send_apdu_req {
   required u8 slot = 0x01;
-  required u8 apdu(255) = 0x02;
+  required u8 apdu(u16 : kBufferDataSize) = 0x02;
   optional u8 channel_id = 0x10;
-} = 59;
+} = 0x3B;
 
 response send_apdu_resp {
   required qmi_result result = 0x2;
-  optional u8 adpu_response(255) = 0x10;
-} = 59;
+  optional u8 apdu_response(u16 : kBufferDataSize) = 0x10;
+} = 0x3B;

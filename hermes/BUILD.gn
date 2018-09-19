@@ -26,7 +26,7 @@ static_library("libhermes") {
   configs += [ ":target_defaults" ]
   sources = [
     "apdu.cc",
-    "qmi_uim.c",
+    "qmi_uim.cc",
     "sgp_22.cc",
     "socket_qrtr.cc",
     "smdp.cc",
