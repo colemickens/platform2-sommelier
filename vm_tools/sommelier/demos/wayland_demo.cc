@@ -2,20 +2,28 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <wayland-client.h>
 #include <wayland-client-protocol.h>
 
+#include "base/command_line.h"
 #include "base/logging.h"
 #include "base/memory/shared_memory.h"
+#include "base/strings/string_number_conversions.h"
 #include "brillo/syslog_logging.h"
+
+constexpr char kBgColorFlag[] = "bgcolor";
+constexpr char kWidthFlag[] = "width";
+constexpr char kHeightFlag[] = "height";
 
 struct demo_data {
   uint32_t bgcolor;
   uint32_t width;
   uint32_t height;
+  int scale;
   struct wl_compositor* compositor;
   struct wl_shell* shell;
   struct wl_shm* shm;
@@ -155,28 +163,61 @@ void output_mode(void* data,
                  int32_t height,
                  int32_t refresh) {
   struct demo_data* data_ptr = reinterpret_cast<struct demo_data*>(data);
-  data_ptr->width = width;
-  data_ptr->height = height;
+  if (data_ptr->width == 0) {
+    data_ptr->width = width;
+    if (data_ptr->scale != 0) {
+      data_ptr->width /= data_ptr->scale;
+    }
+  }
+  if (data_ptr->height == 0) {
+    data_ptr->height = height;
+    if (data_ptr->scale != 0) {
+      data_ptr->height /= data_ptr->scale;
+    }
+  }
 }
 
 void output_done(void* data, struct wl_output* output) {}
 
-void output_scale(void* data, struct wl_output* output, int32_t factor) {}
+void output_scale(void* data, struct wl_output* output, int32_t factor) {
+  struct demo_data* data_ptr = reinterpret_cast<struct demo_data*>(data);
+  data_ptr->scale = factor;
+  if (data_ptr->width != 0) {
+    data_ptr->width /= factor;
+  }
+  if (data_ptr->height != 0) {
+    data_ptr->height /= factor;
+  }
+}
 
 int main(int argc, char* argv[]) {
   brillo::InitLog(brillo::kLogToSyslog);
   LOG(INFO) << "Starting wayland_demo application";
 
+  base::CommandLine::Init(argc, argv);
+  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   struct demo_data data;
   memset(&data, 0, sizeof(data));
   data.done = false;
 
   data.bgcolor = 0x3388DD;
-  if (argc > 1) {
-    data.bgcolor = strtoul(argv[1], nullptr, 0);
+  if (cl->HasSwitch(kBgColorFlag)) {
+    data.bgcolor =
+        strtoul(cl->GetSwitchValueASCII(kBgColorFlag).c_str(), nullptr, 0);
   }
-  data.width = 10;
-  data.height = 60;
+  if (cl->HasSwitch(kWidthFlag)) {
+    if (!base::StringToUint(cl->GetSwitchValueASCII(kWidthFlag), &data.width)) {
+      LOG(ERROR) << "Invalid width parameter passed";
+      return -1;
+    }
+  }
+  if (cl->HasSwitch(kHeightFlag)) {
+    if (!base::StringToUint(cl->GetSwitchValueASCII(kHeightFlag),
+                            &data.height)) {
+      LOG(ERROR) << "Invalid height parameter passed";
+      return -1;
+    }
+  }
 
   struct wl_display* display = wl_display_connect(nullptr);
   if (!display) {
@@ -234,7 +275,6 @@ int main(int argc, char* argv[]) {
                                 nullptr);
 
   wl_shell_surface_set_toplevel(data.shell_surface);
-  wl_shell_surface_set_maximized(data.shell_surface, nullptr);
   wl_shell_surface_set_class(data.shell_surface, "wayland_demo");
   data.callback = wl_surface_frame(data.surface);
   struct wl_callback_listener callback_listener = {demo_draw};
