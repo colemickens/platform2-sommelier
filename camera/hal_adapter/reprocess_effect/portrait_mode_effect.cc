@@ -91,7 +91,7 @@ int32_t PortraitModeEffect::ReprocessRequest(
     ScopedYUVBufferHandle* output_buffer) {
   VLOGF_ENTER();
 
-  const uint32_t kPortraitProcessorTimeoutSecs = 5;
+  const uint32_t kPortraitProcessorTimeoutSecs = 15;
   if (!input_buffer || !*input_buffer || !output_buffer || !*output_buffer) {
     return -EINVAL;
   }
