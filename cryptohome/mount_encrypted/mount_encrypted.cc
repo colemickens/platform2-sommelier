@@ -18,7 +18,6 @@
 #include <string>
 
 #include <base/files/file_util.h>
-#include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 
 #include <metrics/metrics_library.h>
@@ -35,11 +34,9 @@ struct timeval tick = {};
 struct timeval tick_start = {};
 #endif
 
-namespace {
-constexpr char kNvramExport[] = "/tmp/lockbox.nvram";
-constexpr char kMountEncryptedMetricsPath[] = "/run/metrics.mount-encrypted";
-}
+static const gchar* const kNvramExport = "/tmp/lockbox.nvram";
 
+static const char kMountEncryptedMetricsPath[] = "/run/metrics.mount-encrypted";
 
 namespace metrics {
 const char kSystemKeyStatus[] = "Platform.MountEncrypted.SystemKeyStatus";
@@ -52,9 +49,9 @@ static result_code get_system_property(const char* prop, char* buf,
                                        size_t length) {
   const char* rc;
 
-  LOG(INFO) << "Fetching System Property: " << prop;
+  DEBUG("Fetching System Property '%s'", prop);
   rc = VbGetSystemPropertyString(prop, buf, length);
-  LOG(INFO) << "Got System Property 'mainfw_type': " << (rc ? buf : "FAIL");
+  DEBUG("Got System Property 'mainfw_type': %s", rc ? buf : "FAIL");
 
   return rc != NULL ? RESULT_SUCCESS : RESULT_FAIL_FATAL;
 }
@@ -112,7 +109,7 @@ static result_code finalize_from_cmdline(
   // Load the encryption key.
   brillo::SecureBlob encryption_key = encrypted_fs.GetKey();
   if (encryption_key.empty()) {
-    LOG(ERROR) << "Could not get mount encryption key";
+    ERROR("Could not get mount encryption key");
     return RESULT_FAIL_FATAL;
   }
 
@@ -156,14 +153,14 @@ static result_code report_info(const cryptohome::EncryptedFs& encrypted_fs,
 /* Exports NVRAM contents to tmpfs for use by install attributes */
 void nvram_export(const brillo::SecureBlob& contents) {
   int fd;
-  LOG(INFO) << "Export NVRAM contents";
+  DEBUG("Export NVRAM contents");
   fd = open(kNvramExport, O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
   if (fd < 0) {
-    PLOG(ERROR) << "open(nvram_export)";
+    perror("open(nvram_export)");
     return;
   }
   if (write(fd, contents.data(), contents.size()) != contents.size()) {
-    // Don't leave broken files around
+    /* Don't leave broken files around */
     unlink(kNvramExport);
   }
   close(fd);
@@ -192,7 +189,7 @@ int main(int argc, char* argv[]) {
   metrics.Init();
   metrics.SetOutputFile(kMountEncryptedMetricsPath);
 
-  LOG(INFO) << "Starting.";
+  INFO_INIT("Starting.");
 
   bool use_factory_system_key = false;
   if (argc > 1) {
@@ -212,8 +209,10 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  // For the mount operation at boot, return RESULT_FAIL_FATAL to trigger
-  // chromeos_startup do the stateful wipe.
+  /* For the mount operation at boot, return RESULT_FAIL_FATAL to trigger
+   * chromeos_startup do the stateful wipe.
+   */
+
   RecordEnumeratedHistogram(&metrics, metrics::kEncryptedFsType,
                             encrypted_fs.GetType());
   rc = encrypted_fs.CheckStates();
@@ -257,8 +256,8 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  LOG(INFO) << "Done.";
+  INFO_DONE("Done.");
 
-  // Continue boot.
+  /* Continue boot. */
   return rc;
 }
