@@ -1146,7 +1146,7 @@ bool SessionManagerImpl::UpgradeArcContainer(
     *error = CreateError(dbus_error::kArcContainerNotFound, kMessage);
     return false;
   }
-  LOG(INFO) << "Container is running with PID " << pid;
+  LOG(INFO) << "Android container is running with PID " << pid;
   base::ScopedFD server_socket;
   if (!CreateArcServerSocket(&server_socket, error)) {
     DCHECK(*error);
@@ -1767,9 +1767,9 @@ void SessionManagerImpl::OnAndroidContainerStopped(
     pid_t pid,
     ArcContainerStopReason reason) {
   if (reason == ArcContainerStopReason::CRASH) {
-    LOG(ERROR) << "Android Container with pid " << pid << " crashed";
+    LOG(ERROR) << "Android container with PID " << pid << " crashed";
   } else {
-    LOG(INFO) << "Android Container with pid " << pid << " stopped";
+    LOG(INFO) << "Android container with PID " << pid << " stopped";
   }
 
   login_metrics_->StopTrackingArcUseTime();
