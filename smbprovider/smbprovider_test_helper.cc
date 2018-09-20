@@ -34,6 +34,12 @@ MountOptionsProto CreateMountOptionsProto(const std::string& path,
   return mount_options;
 }
 
+MountConfigProto CreateMountConfigProto(bool enable_ntlm) {
+  MountConfigProto mount_config;
+  mount_config.set_enable_ntlm(enable_ntlm);
+  return mount_config;
+}
+
 UnmountOptionsProto CreateUnmountOptionsProto(int32_t mount_id) {
   UnmountOptionsProto unmount_options;
   unmount_options.set_mount_id(mount_id);

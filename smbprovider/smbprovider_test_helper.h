@@ -25,6 +25,8 @@ MountOptionsProto CreateMountOptionsProto(const std::string& path,
                                           const std::string& workgroup,
                                           const std::string& username);
 
+MountConfigProto CreateMountConfigProto(bool enable_ntlm);
+
 UnmountOptionsProto CreateUnmountOptionsProto(int32_t mount_id);
 
 ReadDirectoryOptionsProto CreateReadDirectoryOptionsProto(
