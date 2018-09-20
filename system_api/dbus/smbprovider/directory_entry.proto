@@ -64,6 +64,15 @@ message MountOptionsProto {
   // Authentication parameters.
   optional string workgroup = 2;
   optional string username = 3;
+
+  // Mount options set by the client.
+  optional MountConfigProto mount_config = 4;
+}
+
+message MountConfigProto {
+  // Boolean indication whether or not to enable NTLM protocol. False
+  // disables the NTLM protocol.
+  optional bool enable_ntlm = 1;
 }
 
 // Used for passing inputs into SmbProvider.Unmount().
