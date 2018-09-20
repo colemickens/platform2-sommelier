@@ -14,8 +14,10 @@ if (use.test) {
 
   static_library("testrunner") {
     configs += [
-      ":testrunner_config",
+      # //common-mk:test should be at the top. crbug.com/887845
+      # TODO(crbug.com/887845): Remove this note after library order issue is resolved.
       "//common-mk:test",
+      ":testrunner_config",
     ]
     sources = [
       "../testrunner.cc",

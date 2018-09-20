@@ -49,6 +49,8 @@ if (use.test) {
 
   executable("hermes_test") {
     configs += [
+      # //common-mk:test should be at the top. crbug.com/887845
+      # TODO(crbug.com/887845): Remove this note after library order issue is resolved.
       "//common-mk:test",
       ":target_defaults",
       ":test_config",

@@ -58,8 +58,10 @@ executable("touchkb_haptic_test") {
 if (use.test) {
   executable("eventkey_test") {
     configs += [
-      ":target_defaults",
+      # //common-mk:test should be at the top. crbug.com/887845
+      # TODO(crbug.com/887845): Remove this note after library order issue is resolved.
       "//common-mk:test",
+      ":target_defaults",
     ]
     sources = [
       "statemachine/eventkey.cc",
@@ -69,8 +71,8 @@ if (use.test) {
 
   executable("slot_test") {
     configs += [
-      ":target_defaults",
       "//common-mk:test",
+      ":target_defaults",
     ]
     sources = [
       "statemachine/eventkey.cc",
@@ -81,8 +83,8 @@ if (use.test) {
 
   executable("statemachine_test") {
     configs += [
-      ":target_defaults",
       "//common-mk:test",
+      ":target_defaults",
     ]
     sources = [
       "statemachine/eventkey.cc",
@@ -94,8 +96,8 @@ if (use.test) {
 
   executable("evdevsource_test") {
     configs += [
-      ":target_defaults",
       "//common-mk:test",
+      ":target_defaults",
     ]
     sources = [
       "evdevsource.cc",
@@ -105,8 +107,8 @@ if (use.test) {
 
   executable("uinputdevice_test") {
     configs += [
-      ":target_defaults",
       "//common-mk:test",
+      ":target_defaults",
     ]
     sources = [
       "uinputdevice.cc",
