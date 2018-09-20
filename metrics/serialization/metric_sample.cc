@@ -30,8 +30,29 @@ MetricSample::MetricSample(MetricSample::SampleType sample_type,
       num_samples_(num_samples) {}
 
 bool MetricSample::IsValid() const {
-  return type() != INVALID && name().find(' ') == std::string::npos &&
-         name().find('\0') == std::string::npos && !name().empty();
+  if (type() == INVALID ||
+      name().find(' ') != std::string::npos ||
+      name().find('\0') != std::string::npos ||
+      name().empty()) {
+    LOG(ERROR) << "Invalid sample type or name for histogram \""
+               << name() << "\"";
+    return false;
+  }
+  if (type() == LINEAR_HISTOGRAM && max() == 1) {
+    // No buckets: this is quietly ignored by Chrome, so better catch it here.
+    LOG(ERROR) << "No buckets for linear histogram \"" << name() << "\"";
+    return false;
+  }
+  if (type() == HISTOGRAM && bucket_count() > max() - min() + 2) {
+    // Too many buckets: this is also quietly ignored by Chrome.
+    // Note: a value x such that min <= x < max goes into a regular bucket.
+    // Values outside that range go in the overflow and underflow buckets.
+    LOG(ERROR) << "Too many buckets (" << bucket_count()
+               << ") for histogram \"" << name()
+               << "\", max for this range is " << max() - min() + 2;
+    return false;
+  }
+  return true;
 }
 
 std::string MetricSample::ToString() const {

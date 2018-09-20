@@ -84,6 +84,15 @@ TEST_F(SerializationUtilsTest, IllegalNameAreFilteredTest) {
   EXPECT_EQ(0, size);
 }
 
+TEST_F(SerializationUtilsTest, BadHistogramsTest) {
+  EXPECT_FALSE(SerializationUtils::WriteMetricsToFile(
+      {MetricSample::HistogramSample("myhist", 5, 1, 10, 100)},
+      filename_));
+  EXPECT_FALSE(SerializationUtils::WriteMetricsToFile(
+      {MetricSample::LinearHistogramSample("alsomyhist", 0, 1)},
+      filename_));
+}
+
 TEST_F(SerializationUtilsTest, BadInputIsCaughtTest) {
   std::string input(
       base::StringPrintf("sparsehistogram%cname foo%c", '\0', '\0'));
@@ -139,12 +148,12 @@ TEST_F(SerializationUtilsTest, ReadLongMessageTest) {
 
 TEST_F(SerializationUtilsTest, WriteReadTest) {
   std::vector<MetricSample> output_samples = {
-      MetricSample::HistogramSample("myhist", 1, 2, 3, 4),
+      MetricSample::HistogramSample("myhist", 3, 1, 10, 5),
       MetricSample::CrashSample("mycrash"),
       MetricSample::LinearHistogramSample("linear", 1, 10),
       MetricSample::SparseHistogramSample("mysparse", 30),
       MetricSample::UserActionSample("myaction"),
-      MetricSample::HistogramSample("myrepeatedhist", 1, 2, 3, 4, 10),
+      MetricSample::HistogramSample("myrepeatedhist", 3, 1, 10, 5, 10),
   };
 
   SerializationUtils::WriteMetricsToFile(output_samples, filename_);
@@ -166,7 +175,7 @@ TEST_F(SerializationUtilsTest, WriteReadTest) {
 // trigger two uploads.
 TEST_F(SerializationUtilsTest, BatchedUploadTest) {
   MetricSample hist =
-      MetricSample::HistogramSample("Boring.Histogram", 1, 2, 3, 4);
+      MetricSample::HistogramSample("Boring.Histogram", 3, 1, 10, 5);
   // The serialized MetricSample does not contain the header size (4 bytes for
   // the total sample length).
   size_t serialized_sample_length = hist.ToString().length() + 4;
