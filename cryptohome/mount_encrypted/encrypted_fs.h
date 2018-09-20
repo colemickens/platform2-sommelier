@@ -12,7 +12,6 @@
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <brillo/blkdev_utils/device_mapper.h>
 #include <brillo/blkdev_utils/loop_device.h>
 #include <brillo/secure_blob.h>
 
@@ -52,8 +51,7 @@ class EncryptedFs {
   // Setup EncryptedFs with the root dir, platform and loopdev manager.
   EncryptedFs(const base::FilePath& mount_root,
               Platform* platform,
-              brillo::LoopDeviceManager* loop_device_manager,
-              brillo::DeviceMapper* device_mapper);
+              brillo::LoopDeviceManager* loop_device_manager);
   ~EncryptedFs() = default;
 
   // Setup mounts the encrypted mount by:
@@ -89,10 +87,9 @@ class EncryptedFs {
   // Use a raw Platform pointer to avoid convoluted EXPECT_CALL semantics
   // for mock Platform objects.
   Platform* platform_;
+
   // Loop Device Manager.
   brillo::LoopDeviceManager* loopdev_manager_;
-  // Device Mapper.
-  brillo::DeviceMapper* device_mapper_;
 
   // CreateSparseBackingFile creates the sparse backing file for the
   // encrypted mount and returns an open fd, if successful.

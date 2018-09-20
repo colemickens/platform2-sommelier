@@ -179,11 +179,7 @@ int main(int argc, char* argv[]) {
   base::FilePath rootdir = base::FilePath(getenv("MOUNT_ENCRYPTED_ROOT"));
   cryptohome::Platform platform;
   brillo::LoopDeviceManager loopdev_manager;
-  brillo::DeviceMapper device_mapper;
-  cryptohome::EncryptedFs encrypted_fs(rootdir,
-                                       &platform,
-                                       &loopdev_manager,
-                                       &device_mapper);
+  cryptohome::EncryptedFs encrypted_fs(rootdir, &platform, &loopdev_manager);
 
   MetricsLibrary metrics;
   metrics.Init();
