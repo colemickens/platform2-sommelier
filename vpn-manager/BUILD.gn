@@ -1,0 +1,111 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":l2tpipsec_vpn",
+    ":libl2tpipsec_vpn",
+  ]
+  if (use.test) {
+    deps += [
+      ":daemon_test",
+      ":ipsec_manager_test",
+      ":l2tp_manager_test",
+      ":service_manager_test",
+    ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "openssl",
+  ]
+  defines = [
+    "IPSEC_STARTER=\"/usr/libexec/ipsec/starter\"",
+    "IPSEC_WHACK=\"/usr/libexec/ipsec/whack\"",
+    "IPSEC_UPDOWN=\"/usr/libexec/l2tpipsec_vpn/pluto_updown\"",
+    "L2TPD=\"/usr/sbin/xl2tpd\"",
+    "PKCS11_LIB=\"${libdir}/libchaps.so\"",
+  ]
+}
+
+static_library("libl2tpipsec_vpn") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "daemon.cc",
+    "ipsec_manager.cc",
+    "l2tp_manager.cc",
+    "service_manager.cc",
+  ]
+}
+
+executable("l2tpipsec_vpn") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "l2tpipsec_vpn.cc",
+  ]
+  deps = [
+    ":libl2tpipsec_vpn",
+  ]
+}
+
+if (use.test) {
+  executable("daemon_test") {
+    configs += [
+      # //common-mk:test should be at the top. crbug.com/887845
+      # TODO(crbug.com/887845): Remove this note after library order issue is resolved.
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    sources = [
+      "daemon_test.cc",
+    ]
+    deps = [
+      ":libl2tpipsec_vpn",
+    ]
+  }
+
+  executable("ipsec_manager_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    sources = [
+      "ipsec_manager_test.cc",
+    ]
+    deps = [
+      ":libl2tpipsec_vpn",
+    ]
+  }
+
+  executable("l2tp_manager_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    sources = [
+      "l2tp_manager_test.cc",
+    ]
+    deps = [
+      ":libl2tpipsec_vpn",
+    ]
+  }
+
+  executable("service_manager_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    sources = [
+      "service_manager_test.cc",
+    ]
+    deps = [
+      ":libl2tpipsec_vpn",
+    ]
+  }
+}
