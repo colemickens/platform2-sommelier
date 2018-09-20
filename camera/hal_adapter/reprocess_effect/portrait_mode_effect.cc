@@ -141,9 +141,19 @@ int32_t PortraitModeEffect::ReprocessRequest(
       return result;
     }
 
+    // Duplicate the file descriptors since shm_open() returns descriptors
+    // associated with FD_CLOEXEC, which causes the descriptors to be closed at
+    // the call of execve(). Duplicated descriptors do not share the
+    // close-on-exec flag.
+    base::ScopedFD dup_input_rgb_buf_fd(
+        HANDLE_EINTR(dup(input_rgb_shm.handle().fd)));
+    base::ScopedFD dup_output_rgb_buf_fd(
+        HANDLE_EINTR(dup(output_rgb_shm.handle().fd)));
+    base::ScopedFD dup_result_report_fd(
+        HANDLE_EINTR(dup(result_report_shm.handle().fd)));
     base::Process process = LaunchPortraitProcessor(
-        input_rgb_shm.handle().fd, output_rgb_shm.handle().fd,
-        result_report_shm.handle().fd, width, height, orientation);
+        dup_input_rgb_buf_fd.get(), dup_output_rgb_buf_fd.get(),
+        dup_result_report_fd.get(), width, height, orientation);
     if (!process.IsValid()) {
       LOGF(ERROR) << "Failed to launch portrait processor";
       return -EINVAL;
@@ -253,29 +263,26 @@ base::Process PortraitModeEffect::LaunchPortraitProcessor(
     uint32_t width,
     uint32_t height,
     uint32_t orientation) {
-  int dup_input_rgb_buf_fd = dup(input_rgb_buf_fd);
-  int dup_output_rgb_buf_fd = dup(output_rgb_buf_fd);
-  int dup_result_report_fd = dup(result_report_fd);
   LOGF(INFO) << "Prepare arguments for portrait processor";
   // Added a pair of parentheses to declare a variable so as to avoid the most
   // vexing parse ambiguity
   base::CommandLine cmdline((base::FilePath(kPortraitProcessorBinary)));
   cmdline.AppendSwitchASCII("debug_images_verbosity", "1");
   cmdline.AppendSwitchASCII("input_shmbuf_fd",
-                            std::to_string(dup_input_rgb_buf_fd));
+                            std::to_string(input_rgb_buf_fd));
   cmdline.AppendSwitchASCII("output_shmbuf_fd",
-                            std::to_string(dup_output_rgb_buf_fd));
+                            std::to_string(output_rgb_buf_fd));
   cmdline.AppendSwitchASCII("width", std::to_string(width));
   cmdline.AppendSwitchASCII("height", std::to_string(height));
   cmdline.AppendSwitchASCII("orientation", std::to_string(orientation));
   cmdline.AppendSwitchASCII("result_report_fd",
-                            std::to_string(dup_result_report_fd));
+                            std::to_string(result_report_fd));
   VLOGF(1) << cmdline.GetCommandLineString();
   LOGF(INFO) << "Start portrait processing ...";
   base::FileHandleMappingVector fds_to_remap;
-  fds_to_remap.emplace_back(dup_input_rgb_buf_fd, dup_input_rgb_buf_fd);
-  fds_to_remap.emplace_back(dup_output_rgb_buf_fd, dup_output_rgb_buf_fd);
-  fds_to_remap.emplace_back(dup_result_report_fd, dup_result_report_fd);
+  fds_to_remap.emplace_back(input_rgb_buf_fd, input_rgb_buf_fd);
+  fds_to_remap.emplace_back(output_rgb_buf_fd, output_rgb_buf_fd);
+  fds_to_remap.emplace_back(result_report_fd, result_report_fd);
   base::LaunchOptions options;
   options.fds_to_remap = &fds_to_remap;
   return base::LaunchProcess(cmdline, options);
