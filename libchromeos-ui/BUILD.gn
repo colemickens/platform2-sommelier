@@ -1,0 +1,52 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":libchromeos-ui-${libbase_ver}",
+  ]
+  if (use.test) {
+    deps += [ ":libchromeos-ui-test" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+  ]
+  include_dirs = [ "." ]
+}
+
+shared_library("libchromeos-ui-${libbase_ver}") {
+  configs += [
+    ":target_defaults",
+    "//common-mk:visibility_default",
+  ]
+  sources = [
+    "chromeos/ui/chromium_command_builder.cc",
+    "chromeos/ui/util.cc",
+  ]
+  libs = [ "-lbootstat" ]
+}
+
+if (use.test) {
+  executable("libchromeos-ui-test") {
+    configs += [
+      # //common-mk:test should be at the top. crbug.com/887845
+      # TODO(crbug.com/887845): Remove this note after library order issue is resolved.
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    sources = [
+      "chromeos/ui/chromium_command_builder_unittest.cc",
+    ]
+    deps = [
+      ":libchromeos-ui-${libbase_ver}",
+      "//common-mk/testrunner",
+    ]
+  }
+}
