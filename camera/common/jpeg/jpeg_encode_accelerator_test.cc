@@ -216,9 +216,9 @@ bool JpegEncodeAcceleratorTest::CompareHwAndSwResults(Frame* frame) {
   int u_stride = width / 2;
   int v_stride = u_stride;
   if (libyuv::ConvertToI420(
-          static_cast<const uint8*>(frame->hw_out_shm->memory()),
-          frame->hw_out_size,
-          hw_yuv_result, y_stride, hw_yuv_result + y_stride * height, u_stride,
+          static_cast<const uint8_t*>(frame->hw_out_shm->memory()),
+          frame->hw_out_size, hw_yuv_result, y_stride,
+          hw_yuv_result + y_stride * height, u_stride,
           hw_yuv_result + y_stride * height + u_stride * height / 2, v_stride,
           0, 0, width, height, width, height, libyuv::kRotate0,
           libyuv::FOURCC_MJPG)) {
@@ -227,9 +227,9 @@ bool JpegEncodeAcceleratorTest::CompareHwAndSwResults(Frame* frame) {
 
   uint8_t* sw_yuv_result = new uint8_t[yuv_size];
   if (libyuv::ConvertToI420(
-          static_cast<const uint8*>(frame->sw_out_shm->memory()),
-          frame->sw_out_size,
-          sw_yuv_result, y_stride, sw_yuv_result + y_stride * height, u_stride,
+          static_cast<const uint8_t*>(frame->sw_out_shm->memory()),
+          frame->sw_out_size, sw_yuv_result, y_stride,
+          sw_yuv_result + y_stride * height, u_stride,
           sw_yuv_result + y_stride * height + u_stride * height / 2, v_stride,
           0, 0, width, height, width, height, libyuv::kRotate0,
           libyuv::FOURCC_MJPG)) {
@@ -302,6 +302,16 @@ TEST_F(JpegEncodeAcceleratorTest, EncodeTest) {
   LoadFrame(g_env->yuv_filename1_, &jpeg_frame1_);
   PrepareMemory(&jpeg_frame1_);
   EncodeTest(&jpeg_frame1_);
+}
+
+TEST_F(JpegEncodeAcceleratorTest, EncodeTestFor2Resolutions) {
+  EXPECT_EQ(jpeg_encoder_->Start(), true);
+  LoadFrame(g_env->yuv_filename1_, &jpeg_frame1_);
+  LoadFrame(g_env->yuv_filename2_, &jpeg_frame2_);
+  PrepareMemory(&jpeg_frame1_);
+  EncodeTest(&jpeg_frame1_);
+  PrepareMemory(&jpeg_frame2_);
+  EncodeTest(&jpeg_frame2_);
 }
 
 TEST_F(JpegEncodeAcceleratorTest, Encode60Images) {
