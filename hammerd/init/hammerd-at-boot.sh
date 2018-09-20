@@ -9,6 +9,8 @@
 
 . /usr/share/cros/init/hammerd-base-detector.sh || exit 1
 
+LOGGER_TAG="hammerd-at-boot"
+
 monitor_dbus_signal() {
   # Monitor the hammerd updating DBus signal.
   # If we catch the "update start" signals, then show the boot message, and
@@ -20,20 +22,20 @@ monitor_dbus_signal() {
   dbus-monitor --system --profile "interface='${interface}'" | \
   while read -r line; do
     if [ -z "${line##*${started_signal}*}" ]; then
-      logger -t hammerd-at-boot "Hammerd starts updating, display message."
+      logger -t "${LOGGER_TAG}" "Hammerd starts updating, display message."
       chromeos-boot-alert update_detachable_base_firmware
     fi
   done
 }
 
 main() {
-  if ! base_connected "hammer-at-boot"; then
-    logger -t hammer-at-boot "Base not connected, skipping hammerd at boot."
+  if ! base_connected "${LOGGER_TAG}"; then
+    logger -t "${LOGGER_TAG}" "Base not connected, skipping hammerd at boot."
     metrics_client -e Platform.DetachableBase.AttachedOnBoot 0 2
     return
   fi
 
-  logger -t hammerd-at-boot "Force trigger hammerd at boot."
+  logger -t "${LOGGER_TAG}" "Force trigger hammerd at boot."
   metrics_client -e Platform.DetachableBase.AttachedOnBoot 1 2
 
   # Background process that catches the DBus signal.
