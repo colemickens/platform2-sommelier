@@ -12,6 +12,8 @@
 namespace smbprovider {
 
 bool IsValidOptions(const MountOptionsProto& options) {
+  // TODO(jimmyxgong): Add validation of MountConfig once all Mount calls set
+  // it.
   return options.has_path() && options.has_workgroup() &&
          options.has_username();
 }
@@ -90,6 +92,10 @@ bool IsValidOptions(const RemountOptionsProto& options) {
   // TODO(baileyberro): Add verification for workgroup and username here when
   // SmbProviderClient starts passing them.
   return options.has_path() && options.has_mount_id();
+}
+
+bool IsValidMountConfig(const MountConfigProto& options) {
+  return options.has_enable_ntlm();
 }
 
 std::string GetEntryPath(const ReadDirectoryOptionsProto& options) {

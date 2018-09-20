@@ -47,6 +47,8 @@ bool IsValidOptions(const GetDeleteListOptionsProto& options);
 bool IsValidOptions(const GetSharesOptionsProto& options);
 bool IsValidOptions(const RemountOptionsProto& options);
 
+bool IsValidMountConfig(const MountConfigProto& options);
+
 // Helper method to get the entry path from a proto.
 std::string GetEntryPath(const ReadDirectoryOptionsProto& options);
 std::string GetEntryPath(const GetMetadataEntryOptionsProto& options);
