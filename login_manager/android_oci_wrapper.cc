@@ -61,8 +61,10 @@ void AndroidOciWrapper::RequestJobExit(ArcContainerStopReason reason) {
 
   exit_reason_ = reason;
 
-  if (stateful_mode_ != StatefulMode::STATELESS && RequestTermination())
-    return;
+  if (stateful_mode_ == StatefulMode::STATEFUL) {
+    if (RequestTermination())
+      return;
+  }
 
   std::vector<std::string> argv = {kRunOciPath, kRunOciLogging,
                                    kRunOciKillSignal, kRunOciKillCommand,
