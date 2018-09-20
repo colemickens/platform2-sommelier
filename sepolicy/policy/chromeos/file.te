@@ -55,6 +55,8 @@ type cros_var_log, file_type;
 type cros_var_lib, file_type;
 type cros_var_spool, file_type;
 
+type cros_run, file_type;
+
 type cros_tz_data_file, file_type;
 
 type cros_ld_conf_cache, file_type;
@@ -81,3 +83,8 @@ allow debugfs_type debugfs:filesystem associate;
 allow debugfs_trace_marker debugfs_tracing:filesystem associate;
 allow sysfs_type sysfs:filesystem associate;
 neverallow fs_type file_type:filesystem associate;
+
+type wayland_socket, file_type;
+
+# TODO(fqj): temporarily let un-decomposed chromeos domain to write file as tmpfs.
+type_transition chromeos cros_run:dir tmpfs;

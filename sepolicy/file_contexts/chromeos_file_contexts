@@ -77,14 +77,15 @@ include(sepolicy/file_contexts/coreutils)
 
 # All the following files are created dynamically and need to be labeled at
 # runtime.
+/run                            u:object_r:cros_run:s0
+/run/arc/debugfs                u:object_r:debugfs:s0
+/run/arc/sdcard(/.*)?           u:object_r:storage_file:s0
 
 has_arc(`
 /run/arc/cmdline.android        u:object_r:is_arc_nyc(proc, proc_cmdline):s0
 ')
 
-/run/arc/sdcard(/.*)?           u:object_r:storage_file:s0
 
-/run/arc/debugfs                           u:object_r:debugfs:s0
 
 include(sepolicy/file_contexts/sysfs_contexts)
 
