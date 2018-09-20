@@ -18,6 +18,7 @@
 #include "smbprovider/iterator/directory_iterator.h"
 #include "smbprovider/kerberos_artifact_synchronizer.h"
 #include "smbprovider/metadata_cache.h"
+#include "smbprovider/mount_config.h"
 #include "smbprovider/mount_manager.h"
 #include "smbprovider/netbios_packet_parser.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
@@ -100,6 +101,7 @@ class SmbProviderTest : public testing::Test {
       FakeSambaInterface* fake_samba,
       MountManager* mount_manager,
       const MountConfig& mount_config) {
+    enable_ntlm_ = mount_config.enable_ntlm;
     return std::make_unique<FakeSambaProxy>(fake_samba);
   }
 
@@ -112,11 +114,19 @@ class SmbProviderTest : public testing::Test {
   // Helper method that adds "smb://wdshare/test" as a mountable share and
   // mounts it.
   int32_t PrepareMount() {
+    return PrepareMountWithMountConfig(true /* enable_ntlm */);
+  }
+
+  // Helper method that behaves just like PrepareMount() but with |enable_ntlm|
+  // input for MountConfig.
+  int32_t PrepareMountWithMountConfig(bool enable_ntlm) {
     fake_samba_->AddDirectory(GetDefaultServer());
     fake_samba_->AddDirectory(GetDefaultMountRoot());
     int32_t mount_id;
     int32_t err;
-    ProtoBlob proto_blob = CreateMountOptionsBlob(GetDefaultMountRoot());
+    MountConfig mount_config(enable_ntlm);
+    ProtoBlob proto_blob =
+        CreateMountOptionsBlob(GetDefaultMountRoot(), mount_config);
     smbprovider_->Mount(proto_blob, base::ScopedFD(), &err, &mount_id);
     EXPECT_EQ(ERROR_OK, CastError(err));
     ExpectNoOpenEntries();
@@ -278,6 +288,7 @@ class SmbProviderTest : public testing::Test {
   KerberosArtifactSynchronizer* kerberos_synchronizer_;
   // |metadata_cache| is used to test the GetEntries method
   std::unique_ptr<MetadataCache> metadata_cache_;
+  bool enable_ntlm_ = false;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SmbProviderTest);
@@ -308,7 +319,6 @@ TEST_F(SmbProviderTest, MountFailsWithInvalidProto) {
   ExpectNoOpenEntries();
 }
 
-// Mount fails when mounting a share that doesn't exist.
 TEST_F(SmbProviderTest, MountFailsWithInvalidShare) {
   int32_t mount_id;
   int32_t err;
@@ -3242,6 +3252,56 @@ TEST_F(SmbProviderTest, StartReadDirectoryCacheEnabledPurgesBeforeRead) {
   smbprovider_->StartReadDirectory(read_dir_blob, &error_code, &results,
                                    &read_dir_token);
   EXPECT_TRUE(cache->IsEmpty());
+}
+
+TEST_F(SmbProviderTest, TestMountConfigEnableNTLM) {
+  EXPECT_FALSE(enable_ntlm_);
+
+  SetUpSmbProvider(true /* enable_metadata_cache */);
+  int32_t mount_id = PrepareMountWithMountConfig(true /* enable ntlm */);
+
+  DCHECK_GE(mount_id, 0);
+
+  EXPECT_TRUE(enable_ntlm_);
+}
+
+TEST_F(SmbProviderTest, TestMountConfigDisableNTLM) {
+  EXPECT_FALSE(enable_ntlm_);
+
+  SetUpSmbProvider(true /* enable_metadata_cache */);
+  int32_t mount_id = PrepareMountWithMountConfig(false /* enable ntlm */);
+
+  DCHECK_GE(mount_id, 0);
+
+  EXPECT_FALSE(enable_ntlm_);
+}
+
+TEST_F(SmbProviderTest, TestRemountConfigEnableNTLM) {
+  fake_samba_->AddDirectory("smb://testshare");
+
+  const int32_t mount_id = 1;
+  MountConfig mount_config(true /* enable_ntlm */);
+  ProtoBlob blob = CreateRemountOptionsBlob("smb://testshare", mount_id,
+                                            std::move(mount_config));
+
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->Remount(blob, base::ScopedFD())));
+  EXPECT_EQ(1, mount_manager_->MountCount());
+  EXPECT_TRUE(mount_manager_->IsAlreadyMounted(mount_id));
+  EXPECT_TRUE(enable_ntlm_);
+}
+
+TEST_F(SmbProviderTest, TestRemountConfigDisableNTLM) {
+  fake_samba_->AddDirectory("smb://testshare");
+
+  const int32_t mount_id = 1;
+  MountConfig mount_config(false /* enable_ntlm */);
+  ProtoBlob blob = CreateRemountOptionsBlob("smb://testshare", mount_id,
+                                            std::move(mount_config));
+
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->Remount(blob, base::ScopedFD())));
+  EXPECT_EQ(1, mount_manager_->MountCount());
+  EXPECT_TRUE(mount_manager_->IsAlreadyMounted(mount_id));
+  EXPECT_FALSE(enable_ntlm_);
 }
 
 }  // namespace smbprovider

@@ -117,7 +117,8 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
 
  private:
   // Runs |samba_interface_factory_|.
-  std::unique_ptr<SambaInterface> CreateSambaInterface();
+  std::unique_ptr<SambaInterface> CreateSambaInterface(
+      const MountConfig& mount_config);
 
   // Returns the SambaInterfaceId from |system_samba_interface_|.
   SambaInterface::SambaInterfaceId GetSystemSambaInterfaceId();

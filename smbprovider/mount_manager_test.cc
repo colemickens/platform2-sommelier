@@ -34,6 +34,7 @@ class MountManagerTest : public testing::Test {
       FakeSambaInterface* fake_samba,
       MountManager* mount_manager,
       const MountConfig& mount_config) {
+    enable_ntlm_ = mount_config.enable_ntlm;
     return std::make_unique<FakeSambaProxy>(fake_samba);
   }
 
@@ -65,6 +66,14 @@ class MountManagerTest : public testing::Test {
                              MountConfig(true /* enable_ntlm */), mount_id);
   }
 
+  bool AddMountWithMountConfig(const std::string& root_path,
+                               SmbCredential credential,
+                               const MountConfig& mount_config,
+                               int32_t* mount_id) {
+    return mounts_->AddMount(root_path, std::move(credential), mount_config,
+                             mount_id);
+  }
+
   bool Remount(const std::string& root_path, int32_t mount_id) {
     return Remount(root_path, mount_id, SmbCredential());
   }
@@ -74,6 +83,14 @@ class MountManagerTest : public testing::Test {
                SmbCredential credential) {
     return mounts_->Remount(root_path, mount_id, std::move(credential),
                             MountConfig(true /* enable_ntlm */));
+  }
+
+  bool RemountWithMountConfig(const std::string& root_path,
+                              SmbCredential credential,
+                              const MountConfig& mount_config,
+                              int32_t mount_id) {
+    return mounts_->Remount(root_path, mount_id, std::move(credential),
+                            mount_config);
   }
 
   void ExpectCredentialsEqual(int32_t mount_id,
@@ -112,6 +129,7 @@ class MountManagerTest : public testing::Test {
  protected:
   std::unique_ptr<MountManager> mounts_;
   TempFileManager temp_files_;
+  bool enable_ntlm_ = false;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MountManagerTest);
@@ -671,4 +689,57 @@ TEST_F(MountManagerTest, TestRemoveCredentialFromMultiple) {
   EXPECT_TRUE(mounts_->RemoveMount(mount_id2));
   EXPECT_EQ(0, mounts_->MountCount());
 }
+
+TEST_F(MountManagerTest, TestEnableNTLM) {
+  EXPECT_FALSE(enable_ntlm_);
+
+  int mount_id;
+  SmbCredential credential = CreateCredential(kWorkgroup, kUsername, kPassword);
+
+  MountConfig mount_config(true /* enable_ntlm */);
+
+  EXPECT_TRUE(AddMountWithMountConfig(kMountRoot, std::move(credential),
+                                      mount_config, &mount_id));
+  EXPECT_TRUE(enable_ntlm_);
+}
+
+TEST_F(MountManagerTest, TestDisableNTLM) {
+  EXPECT_FALSE(enable_ntlm_);
+
+  int mount_id;
+  SmbCredential credential = CreateCredential(kWorkgroup, kUsername, kPassword);
+
+  MountConfig mount_config(false /* enable_ntlm */);
+
+  EXPECT_TRUE(AddMountWithMountConfig(kMountRoot, std::move(credential),
+                                      mount_config, &mount_id));
+  EXPECT_FALSE(enable_ntlm_);
+}
+
+TEST_F(MountManagerTest, TestRemountEnableNTLM) {
+  EXPECT_FALSE(enable_ntlm_);
+
+  int mount_id = 2;
+  SmbCredential credential = CreateCredential(kWorkgroup, kUsername, kPassword);
+
+  MountConfig mount_config(true /* enable_ntlm */);
+
+  EXPECT_TRUE(RemountWithMountConfig(kMountRoot, std::move(credential),
+                                     mount_config, mount_id));
+  EXPECT_TRUE(enable_ntlm_);
+}
+
+TEST_F(MountManagerTest, TestRemountDisableNTLM) {
+  EXPECT_FALSE(enable_ntlm_);
+
+  int mount_id = 2;
+  SmbCredential credential = CreateCredential(kWorkgroup, kUsername, kPassword);
+
+  MountConfig mount_config(false /* enable_ntlm */);
+
+  EXPECT_TRUE(RemountWithMountConfig(kMountRoot, std::move(credential),
+                                     mount_config, mount_id));
+  EXPECT_FALSE(enable_ntlm_);
+}
+
 }  // namespace smbprovider

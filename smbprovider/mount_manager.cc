@@ -127,7 +127,8 @@ MountManager::MountManager(std::unique_ptr<MountTracker> mount_tracker,
                            SambaInterfaceFactory samba_interface_factory)
     : mount_tracker_(std::move(mount_tracker)),
       samba_interface_factory_(std::move(samba_interface_factory)) {
-  system_samba_interface_ = CreateSambaInterface();
+  system_samba_interface_ =
+      CreateSambaInterface(MountConfig(false /* enable_ntlm */));
 }
 
 MountManager::~MountManager() = default;
@@ -148,8 +149,10 @@ bool MountManager::AddMount(const std::string& mount_root,
                             int32_t* mount_id) {
   DCHECK(mount_id);
 
-  bool mount_succeeded = mount_tracker_->AddMount(
-      mount_root, std::move(credential), CreateSambaInterface(), mount_id);
+  const bool mount_succeeded =
+      mount_tracker_->AddMount(mount_root, std::move(credential),
+                               CreateSambaInterface(mount_config), mount_id);
+
   if (mount_succeeded) {
     // After adding a new mount, remounts are disabled. This is only used as a
     // DCHECK to ensure remounts are not called after a new mount.
@@ -167,7 +170,8 @@ bool MountManager::Remount(const std::string& mount_root,
   DCHECK_GE(mount_id, 0);
 
   return mount_tracker_->AddMountWithId(mount_root, std::move(credential),
-                                        CreateSambaInterface(), mount_id);
+                                        CreateSambaInterface(mount_config),
+                                        mount_id);
 }
 
 bool MountManager::RemoveMount(int32_t mount_id) {
@@ -207,9 +211,9 @@ SambaInterface* MountManager::GetSystemSambaInterface() const {
   return system_samba_interface_.get();
 }
 
-std::unique_ptr<SambaInterface> MountManager::CreateSambaInterface() {
-  return samba_interface_factory_.Run(this,
-                                      MountConfig(true /* enable_ntlm */));
+std::unique_ptr<SambaInterface> MountManager::CreateSambaInterface(
+    const MountConfig& mount_config) {
+  return samba_interface_factory_.Run(this, mount_config);
 }
 
 bool MountManager::GetAuthentication(

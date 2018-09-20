@@ -8,6 +8,7 @@
 
 #include <gtest/gtest.h>
 
+#include "smbprovider/mount_config.h"
 #include "smbprovider/netbios_packet_parser.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
 #include "smbprovider/temp_file_manager.h"
@@ -31,13 +32,23 @@ MountOptionsProto CreateMountOptionsProto(const std::string& path,
   mount_options.set_path(path);
   mount_options.set_workgroup(workgroup);
   mount_options.set_username(username);
+
   return mount_options;
 }
 
-MountConfigProto CreateMountConfigProto(bool enable_ntlm) {
-  MountConfigProto mount_config;
-  mount_config.set_enable_ntlm(enable_ntlm);
-  return mount_config;
+MountOptionsProto CreateMountOptionsProto(const std::string& path,
+                                          const std::string& workgroup,
+                                          const std::string& username,
+                                          const MountConfig& mount_config) {
+  MountOptionsProto mount_options =
+      CreateMountOptionsProto(path, workgroup, username);
+
+  std::unique_ptr<MountConfigProto> config =
+      CreateMountConfigProto(mount_config.enable_ntlm);
+
+  mount_options.set_allocated_mount_config(config.release());
+
+  return mount_options;
 }
 
 UnmountOptionsProto CreateUnmountOptionsProto(int32_t mount_id) {
@@ -185,6 +196,23 @@ RemountOptionsProto CreateRemountOptionsProto(const std::string& path,
   return options;
 }
 
+RemountOptionsProto CreateRemountOptionsProto(const std::string& path,
+                                              int32_t mount_id,
+                                              const MountConfig& mount_config) {
+  RemountOptionsProto remount_options;
+  remount_options.set_path(path);
+  remount_options.set_mount_id(mount_id);
+
+  // set_allocated_mount_config() transfers ownership of |mount_config| to
+  // |mount_options| so |mount_config| needs to be created in the heap.
+  auto config = std::make_unique<MountConfigProto>();
+  config->set_enable_ntlm(mount_config.enable_ntlm);
+
+  remount_options.set_allocated_mount_config(config.release());
+
+  return remount_options;
+}
+
 authpolicy::KerberosFiles CreateKerberosFilesProto(
     const std::string& krb5cc, const std::string& krb5conf) {
   authpolicy::KerberosFiles kerberos_files;
@@ -199,10 +227,24 @@ ProtoBlob CreateMountOptionsBlob(const std::string& path) {
 }
 
 ProtoBlob CreateMountOptionsBlob(const std::string& path,
+                                 const MountConfig& mount_config) {
+  return SerializeProtoToBlobAndCheck(CreateMountOptionsProto(
+      path, "" /* workgroup */, "" /* username */, mount_config));
+}
+
+ProtoBlob CreateMountOptionsBlob(const std::string& path,
                                  const std::string& workgroup,
                                  const std::string& username) {
   return SerializeProtoToBlobAndCheck(
       CreateMountOptionsProto(path, workgroup, username));
+}
+
+ProtoBlob CreateMountOptionsBlob(const std::string& path,
+                                 const std::string& workgroup,
+                                 const std::string& username,
+                                 const MountConfig mount_config) {
+  return SerializeProtoToBlobAndCheck(
+      CreateMountOptionsProto(path, workgroup, username, mount_config));
 }
 
 ProtoBlob CreateUnmountOptionsBlob(int32_t mount_id) {
@@ -304,6 +346,13 @@ ProtoBlob CreateGetSharesOptionsBlob(const std::string& server_url) {
 ProtoBlob CreateRemountOptionsBlob(const std::string& path, int32_t mount_id) {
   return SerializeProtoToBlobAndCheck(
       CreateRemountOptionsProto(path, mount_id));
+}
+
+ProtoBlob CreateRemountOptionsBlob(const std::string& path,
+                                   int32_t mount_id,
+                                   MountConfig mount_config) {
+  return SerializeProtoToBlobAndCheck(
+      CreateRemountOptionsProto(path, mount_id, mount_config));
 }
 
 base::ScopedFD WritePasswordToFile(TempFileManager* temp_manager,
@@ -412,6 +461,15 @@ std::vector<uint8_t> CreateValidNetBiosHostname(const std::string& hostname,
   hostname_bytes[17] = 0x00;
 
   return hostname_bytes;
+}
+
+std::unique_ptr<MountConfigProto> CreateMountConfigProto(bool enable_ntlm) {
+  // set_allocated_mount_config() transfers ownership of |mount_config| to
+  // |mount_options| so |mount_config| needs to be created in the heap.
+  auto mount_config = std::make_unique<MountConfigProto>();
+  mount_config->set_enable_ntlm(enable_ntlm);
+
+  return mount_config;
 }
 
 }  // namespace smbprovider

@@ -5,6 +5,7 @@
 #ifndef SMBPROVIDER_SMBPROVIDER_TEST_HELPER_H_
 #define SMBPROVIDER_SMBPROVIDER_TEST_HELPER_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -19,13 +20,17 @@ namespace smbprovider {
 constexpr char kTestCCacheName[] = "ccache";
 constexpr char kTestKrb5ConfName[] = "krb5.conf";
 
+struct MountConfig;
 class TempFileManager;
 
 MountOptionsProto CreateMountOptionsProto(const std::string& path,
                                           const std::string& workgroup,
                                           const std::string& username);
 
-MountConfigProto CreateMountConfigProto(bool enable_ntlm);
+MountOptionsProto CreateMountOptionsProto(const std::string& path,
+                                          const std::string& workgroup,
+                                          const std::string& username,
+                                          MountConfig* mount_config);
 
 UnmountOptionsProto CreateUnmountOptionsProto(int32_t mount_id);
 
@@ -84,6 +89,10 @@ GetSharesOptionsProto CreateGetSharesOptionsProto(
 RemountOptionsProto CreateRemountOptionsProto(const std::string& path,
                                               int32_t mount_id);
 
+RemountOptionsProto CreateRemountOptionsProto(const std::string& path,
+                                              int32_t mount_id,
+                                              const MountConfig& mount_config);
+
 // Writes the Credential Cache file contents |krb5cc| and the krb5.conf file
 // contents |krb5conf| into a authpolicy::KerberosFiles proto.
 authpolicy::KerberosFiles CreateKerberosFilesProto(const std::string& krb5cc,
@@ -92,8 +101,16 @@ authpolicy::KerberosFiles CreateKerberosFilesProto(const std::string& krb5cc,
 ProtoBlob CreateMountOptionsBlob(const std::string& path);
 
 ProtoBlob CreateMountOptionsBlob(const std::string& path,
+                                 const MountConfig& mount_config);
+
+ProtoBlob CreateMountOptionsBlob(const std::string& path,
                                  const std::string& workgroup,
                                  const std::string& username);
+
+ProtoBlob CreateMountOptionsBlob(const std::string& path,
+                                 const std::string& workgroup,
+                                 const std::string& username,
+                                 const MountConfig& mount_config);
 
 ProtoBlob CreateUnmountOptionsBlob(int32_t mount_id);
 
@@ -148,6 +165,10 @@ ProtoBlob CreateGetDeleteListOptionsBlob(int32_t mount_id,
 ProtoBlob CreateGetSharesOptionsBlob(const std::string& server_url);
 
 ProtoBlob CreateRemountOptionsBlob(const std::string& path, int32_t mount_id);
+
+ProtoBlob CreateRemountOptionsBlob(const std::string& path,
+                                   int32_t mount_id,
+                                   MountConfig mount_config);
 
 // FakeSamba URL helper methods
 inline std::string GetDefaultServer() {
@@ -214,6 +235,8 @@ std::vector<uint8_t> CreateNetBiosResponsePacket(
 // less than or equal to 15 bytes.
 std::vector<uint8_t> CreateValidNetBiosHostname(const std::string& hostname,
                                                 uint8_t type);
+
+std::unique_ptr<MountConfigProto> CreateMountConfigProto(bool enable_ntlm);
 
 }  // namespace smbprovider
 
