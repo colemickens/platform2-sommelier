@@ -25,11 +25,12 @@ cp $IMAGE staff.bin
 # Generate dev key set
 futility create --desc="Hammer dev key" $KEY key
 
-# Pick up RO and RW version
+# Pick up RO and RW version (only take up to 27 bytes, to leave an extra
+# 4 bytes for .dev/.rbX tag, and terminating \0.
 ro_version_offset=`dump_fmap $IMAGE RO_FRID | sed -n 's/area_offset: *//p'`
-ro_version=`dd if=$IMAGE bs=1 skip=$((ro_version_offset)) count=32`
+ro_version=`dd if=$IMAGE bs=1 skip=$((ro_version_offset)) count=27`
 rw_version_offset=`dump_fmap $IMAGE RW_FWID | sed -n 's/area_offset: *//p'`
-rw_version=`dd if=$IMAGE bs=1 skip=$((rw_version_offset)) count=32`
+rw_version=`dd if=$IMAGE bs=1 skip=$((rw_version_offset)) count=27`
 
 # Hack the version string
 cp $IMAGE staff.dev
