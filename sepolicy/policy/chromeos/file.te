@@ -69,6 +69,10 @@ allow chromeos_domain tmpfs:dir { getattr read setattr };
 allow chromeos_domain tmpfs:dir create_dir_perms;
 
 allow file_type labeledfs:filesystem associate;
+# TODO(fqj,crbug.com/874980): allow rootfs labeledfs:filesystem is a workaround
+# before developer use process are confined.
+allow rootfs labeledfs:filesystem associate;
+auditallow rootfs labeledfs:filesystem associate;
 allow file_type tmpfs:filesystem associate;
 allow file_type rootfs:filesystem associate;
 allow dev_type tmpfs:filesystem associate;
