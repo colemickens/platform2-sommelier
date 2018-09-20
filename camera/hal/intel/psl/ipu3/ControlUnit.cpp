@@ -814,7 +814,14 @@ status_t ControlUnit::handleNewShutter(MessageShutter msg)
 
     int64_t ts = msg.tv_sec * 1000000000; // seconds to nanoseconds
     ts += msg.tv_usec * 1000; // microseconds to nanoseconds
-
+    //use request setting timestamp when reprocess
+    if (reqState->request->hasInputBuf()){
+        camera_metadata_ro_entry entry;
+        entry = metaData->find(ANDROID_SENSOR_TIMESTAMP);
+        if (entry.count == 1) {
+            ts = entry.data.i64[0];
+        }
+    }
     //# ANDROID_METADATA_Dynamic android.sensor.timestamp done
     reqState->ctrlUnitResult->update(ANDROID_SENSOR_TIMESTAMP, &ts, 1);
     reqState->request->mCallback->shutterDone(reqState->request, ts);
