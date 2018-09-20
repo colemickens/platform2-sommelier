@@ -9,17 +9,11 @@
 
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
-#include <mojo/edk/embedder/process_delegate.h>
 
 #include "cros-camera/camera_mojo_channel_manager.h"
 #include "mojo/cros_camera_service.mojom.h"
 
 namespace cros {
-
-class MojoShutdownImpl : public mojo::edk::ProcessDelegate {
-  // Handle IPC shutdown completion
-  void OnShutdownComplete() final {}
-};
 
 class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
  public:
@@ -73,7 +67,6 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
   // A mutex to guard static variable.
   static base::Lock static_lock_;
   static int reference_count_;
-  static MojoShutdownImpl* mojo_shutdown_impl_;
 
   DISALLOW_COPY_AND_ASSIGN(CameraMojoChannelManagerImpl);
 };

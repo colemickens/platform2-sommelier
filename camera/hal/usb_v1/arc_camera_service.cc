@@ -39,14 +39,14 @@ ArcCameraServiceImpl::ArcCameraServiceImpl(int socket_fd, base::Closure quit_cb)
     LOG(ERROR) << "Mojo IPC thread failed to start";
     return;
   }
-  mojo::edk::InitIPCSupport(this, ipc_thread_.task_runner());
+  mojo::edk::InitIPCSupport(ipc_thread_.task_runner());
 }
 
 ArcCameraServiceImpl::~ArcCameraServiceImpl() {
   if (binding_.is_bound())
     binding_.Close();
   camera_device_->Disconnect();
-  mojo::edk::ShutdownIPCSupport();
+  mojo::edk::ShutdownIPCSupport(base::Bind(&base::DoNothing));
   ipc_thread_.Stop();
 }
 
@@ -112,7 +112,7 @@ bool ArcCameraServiceImpl::Start() {
     message_pipe = mojo::edk::CreateChildMessagePipe(
         std::string(reinterpret_cast<const char*>(buf), message_length));
   } else {
-    message_pipe = mojo::edk::CreateMessagePipe(std::move(handle));
+    message_pipe = mojo::edk::ConnectToPeerProcess(std::move(handle));
   }
 
   // This thread that calls Bind() will receive IPC functions.
@@ -156,7 +156,7 @@ void ArcCameraServiceImpl::StreamOn(uint32_t width,
   int ret = camera_device_->StreamOn(width, height, pixel_format, frame_rate,
                                      &fds, &buffer_size);
 
-  mojo::Array<mojo::ScopedHandle> handles;
+  std::vector<mojo::ScopedHandle> handles;
   for (const auto& fd : fds) {
     MojoHandle wrapped_handle;
     MojoResult wrap_result = mojo::edk::CreatePlatformHandleWrapper(
@@ -169,7 +169,7 @@ void ArcCameraServiceImpl::StreamOn(uint32_t width,
     handles.push_back(mojo::ScopedHandle(mojo::Handle(wrapped_handle)));
   }
   if (ret) {
-    handles.SetToEmpty();
+    handles.clear();
   }
   callback.Run(std::move(handles), buffer_size, ret);
 }
@@ -234,10 +234,10 @@ void ArcCameraServiceImpl::GetCameraDeviceInfos(
         device_info.frames_to_skip_after_streamon;
     info->horizontal_view_angle_16_9 = device_info.horizontal_view_angle_16_9;
     info->horizontal_view_angle_4_3 = device_info.horizontal_view_angle_4_3;
-    for (const auto& focal_length :
-         device_info.lens_info_available_focal_lengths) {
-      info->lens_info_available_focal_lengths.push_back(focal_length);
-    }
+    // TODO(hidehiko): Remove explicit std::vector<float>(). This is just
+    // due to compatibility for before/after uprev.
+    info->lens_info_available_focal_lengths =
+        std::vector<float>(device_info.lens_info_available_focal_lengths);
     info->lens_info_minimum_focus_distance =
         device_info.lens_info_minimum_focus_distance;
     info->lens_info_optimal_focus_distance =

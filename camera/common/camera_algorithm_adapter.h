@@ -11,7 +11,6 @@
 
 #include <base/threading/thread.h>
 #include <mojo/edk/embedder/platform_handle.h>
-#include <mojo/edk/embedder/process_delegate.h>
 #include <mojo/edk/embedder/scoped_platform_handle.h>
 
 #include "common/camera_algorithm_ops_impl.h"
@@ -22,7 +21,7 @@ namespace cros {
 // This class loads and adapts the functions of camera algorithm. It runs in
 // the sandboxed camera algorithm process.
 
-class CameraAlgorithmAdapter : public mojo::edk::ProcessDelegate {
+class CameraAlgorithmAdapter {
  public:
   CameraAlgorithmAdapter();
 
@@ -36,8 +35,6 @@ class CameraAlgorithmAdapter : public mojo::edk::ProcessDelegate {
                              mojo::edk::ScopedPlatformHandle channel_handle);
 
   void DestroyOnIpcThread();
-
-  void OnShutdownComplete() {}
 
   // Pointer to CameraAlgorithmOps interface implementation.
   CameraAlgorithmOpsImpl* algo_impl_;

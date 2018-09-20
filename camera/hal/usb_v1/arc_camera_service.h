@@ -12,7 +12,6 @@
 
 #include <base/threading/thread.h>
 #include <base/threading/thread_checker.h>
-#include <mojo/edk/embedder/process_delegate.h>
 #include <mojo/public/cpp/bindings/binding.h>
 
 #include "hal/usb_v1/arc_camera.mojom.h"
@@ -20,17 +19,13 @@
 
 namespace arc {
 
-class ArcCameraServiceImpl : public ArcCameraService,
-                             public mojo::edk::ProcessDelegate {
+class ArcCameraServiceImpl : public ArcCameraService {
  public:
   ArcCameraServiceImpl(int socket_fd, base::Closure quit_cb);
   ~ArcCameraServiceImpl();
 
   // Create a mojo connection to container.
   bool Start();
-
-  // ProcessDelegate implementation.
-  void OnShutdownComplete() override {}
 
  private:
   void OnChannelClosed(const std::string& error_msg);

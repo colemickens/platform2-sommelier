@@ -12,7 +12,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_path_watcher.h>
 #include <base/single_thread_task_runner.h>
-#include <mojo/edk/embedder/process_delegate.h>
 #include <mojo/public/cpp/bindings/binding.h>
 
 #include "hal_adapter/camera_hal_adapter.h"
@@ -26,8 +25,7 @@ namespace cros {
 // as Chrome VideoCaptureDeviceFactory and Android cameraserver process connect
 // to the CameraHalDispatcher to ask for camera service; CameraHalDispatcher
 // proxies the service requests to CameraHalServerImpl.
-class CameraHalServerImpl final : public mojom::CameraHalServer,
-                                  public mojo::edk::ProcessDelegate {
+class CameraHalServerImpl final : public mojom::CameraHalServer {
  public:
   CameraHalServerImpl();
   ~CameraHalServerImpl();
@@ -39,10 +37,6 @@ class CameraHalServerImpl final : public mojom::CameraHalServer,
   // CameraHalServer Mojo interface implementation.  This method runs on
   // |ipc_thread_|.
   void CreateChannel(mojom::CameraModuleRequest camera_module_request) final;
-
-  // ProcessDelegate implementation.  This is a no-op since on Mojo connection
-  // error the process will simply exit.
-  void OnShutdownComplete() final;
 
   void SetTracingEnabled(bool enabled);
 

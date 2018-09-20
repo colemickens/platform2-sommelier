@@ -48,7 +48,7 @@ void CameraAlgorithmAdapter::InitializeOnIpcThread(
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
   VLOGF(1) << "Setting up message pipe";
   mojo::edk::Init();
-  mojo::edk::InitIPCSupport(this, ipc_thread_.task_runner());
+  mojo::edk::InitIPCSupport(ipc_thread_.task_runner());
   mojo::edk::SetParentPipeHandle(std::move(channel_handle));
   mojo::ScopedMessagePipeHandle child_pipe =
       mojo::edk::CreateChildMessagePipe(mojo_token);
@@ -83,7 +83,7 @@ void CameraAlgorithmAdapter::DestroyOnIpcThread() {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
   VLOGF_ENTER();
   algo_impl_->Unbind();
-  mojo::edk::ShutdownIPCSupport();
+  mojo::edk::ShutdownIPCSupport(base::Bind(&base::DoNothing));
   if (algo_dll_handle_) {
     dlclose(algo_dll_handle_);
   }

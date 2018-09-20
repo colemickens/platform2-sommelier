@@ -49,7 +49,7 @@ CameraHalServerImpl::CameraHalServerImpl()
 
 CameraHalServerImpl::~CameraHalServerImpl() {
   VLOGF_ENTER();
-  mojo::edk::ShutdownIPCSupport();
+  mojo::edk::ShutdownIPCSupport(base::Bind(&base::DoNothing));
 }
 
 bool CameraHalServerImpl::Start() {
@@ -60,7 +60,7 @@ bool CameraHalServerImpl::Start() {
     LOGF(ERROR) << "Failed to start IPCThread";
     return false;
   }
-  mojo::edk::InitIPCSupport(this, ipc_thread_.task_runner());
+  mojo::edk::InitIPCSupport(ipc_thread_.task_runner());
 
   base::FilePath socket_path(constants::kCrosCameraSocketPathString);
   if (!watcher_.Watch(socket_path, false,
@@ -81,8 +81,6 @@ void CameraHalServerImpl::CreateChannel(
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
   camera_hal_adapter_->OpenCameraHal(std::move(camera_module_request));
 }
-
-void CameraHalServerImpl::OnShutdownComplete() {}
 
 void CameraHalServerImpl::SetTracingEnabled(bool enabled) {
   VLOGF_ENTER();

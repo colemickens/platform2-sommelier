@@ -23,7 +23,6 @@ mojom::CameraHalDispatcherPtr CameraMojoChannelManagerImpl::dispatcher_;
 base::Thread* CameraMojoChannelManagerImpl::ipc_thread_ = nullptr;
 base::Lock CameraMojoChannelManagerImpl::static_lock_;
 int CameraMojoChannelManagerImpl::reference_count_ = 0;
-MojoShutdownImpl* CameraMojoChannelManagerImpl::mojo_shutdown_impl_ = nullptr;
 
 // static
 std::unique_ptr<CameraMojoChannelManager>
@@ -52,9 +51,7 @@ CameraMojoChannelManagerImpl::~CameraMojoChannelManagerImpl() {
   if (reference_count_ == 0) {
     ipc_thread_->Stop();
     delete ipc_thread_;
-    delete mojo_shutdown_impl_;
     ipc_thread_ = nullptr;
-    mojo_shutdown_impl_ = nullptr;
   }
 
   VLOGF_EXIT();
@@ -68,7 +65,7 @@ void CameraMojoChannelManagerImpl::DestroyOnIpcThreadLocked() {
   // destructor.
   if (reference_count_ == 0) {
     dispatcher_.reset();
-    mojo::edk::ShutdownIPCSupport();
+    mojo::edk::ShutdownIPCSupport(base::Bind(&base::DoNothing));
   }
 
   VLOGF_EXIT();
@@ -92,8 +89,7 @@ bool CameraMojoChannelManagerImpl::Start() {
     reference_count_--;
     return false;
   }
-  mojo_shutdown_impl_ = new MojoShutdownImpl();
-  mojo::edk::InitIPCSupport(mojo_shutdown_impl_, ipc_thread_->task_runner());
+  mojo::edk::InitIPCSupport(ipc_thread_->task_runner());
 
   return true;
 }
