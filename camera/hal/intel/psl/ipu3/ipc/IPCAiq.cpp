@@ -1053,8 +1053,7 @@ bool IPCAiq::flattenSaResults(const ia_aiq_sa_results& saResults, sa_run_params_
             MEMCPY_S(res->channel_gb, sizeof(res->channel_gb),
                 base->channel_gb, size);
         }
-    }
-    else {
+    } else if (base->lsc_update) {
         LOGE("@%s, Error: LSC table size is 0", __FUNCTION__);
     }
 
