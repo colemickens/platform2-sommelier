@@ -482,8 +482,6 @@
             ],
           },
           'sources': [
-            'mock_platform.cc',
-            'mount_encrypted/encrypted_fs_unittest.cc',
             'mount_encrypted/encryption_key_unittest.cc',
             'mount_encrypted/tlcl_stub.cc',
           ],
