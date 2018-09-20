@@ -10,6 +10,7 @@
 
 #include <base/logging.h>
 
+#include "smbprovider/mount_config.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
 
 namespace smbprovider {
@@ -139,6 +140,17 @@ void ConvertToProto(const DirectoryEntry& entry, DirectoryEntryProto* proto);
 void AddToDeleteList(const std::string& entry_path, DeleteListProto* proto);
 
 void AddToHostnamesProto(const std::string& hostname, HostnamesProto* proto);
+
+template <typename Proto>
+bool ConvertToMountConfig(const Proto& option, MountConfig* mount_config) {
+  DCHECK(mount_config);
+  DCHECK(IsValidMountConfig(option.mount_config()));
+
+  const MountConfigProto& mount_config_proto = option.mount_config();
+  *mount_config = MountConfig(mount_config_proto.enable_ntlm());
+
+  return true;
+}
 
 }  // namespace smbprovider
 

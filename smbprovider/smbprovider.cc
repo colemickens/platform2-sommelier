@@ -109,13 +109,27 @@ void SmbProvider::Mount(const ProtoBlob& options_blob,
   // The functions below will set the error if they fail.
   *error_code = static_cast<int32_t>(ERROR_OK);
 
+  MountOptionsProto options;
+  if (!ParseOptionsProto(options_blob, &options, error_code)) {
+    return;  // Error with parsing proto.
+  }
+
+  // TODO(jimmyxgong): MountOptionsProto should always have a MountConfigProto.
+  // Remove this code once MountOptionsProto is properly populated. Add
+  // ConvertToMountConfig() bool success chain.
+  // |mount_config| is created here if necessary until MountConfig is properly
+  // populated.
+  MountConfig mount_config(true /* enable_ntlm */);
+
+  if (options.has_mount_config()) {
+    ConvertToMountConfig(options, &mount_config);
+  }
+
   // AddMount() has to be called first since the credential has to be stored
   // before calling CanAccessMount().
-  MountOptionsProto options;
   const bool success =
-      ParseOptionsProto(options_blob, &options, error_code) &&
-      AddMount(options.path(), options.workgroup(), options.username(),
-               password_fd, error_code, mount_id) &&
+      AddMount(options.path(), mount_config, options.workgroup(),
+               options.username(), password_fd, error_code, mount_id) &&
       CanAccessMount(*mount_id, options.path(), error_code);
 
   if (!success) {
@@ -781,15 +795,13 @@ bool SmbProvider::RemoveMount(int32_t mount_id, int32_t* error_code) {
 }
 
 bool SmbProvider::AddMount(const std::string& mount_root,
+                           const MountConfig& mount_config,
                            const std::string& workgroup,
                            const std::string& username,
                            const base::ScopedFD& password_fd,
                            int32_t* error_code,
                            int32_t* mount_id) {
   SmbCredential credential(workgroup, username, GetPassword(password_fd));
-  // TODO(jimmyxgong): Remove once AddMount has a MountConfig as an input
-  // parameter.
-  MountConfig mount_config(true /* enable_ntlm */);
   bool added = mount_manager_->AddMount(mount_root, std::move(credential),
                                         mount_config, mount_id);
   if (!added) {

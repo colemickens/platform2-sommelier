@@ -17,6 +17,7 @@
 #include "smbprovider/iterator/caching_iterator.h"
 #include "smbprovider/iterator/share_iterator.h"
 #include "smbprovider/kerberos_artifact_synchronizer.h"
+#include "smbprovider/mount_config.h"
 #include "smbprovider/proto.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
 #include "smbprovider/read_dir_progress.h"
@@ -208,6 +209,7 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   // |password_fd| will be used if provided. Sets |mount_id| when mount is
   // successful.
   bool AddMount(const std::string& mount_root,
+                const MountConfig& mount_config,
                 const std::string& workgroup,
                 const std::string& username,
                 const base::ScopedFD& password_fd,
