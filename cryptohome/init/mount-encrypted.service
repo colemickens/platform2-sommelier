@@ -15,8 +15,8 @@ After=system-services.target
 Type=oneshot
 RemainAfterExit=true
 
-# Copy the log (not through symlinks), and retain permissions. The
-# target should always be removed since the log is only useful on a
-# per-boot basis, and we don't want to follow symlinks on the target
-# either, and use a trailing slash to require that "log" is a directory.
-ExecStart=-/bin/cp -aP --remove-destination /tmp/mount-encrypted.log /var/log/
+# Copy the log (not through symlinks), and retain permissions but use
+# the default SELinux label for the target. The target should always
+# be removed since we don't want to follow symlinks on the target.
+# Use a trailing slash to require that "log" is a directory.
+ExecStart=-/bin/cp -aPZ --remove-destination /tmp/mount-encrypted.log /var/log/
