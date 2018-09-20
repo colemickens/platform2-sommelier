@@ -238,9 +238,12 @@ bool VirtualMachine::Start(base::FilePath kernel,
   std::vector<string> logger_args = {
       kLoggerBin,
       // Host syslog deamon requires priority to be set.
-      "-p", "auth.info", "--skip-empty",
+      "-p",
+      "auth.info",
+      "--skip-empty",
       // Tag each to specify the VM number.
-      "--tag", base::StringPrintf("VM(%u)", vsock_cid_),
+      "--tag",
+      base::StringPrintf("VM(%u)", vsock_cid_),
   };
 
   for (string& arg : logger_args) {

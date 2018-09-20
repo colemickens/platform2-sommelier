@@ -33,6 +33,7 @@
 #include "vm_tools/concierge/vsock_cid_pool.h"
 
 namespace vm_tools {
+
 namespace concierge {
 
 // VM Launcher Service responsible for responding to DBus method calls for
@@ -122,6 +123,12 @@ class Service final : public base::MessageLoopForIO::Watcher {
                           const std::string& vm_name,
                           const std::string& container_name);
 
+  void OnTremplinStartedSignal(dbus::Signal* signal);
+
+  void OnSignalConnected(const std::string& interface_name,
+                         const std::string& signal_name,
+                         bool is_connected);
+
   using VmMap = std::map<std::pair<std::string, std::string>,
                          std::unique_ptr<VirtualMachine>>;
 
@@ -165,6 +172,9 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   // Ensure calls are made on the right thread.
   base::SequenceChecker sequence_checker_;
+
+  // Signal must be connected before we can call SetTremplinStarted in a VM.
+  bool is_tremplin_started_signal_connected_ = false;
 
   base::WeakPtrFactory<Service> weak_ptr_factory_;
 

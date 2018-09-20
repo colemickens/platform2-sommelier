@@ -412,6 +412,12 @@ bool Service::Init() {
                << vm_tools::cicerone::kVmCiceroneServiceName;
     return false;
   }
+  cicerone_service_proxy_->ConnectToSignal(
+      vm_tools::cicerone::kVmCiceroneServiceName,
+      vm_tools::cicerone::kTremplinStartedSignal,
+      base::Bind(&Service::OnTremplinStartedSignal,
+                 weak_ptr_factory_.GetWeakPtr()),
+      base::Bind(&Service::OnSignalConnected, weak_ptr_factory_.GetWeakPtr()));
 
   // Get the D-Bus proxy for communicating with seneschal.
   seneschal_service_proxy_ = bus_->GetObjectProxy(
@@ -526,10 +532,11 @@ std::unique_ptr<dbus::Response> Service::StartVm(
 
   StartVmRequest request;
   StartVmResponse response;
+  // We change to a success status later if necessary.
+  response.set_status(VM_STATUS_FAILURE);
 
   if (!reader.PopArrayOfBytesAsProto(&request)) {
     LOG(ERROR) << "Unable to parse StartVmRequest from message";
-
     response.set_failure_reason("Unable to parse protobuf");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
@@ -538,8 +545,15 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   // Make sure the VM has a name.
   if (request.name().empty()) {
     LOG(ERROR) << "Ignoring request with empty name";
-
     response.set_failure_reason("Missing VM name");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Make sure we have our signal connected if starting a Termina VM.
+  if (request.start_termina() && !is_tremplin_started_signal_connected_) {
+    LOG(ERROR) << "Can't start Termina VM without TremplinStartedSignal";
+    response.set_failure_reason("TremplinStartedSignal not connected");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -554,6 +568,9 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     vm_info->set_cid(vm->cid());
 
     response.set_success(true);
+    response.set_status(request.start_termina() && !vm->IsTremplinStarted()
+                            ? VM_STATUS_STARTING
+                            : VM_STATUS_RUNNING);
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -806,6 +823,8 @@ std::unique_ptr<dbus::Response> Service::StartVm(
 
   VmInfo* vm_info = response.mutable_vm_info();
   response.set_success(true);
+  response.set_status(request.start_termina() ? VM_STATUS_STARTING
+                                              : VM_STATUS_RUNNING);
   vm_info->set_ipv4_address(vm->IPv4Address());
   vm_info->set_pid(vm->pid());
   vm_info->set_cid(vsock_cid);
@@ -1197,8 +1216,8 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
     return dbus_response;
   }
 
-  base::ScopedFD disk_fd(HANDLE_EINTR(open(disk_path.value().c_str(),
-                                           O_RDWR | O_NOFOLLOW | O_CLOEXEC)));
+  base::ScopedFD disk_fd(HANDLE_EINTR(
+      open(disk_path.value().c_str(), O_RDWR | O_NOFOLLOW | O_CLOEXEC)));
   if (!disk_fd.is_valid()) {
     LOG(ERROR) << "Failed opening VM disk for export";
     response.set_failure_reason("Failed opening VM disk for export");
@@ -1564,6 +1583,40 @@ bool Service::IsContainerRunning(const std::string& owner_id,
     return false;
   }
   return response.container_running();
+}
+
+void Service::OnTremplinStartedSignal(dbus::Signal* signal) {
+  DCHECK_EQ(signal->GetInterface(), vm_tools::cicerone::kVmCiceroneInterface);
+  DCHECK_EQ(signal->GetMember(), vm_tools::cicerone::kTremplinStartedSignal);
+
+  vm_tools::cicerone::TremplinStartedSignal tremplin_started_signal;
+  dbus::MessageReader reader(signal);
+  if (!reader.PopArrayOfBytesAsProto(&tremplin_started_signal)) {
+    LOG(ERROR) << "Failed to parse TremplinStartedSignal from DBus Signal";
+    return;
+  }
+
+  auto iter = FindVm(tremplin_started_signal.owner_id(),
+                     tremplin_started_signal.vm_name());
+  if (iter == vms_.end()) {
+    LOG(ERROR) << "Received signal from an unknown vm.";
+    return;
+  }
+  LOG(INFO) << "Received TremplinStartedSignal for owner: "
+            << tremplin_started_signal.owner_id()
+            << ", vm: " << tremplin_started_signal.vm_name();
+  iter->second->SetTremplinStarted();
+}
+
+void Service::OnSignalConnected(const std::string& interface_name,
+                                const std::string& signal_name,
+                                bool is_connected) {
+  DCHECK_EQ(interface_name, vm_tools::cicerone::kVmCiceroneInterface);
+  DCHECK_EQ(signal_name, vm_tools::cicerone::kTremplinStartedSignal);
+  if (!is_connected) {
+    LOG(ERROR) << "Failed to connect to Signal.";
+  }
+  is_tremplin_started_signal_connected_ = is_connected;
 }
 
 Service::VmMap::iterator Service::FindVm(std::string owner_id,

@@ -181,6 +181,10 @@ class VirtualMachine {
   // Returns INADDR_ANY if there is no container subnet.
   uint32_t ContainerSubnet() const;
 
+  // Whether a TremplinStartedSignal has been received for the VM.
+  bool IsTremplinStarted() const { return is_tremplin_started_; }
+  void SetTremplinStarted() { is_tremplin_started_ = true; }
+
   static std::unique_ptr<VirtualMachine> CreateForTesting(
       MacAddress mac_addr,
       std::unique_ptr<SubnetPool::Subnet> subnet,
@@ -236,6 +240,9 @@ class VirtualMachine {
 
   // Stub for making RPC requests to the maitre'd process inside the VM.
   std::unique_ptr<vm_tools::Maitred::Stub> stub_;
+
+  // Whether a TremplinStartedSignal has been received for the VM.
+  bool is_tremplin_started_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(VirtualMachine);
 };

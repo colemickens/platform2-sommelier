@@ -73,6 +73,49 @@ void IPv4AddressToString(uint32_t addr, string* address) {
   *address = buf;
 }
 
+int LogVmStatus(const string& vm_name,
+                const vm_tools::concierge::StartVmResponse& response) {
+  int ret = -1;
+  std::string status;
+  switch (response.status()) {
+    case vm_tools::concierge::VM_STATUS_RUNNING:
+      status = "Running";
+      ret = 0;
+      break;
+    case vm_tools::concierge::VM_STATUS_STARTING:
+      status = "Starting";
+      ret = 0;
+      break;
+    case vm_tools::concierge::VM_STATUS_FAILURE:
+      status = "Failure";
+      break;
+    default:
+      status = "Unknown";
+      break;
+  }
+
+  LOG(INFO) << "Vm state for '" << vm_name << "'"
+            << " is now " << status;
+
+  if (ret != 0) {
+    LOG(ERROR) << "Failed to start VM: " << response.failure_reason();
+    return ret;
+  }
+
+  vm_tools::concierge::VmInfo vm_info = response.vm_info();
+  string address;
+  IPv4AddressToString(vm_info.ipv4_address(), &address);
+
+  LOG(INFO) << "Started Termina VM with";
+  LOG(INFO) << "    ip address: " << address;
+  LOG(INFO) << "    vsock cid:  " << vm_info.cid();
+  LOG(INFO) << "    process id: " << vm_info.pid();
+  LOG(INFO) << "    seneschal server handle: "
+            << vm_info.seneschal_server_handle();
+
+  return ret;
+}
+
 int StartVm(dbus::ObjectProxy* proxy,
             string owner_id,
             string name,
@@ -222,23 +265,7 @@ int StartVm(dbus::ObjectProxy* proxy,
     return -1;
   }
 
-  if (!response.success()) {
-    LOG(ERROR) << "Failed to start VM: " << response.failure_reason();
-    return -1;
-  }
-
-  vm_tools::concierge::VmInfo vm_info = response.vm_info();
-  string address;
-  IPv4AddressToString(vm_info.ipv4_address(), &address);
-
-  LOG(INFO) << "Started VM with";
-  LOG(INFO) << "    ip address: " << address;
-  LOG(INFO) << "    vsock cid:  " << vm_info.cid();
-  LOG(INFO) << "    process id: " << vm_info.pid();
-  LOG(INFO) << "    seneschal server handle: "
-            << vm_info.seneschal_server_handle();
-
-  return 0;
+  return LogVmStatus(request.name(), response);
 }
 
 int StopVm(dbus::ObjectProxy* proxy, string owner_id, string name) {
@@ -516,13 +543,13 @@ int ExportDiskImage(dbus::ObjectProxy* proxy,
   base::FilePath export_disk_path;
   if (!removable_media.empty()) {
     export_disk_path = base::FilePath(kRemovableMediaRoot)
-                    .Append(removable_media)
-                    .Append(export_name + kQcowImageExtension);
+                           .Append(removable_media)
+                           .Append(export_name + kQcowImageExtension);
   } else {
     export_disk_path = base::FilePath(kCryptohomeUser)
-                    .Append(cryptohome_id)
-                    .Append(kDownloadsDir)
-                    .Append(export_name + kQcowImageExtension);
+                           .Append(cryptohome_id)
+                           .Append(kDownloadsDir)
+                           .Append(export_name + kQcowImageExtension);
   }
   if (export_disk_path.ReferencesParent()) {
     LOG(ERROR) << "Invalid removable_vm_path";
@@ -533,9 +560,8 @@ int ExportDiskImage(dbus::ObjectProxy* proxy,
     return -1;
   }
 
-  base::ScopedFD disk_fd(HANDLE_EINTR(open(export_disk_path.value().c_str(),
-                                           O_CREAT | O_RDWR | O_NOFOLLOW,
-                                           0600)));
+  base::ScopedFD disk_fd(HANDLE_EINTR(open(
+      export_disk_path.value().c_str(), O_CREAT | O_RDWR | O_NOFOLLOW, 0600)));
   if (!disk_fd.is_valid()) {
     LOG(ERROR) << "Failed opening export file "
                << export_disk_path.MaybeAsASCII();
@@ -747,23 +773,7 @@ int StartTerminaVm(dbus::ObjectProxy* proxy,
     return -1;
   }
 
-  if (!response.success()) {
-    LOG(ERROR) << "Failed to start VM: " << response.failure_reason();
-    return -1;
-  }
-
-  vm_tools::concierge::VmInfo vm_info = response.vm_info();
-  string address;
-  IPv4AddressToString(vm_info.ipv4_address(), &address);
-
-  LOG(INFO) << "Started Termina VM with";
-  LOG(INFO) << "    ip address: " << address;
-  LOG(INFO) << "    vsock cid:  " << vm_info.cid();
-  LOG(INFO) << "    process id: " << vm_info.pid();
-  LOG(INFO) << "    seneschal server handle: "
-            << vm_info.seneschal_server_handle();
-
-  return 0;
+  return LogVmStatus(request.name(), response);
 }
 
 int StartContainer(dbus::ObjectProxy* proxy,
@@ -943,8 +953,7 @@ int main(int argc, char** argv) {
                             std::move(FLAGS_storage_location));
   } else if (FLAGS_export_disk) {
     return ExportDiskImage(proxy, std::move(FLAGS_cryptohome_id),
-                           std::move(FLAGS_name),
-                           std::move(FLAGS_export_name),
+                           std::move(FLAGS_name), std::move(FLAGS_export_name),
                            std::move(FLAGS_removable_media));
   } else if (FLAGS_list_disks) {
     return ListDiskImages(proxy, std::move(FLAGS_cryptohome_id),
