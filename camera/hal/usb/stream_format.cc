@@ -23,7 +23,7 @@ static std::vector<int> kSupportedHalFormats{
 static const std::vector<uint32_t> GetSupportedFourCCs() {
   // The preference of supported fourccs in the list is from high to low.
   static const std::vector<uint32_t> kSupportedFourCCs = {
-      V4L2_PIX_FMT_MJPEG, V4L2_PIX_FMT_YUYV,
+      V4L2_PIX_FMT_YUYV, V4L2_PIX_FMT_MJPEG,
   };
   return kSupportedFourCCs;
 }
@@ -116,11 +116,23 @@ SupportedFormats GetQualifiedFormats(
         continue;
       }
 
-      // Skip if |qualified_formats| already has the same resolution with a more
-      // preferred fourcc.
-      if (FindFormatByResolution(qualified_formats, supported_format.width,
-                                 supported_format.height) != NULL) {
-        continue;
+      // For the same resolution, prefer the format which has larger frame rate.
+      // For the same frame rate, choose preferred fourcc first.
+      auto it = qualified_formats.cbegin();
+      for (; it != qualified_formats.cend(); it++) {
+        if (it->width == supported_format.width &&
+            it->height == supported_format.height) {
+          break;
+        }
+      }
+      if (it != qualified_formats.cend()) {
+        float max_fps_existed_format = GetMaximumFrameRate(*it);
+        float max_fps_current_format = GetMaximumFrameRate(supported_format);
+        if (max_fps_existed_format < max_fps_current_format) {
+          qualified_formats.erase(it);
+        } else {
+          continue;
+        }
       }
       qualified_formats.push_back(supported_format);
     }
