@@ -34,7 +34,7 @@ void ShowUsage() {
       "        metrics_client [-W <file>] -R <file>\n"
       "        metrics_client [-cCDg]\n"
       "\n"
-      "  default: send metric with integer values\n"
+      "  default: send an integer-valued histogram sample\n"
       "           |min| > 0, |min| <= sample < |max|\n"
       "  -C: Create consent file such that -c will return 0.\n"
       "  -D: Delete consent file such that -c will return 1.\n"
@@ -44,6 +44,9 @@ void ShowUsage() {
       "      in guest mode always return 1\n"
       "  -e: send linear/enumeration histogram data\n"
       "  -g: return exit status 0 if machine in guest mode, 1 otherwise\n"
+      // The -i flag prints the client ID, if it exists and is valid.
+      // It is not advertised here because it is deprecated and for internal
+      // use only (at least by the log tool in debugd).
       "  -s: send a sparse histogram sample\n"
       "  -t: convert sample from double seconds to int milliseconds\n"
       "  -u: send a user action\n"
@@ -204,6 +207,8 @@ int main(int argc, char** argv) {
         mode = kModeIsGuestMode;
         break;
       case 'i':
+        // This flag is slated for removal.
+        // See comment in ShowUsage().
         mode = kModeShowConsentId;
         break;
       case 's':
