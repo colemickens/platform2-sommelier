@@ -12,6 +12,7 @@
 #include <unistd.h>
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/bind.h>
@@ -27,7 +28,7 @@ namespace chromeos_metrics {
 namespace {
 
 constexpr char kVmlogHeader[] =
-  "time pgmajfault pgmajfault_f pgmajfault_a pswpin pswpout cpuusage\n";
+    "time pgmajfault pgmajfault_f pgmajfault_a pswpin pswpout cpuusage";
 
 // We limit the size of vmlog log files to keep frequent logging from wasting
 // disk space.
@@ -35,8 +36,8 @@ constexpr int kMaxVmlogFileSize = 256 * 1024;
 
 }  // namespace
 
-bool VmStatsParseStats(
-    std::istream* input_stream, struct VmstatRecord* record) {
+bool VmStatsParseStats(std::istream* input_stream,
+                       struct VmstatRecord* record) {
   // a mapping of string name to field in VmstatRecord and whether we found it
   struct Mapping {
     const std::string name;
@@ -214,12 +215,10 @@ void VmlogWriter::Init(const base::FilePath& vmlog_dir,
   // See crbug.com/724175 for details.
   if (now - base::Time::UnixEpoch() < base::TimeDelta::FromDays(1)) {
     LOG(WARNING) << "Time seems incorrect, too close to epoch: " << now;
-    valid_time_delay_timer_.Start(FROM_HERE,
-                                  base::TimeDelta::FromMinutes(5),
-                                  base::Bind(&VmlogWriter::Init,
-                                             base::Unretained(this),
-                                             vmlog_dir,
-                                             log_interval));
+    valid_time_delay_timer_.Start(
+        FROM_HERE, base::TimeDelta::FromMinutes(5),
+        base::Bind(&VmlogWriter::Init, base::Unretained(this), vmlog_dir,
+                   log_interval));
     return;
   }
 
@@ -238,9 +237,6 @@ void VmlogWriter::Init(const base::FilePath& vmlog_dir,
                vmlog_dir.Append("vmlog.1.PREVIOUS"));
   }
 
-  vmlog_.reset(new VmlogFile(
-      vmlog_current_path, vmlog_rotated_path, kMaxVmlogFileSize, kVmlogHeader));
-
   vmstat_stream_.open("/proc/vmstat", std::ifstream::in);
   if (vmstat_stream_.fail()) {
     PLOG(ERROR) << "Couldn't open /proc/vmstat";
@@ -256,6 +252,34 @@ void VmlogWriter::Init(const base::FilePath& vmlog_dir,
   if (!log_interval.is_zero()) {
     timer_.Start(FROM_HERE, log_interval, this, &VmlogWriter::WriteCallback);
   }
+
+  const int n_cpus = sysconf(_SC_NPROCESSORS_ONLN);
+  for (int cpu = 0; cpu != n_cpus; ++cpu) {
+    std::ostringstream path;
+    path << "/sys/devices/system/cpu/cpufreq/policy" << cpu
+         << "/scaling_cur_freq";
+    std::ifstream cpufreq_stream(path.str());
+    if (cpufreq_stream) {
+      cpufreq_streams_.push_back(std::move(cpufreq_stream));
+    } else {
+      PLOG(WARNING) << "Failed to open scaling_cur_freq for logical core "
+                    << cpu;
+    }
+  }
+
+  amdgpu_sclk_stream_.open("/sys/class/drm/card0/device/pp_dpm_sclk");
+
+  std::ostringstream header(kVmlogHeader, std::ios_base::ate);
+  if (amdgpu_sclk_stream_)
+    header << " gpufreq";
+
+  for (int cpu = 0; cpu != cpufreq_streams_.size(); ++cpu) {
+    header << " cpufreq" << cpu;
+  }
+  header << "\n";
+
+  vmlog_.reset(new VmlogFile(vmlog_current_path, vmlog_rotated_path,
+                             kMaxVmlogFileSize, header.str()));
 }
 
 VmlogWriter::~VmlogWriter() = default;
@@ -272,7 +296,8 @@ bool VmlogWriter::GetCpuUsage(double* cpu_usage_out) {
     LOG(WARNING) << "Same total time for two consecutive calls to GetCpuUsage";
     return false;
   }
-  *cpu_usage_out = (cur.non_idle_time_ - prev_cputime_record_.non_idle_time_)/
+  *cpu_usage_out =
+      (cur.non_idle_time_ - prev_cputime_record_.non_idle_time_) /
       static_cast<double>(cur.total_time_ - prev_cputime_record_.total_time_);
   prev_cputime_record_ = cur;
   return true;
@@ -293,8 +318,7 @@ bool VmlogWriter::GetDeltaVmStat(VmstatRecord* delta_out) {
     return false;
   }
 
-  delta_out->page_faults_ =
-      r.page_faults_ - prev_vmstat_record_.page_faults_;
+  delta_out->page_faults_ = r.page_faults_ - prev_vmstat_record_.page_faults_;
   delta_out->file_page_faults_ =
       r.file_page_faults_ - prev_vmstat_record_.file_page_faults_;
   delta_out->anon_page_faults_ =
@@ -302,6 +326,51 @@ bool VmlogWriter::GetDeltaVmStat(VmstatRecord* delta_out) {
   delta_out->swap_in_ = r.swap_in_ - prev_vmstat_record_.swap_in_;
   delta_out->swap_out_ = r.swap_out_ - prev_vmstat_record_.swap_out_;
   prev_vmstat_record_ = r;
+  return true;
+}
+
+bool ParseAmdgpuFrequency(std::ostream& out, std::istream& sclk_stream) {
+  // Note: pcrecpp::RE is thread-safe, and FullMatch() is re-entrant.
+  static const pcrecpp::RE* amdgpu_sclk_expression =
+      new pcrecpp::RE(R"(^\d: (\d{2,4})Mhz \*$)");
+
+  std::string line;
+  while (std::getline(sclk_stream, line)) {
+    std::string frequency_mhz;
+    if (amdgpu_sclk_expression->FullMatch(line, &frequency_mhz)) {
+      out << " " << frequency_mhz;
+      return true;
+    }
+  }
+
+  PLOG(ERROR) << "Unable to recognize GPU frequency";
+  return false;
+}
+
+bool VmlogWriter::GetAmdgpuFrequency(std::ostream& out) {
+  if (!amdgpu_sclk_stream_) {
+    // Nothing to do if the sysfs entry is not present.
+    return true;
+  }
+  if (!amdgpu_sclk_stream_.seekg(0, std::ios_base::beg)) {
+    PLOG(ERROR) << "Unable to seek pp_dpm_sclk";
+    return false;
+  }
+
+  return ParseAmdgpuFrequency(out, amdgpu_sclk_stream_);
+}
+
+bool VmlogWriter::GetCpuFrequencies(std::ostream& out) {
+  for (std::ifstream& cpufreq_stream : cpufreq_streams_) {
+    if (!cpufreq_stream.seekg(0, std::ios_base::beg)) {
+      PLOG(ERROR) << "Unable to seek scaling_cur_freq";
+      return false;
+    }
+
+    std::string result;
+    cpufreq_stream >> result;
+    out << " " << result;
+  }
   return true;
 }
 
@@ -318,22 +387,23 @@ void VmlogWriter::WriteCallback() {
   gettimeofday(&tv, nullptr);
   struct tm tm_time;
   localtime_r(&tv.tv_sec, &tm_time);
-  std::string out_line = base::StringPrintf(
+  std::ostringstream out_line;
+  out_line << base::StringPrintf(
       "[%02d%02d/%02d%02d%02d]"
-      " %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 " %.2f\n",
-      tm_time.tm_mon + 1,
-      tm_time.tm_mday,
-      tm_time.tm_hour,
-      tm_time.tm_min,
-      tm_time.tm_sec,
-      delta_vmstat.page_faults_,
-      delta_vmstat.file_page_faults_,
-      delta_vmstat.anon_page_faults_,
-      delta_vmstat.swap_in_,
-      delta_vmstat.swap_out_,
-      cpu_usage);
+      " %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 " %.2f",
+      tm_time.tm_mon + 1, tm_time.tm_mday,              //
+      tm_time.tm_hour, tm_time.tm_min, tm_time.tm_sec,  //
+      delta_vmstat.page_faults_, delta_vmstat.file_page_faults_,
+      delta_vmstat.anon_page_faults_, delta_vmstat.swap_in_,
+      delta_vmstat.swap_out_, cpu_usage);
 
-  if (!vmlog_->Write(out_line)) {
+  if (!GetAmdgpuFrequency(out_line) || !GetCpuFrequencies(out_line)) {
+    LOG(ERROR) << "Stop timer because of error reading system info";
+    timer_.Stop();
+  }
+  out_line << "\n";
+
+  if (!vmlog_->Write(out_line.str())) {
     LOG(ERROR) << "Writing to vmlog failed.";
     timer_.Stop();
     return;

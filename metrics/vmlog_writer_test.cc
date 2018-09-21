@@ -36,9 +36,7 @@ using ::testing::StrictMock;
 
 namespace chromeos_metrics {
 
-class VmlogWriterTest : public testing::Test {};
-
-TEST_F(VmlogWriterTest, ParseVmStats) {
+TEST(VmlogWriterTest, ParseVmStats) {
   const char kVmStats[] =
     "pswpin 1345\n"
     "pswpout 8896\n"
@@ -58,7 +56,7 @@ TEST_F(VmlogWriterTest, ParseVmStats) {
   EXPECT_EQ(stats.swap_out_, 8896);
 }
 
-TEST_F(VmlogWriterTest, ParseVmStatsOptionalMissing) {
+TEST(VmlogWriterTest, ParseVmStatsOptionalMissing) {
   const char kVmStats[] =
     "pswpin 1345\n"
     "pswpout 8896\n"
@@ -77,7 +75,39 @@ TEST_F(VmlogWriterTest, ParseVmStatsOptionalMissing) {
   EXPECT_EQ(stats.file_page_faults_, 0);
 }
 
-TEST_F(VmlogWriterTest, ParseCpuTime) {
+TEST(VmlogWriterTest, ParseAmdgpuFrequency) {
+  const char kAmdgpuSclkFrequency[] =
+      "0: 200Mhz\n"
+      "1: 300Mhz\n"
+      "2: 400Mhz *\n"
+      "3: 480Mhz\n"
+      "4: 553Mhz\n"
+      "5: 626Mhz\n"
+      "6: 685Mhz\n"
+      "7: 720Mhz\n";
+  std::istringstream input_stream(kAmdgpuSclkFrequency);
+  std::stringstream selected_frequency;
+  EXPECT_TRUE(ParseAmdgpuFrequency(selected_frequency, input_stream));
+  EXPECT_EQ(selected_frequency.str(), " 400");
+}
+
+TEST(VmlogWriterTest, ParseAmdgpuFrequencyMissing) {
+  const char kAmdgpuSclkFrequency[] =
+      "0: 200Mhz\n"
+      "1: 300Mhz\n"
+      "2: 400Mhz\n"
+      "3: 480Mhz\n"
+      "4: 553Mhz\n"
+      "5: 626Mhz\n"
+      "6: 685Mhz\n"
+      "7: 720Mhz\n";
+  std::istringstream input_stream(kAmdgpuSclkFrequency);
+  std::stringstream selected_frequency;
+  EXPECT_FALSE(ParseAmdgpuFrequency(selected_frequency, input_stream));
+  EXPECT_EQ(selected_frequency.str(), "");
+}
+
+TEST(VmlogWriterTest, ParseCpuTime) {
   const char kProcStat[] =
       "cpu  9440559 4101628 4207468 764635735 5162045 0 132368 0 0 0";
   std::istringstream input_stream(kProcStat);
@@ -87,7 +117,7 @@ TEST_F(VmlogWriterTest, ParseCpuTime) {
   EXPECT_EQ(record.total_time_, 787679803);
 }
 
-TEST_F(VmlogWriterTest, VmlogRotation) {
+TEST(VmlogWriterTest, VmlogRotation) {
   base::FilePath temp_directory;
   EXPECT_TRUE(base::CreateNewTempDirectory("", &temp_directory));
 
@@ -142,7 +172,7 @@ TEST_F(VmlogWriterTest, VmlogRotation) {
   EXPECT_EQ(rotated_path.value(), symlink_target.value());
 }
 
-TEST_F(VmlogWriterTest, WriteCallbackSuccess) {
+TEST(VmlogWriterTest, WriteCallbackSuccess) {
   base::FilePath tempdir;
   EXPECT_TRUE(base::CreateNewTempDirectory("", &tempdir));
 

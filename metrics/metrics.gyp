@@ -5,6 +5,7 @@
         'dbus-1',
         'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
+        'libpcrecpp',
       ],
     },
     'cflags_cc': [

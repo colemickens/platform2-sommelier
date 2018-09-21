@@ -9,12 +9,14 @@
 #include <istream>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <pcrecpp.h>
 
 namespace chromeos_metrics {
 
@@ -38,6 +40,12 @@ bool VmStatsParseStats(std::istream* input, struct VmstatRecord* record);
 
 // Parse cpu time from /proc/stat. Returns true for success.
 bool ParseCpuTime(std::istream* input, CpuTimeRecord* record);
+
+// Read the GPU frequency.  Returns true on success or an expected failure.
+// @param out: A stream to output the discovered frequency, in MHz.
+// @param sclk_stream: A stream from which to read the GPU shader clock
+// frequency.
+bool ParseAmdgpuFrequency(std::ostream& out, std::istream& sclk_stream);
 
 // Encapsulates the logic for writing to vmlog and rotating log files when
 // necessary.
@@ -100,6 +108,12 @@ class VmlogWriter {
   // calls to this function.
   bool GetCpuUsage(double* cpu_usage_out);
 
+  // Read the CPU frequencies.  Returns true on success.
+  bool GetCpuFrequencies(std::ostream& out);
+
+  // Read the GPU frequency.  Returns true on success or an expected failure.
+  bool GetAmdgpuFrequency(std::ostream& out);
+
   std::unique_ptr<VmlogFile> vmlog_;
   // Stream used to read content in /proc/vmstat.
   std::ifstream vmstat_stream_;
@@ -109,6 +123,13 @@ class VmlogWriter {
   VmstatRecord prev_vmstat_record_;
   // Record cpu stat info read in from /proc/stat last time.
   CpuTimeRecord prev_cputime_record_;
+
+  // A set of open entries to sysfs for cpu frequency information.  Each one
+  // contains a single integer, in kHz.
+  std::vector<std::ifstream> cpufreq_streams_;
+
+  // A (possibly invalid) stream to the amdgpu shader clock frequency
+  std::ifstream amdgpu_sclk_stream_;
 
   base::RepeatingTimer timer_;
   base::OneShotTimer valid_time_delay_timer_;
