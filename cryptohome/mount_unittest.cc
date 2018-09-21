@@ -237,8 +237,7 @@ class MountTest
     ExpectCryptohomeKeySetup(user);
     if (ShouldTestEcryptfs()) {
       EXPECT_CALL(platform_,
-                  Mount(user.vault_path, user.vault_mount_path,
-                        "ecryptfs", kDefaultMountFlags, _))
+                  Mount(user.vault_path, user.vault_mount_path, "ecryptfs", _))
           .WillOnce(Return(true));
     }
     EXPECT_CALL(platform_, CreateDirectory(user.vault_mount_path))
@@ -253,7 +252,7 @@ class MountTest
     ExpectDaemonStoreMounts(user, false /* ephemeral_mount */);
     if (ShouldTestEcryptfs()) {
       EXPECT_CALL(platform_, Mount(user.vault_path, user.vault_mount_path,
-                                   "ecryptfs", kDefaultMountFlags, _))
+                                   "ecryptfs", _))
           .WillOnce(Return(true));
     }
     EXPECT_CALL(platform_, CreateDirectory(user.vault_mount_path))
@@ -294,8 +293,7 @@ class MountTest
         .WillOnce(Return(true));
 
     EXPECT_CALL(platform_,
-                Mount(FilePath("/dev/loop7"), _, kEphemeralMountType,
-                      kDefaultMountFlags, _))
+                Mount(FilePath("/dev/loop7"), _, kEphemeralMountType, _))
         .WillRepeatedly(Return(true));
     EXPECT_CALL(platform_, IsDirectoryMounted(FilePath("/home/chronos/user")))
         .WillOnce(Return(false));  // first mount
@@ -1297,11 +1295,11 @@ TEST_P(MountTest, RememberMountOrderingTest) {
   FilePath dest2("/dest/baz");
   {
     InSequence sequence;
-    EXPECT_CALL(platform_, Mount(src, dest0, _, kDefaultMountFlags, _))
+    EXPECT_CALL(platform_, Mount(src, dest0, _, _))
         .WillOnce(Return(true));
     EXPECT_CALL(platform_, Bind(src, dest1))
         .WillOnce(Return(true));
-    EXPECT_CALL(platform_, Mount(src, dest2, _, kDefaultMountFlags, _))
+    EXPECT_CALL(platform_, Mount(src, dest2, _, _))
         .WillOnce(Return(true));
     EXPECT_CALL(platform_, Unmount(dest2, _, _))
         .WillOnce(Return(true));
@@ -1730,7 +1728,7 @@ TEST_P(MountTest, MountCryptohomeToMigrateFromEcryptfs) {
     EXPECT_CALL(platform_, CreateDirectory(temporary_mount))
       .WillOnce(Return(true));
     EXPECT_CALL(platform_, Mount(user->vault_path, temporary_mount,
-                                 "ecryptfs", kDefaultMountFlags, _))
+                                 "ecryptfs", _))
       .WillOnce(Return(true));
 
     // Key set up for both dircrypto and ecryptfs.
@@ -2005,9 +2003,9 @@ TEST_P(EphemeralNoUserSystemTest, OwnerUnknownMountCreateTest) {
                  StartsWith(user->user_vault_path.value()))))
     .WillRepeatedly(Return(true));
 
-  EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType,
-                               kDefaultMountFlags, _)).Times(0);
-  EXPECT_CALL(platform_, Mount(_, _, _, kDefaultMountFlags, _))
+  EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
+      .Times(0);
+  EXPECT_CALL(platform_, Mount(_, _, _, _))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, Bind(_, _))
       .WillRepeatedly(Return(true));
@@ -2086,9 +2084,9 @@ TEST_P(EphemeralNoUserSystemTest, MountSetUserTypeFailTest) {
         Property(&FilePath::value, StartsWith(user->user_vault_path.value()))))
     .WillRepeatedly(Return(true));
 
-  EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType,
-                               kDefaultMountFlags, _)).Times(0);
-  EXPECT_CALL(platform_, Mount(_, _, _, kDefaultMountFlags, _))
+  EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
+      .Times(0);
+  EXPECT_CALL(platform_, Mount(_, _, _, _))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, Bind(_, _))
       .WillRepeatedly(Return(true));
@@ -2163,7 +2161,7 @@ TEST_P(EphemeralNoUserSystemTest, OwnerUnknownMountIsEphemeralTest) {
   // known owner, a mount request with the |ensure_ephemeral| flag set fails.
   TestUser* user = &helper_.users[0];
 
-  EXPECT_CALL(platform_, Mount(_, _, _, kDefaultMountFlags, _)).Times(0);
+  EXPECT_CALL(platform_, Mount(_, _, _, _)).Times(0);
   EXPECT_CALL(tpm_, SetUserType(_)).Times(0);
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
@@ -2551,7 +2549,7 @@ TEST_P(EphemeralOwnerOnlySystemTest, OwnerMountIsEphemeralTest) {
   set_policy(true, owner->username, false);
   UsernamePasskey up(owner->username, owner->passkey);
 
-  EXPECT_CALL(platform_, Mount(_, _, _, kDefaultMountFlags, _)).Times(0);
+  EXPECT_CALL(platform_, Mount(_, _, _, _)).Times(0);
   EXPECT_CALL(tpm_, SetUserType(_)).Times(0);
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
@@ -2615,8 +2613,8 @@ TEST_P(EphemeralExistingUserSystemTest, OwnerUnknownMountNoRemoveTest) {
   EXPECT_CALL(platform_, FileExists(_))
     .WillRepeatedly(Return(true));
 
-  EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType,
-                               kDefaultMountFlags, _)).Times(0);
+  EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
+      .Times(0);
 
   Mount::MountArgs mount_args = GetDefaultMountArgs();
   mount_args.create_if_missing = true;
@@ -3180,11 +3178,10 @@ TEST_P(EphemeralNoUserSystemTest, MountGuestUserDir) {
       EnumerateDirectoryEntries(
         Property(&FilePath::value, StartsWith(kEphemeralCryptohomeDir)),  _, _))
     .WillOnce(DoAll(SetArgPointee<2>(empty), Return(true)));
-  EXPECT_CALL(platform_, Mount(_, _, _, kDefaultMountFlags, _))
+  EXPECT_CALL(platform_, Mount(_, _, _, _))
     .Times(0);
   EXPECT_CALL(platform_,
-      Mount(FilePath("/dev/loop7"), _, kEphemeralMountType,
-            kDefaultMountFlags, _))
+      Mount(FilePath("/dev/loop7"), _, kEphemeralMountType, _))
     .WillOnce(Return(true));
   EXPECT_CALL(platform_,
       Bind(Property(&FilePath::value, StartsWith(kEphemeralCryptohomeDir)),
@@ -3268,7 +3265,7 @@ TEST_P(EphemeralNoUserSystemTest, MountGuestUserFailSetUserType) {
   EXPECT_CALL(platform_,
       Stat(Property(&FilePath::value, StartsWith(kEphemeralCryptohomeDir)), _))
     .WillOnce(Return(false));
-  EXPECT_CALL(platform_, Mount(_, _, _, kDefaultMountFlags, _))
+  EXPECT_CALL(platform_, Mount(_, _, _, _))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, Bind(_, _))
     .WillRepeatedly(Return(true));
