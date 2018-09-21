@@ -366,7 +366,7 @@ class Platform2(object):
       os.remove(component)
 
     if self.should_use_gn():
-      args = ['%s:all' % self.platform_subdir]
+      args = ['%s:%s' % (self.platform_subdir, x) for x in args]
     ninja_args = ['ninja', '-C', self.get_products_path()]
     if self.jobs:
       ninja_args += ['-j', str(self.jobs)]
