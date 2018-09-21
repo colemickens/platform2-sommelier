@@ -43,8 +43,12 @@ message FileDump {
   // Absolute path to the file.
   string path = 1;
 
+  // Canonicalized path to the file. Unlike |path|, this path never contains
+  // symbolic links.
+  string canonical_path = 2;
+
   // Contents of the file.
-  string contents = 2;
+  string contents = 3;
 }
 
 // Parameters for the GetProcData RPC.
@@ -76,7 +80,7 @@ message GetProcDataResponse {
   // the |type| field of the request. The file paths are guaranteed to belong to
   // the /proc/ directory. Symlinks will NOT be followed.
   //
-  // Example value: an entry with |path| equal to
+  // Example value: an entry with |path| and |canonical_path| equal to
   // "/proc/acpi/button/lid/LID0/state" and |contents| equal to "state: open".
   //
   // NOTE: There's NO guarantee that the file names or formats of the file
@@ -89,9 +93,14 @@ message GetSysfsDataRequest {
   // Type of information to be retrieved from the sysfs filesystem.
   enum Type {
     TYPE_UNSET = 0;
-    HWMON = 1;    // request information about hwmon devices
-    THERMAL = 2;  // request information about thermal zone devices and cooling
-                  // devices
+    CLASS_HWMON = 1;    // request information about hwmon devices (contents of
+                        // files under /sys/class/hwmon/)
+    CLASS_THERMAL = 2;  // request information about thermal zone devices and
+                        // cooling devices (contents of files under
+                        // /sys/class/thermal/)
+    FIRMWARE_DMI_TABLES = 3;  // request SMBIOS information as raw DMI tables
+                              // (contents of files under
+                              // /sys/firmware/dmi/tables/)
   };
 
   // Must not be |TYPE_UNSET|.
@@ -100,33 +109,25 @@ message GetSysfsDataRequest {
 
 // Return value of the GetSysfsData RPC.
 message GetSysfsDataResponse {
-  // Information about a single device extracted from the sysfs filesystem.
-  message Device {
-    // Full path to the device's directory (located in the /sys/devices/
-    // subtree).
-    //
-    // Example value: "/sys/devices/platform/coretemp.0/hwmon/hwmon0".
-    string device_path = 1;
-
-    // Contents of files in the device's directory (i.e., |device_path|).
-    // Symlinks will NOT be followed.
-    //
-    // Example value: two entries, one having |path| equal to
-    // "/sys/devices/platform/coretemp.0/hwmon/hwmon0/name" and |contents| equal
-    // to "coretemp", and another having |path| equal to
-    // "/sys/devices/platform/coretemp.0/hwmon/hwmon0/power/control" and
-    // |contents| equal to "auto".
-    //
-    // NOTE: The set of files present here is determined by the set of
-    // attributes returned by the device driver through the sysfs interface.
-    // NOTE: There's NO guarantee that the file names or formats of the file
-    // contents will stay the same after the OS kernel version changes.
-    repeated FileDump file_dump = 2;
-  }
-
-  // Information for each device of the requested kind, as specified by the
-  // |type| field of the request.
-  repeated Device device = 1;
+  // Contents of the requested file(s) from the sysfs filesystem, as specified
+  // by the |type| field of the request. The file paths are guaranteed to belong
+  // to the /sys/ directory. Whether symlinks in the reported directories are
+  // followed depends on |type|-specific handling.
+  //
+  // Example value - two entries:
+  // 1. The first entry having |path| equal to "/sys/class/hwmon/hwmon0/name",
+  //    |canonical_path| to "/sys/devices/platform/coretemp.0/hwmon/hwmon0/name"
+  //    and |contents| to "coretemp".
+  // 2. The second one having |path| equal to
+  //    "/sys/class/hwmon/hwmon0/power/control", |canonical_path| to
+  //    "/sys/devices/platform/coretemp.0/hwmon/hwmon0/power/control" and
+  //    |contents| to "auto".
+  //
+  // NOTE: The set of files present here is determined by the information
+  // returned by the host kernel through the sysfs interface.
+  // NOTE: There's NO guarantee that the file names or formats of the file
+  // contents will stay the same after the OS kernel version changes.
+  repeated FileDump file_dump = 1;
 }
 
 // Parameters for the PerformWebRequest RPC.
