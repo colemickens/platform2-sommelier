@@ -253,12 +253,18 @@ class CrosConfigBaseImpl(object):
       Dictionary that maps method call onto return config.
     """
     result = {}
+    result['ListModels'] = self.GetModelList()
     result['GetFirmwareUris'] = self.GetFirmwareUris()
     result['GetTouchFirmwareFiles'] = self.GetTouchFirmwareFiles()
     result['GetArcFiles'] = self.GetArcFiles()
     result['GetAudioFiles'] = self.GetAudioFiles()
     result['GetThermalFiles'] = self.GetThermalFiles()
     result['GetFirmwareInfo'] = self.GetFirmwareInfo()
+    for target in ['coreboot', 'ec']:
+      result['GetFirmwareBuildTargets_%s' % target] = \
+        self.GetFirmwareBuildTargets(target)
+    result['GetFirmwareBuildCombinations'] = \
+      self.GetFirmwareBuildCombinations(['coreboot', 'ec'])
     result['GetWallpaperFiles'] = self.GetWallpaperFiles()
     return result
 
