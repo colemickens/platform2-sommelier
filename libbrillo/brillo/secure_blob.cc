@@ -109,25 +109,4 @@ int SecureMemcmp(const void* s1, const void* s2, size_t n) {
   return result != 0;
 }
 
-SecureBlob BlobToSecureHex(const SecureBlob& blob) {
-  static const char kHexChars[] = "0123456789abcdef";
-  SecureBlob buffer(blob.size() * 2, 0);
-  const char* blob_char_data = blob.char_data();
-
-  // Each input byte creates two output hex characters.
-  for (size_t i = 0; i < blob.size(); ++i) {
-    buffer[(i * 2)] = kHexChars[(blob_char_data[i] >> 4) & 0xf];
-    buffer[(i * 2) + 1] = kHexChars[blob_char_data[i] & 0xf];
-  }
-  return buffer;
-}
-
-SecureBlob SecureHexToBlob(const SecureBlob& blob) {
-  SecureBlob buffer;
-  if (!base::HexStringToBytes(blob.char_data(), &buffer))
-    return SecureBlob();
-
-  return buffer;
-}
-
 }  // namespace brillo
