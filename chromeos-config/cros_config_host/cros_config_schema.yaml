@@ -48,14 +48,6 @@ properties:
   chromeos:
     type: object
     properties:
-      build-settings:
-        type: object
-        properties:
-          firmware-updater-script:
-            description: Specifies the firmware updater script that should be used
-              for the given firmware installation.  The default is `updater4.sh`
-            type: string
-        additionalProperties: false
       configs:
         type: array
         items:

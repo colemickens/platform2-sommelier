@@ -48,18 +48,10 @@ MODELS = '''
 FAMILY_FIRMWARE_MISSING = '''
 &family {
   firmware {
-    script = "updater4.sh";
     shared: reef {
       ec-image = "bcs://Reef_EC.9984.0.0.tbz2";
       main-image = "bcs://Reef.9984.0.0.tbz2";
     };
-  };
-};
-'''
-
-FAMILY_FIRMWARE_SCRIPT_MISSING = '''
-&family {
-  firmware {
   };
 };
 '''
@@ -77,7 +69,6 @@ FAMILY_FIRMWARE_BAD_SHARES = '''
 FAMILY_FIRMWARE = FAMILY_FIRMWARE_MISSING + '''
 &family {
   firmware {
-    script = "updater4.sh";
     shared: reef {
       bcs-overlay = "overlay-reef-private";
       build-targets {
@@ -531,12 +522,6 @@ class UnitTests(cros_test_lib.TestCase):
         "missing",
         "/chromeos/family/firmware/reef: Missing subnode 'build-targets'",
         ], self.Run(HEADER + MODELS + FAMILY_FIRMWARE_MISSING))
-
-  def testFamilyFirmwareScriptMissing(self):
-    """Test a family firmware without a script"""
-    self.assertIn(
-        "/chromeos/family/firmware: Required property 'script' missing",
-        self.Run(HEADER + MODELS + FAMILY_FIRMWARE_SCRIPT_MISSING))
 
   def testFamilyFirmware(self):
     """Test valid family firmware"""

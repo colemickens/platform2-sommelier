@@ -1,6 +1,5 @@
 {
   "chromeos": {
-    "build-settings": {},
     "configs": [
       {
         "firmware": {

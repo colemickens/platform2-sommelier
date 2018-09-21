@@ -245,9 +245,6 @@ class CommonTests(object):
 
   def testFirmware(self):
     """Test access to firmware information"""
-    config = CrosConfig(self.filepath)
-    self.assertEqual('updater4.sh', config.GetFirmwareScript())
-
     expected = OrderedDict(
         [('another',
           FirmwareInfo(model='another',
@@ -324,7 +321,7 @@ class CommonTests(object):
                        create_bios_rw_image=False,
                        tools=[],
                        sig_id='whitelabel-whitelabel2'))])
-    result = config.GetFirmwareInfo()
+    result = CrosConfig(self.filepath).GetFirmwareInfo()
     self.assertEqual(result, expected)
 
 
@@ -448,13 +445,12 @@ class CrosConfigHostTestFdt(unittest.TestCase, CommonTests):
     """Test that we can read properties from non-model nodes"""
     config = CrosConfig(self.filepath)
     # pylint: disable=protected-access
-    self.assertEqual(config._GetProperty('/chromeos/family/firmware',
-                                         'script').value, 'updater4.sh')
-    firmware = config.GetFamilyNode('/firmware')
-    self.assertEqual(firmware.name, 'firmware')
-    self.assertEqual(firmware.Property('script').value, 'updater4.sh')
+    touch = config.GetFamilyNode('/touch/some-touchscreen')
+    self.assertEqual(touch.name, 'some-touchscreen')
+    self.assertEqual(touch.Property('vendor').value, 'some_touch_vendor')
     self.assertEqual(
-        config.GetFamilyProperty('/firmware', 'script').value, 'updater4.sh')
+        config.GetFamilyProperty('/touch/some-touchscreen', 'vendor').value,
+        'some_touch_vendor')
 
   def testDefaultConfig(self):
     if 'SYSROOT' in os.environ:

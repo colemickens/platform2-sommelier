@@ -28,7 +28,6 @@
 		};
 	};
 	firmware {
-		script = "updater4.sh";
 		shared: some {
 			bcs-overlay = "overlay-some-private";
 			ec-image = "bcs://Some_EC.1111.11.1.tbz2";

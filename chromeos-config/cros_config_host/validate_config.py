@@ -545,7 +545,7 @@ SCHEMA = NodeDesc('/', True, [
                 ]),
             ]),
             NodeDesc('firmware', elements=[
-                PropString('script', True, r'updater4\.sh'),
+                PropString('script', False, r'updater4\.sh'),
                 NodeAny('', [
                     PropPhandleTarget(),
                     copy.deepcopy(BUILD_TARGETS_SCHEMA),

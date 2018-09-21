@@ -533,7 +533,7 @@ features for overlays that have already been migrated.
     *   `firmware` (optional) : Contains information about firmware versions and
         files
 
-        *   `script`: Updater script to use. See [the pack_dist
+        *   `script` (optional): Updater script to use. See [the pack_dist
             directory](https://cs.corp.google.com/chromeos_public/src/platform/firmware/pack_dist)
             for the scripts. The options are:
             *   `updater1s.sh`: Only used by mario. Do not use for new boards.

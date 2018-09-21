@@ -464,14 +464,6 @@ class CrosConfigBaseImpl(object):
     """
     return sorted(set([device.GetName() for device in self.GetDeviceConfigs()]))
 
-  def GetFirmwareScript(self):
-    """Obtain the packer script to use. Always updater4.sh
-
-    Returns:
-      Filename of packer script to use (e.g. 'updater4.sh')
-    """
-    return 'updater4.sh'
-
   def GetFirmwareInfo(self):
     firmware_info = OrderedDict()
     for name in self.GetModelList():
