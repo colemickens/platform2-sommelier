@@ -77,9 +77,7 @@ static int has_chromefw(void) {
 // system key. It is intended to be called by Cryptohome once the TPM is done
 // being set up. If the system key is passed as an argument, use it, otherwise
 // attempt to query the TPM again.
-static result_code finalize_from_cmdline(
-    const cryptohome::EncryptedFs& encrypted_fs,
-    char* key) {
+static result_code finalize_from_cmdline(char* key) {
   // Load the system key.
   brillo::SecureBlob system_key;
   if (!base::HexStringToBytes(key, &system_key) ||
@@ -107,7 +105,7 @@ static result_code finalize_from_cmdline(
   }
 
   // Load the encryption key.
-  char* encryption_key = encrypted_fs.get_mount_key();
+  char* encryption_key = get_mount_key();
   if (!encryption_key) {
     ERROR("Could not get mount encryption key");
     return RESULT_FAIL_FATAL;
@@ -124,7 +122,7 @@ static result_code finalize_from_cmdline(
   return RESULT_SUCCESS;
 }
 
-static result_code report_info(const cryptohome::EncryptedFs& encrypted_fs) {
+static result_code report_info() {
   Tpm tpm;
   printf("TPM: %s\n", tpm.available() ? "yes" : "no");
   if (tpm.available()) {
@@ -149,7 +147,7 @@ static result_code report_info(const cryptohome::EncryptedFs& encrypted_fs) {
   }
 
   // Report info from the encrypted mount.
-  encrypted_fs.report_mount_info();
+  report_mount_info();
 
   return RESULT_SUCCESS;
 }
@@ -181,25 +179,24 @@ void RecordEnumeratedHistogram(MetricsLibrary* metrics,
 int main(int argc, char* argv[]) {
   result_code rc;
   rootdir = getenv("MOUNT_ENCRYPTED_ROOT");
-  cryptohome::EncryptedFs encrypted_fs;
 
   MetricsLibrary metrics;
   metrics.Init();
   metrics.SetOutputFile(kMountEncryptedMetricsPath);
 
   INFO_INIT("Starting.");
-  rc = encrypted_fs.prepare_paths(rootdir);
+  rc = prepare_paths(rootdir);
   if (rc != RESULT_SUCCESS)
     return rc;
 
   bool use_factory_system_key = false;
   if (argc > 1) {
     if (!strcmp(argv[1], "umount")) {
-      return encrypted_fs.teardown_mount();
+      return teardown_mount();
     } else if (!strcmp(argv[1], "info")) {
-      return report_info(encrypted_fs);
+      return report_info();
     } else if (!strcmp(argv[1], "finalize")) {
-      return finalize_from_cmdline(encrypted_fs, argc > 2 ? argv[2] : NULL);
+      return finalize_from_cmdline(argc > 2 ? argv[2] : NULL);
     } else if (!strcmp(argv[1], "factory")) {
       use_factory_system_key = true;
     } else {
@@ -211,7 +208,7 @@ int main(int argc, char* argv[]) {
   /* For the mount operation at boot, return RESULT_FAIL_FATAL to trigger
    * chromeos_startup do the stateful wipe.
    */
-  rc = encrypted_fs.check_mount_states();
+  rc = check_mount_states();
   if (rc != RESULT_SUCCESS)
     return rc;
 
@@ -240,8 +237,7 @@ int main(int argc, char* argv[]) {
 
   std::string encryption_key_hex =
       base::HexEncode(key.encryption_key().data(), key.encryption_key().size());
-  rc = encrypted_fs.setup_encrypted(encryption_key_hex.c_str(),
-                                    key.is_fresh());
+  rc = setup_encrypted(encryption_key_hex.c_str(), key.is_fresh());
   if (rc == RESULT_SUCCESS) {
     bool lockbox_valid = false;
     if (loader->CheckLockbox(&lockbox_valid) == RESULT_SUCCESS) {
