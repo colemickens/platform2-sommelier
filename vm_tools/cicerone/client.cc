@@ -38,7 +38,7 @@ using std::string;
 
 namespace {
 
-constexpr int kDefaultTimeoutMs = 5 * 1000;
+constexpr int kDefaultTimeoutMs = 120 * 1000;
 
 int CreateLxdContainer(dbus::ObjectProxy* proxy,
                        const string& vm_name,

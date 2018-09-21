@@ -77,9 +77,8 @@ constexpr uint32_t kPackageKitFilterInstalled = 2;
 // https://www.freedesktop.org/software/PackageKit/gtk-doc/PackageKit-Enumerations.html#PkInfoEnum
 constexpr uint32_t kPackageKitInfoSecurity = 8;
 
-// Timeout for when we are querying for package information in case PackageKit
-// dies.
-constexpr int kGetLinuxPackageInfoTimeoutSeconds = 10;
+// Timeout for when we are querying for package information.
+constexpr int kGetLinuxPackageInfoTimeoutSeconds = 60;
 constexpr base::TimeDelta kGetLinuxPackageInfoTimeout =
     base::TimeDelta::FromSeconds(kGetLinuxPackageInfoTimeoutSeconds);
 

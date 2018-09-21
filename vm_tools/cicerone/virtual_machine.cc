@@ -29,17 +29,11 @@ namespace cicerone {
 namespace {
 
 // How long to wait before timing out on regular RPCs.
-constexpr int64_t kDefaultTimeoutSeconds = 10;
+constexpr int64_t kDefaultTimeoutSeconds = 60;
 
-// How long to wait while setting up a user.
-constexpr int64_t kSetUpUserTimeoutSeconds = 15;
-
-// How long to wait while creating a container.
-constexpr int64_t kCreateLxdContainerTimeoutSeconds = 30;
-
-// How long to wait while starting a container. This can take over 30 seconds on
-// Braswell boards when starting it for the first time.
-constexpr int64_t kStartLxdContainerTimeoutSeconds = 60;
+// How long to wait while doing more complex operations like starting or
+// creating a container.
+constexpr int64_t kLongOperationTimeoutSeconds = 120;
 
 }  // namespace
 
@@ -180,7 +174,7 @@ VirtualMachine::CreateLxdContainerStatus VirtualMachine::CreateLxdContainer(
   grpc::ClientContext ctx;
   ctx.set_deadline(gpr_time_add(
       gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kCreateLxdContainerTimeoutSeconds, GPR_TIMESPAN)));
+      gpr_time_from_seconds(kLongOperationTimeoutSeconds, GPR_TIMESPAN)));
 
   grpc::Status status =
       tremplin_stub_->CreateContainer(&ctx, request, &response);
@@ -228,7 +222,7 @@ VirtualMachine::StartLxdContainerStatus VirtualMachine::StartLxdContainer(
   grpc::ClientContext ctx;
   ctx.set_deadline(gpr_time_add(
       gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kStartLxdContainerTimeoutSeconds, GPR_TIMESPAN)));
+      gpr_time_from_seconds(kLongOperationTimeoutSeconds, GPR_TIMESPAN)));
 
   grpc::Status status =
       tremplin_stub_->StartContainer(&ctx, request, &response);
@@ -322,7 +316,7 @@ VirtualMachine::SetUpLxdContainerUser(const std::string& container_name,
   grpc::ClientContext ctx;
   ctx.set_deadline(gpr_time_add(
       gpr_now(GPR_CLOCK_MONOTONIC),
-      gpr_time_from_seconds(kSetUpUserTimeoutSeconds, GPR_TIMESPAN)));
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
 
   grpc::Status status = tremplin_stub_->SetUpUser(&ctx, request, &response);
   if (!status.ok()) {
