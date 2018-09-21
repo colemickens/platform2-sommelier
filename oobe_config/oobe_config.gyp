@@ -40,7 +40,10 @@
         ],
       },
       'sources': [
+        'load_oobe_config_usb.cc',
         'oobe_config.cc',
+        'usb_common.cc',
+        'utils.cc',
       ],
       'link_settings': {
         'libraries': [
@@ -53,6 +56,8 @@
       'type': 'executable',
       'sources': [
         'finish_oobe_auto_config.cc',
+        'usb_common.cc',
+        'utils.cc',
       ],
     },
     {
@@ -111,6 +116,7 @@
           },
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
+            'load_oobe_config_usb_test.cc',
             'oobe_config_test.cc',
           ],
         },

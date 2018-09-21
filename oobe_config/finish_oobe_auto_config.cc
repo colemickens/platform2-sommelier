@@ -13,33 +13,15 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <brillo/flag_helper.h>
-#include <brillo/process.h>
+
+#include "oobe_config/usb_common.h"
+#include "oobe_config/utils.h"
 
 using base::FilePath;
 using std::string;
 using std::vector;
 
-namespace {
-
-constexpr char kOobeConfigDir[] = "unencrypted/oobe_auto_config/";
-constexpr char kConfigFile[] = "config.json";
-constexpr char kDomainFile[] = "enrollment_domain";
-constexpr char kKeyFile[] = "validation_key.pub";
-constexpr char kDevDiskById[] = "/dev/disk/by-id/";
-constexpr char kUsbDevicePathSigFile[] = "usb_device_path.sig";
-
-// TODO(tbrindus): move this into a util file.
-int RunCommand(const vector<string>& command) {
-  LOG(INFO) << "Command: " << base::JoinString(command, " ");
-
-  brillo::ProcessImpl proc;
-
-  for (const auto& arg : command) {
-    proc.AddArg(arg);
-  }
-
-  return proc.Run();
-}
+namespace oobe_config {
 
 // Enumerates /dev/disk/by-id/ to find which persistent disk identifier
 // |mount_dev| corresponds to.
@@ -87,14 +69,15 @@ void SignSourcePartitionFile(const FilePath& priv_key, const FilePath& src_dev,
   CHECK(base::CreateTemporaryFile(&temp_disk));
   CHECK(base::WriteFile(temp_disk, disk.c_str(), disk.length()) ==
         disk.length());
-  SignFile(priv_key, temp_disk, dst_dir.Append(kOobeConfigDir)
-                                       .Append(kUsbDevicePathSigFile));
+  SignFile(
+      priv_key, temp_disk,
+      dst_dir.Append(kUnencryptedOobeConfigDir).Append(kUsbDevicePathSigFile));
 }
 
 void SignOobeFiles(const FilePath& priv_key, const FilePath& pub_key,
                    const FilePath& src_stateful, const FilePath& dst_stateful) {
-  auto src_config_dir = src_stateful.Append(kOobeConfigDir);
-  auto dst_config_dir = dst_stateful.Append(kOobeConfigDir);
+  auto src_config_dir = src_stateful.Append(kUnencryptedOobeConfigDir);
+  auto dst_config_dir = dst_stateful.Append(kUnencryptedOobeConfigDir);
 
   // /stateful/unencrypted/oobe_auto_config might not exist on the target
   // device, so create it here.
@@ -111,7 +94,7 @@ void SignOobeFiles(const FilePath& priv_key, const FilePath& pub_key,
   }
 }
 
-}  // namespace
+}  // namespace oobe_config
 
 int main(int argc, char** argv) {
   DEFINE_string(priv_key, "",
@@ -150,13 +133,14 @@ int main(int argc, char** argv) {
   CHECK(base::DirectoryExists(dst_stateful));
 
   // Generate digests for the configuration and domain files.
-  SignOobeFiles(priv_key, pub_key, src_stateful, dst_stateful);
+  oobe_config::SignOobeFiles(priv_key, pub_key, src_stateful, dst_stateful);
 
   // Generate digest for the source stateful device name.
-  SignSourcePartitionFile(priv_key, src_device, dst_stateful);
+  oobe_config::SignSourcePartitionFile(priv_key, src_device, dst_stateful);
 
   // Copy the public key into the target stateful for use in validation.
-  CHECK(base::CopyFile(pub_key,
-                       dst_stateful.Append(kOobeConfigDir).Append(kKeyFile)));
+  CHECK(base::CopyFile(
+      pub_key, dst_stateful.Append(oobe_config::kUnencryptedOobeConfigDir)
+                   .Append(oobe_config::kKeyFile)));
   return 0;
 }
