@@ -34,10 +34,10 @@ typeDefs:
         type: string
     additionalProperties: false
   whitelabel-tag: &whitelabel_tag
-    description: "'whitelabel-tag' value set in the VPD for Whitelabels."
+    description: "'whitelabel_tag' value set in the VPD, to add Whitelabel branding over an unbranded base model."
     type: string
   customization-id: &customization_id
-    description: "'customization-id' value set in the VPD for Zergs and older Whitelabels."
+    description: "'customization_id' value set in the VPD for non-unibuild Zergs and Whitelabels. Deprecated for use in new products since 2017/07/26."
     type: string
   platform-name: &platform_name
     description: "Defines the name that is reported by 'mosys platform name'
