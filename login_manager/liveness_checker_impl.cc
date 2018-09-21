@@ -5,6 +5,7 @@
 #include "login_manager/liveness_checker_impl.h"
 
 #include <signal.h>
+#include <string>
 
 #include <base/bind.h>
 #include <base/callback.h>
@@ -63,15 +64,17 @@ void LivenessCheckerImpl::CheckAndSendLivenessPing(base::TimeDelta interval) {
   // If there's an un-acked ping, the browser needs to be taken down.
   if (!last_ping_acked_) {
     LOG(WARNING) << "Browser hang detected!";
+
+    // TODO(https://crbug.com/883029): Remove.
+    std::string top_output;
+    base::GetAppOutput({"top", "-b", "-1", "-n1", "-w200"}, &top_output);
+    LOG(WARNING) << "Top output (trimmed):";
+    LOG(WARNING) << top_output.substr(0, 2048);
+
     if (enable_aborting_) {
       // Note: If this log message is changed, the desktopui_HangDetector
       // autotest must be updated.
       LOG(WARNING) << "Aborting browser process.";
-      // TODO(dcastagna): Remove this after https://crbug.com/865739 is fixed.
-      std::string lsof_output;
-      base::GetAppOutput({"lsof", "/dev/dri/card0"}, &lsof_output);
-      LOG(WARNING) << "Processes keeping /dev/dri/card0 open:";
-      LOG(WARNING) << lsof_output;
 
       manager_->AbortBrowser(SIGABRT,
                              "Browser did not respond to DBus liveness check.");
