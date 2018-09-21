@@ -177,8 +177,7 @@ void RecordEnumeratedHistogram(MetricsLibrary* metrics,
 int main(int argc, char* argv[]) {
   result_code rc;
   base::FilePath rootdir = base::FilePath(getenv("MOUNT_ENCRYPTED_ROOT"));
-  cryptohome::Platform platform;
-  cryptohome::EncryptedFs encrypted_fs(rootdir, &platform);
+  cryptohome::EncryptedFs encrypted_fs(rootdir);
 
   MetricsLibrary metrics;
   metrics.Init();
