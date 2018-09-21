@@ -36,5 +36,6 @@ set_tid_address: 1
 set_robust_list: 1
 munmap: 1
 execve: 1
-# In the line below 1 stands for AF_UNIX.
-socket: arg0 == 1
+socket: arg0 == AF_UNIX
+# Used by libbrillo to know whether stderr is a TTY.
+ioctl: arg1 == TCGETS

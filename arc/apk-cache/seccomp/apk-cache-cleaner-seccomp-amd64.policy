@@ -36,5 +36,6 @@ rt_sigprocmask: 1
 socket: 1
 connect: 1
 sendto: 1
-# In the line below 1 stands for AF_UNIX.
-socket: arg0 == 1
+socket: arg0 == AF_UNIX
+# Used by libbrillo to know whether stderr is a TTY.
+ioctl: arg1 == TCGETS
