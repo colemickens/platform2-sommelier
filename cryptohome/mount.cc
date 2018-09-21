@@ -734,7 +734,7 @@ bool Mount::MountEphemeralCryptohomeInner(const std::string& username) {
   }
 
   // Format the sparse file into ext4.
-  if (!platform_->FormatExt4(sparse_file, kDefaultExt4FormatOpts, 0)) {
+  if (!platform_->FormatExt4(sparse_file)) {
     LOG(ERROR) << "Can't format ephemeral sparse file into ext4";
     return false;
   }
