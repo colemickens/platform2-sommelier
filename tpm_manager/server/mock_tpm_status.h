@@ -31,7 +31,7 @@ class MockTpmStatus : public TpmStatus {
   ~MockTpmStatus() override;
 
   MOCK_METHOD0(IsTpmEnabled, bool());
-  MOCK_METHOD0(CheckAndNotifyIfTpmOwned, bool());
+  MOCK_METHOD0(CheckAndNotifyIfTpmOwned, TpmOwnershipStatus());
   MOCK_METHOD4(GetDictionaryAttackInfo,
                bool(int* counter,
                     int* threshold,

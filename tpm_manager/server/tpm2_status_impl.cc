@@ -42,21 +42,27 @@ bool Tpm2StatusImpl::IsTpmEnabled() {
   return trunks_tpm_state_->IsEnabled();
 }
 
-bool Tpm2StatusImpl::CheckAndNotifyIfTpmOwned() {
-  if (is_owned_) {
-    return true;
+TpmStatus::TpmOwnershipStatus Tpm2StatusImpl::CheckAndNotifyIfTpmOwned() {
+  if (kTpmOwned == ownership_status_) {
+    return kTpmOwned;
   }
 
   Refresh();
 
-  is_owned_ = trunks_tpm_state_->IsOwned();
-  if (is_owned_ && !ownership_taken_callback_.is_null()) {
-    // Sends out the ownership taken signal when the value of is_owned_ changes
-    // from false to true.
-    ownership_taken_callback_.Run();
+  if (trunks_tpm_state_->IsOwned()) {
+    ownership_status_ = kTpmOwned;
+  } else if (trunks_tpm_state_->IsOwnerPasswordSet()) {
+    ownership_status_ = kTpmPreOwned;
   }
 
-  return is_owned_;
+  if (kTpmOwned == ownership_status_ && !ownership_taken_callback_.is_null()) {
+    // Sends out the ownership taken signal when the TPM ownership status
+    // changes to owned from a different state.
+    ownership_taken_callback_.Run();
+    ownership_taken_callback_.Reset();
+  }
+
+  return ownership_status_;
 }
 
 bool Tpm2StatusImpl::GetDictionaryAttackInfo(int* counter,

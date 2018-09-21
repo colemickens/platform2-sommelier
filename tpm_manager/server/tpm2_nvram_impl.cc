@@ -22,11 +22,13 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <trunks/authorization_delegate.h>
 #include <trunks/error_codes.h>
 #include <trunks/policy_session.h>
 #include <trunks/scoped_global_session.h>
 #include <trunks/tpm_constants.h>
 #include <trunks/tpm_utility.h>
+#include <trunks/tpm_utility_impl.h>
 
 namespace tpm_manager {
 
@@ -144,9 +146,11 @@ NvramResult MapTpmError(TPM_RC tpm_error) {
 }  // namespace
 
 Tpm2NvramImpl::Tpm2NvramImpl(const trunks::TrunksFactory& factory,
-                             LocalDataStore* local_data_store)
+                             LocalDataStore* local_data_store,
+                             TpmStatus* tpm_status)
     : trunks_factory_(factory),
       local_data_store_(local_data_store),
+      tpm_status_(tpm_status),
       initialized_(false),
 #ifndef TRUNKS_USE_PER_OP_SESSIONS
       trunks_session_(trunks_factory_.GetHmacSession()),
@@ -162,16 +166,7 @@ NvramResult Tpm2NvramImpl::DefineSpace(
   if (!Initialize()) {
     return NVRAM_RESULT_DEVICE_ERROR;
   }
-  trunks::ScopedGlobalHmacSession session_scope(&trunks_factory_,
-                                                kGlobalSessionSalted,
-                                                kGlobalSessionEncryption,
-                                                &trunks_session_);
-  if (!trunks_session_) {
-    return NVRAM_RESULT_DEVICE_ERROR;
-  }
-  if (!SetupOwnerSession()) {
-    return NVRAM_RESULT_OPERATION_DISABLED;
-  }
+
   trunks::TPMA_NV attribute_flags = 0;
   bool world_read_allowed = false;
   bool world_write_allowed = false;
@@ -190,15 +185,56 @@ NvramResult Tpm2NvramImpl::DefineSpace(
     LOG(ERROR) << "Failed to compute policy digest.";
     return NVRAM_RESULT_DEVICE_ERROR;
   }
+
+  std::unique_ptr<trunks::ScopedGlobalHmacSession> session_scope;
+  const TpmStatus::TpmOwnershipStatus ownership_status =
+      tpm_status_->CheckAndNotifyIfTpmOwned();
+  LOG(INFO) << __func__ << ", index = " << index << ", ownership = " << ownership_status;
+  if (ownership_status == TpmStatus::kTpmOwned) {
+    session_scope = std::make_unique<trunks::ScopedGlobalHmacSession>(
+        &trunks_factory_,
+        kGlobalSessionSalted,
+        kGlobalSessionEncryption,
+        &trunks_session_);
+
+    if (!trunks_session_) {
+      return NVRAM_RESULT_DEVICE_ERROR;
+    }
+  }
+
+  std::unique_ptr<trunks::AuthorizationDelegate> password_delegate;
+  trunks::AuthorizationDelegate* delegate;
+  switch (ownership_status) {
+    case TpmStatus::kTpmUnowned:
+      password_delegate = trunks_factory_.GetPasswordAuthorization("");
+      delegate = password_delegate.get();
+      break;
+    case TpmStatus::kTpmPreOwned:
+      password_delegate =
+          trunks_factory_.GetPasswordAuthorization(trunks::kWellKnownPassword);
+      delegate = password_delegate.get();
+      break;
+    case TpmStatus::kTpmOwned:
+      if (!SetupOwnerSession()) {
+        return NVRAM_RESULT_OPERATION_DISABLED;
+      }
+      delegate = trunks_session_->GetDelegate();
+      break;
+    default:
+      LOG(ERROR) << __func__ << ", invalid TPM ownership status: "
+                 << ownership_status;
+      return NVRAM_RESULT_DEVICE_ERROR;
+  }
+
   TPM_RC result = trunks_utility_->DefineNVSpace(
       index, size, attribute_flags, authorization_value, policy_digest,
-      trunks_session_->GetDelegate());
+      delegate);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error defining nvram space: " << GetErrorString(result);
     return MapTpmError(result);
   }
   if (!SavePolicyRecord(policy_record)) {
-    trunks_utility_->DestroyNVSpace(index, trunks_session_->GetDelegate());
+    trunks_utility_->DestroyNVSpace(index, delegate);
     return NVRAM_RESULT_DEVICE_ERROR;
   }
   return NVRAM_RESULT_SUCCESS;

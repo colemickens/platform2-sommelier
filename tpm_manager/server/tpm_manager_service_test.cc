@@ -129,7 +129,7 @@ TEST_F(TpmManagerServiceTest_NoWaitForOwnership, AutoInitialize) {
   // Called in InitializeTask() and GetTpmStatus()
   EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned())
       .Times(2)
-      .WillRepeatedly(Return(false));
+      .WillRepeatedly(Return(TpmStatus::kTpmUnowned));
   // Make sure InitializeTpm doesn't get multiple calls.
   EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(1);
   EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(0);
@@ -141,7 +141,7 @@ TEST_F(TpmManagerServiceTest_NoWaitForOwnership, NoNeedToInitialize) {
   // Called in InitializeTask() and GetTpmStatus()
   EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned())
       .Times(2)
-      .WillRepeatedly(Return(true));
+      .WillRepeatedly(Return(TpmStatus::kTpmOwned));
   EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(0);
   EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(0);
   SetupService();
@@ -162,7 +162,7 @@ TEST_F(TpmManagerServiceTest_NoWaitForOwnership, AutoInitializeFailure) {
   // Called in InitializeTask() and GetTpmStatus()
   EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned())
       .Times(2)
-      .WillRepeatedly(Return(false));
+      .WillRepeatedly(Return(TpmStatus::kTpmUnowned));
   EXPECT_CALL(mock_tpm_initializer_, InitializeTpm())
       .WillRepeatedly(Return(false));
   SetupService();
@@ -173,7 +173,7 @@ TEST_F(TpmManagerServiceTest_NoWaitForOwnership,
        TakeOwnershipAfterAutoInitialize) {
   // Called in InitializeTask()
   EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned())
-      .WillOnce(Return(false));
+      .WillOnce(Return(TpmStatus::kTpmUnowned));
   EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(AtLeast(2));
   SetupService();
   auto callback = [](TpmManagerServiceTest* self,
@@ -188,7 +188,7 @@ TEST_F(TpmManagerServiceTest_NoWaitForOwnership,
 
 TEST_F(TpmManagerServiceTest_Preinit, NoAutoInitialize) {
   EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned())
-      .WillRepeatedly(Return(false));
+      .WillRepeatedly(Return(TpmStatus::kTpmUnowned));
   EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(0);
   EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(1);
   SetupService();
@@ -199,7 +199,7 @@ TEST_F(TpmManagerServiceTest_Preinit, TpmAlreadyOwned) {
   // Called in InitializeTask() and GetTpmStatus()
   EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned())
       .Times(2)
-      .WillRepeatedly(Return(true));
+      .WillRepeatedly(Return(TpmStatus::kTpmOwned));
   EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(0);
   EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(0);
   SetupService();

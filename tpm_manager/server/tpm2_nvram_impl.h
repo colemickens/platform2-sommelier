@@ -21,12 +21,14 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/macros.h>
 #include <trunks/trunks_factory.h>
 
 #include "tpm_manager/common/tpm_manager.pb.h"
 #include "tpm_manager/server/local_data_store.h"
+#include "tpm_manager/server/tpm_status.h"
 
 namespace tpm_manager {
 
@@ -36,7 +38,8 @@ class Tpm2NvramImpl : public TpmNvram {
  public:
   // Does not take ownership of arguments.
   Tpm2NvramImpl(const trunks::TrunksFactory& factory,
-                LocalDataStore* local_data_store);
+                LocalDataStore* local_data_store,
+                TpmStatus* tpm_status);
   ~Tpm2NvramImpl() override = default;
 
   // TpmNvram methods.
@@ -111,6 +114,7 @@ class Tpm2NvramImpl : public TpmNvram {
 
   const trunks::TrunksFactory& trunks_factory_;
   LocalDataStore* local_data_store_;
+  TpmStatus* tpm_status_;
   bool initialized_;
   std::unique_ptr<trunks::HmacSession> trunks_session_;
   std::unique_ptr<trunks::TpmUtility> trunks_utility_;

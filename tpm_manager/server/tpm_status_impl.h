@@ -42,7 +42,7 @@ class TpmStatusImpl : public TpmStatus {
 
   // TpmState methods.
   bool IsTpmEnabled() override;
-  bool CheckAndNotifyIfTpmOwned() override;
+  TpmOwnershipStatus CheckAndNotifyIfTpmOwned() override;
   bool GetDictionaryAttackInfo(int* counter,
                                int* threshold,
                                bool* lockout,
@@ -80,14 +80,13 @@ class TpmStatusImpl : public TpmStatus {
   // process has finished.
   bool is_owned_{false};
 
-  // Whether the entire TPM initialization process has finished, i.e., ownership
-  // has been taken and the owner password is no longer the default one.
+  // Whether the TPM is fully initialized.
   bool is_fully_initialized_{false};
 
   bool is_enable_initialized_{false};
 
   // Callback function called after TPM ownership is taken.
-  const OwnershipTakenCallBack& ownership_taken_callback_;
+  OwnershipTakenCallBack ownership_taken_callback_;
 
   // Whether we should query the TPM again with the default password or use the
   // cached result in is_owner_password_default_. We should query the TPM for

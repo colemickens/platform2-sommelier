@@ -29,6 +29,7 @@
 #include "tpm_manager/server/mock_local_data_store.h"
 #include "tpm_manager/server/mock_openssl_crypto_util.h"
 #include "tpm_manager/server/mock_tpm_status.h"
+#include "tpm_manager/server/tpm_status.h"
 
 using testing::_;
 using testing::AtLeast;
@@ -90,14 +91,14 @@ TEST_F(Tpm2InitializerTest, InitializeTpmNoSeedTpm) {
 
 TEST_F(Tpm2InitializerTest, InitializeTpmAlreadyOwned) {
   EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned())
-      .WillRepeatedly(Return(true));
+      .WillRepeatedly(Return(TpmStatus::kTpmOwned));
   EXPECT_CALL(mock_tpm_utility_, TakeOwnership(_, _, _)).Times(0);
   EXPECT_TRUE(tpm_initializer_->InitializeTpm());
 }
 
 TEST_F(Tpm2InitializerTest, InitializeTpmLocalDataReadError) {
   EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned())
-      .WillRepeatedly(Return(false));
+      .WillRepeatedly(Return(TpmStatus::kTpmUnowned));
   EXPECT_CALL(mock_data_store_, Read(_)).WillRepeatedly(Return(false));
   EXPECT_CALL(mock_tpm_utility_, TakeOwnership(_, _, _)).Times(0);
   EXPECT_FALSE(tpm_initializer_->InitializeTpm());
@@ -105,7 +106,7 @@ TEST_F(Tpm2InitializerTest, InitializeTpmLocalDataReadError) {
 
 TEST_F(Tpm2InitializerTest, InitializeTpmLocalDataWriteError) {
   EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned())
-      .WillRepeatedly(Return(false));
+      .WillRepeatedly(Return(TpmStatus::kTpmUnowned));
   EXPECT_CALL(mock_data_store_, Write(_)).WillRepeatedly(Return(false));
   EXPECT_CALL(mock_tpm_utility_, TakeOwnership(_, _, _)).Times(0);
   EXPECT_FALSE(tpm_initializer_->InitializeTpm());
@@ -114,7 +115,7 @@ TEST_F(Tpm2InitializerTest, InitializeTpmLocalDataWriteError) {
 
 TEST_F(Tpm2InitializerTest, InitializeTpmOwnershipError) {
   EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned())
-      .WillOnce(Return(false));
+      .WillOnce(Return(TpmStatus::kTpmUnowned));
   EXPECT_CALL(mock_tpm_utility_, TakeOwnership(_, _, _))
       .WillRepeatedly(Return(trunks::TPM_RC_FAILURE));
   EXPECT_FALSE(tpm_initializer_->InitializeTpm());
@@ -123,7 +124,7 @@ TEST_F(Tpm2InitializerTest, InitializeTpmOwnershipError) {
 
 TEST_F(Tpm2InitializerTest, InitializeTpmSuccess) {
   EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned())
-      .WillOnce(Return(false));
+      .WillOnce(Return(TpmStatus::kTpmUnowned));
   std::string owner_random_bytes("\xFF\xF7\x00\x01\xD2\xA3", 6);
   std::string owner_password =
       base::HexEncode(owner_random_bytes.data(), owner_random_bytes.size());
@@ -150,7 +151,7 @@ TEST_F(Tpm2InitializerTest, InitializeTpmSuccess) {
 
 TEST_F(Tpm2InitializerTest, InitializeTpmSuccessAfterError) {
   EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned())
-      .WillOnce(Return(false));
+      .WillOnce(Return(TpmStatus::kTpmUnowned));
   std::string owner_password("owner");
   std::string endorsement_password("endorsement");
   std::string lockout_password("lockout");

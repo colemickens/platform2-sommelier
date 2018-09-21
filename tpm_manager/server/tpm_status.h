@@ -27,22 +27,39 @@ namespace tpm_manager {
 // of TPM device.
 class TpmStatus {
  public:
+  enum TpmOwnershipStatus {
+    // TPM is not owned. The owner password is empty.
+    kTpmUnowned = 0,
+
+    // TPM is pre-owned. The owner password is set to a well-known password, but
+    // TPM initialization is not completed yet.
+    kTpmPreOwned,
+
+    // TPM initialization is completed. The owner password is set to a randomly-
+    // generated password.
+    kTpmOwned,
+  };
+
   TpmStatus() = default;
   virtual ~TpmStatus() = default;
 
   // Returns true iff the TPM is enabled.
   virtual bool IsTpmEnabled() = 0;
-  // Returns true iff the TPM has been owned and the entire TPM initialization
-  // process has finished, including all the password set up.
+
+  // Returns current TPM ownership status. The status will be kTpmOwned iff the
+  // entire TPM initialization process has finished, including all the password
+  // set up.
   //
-  // Sends out a signal to the dbus if the TPM state is changed from not owned
-  // to owned.
-  virtual bool CheckAndNotifyIfTpmOwned() = 0;
+  // Sends out a signal to the dbus if the TPM state is changed to owned from a
+  // different state.
+  virtual TpmOwnershipStatus CheckAndNotifyIfTpmOwned() = 0;
+
   // Reports the current state of the TPM dictionary attack logic.
   virtual bool GetDictionaryAttackInfo(int* counter,
                                        int* threshold,
                                        bool* lockout,
                                        int* seconds_remaining) = 0;
+
   // Get TPM hardware and software version information.
   virtual bool GetVersionInfo(uint32_t* family,
                               uint64_t* spec_level,

@@ -19,6 +19,8 @@
 
 #include <memory>
 
+#include <base/callback.h>
+#include <base/callback_forward.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/dbus/dbus_object.h>
@@ -34,7 +36,7 @@ using brillo::dbus_utils::DBusMethodResponse;
 using brillo::dbus_utils::DBusObject;
 using brillo::dbus_utils::DBusSignal;
 
-using OwnershipTakenCallBack = base::Callback<void()>;
+using OwnershipTakenCallBack = base::Closure;
 
 // Handles D-Bus communication with the TpmManager daemon.
 class DBusService : public brillo::DBusServiceDaemon {

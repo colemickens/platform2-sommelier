@@ -34,6 +34,8 @@
 
 namespace trunks {
 
+const char kWellKnownPassword[] = "cros-password";
+
 class AuthorizationDelegate;
 class TrunksFactory;
 

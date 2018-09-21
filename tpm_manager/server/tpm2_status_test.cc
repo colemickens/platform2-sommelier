@@ -77,13 +77,17 @@ TEST_F(Tpm2StatusTest, IsOwnedSuccess) {
   EXPECT_CALL(mock_tpm_state_, Initialize())
       .WillRepeatedly(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_tpm_state_, IsOwned()).WillRepeatedly(Return(true));
-  EXPECT_TRUE(tpm_status_->CheckAndNotifyIfTpmOwned());
+  EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
+      .WillRepeatedly(Return(true));
+  EXPECT_EQ(TpmStatus::kTpmOwned, tpm_status_->CheckAndNotifyIfTpmOwned());
   EXPECT_EQ(ownership_call_count_, 1);
 }
 
 TEST_F(Tpm2StatusTest, IsOwnedFailure) {
   EXPECT_CALL(mock_tpm_state_, IsOwned()).WillRepeatedly(Return(false));
-  EXPECT_FALSE(tpm_status_->CheckAndNotifyIfTpmOwned());
+  EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
+      .WillRepeatedly(Return(false));
+  EXPECT_EQ(TpmStatus::kTpmUnowned, tpm_status_->CheckAndNotifyIfTpmOwned());
   EXPECT_EQ(ownership_call_count_, 0);
 }
 
@@ -92,19 +96,33 @@ TEST_F(Tpm2StatusTest, IsOwnedRepeatedInitializationOnFalse) {
       .Times(2)
       .WillRepeatedly(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_tpm_state_, IsOwned()).WillOnce(Return(false));
-  EXPECT_FALSE(tpm_status_->CheckAndNotifyIfTpmOwned());
+  EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
+      .WillRepeatedly(Return(false));
+  EXPECT_EQ(TpmStatus::kTpmUnowned, tpm_status_->CheckAndNotifyIfTpmOwned());
   EXPECT_EQ(ownership_call_count_, 0);
   EXPECT_CALL(mock_tpm_state_, IsOwned()).WillRepeatedly(Return(true));
-  EXPECT_TRUE(tpm_status_->CheckAndNotifyIfTpmOwned());
+  EXPECT_EQ(TpmStatus::kTpmOwned, tpm_status_->CheckAndNotifyIfTpmOwned());
   EXPECT_EQ(ownership_call_count_, 1);
 }
 
 TEST_F(Tpm2StatusTest, IsOwnedNoRepeatedInitializationOnTrue) {
   EXPECT_CALL(mock_tpm_state_, Initialize()).WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_tpm_state_, IsOwned()).WillRepeatedly(Return(true));
-  EXPECT_TRUE(tpm_status_->CheckAndNotifyIfTpmOwned());
-  EXPECT_TRUE(tpm_status_->CheckAndNotifyIfTpmOwned());
+  EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
+      .WillRepeatedly(Return(true));
+  EXPECT_EQ(TpmStatus::kTpmOwned, tpm_status_->CheckAndNotifyIfTpmOwned());
+  EXPECT_EQ(TpmStatus::kTpmOwned, tpm_status_->CheckAndNotifyIfTpmOwned());
   EXPECT_EQ(ownership_call_count_, 1);
+}
+
+TEST_F(Tpm2StatusTest, IsPreOwned) {
+  EXPECT_CALL(mock_tpm_state_, Initialize())
+      .WillRepeatedly(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_tpm_state_, IsOwned()).WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
+      .WillRepeatedly(Return(true));
+  EXPECT_EQ(TpmStatus::kTpmPreOwned, tpm_status_->CheckAndNotifyIfTpmOwned());
+  EXPECT_EQ(ownership_call_count_, 0);
 }
 
 TEST_F(Tpm2StatusTest, GetDictionaryAttackInfoInitializeFailure) {

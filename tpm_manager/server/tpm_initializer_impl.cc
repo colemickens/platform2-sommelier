@@ -52,7 +52,7 @@ bool TpmInitializerImpl::PreInitializeTpm() {
 }
 
 bool TpmInitializerImpl::InitializeTpm() {
-  if (tpm_status_->CheckAndNotifyIfTpmOwned()) {
+  if (TpmStatus::kTpmOwned == tpm_status_->CheckAndNotifyIfTpmOwned()) {
     // Tpm is already owned, so we do not need to do anything.
     VLOG(1) << "Tpm already owned.";
     return true;

@@ -43,7 +43,7 @@ class Tpm2StatusImpl : public TpmStatus {
 
   // TpmStatus methods.
   bool IsTpmEnabled() override;
-  bool CheckAndNotifyIfTpmOwned() override;
+  TpmOwnershipStatus CheckAndNotifyIfTpmOwned() override;
   bool GetDictionaryAttackInfo(int* counter,
                                int* threshold,
                                bool* lockout,
@@ -71,12 +71,12 @@ class Tpm2StatusImpl : public TpmStatus {
   bool Refresh();
 
   bool initialized_{false};
-  bool is_owned_{false};
+  TpmOwnershipStatus ownership_status_{kTpmUnowned};
   const trunks::TrunksFactory& trunks_factory_;
   std::unique_ptr<trunks::TpmState> trunks_tpm_state_;
 
   // Callback function called after TPM ownership is taken.
-  const OwnershipTakenCallBack& ownership_taken_callback_;
+  OwnershipTakenCallBack ownership_taken_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(Tpm2StatusImpl);
 };

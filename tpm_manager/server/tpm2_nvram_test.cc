@@ -18,13 +18,16 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include "trunks/authorization_delegate.h"
 #include <trunks/mock_hmac_session.h>
 #include <trunks/mock_policy_session.h>
 #include <trunks/mock_tpm_utility.h>
+#include "trunks/password_authorization_delegate.h"
 #include <trunks/tpm_constants.h>
 #include <trunks/trunks_factory_for_test.h>
 
 #include "tpm_manager/server/mock_local_data_store.h"
+#include "tpm_manager/server/mock_tpm_status.h"
 
 namespace {
 
@@ -66,7 +69,8 @@ class Tpm2NvramTest : public testing::Test {
     factory_.set_policy_session(&mock_policy_session_);
     factory_.set_trial_session(&mock_trial_session_);
     factory_.set_tpm_utility(&mock_tpm_utility_);
-    tpm_nvram_.reset(new Tpm2NvramImpl(factory_, &mock_data_store_));
+    tpm_nvram_.reset(
+        new Tpm2NvramImpl(factory_, &mock_data_store_, &mock_tpm_status_));
     ON_CALL(mock_hmac_session_, GetDelegate()).WillByDefault(Return(kHMACAuth));
     ON_CALL(mock_policy_session_, GetDelegate())
         .WillByDefault(Return(kPolicyAuth));
@@ -76,6 +80,8 @@ class Tpm2NvramTest : public testing::Test {
     ON_CALL(mock_trial_session_, GetDigest(_))
         .WillByDefault(
             DoAll(SetArgPointee<0>(kFakePolicyDigest), Return(TPM_RC_SUCCESS)));
+    ON_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned())
+        .WillByDefault(Return(TpmStatus::kTpmOwned));
   }
 
   void SetupOwnerPassword() {
@@ -158,6 +164,7 @@ class Tpm2NvramTest : public testing::Test {
   NiceMock<trunks::MockPolicySession> mock_trial_session_;
   NiceMock<MockLocalDataStore> mock_data_store_;
   NiceMock<trunks::MockTpmUtility> mock_tpm_utility_;
+  NiceMock<MockTpmStatus> mock_tpm_status_;
   std::unique_ptr<Tpm2NvramImpl> tpm_nvram_;
 };
 
@@ -317,6 +324,27 @@ TEST_F(Tpm2NvramTest, DefineSpaceClobberExistingLocalData) {
             local_data.nvram_policy(2).index());
   EXPECT_NE(local_data.nvram_policy(1).index(),
             local_data.nvram_policy(2).index());
+}
+
+TEST_F(Tpm2NvramTest, DefineSpaceBeforeTpmIsOwned) {
+  auto delegate = std::make_unique<trunks::PasswordAuthorizationDelegate>("");
+  factory_.set_password_authorization_delegate(delegate.get());
+
+  ON_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned())
+      .WillByDefault(Return(TpmStatus::kTpmUnowned));
+
+  // trunks_session_->Delegate() is not called.
+  EXPECT_CALL(mock_hmac_session_, GetDelegate()).Times(0);
+  // ScopedGlobalHmacSession() is not called.
+  EXPECT_CALL(mock_hmac_session_, StartUnboundSession(_, _)).Times(0);
+  // SetupOwnerSession() is not called.
+  EXPECT_CALL(mock_hmac_session_, SetEntityAuthorizationValue(_)).Times(0);
+
+  EXPECT_CALL(mock_tpm_utility_, DefineNVSpace(_, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_EQ(
+      NVRAM_RESULT_SUCCESS,
+      tpm_nvram_->DefineSpace(0, 0, {}, "", NVRAM_POLICY_NONE));
 }
 
 TEST_F(Tpm2NvramTest, DestroySpaceSuccess) {

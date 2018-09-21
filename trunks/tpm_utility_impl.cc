@@ -47,7 +47,6 @@
 namespace {
 
 const char kPlatformPassword[] = "cros-platform";
-const char kWellKnownPassword[] = "cros-password";
 const size_t kMaxPasswordLength = 32;
 // The below maximum is defined in TPM 2.0 Library Spec Part 2 Section 13.1
 const uint32_t kMaxNVSpaceIndex = (1 << 24) - 1;
@@ -328,7 +327,7 @@ TPM_RC TpmUtilityImpl::PrepareForOwnership() {
 TPM_RC TpmUtilityImpl::CreateStorageAndSaltingKeys() {
   // First we set the storage hierarchy authorization to the well know default
   // password.
-  TPM_RC result = result = SetKnownOwnerPassword(kWellKnownPassword);
+  TPM_RC result = SetKnownOwnerPassword(kWellKnownPassword);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Error injecting known password: "
                << GetErrorString(result);
