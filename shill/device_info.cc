@@ -51,6 +51,7 @@
 #include "shill/manager.h"
 #include "shill/net/ndisc.h"
 #include "shill/net/rtnl_handler.h"
+#include "shill/net/rtnl_link_stats.h"
 #include "shill/net/rtnl_listener.h"
 #include "shill/net/rtnl_message.h"
 #include "shill/net/shill_time.h"
@@ -1253,7 +1254,7 @@ void DeviceInfo::RetrieveLinkStatistics(int interface_index,
     return;
   }
   ByteString stats_bytes(msg.GetAttribute(IFLA_STATS64));
-  struct rtnl_link_stats64 stats;
+  struct old_rtnl_link_stats64 stats;
   if (stats_bytes.GetLength() < sizeof(stats)) {
     LOG(WARNING) << "Link statistics size is too small: "
                  << stats_bytes.GetLength() << " < " << sizeof(stats);

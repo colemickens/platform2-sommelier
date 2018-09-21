@@ -48,6 +48,7 @@
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/mock_sockets.h"
 #include "shill/net/mock_time.h"
+#include "shill/net/rtnl_link_stats.h"
 #include "shill/net/rtnl_message.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/mock_vpn_provider.h"
@@ -443,7 +444,7 @@ TEST_F(DeviceInfoTest, GetByteCounts) {
 
   // Short link statistics message.
   message.reset(BuildLinkMessage(RTNLMessage::kModeAdd));
-  struct rtnl_link_stats64 stats;
+  struct old_rtnl_link_stats64 stats;
   memset(&stats, 0, sizeof(stats));
   stats.rx_bytes = kReceiveByteCount;
   stats.tx_bytes = kTransmitByteCount;
