@@ -12,6 +12,7 @@ clock_gettime: 1
 clone: 1
 close: 1
 connect: 1
+dup: 1
 epoll_create1: 1
 epoll_ctl: 1
 epoll_pwait: 1
@@ -22,6 +23,8 @@ exit_group: 1
 fcntl: 1
 fstat: 1
 futex: 1
+getcwd: 1
+getdents: 1
 getegid: 1
 geteuid: 1
 getgid: 1
@@ -33,17 +36,22 @@ getsockopt: 1
 gettid: 1
 gettimeofday: 1
 getuid: 1
+ioctl: arg1 == TCGETS
 listen: 1
 lseek: 1
+lstat: 1
 madvise: 1
-mmap: arg2 == PROT_NONE || arg2 == PROT_READ || arg2 == PROT_WRITE || arg2 == PROT_READ|PROT_WRITE
-mprotect: arg2 == PROT_NONE || arg2 == PROT_READ || arg2 == PROT_WRITE || arg2 == PROT_READ|PROT_WRITE
+# Make sure PROT_WRITE (bit 1) and PROT_EXEC (bit 2) are not both set.
+mmap: arg2 in 0xfffffffb || arg2 in 0xfffffffd
+# Make sure PROT_WRITE (bit 1) and PROT_EXEC (bit 2) are not both set.
+mprotect: arg2 in 0xfffffffb || arg2 in 0xfffffffd
 munmap: 1
 open: 1
 pipe2: 1
 poll: 1
 prctl: arg0 == PR_SET_NAME
 read: 1
+readlink: 1
 recvmsg: 1
 restart_syscall: 1
 rt_sigaction: 1
