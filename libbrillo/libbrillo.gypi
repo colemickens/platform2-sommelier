@@ -112,7 +112,6 @@
       'sources': [
         'brillo/blkdev_utils/device_mapper.cc',
         'brillo/blkdev_utils/device_mapper_task.cc',
-        'brillo/blkdev_utils/loop_device.cc',
       ],
     },
     {
@@ -192,7 +191,6 @@
       ],
       'sources': [
         'brillo/blkdev_utils/device_mapper_fake.cc',
-        'brillo/blkdev_utils/loop_device_fake.cc',
         'brillo/http/http_connection_fake.cc',
         'brillo/http/http_transport_fake.cc',
         'brillo/message_loops/fake_message_loop.cc',
@@ -385,7 +383,6 @@
             'brillo/asynchronous_signal_handler_unittest.cc',
             'brillo/backoff_entry_unittest.cc',
             'brillo/blkdev_utils/device_mapper_unittest.cc',
-            'brillo/blkdev_utils/loop_device_unittest.cc',
             'brillo/data_encoding_unittest.cc',
             'brillo/enum_flags_unittest.cc',
             'brillo/errors/error_codes_unittest.cc',
