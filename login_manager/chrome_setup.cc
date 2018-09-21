@@ -373,9 +373,12 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
     }
   }
 
-  // Force-enable the Touch-Optimized UI feature for touch centric devices.
-  if (builder->UseFlagIsSet("touch_centric_device"))
+  if (builder->UseFlagIsSet("touch_centric_device")) {
+    // Force-enable the Touch-Optimized UI feature for touch-centric devices.
     builder->AddFeatureEnableOverride("TouchOptimizedUi");
+    // Tapping the power button should turn the screen off in laptop mode.
+    builder->AddArg("--force-tablet-power-button");
+  }
 
   if (builder->UseFlagIsSet("rialto")) {
     builder->AddArg("--enterprise-enable-zero-touch-enrollment=hands-off");
