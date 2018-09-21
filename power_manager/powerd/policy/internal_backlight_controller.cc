@@ -528,7 +528,8 @@ void InternalBacklightController::HandleIncreaseBrightnessRequest() {
   // If we don't actually change the brightness, emit a signal so the UI can
   // show the user that nothing changed.
   const double current_percent = LevelToPercent(current_level_);
-  HandleSetBrightnessRequest(new_percent, Transition::FAST);
+  HandleSetBrightnessRequest(new_percent, Transition::FAST,
+                             SetBacklightBrightnessRequest_Cause_USER_REQUEST);
   if (LevelToPercent(current_level_) == current_percent) {
     EmitBrightnessChangedSignal(dbus_wrapper_, kScreenBrightnessChangedSignal,
                                 current_percent,
@@ -555,7 +556,8 @@ void InternalBacklightController::HandleDecreaseBrightnessRequest(
   // If we don't actually change the brightness, emit a signal so the UI can
   // show the user that nothing changed.
   const double current_percent = LevelToPercent(current_level_);
-  HandleSetBrightnessRequest(new_percent, Transition::FAST);
+  HandleSetBrightnessRequest(new_percent, Transition::FAST,
+                             SetBacklightBrightnessRequest_Cause_USER_REQUEST);
   if (LevelToPercent(current_level_) == current_percent) {
     EmitBrightnessChangedSignal(dbus_wrapper_, kScreenBrightnessChangedSignal,
                                 current_percent,
@@ -564,16 +566,32 @@ void InternalBacklightController::HandleDecreaseBrightnessRequest(
 }
 
 void InternalBacklightController::HandleSetBrightnessRequest(
-    double percent, Transition transition) {
-  LOG(INFO) << "Got user-triggered request to set brightness to " << percent
-            << "%";
-  user_adjustment_count_++;
+    double percent,
+    Transition transition,
+    SetBacklightBrightnessRequest_Cause cause) {
+  BacklightBrightnessChange_Cause change_cause =
+      BacklightBrightnessChange_Cause_OTHER;
+  const char* cause_str = "unknown";
+  switch (cause) {
+    case SetBacklightBrightnessRequest_Cause_USER_REQUEST:
+      cause_str = "user-triggered";
+      change_cause = BacklightBrightnessChange_Cause_USER_REQUEST;
+      break;
+    case SetBacklightBrightnessRequest_Cause_MODEL:
+      cause_str = "model-triggered";
+      change_cause = BacklightBrightnessChange_Cause_MODEL;
+      break;
+  }
+
+  LOG(INFO) << "Got " << cause_str << " request to set brightness to "
+            << percent << "%";
+  if (cause == SetBacklightBrightnessRequest_Cause_USER_REQUEST)
+    user_adjustment_count_++;
   using_policy_brightness_ = false;
 
   // When the user explicitly requests a specific brightness level, use it for
   // both AC and battery power.
-  SetExplicitBrightnessPercent(percent, percent, transition,
-                               BacklightBrightnessChange_Cause_USER_REQUEST);
+  SetExplicitBrightnessPercent(percent, percent, transition, change_cause);
 }
 
 void InternalBacklightController::HandleGetBrightnessRequest(

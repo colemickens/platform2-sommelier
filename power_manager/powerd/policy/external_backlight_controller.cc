@@ -196,7 +196,9 @@ void ExternalBacklightController::HandleDecreaseBrightnessRequest(
 }
 
 void ExternalBacklightController::HandleSetBrightnessRequest(
-    double percent, Transition transition) {
+    double percent,
+    Transition transition,
+    SetBacklightBrightnessRequest_Cause cause) {
   // Silently ignore requests to set to a specific percent. External displays
   // are buggy and DDC/CI is racy if the user is simultaneously adjusting the
   // brightness using physical buttons. Instead, we only support increasing and

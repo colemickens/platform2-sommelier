@@ -76,7 +76,9 @@ class ExternalBacklightController : public BacklightController,
   // Handlers for requests sent via D-Bus.
   void HandleIncreaseBrightnessRequest();
   void HandleDecreaseBrightnessRequest(bool allow_off);
-  void HandleSetBrightnessRequest(double percent, Transition transition);
+  void HandleSetBrightnessRequest(double percent,
+                                  Transition transition,
+                                  SetBacklightBrightnessRequest_Cause cause);
   void HandleGetBrightnessRequest(double* percent_out, bool* success_out);
 
   // Turns displays on or off via |monitor_reconfigure_| as needed for

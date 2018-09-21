@@ -43,31 +43,50 @@ void OnSetBrightness(const std::string& method_name,
                      dbus::MethodCall* method_call,
                      dbus::ExportedObject::ResponseSender response_sender) {
   double percent = 0.0;
-  int dbus_transition = 0;
-  dbus::MessageReader reader(method_call);
-  if (!reader.PopDouble(&percent) || !reader.PopInt32(&dbus_transition)) {
-    LOG(ERROR) << "Missing " << method_name << " args";
-    response_sender.Run(dbus::ErrorResponse::FromMethodCall(
-        method_call, DBUS_ERROR_INVALID_ARGS,
-        "Expected double percent and int32 transition"));
-    return;
-  }
-
   using Transition = policy::BacklightController::Transition;
   Transition transition = Transition::FAST;
-  switch (dbus_transition) {
-    case kBrightnessTransitionGradual:
-      transition = Transition::FAST;
-      break;
-    case kBrightnessTransitionInstant:
-      transition = Transition::INSTANT;
-      break;
-    default:
-      LOG(ERROR) << "Invalid " << method_name << " transition "
-                 << dbus_transition;
+  SetBacklightBrightnessRequest_Cause cause =
+      SetBacklightBrightnessRequest_Cause_USER_REQUEST;
+
+  dbus::MessageReader reader(method_call);
+  SetBacklightBrightnessRequest request;
+  if (reader.PopArrayOfBytesAsProto(&request)) {
+    percent = request.percent();
+    switch (request.transition()) {
+      case SetBacklightBrightnessRequest_Transition_GRADUAL:
+        transition = Transition::FAST;
+        break;
+      case SetBacklightBrightnessRequest_Transition_INSTANT:
+        transition = Transition::INSTANT;
+        break;
+    }
+    cause = request.cause();
+  } else {
+    // TODO(derat): Delete this path and just return the error after Chrome has
+    // been updated to send protobufs instead of D-Bus args:
+    // https://crbug.com/881786
+    int dbus_transition = 0;
+    if (!reader.PopDouble(&percent) || !reader.PopInt32(&dbus_transition)) {
+      LOG(ERROR) << "Invalid " << method_name << " args";
+      response_sender.Run(dbus::ErrorResponse::FromMethodCall(
+          method_call, DBUS_ERROR_INVALID_ARGS,
+          "Expected SetBacklightBrightnessRequest protobuf"));
+      return;
+    }
+    switch (dbus_transition) {
+      case kBrightnessTransitionGradual:
+        transition = Transition::FAST;
+        break;
+      case kBrightnessTransitionInstant:
+        transition = Transition::INSTANT;
+        break;
+      default:
+        LOG(ERROR) << "Invalid " << method_name << " transition "
+                   << dbus_transition;
+    }
   }
 
-  callback.Run(percent, transition);
+  callback.Run(percent, transition, cause);
   response_sender.Run(dbus::Response::FromMethodCall(method_call));
 }
 

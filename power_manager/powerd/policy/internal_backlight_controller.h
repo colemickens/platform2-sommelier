@@ -125,7 +125,9 @@ class InternalBacklightController : public BacklightController,
   // Handlers for requests sent via D-Bus.
   void HandleIncreaseBrightnessRequest();
   void HandleDecreaseBrightnessRequest(bool allow_off);
-  void HandleSetBrightnessRequest(double percent, Transition transition);
+  void HandleSetBrightnessRequest(double percent,
+                                  Transition transition,
+                                  SetBacklightBrightnessRequest_Cause cause);
   void HandleGetBrightnessRequest(double* percent_out, bool* success_out);
 
   // Increases the explicitly-set brightness to the minimum visible level if

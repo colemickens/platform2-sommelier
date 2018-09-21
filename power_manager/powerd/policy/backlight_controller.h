@@ -124,8 +124,8 @@ class BacklightController {
 
   using IncreaseBrightnessCallback = base::Closure;
   using DecreaseBrightnessCallback = base::Callback<void(bool allow_off)>;
-  using SetBrightnessCallback =
-      base::Callback<void(double percent, Transition)>;
+  using SetBrightnessCallback = base::Callback<void(
+      double percent, Transition, SetBacklightBrightnessRequest_Cause)>;
   using GetBrightnessCallback =
       base::Callback<void(double* percent_out, bool* success_out)>;
 
