@@ -13,6 +13,7 @@
 
 #include <base/files/file_util.h>
 #include <mojo/edk/embedder/embedder.h>
+#include <mojo/edk/embedder/pending_process_connection.h>
 #include <mojo/edk/embedder/platform_channel_pair.h>
 #include <mojo/edk/embedder/platform_channel_utils_posix.h>
 #include <mojo/edk/embedder/platform_handle_vector.h>
@@ -225,14 +226,16 @@ MojoResult CreateMojoChannelToChildByUnixDomainSocket(
   }
 
   VLOGF(1) << "Setting up message pipe";
+  mojo::edk::PendingProcessConnection process;
   mojo::edk::PlatformChannelPair channel_pair;
-  const int kUnusedProcessHandle = 0;
-  mojo::edk::ChildProcessLaunched(kUnusedProcessHandle,
-                                  channel_pair.PassServerHandle());
+  process.Connect(base::kNullProcessHandle,
+                  mojo::edk::ConnectionParams(channel_pair.PassServerHandle()));
   mojo::edk::ScopedPlatformHandleVectorPtr handles(
       new mojo::edk::PlatformHandleVector(
           {channel_pair.PassClientHandle().release()}));
-  std::string token = mojo::edk::GenerateRandomToken();
+  std::string token;
+  mojo::ScopedMessagePipeHandle message_pipe =
+      process.CreateMessagePipe(&token);
   VLOGF(1) << "Generated token: " << token;
   struct iovec iov = {const_cast<char*>(token.c_str()), token.length()};
   if (mojo::edk::PlatformChannelSendmsgWithHandles(
@@ -242,7 +245,7 @@ MojoResult CreateMojoChannelToChildByUnixDomainSocket(
     return MOJO_RESULT_INTERNAL;
   }
 
-  *parent_pipe = mojo::edk::CreateParentMessagePipe(token);
+  *parent_pipe = std::move(message_pipe);
   return MOJO_RESULT_OK;
 }
 

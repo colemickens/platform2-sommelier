@@ -181,7 +181,7 @@ void CameraMojoChannelManagerImpl::TearDownMojoEnvLockedOnThread() {
   if (dispatcher_.is_bound()) {
     dispatcher_.reset();
   }
-  mojo::edk::ShutdownIPCSupport();
+  mojo::edk::ShutdownIPCSupport(base::Bind(&base::DoNothing));
 }
 
 // static

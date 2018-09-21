@@ -176,7 +176,7 @@ cros::mojom::CameraMetadataPtr SerializeCameraMetadata(
 ScopedCameraMetadata DeserializeCameraMetadata(
     const cros::mojom::CameraMetadataPtr& metadata) {
   ScopedCameraMetadata result;
-  if (!metadata->entries.is_null()) {
+  if (metadata->entries.has_value()) {
     camera_metadata_t* allocated_data = allocate_camera_metadata(
         metadata->entry_capacity, metadata->data_capacity);
     if (!allocated_data) {
@@ -186,9 +186,8 @@ ScopedCameraMetadata DeserializeCameraMetadata(
     result.reset(allocated_data);
     for (size_t i = 0; i < metadata->entry_count; ++i) {
       int ret = add_camera_metadata_entry(
-          result.get(), static_cast<uint32_t>(metadata->entries[i]->tag),
-          metadata->entries[i]->data.storage().data(),
-          metadata->entries[i]->count);
+          result.get(), static_cast<uint32_t>((*metadata->entries)[i]->tag),
+          (*metadata->entries)[i]->data.data(), (*metadata->entries)[i]->count);
       if (ret) {
         LOGF(ERROR) << "Failed to add camera metadata entry";
         result.reset();
