@@ -1187,4 +1187,12 @@ constexpr char kOpenFileMethod[] = "OpenFile";
 
 }  // namespace arc
 
+namespace anomaly_collector {
+const char kAnomalyEventServiceName[] = "org.chromium.AnomalyEventService";
+const char kAnomalyEventServicePath[] = "/org/chromium/AnomalyEventService";
+const char kAnomalyEventServiceInterface[] =
+    "org.chromium.AnomalyEventServiceInterface";
+const char kAnomalyEventSignalName[] = "AnomalyEvent";
+}  // namespace anomaly_collector
+
 #endif  // SYSTEM_API_DBUS_SERVICE_CONSTANTS_H_

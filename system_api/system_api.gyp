@@ -192,6 +192,29 @@
       ]
     },
     {
+      'target_name': 'system_api-metrics_event-protos-gen',
+      'type': 'none',
+      'variables': {
+        'proto_in_dir': 'dbus/metrics_event',
+        'proto_out_dir': 'include/metrics_event/proto_bindings',
+      },
+      'sources': [
+        '<(proto_in_dir)/metrics_event.proto',
+      ],
+      'includes': ['../../platform2/common-mk/protoc.gypi'],
+    },
+    {
+      'target_name': 'system_api-metrics_event-protos',
+      'type': 'static_library',
+      'standalone_static_library': 1,
+      'dependencies': [
+        'system_api-metrics_event-protos-gen',
+      ],
+      'sources': [
+        '<(SHARED_INTERMEDIATE_DIR)/include/metrics_event/proto_bindings/metrics_event.pb.cc',
+      ]
+    },
+    {
       'target_name': 'system_api-smbprovider-protos-gen',
       'type': 'none',
       'variables': {
