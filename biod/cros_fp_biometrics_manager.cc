@@ -543,7 +543,7 @@ bool CrosFpBiometricsManager::CrosFpDevice::UploadTemplate(
     req->size = tlen | (remaining == tlen ? FP_TEMPLATE_COMMIT : 0);
     std::copy(pos, pos + tlen, req->data);
     cmd.SetReqSize(tlen + sizeof(struct ec_params_fp_template));
-    if (!cmd.Run(cros_fd_.get())) {
+    if (!cmd.Run(cros_fd_.get()) || cmd.Result() != EC_RES_SUCCESS) {
       LOG(ERROR) << "FP_TEMPLATE command failed @ " << pos - tmpl.begin();
       return false;
     }
