@@ -27,6 +27,7 @@ static_library("libhermes") {
   sources = [
     "apdu.cc",
     "qmi_uim.c",
+    "sgp_22.cc",
     "smdp.cc",
   ]
 }
