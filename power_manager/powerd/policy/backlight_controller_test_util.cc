@@ -33,14 +33,14 @@ void CallDecreaseScreenBrightness(system::DBusWrapperStub* wrapper,
   ASSERT_TRUE(wrapper->CallExportedMethodSync(&method_call));
 }
 
-void CallSetScreenBrightnessPercent(
+void CallSetScreenBrightness(
     system::DBusWrapperStub* wrapper,
     double percent,
     SetBacklightBrightnessRequest_Transition transition,
     SetBacklightBrightnessRequest_Cause cause) {
   DCHECK(wrapper);
   dbus::MethodCall method_call(kPowerManagerInterface,
-                               kSetScreenBrightnessPercentMethod);
+                               kSetScreenBrightnessMethod);
   dbus::MessageWriter writer(&method_call);
   SetBacklightBrightnessRequest proto;
   proto.set_percent(percent);
@@ -50,9 +50,9 @@ void CallSetScreenBrightnessPercent(
   ASSERT_TRUE(wrapper->CallExportedMethodSync(&method_call));
 }
 
-void CallSetScreenBrightnessPercentLegacy(system::DBusWrapperStub* wrapper,
-                                          double percent,
-                                          int transition) {
+void CallSetScreenBrightnessPercent(system::DBusWrapperStub* wrapper,
+                                    double percent,
+                                    int transition) {
   DCHECK(wrapper);
   dbus::MethodCall method_call(kPowerManagerInterface,
                                kSetScreenBrightnessPercentMethod);

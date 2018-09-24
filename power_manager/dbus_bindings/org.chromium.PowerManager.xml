@@ -30,6 +30,13 @@
       </tp:docstring>
       <arg name="external_wakeup_count" direction="in" type="t" />
     </method>
+    <method name="SetScreenBrightness">
+      <tp:docstring>
+        The |serialized_proto| arg is a serialized
+        power_manager::SetBacklightBrightnessRequest protobuf.
+      </tp:docstring>
+      <arg name="serialized_proto" direction="in" type="ay" />
+    </method>
     <method name="DecreaseScreenBrightness">
       <arg name="allow_off" direction="in" type="b" />
     </method>

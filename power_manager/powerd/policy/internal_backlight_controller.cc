@@ -225,12 +225,17 @@ void InternalBacklightController::Init(
       base::Bind(&InternalBacklightController::HandleDecreaseBrightnessRequest,
                  weak_ptr_factory_.GetWeakPtr()));
   RegisterSetBrightnessHandler(
-      dbus_wrapper_, kSetScreenBrightnessPercentMethod,
+      dbus_wrapper_, kSetScreenBrightnessMethod,
       base::Bind(&InternalBacklightController::HandleSetBrightnessRequest,
                  weak_ptr_factory_.GetWeakPtr()));
   RegisterGetBrightnessHandler(
       dbus_wrapper_, kGetScreenBrightnessPercentMethod,
       base::Bind(&InternalBacklightController::HandleGetBrightnessRequest,
+                 weak_ptr_factory_.GetWeakPtr()));
+  // TODO(derat): Delete this after Chrome is calling SetScreenBrightness.
+  RegisterSetBrightnessHandler(
+      dbus_wrapper_, kSetScreenBrightnessPercentMethod,
+      base::Bind(&InternalBacklightController::HandleSetBrightnessRequest,
                  weak_ptr_factory_.GetWeakPtr()));
 
   init_time_ = clock_->GetCurrentTime();

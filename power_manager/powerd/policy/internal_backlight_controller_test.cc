@@ -189,7 +189,7 @@ TEST_F(InternalBacklightControllerTest, IncreaseAndDecreaseBrightness) {
   const double kStep = 100.0 / InternalBacklightController::kMaxBrightnessSteps;
   const double kMiddlePercent =
       kStep * InternalBacklightController::kMaxBrightnessSteps / 2;
-  test::CallSetScreenBrightnessPercent(
+  test::CallSetScreenBrightness(
       dbus_wrapper_.get(), kMiddlePercent + 0.75 * kStep,
       SetBacklightBrightnessRequest_Transition_INSTANT,
       SetBacklightBrightnessRequest_Cause_USER_REQUEST);
@@ -200,7 +200,7 @@ TEST_F(InternalBacklightControllerTest, IncreaseAndDecreaseBrightness) {
 
   // Start at 1/4 of a step below the middle step. After an increase request,
   // the brightness should be snapped to one step above the middle step.
-  test::CallSetScreenBrightnessPercent(
+  test::CallSetScreenBrightness(
       dbus_wrapper_.get(), kMiddlePercent - 0.25 * kStep,
       SetBacklightBrightnessRequest_Transition_INSTANT,
       SetBacklightBrightnessRequest_Cause_USER_REQUEST);
@@ -258,7 +258,7 @@ TEST_F(InternalBacklightControllerTest, NotifyObserver) {
   // Set the brightness to a lower level.
   observer.Clear();
   const double kLowPercent = 40.0;
-  test::CallSetScreenBrightnessPercent(
+  test::CallSetScreenBrightness(
       dbus_wrapper_.get(), kLowPercent,
       SetBacklightBrightnessRequest_Transition_INSTANT,
       SetBacklightBrightnessRequest_Cause_USER_REQUEST);
@@ -452,7 +452,7 @@ TEST_F(InternalBacklightControllerTest, TestPlugAndUnplug) {
   // A custom level set while using battery power should be used after switching
   // to AC.
   const double kFirstPercent = 40.0;
-  test::CallSetScreenBrightnessPercent(
+  test::CallSetScreenBrightness(
       dbus_wrapper_.get(), kFirstPercent,
       SetBacklightBrightnessRequest_Transition_INSTANT,
       SetBacklightBrightnessRequest_Cause_USER_REQUEST);
@@ -462,7 +462,7 @@ TEST_F(InternalBacklightControllerTest, TestPlugAndUnplug) {
 
   // Ditto for switching from AC to battery.
   const double kSecondPercent = 60.0;
-  test::CallSetScreenBrightnessPercent(
+  test::CallSetScreenBrightness(
       dbus_wrapper_.get(), kSecondPercent,
       SetBacklightBrightnessRequest_Transition_INSTANT,
       SetBacklightBrightnessRequest_Cause_USER_REQUEST);
@@ -505,7 +505,7 @@ TEST_F(InternalBacklightControllerTest, TestDimming) {
   controller_->SetDimmedForInactivity(true);
   EXPECT_EQ(dimmed_level, backlight_.current_level());
   const double kNewUserOffset = 67.0;
-  test::CallSetScreenBrightnessPercent(
+  test::CallSetScreenBrightness(
       dbus_wrapper_.get(), kNewUserOffset,
       SetBacklightBrightnessRequest_Transition_INSTANT,
       SetBacklightBrightnessRequest_Cause_USER_REQUEST);
@@ -519,7 +519,7 @@ TEST_F(InternalBacklightControllerTest, TestDimming) {
 
   // If the brightness is already below the dimmed level, it shouldn't be
   // changed when dimming is requested.
-  test::CallSetScreenBrightnessPercent(
+  test::CallSetScreenBrightness(
       dbus_wrapper_.get(), InternalBacklightController::kMinVisiblePercent,
       SetBacklightBrightnessRequest_Transition_INSTANT,
       SetBacklightBrightnessRequest_Cause_USER_REQUEST);
@@ -537,7 +537,7 @@ TEST_F(InternalBacklightControllerTest, UserLevelOverridesAmbientLight) {
   EXPECT_EQ(0, controller_->GetNumUserAdjustments());
 
   const double kUserPercent = 80.0;
-  test::CallSetScreenBrightnessPercent(
+  test::CallSetScreenBrightness(
       dbus_wrapper_.get(), kUserPercent,
       SetBacklightBrightnessRequest_Transition_INSTANT,
       SetBacklightBrightnessRequest_Cause_USER_REQUEST);
@@ -628,7 +628,7 @@ TEST_F(InternalBacklightControllerTest, ForceBacklightOnForUserActivity) {
   Init(PowerSource::AC);
   const int kMinVisibleLevel =
       PercentToLevel(InternalBacklightController::kMinVisiblePercent);
-  test::CallSetScreenBrightnessPercent(
+  test::CallSetScreenBrightness(
       dbus_wrapper_.get(), 0.0,
       SetBacklightBrightnessRequest_Transition_INSTANT,
       SetBacklightBrightnessRequest_Cause_USER_REQUEST);
@@ -637,7 +637,7 @@ TEST_F(InternalBacklightControllerTest, ForceBacklightOnForUserActivity) {
   EXPECT_EQ(kMinVisibleLevel, backlight_.current_level());
 
   // Pressing the power button should also increase the brightness.
-  test::CallSetScreenBrightnessPercent(
+  test::CallSetScreenBrightness(
       dbus_wrapper_.get(), 0.0,
       SetBacklightBrightnessRequest_Transition_INSTANT,
       SetBacklightBrightnessRequest_Cause_USER_REQUEST);
@@ -646,7 +646,7 @@ TEST_F(InternalBacklightControllerTest, ForceBacklightOnForUserActivity) {
   EXPECT_EQ(kMinVisibleLevel, backlight_.current_level());
 
   // Ditto for most user activity.
-  test::CallSetScreenBrightnessPercent(
+  test::CallSetScreenBrightness(
       dbus_wrapper_.get(), 0.0,
       SetBacklightBrightnessRequest_Transition_INSTANT,
       SetBacklightBrightnessRequest_Cause_USER_REQUEST);
@@ -663,7 +663,7 @@ TEST_F(InternalBacklightControllerTest, ForceBacklightOnForUserActivity) {
 
   // User activity corresponding to brightness- or volume-related key presses
   // shouldn't increase the brightness, though.
-  test::CallSetScreenBrightnessPercent(
+  test::CallSetScreenBrightness(
       dbus_wrapper_.get(), 0.0,
       SetBacklightBrightnessRequest_Transition_INSTANT,
       SetBacklightBrightnessRequest_Cause_USER_REQUEST);
@@ -700,7 +700,7 @@ TEST_F(InternalBacklightControllerTest, ForceBacklightOnForUserActivity) {
   PowerManagementPolicy policy;
   policy.set_force_nonzero_brightness_for_user_activity(false);
   controller_->HandlePolicyChange(policy);
-  test::CallSetScreenBrightnessPercent(
+  test::CallSetScreenBrightness(
       dbus_wrapper_.get(), 0.0,
       SetBacklightBrightnessRequest_Transition_INSTANT,
       SetBacklightBrightnessRequest_Cause_USER_REQUEST);
@@ -929,7 +929,7 @@ TEST_F(InternalBacklightControllerTest, MinVisibleLevelPrefUndercutsDefault) {
   // Set the brightness to 0%, increase it one step, and confirm that the level
   // configured by the pref is used instead of the higher computed default.
   Init(PowerSource::AC);
-  test::CallSetScreenBrightnessPercent(
+  test::CallSetScreenBrightness(
       dbus_wrapper_.get(), 0.0,
       SetBacklightBrightnessRequest_Transition_INSTANT,
       SetBacklightBrightnessRequest_Cause_USER_REQUEST);
@@ -940,7 +940,7 @@ TEST_F(InternalBacklightControllerTest, MinVisibleLevelPrefUndercutsDefault) {
 TEST_F(InternalBacklightControllerTest, PreemptTransitionForShutdown) {
   // Start a user-requested transition to 0.
   Init(PowerSource::AC);
-  test::CallSetScreenBrightnessPercent(
+  test::CallSetScreenBrightness(
       dbus_wrapper_.get(), 0, SetBacklightBrightnessRequest_Transition_GRADUAL,
       SetBacklightBrightnessRequest_Cause_USER_REQUEST);
   EXPECT_EQ(0, backlight_.current_level());
@@ -1044,7 +1044,7 @@ TEST_F(InternalBacklightControllerTest, SetAndGetBrightness) {
 
   // Set the brightness to a known percent.
   const double kBrightnessPercent = 55.0;
-  test::CallSetScreenBrightnessPercent(
+  test::CallSetScreenBrightness(
       dbus_wrapper_.get(), kBrightnessPercent,
       SetBacklightBrightnessRequest_Transition_GRADUAL,
       SetBacklightBrightnessRequest_Cause_MODEL);
@@ -1076,8 +1076,8 @@ TEST_F(InternalBacklightControllerTest, SetBrightnessLegacy) {
 
   // Request a brightness change using a legacy call that passes D-Bus args.
   const double kBrightnessPercent = 55.0;
-  test::CallSetScreenBrightnessPercentLegacy(
-      dbus_wrapper_.get(), kBrightnessPercent, kBrightnessTransitionGradual);
+  test::CallSetScreenBrightnessPercent(dbus_wrapper_.get(), kBrightnessPercent,
+                                       kBrightnessTransitionGradual);
   double percent = 0.0;
   ASSERT_TRUE(controller_->GetBrightnessPercent(&percent));
   ASSERT_DOUBLE_EQ(round(kBrightnessPercent), round(percent));

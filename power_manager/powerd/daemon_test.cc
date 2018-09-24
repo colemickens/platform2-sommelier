@@ -725,14 +725,11 @@ TEST_F(DaemonTest, FactoryMode) {
 
   // Display- and keyboard-backlight-related D-Bus methods shouldn't be
   // exported.
+  EXPECT_FALSE(dbus_wrapper_->IsMethodExported(kSetScreenBrightnessMethod));
   EXPECT_FALSE(
       dbus_wrapper_->IsMethodExported(kIncreaseScreenBrightnessMethod));
   EXPECT_FALSE(
       dbus_wrapper_->IsMethodExported(kDecreaseScreenBrightnessMethod));
-  EXPECT_FALSE(
-      dbus_wrapper_->IsMethodExported(kSetScreenBrightnessPercentMethod));
-  EXPECT_FALSE(
-      dbus_wrapper_->IsMethodExported(kSetScreenBrightnessPercentMethod));
   EXPECT_FALSE(
       dbus_wrapper_->IsMethodExported(kGetScreenBrightnessPercentMethod));
   EXPECT_FALSE(

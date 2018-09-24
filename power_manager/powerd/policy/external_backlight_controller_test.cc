@@ -42,7 +42,7 @@ TEST_F(ExternalBacklightControllerTest, BrightnessRequests) {
   // requests, but it does allow relative adjustments.
   double percent = 0.0;
   EXPECT_FALSE(controller_.GetBrightnessPercent(&percent));
-  test::CallSetScreenBrightnessPercent(
+  test::CallSetScreenBrightness(
       &dbus_wrapper_, 50.0, SetBacklightBrightnessRequest_Transition_INSTANT,
       SetBacklightBrightnessRequest_Cause_USER_REQUEST);
   EXPECT_EQ(0, controller_.GetNumUserAdjustments());

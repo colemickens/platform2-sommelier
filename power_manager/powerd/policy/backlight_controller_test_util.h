@@ -23,18 +23,19 @@ namespace test {
 void CallIncreaseScreenBrightness(system::DBusWrapperStub* wrapper);
 void CallDecreaseScreenBrightness(system::DBusWrapperStub* wrapper,
                                   bool allow_off);
-void CallSetScreenBrightnessPercent(
+void CallSetScreenBrightness(
     system::DBusWrapperStub* wrapper,
     double percent,
     SetBacklightBrightnessRequest_Transition transition,
     SetBacklightBrightnessRequest_Cause cause);
-// Passes D-Bus args to SetScreenBrightnessPercent rather than a
-// SetBacklightBrightnessRequest protobuf. |transition| is a
-// kBrightnessTransition* value from system_api.
-// TODO(derat): Delete after Chrome passes protobufs: https://crbug.com/881786
-void CallSetScreenBrightnessPercentLegacy(system::DBusWrapperStub* wrapper,
-                                          double percent,
-                                          int transition);
+// Passes D-Bus args to SetScreenBrightnessPercent rather than passing a
+// protobuf to SetScreenBrightness. |transition| is a kBrightnessTransition*
+// value from system_api.
+// TODO(derat): Delete after Chrome passes protobufs to the new method:
+// https://crbug.com/881786
+void CallSetScreenBrightnessPercent(system::DBusWrapperStub* wrapper,
+                                    double percent,
+                                    int transition);
 
 // Checks that the D-Bus signal at |index| has name |signal_name| and
 // describes a brightness change to (rounded) |brightness_percent| for |cause|.
