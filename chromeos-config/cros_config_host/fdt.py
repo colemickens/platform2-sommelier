@@ -346,7 +346,7 @@ class Fdt(object):
     poffset = libfdt.fdt_first_property_offset(self._fdt, node.offset)
     while poffset >= 0:
       p = self.fdt_obj.get_property_by_offset(poffset)
-      prop = Prop(node.fdt, node, poffset, p.name, p.value)
+      prop = Prop(node.fdt, node, poffset, p.name, p)
       props_dict[prop.name] = prop
 
       poffset = libfdt.fdt_next_property_offset(self._fdt, poffset)
