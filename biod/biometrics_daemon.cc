@@ -504,12 +504,19 @@ void BiometricsDaemon::OnSessionStateChanged(dbus::Signal* signal) {
   LOG(INFO) << "Session state changed to " << state << ".";
 
   if (state == dbus_constants::kSessionStateStarted) {
-    for (const auto& biometrics_manager_wrapper : biometrics_managers_) {
-      biometrics_manager_wrapper->get().SetDiskAccesses(true);
-    }
+    // If a primary session doesn't exist, we can safely reset the sensors
+    // before loading in templates. But if one exists, we should leave the
+    // sensors as is.
     if (!primary_user_.empty()) {
       LOG(INFO) << "Primary user already exists. Not updating primary user.";
       return;
+    }
+    for (const auto& biometrics_manager_wrapper : biometrics_managers_) {
+      biometrics_manager_wrapper->get().SetDiskAccesses(true);
+      if (!biometrics_manager_wrapper->get().ResetSensor()) {
+        LOG(ERROR) << "Failed to reset biometric sensor type: "
+                   << biometrics_manager_wrapper->get().GetType();
+      }
     }
     if (RetrievePrimarySession()) {
       for (const auto& biometrics_manager_wrapper : biometrics_managers_) {

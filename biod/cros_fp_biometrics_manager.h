@@ -49,6 +49,8 @@ class CrosFpBiometricsManager : public BiometricsManager {
 
   void SetDiskAccesses(bool allow) override;
 
+  bool ResetSensor() override;
+
  protected:
   void EndEnrollSession() override;
   void EndAuthSession() override;

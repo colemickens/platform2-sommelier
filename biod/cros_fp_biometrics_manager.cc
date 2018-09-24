@@ -124,6 +124,7 @@ class CrosFpBiometricsManager::CrosFpDevice : public MessageLoopForIO::Watcher {
   static std::unique_ptr<CrosFpDevice> Open(const MkbpCallback& callback);
 
   bool FpMode(uint32_t mode);
+  bool GetFpMode(uint32_t* mode);
   bool GetFpStats(int* capture_ms, int* matcher_ms, int* overall_ms);
   bool GetDirtyMap(std::bitset<32>* bitmap);
   bool GetTemplate(int index, VendorTemplate* out);
@@ -245,6 +246,18 @@ bool CrosFpBiometricsManager::CrosFpDevice::FpMode(uint32_t mode) {
   EcCommand<struct ec_params_fp_mode, struct ec_response_fp_mode> cmd(
       EC_CMD_FP_MODE, 0, {.mode = mode});
   return cmd.Run(cros_fd_.get());
+}
+
+bool CrosFpBiometricsManager::CrosFpDevice::GetFpMode(uint32_t* mode) {
+  EcCommand<struct ec_params_fp_mode, struct ec_response_fp_mode> cmd(
+      EC_CMD_FP_MODE, 0, {.mode = static_cast<uint32_t>(FP_MODE_DONT_CHANGE)});
+  if (!cmd.Run(cros_fd_.get())) {
+    LOG(ERROR) << "Failed to get FP mode from MCU.";
+    return false;
+  }
+
+  *mode = cmd.Resp()->mode;
+  return true;
 }
 
 bool CrosFpBiometricsManager::CrosFpDevice::FpFrame(
@@ -751,6 +764,43 @@ bool CrosFpBiometricsManager::SendStatsOnLogin() {
 
 void CrosFpBiometricsManager::SetDiskAccesses(bool allow) {
   biod_storage_.set_allow_access(allow);
+}
+
+bool CrosFpBiometricsManager::ResetSensor() {
+  // TODO(pmalani): FP_MODE_RESET_SENSOR
+  if (!cros_dev_->FpMode((1 << 7))) {
+    LOG(ERROR) << "Failed to send reset_sensor command to FPMCU.";
+    return false;
+  }
+
+  int retries = 50;
+  bool reset_complete = false;
+  while (retries--) {
+    uint32_t cur_mode;
+    if (!cros_dev_->GetFpMode(&cur_mode)) {
+      LOG(ERROR) << "Failed to query sensor state during reset.";
+      return false;
+    }
+
+    // TODO(pmalani): FP_MODE_RESET_SENSOR
+    if (!(cur_mode & (1 << 7))) {
+      reset_complete = true;
+      break;
+    }
+    base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(100));
+  }
+
+  if (!reset_complete) {
+    LOG(ERROR) << "Reset on FPMCU failed to complete.";
+    return false;
+  }
+
+  if (!Init()) {
+    LOG(ERROR) << "Failed to reinitialize CrosFpBiometricsManager.";
+    return false;
+  }
+
+  return true;
 }
 
 void CrosFpBiometricsManager::EndEnrollSession() {
