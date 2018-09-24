@@ -14,7 +14,7 @@ package power_manager;
 // hardware levels.
 
 // Request to change the backlight brightness sent from Chrome to powerd in a
-// SetScreenBrightnessPercent D-Bus method call.
+// SetScreenBrightness D-Bus method call.
 message SetBacklightBrightnessRequest {
   // Desired backlight brightness as a percent in the range [0.0, 100.0].
   optional double percent = 1;
