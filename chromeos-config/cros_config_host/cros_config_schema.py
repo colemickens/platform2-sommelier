@@ -441,6 +441,50 @@ def _FilterBuildElements(config, path):
     config.pop(key)
 
 
+def GetValidSchemaProperties(
+    schema=os.path.join(this_dir, 'cros_config_schema.yaml')):
+  """Returns all valid properties from the given schema
+
+  Iterates over the config payload for devices and returns the list of
+  valid properties that could potentially be returned from
+  cros_config_host or cros_config
+
+  Args:
+    schema: Source schema that contains the properties.
+  """
+  with open(schema, 'r') as schema_stream:
+    schema_yaml = yaml.load(schema_stream.read())
+  root_path = 'properties/chromeos/properties/configs/items/properties'
+  schema_node = schema_yaml
+  for element in root_path.split('/'):
+    schema_node = schema_node[element]
+
+  result = {}
+  _GetValidSchemaProperties(schema_node, [], result)
+  return result
+
+def _GetValidSchemaProperties(schema_node, path, result):
+  """Recursively finds the valid properties for a given node
+
+  Args:
+    schema_node: Single node from the schema
+    path: Running path that a given node maps to
+    result: Running collection of results
+  """
+  full_path = '/%s' % '/'.join(path)
+  for key in schema_node:
+    new_path = path + [key]
+    type = schema_node[key]['type']
+
+    if type == 'object':
+      if 'properties' in schema_node[key]:
+        _GetValidSchemaProperties(
+            schema_node[key]['properties'], new_path, result)
+    elif type == 'string':
+      all_props = result.get(full_path, [])
+      all_props.append(key)
+      result[full_path] = all_props
+
 def ValidateConfigSchema(schema, config):
   """Validates a transformed cros config against the schema specified
 

@@ -294,6 +294,14 @@ class FilterBuildElements(unittest.TestCase):
     self.assertNotIn('firmware', json_dict['chromeos']['configs'][0])
 
 
+class GetValidSchemaProperties(unittest.TestCase):
+
+  def testGetValidSchemaProperties(self):
+    schema_props = cros_config_schema.GetValidSchemaProperties()
+    self.assertIn('cras-config-dir', schema_props['/audio/main'])
+    self.assertIn('key-id', schema_props['/firmware-signing'])
+
+
 class MainTests(unittest.TestCase):
 
   def testMainWithExampleWithBuildAndCBindings(self):
