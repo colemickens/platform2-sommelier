@@ -38,6 +38,7 @@ rt_sigreturn: 1
 set_tid_address: 1
 symlink: 1
 tgkill: 1
+sendto: 1
 
 # For modprobe(8)
 clone: 1
