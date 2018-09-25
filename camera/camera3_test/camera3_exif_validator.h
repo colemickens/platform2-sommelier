@@ -41,6 +41,8 @@ class Camera3ExifValidator {
                         size_t buffer_size,
                         const camera_metadata_t& metadata,
                         const time_t& date_time) const;
+  int getExifOrientation(const BufferHandleUniquePtr& buffer,
+                         size_t buffer_size);
 
  protected:
   const Camera3Device::StaticInfo& cam_info_;

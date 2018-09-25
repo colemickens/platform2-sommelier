@@ -261,6 +261,58 @@ Camera3FrameFixture::ImageUniquePtr Camera3FrameFixture::ConvertToImage(
 }
 
 Camera3FrameFixture::ImageUniquePtr
+Camera3FrameFixture::ConvertToImageAndRotate(BufferHandleUniquePtr buffer,
+                                             uint32_t width,
+                                             uint32_t height,
+                                             ImageFormat format,
+                                             int32_t rotation) {
+  ImageUniquePtr image =
+      ConvertToImage(std::move(buffer), width, height, format);
+  if (image == nullptr) {
+    LOG(ERROR) << "Failed to convert image before rotate";
+    return image;
+  }
+  if (format != ImageFormat::IMAGE_FORMAT_I420) {
+    LOG(ERROR) << "Do not support rotate image with format: " << format;
+    return image;
+  }
+
+  int new_width = width;
+  int new_height = height;
+  libyuv::RotationMode rotationMode;
+
+  if (rotation % 180 == 90) {
+    std::swap(new_width, new_height);
+  }
+
+  switch (rotation) {
+    case 90:
+      rotationMode = libyuv::kRotate90;
+      break;
+    case 180:
+      rotationMode = libyuv::kRotate180;
+      break;
+    case 270:
+      rotationMode = libyuv::kRotate270;
+      break;
+    default:
+      rotationMode = libyuv::kRotate0;
+      break;
+  }
+
+  ImageUniquePtr rotated_image(
+      new Image(new_width, new_height, ImageFormat::IMAGE_FORMAT_I420));
+  libyuv::I420Rotate(
+      image->planes[0].addr, image->planes[0].stride, image->planes[1].addr,
+      image->planes[1].stride, image->planes[2].addr, image->planes[2].stride,
+      rotated_image->planes[0].addr, rotated_image->planes[0].stride,
+      rotated_image->planes[1].addr, rotated_image->planes[1].stride,
+      rotated_image->planes[2].addr, rotated_image->planes[2].stride, width,
+      height, rotationMode);
+  return rotated_image;
+}
+
+Camera3FrameFixture::ImageUniquePtr
 Camera3FrameFixture::GenerateColorBarsPattern(
     uint32_t width,
     uint32_t height,

@@ -132,27 +132,45 @@ void Camera3ReprocessingTest::TestReprocessing(
                           &reprocess_result_metadata, &reprocess_result_buffer,
                           kDefaultTimeoutMs);
 
+    int32_t exif_orientation = 0;
     if (reprocessing_format == HAL_PIXEL_FORMAT_BLOB) {
       // Verify exif
       size_t jpeg_max_size = cam_device_.GetStaticInfo()->GetJpegMaxSize();
 
       Camera3ExifValidator exif_validator(*cam_device_.GetStaticInfo());
-      exif_validator.ValidateExifKeys(reprocessing_size, exif_test_data,
-                                      reprocess_result_buffer, jpeg_max_size,
-                                      *result_metadata.get(), capture_time);
+      exif_validator.ValidateExifKeys(
+          reprocessing_size, exif_test_data, reprocess_result_buffer,
+          jpeg_max_size, *reprocess_result_metadata.get(), capture_time);
+      exif_orientation = exif_validator.getExifOrientation(
+          reprocess_result_buffer, jpeg_max_size);
     }
 
     // Check similarity
-    auto input_image =
+    ImageUniquePtr input_image =
         ConvertToImage(std::move(result_buffer), input_size.Width(),
                        input_size.Height(), ImageFormat::IMAGE_FORMAT_I420);
     ASSERT_TRUE(input_image != nullptr) << "Failed to convert input image";
     input_image = Scale(input_image, reprocessing_size.Width(),
                         reprocessing_size.Height());
     ASSERT_TRUE(input_image != nullptr) << "Failed to scale input image";
-    auto repr_image = ConvertToImage(
-        std::move(reprocess_result_buffer), reprocessing_size.Width(),
-        reprocessing_size.Height(), ImageFormat::IMAGE_FORMAT_I420);
+
+    ImageUniquePtr repr_image;
+    if (exif_orientation == 0 && exif_test_data.orientation != 0) {
+      // Rotate the reprocessed image back if HAL auto correct the orientation
+      int correct_rotation = (360 - exif_test_data.orientation) % 360;
+      int cur_width = reprocessing_size.Width();
+      int cur_height = reprocessing_size.Height();
+      if (correct_rotation % 180 == 90) {
+        std::swap(cur_width, cur_height);
+      }
+      repr_image = ConvertToImageAndRotate(
+          std::move(reprocess_result_buffer), cur_width, cur_height,
+          ImageFormat::IMAGE_FORMAT_I420, correct_rotation);
+    } else {
+      repr_image = ConvertToImage(
+          std::move(reprocess_result_buffer), reprocessing_size.Width(),
+          reprocessing_size.Height(), ImageFormat::IMAGE_FORMAT_I420);
+    }
     ASSERT_TRUE(repr_image != nullptr)
         << "Failed to convert reprocessing image";
 

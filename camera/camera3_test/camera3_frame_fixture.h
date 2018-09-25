@@ -119,6 +119,14 @@ class Camera3FrameFixture : public Camera3StreamFixture {
                                 uint32_t height,
                                 ImageFormat format);
 
+  // Convert the buffer to given format, rotate the image by rotation and return
+  // a new buffer in the Image structure. The input buffer is freed.
+  ImageUniquePtr ConvertToImageAndRotate(BufferHandleUniquePtr buffer,
+                                         uint32_t width,
+                                         uint32_t height,
+                                         ImageFormat format,
+                                         int32_t rotation);
+
   ImageUniquePtr GenerateColorBarsPattern(
       uint32_t width,
       uint32_t height,

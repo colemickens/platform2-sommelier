@@ -349,7 +349,7 @@ void Camera3ExifValidator::ValidateExifKeys(
                      GetExifTagInteger(exif_data, EXIF_IFD_EXIF,
                                        EXIF_TAG_PIXEL_Y_DIMENSION, byte_order)))
       << "EXIF JPEG pixel dimension should match requested size";
-  EXPECT_EQ(jpeg_resolution, jpeg_exif_info.jpeg_resolution)
+  EXPECT_EQ(expected_jpeg_size, jpeg_exif_info.jpeg_resolution)
       << "JPEG size result and request should match";
 
   // Validate date time between EXIF data and current time
@@ -463,6 +463,17 @@ void Camera3ExifValidator::ValidateExifKeys(
   EXPECT_TRUE(is_number(EXIF_IFD_EXIF, EXIF_TAG_SUB_SEC_TIME));
   EXPECT_TRUE(is_number(EXIF_IFD_EXIF, EXIF_TAG_SUB_SEC_TIME_ORIGINAL));
   EXPECT_TRUE(is_number(EXIF_IFD_EXIF, EXIF_TAG_SUB_SEC_TIME_DIGITIZED));
+}
+
+int Camera3ExifValidator::getExifOrientation(
+    const BufferHandleUniquePtr& buffer, size_t buffer_size) {
+  JpegExifInfo jpeg_exif_info(buffer, buffer_size);
+  jpeg_exif_info.Initialize();
+  ExifByteOrder byte_order = exif_data_get_byte_order(jpeg_exif_info.exif_data);
+  const ExifData& exif_data = *jpeg_exif_info.exif_data;
+  int32_t exif_orientation = GetExifTagInteger(
+      exif_data, EXIF_IFD_0, EXIF_TAG_ORIENTATION, byte_order);
+  return exif_orientation;
 }
 
 }  // namespace camera3_test
