@@ -62,8 +62,15 @@ static_library("liboobeconfig") {
   ]
 }
 
+pkg_config("crypto") {
+  pkg_deps = ["libcrypto"]
+}
+
 executable("finish_oobe_auto_config") {
-  configs += [ ":target_defaults" ]
+  configs += [
+    ":crypto",
+    ":target_defaults",
+  ]
   sources = [
     "finish_oobe_auto_config.cc",
     "usb_common.cc",
@@ -82,7 +89,10 @@ executable("oobe_config_save") {
 }
 
 executable("oobe_config_restore") {
-  configs += [ ":target_defaults" ]
+  configs += [
+    ":crypto",
+    ":target_defaults",
+  ]
   sources = [
     "oobe_config_restore_main.cc",
     "oobe_config_restore_service.cc",
@@ -109,6 +119,7 @@ if (use.test) {
   executable("oobe_config_test") {
     configs += [
       "//common-mk:test",
+      ":crypto",
       ":target_defaults",
       ":test_config",
     ]

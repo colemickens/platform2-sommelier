@@ -44,20 +44,6 @@ FilePath FindPersistentMountDevice(const FilePath& mount_dev) {
   return FilePath();
 }
 
-// Using |priv_key|, signs |src|, and writes the digest into |dst|.
-void SignFile(const FilePath& priv_key, const FilePath& src,
-              const FilePath& dst) {
-  CHECK(base::PathExists(src));
-  LOG(INFO) << "Signing " << src.value() << " into " << dst.value();
-  CHECK_EQ(RunCommand(vector<string> {
-        "/usr/bin/openssl", "dgst",
-        "-sha256",
-        "-sign", priv_key.value(),
-        "-out", dst.value(),
-        src.value()
-  }), 0);
-}
-
 // Finds the persistent block device that |src_dir| is mounted on, and signs
 // the path using |priv_key|, and writes it to |dst_dir|/.../block_device.sig.
 void SignSourcePartitionFile(const FilePath& priv_key, const FilePath& src_dev,
@@ -69,9 +55,9 @@ void SignSourcePartitionFile(const FilePath& priv_key, const FilePath& src_dev,
   CHECK(base::CreateTemporaryFile(&temp_disk));
   CHECK(base::WriteFile(temp_disk, disk.c_str(), disk.length()) ==
         disk.length());
-  SignFile(
+  CHECK(SignFile(
       priv_key, temp_disk,
-      dst_dir.Append(kUnencryptedOobeConfigDir).Append(kUsbDevicePathSigFile));
+      dst_dir.Append(kUnencryptedOobeConfigDir).Append(kUsbDevicePathSigFile)));
 }
 
 void SignOobeFiles(const FilePath& priv_key, const FilePath& pub_key,
@@ -83,14 +69,14 @@ void SignOobeFiles(const FilePath& priv_key, const FilePath& pub_key,
   // device, so create it here.
   CHECK(base::CreateDirectory(dst_config_dir));
 
-  SignFile(priv_key, src_config_dir.Append(kConfigFile),
-           dst_config_dir.Append(kConfigFile).AddExtension("sig"));
+  CHECK(SignFile(priv_key, src_config_dir.Append(kConfigFile),
+                 dst_config_dir.Append(kConfigFile).AddExtension("sig")));
 
   // If the media was provisioned for auto-enrollment, sign the domain name
   // as well.
   if (base::PathExists(src_config_dir.Append(kDomainFile))) {
-    SignFile(priv_key, src_config_dir.Append(kDomainFile),
-             dst_config_dir.Append(kDomainFile).AddExtension("sig"));
+    CHECK(SignFile(priv_key, src_config_dir.Append(kDomainFile),
+                   dst_config_dir.Append(kDomainFile).AddExtension("sig")));
   }
 }
 

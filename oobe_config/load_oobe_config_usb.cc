@@ -4,15 +4,23 @@
 
 #include "oobe_config/load_oobe_config_usb.h"
 
+#include <map>
+#include <vector>
+
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <openssl/evp.h>
+#include <openssl/pem.h>
 
 #include "oobe_config/usb_common.h"
+#include "oobe_config/utils.h"
 
 using base::FilePath;
+using std::map;
 using std::string;
 using std::unique_ptr;
+using std::vector;
 
 namespace oobe_config {
 
@@ -32,44 +40,67 @@ LoadOobeConfigUsb::LoadOobeConfigUsb(const FilePath& stateful_dir,
       unencrypted_oobe_config_dir_.Append(kDomainFile).AddExtension("sig");
   usb_device_path_signature_file_ =
       unencrypted_oobe_config_dir_.Append(kUsbDevicePathSigFile);
+
+  config_is_verified_ = false;
+  public_key_ = nullptr;
 }
 
-bool LoadOobeConfigUsb::CheckFilesExistence() {
-  if (!base::PathExists(stateful_)) {
+bool LoadOobeConfigUsb::ReadFiles(bool ignore_errors) {
+  if (!base::PathExists(stateful_) && !ignore_errors) {
     LOG(ERROR) << "Stateful partition's path " << stateful_.value()
                << " does not exist.";
     return false;
   }
-  if (!base::PathExists(unencrypted_oobe_config_dir_)) {
+  if (!base::PathExists(unencrypted_oobe_config_dir_) && !ignore_errors) {
     LOG(WARNING) << "oobe_config directory on stateful partition "
                  << unencrypted_oobe_config_dir_.value()
                  << " does not exist. This is not an error if the system is not"
                  << " configured for auto oobe.";
     return false;
   }
-  if (!base::PathExists(pub_key_file_)) {
+
+  if (!base::PathExists(pub_key_file_) && !ignore_errors) {
     LOG(WARNING) << "Public key file " << pub_key_file_.value()
                  << " does not exist. ";
     return false;
   }
-  if (!base::PathExists(config_signature_file_)) {
-    LOG(WARNING) << "Config file's signature file "
-                 << config_signature_file_.value() << " does not exist.";
-    return false;
-  }
-  if (!base::PathExists(enrollment_domain_signature_file_)) {
-    LOG(WARNING) << "Enrollment domain's signature file "
-                 << enrollment_domain_signature_file_.value()
-                 << " does not exist.";
-    return false;
-  }
-  if (!base::PathExists(usb_device_path_signature_file_)) {
-    LOG(WARNING) << "USB device path's signature file "
-                 << usb_device_path_signature_file_.value()
-                 << " does not exist.";
+
+  if (!ReadPublicKey() && !ignore_errors) {
     return false;
   }
 
+  map<FilePath, string*> signature_files = {
+      {config_signature_file_, &config_signature_},
+      {enrollment_domain_signature_file_, &enrollment_domain_signature_},
+      {usb_device_path_signature_file_, &usb_device_path_signature_}};
+
+  for (auto& file : signature_files) {
+    if (!base::PathExists(file.first) && !ignore_errors) {
+      LOG(WARNING) << "File " << file.first.value() << " does not exist. ";
+      return false;
+    }
+    if (!base::ReadFileToString(file.first, file.second) && !ignore_errors) {
+      PLOG(ERROR) << "Failed to read file: " << file.first.value();
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool LoadOobeConfigUsb::ReadPublicKey() {
+  base::ScopedFILE pkf(base::OpenFile(pub_key_file_, "r"));
+  if (!pkf) {
+    PLOG(ERROR) << "Failed to open the public key file "
+                << pub_key_file_.value();
+    return false;
+  }
+  public_key_.reset(PEM_read_PUBKEY(pkf.get(), nullptr, nullptr, nullptr));
+  if (!public_key_) {
+    LOG(ERROR) << "Failed to read the PEM public key file "
+               << pub_key_file_.value();
+    return false;
+  }
   return true;
 }
 
@@ -80,15 +111,27 @@ bool LoadOobeConfigUsb::VerifyPublicKey() {
   // for verifying signatures. The binary SHA256 digest of this file should
   // match the 32 bytes in the TPM at index 0x100c, otherwise abort.
 
-  // TODO(ahassani): Implement.
-
   return false;
 }
 
-bool LoadOobeConfigUsb::VerifySignature(const FilePath& file,
-                                        const FilePath& signature) {
-  // TODO(ahassani): Implement.
-  return false;
+bool LoadOobeConfigUsb::VerifySignature(const string& message,
+                                        const string& signature) {
+  crypto::ScopedEVP_MD_CTX mdctx(EVP_MD_CTX_create());
+  if (!mdctx) {
+    LOG(ERROR) << "Failed to create a EVP_MD context.";
+    return false;
+  }
+  if (EVP_DigestVerifyInit(mdctx.get(), nullptr, EVP_sha256(), nullptr,
+                           public_key_.get()) != 1 ||
+      EVP_DigestVerifyUpdate(mdctx.get(), message.c_str(), message.length()) !=
+          1 ||
+      EVP_DigestVerifyFinal(
+          mdctx.get(), reinterpret_cast<const unsigned char*>(signature.data()),
+          signature.size()) != 1) {
+    LOG(ERROR) << "Failed to verify the signature.";
+    return false;
+  }
+  return true;
 }
 
 bool LoadOobeConfigUsb::LocateUsbDevice(FilePath* device_id) {
@@ -102,7 +145,7 @@ bool LoadOobeConfigUsb::LocateUsbDevice(FilePath* device_id) {
   base::FileEnumerator iter(device_ids_dir_, false,
                             base::FileEnumerator::FILES);
   for (auto dev_id = iter.Next(); !dev_id.empty(); dev_id = iter.Next()) {
-    if (VerifySignature(dev_id, usb_device_path_signature_file_)) {
+    if (VerifySignature(dev_id.value(), usb_device_path_signature_)) {
       // Found the device; do a readlink -f and return the absolute path to the
       // device.
       // TODO(ahassani): Implement.
@@ -133,7 +176,14 @@ bool LoadOobeConfigUsb::UnmountUsbDevice(const FilePath& mount_point) {
 
 bool LoadOobeConfigUsb::GetOobeConfigJson(string* config,
                                           string* enrollment_domain) {
-  if (!CheckFilesExistence()) {
+  // We have already verified the config, just return it.
+  if (config_is_verified_) {
+    *config = config_;
+    *enrollment_domain = enrollment_domain_;
+    return true;
+  }
+
+  if (!ReadFiles(false /* ignore_errors */)) {
     return false;
   }
 
@@ -155,29 +205,28 @@ bool LoadOobeConfigUsb::GetOobeConfigJson(string* config,
 
   FilePath config_file_on_usb;
   FilePath enrollment_domain_file_on_usb;
-  // /stateful/unencrypted/oobe_auto_config/config.json.sig is the signature of
-  // the config.json file on the USB stateful.
-  if (!VerifySignature(config_file_on_usb, config_signature_file_)) {
-    return false;
-  }
-
-  // /stateful/unencrypted/oobe_auto_config/enrollment_domain.sig is the
-  // signature of the enrollment_domain file on the USB stateful.
-  if (!VerifySignature(enrollment_domain_file_on_usb,
-                       enrollment_domain_signature_file_)) {
-    return false;
-  }
-
-  if (!base::ReadFileToString(config_file_on_usb, config)) {
+  if (!base::ReadFileToString(config_file_on_usb, &config_)) {
     LOG(ERROR) << "Failed to read oobe config file: "
                << config_file_on_usb.value();
     return false;
   }
 
   if (!base::ReadFileToString(enrollment_domain_file_on_usb,
-                              enrollment_domain)) {
+                              &enrollment_domain_)) {
     LOG(ERROR) << "Failed to read enrollment domain file: "
                << enrollment_domain_file_on_usb.value();
+    return false;
+  }
+
+  // /stateful/unencrypted/oobe_auto_config/config.json.sig is the signature of
+  // the config.json file on the USB stateful.
+  if (!VerifySignature(config_, config_signature_)) {
+    return false;
+  }
+
+  // /stateful/unencrypted/oobe_auto_config/enrollment_domain.sig is the
+  // signature of the enrollment_domain file on the USB stateful.
+  if (!VerifySignature(enrollment_domain_, enrollment_domain_signature_)) {
     return false;
   }
 
@@ -185,9 +234,13 @@ bool LoadOobeConfigUsb::GetOobeConfigJson(string* config,
   // at some point before enrolling we have to verify that the token in
   // config.json matches the domain name in enrollment_domain, because that's
   // what we showed to the user in recovery.
-  if (!VerifyEnrollmentDomainInConfig(*config, *enrollment_domain)) {
+  if (!VerifyEnrollmentDomainInConfig(config_, enrollment_domain_)) {
     return false;
   }
+
+  *config = config_;
+  *enrollment_domain = enrollment_domain_;
+  config_is_verified_ = true;
 
   if (!UnmountUsbDevice(usb_mount_path)) {
     // TODO(ahassani): Ignore the failure; But log it.

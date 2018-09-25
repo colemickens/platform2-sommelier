@@ -8,9 +8,16 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
+
 namespace oobe_config {
 
 int RunCommand(const std::vector<std::string>& command);
+
+// Using |priv_key|, signs |src|, and writes the digest into |dst|.
+bool SignFile(const base::FilePath& priv_key,
+              const base::FilePath& src,
+              const base::FilePath& dst);
 
 }  // namespace oobe_config
 

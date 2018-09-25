@@ -11,6 +11,7 @@
 #include <string>
 
 #include <base/files/file_path.h>
+#include <crypto/scoped_openssl_types.h>
 
 namespace oobe_config {
 
@@ -30,17 +31,24 @@ class LoadOobeConfigUsb : public LoadOobeConfigInterface {
   static std::unique_ptr<LoadOobeConfigUsb> CreateInstance();
 
  private:
-  // Checks that all the files necessary for USB enrollment exist.
-  bool CheckFilesExistence();
+  friend class LoadOobeConfigUsbTest;
+
+  // Checks and reads in all the files necessary for USB enrollment. If
+  // |ignore_errors| is true, it will ignore errors along the way so we can
+  // unittest functions easier without the need to create/sign all the files.
+  bool ReadFiles(bool ignore_errors);
+
+  // Reads the public key into a data structure usable by libcrypto.
+  bool ReadPublicKey();
 
   // Verifies the hash of the public key on the stateful partition matches the
   // one in the TPM.
   bool VerifyPublicKey();
 
-  // Verifies the signature of a file using the default and already verified
+  // Verifies the signature of a message using the default and already verified
   // public key.
-  bool VerifySignature(const base::FilePath& file,
-                       const base::FilePath& signature);
+  bool VerifySignature(const std::string& message,
+                       const std::string& signature);
 
   // Locates the USB device using the device path's signature file.
   bool LocateUsbDevice(base::FilePath* device_id);
@@ -63,6 +71,15 @@ class LoadOobeConfigUsb : public LoadOobeConfigInterface {
   base::FilePath enrollment_domain_signature_file_;
   base::FilePath usb_device_path_signature_file_;
   base::FilePath device_ids_dir_;
+
+  crypto::ScopedEVP_PKEY public_key_;
+  std::string config_signature_;
+  std::string enrollment_domain_signature_;
+  std::string usb_device_path_signature_;
+
+  bool config_is_verified_;
+  std::string config_;
+  std::string enrollment_domain_;
 
   DISALLOW_COPY_AND_ASSIGN(LoadOobeConfigUsb);
 };
