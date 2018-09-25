@@ -89,6 +89,7 @@ private:
                                              camera3_stream_t* stream);
     status_t prepareBuffer(std::shared_ptr<CameraBuffer>& buffer);
     bool checkListenerBuffer(Camera3Request* request);
+    void dump(std::shared_ptr<CameraBuffer> buf, const CameraStream* stream);
 
 private:
     camera3_stream_t* mStream; /* OutputFrameWorker doesn't own mStream */

@@ -271,6 +271,8 @@ status_t OutputFrameWorker::handlePostRun()
             continue;
         }
 
+        listenerBuf->setRequestId(request->seqenceId());
+
         status = prepareBuffer(listenerBuf);
         CheckError(status != NO_ERROR, status, "prepare listener buffer error!");
 
@@ -292,6 +294,9 @@ status_t OutputFrameWorker::handlePostRun()
             MEMCPY_S(listenerBuf->data(), listenerBuf->size(),
                      processingData.mWorkingBuffer->data(), processingData.mWorkingBuffer->size());
         }
+
+        dump(listenerBuf, stream);
+
         stream->captureDone(listenerBuf, request);
         LOG2("%s, line %d, req id %d frameDone",  __func__, __LINE__, request->seqenceId());
     }
@@ -328,18 +333,7 @@ status_t OutputFrameWorker::handlePostRun()
         }
     }
 
-    // Dump the buffers if enabled in flags
-    if (processingData.mOutputBuffer->format() == HAL_PIXEL_FORMAT_BLOB) {
-        processingData.mOutputBuffer->dumpImage(CAMERA_DUMP_JPEG, ".jpg");
-    } else if (processingData.mOutputBuffer->format() ==
-                              HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED
-            || processingData.mOutputBuffer->format() == HAL_PIXEL_FORMAT_YCbCr_420_888) {
-        if (stream->usage() & GRALLOC_USAGE_HW_VIDEO_ENCODER) {
-            processingData.mOutputBuffer->dumpImage(CAMERA_DUMP_VIDEO, "video.nv12");
-        } else {
-            processingData.mOutputBuffer->dumpImage(CAMERA_DUMP_PREVIEW, "preview.nv12");
-        }
-    }
+    dump(processingData.mOutputBuffer, stream);
 
     // call capturedone for the stream of the buffer
     stream->captureDone(processingData.mOutputBuffer, request);
@@ -417,6 +411,23 @@ bool OutputFrameWorker::checkListenerBuffer(Camera3Request* request)
 
     LOG2("%s, required is %s", __FUNCTION__, (required ? "true" : "false"));
     return required;
+}
+
+void OutputFrameWorker::dump(std::shared_ptr<CameraBuffer> buf, const CameraStream* stream)
+{
+    CheckError(stream == nullptr, VOID_VALUE, "@%s, stream is nullptr", __FUNCTION__);
+    LOG2("@%s", __FUNCTION__);
+
+    if (buf->format() == HAL_PIXEL_FORMAT_BLOB) {
+        buf->dumpImage(CAMERA_DUMP_JPEG, ".jpg");
+    } else if (buf->format() == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED ||
+               buf->format() == HAL_PIXEL_FORMAT_YCbCr_420_888) {
+        if (stream->usage() & GRALLOC_USAGE_HW_VIDEO_ENCODER) {
+            buf->dumpImage(CAMERA_DUMP_VIDEO, "video.nv12");
+        } else {
+            buf->dumpImage(CAMERA_DUMP_PREVIEW, "preview.nv12");
+        }
+    }
 }
 
 OutputFrameWorker::SWPostProcessor::SWPostProcessor(int cameraId) :
