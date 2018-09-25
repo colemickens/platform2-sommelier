@@ -170,7 +170,6 @@ class Cellular : public Device,
   void set_modem_state(ModemState state) { modem_state_ = state; }
   ModemState modem_state() const { return modem_state_; }
   bool IsUnderlyingDeviceEnabled() const override;
-  bool IsModemRegistered() const;
   static bool IsEnabledModemState(ModemState state);
 
   void HandleNewSignalQuality(uint32_t strength);

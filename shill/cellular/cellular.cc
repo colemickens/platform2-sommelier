@@ -333,12 +333,6 @@ bool Cellular::IsUnderlyingDeviceEnabled() const {
   return IsEnabledModemState(modem_state_);
 }
 
-bool Cellular::IsModemRegistered() const {
-  return (modem_state_ == Cellular::kModemStateRegistered ||
-          modem_state_ == Cellular::kModemStateConnecting ||
-          modem_state_ == Cellular::kModemStateConnected);
-}
-
 // static
 bool Cellular::IsEnabledModemState(ModemState state) {
   switch (state) {
