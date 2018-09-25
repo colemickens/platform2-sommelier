@@ -164,16 +164,14 @@ struct PackageKitTransactionProperties : public dbus::PropertySet {
 // proper cleanup.
 class PackageKitTransaction : PackageKitProxy::PackageKitDeathObserver {
  public:
-  explicit PackageKitTransaction(
-      scoped_refptr<dbus::Bus> bus,
-      base::WeakPtr<PackageKitProxy> packagekit_proxy,
-      dbus::ObjectProxy* packagekit_service_proxy,
-      uint32_t signal_mask)
+  explicit PackageKitTransaction(scoped_refptr<dbus::Bus> bus,
+                                 PackageKitProxy* packagekit_proxy,
+                                 dbus::ObjectProxy* packagekit_service_proxy,
+                                 uint32_t signal_mask)
       : bus_(bus),
         packagekit_proxy_(packagekit_proxy),
         packagekit_service_proxy_(packagekit_service_proxy),
-        signal_mask_(signal_mask),
-        weak_ptr_factory_(this) {
+        signal_mask_(signal_mask) {
     DCHECK_EQ(signal_mask, signal_mask & kValidSignalMask);
     packagekit_proxy_->AddPackageKitDeathObserver(this);
   }
@@ -241,7 +239,7 @@ class PackageKitTransaction : PackageKitProxy::PackageKitDeathObserver {
           std::make_unique<PackageKitTransactionProperties>(
               transaction_proxy_,
               base::Bind(&PackageKitTransaction::OnPackageKitPropertyChanged,
-                         weak_ptr_factory_.GetWeakPtr()));
+                         base::Unretained(this)));
       transaction_properties_->ConnectSignals();
       transaction_properties_->GetAll();
     }
@@ -314,22 +312,22 @@ class PackageKitTransaction : PackageKitProxy::PackageKitDeathObserver {
       signal_mask_ = signal_mask_ & ~kErrorCodeSignalMask;
       signal_name.assign(kErrorCodeSignal);
       signal_callback = base::Bind(&PackageKitTransaction::OnErrorSignal,
-                                   weak_ptr_factory_.GetWeakPtr());
+                                   base::Unretained(this));
     } else if (signal_mask_ & kFinishedSignalMask) {
       signal_mask_ = signal_mask_ & ~kFinishedSignalMask;
       signal_name.assign(kFinishedSignal);
       signal_callback = base::Bind(&PackageKitTransaction::OnFinishedSignal,
-                                   weak_ptr_factory_.GetWeakPtr());
+                                   base::Unretained(this));
     } else if (signal_mask_ & kPackageSignalMask) {
       signal_mask_ = signal_mask_ & ~kPackageSignalMask;
       signal_name.assign(kPackageSignal);
       signal_callback = base::Bind(&PackageKitTransaction::OnPackageSignal,
-                                   weak_ptr_factory_.GetWeakPtr());
+                                   base::Unretained(this));
     } else if (signal_mask_ & kDetailsSignalMask) {
       signal_mask_ = signal_mask_ & ~kDetailsSignalMask;
       signal_name.assign(kDetailsSignal);
       signal_callback = base::Bind(&PackageKitTransaction::OnDetailsSignal,
-                                   weak_ptr_factory_.GetWeakPtr());
+                                   base::Unretained(this));
     } else {
       NOTREACHED();
     }
@@ -337,7 +335,7 @@ class PackageKitTransaction : PackageKitProxy::PackageKitDeathObserver {
     transaction_proxy_->ConnectToSignal(
         kPackageKitTransactionInterface, signal_name, signal_callback,
         base::Bind(&PackageKitTransaction::OnSignalConnected,
-                   weak_ptr_factory_.GetWeakPtr()));
+                   base::Unretained(this)));
   }
 
   void OnSignalConnected(const std::string& interface_name,
@@ -461,7 +459,7 @@ class PackageKitTransaction : PackageKitProxy::PackageKitDeathObserver {
 
  protected:
   scoped_refptr<dbus::Bus> bus_;
-  base::WeakPtr<PackageKitProxy> packagekit_proxy_;
+  PackageKitProxy* packagekit_proxy_;            // Not owned.
   dbus::ObjectProxy* packagekit_service_proxy_;  // Not owned.
 
  private:
@@ -471,7 +469,6 @@ class PackageKitTransaction : PackageKitProxy::PackageKitDeathObserver {
   dbus::ObjectPath transaction_path_;
   std::unique_ptr<PackageKitTransactionProperties> transaction_properties_;
 
-  base::WeakPtrFactory<PackageKitTransaction> weak_ptr_factory_;
   DISALLOW_COPY_AND_ASSIGN(PackageKitTransaction);
 };
 
@@ -480,7 +477,7 @@ class GetDetailsLocalTransaction : public PackageKitTransaction {
  public:
   GetDetailsLocalTransaction(
       scoped_refptr<dbus::Bus> bus,
-      base::WeakPtr<PackageKitProxy> packagekit_proxy,
+      PackageKitProxy* packagekit_proxy,
       dbus::ObjectProxy* packagekit_service_proxy,
       std::shared_ptr<PackageKitProxy::PackageInfoTransactionData> data)
       : PackageKitTransaction(
@@ -559,7 +556,7 @@ class GetDetailsLocalTransaction : public PackageKitTransaction {
 class SearchFilesTransaction : public PackageKitTransaction {
  public:
   SearchFilesTransaction(scoped_refptr<dbus::Bus> bus,
-                         base::WeakPtr<PackageKitProxy> packagekit_proxy,
+                         PackageKitProxy* packagekit_proxy,
                          dbus::ObjectProxy* packagekit_service_proxy,
                          const base::FilePath& file_path,
                          PackageKitProxy::PackageSearchCallback callback)
@@ -570,8 +567,7 @@ class SearchFilesTransaction : public PackageKitTransaction {
             kErrorCodeSignalMask | kFinishedSignalMask | kPackageSignalMask),
         file_path_(file_path),
         callback_(std::move(callback)),
-        callback_called_(false),
-        weak_ptr_factory_(this) {}
+        callback_called_(false) {}
 
   bool ExecuteRequest(dbus::ObjectProxy* transaction_proxy) override {
     dbus::MethodCall method_call(kPackageKitTransactionInterface,
@@ -643,7 +639,6 @@ class SearchFilesTransaction : public PackageKitTransaction {
   base::FilePath file_path_;
   PackageKitProxy::PackageSearchCallback callback_;
   bool callback_called_;
-  base::WeakPtrFactory<SearchFilesTransaction> weak_ptr_factory_;
 };
 
 // This is for tracking if an install is currently in progress.
@@ -652,12 +647,11 @@ bool install_active = false;
 // Sublcass for handling InstallFiles transaction.
 class InstallFilesTransaction : public PackageKitTransaction {
  public:
-  InstallFilesTransaction(
-      scoped_refptr<dbus::Bus> bus,
-      base::WeakPtr<PackageKitProxy> packagekit_proxy,
-      dbus::ObjectProxy* packagekit_service_proxy,
-      base::WeakPtr<PackageKitProxy::PackageKitObserver> observer,
-      base::FilePath file_path)
+  InstallFilesTransaction(scoped_refptr<dbus::Bus> bus,
+                          PackageKitProxy* packagekit_proxy,
+                          dbus::ObjectProxy* packagekit_service_proxy,
+                          PackageKitProxy::PackageKitObserver* observer,
+                          base::FilePath file_path)
       : PackageKitTransaction(
             bus,
             packagekit_proxy,
@@ -671,7 +665,7 @@ class InstallFilesTransaction : public PackageKitTransaction {
     if (!observer_)
       return;
     observer_->OnInstallCompletion(false, details);
-    observer_.reset();
+    observer_ = nullptr;
   }
 
   bool ExecuteRequest(dbus::ObjectProxy* transaction_proxy) override {
@@ -691,7 +685,7 @@ class InstallFilesTransaction : public PackageKitTransaction {
     if (!observer_)
       return;
     observer_->OnInstallCompletion(false, details);
-    observer_.reset();
+    observer_ = nullptr;
   }
 
   void FinishedReceived(uint32_t exit_code) override {
@@ -701,7 +695,7 @@ class InstallFilesTransaction : public PackageKitTransaction {
     observer_->OnInstallCompletion(
         kPackageKitExitCodeSuccess == exit_code,
         "Exit Code: " + base::IntToString(exit_code));
-    observer_.reset();
+    observer_ = nullptr;
   }
 
   void PropertyChangeReceived(
@@ -743,14 +737,14 @@ class InstallFilesTransaction : public PackageKitTransaction {
 
  private:
   base::FilePath file_path_;
-  base::WeakPtr<PackageKitProxy::PackageKitObserver> observer_;
+  PackageKitProxy::PackageKitObserver* observer_;  // Not owned.
 };
 
 // Sublcass for handling UpdatePackages transaction.
 class UpdatePackagesTransaction : public PackageKitTransaction {
  public:
   UpdatePackagesTransaction(scoped_refptr<dbus::Bus> bus,
-                            base::WeakPtr<PackageKitProxy> packagekit_proxy,
+                            PackageKitProxy* packagekit_proxy,
                             dbus::ObjectProxy* packagekit_service_proxy,
                             std::vector<std::string> package_ids)
       : PackageKitTransaction(bus,
@@ -800,7 +794,7 @@ class UpdatePackagesTransaction : public PackageKitTransaction {
 class GetUpdatesTransaction : public PackageKitTransaction {
  public:
   GetUpdatesTransaction(scoped_refptr<dbus::Bus> bus,
-                        base::WeakPtr<PackageKitProxy> packagekit_proxy,
+                        PackageKitProxy* packagekit_proxy,
                         dbus::ObjectProxy* packagekit_service_proxy)
       : PackageKitTransaction(
             bus,
@@ -873,7 +867,7 @@ class GetUpdatesTransaction : public PackageKitTransaction {
 class RefreshCacheTransaction : public PackageKitTransaction {
  public:
   RefreshCacheTransaction(scoped_refptr<dbus::Bus> bus,
-                          base::WeakPtr<PackageKitProxy> packagekit_proxy,
+                          PackageKitProxy* packagekit_proxy,
                           dbus::ObjectProxy* packagekit_service_proxy)
       : PackageKitTransaction(bus,
                               packagekit_proxy,
@@ -881,7 +875,7 @@ class RefreshCacheTransaction : public PackageKitTransaction {
                               kErrorCodeSignalMask | kFinishedSignalMask) {}
 
   static void RefreshCacheNow(scoped_refptr<dbus::Bus> bus,
-                              base::WeakPtr<PackageKitProxy> packagekit_proxy,
+                              PackageKitProxy* packagekit_proxy,
                               dbus::ObjectProxy* packagekit_service_proxy) {
     bool disable_cros_updates;
     bool disable_security_updates;
@@ -965,24 +959,24 @@ PackageKitProxy::PackageInfoTransactionData::PackageInfoTransactionData(
 
 // static
 std::unique_ptr<PackageKitProxy> PackageKitProxy::Create(
-    base::WeakPtr<PackageKitObserver> observer) {
+    PackageKitObserver* observer) {
   if (!observer)
     return nullptr;
-  auto pk_proxy = base::WrapUnique(new PackageKitProxy(std::move(observer)));
+  auto pk_proxy = base::WrapUnique(new PackageKitProxy(observer));
   if (!pk_proxy->Init()) {
     pk_proxy.reset();
   }
   return pk_proxy;
 }
 
-PackageKitProxy::PackageKitProxy(base::WeakPtr<PackageKitObserver> observer)
-    : observer_(observer),
-      task_runner_(base::ThreadTaskRunnerHandle::Get()),
-      weak_ptr_factory_(this) {}
+PackageKitProxy::PackageKitProxy(PackageKitObserver* observer)
+    : task_runner_(base::ThreadTaskRunnerHandle::Get()), observer_(observer) {}
 
 PackageKitProxy::~PackageKitProxy() = default;
 
 bool PackageKitProxy::Init() {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+
   dbus::Bus::Options opts;
   opts.bus_type = dbus::Bus::SYSTEM;
   bus_ = new dbus::Bus(std::move(opts));
@@ -996,23 +990,17 @@ bool PackageKitProxy::Init() {
     LOG(ERROR) << "Failed to get PackageKit D-Bus proxy";
     return false;
   }
-  packagekit_service_proxy_->WaitForServiceToBeAvailable(
-      base::Bind(&PackageKitProxy::OnPackageKitServiceAvailable,
-                 weak_ptr_factory_.GetWeakPtr()));
+  packagekit_service_proxy_->WaitForServiceToBeAvailable(base::Bind(
+      &PackageKitProxy::OnPackageKitServiceAvailable, base::Unretained(this)));
 
   // Fire off a delayed task to do a repo update so that we can do automatic
   // upgrades on our managed packages.
   task_runner_->PostDelayedTask(
       FROM_HERE,
       base::Bind(&RefreshCacheTransaction::RefreshCacheNow, bus_,
-                 weak_ptr_factory_.GetWeakPtr(), packagekit_service_proxy_),
+                 base::Unretained(this), packagekit_service_proxy_),
       kRefreshCacheStartupDelay);
-
   return true;
-}
-
-base::WeakPtr<PackageKitProxy> PackageKitProxy::GetWeakPtr() {
-  return weak_ptr_factory_.GetWeakPtr();
 }
 
 bool PackageKitProxy::GetLinuxPackageInfo(
@@ -1029,7 +1017,7 @@ bool PackageKitProxy::GetLinuxPackageInfo(
       std::make_shared<PackageInfoTransactionData>(file_path, out_pkg_info);
   task_runner_->PostTask(
       FROM_HERE, base::Bind(&PackageKitProxy::GetLinuxPackageInfoOnDBusThread,
-                            weak_ptr_factory_.GetWeakPtr(), data));
+                            base::Unretained(this), data));
 
   bool result;
   if (!data->event.TimedWait(kGetLinuxPackageInfoTimeout)) {
@@ -1050,23 +1038,20 @@ int PackageKitProxy::InstallLinuxPackage(const base::FilePath& file_path,
   int status = vm_tools::container::InstallLinuxPackageResponse::FAILED;
   task_runner_->PostTask(
       FROM_HERE, base::Bind(&PackageKitProxy::InstallLinuxPackageOnDBusThread,
-                            weak_ptr_factory_.GetWeakPtr(), file_path, &event,
-                            &status, out_error));
+                            base::Unretained(this), file_path, &event, &status,
+                            out_error));
   event.Wait();
   return status;
 }
 
 void PackageKitProxy::SearchLinuxPackagesForFile(
     const base::FilePath& file_path, PackageSearchCallback callback) {
-  DCHECK(sequence_checker_.CalledOnValidSequence());
   LOG(INFO) << "Searching for local Linux package that owns "
             << file_path.value();
-  // This object is intentionally leaked and will clean itself up when done
-  // with all the D-Bus communication.
-  SearchFilesTransaction* transaction = new SearchFilesTransaction(
-      bus_, weak_ptr_factory_.GetWeakPtr(), packagekit_service_proxy_,
-      file_path, std::move(callback));
-  transaction->StartTransaction();
+  task_runner_->PostTask(
+      FROM_HERE,
+      base::Bind(&PackageKitProxy::SearchLinuxPackagesForFileOnDBusThread,
+                 base::Unretained(this), file_path, std::move(callback)));
 }
 
 void PackageKitProxy::AddPackageKitDeathObserver(
@@ -1088,7 +1073,7 @@ void PackageKitProxy::GetLinuxPackageInfoOnDBusThread(
   // This object is intentionally leaked and will clean itself up when done
   // with all the D-Bus communication.
   GetDetailsLocalTransaction* transaction = new GetDetailsLocalTransaction(
-      bus_, weak_ptr_factory_.GetWeakPtr(), packagekit_service_proxy_, data);
+      bus_, this, packagekit_service_proxy_, data);
   transaction->StartTransaction();
 }
 
@@ -1114,8 +1099,7 @@ void PackageKitProxy::InstallLinuxPackageOnDBusThread(
   // This object is intentionally leaked and will clean itself up when done
   // with all the D-Bus communication.
   InstallFilesTransaction* transaction = new InstallFilesTransaction(
-      bus_, weak_ptr_factory_.GetWeakPtr(), packagekit_service_proxy_,
-      observer_, file_path);
+      bus_, this, packagekit_service_proxy_, observer_, file_path);
   if (!transaction->StartTransaction()) {
     install_active = false;
     *status = vm_tools::container::InstallLinuxPackageResponse::FAILED;
@@ -1128,6 +1112,16 @@ void PackageKitProxy::InstallLinuxPackageOnDBusThread(
   *status = vm_tools::container::InstallLinuxPackageResponse::STARTED;
   *out_error = "";
   event->Signal();
+}
+
+void PackageKitProxy::SearchLinuxPackagesForFileOnDBusThread(
+    const base::FilePath& file_path, PackageSearchCallback callback) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  // This object is intentionally leaked and will clean itself up when done
+  // with all the D-Bus communication.
+  SearchFilesTransaction* transaction = new SearchFilesTransaction(
+      bus_, this, packagekit_service_proxy_, file_path, std::move(callback));
+  transaction->StartTransaction();
 }
 
 void PackageKitProxy::OnPackageKitNameOwnerChanged(
@@ -1143,7 +1137,7 @@ void PackageKitProxy::OnPackageKitServiceAvailable(bool service_is_available) {
   if (service_is_available) {
     packagekit_service_proxy_->SetNameOwnerChangedCallback(
         base::Bind(&PackageKitProxy::OnPackageKitNameOwnerChanged,
-                   weak_ptr_factory_.GetWeakPtr()));
+                   base::Unretained(this)));
   }
 }
 

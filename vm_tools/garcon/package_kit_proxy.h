@@ -11,7 +11,6 @@
 
 #include <base/callback_forward.h>
 #include <base/macros.h>
-#include <base/memory/weak_ptr.h>
 #include <base/message_loop/message_loop.h>
 #include <base/observer_list.h>
 #include <base/sequence_checker.h>
@@ -54,13 +53,9 @@ class PackageKitProxy {
   // Creates an instance of PackageKitProxy that will use the calling thread for
   // its message loop for D-Bus communication. Returns nullptr if there was a
   // failure.
-  static std::unique_ptr<PackageKitProxy> Create(
-      base::WeakPtr<PackageKitObserver> observer);
+  static std::unique_ptr<PackageKitProxy> Create(PackageKitObserver* observer);
 
   ~PackageKitProxy();
-
-  // Returns a WeakPtr reference to this object.
-  base::WeakPtr<PackageKitProxy> GetWeakPtr();
 
   // Gets the information about a local Linux package file located at
   // |file_path| and populates |out_pkg_info| with the details on success.
@@ -87,8 +82,6 @@ class PackageKitProxy {
   // by uninstallers and similar systems that care only about .desktop files
   // that are on the local files system, so we don't care about uninstalled
   // packages.
-  //
-  // Should only be called on D-Bus thread. Caller must not block D-Bus thread.
   void SearchLinuxPackagesForFile(const base::FilePath& file_path,
                                   PackageSearchCallback callback);
 
@@ -121,7 +114,7 @@ class PackageKitProxy {
   void RemovePackageKitDeathObserver(PackageKitDeathObserver* observer);
 
  private:
-  explicit PackageKitProxy(base::WeakPtr<PackageKitObserver> observer);
+  explicit PackageKitProxy(PackageKitObserver* observer);
   bool Init();
   void GetLinuxPackageInfoOnDBusThread(
       std::shared_ptr<PackageInfoTransactionData> data);
@@ -129,6 +122,8 @@ class PackageKitProxy {
                                        base::WaitableEvent* event,
                                        int* status,
                                        std::string* out_error);
+  void SearchLinuxPackagesForFileOnDBusThread(const base::FilePath& file_path,
+                                              PackageSearchCallback callback);
 
   // Callback for ownership change of PackageKit service, used to detect if it
   // crashes while we are waiting on something that doesn't have a timeout.
@@ -142,15 +137,13 @@ class PackageKitProxy {
   scoped_refptr<dbus::Bus> bus_;
   dbus::ObjectProxy* packagekit_service_proxy_;  // Owned by |bus_|.
 
-  base::WeakPtr<PackageKitObserver> observer_;
   scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
+  PackageKitObserver* observer_;  // Now owned.
 
   // Ensure calls are made on the right thread.
   base::SequenceChecker sequence_checker_;
 
   base::ObserverList<PackageKitDeathObserver> death_observers_;
-
-  base::WeakPtrFactory<PackageKitProxy> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(PackageKitProxy);
 };

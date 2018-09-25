@@ -108,12 +108,25 @@ void RunGarconService(vm_tools::garcon::PackageKitProxy* pk_proxy,
   event->Signal();
 
   if (server) {
-    LOG(INFO) << "Server listening on vsock port " << *vsock_listen_port
-              << " IPv4 port " << vm_tools::kGarconPort;
-    // The following call will never return since we have no mechanism for
-    // actually shutting down garcon.
+    LOG(INFO) << "Server listening on vsock port " << *vsock_listen_port;
+    // The following call will return once we invoke Shutdown on the gRPC server
+    // when the main RunLoop exits.
     server->Wait();
   }
+}
+
+void CreatePackageKitProxy(
+    base::WaitableEvent* event,
+    vm_tools::garcon::HostNotifier* host_notifier,
+    std::unique_ptr<vm_tools::garcon::PackageKitProxy>* proxy_ptr) {
+  // We don't want to receive SIGTERM on this thread.
+  sigset_t mask;
+  sigemptyset(&mask);
+  sigaddset(&mask, SIGTERM);
+  sigprocmask(SIG_BLOCK, &mask, nullptr);
+
+  *proxy_ptr = vm_tools::garcon::PackageKitProxy::Create(host_notifier);
+  event->Signal();
 }
 
 void PrintUsage() {
@@ -177,17 +190,35 @@ int main(int argc, char** argv) {
   openlog(kLogPrefix, LOG_PID, LOG_DAEMON);
   logging::SetLogMessageHandler(LogToSyslog);
 
+  // Note on threading model. There are 3 threads used in garcon. One is for the
+  // incoming gRPC requests. One is for the D-Bus communication with the
+  // PackageKit daemon. The third is the main thread which is for gRPC requests
+  // to the host as well as for monitoring filesystem changes (which result in a
+  // gRPC call to the host under certain conditions). The main thing to be
+  // careful of is that the gRPC thread for incoming requests is never blocking
+  // on the gRPC thread for outgoing requests (since they are both talking to
+  // cicerone, and both of those operations in cicerone are likely going to use
+  // the same D-Bus thread for communication within cicerone).
+
   // Thread that the gRPC server is running on.
-  base::Thread grpc_thread{"gRPC Thread"};
+  base::Thread grpc_thread{"gRPC Server Thread"};
   if (!grpc_thread.Start()) {
     LOG(ERROR) << "Failed starting the gRPC thread";
     return -1;
   }
 
+  // Thread that D-Bus communication runs on.
+  base::Thread dbus_thread{"D-Bus Thread"};
+  if (!dbus_thread.StartWithOptions(
+          base::Thread::Options(base::MessageLoop::TYPE_IO, 0))) {
+    LOG(ERROR) << "Failed starting the D-Bus thread";
+    return -1;
+  }
+
   // Setup the HostNotifier on the run loop for the main thread. It needs to
-  // have its own run loop separate from the gRPC server since it will be using
-  // base::FilePathWatcher to identify installed application changes, that same
-  // thread is also then used for D-Bus messaging.
+  // have its own run loop separate from the gRPC server & D-Bus server since it
+  // will be using base::FilePathWatcher to identify installed application and
+  // mime type changes.
   base::RunLoop run_loop;
 
   std::unique_ptr<vm_tools::garcon::HostNotifier> host_notifier =
@@ -197,17 +228,30 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-  // This needs to be created on the main thread since it will be using that
-  // for D-Bus communication.
-  std::unique_ptr<vm_tools::garcon::PackageKitProxy> pk_proxy =
-      vm_tools::garcon::PackageKitProxy::Create(host_notifier->GetWeakPtr());
+  base::WaitableEvent event(false /*manual_reset*/,
+                            false /*initially_signaled*/);
+
+  // This needs to be created on the D-Bus thread.
+  std::unique_ptr<vm_tools::garcon::PackageKitProxy> pk_proxy;
+  bool ret = dbus_thread.task_runner()->PostTask(
+      FROM_HERE, base::Bind(&CreatePackageKitProxy, &event, host_notifier.get(),
+                            &pk_proxy));
+  if (!ret) {
+    LOG(ERROR) << "Failed to post PackageKit proxy creation to D-Bus thread";
+    return -1;
+  }
+  // Wait for the creation to complete.
+  event.Wait();
+  if (!pk_proxy) {
+    LOG(ERROR) << "Failed in creating the PackageKit proxy";
+    return -1;
+  }
+  event.Reset();
 
   // Launch the gRPC server on the gRPC thread.
   std::shared_ptr<grpc::Server> server_copy;
-  base::WaitableEvent event(false /*manual_reset*/,
-                            false /*initially_signaled*/);
   int vsock_listen_port = 0;
-  bool ret = grpc_thread.task_runner()->PostTask(
+  ret = grpc_thread.task_runner()->PostTask(
       FROM_HERE, base::Bind(&RunGarconService, pk_proxy.get(), &event,
                             &server_copy, &vsock_listen_port));
   if (!ret) {
@@ -228,9 +272,8 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-  host_notifier->set_grpc_server(server_copy);
   if (!host_notifier->Init(static_cast<uint32_t>(vsock_listen_port),
-                           pk_proxy->GetWeakPtr())) {
+                           pk_proxy.get())) {
     LOG(ERROR) << "Failed to set up host notifier";
     return -1;
   }
@@ -238,5 +281,12 @@ int main(int argc, char** argv) {
   // Start the main run loop now for the HostNotifier.
   run_loop.Run();
 
+  // We get here after a SIGTERM gets posted and the main run loop has exited.
+  // We then shutdown the gRPC server (which will terminate that thread) and
+  // then stop the D-Bus thread. We will be the only remaining thread at that
+  // point so everything can be safely destructed and we remove the need for
+  // any weak pointers.
+  server_copy->Shutdown();
+  dbus_thread.Stop();
   return 0;
 }

@@ -12,7 +12,6 @@
 #include <base/files/file_path_watcher.h>
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
-#include <base/memory/weak_ptr.h>
 #include <base/message_loop/message_loop.h>
 #include <grpc++/grpc++.h>
 
@@ -44,8 +43,7 @@ class HostNotifier : public base::MessageLoopForIO::Watcher,
   // Notifies the host that garcon is ready. This will send the initial update
   // for the application list and also establish a watcher for any updates to
   // the list of installed applications. Returns false if there was any failure.
-  bool Init(uint32_t vsock_port,
-            base::WeakPtr<PackageKitProxy> package_kit_proxy);
+  bool Init(uint32_t vsock_port, PackageKitProxy* package_kit_proxy);
 
   // base::MessageLoopForIO::Watcher overrides.
   void OnFileCanReadWithoutBlocking(int fd) override;
@@ -57,15 +55,6 @@ class HostNotifier : public base::MessageLoopForIO::Watcher,
   void OnInstallProgress(
       vm_tools::container::InstallLinuxPackageProgressInfo::Status status,
       uint32_t percent_progress) override;
-
-  // Returns a WeakPtr reference to this object.
-  base::WeakPtr<HostNotifier> GetWeakPtr();
-
-  // Sets the gRPC Server object which will then be shutdown when this thread
-  // detects a SIGTERM.
-  void set_grpc_server(std::shared_ptr<grpc::Server> grpc_server) {
-    grpc_server_ = grpc_server;
-  }
 
  private:
   // Callback structure for SendAppListToHost callback chain.
@@ -150,18 +139,14 @@ class HostNotifier : public base::MessageLoopForIO::Watcher,
   // when this program receives a SIGTERM.
   base::Closure shutdown_closure_;
 
-  // Pointer to the gRPC server so we can shut down its thread when we receive
-  // a SIGTERM.
-  std::shared_ptr<grpc::Server> grpc_server_;
-
   // File descriptor for receiving signals.
   base::ScopedFD signal_fd_;
   base::MessageLoopForIO::FileDescriptorWatcher signal_controller_;
 
   // Pointer to the PackageKit needed for querying package_id data.
-  base::WeakPtr<PackageKitProxy> package_kit_proxy_;
+  PackageKitProxy* package_kit_proxy_;  // Not owned.
 
-  base::WeakPtrFactory<HostNotifier> weak_ptr_factory_;
+  scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
 
   DISALLOW_COPY_AND_ASSIGN(HostNotifier);
 };

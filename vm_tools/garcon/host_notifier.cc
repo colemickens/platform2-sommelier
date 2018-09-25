@@ -76,6 +76,19 @@ std::string GetSecurityToken() {
   return std::string(token);
 }
 
+void SendInstallStatusToHost(
+    vm_tools::container::ContainerListener::Stub* stub,
+    vm_tools::container::InstallLinuxPackageProgressInfo progress_info) {
+  grpc::ClientContext ctx;
+  vm_tools::EmptyMessage empty;
+  grpc::Status grpc_status =
+      stub->InstallLinuxPackageProgress(&ctx, progress_info, &empty);
+  if (!grpc_status.ok()) {
+    LOG(WARNING) << "Failed to notify host system about install status: "
+                 << grpc_status.error_message();
+  }
+}
+
 }  // namespace
 
 namespace vm_tools {
@@ -147,14 +160,9 @@ HostNotifier::HostNotifier(base::Closure shutdown_closure)
       send_app_list_to_host_in_progress_(false),
       update_mime_types_posted_(false),
       shutdown_closure_(std::move(shutdown_closure)),
-      signal_controller_(FROM_HERE),
-      weak_ptr_factory_(this) {}
+      signal_controller_(FROM_HERE) {}
 
-HostNotifier::~HostNotifier() {
-  if (grpc_server_) {
-    grpc_server_->Shutdown();
-  }
-}
+HostNotifier::~HostNotifier() = default;
 
 void HostNotifier::OnFileCanReadWithoutBlocking(int fd) {
   DCHECK_EQ(fd, signal_fd_.get());
@@ -167,33 +175,24 @@ void HostNotifier::OnFileCanReadWithoutBlocking(int fd) {
   // which should then shut us down, deallocate us and then also terminate the
   // gRPC thread.
   NotifyHostOfContainerShutdown();
-  base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE, shutdown_closure_);
+  task_runner_->PostTask(FROM_HERE, shutdown_closure_);
 }
 
 void HostNotifier::OnFileCanWriteWithoutBlocking(int fd) {
   NOTREACHED();
 }
 
-base::WeakPtr<HostNotifier> HostNotifier::GetWeakPtr() {
-  return weak_ptr_factory_.GetWeakPtr();
-}
-
 void HostNotifier::OnInstallCompletion(bool success,
                                        const std::string& failure_reason) {
-  grpc::ClientContext ctx;
   vm_tools::container::InstallLinuxPackageProgressInfo progress_info;
   progress_info.set_token(token_);
   progress_info.set_status(
       success ? vm_tools::container::InstallLinuxPackageProgressInfo::SUCCEEDED
               : vm_tools::container::InstallLinuxPackageProgressInfo::FAILED);
   progress_info.set_failure_details(failure_reason);
-  vm_tools::EmptyMessage empty;
-  grpc::Status grpc_status =
-      stub_->InstallLinuxPackageProgress(&ctx, progress_info, &empty);
-  if (!grpc_status.ok()) {
-    LOG(WARNING) << "Failed to notify host system about install completion: "
-                 << grpc_status.error_message();
-  }
+  task_runner_->PostTask(FROM_HERE, base::Bind(&SendInstallStatusToHost,
+                                               base::Unretained(stub_.get()),
+                                               std::move(progress_info)));
 }
 
 void HostNotifier::OnInstallProgress(
@@ -203,19 +202,16 @@ void HostNotifier::OnInstallProgress(
   progress_info.set_token(token_);
   progress_info.set_status(status);
   progress_info.set_progress_percent(percent_progress);
-  grpc::ClientContext ctx;
-  vm_tools::EmptyMessage empty;
-  grpc::Status grpc_status =
-      stub_->InstallLinuxPackageProgress(&ctx, progress_info, &empty);
-  if (!grpc_status.ok()) {
-    LOG(WARNING) << "Failed to notify host system about install progress: "
-                 << grpc_status.error_message();
-  }
+  task_runner_->PostTask(FROM_HERE, base::Bind(&SendInstallStatusToHost,
+                                               base::Unretained(stub_.get()),
+                                               std::move(progress_info)));
 }
 
 bool HostNotifier::Init(uint32_t vsock_port,
-                        base::WeakPtr<PackageKitProxy> package_kit_proxy) {
+                        PackageKitProxy* package_kit_proxy) {
+  CHECK(package_kit_proxy);
   package_kit_proxy_ = package_kit_proxy;
+  task_runner_ = base::ThreadTaskRunnerHandle::Get();
   std::string host_ip = GetHostIp();
   token_ = GetSecurityToken();
   if (token_.empty() || host_ip.empty()) {
@@ -260,7 +256,7 @@ bool HostNotifier::Init(uint32_t vsock_port,
         std::make_unique<base::FilePathWatcher>();
     if (!watcher->Watch(path, true,
                         base::Bind(&HostNotifier::DesktopPathsChanged,
-                                   weak_ptr_factory_.GetWeakPtr()))) {
+                                   base::Unretained(this)))) {
       LOG(ERROR) << "Failed setting up filesystem path watcher for dir: "
                  << path.value();
       // Probably better to just watch the dirs we can rather than terminate
@@ -279,7 +275,7 @@ bool HostNotifier::Init(uint32_t vsock_port,
   base::FilePath mime_type_path(kMimeTypesDir);
   if (!mime_type_watcher->Watch(mime_type_path, false,
                                 base::Bind(&HostNotifier::MimeTypesChanged,
-                                           weak_ptr_factory_.GetWeakPtr()))) {
+                                           base::Unretained(this)))) {
     LOG(ERROR) << "Failed setting up filesystem path watcher for: "
                << kMimeTypesDir;
   }
@@ -288,10 +284,9 @@ bool HostNotifier::Init(uint32_t vsock_port,
   // Also setup the watcher for the $HOME/.mime.types file.
   std::unique_ptr<base::FilePathWatcher> home_mime_type_watcher =
       std::make_unique<base::FilePathWatcher>();
-  if (!home_mime_type_watcher->Watch(
-          base::GetHomeDir(), false,
-          base::Bind(&HostNotifier::MimeTypesChanged,
-                     weak_ptr_factory_.GetWeakPtr()))) {
+  if (!home_mime_type_watcher->Watch(base::GetHomeDir(), false,
+                                     base::Bind(&HostNotifier::MimeTypesChanged,
+                                                base::Unretained(this)))) {
     LOG(ERROR) << "Failed setting up filesystem path watcher for: "
                << base::GetHomeDir().value();
   }
@@ -341,10 +336,9 @@ void HostNotifier::SendAppListToHost() {
     //
     // Checking a boolean isn't a race condition because all the callbacks are
     // on the same thread.
-    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+    task_runner_->PostDelayedTask(
         FROM_HERE,
-        base::Bind(&HostNotifier::SendAppListToHost,
-                   weak_ptr_factory_.GetWeakPtr()),
+        base::Bind(&HostNotifier::SendAppListToHost, base::Unretained(this)),
         kFilesystemChangeCoalesceTime);
     return;
   }
@@ -455,11 +449,9 @@ void HostNotifier::SendAppListToHost() {
 void HostNotifier::RequestNextPackageIdOrCompleteUpdateApplicationList(
     std::unique_ptr<AppListBuilderState> state) {
   if ((state->num_package_id_queries_completed >=
-       state->desktop_files_for_application.size()) ||
-      !package_kit_proxy_) {
-    // We have finished all package_id queries. (Or we can't do any more because
-    // the package_kit_proxy_ has vanished) This data is ready to send to the
-    // host.
+       state->desktop_files_for_application.size())) {
+    // We have finished all package_id queries. This data is ready to send to
+    // the host.
     send_app_list_to_host_in_progress_ = false;
     vm_tools::EmptyMessage empty;
     grpc::ClientContext ctx;
@@ -476,8 +468,8 @@ void HostNotifier::RequestNextPackageIdOrCompleteUpdateApplicationList(
   package_kit_proxy_->SearchLinuxPackagesForFile(
       state->desktop_files_for_application
           [state->num_package_id_queries_completed],
-      base::Bind(&HostNotifier::PackageIdCallback,
-                 weak_ptr_factory_.GetWeakPtr(), base::Passed(&state)));
+      base::Bind(&HostNotifier::PackageIdCallback, base::Unretained(this),
+                 base::Passed(&state)));
 }
 
 void HostNotifier::PackageIdCallback(
@@ -500,7 +492,11 @@ void HostNotifier::PackageIdCallback(
   }
 
   state->num_package_id_queries_completed++;
-  RequestNextPackageIdOrCompleteUpdateApplicationList(std::move(state));
+  task_runner_->PostTask(
+      FROM_HERE,
+      base::Bind(
+          &HostNotifier::RequestNextPackageIdOrCompleteUpdateApplicationList,
+          base::Unretained(this), base::Passed(&state)));
 }
 
 void HostNotifier::SendMimeTypesToHost() {
@@ -526,7 +522,6 @@ void HostNotifier::SendMimeTypesToHost() {
   request.mutable_mime_type_mappings()->insert(
       std::make_move_iterator(mime_type_map.begin()),
       std::make_move_iterator(mime_type_map.end()));
-
   // Now make the gRPC call to send this list to the host.
   grpc::ClientContext ctx;
   grpc::Status status = stub_->UpdateMimeTypes(&ctx, request, &empty);
@@ -553,10 +548,9 @@ void HostNotifier::DesktopPathsChanged(const base::FilePath& path, bool error) {
   if (update_app_list_posted_) {
     return;
   }
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  task_runner_->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&HostNotifier::SendAppListToHost,
-                 weak_ptr_factory_.GetWeakPtr()),
+      base::Bind(&HostNotifier::SendAppListToHost, base::Unretained(this)),
       kFilesystemChangeCoalesceTime);
   update_app_list_posted_ = true;
 }
@@ -574,10 +568,9 @@ void HostNotifier::MimeTypesChanged(const base::FilePath& path, bool error) {
   if (update_mime_types_posted_) {
     return;
   }
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  task_runner_->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&HostNotifier::SendMimeTypesToHost,
-                 weak_ptr_factory_.GetWeakPtr()),
+      base::Bind(&HostNotifier::SendMimeTypesToHost, base::Unretained(this)),
       kFilesystemChangeCoalesceTime);
   update_mime_types_posted_ = true;
 }
