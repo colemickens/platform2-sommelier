@@ -503,6 +503,9 @@ void BiometricsDaemon::OnSessionStateChanged(dbus::Signal* signal) {
   LOG(INFO) << "Session state changed to " << state << ".";
 
   if (state == dbus_constants::kSessionStateStarted) {
+    for (const auto& biometrics_manager_wrapper : biometrics_managers_) {
+      biometrics_manager_wrapper->get().SetDiskAccesses(true);
+    }
     if (!primary_user_.empty()) {
       LOG(INFO) << "Primary user already exists. Not updating primary user.";
       return;
@@ -518,6 +521,7 @@ void BiometricsDaemon::OnSessionStateChanged(dbus::Signal* signal) {
   } else if (state == dbus_constants::kSessionStateStopping) {
     // Assuming that log out will always log out all users at the same time.
     for (const auto& biometrics_manager_wrapper : biometrics_managers_) {
+      biometrics_manager_wrapper->get().SetDiskAccesses(false);
       biometrics_manager_wrapper->get().RemoveRecordsFromMemory();
       biometrics_manager_wrapper->RefreshRecordObjects();
     }

@@ -187,6 +187,10 @@ class BiometricsManager {
 
   virtual bool SendStatsOnLogin() { return true; }
 
+  // Set whether the biometrics manager can access the underlying disk storage
+  // for reading/writing records.
+  virtual void SetDiskAccesses(bool allow) {}
+
  protected:
   virtual void EndEnrollSession() = 0;
   virtual void EndAuthSession() = 0;

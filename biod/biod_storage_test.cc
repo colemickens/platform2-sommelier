@@ -71,6 +71,8 @@ class BiodStorageTest : public ::testing::Test {
     biod_storage_.reset(new BiodStorage(
         kBiometricsManagerName,
         base::Bind(&BiodStorageTest::LoadRecord, base::Unretained(this))));
+    // Since there is no session manager, allow accesses by default.
+    biod_storage_->set_allow_access(true);
     biod_storage_->SetRootPathForTesting(root_path_);
   }
 

@@ -742,6 +742,10 @@ bool CrosFpBiometricsManager::SendStatsOnLogin() {
   return rc;
 }
 
+void CrosFpBiometricsManager::SetDiskAccesses(bool allow) {
+  biod_storage_.set_allow_access(allow);
+}
+
 void CrosFpBiometricsManager::EndEnrollSession() {
   LOG(INFO) << __func__;
   KillMcuSession();
