@@ -5,6 +5,7 @@
 // Unit tests for SecureBlob.
 
 #include "brillo/asan.h"
+#include "brillo/secure_allocator.h"
 #include "brillo/secure_blob.h"
 
 #include <algorithm>
@@ -225,6 +226,40 @@ TEST_F(SecureBlobTest, HexStringToSecureBlob) {
   EXPECT_EQ(blob[13], 0xee);
   EXPECT_EQ(blob[14], 0xff);
   EXPECT_EQ(blob[15], 0x0f);
+}
+
+// Override clear_contents() to check whether memory has been cleared.
+template <typename T>
+class TestSecureAllocator : public SecureAllocator<T> {
+ public:
+  using typename SecureAllocator<T>::pointer;
+  using typename SecureAllocator<T>::size_type;
+
+  int GetErasedCount() { return erased_count; }
+
+ protected:
+  void clear_contents(pointer p, size_type n) override {
+    SecureAllocator<T>::clear_contents(p, n);
+    for (int i = 0; i < n; i++) {
+      EXPECT_EQ(p[i], 0);
+    }
+    erased_count++;
+  }
+
+ private:
+  int erased_count = 0;
+};
+
+TEST(SecureAllocator, ErasureOnDeallocation) {
+  // Make sure that the contents are cleared on deallocation.
+  TestSecureAllocator<char> e;
+
+  char *test_string_addr = e.allocate(15);
+  snprintf(test_string_addr, sizeof(test_string_addr), "Test String");
+
+  // Deallocate memory; the mock class should check for cleared data.
+  e.deallocate(test_string_addr, 15);
+  EXPECT_EQ(e.GetErasedCount(), 1);
 }
 
 }  // namespace brillo
