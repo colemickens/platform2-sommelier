@@ -23,7 +23,7 @@ template("generate_dbus_proxies") {
   if (!defined(mock_output_file)) {
     mock_output_file = ""
   }
-  if (dbus_service_config == "") {
+  if (!defined(dbus_service_config) || dbus_service_config == "") {
     service_config = ""
   } else {
     service_config = rebase_path(dbus_service_config)

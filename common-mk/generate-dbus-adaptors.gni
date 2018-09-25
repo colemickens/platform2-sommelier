@@ -14,7 +14,7 @@ template("generate_dbus_adaptors") {
   }
   h_dir = "${root_gen_dir}/${dbus_adaptors_out_dir}"
 
-  if (dbus_service_config == "") {
+  if (!defined(dbus_service_config) || dbus_service_config == "") {
     service_config = ""
   } else {
     service_config = rebase_path(dbus_service_config)
