@@ -110,7 +110,7 @@ void CameraHalServerImpl::OnSocketFileStatusChange(
   MojoResult result =
       CreateMojoChannelToParentByUnixDomainSocket(socket_path, &child_pipe);
   if (result != MOJO_RESULT_OK) {
-    LOGF(WARNING) << "Failed to create Mojo Channel to" << socket_path.value();
+    LOGF(WARNING) << "Failed to create Mojo Channel to " << socket_path.value();
     return;
   }
 
