@@ -361,8 +361,6 @@ status_t IPU3CameraHw::configStreamsPrivate()
     mImguUnit->flush();
     mControlUnit->flush();
 
-    mMediaCtl->resetLinks();
-
     status_t status = mGCM.configStreams(mActiveStreams, mOperationMode, mTestPatternMode);
     if (status != NO_ERROR) {
         LOGE("Unable to configure stream: No matching graph config found! BUG");

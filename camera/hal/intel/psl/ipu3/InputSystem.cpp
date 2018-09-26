@@ -119,6 +119,7 @@ status_t InputSystem::handleConfigure(MessageConfigure msg)
     mStarted = false;
 
     mMediaCtlHelper.closeVideoNodes();
+    mMediaCtlHelper.resetLinks();
     status = mMediaCtlHelper.configure(graphConfigMgr, IStreamConfigProvider::CIO2);
     if (status != OK) {
         LOGE("Failed to configure input system.");

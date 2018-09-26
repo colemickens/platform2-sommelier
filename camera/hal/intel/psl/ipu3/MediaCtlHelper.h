@@ -44,6 +44,7 @@ public:
     std::map<IPU3NodeNames, std::shared_ptr<cros::V4L2VideoNode>>
         getConfiguredNodesPerName(IStreamConfigProvider::MediaType mediaType);
     status_t closeVideoNodes();
+    status_t resetLinks();
 
 public:
     /**
@@ -73,7 +74,6 @@ public:
 private:
     status_t openVideoNodesPerPipe();
     status_t openVideoNode(const char *entityName, IPU3NodeNames isysNodeName);
-    status_t resetLinks();
 
 private:
     ConfigurationResults mConfigResults;
