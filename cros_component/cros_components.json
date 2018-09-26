@@ -16,9 +16,7 @@
       "name": "demo_mode_resources",
       "files":[
         "build/rootfs/demo_mode_resources/image/android_demo_apps.squash",
-        "build/rootfs/demo_mode_resources/image/chrome_apps/",
-        "build/rootfs/demo_mode_resources/image/demo_extensions.json",
-        "build/rootfs/demo_mode_resources/image/policy/"
+        "build/rootfs/demo_mode_resources/image/media/"
       ],
       "manifest": "build/rootfs/demo_mode_resources/manifest.json",
       "gsbucket": "gs://chrome-component-demo-mode/",
