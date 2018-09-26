@@ -68,13 +68,13 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
                 int32_t* mount_id);
 
   // Adds |mount_root| to the |mounts_| map with a specific mount_id. Must not
-  // be called after AddMount is called for the first time. Returns false if
-  // |mount_root| is already mounted. If |workgroup| and |username| are
-  // provided, they will be used as a credential when interacting with the
-  // mount.
+  // be called after AddMount is called for the first time. |mount_config| holds
+  // the mount options set by the client. Returns false if |mount_root| is
+  // already mounted.
   bool Remount(const std::string& mount_root,
                int32_t mount_id,
-               SmbCredential credential);
+               SmbCredential credential,
+               const MountConfig& mount_config);
 
   // Returns true if |mount_id| was mounted and removes the mount.
   bool RemoveMount(int32_t mount_id);

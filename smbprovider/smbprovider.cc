@@ -806,8 +806,11 @@ bool SmbProvider::Remount(const std::string& mount_root,
                           const base::ScopedFD& password_fd,
                           int32_t* error_code) {
   SmbCredential credential(workgroup, username, GetPassword(password_fd));
-  bool remounted =
-      mount_manager_->Remount(mount_root, mount_id, std::move(credential));
+  // TODO(jimmyxgong): Remove once Remount has a MountConfig as an input
+  // parameter.
+  MountConfig mount_config(true /* enable_ntlm */);
+  bool remounted = mount_manager_->Remount(mount_root, mount_id,
+                                           std::move(credential), mount_config);
   if (!remounted) {
     *error_code = static_cast<int32_t>(ERROR_IN_USE);
   }

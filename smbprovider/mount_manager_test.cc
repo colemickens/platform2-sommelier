@@ -69,7 +69,8 @@ class MountManagerTest : public testing::Test {
   bool Remount(const std::string& root_path,
                int32_t mount_id,
                SmbCredential credential) {
-    return mounts_->Remount(root_path, mount_id, std::move(credential));
+    return mounts_->Remount(root_path, mount_id, std::move(credential),
+                            MountConfig(true /* enable_ntlm */));
   }
 
   void ExpectCredentialsEqual(int32_t mount_id,

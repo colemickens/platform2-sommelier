@@ -161,7 +161,8 @@ bool MountManager::AddMount(const std::string& mount_root,
 
 bool MountManager::Remount(const std::string& mount_root,
                            int32_t mount_id,
-                           SmbCredential credential) {
+                           SmbCredential credential,
+                           const MountConfig& mount_config) {
   DCHECK(can_remount_);
   DCHECK_GE(mount_id, 0);
 
