@@ -18,6 +18,7 @@
 #include <vector>
 
 #include <base/memory/ref_counted.h>
+#include <base/time/tick_clock.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/errors/error.h>
 #include <chromeos/dbus/service_constants.h>
@@ -114,6 +115,12 @@ class SessionManagerImpl
   // minimum amount of time we must wait before killing the containers.
   static const base::TimeDelta kContainerTimeout;
 
+  // Time window after suspend/resume in which the session should be ended if
+  // Chrome crashes. This is done as a precaution to avoid showing an unlocked
+  // screen if the crash made Chrome fail to lock the screen:
+  // https://crbug.com/867970
+  static const base::TimeDelta kCrashAfterSuspendInterval;
+
   // The Delegate interface performs actions on behalf of SessionManagerImpl.
   class Delegate {
    public:
@@ -142,6 +149,7 @@ class SessionManagerImpl
                      PolicyKey* owner_key,
                      ContainerManagerInterface* android_container,
                      InstallAttributesReader* install_attributes_reader,
+                     dbus::ObjectProxy* powerd_proxy,
                      dbus::ObjectProxy* system_clock_proxy);
   ~SessionManagerImpl() override;
 
@@ -156,11 +164,12 @@ class SessionManagerImpl
       const std::string& normalized_account_id);
 #endif  // USE_CHEETS
 
-  // Tests can call this before Initialize() to inject their own objects.
+  // Tests can call these before Initialize() to inject their own objects.
   void SetPolicyServicesForTesting(
       std::unique_ptr<DevicePolicyService> device_policy,
       std::unique_ptr<UserPolicyServiceFactory> user_policy_factory,
       std::unique_ptr<DeviceLocalAccountManager> device_local_account_manager);
+  void SetTickClockForTesting(std::unique_ptr<base::TickClock> clock);
 
   // SessionManagerInterface implementation.
   // Should set up policy stuff; if false DIE.
@@ -323,6 +332,11 @@ class SessionManagerImpl
 
   using UserSessionMap = std::map<std::string, std::unique_ptr<UserSession>>;
 
+  // Called when powerd announces that a suspend/resume cycle is beginning or
+  // ending.
+  void OnSuspendImminent(dbus::Signal* signal);
+  void OnSuspendDone(dbus::Signal* signal);
+
   // Called when the tlsdated service becomes initially available.
   void OnSystemClockServiceAvailable(bool service_available);
 
@@ -424,6 +438,14 @@ class SessionManagerImpl
   bool system_clock_synchronized_;
   std::string cookie_;
 
+  // True if a SuspendImminent D-Bus signal was received from |powerd_proxy_|
+  // but the corresponding SuspendDone signal hasn't been received yet.
+  bool suspend_ongoing_;
+
+  // Time at which the last SuspendDone signal was received from
+  // |powerd_proxy_|.
+  base::TimeTicks last_suspend_done_time_;
+
   base::FilePath chrome_testing_path_;
 
   std::unique_ptr<InitDaemonController> init_controller_;
@@ -431,23 +453,26 @@ class SessionManagerImpl
   base::TimeDelta system_clock_last_sync_info_retry_delay_;
   base::TimeTicks arc_start_time_;
 
+  std::unique_ptr<base::TickClock> tick_clock_;
   scoped_refptr<dbus::Bus> bus_;
   org::chromium::SessionManagerInterfaceAdaptor adaptor_;
   std::unique_ptr<DBusService> dbus_service_;
 
-  Delegate* delegate_;                                  // Owned by the caller.
-  KeyGenerator* key_gen_;                               // Owned by the caller.
-  ServerBackedStateKeyGenerator* state_key_generator_;  // Owned by the caller.
-  ProcessManagerServiceInterface* manager_;             // Owned by the caller.
-  LoginMetrics* login_metrics_;                         // Owned by the caller.
-  NssUtil* nss_;                                        // Owned by the caller.
-  SystemUtils* system_;                                 // Owned by the caller.
-  Crossystem* crossystem_;                              // Owned by the caller.
-  VpdProcess* vpd_process_;                             // Owned by the caller.
-  PolicyKey* owner_key_;                                // Owned by the caller.
-  ContainerManagerInterface* android_container_;        // Owned by the caller.
-  InstallAttributesReader* install_attributes_reader_;  // Owned by the caller.
-  dbus::ObjectProxy* system_clock_proxy_;               // Owned by the caller.
+  // Ownership of all of these raw pointers remains elsewhere.
+  Delegate* delegate_;
+  KeyGenerator* key_gen_;
+  ServerBackedStateKeyGenerator* state_key_generator_;
+  ProcessManagerServiceInterface* manager_;
+  LoginMetrics* login_metrics_;
+  NssUtil* nss_;
+  SystemUtils* system_;
+  Crossystem* crossystem_;
+  VpdProcess* vpd_process_;
+  PolicyKey* owner_key_;
+  ContainerManagerInterface* android_container_;
+  InstallAttributesReader* install_attributes_reader_;
+  dbus::ObjectProxy* powerd_proxy_;
+  dbus::ObjectProxy* system_clock_proxy_;
 
   std::unique_ptr<DevicePolicyService> device_policy_;
   std::unique_ptr<UserPolicyServiceFactory> user_policy_factory_;

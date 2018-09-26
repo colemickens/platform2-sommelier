@@ -32,6 +32,7 @@
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
 #include <base/strings/string_util.h>
+#include <base/test/simple_test_tick_clock.h>
 #include <brillo/cryptohome.h>
 #include <brillo/dbus/dbus_param_writer.h>
 #include <brillo/errors/error.h>
@@ -315,6 +316,7 @@ class SessionManagerImplTest : public ::testing::Test,
       : bus_(new FakeBus()),
         state_key_generator_(&utils_, &metrics_),
         android_container_(kAndroidPid),
+        powerd_proxy_(new MockObjectProxy()),
         system_clock_proxy_(new MockObjectProxy()) {}
 
   ~SessionManagerImplTest() override = default;
@@ -380,7 +382,8 @@ class SessionManagerImplTest : public ::testing::Test,
         this /* delegate */, base::WrapUnique(init_controller_), bus_.get(),
         &key_gen_, &state_key_generator_, &manager_, &metrics_, &nss_, &utils_,
         &crossystem_, &vpd_process_, &owner_key_, &android_container_,
-        &install_attributes_reader_, system_clock_proxy_.get());
+        &install_attributes_reader_, powerd_proxy_.get(),
+        system_clock_proxy_.get());
     impl_->SetSystemClockLastSyncInfoRetryDelayForTesting(base::TimeDelta());
 
     device_policy_store_ = new MockPolicyStore();
@@ -413,9 +416,29 @@ class SessionManagerImplTest : public ::testing::Test,
         base::WrapUnique(user_policy_service_factory_),
         std::move(device_local_account_manager));
 
+    // Start at an arbitrary non-zero time.
+    tick_clock_ = new base::SimpleTestTickClock();
+    tick_clock_->SetNowTicks(base::TimeTicks() + base::TimeDelta::FromHours(1));
+    impl_->SetTickClockForTesting(base::WrapUnique(tick_clock_));
+
+    EXPECT_CALL(*powerd_proxy_,
+                ConnectToSignal(power_manager::kPowerManagerInterface,
+                                power_manager::kSuspendImminentSignal, _, _))
+        .WillOnce(SaveArg<2>(&suspend_imminent_callback_));
+    EXPECT_CALL(*powerd_proxy_,
+                ConnectToSignal(power_manager::kPowerManagerInterface,
+                                power_manager::kSuspendDoneSignal, _, _))
+        .WillOnce(SaveArg<2>(&suspend_done_callback_));
+
     EXPECT_CALL(*system_clock_proxy_, WaitForServiceToBeAvailable(_))
         .WillOnce(SaveArg<0>(&available_callback_));
+
     impl_->Initialize();
+
+    ASSERT_TRUE(Mock::VerifyAndClearExpectations(powerd_proxy_.get()));
+    ASSERT_FALSE(suspend_imminent_callback_.is_null());
+    ASSERT_FALSE(suspend_done_callback_.is_null());
+
     ASSERT_TRUE(Mock::VerifyAndClearExpectations(system_clock_proxy_.get()));
     ASSERT_FALSE(available_callback_.is_null());
 
@@ -774,6 +797,7 @@ class SessionManagerImplTest : public ::testing::Test,
   MockPolicyStore* device_policy_store_ = nullptr;
   MockDevicePolicyService* device_policy_service_ = nullptr;
   MockUserPolicyServiceFactory* user_policy_service_factory_ = nullptr;
+  base::SimpleTestTickClock* tick_clock_ = nullptr;
   map<string, MockPolicyService*> user_policy_services_;
   // The username which is expected to be passed to
   // MockUserPolicyServiceFactory::CreateForHiddenUserHome.
@@ -796,8 +820,14 @@ class SessionManagerImplTest : public ::testing::Test,
   MockPolicyKey owner_key_;
   FakeContainerManager android_container_;
   MockInstallAttributesReader install_attributes_reader_;
+
+  scoped_refptr<MockObjectProxy> powerd_proxy_;
+  dbus::ObjectProxy::SignalCallback suspend_imminent_callback_;
+  dbus::ObjectProxy::SignalCallback suspend_done_callback_;
+
   scoped_refptr<MockObjectProxy> system_clock_proxy_;
   dbus::ObjectProxy::WaitForServiceToBeAvailableCallback available_callback_;
+
   password_provider::FakePasswordProvider* password_provider_ = nullptr;
 
   std::unique_ptr<SessionManagerImpl> impl_;
@@ -2041,6 +2071,35 @@ TEST_F(SessionManagerImplTest, LockUnlockScreen) {
   EXPECT_FALSE(impl_->ShouldEndSession(nullptr));
 
   EXPECT_FALSE(impl_->IsScreenLocked());
+}
+
+TEST_F(SessionManagerImplTest, EndSessionDuringAndAfterSuspend) {
+  // Initially, we should restart Chrome if it crashes.
+  EXPECT_FALSE(impl_->ShouldEndSession(nullptr));
+
+  // Right after suspend starts, we should end the session instead.
+  dbus::Signal imminent_signal(power_manager::kPowerManagerInterface,
+                               power_manager::kSuspendImminentSignal);
+  suspend_imminent_callback_.Run(&imminent_signal);
+  EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
+
+  // We should also end it if some time passes...
+  tick_clock_->Advance(base::TimeDelta::FromSeconds(20));
+  EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
+
+  // ... and right after resume finishes...
+  dbus::Signal done_signal(power_manager::kPowerManagerInterface,
+                           power_manager::kSuspendDoneSignal);
+  suspend_done_callback_.Run(&done_signal);
+  EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
+
+  // ... and for a period of time after that.
+  tick_clock_->Advance(SessionManagerImpl::kCrashAfterSuspendInterval);
+  EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
+
+  // If we wait long enough, we should go back to restarting Chrome.
+  tick_clock_->Advance(base::TimeDelta::FromSeconds(1));
+  EXPECT_FALSE(impl_->ShouldEndSession(nullptr));
 }
 
 TEST_F(SessionManagerImplTest, StartDeviceWipe) {

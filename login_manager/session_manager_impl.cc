@@ -31,6 +31,7 @@
 #include <base/strings/string_tokenizer.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/default_tick_clock.h>
 #include <base/time/time.h>
 #include <brillo/cryptohome.h>
 #include <brillo/dbus/dbus_object.h>
@@ -117,6 +118,9 @@ constexpr char SessionManagerImpl::kScreenUnlockedImpulse[] = "screen-unlocked";
 // needs as long as 3s on kevin to perform graceful shutdown.
 constexpr base::TimeDelta SessionManagerImpl::kContainerTimeout =
     base::TimeDelta::FromSeconds(3);
+
+constexpr base::TimeDelta SessionManagerImpl::kCrashAfterSuspendInterval =
+    base::TimeDelta::FromSeconds(5);
 
 namespace {
 
@@ -209,6 +213,17 @@ bool ParseAndValidatePolicyDescriptor(
   }
 
   return true;
+}
+
+// Handles the result of an attempt to connect to a D-Bus signal, logging an
+// error on failure.
+void HandleDBusSignalConnected(const std::string& interface,
+                               const std::string& signal,
+                               bool success) {
+  if (!success) {
+    LOG(ERROR) << "Failed to connect to D-Bus signal " << interface << "."
+               << signal;
+  }
 }
 
 }  // namespace
@@ -318,15 +333,18 @@ SessionManagerImpl::SessionManagerImpl(
     PolicyKey* owner_key,
     ContainerManagerInterface* android_container,
     InstallAttributesReader* install_attributes_reader,
+    dbus::ObjectProxy* powerd_proxy,
     dbus::ObjectProxy* system_clock_proxy)
     : session_started_(false),
       session_stopping_(false),
       screen_locked_(false),
       supervised_user_creation_ongoing_(false),
       system_clock_synchronized_(false),
+      suspend_ongoing_(false),
       init_controller_(std::move(init_controller)),
       system_clock_last_sync_info_retry_delay_(
           kSystemClockLastSyncInfoRetryDelay),
+      tick_clock_(std::make_unique<base::DefaultTickClock>()),
       bus_(bus),
       adaptor_(this),
       delegate_(delegate),
@@ -341,6 +359,7 @@ SessionManagerImpl::SessionManagerImpl(
       owner_key_(owner_key),
       android_container_(android_container),
       install_attributes_reader_(install_attributes_reader),
+      powerd_proxy_(powerd_proxy),
       system_clock_proxy_(system_clock_proxy),
       mitigator_(key_gen),
       password_provider_(
@@ -376,6 +395,11 @@ void SessionManagerImpl::SetPolicyServicesForTesting(
   device_local_account_manager_ = std::move(device_local_account_manager);
 }
 
+void SessionManagerImpl::SetTickClockForTesting(
+    std::unique_ptr<base::TickClock> clock) {
+  tick_clock_ = std::move(clock);
+}
+
 void SessionManagerImpl::AnnounceSessionStoppingIfNeeded() {
   if (session_started_) {
     session_stopping_ = true;
@@ -406,12 +430,38 @@ bool SessionManagerImpl::ShouldEndSession(std::string* reason_out) {
     return true;
   }
 
+  if (suspend_ongoing_) {
+    set_reason("suspend ongoing");
+    return true;
+  }
+
+  if (!last_suspend_done_time_.is_null()) {
+    const base::TimeDelta time_since_suspend =
+        tick_clock_->NowTicks() - last_suspend_done_time_;
+    if (time_since_suspend <= kCrashAfterSuspendInterval) {
+      set_reason("suspend completed recently");
+      return true;
+    }
+  }
+
   set_reason("");
   return false;
 }
 
 bool SessionManagerImpl::Initialize() {
   key_gen_->set_delegate(this);
+
+  powerd_proxy_->ConnectToSignal(
+      power_manager::kPowerManagerInterface,
+      power_manager::kSuspendImminentSignal,
+      base::Bind(&SessionManagerImpl::OnSuspendImminent,
+                 weak_ptr_factory_.GetWeakPtr()),
+      base::Bind(&HandleDBusSignalConnected));
+  powerd_proxy_->ConnectToSignal(power_manager::kPowerManagerInterface,
+                                 power_manager::kSuspendDoneSignal,
+                                 base::Bind(&SessionManagerImpl::OnSuspendDone,
+                                            weak_ptr_factory_.GetWeakPtr()),
+                                 base::Bind(&HandleDBusSignalConnected));
 
   system_clock_proxy_->WaitForServiceToBeAvailable(
       base::Bind(&SessionManagerImpl::OnSystemClockServiceAvailable,
@@ -1003,6 +1053,21 @@ void SessionManagerImpl::GetServerBackedStateKeys(
   }
 }
 
+void SessionManagerImpl::OnSuspendImminent(dbus::Signal* signal) {
+  suspend_ongoing_ = true;
+
+  // TODO(derat): Also check if Chrome last crashed within ~5 seconds of
+  // tick_clock_->NowTicks() and end the session if so:
+  // https://crbug.com/867970. We'll probably need to expose the last crash time
+  // from ProcessManagerServiceInterface (implemented by SessionManagerService)
+  // and then call StopSession here.
+}
+
+void SessionManagerImpl::OnSuspendDone(dbus::Signal* signal) {
+  suspend_ongoing_ = false;
+  last_suspend_done_time_ = tick_clock_->NowTicks();
+}
+
 void SessionManagerImpl::OnSystemClockServiceAvailable(bool service_available) {
   if (!service_available) {
     LOG(ERROR) << "Failed to listen for tlsdated service start";
@@ -1146,7 +1211,7 @@ bool SessionManagerImpl::UpgradeArcContainer(
   // than when the mini-container starts) since we are interested in measuring
   // time from when the user logs in until the system is ready to be interacted
   // with.
-  arc_start_time_ = base::TimeTicks::Now();
+  arc_start_time_ = tick_clock_->NowTicks();
 
   // To upgrade the ARC mini-container, a certain amount of disk space is
   // needed under /home. We first check it.

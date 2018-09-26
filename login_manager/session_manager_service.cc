@@ -197,8 +197,8 @@ bool SessionManagerService::Initialize() {
       &key_gen_, &state_key_generator_,
       this /* manager, i.e. ProcessManagerServiceInterface */, login_metrics_,
       nss_.get(), system_, &crossystem_, &vpd_process_, &owner_key_,
-      android_container_.get(),
-      &install_attributes_reader_, system_clock_proxy);
+      android_container_.get(), &install_attributes_reader_, powerd_dbus_proxy_,
+      system_clock_proxy);
   if (!InitializeImpl())
     return false;
 
