@@ -48,6 +48,17 @@ use std::path::{Path, PathBuf};
 // Not to be confused with chrono::Duration or the deprecated time::Duration.
 use std::time::Duration;
 
+macro_rules! die {
+    ($message:expr) => {
+        |err| {
+            let m = format!("panic: {}: {}", $message, err);
+            // error! goes to log, panic! goes to stderr.
+            error!("{}", m);
+            panic!("{}", m);
+        }
+    }
+}
+
 #[cfg(test)]
 mod test;
 
@@ -719,7 +730,7 @@ impl<'a> Sampler<'a> {
         low_mem_file_flags.custom_flags(libc::O_NONBLOCK);
         low_mem_file_flags.read(true);
         let low_mem_file_option = open_with_flags_maybe(&paths.low_mem_device, &low_mem_file_flags)
-            .expect("error opening low-mem file");
+            .unwrap_or_else(die!("error opening low-mem file"));
         if low_mem_file_option.is_none() {
             warn!("low-mem device: cannot open and will not use");
         }
@@ -727,18 +738,18 @@ impl<'a> Sampler<'a> {
         let mut low_mem_watcher = FileWatcher::new();
 
         if let Some(ref low_mem_file) = low_mem_file_option.as_ref() {
-            watcher.set(&low_mem_file).expect("cannot watch low-mem fd");
-            low_mem_watcher.set(&low_mem_file).expect("cannot set low-mem watcher");
+            watcher.set(&low_mem_file).unwrap_or_else(die!("cannot watch low-mem fd"));
+            low_mem_watcher.set(&low_mem_file).unwrap_or_else(die!("cannot set low-mem watcher"));
         }
         for fd in dbus.get_fds().iter().by_ref() {
-            watcher.set_fd(*fd).expect("cannot watch dbus fd");
+            watcher.set_fd(*fd).unwrap_or_else(die!("cannot watch dbus fd"));
         }
 
         let files = Files {
-            vmstat_file: open(&paths.vmstat).expect("cannot open vmstat"),
-            runnables_file: open(&paths.runnables).expect("cannot open loadavg"),
+            vmstat_file: open(&paths.vmstat).unwrap_or_else(die!("cannot open vmstat")),
+            runnables_file: open(&paths.runnables).unwrap_or_else(die!("cannot open loadavg")),
             available_file_option: open_maybe(&paths.available)
-                .expect("error opening available file"),
+                .unwrap_or_else(die!("error opening available file")),
             low_mem_file_option,
         };
 
@@ -761,8 +772,9 @@ impl<'a> Sampler<'a> {
             timer,
             quit_request: false,
         };
-        sampler.find_starting_clip_counter().expect("cannot find starting clip counter");
-        sampler.log_static_parameters().expect("cannot log static parameters");
+        sampler.find_starting_clip_counter()
+            .unwrap_or_else(die!("cannot find starting clip counter"));
+        sampler.log_static_parameters().unwrap_or_else(die!("cannot log static parameters"));
         sampler
     }
 
@@ -1224,7 +1236,7 @@ fn main() {
 
     syslog::init(syslog::Facility::LOG_USER,
                  if debug_log { log::LevelFilter::Debug } else { log::LevelFilter::Warn },
-                 Some("memd")).expect("cannot initialize syslog");
+                 Some("memd")).unwrap_or_else(die!("cannot initialize syslog"));
 
     warn!("memd started");
     run_memory_daemon(always_poll_fast);
@@ -1267,14 +1279,15 @@ fn run_memory_daemon(always_poll_fast: bool) {
     {
         test::setup_test_environment(&paths);
         let var_log = &paths.log_directory.parent().unwrap();
-        std::fs::create_dir_all(var_log).expect("cannot create /var/log");
+        std::fs::create_dir_all(var_log).unwrap_or_else(die!("cannot create /var/log"));
     }
 
     // Make sure /var/log/memd exists.  Create it if not.  Assume /var/log
     // exists.  Panic on errors.
     if !paths.log_directory.exists() {
         create_dir(&paths.log_directory)
-            .expect(&format!("cannot create log directory {:?}", &paths.log_directory));
+            .unwrap_or_else(die!(&format!("cannot create log directory {:?}",
+                                          &paths.log_directory)));
     }
 
     #[cfg(test)]
@@ -1283,12 +1296,12 @@ fn run_memory_daemon(always_poll_fast: bool) {
     #[cfg(not(test))]
     {
         let timer = Box::new(GenuineTimer {});
-        let dbus = Box::new(GenuineDbus::new().expect("cannot connect to dbus"));
+        let dbus = Box::new(GenuineDbus::new().unwrap_or_else(die!("cannot connect to dbus")));
         let mut sampler = Sampler::new(always_poll_fast, &paths, timer, dbus);
         loop {
             // Run forever, alternating between slow and fast poll.
-            sampler.slow_poll().expect("slow poll error");
-            sampler.fast_poll().expect("fast poll error");
+            sampler.slow_poll().unwrap_or_else(die!("slow poll error"));
+            sampler.fast_poll().unwrap_or_else(die!("fast poll error"));
         }
     }
 }

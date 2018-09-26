@@ -13,9 +13,11 @@ clock_getres: 1
 clock_gettime: 1
 close: 1
 connect: 1
+exit_group: 1
 fcntl: 1
 fstat: 1
 ftruncate: 1
+futex: 1
 geteuid: 1
 getresgid: 1
 getresuid: 1
