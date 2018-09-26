@@ -51,13 +51,24 @@ type cros_init_conf_file, file_type;
 type cros_selinux_config_file, file_type;
 
 type cros_var, file_type;
-type cros_syslog, file_type;
 type cros_var_log, file_type;
 type cros_var_lib, file_type;
 type cros_var_spool, file_type;
 
+type cros_arc_log, file_type, cros_log_type;
+type cros_authpolicy_log, file_type, cros_log_type;
+type cros_boot_log, file_type, cros_log_type;
+type cros_net_log, file_type, cros_log_type;
+type cros_secure_log, file_type, cros_log_type;
+type cros_syslog, file_type, cros_log_type;
+type cros_tlsdate_log, file_type, cros_log_type;
+
+
 type cros_run, file_type;
 
+type cros_network_conf_file, file_type;
+type cros_passwd_file, file_type;
+type cros_rsyslog_conf_file, file_type;
 type cros_tz_data_file, file_type;
 
 type cros_ld_conf_cache, file_type;
@@ -93,3 +104,5 @@ type wayland_socket, file_type;
 
 # TODO(fqj): temporarily let un-decomposed chromeos domain to write file as tmpfs.
 type_transition chromeos cros_run:dir tmpfs;
+
+auditallow domain cros_var_log:dir { add_name write };

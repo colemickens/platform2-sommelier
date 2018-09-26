@@ -26,6 +26,7 @@ allow $1 cros_init_scripts:fd use;
 
 define(`filetrans_pattern', `
 allow $1 $2:dir rw_dir_perms;
+allow $1 $3:$4 create_file_perms;
 type_transition $1 $2:$4 $3 $5;
 ')
 
@@ -33,4 +34,8 @@ define(`log_writer', `
 allow $1 cros_logger_exec:file { rx_file_perms };
 allow $1 cros_rsyslogd:unix_dgram_socket { sendto };
 allow $1 logger_device:sock_file write;
+')
+
+define(`cros_net', `
+typeattribute $1 cros_netdomain;
 ')
