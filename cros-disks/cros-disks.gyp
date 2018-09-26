@@ -72,7 +72,7 @@
       ],
     },
     {
-      'target_name': 'disks',
+      'target_name': 'cros-disks',
       'type': 'executable',
       'dependencies': ['libdisks'],
       'sources': [

@@ -56,7 +56,7 @@ const char kPropertySerial[] = "ID_SERIAL";
 const char kSubsystemUsb[] = "usb";
 const char kVirtualDevicePathPrefix[] = "/sys/devices/virtual/";
 const char kLoopDevicePathPrefix[] = "/sys/devices/virtual/block/loop";
-const char kUSBDeviceInfoFile[] = "/opt/google/cros-disks/usb-device-info";
+const char kUSBDeviceInfoFile[] = "/usr/share/cros-disks/usb-device-info";
 const char kUSBIdentifierDatabase[] = "/usr/share/misc/usb.ids";
 const char* const kPartitionTypesToHide[] = {
     "c12a7328-f81f-11d2-ba4b-00a0c93ec93b",  // EFI system partition

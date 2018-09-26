@@ -41,7 +41,7 @@ const char kAVFSMountUser[] = "avfs";
 // TODO(wad,benchan): Revisit the location of policy files once more system
 // daemons are sandboxed with seccomp filters.
 const char kAVFSSeccompFilterPolicyFile[] =
-    "/opt/google/cros-disks/avfsd-seccomp.policy";
+    "/usr/share/policy/avfsd-seccomp.policy";
 const char kAVFSMountProgram[] = "/usr/bin/avfsd";
 const char kAVFSRootDirectory[] = "/run/avfsroot";
 const mode_t kAVFSDirectoryPermissions = 0770;  // rwx by avfs user and group
