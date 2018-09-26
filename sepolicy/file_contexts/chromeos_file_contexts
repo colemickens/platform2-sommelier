@@ -26,6 +26,7 @@ include(sepolicy/file_contexts/coreutils)
 /usr/bin/anomaly_collector      u:object_r:cros_anomaly_collector_exec:s0
 /usr/bin/chrt                   u:object_r:cros_chrt_exec:s0
 /usr/bin/cras                   u:object_r:cros_cras_exec:s0
+/usr/bin/cros-disks             u:object_r:cros_disks_exec:s0
 /usr/bin/dbus-daemon            u:object_r:cros_dbus_daemon_exec:s0
 /usr/bin/ionice                 u:object_r:cros_ionice_exec:s0
 /usr/bin/logger                 u:object_r:cros_logger_exec:s0
