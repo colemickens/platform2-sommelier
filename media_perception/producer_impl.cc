@@ -54,23 +54,24 @@ void ProducerImpl::OnBufferRetired(int32_t buffer_id) {
 }
 
 void ProducerImpl::PushNextFrame(
-    base::TimeDelta timestamp, std::unique_ptr<const uint8_t[]> data,
-    int data_size, media::mojom::VideoCapturePixelFormat pixel_format,
-    int width, int height) {
+    std::shared_ptr<ProducerImpl> producer_impl, base::TimeDelta timestamp,
+    std::unique_ptr<const uint8_t[]> data, int data_size,
+    media::mojom::VideoCapturePixelFormat pixel_format, int width, int height) {
   gfx::mojom::SizePtr size = gfx::mojom::Size::New();
   size->width = width;
   size->height = height;
   virtual_device_->RequestFrameBuffer(
       std::move(size), pixel_format,
       base::Bind(&ProducerImpl::OnFrameBufferReceived, base::Unretained(this),
-                 timestamp, base::Passed(&data), data_size, pixel_format, width,
-                 height));
+                 producer_impl, timestamp, base::Passed(&data), data_size,
+                 pixel_format, width, height));
 }
 
 void ProducerImpl::OnFrameBufferReceived(
-    base::TimeDelta timestamp, std::unique_ptr<const uint8_t[]> data,
-    int data_size, media::mojom::VideoCapturePixelFormat pixel_format,
-    int width, int height, int32_t buffer_id) {
+    std::shared_ptr<ProducerImpl> producer_impl, base::TimeDelta timestamp,
+    std::unique_ptr<const uint8_t[]> data, int data_size,
+    media::mojom::VideoCapturePixelFormat pixel_format, int width, int height,
+    int32_t buffer_id) {
   if (buffer_id == video_capture::mojom::kInvalidBufferId) {
     LOG(ERROR) << "Got invalid buffer id.";
     return;

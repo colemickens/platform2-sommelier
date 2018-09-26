@@ -216,16 +216,18 @@ void MojoConnector::StopVideoCaptureOnIpcThread() {
 }
 
 void MojoConnector::CreateVirtualDevice(
-    const VideoDevice& video_device, ProducerImpl* producer_impl,
+    const VideoDevice& video_device,
+    std::shared_ptr<ProducerImpl> producer_impl,
     const VideoCaptureServiceClient::VirtualDeviceCallback& callback) {
   ipc_thread_.task_runner()->PostTask(
       FROM_HERE, base::Bind(&MojoConnector::CreateVirtualDeviceOnIpcThread,
-                            base::Unretained(this), video_device,
-                            producer_impl, callback));
+                            base::Unretained(this), video_device, producer_impl,
+                            callback));
 }
 
 void MojoConnector::CreateVirtualDeviceOnIpcThread(
-    const VideoDevice& video_device, ProducerImpl* producer_impl,
+    const VideoDevice& video_device,
+    std::shared_ptr<ProducerImpl> producer_impl,
     const VideoCaptureServiceClient::VirtualDeviceCallback& callback) {
   media::mojom::VideoCaptureDeviceInfoPtr info =
       media::mojom::VideoCaptureDeviceInfo::New();
@@ -242,7 +244,7 @@ void MojoConnector::CreateVirtualDeviceOnIpcThread(
 }
 
 void MojoConnector::PushFrameToVirtualDevice(
-    ProducerImpl* producer_impl, base::TimeDelta timestamp,
+    std::shared_ptr<ProducerImpl> producer_impl, base::TimeDelta timestamp,
     std::unique_ptr<const uint8_t[]> data, int data_size,
     PixelFormat pixel_format, int frame_width, int frame_height) {
   ipc_thread_.task_runner()->PostTask(
@@ -253,11 +255,11 @@ void MojoConnector::PushFrameToVirtualDevice(
 }
 
 void MojoConnector::PushFrameToVirtualDeviceOnIpcThread(
-    ProducerImpl* producer_impl, base::TimeDelta timestamp,
+    std::shared_ptr<ProducerImpl> producer_impl, base::TimeDelta timestamp,
     std::unique_ptr<const uint8_t[]> data, int data_size,
     PixelFormat pixel_format, int frame_width, int frame_height) {
   producer_impl->PushNextFrame(
-      timestamp, std::move(data), data_size,
+      producer_impl, timestamp, std::move(data), data_size,
       GetVideoCapturePixelFormatFromPixelFormat(pixel_format), frame_width,
       frame_height);
 }

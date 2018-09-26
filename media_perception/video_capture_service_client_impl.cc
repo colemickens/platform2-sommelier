@@ -59,13 +59,12 @@ void VideoCaptureServiceClientImpl::OnNewFrameData(
 
 void VideoCaptureServiceClientImpl::CreateVirtualDevice(
     const VideoDevice& video_device, const VirtualDeviceCallback& callback) {
-  std::unique_ptr<ProducerImpl> producer_impl(new ProducerImpl());
-  mojo_connector_->CreateVirtualDevice(
-      video_device, producer_impl.get(), callback);
+  auto producer_impl = std::make_shared<ProducerImpl>();
+  mojo_connector_->CreateVirtualDevice(video_device, producer_impl, callback);
 
   std::lock_guard<std::mutex> lock(device_id_to_producer_map_lock_);
   device_id_to_producer_map_.insert(
-      std::make_pair(video_device.id, std::move(producer_impl)));
+      std::make_pair(video_device.id, producer_impl));
 }
 
 void VideoCaptureServiceClientImpl::PushFrameToVirtualDevice(
@@ -73,15 +72,14 @@ void VideoCaptureServiceClientImpl::PushFrameToVirtualDevice(
     std::unique_ptr<const uint8_t[]> data, int data_size,
     PixelFormat pixel_format, int frame_width, int frame_height) {
   std::lock_guard<std::mutex> lock(device_id_to_producer_map_lock_);
-  std::map<std::string, std::unique_ptr<ProducerImpl>>::iterator it =
+  std::map<std::string, std::shared_ptr<ProducerImpl>>::iterator it =
       device_id_to_producer_map_.find(device_id);
   if (it == device_id_to_producer_map_.end()) {
     LOG(ERROR) << "Device id not found in producer map.";
     return;
   }
   mojo_connector_->PushFrameToVirtualDevice(
-      (it->second).get(),
-      base::TimeDelta::FromMicroseconds(timestamp_in_microseconds),
+      it->second, base::TimeDelta::FromMicroseconds(timestamp_in_microseconds),
       std::move(data), data_size, pixel_format, frame_width, frame_height);
 }
 

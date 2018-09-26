@@ -55,7 +55,7 @@ class VideoCaptureServiceClientImpl : public VideoCaptureServiceClient {
   // mojo object when PushFrameToVirtualDevice is called.
   // ProducerImpl objects provide an interface for buffer info updates of an
   // associated virtual device.
-  std::map<std::string /*device_id*/, std::unique_ptr<ProducerImpl>>
+  std::map<std::string /*device_id*/, std::shared_ptr<ProducerImpl>>
       device_id_to_producer_map_;
 
   // Guards against concurrent changes to |device_id_to_producer_map_|.

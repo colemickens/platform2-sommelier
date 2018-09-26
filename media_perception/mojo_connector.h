@@ -54,13 +54,12 @@ class MojoConnector : public mojo::edk::ProcessDelegate {
   void StopVideoCapture();
 
   // Creates a new virtual device that frames can be fed into.
-  // producer_impl is owned by the caller.
   void CreateVirtualDevice(
-      const VideoDevice& video_device, ProducerImpl* producer_impl,
+      const VideoDevice& video_device,
+      std::shared_ptr<ProducerImpl> producer_impl,
       const VideoCaptureServiceClient::VirtualDeviceCallback& callback);
 
-  // producer_impl is owned by the caller.
-  void PushFrameToVirtualDevice(ProducerImpl* producer_impl,
+  void PushFrameToVirtualDevice(std::shared_ptr<ProducerImpl> producer_impl,
                                 base::TimeDelta timestamp,
                                 std::unique_ptr<const uint8_t[]> data,
                                 int data_size, PixelFormat pixel_format,
@@ -96,14 +95,13 @@ class MojoConnector : public mojo::edk::ProcessDelegate {
 
   void StopVideoCaptureOnIpcThread();
 
-  // producer_impl is owned by the caller.
   void CreateVirtualDeviceOnIpcThread(
-      const VideoDevice& video_device, ProducerImpl* producer_impl,
+      const VideoDevice& video_device,
+      std::shared_ptr<ProducerImpl> producer_impl,
       const VideoCaptureServiceClient::VirtualDeviceCallback& callback);
 
-  // producer_impl is owned by the caller.
   void PushFrameToVirtualDeviceOnIpcThread(
-      ProducerImpl* producer_impl, base::TimeDelta timestamp,
+      std::shared_ptr<ProducerImpl> producer_impl, base::TimeDelta timestamp,
       std::unique_ptr<const uint8_t[]> data, int data_size,
       PixelFormat pixel_format, int frame_width, int frame_height);
 

@@ -23,7 +23,8 @@ class ProducerImpl : public video_capture::mojom::Producer {
       video_capture::mojom::DeviceFactoryPtr* factory,
       media::mojom::VideoCaptureDeviceInfoPtr info);
 
-  void PushNextFrame(base::TimeDelta timestamp,
+  void PushNextFrame(std::shared_ptr<ProducerImpl> producer_impl,
+                     base::TimeDelta timestamp,
                      std::unique_ptr<const uint8_t[]> data, int data_size,
                      media::mojom::VideoCapturePixelFormat pixel_format,
                      int width, int height);
@@ -40,7 +41,8 @@ class ProducerImpl : public video_capture::mojom::Producer {
   // will get unbound.
   video_capture::mojom::ProducerPtr CreateInterfacePtr();
 
-  void OnFrameBufferReceived(base::TimeDelta timestamp,
+  void OnFrameBufferReceived(std::shared_ptr<ProducerImpl> producer_impl,
+                             base::TimeDelta timestamp,
                              std::unique_ptr<const uint8_t[]> data,
                              int data_size,
                              media::mojom::VideoCapturePixelFormat pixel_format,
