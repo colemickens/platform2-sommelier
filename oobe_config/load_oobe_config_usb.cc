@@ -137,18 +137,20 @@ bool LoadOobeConfigUsb::VerifySignature(const string& message,
 bool LoadOobeConfigUsb::LocateUsbDevice(FilePath* device_id) {
   // /stateful/unencrypted/oobe_auto_config/usb_device_path.sig is the signature
   // of a /dev/disk/by-id path for the root USB device (e.g. /dev/sda). So to
-  // obtain which USB we were on pre-reboot,
+  // obtain which USB we were on pre-reboot:
   // for dev in /dev/disk/by-id/ *:
   //     if dev verifies with usb_device_path.sig with validation_key.pub:
-  //         (subprocess OpenSSL for this) USB block device is at readlink(dev)
+  //       USB block device is at readlink(dev)
 
   base::FileEnumerator iter(device_ids_dir_, false,
                             base::FileEnumerator::FILES);
-  for (auto dev_id = iter.Next(); !dev_id.empty(); dev_id = iter.Next()) {
-    if (VerifySignature(dev_id.value(), usb_device_path_signature_)) {
-      // Found the device; do a readlink -f and return the absolute path to the
-      // device.
-      // TODO(ahassani): Implement.
+  for (auto link = iter.Next(); !link.empty(); link = iter.Next()) {
+    if (VerifySignature(link.value(), usb_device_path_signature_) &&
+        base::ReadSymbolicLink(link, device_id)) {
+      // Found the device, did a `readlink -f` and returning the absolute path
+      // to the device.
+      *device_id = base::MakeAbsoluteFilePath(*device_id);
+      LOG(INFO) << "Found USB device " << device_id->value();
       return true;
     }
   }

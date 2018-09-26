@@ -95,6 +95,31 @@ class LoadOobeConfigUsbTest : public ::testing::Test {
               expected_result);
   }
 
+  void TestLocateUsbDevice(const FilePath& private_key, bool expect_result) {
+    FilePath dev_id1, dev_id2;
+    EXPECT_TRUE(base::CreateTemporaryFile(&dev_id1));
+    EXPECT_TRUE(base::CreateTemporaryFile(&dev_id2));
+
+    FilePath dev_id1_sym = load_config_->device_ids_dir_.Append("dev_id1_sym");
+    FilePath dev_id2_sym = load_config_->device_ids_dir_.Append("dev_id2_sym");
+    EXPECT_TRUE(base::CreateSymbolicLink(dev_id1, dev_id1_sym));
+    EXPECT_TRUE(base::CreateSymbolicLink(dev_id2, dev_id2_sym));
+
+    FilePath temp_link;
+    EXPECT_TRUE(base::CreateTemporaryFile(&temp_link));
+    EXPECT_EQ(base::WriteFile(temp_link, dev_id2_sym.value().c_str(),
+                              dev_id2_sym.value().size()),
+              dev_id2_sym.value().size());
+    EXPECT_TRUE(SignFile(private_key, temp_link,
+                         load_config_->usb_device_path_signature_file_));
+
+    EXPECT_TRUE(load_config_->ReadFiles(true /* ignore_errors */));
+    FilePath found_usb_device;
+    EXPECT_EQ(load_config_->LocateUsbDevice(&found_usb_device), expect_result);
+    EXPECT_EQ(base::MakeAbsoluteFilePath(dev_id2) == found_usb_device,
+              expect_result);
+  }
+
   ScopedTempDir fake_stateful_;
   ScopedTempDir fake_device_ids_dir_;
   unique_ptr<LoadOobeConfigUsb> load_config_;
@@ -122,6 +147,14 @@ TEST_F(LoadOobeConfigUsbTest, VerifySignatureFailData) {
   const string kData = "This is a test string!!!";
   const string kInvalidData = "This is an invalid test string!!!";
   TestVerifySignature(kData, kInvalidData, private_key_file_, false);
+}
+
+TEST_F(LoadOobeConfigUsbTest, LocateUsbDevice) {
+  TestLocateUsbDevice(private_key_file_, true);
+}
+
+TEST_F(LoadOobeConfigUsbTest, LocateUsbDeviceFail) {
+  TestLocateUsbDevice(alt_private_key_file_, false);
 }
 
 }  // namespace oobe_config
