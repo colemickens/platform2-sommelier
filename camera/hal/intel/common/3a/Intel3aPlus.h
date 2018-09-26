@@ -93,6 +93,7 @@ private:
     Intel3aPlus(const Intel3aPlus& other);
     Intel3aPlus& operator=(const Intel3aPlus& other);
 
+    void updateMinAEWindowSize(CameraWindow &dst);
     void parseMeteringRegion(const CameraMetadata *settings,
                              int tagId, CameraWindow &meteringWindow);
 

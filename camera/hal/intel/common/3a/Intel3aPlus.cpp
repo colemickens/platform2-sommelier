@@ -494,6 +494,8 @@ status_t Intel3aPlus::fillAeInputParams(const CameraMetadata *settings,
             aeRegion->clip(*croppingRegion);
         convertFromAndroidToIaCoordinates(*aeRegion, dst);
 
+        updateMinAEWindowSize(dst);
+
         aiqInputParams->aeInputParams.exposure_window->left = dst.left();
         aiqInputParams->aeInputParams.exposure_window->top = dst.top();
         aiqInputParams->aeInputParams.exposure_window->right = dst.right();
@@ -641,6 +643,45 @@ status_t Intel3aPlus::fillAeInputParams(const CameraMetadata *settings,
 
     }
     return NO_ERROR;
+}
+
+void Intel3aPlus::updateMinAEWindowSize(CameraWindow &dst)
+{
+    int minWidth = (IA_COORDINATE_WIDTH + 10) / 10;
+    int minHeight = (IA_COORDINATE_HEIGHT + 10) / 10;
+
+    if (dst.width() * dst.height() >= minWidth * minHeight) return;
+
+    ia_coordinate center = dst.center();
+    ia_coordinate topLeft = { dst.left(), dst.top() };
+    ia_coordinate bottomright = { dst.right(), dst.bottom() };
+    if (dst.width() < minWidth) {
+        if (dst.center().x < minWidth / 2) {
+            center.x = minWidth / 2;
+        } else if (dst.center().x > (IA_COORDINATE_WIDTH - minWidth / 2)) {
+            center.x = IA_COORDINATE_WIDTH - minWidth / 2;
+        }
+
+        topLeft.x = center.x - minWidth / 2;
+        bottomright.x = center.x + minWidth / 2;
+    }
+
+    if (dst.height() < minHeight) {
+        if (dst.center().y < minHeight / 2) {
+            center.y = minHeight / 2;
+        } else if (dst.center().y > (IA_COORDINATE_HEIGHT - minHeight / 2)) {
+            center.y = IA_COORDINATE_HEIGHT - minHeight / 2;
+        }
+
+        topLeft.y = center.y - minHeight / 2;
+        bottomright.y = center.y + minHeight / 2;
+    }
+
+    LOG2("change window from [%d,%d,%d,%d] to [%d,%d,%d,%d]",
+          dst.left(), dst.top(), dst.right(), dst.bottom(),
+          topLeft.x, topLeft.y, bottomright.x, bottomright.y);
+
+    dst.init(topLeft, bottomright, dst.weight());
 }
 
 /**
