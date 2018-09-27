@@ -63,4 +63,4 @@ private:
   std::string empty_string_;
 };
 
-#endif  // LIBBRILLO_LIBINSTALLATTRIBUTES_H_
+#endif  // LIBBRILLO_INSTALL_ATTRIBUTES_LIBINSTALLATTRIBUTES_H_

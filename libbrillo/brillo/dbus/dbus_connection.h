@@ -37,4 +37,4 @@ class BRILLO_EXPORT DBusConnection final {
 
 }  // namespace brillo
 
-#endif  // LIBBRILLO_BRILLO_DAEMONS_DBUS_DAEMON_H_
+#endif  // LIBBRILLO_BRILLO_DBUS_DBUS_CONNECTION_H_

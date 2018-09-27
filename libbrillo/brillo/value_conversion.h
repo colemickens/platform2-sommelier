@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef BRILLO_VALUE_CONVERSION_H_
-#define BRILLO_VALUE_CONVERSION_H_
+#ifndef LIBBRILLO_BRILLO_VALUE_CONVERSION_H_
+#define LIBBRILLO_BRILLO_VALUE_CONVERSION_H_
 
 // This file provides a set of helper functions to convert between base::Value
 // and native types. Apart from handling standard types such as 'int' and
@@ -135,4 +135,4 @@ std::unique_ptr<base::Value> ToValue(
 
 }  // namespace brillo
 
-#endif  // BRILLO_VALUE_CONVERSION_H_
+#endif  // LIBBRILLO_BRILLO_VALUE_CONVERSION_H_
