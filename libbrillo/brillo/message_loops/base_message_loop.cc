@@ -93,8 +93,7 @@ MessageLoop::TaskId BaseMessageLoop::PostDelayedTask(
   if (!base_scheduled)
     return MessageLoop::kTaskIdNull;
 
-  delayed_tasks_.emplace(task_id,
-                         DelayedTask{from_here, task_id, std::move(task)});
+  delayed_tasks_.emplace(task_id, DelayedTask{from_here, task_id, task});
   return task_id;
 }
 
