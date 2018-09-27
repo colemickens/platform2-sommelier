@@ -13,9 +13,9 @@
 
 namespace mist {
 
-Context::Context() {}
+Context::Context() = default;
 
-Context::~Context() {}
+Context::~Context() = default;
 
 bool Context::Initialize() {
   metrics_.reset(new Metrics());

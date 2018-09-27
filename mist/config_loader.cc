@@ -28,9 +28,9 @@ const char kDefaultConfigFile[] = "/usr/share/mist/default.conf";
 
 }  // namespace
 
-ConfigLoader::ConfigLoader() {}
+ConfigLoader::ConfigLoader() = default;
 
-ConfigLoader::~ConfigLoader() {}
+ConfigLoader::~ConfigLoader() = default;
 
 bool ConfigLoader::LoadDefaultConfig() {
   return LoadConfig(FilePath(kDefaultConfigFile));
