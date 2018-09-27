@@ -23,7 +23,7 @@ class TestFileDescriptorWatcher : public MessageLoopForIO::Watcher {
 
 class EventDispatcherTest : public testing::Test {
  protected:
-  void TearDown() {
+  void TearDown() override {
     // Close all file descriptors opened by CreatePollFileDescriptor().
     for (int file_descriptor : file_descriptors_) {
       close(file_descriptor);
