@@ -143,7 +143,8 @@ bool InputWatcher::Init(
     for (auto const& input_device : input_device_list) {
       int num = -1;
       if (GetInputNumber(input_device.sysname, &num)) {
-        HandleAddedInput(input_device.sysname, num, input_device.syspath);
+        HandleAddedInput(input_device.sysname, num, input_device.syspath,
+                         false /* notify_state */);
       }
     }
   } else {
@@ -262,7 +263,7 @@ void InputWatcher::OnUdevEvent(const UdevEvent& event) {
   if (GetInputNumber(event.device_info.sysname, &input_num)) {
     if (event.action == UdevEvent::Action::ADD)
       HandleAddedInput(event.device_info.sysname, input_num,
-                       event.device_info.syspath);
+                       event.device_info.syspath, true /* notify_state */);
     else if (event.action == UdevEvent::Action::REMOVE)
       HandleRemovedInput(input_num, event.device_info.syspath);
   }
@@ -393,7 +394,8 @@ void InputWatcher::ProcessHoverEvent(const input_event& event) {
 
 void InputWatcher::HandleAddedInput(const std::string& input_name,
                                     int input_num,
-                                    const std::string& syspath) {
+                                    const std::string& syspath,
+                                    bool notify_state) {
   if (event_devices_.count(input_num) > 0) {
     LOG(WARNING) << "Input " << input_num << " already registered";
     return;
@@ -430,6 +432,10 @@ void InputWatcher::HandleAddedInput(const std::string& input_name,
       lid_device_ = device.get();
       lid_state_ = device->GetInitialLidState();
       VLOG(1) << "Initial lid state is " << LidStateToString(lid_state_);
+      if (notify_state) {
+        for (InputObserver& observer : observers_)
+          observer.OnLidEvent(lid_state_);
+      }
     }
   }
 
@@ -444,6 +450,10 @@ void InputWatcher::HandleAddedInput(const std::string& input_name,
       tablet_mode_ = device->GetInitialTabletMode();
       VLOG(1) << "Initial tablet mode state is "
               << TabletModeToString(tablet_mode_);
+      if (notify_state) {
+        for (InputObserver& observer : observers_)
+          observer.OnTabletModeEvent(tablet_mode_);
+      }
     }
   }
 

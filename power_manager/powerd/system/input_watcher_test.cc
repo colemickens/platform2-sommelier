@@ -150,14 +150,15 @@ class InputWatcherTest : public testing::Test {
       scoped_wakeup_device_factory_.reset(wakeup_device_factory_);
       observer_.reset();
     }
-    input_watcher_.reset(new InputWatcher);
+
+    input_watcher_ = std::make_unique<InputWatcher>();
+    observer_ = std::make_unique<TestObserver>(input_watcher_.get());
+
     input_watcher_->set_dev_input_path_for_testing(dev_input_path_);
     input_watcher_->set_sys_class_input_path_for_testing(sys_class_input_path_);
     ASSERT_TRUE(input_watcher_->Init(std::move(scoped_event_device_factory_),
                                      std::move(scoped_wakeup_device_factory_),
                                      &prefs_, &udev_));
-
-    observer_.reset(new TestObserver(input_watcher_.get()));
   }
 
   // Registers |device| named |name| within |dev_input_dir_|. To be recognized,
@@ -320,8 +321,9 @@ TEST_F(InputWatcherTest, LidSwitch) {
   AddDevice("event0", lid_switch, kAcpiLidSysfsFile.value());
 
   // Before any events have been received, check that the initially-read state
-  // is returned.
+  // is returned but no event is sent.
   Init();
+  EXPECT_EQ(kNoActions, observer_->GetActions());
 
   // Check ACPI lid switch is not monitored for wake events.
   EXPECT_FALSE(wakeup_device_factory_->WasDeviceCreated(kAcpiLidSysfsFile));
@@ -377,9 +379,10 @@ TEST_F(InputWatcherTest, TabletModeSwitch) {
   AddDevice("event0", tablet_mode_switch, kTabletModeSysfsFile.value());
 
   // Before any events have been received, check that the initially-read mode is
-  // returned.
+  // returned but that no event is sent.
   Init();
   EXPECT_EQ(TabletMode::ON, input_watcher_->GetTabletMode());
+  EXPECT_EQ(kNoActions, observer_->GetActions());
 
   // Check tablet mode switch is monitored for wake events.
   EXPECT_TRUE(wakeup_device_factory_->WasDeviceCreated(kTabletModeSysfsFile));
@@ -693,6 +696,36 @@ TEST_F(InputWatcherTest, RegisterForUdevEvents) {
   input_watcher_.reset();
   EXPECT_FALSE(
       udev_.HasSubsystemObserver(InputWatcher::kInputUdevSubsystem, dead_ptr));
+}
+
+TEST_F(InputWatcherTest, NotifyAboutAddedSwitch) {
+  Init();
+  ASSERT_EQ(kNoActions, observer_->GetActions());
+
+  // Make a lid switch device show up and check that a fake event is sent to the
+  // observer.
+  linked_ptr<EventDeviceStub> lid_switch(new EventDeviceStub);
+  lid_switch->set_debug_name("lid_switch");
+  lid_switch->set_is_lid_switch(true);
+  lid_switch->set_initial_lid_state(LidState::OPEN);
+  AddDevice("event0", lid_switch, "");
+  udev_.NotifySubsystemObservers(
+      {{InputWatcher::kInputUdevSubsystem, "", "event0", ""},
+       UdevEvent::Action::ADD});
+  EXPECT_EQ(kLidOpenAction, observer_->GetActions());
+
+  // The same thing should happen if a tablet mode switch appears. This is
+  // needed to ensure that Chrome learns about tablet mode: http://b/116006288
+  linked_ptr<EventDeviceStub> tablet_mode_switch(new EventDeviceStub);
+  tablet_mode_switch->set_debug_name("tablet_mode_switch");
+  tablet_mode_switch->set_is_tablet_mode_switch(true);
+  tablet_mode_switch->set_initial_tablet_mode(TabletMode::ON);
+  AddDevice("event1", tablet_mode_switch, "");
+  udev_.NotifySubsystemObservers(
+      {{InputWatcher::kInputUdevSubsystem, "", "event1", ""},
+       UdevEvent::Action::ADD});
+  EXPECT_EQ(TabletMode::ON, input_watcher_->GetTabletMode());
+  EXPECT_EQ(kTabletModeOnAction, observer_->GetActions());
 }
 
 TEST_F(InputWatcherTest, TolerateMissingDevInputDirectory) {

@@ -128,9 +128,14 @@ class InputWatcher : public InputWatcherInterface,
   void ProcessHoverEvent(const input_event& event);
 
   // Handles an input being added to or removed from the system.
+  // If |notify_state| is true, |observers| will be notified about the initial
+  // state (if the input is watched). Notifications are not sent during
+  // initialization, but they are sent later so that observers can learn about
+  // the state of new devices.
   void HandleAddedInput(const std::string& input_name,
                         int input_num,
-                        const std::string& syspath);
+                        const std::string& syspath,
+                        bool notify_state);
 
   void HandleRemovedInput(int input_num, const std::string& syspath);
 
