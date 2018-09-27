@@ -39,6 +39,7 @@ const VendorTagInfo kRequestVendorTag[] = {
 
 // SegmentationResult::kSuccess: portrait mode segmentation succeeds
 // SegmentationResult::kFailure: portrait mode segmentation fails
+// SegmentationResult::kTimeout: portrait processing timeout
 const VendorTagInfo kResultVendorTag[] = {
     {"com.google.effect.portraitModeSegmentationResult", TYPE_BYTE, {.u8 = 0}}};
 
@@ -163,8 +164,12 @@ int32_t PortraitModeEffect::ReprocessRequest(
             base::TimeDelta::FromSeconds(kPortraitProcessorTimeoutSecs),
             &exit_code) ||
         exit_code != 0) {
-      PLOGF(ERROR) << "Wait for child process error";
-      return -EINVAL;
+      PLOGF(ERROR) << "Wait for portrait processing error";
+      SegmentationResult segmentation_result = SegmentationResult::kTimeout;
+      result_metadata->update(result_vendor_tag_,
+                              reinterpret_cast<uint8_t*>(&segmentation_result),
+                              1);
+      return 0;
     }
     LOGF(INFO) << "Portrait processing finished";
 

@@ -66,7 +66,7 @@ class PortraitModeEffect final : public ReprocessEffect {
 
   uint32_t enable_vendor_tag_;
 
-  enum class SegmentationResult : uint8_t { kSuccess, kFailure };
+  enum class SegmentationResult : uint8_t { kSuccess, kFailure, kTimeout };
 
   uint32_t result_vendor_tag_;
 
