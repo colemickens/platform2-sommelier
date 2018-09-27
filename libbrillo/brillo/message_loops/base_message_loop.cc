@@ -15,6 +15,7 @@
 #include <linux/major.h>
 #endif
 
+#include <utility>
 #include <vector>
 
 #include <base/bind.h>

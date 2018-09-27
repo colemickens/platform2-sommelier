@@ -4,10 +4,12 @@
 
 #include <brillo/streams/file_stream.h>
 
+#include <sys/stat.h>
+
 #include <limits>
 #include <numeric>
 #include <string>
-#include <sys/stat.h>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_util.h>

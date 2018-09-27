@@ -5,6 +5,9 @@
 #include <brillo/streams/stream_utils.h>
 
 #include <limits>
+#include <memory>
+#include <string>
+#include <utility>
 
 #include <base/bind.h>
 #include <brillo/message_loops/fake_message_loop.h>

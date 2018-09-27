@@ -4,10 +4,12 @@
 
 #include <brillo/streams/file_stream.h>
 
-#include <algorithm>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
+#include <algorithm>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/files/file_util.h>

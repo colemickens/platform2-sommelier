@@ -26,6 +26,7 @@
 #include <brillo/any_internal_impl.h>
 
 #include <algorithm>
+#include <string>
 
 #include <brillo/brillo_export.h>
 #include <brillo/type_name_undecorate.h>

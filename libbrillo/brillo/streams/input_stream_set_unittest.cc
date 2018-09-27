@@ -4,6 +4,8 @@
 
 #include <brillo/streams/input_stream_set.h>
 
+#include <memory>
+
 #include <brillo/errors/error_codes.h>
 #include <brillo/streams/mock_stream.h>
 #include <brillo/streams/stream_errors.h>

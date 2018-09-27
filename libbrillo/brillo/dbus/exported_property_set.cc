@@ -4,6 +4,8 @@
 
 #include <brillo/dbus/exported_property_set.h>
 
+#include <utility>
+
 #include <base/bind.h>
 #include <dbus/bus.h>
 #include <dbus/property.h>  // For kPropertyInterface

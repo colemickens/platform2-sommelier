@@ -5,7 +5,9 @@
 #ifndef LIBBRILLO_BRILLO_DBUS_DBUS_METHOD_RESPONSE_H_
 #define LIBBRILLO_BRILLO_DBUS_DBUS_METHOD_RESPONSE_H_
 
+#include <memory>
 #include <string>
+#include <utility>
 
 #include <base/macros.h>
 #include <brillo/brillo_export.h>

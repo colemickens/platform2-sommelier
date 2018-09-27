@@ -4,7 +4,11 @@
 
 #include <brillo/streams/stream_utils.h>
 
+#include <algorithm>
 #include <limits>
+#include <memory>
+#include <utility>
+#include <vector>
 
 #include <base/bind.h>
 #include <brillo/message_loops/message_loop.h>

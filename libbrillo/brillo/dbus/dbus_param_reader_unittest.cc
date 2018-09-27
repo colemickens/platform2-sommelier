@@ -4,6 +4,7 @@
 
 #include <brillo/dbus/dbus_param_reader.h>
 
+#include <memory>
 #include <string>
 
 #include <brillo/variant_dictionary.h>

@@ -4,11 +4,13 @@
 
 #include "brillo/flag_helper.h"
 
-#include <memory>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string>
 #include <sysexits.h>
+
+#include <memory>
+#include <string>
+#include <utility>
 
 #include <base/base_switches.h>
 #include <base/command_line.h>

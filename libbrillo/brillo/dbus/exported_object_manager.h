@@ -6,6 +6,7 @@
 #define LIBBRILLO_BRILLO_DBUS_EXPORTED_OBJECT_MANAGER_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 

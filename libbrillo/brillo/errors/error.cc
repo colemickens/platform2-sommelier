@@ -4,6 +4,8 @@
 
 #include <brillo/errors/error.h>
 
+#include <utility>
+
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 

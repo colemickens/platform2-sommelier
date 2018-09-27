@@ -6,6 +6,7 @@
 #define LIBBRILLO_BRILLO_HTTP_HTTP_TRANSPORT_CURL_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <utility>
 

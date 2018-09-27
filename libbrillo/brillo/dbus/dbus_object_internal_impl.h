@@ -32,6 +32,7 @@
 #include <memory>
 #include <string>
 #include <type_traits>
+#include <utility>
 
 #include <brillo/dbus/data_serialization.h>
 #include <brillo/dbus/dbus_method_response.h>

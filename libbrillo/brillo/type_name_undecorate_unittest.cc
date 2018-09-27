@@ -4,6 +4,8 @@
 
 #include <brillo/type_name_undecorate.h>
 
+#include <map>
+
 #include <brillo/variant_dictionary.h>
 #include <gtest/gtest.h>
 

@@ -4,6 +4,8 @@
 
 #include <brillo/dbus/exported_object_manager.h>
 
+#include <utility>
+
 #include <base/bind.h>
 #include <brillo/dbus/dbus_object_test_helpers.h>
 #include <brillo/dbus/utils.h>

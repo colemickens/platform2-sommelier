@@ -12,6 +12,9 @@
 #ifndef LIBBRILLO_BRILLO_DBUS_DBUS_OBJECT_TEST_HELPERS_H_
 #define LIBBRILLO_BRILLO_DBUS_DBUS_OBJECT_TEST_HELPERS_H_
 
+#include <memory>
+#include <utility>
+
 #include <base/bind.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/dbus/dbus_method_invoker.h>

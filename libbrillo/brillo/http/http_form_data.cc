@@ -5,6 +5,7 @@
 #include <brillo/http/http_form_data.h>
 
 #include <limits>
+#include <utility>
 
 #include <base/format_macros.h>
 #include <base/rand_util.h>

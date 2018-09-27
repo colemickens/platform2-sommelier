@@ -4,6 +4,7 @@
 
 #include <brillo/dbus/dbus_param_writer.h>
 
+#include <memory>
 #include <string>
 
 #include <brillo/any.h>

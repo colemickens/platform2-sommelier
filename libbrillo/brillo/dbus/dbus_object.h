@@ -62,7 +62,9 @@ class MyDbusObject {
 #define LIBBRILLO_BRILLO_DBUS_DBUS_OBJECT_H_
 
 #include <map>
+#include <memory>
 #include <string>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/callback_helpers.h>

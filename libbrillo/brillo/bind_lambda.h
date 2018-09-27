@@ -5,6 +5,8 @@
 #ifndef LIBBRILLO_BRILLO_BIND_LAMBDA_H_
 #define LIBBRILLO_BRILLO_BIND_LAMBDA_H_
 
+#include <utility>
+
 #include <base/bind.h>
 
 ////////////////////////////////////////////////////////////////////////////////

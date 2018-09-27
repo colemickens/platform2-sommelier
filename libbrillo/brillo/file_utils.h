@@ -7,6 +7,8 @@
 
 #include <sys/types.h>
 
+#include <string>
+
 #include <base/files/file_path.h>
 #include <brillo/brillo_export.h>
 #include <brillo/secure_blob.h>

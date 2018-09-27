@@ -4,6 +4,7 @@
 
 #include <brillo/http/http_proxy.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 

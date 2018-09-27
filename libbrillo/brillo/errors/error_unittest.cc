@@ -4,6 +4,8 @@
 
 #include <brillo/errors/error.h>
 
+#include <utility>
+
 #include <gtest/gtest.h>
 
 using brillo::Error;

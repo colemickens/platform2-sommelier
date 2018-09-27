@@ -8,6 +8,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#include <utility>
+
 #include <base/bind.h>
 #include <base/posix/eintr_wrapper.h>
 #include <brillo/asynchronous_signal_handler.h>

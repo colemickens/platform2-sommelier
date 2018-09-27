@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <set>
+#include <utility>
 
 #include <base/callback.h>
 #include <brillo/http/http_request.h>

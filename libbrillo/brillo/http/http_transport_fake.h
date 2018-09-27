@@ -6,9 +6,11 @@
 #define LIBBRILLO_BRILLO_HTTP_HTTP_TRANSPORT_FAKE_H_
 
 #include <map>
+#include <memory>
 #include <queue>
 #include <string>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 #include <base/callback.h>

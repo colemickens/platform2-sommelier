@@ -5,6 +5,7 @@
 #include <brillo/http/http_form_data.h>
 
 #include <set>
+#include <utility>
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
