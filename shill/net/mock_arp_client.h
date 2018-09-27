@@ -14,8 +14,8 @@
 // limitations under the License.
 //
 
-#ifndef SHILL_MOCK_ARP_CLIENT_H_
-#define SHILL_MOCK_ARP_CLIENT_H_
+#ifndef SHILL_NET_MOCK_ARP_CLIENT_H_
+#define SHILL_NET_MOCK_ARP_CLIENT_H_
 
 #include "shill/net/arp_client.h"
 
@@ -44,4 +44,4 @@ class MockArpClient : public ArpClient {
 
 }  // namespace shill
 
-#endif  // SHILL_MOCK_ARP_CLIENT_H_
+#endif  // SHILL_NET_MOCK_ARP_CLIENT_H_

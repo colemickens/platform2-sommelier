@@ -14,8 +14,8 @@
 // limitations under the License.
 //
 
-#ifndef SHILL_ARP_CLIENT_TEST_HELPER_H_
-#define SHILL_ARP_CLIENT_TEST_HELPER_H_
+#ifndef SHILL_NET_ARP_CLIENT_TEST_HELPER_H_
+#define SHILL_NET_ARP_CLIENT_TEST_HELPER_H_
 
 #include <base/macros.h>
 
@@ -49,4 +49,4 @@ class ArpClientTestHelper {
 
 }  // namespace shill
 
-#endif  // SHILL_ARP_CLIENT_TEST_HELPER_H_
+#endif  // SHILL_NET_ARP_CLIENT_TEST_HELPER_H_

@@ -14,8 +14,8 @@
 // limitations under the License.
 //
 
-#ifndef SHILL_PROPERTY_STORE_UNITTEST_H_
-#define SHILL_PROPERTY_STORE_UNITTEST_H_
+#ifndef SHILL_PROPERTY_STORE_TEST_H_
+#define SHILL_PROPERTY_STORE_TEST_H_
 
 #include <string>
 #include <vector>
@@ -223,4 +223,4 @@ class PropertyStoreTest : public testing::TestWithParam<brillo::Any> {
 
 }  // namespace shill
 
-#endif  // SHILL_PROPERTY_STORE_UNITTEST_H_
+#endif  // SHILL_PROPERTY_STORE_TEST_H_

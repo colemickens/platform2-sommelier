@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef RTNL_LINK_STATS_H_
-#define RTNL_LINK_STATS_H_
+#ifndef SHILL_NET_RTNL_LINK_STATS_H_
+#define SHILL_NET_RTNL_LINK_STATS_H_
 
 #include <stdint.h>
 
@@ -43,4 +43,4 @@ struct old_rtnl_link_stats64 {
   uint64_t tx_compressed;
 };
 
-#endif  // RTNL_LINK_STATS_H_
+#endif  // SHILL_NET_RTNL_LINK_STATS_H_

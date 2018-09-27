@@ -14,8 +14,8 @@
 // limitations under the License.
 //
 
-#ifndef SHILL_ARP_PACKET_H_
-#define SHILL_ARP_PACKET_H_
+#ifndef SHILL_NET_ARP_PACKET_H_
+#define SHILL_NET_ARP_PACKET_H_
 
 #include "shill/net/byte_string.h"
 #include "shill/net/ip_address.h"
@@ -86,4 +86,4 @@ class SHILL_EXPORT ArpPacket {
 
 }  // namespace shill
 
-#endif  // SHILL_ARP_PACKET_H_
+#endif  // SHILL_NET_ARP_PACKET_H_
