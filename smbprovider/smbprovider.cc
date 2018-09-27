@@ -145,10 +145,24 @@ int32_t SmbProvider::Remount(const ProtoBlob& options_blob,
   int32_t error_code = static_cast<int32_t>(ERROR_OK);
 
   RemountOptionsProto options;
-  const bool remounted =
-      ParseOptionsProto(options_blob, &options, &error_code) &&
-      Remount(options.path(), GetMountId(options), options.workgroup(),
-              options.username(), password_fd, &error_code);
+  if (!ParseOptionsProto(options_blob, &options, &error_code)) {
+    return error_code;  // Error with parsing proto.
+  }
+
+  // TODO(jimmyxgong): MountOptionsProto should always have a MountConfigProto.
+  // Remove this code once MountOptionsProto is properly populated. Add
+  // ConvertToMountConfigProto() bool success chain.
+  // |mount_config| is created here if necessary until MountConfig is properly
+  // populated.
+  MountConfig mount_config(true /* enable_ntlm */);
+
+  if (options.has_mount_config()) {
+    ConvertToMountConfig(options, &mount_config);
+  }
+
+  const bool remounted = Remount(options.path(), GetMountId(options),
+                                 mount_config, options.workgroup(),
+                                 options.username(), password_fd, &error_code);
 
   if (!remounted) {
     return error_code;
@@ -813,14 +827,12 @@ bool SmbProvider::AddMount(const std::string& mount_root,
 
 bool SmbProvider::Remount(const std::string& mount_root,
                           int32_t mount_id,
+                          const MountConfig& mount_config,
                           const std::string& workgroup,
                           const std::string& username,
                           const base::ScopedFD& password_fd,
                           int32_t* error_code) {
   SmbCredential credential(workgroup, username, GetPassword(password_fd));
-  // TODO(jimmyxgong): Remove once Remount has a MountConfig as an input
-  // parameter.
-  MountConfig mount_config(true /* enable_ntlm */);
   bool remounted = mount_manager_->Remount(mount_root, mount_id,
                                            std::move(credential), mount_config);
   if (!remounted) {

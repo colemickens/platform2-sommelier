@@ -220,6 +220,7 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   // |error_code| on failure.
   bool Remount(const std::string& mount_root,
                int32_t mount_id,
+               const MountConfig& mount_config,
                const std::string& workgroup,
                const std::string& username,
                const base::ScopedFD& password_fd,
