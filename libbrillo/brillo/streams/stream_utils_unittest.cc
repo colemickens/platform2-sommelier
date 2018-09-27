@@ -17,9 +17,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-using testing::DoAll;
 using testing::InSequence;
-using testing::Return;
 using testing::StrictMock;
 using testing::_;
 

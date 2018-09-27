@@ -4,7 +4,6 @@
 
 #include "brillo/key_value_store.h"
 
-#include <map>
 #include <string>
 #include <vector>
 
@@ -15,7 +14,6 @@
 #include <brillo/strings/string_utils.h>
 #include <brillo/map_utils.h>
 
-using std::map;
 using std::string;
 using std::vector;
 

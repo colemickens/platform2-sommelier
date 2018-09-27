@@ -17,8 +17,6 @@
 
 using ::testing::AnyNumber;
 using ::testing::Return;
-using ::testing::Invoke;
-using ::testing::Mock;
 using ::testing::_;
 
 namespace brillo {
