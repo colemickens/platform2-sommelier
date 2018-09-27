@@ -26,8 +26,6 @@
 #include "shill/logging.h"
 
 using base::StringPrintf;
-using brillo::dbus_utils::AsyncEventSequencer;
-using brillo::dbus_utils::ExportedObjectManager;
 using std::string;
 using std::vector;
 

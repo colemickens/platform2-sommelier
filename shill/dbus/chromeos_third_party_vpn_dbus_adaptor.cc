@@ -23,9 +23,6 @@
 #include "shill/service.h"
 #include "shill/vpn/third_party_vpn_driver.h"
 
-using brillo::dbus_utils::AsyncEventSequencer;
-using brillo::dbus_utils::ExportedObjectManager;
-
 namespace shill {
 
 namespace Logging {

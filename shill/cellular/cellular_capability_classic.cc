@@ -27,7 +27,6 @@
 #include "shill/property_accessor.h"
 
 using base::Bind;
-using base::Callback;
 using base::Closure;
 using std::string;
 

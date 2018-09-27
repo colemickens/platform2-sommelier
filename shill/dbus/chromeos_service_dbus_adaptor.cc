@@ -24,8 +24,6 @@
 #include "shill/logging.h"
 #include "shill/service.h"
 
-using brillo::dbus_utils::AsyncEventSequencer;
-using brillo::dbus_utils::ExportedObjectManager;
 using std::map;
 using std::string;
 using std::vector;

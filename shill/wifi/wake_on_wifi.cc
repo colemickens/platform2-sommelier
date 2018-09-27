@@ -44,7 +44,6 @@
 
 using base::Bind;
 using base::Closure;
-using std::list;
 using std::pair;
 using std::set;
 using std::string;

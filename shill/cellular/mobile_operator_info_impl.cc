@@ -37,7 +37,6 @@ using base::Bind;
 using base::FilePath;
 using base::PathExists;
 using google::protobuf::io::CopyingInputStreamAdaptor;
-using google::protobuf::RepeatedField;
 using google::protobuf::RepeatedPtrField;
 using shill::mobile_operator_db::Data;
 using shill::mobile_operator_db::Filter;
@@ -46,7 +45,6 @@ using shill::mobile_operator_db::MobileAPN;
 using shill::mobile_operator_db::MobileNetworkOperator;
 using shill::mobile_operator_db::MobileOperatorDB;
 using shill::mobile_operator_db::MobileVirtualNetworkOperator;
-using shill::mobile_operator_db::OnlinePortal;
 using std::string;
 using std::vector;
 

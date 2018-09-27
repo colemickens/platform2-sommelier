@@ -23,8 +23,6 @@
 #include "shill/profile.h"
 #include "shill/service.h"
 
-using brillo::dbus_utils::AsyncEventSequencer;
-using brillo::dbus_utils::ExportedObjectManager;
 using std::string;
 
 namespace shill {

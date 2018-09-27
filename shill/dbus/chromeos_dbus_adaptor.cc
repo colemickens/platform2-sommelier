@@ -28,7 +28,6 @@
 using base::Bind;
 using base::Passed;
 using brillo::dbus_utils::DBusObject;
-using brillo::dbus_utils::ExportedObjectManager;
 using std::string;
 
 namespace shill {

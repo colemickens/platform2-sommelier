@@ -29,7 +29,6 @@
 #include "shill/net/shill_time.h"
 #include "shill/static_ip_parameters.h"
 
-using base::Callback;
 using std::string;
 
 namespace shill {

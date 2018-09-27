@@ -20,8 +20,6 @@
 #include "shill/logging.h"
 #include "shill/rpc_task.h"
 
-using brillo::dbus_utils::AsyncEventSequencer;
-using brillo::dbus_utils::ExportedObjectManager;
 using std::map;
 using std::string;
 

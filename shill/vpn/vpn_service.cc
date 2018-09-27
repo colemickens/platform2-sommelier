@@ -33,7 +33,6 @@
 using base::Bind;
 using base::StringPrintf;
 using base::Unretained;
-using std::replace_if;
 using std::string;
 
 namespace shill {

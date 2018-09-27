@@ -79,7 +79,6 @@
 
 using base::Bind;
 using base::Callback;
-using base::FilePath;
 using base::StringPrintf;
 using base::Unretained;
 using std::map;

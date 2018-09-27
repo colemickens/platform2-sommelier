@@ -31,7 +31,6 @@
 #include "shill/process_manager.h"
 
 using base::Bind;
-using base::Callback;
 using base::StringPrintf;
 using shill_protos::EncryptDataMessage;
 using shill_protos::EncryptDataResponse;
