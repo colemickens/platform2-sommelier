@@ -19,7 +19,8 @@ std::string TracePathTool::Start(
     const base::ScopedFD& outfd,
     const std::string& destination,
     const brillo::VariantDictionary& options) {
-  ProcessWithId* p = CreateProcess();
+  ProcessWithId* p =
+      CreateProcess(true /* sandboxed */, false /* access_root_mount_ns */);
   if (!p)
     return "";
 

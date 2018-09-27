@@ -21,8 +21,8 @@ class SubprocessTool {
   SubprocessTool() = default;
   virtual ~SubprocessTool() = default;
 
-  virtual ProcessWithId* CreateProcess(bool sandboxed = true,
-                                       bool allow_root_mount_ns = false);
+  virtual ProcessWithId* CreateProcess(bool sandboxed,
+                                       bool allow_root_mount_ns);
 
   // TODO(vapier): Rework sandboxing so we can re-internalize this function.
   bool RecordProcess(std::unique_ptr<ProcessWithId> process);

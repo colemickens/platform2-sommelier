@@ -29,7 +29,8 @@ bool PingTool::Start(const base::ScopedFD& outfd,
                      const brillo::VariantDictionary& options,
                      std::string* out_id,
                      brillo::ErrorPtr* error) {
-  ProcessWithId* p = CreateProcess();
+  ProcessWithId* p =
+      CreateProcess(true /* sandboxed */, false /* access_root_mount_ns */);
   if (!p) {
     DEBUGD_ADD_ERROR(
         error, kPingToolErrorString, "Could not create ping process");

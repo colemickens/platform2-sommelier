@@ -218,7 +218,8 @@ std::string StorageTool::Start(const base::ScopedFD& outfd) {
     return "<Failed to find device>";
   }
 
-  ProcessWithId* p = CreateProcess(false);
+  ProcessWithId* p =
+      CreateProcess(false /* sandboxed */, false /* access_root_mount_ns */);
   if (!p)
     return "";
 

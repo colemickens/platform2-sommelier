@@ -16,7 +16,8 @@ const char kMemtesterpath[] = "/usr/sbin/memtester";
 
 std::string MemtesterTool::Start(const base::ScopedFD& outfd,
                                  const uint32_t& memory) {
-  ProcessWithId* p = CreateProcess(false);
+  ProcessWithId* p =
+      CreateProcess(false /* sandboxed */, false /* access_root_mount_ns */);
   if (!p)
     return "";
 
