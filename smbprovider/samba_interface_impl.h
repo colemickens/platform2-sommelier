@@ -12,6 +12,7 @@
 #include <dbus/smbprovider/dbus-constants.h>
 
 #include "smbprovider/id_map.h"
+#include "smbprovider/mount_config.h"
 #include "smbprovider/samba_interface.h"
 
 namespace smbprovider {
@@ -33,7 +34,8 @@ class SambaInterfaceImpl : public SambaInterface {
 
   // This should be called instead of constructor.
   template <typename T = SambaInterfaceImpl::AuthCallback>
-  static std::unique_ptr<SambaInterfaceImpl> Create(T auth_callback);
+  static std::unique_ptr<SambaInterfaceImpl> Create(
+      T auth_callback, const MountConfig& mount_config);
 
   int32_t OpenFile(const std::string& file_path,
                    int32_t flags,

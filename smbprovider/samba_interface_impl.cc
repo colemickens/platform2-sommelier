@@ -37,7 +37,7 @@ int CopyProgressHandler(off_t upto, void* callback_context) {
 
 template <typename T>
 std::unique_ptr<SambaInterfaceImpl> SambaInterfaceImpl::Create(
-    T auth_callback) {
+    T auth_callback, const MountConfig& mount_config) {
   SMBCCTX* context = smbc_new_context();
   if (!context) {
     LOG(ERROR) << "Could not create smbc context";
@@ -45,7 +45,10 @@ std::unique_ptr<SambaInterfaceImpl> SambaInterfaceImpl::Create(
   }
 
   smbc_setOptionUseKerberos(context, 1);
-  smbc_setOptionFallbackAfterKerberos(context, 1);
+
+  bool enable_ntlm = mount_config.enable_ntlm;
+  smbc_setOptionFallbackAfterKerberos(context, enable_ntlm);
+  LOG(INFO) << "Enable NTLM protocol is set to: " << enable_ntlm;
 
   if (!smbc_init_context(context)) {
     smbc_free_context(context, 0);
@@ -409,7 +412,8 @@ SambaInterfaceImpl::SambaInterfaceImpl(SMBCCTX* context) : context_(context) {
 }
 
 // This is required to explicitly instantiate the template function.
-template std::unique_ptr<SambaInterfaceImpl> SambaInterfaceImpl::Create<
-    SambaInterfaceImpl::AuthCallback>(SambaInterfaceImpl::AuthCallback);
+template std::unique_ptr<SambaInterfaceImpl>
+SambaInterfaceImpl::Create<SambaInterfaceImpl::AuthCallback>(
+    SambaInterfaceImpl::AuthCallback, const MountConfig& mount_config);
 
 }  // namespace smbprovider
