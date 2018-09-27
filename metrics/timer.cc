@@ -98,8 +98,8 @@ bool TimerReporter::ReportMilliseconds() const {
   base::TimeDelta elapsed_time;
   if (!metrics_lib_ || !GetElapsedTime(&elapsed_time))
     return false;
-  return metrics_lib_->SendToUMA(
-      histogram_name_, elapsed_time.InMilliseconds(), min_, max_, num_buckets_);
+  return metrics_lib_->SendToUMA(histogram_name_, elapsed_time.InMilliseconds(),
+                                 min_, max_, num_buckets_);
 }
 
 }  // namespace chromeos_metrics

@@ -38,14 +38,14 @@ namespace chromeos_metrics {
 
 TEST(VmlogWriterTest, ParseVmStats) {
   const char kVmStats[] =
-    "pswpin 1345\n"
-    "pswpout 8896\n"
-    "foo 100\n"
-    "bar 200\n"
-    "pgmajfault 42\n"
-    "pgmajfault_a 3838\n"
-    "pgmajfault_f 66\n"
-    "etcetc 300\n";
+      "pswpin 1345\n"
+      "pswpout 8896\n"
+      "foo 100\n"
+      "bar 200\n"
+      "pgmajfault 42\n"
+      "pgmajfault_a 3838\n"
+      "pgmajfault_f 66\n"
+      "etcetc 300\n";
   std::istringstream input_stream(kVmStats);
   struct VmstatRecord stats;
   EXPECT_TRUE(VmStatsParseStats(&input_stream, &stats));
@@ -58,16 +58,16 @@ TEST(VmlogWriterTest, ParseVmStats) {
 
 TEST(VmlogWriterTest, ParseVmStatsOptionalMissing) {
   const char kVmStats[] =
-    "pswpin 1345\n"
-    "pswpout 8896\n"
-    "foo 100\n"
-    "bar 200\n"
-    "pgmajfault 42\n"
-    // pgmajfault_a and pgmajfault_f are optional.
-    // The default value when missing is 0.
-    // "pgmajfault_a 3838\n"
-    // "pgmajfault_f 66\n"
-    "etcetc 300\n";
+      "pswpin 1345\n"
+      "pswpout 8896\n"
+      "foo 100\n"
+      "bar 200\n"
+      "pgmajfault 42\n"
+      // pgmajfault_a and pgmajfault_f are optional.
+      // The default value when missing is 0.
+      // "pgmajfault_a 3838\n"
+      // "pgmajfault_f 66\n"
+      "etcetc 300\n";
   std::istringstream input_stream(kVmStats);
   struct VmstatRecord stats;
   EXPECT_TRUE(VmStatsParseStats(&input_stream, &stats));
@@ -124,8 +124,8 @@ TEST(VmlogWriterTest, VmlogRotation) {
   base::FilePath log_path = temp_directory.Append("log");
   base::FilePath rotated_path = temp_directory.Append("rotated");
   base::FilePath latest_symlink_path = temp_directory.Append("vmlog.1.LATEST");
-  base::FilePath previous_symlink_path = temp_directory.Append(
-      "vmlog.1.PREVIOUS");
+  base::FilePath previous_symlink_path =
+      temp_directory.Append("vmlog.1.PREVIOUS");
 
   // VmlogFile expects to create its output files.
   base::DeleteFile(log_path, false);
@@ -154,8 +154,7 @@ TEST(VmlogWriterTest, VmlogRotation) {
 
   EXPECT_TRUE(base::PathExists(latest_symlink_path));
   base::FilePath symlink_target;
-  EXPECT_TRUE(base::ReadSymbolicLink(latest_symlink_path,
-                                     &symlink_target));
+  EXPECT_TRUE(base::ReadSymbolicLink(latest_symlink_path, &symlink_target));
   EXPECT_EQ(rotated_path.value(), symlink_target.value());
 
   // Test log rotation for vmlog.1 files when a writer is created.
@@ -167,8 +166,7 @@ TEST(VmlogWriterTest, VmlogRotation) {
   EXPECT_FALSE(base::PathExists(latest_symlink_path));
   EXPECT_TRUE(base::PathExists(previous_symlink_path));
 
-  EXPECT_TRUE(base::ReadSymbolicLink(previous_symlink_path,
-                                     &symlink_target));
+  EXPECT_TRUE(base::ReadSymbolicLink(previous_symlink_path, &symlink_target));
   EXPECT_EQ(rotated_path.value(), symlink_target.value());
 }
 

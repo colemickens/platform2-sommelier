@@ -24,16 +24,15 @@ constexpr char kValidNameCharacters[] =
 
 }  // namespace
 
-CumulativeMetrics::CumulativeMetrics(
-    const FilePath& backing_dir,
-    const std::vector<std::string>& names,
-    base::TimeDelta update_period,
-    Callback update_callback,
-    base::TimeDelta accumulation_period,
-    Callback cycle_end_callback) :
-        backing_dir_(backing_dir),
-        update_period_(update_period),
-        accumulation_period_(accumulation_period) {
+CumulativeMetrics::CumulativeMetrics(const FilePath& backing_dir,
+                                     const std::vector<std::string>& names,
+                                     base::TimeDelta update_period,
+                                     Callback update_callback,
+                                     base::TimeDelta accumulation_period,
+                                     Callback cycle_end_callback)
+    : backing_dir_(backing_dir),
+      update_period_(update_period),
+      accumulation_period_(accumulation_period) {
   int64_t new_version_hash = 0;
 
   PersistentInteger persistent_version_hash(backing_dir.Append("version.hash"));
@@ -88,7 +87,7 @@ CumulativeMetrics::CumulativeMetrics(
 bool CumulativeMetrics::ProcessCycleEnd() {
   base::TimeDelta wall_time = Time::Now() - Time::UnixEpoch();
   base::TimeDelta cycle_start =
-    base::TimeDelta::FromMicroseconds(cycle_start_->Get());
+      base::TimeDelta::FromMicroseconds(cycle_start_->Get());
   if (wall_time - cycle_start > accumulation_period_) {
     cycle_start_->Set(wall_time.InMicroseconds());
     return true;

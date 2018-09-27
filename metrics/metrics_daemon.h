@@ -259,7 +259,8 @@ class MetricsDaemon : public brillo::DBusDaemon {
   // Retrieves current active and suspended times for detachable base.
   // active_time and suspended_time are only valid if the function returns true.
   bool GetDetachableBaseTimes(const base::FilePath sysfs_path_path,
-                              uint64_t* active_time, uint64_t* suspended_time);
+                              uint64_t* active_time,
+                              uint64_t* suspended_time);
 
   // Parses content of /proc/meminfo and sends fields of interest to UMA.
   // Returns false on errors.  |meminfo_raw| contains the content of
@@ -311,7 +312,8 @@ class MetricsDaemon : public brillo::DBusDaemon {
   bool ReportZram(const base::FilePath& zram_dir);
 
   // Reads a string from a file and converts it to uint64_t.
-  static bool ReadFileToUint64(const base::FilePath& path, uint64_t* value,
+  static bool ReadFileToUint64(const base::FilePath& path,
+                               uint64_t* value,
                                bool warn_on_read_failure = true);
 
   // Reads /sys/devices/virtual/block/zram0/mm_stat.

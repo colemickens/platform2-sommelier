@@ -18,8 +18,8 @@
 
 using base::FilePath;
 using ::testing::_;
-using ::testing::Return;
 using ::testing::AnyNumber;
+using ::testing::Return;
 
 namespace {
 const FilePath kTestUMAEventsFile("test-uma-events");

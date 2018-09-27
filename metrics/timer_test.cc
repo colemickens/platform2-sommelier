@@ -433,9 +433,8 @@ TEST_F(TimerReporterTest, StartStopReport) {
       .WillOnce(Return(stime))
       .WillOnce(Return(etime));
   timer_reporter_.clock_wrapper_ = std::move(clock_wrapper_mock_);
-  EXPECT_CALL(
-      lib_,
-      SendToUMA(kMetricName, kDelta1MSec, kMinSample, kMaxSample, kNumBuckets))
+  EXPECT_CALL(lib_, SendToUMA(kMetricName, kDelta1MSec, kMinSample, kMaxSample,
+                              kNumBuckets))
       .WillOnce(Return(true));
   ASSERT_TRUE(timer_reporter_.Start());
   ASSERT_TRUE(timer_reporter_.Stop());

@@ -76,7 +76,7 @@ extern "C" int CMetricsLibrarySendCrashToUMA(CMetricsLibrary handle,
 }
 
 extern "C" int CMetricsLibrarySendCrosEventToUMA(CMetricsLibrary handle,
-                                                 const char *event) {
+                                                 const char* event) {
   MetricsLibrary* lib = reinterpret_cast<MetricsLibrary*>(handle);
   if (lib == NULL)
     return 0;

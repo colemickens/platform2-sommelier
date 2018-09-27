@@ -13,8 +13,7 @@
 
 using chromeos_metrics::PersistentInteger;
 
-class PersistentIntegerTest : public testing::Test {
-};
+class PersistentIntegerTest : public testing::Test {};
 
 TEST_F(PersistentIntegerTest, BasicChecks) {
   base::ScopedTempDir temp_dir;

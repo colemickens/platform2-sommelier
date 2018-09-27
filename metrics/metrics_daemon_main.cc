@@ -58,18 +58,15 @@ int main(int argc, char** argv) {
   DEFINE_bool(uploader_test, false, "run the uploader once and exit");
 
   // Upload Service flags.
-  DEFINE_int32(upload_interval_secs,
-               1800,
+  DEFINE_int32(upload_interval_secs, 1800,
                "Interval at which metrics_daemon sends the metrics. (needs "
                "-uploader)");
-  DEFINE_string(server,
-                "https://clients4.google.com/uma/v2",
+  DEFINE_string(server, "https://clients4.google.com/uma/v2",
                 "Server to upload the metrics to. (needs -uploader)");
-  DEFINE_string(metrics_file,
-                "/var/lib/metrics/uma-events",
+  DEFINE_string(metrics_file, "/var/lib/metrics/uma-events",
                 "File to use as a proxy for uploading the metrics");
-  DEFINE_string(
-      config_root, "/", "Root of the configuration files (testing only)");
+  DEFINE_string(config_root, "/",
+                "Root of the configuration files (testing only)");
 
   brillo::FlagHelper::Init(argc, argv, "Chromium OS Metrics Daemon");
 
@@ -85,17 +82,11 @@ int main(int argc, char** argv) {
   MetricsLibrary metrics_lib;
   metrics_lib.Init();
   chromeos_metrics::MetricsDaemon daemon;
-  daemon.Init(FLAGS_uploader_test,
-              FLAGS_uploader | FLAGS_uploader_test,
-              &metrics_lib,
-              MetricsMainDiskStatsPath(),
-              "/proc/vmstat",
-              kScalingMaxFreqPath,
-              kCpuinfoMaxFreqPath,
+  daemon.Init(FLAGS_uploader_test, FLAGS_uploader | FLAGS_uploader_test,
+              &metrics_lib, MetricsMainDiskStatsPath(), "/proc/vmstat",
+              kScalingMaxFreqPath, kCpuinfoMaxFreqPath,
               base::TimeDelta::FromSeconds(FLAGS_upload_interval_secs),
-              FLAGS_server,
-              FLAGS_metrics_file,
-              FLAGS_config_root,
+              FLAGS_server, FLAGS_metrics_file, FLAGS_config_root,
               backing_dir_path);
 
   if (FLAGS_uploader_test) {

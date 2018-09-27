@@ -116,10 +116,10 @@ const char MetricsDaemon::kMetricReadSectorsShortName[] =
 const char MetricsDaemon::kMetricWriteSectorsShortName[] =
     "Platform.WriteSectorsShort";
 
-const int MetricsDaemon::kMetricStatsShortInterval = 1;        // seconds
-const int MetricsDaemon::kMetricStatsLongInterval = 30;        // seconds
-const int MetricsDaemon::kMetricMeminfoInterval = 30;          // seconds
-const int MetricsDaemon::kMetricDetachableBaseInterval =  30;  // seconds
+const int MetricsDaemon::kMetricStatsShortInterval = 1;       // seconds
+const int MetricsDaemon::kMetricStatsLongInterval = 30;       // seconds
+const int MetricsDaemon::kMetricMeminfoInterval = 30;         // seconds
+const int MetricsDaemon::kMetricDetachableBaseInterval = 30;  // seconds
 
 // Assume a max rate of 250Mb/s for reads (worse for writes) and 512 byte
 // sectors.
@@ -177,12 +177,9 @@ const char MetricsDaemon::kMetricDetachableBaseActivePercentName[] =
 
 // Detachable base autosuspend sysfs entries.
 
-const char MetricsDaemon::kHammerSysfsPathPath[] =
-    "/run/hammer_sysfs_path";
-const char MetricsDaemon::kDetachableBaseSysfsLevelName[] =
-    "power/level";
-const char MetricsDaemon::kDetachableBaseSysfsLevelValue[] =
-    "auto";
+const char MetricsDaemon::kHammerSysfsPathPath[] = "/run/hammer_sysfs_path";
+const char MetricsDaemon::kDetachableBaseSysfsLevelName[] = "power/level";
+const char MetricsDaemon::kDetachableBaseSysfsLevelValue[] = "auto";
 const char MetricsDaemon::kDetachableBaseSysfsActiveTimeName[] =
     "power/runtime_active_time";
 const char MetricsDaemon::kDetachableBaseSysfsSuspendedTimeName[] =
@@ -322,16 +319,14 @@ void MetricsDaemon::Init(bool testing,
       new PersistentInteger(backing_dir_.Append(kKernelCrashesDailyName)));
   kernel_crashes_weekly_count_.reset(
       new PersistentInteger(backing_dir_.Append(kKernelCrashesWeeklyName)));
-  kernel_crashes_version_count_.reset(
-      new PersistentInteger(
-          backing_dir_.Append(kKernelCrashesSinceUpdateName)));
+  kernel_crashes_version_count_.reset(new PersistentInteger(
+      backing_dir_.Append(kKernelCrashesSinceUpdateName)));
   unclean_shutdowns_daily_count_.reset(
       new PersistentInteger(backing_dir_.Append(kUncleanShutdownsDailyName)));
   unclean_shutdowns_weekly_count_.reset(
       new PersistentInteger(backing_dir_.Append(kUncleanShutdownsWeeklyName)));
 
-  daily_cycle_.reset(
-      new PersistentInteger(backing_dir_.Append("daily.cycle")));
+  daily_cycle_.reset(new PersistentInteger(backing_dir_.Append("daily.cycle")));
   weekly_cycle_.reset(
       new PersistentInteger(backing_dir_.Append("weekly.cycle")));
   version_cycle_.reset(
@@ -372,8 +367,7 @@ int MetricsDaemon::OnInit() {
 
   if (bus_->IsConnected()) {
     const std::string match_rule =
-        base::StringPrintf(kCrashReporterMatchRule,
-                           kCrashReporterInterface,
+        base::StringPrintf(kCrashReporterMatchRule, kCrashReporterInterface,
                            kCrashReporterUserCrashSignal);
 
     bus_->AddFilterFunction(&MetricsDaemon::MessageFilter, this);
@@ -404,8 +398,8 @@ int MetricsDaemon::OnInit() {
 
   if (uploader_active_) {
     bool is_official = IsOnOfficialBuild();
-    LOG(INFO) << "uploader enabled" <<
-        (is_official ? "" : " (dummy mode for unofficial build)");
+    LOG(INFO) << "uploader enabled"
+              << (is_official ? "" : " (dummy mode for unofficial build)");
     upload_service_.reset(
         new UploadService(new SystemProfileCache(), metrics_lib_, server_));
     upload_service_->Init(upload_interval_, metrics_file_, is_official);
@@ -417,8 +411,7 @@ int MetricsDaemon::OnInit() {
 void MetricsDaemon::OnShutdown(int* return_code) {
   if (!testing_ && bus_->IsConnected()) {
     const std::string match_rule =
-        base::StringPrintf(kCrashReporterMatchRule,
-                           kCrashReporterInterface,
+        base::StringPrintf(kCrashReporterMatchRule, kCrashReporterInterface,
                            kCrashReporterUserCrashSignal);
 
     bus_->RemoveFilterFunction(&MetricsDaemon::MessageFilter, this);
@@ -484,10 +477,8 @@ TimeDelta MetricsDaemon::GetIncrementalCpuUse() {
     return TimeDelta();
   }
   std::vector<std::string> proc_stat_totals =
-      base::SplitString(proc_stat_lines[0],
-                        base::kWhitespaceASCII,
-                        base::KEEP_WHITESPACE,
-                        base::SPLIT_WANT_NONEMPTY);
+      base::SplitString(proc_stat_lines[0], base::kWhitespaceASCII,
+                        base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
   uint64_t user_ticks, user_nice_ticks, system_ticks;
   if (proc_stat_totals.size() != kMetricsProcStatFirstLineItemsCount ||
@@ -614,10 +605,8 @@ bool MetricsDaemon::DiskStatsReadStats(uint64_t* read_sectors,
     LOG_IF(WARNING, nchars == sizeof(line))
         << "line too long in " << diskstats_path_;
     line[nchars] = '\0';
-    nitems = sscanf(line,
-                    "%*d %*d %" PRIu64 " %*d %*d %*d %" PRIu64,
-                    read_sectors,
-                    write_sectors);
+    nitems = sscanf(line, "%*d %*d %" PRIu64 " %*d %*d %*d %" PRIu64,
+                    read_sectors, write_sectors);
     if (nitems == 2) {
       success = true;
     } else {
@@ -715,9 +704,9 @@ void MetricsDaemon::StatsCallback() {
   bool vmstats_success = VmStatsReadStats(&vmstats_now);
   uint64_t delta_faults = vmstats_now.page_faults_ - vmstats_.page_faults_;
   uint64_t delta_file_faults =
-    vmstats_now.file_page_faults_ - vmstats_.file_page_faults_;
+      vmstats_now.file_page_faults_ - vmstats_.file_page_faults_;
   uint64_t delta_anon_faults =
-    vmstats_now.anon_page_faults_ - vmstats_.anon_page_faults_;
+      vmstats_now.anon_page_faults_ - vmstats_.anon_page_faults_;
   uint64_t delta_swap_in = vmstats_now.swap_in_ - vmstats_.swap_in_;
   uint64_t delta_swap_out = vmstats_now.swap_out_ - vmstats_.swap_out_;
   uint64_t page_faults_per_second = delta_faults / delta_time;
@@ -729,43 +718,22 @@ void MetricsDaemon::StatsCallback() {
   switch (stats_state_) {
     case kStatsShort:
       if (diskstats_success) {
-        SendSample(kMetricReadSectorsShortName,
-                   read_sectors_per_second,
-                   1,
-                   kMetricSectorsIOMax,
-                   kMetricSectorsBuckets);
-        SendSample(kMetricWriteSectorsShortName,
-                   write_sectors_per_second,
-                   1,
-                   kMetricSectorsIOMax,
-                   kMetricSectorsBuckets);
+        SendSample(kMetricReadSectorsShortName, read_sectors_per_second, 1,
+                   kMetricSectorsIOMax, kMetricSectorsBuckets);
+        SendSample(kMetricWriteSectorsShortName, write_sectors_per_second, 1,
+                   kMetricSectorsIOMax, kMetricSectorsBuckets);
       }
       if (vmstats_success) {
-        SendSample(kMetricPageFaultsShortName,
-                   page_faults_per_second,
-                   1,
-                   kMetricPageFaultsMax,
-                   kMetricPageFaultsBuckets);
-        SendSample(kMetricFilePageFaultsShortName,
-                   file_page_faults_per_second,
-                   1,
-                   kMetricPageFaultsMax,
-                   kMetricPageFaultsBuckets);
-        SendSample(kMetricAnonPageFaultsShortName,
-                   anon_page_faults_per_second,
-                   1,
-                   kMetricPageFaultsMax,
-                   kMetricPageFaultsBuckets);
-        SendSample(kMetricSwapInShortName,
-                   swap_in_per_second,
-                   1,
-                   kMetricPageFaultsMax,
-                   kMetricPageFaultsBuckets);
-        SendSample(kMetricSwapOutShortName,
-                   swap_out_per_second,
-                   1,
-                   kMetricPageFaultsMax,
-                   kMetricPageFaultsBuckets);
+        SendSample(kMetricPageFaultsShortName, page_faults_per_second, 1,
+                   kMetricPageFaultsMax, kMetricPageFaultsBuckets);
+        SendSample(kMetricFilePageFaultsShortName, file_page_faults_per_second,
+                   1, kMetricPageFaultsMax, kMetricPageFaultsBuckets);
+        SendSample(kMetricAnonPageFaultsShortName, anon_page_faults_per_second,
+                   1, kMetricPageFaultsMax, kMetricPageFaultsBuckets);
+        SendSample(kMetricSwapInShortName, swap_in_per_second, 1,
+                   kMetricPageFaultsMax, kMetricPageFaultsBuckets);
+        SendSample(kMetricSwapOutShortName, swap_out_per_second, 1,
+                   kMetricPageFaultsMax, kMetricPageFaultsBuckets);
       }
       // Schedule long callback.
       stats_state_ = kStatsLong;
@@ -774,46 +742,25 @@ void MetricsDaemon::StatsCallback() {
       break;
     case kStatsLong:
       if (diskstats_success) {
-        SendSample(kMetricReadSectorsLongName,
-                   read_sectors_per_second,
-                   1,
-                   kMetricSectorsIOMax,
-                   kMetricSectorsBuckets);
-        SendSample(kMetricWriteSectorsLongName,
-                   write_sectors_per_second,
-                   1,
-                   kMetricSectorsIOMax,
-                   kMetricSectorsBuckets);
+        SendSample(kMetricReadSectorsLongName, read_sectors_per_second, 1,
+                   kMetricSectorsIOMax, kMetricSectorsBuckets);
+        SendSample(kMetricWriteSectorsLongName, write_sectors_per_second, 1,
+                   kMetricSectorsIOMax, kMetricSectorsBuckets);
         // Reset sector counters.
         read_sectors_ = read_sectors_now;
         write_sectors_ = write_sectors_now;
       }
       if (vmstats_success) {
-        SendSample(kMetricPageFaultsLongName,
-                   page_faults_per_second,
-                   1,
-                   kMetricPageFaultsMax,
-                   kMetricPageFaultsBuckets);
-        SendSample(kMetricFilePageFaultsLongName,
-                   file_page_faults_per_second,
-                   1,
-                   kMetricPageFaultsMax,
-                   kMetricPageFaultsBuckets);
-        SendSample(kMetricAnonPageFaultsLongName,
-                   anon_page_faults_per_second,
-                   1,
-                   kMetricPageFaultsMax,
-                   kMetricPageFaultsBuckets);
-        SendSample(kMetricSwapInLongName,
-                   swap_in_per_second,
-                   1,
-                   kMetricPageFaultsMax,
-                   kMetricPageFaultsBuckets);
-        SendSample(kMetricSwapOutLongName,
-                   swap_out_per_second,
-                   1,
-                   kMetricPageFaultsMax,
-                   kMetricPageFaultsBuckets);
+        SendSample(kMetricPageFaultsLongName, page_faults_per_second, 1,
+                   kMetricPageFaultsMax, kMetricPageFaultsBuckets);
+        SendSample(kMetricFilePageFaultsLongName, file_page_faults_per_second,
+                   1, kMetricPageFaultsMax, kMetricPageFaultsBuckets);
+        SendSample(kMetricAnonPageFaultsLongName, anon_page_faults_per_second,
+                   1, kMetricPageFaultsMax, kMetricPageFaultsBuckets);
+        SendSample(kMetricSwapInLongName, swap_in_per_second, 1,
+                   kMetricPageFaultsMax, kMetricPageFaultsBuckets);
+        SendSample(kMetricSwapOutLongName, swap_out_per_second, 1,
+                   kMetricPageFaultsMax, kMetricPageFaultsBuckets);
 
         vmstats_ = vmstats_now;
       }
@@ -835,8 +782,8 @@ void MetricsDaemon::ScheduleMeminfoCallback(int wait) {
   base::TimeDelta wait_delta = base::TimeDelta::FromSeconds(wait);
   base::MessageLoop::current()->task_runner()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(
-          &MetricsDaemon::MeminfoCallback, base::Unretained(this), wait_delta),
+      base::Bind(&MetricsDaemon::MeminfoCallback, base::Unretained(this),
+                 wait_delta),
       wait_delta);
 }
 
@@ -850,14 +797,12 @@ void MetricsDaemon::MeminfoCallback(base::TimeDelta wait) {
   // Make both calls even if the first one fails.  Only stop rescheduling if
   // both calls fail, since some platforms do not support zram.
   bool success = ProcessMeminfo(meminfo_raw);
-  bool reschedule =
-      ReportZram(base::FilePath("/sys/block/zram0")) ||
-      success;
+  bool reschedule = ReportZram(base::FilePath("/sys/block/zram0")) || success;
   if (reschedule) {
     base::MessageLoop::current()->task_runner()->PostDelayedTask(
         FROM_HERE,
-        base::Bind(
-            &MetricsDaemon::MeminfoCallback, base::Unretained(this), wait),
+        base::Bind(&MetricsDaemon::MeminfoCallback, base::Unretained(this),
+                   wait),
         wait);
   }
 }
@@ -874,8 +819,8 @@ void MetricsDaemon::ScheduleDetachableBaseCallback(int wait) {
       wait_delta);
 }
 
-void MetricsDaemon::DetachableBaseCallback(
-    const base::FilePath sysfs_path_path, base::TimeDelta wait) {
+void MetricsDaemon::DetachableBaseCallback(const base::FilePath sysfs_path_path,
+                                           base::TimeDelta wait) {
   uint64_t active_time, suspended_time;
 
   if (GetDetachableBaseTimes(sysfs_path_path, &active_time, &suspended_time)) {
@@ -895,8 +840,8 @@ void MetricsDaemon::DetachableBaseCallback(
     uint64_t delta_suspended = suspended_time - detachable_base_suspended_time_;
 
     if ((delta_active + delta_suspended) > 0) {
-      double active_ratio = static_cast<double>(delta_active) /
-              (delta_active + delta_suspended);
+      double active_ratio =
+          static_cast<double>(delta_active) / (delta_active + delta_suspended);
 
       DLOG(INFO) << "Detachable base active_ratio: "
                  << base::StringPrintf("%.8f", active_ratio);
@@ -923,9 +868,9 @@ void MetricsDaemon::DetachableBaseCallback(
       wait);
 }
 
-bool MetricsDaemon::GetDetachableBaseTimes(
-    const base::FilePath sysfs_path_path,
-    uint64_t* active_time, uint64_t* suspended_time) {
+bool MetricsDaemon::GetDetachableBaseTimes(const base::FilePath sysfs_path_path,
+                                           uint64_t* active_time,
+                                           uint64_t* suspended_time) {
   base::FilePath sysfs_path;
   std::string content;
 
@@ -934,18 +879,20 @@ bool MetricsDaemon::GetDetachableBaseTimes(
   base::TrimWhitespaceASCII(content, base::TRIM_TRAILING, &content);
 
   sysfs_path = base::FilePath(content);
-  if (!base::ReadFileToString(sysfs_path.Append(
-      kDetachableBaseSysfsLevelName), &content))
+  if (!base::ReadFileToString(sysfs_path.Append(kDetachableBaseSysfsLevelName),
+                              &content))
     return false;
   base::TrimWhitespaceASCII(content, base::TRIM_TRAILING, &content);
 
   if (content != "auto")
     return false;
 
-  bool r1 = ReadFileToUint64(sysfs_path.Append(
-      kDetachableBaseSysfsActiveTimeName), active_time, false);
-  bool r2 = ReadFileToUint64(sysfs_path.Append(
-      kDetachableBaseSysfsSuspendedTimeName), suspended_time, false);
+  bool r1 =
+      ReadFileToUint64(sysfs_path.Append(kDetachableBaseSysfsActiveTimeName),
+                       active_time, false);
+  bool r2 =
+      ReadFileToUint64(sysfs_path.Append(kDetachableBaseSysfsSuspendedTimeName),
+                       suspended_time, false);
   if (!r1 || !r2)
     return false;
 
@@ -984,11 +931,9 @@ bool MetricsDaemon::ReadMMStat(const base::FilePath& zram_dir,
     return false;
   }
 
-  int num_items = sscanf(content.c_str(),
-                         "%" PRIu64 " %" PRIu64 " %*d %*d %*d %" PRIu64 " %*d",
-                         orig_data_size_out,
-                         compr_data_size_out,
-                         zero_pages_out);
+  int num_items = sscanf(
+      content.c_str(), "%" PRIu64 " %" PRIu64 " %*d %*d %*d %" PRIu64 " %*d",
+      orig_data_size_out, compr_data_size_out, zero_pages_out);
   if (num_items != 3) {
     LOG(WARNING) << "Found " << num_items << " item(s) in "
                  << mm_stat_path.value() << ", expected 3";
@@ -1034,10 +979,7 @@ bool MetricsDaemon::ReportZram(const base::FilePath& zram_dir) {
   if (compr_data_size_mb >= 1 &&
       orig_data_size < (1ull << (sizeof(orig_data_size) * 8 - 1)) / 100) {
     SendSample("Platform.ZramCompressionRatioPercent",
-               orig_data_size * 100 / compr_data_size,
-               100,
-               600,
-               50);
+               orig_data_size * 100 / compr_data_size, 100, 600, 50);
   }
   // The values of interest for zero_pages are between 1MB and 1GB.  The units
   // are number of pages.
@@ -1124,22 +1066,16 @@ bool MetricsDaemon::ProcessMeminfo(const string& meminfo_raw) {
     int swap_used = swap_total - swap_free;
     int swap_used_percent = swap_used * 100 / swap_total;
     SendSample("Platform.MeminfoSwapUsed", swap_used, 1, 8 * 1000 * 1000, 100);
-    SendLinearSample(
-        "Platform.MeminfoSwapUsedPercent", swap_used_percent, 100, 101);
+    SendLinearSample("Platform.MeminfoSwapUsedPercent", swap_used_percent, 100,
+                     101);
   }
   mem_used_derived = total_memory - mem_free_derived;
-  SendSample("Platform.MeminfoMemFreeDerived",
-             mem_free_derived,
-             1,
-             kMaximumMemorySizeInKB,
-             100);
-  SendSample("Platform.MeminfoMemUsedDerived",
-             mem_used_derived,
-             1,
-             kMaximumMemorySizeInKB,
-             100);
-  SendSample(
-      "Platform.MeminfoMemTotal", total_memory, 1, kMaximumMemorySizeInKB, 100);
+  SendSample("Platform.MeminfoMemFreeDerived", mem_free_derived, 1,
+             kMaximumMemorySizeInKB, 100);
+  SendSample("Platform.MeminfoMemUsedDerived", mem_used_derived, 1,
+             kMaximumMemorySizeInKB, 100);
+  SendSample("Platform.MeminfoMemTotal", total_memory, 1,
+             kMaximumMemorySizeInKB, 100);
   return true;
 }
 
@@ -1239,8 +1175,8 @@ bool MetricsDaemon::ProcessMemuse(const string& meminfo_raw) {
   }
   string metrics_name =
       base::StringPrintf("Platform.MemuseAnon%d", memuse_interval_index_);
-  SendLinearSample(
-      metrics_name, (active_anon + inactive_anon) * 100 / total, 100, 101);
+  SendLinearSample(metrics_name, (active_anon + inactive_anon) * 100 / total,
+                   100, 101);
   return true;
 }
 
@@ -1253,8 +1189,7 @@ void MetricsDaemon::SendKernelCrashesCumulativeCountStats() {
   // Report the number of crashes for this OS version, but don't clear the
   // counter.  It is cleared elsewhere on version change.
   int64_t crashes_count = kernel_crashes_version_count_->Get();
-  SendSample(kKernelCrashesSinceUpdateName,
-             crashes_count,
+  SendSample(kKernelCrashesSinceUpdateName, crashes_count,
              1,     // value of first bucket
              500,   // value of last bucket
              100);  // number of buckets
@@ -1271,31 +1206,27 @@ void MetricsDaemon::SendKernelCrashesCumulativeCountStats() {
   if (cpu_use_ms > 0) {
     // Send the crash frequency since update in number of crashes per CPU year.
     SendSample("Platform.KernelCrashesPerCpuYear",
-               crashes_count * kSecondsPerDay * 365 * 1000 / cpu_use_ms,
-               1,
+               crashes_count * kSecondsPerDay * 365 * 1000 / cpu_use_ms, 1,
                1000 * 1000,  // about one crash every 30s of CPU time
                100);
   }
 
   int64_t active_use_seconds = version_cumulative_active_use_->Get();
   if (active_use_seconds > 0) {
-    SendSample(kCumulativeUseTimeName,
-               active_use_seconds,
+    SendSample(kCumulativeUseTimeName, active_use_seconds,
                1,                // device may be used very little...
                8 * 1000 * 1000,  // ... or a lot (about 90 days)
                100);
     // Same as above, but per year of active time.
     SendSample("Platform.KernelCrashesPerActiveYear",
-               crashes_count * kSecondsPerDay * 365 / active_use_seconds,
-               1,
+               crashes_count * kSecondsPerDay * 365 / active_use_seconds, 1,
                1000 * 1000,  // about one crash every 30s of active time
                100);
   }
 }
 
 void MetricsDaemon::SendAndResetDailyUseSample() {
-  SendSample(kDailyUseTimeName,
-             daily_active_use_->GetAndClear(),
+  SendSample(kDailyUseTimeName, daily_active_use_->GetAndClear(),
              1,               // value of first bucket
              kSecondsPerDay,  // value of last bucket
              50);             // number of buckets
@@ -1304,8 +1235,7 @@ void MetricsDaemon::SendAndResetDailyUseSample() {
 void MetricsDaemon::SendAndResetCrashIntervalSample(
     const std::unique_ptr<PersistentInteger>& interval,
     const std::string& name) {
-  SendSample(name,
-             interval->GetAndClear(),
+  SendSample(name, interval->GetAndClear(),
              1,                    // value of first bucket
              4 * kSecondsPerWeek,  // value of last bucket
              50);                  // number of buckets
@@ -1314,8 +1244,7 @@ void MetricsDaemon::SendAndResetCrashIntervalSample(
 void MetricsDaemon::SendAndResetCrashFrequencySample(
     const std::unique_ptr<PersistentInteger>& frequency,
     const std::string& name) {
-  SendSample(name,
-             frequency->GetAndClear(),
+  SendSample(name, frequency->GetAndClear(),
              1,    // value of first bucket
              100,  // value of last bucket
              50);  // number of buckets

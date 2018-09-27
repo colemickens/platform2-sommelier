@@ -22,11 +22,11 @@ namespace chromeos_metrics {
 
 // Record for retrieving and reporting values from /proc/vmstat
 struct VmstatRecord {
-  uint64_t page_faults_ = 0;        // major faults
-  uint64_t file_page_faults_ = 0;   // major faults for file-backed pages
-  uint64_t anon_page_faults_ = 0;   // major faults for anonymous pages
-  uint64_t swap_in_ = 0;            // pages swapped in
-  uint64_t swap_out_ = 0;           // pages swapped out
+  uint64_t page_faults_ = 0;       // major faults
+  uint64_t file_page_faults_ = 0;  // major faults for file-backed pages
+  uint64_t anon_page_faults_ = 0;  // major faults for anonymous pages
+  uint64_t swap_in_ = 0;           // pages swapped in
+  uint64_t swap_out_ = 0;          // pages swapped out
 };
 
 struct CpuTimeRecord {

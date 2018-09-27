@@ -32,7 +32,7 @@ static int accumulator_report_count = 0;
 
 class CumulativeMetricsTest : public testing::Test {};
 
-static void UpdateAccumulators(CumulativeMetrics *cm) {
+static void UpdateAccumulators(CumulativeMetrics* cm) {
   cm->Add(kMetricNameX, 111);
   cm->Add(kMetricNameY, 222);
   cm->Max(kMetricNameZ, 333);
@@ -40,7 +40,7 @@ static void UpdateAccumulators(CumulativeMetrics *cm) {
   accumulator_update_total_count++;
 }
 
-static void ReportAccumulators(CumulativeMetrics *cm) {
+static void ReportAccumulators(CumulativeMetrics* cm) {
   // The first call is done at initialization, to possibly report metrics
   // accumulated in the previous cycle.  We ignore it because we want to
   // test through at least one cycle.
@@ -65,13 +65,10 @@ TEST_F(CumulativeMetricsTest, TestLoop) {
   ASSERT_TRUE(base::CreateDirectory(pi_path));
 
   std::vector<std::string> names = {kMetricNameX, kMetricNameY, kMetricNameZ};
-  CumulativeMetrics cm(
-      pi_path,
-      names,
-      base::TimeDelta::FromMilliseconds(100),
-      base::Bind(&UpdateAccumulators),
-      base::TimeDelta::FromMilliseconds(500),
-      base::Bind(&ReportAccumulators));
+  CumulativeMetrics cm(pi_path, names, base::TimeDelta::FromMilliseconds(100),
+                       base::Bind(&UpdateAccumulators),
+                       base::TimeDelta::FromMilliseconds(500),
+                       base::Bind(&ReportAccumulators));
 
   base::RunLoop().Run();
 

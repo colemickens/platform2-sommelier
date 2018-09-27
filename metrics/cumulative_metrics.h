@@ -126,14 +126,18 @@ class CumulativeMetrics {
   void PanicFromBadName(const char* action, const std::string& name) const;
 
  private:
-  base::FilePath backing_dir_;            // for PersistentInteger backing files
+  // for PersistentInteger backing files
+  base::FilePath backing_dir_;
+  // name -> accumulated value
   std::map<std::string, std::unique_ptr<PersistentInteger>> values_;
-                                          // name -> accumulated value
-  base::TimeDelta update_period_;         // interval between update callbacks
-  base::TimeDelta accumulation_period_;   // cycle length
+  // interval between update callbacks
+  base::TimeDelta update_period_;
+  // cycle length
+  base::TimeDelta accumulation_period_;
+  // clock at beginning of cycle (usecs)
   std::unique_ptr<PersistentInteger> cycle_start_;
-                                          // clock at beginning of cycle (usecs)
-  base::TimeTicks last_update_time_;      // active time at latest update
+  // active time at latest update
+  base::TimeTicks last_update_time_;
   // |update_callback_| is called every |update_period_seconds_| to update the
   // accumulators.
   Callback update_callback_;

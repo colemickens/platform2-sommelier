@@ -79,7 +79,6 @@ bool MetricsLibrary::cached_enabled_ = false;
 MetricsLibrary::MetricsLibrary() : consent_file_(kConsentFile) {}
 MetricsLibrary::~MetricsLibrary() {}
 
-
 bool MetricsLibrary::IsGuestMode() {
   // Shortcut check whether there is any logged-in user.
   if (access("/run/state/logged-in", F_OK) != 0)
@@ -190,8 +189,8 @@ bool MetricsLibrary::EnableMetrics() {
 
   // http://crbug.com/383003 says we must be world readable.
   mode_t mask = umask(0022);
-  int write_len = base::WriteFile(
-      base::FilePath(consent_file_), guid.c_str(), guid.length());
+  int write_len = base::WriteFile(base::FilePath(consent_file_), guid.c_str(),
+                                  guid.length());
   umask(mask);
 
   return write_len == static_cast<int>(guid.length());
@@ -231,11 +230,11 @@ bool MetricsLibrary::SendToUMA(
 
 #if USE_METRICS_UPLOADER
 bool MetricsLibrary::SendRepeatedToUMA(const std::string& name,
-                                    int sample,
-                                    int min,
-                                    int max,
-                                    int nbuckets,
-                                    int num_samples) {
+                                       int sample,
+                                       int min,
+                                       int max,
+                                       int nbuckets,
+                                       int num_samples) {
   return metrics::SerializationUtils::WriteMetricsToFile(
       {metrics::MetricSample::HistogramSample(name, sample, min, max, nbuckets,
                                               num_samples)},

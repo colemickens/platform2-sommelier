@@ -69,18 +69,10 @@ class MetricsDaemonTest : public testing::Test {
     CHECK(persistent_integer_backing_dir_.CreateUniqueTempDir());
     base::FilePath backing_dir_path = persistent_integer_backing_dir_.GetPath();
 
-    daemon_.Init(true,
-                 false,
-                 &metrics_lib_,
-                 kFakeDiskStatsName,
-                 kFakeVmStatsName,
-                 kFakeScalingMaxFreqPath,
-                 kFakeCpuinfoMaxFreqPath,
-                 base::TimeDelta::FromMinutes(30),
-                 kMetricsServer,
-                 kMetricsFilePath,
-                 "/",
-                 backing_dir_path);
+    daemon_.Init(true, false, &metrics_lib_, kFakeDiskStatsName,
+                 kFakeVmStatsName, kFakeScalingMaxFreqPath,
+                 kFakeCpuinfoMaxFreqPath, base::TimeDelta::FromMinutes(30),
+                 kMetricsServer, kMetricsFilePath, "/", backing_dir_path);
 
     // Replace original persistent values with mock ones.
     base::FilePath m1 = backing_dir_path.Append("1.mock");
@@ -96,8 +88,7 @@ class MetricsDaemonTest : public testing::Test {
     daemon_.user_crash_interval_.reset(user_crash_interval_mock_);
 
     base::FilePath m4 = backing_dir_path.Append("4.mock");
-    unclean_shutdown_interval_mock_ =
-        new StrictMock<PersistentIntegerMock>(m4);
+    unclean_shutdown_interval_mock_ = new StrictMock<PersistentIntegerMock>(m4);
     daemon_.unclean_shutdown_interval_.reset(unclean_shutdown_interval_mock_);
   }
 
@@ -157,8 +148,7 @@ class MetricsDaemonTest : public testing::Test {
     DBusMessageIter iter;
     dbus_message_iter_init_append(msg, &iter);
     for (vector<string>::const_iterator it = arg_values.begin();
-         it != arg_values.end();
-         ++it) {
+         it != arg_values.end(); ++it) {
       const char* str_value = it->c_str();
       dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &str_value);
     }
@@ -184,9 +174,8 @@ class MetricsDaemonTest : public testing::Test {
   void CreateUint64ValueFile(const base::FilePath& path, uint64_t value) {
     base::DeleteFile(path, false);
     std::string value_string = base::Uint64ToString(value);
-    ASSERT_EQ(
-        value_string.length(),
-        base::WriteFile(path, value_string.c_str(), value_string.length()));
+    ASSERT_EQ(value_string.length(), base::WriteFile(path, value_string.c_str(),
+                                                     value_string.length()));
   }
 
   // The MetricsDaemon under test.
@@ -230,8 +219,8 @@ TEST_F(MetricsDaemonTest, MessageFilter) {
 
   IgnoreActiveUseUpdate();
   vector<string> signal_args;
-  msg = NewDBusSignalString(
-      "/", "org.chromium.CrashReporter", "UserCrash", signal_args);
+  msg = NewDBusSignalString("/", "org.chromium.CrashReporter", "UserCrash",
+                            signal_args);
   res = MetricsDaemon::MessageFilter(/* connection */ nullptr, msg, &daemon_);
   EXPECT_EQ(DBUS_HANDLER_RESULT_HANDLED, res);
   DeleteDBusMessage(msg);
@@ -239,8 +228,8 @@ TEST_F(MetricsDaemonTest, MessageFilter) {
   signal_args.clear();
   signal_args.push_back("randomstate");
   signal_args.push_back("bob");  // arbitrary username
-  msg = NewDBusSignalString(
-      "/", "org.chromium.UnknownService.Manager", "StateChanged", signal_args);
+  msg = NewDBusSignalString("/", "org.chromium.UnknownService.Manager",
+                            "StateChanged", signal_args);
   res = MetricsDaemon::MessageFilter(/* connection */ nullptr, msg, &daemon_);
   EXPECT_EQ(DBUS_HANDLER_RESULT_NOT_YET_HANDLED, res);
   DeleteDBusMessage(msg);
@@ -266,10 +255,9 @@ TEST_F(MetricsDaemonTest, ReportDiskStats) {
   EXPECT_CALL(
       metrics_lib_,
       SendToUMA(_, (kFakeReadSectors[1] - kFakeReadSectors[0]) / 30, _, _, _));
-  EXPECT_CALL(
-      metrics_lib_,
-      SendToUMA(
-          _, (kFakeWriteSectors[1] - kFakeWriteSectors[0]) / 30, _, _, _));
+  EXPECT_CALL(metrics_lib_,
+              SendToUMA(_, (kFakeWriteSectors[1] - kFakeWriteSectors[0]) / 30,
+                        _, _, _));
   EXPECT_CALL(metrics_lib_, SendEnumToUMA(_, _, _));  // SendCpuThrottleMetrics
   daemon_.StatsCallback();
   EXPECT_TRUE(s_state != daemon_.stats_state_);
@@ -361,8 +349,7 @@ TEST_F(MetricsDaemonTest, SendZramMetrics) {
 
   ASSERT_EQ(value_string.length(),
             base::WriteFile(base::FilePath(MetricsDaemon::kMMStatName),
-                            value_string.c_str(),
-                            value_string.length()));
+                            value_string.c_str(), value_string.length()));
 
   const uint64_t real_orig_size = orig_data_size + zero_pages * page_size;
   const uint64_t zero_ratio_percent =
@@ -433,24 +420,23 @@ TEST_F(MetricsDaemonTest, GetDetachableBaseTimes) {
 
   uint64_t active_time, suspended_time;
 
-  EXPECT_FALSE(daemon_.GetDetachableBaseTimes(
-      hammer_sysfs_path, &active_time, &suspended_time));
+  EXPECT_FALSE(daemon_.GetDetachableBaseTimes(hammer_sysfs_path, &active_time,
+                                              &suspended_time));
 
-  EXPECT_TRUE(base::WriteFile(
-      hammer_sysfs_path, temp_dir.value().c_str(),
-      temp_dir.value().length()));
-  EXPECT_TRUE(base::WriteFile(
-      level_path, MetricsDaemon::kDetachableBaseSysfsLevelValue,
-      strlen(MetricsDaemon::kDetachableBaseSysfsLevelValue)));
+  EXPECT_TRUE(base::WriteFile(hammer_sysfs_path, temp_dir.value().c_str(),
+                              temp_dir.value().length()));
+  EXPECT_TRUE(
+      base::WriteFile(level_path, MetricsDaemon::kDetachableBaseSysfsLevelValue,
+                      strlen(MetricsDaemon::kDetachableBaseSysfsLevelValue)));
 
-  EXPECT_FALSE(daemon_.GetDetachableBaseTimes(
-      hammer_sysfs_path, &active_time, &suspended_time));
+  EXPECT_FALSE(daemon_.GetDetachableBaseTimes(hammer_sysfs_path, &active_time,
+                                              &suspended_time));
 
   CreateUint64ValueFile(active_time_path, 10);
   CreateUint64ValueFile(suspended_time_path, 20);
 
-  EXPECT_TRUE(daemon_.GetDetachableBaseTimes(
-      hammer_sysfs_path, &active_time, &suspended_time));
+  EXPECT_TRUE(daemon_.GetDetachableBaseTimes(hammer_sysfs_path, &active_time,
+                                             &suspended_time));
   EXPECT_EQ(active_time, 10);
   EXPECT_EQ(suspended_time, 20);
 }

@@ -19,8 +19,8 @@ namespace chromeos_metrics {
 // Static class member instantiation.
 bool PersistentInteger::testing_ = false;
 
-PersistentInteger::PersistentInteger(const base::FilePath& backing_file_path) :
-    path_(backing_file_path), synced_(false), value_(0), version_(kVersion) {}
+PersistentInteger::PersistentInteger(const base::FilePath& backing_file_path)
+    : path_(backing_file_path), synced_(false), value_(0), version_(kVersion) {}
 
 PersistentInteger::~PersistentInteger() {}
 
@@ -60,8 +60,7 @@ void PersistentInteger::Write() {
   const char* value_ptr = reinterpret_cast<const char*>(&value_);
   PCHECK(f.Write(0, version_ptr, sizeof(version_)) == sizeof(version_) &&
          f.Write(sizeof(version_), value_ptr, sizeof(value_)) == sizeof(value_))
-      << "cannot write to "
-      << path_.MaybeAsASCII();
+      << "cannot write to " << path_.MaybeAsASCII();
   synced_ = true;
 }
 
