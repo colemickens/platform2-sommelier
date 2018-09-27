@@ -308,4 +308,4 @@ TEST(BackoffEntryTest, OverflowProtection) {
   EXPECT_EQ(20000, custom.GetTimeUntilRelease().InMilliseconds());
 }
 
-}  // namespace
+}  // namespace brillo

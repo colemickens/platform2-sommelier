@@ -170,7 +170,7 @@ TEST(ValueConversionTest, FromValueVectorOfString) {
 TEST(ValueConversionTest, FromValueVectorOfVectors) {
   std::vector<std::vector<int>> actual;
   EXPECT_TRUE(FromValue(*ParseValue("[[1,2], [], [3]]"), &actual));
-  EXPECT_EQ((std::vector<std::vector<int>>{{1,2}, {}, {3}}), actual);
+  EXPECT_EQ((std::vector<std::vector<int>>{{1, 2}, {}, {3}}), actual);
 
   EXPECT_TRUE(FromValue(*ParseValue("[]"), &actual));
   EXPECT_TRUE(actual.empty());

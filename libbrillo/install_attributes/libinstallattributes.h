@@ -53,7 +53,7 @@ class BRILLO_EXPORT InstallAttributesReader {
   // successful, too.
   bool initialized_ = false;
 
-private:
+ private:
   // Try to load the verified install attributes from disk.  This is expected to
   // fail when install attributes haven't yet been finalized (OOBE) or verified
   // (early in the boot sequence).

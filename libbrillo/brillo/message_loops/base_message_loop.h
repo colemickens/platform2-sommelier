@@ -119,7 +119,7 @@ class BRILLO_EXPORT BaseMessageLoop : public MessageLoop {
 
     // Sets the closure to be run immediately whenever the file descriptor
     // becomes ready.
-    void RunImmediately() { immediate_run_= true; }
+    void RunImmediately() { immediate_run_ = true; }
 
    private:
     tracked_objects::Location location_;

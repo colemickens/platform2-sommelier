@@ -207,7 +207,7 @@ void ProcessImpl::CloseUnusedFileDescriptors() {
     // Since we're just trying to close anything we can find,
     // ignore any error return values of close().
     IGNORE_EINTR(close(fd));
- }
+  }
 }
 
 bool ProcessImpl::Start() {
