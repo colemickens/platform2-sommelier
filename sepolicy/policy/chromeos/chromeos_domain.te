@@ -34,10 +34,15 @@ allow chromeos_domain rootfs:dir search;
 allow chromeos_domain cros_var:dir search;
 allow chromeos_domain rootfs:lnk_file r_file_perms;
 
+allow chromeos_domain sysfs:dir search;
+allow chromeos_domain sysfs:lnk_file { read getattr };
+
 allow chromeos_domain device:dir search;
 allow chromeos_domain cros_labeled_dev_type:lnk_file r_file_perms;
 allow chromeos_domain devpts:dir search;
 
+allow chromeos_domain fs_type:dir getattr;
+allow chromeos_domain fs_type:filesystem getattr;
 
 allow chromeos_domain cros_system_file:file execute;
 r_dir_file(chromeos_domain, cros_system_file)

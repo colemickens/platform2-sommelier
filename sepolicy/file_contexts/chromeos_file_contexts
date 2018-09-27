@@ -57,6 +57,8 @@ include(sepolicy/file_contexts/coreutils)
 /var                            u:object_r:cros_var:s0
 /var/empty                      u:object_r:cros_var_empty:s0
 /var/lib                        u:object_r:cros_var_lib:s0
+/var/lib/metrics                u:object_r:cros_metrics_file:s0
+/var/lib/metrics/uma-events     u:object_r:cros_metrics_uma_events_file:s0
 /var/log                        u:object_r:cros_var_log:s0
 /var/log/arc.log                u:object_r:cros_arc_log:s0
 /var/log/authpolicy.log         u:object_r:cros_authpolicy_log:s0

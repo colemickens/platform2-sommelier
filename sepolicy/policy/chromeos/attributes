@@ -6,3 +6,5 @@ attribute cros_dev_type;
 attribute cros_labeled_dev_type;
 
 attribute cros_log_type;
+
+attribute cros_tmpfile_type;

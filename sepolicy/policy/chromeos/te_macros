@@ -39,3 +39,8 @@ allow $1 logger_device:sock_file write;
 define(`cros_net', `
 typeattribute $1 cros_netdomain;
 ')
+
+define(`from_minijail_static', `
+domain_auto_trans(minijail, $2, $1);
+allow $1 minijail:fd use;
+')
