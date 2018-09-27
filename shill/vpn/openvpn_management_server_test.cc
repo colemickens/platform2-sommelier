@@ -73,7 +73,7 @@ class OpenVPNManagementServerTest : public testing::Test {
     driver_.args()->SetString(kOpenVPNPasswordProperty, "yoyo");
     driver_.args()->SetString(kOpenVPNOTPProperty, "123456");
     SetConnectedSocket();
-    ExpectSend("username \"Auth\" jojo\n");
+    ExpectSend("username \"Auth\" \"jojo\"\n");
     ExpectSend("password \"Auth\" \"SCRV1:eW95bw==:MTIzNDU2\"\n");
   }
 
@@ -81,7 +81,7 @@ class OpenVPNManagementServerTest : public testing::Test {
     driver_.args()->SetString(kOpenVPNUserProperty, "jojo");
     driver_.args()->SetString(kOpenVPNTokenProperty, "toto");
     SetConnectedSocket();
-    ExpectSend("username \"Auth\" jojo\n");
+    ExpectSend("username \"Auth\" \"jojo\"\n");
     ExpectSend("password \"Auth\" \"toto\"\n");
   }
 
@@ -89,7 +89,7 @@ class OpenVPNManagementServerTest : public testing::Test {
     driver_.args()->SetString(kOpenVPNUserProperty, "jojo");
     driver_.args()->SetString(kOpenVPNPasswordProperty, "yoyo");
     SetConnectedSocket();
-    ExpectSend("username \"Auth\" jojo\n");
+    ExpectSend("username \"Auth\" \"jojo\"\n");
     ExpectSend("password \"Auth\" \"yoyo\"\n");
   }
 
@@ -483,14 +483,28 @@ TEST_F(OpenVPNManagementServerTest, SendState) {
 
 TEST_F(OpenVPNManagementServerTest, SendUsername) {
   SetConnectedSocket();
-  ExpectSend("username \"Auth\" joesmith\n");
+  ExpectSend("username \"Auth\" \"joesmith\"\n");
   server_.SendUsername("Auth", "joesmith");
+}
+
+TEST_F(OpenVPNManagementServerTest, SendUsernameWithSpecialCharacters) {
+  SetConnectedSocket();
+  // Verify that \ and " are escaped as \\ and \" in tag and username.
+  ExpectSend("username \"\\\\ and \\\"\" \"joesmith with \\\" and \\\\\"\n");
+  server_.SendUsername("\\ and \"", "joesmith with \" and \\");
 }
 
 TEST_F(OpenVPNManagementServerTest, SendPassword) {
   SetConnectedSocket();
-  ExpectSend("password \"Auth\" \"foo\\\"bar\"\n");
-  server_.SendPassword("Auth", "foo\"bar");
+  ExpectSend("password \"Auth\" \"foobar\"\n");
+  server_.SendPassword("Auth", "foobar");
+}
+
+TEST_F(OpenVPNManagementServerTest, SendPasswordWithSpecialCharacters) {
+  SetConnectedSocket();
+  // Verify that \ and " are escaped as \\ and \" in tag and password.
+  ExpectSend("password \"\\\\ and \\\"\" \"foobar with \\\" and \\\\\"\n");
+  server_.SendPassword("\\ and \"", "foobar with \" and \\");
 }
 
 TEST_F(OpenVPNManagementServerTest, ProcessFailedPasswordMessage) {

@@ -467,14 +467,14 @@ void OpenVPNManagementServer::SendState(const string& state) {
 void OpenVPNManagementServer::SendUsername(const string& tag,
                                            const string& username) {
   SLOG(this, 2) << __func__;
-  Send(StringPrintf("username \"%s\" %s\n", tag.c_str(), username.c_str()));
+  Send(StringPrintf("username \"%s\" \"%s\"\n", EscapeToQuote(tag).c_str(),
+                    EscapeToQuote(username).c_str()));
 }
 
 void OpenVPNManagementServer::SendPassword(const string& tag,
                                            const string& password) {
   SLOG(this, 2) << __func__;
-  Send(StringPrintf("password \"%s\" \"%s\"\n",
-                    tag.c_str(),
+  Send(StringPrintf("password \"%s\" \"%s\"\n", EscapeToQuote(tag).c_str(),
                     EscapeToQuote(password).c_str()));
 }
 

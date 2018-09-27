@@ -92,8 +92,10 @@ class OpenVPNManagementServer {
   FRIEND_TEST(OpenVPNManagementServerTest, Send);
   FRIEND_TEST(OpenVPNManagementServerTest, SendHoldRelease);
   FRIEND_TEST(OpenVPNManagementServerTest, SendPassword);
+  FRIEND_TEST(OpenVPNManagementServerTest, SendPasswordWithSpecialCharacters);
   FRIEND_TEST(OpenVPNManagementServerTest, SendState);
   FRIEND_TEST(OpenVPNManagementServerTest, SendUsername);
+  FRIEND_TEST(OpenVPNManagementServerTest, SendUsernameWithSpecialCharacters);
   FRIEND_TEST(OpenVPNManagementServerTest, Start);
   FRIEND_TEST(OpenVPNManagementServerTest, Stop);
   FRIEND_TEST(OpenVPNManagementServerTest, SupplyTPMToken);
