@@ -34,9 +34,9 @@
 
 #include "shill/cellular/modem_info.h"
 #include "shill/crypto_util_proxy.h"
-#include "shill/dhcp/dhcp_properties.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
+#include "shill/dhcp/dhcp_properties.h"
 #include "shill/event_dispatcher.h"
 #include "shill/geolocation_info.h"
 #include "shill/hook_table.h"

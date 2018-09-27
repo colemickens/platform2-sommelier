@@ -17,9 +17,9 @@
 #include "shill/error.h"
 
 #include <base/files/file_path.h>
-#include <chromeos/dbus/service_constants.h>
 #include <brillo/errors/error.h>
 #include <brillo/errors/error_codes.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "shill/logging.h"
 

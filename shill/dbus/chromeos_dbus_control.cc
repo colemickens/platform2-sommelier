@@ -21,19 +21,18 @@
 #include <brillo/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/dbus/chromeos_dbus_service_watcher.h"
 #include "shill/dbus/chromeos_device_dbus_adaptor.h"
+#include "shill/dbus/chromeos_dhcpcd_listener.h"
+#include "shill/dbus/chromeos_dhcpcd_proxy.h"
 #include "shill/dbus/chromeos_ipconfig_dbus_adaptor.h"
 #include "shill/dbus/chromeos_manager_dbus_adaptor.h"
+#include "shill/dbus/chromeos_power_manager_proxy.h"
 #include "shill/dbus/chromeos_profile_dbus_adaptor.h"
 #include "shill/dbus/chromeos_rpc_task_dbus_adaptor.h"
 #include "shill/dbus/chromeos_service_dbus_adaptor.h"
 #include "shill/dbus/chromeos_third_party_vpn_dbus_adaptor.h"
-
-#include "shill/dbus/chromeos_dhcpcd_listener.h"
-#include "shill/dbus/chromeos_dhcpcd_proxy.h"
-#include "shill/dbus/chromeos_power_manager_proxy.h"
 #include "shill/dbus/chromeos_upstart_proxy.h"
-#include "shill/dbus/chromeos_dbus_service_watcher.h"
 
 #if !defined(DISABLE_CELLULAR)
 #include "shill/dbus/chromeos_dbus_objectmanager_proxy.h"

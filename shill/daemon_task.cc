@@ -18,8 +18,8 @@
 
 #include <base/bind.h>
 
-#include "shill/dbus/chromeos_dbus_control.h"
 #include "shill/control_interface.h"
+#include "shill/dbus/chromeos_dbus_control.h"
 #include "shill/dhcp/dhcp_provider.h"
 #include "shill/error.h"
 #include "shill/logging.h"

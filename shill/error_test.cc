@@ -16,9 +16,9 @@
 
 #include "shill/error.h"
 
-#include <chromeos/dbus/service_constants.h>
 #include <brillo/errors/error.h>
 #include <brillo/errors/error_codes.h>
+#include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
 namespace shill {
