@@ -131,6 +131,9 @@ class CecDeviceImpl : public CecDevice {
   // Immediately responds to all currently ongoing queries.
   void RespondToAllPendingQueries(TvPowerStatus response);
 
+  // Enqueues messages, returns true if the message was added to the queue.
+  bool EnqueueMessage(struct cec_msg msg);
+
   // Disables device.
   void DisableDevice();
 

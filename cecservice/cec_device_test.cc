@@ -505,4 +505,23 @@ TEST_F(CecDeviceTest, TestMessageSendingWhenNoLogicalAddressIsConfigured) {
   EXPECT_EQ(kLogicalAddress, cec_msg_initiator(&sent_message_));
 }
 
+extern const size_t kCecDeviceMaxTxQueueSize;
+
+TEST_F(CecDeviceTest, TestMaxTxQueueSize) {
+  Init();
+  Connect();
+
+  ON_CALL(*cec_fd_mock_, WriteWatch()).WillByDefault(Return(true));
+
+  TvPowerStatus power_status;
+  for (size_t i = 0; i < kCecDeviceMaxTxQueueSize; i++) {
+    device_->GetTvPowerStatus(base::Bind(Copy, &power_status));
+  }
+
+  // The output queue is full now, should respond immediately with an error.
+  TvPowerStatus power_status_error = kTvPowerStatusUnknown;
+  device_->GetTvPowerStatus(base::Bind(Copy, &power_status_error));
+  EXPECT_EQ(kTvPowerStatusError, power_status_error);
+}
+
 }  // namespace cecservice

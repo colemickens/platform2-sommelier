@@ -18,6 +18,12 @@
 
 namespace cecservice {
 
+// Maximum size of a cec device's queue with outgoing messages, roughly
+// 10 secs of continus flow of messages.
+//
+// Extern to make it avaiable to UTs.
+extern const size_t kCecDeviceMaxTxQueueSize = 250;
+
 namespace {
 struct cec_msg CreateMessage(uint16_t destination_address) {
   struct cec_msg message;
@@ -88,12 +94,13 @@ void CecDeviceImpl::GetTvPowerStatus(GetTvPowerStatusCallback callback) {
 
   struct cec_msg message = CreateMessage(CEC_LOG_ADDR_TV);
   cec_msg_give_device_power_status(&message, 1);
-  message_queue_.push_back(message);
-
-  requests_.push_back({std::move(callback), 0});
-
-  RequestWriteWatch();
-}
+  if (EnqueueMessage(message)) {
+    requests_.push_back({std::move(callback), 0});
+    RequestWriteWatch();
+  } else {
+    std::move(callback).Run(kTvPowerStatusError);
+  }
+}  // namespace cecservice
 
 void CecDeviceImpl::SetStandBy() {
   if (!fd_) {
@@ -113,7 +120,7 @@ void CecDeviceImpl::SetStandBy() {
 
   struct cec_msg message = CreateMessage(CEC_LOG_ADDR_TV);
   cec_msg_standby(&message);
-  message_queue_.push_back(message);
+  EnqueueMessage(message);
 
   RequestWriteWatch();
 }
@@ -132,12 +139,12 @@ void CecDeviceImpl::SetWakeUp() {
 
   switch (GetState()) {
     case State::kReady: {
-      message_queue_.push_back(image_view_on_message);
+      EnqueueMessage(image_view_on_message);
 
       struct cec_msg active_source_message =
           CreateMessage(CEC_LOG_ADDR_BROADCAST);
       cec_msg_active_source(&active_source_message, physical_address_);
-      message_queue_.push_back(active_source_message);
+      EnqueueMessage(active_source_message);
     } break;
     case State::kStart:
       if (SendMessage(&image_view_on_message) == CecFd::TransmitResult::kOk) {
@@ -150,7 +157,7 @@ void CecDeviceImpl::SetWakeUp() {
       }
       break;
     case State::kNoLogicalAddress:
-      message_queue_.push_back(image_view_on_message);
+      EnqueueMessage(image_view_on_message);
       pending_active_source_broadcast_ = true;
       break;
   }
@@ -218,7 +225,7 @@ bool CecDeviceImpl::ProcessStateChangeEvent(
       if (pending_active_source_broadcast_) {
         struct cec_msg message = CreateMessage(CEC_LOG_ADDR_BROADCAST);
         cec_msg_active_source(&message, physical_address_);
-        message_queue_.push_back(message);
+        EnqueueMessage(message);
 
         pending_active_source_broadcast_ = false;
       }
@@ -352,7 +359,7 @@ void CecDeviceImpl::ProcessIncomingMessage(struct cec_msg* msg) {
       if (active_source_) {
         cec_msg_init(&reply, logical_address_, CEC_LOG_ADDR_BROADCAST);
         cec_msg_active_source(&reply, physical_address_);
-        message_queue_.push_back(std::move(reply));
+        EnqueueMessage(std::move(reply));
       }
       break;
     case CEC_MSG_ACTIVE_SOURCE:
@@ -364,7 +371,7 @@ void CecDeviceImpl::ProcessIncomingMessage(struct cec_msg* msg) {
     case CEC_MSG_GIVE_DEVICE_POWER_STATUS:
       cec_msg_init(&reply, logical_address_, cec_msg_initiator(msg));
       cec_msg_report_power_status(&reply, CEC_OP_POWER_STATUS_ON);
-      message_queue_.push_back(reply);
+      EnqueueMessage(reply);
       break;
     case CEC_MSG_STANDBY:
       // Ignore standby.
@@ -372,7 +379,7 @@ void CecDeviceImpl::ProcessIncomingMessage(struct cec_msg* msg) {
     default:
       if (!cec_msg_is_broadcast(msg)) {
         cec_msg_reply_feature_abort(msg, CEC_OP_ABORT_UNRECOGNIZED_OP);
-        message_queue_.push_back(std::move(*msg));
+        EnqueueMessage(std::move(*msg));
       }
       break;
   }
@@ -445,6 +452,18 @@ void CecDeviceImpl::RespondToAllPendingQueries(TvPowerStatus response) {
 
   for (auto& request : requests) {
     std::move(request.callback).Run(response);
+  }
+}
+
+bool CecDeviceImpl::EnqueueMessage(struct cec_msg msg) {
+  if (message_queue_.size() < kCecDeviceMaxTxQueueSize) {
+    message_queue_.push_back(msg);
+    return true;
+  } else {
+    LOG(ERROR) << base::StringPrintf(
+        "Output queue size too large, message 0x%x not enqueued",
+        cec_msg_opcode(&msg));
+    return false;
   }
 }
 
