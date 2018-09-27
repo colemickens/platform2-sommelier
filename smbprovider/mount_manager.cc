@@ -208,7 +208,8 @@ SambaInterface* MountManager::GetSystemSambaInterface() const {
 }
 
 std::unique_ptr<SambaInterface> MountManager::CreateSambaInterface() {
-  return samba_interface_factory_.Run(this);
+  return samba_interface_factory_.Run(this,
+                                      MountConfig(true /* enable_ntlm */));
 }
 
 bool MountManager::GetAuthentication(

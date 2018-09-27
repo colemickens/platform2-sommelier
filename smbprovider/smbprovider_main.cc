@@ -129,7 +129,7 @@ bool CreateSmbConfFile() {
 }
 
 std::unique_ptr<SambaInterface> SambaInterfaceFactoryFunction(
-    MountManager* mount_manager) {
+    MountManager* mount_manager, const MountConfig& mount_config) {
   return SambaInterfaceImpl::Create(
       base::Bind(base::IgnoreResult(&MountManager::GetAuthentication),
                  mount_manager->AsWeakPtr()));

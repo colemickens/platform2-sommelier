@@ -20,11 +20,6 @@
 namespace smbprovider {
 namespace {
 
-std::unique_ptr<SambaInterface> SambaInterfaceFactoryFunction(
-    FakeSambaInterface* fake_samba, MountManager* mount_manager) {
-  return std::make_unique<FakeSambaProxy>(fake_samba);
-}
-
 constexpr char kMountRoot[] = "smb://192.168.0.1/test";
 constexpr char kWorkgroup[] = "domain";
 constexpr char kUsername[] = "user1";
@@ -35,6 +30,13 @@ constexpr int32_t kBufferSize = 256;
 
 class MountManagerTest : public testing::Test {
  public:
+  std::unique_ptr<SambaInterface> SambaInterfaceFactoryFunction(
+      FakeSambaInterface* fake_samba,
+      MountManager* mount_manager,
+      const MountConfig& mount_config) {
+    return std::make_unique<FakeSambaProxy>(fake_samba);
+  }
+
   MountManagerTest() {
     auto tick_clock = std::make_unique<base::SimpleTestTickClock>();
 
@@ -43,7 +45,8 @@ class MountManagerTest : public testing::Test {
 
     auto fake_samba_ = std::make_unique<FakeSambaInterface>();
     auto samba_interface_factory =
-        base::Bind(&SambaInterfaceFactoryFunction, fake_samba_.get());
+        base::Bind(&MountManagerTest::SambaInterfaceFactoryFunction,
+                   base::Unretained(this), fake_samba_.get());
 
     mounts_ = std::make_unique<MountManager>(
         std::move(mount_tracker), std::move(samba_interface_factory));

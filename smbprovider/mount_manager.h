@@ -41,8 +41,8 @@ std::unique_ptr<password_provider::Password> GetPassword(
 // with each mount.
 class MountManager : public base::SupportsWeakPtr<MountManager> {
  public:
-  using SambaInterfaceFactory =
-      base::Callback<std::unique_ptr<SambaInterface>(MountManager*)>;
+  using SambaInterfaceFactory = base::Callback<std::unique_ptr<SambaInterface>(
+      MountManager*, const MountConfig& mount_config)>;
 
   MountManager(std::unique_ptr<MountTracker> mount_tracker,
                SambaInterfaceFactory samba_interface_factory);

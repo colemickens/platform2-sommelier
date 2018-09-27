@@ -92,15 +92,17 @@ void ExpectKerberosCallback(bool expected_result,
   EXPECT_EQ(expected_result, result);
 }
 
-std::unique_ptr<SambaInterface> SambaInterfaceFactoryFunction(
-    FakeSambaInterface* fake_samba, MountManager* mount_manager) {
-  return std::make_unique<FakeSambaProxy>(fake_samba);
-}
-
 }  // namespace
 
 class SmbProviderTest : public testing::Test {
  public:
+  std::unique_ptr<SambaInterface> SambaInterfaceFactoryFunction(
+      FakeSambaInterface* fake_samba,
+      MountManager* mount_manager,
+      const MountConfig& mount_config) {
+    return std::make_unique<FakeSambaProxy>(fake_samba);
+  }
+
   SmbProviderTest() { SetUpSmbProvider(); }
   ~SmbProviderTest() override = default;
 
@@ -187,7 +189,8 @@ class SmbProviderTest : public testing::Test {
                                                         enable_metadata_cache);
 
     auto samba_interface_factory =
-        base::Bind(&SambaInterfaceFactoryFunction, fake_samba_.get());
+        base::Bind(&SmbProviderTest::SambaInterfaceFactoryFunction,
+                   base::Unretained(this), fake_samba_.get());
 
     auto mount_manager_ptr = std::make_unique<MountManager>(
         std::move(mount_tracker), std::move(samba_interface_factory));
