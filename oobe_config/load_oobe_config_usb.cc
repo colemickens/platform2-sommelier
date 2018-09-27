@@ -10,6 +10,7 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 
@@ -17,6 +18,7 @@
 #include "oobe_config/utils.h"
 
 using base::FilePath;
+using base::ScopedTempDir;
 using std::map;
 using std::string;
 using std::unique_ptr;
@@ -167,13 +169,20 @@ bool LoadOobeConfigUsb::VerifyEnrollmentDomainInConfig(
 
 bool LoadOobeConfigUsb::MountUsbDevice(const FilePath& device_path,
                                        const FilePath& mount_point) {
-  // TODO(ahassani): Implement.
-  return false;
+  if (RunCommand({"mount", "-n", "-o", "ro", device_path.value(),
+                  mount_point.value()}) != 0) {
+    LOG(ERROR) << "Failed to mount " << device_path.value();
+    return false;
+  }
+  return true;
 }
 
 bool LoadOobeConfigUsb::UnmountUsbDevice(const FilePath& mount_point) {
-  // TODO(ahassani): Implement.
-  return false;
+  if (RunCommand({"umount", mount_point.value()}) != 0) {
+    LOG(WARNING) << "Failed to unmount " << mount_point.value();
+    return false;
+  }
+  return true;
 }
 
 bool LoadOobeConfigUsb::GetOobeConfigJson(string* config,
@@ -200,34 +209,37 @@ bool LoadOobeConfigUsb::GetOobeConfigJson(string* config,
     return false;
   }
 
-  FilePath usb_mount_path;  // Make some random directory.
-  if (!MountUsbDevice(device_path, usb_mount_path)) {
-    return false;
-  }
-
-  FilePath config_file_on_usb;
-  FilePath enrollment_domain_file_on_usb;
-  if (!base::ReadFileToString(config_file_on_usb, &config_)) {
-    LOG(ERROR) << "Failed to read oobe config file: "
-               << config_file_on_usb.value();
-    return false;
-  }
-
-  if (!base::ReadFileToString(enrollment_domain_file_on_usb,
-                              &enrollment_domain_)) {
-    LOG(ERROR) << "Failed to read enrollment domain file: "
-               << enrollment_domain_file_on_usb.value();
+  ScopedTempDir usb_mount_path;
+  if (!usb_mount_path.CreateUniqueTempDir() ||
+      !MountUsbDevice(device_path, usb_mount_path.GetPath())) {
     return false;
   }
 
   // /stateful/unencrypted/oobe_auto_config/config.json.sig is the signature of
   // the config.json file on the USB stateful.
+  FilePath unencrypted_oobe_config_dir_on_usb =
+      usb_mount_path.GetPath().Append(kUnencryptedOobeConfigDir);
+  FilePath config_file_on_usb =
+      unencrypted_oobe_config_dir_on_usb.Append(kConfigFile);
+  if (!base::ReadFileToString(config_file_on_usb, &config_)) {
+    LOG(ERROR) << "Failed to read oobe config file: "
+               << config_file_on_usb.value();
+    return false;
+  }
   if (!VerifySignature(config_, config_signature_)) {
     return false;
   }
 
   // /stateful/unencrypted/oobe_auto_config/enrollment_domain.sig is the
   // signature of the enrollment_domain file on the USB stateful.
+  FilePath enrollment_domain_file_on_usb =
+      unencrypted_oobe_config_dir_on_usb.Append(kDomainFile);
+  if (!base::ReadFileToString(enrollment_domain_file_on_usb,
+                              &enrollment_domain_)) {
+    LOG(ERROR) << "Failed to read enrollment domain file: "
+               << enrollment_domain_file_on_usb.value();
+    return false;
+  }
   if (!VerifySignature(enrollment_domain_, enrollment_domain_signature_)) {
     return false;
   }
@@ -244,10 +256,8 @@ bool LoadOobeConfigUsb::GetOobeConfigJson(string* config,
   *enrollment_domain = enrollment_domain_;
   config_is_verified_ = true;
 
-  if (!UnmountUsbDevice(usb_mount_path)) {
-    // TODO(ahassani): Ignore the failure; But log it.
-  }
-
+  // Ignore the failure.
+  UnmountUsbDevice(usb_mount_path.GetPath());
   return true;
 }
 
