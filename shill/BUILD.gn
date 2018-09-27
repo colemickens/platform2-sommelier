@@ -261,6 +261,7 @@ generate_dbus_proxies("generate_dhcpcd_proxies") {
 generate_dbus_proxies("generate_upstart_proxies") {
   proxy_output_file = "include/upstart/dbus-proxies.h"
   sources = [
+    "dbus_bindings/upstart-job-shill-event.dbus-xml",
     "dbus_bindings/upstart.dbus-xml",
   ]
 }

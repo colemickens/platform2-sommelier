@@ -29,15 +29,9 @@ class ChromeosUpstartProxy : public UpstartProxyInterface {
                  bool wait) override;
 
  private:
-  // Service path is provided in the xml file and will be populated by the
-  // generator.
-  static const char kServiceName[];
+  static const char kUpstartServiceName[];
 
-  // Callback for async call to EmitEvent.
-  void OnEmitEventSuccess();
-  void OnEmitEventFailure(brillo::Error* error);
-
-  std::unique_ptr<com::ubuntu::Upstart0_6Proxy> upstart_proxy_;
+  std::unique_ptr<com::ubuntu::Upstart0_6::JobProxy> shill_event_proxy_;
 
   base::WeakPtrFactory<ChromeosUpstartProxy> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(ChromeosUpstartProxy);

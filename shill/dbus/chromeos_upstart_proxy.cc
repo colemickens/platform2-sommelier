@@ -13,32 +13,24 @@ using std::vector;
 
 namespace shill {
 
-// static.
-const char ChromeosUpstartProxy::kServiceName[] = "com.ubuntu.Upstart";
+const char ChromeosUpstartProxy::kUpstartServiceName[] = "com.ubuntu.Upstart";
 
 ChromeosUpstartProxy::ChromeosUpstartProxy(const scoped_refptr<dbus::Bus>& bus)
-    : upstart_proxy_(
-        new com::ubuntu::Upstart0_6Proxy(bus, kServiceName)) {}
+    : shill_event_proxy_(new com::ubuntu::Upstart0_6::JobProxy(
+          bus, kUpstartServiceName)) {}
 
 void ChromeosUpstartProxy::EmitEvent(
     const string& name, const vector<string>& env, bool wait) {
-  upstart_proxy_->EmitEventAsync(
-      name,
-      env,
-      wait,
-      base::Bind(&ChromeosUpstartProxy::OnEmitEventSuccess,
-                 weak_factory_.GetWeakPtr()),
-      base::Bind(&ChromeosUpstartProxy::OnEmitEventFailure,
-                 weak_factory_.GetWeakPtr()));
-}
-
-void ChromeosUpstartProxy::OnEmitEventSuccess() {
-  VLOG(2) << "Event emitted successful";
-}
-
-void ChromeosUpstartProxy::OnEmitEventFailure(brillo::Error* error) {
-  LOG(ERROR) << "Failed to emit event: " << error->GetCode()
-      << " " << error->GetMessage();
+  vector<string> start_job_env = env;
+  start_job_env.push_back("EVENT_NAME=" + name);
+  shill_event_proxy_->StartAsync(
+      start_job_env, wait, base::Bind([](const dbus::ObjectPath& path) {
+        VLOG(2) << "Event emitted successful";
+      }),
+      base::Bind([](brillo::Error* error) {
+        LOG(ERROR) << "Failed to emit event: " << error->GetCode() << " "
+                   << error->GetMessage();
+      }));
 }
 
 }  // namespace shill
