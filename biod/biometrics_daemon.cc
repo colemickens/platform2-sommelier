@@ -13,7 +13,6 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "biod/cros_fp_biometrics_manager.h"
-#include "biod/fake_biometrics_manager.h"
 #include "biod/fpc_biometrics_manager.h"
 #include "biod/proto_bindings/constants.pb.h"
 #include "biod/proto_bindings/messages.pb.h"
@@ -413,14 +412,6 @@ BiometricsDaemon::BiometricsDaemon() {
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
   object_manager_->RegisterAsync(
       sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
-
-  ObjectPath fake_bio_path = ObjectPath(base::StringPrintf(
-      "%s/%s", kBiodServicePath, kFakeBiometricsManagerName));
-  biometrics_managers_.emplace_back(std::make_unique<BiometricsManagerWrapper>(
-      std::make_unique<FakeBiometricsManager>(), object_manager_.get(),
-      fake_bio_path,
-      sequencer->GetHandler("Failed to register FakeBiometricsManager object",
-                            true)));
 
   ObjectPath fpc_bio_path = ObjectPath(
       base::StringPrintf("%s/%s", kBiodServicePath, kFpcBiometricsManagerName));
