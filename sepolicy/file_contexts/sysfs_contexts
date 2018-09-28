@@ -43,7 +43,9 @@
 /sys/devices/system/cpu/intel_pstate/max_perf_pct               u:object_r:sysfs:s0
 /sys/devices/system/cpu/intel_pstate/min_perf_pct               u:object_r:sysfs:s0
 /sys/devices/system/cpu/intel_pstate/no_turbo                   u:object_r:sysfs:s0
+/sys/devices/system/cpu/intel_pstate/status                     u:object_r:sysfs:s0
 /sys/devices/system/cpu/microcode/reload                        u:object_r:sysfs:s0
+/sys/devices/system/cpu/smt/control                             u:object_r:sysfs:s0
 # For ARM
 /sys/devices/system/cpu/cpu[0-9]+/online                        u:object_r:sysfs:s0
 /sys/devices/system/cpu/cpufreq/policy[0-9]+/scaling_governor   u:object_r:sysfs:s0
