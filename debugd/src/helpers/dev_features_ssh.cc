@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -10,6 +11,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <brillo/flag_helper.h>
 
@@ -123,6 +125,12 @@ bool ConfigureSsh(const std::vector<InstallFile>& install_files) {
       return false;
     }
   }
+
+  base::ScopedFD init_ns_fd(open("/proc/1/ns/mnt", O_CLOEXEC));
+  // Since debugd is running in a sandboxed envrionment, the check
+  // whether '/' is writable needs to be done in the init namespace,
+  // instead of the debugd sandboxed namespace.
+  setns(init_ns_fd.get(), CLONE_NEWNS);
 
   if (!base::CreateDirectory(base::FilePath(kKeyInstallDir)) ||
       !base::CreateDirectory(base::FilePath(kInitInstallDir))) {
