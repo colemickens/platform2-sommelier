@@ -398,7 +398,9 @@ bool VirtualMachine::RunProcessWithTimeout(std::vector<string> args,
                        timeout.InSeconds());
 }
 
-bool VirtualMachine::ConfigureNetwork() {
+bool VirtualMachine::ConfigureNetwork(
+    const std::vector<string>& nameservers,
+    const std::vector<string>& search_domains) {
   LOG(INFO) << "Configuring network for VM " << vsock_cid_;
 
   vm_tools::NetworkConfigRequest request;
@@ -421,6 +423,10 @@ bool VirtualMachine::ConfigureNetwork() {
     return false;
   }
 
+  // TODO(smbarber): check return value here once all VMs have SetResolvConfig.
+  // Ignore the return value here for now. If the guest VM doesn't yet
+  // implement the SetResolvConfig RPC, it's not a failure.
+  SetResolvConfig(nameservers, search_domains);
   return true;
 }
 
@@ -501,6 +507,39 @@ bool VirtualMachine::Mount9P(uint32_t port, string target) {
                << " inside VM " << vsock_cid_ << ": "
                << (status.ok() ? strerror(response.error())
                                : status.error_message());
+    return false;
+  }
+
+  return true;
+}
+
+bool VirtualMachine::SetResolvConfig(
+    const std::vector<string>& nameservers,
+    const std::vector<string>& search_domains) {
+  LOG(INFO) << "Setting resolv config for VM " << vsock_cid_;
+
+  vm_tools::SetResolvConfigRequest request;
+  vm_tools::EmptyMessage response;
+
+  vm_tools::ResolvConfig* resolv_config = request.mutable_resolv_config();
+
+  google::protobuf::RepeatedPtrField<string> request_nameservers(
+      nameservers.begin(), nameservers.end());
+  resolv_config->mutable_nameservers()->Swap(&request_nameservers);
+
+  google::protobuf::RepeatedPtrField<string> request_search_domains(
+      search_domains.begin(), search_domains.end());
+  resolv_config->mutable_search_domains()->Swap(&request_search_domains);
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+
+  grpc::Status status = stub_->SetResolvConfig(&ctx, request, &response);
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to set resolv config for VM " << vsock_cid_ << ": "
+               << status.error_message();
     return false;
   }
 

@@ -120,9 +120,10 @@ class VirtualMachine {
                              std::map<std::string, std::string> env,
                              base::TimeDelta timeout);
 
-  // Configures the network interfaces inside the VM.  Returns true if
-  // successful, false otherwise.
-  bool ConfigureNetwork();
+  // Configures the network interfaces inside the VM.  Returns true iff
+  // successful.
+  bool ConfigureNetwork(const std::vector<std::string>& nameservers,
+                        const std::vector<std::string>& search_domains);
 
   // Mounts a file system inside the VM.  Both |source| (if it is a file path)
   // and |target| must be valid paths inside the VM.  Returns true on success.
@@ -138,6 +139,11 @@ class VirtualMachine {
   // Mount a 9p file system inside the VM.  The guest VM connects to a server
   // listening on the vsock port |port| and mounts the file system on |target|.
   bool Mount9P(uint32_t port, std::string target);
+
+  // Sets the resolv.conf in the VM to |config|. Returns true if successful,
+  // false if the resolv.conf in the guest could not be updated.
+  bool SetResolvConfig(const std::vector<std::string>& nameservers,
+                       const std::vector<std::string>& search_domains);
 
   // Sets the container subnet for this VM to |subnet|. This subnet is intended
   // to be provided to a container runtime as a DHCP pool.

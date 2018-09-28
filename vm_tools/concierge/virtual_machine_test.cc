@@ -401,7 +401,7 @@ void VirtualMachineTest::TestFailed(string reason) {
 }  // namespace
 
 TEST_F(VirtualMachineTest, ConfigureNetwork) {
-  ASSERT_TRUE(vm_->ConfigureNetwork());
+  ASSERT_TRUE(vm_->ConfigureNetwork({"8.8.8.8"}, {}));
 
   EXPECT_FALSE(failed_) << "Failure reason: " << failure_reason_;
 }

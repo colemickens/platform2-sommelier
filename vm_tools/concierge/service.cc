@@ -403,6 +403,11 @@ bool Service::Init() {
     return false;
   }
 
+  // Set up the D-Bus client for shill.
+  shill_client_ = std::make_unique<ShillClient>(bus_);
+  shill_client_->RegisterResolvConfigChangedHandler(base::Bind(
+      &Service::OnResolvConfigChanged, weak_ptr_factory_.GetWeakPtr()));
+
   // Get the D-Bus proxy for communicating with cicerone.
   cicerone_service_proxy_ = bus_->GetObjectProxy(
       vm_tools::cicerone::kVmCiceroneServiceName,
@@ -763,7 +768,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   }
 
   // maitre'd is ready.  Finish setting up the VM.
-  if (!vm->ConfigureNetwork()) {
+  if (!vm->ConfigureNetwork(nameservers_, search_domains_)) {
     LOG(ERROR) << "Failed to configure VM network";
 
     response.set_failure_reason("Failed to configure VM network");
@@ -1483,6 +1488,15 @@ std::unique_ptr<dbus::Response> Service::GetContainerSshKeys(
       "%s.%s.linux.test", container_name.c_str(), request.vm_name().c_str()));
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
+}
+
+void Service::OnResolvConfigChanged(std::vector<string> nameservers,
+                                    std::vector<string> search_domains) {
+  nameservers_ = std::move(nameservers);
+  search_domains_ = std::move(search_domains);
+  for (auto& iter : vms_) {
+    iter.second->SetResolvConfig(nameservers_, search_domains_);
+  }
 }
 
 void Service::NotifyCiceroneOfVmStarted(const std::string& owner_id,

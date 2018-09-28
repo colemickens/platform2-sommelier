@@ -11,6 +11,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/callback.h>
 #include <base/files/scoped_file.h>
@@ -27,6 +28,7 @@
 #include <grpc++/grpc++.h>
 
 #include "vm_tools/concierge/mac_address_generator.h"
+#include "vm_tools/concierge/shill_client.h"
 #include "vm_tools/concierge/startup_listener_impl.h"
 #include "vm_tools/concierge/subnet_pool.h"
 #include "vm_tools/concierge/virtual_machine.h"
@@ -103,6 +105,10 @@ class Service final : public base::MessageLoopForIO::Watcher {
   std::unique_ptr<dbus::Response> GetContainerSshKeys(
       dbus::MethodCall* method_call);
 
+  // Handles DNS changes from shill.
+  void OnResolvConfigChanged(std::vector<std::string> nameservers,
+                             std::vector<std::string> search_domains);
+
   // Helper for starting termina VMs, e.g. starting lxd.
   bool StartTermina(VirtualMachine* vm, std::string* failure_reason);
 
@@ -141,6 +147,10 @@ class Service final : public base::MessageLoopForIO::Watcher {
   SubnetPool subnet_pool_;
   VsockCidPool vsock_cid_pool_;
 
+  // Current DNS resolution config.
+  std::vector<std::string> nameservers_;
+  std::vector<std::string> search_domains_;
+
   // File descriptor for the SIGCHLD events.
   base::ScopedFD signal_fd_;
   base::MessageLoopForIO::FileDescriptorWatcher watcher_;
@@ -156,6 +166,9 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   // Active VMs keyed by (owner_id, vm_name).
   VmMap vms_;
+
+  // The shill D-Bus client.
+  std::unique_ptr<ShillClient> shill_client_;
 
   // The StartupListener service.
   std::unique_ptr<StartupListenerImpl> startup_listener_;

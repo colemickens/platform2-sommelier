@@ -62,6 +62,7 @@
       'variables': {
         'exported_deps': [
           'libqcow_utils',
+          'libshill-client',
           'system_api',
         ],
         'deps': ['<@(exported_deps)'],
@@ -80,6 +81,7 @@
         'concierge/mac_address_generator.cc',
         'concierge/seneschal_server_proxy.cc',
         'concierge/service.cc',
+        'concierge/shill_client.cc',
         'concierge/ssh_keys.cc',
         'concierge/startup_listener_impl.cc',
         'concierge/subnet_pool.cc',
