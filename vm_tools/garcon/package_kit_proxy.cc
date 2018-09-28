@@ -47,6 +47,7 @@ constexpr char kCreateTransactionMethod[] = "CreateTransaction";
 constexpr char kGetDetailsLocalMethod[] = "GetDetailsLocal";
 constexpr char kSearchFilesMethod[] = "SearchFiles";
 constexpr char kInstallFilesMethod[] = "InstallFiles";
+constexpr char kRemovePackagesMethod[] = "RemovePackages";
 constexpr char kRefreshCacheMethod[] = "RefreshCache";
 constexpr char kGetUpdatesMethod[] = "GetUpdates";
 constexpr char kUpdatePackagesMethod[] = "UpdatePackages";
@@ -68,6 +69,7 @@ constexpr char kDetailsKeySummary[] = "summary";
 constexpr uint32_t kPackageKitExitCodeSuccess = 1;
 // See:
 // https://www.freedesktop.org/software/PackageKit/gtk-doc/PackageKit-Enumerations.html#PkStatusEnum
+constexpr uint32_t kPackageKitStatusRemoving = 6;
 constexpr uint32_t kPackageKitStatusDownload = 8;
 constexpr uint32_t kPackageKitStatusInstall = 9;
 // See:
@@ -76,6 +78,9 @@ constexpr uint32_t kPackageKitFilterInstalled = 2;
 // See:
 // https://www.freedesktop.org/software/PackageKit/gtk-doc/PackageKit-Enumerations.html#PkInfoEnum
 constexpr uint32_t kPackageKitInfoSecurity = 8;
+// See:
+// https://www.freedesktop.org/software/PackageKit/gtk-doc/PackageKit-Enumerations.html#PkTransactionFlagEnum
+constexpr uint32_t kPackageKitTransactionFlagEnumNone = 0;
 
 // Timeout for when we are querying for package information.
 constexpr int kGetLinuxPackageInfoTimeoutSeconds = 60;
@@ -184,9 +189,8 @@ class PackageKitTransaction : PackageKitProxy::PackageKitDeathObserver {
   }
 
   // This MUST be invoked after object construction in order to ensure proper
-  // cleanup. Returns true on successful start of the process, false otherwise.
-  // Even if this returns false, it will take care of it's own destruction.
-  bool StartTransaction() {
+  // cleanup. Even if this fails, it will take care of its own destruction.
+  void StartTransaction() {
     // Create a transaction with PackageKit for performing the operation.
     dbus::MethodCall method_call(kPackageKitInterface,
                                  kCreateTransactionMethod);
@@ -196,7 +200,7 @@ class PackageKitTransaction : PackageKitProxy::PackageKitDeathObserver {
             &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
     if (!dbus_response) {
       GeneralErrorInternal("Failure calling CreateTransaction");
-      return false;
+      return;
     }
     // CreateTransaction returns the object path for the transaction session we
     // have created.
@@ -204,13 +208,13 @@ class PackageKitTransaction : PackageKitProxy::PackageKitDeathObserver {
     if (!reader.PopObjectPath(&transaction_path_)) {
       GeneralErrorInternal(
           "Failure reading object path from transaction result");
-      return false;
+      return;
     }
     transaction_proxy_ =
         bus_->GetObjectProxy(kPackageKitServiceName, transaction_path_);
     if (!transaction_proxy_) {
       GeneralErrorInternal("Failed to get proxy for transaction");
-      return false;
+      return;
     }
 
     // Set the hint that we don't support interactivity. I haven't seen a case
@@ -249,11 +253,10 @@ class PackageKitTransaction : PackageKitProxy::PackageKitDeathObserver {
       if (!ExecuteRequest(transaction_proxy_)) {
         GeneralErrorInternal(
             "Failure executing the request in the transaction");
-        return false;
+        return;
       }
     }
     ConnectNextSignal();
-    return true;
   }
 
   // Override to execute the actual request within the transaction such as
@@ -641,25 +644,24 @@ class SearchFilesTransaction : public PackageKitTransaction {
   bool callback_called_;
 };
 
-// This is for tracking if an install is currently in progress.
-bool install_active = false;
-
 // Sublcass for handling InstallFiles transaction.
 class InstallFilesTransaction : public PackageKitTransaction {
  public:
-  InstallFilesTransaction(scoped_refptr<dbus::Bus> bus,
-                          PackageKitProxy* packagekit_proxy,
-                          dbus::ObjectProxy* packagekit_service_proxy,
-                          PackageKitProxy::PackageKitObserver* observer,
-                          base::FilePath file_path)
+  InstallFilesTransaction(
+      scoped_refptr<dbus::Bus> bus,
+      PackageKitProxy* packagekit_proxy,
+      dbus::ObjectProxy* packagekit_service_proxy,
+      PackageKitProxy::PackageKitObserver* observer,
+      base::FilePath file_path,
+      std::unique_ptr<PackageKitProxy::BlockingOperationActiveClearer> clearer)
       : PackageKitTransaction(
             bus,
             packagekit_proxy,
             packagekit_service_proxy,
             kErrorCodeSignalMask | kFinishedSignalMask | kPropertiesSignalMask),
         file_path_(file_path),
+        clearer_(std::move(clearer)),
         observer_(observer) {}
-  ~InstallFilesTransaction() { install_active = false; }
 
   void GeneralError(const std::string& details) override {
     if (!observer_)
@@ -737,6 +739,125 @@ class InstallFilesTransaction : public PackageKitTransaction {
 
  private:
   base::FilePath file_path_;
+  // Ensure blocking_operation_active is cleared when this object is deleted.
+  std::unique_ptr<PackageKitProxy::BlockingOperationActiveClearer> clearer_;
+  PackageKitProxy::PackageKitObserver* observer_;  // Not owned.
+};
+
+// Runs a RemovePackages transaction as part of a larger
+// UninstallPackageOwningFile chain. The only reason that this is specific to
+// UninstallPackageOwningFile is the name of the observer functions called.
+// This could be used in other uninstall chains if it had generic callbacks,
+// but right now UninstallPackageOwningFile is the only way of uninstalling
+// anything, so more complexity would be a YAGNI smell.
+class UninstallPackagesTransaction : public PackageKitTransaction {
+ public:
+  UninstallPackagesTransaction(
+      scoped_refptr<dbus::Bus> bus,
+      PackageKitProxy* packagekit_proxy,
+      dbus::ObjectProxy* packagekit_service_proxy,
+      const std::string& package_id,
+      std::unique_ptr<PackageKitProxy::BlockingOperationActiveClearer> clearer,
+      PackageKitProxy::PackageKitObserver* observer)
+      : PackageKitTransaction(
+            bus,
+            packagekit_proxy,
+            packagekit_service_proxy,
+            kErrorCodeSignalMask | kFinishedSignalMask | kPropertiesSignalMask),
+        package_id_(package_id),
+        clearer_(std::move(clearer)),
+        observer_(observer) {}
+
+  bool ExecuteRequest(dbus::ObjectProxy* transaction_proxy) override {
+    dbus::MethodCall method_call(kPackageKitTransactionInterface,
+                                 kRemovePackagesMethod);
+    dbus::MessageWriter writer(&method_call);
+    // Transaction flags: we are not simulating the transaction.
+    writer.AppendUint64(kPackageKitTransactionFlagEnumNone);
+    // Package IDs
+    writer.AppendArrayOfStrings({package_id_});
+    // Boolean: allow_deps. If true, we will remove all dependent packages. If
+    // false, we will fail if the package has dependencies. We don't want to
+    // surprise the user by removing packages they weren't expected, so we
+    // currently hardcode this to false.
+    writer.AppendBool(false);
+    // Boolean: autoremove. If true, removes packages that were installed
+    // together with the to-be-removed package which are no longer depending on.
+    // We hardcode this to true; many Chromebooks have limited storage and we
+    // don't want to rely on the user knowing they need to run special cleanup
+    // commands.
+    writer.AppendBool(true);
+    std::unique_ptr<dbus::Response> dbus_response =
+        transaction_proxy->CallMethodAndBlock(
+            &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+    return !!dbus_response;
+  }
+
+  void GeneralError(const std::string& details) override {
+    LOG(ERROR) << "General error uninstalling package: " << details;
+    if (!observer_) {
+      return;
+    }
+    observer_->OnUninstallCompletion(false, details);
+    observer_ = nullptr;
+  }
+
+  void ErrorReceived(uint32_t error_code, const std::string& details) override {
+    LOG(ERROR) << "Error uninstalling package: " << details << " (code "
+               << error_code << ")";
+    if (!observer_) {
+      return;
+    }
+    observer_->OnUninstallCompletion(false, details);
+    observer_ = nullptr;
+  }
+
+  void PropertyChangeReceived(
+      const std::string& name,
+      PackageKitTransactionProperties* properties) override {
+    VLOG(3) << "PropertyChangeReceived:" << name
+            << ", status: " << properties->status.value()
+            << ", %: " << properties->percentage.value();
+    // There are several states, but the only one that takes any significant
+    // time is the 'Removing' state.
+    if (properties->status.value() != kPackageKitStatusRemoving) {
+      return;
+    }
+
+    if (!observer_) {
+      return;
+    }
+
+    int percentage = properties->percentage.value();
+    // PackageKit uses 101 for the percent when it doesn't know, treat that as
+    // zero because you see this at the beginning of phases.
+    if (percentage == 101) {
+      percentage = 0;
+    }
+
+    observer_->OnUninstallProgress(percentage);
+  }
+
+  void FinishedReceived(uint32_t exit_code) override {
+    if (!observer_) {
+      return;
+    }
+    if (exit_code == kPackageKitExitCodeSuccess) {
+      LOG(INFO) << "Uninstall transaction completed successfully";
+      observer_->OnUninstallCompletion(true, "");
+    } else {
+      LOG(ERROR) << "Uninstall transaction failed with code: " << exit_code;
+      observer_->OnUninstallCompletion(
+          false, "Uninstall transaction failed with code: " +
+                     base::IntToString(exit_code));
+    }
+    observer_ = nullptr;
+  }
+
+ private:
+  std::string package_id_;
+  // Ensure blocking_operation_active is cleared when this object is deleted.
+  std::unique_ptr<PackageKitProxy::BlockingOperationActiveClearer> clearer_;
   PackageKitProxy::PackageKitObserver* observer_;  // Not owned.
 };
 
@@ -950,6 +1071,18 @@ class RefreshCacheTransaction : public PackageKitTransaction {
 
 }  // namespace
 
+PackageKitProxy::BlockingOperationActiveClearer::BlockingOperationActiveClearer(
+    base::Lock* blocking_operation_active_mutex,
+    bool* blocking_operation_active)
+    : blocking_operation_active_mutex_(blocking_operation_active_mutex),
+      blocking_operation_active_(blocking_operation_active) {}
+
+PackageKitProxy::BlockingOperationActiveClearer::
+    ~BlockingOperationActiveClearer() {
+  base::AutoLock auto_lock(*blocking_operation_active_mutex_);
+  *blocking_operation_active_ = false;
+}
+
 PackageKitProxy::PackageInfoTransactionData::PackageInfoTransactionData(
     const base::FilePath& file_path_in,
     std::shared_ptr<LinuxPackageInfo> pkg_info_in)
@@ -970,7 +1103,9 @@ std::unique_ptr<PackageKitProxy> PackageKitProxy::Create(
 }
 
 PackageKitProxy::PackageKitProxy(PackageKitObserver* observer)
-    : task_runner_(base::ThreadTaskRunnerHandle::Get()), observer_(observer) {}
+    : task_runner_(base::ThreadTaskRunnerHandle::Get()),
+      observer_(observer),
+      blocking_operation_active_(false) {}
 
 PackageKitProxy::~PackageKitProxy() = default;
 
@@ -1031,17 +1166,90 @@ bool PackageKitProxy::GetLinuxPackageInfo(
   return result;
 }
 
-int PackageKitProxy::InstallLinuxPackage(const base::FilePath& file_path,
-                                         std::string* out_error) {
-  base::WaitableEvent event(false /*manual_reset*/,
-                            false /*initially_signaled*/);
-  int status = vm_tools::container::InstallLinuxPackageResponse::FAILED;
+vm_tools::container::InstallLinuxPackageResponse::Status
+PackageKitProxy::InstallLinuxPackage(const base::FilePath& file_path,
+                                     std::string* out_error) {
+  // Make sure we don't already have one in progress.
+  {  // Scope mutex lock
+    base::AutoLock auto_lock(blocking_operation_active_mutex_);
+    if (blocking_operation_active_) {
+      *out_error = "Install or other blocking operation is already active";
+      LOG(ERROR) << *out_error;
+      return vm_tools::container::InstallLinuxPackageResponse::
+          INSTALL_ALREADY_ACTIVE;
+    }
+    blocking_operation_active_ = true;
+  }  // Release mutex lock
+  // We own blocking_operation_active, make sure we clear it later.
+  auto clearer = std::make_unique<BlockingOperationActiveClearer>(
+      &blocking_operation_active_mutex_, &blocking_operation_active_);
   task_runner_->PostTask(
-      FROM_HERE, base::Bind(&PackageKitProxy::InstallLinuxPackageOnDBusThread,
-                            base::Unretained(this), file_path, &event, &status,
-                            out_error));
-  event.Wait();
-  return status;
+      FROM_HERE,
+      base::Bind(&PackageKitProxy::InstallLinuxPackageOnDBusThread,
+                 base::Unretained(this), file_path, base::Passed(&clearer)));
+  return vm_tools::container::InstallLinuxPackageResponse::STARTED;
+}
+
+vm_tools::container::UninstallPackageOwningFileResponse::Status
+PackageKitProxy::UninstallPackageOwningFile(const base::FilePath& file_path,
+                                            std::string* out_error) {
+  // Fail if there is a blocking operation in progress.
+  {  // Scope mutex lock
+    base::AutoLock auto_lock(blocking_operation_active_mutex_);
+    if (blocking_operation_active_) {
+      *out_error = "Uninstall or other blocking operation is already active";
+      LOG(ERROR) << *out_error;
+      return vm_tools::container::UninstallPackageOwningFileResponse::
+          BLOCKING_OPERATION_IN_PROGRESS;
+    }
+    blocking_operation_active_ = true;
+  }  // Release mutex lock
+  // We own blocking_operation_active, make sure we clear it later.
+  auto clearer = std::make_unique<BlockingOperationActiveClearer>(
+      &blocking_operation_active_mutex_, &blocking_operation_active_);
+
+  // Start search
+  PackageSearchCallback callback = base::Bind(
+      &PackageKitProxy::UninstallPackageOwningFileSearchForFileCallback,
+      base::Unretained(this), file_path, base::Passed(&clearer));
+  SearchLinuxPackagesForFile(file_path, std::move(callback));
+  return vm_tools::container::UninstallPackageOwningFileResponse::STARTED;
+}
+
+void PackageKitProxy::UninstallPackageOwningFileSearchForFileCallback(
+    base::FilePath file_path,
+    std::unique_ptr<BlockingOperationActiveClearer>
+        blocking_operation_active_lock,
+    bool success,
+    bool pkg_found,
+    const LinuxPackageInfo& pkg_info,
+    const std::string& error) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  if (!success) {
+    LOG(ERROR) << "UninstallPackageOwningFile failed at search package step: "
+               << error;
+    if (observer_) {
+      observer_->OnUninstallCompletion(false, error);
+    }
+    return;
+  }
+
+  if (!pkg_found) {
+    LOG(ERROR) << "UninstallPackageOwningFile failed to find a package for "
+               << file_path.value();
+    if (observer_) {
+      observer_->OnUninstallCompletion(
+          false, "Could not find package that owns " + file_path.value());
+    }
+    return;
+  }
+  LOG(INFO) << "Uninstalling Linux package " << pkg_info.package_id;
+  // This object is intentionally leaked and will clean itself up when done
+  // with all the D-Bus communication.
+  UninstallPackagesTransaction* transaction = new UninstallPackagesTransaction(
+      bus_, this, packagekit_service_proxy_, pkg_info.package_id,
+      std::move(blocking_operation_active_lock), observer_);
+  transaction->StartTransaction();
 }
 
 void PackageKitProxy::SearchLinuxPackagesForFile(
@@ -1079,39 +1287,14 @@ void PackageKitProxy::GetLinuxPackageInfoOnDBusThread(
 
 void PackageKitProxy::InstallLinuxPackageOnDBusThread(
     const base::FilePath& file_path,
-    base::WaitableEvent* event,
-    int* status,
-    std::string* out_error) {
+    std::unique_ptr<BlockingOperationActiveClearer> clearer) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  CHECK(event);
-  CHECK(status);
-  CHECK(out_error);
-  // Make sure we don't already have one in progress.
-  if (install_active) {
-    *status = vm_tools::container::InstallLinuxPackageResponse::
-        INSTALL_ALREADY_ACTIVE;
-    *out_error = "Install is already active";
-    LOG(ERROR) << *out_error;
-    event->Signal();
-    return;
-  }
-  install_active = true;
   // This object is intentionally leaked and will clean itself up when done
   // with all the D-Bus communication.
-  InstallFilesTransaction* transaction = new InstallFilesTransaction(
-      bus_, this, packagekit_service_proxy_, observer_, file_path);
-  if (!transaction->StartTransaction()) {
-    install_active = false;
-    *status = vm_tools::container::InstallLinuxPackageResponse::FAILED;
-    *out_error = "Failure with D-Bus communication";
-    LOG(ERROR) << *out_error;
-    event->Signal();
-    return;
-  }
-
-  *status = vm_tools::container::InstallLinuxPackageResponse::STARTED;
-  *out_error = "";
-  event->Signal();
+  InstallFilesTransaction* transaction =
+      new InstallFilesTransaction(bus_, this, packagekit_service_proxy_,
+                                  observer_, file_path, std::move(clearer));
+  transaction->StartTransaction();
 }
 
 void PackageKitProxy::SearchLinuxPackagesForFileOnDBusThread(

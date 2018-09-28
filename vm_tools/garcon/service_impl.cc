@@ -594,9 +594,33 @@ grpc::Status ServiceImpl::InstallLinuxPackage(
 
   std::string error_msg;
   response->set_status(
-      static_cast<vm_tools::container::InstallLinuxPackageResponse::Status>(
-          package_kit_proxy_->InstallLinuxPackage(file_path, &error_msg)));
+      package_kit_proxy_->InstallLinuxPackage(file_path, &error_msg));
   response->set_failure_reason(error_msg);
+
+  return grpc::Status::OK;
+}
+
+grpc::Status ServiceImpl::UninstallPackageOwningFile(
+    grpc::ServerContext* ctx,
+    const vm_tools::container::UninstallPackageOwningFileRequest* request,
+    vm_tools::container::UninstallPackageOwningFileResponse* response) {
+  LOG(INFO) << "Received request to uninstall package owning a file";
+  if (request->desktop_file_id().empty()) {
+    return grpc::Status(grpc::INVALID_ARGUMENT, "missing desktop_file_id");
+  }
+
+  // Find the actual file path that corresponds to this desktop file id.
+  base::FilePath file_path =
+      DesktopFile::FindFileForDesktopId(request->desktop_file_id());
+  if (file_path.empty()) {
+    return grpc::Status(grpc::INVALID_ARGUMENT,
+                        "desktop_file_id does not exist");
+  }
+
+  std::string error;
+  response->set_status(
+      package_kit_proxy_->UninstallPackageOwningFile(file_path, &error));
+  response->set_failure_reason(error);
 
   return grpc::Status::OK;
 }

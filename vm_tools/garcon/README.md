@@ -78,6 +78,13 @@ Garcon can be instructed by the host to perform an installation on a Linux
 package file that is accessible to the container. PackageKit is used as the
 backend for performing the install.
 
+### Linux Package Uninstallation
+
+Garcon can be instructed by the host to uninstall an installed Linux package.
+The package to be uninstalled is indicated by the name of the .desktop file,
+not the package_id, to avoid issues with stale package_ids. PackageKit is used
+as the backend for performing the uninstall.
+
 ## Garcon Background Processing
 
 Garcon does additional work in the background aside from the RPC services

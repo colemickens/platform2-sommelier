@@ -55,6 +55,9 @@ class HostNotifier : public base::MessageLoopForIO::Watcher,
   void OnInstallProgress(
       vm_tools::container::InstallLinuxPackageProgressInfo::Status status,
       uint32_t percent_progress) override;
+  void OnUninstallCompletion(bool success,
+                             const std::string& failure_reason) override;
+  void OnUninstallProgress(uint32_t percent_progress) override;
 
  private:
   // Callback structure for SendAppListToHost callback chain.

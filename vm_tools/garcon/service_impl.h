@@ -48,6 +48,12 @@ class ServiceImpl final : public vm_tools::container::Garcon::Service {
       const vm_tools::container::InstallLinuxPackageRequest* request,
       vm_tools::container::InstallLinuxPackageResponse* response) override;
 
+  grpc::Status UninstallPackageOwningFile(
+      grpc::ServerContext* ctx,
+      const vm_tools::container::UninstallPackageOwningFileRequest* request,
+      vm_tools::container::UninstallPackageOwningFileResponse* response)
+      override;
+
   grpc::Status GetDebugInformation(
       grpc::ServerContext* ctx,
       const vm_tools::container::GetDebugInformationRequest* request,

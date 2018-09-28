@@ -14,9 +14,11 @@
 #include <base/message_loop/message_loop.h>
 #include <base/observer_list.h>
 #include <base/sequence_checker.h>
+#include <base/synchronization/lock.h>
 #include <dbus/bus.h>
 #include <dbus/object_proxy.h>
 
+#include "container_guest.grpc.pb.h"  // NOLINT(build/include)
 #include "container_host.grpc.pb.h"  // NOLINT(build/include)
 
 namespace vm_tools {
@@ -34,6 +36,10 @@ class PackageKitProxy {
     virtual void OnInstallProgress(
         vm_tools::container::InstallLinuxPackageProgressInfo::Status status,
         uint32_t percent_progress) = 0;
+    virtual void OnUninstallProgress(uint32_t percent_progress) = 0;
+    // TODO(iby): Special error code for dependent file case.
+    virtual void OnUninstallCompletion(bool success,
+                                       const std::string& failure_reason) = 0;
   };
   struct LinuxPackageInfo {
     std::string package_id;
@@ -86,11 +92,18 @@ class PackageKitProxy {
                                   PackageSearchCallback callback);
 
   // Requests that installation of the Linux package located at |file_path| be
-  // performed. Returns the result which corresponds to the
-  // InstallLinuxPackageResponse::Status enum. |out_error| will be set in the
-  // case of failure.
-  int InstallLinuxPackage(const base::FilePath& file_path,
-                          std::string* out_error);
+  // performed. |out_error| will be set in the case of failure.
+  vm_tools::container::InstallLinuxPackageResponse::Status InstallLinuxPackage(
+      const base::FilePath& file_path, std::string* out_error);
+
+  // Kicks off a sequence of requests to uninstall the package owning the
+  // file at |file_path|. Returns a status code indicating if the uninstall
+  // sequence was successfully started.
+  // On success, returns as soon as the sequence starts; actual results are
+  // posted later via the PackageKitObserver callback.
+  vm_tools::container::UninstallPackageOwningFileResponse::Status
+  UninstallPackageOwningFile(const base::FilePath& file_path,
+                             std::string* out_error);
 
   // For use by this implementation only, these are public because helper
   // classes also utilize them.
@@ -110,6 +123,24 @@ class PackageKitProxy {
     // of ownership.
     virtual void OnPackageKitDeath() = 0;
   };
+  // Internal use only: Sets blocking_operation_active_ to false when destroyed.
+  // Does not set blocking_operation_active_ to true ever.
+  class BlockingOperationActiveClearer {
+   public:
+    BlockingOperationActiveClearer(base::Lock* blocking_operation_active_mutex,
+                                   bool* blocking_operation_active);
+    ~BlockingOperationActiveClearer();
+
+    // Not moveable, not copyable
+    BlockingOperationActiveClearer(const BlockingOperationActiveClearer&) =
+        delete;
+    BlockingOperationActiveClearer& operator=(
+        const BlockingOperationActiveClearer&) = delete;
+
+   private:
+    base::Lock* blocking_operation_active_mutex_;  // Not owned
+    bool* blocking_operation_active_;              // Not owned either
+  };
   void AddPackageKitDeathObserver(PackageKitDeathObserver* observer);
   void RemovePackageKitDeathObserver(PackageKitDeathObserver* observer);
 
@@ -118,10 +149,9 @@ class PackageKitProxy {
   bool Init();
   void GetLinuxPackageInfoOnDBusThread(
       std::shared_ptr<PackageInfoTransactionData> data);
-  void InstallLinuxPackageOnDBusThread(const base::FilePath& file_path,
-                                       base::WaitableEvent* event,
-                                       int* status,
-                                       std::string* out_error);
+  void InstallLinuxPackageOnDBusThread(
+      const base::FilePath& file_path,
+      std::unique_ptr<BlockingOperationActiveClearer> clearer);
   void SearchLinuxPackagesForFileOnDBusThread(const base::FilePath& file_path,
                                               PackageSearchCallback callback);
 
@@ -134,11 +164,33 @@ class PackageKitProxy {
   // order for name ownership change events to come through.
   void OnPackageKitServiceAvailable(bool service_is_available);
 
+  // Callback from SearchLinuxPackagesForFile, used by
+  // UninstallPackageOwningFile. If an owning package is found, kicks off the
+  // actual uninstall.
+  void UninstallPackageOwningFileSearchForFileCallback(
+      base::FilePath file_path,
+      std::unique_ptr<BlockingOperationActiveClearer> clearer,
+      bool success,
+      bool pkg_found,
+      const LinuxPackageInfo& pkg_info,
+      const std::string& error);
+
   scoped_refptr<dbus::Bus> bus_;
   dbus::ObjectProxy* packagekit_service_proxy_;  // Owned by |bus_|.
 
   scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
-  PackageKitObserver* observer_;  // Now owned.
+  PackageKitObserver* observer_;  // Not owned.
+
+  // Ensures that only one blocking operation (install, uninstall) happens at a
+  // time. Two reasons for this:
+  // 1. If we don't block here, PackageKit will generally fail anyways because
+  //    it can't acquire the dpkg lock.
+  // 2. The interface is simpler if only one operation can be in flight at once.
+  //    In particular, we don't need to indicate which uninstall / install we
+  //    are reporting status on.
+  base::Lock blocking_operation_active_mutex_;
+  bool blocking_operation_active_;  // Lock blocking_operation_active_mutex_
+                                    // before accessing.
 
   // Ensure calls are made on the right thread.
   base::SequenceChecker sequence_checker_;

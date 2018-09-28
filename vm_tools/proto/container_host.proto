@@ -106,6 +106,34 @@ message InstallLinuxPackageProgressInfo {
   string failure_details = 4;
 }
 
+message UninstallPackageProgressInfo {
+  // The security token the container was given.
+  string token = 1;
+
+  enum Status {
+    // Uninstall has completed and was successful. No further signals will be
+    // sent after this one.
+    SUCCEEDED = 0;
+
+    // Uninstall failed to complete, the specific reason will be in
+    // failure_details. No further signals will be sent after this one.
+    FAILED = 1;
+
+    // This is sent while the uninstall is in progress. progress_percent will be
+    // filled in.
+    UNINSTALLING = 2;
+  }
+
+  // Current status of the uninstallation progress.
+  Status status = 2;
+
+  // Overall percentage progress.
+  uint32 progress_percent = 3;
+
+  // Details relating to the failure state.
+  string failure_details = 4;
+}
+
 // Request protobuf for opening a new terminal in the container.
 message OpenTerminalRequest {
   // The security token the container was given.
@@ -148,6 +176,9 @@ service ContainerListener {
   // Called by a container during a Linux package install to update on progress
   // and completion/failure.
   rpc InstallLinuxPackageProgress(InstallLinuxPackageProgressInfo)
+      returns (EmptyMessage);
+
+  rpc UninstallPackageProgress(UninstallPackageProgressInfo)
       returns (EmptyMessage);
 
   // Called by a container to have the host open a new terminal that is

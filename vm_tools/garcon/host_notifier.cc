@@ -89,6 +89,18 @@ void SendInstallStatusToHost(
   }
 }
 
+void SendUninstallStatusToHost(
+    vm_tools::container::ContainerListener::Stub* stub,
+    vm_tools::container::UninstallPackageProgressInfo info) {
+  grpc::ClientContext ctx;
+  vm_tools::EmptyMessage empty;
+  grpc::Status grpc_status = stub->UninstallPackageProgress(&ctx, info, &empty);
+  if (!grpc_status.ok()) {
+    LOG(WARNING) << "Failed to notify host system about uninstall status: "
+                 << grpc_status.error_message() << " (code "
+                 << grpc_status.error_code() << ")";
+  }
+}
 }  // namespace
 
 namespace vm_tools {
@@ -205,6 +217,37 @@ void HostNotifier::OnInstallProgress(
   task_runner_->PostTask(FROM_HERE, base::Bind(&SendInstallStatusToHost,
                                                base::Unretained(stub_.get()),
                                                std::move(progress_info)));
+}
+
+void HostNotifier::OnUninstallCompletion(bool success,
+                                         const std::string& failure_reason) {
+  LOG(INFO) << "Got HostNotifier::OnUninstallCompletion(" << success << ", "
+            << failure_reason << ")";
+  vm_tools::container::UninstallPackageProgressInfo info;
+  info.set_token(token_);
+  if (success) {
+    info.set_status(
+        vm_tools::container::UninstallPackageProgressInfo::SUCCEEDED);
+  } else {
+    info.set_status(vm_tools::container::UninstallPackageProgressInfo::FAILED);
+    info.set_failure_details(failure_reason);
+  }
+  task_runner_->PostTask(
+      FROM_HERE, base::Bind(&SendUninstallStatusToHost,
+                            base::Unretained(stub_.get()), std::move(info)));
+}
+
+void HostNotifier::OnUninstallProgress(uint32_t percent_progress) {
+  VLOG(3) << "Got HostNotifier::OnUninstallProgress(" << percent_progress
+          << ")";
+  vm_tools::container::UninstallPackageProgressInfo info;
+  info.set_token(token_);
+  info.set_status(
+      vm_tools::container::UninstallPackageProgressInfo::UNINSTALLING);
+  info.set_progress_percent(percent_progress);
+  task_runner_->PostTask(
+      FROM_HERE, base::Bind(&SendUninstallStatusToHost,
+                            base::Unretained(stub_.get()), std::move(info)));
 }
 
 bool HostNotifier::Init(uint32_t vsock_port,

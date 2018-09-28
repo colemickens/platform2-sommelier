@@ -140,9 +140,38 @@ message InstallLinuxPackageResponse {
     // failure_reason.
     FAILED = 1;
 
-    // Indicates another install is already in process, this one will not be
-    // started.
+    // Indicates another install (or other blocking operation) is already in
+    // process, this one will not be started.
     INSTALL_ALREADY_ACTIVE = 2;
+  }
+  Status status = 1;
+
+  // Contains a textual reason for the failure in case of a FAILED status.
+  string failure_reason = 2;
+}
+
+// Request to uninstall the package that owns the given .desktop file. This is
+// safer than uninstalling by package_id, since packages can get upgraded and
+// we'd have a stale package_id.
+message UninstallPackageOwningFileRequest {
+  // Uninstall the package owning this .desktop file:
+  string desktop_file_id = 1;
+}
+
+// Response sent back from a request to uninstall a Linux package.
+message UninstallPackageOwningFileResponse {
+  enum Status {
+    // Uninstall process was successfully started, all further updates will be
+    // sent via the UninstallPackageOwningFileProgress callbacks.
+    STARTED = 0;
+
+    // Failed to startup for a general reason, specific details are given in
+    // failure_reason.
+    FAILED = 1;
+
+    // Indicates another blocking operation (uninstall, install, etc) is already
+    // in progress, this one will not be started.
+    BLOCKING_OPERATION_IN_PROGRESS = 2;
   }
   Status status = 1;
 
@@ -177,6 +206,11 @@ service Garcon {
   // Install a Linux package file in the container.
   rpc InstallLinuxPackage(InstallLinuxPackageRequest)
       returns (InstallLinuxPackageResponse);
+
+  // Uninstalls the package that owns the specified file. Results are in
+  // signals.
+  rpc UninstallPackageOwningFile(UninstallPackageOwningFileRequest)
+      returns (UninstallPackageOwningFileResponse);
 
   // Get debug information about container state.
   rpc GetDebugInformation(GetDebugInformationRequest)
