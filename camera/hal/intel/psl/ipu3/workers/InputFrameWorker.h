@@ -28,10 +28,13 @@ public:
     InputFrameWorker(std::shared_ptr<cros::V4L2VideoNode> node, int cameraId, size_t pipelineDepth);
     virtual ~InputFrameWorker();
 
-    status_t configure(std::shared_ptr<GraphConfig> &config);
+    status_t configure(std::shared_ptr<GraphConfig>& config);
     status_t prepareRun(std::shared_ptr<DeviceMessage> msg);
     status_t run();
     status_t postRun();
+
+private:
+    GraphConfig::PipeType mPipeType;
 };
 
 } /* namespace camera2 */

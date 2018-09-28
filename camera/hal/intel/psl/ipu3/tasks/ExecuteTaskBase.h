@@ -50,6 +50,7 @@ struct ProcTaskMsg {
     bool immediate;
     unsigned int reqId;
     std::shared_ptr<cros::V4L2Buffer> rawNonScaledBuffer;
+    std::shared_ptr<cros::V4L2Buffer> lastRawNonScaledBuffer;
     cros::V4L2Buffer *statsCapture;
     std::shared_ptr<ProcUnitSettings> processingSettings;
 

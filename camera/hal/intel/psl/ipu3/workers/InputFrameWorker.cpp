@@ -29,7 +29,7 @@ namespace camera2 {
 InputFrameWorker::InputFrameWorker(std::shared_ptr<cros::V4L2VideoNode> node,
         int cameraId, size_t pipelineDepth) :
         /* Keep the same number of buffers as ISYS. */
-        FrameWorker(node, cameraId, pipelineDepth + 1, "InputFrameWorker")
+        FrameWorker(node, cameraId, pipelineDepth + 2, "InputFrameWorker")
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
     mPollMe = true;
@@ -40,9 +40,12 @@ InputFrameWorker::~InputFrameWorker()
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
 }
 
-status_t InputFrameWorker::configure(std::shared_ptr<GraphConfig> & /*config*/)
+status_t InputFrameWorker::configure(std::shared_ptr<GraphConfig>& config)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+
+    mPipeType = config->getPipeType();
+    LOG2("@%s, mPipeType:%d", __FUNCTION__, mPipeType);
 
     status_t ret = mNode->GetFormat(&mFormat);
     if (ret != OK)
@@ -58,27 +61,29 @@ status_t InputFrameWorker::configure(std::shared_ptr<GraphConfig> & /*config*/)
 status_t InputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
-    status_t status = OK;
-    int memType = mNode->GetMemoryType();
-    int index = msg->pMsg.rawNonScaledBuffer->Index();
 
-    if (memType == V4L2_MEMORY_DMABUF) {
-        int fd = msg->pMsg.rawNonScaledBuffer->Fd(0);
-        mBuffers[index].SetFd(fd, 0);
-        CheckError((mBuffers[index].Fd(0) < 0), BAD_VALUE, "@%s invalid fd(%d) passed from isys.\n",
-            __func__, mBuffers[index].Fd(0));
-    } else {
-        LOGE("@%s unsupported memory type %d.", __func__, memType);
-        return BAD_VALUE;
+    int memType = mNode->GetMemoryType();
+    CheckError(memType != V4L2_MEMORY_DMABUF, BAD_VALUE,
+               "@%s unsupported memory type %d.", __func__, memType);
+
+    std::shared_ptr<cros::V4L2Buffer> rawV4L2Buf = msg->pMsg.rawNonScaledBuffer;
+    if (mPipeType == GraphConfig::PIPE_STILL &&
+        msg->pMsg.lastRawNonScaledBuffer) {
+        rawV4L2Buf = msg->pMsg.lastRawNonScaledBuffer;
     }
 
-    status |= mNode->PutFrame(&mBuffers[index]);
+    int index = rawV4L2Buf->Index();
+    mBuffers[index].SetFd(rawV4L2Buf->Fd(0), 0);
+    int fd = mBuffers[index].Fd(0);
+    CheckError(fd < 0, BAD_VALUE, "@%s invalid fd(%d) passed from isys.\n", __func__, fd);
+
+    status_t status = mNode->PutFrame(&mBuffers[index]);
 
     Camera3Request* request = msg->pMsg.processingSettings->request;
     CheckError(!request, BAD_VALUE, "@%s request is nullptr", __func__);
 
-    request->setSeqenceId(msg->pMsg.rawNonScaledBuffer->Sequence());
-    PERFORMANCE_HAL_ATRACE_PARAM1("seqId", msg->pMsg.rawNonScaledBuffer->Sequence());
+    request->setSeqenceId(rawV4L2Buf->Sequence());
+    PERFORMANCE_HAL_ATRACE_PARAM1("seqId", rawV4L2Buf->Sequence());
 
     if (LogHelper::isDumpTypeEnable(CAMERA_DUMP_RAW) &&
         LogHelper::isDumpTypeEnable(CAMERA_DUMP_JPEG)) {

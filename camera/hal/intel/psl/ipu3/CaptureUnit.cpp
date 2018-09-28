@@ -66,6 +66,9 @@ CaptureUnit::~CaptureUnit()
 
     mInflightRequests.clear();
     mQueuedCaptureBuffers.clear();
+    while (!mLastQueuedCaptureBuffers.empty()) {
+        mLastQueuedCaptureBuffers.pop();
+    }
     mLastInflightRequest = nullptr;
 
     if (mBufferPools) {
@@ -267,6 +270,9 @@ status_t CaptureUnit::handleConfigStreams(MessageConfig msg)
     mBufferPools->freeBuffers();
 
     mQueuedCaptureBuffers.clear();
+    while (!mLastQueuedCaptureBuffers.empty()) {
+        mLastQueuedCaptureBuffers.pop();
+    }
     if (mBufferPools) {
         delete mBufferPools;
         mBufferPools = nullptr;
@@ -297,14 +303,13 @@ status_t CaptureUnit::handleConfigStreams(MessageConfig msg)
     }
 
     int skipCount = mSensorSettingsDelay;//mSyncManager->getFrameSyncDelay();
-    int poolSize = mPipelineDepth + 1;
+    int poolSize = mPipelineDepth + 2;
 
     status = mBufferPools->createBufferPools(poolSize, skipCount, mIsys);
     if (status != NO_ERROR) {
         LOGE("Failed to create buffer pools (status= 0x%X)", status);
         return status;
     }
-    mQueuedCaptureBuffers.reserve(poolSize);
 
     /**
      * Notify Control Unit of the new sensor mode information
@@ -624,7 +629,7 @@ status_t CaptureUnit::enqueueIsysBuffer(std::shared_ptr<InflightRequestState> &r
         return UNKNOWN_ERROR;
     }
 
-    mQueuedCaptureBuffers.push_back(v4l2BufPtr);
+    mQueuedCaptureBuffers[v4l2BufPtr->Index()] = v4l2BufPtr;
 
     return status;
 }
@@ -762,14 +767,11 @@ status_t CaptureUnit::processIsysBuffer(MessageBuffer &msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
     status_t status = NO_ERROR;
-    std::shared_ptr<cros::V4L2Buffer> isysBufferPtr = nullptr;
     cros::V4L2Buffer *outBuf = nullptr;
     ICaptureEventListener::CaptureMessage outMsg;
     std::shared_ptr<InflightRequestState> state = nullptr;
-    IPU3NodeNames isysNode = IMGU_NODE_NULL;
-    int requestId = 0;
-
-    requestId = msg.requestId;
+    IPU3NodeNames isysNode = msg.isysNodeName;
+    int requestId = msg.requestId;
 
     // Notify listeners, first fill the observer message
     outBuf = &msg.v4l2Buf;
@@ -780,34 +782,33 @@ status_t CaptureUnit::processIsysBuffer(MessageBuffer &msg)
     outMsg.id = ICaptureEventListener::CAPTURE_MESSAGE_ID_EVENT;
     outMsg.data.event.reqId = requestId;
 
-    std::vector<std::shared_ptr<cros::V4L2Buffer>> *bufferQueuePtr = nullptr;
-    isysNode = msg.isysNodeName;
-    bufferQueuePtr = &mQueuedCaptureBuffers;
-
-    for (size_t i = 0; i < bufferQueuePtr->size(); i++) {
-        if (outBuf->Index() == bufferQueuePtr->at(i)->Index()) {
-            bufferQueuePtr->at(i)->SetTimestamp(outMsg.data.event.timestamp);
-
-            isysBufferPtr = bufferQueuePtr->at(i);
-            isysBufferPtr->SetSequence(outMsg.data.event.sequence);
-            // Remove the shared pointer reference from the vector
-            bufferQueuePtr->erase(bufferQueuePtr->begin() + i);
-            break;
-        }
-    }
-
-    if (isysBufferPtr.get() == nullptr) {
+    if (mQueuedCaptureBuffers.find(outBuf->Index()) == mQueuedCaptureBuffers.end()) {
         LOGE("ISYS buffer not found for request %d", requestId);
         return UNKNOWN_ERROR;
     }
-    outMsg.data.event.pixelBuffer = isysBufferPtr;
+    std::shared_ptr<cros::V4L2Buffer> buf = mQueuedCaptureBuffers[outBuf->Index()];
+    buf->SetTimestamp(outMsg.data.event.timestamp);
+    buf->SetSequence(outMsg.data.event.sequence);
+    mQueuedCaptureBuffers.erase(outBuf->Index());
+
+    outMsg.data.event.lastPixelBuffer = nullptr;
+    if (requestId >= 0 && mLastQueuedCaptureBuffers.size() > 0) {
+        outMsg.data.event.lastPixelBuffer = mLastQueuedCaptureBuffers.front();
+        mLastQueuedCaptureBuffers.pop();
+    }
+
+    outMsg.data.event.pixelBuffer = buf;
     LOG2("@%s: Received buffer from ISYS node %d - Request %d", __FUNCTION__, isysNode, requestId);
+
+    if (requestId >= 0) {
+        mLastQueuedCaptureBuffers.push(buf);
+    }
 
     // Skip sending raw frames till the specified limit
     if (requestId < 0) {
         LOG2("@%s: skip frame %d received, isysNode:%d",
                 __FUNCTION__, requestId, isysNode);
-        mBufferPools->returnCaptureSkipBuffer(isysBufferPtr);
+        mBufferPools->returnCaptureSkipBuffer(buf);
         return NO_ERROR;
     }
 

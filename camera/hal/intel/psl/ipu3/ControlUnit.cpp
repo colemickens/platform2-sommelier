@@ -221,6 +221,7 @@ void RequestCtrlState::reset(RequestCtrlState* me)
         me->processingSettings.reset();
         me->captureBufs.rawBuffer.reset();
         me->captureBufs.rawNonScaledBuffer.reset();
+        me->captureBufs.lastRawNonScaledBuffer.reset();
         DELETE_ARRAY_AND_NULLIFY(me->rGammaLut);
         DELETE_ARRAY_AND_NULLIFY(me->gGammaLut);
         DELETE_ARRAY_AND_NULLIFY(me->bGammaLut);
@@ -619,23 +620,17 @@ ControlUnit::processRequestForCapture(std::shared_ptr<RequestCtrlState> &reqStat
 
 status_t ControlUnit::handleNewImage(MessageNewImage msg)
 {
-    status_t status = OK;
-    std::shared_ptr<RequestCtrlState> reqState = nullptr;
-    int reqId = msg.requestId;
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    int reqId = msg.requestId;
 
     std::map<int, std::shared_ptr<RequestCtrlState>>::iterator it =
                                     mWaitingForCapture.find(reqId);
-    if (it == mWaitingForCapture.end()) {
-        LOGE("Unexpected new image received %d - Fix the bug", reqId);
-        return UNKNOWN_ERROR;
-    }
+    CheckError(it == mWaitingForCapture.end(), UNKNOWN_ERROR,
+               "@%s, Unexpected new image received %d", __FUNCTION__, reqId);
 
-    reqState = it->second;
-    if (reqState.get() == nullptr) {
-        LOGE("State for request Id = %d is not present - Fix the bug", reqId);
-        return UNKNOWN_ERROR;
-    }
+    std::shared_ptr<RequestCtrlState> reqState = it->second;
+    CheckError(reqState == nullptr, UNKNOWN_ERROR,
+               "@%s, State for request Id = %d is nullptr", __FUNCTION__, reqId);
 
     /*
      * Send the buffer. See complete processing to understand
@@ -643,20 +638,20 @@ status_t ControlUnit::handleNewImage(MessageNewImage msg)
      */
     reqState->captureBufs.rawBuffer = nullptr;
     reqState->captureBufs.rawNonScaledBuffer = nullptr;
+    reqState->captureBufs.lastRawNonScaledBuffer = nullptr;
 
     reqState->framesArrived++;
-    if (msg.type == CAPTURE_EVENT_RAW_BAYER) {
-        reqState->captureBufs.rawNonScaledBuffer = msg.rawBuffer;
-    } else {
-        LOGE("Unknown capture buffer type in request %d- Fix the bug", reqId);
-        return UNKNOWN_ERROR;
-    }
 
-    status = completeProcessing(reqState);
-    if (status != OK)
-        LOGE("Cannot complete the buffer processing - fix the bug!");
+    CheckError(msg.type != CAPTURE_EVENT_RAW_BAYER, UNKNOWN_ERROR,
+               "@%s, Unknown capture buffer type in request %d", __FUNCTION__, reqId);
 
-    return status;
+    reqState->captureBufs.rawNonScaledBuffer = msg.rawBuffer;
+    reqState->captureBufs.lastRawNonScaledBuffer = msg.lastRawBuffer;
+
+    status_t status = completeProcessing(reqState);
+    CheckError(status != OK, status, "@%s, Cannot complete the buffer processing", __FUNCTION__);
+
+    return OK;
 }
 
 status_t ControlUnit::handleNewStat(MessageStats msg)
@@ -881,6 +876,7 @@ ControlUnit::notifyCaptureEvent(CaptureMessage *captureMsg)
             msg.type = CAPTURE_EVENT_RAW_BAYER;
             msg.requestId = captureMsg->data.event.reqId;
             msg.rawBuffer = captureMsg->data.event.pixelBuffer;
+            msg.lastRawBuffer = captureMsg->data.event.lastPixelBuffer;
             base::Callback<status_t()> closure =
                     base::Bind(&ControlUnit::handleNewImage,
                                base::Unretained(this),

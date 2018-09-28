@@ -83,6 +83,7 @@ public:  /* private types */
         unsigned int requestId; /**< For raw buffers from CaptureUnit as
                                      they don't have request */
         std::shared_ptr<cros::V4L2Buffer> rawBuffer;
+        std::shared_ptr<cros::V4L2Buffer> lastRawBuffer;
         CaptureEventType type;
         MessageNewImage() : requestId(0), type(CAPTURE_EVENT_MAX) {}
     };

@@ -444,6 +444,8 @@ status_t ImguUnit::ImguPipe::configStreams(std::vector<camera3_stream_t*> &strea
         return UNKNOWN_ERROR;
     }
 
+    graphConfig->setPipeType(mPipeType);
+
     status_t status = mMediaCtlHelper.configure(gcm, mediaType);
     CheckError(status != OK, status, "failed to configure video MediaCtlHelper");
 
@@ -623,6 +625,7 @@ ImguUnit::ImguPipe::completeRequest(std::shared_ptr<ProcUnitSettings> &processin
 
     ProcTaskMsg procMsg;
     procMsg.rawNonScaledBuffer = captureBufs.rawNonScaledBuffer;
+    procMsg.lastRawNonScaledBuffer = captureBufs.lastRawNonScaledBuffer;
     procMsg.reqId = reqId;
     procMsg.processingSettings = processingSettings;
 
