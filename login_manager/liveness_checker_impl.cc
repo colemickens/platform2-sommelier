@@ -6,6 +6,7 @@
 
 #include <signal.h>
 #include <string>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/callback.h>
@@ -15,6 +16,8 @@
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
 #include <base/process/launch.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <base/time/time.h>
 #include <brillo/message_loops/message_loop.h>
 #include <chromeos/dbus/service_constants.h>
@@ -67,9 +70,16 @@ void LivenessCheckerImpl::CheckAndSendLivenessPing(base::TimeDelta interval) {
 
     // TODO(https://crbug.com/883029): Remove.
     std::string top_output;
-    base::GetAppOutput({"top", "-b", "-1", "-n1", "-w200"}, &top_output);
+    base::GetAppOutput({"top", "-b", "-c", "-n1", "-w512"}, &top_output);
+
+    std::vector<std::string> top_output_lines = base::SplitString(
+        top_output, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+    if (top_output_lines.size() > 20)
+      top_output_lines.resize(20);
+    top_output = base::JoinString(top_output_lines, "\n");
+
     LOG(WARNING) << "Top output (trimmed):";
-    LOG(WARNING) << top_output.substr(0, 2048);
+    LOG(WARNING) << top_output;
 
     if (enable_aborting_) {
       // Note: If this log message is changed, the desktopui_HangDetector
