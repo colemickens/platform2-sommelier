@@ -24,6 +24,9 @@ class ServiceImpl final : public vm_tools::Maitred::Service {
   explicit ServiceImpl(std::unique_ptr<Init> init);
   ~ServiceImpl() override = default;
 
+  // Initializes ServiceImpl for first use.
+  bool Init();
+
   void set_shutdown_cb(base::Callback<bool(void)> cb) {
     shutdown_cb_ = std::move(cb);
   }
@@ -51,8 +54,12 @@ class ServiceImpl final : public vm_tools::Maitred::Service {
                             const vm_tools::StartTerminaRequest* request,
                             vm_tools::StartTerminaResponse* response) override;
 
+  grpc::Status SetResolvConfig(grpc::ServerContext* ctx,
+                               const vm_tools::SetResolvConfigRequest* request,
+                               vm_tools::EmptyMessage* response) override;
+
  private:
-  std::unique_ptr<Init> init_;
+  std::unique_ptr<vm_tools::maitred::Init> init_;
 
   // Callback used for shutting down the gRPC server.  Called when handling a
   // Shutdown RPC.

@@ -6,6 +6,7 @@
 
 #include <arpa/inet.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <linux/sockios.h>
 #include <net/if.h>
 #include <net/route.h>
@@ -15,6 +16,9 @@
 #include <sys/ioctl.h>
 #include <sys/mount.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include <linux/vm_sockets.h>
 
@@ -27,8 +31,10 @@
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/posix/safe_strerror.h>
 #include <base/process/launch.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_util.h>
 
 using std::string;
 
@@ -41,6 +47,12 @@ constexpr char kInterfaceName[] = "eth0";
 constexpr char kLoopbackName[] = "lo";
 
 constexpr char kHostIpPath[] = "/run/host_ip";
+
+constexpr char kResolvConfOptions[] =
+    "options single-request timeout:1 attempts:5\n";
+constexpr char kResolvConfPath[] = "/run/resolv.conf";
+constexpr char kRunPath[] = "/run";
+constexpr char kTmpResolvConfPath[] = "/run/resolv.conf.tmp";
 
 // How long to wait before timing out on `lxd waitready`.
 constexpr int kLxdWaitreadyTimeoutSeconds = 120;
@@ -92,9 +104,93 @@ int EnableInterface(int sockfd, const char* ifname) {
   return 0;
 }
 
+// Prints an error log with the message in |error| concatenated with the
+// string representation of the current value of errno. The same error message
+// will also be stored in |out_error|.
+void PLogAndSaveError(const string& error, string* out_error) {
+  string error_with_strerror = error + ": " + base::safe_strerror(errno);
+  LOG(ERROR) << error_with_strerror;
+  out_error->assign(error_with_strerror);
+}
+
+// Writes a resolv.conf with the supplied |nameservers| and |search_domains|.
+// The default Chrome OS resolver options will be used. Returns true on
+// success, and returns false on failure with an error message stored in
+// |out_error|.
+bool WriteResolvConf(const std::vector<string> nameservers,
+                     const std::vector<string> search_domains,
+                     string* out_error) {
+  DCHECK(out_error);
+
+  base::ScopedFD resolv_fd(
+      HANDLE_EINTR(open(kRunPath, O_TMPFILE | O_WRONLY | O_CLOEXEC, 0644)));
+  if (!resolv_fd.is_valid()) {
+    PLogAndSaveError(
+        base::StringPrintf("failed to open tmpfile in %s", kRunPath),
+        out_error);
+    return false;
+  }
+
+  for (auto& ns : nameservers) {
+    string nameserver_line = base::StringPrintf("nameserver %s\n", ns.c_str());
+    if (!base::WriteFileDescriptor(resolv_fd.get(), nameserver_line.c_str(),
+                                   nameserver_line.length())) {
+      PLogAndSaveError("failed to write nameserver to tmpfile", out_error);
+      return false;
+    }
+  }
+
+  if (!search_domains.empty()) {
+    string search_domains_line = base::StringPrintf(
+        "search %s\n", base::JoinString(search_domains, " ").c_str());
+    if (!base::WriteFileDescriptor(resolv_fd.get(), search_domains_line.c_str(),
+                                   search_domains_line.length())) {
+      PLogAndSaveError("failed to write search domains to tmpfile", out_error);
+      return false;
+    }
+  }
+
+  if (!base::WriteFileDescriptor(resolv_fd.get(), kResolvConfOptions,
+                                 strlen(kResolvConfOptions))) {
+    PLogAndSaveError("failed to write resolver options to tmpfile", out_error);
+    return false;
+  }
+
+  // The file has been successfully written to, so link it into place.
+  // First link it to a named file with linkat(2), then atomically move it
+  // into place with rename(2). linkat(2) will not overwrite the destination,
+  // hence the need to do this in two steps.
+  const base::FilePath source_path(
+      base::StringPrintf("/proc/self/fd/%d", resolv_fd.get()));
+  if (HANDLE_EINTR(linkat(AT_FDCWD, source_path.value().c_str(), AT_FDCWD,
+                          kTmpResolvConfPath, AT_SYMLINK_FOLLOW)) < 0) {
+    PLogAndSaveError(
+        base::StringPrintf("failed to link tmpfile to %s", kTmpResolvConfPath),
+        out_error);
+    return false;
+  }
+
+  if (HANDLE_EINTR(rename(kTmpResolvConfPath, kResolvConfPath)) < 0) {
+    PLogAndSaveError(
+        base::StringPrintf("failed to rename tmpfile to %s", kResolvConfPath),
+        out_error);
+    return false;
+  }
+
+  return true;
+}
+
 }  // namespace
 
-ServiceImpl::ServiceImpl(std::unique_ptr<Init> init) : init_(std::move(init)) {}
+ServiceImpl::ServiceImpl(std::unique_ptr<vm_tools::maitred::Init> init)
+    : init_(std::move(init)) {}
+
+bool ServiceImpl::Init() {
+  std::vector<string> default_nameservers{"8.8.8.8", "8.8.4.4"};
+  string error;
+
+  return WriteResolvConf(std::move(default_nameservers), {}, &error);
+}
 
 grpc::Status ServiceImpl::ConfigureNetwork(grpc::ServerContext* ctx,
                                            const NetworkConfigRequest* request,
@@ -437,6 +533,24 @@ grpc::Status ServiceImpl::Mount9P(grpc::ServerContext* ctx,
   }
 
   LOG(INFO) << "Mounted 9P file system on " << request->target();
+  return grpc::Status::OK;
+}
+
+grpc::Status ServiceImpl::SetResolvConfig(grpc::ServerContext* ctx,
+                                          const SetResolvConfigRequest* request,
+                                          EmptyMessage* response) {
+  LOG(INFO) << "Received request to update VM resolv.conf";
+  const vm_tools::ResolvConfig& resolv_config = request->resolv_config();
+
+  std::vector<string> nameservers(resolv_config.nameservers().begin(),
+                                  resolv_config.nameservers().end());
+  std::vector<string> search_domains(resolv_config.search_domains().begin(),
+                                     resolv_config.search_domains().end());
+  string error;
+  if (!WriteResolvConf(nameservers, search_domains, &error)) {
+    return grpc::Status(grpc::INTERNAL, error);
+  }
+
   return grpc::Status::OK;
 }
 

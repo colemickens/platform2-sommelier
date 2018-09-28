@@ -22,9 +22,21 @@ message IPv4Config {
   fixed32 gateway = 3;
 }
 
+// DNS parameters for the VM. These correspond to settings in resolv.conf(5).
+message ResolvConfig {
+  // The nameservers to use for DNS resolution.
+  repeated string nameservers = 1;
+
+  // The search domains for hostname lookup. See resolv.conf(5).
+  repeated string search_domains = 2;
+}
+
 message NetworkConfigRequest {
   // IPv4 configuration for the VM.
   IPv4Config ipv4_config = 1;
+
+  // DNS configuration for the VM.
+  ResolvConfig resolv_config = 2;
 }
 
 // Description of a single process that should be spawned by maitre'd.
@@ -136,6 +148,11 @@ message StartTerminaResponse {
   string failure_reason = 2;
 }
 
+message SetResolvConfigRequest {
+  // DNS configuration for the VM.
+  ResolvConfig resolv_config = 1;
+}
+
 // Implemented by maitred inside the VM.
 service Maitred {
   // Set up networking inside the VM so that it can access the internet.
@@ -157,4 +174,7 @@ service Maitred {
   // when mounting the 9P server, which requires first connecting a socket
   // to the server.  Other transports should use the normal Mount rpc instead.
   rpc Mount9P(Mount9PRequest) returns (MountResponse);
+
+  // Sets the resolv config (nameservers, search domains, and local domain).
+  rpc SetResolvConfig(SetResolvConfigRequest) returns (EmptyMessage);
 }

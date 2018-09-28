@@ -143,6 +143,9 @@ int main(int argc, char** argv) {
       grpc::InsecureServerCredentials());
 
   vm_tools::maitred::ServiceImpl maitred_service(std::move(init));
+  if (!maitred_service.Init()) {
+    LOG(FATAL) << "Failed to initialize maitred service";
+  }
   builder.RegisterService(&maitred_service);
 
   std::unique_ptr<grpc::Server> server = builder.BuildAndStart();
