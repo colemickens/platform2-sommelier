@@ -78,7 +78,7 @@
       'sources': ['main.cc'],
       'link_settings': {
         'ldflags': [
-          '-L /build/guado/tmp/portage/chromeos-base/mri_package-9999/work/',
+          '-L .',
         ],
         'libraries': [
           '-lrtanalytics -ldl',
