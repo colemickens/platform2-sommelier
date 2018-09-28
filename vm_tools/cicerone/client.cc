@@ -13,6 +13,7 @@
 #include <utility>
 
 #include <base/at_exit.h>
+#include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -24,6 +25,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
 #include <base/sys_info.h>
+#include <base/threading/thread_task_runner_handle.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 #include <chromeos/dbus/service_constants.h>
@@ -39,6 +41,30 @@ using std::string;
 namespace {
 
 constexpr int kDefaultTimeoutMs = 120 * 1000;
+
+void OnSignalConnected(const std::string& interface_name,
+                       const std::string& signal_name,
+                       bool is_connected) {
+  LOG(INFO) << "D-Bus signal " << (is_connected ? "" : "NOT ")
+            << "connected for " << interface_name << ":" << signal_name;
+}
+
+void OnContainerCreatedCallback(
+    base::RunLoop* run_loop,
+    vm_tools::cicerone::LxdContainerCreatedSignal::Status* final_status,
+    std::string* failure_reason,
+    dbus::Signal* signal) {
+  dbus::MessageReader reader(signal);
+  vm_tools::cicerone::LxdContainerCreatedSignal lccs;
+  if (!reader.PopArrayOfBytesAsProto(&lccs)) {
+    LOG(ERROR) << "Failed parsing LxdContainerCreatedSignal proto";
+    return;
+  }
+
+  *final_status = lccs.status();
+  *failure_reason = lccs.failure_reason();
+  run_loop->Quit();
+}
 
 int CreateLxdContainer(dbus::ObjectProxy* proxy,
                        const string& vm_name,
@@ -63,6 +89,19 @@ int CreateLxdContainer(dbus::ObjectProxy* proxy,
     LOG(ERROR) << "Failed to encode CreateLxdContainer protobuf";
     return -1;
   }
+
+  // RunLoop so we can monitor the D-Bus signals coming back to determine when
+  // container creation has actually finished.
+  base::RunLoop run_loop;
+  vm_tools::cicerone::LxdContainerCreatedSignal::Status final_status =
+      vm_tools::cicerone::LxdContainerCreatedSignal::UNKNOWN;
+  std::string failure_reason = "Timed out waiting for reply";
+  proxy->ConnectToSignal(
+      vm_tools::cicerone::kVmCiceroneInterface,
+      vm_tools::cicerone::kLxdContainerCreatedSignal,
+      base::Bind(&OnContainerCreatedCallback, base::Unretained(&run_loop),
+                 &final_status, &failure_reason),
+      base::Bind(&OnSignalConnected));
 
   std::unique_ptr<dbus::Response> dbus_response =
       proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
@@ -90,9 +129,21 @@ int CreateLxdContainer(dbus::ObjectProxy* proxy,
     LOG(INFO) << "Container " << container_name << " already existed";
     return 0;
   } else {
-    LOG(INFO) << "Creating container " << container_name
-              << " in the background";
-    return 0;
+    // Start the RunLoop which'll get the D-Bus signal callbacks and set the
+    // final result for us.
+    LOG(INFO) << "Waiting for D-Bus signal for container creation status";
+    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+        FROM_HERE, run_loop.QuitClosure(), base::TimeDelta::FromMinutes(10));
+    run_loop.Run();
+
+    if (final_status ==
+        vm_tools::cicerone::LxdContainerCreatedSignal::CREATED) {
+      LOG(INFO) << "Created container " << container_name << " successfully";
+      return 0;
+    } else {
+      LOG(ERROR) << "Failed to create LXD container: " << failure_reason;
+      return -1;
+    }
   }
 }
 
@@ -458,6 +509,35 @@ int GetLinuxPackageInfo(dbus::ObjectProxy* proxy,
   return 0;
 }
 
+void OnApplicationInstalledCallback(
+    base::RunLoop* run_loop,
+    vm_tools::cicerone::InstallLinuxPackageProgressSignal::Status* final_status,
+    std::string* failure_details,
+    dbus::Signal* signal) {
+  dbus::MessageReader reader(signal);
+  vm_tools::cicerone::InstallLinuxPackageProgressSignal ilpps;
+  if (!reader.PopArrayOfBytesAsProto(&ilpps)) {
+    LOG(ERROR) << "Failed parsing InstallLinuxPackageProgressSignal proto";
+    return;
+  }
+
+  if (ilpps.status() ==
+      vm_tools::cicerone::InstallLinuxPackageProgressSignal::DOWNLOADING) {
+    LOG(INFO) << "Downloading install packages, progress: "
+              << ilpps.progress_percent();
+    return;
+  } else if (ilpps.status() ==
+             vm_tools::cicerone::InstallLinuxPackageProgressSignal::
+                 INSTALLING) {
+    LOG(INFO) << "Installing packages, progress: " << ilpps.progress_percent();
+    return;
+  }
+
+  *final_status = ilpps.status();
+  *failure_details = ilpps.failure_details();
+  run_loop->Quit();
+}
+
 int InstallLinuxPackage(dbus::ObjectProxy* proxy,
                         const string& vm_name,
                         const string& container_name,
@@ -484,6 +564,19 @@ int InstallLinuxPackage(dbus::ObjectProxy* proxy,
     return -1;
   }
 
+  // RunLoop so we can monitor the D-Bus signals coming back to determine when
+  // application install has actually finished.
+  base::RunLoop run_loop;
+  vm_tools::cicerone::InstallLinuxPackageProgressSignal::Status final_status =
+      vm_tools::cicerone::InstallLinuxPackageProgressSignal::FAILED;
+  std::string failure_details = "Timed out waiting for reply";
+  proxy->ConnectToSignal(
+      vm_tools::cicerone::kVmCiceroneInterface,
+      vm_tools::cicerone::kInstallLinuxPackageProgressSignal,
+      base::Bind(&OnApplicationInstalledCallback, base::Unretained(&run_loop),
+                 &final_status, &failure_details),
+      base::Bind(&OnSignalConnected));
+
   std::unique_ptr<dbus::Response> dbus_response =
       proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
   if (!dbus_response) {
@@ -500,6 +593,21 @@ int InstallLinuxPackage(dbus::ObjectProxy* proxy,
   switch (response.status()) {
     case vm_tools::cicerone::InstallLinuxPackageResponse::STARTED:
       LOG(INFO) << "Successfully started the package install";
+      // Start the RunLoop which'll get the D-Bus signal callbacks and set the
+      // final result for us.
+      LOG(INFO) << "Waiting for D-Bus signal for application install status";
+      base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+          FROM_HERE, run_loop.QuitClosure(), base::TimeDelta::FromMinutes(10));
+      run_loop.Run();
+
+      if (final_status ==
+          vm_tools::cicerone::InstallLinuxPackageProgressSignal::SUCCEEDED) {
+        LOG(INFO) << "Finished application install successfully";
+        return 0;
+      } else {
+        LOG(ERROR) << "Failed to install application: " << failure_details;
+        return -1;
+      }
       return 0;
     case vm_tools::cicerone::InstallLinuxPackageResponse::
         INSTALL_ALREADY_ACTIVE:
