@@ -159,6 +159,7 @@
           ],
           'sources': [
             'grpc_async_adapter/async_grpc_client_server_test.cc',
+            'grpc_async_adapter/async_grpc_server_test.cc',
             'grpc_async_adapter/grpc_completion_queue_dispatcher_test.cc',
           ],
           'variables': {

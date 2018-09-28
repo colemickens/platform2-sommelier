@@ -158,12 +158,14 @@ class RpcReply {
 }  // namespace
 
 // Creates an |AsyncGrpcServer| and |AsyncGrpcClient| for the
-// ExampleService::test_rpcs::ExampleService::AsyncService interface (defined in
+// test_rpcs::ExampleService::AsyncService interface (defined in
 // test_rpcs.proto), set up to talk to each other.
 class AsyncGrpcClientServerTest : public ::testing::Test {
  public:
-  AsyncGrpcClientServerTest() {
-    CHECK(tmpdir_.CreateUniqueTempDir());
+  AsyncGrpcClientServerTest() = default;
+
+  void SetUp() override {
+    ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
 
     // Create a temporary filename that's guaranteed to not exist, but is
     // inside our scoped directory so it'll get deleted later.
@@ -181,14 +183,14 @@ class AsyncGrpcClientServerTest : public ::testing::Test {
     server_->RegisterHandler(
         &test_rpcs::ExampleService::AsyncService::RequestEchoIntRpc,
         pending_echo_int_rpcs_.GetRpcHandlerCallback());
-    server_->Start();
+    ASSERT_TRUE(server_->Start());
 
     // Create the AsyncGrpcClient.
     client_ = std::make_unique<AsyncGrpcClient<test_rpcs::ExampleService>>(
         message_loop_.task_runner(), GetDomainSocketAddress());
   }
 
-  ~AsyncGrpcClientServerTest() override {
+  void TearDown() override {
     ShutdownClient();
     ShutdownServer();
   }

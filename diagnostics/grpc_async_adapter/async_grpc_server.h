@@ -43,14 +43,19 @@ class AsyncGrpcServerBase {
                       const std::string& server_uri);
   virtual ~AsyncGrpcServerBase();
 
-  // Starts this server.
-  void Start();
+  // Starts this server. When this returns failure, no further methods are
+  // allowed to be called, except Shutdown() - which is allowed but not required
+  // in this case.
+  // This function must not be called twice.
+  bool Start();
 
-  // Shuts down this server. The caller may only delete this instance after
-  // |on_shutdown| has been called.
-  // If this server was has not been started, |on_shutdown_| will be called
-  // immediately.
-  // This function may not be called twice.
+  // Shuts down this server. This must be used before deleting this instance in
+  // case when the server successfully started - the instance must be destroyed
+  // only after |on_shutdown| has been called.
+  // If this server has not been successfully started, calling Shutdown() is
+  // optional but allowed (|on_shutdown_| will be called immediately in this
+  // case).
+  // This function must not be called twice.
   void Shutdown(const base::Closure& on_shutdown);
 
  protected:

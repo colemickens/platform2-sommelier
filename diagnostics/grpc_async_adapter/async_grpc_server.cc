@@ -16,7 +16,7 @@ AsyncGrpcServerBase::AsyncGrpcServerBase(
 
 AsyncGrpcServerBase::~AsyncGrpcServerBase() = default;
 
-void AsyncGrpcServerBase::Start() {
+bool AsyncGrpcServerBase::Start() {
   CHECK_EQ(State::kNotStarted, state_);
   state_ = State::kStarted;
 
@@ -25,6 +25,8 @@ void AsyncGrpcServerBase::Start() {
   builder.RegisterService(service());
   completion_queue_ = builder.AddCompletionQueue();
   server_ = builder.BuildAndStart();
+  if (!server_)
+    return false;
   dispatcher_ = std::make_unique<GrpcCompletionQueueDispatcher>(
       completion_queue_.get(), task_runner_);
   dispatcher_->Start();
@@ -32,11 +34,14 @@ void AsyncGrpcServerBase::Start() {
   for (const auto& rpc_state_factory : rpc_state_factories_)
     ExpectNextRpc(rpc_state_factory);
   rpc_state_factories_.clear();
+  return true;
 }
 
 void AsyncGrpcServerBase::Shutdown(const base::Closure& on_shutdown) {
   CHECK_NE(state_, State::kShutDown);
-  if (state_ != State::kStarted) {
+  // Don't do anything if Start() was not called or it failed.
+  if (state_ != State::kStarted || !server_) {
+    state_ = State::kShutDown;
     on_shutdown.Run();
     return;
   }

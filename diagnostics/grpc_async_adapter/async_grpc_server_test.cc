@@ -1,0 +1,109 @@
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include <memory>
+#include <string>
+
+#include <base/files/file_path.h>
+#include <base/files/scoped_temp_dir.h>
+#include <base/logging.h>
+#include <base/message_loop/message_loop.h>
+#include <base/run_loop.h>
+#include <base/threading/thread_task_runner_handle.h>
+#include <gtest/gtest.h>
+
+#include "diagnostics/grpc_async_adapter/async_grpc_server.h"
+#include "test_rpcs.grpc.pb.h"  // NOLINT(build/include)
+
+namespace diagnostics {
+
+namespace {
+
+std::string MakeGrpcUri(const base::FilePath& socket_path) {
+  return "unix:" + socket_path.value();
+}
+
+}  // namespace
+
+// Simple smoke tests for AsyncGrpcServer.
+class AsyncGrpcServerTest : public ::testing::Test {
+ public:
+  AsyncGrpcServerTest() = default;
+
+  void SetUp() override { ASSERT_TRUE(temp_dir_.CreateUniqueTempDir()); }
+
+  void TearDown() override {
+    if (server_) {
+      BlockingShutdownServer();
+      server_.reset();
+    }
+  }
+
+  base::FilePath GetTempPath() const { return temp_dir_.GetPath(); }
+
+  void CreateServer(const std::string& service_uri) {
+    DCHECK(!server_);
+    server_ = std::make_unique<
+        AsyncGrpcServer<test_rpcs::ExampleService::AsyncService>>(
+        base::ThreadTaskRunnerHandle::Get(), service_uri);
+  }
+
+  void DestroyServer() {
+    DCHECK(server_);
+    server_.reset();
+  }
+
+  AsyncGrpcServer<test_rpcs::ExampleService::AsyncService>* server() {
+    return server_.get();
+  }
+
+ private:
+  void BlockingShutdownServer() {
+    base::RunLoop loop;
+    server_->Shutdown(loop.QuitClosure());
+    loop.Run();
+  }
+
+  base::MessageLoopForIO message_loop_;
+  base::ScopedTempDir temp_dir_;
+  std::unique_ptr<AsyncGrpcServer<test_rpcs::ExampleService::AsyncService>>
+      server_;
+
+  DISALLOW_COPY_AND_ASSIGN(AsyncGrpcServerTest);
+};
+
+// Test that the server gets successfully started on the given socket file path.
+TEST_F(AsyncGrpcServerTest, Basic) {
+  CreateServer(MakeGrpcUri(GetTempPath().AppendASCII("testing_socket")));
+  EXPECT_TRUE(server()->Start());
+}
+
+// Test that the server may be destroyed without using Shutdown() when the
+// server has not been started.
+TEST_F(AsyncGrpcServerTest, SkippingShutdownWhenNotStarted) {
+  CreateServer(MakeGrpcUri(GetTempPath().AppendASCII("testing_socket")));
+  DestroyServer();
+}
+
+// Test that the server fails to start when the socket file cannot be created
+// due to a non-existing directory in the path.
+TEST_F(AsyncGrpcServerTest, ErrorUnavailablePath) {
+  CreateServer(MakeGrpcUri(GetTempPath()
+                               .AppendASCII("non_existing_directory")
+                               .AppendASCII("testing_socket")));
+  EXPECT_FALSE(server()->Start());
+}
+
+// Test that the server may be destroyed without using Shutdown() when the
+// server startup failed (the failure is the same as in the ErrorUnavailablePath
+// test).
+TEST_F(AsyncGrpcServerTest, ErrorUnavailablePathSkippingShutdown) {
+  CreateServer(MakeGrpcUri(GetTempPath()
+                               .AppendASCII("non_existing_directory")
+                               .AppendASCII("testing_socket")));
+  EXPECT_FALSE(server()->Start());
+  DestroyServer();
+}
+
+}  // namespace diagnostics
