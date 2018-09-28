@@ -6,6 +6,7 @@
 access: 1
 brk: 1
 clock_getres: 1
+clock_gettime: 1
 close: 1
 connect: 1
 epoll_create1: 1
@@ -22,6 +23,7 @@ getresgid: 1
 getresuid: 1
 getsockname: 1
 gettid: 1
+gettimeofday: 1
 getuid: 1
 # Allow the following ALSA sequencer IOCTLs:
 # - TCGETS
