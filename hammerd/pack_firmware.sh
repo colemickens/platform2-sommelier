@@ -21,7 +21,8 @@ meowth whiskers
 nocturne whiskers"
 
 DEFINE_string board "" "The board name. e.g. poppy" b
-DEFINE_string version "" "The version of the target file. e.g. 9794.0.0" v
+DEFINE_string ro_version "" "The RO version of the target file. e.g. 9790.0.0" r
+DEFINE_string rw_version "" "The RW version of the target file. e.g. 9794.0.0" v
 DEFINE_string channel "dev" \
   "The channel of the target file. One of canary, dev, beta, or stable" c
 DEFINE_string signed_key "dev" \
@@ -30,11 +31,15 @@ DEFINE_string signed_key "dev" \
 FLAGS "$@" || exit 1
 eval set -- "${FLAGS_ARGV}"
 
+set -e
+
 # Global variables that are assigned in init() function.
 # The temporary working directory.
 TMP=""
-# The base URL of the downloaded files.
-GS_URL_BASE=""
+# The base URL of the downloaded files (RO version).
+GS_URL_BASE_RO=""
+# The base URL of the downloaded files (RW version).
+GS_URL_BASE_RW=""
 # The detachable base code name.
 BASE_NAME=""
 
@@ -64,8 +69,12 @@ init() {
   fi
   echo "The base name: ${BASE_NAME}"
 
-  if [[ -z "${FLAGS_version}" ]]; then
-    die_notrace "Please specify a firmware version using -v, e.g. 9794.0.0"
+  if [[ -z "${FLAGS_ro_version}" ]]; then
+    die_notrace "Please specify a firmware RO version using -r, e.g. 9794.0.0"
+  fi
+
+  if [[ -z "${FLAGS_rw_version}" ]]; then
+    die_notrace "Please specify a firmware RW version using -v, e.g. 9790.0.0"
   fi
 
   if [[ -z "${FLAGS_channel}" ]]; then
@@ -78,9 +87,15 @@ init() {
     die_notrace "Please specify a signed key name using -s, e.g. dev, premp, mp"
   fi
 
-  GS_URL_BASE="gs://chromeos-releases/${FLAGS_channel}-channel/${FLAGS_board}/${FLAGS_version}"
-  if ! gsutil ls "${GS_URL_BASE}" > /dev/null; then
-    die_notrace "${GS_URL_BASE} is not a valid URL. Please check the argument."
+  local gs_url_base="gs://chromeos-releases/${FLAGS_channel}-channel/${FLAGS_board}"
+  GS_URL_BASE_RO="${gs_url_base}/${FLAGS_ro_version}"
+  if ! gsutil ls "${GS_URL_BASE_RO}" > /dev/null; then
+    die_notrace "${GS_URL_BASE_RO} is not a valid URL. Please check the argument."
+  fi
+
+  GS_URL_BASE_RW="${gs_url_base}/${FLAGS_rw_version}"
+  if ! gsutil ls "${GS_URL_BASE_RW}" > /dev/null; then
+    die_notrace "${GS_URL_BASE_RW} is not a valid URL. Please check the argument."
   fi
 }
 
@@ -89,21 +104,34 @@ cleanup() {
   rm -rf "${TMP}"
 }
 
+# get_ec_file_name (ro|rw): Get file name for the EC binary/tarball (using RO or
+# RW version depending on parameter).
 get_ec_file_name() {
   if [[ "${FLAGS_signed_key}" == "dev" ]]; then
     echo "ChromeOS-firmware-*.tar.bz2"
   else
-    echo "chromeos_${FLAGS_version}_${BASE_NAME}_${FLAGS_signed_key}.bin"
+    if [[ "$1" == "ro" ]]; then
+      echo "chromeos_${FLAGS_ro_version}_${BASE_NAME}_${FLAGS_signed_key}.bin"
+    else
+      echo "chromeos_${FLAGS_rw_version}_${BASE_NAME}_${FLAGS_signed_key}.bin"
+    fi
   fi
 }
 
 get_tp_tarball_name() {
-  echo "ChromeOS-accessory_rwsig-*-${FLAGS_version}-${FLAGS_board}.tar.bz2"
+  echo "ChromeOS-accessory_rwsig-*-${FLAGS_rw_version}-${FLAGS_board}.tar.bz2"
 }
 
-# Download a file that may have wildcard, and return the exact file name.
+# download_file (ro|rw) filename: Download a file that may have wildcard from
+# either RO or RW version folder in GS, and return the exact file name.
 download_file() {
-  local gs_url="${GS_URL_BASE}/${1}"
+  local base
+  if [[ "$1" == "ro" ]]; then
+    base="${GS_URL_BASE_RO}"
+  else
+    base="${GS_URL_BASE_RW}"
+  fi
+  local gs_url="${base}/${2}"
   local fw_path="$(gsutil ls "${gs_url}")"
   if [[ -z "${fw_path}" ]]; then
     die "Please ensure your gsutil works and the firmware version is correct."
@@ -113,29 +141,48 @@ download_file() {
   echo "$(basename "${fw_path}")"
 }
 
-process_ec_file() {
-  local downloaded_file="$(download_file "$(get_ec_file_name)")"
+# Extract EC file from downloaded file ($1) to specified location ($2).
+extract_ec_file() {
   local ec_path="${BASE_NAME}/ec.bin"
-  local old_file=
 
   # If the firmware is signed, then the downloaded file is the binary blob,
   # instead of a tarball.
-  if [[ "${downloaded_file}" == *.bin ]]; then
-    old_file="${downloaded_file}"
+  if [[ "${1}" == *.bin ]]; then
+    mv "${1}" "${2}"
   else
-    tar xf "${downloaded_file}" "${ec_path}"
-    old_file="${ec_path}"
+    tar xf "${1}" "${ec_path}"
+    mv "${ec_path}" "${2}"
+  fi
+}
+
+process_ec_file() {
+  local ec_ro="ec_ro.bin"
+  local ec_rw="ec_rw.bin"
+
+  extract_ec_file "$(download_file ro "$(get_ec_file_name ro)")" "${ec_ro}"
+  extract_ec_file "$(download_file rw "$(get_ec_file_name rw)")" "${ec_rw}"
+
+  # Use RW firmware version as file name.
+  local fw_version_rw="$(strings "${ec_rw}" | grep "${BASE_NAME}" | head -n1)"
+  local new_file="${fw_version_rw}.fw"
+  # fmap[0]="EC_RW" fmap[1]=offset fmap[2]=size (decimal)
+  local fmap=($(dump_fmap -p "${ec_ro}" EC_RW))
+
+  # Inject RW into the existing RO file.
+  cp "${ec_ro}" "${new_file}"
+  dd if="${ec_rw}" of="${new_file}" \
+     bs=1 skip="${fmap[1]}" seek="${fmap[1]}" count="${fmap[2]}" conv=notrunc
+
+  # Verify the resulting image is signed properly.
+  if ! futility verify --strict "${new_file}" >&2; then
+    die "Cannot verify ${new_file}."
   fi
 
-  # Modify file name to the firmware version.
-  local fw_version="$(strings "${old_file}" | grep "${BASE_NAME}" | head -n1)"
-  local new_file="${fw_version}.fw"
-  mv "${old_file}" "${new_file}"
   echo "${new_file}"
 }
 
 process_tp_file() {
-  local downloaded_file="$(download_file "$(get_tp_tarball_name)")"
+  local downloaded_file="$(download_file rw "$(get_tp_tarball_name)")"
 
   # Extract the symbolic link first, then extract the target file.
   local sym_file_name="touchpad.bin"
@@ -152,11 +199,14 @@ main() {
   trap cleanup EXIT
   init
 
+  local ec_file
+  local tp_file
+
   # Download and extract EC firmware and touchpad firmware.
-  local ec_file="$(process_ec_file)"
-  local tp_file="$(process_tp_file)"
+  ec_file="$(process_ec_file)"
+  tp_file="$(process_tp_file)"
   # Pack EC and touchpad firmware and move to the current directory.
-  local output_tar="${BASE_NAME}_${FLAGS_version}_${FLAGS_signed_key}.tbz2"
+  local output_tar="${BASE_NAME}_${FLAGS_ro_version}-${FLAGS_rw_version}_${FLAGS_signed_key}.tbz2"
   tar jcf "${output_tar}" "${ec_file}" "${tp_file}"
   mv "${output_tar}" "${CURRENT_DIR}"
 
