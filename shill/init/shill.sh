@@ -48,10 +48,10 @@ if [ ! -f /home/chronos/.oobe_completed ]; then
   ARGS="${ARGS} --portal-list="
 fi
 
-if [ -e /var/lib/shill/shill_sandboxing_disabled ]; then
-  /usr/bin/metrics_client -e Network.Shill.SandboxingEnabled 0 3 &
-  exec /usr/bin/shill ${ARGS}
-else
+# TODO(mortonm): The " && false" ensures shill always runs as root, regardless
+# of whether the shill_sandboxing_enabled file exists. Take this out after
+# Chrome can be uprevved. See crbug.com/891338.
+if [ -e /var/lib/shill/shill_sandboxing_enabled ] && false; then
   /usr/bin/metrics_client -e Network.Shill.SandboxingEnabled 1 3 &
   ARGS="${ARGS} --jail-vpn-clients"
   # Run shill as shill user/group in a minijail:
@@ -64,4 +64,7 @@ else
   #   --ambient so child processes can inherit runtime capabilities:
   exec /sbin/minijail0 -u shill -g shill -G -n -B 20 -c 800003de0 --ambient \
        -- /usr/bin/shill ${ARGS}
+else
+  /usr/bin/metrics_client -e Network.Shill.SandboxingEnabled 0 3 &
+  exec /usr/bin/shill ${ARGS}
 fi
