@@ -189,10 +189,8 @@ status_t AiqConf::fillLensStaticMetadata(camera_metadata_t * metadata)
             && cmc->cmc_parsed_optics.lut_apertures != nullptr) {
             // fixed aperture, the fn should be divided 100 because the value is multiplied 100 in cmc
             fn = (float)cmc->cmc_parsed_optics.lut_apertures[0] / 100;
-            float av = log10(pow(fn, 2)) / log10(2.0);
-            av = ((int)(av * 10 + 0.5)) / 10.0;
-            res |= MetadataHelper::updateMetadata(metadata, ANDROID_LENS_INFO_AVAILABLE_APERTURES, &av, 1);
-            LOG2("static ANDROID_LENS_INFO_AVAILABLE_APERTURES :%.2f", av);
+            res |= MetadataHelper::updateMetadata(metadata, ANDROID_LENS_INFO_AVAILABLE_APERTURES, &fn, 1);
+            LOG2("static ANDROID_LENS_INFO_AVAILABLE_APERTURES :%.2f", fn);
         }
         // Lens: FilterDensities
         int32_t nd_gain = 0;
