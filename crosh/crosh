@@ -400,12 +400,16 @@ imageloader() {
     2>&1 >/dev/null
 }
 
-USAGE_vmc='[ start <name> | stop <name> | destroy <name> |
+USAGE_vmc='[ start <name> |
+      stop <name> |
+      destroy <name> |
       export <vm name> <file name> [removable storage name] |
-      list | share <vm name> <path> ]
+      list |
+      share <vm name> <path> |
+      container <vm name> <container name> [ <image server> <image alias> ] ]
 '
 HELP_vmc='
-  Manage a VM.
+  Manage a VM/container.
 '
 EXEC_vmc='/usr/bin/concierge_client'
 cmd_vmc() (
@@ -510,14 +514,81 @@ cmd_vmc() (
       return 1
     fi
     ;;
+  container)
+    if [ $# -ne 2 -a $# -ne 4 ]; then
+      help "Specify the name of a VM and container and optionally image server and alias"
+      return 1
+    fi
+    local vm_name="$1"; shift
+    local container_name="$1"; shift
+    local image_server="https://storage.googleapis.com/cros-containers"
+    local image_alias="debian/stretch"
+    if [ $# -eq 2 ]; then
+      image_server="$1"; shift
+      image_alias="$1"; shift
+    fi
+
+    cicerone_client --create_lxd_container --vm_name="${vm_name}" \
+      --owner_id="${CROS_USER_ID_HASH}" --container_name="${container_name}" \
+      --image_server="${image_server}" --image_alias="${image_alias}" \
+      2>/dev/null
+    if [ $? -ne 0 ]; then
+      echo "Unable to create container"
+      return 1
+    fi
+
+    cicerone_client --start_lxd_container --vm_name="${vm_name}" \
+      --owner_id="${CROS_USER_ID_HASH}" --container_name="${container_name}" \
+      2>/dev/null
+    if [ $? -ne 0 ]; then
+      echo "Unable to start container"
+      return 1
+    fi
+
+    # Get the logged in username so we can create the user in the container.
+    local reply status
+    reply=$(dbus-send --system --type=method_call --print-reply \
+        --dest=org.chromium.SessionManager /org/chromium/SessionManager \
+        org.chromium.SessionManagerInterface.RetrieveActiveSessions 2>&1)
+    status=$?
+    if [ ${status} -ne 0 ]; then
+      echo "Error getting primary session: ${reply}"
+      return 1
+    fi
+    # Reply format:
+    # <dbus response header>\n
+    #    array [
+    #       dict entry(
+    #         string "email@example.com"
+    #         string "OWNER_ID_HASH"
+    #       )
+    #       ---repeated dict entries----
+    #    ]
+    local username
+    local sedexpr="s/.*string \"(.*)@.*"${CROS_USER_ID_HASH}".*/\1/p"
+    username=$(echo "${reply}" | tr '\n' ' ' | sed -n -E "${sedexpr}")
+
+    cicerone_client --set_up_lxd_user --vm_name="${vm_name}" \
+      --owner_id="${CROS_USER_ID_HASH}" --container_name="${container_name}" \
+      --container_username="${username}" 2>/dev/null
+    if [ $? -ne 0 ]; then
+      echo "Unable to set up user in container"
+      return 1
+    fi
+
+    # Give the user a shell in the container.
+    vsh --vm_name="${vm_name}" --owner_id="${CROS_USER_ID_HASH}" \
+      --target_container="${container_name}"
+    ;;
   *)
     echo "Unknown VM command: ${cmd}"
   esac
 )
 
-USAGE_vsh='<name>'
+USAGE_vsh='<vm_name> [<container_name>]'
 HELP_vsh='
-  Connect to a shell inside the VM <name>.
+  Connect to a shell inside the VM <vm_name>, or to a shell inside the container
+  <container_name> within the VM <vm_name>.
 '
 EXEC_vsh='/usr/bin/vsh'
 cmd_vsh() (
@@ -525,16 +596,22 @@ cmd_vsh() (
     echo "This command is not available."
     return 1
   fi
-  if [ $# -ne 1 ]; then
-    help "Missing name"
+  if [ $# -ne 1 -a $# -ne 2 ]; then
+    help "Missing vm_name"
     return 1
   fi
 
-  local name="$1"; shift
+  local vm_name="$1"; shift
+  if [ $# -eq 1 ]; then
+    local container_name="$1"; shift
+    vsh --vm_name="${vm_name}" --owner_id="${CROS_USER_ID_HASH}" \
+      --target_container="${container_name}"
+  else
+    vsh --vm_name="${vm_name}" --owner_id="${CROS_USER_ID_HASH}" -- \
+      LXD_DIR=/mnt/stateful/lxd \
+      LXD_CONF=/mnt/stateful/lxd_conf
+  fi
 
-  vsh --vm_name="${name}" --owner_id="${CROS_USER_ID_HASH}" -- \
-    LXD_DIR=/mnt/stateful/lxd \
-    LXD_CONF=/mnt/stateful/lxd_conf
 )
 
 # Set the vars to pass the unittests ...
