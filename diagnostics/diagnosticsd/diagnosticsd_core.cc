@@ -9,17 +9,65 @@
 #include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/threading/thread_task_runner_handle.h>
 #include <dbus/diagnosticsd/dbus-constants.h>
 #include <dbus/object_path.h>
 #include <mojo/public/cpp/system/message_pipe.h>
 
+#include "diagnostics/diagnosticsd/bind_utils.h"
+
 namespace diagnostics {
 
-DiagnosticsdCore::DiagnosticsdCore(Delegate* delegate) : delegate_(delegate) {
+DiagnosticsdCore::DiagnosticsdCore(
+    const std::string& grpc_service_uri,
+    const std::string& diagnostics_processor_grpc_uri,
+    Delegate* delegate)
+    : delegate_(delegate),
+      grpc_service_uri_(grpc_service_uri),
+      diagnostics_processor_grpc_uri_(diagnostics_processor_grpc_uri),
+      grpc_server_(base::ThreadTaskRunnerHandle::Get(), grpc_service_uri_) {
   DCHECK(delegate);
 }
 
 DiagnosticsdCore::~DiagnosticsdCore() = default;
+
+bool DiagnosticsdCore::StartGrpcCommunication() {
+  // Associate RPCs of the to-be-exposed gRPC interface with methods of
+  // |grpc_service_|.
+  grpc_server_.RegisterHandler(
+      &grpc_api::Diagnosticsd::AsyncService::RequestSendMessageToUi,
+      base::Bind(&DiagnosticsdGrpcService::SendMessageToUi,
+                 base::Unretained(&grpc_service_)));
+
+  // Start the gRPC server that listens for incoming gRPC requests.
+  VLOG(1) << "Starting gRPC server";
+  if (!grpc_server_.Start()) {
+    LOG(ERROR) << "Failed to start the gRPC server listening on "
+               << grpc_service_uri_;
+    return false;
+  }
+  VLOG(0) << "Successfully started gRPC server listening on "
+          << grpc_service_uri_;
+
+  // Start the gRPC client that talks to the diagnostics_processor daemon.
+  diagnostics_processor_grpc_client_ =
+      std::make_unique<AsyncGrpcClient<grpc_api::DiagnosticsProcessor>>(
+          base::ThreadTaskRunnerHandle::Get(), diagnostics_processor_grpc_uri_);
+  VLOG(0) << "Created gRPC diagnostics_processor client on "
+          << diagnostics_processor_grpc_uri_;
+
+  return true;
+}
+
+void DiagnosticsdCore::TearDownGrpcCommunication(
+    const base::Closure& on_torn_down) {
+  // Begin the graceful teardown of the gRPC server and client.
+  VLOG(1) << "Tearing down gRPC server and gRPC diagnostics_processor client";
+  // |on_torn_down| will be called after both Shutdown()s signal completion.
+  const base::Closure barrier_closure = BarrierClosure(2, on_torn_down);
+  grpc_server_.Shutdown(barrier_closure);
+  diagnostics_processor_grpc_client_->Shutdown(barrier_closure);
+}
 
 void DiagnosticsdCore::RegisterDBusObjectsAsync(
     const scoped_refptr<dbus::Bus>& bus,

@@ -28,7 +28,7 @@ class DiagnosticsdDaemon final : public brillo::DBusServiceDaemon {
 
   DiagnosticsdCoreDelegateImpl diagnosticsd_core_delegate_impl_{
       this /* daemon */};
-  DiagnosticsdCore diagnosticsd_core_{&diagnosticsd_core_delegate_impl_};
+  DiagnosticsdCore diagnosticsd_core_;
 
   DISALLOW_COPY_AND_ASSIGN(DiagnosticsdDaemon);
 };

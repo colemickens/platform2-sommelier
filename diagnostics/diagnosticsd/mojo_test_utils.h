@@ -6,6 +6,7 @@
 #define DIAGNOSTICS_DIAGNOSTICSD_MOJO_TEST_UTILS_H_
 
 #include <base/files/scoped_file.h>
+#include <base/macros.h>
 
 namespace diagnostics {
 
@@ -25,6 +26,8 @@ class FakeMojoFdGenerator final {
 
  private:
   base::ScopedFD fd_;
+
+  DISALLOW_COPY_AND_ASSIGN(FakeMojoFdGenerator);
 };
 
 }  // namespace diagnostics

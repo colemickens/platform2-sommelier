@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 
+#include <base/callback.h>
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
@@ -19,7 +20,11 @@
 #include "diagnostics/diagnosticsd/diagnosticsd_dbus_service.h"
 #include "diagnostics/diagnosticsd/diagnosticsd_grpc_service.h"
 #include "diagnostics/diagnosticsd/diagnosticsd_mojo_service.h"
+#include "diagnostics/grpc_async_adapter/async_grpc_client.h"
+#include "diagnostics/grpc_async_adapter/async_grpc_server.h"
 
+#include "diagnostics_processor.grpc.pb.h"  // NOLINT(build/include)
+#include "diagnosticsd.grpc.pb.h"           // NOLINT(build/include)
 #include "mojo/diagnosticsd.mojom.h"
 
 namespace diagnostics {
@@ -52,8 +57,23 @@ class DiagnosticsdCore final : public DiagnosticsdDBusService::Delegate,
     virtual void BeginDaemonShutdown() = 0;
   };
 
-  explicit DiagnosticsdCore(Delegate* delegate);
+  // |grpc_service_uri| is the URI on which the gRPC interface exposed by the
+  // diagnosticsd daemon will be listening.
+  // |diagnostics_processor_grpc_uri| is the URI which is used for making
+  // requests to the gRPC interface exposed by the diagnostics_processor daemon.
+  DiagnosticsdCore(const std::string& grpc_service_uri,
+                   const std::string& diagnostics_processor_grpc_uri,
+                   Delegate* delegate);
   ~DiagnosticsdCore() override;
+
+  // Starts gRPC servers and clients.
+  bool StartGrpcCommunication();
+
+  // Performs asynchronous shutdown and cleanup of gRPC servers and clients.
+  // This must be used before deleting this instance in case
+  // StartGrpcCommunication() was called and returned success - in that case,
+  // the instance must be destroyed only after |on_torn_down| has been called.
+  void TearDownGrpcCommunication(const base::Closure& on_torn_down);
 
   // Register the D-Bus object that the diagnosticsd daemon exposes and tie
   // methods exposed by this object with the actual implementation.
@@ -74,10 +94,34 @@ class DiagnosticsdCore final : public DiagnosticsdDBusService::Delegate,
 
   // Unowned. The delegate should outlive this instance.
   Delegate* const delegate_;
-  // Implementation of the D-Bus interface exposed by the diagnosticsd daemon.
-  DiagnosticsdDBusService dbus_service_{this /* delegate */};
+
+  // gRPC-related members:
+
+  // gRPC URI on which the |grpc_server_| is listening for incoming requests.
+  const std::string grpc_service_uri_;
+  // gRPC URI which is used by |diagnostics_processor_grpc_client_| for
+  // accessing the gRPC interface exposed by the diagnostics_processor daemon.
+  const std::string diagnostics_processor_grpc_uri_;
   // Implementation of the gRPC interface exposed by the diagnosticsd daemon.
   DiagnosticsdGrpcService grpc_service_{this /* delegate */};
+  // Connects |grpc_service_| with the gRPC server that listens for incoming
+  // requests.
+  AsyncGrpcServer<grpc_api::Diagnosticsd::AsyncService> grpc_server_;
+  // Allows to make outgoing requests to the gRPC interface exposed by the
+  // diagnostics_processor daemon.
+  std::unique_ptr<AsyncGrpcClient<grpc_api::DiagnosticsProcessor>>
+      diagnostics_processor_grpc_client_;
+
+  // D-Bus-related members:
+
+  // Implementation of the D-Bus interface exposed by the diagnosticsd daemon.
+  DiagnosticsdDBusService dbus_service_{this /* delegate */};
+  // Connects |dbus_service_| with the methods of the D-Bus object exposed by
+  // the diagnosticsd daemon.
+  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
+
+  // Mojo-related members:
+
   // Implementation of the Mojo interface exposed by the diagnosticsd daemon and
   // a proxy that allows sending outgoing Mojo requests.
   //
@@ -91,9 +135,6 @@ class DiagnosticsdCore final : public DiagnosticsdDBusService::Delegate,
   // during shutdown when |mojo_service_| and |mojo_service_binding_| may
   // already get destroyed.
   bool mojo_service_bind_attempted_ = false;
-  // Connects |dbus_service_| with the methods of the D-Bus object exposed by
-  // the diagnosticsd daemon.
-  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
 
   DISALLOW_COPY_AND_ASSIGN(DiagnosticsdCore);
 };

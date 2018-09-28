@@ -3,13 +3,17 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <string>
 #include <utility>
 
+#include <base/bind.h>
 #include <base/files/scoped_file.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
+#include <base/strings/stringprintf.h>
 #include <brillo/bind_lambda.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/dbus_method_invoker.h>
@@ -38,6 +42,12 @@ using testing::StrictMock;
 using testing::WithArg;
 
 namespace diagnostics {
+
+// Templates for the gRPC URIs that should be used for testing. "%s" is
+// substituted with a temporary directory.
+const char kDiagnosticsdGrpcUriTemplate[] = "unix:%s/test_diagnosticsd_socket";
+const char kDiagnosticsProcessorGrpcUriTemplate[] =
+    "unix:%s/test_diagnostics_processor_socket";
 
 using MojomDiagnosticsdService =
     chromeos::diagnostics::mojom::DiagnosticsdService;
@@ -68,7 +78,32 @@ class DiagnosticsdCoreTest : public testing::Test {
 
   ~DiagnosticsdCoreTest() { SetDBusShutdownExpectations(); }
 
-  void SetUp() override { SetUpDBus(); }
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+
+    const std::string grpc_service_uri = base::StringPrintf(
+        kDiagnosticsdGrpcUriTemplate, temp_dir_.GetPath().value().c_str());
+    const std::string diagnostics_processor_grpc_uri =
+        base::StringPrintf(kDiagnosticsProcessorGrpcUriTemplate,
+                           temp_dir_.GetPath().value().c_str());
+    core_ = std::make_unique<DiagnosticsdCore>(
+        grpc_service_uri, diagnostics_processor_grpc_uri, &core_delegate_);
+    ASSERT_TRUE(core_->StartGrpcCommunication());
+
+    SetUpDBus();
+  }
+
+  void TearDown() override {
+    base::RunLoop run_loop;
+    core_->TearDownGrpcCommunication(run_loop.QuitClosure());
+    run_loop.Run();
+  }
+
+  MockDiagnosticsdCoreDelegate* core_delegate() { return &core_delegate_; }
+
+  mojo::InterfacePtr<MojomDiagnosticsdService>* mojo_service_interface_ptr() {
+    return &mojo_service_interface_ptr_;
+  }
 
   // Call the BootstrapMojoConnection D-Bus method. Returns whether the D-Bus
   // call returned success.
@@ -123,20 +158,6 @@ class DiagnosticsdCoreTest : public testing::Test {
             }));
   }
 
-  base::MessageLoop message_loop_;
-
-  scoped_refptr<StrictMock<dbus::MockBus>> dbus_bus_ =
-      new StrictMock<dbus::MockBus>(dbus::Bus::Options());
-
-  // Mock D-Bus integration helper for the object exposed by the tested code.
-  scoped_refptr<StrictMock<dbus::MockExportedObject>> diagnosticsd_dbus_object_;
-
-  // Mojo interface to the service exposed by the tested code.
-  mojo::InterfacePtr<MojomDiagnosticsdService> mojo_service_interface_ptr_;
-
-  StrictMock<MockDiagnosticsdCoreDelegate> core_delegate_;
-  DiagnosticsdCore core_{&core_delegate_};
-
  private:
   // Initialize the Mojo subsystem.
   void InitializeMojo() { mojo::edk::Init(); }
@@ -174,7 +195,7 @@ class DiagnosticsdCoreTest : public testing::Test {
     // Run the tested code that exports D-Bus objects and methods.
     scoped_refptr<brillo::dbus_utils::AsyncEventSequencer> dbus_sequencer(
         new brillo::dbus_utils::AsyncEventSequencer());
-    core_.RegisterDBusObjectsAsync(dbus_bus_, dbus_sequencer.get());
+    core_->RegisterDBusObjectsAsync(dbus_bus_, dbus_sequencer.get());
 
     // Verify that required D-Bus methods are exported.
     EXPECT_FALSE(bootstrap_mojo_connection_dbus_method_.is_null());
@@ -184,6 +205,23 @@ class DiagnosticsdCoreTest : public testing::Test {
   void SetDBusShutdownExpectations() {
     EXPECT_CALL(*diagnosticsd_dbus_object_, Unregister());
   }
+
+  base::MessageLoop message_loop_;
+
+  base::ScopedTempDir temp_dir_;
+
+  scoped_refptr<StrictMock<dbus::MockBus>> dbus_bus_ =
+      new StrictMock<dbus::MockBus>(dbus::Bus::Options());
+
+  // Mock D-Bus integration helper for the object exposed by the tested code.
+  scoped_refptr<StrictMock<dbus::MockExportedObject>> diagnosticsd_dbus_object_;
+
+  // Mojo interface to the service exposed by the tested code.
+  mojo::InterfacePtr<MojomDiagnosticsdService> mojo_service_interface_ptr_;
+
+  StrictMock<MockDiagnosticsdCoreDelegate> core_delegate_;
+
+  std::unique_ptr<DiagnosticsdCore> core_;
 
   // Callback that the tested code exposed as the BootstrapMojoConnection D-Bus
   // method.
@@ -202,20 +240,20 @@ TEST_F(DiagnosticsdCoreTest, MojoBootstrapSuccess) {
   EXPECT_TRUE(
       CallBootstrapMojoConnectionDBusMethod(fake_mojo_fd_generator.MakeFd()));
 
-  EXPECT_TRUE(mojo_service_interface_ptr_);
+  EXPECT_TRUE(*mojo_service_interface_ptr());
 }
 
 // Test failure to bootstrap the Mojo service due to en error returned by
 // BindDiagnosticsdMojoService() delegate method.
 TEST_F(DiagnosticsdCoreTest, MojoBootstrapErrorToBind) {
   FakeMojoFdGenerator fake_mojo_fd_generator;
-  EXPECT_CALL(core_delegate_, BindDiagnosticsdMojoServiceImpl(_, _))
+  EXPECT_CALL(*core_delegate(), BindDiagnosticsdMojoServiceImpl(_, _))
       .WillOnce(Return(nullptr));
-  EXPECT_CALL(core_delegate_, BeginDaemonShutdown());
+  EXPECT_CALL(*core_delegate(), BeginDaemonShutdown());
 
   EXPECT_FALSE(
       CallBootstrapMojoConnectionDBusMethod(fake_mojo_fd_generator.MakeFd()));
-  Mock::VerifyAndClearExpectations(&core_delegate_);
+  Mock::VerifyAndClearExpectations(core_delegate());
 }
 
 // Test that second attempt to bootstrap the Mojo service results in error and
@@ -226,14 +264,14 @@ TEST_F(DiagnosticsdCoreTest, MojoBootstrapErrorRepeated) {
 
   EXPECT_TRUE(CallBootstrapMojoConnectionDBusMethod(
       first_fake_mojo_fd_generator.MakeFd()));
-  Mock::VerifyAndClearExpectations(&core_delegate_);
+  Mock::VerifyAndClearExpectations(core_delegate());
 
   FakeMojoFdGenerator second_fake_mojo_fd_generator;
-  EXPECT_CALL(core_delegate_, BeginDaemonShutdown());
+  EXPECT_CALL(*core_delegate(), BeginDaemonShutdown());
 
   EXPECT_FALSE(CallBootstrapMojoConnectionDBusMethod(
       second_fake_mojo_fd_generator.MakeFd()));
-  Mock::VerifyAndClearExpectations(&core_delegate_);
+  Mock::VerifyAndClearExpectations(core_delegate());
 }
 
 // Test that the daemon gets shut down when the previously bootstrapped Mojo
@@ -244,15 +282,15 @@ TEST_F(DiagnosticsdCoreTest, MojoBootstrapSuccessThenAbort) {
 
   EXPECT_TRUE(
       CallBootstrapMojoConnectionDBusMethod(fake_mojo_fd_generator.MakeFd()));
-  Mock::VerifyAndClearExpectations(&core_delegate_);
+  Mock::VerifyAndClearExpectations(core_delegate());
 
-  EXPECT_CALL(core_delegate_, BeginDaemonShutdown());
+  EXPECT_CALL(*core_delegate(), BeginDaemonShutdown());
 
-  // Abort the Mojo connection by closing the |mojo_service_interface_ptr_|
+  // Abort the Mojo connection by closing the |mojo_service_interface_ptr()|
   // endpoint.
-  mojo_service_interface_ptr_.reset();
+  mojo_service_interface_ptr()->reset();
   base::RunLoop().RunUntilIdle();
-  Mock::VerifyAndClearExpectations(&core_delegate_);
+  Mock::VerifyAndClearExpectations(core_delegate());
 }
 
 }  // namespace diagnostics
