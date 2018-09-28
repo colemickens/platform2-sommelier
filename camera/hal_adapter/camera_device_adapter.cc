@@ -352,11 +352,11 @@ int32_t CameraDeviceAdapter::Close() {
   if (device_closed_) {
     return 0;
   }
+  reprocess_effect_thread_.Stop();
   int32_t ret = camera_device_->common.close(&camera_device_->common);
   device_closed_ = true;
   DCHECK_EQ(ret, 0);
   fence_sync_thread_.Stop();
-  reprocess_effect_thread_.Stop();
   close_callback_.Run();
   return ret;
 }
