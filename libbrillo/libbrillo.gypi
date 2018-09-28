@@ -55,7 +55,10 @@
           ],
         },
       },
-      'libraries': ['-lmodp_b64'],
+      'libraries': [
+        '-lmodp_b64',
+        '-lrootdev',
+      ],
       'sources': [
         'brillo/asynchronous_signal_handler.cc',
         'brillo/backoff_entry.cc',
@@ -99,6 +102,7 @@
             'brillo/dbus/exported_object_manager.cc',
             'brillo/dbus/exported_property_set.cc',
             'brillo/dbus/utils.cc',
+            'brillo/update_engine/utils.cc',
           ],
         }],
       ],
@@ -423,6 +427,7 @@
                 'brillo/dbus/exported_property_set_unittest.cc',
                 'brillo/http/http_proxy_unittest.cc',
                 'brillo/type_name_undecorate_unittest.cc',
+                'brillo/update_engine/utils_unittest.cc',
                 'brillo/variant_dictionary_unittest.cc',
                 '<(proto_in_dir)/test.proto',
               ],
