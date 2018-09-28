@@ -23,6 +23,7 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/threading/thread_task_runner_handle.h>
@@ -200,6 +201,20 @@ std::string ReplaceLocalhostInUrl(const std::string& url,
   }
   auto port_check = url.find(':', front);
   if (port_check != std::string::npos && port_check < back) {
+    // Check if this port is one we already map to localhost, and if so then
+    // do not do the replacement.
+    if (alt_host == kDefaultContainerHostname) {
+      int port;
+      if (base::StringToInt(url.substr(port_check + 1, back - (port_check + 1)),
+                            &port)) {
+        if (std::find(kStaticForwardPorts,
+                      kStaticForwardPorts + sizeof(kStaticForwardPorts),
+                      port) !=
+            kStaticForwardPorts + sizeof(kStaticForwardPorts)) {
+          return url;
+        }
+      }
+    }
     back = port_check;
   }
   // We don't care about URL validity, but our logic should ensure that front
