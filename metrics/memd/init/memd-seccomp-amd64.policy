@@ -10,6 +10,7 @@ access: 1
 arch_prctl: 1
 brk: 1
 clock_getres: 1
+clock_gettime: 1
 close: 1
 connect: 1
 fcntl: 1
