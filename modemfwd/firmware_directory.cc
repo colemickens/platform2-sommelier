@@ -8,7 +8,9 @@
 #include <utility>
 
 #include <base/files/file_path.h>
+#include <base/logging.h>
 #include <base/macros.h>
+#include <cros_config/cros_config.h>
 
 #include "modemfwd/proto_bindings/firmware_manifest.pb.h"
 #include "modemfwd/proto_file_io.h"
@@ -16,6 +18,28 @@
 namespace {
 
 const char kManifestName[] = "firmware_manifest.prototxt";
+
+// Returns the modem firmware variant for the current model of the device by
+// reading the /modem/firmware-variant property of the current model via
+// chromeos-config. Returns an empty string if it fails to read the modem
+// firmware variant from chromeos-config or no modem firmware variant is
+// specified.
+std::string GetModemFirmwareVariant() {
+  brillo::CrosConfig config;
+  if (!config.InitModel()) {
+    LOG(WARNING) << "Failed to load Chrome OS configuration";
+    return std::string();
+  }
+
+  std::string variant;
+  if (!config.GetString("/modem", "firmware-variant", &variant)) {
+    LOG(INFO) << "No modem firmware variant is specified";
+    return std::string();
+  }
+
+  LOG(INFO) << "Use modem firmware variant: " << variant;
+  return variant;
+}
 
 }  // namespace
 
@@ -27,15 +51,18 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
  public:
   FirmwareDirectoryImpl(const FirmwareManifest& manifest,
                         const base::FilePath& directory)
-      : manifest_(manifest), directory_(directory) {}
+      : manifest_(manifest),
+        directory_(directory),
+        variant_(GetModemFirmwareVariant()) {}
 
   // modemfwd::FirmwareDirectory overrides.
   bool FindMainFirmware(const std::string& device_id,
                         FirmwareFileInfo* out_info) override {
     DCHECK(out_info);
     for (const MainFirmware& file_info : manifest_.main_firmware()) {
-      if (file_info.device_id() == device_id && !file_info.filename().empty() &&
-          !file_info.version().empty()) {
+      if (file_info.device_id() == device_id &&
+          (file_info.variant().empty() || file_info.variant() == variant_) &&
+          !file_info.filename().empty() && !file_info.version().empty()) {
         out_info->firmware_path = directory_.Append(file_info.filename());
         out_info->version = file_info.version();
         return true;
@@ -66,8 +93,9 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
                                    FirmwareFileInfo* out_info) {
     DCHECK(out_info);
     for (const CarrierFirmware& file_info : manifest_.carrier_firmware()) {
-      if (file_info.device_id() != device_id || file_info.filename().empty() ||
-          file_info.version().empty()) {
+      if (file_info.device_id() != device_id ||
+          (!file_info.variant().empty() && file_info.variant() != variant_) ||
+          file_info.filename().empty() || file_info.version().empty()) {
         continue;
       }
 
@@ -85,6 +113,7 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
 
   FirmwareManifest manifest_;
   base::FilePath directory_;
+  std::string variant_;
 
   DISALLOW_COPY_AND_ASSIGN(FirmwareDirectoryImpl);
 };

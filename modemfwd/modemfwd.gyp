@@ -8,6 +8,7 @@
       'deps': [
         'libchrome-<(libbase_ver)',
         'libbrillo-<(libbase_ver)',
+        'libcros_config',
         'libshill-client',
         # system_api depends on protobuf. It must appear before protobuf
         # here or the linker flags won't be in the right order.
