@@ -28,18 +28,18 @@ StreamOutputTask::StreamOutputTask():
     mCaptureDoneCount(0)
 
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 }
 
 StreamOutputTask::~StreamOutputTask()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 }
 
 status_t
 StreamOutputTask::notifyPUTaskEvent(PUTaskMessage *puMsg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     std::shared_ptr<CameraBuffer> buffer;
     Camera3Request* request;
     CameraStream *stream;
@@ -95,7 +95,7 @@ StreamOutputTask::notifyPUTaskEvent(PUTaskMessage *puMsg)
 
 void StreamOutputTask::cleanListeners()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     cleanListener();
 }
 

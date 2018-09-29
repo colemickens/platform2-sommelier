@@ -52,7 +52,7 @@ AAARunner::AAARunner(int camerId, Intel3aPlus *aaaWrapper, SettingsProcessor *se
         mDigiGainOnSensor(false),
         mPrecaptureResultRequestId(PRECAPTURE_ID_INVAL)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     CLEAR(mResizeLscGridR);
     CLEAR(mResizeLscGridGr);
@@ -67,7 +67,7 @@ AAARunner::AAARunner(int camerId, Intel3aPlus *aaaWrapper, SettingsProcessor *se
 
 status_t AAARunner::init(bool digiGainOnSensor)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     mLatestInputParams.init();
     /*
@@ -94,7 +94,7 @@ status_t AAARunner::init(bool digiGainOnSensor)
 
 AAARunner::~AAARunner()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     m3aWrapper = nullptr;
 
@@ -119,7 +119,7 @@ AAARunner::~AAARunner()
  */
 status_t AAARunner::run2A(RequestCtrlState &reqState, bool forceUpdated)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
     status_t status = NO_ERROR;
     int prevExposure = 0;
@@ -334,7 +334,7 @@ status_t AAARunner::run2A(RequestCtrlState &reqState, bool forceUpdated)
  */
 void AAARunner::runAf(RequestCtrlState &reqState)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
     status_t status = OK;
     bool fixedFocus = (m3aWrapper->getMinFocusDistance() == 0.0f);
@@ -412,7 +412,7 @@ exit:
  */
 status_t AAARunner::processAeResults(RequestCtrlState &reqState)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
     if (reqState.request == nullptr) {
         LOGE("Request is nullptr");
@@ -718,7 +718,7 @@ status_t AAARunner::processAwbResults(RequestCtrlState &reqState)
  */
 status_t AAARunner::applyTonemaps(RequestCtrlState &reqState)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     status_t status = OK;
 
     /*
@@ -913,7 +913,7 @@ status_t AAARunner::updateNeutralColorPoint(RequestCtrlState &reqAiqCfg)
 
 void AAARunner::applyDigitalGain(RequestCtrlState &reqState, float digitalGain) const
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     ia_aiq_sa_results &saResults = reqState.captureSettings->aiqResults.saResults;
     uint32_t lscSize = saResults.width * saResults.height;
     for (uint32_t i = 0; i < lscSize; i++) {
@@ -943,7 +943,7 @@ status_t AAARunner::allocateLscTable(int tableSize)
 
 void AAARunner::initLsc(AiqResults &results, uint32_t lscSize) const
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     ia_aiq_sa_results &saResults = results.saResults;
     for (uint32_t i = 0; i < lscSize; i++) {
         saResults.channel_b[i]  = 1.0f;

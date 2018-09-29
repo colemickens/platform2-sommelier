@@ -35,18 +35,18 @@ StatisticsWorker::StatisticsWorker(std::shared_ptr<cros::V4L2VideoNode> node, in
         mAfFilterBuffPool(afFilterBuffPool),
         mRgbsGridBuffPool(rgbsGridBuffPool)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     mPollMe = true;
 }
 
 StatisticsWorker::~StatisticsWorker()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 }
 
 status_t StatisticsWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     FrameInfo frame;
     int page_size = getpagesize();
     frame.width = sizeof(ipu3_uapi_stats_3a) + page_size - (sizeof(ipu3_uapi_stats_3a) % page_size);
@@ -79,7 +79,7 @@ status_t StatisticsWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
 
 status_t StatisticsWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     mMsg = msg;
 
     status_t status = OK;
@@ -98,7 +98,7 @@ status_t StatisticsWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
 
 status_t StatisticsWorker::run()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     if (!mMsg) {
         LOGE("Message is not set - Fix the bug");
         return UNKNOWN_ERROR;

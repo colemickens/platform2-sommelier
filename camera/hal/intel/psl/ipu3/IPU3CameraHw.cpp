@@ -47,19 +47,19 @@ IPU3CameraHw::IPU3CameraHw(int cameraId):
         mOperationMode(0),
         mTestPatternMode(ANDROID_SENSOR_TEST_PATTERN_MODE_OFF)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 }
 
 IPU3CameraHw::~IPU3CameraHw()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     deInit();
 }
 
 status_t
 IPU3CameraHw::init()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     status_t status = NO_ERROR;
 
     std::string sensorMediaDevice = PSLConfParser::getSensorMediaDevice();
@@ -115,7 +115,7 @@ IPU3CameraHw::init()
 void
 IPU3CameraHw::deInit()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     if (mImguUnit) {
         mImguUnit->cleanListener();
         mImguUnit->flush();
@@ -156,13 +156,13 @@ IPU3CameraHw::deInit()
 const camera_metadata_t *
 IPU3CameraHw::getDefaultRequestSettings(int type)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     return PlatformData::getDefaultMetadata(mCameraId, type);
 }
 
 status_t IPU3CameraHw::checkStreamSizes(std::vector<camera3_stream_t*> &activeStreams)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     int32_t count;
 
@@ -243,7 +243,7 @@ status_t
 IPU3CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
                             uint32_t operation_mode)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     uint32_t maxBufs, usage;
 
     if (checkStreamSizes(activeStreams) != OK)
@@ -287,7 +287,7 @@ IPU3CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
 status_t
 IPU3CameraHw::bindStreams(std::vector<CameraStreamNode *> activeStreams)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     status_t status = NO_ERROR;
 
     mDummyHwStreamsVector.clear();
@@ -306,7 +306,7 @@ IPU3CameraHw::bindStreams(std::vector<CameraStreamNode *> activeStreams)
 status_t
 IPU3CameraHw::processRequest(Camera3Request* request, int inFlightCount)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     if (inFlightCount > mPipelineDepth) {
         LOG2("@%s:blocking request %d", __FUNCTION__, request->getId());
         return RequestThread::REQBLK_WAIT_ONE_REQUEST_COMPLETED;
@@ -398,7 +398,7 @@ IPU3CameraHw::dump(int fd)
 status_t
 IPU3CameraHw::initStaticMetadata(void)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     status_t status = NO_ERROR;
     /**

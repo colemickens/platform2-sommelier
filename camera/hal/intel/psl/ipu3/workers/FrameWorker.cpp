@@ -48,7 +48,7 @@ status_t FrameWorker::configure(std::shared_ptr<GraphConfig> & /*config*/)
 
 status_t FrameWorker::startWorker()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     status_t ret = mNode->Start();
     if (ret != OK) {
         LOGE("Unable to start device: %s ret: %d", mNode->Name().c_str(), ret);
@@ -64,7 +64,7 @@ status_t FrameWorker::stopWorker()
 
 status_t FrameWorker::setWorkerDeviceFormat(FrameInfo &frame)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     cros::V4L2Format v4l2_fmt;
     v4l2_fmt.SetWidth(frame.width);

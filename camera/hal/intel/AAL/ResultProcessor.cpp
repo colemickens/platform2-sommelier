@@ -32,7 +32,7 @@ ResultProcessor::ResultProcessor(RequestThread * aReqThread,
     mPartialResultCount(0),
     mNextRequestId(0)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     mReqStatePool.init(MAX_REQUEST_IN_TRANSIT);
     if (!mCameraThread.Start()) {
         LOGE("Camera thread failed to start");
@@ -41,7 +41,7 @@ ResultProcessor::ResultProcessor(RequestThread * aReqThread,
 
 ResultProcessor::~ResultProcessor()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     mCameraThread.Stop();
     mRequestsPendingMetaReturn.clear();
     mRequestsInTransit.clear();
@@ -55,7 +55,7 @@ ResultProcessor::~ResultProcessor()
  */
 status_t ResultProcessor::requestExitAndWait(void)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     status_t status = NO_ERROR;
     base::Callback<status_t()> closure =
             base::Bind(&ResultProcessor::handleExit, base::Unretained(this));
@@ -65,7 +65,7 @@ status_t ResultProcessor::requestExitAndWait(void)
 
 status_t ResultProcessor::handleExit(void)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     while ((mRequestsInTransit.size()) != 0) {
         recycleRequest((mRequestsInTransit.begin()->second)->request);
     }
@@ -90,7 +90,7 @@ status_t ResultProcessor::handleExit(void)
  */
 status_t ResultProcessor::registerRequest(Camera3Request *request)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_REQ_STATE);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_REQ_STATE, LOG_TAG);
     MessageRegisterRequest msg;
     msg.request = request;
     status_t status = NO_ERROR;
@@ -137,7 +137,7 @@ status_t ResultProcessor::handleRegisterRequest(MessageRegisterRequest msg)
 status_t ResultProcessor::shutterDone(Camera3Request* request,
                                       int64_t timestamp)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_REQ_STATE);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_REQ_STATE, LOG_TAG);
     MessageShutterDone msg;
     msg.request = request;
     msg.time = timestamp;
@@ -217,7 +217,7 @@ void ResultProcessor::returnShutterDone(RequestState_t* reqState)
 status_t ResultProcessor::metadataDone(Camera3Request* request,
                                        int resultIndex)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_REQ_STATE);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_REQ_STATE, LOG_TAG);
     MessageMetadataDone msg;
     msg.request = request;
     msg.resultIndex = resultIndex;
@@ -331,7 +331,7 @@ status_t ResultProcessor::returnStoredPartials()
 status_t ResultProcessor::bufferDone(Camera3Request* request,
                                      std::shared_ptr<CameraBuffer> buffer)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_REQ_STATE);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_REQ_STATE, LOG_TAG);
     MessageBufferDone msg;
     msg.request = request;
     msg.buffer = buffer;
@@ -353,7 +353,7 @@ status_t ResultProcessor::bufferDone(Camera3Request* request,
  */
 status_t ResultProcessor::handleBufferDone(MessageBufferDone msg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_REQ_STATE);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_REQ_STATE, LOG_TAG);
     status_t status = NO_ERROR;
     Camera3Request* request = msg.request;
     std::shared_ptr<CameraBuffer> buffer = msg.buffer;
@@ -588,7 +588,7 @@ status_t ResultProcessor::recycleRequest(Camera3Request *req)
 
 status_t ResultProcessor::deviceError(void)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_REQ_STATE);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_REQ_STATE, LOG_TAG);
     base::Callback<void()> closure =
             base::Bind(&ResultProcessor::handleDeviceError,
                        base::Unretained(this));

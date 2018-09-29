@@ -45,7 +45,7 @@ MediaCtlHelper::~MediaCtlHelper()
 status_t MediaCtlHelper::configure(IStreamConfigProvider &graphConfigMgr,
                                    IStreamConfigProvider::MediaType type)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     LOG1("@%s, media type: %d", __FUNCTION__, type);
 
     mPipeType = type;

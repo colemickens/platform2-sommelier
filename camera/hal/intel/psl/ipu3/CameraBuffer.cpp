@@ -205,7 +205,7 @@ status_t CameraBuffer::deinit()
 
 CameraBuffer::~CameraBuffer()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     if (mInit) {
         switch(mType) {
@@ -294,7 +294,7 @@ status_t CameraBuffer::deregisterBuffer()
  */
 status_t CameraBuffer::lock(int flags)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     mDataPtr = nullptr;
     mSize = 0;
     int ret = 0;
@@ -340,7 +340,7 @@ status_t CameraBuffer::lock(int flags)
 
 status_t CameraBuffer::lock()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     status_t status;
     int lockMode;
 
@@ -378,7 +378,7 @@ status_t CameraBuffer::lock()
 
 status_t CameraBuffer::unlock()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     if (mLocked && mType != BUF_TYPE_HANDLE) {
          mLocked = false;
          return NO_ERROR;
@@ -447,7 +447,7 @@ allocateHeapBuffer(int w,
                    int cameraId,
                    int dataSizeOverride)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     void *dataPtr;
 
     int dataSize = dataSizeOverride ? dataSizeOverride : frameSize(v4l2Fmt, s, h);
@@ -472,7 +472,7 @@ allocateHandleBuffer(int w,
                      int usage,
                      int cameraId)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     cros::CameraBufferManager* bufManager = cros::CameraBufferManager::GetInstance();
     buffer_handle_t handle;
     uint32_t stride = 0;

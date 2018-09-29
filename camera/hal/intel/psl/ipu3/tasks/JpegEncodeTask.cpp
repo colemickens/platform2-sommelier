@@ -31,12 +31,12 @@ JpegEncodeTask::JpegEncodeTask(int cameraId):
     mJpegMaker(nullptr),
     mCameraId(cameraId)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 }
 
 JpegEncodeTask::~JpegEncodeTask()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     if (mJpegMaker != nullptr) {
         delete mJpegMaker;
@@ -50,7 +50,7 @@ JpegEncodeTask::~JpegEncodeTask()
 status_t
 JpegEncodeTask::init()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     status_t status = NO_ERROR;
 
     mImgEncoder = std::make_shared<ImgEncoder>(mCameraId);
@@ -230,7 +230,7 @@ void JpegEncodeTask::readExifInfoFromAndroidResult(const CameraMetadata &result,
 status_t
 JpegEncodeTask::handleMessageNewJpegInput(ITaskEventListener::PUTaskEvent &msg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     status_t status = NO_ERROR;
 
     LOG1("begin jpeg encoder");
@@ -308,7 +308,7 @@ JpegEncodeTask::handleMessageNewJpegInput(ITaskEventListener::PUTaskEvent &msg)
  */
 AwbMode JpegEncodeTask::convertAwbMode(const uint8_t androidAwb) const
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     AwbMode cameraAwb = CAM_AWB_MODE_NOT_SET;
 
     cameraAwb =

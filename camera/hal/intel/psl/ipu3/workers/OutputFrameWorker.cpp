@@ -37,7 +37,7 @@ OutputFrameWorker::OutputFrameWorker(std::shared_ptr<cros::V4L2VideoNode> node, 
                 mProcessor(cameraId),
                 mCameraThread("OutputFrameWorker" + std::to_string(nodeName))
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     if (mNode) {
         LOG1("@%s, node name:%d, device name:%s, mStream:%p", __FUNCTION__,
         nodeName, mNode->Name().c_str(), mStream);
@@ -54,7 +54,7 @@ OutputFrameWorker::OutputFrameWorker(std::shared_ptr<cros::V4L2VideoNode> node, 
 
 OutputFrameWorker::~OutputFrameWorker()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     mCameraThread.Stop();
 }
 
@@ -73,7 +73,7 @@ void OutputFrameWorker::clearListeners()
 
 status_t OutputFrameWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     status_t ret = mNode->GetFormat(&mFormat);
     if (ret != OK)
@@ -133,7 +133,7 @@ status_t OutputFrameWorker::configure(std::shared_ptr<GraphConfig> &/*config*/)
 
 status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     mMsg = msg;
     mPollMe = false;
     status_t status = NO_ERROR;
@@ -197,7 +197,7 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
 
 status_t OutputFrameWorker::run()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     if (mMsg == nullptr) {
         LOGE("Message not found - Fix the bug");
         return UNKNOWN_ERROR;
@@ -217,7 +217,7 @@ status_t OutputFrameWorker::run()
 
 status_t OutputFrameWorker::postRun()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
     mIndex = (mIndex + 1) % mPipelineDepth;
 
@@ -693,7 +693,7 @@ status_t OutputFrameWorker::SWPostProcessor::convertJpeg(
                                std::shared_ptr<CameraBuffer> output,
                                Camera3Request *request)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     ITaskEventListener::PUTaskEvent msg;
     msg.buffer = output;
     msg.jpegInputbuffer = input;

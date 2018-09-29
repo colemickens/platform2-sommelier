@@ -27,7 +27,7 @@ IntelAWBStateMachine::IntelAWBStateMachine(int aCameraId):
         mCurrentAwbState(0),
         mCurrentAwbMode(nullptr)
 {
-    HAL_TRACE_CALL_PRETTY(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     mCurrentAwbMode = &mAutoMode;
     CLEAR(mLastAwbControls);
     mLastAwbControls.awbMode = ANDROID_CONTROL_AWB_MODE_AUTO;
@@ -35,7 +35,7 @@ IntelAWBStateMachine::IntelAWBStateMachine(int aCameraId):
 
 IntelAWBStateMachine::~IntelAWBStateMachine()
 {
-    HAL_TRACE_CALL_PRETTY(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 }
 
 status_t
@@ -99,13 +99,13 @@ IntelAWBModeBase::IntelAWBModeBase():
         mCurrentAwbState(ANDROID_CONTROL_AWB_STATE_INACTIVE)
 {
     CLEAR(mLastAwbControls);
-    HAL_TRACE_CALL_PRETTY(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 }
 
 void
 IntelAWBModeBase::updateResult(CameraMetadata& results)
 {
-    HAL_TRACE_CALL_PRETTY(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
     LOG2("%s: current AWB state is: %s", __FUNCTION__,
          META_CONTROL2STR(awbState, mCurrentAwbState));
@@ -121,7 +121,7 @@ IntelAWBModeBase::updateResult(CameraMetadata& results)
 void
 IntelAWBModeBase::resetState()
 {
-    HAL_TRACE_CALL_PRETTY(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     mCurrentAwbState = ANDROID_CONTROL_AWB_STATE_INACTIVE;
 }
 
@@ -132,14 +132,14 @@ IntelAWBModeBase::resetState()
 
 IntelAWBModeOff::IntelAWBModeOff():IntelAWBModeBase()
 {
-    HAL_TRACE_CALL_PRETTY(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 }
 
 status_t
 IntelAWBModeOff::processState(const uint8_t &controlMode,
                               const AwbControls &awbControls)
 {
-    HAL_TRACE_CALL_PRETTY(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     status_t status = OK;
 
     mLastAwbControls = awbControls;
@@ -161,7 +161,7 @@ IntelAWBModeOff::processResult(const ia_aiq_awb_results& awbResults,
                                CameraMetadata& result)
 {
     UNUSED(awbResults);
-    HAL_TRACE_CALL_PRETTY(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
     mCurrentAwbState = ANDROID_CONTROL_AWB_STATE_INACTIVE;
     updateResult(result);
@@ -175,7 +175,7 @@ IntelAWBModeOff::processResult(const ia_aiq_awb_results& awbResults,
 
 IntelAWBModeAuto::IntelAWBModeAuto():IntelAWBModeBase()
 {
-    HAL_TRACE_CALL_PRETTY(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 }
 
 status_t

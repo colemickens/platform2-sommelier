@@ -43,12 +43,12 @@ SensorHwOp::SensorHwOp(std::shared_ptr<cros::V4L2Subdevice> pixelArraySubdev):
    pHBlankReadOnly(false),
    pVBlankReadOnly(false)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 }
 
 SensorHwOp::~SensorHwOp()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 }
 
 /************* V4L2 wrapper *******************/
@@ -65,7 +65,7 @@ int SensorHwOp::getActivePixelArraySize(int &width,
                                         int &height,
                                         int &code)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     int status = BAD_VALUE;
 
     status = pPixelArraySubdev->GetPadFormat(0, &width, &height, &code);
@@ -80,7 +80,7 @@ int SensorHwOp::getActivePixelArraySize(int &width,
  */
 status_t SensorHwOp::updateMembers()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     int status = BAD_VALUE;
     int code = 0;
     v4l2_queryctrl control;
@@ -126,7 +126,7 @@ status_t SensorHwOp::updateMembers()
  */
 int SensorHwOp::getSensorOutputSize(int &width, int &height, int &code)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     int status = BAD_VALUE;
 
     status = pPixelArraySubdev->GetPadFormat(0, &width, &height, &code);
@@ -143,7 +143,7 @@ int SensorHwOp::getSensorOutputSize(int &width, int &height, int &code)
  */
 int SensorHwOp::getPixelRate(int &pixel_rate)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
     return pPixelArraySubdev->GetControl(V4L2_CID_PIXEL_RATE, &pixel_rate);
 }
@@ -157,7 +157,7 @@ int SensorHwOp::getPixelRate(int &pixel_rate)
  */
 int SensorHwOp::getLinkFreq(int &link_freq)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
     return pPixelArraySubdev->GetControl(V4L2_CID_LINK_FREQ, &link_freq);
 }
@@ -171,7 +171,7 @@ int SensorHwOp::getLinkFreq(int &link_freq)
  */
 int SensorHwOp::getPixelClock(int64_t &pixel_clock)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     int ret = BAD_VALUE;
     int link_freq = 0;
     v4l2_querymenu menu;
@@ -202,7 +202,7 @@ int SensorHwOp::getPixelClock(int64_t &pixel_clock)
  */
 int SensorHwOp::setExposure(int coarse_exposure, int fine_exposure)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     UNUSED(fine_exposure);
     int ret = BAD_VALUE;
 
@@ -223,7 +223,7 @@ int SensorHwOp::setExposure(int coarse_exposure, int fine_exposure)
  */
 int SensorHwOp::getExposure(int &coarse_exposure, int &fine_exposure)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     int ret = BAD_VALUE;
 
     ret = pPixelArraySubdev->GetControl(V4L2_CID_EXPOSURE, &coarse_exposure);
@@ -246,7 +246,7 @@ int SensorHwOp::getExposure(int &coarse_exposure, int &fine_exposure)
  */
 int SensorHwOp::getExposureRange(int &exposure_min, int &exposure_max, int &exposure_step)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     int ret = BAD_VALUE;
     v4l2_queryctrl exposure;
     CLEAR(exposure);
@@ -276,7 +276,7 @@ int SensorHwOp::getExposureRange(int &exposure_min, int &exposure_max, int &expo
  */
 int SensorHwOp::setGains(int analog_gain, int digital_gain)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     int ret = BAD_VALUE;
 
     ret = pPixelArraySubdev->SetControl(V4L2_CID_ANALOGUE_GAIN, analog_gain);
@@ -298,7 +298,7 @@ int SensorHwOp::setGains(int analog_gain, int digital_gain)
  */
 int SensorHwOp::getGains(int &analog_gain, int &digital_gain)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     int ret = BAD_VALUE;
 
     ret = pPixelArraySubdev->GetControl(V4L2_CID_ANALOGUE_GAIN, &analog_gain);
@@ -319,7 +319,7 @@ int SensorHwOp::getGains(int &analog_gain, int &digital_gain)
  */
 status_t SensorHwOp::setFrameDuration(unsigned int llp, unsigned int fll)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     status_t status = OK;
     status_t statusH = OK;
     status_t statusV = OK;
@@ -357,7 +357,7 @@ status_t SensorHwOp::setFrameDuration(unsigned int llp, unsigned int fll)
  */
 status_t SensorHwOp::getMinimumFrameDuration(unsigned int &llp, unsigned int &fll)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     status_t status = OK;
     status_t statusH = OK;
     status_t statusV = OK;
@@ -402,7 +402,7 @@ status_t SensorHwOp::getMinimumFrameDuration(unsigned int &llp, unsigned int &fl
  */
 int SensorHwOp::getVBlank(unsigned int &vblank)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     vblank = pVertBlank;
 
     return OK;
@@ -417,7 +417,7 @@ int SensorHwOp::getVBlank(unsigned int &vblank)
  */
 int SensorHwOp::getHBlank(unsigned int &hblank)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     hblank = pHorzBlank;
 
     return OK;
@@ -432,7 +432,7 @@ int SensorHwOp::getHBlank(unsigned int &hblank)
  */
 int SensorHwOp::getAperture(int &aperture)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     return pPixelArraySubdev->GetControl(V4L2_CID_IRIS_ABSOLUTE, &aperture);
 }
 
@@ -456,7 +456,7 @@ status_t SensorHwOp::updateFrameTimings()
  */
 status_t SensorHwOp::setSensorFT(int width, int height)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
     pSensorFTWidth = width;
     pSensorFTHeight = height;

@@ -196,24 +196,27 @@ bool __setEnviromentValue(const char* variable, const char* value);
 
 class ScopedTrace {
 public:
-inline ScopedTrace(int level, const char* name) :
+inline ScopedTrace(int level, const char* name, const char* tag) :
         mLevel(level),
-        mName(name) {
+        mName(name),
+        mTag(tag) {
     if (gLogLevel & mLevel) {
-        VLOG(3) << base::StringPrintf(LOG_HEADER "ENTER-%s", "D/", CAMHAL_TAG, mName);
+        VLOG(3) << base::StringPrintf("%s %s%s:" "ENTER-%s", "D/", CAMHAL_PREFIX, mTag, mName);
     }
 }
 
 inline ~ScopedTrace() {
     if (gLogLevel & mLevel) {
-        VLOG(3) << base::StringPrintf(LOG_HEADER "EXIT-%s", "D/", CAMHAL_TAG, mName);
+        VLOG(3) << base::StringPrintf("%s %s%s:" "EXIT-%s", "D/", CAMHAL_PREFIX, mTag, mName);
     }
 }
 
 private:
     int mLevel;
     const char* mName;
+    const char* mTag;
 };
+
 
 } // namespace LogHelper
 
@@ -256,12 +259,7 @@ private:
     VLOG(3) << base::StringPrintf(LOG_HEADER, "D/", CAMHAL_TAG) \
             << base::StringPrintf(__VA_ARGS__)
 
-// CAMTRACE_NAME traces the beginning and end of the current scope.  To trace
-// the correct start and end times this macro should be declared first in the
-// scope body.
-#define HAL_TRACE_NAME(level, name) LogHelper::ScopedTrace ___tracer(level, name )
-#define HAL_TRACE_CALL(level) HAL_TRACE_NAME(level, __FUNCTION__)
-#define HAL_TRACE_CALL_PRETTY(level) HAL_TRACE_NAME(level, __PRETTY_FUNCTION__)
+#define HAL_TRACE_CALL(level, tag) LogHelper::ScopedTrace ___tracer(level, __FUNCTION__, tag)
 #else
 #define LOG1(...)
 #define LOG2(...)
@@ -272,9 +270,7 @@ private:
 #define LOGV(...)
 #define LOGI(...)
 
-#define HAL_TRACE_NAME(level, name)
-#define HAL_TRACE_CALL(level)
-#define HAL_TRACE_CALL_PRETTY(level)
+#define HAL_TRACE_CALL(level, tag)
 #endif
 
 } NAMESPACE_DECLARATION_END

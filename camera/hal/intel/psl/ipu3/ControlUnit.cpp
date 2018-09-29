@@ -62,7 +62,7 @@ ControlUnit::ControlUnit(ImguUnit *thePU,
 status_t
 ControlUnit::init()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     status_t status = OK;
     const char *sensorName = nullptr;
     ia_binary_data nvmData = {nullptr, 0};
@@ -159,7 +159,7 @@ ControlUnit::init()
  */
 status_t ControlUnit::allocateLscResults()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     status_t status = OK;
     std::shared_ptr<CaptureUnitSettings> capSettings = nullptr;
     ia_binary_data cpfData;
@@ -322,7 +322,7 @@ void RequestCtrlState::init(Camera3Request *req)
 
 ControlUnit::~ControlUnit()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     mLatestStatistics = nullptr;
     mSettingsHistory.clear();
@@ -438,7 +438,7 @@ ControlUnit::processRequest(Camera3Request* request)
 
 status_t ControlUnit::handleNewRequest(std::shared_ptr<RequestCtrlState> state)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
     status_t status = NO_ERROR;
     std::shared_ptr<RequestCtrlState> reqState = state;
@@ -620,7 +620,7 @@ ControlUnit::processRequestForCapture(std::shared_ptr<RequestCtrlState> &reqStat
 
 status_t ControlUnit::handleNewImage(MessageNewImage msg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     int reqId = msg.requestId;
 
     std::map<int, std::shared_ptr<RequestCtrlState>>::iterator it =
@@ -656,7 +656,7 @@ status_t ControlUnit::handleNewImage(MessageNewImage msg)
 
 status_t ControlUnit::handleNewStat(MessageStats msg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     status_t status = NO_ERROR;
     std::shared_ptr<IPU3CapturedStatistics> stats = msg.stats;
     int statsId = 0;
@@ -718,7 +718,7 @@ status_t ControlUnit::handleNewStat(MessageStats msg)
 status_t
 ControlUnit::completeProcessing(std::shared_ptr<RequestCtrlState> &reqState)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     int reqId = reqState->captureSettings->aiqResults.requestId;
     bool updateMeta = false;
 
@@ -778,7 +778,7 @@ ControlUnit::completeProcessing(std::shared_ptr<RequestCtrlState> &reqState)
 
 status_t ControlUnit::handleNewShutter(MessageShutter msg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     std::shared_ptr<RequestCtrlState> reqState = nullptr;
     int reqId = msg.requestId;
 
@@ -828,7 +828,7 @@ status_t ControlUnit::handleNewShutter(MessageShutter msg)
 
 status_t ControlUnit::handleNewSensorDescriptor(MessageSensorMode msg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     mMetadata->FillSensorDescriptor(msg);
     return mSettingsProcessor->handleNewSensorDescriptor(msg);
 }
@@ -836,7 +836,7 @@ status_t ControlUnit::handleNewSensorDescriptor(MessageSensorMode msg)
 status_t
 ControlUnit::flush(void)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     status_t status = NO_ERROR;
     base::Callback<status_t()> closure =
             base::Bind(&ControlUnit::handleFlush, base::Unretained(this));
@@ -846,7 +846,7 @@ ControlUnit::flush(void)
 
 status_t ControlUnit::handleFlush(void)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
     mWaitingForCapture.clear();
     mPendingRequests.clear();
@@ -858,7 +858,7 @@ status_t ControlUnit::handleFlush(void)
 bool
 ControlUnit::notifyCaptureEvent(CaptureMessage *captureMsg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
     if (captureMsg == nullptr) {
         return false;

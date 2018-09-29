@@ -171,7 +171,7 @@ void GraphConfigManager::addAndroidMap()
 GraphConfigNodes* GraphConfigManager::parse(const char *descriptorXmlFile,
                                             const char *settingsXmlFile)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     GCSSParser parser;
 
     GraphConfigNodes *nodes = new GraphConfigNodes;
@@ -518,7 +518,7 @@ status_t GraphConfigManager::configStreams(const vector<camera3_stream_t*> &stre
                                            uint32_t operationMode,
                                            int32_t testPatternMode)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     HAL_KPI_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, 1000000); /* 1 ms*/
     UNUSED(operationMode);
     ResolutionItem res;

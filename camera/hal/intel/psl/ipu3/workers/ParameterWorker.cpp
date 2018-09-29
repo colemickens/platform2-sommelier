@@ -63,7 +63,7 @@ ParameterWorker::~ParameterWorker()
 
 status_t ParameterWorker::configure(std::shared_ptr<GraphConfig> &config)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     status_t ret = OK;
     uintptr_t cmcHandle = reinterpret_cast<uintptr_t>(nullptr);
 
@@ -188,7 +188,7 @@ void ParameterWorker::dump()
 
 status_t ParameterWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     std::lock_guard<std::mutex> l(mParamsMutex);
 
     mMsg = msg;
@@ -225,7 +225,7 @@ status_t ParameterWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
 
 status_t ParameterWorker::run()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     // Don't dequeue ISP parameter buffer if test pattern mode is used.
     if (mMsg->pMsg.processingSettings->captureSettings->testPatternMode
@@ -246,7 +246,7 @@ status_t ParameterWorker::run()
 
 status_t ParameterWorker::postRun()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     mMsg = nullptr;
     return OK;
 }

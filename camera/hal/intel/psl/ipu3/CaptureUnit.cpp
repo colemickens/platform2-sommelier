@@ -174,7 +174,7 @@ void CaptureUnit::setSettingsProcessor(SettingsProcessor *settingsProcessor)
 
 status_t CaptureUnit::flush()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     status_t status = NO_ERROR;
     base::Callback<status_t()> closure =
@@ -185,7 +185,7 @@ status_t CaptureUnit::flush()
 
 status_t CaptureUnit::handleFlush()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     if (mLastInflightRequest) {
         if (mLastInflightRequest->aiqCaptureSettings)
@@ -203,7 +203,7 @@ status_t CaptureUnit::handleFlush()
 status_t CaptureUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams,
         bool configChanged)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
     MessageConfig msg;
     msg.activeStreams = &activeStreams;
@@ -219,7 +219,7 @@ status_t CaptureUnit::configStreams(std::vector<camera3_stream_t*> &activeStream
 
 status_t CaptureUnit::handleConfigStreams(MessageConfig msg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     status_t status = NO_ERROR;
     ICaptureEventListener::CaptureMessage outMsg;
     std::vector<camera3_stream_t*> &activeStreams = *msg.activeStreams;
@@ -365,7 +365,7 @@ status_t CaptureUnit::handleConfigStreams(MessageConfig msg)
 
 int CaptureUnit::getActiveIsysNodes(std::shared_ptr<GraphConfig> graphConfig)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     status_t status = NO_ERROR;
     int nodeCount = 0;
     InputSystem::ConfiguredNodesPerName *nodes = nullptr;
@@ -412,7 +412,7 @@ int CaptureUnit::getActiveIsysNodes(std::shared_ptr<GraphConfig> graphConfig)
 
 status_t CaptureUnit::setSensorFrameTimings()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     status_t status = NO_ERROR;
 
     const MediaCtlConfig *mediaCtlConfig = mStreamCfgProvider.getMediaCtlConfig(IStreamConfigProvider::CIO2);
@@ -447,7 +447,7 @@ status_t CaptureUnit::setSensorFrameTimings()
  */
 status_t CaptureUnit::getSensorModeData(ia_aiq_exposure_sensor_descriptor &desc)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     status_t status = NO_ERROR;
 
     status = mSyncManager->getSensorModeData(desc);
@@ -463,7 +463,7 @@ int64_t CaptureUnit::getRollingShutterSkew()
 status_t CaptureUnit::doCapture(Camera3Request* request,
         std::shared_ptr<CaptureUnitSettings>  &aiqCaptureSettings)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     status_t status = NO_ERROR;
     MessageRequest msg;
 
@@ -490,7 +490,7 @@ status_t CaptureUnit::doCapture(Camera3Request* request,
 
 status_t CaptureUnit::handleCapture(MessageRequest msg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     status_t status = NO_ERROR;
     std::shared_ptr<InflightRequestState> inflightRequest = msg.inFlightRequest;
     mLastInflightRequest = inflightRequest;
@@ -561,7 +561,7 @@ status_t CaptureUnit::handleCapture(MessageRequest msg)
 
 status_t CaptureUnit::applyAeParams(std::shared_ptr<CaptureUnitSettings> &aiqCaptureSettings)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     status_t status = NO_ERROR;
 
     status = mSyncManager->setParameters(aiqCaptureSettings);
@@ -580,7 +580,7 @@ status_t CaptureUnit::applyAeParams(std::shared_ptr<CaptureUnitSettings> &aiqCap
  */
 status_t CaptureUnit::enqueueBuffers(std::shared_ptr<InflightRequestState> &reqState, bool skip)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     status_t status = NO_ERROR;
 
     status = enqueueIsysBuffer(reqState, skip);
@@ -595,7 +595,7 @@ status_t CaptureUnit::enqueueBuffers(std::shared_ptr<InflightRequestState> &reqS
 status_t CaptureUnit::enqueueIsysBuffer(std::shared_ptr<InflightRequestState> &reqState,
                                         bool skip)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     status_t status = NO_ERROR;
     std::shared_ptr<cros::V4L2Buffer> v4l2BufPtr = nullptr;
     int32_t reqId = reqState->aiqCaptureSettings->aiqResults.requestId;
@@ -637,7 +637,7 @@ status_t CaptureUnit::enqueueIsysBuffer(std::shared_ptr<InflightRequestState> &r
 
 status_t CaptureUnit::attachListener(ICaptureEventListener *aListener)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
     std::lock_guard<std::mutex> l(mListenerLock);
     mListeners.push_back(aListener);
@@ -647,7 +647,7 @@ status_t CaptureUnit::attachListener(ICaptureEventListener *aListener)
 
 void CaptureUnit::cleanListeners()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
     std::lock_guard<std::mutex> l(mListenerLock);
     mListeners.clear();
@@ -686,7 +686,7 @@ void CaptureUnit::notifyIsysEvent(IsysMessage &isysMsg)
  */
 status_t CaptureUnit::issueSkips(int count, bool buffers, bool settings, bool isys)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     status_t status = OK;
     int32_t lastReqId;
     int32_t skipRequestId = 0;
@@ -742,7 +742,7 @@ status_t CaptureUnit::issueSkips(int count, bool buffers, bool settings, bool is
 
 status_t CaptureUnit::handleIsysEvent(MessageBuffer msg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     status_t status = NO_ERROR;
     ICaptureEventListener::CaptureMessage outMsg;
 
@@ -765,7 +765,7 @@ status_t CaptureUnit::handleIsysEvent(MessageBuffer msg)
 
 status_t CaptureUnit::processIsysBuffer(MessageBuffer &msg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     status_t status = NO_ERROR;
     cros::V4L2Buffer *outBuf = nullptr;
     ICaptureEventListener::CaptureMessage outMsg;
@@ -846,7 +846,7 @@ status_t CaptureUnit::processIsysBuffer(MessageBuffer &msg)
 
 status_t CaptureUnit::notifyListeners(ICaptureEventListener::CaptureMessage *msg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     bool ret = false;
 
     std::lock_guard<std::mutex> l(mListenerLock);

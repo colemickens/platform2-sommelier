@@ -125,7 +125,7 @@ void ImgEncoder::allocateOutputCameraBuffers(EncodePackage &pkg, ExifMetaData& m
  */
 status_t ImgEncoder::encodeSync(EncodePackage& package, ExifMetaData& metaData)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     status_t status = NO_ERROR;
     ImgEncoderCore::EncodePackage corePackage;
     // allocate needed camera buffers for output

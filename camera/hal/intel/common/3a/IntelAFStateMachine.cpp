@@ -64,7 +64,7 @@ IntelAFStateMachine::IntelAFStateMachine(int aCameraId, const Intel3aPlus &aaa):
         mCurrentAfState(ANDROID_CONTROL_AF_STATE_INACTIVE),
         m3A(aaa)
 {
-    HAL_TRACE_CALL_PRETTY(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     mCurrentAfMode = &mAutoMode;
     mLastAfControls = { ANDROID_CONTROL_AF_MODE_AUTO,
                         ANDROID_CONTROL_AF_TRIGGER_IDLE };
@@ -88,7 +88,7 @@ IntelAFStateMachine::IntelAFStateMachine(int aCameraId, const Intel3aPlus &aaa):
 
 IntelAFStateMachine::~IntelAFStateMachine()
 {
-    HAL_TRACE_CALL_PRETTY(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 }
 
 status_t
@@ -216,7 +216,7 @@ IntelAfModeBase::IntelAfModeBase():
         mLastActiveTriggerTime(0),
         mFramesSinceTrigger(0)
 {
-    HAL_TRACE_CALL_PRETTY(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     mLastAfControls = { ANDROID_CONTROL_AF_MODE_AUTO,
             ANDROID_CONTROL_AF_TRIGGER_IDLE };
 }
@@ -238,7 +238,7 @@ IntelAfModeBase::processTriggers(const uint8_t &afTrigger,
 {
     UNUSED(afInputParams);
     UNUSED(preCaptureId);
-    HAL_TRACE_CALL_PRETTY(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
     if (afTrigger == ANDROID_CONTROL_AF_TRIGGER_START) {
         resetTrigger(systemTime() / 1000);
@@ -255,7 +255,7 @@ IntelAfModeBase::processTriggers(const uint8_t &afTrigger,
 void
 IntelAfModeBase::updateResult(CameraMetadata& results)
 {
-    HAL_TRACE_CALL_PRETTY(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
     //# METADATA_Dynamic control.afMode done
     LOG2("%s afMode = %s state = %s", __FUNCTION__,
@@ -315,7 +315,7 @@ void IntelAfModeBase::checkIfFocusTimeout()
 
 IntelAFModeOff::IntelAFModeOff():IntelAfModeBase()
 {
-    HAL_TRACE_CALL_PRETTY(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 }
 
 status_t
@@ -326,7 +326,7 @@ IntelAFModeOff::processTriggers(const uint8_t &afTrigger,
 {
     UNUSED(afInputParams);
     UNUSED(preCaptureId);
-    HAL_TRACE_CALL_PRETTY(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     mLastAfControls.afTrigger = afTrigger;
     mLastAfControls.afMode = afMode;
     return OK;
@@ -340,7 +340,7 @@ IntelAFModeOff::processResult(ia_aiq_af_results& afResults,
      * IN MANUAL and EDOF AF state never changes
      */
     UNUSED(afResults);
-    HAL_TRACE_CALL_PRETTY(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
     // Af assist flash light should be disable for OFF mode
     afResults.use_af_assist = false;
@@ -358,7 +358,7 @@ IntelAFModeOff::processResult(ia_aiq_af_results& afResults,
 
 IntelAFModeAuto::IntelAFModeAuto():IntelAfModeBase()
 {
-    HAL_TRACE_CALL_PRETTY(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 }
 
 status_t
@@ -367,7 +367,7 @@ IntelAFModeAuto::processTriggers(const uint8_t &afTrigger,
                                  int preCaptureId,
                                  ia_aiq_af_input_params& afInputParams)
 {
-    HAL_TRACE_CALL_PRETTY(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     IntelAfModeBase::processTriggers(afTrigger,
                                      afMode,
                                      preCaptureId,
@@ -429,7 +429,7 @@ status_t
 IntelAFModeAuto::processResult(ia_aiq_af_results& afResult,
                                CameraMetadata& result)
 {
-    HAL_TRACE_CALL_PRETTY(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     mLensState = ANDROID_LENS_STATE_STATIONARY;
 
     if (mLastActiveTriggerTime != 0) {
@@ -481,7 +481,7 @@ IntelAFModeAuto::processResult(ia_aiq_af_results& afResult,
 
 IntelAFModeContinuousPicture::IntelAFModeContinuousPicture():IntelAfModeBase()
 {
-    HAL_TRACE_CALL_PRETTY(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 }
 
 status_t
@@ -490,7 +490,7 @@ IntelAFModeContinuousPicture::processTriggers(const uint8_t &afTrigger,
                                               int preCaptureId,
                                               ia_aiq_af_input_params& afInputParams)
 {
-    HAL_TRACE_CALL_PRETTY(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     IntelAfModeBase::processTriggers(afTrigger,
                                      afMode,
                                      preCaptureId,
@@ -557,7 +557,7 @@ status_t
 IntelAFModeContinuousPicture::processResult(ia_aiq_af_results& afResult,
                                            CameraMetadata& result)
 {
-    HAL_TRACE_CALL_PRETTY(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     mLensState = ANDROID_LENS_STATE_STATIONARY;
 
     // state transition from locked state are only allowed via triggers, which

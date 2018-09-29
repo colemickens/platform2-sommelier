@@ -51,7 +51,7 @@ SettingsProcessor::~SettingsProcessor()
 
 status_t SettingsProcessor::init()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
     // save state for fix focus;
     mFixedFocus = (m3aWrapper->getMinFocusDistance() == 0.0f);
@@ -71,7 +71,7 @@ status_t
 SettingsProcessor::processRequestSettings(const CameraMetadata &settings,
                                     RequestCtrlState &reqAiqCfg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     status_t status = OK;
 
     /**
@@ -168,7 +168,7 @@ SettingsProcessor::processCroppingRegion(const CameraMetadata &settings,
 status_t SettingsProcessor::processIspSettings(const CameraMetadata &settings,
                                          RequestCtrlState &reqAiqCfg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     camera_metadata_ro_entry entry;
     CLEAR(entry);
     IspSettings *ispSettings = nullptr;
@@ -317,7 +317,7 @@ status_t
 SettingsProcessor::processAfSettings(const CameraMetadata  &settings,
                                RequestCtrlState &reqAiqCfg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     status_t status = OK;
 
     AfInputParams inParams;
@@ -383,7 +383,7 @@ SettingsProcessor::processAfSettings(const CameraMetadata  &settings,
 status_t SettingsProcessor::processImageEnhancementSettings(const CameraMetadata &settings,
                                                       RequestCtrlState &reqAiqCfg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     camera_metadata_ro_entry entry;
     CLEAR(entry);
     IspSettings *ispSettings = nullptr;
@@ -437,7 +437,7 @@ status_t
 SettingsProcessor::processAeSettings(const CameraMetadata&  settings,
                                RequestCtrlState &reqAiqCfg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     status_t status = OK;
 
     AeInputParams aeInputParams;
@@ -486,7 +486,7 @@ SettingsProcessor::processAeSettings(const CameraMetadata&  settings,
 status_t
 SettingsProcessor::handleNewSensorDescriptor(ControlUnit::MessageSensorMode &msg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     mCurrentFrameParams = msg.frameParams;
     mSensorDescriptor = msg.exposureDesc;
 
@@ -549,7 +549,7 @@ status_t
 SettingsProcessor::processAwbSettings(const CameraMetadata  &settings,
                                 RequestCtrlState &reqAiqCfg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     status_t status = OK;
 
     AwbInputParams awbInputParams;
@@ -566,7 +566,7 @@ status_t
 SettingsProcessor::processStabilizationSettings(const CameraMetadata &settings,
                                           RequestCtrlState &reqAiqCfg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     camera_metadata_ro_entry entry;
     //# ANDROID_METADATA_Control android.control.videoStabilizationMode done
     entry = settings.find(ANDROID_CONTROL_VIDEO_STABILIZATION_MODE);
@@ -583,7 +583,7 @@ SettingsProcessor::processStabilizationSettings(const CameraMetadata &settings,
 status_t SettingsProcessor::processHotPixelSettings(const CameraMetadata &settings,
                                               RequestCtrlState &reqAiqCfg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     camera_metadata_ro_entry entry;
     //# ANDROID_METADATA_Control android.statistics.hotPixelMapMode done
     entry = settings.find(ANDROID_STATISTICS_HOT_PIXEL_MAP_MODE);
@@ -599,7 +599,7 @@ status_t SettingsProcessor::processHotPixelSettings(const CameraMetadata &settin
 status_t SettingsProcessor::processTestPatternMode(const CameraMetadata &settings,
                                              RequestCtrlState &reqAiqCfg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     camera_metadata_ro_entry entry;
 
     entry = settings.find(ANDROID_SENSOR_TEST_PATTERN_MODE);

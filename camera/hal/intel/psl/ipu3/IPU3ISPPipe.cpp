@@ -35,7 +35,7 @@ IPU3ISPPipe::~IPU3ISPPipe()
 
 void IPU3ISPPipe::SetPipeConfig(const aic_output_t pipe_config)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
     mAicOutput = pipe_config;
 

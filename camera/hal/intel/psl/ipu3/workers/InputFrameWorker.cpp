@@ -31,18 +31,18 @@ InputFrameWorker::InputFrameWorker(std::shared_ptr<cros::V4L2VideoNode> node,
         /* Keep the same number of buffers as ISYS. */
         FrameWorker(node, cameraId, pipelineDepth + 2, "InputFrameWorker")
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     mPollMe = true;
 }
 
 InputFrameWorker::~InputFrameWorker()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 }
 
 status_t InputFrameWorker::configure(std::shared_ptr<GraphConfig>& config)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     mPipeType = config->getPipeType();
     LOG2("@%s, mPipeType:%d", __FUNCTION__, mPipeType);
@@ -60,7 +60,7 @@ status_t InputFrameWorker::configure(std::shared_ptr<GraphConfig>& config)
 
 status_t InputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
     int memType = mNode->GetMemoryType();
     CheckError(memType != V4L2_MEMORY_DMABUF, BAD_VALUE,
@@ -108,13 +108,13 @@ status_t InputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
 
 status_t InputFrameWorker::run()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     return OK;
 }
 
 status_t InputFrameWorker::postRun()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     cros::V4L2Buffer outBuf;
     status_t status = mNode->GrabFrame(&outBuf);
 

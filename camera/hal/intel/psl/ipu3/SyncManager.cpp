@@ -46,7 +46,7 @@ SyncManager::SyncManager(int32_t cameraId,
     mDigiGainOnSensor(false),
     mCurrentSettingIdentifier(0)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     mCapInfo = getIPU3CameraCapInfo(cameraId);
     if (!mCameraThread.Start()) {
         LOGE("Camera thread failed to start");
@@ -55,7 +55,7 @@ SyncManager::SyncManager(int32_t cameraId,
 
 SyncManager::~SyncManager()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     status_t status;
 
     status = stop();
@@ -92,7 +92,7 @@ SyncManager::~SyncManager()
  */
 status_t SyncManager::setSubdev(std::shared_ptr<MediaEntity> entity, sensorEntityType type)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     std::shared_ptr<cros::V4L2Subdevice> subdev = nullptr;
     entity->getDevice((std::shared_ptr<cros::V4L2Device>&) subdev);
@@ -129,7 +129,7 @@ status_t SyncManager::setSubdev(std::shared_ptr<MediaEntity> entity, sensorEntit
 status_t SyncManager::setMediaEntity(const std::string &name,
                                      const sensorEntityType type)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     status_t status = OK;
     std::shared_ptr<MediaEntity> mediaEntity = nullptr;
     std::string entityName;
@@ -198,7 +198,7 @@ status_t SyncManager::setMediaEntity(const std::string &name,
 */
 status_t SyncManager::init(int32_t exposureDelay, int32_t gainDelay)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     MessageInit msg;
     /**
      * The delay we want to store is the relative between exposure and gain
@@ -230,7 +230,7 @@ status_t SyncManager::init(int32_t exposureDelay, int32_t gainDelay)
  */
 status_t SyncManager::handleInit(MessageInit msg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     status_t status = OK;
     mExposureDelay = msg.exposureDelay;
     mGainDelay = msg.gainDelay;
@@ -289,7 +289,7 @@ status_t SyncManager::createSensorObj()
  */
 status_t SyncManager::getSensorModeData(ia_aiq_exposure_sensor_descriptor &desc)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     MessageSensorModeData msg;
 
     msg.desc = &desc;
@@ -309,7 +309,7 @@ status_t SyncManager::getSensorModeData(ia_aiq_exposure_sensor_descriptor &desc)
  */
 status_t SyncManager::handleGetSensorModeData(MessageSensorModeData msg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     status_t status = OK;
     int integration_step = 0;
     int integration_max = 0;
@@ -392,7 +392,7 @@ status_t SyncManager::handleGetSensorModeData(MessageSensorModeData msg)
  */
 status_t SyncManager::setParameters(std::shared_ptr<CaptureUnitSettings> settings)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     base::Callback<status_t()> closure =
             base::Bind(&SyncManager::handleSetParams, base::Unretained(this),
                        base::Passed(std::move(settings)));
@@ -410,7 +410,7 @@ status_t SyncManager::setParameters(std::shared_ptr<CaptureUnitSettings> setting
  */
 status_t SyncManager::handleSetParams(std::shared_ptr<CaptureUnitSettings> settings)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     LOGP("%s add one hold for %p in mCaptureUnitSettingsPool", __FUNCTION__, settings.get());
     mQueuedSettings.push_back(std::move(settings));
 
@@ -433,7 +433,7 @@ status_t SyncManager::handleSetParams(std::shared_ptr<CaptureUnitSettings> setti
  */
 status_t SyncManager::setSensorFT(int width, int height)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     MessageSensorFT msg;
     msg.width = width;
     msg.height = height;
@@ -448,7 +448,7 @@ status_t SyncManager::setSensorFT(int width, int height)
 
 status_t SyncManager::handleSetSensorFT(MessageSensorFT msg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     status_t status = OK;
     int width = msg.width;
     int height = msg.height;
@@ -477,7 +477,7 @@ status_t SyncManager::handleSetSensorFT(MessageSensorFT msg)
  */
 status_t SyncManager::handleSOF(MessageFrameEvent msg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     status_t status = OK;
 
     if (!mStarted) {
@@ -538,7 +538,7 @@ status_t SyncManager::handleSOF(MessageFrameEvent msg)
  */
 status_t SyncManager::handleEOF()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     /**
      * We are not getting EOF yet, but once we do ...
      * TODO: In this case we should check the time before we apply the settings
@@ -557,7 +557,7 @@ status_t SyncManager::handleEOF()
 status_t SyncManager::applySensorParams(ia_aiq_exposure_sensor_parameters &expParams,
                                         bool noDelay)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     status_t status = OK;
     uint16_t aGain, dGain;
     // Frame duration
@@ -593,7 +593,7 @@ status_t SyncManager::applySensorParams(ia_aiq_exposure_sensor_parameters &expPa
  */
 status_t SyncManager::start()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     status_t status = OK;
     base::Callback<status_t()> closure =
             base::Bind(&SyncManager::handleStart, base::Unretained(this));
@@ -607,7 +607,7 @@ status_t SyncManager::start()
  */
 status_t SyncManager::handleStart()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     status_t status = OK;
     if (mStarted) {
         LOGW("SyncManager already started");
@@ -650,7 +650,7 @@ status_t SyncManager::handleStart()
  */
 status_t SyncManager::isStarted(bool &started)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     MessageIsStarted msg;
     msg.value = &started;
 
@@ -669,7 +669,7 @@ status_t SyncManager::isStarted(bool &started)
  */
 status_t SyncManager::handleIsStarted(MessageIsStarted msg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     *msg.value = mStarted;
 
@@ -683,7 +683,7 @@ status_t SyncManager::handleIsStarted(MessageIsStarted msg)
  */
 status_t SyncManager::stop()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     status_t status = OK;
     base::Callback<status_t()> closure =
             base::Bind(&SyncManager::handleStop, base::Unretained(this));
@@ -700,7 +700,7 @@ status_t SyncManager::stop()
  */
 status_t SyncManager::handleStop()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     status_t status = OK;
 
     if (mStarted) {
@@ -722,7 +722,7 @@ status_t SyncManager::handleStop()
  */
 status_t SyncManager::flush()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     status_t status = OK;
     base::Callback<status_t()> closure =
             base::Bind(&SyncManager::handleFlush, base::Unretained(this));
@@ -735,7 +735,7 @@ status_t SyncManager::flush()
  */
 status_t SyncManager::handleFlush()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     status_t status = OK;
 
     if (mPollerThread)
@@ -748,7 +748,7 @@ status_t SyncManager::handleFlush()
 
 int SyncManager::getCurrentCameraId(void)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     return mCameraId;
 }
 
@@ -762,7 +762,7 @@ int SyncManager::getCurrentCameraId(void)
  */
 status_t SyncManager::notifyPollEvent(PollEventMessage *pollEventMsg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     struct v4l2_event event;
     MessageFrameEvent msg;
     status_t status = OK;

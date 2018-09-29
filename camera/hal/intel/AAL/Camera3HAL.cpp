@@ -37,7 +37,7 @@ hal_dev_initialize(const struct camera3_device * dev,
                    const camera3_callback_ops_t *callback_ops)
 {
     PERFORMANCE_HAL_ATRACE();
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     // As per interface requirement this call should not take longer than 10ms
     HAL_KPI_TRACE_CALL(1,10000000);
     FUNCTION_PREPARED_RETURN
@@ -50,7 +50,7 @@ hal_dev_configure_streams(const struct camera3_device * dev,
                           camera3_stream_configuration_t *stream_list)
 {
     PERFORMANCE_HAL_ATRACE();
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     // As per interface requirement this call should not take longer than 1s
     HAL_KPI_TRACE_CALL(1,1000000000);
     FUNCTION_PREPARED_RETURN
@@ -63,7 +63,7 @@ hal_dev_construct_default_request_settings(const struct camera3_device * dev,
                                            int type)
 {
     PERFORMANCE_HAL_ATRACE();
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     // As per interface requirement this call should not take longer than 5ms
     HAL_KPI_TRACE_CALL(1, 5000000);
 
@@ -79,7 +79,7 @@ hal_dev_process_capture_request(const struct camera3_device * dev,
                                 camera3_capture_request_t *request)
 {
     PERFORMANCE_HAL_ATRACE();
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     /**
      *  As per interface requirement this call should not take longer than 4
      *  frame intervals. Here we choose that value to be 4 frame intervals at
@@ -94,7 +94,7 @@ hal_dev_process_capture_request(const struct camera3_device * dev,
 static void
 hal_dev_dump(const struct camera3_device * dev, int fd)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     // As per interface requirement this call should not take longer than 10ms
     HAL_KPI_TRACE_CALL(1, 10000000);
     if (!dev)
@@ -108,7 +108,7 @@ hal_dev_dump(const struct camera3_device * dev, int fd)
 static int
 hal_dev_flush(const struct camera3_device * dev)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     // As per interface requirement this call should not take longer than 1000ms
     HAL_KPI_TRACE_CALL(1, 1000000000);
     if (!dev)
@@ -161,7 +161,7 @@ Camera3HAL::~Camera3HAL()
 
 status_t Camera3HAL::init(void)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     status_t status = UNKNOWN_ERROR;
 
     mCameraHw = ICameraHw::createCameraHW(mCameraId);
@@ -183,7 +183,7 @@ bail:
 
 status_t Camera3HAL::deinit(void)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     status_t status = NO_ERROR;
 
@@ -210,7 +210,7 @@ status_t Camera3HAL::deinit(void)
 int Camera3HAL::initialize(const camera3_callback_ops_t *callback_ops)
 {
     status_t status = NO_ERROR;
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     if (callback_ops == nullptr)
         return -ENODEV;
@@ -225,7 +225,7 @@ int Camera3HAL::initialize(const camera3_callback_ops_t *callback_ops)
 
 int Camera3HAL::configure_streams(camera3_stream_configuration_t *stream_list)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     if (!stream_list)
         return -EINVAL;
 
@@ -265,7 +265,7 @@ camera_metadata_t* Camera3HAL::construct_default_request_settings(int type)
 
 int Camera3HAL::process_capture_request(camera3_capture_request_t *request)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     if (request == nullptr) {
         LOGE("%s: request is null!", __FUNCTION__);
         return -EINVAL;
@@ -294,7 +294,7 @@ int Camera3HAL::process_capture_request(camera3_capture_request_t *request)
 
 void Camera3HAL::dump(int fd)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     if (mRequestThread != nullptr)
         mRequestThread->dump(fd);
@@ -304,7 +304,7 @@ void Camera3HAL::dump(int fd)
 
 int Camera3HAL::flush()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     if (CC_LIKELY(mRequestThread != nullptr))
         return mRequestThread->flush();

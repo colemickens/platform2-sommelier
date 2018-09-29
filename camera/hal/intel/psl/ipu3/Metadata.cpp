@@ -52,7 +52,7 @@ status_t Metadata::init()
 void
 Metadata::writeAwbMetadata(RequestCtrlState &reqState)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
     /*
      * Update the manual color correction parameters
@@ -93,7 +93,7 @@ Metadata::writeAwbMetadata(RequestCtrlState &reqState)
 
 void Metadata::writePAMetadata(RequestCtrlState &reqState)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     uint8_t blLock = 0;
 
     if (reqState.blackLevelOff) {
@@ -190,7 +190,7 @@ void Metadata::writeMiscMetadata(RequestCtrlState &reqState) const
 
 void Metadata::writeLSCMetadata(std::shared_ptr<RequestCtrlState> &reqState) const
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
     reqState->ctrlUnitResult->update(ANDROID_SHADING_MODE,
                                     &reqState->captureSettings->shadingMode,
@@ -203,7 +203,7 @@ void Metadata::writeLSCMetadata(std::shared_ptr<RequestCtrlState> &reqState) con
 
 void Metadata::writeLensMetadata(RequestCtrlState &reqState) const
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
     // from static metadata in different places. Use same result data for both.
     const camera_metadata_t *meta = PlatformData::getStaticMetadata(mCameraId);
@@ -231,7 +231,7 @@ void Metadata::writeLensMetadata(RequestCtrlState &reqState) const
 
 void Metadata::writeSensorMetadata(RequestCtrlState &reqState)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     const CameraMetadata *settings = reqState.request->getSettings();
     camera_metadata_ro_entry entry;
     int64_t exposureTime = 0;
@@ -327,7 +327,7 @@ void Metadata::writeSensorMetadata(RequestCtrlState &reqState)
 
 status_t Metadata::initTonemaps()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     // Get the max tonemap points
     const camera_metadata_t *meta =
         PlatformData::getStaticMetadata(mCameraId);
@@ -360,13 +360,13 @@ status_t Metadata::initTonemaps()
 void
 Metadata::FillSensorDescriptor(const ControlUnit::MessageSensorMode &msg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     mSensorDescriptor = msg.exposureDesc;
 }
 
 status_t Metadata::fillTonemapCurve(RequestCtrlState &reqState)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
     ia_aiq_gbce_results &gbceResults = reqState.captureSettings->aiqResults.gbceResults;
 

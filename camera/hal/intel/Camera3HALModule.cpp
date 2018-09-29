@@ -54,7 +54,7 @@ static std::mutex sCameraHalMutex;
 
 int openCameraHardware(int id, const hw_module_t* module, hw_device_t** device)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     if (sInstances[id])
         return 0;
@@ -83,7 +83,7 @@ static int hal_get_number_of_cameras(void)
     PerformanceTraces::reset();
     PerformanceTraces::HalAtrace::reset();
 
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     PERFORMANCE_HAL_ATRACE();
 
@@ -93,7 +93,7 @@ static int hal_get_number_of_cameras(void)
 static int hal_get_camera_info(int cameraId, struct camera_info *cameraInfo)
 {
     PERFORMANCE_HAL_ATRACE();
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     if (cameraId < 0 || !cameraInfo ||
           cameraId >= hal_get_number_of_cameras())
@@ -106,7 +106,7 @@ static int hal_get_camera_info(int cameraId, struct camera_info *cameraInfo)
 
 static int hal_set_callbacks(const camera_module_callbacks_t *callbacks)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     UNUSED(callbacks);
     return 0;
@@ -118,7 +118,7 @@ static int hal_dev_open(const hw_module_t* module, const char* name,
     int status = -EINVAL;
     int camera_id;
 
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     LogHelper::setDebugLevel();
     PerformanceTraces::reset();
     PerformanceTraces::HalAtrace::reset();
@@ -168,7 +168,7 @@ static int hal_dev_open(const hw_module_t* module, const char* name,
 static int hal_dev_close(hw_device_t* device)
 {
     PERFORMANCE_HAL_ATRACE();
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     if (!device || sInstanceCount == 0) {
         LOGW("hal close, instance count %d", sInstanceCount);
@@ -198,7 +198,7 @@ static int hal_open_legacy(
     uint32_t halVersion,
     struct hw_device_t** device)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     UNUSED(module);
     UNUSED(id);
@@ -209,7 +209,7 @@ static int hal_open_legacy(
 
 static int hal_set_torch_mode(const char* camera_id, bool enabled)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     UNUSED(camera_id);
     UNUSED(enabled);
@@ -218,7 +218,7 @@ static int hal_set_torch_mode(const char* camera_id, bool enabled)
 
 static int hal_init()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     if (PlatformData::numberOfCameras() == 0) {
         LOGE("Init failed bacause no camera device was found.");

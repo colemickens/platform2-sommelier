@@ -752,7 +752,7 @@ status_t InputSystem::handlePollEvent(MessagePollEvent msg)
 
 status_t InputSystem::pollNextRequest()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     status_t status = NO_ERROR;
     int reqId = mCaptureQueue[0];
     mCaptureInProgress.reset();

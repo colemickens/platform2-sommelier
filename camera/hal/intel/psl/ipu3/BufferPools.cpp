@@ -29,12 +29,12 @@ BufferPools::BufferPools() :
         mBufferPoolSize(0),
         mBufferManager(cros::CameraBufferManager::GetInstance())
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 }
 
 BufferPools::~BufferPools()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     freeBuffers();
 }
 
@@ -49,7 +49,7 @@ BufferPools::~BufferPools()
 status_t BufferPools::createBufferPools(int numBufs, int numSkips,
         std::shared_ptr<InputSystem> isys)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     std::shared_ptr<cros::V4L2VideoNode> node = isys->findOutputNode(ISYS_NODE_RAW);
     status_t status = NO_ERROR;
 
@@ -124,7 +124,7 @@ status_t BufferPools::allocateCaptureBuffers(
         const FrameInfo &frameInfo,
         int numSkips, std::vector<cros::V4L2Buffer> &v4l2Buffers)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     status_t status = NO_ERROR;
     std::shared_ptr<cros::V4L2Buffer> v4l2Buf = nullptr;
 
@@ -180,7 +180,7 @@ status_t BufferPools::allocateCaptureBuffers(
 
 void BufferPools::freeBuffers()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     mCaptureSkipBuffers.clear();
     for (auto& it : mBufferHandles) {
@@ -191,19 +191,19 @@ void BufferPools::freeBuffers()
 
 status_t BufferPools::acquireItem(std::shared_ptr<cros::V4L2Buffer> &v4l2Buffer)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     return mCaptureItemsPool.acquireItem(v4l2Buffer);
 }
 
 void BufferPools::returnCaptureSkipBuffer(std::shared_ptr<cros::V4L2Buffer> &v4l2Buffer)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     mCaptureSkipBuffers.push_back(v4l2Buffer);
 }
 
 status_t BufferPools::acquireCaptureSkipBuffer(std::shared_ptr<cros::V4L2Buffer> &v4l2Buffer)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     if (mCaptureSkipBuffers.empty() == false) {
         v4l2Buffer = mCaptureSkipBuffers.at(0);
         mCaptureSkipBuffers.erase(mCaptureSkipBuffers.begin());
@@ -216,7 +216,7 @@ status_t BufferPools::acquireCaptureSkipBuffer(std::shared_ptr<cros::V4L2Buffer>
 
 void BufferPools::returnBuffer(cros::V4L2Buffer * /* buffer */)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     LOGW("IMPLEMENTATION MISSING");
 }
 

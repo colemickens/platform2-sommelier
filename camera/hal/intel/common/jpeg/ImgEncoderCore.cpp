@@ -353,7 +353,7 @@ int ImgEncoderCore::doEncode(std::shared_ptr<CommonBuffer> srcBuf,
  */
 status_t ImgEncoderCore::encodeSync(EncodePackage & package, ExifMetaData& metaData)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     status_t status = NO_ERROR;
     int mainSize = 0;
     uint32_t thumbSize = 0;

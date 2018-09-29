@@ -30,7 +30,7 @@ PollerThread::PollerThread(std::string name):
     mListener (nullptr),
     mEvents(POLLPRI | POLLIN | POLLERR)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     mFlushFd[0] = -1;
     mFlushFd[1] = -1;
@@ -42,7 +42,7 @@ PollerThread::PollerThread(std::string name):
 
 PollerThread::~PollerThread()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     close(mFlushFd[0]);
     close(mFlushFd[1]);
@@ -71,7 +71,7 @@ status_t PollerThread::init(std::vector<std::shared_ptr<cros::V4L2Device>> &devi
                             int events,
                             bool makeRealtime)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     MessageInit msg;
 
     msg.devices = devices; // copy the vector
@@ -89,7 +89,7 @@ status_t PollerThread::init(std::vector<std::shared_ptr<cros::V4L2Device>> &devi
 
 status_t PollerThread::handleInit(MessageInit msg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     status_t status = NO_ERROR;
 
     if (mFlushFd[1] != -1 || mFlushFd[0] != -1) {
@@ -149,7 +149,7 @@ status_t PollerThread::handleInit(MessageInit msg)
 status_t PollerThread::pollRequest(int reqId, int timeout,
                                    std::vector<std::shared_ptr<cros::V4L2Device>> *devices)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     MessagePollRequest msg;
     msg.reqId = reqId;
     msg.timeout = timeout;
@@ -165,7 +165,7 @@ status_t PollerThread::pollRequest(int reqId, int timeout,
 
 status_t PollerThread::handlePollRequest(MessagePollRequest msg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     status_t status = NO_ERROR;
     int ret;
     IPollEventListener::PollEventMessage outMsg;
@@ -223,7 +223,7 @@ status_t PollerThread::handlePollRequest(MessagePollRequest msg)
  */
 status_t PollerThread::flush(bool sync, bool clear)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     MessageFlush msg;
     msg.clearVectors = clear;
 
@@ -281,7 +281,7 @@ status_t PollerThread::requestExitAndWait(void)
 /** Listener Methods **/
 status_t PollerThread::notifyListener(IPollEventListener::PollEventMessage *msg)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     status_t status = OK;
 
     if (mListener == nullptr)

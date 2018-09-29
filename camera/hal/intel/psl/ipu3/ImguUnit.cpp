@@ -36,7 +36,7 @@ ImguUnit::ImguUnit(int cameraId,
         mGCM(gcm),
         mMediaCtl(mediaCtl)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     mActiveStreams.inputStream = nullptr;
 
     mRgbsGridBuffPool = std::make_shared<SharedItemPool<ia_aiq_rgbs_grid>>("RgbsGridBuffPool");
@@ -50,7 +50,7 @@ ImguUnit::ImguUnit(int cameraId,
 
 ImguUnit::~ImguUnit()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     mActiveStreams.blobStreams.clear();
     mActiveStreams.rawStreams.clear();
@@ -69,7 +69,7 @@ ImguUnit::~ImguUnit()
 
 void ImguUnit::cleanListener()
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
     for (size_t i = 0; i < GraphConfig::PIPE_MAX; i++) {
         if (mImguPipe[i] != nullptr) {
@@ -81,7 +81,7 @@ void ImguUnit::cleanListener()
 
 status_t ImguUnit::attachListener(ICaptureEventListener *aListener)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
     mListeners.push_back(aListener);
     return OK;
@@ -185,7 +185,7 @@ void ImguUnit::freePublicStatBuffers()
 
 status_t ImguUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
     mActiveStreams.blobStreams.clear();
     mActiveStreams.rawStreams.clear();
@@ -273,7 +273,7 @@ status_t ImguUnit::completeRequest(std::shared_ptr<ProcUnitSettings> &processing
                                    ICaptureEventListener::CaptureBuffers &captureBufs,
                                    bool updateMeta)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     LOG2("%s, updateMeta %d", __FUNCTION__, updateMeta);
     Camera3Request *request = processingSettings->request;
     if (CC_UNLIKELY(request == nullptr)) {
@@ -317,7 +317,7 @@ status_t ImguUnit::completeRequest(std::shared_ptr<ProcUnitSettings> &processing
 
 status_t ImguUnit::flush(void)
 {
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
     status_t status = OK;
     for (size_t i = 0; i < GraphConfig::PIPE_MAX; i++) {

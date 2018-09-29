@@ -282,7 +282,7 @@ int CameraProfiles::parseEnum(const char *src,
                               int metadataCacheSize,
                               int64_t* metadataCache)
 {
-    HAL_TRACE_CALL(1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     int count = 0;
     int maxCount = metadataCacheSize / camera_metadata_type_size[tagInfo->type];
     char *endPtr = nullptr;
@@ -325,7 +325,7 @@ int CameraProfiles::parseEnumAndNumbers(const char *src,
                                         int metadataCacheSize,
                                         int64_t* metadataCache)
 {
-    HAL_TRACE_CALL(1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     int count = 0;
     int maxCount = metadataCacheSize / camera_metadata_type_size[tagInfo->type];
     char * endPtr = nullptr;
@@ -377,7 +377,7 @@ int CameraProfiles::parseData(const char *src,
                               int metadataCacheSize,
                               int64_t* metadataCache)
 {
-    HAL_TRACE_CALL(1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     int index = 0;
     int maxIndex = metadataCacheSize/sizeof(double); // worst case
 
@@ -473,7 +473,7 @@ int CameraProfiles::parseStreamConfig(const char *src,
         int metadataCacheSize,
         int64_t* metadataCache)
 {
-    HAL_TRACE_CALL(1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     int count = 0;  // entry count
     int maxCount = metadataCacheSize/sizeof(int32_t);
@@ -580,7 +580,7 @@ int CameraProfiles::parseAvailableKeys(const char *src,
                                        int metadataCacheSize,
                                        int64_t* metadataCache)
 {
-    HAL_TRACE_CALL(1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     int count = 0;  // entry count
     int maxCount = metadataCacheSize/camera_metadata_type_size[tagInfo->type];
     size_t tableSize = ELEMENT(metadataNames);
@@ -644,7 +644,7 @@ int CameraProfiles::parseAvailableInputOutputFormatsMap(const char *src,
         int metadataCacheSize,
         int64_t* metadataCache)
 {
-    HAL_TRACE_CALL(1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     int count = 0;  // entry count
     int maxCount = metadataCacheSize/camera_metadata_type_size[tagInfo->type];
@@ -739,7 +739,7 @@ int CameraProfiles::parseSizes(const char *src,
                                int metadataCacheSize,
                                int64_t* metadataCache)
 {
-    HAL_TRACE_CALL(1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     int entriesFound = 0;
 
     entriesFound = parseData(src, tagInfo, metadataCacheSize, metadataCache);
@@ -760,7 +760,7 @@ int CameraProfiles::parseImageFormats(const char *src,
     /**
      * DEPRECATED in V 3.2: TODO: add warning and extra checks
      */
-    HAL_TRACE_CALL(1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     int entriesFound = 0;
 
     entriesFound = parseEnum(src, tagInfo, metadataCacheSize, metadataCache);
@@ -773,7 +773,7 @@ int CameraProfiles::parseRectangle(const char *src,
                                    int metadataCacheSize,
                                    int64_t *metadataCache)
 {
-    HAL_TRACE_CALL(1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     int entriesFound = 0;
     entriesFound = parseData(src, tagInfo, metadataCacheSize, metadataCache);
 
@@ -790,7 +790,7 @@ int CameraProfiles::parseBlackLevelPattern(const char *src,
                                            int metadataCacheSize,
                                            int64_t *metadataCache)
 {
-    HAL_TRACE_CALL(1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     int entriesFound = 0;
     entriesFound = parseData(src, tagInfo, metadataCacheSize, metadataCache);
     if (entriesFound % 4) {
@@ -807,7 +807,7 @@ int CameraProfiles::parseStreamConfigDuration(const char *src,
         int metadataCacheSize,
         int64_t *metadataCache)
 {
-    HAL_TRACE_CALL(1);
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     int count = 0;  // entry count
     int maxCount = metadataCacheSize/camera_metadata_type_size[tagInfo->type];
     int ret;
