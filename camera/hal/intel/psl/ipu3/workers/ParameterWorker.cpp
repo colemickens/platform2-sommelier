@@ -260,6 +260,10 @@ void ParameterWorker::updateAicInputParams(std::shared_ptr<DeviceMessage> msg, I
     runtimeParams.manual_saturation = msg->pMsg.processingSettings->captureSettings->ispSettings.manualSettings.manualSaturation;
     runtimeParams.manual_sharpness = msg->pMsg.processingSettings->captureSettings->ispSettings.manualSettings.manualSharpness;
     camera2::RuntimeParamsHelper::copyPaResults(runtimeParams, msg->pMsg.processingSettings->captureSettings->aiqResults.paResults);
+    if (mPipeType == GraphConfig::PIPE_STILL) {
+        // always update LSC for still pipe
+        msg->pMsg.processingSettings->captureSettings->aiqResults.saResults.lsc_update = true;
+    }
     camera2::RuntimeParamsHelper::copySaResults(runtimeParams, msg->pMsg.processingSettings->captureSettings->aiqResults.saResults);
     camera2::RuntimeParamsHelper::copyWeightGrid(runtimeParams, msg->pMsg.processingSettings->captureSettings->aiqResults.aeResults.weight_grid);
     runtimeParams.isp_vamem_type = 0; //???
