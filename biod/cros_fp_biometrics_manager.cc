@@ -479,6 +479,7 @@ bool CrosFpBiometricsManager::CrosFpDevice::Init() {
   LOG(INFO) << "  Image Dimensions : " << info_.width << "x" << info_.height
             << " " << info_.bpp << " bpp";
   LOG(INFO) << "CROS FP Finger Template Info ";
+  LOG(INFO) << "  Template data format  : " << info_.template_version;
   LOG(INFO) << "  Template Data Size    : " << info_.template_size;
   LOG(INFO) << "  Max number of fingers : " << info_.template_max;
 
