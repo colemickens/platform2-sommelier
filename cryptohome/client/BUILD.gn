@@ -1,0 +1,23 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-proxies.gni")
+
+# cryptohome client library generated headers. Used by other tools to
+# interact with cryptohome.
+generate_dbus_proxies("libcryptohome-client-headers") {
+  dbus_service_config = "../dbus_bindings/dbus-service-config.json"
+  proxy_output_file = "include/cryptohome/dbus-proxies.h"
+  mock_output_file = "include/cryptohome/dbus-proxy-mocks.h"
+  proxy_path_in_mocks = "cryptohome/dbus-proxies.h"
+  sources = [
+    "../dbus_bindings/org.chromium.CryptohomeInterface.xml",
+  ]
+}
+
+group("all") {
+  deps = [
+    ":libcryptohome-client-headers",
+  ]
+}

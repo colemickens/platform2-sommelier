@@ -1,0 +1,21 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-proxies.gni")
+
+generate_dbus_proxies("bootlockbox-proxies") {
+  dbus_service_config = "../dbus_adaptors/dbus-service-config.json"
+  proxy_output_file = "include/bootlockbox/dbus-proxies.h"
+  mock_output_file = "include/bootlockbox/dbus-proxy-mocks.h"
+  proxy_path_in_mocks = "bootlockbox/dbus-proxies.h"
+  sources = [
+    "../dbus_adaptors/org.chromium.BootLockboxInterface.xml",
+  ]
+}
+
+group("all") {
+  deps = [
+    ":bootlockbox-proxies",
+  ]
+}

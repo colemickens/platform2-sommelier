@@ -1,0 +1,35 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":cryptohome-tpm-live-test",
+  ]
+}
+
+pkg_config("cryptohome-tpm-live-test_config") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "libmetrics-${libbase_ver}",
+    "openssl",
+    "protobuf",
+  ]
+}
+
+executable("cryptohome-tpm-live-test") {
+  configs += [
+    ":cryptohome-tpm-live-test_config",
+    "//cryptohome/libs:target_defaults",
+  ]
+  sources = [
+    "../cryptohome-tpm-live-test.cc",
+    "../tpm_live_test.cc",
+  ]
+  deps = [
+    "//cryptohome/libs:libcrostpm",
+  ]
+}
