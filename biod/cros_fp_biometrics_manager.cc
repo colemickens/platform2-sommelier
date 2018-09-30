@@ -125,6 +125,7 @@ class CrosFpBiometricsManager::CrosFpDevice : public MessageLoopForIO::Watcher {
   bool ResetContext();
 
   int MaxTemplateCount() { return info_.template_max; }
+  int TemplateVersion() { return info_.template_version; }
 
  protected:
   // MessageLoopForIO::Watcher overrides:
@@ -1078,6 +1079,13 @@ bool CrosFpBiometricsManager::LoadRecord(const std::string& user_id,
 
   LOG(INFO) << "Upload record " << record_id;
   VendorTemplate tmpl(tmpl_data_str.begin(), tmpl_data_str.end());
+  auto* metadata =
+      reinterpret_cast<const ec_fp_template_encryption_metadata*>(tmpl.data());
+  if (metadata->struct_version != cros_dev_->TemplateVersion()) {
+    LOG(ERROR) << "Version mismatch between template ("
+               << metadata->struct_version << ") and hardware ("
+               << cros_dev_->TemplateVersion() << ")";
+  }
   if (!cros_dev_->UploadTemplate(tmpl)) {
     LOG(ERROR) << "Cannot send template to the MCU from " << record_id << ".";
     return false;
