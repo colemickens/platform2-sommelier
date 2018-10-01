@@ -21,7 +21,6 @@ use Dbus;
 use errno;
 use FileWatcher;
 use get_runnables;
-use open_with_flags;
 use PAGE_SIZE;
 use Paths;
 use Result;
@@ -53,7 +52,7 @@ fn duration_to_millis(duration: &Duration) -> i64 {
 // Writes |string| to file |path|.  If |append| is true, seeks to end first.
 // If |append| is false, truncates the file first.
 fn write_string(string: &str, path: &Path, append: bool) -> Result<()> {
-    let mut f = open_with_flags(&path, OpenOptions::new().write(true).append(append))?;
+    let mut f = OpenOptions::new().write(true).append(append).open(&path)?;
     if !append {
         f.set_len(0)?;
     }
@@ -328,7 +327,8 @@ pub fn test_loop(_always_poll_fast: bool, paths: &Paths) {
                                 .expect("cannot create mock dbus"));
         let timer = Box::new(MockTimer::new(events, paths.clone(),
                                             dbus.fifo_out.take().unwrap()));
-        let mut sampler = Sampler::new(false, &paths, timer, dbus);
+        let mut sampler = Sampler::new(false, &paths, timer, dbus)
+            .expect("sampler creation error");
         loop {
             // Alternate between slow and fast poll.
             sampler.slow_poll().expect("slow poll error");

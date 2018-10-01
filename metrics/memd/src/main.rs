@@ -38,7 +38,6 @@ use std::{io,mem,str};
 #[cfg(not(test))]
 use std::thread;
 use std::cmp::max;
-use std::error::Error;
 use std::fmt;
 use std::fs::{create_dir, File, OpenOptions};
 use std::io::prelude::*;
@@ -126,7 +125,57 @@ const VMSTATS: [(&str, bool); VMSTAT_VALUES_COUNT] = [
     ("pgmajfault_f",            false),
 ];
 
-type Result<T> = std::result::Result<T, Box<Error>>;
+#[derive(Debug)]
+pub enum Error {
+    LowMemFileError(Box<std::error::Error>),
+    VmstatFileError(Box<std::io::Error>),
+    RunnablesFileError(Box<std::io::Error>),
+    AvailableFileError(Box<std::error::Error>),
+    CreateLogDirError(Box<std::io::Error>),
+    StartingClipCounterMissingError(Box<std::error::Error>),
+    LogStaticParametersError(Box<std::error::Error>),
+    DbusWatchError(Box<std::error::Error>),
+    LowMemFDWatchError(Box<std::error::Error>),
+    LowMemWatcherError(Box<std::error::Error>),
+}
+
+
+impl std::error::Error for Error {
+    // This function is "soft-deprecated" so
+    // we use the fmt() function from Display below.
+    fn description(&self) -> &str {
+        "memd_error"
+    }
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &Error::LowMemFileError(ref e) =>
+                write!(f, "cannot opening low-mem file: {}", e),
+            &Error::VmstatFileError(ref e) =>
+                write!(f, "cannot open vmstat: {}", e),
+            &Error::RunnablesFileError(ref e) =>
+                write!(f, "cannot open loadavg: {}", e),
+            &Error::AvailableFileError(ref e) =>
+                write!(f, "cannot open available file: {}", e),
+            &Error::CreateLogDirError(ref e) =>
+                write!(f, "cannot create log directory: {}", e),
+            &Error::StartingClipCounterMissingError(ref e) =>
+                write!(f, "cannot find starting clip counter: {}", e),
+            &Error::LogStaticParametersError(ref e) =>
+                write!(f, "cannot log static parameters: {}", e),
+            &Error::DbusWatchError(ref e) =>
+                write!(f, "cannot watch dbus fd: {}", e),
+            &Error::LowMemFDWatchError(ref e) =>
+                write!(f, "cannot watch low-mem fd: {}", e),
+            &Error::LowMemWatcherError(ref e) =>
+                write!(f, "cannot set low-mem watcher: {}", e),
+        }
+    }
+}
+
+type Result<T> = std::result::Result<T, Box<std::error::Error>>;
 
 fn errno() -> i32 {
     // _errno_location() is trivially safe to call and dereferencing the
@@ -154,33 +203,25 @@ fn strerror(err: i32) -> String {
     }
 }
 
-// Opens a file.  Returns an error which includes the file name.
-fn open(path: &Path) -> Result<File> {
-    Ok(File::open(path).map_err(|e| format!("{:?}: {}", path, e))?)
-}
-
 // Opens a file if it exists, otherwise returns none.
 fn open_maybe(path: &Path) -> Result<Option<File>> {
     if !path.exists() {
         Ok(None)
     } else {
-        Ok(Some(open(path)?))
+        Ok(Some(File::open(path)?))
     }
-}
-
-// Opens a file with mode flags (unfortunately named OpenOptions).
-fn open_with_flags(path: &Path, options: &OpenOptions) -> Result<File> {
-    Ok(options.open(path).map_err(|e| format!("{:?}: {}", path, e))?)
 }
 
 // Opens a file with mode flags.  If the file does not exist, returns None.
-fn open_with_flags_maybe(path: &Path, options: &OpenOptions) -> Result<Option<File>> {
+fn open_with_flags_maybe(path: &Path, options: &OpenOptions) ->
+    Result<Option<File>> {
     if !path.exists() {
         Ok(None)
     } else {
-        Ok(Some(open_with_flags(&path, &options)?))
+        Ok(Some(options.open(&path)?))
     }
 }
+
 
 // Converts the result of an integer expression |e| to modulo |n|. |e| may be
 // negative. This differs from plain "%" in that the result of this function
@@ -194,7 +235,7 @@ fn modulo(e: isize, n: usize) -> usize {
 // Reads a string from the file named by |path|, representing a u32, and
 // returns the value the strings it represents.
 fn read_int(path: &Path) -> Result<u32> {
-    let mut file = open(path)?;
+    let mut file = File::open(path)?;
     let mut content = String::new();
     file.read_to_string(&mut content)?;
     Ok(content.trim().parse::<u32>()?)
@@ -724,32 +765,39 @@ impl<'a> Sampler<'a> {
     fn new(always_poll_fast: bool,
            paths: &'a Paths,
            timer: Box<Timer>,
-           dbus: Box<Dbus>) -> Sampler {
+           dbus: Box<Dbus>) -> Result<Sampler> {
 
         let mut low_mem_file_flags = OpenOptions::new();
         low_mem_file_flags.custom_flags(libc::O_NONBLOCK);
         low_mem_file_flags.read(true);
-        let low_mem_file_option = open_with_flags_maybe(&paths.low_mem_device, &low_mem_file_flags)
-            .unwrap_or_else(die!("error opening low-mem file"));
+        let low_mem_file_option = open_with_flags_maybe(&paths.low_mem_device,
+                                                        &low_mem_file_flags)
+            .map_err(|e| Error::LowMemFileError(e))?;
         if low_mem_file_option.is_none() {
             warn!("low-mem device: cannot open and will not use");
         }
+
         let mut watcher = FileWatcher::new();
         let mut low_mem_watcher = FileWatcher::new();
 
         if let Some(ref low_mem_file) = low_mem_file_option.as_ref() {
-            watcher.set(&low_mem_file).unwrap_or_else(die!("cannot watch low-mem fd"));
-            low_mem_watcher.set(&low_mem_file).unwrap_or_else(die!("cannot set low-mem watcher"));
+            watcher.set(&low_mem_file)
+                .map_err(|e| Error::LowMemFDWatchError(e))?;
+            low_mem_watcher.set(&low_mem_file)
+                .map_err(|e| Error::LowMemWatcherError(e))?;
         }
         for fd in dbus.get_fds().iter().by_ref() {
-            watcher.set_fd(*fd).unwrap_or_else(die!("cannot watch dbus fd"));
+            watcher.set_fd(*fd)
+                .map_err(|e| Error::DbusWatchError(e))?;
         }
 
         let files = Files {
-            vmstat_file: open(&paths.vmstat).unwrap_or_else(die!("cannot open vmstat")),
-            runnables_file: open(&paths.runnables).unwrap_or_else(die!("cannot open loadavg")),
+            vmstat_file: File::open(&paths.vmstat)
+                .map_err(|e| Error::VmstatFileError(Box::new(e)))?,
+            runnables_file: File::open(&paths.runnables)
+                .map_err(|e| Error::RunnablesFileError(Box::new(e)))?,
             available_file_option: open_maybe(&paths.available)
-                .unwrap_or_else(die!("error opening available file")),
+                .map_err(|e| Error::AvailableFileError(e))?,
             low_mem_file_option,
         };
 
@@ -773,9 +821,10 @@ impl<'a> Sampler<'a> {
             quit_request: false,
         };
         sampler.find_starting_clip_counter()
-            .unwrap_or_else(die!("cannot find starting clip counter"));
-        sampler.log_static_parameters().unwrap_or_else(die!("cannot log static parameters"));
-        sampler
+            .map_err(|e| Error::StartingClipCounterMissingError(e))?;
+        sampler.log_static_parameters()
+            .map_err(|e| Error::LogStaticParametersError(e))?;
+        Ok(sampler)
     }
 
     // Refresh cached time.  This should be called after system calls, which
@@ -831,7 +880,7 @@ impl<'a> Sampler<'a> {
         log_from_procfs(&mut out, psv, "min_free_kbytes")?;
         log_from_procfs(&mut out, psv, "extra_free_kbytes")?;
 
-        let mut zoneinfo = ZoneinfoFile { 0: open(&self.paths.zoneinfo)? };
+        let mut zoneinfo = ZoneinfoFile { 0: File::open(&self.paths.zoneinfo)? };
         let watermarks = zoneinfo.read_watermarks()?;
         writeln!(out, "min_water_mark_kbytes {}", watermarks.min * 4)?;
         writeln!(out, "low_water_mark_kbytes {}", watermarks.low * 4)?;
@@ -1239,7 +1288,13 @@ fn main() {
                  Some("memd")).unwrap_or_else(die!("cannot initialize syslog"));
 
     warn!("memd started");
-    run_memory_daemon(always_poll_fast);
+    match run_memory_daemon(always_poll_fast) {
+        Err(e) => {
+            error!("panic: {}", e);
+            panic!("panic: {}", e);
+        },
+        Ok(_) => ()
+    };
 }
 
 fn testing_root() -> String {
@@ -1250,7 +1305,7 @@ fn testing_root() -> String {
 #[test]
 fn memory_daemon_test() {
     env_logger::init();
-    run_memory_daemon(false);
+    run_memory_daemon(false).expect("run_memory_daemon error");
 }
 
 #[test]
@@ -1258,7 +1313,7 @@ fn read_vmstat_test() {
     test::read_vmstat();
 }
 
-fn run_memory_daemon(always_poll_fast: bool) {
+fn run_memory_daemon(always_poll_fast: bool) -> Result<()> {
     let testing_root = testing_root();
     // make_paths! returns a Paths object initializer with these fields.
     let paths = make_paths!(
@@ -1279,15 +1334,15 @@ fn run_memory_daemon(always_poll_fast: bool) {
     {
         test::setup_test_environment(&paths);
         let var_log = &paths.log_directory.parent().unwrap();
-        std::fs::create_dir_all(var_log).unwrap_or_else(die!("cannot create /var/log"));
+        std::fs::create_dir_all(var_log)
+            .map_err(|e| Error::CreateLogDirError(Box::new(e)))?
     }
 
     // Make sure /var/log/memd exists.  Create it if not.  Assume /var/log
     // exists.  Panic on errors.
     if !paths.log_directory.exists() {
         create_dir(&paths.log_directory)
-            .unwrap_or_else(die!(&format!("cannot create log directory {:?}",
-                                          &paths.log_directory)));
+            .map_err(|e| Error::CreateLogDirError(Box::new(e)))?
     }
 
     #[cfg(test)]
@@ -1297,11 +1352,13 @@ fn run_memory_daemon(always_poll_fast: bool) {
     {
         let timer = Box::new(GenuineTimer {});
         let dbus = Box::new(GenuineDbus::new().unwrap_or_else(die!("cannot connect to dbus")));
-        let mut sampler = Sampler::new(always_poll_fast, &paths, timer, dbus);
+        let mut sampler = Sampler::new(always_poll_fast, &paths, timer, dbus)?;
         loop {
             // Run forever, alternating between slow and fast poll.
-            sampler.slow_poll().unwrap_or_else(die!("slow poll error"));
-            sampler.fast_poll().unwrap_or_else(die!("fast poll error"));
+            sampler.slow_poll()?;
+            sampler.fast_poll()?;
         }
     }
+    #[cfg(test)]
+    Ok(())
 }
