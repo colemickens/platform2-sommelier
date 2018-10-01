@@ -227,10 +227,9 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   void RemoveMountIfMounted(int32_t mount_id);
 
   // Helper method to read a file with valid |options| and output the results
-  // into a |buffer|. This sets |error_code| on failure.
+  // into |content_buffer_|. This sets |error_code| on failure.
   bool ReadFileIntoBuffer(const ReadFileOptionsProto& options,
-                          int32_t* error_code,
-                          std::vector<uint8_t>* buffer);
+                          int32_t* error_code);
 
   // Helper method to write data from a |buffer| into a temporary file and
   // outputs the resulting file descriptor into |temp_fd|. |options| is used for
@@ -374,15 +373,13 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
                 const std::string& target_path,
                 int32_t* error_code);
 
-  // Helper method that fills |buffer| by reading the file with handle
-  // |file_id|. Returns true and sets |bytes_read| on success. Returns false and
-  // sets |error_code| on failure. |options| is used for logging.
+  // Helper method that fills |content_buffer_| by reading the file with handle
+  // |file_id|. Returns false and sets |error_code| on failure. |options| is
+  // used for logging.
   template <typename Proto>
-  bool ReadToBuffer(const Proto& options,
-                    int32_t file_id,
-                    std::vector<uint8_t>* buffer,
-                    size_t* bytes_read,
-                    int32_t* error_code);
+  bool ReadToContentBuffer(const Proto& options,
+                           int32_t file_id,
+                           int32_t* error_code);
 
   // Reads the entries in a directory using the specified type of |Iterator| and
   // outputs the entries in |out_entries|. |options_blob| is parsed into a
@@ -485,6 +482,7 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   template <typename Proto>
   bool IsMounted(const Proto& options, int32_t* error_code) const;
 
+  std::vector<uint8_t> content_buffer_;
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   std::unique_ptr<MountManager> mount_manager_;
   std::unique_ptr<KerberosArtifactSynchronizer> kerberos_synchronizer_;

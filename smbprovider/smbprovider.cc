@@ -318,16 +318,14 @@ void SmbProvider::ReadFile(const ProtoBlob& options_blob,
   DCHECK(error_code);
   DCHECK(temp_fd);
 
-  // TODO(allenvic): Investigate having a single shared buffer in the class.
-  std::vector<uint8_t> buffer;
   ReadFileOptionsProto options;
 
   // The functions below will set the error if they fail.
   *error_code = static_cast<int32_t>(ERROR_OK);
   bool success = ParseOptionsProto(options_blob, &options, error_code) &&
                  IsMounted(options, error_code) && Seek(options, error_code) &&
-                 ReadFileIntoBuffer(options, error_code, &buffer) &&
-                 WriteTempFile(options, buffer, error_code, temp_fd);
+                 ReadFileIntoBuffer(options, error_code) &&
+                 WriteTempFile(options, content_buffer_, error_code, temp_fd);
 
   if (!success) {
     *temp_fd = GenerateEmptyFile();
@@ -822,16 +820,11 @@ void SmbProvider::RemoveMountIfMounted(int32_t mount_id) {
 }
 
 bool SmbProvider::ReadFileIntoBuffer(const ReadFileOptionsProto& options,
-                                     int32_t* error_code,
-                                     std::vector<uint8_t>* buffer) {
-  DCHECK(buffer);
+                                     int32_t* error_code) {
   DCHECK(error_code);
 
-  buffer->resize(options.length());
-  size_t bytes_read;
-
-  if (!ReadToBuffer(options, options.file_id(), buffer, &bytes_read,
-                    error_code)) {
+  // Read the data in the member |content_buffer_|.
+  if (!ReadToContentBuffer(options, options.file_id(), error_code)) {
     return false;
   }
   return true;
@@ -1217,27 +1210,28 @@ ErrorType SmbProvider::ContinueCopy(int32_t copy_token) {
 }
 
 template <typename Proto>
-bool SmbProvider::ReadToBuffer(const Proto& options,
-                               int32_t file_id,
-                               std::vector<uint8_t>* buffer,
-                               size_t* bytes_read,
-                               int32_t* error_code) {
-  DCHECK(buffer);
-  DCHECK(bytes_read);
+bool SmbProvider::ReadToContentBuffer(const Proto& options,
+                                      int32_t file_id,
+                                      int32_t* error_code) {
   DCHECK(error_code);
 
+  // Make sure the buffer is at least large enough for the content.
+  content_buffer_.resize(options.length());
+
+  size_t bytes_read;
   SambaInterface* samba_interface = GetSambaInterface(GetMountId(options));
-  int32_t result = samba_interface->ReadFile(file_id, buffer->data(),
-                                             buffer->size(), bytes_read);
+  int32_t result = samba_interface->ReadFile(
+      file_id, content_buffer_.data(), content_buffer_.size(), &bytes_read);
   if (result != 0) {
     LogAndSetError(options, GetErrorFromErrno(result), error_code);
     return false;
   }
 
-  DCHECK_GE(*bytes_read, 0);
-  DCHECK_LE(*bytes_read, buffer->size());
+  DCHECK_GE(bytes_read, 0);
+  DCHECK_LE(bytes_read, content_buffer_.size());
+
   // Make sure buffer is only as big as bytes_read.
-  buffer->resize(*bytes_read);
+  content_buffer_.resize(bytes_read);
   return true;
 }
 
