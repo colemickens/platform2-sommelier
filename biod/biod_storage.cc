@@ -28,11 +28,17 @@ using base::FilePath;
 
 namespace {
 constexpr char kDaemonStorePath[] = "/run/daemon-store";
-const char kRecordFileName[] = "Record";
-const char kBiod[] = "biod";
-const char kLabel[] = "label";
-const char kRecordId[] = "record_id";
-const char kData[] = "data";
+constexpr char kRecordFileName[] = "Record";
+constexpr char kBiod[] = "biod";
+
+// Members of the JSON file.
+constexpr char kBioManagerMember[] = "biomanager";
+constexpr char kData[] = "data";
+constexpr char kLabel[] = "label";
+constexpr char kRecordId[] = "record_id";
+constexpr char kVersionMember[] = "version";
+// Version of the file format.
+constexpr int kFormatVersion = 1;
 }  // namespace
 
 BiodStorage::BiodStorage(const std::string& biometrics_manager_name,
@@ -58,6 +64,8 @@ bool BiodStorage::WriteRecord(const BiometricsManager::Record& record,
   record_value.SetString(kLabel, record.GetLabel());
   record_value.SetString(kRecordId, record_id);
   record_value.Set(kData, std::move(data));
+  record_value.SetInteger(kVersionMember, kFormatVersion);
+  record_value.SetString(kBioManagerMember, biometrics_manager_name_);
 
   std::string json_string;
   JSONStringValueSerializer json_serializer(&json_string);
