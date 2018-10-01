@@ -101,6 +101,7 @@ pkg_config("crash_sender_config") {
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
     "libminijail",
+    "libsession_manager-client",
   ]
 }
 

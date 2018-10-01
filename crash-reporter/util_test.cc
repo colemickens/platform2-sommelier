@@ -166,8 +166,10 @@ TEST_F(CrashCommonUtilTest, GetUserCrashDirectories) {
                                {{"user1", "hash1"}, {"user2", "hash2"}});
   EXPECT_TRUE(GetUserCrashDirectories(mock.get(), &directories));
   EXPECT_EQ(2, directories.size());
-  EXPECT_EQ("/home/user/hash1/crash", directories[0].value());
-  EXPECT_EQ("/home/user/hash2/crash", directories[1].value());
+  EXPECT_EQ(paths::Get("/home/user/hash1/crash").value(),
+            directories[0].value());
+  EXPECT_EQ(paths::Get("/home/user/hash2/crash").value(),
+            directories[1].value());
 }
 
 }  // namespace util

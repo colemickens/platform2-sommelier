@@ -22,6 +22,20 @@ constexpr char kSystemCrashDirectory[] = "/var/spool/crash";
 // Directory where system configuration files are located.
 constexpr char kEtcDirectory[] = "/etc";
 
+// Directory where per-user crashes are saved before the user logs in.
+//
+// Normally this path is not used.  Unfortunately, there are a few edge cases
+// where we need this.  Any process that runs as kDefaultUserName that crashes
+// is consider a "user crash".  That includes the initial Chrome browser that
+// runs the login screen.  If that blows up, there is no logged in user yet,
+// so there is no per-user dir for us to stash things in.  Instead we fallback
+// to this path as it is at least encrypted on a per-system basis.
+//
+// This also comes up when running autotests.  The GUI is sitting at the login
+// screen while tests are sshing in, changing users, and triggering crashes as
+// the user (purposefully).
+constexpr char kFallbackUserCrashDirectory[] = "/home/chronos/crash";
+
 // File whose existence indicates this is a developer image.
 constexpr char kLeaveCoreFile[] = "/root/.leave_core";
 

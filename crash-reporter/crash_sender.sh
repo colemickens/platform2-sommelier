@@ -544,10 +544,6 @@ remove_report() {
 send_crashes() {
   local dir="$1"
 
-  if [ ! -d "${dir}" ]; then
-    return
-  fi
-
   # Consider any old files which still have no corresponding meta file
   # as orphaned, and remove them.
   for old_file in $(${FIND} "${dir}" -mindepth 1 \
@@ -674,21 +670,14 @@ send_crashes() {
   done
 }
 
-main() {
-  if [ $# -ne 1 ]; then
+main () {
+  if [ $# -ne 2 ]; then
     lecho "Wrong number of command line flags: $*"
     exit 1
   fi
   TMP_DIR="$1"
 
-  # Send system-wide crashes
-  send_crashes "${CRASH_SPOOL}"
-
-  # Send user-specific crashes
-  local d
-  for d in /home/chronos/crash /home/chronos/u-*/crash; do
-    send_crashes "${d}"
-  done
+  send_crashes $2
 }
 
 main "$@"

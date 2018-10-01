@@ -6,10 +6,15 @@
 
 #include <stdlib.h>
 
+#include <string>
+#include <vector>
+
 #include <base/command_line.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/macros.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <brillo/flag_helper.h>
 #include <gtest/gtest.h>
 
@@ -18,12 +23,38 @@
 #include "crash-reporter/test_util.h"
 
 namespace util {
+namespace {
+
+// Prases the output file from fake_crash_sender.sh to a vector of items per
+// line. Example:
+//
+// foo1 foo2
+// bar1 bar2
+//
+// => [["foo1", "foo2"], ["bar1, "bar2"]]
+//
+std::vector<std::vector<std::string>> ParseFakeCrashSenderOutput(
+    const std::string& contents) {
+  std::vector<std::vector<std::string>> rows;
+
+  std::vector<std::string> lines = base::SplitString(
+      contents, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  for (const auto& line : lines) {
+    std::vector<std::string> items =
+        base::SplitString(line, base::kWhitespaceASCII, base::TRIM_WHITESPACE,
+                          base::SPLIT_WANT_NONEMPTY);
+    rows.push_back(items);
+  }
+
+  return rows;
+}
 
 class CrashSenderUtilTest : public testing::Test {
  private:
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    paths::SetPrefixForTesting(temp_dir_.GetPath());
+    test_dir_ = temp_dir_.GetPath();
+    paths::SetPrefixForTesting(test_dir_);
   }
 
   void TearDown() override {
@@ -41,8 +72,12 @@ class CrashSenderUtilTest : public testing::Test {
     brillo::FlagHelper::ResetForTesting();
   }
 
+ protected:
   base::ScopedTempDir temp_dir_;
+  base::FilePath test_dir_;
 };
+
+}  // namespace
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_MalformedValue) {
   const char* argv[] = {"crash_sender", "-e", "WHATEVER"};
@@ -140,6 +175,58 @@ TEST_F(CrashSenderUtilTest, CheckDependencies) {
   // Create kRestrictedCertificatesDirectory and try again.
   ASSERT_TRUE(base::CreateDirectory(kRestrictedCertificatesDirectory));
   EXPECT_TRUE(CheckDependencies(&missing_path));
+}
+
+TEST_F(CrashSenderUtilTest, Sender) {
+  // Set up the mock sesssion manager client.
+  auto mock =
+      std::make_unique<org::chromium::SessionManagerInterfaceProxyMock>();
+  test_util::SetActiveSessions(mock.get(),
+                               {{"user1", "hash1"}, {"user2", "hash2"}});
+
+  // Set up the output file for fake_crash_sender.sh.
+  const base::FilePath output_file = test_dir_.Append("fake_crash_sender.out");
+  setenv("FAKE_CRASH_SENDER_OUTPUT", output_file.value().c_str(),
+         1 /* overwrite */);
+
+  // Create crash directories.
+  // The crash directory for "user1" is not present, thus should be skipped.
+  const base::FilePath system_crash_directory =
+      paths::Get(paths::kSystemCrashDirectory);
+  ASSERT_TRUE(base::CreateDirectory(system_crash_directory));
+  const base::FilePath user2_crash_directory =
+      paths::Get("/home/user/hash2/crash");
+  ASSERT_TRUE(base::CreateDirectory(user2_crash_directory));
+
+  // Set up the sender.
+  Sender::Options options;
+  options.shell_script = base::FilePath("fake_crash_sender.sh");
+  options.proxy = mock.release();
+  Sender sender(options);
+  ASSERT_TRUE(sender.Init());
+
+  // Send crashes.
+  EXPECT_TRUE(sender.SendCrashes(system_crash_directory));
+  EXPECT_TRUE(sender.SendUserCrashes());
+
+  // Check the output file from fake_crash_sender.sh.
+  std::string contents;
+  ASSERT_TRUE(base::ReadFileToString(output_file, &contents));
+  std::vector<std::vector<std::string>> rows =
+      ParseFakeCrashSenderOutput(contents);
+  ASSERT_EQ(2, rows.size());
+
+  // The first run should be for the system crash directory.
+  std::vector<std::string> row = rows[0];
+  ASSERT_EQ(2, row.size());
+  EXPECT_EQ(sender.temp_dir().value(), row[0]);
+  EXPECT_EQ(system_crash_directory.value(), row[1]);
+
+  // The second run should be for "user2".
+  row = rows[1];
+  ASSERT_EQ(2, row.size());
+  EXPECT_EQ(sender.temp_dir().value(), row[0]);
+  EXPECT_EQ(user2_crash_directory.value(), row[1]);
 }
 
 }  // namespace util

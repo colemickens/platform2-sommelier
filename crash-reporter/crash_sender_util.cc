@@ -5,6 +5,8 @@
 #include "crash-reporter/crash_sender_util.h"
 
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include <map>
 #include <string>
@@ -18,6 +20,7 @@
 
 #include "crash-reporter/crash_sender_paths.h"
 #include "crash-reporter/paths.h"
+#include "crash-reporter/util.h"
 
 namespace util {
 
@@ -120,6 +123,82 @@ bool CheckDependencies(base::FilePath* missing_path) {
     }
   }
   return true;
+}
+
+Sender::Sender(const Sender::Options& options)
+    : shell_script_(options.shell_script), proxy_(options.proxy) {}
+
+bool Sender::Init() {
+  if (!scoped_temp_dir_.CreateUniqueTempDir()) {
+    PLOG(ERROR) << "Failed to create a temporary directory.";
+    return false;
+  }
+  return true;
+}
+
+bool Sender::SendCrashes(const base::FilePath& crash_dir) {
+  if (!base::DirectoryExists(crash_dir)) {
+    // Directory not existing is not an error.
+    return true;
+  }
+
+  const int child_pid = fork();
+  if (child_pid == 0) {
+    char* shell_script_path = const_cast<char*>(shell_script_.value().c_str());
+    char* temp_dir_path =
+        const_cast<char*>(scoped_temp_dir_.GetPath().value().c_str());
+    char* crash_dir_path = const_cast<char*>(crash_dir.value().c_str());
+    char* shell_argv[] = {shell_script_path, temp_dir_path, crash_dir_path,
+                          nullptr};
+    execve(shell_script_path, shell_argv, environ);
+    exit(EXIT_FAILURE);  // execve() failed.
+  } else {
+    int status = 0;
+    if (waitpid(child_pid, &status, 0) < 0) {
+      PLOG(ERROR) << "Failed to wait for the child process: " << child_pid;
+      return false;
+    }
+    if (!WIFEXITED(status)) {
+      LOG(ERROR) << "Terminated abnormally: " << status;
+      return false;
+    }
+    int exit_code = WEXITSTATUS(status);
+    if (exit_code != 0) {
+      LOG(ERROR) << "Terminated with non-zero exit code: " << exit_code;
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool Sender::SendUserCrashes() {
+  scoped_refptr<dbus::Bus> bus;
+  bool fully_successful = true;
+
+  // Set up the session manager proxy if it's not given from the options.
+  if (!proxy_) {
+    dbus::Bus::Options options;
+    options.bus_type = dbus::Bus::SYSTEM;
+    scoped_refptr<dbus::Bus> bus = new dbus::Bus(options);
+    CHECK(bus->Connect());
+    proxy_.reset(new org::chromium::SessionManagerInterfaceProxy(bus));
+  }
+
+  std::vector<base::FilePath> directories;
+  if (util::GetUserCrashDirectories(proxy_.get(), &directories)) {
+    for (auto directory : directories) {
+      if (!SendCrashes(directory)) {
+        LOG(ERROR) << "Skipped " << directory.value();
+        fully_successful = false;
+      }
+    }
+  }
+
+  if (bus)
+    bus->ShutdownAndBlock();
+
+  return fully_successful;
 }
 
 }  // namespace util

@@ -101,8 +101,9 @@ bool GetUserCrashDirectories(
 
   for (auto iter : sessions) {
     directories->push_back(
-        brillo::cryptohome::home::GetHashedUserPath(iter.second)
-            .Append("crash"));
+        paths::Get(brillo::cryptohome::home::GetHashedUserPath(iter.second)
+                       .Append("crash")
+                       .value()));
   }
 
   return true;

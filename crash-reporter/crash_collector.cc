@@ -49,18 +49,6 @@ const char kUploadFilePrefix[] = "upload_file_";
 // Key of the lsb-release entry containing the OS version.
 const char kLsbVersionKey[] = "CHROMEOS_RELEASE_VERSION";
 
-// Normally this path is not used.  Unfortunately, there are a few edge cases
-// where we need this.  Any process that runs as kDefaultUserName that crashes
-// is consider a "user crash".  That includes the initial Chrome browser that
-// runs the login screen.  If that blows up, there is no logged in user yet,
-// so there is no per-user dir for us to stash things in.  Instead we fallback
-// to this path as it is at least encrypted on a per-system basis.
-//
-// This also comes up when running autotests.  The GUI is sitting at the login
-// screen while tests are sshing in, changing users, and triggering crashes as
-// the user (purposefully).
-const char kFallbackUserCrashPath[] = "/home/chronos/crash";
-
 // Directory mode of the user crash spool directory.
 const mode_t kUserCrashPathMode = 0755;
 
@@ -401,7 +389,7 @@ FilePath CrashCollector::GetUserCrashDirectory() {
   // In this multiprofile world, there is no one-specific user dir anymore.
   // Ask the session manager for the active ones, then just run with the
   // first result we get back.
-  FilePath user_directory = FilePath(kFallbackUserCrashPath);
+  FilePath user_directory = FilePath(paths::kFallbackUserCrashDirectory);
   std::vector<FilePath> directories;
   if (!GetUserCrashDirectories(&directories) || directories.empty()) {
     LOG(ERROR) << "Could not get user crash directories, using default.";

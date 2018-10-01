@@ -5,7 +5,11 @@
 #ifndef CRASH_REPORTER_CRASH_SENDER_UTIL_H_
 #define CRASH_REPORTER_CRASH_SENDER_UTIL_H_
 
+#include <memory>
+
 #include <base/files/file_path.h>
+#include <session_manager/dbus-proxies.h>
+#include <base/files/scoped_temp_dir.h>
 
 namespace util {
 
@@ -55,6 +59,43 @@ bool ShouldPauseSending();
 // false, and saves the first path that was missing in |missing_path|.
 // TODO(satorux): Remove this once rewriting to C++ is complete.
 bool CheckDependencies(base::FilePath* missing_path);
+
+// A helper class for sending crashes. The behaviors can be customized with
+// Options class for unit testing.
+class Sender {
+ public:
+  struct Options {
+    // The shell script used for sending crashes.
+    base::FilePath shell_script = base::FilePath("/sbin/crash_sender.sh");
+
+    // Session manager client for locating the user-specific crash directories.
+    org::chromium::SessionManagerInterfaceProxyInterface* proxy = nullptr;
+  };
+
+  explicit Sender(const Options& options);
+
+  // Initializes the sender object. Returns true on success.
+  bool Init();
+
+  // Sends crashes in |crash_dir|. Returns true on if sending is successful, or
+  // |crash_dir| does not exist.
+  bool SendCrashes(const base::FilePath& crash_dir);
+
+  // Sends the user-specific crashes. Returns true on if all the user-specific
+  // crash directories are handled successfully.
+  bool SendUserCrashes();
+
+  // Returns the temporary directory used in the object. Valid after Init() is
+  // completed successfully.
+  const base::FilePath& temp_dir() const { return scoped_temp_dir_.GetPath(); }
+
+ private:
+  const base::FilePath shell_script_;
+  std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface> proxy_;
+  base::ScopedTempDir scoped_temp_dir_;
+
+  DISALLOW_COPY_AND_ASSIGN(Sender);
+};
 
 }  // namespace util
 
