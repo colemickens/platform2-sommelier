@@ -2,9 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <brillo/flag_helper.h>
@@ -44,6 +46,12 @@ int main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
   base::FilePath password_file(FLAGS_system ? kSystemPath : kDevModePath);
+
+  base::ScopedFD init_ns_fd(open("/proc/1/ns/mnt", O_CLOEXEC));
+  // Since debugd is running in a sandboxed envrionment, the stateful partition
+  // isn't mounted.  All of these checks need to be done in the init namespace
+  // instead of the debugd sandboxed namespace.
+  setns(init_ns_fd.get(), CLONE_NEWNS);
 
   if (FLAGS_q) {
     if (utils.IsPasswordSet(FLAGS_user, password_file)) {
