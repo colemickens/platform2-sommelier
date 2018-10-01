@@ -253,8 +253,7 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   // Helper method to write data from |content_buffer_| into a file specified by
   // |file_id|. |options| is used for logging. Returns true on success, and sets
   // |error_code| on failure.
-  template <typename Proto>
-  bool WriteFileFromBuffer(const Proto& options,
+  bool WriteFileFromBuffer(const WriteFileOptionsProto& options,
                            int32_t file_id,
                            int32_t* error_code);
 
@@ -375,8 +374,7 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   // Helper method that fills |content_buffer_| by reading the file with handle
   // |file_id|. Returns false and sets |error_code| on failure. |options| is
   // used for logging.
-  template <typename Proto>
-  bool ReadToContentBuffer(const Proto& options,
+  bool ReadToContentBuffer(const ReadFileOptionsProto& options,
                            int32_t file_id,
                            int32_t* error_code);
 

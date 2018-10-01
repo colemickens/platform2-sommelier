@@ -847,8 +847,7 @@ bool SmbProvider::WriteTempFile(const Proto& options,
   return true;
 }
 
-template <typename Proto>
-bool SmbProvider::WriteFileFromBuffer(const Proto& options,
+bool SmbProvider::WriteFileFromBuffer(const WriteFileOptionsProto& options,
                                       int32_t file_id,
                                       int32_t* error_code) {
   DCHECK(error_code);
@@ -1207,8 +1206,7 @@ ErrorType SmbProvider::ContinueCopy(int32_t copy_token) {
   return GetErrorFromErrno(copy_result);
 }
 
-template <typename Proto>
-bool SmbProvider::ReadToContentBuffer(const Proto& options,
+bool SmbProvider::ReadToContentBuffer(const ReadFileOptionsProto& options,
                                       int32_t file_id,
                                       int32_t* error_code) {
   DCHECK(error_code);
