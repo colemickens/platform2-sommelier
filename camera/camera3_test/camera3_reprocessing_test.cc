@@ -21,15 +21,16 @@ class Camera3ReprocessingTest : public Camera3FrameFixture,
 
  protected:
   using ExifTestData = Camera3ExifValidator::ExifTestData;
-  // using Camera3FrameFixture::ImageUniquePtr;
   using ImageUniquePtr = std::unique_ptr<struct Image>;
 
   const int kNumOfReprocessCaptures = 3;
   const double kReprocessingTestSsimThreshold = 0.75;
 
-  ImageUniquePtr Scale(const ImageUniquePtr& in_buffer,
-                       uint32_t to_width,
-                       uint32_t to_height);
+  // Crop the input image with the output aspect ratio if necessary and then
+  // scale it to the designated width and height
+  ImageUniquePtr CropAndScale(const ImageUniquePtr& in_buffer,
+                              uint32_t to_width,
+                              uint32_t to_height);
 
   // |exif_test_data| is used only when |reprocessing_format| is
   // HAL_PIXEL_FORMAT_BLOB
@@ -80,22 +81,55 @@ class Camera3ReprocessingTest : public Camera3FrameFixture,
       std::vector<BufferHandleUniquePtr> buffers) override;
 };
 
-Camera3ReprocessingTest::ImageUniquePtr Camera3ReprocessingTest::Scale(
-    const ImageUniquePtr& buffer, uint32_t to_width, uint32_t to_height) {
-  if (ImageFormat::IMAGE_FORMAT_I420 != buffer->format) {
+Camera3ReprocessingTest::ImageUniquePtr Camera3ReprocessingTest::CropAndScale(
+    const ImageUniquePtr& image, uint32_t to_width, uint32_t to_height) {
+  if (ImageFormat::IMAGE_FORMAT_I420 != image->format) {
     ADD_FAILURE() << "Cannot scale non-I420 format";
     return nullptr;
   }
+
+  const struct Image* crop_image;
+  ImageUniquePtr crop_buffer;
+  if (image->width * to_height == image->height * to_width) {
+    crop_image = image.get();
+  } else {
+    uint32_t crop_w, crop_h;
+    if (image->width * to_height < image->height * to_width) {
+      crop_w = image->width;
+      crop_h = image->width * to_height / to_width;
+    } else {
+      crop_w = image->height * to_width / to_height;
+      crop_h = image->height;
+    }
+
+    crop_buffer =
+        std::make_unique<Image>(crop_w, crop_h, ImageFormat::IMAGE_FORMAT_I420);
+    int ret = libyuv::ConvertToI420(
+        image->data.data(), image->data.size(), crop_buffer->planes[0].addr,
+        crop_buffer->planes[0].stride, crop_buffer->planes[1].addr,
+        crop_buffer->planes[1].stride, crop_buffer->planes[2].addr,
+        crop_buffer->planes[2].stride, (image->width - crop_w) / 2,
+        (image->height - crop_h) / 2, image->width, image->height, crop_w,
+        crop_h, libyuv::RotationMode::kRotate0, libyuv::FourCC::FOURCC_I420);
+    if (ret != 0) {
+      ADD_FAILURE() << "libyuv I420 crop failed";
+      return nullptr;
+    }
+
+    crop_image = crop_buffer.get();
+  }
+
   auto out_buffer = std::make_unique<Image>(to_width, to_height,
                                             ImageFormat::IMAGE_FORMAT_I420);
-  libyuv::I420Scale(buffer->planes[0].addr, buffer->planes[0].stride,
-                    buffer->planes[1].addr, buffer->planes[1].stride,
-                    buffer->planes[2].addr, buffer->planes[2].stride,
-                    buffer->width, buffer->height, out_buffer->planes[0].addr,
-                    out_buffer->planes[0].stride, out_buffer->planes[1].addr,
-                    out_buffer->planes[1].stride, out_buffer->planes[2].addr,
-                    out_buffer->planes[2].stride, out_buffer->width,
-                    out_buffer->height, libyuv::kFilterBilinear);
+  libyuv::I420Scale(crop_image->planes[0].addr, crop_image->planes[0].stride,
+                    crop_image->planes[1].addr, crop_image->planes[1].stride,
+                    crop_image->planes[2].addr, crop_image->planes[2].stride,
+                    crop_image->width, crop_image->height,
+                    out_buffer->planes[0].addr, out_buffer->planes[0].stride,
+                    out_buffer->planes[1].addr, out_buffer->planes[1].stride,
+                    out_buffer->planes[2].addr, out_buffer->planes[2].stride,
+                    out_buffer->width, out_buffer->height,
+                    libyuv::kFilterBilinear);
   return out_buffer;
 }
 
@@ -150,8 +184,8 @@ void Camera3ReprocessingTest::TestReprocessing(
         ConvertToImage(std::move(result_buffer), input_size.Width(),
                        input_size.Height(), ImageFormat::IMAGE_FORMAT_I420);
     ASSERT_TRUE(input_image != nullptr) << "Failed to convert input image";
-    input_image = Scale(input_image, reprocessing_size.Width(),
-                        reprocessing_size.Height());
+    input_image = CropAndScale(input_image, reprocessing_size.Width(),
+                               reprocessing_size.Height());
     ASSERT_TRUE(input_image != nullptr) << "Failed to scale input image";
 
     ImageUniquePtr repr_image;
