@@ -18,7 +18,14 @@ extern const base::FilePath kSaveTempPath;
 extern const base::FilePath kRestoreTempPath;
 // The rollback data is stored here on unencrypted stateful as an encrypted
 // proto. This is the file which is preserved over powerwash.
-extern const base::FilePath kRollbackDataPath;
+extern const base::FilePath kUnencryptedStatefulRollbackDataPath;
+// The rollback data is stored here on encrypted stateful as an unencrypted
+// proto.
+extern const base::FilePath kEncryptedStatefulRollbackDataPath;
+
+// These files indicate in which restore state are we currently.
+extern const base::FilePath kFirstStageCompletedFile;
+extern const base::FilePath kSecondStageCompletedFile;
 
 // Name of the files (without path) we want to preserve.
 extern const base::FilePath kInstallAttributesPath;

@@ -33,7 +33,8 @@ TEST(OobeConfigTest, SaveAndRestoreTest) {
   // Saving rollback data.
   ASSERT_TRUE(oobe_config.UnencryptedRollbackSave());
   std::string rollback_data;
-  ASSERT_TRUE(oobe_config.ReadFile(kRollbackDataPath, &rollback_data));
+  ASSERT_TRUE(oobe_config.ReadFile(kUnencryptedStatefulRollbackDataPath,
+                                   &rollback_data));
   EXPECT_FALSE(rollback_data.empty());
 
   // Simulate powerwash and only preserve rollback_data by creating new temp
@@ -44,10 +45,12 @@ TEST(OobeConfigTest, SaveAndRestoreTest) {
 
   // Verify that we don't have any remaining files.
   std::string tmp_data = "x";
-  ASSERT_FALSE(oobe_config.ReadFile(kRollbackDataPath, &tmp_data));
+  ASSERT_FALSE(
+      oobe_config.ReadFile(kUnencryptedStatefulRollbackDataPath, &tmp_data));
   EXPECT_TRUE(tmp_data.empty());
   // Preserving rollback data.
-  ASSERT_TRUE(oobe_config.WriteFile(kRollbackDataPath, rollback_data));
+  ASSERT_TRUE(oobe_config.WriteFile(kUnencryptedStatefulRollbackDataPath,
+                                    rollback_data));
 
   // Restore data.
   EXPECT_TRUE(oobe_config.UnencryptedRollbackRestore());

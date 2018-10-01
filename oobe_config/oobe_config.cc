@@ -4,6 +4,7 @@
 
 #include "oobe_config/oobe_config.h"
 
+#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <map>
@@ -15,7 +16,7 @@
 namespace oobe_config {
 
 base::FilePath OobeConfig::GetPrefixedFilePath(
-    const base::FilePath& file_path) {
+    const base::FilePath& file_path) const {
   if (prefix_path_for_testing_.empty())
     return file_path;
   DCHECK(!file_path.value().empty());
@@ -24,7 +25,7 @@ base::FilePath OobeConfig::GetPrefixedFilePath(
 }
 
 bool OobeConfig::ReadFileWithoutPrefix(const base::FilePath& file_path,
-                                       std::string* out_content) {
+                                       std::string* out_content) const {
   bool result = base::ReadFileToString(file_path, out_content);
   if (result) {
     LOG(INFO) << "Loaded " << file_path.value();
@@ -36,12 +37,16 @@ bool OobeConfig::ReadFileWithoutPrefix(const base::FilePath& file_path,
 }
 
 bool OobeConfig::ReadFile(const base::FilePath& file_path,
-                          std::string* out_content) {
+                          std::string* out_content) const {
   return ReadFileWithoutPrefix(GetPrefixedFilePath(file_path), out_content);
 }
 
+bool OobeConfig::FileExists(const base::FilePath& file_path) const {
+  return base::PathExists(GetPrefixedFilePath(file_path));
+}
+
 bool OobeConfig::WriteFileWithoutPrefix(const base::FilePath& file_path,
-                                        const std::string& data) {
+                                        const std::string& data) const {
   if (!base::CreateDirectory(file_path.DirName())) {
     LOG(ERROR) << "Couldn't create directory for " << file_path.value();
     return false;
@@ -56,11 +61,11 @@ bool OobeConfig::WriteFileWithoutPrefix(const base::FilePath& file_path,
 }
 
 bool OobeConfig::WriteFile(const base::FilePath& file_path,
-                           const std::string& data) {
+                           const std::string& data) const {
   return WriteFileWithoutPrefix(GetPrefixedFilePath(file_path), data);
 }
 
-bool OobeConfig::GetRollbackData(RollbackData* rollback_data) {
+bool OobeConfig::GetRollbackData(RollbackData* rollback_data) const {
   std::string file_content;
   ReadFile(kSaveTempPath.Append(kInstallAttributesFileName), &file_content);
   rollback_data->set_install_attributes(file_content);
@@ -81,7 +86,7 @@ bool OobeConfig::GetRollbackData(RollbackData* rollback_data) {
   return true;
 }
 
-bool OobeConfig::RestoreRollbackData(const RollbackData& rollback_data) {
+bool OobeConfig::RestoreRollbackData(const RollbackData& rollback_data) const {
   WriteFile(kRestoreTempPath.Append(kInstallAttributesFileName),
             rollback_data.install_attributes());
   WriteFile(kRestoreTempPath.Append(kOwnerKeyFileName),
@@ -105,7 +110,7 @@ bool OobeConfig::RestoreRollbackData(const RollbackData& rollback_data) {
   return true;
 }
 
-bool OobeConfig::UnencryptedRollbackSave() {
+bool OobeConfig::UnencryptedRollbackSave() const {
   RollbackData rollback_data;
   if (!GetRollbackData(&rollback_data)) {
     return false;
@@ -117,27 +122,44 @@ bool OobeConfig::UnencryptedRollbackSave() {
     LOG(ERROR) << "Couldn't serialize proto.";
     return false;
   }
-  if (!WriteFile(kRollbackDataPath, rollback_data_str)) {
+  if (!WriteFile(kUnencryptedStatefulRollbackDataPath, rollback_data_str)) {
     return false;
   }
 
   return true;
 }
 
-bool OobeConfig::UnencryptedRollbackRestore() {
+bool OobeConfig::UnencryptedRollbackRestore() const {
   std::string rollback_data_str;
-  if (!ReadFile(kRollbackDataPath, &rollback_data_str)) {
+  if (!ReadFile(kUnencryptedStatefulRollbackDataPath, &rollback_data_str)) {
     return false;
   }
+  // Write the unencrypted data immediately to
+  // kEncryptedStatefulRollbackDataPath.
+  if (!WriteFile(kEncryptedStatefulRollbackDataPath, rollback_data_str)) {
+    return false;
+  }
+
   RollbackData rollback_data;
   if (!rollback_data.ParseFromString(rollback_data_str)) {
     LOG(ERROR) << "Couldn't parse proto.";
     return false;
   }
-  LOG(INFO) << "Parsed " << kRollbackDataPath.value();
+  LOG(INFO) << "Parsed " << kUnencryptedStatefulRollbackDataPath.value();
 
   // Data is already unencrypted, restore it.
   return RestoreRollbackData(rollback_data);
+}
+
+void OobeConfig::CleanupEncryptedStatefulDirectory() const {
+  base::FileEnumerator iter(
+      GetPrefixedFilePath(kEncryptedStatefulRollbackDataPath), false,
+      base::FileEnumerator::FILES);
+  for (auto file = iter.Next(); !file.empty(); file = iter.Next()) {
+    if (!base::DeleteFile(file, false)) {
+      LOG(ERROR) << "Couldn't delete " << file.value();
+    }
+  }
 }
 
 }  // namespace oobe_config

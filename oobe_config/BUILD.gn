@@ -55,6 +55,7 @@ static_library("liboobeconfig") {
     ":target_defaults",
   ]
   sources = [
+    "load_oobe_config_rollback.cc",
     "oobe_config.cc",
     "rollback_constants.cc",
   ]
@@ -171,6 +172,7 @@ if (use.test) {
       ":test_config",
     ]
     sources = [
+      "load_oobe_config_rollback_test.cc",
       "load_oobe_config_usb_test.cc",
       "rollback_helper_test.cc",
       "oobe_config_test.cc",

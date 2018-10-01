@@ -30,8 +30,9 @@ void InitLog() {
 
 class OobeConfigRestoreDaemon : public brillo::DBusServiceDaemon {
  public:
-  OobeConfigRestoreDaemon()
-      : DBusServiceDaemon(kOobeConfigRestoreServiceName) {}
+  explicit OobeConfigRestoreDaemon(bool allow_unencrypted)
+      : DBusServiceDaemon(kOobeConfigRestoreServiceName),
+        allow_unencrypted_(allow_unencrypted) {}
 
  protected:
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
@@ -39,8 +40,8 @@ class OobeConfigRestoreDaemon : public brillo::DBusServiceDaemon {
         nullptr, bus_,
         org::chromium::OobeConfigRestoreAdaptor::GetObjectPath());
 
-    service_ =
-        std::make_unique<OobeConfigRestoreService>(std::move(dbus_object));
+    service_ = std::make_unique<OobeConfigRestoreService>(
+        std::move(dbus_object), allow_unencrypted_);
     service_->RegisterAsync(sequencer->GetHandler(
         "OobeConfigRestoreService.RegisterAsync() failed.", true));
   }
@@ -52,12 +53,13 @@ class OobeConfigRestoreDaemon : public brillo::DBusServiceDaemon {
 
  private:
   std::unique_ptr<OobeConfigRestoreService> service_;
+  bool allow_unencrypted_;
   DISALLOW_COPY_AND_ASSIGN(OobeConfigRestoreDaemon);
 };
 
 // Runs OobeConfigRestoreDaemon.
-int RunDaemon() {
-  OobeConfigRestoreDaemon daemon;
+int RunDaemon(bool allow_unencrypted) {
+  OobeConfigRestoreDaemon daemon(allow_unencrypted);
 
   LOG(INFO) << "Starting oobe_config_restore daemon";
   int res = daemon.Run();
@@ -68,7 +70,11 @@ int RunDaemon() {
 
 }  // namespace oobe_config
 
-const char kTestUnencrypted[] = "test-unencrypted";
+// Execute the first stage of the restore process itself immediately (without
+// waiting for Chrome to initiate it). Use only for testing.
+constexpr char kTestUnencrypted[] = "test-unencrypted";
+// Starts the service using unencrypted rollback data. Use only for testing.
+constexpr char kAllowUnencrypted[] = "allow-unencrypted";
 
 int main(int argc, char* argv[]) {
   oobe_config::InitLog();
@@ -77,7 +83,9 @@ int main(int argc, char* argv[]) {
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   if (cl->HasSwitch(kTestUnencrypted)) {
     return oobe_config::OobeConfig().UnencryptedRollbackRestore();
+  } else if (cl->HasSwitch(kAllowUnencrypted)) {
+    return oobe_config::RunDaemon(/*allow_unencrypted=*/true);
   } else {
-    return oobe_config::RunDaemon();
+    return oobe_config::RunDaemon(/*allow_unencrypted=*/false);
   }
 }

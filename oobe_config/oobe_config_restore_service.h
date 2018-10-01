@@ -23,7 +23,8 @@ class OobeConfigRestoreService
       public org::chromium::OobeConfigRestoreInterface {
  public:
   explicit OobeConfigRestoreService(
-      std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object);
+      std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
+      bool allow_unencrypted);
   ~OobeConfigRestoreService() override;
 
   // Registers the D-Bus object and interfaces.
@@ -38,6 +39,7 @@ class OobeConfigRestoreService
 
  private:
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
+  bool allow_unencrypted_;
 
   DISALLOW_COPY_AND_ASSIGN(OobeConfigRestoreService);
 };

@@ -35,7 +35,7 @@ bool PrepareSave(const base::FilePath& root_path,
   }
 
   base::FilePath rollback_data_path =
-      PrefixAbsolutePath(root_path, kRollbackDataPath);
+      PrefixAbsolutePath(root_path, kUnencryptedStatefulRollbackDataPath);
 
   if (!ignore_permissions_for_testing) {
     uid_t oobe_config_save_uid;
@@ -127,6 +127,22 @@ bool PrepareSave(const base::FilePath& root_path,
 
 bool FinishRestore(const base::FilePath& root_path,
                    bool ignore_permissions_for_testing) {
+  /* TODO(hunyadym):
+    if [ ! -f /var/lib/oobe_config_restore/first_stage_completed ] ; then
+      echo "First stage not yet completed."
+      exit
+    fi
+    if [ -f /var/lib/oobe_config_restore/second_stage_completed ] ; then
+      echo "Second stage already completed."
+      exit
+    fi
+
+    if [ ! -f /var/lib/oobe_config_restore/rollback_data ] ; then
+      echo "Unencrypted rollback_data is not present."
+      exit
+    fi
+  */
+
   base::FilePath restore_path = PrefixAbsolutePath(root_path, kRestoreTempPath);
   // Restore install attributes. /home/.shadow should already exist at OOBE
   // time. Owner should be root:root, with permissions 644.
@@ -181,6 +197,16 @@ bool FinishRestore(const base::FilePath& root_path,
       PLOG(ERROR) << "Couldn't delete " << file.value();
     }
   }
+
+  /* TODO(hunyadym):
+    # We remove the original data (oobe_config_restore has no permission to do
+    # it).
+    # We already checked that the data is saved.
+    rm /mnt/stateful_partition/unencrypted/preserve/rollback_data
+
+    # We indicate that the first stage is completed.
+    touch /var/lib/oobe_config_restore/second_stage_completed
+  */
 
   return true;
 }

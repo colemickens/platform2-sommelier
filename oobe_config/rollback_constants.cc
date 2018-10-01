@@ -13,8 +13,15 @@ const base::FilePath kSaveTempPath =
     base::FilePath("/var/lib/oobe_config_save/");
 const base::FilePath kRestoreTempPath =
     base::FilePath("/var/lib/oobe_config_restore/");
-const base::FilePath kRollbackDataPath = base::FilePath(
+const base::FilePath kUnencryptedStatefulRollbackDataPath = base::FilePath(
     "/mnt/stateful_partition/unencrypted/preserve/rollback_data");
+const base::FilePath kEncryptedStatefulRollbackDataPath =
+    base::FilePath("/var/lib/oobe_config_restore/rollback_data");
+
+const base::FilePath kFirstStageCompletedFile =
+    base::FilePath("/var/lib/oobe_config_restore/first_stage_completed");
+const base::FilePath kSecondStageCompletedFile =
+    base::FilePath("/var/lib/oobe_config_restore/second_stage_completed");
 
 const base::FilePath kInstallAttributesPath =
     base::FilePath("/home/.shadow/install_attributes.pb");
