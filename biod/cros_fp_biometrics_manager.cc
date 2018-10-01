@@ -1085,6 +1085,7 @@ bool CrosFpBiometricsManager::LoadRecord(const std::string& user_id,
     LOG(ERROR) << "Version mismatch between template ("
                << metadata->struct_version << ") and hardware ("
                << cros_dev_->TemplateVersion() << ")";
+    biod_storage_.DeleteRecord(user_id, record_id);
     return false;
   }
   if (!cros_dev_->UploadTemplate(tmpl)) {
