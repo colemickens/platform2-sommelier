@@ -123,6 +123,7 @@ class ObjectStoreImpl : public ObjectStore {
   std::unique_ptr<leveldb::Env> env_;
   std::unique_ptr<leveldb::DB> db_;
   std::map<int, BlobType> blob_type_map_;
+  base::FilePath database_name_;
 
   friend class TestObjectStoreEncryption;
   FRIEND_TEST(TestObjectStoreEncryption, EncryptionInit);

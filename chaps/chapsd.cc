@@ -10,6 +10,7 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sysexits.h>
 #include <unistd.h>
 
 #include <memory>
@@ -143,8 +144,25 @@ class Daemon : public brillo::DBusServiceDaemon {
     // We're not finished with initialization until the initialization thread
     // has had a chance to acquire the lock.
     init_started.Wait();
+
     // Now we can export D-Bus objects.
-    return DBusServiceDaemon::OnInit();
+    int return_code = DBusServiceDaemon::OnInit();
+    if (return_code != EX_OK)
+      return return_code;
+
+    RegisterHandler(SIGTERM, base::Bind(&Daemon::ShutdownSignalHandler,
+                                        base::Unretained(this)));
+    RegisterHandler(SIGINT, base::Bind(&Daemon::ShutdownSignalHandler,
+                                       base::Unretained(this)));
+
+    return EX_OK;
+  }
+
+  void OnShutdown(int* exit_code) override {
+    // TODO(https://crbug.com/844537): Remove when root cause of disappearing
+    // system token certificates is found.
+    LOG(INFO) << "chapsd Daemon::OnShutdown invoked.";
+    DBusServiceDaemon::OnShutdown(exit_code);
   }
 
   void RegisterDBusObjectsAsync(
@@ -156,6 +174,17 @@ class Daemon : public brillo::DBusServiceDaemon {
   }
 
  private:
+  // Mimicks |brillo::Daemon::Shutdown| but also logs the incoming signal.
+  // TODO(https://crbug.com/844537): Remove when root cause of disappearing
+  // system token certificates is found.
+  bool ShutdownSignalHandler(const signalfd_siginfo& info) {
+    // Trigger daemon shutdown, because the signal handler replaces the
+    // original signal handler from |brillo::Daemon|.
+    LOG(INFO) << "Shutdown triggered by signal " << info.ssi_signo << ".";
+    Quit();
+    return true;  // Unregister the signal handler.
+  }
+
   std::string srk_auth_data_;
   bool auto_load_system_token_;
   base::Thread tpm_background_thread_;

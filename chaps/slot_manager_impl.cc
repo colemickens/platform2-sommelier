@@ -118,6 +118,20 @@ bool SanityCheckAuthData(const string& auth_data_hash,
   return (auth_data_hash[1] == saved_auth_data_hash[1]);
 }
 
+// TODO(https://crbug.com/844537): Remove when the root cause of disappearing
+// system token certificates is found.
+// Creates a flag file under /var/log/chapsd_token_reinitialized, containing the
+// path of the token that has been reinitialized. The purpose is to know if this
+// has happened even if syslog is not available at the time when token
+// reinitialization is triggered (e.g. because the machine is shutting down).
+void CreateTokenReinitializedFlagFile(const base::FilePath& token_path) {
+  const base::FilePath flag_file_path("/var/log/chapsd_token_reinitialized");
+  const std::string& token_path_value = token_path.value();
+  base::WriteFile(flag_file_path,
+                  token_path_value.c_str(),
+                  static_cast<int>(token_path_value.length()));
+}
+
 // Performs expensive tasks required to initialize a token.
 class TokenInitThread : public base::PlatformThread::Delegate {
  public:
@@ -202,6 +216,7 @@ void TokenInitThread::ThreadMain() {
                                     &master_key)) {
       LOG(ERROR) << "Authentication failed for token at " << path_.value()
                  << ", reinitializing token.";
+      CreateTokenReinitializedFlagFile(path_);
       tpm_utility_->UnloadKeysForSlot(slot_id_);
       if (object_pool_->DeleteAll() != ObjectPool::Result::Success)
         LOG(WARNING) << "Failed to delete all existing objects.";
@@ -289,15 +304,20 @@ SlotManagerImpl::SlotManagerImpl(ChapsFactory* factory,
 }
 
 SlotManagerImpl::~SlotManagerImpl() {
+  LOG(INFO) << "SlotManagerImpl is shutting down.";
   for (size_t i = 0; i < slot_list_.size(); ++i) {
     // Wait for any worker thread to finish.
-    if (slot_list_[i].worker_thread.get())
+    if (slot_list_[i].worker_thread.get()) {
+      LOG(INFO) << "Waiting for worker thread for slot " << i << " to exit.";
       base::PlatformThread::Join(slot_list_[i].worker_thread_handle);
+    }
     if (tpm_utility_->IsTPMAvailable()) {
       // Unload any keys that have been loaded in the TPM.
+      LOG(INFO) << "Unloading keys for slot " << i << ".";
       tpm_utility_->UnloadKeysForSlot(i);
     }
   }
+  LOG(INFO) << "SlotManagerImpl destructor done.";
 }
 
 bool SlotManagerImpl::Init() {

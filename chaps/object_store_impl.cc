@@ -6,9 +6,11 @@
 
 #include <limits>
 #include <map>
+#include <sstream>
 #include <string>
 #include <vector>
 
+#include "base/files/file_enumerator.h"
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
@@ -59,6 +61,49 @@ class MetricsWrapper {
 #endif
 };
 
+// Logs information about |db_dir| before opening the leveldb.
+// TODO(https://crbug.com/844537): Remove or decrease log level when root cause
+// of disappearing system token certificates is found.
+void LogDatabaseDirectoryStats(const FilePath& db_dir) {
+  if (!base::DirectoryExists(db_dir)) {
+    LOG(INFO) << "leveldb " << db_dir.value() << " directory did not exist.";
+    return;
+  }
+  base::FileEnumerator file_enumerator(db_dir, false /* recursive */,
+                                       base::FileEnumerator::FILES);
+  std::ostringstream db_info;
+  for (base::FilePath db_file = file_enumerator.Next(); !db_file.empty();
+       db_file = file_enumerator.Next()) {
+    base::FileEnumerator::FileInfo db_file_info = file_enumerator.GetInfo();
+    db_info << "\n  " << db_file.value() << " (" << db_file_info.GetSize()
+            << " bytes, " << db_file_info.GetLastModifiedTime() << ")";
+  }
+  LOG(INFO) << "leveldb " << db_dir.value() << " dump:" << db_info.str();
+}
+
+// Logs information about |db|.
+// TODO(https://crbug.com/844537): Remove or decrease log level when root cause
+// of disappearing system token certificates is found.
+void LogDatabaseStats(leveldb::DB* db) {
+  std::string leveldb_stats;
+  if (db->GetProperty("leveldb.stats", &leveldb_stats)) {
+    LOG(INFO) << "leveldb.stats:\n" << leveldb_stats;
+  } else {
+    LOG(WARNING) << "Failed to retrieve leveldb.stats";
+  }
+
+  // Also log the number of objects in the database. This needs to be explicitly
+  // counted in leveldb.
+  int key_count = 0;
+  leveldb::ReadOptions read_options;
+  read_options.fill_cache = false;
+  std::unique_ptr<leveldb::Iterator> it(db->NewIterator(read_options));
+  for (it->SeekToFirst(); it->Valid(); it->Next()) {
+    ++key_count;
+  }
+  LOG(INFO) << "leveldb contains " << key_count << " keys.";
+}
+
 }  // namespace
 
 namespace chaps {
@@ -82,7 +127,15 @@ const int ObjectStoreImpl::kBlobVersion = 1;
 
 ObjectStoreImpl::ObjectStoreImpl() {}
 
-ObjectStoreImpl::~ObjectStoreImpl() {}
+ObjectStoreImpl::~ObjectStoreImpl() {
+  // TODO(https://crbug.com/844537): Remove or decrease log level when root
+  // cause of disappearing system token certificates is found.
+  if (db_) {
+    LOG(INFO) << "Closing database for " << database_name_.value();
+    db_.reset();
+    LogDatabaseDirectoryStats(database_name_);
+  }
+}
 
 bool ObjectStoreImpl::Init(const FilePath& database_path) {
   MetricsWrapper metrics;
@@ -103,6 +156,10 @@ bool ObjectStoreImpl::Init(const FilePath& database_path) {
 #endif
   }
   FilePath database_name = database_path.Append(kDatabaseDirectory);
+  database_name_ = database_name;
+  // TODO(https://crbug.com/844537): Remove or decrease log level when root
+  // cause of disappearing system token certificates is found.
+  LogDatabaseDirectoryStats(database_name);
   leveldb::DB* db = NULL;
   leveldb::Status status = leveldb::DB::Open(options,
                                              database_name.value(),
@@ -138,6 +195,10 @@ bool ObjectStoreImpl::Init(const FilePath& database_path) {
     metrics.SendUMAEvent("Chaps.DatabaseCreateFailure");
     return false;
   }
+
+  // TODO(https://crbug.com/844537): Remove or decrease log level when root
+  // cause of disappearing system token certificates is found.
+  LogDatabaseStats(db);
 
   db_.reset(db);
   int version = 0;
