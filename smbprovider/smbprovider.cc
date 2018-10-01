@@ -381,13 +381,12 @@ int32_t SmbProvider::WriteFile(const ProtoBlob& options_blob,
                                const base::ScopedFD& temp_fd) {
   int32_t error_code;
   WriteFileOptionsProto options;
-  std::vector<uint8_t> buffer;
 
   const bool result =
       ParseOptionsProto(options_blob, &options, &error_code) &&
-      ReadFromFD(options, temp_fd, &error_code, &buffer) &&
+      ReadFromFD(options, temp_fd, &error_code, &content_buffer_) &&
       Seek(options, &error_code) &&
-      WriteFileFromBuffer(options, options.file_id(), buffer, &error_code);
+      WriteFileFromBuffer(options, options.file_id(), &error_code);
 
   return result ? static_cast<int32_t>(ERROR_OK) : error_code;
 }
@@ -851,13 +850,12 @@ bool SmbProvider::WriteTempFile(const Proto& options,
 template <typename Proto>
 bool SmbProvider::WriteFileFromBuffer(const Proto& options,
                                       int32_t file_id,
-                                      const std::vector<uint8_t>& buffer,
                                       int32_t* error_code) {
   DCHECK(error_code);
 
   SambaInterface* samba_interface = GetSambaInterface(GetMountId(options));
-  int32_t result =
-      samba_interface->WriteFile(file_id, buffer.data(), buffer.size());
+  int32_t result = samba_interface->WriteFile(file_id, content_buffer_.data(),
+                                              content_buffer_.size());
   if (result != 0) {
     LogAndSetError(options, GetErrorFromErrno(result), error_code);
     return false;

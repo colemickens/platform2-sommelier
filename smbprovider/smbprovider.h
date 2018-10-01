@@ -250,13 +250,12 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
                                  brillo::dbus_utils::FileDescriptor* temp_fd,
                                  int32_t* bytes_written);
 
-  // Helper method to write data from a |buffer| into a file specified by
+  // Helper method to write data from |content_buffer_| into a file specified by
   // |file_id|. |options| is used for logging. Returns true on success, and sets
   // |error_code| on failure.
   template <typename Proto>
   bool WriteFileFromBuffer(const Proto& options,
                            int32_t file_id,
-                           const std::vector<uint8_t>& buffer,
                            int32_t* error_code);
 
   // Moves an entry at |source_path| to |target_path|. |options| is used for
