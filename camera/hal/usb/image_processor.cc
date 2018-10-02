@@ -370,6 +370,9 @@ int ImageProcessor::Crop(const FrameBuffer& in_frame, FrameBuffer* out_frame) {
 
   int crop_x = (in_frame.GetWidth() - out_frame->GetWidth()) / 2;
   int crop_y = (in_frame.GetHeight() - out_frame->GetHeight()) / 2;
+  // Crop from even pixels for correct YUV image.
+  crop_x &= ~1;
+  crop_y &= ~1;
 
   int ret = libyuv::ConvertToI420(
       in_frame.GetData(), in_frame.GetDataSize(), out_frame->GetData(),
