@@ -219,6 +219,7 @@ The schema definition is below:
 | firmware | [firmware](#firmware) |  | True |  |  |
 | firmware-signing | [firmware-signing](#firmware-signing) |  | False |  |  |
 | identity | [identity](#identity) |  | False |  | Defines attributes that are used by cros_config to detect the identity of the platform and which corresponding config should be used. This tuple must either contain x86 properties only or ARM properties only. |
+| modem | [modem](#modem) |  | False |  |  |
 | name | string | ```^[_a-zA-Z0-9]{3,}``` | True |  | Unique name for the given model. |
 | oem-id | string | ```[0-9]+``` | False |  | Some projects store SKU ID, OEM ID and Board Revision in an EEPROM and only SKU ID can be updated in the factory and RMA flow but others should be pre-flashed in the chip level. In this case, we would like to validate whether oem-id here from the updated SKU ID matches the one in the EEPROM so we can prevent this device from being updated to another OEM's devices.  |
 | power | [power](#power) |  | False |  | WARNING -- This config contains unvalidated settings, which is not a correct usage pattern, but this will be used in the interim until a longer term solution can be put in place where the overall schema can be single sourced (for the YAML and C++ that uses it); likely though some type of code generation. SUMMARY -- Contains power_manager device settings.  This is the new mechanism used in lieu of the previous file based implementation (via powerd-prefs). Power manager will first check for a property in this config, else it will revert to the file based mechanism (via the powerd-prefs setting). This provides more flexibility in sharing power settings across different devices that share the same build overlay. Any property can be overridden from - src/platform2/power_manager/default_prefs or src/platform2/power_manager/optional_prefs For details about each setting property, see - src/platform2/power_manager/common/power_constants.h For examples on setting these properties (including multiline examples), see the power config example in libcros_config/test.yaml |
@@ -315,6 +316,11 @@ The schema definition is below:
 | device-tree-compatible-match | string |  | False | ARM | [ARM] Simple substring match value or a POSIX regex pattern that is matched against the contents of /proc/device-tree/compatible on ARM devices. |
 | platform-name | string |  | False | ARM | Defines the name that is reported by 'mosys platform name' This is typically the reference design name with the first letter capitalized |
 | whitelabel-tag | string |  | False | ARM | 'whitelabel_tag' value set in the VPD, to add Whitelabel branding over an unbranded base model. |
+
+### modem
+| Attribute | Type   | RegEx     | Required | Oneof Group |  Description |
+| --------- | ------ | --------- | -------- | ----------- |  ----------- |
+| firmware-variant | string |  | False |  | Variant of the modem firmware to be used. This value is read by modemfwd to match against the variant field of a firmware entry in a firmware manifest. In most cases, we simply use the model name as the value. |
 
 ### power
 | Attribute | Type   | RegEx     | Required | Oneof Group |  Description |
@@ -850,3 +856,11 @@ features for overlays that have already been migrated.
             this case, we would like to validate whether oem-id here from the
             updated SKU ID matches the one in the EEPROM so we can prevent this
             device from being updated to another OEM's models.
+
+        *   `modem` (optional): Contains information about the built-in cellular
+            modem.
+
+            *   `firmware-variant` (optional): Variant of the modem firmware
+                to be used. This value is read by modemfwd to match against the
+                variant field of a firmware entry in a firmware manifest. In
+                most cases, we simply use the model name as the value.

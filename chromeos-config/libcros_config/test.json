@@ -18,6 +18,9 @@
           "sku-id": 0,
           "smbios-name-match": "Some"
         },
+        "modem": {
+          "firmware-variant": "some"
+        },
         "name": "some",
         "oem-id": "0",
         "power": {
@@ -60,6 +63,9 @@
           "platform-name": "Some",
           "sku-id": 1,
           "smbios-name-match": "Some"
+        },
+        "modem": {
+          "firmware-variant": "some"
         },
         "name": "some",
         "oem-id": "0",

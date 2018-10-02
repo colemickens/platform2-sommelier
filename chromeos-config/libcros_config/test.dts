@@ -88,6 +88,9 @@
 			key-id = "SOME";
 			shares = <&shared>;
 		};
+		modem {
+			firmware-variant = "some";
+		};
 		submodels {
 			some_touch: touch {
 				touch {

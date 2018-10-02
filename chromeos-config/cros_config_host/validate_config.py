@@ -600,6 +600,9 @@ SCHEMA = NodeDesc('/', True, [
                                     False, {'../whitelabel': False})
                     ] + copy.deepcopy(ARC_PROPERTIES_SCHEMA)),
                 ], conditional_props=NOT_WL),
+                NodeDesc('modem', False, [
+                    PropString('firmware-variant', False, '[a-z0-9_]+'),
+                ]),
                 NodeDesc('power', False, [
                     PropPhandle('power-type', '/chromeos/family/power/ANY',
                                 False),

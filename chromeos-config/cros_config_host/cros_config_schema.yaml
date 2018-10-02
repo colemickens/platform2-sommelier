@@ -354,6 +354,16 @@ properties:
                 prevent this device from being updated to another OEM's devices.
               type: string
               pattern: "[0-9]+"
+            modem:
+              type: object
+              properties:
+                firmware-variant:
+                  description: Variant of the modem firmware to be used. This
+                    value is read by modemfwd to match against the variant field
+                    of a firmware entry in a firmware manifest. In most cases,
+                    we simply use the model name as the value.
+                  type: string
+              additionalProperties: false
           additionalProperties: false
           required:
           - firmware

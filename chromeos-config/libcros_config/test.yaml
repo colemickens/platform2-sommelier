@@ -84,6 +84,8 @@ some_config: &some_config
     platform-name: "Some"
     smbios-name-match: "Some"
     sku-id: "{{$sku-id}}"
+  modem:
+    firmware-variant: "some"
   wallpaper: "some"
   $oem-id: "0"
 
