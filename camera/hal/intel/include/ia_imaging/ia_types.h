@@ -190,9 +190,9 @@ typedef struct {
 } ia_coordinate;
 
 typedef struct {
-    void (*vdebug)(const char *fmt, va_list ap);
-    void (*verror)(const char *fmt, va_list ap);
-    void (*vinfo)(const char *fmt, va_list ap);
+    void (*vdebug)(const char *fmt, ...);
+    void (*verror)(const char *fmt, ...);
+    void (*vinfo)(const char *fmt, ...);
 } ia_env;
 
 typedef struct {

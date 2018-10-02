@@ -38,28 +38,6 @@ enum NativeHandleIntIndices {
     NATIVE_HANDLE_INT_MAX
 };
 
-/* buffer value fetching function */
-static int getIntFromHandle(buffer_handle_t *handle, int intIndex)
-{
-    if (handle == nullptr) {
-        LOGE("null native handle");
-        return -1;
-    }
-    if (intIndex >= NATIVE_HANDLE_INT_MAX ||
-        intIndex >= (*handle)->numInts ||
-        intIndex < 0) {
-        LOGE("bad native handle int index %d", intIndex);
-        return -1;
-    }
-    if ((*handle)->numInts < NATIVE_HANDLE_INT_MAX) {
-        LOGE("bad native handle, numints %d enum max %d",
-             (*handle)->numInts,
-             NATIVE_HANDLE_INT_MAX);
-        return -1;
-    }
-    return (*handle)->data[(*handle)->numFds + intIndex];
-}
-
 int v4L2Fmt2GFXFmt(int v4l2Fmt)
 {
     int gfxFmt = -1;

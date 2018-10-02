@@ -164,11 +164,11 @@ enum  {
 // Dedicated namespace section for function declarations
 namespace LogHelper {
 
-void cca_print_error(const char *fmt, va_list ap);
+void cca_print_error(const char *fmt, ...);
 
-void cca_print_debug(const char *fmt, va_list ap);
+void cca_print_debug(const char *fmt, ...);
 
-void cca_print_info(const char *fmt, va_list ap);
+void cca_print_info(const char *fmt, ...);
 
 /**
  * Runtime selection of debugging level.
