@@ -60,17 +60,10 @@ class BiodStorage {
   // xxxxxxxx_xxxx_xxxx_xxxx_xxxxxxxxxxxx, where x is a lowercase hex number.
   std::string GenerateNewRecordId();
 
-  // Set the |allow_access_| which determines whether the backing storage
-  // location can be accessed or not. Depending on the mounting mechanism and
-  // namespace restrictions, the mounts might not be visible until after
-  // certain points of the user flow (like successful login) are complete.
-  void set_allow_access(bool allow_access) { allow_access_ = allow_access; }
-
  private:
   base::FilePath root_path_;
   std::string biometrics_manager_name_;
   ReadRecordsCallback load_record_;
-  bool allow_access_;
 };
 }  // namespace biod
 

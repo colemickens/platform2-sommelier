@@ -27,7 +27,7 @@ namespace biod {
 using base::FilePath;
 
 namespace {
-constexpr char kDaemonStorePath[] = "/run/daemon-store";
+const char kRootPath[] = "/home/root";
 constexpr char kRecordFileName[] = "Record";
 constexpr char kBiod[] = "biod";
 
@@ -43,10 +43,9 @@ constexpr int kFormatVersion = 1;
 
 BiodStorage::BiodStorage(const std::string& biometrics_manager_name,
                          const ReadRecordsCallback& load_record)
-    : root_path_(kDaemonStorePath),
+    : root_path_(kRootPath),
       biometrics_manager_name_(biometrics_manager_name),
-      load_record_(load_record),
-      allow_access_(false) {}
+      load_record_(load_record) {}
 
 void BiodStorage::SetRootPathForTesting(const base::FilePath& root_path) {
   root_path_ = root_path;
@@ -54,11 +53,6 @@ void BiodStorage::SetRootPathForTesting(const base::FilePath& root_path) {
 
 bool BiodStorage::WriteRecord(const BiometricsManager::Record& record,
                               std::unique_ptr<base::Value> data) {
-  if (!allow_access_) {
-    LOG(ERROR) << "Access to the storage mounts not allowed.";
-    return false;
-  }
-
   const std::string& record_id(record.GetId());
   base::DictionaryValue record_value;
   record_value.SetString(kLabel, record.GetLabel());
@@ -77,13 +71,13 @@ bool BiodStorage::WriteRecord(const BiometricsManager::Record& record,
 
   std::unique_ptr<ScopedUmask> owner_only_umask(new ScopedUmask(~(0700)));
 
-  FilePath record_storage_filename = root_path_.Append(kBiod)
-                                         .Append(record.GetUserId())
+  FilePath record_storage_filename = root_path_.Append(record.GetUserId())
+                                         .Append(kBiod)
                                          .Append(biometrics_manager_name_)
                                          .Append(kRecordFileName + record_id);
   if (!base::CreateDirectory(record_storage_filename.DirName())) {
-    PLOG(ERROR) << "Cannot create directory: "
-                << record_storage_filename.DirName().value() << ".";
+    LOG(ERROR) << "Cannot create directory: "
+               << record_storage_filename.DirName().value() << ".";
     return false;
   }
 
@@ -109,13 +103,8 @@ bool BiodStorage::ReadRecords(const std::unordered_set<std::string>& user_ids) {
 }
 
 bool BiodStorage::ReadRecordsForSingleUser(const std::string& user_id) {
-  if (!allow_access_) {
-    LOG(ERROR) << "Access to the storage mounts not yet allowed.";
-    return false;
-  }
-
   FilePath biod_path =
-      root_path_.Append(kBiod).Append(user_id).Append(biometrics_manager_name_);
+      root_path_.Append(user_id).Append(kBiod).Append(biometrics_manager_name_);
   base::FileEnumerator enum_records(biod_path, false,
                                     base::FileEnumerator::FILES, "Record*");
   bool read_all_records_successfully = true;
@@ -190,13 +179,8 @@ bool BiodStorage::ReadRecordsForSingleUser(const std::string& user_id) {
 
 bool BiodStorage::DeleteRecord(const std::string& user_id,
                                const std::string& record_id) {
-  if (!allow_access_) {
-    LOG(ERROR) << "Access to the storage mounts not yet allowed.";
-    return false;
-  }
-
-  FilePath record_storage_filename = root_path_.Append(kBiod)
-                                         .Append(user_id)
+  FilePath record_storage_filename = root_path_.Append(user_id)
+                                         .Append(kBiod)
                                          .Append(biometrics_manager_name_)
                                          .Append(kRecordFileName + record_id);
 
