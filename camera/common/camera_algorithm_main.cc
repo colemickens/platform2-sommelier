@@ -37,11 +37,7 @@ int main(int argc, char** argv) {
     LOGF(WARNING) << "Failed to set process priority";
   }
 
-  // Socket file is in the root directory after minijail chroot
-  std::string socket_name("/");
-  socket_name.append(
-      basename(cros::constants::kCrosCameraAlgoSocketPathString));
-  base::FilePath socket_path(socket_name);
+  base::FilePath socket_path(cros::constants::kCrosCameraAlgoSocketPathString);
   // Creat unix socket to receive the adapter token and connection handle
   int fd = -1;
   if (!cros::CreateServerUnixDomainSocket(socket_path, &fd)) {
