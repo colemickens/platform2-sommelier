@@ -40,6 +40,7 @@
     'USE_containers%': 0,
     'USE_coverage%': 0,
     'USE_cros_host%': 0,
+    'USE_crosvm_wl_dmabuf%': 0,
     'USE_dbus%': 0,
     'USE_device_mapper%': 0,
     'USE_dhcpv6%': 0,

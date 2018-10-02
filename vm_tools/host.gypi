@@ -6,6 +6,9 @@
         'libchrome-<(libbase_ver)',
       ],
     },
+    'defines': [
+      'USE_CROSVM_WL_DMABUF=<(USE_crosvm_wl_dmabuf)',
+    ],
   },
   'targets': [
     {
