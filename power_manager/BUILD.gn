@@ -1,0 +1,472 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+import("//common-mk/generate-dbus-proxies.gni")
+
+group("all") {
+  deps = [
+    ":backlight_tool",
+    ":check_powerd_config",
+    ":dump_power_status",
+    ":inject_powerd_input_event",
+    ":libpolicy",
+    ":libpolicy_stub",
+    ":libpowerd",
+    ":libsystem",
+    ":libsystem_stub",
+    ":libutil",
+    ":memory_suspend_test",
+    ":power_supply_info",
+    ":powerd",
+    ":powerd_dbus_suspend",
+    ":powerd_setuid_helper",
+    ":send_debug_power_status",
+    ":set_cellular_transmit_power",
+    ":set_power_policy",
+    ":set_wifi_transmit_power",
+    ":suspend_delay_sample",
+  ]
+  if (use.buffet) {
+    deps += [ ":buffet_command_handlers" ]
+  }
+  if (use.test) {
+    deps += [
+      ":libutil_test",
+      ":power_manager_daemon_test",
+      ":power_manager_policy_test",
+      ":power_manager_system_test",
+      ":power_manager_util_test",
+    ]
+  }
+  if (use.amd64) {
+    deps += [ ":dump_intel_rapl_consumption" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  defines = [ "USE_BUFFET=${use.buffet}" ]
+
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "libcros_config",
+    "libudev",
+
+    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # before protobuf here or the linker flags won't be in the right
+    # order.
+    "system_api",
+    "protobuf-lite",
+  ]
+}
+
+pkg_config("libutil_dependent_config") {
+  pkg_deps = [ "libmetrics-${libbase_ver}" ]
+}
+
+static_library("libutil") {
+  configs += [ ":target_defaults" ]
+  all_dependent_configs = [ ":libutil_dependent_config" ]
+  sources = [
+    "common/activity_logger.cc",
+    "common/clock.cc",
+    "common/cros_config_prefs_source.cc",
+    "common/file_prefs_store.cc",
+    "common/metrics_constants.cc",
+    "common/metrics_sender.cc",
+    "common/power_constants.cc",
+    "common/prefs.cc",
+    "common/util.cc",
+  ]
+}
+
+static_library("libsystem") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "powerd/system/acpi_wakeup_helper.cc",
+    "powerd/system/ambient_light_sensor.cc",
+    "powerd/system/arc_timer_manager.cc",
+    "powerd/system/async_file_reader.cc",
+    "powerd/system/audio_client.cc",
+    "powerd/system/dark_resume.cc",
+    "powerd/system/dbus_wrapper.cc",
+    "powerd/system/display/display_info.cc",
+    "powerd/system/display/display_power_setter.cc",
+    "powerd/system/display/display_watcher.cc",
+    "powerd/system/display/external_display.cc",
+    "powerd/system/ec_wakeup_helper.cc",
+    "powerd/system/event_device.cc",
+    "powerd/system/input_watcher.cc",
+    "powerd/system/internal_backlight.cc",
+    "powerd/system/legacy_dark_resume.cc",
+    "powerd/system/lockfile_checker.cc",
+    "powerd/system/peripheral_battery_watcher.cc",
+    "powerd/system/pluggable_internal_backlight.cc",
+    "powerd/system/power_supply.cc",
+    "powerd/system/rolling_average.cc",
+    "powerd/system/sar_watcher.cc",
+    "powerd/system/tagged_device.cc",
+    "powerd/system/udev.cc",
+    "powerd/system/udev_util.cc",
+    "powerd/system/wakeup_device.cc",
+  ]
+  libs = [ "-lrt" ]
+}
+
+pkg_config("libsystem_stub_dependent_config") {
+  pkg_deps = [ "dbus-1" ]
+}
+
+static_library("libsystem_stub") {
+  configs += [ ":target_defaults" ]
+  all_dependent_configs = [ ":libsystem_stub_dependent_config" ]
+  sources = [
+    "powerd/system/acpi_wakeup_helper_stub.cc",
+    "powerd/system/ambient_light_sensor_stub.cc",
+    "powerd/system/audio_client_stub.cc",
+    "powerd/system/backlight_stub.cc",
+    "powerd/system/dark_resume_stub.cc",
+    "powerd/system/dbus_wrapper_stub.cc",
+    "powerd/system/display/display_power_setter_stub.cc",
+    "powerd/system/display/display_watcher_stub.cc",
+    "powerd/system/ec_wakeup_helper_stub.cc",
+    "powerd/system/event_device_stub.cc",
+    "powerd/system/input_watcher_stub.cc",
+    "powerd/system/lockfile_checker_stub.cc",
+    "powerd/system/power_supply_stub.cc",
+    "powerd/system/sar_watcher_stub.cc",
+    "powerd/system/udev_stub.cc",
+    "powerd/system/wakeup_device_stub.cc",
+  ]
+}
+
+static_library("libpolicy") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "powerd/policy/ambient_light_handler.cc",
+    "powerd/policy/backlight_controller.cc",
+    "powerd/policy/cellular_controller.cc",
+    "powerd/policy/external_backlight_controller.cc",
+    "powerd/policy/input_device_controller.cc",
+    "powerd/policy/input_event_handler.cc",
+    "powerd/policy/internal_backlight_controller.cc",
+    "powerd/policy/keyboard_backlight_controller.cc",
+    "powerd/policy/sar_handler.cc",
+    "powerd/policy/state_controller.cc",
+    "powerd/policy/suspend_delay_controller.cc",
+    "powerd/policy/suspender.cc",
+    "powerd/policy/user_proximity_voting.cc",
+    "powerd/policy/wifi_controller.cc",
+  ]
+  libs = [ "-lm" ]
+}
+
+static_library("libpolicy_stub") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "powerd/policy/backlight_controller_observer_stub.cc",
+    "powerd/policy/backlight_controller_stub.cc",
+  ]
+}
+
+pkg_config("libpowerd_dependent_config") {
+  pkg_deps = [ "libmetrics-${libbase_ver}" ]
+}
+
+static_library("libpowerd") {
+  configs += [ ":target_defaults" ]
+  all_dependent_configs = [ ":libpowerd_dependent_config" ]
+  sources = [
+    "powerd/daemon.cc",
+    "powerd/metrics_collector.cc",
+  ]
+
+  deps = [
+    ":libpolicy",
+    ":libsystem",
+    ":libutil",
+  ]
+
+  if (use.buffet) {
+    deps += [ ":buffet_command_handlers" ]
+  }
+}
+
+executable("powerd") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "powerd/main.cc",
+  ]
+  deps = [
+    ":libpowerd",
+  ]
+}
+
+executable("powerd_setuid_helper") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "powerd/powerd_setuid_helper.cc",
+  ]
+}
+
+executable("set_cellular_transmit_power") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "powerd/set_cellular_transmit_power.cc",
+  ]
+}
+
+pkg_config("set_wifi_transmit_power_config") {
+  pkg_deps = [ "libnl-genl-3.0" ]
+}
+
+executable("set_wifi_transmit_power") {
+  configs += [
+    ":set_wifi_transmit_power_config",
+    ":target_defaults",
+  ]
+  sources = [
+    "powerd/set_wifi_transmit_power.cc",
+  ]
+}
+
+executable("backlight_tool") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "tools/backlight_tool.cc",
+  ]
+  deps = [
+    ":libpolicy",
+    ":libsystem",
+    ":libsystem_stub",
+    ":libutil",
+  ]
+}
+
+executable("check_powerd_config") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "tools/check_powerd_config.cc",
+  ]
+  deps = [
+    ":libutil",
+  ]
+}
+
+executable("inject_powerd_input_event") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "tools/inject_powerd_input_event.cc",
+  ]
+}
+
+executable("memory_suspend_test") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "tools/memory_suspend_test.cc",
+  ]
+}
+
+executable("powerd_dbus_suspend") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "tools/powerd_dbus_suspend.cc",
+  ]
+}
+
+executable("power_supply_info") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "tools/power_supply_info.cc",
+  ]
+  deps = [
+    ":libsystem",
+    ":libsystem_stub",
+    ":libutil",
+  ]
+}
+
+executable("dump_power_status") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "tools/dump_power_status.cc",
+  ]
+  deps = [
+    ":libsystem",
+    ":libsystem_stub",
+    ":libutil",
+  ]
+}
+
+executable("send_debug_power_status") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "tools/send_debug_power_status.cc",
+  ]
+}
+
+executable("set_power_policy") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "tools/set_power_policy.cc",
+  ]
+}
+
+executable("suspend_delay_sample") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "tools/suspend_delay_sample.cc",
+  ]
+}
+
+if (use.buffet) {
+  generate_dbus_proxies("generate_buffet_proxies") {
+    dbus_service_config = "../buffet/dbus_bindings/dbus-service-config.json"
+    proxy_output_file = "include/buffet/dbus-proxies.h"
+    sources = [
+      "../buffet/dbus_bindings/org.chromium.Buffet.Command.xml",
+    ]
+  }
+  static_library("buffet_command_handlers") {
+    configs += [ ":target_defaults" ]
+    sources = [
+      "powerd/buffet/command_handlers.cc",
+    ]
+    deps = [
+      ":generate_buffet_proxies",
+    ]
+  }
+}
+
+if (use.test) {
+  static_library("libutil_test") {
+    configs += [ ":target_defaults" ]
+    sources = [
+      "common/action_recorder.cc",
+      "common/fake_prefs.cc",
+      "common/metrics_sender_stub.cc",
+      "common/test_main_loop_runner.cc",
+    ]
+  }
+
+  executable("power_manager_util_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    sources = [
+      "common/activity_logger_test.cc",
+      "common/prefs_test.cc",
+      "common/testrunner.cc",
+      "common/util_test.cc",
+    ]
+    deps = [
+      ":libutil",
+      ":libutil_test",
+    ]
+  }
+
+  pkg_config("power_manager_system_test_config") {
+    # For base::MockTimer.
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+  }
+
+  executable("power_manager_system_test") {
+    configs += [
+      "//common-mk:test",
+      ":power_manager_system_test_config",
+      ":target_defaults",
+    ]
+    sources = [
+      "common/testrunner.cc",
+      "powerd/system/acpi_wakeup_helper_test.cc",
+      "powerd/system/ambient_light_sensor_test.cc",
+      "powerd/system/arc_timer_manager_test.cc",
+      "powerd/system/async_file_reader_test.cc",
+      "powerd/system/audio_client_test.cc",
+      "powerd/system/display/display_watcher_test.cc",
+      "powerd/system/display/external_display_test.cc",
+      "powerd/system/input_watcher_test.cc",
+      "powerd/system/internal_backlight_test.cc",
+      "powerd/system/legacy_dark_resume_test.cc",
+      "powerd/system/lockfile_checker_test.cc",
+      "powerd/system/peripheral_battery_watcher_test.cc",
+      "powerd/system/pluggable_internal_backlight_test.cc",
+      "powerd/system/power_supply_test.cc",
+      "powerd/system/rolling_average_test.cc",
+      "powerd/system/sar_watcher_test.cc",
+      "powerd/system/tagged_device_test.cc",
+      "powerd/system/wakeup_device_test.cc",
+    ]
+    deps = [
+      ":libsystem",
+      ":libsystem_stub",
+      ":libutil",
+      ":libutil_test",
+    ]
+  }
+
+  executable("power_manager_policy_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    sources = [
+      "common/testrunner.cc",
+      "powerd/policy/ambient_light_handler_test.cc",
+      "powerd/policy/backlight_controller_test_util.cc",
+      "powerd/policy/cellular_controller_test.cc",
+      "powerd/policy/external_backlight_controller_test.cc",
+      "powerd/policy/input_device_controller_test.cc",
+      "powerd/policy/input_event_handler_test.cc",
+      "powerd/policy/internal_backlight_controller_test.cc",
+      "powerd/policy/keyboard_backlight_controller_test.cc",
+      "powerd/policy/sar_handler_test.cc",
+      "powerd/policy/state_controller_test.cc",
+      "powerd/policy/suspend_delay_controller_test.cc",
+      "powerd/policy/suspender_test.cc",
+      "powerd/policy/user_proximity_voting_test.cc",
+      "powerd/policy/wifi_controller_test.cc",
+    ]
+    deps = [
+      ":libpolicy",
+      ":libpolicy_stub",
+      ":libsystem",
+      ":libsystem_stub",
+      ":libutil",
+      ":libutil_test",
+    ]
+  }
+
+  executable("power_manager_daemon_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    sources = [
+      "common/testrunner.cc",
+      "powerd/daemon_test.cc",
+      "powerd/metrics_collector_test.cc",
+    ]
+    deps = [
+      ":libpolicy",
+      ":libpolicy_stub",
+      ":libpowerd",
+      ":libsystem",
+      ":libsystem_stub",
+      ":libutil",
+      ":libutil_test",
+    ]
+  }
+}
+
+if (use.amd64) {
+  executable("dump_intel_rapl_consumption") {
+    configs += [ ":target_defaults" ]
+    sources = [
+      "tools/dump_intel_rapl_consumption.cc",
+    ]
+  }
+}
