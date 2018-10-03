@@ -7,6 +7,7 @@
 
 from __future__ import print_function
 
+from itertools import izip_longest
 import json
 import jsonschema
 import os
@@ -363,30 +364,50 @@ class GetValidSchemaProperties(unittest.TestCase):
 
 
 class MainTests(unittest.TestCase):
+  def assertFileEqual(self, file_expected, file_actual, regen_cmd=''):
+    self.assertTrue(os.path.isfile(file_expected),
+                    "Expected file does not exist at path: {}" \
+                    .format(file_expected))
+
+    self.assertTrue(os.path.isfile(file_actual),
+                    "Actual file does not exist at path: {}" \
+                    .format(file_actual))
+
+    with open(file_expected, 'r') as expected, open(file_actual, 'r') as actual:
+      for line_num, (line_expected, line_actual) in \
+          enumerate(izip_longest(expected, actual)):
+        self.assertEqual(line_expected, line_actual, \
+           ('Files differ at line {0}\n'
+            'Expected: {1}\n'
+            'Actual  : {2}\n'
+            'Path of expected output file: {3}\n'
+            'Path of actual output file: {4}\n'
+            '{5}').format(line_num, repr(line_expected), repr(line_actual),
+                          file_expected, file_actual, regen_cmd))
 
   def testMainWithExampleWithBuildAndCBindings(self):
-    output = tempfile.mktemp()
+    json_output = tempfile.mktemp()
     c_output = tempfile.mktemp()
     cros_config_schema.Main(
         None,
         os.path.join(this_dir, '../libcros_config/test.yaml'),
-        output,
+        json_output,
         gen_c_bindings_output=c_output)
     regen_cmd = ('To regenerate the expected output, run:\n'
                  '\tpython -m cros_config_host.cros_config_schema '
                  '-c libcros_config/test.yaml '
                  '-o libcros_config/test_build.json '
                  '-g libcros_config/test.c')
-    with open(output, 'r') as output_stream:
-      with open(os.path.join(
-          this_dir, '../libcros_config/test_build.json')) as expected_stream:
-        self.assertEqual(expected_stream.read(), output_stream.read(),
-                         regen_cmd)
-    with open(c_output, 'r') as output_stream:
-      with open(os.path.join(this_dir,
-                             '../libcros_config/test.c')) as expected_stream:
-        self.assertEqual(expected_stream.read(), output_stream.read(),
-                         regen_cmd)
+
+    expected_json_file = \
+            os.path.join(this_dir, '../libcros_config/test_build.json')
+    self.assertFileEqual(expected_json_file, json_output, regen_cmd)
+
+    expected_c_file = os.path.join(this_dir, '../libcros_config/test.c')
+    self.assertFileEqual(expected_c_file, c_output, regen_cmd)
+
+    os.remove(json_output)
+    os.remove(c_output)
 
   def testMainWithExampleWithoutBuild(self):
     output = tempfile.mktemp()
@@ -395,25 +416,24 @@ class MainTests(unittest.TestCase):
         os.path.join(this_dir, '../libcros_config/test.yaml'),
         output,
         filter_build_details=True)
-    with open(output, 'r') as output_stream:
-      with open(os.path.join(this_dir,
-                             '../libcros_config/test.json')) as expected_stream:
-        self.assertEqual(expected_stream.read(), output_stream.read(),
-                         ('To regenerate the expected output, run:\n'
-                          '\tpython -m cros_config_host.cros_config_schema '
-                          '-f True '
-                          '-c libcros_config/test.yaml '
-                          '-o libcros_config/test.json'))
 
+    regen_cmd = ('To regenerate the expected output, run:\n'
+                 '\tpython -m cros_config_host.cros_config_schema '
+                 '-f True '
+                 '-c libcros_config/test.yaml '
+                 '-o libcros_config/test.json')
+
+    expected_file = os.path.join(this_dir, '../libcros_config/test.json')
+    self.assertFileEqual(expected_file, output, regen_cmd)
     os.remove(output)
 
   def testMainArmExample(self):
-    output = tempfile.mktemp()
+    json_output = tempfile.mktemp()
     c_output = tempfile.mktemp()
     cros_config_schema.Main(
         None,
         os.path.join(this_dir, '../libcros_config/test_arm.yaml'),
-        output,
+        json_output,
         filter_build_details=True,
         gen_c_bindings_output=c_output)
     regen_cmd = ('To regenerate the expected output, run:\n'
@@ -422,19 +442,17 @@ class MainTests(unittest.TestCase):
                  '-c libcros_config/test_arm.yaml '
                  '-o libcros_config/test_arm.json '
                  '-g libcros_config/test_arm.c')
-    with open(output, 'r') as output_stream:
-      with open(os.path.join(
-          this_dir,
-          '../libcros_config/test_arm.json')) as expected_stream:
-        self.assertEqual(
-            expected_stream.read(), output_stream.read(), regen_cmd)
-    with open(c_output, 'r') as output_stream:
-      expected_file = os.path.join(this_dir, '../libcros_config/test_arm.c')
-      with open(expected_file) as expected_stream:
-        self.assertEqual(expected_stream.read(), output_stream.read(),
-                         regen_cmd)
 
-    os.remove(output)
+    expected_json_file = \
+            os.path.join(this_dir, '../libcros_config/test_arm.json')
+    self.assertFileEqual(expected_json_file, json_output, regen_cmd)
+
+    expected_c_file = os.path.join(this_dir,
+                                   '../libcros_config/test_arm.c')
+    self.assertFileEqual(expected_c_file, c_output, regen_cmd)
+
+    os.remove(json_output)
+    os.remove(c_output)
 
   def testMainImportExample(self):
     output = tempfile.mktemp()
@@ -446,12 +464,8 @@ class MainTests(unittest.TestCase):
                  '\tpython -m cros_config_host.cros_config_schema '
                  '-c libcros_config/test_import.yaml '
                  '-o libcros_config/test_import.json')
-    with open(output, 'r') as output_stream:
-      with open(os.path.join(
-          this_dir,
-          '../libcros_config/test_import.json')) as expected_stream:
-        self.assertEqual(
-            expected_stream.read(), output_stream.read(), regen_cmd)
+    expected_file = os.path.join(this_dir, '../libcros_config/test_import.json')
+    self.assertFileEqual(expected_file, output, regen_cmd)
 
     os.remove(output)
 
@@ -469,12 +483,8 @@ class MainTests(unittest.TestCase):
                  '-o libcros_config/test_merge.json '
                  '-m libcros_config/test_merge_base.yaml '
                  'libcros_config/test_merge_overlay.yaml')
-    with open(output, 'r') as output_stream:
-      with open(os.path.join(
-          this_dir,
-          '../libcros_config/test_merge.json')) as expected_stream:
-        self.assertEqual(
-            expected_stream.read(), output_stream.read(), regen_cmd)
+    expected_file = os.path.join(this_dir, '../libcros_config/test_merge.json')
+    self.assertFileEqual(expected_file, output, regen_cmd)
 
     os.remove(output)
 
