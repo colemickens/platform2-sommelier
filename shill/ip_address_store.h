@@ -5,7 +5,6 @@
 #ifndef SHILL_IP_ADDRESS_STORE_H_
 #define SHILL_IP_ADDRESS_STORE_H_
 
-#include <random>
 #include <set>
 
 #include "shill/net/ip_address.h"
@@ -40,14 +39,11 @@ class IPAddressStore {
   bool Empty() const;
   const IPAddresses& GetIPAddresses() const { return ip_addresses_; }
 
-  IPAddress GetRandomIP();
-
  protected:
   friend class IPAddressStoreTest;
 
  private:
   IPAddresses ip_addresses_;
-  std::default_random_engine random_engine_;
 
   DISALLOW_COPY_AND_ASSIGN(IPAddressStore);
 };
