@@ -85,7 +85,13 @@ class EcCommand {
 
   bool Run(int ec_fd) {
     data_.cmd.result = 0xff;
-    return ioctl(ec_fd, CROS_EC_DEV_IOCXCMD_V2, &data_) == data_.cmd.insize;
+    int result = ioctl(ec_fd, CROS_EC_DEV_IOCXCMD_V2, &data_);
+    if (result < 0) {
+      PLOG(ERROR) << "FPMCU ioctl failed, command: " << data_.cmd.command;
+      return false;
+    }
+
+    return (static_cast<uint32_t>(result) == data_.cmd.insize);
   }
 
   I* Resp() { return &data_.resp; }
