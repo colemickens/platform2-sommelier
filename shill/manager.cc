@@ -40,7 +40,6 @@
 #include "shill/event_dispatcher.h"
 #include "shill/geolocation_info.h"
 #include "shill/hook_table.h"
-#include "shill/ip_address_store.h"
 #include "shill/logging.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
@@ -181,7 +180,6 @@ Manager::Manager(ControlInterface* control_interface,
       ignore_unknown_ethernet_(false),
       default_service_callback_tag_(0),
       crypto_util_proxy_(new CryptoUtilProxy(dispatcher)),
-      health_checker_remote_ips_(new IPAddressStore()),
       suppress_autoconnect_(false),
       is_connected_state_(false),
       has_user_session_(false),

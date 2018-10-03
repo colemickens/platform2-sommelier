@@ -44,7 +44,6 @@ class DeviceClaimer;
 class DefaultProfile;
 class Error;
 class EventDispatcher;
-class IPAddressStore;
 class ManagerAdaptorInterface;
 class Resolver;
 class VPNProvider;
@@ -371,9 +370,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual const PropertyStore& store() const { return store_; }
   virtual const base::FilePath& run_path() const { return run_path_; }
   const base::FilePath& storage_path() const { return storage_path_; }
-  IPAddressStore* health_checker_remote_ips() const {
-    return health_checker_remote_ips_.get();
-  }
 
   virtual int64_t GetSuspendDurationUsecs() const {
       return power_manager_->suspend_duration_us(); }
@@ -885,11 +881,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // Delegate to handle destination verification operations for the manager.
   std::unique_ptr<CryptoUtilProxy> crypto_util_proxy_;
-
-  // Stores IP addresses of some remote hosts that accept port 80 TCP
-  // connections. ConnectionHealthChecker uses these IPs.
-  // The store resides in Manager so that it persists across Device reset.
-  std::unique_ptr<IPAddressStore> health_checker_remote_ips_;
 
   // Stores the most recent copy of geolocation information for each
   // device the manager is keeping track of.
