@@ -92,7 +92,7 @@ that allow for even better re-use and expressiveness in the YAML config.
         known until the device/product/sku variables come into scope (e.g.
         $sku-id).
 
-2.  File Imports - File imports allow common snippets of YAML to be shared
+3.  File Imports - File imports allow common snippets of YAML to be shared
     across multiple different implementations.  File importing works the same as
     if the YAML files were cat'd together and then evaluated.  File importing is
     recursive also, so it will support importing files that import other files.
@@ -158,6 +158,44 @@ chromeos:
         key-id: "SOME-KEY-ID"
         signature-id: "SomeDevice"
 ```
+
+### YAML Merging (multiple source YAML files)
+
+There are various cases where it makes sense to manage YAML config across
+multiple different repos in separate YAML files.
+
+E.g.
+
+* Permissions based control via git repo access to specific config
+* Extending overlays for device customization (e.g. Moblab)
+
+This is supported through cros_config_schema tool and is invoked as part of the
+chromeos-config ebuild.
+
+Using normal portage ebuilds/config, users can install as many YAML files as
+they wish to be merged together into: /usr/share/chromeos-config/yaml
+
+E.g.
+
+* models.yaml
+* models-private.yaml (private config overlaid on the public config)
+
+These files are then merged together based on their lexicographic name order.
+
+Merging of YAML files applies the following characteristics:
+
+1. Order is important.  If two files supply the same config, the last file wins.
+2. Identity is important.  Config is merged based on ONE OF the following:
+
+   1. name - If the name attribute matches, the config is merged
+   2. identity - Identity can be matched on all or some of the attributes.
+
+For a detailed example of how merging works, see the following test files:
+
+1. [test_merge_base.yaml](https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/chromeos-config/libcros_config/test_merge_base.yaml) - First file passed to the merge routine.
+2. [test_merge_overlay.yaml](https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/chromeos-config/libcros_config/test_merge_overlay.yaml) - Second file passed (winner of any conflicts).
+3. [test_merge.json](https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/chromeos-config/libcros_config/test_merge.json) - Result generated from the merge.
+
 
 ### YAML Transform (to JSON)
 
