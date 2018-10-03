@@ -60,6 +60,16 @@ bool ShouldPauseSending();
 // TODO(satorux): Remove this once rewriting to C++ is complete.
 bool CheckDependencies(base::FilePath* missing_path);
 
+// Gets the base part of a crash report file, such as name.01234.5678.9012 from
+// name.01234.5678.9012.meta or name.01234.5678.9012.log.tar.xz.  We make sure
+// "name" is sanitized in CrashCollector::Sanitize to not include any periods.
+// The directory part will be preserved.
+base::FilePath GetBasePartOfCrashFile(const base::FilePath& file_name);
+
+// Removes orphaned files in |crash_dir|, that are files 24 hours old or older,
+// without corresponding meta file.
+void RemoveOrphanedCrashFiles(const base::FilePath& crash_dir);
+
 // A helper class for sending crashes. The behaviors can be customized with
 // Options class for unit testing.
 class Sender {

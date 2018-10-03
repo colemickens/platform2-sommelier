@@ -12,10 +12,13 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <brillo/flag_helper.h>
 
 #include "crash-reporter/crash_sender_paths.h"
@@ -125,6 +128,49 @@ bool CheckDependencies(base::FilePath* missing_path) {
   return true;
 }
 
+base::FilePath GetBasePartOfCrashFile(const base::FilePath& file_name) {
+  std::vector<std::string> components;
+  file_name.GetComponents(&components);
+
+  std::vector<std::string> parts = base::SplitString(
+      components.back(), ".", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+  if (parts.size() < 4) {
+    LOG(ERROR) << "Unexpected file name format: " << file_name.value();
+    return file_name;
+  }
+
+  parts.resize(4);
+  const std::string base_name = base::JoinString(parts, ".");
+
+  if (components.size() == 1)
+    return base::FilePath(base_name);
+  return file_name.DirName().Append(base_name);
+}
+
+void RemoveOrphanedCrashFiles(const base::FilePath& crash_dir) {
+  base::FileEnumerator iter(crash_dir, true /* recursive */,
+                            base::FileEnumerator::FILES, "*");
+  for (base::FilePath file = iter.Next(); !file.empty(); file = iter.Next()) {
+    // Get the meta data file path.
+    const base::FilePath meta_file =
+        base::FilePath(GetBasePartOfCrashFile(file).value() + ".meta");
+
+    // Check how old the file is.
+    base::File::Info info;
+    if (!GetFileInfo(file, &info)) {
+      LOG(ERROR) << "Failed to get file info: " << file.value();
+      continue;
+    }
+    base::TimeDelta delta = base::Time::Now() - info.last_modified;
+
+    if (!base::PathExists(meta_file) && delta.InHours() >= 24) {
+      LOG(INFO) << "Removing old orphaned file: " << file.value();
+      if (!base::DeleteFile(file, false /* recursive */))
+        PLOG(ERROR) << "Failed to remove " << file.value();
+    }
+  }
+}
+
 Sender::Sender(const Sender::Options& options)
     : shell_script_(options.shell_script), proxy_(options.proxy) {}
 
@@ -141,6 +187,8 @@ bool Sender::SendCrashes(const base::FilePath& crash_dir) {
     // Directory not existing is not an error.
     return true;
   }
+
+  RemoveOrphanedCrashFiles(crash_dir);
 
   const int child_pid = fork();
   if (child_pid == 0) {

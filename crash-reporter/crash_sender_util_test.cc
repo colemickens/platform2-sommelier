@@ -15,6 +15,7 @@
 #include <base/macros.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <base/time/time.h>
 #include <brillo/flag_helper.h>
 #include <gtest/gtest.h>
 
@@ -47,6 +48,17 @@ std::vector<std::vector<std::string>> ParseFakeCrashSenderOutput(
   }
 
   return rows;
+}
+
+// Helper function for calling GetBasePartOfCrashFile() concisely for tests.
+std::string GetBasePartHelper(const std::string& file_name) {
+  return GetBasePartOfCrashFile(base::FilePath(file_name)).value();
+}
+
+// Helper function for calling base::TouchFile() concisely for tests.
+bool TouchFileHelper(const base::FilePath& file_name,
+                     base::Time modified_time) {
+  return base::TouchFile(file_name, modified_time, modified_time);
 }
 
 class CrashSenderUtilTest : public testing::Test {
@@ -175,6 +187,68 @@ TEST_F(CrashSenderUtilTest, CheckDependencies) {
   // Create kRestrictedCertificatesDirectory and try again.
   ASSERT_TRUE(base::CreateDirectory(kRestrictedCertificatesDirectory));
   EXPECT_TRUE(CheckDependencies(&missing_path));
+}
+
+TEST_F(CrashSenderUtilTest, GetBasePartOfCrashFile) {
+  EXPECT_EQ("1", GetBasePartHelper("1"));
+  EXPECT_EQ("1.2", GetBasePartHelper("1.2"));
+  EXPECT_EQ("1.2.3", GetBasePartHelper("1.2.3"));
+  EXPECT_EQ("1.2.3.4", GetBasePartHelper("1.2.3.4"));
+  EXPECT_EQ("1.2.3.4", GetBasePartHelper("1.2.3.4.log"));
+  EXPECT_EQ("1.2.3.4", GetBasePartHelper("1.2.3.4.log"));
+  EXPECT_EQ("1.2.3.4", GetBasePartHelper("1.2.3.4.log.tar"));
+  EXPECT_EQ("1.2.3.4", GetBasePartHelper("1.2.3.4.log.tar.gz"));
+  // Directory should be preserved.
+  EXPECT_EQ("/d/1.2", GetBasePartHelper("/d/1.2"));
+  EXPECT_EQ("/d/1.2.3.4", GetBasePartHelper("/d/1.2.3.4.log"));
+  // Dots in directory name should not affect the function.
+  EXPECT_EQ("/d.d.d.d/1.2.3.4", GetBasePartHelper("/d.d.d.d/1.2.3.4.log"));
+}
+
+TEST_F(CrashSenderUtilTest, RemoveOrphanedCrashFiles) {
+  const base::FilePath crash_directory =
+      paths::Get(paths::kSystemCrashDirectory);
+  ASSERT_TRUE(base::CreateDirectory(crash_directory));
+
+  const base::FilePath new_log = crash_directory.Append("0.0.0.0.log");
+  const base::FilePath old1_log = crash_directory.Append("1.1.1.1.log");
+  const base::FilePath old1_meta = crash_directory.Append("1.1.1.1.meta");
+  const base::FilePath old2_log = crash_directory.Append("2.2.2.2.log");
+  const base::FilePath old3_log = crash_directory.Append("3.3.3.3.log");
+  const base::FilePath old4_log = crash_directory.Append("4.log");
+
+  base::Time now = base::Time::Now();
+
+  // new_log is new thus should not be removed.
+  ASSERT_TRUE(test_util::CreateFile(new_log, ""));
+
+  // old1_log is old but comes with the meta file thus should not be removed.
+  ASSERT_TRUE(test_util::CreateFile(old1_log, ""));
+  ASSERT_TRUE(test_util::CreateFile(old1_meta, ""));
+  ASSERT_TRUE(TouchFileHelper(old1_log, now - base::TimeDelta::FromHours(24)));
+  ASSERT_TRUE(TouchFileHelper(old1_meta, now - base::TimeDelta::FromHours(24)));
+
+  // old2_log is old without the meta file thus should be removed.
+  ASSERT_TRUE(test_util::CreateFile(old2_log, ""));
+  ASSERT_TRUE(TouchFileHelper(old2_log, now - base::TimeDelta::FromHours(24)));
+
+  // old3_log is very old without the meta file thus should be removed.
+  ASSERT_TRUE(test_util::CreateFile(old3_log, ""));
+  ASSERT_TRUE(TouchFileHelper(old3_log, now - base::TimeDelta::FromDays(365)));
+
+  // old4_log is misnamed, but should be removed since it's old.
+  ASSERT_TRUE(test_util::CreateFile(old4_log, ""));
+  ASSERT_TRUE(TouchFileHelper(old4_log, now - base::TimeDelta::FromHours(24)));
+
+  RemoveOrphanedCrashFiles(crash_directory);
+
+  // Check what files were removed.
+  EXPECT_TRUE(base::PathExists(new_log));
+  EXPECT_TRUE(base::PathExists(old1_log));
+  EXPECT_TRUE(base::PathExists(old1_meta));
+  EXPECT_FALSE(base::PathExists(old2_log));
+  EXPECT_FALSE(base::PathExists(old3_log));
+  EXPECT_FALSE(base::PathExists(old4_log));
 }
 
 TEST_F(CrashSenderUtilTest, Sender) {

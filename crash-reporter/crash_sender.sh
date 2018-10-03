@@ -157,13 +157,6 @@ check_rate() {
   return 0
 }
 
-# Gets the base part of a crash report file, such as name.01234.5678.9012 from
-# name.01234.5678.9012.meta or name.01234.5678.9012.log.tar.xz.  We make sure
-# "name" is sanitized in CrashCollector::Sanitize to not include any periods.
-get_base() {
-  echo "$1" | cut -d. -f-4
-}
-
 get_extension() {
   local extension="${1##*.}"
   local filename="${1%.*}"
@@ -543,16 +536,6 @@ remove_report() {
 # 3G connection (see crosbug.com/3304 for discussion).
 send_crashes() {
   local dir="$1"
-
-  # Consider any old files which still have no corresponding meta file
-  # as orphaned, and remove them.
-  for old_file in $(${FIND} "${dir}" -mindepth 1 \
-                    -mmin +$((24 * 60)) -type f); do
-    if [ ! -e "$(get_base "${old_file}").meta" ]; then
-      lecho "Removing old orphaned file: ${old_file}."
-      rm -f -- "${old_file}"
-    fi
-  done
 
   # Look through all metadata (*.meta) files, oldest first.  That way, the rate
   # limit does not stall old crashes if there's a high amount of new crashes
