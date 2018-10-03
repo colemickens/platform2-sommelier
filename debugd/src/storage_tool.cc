@@ -26,7 +26,7 @@ namespace {
 
 const char kSmartctl[] = "/usr/sbin/smartctl";
 const char kBadblocks[] = "/sbin/badblocks";
-const char kMountFile[] = "/proc/mounts";
+const char kMountFile[] = "/proc/1/mounts";
 const char kSource[] = "/mnt/stateful_partition";
 
 }  // namespace
