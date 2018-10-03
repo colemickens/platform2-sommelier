@@ -29,8 +29,9 @@ namespace {
 // endian. The checksum field is zeroed in |kIcmpEchoRequestEvenLen| and
 // |kIcmpEchoRequestOddLen| so the checksum can be calculated on the header in
 // IcmpTest.ComputeIcmpChecksum.
-const uint8_t kIcmpEchoRequestEvenLen[] = {0x08, 0x00, 0x00, 0x00,
-                                           0x71, 0x50, 0x00, 0x00};
+alignas(struct icmphdr) const uint8_t kIcmpEchoRequestEvenLen[] = {
+                                          0x08, 0x00, 0x00, 0x00,
+                                          0x71, 0x50, 0x00, 0x00};
 alignas(struct icmphdr) const uint8_t kIcmpEchoRequestEvenLenChecksum[] = {
                                           0x86, 0xaf};
 alignas(struct icmphdr) const uint8_t kIcmpEchoRequestOddLen[] = {
