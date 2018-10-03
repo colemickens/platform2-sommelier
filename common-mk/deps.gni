@@ -8,7 +8,7 @@
 # Parameters:
 #   pkg_deps: package names to be written as dependencies.
 #   target: the target name using the packages, which becomes the prefix of the
-#       genrated file name.
+#       generated file name.
 template("write_deps") {
   forward_variables_from(invoker,
                          [
