@@ -233,6 +233,52 @@ grpc::Status ContainerListenerImpl::InstallLinuxPackageProgress(
   return grpc::Status::OK;
 }
 
+grpc::Status ContainerListenerImpl::UninstallPackageProgress(
+    grpc::ServerContext* ctx,
+    const vm_tools::container::UninstallPackageProgressInfo* request,
+    vm_tools::EmptyMessage* response) {
+  std::string peer_address = ctx->peer();
+  uint32_t cid = ExtractCidFromPeerAddress(peer_address);
+  if (cid == 0) {
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Failed parsing cid for ContainerListener");
+  }
+  UninstallPackageProgressSignal progress_signal;
+  switch (request->status()) {
+    case vm_tools::container::UninstallPackageProgressInfo::SUCCEEDED:
+      progress_signal.set_status(UninstallPackageProgressSignal::SUCCEEDED);
+      break;
+    case vm_tools::container::UninstallPackageProgressInfo::FAILED:
+      progress_signal.set_status(UninstallPackageProgressSignal::FAILED);
+      progress_signal.set_failure_details(request->failure_details());
+      break;
+    case vm_tools::container::UninstallPackageProgressInfo::UNINSTALLING:
+      progress_signal.set_status(UninstallPackageProgressSignal::UNINSTALLING);
+      progress_signal.set_progress_percent(request->progress_percent());
+      break;
+    default:
+      return grpc::Status(grpc::FAILED_PRECONDITION,
+                          "Invalid status field in protobuf request");
+  }
+  base::WaitableEvent event(false /*manual_reset*/,
+                            false /*initially_signaled*/);
+  bool result = false;
+  task_runner_->PostTask(
+      FROM_HERE,
+      base::Bind(&vm_tools::cicerone::Service::UninstallPackageProgress,
+                 service_, request->token(), cid, &progress_signal, &result,
+                 &event));
+  event.Wait();
+  if (!result) {
+    LOG(ERROR) << "Failure updating Linux package uninstall progress from "
+                  "ContainerListener";
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Failure in UninstallPackageProgress");
+  }
+
+  return grpc::Status::OK;
+}
+
 grpc::Status ContainerListenerImpl::OpenTerminal(
     grpc::ServerContext* ctx,
     const vm_tools::container::OpenTerminalRequest* request,

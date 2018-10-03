@@ -620,6 +620,114 @@ int InstallLinuxPackage(dbus::ObjectProxy* proxy,
       return -1;
   }
 }
+
+void OnApplicationUninstalledCallback(
+    base::RunLoop* run_loop,
+    vm_tools::cicerone::UninstallPackageProgressSignal::Status* final_status,
+    std::string* failure_details,
+    dbus::Signal* signal) {
+  dbus::MessageReader reader(signal);
+  vm_tools::cicerone::UninstallPackageProgressSignal progress_signal;
+  if (!reader.PopArrayOfBytesAsProto(&progress_signal)) {
+    LOG(ERROR) << "Failed parsing UninstallPackageProgressSignal proto";
+    return;
+  }
+
+  if (progress_signal.status() ==
+      vm_tools::cicerone::UninstallPackageProgressSignal::UNINSTALLING) {
+    LOG(INFO) << "Uninstall packages, progress: "
+              << progress_signal.progress_percent();
+    return;
+  }
+
+  *final_status = progress_signal.status();
+  *failure_details = progress_signal.failure_details();
+  run_loop->Quit();
+}
+
+int UninstallApplication(dbus::ObjectProxy* proxy,
+                         const string& vm_name,
+                         const string& container_name,
+                         const string& owner_id,
+                         const string& application) {
+  if (application.empty()) {
+    LOG(ERROR) << "--application is required";
+    return -1;
+  }
+  LOG(INFO) << "Uninstalling application";
+
+  dbus::MethodCall method_call(
+      vm_tools::cicerone::kVmCiceroneInterface,
+      vm_tools::cicerone::kUninstallPackageOwningFileMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  vm_tools::cicerone::UninstallPackageOwningFileRequest request;
+  request.set_vm_name(vm_name);
+  request.set_container_name(container_name);
+  request.set_owner_id(owner_id);
+  request.set_desktop_file_id(application);
+
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode UninstallPackageOwningFileRequest protobuf";
+    return -1;
+  }
+
+  // RunLoop so we can monitor the D-Bus signals coming back to determine when
+  // application uninstall has actually finished.
+  base::RunLoop run_loop;
+  vm_tools::cicerone::UninstallPackageProgressSignal::Status final_status =
+      vm_tools::cicerone::UninstallPackageProgressSignal::FAILED;
+  std::string failure_details = "Timed out waiting for reply";
+  proxy->ConnectToSignal(
+      vm_tools::cicerone::kVmCiceroneInterface,
+      vm_tools::cicerone::kUninstallPackageProgressSignal,
+      base::Bind(&OnApplicationUninstalledCallback, base::Unretained(&run_loop),
+                 &final_status, &failure_details),
+      base::Bind(&OnSignalConnected));
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to cicerone service";
+    return -1;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  vm_tools::cicerone::UninstallPackageOwningFileResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse response protobuf";
+    return -1;
+  }
+  switch (response.status()) {
+    case vm_tools::cicerone::UninstallPackageOwningFileResponse::STARTED:
+      LOG(INFO) << "Successfully started the package uninstall";
+      // Start the RunLoop which'll get the D-Bus signal callbacks and set the
+      // final result for us.
+      LOG(INFO) << "Waiting for D-Bus signal for application uninstall status";
+      base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+          FROM_HERE, run_loop.QuitClosure(), base::TimeDelta::FromMinutes(10));
+      run_loop.Run();
+
+      if (final_status ==
+          vm_tools::cicerone::UninstallPackageProgressSignal::SUCCEEDED) {
+        LOG(INFO) << "Finished application uninstall successfully";
+        return 0;
+      } else {
+        LOG(ERROR) << "Failed to uninstall application: " << failure_details;
+        return -1;
+      }
+      return 0;
+    case vm_tools::cicerone::UninstallPackageOwningFileResponse::
+        BLOCKING_OPERATION_IN_PROGRESS:
+      LOG(ERROR) << "Failed starting the package uninstall because one is "
+                    "already active";
+      return -1;
+    default:
+      LOG(ERROR) << "Failed starting the package uninstall, reason: "
+                 << response.failure_reason();
+      return -1;
+  }
+}
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -635,6 +743,7 @@ int main(int argc, char** argv) {
   DEFINE_bool(get_icon, false, "Get an app icon from a container within a VM");
   DEFINE_bool(get_info, false, "Get debug information about all running VMs");
   DEFINE_bool(install_package, false, "Install a Linux package file");
+  DEFINE_bool(uninstall_application, false, "Uninstall an application");
   DEFINE_bool(package_info, false, "Gets information on a Linux package file");
 
   // Parameters.
@@ -681,13 +790,13 @@ int main(int argc, char** argv) {
   if (FLAGS_create_lxd_container + FLAGS_start_lxd_container +
       FLAGS_set_up_lxd_user + FLAGS_get_username + FLAGS_launch_application +
       FLAGS_get_icon + FLAGS_get_info + FLAGS_install_package +
-      FLAGS_package_info != 1) {
+      FLAGS_uninstall_application + FLAGS_package_info != 1) {
     // clang-format on
     LOG(ERROR) << "Exactly one of --create_lxd_container, "
                << "--start_lxd_container, --set_up_lxd_user, "
                << "--get_username, --launch_application, --get_icon, "
-               << "--get_info, --install_package or "
-               << " --package_info must be provided";
+               << "--get_info, --install_package, --uninstall_application, or "
+               << "--package_info must be provided";
     return -1;
   }
 
@@ -740,6 +849,9 @@ int main(int argc, char** argv) {
   } else if (FLAGS_install_package) {
     return InstallLinuxPackage(proxy, FLAGS_vm_name, FLAGS_container_name,
                                FLAGS_owner_id, std::move(FLAGS_file_path));
+  } else if (FLAGS_uninstall_application) {
+    return UninstallApplication(proxy, FLAGS_vm_name, FLAGS_container_name,
+                                FLAGS_owner_id, FLAGS_application);
   } else if (FLAGS_package_info) {
     return GetLinuxPackageInfo(proxy, FLAGS_vm_name, FLAGS_container_name,
                                FLAGS_owner_id, std::move(FLAGS_file_path));

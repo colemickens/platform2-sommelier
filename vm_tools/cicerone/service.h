@@ -135,6 +135,18 @@ class Service final : public base::MessageLoopForIO::Watcher {
       bool* result,
       base::WaitableEvent* event);
 
+  // Sends a D-Bus signal to inform Chrome about the progress or completion of a
+  // Linux package uninstall. It will use |cid| to resolve the request to a VM
+  // and then |container_token| to resolve it to a container. |progress_signal|
+  // should have all related fields from the container request set in it.
+  // |result| is set to true on success, false otherwise. Signals |event| when
+  // done.
+  void UninstallPackageProgress(const std::string& container_token,
+                                const uint32_t cid,
+                                UninstallPackageProgressSignal* progress_signal,
+                                bool* result,
+                                base::WaitableEvent* event);
+
   // Sends a D-Bus message to Chrome to tell it to open a terminal that is
   // connected back to the VM/container and if there are params in
   // |terminal_params| then those should be executed in that terminal.
@@ -204,6 +216,11 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   // Handles a request to install a Linux package file in a container.
   std::unique_ptr<dbus::Response> InstallLinuxPackage(
+      dbus::MethodCall* method_call);
+
+  // Handles a request to uninstall the Linux package that owns the indicated
+  // .desktop file.
+  std::unique_ptr<dbus::Response> UninstallPackageOwningFile(
       dbus::MethodCall* method_call);
 
   // Handles a request to create an LXD container.

@@ -48,6 +48,10 @@ class ContainerListenerImpl final
       grpc::ServerContext* ctx,
       const vm_tools::container::InstallLinuxPackageProgressInfo* request,
       vm_tools::EmptyMessage* response) override;
+  grpc::Status UninstallPackageProgress(
+      grpc::ServerContext* ctx,
+      const vm_tools::container::UninstallPackageProgressInfo* request,
+      vm_tools::EmptyMessage* response) override;
   grpc::Status OpenTerminal(
       grpc::ServerContext* ctx,
       const vm_tools::container::OpenTerminalRequest* request,

@@ -657,6 +657,42 @@ void Service::InstallLinuxPackageProgress(
   event->Signal();
 }
 
+void Service::UninstallPackageProgress(
+    const std::string& container_token,
+    const uint32_t cid,
+    UninstallPackageProgressSignal* progress_signal,
+    bool* result,
+    base::WaitableEvent* event) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  CHECK(progress_signal);
+  CHECK(result);
+  CHECK(event);
+  *result = false;
+  VirtualMachine* vm;
+  std::string owner_id;
+  std::string vm_name;
+
+  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name)) {
+    event->Signal();
+    return;
+  }
+  std::string container_name = vm->GetContainerNameForToken(container_token);
+  if (container_name.empty()) {
+    event->Signal();
+    return;
+  }
+
+  // Send the D-Bus signal out updating progress/completion for the uninstall.
+  dbus::Signal signal(kVmCiceroneInterface, kUninstallPackageProgressSignal);
+  progress_signal->set_vm_name(vm_name);
+  progress_signal->set_container_name(container_name);
+  progress_signal->set_owner_id(owner_id);
+  dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(*progress_signal);
+  exported_object_->SendSignal(&signal);
+  *result = true;
+  event->Signal();
+}
+
 void Service::OpenTerminal(const std::string& container_token,
                            vm_tools::apps::TerminalParams terminal_params,
                            uint32_t cid,
@@ -766,6 +802,7 @@ bool Service::Init() {
       {kLaunchVshdMethod, &Service::LaunchVshd},
       {kGetLinuxPackageInfoMethod, &Service::GetLinuxPackageInfo},
       {kInstallLinuxPackageMethod, &Service::InstallLinuxPackage},
+      {kUninstallPackageOwningFileMethod, &Service::UninstallPackageOwningFile},
       {kCreateLxdContainerMethod, &Service::CreateLxdContainer},
       {kStartLxdContainerMethod, &Service::StartLxdContainer},
       {kGetLxdContainerUsernameMethod, &Service::GetLxdContainerUsername},
@@ -1360,9 +1397,100 @@ std::unique_ptr<dbus::Response> Service::InstallLinuxPackage(
   }
 
   std::string error_msg;
-  int status = container->InstallLinuxPackage(request.file_path(), &error_msg);
-  response.set_status(static_cast<InstallLinuxPackageResponse::Status>(status));
+  vm_tools::container::InstallLinuxPackageResponse::Status status =
+      container->InstallLinuxPackage(request.file_path(), &error_msg);
   response.set_failure_reason(error_msg);
+  switch (status) {
+    case vm_tools::container::InstallLinuxPackageResponse::STARTED:
+      response.set_status(InstallLinuxPackageResponse::STARTED);
+      break;
+    case vm_tools::container::InstallLinuxPackageResponse::FAILED:
+      response.set_status(InstallLinuxPackageResponse::FAILED);
+      break;
+    case vm_tools::container::InstallLinuxPackageResponse::
+        INSTALL_ALREADY_ACTIVE:
+      response.set_status(InstallLinuxPackageResponse::INSTALL_ALREADY_ACTIVE);
+      break;
+    default:
+      LOG(ERROR) << "Unknown InstallLinuxPackageResponse Status " << status;
+      response.set_failure_reason(
+          "Unknown InstallLinuxPackageResponse Status from container");
+      response.set_status(InstallLinuxPackageResponse::FAILED);
+      break;
+  }
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::UninstallPackageOwningFile(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received UninstallPackageOwningFile request";
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  UninstallPackageOwningFileRequest request;
+  UninstallPackageOwningFileResponse response;
+  response.set_status(UninstallPackageOwningFileResponse::FAILED);
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR)
+        << "Unable to parse UninstallPackageOwningFileRequest from message";
+    response.set_failure_reason("Unable to parse request protobuf");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  if (request.desktop_file_id().empty()) {
+    LOG(ERROR) << "desktop_file_id is not set in request";
+    response.set_failure_reason("desktop_file_id is not set in request");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
+  if (!vm) {
+    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
+    response.set_failure_reason("Requested VM does not exist");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  std::string container_name = request.container_name().empty()
+                                   ? kDefaultContainerName
+                                   : request.container_name();
+  Container* container = vm->GetContainerForName(container_name);
+  if (!container) {
+    LOG(ERROR) << "Requested container does not exist: " << container_name;
+    response.set_failure_reason(base::StringPrintf(
+        "requested container does not exist: %s", container_name.c_str()));
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  std::string error_msg;
+  auto status = container->UninstallPackageOwningFile(request.desktop_file_id(),
+                                                      &error_msg);
+  switch (status) {
+    case vm_tools::container::UninstallPackageOwningFileResponse::STARTED:
+      response.set_status(UninstallPackageOwningFileResponse::STARTED);
+      break;
+    case vm_tools::container::UninstallPackageOwningFileResponse::FAILED:
+      response.set_status(UninstallPackageOwningFileResponse::FAILED);
+      response.set_failure_reason(error_msg);
+      break;
+    case vm_tools::container::UninstallPackageOwningFileResponse::
+        BLOCKING_OPERATION_IN_PROGRESS:
+      response.set_status(
+          UninstallPackageOwningFileResponse::BLOCKING_OPERATION_IN_PROGRESS);
+      response.set_failure_reason(error_msg);
+      break;
+    default:
+      response.set_status(UninstallPackageOwningFileResponse::FAILED);
+      response.set_failure_reason("Unknown return status " +
+                                  base::IntToString(status));
+      break;
+  }
 
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;

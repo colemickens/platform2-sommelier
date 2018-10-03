@@ -79,7 +79,12 @@ class Container {
   bool GetLinuxPackageInfo(const std::string& file_path,
                            LinuxPackageInfo* out_pkg_info,
                            std::string* out_error);
-  int InstallLinuxPackage(const std::string& file_path, std::string* out_error);
+  vm_tools::container::InstallLinuxPackageResponse::Status InstallLinuxPackage(
+      const std::string& file_path, std::string* out_error);
+
+  vm_tools::container::UninstallPackageOwningFileResponse::Status
+  UninstallPackageOwningFile(const std::string& desktop_file_id,
+                             std::string* out_error);
 
   bool IsRunning();
 

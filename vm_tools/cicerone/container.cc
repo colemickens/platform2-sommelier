@@ -200,8 +200,9 @@ bool Container::GetLinuxPackageInfo(const std::string& file_path,
   return container_response.success();
 }
 
-int Container::InstallLinuxPackage(const std::string& file_path,
-                                   std::string* out_error) {
+vm_tools::container::InstallLinuxPackageResponse::Status
+Container::InstallLinuxPackage(const std::string& file_path,
+                               std::string* out_error) {
   vm_tools::container::InstallLinuxPackageRequest container_request;
   vm_tools::container::InstallLinuxPackageResponse container_response;
   container_request.set_file_path(file_path);
@@ -220,6 +221,31 @@ int Container::InstallLinuxPackage(const std::string& file_path,
     out_error->assign("gRPC failure installing Linux package in container: " +
                       status.error_message());
     return vm_tools::container::InstallLinuxPackageResponse::FAILED;
+  }
+  out_error->assign(container_response.failure_reason());
+  return container_response.status();
+}
+
+vm_tools::container::UninstallPackageOwningFileResponse::Status
+Container::UninstallPackageOwningFile(const std::string& desktop_file_id,
+                                      std::string* out_error) {
+  vm_tools::container::UninstallPackageOwningFileRequest container_request;
+  vm_tools::container::UninstallPackageOwningFileResponse container_response;
+  container_request.set_desktop_file_id(desktop_file_id);
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+
+  grpc::Status status = garcon_stub_->UninstallPackageOwningFile(
+      &ctx, container_request, &container_response);
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to uninstall package in container " << name_ << ": "
+               << status.error_message() << " code: " << status.error_code();
+    out_error->assign("gRPC failure uninstalling package in container: " +
+                      status.error_message());
+    return vm_tools::container::UninstallPackageOwningFileResponse::FAILED;
   }
   out_error->assign(container_response.failure_reason());
   return container_response.status();
