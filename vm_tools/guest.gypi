@@ -262,6 +262,7 @@
             'deps': [
               'dbus-1',
               'libbrillo-<(libbase_ver)',
+              'libchrome-test-<(libbase_ver)',
               '<@(exported_deps)',
             ],
           },

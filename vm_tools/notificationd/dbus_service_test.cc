@@ -9,12 +9,19 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/memory/ref_counted.h>
 #include <base/run_loop.h>
 #include <base/values.h>
+#include <dbus/mock_bus.h>
+#include <dbus/mock_exported_object.h>
 #include <dbus/values_util.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "vm_tools/notificationd/notification_daemon.h"
+
+using ::testing::_;
+using ::testing::Invoke;
 
 namespace {
 
@@ -224,6 +231,39 @@ TEST_F(DBusServiceTest, Notify) {
 
   // Test response
   EXPECT_EQ(received_out_id, expected_out_id);
+}
+
+// Test if dbus adaptor can properly send NotificationClosed signal.
+TEST_F(DBusServiceTest, NotificationClosedSignal) {
+  auto dbus_service = DBusService(nullptr);
+
+  // Prepare mock exported object
+  const dbus::ObjectPath kObjectPath("/org/example/TestService");
+  auto mock_exported_object =
+      make_scoped_refptr(new dbus::MockExportedObject(nullptr, kObjectPath));
+  dbus_service.exported_object_ = mock_exported_object.get();
+
+  // Expected data
+  const uint32_t expected_id = 456;
+  const auto expected_reason = DBusService::ClosedReason::BY_USER;
+
+  // Test if SendSignal is called once with expected args
+  EXPECT_CALL(*mock_exported_object.get(), SendSignal(_))
+      .WillOnce(Invoke([&](dbus::Signal* signal) {
+        dbus::MessageReader reader(signal);
+
+        uint32_t id = -1;
+        uint32_t reason = -1;
+        ASSERT_TRUE(reader.PopUint32(&id));
+        ASSERT_TRUE(reader.PopUint32(&reason));
+        ASSERT_FALSE(reader.HasMoreData());
+
+        EXPECT_EQ(id, expected_id);
+        EXPECT_EQ(reason, static_cast<uint32_t>(expected_reason));
+      }));
+
+  // Send signal
+  dbus_service.SendNotificationClosedSignal(expected_id, expected_reason);
 }
 
 }  // namespace notificationd

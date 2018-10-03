@@ -85,6 +85,15 @@ std::unique_ptr<DBusService> DBusService::Create(DBusInterface* interface) {
   return service;
 }
 
+void DBusService::SendNotificationClosedSignal(uint32_t id,
+                                               ClosedReason reason) {
+  dbus::Signal signal(kNotificationsServiceName, "NotificationClosed");
+  dbus::MessageWriter writer(&signal);
+  writer.AppendUint32(id);
+  writer.AppendUint32(static_cast<uint32_t>(reason));
+  exported_object_->SendSignal(&signal);
+}
+
 bool DBusService::RegisterMethods() {
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (DBusService::*)(dbus::MethodCall*);

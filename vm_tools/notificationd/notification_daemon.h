@@ -15,6 +15,7 @@
 #include "vm_tools/notificationd/dbus_interface.h"
 #include "vm_tools/notificationd/dbus_service.h"
 #include "vm_tools/notificationd/notification_shell_client.h"
+#include "vm_tools/notificationd/notification_shell_interface.h"
 
 namespace vm_tools {
 namespace notificationd {
@@ -22,7 +23,8 @@ namespace notificationd {
 // Handles D-BUS server for notification and Wayland client for notification.
 // Once the D-BUS server recieves notification event, the daemon forwards it via
 // the Wayland client.
-class NotificationDaemon : public DBusInterface {
+class NotificationDaemon : public DBusInterface,
+                           public NotificationShellInterface {
  public:
   // Creates and returns a NotificationDaemon. Returns nullptr if the the daemon
   // failed to be initialized for any reason.
@@ -37,6 +39,9 @@ class NotificationDaemon : public DBusInterface {
   bool GetCapabilities(std::vector<std::string>* out_capabilities) override;
   bool Notify(const NotifyArgument& input, uint32_t* out_id) override;
   bool GetServerInformation(ServerInformation* output) override;
+
+  // NotificationShellInterface overrides.
+  void OnClosed(const std::string& notification_key, bool by_user) override;
 
  private:
   NotificationDaemon() = default;

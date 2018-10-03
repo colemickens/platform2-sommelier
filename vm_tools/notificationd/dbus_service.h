@@ -22,12 +22,27 @@ namespace notificationd {
 // https://developer.gnome.org/notification-spec/
 class DBusService {
  public:
+  // Closed reason id according to org.freedesktop.Notifications specification.
+  enum class ClosedReason {
+    // The notification expired.
+    EXPIRED = 1,
+    // The notification was closed by the user.
+    BY_USER = 2,
+    // The notification was closed by CloseNotification request.
+    BY_REQUEST = 3,
+    // Undefined reasons.
+    UNDEFINED = 4,
+  };
+
   ~DBusService() = default;
 
   // Creates and returns a DBusService. The |interface| is required to outlive
   // this DBusService. Returns nullptr if the the service failed to be
   // initialized for any reason.
   static std::unique_ptr<DBusService> Create(DBusInterface* interface);
+
+  // Sends the D-Bus signal out to indicate the notification is closed.
+  void SendNotificationClosedSignal(uint32_t id, ClosedReason reason);
 
  private:
   explicit DBusService(DBusInterface* interface);
@@ -52,6 +67,7 @@ class DBusService {
   FRIEND_TEST(DBusServiceTest, GetCapabilities);
   FRIEND_TEST(DBusServiceTest, Notify);
   FRIEND_TEST(DBusServiceTest, GetServerInformation);
+  FRIEND_TEST(DBusServiceTest, NotificationClosedSignal);
 
   DISALLOW_COPY_AND_ASSIGN(DBusService);
 };

@@ -13,6 +13,7 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <brillo/bind_lambda.h>
 
 #include "vm_tools/notificationd/notification_shell_client.h"
@@ -48,7 +49,7 @@ bool NotificationDaemon::Init(const std::string& display_name,
                               const std::string& virtwl_device,
                               base::Closure quit_closure) {
   notification_shell_client_ = NotificationShellClient::Create(
-      display_name, virtwl_device, std::move(quit_closure));
+      display_name, virtwl_device, this, std::move(quit_closure));
   if (!notification_shell_client_) {
     LOG(ERROR) << "Failed to create notification shell client";
     return false;
@@ -89,6 +90,16 @@ bool NotificationDaemon::GetServerInformation(ServerInformation* output) {
   output->spec_version = kNotificationsSpecVersion;
 
   return true;
+}
+
+void NotificationDaemon::OnClosed(const std::string& notification_key,
+                                  bool by_user) {
+  uint32_t id = 0;
+  DCHECK(base::StringToUint(notification_key, &id));
+  // Forward notification closed event to client via D-Bus.
+  dbus_service_->SendNotificationClosedSignal(
+      id, by_user ? DBusService::ClosedReason::BY_USER
+                  : DBusService::ClosedReason::BY_REQUEST);
 }
 
 }  // namespace notificationd
