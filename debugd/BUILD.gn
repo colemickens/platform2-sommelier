@@ -1,0 +1,310 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+group("all") {
+  deps = [
+    ":capture_packets",
+    ":debugd",
+    ":debugd-adaptors",
+    ":debugd_dbus_utils",
+    ":dev_features_chrome_remote_debugging",
+    ":dev_features_password",
+    ":dev_features_rootfs_verification",
+    ":dev_features_ssh",
+    ":dev_features_usb_boot",
+    ":external-proto",
+    ":generate_logs",
+    ":icmp",
+    ":libdebugd",
+    ":netif",
+    ":network_status",
+  ]
+  if (use.cellular) {
+    deps += [ ":modem_status" ]
+  }
+  if (use.test) {
+    deps += [ ":debugd_testrunner" ]
+  }
+  if (use.wimax) {
+    deps += [ ":wimax_status" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  defines = [
+    "USE_CELLULAR=${use.cellular}",
+    "USE_IWLWIFI_DUMP=${use.iwlwifi_dump}",
+    "USE_TPM=${use.tpm}",
+    "USE_WIMAX=${use.wimax}",
+  ]
+
+  pkg_deps = [
+    "dbus-1",
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "libminijail",
+    "libpcrecpp",
+  ]
+}
+
+proto_library("external-proto") {
+  proto_in_dir = "${sysroot}/usr/include/chromeos/dbus/cryptohome"
+  proto_out_dir = "include"
+  sources = [
+    "${proto_in_dir}/key.proto",
+    "${proto_in_dir}/rpc.proto",
+  ]
+}
+
+generate_dbus_adaptors("debugd-adaptors") {
+  new_fd_bindings = true
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+  dbus_adaptors_out_dir = "include/debugd/dbus_adaptors"
+  sources = [
+    "dbus_bindings/org.chromium.debugd.xml",
+  ]
+}
+
+pkg_config("libdebugd_dependent_config") {
+  pkg_deps = [ "libshill-client" ]
+}
+
+static_library("libdebugd") {
+  configs += [ ":target_defaults" ]
+  all_dependent_configs = [ ":libdebugd_dependent_config" ]
+  sources = [
+    "src/anonymizer_tool.cc",
+    "src/battery_tool.cc",
+    "src/campfire_tool.cc",
+    "src/constants.cc",
+    "src/container_tool.cc",
+    "src/crash_sender_tool.cc",
+    "src/cups_tool.cc",
+    "src/debug_logs_tool.cc",
+    "src/debug_mode_tool.cc",
+    "src/debugd_dbus_adaptor.cc",
+    "src/dev_features_tool.cc",
+    "src/dev_mode_no_owner_restriction.cc",
+    "src/example_tool.cc",
+    "src/icmp_tool.cc",
+    "src/log_tool.cc",
+    "src/memory_tool.cc",
+    "src/modem_status_tool.cc",
+    "src/netif_tool.cc",
+    "src/network_status_tool.cc",
+    "src/oom_adj_tool.cc",
+    "src/packet_capture_tool.cc",
+    "src/perf_tool.cc",
+    "src/ping_tool.cc",
+    "src/process_with_id.cc",
+    "src/process_with_output.cc",
+    "src/route_tool.cc",
+    "src/sandboxed_process.cc",
+    "src/session_manager_proxy.cc",
+    "src/shill_scripts_tool.cc",
+    "src/storage_tool.cc",
+    "src/subprocess_tool.cc",
+    "src/swap_tool.cc",
+    "src/sysrq_tool.cc",
+    "src/systrace_tool.cc",
+    "src/tracepath_tool.cc",
+    "src/u2f_tool.cc",
+    "src/variant_utils.cc",
+    "src/vm_concierge_tool.cc",
+    "src/wifi_power_tool.cc",
+    "src/wimax_status_tool.cc",
+  ]
+  deps = [
+    ":debugd-adaptors",
+    ":external-proto",
+  ]
+}
+
+static_library("debugd_dbus_utils") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "src/helpers/shill_proxy.cc",
+    "src/helpers/system_service_proxy.cc",
+  ]
+}
+
+pkg_config("debugd_config") {
+  pkg_deps = [ "protobuf" ]
+}
+
+executable("debugd") {
+  configs += [
+    ":debugd_config",
+    ":target_defaults",
+  ]
+  sources = [
+    "src/main.cc",
+  ]
+  deps = [
+    ":libdebugd",
+  ]
+}
+
+executable("capture_packets") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "src/helpers/capture_packets.cc",
+  ]
+  libs = [ "-lpcap" ]
+}
+
+executable("dev_features_chrome_remote_debugging") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "src/helpers/dev_features_chrome_remote_debugging.cc",
+  ]
+  deps = [
+    ":libdebugd",
+  ]
+}
+
+executable("dev_features_password") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "src/helpers/dev_features_password.cc",
+    "src/helpers/dev_features_password_utils.cc",
+  ]
+  deps = [
+    ":libdebugd",
+  ]
+}
+
+executable("dev_features_rootfs_verification") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "src/helpers/dev_features_rootfs_verification.cc",
+  ]
+  libs = [ "-lrootdev" ]
+  deps = [
+    ":libdebugd",
+  ]
+}
+
+executable("dev_features_ssh") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "src/helpers/dev_features_ssh.cc",
+  ]
+  deps = [
+    ":libdebugd",
+  ]
+}
+
+pkg_config("dev_features_usb_boot_config") {
+  pkg_deps = [ "vboot_host" ]
+}
+
+executable("dev_features_usb_boot") {
+  configs += [
+    ":dev_features_usb_boot_config",
+    ":target_defaults",
+  ]
+  sources = [
+    "src/helpers/dev_features_usb_boot.cc",
+  ]
+  deps = [
+    ":libdebugd",
+  ]
+}
+
+executable("icmp") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "src/helpers/icmp.cc",
+  ]
+}
+
+executable("netif") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "src/helpers/netif.cc",
+  ]
+  deps = [
+    ":debugd_dbus_utils",
+  ]
+}
+
+executable("network_status") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "src/helpers/network_status.cc",
+  ]
+  deps = [
+    ":debugd_dbus_utils",
+  ]
+}
+
+executable("generate_logs") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "tools/generate_logs.cc",
+  ]
+}
+
+if (use.cellular) {
+  executable("modem_status") {
+    configs += [ ":target_defaults" ]
+    sources = [
+      "src/helpers/modem_status.cc",
+    ]
+    deps = [
+      ":debugd_dbus_utils",
+    ]
+  }
+}
+
+if (use.wimax) {
+  executable("wimax_status") {
+    configs += [ ":target_defaults" ]
+    sources = [
+      "src/helpers/wimax_status.cc",
+    ]
+    deps = [
+      ":debugd_dbus_utils",
+    ]
+  }
+}
+
+if (use.test) {
+  pkg_config("debugd_testrunner_config") {
+    pkg_deps = [
+      "protobuf",
+      "libchrome-test-${libbase_ver}",
+    ]
+  }
+
+  executable("debugd_testrunner") {
+    configs += [
+      "//common-mk:test",
+      ":debugd_testrunner_config",
+      ":target_defaults",
+    ]
+    sources = [
+      "src/anonymizer_tool_test.cc",
+      "src/dev_mode_no_owner_restriction_test.cc",
+      "src/helpers/dev_features_password_utils.cc",
+      "src/helpers/dev_features_password_utils_test.cc",
+      "src/log_tool_test.cc",
+      "src/process_with_id_test.cc",
+      "src/sandboxed_process_test.cc",
+      "src/storage_tool_test.cc",
+      "src/subprocess_tool_test.cc",
+    ]
+    libs = [ "-lm" ]
+    deps = [
+      ":debugd_dbus_utils",
+      ":libdebugd",
+      "//common-mk/testrunner",
+    ]
+  }
+}
