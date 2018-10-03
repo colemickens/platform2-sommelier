@@ -26,7 +26,7 @@ SKUS = 'skus'
 CONFIG = 'config'
 BUILD_ONLY_ELEMENTS = [
     '/firmware', '/firmware-signing', '/audio/main/files', '/touch/files',
-    '/arc/files', '/thermal/files'
+    '/arc/files', '/thermal/files', '/hardware-properties'
 ]
 BRAND_ELEMENTS = ['brand-code', 'firmware-signing', 'wallpaper']
 TEMPLATE_PATTERN = re.compile('{{([^}]*)}}')
@@ -558,6 +558,25 @@ def _ValidateWhitelabelBrandChangesOnly(json_config):
                                  base_str,
                                  compare_str))
 
+def _ValidateHardwarePropertiesAreBoolean(json_config):
+  """Checks that all fields under hardware-properties are boolean
+
+     Ensures that no key is added to hardware-properties that has a non-boolean
+     value, because non-boolean values are unsupported by the
+     hardware-properties codegen.
+
+  Args:
+    json_config: JSON config dictionary
+  """
+  for config in json_config['chromeos']['configs']:
+    hardware_properties = config.get('hardware-properties', None)
+    if hardware_properties:
+      for key, value in hardware_properties.iteritems():
+        if not isinstance(value, bool):
+          raise ValidationError(
+              ('All configs under hardware-properties must be boolean flags\n'
+               'However, key \'{}\' has value \'{}\'.').format(key, value))
+
 def ValidateConfig(config):
   """Validates a transformed cros config for general business rules.
 
@@ -570,6 +589,7 @@ def ValidateConfig(config):
   json_config = json.loads(config)
   _ValidateUniqueIdentities(json_config)
   _ValidateWhitelabelBrandChangesOnly(json_config)
+  _ValidateHardwarePropertiesAreBoolean(json_config)
 
 def _FindImports(config_file, includes):
   """Recursively looks up and finds files to include for yaml.

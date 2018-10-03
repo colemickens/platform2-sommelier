@@ -345,6 +345,49 @@ chromeos:
     except cros_config_schema.ValidationError as err:
       self.assertIn('Whitelabel configs can only', err.__str__())
 
+  def testHardwarePropertiesNonBoolean(self):
+    config = \
+"""
+chromeos:
+  devices:
+    - $name: 'bad_device'
+      skus:
+        - config:
+            identity:
+              sku-id: 0
+            # THIS WILL CAUSE THE FAILURE
+            hardware-properties:
+              has-base-accelerometer: true
+              has-base-gyroscope: 7
+              has-lid-accelerometer: false
+              is-lid-convertible: false
+"""
+    try:
+      cros_config_schema.ValidateConfig(
+          cros_config_schema.TransformConfig(config))
+    except cros_config_schema.ValidationError as err:
+      self.assertIn('must be boolean', err.__str__())
+    else:
+      self.fail('ValidationError not raised')
+
+  def testHardwarePropertiesBoolean(self):
+    config = \
+"""
+chromeos:
+  devices:
+    - $name: 'good_device'
+      skus:
+        - config:
+            identity:
+              sku-id: 0
+            hardware-properties:
+              has-base-accelerometer: true
+              has-base-gyroscope: true
+              has-lid-accelerometer: true
+              is-lid-convertible: false
+"""
+    cros_config_schema.ValidateConfig(
+        cros_config_schema.TransformConfig(config))
 
 class FilterBuildElements(unittest.TestCase):
 

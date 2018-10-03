@@ -256,6 +256,7 @@ The schema definition is below:
 | brand-code | string | ```^[A-Z]{4}$``` | False |  | Brand code of the model (also called RLZ code). |
 | firmware | [firmware](#firmware) |  | True |  |  |
 | firmware-signing | [firmware-signing](#firmware-signing) |  | False |  |  |
+| hardware-properties | [hardware-properties](#hardware-properties) |  | False |  | Contains boolean flags for hardware properties of this board, for example if it's convertible, has a touchscreen, has a camera, etc. This information is used to auto-generate C code that is consumed by the EC build process in order to do run-time configuration. If a value is defined within a config file, but not for a specific model, that value will be assumed to be false for that model. All properties must be booleans. If non-boolean properties are desired, the generation code in cros_config_schema.py must be updated to support them. |
 | identity | [identity](#identity) |  | False |  | Defines attributes that are used by cros_config to detect the identity of the platform and which corresponding config should be used. This tuple must either contain x86 properties only or ARM properties only. |
 | modem | [modem](#modem) |  | False |  |  |
 | name | string | ```^[_a-zA-Z0-9]{3,}``` | True |  | Unique name for the given model. |
@@ -341,6 +342,14 @@ The schema definition is below:
 | key-id | string |  | True |  | Key ID from the signer key set that is used to sign the given firmware image. |
 | sig-id-in-customization-id | boolean |  | False |  | Indicates that this model cannot be decoded by the mapping table. Instead the model is stored in the VPD (Vital Product Data) region in the customization_id property. This allows us to determine the model to use in the factory during the finalization stage. Note that if the VPD is wiped then the model will be lost. This may mean that the device will revert back to a generic model, or may not work. It is not possible in general to test whether the model in the VPD is correct at run-time. We simply assume that it is. The advantage of using this property is that no hardware changes are needed to change one model into another. For example we can create 20 different whitelabel boards, all with the same hardware, just by changing the customization_id that is written into SPI flash. |
 | signature-id | string |  | True |  | ID used to generate keys/keyblocks in the firmware signing output.  This is also the value provided to mosys platform signature for the updater4.sh script. |
+
+### hardware-properties
+| Attribute | Type   | RegEx     | Required | Oneof Group |  Description |
+| --------- | ------ | --------- | -------- | ----------- |  ----------- |
+| has-base-accelerometer | boolean |  | False |  | Is there an accelerometer in the base of the device. |
+| has-base-gyroscope | boolean |  | False |  | Is there a gyroscope in the base of the device. |
+| has-lid-accelerometer | boolean |  | False |  | Is there an accelerometer in the lid of the device. |
+| is-lid-convertible | boolean |  | False |  | Can the lid be rotated 360 degrees. |
 
 ### identity
 | Attribute | Type   | RegEx     | Required | Oneof Group |  Description |

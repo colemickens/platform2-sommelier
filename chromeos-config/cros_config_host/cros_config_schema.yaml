@@ -355,6 +355,34 @@ properties:
                     we simply use the model name as the value.
                   type: string
               additionalProperties: false
+            hardware-properties:
+              type: object
+              description: Contains boolean flags for hardware properties of
+                this board, for example if it's convertible, has a touchscreen,
+                has a camera, etc. This information is used to auto-generate C
+                code that is consumed by the EC build process in order to do
+                run-time configuration. If a value is defined within a config
+                file, but not for a specific model, that value will be assumed
+                to be false for that model.
+                All properties must be booleans. If non-boolean
+                properties are desired, the generation code in
+                cros_config_schema.py must be updated to support them.
+              properties:
+                is-lid-convertible:
+                  description: Can the lid be rotated 360 degrees.
+                  type: boolean
+                has-lid-accelerometer:
+                  description: Is there an accelerometer in the lid of the
+                    device.
+                  type: boolean
+                has-base-accelerometer:
+                  description: Is there an accelerometer in the base of the
+                    device.
+                  type: boolean
+                has-base-gyroscope:
+                  description: Is there a gyroscope in the base of the device.
+                  type: boolean
+              additionalProperties: false
           additionalProperties: false
           required:
           - firmware
