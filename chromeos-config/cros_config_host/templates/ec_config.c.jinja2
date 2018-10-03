@@ -1,0 +1,36 @@
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "ec_config.h"
+
+#include "compile_time_macros.h"
+
+{% for device_name, skus in device_properties.iteritems() -%}
+  {%- if device_properties | length > 1 -%}
+    {% if loop.first %}
+#if defined(BOARD_{{ device_name | upper }})
+    {%- else %}
+#elif defined(BOARD_{{ device_name | upper }})
+    {%- endif -%}
+  {%- endif %}
+
+const struct sku_info ALL_SKUS[] = {
+  {%- for sku, flag_values in skus %}
+  {.sku = {{ sku }}
+    {%- for flag in flags %},
+   .{{ flag }} = {{ flag_values[flag] | int }}
+    {%- endfor -%}
+  }
+    {%- if not loop.last -%} , {%- endif -%}
+  {% endfor %}
+};
+  {%- if device_properties | length > 1 and loop.last %}
+
+#endif
+  {%- endif %}
+{% else -%}
+  const struct sku_info ALL_SKUS[] = {};
+{%- endfor %}
+
+const size_t NUM_SKUS = ARRAY_SIZE(ALL_SKUS);

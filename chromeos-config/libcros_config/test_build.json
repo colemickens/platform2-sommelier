@@ -58,6 +58,12 @@
           "key-id": "SOME",
           "signature-id": "some"
         },
+        "hardware-properties": {
+          "has-base-accelerometer": true,
+          "has-base-gyroscope": true,
+          "has-lid-accelerometer": true,
+          "is-lid-convertible": true
+        },
         "identity": {
           "platform-name": "Some",
           "sku-id": 0,
@@ -172,6 +178,9 @@
           "key-id": "SOME",
           "signature-id": "some"
         },
+        "hardware-properties": {
+          "is-lid-convertible": false
+        },
         "identity": {
           "platform-name": "Some",
           "sku-id": 1,
@@ -285,6 +294,9 @@
           "key-id": "ANOTHER",
           "signature-id": "another"
         },
+        "hardware-properties": {
+          "is-lid-convertible": true
+        },
         "identity": {
           "platform-name": "Another",
           "smbios-name-match": "Another"
@@ -361,6 +373,9 @@
           "sig-id-in-customization-id": true,
           "signature-id": "whitelabel-whitelabel1"
         },
+        "hardware-properties": {
+          "is-lid-convertible": false
+        },
         "identity": {
           "platform-name": "Some",
           "sku-id": 8,
@@ -437,6 +452,9 @@
           "sig-id-in-customization-id": true,
           "signature-id": "whitelabel-whitelabel1"
         },
+        "hardware-properties": {
+          "is-lid-convertible": false
+        },
         "identity": {
           "platform-name": "Some",
           "sku-id": 9,
@@ -511,6 +529,9 @@
           "key-id": "WHITELABEL2",
           "sig-id-in-customization-id": true,
           "signature-id": "whitelabel-whitelabel2"
+        },
+        "hardware-properties": {
+          "is-lid-convertible": false
         },
         "identity": {
           "platform-name": "Some",
@@ -587,6 +608,9 @@
           "key-id": "WHITELABEL2",
           "sig-id-in-customization-id": true,
           "signature-id": "whitelabel-whitelabel2"
+        },
+        "hardware-properties": {
+          "is-lid-convertible": false
         },
         "identity": {
           "platform-name": "Some",

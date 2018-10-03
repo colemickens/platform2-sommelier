@@ -9,6 +9,7 @@ from __future__ import print_function
 import argparse
 import collections
 import copy
+from jinja2 import Template
 import json
 from jsonschema import validate
 import os
@@ -30,6 +31,10 @@ BUILD_ONLY_ELEMENTS = [
 ]
 BRAND_ELEMENTS = ['brand-code', 'firmware-signing', 'wallpaper']
 TEMPLATE_PATTERN = re.compile('{{([^}]*)}}')
+
+EC_OUTPUT_NAME = 'ec_config'
+TEMPLATE_DIR = 'templates'
+TEMPLATE_SUFFIX = '.jinja2'
 
 
 def GetNamedTuple(mapping):
@@ -317,8 +322,8 @@ def TransformConfig(config, model_filter_regex=None):
   return _FormatJson(json_config)
 
 
-def GenerateCBindings(config):
-  """Generates C struct bindings
+def GenerateMosysCBindings(config):
+  """Generates Mosys C struct bindings
 
   Generates C struct bindings that can be used by mosys.
 
@@ -395,6 +400,71 @@ const struct config_map *cros_config_get_config_map(int *num_entries) {
 
   return file_format % (',\n'.join(structs), len(structs))
 
+def GenerateEcCBindings(config):
+  """Generates EC C struct bindings
+
+  Generates .h and .c file containing C struct bindings that can be used by ec.
+
+  Args:
+    config: Config (transformed) that is the transform basis.
+  """
+
+  json_config = json.loads(config)
+  device_properties = collections.defaultdict(dict)
+  flag_set = set()
+  for config in json_config[CHROMEOS][CONFIGS]:
+    firmware = config['firmware']
+
+    if 'build-targets' not in firmware:
+      # Do not consider it an error if a config explicitly specifies no
+      # firmware.
+      if 'no-firmware' not in firmware or not firmware['no-firmware']:
+        print("WARNING: config missing 'firmware.build-targets', skipping",
+              file=sys.stderr)
+    elif 'ec' not in firmware['build-targets']:
+      print("WARNING: config missing 'firmware.build-targets.ec', skipping",
+            file=sys.stderr)
+    elif 'identity' not in config:
+      print("WARNING: config missing 'identity', skipping",
+            file=sys.stderr)
+    elif 'sku-id' not in config['identity']:
+      print("WARNING: config missing 'identity.sku-id', skipping",
+            file=sys.stderr)
+    else:
+      sku = config['identity']['sku-id']
+      ec_build_target = firmware['build-targets']['ec'].upper()
+
+      # Default flag value will be false.
+      flag_values = collections.defaultdict(bool)
+
+      hwprops = config.get('hardware-properties', None)
+      if hwprops:
+        for flag, value in hwprops.iteritems():
+          clean_flag = flag.replace('-', '_')
+          flag_set.add(clean_flag)
+          flag_values[clean_flag] = value
+
+      # Duplicate skus take the last value in the config file.
+      device_properties[ec_build_target][sku] = flag_values
+
+  flags = list(flag_set)
+  flags.sort()
+  for device_name in device_properties.iterkeys():
+    # Order struct definitions by sku.
+    device_properties[device_name] = \
+        sorted(device_properties[device_name].items())
+
+  h_template_path = os.path.join(
+      this_dir, TEMPLATE_DIR, (EC_OUTPUT_NAME + ".h" + TEMPLATE_SUFFIX))
+  h_template = Template(open(h_template_path).read())
+
+  c_template_path = os.path.join(
+      this_dir, TEMPLATE_DIR, (EC_OUTPUT_NAME + ".c" + TEMPLATE_SUFFIX))
+  c_template = Template(open(c_template_path).read())
+
+  h_output = h_template.render(flags=flags)
+  c_output = c_template.render(device_properties=device_properties, flags=flags)
+  return (h_output, c_output)
 
 def _FormatJson(config):
   """Formats JSON for output or printing.
@@ -738,7 +808,7 @@ def Main(schema,
   if gen_c_bindings_output:
     with open(gen_c_bindings_output, 'w') as output_stream:
       # Using print function adds proper trailing newline
-      print(GenerateCBindings(full_json_transform), file=output_stream)
+      print(GenerateMosysCBindings(full_json_transform), file=output_stream)
 
 
 def main(_argv=None):

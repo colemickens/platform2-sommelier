@@ -430,7 +430,18 @@ class MainTests(unittest.TestCase):
             '{5}').format(line_num, repr(line_expected), repr(line_actual),
                           file_expected, file_actual, regen_cmd))
 
-  def testMainWithExampleWithBuildAndCBindings(self):
+  def assertMultilineStringEqual(self, str_expected, str_actual):
+    expected = str_expected.strip().split("\n")
+    actual = str_actual.strip().split("\n")
+    for line_num, (line_expected, line_actual) in \
+        enumerate(izip_longest(expected, actual)):
+      self.assertEqual(line_expected, line_actual, \
+         ('Strings differ at line {0}\n'
+          'Expected: {1}\n'
+          'Actual  : {2}\n').format(line_num, repr(line_expected),
+                                    repr(line_actual)))
+
+  def testMainWithExampleWithBuildAndMosysCBindings(self):
     json_output = tempfile.mktemp()
     c_output = tempfile.mktemp()
     cros_config_schema.Main(
@@ -533,6 +544,98 @@ class MainTests(unittest.TestCase):
 
     os.remove(output)
 
+  def testEcCodegenManyBoards(self):
+    input_json = """
+      {
+        "chromeos": {
+          "configs": [
+            {
+              "firmware": {
+                "build-targets": {
+                  "ec": "Another"
+                }
+              },
+              "hardware-properties": {
+                "is-lid-convertible": false,
+                "has-base-accelerometer": true,
+                "has-lid-accelerometer": true
+              },
+              "identity": {
+                "sku-id": 40
+              }
+            },
+            {
+              "firmware": {
+                "build-targets": {
+                  "ec": "Some"
+                }
+              },
+              "hardware-properties": {
+                "is-lid-convertible": false,
+                "has-base-accelerometer": true,
+                "has-lid-accelerometer": true
+              },
+              "identity": {
+                "sku-id": 9
+              }
+            },
+            {
+              "firmware": {
+                "build-targets": {
+                  "ec": "Some"
+                }
+              },
+              "hardware-properties": {
+                "is-lid-convertible": true,
+                "has-lid-accelerometer": true
+              },
+              "identity": {
+                "sku-id": 99
+              }
+            }
+          ]
+        }
+      }
+    """
+    h_expected_path = os.path.join(this_dir, '../libcros_config/ec_test_many.h')
+    c_expected_path = os.path.join(this_dir, '../libcros_config/ec_test_many.c')
+    h_expected = open(h_expected_path).read()
+    c_expected = open(c_expected_path).read()
+
+    h_actual, c_actual = cros_config_schema.GenerateEcCBindings(input_json)
+    self.assertMultilineStringEqual(h_expected, h_actual)
+    self.assertMultilineStringEqual(c_expected, c_actual)
+
+  def testEcCodegenWithOneBoard(self):
+    input_json_path = os.path.join(this_dir,
+                                   '../libcros_config/test_build.json')
+    input_json = open(input_json_path).read()
+
+    h_expected_path = os.path.join(this_dir, '../libcros_config/ec_test_one.h')
+    c_expected_path = os.path.join(this_dir, '../libcros_config/ec_test_one.c')
+    h_expected = open(h_expected_path).read()
+    c_expected = open(c_expected_path).read()
+
+    h_actual, c_actual = cros_config_schema.GenerateEcCBindings(input_json)
+    self.assertMultilineStringEqual(h_expected, h_actual)
+    self.assertMultilineStringEqual(c_expected, c_actual)
+
+  def testEcCodegenWithNoBoards(self):
+    input_json = """
+    {
+      "chromeos": {
+        "configs": []
+      }
+    }
+    """
+    h_expected_path = os.path.join(this_dir, '../libcros_config/ec_test_none.h')
+    c_expected_path = os.path.join(this_dir, '../libcros_config/ec_test_none.c')
+    h_expected = open(h_expected_path).read()
+    c_expected = open(c_expected_path).read()
+
+    h_actual, c_actual = cros_config_schema.GenerateEcCBindings(input_json)
+    self.assertMultilineStringEqual(h_expected, h_actual)
+    self.assertMultilineStringEqual(c_expected, c_actual)
 
 if __name__ == '__main__':
   unittest.main()
