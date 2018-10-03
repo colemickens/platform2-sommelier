@@ -33,7 +33,6 @@
 #include "shill/mock_device_info.h"
 #include "shill/mock_dns_server_tester.h"
 #include "shill/mock_event_dispatcher.h"
-#include "shill/mock_ip_address_store.h"
 #include "shill/mock_ipconfig.h"
 #include "shill/mock_link_monitor.h"
 #include "shill/mock_manager.h"

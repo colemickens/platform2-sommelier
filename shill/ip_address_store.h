@@ -29,18 +29,18 @@ class IPAddressStore {
   using IPAddresses = std::set<IPAddress, IPAddressLTIgnorePrefix>;
 
   IPAddressStore();
-  virtual ~IPAddressStore();
+  ~IPAddressStore();
 
   // Add a new IP address if it does not already exist.
-  virtual void AddUnique(const IPAddress& ip);
-  virtual void Remove(const IPAddress& ip);
-  virtual void Clear();
-  virtual bool Contains(const IPAddress& ip) const;
-  virtual size_t Count() const;
-  virtual bool Empty() const;
+  void AddUnique(const IPAddress& ip);
+  void Remove(const IPAddress& ip);
+  void Clear();
+  bool Contains(const IPAddress& ip) const;
+  size_t Count() const;
+  bool Empty() const;
   const IPAddresses& GetIPAddresses() const { return ip_addresses_; }
 
-  virtual IPAddress GetRandomIP();
+  IPAddress GetRandomIP();
 
  protected:
   friend class IPAddressStoreTest;

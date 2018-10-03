@@ -756,7 +756,6 @@ if (use.test) {
       "mock_icmp.cc",
       "mock_icmp_session.cc",
       "mock_icmp_session_factory.cc",
-      "mock_ip_address_store.cc",
       "mock_ipconfig.cc",
       "mock_link_monitor.cc",
       "mock_log.cc",
