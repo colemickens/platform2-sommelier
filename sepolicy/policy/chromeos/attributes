@@ -8,3 +8,6 @@ attribute cros_labeled_dev_type;
 attribute cros_log_type;
 
 attribute cros_tmpfile_type;
+
+attribute cros_init_scripts_domain;
+attribute cros_init_scripts_file_type;
