@@ -1,0 +1,452 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+group("all") {
+  deps = [
+    ":chaps-protos",
+    ":chaps_client",
+    ":chapsd",
+    ":libchaps",
+    ":libchaps_static",
+    ":p11_replay",
+  ]
+  if (use.test) {
+    deps += [
+      ":chaps_service_test",
+      ":chaps_test",
+      ":chapsd_test",
+      ":dbus_test",
+      ":isolate_login_client_test",
+      ":libchaps_test",
+      ":object_policy_test",
+      ":object_pool_test",
+      ":object_store_test",
+      ":object_test",
+      ":opencryptoki_importer_test",
+      ":session_test",
+      ":slot_manager_test",
+      ":tpm_utility_test",
+    ]
+    if (use.tpm2) {
+      deps += [ ":tpm2_utility_test" ]
+    }
+  }
+}
+
+pkg_config("target_defaults") {
+  defines = [ "USE_TPM2=${use.tpm2}" ]
+
+  pkg_deps = [
+    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # before protobuf here or the linker flags won't be in the right
+    # order.
+    "system_api",
+    "protobuf-lite",
+    "openssl",
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+  ]
+}
+
+proto_library("chaps-protos") {
+  proto_in_dir = "."
+  proto_out_dir = "include/chaps/proto_bindings"
+  sources = [
+    "${proto_in_dir}/attributes.proto",
+  ]
+
+  # libchaps-protos.a is used by a shared_libary
+  # object, so we need to build it with '-fPIC' instead of '-fPIE'.
+  use_pic = true
+}
+
+# This is meant only for internal binaries like unittests.  All
+# client programs should be using the shared libchaps library.
+static_library("libchaps_static") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "attributes.cc",
+    "chaps.cc",
+    "chaps_proxy.cc",
+    "chaps_utility.cc",
+    "dbus/dbus_proxy_wrapper.cc",
+    "dbus/scoped_bus.cc",
+    "isolate_chromeos.cc",
+    "proto_conversion.cc",
+    "token_manager_client.cc",
+  ]
+  deps = [
+    ":chaps-protos",
+  ]
+}
+
+shared_library("libchaps") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "attributes.cc",
+    "chaps.cc",
+    "chaps_proxy.cc",
+    "chaps_utility.cc",
+    "dbus/dbus_proxy_wrapper.cc",
+    "dbus/scoped_bus.cc",
+    "isolate_chromeos.cc",
+    "proto_conversion.cc",
+    "token_manager_client.cc",
+  ]
+  deps = [
+    ":chaps-protos",
+  ]
+}
+
+pkg_config("chapsd_config") {
+  pkg_deps = [
+    "libmetrics-${libbase_ver}",
+    "libminijail",
+  ]
+}
+
+executable("chapsd") {
+  configs += [
+    ":chapsd_config",
+    ":target_defaults",
+  ]
+  sources = [
+    "chaps_adaptor.cc",
+    "chaps_factory_impl.cc",
+    "chaps_service.cc",
+    "chapsd.cc",
+    "object_impl.cc",
+    "object_policy_cert.cc",
+    "object_policy_common.cc",
+    "object_policy_data.cc",
+    "object_policy_key.cc",
+    "object_policy_private_key.cc",
+    "object_policy_public_key.cc",
+    "object_policy_secret_key.cc",
+    "object_pool_impl.cc",
+    "object_store_impl.cc",
+    "opencryptoki_importer.cc",
+    "platform_globals_chromeos.cc",
+    "proto_conversion.cc",
+    "session_impl.cc",
+    "slot_manager_impl.cc",
+  ]
+  libs = [
+    "-ldl",
+    "-lleveldb",
+    "-lmemenv",
+  ]
+  deps = [
+    ":chaps-protos",
+    ":libchaps_static",
+  ]
+
+  if (use.tpm2) {
+    sources += [ "tpm2_utility_impl.cc" ]
+    libs += [ "-ltrunks" ]
+  }
+
+  if (!use.tpm2) {
+    sources += [ "tpm_utility_impl.cc" ]
+    libs += [ "-ltspi" ]
+  }
+}
+
+executable("chaps_client") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "chaps_client.cc",
+  ]
+  deps = [
+    ":libchaps_static",
+  ]
+}
+
+executable("p11_replay") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "p11_replay.cc",
+  ]
+  deps = [
+    ":libchaps",
+  ]
+}
+
+if (use.test) {
+  pkg_config("libchaps_test_dependent_config") {
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+  }
+
+  static_library("libchaps_test") {
+    configs += [ ":target_defaults" ]
+    all_dependent_configs = [ ":libchaps_test_dependent_config" ]
+    sources = [
+      "chaps_factory_mock.cc",
+      "object_importer_mock.cc",
+      "object_mock.cc",
+      "object_policy_mock.cc",
+      "object_pool_mock.cc",
+      "object_store_mock.cc",
+      "session_mock.cc",
+      "slot_manager_mock.cc",
+      "tpm_utility_mock.cc",
+    ]
+
+    deps = [
+      ":chaps-protos",
+      ":libchaps_static",
+    ]
+  }
+
+  executable("chaps_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    sources = [
+      "chaps_test.cc",
+    ]
+    deps = [
+      ":libchaps_static",
+    ]
+  }
+
+  executable("chaps_service_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    sources = [
+      "chaps_service.cc",
+      "chaps_service_test.cc",
+    ]
+    deps = [
+      ":libchaps_static",
+      ":libchaps_test",
+    ]
+  }
+
+  executable("dbus_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    sources = [
+      "dbus/dbus_proxy_wrapper_test.cc",
+      "dbus/scoped_bus_test.cc",
+    ]
+    deps = [
+      ":libchaps_static",
+      "//common-mk/testrunner",
+    ]
+  }
+
+  executable("slot_manager_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    sources = [
+      "slot_manager_impl.cc",
+      "slot_manager_test.cc",
+    ]
+    deps = [
+      ":libchaps_static",
+      ":libchaps_test",
+    ]
+  }
+
+  executable("session_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    sources = [
+      "session_impl.cc",
+      "session_test.cc",
+    ]
+    deps = [
+      ":libchaps_static",
+      ":libchaps_test",
+    ]
+  }
+
+  executable("object_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    sources = [
+      "object_impl.cc",
+      "object_test.cc",
+    ]
+    deps = [
+      ":libchaps_static",
+      ":libchaps_test",
+    ]
+  }
+
+  executable("object_policy_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    sources = [
+      "object_policy_cert.cc",
+      "object_policy_common.cc",
+      "object_policy_data.cc",
+      "object_policy_key.cc",
+      "object_policy_private_key.cc",
+      "object_policy_public_key.cc",
+      "object_policy_secret_key.cc",
+      "object_policy_test.cc",
+    ]
+    deps = [
+      ":libchaps_static",
+      ":libchaps_test",
+    ]
+  }
+
+  executable("object_pool_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    sources = [
+      "object_pool_impl.cc",
+      "object_pool_test.cc",
+    ]
+    deps = [
+      ":libchaps_static",
+      ":libchaps_test",
+    ]
+  }
+
+  pkg_config("object_store_test_config") {
+    pkg_deps = [ "libmetrics-${libbase_ver}" ]
+  }
+
+  executable("object_store_test") {
+    configs += [
+      "//common-mk:test",
+      ":object_store_test_config",
+      ":target_defaults",
+    ]
+    sources = [
+      "object_store_impl.cc",
+      "object_store_test.cc",
+    ]
+    libs = [
+      "-lleveldb",
+      "-lmemenv",
+    ]
+    deps = [
+      ":libchaps_static",
+    ]
+  }
+
+  executable("opencryptoki_importer_test") {
+    configs += [
+      "//common-mk:test",
+      ":object_store_test_config",
+      ":target_defaults",
+    ]
+    sources = [
+      "opencryptoki_importer.cc",
+      "opencryptoki_importer_test.cc",
+    ]
+    deps = [
+      ":libchaps_static",
+      ":libchaps_test",
+    ]
+  }
+
+  executable("isolate_login_client_test") {
+    configs += [
+      "//common-mk:test",
+      ":object_store_test_config",
+      ":target_defaults",
+    ]
+    sources = [
+      "isolate_login_client.cc",
+      "isolate_login_client_test.cc",
+      "token_file_manager_chromeos.cc",
+    ]
+    deps = [
+      ":libchaps_static",
+      ":libchaps_test",
+    ]
+  }
+
+  # Live Tests
+  # Note: These tests require a live system with gtest and gmock
+  # installed. These cannot be run without a real TPM and cannot be
+  # run with autotest. These tests do not need to be run regularly
+  # but may be useful in the future and so have been kept around.
+  executable("chapsd_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    sources = [
+      "chapsd_test.cc",
+      "platform_globals_chromeos.cc",
+    ]
+    libs = [ "-ldl" ]
+    deps = [
+      ":libchaps_static",
+    ]
+  }
+
+  executable("tpm_utility_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    sources = [
+      "tpm_utility_test.cc",
+    ]
+    deps = [
+      ":libchaps_static",
+      ":libchaps_test",
+    ]
+
+    if (use.tpm2) {
+      sources += [ "tpm2_utility_impl.cc" ]
+      libs = [ "-ltrunks" ]
+    }
+
+    if (!use.tpm2) {
+      sources += [ "tpm_utility_impl.cc" ]
+      libs = [ "-ltspi" ]
+    }
+  }
+
+  # Conditional Unit Tests
+  # Unit tests here are gated by conditionals. Since we cannot add
+  # conditionals in the middle of a target list, we added it at the end.
+  if (use.tpm2) {
+    executable("tpm2_utility_test") {
+      configs += [
+        "//common-mk:test",
+        ":target_defaults",
+      ]
+      sources = [
+        "tpm2_utility_impl.cc",
+        "tpm2_utility_test.cc",
+      ]
+      libs = [
+        "-ltrunks",
+        "-ltrunks_test",
+      ]
+      deps = [
+        ":libchaps_static",
+        ":libchaps_test",
+      ]
+    }
+  }
+}
