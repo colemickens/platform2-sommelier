@@ -134,6 +134,7 @@ class AttestationBaseTest : public testing::Test {
 
  protected:
   std::string serialized_db_;
+  // TODO(crbug.com/891630): Use a StrictMock<MockTpm> and fix tests.
   NiceMock<MockTpm> tpm_;
   NiceMock<MockTpmInit> tpm_init_;
   NiceMock<MockPlatform> platform_;

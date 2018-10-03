@@ -2767,21 +2767,21 @@ Tpm::TpmRetryAction Attestation::GetTpmEndorsementPublicKey(
       // say no for sure because if the TPM becomes unowned then the EID
       // can be computed, but that will not happen without specific action
       // and the attestation database will not be in a great state then.
-      if (!tpm_->IsTransient(action) && action != Tpm::kTpmRetryNone) {
-        LOG(WARNING) << "Attestation: Computing the EID is likely to fail."
-                     << " Request an enrollment certificate instead.";
-      }
-      if (tpm_->IsTransient(action)) {
-        // Return so that the caller can retry. Otherwise, we will fall
-        // through.
-        return action;
-      } else if (!database_pb_.delegate().has_can_read_internal_pub()) {
+      if (!tpm_->IsTransient(action) &&
+          !database_pb_.delegate().has_can_read_internal_pub()) {
         // If the results are definitively success or a final failure, record
         // whether the delegate had permission or not.
         database_pb_.mutable_delegate()->set_can_read_internal_pub(
             action == Tpm::kTpmRetryNone);
         PersistDatabaseChanges();
       }
+      // Return in case of success or if the caller can retry.
+      if (action == Tpm::kTpmRetryNone || tpm_->IsTransient(action)) {
+        return action;
+      }
+      // Fall through in case the TPM has been reset but not the database.
+      LOG(WARNING) << "Attestation: Computing the EID is likely to fail."
+                   << " Request an enrollment certificate instead.";
     }
   }
   // Always calling this if we fail with the delegate allows us to retrieve
