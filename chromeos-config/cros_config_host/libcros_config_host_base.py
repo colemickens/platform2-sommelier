@@ -6,7 +6,10 @@
 from __future__ import print_function
 
 from collections import namedtuple, OrderedDict
+
 import os
+
+from cros_config_schema import GetValidSchemaProperties
 
 # Represents a single touch firmware file which needs to be installed:
 #   source: source filename of firmware file. This is installed in a
@@ -266,6 +269,15 @@ class CrosConfigBaseImpl(object):
     result['GetFirmwareBuildCombinations'] = \
       self.GetFirmwareBuildCombinations(['coreboot', 'ec'])
     result['GetWallpaperFiles'] = self.GetWallpaperFiles()
+
+    schema_properties = GetValidSchemaProperties()
+    for device in self.GetDeviceConfigs():
+      value_map = {}
+      for path in schema_properties:
+        for schema_property in schema_properties[path]:
+          value_map['%s::%s' % (path, schema_property)] = device.GetProperty(
+              path, schema_property)
+      result['GetProperty_%s' % device.GetName()] = value_map
     return result
 
 
