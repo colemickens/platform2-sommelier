@@ -348,10 +348,6 @@ static int ReportServiceFailure(const char *service_name, const int exit_status)
 }
 
 static int ReportSELinuxViolation(void) {
-  // TODO(https://crbug.com/891772): Delete once autotest violation is fixed.
-  if (!testing)
-    return 0;
-
   if (selinux_audit_text == NULL)
     return 0;
 
