@@ -13,13 +13,16 @@
 # pseudo-modem0
 #
 
-test_if=eth_test
+readonly DEFAULT_NEW_IFNAME=eth_test
 
-usage () {
-  echo "Usage: $0 <command> [args...]"
-  echo "  setup <iface> [new_iface_name]    Set <iface> as backchannel device"
-  echo "  teardown <iface> [new_iface_name] Return backchannel device to normal"
-  echo "  reach <ip> <gw> [new_iface_name]  Route <ip> via gateway <gw>"
+usage() {
+cat <<EOF
+Usage: $0 <command> [args...]
+  setup <iface> [new_iface_name]    Set <iface> as backchannel device
+  teardown <iface> [new_iface_name] Return backchannel device to normal
+  reach <ip> <gw> [new_iface_name]  Route <ip> via gateway <gw>
+
+EOF
 }
 
 macaddr() {
@@ -33,57 +36,52 @@ ipaddr_with_subnet_mask() {
 # We need to down the interface (and therefore stop flimflam) across the
 # invocation of nameif, according to nameif(1).
 renameif() {
-  old="$1" ; shift
-  new="$1" ; shift
+  local old_ifname="$1"
+  local new_ifname="$2"
+
   initctl stop shill
-  ip link set "$old" down
-  nameif "$new" $(macaddr "$old")
-  ip link set "$new" up
+  ip link set "${old_ifname}" down
+  nameif "${new_ifname}" "$(macaddr "${old_ifname}")"
+  ip link set "${new_ifname}" up
   initctl start shill
 }
 
 setup() {
-  oldip=$(ipaddr_with_subnet_mask "$1")
-  if [ ! -z $2 ] ; then
-    test_if="$2"
-  fi
-  renameif "$1" "$test_if"
-  ip addr add "$oldip" dev "$test_if"
+  local old_ifname="$1"
+  local new_ifname="${2:-${DEFAULT_NEW_IFNAME}}"
+
+  local old_ip
+  old_ip="$(ipaddr_with_subnet_mask "${old_ifname}")"
+  renameif "${old_ifname}" "${new_ifname}"
+  ip addr add "${old_ip}" dev "${new_ifname}"
 }
 
 teardown() {
-  if [ ! -z $2 ] ; then
-    test_if="$2"
-  fi
-  renameif "$test_if" "$1"
+  local old_ifname="$1"
+  local new_ifname="${2:-${DEFAULT_NEW_IFNAME}}"
+
+  renameif "${new_ifname}" "${old_ifname}"
 }
 
 reach() {
-  ip="$1" ; shift
-  gw="$1" ; shift
-  if [ ! -z $1 ] ; then
-    test_if="$1"
-  fi
-  ip route add "$ip" via "$gw" dev "$test_if"
+  local ip="$1"
+  local gw="$2"
+  local new_ifname="${3:-${DEFAULT_NEW_IFNAME}}"
+  ip route add "${ip}" via "${gw}" dev "${new_ifname}"
 }
 
-if [ -z "$1" ]; then
-  usage
-  exit 1
-fi
+backchannel() {
+  local command="$1"
 
-command="$1" ; shift
-case "$command" in
-  setup)
-    setup "$@"
-    ;;
-  teardown)
-    teardown "$@"
-    ;;
-  reach)
-    reach "$@"
-    ;;
-  *)
-    usage
-    ;;
-esac
+  case "${command}" in
+    setup|teardown|reach)
+      "$@"
+      ;;
+    *)
+      usage
+      exit 1
+      ;;
+  esac
+}
+
+backchannel "$@"
