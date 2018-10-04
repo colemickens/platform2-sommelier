@@ -455,7 +455,7 @@ TEST_F(UserCollectorTest, ClobberContainerDirectory) {
 }
 
 TEST_F(UserCollectorTest, CopyOffProcFilesBadPid) {
-  FilePath container_path("test/container");
+  FilePath container_path = test_dir_.Append("container");
   ASSERT_TRUE(collector_.ClobberContainerDirectory(container_path));
 
   ASSERT_FALSE(collector_.CopyOffProcFiles(0, container_path));
@@ -463,7 +463,7 @@ TEST_F(UserCollectorTest, CopyOffProcFilesBadPid) {
 }
 
 TEST_F(UserCollectorTest, CopyOffProcFilesOK) {
-  FilePath container_path("test/container");
+  FilePath container_path = test_dir_.Append("container");
   ASSERT_TRUE(collector_.ClobberContainerDirectory(container_path));
 
   ASSERT_TRUE(collector_.CopyOffProcFiles(pid_, container_path));
