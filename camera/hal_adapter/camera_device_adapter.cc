@@ -6,6 +6,8 @@
 
 #include "hal_adapter/camera_device_adapter.h"
 
+#include <unistd.h>
+
 #include <map>
 #include <set>
 #include <utility>
@@ -419,6 +421,11 @@ void CameraDeviceAdapter::Notify(const camera3_callback_ops_t* ops,
   base::AutoLock l(self->callback_ops_delegate_lock_);
   if (self->callback_ops_delegate_) {
     self->callback_ops_delegate_->Notify(std::move(msg_ptr));
+  }
+  if (msg->type == CAMERA3_MSG_ERROR &&
+      msg->message.error.error_code == CAMERA3_MSG_ERROR_DEVICE) {
+    LOGF(ERROR) << "Fatal device error; aborting the camera service";
+    _exit(EIO);
   }
 }
 
