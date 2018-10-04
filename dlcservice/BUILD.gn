@@ -1,0 +1,82 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":dlcservice",
+    ":dlcservice_adaptors",
+    ":libdlcservice",
+  ]
+  if (use.test) {
+    deps += [ ":dlcservice_tests" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libchrome-${libbase_ver}",
+    "libbrillo-${libbase_ver}",
+    "libimageloader-client",
+    "libupdate_engine-client",
+  ]
+}
+
+generate_dbus_adaptors("dlcservice_adaptors") {
+  dbus_service_config = "dbus_adaptors/dbus-service-config.json"
+  dbus_adaptors_out_dir = "include/dlcservice/dbus_adaptors"
+  sources = [
+    "dbus_adaptors/org.chromium.DlcServiceInterface.xml",
+  ]
+}
+
+static_library("libdlcservice") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "dlc_service.cc",
+    "dlc_service.h",
+    "dlc_service_dbus_adaptor.cc",
+    "dlc_service_dbus_adaptor.h",
+  ]
+  deps = [
+    ":dlcservice_adaptors",
+  ]
+}
+
+executable("dlcservice") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "main.cc",
+  ]
+  deps = [
+    ":libdlcservice",
+  ]
+}
+
+if (use.test) {
+  pkg_config("dlcservice_tests_config") {
+    pkg_deps = [
+      "libchrome-test-${libbase_ver}",
+      "libimageloader-client-test",
+      "libupdate_engine-client-test",
+    ]
+  }
+
+  executable("dlcservice_tests") {
+    configs += [
+      "//common-mk:test",
+      ":dlcservice_tests_config",
+      ":target_defaults",
+    ]
+    sources = [
+      "dlc_service_dbus_adaptor_test.cc",
+    ]
+    deps = [
+      ":libdlcservice",
+      "//common-mk/testrunner",
+    ]
+  }
+}
