@@ -10,6 +10,7 @@ brk: 1
 capget: 1
 capset: 1
 clock_getres: 1
+clock_gettime: 1
 clone: 1
 close: 1
 connect: 1

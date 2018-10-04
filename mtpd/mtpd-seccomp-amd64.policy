@@ -35,6 +35,7 @@ sched_get_priority_max: 1
 connect: 1
 getsockname: 1
 clock_getres: 1
+clock_gettime: 1
 exit_group: 1
 clone: 1
 sched_get_priority_min: 1

@@ -5,6 +5,7 @@
 # This file lists out the seccomp policy for allowed syscalls on ml_service.
 brk: 1
 clock_getres: 1
+clock_gettime: 1
 close: 1
 connect: 1
 epoll_create1: 1
