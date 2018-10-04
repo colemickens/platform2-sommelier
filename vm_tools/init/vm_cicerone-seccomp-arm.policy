@@ -26,6 +26,7 @@ eventfd2: 1
 geteuid32: 1
 epoll_create1: 1
 getgid32: 1
+mremap: 1
 munmap: 1
 clone: 1
 set_robust_list: 1
