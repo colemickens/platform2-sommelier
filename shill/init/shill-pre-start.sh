@@ -50,7 +50,7 @@ chmod 0755 /var/lib/shill
 
 # Create directory for backing files for metrics.
 mkdir -p /var/lib/shill/metrics
-chown shill:shill /var/lib/shill/metrics
+chown -R shill:shill /var/lib/shill/metrics
 chmod 0755 /var/lib/shill/metrics
 
 # This option is no longer supported.
