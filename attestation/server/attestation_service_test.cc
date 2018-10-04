@@ -2145,12 +2145,48 @@ TEST_P(AttestationServiceTest, CreateCertificateRequestSuccess) {
     EXPECT_TRUE(pca_request.ParseFromString(reply.pca_request()));
     EXPECT_EQ(kTpmVersionUnderTest, pca_request.tpm_version());
     EXPECT_EQ(ENTERPRISE_MACHINE_CERTIFICATE, pca_request.profile());
+    EXPECT_TRUE(pca_request.nvram_quotes().empty());
     EXPECT_EQ(cert_name, pca_request.identity_credential());
     quit_closure.Run();
   };
   CreateCertificateRequestRequest request;
   request.set_aca_type(aca_type_);
   request.set_certificate_profile(ENTERPRISE_MACHINE_CERTIFICATE);
+  request.set_username("user");
+  request.set_request_origin("origin");
+  service_->CreateCertificateRequest(request, base::Bind(callback,
+      GetCertificateName(identity_, aca_type_), QuitClosure()));
+  Run();
+}
+
+TEST_P(AttestationServiceTest, CreateEnrollmentCertificateRequestSuccess) {
+  SetUpIdentity(identity_);
+  SetUpIdentityCertificate(identity_, aca_type_);
+  auto callback = [](const std::string& cert_name,
+                     const base::Closure& quit_closure,
+                     const CreateCertificateRequestReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_TRUE(reply.has_pca_request());
+    AttestationCertificateRequest pca_request;
+    EXPECT_TRUE(pca_request.ParseFromString(reply.pca_request()));
+    EXPECT_EQ(kTpmVersionUnderTest, pca_request.tpm_version());
+    EXPECT_EQ(ENTERPRISE_ENROLLMENT_CERTIFICATE, pca_request.profile());
+#if USE_TPM2
+    EXPECT_NE(pca_request.nvram_quotes().end(),
+              pca_request.nvram_quotes().find(BOARD_ID));
+    EXPECT_EQ("board_id", pca_request.nvram_quotes().at(BOARD_ID).quote());
+    EXPECT_NE(pca_request.nvram_quotes().end(),
+              pca_request.nvram_quotes().find(SN_BITS));
+    EXPECT_EQ("sn_bits", pca_request.nvram_quotes().at(SN_BITS).quote());
+#else
+  EXPECT_TRUE(pca_request.nvram_quotes().empty());
+#endif
+    EXPECT_EQ(cert_name, pca_request.identity_credential());
+    quit_closure.Run();
+  };
+  CreateCertificateRequestRequest request;
+  request.set_aca_type(aca_type_);
+  request.set_certificate_profile(ENTERPRISE_ENROLLMENT_CERTIFICATE);
   request.set_username("user");
   request.set_request_origin("origin");
   service_->CreateCertificateRequest(request, base::Bind(callback,
@@ -2289,16 +2325,6 @@ TEST_P(AttestationServiceTest, CreateEnrollRequestSuccessWithoutAbeData) {
     EXPECT_EQ("public_key_tpm", pca_request.identity_public_key());
     EXPECT_EQ("pcr0", pca_request.pcr0_quote().quote());
     EXPECT_EQ("pcr1", pca_request.pcr1_quote().quote());
-#if USE_TPM2
-    EXPECT_NE(pca_request.nvram_quotes().end(),
-              pca_request.nvram_quotes().find(BOARD_ID));
-    EXPECT_EQ("board_id", pca_request.nvram_quotes().at(BOARD_ID).quote());
-    EXPECT_NE(pca_request.nvram_quotes().end(),
-              pca_request.nvram_quotes().find(SN_BITS));
-    EXPECT_EQ("sn_bits", pca_request.nvram_quotes().at(SN_BITS).quote());
-#else
-  EXPECT_TRUE(pca_request.nvram_quotes().empty());
-#endif
     EXPECT_FALSE(pca_request.has_enterprise_enrollment_nonce());
     quit_closure.Run();
   };

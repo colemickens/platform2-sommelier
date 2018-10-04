@@ -166,8 +166,6 @@ message AttestationEnrollmentRequest {
   optional bytes enterprise_enrollment_nonce = 5;
   // The device TPM version.
   optional TpmVersion tpm_version = 6;
-  // NVRAM quoted by AIK. Keys are values of the NVRAMQuoteType.
-  map<int32, Quote> nvram_quotes = 7;
 }
 
 enum ResponseStatus {
@@ -215,6 +213,9 @@ message AttestationCertificateRequest {
   optional int32 temporal_index = 13;
   // The device TPM version.
   optional TpmVersion tpm_version = 14;
+  // NVRAM quoted by AIK. Keys are values of the NVRAMQuoteType. This is only
+  // used for enrollment certificates.
+  map<int32, Quote> nvram_quotes = 15;
 }
 
 // The response from the attestation server for the certificate request.

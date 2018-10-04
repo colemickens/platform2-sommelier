@@ -367,7 +367,10 @@ constexpr int kLastPcrToQuote = 1;
 
 #if USE_TPM2
 
-// Description of the NVRAM indices used for attestation.
+// Description of the NVRAM indices used for attestation. Note that quotes
+// for all these indices are sent to the ACA when requesting an enrollment
+// certificate. When adding to this, please ensure that only BOARD_ID and
+// SN_BITS are sent for that certificte request.
 const struct {
   NVRAMQuoteType quote_type;
   const char* quote_name;
@@ -1107,7 +1110,6 @@ bool AttestationService::CreateEnrollRequestInternal(ACAType aca_type,
       identity_data.identity_binding().identity_public_key());
   *request_pb.mutable_pcr0_quote() = identity_data.pcr_quotes().at(0);
   *request_pb.mutable_pcr1_quote() = identity_data.pcr_quotes().at(1);
-  *request_pb.mutable_nvram_quotes() = identity_data.nvram_quotes();
 
   if (identity_data.features() & IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID) {
     std::string enterprise_enrollment_nonce =
@@ -1200,6 +1202,12 @@ bool AttestationService::CreateCertificateRequestInternal(
   request_pb.set_identity_credential(
       identity_certificate.identity_credential());
   request_pb.set_profile(profile);
+  if (profile == ENTERPRISE_ENROLLMENT_CERTIFICATE) {
+    const AttestationDatabase::Identity& identity_data =
+        database_->GetProtobuf().identities().Get(
+            identity_certificate.identity());
+    *request_pb.mutable_nvram_quotes() = identity_data.nvram_quotes();
+  }
   if (!origin.empty() &&
       (profile == CONTENT_PROTECTION_CERTIFICATE_WITH_STABLE_ID)) {
     request_pb.set_origin(origin);
