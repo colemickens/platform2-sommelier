@@ -25,23 +25,19 @@ Usage: $0 <command> [args...]
 EOF
 }
 
-macaddr() {
-  ip addr show "$1" | awk '/link\/ether/ { print $2 }'
-}
-
 ipaddr_with_subnet_mask() {
   ip addr show "$1" | awk '/inet / { print $2 }'
 }
 
-# We need to down the interface (and therefore stop flimflam) across the
-# invocation of nameif, according to nameif(1).
+# We need to down the interface (and therefore stop shill ) across the
+# invocation of `ip link set <old_ifname> name <new_ifname>`.
 renameif() {
   local old_ifname="$1"
   local new_ifname="$2"
 
   initctl stop shill
   ip link set "${old_ifname}" down
-  nameif "${new_ifname}" "$(macaddr "${old_ifname}")"
+  ip link set "${old_ifname}" name "${new_ifname}"
   ip link set "${new_ifname}" up
   initctl start shill
 }
