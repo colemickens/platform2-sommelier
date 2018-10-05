@@ -51,6 +51,12 @@ bool IsRemovableDevice(const std::string& device) {
 
 }  // namespace
 
+const char kDlcInstallRootDirectoryEncrypted[] = "/home/chronos/dlc";
+const char kPartitionNamePrefixDlc[] = "dlc_";
+const char kPartitionNameDlcA[] = "dlc_a";
+const char kPartitionNameDlcB[] = "dlc_b";
+const char kPartitionNameDlcImage[] = "dlc.img";
+
 std::string SysfsBlockDevice(const std::string& device) {
   base::FilePath device_path(device);
   if (device_path.DirName().value() != "/dev") {

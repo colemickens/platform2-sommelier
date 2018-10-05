@@ -13,6 +13,14 @@
 namespace brillo {
 namespace chromeos_update_engine {
 
+// The directory in stateful partition where all DLCs are installed.
+// TODO(xiaochu): supports install on both encrypted/unencrypted partitions.
+BRILLO_EXPORT extern const char kDlcInstallRootDirectoryEncrypted[];
+BRILLO_EXPORT extern const char kPartitionNamePrefixDlc[];
+BRILLO_EXPORT extern const char kPartitionNameDlcA[];
+BRILLO_EXPORT extern const char kPartitionNameDlcB[];
+BRILLO_EXPORT extern const char kPartitionNameDlcImage[];
+
 // Converts partition device name into device path in /sys/block.
 BRILLO_EXPORT std::string SysfsBlockDevice(const std::string& device);
 
