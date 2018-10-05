@@ -315,6 +315,34 @@ TEST_F(CrashSenderUtilTest, GetMetaFiles) {
   EXPECT_EQ(meta_1.value(), meta_files[3].value());
 }
 
+TEST_F(CrashSenderUtilTest, GetBaseNameFromMetadata) {
+  std::string metadata = "";
+  EXPECT_EQ("", GetBaseNameFromMetadata(metadata, "payload").value());
+
+  metadata = "payload=test.log\n";
+  EXPECT_EQ("test.log", GetBaseNameFromMetadata(metadata, "payload").value());
+
+  metadata = "payload=/foo/test.log\n";
+  EXPECT_EQ("test.log", GetBaseNameFromMetadata(metadata, "payload").value());
+}
+
+TEST_F(CrashSenderUtilTest, GetKindFromPayloadPath) {
+  EXPECT_EQ("", GetKindFromPayloadPath(base::FilePath()));
+  EXPECT_EQ("", GetKindFromPayloadPath(base::FilePath("foo")));
+  EXPECT_EQ("log", GetKindFromPayloadPath(base::FilePath("foo.log")));
+  // "dmp" is a special case.
+  EXPECT_EQ("minidump", GetKindFromPayloadPath(base::FilePath("foo.dmp")));
+
+  // ".gz" should be ignored.
+  EXPECT_EQ("log", GetKindFromPayloadPath(base::FilePath("foo.log.gz")));
+  EXPECT_EQ("minidump", GetKindFromPayloadPath(base::FilePath("foo.dmp.gz")));
+  EXPECT_EQ("", GetKindFromPayloadPath(base::FilePath("foo.gz")));
+
+  // The directory name should not afect the function.
+  EXPECT_EQ("minidump",
+            GetKindFromPayloadPath(base::FilePath("/1.2.3/foo.dmp.gz")));
+}
+
 TEST_F(CrashSenderUtilTest, Sender) {
   // Set up the mock sesssion manager client.
   auto mock =

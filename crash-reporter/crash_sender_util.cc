@@ -22,6 +22,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
+#include <brillo/key_value_store.h>
 
 #include "crash-reporter/crash_sender_paths.h"
 #include "crash-reporter/paths.h"
@@ -45,6 +46,16 @@ void ShowUsageAndExit() {
       "Options:\n"
       " -e <var>=<val>     Set env |var| to |val| (only some vars)\n");
   exit(EXIT_SUCCESS);
+}
+
+// Tries to find |key| in a key-value string |contents|, and writes the value to
+// |value|. Returns true on success.
+bool GetKeyValueFromString(const std::string& contents,
+                           const std::string& key,
+                           std::string* value) {
+  brillo::KeyValueStore store;
+  store.LoadFromString(contents);
+  return store.GetString(key, value);
 }
 
 }  // namespace
@@ -208,6 +219,33 @@ std::vector<base::FilePath> GetMetaFiles(const base::FilePath& crash_dir) {
   for (const auto& pair : time_meta_pairs)
     meta_files.push_back(pair.second);
   return meta_files;
+}
+
+base::FilePath GetBaseNameFromMetadata(const std::string& metadata,
+                                       const std::string& key) {
+  std::string value;
+  if (!GetKeyValueFromString(metadata, key, &value))
+    return base::FilePath();
+
+  return base::FilePath(value).BaseName();
+}
+
+std::string GetKindFromPayloadPath(const base::FilePath& payload_path) {
+  std::vector<std::string> parts =
+      base::SplitString(payload_path.BaseName().value(), ".",
+                        base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+  // Suppress "gz".
+  if (parts.size() >= 2 && parts.back() == "gz")
+    parts.pop_back();
+
+  if (parts.size() <= 1)
+    return "";
+
+  std::string extension = parts.back();
+  if (extension == "dmp")
+    return "minidump";
+
+  return extension;
 }
 
 Sender::Sender(const Sender::Options& options)

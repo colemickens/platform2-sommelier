@@ -6,6 +6,7 @@
 #define CRASH_REPORTER_CRASH_SENDER_UTIL_H_
 
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -78,6 +79,15 @@ void RemoveReportFiles(const base::FilePath& meta_file);
 // Returns the list of meta data files (files with ".meta" suffix), sorted by
 // the timestamp in the old-to-new order.
 std::vector<base::FilePath> GetMetaFiles(const base::FilePath& crash_dir);
+
+// Gets the base name of the path pointed by |key| in the given meta
+// data. Returns an empty path if the key is not found.
+base::FilePath GetBaseNameFromMetadata(const std::string& metadata,
+                                       const std::string& key);
+
+// Returns which kind of report from the given payload path. Returns an empty
+// string if the kind is unknown.
+std::string GetKindFromPayloadPath(const base::FilePath& payload_path);
 
 // A helper class for sending crashes. The behaviors can be customized with
 // Options class for unit testing.

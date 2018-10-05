@@ -169,6 +169,7 @@ get_extension() {
 }
 
 # Return which kind of report the given metadata file relates to
+# NOTE: Similar to crash_sender_util.cc:GetKindFromPayloadPath().
 get_kind() {
   local meta_path="$1"
   local payload="$(get_file_path "${meta_path}" "payload")"
@@ -200,6 +201,7 @@ get_key_value() {
 }
 
 # Get the full path to the file pointed at by the meta data.
+# NOTE: Similar to crash_sender_util.cc:GetRelativePathFromMetadata().
 get_file_path() {
   local file="$1"
   local key="$2"
