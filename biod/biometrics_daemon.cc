@@ -217,6 +217,7 @@ void BiometricsManagerWrapper::OnEnrollScanDone(
   writer.AppendProtoAsArrayOfBytes(proto);
   dbus_object_.SendSignal(&enroll_scan_done_signal);
   if (enroll_status.done) {
+    enroll_session_.End();
     FinalizeEnrollSessionObject();
     RefreshRecordObjects();
   }

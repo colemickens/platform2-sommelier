@@ -759,6 +759,7 @@ void CrosFpBiometricsManager::EndAuthSession() {
 void CrosFpBiometricsManager::KillMcuSession() {
   // TODO(vpalatin): test cros_dev_->FpMode(FP_MODE_DEEPSLEEP);
   cros_dev_->FpMode(0);
+  session_weak_factory_.InvalidateWeakPtrs();
   OnTaskComplete();
 }
 
@@ -1060,7 +1061,6 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
 }
 
 void CrosFpBiometricsManager::OnTaskComplete() {
-  session_weak_factory_.InvalidateWeakPtrs();
   next_session_action_ = SessionAction();
 }
 
