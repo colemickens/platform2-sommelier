@@ -12,6 +12,7 @@
 
 #include <base/files/file_path.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <power_manager-client/power_manager/dbus-proxies.h>
 
 namespace oobe_config {
 
@@ -24,7 +25,7 @@ class LoadOobeConfigRollback : public LoadOobeConfigInterface {
  public:
   LoadOobeConfigRollback(OobeConfig* oobe_config,
                          bool allow_unencrypted,
-                         bool execute_commands);
+                         org::chromium::PowerManagerProxy* power_manager_proxy);
   ~LoadOobeConfigRollback() = default;
 
   bool GetOobeConfigJson(std::string* config,
@@ -59,7 +60,7 @@ class LoadOobeConfigRollback : public LoadOobeConfigInterface {
 
   OobeConfig* oobe_config_;
   bool allow_unencrypted_ = false;
-  bool execute_commands_ = true;
+  org::chromium::PowerManagerProxy* power_manager_proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(LoadOobeConfigRollback);
 };

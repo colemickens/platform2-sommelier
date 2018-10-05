@@ -45,7 +45,7 @@ generate_dbus_adaptors("oobe_config_restore_adaptors") {
 }
 
 pkg_config("liboobeconfig_config") {
-  pkg_deps = [ "dbus-1" ]
+  pkg_deps = [ "dbus-1", "libpower_manager-client" ]
 }
 
 # oobe_config library.

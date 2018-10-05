@@ -8,6 +8,7 @@
 #include <base/files/file_util.h>
 #include <base/json/json_writer.h>
 #include <base/values.h>
+#include <power_manager-client/power_manager/dbus-constants.h>
 
 #include "oobe_config/oobe_config.h"
 #include "oobe_config/rollback_constants.h"
@@ -19,12 +20,13 @@ using std::unique_ptr;
 
 namespace oobe_config {
 
-LoadOobeConfigRollback::LoadOobeConfigRollback(OobeConfig* oobe_config,
-                                               bool allow_unencrypted,
-                                               bool execute_commands)
+LoadOobeConfigRollback::LoadOobeConfigRollback(
+    OobeConfig* oobe_config,
+    bool allow_unencrypted,
+    org::chromium::PowerManagerProxy* power_manager_proxy)
     : oobe_config_(oobe_config),
       allow_unencrypted_(allow_unencrypted),
-      execute_commands_(execute_commands) {}
+      power_manager_proxy_(power_manager_proxy) {}
 
 bool LoadOobeConfigRollback::CheckFirstStage() {
   // Check whether we're in the first stage.
@@ -134,9 +136,15 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
     // We create kFirstStageCompletedFile after this.
     oobe_config.WriteFile(kFirstStageCompletedFile, "");
     // If all succeeded, we reboot.
-    if (base::PathExists(kFirstStageCompletedFile) && execute_commands_) {
-      // TODO(hunyadym): Reboot device.
-      LOG(ERROR) << "Reboot not yet implemented.";
+    if (base::PathExists(kFirstStageCompletedFile) && power_manager_proxy_) {
+      LOG(INFO) << "Rebooting device.";
+      brillo::ErrorPtr error;
+      if (!power_manager_proxy_->RequestRestart(
+              ::power_manager::REQUEST_RESTART_OTHER,
+              "oobe_config: reboot after rollback restore first stage",
+              &error)) {
+        LOG(ERROR) << "Failed to reboot device, error: " << error->GetMessage();
+      }
     }
     return false;
   }

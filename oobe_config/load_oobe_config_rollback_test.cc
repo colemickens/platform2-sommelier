@@ -27,7 +27,7 @@ class LoadOobeConfigRollbackTest : public ::testing::Test {
     oobe_config_->set_prefix_path_for_testing(fake_root_dir_.GetPath());
     load_config_ = std::make_unique<LoadOobeConfigRollback>(
         oobe_config_.get(), /*allow_unencrypted=*/true,
-        /*execute_commands=*/false);
+        /* TODO(hunyadym): Mock this */ nullptr);
   }
 
   base::ScopedTempDir fake_root_dir_;

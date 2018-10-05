@@ -46,9 +46,12 @@ void OobeConfigRestoreService::ProcessAndGetOobeAutoConfig(
   DCHECK(error);
   DCHECK(oobe_config_blob);
 
+  power_manager_proxy_ = std::make_unique<org::chromium::PowerManagerProxy>(
+      dbus_object_->GetBus());
+
   OobeConfig oobe_config;
   LoadOobeConfigRollback load_oobe_config_rollback(
-      &oobe_config, allow_unencrypted_, /*execute_commands=*/true);
+      &oobe_config, allow_unencrypted_, power_manager_proxy_.get());
   std::string chrome_config_json, unused_enrollment_domain;
   if (load_oobe_config_rollback.GetOobeConfigJson(&chrome_config_json,
                                                   &unused_enrollment_domain)) {
