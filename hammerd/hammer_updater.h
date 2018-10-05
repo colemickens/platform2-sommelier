@@ -30,6 +30,7 @@ class HammerUpdater {
     kInvalidFirmware,
     kTouchpadUpToDate,
     kTouchpadMismatched,
+    kNeedLock,
   };
 
   enum class UpdateCondition {
@@ -52,6 +53,8 @@ class HammerUpdater {
     // Set the flag when the EC lacks entropy. Reset it after the entropy is
     // injected successfully.
     bool inject_entropy;
+    // Set the flag when we lock RW at the previous round.
+    bool post_rw_lock;
     // Set the flag when we jump to RW at the previous round.
     bool post_rw_jump;
 
@@ -59,6 +62,7 @@ class HammerUpdater {
                   update_rw(false),
                   update_tp(false),
                   inject_entropy(false),
+                  post_rw_lock(false),
                   post_rw_jump(false) {}
     const std::string ToString();
   };

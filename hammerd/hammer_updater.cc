@@ -176,6 +176,7 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
     DLOG(INFO) << "Current task state: " << task_.ToString();
     status = RunOnce();
     task_.post_rw_jump = (status == HammerUpdater::RunStatus::kNeedJump);
+    task_.post_rw_lock = (status == HammerUpdater::RunStatus::kNeedLock);
     switch (status) {
       case HammerUpdater::RunStatus::kNoUpdate:
         LOG(INFO) << "Hammer does not need to update.";
@@ -203,6 +204,17 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
         LOG(INFO) << "Reset hammer and run again. run_count=" << run_count;
         fw_updater_->SendSubcommand(UpdateExtraCommand::kImmediateReset);
         fw_updater_->CloseUsb();
+        base::PlatformThread::Sleep(
+            base::TimeDelta::FromMilliseconds(kResetTimeMs));
+        continue;
+
+      case HammerUpdater::RunStatus::kNeedLock:
+        LOG(INFO) << "Request 'Jump to RW'. Hammer will reboot with locked RW. "
+            << "Run again. run_count=" << run_count;
+        fw_updater_->SendSubcommand(UpdateExtraCommand::kJumpToRW);
+        fw_updater_->CloseUsb();
+        // TODO(kitching): Make RW jumps more robust by polling until
+        // the jump completes (or fails).
         base::PlatformThread::Sleep(
             base::TimeDelta::FromMilliseconds(kResetTimeMs));
         continue;
@@ -357,6 +369,29 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce() {
     LOG(INFO) << "RW update " << (ret ? "passed." : "failed.");
     return HammerUpdater::RunStatus::kNeedReset;
   }
+
+  // Now we need to jump to RW section.  When requesting 'Jump to RW', hammer
+  // responds differently depending on the state of RO and RW locks:
+  //   (1) RO is unlocked:
+  //       hammerd will jump to RW regardless of wether or not RW is locked.
+  //   (2) RO is locked:
+  //       (a) RW is locked: hammer will jump to RW.
+  //       (b) RW is unlocked: hammer will set RW to be locked on next boot, and
+  //           reset itself.
+  // In the case of (2)(b), after requesting the jump, hammer will reset itself
+  // and end up in RO.  Now we fall under the case of (2)(1) and may request the
+  // jump again.
+  if (fw_updater_->IsSectionLocked(SectionName::RO) &&
+      !fw_updater_->IsSectionLocked(SectionName::RW)) {
+    if (task_.post_rw_lock) {
+      LOG(INFO) << "Failed to lock RW section...";
+      return HammerUpdater::RunStatus::kFatalError;
+    }
+    LOG(INFO) << "RO is locked but RW is not. "
+        << "Lock RW by asking hammer to reset.";
+    return HammerUpdater::RunStatus::kNeedLock;
+  }
+  task_.post_rw_lock = false;
 
   LOG(INFO) << "No need to update RW. Jump to RW section.";
   return HammerUpdater::RunStatus::kNeedJump;
