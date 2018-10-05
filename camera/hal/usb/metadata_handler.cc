@@ -241,9 +241,11 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
   std::vector<int64_t> min_frame_durations;
   std::vector<int64_t> stall_durations;
 
-  int64_t max_frame_duration = std::numeric_limits<int64_t>::min();
+  // The min fps <= 15 must be supported in CTS.
+  const int32_t kMinFpsMax = 1;
   int32_t max_fps = std::numeric_limits<int32_t>::min();
-  int32_t min_fps = std::numeric_limits<int32_t>::max();
+  int32_t min_fps = kMinFpsMax;
+  int64_t max_frame_duration = 1000000000LL / min_fps;
 
   std::vector<int> hal_formats{HAL_PIXEL_FORMAT_BLOB,
                                HAL_PIXEL_FORMAT_YCbCr_420_888,
@@ -306,7 +308,9 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
   UPDATE(ANDROID_CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES, fps_ranges,
          ARRAY_SIZE(fps_ranges));
 
-  UPDATE(ANDROID_CONTROL_AE_TARGET_FPS_RANGE, fps_ranges, 2);
+  // CTS expects the (maxFps == minFps) for recording.
+  int32_t ae_fps_ranges[] = {max_fps, max_fps};
+  UPDATE(ANDROID_CONTROL_AE_TARGET_FPS_RANGE, ae_fps_ranges, 2);
 
   UPDATE(ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS,
          stream_configurations.data(), stream_configurations.size());
