@@ -14,7 +14,7 @@ fn main() {
     let proto_root = match env::var("SYSROOT") {
         Ok(dir) => PathBuf::from(dir).join("usr/include/chromeos"),
         // Make this work when typing "cargo build" in platform2/metrics/memd
-        Err(_) => PathBuf::from("../../../platform/system_api"),
+        Err(_) => PathBuf::from("../../system_api"),
     };
     let proto_dir = proto_root.join("dbus/metrics_event");
     let proto_file = proto_dir.join("metrics_event.proto");

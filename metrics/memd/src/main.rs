@@ -47,17 +47,6 @@ use std::path::{Path, PathBuf};
 // Not to be confused with chrono::Duration or the deprecated time::Duration.
 use std::time::Duration;
 
-macro_rules! die {
-    ($message:expr) => {
-        |err| {
-            let m = format!("panic: {}: {}", $message, err);
-            // error! goes to log, panic! goes to stderr.
-            error!("{}", m);
-            panic!("{}", m);
-        }
-    }
-}
-
 #[cfg(test)]
 mod test;
 
@@ -1283,18 +1272,23 @@ fn main() {
         }
     }
 
+    let log_level = if debug_log { log::LevelFilter::Debug } else { log::LevelFilter::Warn };
     syslog::init(syslog::Facility::LOG_USER,
-                 if debug_log { log::LevelFilter::Debug } else { log::LevelFilter::Warn },
-                 Some("memd")).unwrap_or_else(die!("cannot initialize syslog"));
+                 log_level,
+                 Some("memd")).expect("cannot initialize syslog");
+
+    // Unlike log!(), warn!() etc., panic!() is not redirected by the syslog
+    // facility, instead always goes to stderr, which can get lost.  Here we
+    // provide our own panic hook to make sure that the panic message goes to
+    // the syslog as well.
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |panic_info| {
+        error!("memd: {}", panic_info);
+        default_panic(panic_info);
+    }));
 
     warn!("memd started");
-    match run_memory_daemon(always_poll_fast) {
-        Err(e) => {
-            error!("panic: {}", e);
-            panic!("panic: {}", e);
-        },
-        Ok(_) => ()
-    };
+    run_memory_daemon(always_poll_fast).expect("memd failed");
 }
 
 fn testing_root() -> String {
@@ -1351,7 +1345,7 @@ fn run_memory_daemon(always_poll_fast: bool) -> Result<()> {
     #[cfg(not(test))]
     {
         let timer = Box::new(GenuineTimer {});
-        let dbus = Box::new(GenuineDbus::new().unwrap_or_else(die!("cannot connect to dbus")));
+        let dbus = Box::new(GenuineDbus::new()?);
         let mut sampler = Sampler::new(always_poll_fast, &paths, timer, dbus)?;
         loop {
             // Run forever, alternating between slow and fast poll.
