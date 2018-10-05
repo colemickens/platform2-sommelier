@@ -243,9 +243,10 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
 
   // The min fps <= 15 must be supported in CTS.
   const int32_t kMinFpsMax = 1;
+  const int64_t kOneSecOfNanoUnit = 1000000000LL;
   int32_t max_fps = std::numeric_limits<int32_t>::min();
   int32_t min_fps = kMinFpsMax;
-  int64_t max_frame_duration = 1000000000LL / min_fps;
+  int64_t max_frame_duration = kOneSecOfNanoUnit / min_fps;
 
   std::vector<int> hal_formats{HAL_PIXEL_FORMAT_BLOB,
                                HAL_PIXEL_FORMAT_YCbCr_420_888,
@@ -262,7 +263,10 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
 
     int64_t min_frame_duration = std::numeric_limits<int64_t>::max();
     for (const auto& frame_rate : supported_format.frame_rates) {
-      int64_t frame_duration = 1000000000LL / frame_rate;
+      // To prevent floating point precision problem we cast the floating point
+      // to double here.
+      int64_t frame_duration =
+          kOneSecOfNanoUnit / static_cast<double>(frame_rate);
       if (frame_duration < min_frame_duration) {
         min_frame_duration = frame_duration;
       }
