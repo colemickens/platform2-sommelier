@@ -203,47 +203,6 @@ status_feedback() {
   all_modem_status 2>/dev/null | mask_modem_properties
 }
 
-update_prl() {
-  local modem
-  local mdn
-  local min
-  $(arg_or_default modem $(default_modem))
-  [ -z "${modem}" ] && error_exit "No modem found."
-
-  if is_mm1_modem "${modem}"; then
-    error_exit "Updating PRL is not supported on this modem."
-  fi
-
-  $(needarg prlfile)
-  mdn=$(mm_modem_status "${modem}" mdn)
-  min=$(mm_modem_status "${modem}" min)
-  if [ -z "${mdn}" -o -z "${min}" ]; then
-    error_exit "Cannot update PRL: MDN/MIN are unknown."
-  fi
-  if [ ! -r "${prlfile}" ]; then
-    error_exit "Cannot read PRL file \"${prlfile}\"."
-  fi
-  # Because cromo runs as a different user than this script,
-  # it may not have access to the specified file, even when
-  # the script does. A specific example is the Downloads folder,
-  # which only the "chronos" user has access to. To work
-  # around this problem, we copy the PRL file to /tmp.
-  local tmpfile=$(mktemp --tmpdir prl.XXXXXXXXXX)
-  trap "rm -f ${tmpfile}" 1 2 13 15
-  cp "${prlfile}" "${tmpfile}"
-  if [ $? -ne 0 ]; then
-    rm -f "${tmpfile}"
-    error_exit "Cannot copy \"${prlfile}\" to \"${tmpfile}\" directory."
-  fi
-  chmod 644 "${tmpfile}"
-  local oldstate=$(mm_modem_activation_state "${modem}")
-  args="mdn,${mdn},min,${min},prlfile,${tmpfile}"
-  dbus_call "${MM}" "${modem}" "${MM_IMODEM_CDMA}.ActivateManualDebug" \
-    "dict:string:string:${args}"
-  wait_for_modem_reset "${modem}" 40
-  rm -f "${tmpfile}"
-}
-
 ussd() {
   local modem
   local operation="$1"
@@ -363,33 +322,18 @@ set_madison_config() {
   echo "Please reboot (or restart cromo) to use the new config group."
 }
 
-run_modem_command() {
-  $(needarg cmd)
-  dbus-send --system --print-reply --dest=org.chromium.debugd \
-    /org/chromium/debugd org.chromium.debugd.RunModemCommand "string:${cmd}"
-}
-
 usage() {
   echo "Usage: $(basename $0) <command> [args...]"
   echo "  activate [-modem <modem>] [<carrier>]        Activate modem"
   echo "  activate-manual [-modem <modem>] [args...]   Activate modem manually"
-  echo "  ciprl-update                                " \
-    "Enable and perform client initiated PRL update"
   echo "  connect [-modem <modem>] [phone number]      Connect modem"
   echo "  factory-reset [-modem <modem>] [<spc>]       Factory-reset the modem"
-  echo "  get-oma-status                               Current OMA-DM setting"
-  echo "  get-prl                                      Current PRL"
-  echo "  get-service                                 " \
-    "Integer index of data service"
   echo "  reset [-modem <modem>]                       Reset the modem"
   echo "  set-carrier [-modem <modem>] <carrier-name> " \
     "Set modem carrier firmware"
   echo "  set-logging (debug|info|warn|error)          Set logging level"
   echo "  set-madison-config <config-group-name>       Set Madison config group"
-  echo "  start-oma                                   " \
-    "Enable and launch OMA session"
   echo "  status                                       Display modem status"
-  echo "  update-prl [-modem <modem>] <prl-file-name>  Install a PRL file"
   echo "  ussd [-modem <modem>] status                " \
     "Show status of ongoing USSD session"
   echo "  ussd [-modem <modem>] initiate <command>     Initiate a USSD session"
@@ -408,23 +352,11 @@ case "${cmd}" in
   activate-manual)
     activate_manual "$@"
     ;;
-  ciprl-update)
-    run_modem_command ciprl-update
-    ;;
   connect)
     connect "$@"
     ;;
   factory-reset)
     factory_reset "$@"
-    ;;
-  get-oma-status)
-    run_modem_command get-oma-status
-    ;;
-  get-prl)
-    run_modem_command get-prl
-    ;;
-  get-service)
-    run_modem_command get-service
     ;;
   reset)
     reset "$@"
@@ -438,17 +370,11 @@ case "${cmd}" in
   set-madison-config)
     set_madison_config "$@"
     ;;
-  start-oma)
-    run_modem_command start-oma
-    ;;
   status)
     status "$@"
     ;;
   status-feedback)
     status_feedback "$@"
-    ;;
-  update-prl)
-    update_prl "$@"
     ;;
   ussd)
     ussd "$@"
