@@ -22,7 +22,7 @@
 
 namespace hammerd {
 
-constexpr unsigned int kTransferTimeoutMs = 3000;
+constexpr unsigned int kTransferTimeoutMs = 5000;
 
 const char* ToString(UpdateExtraCommand subcommand) {
   switch (subcommand) {
