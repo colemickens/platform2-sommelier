@@ -299,11 +299,11 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce() {
   }
 
   // ********************** RO **********************
-  // Current section is now guaranteed to be RO.  If hammer:
-  //   (1) failed to jump to RW after the last run; or
-  //   (2) need to inject entropy; or
-  //   (3) RW section needs and be able to update
-  // then continue with the update procedure.
+  // Current section is now guaranteed to be RO.  Deal with
+  // each of three possible ongoing tasks:
+  //   (1) jump to RW (failed, attempt update if possible)
+  //   (2) inject entropy
+  //   (3) update RW section
   if (task_.post_rw_jump || task_.inject_entropy ||
       (task_.update_rw &&
        fw_updater_->ValidKey() &&
@@ -313,7 +313,7 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce() {
     if (task_.post_rw_jump) {
       LOG(ERROR) << "Failed to jump to RW. Need to update RW section.";
       if (update_condition_ == UpdateCondition::kNever) {
-        LOG(INFO) << "RW is broken but never update, notify UI.";
+        LOG(INFO) << "RW is broken but update condition is 'never', notify UI.";
         NotifyNeedUpdate();
         return HammerUpdater::RunStatus::kFatalError;
       }
