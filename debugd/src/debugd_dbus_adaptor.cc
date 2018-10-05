@@ -131,10 +131,6 @@ std::string DebugdDBusAdaptor::GetModemStatus() {
   return modem_status_tool_->GetModemStatus();
 }
 
-std::string DebugdDBusAdaptor::RunModemCommand(const std::string& command) {
-  return modem_status_tool_->RunModemCommand(command);
-}
-
 std::string DebugdDBusAdaptor::GetNetworkStatus() {
   return network_status_tool_->GetNetworkStatus();
 }

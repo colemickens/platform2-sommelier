@@ -84,7 +84,6 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::vector<std::string> GetRoutes(
       const brillo::VariantDictionary& options) override;
   std::string GetModemStatus() override;
-  std::string RunModemCommand(const std::string& command) override;
   std::string GetNetworkStatus() override;
   std::string GetWiMaxStatus() override;
   bool GetPerfOutput(brillo::ErrorPtr* error,

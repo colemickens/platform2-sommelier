@@ -156,20 +156,6 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
-    <method name="RunModemCommand">
-      <tp:docstring>
-        Runs the specified command through the modem serial interface and
-        returns the output.
-      </tp:docstring>
-      <arg name="command" type="s" direction="in">
-        <tp:docstring>
-          Supported commands: get-oma-status, start-oma, get-prl, ciprl-update,
-          get-service.
-        </tp:docstring>
-      </arg>
-      <arg name="status" type="s" direction="out" />
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
-    </method>
     <method name="GetNetworkStatus">
       <tp:docstring>
         Returns network information as a JSON string. See the design document

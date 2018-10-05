@@ -280,7 +280,6 @@
             'src/helpers/dev_features_password_utils.cc',
             'src/helpers/dev_features_password_utils_test.cc',
             'src/log_tool_test.cc',
-            'src/modem_status_tool_test.cc',
             'src/process_with_id_test.cc',
             'src/sandboxed_process_test.cc',
             'src/storage_tool_test.cc',

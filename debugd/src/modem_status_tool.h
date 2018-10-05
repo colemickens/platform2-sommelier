@@ -16,14 +16,8 @@ class ModemStatusTool {
   ModemStatusTool() = default;
   ~ModemStatusTool() = default;
   std::string GetModemStatus();
-  std::string RunModemCommand(const std::string& command);
 
  private:
-  friend class ModemStatusToolTest;
-
-  std::string SendATCommand(const std::string& command);
-  static std::string CollapseNewLines(const std::string& input);
-
   DISALLOW_COPY_AND_ASSIGN(ModemStatusTool);
 };
 
