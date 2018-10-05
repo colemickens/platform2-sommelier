@@ -123,6 +123,7 @@ class TPM2UtilityImpl : public TPMUtility {
   std::unique_ptr<trunks::CommandTransceiver> default_background_transceiver_;
   std::unique_ptr<trunks::TrunksFactoryImpl> default_factory_;
   trunks::TrunksFactory* factory_;
+  bool is_trunks_proxy_initialized_ = false;
   bool is_initialized_ = false;
   bool is_enabled_ready_ = false;
   bool is_enabled_ = false;

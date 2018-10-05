@@ -91,8 +91,9 @@ bool AddPKCS1Padding(const std::string& input,
   return true;
 }
 
-void InitTransceiver(trunks::CommandTransceiver* transceiver) {
-  if (!transceiver->Init()) {
+void InitTransceiver(trunks::CommandTransceiver* transceiver, bool* success) {
+  *success = transceiver->Init();
+  if (!*success) {
     LOG(ERROR) << "Error initializing transceiver.";
   }
 }
@@ -125,6 +126,9 @@ class ScopedSession {
     if (result != TPM_RC_SUCCESS) {
       LOG(ERROR) << "Error starting an AuthorizationSession: "
                  << trunks::GetErrorString(result);
+      LOG_IF(FATAL, result == trunks::SAPI_RC_NO_CONNECTION)
+          << "Fatal failure - opening session failed due to TPM daemon "
+             "unavailability.";
       *target_session_ = nullptr;
     } else {
       *target_session_ = std::move(new_session);
@@ -158,9 +162,9 @@ TPM2UtilityImpl::TPM2UtilityImpl(
         : task_runner_(task_runner),
           default_trunks_proxy_(new trunks::TrunksDBusProxy) {
   task_runner->PostNonNestableTask(
-      FROM_HERE,
-      base::Bind(&InitTransceiver,
-                 base::Unretained(default_trunks_proxy_.get())));
+      FROM_HERE, base::Bind(&InitTransceiver,
+                            base::Unretained(default_trunks_proxy_.get()),
+                            base::Unretained(&is_trunks_proxy_initialized_)));
   // We stitch the transceivers together. The call chain is:
   // ChapsTPMUtility --> TrunksFactory --> BackgroundCommandTransceiver -->
   // TrunksProxy
@@ -218,6 +222,10 @@ bool TPM2UtilityImpl::Init() {
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting TPM state information: "
                << trunks::GetErrorString(result);
+    LOG_IF(FATAL, result == trunks::SAPI_RC_NO_CONNECTION &&
+                      is_trunks_proxy_initialized_)
+        << "Fatal failure - initialization failed due to TPM daemon becoming "
+           "unavailable.";
     return false;
   }
   // Check if firmware initialized the platform hierarchy.
@@ -238,6 +246,10 @@ bool TPM2UtilityImpl::Init() {
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error starting an AuthorizationSession: "
                << trunks::GetErrorString(result);
+    LOG_IF(FATAL, result == trunks::SAPI_RC_NO_CONNECTION &&
+                      is_trunks_proxy_initialized_)
+        << "Fatal failure - initialization failed due to TPM daemon becoming "
+           "unavailable.";
     return false;
   }
 #endif
@@ -261,6 +273,10 @@ bool TPM2UtilityImpl::IsTPMAvailable() {
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting TPM state information: "
                << trunks::GetErrorString(result);
+    LOG_IF(FATAL, result == trunks::SAPI_RC_NO_CONNECTION &&
+                      is_trunks_proxy_initialized_)
+        << "Fatal failure - initialization failed due to TPM daemon becoming "
+           "unavailable.";
     return false;
   }
   is_enabled_ = tpm_state->IsEnabled();
@@ -662,12 +678,18 @@ bool TPM2UtilityImpl::LoadKeyWithParentInternal(int slot,
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error loading key into TPM: "
                << trunks::GetErrorString(result);
+    LOG_IF(FATAL, result == trunks::SAPI_RC_NO_CONNECTION)
+        << "Fatal failure - key loading failed due to TPM daemon "
+           "unavailability.";
     return false;
   }
   std::string key_name;
   result = trunks_tpm_utility_->GetKeyName(*key_handle, &key_name);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting key name: " << trunks::GetErrorString(result);
+    LOG_IF(FATAL, result == trunks::SAPI_RC_NO_CONNECTION)
+        << "Fatal failure - key loading failed due to TPM daemon "
+           "unavailability.";
     return false;
   }
   handle_auth_data_[*key_handle] = auth_data;
@@ -684,6 +706,9 @@ bool TPM2UtilityImpl::UnbindInternal(int key_handle,
                                                         &public_data);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting key public data: " << result;
+    LOG_IF(FATAL, result == trunks::SAPI_RC_NO_CONNECTION)
+        << "Fatal failure - key unbinding failed due to TPM daemon "
+           "unavailability.";
     return false;
   }
   if (input.size() > public_data.unique.rsa.size) {
@@ -705,6 +730,9 @@ bool TPM2UtilityImpl::UnbindInternal(int key_handle,
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error performing unbind operation: "
                << trunks::GetErrorString(result);
+    LOG_IF(FATAL, result == trunks::SAPI_RC_NO_CONNECTION)
+        << "Fatal failure - key unbinding failed due to TPM daemon "
+           "unavailability.";
     return false;
   }
   return true;
