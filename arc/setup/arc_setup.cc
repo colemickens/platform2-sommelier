@@ -9,6 +9,7 @@
 #include <linux/magic.h>
 #include <sched.h>
 #include <selinux/selinux.h>
+#include <stdlib.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -25,7 +26,6 @@
 
 #include <base/bind.h>
 #include <base/command_line.h>
-#include <base/compiler_specific.h>
 #include <base/environment.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
@@ -299,14 +299,18 @@ bool ShouldDeleteAndroidData(AndroidSdkVersion system_sdk_version,
   return false;
 }
 
-NOINLINE void CheckProcessIsAliveOrDie(const std::string& pid_str) {
+void CheckProcessIsAliveOrExit(const std::string& pid_str) {
   pid_t pid;
   EXIT_IF(!base::StringToInt(pid_str, &pid));
-  EXIT_IF(!IsProcessAlive(pid));
+  if (!IsProcessAlive(pid)) {
+    LOG(ERROR) << "Process " << pid << " is NOT alive";
+    exit(EXIT_FAILURE);
+  }
   LOG(INFO) << "Process " << pid << " is still alive, at least as a zombie";
+  // TODO(yusukes): Check if the PID is a zombie or not, and log accordingly.
 }
 
-NOINLINE void CheckNamespacesAvailableOrDie(const std::string& pid_str) {
+void CheckNamespacesAvailableOrExit(const std::string& pid_str) {
   const base::FilePath proc("/proc");
   const base::FilePath ns = proc.Append(pid_str).Append("ns");
   EXIT_IF(!base::PathExists(ns));
@@ -316,21 +320,25 @@ NOINLINE void CheckNamespacesAvailableOrDie(const std::string& pid_str) {
     // succeed when open doesn't.
     const base::FilePath path_to_check = ns.Append(entry);
     base::ScopedFD fd(open(path_to_check.value().c_str(), O_RDONLY));
-    PLOG_IF(FATAL, !fd.is_valid())
-        << "Failed to open " << path_to_check.value();
+    if (!fd.is_valid()) {
+      PLOG(ERROR) << "Failed to open " << path_to_check.value();
+      exit(EXIT_FAILURE);
+    }
   }
   LOG(INFO) << "Process " << pid_str << " still has all namespace entries";
 }
 
-NOINLINE void CheckOtherProcEntriesOrDie(const std::string& pid_str) {
+void CheckOtherProcEntriesOrExit(const std::string& pid_str) {
   const base::FilePath proc("/proc");
   const base::FilePath proc_pid = proc.Append(pid_str);
   for (const char* entry : {"cwd", "root"}) {
-    // Use open for the same reason as CheckNamespacesAvailableOrDie().
+    // Use open for the same reason as CheckNamespacesAvailableOrExit().
     const base::FilePath path_to_check = proc_pid.Append(entry);
     base::ScopedFD fd(open(path_to_check.value().c_str(), O_RDONLY));
-    PLOG_IF(FATAL, !fd.is_valid())
-        << "Failed to open " << path_to_check.value();
+    if (!fd.is_valid()) {
+      PLOG(ERROR) << "Failed to open " << path_to_check.value();
+      exit(EXIT_FAILURE);
+    }
   }
   LOG(INFO) << "Process " << pid_str << " still has other proc entries";
 }
@@ -1904,13 +1912,20 @@ void ArcSetup::ContinueContainerBoot(ArcBootType boot_type,
   base::ElapsedTimer timer;
   if (!LaunchAndWait(command_line)) {
     auto elapsed = timer.Elapsed().InMillisecondsRoundedUp();
-    // ContinueContainerBoot() failed. Try to find out why it failed and abort
-    // differently. This will give us slightly better crash stats.
-    CheckProcessIsAliveOrDie(pid_str);
-    CheckNamespacesAvailableOrDie(pid_str);
-    CheckOtherProcEntriesOrDie(pid_str);
-    LOG(FATAL) << kCommand << " failed for unknown reason after" << elapsed
+    // ContinueContainerBoot() failed. Try to find out why it failed and log
+    // messages accordingly. If one of these functions calls exit(), it means
+    // that '/usr/bin/nsenter' is very likely the command that failed (rather
+    // than '/system/bin/arcbootcontinue'.)
+    CheckProcessIsAliveOrExit(pid_str);
+    CheckNamespacesAvailableOrExit(pid_str);
+    CheckOtherProcEntriesOrExit(pid_str);
+
+    // Either nsenter or arcbootcontinue failed, but we don't know which. For
+    // example, arcbootcontinue may fail if it tries to set a property while
+    // init is being shut down or crashing.
+    LOG(ERROR) << kCommand << " failed for unknown reason after " << elapsed
                << "ms";
+    exit(EXIT_FAILURE);
   }
   LOG(INFO) << "Running " << kCommand << " took "
             << timer.Elapsed().InMillisecondsRoundedUp() << "ms";
