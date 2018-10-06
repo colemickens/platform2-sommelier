@@ -589,10 +589,6 @@ status_t SettingsProcessor::processHotPixelSettings(const CameraMetadata &settin
     entry = settings.find(ANDROID_STATISTICS_HOT_PIXEL_MAP_MODE);
     MetadataHelper::getSetting(mStaticMetadataCache.availableHotPixelMapModes, entry,
                                  &(reqAiqCfg.captureSettings->hotPixelMapMode));
-    //# ANDROID_METADATA_Control android.hotPixel.mode done
-    entry = settings.find(ANDROID_HOT_PIXEL_MODE);
-    MetadataHelper::getSetting(mStaticMetadataCache.availableHotPixelModes, entry,
-                                 &(reqAiqCfg.captureSettings->hotPixelMode));
     return OK;
 }
 
