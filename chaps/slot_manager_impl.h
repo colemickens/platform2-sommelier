@@ -7,6 +7,7 @@
 
 #include "chaps/handle_generator.h"
 #include "chaps/slot_manager.h"
+#include "chaps/system_shutdown_blocker.h"
 #include "chaps/token_manager_interface.h"
 
 #include <map>
@@ -40,7 +41,8 @@ class SlotManagerImpl : public SlotManager,
  public:
   SlotManagerImpl(ChapsFactory* factory,
                   TPMUtility* tpm_utility,
-                  bool auto_load_system_token);
+                  bool auto_load_system_token,
+                  SystemShutdownBlocker* system_shutdown_blocker);
   ~SlotManagerImpl() override;
 
   // Initializes the slot manager. Returns true on success.
@@ -187,6 +189,7 @@ class SlotManagerImpl : public SlotManager,
   base::Lock handle_generator_lock_;
   bool auto_load_system_token_;
   bool is_initialized_;
+  SystemShutdownBlocker* system_shutdown_blocker_;
 
   DISALLOW_COPY_AND_ASSIGN(SlotManagerImpl);
 };

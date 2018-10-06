@@ -25,6 +25,7 @@
 #include <base/synchronization/waitable_event.h>
 #include <base/threading/platform_thread.h>
 #include <base/threading/thread.h>
+#include <base/threading/thread_task_runner_handle.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/syslog_logging.h>
 #include <libminijail.h>
@@ -125,8 +126,12 @@ class Daemon : public brillo::DBusServiceDaemon {
 #endif
 
     factory_.reset(new ChapsFactoryImpl);
-    slot_manager_.reset(new SlotManagerImpl(
-        factory_.get(), tpm_.get(), auto_load_system_token_));
+    system_shutdown_blocker_.reset(
+        new SystemShutdownBlocker(base::ThreadTaskRunnerHandle::Get()));
+    slot_manager_.reset(new SlotManagerImpl(factory_.get(),
+                                            tpm_.get(),
+                                            auto_load_system_token_,
+                                            system_shutdown_blocker_.get()));
     service_.reset(new ChapsServiceImpl(slot_manager_.get()));
 
     // Initialize the TPM utility and slot manager asynchronously because
@@ -193,6 +198,7 @@ class Daemon : public brillo::DBusServiceDaemon {
 
   std::unique_ptr<TPMUtility> tpm_;
   std::unique_ptr<ChapsFactory> factory_;
+  std::unique_ptr<SystemShutdownBlocker> system_shutdown_blocker_;
   std::unique_ptr<SlotManagerImpl> slot_manager_;
   std::unique_ptr<ChapsInterface> service_;
   std::unique_ptr<ChapsAdaptor> adaptor_;

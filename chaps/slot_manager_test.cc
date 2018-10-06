@@ -144,7 +144,7 @@ class TestSlotManager: public ::testing::Test {
     EXPECT_CALL(factory_, CreateObjectPool(_, _, _))
         .WillRepeatedly(InvokeWithoutArgs(CreateObjectPoolMock));
     ConfigureTPMUtility(&tpm_);
-    slot_manager_.reset(new SlotManagerImpl(&factory_, &tpm_, false));
+    slot_manager_.reset(new SlotManagerImpl(&factory_, &tpm_, false, nullptr));
     ASSERT_TRUE(slot_manager_->Init());
   }
   void TearDown() {
@@ -172,10 +172,10 @@ class TestSlotManager: public ::testing::Test {
 typedef TestSlotManager TestSlotManager_DeathTest;
 TEST(DeathTest, InvalidInit) {
   ChapsFactoryMock factory;
-  EXPECT_DEATH_IF_SUPPORTED(new SlotManagerImpl(&factory, NULL, false),
+  EXPECT_DEATH_IF_SUPPORTED(new SlotManagerImpl(&factory, NULL, false, nullptr),
                             "Check failed");
   TPMUtilityMock tpm;
-  EXPECT_DEATH_IF_SUPPORTED(new SlotManagerImpl(NULL, &tpm, false),
+  EXPECT_DEATH_IF_SUPPORTED(new SlotManagerImpl(NULL, &tpm, false, nullptr),
                             "Check failed");
 }
 
@@ -241,7 +241,7 @@ TEST(DeathTest, OutOfMemoryInit) {
   ObjectImporter* null_importer = NULL;
   EXPECT_CALL(factory, CreateObjectImporter(_, _, _))
       .WillRepeatedly(Return(null_importer));
-  SlotManagerImpl sm(&factory, &tpm, false);
+  SlotManagerImpl sm(&factory, &tpm, false, nullptr);
   ASSERT_TRUE(sm.Init());
   int slot_id;
   EXPECT_DEATH_IF_SUPPORTED(
@@ -486,7 +486,7 @@ TEST_F(TestSlotManager_DeathTest, TestIsolateTokens) {
 
 TEST_F(TestSlotManager, SRKNotReady) {
   EXPECT_CALL(tpm_, IsSRKReady()).WillRepeatedly(Return(false));
-  slot_manager_.reset(new SlotManagerImpl(&factory_, &tpm_, false));
+  slot_manager_.reset(new SlotManagerImpl(&factory_, &tpm_, false, nullptr));
   ASSERT_TRUE(slot_manager_->Init());
 
   EXPECT_FALSE(slot_manager_->IsTokenAccessible(ic_, 0));
@@ -501,7 +501,7 @@ TEST_F(TestSlotManager, SRKNotReady) {
 
 TEST_F(TestSlotManager, DelayedSRKInit) {
   EXPECT_CALL(tpm_, IsSRKReady()).WillRepeatedly(Return(false));
-  slot_manager_.reset(new SlotManagerImpl(&factory_, &tpm_, false));
+  slot_manager_.reset(new SlotManagerImpl(&factory_, &tpm_, false, nullptr));
   ASSERT_TRUE(slot_manager_->Init());
 
   EXPECT_CALL(tpm_, IsSRKReady()).WillRepeatedly(Return(true));
@@ -527,7 +527,8 @@ class SoftwareOnlyTest : public TestSlotManager {
         .WillRepeatedly(InvokeWithoutArgs(
             this, &SoftwareOnlyTest::ObjectPoolFactory));
     EXPECT_CALL(no_tpm_, IsTPMAvailable()).WillRepeatedly(Return(false));
-    slot_manager_.reset(new SlotManagerImpl(&factory_, &no_tpm_, false));
+    slot_manager_.reset(
+        new SlotManagerImpl(&factory_, &no_tpm_, false, nullptr));
     ASSERT_TRUE(slot_manager_->Init());
   }
 

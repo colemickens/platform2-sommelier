@@ -134,6 +134,7 @@ executable("chapsd") {
     "proto_conversion.cc",
     "session_impl.cc",
     "slot_manager_impl.cc",
+    "system_shutdown_blocker.cc",
   ]
   libs = [
     "-ldl",
@@ -253,6 +254,7 @@ if (use.test) {
     sources = [
       "slot_manager_impl.cc",
       "slot_manager_test.cc",
+      "system_shutdown_blocker.cc",
     ]
     deps = [
       ":libchaps_static",

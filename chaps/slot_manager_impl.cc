@@ -12,6 +12,8 @@
 #include <string>
 #include <vector>
 
+#include <base/bind.h>
+#include <base/callback_helpers.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -40,6 +42,8 @@ namespace {
 
 // I18N Note: The descriptive strings are needed for PKCS #11 compliance but
 // they should not appear on any UI.
+constexpr base::TimeDelta kTokenInitBlockSystemShutdownFallbackTimeout =
+    base::TimeDelta::FromSeconds(10);
 const CK_VERSION kDefaultVersion = {1, 0};
 const char kManufacturerID[] = "Chromium OS";
 const CK_ULONG kMaxPinLen = 127;
@@ -174,7 +178,8 @@ class TokenInitThread : public base::PlatformThread::Delegate {
                   FilePath path,
                   const SecureBlob& auth_data,
                   TPMUtility* tpm_utility,
-                  ObjectPool* object_pool);
+                  ObjectPool* object_pool,
+                  SystemShutdownBlocker* system_shutdown_blocker);
 
   ~TokenInitThread() override {}
 
@@ -189,6 +194,9 @@ class TokenInitThread : public base::PlatformThread::Delegate {
   SecureBlob auth_data_;
   TPMUtility* tpm_utility_;
   ObjectPool* object_pool_;
+  SystemShutdownBlocker* system_shutdown_blocker_;
+
+  DISALLOW_COPY_AND_ASSIGN(TokenInitThread);
 };
 
 // Performs expensive tasks required to terminate a token.
@@ -209,20 +217,41 @@ class TokenTermThread : public base::PlatformThread::Delegate {
  private:
   int slot_id_;
   TPMUtility* tpm_utility_;
+
+  DISALLOW_COPY_AND_ASSIGN(TokenTermThread);
 };
 
-TokenInitThread::TokenInitThread(int slot_id,
-                                 FilePath path,
-                                 const SecureBlob& auth_data,
-                                 TPMUtility* tpm_utility,
-                                 ObjectPool* object_pool)
+TokenInitThread::TokenInitThread(
+    int slot_id,
+    FilePath path,
+    const SecureBlob& auth_data,
+    TPMUtility* tpm_utility,
+    ObjectPool* object_pool,
+    SystemShutdownBlocker* system_shutdown_blocker)
     : slot_id_(slot_id),
       path_(path),
       auth_data_(auth_data),
       tpm_utility_(tpm_utility),
-      object_pool_(object_pool) {}
+      object_pool_(object_pool),
+      system_shutdown_blocker_(system_shutdown_blocker) {}
 
 void TokenInitThread::ThreadMain() {
+  // Block system shutdown while TokenInitThread is running. Unblock shutdown
+  // once TokenInitThread completes or a fallback timeout of
+  // |kTokenInitBlockSystemShutdownFallbackTimeout| has expired.
+  // |system_shutdown_blocker_| can be nullptr in tests.
+  std::unique_ptr<base::ScopedClosureRunner> scoped_closure_runner;
+  if (system_shutdown_blocker_) {
+    auto unblock_closure =
+        base::Bind(&SystemShutdownBlocker::Unblock,
+                   base::Unretained(system_shutdown_blocker_),
+                   slot_id_);
+    scoped_closure_runner =
+        std::make_unique<base::ScopedClosureRunner>(unblock_closure);
+    system_shutdown_blocker_->Block(
+        slot_id_, kTokenInitBlockSystemShutdownFallbackTimeout);
+  }
+
   string auth_data_hash = HashAuthData(auth_data_);
   string saved_auth_data_hash;
   string auth_key_blob;
@@ -311,14 +340,17 @@ bool TokenInitThread::InitializeKeyHierarchy(SecureBlob* master_key) {
 
 }  // namespace
 
-SlotManagerImpl::SlotManagerImpl(ChapsFactory* factory,
-                                 TPMUtility* tpm_utility,
-                                 bool auto_load_system_token)
+SlotManagerImpl::SlotManagerImpl(
+    ChapsFactory* factory,
+    TPMUtility* tpm_utility,
+    bool auto_load_system_token,
+    SystemShutdownBlocker* system_shutdown_blocker)
     : factory_(factory),
       last_handle_(0),
       tpm_utility_(tpm_utility),
       auto_load_system_token_(auto_load_system_token),
-      is_initialized_(false) {
+      is_initialized_(false),
+      system_shutdown_blocker_(system_shutdown_blocker) {
   CHECK(factory_);
   CHECK(tpm_utility_);
 
@@ -636,7 +668,8 @@ bool SlotManagerImpl::LoadTokenInternal(const SecureBlob& isolate_credential,
                             path,
                             auth_data,
                             tpm_utility_,
-                            object_pool.get()));
+                            object_pool.get(),
+                            system_shutdown_blocker_));
     base::PlatformThread::Create(0,
                                  slot_list_[*slot_id].worker_thread.get(),
                                  &slot_list_[*slot_id].worker_thread_handle);
