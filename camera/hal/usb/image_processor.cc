@@ -77,8 +77,8 @@ ImageProcessor::ImageProcessor()
       constants::kCrosForceJpegHardwareEncodeOption, false);
   force_jpeg_hw_decode_ = TestConfig().GetBoolean(
       constants::kCrosForceJpegHardwareDecodeOption, false);
-  LOGF(INFO) << "Force JPEG Hareware encode: " << force_jpeg_hw_encode_;
-  LOGF(INFO) << "Force JPEG Hareware decode: " << force_jpeg_hw_decode_;
+  LOGF(INFO) << "Force JPEG Hardware encode: " << force_jpeg_hw_encode_;
+  LOGF(INFO) << "Force JPEG Hardware decode: " << force_jpeg_hw_decode_;
 
   jda_ = JpegDecodeAccelerator::CreateInstance();
   jda_available_ = jda_->Start();
