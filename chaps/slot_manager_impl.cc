@@ -56,6 +56,8 @@ const int kAuthDataHashVersion = 1;
 const char kKeyPurposeEncrypt[] = "encrypt";
 const char kKeyPurposeMac[] = "mac";
 const char kAuthKeyMacInput[] = "arbitrary";
+const char kTokenReinitializedFlagFilePath[] =
+    "/var/lib/chaps/debug_token_reinitialized";
 
 const struct MechanismInfo {
   CK_MECHANISM_TYPE type;
@@ -120,16 +122,48 @@ bool SanityCheckAuthData(const string& auth_data_hash,
 
 // TODO(https://crbug.com/844537): Remove when the root cause of disappearing
 // system token certificates is found.
-// Creates a flag file under /var/log/chapsd_token_reinitialized, containing the
-// path of the token that has been reinitialized. The purpose is to know if this
-// has happened even if syslog is not available at the time when token
-// reinitialization is triggered (e.g. because the machine is shutting down).
-void CreateTokenReinitializedFlagFile(const base::FilePath& token_path) {
-  const base::FilePath flag_file_path("/var/log/chapsd_token_reinitialized");
+// Creates a persistent flag file containing the path of the token that has been
+// reinitialized. The purpose is to know if this has happened even if syslog is
+// not available at the time when token reinitialization is triggered (e.g.
+// because the machine is shutting down). The file will be read by
+// |LogTokenReinitializedFromFlagFile|.
+void CreateTokenReinitializedFlagFile(const FilePath& token_path) {
+  const FilePath flag_file_path(kTokenReinitializedFlagFilePath);
   const std::string& token_path_value = token_path.value();
   base::WriteFile(flag_file_path,
                   token_path_value.c_str(),
                   static_cast<int>(token_path_value.length()));
+}
+
+// TODO(https://crbug.com/844537): Remove when the root cause of disappearing
+// system token certificates is found.
+// Reads the flag file written by |CreateTokenReinitizliedFlagFile| if it exists
+// and logs a message if it indicates that a token has been reinitialized.
+void LogTokenReinitializedFromFlagFile() {
+  const FilePath flag_file_path(kTokenReinitializedFlagFilePath);
+  if (!base::PathExists(flag_file_path)) {
+    return;
+  }
+
+  std::string reinitialized_token_path;
+  if (!base::ReadFileToStringWithMaxSize(flag_file_path,
+                                         &reinitialized_token_path,
+                                         4096)) {
+    PLOG(ERROR) << "Could not read flag file " << flag_file_path.value();
+    return;
+  }
+  base::File::Info flag_file_info;
+  if (!base::GetFileInfo(flag_file_path, &flag_file_info)) {
+    PLOG(ERROR) << "Could not get info for flag file " <<
+                flag_file_path.value();
+    return;
+  }
+  if (!base::DeleteFile(flag_file_path, false /* recursive */)) {
+    PLOG(ERROR) << "Could not delete flag file " << flag_file_path.value();
+  }
+  LOG(WARNING) << "Flag file with timestamp " << flag_file_info.last_modified <<
+               " indicated that token " << reinitialized_token_path <<
+               " has been reinitialized.";
 }
 
 // Performs expensive tasks required to initialize a token.
@@ -321,6 +355,7 @@ SlotManagerImpl::~SlotManagerImpl() {
 }
 
 bool SlotManagerImpl::Init() {
+  LogTokenReinitializedFromFlagFile();
   // If the SRK is ready we expect the rest of the init work to succeed.
   bool expect_success = tpm_utility_->IsTPMAvailable() &&
                         tpm_utility_->IsSRKReady();
