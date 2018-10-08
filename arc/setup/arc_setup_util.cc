@@ -408,24 +408,45 @@ class ArcMounterImpl : public ArcMounter {
       return false;
     }
 
-    if (!Umount(path))
-      return false;
-
     if (major(st.st_dev) != LOOP_MAJOR) {
       LOG(ERROR) << path.value()
                  << " is not loop-mounted. st_dev=" << st.st_dev;
       return false;
     }
 
+    bool autoclear = false;
     const base::FilePath device_path = GetLoopDevicePath(minor(st.st_dev));
-    base::ScopedFD scoped_loop_fd(open(device_path.value().c_str(), O_RDWR));
-    if (!scoped_loop_fd.is_valid()) {
-      PLOG(ERROR) << "Failed to open " << device_path.value();
-      return false;
+    {
+      base::ScopedFD scoped_loop_fd(
+          open(device_path.value().c_str(), O_RDONLY | O_CLOEXEC));
+      if (!scoped_loop_fd.is_valid()) {
+        PLOG(ERROR) << "Failed to open " << device_path.value();
+        return false;
+      }
+
+      struct loop_info64 loop_info;
+      if (ioctl(scoped_loop_fd.get(), LOOP_GET_STATUS64, &loop_info) < 0) {
+        PLOG(ERROR) << "Failed to get info " << device_path.value();
+        return false;
+      }
+      autoclear = loop_info.lo_flags & LO_FLAGS_AUTOCLEAR;
     }
-    if (ioctl(scoped_loop_fd.get(), LOOP_CLR_FD)) {
-      PLOG(ERROR) << "Failed to free " << device_path.value();
+
+    if (!Umount(path))
       return false;
+
+    if (!autoclear) {
+      base::ScopedFD scoped_loop_fd(
+          open(device_path.value().c_str(), O_RDWR | O_CLOEXEC));
+      if (!scoped_loop_fd.is_valid()) {
+        PLOG(ERROR) << "Failed to open " << device_path.value();
+        return false;
+      }
+
+      if (ioctl(scoped_loop_fd.get(), LOOP_CLR_FD) < 0) {
+        PLOG(ERROR) << "Failed to free " << device_path.value();
+        return false;
+      }
     }
 
     return true;
