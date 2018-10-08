@@ -29,8 +29,8 @@ class ProcessWithOutput : public SandboxedProcess {
   ProcessWithOutput();
   ~ProcessWithOutput() override;
   bool Init() override;
-  bool GetOutput(std::string* output);
-  bool GetOutputLines(std::vector<std::string>* output);
+  bool GetOutput(std::string* output) const;
+  bool GetOutputLines(std::vector<std::string>* output) const;
 
   // Reads the stderr output. Must have called set_separate_stderr(true) and
   // run the process to completion.

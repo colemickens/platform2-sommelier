@@ -49,6 +49,7 @@
 #include "debugd/src/systrace_tool.h"
 #include "debugd/src/tracepath_tool.h"
 #include "debugd/src/u2f_tool.h"
+#include "debugd/src/verify_ro_tool.h"
 #include "debugd/src/wifi_power_tool.h"
 #include "debugd/src/wimax_status_tool.h"
 
@@ -173,11 +174,13 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   bool SetRlzPingSent(brillo::ErrorPtr* error) override;
   std::string CampfireEnableAltOS(int size_gb) override;
   std::string CampfireDisableAltOS() override;
+  std::string GetGscOnUsbRWFirmwareVer() override;
 
  private:
   brillo::dbus_utils::DBusObject dbus_object_;
 
   std::unique_ptr<SessionManagerProxy> session_manager_proxy_;
+
   std::unique_ptr<BatteryTool> battery_tool_;
   std::unique_ptr<CampfireTool> campfire_tool_;
   std::unique_ptr<ContainerTool> container_tool_;
@@ -206,6 +209,7 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::unique_ptr<SystraceTool> systrace_tool_;
   std::unique_ptr<TracePathTool> tracepath_tool_;
   std::unique_ptr<U2fTool> u2f_tool_;
+  std::unique_ptr<VerifyRoTool> verify_ro_tool_;
   std::unique_ptr<SimpleServiceTool> vm_concierge_tool_;
   std::unique_ptr<WifiPowerTool> wifi_power_tool_;
   std::unique_ptr<WiMaxStatusTool> wimax_status_tool_;

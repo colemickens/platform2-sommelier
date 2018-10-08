@@ -63,6 +63,7 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus)
   systrace_tool_ = std::make_unique<SystraceTool>();
   tracepath_tool_ = std::make_unique<TracePathTool>();
   u2f_tool_ = std::make_unique<U2fTool>();
+  verify_ro_tool_ = std::make_unique<VerifyRoTool>();
   vm_concierge_tool_ = std::make_unique<SimpleServiceTool>(
       "vm_concierge", bus,
       vm_tools::concierge::kVmConciergeServiceName,
@@ -487,6 +488,10 @@ std::string DebugdDBusAdaptor::CampfireEnableAltOS(int size_gb) {
 
 std::string DebugdDBusAdaptor::CampfireDisableAltOS() {
   return campfire_tool_->DisableAltOS();
+}
+
+std::string DebugdDBusAdaptor::GetGscOnUsbRWFirmwareVer() {
+  return verify_ro_tool_->GetGscOnUsbRWFirmwareVer();
 }
 
 }  // namespace debugd

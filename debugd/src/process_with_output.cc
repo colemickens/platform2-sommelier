@@ -67,9 +67,9 @@ bool ProcessWithOutput::Init() {
   return true;
 }
 
-bool ProcessWithOutput::GetOutputLines(std::vector<std::string>* output) {
+bool ProcessWithOutput::GetOutputLines(std::vector<std::string>* output) const {
   std::string contents;
-  if (!base::ReadFileToString(outfile_path_, &contents))
+  if (!GetOutput(&contents))
     return false;
 
   // If the file contains "a\nb\n", base::SplitString() will return a vector
@@ -84,7 +84,7 @@ bool ProcessWithOutput::GetOutputLines(std::vector<std::string>* output) {
   return true;
 }
 
-bool ProcessWithOutput::GetOutput(std::string* output) {
+bool ProcessWithOutput::GetOutput(std::string* output) const {
   return base::ReadFileToString(outfile_path_, output);
 }
 

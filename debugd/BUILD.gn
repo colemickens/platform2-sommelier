@@ -116,6 +116,7 @@ static_library("libdebugd") {
     "src/tracepath_tool.cc",
     "src/u2f_tool.cc",
     "src/variant_utils.cc",
+    "src/verify_ro_tool.cc",
     "src/wifi_power_tool.cc",
     "src/wimax_status_tool.cc",
   ]

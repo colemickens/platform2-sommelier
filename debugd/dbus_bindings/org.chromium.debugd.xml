@@ -936,5 +936,17 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="GetGscOnUsbRWFirmwareVer">
+      <tp:docstring>
+        Get the version number of the security chip RW firmware on the
+        USB-connected DUT.
+      </tp:docstring>
+      <arg name="result" type="s" direction="out">
+        <tp:docstring>
+          Error message if failed, or the RW firmware version.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
   </interface>
 </node>
