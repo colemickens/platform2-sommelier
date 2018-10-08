@@ -6,7 +6,6 @@
 #include "chromeos-config/libcros_config/identity_arm.h"
 
 #include <string>
-#include <regex.h>
 
 #include <base/logging.h>
 #include <base/files/file_util.h>
@@ -42,19 +41,7 @@ bool CrosConfigIdentityArm::ReadDtCompatible(
 }
 
 bool CrosConfigIdentityArm::IsCompatible(const std::string& device_name) const {
-  bool basic_match = compatible_devices_.find(device_name) != std::string::npos;
-  bool regex_match = false;
-  if (!basic_match) {
-    regex_t regex;
-    if (regcomp(&regex, device_name.c_str(),
-                REG_EXTENDED | REG_ICASE | REG_NOSUB) == 0) {
-      regex_match =
-          regexec(&regex, compatible_devices_.c_str(), 0, nullptr, 0) == 0;
-      regfree(&regex);
-    }
-  }
-
-  return basic_match || regex_match;
+  return compatible_devices_.find(device_name) != std::string::npos;
 }
 
 }  // namespace brillo

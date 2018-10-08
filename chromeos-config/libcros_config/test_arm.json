@@ -10,13 +10,6 @@
       },
       {
         "identity": {
-          "device-tree-compatible-match": "google.*another"
-        },
-        "name": "another",
-        "wallpaper": "another-wallpaper"
-      },
-      {
-        "identity": {
           "device-tree-compatible-match": "google,whitelabel",
           "whitelabel-tag": "whitelabel1"
         },

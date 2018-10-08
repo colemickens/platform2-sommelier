@@ -196,13 +196,6 @@ TEST_F(CrosConfigTest, CheckArmIdentityByDeviceName) {
   ASSERT_EQ("some-wallpaper", val);
 }
 
-TEST_F(CrosConfigTest, CheckArmIdentityWithRegexMatch) {
-  InitConfigArm("google,random1,google,another,google,random2");
-  std::string val;
-  ASSERT_TRUE(cros_config_.GetString("/", "wallpaper", &val));
-  ASSERT_EQ("another-wallpaper", val);
-}
-
 TEST_F(CrosConfigTest, CheckArmIdentityByWhitelabel) {
   InitConfigArm("google,whitelabel", "whitelabel1");
   std::string val;

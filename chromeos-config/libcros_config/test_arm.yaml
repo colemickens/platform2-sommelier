@@ -17,17 +17,6 @@ chromeos:
             firmware:
               no-firmware: true
             wallpaper: "some-wallpaper"
-    - $name: "another"
-      products:
-        - $key-id: "ANOTHER"
-      skus:
-        - config:
-            name: "{{$name}}"
-            identity:
-              device-tree-compatible-match: "google.*another"
-            firmware:
-              no-firmware: true
-            wallpaper: "another-wallpaper"
     - $name: "whitelabel"
       products:
         - $whitelabel-tag: "whitelabel1"

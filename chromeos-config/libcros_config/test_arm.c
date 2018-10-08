@@ -11,15 +11,6 @@ static struct config_map all_configs[] = {
               .signature_id = "some"}},
 
     {.platform_name = "",
-     .device_tree_compatible_match = "google.*another",
-     .customization_id = "",
-     .whitelabel_tag = "",
-     .info = {.brand = "",
-              .model = "another",
-              .customization = "another",
-              .signature_id = "another"}},
-
-    {.platform_name = "",
      .device_tree_compatible_match = "google,whitelabel",
      .customization_id = "",
      .whitelabel_tag = "whitelabel1",
@@ -48,6 +39,6 @@ static struct config_map all_configs[] = {
 };
 
 const struct config_map *cros_config_get_config_map(int *num_entries) {
-  *num_entries = 5;
+  *num_entries = 4;
   return &all_configs[0];
 }

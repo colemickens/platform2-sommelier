@@ -242,9 +242,8 @@ properties:
                   additionalProperties: false
                 - properties:
                     device-tree-compatible-match:
-                      description: "[ARM] Simple substring match value or a POSIX regex pattern
-                        that is matched against the contents of
-                        /proc/device-tree/compatible on ARM devices."
+                      description: "[ARM] String pattern (partial) that is matched against the
+                        contents of /proc/device-tree/compatible on ARM devices."
                       type: string
                     platform-name: *platform_name
                     customization-id: *customization_id
