@@ -393,25 +393,53 @@ class ArcMounterImpl : public ArcMounter {
     return true;
   }
 
-  bool UmountLazily(const base::FilePath& path) override {
-    if (umount2(Realpath(path).value().c_str(), MNT_DETACH) != 0) {
-      PLOG(ERROR) << "Failed to lazy-umount " << path.value();
-      return false;
+  bool UmountIfExists(const base::FilePath& path) override {
+    if (umount(Realpath(path).value().c_str()) != 0) {
+      // We tolerate nothing mounted on the path (EINVAL) and we tolerate the
+      // path not existing (ENOENT)
+      if (errno != EINVAL && errno != ENOENT) {
+        PLOG(ERROR) << "Mount exists but failed to umount " << path.value();
+        return false;
+      }
     }
     return true;
   }
 
   bool LoopUmount(const base::FilePath& path) override {
+    if (!LoopUmountInternal(path, /*ignore_missing=*/false)) {
+      LOG(ERROR) << "Failed to unmount loop " << path.value();
+      return false;
+    }
+    return true;
+  }
+
+  bool LoopUmountIfExists(const base::FilePath& path) override {
+    if (!LoopUmountInternal(path, /*ignore_missing=*/true)) {
+      LOG(ERROR) << "Mount exists but failed to unmount loop " << path.value();
+      return false;
+    }
+    return true;
+  }
+
+ private:
+  bool LoopUmountInternal(const base::FilePath& path,
+                          const bool ignore_missing) {
     struct stat st;
     if (stat(path.value().c_str(), &st) < 0) {
-      PLOG(ERROR) << "Failed to stat " << path.value();
-      return false;
+      if (!ignore_missing || errno != ENOENT) {
+        PLOG(ERROR) << "Failed to stat " << path.value();
+        return false;
+      }
+      return true;
     }
 
     if (major(st.st_dev) != LOOP_MAJOR) {
-      LOG(ERROR) << path.value()
-                 << " is not loop-mounted. st_dev=" << st.st_dev;
-      return false;
+      if (!ignore_missing) {
+        LOG(ERROR) << path.value()
+                   << " is not loop-mounted. st_dev=" << st.st_dev;
+        return false;
+      }
+      return true;
     }
 
     bool autoclear = false;
@@ -452,7 +480,6 @@ class ArcMounterImpl : public ArcMounter {
     return true;
   }
 
- private:
   bool LoopMountInternal(const std::string& source,
                          const base::FilePath& target,
                          unsigned long mount_flags,  // NOLINT(runtime/int)
@@ -569,7 +596,7 @@ ScopedMount::~ScopedMount() {
     PLOG_IF(INFO, !mounter_->LoopUmount(path_))
         << "Ignoring failure to umount " << path_.value();
   } else {
-    PLOG_IF(INFO, !mounter_->UmountLazily(path_))
+    PLOG_IF(INFO, !mounter_->Umount(path_))
         << "Ignoring failure to umount " << path_.value();
   }
 }

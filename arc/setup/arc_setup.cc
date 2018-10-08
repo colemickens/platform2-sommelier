@@ -804,19 +804,13 @@ void ArcSetup::SetUpGservicesCache() {
 }
 
 void ArcSetup::UnmountSdcard() {
-  // Teardown mounts. pkglist are teared down in an upstart file.
-  const bool is_esdfs_supported = config_.GetBoolOrDie("USE_ESDFS");
-
-  // If USE_ESDFS is not set, then /system/bin/sdcard manages the mount instead.
-  if (!is_esdfs_supported) {
-    LOG(INFO) << "Esdfs not enabled. /system/bin/sdcard manages the mount.";
-    return;
-  }
-
+  // We unmount here in both the ESDFS and the FUSE cases in order to
+  // clean up after Android's /system/bin/sdcard. However, the paths
+  // must be the same in both cases.
   for (auto mount : kEsdfsMounts) {
     base::FilePath kDestDirectory =
         arc_paths_->sdcard_mount_directory.Append(mount.relative_path);
-    IGNORE_ERRORS(arc_mounter_->UmountLazily(kDestDirectory));
+    IGNORE_ERRORS(arc_mounter_->Umount(kDestDirectory));
   }
 
   LOG(INFO) << "Unmount sdcard complete.";
@@ -979,7 +973,7 @@ void ArcSetup::SetUpSdcard() {
 }
 
 void ArcSetup::SetUpSharedTmpfsForExternalStorage() {
-  IGNORE_ERRORS(arc_mounter_->UmountLazily(arc_paths_->sdcard_mount_directory));
+  EXIT_IF(!arc_mounter_->UmountIfExists(arc_paths_->sdcard_mount_directory));
   EXIT_IF(!MkdirRecursively(arc_paths_->sdcard_mount_directory));
   EXIT_IF(!arc_mounter_->Mount("tmpfs", arc_paths_->sdcard_mount_directory,
                                "tmpfs", MS_NOSUID | MS_NODEV | MS_NOEXEC,
@@ -1012,7 +1006,7 @@ void ArcSetup::SetUpSharedTmpfsForExternalStorage() {
 }
 
 void ArcSetup::SetUpFilesystemForObbMounter() {
-  IGNORE_ERRORS(arc_mounter_->UmountLazily(arc_paths_->obb_mount_directory));
+  EXIT_IF(!arc_mounter_->UmountIfExists(arc_paths_->obb_mount_directory));
   EXIT_IF(!MkdirRecursively(arc_paths_->obb_mount_directory));
   EXIT_IF(!arc_mounter_->Mount("tmpfs", arc_paths_->obb_mount_directory,
                                "tmpfs", MS_NOSUID | MS_NODEV | MS_NOEXEC,
@@ -1246,8 +1240,8 @@ void ArcSetup::SetUpMountPointForDebugFilesystem(bool is_dev_mode) {
   EXIT_IF(!InstallDirectory(0755, kHostRootUid, kHostRootGid,
                             arc_paths_->debugfs_directory));
 
-  // debug/sync does not exist on all kernels so ignore errors
-  IGNORE_ERRORS(arc_mounter_->UmountLazily(sync_mount_directory));
+  // debug/sync does not exist on all kernels
+  EXIT_IF(!arc_mounter_->UmountIfExists(sync_mount_directory));
 
   EXIT_IF(
       !InstallDirectory(0755, kSystemUid, kSystemGid, sync_mount_directory));
@@ -1267,7 +1261,7 @@ void ArcSetup::SetUpMountPointForDebugFilesystem(bool is_dev_mode) {
   const base::FilePath tracing_mount_directory =
       arc_paths_->debugfs_directory.Append("tracing");
 
-  IGNORE_ERRORS(arc_mounter_->UmountLazily(tracing_mount_directory));
+  EXIT_IF(!arc_mounter_->UmountIfExists(tracing_mount_directory));
   EXIT_IF(!InstallDirectory(0755, kHostRootUid, kHostRootGid,
                             tracing_mount_directory));
 
@@ -1296,7 +1290,7 @@ void ArcSetup::MountDemoApps(const base::FilePath& demo_apps_image,
 }
 
 void ArcSetup::SetUpMountPointForRemovableMedia() {
-  IGNORE_ERRORS(arc_mounter_->UmountLazily(arc_paths_->media_mount_directory));
+  EXIT_IF(!arc_mounter_->UmountIfExists(arc_paths_->media_mount_directory));
   EXIT_IF(!InstallDirectory(0755, kRootUid, kSystemGid,
                             arc_paths_->media_mount_directory));
 
@@ -1312,7 +1306,7 @@ void ArcSetup::SetUpMountPointForRemovableMedia() {
 }
 
 void ArcSetup::SetUpMountPointForAdbd() {
-  IGNORE_ERRORS(arc_mounter_->UmountLazily(arc_paths_->adbd_mount_directory));
+  EXIT_IF(!arc_mounter_->UmountIfExists(arc_paths_->adbd_mount_directory));
   EXIT_IF(!InstallDirectory(0770, kShellUid, kShellGid,
                             arc_paths_->adbd_mount_directory));
 
@@ -1325,11 +1319,11 @@ void ArcSetup::SetUpMountPointForAdbd() {
 }
 
 void ArcSetup::CleanUpStaleMountPoints() {
-  IGNORE_ERRORS(arc_mounter_->UmountLazily(arc_paths_->media_dest_directory));
+  EXIT_IF(!arc_mounter_->UmountIfExists(arc_paths_->media_dest_directory));
 }
 
 void ArcSetup::SetUpSharedMountPoints() {
-  IGNORE_ERRORS(arc_mounter_->UmountLazily(arc_paths_->shared_mount_directory));
+  EXIT_IF(!arc_mounter_->UmountIfExists(arc_paths_->shared_mount_directory));
   EXIT_IF(!InstallDirectory(0755, kRootUid, kRootGid,
                             arc_paths_->shared_mount_directory));
   // Use 0755 to make sure only the real root user can write to the shared
@@ -1657,28 +1651,32 @@ AndroidSdkVersion ArcSetup::GetSdkVersion() {
 void ArcSetup::UnmountOnStop() {
   // This function is for Mode::STOP. Use IGNORE_ERRORS to make sure to run all
   // clean up code.
-  IGNORE_ERRORS(arc_mounter_->UmountLazily(
+  IGNORE_ERRORS(arc_mounter_->UmountIfExists(
       arc_paths_->shared_mount_directory.Append("cache")));
-  IGNORE_ERRORS(arc_mounter_->UmountLazily(
+  IGNORE_ERRORS(arc_mounter_->UmountIfExists(
       arc_paths_->shared_mount_directory.Append("data")));
-  IGNORE_ERRORS(arc_mounter_->LoopUmount(
+  IGNORE_ERRORS(arc_mounter_->LoopUmountIfExists(
       arc_paths_->shared_mount_directory.Append("demo_apps")));
-  IGNORE_ERRORS(arc_mounter_->UmountLazily(arc_paths_->adbd_mount_directory));
-  IGNORE_ERRORS(arc_mounter_->UmountLazily(arc_paths_->media_dest_directory));
-  IGNORE_ERRORS(arc_mounter_->UmountLazily(arc_paths_->media_mount_directory));
-  IGNORE_ERRORS(arc_mounter_->UmountLazily(arc_paths_->sdcard_mount_directory));
-  IGNORE_ERRORS(arc_mounter_->UmountLazily(arc_paths_->shared_mount_directory));
-  IGNORE_ERRORS(arc_mounter_->UmountLazily(arc_paths_->obb_mount_directory));
-  IGNORE_ERRORS(arc_mounter_->UmountLazily(arc_paths_->oem_mount_directory));
-  IGNORE_ERRORS(arc_mounter_->UmountLazily(arc_paths_->android_mutable_source));
+  IGNORE_ERRORS(arc_mounter_->UmountIfExists(arc_paths_->adbd_mount_directory));
+  IGNORE_ERRORS(arc_mounter_->UmountIfExists(arc_paths_->media_dest_directory));
   IGNORE_ERRORS(
-      arc_mounter_->UmountLazily(arc_paths_->debugfs_directory.Append("sync")));
-  IGNORE_ERRORS(arc_mounter_->UmountLazily(
+      arc_mounter_->UmountIfExists(arc_paths_->media_mount_directory));
+  IGNORE_ERRORS(arc_mounter_->Umount(arc_paths_->sdcard_mount_directory));
+  IGNORE_ERRORS(
+      arc_mounter_->UmountIfExists(arc_paths_->shared_mount_directory));
+  IGNORE_ERRORS(arc_mounter_->Umount(arc_paths_->obb_mount_directory));
+  IGNORE_ERRORS(arc_mounter_->Umount(arc_paths_->oem_mount_directory));
+  IGNORE_ERRORS(
+      arc_mounter_->UmountIfExists(arc_paths_->android_mutable_source));
+  IGNORE_ERRORS(arc_mounter_->UmountIfExists(
+      arc_paths_->debugfs_directory.Append("sync")));
+  IGNORE_ERRORS(arc_mounter_->UmountIfExists(
       arc_paths_->debugfs_directory.Append("tracing")));
   // Clean up in case this was not unmounted.
-  IGNORE_ERRORS(arc_mounter_->UmountLazily(arc_paths_->binfmt_misc_directory));
   IGNORE_ERRORS(
-      arc_mounter_->UmountLazily(arc_paths_->android_rootfs_directory.Append(
+      arc_mounter_->UmountIfExists(arc_paths_->binfmt_misc_directory));
+  IGNORE_ERRORS(
+      arc_mounter_->UmountIfExists(arc_paths_->android_rootfs_directory.Append(
           arc_paths_->system_lib_arm_directory_relative)));
 }
 
@@ -1837,11 +1835,11 @@ void ArcSetup::UnmountSharedAndroidDirectories() {
   const base::FilePath shared_demo_apps_directory =
       arc_paths_->shared_mount_directory.Append("demo_apps");
 
-  IGNORE_ERRORS(arc_mounter_->UmountLazily(data_directory));
-  IGNORE_ERRORS(arc_mounter_->UmountLazily(shared_cache_directory));
-  IGNORE_ERRORS(arc_mounter_->UmountLazily(shared_data_directory));
-  IGNORE_ERRORS(arc_mounter_->LoopUmount(shared_demo_apps_directory));
-  IGNORE_ERRORS(arc_mounter_->UmountLazily(arc_paths_->shared_mount_directory));
+  IGNORE_ERRORS(arc_mounter_->Umount(data_directory));
+  IGNORE_ERRORS(arc_mounter_->UmountIfExists(shared_cache_directory));
+  IGNORE_ERRORS(arc_mounter_->Umount(shared_data_directory));
+  IGNORE_ERRORS(arc_mounter_->LoopUmountIfExists(shared_demo_apps_directory));
+  IGNORE_ERRORS(arc_mounter_->Umount(arc_paths_->shared_mount_directory));
 }
 
 void ArcSetup::MaybeStartAdbdProxy(bool is_dev_mode,

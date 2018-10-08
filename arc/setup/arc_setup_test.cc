@@ -64,8 +64,10 @@ class MockArcMounter : public ArcMounter {
     return true;
   }
 
-  bool UmountLazily(const base::FilePath& path) override {
-    return Umount(path);
+  bool UmountIfExists(const base::FilePath& path) override {
+    Umount(path);
+    // If mount does not exist, succeed anyway.
+    return true;
   }
 
   bool LoopUmount(const base::FilePath& path) override {
@@ -73,6 +75,12 @@ class MockArcMounter : public ArcMounter {
     if (it == loop_mount_points_.end())
       return false;
     loop_mount_points_.erase(it);
+    return true;
+  }
+
+  bool LoopUmountIfExists(const base::FilePath& path) override {
+    LoopUmount(path);
+    // If loop mount does not exist, succeed anyway.
     return true;
   }
 

@@ -73,10 +73,12 @@ class ArcMounter {
 
   virtual bool Umount(const base::FilePath& path) = 0;
 
-  virtual bool UmountLazily(const base::FilePath& path) = 0;
+  virtual bool UmountIfExists(const base::FilePath& path) = 0;
 
   // Unmounts |path|, then frees the loop device for the |path|.
   virtual bool LoopUmount(const base::FilePath& path) = 0;
+
+  virtual bool LoopUmountIfExists(const base::FilePath& path) = 0;
 };
 
 // A class that umounts a mountpoint when the mountpoint goes out of scope.
