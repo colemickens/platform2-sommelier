@@ -431,6 +431,7 @@ int MetadataHandler::FillMetadataFromDeviceInfo(
       ANDROID_JPEG_THUMBNAIL_QUALITY,
       ANDROID_JPEG_THUMBNAIL_SIZE,
       ANDROID_LENS_OPTICAL_STABILIZATION_MODE,
+      ANDROID_LENS_STATE,
       ANDROID_NOISE_REDUCTION_MODE,
       ANDROID_REQUEST_PIPELINE_DEPTH,
       ANDROID_SCALER_CROP_REGION,
@@ -666,6 +667,13 @@ int MetadataHandler::PostHandleRequest(int frame_number,
     LOGF(ERROR) << "Active array size is not found.";
     return -EINVAL;
   }
+
+  // android.lens
+  // Since android.lens.focalLength, android.lens.focusDistance and
+  // android.lens.aperture are all fixed. And we don't support
+  // android.lens.filterDensity so we can set the state to stationary.
+  const uint8_t lens_state = ANDROID_LENS_STATE_STATIONARY;
+  UPDATE(ANDROID_LENS_STATE, &lens_state, 1);
 
   // android.scaler
   const int32_t crop_region[] = {
