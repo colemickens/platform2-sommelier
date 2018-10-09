@@ -52,34 +52,32 @@ bool CrosConfigJson::SelectConfigByIdentity(
           if (configs_list->GetDictionary(i, &config_dict)) {
             const base::DictionaryValue* identity_dict = nullptr;
             if (config_dict->GetDictionary("identity", &identity_dict)) {
+              int find_sku_id = -1;
               bool platform_specific_match = false;
               if (identity_x86) {
-                const std::string& find_name = identity_x86->GetName();
-                int find_sku_id = identity_x86->GetSkuId();
-                int current_sku_id;
-                bool sku_match = true;
-                if (find_sku_id > -1 &&
-                    identity_dict->GetInteger("sku-id", &current_sku_id)) {
-                  sku_match = current_sku_id == find_sku_id;
-                }
+                find_sku_id = identity_x86->GetSkuId();
 
-                bool name_match = true;
+                const std::string& find_name = identity_x86->GetName();
                 std::string current_name;
                 if (identity_dict->GetString("smbios-name-match",
-                                             &current_name) &&
-                    !find_name.empty()) {
-                  name_match = current_name == find_name;
+                                             &current_name)) {
+                  platform_specific_match = current_name == find_name;
                 }
-                platform_specific_match = sku_match && name_match;
               } else if (identity_arm) {
-                bool dt_compatible_match = false;
+                find_sku_id = identity_arm->GetSkuId();
+
                 std::string current_dt_compatible_match;
                 if (identity_dict->GetString("device-tree-compatible-match",
                                              &current_dt_compatible_match)) {
-                  dt_compatible_match =
+                  platform_specific_match =
                       identity_arm->IsCompatible(current_dt_compatible_match);
                 }
-                platform_specific_match = dt_compatible_match;
+              }
+              bool sku_match = true;
+              int current_sku_id;
+              if (find_sku_id > -1 &&
+                  identity_dict->GetInteger("sku-id", &current_sku_id)) {
+                sku_match = current_sku_id == find_sku_id;
               }
 
               bool vpd_tag_match = true;
@@ -94,7 +92,7 @@ bool CrosConfigJson::SelectConfigByIdentity(
                 vpd_tag_match = current_vpd_tag == find_whitelabel_name;
               }
 
-              if (platform_specific_match && vpd_tag_match) {
+              if (platform_specific_match && sku_match && vpd_tag_match) {
                 config_dict_ = config_dict;
                 break;
               }

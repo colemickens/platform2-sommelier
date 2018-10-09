@@ -33,6 +33,9 @@ typeDefs:
         description: Symlink file that will be installed pointing to the destination.
         type: string
     additionalProperties: false
+  sku-id: &sku_id
+    description: "SKU/Board strapping pins configured during board manufacturing."
+    type: integer
   whitelabel-tag: &whitelabel_tag
     description: "'whitelabel_tag' value set in the VPD, to add Whitelabel branding over an unbranded base model."
     type: string
@@ -228,14 +231,11 @@ properties:
                 This tuple must either contain x86 properties only or ARM properties only.
               oneOf:
                 - properties:
-                    sku-id:
-                      description: "[x86] SKU/Board strapping pins configured during board
-                        manufacturing."
-                      type: integer
                     smbios-name-match:
                       description: "[x86] Firmware name built into the firmware and reflected back
                         out in the SMBIOS tables."
                       type: string
+                    sku-id: *sku_id
                     platform-name: *platform_name
                     customization-id: *customization_id
                     whitelabel-tag: *whitelabel_tag
@@ -245,6 +245,7 @@ properties:
                       description: "[ARM] String pattern (partial) that is matched against the
                         contents of /proc/device-tree/compatible on ARM devices."
                       type: string
+                    sku-id: *sku_id
                     platform-name: *platform_name
                     customization-id: *customization_id
                     whitelabel-tag: *whitelabel_tag

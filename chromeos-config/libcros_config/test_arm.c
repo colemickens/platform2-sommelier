@@ -3,6 +3,7 @@
 static struct config_map all_configs[] = {
     {.platform_name = "",
      .device_tree_compatible_match = "google,some",
+     .sku_id = -1,
      .customization_id = "",
      .whitelabel_tag = "",
      .info = {.brand = "",
@@ -12,6 +13,7 @@ static struct config_map all_configs[] = {
 
     {.platform_name = "",
      .device_tree_compatible_match = "google,whitelabel",
+     .sku_id = -1,
      .customization_id = "",
      .whitelabel_tag = "whitelabel1",
      .info = {.brand = "",
@@ -21,6 +23,7 @@ static struct config_map all_configs[] = {
 
     {.platform_name = "",
      .device_tree_compatible_match = "google,whitelabel",
+     .sku_id = -1,
      .customization_id = "",
      .whitelabel_tag = "whitelabel2",
      .info = {.brand = "",
@@ -30,15 +33,36 @@ static struct config_map all_configs[] = {
 
     {.platform_name = "",
      .device_tree_compatible_match = "google,whitelabel",
+     .sku_id = -1,
      .customization_id = "",
      .whitelabel_tag = "",
      .info = {.brand = "",
               .model = "whitelabel",
               .customization = "whitelabel",
-              .signature_id = "whitelabel"}}
+              .signature_id = "whitelabel"}},
+
+    {.platform_name = "Another",
+     .device_tree_compatible_match = "google,another",
+     .sku_id = 8,
+     .customization_id = "",
+     .whitelabel_tag = "",
+     .info = {.brand = "",
+              .model = "another1",
+              .customization = "another1",
+              .signature_id = "another1"}},
+
+    {.platform_name = "Another",
+     .device_tree_compatible_match = "google,another",
+     .sku_id = 9,
+     .customization_id = "",
+     .whitelabel_tag = "",
+     .info = {.brand = "",
+              .model = "another2",
+              .customization = "another2",
+              .signature_id = "another2"}}
 };
 
 const struct config_map *cros_config_get_config_map(int *num_entries) {
-  *num_entries = 4;
+  *num_entries = 6;
   return &all_configs[0];
 }

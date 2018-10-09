@@ -69,10 +69,12 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
   // based on the supplied ARM identifiers.
   // @filepath: Path to configuration .dtb|.json file.
   // @dt_compatible_name: ARM device-tree compatible name string.
+  // @sku_id: SKU ID as returned by 'mosys platform sku'.
   // @customization_id: VPD customization ID
   // @return true if OK, false on error.
   bool InitForTestArm(const base::FilePath& filepath,
                       const std::string& dt_compatible_name,
+                      int sku_id,
                       const std::string& customization_id);
 
   // Internal function to obtain a property value and return a list of log
@@ -115,11 +117,17 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
 
   // Common initialization function based on ARM identity.
   // @dt_compatible_file: ARM based device-tree compatible file
+  // @sku_id_file: File containing the SKU interger.
   // @vpd_file: File containing the customization_id from VPD. Typically this
   //     is '/sys/firmware/vpd/ro/customization_id'.
+  // @sku_id:If value is kDefaultSkuId then identity will get sku_id from
+  //     FDT which is the same with `mosys platform id`. Or this value
+  //     will be set into identity to replace the default one from FDT.
   //   results for every query
   bool SelectConfigByIdentityArm(const base::FilePath& dt_compatible_file,
-                                 const base::FilePath& vpd_file);
+                                 const base::FilePath& sku_id_file,
+                                 const base::FilePath& vpd_file,
+                                 const int sku_id = kDefaultSkuId);
 
   // Creates the appropriate instance of CrosConfigImpl based on the underlying
   // file type (.dtb|.json).

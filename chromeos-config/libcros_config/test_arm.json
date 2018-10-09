@@ -31,6 +31,22 @@
         },
         "name": "whitelabel",
         "wallpaper": "whitelabel-default-wallpaper"
+      },
+      {
+        "identity": {
+          "device-tree-compatible-match": "google,another",
+          "platform-name": "Another",
+          "sku-id": 8
+        },
+        "name": "another1"
+      },
+      {
+        "identity": {
+          "device-tree-compatible-match": "google,another",
+          "platform-name": "Another",
+          "sku-id": 9
+        },
+        "name": "another2"
       }
     ]
   }

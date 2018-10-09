@@ -16,8 +16,11 @@ CrosConfigIdentityArm::CrosConfigIdentityArm() {}
 
 CrosConfigIdentityArm::~CrosConfigIdentityArm() {}
 
-bool CrosConfigIdentityArm::FakeDtCompatible(
-    const std::string& device_name, base::FilePath* dt_compatible_file_out) {
+bool CrosConfigIdentityArm::Fake(
+    const std::string& device_name,
+    int sku_id,
+    base::FilePath* dt_compatible_file_out,
+    base::FilePath* sku_id_file_out) {
   *dt_compatible_file_out = base::FilePath("dt_compatible");
   if (base::WriteFile(*dt_compatible_file_out, device_name.c_str(),
                       device_name.length()) != device_name.length()) {
@@ -25,18 +28,38 @@ bool CrosConfigIdentityArm::FakeDtCompatible(
     return false;
   }
 
+  char *sku_id_char = reinterpret_cast<char*>(malloc(sizeof(sku_id)));
+  *sku_id_file_out = base::FilePath("sku-id");
+
+  std::memcpy(sku_id_char, &sku_id, sizeof(sku_id));
+  if (base::WriteFile(*sku_id_file_out, sku_id_char,
+                      sizeof(sku_id)) != sizeof(sku_id)) {
+    CROS_CONFIG_LOG(ERROR) << "Failed to write sku-id file";
+    return false;
+  }
+
   return true;
 }
 
-bool CrosConfigIdentityArm::ReadDtCompatible(
-    const base::FilePath& dt_compatible_file) {
+bool CrosConfigIdentityArm::ReadInfo(const base::FilePath& dt_compatible_file,
+                                     const base::FilePath& sku_id_file) {
+  char *sku_id_char = reinterpret_cast<char*>(malloc(sizeof(sku_id_)));
   if (!base::ReadFileToString(dt_compatible_file, &compatible_devices_)) {
     CROS_CONFIG_LOG(ERROR) << "Failed to read device-tree compatible file: "
                            << dt_compatible_file.MaybeAsASCII();
     return false;
   }
+
+  if (base::ReadFile(sku_id_file, sku_id_char,
+                     sizeof(sku_id_)) != sizeof(sku_id_)) {
+    CROS_CONFIG_LOG(WARNING) << "Cannot read product_sku file ";
+    return false;
+  }
+  std::memcpy(&sku_id_, sku_id_char, sizeof(sku_id_));
+
   CROS_CONFIG_LOG(INFO) << "Read device-tree compatible list: "
-                        << compatible_devices_;
+                        << compatible_devices_
+                        << ", sku_id: " << sku_id_;
   return true;
 }
 

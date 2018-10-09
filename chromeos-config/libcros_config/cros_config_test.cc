@@ -33,10 +33,12 @@ class CrosConfigTest : public testing::Test {
   }
 
   void InitConfigArm(const std::string device_name = "google,some",
+                     int sku_id = -1,
                      std::string whitelabel_name = "") {
     base::FilePath filepath(TEST_FILE_ARM);
     ASSERT_TRUE(
-        cros_config_.InitForTestArm(filepath, device_name, whitelabel_name));
+        cros_config_.InitForTestArm(filepath, device_name,
+                                    sku_id, whitelabel_name));
   }
 
   brillo::CrosConfig cros_config_;
@@ -197,28 +199,39 @@ TEST_F(CrosConfigTest, CheckArmIdentityByDeviceName) {
 }
 
 TEST_F(CrosConfigTest, CheckArmIdentityByWhitelabel) {
-  InitConfigArm("google,whitelabel", "whitelabel1");
+  InitConfigArm("google,whitelabel", -1, "whitelabel1");
   std::string val;
   ASSERT_TRUE(cros_config_.GetString("/", "wallpaper", &val));
   ASSERT_EQ("whitelabel1-wallpaper", val);
 }
 
+TEST_F(CrosConfigTest, CheckArmIdentityBySkuId) {
+  InitConfigArm("google,another", 8, "");
+  std::string val;
+  ASSERT_TRUE(cros_config_.GetString("/", "name", &val));
+  ASSERT_EQ("another1", val);
+
+  InitConfigArm("google,another", 9, "");
+  ASSERT_TRUE(cros_config_.GetString("/", "name", &val));
+  ASSERT_EQ("another2", val);
+}
+
 TEST_F(CrosConfigTest, CheckWhitelabelEmptyMatchesDefault) {
-  InitConfigArm("google,whitelabel", "");
+  InitConfigArm("google,whitelabel", -1, "");
   std::string val;
   ASSERT_TRUE(cros_config_.GetString("/", "wallpaper", &val));
   ASSERT_EQ("whitelabel-default-wallpaper", val);
 }
 
 TEST_F(CrosConfigTest, CheckWhitelabelUnknownMatchesDefault) {
-  InitConfigArm("google,whitelabel", "unknown");
+  InitConfigArm("google,whitelabel", -1, "unknown");
   std::string val;
   ASSERT_TRUE(cros_config_.GetString("/", "wallpaper", &val));
   ASSERT_EQ("whitelabel-default-wallpaper", val);
 }
 
 TEST_F(CrosConfigTest, CheckWhitelabelTagIgnoredForNonWhitelabel) {
-  InitConfigArm("google,some", "whitelabel-tag-to-ignore");
+  InitConfigArm("google,some", -1, "whitelabel-tag-to-ignore");
   std::string val;
   ASSERT_TRUE(cros_config_.GetString("/", "wallpaper", &val));
   ASSERT_EQ("some-wallpaper", val);
@@ -226,7 +239,7 @@ TEST_F(CrosConfigTest, CheckWhitelabelTagIgnoredForNonWhitelabel) {
 
 TEST_F(CrosConfigTest, CheckArmNoIdentityMatch) {
   base::FilePath filepath(TEST_FILE_ARM);
-  ASSERT_FALSE(cros_config_.InitForTestArm(filepath, "invalid", ""));
+  ASSERT_FALSE(cros_config_.InitForTestArm(filepath, "invalid", -1, ""));
 }
 #endif /* !USE_JSON */
 
