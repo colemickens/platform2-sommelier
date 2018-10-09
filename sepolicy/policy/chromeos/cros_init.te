@@ -42,6 +42,7 @@ auditallow cros_init cros_init_shell_scripts:file execute;
 
 allow cros_init cros_chrt_exec:file rx_file_perms;
 
+# init/syslog.conf
 filetrans_pattern(cros_init_scripts, cros_var_log, cros_arc_log, file, "arc.log");
 filetrans_pattern(cros_init_scripts, cros_var_log, cros_authpolicy_log, file, "authpolicy.log");
 filetrans_pattern(cros_init_scripts, cros_var_log, cros_boot_log, file, "boot.log");
@@ -49,6 +50,7 @@ filetrans_pattern(cros_init_scripts, cros_var_log, cros_net_log, file, "net.log"
 filetrans_pattern(cros_init_scripts, cros_var_log, cros_secure_log, file, "secure");
 filetrans_pattern(cros_init_scripts, cros_var_log, cros_syslog, file, "messages");
 filetrans_pattern(cros_init_scripts, cros_var_log, cros_tlsdate_log, file, "tlsdate.log");
+filetrans_pattern(cros_init_scripts, cros_var_lib, cros_tz_data_file, dir, "timezone");
 
 # init/metrics_library.conf
 filetrans_pattern(cros_init_scripts, cros_var_lib, cros_metrics_file, dir, "metrics");
