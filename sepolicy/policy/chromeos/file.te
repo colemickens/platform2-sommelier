@@ -3,6 +3,7 @@ type cros_system_file, exec_type, file_type;
 
 type cros_anomaly_collector_exec, exec_type, file_type;
 type cros_avahi_daemon_exec, exec_type, file_type;
+type cros_bluetoothd_exec, exec_type, file_type;
 type cros_chapsd_exec, exec_type, file_type;
 type cros_chromeos_cleanup_logs_exec, exec_type, file_type;
 type cros_chromeos_trim_exec, exec_type, file_type;

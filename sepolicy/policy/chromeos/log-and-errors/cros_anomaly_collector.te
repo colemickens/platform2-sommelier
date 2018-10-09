@@ -2,7 +2,7 @@ type cros_anomaly_collector, chromeos_domain, domain, mlstrustedobject;
 
 permissive cros_anomaly_collector;
 
-domain_auto_trans(minijail, cros_anomaly_collector_exec, cros_anomaly_collector);
+from_minijail_preload(cros_anomaly_collector, cros_anomaly_collector_exec);
 
 allow cros_anomaly_collector cros_syslog:file r_file_perms;
 allow cros_anomaly_collector cros_metrics_file:dir { search getattr };

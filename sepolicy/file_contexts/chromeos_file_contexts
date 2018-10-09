@@ -51,6 +51,8 @@ include(sepolicy/file_contexts/coreutils)
 /usr/sbin/update_engine         u:object_r:cros_update_engine_exec:s0
 /usr/sbin/wpa_supplicant        u:object_r:cros_wpa_supplicant_exec:s0
 
+/usr/libexec/bluetooth/bluetoothd u:object_r:cros_bluetoothd_exec:s0
+
 /usr/share/cros/init(/.*)?      u:object_r:cros_init_shell_scripts:s0
 /usr/share/cros/init/ui-respawn u:object_r:cros_init_ui_respawn_shell_script:s0
 /usr/share/cros/init/ui-pre-start u:object_r:cros_init_ui_pre_start_shell_script:s0

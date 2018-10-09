@@ -1,0 +1,69 @@
+# Minijail-related macros
+
+#####################################
+# minijail_netns_new(domain)
+# When minijail is used with minijail_namespace_net() or the CLI is used with
+# the "-e" option, it tries to enter a new network namespace.
+#
+define(`minijail_netns_new', `
+allowxperm $1 $1:unix_dgram_socket ioctl { SIOCSIFFLAGS SIOCGIFFLAGS };
+')
+
+define(`minijail_mounts', `
+')
+
+
+# Auto-label tmpfile managed by minijail domains (static-only)
+define(`minijail_static_uses_tmpfile', `
+type cros_minijail_$2_tmp_file, file_type;
+filetrans_pattern($1, tmpfs, cros_minijail_$2_tmp_file, dir);
+filetrans_pattern($1, tmpfs, cros_minijail_$2_tmp_file, file);
+')
+
+# Domain transition where miniajil0 runs on static mode.
+# ($1 where minijail running) -> (execute $2) -> $3
+define(`from_minijail_static_custom', `
+typeattribute $1 minijail_domain;
+domain_auto_trans($1, $2, $3);
+allow $3 $1:fd use;
+rw_dir_file($3, $4);
+')
+
+# Domain transition where minijail0 runs on preload mode.
+# ($1 where minijail running) -> (execute $2) -> $3
+define(`from_minijail_preload_custom', `
+from_minijail_static_custom($1, $2, $3, $4);
+typeattribute $3 minijail_ldpreload_domain;
+');
+
+# Domain transition where minijail0 runs on static mode.
+# minijail -> (execute $2) -> $1
+define(`from_minijail_static', `
+from_minijail_static_custom(minijail, $2, $1, cros_minijail_minijail_tmp_file);
+')
+
+# Domain transition where minijail0 runs on preload mode.
+# minijail -> (execute $2) -> $1
+define(`from_minijail_preload', `
+from_minijail_preload_custom(minijail, $2, $1, cros_minijail_minijail_tmp_file);
+')
+
+# Domain transition where minijail0 runs on preload mode.
+# $1 -> (execute minijail0) -> (intermediates) -> (execute $2) -> $3
+define(`chain_minijail0_preload', `
+chain_minijail0_static($1, $2, $3);
+typeattribute $3 minijail_ldpreload_domain;
+')
+
+# Domain transition where minijail0 runs on static mode.
+# $1 -> (execute minijail0) -> (intermediates) -> (execute $2) -> $3
+define(`chain_minijail0_static', `
+typeattribute $1 minijail_executor_domain;
+type $3_minijail0, chromeos_domain, minijail_domain, domain;
+permissive $3_minijail0;
+domain_auto_trans($1, cros_minijail_exec, $3_minijail0);
+domain_auto_trans($3_minijail0, $2, $3);
+allow $3 $3_minijail0:fd use;
+allow $3_minijail0 $1:fd use;
+')
+
