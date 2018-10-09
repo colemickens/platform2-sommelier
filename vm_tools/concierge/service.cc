@@ -1253,14 +1253,6 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
     return dbus_response;
   }
 
-  int64_t disk_size;
-  if (!base::GetFileSize(disk_path, &disk_size)) {
-    LOG(ERROR) << "Disk path size unknown";
-    response.set_failure_reason("Failed to get size of disk");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
   base::ScopedFD disk_fd(HANDLE_EINTR(
       open(disk_path.value().c_str(), O_RDWR | O_NOFOLLOW | O_CLOEXEC)));
   if (!disk_fd.is_valid()) {
@@ -1279,17 +1271,11 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
     return dbus_response;
   }
 
-  ssize_t bytes_sent;
-  size_t total_bytes_sent = 0;
-  while (total_bytes_sent < disk_size) {
-    bytes_sent = HANDLE_EINTR(sendfile(storage_fd.get(), disk_fd.get(), nullptr,
-                                       disk_size - total_bytes_sent));
-    if (bytes_sent < 0) {
-      response.set_failure_reason("sendfile failed");
-      writer.AppendProtoAsArrayOfBytes(response);
-      return dbus_response;
-    }
-    total_bytes_sent += bytes_sent;
+  int convert_res = convert_to_qcow2(disk_fd.get(), storage_fd.get());
+  if (convert_res < 0) {
+    response.set_failure_reason("convert_to_qcow2 failed");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
   }
 
   response.set_status(DISK_STATUS_CREATED);
