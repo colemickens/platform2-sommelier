@@ -1063,10 +1063,6 @@ bool ArcSetup::GenerateHostSideCode(
             << time_delta.InMillisecondsRoundedUp() << "ms";
   arc_setup_metrics_->SendCodeRelocationResult(result);
 
-  // Make sure directories for all ISA are there just to make config.json happy.
-  for (const auto* isa : {"arm", "x86", "x86_64"})
-    EXIT_IF(!MkdirRecursively(host_dalvik_cache_directory.Append(isa)));
-
   return result == ArcCodeRelocationResult::SUCCESS;
 }
 
@@ -2054,13 +2050,21 @@ void ArcSetup::OnSetup() {
   // directories are empty and read-only which is the best for security.
 
   // Unconditionally generate host-side code here.
-  base::ElapsedTimer timer;
-  EXIT_IF(!GenerateHostSideCode(arc_paths_->art_dalvik_cache_directory));
+  if (GetSdkVersion() <= AndroidSdkVersion::ANDROID_P) {
+    base::ElapsedTimer timer;
+    EXIT_IF(!GenerateHostSideCode(arc_paths_->art_dalvik_cache_directory));
 
-  // For now, integrity checking time is the time needed to relocate
-  // boot*.art files because of b/67912719. Once TPM is enabled, this will
-  // report the total time spend on code verification + [relocation + sign]
-  arc_setup_metrics_->SendCodeIntegrityCheckingTotalTime(timer.Elapsed());
+    // For now, integrity checking time is the time needed to relocate
+    // boot*.art files because of b/67912719. Once TPM is enabled, this will
+    // report the total time spend on code verification + [relocation + sign]
+    arc_setup_metrics_->SendCodeIntegrityCheckingTotalTime(timer.Elapsed());
+  }
+
+  // Make sure directories for all ISA are there just to make config.json happy.
+  for (const auto* isa : {"arm", "x86", "x86_64"}) {
+    EXIT_IF(
+        !MkdirRecursively(arc_paths_->art_dalvik_cache_directory.Append(isa)));
+  }
 
   SetUpSharedMountPoints();
   CreateContainerFilesAndDirectories();
@@ -2123,12 +2127,15 @@ void ArcSetup::OnBootContinue() {
   // don't exist, this has to be done before calling ShareAndroidData().
   SetUpAndroidData();
 
-  if (!InstallLinksToHostSideCode()) {
-    arc_setup_metrics_->SendBootContinueCodeInstallationResult(
-        ArcBootContinueCodeInstallationResult::ERROR_CANNOT_INSTALL_HOST_CODE);
-  } else {
-    arc_setup_metrics_->SendBootContinueCodeInstallationResult(
-        ArcBootContinueCodeInstallationResult::SUCCESS);
+  if (GetSdkVersion() <= AndroidSdkVersion::ANDROID_P) {
+    if (!InstallLinksToHostSideCode()) {
+      arc_setup_metrics_->SendBootContinueCodeInstallationResult(
+          ArcBootContinueCodeInstallationResult::
+              ERROR_CANNOT_INSTALL_HOST_CODE);
+    } else {
+      arc_setup_metrics_->SendBootContinueCodeInstallationResult(
+          ArcBootContinueCodeInstallationResult::SUCCESS);
+    }
   }
 
   // Set up /run/arc/shared_mounts/{cache,data,demo_apps} to expose the user's
