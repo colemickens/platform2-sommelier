@@ -349,8 +349,10 @@ camera_metadata_t* PSLConfParser::constructDefaultMetadata(int cameraId, int req
     int32_t mode = ANDROID_SENSOR_TEST_PATTERN_MODE_OFF;
     TAGINFO(ANDROID_SENSOR_TEST_PATTERN_MODE, mode);
     TAGINFO(ANDROID_SENSOR_ROLLING_SHUTTER_SKEW, bogusValue);
-    value = ANDROID_HOT_PIXEL_MODE_FAST;
-    TAGINFO(ANDROID_HOT_PIXEL_MODE, value);
+    entry = metadata.find(ANDROID_HOT_PIXEL_AVAILABLE_HOT_PIXEL_MODES);
+    if (entry.count > 0) {
+      TAGINFO(ANDROID_HOT_PIXEL_MODE, entry.data.u8[0]);
+    }
     value = ANDROID_STATISTICS_HOT_PIXEL_MAP_MODE_OFF;
     TAGINFO(ANDROID_STATISTICS_HOT_PIXEL_MAP_MODE, value);
     value = ANDROID_STATISTICS_SCENE_FLICKER_NONE;
