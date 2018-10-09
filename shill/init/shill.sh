@@ -48,8 +48,16 @@ if [ ! -f /home/chronos/.oobe_completed ]; then
   ARGS="${ARGS} --portal-list="
 fi
 
-if [ -e /var/lib/shill/shill_sandboxing_enabled ]; then
-  /usr/bin/metrics_client -e Network.Shill.SandboxingEnabled 1 3
+# TODO(mortonm): Previous versions of this code used the
+# shill_sandboxing_enabled file when sandboxing was disabled by default. This
+# line cleans up that leftover file. Remove this line after M76 branches.
+rm -f /var/lib/shill/shill_sandboxing_enabled
+
+if [ -e /var/lib/shill/shill_sandboxing_disabled ]; then
+  /usr/bin/metrics_client -e Network.Shill.SandboxingEnabled 0 3 &
+  exec /usr/bin/shill ${ARGS}
+else
+  /usr/bin/metrics_client -e Network.Shill.SandboxingEnabled 1 3 &
   ARGS="${ARGS} --jail-vpn-clients"
   # Run shill as shill user/group in a minijail:
   #   -G so shill programs can inherit supplementary groups.
@@ -61,7 +69,4 @@ if [ -e /var/lib/shill/shill_sandboxing_enabled ]; then
   #   --ambient so child processes can inherit runtime capabilities:
   exec /sbin/minijail0 -u shill -g shill -G -n -B 20 -c 800003de0 --ambient \
        -- /usr/bin/shill ${ARGS}
-else
-  /usr/bin/metrics_client -e Network.Shill.SandboxingEnabled 0 3
-  exec /usr/bin/shill ${ARGS}
 fi
