@@ -562,12 +562,12 @@ TEST_P(Camera3ReprocessingReorderTest, ReorderStream) {
   }
 }
 
-// Return camera ids of cameras which has reprocessing capability
-static std::vector<int> EnumerateReprocessingCapCameras() {
+// Return ids of test cameras which has reprocessing capability
+static std::vector<int> EnumerateReprocessingTestCameras() {
   std::vector<int> ret_ids;
   std::ostringstream ss;
   Camera3Module m;
-  for (auto cam_id : m.GetCameraIds()) {
+  for (auto cam_id : m.GetTestCameraIds()) {
     camera_info info;
     m.GetCameraInfo(cam_id, &info);
     auto static_info = std::make_unique<Camera3Device::StaticInfo>(info);
@@ -579,16 +579,18 @@ static std::vector<int> EnumerateReprocessingCapCameras() {
       ss << ' ' << cam_id;
     }
   }
-  LOG(INFO) << "Camera with reprocessing capability:" << ss.str();
+  LOG(INFO) << "Test camera with reprocessing capability:" << ss.str();
   return ret_ids;
 }
 
-INSTANTIATE_TEST_CASE_P(Camera3FrameTest,
-                        Camera3ReprocessingTest,
-                        ::testing::ValuesIn(EnumerateReprocessingCapCameras()));
+INSTANTIATE_TEST_CASE_P(
+    Camera3FrameTest,
+    Camera3ReprocessingTest,
+    ::testing::ValuesIn(EnumerateReprocessingTestCameras()));
 
-INSTANTIATE_TEST_CASE_P(Camera3FrameTest,
-                        Camera3ReprocessingReorderTest,
-                        ::testing::ValuesIn(EnumerateReprocessingCapCameras()));
+INSTANTIATE_TEST_CASE_P(
+    Camera3FrameTest,
+    Camera3ReprocessingReorderTest,
+    ::testing::ValuesIn(EnumerateReprocessingTestCameras()));
 
 }  // namespace camera3_test

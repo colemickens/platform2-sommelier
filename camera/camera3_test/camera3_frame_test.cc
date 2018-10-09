@@ -1673,7 +1673,7 @@ INSTANTIATE_TEST_CASE_P(
     Camera3FrameTest,
     Camera3SingleFrameTest,
     ::testing::Combine(
-        ::testing::ValuesIn(Camera3Module().GetCameraIds()),
+        ::testing::ValuesIn(Camera3Module().GetTestCameraIds()),
         ::testing::Values(HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
                           HAL_PIXEL_FORMAT_YCbCr_420_888,
                           HAL_PIXEL_FORMAT_YCrCb_420_SP,
@@ -1693,7 +1693,7 @@ INSTANTIATE_TEST_CASE_P(
 INSTANTIATE_TEST_CASE_P(
     Camera3FrameTest,
     Camera3MultiFrameTest,
-    ::testing::Combine(::testing::ValuesIn(Camera3Module().GetCameraIds()),
+    ::testing::Combine(::testing::ValuesIn(Camera3Module().GetTestCameraIds()),
                        ::testing::Values(CAMERA3_TEMPLATE_PREVIEW,
                                          CAMERA3_TEMPLATE_STILL_CAPTURE,
                                          CAMERA3_TEMPLATE_VIDEO_RECORD,
@@ -1702,14 +1702,15 @@ INSTANTIATE_TEST_CASE_P(
                                          CAMERA3_TEMPLATE_MANUAL),
                        ::testing::Range(1, 10)));
 
-INSTANTIATE_TEST_CASE_P(Camera3FrameTest,
-                        Camera3MixedTemplateMultiFrameTest,
-                        ::testing::ValuesIn(Camera3Module().GetCameraIds()));
+INSTANTIATE_TEST_CASE_P(
+    Camera3FrameTest,
+    Camera3MixedTemplateMultiFrameTest,
+    ::testing::ValuesIn(Camera3Module().GetTestCameraIds()));
 
 INSTANTIATE_TEST_CASE_P(
     Camera3FrameTest,
     Camera3FlushRequestsTest,
-    ::testing::Combine(::testing::ValuesIn(Camera3Module().GetCameraIds()),
+    ::testing::Combine(::testing::ValuesIn(Camera3Module().GetTestCameraIds()),
                        ::testing::Values(CAMERA3_TEMPLATE_PREVIEW,
                                          CAMERA3_TEMPLATE_STILL_CAPTURE,
                                          CAMERA3_TEMPLATE_VIDEO_RECORD,
@@ -1718,32 +1719,36 @@ INSTANTIATE_TEST_CASE_P(
                                          CAMERA3_TEMPLATE_MANUAL),
                        ::testing::Values(10)));
 
-INSTANTIATE_TEST_CASE_P(Camera3FrameTest,
-                        Camera3MultiStreamFrameTest,
-                        ::testing::ValuesIn(Camera3Module().GetCameraIds()));
+INSTANTIATE_TEST_CASE_P(
+    Camera3FrameTest,
+    Camera3MultiStreamFrameTest,
+    ::testing::ValuesIn(Camera3Module().GetTestCameraIds()));
 
-INSTANTIATE_TEST_CASE_P(Camera3FrameTest,
-                        Camera3InvalidRequestTest,
-                        ::testing::ValuesIn(Camera3Module().GetCameraIds()));
+INSTANTIATE_TEST_CASE_P(
+    Camera3FrameTest,
+    Camera3InvalidRequestTest,
+    ::testing::ValuesIn(Camera3Module().GetTestCameraIds()));
 
 INSTANTIATE_TEST_CASE_P(
     Camera3FrameTest,
     Camera3SimpleCaptureFrames,
-    ::testing::Combine(::testing::ValuesIn(Camera3Module().GetCameraIds()),
+    ::testing::Combine(::testing::ValuesIn(Camera3Module().GetTestCameraIds()),
                        ::testing::Values(10)));
 
-INSTANTIATE_TEST_CASE_P(Camera3FrameTest,
-                        Camera3ResultTimestampsTest,
-                        ::testing::ValuesIn(Camera3Module().GetCameraIds()));
+INSTANTIATE_TEST_CASE_P(
+    Camera3FrameTest,
+    Camera3ResultTimestampsTest,
+    ::testing::ValuesIn(Camera3Module().GetTestCameraIds()));
 
-INSTANTIATE_TEST_CASE_P(Camera3FrameTest,
-                        Camera3InvalidBufferTest,
-                        ::testing::ValuesIn(Camera3Module().GetCameraIds()));
+INSTANTIATE_TEST_CASE_P(
+    Camera3FrameTest,
+    Camera3InvalidBufferTest,
+    ::testing::ValuesIn(Camera3Module().GetTestCameraIds()));
 
 static std::vector<std::tuple<int32_t, int32_t, int32_t, int32_t>>
 IterateCameraIdFormatResolution() {
   std::vector<std::tuple<int32_t, int32_t, int32_t, int32_t>> result;
-  auto cam_ids = Camera3Module().GetCameraIds();
+  auto cam_ids = Camera3Module().GetTestCameraIds();
   auto formats =
       std::vector<int>({HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
                         HAL_PIXEL_FORMAT_YCbCr_420_888, HAL_PIXEL_FORMAT_BLOB});

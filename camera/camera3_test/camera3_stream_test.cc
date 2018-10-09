@@ -212,7 +212,7 @@ INSTANTIATE_TEST_CASE_P(
     Camera3StreamTest,
     Camera3SingleStreamTest,
     ::testing::Combine(
-        ::testing::ValuesIn(Camera3Module().GetCameraIds()),
+        ::testing::ValuesIn(Camera3Module().GetTestCameraIds()),
         ::testing::Values(HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
                           HAL_PIXEL_FORMAT_YCbCr_420_888,
                           HAL_PIXEL_FORMAT_YCrCb_420_SP,
@@ -222,15 +222,16 @@ INSTANTIATE_TEST_CASE_P(
                           HAL_PIXEL_FORMAT_Y16,
                           HAL_PIXEL_FORMAT_RAW16)));
 
-INSTANTIATE_TEST_CASE_P(Camera3StreamTest,
-                        Camera3MultiStreamTest,
-                        ::testing::ValuesIn(Camera3Module().GetCameraIds()));
+INSTANTIATE_TEST_CASE_P(
+    Camera3StreamTest,
+    Camera3MultiStreamTest,
+    ::testing::ValuesIn(Camera3Module().GetTestCameraIds()));
 
 INSTANTIATE_TEST_CASE_P(
     Camera3StreamTest,
     Camera3StreamInvalidRotationTest,
     ::testing::Combine(
-        ::testing::ValuesIn(Camera3Module().GetCameraIds()),
+        ::testing::ValuesIn(Camera3Module().GetTestCameraIds()),
         ::testing::Values(HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
                           HAL_PIXEL_FORMAT_YCbCr_420_888,
                           HAL_PIXEL_FORMAT_YCrCb_420_SP,

@@ -98,6 +98,10 @@ class Camera3Module {
   // Get list of camera IDs
   std::vector<int> GetCameraIds();
 
+  // Get list of test camera IDs if specify in cmdline args, or default use
+  // |GetCameraIds|
+  std::vector<int> GetTestCameraIds();
+
   // Open camera device
   camera3_device* OpenDevice(int cam_id);
 
@@ -147,6 +151,10 @@ class Camera3Module {
                                    int32_t index);
 
   const camera_module_t* cam_module_;
+
+  // Id of cameras to be tested exclusively. Empty vector for test all available
+  // cameras.
+  std::vector<int> test_camera_ids_;
 
   // This thread is needed because of the Chrome OS camera HAL adapter
   // assumption that all the camera_module functions should be called on the

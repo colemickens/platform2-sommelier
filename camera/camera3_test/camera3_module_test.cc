@@ -12,6 +12,7 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/macros.h>
+#include <base/strings/string_split.h>
 
 #include "camera3_test/camera3_perf_log.h"
 #include "camera3_test/camera3_test_data_forwarder.h"
@@ -98,6 +99,21 @@ std::ostream& operator<<(std::ostream& out, const ResolutionInfo& info) {
   return out;
 }
 
+static std::vector<int> GetCmdLineTestCameraIds() {
+  auto id_str =
+      base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII("camera_ids");
+  std::vector<int> ids;
+  if (!id_str.empty()) {
+    auto id_strs = base::SplitString(id_str, ",",
+                                     base::WhitespaceHandling::TRIM_WHITESPACE,
+                                     base::SplitResult::SPLIT_WANT_ALL);
+    for (const auto& id : id_strs) {
+      ids.push_back(stoi(id));
+    }
+  }
+  return ids;
+}
+
 static void InitCameraModuleOnThread(camera_module_t* cam_module) {
   static CameraModuleCallbacksAux* callbacks = []() {
     auto* aux = new CameraModuleCallbacksAux();
@@ -115,26 +131,68 @@ static void InitCameraModuleOnThread(camera_module_t* cam_module) {
   int num_builtin_cameras = cam_module->get_number_of_cameras();
   VLOGF(1) << "num_builtin_cameras = " << num_builtin_cameras;
   ASSERT_EQ(0, cam_module->set_callbacks(callbacks));
-  g_cam_module = cam_module;
 }
 
-static void InitCameraModule(void** cam_hal_handle,
-                             const char* camera_hal_path) {
-  *cam_hal_handle = dlopen(camera_hal_path, RTLD_NOW);
+// On successfully Initialized, |cam_module_| will pointed to valid
+// camera_module_t. Caller should be responsible to dlclose |cam_hal_handle|, if
+// it's not NULL.
+static void InitCameraModule(const base::FilePath& camera_hal_path,
+                             void** cam_hal_handle,
+                             camera_module_t** cam_module) {
+  *cam_hal_handle = dlopen(camera_hal_path.value().c_str(), RTLD_NOW);
   ASSERT_NE(nullptr, *cam_hal_handle) << "Failed to dlopen: " << dlerror();
 
-  camera_module_t* cam_module = static_cast<camera_module_t*>(
+  camera_module_t* module = static_cast<camera_module_t*>(
       dlsym(*cam_hal_handle, HAL_MODULE_INFO_SYM_AS_STR));
-  ASSERT_NE(nullptr, cam_module) << "Camera module is invalid";
-  ASSERT_NE(nullptr, cam_module->get_number_of_cameras)
+  ASSERT_NE(nullptr, module) << "Camera module is invalid";
+  ASSERT_NE(nullptr, module->get_number_of_cameras)
       << "get_number_of_cameras is not implemented";
-  ASSERT_NE(nullptr, cam_module->get_camera_info)
+  ASSERT_NE(nullptr, module->get_camera_info)
       << "get_camera_info is not implemented";
-  ASSERT_NE(nullptr, cam_module->common.methods->open)
-      << "open() is unimplemented";
-  ASSERT_EQ(0,
-            g_module_thread.PostTaskSync(
-                FROM_HERE, base::Bind(&InitCameraModuleOnThread, cam_module)));
+  ASSERT_NE(nullptr, module->common.methods->open) << "open() is unimplemented";
+  for (int id : GetCmdLineTestCameraIds()) {
+    ASSERT_GT(module->get_number_of_cameras(), id)
+        << "No such test camera id in HAL";
+  }
+  ASSERT_EQ(0, g_module_thread.PostTaskSync(
+                   FROM_HERE, base::Bind(&InitCameraModuleOnThread, module)));
+  *cam_module = module;
+}
+
+static void InitCameraModuleByHalPath(const base::FilePath& camera_hal_path,
+                                      void** cam_hal_handle) {
+  InitCameraModule(camera_hal_path, cam_hal_handle, &g_cam_module);
+}
+
+static void InitCameraModuleByFacing(int facing, void** cam_hal_handle) {
+  // Do cleanup when exit from ASSERT_XX
+  struct CleanupModule {
+    void operator()(void** cam_hal_handle) {
+      if (*cam_hal_handle) {
+        g_cam_module = NULL;
+        dlclose(*cam_hal_handle);
+        *cam_hal_handle = NULL;
+      }
+    }
+  };
+  for (const auto& hal_path : cros::GetCameraHalPaths()) {
+    InitCameraModule(hal_path, cam_hal_handle, &g_cam_module);
+    std::unique_ptr<void*, CleanupModule> cleanup_ptr(cam_hal_handle);
+    if (g_cam_module != NULL) {
+      Camera3Module camera_module;
+      for (int i = 0; i < camera_module.GetNumberOfCameras(); i++) {
+        camera_info info;
+        ASSERT_EQ(0, camera_module.GetCameraInfo(i, &info));
+        if (info.facing == facing) {
+          base::CommandLine::ForCurrentProcess()->AppendSwitchASCII(
+              "camera_ids", std::to_string(i));
+          cleanup_ptr.release();
+          return;
+        }
+      }
+    }
+  }
+  FAIL() << "Cannot find camera with facing=" << facing;
 }
 
 static void InitPerfLog() {
@@ -162,6 +220,7 @@ static camera_module_t* GetCameraModule() {
 
 Camera3Module::Camera3Module()
     : cam_module_(GetCameraModule()),
+      test_camera_ids_(GetCmdLineTestCameraIds()),
       hal_thread_(&g_module_thread),
       dev_thread_("Camera3 Test Device Thread") {
   dev_thread_.Start();
@@ -194,6 +253,10 @@ std::vector<int> Camera3Module::GetCameraIds() {
   }
 
   return ids;
+}
+
+std::vector<int> Camera3Module::GetTestCameraIds() {
+  return test_camera_ids_.empty() ? GetCameraIds() : test_camera_ids_;
 }
 
 void Camera3Module::GetStreamConfigEntry(int cam_id,
@@ -1065,6 +1128,23 @@ static void AddGtestFilterNegativePattern(std::string negative) {
       .append(negative);
 }
 
+// Return -ENOENT for no facing specified, -EINVAL for invalid facing name.
+static int GetCmdLineTestCameraFacing(const base::CommandLine& cmd_line) {
+  const std::string facing_names[] = {"back", "front"};
+  const auto& facing_name = cmd_line.GetSwitchValueASCII("camera_facing");
+  if (facing_name.empty())
+    return -ENOENT;
+  int idx = std::distance(
+      facing_names,
+      std::find(facing_names, facing_names + arraysize(facing_names),
+                facing_name));
+  if (idx == arraysize(facing_names)) {
+    ADD_FAILURE() << "Invalid facing name: " << facing_name;
+    return -EINVAL;
+  }
+  return idx;
+}
+
 bool InitializeTest(int* argc, char*** argv, void** cam_hal_handle) {
   // Set up logging so we can enable VLOGs with -v / --vmodule.
   base::CommandLine::Init(*argc, *argv);
@@ -1075,8 +1155,19 @@ bool InitializeTest(int* argc, char*** argv, void** cam_hal_handle) {
   base::CommandLine* cmd_line = base::CommandLine::ForCurrentProcess();
   base::FilePath camera_hal_path =
       cmd_line->GetSwitchValuePath("camera_hal_path");
+  int facing = GetCmdLineTestCameraFacing(*cmd_line);
 
-  if (camera_hal_path.empty()) {
+  if (facing != -ENOENT) {
+    if (facing == -EINVAL) {
+      LOG(ERROR) << "Invalid camera facing name.";
+      return false;
+    } else if (!camera_hal_path.empty() ||
+               !camera3_test::GetCmdLineTestCameraIds().empty()) {
+      LOGF(ERROR) << "Cannot specify both --camera_hal_path/--camera_ids and "
+                     "--camera_facing.";
+      return false;
+    }
+  } else if (camera_hal_path.empty()) {
     std::vector<base::FilePath> camera_hal_paths = cros::GetCameraHalPaths();
 
     if (camera_hal_paths.size() == 1) {
@@ -1107,8 +1198,11 @@ bool InitializeTest(int* argc, char*** argv, void** cam_hal_handle) {
 
   // Open camera HAL and get module
   camera3_test::g_module_thread.Start();
-  camera3_test::InitCameraModule(cam_hal_handle,
-                                 camera_hal_path.value().c_str());
+  if (facing != -ENOENT) {
+    camera3_test::InitCameraModuleByFacing(facing, cam_hal_handle);
+  } else {
+    camera3_test::InitCameraModuleByHalPath(camera_hal_path, cam_hal_handle);
+  }
 
   camera3_test::InitPerfLog();
 

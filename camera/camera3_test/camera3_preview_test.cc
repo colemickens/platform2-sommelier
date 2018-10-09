@@ -52,8 +52,9 @@ TEST_P(Camera3SinglePreviewTest, Camera3BasicPreviewTest) {
   }
 }
 
-INSTANTIATE_TEST_CASE_P(Camera3PreviewTest,
-                        Camera3SinglePreviewTest,
-                        ::testing::ValuesIn(Camera3Module().GetCameraIds()));
+INSTANTIATE_TEST_CASE_P(
+    Camera3PreviewTest,
+    Camera3SinglePreviewTest,
+    ::testing::ValuesIn(Camera3Module().GetTestCameraIds()));
 
 }  // namespace camera3_test

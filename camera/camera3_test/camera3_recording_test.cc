@@ -178,10 +178,10 @@ ParseRecordingParams() {
   // now, and all cameras are sorted by facing in SuperHAL.  I feel bad when
   // implementing the following hack (sigh).
   std::vector<std::tuple<int, int32_t, int32_t, float>> result;
-  auto cam_ids = Camera3Module().GetCameraIds();
-  if (cam_ids.size() < param_ids.size()) {
+  Camera3Module module;
+  if (module.GetCameraIds().size() < param_ids.size()) {
     // SuperHAL case
-    for (const auto& cam_id : cam_ids) {
+    for (const auto& cam_id : module.GetTestCameraIds()) {
       camera_info info;
       EXPECT_EQ(0, Camera3Module().GetCameraInfo(cam_id, &info));
       bool found_matching_param = false;
@@ -196,7 +196,7 @@ ParseRecordingParams() {
     }
   } else {
     // Single HAL case
-    for (const auto& cam_id : cam_ids) {
+    for (const auto& cam_id : module.GetTestCameraIds()) {
       if (std::find_if(
               params.begin(), params.end(),
               [&](const std::tuple<int, int32_t, int32_t, float>& item) {

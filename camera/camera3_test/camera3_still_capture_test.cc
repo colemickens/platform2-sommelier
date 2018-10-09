@@ -263,14 +263,15 @@ TEST_P(Camera3JpegResolutionTest, JpegResolutionTest) {
       << "JPEG size result and request should match";
 }
 
-INSTANTIATE_TEST_CASE_P(Camera3StillCaptureTest,
-                        Camera3SimpleStillCaptureTest,
-                        ::testing::ValuesIn(Camera3Module().GetCameraIds()));
+INSTANTIATE_TEST_CASE_P(
+    Camera3StillCaptureTest,
+    Camera3SimpleStillCaptureTest,
+    ::testing::ValuesIn(Camera3Module().GetTestCameraIds()));
 
 static std::vector<std::tuple<int, ResolutionInfo, ResolutionInfo>>
 IterateCameraIdPreviewJpegResolution() {
   std::vector<std::tuple<int, ResolutionInfo, ResolutionInfo>> result;
-  auto cam_ids = Camera3Module().GetCameraIds();
+  auto cam_ids = Camera3Module().GetTestCameraIds();
   for (const auto& cam_id : cam_ids) {
     auto preview_resolutions = Camera3Module().GetSortedOutputResolutions(
         cam_id, HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED);
