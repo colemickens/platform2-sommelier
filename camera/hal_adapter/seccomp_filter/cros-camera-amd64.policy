@@ -78,8 +78,9 @@ setpriority: 1
 setsockopt: 1
 sigaltstack: 1
 signalfd4: 1
-# Allow PF_UNIX for mojo IPC, and PF_NETLINK for udev.
-socket: arg0 == PF_UNIX || arg0 == PF_NETLINK
+# Allow PF_UNIX for syslog and mojo IPC.
+# Allow PF_NETLINK with NETLINK_KOBJECT_UEVENT (15) for udev.
+socket: arg0 == PF_UNIX || arg0 == PF_NETLINK && arg2 == 15
 socketpair: 1
 stat: 1
 statfs: 1
