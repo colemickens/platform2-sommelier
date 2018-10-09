@@ -507,6 +507,7 @@ mount --make-shared -n -t tmpfs -o nodev,noexec,nosuid media /media
 if [ -f /sys/fs/selinux/enforce ]; then
   chattr -i /var/empty || :
   restorecon -R -D /var
+  restorecon -R /sys
 fi
 
 # Make sure the empty dir stays empty (only works on ext4).
