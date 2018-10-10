@@ -78,6 +78,12 @@ server.
 This makes it possible to share different sets of paths with different
 VMs by giving each of them access to a different 9p server.
 
+## 9s
+
+`9s` is program that serves the [9p] file system protocol.  `seneschal` launches
+one instance of this program for each VM started by the user.  It is a small
+wrapper around the [p9](#p9) rust library.
+
 ## vsh
 
 `vsh` is a vsock-based remote shell utility. `vshd` runs on the guest/server,

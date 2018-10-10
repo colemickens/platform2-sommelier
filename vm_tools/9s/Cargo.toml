@@ -1,0 +1,20 @@
+[package]
+name = "9s"
+version = "0.1.0"
+authors = ["The Chromium OS Authors"]
+
+[dependencies]
+getopts = "0.2"
+libc = "0.2"
+p9 = "0.1.0"
+log = "0.4"
+
+[profile.dev]
+# We want some optimization even in dev builds.
+opt-level = 2
+
+[profile.release]
+# We still want debug information in release builds.
+debug = true
+lto = true
+panic = 'abort'
