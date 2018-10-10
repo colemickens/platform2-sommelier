@@ -27,22 +27,22 @@ class ConnectionInfoTest : public testing::Test {
  protected:
   void ExpectConnectionInfoEqual(const ConnectionInfo& info1,
                                  const ConnectionInfo& info2) {
-    EXPECT_EQ(info1.protocol(), info2.protocol());
-    EXPECT_EQ(info1.time_to_expire_seconds(), info2.time_to_expire_seconds());
-    EXPECT_EQ(info1.is_unreplied(), info2.is_unreplied());
-    EXPECT_TRUE(info1.original_source_ip_address()
-                    .Equals(info2.original_source_ip_address()));
-    EXPECT_EQ(info1.original_source_port(), info2.original_source_port());
-    EXPECT_TRUE(info1.original_destination_ip_address()
-                    .Equals(info2.original_destination_ip_address()));
-    EXPECT_EQ(info1.original_destination_port(),
-              info2.original_destination_port());
-    EXPECT_TRUE(info1.reply_source_ip_address()
-                    .Equals(info2.reply_source_ip_address()));
-    EXPECT_EQ(info1.reply_source_port(), info2.reply_source_port());
-    EXPECT_TRUE(info1.reply_destination_ip_address()
-                    .Equals(info2.reply_destination_ip_address()));
-    EXPECT_EQ(info1.reply_destination_port(), info2.reply_destination_port());
+    EXPECT_EQ(info1.protocol, info2.protocol);
+    EXPECT_EQ(info1.time_to_expire_seconds, info2.time_to_expire_seconds);
+    EXPECT_EQ(info1.is_unreplied, info2.is_unreplied);
+    EXPECT_TRUE(info1.original_source_ip_address
+                    .Equals(info2.original_source_ip_address));
+    EXPECT_EQ(info1.original_source_port, info2.original_source_port);
+    EXPECT_TRUE(info1.original_destination_ip_address
+                    .Equals(info2.original_destination_ip_address));
+    EXPECT_EQ(info1.original_destination_port,
+              info2.original_destination_port);
+    EXPECT_TRUE(info1.reply_source_ip_address
+                    .Equals(info2.reply_source_ip_address));
+    EXPECT_EQ(info1.reply_source_port, info2.reply_source_port);
+    EXPECT_TRUE(info1.reply_destination_ip_address
+                    .Equals(info2.reply_destination_ip_address));
+    EXPECT_EQ(info1.reply_destination_port, info2.reply_destination_port);
   }
 };
 

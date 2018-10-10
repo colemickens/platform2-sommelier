@@ -9,18 +9,17 @@
 namespace shill {
 
 ConnectionInfo::ConnectionInfo()
-    : protocol_(IPPROTO_MAX),
-      time_to_expire_seconds_(0),
-      is_unreplied_(false),
-      original_source_ip_address_(IPAddress::kFamilyUnknown),
-      original_source_port_(0),
-      original_destination_ip_address_(IPAddress::kFamilyUnknown),
-      original_destination_port_(0),
-      reply_source_ip_address_(IPAddress::kFamilyUnknown),
-      reply_source_port_(0),
-      reply_destination_ip_address_(IPAddress::kFamilyUnknown),
-      reply_destination_port_(0) {
-}
+    : protocol(IPPROTO_MAX),
+      time_to_expire_seconds(0),
+      is_unreplied(false),
+      original_source_ip_address(IPAddress::kFamilyUnknown),
+      original_source_port(0),
+      original_destination_ip_address(IPAddress::kFamilyUnknown),
+      original_destination_port(0),
+      reply_source_ip_address(IPAddress::kFamilyUnknown),
+      reply_source_port(0),
+      reply_destination_ip_address(IPAddress::kFamilyUnknown),
+      reply_destination_port(0) {}
 
 ConnectionInfo::ConnectionInfo(int protocol,
                                int64_t time_to_expire_seconds,
@@ -33,52 +32,22 @@ ConnectionInfo::ConnectionInfo(int protocol,
                                uint16_t reply_source_port,
                                IPAddress reply_destination_ip_address,
                                uint16_t reply_destination_port)
-    : protocol_(protocol),
-      time_to_expire_seconds_(time_to_expire_seconds),
-      is_unreplied_(is_unreplied),
-      original_source_ip_address_(original_source_ip_address),
-      original_source_port_(original_source_port),
-      original_destination_ip_address_(original_destination_ip_address),
-      original_destination_port_(original_destination_port),
-      reply_source_ip_address_(reply_source_ip_address),
-      reply_source_port_(reply_source_port),
-      reply_destination_ip_address_(reply_destination_ip_address),
-      reply_destination_port_(reply_destination_port) {
-}
+    : protocol(protocol),
+      time_to_expire_seconds(time_to_expire_seconds),
+      is_unreplied(is_unreplied),
+      original_source_ip_address(original_source_ip_address),
+      original_source_port(original_source_port),
+      original_destination_ip_address(original_destination_ip_address),
+      original_destination_port(original_destination_port),
+      reply_source_ip_address(reply_source_ip_address),
+      reply_source_port(reply_source_port),
+      reply_destination_ip_address(reply_destination_ip_address),
+      reply_destination_port(reply_destination_port) {}
 
-ConnectionInfo::ConnectionInfo(const ConnectionInfo& info)
-    : protocol_(info.protocol_),
-      time_to_expire_seconds_(info.time_to_expire_seconds_),
-      is_unreplied_(info.is_unreplied_),
-      original_source_ip_address_(info.original_source_ip_address_),
-      original_source_port_(info.original_source_port_),
-      original_destination_ip_address_(
-          info.original_destination_ip_address_),
-      original_destination_port_(info.original_destination_port_),
-      reply_source_ip_address_(info.reply_source_ip_address_),
-      reply_source_port_(info.reply_source_port_),
-      reply_destination_ip_address_(
-          info.reply_destination_ip_address_),
-      reply_destination_port_(info.reply_destination_port_) {
-}
+ConnectionInfo::ConnectionInfo(const ConnectionInfo& info) = default;
 
-ConnectionInfo::~ConnectionInfo() {}
+ConnectionInfo::~ConnectionInfo() = default;
 
-ConnectionInfo& ConnectionInfo::operator=(const ConnectionInfo& info) {
-  protocol_ = info.protocol_;
-  time_to_expire_seconds_ = info.time_to_expire_seconds_;
-  is_unreplied_ = info.is_unreplied_;
-  original_source_ip_address_ = info.original_source_ip_address_;
-  original_source_port_ = info.original_source_port_;
-  original_destination_ip_address_ =
-      info.original_destination_ip_address_;
-  original_destination_port_ = info.original_destination_port_;
-  reply_source_ip_address_ = info.reply_source_ip_address_;
-  reply_source_port_ = info.reply_source_port_;
-  reply_destination_ip_address_ = info.reply_destination_ip_address_;
-  reply_destination_port_ = info.reply_destination_port_;
-
-  return *this;
-}
+ConnectionInfo& ConnectionInfo::operator=(const ConnectionInfo& info) = default;
 
 }  // namespace shill

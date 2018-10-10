@@ -77,70 +77,72 @@ bool ConnectionInfoReader::ParseConnectionInfo(const string& input,
     return false;
   }
 
+  ConnectionInfo result;
   int index = 0;
 
-  int protocol = 0;
-  if (!ParseProtocol(tokens[++index], &protocol)) {
+  if (!ParseProtocol(tokens[++index], &result.protocol)) {
     return false;
   }
-  info->set_protocol(protocol);
 
-  int64_t time_to_expire_seconds = 0;
-  if (!ParseTimeToExpireSeconds(tokens[++index], &time_to_expire_seconds)) {
+  if (!ParseTimeToExpireSeconds(tokens[++index],
+                                &result.time_to_expire_seconds)) {
     return false;
   }
-  info->set_time_to_expire_seconds(time_to_expire_seconds);
 
-  if (protocol == IPPROTO_TCP)
+  if (result.protocol == IPPROTO_TCP)
     ++index;
 
-  IPAddress ip_address(IPAddress::kFamilyUnknown);
-  uint16_t port = 0;
   bool is_source = false;
 
-  if (!ParseIPAddress(tokens[++index], &ip_address, &is_source) || !is_source) {
+  if (!ParseIPAddress(tokens[++index], &result.original_source_ip_address,
+                      &is_source) ||
+      !is_source) {
     return false;
   }
-  info->set_original_source_ip_address(ip_address);
-  if (!ParseIPAddress(tokens[++index], &ip_address, &is_source) || is_source) {
+  if (!ParseIPAddress(tokens[++index], &result.original_destination_ip_address,
+                      &is_source) ||
+      is_source) {
     return false;
   }
-  info->set_original_destination_ip_address(ip_address);
 
-  if (!ParsePort(tokens[++index], &port, &is_source) || !is_source) {
+  if (!ParsePort(tokens[++index], &result.original_source_port, &is_source) ||
+      !is_source) {
     return false;
   }
-  info->set_original_source_port(port);
-  if (!ParsePort(tokens[++index], &port, &is_source) || is_source) {
+  if (!ParsePort(tokens[++index], &result.original_destination_port,
+                 &is_source) ||
+      is_source) {
     return false;
   }
-  info->set_original_destination_port(port);
 
   if (tokens[index + 1] == kUnrepliedTag) {
-    info->set_is_unreplied(true);
+    result.is_unreplied = true;
     ++index;
   } else {
-    info->set_is_unreplied(false);
+    result.is_unreplied = false;
   }
 
-  if (!ParseIPAddress(tokens[++index], &ip_address, &is_source) || !is_source) {
+  if (!ParseIPAddress(tokens[++index], &result.reply_source_ip_address,
+                      &is_source) ||
+      !is_source) {
     return false;
   }
-  info->set_reply_source_ip_address(ip_address);
-  if (!ParseIPAddress(tokens[++index], &ip_address, &is_source) || is_source) {
+  if (!ParseIPAddress(tokens[++index], &result.reply_destination_ip_address,
+                      &is_source) ||
+      is_source) {
     return false;
   }
-  info->set_reply_destination_ip_address(ip_address);
 
-  if (!ParsePort(tokens[++index], &port, &is_source) || !is_source) {
+  if (!ParsePort(tokens[++index], &result.reply_source_port, &is_source) ||
+      !is_source) {
     return false;
   }
-  info->set_reply_source_port(port);
-  if (!ParsePort(tokens[++index], &port, &is_source) || is_source) {
+  if (!ParsePort(tokens[++index], &result.reply_destination_port, &is_source) ||
+      is_source) {
     return false;
   }
-  info->set_reply_destination_port(port);
 
+  *info = result;
   return true;
 }
 

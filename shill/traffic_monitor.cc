@@ -176,12 +176,12 @@ bool TrafficMonitor::IsDnsFailing() {
         kDnsTimedOutThresholdSeconds - kSamplingIntervalMilliseconds / 1000;
     string device_ip_address = device_->ipconfig()->properties().address;
     for (const auto& info : connection_infos) {
-      if (info.protocol() != IPPROTO_UDP ||
-          info.time_to_expire_seconds() > kDnsTimedOutThresholdSeconds ||
-          info.time_to_expire_seconds() <= kDnsTimedOutLowerThresholdSeconds ||
-          !info.is_unreplied() ||
-          info.original_source_ip_address().ToString() != device_ip_address ||
-          info.original_destination_port() != kDnsPort)
+      if (info.protocol != IPPROTO_UDP ||
+          info.time_to_expire_seconds > kDnsTimedOutThresholdSeconds ||
+          info.time_to_expire_seconds <= kDnsTimedOutLowerThresholdSeconds ||
+          !info.is_unreplied ||
+          info.original_source_ip_address.ToString() != device_ip_address ||
+          info.original_destination_port != kDnsPort)
         continue;
 
       ++accummulated_dns_failures_samples_;
