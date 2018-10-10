@@ -17,11 +17,6 @@
 static bool is_blacklisted_driver(
     const char* vendor_string, VAProfile profile, VAEntrypoint entrypoint) {
   if (strstr(vendor_string, "AMD STONEY") != NULL) {
-    // HW JPEG Decoding.
-    // TODO(hiroh): Remove this once https://crbug.com/828119 is fixed.
-    if (entrypoint == VAEntrypointVLD) {
-      return profile == VAProfileJPEGBaseline;
-    }
     // HW H264 Encoding.
     // TODO(hiroh): Remove this once https://crbug.com/828482 is fixed.
     if (entrypoint == VAEntrypointEncSlice) {
