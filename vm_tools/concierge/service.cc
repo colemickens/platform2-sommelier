@@ -99,6 +99,11 @@ constexpr char kDownloadsDir[] = "Downloads";
 // File extenstion for qcow2 disk types
 constexpr char kQcowImageExtension[] = ".qcow2";
 
+// Valid file extensions for disk images
+constexpr const char* kDiskImagePatterns[] = {
+    "*.img", "*.qcow2",
+};
+
 // Default name to use for a container.
 constexpr char kDefaultContainerName[] = "penguin";
 
@@ -1296,27 +1301,29 @@ std::unique_ptr<dbus::Response> Service::ListVmDisks(
   }
 
   uint64_t total_size = 0;
-  // Returns *.qcow2 in the given storage area.
-  base::FileEnumerator dir_enum(image_dir, false, base::FileEnumerator::FILES,
-                                "*.qcow2");
+  // Returns disk images in the given storage area.
+  for (const auto& pattern : kDiskImagePatterns) {
+    base::FileEnumerator dir_enum(image_dir, false, base::FileEnumerator::FILES,
+                                  pattern);
 
-  for (base::FilePath path = dir_enum.Next(); !path.empty();
-       path = dir_enum.Next()) {
-    base::FilePath bare_name = path.BaseName().RemoveExtension();
-    if (bare_name.empty()) {
-      continue;
-    }
-    std::string image_name;
-    if (!base::Base64UrlDecode(bare_name.value(),
-                               base::Base64UrlDecodePolicy::IGNORE_PADDING,
-                               &image_name)) {
-      continue;
-    }
-    std::string* name = response.add_images();
-    *name = std::move(image_name);
-    struct stat st;
-    if (stat(path.value().c_str(), &st) == 0) {
-      total_size += st.st_blocks * 512;
+    for (base::FilePath path = dir_enum.Next(); !path.empty();
+         path = dir_enum.Next()) {
+      base::FilePath bare_name = path.BaseName().RemoveExtension();
+      if (bare_name.empty()) {
+        continue;
+      }
+      std::string image_name;
+      if (!base::Base64UrlDecode(bare_name.value(),
+                                 base::Base64UrlDecodePolicy::IGNORE_PADDING,
+                                 &image_name)) {
+        continue;
+      }
+      std::string* name = response.add_images();
+      *name = std::move(image_name);
+      struct stat st;
+      if (stat(path.value().c_str(), &st) == 0) {
+        total_size += st.st_blocks * 512;
+      }
     }
   }
   response.set_total_size(total_size);
