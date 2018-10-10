@@ -75,6 +75,8 @@ MountErrorType FUSEMounter::MountImpl() {
   mount_process.SetUserId(mount_user_id);
   mount_process.SetGroupId(mount_group_id);
   mount_process.SetNoNewPrivileges();
+  // TODO(crbug.com/866377): Run FUSE fully deprivileged.
+  mount_process.SetCapabilities(CAP_TO_MASK(CAP_SYS_ADMIN));
 
   // The FUSE mount program is put under a new mount namespace, so mounts
   // inside that namespace don't normally propagate out except when a mount is

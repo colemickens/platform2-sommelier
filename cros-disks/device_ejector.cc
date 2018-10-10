@@ -4,6 +4,8 @@
 
 #include "cros-disks/device_ejector.h"
 
+#include <linux/capability.h>
+
 #include <memory>
 
 #include <base/bind.h>
@@ -37,6 +39,7 @@ bool DeviceEjector::Eject(const std::string& device_path) {
   process->NewNetworkNamespace();
   process->AddArgument(kEjectProgram);
   process->AddArgument(device_path);
+  process->SetCapabilities(CAP_TO_MASK(CAP_SYS_ADMIN));
 
   // TODO(benchan): Set up a timeout to kill a hanging process.
   bool started = process->Start();

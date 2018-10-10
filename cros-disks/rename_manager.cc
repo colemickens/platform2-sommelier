@@ -109,6 +109,7 @@ RenameErrorType RenameManager::StartRenaming(const string& device_path,
   process->NewMountNamespace();
   process->NewIpcNamespace();
   process->NewNetworkNamespace();
+  process->SetCapabilities(0);
 
   process->AddArgument(parameters->program_path);
 

@@ -372,12 +372,15 @@ MountErrorType ArchiveManager::MountAVFSPath(const string& base_path,
       "ro,nodev,noexec,nosuid,allow_other,user=%s,modules=subdir,subdir=%s",
       kAVFSMountUser, base_path.c_str()));
   mount_process.AddArgument(avfs_path);
+  mount_process.SetNoNewPrivileges();
   mount_process.LoadSeccompFilterPolicy(kAVFSSeccompFilterPolicyFile);
   // TODO(benchan): Enable PID and VFS namespace.
   // TODO(wad,ellyjones,benchan): Enable network namespace once libminijail
   // supports it.
   mount_process.SetUserId(user_id);
   mount_process.SetGroupId(group_id);
+  // TODO(crbug.com/866377): Run FUSE fully deprivileged.
+  mount_process.SetCapabilities(CAP_TO_MASK(CAP_SYS_ADMIN));
   int return_code = mount_process.Run();
   if (return_code != 0) {
     LOG(WARNING) << "AVFS program failed with a return code " << return_code;
