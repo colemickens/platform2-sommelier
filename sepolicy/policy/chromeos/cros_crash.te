@@ -18,6 +18,12 @@ domain_auto_trans(chromeos_domain, cros_crash_reporter_exec, cros_crash);
 # This audit allow is used to catch more unexpected usage.
 # -chromeos since we're pulling more processes out of chromeos, also it creates noises that crash_test.py
 # tries to run crash_reporter during the test.
-auditallow {chromeos_domain -kernel -chromeos -cros_anomaly_collector} cros_crash_reporter_exec:file execute;
+auditallow {
+chromeos_domain
+-kernel
+-chromeos
+-cros_anomaly_collector
+-cros_udevd # Udevd is also expected to execute crash reporter.
+} cros_crash_reporter_exec:file execute;
 
 minijail_netns_new(cros_crash)
