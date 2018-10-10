@@ -5,40 +5,10 @@
 #include "shill/shill_daemon.h"
 #include "shill/logging.h"
 
-#include <stdlib.h>
 #include <sysexits.h>
-#include <string>
 
 #include <base/bind.h>
-#include <base/files/file_path.h>
-#include <base/files/file_util.h>
-#include <base/strings/string_util.h>
-#include <base/strings/stringprintf.h>
 
-namespace {
-
-// Reads a process' name from |comm_file|, a file like "/proc/%u/comm".
-std::string GetProcName(const base::FilePath& comm_file) {
-  std::string comm_contents;
-  if (!base::ReadFileToString(comm_file, &comm_contents))
-    return "";
-  base::TrimWhitespaceASCII(comm_contents, base::TRIM_ALL, &comm_contents);
-  return comm_contents;
-}
-
-// TODO(crbug/865442): Remove this method once the tagged bug is root caused and
-// fixed.
-bool SigtermHandler(const struct signalfd_siginfo& siginfo) {
-  LOG(ERROR) << "SIGTERM sender: " << siginfo.ssi_pid << ","
-            << GetProcName(base::FilePath(
-                   base::StringPrintf("/proc/%u/comm", siginfo.ssi_pid)));
-  // Induce service failure in /var/spool/crash/.
-  CHECK(false);
-  // Unreachable.
-  return true;
-}
-
-}  // namespace
 
 namespace shill {
 
@@ -60,10 +30,6 @@ int ShillDaemon::OnInit() {
 
   // Signal that we've acquired all resources.
   startup_callback_.Run();
-
-  // TODO(crbug/865442): Remove this handler once the tagged bug is root caused
-  // and fixed.
-  RegisterHandler(SIGTERM, base::Bind(&SigtermHandler));
 
   return EX_OK;
 }
