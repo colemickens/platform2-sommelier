@@ -55,6 +55,28 @@ class MetricsDaemon : public brillo::DBusDaemon {
   // Triggers an upload event and exit. (Used to test UploadService)
   void RunUploaderTest();
 
+  // Sets the base component of the path used to read temperature zone files.
+  // See member variable |zone_path_base_| for example usage.
+  void SetTemperatureZonePathBaseForTest(const base::FilePath& path);
+
+  // Components of path to temperature logging files in sysfs.
+  static constexpr char kSysfsTemperatureZoneFormat[] = "temperature_zone%d";
+  static constexpr char kSysfsTemperatureValueFile[] = "temp";
+  static constexpr char kSysfsTemperatureTypeFile[] = "type";
+
+  // UMA Metrics used to report temperature data.
+  static constexpr char kMetricTemperatureCpuName[] =
+      "Platform.Thermal.Temperature.Cpu.0";
+  static constexpr char kMetricTemperatureZeroName[] =
+      "Platform.Temperature.Sensor00";
+  static constexpr char kMetricTemperatureOneName[] =
+      "Platform.Temperature.Sensor01";
+  static constexpr char kMetricTemperatureTwoName[] =
+      "Platform.Temperature.Sensor02";
+
+  // Maximum temperature value to be reported to UMA.
+  static constexpr int kMetricTemperatureMax = 100;  // degrees Celsius
+
  protected:
   // Used also by the unit tests.
   static const char kComprDataSizeName[];
@@ -83,6 +105,9 @@ class MetricsDaemon : public brillo::DBusDaemon {
   FRIEND_TEST(MetricsDaemonTest, ReportUserCrashInterval);
   FRIEND_TEST(MetricsDaemonTest, SendSample);
   FRIEND_TEST(MetricsDaemonTest, SendCpuThrottleMetrics);
+  FRIEND_TEST(MetricsDaemonTest, SendTemperatureSamplesAlternative);
+  FRIEND_TEST(MetricsDaemonTest, SendTemperatureSamplesBasic);
+  FRIEND_TEST(MetricsDaemonTest, SendTemperatureSamplesReadError);
   FRIEND_TEST(MetricsDaemonTest, SendZramMetrics);
   FRIEND_TEST(MetricsDaemonTest, SendZramMetricsOld);
   FRIEND_TEST(MetricsDaemonTest, GetDetachableBaseTimes);
@@ -239,6 +264,14 @@ class MetricsDaemon : public brillo::DBusDaemon {
 
   // Reads cumulative vm statistics from procfs.  Returns true for success.
   bool VmStatsReadStats(struct VmstatRecord* stats);
+
+  // Reads current temperature values from sysfs and returns as a map.
+  // Keys are contents of temperature_zone 'type' file.
+  // Values are contents of temperature_zone 'temp' file in millidegrees C.
+  std::map<std::string, uint64_t> ReadSensorTemperatures();
+
+  // Fetches current temperatures from sysfs and sends to UMA.
+  void SendTemperatureSamples();
 
   // Reports disk and vm statistics.
   void StatsCallback();
@@ -403,6 +436,25 @@ class MetricsDaemon : public brillo::DBusDaemon {
   std::string vmstats_path_;
   std::string scaling_max_freq_path_;
   std::string cpuinfo_max_freq_path_;
+
+  // The base component used to read from temperature zone paths
+  // An example temperature zone path would be:
+  //   '/sys/class/thermal/thermal_zone0/temp'
+  // This base path would be the portion before the thermal_zone:
+  //   '/sys/class/thermal/'
+  // This will primarily be changed for testing purposes, see
+  // SetTemperatureZonePathBaseForTest(base::FilePath).
+  base::FilePath zone_path_base_;
+
+  // In the sysfs directory '/sys/class/thermal/' there are multiple thermal
+  // zones, starting at 0, for example '/sys/class/thermal/thermal_zone0',
+  // '/sys/class/thermal/thermal_zone1', etc.
+  // temperature_zones_count_ is the total number of these zones, so if
+  // temperature_zones_count_ is 3, then thermal_zone0, thermal_zone1, and
+  // thermal_zone2 should all exist, while thermal_zone3 should not.
+  // This is initialized to -1, meaning that the first attempt to read
+  // thermal_zones will try zones until failure and then update the count.
+  int32_t temperature_zones_count_;
 
   base::TimeDelta upload_interval_;
   std::string server_;

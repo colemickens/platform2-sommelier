@@ -55,6 +55,7 @@ class MetricsDaemonTest : public testing::Test {
  protected:
   std::string kFakeDiskStats0;
   std::string kFakeDiskStats1;
+  base::FilePath fake_temperature_dir;
 
   virtual void SetUp() {
     kFakeDiskStats0 = base::StringPrintf(
@@ -73,6 +74,9 @@ class MetricsDaemonTest : public testing::Test {
                  kFakeVmStatsName, kFakeScalingMaxFreqPath,
                  kFakeCpuinfoMaxFreqPath, base::TimeDelta::FromMinutes(30),
                  kMetricsServer, kMetricsFilePath, "/", backing_dir_path);
+
+    CHECK(base::CreateNewTempDirectory("", &fake_temperature_dir));
+    daemon_.SetTemperatureZonePathBaseForTest(fake_temperature_dir);
 
     // Replace original persistent values with mock ones.
     base::FilePath m1 = backing_dir_path.Append("1.mock");
@@ -178,6 +182,27 @@ class MetricsDaemonTest : public testing::Test {
                                                      value_string.length()));
   }
 
+  // Creates two input files containing a temperature zone type and a
+  // temperature value at the appropriate zone path given by
+  // fake_temperature_dir, the temperature zone format, and |zone|.
+  void CreateFakeTemperatureSamplesFiles(int zone,
+                                         const std::string& type,
+                                         uint64_t value) {
+    std::string temperature_zone =
+        base::StringPrintf(MetricsDaemon::kSysfsTemperatureZoneFormat, zone);
+    base::FilePath zone_path = fake_temperature_dir.Append(temperature_zone);
+    CHECK(base::CreateDirectory(zone_path));
+    base::FilePath type_path =
+        zone_path.Append(MetricsDaemon::kSysfsTemperatureTypeFile);
+
+    ASSERT_EQ(type.length(),
+              base::WriteFile(type_path, type.c_str(), type.length()));
+
+    base::FilePath value_path =
+        zone_path.Append(MetricsDaemon::kSysfsTemperatureValueFile);
+    CreateUint64ValueFile(value_path, value);
+  }
+
   // The MetricsDaemon under test.
   MetricsDaemon daemon_;
   // The temporary directory for backing files.
@@ -261,6 +286,79 @@ TEST_F(MetricsDaemonTest, ReportDiskStats) {
   EXPECT_CALL(metrics_lib_, SendEnumToUMA(_, _, _));  // SendCpuThrottleMetrics
   daemon_.StatsCallback();
   EXPECT_TRUE(s_state != daemon_.stats_state_);
+}
+
+TEST_F(MetricsDaemonTest, SendTemperatureSamplesBasic) {
+  CreateFakeTemperatureSamplesFiles(0, "x86_pkg_temp", 42000);
+  CreateFakeTemperatureSamplesFiles(1, "TCPU", 27200);
+  CreateFakeTemperatureSamplesFiles(2, "TSR1", 18700);
+  CreateFakeTemperatureSamplesFiles(3, "TSR0", 30500);
+  EXPECT_CALL(metrics_lib_,
+              SendEnumToUMA(MetricsDaemon::kMetricTemperatureCpuName, 27,
+                            MetricsDaemon::kMetricTemperatureMax));
+  EXPECT_CALL(metrics_lib_,
+              SendEnumToUMA(MetricsDaemon::kMetricTemperatureOneName, 18,
+                            MetricsDaemon::kMetricTemperatureMax));
+  EXPECT_CALL(metrics_lib_,
+              SendEnumToUMA(MetricsDaemon::kMetricTemperatureZeroName, 30,
+                            MetricsDaemon::kMetricTemperatureMax));
+  daemon_.SendTemperatureSamples();
+}
+
+TEST_F(MetricsDaemonTest, SendTemperatureSamplesAlternative) {
+  CreateFakeTemperatureSamplesFiles(0, "TSR1", 42390);
+  CreateFakeTemperatureSamplesFiles(1, "acpitz", 10298);
+  CreateFakeTemperatureSamplesFiles(2, "TSR0", 31337);
+  CreateFakeTemperatureSamplesFiles(3, "x86_pkg_temp", 80091);
+  EXPECT_CALL(metrics_lib_,
+              SendEnumToUMA(MetricsDaemon::kMetricTemperatureOneName, 42,
+                            MetricsDaemon::kMetricTemperatureMax));
+  EXPECT_CALL(metrics_lib_,
+              SendEnumToUMA(MetricsDaemon::kMetricTemperatureCpuName, 10,
+                            MetricsDaemon::kMetricTemperatureMax));
+  EXPECT_CALL(metrics_lib_,
+              SendEnumToUMA(MetricsDaemon::kMetricTemperatureZeroName, 31,
+                            MetricsDaemon::kMetricTemperatureMax));
+  daemon_.SendTemperatureSamples();
+}
+
+TEST_F(MetricsDaemonTest, SendTemperatureSamplesReadError) {
+  CreateFakeTemperatureSamplesFiles(0, "TSR1", 42390);
+  CreateFakeTemperatureSamplesFiles(1, "acpitz", 10298);
+  CreateFakeTemperatureSamplesFiles(2, "TSR0", 31337);
+  EXPECT_CALL(metrics_lib_,
+              SendEnumToUMA(MetricsDaemon::kMetricTemperatureOneName, 42,
+                            MetricsDaemon::kMetricTemperatureMax));
+  EXPECT_CALL(metrics_lib_,
+              SendEnumToUMA(MetricsDaemon::kMetricTemperatureCpuName, 10,
+                            MetricsDaemon::kMetricTemperatureMax));
+  EXPECT_CALL(metrics_lib_,
+              SendEnumToUMA(MetricsDaemon::kMetricTemperatureZeroName, 31,
+                            MetricsDaemon::kMetricTemperatureMax));
+  daemon_.SendTemperatureSamples();
+
+  // Break zones 0 and 1 by deleting input files.
+  std::string temperature_zone_zero =
+      base::StringPrintf(MetricsDaemon::kSysfsTemperatureZoneFormat, 0);
+  base::FilePath zone_path_zero =
+      fake_temperature_dir.Append(temperature_zone_zero);
+  base::FilePath value_path_zero =
+      zone_path_zero.Append(MetricsDaemon::kSysfsTemperatureValueFile);
+  base::DeleteFile(value_path_zero, false);
+
+  std::string temperature_zone_one =
+      base::StringPrintf(MetricsDaemon::kSysfsTemperatureZoneFormat, 1);
+  base::FilePath zone_path_one =
+      fake_temperature_dir.Append(temperature_zone_one);
+  base::FilePath type_path_one =
+      zone_path_one.Append(MetricsDaemon::kSysfsTemperatureTypeFile);
+  base::DeleteFile(type_path_one, false);
+
+  // Zone 2 metric should still be reported despite breakages.
+  EXPECT_CALL(metrics_lib_,
+              SendEnumToUMA(MetricsDaemon::kMetricTemperatureZeroName, 31,
+                            MetricsDaemon::kMetricTemperatureMax));
+  daemon_.SendTemperatureSamples();
 }
 
 TEST_F(MetricsDaemonTest, ProcessMeminfo) {
