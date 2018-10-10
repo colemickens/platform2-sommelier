@@ -1,0 +1,24 @@
+[package]
+name = "p9"
+version = "0.1.0"
+authors = ["The Chromium OS Authors"]
+
+[dependencies]
+libc = "*"
+wire_format_derive = "*"
+
+[features]
+trace = []
+
+[profile.dev]
+# We want some optimization even in dev builds.
+opt-level = 2
+
+[profile.release]
+# We still want debug information in release builds.
+debug = true
+lto = true
+panic = 'abort'
+
+[patch.crates-io]
+wire_format_derive = { path = "wire_format_derive" }

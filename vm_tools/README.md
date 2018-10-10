@@ -14,7 +14,7 @@ for starting and stopping VMs.
 
 When `vm_concierge` receives a request to start a VM it allocates various
 resources for that VM (IPv4 address, vsock context id, etc) from a shared pool
-of resources.  It then launches a new instance of `crosvm` to actually run the
+of resources.  It then launches a new instance of [crosvm] to actually run the
 VM.
 
 Once the VM has started up `vm_concierge` communicates with the `maitred`
@@ -57,12 +57,17 @@ uses TCP/IP for the transport and firewall rules ensure that only the container
 IPs are allowed to connect to the corresponding port for `garcon` that is open
 in `vm_cicerone`.
 
+## p9
+
+The [p9](p9/) directory holds a server implementation of the [9p] file system
+protocol.  It is used by [crosvm] and the [9s](#9s) daemon to share files and
+directories between the host and the VM.
+
 ## seneschal
 
 `seneschal` is the steward of the user's /home directory. It manages processes
-that serve the [9p](http://man.cat-v.org/plan_9/5/0intro) file system protocol.
-The 9p client lives in the guest kernel and communicates with the server over
-[vsock](https://lwn.net/Articles/695981/).
+that serve the [9p] file system protocol. The 9p client lives in the guest
+kernel and communicates with the server over [vsock].
 
 Each server initially does not have access to any path but can be
 granted access to specific paths in the user's home directory by sending
@@ -110,11 +115,11 @@ uploading it to Google servers.
 ## VM <-> host communication
 
 All communication between `vm_concierge` and the applications inside the VM
-happen over a [vsock](https://lwn.net/Articles/695981/) transport. The actual
-RPC communication uses the [gRPC](http://grpc.io) framework. Every `maitred`
-instance listens on a known port in the vsock namespace (port 8888).
+happen over a [vsock] transport. The actual RPC communication uses the
+[gRPC](http://grpc.io) framework. Every `maitred` instance listens on a known
+port in the vsock namespace (port 8888).
 
-See [docs/vsock.md](docs/vsock.md) for more details about vsock.
+See [docs/vsock.md](docs/vsock.md) for more details about [vsock].
 
 ### Authentication
 
@@ -132,3 +137,8 @@ gRPC uses [protocol buffers](https://developers.google.com/protocol-buffers) as
 the serialization format for messages sent over the vsock and IP transport.  The
 [proto](proto/) directory holds the definitions for all the messages sent and
 services provided between the host and the VM/container.
+
+
+[9p]: http://man.cat-v.org/plan_9/5/0intro
+[crosvm]: https://chromium.googlesource.com/chromiumos/platform/crosvm
+[vsock]: https://lwn.net/Articles/695981/
