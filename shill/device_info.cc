@@ -120,7 +120,10 @@ constexpr char kInterfaceTunFlags[] = "tun_flags";
 constexpr char kInterfaceType[] = "type";
 
 // Device name prefixes for virtual devices that should be ignored.
+// TODO(chromium:899004): Using network device name is a bit fragile. Find
+// other signals to identify these network devices.
 const char* const kIgnoredDeviceNamePrefixes[] = {
+    "rmnet_ipa",
     "veth",
     "vm"
 };
