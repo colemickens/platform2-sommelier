@@ -14,7 +14,7 @@
 
 namespace brillo {
 
-Daemon::Daemon() : exit_code_{EX_OK} {
+Daemon::Daemon() : exit_code_{EX_OK}, exiting_(false) {
   message_loop_.SetAsCurrent();
 }
 
@@ -85,15 +85,27 @@ bool Daemon::OnRestart() {
 }
 
 bool Daemon::Shutdown(const signalfd_siginfo& /* info */) {
-  Quit();
-  return true;  // Unregister the signal handler.
+  // Only respond to the first call.
+  if (!exiting_) {
+    exiting_ = true;
+    Quit();
+  }
+  // Always return false, to avoid unregistering the signal handler. We might
+  // receive multiple successive signals, and we don't want to take the default
+  // response (termination) while we're still tearing down.
+  return false;
 }
 
 bool Daemon::Restart(const signalfd_siginfo& /* info */) {
-  if (OnRestart())
-    return false;  // Keep listening to the signal.
-  Quit();
-  return true;  // Unregister the signal handler.
+  if (!exiting_ && !OnRestart()) {
+    // Only Quit() once.
+    exiting_ = true;
+    Quit();
+  }
+  // Always return false, to avoid unregistering the signal handler. We might
+  // receive multiple successive signals, and we don't want to take the default
+  // response (termination) while we're still tearing down.
+  return false;
 }
 
 void Daemon::OnEventLoopStartedTask() {
