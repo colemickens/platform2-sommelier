@@ -37,7 +37,6 @@
         'client_tracker.cc',
         'device.cc',
         'device_tracker.cc',
-        'file_handler.cc',
         'ports.cc',
         'seq_handler.cc',
         'subdevice_client_fd_holder.cc',

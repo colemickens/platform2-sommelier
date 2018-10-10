@@ -14,7 +14,6 @@
 #include <base/strings/stringprintf.h>
 
 #include "midis/constants.h"
-#include "midis/file_handler.h"
 #include "midis/subdevice_client_fd_holder.h"
 
 namespace {
