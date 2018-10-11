@@ -47,6 +47,8 @@ constexpr char kXDisplayEnv[] = "DISPLAY";
 constexpr char kXLowDensityDisplayEnv[] = "DISPLAY_LOW_DENSITY";
 constexpr char kWaylandDisplayEnv[] = "WAYLAND_DISPLAY";
 constexpr char kWaylandLowDensityDisplayEnv[] = "WAYLAND_DISPLAY_LOW_DENSITY";
+constexpr char kXCursorSizeEnv[] = "XCURSOR_SIZE";
+constexpr char kLowDensityXCursorSizeEnv[] = "XCURSOR_SIZE_LOW_DENSITY";
 constexpr size_t kMaxIconSize = 1048576;  // 1MB, very large for an icon
 
 // Information about any errors that happen in the child process before the exec
@@ -480,6 +482,7 @@ grpc::Status ServiceImpl::LaunchApplication(
       vm_tools::container::LaunchApplicationRequest::SCALED) {
     env[kXDisplayEnv] = std::getenv(kXLowDensityDisplayEnv);
     env[kWaylandDisplayEnv] = std::getenv(kWaylandLowDensityDisplayEnv);
+    env[kXCursorSizeEnv] = std::getenv(kLowDensityXCursorSizeEnv);
   }
 
   if (!Spawn(std::move(argv), std::move(env), desktop_file->path())) {
