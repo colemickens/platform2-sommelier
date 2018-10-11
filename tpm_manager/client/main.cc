@@ -148,6 +148,16 @@ uint32_t StringToNvramIndex(const std::string& s) {
   return trunks::HR_HANDLE_MASK & StringToUint32(s);
 }
 
+std::string GetAuthValueFromPassword(const std::string& password) {
+  // For NULL password auth, we should pass a Empty Buffer as authorization
+  // value to TPM. Otherwise, we use SHA256(password) to transform the
+  // variable-length password to fixed-length authorization value.
+  if (password.empty())
+    return "";
+  else
+    return crypto::SHA256HashString(password);
+}
+
 using ClientLoopBase = brillo::Daemon;
 class ClientLoop : public ClientLoopBase {
  public:
@@ -397,7 +407,7 @@ class ClientLoop : public ClientLoopBase {
       }
       pos = next_pos + 1;
     }
-    request.set_authorization_value(crypto::SHA256HashString(password));
+    request.set_authorization_value(GetAuthValueFromPassword(password));
     request.set_policy(bind_to_pcr0 ? NVRAM_POLICY_PCR0 : NVRAM_POLICY_NONE);
     tpm_nvram_->DefineSpace(
         request, base::Bind(&ClientLoop::PrintReplyAndQuit<DefineSpaceReply>,
@@ -425,7 +435,7 @@ class ClientLoop : public ClientLoopBase {
       return;
     }
     request.set_data(data);
-    request.set_authorization_value(crypto::SHA256HashString(password));
+    request.set_authorization_value(GetAuthValueFromPassword(password));
     request.set_use_owner_authorization(use_owner_authorization);
     tpm_nvram_->WriteSpace(
         request, base::Bind(&ClientLoop::PrintReplyAndQuit<WriteSpaceReply>,
@@ -447,7 +457,7 @@ class ClientLoop : public ClientLoopBase {
                        bool use_owner_authorization) {
     ReadSpaceRequest request;
     request.set_index(index);
-    request.set_authorization_value(crypto::SHA256HashString(password));
+    request.set_authorization_value(GetAuthValueFromPassword(password));
     request.set_use_owner_authorization(use_owner_authorization);
     tpm_nvram_->ReadSpace(request,
                           base::Bind(&ClientLoop::HandleReadSpaceReply,
@@ -463,7 +473,7 @@ class ClientLoop : public ClientLoopBase {
     request.set_index(index);
     request.set_lock_read(lock_read);
     request.set_lock_write(lock_write);
-    request.set_authorization_value(crypto::SHA256HashString(password));
+    request.set_authorization_value(GetAuthValueFromPassword(password));
     request.set_use_owner_authorization(use_owner_authorization);
     tpm_nvram_->LockSpace(
         request, base::Bind(&ClientLoop::PrintReplyAndQuit<LockSpaceReply>,
