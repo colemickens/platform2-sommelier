@@ -56,6 +56,8 @@ const char WiFiService::kStorageSSID[] = "SSID";
 const char WiFiService::kStoragePreferredDevice[] = "WiFi.PreferredDevice";
 const char WiFiService::kStorageRoamThreshold[] = "WiFi.RoamThreshold";
 const char WiFiService::kStorageRoamThresholdSet[] = "WiFi.RoamThresholdSet";
+// This property is now unused, but was used briefly (M68-M71) and might still
+// exist in some profiles.
 const char WiFiService::kStorageFTEnabled[] = "WiFi.FTEnabled";
 
 bool WiFiService::logged_signal_warning = false;
@@ -75,7 +77,7 @@ WiFiService::WiFiService(ControlInterface* control_interface,
       security_(security),
       mode_(mode),
       hidden_ssid_(hidden_ssid),
-      ft_enabled_(false),
+      ft_enabled_(true),
       frequency_(0),
       physical_mode_(Metrics::kWiFiNetworkPhyModeUndef),
       raw_signal_strength_(0),
@@ -381,8 +383,6 @@ bool WiFiService::Load(StoreInterface* storage) {
   roam_threshold_db_ = static_cast<uint16_t>(stored_roam_threshold_temp);
   storage->GetBool(id, kStorageRoamThresholdSet, &roam_threshold_db_set_);
 
-  storage->GetBool(id, kStorageFTEnabled, &ft_enabled_);
-
   expecting_disconnect_ = false;
   return true;
 }
@@ -405,7 +405,6 @@ bool WiFiService::Save(StoreInterface* storage) {
   storage->SetUint64(id, kStorageRoamThreshold,
                      static_cast<uint64_t>(roam_threshold_db_));
   storage->SetBool(id, kStorageRoamThresholdSet, roam_threshold_db_set_);
-  storage->SetBool(id, kStorageFTEnabled, ft_enabled_);
   Service::SaveString(storage, id, kStoragePreferredDevice, preferred_device_,
                       false, false);
 
@@ -431,7 +430,6 @@ bool WiFiService::Unload() {
   preferred_device_.clear();
   roam_threshold_db_ = 0;
   roam_threshold_db_set_ = false;
-  ft_enabled_ = false;
   return provider_->OnServiceUnloaded(this);
 }
 
