@@ -12,6 +12,7 @@ getrandom: 1
 getuid: 1
 lseek: 1
 open: 1
+openat: 1
 read: 1
 restart_syscall: 1
 rt_sigreturn: 1
