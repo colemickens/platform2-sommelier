@@ -67,7 +67,7 @@ constexpr base::TimeDelta kServerExitTimeout = base::TimeDelta::FromSeconds(2);
 // Path to the 9p server.
 constexpr char kServerPath[] = "/usr/bin/9s";
 constexpr char kServerRoot[] = "/fsroot";
-constexpr char kSeccompPolicyPath[] = "/usr/share/policy/crosvm/9s.policy";
+constexpr char kSeccompPolicyPath[] = "/usr/share/policy/9s-seccomp.policy";
 
 // `mkdir -p`, essentially.  Reimplement all of base::CreateDirectory because
 // we want mode 0755 instead of mode 0700.
