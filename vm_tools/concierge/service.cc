@@ -96,6 +96,9 @@ constexpr char kCryptohomeUser[] = "/home/user";
 // Downloads directory for a user.
 constexpr char kDownloadsDir[] = "Downloads";
 
+// File extension for raw disk types
+constexpr char kRawImageExtension[] = ".img";
+
 // File extenstion for qcow2 disk types
 constexpr char kQcowImageExtension[] = ".qcow2";
 
@@ -235,11 +238,13 @@ base::FilePath GetLatestVMPath() {
 }
 
 // Gets the path to a VM disk given the name, user id, and location.
-bool GetDiskPathFromName(const std::string& disk_path,
-                         const std::string& cryptohome_id,
-                         StorageLocation storage_location,
-                         bool create_parent_dir,
-                         base::FilePath* path_out) {
+bool GetDiskPathFromName(
+    const std::string& disk_path,
+    const std::string& cryptohome_id,
+    StorageLocation storage_location,
+    bool create_parent_dir,
+    base::FilePath* path_out,
+    enum DiskImageType preferred_image_type = DiskImageType::DISK_IMAGE_QCOW2) {
   if (!base::ContainsOnlyChars(cryptohome_id, kValidCryptoHomeCharacters)) {
     LOG(ERROR) << "Invalid cryptohome_id specified";
     return false;
@@ -250,6 +255,7 @@ bool GetDiskPathFromName(const std::string& disk_path,
   base::Base64UrlEncode(disk_path, base::Base64UrlEncodePolicy::INCLUDE_PADDING,
                         &disk_name);
 
+  base::FilePath storage_path;
   if (storage_location == STORAGE_CRYPTOHOME_ROOT) {
     base::FilePath crosvm_dir = base::FilePath(kCryptohomeRoot)
                                     .Append(cryptohome_id)
@@ -266,14 +272,43 @@ bool GetDiskPathFromName(const std::string& disk_path,
         return false;
       }
     }
-    *path_out = crosvm_dir.Append(disk_name + kQcowImageExtension);
+    storage_path = crosvm_dir;
   } else if (storage_location == STORAGE_CRYPTOHOME_DOWNLOADS) {
-    *path_out = base::FilePath(kCryptohomeUser)
-                    .Append(cryptohome_id)
-                    .Append(kDownloadsDir)
-                    .Append(disk_name + kQcowImageExtension);
+    storage_path = base::FilePath(kCryptohomeUser)
+                       .Append(cryptohome_id)
+                       .Append(kDownloadsDir);
   } else {
     LOG(ERROR) << "Unknown storage location type";
+    return false;
+  }
+
+  auto qcow2_path = storage_path.Append(disk_name + kQcowImageExtension);
+  auto raw_path = storage_path.Append(disk_name + kRawImageExtension);
+  bool qcow2_exists = base::PathExists(qcow2_path);
+  bool raw_exists = base::PathExists(raw_path);
+
+  // This scenario (both <name>.img and <name>.qcow2 exist) should never happen.
+  // It is prevented by the later checks in this function.
+  // However, in case it does happen somehow (e.g. user manually created files
+  // in dev mode), bail out, since we can't tell which one the user wants.
+  if (qcow2_exists && raw_exists) {
+    LOG(ERROR) << "Both qcow2 and raw variants of " << disk_path
+               << " already exist.";
+    return false;
+  }
+
+  // Return the path to an existing image of any type, if one exists.
+  // If not, generate a path based on the preferred image type.
+  if (qcow2_exists) {
+    *path_out = qcow2_path;
+  } else if (raw_exists) {
+    *path_out = raw_path;
+  } else if (preferred_image_type == DISK_IMAGE_QCOW2) {
+    *path_out = qcow2_path;
+  } else if (preferred_image_type == DISK_IMAGE_RAW) {
+    *path_out = raw_path;
+  } else {
+    LOG(ERROR) << "Unknown image type " << preferred_image_type;
     return false;
   }
 
@@ -1050,7 +1085,7 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
   if (!GetDiskPathFromName(request.disk_path(), request.cryptohome_id(),
                            request.storage_location(),
                            true, /* create_parent_dir */
-                           &disk_path)) {
+                           &disk_path, request.image_type())) {
     response.set_status(DISK_STATUS_FAILED);
     response.set_failure_reason("Failed to create vm image");
     writer.AppendProtoAsArrayOfBytes(response);
