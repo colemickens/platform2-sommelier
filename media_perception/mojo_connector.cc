@@ -54,7 +54,7 @@ constexpr char kConnectorPipe[] = "mpp-connector-pipe";
 
 }  // namespace
 
-MojoConnector::MojoConnector() : ipc_thread_("IpcThread") {
+MojoConnector::MojoConnector(): ipc_thread_("IpcThread") {
   mojo::edk::Init();
   LOG(INFO) << "Starting IPC thread.";
   if (!ipc_thread_.StartWithOptions(
@@ -79,6 +79,11 @@ void MojoConnector::OnConnectionErrorOrClosed() {
   LOG(ERROR) << "Connection error/closed received";
 }
 
+void MojoConnector::OnDeviceFactoryConnectionErrorOrClosed() {
+  std::lock_guard<std::mutex> lock(vcs_connection_state_mutex_);
+  is_connected_to_vcs_ = false;
+}
+
 void MojoConnector::AcceptConnectionOnIpcThread(base::ScopedFD fd) {
   CHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
   mojo::edk::SetParentPipeHandle(
@@ -95,15 +100,27 @@ void MojoConnector::AcceptConnectionOnIpcThread(base::ScopedFD fd) {
 }
 
 void MojoConnector::ConnectToVideoCaptureService() {
-  ipc_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(&MojoConnector::ConnectToVideoCaptureServiceOnIpcThread,
-                 base::Unretained(this)));
+  std::lock_guard<std::mutex> lock(vcs_connection_state_mutex_);
+  if (!is_connected_to_vcs_) {
+    ipc_thread_.task_runner()->PostTask(
+        FROM_HERE,
+        base::Bind(&MojoConnector::ConnectToVideoCaptureServiceOnIpcThread,
+                   base::Unretained(this)));
+    is_connected_to_vcs_ = true;
+  }
 }
 
 void MojoConnector::ConnectToVideoCaptureServiceOnIpcThread() {
   media_perception_service_impl_->ConnectToVideoCaptureService(
       mojo::GetProxy(&device_factory_));
+  device_factory_.set_connection_error_handler(
+      base::Bind(&MojoConnector::OnDeviceFactoryConnectionErrorOrClosed,
+                 base::Unretained(this)));
+}
+
+bool MojoConnector::IsConnectedToVideoCaptureService() {
+  std::lock_guard<std::mutex> lock(vcs_connection_state_mutex_);
+  return is_connected_to_vcs_;
 }
 
 void MojoConnector::GetDevices(

@@ -58,8 +58,12 @@ class VideoCaptureServiceClient {
                          int data_size, int frame_width, int frame_height)>;
 
   virtual ~VideoCaptureServiceClient() {}
+
   // Connects to the Video Capture Service over Mojo IPC.
   virtual bool Connect() = 0;
+
+  // Check if the service is connected.
+  virtual bool IsConnected() = 0;
 
   // Gets a list of video devices available.
   virtual void GetDevices(const GetDevicesCallback& callback) = 0;

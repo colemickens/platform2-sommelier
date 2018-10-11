@@ -31,6 +31,7 @@ class VideoCaptureServiceClientImpl : public VideoCaptureServiceClient {
 
   // VideoCaptureServiceClient overrides:
   bool Connect() override;
+  bool IsConnected() override;
   void GetDevices(const GetDevicesCallback& callback) override;
   void SetActiveDevice(const std::string& device_id,
                        const SetActiveDeviceCallback& callback) override;

@@ -23,6 +23,13 @@ bool VideoCaptureServiceClientImpl::Connect() {
   return true;
 }
 
+bool VideoCaptureServiceClientImpl::IsConnected() {
+  if (mojo_connector_ == nullptr)
+    return false;
+
+  return mojo_connector_->IsConnectedToVideoCaptureService();
+}
+
 void VideoCaptureServiceClientImpl::GetDevices(
     const GetDevicesCallback& callback) {
   mojo_connector_->GetDevices(callback);

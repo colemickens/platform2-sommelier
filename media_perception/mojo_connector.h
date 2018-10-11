@@ -20,7 +20,6 @@
 #include "media_perception/video_capture_service_client.h"
 #include "mojom/media_perception_service.mojom.h"
 
-
 namespace mri {
 
 class MojoConnector : public mojo::edk::ProcessDelegate {
@@ -33,6 +32,9 @@ class MojoConnector : public mojo::edk::ProcessDelegate {
   // Use the Mojo connector to ensure the video capture servicec is started in
   // Chrome and get access to the video capture service Mojo API.
   void ConnectToVideoCaptureService();
+
+  // Check the connection state.
+  bool IsConnectedToVideoCaptureService();
 
   // Get the list of video devices from the video capture service.
   void GetDevices(
@@ -69,6 +71,9 @@ class MojoConnector : public mojo::edk::ProcessDelegate {
  private:
   // Handler for when the Mojo connection is closed or errors out.
   void OnConnectionErrorOrClosed();
+
+  // Handler for when device pointer connection is closed or errors out.
+  void OnDeviceFactoryConnectionErrorOrClosed();
 
   // mojo::edk::ProcessDelegate:
   void OnShutdownComplete() override;
@@ -121,6 +126,9 @@ class MojoConnector : public mojo::edk::ProcessDelegate {
 
   // Provides interface for receiving frames from the video capture service.
   ReceiverImpl receiver_impl_;
+
+  std::mutex vcs_connection_state_mutex_;
+  bool is_connected_to_vcs_ = false;
 };
 
 }  // namespace mri
