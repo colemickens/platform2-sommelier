@@ -50,18 +50,6 @@ void CallSetScreenBrightness(
   ASSERT_TRUE(wrapper->CallExportedMethodSync(&method_call));
 }
 
-void CallSetScreenBrightnessPercent(system::DBusWrapperStub* wrapper,
-                                    double percent,
-                                    int transition) {
-  DCHECK(wrapper);
-  dbus::MethodCall method_call(kPowerManagerInterface,
-                               kSetScreenBrightnessPercentMethod);
-  dbus::MessageWriter writer(&method_call);
-  writer.AppendDouble(percent);
-  writer.AppendInt32(transition);
-  ASSERT_TRUE(wrapper->CallExportedMethodSync(&method_call));
-}
-
 void CheckBrightnessChangedSignal(system::DBusWrapperStub* wrapper,
                                   size_t index,
                                   const std::string& signal_name,

@@ -1070,25 +1070,5 @@ TEST_F(InternalBacklightControllerTest, SetAndGetBrightness) {
   EXPECT_DOUBLE_EQ(round(kBrightnessPercent), round(percent));
 }
 
-TEST_F(InternalBacklightControllerTest, SetBrightnessLegacy) {
-  Init(PowerSource::AC);
-  dbus_wrapper_->ClearSentSignals();
-
-  // Request a brightness change using a legacy call that passes D-Bus args.
-  const double kBrightnessPercent = 55.0;
-  test::CallSetScreenBrightnessPercent(dbus_wrapper_.get(), kBrightnessPercent,
-                                       kBrightnessTransitionGradual);
-  double percent = 0.0;
-  ASSERT_TRUE(controller_->GetBrightnessPercent(&percent));
-  ASSERT_DOUBLE_EQ(round(kBrightnessPercent), round(percent));
-  EXPECT_EQ(kFastBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
-
-  // Legacy calls don't pass causes, so USER_REQUEST should be used.
-  test::CheckBrightnessChangedSignal(
-      dbus_wrapper_.get(), 0, kScreenBrightnessChangedSignal,
-      kBrightnessPercent, BacklightBrightnessChange_Cause_USER_REQUEST);
-}
-
 }  // namespace policy
 }  // namespace power_manager

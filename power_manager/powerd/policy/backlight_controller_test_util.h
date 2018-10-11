@@ -28,14 +28,6 @@ void CallSetScreenBrightness(
     double percent,
     SetBacklightBrightnessRequest_Transition transition,
     SetBacklightBrightnessRequest_Cause cause);
-// Passes D-Bus args to SetScreenBrightnessPercent rather than passing a
-// protobuf to SetScreenBrightness. |transition| is a kBrightnessTransition*
-// value from system_api.
-// TODO(derat): Delete after Chrome passes protobufs to the new method:
-// https://crbug.com/881786
-void CallSetScreenBrightnessPercent(system::DBusWrapperStub* wrapper,
-                                    double percent,
-                                    int transition);
 
 // Checks that the D-Bus signal at |index| has name |signal_name| and
 // describes a brightness change to (rounded) |brightness_percent| for |cause|.

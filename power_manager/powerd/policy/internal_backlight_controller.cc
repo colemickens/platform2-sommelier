@@ -232,11 +232,6 @@ void InternalBacklightController::Init(
       dbus_wrapper_, kGetScreenBrightnessPercentMethod,
       base::Bind(&InternalBacklightController::HandleGetBrightnessRequest,
                  weak_ptr_factory_.GetWeakPtr()));
-  // TODO(derat): Delete this after Chrome is calling SetScreenBrightness.
-  RegisterSetBrightnessHandler(
-      dbus_wrapper_, kSetScreenBrightnessPercentMethod,
-      base::Bind(&InternalBacklightController::HandleSetBrightnessRequest,
-                 weak_ptr_factory_.GetWeakPtr()));
 
   init_time_ = clock_->GetCurrentTime();
   LOG(INFO) << "Backlight has range [0, " << max_level_ << "] with "

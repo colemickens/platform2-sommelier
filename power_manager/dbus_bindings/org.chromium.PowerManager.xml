@@ -44,15 +44,6 @@
     <method name="GetScreenBrightnessPercent">
       <arg name="percent" direction="out" type="d" />
     </method>
-    <method name="SetScreenBrightnessPercent">
-      <tp:docstring>
-        The |style| arg must be one of the values:
-          power_manager::kBrightnessTransitionGradual or
-          power_manager::kBrightnessTransitionInstant.
-      </tp:docstring>
-      <arg name="percent" direction="in" type="d" />
-      <arg name="style" direction="in" type="i" />
-    </method>
     <method name="DecreaseKeyboardBrightness" />
     <method name="IncreaseKeyboardBrightness" />
     <method name="GetPowerSupplyProperties">

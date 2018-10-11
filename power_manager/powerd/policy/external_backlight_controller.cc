@@ -63,11 +63,6 @@ void ExternalBacklightController::Init(
       dbus_wrapper_, kGetScreenBrightnessPercentMethod,
       base::Bind(&ExternalBacklightController::HandleGetBrightnessRequest,
                  weak_ptr_factory_.GetWeakPtr()));
-  // TODO(derat): Delete this.
-  RegisterSetBrightnessHandler(
-      dbus_wrapper_, kSetScreenBrightnessPercentMethod,
-      base::Bind(&ExternalBacklightController::HandleSetBrightnessRequest,
-                 weak_ptr_factory_.GetWeakPtr()));
 
   UpdateDisplays(display_watcher_->GetDisplays());
 }
