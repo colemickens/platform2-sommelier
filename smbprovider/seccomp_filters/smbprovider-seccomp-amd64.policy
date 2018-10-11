@@ -50,6 +50,7 @@ mremap: 1
 munlock: 1
 munmap: 1
 open: 1
+openat: 1
 pipe: 1
 pipe2: 1
 poll: 1
