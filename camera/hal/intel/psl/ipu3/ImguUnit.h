@@ -28,6 +28,7 @@
 #include "workers/IDeviceWorker.h"
 #include "workers/FrameWorker.h"
 #include "MediaCtlHelper.h"
+#include "IErrorCallback.h"
 #include "workers/ParameterWorker.h"
 #include <linux/intel-ipu3.h>
 
@@ -44,6 +45,7 @@ public:
             std::shared_ptr<MediaController> mediaCtl);
     virtual ~ImguUnit();
 
+    void registerErrorCallback(IErrorCallback *errCb);
     status_t attachListener(ICaptureEventListener *aListener);
     void cleanListener();
 
@@ -62,7 +64,8 @@ private:
     public:
         ImguPipe(int cameraId, GraphConfig::PipeType pipeType,
                  std::shared_ptr<MediaController> mediaCtl,
-                 std::vector<ICaptureEventListener*> listeners);
+                 std::vector<ICaptureEventListener*> listeners,
+                 IErrorCallback *errCb);
         virtual ~ImguPipe();
 
         void cleanListener();
@@ -136,6 +139,8 @@ private:
         std::map<IPU3NodeNames, std::shared_ptr<cros::V4L2VideoNode>> mConfiguredNodesPerName;
         bool mFirstRequest;
         bool mFirstPollCallbacked;
+        int32_t mPollErrorTimes;
+        IErrorCallback* mErrCb;
         pthread_mutex_t mFirstLock;
         pthread_cond_t mFirstCond;
 
@@ -146,6 +151,7 @@ private:
     int mCameraId;
     GraphConfigManager &mGCM;
     std::shared_ptr<MediaController> mMediaCtl;
+    IErrorCallback* mErrCb;
     std::shared_ptr<SharedItemPool<ia_aiq_af_grid>> mAfFilterBuffPool; /* 3A statistics buffers */
     std::shared_ptr<SharedItemPool<ia_aiq_rgbs_grid>> mRgbsGridBuffPool;
 

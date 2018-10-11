@@ -44,7 +44,9 @@ SyncManager::SyncManager(int32_t cameraId,
     mExposureDelay(0),
     mGainDelay(0),
     mDigiGainOnSensor(false),
-    mCurrentSettingIdentifier(0)
+    mCurrentSettingIdentifier(0),
+    mPollErrorTimes(0),
+    mErrCb(nullptr)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     mCapInfo = getIPU3CameraCapInfo(cameraId);
@@ -220,6 +222,12 @@ status_t SyncManager::init(int32_t exposureDelay, int32_t gainDelay)
                        base::Passed(std::move(msg)));
     mCameraThread.PostTaskSync<status_t>(FROM_HERE, closure, &status);
     return status;
+}
+
+void SyncManager::registerErrorCallback(IErrorCallback *errCb)
+{
+    LOG1("@%s, errCb:%p", __FUNCTION__, errCb);
+    mErrCb = errCb;
 }
 
 /**
@@ -485,7 +493,7 @@ status_t SyncManager::handleSOF(MessageFrameEvent msg)
         return OK;
     }
     // Poll again
-    mPollerThread->pollRequest(0, 1000,
+    mPollerThread->pollRequest(0, IPU3_EVENT_POLL_TIMEOUT,
                               (std::vector<std::shared_ptr<cros::V4L2Device>>*) &mDevicesToPoll);
 
     if (CC_UNLIKELY(mQueuedSettings.empty())) {
@@ -636,10 +644,12 @@ status_t SyncManager::handleStart()
         mQueuedSettings[0]->inEffectFrom = 0;
         mQueuedSettings.erase(mQueuedSettings.begin());
     }
-    // Start to poll
-    mPollerThread->pollRequest(0, 1000,
-                              (std::vector<std::shared_ptr<cros::V4L2Device>>*) &mDevicesToPoll);
     mStarted = true;
+    mPollErrorTimes = 0;
+
+    // Start to poll
+    mPollerThread->pollRequest(0, IPU3_EVENT_POLL_TIMEOUT,
+                              (std::vector<std::shared_ptr<cros::V4L2Device>>*) &mDevicesToPoll);
     return OK;
 }
 
@@ -776,15 +786,23 @@ status_t SyncManager::notifyPollEvent(PollEventMessage *pollEventMsg)
               pollEventMsg->data.reqId,
               pollEventMsg->data.pollStatus);
 
-        // Poll again
-        mPollerThread->pollRequest(0, 1000,
-                           (std::vector<std::shared_ptr<cros::V4L2Device>>*) &mDevicesToPoll);
+        // Poll again if poll error times is less than the threshold.
+        if (mPollErrorTimes++ < POLL_REQUEST_TRY_TIMES) {
+            status = mPollerThread->pollRequest(0, IPU3_EVENT_POLL_TIMEOUT,
+                    (std::vector<std::shared_ptr<cros::V4L2Device>>*) &mDevicesToPoll);
+            return status;
+        } else if (mErrCb) {
+            // return a error message if poll failed happens 5 times in succession
+            mErrCb->deviceError();
+            return UNKNOWN_ERROR;
+        }
     } else if (pollEventMsg->data.activeDevices->empty()) {
         LOG1("%s Polling from Flush: succeeded", __FUNCTION__);
         // TODO flush actions.
     } else {
         //cannot be anything else than event if ending up here.
         do {
+            mPollErrorTimes = 0;
             status = mIsysReceiverSubdev->DequeueEvent(&event);
             if (status < 0) {
                 LOGE("dequeueing event failed");

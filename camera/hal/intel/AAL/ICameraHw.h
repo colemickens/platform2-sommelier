@@ -19,6 +19,7 @@
 #include <vector>
 #include "hardware/camera3.h"
 #include "Camera3Request.h"
+#include "IErrorCallback.h"
 
 NAMESPACE_DECLARATION {
 
@@ -29,6 +30,13 @@ public:
     virtual ~ICameraHw(){};
 
     virtual status_t init(void) = 0;
+
+    /*
+     * Register error callback function
+     *
+     * notify the message to framework when error happens in hal
+     */
+    virtual void registerErrorCallback(IErrorCallback *errCb) = 0;
 
     virtual const camera_metadata_t * getDefaultRequestSettings(int type) = 0;
     /*

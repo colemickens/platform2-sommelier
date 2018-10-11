@@ -157,6 +157,15 @@ IPU3CameraHw::deInit()
     }
 }
 
+void
+IPU3CameraHw::registerErrorCallback(IErrorCallback *errCb)
+{
+    LOG2("@%s, errCb:%p", __FUNCTION__, errCb);
+    PlatformData::getIntel3AClient()->registerErrorCallback(errCb);
+    mCaptureUnit->registerErrorCallback(errCb);
+    mImguUnit->registerErrorCallback(errCb);
+}
+
 const camera_metadata_t *
 IPU3CameraHw::getDefaultRequestSettings(int type)
 {

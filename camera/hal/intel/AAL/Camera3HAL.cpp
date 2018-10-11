@@ -191,14 +191,14 @@ status_t Camera3HAL::deinit(void)
     if (mRequestThread != nullptr)
         status = mRequestThread->flush();
 
-    if (mCameraHw != nullptr) {
-        delete mCameraHw;
-        mCameraHw = nullptr;
-    }
-
     if (mRequestThread != nullptr) {
         status |= mRequestThread->deinit();
         mRequestThread.reset();
+    }
+
+    if (mCameraHw != nullptr) {
+        delete mCameraHw;
+        mCameraHw = nullptr;
     }
 
     return status;

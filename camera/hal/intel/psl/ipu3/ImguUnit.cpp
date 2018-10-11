@@ -34,7 +34,9 @@ ImguUnit::ImguUnit(int cameraId,
                    std::shared_ptr<MediaController> mediaCtl) :
         mCameraId(cameraId),
         mGCM(gcm),
-        mMediaCtl(mediaCtl)
+        mMediaCtl(mediaCtl),
+        mErrCb(nullptr)
+
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     mActiveStreams.inputStream = nullptr;
@@ -85,6 +87,12 @@ status_t ImguUnit::attachListener(ICaptureEventListener *aListener)
 
     mListeners.push_back(aListener);
     return OK;
+}
+
+void ImguUnit::registerErrorCallback(IErrorCallback *errCb)
+{
+    LOG1("@%s, errCb:%p", __FUNCTION__, errCb);
+    mErrCb = errCb;
 }
 
 /**
@@ -266,7 +274,7 @@ status_t ImguUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams)
     status_t status = OK;
     if (yuvNum > 0) {
         mImguPipe[GraphConfig::PIPE_VIDEO] =
-            std::unique_ptr<ImguPipe>(new ImguPipe(mCameraId, GraphConfig::PIPE_VIDEO, mMediaCtl, mListeners));
+            std::unique_ptr<ImguPipe>(new ImguPipe(mCameraId, GraphConfig::PIPE_VIDEO, mMediaCtl, mListeners, mErrCb));
 
         // only statistics from VIDEO pipe is used to run 3A, register stats buffer for VIDEO pipe.
         status = mImguPipe[GraphConfig::PIPE_VIDEO]->configStreams(mActiveStreams.yuvStreams,
@@ -276,7 +284,7 @@ status_t ImguUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams)
 
     if (blobNum > 0) {
         mImguPipe[GraphConfig::PIPE_STILL] =
-            std::unique_ptr<ImguPipe>(new ImguPipe(mCameraId, GraphConfig::PIPE_STILL, mMediaCtl, mListeners));
+            std::unique_ptr<ImguPipe>(new ImguPipe(mCameraId, GraphConfig::PIPE_STILL, mMediaCtl, mListeners, mErrCb));
 
         status = mImguPipe[GraphConfig::PIPE_STILL]->configStreams(mActiveStreams.blobStreams,
                           mGCM, nullptr, nullptr);
@@ -356,7 +364,8 @@ status_t ImguUnit::flush(void)
 
 ImguUnit::ImguPipe::ImguPipe(int cameraId, GraphConfig::PipeType pipeType,
                              std::shared_ptr<MediaController> mediaCtl,
-                             std::vector<ICaptureEventListener*> listeners) :
+                             std::vector<ICaptureEventListener*> listeners,
+                             IErrorCallback *errCb) :
         mCameraId(cameraId),
         mPipeType(pipeType),
         mMediaCtlHelper(mediaCtl, nullptr),
@@ -365,7 +374,9 @@ ImguUnit::ImguPipe::ImguPipe(int cameraId, GraphConfig::PipeType pipeType,
         mPollerThread(new PollerThread("ImguPollerThread" + std::to_string(pipeType))),
         mListeners(listeners),
         mFirstRequest(true),
-        mFirstPollCallbacked(false)
+        mFirstPollCallbacked(false),
+        mPollErrorTimes(0),
+        mErrCb(errCb)
 {
     pthread_condattr_t attr;
     int ret = pthread_condattr_init(&attr);
@@ -489,6 +500,7 @@ status_t ImguUnit::ImguPipe::configStreams(std::vector<camera3_stream_t*> &strea
                                  this, POLLPRI | POLLIN | POLLOUT | POLLERR, false);
     CheckError(status != NO_ERROR, status, "PollerThread init failed (ret = %d)", status);
 
+    mPollErrorTimes = 0;
     return OK;
 }
 
@@ -884,6 +896,7 @@ status_t ImguUnit::ImguPipe::notifyPollEvent(PollEventMessage *pollMsg)
     msg.pollEvent.requestId = pollMsg->data.reqId;
 
     if (pollMsg->id == POLL_EVENT_ID_EVENT) {
+        mPollErrorTimes = 0;
         int numDevices = pollMsg->data.activeDevices->size();
         if (numDevices == 0) {
             LOG1("@%s: devices flushed", __FUNCTION__);
@@ -926,13 +939,17 @@ status_t ImguUnit::ImguPipe::notifyPollEvent(PollEventMessage *pollMsg)
 
     } else if (pollMsg->id == POLL_EVENT_ID_ERROR) {
         LOGE("Device poll failed");
-        // For now, set number of device to zero in error case
-        msg.pollEvent.numDevices = 0;
-        msg.pollEvent.polledDevices = 0;
-        base::Callback<status_t()> closure =
-                base::Bind(&ImguUnit::ImguPipe::ImguPipe::handlePoll, base::Unretained(this),
-                           base::Passed(std::move(msg)));
-        mCameraThread.PostTaskAsync<status_t>(FROM_HERE, closure);
+        // Poll again if poll error times is less than the threshold.
+        if (mPollErrorTimes++ < POLL_REQUEST_TRY_TIMES) {
+            status_t status = mPollerThread->pollRequest(pollMsg->data.reqId,
+                                                         IPU3_EVENT_POLL_TIMEOUT,
+                                                         pollMsg->data.polledDevices);
+            return status;
+        } else if (mErrCb) {
+            // return a error message if poll failed happens 5 times in succession
+            mErrCb->deviceError();
+            return UNKNOWN_ERROR;
+        }
     }
 
     return OK;

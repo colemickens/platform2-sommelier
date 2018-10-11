@@ -65,7 +65,7 @@ RequestThread::init(const camera3_callback_ops_t *callback_ops)
     mRequestsPool.init(MAX_REQUEST_IN_PROCESS_NUM);
 
     mResultProcessor = new ResultProcessor(this, callback_ops);
-    PlatformData::getIntel3AClient()->registerErrorCallback(mResultProcessor);
+    mCameraHw->registerErrorCallback(mResultProcessor);
     mInitialized = true;
     return NO_ERROR;
 }
@@ -77,8 +77,8 @@ RequestThread::deinit()
         return NO_ERROR;
     }
 
-    if (mResultProcessor!= nullptr) {
-        PlatformData::getIntel3AClient()->registerErrorCallback(nullptr);
+    if (mResultProcessor) {
+        mCameraHw->registerErrorCallback(nullptr);
         mBlockAction = REQBLK_NONBLOCKING;
         mResultProcessor->requestExitAndWait();
         delete mResultProcessor;

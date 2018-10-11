@@ -42,6 +42,7 @@ public:
     status_t deinit(void);
     status_t run();
 
+    IErrorCallback* getResultProcessor() { return mResultProcessor; }
     status_t configureStreams(camera3_stream_configuration_t *stream_list);
     status_t constructDefaultRequest(int type, camera_metadata_t** meta);
     status_t processCaptureRequest(camera3_capture_request_t *request);

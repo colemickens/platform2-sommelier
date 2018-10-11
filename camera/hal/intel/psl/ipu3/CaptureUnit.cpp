@@ -159,6 +159,12 @@ status_t CaptureUnit::init()
     return OK;
 }
 
+void CaptureUnit::registerErrorCallback(IErrorCallback *errCb)
+{
+    mIsys->registerErrorCallback(errCb);
+    mSyncManager->registerErrorCallback(errCb);
+}
+
 LensHw *CaptureUnit::getLensControlInterface()
 {
     return static_cast<LensHw*>(mLensController.get());

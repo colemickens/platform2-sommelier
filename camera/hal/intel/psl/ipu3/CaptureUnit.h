@@ -25,6 +25,7 @@
 #include "InputSystem.h"
 #include "SyncManager.h"
 #include "LensHw.h"
+#include "IErrorCallback.h"
 #include <linux/intel-ipu3.h>
 
 #include <cros-camera/camera_thread.h>
@@ -135,6 +136,7 @@ public:
     ~CaptureUnit();
 
     status_t init();
+    void registerErrorCallback(IErrorCallback *errCb);
     void setSettingsProcessor(SettingsProcessor *settingsProcessor);
 
     status_t flush();

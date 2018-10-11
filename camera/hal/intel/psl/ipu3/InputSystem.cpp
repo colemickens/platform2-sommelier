@@ -41,7 +41,10 @@ InputSystem::InputSystem(IISysObserver *observer, std::shared_ptr<MediaControlle
     mBufferSeqNbr(0),
     mCameraThread("InputSystem"),
     mPollerThread(new PollerThread("IsysPollerThread")),
-    mRequestDone(true)
+    mRequestDone(true),
+    mPollErrorTimes(0),
+    mErrCb(nullptr)
+
 {
     LOG1("@%s", __FUNCTION__);
     mIsysRequestPool.init(MAX_REQUEST_IN_PROCESS_NUM);
@@ -83,6 +86,12 @@ status_t InputSystem::requestExitAndWait()
     }
     mCameraThread.Stop();
     return status;
+}
+
+void InputSystem::registerErrorCallback(IErrorCallback *errCb)
+{
+    LOG1("@%s, errCb:%p", __FUNCTION__, errCb);
+    mErrCb = errCb;
 }
 
 status_t InputSystem::configure(IStreamConfigProvider &streamConfigMgr,
@@ -184,6 +193,8 @@ status_t InputSystem::handleStart()
             break;
         }
     }
+
+    mPollErrorTimes = 0;
     if (status == NO_ERROR)
         mStarted = true;
     return status;
@@ -666,13 +677,20 @@ status_t InputSystem::handlePollEvent(MessagePollEvent msg)
         isysMsg.id = IISysObserver::ISYS_MESSAGE_ID_ERROR;
         isysMsg.data.error.status = status;
         mObserver->notifyIsysEvent(isysMsg);
-        // Poll again
-        status = mPollerThread->pollRequest(mCaptureInProgress->requestId,
-                   IPU3_EVENT_POLL_TIMEOUT,
-                   (std::vector<std::shared_ptr<cros::V4L2Device>>*) &mCaptureInProgress->configuredNodesForRequest);
-        return status;
+        // Poll again if poll error times is less than the threshold.
+        if (mPollErrorTimes++ < POLL_REQUEST_TRY_TIMES) {
+            status = mPollerThread->pollRequest(mCaptureInProgress->requestId,
+                                                IPU3_EVENT_POLL_TIMEOUT,
+                                                (std::vector<std::shared_ptr<cros::V4L2Device>>*) &mCaptureInProgress->configuredNodesForRequest);
+            return status;
+        } else if (mErrCb) {
+            // return a error message if poll failed happens 5 times in succession
+            mErrCb->deviceError();
+            return UNKNOWN_ERROR;
+        }
     }
 
+    mPollErrorTimes = 0;
     for (int i = 0; i < activeNodecount; i++) {
         status = getIsysNodeName(activeNodes[i], isysNodeName);
         if (status != NO_ERROR) {

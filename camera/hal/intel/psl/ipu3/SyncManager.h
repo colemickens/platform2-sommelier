@@ -31,6 +31,7 @@
 #include "Intel3aPlus.h"
 #include "CaptureUnitSettings.h"
 #include "SensorHwOp.h"
+#include "IErrorCallback.h"
 
 #include <cros-camera/camera_thread.h>
 
@@ -75,6 +76,7 @@ public:
 
 
     status_t init(int32_t exposureDelay, int32_t gainDelay);
+    void registerErrorCallback(IErrorCallback *errCb);
     status_t getSensorModeData(ia_aiq_exposure_sensor_descriptor &desc);
     status_t stop();
     status_t start();
@@ -155,6 +157,11 @@ private:
      */
     int64_t mCurrentSettingIdentifier;
 
+    /**
+     * Error handling for polling request.
+     */
+    int32_t mPollErrorTimes;
+    IErrorCallback* mErrCb;
 private:
     /* IMessageHandler overloads */
     status_t handleInit(MessageInit msg);

@@ -31,6 +31,7 @@
 #include <utils/Errors.h>
 #include "MediaCtlHelper.h"
 #include "NodeTypes.h"
+#include "IErrorCallback.h"
 
 #include <cros-camera/camera_thread.h>
 
@@ -89,6 +90,7 @@ public:
     InputSystem(IISysObserver *observer, std::shared_ptr<MediaController> mediaCtl);
     ~InputSystem();
 
+    void registerErrorCallback(IErrorCallback *errCb);
     status_t configure(IStreamConfigProvider &streamConfigProv,
                        MediaCtlHelper::ConfigurationResults &outData);
 
@@ -214,6 +216,11 @@ private: /* members */
     friend class std::shared_ptr<IsysRequest>;
     bool mRequestDone;
 
+    /**
+     * Error handling for polling request.
+     */
+    int32_t mPollErrorTimes;
+    IErrorCallback* mErrCb;
 }; // class InputSystem
 
 } // namespace camera2

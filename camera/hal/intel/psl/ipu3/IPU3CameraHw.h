@@ -21,6 +21,7 @@
 #include "HwStreamBase.h"
 #include "GraphConfigManager.h"
 #include "MediaController.h"
+#include "IErrorCallback.h"
 
 namespace android {
 namespace camera2 {
@@ -48,6 +49,7 @@ class IPU3CameraHw: public ICameraHw {
 
   // override of ICameraHw
     virtual status_t init();
+    void registerErrorCallback(IErrorCallback *errCb);
     virtual const camera_metadata_t * getDefaultRequestSettings(int type);
     virtual status_t bindStreams(std::vector<CameraStreamNode *> activeStreams);
     virtual status_t configStreams(std::vector<camera3_stream_t*> &activeStreams,
