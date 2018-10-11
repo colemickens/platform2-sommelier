@@ -130,8 +130,9 @@ class DeviceInfoTest : public Test {
   }
 
   void SetSockets() {
-    mock_sockets_ = new MockSockets();
-    device_info_.set_sockets(mock_sockets_);
+    auto sockets = std::make_unique<MockSockets>();
+    mock_sockets_ = sockets.get();
+    device_info_.set_sockets_for_test(std::move(sockets));
   }
 
   // Takes ownership of |provider|.

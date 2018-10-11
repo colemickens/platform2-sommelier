@@ -9,6 +9,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/callback.h>
@@ -246,7 +247,9 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   void OnWiFiInterfaceInfoReceived(const Nl80211Message& message);
 #endif  // DISABLE_WIFI
 
-  void set_sockets(Sockets* sockets) { sockets_.reset(sockets); }
+  void set_sockets_for_test(std::unique_ptr<Sockets> sockets) {
+    sockets_ = std::move(sockets);
+  }
 
   ControlInterface* control_interface_;
   EventDispatcher* dispatcher_;
