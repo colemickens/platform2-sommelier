@@ -85,9 +85,10 @@ class PortalDetector {
   // this is the last attempt, the "final" flag in the Result structure will
   // be true, otherwise it will be false, and the PortalDetector will
   // schedule the next attempt.
-  virtual bool Start(const std::string& url_string);
-  virtual bool StartAfterDelay(const std::string& url_string,
-                               int delay_seconds);
+  virtual bool Start(const ConnectivityTrial::PortalDetectionProperties& props);
+  virtual bool StartAfterDelay(
+      const ConnectivityTrial::PortalDetectionProperties& props,
+      int delay_seconds);
 
   // End the current portal detection process if one exists, and do not call
   // the callback.

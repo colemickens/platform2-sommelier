@@ -59,15 +59,17 @@ PortalDetector::~PortalDetector() {
   Stop();
 }
 
-bool PortalDetector::Start(const string& url_string) {
-  return StartAfterDelay(url_string, 0);
+bool PortalDetector::Start(
+    const ConnectivityTrial::PortalDetectionProperties& props) {
+  return StartAfterDelay(props, 0);
 }
 
-bool PortalDetector::StartAfterDelay(const string& url_string,
-                                     int delay_seconds) {
+bool PortalDetector::StartAfterDelay(
+    const ConnectivityTrial::PortalDetectionProperties& props,
+    int delay_seconds) {
   SLOG(connection_.get(), 3) << "In " << __func__;
 
-  if (!connectivity_trial_->Start(url_string, delay_seconds * 1000)) {
+  if (!connectivity_trial_->Start(props, delay_seconds * 1000)) {
     return false;
   }
   attempt_count_ = 1;

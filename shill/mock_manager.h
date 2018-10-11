@@ -77,7 +77,8 @@ class MockManager : public Manager {
   MOCK_CONST_METHOD1(IsTechnologyAutoConnectDisabled,
                      bool(Technology::Identifier tech));
   MOCK_METHOD2(RequestScan, void(const std::string& technology, Error* error));
-  MOCK_CONST_METHOD0(GetPortalCheckURL, const std::string&());
+  MOCK_CONST_METHOD0(GetPortalCheckHttpUrl, const std::string&());
+  MOCK_CONST_METHOD0(GetPortalCheckHttpsUrl, const std::string&());
   MOCK_CONST_METHOD0(GetPortalCheckInterval, int());
   MOCK_METHOD0(IsSuspending, bool());
   MOCK_CONST_METHOD1(GetEnabledDeviceWithTechnology,

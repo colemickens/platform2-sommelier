@@ -230,7 +230,9 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
   EXPECT_EQ(LinkMonitor::kDefaultLinkMonitorTechnologies,
             manager_props.link_monitor_technologies);
   EXPECT_EQ("", manager_props.no_auto_connect_technologies);
-  EXPECT_EQ(ConnectivityTrial::kDefaultURL, manager_props.portal_url);
+  EXPECT_EQ(ConnectivityTrial::kDefaultHttpUrl, manager_props.portal_http_url);
+  EXPECT_EQ(ConnectivityTrial::kDefaultHttpsUrl,
+            manager_props.portal_https_url);
   EXPECT_EQ(PortalDetector::kDefaultCheckIntervalSeconds,
             manager_props.portal_check_interval_seconds);
   EXPECT_EQ("", manager_props.prohibited_technologies);

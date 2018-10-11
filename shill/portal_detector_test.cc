@@ -39,7 +39,8 @@ namespace shill {
 namespace {
 const char kBadURL[] = "badurl";
 const char kInterfaceName[] = "int0";
-const char kURL[] = "http://www.chromium.org";
+const char kHttpUrl[] = "http://www.chromium.org";
+const char kHttpsUrl[] = "https://www.google.com";
 const char kDNSServer0[] = "8.8.8.8";
 const char kDNSServer1[] = "8.8.4.4";
 const char* const kDNSServers[] = {kDNSServer0, kDNSServer1};
@@ -111,8 +112,9 @@ class PortalDetectorTest : public Test {
     Callback<void(const PortalDetector::Result&)> result_callback_;
   };
 
-  bool StartPortalRequest(const string& url_string) {
-    bool ret = portal_detector_->Start(url_string);
+  bool StartPortalRequest(
+      const ConnectivityTrial::PortalDetectionProperties& props) {
+    bool ret = portal_detector_->Start(props);
     return ret;
   }
 
@@ -143,7 +145,9 @@ class PortalDetectorTest : public Test {
   void StartAttempt() {
     EXPECT_CALL(*connectivity_trial(), Start(_, _)).WillOnce(Return(true));
 
-    EXPECT_TRUE(StartPortalRequest(kURL));
+    ConnectivityTrial::PortalDetectionProperties props =
+        ConnectivityTrial::PortalDetectionProperties(kHttpUrl, kHttpsUrl);
+    EXPECT_TRUE(StartPortalRequest(props));
   }
 
  private:
@@ -174,13 +178,17 @@ TEST_F(PortalDetectorTest, Constructor) {
 
 TEST_F(PortalDetectorTest, InvalidURL) {
   EXPECT_CALL(*connectivity_trial(), Start(_, _)).WillOnce(Return(false));
-  EXPECT_FALSE(portal_detector()->Start(kBadURL));
+  ConnectivityTrial::PortalDetectionProperties props =
+      ConnectivityTrial::PortalDetectionProperties(kBadURL, kHttpsUrl);
+  EXPECT_FALSE(portal_detector()->Start(props));
   ExpectReset();
 }
 
 TEST_F(PortalDetectorTest, StartAttemptFailed) {
-  EXPECT_CALL(*connectivity_trial(), Start(kURL, 0)).WillOnce(Return(true));
-  EXPECT_TRUE(StartPortalRequest(kURL));
+  ConnectivityTrial::PortalDetectionProperties props =
+      ConnectivityTrial::PortalDetectionProperties(kHttpUrl, kHttpsUrl);
+  EXPECT_CALL(*connectivity_trial(), Start(props, 0)).WillOnce(Return(true));
+  EXPECT_TRUE(StartPortalRequest(props));
 
   // Expect that the request will be started -- return failure.
   ConnectivityTrial::Result errorResult =
@@ -204,15 +212,18 @@ TEST_F(PortalDetectorTest, IsInProgress) {
   // Starting the attempt immediately should result with IsInProgress returning
   // true
   EXPECT_CALL(*connectivity_trial(), Start(_, _))
-      .Times(2).WillRepeatedly(Return(true));
-  EXPECT_TRUE(StartPortalRequest(kURL));
+      .Times(2)
+      .WillRepeatedly(Return(true));
+  ConnectivityTrial::PortalDetectionProperties props =
+      ConnectivityTrial::PortalDetectionProperties(kHttpUrl, kHttpsUrl);
+  EXPECT_TRUE(StartPortalRequest(props));
   EXPECT_CALL(*connectivity_trial(), IsActive()).WillOnce(Return(true));
   EXPECT_TRUE(portal_detector()->IsInProgress());
 
   // Starting the attempt with a delay should result with IsInProgress returning
   // false
   EXPECT_CALL(*connectivity_trial(), IsActive()).WillOnce(Return(false));
-  portal_detector()->StartAfterDelay(kURL, 2);
+  portal_detector()->StartAfterDelay(props, 2);
   EXPECT_FALSE(portal_detector()->IsInProgress());
 
   // Advance time, IsInProgress should now be true
@@ -228,8 +239,10 @@ TEST_F(PortalDetectorTest, IsInProgress) {
 }
 
 TEST_F(PortalDetectorTest, AdjustStartDelayImmediate) {
-  EXPECT_CALL(*connectivity_trial(), Start(kURL, 0)).WillOnce(Return(true));
-  EXPECT_TRUE(StartPortalRequest(kURL));
+  ConnectivityTrial::PortalDetectionProperties props =
+      ConnectivityTrial::PortalDetectionProperties(kHttpUrl, kHttpsUrl);
+  EXPECT_CALL(*connectivity_trial(), Start(props, 0)).WillOnce(Return(true));
+  EXPECT_TRUE(StartPortalRequest(props));
 
   // A second attempt should be delayed by kMinTimeBetweenAttemptsSeconds.
   EXPECT_TRUE(portal_detector()->AdjustStartDelay(0)
@@ -239,10 +252,12 @@ TEST_F(PortalDetectorTest, AdjustStartDelayImmediate) {
 TEST_F(PortalDetectorTest, AdjustStartDelayAfterDelay) {
   const int kDelaySeconds = 123;
   // The first attempt should be delayed by kDelaySeconds.
-  EXPECT_CALL(*connectivity_trial(), Start(kURL, kDelaySeconds * 1000))
+  ConnectivityTrial::PortalDetectionProperties props =
+      ConnectivityTrial::PortalDetectionProperties(kHttpUrl, kHttpsUrl);
+  EXPECT_CALL(*connectivity_trial(), Start(props, kDelaySeconds * 1000))
       .WillOnce(Return(true));
 
-  portal_detector()->StartAfterDelay(kURL, kDelaySeconds);
+  portal_detector()->StartAfterDelay(props, kDelaySeconds);
 
   AdvanceTime(kDelaySeconds * 1000);
 
@@ -255,9 +270,12 @@ TEST_F(PortalDetectorTest, AttemptCount) {
   EXPECT_FALSE(portal_detector()->IsInProgress());
   // Expect the PortalDetector to immediately post a task for the each attempt.
   EXPECT_CALL(*connectivity_trial(), Start(_, _))
-      .Times(2).WillRepeatedly(Return(true));
+      .Times(2)
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(*connectivity_trial(), IsActive()).WillOnce(Return(false));
-  portal_detector()->StartAfterDelay(kURL, 2);
+  ConnectivityTrial::PortalDetectionProperties props =
+      ConnectivityTrial::PortalDetectionProperties(kHttpUrl, kHttpsUrl);
+  portal_detector()->StartAfterDelay(props, 2);
 
   EXPECT_FALSE(portal_detector()->IsInProgress());
 
@@ -296,7 +314,7 @@ TEST_F(PortalDetectorTest, AttemptCount) {
   EXPECT_CALL(*connectivity_trial(), Stop()).Times(1);
 
   EXPECT_CALL(*connectivity_trial(), IsActive()).WillOnce(Return(true));
-  portal_detector()->Start(kURL);
+  portal_detector()->Start(props);
   for (int i = 0; i < PortalDetector::kMaxRequestAttempts; i++) {
     EXPECT_TRUE(portal_detector()->IsInProgress());
     AdvanceTime(PortalDetector::kMinTimeBetweenAttemptsSeconds * 1000);
@@ -316,9 +334,12 @@ TEST_F(PortalDetectorTest, ReadBadHeadersRetry) {
   EXPECT_FALSE(portal_detector()->IsInProgress());
   // Expect the PortalDetector to immediately post a task for the each attempt.
   EXPECT_CALL(*connectivity_trial(), Start(_, 0))
-      .Times(2).WillRepeatedly(Return(true));
+      .Times(2)
+      .WillRepeatedly(Return(true));
 
-  EXPECT_TRUE(StartPortalRequest(kURL));
+  ConnectivityTrial::PortalDetectionProperties props =
+      ConnectivityTrial::PortalDetectionProperties(kHttpUrl, kHttpsUrl);
+  EXPECT_TRUE(StartPortalRequest(props));
 
   // Expect that the request will be started -- return failure.
   EXPECT_CALL(*connectivity_trial(), Retry(0))
@@ -354,7 +375,7 @@ TEST_F(PortalDetectorTest, ReadBadHeadersRetry) {
   EXPECT_CALL(*connectivity_trial(), Stop()).Times(1);
 
   EXPECT_CALL(*connectivity_trial(), IsActive()).WillOnce(Return(true));
-  portal_detector()->Start(kURL);
+  portal_detector()->Start(props);
   for (int i = 0; i < PortalDetector::kMaxFailuresInContentPhase; i++) {
     EXPECT_TRUE(portal_detector()->IsInProgress());
     AdvanceTime(PortalDetector::kMinTimeBetweenAttemptsSeconds * 1000);

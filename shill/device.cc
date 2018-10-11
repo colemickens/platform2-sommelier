@@ -1353,10 +1353,14 @@ bool Device::StartPortalDetection() {
       connection_,
       dispatcher_,
       Bind(&Device::PortalDetectorCallback, weak_ptr_factory_.GetWeakPtr())));
-  if (!portal_detector_->Start(manager_->GetPortalCheckURL())) {
+  ConnectivityTrial::PortalDetectionProperties props =
+      ConnectivityTrial::PortalDetectionProperties(
+          manager_->GetPortalCheckHttpUrl(),
+          manager_->GetPortalCheckHttpsUrl());
+  if (!portal_detector_->Start(props)) {
     LOG(ERROR) << "Device " << link_name()
                << ": Portal detection failed to start: likely bad URL: "
-               << manager_->GetPortalCheckURL();
+               << props.http_url_string << " or " << props.https_url_string;
     SetServiceConnectedState(Service::kStateOnline);
     return false;
   }
@@ -1382,10 +1386,10 @@ bool Device::StartConnectionDiagnosticsAfterPortalDetection(
                                 Bind(&Device::ConnectionDiagnosticsCallback,
                                      weak_ptr_factory_.GetWeakPtr())));
   if (!connection_diagnostics_->StartAfterPortalDetection(
-      manager_->GetPortalCheckURL(), result)) {
+          manager_->GetPortalCheckHttpUrl(), result)) {
     LOG(ERROR) << "Device " << link_name()
                << ": Connection diagnostics failed to start: likely bad URL: "
-               << manager_->GetPortalCheckURL();
+               << manager_->GetPortalCheckHttpUrl();
     connection_diagnostics_.reset();
     return false;
   }
@@ -1670,12 +1674,15 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
   if (state == Service::kStatePortal && connection_->IsDefault() &&
       manager_->GetPortalCheckInterval() != 0) {
     CHECK(portal_detector_.get());
+    ConnectivityTrial::PortalDetectionProperties props =
+        ConnectivityTrial::PortalDetectionProperties(
+            manager_->GetPortalCheckHttpUrl(),
+            manager_->GetPortalCheckHttpsUrl());
     if (!portal_detector_->StartAfterDelay(
-            manager_->GetPortalCheckURL(),
-            manager_->GetPortalCheckInterval())) {
+            props, manager_->GetPortalCheckInterval())) {
       LOG(ERROR) << "Device " << link_name()
                  << ": Portal detection failed to restart: likely bad URL: "
-                 << manager_->GetPortalCheckURL();
+                 << props.http_url_string << " or " << props.https_url_string;
       SetServiceState(Service::kStateOnline);
       portal_detector_.reset();
       return;

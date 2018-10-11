@@ -51,9 +51,13 @@ ConnectionTester::~ConnectionTester() {
 
 void ConnectionTester::Start() {
   SLOG(connection_.get(), 3) << "In " << __func__;
-  if (!connectivity_trial_->Start(ConnectivityTrial::kDefaultURL, 0))
-    LOG(ERROR) << StringPrintf("ConnectivityTrial failed to parse default "
-                               "URL %s", ConnectivityTrial::kDefaultURL);
+  ConnectivityTrial::PortalDetectionProperties props =
+      ConnectivityTrial::PortalDetectionProperties();
+  if (!connectivity_trial_->Start(props, 0))
+    LOG(ERROR) << StringPrintf(
+        "ConnectivityTrial failed to parse default "
+        "URL %s",
+        props.http_url_string.c_str());
 }
 
 void ConnectionTester::Stop() {

@@ -74,7 +74,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
     std::string check_portal_list;
     std::string country;
     int32_t portal_check_interval_seconds;
-    std::string portal_url;
+    std::string portal_http_url;
+    std::string portal_https_url;
     std::string host_name;
     // Whether to ARP for the default gateway in the DHCP client after
     // acquiring a lease.
@@ -345,8 +346,11 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual int GetPortalCheckInterval() const {
     return props_.portal_check_interval_seconds;
   }
-  virtual const std::string& GetPortalCheckURL() const {
-    return props_.portal_url;
+  virtual const std::string& GetPortalCheckHttpUrl() const {
+    return props_.portal_http_url;
+  }
+  virtual const std::string& GetPortalCheckHttpsUrl() const {
+    return props_.portal_https_url;
   }
 
   virtual DeviceInfo* device_info() { return &device_info_; }

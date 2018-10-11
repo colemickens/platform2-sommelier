@@ -19,7 +19,8 @@ class MockConnectivityTrial : public ConnectivityTrial {
   MockConnectivityTrial(ConnectionRefPtr connection, int trial_timeout_seconds);
   ~MockConnectivityTrial() override;
 
-  MOCK_METHOD2(Start, bool(const std::string&, int));
+  MOCK_METHOD2(Start,
+               bool(const ConnectivityTrial::PortalDetectionProperties&, int));
   MOCK_METHOD1(Retry, bool(int));
   MOCK_METHOD0(Stop, void());
   MOCK_METHOD0(IsActive, bool());

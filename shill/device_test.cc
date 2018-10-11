@@ -2101,9 +2101,11 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionBadUrl) {
       .WillOnce(Return(true));
   EXPECT_CALL(manager_, IsPortalDetectionEnabled(device_->technology()))
       .WillOnce(Return(true));
-  const string portal_url;
-  EXPECT_CALL(manager_, GetPortalCheckURL())
-      .WillRepeatedly(ReturnRef(portal_url));
+  const string http_portal_url, https_portal_url;
+  EXPECT_CALL(manager_, GetPortalCheckHttpUrl())
+      .WillRepeatedly(ReturnRef(http_portal_url));
+  EXPECT_CALL(manager_, GetPortalCheckHttpsUrl())
+      .WillRepeatedly(ReturnRef(https_portal_url));
   EXPECT_CALL(*service_.get(), SetState(Service::kStateOnline));
   EXPECT_FALSE(StartPortalDetection());
 }
@@ -2119,9 +2121,12 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionStart) {
       .WillOnce(Return(true));
   EXPECT_CALL(manager_, IsPortalDetectionEnabled(device_->technology()))
       .WillOnce(Return(true));
-  const string portal_url(ConnectivityTrial::kDefaultURL);
-  EXPECT_CALL(manager_, GetPortalCheckURL())
-      .WillRepeatedly(ReturnRef(portal_url));
+  const string http_portal_url(ConnectivityTrial::kDefaultHttpUrl);
+  const string https_portal_url(ConnectivityTrial::kDefaultHttpsUrl);
+  EXPECT_CALL(manager_, GetPortalCheckHttpUrl())
+      .WillRepeatedly(ReturnRef(http_portal_url));
+  EXPECT_CALL(manager_, GetPortalCheckHttpsUrl())
+      .WillRepeatedly(ReturnRef(https_portal_url));
   EXPECT_CALL(*service_.get(), SetState(Service::kStateOnline))
       .Times(0);
   const string kInterfaceName("int0");
@@ -2150,9 +2155,12 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionStartIPv6) {
       .WillOnce(Return(true));
   EXPECT_CALL(manager_, IsPortalDetectionEnabled(device_->technology()))
       .WillOnce(Return(true));
-  const string portal_url(ConnectivityTrial::kDefaultURL);
-  EXPECT_CALL(manager_, GetPortalCheckURL())
-      .WillRepeatedly(ReturnRef(portal_url));
+  const string http_portal_url(ConnectivityTrial::kDefaultHttpUrl);
+  const string https_portal_url(ConnectivityTrial::kDefaultHttpsUrl);
+  EXPECT_CALL(manager_, GetPortalCheckHttpUrl())
+      .WillRepeatedly(ReturnRef(http_portal_url));
+  EXPECT_CALL(manager_, GetPortalCheckHttpsUrl())
+      .WillRepeatedly(ReturnRef(https_portal_url));
   EXPECT_CALL(*service_.get(), SetState(Service::kStateOnline))
       .Times(0);
   const string kInterfaceName("int0");
@@ -2337,9 +2345,12 @@ TEST_F(DevicePortalDetectionTest, RequestPortalDetection) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*service_.get(), HasProxyConfig())
       .WillRepeatedly(Return(false));
-  const string kPortalCheckURL("http://portal");
-  EXPECT_CALL(manager_, GetPortalCheckURL())
-      .WillOnce(ReturnRef(kPortalCheckURL));
+  const string kPortalCheckHttpUrl("http://portal");
+  const string kPortalCheckHttpsUrl("https://portal");
+  EXPECT_CALL(manager_, GetPortalCheckHttpUrl())
+      .WillOnce(ReturnRef(kPortalCheckHttpUrl));
+  EXPECT_CALL(manager_, GetPortalCheckHttpsUrl())
+      .WillOnce(ReturnRef(kPortalCheckHttpsUrl));
   const string kInterfaceName("int0");
   EXPECT_CALL(*connection_.get(), IsIPv6())
       .WillRepeatedly(Return(false));
@@ -2413,11 +2424,17 @@ TEST_F(DevicePortalDetectionTest, RestartPortalDetection) {
   EXPECT_CALL(manager_, GetPortalCheckInterval())
       .Times(AtLeast(1))
       .WillRepeatedly(Return(kPortalDetectionInterval));
-  const string kPortalCheckURL("http://portal");
-  EXPECT_CALL(manager_, GetPortalCheckURL())
-      .WillOnce(ReturnRef(kPortalCheckURL));
-  EXPECT_CALL(*portal_detector_, StartAfterDelay(kPortalCheckURL,
-                                                 kPortalDetectionInterval))
+  const string kPortalCheckHttpUrl("http://portal");
+  const string kPortalCheckHttpsUrl("https://portal");
+  EXPECT_CALL(manager_, GetPortalCheckHttpUrl())
+      .WillOnce(ReturnRef(kPortalCheckHttpUrl));
+  EXPECT_CALL(manager_, GetPortalCheckHttpsUrl())
+      .WillOnce(ReturnRef(kPortalCheckHttpsUrl));
+  ConnectivityTrial::PortalDetectionProperties props =
+      ConnectivityTrial::PortalDetectionProperties(kPortalCheckHttpUrl,
+                                                   kPortalCheckHttpsUrl);
+  EXPECT_CALL(*portal_detector_,
+              StartAfterDelay(props, kPortalDetectionInterval))
       .WillOnce(Return(true));
   EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
   SetServiceConnectedState(Service::kStatePortal);
@@ -2548,9 +2565,12 @@ TEST_F(DevicePortalDetectionTest, FallbackDNSResultCallback) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*service_.get(), HasProxyConfig())
       .WillRepeatedly(Return(false));
-  const string kPortalCheckURL("http://portal");
-  EXPECT_CALL(manager_, GetPortalCheckURL())
-      .WillOnce(ReturnRef(kPortalCheckURL));
+  const string kPortalCheckHttpUrl("http://portal");
+  const string kPortalCheckHttpsUrl("https://portal");
+  EXPECT_CALL(manager_, GetPortalCheckHttpUrl())
+      .WillOnce(ReturnRef(kPortalCheckHttpUrl));
+  EXPECT_CALL(manager_, GetPortalCheckHttpsUrl())
+      .WillOnce(ReturnRef(kPortalCheckHttpsUrl));
   const string kInterfaceName("int0");
   EXPECT_CALL(*connection_.get(), IsIPv6())
       .WillRepeatedly(Return(false));
@@ -2595,9 +2615,12 @@ TEST_F(DevicePortalDetectionTest, ConfigDNSResultCallback) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*service_.get(), HasProxyConfig())
       .WillRepeatedly(Return(false));
-  const string kPortalCheckURL("http://portal");
-  EXPECT_CALL(manager_, GetPortalCheckURL())
-      .WillOnce(ReturnRef(kPortalCheckURL));
+  const string kPortalCheckHttpUrl("http://portal");
+  const string kPortalCheckHttpsUrl("https://portal");
+  EXPECT_CALL(manager_, GetPortalCheckHttpUrl())
+      .WillOnce(ReturnRef(kPortalCheckHttpUrl));
+  EXPECT_CALL(manager_, GetPortalCheckHttpsUrl())
+      .WillOnce(ReturnRef(kPortalCheckHttpsUrl));
   const string kInterfaceName("int0");
   EXPECT_CALL(*connection_.get(), IsIPv6())
       .WillRepeatedly(Return(false));
@@ -2633,9 +2656,12 @@ TEST_F(DevicePortalDetectionTest, DestroyConnection) {
       .WillOnce(Return(true));
   EXPECT_CALL(manager_, IsPortalDetectionEnabled(device_->technology()))
       .WillOnce(Return(true));
-  const string portal_url(ConnectivityTrial::kDefaultURL);
-  EXPECT_CALL(manager_, GetPortalCheckURL())
-      .WillRepeatedly(ReturnRef(portal_url));
+  const string http_portal_url(ConnectivityTrial::kDefaultHttpUrl);
+  const string https_portal_url(ConnectivityTrial::kDefaultHttpsUrl);
+  EXPECT_CALL(manager_, GetPortalCheckHttpUrl())
+      .WillRepeatedly(ReturnRef(http_portal_url));
+  EXPECT_CALL(manager_, GetPortalCheckHttpsUrl())
+      .WillRepeatedly(ReturnRef(https_portal_url));
   const string kInterfaceName("int0");
   EXPECT_CALL(*connection.get(), interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));

@@ -65,7 +65,25 @@ class ConnectivityTrial {
     Status status;
   };
 
-  static const char kDefaultURL[];
+  struct PortalDetectionProperties {
+    PortalDetectionProperties()
+        : http_url_string(kDefaultHttpsUrl),
+          https_url_string(kDefaultHttpsUrl) {}
+    PortalDetectionProperties(const std::string& http_url_string,
+                              const std::string& https_url_string)
+        : http_url_string(http_url_string),
+          https_url_string(https_url_string) {}
+    bool operator==(const PortalDetectionProperties& b) const {
+      return http_url_string == b.http_url_string &&
+             https_url_string == b.https_url_string;
+    }
+
+    std::string http_url_string;
+    std::string https_url_string;
+  };
+
+  static const char kDefaultHttpUrl[];
+  static const char kDefaultHttpsUrl[];
 
   ConnectivityTrial(ConnectionRefPtr connection,
                     EventDispatcher* dispatcher,
@@ -96,7 +114,7 @@ class ConnectivityTrial {
   //
   // After a trial completes, the callback supplied in the constructor is
   // called.
-  virtual bool Start(const std::string& url_string,
+  virtual bool Start(const PortalDetectionProperties& props,
                      int start_delay_milliseconds);
 
   // After a trial completes, the calling class may call Retry on the trial.
@@ -162,10 +180,10 @@ class ConnectivityTrial {
   base::Callback<void(std::shared_ptr<brillo::http::Response>)>
       request_success_callback_;
   base::Callback<void(HttpRequest::Result)> request_error_callback_;
-  std::unique_ptr<HttpRequest> request_;
+  std::unique_ptr<HttpRequest> http_request_;
 
   Sockets sockets_;
-  std::string url_string_;
+  std::string http_url_string_;
   base::CancelableClosure trial_;
   base::CancelableClosure trial_timeout_;
   bool is_active_;

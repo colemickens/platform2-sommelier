@@ -194,7 +194,7 @@ class ConnectionDiagnostics {
 
   // Starts diagnosing problems that |connection_| encounters reaching
   // |url_string|.
-  bool Start(const std::string& url_string);
+  bool Start(const ConnectivityTrial::PortalDetectionProperties& props);
 
   // Skips the portal detection initiated in ConnectionDiagnostics::Start and
   // performs further diagnostics based on the |result| from a completed portal

@@ -19,8 +19,11 @@ class MockPortalDetector : public PortalDetector {
   explicit MockPortalDetector(ConnectionRefPtr connection);
   ~MockPortalDetector() override;
 
-  MOCK_METHOD1(Start, bool(const std::string&));
-  MOCK_METHOD2(StartAfterDelay, bool(const std::string&, int delay_seconds));
+  MOCK_METHOD1(Start,
+               bool(const ConnectivityTrial::PortalDetectionProperties&));
+  MOCK_METHOD2(StartAfterDelay,
+               bool(const ConnectivityTrial::PortalDetectionProperties&,
+                    int delay_seconds));
   MOCK_METHOD0(Stop, void());
   MOCK_METHOD0(IsInProgress, bool());
 

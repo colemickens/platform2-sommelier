@@ -165,8 +165,9 @@ ConnectionDiagnostics::~ConnectionDiagnostics() {
   Stop();
 }
 
-bool ConnectionDiagnostics::Start(const string& url_string) {
-  SLOG(this, 3) << __func__ << "(" << url_string << ")";
+bool ConnectionDiagnostics::Start(
+    const ConnectivityTrial::PortalDetectionProperties& props) {
+  SLOG(this, 3) << __func__ << "(" << props.http_url_string << ")";
 
   if (running()) {
     LOG(ERROR) << "Connection diagnostics already started";
@@ -174,13 +175,13 @@ bool ConnectionDiagnostics::Start(const string& url_string) {
   }
 
   target_url_.reset(new HttpUrl());
-  if (!target_url_->ParseFromString(url_string)) {
-    LOG(ERROR) << "Failed to parse URL string: " << url_string;
+  if (!target_url_->ParseFromString(props.http_url_string)) {
+    LOG(ERROR) << "Failed to parse URL string: " << props.http_url_string;
     Stop();
     return false;
   }
 
-  if (!portal_detector_->Start(url_string)) {
+  if (!portal_detector_->Start(props)) {
     Stop();
     return false;
   }

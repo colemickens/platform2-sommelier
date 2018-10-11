@@ -227,7 +227,8 @@ Manager::Manager(ControlInterface* control_interface,
   store_.RegisterString(kNoAutoConnectTechnologiesProperty,
                         &props_.no_auto_connect_technologies);
   store_.RegisterBool(kOfflineModeProperty, &props_.offline_mode);
-  store_.RegisterConstString(kPortalURLProperty, &props_.portal_url);
+  store_.RegisterConstString(kPortalHttpUrlProperty, &props_.portal_http_url);
+  store_.RegisterConstString(kPortalHttpsUrlProperty, &props_.portal_https_url);
   store_.RegisterInt32(kPortalCheckIntervalProperty,
                        &props_.portal_check_interval_seconds);
   HelpRegisterConstDerivedRpcIdentifiers(kProfilesProperty,

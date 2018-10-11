@@ -40,7 +40,8 @@ namespace shill {
 namespace {
 const char kBadURL[] = "badurl";
 const char kInterfaceName[] = "int0";
-const char kURL[] = "http://www.chromium.org";
+const char kHttpUrl[] = "http://www.chromium.org";
+const char kHttpsUrl[] = "https://www.google.com";
 const char kDNSServer0[] = "8.8.8.8";
 const char kDNSServer1[] = "8.8.4.4";
 const char* const kDNSServers[] = {kDNSServer0, kDNSServer1};
@@ -80,12 +81,12 @@ class ConnectivityTrialTest : public Test {
         .WillRepeatedly(Invoke(this, &ConnectivityTrialTest::GetTimeMonotonic));
     EXPECT_CALL(*connection_.get(), dns_servers())
         .WillRepeatedly(ReturnRef(dns_servers_));
-    EXPECT_FALSE(connectivity_trial_->request_.get());
+    EXPECT_FALSE(connectivity_trial_->http_request_.get());
   }
 
   void TearDown() override {
     Mock::VerifyAndClearExpectations(&http_request_);
-    if (connectivity_trial_->request_.get()) {
+    if (connectivity_trial_->http_request_.get()) {
       EXPECT_CALL(*http_request(), Stop());
 
       // Delete the ConnectivityTrial while expectations still exist.
@@ -119,19 +120,21 @@ class ConnectivityTrialTest : public Test {
 
   void AssignHttpRequest() {
     http_request_ = new StrictMock<MockHttpRequest>(connection_);
-    connectivity_trial_->request_.reset(http_request_);  // Passes ownership.
+    connectivity_trial_->http_request_.reset(
+        http_request_);  // Passes ownership.
   }
 
-  bool StartTrialWithDelay(const string& url_string, int delay) {
-    bool ret = connectivity_trial_->Start(url_string, delay);
+  bool StartTrialWithDelay(
+      const ConnectivityTrial::PortalDetectionProperties& props, int delay) {
+    bool ret = connectivity_trial_->Start(props, delay);
     if (ret) {
       AssignHttpRequest();
     }
     return ret;
   }
 
-  bool StartTrial(const string& url_string) {
-    return StartTrialWithDelay(url_string, 0);
+  bool StartTrial(const ConnectivityTrial::PortalDetectionProperties& props) {
+    return StartTrialWithDelay(props, 0);
   }
 
   void StartTrialTask() {
@@ -161,7 +164,7 @@ class ConnectivityTrialTest : public Test {
   void ExpectReset() {
     EXPECT_TRUE(callback_target_.result_callback().
                 Equals(connectivity_trial_->trial_callback_));
-    EXPECT_FALSE(connectivity_trial_->request_.get());
+    EXPECT_FALSE(connectivity_trial_->http_request_.get());
   }
 
   void ExpectTrialRetry(const ConnectivityTrial::Result& result, int delay) {
@@ -181,7 +184,9 @@ class ConnectivityTrialTest : public Test {
 
   void StartTrial() {
     EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
-    EXPECT_TRUE(StartTrial(kURL));
+    ConnectivityTrial::PortalDetectionProperties props =
+        ConnectivityTrial::PortalDetectionProperties(kHttpUrl, kHttpsUrl);
+    EXPECT_TRUE(StartTrial(props));
 
     // Expect that the request will be started -- return failure.
     EXPECT_CALL(*http_request(), Start(_, _, _))
@@ -233,7 +238,9 @@ TEST_F(ConnectivityTrialTest, Constructor) {
 TEST_F(ConnectivityTrialTest, InvalidURL) {
   EXPECT_FALSE(connectivity_trial()->IsActive());
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0)).Times(0);
-  EXPECT_FALSE(StartTrial(kBadURL));
+  ConnectivityTrial::PortalDetectionProperties props =
+      ConnectivityTrial::PortalDetectionProperties(kBadURL, kHttpsUrl);
+  EXPECT_FALSE(StartTrial(props));
   ExpectReset();
 
   EXPECT_FALSE(connectivity_trial()->Retry(0));
@@ -246,7 +253,9 @@ TEST_F(ConnectivityTrialTest, IsActive) {
 
   // Once the trial is started, IsActive should return true.
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
-  EXPECT_TRUE(StartTrial(kURL));
+  ConnectivityTrial::PortalDetectionProperties props =
+      ConnectivityTrial::PortalDetectionProperties(kHttpUrl, kHttpsUrl);
+  EXPECT_TRUE(StartTrial(props));
   StartTrialTask();
   EXPECT_TRUE(connectivity_trial()->IsActive());
 
@@ -260,7 +269,9 @@ TEST_F(ConnectivityTrialTest, IsActive) {
 
 TEST_F(ConnectivityTrialTest, StartAttemptFailed) {
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
-  EXPECT_TRUE(StartTrial(kURL));
+  ConnectivityTrial::PortalDetectionProperties props =
+      ConnectivityTrial::PortalDetectionProperties(kHttpUrl, kHttpsUrl);
+  EXPECT_TRUE(StartTrial(props));
 
   // Expect that the request will be started -- return failure.
   EXPECT_CALL(*http_request(), Start(_, _, _))
@@ -280,24 +291,30 @@ TEST_F(ConnectivityTrialTest, StartAttemptFailed) {
 
 TEST_F(ConnectivityTrialTest, StartRepeated) {
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0)).Times(1);
-  EXPECT_TRUE(StartTrial(kURL));
+  ConnectivityTrial::PortalDetectionProperties props =
+      ConnectivityTrial::PortalDetectionProperties(kHttpUrl, kHttpsUrl);
+  EXPECT_TRUE(StartTrial(props));
 
   // A second call should cancel the existing trial and set up the new one.
   EXPECT_CALL(*http_request(), Stop());
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 10)).Times(1);
-  EXPECT_TRUE(StartTrialWithDelay(kURL, 10));
+  EXPECT_TRUE(StartTrialWithDelay(props, 10));
 }
 
 TEST_F(ConnectivityTrialTest, StartTrialAfterDelay) {
   const int kDelaySeconds = 123;
   // The trial should be delayed by kDelaySeconds.
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, kDelaySeconds));
-  EXPECT_TRUE(StartTrialWithDelay(kURL, kDelaySeconds));
+  ConnectivityTrial::PortalDetectionProperties props =
+      ConnectivityTrial::PortalDetectionProperties(kHttpUrl, kHttpsUrl);
+  EXPECT_TRUE(StartTrialWithDelay(props, kDelaySeconds));
 }
 
 TEST_F(ConnectivityTrialTest, TrialRetry) {
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
-  EXPECT_TRUE(StartTrial(kURL));
+  ConnectivityTrial::PortalDetectionProperties props =
+      ConnectivityTrial::PortalDetectionProperties(kHttpUrl, kHttpsUrl);
+  EXPECT_TRUE(StartTrial(props));
 
   // Expect that the request will be started -- return failure.
   EXPECT_CALL(*http_request(), Start(_, _, _))
@@ -313,7 +330,9 @@ TEST_F(ConnectivityTrialTest, TrialRetry) {
 
 TEST_F(ConnectivityTrialTest, TrialRetryFail) {
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
-  EXPECT_TRUE(StartTrial(kURL));
+  ConnectivityTrial::PortalDetectionProperties props =
+      ConnectivityTrial::PortalDetectionProperties(kHttpUrl, kHttpsUrl);
+  EXPECT_TRUE(StartTrial(props));
 
   EXPECT_CALL(*http_request(), Stop());
   connectivity_trial()->Stop();
@@ -329,7 +348,9 @@ TEST_F(ConnectivityTrialTest, ReadBadHeadersRetry) {
 
   // Expect ConnectivityTrial to immediately post a task for the each attempt.
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
-  EXPECT_TRUE(StartTrial(kURL));
+  ConnectivityTrial::PortalDetectionProperties props =
+      ConnectivityTrial::PortalDetectionProperties(kHttpUrl, kHttpsUrl);
+  EXPECT_TRUE(StartTrial(props));
 
   // Expect that the request will be started and return the in progress status.
   EXPECT_CALL(*http_request(), Start(_, _, _))
@@ -363,7 +384,9 @@ TEST_F(ConnectivityTrialTest, ReadBadHeadersRetry) {
 
 TEST_F(ConnectivityTrialTest, RequestTimeout) {
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
-  EXPECT_TRUE(StartTrial(kURL));
+  ConnectivityTrial::PortalDetectionProperties props =
+      ConnectivityTrial::PortalDetectionProperties(kHttpUrl, kHttpsUrl);
+  EXPECT_TRUE(StartTrial(props));
 
   StartTrialTask();
 
@@ -376,7 +399,9 @@ TEST_F(ConnectivityTrialTest, RequestTimeout) {
 
 TEST_F(ConnectivityTrialTest, RequestSuccess) {
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
-  EXPECT_TRUE(StartTrial(kURL));
+  ConnectivityTrial::PortalDetectionProperties props =
+      ConnectivityTrial::PortalDetectionProperties(kHttpUrl, kHttpsUrl);
+  EXPECT_TRUE(StartTrial(props));
 
   StartTrialTask();
 
@@ -389,7 +414,9 @@ TEST_F(ConnectivityTrialTest, RequestSuccess) {
 
 TEST_F(ConnectivityTrialTest, RequestFail) {
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
-  EXPECT_TRUE(StartTrial(kURL));
+  ConnectivityTrial::PortalDetectionProperties props =
+      ConnectivityTrial::PortalDetectionProperties(kHttpUrl, kHttpsUrl);
+  EXPECT_TRUE(StartTrial(props));
 
   StartTrialTask();
 

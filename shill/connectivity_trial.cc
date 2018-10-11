@@ -58,8 +58,10 @@ static auto kModuleLogScope = ScopeLogger::kPortal;
 static string ObjectID(Connection* c) { return c->interface_name(); }
 }
 
-const char ConnectivityTrial::kDefaultURL[] =
+const char ConnectivityTrial::kDefaultHttpUrl[] =
     "http://www.gstatic.com/generate_204";
+const char ConnectivityTrial::kDefaultHttpsUrl[] =
+    "https://www.google.com/generate_204";
 
 ConnectivityTrial::ConnectivityTrial(ConnectionRefPtr connection,
                                      EventDispatcher* dispatcher,
@@ -82,7 +84,7 @@ ConnectivityTrial::~ConnectivityTrial() {
 
 bool ConnectivityTrial::Retry(int start_delay_milliseconds) {
   SLOG(connection_.get(), 3) << "In " << __func__;
-  if (request_.get())
+  if (http_request_.get())
     CleanupTrial(false);
   else
     return false;
@@ -90,23 +92,27 @@ bool ConnectivityTrial::Retry(int start_delay_milliseconds) {
   return true;
 }
 
-bool ConnectivityTrial::Start(const string& url_string,
+bool ConnectivityTrial::Start(const PortalDetectionProperties& props,
                               int start_delay_milliseconds) {
   SLOG(connection_.get(), 3) << "In " << __func__;
 
   // This step is rerun on each attempt, but trying it here will allow
   // Start() to abort on any obviously malformed URL strings.
-  HttpUrl url;
-  if (!url.ParseFromString(RandomizeURL(url_string))) {
-    LOG(ERROR) << "Failed to parse URL string: " << url_string;
+  HttpUrl http_url, https_url;
+  if (!http_url.ParseFromString(RandomizeURL(props.http_url_string))) {
+    LOG(ERROR) << "Failed to parse URL string: " << props.http_url_string;
     return false;
   }
-  url_string_ = url_string;
+  if (!https_url.ParseFromString(props.https_url_string)) {
+    LOG(ERROR) << "Failed to parse URL string: " << props.https_url_string;
+    return false;
+  }
+  http_url_string_ = props.http_url_string;
 
-  if (request_.get()) {
+  if (http_request_.get()) {
     CleanupTrial(false);
   } else {
-    request_.reset(new HttpRequest(connection_, dispatcher_));
+    http_request_.reset(new HttpRequest(connection_, dispatcher_));
   }
   StartTrialAfterDelay(start_delay_milliseconds);
   return true;
@@ -115,7 +121,7 @@ bool ConnectivityTrial::Start(const string& url_string,
 void ConnectivityTrial::Stop() {
   SLOG(connection_.get(), 3) << "In " << __func__;
 
-  if (!request_.get()) {
+  if (!http_request_.get()) {
     return;
   }
 
@@ -134,14 +140,14 @@ void ConnectivityTrial::StartTrialAfterDelay(int start_delay_milliseconds) {
 
 void ConnectivityTrial::StartTrialTask() {
   HttpUrl url;
-  if (!url.ParseFromString(RandomizeURL(url_string_))) {
-    LOG(ERROR) << "Failed to parse URL string: " << url_string_;
+  if (!url.ParseFromString(RandomizeURL(http_url_string_))) {
+    LOG(ERROR) << "Failed to parse URL string: " << http_url_string_;
     CompleteTrial(Result(kPhaseUnknown, kStatusFailure));
     return;
   }
 
-  HttpRequest::Result result =
-      request_->Start(url, request_success_callback_, request_error_callback_);
+  HttpRequest::Result result = http_request_->Start(
+      url, request_success_callback_, request_error_callback_);
   if (result != HttpRequest::kResultInProgress) {
     CompleteTrial(ConnectivityTrial::GetPortalResultForRequestResult(result));
     return;
@@ -184,15 +190,15 @@ void ConnectivityTrial::CompleteTrial(Result result) {
 void ConnectivityTrial::CleanupTrial(bool reset_request) {
   trial_timeout_.Cancel();
 
-  if (request_.get())
-    request_->Stop();
+  if (http_request_.get())
+    http_request_->Stop();
 
   is_active_ = false;
 
-  if (!reset_request || !request_.get())
+  if (!reset_request || !http_request_.get())
     return;
 
-  request_.reset();
+  http_request_.reset();
 }
 
 void ConnectivityTrial::TimeoutTrialTask() {
