@@ -784,6 +784,118 @@ TEST_F(SmbProviderTest, GetMetadataSucceeds) {
   EXPECT_EQ(kFileDate, entry.last_modified_time());
 }
 
+// Calls ReadDirectory() to put a file in the cache, then deletes the
+// file and verifies that the cache doesn't incorrectly hit.
+TEST_F(SmbProviderTest, DeleteFileInvalidatesCache) {
+  SetUpSmbProvider(true /* metadata_cache_enabled */);
+  int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetAddedFullDirectoryPath());
+  fake_samba_->AddFile(GetAddedFullFilePath(), kFileSize, kFileDate);
+
+  // Get the cache.
+  MetadataCache* cache = nullptr;
+  EXPECT_TRUE(mount_manager_->GetMetadataCache(mount_id, &cache));
+  EXPECT_NE(nullptr, cache);
+
+  // Nothing is in the cache yet.
+  EXPECT_TRUE(cache->IsEmpty());
+
+  ProtoBlob results;
+  int32_t err;
+  ProtoBlob read_directory_blob =
+      CreateReadDirectoryOptionsBlob(mount_id, GetDefaultDirectoryPath());
+  smbprovider_->ReadDirectory(read_directory_blob, &err, &results);
+  EXPECT_EQ(ERROR_OK, CastError(err));
+
+  // The file should be in the cache now.
+  DirectoryEntry entry;
+  EXPECT_TRUE(cache->FindEntry(GetAddedFullFilePath(), &entry));
+
+  ProtoBlob delete_entry_blob = CreateDeleteEntryOptionsBlob(
+      mount_id, GetDefaultFilePath(), false /* recursive */);
+  EXPECT_EQ(ERROR_OK, smbprovider_->DeleteEntry(delete_entry_blob));
+
+  // File should no longer be in the cache.
+  EXPECT_FALSE(cache->FindEntry(GetAddedFullFilePath(), &entry));
+}
+
+// Calls ReadDirectory() to put a directory in the cache, then deletes the
+// directory and verifies that the cache doesn't incorrectly hit.
+TEST_F(SmbProviderTest, DeleteDirInvalidatesCache) {
+  SetUpSmbProvider(true /* metadata_cache_enabled */);
+  const int32_t mount_id = PrepareMount();
+
+  const std::string subdir_path = GetDefaultDirectoryPath() + "/subdir";
+  const std::string subdir_full_path = GetDefaultMountRoot() + subdir_path;
+  fake_samba_->AddDirectory(GetAddedFullDirectoryPath());
+  fake_samba_->AddDirectory(subdir_full_path);
+
+  // Get the cache.
+  MetadataCache* cache = nullptr;
+  EXPECT_TRUE(mount_manager_->GetMetadataCache(mount_id, &cache));
+  EXPECT_NE(nullptr, cache);
+
+  // Nothing is in the cache yet.
+  EXPECT_TRUE(cache->IsEmpty());
+
+  ProtoBlob results;
+  int32_t err;
+  const ProtoBlob read_directory_blob =
+      CreateReadDirectoryOptionsBlob(mount_id, GetDefaultDirectoryPath());
+  smbprovider_->ReadDirectory(read_directory_blob, &err, &results);
+  EXPECT_EQ(ERROR_OK, CastError(err));
+
+  // The directory should be in the cache now.
+  DirectoryEntry entry;
+  EXPECT_TRUE(cache->FindEntry(subdir_full_path, &entry));
+
+  const ProtoBlob delete_entry_blob = CreateDeleteEntryOptionsBlob(
+      mount_id, subdir_path, false /* recursive */);
+  EXPECT_EQ(ERROR_OK, smbprovider_->DeleteEntry(delete_entry_blob));
+
+  // |subdir_path| should no longer be in the cache.
+  EXPECT_FALSE(cache->FindEntry(subdir_full_path, &entry));
+}
+
+// Calls ReadDirectory() to put a file in the cache, then deletes the
+// directory containing the file and verifies that the cache doesn't
+// incorrectly hit.
+TEST_F(SmbProviderTest, DeleteFileRecursiveInvalidatesCache) {
+  SetUpSmbProvider(true /* metadata_cache_enabled */);
+  const int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetAddedFullDirectoryPath());
+  fake_samba_->AddFile(GetAddedFullFilePath(), kFileSize, kFileDate);
+
+  // Get the cache.
+  MetadataCache* cache = nullptr;
+  EXPECT_TRUE(mount_manager_->GetMetadataCache(mount_id, &cache));
+  EXPECT_NE(nullptr, cache);
+
+  // Nothing is in the cache yet.
+  EXPECT_TRUE(cache->IsEmpty());
+
+  ProtoBlob results;
+  int32_t err;
+  const ProtoBlob read_directory_blob =
+      CreateReadDirectoryOptionsBlob(mount_id, GetDefaultDirectoryPath());
+  smbprovider_->ReadDirectory(read_directory_blob, &err, &results);
+  EXPECT_EQ(ERROR_OK, CastError(err));
+
+  // The file should be in the cache now.
+  DirectoryEntry entry;
+  EXPECT_TRUE(cache->FindEntry(GetAddedFullFilePath(), &entry));
+
+  // Delete the parent directory recursively.
+  const ProtoBlob delete_entry_blob = CreateDeleteEntryOptionsBlob(
+      mount_id, GetDefaultDirectoryPath(), true /* recursive */);
+  EXPECT_EQ(ERROR_OK, smbprovider_->DeleteEntry(delete_entry_blob));
+
+  // File should no longer be in the cache.
+  EXPECT_FALSE(cache->FindEntry(GetAddedFullFilePath(), &entry));
+}
+
 // GetMetadata (cache enabled) succeeds when passed a valid share path
 // when the entry is not in the cache.
 TEST_F(SmbProviderTest, GetMetadataSucceedsCacheMiss) {

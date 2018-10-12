@@ -919,19 +919,37 @@ int32_t SmbProvider::DeleteDirectoryEntry(int32_t mount_id,
   if (entry.is_directory) {
     return DeleteDirectory(mount_id, entry.full_path);
   }
+
   return DeleteFile(mount_id, entry.full_path);
 }
 
 int32_t SmbProvider::DeleteFile(int32_t mount_id,
                                 const std::string& file_path) {
+  // It's always safe to invalidate the cache regardless of whether the delete
+  // is successful or not.
+  InvalidateCacheEntry(mount_id, file_path);
   SambaInterface* samba_interface = GetSambaInterface(mount_id);
   return samba_interface->Unlink(file_path.c_str());
 }
 
 int32_t SmbProvider::DeleteDirectory(int32_t mount_id,
                                      const std::string& dir_path) {
+  // It's always safe to invalidate the cache regardless of whether the delete
+  // is successful or not.
+  InvalidateCacheEntry(mount_id, dir_path);
   SambaInterface* samba_interface = GetSambaInterface(mount_id);
   return samba_interface->RemoveDirectory(dir_path.c_str());
+}
+
+void SmbProvider::InvalidateCacheEntry(int32_t mount_id,
+                                       const std::string& full_path) {
+  MetadataCache* cache = nullptr;
+  bool got_cache = mount_manager_->GetMetadataCache(mount_id, &cache);
+  DCHECK(got_cache);
+  DCHECK(cache);
+
+  // The result can be ignored since it may or may not be in the cache.
+  cache->RemoveEntry(full_path);
 }
 
 PostDepthFirstIterator SmbProvider::GetPostOrderIterator(

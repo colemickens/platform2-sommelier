@@ -56,7 +56,8 @@ class MetadataCache {
   // Returns true if the cache is empty.
   bool IsEmpty() const;
 
-  // Removes the entry at |entry_path| from the cache.
+  // Removes the entry at |entry_path| from the cache. |entry_cache| is a
+  // full smb url.
   bool RemoveEntry(const std::string& entry_path);
 
   // Removes all entries in the cache that have expired.

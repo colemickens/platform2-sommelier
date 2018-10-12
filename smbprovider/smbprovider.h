@@ -283,6 +283,10 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   // Calls RemoveDirectory.
   int32_t DeleteDirectory(int32_t mount_id, const std::string& dir_path);
 
+  // Removes |full_path| from the cache in the mount with |mount_id|. If the
+  // entry was not in the cache, this is a no-op.
+  void InvalidateCacheEntry(int32_t mount_id, const std::string& full_path);
+
   // Helper method to construct a PostDepthFirstIterator for a given
   // |full_path|.
   PostDepthFirstIterator GetPostOrderIterator(int32_t mount_id,
