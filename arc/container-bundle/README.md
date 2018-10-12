@@ -278,7 +278,7 @@ device files. They can only access the ones that are explcitly allowed in the
 
 ## Boot process
 
-TODO
+![Container boot process](container_boot_process.png)
 
 ### Hooks
 
@@ -302,13 +302,12 @@ hooks: pre-create and pre-chroot.
 
 The pre-create hook invokes
 [`arc-setup`](https://chromium.googlesource.com/chromiumos/platform2/+/master/arc/setup/)
-with the `--setup` flag via its wrapper script, `/usr/sbin/arc_setup_wrapper.sh`
-and creates host-side files and directories that will be bind-mounted to the
-container via `config.json`.
+with the `--mode=setup` flag and creates host-side files and directories that
+will be bind-mounted to the container via `config.json`.
 
 The pre-chroot hook invokes
 [`arc-setup`](https://chromium.googlesource.com/chromiumos/platform2/+/master/arc/setup/)
-with the `--pre-chroot` flag and performs several operations:
+with the `--mode=pre-chroot` flag and performs several operations:
 
 * Set up
   [`binfmt_misc`](https://www.kernel.org/doc/html/latest/admin-guide/binfmt-misc.html)
