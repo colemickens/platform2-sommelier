@@ -38,16 +38,9 @@ int RunCommand(const vector<string>& command) {
   return proc.Run();
 }
 
-bool SignFile(const FilePath& priv_key,
-              const FilePath& src,
-              const FilePath& dst) {
-  // Reading the source file.
-  string src_content;
-  if (!base::ReadFileToString(src, &src_content)) {
-    PLOG(ERROR) << "Failed to read the source file " << src.value();
-    return false;
-  }
-
+bool Sign(const FilePath& priv_key,
+          const string& src_content,
+          const FilePath& dst) {
   // Reading the private key.
   base::ScopedFILE pkf(base::OpenFile(priv_key, "r"));
   if (!pkf) {
@@ -69,14 +62,14 @@ bool SignFile(const FilePath& priv_key,
     return false;
   }
 
-  // Signing the |src| file.
+  // Signing the |src_content|.
   size_t signature_len = 0;
   if (EVP_DigestSignInit(mdctx.get(), nullptr, EVP_sha256(), nullptr,
                          private_key.get()) != 1 ||
       EVP_DigestSignUpdate(mdctx.get(), src_content.c_str(),
                            src_content.length()) != 1 ||
       EVP_DigestSignFinal(mdctx.get(), nullptr, &signature_len) != 1) {
-    LOG(ERROR) << "Failed to sign the source file " << src.value();
+    LOG(ERROR) << "Failed to sign the content.";
   }
   // Now we know the size of the signature, let's get it.
   crypto::ScopedOpenSSLBytes signature(reinterpret_cast<unsigned char*>(
@@ -98,6 +91,17 @@ bool SignFile(const FilePath& priv_key,
   }
 
   return true;
+}
+
+bool Sign(const FilePath& priv_key, const FilePath& src, const FilePath& dst) {
+  // Reading the source file.
+  string src_content;
+  if (!base::ReadFileToString(src, &src_content)) {
+    PLOG(ERROR) << "Failed to read the source file " << src.value();
+    return false;
+  }
+
+  return Sign(priv_key, src_content, dst);
 }
 
 }  // namespace oobe_config

@@ -81,12 +81,9 @@ class LoadOobeConfigUsbTest : public ::testing::Test {
                            const string& data_to_verify,
                            const FilePath& private_key_file,
                            bool expected_result) {
-    FilePath data_file, signature_file;
-    EXPECT_TRUE(CreateTemporaryFile(&data_file));
+    FilePath signature_file;
     EXPECT_TRUE(CreateTemporaryFile(&signature_file));
-    EXPECT_EQ(WriteFile(data_file, data_to_sign.c_str(), data_to_sign.length()),
-              data_to_sign.length());
-    EXPECT_TRUE(SignFile(private_key_file, data_file, signature_file));
+    EXPECT_TRUE(Sign(private_key_file, data_to_sign, signature_file));
     string signature;
     EXPECT_TRUE(ReadFileToString(signature_file, &signature));
     EXPECT_TRUE(load_config_->ReadPublicKey());
@@ -104,13 +101,8 @@ class LoadOobeConfigUsbTest : public ::testing::Test {
     EXPECT_TRUE(base::CreateSymbolicLink(dev_id1, dev_id1_sym));
     EXPECT_TRUE(base::CreateSymbolicLink(dev_id2, dev_id2_sym));
 
-    FilePath temp_link;
-    EXPECT_TRUE(base::CreateTemporaryFile(&temp_link));
-    EXPECT_EQ(base::WriteFile(temp_link, dev_id2_sym.value().c_str(),
-                              dev_id2_sym.value().size()),
-              dev_id2_sym.value().size());
-    EXPECT_TRUE(SignFile(private_key, temp_link,
-                         load_config_->usb_device_path_signature_file_));
+    EXPECT_TRUE(Sign(private_key, dev_id2_sym.value(),
+                     load_config_->usb_device_path_signature_file_));
 
     EXPECT_TRUE(load_config_->ReadFiles(true /* ignore_errors */));
     FilePath found_usb_device;

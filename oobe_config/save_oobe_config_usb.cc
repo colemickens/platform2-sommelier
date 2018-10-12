@@ -50,13 +50,8 @@ void SignSourcePartitionFile(const FilePath& priv_key,
                              const FilePath& dst_dir) {
   auto mount_dev = FindPersistentMountDevice(src_dev);
   CHECK(base::PathExists(mount_dev));
-  auto disk = mount_dev.value();
-  FilePath temp_disk;
-  CHECK(base::CreateTemporaryFile(&temp_disk));
-  CHECK(base::WriteFile(temp_disk, disk.c_str(), disk.length()) ==
-        disk.length());
-  CHECK(SignFile(
-      priv_key, temp_disk,
+  CHECK(Sign(
+      priv_key, mount_dev.value(),
       dst_dir.Append(kUnencryptedOobeConfigDir).Append(kUsbDevicePathSigFile)));
 }
 
@@ -71,14 +66,14 @@ void SignOobeFiles(const FilePath& priv_key,
   // device, so create it here.
   CHECK(base::CreateDirectory(dst_config_dir));
 
-  CHECK(SignFile(priv_key, src_config_dir.Append(kConfigFile),
-                 dst_config_dir.Append(kConfigFile).AddExtension("sig")));
+  CHECK(Sign(priv_key, src_config_dir.Append(kConfigFile),
+             dst_config_dir.Append(kConfigFile).AddExtension("sig")));
 
   // If the media was provisioned for auto-enrollment, sign the domain name
   // as well.
   if (base::PathExists(src_config_dir.Append(kDomainFile))) {
-    CHECK(SignFile(priv_key, src_config_dir.Append(kDomainFile),
-                   dst_config_dir.Append(kDomainFile).AddExtension("sig")));
+    CHECK(Sign(priv_key, src_config_dir.Append(kDomainFile),
+               dst_config_dir.Append(kDomainFile).AddExtension("sig")));
   }
 }
 

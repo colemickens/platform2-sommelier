@@ -39,10 +39,15 @@ class ScopedPathUnlinker {
 
 int RunCommand(const std::vector<std::string>& command);
 
-// Using |priv_key|, signs |src|, and writes the digest into |dst|.
-bool SignFile(const base::FilePath& priv_key,
-              const base::FilePath& src,
-              const base::FilePath& dst);
+// Using |priv_key|, signs |src| file, and writes the digest into |dst|.
+bool Sign(const base::FilePath& priv_key,
+          const base::FilePath& src,
+          const base::FilePath& dst);
+
+// Using |priv_key|, signs |src_content|, and writes the digest into |dst|.
+bool Sign(const base::FilePath& priv_key,
+          const std::string& src_content,
+          const base::FilePath& dst);
 
 }  // namespace oobe_config
 
