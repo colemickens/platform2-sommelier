@@ -189,8 +189,11 @@ TEST_F(Tpm2NvramTest, SessionFailure) {
   // We have to setup a fake space to force them using the Session in this test.
   SetupExistingSpace(0, kSomeNvramSize, trunks::TPMA_NV_WRITTEN,
                      NO_EXPECT_AUTH, NORMAL_AUTH);
-  EXPECT_NE(NVRAM_RESULT_SUCCESS, tpm_nvram_->WriteSpace(0, "", ""));
-  EXPECT_NE(NVRAM_RESULT_SUCCESS, tpm_nvram_->ReadSpace(0, nullptr, ""));
+  EXPECT_NE(NVRAM_RESULT_SUCCESS,
+            tpm_nvram_->WriteSpace(0, "", kFakeAuthorizationValue));
+  std::string read_data;
+  EXPECT_NE(NVRAM_RESULT_SUCCESS,
+            tpm_nvram_->ReadSpace(0, &read_data, kFakeAuthorizationValue));
   EXPECT_NE(NVRAM_RESULT_SUCCESS, tpm_nvram_->LockSpace(0, false, false, ""));
 }
 
@@ -530,6 +533,64 @@ TEST_F(Tpm2NvramTest, ReadSpaceOwner) {
             tpm_nvram_->ReadSpace(kSomeNvramIndex, &read_data,
                                   kFakeAuthorizationValue));
   EXPECT_EQ(kSomeData, read_data);
+}
+
+TEST_F(Tpm2NvramTest, ReadWriteSpaceBeforeTpmIsOwned) {
+  const std::string password = kFakeAuthorizationValue;
+
+  SetupExistingSpace(kSomeNvramIndex, kSomeNvramSize, trunks::TPMA_NV_WRITTEN,
+                     NO_EXPECT_AUTH, NORMAL_AUTH);
+
+  // Read
+  EXPECT_CALL(mock_tpm_utility_,
+              ReadNVSpace(kSomeNvramIndex, 0, kSomeNvramSize, false, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  used_password_.clear();
+  std::string read_data;
+  EXPECT_EQ(NVRAM_RESULT_SUCCESS,
+            tpm_nvram_->ReadSpace(kSomeNvramIndex, &read_data, password));
+  ASSERT_EQ(used_password_.size(), 1);
+  EXPECT_EQ(used_password_.back(), password);
+
+
+  // Write
+  EXPECT_CALL(mock_tpm_utility_,
+              WriteNVSpace(kSomeNvramIndex, 0, kSomeData, false, false, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  used_password_.clear();
+  EXPECT_EQ(NVRAM_RESULT_SUCCESS,
+            tpm_nvram_->WriteSpace(kSomeNvramIndex, kSomeData, password));
+  ASSERT_EQ(used_password_.size(), 1);
+  EXPECT_EQ(used_password_.back(), password);
+}
+
+TEST_F(Tpm2NvramTest, ReadWriteSpaceWithNullPassword) {
+  const std::string password = "";
+
+  SetupOwnerPassword();
+  SetupExistingSpace(kSomeNvramIndex, kSomeNvramSize, trunks::TPMA_NV_WRITTEN,
+                     NO_EXPECT_AUTH, NORMAL_AUTH);
+
+  // Read
+  EXPECT_CALL(mock_tpm_utility_,
+              ReadNVSpace(kSomeNvramIndex, 0, kSomeNvramSize, false, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  used_password_.clear();
+  std::string read_data;
+  EXPECT_EQ(NVRAM_RESULT_SUCCESS,
+            tpm_nvram_->ReadSpace(kSomeNvramIndex, &read_data, password));
+  ASSERT_EQ(used_password_.size(), 1);
+  EXPECT_EQ(used_password_.back(), password);
+
+  // Write
+  EXPECT_CALL(mock_tpm_utility_,
+              WriteNVSpace(kSomeNvramIndex, 0, kSomeData, false, false, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  used_password_.clear();
+  EXPECT_EQ(NVRAM_RESULT_SUCCESS,
+            tpm_nvram_->WriteSpace(kSomeNvramIndex, kSomeData, password));
+  ASSERT_EQ(used_password_.size(), 1);
+  EXPECT_EQ(used_password_.back(), password);
 }
 
 TEST_F(Tpm2NvramTest, LockSpaceSuccess) {

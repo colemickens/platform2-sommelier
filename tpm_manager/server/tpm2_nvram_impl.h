@@ -28,6 +28,7 @@
 
 #include "tpm_manager/common/tpm_manager.pb.h"
 #include "tpm_manager/server/local_data_store.h"
+#include "tpm_manager/server/nv_index_authenticator.h"
 #include "tpm_manager/server/tpm_status.h"
 
 namespace tpm_manager {
@@ -76,6 +77,7 @@ class Tpm2NvramImpl : public TpmNvram {
   // Gets the TPM owner password. Returns an empty string if not available.
   std::string GetOwnerPassword();
 
+  // TODO(menghuan): use NvIndexAuthenticator.GetOwnerAuthDelegate() instead?
   // Configures |trunks_session_| with owner authorization. Returns true on
   // success.
   bool SetupOwnerSession();

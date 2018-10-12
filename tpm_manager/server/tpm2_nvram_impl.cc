@@ -38,11 +38,6 @@ using trunks::TPM_RC_SUCCESS;
 
 namespace {
 
-// Enable salting for global session.
-const bool kGlobalSessionSalted = true;
-// Enable encryption for global session.
-const bool kGlobalSessionEncryption = true;
-
 void MapAttributesFromTpm(trunks::TPMA_NV tpm_flags,
                           std::vector<NvramSpaceAttribute>* attributes) {
   if (tpm_flags & trunks::TPMA_NV_WRITEDEFINE)
@@ -186,44 +181,12 @@ NvramResult Tpm2NvramImpl::DefineSpace(
     return NVRAM_RESULT_DEVICE_ERROR;
   }
 
-  std::unique_ptr<trunks::ScopedGlobalHmacSession> session_scope;
-  const TpmStatus::TpmOwnershipStatus ownership_status =
-      tpm_status_->CheckAndNotifyIfTpmOwned();
-  LOG(INFO) << __func__ << ", index = " << index << ", ownership = " << ownership_status;
-  if (ownership_status == TpmStatus::kTpmOwned) {
-    session_scope = std::make_unique<trunks::ScopedGlobalHmacSession>(
-        &trunks_factory_,
-        kGlobalSessionSalted,
-        kGlobalSessionEncryption,
-        &trunks_session_);
-
-    if (!trunks_session_) {
-      return NVRAM_RESULT_DEVICE_ERROR;
-    }
-  }
-
-  std::unique_ptr<trunks::AuthorizationDelegate> password_delegate;
-  trunks::AuthorizationDelegate* delegate;
-  switch (ownership_status) {
-    case TpmStatus::kTpmUnowned:
-      password_delegate = trunks_factory_.GetPasswordAuthorization("");
-      delegate = password_delegate.get();
-      break;
-    case TpmStatus::kTpmPreOwned:
-      password_delegate =
-          trunks_factory_.GetPasswordAuthorization(trunks::kWellKnownPassword);
-      delegate = password_delegate.get();
-      break;
-    case TpmStatus::kTpmOwned:
-      if (!SetupOwnerSession()) {
-        return NVRAM_RESULT_OPERATION_DISABLED;
-      }
-      delegate = trunks_session_->GetDelegate();
-      break;
-    default:
-      LOG(ERROR) << __func__ << ", invalid TPM ownership status: "
-                 << ownership_status;
-      return NVRAM_RESULT_DEVICE_ERROR;
+  NvIndexAuthenticator nvindex_auth(tpm_status_, &trunks_session_,
+      trunks_factory_);
+  trunks::AuthorizationDelegate* delegate =
+      nvindex_auth.GetOwnerAuthDelegate(GetOwnerPassword());
+  if (!delegate) {
+    return NVRAM_RESULT_OPERATION_DISABLED;
   }
 
   TPM_RC result = trunks_utility_->DefineNVSpace(
@@ -270,13 +233,6 @@ NvramResult Tpm2NvramImpl::WriteSpace(uint32_t index,
   if (!Initialize()) {
     return NVRAM_RESULT_DEVICE_ERROR;
   }
-  trunks::ScopedGlobalHmacSession session_scope(&trunks_factory_,
-                                                kGlobalSessionSalted,
-                                                kGlobalSessionEncryption,
-                                                &trunks_session_);
-  if (!trunks_session_) {
-    return NVRAM_RESULT_DEVICE_ERROR;
-  }
   trunks::TPMS_NV_PUBLIC nvram_public;
   TPM_RC result = trunks_utility_->GetNVSpacePublicArea(index, &nvram_public);
   if (result != TPM_RC_SUCCESS) {
@@ -287,6 +243,8 @@ NvramResult Tpm2NvramImpl::WriteSpace(uint32_t index,
   if (nvram_public.attributes & trunks::TPMA_NV_WRITELOCKED) {
     return NVRAM_RESULT_OPERATION_DISABLED;
   }
+  NvIndexAuthenticator nvindex_auth(tpm_status_, &trunks_session_,
+      trunks_factory_);
   trunks::AuthorizationDelegate* authorization = nullptr;
   std::unique_ptr<trunks::PolicySession> policy_session =
       trunks_factory_.GetPolicySession();
@@ -308,18 +266,16 @@ NvramResult Tpm2NvramImpl::WriteSpace(uint32_t index,
     }
     authorization = policy_session->GetDelegate();
   } else if (nvram_public.attributes & trunks::TPMA_NV_AUTHWRITE) {
-    trunks_session_->SetEntityAuthorizationValue(authorization_value);
-    authorization = trunks_session_->GetDelegate();
+    authorization = nvindex_auth.GetDirectAuthDelegate(authorization_value);
   } else if (nvram_public.attributes & trunks::TPMA_NV_OWNERWRITE) {
-    if (!SetupOwnerSession()) {
-      // The owner password has been destroyed.
-      return NVRAM_RESULT_OPERATION_DISABLED;
-    }
     using_owner_authorization = true;
-    authorization = trunks_session_->GetDelegate();
+    authorization = nvindex_auth.GetOwnerAuthDelegate(GetOwnerPassword());
   } else {
     // TPMA_NV_PPWRITE: Platform authorization is long gone.
     return NVRAM_RESULT_OPERATION_DISABLED;
+  }
+  if (!authorization) {
+    return NVRAM_RESULT_DEVICE_ERROR;
   }
   result = trunks_utility_->WriteNVSpace(index, 0 /* offset */, data,
                                          using_owner_authorization, extend,
@@ -337,13 +293,6 @@ NvramResult Tpm2NvramImpl::ReadSpace(uint32_t index,
   if (!Initialize()) {
     return NVRAM_RESULT_DEVICE_ERROR;
   }
-  trunks::ScopedGlobalHmacSession session_scope(&trunks_factory_,
-                                                kGlobalSessionSalted,
-                                                kGlobalSessionEncryption,
-                                                &trunks_session_);
-  if (!trunks_session_) {
-    return NVRAM_RESULT_DEVICE_ERROR;
-  }
   trunks::TPMS_NV_PUBLIC nvram_public;
   TPM_RC result = trunks_utility_->GetNVSpacePublicArea(index, &nvram_public);
   if (result != TPM_RC_SUCCESS) {
@@ -359,6 +308,8 @@ NvramResult Tpm2NvramImpl::ReadSpace(uint32_t index,
     *data = std::string(nvram_public.data_size, 0);
     return NVRAM_RESULT_SUCCESS;
   }
+  NvIndexAuthenticator nvindex_auth(tpm_status_, &trunks_session_,
+      trunks_factory_);
   trunks::AuthorizationDelegate* authorization = nullptr;
   std::unique_ptr<trunks::PolicySession> policy_session =
       trunks_factory_.GetPolicySession();
@@ -377,18 +328,16 @@ NvramResult Tpm2NvramImpl::ReadSpace(uint32_t index,
     }
     authorization = policy_session->GetDelegate();
   } else if (nvram_public.attributes & trunks::TPMA_NV_AUTHREAD) {
-    trunks_session_->SetEntityAuthorizationValue(authorization_value);
-    authorization = trunks_session_->GetDelegate();
+    authorization = nvindex_auth.GetDirectAuthDelegate(authorization_value);
   } else if (nvram_public.attributes & trunks::TPMA_NV_OWNERREAD) {
-    if (!SetupOwnerSession()) {
-      // The owner password has been destroyed.
-      return NVRAM_RESULT_OPERATION_DISABLED;
-    }
     using_owner_authorization = true;
-    authorization = trunks_session_->GetDelegate();
+    authorization = nvindex_auth.GetOwnerAuthDelegate(GetOwnerPassword());
   } else {
     // TPMA_NV_PPREAD: Platform authorization is long gone.
     return NVRAM_RESULT_OPERATION_DISABLED;
+  }
+  if (!authorization) {
+    return NVRAM_RESULT_DEVICE_ERROR;
   }
   result = trunks_utility_->ReadNVSpace(
       index, 0 /* offset */, nvram_public.data_size, using_owner_authorization,
@@ -582,6 +531,7 @@ std::string Tpm2NvramImpl::GetOwnerPassword() {
 }
 
 bool Tpm2NvramImpl::SetupOwnerSession() {
+  // TODO(menghuan): support Pre-Own password?
   std::string owner_password = GetOwnerPassword();
   if (owner_password.empty()) {
     LOG(ERROR) << "Owner authorization required but not available.";
