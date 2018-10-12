@@ -25,6 +25,7 @@ fstat64: 1
 futex: 1
 getdents64: 1
 geteuid32: 1
+getpid: 1
 getresgid32: 1
 getresuid32: 1
 getsockname: 1

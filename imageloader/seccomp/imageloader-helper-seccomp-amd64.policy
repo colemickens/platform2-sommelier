@@ -25,6 +25,7 @@ futex: 1
 getdents: 1
 getdents64: 1
 geteuid: 1
+getpid: 1
 getresgid: 1
 getresuid: 1
 getrlimit: 1
