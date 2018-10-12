@@ -41,7 +41,8 @@ Camera3Request::Camera3Request():
         mRequestId(0),
         mCameraId(-1),
         mSeqenceId(-1),
-        mHasInBuf(false)
+        mHasInBuf(false),
+        mShouldSwapWidthHeight(false)
 {
     LOG1("@%s Creating request with pointer %p", __FUNCTION__, this);
     deInit();

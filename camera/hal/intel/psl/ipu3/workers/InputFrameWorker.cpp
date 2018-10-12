@@ -29,7 +29,8 @@ namespace camera2 {
 InputFrameWorker::InputFrameWorker(std::shared_ptr<cros::V4L2VideoNode> node,
         int cameraId, size_t pipelineDepth) :
         /* Keep the same number of buffers as ISYS. */
-        FrameWorker(node, cameraId, pipelineDepth + 2, "InputFrameWorker")
+        FrameWorker(node, cameraId, pipelineDepth + 2, "InputFrameWorker"),
+        mPipeType(GraphConfig::PIPE_MAX)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     mPollMe = true;
