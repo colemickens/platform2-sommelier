@@ -461,8 +461,13 @@ bool Attestation::IsPreparedForEnrollment() {
     return false;
   }
   return database_pb_.credentials().has_endorsement_credential() ||
-         kMaxPCAType == database_pb_.credentials()
-             .encrypted_endorsement_credentials().size();
+    database_pb_.credentials().encrypted_endorsement_credentials().size();
+}
+
+bool Attestation::IsPreparedForEnrollmentWith(PCAType pca_type) {
+  base::AutoLock lock(lock_);
+  return database_pb_.credentials().encrypted_endorsement_credentials().count(
+      pca_type);
 }
 
 bool Attestation::IsEnrolled() {
@@ -886,9 +891,9 @@ bool Attestation::CreateEnrollRequest(PCAType pca_type,
   const int identity = kFirstIdentity;
   if (!IsTPMReady())
     return false;
-  if (!IsPreparedForEnrollment()) {
+  if (!IsPreparedForEnrollmentWith(pca_type)) {
     LOG(ERROR) << __func__ << ": Enrollment is not possible, attestation data"
-               " does not exist.";
+               " for " << GetPCAName(pca_type) << " does not exist.";
     return false;
   }
   if (database_pb_.identities().size() < identity) {

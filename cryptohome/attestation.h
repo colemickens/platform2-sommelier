@@ -83,6 +83,10 @@ class Attestation : public base::PlatformThread::Delegate,
   // Returns true if the attestation enrollment blobs already exist.
   virtual bool IsPreparedForEnrollment();
 
+  // Returns true if the attestation enrollment blobs already exist for
+  // a given PCA.
+  virtual bool IsPreparedForEnrollmentWith(PCAType pca_type);
+
   // Returns true if an AIK certificate exist for one of the Privacy CAs.
   virtual bool IsEnrolled();
 
@@ -834,6 +838,7 @@ class Attestation : public base::PlatformThread::Delegate,
               MigrateAttestationDatabaseWithCorruptedFields);
   FRIEND_TEST(AttestationBaseTest,
               MigrateAttestationDatabaseAllEndorsementCredentials);
+  FRIEND_TEST(AttestationTest, IsAttestationPreparedForOnePca);
   FRIEND_TEST(AttestationEnrollmentIdTest,
               ComputeEnterpriseEnrollmentIdHasDelegate);
 

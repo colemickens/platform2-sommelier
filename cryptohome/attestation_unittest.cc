@@ -665,6 +665,9 @@ TEST_F(AttestationBaseTest, MigrateAttestationDatabase) {
   ASSERT_FALSE(default_identity_data.identity_key().has_identity_credential());
   ASSERT_EQ("identity_cred", db.identity_key().identity_credential());
   VerifyPCAData(db, "identity_cred");
+
+  // Attestation is prepared.
+  EXPECT_TRUE(attestation_.IsPreparedForEnrollment());
 }
 
 TEST_F(AttestationBaseTest, MigrateAttestationDatabaseWithCorruptedFields) {
@@ -769,6 +772,9 @@ TEST_F(AttestationBaseTest,
   ASSERT_TRUE(MessageDifferencer::Equals(
       test_encrypted_endorsement_credential,
       db.credentials().test_encrypted_endorsement_credential()));
+
+  // Attestation is prepared.
+  EXPECT_TRUE(attestation_.IsPreparedForEnrollment());
 }
 
 TEST_F(AttestationBaseTest, CertChainWithNoIntermediateCA) {
@@ -1025,6 +1031,22 @@ class AttestationTest
  protected:
   Attestation::PCAType pca_type_;
 };
+
+TEST_P(AttestationTest, IsAttestationPreparedForOnePca) {
+  // Simulate a migrated database that only has an encrypted credential
+  // for one PCA.
+  AttestationDatabase& db = GetMutableDatabase();
+  EncryptedData default_encrypted_endorsement_credential;
+  default_encrypted_endorsement_credential.set_wrapped_key("default_key");
+  db.mutable_credentials()->clear_endorsement_credential();
+  (*db.mutable_credentials()
+      ->mutable_encrypted_endorsement_credentials())[pca_type_] =
+      default_encrypted_endorsement_credential;
+  attestation_.PersistDatabase(db);
+
+  // Attestation is prepared.
+  EXPECT_TRUE(attestation_.IsPreparedForEnrollment());
+}
 
 TEST_P(AttestationTest, FirstIdentityNotEnrolled) {
   ASSERT_FALSE(attestation_.HasIdentityCertificate(
