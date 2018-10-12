@@ -217,6 +217,12 @@
       <tp:docstring>
         Runs system-wide perf profiling. The profile parameters are selected by
         perf_args.
+        This method runs quipper asynchronously so that debugd isn't blocked for
+        duration_sec. The DBus client reads the perf output using the file
+        descriptor. Only one profiler session is allowed to run using this
+        method. Calling this method while the profiler is running yields a DBus
+        error. The profiler session can optionally be stopped using method
+        StopPerf before duration_sec elapses.
       </tp:docstring>
       <arg name="duration_sec" type="u" direction="in">
         <tp:docstring>
@@ -232,6 +238,27 @@
       <arg name="stdout" type="h" direction="in">
         <tp:docstring>
           quipper's stdout will be connected to this file descriptor.
+        </tp:docstring>
+      </arg>
+      <arg name="session_id" type="t" direction="out">
+        <tp:docstring>
+          The identifier of the profiler session. Will be non-zero if the
+          profiler is started successfully. It can be used in method
+          StopPerf to stop the profiler and gather output right away.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
+    <method name="StopPerf">
+      <tp:docstring>
+        Stop the existing profiler session and gather perf output right away. If
+        the collection started by GetPerfOutputFd has finished, calling this
+        method will silently succeed.
+      </tp:docstring>
+      <arg name="session_id" type="t" direction="in">
+        <tp:docstring>
+          The profiler session ID returned from the GetPerfOutputFd method. It
+          is used to stop the existing profiler session.
         </tp:docstring>
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>

@@ -4,10 +4,13 @@
 
 #include "debugd/src/perf_tool.h"
 
+#include <signal.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include <base/bind.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 
 #include "debugd/src/error_utils.h"
 #include "debugd/src/process_with_output.h"
@@ -19,6 +22,7 @@ namespace {
 const char kUnsupportedPerfToolErrorName[] =
     "org.chromium.debugd.error.UnsupportedPerfTool";
 const char kProcessErrorName[] = "org.chromium.debugd.error.RunProcess";
+const char kStopProcessErrorName[] = "org.chromium.debugd.error.StopProcess";
 
 const char kArgsError[] = "perf_args must begin with {\"perf\", \"record\"}, "
                           " {\"perf\", \"stat\"}, or {\"perf\", \"mem\"}";
@@ -58,22 +62,12 @@ void AddQuipperArguments(brillo::Process* process,
   }
 }
 
-// For use with brillo::Process::SetPreExecCallback(), this runs after
-// the fork() in the child process, but before exec(). Call fork() again
-// and exit the parent (child of main process). The grandchild will get
-// orphaned, meaning init will wait() for it up so we don't have to.
-bool Orphan() {
-  if (fork() == 0) {  // (grand-)child
-    return true;
-  }
-  // parent
-  ::_Exit(EXIT_SUCCESS);
-}
-
-
 }  // namespace
 
-PerfTool::PerfTool() {}
+PerfTool::PerfTool() {
+  signal_handler_.Init();
+  process_reaper_.Register(&signal_handler_);
+}
 
 bool PerfTool::GetPerfOutput(uint32_t duration_secs,
                              const std::vector<std::string>& perf_args,
@@ -124,9 +118,20 @@ bool PerfTool::GetPerfOutput(uint32_t duration_secs,
   return true;
 }
 
+void PerfTool::OnQuipperProcessExited(const siginfo_t& siginfo) {
+  // Called after SIGCHLD has been received from the signalfd file descriptor.
+  // Wait() for the child process wont' block. It'll just reap the zombie child
+  // process.
+  quipper_process_->Wait();
+  quipper_process_ = nullptr;
+
+  profiler_session_id_.reset();
+}
+
 bool PerfTool::GetPerfOutputFd(uint32_t duration_secs,
                                const std::vector<std::string>& perf_args,
                                const base::ScopedFD& stdout_fd,
+                               uint64_t* session_id,
                                brillo::ErrorPtr* error) {
   PerfSubcommand subcommand = GetPerfSubcommandType(perf_args);
   if (subcommand == PERF_COMMAND_UNSUPPORTED) {
@@ -134,23 +139,68 @@ bool PerfTool::GetPerfOutputFd(uint32_t duration_secs,
     return false;
   }
 
-  SandboxedProcess process;
-  process.SandboxAs("root", "root");
-  if (!process.Init()) {
+  if (quipper_process_) {
+    // Do not run multiple sessions at the same time. Attempt to start another
+    // profiler session using this method yields a DBus error. Note that
+    // starting another session using GetPerfOutput() will still succeed.
+    DEBUGD_ADD_ERROR(error, kProcessErrorName, "Existing perf tool running.");
+    return false;
+  }
+
+  DCHECK(!profiler_session_id_);
+
+  quipper_process_ = std::make_unique<SandboxedProcess>();
+  quipper_process_->SandboxAs("root", "root");
+  if (!quipper_process_->Init()) {
     DEBUGD_ADD_ERROR(
         error, kProcessErrorName, "Process initialization failure.");
     return false;
   }
 
-  AddQuipperArguments(&process, duration_secs, perf_args);
+  AddQuipperArguments(quipper_process_.get(), duration_secs, perf_args);
+  quipper_process_->BindFd(stdout_fd.get(), 1);
 
-  process.SetPreExecCallback(base::Bind(Orphan));
-  process.BindFd(stdout_fd.get(), 1);
-
-  if (process.Run() != 0) {
+  if (!quipper_process_->Start()) {
     DEBUGD_ADD_ERROR(error, kProcessErrorName, "Process start failure.");
     return false;
   }
+  DCHECK_GT(quipper_process_->pid(), 0);
+
+  process_reaper_.WatchForChild(
+      FROM_HERE, quipper_process_->pid(),
+      base::Bind(&PerfTool::OnQuipperProcessExited, base::Unretained(this)));
+
+  // Generate an opaque, pseudo-unique, session ID using time and process ID.
+  profiler_session_id_ = *session_id =
+      static_cast<uint64_t>(base::Time::Now().ToTimeT()) << 32 |
+      (quipper_process_->pid() & 0xffffffff);
+
+  return true;
+}
+
+bool PerfTool::StopPerf(uint64_t session_id, brillo::ErrorPtr* error) {
+  if (!profiler_session_id_) {
+    DEBUGD_ADD_ERROR(error, kStopProcessErrorName, "Perf tool not started");
+    return false;
+  }
+
+  if (profiler_session_id_ != session_id) {
+    // Session ID mismatch: return a failure without affecting the existing
+    // profiler session.
+    DEBUGD_ADD_ERROR(error, kStopProcessErrorName,
+                     "Invalid profile session id.");
+    return false;
+  }
+
+  // Stop by sending SIGINT to the profiler session. The sandboxed quipper
+  // process will be reaped in OnQuipperProcessExited().
+  if (quipper_process_) {
+    DCHECK_GT(quipper_process_->pid(), 0);
+    if (kill(quipper_process_->pid(), SIGINT) != 0) {
+      PLOG(WARNING) << "Failed to stop the profiler session.";
+    }
+  }
+
   return true;
 }
 

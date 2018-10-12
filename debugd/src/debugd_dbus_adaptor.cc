@@ -164,9 +164,14 @@ bool DebugdDBusAdaptor::GetPerfOutputFd(
     brillo::ErrorPtr* error,
     uint32_t duration_sec,
     const std::vector<std::string>& perf_args,
-    const base::ScopedFD& stdout_fd) {
-  return perf_tool_->GetPerfOutputFd(
-      duration_sec, perf_args, stdout_fd, error);
+    const base::ScopedFD& stdout_fd,
+    uint64_t* session_id) {
+  return perf_tool_->GetPerfOutputFd(duration_sec, perf_args, stdout_fd,
+                                     session_id, error);
+}
+
+bool DebugdDBusAdaptor::StopPerf(brillo::ErrorPtr* error, uint64_t session_id) {
+  return perf_tool_->StopPerf(session_id, error);
 }
 
 void DebugdDBusAdaptor::DumpDebugLogs(bool is_compressed,
