@@ -20,6 +20,12 @@ const char kCrosCameraTestConfigPathString[] = "/run/camera/test_config.json";
 const char kCrosForceJpegHardwareEncodeOption[] = "force_jpeg_hw_enc";
 const char kCrosForceJpegHardwareDecodeOption[] = "force_jpeg_hw_dec";
 
+// boolean value for specify enable/disable camera of target facing in camera
+// service.
+const char kCrosEnableFrontCameraOption[] = "enable_front_camera";
+const char kCrosEnableBackCameraOption[] = "enable_back_camera";
+const char kCrosEnableExternalCameraOption[] = "enable_external_camera";
+
 }  // namespace constants
 }  // namespace cros
 #endif  // INCLUDE_CROS_CAMERA_CONSTANTS_H_

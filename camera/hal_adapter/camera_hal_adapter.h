@@ -45,7 +45,7 @@ class CameraHalAdapter : public vendor_tag_ops_t {
  public:
   explicit CameraHalAdapter(std::vector<camera_module_t*> camera_modules);
 
-  ~CameraHalAdapter();
+  virtual ~CameraHalAdapter();
 
   // Starts the camera HAL adapter.  This method must be called before calling
   // any other methods.
@@ -60,7 +60,7 @@ class CameraHalAdapter : public vendor_tag_ops_t {
   int32_t OpenDevice(int32_t camera_id,
                      mojom::Camera3DeviceOpsRequest device_ops_request);
 
-  int32_t GetNumberOfCameras();
+  virtual int32_t GetNumberOfCameras();
 
   int32_t GetCameraInfo(int32_t camera_id, mojom::CameraInfoPtr* camera_info);
 
@@ -77,6 +77,26 @@ class CameraHalAdapter : public vendor_tag_ops_t {
   void CloseDeviceCallback(
       scoped_refptr<base::SingleThreadTaskRunner> task_runner,
       int32_t camera_id);
+
+ protected:
+  // Initialize all underlying camera HALs on |camera_module_thread_| and
+  // build the mapping table for camera id.
+  virtual void StartOnThread(base::Callback<void(bool)> callback);
+
+  // Convert the unified external |camera_id| into the corresponding camera
+  // module and its internal id. Returns (nullptr, 0) if not found.
+  virtual std::pair<camera_module_t*, int> GetInternalModuleAndId(
+      int camera_id);
+
+  virtual void NotifyCameraDeviceStatusChange(
+      CameraModuleCallbacksDelegate* delegate,
+      int camera_id,
+      camera_device_status_t status);
+
+  virtual void NotifyTorchModeStatusChange(
+      CameraModuleCallbacksDelegate* delegate,
+      int camera_id,
+      torch_mode_status_t status);
 
  private:
   // The static methods implement camera_module_callbacks_t, which will delegate
@@ -99,16 +119,8 @@ class CameraHalAdapter : public vendor_tag_ops_t {
                              int camera_id,
                              torch_mode_status_t new_status);
 
-  // Initialize all underlying camera HALs on |camera_module_thread_| and
-  // build the mapping table for camera id.
-  void StartOnThread(base::Callback<void(bool)> callback);
-
   // Send the latest status to the newly connected client.
   void SendLatestStatus(int callbacks_id);
-
-  // Convert the unified external |camera_id| into the corresponding camera
-  // module and its internal id. Returns (nullptr, 0) if not found.
-  std::pair<camera_module_t*, int> GetInternalModuleAndId(int camera_id);
 
   // Convert the |module_id| and its corresponding internal |camera_id| into the
   // unified external camera id. Returns -1 if not found.

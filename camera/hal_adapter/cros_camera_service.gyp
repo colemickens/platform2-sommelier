@@ -35,6 +35,7 @@
       'sources': [
         '../common/ipc_util.cc',
         '../common/utils/camera_hal_enumerator.cc',
+        '../common/utils/test_config.cc',
         '../mojo/CameraMetadataTagsVerifier.cc',
         '../mojo/algorithm/camera_algorithm.mojom',
         '../mojo/camera3.mojom',
@@ -51,6 +52,7 @@
         'camera_device_adapter.cc',
         'camera_hal_adapter.cc',
         'camera_hal_server_impl.cc',
+        'camera_hal_test_adapter.cc',
         'camera_module_callbacks_delegate.cc',
         'camera_module_delegate.cc',
         'camera_trace_event.cc',

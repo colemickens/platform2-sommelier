@@ -440,7 +440,8 @@ void CameraHalAdapter::CameraDeviceStatusChange(
 
   base::AutoLock l(callbacks_delegates_lock_);
   for (auto& it : callbacks_delegates_) {
-    it.second->CameraDeviceStatusChange(external_camera_id, new_status);
+    NotifyCameraDeviceStatusChange(it.second.get(), external_camera_id,
+                                   new_status);
   }
 }
 
@@ -464,7 +465,7 @@ void CameraHalAdapter::TorchModeStatusChange(
 
   base::AutoLock l(callbacks_delegates_lock_);
   for (auto& it : callbacks_delegates_) {
-    it.second->TorchModeStatusChange(camera_id, new_status);
+    NotifyTorchModeStatusChange(it.second.get(), camera_id, new_status);
   }
 }
 
@@ -593,13 +594,27 @@ void CameraHalAdapter::SendLatestStatus(int callbacks_id) {
     torch_mode_status_t status = it.second;
     if (camera_id >= num_builtin_cameras_) {
       // it's an external camera, fire the callback.
-      callbacks_delegate->CameraDeviceStatusChange(
-          camera_id, CAMERA_DEVICE_STATUS_PRESENT);
+      NotifyCameraDeviceStatusChange(callbacks_delegate, camera_id,
+                                     CAMERA_DEVICE_STATUS_PRESENT);
     }
     if (status != default_torch_mode_status_map_[camera_id]) {
-      callbacks_delegate->TorchModeStatusChange(camera_id, status);
+      NotifyTorchModeStatusChange(callbacks_delegate, camera_id, status);
     }
   }
+}
+
+void CameraHalAdapter::NotifyCameraDeviceStatusChange(
+    CameraModuleCallbacksDelegate* delegate,
+    int camera_id,
+    camera_device_status_t status) {
+  delegate->CameraDeviceStatusChange(camera_id, status);
+}
+
+void CameraHalAdapter::NotifyTorchModeStatusChange(
+    CameraModuleCallbacksDelegate* delegate,
+    int camera_id,
+    torch_mode_status_t status) {
+  delegate->TorchModeStatusChange(camera_id, status);
 }
 
 std::pair<camera_module_t*, int> CameraHalAdapter::GetInternalModuleAndId(
