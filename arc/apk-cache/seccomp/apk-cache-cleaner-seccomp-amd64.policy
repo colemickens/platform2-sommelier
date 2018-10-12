@@ -32,6 +32,7 @@ munmap: 1
 arch_prctl: 1
 exit_group: 1
 execve: 1
+getpid: 1
 getrlimit: 1
 rt_sigprocmask: 1
 socket: 1
