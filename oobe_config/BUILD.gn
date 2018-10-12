@@ -135,6 +135,7 @@ if (use.test) {
     sources = [
       "load_oobe_config_usb_test.cc",
       "oobe_config_test.cc",
+      "utils_test.cc",
     ]
     deps = [
       ":liboobeconfig",

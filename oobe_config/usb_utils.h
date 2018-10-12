@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 
 namespace oobe_config {
 
@@ -19,6 +20,22 @@ extern const char kDomainFile[];
 extern const char kKeyFile[];
 extern const char kDevDiskById[];
 extern const char kUsbDevicePathSigFile[];
+
+// Use of this class removes a file after it goes out of scope. This means we do
+// not have to worry about keeping tracking which files to delete when.
+class ScopedPathUnlinker {
+ public:
+  explicit ScopedPathUnlinker(const base::FilePath& file) : file_(file) {}
+  ~ScopedPathUnlinker() {
+    if (!base::DeleteFile(file_, false)) {
+      PLOG(ERROR) << "Unable to unlink path " << file_.value();
+    }
+  }
+
+ private:
+  const base::FilePath file_;
+  DISALLOW_COPY_AND_ASSIGN(ScopedPathUnlinker);
+};
 
 int RunCommand(const std::vector<std::string>& command);
 
