@@ -46,7 +46,8 @@ FilePath FindPersistentMountDevice(const FilePath& mount_dev) {
 
 // Finds the persistent block device that |src_dir| is mounted on, and signs
 // the path using |priv_key|, and writes it to |dst_dir|/.../block_device.sig.
-void SignSourcePartitionFile(const FilePath& priv_key, const FilePath& src_dev,
+void SignSourcePartitionFile(const FilePath& priv_key,
+                             const FilePath& src_dev,
                              const FilePath& dst_dir) {
   auto mount_dev = FindPersistentMountDevice(src_dev);
   CHECK(base::PathExists(mount_dev));
@@ -60,8 +61,10 @@ void SignSourcePartitionFile(const FilePath& priv_key, const FilePath& src_dev,
       dst_dir.Append(kUnencryptedOobeConfigDir).Append(kUsbDevicePathSigFile)));
 }
 
-void SignOobeFiles(const FilePath& priv_key, const FilePath& pub_key,
-                   const FilePath& src_stateful, const FilePath& dst_stateful) {
+void SignOobeFiles(const FilePath& priv_key,
+                   const FilePath& pub_key,
+                   const FilePath& src_stateful,
+                   const FilePath& dst_stateful) {
   auto src_config_dir = src_stateful.Append(kUnencryptedOobeConfigDir);
   auto dst_config_dir = dst_stateful.Append(kUnencryptedOobeConfigDir);
 
