@@ -738,7 +738,7 @@ void GraphConfigManager::dumpStreamConfig(const vector<camera3_stream_t*> &strea
         videoEnc = CHECK_FLAG(streams[i]->usage, GRALLOC_USAGE_HW_VIDEO_ENCODER);
         zsl = CHECK_FLAG(streams[i]->usage, GRALLOC_USAGE_HW_CAMERA_ZSL);
 
-        LOGW("stream[%zu] (%s): %dx%d, fmt %s, max buffers:%d, gralloc hints (0x%x) display:%s, video:%s, zsl:%s",
+        LOGI("stream[%zu] (%s): %dx%d, fmt %s, max buffers:%d, gralloc hints (0x%x) display:%s, video:%s, zsl:%s",
                 i,
                 METAID2STR(android_scaler_availableStreamConfigurations_values, streams[i]->stream_type),
                 streams[i]->width, streams[i]->height,

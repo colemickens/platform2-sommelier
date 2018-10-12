@@ -137,7 +137,7 @@ int MediaController::xioctl(int request, void *arg) const
     } while (-1 == ret && EINTR == errno);
 
     if (ret < 0)
-        LOGW ("%s: Request 0x%x failed: %s", __FUNCTION__, request, strerror(errno));
+        LOGI ("%s: Request 0x%x failed: %s", __FUNCTION__, request, strerror(errno));
 
     return ret;
 }

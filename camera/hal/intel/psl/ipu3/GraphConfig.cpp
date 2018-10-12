@@ -890,12 +890,6 @@ status_t GraphConfig::parseSensorNodeInfo(Node* sensorNode,
         LOGE("Error: Couldn't get values from sensor");
         return UNKNOWN_ERROR;
     }
-    ret = sensorNode->getValue(GCSS_KEY_INTERLACED, tmp);
-    if (ret != css_err_none) {
-        LOGW("Couldn't get interlaced field from sensor");
-    } else {
-        info.interlaced = atoi(tmp.c_str());
-    }
 
     // v-flip is not mandatory. Some sensors may not have this control
     ret = sensorNode->getValue(GCSS_KEY_VFLIP, info.verticalFlip);
@@ -1067,10 +1061,8 @@ status_t GraphConfig::getCio2MediaCtlData(int *cio2Format, MediaCtlConfig *media
     mediaCtlConfig->mFTCSize.Width = sourceInfo.output.w;
     mediaCtlConfig->mFTCSize.Height = sourceInfo.output.h;
 
-    Node *pixelFormatterIn = nullptr, *pixelFormatterOut = nullptr;
     Node *csiBEOutput = nullptr, *csiBESocOutput = nullptr;
     int pfInW = 0, pfInH = 0, pfOutW = 0, pfOutH = 0, pfLeft = 0, pfTop = 0;
-    bool pfPresent = false;
 
     // Get csi_be node. If not found, try csi_be_soc. If not found return error.
     ret = mSettings->getDescendantByString("csi_be:output", &csiBEOutput);
@@ -1099,46 +1091,6 @@ status_t GraphConfig::getCio2MediaCtlData(int *cio2Format, MediaCtlConfig *media
     if (CC_UNLIKELY(csiBESocOutput == nullptr && csiBEOutput == nullptr)) {
         LOGE("Error: CSI BE Output nullptr");
         return UNKNOWN_ERROR;
-    }
-
-    std::string pixelFormatterInput = "bxt_pixelformatter:input";
-    std::string pixelFormatterOutput = "bxt_pixelformatter:output";
-    std::string inputPort;
-    std::string outputPort;
-    if (csiBEOutput != nullptr) {
-        inputPort = "csi_be:" + pixelFormatterInput;
-        outputPort = "csi_be:" + pixelFormatterOutput;
-    } else {
-        inputPort = "csi_be_soc:" + pixelFormatterInput;
-        outputPort = "csi_be_soc:" + pixelFormatterOutput;
-    }
-
-    /* Get cropping values from the pixel formatter input. Output resolution
-     * comes from the csi be output. Some graphs may not use pixel formatter.*/
-    ret = mSettings->getDescendantByString(inputPort,
-                                            &pixelFormatterIn);
-    if (ret != css_err_none) {
-        LOGW("Couldn't get pixel formatter input, skipping");
-    } else {
-        pfPresent = true;
-        ret = mSettings->getDescendantByString(outputPort,
-                                                &pixelFormatterOut);
-        if (ret != css_err_none) {
-            LOGE("Error: Couldn't get pixel formatter output");
-            return UNKNOWN_ERROR;
-        }
-
-        retErr = getDimensions(pixelFormatterIn, pfInW, pfInH, pfLeft, pfTop);
-        if (retErr != OK) {
-            LOGE("Error: Couldn't get values from pixel formatter input");
-            return UNKNOWN_ERROR;
-        }
-
-        retErr = getDimensions(pixelFormatterOut, pfOutW, pfOutH);
-        if (retErr != OK) {
-            LOGE("Error: Couldn't get values from pixel formatter output");
-            return UNKNOWN_ERROR;
-        }
     }
 
     int csiBEOutW = 0, csiBEOutH = 0;
@@ -2049,9 +2001,7 @@ GraphConfig::getSensorFrameParams(ia_aiq_frame_params &sensorFrameParams)
     int32_t hScaler = hPixArray / vBinning;
 
     ret = sensorNode->getDescendant(GCSS_KEY_SCALER, &scalerNode);
-    if (ret != css_err_none) {
-        LOGW("Warning, no scaler found, make sure sensor has no scaler");
-    } else {
+    if (ret == css_err_none) {
 
         ret = getScalingFactor(scalerNode, scalingNum, scalingDenom);
         if (ret != css_err_none) {

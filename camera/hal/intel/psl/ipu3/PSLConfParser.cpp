@@ -772,7 +772,7 @@ void PSLConfParser::getGraphConfigFromXmlFile()
         } else {
             settingsPath += fileName;
         }
-        LOGW("Using settings file %s for camera %zu", settingsPath.c_str(), i);
+        LOGI("Using settings file %s for camera %zu", settingsPath.c_str(), i);
 
         info->mGCMNodes = GraphConfigManager::parse(
             GraphConfigManager::DEFAULT_DESCRIPTOR_FILE, settingsPath.c_str());

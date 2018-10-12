@@ -283,8 +283,9 @@ void SettingsProcessor::cacheStaticMetadata()
             MetadataHelper::getMetadataEntry(meta, ANDROID_CONTROL_AVAILABLE_EFFECTS);
     mStaticMetadataCache.availableNoiseReductionModes =
             MetadataHelper::getMetadataEntry(meta, ANDROID_NOISE_REDUCTION_AVAILABLE_NOISE_REDUCTION_MODES);
+    //ipu3 not config tone map mode, do not print error.
     mStaticMetadataCache.availableTonemapModes =
-            MetadataHelper::getMetadataEntry(meta, ANDROID_TONEMAP_AVAILABLE_TONE_MAP_MODES);
+            MetadataHelper::getMetadataEntry(meta, ANDROID_TONEMAP_AVAILABLE_TONE_MAP_MODES, false);
     mStaticMetadataCache.availableVideoStabilization =
             MetadataHelper::getMetadataEntry(meta, ANDROID_CONTROL_AVAILABLE_VIDEO_STABILIZATION_MODES);
     mStaticMetadataCache.availableOpticalStabilization =
