@@ -164,6 +164,21 @@ struct sl_mwm_hints {
 
 #define MIN_AURA_SHELL_VERSION 6
 
+// Performs an asprintf operation and checks the result for validity and calls
+// abort() if there's a failure. Returns a newly allocated string rather than
+// taking a double pointer argument like asprintf.
+__attribute__((__format__(__printf__, 1, 0))) static char* sl_xasprintf(
+    const char* fmt, ...) {
+  char* str;
+  va_list args;
+  va_start(args, fmt);
+  int rv = vasprintf(&str, fmt, args);
+  assert(rv >= 0);
+  UNUSED(rv);
+  va_end(args);
+  return str;
+}
+
 struct sl_mmap* sl_mmap_create(int fd,
                                size_t size,
                                size_t bpp,
@@ -655,25 +670,25 @@ void sl_window_update(struct sl_window* window) {
       zaura_surface_set_application_id(window->aura_surface,
                                        ctx->application_id);
     } else {
-      char application_id_str[128];
-
-      if (window->clazz) {
-        snprintf(application_id_str, sizeof(application_id_str),
-                 WM_CLASS_APPLICATION_ID_FORMAT, window->clazz);
-      } else if (window->client_leader != XCB_WINDOW_NONE) {
-        snprintf(application_id_str, sizeof(application_id_str),
-                 WM_CLIENT_LEADER_APPLICATION_ID_FORMAT, window->client_leader);
-      } else {
-        snprintf(application_id_str, sizeof(application_id_str),
-                 XID_APPLICATION_ID_FORMAT, window->id);
-      }
-
       // Don't set application id for X11 override redirect. This prevents
       // aura shell from thinking that these are regular application windows
       // that should appear in application lists.
       if (!ctx->xwayland || window->managed) {
+        char* application_id_str;
+        if (window->clazz) {
+          application_id_str =
+              sl_xasprintf(WM_CLASS_APPLICATION_ID_FORMAT, window->clazz);
+        } else if (window->client_leader != XCB_WINDOW_NONE) {
+          application_id_str = sl_xasprintf(
+              WM_CLIENT_LEADER_APPLICATION_ID_FORMAT, window->client_leader);
+        } else {
+          application_id_str =
+              sl_xasprintf(XID_APPLICATION_ID_FORMAT, window->id);
+        }
+
         zaura_surface_set_application_id(window->aura_surface,
                                          application_id_str);
+        free(application_id_str);
       }
     }
   }
@@ -2839,12 +2854,9 @@ static void sl_execvp(const char* file,
                       char* const argv[],
                       int wayland_socked_fd) {
   if (wayland_socked_fd >= 0) {
-    char fd_str[8];
     int fd;
-
     fd = dup(wayland_socked_fd);
-    snprintf(fd_str, sizeof(fd_str), "%d", fd);
-    setenv("WAYLAND_SOCKET", fd_str, 1);
+    putenv(sl_xasprintf("WAYLAND_SOCKET=%d", fd));
   }
 
   setenv("SOMMELIER_VERSION", SOMMELIER_VERSION, 1);
@@ -2894,7 +2906,6 @@ static void sl_calculate_scale_for_xwayland(struct sl_context* ctx) {
 static int sl_handle_display_ready_event(int fd, uint32_t mask, void* data) {
   struct sl_context* ctx = (struct sl_context*)data;
   char display_name[9];
-  char xcursor_size_str[8];
   int bytes_read = 0;
   pid_t pid;
 
@@ -2931,9 +2942,8 @@ static int sl_handle_display_ready_event(int fd, uint32_t mask, void* data) {
   sl_calculate_scale_for_xwayland(ctx);
   wl_display_flush_clients(ctx->host_display);
 
-  snprintf(xcursor_size_str, sizeof(xcursor_size_str), "%d",
-           (int)(XCURSOR_SIZE_BASE * ctx->scale + 0.5));
-  setenv("XCURSOR_SIZE", xcursor_size_str, 1);
+  putenv(sl_xasprintf("XCURSOR_SIZE=%d",
+                      (int)(XCURSOR_SIZE_BASE * ctx->scale + 0.5)));
 
   pid = fork();
   assert(pid >= 0);
@@ -3142,6 +3152,15 @@ static void sl_print_usage() {
       "  --glamor\t\t\tUse glamor to accelerate X11 clients\n");
 }
 
+static const char* sl_arg_value(const char* arg) {
+  const char* s = strchr(arg, '=');
+  if (!s) {
+    sl_print_usage();
+    exit(EXIT_FAILURE);
+  }
+  return s + 1;
+}
+
 int main(int argc, char **argv) {
   struct sl_context ctx = {
       .runprog = NULL,
@@ -3257,6 +3276,7 @@ int main(int argc, char **argv) {
   const char *xwayland_cmd_prefix = getenv("SOMMELIER_XWAYLAND_CMD_PREFIX");
   const char *accelerators = getenv("SOMMELIER_ACCELERATORS");
   const char *xwayland_path = getenv("SOMMELIER_XWAYLAND_PATH");
+  const char* xauth_path = getenv("SOMMELIER_XAUTH_PATH");
   const char *socket_name = "wayland-0";
   const char *runtime_dir;
   struct wl_event_loop *event_loop;
@@ -3285,98 +3305,63 @@ int main(int argc, char **argv) {
     if (strstr(arg, "--master") == arg) {
       master = 1;
     } else if (strstr(arg, "--socket") == arg) {
-      const char *s = strchr(arg, '=');
-      ++s;
-      socket_name = s;
+      socket_name = sl_arg_value(arg);
     } else if (strstr(arg, "--display") == arg) {
-      const char *s = strchr(arg, '=');
-      ++s;
-      display = s;
+      display = sl_arg_value(arg);
     } else if (strstr(arg, "--shm-driver") == arg) {
-      const char *s = strchr(arg, '=');
-      ++s;
-      shm_driver = s;
+      shm_driver = sl_arg_value(arg);
     } else if (strstr(arg, "--data-driver") == arg) {
-      const char *s = strchr(arg, '=');
-      ++s;
-      data_driver = s;
+      data_driver = sl_arg_value(arg);
     } else if (strstr(arg, "--peer-pid") == arg) {
-      const char *s = strchr(arg, '=');
-      ++s;
-      ctx.peer_pid = atoi(s);
+      ctx.peer_pid = atoi(sl_arg_value(arg));
     } else if (strstr(arg, "--peer-cmd-prefix") == arg) {
-      const char *s = strchr(arg, '=');
-      ++s;
-      peer_cmd_prefix = s;
+      peer_cmd_prefix = sl_arg_value(arg);
     } else if (strstr(arg, "--xwayland-cmd-prefix") == arg) {
-      const char *s = strchr(arg, '=');
-      ++s;
-      xwayland_cmd_prefix = s;
+      xwayland_cmd_prefix = sl_arg_value(arg);
     } else if (strstr(arg, "--client-fd") == arg) {
-      const char *s = strchr(arg, '=');
-      ++s;
-      client_fd = atoi(s);
+      client_fd = atoi(sl_arg_value(arg));
     } else if (strstr(arg, "--scale") == arg) {
-      const char *s = strchr(arg, '=');
-      ++s;
-      scale = s;
+      scale = sl_arg_value(arg);
     } else if (strstr(arg, "--dpi") == arg) {
-      const char* s = strchr(arg, '=');
-      ++s;
-      dpi = s;
+      dpi = sl_arg_value(arg);
     } else if (strstr(arg, "--accelerators") == arg) {
-      const char *s = strchr(arg, '=');
-      ++s;
-      accelerators = s;
+      accelerators = sl_arg_value(arg);
     } else if (strstr(arg, "--application-id") == arg) {
-      const char *s = strchr(arg, '=');
-      ++s;
-      ctx.application_id = s;
+      ctx.application_id = sl_arg_value(arg);
     } else if (strstr(arg, "-X") == arg) {
       ctx.xwayland = 1;
     } else if (strstr(arg, "--x-display") == arg) {
-      const char *s = strchr(arg, '=');
-      ++s;
-      xdisplay = atoi(s);
+      xdisplay = atoi(sl_arg_value(arg));
       // Automatically enable X forwarding if X display is specified.
       ctx.xwayland = 1;
     } else if (strstr(arg, "--xwayland-path") == arg) {
-      const char *s = strchr(arg, '=');
-      ++s;
-      xwayland_path = s;
+      xwayland_path = sl_arg_value(arg);
     } else if (strstr(arg, "--no-exit-with-child") == arg) {
       ctx.exit_with_child = 0;
     } else if (strstr(arg, "--sd-notify") == arg) {
-      const char *s = strchr(arg, '=');
-      ++s;
-      ctx.sd_notify = s;
+      ctx.sd_notify = sl_arg_value(arg);
     } else if (strstr(arg, "--no-clipboard-manager") == arg) {
       clipboard_manager = "0";
     } else if (strstr(arg, "--frame-color") == arg) {
-      const char *s = strchr(arg, '=');
-      ++s;
-      frame_color = s;
+      frame_color = sl_arg_value(arg);
     } else if (strstr(arg, "--dark-frame-color") == arg) {
-      const char* s = strchr(arg, '=');
-      ++s;
-      dark_frame_color = s;
+      dark_frame_color = sl_arg_value(arg);
     } else if (strstr(arg, "--virtwl-device") == arg) {
-      const char *s = strchr(arg, '=');
-      ++s;
-      virtwl_device = s;
+      virtwl_device = sl_arg_value(arg);
     } else if (strstr(arg, "--drm-device") == arg) {
-      const char *s = strchr(arg, '=');
-      ++s;
-      drm_device = s;
+      drm_device = sl_arg_value(arg);
     } else if (strstr(arg, "--glamor") == arg) {
       glamor = "1";
+    } else if (strstr(arg, "--x-auth") == arg) {
+      xauth_path = sl_arg_value(arg);
     } else if (arg[0] == '-') {
-      if (strcmp(arg, "--") != 0) {
-        fprintf(stderr, "Option `%s' is unknown.\n", arg);
-        return EXIT_FAILURE;
+      if (strcmp(arg, "--") == 0) {
+        ctx.runprog = &argv[i + 1];
+        break;
       }
-      ctx.runprog = &argv[i + 1];
-      break;
+      // Don't exit on unknown options so we can have forward compatibility
+      // with new flags introduced.
+      fprintf(stderr, "Option `%s' is unknown, ignoring.\n", arg);
     } else {
       ctx.runprog = &argv[i];
       break;
@@ -3390,7 +3375,7 @@ int main(int argc, char **argv) {
   }
 
   if (master) {
-    char lock_addr[UNIX_PATH_MAX + LOCK_SUFFIXLEN];
+    char* lock_addr;
     struct sockaddr_un addr;
     struct sigaction sa;
     struct stat sock_stat;
@@ -3401,7 +3386,7 @@ int main(int argc, char **argv) {
     snprintf(addr.sun_path, sizeof(addr.sun_path), "%s/%s", runtime_dir,
              socket_name);
 
-    snprintf(lock_addr, sizeof(lock_addr), "%s%s", addr.sun_path, LOCK_SUFFIX);
+    lock_addr = sl_xasprintf("%s%s", addr.sun_path, LOCK_SUFFIX);
 
     lock_fd = open(lock_addr, O_CREAT | O_CLOEXEC,
                    (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP));
@@ -3414,6 +3399,7 @@ int main(int argc, char **argv) {
               lock_addr);
       return EXIT_FAILURE;
     }
+    free(lock_addr);
 
     rv = stat(addr.sun_path, &sock_stat);
     if (rv >= 0) {
@@ -3474,8 +3460,9 @@ int main(int argc, char **argv) {
       pid = fork();
       assert(pid != -1);
       if (pid == 0) {
-        char client_fd_str[64], peer_pid_str[64];
-        char peer_cmd_prefix_str[1024];
+        char* client_fd_str;
+        char* peer_pid_str;
+        char* peer_cmd_prefix_str;
         char *args[64];
         int i = 0, j;
 
@@ -3486,8 +3473,7 @@ int main(int argc, char **argv) {
           peer_cmd_prefix = PEER_CMD_PREFIX;
 
         if (peer_cmd_prefix) {
-          snprintf(peer_cmd_prefix_str, sizeof(peer_cmd_prefix_str), "%s",
-                   peer_cmd_prefix);
+          peer_cmd_prefix_str = sl_xasprintf("%s", peer_cmd_prefix);
 
           i = sl_parse_cmd_prefix(peer_cmd_prefix_str, 32, args);
           if (i > 32) {
@@ -3497,11 +3483,9 @@ int main(int argc, char **argv) {
         }
 
         args[i++] = argv[0];
-        snprintf(peer_pid_str, sizeof(peer_pid_str), "--peer-pid=%d",
-                 ucred.pid);
+        peer_pid_str = sl_xasprintf("--peer-pid=%d", ucred.pid);
         args[i++] = peer_pid_str;
-        snprintf(client_fd_str, sizeof(client_fd_str), "--client-fd=%d",
-                 client_fd);
+        client_fd_str = sl_xasprintf("--client-fd=%d", client_fd);
         args[i++] = client_fd_str;
 
         // forward some flags.
@@ -3829,16 +3813,15 @@ int main(int argc, char **argv) {
       pid = fork();
       assert(pid != -1);
       if (pid == 0) {
-        char display_str[8], display_fd_str[8], wm_fd_str[8];
-        char xwayland_path_str[1024];
-        char xwayland_cmd_prefix_str[1024];
+        char* display_fd_str;
+        char* wm_fd_str;
+        char* xwayland_cmd_prefix_str;
         char *args[64];
         int i = 0;
         int fd;
 
         if (xwayland_cmd_prefix) {
-          snprintf(xwayland_cmd_prefix_str, sizeof(xwayland_cmd_prefix_str),
-                   "%s", xwayland_cmd_prefix);
+          xwayland_cmd_prefix_str = sl_xasprintf("%s", xwayland_cmd_prefix);
 
           i = sl_parse_cmd_prefix(xwayland_cmd_prefix_str, 32, args);
           if (i > 32) {
@@ -3847,18 +3830,15 @@ int main(int argc, char **argv) {
           }
         }
 
-        snprintf(xwayland_path_str, sizeof(xwayland_path_str), "%s",
-                 xwayland_path ? xwayland_path : XWAYLAND_PATH);
-        args[i++] = xwayland_path_str;
+        args[i++] = sl_xasprintf("%s", xwayland_path ?: XWAYLAND_PATH);
 
         fd = dup(ds[1]);
-        snprintf(display_fd_str, sizeof(display_fd_str), "%d", fd);
+        display_fd_str = sl_xasprintf("%d", fd);
         fd = dup(wm[1]);
-        snprintf(wm_fd_str, sizeof(wm_fd_str), "%d", fd);
+        wm_fd_str = sl_xasprintf("%d", fd);
 
         if (xdisplay > 0) {
-          snprintf(display_str, sizeof(display_str), ":%d", xdisplay);
-          args[i++] = display_str;
+          args[i++] = sl_xasprintf(":%d", xdisplay);
         }
         args[i++] = "-nolisten";
         args[i++] = "tcp";
@@ -3871,6 +3851,10 @@ int main(int argc, char **argv) {
         args[i++] = display_fd_str;
         args[i++] = "-wm";
         args[i++] = wm_fd_str;
+        if (xauth_path) {
+          args[i++] = "-auth";
+          args[i++] = sl_xasprintf("%s", xauth_path);
+        }
         args[i++] = NULL;
 
         sl_execvp(args[0], args, sv[1]);
