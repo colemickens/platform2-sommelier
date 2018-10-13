@@ -66,7 +66,7 @@ bool LoadOobeConfigUsb::ReadFiles(bool ignore_errors) {
     return false;
   }
 
-  if (!ReadPublicKey() && !ignore_errors) {
+  if (!ReadPublicKey(pub_key_file_, &public_key_) && !ignore_errors) {
     return false;
   }
 
@@ -89,22 +89,6 @@ bool LoadOobeConfigUsb::ReadFiles(bool ignore_errors) {
   return true;
 }
 
-bool LoadOobeConfigUsb::ReadPublicKey() {
-  base::ScopedFILE pkf(base::OpenFile(pub_key_file_, "r"));
-  if (!pkf) {
-    PLOG(ERROR) << "Failed to open the public key file "
-                << pub_key_file_.value();
-    return false;
-  }
-  public_key_.reset(PEM_read_PUBKEY(pkf.get(), nullptr, nullptr, nullptr));
-  if (!public_key_) {
-    LOG(ERROR) << "Failed to read the PEM public key file "
-               << pub_key_file_.value();
-    return false;
-  }
-  return true;
-}
-
 bool LoadOobeConfigUsb::VerifyPublicKey() {
   // TODO(ahassani): calculate the SHA256 of the public key and return false if
   // doesn't match the one in TPM.
@@ -113,26 +97,6 @@ bool LoadOobeConfigUsb::VerifyPublicKey() {
   // match the 32 bytes in the TPM at index 0x100c, otherwise abort.
 
   return false;
-}
-
-bool LoadOobeConfigUsb::VerifySignature(const string& message,
-                                        const string& signature) {
-  crypto::ScopedEVP_MD_CTX mdctx(EVP_MD_CTX_create());
-  if (!mdctx) {
-    LOG(ERROR) << "Failed to create a EVP_MD context.";
-    return false;
-  }
-  if (EVP_DigestVerifyInit(mdctx.get(), nullptr, EVP_sha256(), nullptr,
-                           public_key_.get()) != 1 ||
-      EVP_DigestVerifyUpdate(mdctx.get(), message.c_str(), message.length()) !=
-          1 ||
-      EVP_DigestVerifyFinal(
-          mdctx.get(), reinterpret_cast<const unsigned char*>(signature.data()),
-          signature.size()) != 1) {
-    LOG(ERROR) << "Failed to verify the signature.";
-    return false;
-  }
-  return true;
 }
 
 bool LoadOobeConfigUsb::LocateUsbDevice(FilePath* device_id) {
@@ -146,7 +110,8 @@ bool LoadOobeConfigUsb::LocateUsbDevice(FilePath* device_id) {
   base::FileEnumerator iter(device_ids_dir_, false,
                             base::FileEnumerator::FILES);
   for (auto link = iter.Next(); !link.empty(); link = iter.Next()) {
-    if (VerifySignature(link.value(), usb_device_path_signature_) &&
+    if (VerifySignature(link.value(), usb_device_path_signature_,
+                        public_key_) &&
         base::ReadSymbolicLink(link, device_id)) {
       // Found the device, did a `readlink -f` and returning the absolute path
       // to the device.
@@ -225,7 +190,7 @@ bool LoadOobeConfigUsb::GetOobeConfigJson(string* config,
                << config_file_on_usb.value();
     return false;
   }
-  if (!VerifySignature(config_, config_signature_)) {
+  if (!VerifySignature(config_, config_signature_, public_key_)) {
     return false;
   }
 
@@ -239,7 +204,8 @@ bool LoadOobeConfigUsb::GetOobeConfigJson(string* config,
                << enrollment_domain_file_on_usb.value();
     return false;
   }
-  if (!VerifySignature(enrollment_domain_, enrollment_domain_signature_)) {
+  if (!VerifySignature(enrollment_domain_, enrollment_domain_signature_,
+                       public_key_)) {
     return false;
   }
 

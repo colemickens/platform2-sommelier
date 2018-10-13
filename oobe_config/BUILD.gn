@@ -176,7 +176,7 @@ if (use.test) {
       "load_oobe_config_usb_test.cc",
       "rollback_helper_test.cc",
       "oobe_config_test.cc",
-      "utils_test.cc",
+      "usb_utils_test.cc",
     ]
     deps = [
       ":liboobeconfig",

@@ -38,17 +38,9 @@ class LoadOobeConfigUsb : public LoadOobeConfigInterface {
   // unittest functions easier without the need to create/sign all the files.
   bool ReadFiles(bool ignore_errors);
 
-  // Reads the public key into a data structure usable by libcrypto.
-  bool ReadPublicKey();
-
   // Verifies the hash of the public key on the stateful partition matches the
   // one in the TPM.
   bool VerifyPublicKey();
-
-  // Verifies the signature of a message using the default and already verified
-  // public key.
-  bool VerifySignature(const std::string& message,
-                       const std::string& signature);
 
   // Locates the USB device using the device path's signature file.
   bool LocateUsbDevice(base::FilePath* device_id);

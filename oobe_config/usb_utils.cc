@@ -10,11 +10,11 @@
 #include <base/files/file_util.h>
 #include <base/strings/string_util.h>
 #include <brillo/process.h>
-#include <crypto/scoped_openssl_types.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 
 using base::FilePath;
+using crypto::ScopedEVP_PKEY;
 using std::string;
 using std::vector;
 
@@ -41,6 +41,10 @@ int RunCommand(const vector<string>& command) {
 bool Sign(const FilePath& priv_key,
           const string& src_content,
           const FilePath& dst) {
+  if (src_content.empty()) {
+    LOG(ERROR) << "Input content string cannot be empty!";
+    return false;
+  }
   // Reading the private key.
   base::ScopedFILE pkf(base::OpenFile(priv_key, "r"));
   if (!pkf) {
@@ -102,6 +106,43 @@ bool Sign(const FilePath& priv_key, const FilePath& src, const FilePath& dst) {
   }
 
   return Sign(priv_key, src_content, dst);
+}
+
+bool ReadPublicKey(const FilePath& pub_key_file, ScopedEVP_PKEY* pub_key) {
+  base::ScopedFILE pkf(base::OpenFile(pub_key_file, "r"));
+  if (!pkf) {
+    PLOG(ERROR) << "Failed to open the public key file "
+                << pub_key_file.value();
+    return false;
+  }
+  pub_key->reset(PEM_read_PUBKEY(pkf.get(), nullptr, nullptr, nullptr));
+  if (!(*pub_key)) {
+    LOG(ERROR) << "Failed to read the PEM public key file "
+               << pub_key_file.value();
+    return false;
+  }
+  return true;
+}
+
+bool VerifySignature(const string& message,
+                     const string& signature,
+                     const ScopedEVP_PKEY& pub_key) {
+  crypto::ScopedEVP_MD_CTX mdctx(EVP_MD_CTX_create());
+  if (!mdctx) {
+    LOG(ERROR) << "Failed to create a EVP_MD context.";
+    return false;
+  }
+  if (EVP_DigestVerifyInit(mdctx.get(), nullptr, EVP_sha256(), nullptr,
+                           pub_key.get()) != 1 ||
+      EVP_DigestVerifyUpdate(mdctx.get(), message.c_str(), message.length()) !=
+          1 ||
+      EVP_DigestVerifyFinal(
+          mdctx.get(), reinterpret_cast<const unsigned char*>(signature.data()),
+          signature.size()) != 1) {
+    LOG(ERROR) << "Failed to verify the signature.";
+    return false;
+  }
+  return true;
 }
 
 }  // namespace oobe_config
