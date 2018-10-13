@@ -5,8 +5,13 @@
 #include "sommelier.h"
 
 #include <assert.h>
+#include <gbm.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
+#include <xf86drm.h>
+
+#include "virtgpu_drm.h"
 
 #include "drm-server-protocol.h"
 #include "linux-dmabuf-unstable-v1-client-protocol.h"
@@ -71,6 +76,40 @@ static void sl_drm_create_prime_buffer(struct wl_client* client,
   assert(!stride1);
   assert(!offset2);
   assert(!stride2);
+
+  // Attempts to correct stride0 with virtio-gpu specific resource information,
+  // if available.  Ideally mesa/gbm should have the correct stride. Remove
+  // after crbug.com/892242 is resolved in mesa.
+  if (host->ctx->gbm) {
+    int drm_fd = gbm_device_get_fd(host->ctx->gbm);
+    struct drm_prime_handle prime_handle;
+    int ret;
+
+    // First imports the prime fd to a gem handle. This will fail if this
+    // function was not passed a prime handle that can be imported by the drm
+    // device given to sommelier.
+    memset(&prime_handle, 0, sizeof(prime_handle));
+    prime_handle.fd = name;
+    ret = drmIoctl(drm_fd, DRM_IOCTL_PRIME_FD_TO_HANDLE, &prime_handle);
+    if (!ret) {
+      struct drm_virtgpu_resource_info info_arg;
+      struct drm_gem_close gem_close;
+
+      // Then attempts to get resource information. This will fail silently if
+      // the drm device passed to sommelier is not a virtio-gpu device.
+      memset(&info_arg, 0, sizeof(info_arg));
+      info_arg.bo_handle = prime_handle.handle;
+      ret = drmIoctl(drm_fd, DRM_IOCTL_VIRTGPU_RESOURCE_INFO, &info_arg);
+      // Correct stride0 if we are able to get proper resource info.
+      if (!ret)
+        stride0 = info_arg.stride;
+
+      // Always close the handle we imported.
+      memset(&gem_close, 0, sizeof(gem_close));
+      gem_close.handle = prime_handle.handle;
+      drmIoctl(drm_fd, DRM_IOCTL_GEM_CLOSE, &gem_close);
+    }
+  }
 
   buffer_params =
       zwp_linux_dmabuf_v1_create_params(host->ctx->linux_dmabuf->internal);

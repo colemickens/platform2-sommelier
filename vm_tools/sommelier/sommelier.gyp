@@ -56,6 +56,7 @@
       'variables': {
         'exported_deps': [
           'gbm',
+          'libdrm',
           'pixman-1',
           'wayland-client',
           'wayland-server',
