@@ -69,6 +69,7 @@ class Tpm2NvramTest : public testing::Test {
     factory_.set_policy_session(&mock_policy_session_);
     factory_.set_trial_session(&mock_trial_session_);
     factory_.set_tpm_utility(&mock_tpm_utility_);
+    factory_.set_used_password(&used_password_);
     tpm_nvram_.reset(
         new Tpm2NvramImpl(factory_, &mock_data_store_, &mock_tpm_status_));
     ON_CALL(mock_hmac_session_, GetDelegate()).WillByDefault(Return(kHMACAuth));
@@ -168,6 +169,7 @@ class Tpm2NvramTest : public testing::Test {
   NiceMock<trunks::MockTpmUtility> mock_tpm_utility_;
   NiceMock<MockTpmStatus> mock_tpm_status_;
   std::unique_ptr<Tpm2NvramImpl> tpm_nvram_;
+  std::vector<std::string> used_password_;
 };
 
 TEST_F(Tpm2NvramTest, NoOwnerFailure) {
@@ -341,12 +343,19 @@ TEST_F(Tpm2NvramTest, DefineSpaceBeforeTpmIsOwned) {
   // SetupOwnerSession() is not called.
   EXPECT_CALL(mock_hmac_session_, SetEntityAuthorizationValue(_)).Times(0);
 
-  EXPECT_CALL(mock_tpm_utility_, DefineNVSpace(_, _, _, _, _, _))
+  EXPECT_CALL(mock_tpm_utility_,
+              DefineNVSpace(kSomeNvramIndex, kSomeNvramSize, _,
+                            kFakeAuthorizationValue, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
+
+  used_password_.clear();
   EXPECT_EQ(
       NVRAM_RESULT_SUCCESS,
       tpm_nvram_->DefineSpace(kSomeNvramIndex, kSomeNvramSize, {},
                               kFakeAuthorizationValue, NVRAM_POLICY_NONE));
+  // The owner password is "" and using the password session
+  ASSERT_EQ(used_password_.size(), 1);
+  EXPECT_EQ(used_password_.back(), "");
 }
 
 TEST_F(Tpm2NvramTest, DestroySpaceSuccess) {
