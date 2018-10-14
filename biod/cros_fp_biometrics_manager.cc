@@ -27,6 +27,7 @@
 #include <metrics/metrics_library.h>
 
 #include "biod/biod_metrics.h"
+#include "biod/uinput_device.h"
 extern "C" {
 // Cros EC host commands definition as used by cros_fp.
 #include "biod/ec/cros_ec_dev.h"
@@ -156,6 +157,7 @@ class CrosFpBiometricsManager::CrosFpDevice : public MessageLoopForIO::Watcher {
   struct ec_response_fp_info info_;
 
   MkbpCallback mkbp_event_;
+  UinputDevice input_device_;
 
   std::unique_ptr<MessageLoopForIO::FileDescriptorWatcher> fd_watcher_;
 
@@ -494,6 +496,11 @@ bool CrosFpBiometricsManager::CrosFpDevice::Init() {
           cros_fd_.get(), true, MessageLoopForIO::WATCH_READ, fd_watcher_.get(),
           this)) {
     LOG(ERROR) << "Unable to watch MKBP events";
+    return false;
+  }
+
+  if (!input_device_.Init()) {
+    LOG(ERROR) << "Failed to create Uinput device";
     return false;
   }
 
