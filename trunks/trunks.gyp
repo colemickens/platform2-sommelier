@@ -245,5 +245,31 @@
         },
       ],
     }],
+    ['USE_fuzzer == 1', {
+      'targets': [
+        {
+          'target_name': 'key_blob_fuzzer',
+          'type': 'executable',
+          'includes': ['../common-mk/common_fuzzer.gypi'],
+          'sources': [
+            'key_blob_fuzzer.cc',
+          ],
+          'dependencies': [
+            'trunks',
+          ],
+        },
+        {
+          'target_name': 'creation_blob_fuzzer',
+          'type': 'executable',
+          'includes': ['../common-mk/common_fuzzer.gypi'],
+          'sources': [
+            'creation_blob_fuzzer.cc',
+          ],
+          'dependencies': [
+            'trunks',
+          ],
+        },
+      ],
+    }],
   ],
 }
