@@ -1,0 +1,2 @@
+allow cros_dbus_client_domain cros_system_bus_socket:sock_file write;
+allow cros_dbus_client_domain cros_dbus_daemon:unix_stream_socket connectto;

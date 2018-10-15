@@ -16,6 +16,7 @@ type cros_crash_reporter_exec, exec_type, file_type;
 type cros_crash_sender_exec, exec_type, file_type;
 type cros_cryptohomed_exec, exec_type, file_type;
 type cros_dbus_daemon_exec, exec_type, file_type;
+type cros_dbus_uuidgen_exec, exec_type, file_type;
 type cros_debugd_exec, exec_type, file_type;
 type cros_disks_exec, exec_type, file_type;
 type cros_logger_exec, exec_type, file_type;
@@ -63,6 +64,9 @@ type cros_var_lib, file_type;
 type cros_var_spool, file_type;
 type cros_var_empty, file_type;
 
+type cros_var_lib_dbus, file_type;
+
+
 type cros_arc_log, file_type, cros_log_type;
 type cros_authpolicy_log, file_type, cros_log_type;
 type cros_boot_log, file_type, cros_log_type;
@@ -74,6 +78,7 @@ type cros_metrics_file, file_type;
 type cros_metrics_uma_events_file, file_type;
 
 type cros_run, file_type;
+type cros_run_dbus, file_type;
 
 type cros_network_conf_file, file_type;
 type cros_passwd_file, file_type;
@@ -110,6 +115,7 @@ allow sysfs_type sysfs:filesystem associate;
 neverallow fs_type file_type:filesystem associate;
 
 type wayland_socket, file_type;
+type cros_system_bus_socket, file_type;
 
 # TODO(fqj): temporarily let un-decomposed chromeos domain to write file as tmpfs.
 type_transition chromeos cros_run:dir tmpfs;

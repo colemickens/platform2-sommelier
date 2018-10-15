@@ -55,3 +55,7 @@ filetrans_pattern(cros_init_scripts, cros_var_lib, cros_tz_data_file, dir, "time
 # init/metrics_library.conf
 filetrans_pattern(cros_init_scripts, cros_var_lib, cros_metrics_file, dir, "metrics");
 filetrans_pattern(cros_init_scripts, cros_metrics_file, cros_metrics_uma_events_file, file, "uma-events");
+
+# init/dbus.conf
+filetrans_pattern(cros_init_scripts, cros_var_lib, cros_var_lib_dbus, dir, "dbus");
+filetrans_pattern(cros_init_scripts, cros_run, cros_run_dbus, dir, "dbus");

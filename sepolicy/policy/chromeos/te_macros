@@ -40,6 +40,10 @@ define(`cros_net', `
 typeattribute $1 cros_netdomain;
 ')
 
+define(`cros_dbus_client', `
+typeattribute $1 cros_dbus_client_domain;
+')
+
 
 # minijail-related macros
 include(sepolicy/policy/chromeos/minijail_te_macros)

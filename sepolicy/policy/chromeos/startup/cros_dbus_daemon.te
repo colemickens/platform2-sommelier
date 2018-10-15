@@ -1,5 +1,0 @@
-type cros_dbus_daemon, chromeos_domain, domain, mlstrustedobject;
-
-permissive cros_dbus_daemon;
-
-domain_auto_trans(cros_init, cros_dbus_daemon_exec, cros_dbus_daemon);
