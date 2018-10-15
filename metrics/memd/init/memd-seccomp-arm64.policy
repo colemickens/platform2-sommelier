@@ -40,6 +40,7 @@ prlimit64: arg2 == 0 && arg3 != 0
 read: 1
 readlinkat: 1
 recvmsg: 1
+restart_syscall: 1
 rt_sigaction: 1
 rt_sigprocmask: 1
 sched_getaffinity: 1
