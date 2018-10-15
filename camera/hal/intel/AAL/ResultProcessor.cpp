@@ -364,7 +364,7 @@ status_t ResultProcessor::handleBufferDone(MessageBufferDone msg)
     int reqId = request->getId();
     if (buffer.get() && buffer->getOwner()) {
         PERFORMANCE_HAL_ATRACE_PARAM1(
-            "streamAndReqId", reqId | (buffer->getOwner()->seqNo() << 28));
+            "streamAndReqId", reqId | ((buffer->getOwner()->seqNo() & 0x0f) << 28));
     } else {
         PERFORMANCE_HAL_ATRACE_PARAM1("reqId", reqId);
     }
