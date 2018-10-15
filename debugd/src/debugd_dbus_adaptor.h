@@ -175,6 +175,8 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::string CampfireEnableAltOS(int size_gb) override;
   std::string CampfireDisableAltOS() override;
   std::string GetGscOnUsbRWFirmwareVer() override;
+  std::string GetGscImageRWFirmwareVer(const std::string& image_file) override;
+  std::string GetGscImageBoardID(const std::string& image_file) override;
 
  private:
   brillo::dbus_utils::DBusObject dbus_object_;

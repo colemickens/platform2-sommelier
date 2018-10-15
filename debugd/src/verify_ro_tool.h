@@ -6,10 +6,10 @@
 #define DEBUGD_SRC_VERIFY_RO_TOOL_H_
 
 #include <string>
+#include <vector>
 
 #include <base/macros.h>
 
-#include "debugd/src/process_with_output.h"
 #include "debugd/src/subprocess_tool.h"
 
 namespace debugd {
@@ -26,12 +26,27 @@ class VerifyRoTool : public SubprocessTool {
   //     RW_FW_VER=0.3.10
   std::string GetGscOnUsbRWFirmwareVer();
 
+  // Returns the RW firmware version in the given GSC |image_file| on success or
+  // an error message if an error happens. The output looks like
+  //
+  //     IMAGE_RW_FW_VER=0.3.10
+  std::string GetGscImageRWFirmwareVer(const std::string& image_file);
+
+  // Returns the board ID in the given GSC |image_file| on success or
+  // an error message if an error happens. The output looks like
+  //
+  //     IMAGE_BID_STRING=01234567
+  //     IMAGE_BID_MASK=00001111
+  //     IMAGE_BID_FLAGS=76543210
+  std::string GetGscImageBoardID(const std::string& image_file);
+
  private:
-  // Returns the first line that starts with "|key|=" from the output of the
-  // given |process| or an error message if such line is not found or something
-  // wrong happens.
-  std::string GetLineWithKeyFromProcess(const ProcessWithOutput& process,
-                                        const std::string& key);
+  // Reads contents of the given firmware |image_file| and gets the values of
+  // |keys| from the contents. Returns lines of the "key=value" pairs, one line
+  // per pair, or an error message if not all |keys| are found or if there is a
+  // problem reading |image_file|.
+  std::string GetKeysValuesFromImage(const std::string& image_file,
+                                     const std::vector<std::string>& keys);
 
   DISALLOW_COPY_AND_ASSIGN(VerifyRoTool);
 };

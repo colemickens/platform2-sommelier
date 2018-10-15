@@ -49,9 +49,10 @@ class ProcessWithOutput : public SandboxedProcess {
   // This must be called before Init() to have any effect. Defaults to true.
   void set_use_minijail(bool use_minijail) { use_minijail_ = use_minijail; }
 
-  // Initializes, configures, and runs a ProcessWithOutput. The D-Bus error will
-  // only be set if process setup fails, it's up to the caller to check the
-  // process exit code and handle run failures as needed.
+  // Initializes, configures, and runs a ProcessWithOutput. If |disable_sandbox|
+  // is set, |requires_root| will be ignored. The D-Bus error will only be set
+  // if process setup fails, it's up to the caller to check the process exit
+  // code and handle run failures as needed.
   // |stdin| is a string to pipe into the process, and |stdout| and |stderr|
   // will be filled with the corresponding process output. |error| will be
   // set if process setup fails and the process was never able to run. All
@@ -60,6 +61,7 @@ class ProcessWithOutput : public SandboxedProcess {
   static int RunProcess(const std::string& command,
                         const ArgList& arguments,
                         bool requires_root,
+                        bool disable_sandbox,
                         const std::string* stdin,
                         std::string* stdout,
                         std::string* stderr,

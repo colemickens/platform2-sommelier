@@ -32,6 +32,7 @@ int ControlU2fd(bool start) {
   return ProcessWithOutput::RunProcess("/sbin/initctl",
                                        {action, kJobName},
                                        true,     // requires root
+                                       false,     // disable_sandbox
                                        nullptr,  // stdin
                                        nullptr,  // stdout
                                        nullptr,  // stderr

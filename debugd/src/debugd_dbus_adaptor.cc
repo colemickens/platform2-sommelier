@@ -435,6 +435,7 @@ bool DebugdDBusAdaptor::SetRlzPingSent(brillo::ErrorPtr* error) {
       "/usr/sbin/vpd", {"-i", "RW_VPD", "-s", std::string(kShouldSendRlzPingKey)
       + "=0"},
       true,      // requires root
+      false,     // disable_sandbox
       nullptr,   // stdin
       nullptr,   // stdout
       &stderr, error);
@@ -452,6 +453,7 @@ bool DebugdDBusAdaptor::SetRlzPingSent(brillo::ErrorPtr* error) {
       "/usr/sbin/vpd", {"-i", "RW_VPD", "-d",
       std::string(kRlzEmbargoEndDateKey)},
       true,      // requires root
+      false,     // disable_sandbox
       nullptr,   // stdin
       nullptr,   // stdout
       &stderr, error);
@@ -466,6 +468,7 @@ bool DebugdDBusAdaptor::SetRlzPingSent(brillo::ErrorPtr* error) {
   result = ProcessWithOutput::RunProcess(
       "/usr/sbin/dump_vpd_log", {"--force"},
       true,      // requires root
+      false,     // disable_sandbox
       nullptr,   // stdin
       nullptr,   // stdout
       &stderr, error);
@@ -492,6 +495,16 @@ std::string DebugdDBusAdaptor::CampfireDisableAltOS() {
 
 std::string DebugdDBusAdaptor::GetGscOnUsbRWFirmwareVer() {
   return verify_ro_tool_->GetGscOnUsbRWFirmwareVer();
+}
+
+std::string DebugdDBusAdaptor::GetGscImageRWFirmwareVer(
+    const std::string& image_file) {
+  return verify_ro_tool_->GetGscImageRWFirmwareVer(image_file);
+}
+
+std::string DebugdDBusAdaptor::GetGscImageBoardID(
+    const std::string& image_file) {
+  return verify_ro_tool_->GetGscImageBoardID(image_file);
 }
 
 }  // namespace debugd

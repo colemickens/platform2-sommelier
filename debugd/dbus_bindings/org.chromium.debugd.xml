@@ -948,5 +948,38 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="GetGscImageRWFirmwareVer">
+      <tp:docstring>
+        Gets the RW firmware version in the given GSC image.
+      </tp:docstring>
+      <arg name="image_file" type="s" direction="in">
+        <tp:docstring>
+          Path to the local Cr50 image file.
+        </tp:docstring>
+      </arg>
+      <arg name="result" type="s" direction="out">
+        <tp:docstring>
+          Error message if failed, or the RW firmware versions in the given
+          image.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+    <method name="GetGscImageBoardID">
+      <tp:docstring>
+        Gets the board ID in the given GSC image.
+      </tp:docstring>
+      <arg name="image_file" type="s" direction="in">
+        <tp:docstring>
+          Path to the local Cr50 image file.
+        </tp:docstring>
+      </arg>
+      <arg name="result" type="s" direction="out">
+        <tp:docstring>
+          Error message if failed, or the board ID in the given image.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
   </interface>
 </node>

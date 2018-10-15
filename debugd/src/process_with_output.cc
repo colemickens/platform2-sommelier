@@ -95,12 +95,15 @@ bool ProcessWithOutput::GetError(std::string* error) {
 int ProcessWithOutput::RunProcess(const std::string& command,
                                   const ArgList& arguments,
                                   bool requires_root,
+                                  bool disable_sandbox,
                                   const std::string* stdin,
                                   std::string* stdout,
                                   std::string* stderr,
                                   brillo::ErrorPtr* error) {
   ProcessWithOutput process;
-  if (requires_root) {
+  if (disable_sandbox) {
+    process.DisableSandbox();
+  } else if (requires_root) {
     process.SandboxAs("root", "root");
   }
   return DoRunProcess(
@@ -119,8 +122,8 @@ int ProcessWithOutput::RunHelper(const std::string& helper,
     DEBUGD_ADD_ERROR(error, kDBusErrorString, kPathLengthErrorString);
     return kRunError;
   }
-  return RunProcess(
-      helper_path, arguments, requires_root, stdin, stdout, stderr, error);
+  return RunProcess(helper_path, arguments, requires_root,
+                    false /* disable_sandbox */, stdin, stdout, stderr, error);
 }
 
 int ProcessWithOutput::RunProcessFromHelper(const std::string& command,

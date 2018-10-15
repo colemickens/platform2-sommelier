@@ -50,6 +50,7 @@ int StopCups() {
 
   result = ProcessWithOutput::RunProcess("initctl", {"stop", kJobName},
                                          true,     // requires root
+                                         false,    // disable_sandbox
                                          nullptr,  // stdin
                                          nullptr,  // stdout
                                          nullptr,  // stderr

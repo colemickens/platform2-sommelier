@@ -98,7 +98,8 @@ bool DevModeNoOwnerRestriction::InDevMode() const {
   // information rather than duplicating logic here.
   return ProcessWithOutput::RunProcess("/usr/sbin/is_developer_end_user",
                                        ProcessWithOutput::ArgList{},
-                                       true,  // needs root to run properly.
+                                       true,     // needs root to run properly.
+                                       false,    // disable_sandbox.
                                        nullptr,  // no stdin.
                                        nullptr,  // no stdout.
                                        nullptr,  // no stderr.
