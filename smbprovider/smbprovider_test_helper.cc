@@ -33,6 +33,12 @@ MountOptionsProto CreateMountOptionsProto(const std::string& path,
   mount_options.set_workgroup(workgroup);
   mount_options.set_username(username);
 
+  // Default to enable NTLM authentication.
+  std::unique_ptr<MountConfigProto> config =
+      CreateMountConfigProto(true /* enable_ntlm */);
+
+  mount_options.set_allocated_mount_config(config.release());
+
   return mount_options;
 }
 

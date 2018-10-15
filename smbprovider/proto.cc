@@ -12,10 +12,9 @@
 namespace smbprovider {
 
 bool IsValidOptions(const MountOptionsProto& options) {
-  // TODO(jimmyxgong): Add validation of MountConfig once all Mount calls set
-  // it.
   return options.has_path() && options.has_workgroup() &&
-         options.has_username();
+         options.has_username() && options.has_mount_config() &&
+         IsValidMountConfig(options.mount_config());
 }
 
 bool IsValidOptions(const UnmountOptionsProto& options) {
