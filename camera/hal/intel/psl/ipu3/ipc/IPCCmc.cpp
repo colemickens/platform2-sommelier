@@ -192,7 +192,11 @@ bool IPCCmc::serverFlattenInit(const ia_cmc_t& cmc, cmc_init_params* params)
         results->cmc_parsed_color_matrices.cmc_color_matrices = *base->cmc_parsed_color_matrices.cmc_color_matrices;
     }
     if (base->cmc_parsed_color_matrices.cmc_color_matrix) {
-        results->cmc_parsed_color_matrices.cmc_color_matrix = *base->cmc_parsed_color_matrices.cmc_color_matrix;
+        //fix asan issue:base->cmc_parsed_color_matrices.cmc_color_matrix is not 4 aligned
+        //use memcpy instead of *
+        memcpy(&results->cmc_parsed_color_matrices.cmc_color_matrix,
+               base->cmc_parsed_color_matrices.cmc_color_matrix,
+               sizeof(results->cmc_parsed_color_matrices.cmc_color_matrix));
     }
     if (base->cmc_parsed_color_matrices.ccm_estimate_method) {
         results->cmc_parsed_color_matrices.ccm_estimate_method = *base->cmc_parsed_color_matrices.ccm_estimate_method;
