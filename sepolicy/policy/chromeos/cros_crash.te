@@ -13,7 +13,7 @@ allow cros_crash cros_syslog:file r_file_perms;
 
 allow cros_crash unlabeled:dir search;
 
-domain_auto_trans(chromeos_domain, cros_crash_reporter_exec, cros_crash);
+domain_auto_trans({chromeos_domain -cros_crash}, cros_crash_reporter_exec, cros_crash);
 # Kernel and cros_anomaly_collector are expected to run crash_reporter.
 # This audit allow is used to catch more unexpected usage.
 # -chromeos since we're pulling more processes out of chromeos, also it creates noises that crash_test.py
@@ -23,6 +23,7 @@ chromeos_domain
 -kernel
 -chromeos
 -cros_anomaly_collector
+-cros_crash
 -cros_udevd # Udevd is also expected to execute crash reporter.
 } cros_crash_reporter_exec:file execute;
 

@@ -1,5 +1,7 @@
 # TODO(fqj): go over files of cros_system_file, and to label exec only and rename with _exec suffix.
-type cros_system_file, exec_type, file_type;
+type cros_system_file, exec_type, file_type, cros_system_file_type;
+type cros_usr_dirs, file_type, cros_system_file_type;
+type cros_dev_image_files, file_type;
 
 type cros_anomaly_collector_exec, exec_type, file_type;
 type cros_avahi_daemon_exec, exec_type, file_type;

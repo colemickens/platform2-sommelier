@@ -2,8 +2,9 @@ include(sepolicy/file_contexts/chromeos_unconfined)
 include(sepolicy/file_contexts/coreutils)
 
 # Chrome OS file contexts.
-/                               u:object_r:rootfs:s0
-/(usr/)?[^/]+                   u:object_r:rootfs:s0
+/([^/]+)?                       u:object_r:rootfs:s0
+/usr/[^/]+                      u:object_r:cros_usr_dirs:s0
+/usr/local/[^/]+                u:object_r:cros_dev_image_files:s0
 /sbin/init                      u:object_r:chromeos_init_exec:s0
 
 /sbin/crash_reporter            u:object_r:cros_crash_reporter_exec:s0
