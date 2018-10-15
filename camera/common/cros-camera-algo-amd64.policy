@@ -24,6 +24,7 @@ getpid: 1
 gettid: 1
 gettimeofday: 1
 getuid: 1
+kill: 1
 listen: 1
 lseek: 1
 madvise: 1

@@ -5,9 +5,10 @@
  */
 
 #include <fcntl.h>
+#include <signal.h>
 #include <sys/resource.h>
 #include <sys/socket.h>
-#include <sys/wait.h>
+#include <sys/types.h>
 
 #include <base/at_exit.h>
 #include <base/command_line.h>
@@ -56,37 +57,41 @@ int main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
-  VLOGF(1) << "Waiting for incoming connection for " << socket_path.value();
-  base::ScopedFD connection_fd(accept(socket_fd.get(), NULL, 0));
-  if (!connection_fd.is_valid()) {
-    LOGF(ERROR) << "Failed to accept client connect request";
-    return EXIT_FAILURE;
-  }
-  const size_t kTokenLength = 33;
-  char recv_buf[kTokenLength] = {0};
-  std::deque<mojo::edk::PlatformHandle> platform_handles;
-  if (PlatformChannelRecvmsg(mojo::edk::PlatformHandle(connection_fd.get()),
-                             recv_buf, sizeof(recv_buf), &platform_handles,
-                             true) == 0) {
-    LOGF(ERROR) << "Failed to receive message";
-    return EXIT_FAILURE;
-  }
-  if (platform_handles.size() != 1 || !platform_handles.front().is_valid()) {
-    LOGF(ERROR) << "Received connection handle is invalid";
-    return EXIT_FAILURE;
-  }
+  pid_t pid = 0;
+  while (1) {
+    VLOGF(1) << "Waiting for incoming connection for " << socket_path.value();
+    base::ScopedFD connection_fd(accept(socket_fd.get(), NULL, 0));
+    if (!connection_fd.is_valid()) {
+      LOGF(ERROR) << "Failed to accept client connect request";
+      return EXIT_FAILURE;
+    }
+    const size_t kTokenLength = 33;
+    char recv_buf[kTokenLength] = {0};
+    std::deque<mojo::edk::PlatformHandle> platform_handles;
+    if (PlatformChannelRecvmsg(mojo::edk::PlatformHandle(connection_fd.get()),
+                               recv_buf, sizeof(recv_buf), &platform_handles,
+                               true) == 0) {
+      LOGF(ERROR) << "Failed to receive message";
+      return EXIT_FAILURE;
+    }
+    if (platform_handles.size() != 1 || !platform_handles.front().is_valid()) {
+      LOGF(ERROR) << "Received connection handle is invalid";
+      return EXIT_FAILURE;
+    }
 
-  VLOGF(1) << "Message from client " << std::string(recv_buf);
-  int pid = fork();
-  if (pid == 0) {
-    cros::CameraAlgorithmAdapter adapter;
-    adapter.Run(std::string(recv_buf),
-                mojo::edk::ScopedPlatformHandle(platform_handles.front()));
-    exit(0);
-  } else if (pid > 0) {
-    wait(NULL);
-  } else {
-    LOGF(ERROR) << "Fork failed";
+    VLOGF(1) << "Message from client " << std::string(recv_buf);
+    if (pid > 0) {
+      kill(pid, SIGTERM);
+    }
+    pid = fork();
+    if (pid == 0) {
+      cros::CameraAlgorithmAdapter adapter;
+      adapter.Run(std::string(recv_buf),
+                  mojo::edk::ScopedPlatformHandle(platform_handles.front()));
+      exit(0);
+    } else if (pid < 0) {
+      LOGF(ERROR) << "Fork failed";
+    }
   }
 
   return 0;

@@ -20,7 +20,9 @@ enum RequestTestCommand {
   // algorithm library should calculate the hashcode from the entire
   // |req_header| and invoke the return callback using the hashcode as the
   // |status| parameter.
-  REQUEST_TEST_COMMAND_VERIFY_STATUS
+  REQUEST_TEST_COMMAND_VERIFY_STATUS,
+  // This is to emulate a dead lock.
+  REQUEST_TEST_COMMAND_DEAD_LOCK
 };
 
 inline uint32_t SimpleHash(const uint8_t buf[], uint32_t size) {

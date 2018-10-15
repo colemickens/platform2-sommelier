@@ -74,6 +74,9 @@ class CameraAlgorithmImpl {
       case REQUEST_TEST_COMMAND_VERIFY_STATUS:
         status = SimpleHash(req_header, size);
         break;
+      case REQUEST_TEST_COMMAND_DEAD_LOCK:
+        base::PlatformThread::Sleep(base::TimeDelta::Max());
+        break;
       default:
         status = -EINVAL;
     }

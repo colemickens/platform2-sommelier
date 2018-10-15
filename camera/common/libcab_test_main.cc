@@ -4,18 +4,14 @@
 
 #include <semaphore.h>
 
-#include <fcntl.h>
-#include <stdlib.h>
-#include <sys/mman.h>
-
 #include <list>
-#include <unordered_map>
 #include <unordered_set>
 
 #include <base/at_exit.h>
 #include <base/bind.h>
 #include <base/command_line.h>
 #include <base/logging.h>
+#include <base/memory/shared_memory.h>
 #include <gtest/gtest.h>
 
 #include "common/libcab_test_internal.h"
@@ -82,13 +78,11 @@ class CameraAlgorithmBridgeFixture : public testing::Test,
 };
 
 TEST_F(CameraAlgorithmBridgeFixture, BasicOperation) {
-  int fd = shm_open("/myshm", O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
-  ASSERT_LE(0, fd) << "Failed to create shared memory";
-  ASSERT_LE(0, fcntl(fd, F_GETFD));
-  ASSERT_EQ(0, ftruncate(fd, kShmBufferSize));
-  int32_t handle = bridge_->RegisterBuffer(fd);
+  base::SharedMemory shm;
+  ASSERT_TRUE(shm.CreateAndMapAnonymous(kShmBufferSize))
+      << "Failed to create shared memory";
+  int32_t handle = bridge_->RegisterBuffer(shm.handle().fd);
   ASSERT_LE(0, handle) << "Handle should be of positive value";
-  ASSERT_LE(0, fcntl(fd, F_GETFD));
   std::vector<uint8_t> req_header(1, REQUEST_TEST_COMMAND_NORMAL);
   {
     base::AutoLock l(request_set_lock_);
@@ -102,18 +96,16 @@ TEST_F(CameraAlgorithmBridgeFixture, BasicOperation) {
   ASSERT_EQ(0, status_list_.front());
   std::vector<int32_t> handles({handle});
   bridge_->DeregisterBuffers(handles);
-  close(fd);
-  shm_unlink("/myshm");
 }
 
 TEST_F(CameraAlgorithmBridgeFixture, InvalidFdOrHandle) {
   int32_t handle = bridge_->RegisterBuffer(-1);
   ASSERT_GT(0, handle) << "Registering invalid fd should have failed";
 
-  int fd = shm_open("/myshm", O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
-  ASSERT_LE(0, fd) << "Failed to create shared memory";
-  ASSERT_EQ(0, ftruncate(fd, kShmBufferSize));
-  handle = bridge_->RegisterBuffer(fd);
+  base::SharedMemory shm;
+  ASSERT_TRUE(shm.CreateAndMapAnonymous(kShmBufferSize))
+      << "Failed to create shared memory";
+  handle = bridge_->RegisterBuffer(shm.handle().fd);
   ASSERT_LE(0, handle) << "Handle should be of positive value";
   std::vector<uint8_t> req_header(1, REQUEST_TEST_COMMAND_NORMAL);
   {
@@ -134,29 +126,23 @@ TEST_F(CameraAlgorithmBridgeFixture, InvalidFdOrHandle) {
   }
   std::vector<int32_t> handles({handle});
   bridge_->DeregisterBuffers(handles);
-  close(fd);
-  shm_unlink("/myshm");
 
+  int fd = shm.handle().fd;
+  base::SharedMemory::CloseHandle(shm.handle());
   ASSERT_GT(0, bridge_->RegisterBuffer(fd))
       << "Registering invalid fd should have failed";
 }
 
 TEST_F(CameraAlgorithmBridgeFixture, MultiRequests) {
-  const uint32_t kNumberOfFds = 256;
-  auto GetShmName = [](uint32_t num) {
-    std::stringstream ss;
-    ss << num;
-    return std::string("/myshm") + ss.str();
-  };
+  const size_t kNumberOfFds = 256;
 
-  std::vector<int> fds, handles;
-  for (uint32_t i = 1; i <= kNumberOfFds; i++) {
-    fds.push_back(
-        shm_open(GetShmName(i).c_str(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR));
-    ASSERT_LE(0, fds.back()) << "Failed to create shared memory";
-    ASSERT_EQ(0, ftruncate(fds.back(), kShmBufferSize));
-    handles.push_back(bridge_->RegisterBuffer(fds.back()));
-    ASSERT_LE(0, handles.back()) << "Handle should be of positive value";
+  std::vector<base::SharedMemory> shms(kNumberOfFds);
+  std::vector<int> handles(kNumberOfFds);
+  for (uint32_t i = 0; i < kNumberOfFds; i++) {
+    ASSERT_TRUE(shms[i].CreateAndMapAnonymous(kShmBufferSize))
+        << "Failed to create shared memory";
+    handles[i] = bridge_->RegisterBuffer(shms[i].handle().fd);
+    ASSERT_LE(0, handles[i]) << "Handle should be of positive value";
   }
   for (const auto handle : handles) {
     std::vector<uint8_t> req_header(1, REQUEST_TEST_COMMAND_NORMAL);
@@ -176,12 +162,37 @@ TEST_F(CameraAlgorithmBridgeFixture, MultiRequests) {
     ASSERT_EQ(0, it);
   }
   bridge_->DeregisterBuffers(handles);
-  for (const auto fd : fds) {
-    close(fd);
+}
+
+TEST_F(CameraAlgorithmBridgeFixture, DeadLockRecovery) {
+  // Create a dead lock in the algorithm.
+  std::vector<uint8_t> req_header(1, REQUEST_TEST_COMMAND_DEAD_LOCK);
+  bridge_->Request(req_header, -1);
+  struct timespec timeout = {};
+  clock_gettime(CLOCK_REALTIME, &timeout);
+  timeout.tv_sec += 1;
+  ASSERT_NE(0, sem_timedwait(&return_sem_, &timeout));
+  // Reconnect the bridge.
+  bridge_ = cros::CameraAlgorithmBridge::CreateInstance();
+  ASSERT_NE(nullptr, bridge_);
+  ASSERT_EQ(0, bridge_->Initialize(this));
+  base::SharedMemory shm;
+  ASSERT_TRUE(shm.CreateAndMapAnonymous(kShmBufferSize))
+      << "Failed to create shared memory";
+  int32_t handle = bridge_->RegisterBuffer(shm.handle().fd);
+  ASSERT_LE(0, handle) << "Handle should be of positive value";
+  req_header = std::vector<uint8_t>(1, REQUEST_TEST_COMMAND_NORMAL);
+  {
+    base::AutoLock l(request_set_lock_);
+    request_set_.insert(handle);
   }
-  for (uint32_t i = 1; i <= kNumberOfFds; i++) {
-    shm_unlink(GetShmName(i).c_str());
-  }
+  bridge_->Request(req_header, handle);
+  clock_gettime(CLOCK_REALTIME, &timeout);
+  timeout.tv_sec += 1;
+  ASSERT_EQ(0, sem_timedwait(&return_sem_, &timeout));
+  ASSERT_EQ(0, status_list_.front());
+  std::vector<int32_t> handles({handle});
+  bridge_->DeregisterBuffers(handles);
 }
 
 // This test should be run against the fake libcam_algo.so created with
