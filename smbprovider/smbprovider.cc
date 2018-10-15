@@ -1025,7 +1025,12 @@ bool SmbProvider::MoveEntry(const MoveEntryOptionsProto& options,
                             int32_t* error) {
   DCHECK(error);
 
-  SambaInterface* samba_interface = GetSambaInterface(GetMountId(options));
+  // Invalidate the cache for the source path. This is always safe even if the
+  // move fails because it will just cause a cache miss.
+  int32_t mount_id = GetMountId(options);
+  InvalidateCacheEntry(mount_id, source_path);
+
+  SambaInterface* samba_interface = GetSambaInterface(mount_id);
   int32_t result = samba_interface->MoveEntry(source_path, target_path);
   if (result != 0) {
     LogAndSetError(options, GetErrorFromErrno(result), error);

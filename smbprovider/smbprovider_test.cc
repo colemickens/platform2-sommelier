@@ -896,6 +896,42 @@ TEST_F(SmbProviderTest, DeleteFileRecursiveInvalidatesCache) {
   EXPECT_FALSE(cache->FindEntry(GetAddedFullFilePath(), &entry));
 }
 
+// Calls ReadDirectory() to put a file in the cache, then moves a file
+// and verifies that the cache doesn't incorrectly hit on the source path.
+TEST_F(SmbProviderTest, MoveFileInvalidatesCache) {
+  SetUpSmbProvider(true /* metadata_cache_enabled */);
+  int32_t mount_id = PrepareMount();
+
+  fake_samba_->AddDirectory(GetAddedFullDirectoryPath());
+  fake_samba_->AddFile(GetAddedFullFilePath(), kFileSize, kFileDate);
+
+  // Get the cache.
+  MetadataCache* cache = nullptr;
+  EXPECT_TRUE(mount_manager_->GetMetadataCache(mount_id, &cache));
+  EXPECT_NE(nullptr, cache);
+
+  // Nothing is in the cache yet.
+  EXPECT_TRUE(cache->IsEmpty());
+
+  ProtoBlob results;
+  int32_t err;
+  ProtoBlob read_directory_blob =
+      CreateReadDirectoryOptionsBlob(mount_id, GetDefaultDirectoryPath());
+  smbprovider_->ReadDirectory(read_directory_blob, &err, &results);
+  EXPECT_EQ(ERROR_OK, CastError(err));
+
+  // The file should be in the cache now.
+  DirectoryEntry entry;
+  EXPECT_TRUE(cache->FindEntry(GetAddedFullFilePath(), &entry));
+
+  ProtoBlob move_entry_blob = CreateMoveEntryOptionsBlob(
+      mount_id, GetDefaultFilePath(), GetDefaultFilePath() + "2");
+  EXPECT_EQ(ERROR_OK, smbprovider_->MoveEntry(move_entry_blob));
+
+  // |source_path| should no longer be in the cache.
+  EXPECT_FALSE(cache->FindEntry(GetAddedFullFilePath(), &entry));
+}
+
 // GetMetadata (cache enabled) succeeds when passed a valid share path
 // when the entry is not in the cache.
 TEST_F(SmbProviderTest, GetMetadataSucceedsCacheMiss) {
