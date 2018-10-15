@@ -19,6 +19,7 @@ fstat: 1
 ftruncate: 1
 futex: 1
 geteuid: 1
+getpid: 1
 getresgid: 1
 getresuid: 1
 getrlimit: 1
@@ -35,6 +36,7 @@ open: 1
 openat: 1
 poll: 1
 pread64: 1
+prlimit64: arg2 == 0 && arg3 != 0
 read: 1
 readlink: 1
 recvmsg: 1
