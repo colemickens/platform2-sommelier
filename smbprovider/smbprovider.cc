@@ -114,16 +114,7 @@ void SmbProvider::Mount(const ProtoBlob& options_blob,
     return;  // Error with parsing proto.
   }
 
-  // TODO(jimmyxgong): MountOptionsProto should always have a MountConfigProto.
-  // Remove this code once MountOptionsProto is properly populated. Add
-  // ConvertToMountConfig() bool success chain.
-  // |mount_config| is created here if necessary until MountConfig is properly
-  // populated.
-  MountConfig mount_config(true /* enable_ntlm */);
-
-  if (options.has_mount_config()) {
-    ConvertToMountConfig(options, &mount_config);
-  }
+  MountConfig mount_config = ConvertToMountConfig(options);
 
   // AddMount() has to be called first since the credential has to be stored
   // before calling CanAccessMount().
@@ -149,16 +140,7 @@ int32_t SmbProvider::Remount(const ProtoBlob& options_blob,
     return error_code;  // Error with parsing proto.
   }
 
-  // TODO(jimmyxgong): MountOptionsProto should always have a MountConfigProto.
-  // Remove this code once MountOptionsProto is properly populated. Add
-  // ConvertToMountConfigProto() bool success chain.
-  // |mount_config| is created here if necessary until MountConfig is properly
-  // populated.
-  MountConfig mount_config(true /* enable_ntlm */);
-
-  if (options.has_mount_config()) {
-    ConvertToMountConfig(options, &mount_config);
-  }
+  MountConfig mount_config = ConvertToMountConfig(options);
 
   const bool remounted = Remount(options.path(), GetMountId(options),
                                  mount_config, options.workgroup(),

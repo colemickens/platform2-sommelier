@@ -229,20 +229,14 @@ authpolicy::KerberosFiles CreateKerberosFilesProto(
 
 ProtoBlob CreateMountOptionsBlob(const std::string& path) {
   return SerializeProtoToBlobAndCheck(
-      CreateMountOptionsProto(path, "" /* workgroup */, "" /* username */));
+      CreateMountOptionsProto(path, "" /* workgroup */, "" /* username */,
+                              MountConfig(true /* enable_ntlm */)));
 }
 
 ProtoBlob CreateMountOptionsBlob(const std::string& path,
                                  const MountConfig& mount_config) {
   return SerializeProtoToBlobAndCheck(CreateMountOptionsProto(
       path, "" /* workgroup */, "" /* username */, mount_config));
-}
-
-ProtoBlob CreateMountOptionsBlob(const std::string& path,
-                                 const std::string& workgroup,
-                                 const std::string& username) {
-  return SerializeProtoToBlobAndCheck(
-      CreateMountOptionsProto(path, workgroup, username));
 }
 
 ProtoBlob CreateMountOptionsBlob(const std::string& path,
@@ -350,8 +344,8 @@ ProtoBlob CreateGetSharesOptionsBlob(const std::string& server_url) {
 }
 
 ProtoBlob CreateRemountOptionsBlob(const std::string& path, int32_t mount_id) {
-  return SerializeProtoToBlobAndCheck(
-      CreateRemountOptionsProto(path, mount_id));
+  return CreateRemountOptionsBlob(path, mount_id,
+                                  MountConfig(true /* enable_ntlm */));
 }
 
 ProtoBlob CreateRemountOptionsBlob(const std::string& path,

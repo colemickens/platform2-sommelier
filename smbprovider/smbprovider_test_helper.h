@@ -105,10 +105,6 @@ ProtoBlob CreateMountOptionsBlob(const std::string& path,
 
 ProtoBlob CreateMountOptionsBlob(const std::string& path,
                                  const std::string& workgroup,
-                                 const std::string& username);
-
-ProtoBlob CreateMountOptionsBlob(const std::string& path,
-                                 const std::string& workgroup,
                                  const std::string& username,
                                  const MountConfig& mount_config);
 

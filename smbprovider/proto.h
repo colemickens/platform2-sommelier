@@ -142,14 +142,12 @@ void AddToDeleteList(const std::string& entry_path, DeleteListProto* proto);
 void AddToHostnamesProto(const std::string& hostname, HostnamesProto* proto);
 
 template <typename Proto>
-bool ConvertToMountConfig(const Proto& option, MountConfig* mount_config) {
-  DCHECK(mount_config);
+MountConfig ConvertToMountConfig(const Proto& option) {
   DCHECK(IsValidMountConfig(option.mount_config()));
 
   const MountConfigProto& mount_config_proto = option.mount_config();
-  *mount_config = MountConfig(mount_config_proto.enable_ntlm());
 
-  return true;
+  return MountConfig(mount_config_proto.enable_ntlm());
 }
 
 }  // namespace smbprovider
