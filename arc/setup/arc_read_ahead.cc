@@ -20,8 +20,8 @@
 #include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
 
-// TODO(yusukes): Include a different header for P.
-#include "arc/setup/arc_read_ahead_files_nyc.h"
+// TODO(yusukes): Read different set of files for Q.
+#include "arc/setup/arc_read_ahead_files.h"
 
 namespace arc {
 
@@ -57,12 +57,25 @@ int64_t GetReadAheadSize(const base::FilePath& base_name,
   return 0;  // no read ahead.
 }
 
-FilesToReadMap GetFileList(const base::FilePath& scan_root) {
+FilesToReadMap GetFileList(const base::FilePath& scan_root,
+                           AndroidSdkVersion sdk_version) {
   FilesToReadMap result;
 
   FileNameToCountMap usage;
-  for (auto* file_name : kImportantFiles)
-    usage.emplace(file_name, 0);
+  switch (sdk_version) {
+    case AndroidSdkVersion::UNKNOWN:
+    case AndroidSdkVersion::ANDROID_M:
+      NOTREACHED();
+      break;
+    case AndroidSdkVersion::ANDROID_N_MR1:
+      for (auto* file_name : kImportantFilesN)
+        usage.emplace(file_name, 0);
+      break;
+    case AndroidSdkVersion::ANDROID_P:
+      for (auto* file_name : kImportantFilesP)
+        usage.emplace(file_name, 0);
+      break;
+  }
 
   // Scan all files in |scan_root|.
   size_t num_files = 0;
@@ -101,12 +114,13 @@ FilesToReadMap GetFileList(const base::FilePath& scan_root) {
 }  // namespace
 
 std::pair<size_t, size_t> EmulateArcUreadahead(const base::FilePath& scan_root,
-                                               const base::TimeDelta& timeout) {
+                                               const base::TimeDelta& timeout,
+                                               AndroidSdkVersion sdk_version) {
   base::ElapsedTimer timer;
   size_t num_files_read = 0;
   size_t num_bytes_read = 0;
 
-  FilesToReadMap files_to_read(GetFileList(scan_root));
+  FilesToReadMap files_to_read(GetFileList(scan_root, sdk_version));
   // Use rbegin/rend to read larger files first.
   for (auto it = files_to_read.rbegin(); it != files_to_read.rend(); ++it) {
     const int64_t read_ahead_bytes = it->first;

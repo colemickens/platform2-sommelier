@@ -31,9 +31,12 @@ TEST(ArcReadAhead, TestEmulateArcUreadahead) {
   EXPECT_TRUE(WriteToFile(
       temp_directory.GetPath().Append("subdir").Append("framework-res.apk"),
       0755, std::string(0x1 << 1, 'x')));
+
+  // PrebuiltGmsCoreRelease.apk is in N's list but not in P's.
   EXPECT_TRUE(
       WriteToFile(temp_directory.GetPath().Append("PrebuiltGmsCoreRelease.apk"),
                   0755, std::string(0x1 << 2, 'x')));
+
   EXPECT_TRUE(WriteToFile(
       temp_directory.GetPath().Append("lib_read_ahead_unittest_1.so"), 0755,
       std::string(0x1 << 3, 'x')));
@@ -53,9 +56,16 @@ TEST(ArcReadAhead, TestEmulateArcUreadahead) {
       temp_directory.GetPath().Append("read_ahead_unittest_4.ttf"), 0755));
 
   auto result = EmulateArcUreadahead(temp_directory.GetPath(),
-                                     base::TimeDelta::FromSeconds(5));
+                                     base::TimeDelta::FromSeconds(5),
+                                     AndroidSdkVersion::ANDROID_N_MR1);
   EXPECT_EQ(5, result.first);
   EXPECT_EQ(31 /* == 0b11111 */, result.second);
+
+  result = EmulateArcUreadahead(temp_directory.GetPath(),
+                                base::TimeDelta::FromSeconds(5),
+                                AndroidSdkVersion::ANDROID_P);
+  EXPECT_EQ(4, result.first);
+  EXPECT_EQ(27 /* == 0b11011 */, result.second);
 }
 
 }  // namespace

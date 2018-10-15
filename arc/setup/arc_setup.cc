@@ -2198,7 +2198,8 @@ void ArcSetup::OnPreChroot() {
 }
 
 void ArcSetup::OnReadAhead() {
-  EmulateArcUreadahead(arc_paths_->android_rootfs_directory, kReadAheadTimeout);
+  EmulateArcUreadahead(arc_paths_->android_rootfs_directory, kReadAheadTimeout,
+                       GetSdkVersion());
 }
 
 void ArcSetup::OnRemoveData() {

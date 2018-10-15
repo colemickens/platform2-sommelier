@@ -10,6 +10,8 @@
 
 #include <utility>
 
+#include "arc/setup/android_sdk_version.h"
+
 namespace base {
 
 class FilePath;
@@ -27,7 +29,8 @@ static const int64_t kDefaultReadAheadSize = 128 * 1024;
 // heuristics.
 // The function returns a pair of (# of files read, # of bytes read).
 std::pair<size_t, size_t> EmulateArcUreadahead(const base::FilePath& scan_root,
-                                               const base::TimeDelta& timeout);
+                                               const base::TimeDelta& timeout,
+                                               AndroidSdkVersion sdk_version);
 
 }  // namespace arc
 
