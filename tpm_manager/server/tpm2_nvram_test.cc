@@ -81,12 +81,14 @@ class Tpm2NvramTest : public testing::Test {
         .WillByDefault(
             DoAll(SetArgPointee<0>(kFakePolicyDigest), Return(TPM_RC_SUCCESS)));
     ON_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned())
-        .WillByDefault(Return(TpmStatus::kTpmOwned));
+        .WillByDefault(Return(TpmStatus::kTpmUnowned));
   }
 
   void SetupOwnerPassword() {
     LocalData& local_data = mock_data_store_.GetMutableFakeData();
     local_data.set_owner_password(kTestOwnerPassword);
+    ON_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned())
+        .WillByDefault(Return(TpmStatus::kTpmOwned));
   }
 
   enum ExpectAuth { NO_EXPECT_AUTH, EXPECT_AUTH };
@@ -169,12 +171,11 @@ class Tpm2NvramTest : public testing::Test {
 };
 
 TEST_F(Tpm2NvramTest, NoOwnerFailure) {
-  EXPECT_EQ(NVRAM_RESULT_OPERATION_DISABLED,
-            tpm_nvram_->DefineSpace(0, 0, {}, "", NVRAM_POLICY_NONE));
   EXPECT_EQ(NVRAM_RESULT_OPERATION_DISABLED, tpm_nvram_->DestroySpace(0));
 }
 
 TEST_F(Tpm2NvramTest, SessionFailure) {
+  SetupOwnerPassword();
   EXPECT_CALL(mock_hmac_session_, StartUnboundSession(_, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   EXPECT_NE(NVRAM_RESULT_SUCCESS,
@@ -327,12 +328,6 @@ TEST_F(Tpm2NvramTest, DefineSpaceClobberExistingLocalData) {
 }
 
 TEST_F(Tpm2NvramTest, DefineSpaceBeforeTpmIsOwned) {
-  auto delegate = std::make_unique<trunks::PasswordAuthorizationDelegate>("");
-  factory_.set_password_authorization_delegate(delegate.get());
-
-  ON_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned())
-      .WillByDefault(Return(TpmStatus::kTpmUnowned));
-
   // trunks_session_->Delegate() is not called.
   EXPECT_CALL(mock_hmac_session_, GetDelegate()).Times(0);
   // ScopedGlobalHmacSession() is not called.
@@ -344,7 +339,8 @@ TEST_F(Tpm2NvramTest, DefineSpaceBeforeTpmIsOwned) {
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_EQ(
       NVRAM_RESULT_SUCCESS,
-      tpm_nvram_->DefineSpace(0, 0, {}, "", NVRAM_POLICY_NONE));
+      tpm_nvram_->DefineSpace(kSomeNvramIndex, kSomeNvramSize, {},
+                              kFakeAuthorizationValue, NVRAM_POLICY_NONE));
 }
 
 TEST_F(Tpm2NvramTest, DestroySpaceSuccess) {
@@ -386,6 +382,7 @@ TEST_F(Tpm2NvramTest, DestroySpaceWithExistingLocalData) {
 }
 
 TEST_F(Tpm2NvramTest, WriteSpaceSuccess) {
+  SetupOwnerPassword();
   SetupExistingSpace(kSomeNvramIndex, kSomeNvramSize, kNoExtraAttributes,
                      EXPECT_AUTH, NORMAL_AUTH);
   EXPECT_CALL(mock_tpm_utility_,
@@ -398,6 +395,7 @@ TEST_F(Tpm2NvramTest, WriteSpaceSuccess) {
 }
 
 TEST_F(Tpm2NvramTest, WriteSpaceExtend) {
+  SetupOwnerPassword();
   SetupExistingSpace(kSomeNvramIndex, kSomeNvramSize, trunks::TPMA_NV_EXTEND,
                      EXPECT_AUTH, NORMAL_AUTH);
   EXPECT_CALL(mock_tpm_utility_,
@@ -419,6 +417,7 @@ TEST_F(Tpm2NvramTest, WriteSpaceNonexistant) {
 }
 
 TEST_F(Tpm2NvramTest, WriteSpaceFailure) {
+  SetupOwnerPassword();
   SetupExistingSpace(kSomeNvramIndex, kSomeNvramSize, kNoExtraAttributes,
                      EXPECT_AUTH, NORMAL_AUTH);
   EXPECT_CALL(mock_tpm_utility_, WriteNVSpace(kSomeNvramIndex, _, _, _, _, _))
@@ -454,6 +453,7 @@ TEST_F(Tpm2NvramTest, WriteSpaceOwner) {
 }
 
 TEST_F(Tpm2NvramTest, ReadSpaceSuccess) {
+  SetupOwnerPassword();
   SetupExistingSpace(kSomeNvramIndex, kSomeData.size(), trunks::TPMA_NV_WRITTEN,
                      EXPECT_AUTH, NORMAL_AUTH);
   EXPECT_CALL(mock_tpm_utility_,
@@ -477,6 +477,7 @@ TEST_F(Tpm2NvramTest, ReadSpaceNonexistant) {
 }
 
 TEST_F(Tpm2NvramTest, ReadSpaceFailure) {
+  SetupOwnerPassword();
   SetupExistingSpace(kSomeNvramIndex, kSomeNvramSize, trunks::TPMA_NV_WRITTEN,
                      EXPECT_AUTH, NORMAL_AUTH);
   EXPECT_CALL(mock_tpm_utility_, ReadNVSpace(kSomeNvramIndex, _, _, _, _, _))
