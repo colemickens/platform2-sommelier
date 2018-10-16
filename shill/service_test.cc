@@ -2248,6 +2248,29 @@ TEST_F(ServiceTest, Compare) {
                              kDoNotCompareConnectivityState));
 }
 
+TEST_F(ServiceTest, ComparePreferEthernetOverWifi) {
+  // Create mock ethernet service.
+  scoped_refptr<MockService> ethernet_service(new NiceMock<MockService>(
+      control_interface(), dispatcher(), metrics(), manager()));
+  EXPECT_CALL(*ethernet_service.get(), technology())
+      .WillRepeatedly(Return(Technology::kEthernet));
+
+  // Create mock wifi service.
+  scoped_refptr<MockService> wifi_service(new NiceMock<MockService>(
+      control_interface(), dispatcher(), metrics(), manager()));
+  EXPECT_CALL(*wifi_service.get(), technology())
+      .WillRepeatedly(Return((Technology::kWifi)));
+
+  // Confirm that ethernet service is sorted above wifi service.
+  technology_order_for_sorting_ = {Technology::kEthernet, Technology::kWifi};
+  EXPECT_TRUE(DefaultSortingOrderIs(ethernet_service, wifi_service));
+
+  // Even making the wifi service managed doesn't change the network sorting
+  // order.
+  wifi_service->managed_credentials_ = true;
+  EXPECT_TRUE(DefaultSortingOrderIs(ethernet_service, wifi_service));
+}
+
 TEST_F(ServiceTest, SanitizeStorageIdentifier) {
   EXPECT_EQ("", Service::SanitizeStorageIdentifier(""));
 

@@ -677,6 +677,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, CalculateTechnology);
   FRIEND_TEST(ServiceTest, Certification);
   FRIEND_TEST(ServiceTest, Compare);
+  FRIEND_TEST(ServiceTest, ComparePreferEthernetOverWifi);
   FRIEND_TEST(ServiceTest, ConfigureEapStringProperty);
   FRIEND_TEST(ServiceTest, ConfigureIgnoredProperty);
   FRIEND_TEST(ServiceTest, Constructor);
