@@ -1068,7 +1068,9 @@ bool SessionManagerImpl::StartArcMiniContainer(
       base::StringPrintf("CHROMEOS_DEV_MODE=%d", IsDevMode(system_)),
       base::StringPrintf("CHROMEOS_INSIDE_VM=%d", IsInsideVm(system_)),
       base::StringPrintf("NATIVE_BRIDGE_EXPERIMENT=%d",
-                         request.native_bridge_experiment())};
+                         request.native_bridge_experiment()),
+      base::StringPrintf("ARC_FILE_PICKER_EXPERIMENT=%d",
+                         request.arc_file_picker_experiment())};
   if (request.lcd_density() > 0) {
     env_vars.push_back(
         base::StringPrintf("ARC_LCD_DENSITY=%d", request.lcd_density()));

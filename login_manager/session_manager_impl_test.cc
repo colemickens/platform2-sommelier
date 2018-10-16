@@ -685,7 +685,8 @@ class SessionManagerImplTest : public ::testing::Test,
                 TriggerImpulseInternal(
                     SessionManagerImpl::kStartArcInstanceImpulse,
                     ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                                "NATIVE_BRIDGE_EXPERIMENT=0"),
+                                "NATIVE_BRIDGE_EXPERIMENT=0",
+                                "ARC_FILE_PICKER_EXPERIMENT=0"),
                     InitDaemonController::TriggerMode::ASYNC))
         .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
@@ -2118,7 +2119,8 @@ TEST_F(SessionManagerImplTest, StartArcMiniContainer) {
               TriggerImpulseInternal(
                   SessionManagerImpl::kStartArcInstanceImpulse,
                   ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                              "NATIVE_BRIDGE_EXPERIMENT=0"),
+                              "NATIVE_BRIDGE_EXPERIMENT=0",
+                              "ARC_FILE_PICKER_EXPERIMENT=0"),
                   InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
@@ -2170,7 +2172,8 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainer) {
               TriggerImpulseInternal(
                   SessionManagerImpl::kStartArcInstanceImpulse,
                   ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                              "NATIVE_BRIDGE_EXPERIMENT=0"),
+                              "NATIVE_BRIDGE_EXPERIMENT=0",
+                              "ARC_FILE_PICKER_EXPERIMENT=0"),
                   InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
@@ -2299,7 +2302,8 @@ TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
               TriggerImpulseInternal(
                   SessionManagerImpl::kStartArcInstanceImpulse,
                   ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                              "NATIVE_BRIDGE_EXPERIMENT=0"),
+                              "NATIVE_BRIDGE_EXPERIMENT=0",
+                              "ARC_FILE_PICKER_EXPERIMENT=0"),
                   InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
@@ -2369,7 +2373,8 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainerForDemoSession) {
               TriggerImpulseInternal(
                   SessionManagerImpl::kStartArcInstanceImpulse,
                   ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                              "NATIVE_BRIDGE_EXPERIMENT=0"),
+                              "NATIVE_BRIDGE_EXPERIMENT=0",
+                              "ARC_FILE_PICKER_EXPERIMENT=0"),
                   InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
@@ -2429,7 +2434,8 @@ TEST_F(SessionManagerImplTest,
               TriggerImpulseInternal(
                   SessionManagerImpl::kStartArcInstanceImpulse,
                   ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                              "NATIVE_BRIDGE_EXPERIMENT=0"),
+                              "NATIVE_BRIDGE_EXPERIMENT=0",
+                              "ARC_FILE_PICKER_EXPERIMENT=0"),
                   InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
@@ -2481,7 +2487,8 @@ TEST_F(SessionManagerImplTest, ArcNativeBridgeExperiment) {
               TriggerImpulseInternal(
                   SessionManagerImpl::kStartArcInstanceImpulse,
                   ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                              "NATIVE_BRIDGE_EXPERIMENT=1"),
+                              "NATIVE_BRIDGE_EXPERIMENT=1",
+                              "ARC_FILE_PICKER_EXPERIMENT=0"),
                   InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
@@ -2495,13 +2502,34 @@ TEST_F(SessionManagerImplTest, ArcNativeBridgeExperiment) {
   EXPECT_FALSE(error.get());
 }
 
+TEST_F(SessionManagerImplTest, ArcFilePickerExperiment) {
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulseInternal(
+                  SessionManagerImpl::kStartArcInstanceImpulse,
+                  ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
+                              "NATIVE_BRIDGE_EXPERIMENT=0",
+                              "ARC_FILE_PICKER_EXPERIMENT=1"),
+                  InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+
+  brillo::ErrorPtr error;
+  StartArcMiniContainerRequest request;
+  request.set_arc_file_picker_experiment(true);
+  // Use for login screen mode for minimalistic test.
+  std::string container_instance_id;
+  EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request),
+                                           &container_instance_id));
+  EXPECT_FALSE(error.get());
+}
+
 TEST_F(SessionManagerImplTest, ArcLcdDensity) {
   EXPECT_CALL(
       *init_controller_,
       TriggerImpulseInternal(
           SessionManagerImpl::kStartArcInstanceImpulse,
           ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                      "NATIVE_BRIDGE_EXPERIMENT=0", "ARC_LCD_DENSITY=240"),
+                      "NATIVE_BRIDGE_EXPERIMENT=0",
+                      "ARC_FILE_PICKER_EXPERIMENT=0", "ARC_LCD_DENSITY=240"),
           InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
@@ -2564,7 +2592,8 @@ TEST_F(SessionManagerImplTest, ArcUpgradeCrash) {
               TriggerImpulseInternal(
                   SessionManagerImpl::kStartArcInstanceImpulse,
                   ElementsAre("CHROMEOS_DEV_MODE=1", "CHROMEOS_INSIDE_VM=0",
-                              "NATIVE_BRIDGE_EXPERIMENT=0"),
+                              "NATIVE_BRIDGE_EXPERIMENT=0",
+                              "ARC_FILE_PICKER_EXPERIMENT=0"),
                   InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
@@ -2629,7 +2658,8 @@ TEST_F(SessionManagerImplTest, LocaleAndPreferredLanguages) {
               TriggerImpulseInternal(
                   SessionManagerImpl::kStartArcInstanceImpulse,
                   ElementsAre("CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
-                              "NATIVE_BRIDGE_EXPERIMENT=0"),
+                              "NATIVE_BRIDGE_EXPERIMENT=0",
+                              "ARC_FILE_PICKER_EXPERIMENT=0"),
                   InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
