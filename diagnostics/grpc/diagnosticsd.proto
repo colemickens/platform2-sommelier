@@ -83,6 +83,9 @@ message GetProcDataResponse {
   // Example value: an entry with |path| and |canonical_path| equal to
   // "/proc/acpi/button/lid/LID0/state" and |contents| equal to "state: open".
   //
+  // In case of failure to read some file(s), their entries will be omitted from
+  // the |file_dump| field.
+  //
   // NOTE: There's NO guarantee that the file names or formats of the file
   // contents will stay the same after the OS kernel version changes.
   repeated FileDump file_dump = 1;
@@ -122,6 +125,9 @@ message GetSysfsDataResponse {
   //    "/sys/class/hwmon/hwmon0/power/control", |canonical_path| to
   //    "/sys/devices/platform/coretemp.0/hwmon/hwmon0/power/control" and
   //    |contents| to "auto".
+  //
+  // In case of failure to read some file(s), their entries will be omitted from
+  // the |file_dump| field.
   //
   // NOTE: The set of files present here is determined by the information
   // returned by the host kernel through the sysfs interface.

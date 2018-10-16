@@ -6,35 +6,40 @@
 
 #include <utility>
 
+#include <base/run_loop.h>
 #include <base/threading/thread_task_runner_handle.h>
+
+#include "diagnostics/diagnosticsd/bind_utils.h"
 
 namespace diagnostics {
 
 FakeDiagnosticsProcessor::FakeDiagnosticsProcessor(
-    const std::string& grpc_server_uri)
-    : grpc_server_(base::ThreadTaskRunnerHandle::Get(), grpc_server_uri) {
+    const std::string& grpc_server_uri,
+    const std::string& diagnosticsd_grpc_uri)
+    : grpc_server_(base::ThreadTaskRunnerHandle::Get(), grpc_server_uri),
+      diagnosticsd_grpc_client_(base::ThreadTaskRunnerHandle::Get(),
+                                diagnosticsd_grpc_uri) {
   grpc_server_.RegisterHandler(
       &grpc_api::DiagnosticsProcessor::AsyncService::RequestHandleMessageFromUi,
       base::Bind(&FakeDiagnosticsProcessor::HandleMessageFromUi,
                  base::Unretained(this)));
-}
-
-FakeDiagnosticsProcessor::~FakeDiagnosticsProcessor() = default;
-
-void FakeDiagnosticsProcessor::Start() {
   grpc_server_.Start();
 }
 
-void FakeDiagnosticsProcessor::Shutdown(base::Closure on_shutdown_callback) {
-  grpc_server_.Shutdown(on_shutdown_callback);
+FakeDiagnosticsProcessor::~FakeDiagnosticsProcessor() {
+  // Wait until both gRPC server and client get shut down.
+  base::RunLoop run_loop;
+  const base::Closure barrier_closure =
+      BarrierClosure(2, run_loop.QuitClosure());
+  grpc_server_.Shutdown(barrier_closure);
+  diagnosticsd_grpc_client_.Shutdown(barrier_closure);
+  run_loop.Run();
 }
 
-void FakeDiagnosticsProcessor::HandleMessageFromUi(
-    std::unique_ptr<grpc_api::HandleMessageFromUiRequest> request,
-    const HandleMessageFromUiCallback& callback) {
-  handle_message_from_ui_actual_json_message_.emplace(request->json_message());
-  callback.Run(std::make_unique<grpc_api::EmptyMessage>());
-  handle_message_from_ui_callback_.value().Run();
+void FakeDiagnosticsProcessor::GetProcData(
+    const grpc_api::GetProcDataRequest& request, GetProcDataCallback callback) {
+  diagnosticsd_grpc_client_.CallRpc(
+      &grpc_api::Diagnosticsd::Stub::AsyncGetProcData, request, callback);
 }
 
 void FakeDiagnosticsProcessor::set_handle_message_from_ui_callback(
@@ -46,6 +51,14 @@ void FakeDiagnosticsProcessor::set_handle_message_from_ui_callback(
 const base::Optional<std::string>&
 FakeDiagnosticsProcessor::handle_message_from_ui_actual_json_message() const {
   return handle_message_from_ui_actual_json_message_;
+}
+
+void FakeDiagnosticsProcessor::HandleMessageFromUi(
+    std::unique_ptr<grpc_api::HandleMessageFromUiRequest> request,
+    const HandleMessageFromUiCallback& callback) {
+  handle_message_from_ui_actual_json_message_.emplace(request->json_message());
+  callback.Run(std::make_unique<grpc_api::EmptyMessage>());
+  handle_message_from_ui_callback_.value().Run();
 }
 
 }  // namespace diagnostics

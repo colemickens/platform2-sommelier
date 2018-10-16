@@ -12,25 +12,37 @@
 #include <base/macros.h>
 #include <base/optional.h>
 
+#include "diagnostics/grpc_async_adapter/async_grpc_client.h"
 #include "diagnostics/grpc_async_adapter/async_grpc_server.h"
 
 #include "common.pb.h"                      // NOLINT(build/include)
 #include "diagnostics_processor.grpc.pb.h"  // NOLINT(build/include)
+#include "diagnosticsd.grpc.pb.h"           // NOLINT(build/include)
 
 namespace diagnostics {
 
 // Helper class that allows to test gRPC communication between
 // diagnostics daemon and diagnostics processor.
+//
+// This class runs a "DiagnosticsProcessor" gRPC server on the given
+// |grpc_server_uri| URI, and a gRPC client to the "Diagnosticsd" gRPC service
+// on the |diagnosticsd_grpc_uri| gRPC URI.
 class FakeDiagnosticsProcessor final {
  public:
+  using GetProcDataCallback =
+      base::Callback<void(std::unique_ptr<grpc_api::GetProcDataResponse>)>;
   using HandleMessageFromUiCallback =
       base::Callback<void(std::unique_ptr<grpc_api::EmptyMessage>)>;
 
-  explicit FakeDiagnosticsProcessor(const std::string& grpc_server_uri);
+  FakeDiagnosticsProcessor(const std::string& grpc_server_uri,
+                           const std::string& diagnosticsd_grpc_uri);
   ~FakeDiagnosticsProcessor();
 
-  void Start();
-  void Shutdown(base::Closure on_shutdown_callback);
+  // Methods that correspond to the "Diagnosticsd" gRPC interface and allow
+  // to perform actual gRPC requests as if the diagnostics_processor daemon
+  // would do them:
+  void GetProcData(const grpc_api::GetProcDataRequest& request,
+                   GetProcDataCallback callback);
 
   // Setups callback for the next |HandleMessageFromUi| gRPC call.
   void set_handle_message_from_ui_callback(
@@ -42,6 +54,7 @@ class FakeDiagnosticsProcessor final {
  private:
   using AsyncGrpcDiagnosticsProcessorServer =
       AsyncGrpcServer<grpc_api::DiagnosticsProcessor::AsyncService>;
+  using AsyncGrpcDiagnosticsdClient = AsyncGrpcClient<grpc_api::Diagnosticsd>;
 
   // Receives gRPC request and saves json message from request in
   // |handle_message_from_ui_actual_json_message_|.
@@ -51,6 +64,7 @@ class FakeDiagnosticsProcessor final {
       const HandleMessageFromUiCallback& callback);
 
   AsyncGrpcDiagnosticsProcessorServer grpc_server_;
+  AsyncGrpcDiagnosticsdClient diagnosticsd_grpc_client_;
 
   base::Optional<base::Closure> handle_message_from_ui_callback_;
   base::Optional<std::string> handle_message_from_ui_actual_json_message_;

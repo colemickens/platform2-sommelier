@@ -67,6 +67,11 @@ class DiagnosticsdCore final : public DiagnosticsdDBusService::Delegate,
                    Delegate* delegate);
   ~DiagnosticsdCore() override;
 
+  // Overrides the file system root directory for file operations in tests.
+  void set_root_dir_for_testing(const base::FilePath& root_dir) {
+    grpc_service_.set_root_dir_for_testing(root_dir);
+  }
+
   // Starts gRPC servers and clients.
   bool StartGrpcCommunication();
 

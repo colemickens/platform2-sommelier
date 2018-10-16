@@ -7,6 +7,9 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/callback.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
@@ -14,6 +17,7 @@
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/bind_lambda.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <dbus/diagnosticsd/dbus-constants.h>
 #include <dbus/message.h>
@@ -22,6 +26,7 @@
 #include <dbus/mock_object_proxy.h>
 #include <dbus/property.h>
 #include <gmock/gmock.h>
+#include <google/protobuf/util/message_differencer.h>
 #include <gtest/gtest.h>
 #include <mojo/edk/embedder/embedder.h>
 
@@ -30,6 +35,7 @@
 #include "diagnostics/diagnosticsd/fake_diagnostics_processor.h"
 #include "diagnostics/diagnosticsd/mojo_test_utils.h"
 
+#include "diagnosticsd.pb.h"  // NOLINT(build/include)
 #include "mojo/diagnosticsd.mojom.h"
 
 using testing::_;
@@ -52,6 +58,22 @@ using MojomDiagnosticsdService =
     chromeos::diagnostics::mojom::DiagnosticsdService;
 
 namespace {
+
+// Returns a callback that, once called, saves its parameter to |*response| and
+// quits |*run_loop|.
+template <typename ValueType>
+base::Callback<void(std::unique_ptr<ValueType>)> MakeAsyncResponseWriter(
+    std::unique_ptr<ValueType>* response, base::RunLoop* run_loop) {
+  return base::Bind(
+      [](std::unique_ptr<ValueType>* response, base::RunLoop* run_loop,
+         std::unique_ptr<ValueType> received_response) {
+        EXPECT_TRUE(received_response);
+        EXPECT_FALSE(*response);
+        *response = std::move(received_response);
+        run_loop->Quit();
+      },
+      base::Unretained(response), base::Unretained(run_loop));
+}
 
 class MockDiagnosticsdCoreDelegate : public DiagnosticsdCore::Delegate {
  public:
@@ -80,13 +102,16 @@ class DiagnosticsdCoreTest : public testing::Test {
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
 
-    const std::string grpc_service_uri = base::StringPrintf(
+    diagnosticsd_grpc_uri_ = base::StringPrintf(
         kDiagnosticsdGrpcUriTemplate, temp_dir_.GetPath().value().c_str());
     diagnostics_processor_grpc_uri_ =
         base::StringPrintf(kDiagnosticsProcessorGrpcUriTemplate,
                            temp_dir_.GetPath().value().c_str());
-    core_ = std::make_unique<DiagnosticsdCore>(
-        grpc_service_uri, diagnostics_processor_grpc_uri_, &core_delegate_);
+
+    core_ = std::make_unique<DiagnosticsdCore>(diagnosticsd_grpc_uri_,
+                                               diagnostics_processor_grpc_uri_,
+                                               &core_delegate_);
+    core_->set_root_dir_for_testing(temp_dir_.GetPath());
     ASSERT_TRUE(core_->StartGrpcCommunication());
 
     SetUpDBus();
@@ -101,13 +126,21 @@ class DiagnosticsdCoreTest : public testing::Test {
     run_loop.Run();
   }
 
+  const base::FilePath& temp_dir_path() const {
+    DCHECK(temp_dir_.IsValid());
+    return temp_dir_.GetPath();
+  }
+
   MockDiagnosticsdCoreDelegate* core_delegate() { return &core_delegate_; }
 
   mojo::InterfacePtr<MojomDiagnosticsdService>* mojo_service_interface_ptr() {
     return &mojo_service_interface_ptr_;
   }
 
-  FakeBrowser* fake_browser() { return fake_browser_.get(); }
+  FakeBrowser* fake_browser() {
+    DCHECK(fake_browser_);
+    return fake_browser_.get();
+  }
 
   // Set up mock for BindDiagnosticsdMojoService() that simulates successful
   // Mojo service binding to the given file descriptor. After the mock gets
@@ -137,7 +170,13 @@ class DiagnosticsdCoreTest : public testing::Test {
     return bootstrap_mojo_connection_dbus_method_;
   }
 
+  const std::string& diagnosticsd_grpc_uri() const {
+    DCHECK(!diagnosticsd_grpc_uri_.empty());
+    return diagnosticsd_grpc_uri_;
+  }
+
   const std::string& diagnostics_processor_grpc_uri() const {
+    DCHECK(!diagnostics_processor_grpc_uri_.empty());
     return diagnostics_processor_grpc_uri_;
   }
 
@@ -193,6 +232,11 @@ class DiagnosticsdCoreTest : public testing::Test {
 
   base::ScopedTempDir temp_dir_;
 
+  // gRPC URI on which the tested "Diagnosticsd" gRPC service (owned by
+  // DiagnosticsdCore) is listening.
+  std::string diagnosticsd_grpc_uri_;
+  // gRPC URI on which the fake "DiagnosticsProcessor" gRPC service (owned by
+  // FakeDiagnosticsProcessor) is listening.
   std::string diagnostics_processor_grpc_uri_;
 
   scoped_refptr<StrictMock<dbus::MockBus>> dbus_bus_ =
@@ -281,64 +325,103 @@ TEST_F(DiagnosticsdCoreTest, MojoBootstrapSuccessThenAbort) {
   Mock::VerifyAndClearExpectations(core_delegate());
 }
 
-// TODO(crbug.com/893756): Causing failures on pre-cq due to unavailability of
-// /dev/shm.
+namespace {
+
+// Tests for the DiagnosticsdCore class with the already established Mojo
+// connection to the fake browser and gRPC communication with the fake
+// diagnostics_processor.
+class BootstrappedDiagnosticsdCoreTest : public DiagnosticsdCoreTest {
+ protected:
+  void SetUp() override {
+    ASSERT_NO_FATAL_FAILURE(DiagnosticsdCoreTest::SetUp());
+
+    FakeMojoFdGenerator fake_mojo_fd_generator;
+    SetSuccessMockBindDiagnosticsdMojoService(&fake_mojo_fd_generator);
+    ASSERT_TRUE(
+        fake_browser()->BootstrapMojoConnection(&fake_mojo_fd_generator));
+    ASSERT_TRUE(*mojo_service_interface_ptr());
+
+    fake_diagnostics_processor_ = std::make_unique<FakeDiagnosticsProcessor>(
+        diagnostics_processor_grpc_uri(), diagnosticsd_grpc_uri());
+  }
+
+  void TearDown() override {
+    fake_diagnostics_processor_.reset();
+    DiagnosticsdCoreTest::TearDown();
+  }
+
+  FakeDiagnosticsProcessor* fake_diagnostics_processor() {
+    return fake_diagnostics_processor_.get();
+  }
+
+ private:
+  std::unique_ptr<FakeDiagnosticsProcessor> fake_diagnostics_processor_;
+};
+
+}  // namespace
+
 // Test that diagnostics processor will receive message from browser.
-TEST_F(DiagnosticsdCoreTest, DISABLED_SendGrpcUiMessageToDiagnosticsProcessor) {
+TEST_F(BootstrappedDiagnosticsdCoreTest,
+       DISABLED_SendGrpcUiMessageToDiagnosticsProcessor) {
   const std::string json_message = "{\"some_key\": \"some_value\"}";
 
   base::RunLoop run_loop_handle_message;
-  FakeDiagnosticsProcessor fake_diagnostics_processor(
-      diagnostics_processor_grpc_uri());
-  fake_diagnostics_processor.set_handle_message_from_ui_callback(
+  fake_diagnostics_processor()->set_handle_message_from_ui_callback(
       run_loop_handle_message.QuitClosure());
-  fake_diagnostics_processor.Start();
-
-  FakeMojoFdGenerator fake_mojo_fd_generator;
-  SetSuccessMockBindDiagnosticsdMojoService(&fake_mojo_fd_generator);
-  EXPECT_TRUE(fake_browser()->BootstrapMojoConnection(&fake_mojo_fd_generator));
-
-  EXPECT_TRUE(*mojo_service_interface_ptr());
 
   EXPECT_TRUE(fake_browser()->SendMessageToDiagnosticsProcessor(json_message));
 
   run_loop_handle_message.Run();
-  EXPECT_EQ(json_message, fake_diagnostics_processor
-                              .handle_message_from_ui_actual_json_message()
-                              .value());
-
-  base::RunLoop run_loop_shutdown;
-  fake_diagnostics_processor.Shutdown(run_loop_shutdown.QuitClosure());
-  run_loop_shutdown.Run();
+  EXPECT_EQ(json_message, fake_diagnostics_processor()
+                              ->handle_message_from_ui_actual_json_message());
 }
 
-// TODO(crbug.com/893756): Causing failures on pre-cq due to unavailability of
-// /dev/shm.
 // Test that diagnostics processor will not receive message from browser
 // if JSON message is invalid.
-TEST_F(DiagnosticsdCoreTest,
+TEST_F(BootstrappedDiagnosticsdCoreTest,
        DISABLED_SendGrpcUiMessageToDiagnosticsProcessorInvalidJSON) {
   const std::string json_message = "{'some_key': 'some_value'}";
 
-  FakeDiagnosticsProcessor fake_diagnostics_processor(
-      diagnostics_processor_grpc_uri());
-  fake_diagnostics_processor.Start();
-
-  FakeMojoFdGenerator fake_mojo_fd_generator;
-  SetSuccessMockBindDiagnosticsdMojoService(&fake_mojo_fd_generator);
-  EXPECT_TRUE(fake_browser()->BootstrapMojoConnection(&fake_mojo_fd_generator));
-
-  EXPECT_TRUE(*mojo_service_interface_ptr());
-
   EXPECT_TRUE(fake_browser()->SendMessageToDiagnosticsProcessor(json_message));
+  // There's no reliable way to wait till the wrong HandleMessageFromUi(), if
+  // the tested code is buggy and calls it, gets executed. The RunUntilIdle() is
+  // used to make the test failing at least with some probability in case of
+  // such a bug.
+  base::RunLoop().RunUntilIdle();
 
-  base::RunLoop run_loop_shutdown;
-  fake_diagnostics_processor.Shutdown(run_loop_shutdown.QuitClosure());
-  run_loop_shutdown.Run();
+  EXPECT_FALSE(fake_diagnostics_processor()
+                   ->handle_message_from_ui_actual_json_message()
+                   .has_value());
+}
 
-  EXPECT_FALSE(
-      fake_diagnostics_processor.handle_message_from_ui_actual_json_message()
-          .has_value());
+// Test that the GetProcData() method exposed by the daemon's gRPC server
+// returns a dump of the corresponding file from the disk.
+TEST_F(BootstrappedDiagnosticsdCoreTest, GetProcDataGrpcCall) {
+  const std::string kFakeFileContents = "foo";
+  const base::FilePath file_path = temp_dir_path().Append("proc/uptime");
+  ASSERT_TRUE(base::CreateDirectory(temp_dir_path().Append("proc")));
+  ASSERT_EQ(base::WriteFile(file_path, kFakeFileContents.c_str(),
+                            kFakeFileContents.size()),
+            kFakeFileContents.size());
+
+  grpc_api::GetProcDataRequest request;
+  request.set_type(grpc_api::GetProcDataRequest::FILE_UPTIME);
+  std::unique_ptr<grpc_api::GetProcDataResponse> response;
+  base::RunLoop run_loop;
+  fake_diagnostics_processor()->GetProcData(
+      request, MakeAsyncResponseWriter(&response, &run_loop));
+  run_loop.Run();
+
+  ASSERT_TRUE(response);
+  grpc_api::GetProcDataResponse expected_response;
+  expected_response.add_file_dump();
+  expected_response.mutable_file_dump(0)->set_path(file_path.value());
+  expected_response.mutable_file_dump(0)->set_canonical_path(file_path.value());
+  expected_response.mutable_file_dump(0)->set_contents(kFakeFileContents);
+  EXPECT_TRUE(google::protobuf::util::MessageDifferencer::Equals(
+      *response, expected_response))
+      << "Obtained: " << response->ShortDebugString()
+      << ",\nExpected: " << expected_response.ShortDebugString();
 }
 
 }  // namespace diagnostics
