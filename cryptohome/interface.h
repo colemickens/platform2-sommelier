@@ -290,9 +290,6 @@ gboolean cryptohome_tpm_attestation_reset_identity(Cryptohome *self,
                                                    GArray** OUT_reset_request,
                                                    gboolean* OUT_success,
                                                    GError **error);
-gboolean cryptohome_tpm_get_version(Cryptohome* self,
-                                    gchar** OUT_result,
-                                    GError** error);
 gboolean cryptohome_tpm_get_version_structured(Cryptohome* self,
                                                guint32* OUT_family,
                                                guint64* OUT_spec_level,

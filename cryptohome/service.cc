@@ -2243,37 +2243,6 @@ gboolean Service::TpmClearStoredPassword(GError** error) {
   return TRUE;
 }
 
-// TODO(isandrk): Deprecated, remove at some point in the future when most
-// clients switch to TpmGetVersionStructured. crbug.com/765597
-gboolean Service::TpmGetVersion(gchar** OUT_result,
-                                GError** error) {
-  cryptohome::Tpm::TpmVersionInfo version_info;
-  if (!tpm_init_->GetVersion(&version_info)) {
-    LOG(ERROR) << "Could not get TPM version information.";
-    *OUT_result = nullptr;
-    return FALSE;
-  }
-
-  std::string vendor_specific =
-      base::HexEncode(version_info.vendor_specific.data(),
-                      version_info.vendor_specific.size());
-  std::string info = base::StringPrintf("TPM family: %08" PRIx32 "\n"
-                     "spec level: %016" PRIx64 "\n"
-                     "manufacturer: %08" PRIx32 "\n"
-                     "tpm_model: %08" PRIx32 "\n"
-                     "firmware version: %016" PRIx64 "\n"
-                     "vendor specific: %s\n",
-                     version_info.family,
-                     version_info.spec_level,
-                     version_info.manufacturer,
-                     version_info.tpm_model,
-                     version_info.firmware_version,
-                     vendor_specific.c_str());
-
-  *OUT_result = g_strdup(info.c_str());
-  return TRUE;
-}
-
 gboolean Service::TpmGetVersionStructured(guint32* OUT_family,
                                           guint64* OUT_spec_level,
                                           guint32* OUT_manufacturer,

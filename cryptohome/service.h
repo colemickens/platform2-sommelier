@@ -501,8 +501,6 @@ class Service : public brillo::dbus::AbstractDbusService,
                                                GArray** OUT_reset_request,
                                                gboolean* OUT_success,
                                                GError** error) = 0;
-  virtual gboolean TpmGetVersion(gchar** OUT_result,
-                                 GError** error);
   virtual gboolean TpmGetVersionStructured(guint32* OUT_family,
                                            guint64* OUT_spec_level,
                                            guint32* OUT_manufacturer,
