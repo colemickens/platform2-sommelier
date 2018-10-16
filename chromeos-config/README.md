@@ -348,6 +348,7 @@ The schema definition is below:
 | --------- | ------ | --------- | -------- | ----------- |  ----------- |
 | has-base-accelerometer | boolean |  | False |  | Is there an accelerometer in the base of the device. |
 | has-base-gyroscope | boolean |  | False |  | Is there a gyroscope in the base of the device. |
+| has-fingerprint-sensor | boolean |  | False |  | Is there a fingerprint sensor on the device. |
 | has-lid-accelerometer | boolean |  | False |  | Is there an accelerometer in the lid of the device. |
 | is-lid-convertible | boolean |  | False |  | Can the lid be rotated 360 degrees. |
 

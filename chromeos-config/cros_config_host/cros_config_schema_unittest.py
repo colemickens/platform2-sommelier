@@ -360,6 +360,7 @@ chromeos:
               has-base-accelerometer: true
               has-base-gyroscope: 7
               has-lid-accelerometer: false
+              has-fingerprint-sensor: false
               is-lid-convertible: false
 """
     try:
@@ -384,6 +385,7 @@ chromeos:
               has-base-accelerometer: true
               has-base-gyroscope: true
               has-lid-accelerometer: true
+              has-fingerprint-sensor: true
               is-lid-convertible: false
 """
     cros_config_schema.ValidateConfig(
