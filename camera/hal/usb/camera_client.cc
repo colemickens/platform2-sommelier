@@ -407,6 +407,13 @@ void CameraClient::StreamOffCallback(scoped_refptr<cros::Future<int>> future,
 
 bool CameraClient::ShouldUseNativeSensorRatio(
     const camera3_stream_configuration_t& stream_config, Size* resolution) {
+  if (device_info_.lens_facing == ANDROID_LENS_FACING_EXTERNAL) {
+    // We don't know the native sensor size for the external camera, so return
+    // false here to prevent from using undefined
+    // |device_info_.sensor_info_pixel_array_size_*|.
+    return false;
+  }
+
   bool try_native_sensor_ratio = false;
 
   // Check if we have more than 1 resolution.
