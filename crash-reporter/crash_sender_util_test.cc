@@ -251,6 +251,70 @@ TEST_F(CrashSenderUtilTest, RemoveOrphanedCrashFiles) {
   EXPECT_FALSE(base::PathExists(old4_log));
 }
 
+TEST_F(CrashSenderUtilTest, RemoveReportFiles) {
+  const base::FilePath crash_directory =
+      paths::Get(paths::kSystemCrashDirectory);
+  ASSERT_TRUE(base::CreateDirectory(crash_directory));
+
+  const base::FilePath foo_meta = crash_directory.Append("foo.meta");
+  const base::FilePath foo_log = crash_directory.Append("foo.log");
+  const base::FilePath foo_dmp = crash_directory.Append("foo.dmp");
+  const base::FilePath bar_log = crash_directory.Append("bar.log");
+
+  ASSERT_TRUE(test_util::CreateFile(foo_meta, ""));
+  ASSERT_TRUE(test_util::CreateFile(foo_log, ""));
+  ASSERT_TRUE(test_util::CreateFile(foo_dmp, ""));
+  ASSERT_TRUE(test_util::CreateFile(bar_log, ""));
+
+  // This should remove foo.*.
+  RemoveReportFiles(foo_meta);
+  // This should do nothing because the suffix is not ".meta".
+  RemoveReportFiles(bar_log);
+
+  // Check what files were removed.
+  EXPECT_FALSE(base::PathExists(foo_meta));
+  EXPECT_FALSE(base::PathExists(foo_log));
+  EXPECT_FALSE(base::PathExists(foo_dmp));
+  EXPECT_TRUE(base::PathExists(bar_log));
+}
+
+TEST_F(CrashSenderUtilTest, GetMetaFiles) {
+  const base::FilePath crash_directory =
+      paths::Get(paths::kSystemCrashDirectory);
+  ASSERT_TRUE(base::CreateDirectory(crash_directory));
+
+  // Use unsorted file names, to check that GetMetaFiles() sort files by
+  // timestamps, not file names.
+  const base::FilePath meta_1 = crash_directory.Append("a.meta");
+  const base::FilePath meta_2 = crash_directory.Append("s.meta");
+  const base::FilePath meta_3 = crash_directory.Append("d.meta");
+  const base::FilePath meta_4 = crash_directory.Append("f.meta");
+  // This one should not appear in the result.
+  const base::FilePath metal_5 = crash_directory.Append("g.metal");
+
+  ASSERT_TRUE(test_util::CreateFile(meta_1, ""));
+  ASSERT_TRUE(test_util::CreateFile(meta_2, ""));
+  ASSERT_TRUE(test_util::CreateFile(meta_3, ""));
+  ASSERT_TRUE(test_util::CreateFile(meta_4, ""));
+  ASSERT_TRUE(test_util::CreateFile(metal_5, ""));
+
+  // Change timestamps so that meta_1 is the newest and metal_5 is the oldest.
+  base::Time now = base::Time::Now();
+  ASSERT_TRUE(TouchFileHelper(meta_1, now - base::TimeDelta::FromHours(1)));
+  ASSERT_TRUE(TouchFileHelper(meta_2, now - base::TimeDelta::FromHours(2)));
+  ASSERT_TRUE(TouchFileHelper(meta_3, now - base::TimeDelta::FromHours(3)));
+  ASSERT_TRUE(TouchFileHelper(meta_4, now - base::TimeDelta::FromHours(4)));
+  ASSERT_TRUE(TouchFileHelper(metal_5, now - base::TimeDelta::FromHours(5)));
+
+  std::vector<base::FilePath> meta_files = GetMetaFiles(crash_directory);
+  ASSERT_EQ(4, meta_files.size());
+  // Confirm that files are sorted in the old-to-new order.
+  EXPECT_EQ(meta_4.value(), meta_files[0].value());
+  EXPECT_EQ(meta_3.value(), meta_files[1].value());
+  EXPECT_EQ(meta_2.value(), meta_files[2].value());
+  EXPECT_EQ(meta_1.value(), meta_files[3].value());
+}
+
 TEST_F(CrashSenderUtilTest, Sender) {
   // Set up the mock sesssion manager client.
   auto mock =

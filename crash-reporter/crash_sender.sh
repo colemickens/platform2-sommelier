@@ -527,6 +527,7 @@ is_valid_metadata() {
 }
 
 # Remove the given report path.
+# NOTE: Mirrors crash_sender_util.cc:RemoveReportFiles().
 remove_report() {
   local base="${1%.*}"
   rm -f -- "${base}".*

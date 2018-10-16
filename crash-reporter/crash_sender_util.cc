@@ -8,8 +8,10 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#include <algorithm>
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_enumerator.h>
@@ -169,6 +171,43 @@ void RemoveOrphanedCrashFiles(const base::FilePath& crash_dir) {
         PLOG(ERROR) << "Failed to remove " << file.value();
     }
   }
+}
+
+void RemoveReportFiles(const base::FilePath& meta_file) {
+  if (meta_file.Extension() != ".meta") {
+    LOG(ERROR) << "Not a meta file: " << meta_file.value();
+    return;
+  }
+
+  const std::string pattern =
+      meta_file.BaseName().RemoveExtension().value() + ".*";
+
+  base::FileEnumerator iter(meta_file.DirName(), false /* recursive */,
+                            base::FileEnumerator::FILES, pattern);
+  for (base::FilePath file = iter.Next(); !file.empty(); file = iter.Next()) {
+    if (!base::DeleteFile(file, false /* recursive */))
+      PLOG(ERROR) << "Failed to remove " << file.value();
+  }
+}
+
+std::vector<base::FilePath> GetMetaFiles(const base::FilePath& crash_dir) {
+  base::FileEnumerator iter(crash_dir, false /* recursive */,
+                            base::FileEnumerator::FILES, "*.meta");
+  std::vector<std::pair<base::Time, base::FilePath>> time_meta_pairs;
+  for (base::FilePath file = iter.Next(); !file.empty(); file = iter.Next()) {
+    base::File::Info info;
+    if (!GetFileInfo(file, &info)) {
+      LOG(ERROR) << "Failed to get file info: " << file.value();
+      continue;
+    }
+    time_meta_pairs.push_back(std::make_pair(info.last_modified, file));
+  }
+  std::sort(time_meta_pairs.begin(), time_meta_pairs.end());
+
+  std::vector<base::FilePath> meta_files;
+  for (const auto& pair : time_meta_pairs)
+    meta_files.push_back(pair.second);
+  return meta_files;
 }
 
 Sender::Sender(const Sender::Options& options)

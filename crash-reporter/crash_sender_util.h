@@ -6,6 +6,7 @@
 #define CRASH_REPORTER_CRASH_SENDER_UTIL_H_
 
 #include <memory>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <session_manager/dbus-proxies.h>
@@ -69,6 +70,14 @@ base::FilePath GetBasePartOfCrashFile(const base::FilePath& file_name);
 // Removes orphaned files in |crash_dir|, that are files 24 hours old or older,
 // without corresponding meta file.
 void RemoveOrphanedCrashFiles(const base::FilePath& crash_dir);
+
+// Removes report files associated with the given meta file.
+// More specifically, if "foo.meta" is given, "foo.*" will be removed.
+void RemoveReportFiles(const base::FilePath& meta_file);
+
+// Returns the list of meta data files (files with ".meta" suffix), sorted by
+// the timestamp in the old-to-new order.
+std::vector<base::FilePath> GetMetaFiles(const base::FilePath& crash_dir);
 
 // A helper class for sending crashes. The behaviors can be customized with
 // Options class for unit testing.
