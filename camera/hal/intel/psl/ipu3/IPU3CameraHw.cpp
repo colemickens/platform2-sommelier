@@ -103,6 +103,10 @@ IPU3CameraHw::init()
     status = mImguUnit->attachListener(mControlUnit);
     status |= mCaptureUnit->attachListener(mControlUnit);
 
+    // Reset all links
+    mMediaCtl->resetLinks();
+    mImguMediaCtl->resetLinks();
+
     status = initStaticMetadata();
     if (status != NO_ERROR) {
         LOGE("Error call initStaticMetadata, status:%d", status);
