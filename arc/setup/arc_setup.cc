@@ -1901,8 +1901,7 @@ void ArcSetup::ContinueContainerBoot(ArcBootType boot_type,
       // initialization stage of PackageManagerService.
       "--copy-packages-cache", config_.GetStringOrDie("COPY_PACKAGES_CACHE"),
       "--mount-demo-apps", mount_demo_apps ? "1" : "0", "--is-demo-session",
-      config_.GetStringOrDie("IS_DEMO_SESSION"), "--is-child",
-      config_.GetStringOrDie("IS_CHILD"), "--locale",
+      config_.GetStringOrDie("IS_DEMO_SESSION"), "--locale",
       config_.GetStringOrDie("LOCALE"), "--preferred-languages",
       config_.GetStringOrDie("PREFERRED_LANGUAGES"),
       // Whether ARC should transition the supervision setup
