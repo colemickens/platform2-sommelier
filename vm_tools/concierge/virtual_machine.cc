@@ -194,8 +194,8 @@ bool VirtualMachine::Start(base::FilePath kernel,
   };
   // clang-format on
 
-   if (USE_CROSVM_WL_DMABUF)
-      args.emplace_back("--wayland-dmabuf");
+  if (USE_CROSVM_WL_DMABUF)
+    args.emplace_back("--wayland-dmabuf");
 
   // Add any extra disks.
   for (const auto& disk : disks) {
