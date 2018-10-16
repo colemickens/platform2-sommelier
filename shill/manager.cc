@@ -179,7 +179,6 @@ Manager::Manager(ControlInterface* control_interface,
       is_wake_on_lan_enabled_(true),
       ignore_unknown_ethernet_(false),
       default_service_callback_tag_(0),
-      crypto_util_proxy_(new CryptoUtilProxy(dispatcher)),
       suppress_autoconnect_(false),
       is_connected_state_(false),
       has_user_session_(false),
@@ -1593,105 +1592,6 @@ int Manager::RegisterDefaultServiceCallback(const ServiceCallback& callback) {
 void Manager::DeregisterDefaultServiceCallback(int tag) {
   default_service_callbacks_.erase(tag);
 }
-
-#if !defined(DISABLE_WIFI)
-void Manager::VerifyDestination(const string& certificate,
-                                const string& public_key,
-                                const string& nonce,
-                                const string& signed_data,
-                                const string& destination_udn,
-                                const string& hotspot_ssid,
-                                const string& hotspot_bssid,
-                                const ResultBoolCallback& cb,
-                                Error* error) {
-  if (hotspot_bssid.length() > 32) {
-    error->Populate(Error::kOperationFailed,
-                    "Invalid SSID given for verification.");
-    return;
-  }
-  vector<uint8_t> ssid;
-  string bssid;
-  if (hotspot_ssid.length() || hotspot_bssid.length()) {
-    // If Chrome thinks this destination is already configured, service
-    // will be an AP that both we and the destination are connected
-    // to, and not the thing we should verify against.
-    ssid.assign(hotspot_ssid.begin(), hotspot_ssid.end());
-    bssid = hotspot_bssid;
-  } else {
-    // For now, we only support a single connected WiFi service.  If we change
-    // that, we'll need to revisit this.
-    bool found_one = false;
-    for (const auto& service : services_) {
-      if (service->technology() == Technology::kWifi &&
-          service->IsConnected()) {
-        WiFiService* wifi = reinterpret_cast<WiFiService*>(&(*service));
-        bssid = wifi->bssid();
-        ssid = wifi->ssid();
-        found_one = true;
-        break;
-      }
-    }
-    if (!found_one) {
-      error->Populate(Error::kOperationFailed,
-                      "Unable to find connected WiFi service.");
-      return;
-    }
-  }
-  crypto_util_proxy_->VerifyDestination(certificate, public_key, nonce,
-                                        signed_data, destination_udn,
-                                        ssid, bssid, cb, error);
-}
-
-void Manager::VerifyToEncryptLink(const string& public_key,
-                                  const string& data,
-                                  ResultStringCallback cb,
-                                  const Error& error,
-                                  bool success) {
-  if (!success || !error.IsSuccess()) {
-    CHECK(error.IsFailure()) << "Return code from CryptoUtilProxy "
-                             << "inconsistent with error code.";
-    cb.Run(error, "");
-    return;
-  }
-  Error encrypt_error;
-  if (!crypto_util_proxy_->EncryptData(public_key, data, cb, &encrypt_error)) {
-    CHECK(encrypt_error.IsFailure()) << "CryptoUtilProxy::EncryptData returned "
-                                     << "inconsistently.";
-    cb.Run(encrypt_error, "");
-  }
-}
-
-void Manager::VerifyAndEncryptData(const string& certificate,
-                                   const string& public_key,
-                                   const string& nonce,
-                                   const string& signed_data,
-                                   const string& destination_udn,
-                                   const string& hotspot_ssid,
-                                   const string& hotspot_bssid,
-                                   const string& data,
-                                   const ResultStringCallback& cb,
-                                   Error* error) {
-  ResultBoolCallback on_verification_success = Bind(
-      &Manager::VerifyToEncryptLink, AsWeakPtr(), public_key, data, cb);
-  VerifyDestination(certificate, public_key, nonce, signed_data,
-                    destination_udn, hotspot_ssid, hotspot_bssid,
-                    on_verification_success, error);
-}
-
-void Manager::VerifyAndEncryptCredentials(const string& certificate,
-                                          const string& public_key,
-                                          const string& nonce,
-                                          const string& signed_data,
-                                          const string& destination_udn,
-                                          const string& hotspot_ssid,
-                                          const string& hotspot_bssid,
-                                          const string& network_path,
-                                          const ResultStringCallback& cb,
-                                          Error* error) {
-  // This is intentionally left unimplemented until we have a security review.
-  error->Populate(Error::kNotImplemented, "Not implemented");
-}
-#endif  // DISABLE_WIFI
 
 int Manager::CalcConnectionId(const string& gateway_ip,
                               const string& gateway_mac) {

@@ -117,32 +117,6 @@ class ChromeosManagerDBusAdaptor
   bool GetNetworksForGeolocation(
       brillo::ErrorPtr* error,
       brillo::VariantDictionary* networks) override;
-  void VerifyDestination(DBusMethodResponsePtr<bool> response,
-                         const std::string& certificate,
-                         const std::string& public_key,
-                         const std::string& nonce,
-                         const std::string& signed_data,
-                         const std::string& destination_udn,
-                         const std::string& hotspot_ssid,
-                         const std::string& hotspot_bssid) override;
-  void VerifyAndEncryptCredentials(DBusMethodResponsePtr<std::string> response,
-                                   const std::string& certificate,
-                                   const std::string& public_key,
-                                   const std::string& nonce,
-                                   const std::string& signed_data,
-                                   const std::string& destination_udn,
-                                   const std::string& hotspot_ssid,
-                                   const std::string& hotspot_bssid,
-                                   const dbus::ObjectPath& network) override;
-  void VerifyAndEncryptData(DBusMethodResponsePtr<std::string> response,
-                            const std::string& certificate,
-                            const std::string& public_key,
-                            const std::string& nonce,
-                            const std::string& signed_data,
-                            const std::string& destination_udn,
-                            const std::string& hotspot_ssid,
-                            const std::string& hotspot_bssid,
-                            const std::string& data) override;
   bool ConnectToBestServices(brillo::ErrorPtr* error) override;
   bool CreateConnectivityReport(brillo::ErrorPtr* error) override;
   bool ClaimInterface(brillo::ErrorPtr* error,

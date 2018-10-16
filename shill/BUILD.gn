@@ -11,7 +11,6 @@ import("//common-mk/protoctxt.gni")
 
 group("all") {
   deps = [
-    ":crypto-util",
     ":libshill",
     ":libshill-net-${libbase_ver}",
     ":mobile_operator_db",
@@ -21,7 +20,6 @@ group("all") {
     ":openvpn-script",
     ":shill",
     ":shill-chromeos-dbus-adaptors",
-    ":shim-protos",
   ]
   if (use.cellular) {
     deps += [ ":set-apn-helper" ]
@@ -137,15 +135,6 @@ generate_dbus_adaptors("shill-chromeos-dbus-adaptors") {
     "dbus_bindings/org.chromium.flimflam.Service.dbus-xml",
     "dbus_bindings/org.chromium.flimflam.Task.dbus-xml",
     "dbus_bindings/org.chromium.flimflam.ThirdPartyVpn.dbus-xml",
-  ]
-}
-
-proto_library("shim-protos") {
-  configs = [ ":target_defaults" ]
-  proto_in_dir = "shims/protos"
-  proto_out_dir = "include/shill/shims/protos"
-  sources = [
-    "${proto_in_dir}/crypto_util.proto",
   ]
 }
 
@@ -296,7 +285,6 @@ static_library("libshill") {
     "crypto_des_cbc.cc",
     "crypto_provider.cc",
     "crypto_rot47.cc",
-    "crypto_util_proxy.cc",
     "daemon_task.cc",
     "dbus/chromeos_dbus_adaptor.cc",
     "dbus/chromeos_dbus_control.cc",
@@ -422,7 +410,6 @@ static_library("libshill") {
     ":generate_upstart_proxies",
     ":mobile_operator_db",
     ":shill-chromeos-dbus-adaptors",
-    ":shim-protos",
   ]
 
   if (use.cellular) {
@@ -556,27 +543,6 @@ executable("shill") {
   ]
 }
 
-pkg_config("crypto-util_config") {
-  pkg_deps = [
-    "openssl",
-    "protobuf-lite",
-  ]
-}
-
-executable("crypto-util") {
-  configs += [
-    ":crypto-util_config",
-    ":target_defaults",
-  ]
-  configs -= [ "//common-mk:no_exceptions" ]
-  sources = [
-    "shims/crypto_util.cc",
-  ]
-  deps = [
-    ":shim-protos",
-  ]
-}
-
 pkg_config("netfilter-queue-helper_config") {
   pkg_deps = [
     "libnetfilter_queue",
@@ -697,7 +663,6 @@ if (use.test) {
       "crypto_des_cbc_test.cc",
       "crypto_provider_test.cc",
       "crypto_rot47_test.cc",
-      "crypto_util_proxy_test.cc",
       "daemon_task_test.cc",
       "dbus/chromeos_dbus_adaptor_test.cc",
       "dbus/chromeos_manager_dbus_adaptor_test.cc",
@@ -744,7 +709,6 @@ if (use.test) {
       "mock_connection_info_reader.cc",
       "mock_connectivity_trial.cc",
       "mock_control.cc",
-      "mock_crypto_util_proxy.cc",
       "mock_device.cc",
       "mock_device_claimer.cc",
       "mock_device_info.cc",

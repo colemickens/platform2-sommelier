@@ -28,7 +28,6 @@
 #include "shill/mock_adaptors.h"
 #include "shill/mock_connection.h"
 #include "shill/mock_control.h"
-#include "shill/mock_crypto_util_proxy.h"
 #include "shill/mock_device.h"
 #include "shill/mock_device_claimer.h"
 #include "shill/mock_device_info.h"
@@ -105,7 +104,6 @@ class ManagerTest : public PropertyStoreTest {
         wifi_provider_(new NiceMock<MockWiFiProvider>()),
 #endif  // DISABLE_WIFI
         throttler_(new StrictMock<MockThrottler>()),
-        crypto_util_proxy_(new NiceMock<MockCryptoUtilProxy>(dispatcher())),
         upstart_(new NiceMock<MockUpstart>(control_interface())) {
     ON_CALL(*control_interface(), CreatePowerManagerProxy(_, _, _))
         .WillByDefault(ReturnNull());
@@ -134,10 +132,6 @@ class ManagerTest : public PropertyStoreTest {
 
     // Update the manager's map from technology to provider.
     manager()->UpdateProviderMapping();
-
-    // Replace the manager's crypto util proxy with our mock.  Passes
-    // ownership.
-    manager()->crypto_util_proxy_.reset(crypto_util_proxy_);
 
     // Replace the manager's upstart instance with our mock.  Passes
     // ownership.
@@ -496,7 +490,6 @@ class ManagerTest : public PropertyStoreTest {
   MockWiFiProvider* wifi_provider_;
 #endif  // DISABLE_WIFI
   MockThrottler* throttler_;
-  MockCryptoUtilProxy* crypto_util_proxy_;
   MockUpstart* upstart_;
 };
 
@@ -4140,224 +4133,6 @@ TEST_F(ManagerTest, CreateConnectivityReport) {
   manager()->CreateConnectivityReport(nullptr);
   dispatcher()->DispatchPendingEvents();
 }
-
-#if !defined(DISABLE_WIFI)
-TEST_F(ManagerTest, VerifyWhenNotConnected) {
-  const string kFakeCertificate("fake cert");
-  const string kFakePublicKey("fake public key");
-  const string kFakeNonce("fake public key");
-  const string kFakeSignedData("fake signed data");
-  const string kFakeUdn("fake udn");
-  const vector<uint8_t> kSSID(10, 87);
-  const string kConfiguredSSID("AConfiguredDestination");
-  const vector<uint8_t> kConfiguredSSIDVector(kConfiguredSSID.begin(),
-                                              kConfiguredSSID.end());
-  const string kConfiguredBSSID("aa:bb:aa:bb:aa:bb");
-  scoped_refptr<MockWiFiService> mock_destination(
-      new NiceMock<MockWiFiService>(control_interface(), dispatcher(),
-                                    metrics(), manager(), wifi_provider_,
-                                    kSSID, "", "none", false));
-  // Register this service, but don't mark it as connected.
-  manager()->RegisterService(mock_destination);
-  // Verify that if we're not connected to anything, verification fails.
-  {
-    LOG(INFO) << "Can't verify if not connected.";
-    EXPECT_CALL(*crypto_util_proxy_,
-                VerifyDestination(_, _, _, _, _, _, _, _, _)).Times(0);
-    Error error(Error::kOperationInitiated);
-    manager()->VerifyDestination(kFakeCertificate, kFakePublicKey, kFakeNonce,
-                                 kFakeSignedData, kFakeUdn, "", "",
-                                 ResultBoolCallback(), &error);
-    EXPECT_TRUE(error.IsFailure());
-    Mock::VerifyAndClearExpectations(crypto_util_proxy_);
-  }
-  {
-    // However, if the destination is already configured, we might be
-    // connected to it via something other than WiFi, and we shouldn't
-    // enforce the WiFi check.
-    EXPECT_CALL(*crypto_util_proxy_,
-                VerifyDestination(kFakeCertificate, kFakePublicKey, kFakeNonce,
-                                  kFakeSignedData, kFakeUdn,
-                                  kConfiguredSSIDVector, kConfiguredBSSID,
-                                  _, _)).Times(1).WillOnce(Return(true));
-    Error error(Error::kOperationInitiated);
-    manager()->VerifyDestination(kFakeCertificate, kFakePublicKey, kFakeNonce,
-                                 kFakeSignedData, kFakeUdn, kConfiguredSSID,
-                                 kConfiguredBSSID, ResultBoolCallback(),
-                                 &error);
-    EXPECT_FALSE(error.IsFailure());
-    Mock::VerifyAndClearExpectations(crypto_util_proxy_);
-  }
-}
-
-TEST_F(ManagerTest, VerifyDestination) {
-  const string kFakeCertificate("fake cert");
-  const string kFakePublicKey("fake public key");
-  const string kFakeNonce("fake public key");
-  const string kFakeSignedData("fake signed data");
-  const string kFakeUdn("fake udn");
-  const char kSSIDStr[] = "fake ssid";
-  const vector<uint8_t> kSSID(kSSIDStr, kSSIDStr + arraysize(kSSIDStr));
-  const string kConfiguredSSID("AConfiguredDestination");
-  const vector<uint8_t> kConfiguredSSIDVector(kConfiguredSSID.begin(),
-                                              kConfiguredSSID.end());
-  const string kConfiguredBSSID("aa:bb:aa:bb:aa:bb");
-  const string kFakeData("muffin man");
-  scoped_refptr<MockWiFiService> mock_destination(
-      new NiceMock<MockWiFiService>(control_interface(),
-                                    dispatcher(),
-                                    metrics(),
-                                    manager(),
-                                    wifi_provider_,
-                                    kSSID,
-                                    "",
-                                    "none",
-                                    false));
-  manager()->RegisterService(mock_destination);
-  // Making the service look online will let service lookup in
-  // VerifyDestinatoin succeed.
-  EXPECT_CALL(*mock_destination, IsConnected()).WillRepeatedly(Return(true));
-  StrictMock<DestinationVerificationTest> dv_test;
-
-  // Lead off by verifying that the basic VerifyDestination flow works.
-  {
-    LOG(INFO) << "Basic VerifyDestination flow.";
-    ResultBoolCallback passed_down_callback;
-    EXPECT_CALL(*crypto_util_proxy_, VerifyDestination(kFakeCertificate,
-                                                       kFakePublicKey,
-                                                       kFakeNonce,
-                                                       kFakeSignedData,
-                                                       kFakeUdn,
-                                                       kSSID,
-                                                       _,
-                                                       _,
-                                                       _))
-        .Times(1)
-        .WillOnce(DoAll(SaveArg<7>(&passed_down_callback), Return(true)));
-    // Ask the manager to verify the current destination.  This should look
-    // up our previously registered service, and pass some metadata about
-    // that service down to the CryptoUtilProxy to verify.
-    Error error(Error::kOperationInitiated);
-    ResultBoolCallback cb = Bind(
-        &DestinationVerificationTest::ResultBoolCallbackStub,
-        dv_test.AsWeakPtr());
-    manager()->VerifyDestination(kFakeCertificate,
-                                 kFakePublicKey,
-                                 kFakeNonce,
-                                 kFakeSignedData,
-                                 kFakeUdn,
-                                 // Ask to be verified against that service.
-                                 "", "",
-                                 cb,
-                                 &error);
-    // We assert here, because if the operation is not ongoing, it is
-    // inconsistent with shim behavior to call the callback anyway.
-    ASSERT_TRUE(error.IsOngoing());
-    Mock::VerifyAndClearExpectations(crypto_util_proxy_);
-    EXPECT_CALL(dv_test, ResultBoolCallbackStub(_, true)).Times(1);
-    // Call the callback passed into the CryptoUtilProxy, which
-    // should find its way into the callback passed into the manager.
-    // In real code, that callback passed into the manager is from the
-    // DBus adaptor.
-    Error e;
-    passed_down_callback.Run(e, true);
-    Mock::VerifyAndClearExpectations(&dv_test);
-  }
-
-  // Now for a slightly more complex variant.  When we encrypt data,
-  // we do the same verification step but monkey with the callback to
-  // link ourselves to an encrypt step afterward.
-  {
-    LOG(INFO) << "Basic VerifyAndEncryptData";
-    ResultBoolCallback passed_down_callback;
-    EXPECT_CALL(*crypto_util_proxy_, VerifyDestination(kFakeCertificate,
-                                                       kFakePublicKey,
-                                                       kFakeNonce,
-                                                       kFakeSignedData,
-                                                       kFakeUdn,
-                                                       kSSID,
-                                                       _,
-                                                       _,
-                                                       _))
-        .WillOnce(DoAll(SaveArg<7>(&passed_down_callback), Return(true)));
-
-    Error error(Error::kOperationInitiated);
-    ResultStringCallback cb = Bind(
-        &DestinationVerificationTest::ResultStringCallbackStub,
-        dv_test.AsWeakPtr());
-    manager()->VerifyAndEncryptData(kFakeCertificate,
-                                    kFakePublicKey,
-                                    kFakeNonce,
-                                    kFakeSignedData,
-                                    kFakeUdn,
-                                    "", "",
-                                    kFakeData,
-                                    cb,
-                                    &error);
-    ASSERT_TRUE(error.IsOngoing());
-    Mock::VerifyAndClearExpectations(crypto_util_proxy_);
-    // Now, if we call that passed down callback, we should see encrypt being
-    // called.
-    ResultStringCallback second_passed_down_callback;
-    EXPECT_CALL(*crypto_util_proxy_, EncryptData(kFakePublicKey,
-                                                 kFakeData,
-                                                 _,
-                                                 _))
-        .Times(1)
-        .WillOnce(DoAll(SaveArg<2>(&second_passed_down_callback),
-                        Return(true)));
-    Error e;
-    passed_down_callback.Run(e, true);
-    Mock::VerifyAndClearExpectations(crypto_util_proxy_);
-    EXPECT_CALL(dv_test, ResultStringCallbackStub(_, _)).Times(1);
-    // And if we call the second passed down callback, we should see the
-    // original function we passed down to VerifyDestination getting called.
-    e.Reset();
-    second_passed_down_callback.Run(e, "");
-    Mock::VerifyAndClearExpectations(&dv_test);
-  }
-
-  // If verification fails on the way to trying to encrypt, we should ditch
-  // without calling encrypt at all.
-  {
-    LOG(INFO) << "Failed VerifyAndEncryptData";
-    ResultBoolCallback passed_down_callback;
-    EXPECT_CALL(*crypto_util_proxy_, VerifyDestination(kFakeCertificate,
-                                                       kFakePublicKey,
-                                                       kFakeNonce,
-                                                       kFakeSignedData,
-                                                       kFakeUdn,
-                                                       kSSID,
-                                                       _,
-                                                       _,
-                                                       _))
-        .WillOnce(DoAll(SaveArg<7>(&passed_down_callback), Return(true)));
-
-    Error error(Error::kOperationInitiated);
-    ResultStringCallback cb = Bind(
-        &DestinationVerificationTest::ResultStringCallbackStub,
-        dv_test.AsWeakPtr());
-    manager()->VerifyAndEncryptData(kFakeCertificate,
-                                    kFakePublicKey,
-                                    kFakeNonce,
-                                    kFakeSignedData,
-                                    kFakeUdn,
-                                    "", "",
-                                    kFakeData,
-                                    cb,
-                                    &error);
-    ASSERT_TRUE(error.IsOngoing());
-    Mock::VerifyAndClearExpectations(crypto_util_proxy_);
-    Error e(Error::kOperationFailed);
-    EXPECT_CALL(*crypto_util_proxy_, EncryptData(_, _, _, _)).Times(0);
-    // Although we're ditching, this callback is what cleans up the pending
-    // DBus call.
-    EXPECT_CALL(dv_test, ResultStringCallbackStub(_, string(""))).Times(1);
-    passed_down_callback.Run(e, false);
-    Mock::VerifyAndClearExpectations(&dv_test);
-  }
-}
-#endif  // DISABLE_WIFI
 
 TEST_F(ManagerTest, IsProfileBefore) {
   scoped_refptr<MockProfile> profile0(

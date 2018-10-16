@@ -101,41 +101,6 @@
 		<method name="GetNetworksForGeolocation">
 		        <arg type="a{sv}" direction="out"/>
 		</method>
-		<method name="VerifyDestination">
-			<arg name="certificate" type="s" direction="in"/>
-			<arg name="public_key" type="s" direction="in"/>
-			<arg name="nonce" type="s" direction="in"/>
-			<arg name="signed_data" type="s" direction="in"/>
-			<arg name="destination_udn" type="s" direction="in"/>
-			<arg name="hotspot_ssid" type="s" direction="in"/>
-			<arg name="hotspot_bssid" type="s" direction="in"/>
-			<arg type="b" direction="out"/>
-			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
-		</method>
-		<method name="VerifyAndEncryptCredentials">
-			<arg name="certificate" type="s" direction="in"/>
-			<arg name="public_key" type="s" direction="in"/>
-			<arg name="nonce" type="s" direction="in"/>
-			<arg name="signed_data" type="s" direction="in"/>
-			<arg name="destination_udn" type="s" direction="in"/>
-			<arg name="hotspot_ssid" type="s" direction="in"/>
-			<arg name="hotspot_bssid" type="s" direction="in"/>
-			<arg name="network" type="o" direction="in"/>
-			<arg type="s" direction="out"/>
-			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
-		</method>
-		<method name="VerifyAndEncryptData">
-			<arg name="certificate" type="s" direction="in"/>
-			<arg name="public_key" type="s" direction="in"/>
-			<arg name="nonce" type="s" direction="in"/>
-			<arg name="signed_data" type="s" direction="in"/>
-			<arg name="destination_udn" type="s" direction="in"/>
-			<arg name="hotspot_ssid" type="s" direction="in"/>
-			<arg name="hotspot_bssid" type="s" direction="in"/>
-			<arg name="data" type="s" direction="in"/>
-			<arg type="s" direction="out"/>
-			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
-		</method>
 		<method name="ConnectToBestServices"/>
 		<method name="CreateConnectivityReport"/>
 		<method name="ClaimInterface">

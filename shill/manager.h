@@ -21,7 +21,6 @@
 #include <policy/libpolicy.h>
 
 #include "shill/cellular/modem_info.h"
-#include "shill/crypto_util_proxy.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
 #include "shill/dhcp/dhcp_properties.h"
@@ -430,59 +429,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual int RegisterDefaultServiceCallback(const ServiceCallback& callback);
   virtual void DeregisterDefaultServiceCallback(int tag);
 
-#if !defined(DISABLE_WIFI)
-  // Verifies that the destination described by certificate is valid, and that
-  // we're currently connected to that destination.  A full description of the
-  // rules being enforced is in doc/manager-api.txt.  Returns true iff all
-  // checks pass, false otherwise.  On false, error is filled with a
-  // descriptive error code and message.
-  //
-  // |certificate| is a PEM encoded x509 certificate, |public_key| is a base64
-  // encoded public half of an RSA key, |nonce| is a random string, and
-  // |signed_data| is a base64 encoded string as described in
-  // doc/manager-api.txt.
-  void VerifyDestination(const std::string& certificate,
-                         const std::string& public_key,
-                         const std::string& nonce,
-                         const std::string& signed_data,
-                         const std::string& destination_udn,
-                         const std::string& hotspot_ssid,
-                         const std::string& hotspot_bssid,
-                         const ResultBoolCallback& cb,
-                         Error* error);
-
-  // After verifying the destination, encrypt the string data with
-  // |public_key|, the base64 encoded public half of an RSA key pair.  Returns
-  // the base64 encoded result if successful, or an empty string on failure.
-  // On failure, |error| will be filled with an appropriately descriptive
-  // message and error code.
-  void VerifyAndEncryptData(const std::string& certificate,
-                            const std::string& public_key,
-                            const std::string& nonce,
-                            const std::string& signed_data,
-                            const std::string& destination_udn,
-                            const std::string& hotspot_ssid,
-                            const std::string& hotspot_bssid,
-                            const std::string& data,
-                            const ResultStringCallback& cb,
-                            Error* error);
-
-  // After verifying the destination, encrypt the password for |network_path|
-  // under |public_key|.  Similar to EncryptData above except that the
-  // information being encrypted is implicitly the authentication credentials
-  // of the given network.
-  void VerifyAndEncryptCredentials(const std::string& certificate,
-                                   const std::string& public_key,
-                                   const std::string& nonce,
-                                   const std::string& signed_data,
-                                   const std::string& destination_udn,
-                                   const std::string& hotspot_ssid,
-                                   const std::string& hotspot_bssid,
-                                   const std::string& network_path,
-                                   const ResultStringCallback& cb,
-                                   Error* error);
-#endif  // DISABLE_WIFI
-
   // Calculate connection identifier, which is hash of salt value, gateway IP
   // address, and gateway MAC address.
   int CalcConnectionId(const std::string& gateway_ip,
@@ -751,14 +697,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void OnSuspendActionsComplete(const Error& error);
   void OnDarkResumeActionsComplete(const Error& error);
 
-#if !defined(DISABLE_WIFI)
-  void VerifyToEncryptLink(const std::string& public_key,
-                           const std::string& data,
-                           ResultStringCallback cb,
-                           const Error& error,
-                           bool success);
-#endif  // DISABLE_WIFI
-
   // Return true if wifi device is enabled with no existing connection (pending
   // or connected).
   bool IsWifiIdle();
@@ -882,9 +820,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Maps tags to callbacks for monitoring default service changes.
   std::map<int, ServiceCallback> default_service_callbacks_;
   int default_service_callback_tag_;
-
-  // Delegate to handle destination verification operations for the manager.
-  std::unique_ptr<CryptoUtilProxy> crypto_util_proxy_;
 
   // Stores the most recent copy of geolocation information for each
   // device the manager is keeping track of.
