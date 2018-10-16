@@ -699,7 +699,6 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     disks.emplace_back(VirtualMachine::Disk{
         .path = std::move(fd_path),
         .writable = true,
-        .image_type = VirtualMachine::DiskImageType::QCOW2,
     });
   }
 
@@ -711,22 +710,9 @@ std::unique_ptr<dbus::Response> Service::StartVm(
       return dbus_response;
     }
 
-    VirtualMachine::DiskImageType image_type;
-    if (disk.image_type() == vm_tools::concierge::DISK_IMAGE_RAW) {
-      image_type = VirtualMachine::DiskImageType::RAW;
-    } else if (disk.image_type() == vm_tools::concierge::DISK_IMAGE_QCOW2) {
-      image_type = VirtualMachine::DiskImageType::QCOW2;
-    } else {
-      LOG(ERROR) << "Invalid disk type";
-      response.set_failure_reason("Invalid disk type specified");
-      writer.AppendProtoAsArrayOfBytes(response);
-      return dbus_response;
-    }
-
     disks.emplace_back(VirtualMachine::Disk{
         .path = base::FilePath(disk.path()),
         .writable = disk.writable(),
-        .image_type = image_type,
     });
   }
 

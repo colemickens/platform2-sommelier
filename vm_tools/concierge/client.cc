@@ -167,7 +167,7 @@ int StartVm(dbus::ObjectProxy* proxy,
     std::vector<base::StringPiece> tokens = base::SplitStringPiece(
         disk, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
 
-    // disk path[,writable[,image type[,mount target,fstype[,flags[,data]]]]]
+    // disk path[,writable[,mount target,fstype[,flags[,data]]]]
     if (tokens.empty()) {
       LOG(ERROR) << "Disk description is empty";
       return -1;
@@ -188,29 +188,18 @@ int StartVm(dbus::ObjectProxy* proxy,
     }
 
     if (tokens.size() > 2) {
-      if (tokens[2] == kImageTypeRaw) {
-        disk_image->set_image_type(vm_tools::concierge::DISK_IMAGE_RAW);
-      } else if (tokens[2] == kImageTypeQcow2) {
-        disk_image->set_image_type(vm_tools::concierge::DISK_IMAGE_QCOW2);
-      } else {
-        LOG(ERROR) << "Invalid disk image type: " << tokens[2];
-        return -1;
-      }
-    }
-
-    if (tokens.size() > 3) {
-      if (tokens.size() == 4) {
+      if (tokens.size() == 3) {
         LOG(ERROR) << "Missing fstype for " << disk;
         return -1;
       }
-      disk_image->set_mount_point(tokens[3].data(), tokens[3].size());
-      disk_image->set_fstype(tokens[4].data(), tokens[4].size());
+      disk_image->set_mount_point(tokens[2].data(), tokens[2].size());
+      disk_image->set_fstype(tokens[3].data(), tokens[3].size());
       disk_image->set_do_mount(true);
     }
 
-    if (tokens.size() > 5) {
+    if (tokens.size() > 4) {
       uint64_t flags;
-      if (!base::HexStringToUInt64(tokens[5], &flags)) {
+      if (!base::HexStringToUInt64(tokens[4], &flags)) {
         LOG(ERROR) << "Unable to parse flags: " << tokens[5];
         return -1;
       }
@@ -218,10 +207,10 @@ int StartVm(dbus::ObjectProxy* proxy,
       disk_image->set_flags(flags);
     }
 
-    if (tokens.size() > 6) {
+    if (tokens.size() > 5) {
       // Unsplit the rest of the string since data is comma-separated.
-      string data(tokens[6].as_string());
-      for (int i = 7; i < tokens.size(); i++) {
+      string data(tokens[5].as_string());
+      for (int i = 6; i < tokens.size(); i++) {
         data += ",";
         tokens[i].AppendToString(&data);
       }
@@ -718,7 +707,6 @@ int StartTerminaVm(dbus::ObjectProxy* proxy,
 
     vm_tools::concierge::DiskImage* disk_image = request.add_disks();
     disk_image->set_path(std::move(disk_path));
-    disk_image->set_image_type(vm_tools::concierge::DISK_IMAGE_QCOW2);
     disk_image->set_writable(true);
     disk_image->set_do_mount(false);
 

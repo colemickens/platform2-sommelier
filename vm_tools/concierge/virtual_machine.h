@@ -75,9 +75,6 @@ class VirtualMachine {
 
     // Whether the disk should be writable by the VM.
     bool writable;
-
-    // Type of the disk image.
-    DiskImageType image_type;
   };
 
   // Starts a new virtual machine.  Returns nullptr if the virtual machine
