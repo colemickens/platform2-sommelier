@@ -60,8 +60,7 @@ void enter_vfs_namespace() {
     LOG(FATAL) << "minijail_bind(\"/run/dbus\") failed";
 
   // Mount /tmp, /run/cups, and /run/ippusb to be able to communicate with CUPS.
-  if (minijail_bind(j.get(), "/tmp", "/tmp", 1))
-    LOG(FATAL) << "minijail_bind(\"/tmp\") failed";
+  minijail_mount_tmp(j.get());
   // In case we start before cups, make sure the path exists.
   mkdir("/run/cups", 0755);
   if (minijail_bind(j.get(), "/run/cups", "/run/cups", 0))
