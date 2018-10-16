@@ -8,6 +8,9 @@
 
 #include <utility>
 
+#include <base/files/file_enumerator.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
 
@@ -21,10 +24,21 @@ namespace system {
 
 namespace {
 
-static const char kPowerdUdevTag[] = "powerd";
-static const char kPowerdTagsVar[] = "POWERD_TAGS";
+const char kChromeOSClassPath[] = "/sys/class/chromeos/";
+const char kFingerprintSysfsPath[] = "/sys/class/chromeos/cros_fp";
+const char kPowerdRoleCrosFP[] = "cros_fingerprint";
+const char kPowerdRoleVar[] = "POWERD_ROLE";
+const char kPowerdUdevTag[] = "powerd";
+const char kPowerdTagsVar[] = "POWERD_TAGS";
 // Udev device type for USB devices.
-static const char kUSBDevice[] = "usb_device";
+const char kUSBDevice[] = "usb_device";
+
+bool HasPowerdRole(struct udev_device* device, const std::string& role) {
+  const char* role_cstr =
+      udev_device_get_property_value(device, kPowerdRoleVar);
+  const std::string device_role = role_cstr ? role_cstr : "";
+  return role == device_role;
+}
 
 UdevEvent::Action StrToAction(const char* action_str) {
   if (!action_str)
@@ -265,7 +279,38 @@ base::FilePath Udev::FindParentWithSysattr(const std::string& syspath,
 }
 
 base::FilePath Udev::FindWakeCapableParent(const std::string& syspath) {
-  return FindParentWithSysattr(syspath, kPowerWakeup, kUSBDevice);
+  base::FilePath wakeup_device_path;
+  struct udev_device* device =
+      udev_device_new_from_syspath(udev_, syspath.c_str());
+  if (!device)
+    return wakeup_device_path;
+
+  // Returns a pointer to the parent device. No additional reference to
+  // the |device| is acquired, but the |device| owns a reference to the
+  // |parent|.
+  struct udev_device* parent = udev_device_get_parent(device);
+  // We assign powerd roles to the input device. In case |syspath| points to
+  // a event device, look also at the parent device to see if it has
+  // |kPowerdRoleCrosFP| role.
+  if (HasPowerdRole(device, kPowerdRoleCrosFP) ||
+      HasPowerdRole(parent, kPowerdRoleCrosFP)) {
+    base::FilePath actual_fp_path;
+    if (!base::ReadSymbolicLink(base::FilePath(kFingerprintSysfsPath),
+                                &actual_fp_path)) {
+      PLOG(ERROR) << "Failed to read symlink " << kFingerprintSysfsPath
+                  << " for fingerprint device";
+    } else {
+      std::string wakeup_path =
+          base::FilePath(kChromeOSClassPath).Append(actual_fp_path).value();
+      wakeup_device_path =
+          FindParentWithSysattr(wakeup_path, kPowerWakeup, kUSBDevice);
+    }
+  } else {
+    wakeup_device_path =
+        FindParentWithSysattr(syspath, kPowerWakeup, kUSBDevice);
+  }
+  udev_device_unref(device);
+  return wakeup_device_path;
 }
 
 bool Udev::GetDeviceInfo(struct udev_device* dev,

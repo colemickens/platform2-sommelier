@@ -470,6 +470,11 @@ void InputWatcher::HandleAddedInput(const std::string& input_name,
     }
   }
 
+  if (device->IsCrosFp()) {
+    should_watch = true;
+    LOG(INFO) << "Watching fingerprint device: " << device->GetDebugName();
+  }
+
   if (should_watch) {
     device->WatchForEvents(base::Bind(&InputWatcher::OnNewEvents,
                                       weak_ptr_factory_.GetWeakPtr(),
@@ -483,6 +488,8 @@ void InputWatcher::HandleAddedInput(const std::string& input_name,
   // If we do not know the wakeup path of the input device, we cannot monitor
   //  the wakeup counts.
   if (wakeup_device_path.empty()) {
+    LOG(INFO) << "Input device " << device->GetDebugName()
+              << " is not wake-capable";
     return;
   }
 

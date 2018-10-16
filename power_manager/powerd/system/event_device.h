@@ -27,7 +27,9 @@ class EventDevice : public EventDeviceInterface,
 
   // Implementation of EventDeviceInterface.
   std::string GetDebugName() override;
+  std::string GetName() override;
   std::string GetPhysPath() override;
+  bool IsCrosFp() override;
   bool IsLidSwitch() override;
   bool IsTabletModeSwitch() override;
   bool IsPowerButton() override;

@@ -90,6 +90,7 @@ const char kSetCellularTransmitPowerDprGpioPref[] =
     "set_cellular_transmit_power_dpr_gpio";
 
 // Miscellaneous constants.
+const char kCrosFpInputDevName[] = "cros_fp_input";
 const char kInternalBacklightPath[] = "/sys/class/backlight";
 const char kInternalBacklightPattern[] = "*";
 const char kKeyboardBacklightPath[] = "/sys/class/leds";

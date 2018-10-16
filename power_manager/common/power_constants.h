@@ -225,6 +225,9 @@ extern const char kSetCellularTransmitPowerDprGpioPref[];
 
 // Miscellaneous constants.
 
+// Name of the cros_fp fingerprint sensor input device.
+extern const char kCrosFpInputDevName[];
+
 // sysfs directory containing internal backlight devices and a glob-style
 // pattern matching device names.
 extern const char kInternalBacklightPath[];

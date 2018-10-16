@@ -111,6 +111,7 @@ const char InputDeviceController::kInhibited[] = "inhibited";
 
 const char InputDeviceController::kTPAD[] = "TPAD";
 const char InputDeviceController::kTSCR[] = "TSCR";
+const char InputDeviceController::kCRFP[] = "CRFP";
 
 InputDeviceController::InputDeviceController() {}
 
@@ -250,6 +251,7 @@ void InputDeviceController::ConfigureAcpiWakeup() {
 
   acpi_wakeup_helper_->SetWakeupEnabled(kTPAD, mode_ == Mode::LAPTOP);
   acpi_wakeup_helper_->SetWakeupEnabled(kTSCR, false);
+  acpi_wakeup_helper_->SetWakeupEnabled(kCRFP, mode_ != Mode::CLOSED);
 }
 
 InputDeviceController::Mode InputDeviceController::GetMode() const {

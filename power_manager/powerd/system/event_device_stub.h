@@ -26,7 +26,9 @@ class EventDeviceStub : public EventDeviceInterface {
 
   const base::Closure& new_events_cb() const { return new_events_cb_; }
   void set_debug_name(const std::string& name) { debug_name_ = name; }
+  void set_name(const std::string& name) { name_ = name; }
   void set_phys_path(const std::string& path) { phys_path_ = path; }
+  void set_is_cros_fp(bool is_cros_fp) { is_cros_fp_ = is_cros_fp; }
   void set_is_lid_switch(bool is_switch) { is_lid_switch_ = is_switch; }
   void set_is_tablet_mode_switch(bool is_switch) {
     is_tablet_mode_switch_ = is_switch;
@@ -47,7 +49,9 @@ class EventDeviceStub : public EventDeviceInterface {
 
   // Implementation of EventDeviceInterface.
   std::string GetDebugName() override;
+  std::string GetName() override;
   std::string GetPhysPath() override;
+  bool IsCrosFp() override;
   bool IsLidSwitch() override;
   bool IsTabletModeSwitch() override;
   bool IsPowerButton() override;
@@ -60,7 +64,9 @@ class EventDeviceStub : public EventDeviceInterface {
 
  private:
   std::string debug_name_;
+  std::string name_;
   std::string phys_path_;
+  bool is_cros_fp_;
   bool is_lid_switch_;
   bool is_tablet_mode_switch_;
   bool is_power_button_;

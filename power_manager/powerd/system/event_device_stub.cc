@@ -10,7 +10,8 @@ namespace power_manager {
 namespace system {
 
 EventDeviceStub::EventDeviceStub()
-    : is_lid_switch_(false),
+    : is_cros_fp_(false),
+      is_lid_switch_(false),
       is_tablet_mode_switch_(false),
       is_power_button_(false),
       hover_supported_(false),
@@ -38,8 +39,16 @@ std::string EventDeviceStub::GetDebugName() {
   return debug_name_;
 }
 
+std::string EventDeviceStub::GetName() {
+  return name_;
+}
+
 std::string EventDeviceStub::GetPhysPath() {
   return phys_path_;
+}
+
+bool EventDeviceStub::IsCrosFp() {
+  return is_cros_fp_;
 }
 
 bool EventDeviceStub::IsLidSwitch() {

@@ -30,9 +30,15 @@ class EventDeviceInterface {
   // Returns a human-readable identifier to be used for debugging.
   virtual std::string GetDebugName() = 0;
 
+  // Returns the name (from EVIOCGNAME) of the input device.
+  virtual std::string GetName() = 0;
+
   // Returns the physical path of the device.
   // TODO(patrikf): Consider using udev and tags instead.
   virtual std::string GetPhysPath() = 0;
+
+  // Returns true if the device is a Chrome OS fingerprint device.
+  virtual bool IsCrosFp() = 0;
 
   // Returns true if the device can report lid events.
   virtual bool IsLidSwitch() = 0;

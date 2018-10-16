@@ -9,6 +9,8 @@
 
 #include <base/posix/eintr_wrapper.h>
 
+#include "power_manager/common/power_constants.h"
+
 // Helper macros for accessing the bitfields returned by the kernel interface,
 // compare with include/linux/bitops.h.
 #define BITS_PER_LONG (sizeof(long) * 8)  // NOLINT(runtime/int)
@@ -43,10 +45,24 @@ std::string EventDevice::GetDebugName() {
 std::string EventDevice::GetPhysPath() {
   char phys[256] = "";
 
-  if (ioctl(fd_, EVIOCGPHYS(sizeof(phys)), phys) < 0 && errno != ENOENT)
+  if (TEMP_FAILURE_RETRY(ioctl(fd_, EVIOCGPHYS(sizeof(phys)), phys)) < 0 &&
+      errno != ENOENT)
     PLOG(ERROR) << "Could not get topo phys path of " << path_.value();
 
   return phys;
+}
+
+std::string EventDevice::GetName() {
+  char name[256] = {0};
+
+  if (TEMP_FAILURE_RETRY(ioctl(fd_, EVIOCGNAME(sizeof(name) - 1), name)) < 0)
+    PLOG(ERROR) << "Could not get name of " << path_.value();
+
+  return name;
+}
+
+bool EventDevice::IsCrosFp() {
+  return GetName() == kCrosFpInputDevName;
 }
 
 bool EventDevice::IsLidSwitch() {
@@ -97,7 +113,8 @@ bool EventDevice::HasEventBit(int event_type, int bit) {
   // bitmask needs to hold kMaxBit+1 bits
   unsigned long bitmask[BITS_TO_LONGS(kMaxBit + 1)];  // NOLINT(runtime/int)
   memset(bitmask, 0, sizeof(bitmask));
-  if (ioctl(fd_, EVIOCGBIT(event_type, sizeof(bitmask)), bitmask) < 0) {
+  if (TEMP_FAILURE_RETRY(
+          ioctl(fd_, EVIOCGBIT(event_type, sizeof(bitmask)), bitmask)) < 0) {
     PLOG(ERROR) << "EVIOCGBIT failed for " << path_.value();
     return false;
   }
@@ -110,7 +127,7 @@ bool EventDevice::GetSwitchBit(int bit) {
   // bitmask needs to hold SW_MAX+1 bits
   unsigned long bitmask[BITS_TO_LONGS(SW_MAX + 1)];  // NOLINT(runtime/int)
   memset(bitmask, 0, sizeof(bitmask));
-  if (ioctl(fd_, EVIOCGSW(sizeof(bitmask)), bitmask) < 0) {
+  if (TEMP_FAILURE_RETRY(ioctl(fd_, EVIOCGSW(sizeof(bitmask)), bitmask)) < 0) {
     PLOG(ERROR) << "EVIOCGBIT failed for " << path_.value();
     return false;
   }

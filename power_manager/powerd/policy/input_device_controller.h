@@ -53,6 +53,7 @@ class InputDeviceController : public policy::BacklightControllerObserver,
   // ACPI device names.
   static const char kTPAD[];
   static const char kTSCR[];
+  static const char kCRFP[];
 
   // Describes which mode the system is currently in, depending on e.g. the
   // state of the lid.
