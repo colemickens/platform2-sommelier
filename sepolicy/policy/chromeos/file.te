@@ -79,6 +79,7 @@ type cros_metrics_uma_events_file, file_type;
 
 type cros_run, file_type;
 type cros_run_dbus, file_type;
+type cras_socket, file_type; # compatible to existing Android names.
 
 type cros_network_conf_file, file_type;
 type cros_passwd_file, file_type;
