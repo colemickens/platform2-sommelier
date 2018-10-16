@@ -21,6 +21,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/macros.h>
 
@@ -79,6 +80,10 @@ class TRUNKS_EXPORT TrunksFactoryForTest : public TrunksFactory {
 
   void set_tpm_utility(TpmUtility* tpm_utility) { tpm_utility_ = tpm_utility; }
 
+  void set_used_password(std::vector<std::string>* buf) {
+    used_password_ = buf;
+  }
+
   void set_password_authorization_delegate(AuthorizationDelegate* delegate) {
     password_authorization_delegate_ = delegate;
   }
@@ -108,6 +113,7 @@ class TRUNKS_EXPORT TrunksFactoryForTest : public TrunksFactory {
   TpmState* tpm_state_;
   std::unique_ptr<MockTpmUtility> default_tpm_utility_;
   TpmUtility* tpm_utility_;
+  std::vector<std::string>* used_password_;
   std::unique_ptr<PasswordAuthorizationDelegate>
       default_authorization_delegate_;
   AuthorizationDelegate* password_authorization_delegate_;

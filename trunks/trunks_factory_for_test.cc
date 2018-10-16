@@ -715,6 +715,7 @@ TrunksFactoryForTest::TrunksFactoryForTest()
       tpm_state_(default_tpm_state_.get()),
       default_tpm_utility_(new NiceMock<MockTpmUtility>()),
       tpm_utility_(default_tpm_utility_.get()),
+      used_password_(nullptr),
       default_authorization_delegate_(new PasswordAuthorizationDelegate("")),
       password_authorization_delegate_(default_authorization_delegate_.get()),
       default_session_manager_(new NiceMock<MockSessionManager>()),
@@ -745,6 +746,10 @@ std::unique_ptr<TpmUtility> TrunksFactoryForTest::GetTpmUtility() const {
 std::unique_ptr<AuthorizationDelegate>
 TrunksFactoryForTest::GetPasswordAuthorization(
     const std::string& password) const {
+  // The `password` parameter is not used since we don't really check the
+  // content of delegate in unit tests.
+  if (used_password_)
+    used_password_->push_back(password);
   return std::make_unique<AuthorizationDelegateForwarder>(
       password_authorization_delegate_);
 }
