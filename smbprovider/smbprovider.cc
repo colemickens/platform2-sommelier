@@ -26,6 +26,16 @@
 #include "smbprovider/smbprovider_helper.h"
 
 namespace smbprovider {
+namespace {
+
+constexpr mode_t kDirMode = 16877;  // Dir entry
+
+void PopulateMountRootStat(struct stat* mount_root_stat) {
+  mount_root_stat->st_size = 0;
+  mount_root_stat->st_mode = kDirMode;
+  mount_root_stat->st_mtime = 0;
+}
+}  // namespace
 
 bool GetEntries(const ReadDirectoryOptionsProto& options,
                 CachingIterator iterator,
@@ -239,9 +249,18 @@ void SmbProvider::GetMetadataEntry(const ProtoBlob& options_blob,
   }
 
   SambaInterface* samba_interface = GetSambaInterface(GetMountId(options));
+
+  int32_t get_status_error = 0;
   struct stat stat_info;
-  int32_t get_status_error =
-      samba_interface->GetEntryStatus(full_path.c_str(), &stat_info);
+  // Always return a successful response on the root. If the files app detects
+  // a failure here it will block any further requests to the mount.
+  if (options.entry_path() == "/") {
+    PopulateMountRootStat(&stat_info);
+  } else {
+    get_status_error =
+        samba_interface->GetEntryStatus(full_path.c_str(), &stat_info);
+  }
+
   if (get_status_error != 0) {
     LogAndSetError(options, GetErrorFromErrno(get_status_error), error_code);
     return;
