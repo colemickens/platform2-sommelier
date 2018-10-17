@@ -10,6 +10,7 @@ group("all") {
   deps = [
     ":finish_oobe_auto_config",
     ":liboobeconfig",
+    ":libload_oobe_config_usb",
     ":oobe_config_restore",
     ":oobe_config_save",
   ]
@@ -51,10 +52,7 @@ static_library("liboobeconfig") {
     ":target_defaults",
   ]
   sources = [
-    "load_oobe_config_usb.cc",
     "oobe_config.cc",
-    "usb_common.cc",
-    "utils.cc",
   ]
   libs = [ "-lpolicy-${libbase_ver}" ]
   deps = [
@@ -64,6 +62,18 @@ static_library("liboobeconfig") {
 
 pkg_config("crypto") {
   pkg_deps = ["libcrypto"]
+}
+
+static_library("libload_oobe_config_usb") {
+  configs += [
+    ":crypto",
+    ":target_defaults",
+  ]
+  sources = [
+    "load_oobe_config_usb.cc",
+    "usb_common.cc",
+    "utils.cc",
+  ]
 }
 
 executable("finish_oobe_auto_config") {
@@ -99,6 +109,7 @@ executable("oobe_config_restore") {
   ]
   deps = [
     ":liboobeconfig",
+    ":libload_oobe_config_usb",
     ":oobe_config_restore_adaptors",
   ]
 }
@@ -129,6 +140,7 @@ if (use.test) {
     ]
     deps = [
       ":liboobeconfig",
+      ":libload_oobe_config_usb",
       "//common-mk/testrunner",
     ]
   }
