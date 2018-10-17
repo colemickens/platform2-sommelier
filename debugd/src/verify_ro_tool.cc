@@ -54,6 +54,38 @@ std::string VerifyRoTool::GetGscOnUsbRWFirmwareVer() {
   return GetKeysValuesFromProcessOutput(output, {"RW_FW_VER"});
 }
 
+std::string VerifyRoTool::GetGscOnUsbBoardID() {
+  std::string output;
+
+  // Need to disable sandbox for accessing USB.
+  //
+  // TODO(garryxiao): use SandboxAs() instead once we move suzy-q access from
+  // chronos to a new user and group.
+  int exit_code = ProcessWithOutput::RunProcess(
+      kGsctool,
+      {"-i", "-M"},
+      false,         // requires_root
+      true,          // disable_sandbox
+      nullptr,       // stdin
+      &output,       // stdout
+      nullptr,       // stderr
+      nullptr);
+
+  if (exit_code != 0) {
+    LOG(WARNING) << __func__ << ": process exited with a non-zero status.";
+    return "<process exited with a non-zero status>";
+  }
+
+  // A normal output of gsctool -i -M looks like
+  //
+  // ...
+  // BID_TYPE=5a534b4d
+  // BID_TYPE_INV=a5acb4b2
+  // BID_FLAGS=00007f80
+  return GetKeysValuesFromProcessOutput(
+      output, {"BID_TYPE", "BID_TYPE_INV", "BID_FLAGS"});
+}
+
 std::string VerifyRoTool::GetGscImageRWFirmwareVer(
     const std::string& image_file) {
   // A normal output of gsctool -M -b image.bin looks like
@@ -86,7 +118,7 @@ std::string VerifyRoTool::GetGscImageBoardID(const std::string& image_file) {
 std::string VerifyRoTool::GetKeysValuesFromImage(
     const std::string& image_file, const std::vector<std::string>& keys) {
   if (!base::PathExists(base::FilePath(image_file))) {
-    LOG(ERROR) << ", bad image file: " << image_file;
+    LOG(ERROR) << "bad image file: " << image_file;
     return "<bad image file>";
   }
 

@@ -948,6 +948,17 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="GetGscOnUsbBoardID">
+      <tp:docstring>
+        Get the board ID of the security chip on the USB-connected DUT.
+      </tp:docstring>
+      <arg name="result" type="s" direction="out">
+        <tp:docstring>
+          Error message if failed, or the board ID.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
     <method name="GetGscImageRWFirmwareVer">
       <tp:docstring>
         Gets the RW firmware version in the given GSC image.

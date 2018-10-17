@@ -497,6 +497,10 @@ std::string DebugdDBusAdaptor::GetGscOnUsbRWFirmwareVer() {
   return verify_ro_tool_->GetGscOnUsbRWFirmwareVer();
 }
 
+std::string DebugdDBusAdaptor::GetGscOnUsbBoardID() {
+  return verify_ro_tool_->GetGscOnUsbBoardID();
+}
+
 std::string DebugdDBusAdaptor::GetGscImageRWFirmwareVer(
     const std::string& image_file) {
   return verify_ro_tool_->GetGscImageRWFirmwareVer(image_file);
