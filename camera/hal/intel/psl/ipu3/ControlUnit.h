@@ -156,7 +156,9 @@ private:  /* Members */
     std::mutex mSofDataLock;
     std::map<uint32_t, unsigned long long> mSofDataMap;
 
-    static const int16_t AWB_CONVERGENCE_WAIT_COUNT = 2;
+    /* AWB convergence needs to run AWB algorithm 3 times with statistics, so we need to
+       hold request processing when process request 0, 1. */
+    static const int16_t PENDING_REQUEST_FOR_AWB_CONVERGENCE = 1;
 };  // class ControlUnit
 
 }  // namespace camera2

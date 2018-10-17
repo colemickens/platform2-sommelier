@@ -474,7 +474,7 @@ status_t ControlUnit::handleNewRequest(std::shared_ptr<RequestCtrlState> state)
      * Use the latest valid stats for still capture,
      * it comes from video pipe (during still preview)
      */
-    if (mLatestRequestId >= AWB_CONVERGENCE_WAIT_COUNT ||
+    if (mLatestRequestId > PENDING_REQUEST_FOR_AWB_CONVERGENCE ||
         mLatestRequestId == -1 ||
         reqState->request->getBufferCountOfFormat(HAL_PIXEL_FORMAT_BLOB) > 0 ||
         (mLatestStatistics != nullptr &&
@@ -674,8 +674,8 @@ status_t ControlUnit::handleNewStat(MessageStats msg)
     }
 
     bool cio2Starving = false;
-    if (statsId == mLatestRequestId && mLatestRequestId >= AWB_CONVERGENCE_WAIT_COUNT) {
-        // The 0 ~ AWB_CONVERGENCE_WAIT_COUNT request will run with new statistics to speed
+    if (statsId == mLatestRequestId && mLatestRequestId >= PENDING_REQUEST_FOR_AWB_CONVERGENCE) {
+        // The 0 ~ PENDING_REQUEST_FOR_AWB_CONVERGENCE request will run with new statistics to speed
         // AWB converging process. Otherwise, queue all pending requests to CIO2.
         cio2Starving = true;
     }
