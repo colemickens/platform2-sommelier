@@ -12,8 +12,10 @@ namespace system {
 TaggedDevice::TaggedDevice() {}
 
 TaggedDevice::TaggedDevice(const std::string& syspath,
+                           const base::FilePath& wakeup_device_path,
                            const std::string& tags) {
   syspath_ = syspath;
+  wakeup_device_path_ = wakeup_device_path;
 
   base::StringTokenizer parts(tags, " ");
   while (parts.GetNext())

@@ -171,6 +171,8 @@ class InputWatcherTest : public testing::Test {
     UdevDeviceInfo input_device_info;
     input_device_info.sysname = name;
     input_device_info.syspath = syspath;
+    // For testing purposes, assume syspath and wakeup_path are same.
+    input_device_info.wakeup_device_path = base::FilePath(syspath);
     udev_.AddSubsystemDevice(InputWatcher::kInputUdevSubsystem,
                              input_device_info, {});
     event_device_factory_->RegisterDevice(path, device);

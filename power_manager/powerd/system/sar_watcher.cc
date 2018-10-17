@@ -28,7 +28,6 @@
 #include "power_manager/common/prefs.h"
 #include "power_manager/powerd/system/sar_observer.h"
 #include "power_manager/powerd/system/udev.h"
-#include "power_manager/powerd/system/udev_util.h"
 
 namespace power_manager {
 namespace system {

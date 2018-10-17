@@ -134,16 +134,18 @@ class InputWatcher : public InputWatcherInterface,
   // the state of new devices.
   void HandleAddedInput(const std::string& input_name,
                         int input_num,
-                        const std::string& syspath,
+                        const base::FilePath& wakeup_device_path,
                         bool notify_state);
 
-  void HandleRemovedInput(int input_num, const std::string& syspath);
+  void HandleRemovedInput(int input_num);
 
-  // Monitors a device (with |sysfs_path|) to identify the potential wakeup
-  // reason. Monitors only if the given device (or any of the ancestors) are
-  // wake capable. Returns true if the device is being monitored.
-  // Example: /sys/devices/pci0000:00/0000:00:14.0/usb1/1-2
-  bool MonitorWakeupDevice(const base::FilePath& sysfs_path);
+  // Monitors a device (with |wakeup_device_path|) to identify the potential
+  // wakeup reason. Monitors only if the |wakeup_device_path| points to a
+  // directory with power/wakeup property. Returns true if the device is
+  // being monitored.
+  // Example: /sys/devices/pci0000:00/0000:00:14.0/usb1/1-2/
+  bool MonitorWakeupDevice(int input_num,
+                           const base::FilePath& wakeup_device_path);
 
   // Calls NotifyObserversAboutEvent() for each event in |queued_events_| and
   // clears the vector.
@@ -232,10 +234,8 @@ class InputWatcher : public InputWatcherInterface,
   typedef std::map<int, linked_ptr<EventDeviceInterface>> InputMap;
   InputMap event_devices_;
 
-  // Keyed by the path of the device sysfs directory.
-  // Example: /sys/devices/pci0000:00/0000:00:14.0/usb1/1-2
-  using WakeupDeviceMap =
-      std::map<std::string, std::unique_ptr<WakeupDeviceInterface>>;
+  // Keyed by the input event number.
+  using WakeupDeviceMap = std::map<int, std::unique_ptr<WakeupDeviceInterface>>;
   WakeupDeviceMap wakeup_devices_;
 
   base::ObserverList<InputObserver> observers_;

@@ -213,7 +213,7 @@ Thus when adding a new device under EC that can wakeup the system
 [input devices that powerd polls]: https://chromium.googlesource.com/chromiumos/platform2/+/master/power_manager/powerd/system/input_watcher.cc#394
 [`HandleUserActivity`]: https://chromium.googlesource.com/chromiumos/platform2/+/master/power_manager/dbus_bindings/org.chromium.PowerManager.xml#61
 [`SuspendDone`]: https://chromium.googlesource.com/chromiumos/platform2/+/master/power_manager/dbus_bindings/org.chromium.PowerManager.xml#205
-[wake-capable parent]: https://chromium.googlesource.com/chromiumos/platform2/+/master/power_manager/powerd/system/udev_util.cc#21
+[wake-capable parent]: https://chromium.googlesource.com/chromiumos/platform2/+/master/power_manager/powerd/system/udev.cc#257
 [mfd devices]: https://www.kernel.org/doc/Documentation/devicetree/bindings/mfd/mfd.txt
 [monitors the wakeup-count]: https://chromium.googlesource.com/chromiumos/platform2/+/master/power_manager/powerd/system/wakeup_device.cc
 [checks the wakeup count]: https://chromium.googlesource.com/chromiumos/platform2/+/master/power_manager/powerd/system/dark_resume.cc#54

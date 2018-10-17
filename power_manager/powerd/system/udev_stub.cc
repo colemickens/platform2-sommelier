@@ -30,8 +30,9 @@ void UdevStub::NotifySubsystemObservers(const UdevEvent& event) {
 }
 
 void UdevStub::TaggedDeviceChanged(const std::string& syspath,
+                                   const base::FilePath& wakeup_device_path,
                                    const std::string& tags) {
-  tagged_devices_[syspath] = TaggedDevice(syspath, tags);
+  tagged_devices_[syspath] = TaggedDevice(syspath, wakeup_device_path, tags);
   const TaggedDevice& device = tagged_devices_[syspath];
   for (UdevTaggedDeviceObserver& observer : tagged_device_observers_)
     observer.OnTaggedDeviceChanged(device);
@@ -122,14 +123,6 @@ bool UdevStub::SetSysattr(const std::string& syspath,
   // from UdevSysattr. For all reasonable testing scenarios, this should be
   // fine.
   map_[std::make_pair(syspath, sysattr)] = value;
-  return true;
-}
-
-bool UdevStub::FindParentWithSysattr(const std::string& syspath,
-                                     const std::string& sysattr,
-                                     const std::string& stop_at_devtype,
-                                     std::string* parent_syspath) {
-  *parent_syspath = syspath;
   return true;
 }
 

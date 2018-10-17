@@ -8,6 +8,8 @@
 #include <string>
 #include <unordered_set>
 
+#include <base/files/file_path.h>
+
 namespace power_manager {
 namespace system {
 
@@ -16,10 +18,15 @@ class TaggedDevice {
  public:
   // Default constructor for easier use with std::map.
   TaggedDevice();
-  TaggedDevice(const std::string& syspath, const std::string& tags);
+  TaggedDevice(const std::string& syspath,
+               const base::FilePath& wakeup_device_path,
+               const std::string& tags);
   ~TaggedDevice();
 
   const std::string& syspath() const { return syspath_; }
+  const base::FilePath& wakeup_device_path() const {
+    return wakeup_device_path_;
+  }
   const std::unordered_set<std::string> tags() const { return tags_; }
 
   // Returns true if the device has the given tag.
@@ -27,6 +34,8 @@ class TaggedDevice {
 
  private:
   std::string syspath_;
+  // Directory (of itself/ancestor) with power/wakeup property.
+  base::FilePath wakeup_device_path_;
   std::unordered_set<std::string> tags_;
 };
 

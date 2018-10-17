@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/message_loop/message_loop.h>
 #include <base/observer_list.h>
@@ -30,6 +31,8 @@ struct UdevDeviceInfo {
   std::string devtype;
   std::string sysname;
   std::string syspath;
+  // Directory (of itself/ancestor) with power/wakeup property.
+  base::FilePath wakeup_device_path;
 };
 
 // UdevEvent describes a udev event.
@@ -86,17 +89,6 @@ class UdevInterface {
                           const std::string& sysattr,
                           const std::string& value) = 0;
 
-  // For the device specified by |syspath|, finds the first parent device which
-  // has a sysattr named |sysattr|, and stores the parent's syspath in
-  // |parent_syspath|. If |stop_at_devtype| is a nonempty string, then no parent
-  // devices will be considered beyond the first device matching
-  // |stop_at_devtype|. Returns true on success, or false on failure or when no
-  // matching parent device was found.
-  virtual bool FindParentWithSysattr(const std::string& syspath,
-                                     const std::string& sysattr,
-                                     const std::string& stop_at_devtype,
-                                     std::string* parent_syspath) = 0;
-
   // For the device specified by |syspath|, finds all the devlinks that
   // udev configured, and stores their paths in |out|.
   virtual bool GetDevlinks(const std::string& syspath,
@@ -128,10 +120,6 @@ class Udev : public UdevInterface, public base::MessageLoopForIO::Watcher {
   bool SetSysattr(const std::string& syspath,
                   const std::string& sysattr,
                   const std::string& value) override;
-  bool FindParentWithSysattr(const std::string& syspath,
-                             const std::string& sysattr,
-                             const std::string& stopat_devtype,
-                             std::string* parent_syspath) override;
   bool GetDevlinks(const std::string& syspath,
                    std::vector<std::string>* out) override;
 
@@ -142,12 +130,41 @@ class Udev : public UdevInterface, public base::MessageLoopForIO::Watcher {
  private:
   void HandleSubsystemEvent(UdevEvent::Action action, struct udev_device* dev);
   void HandleTaggedDevice(UdevEvent::Action action, struct udev_device* dev);
-  void TaggedDeviceChanged(const std::string& syspath, const std::string& tags);
+  void TaggedDeviceChanged(const std::string& syspath,
+                           const base::FilePath& wakeup_device_path,
+                           const std::string& tags);
   void TaggedDeviceRemoved(const std::string& syspath);
 
   // Populates |tagged_devices_| with currently-existing devices.
   bool EnumerateTaggedDevices();
 
+  // For the udev_device specified by |syspath|, finds the first parent device
+  // which has a sysattr named |sysattr|, and returns the parent's syspath.
+  // If |stop_at_devtype| is a nonempty string, then no parent devices will be
+  // considered beyond the first device matching |stop_at_devtype|. Returns
+  // syspath of the parent with the |sysattr| on success, or an empty path
+  // when no matching parent device was found.
+  base::FilePath FindParentWithSysattr(const std::string& syspath,
+                                       const std::string& sysattr,
+                                       const std::string& stop_at_devtype);
+
+  // Returns the first ancestor which is wake capable (i.e has power/wakeup
+  // property). If the passed device with sysfs path |syspath| is wake capable,
+  // returns the same.
+  // For input devices controlled by 'crosec' which are not wake capable
+  // by themselves, this function is expected to travel the hierarchy to find
+  // crosec which is wake capable.
+  // For USB devices, the input device does not have a power/wakeup property
+  // itself, but the corresponding USB device does. If the matching device does
+  // not have a power/wakeup property, we thus fall back to the first ancestor
+  // that has one. Conflicts should not arise, since real-world USB input
+  // devices typically only expose one input interface anyway. However, crawling
+  // up sysfs should only reach the first "usb_device" node, because
+  // higher-level nodes include USB hubs, and enabling wakeups on those isn't a
+  // good idea.
+  base::FilePath FindWakeCapableParent(const std::string& syspath);
+
+  bool GetDeviceInfo(struct udev_device* dev, UdevDeviceInfo* device_info_out);
   struct udev* udev_;
   struct udev_monitor* udev_monitor_;
 

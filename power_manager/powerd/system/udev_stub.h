@@ -35,7 +35,9 @@ class UdevStub : public UdevInterface {
 
   // Act as if a device was changed or removed. Notifies
   // UdevTaggedDeviceObservers and modifies the internal list of tagged devices.
-  void TaggedDeviceChanged(const std::string& syspath, const std::string& tags);
+  void TaggedDeviceChanged(const std::string& syspath,
+                           const base::FilePath& wakeup_device_path,
+                           const std::string& tags);
   void TaggedDeviceRemoved(const std::string& syspath);
 
   // Removes a |sysattr| to test the scenarios where the file is deleted.
@@ -62,10 +64,6 @@ class UdevStub : public UdevInterface {
   bool SetSysattr(const std::string& syspath,
                   const std::string& sysattr,
                   const std::string& value) override;
-  bool FindParentWithSysattr(const std::string& syspath,
-                             const std::string& sysattr,
-                             const std::string& stop_at_devtype,
-                             std::string* parent_syspath) override;
   bool GetDevlinks(const std::string& syspath,
                    std::vector<std::string>* out) override;
 

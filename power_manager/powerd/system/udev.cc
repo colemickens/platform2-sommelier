@@ -15,7 +15,6 @@
 #include "power_manager/powerd/system/tagged_device.h"
 #include "power_manager/powerd/system/udev_subsystem_observer.h"
 #include "power_manager/powerd/system/udev_tagged_device_observer.h"
-#include "power_manager/powerd/system/udev_util.h"
 
 namespace power_manager {
 namespace system {
@@ -24,6 +23,8 @@ namespace {
 
 static const char kPowerdUdevTag[] = "powerd";
 static const char kPowerdTagsVar[] = "POWERD_TAGS";
+// Udev device type for USB devices.
+static const char kUSBDevice[] = "usb_device";
 
 UdevEvent::Action StrToAction(const char* action_str) {
   if (!action_str)
@@ -40,30 +41,6 @@ UdevEvent::Action StrToAction(const char* action_str) {
     return UdevEvent::Action::OFFLINE;
   else
     return UdevEvent::Action::UNKNOWN;
-}
-
-bool GetDeviceInfo(struct udev_device* dev, UdevDeviceInfo* device_info_out) {
-  DCHECK(device_info_out);
-
-  const char* subsystem = udev_device_get_subsystem(dev);
-  if (!subsystem)
-    return false;
-
-  device_info_out->subsystem = subsystem;
-
-  const char* devtype = udev_device_get_devtype(dev);
-  if (devtype)
-    device_info_out->devtype = devtype;
-
-  const char* sysname = udev_device_get_sysname(dev);
-  if (sysname)
-    device_info_out->sysname = sysname;
-
-  const char* syspath = udev_device_get_syspath(dev);
-  if (syspath)
-    device_info_out->syspath = syspath;
-
-  return true;
 }
 
 struct UdevDeviceDeleter {
@@ -252,18 +229,18 @@ bool Udev::SetSysattr(const std::string& syspath,
   return true;
 }
 
-bool Udev::FindParentWithSysattr(const std::string& syspath,
-                                 const std::string& sysattr,
-                                 const std::string& stop_at_devtype,
-                                 std::string* parent_syspath) {
+base::FilePath Udev::FindParentWithSysattr(const std::string& syspath,
+                                           const std::string& sysattr,
+                                           const std::string& stop_at_devtype) {
   DCHECK(udev_);
 
   struct udev_device* device =
       udev_device_new_from_syspath(udev_, syspath.c_str());
   if (!device) {
     LOG(WARNING) << "Failed to open udev device: " << syspath;
-    return false;
+    return base::FilePath();
   }
+
   struct udev_device* parent = device;
   while (parent) {
     const char* value = udev_device_get_sysattr_value(parent, sysattr.c_str());
@@ -271,15 +248,51 @@ bool Udev::FindParentWithSysattr(const std::string& syspath,
     if (value)
       break;
     // Go up one level unless the devtype matches stop_at_devtype.
-    if (devtype && strcmp(stop_at_devtype.c_str(), devtype) == 0)
+    if (devtype && strcmp(stop_at_devtype.c_str(), devtype) == 0) {
       parent = nullptr;
-    else
+    } else {
+      // Returns a pointer to the parent device. No additional reference to
+      // the device is acquired, but the child device owns a reference to the
+      // parent device.
       parent = udev_device_get_parent(parent);
+    }
   }
+  base::FilePath parent_syspath;
   if (parent)
-    *parent_syspath = udev_device_get_syspath(parent);
+    parent_syspath = base::FilePath(udev_device_get_syspath(parent));
   udev_device_unref(device);
-  return parent != NULL;
+  return parent_syspath;
+}
+
+base::FilePath Udev::FindWakeCapableParent(const std::string& syspath) {
+  return FindParentWithSysattr(syspath, kPowerWakeup, kUSBDevice);
+}
+
+bool Udev::GetDeviceInfo(struct udev_device* dev,
+                         UdevDeviceInfo* device_info_out) {
+  DCHECK(device_info_out);
+
+  const char* subsystem = udev_device_get_subsystem(dev);
+  if (!subsystem)
+    return false;
+
+  device_info_out->subsystem = subsystem;
+
+  const char* devtype = udev_device_get_devtype(dev);
+  if (devtype)
+    device_info_out->devtype = devtype;
+
+  const char* sysname = udev_device_get_sysname(dev);
+  if (sysname)
+    device_info_out->sysname = sysname;
+
+  const char* syspath = udev_device_get_syspath(dev);
+  if (syspath)
+    device_info_out->syspath = syspath;
+
+  device_info_out->wakeup_device_path = FindWakeCapableParent(syspath);
+
+  return true;
 }
 
 bool Udev::GetDevlinks(const std::string& syspath,
@@ -357,7 +370,8 @@ void Udev::HandleTaggedDevice(UdevEvent::Action action,
   switch (action) {
     case UdevEvent::Action::ADD:
     case UdevEvent::Action::CHANGE:
-      TaggedDeviceChanged(syspath, tags ? tags : "");
+      TaggedDeviceChanged(syspath, FindWakeCapableParent(syspath),
+                          tags ? tags : "");
       break;
 
     case UdevEvent::Action::REMOVE:
@@ -370,6 +384,7 @@ void Udev::HandleTaggedDevice(UdevEvent::Action action,
 }
 
 void Udev::TaggedDeviceChanged(const std::string& syspath,
+                               const base::FilePath& wakeup_device_path,
                                const std::string& tags) {
   if (!tags.empty()) {
     LOG(INFO) << (tagged_devices_.count(syspath) ? "Updating" : "Adding")
@@ -377,7 +392,7 @@ void Udev::TaggedDeviceChanged(const std::string& syspath,
   }
 
   // Replace existing device with same syspath.
-  tagged_devices_[syspath] = TaggedDevice(syspath, tags);
+  tagged_devices_[syspath] = TaggedDevice(syspath, wakeup_device_path, tags);
   const TaggedDevice& device = tagged_devices_[syspath];
   for (UdevTaggedDeviceObserver& observer : tagged_device_observers_)
     observer.OnTaggedDeviceChanged(device);
@@ -426,10 +441,10 @@ bool Udev::EnumerateTaggedDevices() {
     const std::string tags = tags_cstr ? tags_cstr : "";
     if (!tags.empty())
       LOG(INFO) << "Adding device " << syspath << " with tags " << tags;
-    tagged_devices_[syspath] = TaggedDevice(syspath, tags);
+    tagged_devices_[syspath] =
+        TaggedDevice(syspath, FindWakeCapableParent(syspath), tags);
     udev_device_unref(device);
   }
-
   udev_enumerate_unref(enumerate);
   return true;
 }

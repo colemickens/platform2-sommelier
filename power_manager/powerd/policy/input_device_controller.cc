@@ -14,7 +14,6 @@
 #include "power_manager/powerd/system/ec_wakeup_helper.h"
 #include "power_manager/powerd/system/tagged_device.h"
 #include "power_manager/powerd/system/udev.h"
-#include "power_manager/powerd/system/udev_util.h"
 
 namespace power_manager {
 namespace policy {
@@ -193,9 +192,7 @@ void InputDeviceController::OnTaggedDeviceRemoved(
 
 void InputDeviceController::SetWakeupFromS3(const system::TaggedDevice& device,
                                             bool enabled) {
-  std::string parent_syspath;
-  if (!system::udev_util::FindWakeCapableParent(device.syspath(), udev_,
-                                                &parent_syspath)) {
+  if (device.wakeup_device_path().empty()) {
     // Don't warn if we didn't want to enable wakeups anyway:
     // https://crbug.com/837274
     LOG_IF(WARNING, enabled) << "No " << kPowerWakeup
@@ -203,8 +200,9 @@ void InputDeviceController::SetWakeupFromS3(const system::TaggedDevice& device,
     return;
   }
   LOG(INFO) << (enabled ? "Enabling" : "Disabling") << " wakeup for "
-            << device.syspath() << " through " << parent_syspath;
-  udev_->SetSysattr(parent_syspath, kPowerWakeup,
+            << device.syspath() << " through "
+            << device.wakeup_device_path().value();
+  udev_->SetSysattr(device.wakeup_device_path().value(), kPowerWakeup,
                     enabled ? kWakeupEnabled : kWakeupDisabled);
 }
 

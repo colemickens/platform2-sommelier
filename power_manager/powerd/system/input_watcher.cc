@@ -26,7 +26,6 @@
 #include "power_manager/powerd/system/event_device_interface.h"
 #include "power_manager/powerd/system/input_observer.h"
 #include "power_manager/powerd/system/udev.h"
-#include "power_manager/powerd/system/udev_util.h"
 #include "power_manager/powerd/system/wakeup_device_interface.h"
 
 namespace power_manager {
@@ -143,7 +142,8 @@ bool InputWatcher::Init(
     for (auto const& input_device : input_device_list) {
       int num = -1;
       if (GetInputNumber(input_device.sysname, &num)) {
-        HandleAddedInput(input_device.sysname, num, input_device.syspath,
+        HandleAddedInput(input_device.sysname, num,
+                         input_device.wakeup_device_path,
                          false /* notify_state */);
       }
     }
@@ -261,11 +261,13 @@ void InputWatcher::OnUdevEvent(const UdevEvent& event) {
   DCHECK_EQ(event.device_info.subsystem, kInputUdevSubsystem);
   int input_num = -1;
   if (GetInputNumber(event.device_info.sysname, &input_num)) {
-    if (event.action == UdevEvent::Action::ADD)
+    if (event.action == UdevEvent::Action::ADD) {
       HandleAddedInput(event.device_info.sysname, input_num,
-                       event.device_info.syspath, true /* notify_state */);
-    else if (event.action == UdevEvent::Action::REMOVE)
-      HandleRemovedInput(input_num, event.device_info.syspath);
+                       event.device_info.wakeup_device_path,
+                       true /* notify_state */);
+    } else if (event.action == UdevEvent::Action::REMOVE) {
+      HandleRemovedInput(input_num);
+    }
   }
 }
 
@@ -394,7 +396,7 @@ void InputWatcher::ProcessHoverEvent(const input_event& event) {
 
 void InputWatcher::HandleAddedInput(const std::string& input_name,
                                     int input_num,
-                                    const std::string& syspath,
+                                    const base::FilePath& wakeup_device_path,
                                     bool notify_state) {
   if (event_devices_.count(input_num) > 0) {
     LOG(WARNING) << "Input " << input_num << " already registered";
@@ -478,22 +480,22 @@ void InputWatcher::HandleAddedInput(const std::string& input_name,
             << " is not monitored for input events";
   }
 
-  // If we do not know the sysfs path of the input device, we cannot monitor the
-  // wakeup counts.
-  if (syspath.empty()) {
+  // If we do not know the wakeup path of the input device, we cannot monitor
+  //  the wakeup counts.
+  if (wakeup_device_path.empty()) {
     return;
   }
 
   // Any input device should also be a valid wake source (if wake enabled).
   if (ShouldMonitorForWakeEvents(device) &&
-      MonitorWakeupDevice(base::FilePath(syspath))) {
-    LOG(INFO) << "Monitoring input device " << input_name << " with sysfs path"
-              << syspath << " to identify the wake source";
+      MonitorWakeupDevice(input_num, wakeup_device_path)) {
+    LOG(INFO) << "Monitoring input device " << input_name
+              << " with wakeup path " << wakeup_device_path.value()
+              << " to identify the wake source";
   }
 }
 
-void InputWatcher::HandleRemovedInput(int input_num,
-                                      const std::string& syspath) {
+void InputWatcher::HandleRemovedInput(int input_num) {
   InputMap::iterator it = event_devices_.find(input_num);
   if (it != event_devices_.end()) {
     LOG(INFO) << "Stopping watching " << it->second->GetDebugName();
@@ -507,34 +509,26 @@ void InputWatcher::HandleRemovedInput(int input_num,
     event_devices_.erase(it);
   }
 
-  if (wakeup_devices_.erase(syspath))
-    LOG(INFO) << "Stopping monitoring of " << syspath << " for wake events";
+  if (wakeup_devices_.erase(input_num)) {
+    LOG(INFO) << "Stopping monitoring input " << input_num
+              << " for wake events";
+  }
 }
 
-bool InputWatcher::MonitorWakeupDevice(const base::FilePath& sysfs_path) {
-  std::string parent_syspath;
-
-  if (!udev_util::FindWakeCapableParent(sysfs_path.value(), udev_,
-                                        &parent_syspath)) {
-    VLOG(1) << "No parent with " << kPowerWakeup
-            << " sysattr found for input device " << sysfs_path.value()
-            << ". Not considered as a wake source";
-    return false;
-  }
-
-  if (wakeup_devices_.count(parent_syspath))
+bool InputWatcher::MonitorWakeupDevice(
+    int input_num, const base::FilePath& wakeup_device_path) {
+  if (wakeup_devices_.count(input_num))
     return true;
 
-  VLOG(1) << "Creating wakeup device for " << parent_syspath;
+  VLOG(1) << "Creating wakeup device for " << wakeup_device_path.value();
   std::unique_ptr<WakeupDeviceInterface> wakeup_device =
-      wakeup_device_factory_->CreateWakeupDevice(
-          base::FilePath(parent_syspath));
+      wakeup_device_factory_->CreateWakeupDevice(wakeup_device_path);
   if (!wakeup_device) {
-    LOG(ERROR) << "Creating wakeup device for " << parent_syspath << " failed";
+    LOG(ERROR) << "Creating wakeup device for " << wakeup_device_path.value()
+               << " failed";
     return false;
   }
-  wakeup_devices_.insert(
-      std::make_pair(parent_syspath, std::move(wakeup_device)));
+  wakeup_devices_.insert(std::make_pair(input_num, std::move(wakeup_device)));
   return true;
 }
 

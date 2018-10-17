@@ -109,7 +109,6 @@ static_library("libsystem") {
     "powerd/system/sar_watcher.cc",
     "powerd/system/tagged_device.cc",
     "powerd/system/udev.cc",
-    "powerd/system/udev_util.cc",
     "powerd/system/wakeup_device.cc",
   ]
   libs = [ "-lrt" ]
