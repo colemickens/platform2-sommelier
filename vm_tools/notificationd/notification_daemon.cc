@@ -95,20 +95,32 @@ bool NotificationDaemon::Notify(const NotifyArgument& input, uint32_t* out_id) {
       button_titles.emplace_back(std::move(button_title));
     }
   }
+
+  // If replaces_id is given, check if the notification id exists and use it as
+  // a notification id. Else, use an incremental id as a notification id.
+  if (input.replaces_id != 0) {
+    *out_id = input.replaces_id;
+    if (click_actions.find(*out_id) == click_actions.end()) {
+      LOG(ERROR) << "No such notification id exists";
+      return false;
+    }
+  } else {
+    *out_id = id_count_;
+    id_count_++;
+  }
+
   // The |click_action| is needed to convert notification shell-style button and
   // body click event to org.freedesktop.Notifications-style action event. So,
   // store it with its notification id.
-  click_actions.emplace(id_count_, click_action);
+  click_actions.emplace(*out_id, click_action);
 
   // Forward notification request to host via Wayland.
   if (!notification_shell_client_->CreateNotification(
-          input.summary, input.body, input.app_name, std::to_string(id_count_),
+          input.summary, input.body, input.app_name, std::to_string(*out_id),
           button_titles)) {
     LOG(ERROR) << "Failed to request create_notification to host";
     return false;
   }
-  *out_id = id_count_;
-  id_count_++;
   return true;
 }
 
