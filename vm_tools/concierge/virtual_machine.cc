@@ -541,6 +541,30 @@ bool VirtualMachine::SetResolvConfig(
   return true;
 }
 
+grpc::Status VirtualMachine::SetTime() {
+  base::Time now = base::Time::Now();
+  struct timeval current = now.ToTimeVal();
+
+  vm_tools::SetTimeRequest request;
+  vm_tools::EmptyMessage response;
+
+  google::protobuf::Timestamp* timestamp = request.mutable_time();
+  timestamp->set_seconds(current.tv_sec);
+  timestamp->set_nanos(current.tv_usec * 1000);
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+
+  grpc::Status status = stub_->SetTime(&ctx, request, &response);
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to set guest time on VM " << vsock_cid_ << ":"
+               << status.error_message();
+  }
+  return status;
+}
+
 void VirtualMachine::SetContainerSubnet(std::unique_ptr<Subnet> subnet) {
   container_subnet_ = std::move(subnet);
 }

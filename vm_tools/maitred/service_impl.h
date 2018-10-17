@@ -58,6 +58,10 @@ class ServiceImpl final : public vm_tools::Maitred::Service {
                                const vm_tools::SetResolvConfigRequest* request,
                                vm_tools::EmptyMessage* response) override;
 
+  grpc::Status SetTime(grpc::ServerContext* ctx,
+                       const vm_tools::SetTimeRequest* request,
+                       vm_tools::EmptyMessage* response) override;
+
  private:
   std::unique_ptr<vm_tools::maitred::Init> init_;
 

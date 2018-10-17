@@ -78,5 +78,37 @@ TEST_F(ServiceTest, ConfigureNetwork_InvalidInput) {
   EXPECT_EQ(invalid.error_code(), result.error_code());
 }
 
+TEST_F(ServiceTest, SetTime_Zero) {
+  grpc::ServerContext ctx;
+  vm_tools::SetTimeRequest request;
+  google::protobuf::Timestamp* time = request.mutable_time();
+  // Clearly-invalid (near-epoch) past time.
+  time->set_seconds(0x0);
+  time->set_nanos(0x0deadbee);
+
+  grpc::Status result = service_impl_.SetTime(&ctx, &request,
+                                              /*response=*/nullptr);
+
+  EXPECT_EQ(result.error_code(), grpc::INVALID_ARGUMENT);
+}
+
+TEST_F(ServiceTest, SetTime_GoodTime) {
+  struct timeval current;
+  ASSERT_EQ(gettimeofday(&current, nullptr), 0);
+
+  grpc::ServerContext ctx;
+  vm_tools::SetTimeRequest request;
+  google::protobuf::Timestamp* time = request.mutable_time();
+
+  time->set_seconds(current.tv_sec + 20);
+  time->set_nanos(current.tv_usec * 1000);
+
+  grpc::Status result = service_impl_.SetTime(&ctx, &request,
+                                              /*response=*/nullptr);
+
+  // Can't set time in gtest env.
+  EXPECT_EQ(result.error_code(), grpc::INTERNAL);
+}
+
 }  // namespace maitred
 }  // namespace vm_tools

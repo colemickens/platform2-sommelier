@@ -143,6 +143,9 @@ class VirtualMachine {
   bool SetResolvConfig(const std::vector<std::string>& nameservers,
                        const std::vector<std::string>& search_domains);
 
+  // Set the guest time to the current time as given by gettimeofday.
+  grpc::Status SetTime();
+
   // Sets the container subnet for this VM to |subnet|. This subnet is intended
   // to be provided to a container runtime as a DHCP pool.
   void SetContainerSubnet(std::unique_ptr<Subnet> subnet);

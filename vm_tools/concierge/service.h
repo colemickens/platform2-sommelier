@@ -83,6 +83,9 @@ class Service final : public base::MessageLoopForIO::Watcher {
   // Handles a request to get VM info.
   std::unique_ptr<dbus::Response> GetVmInfo(dbus::MethodCall* method_call);
 
+  // Handles a request to update all VMs' times to the current host time.
+  std::unique_ptr<dbus::Response> SyncVmTimes(dbus::MethodCall* method_call);
+
   // Handles a request to create a disk image.
   std::unique_ptr<dbus::Response> CreateDiskImage(
       dbus::MethodCall* method_call);

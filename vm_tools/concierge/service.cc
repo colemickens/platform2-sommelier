@@ -425,6 +425,7 @@ bool Service::Init() {
       {kListVmDisksMethod, &Service::ListVmDisks},
       {kStartContainerMethod, &Service::StartContainer},
       {kGetContainerSshKeysMethod, &Service::GetContainerSshKeys},
+      {kSyncVmTimesMethod, &Service::SyncVmTimes},
   };
 
   for (const auto& iter : kServiceMethods) {
@@ -973,6 +974,36 @@ std::unique_ptr<dbus::Response> Service::GetVmInfo(
   vm_info->set_seneschal_server_handle(vm->seneschal_server_handle());
 
   response.set_success(true);
+  writer.AppendProtoAsArrayOfBytes(response);
+
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::SyncVmTimes(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received SyncVmTimes request";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageWriter writer(dbus_response.get());
+
+  SyncVmTimesResponse response;
+
+  int failures = 0;
+  int requests = 0;
+  for (const auto& iter : vms_) {
+    requests++;
+    grpc::Status s = iter.second->SetTime();
+    if (!s.ok()) {
+      failures++;
+      string* tmp = response.add_failure_reason();
+      *tmp = s.error_message();
+    }
+  }
+  response.set_requests(requests);
+  response.set_failures(failures);
   writer.AppendProtoAsArrayOfBytes(response);
 
   return dbus_response;

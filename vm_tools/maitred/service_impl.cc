@@ -17,6 +17,7 @@
 #include <sys/mount.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -551,6 +552,35 @@ grpc::Status ServiceImpl::SetResolvConfig(grpc::ServerContext* ctx,
     return grpc::Status(grpc::INTERNAL, error);
   }
 
+  return grpc::Status::OK;
+}
+
+grpc::Status ServiceImpl::SetTime(grpc::ServerContext* ctx,
+                                  const vm_tools::SetTimeRequest* request,
+                                  EmptyMessage* response) {
+  struct timeval new_time;
+  new_time.tv_sec = request->time().seconds();
+  new_time.tv_usec = request->time().nanos() / 1000;
+
+  LOG(INFO) << "Recieved request to set time to " << new_time.tv_sec << "s, "
+            << new_time.tv_usec << "us";
+
+  if (new_time.tv_sec == 0) {
+    LOG(ERROR) << "Ignored attempt to set time to the epoch";
+
+    return grpc::Status(grpc::INVALID_ARGUMENT,
+                        "ignored attempt to set time to the epoch");
+  }
+
+  if (settimeofday(&new_time, /*tz=*/nullptr) < 0) {
+    string error = strerror(errno);
+    LOG(ERROR) << "Failed to set time: " << error;
+    return grpc::Status(
+        grpc::INTERNAL,
+        base::StringPrintf("failed to set time: %s", error.c_str()));
+  }
+
+  LOG(INFO) << "Successfully set time.";
   return grpc::Status::OK;
 }
 

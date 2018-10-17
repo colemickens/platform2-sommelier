@@ -174,6 +174,9 @@ class FakeMaitredService final : public vm_tools::Maitred::Service {
   grpc::Status Shutdown(grpc::ServerContext* ctx,
                         const vm_tools::EmptyMessage* request,
                         vm_tools::EmptyMessage* response) override;
+  grpc::Status SetTime(grpc::ServerContext* ctx,
+                       const vm_tools::SetTimeRequest* request,
+                       vm_tools::EmptyMessage* response) override;
 
  private:
   // Populated the first time this class receives a LaunchProcess RPC.
@@ -309,6 +312,13 @@ grpc::Status FakeMaitredService::Shutdown(grpc::ServerContext* ctx,
   return grpc::Status::OK;
 }
 
+grpc::Status FakeMaitredService::SetTime(
+    grpc::ServerContext* ctx,
+    const vm_tools::SetTimeRequest* request,
+    vm_tools::EmptyMessage* response) {
+  return grpc::Status::OK;
+}
+
 // Runs on the grpc thread and starts the grpc server.
 void StartFakeMaitredService(
     VirtualMachineTest* vm_test,
@@ -402,6 +412,13 @@ void VirtualMachineTest::TestFailed(string reason) {
 
 TEST_F(VirtualMachineTest, ConfigureNetwork) {
   ASSERT_TRUE(vm_->ConfigureNetwork({"8.8.8.8"}, {}));
+
+  EXPECT_FALSE(failed_) << "Failure reason: " << failure_reason_;
+}
+
+TEST_F(VirtualMachineTest, SetTime) {
+  grpc::Status s = vm_->SetTime();
+  EXPECT_TRUE(s.ok()) << s.error_message();
 
   EXPECT_FALSE(failed_) << "Failure reason: " << failure_reason_;
 }

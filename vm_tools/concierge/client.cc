@@ -842,6 +842,37 @@ int StartContainer(dbus::ObjectProxy* proxy,
   return ret;
 }
 
+int SyncVmTimes(dbus::ObjectProxy* proxy) {
+  LOG(INFO) << "Setting VM times";
+
+  dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
+                               vm_tools::concierge::kSyncVmTimesMethod);
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to concierge service";
+    return -1;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  vm_tools::concierge::SyncVmTimesResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse response protobuf";
+    return -1;
+  }
+  LOG(INFO) << "Sent " << response.requests() << " set time requests with "
+            << response.failures() << " failures.";
+  if (response.failure_reason_size() != 0) {
+    LOG(INFO) << "Failure info: ";
+    for (const string& msg : response.failure_reason()) {
+      LOG(INFO) << msg;
+    }
+  }
+  // 0 if all succeeded else -(# of failures).
+  return -response.failures();
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -864,6 +895,7 @@ int main(int argc, char** argv) {
   DEFINE_bool(launch_application, false,
               "Launches an application in a container");
   DEFINE_bool(get_icon, false, "Get an app icon from a container within a VM");
+  DEFINE_bool(sync_time, false, "Update VM times");
 
   // Parameters.
   DEFINE_string(kernel, "", "Path to the VM kernel");
@@ -913,12 +945,12 @@ int main(int argc, char** argv) {
   if (FLAGS_start + FLAGS_stop + FLAGS_stop_all + FLAGS_get_vm_info +
       FLAGS_create_disk + FLAGS_create_external_disk + FLAGS_start_termina_vm +
       FLAGS_destroy_disk + FLAGS_export_disk + FLAGS_list_disks +
-      FLAGS_start_container != 1) {
+      FLAGS_start_container + FLAGS_sync_time != 1) {
     // clang-format on
     LOG(ERROR) << "Exactly one of --start, --stop, --stop_all, --get_vm_info, "
                << "--create_disk, --create_external_disk --destroy_disk, "
-               << "--export_disk --list_disks, --start_termina_vm, or "
-               << "--start_container "
+               << "--export_disk --list_disks, --start_termina_vm, "
+               << "--start_container, or --sync_time "
                << "must be provided";
     return -1;
   }
@@ -963,6 +995,8 @@ int main(int argc, char** argv) {
     return StartContainer(proxy, std::move(FLAGS_name),
                           std::move(FLAGS_container_name),
                           std::move(FLAGS_cryptohome_id));
+  } else if (FLAGS_sync_time) {
+    return SyncVmTimes(proxy);
   }
 
   // Unreachable.
