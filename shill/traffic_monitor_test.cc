@@ -77,7 +77,7 @@ class TrafficMonitorTest : public Test {
 
     device_->set_ipconfig(ipconfig_);
     ipconfig_properties_.address = kLocalIpAddr;
-    EXPECT_CALL(*ipconfig_.get(), properties())
+    EXPECT_CALL(*ipconfig_, properties())
         .WillRepeatedly(ReturnRef(ipconfig_properties_));
   }
 

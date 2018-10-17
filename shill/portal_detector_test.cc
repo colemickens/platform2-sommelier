@@ -70,14 +70,13 @@ class PortalDetectorTest : public Test {
   }
 
   void SetUp() override {
-    EXPECT_CALL(*connection_.get(), IsIPv6())
-        .WillRepeatedly(Return(false));
-    EXPECT_CALL(*connection_.get(), interface_name())
+    EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
+    EXPECT_CALL(*connection_, interface_name())
         .WillRepeatedly(ReturnRef(interface_name_));
     portal_detector_->time_ = &time_;
     EXPECT_CALL(time_, GetTimeMonotonic(_))
         .WillRepeatedly(Invoke(this, &PortalDetectorTest::GetTimeMonotonic));
-    EXPECT_CALL(*connection_.get(), dns_servers())
+    EXPECT_CALL(*connection_, dns_servers())
         .WillRepeatedly(ReturnRef(dns_servers_));
     portal_detector_->connectivity_trial_
         .reset(connectivity_trial_);  // Passes ownership

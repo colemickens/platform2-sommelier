@@ -54,7 +54,7 @@ size_t NetlinkPacket::GetRemainingLength() const {
 
 const ByteString& NetlinkPacket::GetPayload() const {
   CHECK(IsValid());
-  return *payload_.get();
+  return *payload_;
 }
 
 bool NetlinkPacket::ConsumeAttributes(

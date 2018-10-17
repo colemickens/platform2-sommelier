@@ -233,7 +233,7 @@ TEST_F(DHCPConfigCallbackTest, StoppedDuringSuccessCallback) {
 
 TEST_F(DHCPConfigCallbackTest, ProcessAcquisitionTimeout) {
   // Do not fail on acquisition timeout (e.g. ARP gateway is active).
-  EXPECT_CALL(*config_.get(), ShouldFailOnAcquisitionTimeout())
+  EXPECT_CALL(*config_, ShouldFailOnAcquisitionTimeout())
       .WillOnce(Return(false));
   EXPECT_CALL(*this, FailureCallback(_)).Times(0);
   config_->ProcessAcquisitionTimeout();
@@ -241,7 +241,7 @@ TEST_F(DHCPConfigCallbackTest, ProcessAcquisitionTimeout) {
   Mock::VerifyAndClearExpectations(config_.get());
 
   // Fail on acquisition timeout.
-  EXPECT_CALL(*config_.get(), ShouldFailOnAcquisitionTimeout())
+  EXPECT_CALL(*config_, ShouldFailOnAcquisitionTimeout())
       .WillOnce(Return(true));
   EXPECT_CALL(*this, FailureCallback(_)).Times(1);
   config_->ProcessAcquisitionTimeout();
@@ -261,8 +261,7 @@ TEST_F(DHCPConfigTest, KeepLeaseOnDisconnect) {
   config_->pid_ = 1 << 18;  // Ensure unknown positive PID.
 
   // Keep lease on disconnect (e.g. ARP gateway is enabled).
-  EXPECT_CALL(*config_.get(), ShouldKeepLeaseOnDisconnect())
-      .WillOnce(Return(true));
+  EXPECT_CALL(*config_, ShouldKeepLeaseOnDisconnect()).WillOnce(Return(true));
   EXPECT_CALL(*proxy_, Release(kDeviceName)).Times(0);
   config_->proxy_ = std::move(proxy_);
   EXPECT_TRUE(config_->ReleaseIP(IPConfig::kReleaseReasonDisconnect));
@@ -273,8 +272,7 @@ TEST_F(DHCPConfigTest, ReleaseLeaseOnDisconnect) {
   config_->pid_ = 1 << 18;  // Ensure unknown positive PID.
 
   // Release lease on disconnect.
-  EXPECT_CALL(*config_.get(), ShouldKeepLeaseOnDisconnect())
-      .WillOnce(Return(false));
+  EXPECT_CALL(*config_, ShouldKeepLeaseOnDisconnect()).WillOnce(Return(false));
   EXPECT_CALL(*proxy_, Release(kDeviceName)).Times(1);
   config_->proxy_ = std::move(proxy_);
   EXPECT_TRUE(config_->ReleaseIP(IPConfig::kReleaseReasonDisconnect));
@@ -334,7 +332,7 @@ TEST_F(DHCPConfigTest, RequestIP) {
 }
 
 TEST_F(DHCPConfigCallbackTest, RequestIPTimeout) {
-  EXPECT_CALL(*config_.get(), ShouldFailOnAcquisitionTimeout())
+  EXPECT_CALL(*config_, ShouldFailOnAcquisitionTimeout())
       .WillOnce(Return(true));
   EXPECT_CALL(*this, SuccessCallback(_, _)).Times(0);
   EXPECT_CALL(*this, FailureCallback(ConfigRef()));
@@ -376,7 +374,7 @@ TEST_F(DHCPConfigTest, RestartNoClient) {
 }
 
 TEST_F(DHCPConfigCallbackTest, StartTimeout) {
-  EXPECT_CALL(*config_.get(), ShouldFailOnAcquisitionTimeout())
+  EXPECT_CALL(*config_, ShouldFailOnAcquisitionTimeout())
       .WillOnce(Return(true));
   EXPECT_CALL(*this, SuccessCallback(_, _)).Times(0);
   EXPECT_CALL(*this, FailureCallback(ConfigRef()));

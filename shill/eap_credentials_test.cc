@@ -117,7 +117,7 @@ class EapCredentialsTest : public testing::Test {
     auto password = password_provider::test::CreatePassword(password_str);
     ASSERT_TRUE(password);
 
-    eap_.password_provider_->SavePassword(*password.get());
+    eap_.password_provider_->SavePassword(*password);
   }
 
   EapCredentials eap_;

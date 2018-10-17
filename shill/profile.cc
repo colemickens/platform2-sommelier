@@ -207,7 +207,7 @@ bool Profile::ConfigureDevice(const DeviceRefPtr& device) {
 }
 
 bool Profile::ContainsService(const ServiceConstRefPtr& service) {
-  return service->IsLoadableFrom(*storage_.get());
+  return service->IsLoadableFrom(*storage_);
 }
 
 void Profile::DeleteEntry(const std::string& entry_name, Error* error) {

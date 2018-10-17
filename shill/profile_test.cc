@@ -102,7 +102,7 @@ TEST_F(ProfileTest, DeleteEntry) {
   // DeleteGroup() itself.
   EXPECT_CALL(*storage, ContainsGroup(kEntryName))
       .WillOnce(Return(true));
-  EXPECT_CALL(*manager.get(), HandleProfileEntryDeletion(_, kEntryName))
+  EXPECT_CALL(*manager, HandleProfileEntryDeletion(_, kEntryName))
       .WillOnce(Return(false));
   EXPECT_CALL(*storage, DeleteGroup(kEntryName))
       .WillOnce(Return(true));
@@ -120,7 +120,7 @@ TEST_F(ProfileTest, DeleteEntry) {
   // DeleteGroup() itself.
   EXPECT_CALL(*storage, ContainsGroup(kEntryName))
       .WillOnce(Return(true));
-  EXPECT_CALL(*manager.get(), HandleProfileEntryDeletion(_, kEntryName))
+  EXPECT_CALL(*manager, HandleProfileEntryDeletion(_, kEntryName))
       .WillOnce(Return(true));
   EXPECT_CALL(*storage, DeleteGroup(kEntryName))
       .Times(0);
@@ -223,9 +223,9 @@ TEST_F(ProfileTest, ServiceManagement) {
   scoped_refptr<MockService> service1(CreateMockService());
   scoped_refptr<MockService> service2(CreateMockService());
 
-  EXPECT_CALL(*service1.get(), Save(_))
+  EXPECT_CALL(*service1, Save(_))
       .WillRepeatedly(Invoke(service1.get(), &MockService::FauxSave));
-  EXPECT_CALL(*service2.get(), Save(_))
+  EXPECT_CALL(*service2, Save(_))
       .WillRepeatedly(Invoke(service2.get(), &MockService::FauxSave));
 
   ASSERT_TRUE(profile_->AdoptService(service1));
@@ -281,8 +281,8 @@ TEST_F(ProfileTest, ServiceConfigure) {
 TEST_F(ProfileTest, Save) {
   scoped_refptr<MockService> service1(CreateMockService());
   scoped_refptr<MockService> service2(CreateMockService());
-  EXPECT_CALL(*service1.get(), Save(_)).WillOnce(Return(true));
-  EXPECT_CALL(*service2.get(), Save(_)).WillOnce(Return(true));
+  EXPECT_CALL(*service1, Save(_)).WillOnce(Return(true));
+  EXPECT_CALL(*service2, Save(_)).WillOnce(Return(true));
 
   ASSERT_TRUE(profile_->AdoptService(service1));
   ASSERT_TRUE(profile_->AdoptService(service2));
@@ -297,13 +297,13 @@ TEST_F(ProfileTest, EntryEnumeration) {
       Technology::kCellular) + "_1";
   string service2_storage_name = Technology::NameFromIdentifier(
       Technology::kCellular) + "_2";
-  EXPECT_CALL(*service1.get(), Save(_))
+  EXPECT_CALL(*service1, Save(_))
       .WillRepeatedly(Invoke(service1.get(), &MockService::FauxSave));
-  EXPECT_CALL(*service2.get(), Save(_))
+  EXPECT_CALL(*service2, Save(_))
       .WillRepeatedly(Invoke(service2.get(), &MockService::FauxSave));
-  EXPECT_CALL(*service1.get(), GetStorageIdentifier())
+  EXPECT_CALL(*service1, GetStorageIdentifier())
       .WillRepeatedly(Return(service1_storage_name));
-  EXPECT_CALL(*service2.get(), GetStorageIdentifier())
+  EXPECT_CALL(*service2, GetStorageIdentifier())
       .WillRepeatedly(Return(service2_storage_name));
 
   string service1_name(service1->unique_name());
@@ -494,7 +494,7 @@ TEST_F(ProfileTest, GetServiceFromEntry) {
   // Service entry already registered with the manager, the registered service
   // is returned.
   scoped_refptr<MockService> registered_service(CreateMockService());
-  EXPECT_CALL(*manager.get(),
+  EXPECT_CALL(*manager,
               GetServiceWithStorageIdentifier(profile_, kEntryName, _))
       .WillOnce(Return(registered_service));
   {
@@ -508,10 +508,10 @@ TEST_F(ProfileTest, GetServiceFromEntry) {
   // Service entry not registered with the manager, a temporary service is
   // created/returned.
   scoped_refptr<MockService> temporary_service(CreateMockService());
-  EXPECT_CALL(*manager.get(),
+  EXPECT_CALL(*manager,
               GetServiceWithStorageIdentifier(profile_, kEntryName, _))
       .WillOnce(Return(nullptr));
-  EXPECT_CALL(*manager.get(),
+  EXPECT_CALL(*manager,
               CreateTemporaryServiceFromProfile(profile_, kEntryName, _))
       .WillOnce(Return(temporary_service));
   {

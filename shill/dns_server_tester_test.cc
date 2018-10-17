@@ -51,8 +51,8 @@ class DnsServerTesterTest : public Test {
         dns_servers_(kDnsServers, kDnsServers + 2) {}
 
   void SetUp() override {
-    EXPECT_CALL(*connection_.get(), interface_name())
-          .WillRepeatedly(ReturnRef(interface_name_));
+    EXPECT_CALL(*connection_, interface_name())
+        .WillRepeatedly(ReturnRef(interface_name_));
     dns_server_tester_.reset(
         new DnsServerTester(connection_.get(),
                             &dispatcher_,

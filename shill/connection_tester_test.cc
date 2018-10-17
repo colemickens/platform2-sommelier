@@ -44,8 +44,7 @@ class ConnectionTesterTest : public Test {
             connection_, ConnectionTester::kTrialTimeoutSeconds)) {}
 
   void SetUp() override {
-    EXPECT_CALL(*connection_.get(), IsIPv6())
-        .WillRepeatedly(Return(false));
+    EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
     connection_tester_->connectivity_trial_
         .reset(connectivity_trial_);  // Passes ownership
     EXPECT_TRUE(connection_tester()->connectivity_trial_.get());

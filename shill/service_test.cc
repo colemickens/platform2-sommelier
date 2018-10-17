@@ -531,8 +531,7 @@ TEST_F(ServiceTest, LoadAutoConnect) {
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
   auto dhcp_props = std::make_unique<MockDhcpProperties>();
-  EXPECT_CALL(*dhcp_props.get(), Load(&storage, storage_id_))
-      .Times(AnyNumber());
+  EXPECT_CALL(*dhcp_props, Load(&storage, storage_id_)).Times(AnyNumber());
   service_->dhcp_properties_ = std::move(dhcp_props);
 
   // Three of each expectation so we can test Favorite == unset, false, true.
@@ -658,7 +657,7 @@ TEST_F(ServiceTest, Save) {
   EXPECT_CALL(*eap_, Save(&storage, storage_id_, true));
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   auto dhcp_props = std::make_unique<MockDhcpProperties>();
-  EXPECT_CALL(*dhcp_props.get(), Save(&storage, storage_id_));
+  EXPECT_CALL(*dhcp_props, Save(&storage, storage_id_));
   service_->dhcp_properties_ = std::move(dhcp_props);
   EXPECT_TRUE(service_->Save(&storage));
 }
@@ -2189,22 +2188,22 @@ TEST_F(ServiceTest, Compare) {
   EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
 
   // Technology.
-  EXPECT_CALL(*service2.get(), technology())
+  EXPECT_CALL(*service2, technology())
       .WillRepeatedly(Return(Technology::kEthernet));
-  EXPECT_CALL(*service10.get(), technology())
+  EXPECT_CALL(*service10, technology())
       .WillRepeatedly(Return((Technology::kWifi)));
 
   technology_order_for_sorting_ = {Technology::kEthernet, Technology::kWifi};
   EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
 
   // Test is-dependent-on.
-  EXPECT_CALL(*service10.get(), IsDependentOn(IsRefPtrTo(service2.get())))
+  EXPECT_CALL(*service10, IsDependentOn(IsRefPtrTo(service2.get())))
       .WillOnce(Return(true));
   EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
 
   // It doesn't make sense to have is-dependent-on ranking comparison in any of
   // the remaining subtests below.  Reset to the default.
-  EXPECT_CALL(*service10.get(), IsDependentOn(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(*service10, IsDependentOn(_)).WillRepeatedly(Return(false));
   EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
 
   // Connectable.
@@ -2213,42 +2212,34 @@ TEST_F(ServiceTest, Compare) {
   EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
 
   // IsFailed.
-  EXPECT_CALL(*service2.get(), state())
-      .WillRepeatedly(Return(Service::kStateIdle));
-  EXPECT_CALL(*service2.get(), IsFailed())
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*service10.get(), state())
+  EXPECT_CALL(*service2, state()).WillRepeatedly(Return(Service::kStateIdle));
+  EXPECT_CALL(*service2, IsFailed()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*service10, state())
       .WillRepeatedly(Return(Service::kStateFailure));
-  EXPECT_CALL(*service10.get(), IsFailed())
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service10, IsFailed()).WillRepeatedly(Return(true));
   EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
 
   // Connecting.
-  EXPECT_CALL(*service10.get(), state())
+  EXPECT_CALL(*service10, state())
       .WillRepeatedly(Return(Service::kStateAssociating));
-  EXPECT_CALL(*service10.get(), IsConnecting())
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service10, IsConnecting()).WillRepeatedly(Return(true));
   EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
 
   // Connected-but-portalled preferred over unconnected.
-  EXPECT_CALL(*service2.get(), state())
-      .WillRepeatedly(Return(Service::kStatePortal));
-  EXPECT_CALL(*service2.get(), IsConnected())
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service2, state()).WillRepeatedly(Return(Service::kStatePortal));
+  EXPECT_CALL(*service2, IsConnected()).WillRepeatedly(Return(true));
   EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
 
   // Connected preferred over connected-but-portalled.
   service10->SetConnectable(false);
   service2->SetConnectable(true);
-  EXPECT_CALL(*service10.get(), state())
+  EXPECT_CALL(*service10, state())
       .WillRepeatedly(Return(Service::kStateConnected));
-  EXPECT_CALL(*service10.get(), IsConnected())
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service10, IsConnected()).WillRepeatedly(Return(true));
   EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
 
   // Online preferred over just connected.
-  EXPECT_CALL(*service2.get(), state())
-      .WillRepeatedly(Return(Service::kStateOnline));
+  EXPECT_CALL(*service2, state()).WillRepeatedly(Return(Service::kStateOnline));
   EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
 
   // Connectivity state ignored if this is specified.

@@ -168,14 +168,12 @@ class ConnectionDiagnosticsTest : public Test {
         portal_detector_);  // Passes ownership
     connection_diagnostics_.routing_table_ = &routing_table_;
     connection_diagnostics_.rtnl_handler_ = &rtnl_handler_;
-    ON_CALL(*connection_.get(), interface_name())
+    ON_CALL(*connection_, interface_name())
         .WillByDefault(ReturnRef(interface_name_));
-    ON_CALL(*connection_.get(), dns_servers())
-        .WillByDefault(ReturnRef(dns_servers_));
-    ON_CALL(*connection_.get(), gateway())
+    ON_CALL(*connection_, dns_servers()).WillByDefault(ReturnRef(dns_servers_));
+    ON_CALL(*connection_, gateway())
         .WillByDefault(ReturnRef(gateway_ipv4_address_));
-    ON_CALL(*connection_.get(), local())
-        .WillByDefault(ReturnRef(local_ip_address_));
+    ON_CALL(*connection_, local()).WillByDefault(ReturnRef(local_ip_address_));
     connection_diagnostics_.dns_client_factory_ =
         MockDnsClientFactory::GetInstance();
     connection_diagnostics_.icmp_session_factory_ =
@@ -210,7 +208,7 @@ class ConnectionDiagnosticsTest : public Test {
   }
 
   void UseIPv6Gateway() {
-    EXPECT_CALL(*connection_.get(), gateway())
+    EXPECT_CALL(*connection_, gateway())
         .WillRepeatedly(ReturnRef(gateway_ipv6_address_));
   }
 
@@ -365,7 +363,7 @@ class ConnectionDiagnosticsTest : public Test {
     EXPECT_CALL(*dns_client,
                 Start(connection_diagnostics_.target_url_->host(), _))
         .WillOnce(Return(true));
-    EXPECT_CALL(*connection_.get(), IsIPv6())
+    EXPECT_CALL(*connection_, IsIPv6())
         .WillOnce(Return(family == IPAddress::kFamilyIPv6));
     EXPECT_CALL(
         *MockDnsClientFactory::GetInstance(),
@@ -646,7 +644,7 @@ class ConnectionDiagnosticsTest : public Test {
         expected_issue == ConnectionDiagnostics::kIssueDNSServersInvalid) {
       // If the DNS server addresses are invalid, we will not even attempt to
       // start any ICMP sessions.
-      EXPECT_CALL(*connection_.get(), dns_servers())
+      EXPECT_CALL(*connection_, dns_servers())
           .WillRepeatedly(ReturnRef(bad_dns_servers));
     } else {
       // We are either instrumenting the success case (started pinging all

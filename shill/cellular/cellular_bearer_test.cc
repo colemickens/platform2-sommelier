@@ -144,13 +144,12 @@ TEST_F(CellularBearerTest, Constructor) {
 
 TEST_F(CellularBearerTest, Init) {
   auto properties_proxy = std::make_unique<MockDBusPropertiesProxy>();
-  EXPECT_CALL(*properties_proxy.get(), set_properties_changed_callback(_))
-      .Times(1);
-  EXPECT_CALL(*properties_proxy.get(), GetAll(MM_DBUS_INTERFACE_BEARER))
+  EXPECT_CALL(*properties_proxy, set_properties_changed_callback(_)).Times(1);
+  EXPECT_CALL(*properties_proxy, GetAll(MM_DBUS_INTERFACE_BEARER))
       .WillOnce(Return(ConstructBearerProperties(true, kDataInterface,
                                                  MM_BEARER_IP_METHOD_STATIC,
                                                  MM_BEARER_IP_METHOD_STATIC)));
-  EXPECT_CALL(*control_.get(),
+  EXPECT_CALL(*control_,
               CreateDBusPropertiesProxy(kBearerDBusPath, kBearerDBusService))
       .WillOnce(Return(ByMove(std::move(properties_proxy))));
 
@@ -162,7 +161,7 @@ TEST_F(CellularBearerTest, Init) {
 }
 
 TEST_F(CellularBearerTest, InitAndCreateDBusPropertiesProxyFails) {
-  EXPECT_CALL(*control_.get(),
+  EXPECT_CALL(*control_,
               CreateDBusPropertiesProxy(kBearerDBusPath, kBearerDBusService))
       .WillOnce(ReturnNull());
   bearer_.Init();

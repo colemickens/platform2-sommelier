@@ -103,7 +103,7 @@ class AsyncConnectionTest : public Test {
   void OnConnectCompletion(int fd) {
     async_connection_->OnConnectCompletion(fd);
   }
-  AsyncConnection& async_connection() { return *async_connection_.get(); }
+  AsyncConnection& async_connection() { return *async_connection_; }
   StrictMock<MockSockets>& sockets() { return sockets_; }
   MockEventDispatcher& dispatcher() { return dispatcher_; }
   const IPAddress& ipv4_address() { return ipv4_address_; }

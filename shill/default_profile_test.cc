@@ -77,8 +77,7 @@ TEST_F(DefaultProfileTest, GetProperties) {
   // GetGroups() on the StoreInterface.
   auto storage = std::make_unique<MockStore>();
   set<string> empty_group_set;
-  EXPECT_CALL(*storage.get(), GetGroups())
-      .WillRepeatedly(Return(empty_group_set));
+  EXPECT_CALL(*storage, GetGroups()).WillRepeatedly(Return(empty_group_set));
   profile_->SetStorageForTest(std::move(storage));
 
   Error error(Error::kInvalidProperty, "");
@@ -111,57 +110,48 @@ TEST_F(DefaultProfileTest, GetProperties) {
 
 TEST_F(DefaultProfileTest, Save) {
   auto storage = std::make_unique<MockStore>();
-  EXPECT_CALL(*storage.get(), SetBool(DefaultProfile::kStorageId,
-                                      DefaultProfile::kStorageArpGateway,
-                                      true))
+  EXPECT_CALL(*storage, SetBool(DefaultProfile::kStorageId,
+                                DefaultProfile::kStorageArpGateway, true))
       .WillOnce(Return(true));
-  EXPECT_CALL(*storage.get(), SetString(DefaultProfile::kStorageId,
-                                        DefaultProfile::kStorageName,
-                                        DefaultProfile::kDefaultId))
+  EXPECT_CALL(*storage, SetString(DefaultProfile::kStorageId,
+                                  DefaultProfile::kStorageName,
+                                  DefaultProfile::kDefaultId))
       .WillOnce(Return(true));
-  EXPECT_CALL(*storage.get(), SetString(DefaultProfile::kStorageId,
-                                        DefaultProfile::kStorageHostName,
-                                        ""))
+  EXPECT_CALL(*storage, SetString(DefaultProfile::kStorageId,
+                                  DefaultProfile::kStorageHostName, ""))
       .WillOnce(Return(true));
-  EXPECT_CALL(*storage.get(), SetBool(DefaultProfile::kStorageId,
-                                      DefaultProfile::kStorageOfflineMode,
-                                      false))
+  EXPECT_CALL(*storage, SetBool(DefaultProfile::kStorageId,
+                                DefaultProfile::kStorageOfflineMode, false))
       .WillOnce(Return(true));
-  EXPECT_CALL(*storage.get(), SetString(DefaultProfile::kStorageId,
-                                        DefaultProfile::kStorageCheckPortalList,
-                                        ""))
+  EXPECT_CALL(*storage, SetString(DefaultProfile::kStorageId,
+                                  DefaultProfile::kStorageCheckPortalList, ""))
       .WillOnce(Return(true));
-  EXPECT_CALL(*storage.get(),
+  EXPECT_CALL(*storage,
               SetString(DefaultProfile::kStorageId,
-                        DefaultProfile::kStorageIgnoredDNSSearchPaths,
-                        ""))
+                        DefaultProfile::kStorageIgnoredDNSSearchPaths, ""))
       .WillOnce(Return(true));
-  EXPECT_CALL(*storage.get(),
+  EXPECT_CALL(*storage,
               SetString(DefaultProfile::kStorageId,
-                        DefaultProfile::kStorageLinkMonitorTechnologies,
-                        ""))
+                        DefaultProfile::kStorageLinkMonitorTechnologies, ""))
       .WillOnce(Return(true));
-  EXPECT_CALL(*storage.get(),
+  EXPECT_CALL(*storage,
               SetString(DefaultProfile::kStorageId,
-                        DefaultProfile::kStorageNoAutoConnectTechnologies,
-                        ""))
+                        DefaultProfile::kStorageNoAutoConnectTechnologies, ""))
       .WillOnce(Return(true));
-  EXPECT_CALL(*storage.get(),
+  EXPECT_CALL(*storage,
               SetString(DefaultProfile::kStorageId,
-                        DefaultProfile::kStorageProhibitedTechnologies,
-                        ""))
+                        DefaultProfile::kStorageProhibitedTechnologies, ""))
       .WillOnce(Return(true));
-  EXPECT_CALL(*storage.get(),
+  EXPECT_CALL(*storage,
               SetString(DefaultProfile::kStorageId,
-                        DefaultProfile::kStoragePortalCheckInterval,
-                        "0"))
+                        DefaultProfile::kStoragePortalCheckInterval, "0"))
       .WillOnce(Return(true));
-  EXPECT_CALL(*storage.get(), Flush()).WillOnce(Return(true));
+  EXPECT_CALL(*storage, Flush()).WillOnce(Return(true));
 
-  EXPECT_CALL(*device_.get(), Save(storage.get())).Times(0);
+  EXPECT_CALL(*device_, Save(storage.get())).Times(0);
   profile_->SetStorageForTest(std::move(storage));
   auto dhcp_props = std::make_unique<MockDhcpProperties>();
-  EXPECT_CALL(*dhcp_props.get(), Save(_, _));
+  EXPECT_CALL(*dhcp_props, Save(_, _));
   manager()->dhcp_properties_ = std::move(dhcp_props);
 
   manager()->RegisterDevice(device_);
@@ -172,49 +162,44 @@ TEST_F(DefaultProfileTest, Save) {
 TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
   auto storage = std::make_unique<MockStore>();
   Manager::Properties manager_props;
-  EXPECT_CALL(*storage.get(), GetBool(DefaultProfile::kStorageId,
-                                      DefaultProfile::kStorageArpGateway,
-                                      &manager_props.arp_gateway))
+  EXPECT_CALL(*storage, GetBool(DefaultProfile::kStorageId,
+                                DefaultProfile::kStorageArpGateway,
+                                &manager_props.arp_gateway))
       .WillOnce(Return(false));
-  EXPECT_CALL(*storage.get(), GetString(DefaultProfile::kStorageId,
-                                        DefaultProfile::kStorageHostName,
-                                        &manager_props.host_name))
+  EXPECT_CALL(*storage, GetString(DefaultProfile::kStorageId,
+                                  DefaultProfile::kStorageHostName,
+                                  &manager_props.host_name))
       .WillOnce(Return(false));
-  EXPECT_CALL(*storage.get(), GetBool(DefaultProfile::kStorageId,
-                                      DefaultProfile::kStorageOfflineMode,
-                                      &manager_props.offline_mode))
+  EXPECT_CALL(*storage, GetBool(DefaultProfile::kStorageId,
+                                DefaultProfile::kStorageOfflineMode,
+                                &manager_props.offline_mode))
       .WillOnce(Return(false));
-  EXPECT_CALL(*storage.get(), GetString(DefaultProfile::kStorageId,
-                                        DefaultProfile::kStorageCheckPortalList,
-                                        &manager_props.check_portal_list))
+  EXPECT_CALL(*storage, GetString(DefaultProfile::kStorageId,
+                                  DefaultProfile::kStorageCheckPortalList,
+                                  &manager_props.check_portal_list))
       .WillOnce(Return(false));
-  EXPECT_CALL(*storage.get(),
+  EXPECT_CALL(*storage, GetString(DefaultProfile::kStorageId,
+                                  DefaultProfile::kStorageIgnoredDNSSearchPaths,
+                                  &manager_props.ignored_dns_search_paths))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*storage,
               GetString(DefaultProfile::kStorageId,
-                        DefaultProfile::kStorageIgnoredDNSSearchPaths,
-                        &manager_props.ignored_dns_search_paths))
+                        DefaultProfile::kStorageLinkMonitorTechnologies, _))
       .WillOnce(Return(false));
-  EXPECT_CALL(*storage.get(),
+  EXPECT_CALL(*storage,
               GetString(DefaultProfile::kStorageId,
-                        DefaultProfile::kStorageLinkMonitorTechnologies,
-                        _))
+                        DefaultProfile::kStorageNoAutoConnectTechnologies, _))
       .WillOnce(Return(false));
-  EXPECT_CALL(*storage.get(),
+  EXPECT_CALL(*storage,
               GetString(DefaultProfile::kStorageId,
-                        DefaultProfile::kStorageNoAutoConnectTechnologies,
-                        _))
+                        DefaultProfile::kStorageProhibitedTechnologies, _))
       .WillOnce(Return(false));
-  EXPECT_CALL(*storage.get(),
+  EXPECT_CALL(*storage,
               GetString(DefaultProfile::kStorageId,
-                        DefaultProfile::kStorageProhibitedTechnologies,
-                        _))
-      .WillOnce(Return(false));
-  EXPECT_CALL(*storage.get(),
-              GetString(DefaultProfile::kStorageId,
-                        DefaultProfile::kStoragePortalCheckInterval,
-                        _))
+                        DefaultProfile::kStoragePortalCheckInterval, _))
       .WillOnce(Return(false));
   auto dhcp_props = std::make_unique<MockDhcpProperties>();
-  EXPECT_CALL(*dhcp_props.get(), Load(_, DefaultProfile::kStorageId));
+  EXPECT_CALL(*dhcp_props, Load(_, DefaultProfile::kStorageId));
   manager()->dhcp_properties_ = std::move(dhcp_props);
   profile_->SetStorageForTest(std::move(storage));
 
@@ -241,62 +226,52 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
 TEST_F(DefaultProfileTest, LoadManagerProperties) {
   auto storage = std::make_unique<MockStore>();
   const string host_name("hostname");
-  EXPECT_CALL(*storage.get(), GetBool(DefaultProfile::kStorageId,
-                                      DefaultProfile::kStorageArpGateway,
-                                      _))
+  EXPECT_CALL(*storage, GetBool(DefaultProfile::kStorageId,
+                                DefaultProfile::kStorageArpGateway, _))
       .WillOnce(DoAll(SetArgPointee<2>(false), Return(true)));
-  EXPECT_CALL(*storage.get(), GetString(DefaultProfile::kStorageId,
-                                        DefaultProfile::kStorageHostName,
-                                        _))
+  EXPECT_CALL(*storage, GetString(DefaultProfile::kStorageId,
+                                  DefaultProfile::kStorageHostName, _))
       .WillOnce(DoAll(SetArgPointee<2>(host_name), Return(true)));
-  EXPECT_CALL(*storage.get(), GetBool(DefaultProfile::kStorageId,
-                                      DefaultProfile::kStorageOfflineMode,
-                                      _))
+  EXPECT_CALL(*storage, GetBool(DefaultProfile::kStorageId,
+                                DefaultProfile::kStorageOfflineMode, _))
       .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
   const string portal_list("technology1,technology2");
-  EXPECT_CALL(*storage.get(), GetString(DefaultProfile::kStorageId,
-                                        DefaultProfile::kStorageCheckPortalList,
-                                        _))
+  EXPECT_CALL(*storage, GetString(DefaultProfile::kStorageId,
+                                  DefaultProfile::kStorageCheckPortalList, _))
       .WillOnce(DoAll(SetArgPointee<2>(portal_list), Return(true)));
   const string ignored_paths("chromium.org,google.com");
-  EXPECT_CALL(*storage.get(),
+  EXPECT_CALL(*storage,
               GetString(DefaultProfile::kStorageId,
-                        DefaultProfile::kStorageIgnoredDNSSearchPaths,
-                        _))
+                        DefaultProfile::kStorageIgnoredDNSSearchPaths, _))
       .WillOnce(DoAll(SetArgPointee<2>(ignored_paths), Return(true)));
   const string link_monitor_technologies("ethernet,wimax");
-  EXPECT_CALL(*storage.get(),
+  EXPECT_CALL(*storage,
               GetString(DefaultProfile::kStorageId,
-                        DefaultProfile::kStorageLinkMonitorTechnologies,
-                        _))
-      .WillOnce(DoAll(SetArgPointee<2>(link_monitor_technologies),
-                      Return(true)));
+                        DefaultProfile::kStorageLinkMonitorTechnologies, _))
+      .WillOnce(
+          DoAll(SetArgPointee<2>(link_monitor_technologies), Return(true)));
   const string no_auto_connect_technologies("wifi,cellular");
-  EXPECT_CALL(*storage.get(),
+  EXPECT_CALL(*storage,
               GetString(DefaultProfile::kStorageId,
-                        DefaultProfile::kStorageNoAutoConnectTechnologies,
-                        _))
-      .WillOnce(DoAll(SetArgPointee<2>(no_auto_connect_technologies),
-                      Return(true)));
+                        DefaultProfile::kStorageNoAutoConnectTechnologies, _))
+      .WillOnce(
+          DoAll(SetArgPointee<2>(no_auto_connect_technologies), Return(true)));
   const string portal_check_interval_string("10");
   const int portal_check_interval_int = 10;
-  EXPECT_CALL(*storage.get(),
+  EXPECT_CALL(*storage,
               GetString(DefaultProfile::kStorageId,
-                        DefaultProfile::kStoragePortalCheckInterval,
-                        _))
-      .WillOnce(DoAll(SetArgPointee<2>(portal_check_interval_string),
-                      Return(true)));
+                        DefaultProfile::kStoragePortalCheckInterval, _))
+      .WillOnce(
+          DoAll(SetArgPointee<2>(portal_check_interval_string), Return(true)));
   const string prohibited_technologies("vpn,wimax");
-  EXPECT_CALL(*storage.get(),
+  EXPECT_CALL(*storage,
               GetString(DefaultProfile::kStorageId,
-                        DefaultProfile::kStorageProhibitedTechnologies,
-                        _))
-      .WillOnce(DoAll(SetArgPointee<2>(prohibited_technologies),
-                      Return(true)));
+                        DefaultProfile::kStorageProhibitedTechnologies, _))
+      .WillOnce(DoAll(SetArgPointee<2>(prohibited_technologies), Return(true)));
   profile_->SetStorageForTest(std::move(storage));
   Manager::Properties manager_props;
   auto dhcp_props = std::make_unique<MockDhcpProperties>();
-  EXPECT_CALL(*dhcp_props.get(), Load(_, DefaultProfile::kStorageId));
+  EXPECT_CALL(*dhcp_props, Load(_, DefaultProfile::kStorageId));
   manager()->dhcp_properties_ = std::move(dhcp_props);
 
   profile_->LoadManagerProperties(&manager_props,

@@ -587,22 +587,19 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     ON_CALL(*supplicant_process_proxy_, GetInterface(_, _))
         .WillByDefault(DoAll(SetArgPointee<1>(string("/default/path")),
                              Return(true)));
-    ON_CALL(*supplicant_interface_proxy_.get(), AddNetwork(_, _))
-        .WillByDefault(DoAll(SetArgPointee<1>(string("/default/path")),
-                             Return(true)));
-    ON_CALL(*supplicant_interface_proxy_.get(), Disconnect())
+    ON_CALL(*supplicant_interface_proxy_, AddNetwork(_, _))
+        .WillByDefault(
+            DoAll(SetArgPointee<1>(string("/default/path")), Return(true)));
+    ON_CALL(*supplicant_interface_proxy_, Disconnect())
         .WillByDefault(Return(true));
-    ON_CALL(*supplicant_interface_proxy_.get(), RemoveNetwork(_))
+    ON_CALL(*supplicant_interface_proxy_, RemoveNetwork(_))
         .WillByDefault(Return(true));
-    ON_CALL(*supplicant_interface_proxy_.get(), Scan(_))
+    ON_CALL(*supplicant_interface_proxy_, Scan(_)).WillByDefault(Return(true));
+    ON_CALL(*supplicant_interface_proxy_, EnableMACAddressRandomization(_))
         .WillByDefault(Return(true));
-    ON_CALL(*supplicant_interface_proxy_.get(),
-            EnableMACAddressRandomization(_))
+    ON_CALL(*supplicant_interface_proxy_, DisableMACAddressRandomization())
         .WillByDefault(Return(true));
-    ON_CALL(*supplicant_interface_proxy_.get(),
-            DisableMACAddressRandomization())
-        .WillByDefault(Return(true));
-    ON_CALL(*supplicant_network_proxy_.get(), SetEnabled(_))
+    ON_CALL(*supplicant_network_proxy_, SetEnabled(_))
         .WillByDefault(Return(true));
 
     EXPECT_CALL(*mac80211_monitor_, UpdateConnectedState(_))
@@ -610,7 +607,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
 
     ON_CALL(dhcp_provider_, CreateIPv4Config(_, _, _, _))
         .WillByDefault(Return(dhcp_config_));
-    ON_CALL(*dhcp_config_.get(), RequestIP()).WillByDefault(Return(true));
+    ON_CALL(*dhcp_config_, RequestIP()).WillByDefault(Return(true));
     ON_CALL(*manager(), IsSuspending()).WillByDefault(Return(false));
 
     ON_CALL(control_interface_, CreateSupplicantInterfaceProxy(_, _))
@@ -882,7 +879,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     EXPECT_CALL(*service, ResetSuspectedCredentialFailures());
     EXPECT_CALL(*dhcp_provider(), CreateIPv4Config(_, _, _, _))
         .Times(AnyNumber());
-    EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(AnyNumber());
+    EXPECT_CALL(*dhcp_config_, RequestIP()).Times(AnyNumber());
     EXPECT_CALL(wifi_provider_, IncrementConnectCount(_));
     ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
     Mock::VerifyAndClearExpectations(service.get());
@@ -2376,12 +2373,12 @@ TEST_F(WiFiMainTest, StateChangeWithService) {
   event_dispatcher_->DispatchPendingEvents();
   MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
   InitiateConnect(service);
-  EXPECT_CALL(*service.get(), SetState(Service::kStateAssociating));
+  EXPECT_CALL(*service, SetState(Service::kStateAssociating));
   ReportStateChanged(WPASupplicant::kInterfaceStateAssociated);
   // Verify expectations now, because WiFi may report other state changes
   // when WiFi is Stop()-ed (during TearDown()).
   Mock::VerifyAndClearExpectations(service.get());
-  EXPECT_CALL(*service.get(), SetState(_)).Times(AnyNumber());
+  EXPECT_CALL(*service, SetState(_)).Times(AnyNumber());
 }
 
 TEST_F(WiFiMainTest, StateChangeBackwardsWithService) {
@@ -2389,7 +2386,7 @@ TEST_F(WiFiMainTest, StateChangeBackwardsWithService) {
   // Supplicant state should still be updated, however.
   EXPECT_CALL(*dhcp_provider(), CreateIPv4Config(_, _, _, _))
       .Times(AnyNumber());
-  EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(AnyNumber());
+  EXPECT_CALL(*dhcp_config_, RequestIP()).Times(AnyNumber());
   StartWiFi();
   event_dispatcher_->DispatchPendingEvents();
   MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
@@ -2414,8 +2411,7 @@ TEST_F(WiFiMainTest, ConnectToServiceWithoutRecentIssues) {
   MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
   EXPECT_CALL(*process_proxy, GetDebugLevel(_)).Times(0);
   EXPECT_CALL(*process_proxy, SetDebugLevel(_)).Times(0);
-  EXPECT_CALL(*service.get(), HasRecentConnectionIssues())
-      .WillOnce(Return(false));
+  EXPECT_CALL(*service, HasRecentConnectionIssues()).WillOnce(Return(false));
   InitiateConnect(service);
 }
 
@@ -2434,8 +2430,7 @@ TEST_F(WiFiMainTest, ConnectToServiceWithRecentIssues) {
                 Return(true)));
   EXPECT_CALL(*process_proxy, SetDebugLevel(WPASupplicant::kDebugLevelDebug))
       .Times(1);
-  EXPECT_CALL(*service.get(), HasRecentConnectionIssues())
-      .WillOnce(Return(true));
+  EXPECT_CALL(*service, HasRecentConnectionIssues()).WillOnce(Return(true));
   InitiateConnect(service);
   Mock::VerifyAndClearExpectations(process_proxy);
 
@@ -2696,8 +2691,8 @@ TEST_F(WiFiMainTest, StateAndIPIgnoreLinkEvent) {
   StartWiFi();
   MockWiFiServiceRefPtr service(
       SetupConnectingService("", nullptr, nullptr));
-  EXPECT_CALL(*service.get(), SetState(_)).Times(0);
-  EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(0);
+  EXPECT_CALL(*service, SetState(_)).Times(0);
+  EXPECT_CALL(*dhcp_config_, RequestIP()).Times(0);
   ReportLinkUp();
 
   // Verify expectations now, because WiFi may cause |service| state
@@ -2710,7 +2705,7 @@ TEST_F(WiFiMainTest, SupplicantCompletedAlreadyConnected) {
   MockWiFiServiceRefPtr service(
       SetupConnectedService("", nullptr, nullptr));
   Mock::VerifyAndClearExpectations(dhcp_config_.get());
-  EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(0);
+  EXPECT_CALL(*dhcp_config_, RequestIP()).Times(0);
   // Simulate a rekeying event from the AP.  These show as transitions from
   // completed->completed from wpa_supplicant.
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
@@ -3000,7 +2995,7 @@ TEST_F(WiFiMainTest, SuspectCredentialsWEP) {
   EXPECT_CALL(*service, ResetSuspectedCredentialFailures()).Times(0);
   EXPECT_CALL(*dhcp_provider(), CreateIPv4Config(_, _, _, _))
       .Times(AnyNumber());
-  EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(AnyNumber());
+  EXPECT_CALL(*dhcp_config_, RequestIP()).Times(AnyNumber());
   EXPECT_CALL(*manager(), device_info()).WillRepeatedly(Return(device_info()));
   EXPECT_CALL(*device_info(), GetByteCounts(_, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(0LL), Return(true)));

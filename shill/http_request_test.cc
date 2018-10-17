@@ -121,11 +121,10 @@ class HttpRequestTest : public Test {
   };
 
   void SetUp() override {
-    EXPECT_CALL(*connection_.get(), IsIPv6())
-        .WillRepeatedly(Return(false));
-    EXPECT_CALL(*connection_.get(), interface_name())
+    EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
+    EXPECT_CALL(*connection_, interface_name())
         .WillRepeatedly(ReturnRef(interface_name_));
-    EXPECT_CALL(*connection_.get(), dns_servers())
+    EXPECT_CALL(*connection_, dns_servers())
         .WillRepeatedly(ReturnRef(dns_servers_));
 
     request_.reset(new HttpRequest(connection_, &dispatcher_));
@@ -161,18 +160,14 @@ class HttpRequestTest : public Test {
   void ExpectStop() {
     EXPECT_CALL(*dns_client_, Stop())
         .Times(AtLeast(1));
-    EXPECT_CALL(*connection_.get(), ReleaseRouting());
+    EXPECT_CALL(*connection_, ReleaseRouting());
   }
   void ExpectDNSRequest(const string& host, bool return_value) {
     EXPECT_CALL(*dns_client_, Start(StrEq(host), _))
         .WillOnce(Return(return_value));
   }
-  void ExpectRouteRequest() {
-    EXPECT_CALL(*connection_.get(), RequestRouting());
-  }
-  void ExpectRouteRelease() {
-    EXPECT_CALL(*connection_.get(), ReleaseRouting());
-  }
+  void ExpectRouteRequest() { EXPECT_CALL(*connection_, RequestRouting()); }
+  void ExpectRouteRelease() { EXPECT_CALL(*connection_, ReleaseRouting()); }
   void ExpectRequestErrorCallback(HttpRequest::Result result) {
     EXPECT_CALL(target_, RequestErrorCallTarget(result));
   }

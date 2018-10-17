@@ -1651,7 +1651,7 @@ TEST_F(CellularCapabilityUniversalTimerTest, CompleteActivation) {
       .WillOnce(Return(PendingActivationStore::kStatePending));
   EXPECT_CALL(*service_, SetActivationState(kActivationStateActivating))
       .Times(1);
-  EXPECT_CALL(*modem_proxy_.get(), Reset(_, _, _)).Times(1);
+  EXPECT_CALL(*modem_proxy_, Reset(_, _, _)).Times(1);
   Error error;
   capability_->InitProxies();
   capability_->CompleteActivation(&error);

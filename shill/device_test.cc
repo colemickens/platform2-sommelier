@@ -2054,51 +2054,38 @@ class DevicePortalDetectionTest : public DeviceTest {
 const int DevicePortalDetectionTest::kPortalAttempts = 2;
 
 TEST_F(DevicePortalDetectionTest, ServicePortalDetectionDisabled) {
-  EXPECT_CALL(*service_.get(), IsPortalDetectionDisabled())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*service_.get(), IsConnected())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*service_.get(), SetState(Service::kStateOnline));
+  EXPECT_CALL(*service_, IsPortalDetectionDisabled()).WillOnce(Return(true));
+  EXPECT_CALL(*service_, IsConnected()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*service_, SetState(Service::kStateOnline));
   EXPECT_FALSE(StartPortalDetection());
 }
 
 TEST_F(DevicePortalDetectionTest, TechnologyPortalDetectionDisabled) {
-  EXPECT_CALL(*service_.get(), IsPortalDetectionDisabled())
-      .WillOnce(Return(false));
-  EXPECT_CALL(*service_.get(), IsConnected())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*service_.get(), IsPortalDetectionAuto())
-      .WillOnce(Return(true));
+  EXPECT_CALL(*service_, IsPortalDetectionDisabled()).WillOnce(Return(false));
+  EXPECT_CALL(*service_, IsConnected()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*service_, IsPortalDetectionAuto()).WillOnce(Return(true));
   EXPECT_CALL(manager_, IsPortalDetectionEnabled(device_->technology()))
       .WillOnce(Return(false));
-  EXPECT_CALL(*service_.get(), SetState(Service::kStateOnline));
+  EXPECT_CALL(*service_, SetState(Service::kStateOnline));
   EXPECT_FALSE(StartPortalDetection());
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionProxyConfig) {
-  EXPECT_CALL(*service_.get(), IsPortalDetectionDisabled())
-      .WillOnce(Return(false));
-  EXPECT_CALL(*service_.get(), IsConnected())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*service_.get(), HasProxyConfig())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*service_.get(), IsPortalDetectionAuto())
-      .WillOnce(Return(true));
+  EXPECT_CALL(*service_, IsPortalDetectionDisabled()).WillOnce(Return(false));
+  EXPECT_CALL(*service_, IsConnected()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*service_, HasProxyConfig()).WillOnce(Return(true));
+  EXPECT_CALL(*service_, IsPortalDetectionAuto()).WillOnce(Return(true));
   EXPECT_CALL(manager_, IsPortalDetectionEnabled(device_->technology()))
       .WillOnce(Return(true));
-  EXPECT_CALL(*service_.get(), SetState(Service::kStateOnline));
+  EXPECT_CALL(*service_, SetState(Service::kStateOnline));
   EXPECT_FALSE(StartPortalDetection());
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionBadUrl) {
-  EXPECT_CALL(*service_.get(), IsPortalDetectionDisabled())
-      .WillOnce(Return(false));
-  EXPECT_CALL(*service_.get(), IsConnected())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*service_.get(), HasProxyConfig())
-      .WillOnce(Return(false));
-  EXPECT_CALL(*service_.get(), IsPortalDetectionAuto())
-      .WillOnce(Return(true));
+  EXPECT_CALL(*service_, IsPortalDetectionDisabled()).WillOnce(Return(false));
+  EXPECT_CALL(*service_, IsConnected()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*service_, HasProxyConfig()).WillOnce(Return(false));
+  EXPECT_CALL(*service_, IsPortalDetectionAuto()).WillOnce(Return(true));
   EXPECT_CALL(manager_, IsPortalDetectionEnabled(device_->technology()))
       .WillOnce(Return(true));
   const string http_portal_url, https_portal_url;
@@ -2106,19 +2093,15 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionBadUrl) {
       .WillRepeatedly(ReturnRef(http_portal_url));
   EXPECT_CALL(manager_, GetPortalCheckHttpsUrl())
       .WillRepeatedly(ReturnRef(https_portal_url));
-  EXPECT_CALL(*service_.get(), SetState(Service::kStateOnline));
+  EXPECT_CALL(*service_, SetState(Service::kStateOnline));
   EXPECT_FALSE(StartPortalDetection());
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionStart) {
-  EXPECT_CALL(*service_.get(), IsPortalDetectionDisabled())
-      .WillOnce(Return(false));
-  EXPECT_CALL(*service_.get(), IsConnected())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*service_.get(), HasProxyConfig())
-      .WillOnce(Return(false));
-  EXPECT_CALL(*service_.get(), IsPortalDetectionAuto())
-      .WillOnce(Return(true));
+  EXPECT_CALL(*service_, IsPortalDetectionDisabled()).WillOnce(Return(false));
+  EXPECT_CALL(*service_, IsConnected()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*service_, HasProxyConfig()).WillOnce(Return(false));
+  EXPECT_CALL(*service_, IsPortalDetectionAuto()).WillOnce(Return(true));
   EXPECT_CALL(manager_, IsPortalDetectionEnabled(device_->technology()))
       .WillOnce(Return(true));
   const string http_portal_url(ConnectivityTrial::kDefaultHttpUrl);
@@ -2127,15 +2110,13 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionStart) {
       .WillRepeatedly(ReturnRef(http_portal_url));
   EXPECT_CALL(manager_, GetPortalCheckHttpsUrl())
       .WillRepeatedly(ReturnRef(https_portal_url));
-  EXPECT_CALL(*service_.get(), SetState(Service::kStateOnline))
-      .Times(0);
+  EXPECT_CALL(*service_, SetState(Service::kStateOnline)).Times(0);
   const string kInterfaceName("int0");
-  EXPECT_CALL(*connection_.get(), interface_name())
+  EXPECT_CALL(*connection_, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
-  EXPECT_CALL(*connection_.get(), IsIPv6())
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
   const vector<string> kDNSServers;
-  EXPECT_CALL(*connection_.get(), dns_servers())
+  EXPECT_CALL(*connection_, dns_servers())
       .WillRepeatedly(ReturnRef(kDNSServers));
   EXPECT_TRUE(StartPortalDetection());
 
@@ -2145,14 +2126,10 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionStart) {
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionStartIPv6) {
-  EXPECT_CALL(*service_.get(), IsPortalDetectionDisabled())
-      .WillOnce(Return(false));
-  EXPECT_CALL(*service_.get(), IsConnected())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*service_.get(), HasProxyConfig())
-      .WillOnce(Return(false));
-  EXPECT_CALL(*service_.get(), IsPortalDetectionAuto())
-      .WillOnce(Return(true));
+  EXPECT_CALL(*service_, IsPortalDetectionDisabled()).WillOnce(Return(false));
+  EXPECT_CALL(*service_, IsConnected()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*service_, HasProxyConfig()).WillOnce(Return(false));
+  EXPECT_CALL(*service_, IsPortalDetectionAuto()).WillOnce(Return(true));
   EXPECT_CALL(manager_, IsPortalDetectionEnabled(device_->technology()))
       .WillOnce(Return(true));
   const string http_portal_url(ConnectivityTrial::kDefaultHttpUrl);
@@ -2161,15 +2138,13 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionStartIPv6) {
       .WillRepeatedly(ReturnRef(http_portal_url));
   EXPECT_CALL(manager_, GetPortalCheckHttpsUrl())
       .WillRepeatedly(ReturnRef(https_portal_url));
-  EXPECT_CALL(*service_.get(), SetState(Service::kStateOnline))
-      .Times(0);
+  EXPECT_CALL(*service_, SetState(Service::kStateOnline)).Times(0);
   const string kInterfaceName("int0");
-  EXPECT_CALL(*connection_.get(), interface_name())
+  EXPECT_CALL(*connection_, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
-  EXPECT_CALL(*connection_.get(), IsIPv6())
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(true));
   const vector<string> kDNSServers;
-  EXPECT_CALL(*connection_.get(), dns_servers())
+  EXPECT_CALL(*connection_, dns_servers())
       .WillRepeatedly(ReturnRef(kDNSServers));
   EXPECT_TRUE(StartPortalDetection());
 
@@ -2179,10 +2154,8 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionStartIPv6) {
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionNonFinal) {
-  EXPECT_CALL(*service_.get(), IsConnected())
-      .Times(0);
-  EXPECT_CALL(*service_.get(), SetState(_))
-      .Times(0);
+  EXPECT_CALL(*service_, IsConnected()).Times(0);
+  EXPECT_CALL(*service_, SetState(_)).Times(0);
   PortalDetectorCallback(
       PortalDetector::Result(
           ConnectivityTrial::Result(
@@ -2204,12 +2177,11 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionFailure) {
       ConnectivityTrial::Result(ConnectivityTrial::kPhaseConnection,
                                 ConnectivityTrial::kStatusFailure),
       kPortalAttempts, true);
-  EXPECT_CALL(*service_.get(), IsConnected())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*service_.get(),
+  EXPECT_CALL(*service_, IsConnected()).WillOnce(Return(true));
+  EXPECT_CALL(*service_,
               SetPortalDetectionFailure(kPortalDetectionPhaseConnection,
                                         kPortalDetectionStatusFailure));
-  EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
+  EXPECT_CALL(*service_, SetState(Service::kStatePortal));
   EXPECT_CALL(metrics_,
               SendEnumToUMA("Network.Shill.Unknown.PortalResult",
                             Metrics::kPortalResultConnectionFailure,
@@ -2223,20 +2195,17 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionFailure) {
                         Metrics::kMetricPortalAttemptsMin,
                         Metrics::kMetricPortalAttemptsMax,
                         Metrics::kMetricPortalAttemptsNumBuckets));
-  EXPECT_CALL(*connection_.get(), IsDefault())
-      .WillOnce(Return(false));
-  EXPECT_CALL(*connection_.get(), IsIPv6())
-      .WillOnce(Return(false));
+  EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(false));
+  EXPECT_CALL(*connection_, IsIPv6()).WillOnce(Return(false));
   EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection(
                             IsPortalDetectorResult(result)));
   PortalDetectorCallback(result);
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionSuccess) {
-  EXPECT_CALL(*service_.get(), IsConnected())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*service_.get(), SetPortalDetectionFailure(_, _)).Times(0);
-  EXPECT_CALL(*service_.get(), SetState(Service::kStateOnline));
+  EXPECT_CALL(*service_, IsConnected()).WillOnce(Return(true));
+  EXPECT_CALL(*service_, SetPortalDetectionFailure(_, _)).Times(0);
+  EXPECT_CALL(*service_, SetState(Service::kStateOnline));
   EXPECT_CALL(metrics_,
               SendEnumToUMA("Network.Shill.Unknown.PortalResult",
                             Metrics::kPortalResultSuccess,
@@ -2260,12 +2229,11 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionSuccess) {
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionSuccessAfterFailure) {
-  EXPECT_CALL(*service_.get(), IsConnected())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*service_.get(),
+  EXPECT_CALL(*service_, IsConnected()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*service_,
               SetPortalDetectionFailure(kPortalDetectionPhaseConnection,
                                         kPortalDetectionStatusFailure));
-  EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
+  EXPECT_CALL(*service_, SetState(Service::kStatePortal));
   EXPECT_CALL(metrics_,
               SendEnumToUMA("Network.Shill.Unknown.PortalResult",
                             Metrics::kPortalResultConnectionFailure,
@@ -2279,10 +2247,8 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionSuccessAfterFailure) {
                         Metrics::kMetricPortalAttemptsMin,
                         Metrics::kMetricPortalAttemptsMax,
                         Metrics::kMetricPortalAttemptsNumBuckets));
-  EXPECT_CALL(*connection_.get(), IsDefault())
-      .WillOnce(Return(false));
-  EXPECT_CALL(*connection_.get(), IsIPv6())
-      .WillOnce(Return(false));
+  EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(false));
+  EXPECT_CALL(*connection_, IsIPv6()).WillOnce(Return(false));
   PortalDetectorCallback(
       PortalDetector::Result(
           ConnectivityTrial::Result(
@@ -2291,8 +2257,8 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionSuccessAfterFailure) {
           kPortalAttempts,
           true));
   Mock::VerifyAndClearExpectations(&metrics_);
-  EXPECT_CALL(*service_.get(), SetPortalDetectionFailure(_, _)).Times(0);
-  EXPECT_CALL(*service_.get(), SetState(Service::kStateOnline));
+  EXPECT_CALL(*service_, SetPortalDetectionFailure(_, _)).Times(0);
+  EXPECT_CALL(*service_, SetState(Service::kStateOnline));
   EXPECT_CALL(metrics_,
               SendEnumToUMA("Network.Shill.Unknown.PortalResult",
                             Metrics::kPortalResultSuccess,
@@ -2316,12 +2282,12 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionSuccessAfterFailure) {
 }
 
 TEST_F(DevicePortalDetectionTest, RequestPortalDetection) {
-  EXPECT_CALL(*service_.get(), state())
+  EXPECT_CALL(*service_, state())
       .WillOnce(Return(Service::kStateOnline))
       .WillRepeatedly(Return(Service::kStatePortal));
   EXPECT_FALSE(RequestPortalDetection());
 
-  EXPECT_CALL(*connection_.get(), IsDefault())
+  EXPECT_CALL(*connection_, IsDefault())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   EXPECT_FALSE(RequestPortalDetection());
@@ -2337,14 +2303,12 @@ TEST_F(DevicePortalDetectionTest, RequestPortalDetection) {
   // Throw away our pre-fabricated portal detector, and have the device create
   // a new one.
   StopPortalDetection();
-  EXPECT_CALL(*service_.get(), IsPortalDetectionDisabled())
+  EXPECT_CALL(*service_, IsPortalDetectionDisabled())
       .WillRepeatedly(Return(false));
-  EXPECT_CALL(*service_.get(), IsPortalDetectionAuto())
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service_, IsPortalDetectionAuto()).WillRepeatedly(Return(true));
   EXPECT_CALL(manager_, IsPortalDetectionEnabled(device_->technology()))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*service_.get(), HasProxyConfig())
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*service_, HasProxyConfig()).WillRepeatedly(Return(false));
   const string kPortalCheckHttpUrl("http://portal");
   const string kPortalCheckHttpsUrl("https://portal");
   EXPECT_CALL(manager_, GetPortalCheckHttpUrl())
@@ -2352,24 +2316,22 @@ TEST_F(DevicePortalDetectionTest, RequestPortalDetection) {
   EXPECT_CALL(manager_, GetPortalCheckHttpsUrl())
       .WillOnce(ReturnRef(kPortalCheckHttpsUrl));
   const string kInterfaceName("int0");
-  EXPECT_CALL(*connection_.get(), IsIPv6())
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*connection_.get(), interface_name())
+  EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*connection_, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
   const vector<string> kDNSServers;
-  EXPECT_CALL(*connection_.get(), dns_servers())
+  EXPECT_CALL(*connection_, dns_servers())
       .WillRepeatedly(ReturnRef(kDNSServers));
   EXPECT_TRUE(RequestPortalDetection());
 }
 
 TEST_F(DevicePortalDetectionTest, RequestStartConnectivityTest) {
   const string kInterfaceName("int0");
-  EXPECT_CALL(*connection_.get(), interface_name())
+  EXPECT_CALL(*connection_, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
-  EXPECT_CALL(*connection_.get(), IsIPv6())
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
   const vector<string> kDNSServers;
-  EXPECT_CALL(*connection_.get(), dns_servers())
+  EXPECT_CALL(*connection_, dns_servers())
       .WillRepeatedly(ReturnRef(kDNSServers));
 
   EXPECT_EQ(nullptr, device_->connection_tester_);
@@ -2378,48 +2340,40 @@ TEST_F(DevicePortalDetectionTest, RequestStartConnectivityTest) {
 }
 
 TEST_F(DevicePortalDetectionTest, NotConnected) {
-  EXPECT_CALL(*service_.get(), IsConnected())
-      .WillOnce(Return(false));
+  EXPECT_CALL(*service_, IsConnected()).WillOnce(Return(false));
   SetServiceConnectedState(Service::kStatePortal);
   // We don't check for the portal detector to be reset here, because
   // it would have been reset as a part of disconnection.
 }
 
 TEST_F(DevicePortalDetectionTest, NotPortal) {
-  EXPECT_CALL(*service_.get(), IsConnected())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*service_.get(), SetState(Service::kStateOnline));
+  EXPECT_CALL(*service_, IsConnected()).WillOnce(Return(true));
+  EXPECT_CALL(*service_, SetState(Service::kStateOnline));
   SetServiceConnectedState(Service::kStateOnline);
   ExpectPortalDetectorReset();
 }
 
 TEST_F(DevicePortalDetectionTest, NotDefault) {
-  EXPECT_CALL(*service_.get(), IsConnected())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*connection_.get(), IsDefault())
-      .WillOnce(Return(false));
-  EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
+  EXPECT_CALL(*service_, IsConnected()).WillOnce(Return(true));
+  EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(false));
+  EXPECT_CALL(*service_, SetState(Service::kStatePortal));
   SetServiceConnectedState(Service::kStatePortal);
   ExpectPortalDetectorReset();
 }
 
 TEST_F(DevicePortalDetectionTest, PortalIntervalIsZero) {
-  EXPECT_CALL(*service_.get(), IsConnected())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*connection_.get(), IsDefault())
-      .WillOnce(Return(true));
+  EXPECT_CALL(*service_, IsConnected()).WillOnce(Return(true));
+  EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(true));
   EXPECT_CALL(manager_, GetPortalCheckInterval())
       .WillOnce(Return(0));
-  EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
+  EXPECT_CALL(*service_, SetState(Service::kStatePortal));
   SetServiceConnectedState(Service::kStatePortal);
   ExpectPortalDetectorReset();
 }
 
 TEST_F(DevicePortalDetectionTest, RestartPortalDetection) {
-  EXPECT_CALL(*service_.get(), IsConnected())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*connection_.get(), IsDefault())
-      .WillOnce(Return(true));
+  EXPECT_CALL(*service_, IsConnected()).WillOnce(Return(true));
+  EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(true));
   const int kPortalDetectionInterval = 10;
   EXPECT_CALL(manager_, GetPortalCheckInterval())
       .Times(AtLeast(1))
@@ -2436,17 +2390,16 @@ TEST_F(DevicePortalDetectionTest, RestartPortalDetection) {
   EXPECT_CALL(*portal_detector_,
               StartAfterDelay(props, kPortalDetectionInterval))
       .WillOnce(Return(true));
-  EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
+  EXPECT_CALL(*service_, SetState(Service::kStatePortal));
   SetServiceConnectedState(Service::kStatePortal);
   ExpectPortalDetectorSet();
 }
 
 TEST_F(DevicePortalDetectionTest, CancelledOnSelectService) {
   ExpectPortalDetectorSet();
-  EXPECT_CALL(*service_.get(), state())
-      .WillOnce(Return(Service::kStateIdle));
-  EXPECT_CALL(*service_.get(), SetState(_));
-  EXPECT_CALL(*service_.get(), SetConnection(_));
+  EXPECT_CALL(*service_, state()).WillOnce(Return(Service::kStateIdle));
+  EXPECT_CALL(*service_, SetState(_));
+  EXPECT_CALL(*service_, SetConnection(_));
   SelectService(nullptr);
   ExpectPortalDetectorReset();
 }
@@ -2455,7 +2408,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
   static const char* const kGoogleDNSServers[] = {"8.8.8.8", "8.8.4.4"};
   vector<string> fallback_dns_servers(kGoogleDNSServers, kGoogleDNSServers + 2);
   const string kInterfaceName("int0");
-  EXPECT_CALL(*connection_.get(), interface_name())
+  EXPECT_CALL(*connection_, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
 
   // DNS Failure, start DNS test for fallback DNS servers.
@@ -2463,16 +2416,13 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
       ConnectivityTrial::Result(ConnectivityTrial::kPhaseDNS,
                                 ConnectivityTrial::kStatusFailure),
       kPortalAttempts, true);
-  EXPECT_CALL(*service_.get(), IsConnected())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*service_.get(),
+  EXPECT_CALL(*service_, IsConnected()).WillOnce(Return(true));
+  EXPECT_CALL(*service_,
               SetPortalDetectionFailure(kPortalDetectionPhaseDns,
                                         kPortalDetectionStatusFailure));
-  EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
-  EXPECT_CALL(*connection_.get(), IsDefault())
-      .WillOnce(Return(false));
-  EXPECT_CALL(*connection_.get(), IsIPv6())
-      .WillOnce(Return(false));
+  EXPECT_CALL(*service_, SetState(Service::kStatePortal));
+  EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(false));
+  EXPECT_CALL(*connection_, IsIPv6()).WillOnce(Return(false));
   EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection(
                             IsPortalDetectorResult(result_dns_failure)));
   EXPECT_CALL(*device_, StartDNSTest(fallback_dns_servers, false, _)).Times(1);
@@ -2484,15 +2434,13 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
       ConnectivityTrial::Result(ConnectivityTrial::kPhaseDNS,
                                 ConnectivityTrial::kStatusTimeout),
       kPortalAttempts, true);
-  EXPECT_CALL(*service_.get(), IsConnected())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*service_.get(),
+  EXPECT_CALL(*service_, IsConnected()).WillOnce(Return(true));
+  EXPECT_CALL(*service_,
               SetPortalDetectionFailure(kPortalDetectionPhaseDns,
                                         kPortalDetectionStatusTimeout));
-  EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
-  EXPECT_CALL(*connection_.get(), IsDefault())
-      .WillOnce(Return(false));
-  EXPECT_CALL(*connection_.get(), IsIPv6()).WillOnce(Return(false));
+  EXPECT_CALL(*service_, SetState(Service::kStatePortal));
+  EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(false));
+  EXPECT_CALL(*connection_, IsIPv6()).WillOnce(Return(false));
   EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection(
                             IsPortalDetectorResult(result_dns_timeout)));
   EXPECT_CALL(*device_, StartDNSTest(fallback_dns_servers, false, _)).Times(1);
@@ -2504,16 +2452,13 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
       ConnectivityTrial::Result(ConnectivityTrial::kPhaseConnection,
                                 ConnectivityTrial::kStatusFailure),
       kPortalAttempts, true);
-  EXPECT_CALL(*service_.get(), IsConnected())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*service_.get(),
+  EXPECT_CALL(*service_, IsConnected()).WillOnce(Return(true));
+  EXPECT_CALL(*service_,
               SetPortalDetectionFailure(kPortalDetectionPhaseConnection,
                                         kPortalDetectionStatusFailure));
-  EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
-  EXPECT_CALL(*connection_.get(), IsDefault())
-      .WillOnce(Return(false));
-  EXPECT_CALL(*connection_.get(), IsIPv6())
-      .WillOnce(Return(false));
+  EXPECT_CALL(*service_, SetState(Service::kStatePortal));
+  EXPECT_CALL(*connection_, IsDefault()).WillOnce(Return(false));
+  EXPECT_CALL(*connection_, IsIPv6()).WillOnce(Return(false));
   EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection(
                             IsPortalDetectorResult(result_connection_failure)));
   EXPECT_CALL(*device_, StartDNSTest(_, _, _)).Times(0);
@@ -2527,7 +2472,7 @@ TEST_F(DevicePortalDetectionTest, FallbackDNSResultCallback) {
   device_->set_ipconfig(ipconfig);
 
   // Fallback DNS test failed.
-  EXPECT_CALL(*connection_.get(), UpdateDNSServers(_)).Times(0);
+  EXPECT_CALL(*connection_, UpdateDNSServers(_)).Times(0);
   EXPECT_CALL(*ipconfig, UpdateDNSServers(_)).Times(0);
   EXPECT_CALL(*device_, StartDNSTest(_, _, _)).Times(0);
   EXPECT_CALL(metrics_,
@@ -2539,11 +2484,11 @@ TEST_F(DevicePortalDetectionTest, FallbackDNSResultCallback) {
   Mock::VerifyAndClearExpectations(&metrics_);
 
   // Fallback DNS test succeed with auto fallback disabled.
-  EXPECT_CALL(*service_.get(), is_dns_auto_fallback_allowed())
+  EXPECT_CALL(*service_, is_dns_auto_fallback_allowed())
       .WillOnce(Return(false));
-  EXPECT_CALL(*connection_.get(), UpdateDNSServers(_)).Times(0);
+  EXPECT_CALL(*connection_, UpdateDNSServers(_)).Times(0);
   EXPECT_CALL(*ipconfig, UpdateDNSServers(_)).Times(0);
-  EXPECT_CALL(*service_.get(), NotifyIPConfigChanges()).Times(0);
+  EXPECT_CALL(*service_, NotifyIPConfigChanges()).Times(0);
   EXPECT_CALL(*device_, StartDNSTest(_, _, _)).Times(0);
   EXPECT_CALL(metrics_,
       NotifyFallbackDNSTestResult(_, Metrics::kFallbackDNSTestResultSuccess))
@@ -2555,16 +2500,13 @@ TEST_F(DevicePortalDetectionTest, FallbackDNSResultCallback) {
   Mock::VerifyAndClearExpectations(&metrics_);
 
   // Fallback DNS test succeed with auto fallback enabled.
-  EXPECT_CALL(*service_.get(), is_dns_auto_fallback_allowed())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*service_.get(), IsPortalDetectionDisabled())
+  EXPECT_CALL(*service_, is_dns_auto_fallback_allowed()).WillOnce(Return(true));
+  EXPECT_CALL(*service_, IsPortalDetectionDisabled())
       .WillRepeatedly(Return(false));
-  EXPECT_CALL(*service_.get(), IsPortalDetectionAuto())
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service_, IsPortalDetectionAuto()).WillRepeatedly(Return(true));
   EXPECT_CALL(manager_, IsPortalDetectionEnabled(device_->technology()))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*service_.get(), HasProxyConfig())
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*service_, HasProxyConfig()).WillRepeatedly(Return(false));
   const string kPortalCheckHttpUrl("http://portal");
   const string kPortalCheckHttpsUrl("https://portal");
   EXPECT_CALL(manager_, GetPortalCheckHttpUrl())
@@ -2572,17 +2514,16 @@ TEST_F(DevicePortalDetectionTest, FallbackDNSResultCallback) {
   EXPECT_CALL(manager_, GetPortalCheckHttpsUrl())
       .WillOnce(ReturnRef(kPortalCheckHttpsUrl));
   const string kInterfaceName("int0");
-  EXPECT_CALL(*connection_.get(), IsIPv6())
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*connection_.get(), interface_name())
+  EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*connection_, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
   const vector<string> kDNSServers;
-  EXPECT_CALL(*connection_.get(), dns_servers())
+  EXPECT_CALL(*connection_, dns_servers())
       .WillRepeatedly(ReturnRef(kDNSServers));
 
   EXPECT_CALL(*ipconfig, UpdateDNSServers(_)).Times(1);
-  EXPECT_CALL(*connection_.get(), UpdateDNSServers(_)).Times(1);
-  EXPECT_CALL(*service_.get(), NotifyIPConfigChanges()).Times(1);
+  EXPECT_CALL(*connection_, UpdateDNSServers(_)).Times(1);
+  EXPECT_CALL(*service_, NotifyIPConfigChanges()).Times(1);
   EXPECT_CALL(*device_, StartDNSTest(_, true, _)).Times(1);
   EXPECT_CALL(metrics_,
       NotifyFallbackDNSTestResult(_, Metrics::kFallbackDNSTestResultSuccess))
@@ -2600,21 +2541,19 @@ TEST_F(DevicePortalDetectionTest, ConfigDNSResultCallback) {
   device_->set_ipconfig(ipconfig);
 
   // DNS test failed for configured DNS servers.
-  EXPECT_CALL(*connection_.get(), UpdateDNSServers(_)).Times(0);
+  EXPECT_CALL(*connection_, UpdateDNSServers(_)).Times(0);
   EXPECT_CALL(*ipconfig, UpdateDNSServers(_)).Times(0);
   InvokeConfigDNSResultCallback(DnsServerTester::kStatusFailure);
   Mock::VerifyAndClearExpectations(connection_.get());
   Mock::VerifyAndClearExpectations(ipconfig.get());
 
   // DNS test succeed for configured DNS servers.
-  EXPECT_CALL(*service_.get(), IsPortalDetectionDisabled())
+  EXPECT_CALL(*service_, IsPortalDetectionDisabled())
       .WillRepeatedly(Return(false));
-  EXPECT_CALL(*service_.get(), IsPortalDetectionAuto())
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service_, IsPortalDetectionAuto()).WillRepeatedly(Return(true));
   EXPECT_CALL(manager_, IsPortalDetectionEnabled(device_->technology()))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*service_.get(), HasProxyConfig())
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*service_, HasProxyConfig()).WillRepeatedly(Return(false));
   const string kPortalCheckHttpUrl("http://portal");
   const string kPortalCheckHttpsUrl("https://portal");
   EXPECT_CALL(manager_, GetPortalCheckHttpUrl())
@@ -2622,16 +2561,15 @@ TEST_F(DevicePortalDetectionTest, ConfigDNSResultCallback) {
   EXPECT_CALL(manager_, GetPortalCheckHttpsUrl())
       .WillOnce(ReturnRef(kPortalCheckHttpsUrl));
   const string kInterfaceName("int0");
-  EXPECT_CALL(*connection_.get(), IsIPv6())
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*connection_.get(), interface_name())
+  EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*connection_, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
   const vector<string> kDNSServers;
-  EXPECT_CALL(*connection_.get(), dns_servers())
+  EXPECT_CALL(*connection_, dns_servers())
       .WillRepeatedly(ReturnRef(kDNSServers));
-  EXPECT_CALL(*connection_.get(), UpdateDNSServers(_)).Times(1);
+  EXPECT_CALL(*connection_, UpdateDNSServers(_)).Times(1);
   EXPECT_CALL(*ipconfig, UpdateDNSServers(_)).Times(1);
-  EXPECT_CALL(*service_.get(), NotifyIPConfigChanges()).Times(1);
+  EXPECT_CALL(*service_, NotifyIPConfigChanges()).Times(1);
   InvokeConfigDNSResultCallback(DnsServerTester::kStatusSuccess);
   Mock::VerifyAndClearExpectations(service_.get());
   Mock::VerifyAndClearExpectations(connection_.get());
@@ -2646,14 +2584,10 @@ TEST_F(DevicePortalDetectionTest, DestroyConnection) {
 
   SetConnection(connection);
 
-  EXPECT_CALL(*service_.get(), IsPortalDetectionDisabled())
-      .WillOnce(Return(false));
-  EXPECT_CALL(*service_.get(), IsConnected())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*service_.get(), HasProxyConfig())
-      .WillOnce(Return(false));
-  EXPECT_CALL(*service_.get(), IsPortalDetectionAuto())
-      .WillOnce(Return(true));
+  EXPECT_CALL(*service_, IsPortalDetectionDisabled()).WillOnce(Return(false));
+  EXPECT_CALL(*service_, IsConnected()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*service_, HasProxyConfig()).WillOnce(Return(false));
+  EXPECT_CALL(*service_, IsPortalDetectionAuto()).WillOnce(Return(true));
   EXPECT_CALL(manager_, IsPortalDetectionEnabled(device_->technology()))
       .WillOnce(Return(true));
   const string http_portal_url(ConnectivityTrial::kDefaultHttpUrl);
@@ -2663,12 +2597,11 @@ TEST_F(DevicePortalDetectionTest, DestroyConnection) {
   EXPECT_CALL(manager_, GetPortalCheckHttpsUrl())
       .WillRepeatedly(ReturnRef(https_portal_url));
   const string kInterfaceName("int0");
-  EXPECT_CALL(*connection.get(), interface_name())
+  EXPECT_CALL(*connection, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));
-  EXPECT_CALL(*connection.get(), IsIPv6())
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*connection, IsIPv6()).WillRepeatedly(Return(false));
   const vector<string> kDNSServers;
-  EXPECT_CALL(*connection.get(), dns_servers())
+  EXPECT_CALL(*connection, dns_servers())
       .WillRepeatedly(ReturnRef(kDNSServers));
 
   EXPECT_TRUE(device_->StartConnectivityTest());
@@ -2676,7 +2609,7 @@ TEST_F(DevicePortalDetectionTest, DestroyConnection) {
 
   // Ensure that the DestroyConnection method removes all connection references
   // except the one left in this scope.
-  EXPECT_CALL(*service_.get(), SetConnection(IsNullRefPtr()));
+  EXPECT_CALL(*service_, SetConnection(IsNullRefPtr()));
   DestroyConnection();
   EXPECT_TRUE(connection->HasOneRef());
 }

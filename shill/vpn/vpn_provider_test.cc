@@ -177,7 +177,7 @@ TEST_F(VPNProviderTest, OnDeviceInfoAvailable) {
   const int kInterfaceIndex = 1;
 
   auto bad_driver = std::make_unique<MockVPNDriver>();
-  EXPECT_CALL(*bad_driver.get(), ClaimInterface(_, _))
+  EXPECT_CALL(*bad_driver, ClaimInterface(_, _))
       .Times(2)
       .WillRepeatedly(Return(false));
   provider_.services_.push_back(new VPNService(&control_, nullptr, &metrics_,
@@ -187,14 +187,12 @@ TEST_F(VPNProviderTest, OnDeviceInfoAvailable) {
       kInterfaceName, kInterfaceIndex, Technology::kTunnel));
 
   auto good_driver = std::make_unique<MockVPNDriver>();
-  EXPECT_CALL(*good_driver.get(), ClaimInterface(_, _))
-      .WillOnce(Return(true));
+  EXPECT_CALL(*good_driver, ClaimInterface(_, _)).WillOnce(Return(true));
   provider_.services_.push_back(new VPNService(&control_, nullptr, &metrics_,
                                                nullptr, good_driver.release()));
 
   auto dup_driver = std::make_unique<MockVPNDriver>();
-  EXPECT_CALL(*dup_driver.get(), ClaimInterface(_, _))
-      .Times(0);
+  EXPECT_CALL(*dup_driver, ClaimInterface(_, _)).Times(0);
   provider_.services_.push_back(new VPNService(&control_, nullptr, &metrics_,
                                                nullptr, dup_driver.release()));
 

@@ -208,8 +208,7 @@ class ConnectionTest : public Test {
   void AddDestructorExpectations() {
     EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceInterfaceIndex0));
     EXPECT_CALL(routing_table_, FlushRoutesWithTag(kTestDeviceInterfaceIndex0));
-    EXPECT_CALL(*device_info_.get(),
-                FlushAddresses(kTestDeviceInterfaceIndex0));
+    EXPECT_CALL(*device_info_, FlushAddresses(kTestDeviceInterfaceIndex0));
     EXPECT_CALL(routing_table_, FlushRules(kTestDeviceInterfaceIndex0));
     EXPECT_CALL(routing_table_, FreeTableId(_));
   }
@@ -323,8 +322,7 @@ TEST_F(ConnectionTest, AddConfig) {
       kTestDeviceInterfaceIndex0));
   EXPECT_CALL(*device_info_, GetDevice(kTestDeviceInterfaceIndex0))
       .WillOnce(Return(device));
-  EXPECT_CALL(*device.get(), RequestPortalDetection())
-      .WillOnce(Return(true));
+  EXPECT_CALL(*device, RequestPortalDetection()).WillOnce(Return(true));
   EXPECT_CALL(routing_table_, FlushCache())
       .WillOnce(Return(true));
   connection_->SetUseDNS(true);
@@ -408,7 +406,7 @@ TEST_F(ConnectionTest, AddConfigUserTrafficOnly) {
       new MockConnection(device_info_.get()));
   ConnectionRefPtr device_connection = mock_connection.get();
 
-  EXPECT_CALL(*device_info_.get(),
+  EXPECT_CALL(*device_info_,
               FlushAddresses(mock_connection->interface_index()));
   const string kInterfaceName(kTestDeviceName1);
   EXPECT_CALL(*mock_connection, interface_name())
@@ -442,7 +440,7 @@ TEST_F(ConnectionTest, AddConfigUserTrafficOnly) {
       kTestDeviceInterfaceIndex0));
   EXPECT_CALL(*device_info_, GetDevice(kTestDeviceInterfaceIndex0))
       .WillOnce(Return(device));
-  EXPECT_CALL(*device.get(), RequestPortalDetection()).WillOnce(Return(true));
+  EXPECT_CALL(*device, RequestPortalDetection()).WillOnce(Return(true));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   connection->SetUseDNS(true);
   connection->SetMetric(GetDefaultMetric());
@@ -577,8 +575,7 @@ TEST_F(ConnectionTest, AddConfigReverse) {
       kTestDeviceInterfaceIndex0));
   EXPECT_CALL(*device_info_, GetDevice(kTestDeviceInterfaceIndex0))
       .WillOnce(Return(device));
-  EXPECT_CALL(*device.get(), RequestPortalDetection())
-      .WillOnce(Return(true));
+  EXPECT_CALL(*device, RequestPortalDetection()).WillOnce(Return(true));
   EXPECT_CALL(routing_table_, FlushCache())
       .WillOnce(Return(true));
   connection_->SetUseDNS(true);
@@ -737,7 +734,7 @@ TEST_F(ConnectionTest, RouteRequest) {
       kTestDeviceInterfaceIndex0));
   EXPECT_CALL(*device_info_, GetDevice(kTestDeviceInterfaceIndex0))
       .WillRepeatedly(Return(device));
-  EXPECT_CALL(*device.get(), SetLooseRouting(true)).Times(1);
+  EXPECT_CALL(*device, SetLooseRouting(true)).Times(1);
   connection->RequestRouting();
   connection->RequestRouting();
 
@@ -745,7 +742,7 @@ TEST_F(ConnectionTest, RouteRequest) {
   connection->ReleaseRouting();
 
   // Another release will re-enable reverse-path filter.
-  EXPECT_CALL(*device.get(), SetLooseRouting(false));
+  EXPECT_CALL(*device, SetLooseRouting(false));
   EXPECT_CALL(routing_table_, FlushCache());
   connection->ReleaseRouting();
 
@@ -1141,8 +1138,8 @@ TEST_F(ConnectionTest, OnRouteQueryResponse) {
   // Create a mock connection that will be used for binding.
   scoped_refptr<MockConnection> mock_connection(
       new StrictMock<MockConnection>(device_info_.get()));
-  EXPECT_CALL(*device_info_.get(),
-      FlushAddresses(mock_connection->interface_index()));
+  EXPECT_CALL(*device_info_,
+              FlushAddresses(mock_connection->interface_index()));
   const string kInterfaceName(kTestDeviceName0);
   EXPECT_CALL(*mock_connection, interface_name())
       .WillRepeatedly(ReturnRef(kInterfaceName));

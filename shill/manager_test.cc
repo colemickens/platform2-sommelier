@@ -532,9 +532,9 @@ TEST_F(ManagerTest, PassiveModeDeviceRegistration) {
   SetDeviceClaimer(device_claimer);
   EXPECT_CALL(*device_claimer, default_claimer()).WillRepeatedly(Return(true));
 
-  ON_CALL(*mock_devices_[0].get(), technology())
+  ON_CALL(*mock_devices_[0], technology())
       .WillByDefault(Return(Technology::kEthernet));
-  ON_CALL(*mock_devices_[1].get(), technology())
+  ON_CALL(*mock_devices_[1], technology())
       .WillByDefault(Return(Technology::kWifi));
 
   // Device not released, should not be registered.
@@ -555,11 +555,11 @@ TEST_F(ManagerTest, PassiveModeDeviceRegistration) {
 }
 
 TEST_F(ManagerTest, DeviceRegistration) {
-  ON_CALL(*mock_devices_[0].get(), technology())
+  ON_CALL(*mock_devices_[0], technology())
       .WillByDefault(Return(Technology::kEthernet));
-  ON_CALL(*mock_devices_[1].get(), technology())
+  ON_CALL(*mock_devices_[1], technology())
       .WillByDefault(Return(Technology::kWifi));
-  ON_CALL(*mock_devices_[2].get(), technology())
+  ON_CALL(*mock_devices_[2], technology())
       .WillByDefault(Return(Technology::kCellular));
 
   manager()->RegisterDevice(mock_devices_[0]);
@@ -573,11 +573,11 @@ TEST_F(ManagerTest, DeviceRegistration) {
 
 TEST_F(ManagerTest, DeviceRegistrationTriggersThrottler) {
   manager()->network_throttling_enabled_ = true;
-  ON_CALL(*mock_devices_[0].get(), technology())
+  ON_CALL(*mock_devices_[0], technology())
       .WillByDefault(Return(Technology::kEthernet));
-  ON_CALL(*mock_devices_[1].get(), technology())
+  ON_CALL(*mock_devices_[1], technology())
       .WillByDefault(Return(Technology::kWifi));
-  ON_CALL(*mock_devices_[2].get(), technology())
+  ON_CALL(*mock_devices_[2], technology())
       .WillByDefault(Return(Technology::kCellular));
 
   EXPECT_CALL(*throttler_, ThrottleInterfaces(_, _, _)).Times(1);
@@ -589,11 +589,11 @@ TEST_F(ManagerTest, DeviceRegistrationTriggersThrottler) {
 }
 
 TEST_F(ManagerTest, ManagerCallsThrottlerCorrectly) {
-  ON_CALL(*mock_devices_[0].get(), technology())
+  ON_CALL(*mock_devices_[0], technology())
       .WillByDefault(Return(Technology::kEthernet));
-  ON_CALL(*mock_devices_[1].get(), technology())
+  ON_CALL(*mock_devices_[1], technology())
       .WillByDefault(Return(Technology::kWifi));
-  ON_CALL(*mock_devices_[2].get(), technology())
+  ON_CALL(*mock_devices_[2], technology())
       .WillByDefault(Return(Technology::kCellular));
 
   manager()->RegisterDevice(mock_devices_[0]);
@@ -614,10 +614,8 @@ TEST_F(ManagerTest, DeviceRegistrationAndStart) {
   manager()->running_ = true;
   mock_devices_[0]->enabled_persistent_ = true;
   mock_devices_[1]->enabled_persistent_ = false;
-  EXPECT_CALL(*mock_devices_[0].get(), SetEnabled(true))
-      .Times(1);
-  EXPECT_CALL(*mock_devices_[1].get(), SetEnabled(_))
-      .Times(0);
+  EXPECT_CALL(*mock_devices_[0], SetEnabled(true)).Times(1);
+  EXPECT_CALL(*mock_devices_[1], SetEnabled(_)).Times(0);
   manager()->RegisterDevice(mock_devices_[0]);
   manager()->RegisterDevice(mock_devices_[1]);
 }
@@ -633,9 +631,9 @@ TEST_F(ManagerTest, DeviceRegistrationWithProfile) {
 }
 
 TEST_F(ManagerTest, DeviceDeregistration) {
-  ON_CALL(*mock_devices_[0].get(), technology())
+  ON_CALL(*mock_devices_[0], technology())
       .WillByDefault(Return(Technology::kEthernet));
-  ON_CALL(*mock_devices_[1].get(), technology())
+  ON_CALL(*mock_devices_[1], technology())
       .WillByDefault(Return(Technology::kWifi));
 
   manager()->RegisterDevice(mock_devices_[0]);
@@ -648,12 +646,12 @@ TEST_F(ManagerTest, DeviceDeregistration) {
       new MockProfile(control_interface(), metrics(), manager(), "");
   AdoptProfile(manager(), profile);  // Passes ownership.
 
-  EXPECT_CALL(*mock_devices_[0].get(), SetEnabled(false));
+  EXPECT_CALL(*mock_devices_[0], SetEnabled(false));
   EXPECT_CALL(*profile, UpdateDevice(DeviceRefPtr(mock_devices_[0])));
   manager()->DeregisterDevice(mock_devices_[0]);
   EXPECT_FALSE(IsDeviceRegistered(mock_devices_[0], Technology::kEthernet));
 
-  EXPECT_CALL(*mock_devices_[1].get(), SetEnabled(false));
+  EXPECT_CALL(*mock_devices_[1], SetEnabled(false));
   EXPECT_CALL(*profile, UpdateDevice(DeviceRefPtr(mock_devices_[1])));
   manager()->DeregisterDevice(mock_devices_[1]);
   EXPECT_FALSE(IsDeviceRegistered(mock_devices_[1], Technology::kWifi));
@@ -684,9 +682,9 @@ TEST_F(ManagerTest, ServiceRegistration) {
   string service1_name(mock_service->unique_name());
   string service2_name(mock_service2->unique_name());
 
-  EXPECT_CALL(*mock_service.get(), GetRpcIdentifier())
+  EXPECT_CALL(*mock_service, GetRpcIdentifier())
       .WillRepeatedly(Return(service1_name));
-  EXPECT_CALL(*mock_service2.get(), GetRpcIdentifier())
+  EXPECT_CALL(*mock_service2, GetRpcIdentifier())
       .WillRepeatedly(Return(service2_name));
   // TODO(quiche): make this EXPECT_CALL work (crbug.com/203247)
   // EXPECT_CALL(*static_cast<ManagerMockAdaptor*>(manager.adaptor_.get()),
@@ -762,7 +760,7 @@ TEST_F(ManagerTest, RegisterUnknownService) {
                                 dispatcher(),
                                 metrics(),
                                 &manager));
-  EXPECT_CALL(*mock_service2.get(), GetStorageIdentifier())
+  EXPECT_CALL(*mock_service2, GetStorageIdentifier())
       .WillRepeatedly(Return(mock_service2->unique_name()));
   manager.RegisterService(mock_service2);
   EXPECT_NE(mock_service2->profile().get(), profile.get());
@@ -871,7 +869,7 @@ TEST_F(ManagerTest, MoveService) {
   EXPECT_TRUE(profile->AdoptService(s2));
 
   // Now, move the Service |s2| to another profile.
-  EXPECT_CALL(*s2.get(), Save(_)).WillOnce(Return(true));
+  EXPECT_CALL(*s2, Save(_)).WillOnce(Return(true));
   ASSERT_TRUE(manager.MoveServiceToProfile(s2, manager.ActiveProfile()));
 
   // Force destruction of the original Profile, to ensure that the Service
@@ -1056,10 +1054,9 @@ TEST_F(ManagerTest, PushPopProfile) {
                                 metrics(),
                                 &manager));
   const char kServiceName[] = "service_storage_name";
-  EXPECT_CALL(*service.get(), GetStorageIdentifier())
+  EXPECT_CALL(*service, GetStorageIdentifier())
       .WillRepeatedly(Return(kServiceName));
-  EXPECT_CALL(*service.get(), Load(_))
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service, Load(_)).WillRepeatedly(Return(true));
 
   // Add this service to the manager -- it should end up in the ephemeral
   // profile.
@@ -1341,12 +1338,12 @@ TEST_F(ManagerTest, HandleProfileEntryDeletion) {
                                 manager()));
 
   string entry_name("entry_name");
-  EXPECT_CALL(*s_not_in_profile.get(), GetStorageIdentifier()).Times(0);
-  EXPECT_CALL(*s_not_in_group.get(), GetStorageIdentifier())
+  EXPECT_CALL(*s_not_in_profile, GetStorageIdentifier()).Times(0);
+  EXPECT_CALL(*s_not_in_group, GetStorageIdentifier())
       .WillRepeatedly(Return("not_entry_name"));
-  EXPECT_CALL(*s_configure_fail.get(), GetStorageIdentifier())
+  EXPECT_CALL(*s_configure_fail, GetStorageIdentifier())
       .WillRepeatedly(Return(entry_name));
-  EXPECT_CALL(*s_configure_succeed.get(), GetStorageIdentifier())
+  EXPECT_CALL(*s_configure_succeed, GetStorageIdentifier())
       .WillRepeatedly(Return(entry_name));
 
   manager()->RegisterService(s_not_in_profile);
@@ -1379,39 +1376,35 @@ TEST_F(ManagerTest, HandleProfileEntryDeletion) {
   EXPECT_FALSE(IsSortServicesTaskPending());
 
   // Only services that are members of the profile and group will be abandoned.
-  EXPECT_CALL(*profile1.get(),
-              AbandonService(IsRefPtrTo(s_not_in_profile.get()))).Times(0);
-  EXPECT_CALL(*profile1.get(),
-              AbandonService(IsRefPtrTo(s_not_in_group.get()))).Times(0);
-  EXPECT_CALL(*profile1.get(),
-              AbandonService(IsRefPtrTo(s_configure_fail.get())))
+  EXPECT_CALL(*profile1, AbandonService(IsRefPtrTo(s_not_in_profile.get())))
+      .Times(0);
+  EXPECT_CALL(*profile1, AbandonService(IsRefPtrTo(s_not_in_group.get())))
+      .Times(0);
+  EXPECT_CALL(*profile1, AbandonService(IsRefPtrTo(s_configure_fail.get())))
       .WillOnce(Return(true));
-  EXPECT_CALL(*profile1.get(),
-              AbandonService(IsRefPtrTo(s_configure_succeed.get())))
+  EXPECT_CALL(*profile1, AbandonService(IsRefPtrTo(s_configure_succeed.get())))
       .WillOnce(Return(true));
 
   // Never allow services to re-join profile1.
-  EXPECT_CALL(*profile1.get(), ConfigureService(_))
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*profile1, ConfigureService(_)).WillRepeatedly(Return(false));
 
   // Only allow one of the members of the profile and group to successfully
   // join profile0.
-  EXPECT_CALL(*profile0.get(),
-              ConfigureService(IsRefPtrTo(s_not_in_profile.get()))).Times(0);
-  EXPECT_CALL(*profile0.get(),
-              ConfigureService(IsRefPtrTo(s_not_in_group.get()))).Times(0);
-  EXPECT_CALL(*profile0.get(),
-              ConfigureService(IsRefPtrTo(s_configure_fail.get())))
+  EXPECT_CALL(*profile0, ConfigureService(IsRefPtrTo(s_not_in_profile.get())))
+      .Times(0);
+  EXPECT_CALL(*profile0, ConfigureService(IsRefPtrTo(s_not_in_group.get())))
+      .Times(0);
+  EXPECT_CALL(*profile0, ConfigureService(IsRefPtrTo(s_configure_fail.get())))
       .WillOnce(Return(false));
-  EXPECT_CALL(*profile0.get(),
+  EXPECT_CALL(*profile0,
               ConfigureService(IsRefPtrTo(s_configure_succeed.get())))
       .WillOnce(Return(true));
 
   // Expect the failed-to-configure service to have Unload() called on it.
-  EXPECT_CALL(*s_not_in_profile.get(), Unload()).Times(0);
-  EXPECT_CALL(*s_not_in_group.get(), Unload()).Times(0);
-  EXPECT_CALL(*s_configure_fail.get(), Unload()).Times(1);
-  EXPECT_CALL(*s_configure_succeed.get(), Unload()).Times(0);
+  EXPECT_CALL(*s_not_in_profile, Unload()).Times(0);
+  EXPECT_CALL(*s_not_in_group, Unload()).Times(0);
+  EXPECT_CALL(*s_configure_fail, Unload()).Times(1);
+  EXPECT_CALL(*s_configure_succeed, Unload()).Times(0);
 
   EXPECT_TRUE(manager()->HandleProfileEntryDeletion(profile1, entry_name));
   EXPECT_TRUE(IsSortServicesTaskPending());
@@ -1451,13 +1444,13 @@ TEST_F(ManagerTest, HandleProfileEntryDeletionWithUnload) {
       .Times(4);  // Once for each registration.
 
   string entry_name("entry_name");
-  EXPECT_CALL(*s_will_remove0.get(), GetStorageIdentifier())
+  EXPECT_CALL(*s_will_remove0, GetStorageIdentifier())
       .WillRepeatedly(Return(entry_name));
-  EXPECT_CALL(*s_will_remove1.get(), GetStorageIdentifier())
+  EXPECT_CALL(*s_will_remove1, GetStorageIdentifier())
       .WillRepeatedly(Return(entry_name));
-  EXPECT_CALL(*s_will_not_remove0.get(), GetStorageIdentifier())
+  EXPECT_CALL(*s_will_not_remove0, GetStorageIdentifier())
       .WillRepeatedly(Return(entry_name));
-  EXPECT_CALL(*s_will_not_remove1.get(), GetStorageIdentifier())
+  EXPECT_CALL(*s_will_not_remove1, GetStorageIdentifier())
       .WillRepeatedly(Return(entry_name));
 
   manager()->RegisterService(s_will_remove0);
@@ -2460,17 +2453,14 @@ TEST_F(ManagerTest, ConnectionStatusCheck) {
   manager()->RegisterService(mock_service);
 
   // Device not connected.
-  EXPECT_CALL(*mock_service.get(), IsConnected())
-      .WillOnce(Return(false));
+  EXPECT_CALL(*mock_service, IsConnected()).WillOnce(Return(false));
   EXPECT_CALL(mock_metrics,
       NotifyDeviceConnectionStatus(Metrics::kConnectionStatusOffline));
   manager()->ConnectionStatusCheck();
 
   // Device connected, but not online.
-  EXPECT_CALL(*mock_service.get(), IsConnected())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*mock_service.get(), IsOnline())
-      .WillOnce(Return(false));
+  EXPECT_CALL(*mock_service, IsConnected()).WillOnce(Return(true));
+  EXPECT_CALL(*mock_service, IsOnline()).WillOnce(Return(false));
   EXPECT_CALL(mock_metrics,
       NotifyDeviceConnectionStatus(Metrics::kConnectionStatusOnline)).Times(0);
   EXPECT_CALL(mock_metrics,
@@ -2478,10 +2468,8 @@ TEST_F(ManagerTest, ConnectionStatusCheck) {
   manager()->ConnectionStatusCheck();
 
   // Device connected and online.
-  EXPECT_CALL(*mock_service.get(), IsConnected())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*mock_service.get(), IsOnline())
-      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_service, IsConnected()).WillOnce(Return(true));
+  EXPECT_CALL(*mock_service, IsOnline()).WillOnce(Return(true));
   EXPECT_CALL(mock_metrics,
       NotifyDeviceConnectionStatus(Metrics::kConnectionStatusOnline));
   EXPECT_CALL(mock_metrics,
@@ -2499,13 +2487,13 @@ TEST_F(ManagerTest, DevicePresenceStatusCheck) {
   manager()->RegisterDevice(mock_devices_[2]);
   manager()->RegisterDevice(mock_devices_[3]);
 
-  ON_CALL(*mock_devices_[0].get(), technology())
+  ON_CALL(*mock_devices_[0], technology())
       .WillByDefault(Return(Technology::kEthernet));
-  ON_CALL(*mock_devices_[1].get(), technology())
+  ON_CALL(*mock_devices_[1], technology())
       .WillByDefault(Return(Technology::kWifi));
-  ON_CALL(*mock_devices_[2].get(), technology())
+  ON_CALL(*mock_devices_[2], technology())
       .WillByDefault(Return(Technology::kCellular));
-  ON_CALL(*mock_devices_[3].get(), technology())
+  ON_CALL(*mock_devices_[3], technology())
       .WillByDefault(Return(Technology::kWifi));
 
   EXPECT_CALL(mock_metrics,
@@ -2600,21 +2588,19 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   // DNS configuration.
   std::vector<std::string> dns_servers;
   dns_servers.push_back("8.8.8.8");
-  EXPECT_CALL(*mock_connection0.get(), dns_servers()).
-      WillRepeatedly(ReturnRef(dns_servers));
-  EXPECT_CALL(*mock_connection1.get(), dns_servers()).
-      WillRepeatedly(ReturnRef(dns_servers));
+  EXPECT_CALL(*mock_connection0, dns_servers())
+      .WillRepeatedly(ReturnRef(dns_servers));
+  EXPECT_CALL(*mock_connection1, dns_servers())
+      .WillRepeatedly(ReturnRef(dns_servers));
 
   // If both Services have Connections, the DefaultService follows
   // from ServiceOrderIs.  We notify others of the change in
   // DefaultService.
-  EXPECT_CALL(*mock_connection0.get(), SetUseDNS(true));
-  EXPECT_CALL(*mock_connection0.get(),
-              SetMetric(Connection::kNewDefaultMetric));
-  EXPECT_CALL(*mock_connection0.get(), SetMetric(Connection::kDefaultMetric));
-  EXPECT_CALL(*mock_connection1.get(), SetUseDNS(false));
-  EXPECT_CALL(*mock_connection1.get(),
-              SetMetric(Connection::kNonDefaultMetricBase));
+  EXPECT_CALL(*mock_connection0, SetUseDNS(true));
+  EXPECT_CALL(*mock_connection0, SetMetric(Connection::kNewDefaultMetric));
+  EXPECT_CALL(*mock_connection0, SetMetric(Connection::kDefaultMetric));
+  EXPECT_CALL(*mock_connection1, SetUseDNS(false));
+  EXPECT_CALL(*mock_connection1, SetMetric(Connection::kNonDefaultMetricBase));
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(mock_service0.get()));
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierChanged(kDefaultServiceProperty, _));
@@ -2631,13 +2617,11 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   // Changing the ordering causes the DefaultService to change, and
   // appropriate notifications are sent.
   mock_service1->SetPriority(1, nullptr);
-  EXPECT_CALL(*mock_connection0.get(), SetUseDNS(false));
-  EXPECT_CALL(*mock_connection0.get(),
-              SetMetric(Connection::kNonDefaultMetricBase));
-  EXPECT_CALL(*mock_connection1.get(), SetUseDNS(true));
-  EXPECT_CALL(*mock_connection1.get(),
-              SetMetric(Connection::kNewDefaultMetric));
-  EXPECT_CALL(*mock_connection1.get(), SetMetric(Connection::kDefaultMetric));
+  EXPECT_CALL(*mock_connection0, SetUseDNS(false));
+  EXPECT_CALL(*mock_connection0, SetMetric(Connection::kNonDefaultMetricBase));
+  EXPECT_CALL(*mock_connection1, SetUseDNS(true));
+  EXPECT_CALL(*mock_connection1, SetMetric(Connection::kNewDefaultMetric));
+  EXPECT_CALL(*mock_connection1, SetMetric(Connection::kDefaultMetric));
   EXPECT_CALL(service_watcher, OnDefaultServiceChanged(_));
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(mock_service1.get()));
   EXPECT_CALL(*manager_adaptor_,
@@ -2653,10 +2637,9 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
 
   // Deregistering the current DefaultService causes the other Service
   // to become default.  Appropriate notifications are sent.
-  EXPECT_CALL(*mock_connection0.get(), SetUseDNS(true));
-  EXPECT_CALL(*mock_connection0.get(),
-              SetMetric(Connection::kNewDefaultMetric));
-  EXPECT_CALL(*mock_connection0.get(), SetMetric(Connection::kDefaultMetric));
+  EXPECT_CALL(*mock_connection0, SetUseDNS(true));
+  EXPECT_CALL(*mock_connection0, SetMetric(Connection::kNewDefaultMetric));
+  EXPECT_CALL(*mock_connection0, SetMetric(Connection::kDefaultMetric));
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(mock_service0.get()));
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierChanged(kDefaultServiceProperty, _));
@@ -2795,15 +2778,15 @@ TEST_F(ManagerTest, DefaultServiceStateChange) {
   manager()->UpdateDefaultServices(mock_service0, mock_service0);
 
   // Changing the default service's state should notify both services.
-  EXPECT_CALL(*mock_service0.get(), OnDefaultServiceStateChanged(_));
-  EXPECT_CALL(*mock_service1.get(), OnDefaultServiceStateChanged(_));
+  EXPECT_CALL(*mock_service0, OnDefaultServiceStateChanged(_));
+  EXPECT_CALL(*mock_service1, OnDefaultServiceStateChanged(_));
   manager()->NotifyServiceStateChanged(mock_service0);
   Mock::VerifyAndClearExpectations(mock_service0.get());
   Mock::VerifyAndClearExpectations(mock_service1.get());
 
   // Changing the non-default service's state shouldn't notify anyone.
-  EXPECT_CALL(*mock_service0.get(), OnDefaultServiceStateChanged(_)).Times(0);
-  EXPECT_CALL(*mock_service1.get(), OnDefaultServiceStateChanged(_)).Times(0);
+  EXPECT_CALL(*mock_service0, OnDefaultServiceStateChanged(_)).Times(0);
+  EXPECT_CALL(*mock_service1, OnDefaultServiceStateChanged(_)).Times(0);
   manager()->NotifyServiceStateChanged(mock_service1);
 
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(nullptr));
@@ -2853,13 +2836,13 @@ TEST_F(ManagerTest, AvailableTechnologies) {
   manager()->RegisterDevice(mock_devices_[2]);
   manager()->RegisterDevice(mock_devices_[3]);
 
-  ON_CALL(*mock_devices_[0].get(), technology())
+  ON_CALL(*mock_devices_[0], technology())
       .WillByDefault(Return(Technology::kEthernet));
-  ON_CALL(*mock_devices_[1].get(), technology())
+  ON_CALL(*mock_devices_[1], technology())
       .WillByDefault(Return(Technology::kWifi));
-  ON_CALL(*mock_devices_[2].get(), technology())
+  ON_CALL(*mock_devices_[2], technology())
       .WillByDefault(Return(Technology::kCellular));
-  ON_CALL(*mock_devices_[3].get(), technology())
+  ON_CALL(*mock_devices_[3], technology())
       .WillByDefault(Return(Technology::kWifi));
 
   set<string> expected_technologies;
@@ -2898,10 +2881,8 @@ TEST_F(ManagerTest, ConnectedTechnologies) {
                                 metrics(),
                                 manager()));
 
-  ON_CALL(*connected_service1.get(), IsConnected())
-      .WillByDefault(Return(true));
-  ON_CALL(*connected_service2.get(), IsConnected())
-      .WillByDefault(Return(true));
+  ON_CALL(*connected_service1, IsConnected()).WillByDefault(Return(true));
+  ON_CALL(*connected_service2, IsConnected()).WillByDefault(Return(true));
 
   manager()->RegisterService(connected_service1);
   manager()->RegisterService(connected_service2);
@@ -2913,13 +2894,13 @@ TEST_F(ManagerTest, ConnectedTechnologies) {
   manager()->RegisterDevice(mock_devices_[2]);
   manager()->RegisterDevice(mock_devices_[3]);
 
-  ON_CALL(*mock_devices_[0].get(), technology())
+  ON_CALL(*mock_devices_[0], technology())
       .WillByDefault(Return(Technology::kEthernet));
-  ON_CALL(*mock_devices_[1].get(), technology())
+  ON_CALL(*mock_devices_[1], technology())
       .WillByDefault(Return(Technology::kWifi));
-  ON_CALL(*mock_devices_[2].get(), technology())
+  ON_CALL(*mock_devices_[2], technology())
       .WillByDefault(Return(Technology::kCellular));
-  ON_CALL(*mock_devices_[3].get(), technology())
+  ON_CALL(*mock_devices_[3], technology())
       .WillByDefault(Return(Technology::kWifi));
 
   mock_devices_[0]->SelectService(connected_service1);
@@ -2952,15 +2933,14 @@ TEST_F(ManagerTest, DefaultTechnology) {
                                 manager()));
 
   // Connected. WiFi.
-  ON_CALL(*connected_service.get(), IsConnected())
-      .WillByDefault(Return(true));
-  ON_CALL(*connected_service.get(), state())
+  ON_CALL(*connected_service, IsConnected()).WillByDefault(Return(true));
+  ON_CALL(*connected_service, state())
       .WillByDefault(Return(Service::kStateConnected));
-  ON_CALL(*connected_service.get(), technology())
+  ON_CALL(*connected_service, technology())
       .WillByDefault(Return(Technology::kWifi));
 
   // Disconnected. Ethernet.
-  ON_CALL(*disconnected_service.get(), technology())
+  ON_CALL(*disconnected_service, technology())
       .WillByDefault(Return(Technology::kEthernet));
 
   manager()->RegisterService(disconnected_service);
@@ -2991,15 +2971,14 @@ TEST_F(ManagerTest, Stop) {
   manager()->RegisterDevice(mock_devices_[0]);
   SetPowerManager();
   EXPECT_TRUE(manager()->power_manager());
-  EXPECT_CALL(*profile.get(),
-              UpdateDevice(DeviceRefPtr(mock_devices_[0].get())))
+  EXPECT_CALL(*profile, UpdateDevice(DeviceRefPtr(mock_devices_[0].get())))
       .WillOnce(Return(true));
-  EXPECT_CALL(*mock_devices_[0].get(), SetEnabled(false));
+  EXPECT_CALL(*mock_devices_[0], SetEnabled(false));
 #if !defined(DISABLE_WIFI)
-  EXPECT_CALL(*profile.get(), UpdateWiFiProvider(_)).WillOnce(Return(true));
+  EXPECT_CALL(*profile, UpdateWiFiProvider(_)).WillOnce(Return(true));
 #endif  // DISABLE_WIFI
-  EXPECT_CALL(*profile.get(), Save()).WillOnce(Return(true));
-  EXPECT_CALL(*service.get(), Disconnect(_, HasSubstr("Stop"))).Times(1);
+  EXPECT_CALL(*profile, Save()).WillOnce(Return(true));
+  EXPECT_CALL(*service, Disconnect(_, HasSubstr("Stop"))).Times(1);
   manager()->Stop();
   EXPECT_FALSE(manager()->power_manager());
 }
@@ -3014,9 +2993,8 @@ TEST_F(ManagerTest, UpdateServiceConnected) {
   EXPECT_FALSE(mock_service->retain_auto_connect());
   EXPECT_FALSE(mock_service->auto_connect());
 
-  EXPECT_CALL(*mock_service.get(), IsConnected())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*mock_service.get(), EnableAndRetainAutoConnect());
+  EXPECT_CALL(*mock_service, IsConnected()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_service, EnableAndRetainAutoConnect());
   manager()->UpdateService(mock_service);
 }
 
@@ -3042,7 +3020,7 @@ TEST_F(ManagerTest, UpdateServiceConnectedPersistAutoConnect) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*profile,
               UpdateService(static_cast<ServiceRefPtr>(mock_service)));
-  EXPECT_CALL(*mock_service.get(), EnableAndRetainAutoConnect());
+  EXPECT_CALL(*mock_service, EnableAndRetainAutoConnect());
   manager()->UpdateService(mock_service);
   // This releases the ref on the mock profile.
   mock_service->set_profile(nullptr);
@@ -3059,7 +3037,7 @@ TEST_F(ManagerTest, UpdateServiceLogging) {
       "Service %s updated;", mock_service->unique_name().c_str());
 
   // An idle service should only be logged as unconnected.
-  EXPECT_CALL(*mock_service.get(), state())
+  EXPECT_CALL(*mock_service, state())
       .WillRepeatedly(Return(Service::kStateIdle));
   EXPECT_CALL(log, Log(logging::LOG_INFO, _, HasSubstr("not connected")));
   manager()->RegisterService(mock_service);
@@ -3070,7 +3048,7 @@ TEST_F(ManagerTest, UpdateServiceLogging) {
   Mock::VerifyAndClearExpectations(&log);
 
   // A service leaving the idle state should create a log message.
-  EXPECT_CALL(*mock_service.get(), state())
+  EXPECT_CALL(*mock_service, state())
       .WillRepeatedly(Return(Service::kStateAssociating));
   EXPECT_CALL(log, Log(logging::LOG_INFO, _, HasSubstr(updated_message)))
       .Times(1);
@@ -3089,7 +3067,7 @@ TEST_F(ManagerTest, UpdateServiceLogging) {
 
   // A service transitioning between two non-idle states should create
   // a log message.
-  EXPECT_CALL(*mock_service.get(), state())
+  EXPECT_CALL(*mock_service, state())
       .WillRepeatedly(Return(Service::kStateConnected));
   EXPECT_CALL(log, Log(logging::LOG_INFO, _, HasSubstr(updated_message)))
       .Times(1);
@@ -3100,7 +3078,7 @@ TEST_F(ManagerTest, UpdateServiceLogging) {
 
   // A service transitioning from a non-idle state to idle should create
   // a log message.
-  EXPECT_CALL(*mock_service.get(), state())
+  EXPECT_CALL(*mock_service, state())
       .WillRepeatedly(Return(Service::kStateIdle));
   EXPECT_CALL(log, Log(logging::LOG_INFO, _, HasSubstr(updated_message)))
       .Times(1);
@@ -3122,16 +3100,14 @@ TEST_F(ManagerTest, SaveSuccessfulService) {
   // Re-cast this back to a ServiceRefPtr, so EXPECT arguments work correctly.
   ServiceRefPtr expect_service(service.get());
 
-  EXPECT_CALL(*profile.get(), ConfigureService(expect_service))
+  EXPECT_CALL(*profile, ConfigureService(expect_service))
       .WillOnce(Return(false));
   manager()->RegisterService(service);
 
-  EXPECT_CALL(*service.get(), state())
+  EXPECT_CALL(*service, state())
       .WillRepeatedly(Return(Service::kStateConnected));
-  EXPECT_CALL(*service.get(), IsConnected())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*profile.get(), AdoptService(expect_service))
-      .WillOnce(Return(true));
+  EXPECT_CALL(*service, IsConnected()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*profile, AdoptService(expect_service)).WillOnce(Return(true));
   manager()->UpdateService(service);
 }
 
@@ -3159,7 +3135,7 @@ TEST_F(ManagerTest, EnumerateProfiles) {
       new StrictMock<MockProfile>(
           control_interface(), metrics(), manager(), ""));
     profile_paths.push_back(base::StringPrintf("/profile/%zd", i));
-    EXPECT_CALL(*profile.get(), GetRpcIdentifier())
+    EXPECT_CALL(*profile, GetRpcIdentifier())
         .WillOnce(Return(profile_paths.back()));
     AdoptProfile(manager(), profile);
   }
@@ -3185,9 +3161,9 @@ TEST_F(ManagerTest, EnumerateServiceInnerDevices) {
   const string kDeviceRpcID = "/rpc/";
   manager()->RegisterService(service1);
   manager()->RegisterService(service2);
-  EXPECT_CALL(*service1.get(), GetInnerDeviceRpcIdentifier())
+  EXPECT_CALL(*service1, GetInnerDeviceRpcIdentifier())
       .WillRepeatedly(Return(kDeviceRpcID));
-  EXPECT_CALL(*service2.get(), GetInnerDeviceRpcIdentifier())
+  EXPECT_CALL(*service2, GetInnerDeviceRpcIdentifier())
       .WillRepeatedly(Return(""));
   Error error;
   EXPECT_EQ(vector<string>{kDeviceRpcID}, manager()->EnumerateDevices(&error));
@@ -3196,7 +3172,7 @@ TEST_F(ManagerTest, EnumerateServiceInnerDevices) {
 
 TEST_F(ManagerTest, AutoConnectOnRegister) {
   MockServiceRefPtr service = MakeAutoConnectableService();
-  EXPECT_CALL(*service.get(), AutoConnect());
+  EXPECT_CALL(*service, AutoConnect());
   manager()->RegisterService(service);
   dispatcher()->DispatchPendingEvents();
 }
@@ -3210,13 +3186,11 @@ TEST_F(ManagerTest, AutoConnectOnUpdate) {
   manager()->RegisterService(service2);
   dispatcher()->DispatchPendingEvents();
 
-  EXPECT_CALL(*service1.get(), AutoConnect());
-  EXPECT_CALL(*service2.get(), state())
+  EXPECT_CALL(*service1, AutoConnect());
+  EXPECT_CALL(*service2, state())
       .WillRepeatedly(Return(Service::kStateFailure));
-  EXPECT_CALL(*service2.get(), IsFailed())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*service2.get(), IsConnected())
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*service2, IsFailed()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*service2, IsConnected()).WillRepeatedly(Return(false));
   manager()->UpdateService(service2);
   dispatcher()->DispatchPendingEvents();
 }
@@ -3230,7 +3204,7 @@ TEST_F(ManagerTest, AutoConnectOnDeregister) {
   manager()->RegisterService(service2);
   dispatcher()->DispatchPendingEvents();
 
-  EXPECT_CALL(*service1.get(), AutoConnect());
+  EXPECT_CALL(*service1, AutoConnect());
   manager()->DeregisterService(service2);
   dispatcher()->DispatchPendingEvents();
 }
@@ -3331,9 +3305,9 @@ TEST_F(ManagerTest, RunTerminationActions) {
 }
 
 TEST_F(ManagerTest, OnSuspendImminentDevicesPresent) {
-  EXPECT_CALL(*mock_devices_[0].get(), OnBeforeSuspend(_));
-  EXPECT_CALL(*mock_devices_[1].get(), OnBeforeSuspend(_));
-  EXPECT_CALL(*mock_devices_[2].get(), OnBeforeSuspend(_));
+  EXPECT_CALL(*mock_devices_[0], OnBeforeSuspend(_));
+  EXPECT_CALL(*mock_devices_[1], OnBeforeSuspend(_));
+  EXPECT_CALL(*mock_devices_[2], OnBeforeSuspend(_));
   manager()->RegisterDevice(mock_devices_[0]);
   manager()->RegisterDevice(mock_devices_[1]);
   manager()->RegisterDevice(mock_devices_[2]);
@@ -3348,9 +3322,9 @@ TEST_F(ManagerTest, OnSuspendImminentNoDevicesPresent) {
 }
 
 TEST_F(ManagerTest, OnDarkSuspendImminentDevicesPresent) {
-  EXPECT_CALL(*mock_devices_[0].get(), OnDarkResume(_));
-  EXPECT_CALL(*mock_devices_[1].get(), OnDarkResume(_));
-  EXPECT_CALL(*mock_devices_[2].get(), OnDarkResume(_));
+  EXPECT_CALL(*mock_devices_[0], OnDarkResume(_));
+  EXPECT_CALL(*mock_devices_[1], OnDarkResume(_));
+  EXPECT_CALL(*mock_devices_[2], OnDarkResume(_));
   manager()->RegisterDevice(mock_devices_[0]);
   manager()->RegisterDevice(mock_devices_[1]);
   manager()->RegisterDevice(mock_devices_[2]);
@@ -3372,12 +3346,11 @@ TEST_F(ManagerTest, OnSuspendActionsComplete) {
 }
 
 TEST_F(ManagerTest, RecheckPortal) {
-  EXPECT_CALL(*mock_devices_[0].get(), RequestPortalDetection())
+  EXPECT_CALL(*mock_devices_[0], RequestPortalDetection())
       .WillOnce(Return(false));
-  EXPECT_CALL(*mock_devices_[1].get(), RequestPortalDetection())
+  EXPECT_CALL(*mock_devices_[1], RequestPortalDetection())
       .WillOnce(Return(true));
-  EXPECT_CALL(*mock_devices_[2].get(), RequestPortalDetection())
-      .Times(0);
+  EXPECT_CALL(*mock_devices_[2], RequestPortalDetection()).Times(0);
 
   manager()->RegisterDevice(mock_devices_[0]);
   manager()->RegisterDevice(mock_devices_[1]);
@@ -3391,16 +3364,13 @@ TEST_F(ManagerTest, RecheckPortalOnService) {
                                                         dispatcher(),
                                                         metrics(),
                                                         manager());
-  EXPECT_CALL(*mock_devices_[0].get(),
-              IsConnectedToService(IsRefPtrTo(service)))
+  EXPECT_CALL(*mock_devices_[0], IsConnectedToService(IsRefPtrTo(service)))
       .WillOnce(Return(false));
-  EXPECT_CALL(*mock_devices_[1].get(),
-              IsConnectedToService(IsRefPtrTo(service)))
+  EXPECT_CALL(*mock_devices_[1], IsConnectedToService(IsRefPtrTo(service)))
       .WillOnce(Return(true));
-  EXPECT_CALL(*mock_devices_[1].get(), RestartPortalDetection())
+  EXPECT_CALL(*mock_devices_[1], RestartPortalDetection())
       .WillOnce(Return(true));
-  EXPECT_CALL(*mock_devices_[2].get(), IsConnectedToService(_))
-      .Times(0);
+  EXPECT_CALL(*mock_devices_[2], IsConnectedToService(_)).Times(0);
 
   manager()->RegisterDevice(mock_devices_[0]);
   manager()->RegisterDevice(mock_devices_[1]);
@@ -3448,10 +3418,8 @@ TEST_F(ManagerTest, GetServiceWithGUID) {
                                 metrics(),
                                 manager()));
 
-  EXPECT_CALL(*mock_service0.get(), Configure(_, _))
-      .Times(0);
-  EXPECT_CALL(*mock_service1.get(), Configure(_, _))
-      .Times(0);
+  EXPECT_CALL(*mock_service0, Configure(_, _)).Times(0);
+  EXPECT_CALL(*mock_service1, Configure(_, _)).Times(0);
 
   manager()->RegisterService(mock_service0);
   manager()->RegisterService(mock_service1);
@@ -3488,8 +3456,7 @@ TEST_F(ManagerTest, GetServiceWithGUID) {
 
   {
     Error error;
-    EXPECT_CALL(*mock_service1.get(), Configure(_, &error))
-        .Times(1);
+    EXPECT_CALL(*mock_service1, Configure(_, &error)).Times(1);
     ServiceRefPtr service = manager()->GetService(args, &error);
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(mock_service1.get(), service.get());
@@ -3520,10 +3487,8 @@ TEST_F(ManagerTest, CalculateStateOffline) {
                                 metrics(),
                                 manager()));
 
-  EXPECT_CALL(*mock_service0.get(), IsConnected())
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*mock_service1.get(), IsConnected())
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*mock_service0, IsConnected()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*mock_service1, IsConnected()).WillRepeatedly(Return(false));
 
   manager()->RegisterService(mock_service0);
   manager()->RegisterService(mock_service1);
@@ -3552,13 +3517,11 @@ TEST_F(ManagerTest, CalculateStateOnline) {
                                 metrics(),
                                 manager()));
 
-  EXPECT_CALL(*mock_service0.get(), IsConnected())
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*mock_service1.get(), IsConnected())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*mock_service0.get(), state())
+  EXPECT_CALL(*mock_service0, IsConnected()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*mock_service1, IsConnected()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_service0, state())
       .WillRepeatedly(Return(Service::kStateIdle));
-  EXPECT_CALL(*mock_service1.get(), state())
+  EXPECT_CALL(*mock_service1, state())
       .WillRepeatedly(Return(Service::kStateConnected));
 
   manager()->RegisterService(mock_service0);
@@ -3804,19 +3767,19 @@ TEST_F(ManagerTest, IgnoredSearchList) {
 
   const string kIgnored0 = "chromium.org";
   ignored_paths.push_back(kIgnored0);
-  EXPECT_CALL(*resolver.get(), set_ignored_search_list(ignored_paths));
+  EXPECT_CALL(*resolver, set_ignored_search_list(ignored_paths));
   SetIgnoredDNSSearchPaths(kIgnored0, nullptr);
   EXPECT_EQ(kIgnored0, GetIgnoredDNSSearchPaths());
 
   const string kIgnored1 = "google.com";
   const string kIgnoredSum = kIgnored0 + "," + kIgnored1;
   ignored_paths.push_back(kIgnored1);
-  EXPECT_CALL(*resolver.get(), set_ignored_search_list(ignored_paths));
+  EXPECT_CALL(*resolver, set_ignored_search_list(ignored_paths));
   SetIgnoredDNSSearchPaths(kIgnoredSum, nullptr);
   EXPECT_EQ(kIgnoredSum, GetIgnoredDNSSearchPaths());
 
   ignored_paths.clear();
-  EXPECT_CALL(*resolver.get(), set_ignored_search_list(ignored_paths));
+  EXPECT_CALL(*resolver, set_ignored_search_list(ignored_paths));
   SetIgnoredDNSSearchPaths("", nullptr);
   EXPECT_EQ("", GetIgnoredDNSSearchPaths());
 
@@ -3917,18 +3880,16 @@ TEST_F(ManagerTest, ConnectToBestServices) {
                                 dispatcher(),
                                 metrics(),
                                 manager()));
-  EXPECT_CALL(*wifi_service0.get(), state())
+  EXPECT_CALL(*wifi_service0, state())
       .WillRepeatedly(Return(Service::kStateIdle));
-  EXPECT_CALL(*wifi_service0.get(), IsConnected())
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*wifi_service0, IsConnected()).WillRepeatedly(Return(false));
   wifi_service0->SetConnectable(true);
   wifi_service0->SetAutoConnect(true);
   wifi_service0->SetSecurity(Service::kCryptoAes, true, true);
-  EXPECT_CALL(*wifi_service0.get(), technology())
+  EXPECT_CALL(*wifi_service0, technology())
       .WillRepeatedly(Return(Technology::kWifi));
-  EXPECT_CALL(*wifi_service0.get(), IsVisible())
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*wifi_service0.get(), explicitly_disconnected())
+  EXPECT_CALL(*wifi_service0, IsVisible()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*wifi_service0, explicitly_disconnected())
       .WillRepeatedly(Return(false));
 
   scoped_refptr<MockService> wifi_service1(
@@ -3936,18 +3897,16 @@ TEST_F(ManagerTest, ConnectToBestServices) {
                                 dispatcher(),
                                 metrics(),
                                 manager()));
-  EXPECT_CALL(*wifi_service1.get(), state())
+  EXPECT_CALL(*wifi_service1, state())
       .WillRepeatedly(Return(Service::kStateIdle));
-  EXPECT_CALL(*wifi_service1.get(), IsVisible())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*wifi_service1.get(), IsConnected())
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*wifi_service1, IsVisible()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*wifi_service1, IsConnected()).WillRepeatedly(Return(false));
   wifi_service1->SetAutoConnect(true);
   wifi_service1->SetConnectable(true);
   wifi_service1->SetSecurity(Service::kCryptoRc4, true, true);
-  EXPECT_CALL(*wifi_service1.get(), technology())
+  EXPECT_CALL(*wifi_service1, technology())
       .WillRepeatedly(Return(Technology::kWifi));
-  EXPECT_CALL(*wifi_service1.get(), explicitly_disconnected())
+  EXPECT_CALL(*wifi_service1, explicitly_disconnected())
       .WillRepeatedly(Return(false));
 
   scoped_refptr<MockService> wifi_service2(
@@ -3955,18 +3914,16 @@ TEST_F(ManagerTest, ConnectToBestServices) {
                                 dispatcher(),
                                 metrics(),
                                 manager()));
-  EXPECT_CALL(*wifi_service2.get(), state())
+  EXPECT_CALL(*wifi_service2, state())
       .WillRepeatedly(Return(Service::kStateConnected));
-  EXPECT_CALL(*wifi_service2.get(), IsConnected())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*wifi_service2.get(), IsVisible())
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*wifi_service2, IsConnected()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*wifi_service2, IsVisible()).WillRepeatedly(Return(true));
   wifi_service2->SetAutoConnect(true);
   wifi_service2->SetConnectable(true);
   wifi_service2->SetSecurity(Service::kCryptoNone, false, false);
-  EXPECT_CALL(*wifi_service2.get(), technology())
+  EXPECT_CALL(*wifi_service2, technology())
       .WillRepeatedly(Return(Technology::kWifi));
-  EXPECT_CALL(*wifi_service2.get(), explicitly_disconnected())
+  EXPECT_CALL(*wifi_service2, explicitly_disconnected())
       .WillRepeatedly(Return(false));
 
   manager()->RegisterService(wifi_service0);
@@ -3982,17 +3939,15 @@ TEST_F(ManagerTest, ConnectToBestServices) {
                                 metrics(),
                                 manager()));
 
-  EXPECT_CALL(*cell_service.get(), state())
+  EXPECT_CALL(*cell_service, state())
       .WillRepeatedly(Return(Service::kStateIdle));
-  EXPECT_CALL(*cell_service.get(), IsConnected())
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*cell_service.get(), IsVisible())
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*cell_service, IsConnected()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*cell_service, IsVisible()).WillRepeatedly(Return(true));
   cell_service->SetAutoConnect(true);
   cell_service->SetConnectable(true);
-  EXPECT_CALL(*cell_service.get(), technology())
+  EXPECT_CALL(*cell_service, technology())
       .WillRepeatedly(Return(Technology::kCellular));
-  EXPECT_CALL(*cell_service.get(), explicitly_disconnected())
+  EXPECT_CALL(*cell_service, explicitly_disconnected())
       .WillRepeatedly(Return(true));
   manager()->RegisterService(cell_service);
 
@@ -4002,17 +3957,15 @@ TEST_F(ManagerTest, ConnectToBestServices) {
                                 metrics(),
                                 manager()));
 
-  EXPECT_CALL(*wimax_service.get(), state())
+  EXPECT_CALL(*wimax_service, state())
       .WillRepeatedly(Return(Service::kStateConnected));
-  EXPECT_CALL(*wimax_service.get(), IsConnected())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*wimax_service.get(), IsVisible())
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*wimax_service, IsConnected()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*wimax_service, IsVisible()).WillRepeatedly(Return(true));
   wimax_service->SetAutoConnect(true);
   wimax_service->SetConnectable(true);
-  EXPECT_CALL(*wimax_service.get(), technology())
+  EXPECT_CALL(*wimax_service, technology())
       .WillRepeatedly(Return(Technology::kWiMax));
-  EXPECT_CALL(*wimax_service.get(), explicitly_disconnected())
+  EXPECT_CALL(*wimax_service, explicitly_disconnected())
       .WillRepeatedly(Return(false));
   manager()->RegisterService(wimax_service);
 
@@ -4022,28 +3975,26 @@ TEST_F(ManagerTest, ConnectToBestServices) {
                                 metrics(),
                                 manager()));
 
-  EXPECT_CALL(*vpn_service.get(), state())
+  EXPECT_CALL(*vpn_service, state())
       .WillRepeatedly(Return(Service::kStateIdle));
-  EXPECT_CALL(*vpn_service.get(), IsConnected())
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*vpn_service.get(), IsVisible())
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*vpn_service, IsConnected()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*vpn_service, IsVisible()).WillRepeatedly(Return(true));
   vpn_service->SetAutoConnect(false);
   vpn_service->SetConnectable(true);
-  EXPECT_CALL(*vpn_service.get(), technology())
+  EXPECT_CALL(*vpn_service, technology())
       .WillRepeatedly(Return(Technology::kVPN));
   manager()->RegisterService(vpn_service);
 
   // The connected services should be at the top.
   EXPECT_TRUE(ServiceOrderIs(wifi_service2, wimax_service));
 
-  EXPECT_CALL(*wifi_service0.get(), Connect(_, _)).Times(0);  // Not visible.
-  EXPECT_CALL(*wifi_service1.get(), Connect(_, _));
-  EXPECT_CALL(*wifi_service2.get(), Connect(_, _)).Times(0);  // Lower prio.
-  EXPECT_CALL(*cell_service.get(), Connect(_, _))
+  EXPECT_CALL(*wifi_service0, Connect(_, _)).Times(0);  // Not visible.
+  EXPECT_CALL(*wifi_service1, Connect(_, _));
+  EXPECT_CALL(*wifi_service2, Connect(_, _)).Times(0);  // Lower prio.
+  EXPECT_CALL(*cell_service, Connect(_, _))
       .Times(0);  // Explicitly disconnected.
-  EXPECT_CALL(*wimax_service.get(), Connect(_, _)).Times(0);  // Is connected.
-  EXPECT_CALL(*vpn_service.get(), Connect(_, _)).Times(0);  // Not autoconnect.
+  EXPECT_CALL(*wimax_service, Connect(_, _)).Times(0);  // Is connected.
+  EXPECT_CALL(*vpn_service, Connect(_, _)).Times(0);    // Not autoconnect.
 
   manager()->ConnectToBestServices(nullptr);
   dispatcher()->DispatchPendingEvents();
@@ -4115,14 +4066,12 @@ TEST_F(ManagerTest, CreateConnectivityReport) {
                                 metrics(),
                                 manager());
   manager()->RegisterService(wifi_service);
-  EXPECT_CALL(*wifi_service.get(), state())
+  EXPECT_CALL(*wifi_service, state())
       .WillRepeatedly(Return(Service::kStateConnected));
-  EXPECT_CALL(*wifi_service.get(), IsConnected())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*wifi_device.get(),
-              IsConnectedToService(_)).WillRepeatedly(Return(false));
-  EXPECT_CALL(*wifi_device.get(),
-              IsConnectedToService(IsRefPtrTo(wifi_service)))
+  EXPECT_CALL(*wifi_service, IsConnected()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*wifi_device, IsConnectedToService(_))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*wifi_device, IsConnectedToService(IsRefPtrTo(wifi_service)))
       .WillRepeatedly(Return(true));
 
   // Cell
@@ -4132,14 +4081,12 @@ TEST_F(ManagerTest, CreateConnectivityReport) {
                                 metrics(),
                                 manager());
   manager()->RegisterService(cell_service);
-  EXPECT_CALL(*cell_service.get(), state())
+  EXPECT_CALL(*cell_service, state())
       .WillRepeatedly(Return(Service::kStateConnected));
-  EXPECT_CALL(*cell_service.get(), IsConnected())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*cell_device.get(),
-              IsConnectedToService(_)).WillRepeatedly(Return(false));
-  EXPECT_CALL(*cell_device.get(),
-              IsConnectedToService(IsRefPtrTo(cell_service)))
+  EXPECT_CALL(*cell_service, IsConnected()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*cell_device, IsConnectedToService(_))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*cell_device, IsConnectedToService(IsRefPtrTo(cell_service)))
       .WillRepeatedly(Return(true));
 
   // WiMax
@@ -4149,15 +4096,13 @@ TEST_F(ManagerTest, CreateConnectivityReport) {
                                 metrics(),
                                 manager());
   manager()->RegisterService(wimax_service);
-  EXPECT_CALL(*wimax_service.get(), state())
+  EXPECT_CALL(*wimax_service, state())
       .WillRepeatedly(Return(Service::kStateConnected));
-  EXPECT_CALL(*wimax_service.get(), IsConnected())
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*wimax_service, IsConnected()).WillRepeatedly(Return(true));
 
-  EXPECT_CALL(*wimax_device.get(),
-              IsConnectedToService(_)).WillRepeatedly(Return(false));
-  EXPECT_CALL(*wimax_device.get(),
-              IsConnectedToService(IsRefPtrTo(wimax_service)))
+  EXPECT_CALL(*wimax_device, IsConnectedToService(_))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*wimax_device, IsConnectedToService(IsRefPtrTo(wimax_service)))
       .WillRepeatedly(Return(true));
 
   // Ethernet
@@ -4167,14 +4112,12 @@ TEST_F(ManagerTest, CreateConnectivityReport) {
                                 metrics(),
                                 manager());
   manager()->RegisterService(eth_service);
-  EXPECT_CALL(*eth_service.get(), state())
+  EXPECT_CALL(*eth_service, state())
       .WillRepeatedly(Return(Service::kStateConnected));
-  EXPECT_CALL(*eth_service.get(), IsConnected())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*eth_device.get(),
-              IsConnectedToService(_)).WillRepeatedly(Return(false));
-  EXPECT_CALL(*eth_device.get(),
-              IsConnectedToService(IsRefPtrTo(eth_service)))
+  EXPECT_CALL(*eth_service, IsConnected()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*eth_device, IsConnectedToService(_))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*eth_device, IsConnectedToService(IsRefPtrTo(eth_service)))
       .WillRepeatedly(Return(true));
 
   // VPN: Service exists but is not connected and will not trigger a
@@ -4185,20 +4128,15 @@ TEST_F(ManagerTest, CreateConnectivityReport) {
                                 metrics(),
                                 manager());
   manager()->RegisterService(vpn_service);
-  EXPECT_CALL(*vpn_service.get(), state())
+  EXPECT_CALL(*vpn_service, state())
       .WillRepeatedly(Return(Service::kStateIdle));
-  EXPECT_CALL(*vpn_service.get(), IsConnected())
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*vpn_service, IsConnected()).WillRepeatedly(Return(false));
 
-  EXPECT_CALL(*wifi_device.get(), StartConnectivityTest())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*cell_device.get(), StartConnectivityTest())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*wimax_device.get(), StartConnectivityTest())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*eth_device.get(), StartConnectivityTest())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*vpn_device.get(), StartConnectivityTest()).Times(0);
+  EXPECT_CALL(*wifi_device, StartConnectivityTest()).WillOnce(Return(true));
+  EXPECT_CALL(*cell_device, StartConnectivityTest()).WillOnce(Return(true));
+  EXPECT_CALL(*wimax_device, StartConnectivityTest()).WillOnce(Return(true));
+  EXPECT_CALL(*eth_device, StartConnectivityTest()).WillOnce(Return(true));
+  EXPECT_CALL(*vpn_device, StartConnectivityTest()).Times(0);
   manager()->CreateConnectivityReport(nullptr);
   dispatcher()->DispatchPendingEvents();
 }
@@ -4278,8 +4216,7 @@ TEST_F(ManagerTest, VerifyDestination) {
   manager()->RegisterService(mock_destination);
   // Making the service look online will let service lookup in
   // VerifyDestinatoin succeed.
-  EXPECT_CALL(*mock_destination.get(), IsConnected())
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_destination, IsConnected()).WillRepeatedly(Return(true));
   StrictMock<DestinationVerificationTest> dv_test;
 
   // Lead off by verifying that the basic VerifyDestination flow works.
@@ -4829,43 +4766,36 @@ TEST_F(ManagerTest, IsWifiIdle) {
   manager()->RegisterService(wifi_service);
   manager()->RegisterService(cell_service);
 
-  EXPECT_CALL(*wifi_service.get(), technology())
+  EXPECT_CALL(*wifi_service, technology())
       .WillRepeatedly(Return(Technology::kWifi));
-  EXPECT_CALL(*cell_service.get(), technology())
+  EXPECT_CALL(*cell_service, technology())
       .WillRepeatedly(Return(Technology::kCellular));
 
   // Cellular is connected.
-  EXPECT_CALL(*cell_service.get(), IsConnected())
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*cell_service, IsConnected()).WillRepeatedly(Return(true));
   manager()->UpdateService(cell_service);
 
   // No wifi connection attempt.
-  EXPECT_CALL(*wifi_service.get(), IsConnecting())
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*wifi_service.get(), IsConnected())
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*wifi_service, IsConnecting()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*wifi_service, IsConnected()).WillRepeatedly(Return(false));
   manager()->UpdateService(wifi_service);
   EXPECT_TRUE(manager()->IsWifiIdle());
 
   // Attempt wifi connection.
   Mock::VerifyAndClearExpectations(wifi_service.get());
-  EXPECT_CALL(*wifi_service.get(), technology())
+  EXPECT_CALL(*wifi_service, technology())
       .WillRepeatedly(Return(Technology::kWifi));
-  EXPECT_CALL(*wifi_service.get(), IsConnecting())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*wifi_service.get(), IsConnected())
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*wifi_service, IsConnecting()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*wifi_service, IsConnected()).WillRepeatedly(Return(false));
   manager()->UpdateService(wifi_service);
   EXPECT_FALSE(manager()->IsWifiIdle());
 
   // wifi connected.
   Mock::VerifyAndClearExpectations(wifi_service.get());
-  EXPECT_CALL(*wifi_service.get(), technology())
+  EXPECT_CALL(*wifi_service, technology())
       .WillRepeatedly(Return(Technology::kWifi));
-  EXPECT_CALL(*wifi_service.get(), IsConnecting())
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*wifi_service.get(), IsConnected())
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*wifi_service, IsConnecting()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*wifi_service, IsConnected()).WillRepeatedly(Return(true));
   manager()->UpdateService(wifi_service);
   EXPECT_FALSE(manager()->IsWifiIdle());
 }
@@ -5129,7 +5059,7 @@ TEST_F(ManagerTest, ClaimRegisteredDevice) {
   SetDeviceClaimer(device_claimer);
 
   // Register a device to manager.
-  ON_CALL(*mock_devices_[0].get(), technology())
+  ON_CALL(*mock_devices_[0], technology())
       .WillByDefault(Return(Technology::kWifi));
   manager()->RegisterDevice(mock_devices_[0]);
   // Verify device is registered.
@@ -5213,11 +5143,10 @@ TEST_F(ManagerTest, GetEnabledDeviceWithTechnology) {
   auto ethernet_device = mock_devices_[0];
   auto wifi_device = mock_devices_[1];
   auto cellular_device = mock_devices_[2];
-  ON_CALL(*ethernet_device.get(), technology())
+  ON_CALL(*ethernet_device, technology())
       .WillByDefault(Return(Technology::kEthernet));
-  ON_CALL(*wifi_device.get(), technology())
-      .WillByDefault(Return(Technology::kWifi));
-  ON_CALL(*cellular_device.get(), technology())
+  ON_CALL(*wifi_device, technology()).WillByDefault(Return(Technology::kWifi));
+  ON_CALL(*cellular_device, technology())
       .WillByDefault(Return(Technology::kCellular));
   ethernet_device->enabled_ = true;
   wifi_device->enabled_ = true;
@@ -5239,11 +5168,10 @@ TEST_F(ManagerTest, GetEnabledDeviceByLinkName) {
   auto ethernet_device = mock_devices_[0];
   auto wifi_device = mock_devices_[1];
   auto disabled_wifi_device = mock_devices_[2];
-  ON_CALL(*ethernet_device.get(), technology())
+  ON_CALL(*ethernet_device, technology())
       .WillByDefault(Return(Technology::kEthernet));
-  ON_CALL(*wifi_device.get(), technology())
-      .WillByDefault(Return(Technology::kWifi));
-  ON_CALL(*disabled_wifi_device.get(), technology())
+  ON_CALL(*wifi_device, technology()).WillByDefault(Return(Technology::kWifi));
+  ON_CALL(*disabled_wifi_device, technology())
       .WillByDefault(Return(Technology::kWifi));
   ethernet_device->enabled_ = true;
   wifi_device->enabled_ = true;
@@ -5384,15 +5312,13 @@ TEST_F(ManagerTest, ShouldBlackholeBrowserTraffic) {
                                 metrics(),
                                 manager()));
 
-  EXPECT_CALL(*online_service.get(), IsOnline()).WillRepeatedly(Return(false));
-  EXPECT_CALL(*online_service.get(), IsAlwaysOnVpn(_))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*online_service.get(), IsAlwaysOnVpn(kOnlinePackage))
+  EXPECT_CALL(*online_service, IsOnline()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*online_service, IsAlwaysOnVpn(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(*online_service, IsAlwaysOnVpn(kOnlinePackage))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*offline_service.get(), IsOnline()).WillRepeatedly(Return(false));
-  EXPECT_CALL(*offline_service.get(), IsAlwaysOnVpn(_))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*offline_service.get(), IsAlwaysOnVpn(kOfflinePackage))
+  EXPECT_CALL(*offline_service, IsOnline()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*offline_service, IsAlwaysOnVpn(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(*offline_service, IsAlwaysOnVpn(kOfflinePackage))
       .WillRepeatedly(Return(true));
   manager()->RegisterService(online_service);
   manager()->RegisterService(offline_service);
@@ -5407,7 +5333,7 @@ TEST_F(ManagerTest, ShouldBlackholeBrowserTraffic) {
   EXPECT_EQ(false, manager()->ShouldBlackholeBrowserTraffic(kUnregistered));
 
   // Service comes online, stop blackholing
-  EXPECT_CALL(*online_service.get(), IsOnline()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*online_service, IsOnline()).WillRepeatedly(Return(true));
   manager()->UpdateBlackholeBrowserTraffic();
   EXPECT_EQ(false, manager()->ShouldBlackholeBrowserTraffic(kRegistered));
   EXPECT_EQ(false, manager()->ShouldBlackholeBrowserTraffic(kUnregistered));
@@ -5433,29 +5359,29 @@ TEST_F(ManagerTest, RefreshIPConfig) {
                                 dispatcher(),
                                 metrics(),
                                 manager()));
-  EXPECT_CALL(*service.get(), IsOnline()).WillRepeatedly(Return(false));
-  EXPECT_CALL(*service.get(), IsAlwaysOnVpn(_)).WillRepeatedly(Return(false));
-  EXPECT_CALL(*service.get(), IsAlwaysOnVpn(kOnlinePackage))
+  EXPECT_CALL(*service, IsOnline()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*service, IsAlwaysOnVpn(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(*service, IsAlwaysOnVpn(kOnlinePackage))
       .WillRepeatedly(Return(true));
   manager()->RegisterService(service);
 
-  EXPECT_CALL(*mock_devices_[0].get(), RefreshIPConfig()).Times(1);
+  EXPECT_CALL(*mock_devices_[0], RefreshIPConfig()).Times(1);
   manager()->SetAlwaysOnVpnPackage(kOtherPackage, nullptr);
 
-  EXPECT_CALL(*mock_devices_[0].get(), RefreshIPConfig()).Times(0);
+  EXPECT_CALL(*mock_devices_[0], RefreshIPConfig()).Times(0);
   manager()->SetAlwaysOnVpnPackage(kOnlinePackage, nullptr);
 
-  EXPECT_CALL(*mock_devices_[0].get(), RefreshIPConfig()).Times(0);
+  EXPECT_CALL(*mock_devices_[0], RefreshIPConfig()).Times(0);
   manager()->UpdateBlackholeBrowserTraffic();
 
-  EXPECT_CALL(*mock_devices_[0].get(), RefreshIPConfig()).Times(1);
-  EXPECT_CALL(*service.get(), IsOnline()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_devices_[0], RefreshIPConfig()).Times(1);
+  EXPECT_CALL(*service, IsOnline()).WillRepeatedly(Return(true));
   manager()->UpdateBlackholeBrowserTraffic();
 
-  EXPECT_CALL(*mock_devices_[0].get(), RefreshIPConfig()).Times(1);
+  EXPECT_CALL(*mock_devices_[0], RefreshIPConfig()).Times(1);
   manager()->SetAlwaysOnVpnPackage(kOtherPackage, nullptr);
 
-  EXPECT_CALL(*mock_devices_[0].get(), RefreshIPConfig()).Times(1);
+  EXPECT_CALL(*mock_devices_[0], RefreshIPConfig()).Times(1);
   manager()->SetAlwaysOnVpnPackage("", nullptr);
 }
 
