@@ -1,0 +1,20 @@
+mosys-base: &mosys_base_cmds
+  name: "mosys"
+  args:
+    - "platform id"
+    - "platform name"
+
+mosys-unibuild: &mosys_unibuild_cmds
+  name: "mosys"
+  args:
+    - "platform vendor"
+
+mosys-non-unibuild: &mosys_non_unibuild_cmds
+  name: "mosys"
+  args:
+    - "platform version"
+
+cros-config-unibuild: &cros_config_unibuild_cmds
+  name: "cros_config"
+  args:
+    - "/ brand-name"

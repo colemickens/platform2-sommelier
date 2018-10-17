@@ -1,0 +1,29 @@
+imports:
+  - "cros_config_test_common.yaml"
+
+mosys-nautilus: &mosys_nautilus_cmds
+  name: "mosys"
+  args:
+    - "platform model"
+
+cros-config-lte: &cros_config_lte_cmds
+  name: "cros_config"
+  args:
+    - "/arc/build-properties device"
+
+chromeos:
+  devices:
+    - device-name: "nautilus"
+      command-groups:
+        - *mosys_base_cmds
+        - *mosys_unibuild_cmds
+        - *mosys_nautilus_cmds
+        - *cros_config_unibuild_cmds
+
+    - device-name: "nautiluslte"
+      command-groups:
+        - *mosys_base_cmds
+        - *mosys_unibuild_cmds
+        - *mosys_nautilus_cmds
+        - *cros_config_unibuild_cmds
+        - *cros_config_lte_cmds
