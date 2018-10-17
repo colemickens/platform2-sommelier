@@ -309,17 +309,17 @@ status_t ImguUnit::completeRequest(std::shared_ptr<ProcUnitSettings> &processing
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     LOG2("%s, updateMeta %d", __FUNCTION__, updateMeta);
     Camera3Request *request = processingSettings->request;
-    if (CC_UNLIKELY(request == nullptr)) {
-        LOGE("ProcUnit: nullptr request - BUG");
-        return UNKNOWN_ERROR;
-    }
+
+    CheckAndCallbackError(request == nullptr, mErrCb, UNKNOWN_ERROR,
+                          "ProcUnit: nullptr request - BUG");
+
     const std::vector<camera3_stream_buffer> *outBufs = request->getOutputBuffers();
 
     status_t status = OK;
     if (mImguPipe[GraphConfig::PIPE_VIDEO] != nullptr) {
         status = mImguPipe[GraphConfig::PIPE_VIDEO]->completeRequest(processingSettings,
                            captureBufs, updateMeta);
-        CheckError(status != OK, status, "call video completeRequest failed");
+        CheckAndCallbackError(status != OK, mErrCb, status, "call video completeRequest failed");
     }
 
     if (mImguPipe[GraphConfig::PIPE_STILL] != nullptr) {
@@ -341,7 +341,7 @@ status_t ImguUnit::completeRequest(std::shared_ptr<ProcUnitSettings> &processing
             bool updateMetaInStill = mImguPipe[GraphConfig::PIPE_VIDEO] == nullptr ? true : false;
             status = mImguPipe[GraphConfig::PIPE_STILL]->completeRequest(processingSettings,
                                captureBufs, updateMetaInStill);
-            CheckError(status != OK, status, "call still completeRequest failed");
+            CheckAndCallbackError(status != OK, mErrCb, status, "call still completeRequest failed");
         }
     }
 
@@ -691,18 +691,17 @@ status_t ImguUnit::ImguPipe::handleCompleteReq(DeviceMessage msg)
     LOG2("%s, msg.id %d, pipe type %d", __FUNCTION__, static_cast<int>(msg.id), mPipeType);
 
     Camera3Request *request = msg.cbMetadataMsg.request;
-    if (request == nullptr) {
-        LOGE("Request is nullptr");
-        return BAD_VALUE;
-    }
+
+    CheckAndCallbackError(request == nullptr, mErrCb, BAD_VALUE, "Request is nullptr");
 
     LOG2("order %s:enqueue for Req id %d, ", __FUNCTION__, request->getId());
     std::shared_ptr<DeviceMessage> tmp = std::make_shared<DeviceMessage>(msg);
     mMessagesPending.push_back(tmp);
 
     status_t status = processNextRequest();
-    if (status != NO_ERROR)
-        LOGE("error %d in handling message: %d", status, static_cast<int>(msg.id));
+
+    CheckAndCallbackError(status != NO_ERROR, mErrCb, status,
+                          "error %d in handling message: %d", status, static_cast<int>(msg.id));
 
     return status;
 }
@@ -894,8 +893,9 @@ status_t ImguUnit::ImguPipe::startProcessing()
 status_t ImguUnit::ImguPipe::notifyPollEvent(PollEventMessage *pollMsg)
 {
     LOG2("%s pipe type %d", __FUNCTION__, mPipeType);
-    if (pollMsg == nullptr || pollMsg->data.activeDevices == nullptr)
-        return BAD_VALUE;
+
+    CheckAndCallbackError((pollMsg == nullptr || pollMsg->data.activeDevices == nullptr),
+                          mErrCb, BAD_VALUE, "bad value");
 
     // Common thread message fields for any case
     DeviceMessage msg;

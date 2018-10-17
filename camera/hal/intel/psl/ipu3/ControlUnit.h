@@ -56,7 +56,7 @@ public:
                          int CameraId,
                          IStreamConfigProvider &aStreamCfgProv);
     virtual ~ControlUnit();
-
+    void registerErrorCallback(IErrorCallback *errCb);
     status_t init();
     status_t configStreamsDone(bool configChanged);
 
@@ -130,6 +130,11 @@ private:  /* Members */
     CaptureUnit    *mCaptureUnit; /* ControlUnit doesn't own mCaptureUnit */
     Intel3aPlus    *m3aWrapper;
     int             mCameraId;
+
+    /**
+     * Error handling for polling request.
+     */
+    IErrorCallback* mErrCb;
 
     /**
      * Thread control members

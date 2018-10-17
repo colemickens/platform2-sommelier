@@ -43,7 +43,8 @@ CaptureUnit::CaptureUnit(int camId, IStreamConfigProvider &aStreamCfgProv, std::
         mGainDelay(0),
         mRollingShutterSkew(1000000L),
         mLensSupported(false),
-        mLensController(nullptr)
+        mLensController(nullptr),
+        mErrCb(nullptr)
 {}
 
 CaptureUnit::~CaptureUnit()
@@ -163,6 +164,8 @@ void CaptureUnit::registerErrorCallback(IErrorCallback *errCb)
 {
     mIsys->registerErrorCallback(errCb);
     mSyncManager->registerErrorCallback(errCb);
+    LOG1("@%s, errCb:%p", __FUNCTION__, errCb);
+    mErrCb = errCb;
 }
 
 LensHw *CaptureUnit::getLensControlInterface()
@@ -521,10 +524,8 @@ status_t CaptureUnit::handleCapture(MessageRequest msg)
      * Enqueue the data buffers first
      */
     status = enqueueBuffers(inflightRequest, false);
-    if (status != NO_ERROR) {
-        LOGE("Failed to enqueue buffers!");
-        return UNKNOWN_ERROR;
-    }
+    CheckAndCallbackError(status != NO_ERROR, mErrCb, status,
+                          "@%s: Failed to enqueue buffers!", __FUNCTION__);
 
     /*
      * And then the settings. We send the settings only if we are not skipping,
@@ -709,10 +710,8 @@ status_t CaptureUnit::issueSkips(int count, bool buffers, bool settings, bool is
             mSkipRequestIdQueue.push_back(skipRequestId);
             mLastInflightRequest->aiqCaptureSettings->aiqResults.requestId = skipRequestId;
             status = enqueueBuffers(mLastInflightRequest, true);
-            if (status != NO_ERROR) {
-                LOGE("Failed to enqueue SKIP buffers!");
-                return UNKNOWN_ERROR;
-            }
+            CheckAndCallbackError(status != NO_ERROR, mErrCb, status,
+                                  "@%s: Failed to enqueue SKIP buffers!", __FUNCTION__);
         }
     }
 
@@ -758,6 +757,8 @@ status_t CaptureUnit::handleIsysEvent(MessageBuffer msg)
     switch(isysNodeName) {
     case ISYS_NODE_RAW:
         status = processIsysBuffer(msg);
+        CheckAndCallbackError(status != NO_ERROR, mErrCb, status,
+                              "@%s: Failed process ISYS buffers!", __FUNCTION__);
         break;
     // TODO: handle other types
     default:

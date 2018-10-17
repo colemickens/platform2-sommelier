@@ -49,6 +49,7 @@ ControlUnit::ControlUnit(ImguUnit *thePU,
         mCaptureUnit(theCU),
         m3aWrapper(nullptr),
         mCameraId(cameraId),
+        mErrCb(nullptr),
         mCameraThread("CtrlUThread"),
         mBaseIso(100),
         mStreamCfgProv(aStreamCfgProv),
@@ -347,6 +348,12 @@ ControlUnit::~ControlUnit()
     m3ARunner = nullptr;
 }
 
+void ControlUnit::registerErrorCallback(IErrorCallback *errCb)
+{
+    LOG1("@%s, errCb:%p", __FUNCTION__, errCb);
+    mErrCb = errCb;
+}
+
 status_t
 ControlUnit::configStreamsDone(bool configChanged)
 {
@@ -454,10 +461,8 @@ status_t ControlUnit::handleNewRequest(std::shared_ptr<RequestCtrlState> state)
      */
     const CameraMetadata *reqSettings = reqState->request->getSettings();
 
-    if (reqSettings == nullptr) {
-        LOGE("no settings in request - BUG");
-        return UNKNOWN_ERROR;
-    }
+    CheckAndCallbackError(reqSettings == nullptr, mErrCb, UNKNOWN_ERROR,
+                          "@%s: no settings in request", __FUNCTION__);
 
     status = mSettingsProcessor->processRequestSettings(*reqSettings, *reqState);
     if (status != NO_ERROR) {
@@ -482,11 +487,9 @@ status_t ControlUnit::handleNewRequest(std::shared_ptr<RequestCtrlState> state)
       mPendingRequests.erase(mPendingRequests.begin());
 
       status = processRequestForCapture(reqState, mLatestStatistics);
-      if (CC_UNLIKELY(status != OK)) {
-        LOGE("Failed to process req %d for capture [%d]",
-             reqState->request->getId(), status);
-        // TODO: handle error !
-      }
+      CheckAndCallbackError(status != OK, mErrCb, status,
+                            "@%s: Failed to process req %d for capture",
+                            __FUNCTION__, reqState->request->getId());
     }
 
     return status;
@@ -625,12 +628,12 @@ status_t ControlUnit::handleNewImage(MessageNewImage msg)
 
     std::map<int, std::shared_ptr<RequestCtrlState>>::iterator it =
                                     mWaitingForCapture.find(reqId);
-    CheckError(it == mWaitingForCapture.end(), UNKNOWN_ERROR,
-               "@%s, Unexpected new image received %d", __FUNCTION__, reqId);
+    CheckAndCallbackError(it == mWaitingForCapture.end(), mErrCb, UNKNOWN_ERROR,
+                          "@%s, Unexpected new image received %d", __FUNCTION__, reqId);
 
     std::shared_ptr<RequestCtrlState> reqState = it->second;
-    CheckError(reqState == nullptr, UNKNOWN_ERROR,
-               "@%s, State for request Id = %d is nullptr", __FUNCTION__, reqId);
+    CheckAndCallbackError(reqState == nullptr, mErrCb, UNKNOWN_ERROR,
+                          "@%s, State for request Id = %d is nullptr", __FUNCTION__, reqId);
 
     /*
      * Send the buffer. See complete processing to understand
@@ -642,14 +645,15 @@ status_t ControlUnit::handleNewImage(MessageNewImage msg)
 
     reqState->framesArrived++;
 
-    CheckError(msg.type != CAPTURE_EVENT_RAW_BAYER, UNKNOWN_ERROR,
-               "@%s, Unknown capture buffer type in request %d", __FUNCTION__, reqId);
+    CheckAndCallbackError(msg.type != CAPTURE_EVENT_RAW_BAYER, mErrCb, UNKNOWN_ERROR,
+                          "@%s, Unknown capture buffer type in request %d", __FUNCTION__, reqId);
 
     reqState->captureBufs.rawNonScaledBuffer = msg.rawBuffer;
     reqState->captureBufs.lastRawNonScaledBuffer = msg.lastRawBuffer;
 
     status_t status = completeProcessing(reqState);
-    CheckError(status != OK, status, "@%s, Cannot complete the buffer processing", __FUNCTION__);
+    CheckAndCallbackError(status != OK, mErrCb, status,
+                          "@%s, Cannot complete the buffer processing", __FUNCTION__);
 
     return OK;
 }
@@ -685,19 +689,16 @@ status_t ControlUnit::handleNewStat(MessageStats msg)
         std::shared_ptr<RequestCtrlState> reqState = mPendingRequests[0];
         mPendingRequests.erase(mPendingRequests.begin());
 
-        if (CC_UNLIKELY(!reqState || reqState->request == nullptr)) {
-            LOGE("reqState is nullptr, find BUG!");
-            return UNKNOWN_ERROR;
-        }
+        CheckAndCallbackError((!reqState || reqState->request == nullptr), mErrCb,
+                              UNKNOWN_ERROR, "@%s, reqState is nullptr, find BUG!", __FUNCTION__);
 
         LOG2("@%s: process reqState %d, with stat id of req %d", __FUNCTION__,
                 reqState->request->getId(), statsId);
 
         status = processRequestForCapture(reqState, mLatestStatistics);
-        if (CC_UNLIKELY(status != OK)) {
-            LOGE("Failed to process request %d for capture ", reqState->request->getId());
-            // TODO: handle error !
-        }
+        CheckAndCallbackError(status != OK, mErrCb, status,
+                              "@%s: Failed to process request %d for capture",
+                               __FUNCTION__, reqState->request->getId());
     } while (cio2Starving && !mPendingRequests.empty());
 
     return status;

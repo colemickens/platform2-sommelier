@@ -33,6 +33,20 @@
             } while (0)
 
 /**
+ * Use to check input parameter and if failed, call back error, return err_code and print error message
+ */
+#define CheckAndCallbackError(condition, err_cb, err_code, err_msg, args...) \
+            do { \
+                if (condition) { \
+                    if (err_cb) { \
+                        err_cb->deviceError(); \
+                    } \
+                    LOGE(err_msg, ##args); \
+                    return err_code; \
+                } \
+            } while (0)
+
+/**
  * Use to check input parameter and if failed, return err_code and print warning message,
  * this should be used for non-vital error checking.
  */

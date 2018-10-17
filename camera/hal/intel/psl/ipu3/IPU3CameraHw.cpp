@@ -164,6 +164,7 @@ IPU3CameraHw::registerErrorCallback(IErrorCallback *errCb)
     PlatformData::getIntel3AClient()->registerErrorCallback(errCb);
     mCaptureUnit->registerErrorCallback(errCb);
     mImguUnit->registerErrorCallback(errCb);
+    mControlUnit->registerErrorCallback(errCb);
 }
 
 const camera_metadata_t *

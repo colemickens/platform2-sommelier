@@ -197,6 +197,8 @@ status_t InputSystem::handleStart()
     mPollErrorTimes = 0;
     if (status == NO_ERROR)
         mStarted = true;
+    CheckAndCallbackError(status != NO_ERROR, mErrCb, UNKNOWN_ERROR,
+                          "@%s: STREAMON failed", __FUNCTION__);
     return status;
 }
 
@@ -340,10 +342,8 @@ status_t InputSystem::handlePutFrame(MessageFrame msg)
         LOG2("%s: create new pending Isys Request for reqId %d", __FUNCTION__,
                                                                  reqId);
         status = mIsysRequestPool.acquireItem(isysReq);
-        if (status != NO_ERROR) {
-            LOGE("failed to acquire Isys Request");
-            return UNKNOWN_ERROR;
-        }
+        CheckAndCallbackError(status != NO_ERROR, mErrCb, UNKNOWN_ERROR,
+                              "@%s: failed to acquire Isys Request", __FUNCTION__);
 
         // clear potential reused Nodes
         isysReq->configuredNodesForRequest.clear();
@@ -356,18 +356,15 @@ status_t InputSystem::handlePutFrame(MessageFrame msg)
 
     ConfiguredNodesPerName::iterator it =
                             mConfiguredNodesPerName.find(isysNodeName);
-    if (it == mConfiguredNodesPerName.end()) {
-        LOGE("ISYS putframe - node (%d) not found!", isysNodeName);
-        return BAD_VALUE;
-    }
+    CheckAndCallbackError(it == mConfiguredNodesPerName.end(), mErrCb, BAD_VALUE,
+                          "@%s: ISYS putframe - node (%d) not found!", __FUNCTION__,isysNodeName);
     std::shared_ptr<cros::V4L2VideoNode> videoNode = it->second;
     int ret = videoNode->PutFrame(buf);
-    if (ret < 0) {
-        LOGE("isys putframe failed for dev: %s", videoNode->Name().c_str());
-        return UNKNOWN_ERROR;
-    }
+    CheckAndCallbackError(ret < 0, mErrCb,UNKNOWN_ERROR,
+                          "@%s: isys putframe failed for dev: %s", __FUNCTION__,videoNode->Name().c_str());
 
-    CheckError(isysReq == nullptr, UNKNOWN_ERROR, "@%s: isysReq is nullptr", __FUNCTION__);
+    CheckAndCallbackError(isysReq == nullptr, mErrCb, UNKNOWN_ERROR,
+                          "@%s: isysReq is nullptr", __FUNCTION__);
     isysReq->configuredNodesForRequest.push_back(videoNode);
     isysReq->numNodesForRequest = isysReq->configuredNodesForRequest.size();
     if (newReq) {

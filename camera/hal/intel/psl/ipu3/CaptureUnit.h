@@ -302,6 +302,10 @@ private:
      * This map is re-generated on every stream reconfiguration.
      */
     std::map<IPU3NodeNames, uid_t> mNodeToPortMap;
+    /**
+     * Error handling for polling request.
+     */
+    IErrorCallback* mErrCb;
 };
 
 } // namespace camera2
