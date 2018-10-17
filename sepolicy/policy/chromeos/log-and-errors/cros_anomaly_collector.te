@@ -12,3 +12,12 @@ allow cros_anomaly_collector cros_metrics_uma_events_file:file rw_file_perms;
 type cros_anomaly_collector_tmp_file, file_type, cros_tmpfile_type;
 filetrans_pattern(cros_anomaly_collector, tmpfs, cros_anomaly_collector_tmp_file, file);
 
+minijail_mountdev(cros_anomaly_collector);
+minijail_mounts(
+  cros_anomaly_collector,
+  , # extra mount
+  {cros_anomaly_collector_tmp_file cros_run}, # mounton
+  {cros_run_dbus cros_var cros_var_spool cros_var_log} # getattr
+);
+minijail_chroot(cros_anomaly_collector);
+log_writer(cros_anomaly_collector);

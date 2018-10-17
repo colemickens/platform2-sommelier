@@ -9,8 +9,30 @@ define(`minijail_netns_new', `
 allowxperm $1 $1:unix_dgram_socket ioctl { SIOCSIFFLAGS SIOCGIFFLAGS };
 ')
 
+define(`minijail_mountdev',
+minijail_mounts($1);
+allow $1 $1:capability mknod;
+allow $1 logger_device:sock_file getattr;
+filetrans_pattern($1, tmpfs, device, chr_file);
+filetrans_pattern($1, tmpfs, null_device, chr_file, "null");
+filetrans_pattern($1, tmpfs, zero_device, chr_file, "zero");
+filetrans_pattern($1, tmpfs, urandom_device, chr_file, "urandom");
+filetrans_pattern($1, tmpfs, devpts, lnk_file, "ptmx");
+allow $1 tmpfs:lnk_file create;
+)
+
+# minijail_mounts(domain, extra_mount, extra_mounton, extra_getattr)
 define(`minijail_mounts', `
+allow $1 { proc tmpfs $2 }:filesystem { mount unmount remount};
+allow $1 { labeledfs device sysfs }:filesystem { unmount remount };
+allow $1 { rootfs cros_var cros_var_empty tmpfs $3 }:dir mounton;
+allow $1 { rootfs cros_var cros_var_empty tmpfs $3 }:file mounton;
+allow $1 { rootfs cros_var cros_var_empty tmpfs $3 $4 }:dir getattr;
 ')
+
+define(`minijail_chroot', `
+allow $1 $1:capability sys_chroot;
+');
 
 
 # Auto-label tmpfile managed by minijail domains (static-only)
@@ -26,6 +48,7 @@ define(`from_minijail_static_custom', `
 typeattribute $1 minijail_domain;
 domain_auto_trans($1, $2, $3);
 allow $3 $1:fd use;
+allow $3 $1:fifo_file { read write };
 rw_dir_file($3, $4);
 ')
 

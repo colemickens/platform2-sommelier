@@ -6,8 +6,6 @@ exec_coreutils(cros_periodic_scheduler);
 use_init_fd(cros_periodic_scheduler);
 log_writer(cros_periodic_scheduler);
 
-allow cros_periodic_scheduler cros_system_file_type:dir search;
-
 domain_auto_trans(cros_init, cros_periodic_scheduler_exec, cros_periodic_scheduler);
 
 # rm /var /var/spool (clean up in the script)

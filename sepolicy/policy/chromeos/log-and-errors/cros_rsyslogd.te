@@ -4,7 +4,6 @@ permissive cros_rsyslogd;
 from_minijail_static(cros_rsyslogd, cros_rsyslogd_exec);
 log_writer(cros_rsyslogd);
 cros_net(cros_rsyslogd);
-r_dir_file(cros_rsyslogd, cros_tz_data_file)
 
 type cros_rsyslogd_pid_file, file_type, cros_tmpfile_type;
 filetrans_pattern(cros_rsyslogd, {tmpfs cros_minijail_minijail_tmp_file}, cros_rsyslogd_pid_file, file, "rsyslogd.pid.tmp");
@@ -23,4 +22,3 @@ allow cros_rsyslogd kernel:system syslog_mod;
 allow cros_rsyslogd self:capability2 syslog;
 
 allow cros_rsyslogd self:capability { setuid setgid };
-

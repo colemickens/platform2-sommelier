@@ -1,6 +1,8 @@
 # TODO(fqj): go over files of cros_system_file, and to label exec only and rename with _exec suffix.
 type cros_system_file, exec_type, file_type, cros_system_file_type;
 type cros_usr_dirs, file_type, cros_system_file_type;
+allow chromeos_domain cros_system_file_type:dir search;
+
 type cros_dev_image_files, file_type;
 
 type cros_anomaly_collector_exec, exec_type, file_type;
@@ -85,6 +87,7 @@ type cros_network_conf_file, file_type;
 type cros_passwd_file, file_type;
 type cros_rsyslog_conf_file, file_type;
 type cros_tz_data_file, file_type;
+r_dir_file(chromeos_domain, cros_tz_data_file)
 
 type cros_ld_conf_cache, file_type;
 r_dir_file(domain, cros_ld_conf_cache);
@@ -113,6 +116,7 @@ allow dev_type device:filesystem associate;
 allow debugfs_type debugfs:filesystem associate;
 allow debugfs_trace_marker debugfs_tracing:filesystem associate;
 allow sysfs_type sysfs:filesystem associate;
+allow devpts tmpfs:filesystem associate; # minijail --mountdev creates symlink in /dev(tmpfs)/ptmx in new root.
 neverallow fs_type file_type:filesystem associate;
 
 type wayland_socket, file_type;
