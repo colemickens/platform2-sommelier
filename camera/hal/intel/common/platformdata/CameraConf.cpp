@@ -242,14 +242,13 @@ status_t AiqConf::fillLightSourceStaticMetadata(camera_metadata_t * metadata)
         // calibrationTransform1
         // the below matrix should be sample specific transformation to golden module
         // in the future the matrix should be calculated by the data from NVM
-        uint16_t calibrationTransform[TRANSFORM_MATRIX_SIZE] = {1, 0, 0, 0, 1, 0, 0, 0, 1};
+        camera_metadata_rational_t calibrationTransform[TRANSFORM_MATRIX_SIZE] = {{1,1}, {0,1}, {0,1}, {0,1}, {1,1}, {0,1},
+                                                                                  {0,1}, {0,1}, {1,1}};
         int sensor_calibration_transform_tag[2] = {ANDROID_SENSOR_CALIBRATION_TRANSFORM1, ANDROID_SENSOR_CALIBRATION_TRANSFORM2};
         int sensor_reference_illuminant_tag[2] = {ANDROID_SENSOR_REFERENCE_ILLUMINANT1, ANDROID_SENSOR_REFERENCE_ILLUMINANT2};
         int sensor_color_transform_tag[2] = {ANDROID_SENSOR_COLOR_TRANSFORM1, ANDROID_SENSOR_COLOR_TRANSFORM2};
         int sensor_forward_matrix_tag[2] = {ANDROID_SENSOR_FORWARD_MATRIX1, ANDROID_SENSOR_FORWARD_MATRIX2};
-        int32_t matrix_accurate[TRANSFORM_MATRIX_SIZE];
         int16_t reference_illuminant[2];
-        CLEAR(matrix_accurate);
         CLEAR(reference_illuminant);
         float XYZ_to_sRGB[TRANSFORM_MATRIX_SIZE] = {3.2404542, -1.5371385, -0.4985314,
                                                     -0.9692660, 1.8760108, 0.0415560,
@@ -295,11 +294,13 @@ status_t AiqConf::fillLightSourceStaticMetadata(camera_metadata_t * metadata)
             // calibrationTransform
             res |= MetadataHelper::updateMetadata(metadata, sensor_calibration_transform_tag[light_src_num], &calibrationTransform, TRANSFORM_MATRIX_SIZE);
             // colorTransform
-            MEMCPY_S(matrix_accurate,
-                     sizeof(matrix_accurate),
-                     cmc->cmc_parsed_color_matrices.cmc_color_matrix[light_src_num].matrix_accurate,
-                     sizeof(int32_t) * TRANSFORM_MATRIX_SIZE);
-            res |= MetadataHelper::updateMetadata(metadata, sensor_color_transform_tag[light_src_num], &matrix_accurate, TRANSFORM_MATRIX_SIZE);
+            int32_t *matrix_accurate = cmc->cmc_parsed_color_matrices.cmc_color_matrix[light_src_num].matrix_accurate;
+            // match tag type: rational
+            camera_metadata_rational_t matrix_accurate_rational[TRANSFORM_MATRIX_SIZE];
+            for (size_t i = 0; i < TRANSFORM_MATRIX_SIZE; i++) {
+                matrix_accurate_rational[i] = {matrix_accurate[i], 1};
+            }
+            res |= MetadataHelper::updateMetadata(metadata, sensor_color_transform_tag[light_src_num], &matrix_accurate_rational, TRANSFORM_MATRIX_SIZE);
             LOG2("matrix_accurate:%d,%d,%d,%d,%d,%d,%d,%d,%d",matrix_accurate[0],
                  matrix_accurate[1],matrix_accurate[2],matrix_accurate[3],
                  matrix_accurate[4],matrix_accurate[5],matrix_accurate[6],
