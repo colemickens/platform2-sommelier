@@ -199,7 +199,12 @@ if (use.test) {
 
   # p2p-client tests
   executable("p2p-client-unittests") {
-    configs += [ ":target_defaults" ]
+    configs += [
+      # This config should be at the top.
+      # TODO(crbug.com/887845): Remove this after library order issue is resolved.
+      "//common-mk:test",
+      ":target_defaults",
+    ]
     sources = [
       "client/fake_service_finder.cc",
       "client/peer_selector_test.cc",
@@ -214,7 +219,12 @@ if (use.test) {
 
   # p2p-server tests
   executable("p2p-server-unittests") {
-    configs += [ ":target_defaults" ]
+    configs += [
+      # This config should be at the top.
+      # TODO(crbug.com/887845): Remove this after library order issue is resolved.
+      "//common-mk:test",
+      ":target_defaults",
+    ]
     sources = [
       "server/file_watcher_test.cc",
       "server/http_server_test.cc",
@@ -230,7 +240,12 @@ if (use.test) {
 
   # p2p-http-server tests
   executable("p2p-http-server-unittests") {
-    configs += [ ":target_defaults" ]
+    configs += [
+      # This config should be at the top.
+      # TODO(crbug.com/887845): Remove this after library order issue is resolved.
+      "//common-mk:test",
+      ":target_defaults",
+    ]
     sources = [
       "http_server/connection_delegate_test.cc",
       "http_server/server_test.cc",
