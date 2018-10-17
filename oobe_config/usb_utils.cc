@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "oobe_config/utils.h"
+#include "oobe_config/usb_utils.h"
 
 #include <string>
 #include <vector>
@@ -19,6 +19,14 @@ using std::string;
 using std::vector;
 
 namespace oobe_config {
+
+const char kStatefulDir[] = "/mnt/stateful_partition/";
+const char kUnencryptedOobeConfigDir[] = "unencrypted/oobe_auto_config/";
+const char kConfigFile[] = "config.json";
+const char kDomainFile[] = "enrollment_domain";
+const char kKeyFile[] = "validation_key.pub";
+const char kDevDiskById[] = "/dev/disk/by-id/";
+const char kUsbDevicePathSigFile[] = "usb_device_path.sig";
 
 int RunCommand(const vector<string>& command) {
   LOG(INFO) << "Command: " << base::JoinString(command, " ");

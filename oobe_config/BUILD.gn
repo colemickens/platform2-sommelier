@@ -71,8 +71,7 @@ static_library("libload_oobe_config_usb") {
   ]
   sources = [
     "load_oobe_config_usb.cc",
-    "usb_common.cc",
-    "utils.cc",
+    "usb_utils.cc",
   ]
 }
 
@@ -83,8 +82,7 @@ executable("finish_oobe_auto_config") {
   ]
   sources = [
     "save_oobe_config_usb.cc",
-    "usb_common.cc",
-    "utils.cc",
+    "usb_utils.cc",
   ]
 }
 

@@ -14,8 +14,7 @@
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 
-#include "oobe_config/usb_common.h"
-#include "oobe_config/utils.h"
+#include "oobe_config/usb_utils.h"
 
 using base::FilePath;
 using base::ScopedTempDir;

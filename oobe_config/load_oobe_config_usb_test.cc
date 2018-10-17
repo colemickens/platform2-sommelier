@@ -11,8 +11,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
-#include "oobe_config/usb_common.h"
-#include "oobe_config/utils.h"
+#include "oobe_config/usb_utils.h"
 
 using base::FilePath;
 using base::ScopedTempDir;
