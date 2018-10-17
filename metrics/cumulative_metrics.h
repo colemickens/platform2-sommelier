@@ -95,12 +95,15 @@ class CumulativeMetrics {
                     Callback update_callback,
                     base::TimeDelta accumulation_period,
                     Callback cycle_end_callback);
+  virtual ~CumulativeMetrics() {}
   // Returns the time delta (in active time, not elapsed wall clock time) since
   // the last update to the accumulated quantities, or the daemon start.  This
   // is just a convenience function, because it can be easily maintained by the
   // user of this class.  Note that this could be a lot smaller than the
   // elapsed time.
-  base::TimeDelta ActiveTimeSinceLastUpdate() const;
+  //
+  // This method is virtual so it can be mocked for testing.
+  virtual base::TimeDelta ActiveTimeSinceLastUpdate() const;
   // Sets the value of |name| to |value|.
   void Set(const std::string& name, int64_t value);
   // Adds |value| to the current value of |name|.

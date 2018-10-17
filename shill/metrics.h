@@ -944,7 +944,7 @@ class Metrics {
   // Callback for reporting UMA stats on connected time per device per time
   // period.
   static void ReportTimeOnTechnology(
-      MetricsLibrary* ml,
+      MetricsLibraryInterface* mli,
       const std::vector<std::string> histogram_names,
       const int min,
       const int max,

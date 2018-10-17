@@ -900,7 +900,7 @@ void Metrics::AccumulateTimeOnTechnology(
 
 // static
 void Metrics::ReportTimeOnTechnology(
-    MetricsLibrary* ml,
+    MetricsLibraryInterface* mli,
     const std::vector<std::string> histogram_names,
     const int min,
     const int max,
@@ -913,18 +913,18 @@ void Metrics::ReportTimeOnTechnology(
   int64_t chosen_cellular = cm->Get(cumulative_names[CHOSEN_CELLULAR]);
   int64_t chosen_wifi = cm->Get(cumulative_names[CHOSEN_WIFI]);
 
-  ml->SendToUMA(histogram_names[CHOSEN_ANY], chosen_any,
-                min, max, nbuckets);
-  ml->SendToUMA(histogram_names[CHOSEN_CELLULAR], chosen_cellular,
-                min, max, nbuckets);
-  ml->SendToUMA(histogram_names[CHOSEN_WIFI], chosen_wifi,
-                min, max, nbuckets);
+  mli->SendToUMA(histogram_names[CHOSEN_ANY], chosen_any,
+                 min, max, nbuckets);
+  mli->SendToUMA(histogram_names[CHOSEN_CELLULAR], chosen_cellular,
+                 min, max, nbuckets);
+  mli->SendToUMA(histogram_names[CHOSEN_WIFI], chosen_wifi,
+                 min, max, nbuckets);
 
   if (chosen_any > 0) {
-    ml->SendEnumToUMA(histogram_names[CHOSEN_FRACTION_CELLULAR],
-                      chosen_cellular * 100 / chosen_any, 100);
-    ml->SendEnumToUMA(histogram_names[CHOSEN_FRACTION_WIFI],
-                      chosen_wifi * 100 / chosen_any, 100);
+    mli->SendEnumToUMA(histogram_names[CHOSEN_FRACTION_CELLULAR],
+                       chosen_cellular * 100 / chosen_any, 100);
+    mli->SendEnumToUMA(histogram_names[CHOSEN_FRACTION_WIFI],
+                       chosen_wifi * 100 / chosen_any, 100);
   }
 }
 
