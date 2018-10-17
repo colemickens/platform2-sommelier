@@ -170,8 +170,9 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
                << streamparm.parm.capture.timeperframe.numerator;
     }
   }
-  float fps = streamparm.parm.capture.timeperframe.denominator /
-              streamparm.parm.capture.timeperframe.numerator;
+  float fps =
+      static_cast<float>(streamparm.parm.capture.timeperframe.denominator) /
+      streamparm.parm.capture.timeperframe.numerator;
   if (std::fabs(fps - frame_rate) > std::numeric_limits<float>::epsilon()) {
     LOGF(ERROR) << "Unsupported frame rate " << frame_rate;
     return -EINVAL;
