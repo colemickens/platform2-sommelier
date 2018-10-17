@@ -4,79 +4,195 @@
 
 #include "oobe_config/load_oobe_config_usb.h"
 
+#include <sys/mount.h>
+
 #include <memory>
 #include <string>
 
+#include <base/environment.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "oobe_config/mock_load_oobe_config_usb.h"
+#include "oobe_config/mock_save_oobe_config_usb.h"
+#include "oobe_config/save_oobe_config_usb.h"
 #include "oobe_config/usb_utils.h"
 
 using base::FilePath;
 using base::ScopedTempDir;
 using std::string;
 using std::unique_ptr;
+using testing::_;
+using testing::Invoke;
+using testing::Return;
 
 namespace oobe_config {
+
+namespace {
+constexpr char kDummyConfig[] = "dummy config content";
+constexpr char kDummyDomain[] = "test@";
+}  // namespace
 
 class LoadOobeConfigUsbTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    EXPECT_TRUE(fake_stateful_.CreateUniqueTempDir());
+    // TODO(ahassani): Create an actual ext4 image as a usb device that can be
+    // mounted and used instead of fake creating a directory here.
+    EXPECT_TRUE(fake_device_stateful_.CreateUniqueTempDir());
+    EXPECT_TRUE(fake_usb_stateful_.CreateUniqueTempDir());
     EXPECT_TRUE(fake_device_ids_dir_.CreateUniqueTempDir());
-    load_config_ = std::make_unique<LoadOobeConfigUsb>(
-        fake_stateful_.GetPath(), fake_device_ids_dir_.GetPath());
-    EXPECT_TRUE(load_config_);
-    EXPECT_TRUE(
-        base::CreateDirectory(load_config_->unencrypted_oobe_config_dir_));
+    EXPECT_TRUE(everything_else_.CreateUniqueTempDir());
+    device_oobe_config_dir_ =
+        fake_device_stateful_.GetPath().Append(kUnencryptedOobeConfigDir);
+    usb_oobe_config_dir_ =
+        fake_usb_stateful_.GetPath().Append(kUnencryptedOobeConfigDir);
+    EXPECT_TRUE(base::CreateDirectory(device_oobe_config_dir_));
+    EXPECT_TRUE(base::CreateDirectory(usb_oobe_config_dir_));
 
-    // Copy the public key to the oobe config directory.
-    EXPECT_TRUE(base::CopyFile(public_key_file_, load_config_->pub_key_file_));
-  }
+    // Create config file.
+    config_file_ = usb_oobe_config_dir_.Append(kConfigFile);
+    EXPECT_EQ(base::WriteFile(config_file_, kDummyConfig, strlen(kDummyConfig)),
+              strlen(kDummyConfig));
 
-  void TestLocateUsbDevice(const FilePath& private_key, bool expect_result) {
+    // Create enrollment domain file.
+    enrollment_domain_file_ = fake_usb_stateful_.GetPath()
+                                  .Append(kUnencryptedOobeConfigDir)
+                                  .Append(kDomainFile);
+    EXPECT_EQ(base::WriteFile(enrollment_domain_file_, kDummyDomain,
+                              strlen(kDummyDomain)),
+              strlen(kDummyDomain));
+
+    // Creating device paths.
     FilePath dev_id1, dev_id2;
-    EXPECT_TRUE(base::CreateTemporaryFile(&dev_id1));
-    ScopedPathUnlinker unlinker1(dev_id1);
-    EXPECT_TRUE(base::CreateTemporaryFile(&dev_id2));
-    ScopedPathUnlinker unlinker2(dev_id2);
-
-    FilePath dev_id1_sym = load_config_->device_ids_dir_.Append("dev_id1_sym");
-    FilePath dev_id2_sym = load_config_->device_ids_dir_.Append("dev_id2_sym");
+    EXPECT_TRUE(
+        base::CreateTemporaryFileInDir(everything_else_.GetPath(), &dev_id1));
+    EXPECT_TRUE(
+        base::CreateTemporaryFileInDir(everything_else_.GetPath(), &dev_id2));
+    FilePath dev_id1_sym = fake_device_ids_dir_.GetPath().Append("dev_id1_sym");
+    FilePath dev_id2_sym = fake_device_ids_dir_.GetPath().Append("dev_id2_sym");
     EXPECT_TRUE(base::CreateSymbolicLink(dev_id1, dev_id1_sym));
     EXPECT_TRUE(base::CreateSymbolicLink(dev_id2, dev_id2_sym));
 
-    EXPECT_TRUE(Sign(private_key, dev_id2_sym.value(),
-                     load_config_->usb_device_path_signature_file_));
+    string source_path;
+    base::Environment::Create()->GetVar("SRC", &source_path);
+    auto public_key = FilePath(source_path).Append("test.pub.key");
+    auto private_key = FilePath(source_path).Append("test.pri.key");
 
-    EXPECT_TRUE(load_config_->ReadFiles(true /* ignore_errors */));
-    FilePath found_usb_device;
-    EXPECT_EQ(load_config_->LocateUsbDevice(&found_usb_device), expect_result);
-    EXPECT_EQ(base::MakeAbsoluteFilePath(dev_id2) == found_usb_device,
-              expect_result);
+    // Run a save so we can verify we can load it.
+    MockSaveOobeConfigUsb save_config(
+        fake_device_stateful_.GetPath(), fake_usb_stateful_.GetPath(),
+        fake_device_ids_dir_.GetPath(), dev_id2, private_key, public_key);
+    ON_CALL(save_config, ChangeDeviceOobeConfigDirOwnership())
+        .WillByDefault(Return(true));
+    EXPECT_TRUE(save_config.Save());
+
+    load_config_ = std::make_unique<MockLoadOobeConfigUsb>(
+        fake_device_stateful_.GetPath(), fake_device_ids_dir_.GetPath());
+    EXPECT_TRUE(load_config_);
+
+    ON_CALL(*load_config_, VerifyPublicKey()).WillByDefault(Return(true));
+    ON_CALL(*load_config_, MountUsbDevice(_, _))
+        .WillByDefault(
+            DoAll(Invoke([this](const FilePath& device_path,
+                                const FilePath& mount_point) {
+                    EXPECT_TRUE(base::CopyDirectory(
+                        fake_usb_stateful_.GetPath().Append("unencrypted"),
+                        mount_point, true));
+                  }),
+                  Return(true)));
+    ON_CALL(*load_config_, VerifyEnrollmentDomainInConfig(_, _))
+        .WillByDefault(Return(true));
+    ON_CALL(*load_config_, UnmountUsbDevice(_)).WillByDefault(Return(true));
   }
 
-  ScopedTempDir fake_stateful_;
-  ScopedTempDir fake_device_ids_dir_;
-  unique_ptr<LoadOobeConfigUsb> load_config_;
+  bool TestGetOobeConfigJson() {
+    string config, enrollment_domain;
+    return load_config_->GetOobeConfigJson(&config, &enrollment_domain);
+  }
 
-  FilePath public_key_file_{"test.pub.key"};
-  FilePath private_key_file_{"test.pri.key"};
-  FilePath alt_private_key_file_{"test.inv.pri.key"};
+  ScopedTempDir fake_device_stateful_;
+  ScopedTempDir fake_usb_stateful_;
+  ScopedTempDir fake_device_ids_dir_;
+  ScopedTempDir everything_else_;
+
+  FilePath device_oobe_config_dir_;
+  FilePath usb_oobe_config_dir_;
+  FilePath config_file_;
+  FilePath enrollment_domain_file_;
+
+  unique_ptr<MockLoadOobeConfigUsb> load_config_;
 };
 
-TEST_F(LoadOobeConfigUsbTest, SimpleTest) {
+TEST_F(LoadOobeConfigUsbTest, Simple) {
   string config, enrollment_domain;
-  EXPECT_FALSE(load_config_->GetOobeConfigJson(&config, &enrollment_domain));
+  EXPECT_TRUE(load_config_->GetOobeConfigJson(&config, &enrollment_domain));
+  EXPECT_EQ(config, kDummyConfig);
+  EXPECT_EQ(enrollment_domain, kDummyDomain);
 }
 
-TEST_F(LoadOobeConfigUsbTest, LocateUsbDevice) {
-  TestLocateUsbDevice(private_key_file_, true);
+TEST_F(LoadOobeConfigUsbTest, FailNoConfig) {
+  EXPECT_TRUE(base::DeleteFile(config_file_, false));
+  EXPECT_FALSE(TestGetOobeConfigJson());
 }
 
-TEST_F(LoadOobeConfigUsbTest, LocateUsbDeviceFail) {
-  TestLocateUsbDevice(alt_private_key_file_, false);
+TEST_F(LoadOobeConfigUsbTest, FailNoConfigSignature) {
+  EXPECT_TRUE(base::DeleteFile(
+      device_oobe_config_dir_.Append(kConfigFile).AddExtension("sig"), false));
+  EXPECT_FALSE(TestGetOobeConfigJson());
+}
+
+TEST_F(LoadOobeConfigUsbTest, FailNoEnrollment) {
+  EXPECT_TRUE(base::DeleteFile(enrollment_domain_file_, false));
+  EXPECT_FALSE(TestGetOobeConfigJson());
+}
+
+TEST_F(LoadOobeConfigUsbTest, FailNoEnrollmentDomainSignature) {
+  EXPECT_TRUE(base::DeleteFile(
+      device_oobe_config_dir_.Append(kDomainFile).AddExtension("sig"), false));
+  EXPECT_FALSE(TestGetOobeConfigJson());
+}
+
+TEST_F(LoadOobeConfigUsbTest, FailNoUsbDevicePathSignature) {
+  EXPECT_TRUE(base::DeleteFile(
+      device_oobe_config_dir_.Append(kUsbDevicePathSigFile), false));
+  EXPECT_FALSE(TestGetOobeConfigJson());
+}
+
+TEST_F(LoadOobeConfigUsbTest, FailNoPublicKey) {
+  EXPECT_TRUE(
+      base::DeleteFile(device_oobe_config_dir_.Append(kKeyFile), false));
+  EXPECT_FALSE(TestGetOobeConfigJson());
+}
+
+TEST_F(LoadOobeConfigUsbTest, FailVerifyPublicKey) {
+  EXPECT_CALL(*load_config_, VerifyPublicKey()).WillOnce(Return(false));
+  EXPECT_FALSE(TestGetOobeConfigJson());
+}
+
+TEST_F(LoadOobeConfigUsbTest, FailLocateUsbDevice) {
+  EXPECT_TRUE(base::DeleteFile(
+      fake_device_ids_dir_.GetPath().Append("dev_id2_sym"), false));
+  EXPECT_FALSE(TestGetOobeConfigJson());
+}
+
+TEST_F(LoadOobeConfigUsbTest, FailVerifyEnrollmentDomain) {
+  EXPECT_CALL(*load_config_,
+              VerifyEnrollmentDomainInConfig(kDummyConfig, kDummyDomain))
+      .WillOnce(Return(false));
+  EXPECT_FALSE(TestGetOobeConfigJson());
+}
+
+TEST_F(LoadOobeConfigUsbTest, FailMountUsbDevice) {
+  EXPECT_CALL(*load_config_, MountUsbDevice(_, _)).WillOnce(Return(false));
+  EXPECT_FALSE(TestGetOobeConfigJson());
+}
+
+// Ignores umount
+TEST_F(LoadOobeConfigUsbTest, UnountUsbDevice) {
+  EXPECT_CALL(*load_config_, UnmountUsbDevice(_)).WillOnce(Return(false));
+  EXPECT_TRUE(TestGetOobeConfigJson());
 }
 
 }  // namespace oobe_config

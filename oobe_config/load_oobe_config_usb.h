@@ -12,6 +12,7 @@
 
 #include <base/files/file_path.h>
 #include <crypto/scoped_openssl_types.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 namespace oobe_config {
 
@@ -30,31 +31,30 @@ class LoadOobeConfigUsb : public LoadOobeConfigInterface {
   // and device ids;
   static std::unique_ptr<LoadOobeConfigUsb> CreateInstance();
 
- private:
-  friend class LoadOobeConfigUsbTest;
-
-  // Checks and reads in all the files necessary for USB enrollment. If
-  // |ignore_errors| is true, it will ignore errors along the way so we can
-  // unittest functions easier without the need to create/sign all the files.
-  bool ReadFiles(bool ignore_errors);
+ protected:
+  // Checks and reads in all the files necessary for USB enrollment.
+  virtual bool ReadFiles();
 
   // Verifies the hash of the public key on the stateful partition matches the
   // one in the TPM.
-  bool VerifyPublicKey();
+  virtual bool VerifyPublicKey();
 
   // Locates the USB device using the device path's signature file.
-  bool LocateUsbDevice(base::FilePath* device_id);
+  virtual bool LocateUsbDevice(base::FilePath* device_id);
 
   // Verifies the enrollment domain exist in the config file.
-  bool VerifyEnrollmentDomainInConfig(const std::string& config,
-                                      const std::string& enrollment_domain);
+  virtual bool VerifyEnrollmentDomainInConfig(
+      const std::string& config, const std::string& enrollment_domain);
 
   // Mounts the stateful partition of the discovered USB device.
-  bool MountUsbDevice(const base::FilePath& device_path,
-                      const base::FilePath& mount_point);
+  virtual bool MountUsbDevice(const base::FilePath& device_path,
+                              const base::FilePath& mount_point);
 
   // Unmounts the USB device.
-  bool UnmountUsbDevice(const base::FilePath& mount_point);
+  virtual bool UnmountUsbDevice(const base::FilePath& mount_point);
+
+ private:
+  friend class LoadOobeConfigUsbTest;
 
   base::FilePath stateful_;
   base::FilePath unencrypted_oobe_config_dir_;

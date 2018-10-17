@@ -4,6 +4,8 @@
 
 #include "oobe_config/load_oobe_config_usb.h"
 
+#include <sys/mount.h>
+
 #include <map>
 #include <vector>
 
@@ -32,7 +34,10 @@ unique_ptr<LoadOobeConfigUsb> LoadOobeConfigUsb::CreateInstance() {
 
 LoadOobeConfigUsb::LoadOobeConfigUsb(const FilePath& stateful_dir,
                                      const FilePath& device_ids_dir)
-    : stateful_(stateful_dir), device_ids_dir_(device_ids_dir) {
+    : stateful_(stateful_dir),
+      device_ids_dir_(device_ids_dir),
+      public_key_(nullptr),
+      config_is_verified_(false) {
   unencrypted_oobe_config_dir_ = stateful_.Append(kUnencryptedOobeConfigDir);
   pub_key_file_ = unencrypted_oobe_config_dir_.Append(kKeyFile);
   config_signature_file_ =
@@ -41,18 +46,15 @@ LoadOobeConfigUsb::LoadOobeConfigUsb(const FilePath& stateful_dir,
       unencrypted_oobe_config_dir_.Append(kDomainFile).AddExtension("sig");
   usb_device_path_signature_file_ =
       unencrypted_oobe_config_dir_.Append(kUsbDevicePathSigFile);
-
-  config_is_verified_ = false;
-  public_key_ = nullptr;
 }
 
-bool LoadOobeConfigUsb::ReadFiles(bool ignore_errors) {
-  if (!base::PathExists(stateful_) && !ignore_errors) {
+bool LoadOobeConfigUsb::ReadFiles() {
+  if (!base::PathExists(stateful_)) {
     LOG(ERROR) << "Stateful partition's path " << stateful_.value()
                << " does not exist.";
     return false;
   }
-  if (!base::PathExists(unencrypted_oobe_config_dir_) && !ignore_errors) {
+  if (!base::PathExists(unencrypted_oobe_config_dir_)) {
     LOG(WARNING) << "oobe_config directory on stateful partition "
                  << unencrypted_oobe_config_dir_.value()
                  << " does not exist. This is not an error if the system is not"
@@ -60,13 +62,13 @@ bool LoadOobeConfigUsb::ReadFiles(bool ignore_errors) {
     return false;
   }
 
-  if (!base::PathExists(pub_key_file_) && !ignore_errors) {
+  if (!base::PathExists(pub_key_file_)) {
     LOG(WARNING) << "Public key file " << pub_key_file_.value()
                  << " does not exist. ";
     return false;
   }
 
-  if (!ReadPublicKey(pub_key_file_, &public_key_) && !ignore_errors) {
+  if (!ReadPublicKey(pub_key_file_, &public_key_)) {
     return false;
   }
 
@@ -76,11 +78,11 @@ bool LoadOobeConfigUsb::ReadFiles(bool ignore_errors) {
       {usb_device_path_signature_file_, &usb_device_path_signature_}};
 
   for (auto& file : signature_files) {
-    if (!base::PathExists(file.first) && !ignore_errors) {
+    if (!base::PathExists(file.first)) {
       LOG(WARNING) << "File " << file.first.value() << " does not exist. ";
       return false;
     }
-    if (!base::ReadFileToString(file.first, file.second) && !ignore_errors) {
+    if (!base::ReadFileToString(file.first, file.second)) {
       PLOG(ERROR) << "Failed to read file: " << file.first.value();
       return false;
     }
@@ -106,16 +108,12 @@ bool LoadOobeConfigUsb::LocateUsbDevice(FilePath* device_id) {
   // for dev in /dev/disk/by-id/ *:
   //     if dev verifies with usb_device_path.sig with validation_key.pub:
   //       USB block device is at readlink(dev)
-
   base::FileEnumerator iter(device_ids_dir_, false,
                             base::FileEnumerator::FILES);
   for (auto link = iter.Next(); !link.empty(); link = iter.Next()) {
     if (VerifySignature(link.value(), usb_device_path_signature_,
                         public_key_) &&
-        base::ReadSymbolicLink(link, device_id)) {
-      // Found the device, did a `readlink -f` and returning the absolute path
-      // to the device.
-      *device_id = base::MakeAbsoluteFilePath(*device_id);
+        base::NormalizeFilePath(link, device_id)) {
       LOG(INFO) << "Found USB device " << device_id->value();
       return true;
     }
@@ -128,22 +126,28 @@ bool LoadOobeConfigUsb::LocateUsbDevice(FilePath* device_id) {
 bool LoadOobeConfigUsb::VerifyEnrollmentDomainInConfig(
     const string& config, const string& enrollment_domain) {
   // TODO(ahassani): Implement this.
-  return false;
+  return true;
 }
 
 bool LoadOobeConfigUsb::MountUsbDevice(const FilePath& device_path,
                                        const FilePath& mount_point) {
-  if (RunCommand({"mount", "-n", "-o", "ro", device_path.value(),
-                  mount_point.value()}) != 0) {
-    LOG(ERROR) << "Failed to mount " << device_path.value();
+  LOG(INFO) << "Mounting " << device_path.value() << " on "
+            << mount_point.value();
+  auto kMountFlags = MS_RDONLY | MS_NOEXEC | MS_NOSUID | MS_NODEV;
+  if (mount(device_path.value().c_str(), mount_point.value().c_str(), "ext4",
+            kMountFlags, nullptr) != 0) {
+    PLOG(ERROR) << "Failed to mount " << device_path.value() << "on "
+                << mount_point.value();
     return false;
   }
+
   return true;
 }
 
 bool LoadOobeConfigUsb::UnmountUsbDevice(const FilePath& mount_point) {
-  if (RunCommand({"umount", mount_point.value()}) != 0) {
-    LOG(WARNING) << "Failed to unmount " << mount_point.value();
+  LOG(INFO) << "Unmounting " << mount_point.value();
+  if (umount(mount_point.value().c_str()) != 0) {
+    PLOG(WARNING) << "Failed to unmount " << mount_point.value();
     return false;
   }
   return true;
@@ -152,13 +156,15 @@ bool LoadOobeConfigUsb::UnmountUsbDevice(const FilePath& mount_point) {
 bool LoadOobeConfigUsb::GetOobeConfigJson(string* config,
                                           string* enrollment_domain) {
   // We have already verified the config, just return it.
+  CHECK(config != nullptr);
+  CHECK(enrollment_domain != nullptr);
   if (config_is_verified_) {
     *config = config_;
     *enrollment_domain = enrollment_domain_;
     return true;
   }
 
-  if (!ReadFiles(false /* ignore_errors */)) {
+  if (!ReadFiles()) {
     return false;
   }
 
