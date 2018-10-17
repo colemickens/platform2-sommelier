@@ -12,10 +12,11 @@ group("all") {
     ":liboobeconfig",
     ":libload_oobe_config_usb",
     ":librollback_helper",
-    ":rollback_prepare_save",
-    ":oobe_config_save",
+    ":libsave_oobe_config_usb",
     ":oobe_config_restore",
+    ":oobe_config_save",
     ":rollback_finish_restore",
+    ":rollback_prepare_save",
   ]
   if (use.test) {
     deps += [ ":oobe_config_test" ]
@@ -80,7 +81,7 @@ static_library("libload_oobe_config_usb") {
   ]
 }
 
-executable("finish_oobe_auto_config") {
+static_library("libsave_oobe_config_usb") {
   configs += [
     ":crypto",
     ":target_defaults",
@@ -88,6 +89,18 @@ executable("finish_oobe_auto_config") {
   sources = [
     "save_oobe_config_usb.cc",
     "usb_utils.cc",
+  ]
+}
+
+executable("finish_oobe_auto_config") {
+  configs += [
+    ":target_defaults",
+  ]
+  sources = [
+    "save_oobe_config_usb_main.cc",
+  ]
+  deps = [
+    ":libsave_oobe_config_usb",
   ]
 }
 
@@ -176,12 +189,14 @@ if (use.test) {
       "load_oobe_config_usb_test.cc",
       "rollback_helper_test.cc",
       "oobe_config_test.cc",
+      "save_oobe_config_usb_test.cc",
       "usb_utils_test.cc",
     ]
     deps = [
       ":liboobeconfig",
       ":libload_oobe_config_usb",
       ":librollback_helper",
+      ":libsave_oobe_config_usb",
       "//common-mk/testrunner",
     ]
   }
