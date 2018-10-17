@@ -104,6 +104,19 @@ HammerUpdater::RunStatus HammerUpdater::Run() {
   return status;
 }
 
+HammerUpdater::RunStatus HammerUpdater::UpdateRW() {
+  bool ret = fw_updater_->TransferImage(SectionName::RW);
+  task_.update_rw = !ret;
+  metrics_->SendEnumToUMA(
+      kMetricRWUpdateResult,
+      static_cast<int>(ret
+          ? RWUpdateResult::kSucceeded
+          : RWUpdateResult::kTransferFailed),
+      static_cast<int>(RWUpdateResult::kCount));
+  LOG(INFO) << "RW update " << (ret ? "passed." : "failed.");
+  return HammerUpdater::RunStatus::kNeedReset;
+}
+
 HammerUpdater::RunStatus HammerUpdater::RunLoop() {
   constexpr unsigned int kMaximumRunCount = 10;
   // Time it takes hammer to reset or jump to RW, before being
@@ -358,16 +371,7 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce() {
     }
 
     // Now RW section needs an update, and it is not locked. Let's update!
-    bool ret = fw_updater_->TransferImage(SectionName::RW);
-    task_.update_rw = !ret;
-    metrics_->SendEnumToUMA(
-        kMetricRWUpdateResult,
-        static_cast<int>(ret
-            ? RWUpdateResult::kSucceeded
-            : RWUpdateResult::kTransferFailed),
-        static_cast<int>(RWUpdateResult::kCount));
-    LOG(INFO) << "RW update " << (ret ? "passed." : "failed.");
-    return HammerUpdater::RunStatus::kNeedReset;
+    return UpdateRW();
   }
 
   // Now we need to jump to RW section.  When requesting 'Jump to RW', hammer
@@ -381,11 +385,12 @@ HammerUpdater::RunStatus HammerUpdater::RunOnce() {
   // In the case of (2)(b), after requesting the jump, hammer will reset itself
   // and end up in RO.  Now we fall under the case of (2)(1) and may request the
   // jump again.
+  // TODO(b/117909308): add unittest.
   if (fw_updater_->IsSectionLocked(SectionName::RO) &&
       !fw_updater_->IsSectionLocked(SectionName::RW)) {
     if (task_.post_rw_lock) {
-      LOG(INFO) << "Failed to lock RW section...";
-      return HammerUpdater::RunStatus::kFatalError;
+      LOG(INFO) << "Failed to lock RW section... update RW section again.";
+      return UpdateRW();
     }
     LOG(INFO) << "RO is locked but RW is not. "
         << "Lock RW by asking hammer to reset.";

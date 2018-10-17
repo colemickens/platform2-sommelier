@@ -172,6 +172,9 @@ class HammerUpdater {
   std::string VersionString(TouchpadInfo info);
   std::string VendorString(TouchpadInfo info);
 
+  // Helper function to update RW section.
+  HammerUpdater::RunStatus UpdateRW();
+
   DISALLOW_COPY_AND_ASSIGN(HammerUpdater);
 };
 
