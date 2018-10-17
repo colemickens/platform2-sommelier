@@ -65,8 +65,9 @@ class NotificationDaemon : public DBusInterface,
   std::unique_ptr<NotificationShellClient> notification_shell_client_;
   std::unique_ptr<DBusService> dbus_service_;
 
-  // Incremental notification id handled by this daemon.
-  uint32_t id_count_ = 0;
+  // Incremental notification id handled by this daemon. Notification id starts
+  // from 1 according to the spec of org.freedesktop.Notifications.
+  uint32_t id_count_ = 1;
 
   // Clicking action conversion mapping for each notification id.
   std::map<uint32_t, ClickAction> click_actions;
