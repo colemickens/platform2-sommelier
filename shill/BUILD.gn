@@ -161,6 +161,7 @@ net_sources = [
   "net/netlink_manager.cc",
   "net/netlink_message.cc",
   "net/netlink_packet.cc",
+  "net/netlink_sock_diag.cc",
   "net/netlink_socket.cc",
   "net/nl80211_attribute.cc",
   "net/nl80211_message.cc",
