@@ -33,6 +33,7 @@ close: 1
 creat: 1
 ioctl: 1
 open: 1
+openat: 1
 prctl: 1
 read: 1
 write: 1

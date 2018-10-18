@@ -37,6 +37,7 @@ mmap: 1
 mprotect: 1
 munmap: 1
 open: 1
+openat: 1
 read: 1
 restart_syscall: 1
 rt_sigaction: 1

@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 rt_sigaction: 1
 open: 1
+openat: 1
 mmap: 1
 close: 1
 read: 1

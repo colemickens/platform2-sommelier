@@ -4,6 +4,7 @@
 clock_gettime: 1
 epoll_wait: 1
 open: 1
+openat: 1
 # Make sure PROT_WRITE (bit 1) and PROT_EXEC (bit 2) are not both set.
 mmap2: arg2 in 0xfffffffb || arg2 in 0xfffffffd
 recvmsg: 1
