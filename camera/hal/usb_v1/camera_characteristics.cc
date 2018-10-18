@@ -346,8 +346,8 @@ void CameraCharacteristics::AddPerModuleCharacteristic(
 void CameraCharacteristics::AddFloatValue(const char* value,
                                           const char* characteristic_name,
                                           float* characteristic) {
-  float tmp_value = strtof(value, NULL);
-  if (tmp_value != 0.0) {
+  float tmp_value = 0.0;
+  if (sscanf(value, "%f", &tmp_value) == 1) {
     VLOG(1) << __func__ << ": " << characteristic_name << ": " << value;
     *characteristic = tmp_value;
   } else {
