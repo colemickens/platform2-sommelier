@@ -338,9 +338,9 @@ elif [ -z "${STATE_DEV}" ] || dev_is_debug_build; then
   # (recovery image, factory install shim or netboot), or running from a
   # debug build image. Do not wipe.
   :
-elif [ -O "${DEV_MODE_FILE}" ] ||
+elif crossystem 'devsw_boot?0' && ! crossystem 'mainfw_type?recovery'; then
+  if [ -O "${DEV_MODE_FILE}" ] ||
      ( ! is_tpm_owned && [ -O "${INSTALL_ATTRIBUTES_FILE}" ]); then
-  if crossystem 'devsw_boot?0' && ! crossystem 'mainfw_type?recovery'; then
     # We're transitioning from dev mode to verified boot.
     # When coming back from developer mode, we don't need to
     # clobber as aggressively.  Fast will do the trick.
@@ -348,8 +348,8 @@ elif [ -O "${DEV_MODE_FILE}" ] ||
     echo "fast keepimg" >"${RESET_FILE}"
     clobber-log -- "Leave developer mode"
   fi
-else
-  if crossystem 'devsw_boot?1' && ! crossystem 'mainfw_type?recovery'; then
+elif crossystem 'devsw_boot?1' && ! crossystem 'mainfw_type?recovery'; then
+  if [ ! -O "${DEV_MODE_FILE}" ]; then
     # We're transitioning from verified boot to dev mode.
     chromeos-boot-alert enter_dev
     echo "keepimg" >"${RESET_FILE}"
