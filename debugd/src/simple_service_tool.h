@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DEBUGD_SRC_VM_CONCIERGE_TOOL_H_
-#define DEBUGD_SRC_VM_CONCIERGE_TOOL_H_
+#ifndef DEBUGD_SRC_SIMPLE_SERVICE_TOOL_H_
+#define DEBUGD_SRC_SIMPLE_SERVICE_TOOL_H_
 
 #include <memory>
 #include <string>
@@ -47,4 +47,4 @@ class VmConciergeTool {
 
 }  // namespace debugd
 
-#endif  // DEBUGD_SRC_VM_CONCIERGE_TOOL_H_
+#endif  // DEBUGD_SRC_SIMPLE_SERVICE_TOOL_H_

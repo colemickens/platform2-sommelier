@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "debugd/src/vm_concierge_tool.h"
+#include "debugd/src/simple_service_tool.h"
 
 #include <utility>
 

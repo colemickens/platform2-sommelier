@@ -107,6 +107,7 @@ static_library("libdebugd") {
     "src/sandboxed_process.cc",
     "src/session_manager_proxy.cc",
     "src/shill_scripts_tool.cc",
+    "src/simple_service_tool.cc",
     "src/storage_tool.cc",
     "src/subprocess_tool.cc",
     "src/swap_tool.cc",
@@ -115,7 +116,6 @@ static_library("libdebugd") {
     "src/tracepath_tool.cc",
     "src/u2f_tool.cc",
     "src/variant_utils.cc",
-    "src/vm_concierge_tool.cc",
     "src/wifi_power_tool.cc",
     "src/wimax_status_tool.cc",
   ]
