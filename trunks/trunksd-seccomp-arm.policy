@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 
+getpid: 1
 gettid: 1
 getuid32: 1
 geteuid32: 1
