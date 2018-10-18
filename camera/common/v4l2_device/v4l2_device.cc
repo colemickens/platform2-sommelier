@@ -266,7 +266,7 @@ int V4L2Device::QueryMenu(v4l2_querymenu* menu) {
     return -EINVAL;
   }
 
-  int ret = ::ioctl(fd_, VIDIOC_QUERYMENU, &menu) == 0;
+  int ret = ::ioctl(fd_, VIDIOC_QUERYMENU, menu);
   if (ret != 0) {
     PLOGF(ERROR) << "Failed to get values for query menu (" << menu->id
                  << ") on device" << name_.c_str();
