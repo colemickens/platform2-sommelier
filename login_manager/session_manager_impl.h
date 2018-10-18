@@ -262,6 +262,7 @@ class SessionManagerImpl
   bool LockScreen(brillo::ErrorPtr* error) override;
   void HandleLockScreenShown() override;
   void HandleLockScreenDismissed() override;
+  bool IsScreenLocked() override;
 
   bool RestartJob(brillo::ErrorPtr* error,
                   const base::ScopedFD& in_cred_fd,

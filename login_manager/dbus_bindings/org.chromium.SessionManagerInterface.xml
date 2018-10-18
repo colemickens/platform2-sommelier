@@ -457,6 +457,16 @@
     </method>
 
     <!--
+        IsScreenLocked:
+
+        Returns true through screen_locked if the screen is locked.
+    -->
+    <method name="IsScreenLocked">
+      <arg type="b" name="screen_locked" direction="out" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+    </method>
+
+    <!--
         ScreenIsLocked:
         Broadcast that the browser locked the screen.
     -->

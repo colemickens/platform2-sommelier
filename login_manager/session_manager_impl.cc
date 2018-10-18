@@ -841,6 +841,10 @@ void SessionManagerImpl::HandleLockScreenDismissed() {
   adaptor_.SendScreenIsUnlockedSignal();
 }
 
+bool SessionManagerImpl::IsScreenLocked() {
+  return screen_locked_;
+}
+
 bool SessionManagerImpl::RestartJob(brillo::ErrorPtr* error,
                                     const base::ScopedFD& in_cred_fd,
                                     const std::vector<std::string>& in_argv) {

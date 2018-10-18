@@ -2027,6 +2027,8 @@ TEST_F(SessionManagerImplTest, LockUnlockScreen) {
   impl_->HandleLockScreenShown();
   EXPECT_EQ(TRUE, impl_->ShouldEndSession());
 
+  EXPECT_TRUE(impl_->IsScreenLocked());
+
   EXPECT_CALL(*exported_object(),
               SendSignal(SignalEq(login_manager::kScreenIsUnlockedSignal)))
       .Times(1);
@@ -2037,6 +2039,8 @@ TEST_F(SessionManagerImplTest, LockUnlockScreen) {
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   impl_->HandleLockScreenDismissed();
   EXPECT_EQ(FALSE, impl_->ShouldEndSession());
+
+  EXPECT_FALSE(impl_->IsScreenLocked());
 }
 
 TEST_F(SessionManagerImplTest, StartDeviceWipe) {
