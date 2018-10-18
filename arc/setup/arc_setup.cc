@@ -868,10 +868,6 @@ void ArcSetup::CreateContainerFilesAndDirectories() {
 void ArcSetup::ApplyPerBoardConfigurations() {
   EXIT_IF(!MkdirRecursively(arc_paths_->oem_mount_directory.Append("etc")));
 
-  const base::FilePath hardware_features_xml("/etc/hardware_features.xml");
-  if (!base::PathExists(hardware_features_xml))
-    return;
-
   EXIT_IF(!arc_mounter_->Mount("tmpfs", arc_paths_->oem_mount_directory,
                                "tmpfs", MS_NOSUID | MS_NODEV | MS_NOEXEC,
                                "mode=0755"));
@@ -896,6 +892,10 @@ void ArcSetup::ApplyPerBoardConfigurations() {
           !base::CopyFile(generated_media_profile_xml, new_media_profile_xml));
     }
   }
+
+  const base::FilePath hardware_features_xml("/etc/hardware_features.xml");
+  if (!base::PathExists(hardware_features_xml))
+    return;
 
   const base::FilePath platform_xml_file =
       base::FilePath(arc_paths_->oem_mount_directory)
