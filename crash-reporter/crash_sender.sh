@@ -554,17 +554,6 @@ send_crashes() {
       continue
     fi
 
-    local kind=$(get_kind "${meta_path}")
-    if [ "${kind}" != "minidump" ] && \
-       [ "${kind}" != "kcrash" ] && \
-       [ "${kind}" != "log" ] &&
-       [ "${kind}" != "devcore" ] &&
-       [ "${kind}" != "eccrash" ]; then
-      lecho "Unknown report kind ${kind}.  Removing report."
-      remove_report "${meta_path}"
-      continue
-    fi
-
     if ! is_complete_metadata "${meta_path}"; then
       # This report is incomplete, so if it's old, just remove it.
       local old_meta=$(${FIND} "${dir}" -mindepth 1 -name \

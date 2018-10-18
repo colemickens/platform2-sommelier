@@ -251,6 +251,54 @@ TEST_F(CrashSenderUtilTest, RemoveOrphanedCrashFiles) {
   EXPECT_FALSE(base::PathExists(old4_log));
 }
 
+TEST_F(CrashSenderUtilTest, RemoveInvalidCrashFiles) {
+  const base::FilePath crash_directory =
+      paths::Get(paths::kSystemCrashDirectory);
+  ASSERT_TRUE(base::CreateDirectory(crash_directory));
+
+  // These should be kept, since the payload is a known kind and exists.
+  const base::FilePath good_meta = crash_directory.Append("good.meta");
+  const base::FilePath good_log = crash_directory.Append("good.log");
+  ASSERT_TRUE(test_util::CreateFile(good_meta, "payload=good.log\n"));
+  ASSERT_TRUE(test_util::CreateFile(good_log, ""));
+
+  // These should be kept, the payload path is absolute but should be handled
+  // properly.
+  const base::FilePath absolute_meta = crash_directory.Append("absolute.meta");
+  const base::FilePath absolute_log = crash_directory.Append("absolute.log");
+  ASSERT_TRUE(test_util::CreateFile(absolute_meta,
+                                    "payload=" + absolute_log.value() + "\n"));
+  ASSERT_TRUE(test_util::CreateFile(absolute_log, ""));
+
+  // This should be removed, since no payload info is recorded.
+  const base::FilePath empty_meta = crash_directory.Append("empty.meta");
+  ASSERT_TRUE(test_util::CreateFile(empty_meta, ""));
+
+  // This should be removed, since the payload file does not exist.
+  const base::FilePath nonexistent_meta =
+      crash_directory.Append("nonexistent.meta");
+  ASSERT_TRUE(
+      test_util::CreateFile(nonexistent_meta, "payload=nonexistent.log\n"));
+
+  // These should be removed, since the payload is an unknown kind.
+  const base::FilePath unknown_meta = crash_directory.Append("unknown.meta");
+  const base::FilePath unknown_xxx = crash_directory.Append("unknown.xxx");
+  ASSERT_TRUE(test_util::CreateFile(unknown_meta, "payload=unknown.xxx\n"));
+  ASSERT_TRUE(test_util::CreateFile(unknown_xxx, ""));
+
+  RemoveInvalidCrashFiles(crash_directory);
+
+  // Check what files were removed.
+  EXPECT_TRUE(base::PathExists(good_meta));
+  EXPECT_TRUE(base::PathExists(good_log));
+  EXPECT_TRUE(base::PathExists(absolute_meta));
+  EXPECT_TRUE(base::PathExists(absolute_log));
+  EXPECT_FALSE(base::PathExists(empty_meta));
+  EXPECT_FALSE(base::PathExists(nonexistent_meta));
+  EXPECT_FALSE(base::PathExists(unknown_meta));
+  EXPECT_FALSE(base::PathExists(unknown_xxx));
+}
+
 TEST_F(CrashSenderUtilTest, RemoveReportFiles) {
   const base::FilePath crash_directory =
       paths::Get(paths::kSystemCrashDirectory);

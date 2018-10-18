@@ -72,6 +72,10 @@ base::FilePath GetBasePartOfCrashFile(const base::FilePath& file_name);
 // without corresponding meta file.
 void RemoveOrphanedCrashFiles(const base::FilePath& crash_dir);
 
+// Removes invalid files in |crash_dir|, that are unknown, corrupted, or invalid
+// in other ways.
+void RemoveInvalidCrashFiles(const base::FilePath& crash_dir);
+
 // Removes report files associated with the given meta file.
 // More specifically, if "foo.meta" is given, "foo.*" will be removed.
 void RemoveReportFiles(const base::FilePath& meta_file);

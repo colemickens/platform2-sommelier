@@ -58,6 +58,13 @@ bool GetKeyValueFromString(const std::string& contents,
   return store.GetString(key, value);
 }
 
+// Returns true if the given report kind is known.
+// TODO(satorux): Move collector constants to a common file.
+bool IsKnownKind(const std::string& kind) {
+  return (kind == "minidump" || kind == "kcrash" || kind == "log" ||
+          kind == "devcore" || kind == "eccrash");
+}
+
 }  // namespace
 
 void ParseCommandLine(int argc, const char* const* argv) {
@@ -184,6 +191,45 @@ void RemoveOrphanedCrashFiles(const base::FilePath& crash_dir) {
   }
 }
 
+void RemoveInvalidCrashFiles(const base::FilePath& crash_dir) {
+  std::vector<base::FilePath> meta_files = GetMetaFiles(crash_dir);
+
+  for (const auto& meta_file : meta_files) {
+    LOG(INFO) << "Checking metadata: " << meta_file.value();
+    std::string metadata;
+    if (!base::ReadFileToString(meta_file, &metadata)) {
+      PLOG(WARNING) << "Igonoring: metadata file is inaccessible";
+      continue;
+    }
+
+    base::FilePath payload_path = GetBaseNameFromMetadata(metadata, "payload");
+    if (payload_path.empty()) {
+      LOG(ERROR) << "Removing: payload is not found in the meta data: "
+                 << metadata;
+      RemoveReportFiles(meta_file);
+      continue;
+    }
+
+    // Make it an absolute path.
+    payload_path = meta_file.DirName().Append(payload_path);
+
+    if (!base::PathExists(payload_path)) {
+      // TODO(satorux): logging_CrashSender.py expects "Missing payload" in the
+      // error message. Revise the autotest once the rewrite to C++ is complete.
+      LOG(ERROR) << "Removing: Missing payload: " << payload_path.value();
+      RemoveReportFiles(meta_file);
+      continue;
+    }
+
+    const std::string kind = GetKindFromPayloadPath(payload_path);
+    if (!IsKnownKind(kind)) {
+      LOG(ERROR) << "Removing: unknown kind: " << kind;
+      RemoveReportFiles(meta_file);
+      continue;
+    }
+  }
+}
+
 void RemoveReportFiles(const base::FilePath& meta_file) {
   if (meta_file.Extension() != ".meta") {
     LOG(ERROR) << "Not a meta file: " << meta_file.value();
@@ -266,6 +312,7 @@ bool Sender::SendCrashes(const base::FilePath& crash_dir) {
   }
 
   RemoveOrphanedCrashFiles(crash_dir);
+  RemoveInvalidCrashFiles(crash_dir);
 
   const int child_pid = fork();
   if (child_pid == 0) {
@@ -276,7 +323,8 @@ bool Sender::SendCrashes(const base::FilePath& crash_dir) {
     char* shell_argv[] = {shell_script_path, temp_dir_path, crash_dir_path,
                           nullptr};
     execve(shell_script_path, shell_argv, environ);
-    exit(EXIT_FAILURE);  // execve() failed.
+    // execve() failed.
+    exit(EXIT_FAILURE);
   } else {
     int status = 0;
     if (waitpid(child_pid, &status, 0) < 0) {
