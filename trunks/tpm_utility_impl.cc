@@ -1520,6 +1520,7 @@ TPM_RC TpmUtilityImpl::ReadNVSpace(uint32_t index,
                                    bool using_owner_authorization,
                                    std::string* nvram_data,
                                    AuthorizationDelegate* delegate) {
+  CHECK(nvram_data);
   TPM_RC result;
   if (num_bytes > MAX_NV_BUFFER_SIZE) {
     result = SAPI_RC_BAD_SIZE;

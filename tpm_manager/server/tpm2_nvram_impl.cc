@@ -290,6 +290,7 @@ NvramResult Tpm2NvramImpl::WriteSpace(uint32_t index,
 NvramResult Tpm2NvramImpl::ReadSpace(uint32_t index,
                                      std::string* data,
                                      const std::string& authorization_value) {
+  CHECK(data);
   if (!Initialize()) {
     return NVRAM_RESULT_DEVICE_ERROR;
   }
