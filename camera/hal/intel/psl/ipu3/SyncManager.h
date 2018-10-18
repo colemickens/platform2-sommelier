@@ -162,6 +162,12 @@ private:
      */
     int32_t mPollErrorTimes;
     IErrorCallback* mErrCb;
+
+    /**
+     * Discrete digital gain
+     */
+    bool mUseDiscreteDg;
+
 private:
     /* IMessageHandler overloads */
     status_t handleInit(MessageInit msg);

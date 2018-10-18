@@ -679,6 +679,44 @@ void PSLConfParser::handleSensorInfo(const char *name, const char **atts)
 
             tablePtr = strtok_r(nullptr, ",", &savePtr);
         }
+    } else if (strcmp(name, "ag.multiplier") == 0) {
+        info->mAgMultiplier = atoi(atts[1]);
+    } else if (strcmp(name, "ag.maxRatio") == 0) {
+        info->mAgMaxRatio = atoi(atts[1]);
+    } else if (strcmp(name, "ag.smiaParameters") == 0) {
+        int size = strlen(atts[1]);
+        char src[size + 1];
+        memset(src, 0, sizeof(src));
+        MEMCPY_S(src, size, atts[1], size);
+        char *savePtr, *tablePtr;
+        bool smiaError = false;
+
+        tablePtr = strtok_r(src, ",", &savePtr);
+        if (tablePtr)
+            info->mSMIAm0 = atoi(tablePtr);
+        else
+            smiaError = true;
+        tablePtr = strtok_r(nullptr, ",", &savePtr);
+        if (tablePtr)
+            info->mSMIAm1 = atoi(tablePtr);
+        else
+            smiaError = true;
+        tablePtr = strtok_r(nullptr, ",", &savePtr);
+        if (tablePtr)
+            info->mSMIAc0 = atoi(tablePtr);
+        else
+            smiaError = true;
+        tablePtr = strtok_r(nullptr, ",", &savePtr);
+        if (tablePtr)
+            info->mSMIAc1 = atoi(tablePtr);
+        else
+            smiaError = true;
+
+        if (smiaError) {
+            LOGE("@%s,SMIA parameters fails", __func__);
+            info->mSMIAm0 = info->mSMIAm1 = info->mSMIAc0 = info->mSMIAc1 = 0;
+            return;
+        }
     }
 }
 

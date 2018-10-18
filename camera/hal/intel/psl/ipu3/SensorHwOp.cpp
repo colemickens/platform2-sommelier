@@ -41,7 +41,8 @@ SensorHwOp::SensorHwOp(std::shared_ptr<cros::V4L2Subdevice> pixelArraySubdev):
    pSensorFTWidth(0),
    pSensorFTHeight(0),
    pHBlankReadOnly(false),
-   pVBlankReadOnly(false)
+   pVBlankReadOnly(false),
+   pUseDiscreteDG(false)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 }
@@ -280,7 +281,7 @@ int SensorHwOp::setGains(int analog_gain, int digital_gain)
     int ret = BAD_VALUE;
 
     ret = pPixelArraySubdev->SetControl(V4L2_CID_ANALOGUE_GAIN, analog_gain);
-    if (digital_gain != 0) {
+    if (pUseDiscreteDG || digital_gain != 0) {
         ret = pPixelArraySubdev->SetControl(V4L2_CID_DIGITAL_GAIN, digital_gain);
     }
     return ret;
@@ -490,6 +491,81 @@ int SensorHwOp::setTestPattern(int mode)
 {
     return pPixelArraySubdev->SetControl(V4L2_CID_TEST_PATTERN, mode);
 }
+
+/**
+* create a map for discrete digital gain
+*
+* \param[OUT] discreteDG: use discrete digital gain
+*
+* \return IOCTL return value.
+*/
+int SensorHwOp::createDiscreteDgMap(bool *use_discrete_digital_gain)
+{
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
+    status_t status = OK;
+    v4l2_queryctrl dgControl;
+    v4l2_querymenu dgMenu;
+    CLEAR(dgControl);
+    CLEAR(dgMenu);
+
+    *use_discrete_digital_gain = false;
+
+    dgControl.id = V4L2_CID_DIGITAL_GAIN;
+    status = pPixelArraySubdev->QueryControl(&dgControl);
+    if (status) {
+        LOGE("failed to get the max index of discrete DG table");
+        return status;
+    }
+
+    dgMenu.id = V4L2_CID_DIGITAL_GAIN;
+    if (dgControl.type == V4L2_CTRL_TYPE_INTEGER_MENU && dgControl.maximum > 0) {
+        /* discrete DG has been enabled, WA should work for the sensor */
+        for (dgMenu.index = 0; dgMenu.index <= dgControl.maximum; dgMenu.index++) {
+            status = pPixelArraySubdev->QueryMenu(&dgMenu);
+            if (status == OK) {
+                LOG2("insert discrete DG val: %d %lld", dgMenu.index, dgMenu.value);
+                pDgMap.emplace(dgMenu.value, dgMenu.index);
+            } else {
+                LOGE("failed to get discrete DG table");
+                pUseDiscreteDG = false;
+
+                return status;
+            }
+        }
+
+        pUseDiscreteDG = true;
+        *use_discrete_digital_gain = true;
+    }
+
+    return status;
+}
+
+/**
+* get a suitable discrete digital gain
+*
+* \param[OUT] original digital gain: the current DG value
+*
+* \param[OUT] digital_gain_idx: index of the current DG in the DG menu
+*/
+void SensorHwOp::getDiscreteDg(unsigned short *digital_gain, unsigned short *digital_gain_idx)
+{
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
+
+    *digital_gain_idx = 0;
+
+    if (pUseDiscreteDG) {
+        auto it = pDgMap.upper_bound((int64_t)*digital_gain - 1);
+        if (it != pDgMap.end()) {
+            *digital_gain = (unsigned short)it->first;
+            *digital_gain_idx = (unsigned short)it->second;
+            LOG2("%s new discreteDG:%d, discreteDgIdx:%d", __FUNCTION__,
+                 *digital_gain, *digital_gain_idx);
+        } else {
+            LOGE("%s no suitable discrete DG", __FUNCTION__);
+        }
+    }
+}
+
 
 /*
  * -- end SensorHwOp

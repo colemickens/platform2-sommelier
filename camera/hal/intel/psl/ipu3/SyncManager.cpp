@@ -46,7 +46,8 @@ SyncManager::SyncManager(int32_t cameraId,
     mDigiGainOnSensor(false),
     mCurrentSettingIdentifier(0),
     mPollErrorTimes(0),
-    mErrCb(nullptr)
+    mErrCb(nullptr),
+    mUseDiscreteDg(false)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     mCapInfo = getIPU3CameraCapInfo(cameraId);
@@ -255,6 +256,12 @@ status_t SyncManager::handleInit(MessageInit msg)
     if (status != NO_ERROR) {
         LOGE("Failed to create sensor object");
         goto exit;
+    }
+
+    /* WA for using discrete digital gain */
+    if (mCapInfo->mAgMaxRatio && mCapInfo->mAgMultiplier) {
+        if (mSensorOp->createDiscreteDgMap(&mUseDiscreteDg))
+            LOG2("%s no discrete DG for this sensor", __FUNCTION__);
     }
 
     mQueuedSettings.clear();
@@ -568,12 +575,66 @@ status_t SyncManager::applySensorParams(ia_aiq_exposure_sensor_parameters &expPa
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     status_t status = OK;
     uint16_t aGain, dGain;
+    uint16_t analog_gain_code_global = expParams.analog_gain_code_global;
+    uint16_t digital_gain_global = expParams.digital_gain_global;
+
     // Frame duration
     status |= mSensorOp->setFrameDuration(expParams.line_length_pixels,
                                           expParams.frame_length_lines);
+
+    // Discrete digital gain, seperate total gain = AG x DG
+    if (mUseDiscreteDg && mCapInfo->mAgMaxRatio && mCapInfo->mAgMultiplier) {
+        int ag_product, analog_gain_code, analog_gain_divisor;
+        uint16_t total_gain = expParams.analog_gain_code_global;
+        uint16_t digital_gain = (total_gain + (mCapInfo->mAgMaxRatio * mCapInfo->mAgMultiplier)
+                                - 1) / (mCapInfo->mAgMaxRatio * mCapInfo->mAgMultiplier);
+        uint16_t digital_gain_idx;
+        bool ag_fail = false;
+
+        LOG2("%s total gain:%d, target dg:%d", __FUNCTION__, total_gain, digital_gain);
+
+        mSensorOp->getDiscreteDg(&digital_gain, &digital_gain_idx);
+        if (digital_gain == 0) {
+            LOGE("%s DG==0, wrong, at least 1", __FUNCTION__);
+            digital_gain = 1;
+            digital_gain_idx = 0;
+        }
+
+        // total gain = (AG * AgMultiplier) * DG => ag_product * DG
+        ag_product = total_gain / digital_gain;
+
+        // Set DG idx to digital gain, driver will covert it to DG code
+        digital_gain_global = digital_gain_idx;
+
+        /*
+         * SMIA: AG = (m0*X + c0)/(m1*X + c1), which X = AG code for reg setting.
+         * => AG*m1*X + AG * c1 = m0 * X + c0 => X= (c0 - AG * c1) / (AG * m1 - m0)
+         * => X = (AgMultiplier * (c0 - AG * c1)) / (AgMultiplier * (AG * m1 - m0)) for the
+         * more precise gain code.
+         */
+        analog_gain_divisor = (ag_product * mCapInfo->mSMIAm1) -
+                              (mCapInfo->mAgMultiplier * mCapInfo->mSMIAm0);
+        if (analog_gain_divisor) {
+            analog_gain_code = ((mCapInfo->mAgMultiplier * mCapInfo->mSMIAc0) -
+                               (ag_product * mCapInfo->mSMIAc1)) / analog_gain_divisor;
+            if (analog_gain_code >= 0)
+                analog_gain_code_global = (uint16_t)analog_gain_code;
+            else
+                ag_fail = true;
+        } else {
+            ag_fail = true;
+        }
+
+        if (ag_fail)
+            LOGE("%s, wrong AG, m0 or m1: %d, %d", __FUNCTION__,
+                 mCapInfo->mSMIAm0, mCapInfo->mSMIAm1);
+
+        LOG2("%s new AG:%d, DG:%d", __FUNCTION__, analog_gain_code_global, digital_gain_global);
+    }
+
     // gain
-    mDelayedAGains.push_back(expParams.analog_gain_code_global);
-    mDelayedDGains.push_back(expParams.digital_gain_global);
+    mDelayedAGains.push_back(analog_gain_code_global);
+    mDelayedDGains.push_back(digital_gain_global);
     aGain = mDelayedAGains[0];
     dGain = mDelayedDGains[0];
     if (mDelayedAGains.size() > mGainDelay) {

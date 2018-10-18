@@ -18,6 +18,7 @@
 #define CAMERA3_HAL_SENSORHWOP_H_
 
 #include <memory>
+#include <map>
 #include "cros-camera/v4l2_device.h"
 #include "UtilityMacros.h"
 #include "utils/Errors.h"
@@ -57,6 +58,9 @@ public:
     virtual int setSensorFT(int width, int height);
     virtual int getTestPattern(int *mode);
     virtual int setTestPattern(int mode);
+    virtual int createDiscreteDgMap(bool *use_discrete_digital_gain);
+    virtual void getDiscreteDg(unsigned short *digital_gain,
+                               unsigned short *digital_gain_idx);
 protected:
     virtual status_t getActivePixelArraySize(int &width, int &height,
                                              int &code);
@@ -72,6 +76,8 @@ protected:
     int pSensorFTHeight;
     bool pHBlankReadOnly;
     bool pVBlankReadOnly;
+    bool pUseDiscreteDG;
+    std::map<int64_t, uint32_t> pDgMap;
 
 }; //class SensorHwOpBase
 

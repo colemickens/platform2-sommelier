@@ -75,7 +75,20 @@ public:
     std::string mTestPatternBayerFormat;
     std::unordered_map<int, int> mTestPatternMap; /* key: Android standard test pattern mode
                                                      value: sensor test pattern mode */
-
+    int mAgMultiplier;
+    int mAgMaxRatio;   /*
+                        * total_gain = analog_gain * mAgMultiplier * digital_gain
+                        * the max ratio of analog gain, the suitable discrete
+                        * DG = total_gain / mAgMaxRatio / mAgMultiplier
+                        */
+    int mSMIAm0;
+    int mSMIAm1;
+    int mSMIAc0;
+    int mSMIAc1; /*
+                  * SMIA parameters. In the general case, 3A handles SMIA calculations,
+                  * but for the case of using discrete DG, 3A only passes the total gain to HAL,
+                  * HAL should know SMIA parameters to transfer AG to AG code.
+                  */
 private:
     friend class PSLConfParser;
     std::vector<MediaCtlElement> mMediaCtlElements;

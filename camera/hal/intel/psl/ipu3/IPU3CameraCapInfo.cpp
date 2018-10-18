@@ -37,7 +37,13 @@ IPU3CameraCapInfo::IPU3CameraCapInfo(SensorType type):
     mNvmDirectory(""),
     mSensorName(""),
     mNvmData({nullptr,0}),
-    mTestPatternBayerFormat("")
+    mTestPatternBayerFormat(""),
+    mAgMultiplier(0),
+    mAgMaxRatio(0),
+    mSMIAm0(0),
+    mSMIAm1(0),
+    mSMIAc0(0),
+    mSMIAc1(0)
 {
     CLEAR(mFov);
 }
