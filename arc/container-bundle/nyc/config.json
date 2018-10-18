@@ -469,6 +469,15 @@
 				"gid": 1003
 			},
 			{
+				"path": "/dev/pvr_sync",
+				"type": "c",
+				"major": 10,
+				"dynamicMinor": true,
+				"fileMode": 438,
+				"uid": 0,
+				"gid": 1003
+			},
+			{
 				"path": "/dev/mali0",
 				"type": "c",
 				"major": 10,
