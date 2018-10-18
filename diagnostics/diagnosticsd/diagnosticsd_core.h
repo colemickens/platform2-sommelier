@@ -12,6 +12,7 @@
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
+#include <base/strings/string_piece.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/dbus_object.h>
 #include <dbus/bus.h>
@@ -91,6 +92,10 @@ class DiagnosticsdCore final : public DiagnosticsdDBusService::Delegate,
 
   // Shuts down the self instance after a Mojo fatal error happens.
   void ShutDownDueToMojoError(const std::string& debug_reason);
+
+  // DiagnosticsdMojoService::Delegate overrides:
+  void SendGrpcUiMessageToDiagnosticsProcessor(
+      base::StringPiece json_message) override;
 
   // Unowned. The delegate should outlive this instance.
   Delegate* const delegate_;

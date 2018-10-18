@@ -14,10 +14,7 @@
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
 #include <base/strings/stringprintf.h>
-#include <brillo/bind_lambda.h>
 #include <brillo/dbus/async_event_sequencer.h>
-#include <brillo/dbus/dbus_method_invoker.h>
-#include <brillo/dbus/dbus_object_test_helpers.h>
 #include <dbus/diagnosticsd/dbus-constants.h>
 #include <dbus/message.h>
 #include <dbus/mock_bus.h>
@@ -29,6 +26,8 @@
 #include <mojo/edk/embedder/embedder.h>
 
 #include "diagnostics/diagnosticsd/diagnosticsd_core.h"
+#include "diagnostics/diagnosticsd/fake_browser.h"
+#include "diagnostics/diagnosticsd/fake_diagnostics_processor.h"
 #include "diagnostics/diagnosticsd/mojo_test_utils.h"
 
 #include "mojo/diagnosticsd.mojom.h"
@@ -83,14 +82,17 @@ class DiagnosticsdCoreTest : public testing::Test {
 
     const std::string grpc_service_uri = base::StringPrintf(
         kDiagnosticsdGrpcUriTemplate, temp_dir_.GetPath().value().c_str());
-    const std::string diagnostics_processor_grpc_uri =
+    diagnostics_processor_grpc_uri_ =
         base::StringPrintf(kDiagnosticsProcessorGrpcUriTemplate,
                            temp_dir_.GetPath().value().c_str());
     core_ = std::make_unique<DiagnosticsdCore>(
-        grpc_service_uri, diagnostics_processor_grpc_uri, &core_delegate_);
+        grpc_service_uri, diagnostics_processor_grpc_uri_, &core_delegate_);
     ASSERT_TRUE(core_->StartGrpcCommunication());
 
     SetUpDBus();
+
+    fake_browser_.reset(new FakeBrowser(
+        &mojo_service_interface_ptr_, bootstrap_mojo_connection_dbus_method_));
   }
 
   void TearDown() override {
@@ -105,35 +107,7 @@ class DiagnosticsdCoreTest : public testing::Test {
     return &mojo_service_interface_ptr_;
   }
 
-  // Call the BootstrapMojoConnection D-Bus method. Returns whether the D-Bus
-  // call returned success.
-  bool CallBootstrapMojoConnectionDBusMethod(base::ScopedFD mojo_fd) {
-    // Prepare input data for the call.
-    const int kFakeMethodCallSerial = 1;
-    dbus::MethodCall method_call(kDiagnosticsdServiceInterface,
-                                 kDiagnosticsdBootstrapMojoConnectionMethod);
-    method_call.SetSerial(kFakeMethodCallSerial);
-    dbus::MessageWriter message_writer(&method_call);
-    message_writer.AppendFileDescriptor(mojo_fd.get());
-
-    // Storage for the output data returned by the call.
-    std::unique_ptr<dbus::Response> response;
-    const auto response_writer_callback = base::Bind(
-        [](std::unique_ptr<dbus::Response>* response,
-           std::unique_ptr<dbus::Response> passed_response) {
-          *response = std::move(passed_response);
-        },
-        &response);
-
-    // Call the tested method and extract its result.
-    if (bootstrap_mojo_connection_dbus_method_.is_null())
-      return false;
-    bootstrap_mojo_connection_dbus_method_.Run(&method_call,
-                                               response_writer_callback);
-    EXPECT_TRUE(response);
-    return response &&
-           response->GetMessageType() != dbus::Message::MESSAGE_ERROR;
-  }
+  FakeBrowser* fake_browser() { return fake_browser_.get(); }
 
   // Set up mock for BindDiagnosticsdMojoService() that simulates successful
   // Mojo service binding to the given file descriptor. After the mock gets
@@ -156,6 +130,15 @@ class DiagnosticsdCoreTest : public testing::Test {
               DCHECK(mojo_service_interface_ptr_);
               return mojo_service_binding.release();
             }));
+  }
+
+  dbus::ExportedObject::MethodCallCallback
+  bootstrap_mojo_connection_dbus_method() {
+    return bootstrap_mojo_connection_dbus_method_;
+  }
+
+  const std::string& diagnostics_processor_grpc_uri() const {
+    return diagnostics_processor_grpc_uri_;
   }
 
  private:
@@ -210,6 +193,8 @@ class DiagnosticsdCoreTest : public testing::Test {
 
   base::ScopedTempDir temp_dir_;
 
+  std::string diagnostics_processor_grpc_uri_;
+
   scoped_refptr<StrictMock<dbus::MockBus>> dbus_bus_ =
       new StrictMock<dbus::MockBus>(dbus::Bus::Options());
 
@@ -227,6 +212,8 @@ class DiagnosticsdCoreTest : public testing::Test {
   // method.
   dbus::ExportedObject::MethodCallCallback
       bootstrap_mojo_connection_dbus_method_;
+
+  std::unique_ptr<FakeBrowser> fake_browser_;
 };
 
 }  // namespace
@@ -237,8 +224,7 @@ TEST_F(DiagnosticsdCoreTest, MojoBootstrapSuccess) {
   FakeMojoFdGenerator fake_mojo_fd_generator;
   SetSuccessMockBindDiagnosticsdMojoService(&fake_mojo_fd_generator);
 
-  EXPECT_TRUE(
-      CallBootstrapMojoConnectionDBusMethod(fake_mojo_fd_generator.MakeFd()));
+  EXPECT_TRUE(fake_browser()->BootstrapMojoConnection(&fake_mojo_fd_generator));
 
   EXPECT_TRUE(*mojo_service_interface_ptr());
 }
@@ -252,7 +238,8 @@ TEST_F(DiagnosticsdCoreTest, MojoBootstrapErrorToBind) {
   EXPECT_CALL(*core_delegate(), BeginDaemonShutdown());
 
   EXPECT_FALSE(
-      CallBootstrapMojoConnectionDBusMethod(fake_mojo_fd_generator.MakeFd()));
+      fake_browser()->BootstrapMojoConnection(&fake_mojo_fd_generator));
+
   Mock::VerifyAndClearExpectations(core_delegate());
 }
 
@@ -262,15 +249,16 @@ TEST_F(DiagnosticsdCoreTest, MojoBootstrapErrorRepeated) {
   FakeMojoFdGenerator first_fake_mojo_fd_generator;
   SetSuccessMockBindDiagnosticsdMojoService(&first_fake_mojo_fd_generator);
 
-  EXPECT_TRUE(CallBootstrapMojoConnectionDBusMethod(
-      first_fake_mojo_fd_generator.MakeFd()));
+  EXPECT_TRUE(
+      fake_browser()->BootstrapMojoConnection(&first_fake_mojo_fd_generator));
   Mock::VerifyAndClearExpectations(core_delegate());
 
   FakeMojoFdGenerator second_fake_mojo_fd_generator;
   EXPECT_CALL(*core_delegate(), BeginDaemonShutdown());
 
-  EXPECT_FALSE(CallBootstrapMojoConnectionDBusMethod(
-      second_fake_mojo_fd_generator.MakeFd()));
+  EXPECT_FALSE(
+      fake_browser()->BootstrapMojoConnection(&second_fake_mojo_fd_generator));
+
   Mock::VerifyAndClearExpectations(core_delegate());
 }
 
@@ -280,8 +268,8 @@ TEST_F(DiagnosticsdCoreTest, MojoBootstrapSuccessThenAbort) {
   FakeMojoFdGenerator fake_mojo_fd_generator;
   SetSuccessMockBindDiagnosticsdMojoService(&fake_mojo_fd_generator);
 
-  EXPECT_TRUE(
-      CallBootstrapMojoConnectionDBusMethod(fake_mojo_fd_generator.MakeFd()));
+  EXPECT_TRUE(fake_browser()->BootstrapMojoConnection(&fake_mojo_fd_generator));
+
   Mock::VerifyAndClearExpectations(core_delegate());
 
   EXPECT_CALL(*core_delegate(), BeginDaemonShutdown());
@@ -291,6 +279,62 @@ TEST_F(DiagnosticsdCoreTest, MojoBootstrapSuccessThenAbort) {
   mojo_service_interface_ptr()->reset();
   base::RunLoop().RunUntilIdle();
   Mock::VerifyAndClearExpectations(core_delegate());
+}
+
+// Test that diagnostics processor will receive message from browser.
+TEST_F(DiagnosticsdCoreTest, SendGrpcUiMessageToDiagnosticsProcessor) {
+  const std::string json_message = "{\"some_key\": \"some_value\"}";
+
+  base::RunLoop run_loop_handle_message;
+  FakeDiagnosticsProcessor fake_diagnostics_processor(
+      diagnostics_processor_grpc_uri());
+  fake_diagnostics_processor.set_handle_message_from_ui_callback(
+      run_loop_handle_message.QuitClosure());
+  fake_diagnostics_processor.Start();
+
+  FakeMojoFdGenerator fake_mojo_fd_generator;
+  SetSuccessMockBindDiagnosticsdMojoService(&fake_mojo_fd_generator);
+  EXPECT_TRUE(fake_browser()->BootstrapMojoConnection(&fake_mojo_fd_generator));
+
+  EXPECT_TRUE(*mojo_service_interface_ptr());
+
+  EXPECT_TRUE(fake_browser()->SendMessageToDiagnosticsProcessor(json_message));
+
+  run_loop_handle_message.Run();
+  EXPECT_EQ(json_message, fake_diagnostics_processor
+                              .handle_message_from_ui_actual_json_message()
+                              .value());
+
+  base::RunLoop run_loop_shutdown;
+  fake_diagnostics_processor.Shutdown(run_loop_shutdown.QuitClosure());
+  run_loop_shutdown.Run();
+}
+
+// Test that diagnostics processor will not receive message from browser
+// if JSON message is invalid.
+TEST_F(DiagnosticsdCoreTest,
+       SendGrpcUiMessageToDiagnosticsProcessorInvalidJSON) {
+  const std::string json_message = "{'some_key': 'some_value'}";
+
+  FakeDiagnosticsProcessor fake_diagnostics_processor(
+      diagnostics_processor_grpc_uri());
+  fake_diagnostics_processor.Start();
+
+  FakeMojoFdGenerator fake_mojo_fd_generator;
+  SetSuccessMockBindDiagnosticsdMojoService(&fake_mojo_fd_generator);
+  EXPECT_TRUE(fake_browser()->BootstrapMojoConnection(&fake_mojo_fd_generator));
+
+  EXPECT_TRUE(*mojo_service_interface_ptr());
+
+  EXPECT_TRUE(fake_browser()->SendMessageToDiagnosticsProcessor(json_message));
+
+  base::RunLoop run_loop_shutdown;
+  fake_diagnostics_processor.Shutdown(run_loop_shutdown.QuitClosure());
+  run_loop_shutdown.Run();
+
+  EXPECT_FALSE(
+      fake_diagnostics_processor.handle_message_from_ui_actual_json_message()
+          .has_value());
 }
 
 }  // namespace diagnostics

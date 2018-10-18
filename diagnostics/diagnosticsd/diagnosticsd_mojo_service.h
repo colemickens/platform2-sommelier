@@ -7,6 +7,7 @@
 
 #include <base/callback.h>
 #include <base/macros.h>
+#include <base/strings/string_piece.h>
 #include <mojo/public/cpp/system/buffer.h>
 
 #include "mojo/diagnosticsd.mojom.h"
@@ -24,6 +25,15 @@ class DiagnosticsdMojoService final
   class Delegate {
    public:
     virtual ~Delegate() = default;
+
+    // Called when diagnosticsd daemon mojo function
+    // |SendUiMessageToDiagnosticsProcessorWithSize| was called.
+    //
+    // Call gRPC HandleMessageFromUiRequest method on diagnostics processor
+    // and put |json_message| to the gRPC
+    // |HandleMessageFromUiRequest| request message.
+    virtual void SendGrpcUiMessageToDiagnosticsProcessor(
+        base::StringPiece json_message) = 0;
   };
 
   explicit DiagnosticsdMojoService(Delegate* delegate);
@@ -35,6 +45,11 @@ class DiagnosticsdMojoService final
   void SendUiMessageToDiagnosticsProcessor(
       mojo::ScopedSharedBufferHandle json_message,
       const SendUiMessageToDiagnosticsProcessorCallback& callback) override;
+  void SendUiMessageToDiagnosticsProcessorWithSize(
+      mojo::ScopedSharedBufferHandle json_message,
+      int64_t json_message_size,
+      const SendUiMessageToDiagnosticsProcessorWithSizeCallback& callback)
+      override;
 
  private:
   // Unowned. The delegate should outlive this instance.

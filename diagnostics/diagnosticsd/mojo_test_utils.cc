@@ -8,14 +8,11 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/un.h>
-#include <unistd.h>
-#include <algorithm>
-#include <cstdint>
-#include <cstring>
-#include <iterator>
 
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
+#include <mojo/public/c/system/buffer.h>
+#include <mojo/public/c/system/types.h>
 
 namespace diagnostics {
 
@@ -78,5 +75,41 @@ bool FakeMojoFdGenerator::IsDuplicateFd(int another_fd) const {
   }
   return own_device_id == another_device_id && own_inode == another_inode;
 }
+
+namespace helper {
+std::unique_ptr<mojo::ScopedSharedBufferHandle> WriteToSharedBuffer(
+    const std::string& content) {
+  auto options = MojoCreateSharedBufferOptions{
+      sizeof(MojoCreateSharedBufferOptions),
+      MOJO_CREATE_SHARED_BUFFER_OPTIONS_FLAG_NONE};
+
+  std::unique_ptr<mojo::ScopedSharedBufferHandle> buffer =
+      std::make_unique<mojo::ScopedSharedBufferHandle>();
+
+  MojoResult mojo_result =
+      mojo::CreateSharedBuffer(&options, content.length(), buffer.get());
+  if (mojo_result != MOJO_RESULT_OK) {
+    return nullptr;
+  }
+
+  void* ptr = nullptr;
+
+  mojo_result = mojo::MapBuffer(buffer->get(), 0, content.length(), &ptr,
+                                MOJO_MAP_BUFFER_FLAG_NONE);
+  if (mojo_result != MOJO_RESULT_OK) {
+    mojo::UnmapBuffer(ptr);
+    return nullptr;
+  }
+
+  memcpy(ptr, static_cast<const void*>(content.c_str()), content.length());
+
+  mojo_result = mojo::UnmapBuffer(ptr);
+  if (mojo_result != MOJO_RESULT_OK) {
+    return nullptr;
+  }
+  return buffer;
+}
+
+}  // namespace helper
 
 }  // namespace diagnostics

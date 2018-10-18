@@ -10,6 +10,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/threading/thread_task_runner_handle.h>
+#include <brillo/bind_lambda.h>
 #include <dbus/diagnosticsd/dbus-constants.h>
 #include <dbus/object_path.h>
 #include <mojo/public/cpp/system/message_pipe.h>
@@ -138,6 +139,28 @@ void DiagnosticsdCore::ShutDownDueToMojoError(const std::string& debug_reason) {
   mojo_service_binding_.reset();
   mojo_service_.reset();
   delegate_->BeginDaemonShutdown();
+}
+
+void DiagnosticsdCore::SendGrpcUiMessageToDiagnosticsProcessor(
+    base::StringPiece json_message) {
+  VLOG(1) << "DiagnosticsdCore::SendGrpcMessageToDiagnosticsdProcessor";
+
+  grpc_api::HandleMessageFromUiRequest request;
+  request.set_json_message(json_message.data() ? json_message.data() : "",
+                           json_message.length());
+
+  diagnostics_processor_grpc_client_->CallRpc(
+      &grpc_api::DiagnosticsProcessor::Stub::AsyncHandleMessageFromUi, request,
+      base::Bind([](std::unique_ptr<grpc_api::EmptyMessage> response) {
+        if (!response) {
+          LOG(ERROR) << "Failed to call HandleMessageFromUiRequest "
+                     << "gRPC method on diagnostics_processor: "
+                     << "EmptyMessage is nullptr";
+        } else {
+          VLOG(1) << "gRPC method HandleMessageFromUiRequest was successfully "
+                  << "called on diagnostics_processor";
+        }
+      }));
 }
 
 }  // namespace diagnostics

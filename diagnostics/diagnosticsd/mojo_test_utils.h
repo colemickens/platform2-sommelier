@@ -5,8 +5,12 @@
 #ifndef DIAGNOSTICS_DIAGNOSTICSD_MOJO_TEST_UTILS_H_
 #define DIAGNOSTICS_DIAGNOSTICSD_MOJO_TEST_UTILS_H_
 
+#include <memory>
+#include <string>
+
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
+#include <mojo/public/cpp/system/buffer.h>
 
 namespace diagnostics {
 
@@ -29,6 +33,11 @@ class FakeMojoFdGenerator final {
 
   DISALLOW_COPY_AND_ASSIGN(FakeMojoFdGenerator);
 };
+
+namespace helper {
+std::unique_ptr<mojo::ScopedSharedBufferHandle> WriteToSharedBuffer(
+    const std::string& content);
+}  // namespace helper
 
 }  // namespace diagnostics
 

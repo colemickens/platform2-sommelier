@@ -216,6 +216,9 @@
           'sources': [
             'diagnosticsd/diagnosticsd_core_test.cc',
             'diagnosticsd/diagnosticsd_dbus_service_test.cc',
+            'diagnosticsd/diagnosticsd_mojo_service_test.cc',
+            'diagnosticsd/fake_browser.cc',
+            'diagnosticsd/fake_diagnostics_processor.cc',
             'diagnosticsd/mojo_test_utils.cc',
           ],
           'variables': {

@@ -22,6 +22,13 @@ interface DiagnosticsdService {
   // the diagnostics_processor daemon isn't running at the moment).
   SendUiMessageToDiagnosticsProcessor@1(handle<shared_buffer> json_message)
       => ();
+
+  // TODO(lamzin): remove when mojo library will support retrieving size of
+  // shared buffer.
+  // The same as SendUiMessageToDiagnosticsProcessor, but with additional
+  // parameter json_message_size.
+  SendUiMessageToDiagnosticsProcessorWithSize@2(
+    handle<shared_buffer> json_message, int64 json_message_size) => ();
 };
 
 // Interface exposed by the consumer of DiagnosticsdService.

@@ -22,7 +22,7 @@ its constructor.
 Example for sending RPCs:
 
 ```
-void OnRpcResponse(std::unique_ptr<SomeRpcResponse> response, const grpc::Status& grpc_status) {
+void OnRpcResponse(std::unique_ptr<SomeRpcResponse> response) {
   // Process |response|.
 }
 
