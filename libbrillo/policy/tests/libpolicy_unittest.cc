@@ -132,7 +132,7 @@ TEST(PolicyTest, DevicePolicyAllSetTest) {
   int_value = -1;
   ASSERT_TRUE(policy.GetRollbackToTargetVersion(&int_value));
   EXPECT_EQ(enterprise_management::AutoUpdateSettingsProto::
-                ROLLBACK_WITH_FULL_POWERWASH,
+                ROLLBACK_AND_POWERWASH,
             int_value);
 
   int_value = -1;
