@@ -44,6 +44,7 @@ include(sepolicy/file_contexts/coreutils)
 /usr/sbin/accelerator-logs      u:object_r:cros_accelerator_logs_exec:s0
 /usr/sbin/apk-cache-cleaner-jailed u:object_r:cros_apk_cache_cleaner_jailed_exec:s0
 /usr/sbin/avahi-daemon          u:object_r:cros_avahi_daemon_exec:s0
+/usr/sbin/arc-setup             u:object_r:cros_arc_setup_exec:s0
 /usr/sbin/chapsd                u:object_r:cros_chapsd_exec:s0
 /usr/sbin/chromeos-cleanup-logs u:object_r:cros_chromeos_cleanup_logs_exec:s0
 /usr/sbin/chromeos-trim         u:object_r:cros_chromeos_trim_exec:s0

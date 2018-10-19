@@ -43,6 +43,7 @@ type cros_tlsdated_exec, exec_type, file_type;
 type cros_udevd_exec, exec_type, file_type;
 type cros_update_engine_exec, exec_type, file_type;
 type cros_wpa_supplicant_exec, exec_type, file_type;
+type cros_arc_setup_exec, exec_type, file_type;
 
 type cros_coreutils_exec, exec_type, file_type;
 
@@ -130,6 +131,6 @@ type wayland_socket, file_type;
 type cros_system_bus_socket, file_type;
 
 # TODO(fqj): temporarily let un-decomposed chromeos domain to write file as tmpfs.
-type_transition chromeos cros_run:dir tmpfs;
+type_transition {chromeos cros_arc_setup} cros_run:dir tmpfs;
 
 auditallow domain cros_var_log:dir { add_name write };
