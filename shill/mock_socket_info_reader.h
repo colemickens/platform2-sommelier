@@ -14,7 +14,7 @@
 
 namespace shill {
 
-class SocketInfo;
+struct SocketInfo;
 
 class MockSocketInfoReader : public SocketInfoReader {
  public:

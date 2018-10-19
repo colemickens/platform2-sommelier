@@ -78,28 +78,26 @@ void TrafficMonitor::BuildIPPortToTxQueueLength(
   string device_ip_address = device_->ipconfig()->properties().address;
   for (const auto& info : socket_infos) {
     SLOG(device_.get(), 4) << "SocketInfo(IP="
-                           << info.local_ip_address().ToString()
-                           << ", TX=" << info.transmit_queue_value()
-                           << ", State=" << info.connection_state()
-                           << ", TimerState=" << info.timer_state();
-    if (info.local_ip_address().ToString() != device_ip_address ||
-        info.transmit_queue_value() == 0 ||
-        info.connection_state() != SocketInfo::kConnectionStateEstablished ||
-        (info.timer_state() != SocketInfo::kTimerStateRetransmitTimerPending &&
-         info.timer_state() !=
-            SocketInfo::kTimerStateZeroWindowProbeTimerPending)) {
+                           << info.local_ip_address.ToString()
+                           << ", TX=" << info.transmit_queue_value
+                           << ", State=" << info.connection_state
+                           << ", TimerState=" << info.timer_state;
+    if (info.local_ip_address.ToString() != device_ip_address ||
+        info.transmit_queue_value == 0 ||
+        info.connection_state != SocketInfo::kConnectionStateEstablished ||
+        (info.timer_state != SocketInfo::kTimerStateRetransmitTimerPending &&
+         info.timer_state !=
+             SocketInfo::kTimerStateZeroWindowProbeTimerPending)) {
       SLOG(device_.get(), 4) << "Connection Filtered.";
       continue;
     }
     SLOG(device_.get(), 3) << "Monitoring connection: TX="
-                           << info.transmit_queue_value()
-                           << " TimerState=" << info.timer_state();
+                           << info.transmit_queue_value
+                           << " TimerState=" << info.timer_state;
 
-    string local_ip_port =
-        StringPrintf("%s:%d",
-                     info.local_ip_address().ToString().c_str(),
-                     info.local_port());
-    (*tx_queue_lengths)[local_ip_port] = info.transmit_queue_value();
+    string local_ip_port = StringPrintf(
+        "%s:%d", info.local_ip_address.ToString().c_str(), info.local_port);
+    (*tx_queue_lengths)[local_ip_port] = info.transmit_queue_value;
   }
 }
 

@@ -20,14 +20,14 @@ const uint16_t kPort2 = 2000;
 class SocketInfoTest : public testing::Test {
  protected:
   void ExpectSocketInfoEqual(const SocketInfo& info1, const SocketInfo& info2) {
-    EXPECT_EQ(info1.connection_state(), info2.connection_state());
-    EXPECT_TRUE(info1.local_ip_address().Equals(info2.local_ip_address()));
-    EXPECT_EQ(info1.local_port(), info2.local_port());
-    EXPECT_TRUE(info1.remote_ip_address().Equals(info2.remote_ip_address()));
-    EXPECT_EQ(info1.remote_port(), info2.remote_port());
-    EXPECT_EQ(info1.transmit_queue_value(), info2.transmit_queue_value());
-    EXPECT_EQ(info1.receive_queue_value(), info2.receive_queue_value());
-    EXPECT_EQ(info1.timer_state(), info2.timer_state());
+    EXPECT_EQ(info1.connection_state, info2.connection_state);
+    EXPECT_TRUE(info1.local_ip_address.Equals(info2.local_ip_address));
+    EXPECT_EQ(info1.local_port, info2.local_port);
+    EXPECT_TRUE(info1.remote_ip_address.Equals(info2.remote_ip_address));
+    EXPECT_EQ(info1.remote_port, info2.remote_port);
+    EXPECT_EQ(info1.transmit_queue_value, info2.transmit_queue_value);
+    EXPECT_EQ(info1.receive_queue_value, info2.receive_queue_value);
+    EXPECT_EQ(info1.timer_state, info2.timer_state);
   }
 };
 

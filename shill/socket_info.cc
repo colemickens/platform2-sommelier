@@ -6,6 +6,16 @@
 
 namespace shill {
 
+SocketInfo::SocketInfo()
+    : connection_state(kConnectionStateUnknown),
+      local_ip_address(IPAddress::kFamilyUnknown),
+      local_port(0),
+      remote_ip_address(IPAddress::kFamilyUnknown),
+      remote_port(0),
+      transmit_queue_value(0),
+      receive_queue_value(0),
+      timer_state(kTimerStateUnknown) {}
+
 SocketInfo::SocketInfo(ConnectionState connection_state,
                        const IPAddress& local_ip_address,
                        uint16_t local_port,
@@ -14,51 +24,19 @@ SocketInfo::SocketInfo(ConnectionState connection_state,
                        uint64_t transmit_queue_value,
                        uint64_t receive_queue_value,
                        TimerState timer_state)
-    : connection_state_(connection_state),
-      local_ip_address_(local_ip_address),
-      local_port_(local_port),
-      remote_ip_address_(remote_ip_address),
-      remote_port_(remote_port),
-      transmit_queue_value_(transmit_queue_value),
-      receive_queue_value_(receive_queue_value),
-      timer_state_(timer_state) {
-}
+    : connection_state(connection_state),
+      local_ip_address(local_ip_address),
+      local_port(local_port),
+      remote_ip_address(remote_ip_address),
+      remote_port(remote_port),
+      transmit_queue_value(transmit_queue_value),
+      receive_queue_value(receive_queue_value),
+      timer_state(timer_state) {}
 
-SocketInfo::SocketInfo()
-    : connection_state_(kConnectionStateUnknown),
-      local_ip_address_(IPAddress::kFamilyUnknown),
-      local_port_(0),
-      remote_ip_address_(IPAddress::kFamilyUnknown),
-      remote_port_(0),
-      transmit_queue_value_(0),
-      receive_queue_value_(0),
-      timer_state_(kTimerStateUnknown) {
-}
+SocketInfo::SocketInfo(const SocketInfo& socket_info) = default;
 
-SocketInfo::SocketInfo(const SocketInfo& socket_info)
-    : connection_state_(socket_info.connection_state_),
-      local_ip_address_(socket_info.local_ip_address_),
-      local_port_(socket_info.local_port_),
-      remote_ip_address_(socket_info.remote_ip_address_),
-      remote_port_(socket_info.remote_port_),
-      transmit_queue_value_(socket_info.transmit_queue_value_),
-      receive_queue_value_(socket_info.receive_queue_value_),
-      timer_state_(socket_info.timer_state_) {
-}
+SocketInfo::~SocketInfo() = default;
 
-SocketInfo::~SocketInfo() {}
-
-SocketInfo& SocketInfo::operator=(const SocketInfo& socket_info) {
-  connection_state_ = socket_info.connection_state_;
-  local_ip_address_ = socket_info.local_ip_address_;
-  local_port_ = socket_info.local_port_;
-  remote_ip_address_ = socket_info.remote_ip_address_;
-  remote_port_ = socket_info.remote_port_;
-  transmit_queue_value_ = socket_info.transmit_queue_value_;
-  receive_queue_value_ = socket_info.receive_queue_value_;
-  timer_state_ = socket_info.timer_state_;
-
-  return *this;
-}
+SocketInfo& SocketInfo::operator=(const SocketInfo& socket_info) = default;
 
 }  // namespace shill

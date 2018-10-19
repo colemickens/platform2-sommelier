@@ -5,14 +5,13 @@
 #ifndef SHILL_SOCKET_INFO_H_
 #define SHILL_SOCKET_INFO_H_
 
-#include <base/macros.h>
+#include <stdint.h>
 
 #include "shill/net/ip_address.h"
 
 namespace shill {
 
-class SocketInfo {
- public:
+struct SocketInfo {
   // These connection states (except kConnectionStateUnknown and
   // kConnectionStateMax) are equivalent to and should be kept in sync with
   // those defined in kernel/inlude/net/tcp_states.h
@@ -59,52 +58,14 @@ class SocketInfo {
 
   SocketInfo& operator=(const SocketInfo& socket_info);
 
-  ConnectionState connection_state() const { return connection_state_; }
-  void set_connection_state(ConnectionState connection_state) {
-    connection_state_ = connection_state;
-  }
-
-  const IPAddress& local_ip_address() const { return local_ip_address_; }
-  void set_local_ip_address(const IPAddress& local_ip_address) {
-    local_ip_address_ = local_ip_address;
-  }
-
-  uint16_t local_port() const { return local_port_; }
-  void set_local_port(uint16_t local_port) { local_port_ = local_port; }
-
-  const IPAddress& remote_ip_address() const { return remote_ip_address_; }
-  void set_remote_ip_address(const IPAddress& remote_ip_address) {
-    remote_ip_address_ = remote_ip_address;
-  }
-
-  uint16_t remote_port() const { return remote_port_; }
-  void set_remote_port(uint16_t remote_port) { remote_port_ = remote_port; }
-
-  uint64_t transmit_queue_value() const { return transmit_queue_value_; }
-  void set_transmit_queue_value(uint64_t transmit_queue_value) {
-    transmit_queue_value_ = transmit_queue_value;
-  }
-
-  uint64_t receive_queue_value() const { return receive_queue_value_; }
-  void set_receive_queue_value(uint64_t receive_queue_value) {
-    receive_queue_value_ = receive_queue_value;
-  }
-
-  TimerState timer_state() const { return timer_state_; }
-  void set_timer_state(TimerState timer_state) { timer_state_ = timer_state; }
-
- private:
-  ConnectionState connection_state_;
-  IPAddress local_ip_address_;
-  uint16_t local_port_;
-  IPAddress remote_ip_address_;
-  uint16_t remote_port_;
-  uint64_t transmit_queue_value_;
-  uint64_t receive_queue_value_;
-  TimerState timer_state_;
-
-  // No DISALLOW_COPY_AND_ASSIGN(SocketInfo) as SocketInfo needs to be kept in
-  // STL containers.
+  ConnectionState connection_state;
+  IPAddress local_ip_address;
+  uint16_t local_port;
+  IPAddress remote_ip_address;
+  uint16_t remote_port;
+  uint64_t transmit_queue_value;
+  uint64_t receive_queue_value;
+  TimerState timer_state;
 };
 
 }  // namespace shill

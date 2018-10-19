@@ -80,42 +80,31 @@ bool SocketInfoReader::ParseSocketInfo(const string& input,
     return false;
   }
 
-  IPAddress ip_address(IPAddress::kFamilyUnknown);
-  uint16_t port = 0;
-
-  if (!ParseIPAddressAndPort(tokens[1], &ip_address, &port)) {
+  SocketInfo info;
+  if (!ParseIPAddressAndPort(tokens[1], &info.local_ip_address,
+                             &info.local_port)) {
     return false;
   }
-  socket_info->set_local_ip_address(ip_address);
-  socket_info->set_local_port(port);
 
-  if (!ParseIPAddressAndPort(tokens[2], &ip_address, &port)) {
+  if (!ParseIPAddressAndPort(tokens[2], &info.remote_ip_address,
+                             &info.remote_port)) {
     return false;
   }
-  socket_info->set_remote_ip_address(ip_address);
-  socket_info->set_remote_port(port);
 
-  SocketInfo::ConnectionState connection_state =
-      SocketInfo::kConnectionStateUnknown;
-  if (!ParseConnectionState(tokens[3], &connection_state)) {
+  if (!ParseConnectionState(tokens[3], &info.connection_state)) {
     return false;
   }
-  socket_info->set_connection_state(connection_state);
 
-  uint64_t transmit_queue_value = 0, receive_queue_value = 0;
   if (!ParseTransimitAndReceiveQueueValues(
-      tokens[4], &transmit_queue_value, &receive_queue_value)) {
+          tokens[4], &info.transmit_queue_value, &info.receive_queue_value)) {
     return false;
   }
-  socket_info->set_transmit_queue_value(transmit_queue_value);
-  socket_info->set_receive_queue_value(receive_queue_value);
 
-  SocketInfo::TimerState timer_state = SocketInfo::kTimerStateUnknown;
-  if (!ParseTimerState(tokens[5], &timer_state)) {
+  if (!ParseTimerState(tokens[5], &info.timer_state)) {
     return false;
   }
-  socket_info->set_timer_state(timer_state);
 
+  *socket_info = info;
   return true;
 }
 
