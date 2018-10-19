@@ -60,7 +60,7 @@ enum BufferType {
 //  /* Allocate locally and use a buffer */
 //
 //  buffer_handle_t buffer_handle;
-//  int stride;
+//  uint32_t stride;
 //  manager->Allocate(..., &buffer_handle, &stride);
 //  void* addr;
 //  manager->Lock(buffer_handle, ..., &addr);
