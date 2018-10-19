@@ -1,6 +1,7 @@
 # TODO(fqj): go over files of cros_system_file, and to label exec only and rename with _exec suffix.
 type cros_system_file, exec_type, file_type, cros_system_file_type;
 type cros_usr_dirs, file_type, cros_system_file_type;
+type cros_etc, file_type, cros_system_file_type;
 allow chromeos_domain cros_system_file_type:dir search;
 
 type cros_dev_image_files, file_type;
@@ -94,6 +95,9 @@ r_dir_file(chromeos_domain, cros_tz_data_file)
 
 type cros_ld_conf_cache, file_type;
 r_dir_file(domain, cros_ld_conf_cache);
+# TODO(fqj): update scontext from chromeos to something else identifying the ssh
+filetrans_pattern(chromeos, cros_etc, cros_ld_conf_cache, file, "ld.so.cache~");
+filetrans_pattern(frecon, cros_etc, cros_ld_conf_cache, file, "ld.so.cache~");
 
 type cros_periodic_scheduler_cache_t, file_type;
 
