@@ -6,6 +6,7 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
+    ":bio_wash",
     ":biod",
     ":biod_client_tool",
     ":fake_biometric_tool",
@@ -49,6 +50,17 @@ executable("biod") {
   sources = [
     "fpc/fpc_platform_utils.cc",
     "main.cc",
+  ]
+  libs = [ "-ldl" ]
+  deps = [
+    ":libbiod",
+  ]
+}
+
+executable("bio_wash") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "bio_wash.cc",
   ]
   libs = [ "-ldl" ]
   deps = [

@@ -131,6 +131,10 @@ class CrosFpBiometricsManager::CrosFpDevice : public MessageLoopForIO::Watcher {
   bool UploadTemplate(const VendorTemplate& tmpl);
   bool SetContext(std::string user_id);
   bool ResetContext();
+  // Run a sequence of EC commands to update the entropy in the
+  // MCU. If |reset| is set to true, it will additionally erase the existing
+  // entropy too.
+  bool UpdateEntropy(bool reset);
 
   int MaxTemplateCount() { return info_.template_max; }
   int TemplateVersion() { return info_.template_version; }
@@ -147,7 +151,12 @@ class CrosFpBiometricsManager::CrosFpDevice : public MessageLoopForIO::Watcher {
   bool EcProtoInfo(ssize_t* max_read, ssize_t* max_write);
   bool WaitOnEcBoot(ec_current_image expected_image);
   bool EcReboot(ec_current_image to_image);
-  bool AddEntropy();
+  // Run the EC command to generate new entropy in the underlying MCU.
+  // |reset| specifies whether we want to merely add entropy (false), or perform
+  // a reset, which erases old entropy(true).
+  bool AddEntropy(bool reset);
+  // Get block id from rollback info.
+  bool GetRollBackInfoId(int32_t* block_id);
   bool SetUpFp();
   bool FpFrame(int index, std::vector<uint8_t>* frame);
   bool UpdateFpInfo();
@@ -388,11 +397,15 @@ bool CrosFpBiometricsManager::CrosFpDevice::EcReboot(
   return true;
 }
 
-bool CrosFpBiometricsManager::CrosFpDevice::AddEntropy() {
+bool CrosFpBiometricsManager::CrosFpDevice::AddEntropy(bool reset) {
   // Create the secret.
   EcCommand<struct ec_params_rollback_add_entropy, EmptyParam> cmd_add_entropy(
       EC_CMD_ADD_ENTROPY);
-  cmd_add_entropy.SetReq({.action = ADD_ENTROPY_ASYNC});
+  if (reset) {
+    cmd_add_entropy.SetReq({.action = ADD_ENTROPY_RESET_ASYNC});
+  } else {
+    cmd_add_entropy.SetReq({.action = ADD_ENTROPY_ASYNC});
+  }
   if (!cmd_add_entropy.Run(cros_fd_.get())) {
     LOG(ERROR) << "Failed to send command to add entropy.";
     return false;
@@ -413,48 +426,38 @@ bool CrosFpBiometricsManager::CrosFpDevice::AddEntropy() {
   return false;
 }
 
-bool CrosFpBiometricsManager::CrosFpDevice::SetUpFp() {
+bool CrosFpBiometricsManager::CrosFpDevice::GetRollBackInfoId(
+    int32_t* block_id) {
   EcCommand<EmptyParam, struct ec_response_rollback_info> cmd_rb_info(
       EC_CMD_ROLLBACK_INFO);
   if (!cmd_rb_info.Run(cros_fd_.get())) {
-    LOG(ERROR) << "Failed to verify if entropy had been initialized.";
     return false;
   }
-  if (cmd_rb_info.Resp()->id != 0) {
+
+  *block_id = cmd_rb_info.Resp()->id;
+  return true;
+}
+
+bool CrosFpBiometricsManager::CrosFpDevice::SetUpFp() {
+  int32_t block_id;
+  if (!GetRollBackInfoId(&block_id)) {
+    LOG(ERROR) << "Failed to read block ID from FPMCU.";
+    return false;
+  }
+
+  if (block_id != 0) {
     // Secret has been set.
     LOG(INFO) << "Entropy source had been initialized previously.";
     return true;
   }
   LOG(INFO) << "Entropy source has not been initialized yet.";
 
-  // Reboot the EC to RO.
-  if (!EcReboot(EC_IMAGE_RO)) {
-    LOG(ERROR) << "Failed to reboot cros_fp to initialise entropy.";
+  bool success = UpdateEntropy(false);
+  if (!success) {
+    LOG(INFO) << "Entropy addition failed.";
     return false;
   }
-
-  // Initialize the secret.
-  if (!AddEntropy()) {
-    LOG(ERROR) << "Failed to add entropy.";
-    return false;
-  }
-
-  // Entropy added, reboot cros_fp to RW.
-  if (!EcReboot(EC_IMAGE_RW)) {
-    LOG(ERROR) << "Failed to reboot cros_fp after initializing entropy.";
-    return false;
-  }
-
-  // Verify that the secret has been set.
-  if (!cmd_rb_info.Run(cros_fd_.get())) {
-    LOG(ERROR) << "Failed to verify that entropy has been initialized.";
-    return false;
-  }
-  if (cmd_rb_info.Resp()->id == 0) {
-    LOG(ERROR) << "Entropy source has not been initialized.";
-    return false;
-  }
-  LOG(INFO) << "Entropy source has been successfully initialized.";
+  LOG(INFO) << "Entropy has been successfully added.";
   return true;
 }
 
@@ -593,6 +596,52 @@ bool CrosFpBiometricsManager::CrosFpDevice::SetContext(std::string user_hex) {
 
 bool CrosFpBiometricsManager::CrosFpDevice::ResetContext() {
   return SetContext(std::string());
+}
+
+bool CrosFpBiometricsManager::CrosFpDevice::UpdateEntropy(bool reset) {
+  // Stash the most recent block id.
+  int32_t block_id;
+  if (!GetRollBackInfoId(&block_id)) {
+    LOG(ERROR) << "Failed to block ID from FPMCU before entropy reset.";
+    return false;
+  }
+
+  // Reboot the EC to RO.
+  if (!EcReboot(EC_IMAGE_RO)) {
+    LOG(ERROR) << "Failed to reboot cros_fp to initialise entropy.";
+    return false;
+  }
+
+  // Initialize the secret.
+  if (!AddEntropy(reset)) {
+    LOG(ERROR) << "Failed to add entropy.";
+    return false;
+  }
+
+  // Entropy added, reboot cros_fp to RW.
+  if (!EcReboot(EC_IMAGE_RW)) {
+    LOG(ERROR) << "Failed to reboot cros_fp after initializing entropy.";
+    return false;
+  }
+
+  int32_t new_block_id;
+  if (!GetRollBackInfoId(&new_block_id)) {
+    LOG(ERROR) << "Failed to block ID from FPMCU after entropy reset.";
+    return false;
+  }
+
+  int32_t block_id_diff = 2;
+  if (!reset) {
+    block_id_diff = 1;
+  }
+
+  if (new_block_id != block_id + block_id_diff) {
+    LOG(ERROR) << "Entropy source has not been updated; old block_id: "
+               << block_id << ", new block_id: " << new_block_id;
+    return false;
+  }
+  LOG(INFO) << "Entropy source has been successfully reset.";
+  return true;
 }
 
 const std::string& CrosFpBiometricsManager::Record::GetId() const {
@@ -800,6 +849,16 @@ bool CrosFpBiometricsManager::ResetSensor() {
     return false;
   }
 
+  return true;
+}
+
+bool CrosFpBiometricsManager::ResetEntropy() {
+  bool success = cros_dev_->UpdateEntropy(true);
+  if (!success) {
+    LOG(INFO) << "Entropy source reset failed.";
+    return false;
+  }
+  LOG(INFO) << "Entropy source has been successfully reset.";
   return true;
 }
 

@@ -51,6 +51,8 @@ class CrosFpBiometricsManager : public BiometricsManager {
 
   bool ResetSensor() override;
 
+  bool ResetEntropy() override;
+
  protected:
   void EndEnrollSession() override;
   void EndAuthSession() override;
