@@ -63,7 +63,10 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus)
   systrace_tool_ = std::make_unique<SystraceTool>();
   tracepath_tool_ = std::make_unique<TracePathTool>();
   u2f_tool_ = std::make_unique<U2fTool>();
-  vm_concierge_tool_ = std::make_unique<VmConciergeTool>(bus);
+  vm_concierge_tool_ = std::make_unique<SimpleServiceTool>(
+      "vm_concierge", bus,
+      vm_tools::concierge::kVmConciergeServiceName,
+      vm_tools::concierge::kVmConciergeServicePath);
   wifi_power_tool_ = std::make_unique<WifiPowerTool>();
   wimax_status_tool_ = std::make_unique<WiMaxStatusTool>();
   session_manager_proxy_ = std::make_unique<SessionManagerProxy>(bus);
@@ -418,11 +421,11 @@ bool DebugdDBusAdaptor::RunShillScriptStop(brillo::ErrorPtr* error,
 
 void DebugdDBusAdaptor::StartVmConcierge(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
-  vm_concierge_tool_->StartVmConcierge(std::move(response));
+  vm_concierge_tool_->StartService(std::move(response));
 }
 
 void DebugdDBusAdaptor::StopVmConcierge() {
-  vm_concierge_tool_->StopVmConcierge();
+  vm_concierge_tool_->StopService();
 }
 
 bool DebugdDBusAdaptor::SetRlzPingSent(brillo::ErrorPtr* error) {

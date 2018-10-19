@@ -10,7 +10,6 @@
 #include <base/bind_helpers.h>
 #include <base/location.h>
 #include <brillo/process.h>
-#include <chromeos/dbus/service_constants.h>
 #include <dbus/object_path.h>
 
 using std::string;
@@ -28,55 +27,57 @@ void ServiceReady(
 
 }  // namespace
 
-VmConciergeTool::VmConciergeTool(scoped_refptr<dbus::Bus> bus)
-    : bus_(bus), running_(false) {
+SimpleServiceTool::SimpleServiceTool(const std::string& name,
+                                     scoped_refptr<dbus::Bus> bus,
+                                     const std::string& dbus_service_name,
+                                     const std::string& dbus_service_path)
+    : name_(name), bus_(bus), running_(false) {
   CHECK(bus_);
 
-  concierge_proxy_ = bus_->GetObjectProxy(
-      vm_tools::concierge::kVmConciergeServiceName,
-      dbus::ObjectPath(vm_tools::concierge::kVmConciergeServicePath));
-  concierge_proxy_->SetNameOwnerChangedCallback(base::Bind(
-      &VmConciergeTool::HandleNameOwnerChanged, weak_factory_.GetWeakPtr()));
+  proxy_ = bus_->GetObjectProxy(
+      dbus_service_name, dbus::ObjectPath(dbus_service_path));
+  proxy_->SetNameOwnerChangedCallback(base::Bind(
+      &SimpleServiceTool::HandleNameOwnerChanged, weak_factory_.GetWeakPtr()));
 }
 
-void VmConciergeTool::StartVmConcierge(
+void SimpleServiceTool::StartService(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response) {
   if (running_) {
     response->Return(true);
     return;
   }
 
-  LOG(INFO) << "Starting vm_concierge";
-  brillo::ProcessImpl concierge;
-  concierge.AddArg("/sbin/start");
-  concierge.AddArg("vm_concierge");
+  LOG(INFO) << "Starting " << name_;
+  brillo::ProcessImpl service;
+  service.AddArg("/sbin/start");
+  service.AddArg(name_);
 
-  concierge.Run();
+  service.Run();
 
   // dbus::ObjectProxy keeps a list of WaitForServiceToBeAvailable
   // callbacks so we can safely call this multiple times if there are multiple
   // pending dbus requests.
-  concierge_proxy_->WaitForServiceToBeAvailable(
+  proxy_->WaitForServiceToBeAvailable(
       base::Bind(&ServiceReady, base::Passed(std::move(response))));
 }
 
-void VmConciergeTool::StopVmConcierge() {
+void SimpleServiceTool::StopService() {
   if (!running_) {
     // Nothing to do.
     return;
   }
 
-  LOG(INFO) << "Stopping vm_concierge";
+  LOG(INFO) << "Stopping " << name_;
 
-  brillo::ProcessImpl concierge;
-  concierge.AddArg("/sbin/stop");
-  concierge.AddArg("vm_concierge");
+  brillo::ProcessImpl service;
+  service.AddArg("/sbin/stop");
+  service.AddArg(name_);
 
-  concierge.Run();
+  service.Run();
 }
 
-void VmConciergeTool::HandleNameOwnerChanged(const string& old_owner,
-                                             const string& new_owner) {
+void SimpleServiceTool::HandleNameOwnerChanged(const string& old_owner,
+                                               const string& new_owner) {
   running_ = !new_owner.empty();
 }
 

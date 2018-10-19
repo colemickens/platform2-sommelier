@@ -18,31 +18,37 @@
 namespace debugd {
 
 // Manages the vm_concierge service.
-class VmConciergeTool {
+class SimpleServiceTool {
  public:
-  explicit VmConciergeTool(scoped_refptr<dbus::Bus> bus);
-  ~VmConciergeTool() = default;
+  explicit SimpleServiceTool(const std::string& name,
+                             scoped_refptr<dbus::Bus> bus,
+                             const std::string& dbus_service_name,
+                             const std::string& dbus_service_path);
+  ~SimpleServiceTool() = default;
 
-  void StartVmConcierge(
+  void StartService(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response);
-  void StopVmConcierge();
+  void StopService();
 
  private:
   // Called when the owner of the concierge service changes.
   void HandleNameOwnerChanged(const std::string& old_owner,
                               const std::string& new_owner);
 
+  // Name of the service.
+  const std::string name_;
+
   // Connection to the system bus.
   scoped_refptr<dbus::Bus> bus_;
 
-  // Proxy to the concierge dbus service.  Owned by |bus_|.
-  dbus::ObjectProxy* concierge_proxy_;
+  // Proxy to the service dbus remote object.  Owned by |bus_|.
+  dbus::ObjectProxy* proxy_;
 
   // Whether the concierge service is running.
   bool running_;
 
-  base::WeakPtrFactory<VmConciergeTool> weak_factory_{this};
-  DISALLOW_COPY_AND_ASSIGN(VmConciergeTool);
+  base::WeakPtrFactory<SimpleServiceTool> weak_factory_{this};
+  DISALLOW_COPY_AND_ASSIGN(SimpleServiceTool);
 };
 
 }  // namespace debugd

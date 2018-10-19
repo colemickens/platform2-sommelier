@@ -206,7 +206,7 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::unique_ptr<SystraceTool> systrace_tool_;
   std::unique_ptr<TracePathTool> tracepath_tool_;
   std::unique_ptr<U2fTool> u2f_tool_;
-  std::unique_ptr<VmConciergeTool> vm_concierge_tool_;
+  std::unique_ptr<SimpleServiceTool> vm_concierge_tool_;
   std::unique_ptr<WifiPowerTool> wifi_power_tool_;
   std::unique_ptr<WiMaxStatusTool> wimax_status_tool_;
 };
