@@ -22,15 +22,11 @@
 
 namespace shill {
 
-class AsyncConnection;
 class DnsClient;
 class Error;
 class EventDispatcher;
 class HttpUrl;
-struct InputData;
-class IOHandler;
 class IPAddress;
-class Sockets;
 
 // The HttpRequest class implements facilities for performing
 // a simple "GET" request and returning the contents via a

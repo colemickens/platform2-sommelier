@@ -27,6 +27,7 @@ class DnsClientFactory;
 class Error;
 class EventDispatcher;
 class HttpUrl;
+class IOHandler;
 class IcmpSession;
 class IcmpSessionFactory;
 class Metrics;

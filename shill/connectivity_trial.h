@@ -23,7 +23,6 @@
 
 namespace shill {
 
-class ByteString;
 class EventDispatcher;
 
 // The ConnectivityTrial class implements a single portal detection
