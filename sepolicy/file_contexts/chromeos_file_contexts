@@ -41,6 +41,8 @@ include(sepolicy/file_contexts/coreutils)
 /usr/bin/tlsdated               u:object_r:cros_tlsdated_exec:s0
 
 /usr/sbin/ModemManager          u:object_r:cros_modem_manager_exec:s0
+/usr/sbin/accelerator-logs      u:object_r:cros_accelerator_logs_exec:s0
+/usr/sbin/apk-cache-cleaner-jailed u:object_r:cros_apk_cache_cleaner_jailed_exec:s0
 /usr/sbin/avahi-daemon          u:object_r:cros_avahi_daemon_exec:s0
 /usr/sbin/chapsd                u:object_r:cros_chapsd_exec:s0
 /usr/sbin/chromeos-cleanup-logs u:object_r:cros_chromeos_cleanup_logs_exec:s0
@@ -48,6 +50,7 @@ include(sepolicy/file_contexts/coreutils)
 /usr/sbin/conntrackd            u:object_r:cros_conntrackd_exec:s0
 /usr/sbin/cros-machine-id-regen u:object_r:cros_machine_id_regen_exec:s0
 /usr/sbin/cryptohomed           u:object_r:cros_cryptohomed_exec:s0
+/usr/sbin/jetstream-update-stats u:object_r:cros_jetstream_update_stats_exec:s0
 /usr/sbin/rsyslogd              u:object_r:cros_rsyslogd_exec:s0
 /usr/sbin/sslh(-fork|-select)?  u:object_r:cros_sslh_exec:s0
 /usr/sbin/update_engine         u:object_r:cros_update_engine_exec:s0

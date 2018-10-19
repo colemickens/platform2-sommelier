@@ -1,0 +1,5 @@
+type cros_accelerator_logs, chromeos_domain, domain;
+
+permissive cros_accelerator_logs;
+
+domain_auto_trans(cros_periodic_scheduler, cros_accelerator_logs_exec, cros_accelerator_logs);
