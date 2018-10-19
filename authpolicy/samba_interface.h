@@ -204,6 +204,9 @@ class SambaInterface : public TgtManager::Delegate {
   // Resets internal state (useful for doing multiple domain joins).
   void ResetForTesting();
 
+  // Runs kpasswd to change machine password.
+  ErrorType ChangeMachinePasswordForTesting() WARN_UNUSED_RESULT;
+
  private:
   // User or device specific information. The user might be logging on to a
   // different realm than the machine was joined to.

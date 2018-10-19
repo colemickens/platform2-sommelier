@@ -473,6 +473,17 @@ void LogUserStatus(const ActiveDirectoryUserStatus& status,
   // Note: Don't log the other account info data, it's all PII.
 }
 
+// Logs an error in case of failure. Returns true on success.
+bool ReadMachinePasswordToString(const base::FilePath& password_path,
+                                 std::string* password) {
+  if (!base::ReadFileToString(password_path, password)) {
+    PLOG(ERROR) << "Could not read machine password file '"
+                << password_path.value() << "'";
+    return false;
+  }
+  return true;
+}
+
 }  // namespace
 
 SambaInterface::SambaInterface(AuthPolicyMetrics* metrics,
@@ -1055,6 +1066,29 @@ void SambaInterface::SetDevicePolicyImplForTesting(
 
 void SambaInterface::ResetForTesting() {
   Reset();
+}
+
+ErrorType SambaInterface::ChangeMachinePasswordForTesting() {
+  const base::FilePath password_path(paths_->Get(Path::MACHINE_PASS));
+  std::string old_password;
+  if (!ReadMachinePasswordToString(password_path, &old_password))
+    return ERROR_LOCAL_IO;
+
+  auto stored_password_change_rate_ = password_change_rate_;
+  password_change_rate_ = base::TimeDelta::FromMilliseconds(1);
+  ErrorType error = CheckMachinePasswordChange();
+  password_change_rate_ = stored_password_change_rate_;
+  if (error != ERROR_NONE)
+    return error;
+
+  std::string new_password;
+  if (!ReadMachinePasswordToString(password_path, &new_password))
+    return ERROR_LOCAL_IO;
+
+  if (new_password == old_password)
+    return ERROR_KPASSWD_FAILED;
+
+  return ERROR_NONE;
 }
 
 ErrorType SambaInterface::UpdateKdcIpAndServerTime(AccountData* account) const {
@@ -1998,11 +2032,8 @@ ErrorType SambaInterface::CheckMachinePasswordChange() {
 
   // Read the old password.
   std::string old_password;
-  if (!base::ReadFileToString(password_path, &old_password)) {
-    PLOG(ERROR) << "Could not read machine password file '"
-                << password_path.value() << "'";
+  if (!ReadMachinePasswordToString(password_path, &old_password))
     return ERROR_LOCAL_IO;
-  }
 
   // Generate and write a new password.
   const std::string new_password = GenerateRandomMachinePassword();

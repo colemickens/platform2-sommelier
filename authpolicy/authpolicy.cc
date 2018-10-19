@@ -374,6 +374,10 @@ std::string AuthPolicy::SetDefaultLogLevel(int32_t level) {
   return std::string();
 }
 
+int32_t AuthPolicy::ChangeMachinePasswordForTesting() {
+  return samba_.ChangeMachinePasswordForTesting();
+}
+
 void AuthPolicy::OnUserKerberosFilesChanged() {
   LOG(INFO) << "Firing signal UserKerberosFilesChanged";
   SendUserKerberosFilesChangedSignal();

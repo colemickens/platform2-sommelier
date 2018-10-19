@@ -97,6 +97,8 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
 
   std::string SetDefaultLogLevel(int32_t level) override;
 
+  int32_t ChangeMachinePasswordForTesting() override;
+
   SambaInterface& GetSambaInterfaceForTesting() { return samba_; }
 
   void SetDeviceIsLockedForTesting() { device_is_locked_ = true; }
