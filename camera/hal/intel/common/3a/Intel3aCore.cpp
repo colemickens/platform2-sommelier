@@ -70,6 +70,7 @@ void AiqInputParams::reset()
     aeInputParams.manual_exposure_time_us = &manual_exposure_time_us[0];
     aeInputParams.manual_analog_gain = &manual_analog_gain[0];
     aeInputParams.manual_iso = &manual_iso[0];
+    aeInputParams.manual_convergence_time = -1;
 
     afParams.focus_rect = &focusRect;
     afParams.manual_focus_parameters = &manualFocusParams;
