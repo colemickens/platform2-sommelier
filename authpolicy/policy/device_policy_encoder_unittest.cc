@@ -170,8 +170,8 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
 
   // The encoder of this policy converts ints to RollbackToTargetVersion enums.
   EncodeInteger(&policy, key::kDeviceRollbackToTargetVersion,
-                em::AutoUpdateSettingsProto::ROLLBACK_WITH_FULL_POWERWASH);
-  EXPECT_EQ(em::AutoUpdateSettingsProto::ROLLBACK_WITH_FULL_POWERWASH,
+                em::AutoUpdateSettingsProto::ROLLBACK_AND_POWERWASH);
+  EXPECT_EQ(em::AutoUpdateSettingsProto::ROLLBACK_AND_POWERWASH,
             policy.auto_update_settings().rollback_to_target_version());
 
   EncodeInteger(&policy, key::kDeviceRollbackAllowedMilestones, kInt);
@@ -414,6 +414,10 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EXPECT_EQ(
       em::SamlLoginAuthenticationTypeProto::TYPE_CLIENT_CERTIFICATE,
       policy.saml_login_authentication_type().saml_login_authentication_type());
+
+  EncodeBoolean(&policy, key::kDeviceUnaffiliatedCrostiniAllowed, kBool);
+  EXPECT_EQ(kBool, policy.device_unaffiliated_crostini_allowed()
+                       .device_unaffiliated_crostini_allowed());
 
   //
   // Check whether all device policies have been handled.

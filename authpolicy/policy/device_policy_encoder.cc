@@ -570,6 +570,11 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
         ->set_saml_login_authentication_type(
             static_cast<em::SamlLoginAuthenticationTypeProto::Type>(value));
   });
+
+  EncodeBoolean(key::kDeviceUnaffiliatedCrostiniAllowed, [policy](bool value) {
+    policy->mutable_device_unaffiliated_crostini_allowed()
+        ->set_device_unaffiliated_crostini_allowed(value);
+  });
 }
 
 void DevicePolicyEncoder::EncodeBoolean(
