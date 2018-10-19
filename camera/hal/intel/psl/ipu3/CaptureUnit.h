@@ -41,6 +41,13 @@ class IStreamConfigProvider;
 class BufferPools;
 class SettingsProcessor;
 
+/*
+ * 1 buffer for input raw buffer may be not returned in time;
+ * 2 buffer for video and still pipe outputs unsynchronized issue.
+ * So totally there are 3 extra buffers needed for CIO2 above
+ * max request number.
+ */
+static const uint8_t EXTRA_CIO2_BUFFER_NUMBER = 3;
 static const uint8_t DEFAULT_PIPELINE_DEPTH = 4;
 
 /**

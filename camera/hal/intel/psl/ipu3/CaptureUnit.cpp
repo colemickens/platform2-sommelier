@@ -309,7 +309,7 @@ status_t CaptureUnit::handleConfigStreams(MessageConfig msg)
     }
 
     int skipCount = mSensorSettingsDelay;//mSyncManager->getFrameSyncDelay();
-    int poolSize = mPipelineDepth + 2;
+    int poolSize = mPipelineDepth + EXTRA_CIO2_BUFFER_NUMBER;
 
     status = mBufferPools->createBufferPools(poolSize, skipCount, mIsys);
     if (status != NO_ERROR) {
