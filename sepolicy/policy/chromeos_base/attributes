@@ -17,3 +17,6 @@ attribute cros_init_scripts_file_type;
 attribute minijail_domain;
 attribute minijail_ldpreload_domain;
 attribute minijail_executor_domain;
+
+attribute cros_log_file_creator_domain;
+

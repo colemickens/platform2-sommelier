@@ -1,4 +1,4 @@
-type cros_chromeos_cleanup_logs, chromeos_domain, domain, mlstrustedobject;
+type cros_chromeos_cleanup_logs, chromeos_domain, domain, cros_log_file_creator_domain, mlstrustedobject;
 
 permissive cros_chromeos_cleanup_logs;
 
