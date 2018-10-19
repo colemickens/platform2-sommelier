@@ -144,26 +144,6 @@ MMBearerAllowedAuth ApnAuthenticationToMMBearerAllowedAuth(
   return MM_BEARER_ALLOWED_AUTH_UNKNOWN;
 }
 
-// TODO(benchan): Remove this helper once MMModem3gppSubscriptionState is
-// removed from ModemManager.
-SubscriptionState FromMMModem3gppSubscriptionState(
-    MMModem3gppSubscriptionState subscription_state) {
-  switch (subscription_state) {
-    case MM_MODEM_3GPP_SUBSCRIPTION_STATE_UNKNOWN:
-      return SubscriptionState::kUnknown;
-    case MM_MODEM_3GPP_SUBSCRIPTION_STATE_PROVISIONED:
-      return SubscriptionState::kProvisioned;
-    case MM_MODEM_3GPP_SUBSCRIPTION_STATE_UNPROVISIONED:
-      return SubscriptionState::kUnprovisioned;
-    case MM_MODEM_3GPP_SUBSCRIPTION_STATE_OUT_OF_DATA:
-      return SubscriptionState::kOutOfCredits;
-    default:
-      LOG(ERROR) << "Unrecognized MMModem3gppSubscriptionState: "
-                 << subscription_state;
-      return SubscriptionState::kUnknown;
-  }
-}
-
 }  // namespace
 
 CellularCapabilityUniversal::CellularCapabilityUniversal(Cellular* cellular,
@@ -1549,15 +1529,6 @@ void CellularCapabilityUniversal::OnModem3gppPropertiesChanged(
   }
   if (registration_changed)
     On3gppRegistrationChanged(state, operator_code, operator_name);
-
-  // TODO(benchan): Remove this helper once the SubscriptionState property is
-  // removed from ModemManager.
-  if (properties.ContainsUint(MM_MODEM_MODEM3GPP_PROPERTY_SUBSCRIPTIONSTATE)) {
-    SubscriptionState subscription_state = FromMMModem3gppSubscriptionState(
-        static_cast<MMModem3gppSubscriptionState>(
-            properties.GetUint(MM_MODEM_MODEM3GPP_PROPERTY_SUBSCRIPTIONSTATE)));
-    OnSubscriptionStateChanged(subscription_state);
-  }
 
   if (properties.ContainsUint(MM_MODEM_MODEM3GPP_PROPERTY_ENABLEDFACILITYLOCKS))
     OnFacilityLocksChanged(
