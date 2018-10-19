@@ -391,8 +391,7 @@ static struct config_map all_configs[] = {%s
 const struct config_map *cros_config_get_config_map(int *num_entries) {
   *num_entries = %s;
   return &all_configs[0];
-}
-'''
+}'''
 
   return file_format % (',\n'.join(structs), len(structs))
 
@@ -732,12 +731,14 @@ def Main(schema,
       json_transform = FilterBuildElements(json_transform)
   if output:
     with open(output, 'w') as output_stream:
-      output_stream.write(json_transform)
+      # Using print function adds proper trailing newline
+      print(json_transform, file=output_stream)
   else:
     print(json_transform)
   if gen_c_bindings_output:
     with open(gen_c_bindings_output, 'w') as output_stream:
-      output_stream.write(GenerateCBindings(full_json_transform))
+      # Using print function adds proper trailing newline
+      print(GenerateCBindings(full_json_transform), file=output_stream)
 
 
 def main(_argv=None):
