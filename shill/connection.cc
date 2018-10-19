@@ -453,7 +453,7 @@ void Connection::RequestRouting() {
   if (routing_request_count_++ == 0) {
     DeviceRefPtr device = device_info_->GetDevice(interface_index_);
     DCHECK(device.get());
-    if (!device.get()) {
+    if (!device) {
       LOG(ERROR) << "Device is NULL!";
       return;
     }
@@ -466,7 +466,7 @@ void Connection::ReleaseRouting() {
   if (--routing_request_count_ == 0) {
     DeviceRefPtr device = device_info_->GetDevice(interface_index_);
     DCHECK(device.get());
-    if (!device.get()) {
+    if (!device) {
       LOG(ERROR) << "Device is NULL!";
       return;
     }

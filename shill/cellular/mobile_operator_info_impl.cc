@@ -125,7 +125,7 @@ bool MobileOperatorInfoImpl::Init() {
     const char* database_path_cstr = database_path.value().c_str();
     std::unique_ptr<CopyingInputStreamAdaptor> database_stream;
     database_stream.reset(protobuf_lite_file_input_stream(database_path_cstr));
-    if (!database_stream.get()) {
+    if (!database_stream) {
       LOG(ERROR) << "Failed to read mobile operator database: "
                  << database_path_cstr;
       continue;

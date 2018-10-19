@@ -81,7 +81,7 @@ CellularCapabilityGsm::CellularCapabilityGsm(Cellular* cellular,
   // complicating the code, the test proxy factory is set up to return a nullptr
   // pointer when CellularCapabilityGsm is constructed. Refactor the code to
   // avoid this hack.
-  if (card_proxy_.get())
+  if (card_proxy_)
     InitProperties();
 }
 
@@ -113,7 +113,7 @@ void CellularCapabilityGsm::InitProxies() {
   CellularCapabilityClassic::InitProxies();
   // TODO(benchan): Remove this check after refactoring the proxy
   // initialization.
-  if (!card_proxy_.get()) {
+  if (!card_proxy_) {
     card_proxy_ = control_interface()->CreateModemGsmCardProxy(
         cellular()->dbus_path(), cellular()->dbus_service());
   }

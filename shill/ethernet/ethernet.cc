@@ -282,7 +282,7 @@ void Ethernet::OnEapDetected() {
 }
 
 bool Ethernet::StartSupplicant() {
-  if (supplicant_interface_proxy_.get()) {
+  if (supplicant_interface_proxy_) {
     return true;
   }
 
@@ -342,7 +342,7 @@ bool Ethernet::StartEapAuthentication() {
 }
 
 void Ethernet::StopSupplicant() {
-  if (supplicant_interface_proxy_.get()) {
+  if (supplicant_interface_proxy_) {
     supplicant_interface_proxy_->EAPLogoff();
   }
   supplicant_interface_proxy_.reset();

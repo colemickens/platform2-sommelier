@@ -160,7 +160,7 @@ string Profile::GetFriendlyName() const {
 }
 
 string Profile::GetRpcIdentifier() const {
-  if (!adaptor_.get()) {
+  if (!adaptor_) {
     return string();
   }
   return adaptor_->GetRpcIdentifier();

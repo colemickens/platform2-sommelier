@@ -165,7 +165,7 @@ void VPNService::SetConnection(const ConnectionRefPtr& connection) {
   // service. It's safe to use an unretained callback to driver's method because
   // both the binder and the driver will be destroyed when this service is
   // destructed.
-  if (!connection_binder_.get()) {
+  if (!connection_binder_) {
     connection_binder_.reset(
         new Connection::Binder(unique_name(),
                                Bind(&VPNDriver::OnConnectionDisconnected,

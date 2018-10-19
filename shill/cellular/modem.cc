@@ -90,7 +90,7 @@ void Modem::CreateDeviceFromModemProperties(
     const InterfaceToProperties& properties) {
   SLOG(this, 2) << __func__;
 
-  if (device_.get()) {
+  if (device_) {
     return;
   }
 
@@ -168,7 +168,7 @@ void Modem::OnPropertiesChanged(
     const vector<string>& invalidated_properties) {
   SLOG(this, 2) << __func__;
   SLOG(this, 3) << "PropertiesChanged signal received.";
-  if (device_.get()) {
+  if (device_) {
     device_->OnPropertiesChanged(interface,
                                  changed_properties,
                                  invalidated_properties);

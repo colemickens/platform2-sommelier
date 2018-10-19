@@ -81,7 +81,7 @@ void DnsServerTester::Stop() {
 }
 
 void DnsServerTester::StopAttempt() {
-  if (dns_test_client_.get()) {
+  if (dns_test_client_) {
     dns_test_client_->Stop();
   }
 }

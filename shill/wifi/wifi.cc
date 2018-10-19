@@ -931,7 +931,7 @@ void WiFi::HandleDisconnect() {
     // |pending_service_|, to indicate we're no longer in the middle
     // of a connect request.
     SetPendingService(nullptr);
-  } else if (pending_service_.get()) {
+  } else if (pending_service_) {
     // We've attributed the disconnection to what was the
     // |current_service_|, rather than the |pending_service_|.
     //
@@ -995,7 +995,7 @@ void WiFi::HandleRoam(const string& new_bss) {
 
   const WiFiEndpointConstRefPtr endpoint(endpoint_it->second);
   WiFiServiceRefPtr service = provider_->FindServiceForEndpoint(endpoint);
-  if (!service.get()) {
+  if (!service) {
       LOG(WARNING) << "WiFi " << link_name()
                    << " could not find Service for Endpoint "
                    << endpoint->bssid_string()
@@ -1059,7 +1059,7 @@ void WiFi::HandleRoam(const string& new_bss) {
     return;
   }
 
-  if (pending_service_.get()) {
+  if (pending_service_) {
     // We assume service.get() == pending_service_.get() here, because
     // of the return in the previous if clause.
     //

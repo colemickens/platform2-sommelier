@@ -376,7 +376,7 @@ bool Device::IsConnectedToService(const ServiceRefPtr& service) const {
 }
 
 bool Device::IsConnectedViaTether() const {
-  if (!ipconfig_.get())
+  if (!ipconfig_)
     return false;
 
   ByteArray vendor_encapsulated_options =
@@ -481,7 +481,7 @@ void Device::DropConnection() {
 void Device::ResetConnection() {
   SLOG(this, 2) << __func__;
   DestroyIPConfig();
-  if (!selected_service_.get()) {
+  if (!selected_service_) {
     return;
   }
 
@@ -495,17 +495,17 @@ void Device::ResetConnection() {
 void Device::DestroyIPConfig() {
   DisableIPv6();
   bool ipconfig_changed = false;
-  if (ipconfig_.get()) {
+  if (ipconfig_) {
     ipconfig_->ReleaseIP(IPConfig::kReleaseReasonDisconnect);
     ipconfig_ = nullptr;
     ipconfig_changed = true;
   }
-  if (ip6config_.get()) {
+  if (ip6config_) {
     StopIPv6DNSServerTimer();
     ip6config_ = nullptr;
     ipconfig_changed = true;
   }
-  if (dhcpv6_config_.get()) {
+  if (dhcpv6_config_) {
     dhcpv6_config_->ReleaseIP(IPConfig::kReleaseReasonDisconnect);
     dhcpv6_config_ = nullptr;
     ipconfig_changed = true;
@@ -812,7 +812,7 @@ bool Device::AcquireIPv6ConfigWithLeaseName(const string& lease_name) {
 
 void Device::RefreshIPConfig() {
   SLOG(this, 2) << __func__;
-  if (ipconfig_.get()) {
+  if (ipconfig_) {
     bool updated;
     if (manager_->ShouldBlackholeBrowserTraffic(UniqueName())) {
       updated = ipconfig_->SetBlackholedUids(manager_->browser_traffic_uids());
@@ -1163,7 +1163,7 @@ void Device::OnConnectionUpdated() {
 
 void Device::CreateConnection() {
   SLOG(this, 2) << __func__;
-  if (!connection_.get()) {
+  if (!connection_) {
     connection_ = new Connection(interface_index_,
                                  link_name_,
                                  fixed_ip_params_,
@@ -1176,7 +1176,7 @@ void Device::CreateConnection() {
 void Device::DestroyConnection() {
   SLOG(this, 2) << __func__ << " on " << link_name_;
   StopAllActivities();
-  if (selected_service_.get()) {
+  if (selected_service_) {
     SLOG(this, 3) << "Clearing connection of service "
                   << selected_service_->unique_name();
     selected_service_->SetConnection(nullptr);
@@ -1195,7 +1195,7 @@ void Device::SelectService(const ServiceRefPtr& service) {
     return;
   }
 
-  if (selected_service_.get()) {
+  if (selected_service_) {
     if (selected_service_->state() != Service::kStateFailure) {
       selected_service_->SetState(Service::kStateIdle);
     }
@@ -1218,19 +1218,19 @@ void Device::SelectService(const ServiceRefPtr& service) {
 }
 
 void Device::SetServiceState(Service::ConnectState state) {
-  if (selected_service_.get()) {
+  if (selected_service_) {
     selected_service_->SetState(state);
   }
 }
 
 void Device::SetServiceFailure(Service::ConnectFailure failure_state) {
-  if (selected_service_.get()) {
+  if (selected_service_) {
     selected_service_->SetFailure(failure_state);
   }
 }
 
 void Device::SetServiceFailureSilent(Service::ConnectFailure failure_state) {
-  if (selected_service_.get()) {
+  if (selected_service_) {
     selected_service_->SetFailureSilent(failure_state);
   }
 }
@@ -1289,7 +1289,7 @@ bool Device::RequestPortalDetection() {
     return false;
   }
 
-  if (!connection_.get()) {
+  if (!connection_) {
     SLOG(this, 2) << link_name()
                   << ": No connection, so no need for portal check.";
     return false;
@@ -1507,7 +1507,7 @@ bool Device::StartDNSTest(
     const vector<string>& dns_servers,
     bool retry_until_success,
     const Callback<void(const DnsServerTester::Status)>& callback) {
-  if (dns_server_tester_.get()) {
+  if (dns_server_tester_) {
     LOG(ERROR) << link_name() << ": "
                << "Failed to start DNS Test: current test still running";
     return false;
@@ -1611,7 +1611,7 @@ void Device::StartTrafficMonitor() {
 
   SLOG(this, 2) << "Device " << link_name()
                 << ": Traffic Monitor starting.";
-  if (!traffic_monitor_.get()) {
+  if (!traffic_monitor_) {
     traffic_monitor_.reset(new TrafficMonitor(this, dispatcher_));
     traffic_monitor_->set_network_problem_detected_callback(
         Bind(&Device::OnEncounterNetworkProblem,
@@ -1626,7 +1626,7 @@ void Device::StopTrafficMonitor() {
     return;
   }
 
-  if (traffic_monitor_.get()) {
+  if (traffic_monitor_) {
     SLOG(this, 2) << "Device " << link_name()
                   << ": Traffic Monitor stopping.";
     traffic_monitor_->Stop();
@@ -1657,7 +1657,7 @@ void Device::OnEncounterNetworkProblem(int reason) {
 void Device::SetServiceConnectedState(Service::ConnectState state) {
   DCHECK(selected_service_.get());
 
-  if (!selected_service_.get()) {
+  if (!selected_service_) {
     LOG(ERROR) << link_name() << ": "
                << "Portal detection completed but no selected service exists!";
     return;
@@ -1733,7 +1733,7 @@ void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
         Metrics::kMetricPortalAttemptsToOnlineNumBuckets);
   } else {
     // Set failure phase and status.
-    if (selected_service_.get()) {
+    if (selected_service_) {
       selected_service_->SetPortalDetectionFailure(
           ConnectivityTrial::PhaseToString(result.trial_result.phase),
           ConnectivityTrial::StatusToString(result.trial_result.status));
@@ -1791,7 +1791,7 @@ vector<string> Device::AvailableIPConfigs(Error* /*error*/) {
 }
 
 uint64_t Device::GetLinkMonitorResponseTime(Error* error) {
-  if (!link_monitor_.get()) {
+  if (!link_monitor_) {
     // It is not strictly an error that the link monitor does not
     // exist, but returning an error here allows the GetProperties
     // call in our Adaptor to omit this parameter.

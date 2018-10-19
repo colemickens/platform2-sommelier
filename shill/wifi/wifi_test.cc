@@ -652,7 +652,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     EXPECT_CALL(*wifi_provider(), OnEndpointRemoved(_))
         .WillRepeatedly(Return(nullptr));
     wifi_->SelectService(nullptr);
-    if (supplicant_bss_proxy_.get()) {
+    if (supplicant_bss_proxy_) {
       EXPECT_CALL(*supplicant_bss_proxy_, Die());
     }
     EXPECT_CALL(*mac80211_monitor_, Stop());

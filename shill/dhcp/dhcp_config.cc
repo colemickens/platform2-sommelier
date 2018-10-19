@@ -81,7 +81,7 @@ bool DHCPConfig::RequestIP() {
   if (!pid_) {
     return Start();
   }
-  if (!proxy_.get()) {
+  if (!proxy_) {
     LOG(ERROR) << "Unable to request IP before acquiring destination.";
     return Restart();
   }
@@ -93,7 +93,7 @@ bool DHCPConfig::RenewIP() {
   if (!pid_) {
     return Start();
   }
-  if (!proxy_.get()) {
+  if (!proxy_) {
     LOG(ERROR) << "Unable to renew IP before acquiring destination.";
     return false;
   }
@@ -129,7 +129,7 @@ bool DHCPConfig::ReleaseIP(ReleaseReason reason) {
 }
 
 void DHCPConfig::InitProxy(const string& service) {
-  if (!proxy_.get()) {
+  if (!proxy_) {
     LOG(INFO) << "Init DHCP Proxy: " << device_name() << " at " << service;
     proxy_ = control_interface_->CreateDHCPProxy(service);
   }

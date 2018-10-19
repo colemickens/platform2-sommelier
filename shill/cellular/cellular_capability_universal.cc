@@ -443,7 +443,7 @@ void CellularCapabilityUniversal::Connect(const KeyValueStore& properties,
 void CellularCapabilityUniversal::Disconnect(Error* error,
                                              const ResultCallback& callback) {
   SLOG(this, 3) << __func__;
-  if (modem_simple_proxy_.get()) {
+  if (modem_simple_proxy_) {
     SLOG(this, 2) << "Disconnect all bearers.";
     // If "/" is passed as the bearer path, ModemManager will disconnect all
     // bearers.
@@ -525,7 +525,7 @@ void CellularCapabilityUniversal::UpdatePendingActivationState() {
 
   CellularServiceRefPtr service = cellular()->service();
 
-  if (!service.get())
+  if (!service)
     return;
 
   if (service->activation_state() == kActivationStateActivated)

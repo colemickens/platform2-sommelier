@@ -76,7 +76,7 @@ class DnsClientTest : public Test {
   void TearDown() override {
     // We need to make sure the dns_client instance releases ares_
     // before the destructor for DnsClientTest deletes ares_.
-    if (dns_client_.get()) {
+    if (dns_client_) {
       dns_client_->Stop();
     }
   }

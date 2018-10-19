@@ -144,7 +144,7 @@ void ChromeosDHCPCDListener::EventSignal(
     const string& reason,
     const brillo::VariantDictionary& configuration) {
   DHCPConfigRefPtr config = provider_->GetConfig(pid);
-  if (!config.get()) {
+  if (!config) {
     if (provider_->IsRecentlyUnbound(pid)) {
       SLOG(nullptr, 3)
           << __func__ << ": ignoring message from recently unbound PID " << pid;
@@ -164,7 +164,7 @@ void ChromeosDHCPCDListener::StatusChangedSignal(const string& sender,
                                                  uint32_t pid,
                                                  const string& status) {
   DHCPConfigRefPtr config = provider_->GetConfig(pid);
-  if (!config.get()) {
+  if (!config) {
     if (provider_->IsRecentlyUnbound(pid)) {
       SLOG(nullptr, 3)
           << __func__ << ": ignoring message from recently unbound PID " << pid;

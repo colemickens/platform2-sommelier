@@ -87,7 +87,7 @@ void PortalDetector::Stop() {
 
   attempt_count_ = 0;
   failures_in_content_phase_ = 0;
-  if (connectivity_trial_.get())
+  if (connectivity_trial_)
     connectivity_trial_->Stop();
 }
 

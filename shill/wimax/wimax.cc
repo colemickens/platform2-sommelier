@@ -105,7 +105,7 @@ void WiMax::Stop(Error* error, const EnabledStateChangedCallback& callback) {
   scanning_ = false;
   networks_.clear();
   manager()->wimax_provider()->OnNetworksChanged();
-  if (proxy_.get()) {
+  if (proxy_) {
     proxy_->Disable(
         error, Bind(&WiMax::OnDisableComplete, this, callback),
         kDefaultRPCTimeoutSeconds * 1000);

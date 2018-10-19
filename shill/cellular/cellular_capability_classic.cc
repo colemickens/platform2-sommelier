@@ -229,7 +229,7 @@ void CellularCapabilityClassic::Connect(const KeyValueStore& properties,
 void CellularCapabilityClassic::Disconnect(Error* error,
                                            const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
-  if (proxy_.get())
+  if (proxy_)
     proxy_->Disconnect(error, callback, kTimeoutDisconnect);
   else
     LOG(ERROR) << "No proxy found in disconnect.";
@@ -239,7 +239,7 @@ void CellularCapabilityClassic::SetCarrier(const string& carrier,
                                            Error* error,
                                            const ResultCallback& callback) {
   LOG(INFO) << __func__ << "(" << carrier << ")";
-  if (!gobi_proxy_.get()) {
+  if (!gobi_proxy_) {
     gobi_proxy_ = control_interface()->CreateModemGobiProxy(
         cellular()->dbus_path(), cellular()->dbus_service());
   }

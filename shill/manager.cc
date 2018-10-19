@@ -277,7 +277,7 @@ void Manager::SetArcDevice(const string& arc_device) {
 }
 
 void Manager::ApplyPolicies() {
-  if (!policy_provider_.get())
+  if (!policy_provider_)
     policy_provider_.reset(new policy::PolicyProvider());
   policy_provider_->Reload();
   SLOG(this, 2) << "Reloaded policies";

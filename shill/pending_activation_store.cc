@@ -30,7 +30,7 @@ const char PendingActivationStore::kStorageFileName[] =
 PendingActivationStore::PendingActivationStore() {}
 
 PendingActivationStore::~PendingActivationStore() {
-  if (storage_.get())
+  if (storage_)
     storage_->Flush();  // Make certain that everything is persisted.
 }
 
@@ -82,7 +82,7 @@ string PendingActivationStore::IdentifierTypeToGroupId(IdentifierType type) {
 
 bool PendingActivationStore::InitStorage(const FilePath& storage_path) {
   // Close the current file.
-  if (storage_.get()) {
+  if (storage_) {
     storage_->Flush();
     storage_.reset();  // KeyFileStore closes the file in its destructor.
   }
@@ -110,7 +110,7 @@ PendingActivationStore::State PendingActivationStore::GetActivationState(
     const string& identifier) const {
   string formatted_identifier = FormattedIdentifier(type, identifier);
   SLOG(this, 2) << __func__ << ": " << formatted_identifier;
-  if (!storage_.get()) {
+  if (!storage_) {
     LOG(ERROR) << "Underlying storage not initialized.";
     return kStateUnknown;
   }
@@ -133,7 +133,7 @@ bool PendingActivationStore::SetActivationState(
     State state) {
   SLOG(this, 2) << __func__ << ": State=" << StateToString(state) << ", "
                 << FormattedIdentifier(type, identifier);
-  if (!storage_.get()) {
+  if (!storage_) {
     LOG(ERROR) << "Underlying storage not initialized.";
     return false;
   }
@@ -159,7 +159,7 @@ bool PendingActivationStore::RemoveEntry(IdentifierType type,
                                          const std::string& identifier) {
   SLOG(this, 2) << __func__ << ": "
                 << FormattedIdentifier(type, identifier);
-  if (!storage_.get()) {
+  if (!storage_) {
     LOG(ERROR) << "Underlying storage not initialized.";
     return false;
   }

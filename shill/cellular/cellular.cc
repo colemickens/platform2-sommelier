@@ -636,7 +636,7 @@ void Cellular::HandleNewRegistrationState() {
     // registered means we've successfully connected
     StartLocationPolling();
   }
-  if (!service_.get()) {
+  if (!service_) {
     metrics()->NotifyDeviceScanFinished(interface_index());
     CreateService();
   }

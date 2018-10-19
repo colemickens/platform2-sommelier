@@ -84,7 +84,7 @@ ConnectivityTrial::~ConnectivityTrial() {
 
 bool ConnectivityTrial::Retry(int start_delay_milliseconds) {
   SLOG(connection_.get(), 3) << "In " << __func__;
-  if (http_request_.get())
+  if (http_request_)
     CleanupTrial(false);
   else
     return false;
@@ -109,7 +109,7 @@ bool ConnectivityTrial::Start(const PortalDetectionProperties& props,
   }
   http_url_string_ = props.http_url_string;
 
-  if (http_request_.get()) {
+  if (http_request_) {
     CleanupTrial(false);
   } else {
     http_request_.reset(new HttpRequest(connection_, dispatcher_));
@@ -121,7 +121,7 @@ bool ConnectivityTrial::Start(const PortalDetectionProperties& props,
 void ConnectivityTrial::Stop() {
   SLOG(connection_.get(), 3) << "In " << __func__;
 
-  if (!http_request_.get()) {
+  if (!http_request_) {
     return;
   }
 
@@ -190,7 +190,7 @@ void ConnectivityTrial::CompleteTrial(Result result) {
 void ConnectivityTrial::CleanupTrial(bool reset_request) {
   trial_timeout_.Cancel();
 
-  if (http_request_.get())
+  if (http_request_)
     http_request_->Stop();
 
   is_active_ = false;
