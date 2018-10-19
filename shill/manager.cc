@@ -186,6 +186,7 @@ Manager::Manager(ControlInterface* control_interface,
       network_throttling_enabled_(false),
       download_rate_kbits_(0),
       upload_rate_kbits_(0),
+      ft_enabled_(false),
       should_blackhole_browser_traffic_(false) {
   HelpRegisterDerivedString(kActiveProfileProperty,
                             &Manager::GetActiveProfileRpcIdentifier,
@@ -214,6 +215,7 @@ Manager::Manager(ControlInterface* control_interface,
   HelpRegisterDerivedBool(kDisableWiFiVHTProperty,
                           &Manager::GetDisableWiFiVHT,
                           &Manager::SetDisableWiFiVHT);
+  store_.RegisterBool(kWifiGlobalFTEnabledProperty, &ft_enabled_);
 #endif  // DISABLE_WIFI
   HelpRegisterConstDerivedStrings(kEnabledTechnologiesProperty,
                                   &Manager::EnabledTechnologies);

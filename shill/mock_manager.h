@@ -117,6 +117,7 @@ class MockManager : public Manager {
                                    bool* claimer_removed, Error* error));
   MOCK_METHOD0(OnDeviceClaimerVanished, void());
   MOCK_METHOD0(GetDeviceInterfaceNames, std::vector<std::string>());
+  MOCK_CONST_METHOD0(GetFTEnabled, bool());
 
   // Getter and setter for a mocked device info instance.
   DeviceInfo* mock_device_info() { return mock_device_info_; }

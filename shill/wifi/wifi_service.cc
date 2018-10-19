@@ -674,14 +674,16 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
   }
 
   string key_mgmt = key_management();
-  if (ft_enabled_ && key_mgmt == WPASupplicant::kKeyManagementWPAPSK)
-    key_mgmt = base::StringPrintf("%s %s",
-                                  WPASupplicant::kKeyManagementWPAPSK,
-                                  WPASupplicant::kKeyManagementFTPSK);
-  else if (ft_enabled_ && key_mgmt == WPASupplicant::kKeyManagementWPAEAP)
-    key_mgmt = base::StringPrintf("%s %s",
-                                  WPASupplicant::kKeyManagementWPAEAP,
-                                  WPASupplicant::kKeyManagementFTEAP);
+  if (manager()->GetFTEnabled() && ft_enabled_) {
+    if (key_mgmt == WPASupplicant::kKeyManagementWPAPSK)
+      key_mgmt = base::StringPrintf("%s %s",
+                                    WPASupplicant::kKeyManagementWPAPSK,
+                                    WPASupplicant::kKeyManagementFTPSK);
+    else if (key_mgmt == WPASupplicant::kKeyManagementWPAEAP)
+      key_mgmt = base::StringPrintf("%s %s",
+                                    WPASupplicant::kKeyManagementWPAEAP,
+                                    WPASupplicant::kKeyManagementFTEAP);
+  }
   params.SetString(WPASupplicant::kNetworkPropertyEapKeyManagement, key_mgmt);
 
   if (ieee80211w_required_) {

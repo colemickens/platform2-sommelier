@@ -743,6 +743,7 @@ TEST_F(WiFiServiceTest, ConnectTaskFT) {
   {
     WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityWpa);
 
+    manager()->ft_enabled_ = false;
     wifi_service->ft_enabled_ = false;
     wifi_service->Connect(nullptr, "in test");
     KeyValueStore params = wifi_service->GetSupplicantConfigurationParameters();
@@ -751,6 +752,13 @@ TEST_F(WiFiServiceTest, ConnectTaskFT) {
         params.GetString(WPASupplicant::kNetworkPropertyEapKeyManagement));
 
     wifi_service->ft_enabled_ = true;
+    wifi_service->Connect(nullptr, "in test");
+    params = wifi_service->GetSupplicantConfigurationParameters();
+    EXPECT_EQ(
+        "WPA-PSK",
+        params.GetString(WPASupplicant::kNetworkPropertyEapKeyManagement));
+
+    manager()->ft_enabled_ = true;
     wifi_service->Connect(nullptr, "in test");
     params = wifi_service->GetSupplicantConfigurationParameters();
     EXPECT_EQ(
@@ -763,6 +771,7 @@ TEST_F(WiFiServiceTest, ConnectTaskFT) {
     wifi_service->mutable_eap()->set_password("mumble");
     wifi_service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
 
+    manager()->ft_enabled_ = false;
     wifi_service->ft_enabled_ = false;
     wifi_service->Connect(nullptr, "in test");
     KeyValueStore params = wifi_service->GetSupplicantConfigurationParameters();
@@ -771,6 +780,13 @@ TEST_F(WiFiServiceTest, ConnectTaskFT) {
         params.GetString(WPASupplicant::kNetworkPropertyEapKeyManagement));
 
     wifi_service->ft_enabled_ = true;
+    wifi_service->Connect(nullptr, "in test");
+    params = wifi_service->GetSupplicantConfigurationParameters();
+    EXPECT_EQ(
+        "WPA-EAP",
+        params.GetString(WPASupplicant::kNetworkPropertyEapKeyManagement));
+
+    manager()->ft_enabled_ = true;
     wifi_service->Connect(nullptr, "in test");
     params = wifi_service->GetSupplicantConfigurationParameters();
     EXPECT_EQ(

@@ -497,6 +497,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // on the system e.g. eth0, wlan0.
   virtual std::vector<std::string> GetDeviceInterfaceNames();
 
+  bool GetFTEnabled() const { return ft_enabled_; }
+
   bool ShouldBlackholeBrowserTraffic(const std::string& device_name) const;
 
   const std::vector<uint32_t>& browser_traffic_uids() const {
@@ -569,6 +571,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
   FRIEND_TEST(ThirdPartyVpnDriverTest, SetParameters);
   FRIEND_TEST(VPNProviderTest, SetDefaultRoutingPolicy);
+  FRIEND_TEST(WiFiServiceTest, ConnectTaskFT);
 
   struct DeviceClaim {
     DeviceClaim() {}
@@ -866,6 +869,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   bool network_throttling_enabled_;
   uint32_t download_rate_kbits_;
   uint32_t upload_rate_kbits_;
+
+  // Fast Transition enabled
+  bool ft_enabled_;
 
   // "Browser traffic" refers to traffic from processes under the chronos and
   // debugd users, which includes everything going through chrome and nacl
