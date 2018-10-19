@@ -61,11 +61,4 @@ SocketInfo& SocketInfo::operator=(const SocketInfo& socket_info) {
   return *this;
 }
 
-bool SocketInfo::IsSameSocketAs(const SocketInfo& socket_info) const {
-  return (local_ip_address_.Equals(socket_info.local_ip_address_) &&
-          local_port_ == socket_info.local_port_ &&
-          remote_ip_address_.Equals(socket_info.remote_ip_address_) &&
-          remote_port_ == socket_info.remote_port_);
-}
-
 }  // namespace shill

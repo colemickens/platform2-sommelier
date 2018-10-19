@@ -59,11 +59,6 @@ class SocketInfo {
 
   SocketInfo& operator=(const SocketInfo& socket_info);
 
-  // Returns true if this socket info and |socket_info| refer to the same
-  // socket, i.e. both have the same local address, local port, remote address,
-  // and remote port.
-  bool IsSameSocketAs(const SocketInfo& socket_info) const;
-
   ConnectionState connection_state() const { return connection_state_; }
   void set_connection_state(ConnectionState connection_state) {
     connection_state_ = connection_state;

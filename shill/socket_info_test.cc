@@ -12,10 +12,8 @@ namespace {
 
 const unsigned char kIPAddress1[] = { 192, 168, 1, 1 };
 const unsigned char kIPAddress2[] = { 192, 168, 1, 2 };
-const unsigned char kIPAddress3[] = { 192, 168, 1, 3 };
 const uint16_t kPort1 = 1000;
 const uint16_t kPort2 = 2000;
-const uint16_t kPort3 = 3000;
 
 }  // namespace
 
@@ -63,80 +61,6 @@ TEST_F(SocketInfoTest, AssignmentOperator) {
 
   SocketInfo info_copy = info;
   ExpectSocketInfoEqual(info, info_copy);
-}
-
-TEST_F(SocketInfoTest, IsSameSocketAs) {
-  IPAddress ip_address1(IPAddress::kFamilyIPv4,
-                        ByteString(kIPAddress1, sizeof(kIPAddress1)));
-  IPAddress ip_address2(IPAddress::kFamilyIPv4,
-                        ByteString(kIPAddress2, sizeof(kIPAddress2)));
-  IPAddress ip_address3(IPAddress::kFamilyIPv4,
-                        ByteString(kIPAddress3, sizeof(kIPAddress3)));
-
-  SocketInfo info(SocketInfo::kConnectionStateEstablished,
-                  ip_address1,
-                  kPort1,
-                  ip_address2,
-                  kPort2,
-                  0,
-                  0,
-                  SocketInfo::kTimerStateNoTimerPending);
-
-  // Differs only by local address.
-  EXPECT_FALSE(info.IsSameSocketAs(
-      SocketInfo(SocketInfo::kConnectionStateEstablished,
-                 ip_address3,
-                 kPort1,
-                 ip_address2,
-                 kPort2,
-                 0,
-                 0,
-                 SocketInfo::kTimerStateNoTimerPending)));
-
-  // Differs only by local port.
-  EXPECT_FALSE(info.IsSameSocketAs(
-      SocketInfo(SocketInfo::kConnectionStateEstablished,
-                 ip_address1,
-                 kPort3,
-                 ip_address2,
-                 kPort2,
-                 0,
-                 0,
-                 SocketInfo::kTimerStateNoTimerPending)));
-
-  // Differs only by remote address.
-  EXPECT_FALSE(info.IsSameSocketAs(
-      SocketInfo(SocketInfo::kConnectionStateEstablished,
-                 ip_address1,
-                 kPort1,
-                 ip_address3,
-                 kPort2,
-                 0,
-                 0,
-                 SocketInfo::kTimerStateNoTimerPending)));
-
-  // Differs only by remote port.
-  EXPECT_FALSE(info.IsSameSocketAs(
-      SocketInfo(SocketInfo::kConnectionStateEstablished,
-                 ip_address1,
-                 kPort1,
-                 ip_address2,
-                 kPort3,
-                 0,
-                 0,
-                 SocketInfo::kTimerStateNoTimerPending)));
-
-  // Only local address, local port, remote address, and remote port are
-  // identical.
-  EXPECT_TRUE(info.IsSameSocketAs(
-      SocketInfo(SocketInfo::kConnectionStateClosing,
-                 ip_address1,
-                 kPort1,
-                 ip_address2,
-                 kPort2,
-                 10,
-                 20,
-                 SocketInfo::kTimerStateRetransmitTimerPending)));
 }
 
 }  // namespace shill
