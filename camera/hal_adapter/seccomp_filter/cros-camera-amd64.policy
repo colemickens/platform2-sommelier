@@ -55,6 +55,7 @@ name_to_handle_at: 1
 nanosleep: 1
 newfstatat: 1
 open: 1
+openat: 1
 pipe2: 1
 pipe: 1
 poll: 1
