@@ -34,7 +34,7 @@ class SupplicantEAPStateHandler {
   // Resets the internal state of the handler.
   virtual void Reset();
 
-  virtual bool is_eap_in_progress() { return is_eap_in_progress_; }
+  virtual bool is_eap_in_progress() const { return is_eap_in_progress_; }
 
  private:
   friend class SupplicantEAPStateHandlerTest;

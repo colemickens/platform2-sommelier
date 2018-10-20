@@ -66,7 +66,7 @@ class AsyncConnectionTest : public Test {
                          Unretained(this))) {}
 
     MOCK_METHOD2(CallTarget, void(bool success, int fd));
-    const Callback<void(bool, int)>& callback() { return callback_; }
+    const Callback<void(bool, int)>& callback() const { return callback_; }
 
    private:
     Callback<void(bool, int)> callback_;
@@ -106,9 +106,9 @@ class AsyncConnectionTest : public Test {
   AsyncConnection& async_connection() { return *async_connection_; }
   StrictMock<MockSockets>& sockets() { return sockets_; }
   MockEventDispatcher& dispatcher() { return dispatcher_; }
-  const IPAddress& ipv4_address() { return ipv4_address_; }
-  const IPAddress& ipv6_address() { return ipv6_address_; }
-  int fd() { return async_connection_->fd_; }
+  const IPAddress& ipv4_address() const { return ipv4_address_; }
+  const IPAddress& ipv6_address() const { return ipv6_address_; }
+  int fd() const { return async_connection_->fd_; }
   void set_fd(int fd) { async_connection_->fd_ = fd; }
   StrictMock<ConnectCallbackTarget>& callback_target() {
     return callback_target_;

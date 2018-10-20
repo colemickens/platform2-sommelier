@@ -22,7 +22,7 @@ class MockSupplicantEAPStateHandler : public SupplicantEAPStateHandler {
                                  const std::string& parameter,
                                  Service::ConnectFailure* failure));
   MOCK_METHOD0(Reset, void());
-  MOCK_METHOD0(is_eap_in_progress, bool());
+  MOCK_CONST_METHOD0(is_eap_in_progress, bool());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockSupplicantEAPStateHandler);

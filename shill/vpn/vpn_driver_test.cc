@@ -101,12 +101,15 @@ class VPNDriverTest : public Test {
     driver_.dispatcher_ = dispatcher;
   }
 
-  const base::CancelableClosure& connect_timeout_callback() {
+  const base::CancelableClosure& connect_timeout_callback() const {
     return driver_.connect_timeout_callback_;
   }
 
   bool IsConnectTimeoutStarted() { return driver_.IsConnectTimeoutStarted(); }
-  int connect_timeout_seconds() { return driver_.connect_timeout_seconds(); }
+
+  int connect_timeout_seconds() const {
+    return driver_.connect_timeout_seconds();
+  }
 
   void StartConnectTimeout(int timeout_seconds) {
     driver_.StartConnectTimeout(timeout_seconds);

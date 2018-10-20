@@ -127,7 +127,7 @@ class WiFiProvider : public ProviderInterface {
   // configured for auto-connect.
   std::vector<ByteString> GetSsidsConfiguredForAutoConnect();
 
-  bool disable_vht() { return disable_vht_; }
+  bool disable_vht() const { return disable_vht_; }
   void set_disable_vht(bool disable_vht) { disable_vht_ = disable_vht; }
 
  private:

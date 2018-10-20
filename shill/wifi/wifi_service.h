@@ -174,8 +174,8 @@ class WiFiService : public Service {
   void set_expecting_disconnect(bool val) { expecting_disconnect_ = val; }
   bool expecting_disconnect() const { return expecting_disconnect_; }
 
-  uint16_t roam_threshold_db() { return roam_threshold_db_; }
-  bool roam_threshold_db_set() { return roam_threshold_db_set_; }
+  uint16_t roam_threshold_db() const { return roam_threshold_db_; }
+  bool roam_threshold_db_set() const { return roam_threshold_db_set_; }
 
  protected:
   void SetEAPKeyManagement(const std::string& key_management) override;

@@ -45,9 +45,9 @@ class Icmp {
   bool TransmitV4EchoRequest(uint16_t id, uint16_t seq_num);
   bool TransmitV6EchoRequest(uint16_t id, uint16_t seq_num);
 
-  int socket() { return socket_; }
-  const IPAddress& destination() { return destination_; }
-  int interface_index() { return interface_index_; }
+  int socket() const { return socket_; }
+  const IPAddress& destination() const { return destination_; }
+  int interface_index() const { return interface_index_; }
 
  private:
   friend class IcmpSessionTest;

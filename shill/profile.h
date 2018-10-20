@@ -201,7 +201,8 @@ class Profile : public base::RefCounted<Profile> {
   Metrics* metrics() const { return metrics_; }
   Manager* manager() const { return manager_; }
   StoreInterface* storage() { return storage_.get(); }
-  const base::FilePath& persistent_profile_path() {
+
+  const base::FilePath& persistent_profile_path() const {
     return persistent_profile_path_;
   }
   void set_persistent_profile_path(const base::FilePath& path) {

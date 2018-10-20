@@ -535,7 +535,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual void OnInnerDevicesChanged();
 
   void set_suppress_autoconnect(bool val) { suppress_autoconnect_ = val; }
-  bool suppress_autoconnect() { return suppress_autoconnect_; }
+  bool suppress_autoconnect() const { return suppress_autoconnect_; }
 
   // Called when remote device claimer vanishes.
   virtual void OnDeviceClaimerVanished();

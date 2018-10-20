@@ -208,7 +208,7 @@ class ConnectionDiagnostics {
   // Returns a string representation of |event|.
   static std::string EventToString(const Event& event);
 
-  bool running() { return running_; }
+  bool running() const { return running_; }
 
  private:
   friend class ConnectionDiagnosticsTest;

@@ -51,7 +51,7 @@ class DaemonTaskForTest : public DaemonTask {
       : DaemonTask(Settings(), config) {}
   virtual ~DaemonTaskForTest() {}
 
-  bool quit_result() { return quit_result_; }
+  bool quit_result() const { return quit_result_; }
 
   void RunMessageLoop() { dispatcher_->DispatchForever(); }
 

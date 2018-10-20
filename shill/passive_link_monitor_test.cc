@@ -55,7 +55,7 @@ class ResultCallbackObserver {
 
   MOCK_METHOD1(OnResultCallback, void(bool status));
 
-  const PassiveLinkMonitor::ResultCallback result_callback() {
+  const PassiveLinkMonitor::ResultCallback result_callback() const {
     return result_callback_;
   }
 

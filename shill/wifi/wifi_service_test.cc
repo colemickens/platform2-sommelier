@@ -193,9 +193,9 @@ class WiFiServiceTest : public PropertyStoreTest {
   scoped_refptr<MockWiFi> wifi() { return wifi_; }
   MockManager* mock_manager() { return &mock_manager_; }
   MockWiFiProvider* provider() { return &provider_; }
-  string GetAnyDeviceAddress() { return WiFiService::kAnyDeviceAddress; }
-  const vector<uint8_t>& simple_ssid() { return simple_ssid_; }
-  const string& simple_ssid_string() { return simple_ssid_string_; }
+  string GetAnyDeviceAddress() const { return WiFiService::kAnyDeviceAddress; }
+  const vector<uint8_t>& simple_ssid() const { return simple_ssid_; }
+  const string& simple_ssid_string() const { return simple_ssid_string_; }
 
  private:
   MockManager mock_manager_;

@@ -210,7 +210,7 @@ class DnsClientTest : public Test {
 
     MOCK_METHOD2(CallTarget, void(const Error& error,
                                   const IPAddress& address));
-    const DnsClient::ClientCallback& callback() { return callback_; }
+    const DnsClient::ClientCallback& callback() const { return callback_; }
 
    private:
     DnsClient::ClientCallback callback_;

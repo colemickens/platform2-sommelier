@@ -106,11 +106,13 @@ class HttpRequestTest : public Test {
     MOCK_METHOD1(RequestSuccessCallTarget,
                  void(std::shared_ptr<brillo::http::Response>));
     MOCK_METHOD1(RequestErrorCallTarget, void(HttpRequest::Result));
+
     const Callback<void(std::shared_ptr<brillo::http::Response>)>&
-    request_success_callback() {
+    request_success_callback() const {
       return request_success_callback_;
     }
-    const Callback<void(HttpRequest::Result)>& request_error_callback() {
+
+    const Callback<void(HttpRequest::Result)>& request_error_callback() const {
       return request_error_callback_;
     }
 

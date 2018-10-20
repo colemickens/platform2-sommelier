@@ -33,9 +33,7 @@ class MockIPConfig : public IPConfig {
   MOCK_METHOD0(ResetLeaseExpirationTime, void());
 
  private:
-  const Properties& real_properties() {
-    return IPConfig::properties();
-  }
+  const Properties& real_properties() const { return IPConfig::properties(); }
 
   DISALLOW_COPY_AND_ASSIGN(MockIPConfig);
 };

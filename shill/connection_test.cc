@@ -199,7 +199,7 @@ class ConnectionTest : public Test {
                                base::Unretained(this))) {}
 
     MOCK_METHOD0(CallTarget, void());
-    const base::Closure& callback() { return callback_; }
+    const base::Closure& callback() const { return callback_; }
 
    private:
     base::Closure callback_;

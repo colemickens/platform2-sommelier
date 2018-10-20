@@ -53,11 +53,11 @@ class LinkMonitorObserver {
   MOCK_METHOD0(OnFailureCallback, void());
   MOCK_METHOD0(OnGatewayChangeCallback, void());
 
-  const LinkMonitor::FailureCallback failure_callback() {
+  const LinkMonitor::FailureCallback failure_callback() const {
     return failure_callback_;
   }
 
-  const LinkMonitor::GatewayChangeCallback gateway_change_callback() {
+  const LinkMonitor::GatewayChangeCallback gateway_change_callback() const {
     return gateway_change_callback_;
   }
 

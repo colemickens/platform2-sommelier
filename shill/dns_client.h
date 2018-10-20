@@ -66,7 +66,7 @@ class DnsClient {
 
   virtual bool IsActive() const;
 
-  std::string interface_name() { return interface_name_; }
+  std::string interface_name() const { return interface_name_; }
 
  private:
   friend class DnsClientTest;

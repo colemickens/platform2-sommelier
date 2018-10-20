@@ -69,11 +69,11 @@ class ActiveLinkMonitorObserver {
                     int unicast_failure_count));
   MOCK_METHOD0(OnSuccessCallback, void());
 
-  const ActiveLinkMonitor::FailureCallback failure_callback() {
+  const ActiveLinkMonitor::FailureCallback failure_callback() const {
     return failure_callback_;
   }
 
-  const ActiveLinkMonitor::SuccessCallback success_callback() {
+  const ActiveLinkMonitor::SuccessCallback success_callback() const {
     return success_callback_;
   }
 
