@@ -3277,6 +3277,7 @@ int main(int argc, char **argv) {
   const char *accelerators = getenv("SOMMELIER_ACCELERATORS");
   const char *xwayland_path = getenv("SOMMELIER_XWAYLAND_PATH");
   const char* xauth_path = getenv("SOMMELIER_XAUTH_PATH");
+  const char* xfont_path = getenv("SOMMELIER_XFONT_PATH");
   const char *socket_name = "wayland-0";
   const char *runtime_dir;
   struct wl_event_loop *event_loop;
@@ -3354,6 +3355,8 @@ int main(int argc, char **argv) {
       glamor = "1";
     } else if (strstr(arg, "--x-auth") == arg) {
       xauth_path = sl_arg_value(arg);
+    } else if (strstr(arg, "--x-font-path") == arg) {
+      xfont_path = sl_arg_value(arg);
     } else if (arg[0] == '-') {
       if (strcmp(arg, "--") == 0) {
         ctx.runprog = &argv[i + 1];
@@ -3854,6 +3857,10 @@ int main(int argc, char **argv) {
         if (xauth_path) {
           args[i++] = "-auth";
           args[i++] = sl_xasprintf("%s", xauth_path);
+        }
+        if (xfont_path) {
+          args[i++] = "-fp";
+          args[i++] = sl_xasprintf("%s", xfont_path);
         }
         args[i++] = NULL;
 
