@@ -28,7 +28,7 @@ struct FirmwareInfo {
 };
 
 struct HelperInfo {
-  explicit HelperInfo(const base::FilePath executable_path)
+  explicit HelperInfo(const base::FilePath& executable_path)
       : executable_path(executable_path) {}
 
   base::FilePath executable_path;
