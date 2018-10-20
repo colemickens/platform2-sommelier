@@ -35,12 +35,11 @@ nr_dirty_threshold 68740
 nr_dirty_background_threshold 5728
 pgpgin 41070493
 pgpgout 16914684
-pswpin 59158894
-pswpout 60513438
-pgalloc_dma 3247
-pgalloc_dma32 131210265
-pgalloc_normal 0
-pgalloc_movable 0
+pswpin 60513438
+pswpout 678
+pgalloc_dma32 11
+pgalloc_normal 22
+pgalloc_movable 33
 pgfree 140534607
 pgactivate 70428610
 pgdeactivate 79401090

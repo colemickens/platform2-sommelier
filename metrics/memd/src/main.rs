@@ -16,12 +16,12 @@
 // available (N = 20 right now).
 
 extern crate chrono;
-extern crate libc;
 extern crate dbus;
-
-#[macro_use] extern crate log;
 extern crate env_logger;
+extern crate libc;
+#[macro_use] extern crate log;
 extern crate syslog;
+extern crate tempdir;
 
 extern crate protobuf;  // needed by proto_include.rs
 include!(concat!(env!("OUT_DIR"), "/proto_include.rs"));
@@ -46,6 +46,7 @@ use std::os::unix::io::{AsRawFd, RawFd};
 use std::path::{Path, PathBuf};
 // Not to be confused with chrono::Duration or the deprecated time::Duration.
 use std::time::Duration;
+use tempdir::TempDir;
 
 #[cfg(test)]
 mod test;
@@ -89,30 +90,20 @@ const SAMPLE_QUEUE_LENGTH: usize =
 // the order in which they appear in /proc/vmstat.  When parsing the file,
 // if a mandatory field is missing, the program panics.  A missing optional
 // field (for instance, pgmajfault_f for some kernels) results in a value
-// of 0.
-const VMSTAT_VALUES_COUNT: usize = 6;           // Number of vmstat values we're tracking.
-#[cfg(target_arch = "x86_64")]
-const VMSTATS: [(&str, bool); VMSTAT_VALUES_COUNT] = [
-    // name                     mandatory
-    ("pswpin",                  true),
-    ("pswpout",                 true),
-    ("pgalloc_dma32",           true),
-    ("pgalloc_normal",          true),
-    ("pgmajfault",              true),
-    ("pgmajfault_f",            false),
+// of 0. (BAD: This works only for the last field.)
+//
+// For fields with |accumulate| = true, use the name as a prefix, and add up
+// all values with that prefix in consecutive lines.
+const VMSTAT_VALUES_COUNT: usize = 5;           // Number of vmstat values we're tracking.
+const VMSTATS: [(&str, bool, bool); VMSTAT_VALUES_COUNT] = [
+    // name                 mandatory   accumulate
+    ("pswpin",              true, 	false),
+    ("pswpout",             true,       false),
+    ("pgalloc",             true,       true),   // pgalloc_dma, pgalloc_normal, etc.
+    ("pgmajfault",          true,       false),
+    ("pgmajfault_f",        false,      false),
 ];
-#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
 // The only difference from x86_64 is pgalloc_dma vs. pgalloc_dma32.
-// Wish there was some more concise mechanism.
-const VMSTATS: [(&str, bool); VMSTAT_VALUES_COUNT] = [
-    // name                     mandatory
-    ("pswpin",                  true),
-    ("pswpout",                 true),
-    ("pgalloc_dma",             true),
-    ("pgalloc_normal",          true),
-    ("pgmajfault",              true),
-    ("pgmajfault_f",            false),
-];
 
 #[derive(Debug)]
 pub enum Error {
@@ -375,7 +366,7 @@ struct Sample {
 impl Sample {
     // Outputs a sample.
     fn output(&self, out: &mut File) -> Result<()> {
-        writeln!(out, "{}.{:02} {:6} {} {} {} {} {} {} {} {} {} {} {} {}",
+        writeln!(out, "{}.{:02} {:6} {} {} {} {} {} {} {} {} {} {} {}",
                self.uptime / 1000,
                self.uptime % 1000 / 10,
                self.sample_type,
@@ -390,7 +381,6 @@ impl Sample {
                self.vmstat_values[2],
                self.vmstat_values[3],
                self.vmstat_values[4],
-               self.vmstat_values[5],
         )?;
         Ok(())
     }
@@ -550,29 +540,70 @@ fn get_vmstats(file: &File, vmstat_values: &mut [u32]) -> Result<()> {
     // was filled.
     let mut buffer: [u8; PAGE_SIZE] = unsafe { mem::uninitialized() };
     let content = pread(file, &mut buffer[..])?;
-    let mut rest = &content[..];
-    for (i, &(name, mandatory)) in VMSTATS.iter().enumerate() {
-        let found_name = rest.find(name);
-        match found_name {
-            Some(name_pos) => {
-                rest = &rest[name_pos..];
-                let found_space = rest.find(' ');
-                match found_space {
-                    Some(space_pos) => {
-                        // Skip name and space.
-                        rest = &rest[space_pos+1..];
-                        let (value, pos) = parse_int_prefix(rest)?;
-                        vmstat_values[i] = value;
-                        rest = &rest[pos..];
-                    }
-                    None => {
-                        return Err("unexpected vmstat file syntax".into());
-                    }
-                }
+    let mut lines = content.split('\n');
+    let mut targets = VMSTATS.iter().enumerate();
+    let mut line = None;
+    let mut target = None;
+    let mut advance_line = true;
+    let mut advance_target = true;
+    for i in 0..VMSTAT_VALUES_COUNT {
+        vmstat_values[i] = 0;
+    }
+    loop {
+        if advance_target {
+            target = targets.next();
+            if target == None {
+                break;
             }
+        }
+        if advance_line {
+            line = lines.next();
+            // Special case: empty last line.
+            if line.is_some() && line.unwrap() == "" {
+                line = None;
+            }
+            if line.is_none() {
+                break;
+            }
+        }
+
+        // The default is to advance the line and keep the same target.  When a
+        // target is found in a line, the target is advanced, unless it's an
+        // accumulated target, which adds up the values from consecutive
+        // matching lines.
+        advance_line = true;
+        advance_target = false;
+
+        let (i, &(wanted_name, mandatory, accumulate)) = target.unwrap();
+        match line {
+            Some(string) => {
+                let mut pair = string.split(' ');
+                let found_name = pair.next().ok_or_else(|| "missing name in vmstat")?;
+                let found_value = pair.next().ok_or_else(|| "missing value in vmstat")?;
+                // First check accumulative targets.
+                if accumulate {
+                    if found_name.starts_with(wanted_name) {
+                        vmstat_values[i] += found_value.parse::<u32>()?;
+                        advance_line = true;
+                        advance_target = false;
+                    } else {
+                        // Try the next target, but don't consume the line.
+                        advance_line = false;
+                        advance_target = true;
+                    }
+                    continue;
+                }
+                // Then check for single-shot (not accumulated) fields.
+                if found_name == wanted_name {
+                    vmstat_values[i] = found_value.parse::<u32>()?;
+                    advance_line = true;
+                    advance_target = true;
+                    continue;
+                }
+            },
             None => {
                 if mandatory {
-                    return Err(format!("missing '{}' from vmstats", name).into());
+                    return Err(format!("vmstat: missing value: {}", wanted_name).into());
                 } else {
                     vmstat_values[i] = 0;
                 }
@@ -1228,10 +1259,10 @@ fn test_filename(testing: bool, testing_root: &str, name: &str) -> String {
 }
 
 // This macro constructs a "normal" Paths object when |testing| is false, and
-// one that mimics a root filesystem in a local directory when |testing| is
+// one that mimics a root filesystem in a temporary directory when |testing| is
 // true.
 macro_rules! make_paths {
-    ($testing:expr, $root: expr,
+    ($testing:expr, $root:expr,
      $($name:ident : $e:expr,)*
     ) => (
         Paths {
@@ -1291,9 +1322,14 @@ fn main() {
     run_memory_daemon(always_poll_fast).expect("memd failed");
 }
 
-fn testing_root() -> String {
-    // Calling getpid() is always safe.
-    format!("/tmp/memd-testing-root-{}", unsafe { libc::getpid() })
+// Creates a directory for testing, if testing.  Otherwise
+// returns None
+fn make_testing_dir() -> Option<TempDir> {
+    if cfg!(test) {
+        Some(TempDir::new("memd").expect("cannot create temp dir"))
+    } else {
+        None
+    }
 }
 
 #[test]
@@ -1303,14 +1339,24 @@ fn memory_daemon_test() {
 }
 
 #[test]
-fn read_vmstat_test() {
-    test::read_vmstat();
+fn read_loadavg_test() {
+    test::read_loadavg();
 }
 
-fn run_memory_daemon(always_poll_fast: bool) -> Result<()> {
-    let testing_root = testing_root();
+#[test]
+fn read_vmstat_test() {
+    let testing_dir_option = make_testing_dir();
+    let paths = get_paths(testing_dir_option);
+    test::read_vmstat(&paths);
+}
+
+fn get_paths(root: Option<TempDir>) -> Paths {
     // make_paths! returns a Paths object initializer with these fields.
-    let paths = make_paths!(
+    let testing_root = match root {
+        Some(tmpdir) => tmpdir.path().to_str().unwrap().to_string(),
+        None => "/".to_string(),
+    };
+    make_paths!(
         cfg!(test),
         &testing_root,
         vmstat:            "/proc/vmstat",
@@ -1322,14 +1368,19 @@ fn run_memory_daemon(always_poll_fast: bool) -> Result<()> {
         static_parameters: LOG_DIRECTORY.to_string() + "/" + STATIC_PARAMETERS_LOG,
         zoneinfo:          "/proc/zoneinfo",
         procsysvm:         "/proc/sys/vm",
-    );
+    )
+}
+
+fn run_memory_daemon(always_poll_fast: bool) -> Result<()> {
+    let test_dir_option = make_testing_dir();
+    let paths = get_paths(test_dir_option);
 
     #[cfg(test)]
     {
         test::setup_test_environment(&paths);
         let var_log = &paths.log_directory.parent().unwrap();
         std::fs::create_dir_all(var_log)
-            .map_err(|e| Error::CreateLogDirError(Box::new(e)))?
+            .map_err(|e| Error::CreateLogDirError(Box::new(e)))?;
     }
 
     // Make sure /var/log/memd exists.  Create it if not.  Assume /var/log
@@ -1340,7 +1391,11 @@ fn run_memory_daemon(always_poll_fast: bool) -> Result<()> {
     }
 
     #[cfg(test)]
-    test::test_loop(always_poll_fast, &paths);
+    {
+        test::test_loop(always_poll_fast, &paths);
+        test::teardown_test_environment(&paths);
+        Ok(())
+    }
 
     #[cfg(not(test))]
     {
@@ -1353,6 +1408,4 @@ fn run_memory_daemon(always_poll_fast: bool) -> Result<()> {
             sampler.fast_poll()?;
         }
     }
-    #[cfg(test)]
-    Ok(())
 }

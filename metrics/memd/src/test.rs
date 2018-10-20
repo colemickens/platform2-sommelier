@@ -27,6 +27,8 @@ use Result;
 use Sampler;
 use strerror;
 use Timer;
+use get_vmstats;
+use VMSTAT_VALUES_COUNT;
 
 // Different levels of emulated available RAM in MB.
 const LOW_MEM_LOW_AVAILABLE: usize = 150;
@@ -344,7 +346,6 @@ pub fn test_loop(_always_poll_fast: bool, paths: &Paths) {
             .expect(&format!("test:{}failed.", test_desc));
         println!("test succeeded\n--------------");
     }
-    teardown_test_environment(&paths);
 }
 
 // ================
@@ -642,10 +643,9 @@ fn create_dir_all(path: &Path) -> Result<()> {
     }
 }
 
-fn teardown_test_environment (paths: &Paths) {
-    if let Err(e) = std::fs::remove_dir_all(&paths.testing_root) {
-        info!("teardown: could not remove {}: {:?}", paths.testing_root.to_str().unwrap(), e);
-    }
+pub fn teardown_test_environment (paths: &Paths) {
+    std::fs::remove_dir_all(&paths.testing_root).expect(
+        &format!("teardown: could not remove {}", paths.testing_root.to_str().unwrap()));
 }
 
 pub fn setup_test_environment(paths: &Paths) {
@@ -682,7 +682,7 @@ pub fn setup_test_environment(paths: &Paths) {
     mkfifo(&paths.low_mem_device).expect("could not make mock low-mem device");
 }
 
-pub fn read_vmstat() {
+pub fn read_loadavg() {
     // Calling getpid() is always safe.
     let temp_file_name = format!("/tmp/memd-loadavg-{}", unsafe { libc::getpid() });
     let mut temp_file = OpenOptions::new()
@@ -700,4 +700,15 @@ pub fn read_vmstat() {
     temp_file.write_all("1122.12 25.87 19.51 33/1234 56789".as_bytes()).expect("cannot write");
     temp_file.seek(std::io::SeekFrom::Start(0)).expect("cannot seek");
     assert_eq!(get_runnables(&temp_file).unwrap(), 33);
+}
+
+pub fn read_vmstat(paths: &Paths) {
+    setup_test_environment(&paths);
+    let mut vmstat_values: [u32; VMSTAT_VALUES_COUNT] = [0, 0, 0, 0, 0];
+    get_vmstats(&File::open(&paths.vmstat).expect("cannot open vmstat"),
+                &mut vmstat_values).expect("get_vmstats failure");
+    // Check one simple and one accumulated value.
+    assert_eq!(vmstat_values[1], 678);
+    assert_eq!(vmstat_values[2], 66);
+    teardown_test_environment(&paths);
 }
