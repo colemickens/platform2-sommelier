@@ -7,6 +7,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <gtest/gtest.h>
 #include <imageloader/dbus-proxy-mocks.h>
 #include <update_engine/dbus-proxy-mocks.h>
@@ -42,7 +43,7 @@ class DlcServiceDBusAdaptorTest : public testing::Test {
   base::FilePath content_path_;
 };
 
-TEST_F(DlcServiceDBusAdaptorTest, LoadDlcImages) {
+TEST_F(DlcServiceDBusAdaptorTest, InitTest) {
   auto mock_image_loader_proxy =
       std::make_unique<org::chromium::ImageLoaderInterfaceProxyMock>();
 
@@ -59,6 +60,21 @@ TEST_F(DlcServiceDBusAdaptorTest, LoadDlcImages) {
       std::move(mock_image_loader_proxy),
       std::make_unique<org::chromium::UpdateEngineInterfaceProxyMock>(),
       manifest_path_, content_path_);
+}
+
+TEST_F(DlcServiceDBusAdaptorTest, GetInstalledTest) {
+  DlcServiceDBusAdaptor dlc_service_dbus_adaptor(
+      std::make_unique<org::chromium::ImageLoaderInterfaceProxyMock>(),
+      std::make_unique<org::chromium::UpdateEngineInterfaceProxyMock>(),
+      manifest_path_, content_path_);
+
+  std::string dlc_module_list_str;
+  EXPECT_TRUE(
+      dlc_service_dbus_adaptor.GetInstalled(nullptr, &dlc_module_list_str));
+  DlcModuleList dlc_module_list;
+  EXPECT_TRUE(dlc_module_list.ParseFromString(dlc_module_list_str));
+  EXPECT_EQ(dlc_module_list.dlc_module_infos_size(), 1);
+  EXPECT_EQ(dlc_module_list.dlc_module_infos(0).dlc_id(), kFirstDlc);
 }
 
 }  // namespace dlcservice

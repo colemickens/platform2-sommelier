@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <imageloader/dbus-proxies.h>
@@ -37,10 +38,15 @@ class DlcServiceDBusAdaptor
                const std::string& id_in,
                std::string* mount_point_out) override;
   bool Uninstall(brillo::ErrorPtr* err, const std::string& id_in) override;
+  bool GetInstalled(brillo::ErrorPtr* err,
+                    std::string* dlc_module_list_out) override;
 
  private:
-  // Load installed DLC images.
-  void LoadDlcImages();
+  // Loads installed DLC module images.
+  void LoadDlcModuleImages();
+
+  // Scans manifest_dir_ for a list of supported DLC modules and returns them.
+  std::vector<std::string> ScanDlcModules();
 
   std::unique_ptr<org::chromium::ImageLoaderInterfaceProxyInterface>
       image_loader_proxy_;

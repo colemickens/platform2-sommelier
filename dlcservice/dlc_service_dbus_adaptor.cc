@@ -9,8 +9,22 @@
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
+#include <brillo/errors/error.h>
+#include <brillo/errors/error_codes.h>
+#include <dlcservice/proto_bindings/dlcservice.pb.h>
 
 namespace dlcservice {
+
+namespace {
+
+// Sets the D-Bus error object and logs the error message.
+void LogAndSetError(brillo::ErrorPtr* err, const std::string& msg) {
+  if (err)
+    *err = brillo::Error::Create(FROM_HERE, "dlcservice", "INTERNAL", msg);
+  LOG(ERROR) << msg;
+}
+
+}  // namespace
 
 DlcServiceDBusAdaptor::DlcServiceDBusAdaptor(
     std::unique_ptr<org::chromium::ImageLoaderInterfaceProxyInterface>
@@ -24,7 +38,9 @@ DlcServiceDBusAdaptor::DlcServiceDBusAdaptor(
       update_engine_proxy_(std::move(update_engine_proxy)),
       manifest_dir_(manifest_dir),
       content_dir_(content_dir) {
-  LoadDlcImages();
+  // TODO(xiaochu): Allows dlcservice being activated on-demand.
+  // https://crbug.com/898255
+  LoadDlcModuleImages();
 }
 
 DlcServiceDBusAdaptor::~DlcServiceDBusAdaptor() {}
@@ -43,30 +59,56 @@ bool DlcServiceDBusAdaptor::Uninstall(brillo::ErrorPtr* err,
   return true;
 }
 
-void DlcServiceDBusAdaptor::LoadDlcImages() {
-  // Initialize available DLC list.
-  std::vector<std::string> dlc_ids;
+bool DlcServiceDBusAdaptor::GetInstalled(brillo::ErrorPtr* err,
+                                         std::string* dlc_module_list_out) {
+  // Initialize supported DLC module id list.
+  std::vector<std::string> dlc_module_ids = ScanDlcModules();
+
+  // Find installed DLC modules.
+  DlcModuleList dlc_module_list;
+  for (const auto& dlc_module_id : dlc_module_ids) {
+    auto image_path = content_dir_.Append(dlc_module_id);
+    if (base::PathExists(image_path)) {
+      DlcModuleInfo* dlc_module_info = dlc_module_list.add_dlc_module_infos();
+      dlc_module_info->set_dlc_id(dlc_module_id);
+    }
+  }
+  if (!dlc_module_list.SerializeToString(dlc_module_list_out)) {
+    LogAndSetError(err, "Failed to serialize the protobuf.");
+    return false;
+  }
+  return true;
+}
+
+void DlcServiceDBusAdaptor::LoadDlcModuleImages() {
+  // Initialize supported DLC module id list.
+  std::vector<std::string> dlc_module_ids = ScanDlcModules();
+
+  // Load all installed DLC modules.
+  for (const auto& dlc_module_id : dlc_module_ids) {
+    auto image_path = content_dir_.Append(dlc_module_id);
+    if (!base::PathExists(image_path))
+      continue;
+    // Mount the installed DLC image.
+    std::string path;
+    image_loader_proxy_->LoadDlcImage(dlc_module_id, "Dlc-A", &path, nullptr);
+    if (path.empty()) {
+      LOG(ERROR) << "DLC image " << dlc_module_id << " is corrupted.";
+    } else {
+      LOG(INFO) << "DLC image " << dlc_module_id << " is mounted at " << path;
+    }
+  }
+}
+
+std::vector<std::string> DlcServiceDBusAdaptor::ScanDlcModules() {
+  std::vector<std::string> dlc_module_ids;
   base::FileEnumerator file_enumerator(manifest_dir_, false,
                                        base::FileEnumerator::DIRECTORIES);
   for (base::FilePath dir_path = file_enumerator.Next(); !dir_path.empty();
        dir_path = file_enumerator.Next()) {
-    dlc_ids.emplace_back(dir_path.BaseName().value());
+    dlc_module_ids.emplace_back(dir_path.BaseName().value());
   }
-
-  // Initialize the states of installed DLC.
-  for (auto& dlc_id : dlc_ids) {
-    auto image_path = content_dir_.Append(dlc_id);
-    if (base::PathExists(image_path)) {
-      // Mount the installed DLC image.
-      std::string path;
-      image_loader_proxy_->LoadDlcImage(dlc_id, "Dlc-A", &path, nullptr);
-      if (path.empty()) {
-        LOG(ERROR) << "DLC image " << dlc_id << " is corrupted.";
-      } else {
-        LOG(INFO) << "DLC image " << dlc_id << " is mounted at " << path;
-      }
-    }
-  }
+  return dlc_module_ids;
 }
 
 }  // namespace dlcservice
