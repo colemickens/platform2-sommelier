@@ -46,3 +46,4 @@ poll: 1
 sendmsg: 1
 recvmsg: 1
 epoll_wait: 1
+getpid: 1

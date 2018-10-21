@@ -77,3 +77,4 @@ uname: 1
 getdents64: 1
 setresuid: 1
 setresgid: 1
+getpid: 1

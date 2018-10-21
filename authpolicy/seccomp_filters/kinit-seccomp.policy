@@ -56,3 +56,4 @@ unlink: 1
 writev: 1
 write: 1
 
+getpid: 1

@@ -82,3 +82,4 @@ clone: 1
 prctl: return 1
 ioctl: return 1
 tgkill: return 1
+getpid: 1

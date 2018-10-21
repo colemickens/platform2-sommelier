@@ -33,3 +33,4 @@ set_thread_area: 1
 fcntl64: 1
 # execve: return EPERM
 execve: return 1
+getpid: 1

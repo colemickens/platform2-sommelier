@@ -58,3 +58,4 @@ sendmsg: 1
 recvmsg: 1
 set_robust_list: 1
 pipe2: 1
+getpid: 1

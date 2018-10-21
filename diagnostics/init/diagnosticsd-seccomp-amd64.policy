@@ -73,3 +73,4 @@ stat: 1
 tgkill: 1
 unlink: 1
 write: 1
+getpid: 1

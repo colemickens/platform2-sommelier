@@ -50,3 +50,4 @@ set_robust_list: 1
 ioctl: arg1 == TCGETS
 munmap: 1
 getresgid32: 1
+getpid: 1

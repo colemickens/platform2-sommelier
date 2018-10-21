@@ -50,3 +50,4 @@ socket: arg0 == AF_UNIX
 stat64: 1
 tgkill: 1
 write: 1
+getpid: 1

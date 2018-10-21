@@ -58,3 +58,4 @@ getdents64: 1
 lstat64: 1
 madvise: 1
 rmdir: 1
+getpid: 1

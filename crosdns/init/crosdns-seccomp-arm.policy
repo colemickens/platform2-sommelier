@@ -46,3 +46,4 @@ ioctl: arg1 == TCGETS
 gettimeofday: 1
 send: 1
 clock_gettime: 1
+getpid: 1

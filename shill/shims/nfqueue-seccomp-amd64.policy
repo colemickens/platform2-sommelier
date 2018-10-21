@@ -37,3 +37,4 @@ fcntl: 1
 set_robust_list: 1
 # execve: return EPERM
 execve: return 1
+getpid: 1

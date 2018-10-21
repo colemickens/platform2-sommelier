@@ -67,3 +67,4 @@ unlinkat: 1
 unshare: 1
 wait4: 1
 write: 1
+getpid: 1

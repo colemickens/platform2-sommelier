@@ -7,3 +7,4 @@
 # ioctl: arg1 == EVIOCGABS || EVIOCSABS
 ioctl: arg1 == 0x80184558 || arg1 == 0x401845d8
 open:1
+getpid: 1

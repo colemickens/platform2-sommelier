@@ -84,3 +84,4 @@ getdents64: 1
 setresuid32: 1
 setresgid32: 1
 ARM_set_tls: 1
+getpid: 1

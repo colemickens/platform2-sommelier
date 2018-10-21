@@ -43,3 +43,4 @@ exit_group: 1
 getresgid: 1
 getrlimit: 1
 ioctl: arg1 == TCGETS
+getpid: 1
