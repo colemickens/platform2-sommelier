@@ -56,6 +56,12 @@ class VerifyRoTool : public SubprocessTool {
   bool FlashImageToGscOnUsb(
       brillo::ErrorPtr* error, const std::string& image_file);
 
+  // Verifies AP and EC RO FW integrity of the USB-connected DUT. If it failed,
+  // at least one error message will be added to |error|. Returns whether the
+  // verification is successful.
+  bool VerifyDeviceOnUsbROIntegrity(
+      brillo::ErrorPtr* error, const std::string& ro_desc_file);
+
  private:
   // Reads contents of the given firmware |image_file| and gets the values of
   // |keys| from the contents. Returns lines of the "key=value" pairs, one line

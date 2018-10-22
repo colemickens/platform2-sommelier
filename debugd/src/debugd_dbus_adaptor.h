@@ -180,6 +180,8 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::string GetGscImageBoardID(const std::string& image_file) override;
   bool FlashImageToGscOnUsb(
       brillo::ErrorPtr* error, const std::string& image_file) override;
+  bool VerifyDeviceOnUsbROIntegrity(
+      brillo::ErrorPtr* error, const std::string& ro_desc_file) override;
 
  private:
   brillo::dbus_utils::DBusObject dbus_object_;

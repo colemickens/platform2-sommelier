@@ -157,6 +157,35 @@ bool VerifyRoTool::FlashImageToGscOnUsb(
   return true;
 }
 
+bool VerifyRoTool::VerifyDeviceOnUsbROIntegrity(
+    brillo::ErrorPtr* error,
+    const std::string& ro_desc_file) {
+  if (!base::PathExists(base::FilePath(ro_desc_file))) {
+    DEBUGD_ADD_ERROR(error, kVerifyRoToolErrorString,
+                     "bad RO descriptor file: " + ro_desc_file);
+    LOG(ERROR) << "bad RO descriptor file: " << ro_desc_file;
+    return false;
+  }
+
+  int exit_code = ProcessWithOutput::RunProcess(kGsctool, {"-O", ro_desc_file},
+                                                false,    // requires_root
+                                                true,     // disable_sandbox
+                                                nullptr,  // stdin
+                                                nullptr,  // stdout
+                                                nullptr,  // stderr
+                                                error);
+
+  if (exit_code != EXIT_SUCCESS) {
+    DEBUGD_ADD_ERROR(error, kVerifyRoToolErrorString,
+                     "failed to verify RO FW using file " + ro_desc_file);
+    LOG(ERROR) << __func__ << ": failed to verify RO FW using file "
+               << ro_desc_file;
+    return false;
+  }
+
+  return true;
+}
+
 std::string VerifyRoTool::GetKeysValuesFromImage(
     const std::string& image_file, const std::vector<std::string>& keys) {
   if (!base::PathExists(base::FilePath(image_file))) {

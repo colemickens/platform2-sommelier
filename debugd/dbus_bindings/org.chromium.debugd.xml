@@ -1005,5 +1005,16 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
+    <method name="VerifyDeviceOnUsbROIntegrity">
+      <tp:docstring>
+        Verifies AP and EC RO FW integrity of the USB-connected device.
+      </tp:docstring>
+      <arg name="ro_desc_file" type="s" direction="in">
+        <tp:docstring>
+          Path to the local RO descriptor file.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
   </interface>
 </node>

@@ -516,4 +516,9 @@ bool DebugdDBusAdaptor::FlashImageToGscOnUsb(
   return verify_ro_tool_->FlashImageToGscOnUsb(error, image_file);
 }
 
+bool DebugdDBusAdaptor::VerifyDeviceOnUsbROIntegrity(
+    brillo::ErrorPtr* error, const std::string& ro_desc_file) {
+  return verify_ro_tool_->VerifyDeviceOnUsbROIntegrity(error, ro_desc_file);
+}
+
 }  // namespace debugd
