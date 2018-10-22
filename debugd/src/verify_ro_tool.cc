@@ -4,6 +4,8 @@
 
 #include "debugd/src/verify_ro_tool.h"
 
+#include <stdlib.h>
+
 #include <string>
 #include <vector>
 
@@ -11,12 +13,21 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 
+#include "debugd/src/error_utils.h"
 #include "debugd/src/process_with_output.h"
 #include "debugd/src/verify_ro_utils.h"
 
 namespace {
 
 constexpr char kGsctool[] = "/usr/sbin/gsctool";
+constexpr char kVerifyRoToolErrorString[] =
+    "org.chromium.debugd.error.VerifyRo";
+
+// Exit code of `gsctool <image>` when the DUT's FW is successfully updated.
+//
+// TODO(garryxiao): try to include the exit status enum from gsctool instead of
+// hard-coding it here.
+constexpr int kGsctoolAllFwUpdated = 1;
 
 }  // namespace
 
@@ -39,7 +50,7 @@ std::string VerifyRoTool::GetGscOnUsbRWFirmwareVer() {
       nullptr,       // stderr
       nullptr);
 
-  if (exit_code != 0) {
+  if (exit_code != EXIT_SUCCESS) {
     LOG(WARNING) << __func__ << ": process exited with a non-zero status.";
     return "<process exited with a non-zero status>";
   }
@@ -71,7 +82,7 @@ std::string VerifyRoTool::GetGscOnUsbBoardID() {
       nullptr,       // stderr
       nullptr);
 
-  if (exit_code != 0) {
+  if (exit_code != EXIT_SUCCESS) {
     LOG(WARNING) << __func__ << ": process exited with a non-zero status.";
     return "<process exited with a non-zero status>";
   }
@@ -115,6 +126,37 @@ std::string VerifyRoTool::GetGscImageBoardID(const std::string& image_file) {
   return GetKeysValuesFromImage(image_file, keys);
 }
 
+bool VerifyRoTool::FlashImageToGscOnUsb(
+    brillo::ErrorPtr* error, const std::string& image_file) {
+  if (!base::PathExists(base::FilePath(image_file))) {
+    DEBUGD_ADD_ERROR(error,
+                     kVerifyRoToolErrorString,
+                     "bad image file: " + image_file);
+    LOG(ERROR) << "bad image file: " << image_file;
+    return false;
+  }
+
+  int exit_code = ProcessWithOutput::RunProcess(
+      kGsctool,
+      {image_file},
+      false,         // requires_root
+      true,          // disable_sandbox
+      nullptr,       // stdin
+      nullptr,       // stdout
+      nullptr,       // stderr
+      error);
+
+  if (exit_code != kGsctoolAllFwUpdated) {
+    DEBUGD_ADD_ERROR(error,
+                     kVerifyRoToolErrorString,
+                     "failed to flash image " + image_file);
+    LOG(ERROR) << __func__ << ": failed to flash image " << image_file;
+    return false;
+  }
+
+  return true;
+}
+
 std::string VerifyRoTool::GetKeysValuesFromImage(
     const std::string& image_file, const std::vector<std::string>& keys) {
   if (!base::PathExists(base::FilePath(image_file))) {
@@ -133,7 +175,7 @@ std::string VerifyRoTool::GetKeysValuesFromImage(
       nullptr,       // stderr
       nullptr);
 
-  if (exit_code != 0) {
+  if (exit_code != EXIT_SUCCESS) {
     LOG(WARNING) << __func__ << ": process exited with a non-zero status.";
     return "<process exited with a non-zero status>";
   }

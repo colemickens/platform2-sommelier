@@ -992,5 +992,18 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="FlashImageToGscOnUsb">
+      <tp:docstring>
+        Flashes the given GSC image to the security chip on the USB-connected
+        device if the GSC image version is higher than the one running on the
+        security chip.
+      </tp:docstring>
+      <arg name="image_file" type="s" direction="in">
+        <tp:docstring>
+          Path to the local FW image file.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
   </interface>
 </node>

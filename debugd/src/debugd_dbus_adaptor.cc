@@ -511,4 +511,9 @@ std::string DebugdDBusAdaptor::GetGscImageBoardID(
   return verify_ro_tool_->GetGscImageBoardID(image_file);
 }
 
+bool DebugdDBusAdaptor::FlashImageToGscOnUsb(
+    brillo::ErrorPtr* error, const std::string& image_file) {
+  return verify_ro_tool_->FlashImageToGscOnUsb(error, image_file);
+}
+
 }  // namespace debugd

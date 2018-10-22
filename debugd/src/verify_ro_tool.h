@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <brillo/errors/error.h>
 
 #include "debugd/src/subprocess_tool.h"
 
@@ -48,6 +49,12 @@ class VerifyRoTool : public SubprocessTool {
   //     IMAGE_BID_MASK=00001111
   //     IMAGE_BID_FLAGS=76543210
   std::string GetGscImageBoardID(const std::string& image_file);
+
+  // Flashes the USB-connected DUT's Cr50 FW. If it failed, at least one error
+  // message will be added to |error|. Returns whether the FW flashing is
+  // successful.
+  bool FlashImageToGscOnUsb(
+      brillo::ErrorPtr* error, const std::string& image_file);
 
  private:
   // Reads contents of the given firmware |image_file| and gets the values of
