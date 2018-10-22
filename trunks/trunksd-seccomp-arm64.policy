@@ -47,6 +47,7 @@ faccessat: 1
 pipe2: 1
 socket: 1
 connect: 1
+send: 1
 sendto: 1
 getsockname: 1
 sendmsg: 1
