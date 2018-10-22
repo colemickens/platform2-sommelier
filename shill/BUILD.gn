@@ -143,37 +143,39 @@ write_deps("libshill-net-${libbase_ver}_deps") {
   target = "libshill-net-${libbase_ver}"
 }
 
+net_sources = [
+  "net/arp_client.cc",
+  "net/arp_packet.cc",
+  "net/attribute_list.cc",
+  "net/byte_string.cc",
+  "net/control_netlink_attribute.cc",
+  "net/event_history.cc",
+  "net/generic_netlink_message.cc",
+  "net/io_handler_factory.cc",
+  "net/io_handler_factory_container.cc",
+  "net/io_input_handler.cc",
+  "net/io_ready_handler.cc",
+  "net/ip_address.cc",
+  "net/netlink_attribute.cc",
+  "net/netlink_fd.cc",
+  "net/netlink_manager.cc",
+  "net/netlink_message.cc",
+  "net/netlink_packet.cc",
+  "net/netlink_socket.cc",
+  "net/nl80211_attribute.cc",
+  "net/nl80211_message.cc",
+  "net/rtnl_handler.cc",
+  "net/rtnl_listener.cc",
+  "net/rtnl_message.cc",
+  "net/shill_time.cc",
+  "net/sockets.cc",
+]
+
 shared_library("libshill-net-${libbase_ver}") {
   configs += [ ":target_defaults" ]
   configs -= [ "//common-mk:no_exceptions" ]
-  sources = [
-    "net/arp_client.cc",
-    "net/arp_packet.cc",
-    "net/attribute_list.cc",
-    "net/byte_string.cc",
-    "net/control_netlink_attribute.cc",
-    "net/event_history.cc",
-    "net/generic_netlink_message.cc",
-    "net/io_handler_factory.cc",
-    "net/io_handler_factory_container.cc",
-    "net/io_input_handler.cc",
-    "net/io_ready_handler.cc",
-    "net/ip_address.cc",
-    "net/netlink_attribute.cc",
-    "net/netlink_fd.cc",
-    "net/netlink_manager.cc",
-    "net/netlink_message.cc",
-    "net/netlink_packet.cc",
-    "net/netlink_socket.cc",
-    "net/nl80211_attribute.cc",
-    "net/nl80211_message.cc",
-    "net/rtnl_handler.cc",
-    "net/rtnl_listener.cc",
-    "net/rtnl_message.cc",
-    "net/shill_time.cc",
-    "net/sockets.cc",
-  ]
   defines = [ "SLOG_MEANS_VLOG=1" ]
+  sources = net_sources
   cflags_cc = [
     # for shill::Logging declarations
     "-Wno-unused-variable",
@@ -338,31 +340,6 @@ static_library("libshill") {
     "logging.cc",
     "manager.cc",
     "metrics.cc",
-    "net/arp_client.cc",
-    "net/arp_packet.cc",
-    "net/attribute_list.cc",
-    "net/byte_string.cc",
-    "net/control_netlink_attribute.cc",
-    "net/event_history.cc",
-    "net/generic_netlink_message.cc",
-    "net/io_handler_factory.cc",
-    "net/io_handler_factory_container.cc",
-    "net/io_input_handler.cc",
-    "net/io_ready_handler.cc",
-    "net/ip_address.cc",
-    "net/netlink_attribute.cc",
-    "net/netlink_fd.cc",
-    "net/netlink_manager.cc",
-    "net/netlink_message.cc",
-    "net/netlink_packet.cc",
-    "net/netlink_socket.cc",
-    "net/nl80211_attribute.cc",
-    "net/nl80211_message.cc",
-    "net/rtnl_handler.cc",
-    "net/rtnl_listener.cc",
-    "net/rtnl_message.cc",
-    "net/shill_time.cc",
-    "net/sockets.cc",
     "passive_link_monitor.cc",
     "pending_activation_store.cc",
     "portal_detector.cc",
@@ -398,6 +375,7 @@ static_library("libshill") {
     "vpn/vpn_provider.cc",
     "vpn/vpn_service.cc",
   ]
+  sources += net_sources
   libs = [
     "-lbootstat",
     "-lpolicy-${libbase_ver}",
