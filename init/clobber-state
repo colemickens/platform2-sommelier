@@ -518,6 +518,19 @@ remove_vpd_keys() {
   fi
 }
 
+# In cases where biometric sensors are available, reset the internal entropy
+# used by those sensors for encryption, to render related data/templates etc.
+# undecipherable.
+reset_bio_entropy() {
+  if [ -e /usr/bin/bio_wash ]; then
+    if bio_wash; then
+      echo "Bio wash successful."
+    else
+      echo "Bio wash failed!"
+    fi
+  fi
+}
+
 main() {
   ensure_root_account
   redirect_log_start
@@ -528,6 +541,8 @@ main() {
   if [ "${ROLLBACK_WIPE}" != "rollback" ]; then
     crossystem clear_tpm_owner_request=1
   fi
+
+  reset_bio_entropy
 
   preserve_files
   detect_system_config
