@@ -676,7 +676,8 @@ int StartTerminaVm(dbus::ObjectProxy* proxy,
                    string name,
                    string cryptohome_id,
                    string removable_media,
-                   string image_name) {
+                   string image_name,
+                   string image_type) {
   if (name.empty()) {
     LOG(ERROR) << "--name is required";
     return -1;
@@ -700,7 +701,7 @@ int StartTerminaVm(dbus::ObjectProxy* proxy,
       disk_size = kMinimumDiskSize;
 
     string disk_path;
-    if (CreateDiskImage(proxy, cryptohome_id, name, disk_size, kImageTypeQcow2,
+    if (CreateDiskImage(proxy, cryptohome_id, name, disk_size, image_type,
                         kStorageCryptohomeRoot, &disk_path) != 0) {
       return -1;
     }
@@ -949,7 +950,8 @@ int main(int argc, char** argv) {
   } else if (FLAGS_start_termina_vm) {
     return StartTerminaVm(
         proxy, std::move(FLAGS_name), std::move(FLAGS_cryptohome_id),
-        std::move(FLAGS_removable_media), std::move(FLAGS_image_name));
+        std::move(FLAGS_removable_media), std::move(FLAGS_image_name),
+        std::move(FLAGS_image_type));
   } else if (FLAGS_start_container) {
     return StartContainer(proxy, std::move(FLAGS_name),
                           std::move(FLAGS_container_name),
