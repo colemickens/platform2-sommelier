@@ -9,6 +9,9 @@ group("all") {
     ":net_poll_tool",
     ":static_node_tool",
   ]
+  if (use.test) {
+    deps += [ ":clobber_state_test" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -30,4 +33,24 @@ executable("static_node_tool") {
   sources = [
     "static_node_tool.cc",
   ]
+}
+
+if (use.test) {
+  pkg_config("test_config") {
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+  }
+
+  executable("clobber_state_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
+    ]
+    sources = [
+      "tests/clobber_state_test.cc",
+    ]
+    deps = [
+      "//common-mk/testrunner",
+    ]
+  }
 }
