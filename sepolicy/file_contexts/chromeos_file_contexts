@@ -46,6 +46,7 @@ include(sepolicy/file_contexts/coreutils)
 /usr/sbin/avahi-daemon          u:object_r:cros_avahi_daemon_exec:s0
 /usr/sbin/arc-setup             u:object_r:cros_arc_setup_exec:s0
 /usr/sbin/chapsd                u:object_r:cros_chapsd_exec:s0
+/usr/sbin/sshd                  u:object_r:cros_sshd_exec:s0
 /usr/sbin/chromeos-cleanup-logs u:object_r:cros_chromeos_cleanup_logs_exec:s0
 /usr/sbin/chromeos-trim         u:object_r:cros_chromeos_trim_exec:s0
 /usr/sbin/conntrackd            u:object_r:cros_conntrackd_exec:s0
@@ -140,6 +141,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /dev/shm(/.*)?                  u:object_r:cros_shm:s0
 /dev/urandom                    u:object_r:urandom_device:s0
 /dev/zero                       u:object_r:zero_device:s0
+/dev/ptmx                       u:object_r:ptmx_device:s0
 
 is_arc_nyc(`
 # Label /dev/bus/usb/NNN/MMM

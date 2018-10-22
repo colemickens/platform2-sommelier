@@ -1,0 +1,3 @@
+type cros_ssh_session, domain, chromeos_domain;
+
+permissive cros_ssh_session;

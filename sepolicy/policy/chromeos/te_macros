@@ -48,6 +48,18 @@ define(`cros_net', `
 typeattribute $1 cros_netdomain;
 ')
 
+define(`cros_tcp_create', `
+allow $1 self:tcp_socket create_socket_perms;
+')
+
+define(`cros_udp_create', `
+allow $1 self:udp_socket create_socket_perms;
+');
+
+define(`cros_netlink', `
+allow $1 self:$2 { create_socket_perms_no_ioctl nlmsg_read };
+')
+
 define(`cros_dbus_client', `
 typeattribute $1 cros_dbus_client_domain;
 ')

@@ -32,6 +32,7 @@ type cros_disks_exec, exec_type, file_type;
 type cros_jetstream_update_stats_exec, exec_type, file_type;
 type cros_logger_exec, exec_type, file_type;
 type cros_machine_id_regen_exec, exec_type, file_type;
+type cros_sshd_exec, exec_type, file_type;
 type cros_memd_exec, exec_type, file_type;
 type cros_metrics_daemon_exec, exec_type, file_type;
 type cros_midis_exec, exec_type, file_type;
@@ -109,8 +110,7 @@ r_dir_file(chromeos_domain, cros_tz_data_file)
 
 type cros_ld_conf_cache, file_type;
 r_dir_file(domain, cros_ld_conf_cache);
-# TODO(fqj): update scontext from chromeos to something else identifying the ssh
-filetrans_pattern(chromeos, cros_etc, cros_ld_conf_cache, file, "ld.so.cache~");
+filetrans_pattern(cros_ssh_session, cros_etc, cros_ld_conf_cache, file, "ld.so.cache~");
 filetrans_pattern(frecon, cros_etc, cros_ld_conf_cache, file, "ld.so.cache~");
 
 type cros_periodic_scheduler_cache_t, file_type;

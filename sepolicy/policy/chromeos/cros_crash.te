@@ -25,6 +25,7 @@ chromeos_domain
 -cros_anomaly_collector
 -cros_crash
 -cros_udevd # Udevd is also expected to execute crash reporter.
+-cros_ssh_session
 } cros_crash_reporter_exec:file execute;
 
 minijail_netns_new(cros_crash)
