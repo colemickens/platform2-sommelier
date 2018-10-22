@@ -30,7 +30,8 @@ InputFrameWorker::InputFrameWorker(std::shared_ptr<cros::V4L2VideoNode> node,
         int cameraId, size_t pipelineDepth) :
         /* Keep the same number of buffers as ISYS. */
         FrameWorker(node, cameraId, pipelineDepth + EXTRA_CIO2_BUFFER_NUMBER, "InputFrameWorker"),
-        mPipeType(GraphConfig::PIPE_MAX)
+        mPipeType(GraphConfig::PIPE_MAX),
+        mLastRequestId(-1)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     mPollMe = true;
@@ -67,9 +68,16 @@ status_t InputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
     CheckError(memType != V4L2_MEMORY_DMABUF, BAD_VALUE,
                "@%s unsupported memory type %d.", __func__, memType);
 
+    Camera3Request* request = msg->pMsg.processingSettings->request;
+    CheckError(!request, BAD_VALUE, "@%s request is nullptr", __func__);
+
+    LOG2("@%s, mPipeType:%d, request id %d, mLastRequestId %d",
+          __FUNCTION__, mPipeType, request->getId(), mLastRequestId);
+
     std::shared_ptr<cros::V4L2Buffer> rawV4L2Buf = msg->pMsg.rawNonScaledBuffer;
     if (mPipeType == GraphConfig::PIPE_STILL &&
-        msg->pMsg.lastRawNonScaledBuffer) {
+        msg->pMsg.lastRawNonScaledBuffer &&
+        request->getId() > (mLastRequestId + 1)) {
         rawV4L2Buf = msg->pMsg.lastRawNonScaledBuffer;
     }
 
@@ -79,9 +87,7 @@ status_t InputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
     CheckError(fd < 0, BAD_VALUE, "@%s invalid fd(%d) passed from isys.\n", __func__, fd);
 
     status_t status = mNode->PutFrame(&mBuffers[index]);
-
-    Camera3Request* request = msg->pMsg.processingSettings->request;
-    CheckError(!request, BAD_VALUE, "@%s request is nullptr", __func__);
+    mLastRequestId = request->getId();
 
     request->setSeqenceId(rawV4L2Buf->Sequence());
     PERFORMANCE_HAL_ATRACE_PARAM1("seqId", rawV4L2Buf->Sequence());

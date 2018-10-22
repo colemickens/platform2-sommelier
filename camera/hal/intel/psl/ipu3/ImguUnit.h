@@ -120,6 +120,7 @@ private:
         int mCameraId;
         GraphConfig::PipeType mPipeType;
         MediaCtlHelper mMediaCtlHelper;
+        int mLastRequestId;
         ImguState mState;
 
         /**

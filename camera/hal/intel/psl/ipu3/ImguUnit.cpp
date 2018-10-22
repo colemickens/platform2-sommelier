@@ -369,6 +369,7 @@ ImguUnit::ImguPipe::ImguPipe(int cameraId, GraphConfig::PipeType pipeType,
         mCameraId(cameraId),
         mPipeType(pipeType),
         mMediaCtlHelper(mediaCtl, nullptr),
+        mLastRequestId(-1),
         mState(IMGU_IDLE),
         mCameraThread("ImguThread" + std::to_string(pipeType)),
         mPollerThread(new PollerThread("ImguPollerThread" + std::to_string(pipeType))),
@@ -470,6 +471,7 @@ status_t ImguUnit::ImguPipe::configStreams(std::vector<camera3_stream_t*> &strea
 {
     LOG1("%s, Pipe Type %d, streams number:%lu", __FUNCTION__, mPipeType, streams.size());
     mFirstRequest = true;
+    mLastRequestId = -1;
 
     IStreamConfigProvider::MediaType mediaType = GraphConfig::PIPE_STILL == mPipeType ?
                            IStreamConfigProvider::IMGU_STILL : IStreamConfigProvider::IMGU_VIDEO;
@@ -725,8 +727,14 @@ status_t ImguUnit::ImguPipe::processNextRequest()
     Camera3Request *request = msg->cbMetadataMsg.request;
     CheckError(request == nullptr, BAD_VALUE, "Request is nullptr");
 
-    if (GraphConfig::PIPE_STILL == mPipeType) mFirstRequest = true;
-    LOG2("@%s:handleExecuteReq for Req id %d, ", __FUNCTION__, request->getId());
+    if (GraphConfig::PIPE_STILL == mPipeType
+        && (mLastRequestId + 1) != request->getId()){
+        mFirstRequest = true;
+    }
+
+    LOG2("@%s:handleExecuteReq for Req id %d, mLastRequestId %d",
+          __FUNCTION__, request->getId(), mLastRequestId);
+    mLastRequestId = request->getId();
 
     if (msg->cbMetadataMsg.updateMeta) {
         updateProcUnitResults(*request, msg->pMsg.processingSettings);

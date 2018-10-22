@@ -35,6 +35,7 @@ public:
 
 private:
     GraphConfig::PipeType mPipeType;
+    int mLastRequestId;
 };
 
 } /* namespace camera2 */
