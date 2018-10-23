@@ -30,7 +30,7 @@ understand its resource costs in the wild:
 * MachineLearningService.CpuUsageMilliPercent: Fraction of total CPU resources
   consumed by the daemon every 5 minutes, in units of milli-percent (1/100,000).
 
-TODO(amoylan): Additional metrics to be added, ideally per-model, to understand
+TODO(alanlxl): Additional metrics to be added, ideally per-model, to understand
 levels of performance that clients are getting:
 
 * LoadModel time
