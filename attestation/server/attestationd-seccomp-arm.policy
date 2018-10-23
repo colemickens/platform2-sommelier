@@ -100,3 +100,4 @@ ioctl: 1
 
 # This call is attempted but apparently not necessary; return EPERM.
 prctl: return 1
+prlimit64: arg2 == 0 && arg3 != 0

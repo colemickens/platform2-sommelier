@@ -15,6 +15,7 @@ exit: 1
 exit_group: 1
 fstat: 1
 futex: 1
+getpid: 1
 getrlimit: 1
 # ioctl: arg1 == EVIOCSFF
 #        arg1 == EVIOCGABS(ABS_X) || arg1 == EVIOCGABS(ABS_Y) ||
@@ -38,6 +39,7 @@ mprotect: 1
 munmap: 1
 open: 1
 openat: 1
+prlimit64: arg2 == 0 && arg3 != 0
 read: 1
 restart_syscall: 1
 rt_sigaction: 1
@@ -49,4 +51,3 @@ set_tid_address: 1
 stat: 1
 wait4: 1
 write: 1
-getpid: 1

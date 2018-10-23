@@ -41,3 +41,4 @@ sendto: 1
 socket: arg0 == AF_UNIX
 # Used by libbrillo to know whether stderr is a TTY.
 ioctl: arg1 == TCGETS
+prlimit64: arg2 == 0 && arg3 != 0

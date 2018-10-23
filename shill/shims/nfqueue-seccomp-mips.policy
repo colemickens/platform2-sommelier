@@ -42,3 +42,4 @@ set_thread_area: 1
 set_robust_list: 1
 sendmsg: 1
 getpid: 1
+prlimit64: arg2 == 0 && arg3 != 0

@@ -40,3 +40,4 @@ set_robust_list: 1
 set_tid_address: 1
 
 getpid: 1
+prlimit64: arg2 == 0 && arg3 != 0

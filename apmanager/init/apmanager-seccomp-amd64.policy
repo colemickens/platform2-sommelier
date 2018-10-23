@@ -88,3 +88,4 @@ rmdir: 1
 chown: 1
 chmod: 1
 writev: 1
+prlimit64: arg2 == 0 && arg3 != 0

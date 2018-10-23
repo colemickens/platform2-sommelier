@@ -51,3 +51,4 @@ ioctl: arg1 == TCGETS
 munmap: 1
 getresgid32: 1
 getpid: 1
+prlimit64: arg2 == 0 && arg3 != 0

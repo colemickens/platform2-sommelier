@@ -38,3 +38,4 @@ set_robust_list: 1
 # execve: return EPERM
 execve: return 1
 getpid: 1
+prlimit64: arg2 == 0 && arg3 != 0

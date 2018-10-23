@@ -47,3 +47,4 @@ gettimeofday: 1
 send: 1
 clock_gettime: 1
 getpid: 1
+prlimit64: arg2 == 0 && arg3 != 0

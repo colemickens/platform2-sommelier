@@ -83,3 +83,4 @@ chmod: 1
 chown32: 1
 dup: 1
 writev: 1
+prlimit64: arg2 == 0 && arg3 != 0

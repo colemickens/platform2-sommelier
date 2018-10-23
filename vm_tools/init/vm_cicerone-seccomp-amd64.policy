@@ -80,3 +80,4 @@ nanosleep: 1
 chmod: 1
 accept: 1
 getpid: 1
+prlimit64: arg2 == 0 && arg3 != 0

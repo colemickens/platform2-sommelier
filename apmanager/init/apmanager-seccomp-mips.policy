@@ -68,3 +68,4 @@ kill: 1
 rt_sigaction: 1
 waitpid: 1
 writev: 1
+prlimit64: arg2 == 0 && arg3 != 0

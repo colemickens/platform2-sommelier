@@ -56,3 +56,4 @@ tgkill: 1
 ugetrlimit: 1
 uname: 1
 write: 1
+prlimit64: arg2 == 0 && arg3 != 0

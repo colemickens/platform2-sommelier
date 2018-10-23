@@ -27,6 +27,7 @@ getegid: 1
 geteuid: 1
 getgid: 1
 getpeername: 1
+getpid: 1
 getrandom: 1
 getresgid: 1
 getresuid: 1
@@ -54,6 +55,7 @@ openat: 1
 pipe: 1
 pipe2: 1
 poll: 1
+prlimit64: arg2 == 0 && arg3 != 0
 pwrite64: 1
 read: 1
 recvfrom: 1
@@ -81,4 +83,3 @@ unlink: 1
 wait4: 1
 write: 1
 writev: 1
-getpid: 1

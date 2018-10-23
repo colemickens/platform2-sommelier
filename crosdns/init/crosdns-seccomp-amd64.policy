@@ -44,3 +44,4 @@ getresgid: 1
 getrlimit: 1
 ioctl: arg1 == TCGETS
 getpid: 1
+prlimit64: arg2 == 0 && arg3 != 0

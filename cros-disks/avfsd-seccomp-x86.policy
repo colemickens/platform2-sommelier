@@ -69,3 +69,4 @@ openat: 1
 set_robust_list: 1
 pipe: 1
 getpid: 1
+prlimit64: arg2 == 0 && arg3 != 0
