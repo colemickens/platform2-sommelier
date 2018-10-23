@@ -181,6 +181,12 @@ TEST_F(Tpm2NvramTest, SessionFailure) {
   EXPECT_NE(NVRAM_RESULT_SUCCESS,
             tpm_nvram_->DefineSpace(0, 0, {}, "", NVRAM_POLICY_NONE));
   EXPECT_NE(NVRAM_RESULT_SUCCESS, tpm_nvram_->DestroySpace(0));
+
+  // Since the ReadSpace/WriteSpace will use the return data of
+  // GetNVSpacePublicArea() to determine whether using Session or not.
+  // We have to setup a fake space to force them using the Session in this test.
+  SetupExistingSpace(0, kSomeNvramSize, trunks::TPMA_NV_WRITTEN,
+                     NO_EXPECT_AUTH, NORMAL_AUTH);
   EXPECT_NE(NVRAM_RESULT_SUCCESS, tpm_nvram_->WriteSpace(0, "", ""));
   EXPECT_NE(NVRAM_RESULT_SUCCESS, tpm_nvram_->ReadSpace(0, nullptr, ""));
   EXPECT_NE(NVRAM_RESULT_SUCCESS, tpm_nvram_->LockSpace(0, false, false, ""));
