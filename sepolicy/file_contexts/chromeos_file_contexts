@@ -7,6 +7,7 @@ include(sepolicy/file_contexts/coreutils)
 /usr/local/[^/]+                u:object_r:cros_dev_image_files:s0
 /sbin/init                      u:object_r:chromeos_init_exec:s0
 
+/sbin/chromeos_startup          u:object_r:chromeos_startup_script_exec:s0
 /sbin/crash_reporter            u:object_r:cros_crash_reporter_exec:s0
 /sbin/crash_sender              u:object_r:cros_crash_sender_exec:s0
 /sbin/debugd                    u:object_r:cros_debugd_exec:s0
@@ -14,8 +15,10 @@ include(sepolicy/file_contexts/coreutils)
 /sbin/insmod                    u:object_r:cros_modprobe_exec:s0
 /sbin/minijail0                 u:object_r:cros_minijail_exec:s0
 /sbin/modprobe                  u:object_r:cros_modprobe_exec:s0
+/sbin/restorecon                u:object_r:cros_restorecon_exec:s0
 /sbin/rmmod                     u:object_r:cros_modprobe_exec:s0
 /sbin/session_manager           u:object_r:cros_session_manager_exec:s0
+/sbin/setfiles                  u:object_r:cros_restorecon_exec:s0
 /sbin/udevd                     u:object_r:cros_udevd_exec:s0
 /sbin/upstart-socket-bridge     u:object_r:upstart_socket_bridge_exec:s0
 
@@ -92,6 +95,8 @@ include(sepolicy/file_contexts/coreutils)
 /var/log/secure                 u:object_r:cros_secure_log:s0
 /var/log/tlsdate.log            u:object_r:cros_tlsdate_log:s0
 /var/log/powerd.out             u:object_r:cros_powerd_log:s0
+/var/log/asan(/.*)?             u:object_r:cros_var_log_asan:s0
+/var/log/mount_options.log      u:object_r:chromeos_startup_mount_options_log_file:s0
 /var/spool                      u:object_r:cros_var_spool:s0
 /var/spool/cron-lite(/.*)?      u:object_r:cros_periodic_scheduler_cache_t:s0
 
@@ -112,6 +117,7 @@ include(sepolicy/file_contexts/coreutils)
 /etc/resolv.conf                u:object_r:cros_network_conf_file:s0
 /etc/rsyslog(.*)?               u:object_r:cros_rsyslog_conf_file:s0
 /etc/selinux(/.*)?              u:object_r:cros_selinux_config_file:s0
+/etc/sysctl.d(/.*)?             u:object_r:cros_sysctl_conf_file:s0
 /etc/systemd/network(/.*)?      u:object_r:cros_network_conf_file:s0
 /etc/udev(/.*)?                 u:object_r:cros_udev_conf_file:s0
 

@@ -7,6 +7,8 @@ allow chromeos_domain cros_system_file_type:dir search;
 type cros_kernel_modules_ko_file, file_type;
 type cros_kernel_modules_file, file_type;
 
+type chromeos_startup_script_exec, exec_type, file_type;
+
 type cros_dev_image_files, file_type;
 
 type cros_seccomp_policy_file, file_type;
@@ -14,6 +16,7 @@ type cros_seccomp_policy_file, file_type;
 type cros_accelerator_logs_exec, exec_type, file_type;
 type cros_anomaly_collector_exec, exec_type, file_type;
 type cros_apk_cache_cleaner_jailed_exec, exec_type, file_type;
+type cros_arc_setup_exec, exec_type, file_type;
 type cros_avahi_daemon_exec, exec_type, file_type;
 type cros_bluetoothd_exec, exec_type, file_type;
 type cros_chapsd_exec, exec_type, file_type;
@@ -41,6 +44,7 @@ type cros_modem_manager_exec, exec_type, file_type;
 type cros_modprobe_exec, exec_type, file_type;
 type cros_periodic_scheduler_exec, exec_type, file_type;
 type cros_powerd_exec, exec_type, file_type;
+type cros_restorecon_exec, exec_type, file_type;
 type cros_rsyslogd_exec, exec_type, file_type;
 type cros_session_manager_exec, exec_type, file_type;
 type cros_shill_exec, exec_type, file_type;
@@ -49,7 +53,6 @@ type cros_tlsdated_exec, exec_type, file_type;
 type cros_udevd_exec, exec_type, file_type;
 type cros_update_engine_exec, exec_type, file_type;
 type cros_wpa_supplicant_exec, exec_type, file_type;
-type cros_arc_setup_exec, exec_type, file_type;
 
 type cros_coreutils_exec, exec_type, file_type;
 
@@ -75,6 +78,7 @@ type cros_ionice_exec, exec_type, file_type;
 
 type cros_init_conf_file, file_type;
 type cros_selinux_config_file, file_type;
+type cros_sysctl_conf_file, file_type;
 
 type cros_var, file_type;
 type cros_var_log, file_type;
