@@ -1,6 +1,35 @@
+
 define(`has_arc', ifelse(arc_version, `none', $2, $1))
 define(`no_arc', has_arc(, $1))
 define(`is_arc_nyc', ifelse(arc_version, `n', $1, $2))
 
-# Wraps policy that fails NYC CTS.
-define(`arc_nyc_cts_fails', ifelse(arc_version, `n', , $1))
+divert(-1)
+define(`_first', `$1');
+define(`_break_cts', `
+ifelse($1, `()', , `
+ define(`broken_arc_version', _first$1)
+ ifelse(broken_arc_version, arc_version, `define(`_broke_cts', `true')')
+ _break_cts((shift$1), $2, $3)
+# ifelse $1(broken_cts_versions)
+')
+# define _break_cts
+')
+define(`_put_permissive', `
+ifelse(`$#', `0', , `$#', `1', `permissive $1;', `_put_permissive(shift($@))')
+')
+
+# Wraps policy that fails CTS.
+# break_cts(broken_cts_versions, policies, affected_domains)
+define(`break_cts', `
+_break_cts($1)
+ifelse(_broke_cts, `true', `_put_permissive$3', $2);
+undefine(`_broke_cts')
+')
+
+divert
+
+# Wraps policies that fails NYC CTS.
+# arc_nyc_cts_fails(policies, affected_scontexts)
+define(`arc_nyc_cts_fails', `
+break_cts((`n'), $1, $2)
+')
