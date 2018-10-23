@@ -403,11 +403,18 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
 
   // Don't modify Cr50 in factory.
   if (!is_factory_install) {
-    result = RunCr50Script(install_config.root.mount(), "cr50-set-board-id.sh",
-                           "unknown");
-    // cr50 set board id failure is not a reason for interrupting installation.
-    if (result)
-      fprintf(stderr, "ignored: cr50-set-board-id failure (%d).\n", result);
+    // Check the device state to determine if the board id should be set.
+    if (RunCr50Script(install_config.root.mount(), "cr50-set-board-id.sh",
+                      "check_device")) {
+      printf("Skip setting board id.\n");
+    } else {
+      // Set the board id with unknown phase.
+      result = RunCr50Script(install_config.root.mount(),
+                             "cr50-set-board-id.sh", "unknown");
+      // cr50 set board id failure is not a reason to interrupt installation.
+      if (result)
+        fprintf(stderr, "ignored: cr50-set-board-id failure (%d).\n", result);
+    }
 
     result = RunCr50Script(install_config.root.mount(), "cr50-update.sh",
                            install_config.root.mount());
