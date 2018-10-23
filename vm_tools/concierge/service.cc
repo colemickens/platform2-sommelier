@@ -611,6 +611,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     vm_info->set_ipv4_address(vm->IPv4Address());
     vm_info->set_pid(vm->pid());
     vm_info->set_cid(vm->cid());
+    vm_info->set_seneschal_server_handle(vm->seneschal_server_handle());
 
     response.set_success(true);
     response.set_status(request.start_termina() && !vm->IsTremplinStarted()
