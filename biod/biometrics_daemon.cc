@@ -506,10 +506,6 @@ void BiometricsDaemon::OnSessionStateChanged(dbus::Signal* signal) {
   if (state == dbus_constants::kSessionStateStarted) {
     for (const auto& biometrics_manager_wrapper : biometrics_managers_) {
       biometrics_manager_wrapper->get().SetDiskAccesses(true);
-      if (!biometrics_manager_wrapper->get().ResetSensor()) {
-        LOG(ERROR) << "Failed to reset biometric sensor type: "
-                   << biometrics_manager_wrapper->get().GetType();
-      }
     }
     if (!primary_user_.empty()) {
       LOG(INFO) << "Primary user already exists. Not updating primary user.";

@@ -191,10 +191,6 @@ class BiometricsManager {
   // for reading/writing records.
   virtual void SetDiskAccesses(bool allow) {}
 
-  // Perform a reset on the underlying sensor h/w (as well as re-initialize any
-  // software state associated with that sensor).
-  virtual bool ResetSensor() { return true; }
-
  protected:
   virtual void EndEnrollSession() = 0;
   virtual void EndAuthSession() = 0;
