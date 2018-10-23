@@ -6,3 +6,5 @@ permissive cros_debugd_minijail;
 
 domain_auto_trans(cros_init, cros_debugd_exec, cros_debugd);
 domain_auto_trans(cros_debugd, cros_minijail_exec, cros_debugd_minijail);
+
+log_writer(cros_debugd);

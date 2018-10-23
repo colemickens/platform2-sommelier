@@ -6,3 +6,5 @@ domain_auto_trans(cros_periodic_scheduler, cros_machine_id_regen_exec, cros_mach
 
 # init will also execute cros-machine-id-regen at network disconnected.
 domain_auto_trans(cros_init, cros_machine_id_regen_exec, cros_machine_id_regen);
+
+log_writer(cros_machine_id_regen);

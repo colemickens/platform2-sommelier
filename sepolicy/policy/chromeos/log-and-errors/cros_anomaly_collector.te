@@ -4,10 +4,9 @@ permissive cros_anomaly_collector;
 
 from_minijail_preload(cros_anomaly_collector, cros_anomaly_collector_exec);
 cros_dbus_client(cros_anomaly_collector)
+uma_writer(cros_anomaly_collector)
 
 allow cros_anomaly_collector cros_syslog:file r_file_perms;
-allow cros_anomaly_collector cros_metrics_file:dir { search getattr };
-allow cros_anomaly_collector cros_metrics_uma_events_file:file rw_file_perms;
 
 type cros_anomaly_collector_tmp_file, file_type, cros_tmpfile_type;
 filetrans_pattern(cros_anomaly_collector, tmpfs, cros_anomaly_collector_tmp_file, file);

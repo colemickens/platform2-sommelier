@@ -3,3 +3,5 @@ type cros_chapsd, domain, chromeos_domain, mlstrustedobject;
 permissive cros_chapsd;
 
 domain_auto_trans(cros_init_scripts, cros_chapsd_exec, cros_chapsd);
+
+log_writer(cros_chapsd);

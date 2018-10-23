@@ -44,6 +44,9 @@ define(`cros_dbus_client', `
 typeattribute $1 cros_dbus_client_domain;
 ')
 
+define(`uma_writer', `
+typeattribute $1 cros_uma_events_writer_domain;
+')
 
 # minijail-related macros
 include(sepolicy/policy/chromeos/minijail_te_macros)

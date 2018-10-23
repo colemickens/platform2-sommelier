@@ -28,3 +28,4 @@ chromeos_domain
 } cros_crash_reporter_exec:file execute;
 
 minijail_netns_new(cros_crash)
+log_writer(cros_crash);
