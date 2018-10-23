@@ -6,6 +6,8 @@ allow chromeos_domain cros_system_file_type:dir search;
 
 type cros_dev_image_files, file_type;
 
+type cros_seccomp_policy_file, file_type;
+
 type cros_accelerator_logs_exec, exec_type, file_type;
 type cros_anomaly_collector_exec, exec_type, file_type;
 type cros_apk_cache_cleaner_jailed_exec, exec_type, file_type;
@@ -77,12 +79,13 @@ type cros_var_lib_dbus, file_type;
 type cros_arc_log, file_type, cros_log_type;
 type cros_authpolicy_log, file_type, cros_log_type;
 type cros_boot_log, file_type, cros_log_type;
+type cros_metrics_file, file_type;
+type cros_metrics_uma_events_file, file_type;
 type cros_net_log, file_type, cros_log_type;
+type cros_powerd_log, file_type;
 type cros_secure_log, file_type, cros_log_type;
 type cros_syslog, file_type, cros_log_type;
 type cros_tlsdate_log, file_type, cros_log_type;
-type cros_metrics_file, file_type;
-type cros_metrics_uma_events_file, file_type;
 
 type cros_run, file_type;
 type cros_run_dbus, file_type;

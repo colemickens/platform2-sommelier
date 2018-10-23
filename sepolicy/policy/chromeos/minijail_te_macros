@@ -7,6 +7,7 @@
 #
 define(`minijail_netns_new', `
 allowxperm $1 $1:unix_dgram_socket ioctl { SIOCSIFFLAGS SIOCGIFFLAGS };
+allow $1 self:capability net_admin;
 ')
 
 define(`minijail_mountdev',
@@ -32,8 +33,16 @@ allow $1 { rootfs cros_var cros_var_empty tmpfs $3 $4 }:dir getattr;
 
 define(`minijail_chroot', `
 allow $1 $1:capability sys_chroot;
+allow minijail {rootfs $2}:dir open;
 ');
 
+define(`minijail_seccomp', `
+allow $1 cros_seccomp_policy_file:file r_file_perms;
+')
+
+define(`minijail_rlimit', `
+allow $1 self:capability sys_resource;
+');
 
 # Auto-label tmpfile managed by minijail domains (static-only)
 define(`minijail_static_uses_tmpfile', `

@@ -52,3 +52,6 @@ filetrans_pattern(cros_init_scripts, cros_run, cros_run_dbus, dir, "dbus");
 
 # init/cras.conf
 filetrans_pattern(cros_init_scripts, cros_run, cras_socket, dir, "cras")
+
+# init/powerd.conf
+filetrans_pattern(cros_init_scripts, cros_var_log, cros_powerd_log, file, "powerd.out")
