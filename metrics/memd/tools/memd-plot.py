@@ -27,10 +27,14 @@ warnings.filterwarnings('ignore',
 
 
 def die(message):
-  """Prints message and exits."""
-  print(message)
+  """Prints message and exits with error status."""
+  print('memd_plot.py: fatal error:', message)
   sys.exit(1)
 
+def warn(message):
+  """Prints warning."""
+  print('memd_plot.py: warning:', message)
+  print(message)
 
 def usage():
   """Prints usage message and exits"""
@@ -215,12 +219,14 @@ def toggle_attribute(label, attribute_name):
 # Tables that describe how various values/events are plotted.
 
 # Graph_attributes is for time-varying values.
-# Each graph is identified by its name (for instance, 'freeram').
+# Each graph is identified by its name (for instance, 'freeram'),
+# also called 'label'.
 #
 # Graphs with 'ignore' == True are not plotted.
 # Graphs with the same 'group' attribute are plotted with the same scale.
-# 'off' == True hides the graph at startup
-# 'derivative' == True plots the derivatives between samples
+# 'off' == True: hides the graph at startup.
+# 'differentiate' == True: plots the derivatives between samples.
+# 'optional' == True: label is optional in samples.
 graph_attributes = {
     # 'uptime' is treated specially since it is never plotted
     'uptime': {'ignore': True},
@@ -250,37 +256,53 @@ graph_attributes = {
         'group': 'ram',
         'scale': 1000,
     },
-    'nr_pages_scanned': {
-        'group': 'pages',
-        'off': True,
-    },
     'pswpin': {
-        'derivative': True,
+        'differentiate': True,
         'group': 'pages',
         'off': True,
     },
     'pswpout': {
-        'derivative': True,
+        'differentiate': True,
+        'group': 'pages',
+        'off': True,
+    },
+    'nr_pages_scanned': {
+        'optional': True,
+        'group': 'pages',
+        'off': True,
+    },
+    'pgalloc': {
+        'optional': True,
+        'differentiate': True,
+        'group': 'pages',
+        'off': True,
+    },
+    'pgalloc_dma': {
+        'optional': True,
+        'differentiate': True,
         'group': 'pages',
         'off': True,
     },
     'pgalloc_dma32': {
-        'derivative': True,
+        'optional': True,
+        'differentiate': True,
         'group': 'pages',
         'off': True,
     },
     'pgalloc_normal': {
-        'derivative': True,
+        'optional': True,
+        'differentiate': True,
         'group': 'pages',
         'off': True,
     },
     'pgmajfault': {
-        'derivative': True,
+        'differentiate': True,
         'group': 'pages',
         'off': True,
     },
     'pgmajfault_f': {
-        'derivative': True,
+        'optional': True,
+        'differentiate': True,
         'group': 'pages',
         'off': True,
     },
@@ -346,6 +368,7 @@ class Plotter(object):
     self._needs_redisplay = True
     # Interactive input state
     self._ii_state = 'base'
+    self._labels = {}
 
   def key_for_name(self, label):
     """Returns the one-character key for string |label|.
@@ -364,14 +387,25 @@ class Plotter(object):
     """Normalizes the arrays of values in |samples|
 
     Values are modified according to the graph attributes.
-    Additionally, expected and provided label names are
+    Additionally, expected and found label names are
     checked for consistency.
     """
-    # Sanity check: the names in graph_attributes should match the field names
-    # in the samples.
-    if set(graph_attributes.keys()) != set(self._samples.keys()):
-      die('mismatch in field names\nexpecting:\n%s\nfound:\n%s\n' %
-          (graph_attributes.keys(), self._samples.keys()))
+    # Sanity check of sample labels against the name/labels in
+    # graph_attributes.
+    known_labels = set(graph_attributes.keys())
+    required_labels = set([key for key in graph_attributes.keys()
+                           if 'optional' not in graph_attributes[key]])
+    found_labels = set(self._samples.keys())
+
+    if not required_labels.issubset(found_labels):
+      die('these required fields are missing:\n%s\n' %
+          (sorted(required_labels.difference(found_labels))))
+
+    if not found_labels.issubset(known_labels):
+      warn('ignoring these unknown fields:\n%s\n' %
+           (sorted(found_labels.difference(known_labels))))
+
+    self._labels = found_labels & known_labels
 
     # Convert uptimes to float (needed by filtering step).
     uptimes = [float(t) for t in self._samples['uptime']]
@@ -380,7 +414,7 @@ class Plotter(object):
     # Convert values to floats and scale them by given scale factor (if any).
     # Also filter values (average over window, and compute derivative).
     # A bit hacky since there may be reboots.
-    for label in graph_attributes:
+    for label in self._labels:
       attr = graph_attributes[label]
 
       if 'ignore' in attr:
@@ -389,7 +423,7 @@ class Plotter(object):
       scale = attr['scale'] if 'scale' in attr else 1
       self._samples[label] = [scale * float(x) for x in self._samples[label]]
 
-      if 'derivative' in attr:
+      if 'differentiate' in attr:
         s = self._samples[label]
         s = [derivative(s[i+1], s[i], uptimes[i+1], uptimes[i])
              for i in range(len(s) - 1)]
@@ -406,14 +440,14 @@ class Plotter(object):
     offset = 0.0
     last_uptime = -1.0
     adjusted_uptimes = []
-    for i in range(len(uptimes)):
+    for uptime in uptimes:
       # If the uptimes are not contiguous (i.e. at most about 0.1 seconds apart,
       # generously rounded up to 0.5) adjust offset so as to leave a 1-second
       # gap.
-      if abs(uptimes[i] - last_uptime) > 0.5:
-        offset += last_uptime - uptimes[i] + 1.0
-      last_uptime = uptimes[i]
-      adjusted_uptimes.append(uptimes[i] + offset)
+      if abs(uptime - last_uptime) > 0.5:
+        offset += last_uptime - uptime + 1.0
+      last_uptime = uptime
+      adjusted_uptimes.append(uptime + offset)
 
     self._samples['uptime'] = adjusted_uptimes
 
@@ -422,7 +456,7 @@ class Plotter(object):
 
     # 1. Find groups of quantities that should be scaled equally.
     sample_groups = {}
-    for label in graph_attributes:
+    for label in self._labels:
       attr = graph_attributes[label]
       if 'group' in attr:
         group_name = attr['group']
@@ -440,7 +474,7 @@ class Plotter(object):
       max_values_by_group[group_name] = max_value
 
     # Find max value for values that don't belong to any group.
-    for label in graph_attributes:
+    for label in self._labels:
       if label not in max_values and 'ignore' not in graph_attributes[label]:
         max_values[label] = max(self._samples[label])
 
@@ -461,10 +495,10 @@ class Plotter(object):
 
     uptimes = self._samples['uptime']
     previous_uptime = -1.0
-    for i in range(len(uptimes)):
+    for i, uptime in enumerate(uptimes):
       # Check for gap, but skip first (artificial) gap.  At each gap, insert a
       # None value in all value arrays, except uptime and type.
-      if i > 0 and uptimes[i] > previous_uptime + 0.3:
+      if i > 0 and uptime > previous_uptime + 0.3:
         for name in self._samples:
           if name == 'uptime':
             new_samples[name].append(previous_uptime)
@@ -472,7 +506,7 @@ class Plotter(object):
             new_samples[name].append('timer')
           else:
             new_samples[name].append(None)
-      previous_uptime = uptimes[i]
+      previous_uptime = uptime
 
       # Copy over old values.
       for name in self._samples:
@@ -484,7 +518,7 @@ class Plotter(object):
     """Plots the sampled values for label as a function of time."""
 
     on = 'off' not in graph_attributes[label]
-    legend_entry = '%s %s (100 = %s)' % (
+    legend_entry = '%s) %s (100 = %s)' % (
         self.key_for_name(label),
         label,
         eng_notation(max_values[label]))
@@ -505,7 +539,7 @@ class Plotter(object):
     add_grid(fig, int(self._samples['uptime'][-1]))
 
     # Graphs.
-    plot_labels = [label for label in graph_attributes
+    plot_labels = [label for label in self._labels
                    if 'ignore' not in graph_attributes[label]]
     for plot_label in plot_labels:
       self.plot_values(plot_label)
@@ -515,8 +549,7 @@ class Plotter(object):
     event_types = self._samples['type']
     times = {name: [] for name in event_attributes}
     values = {name: [] for name in event_attributes}
-    for i in range(len(uptimes)):
-      uptime = uptimes[i]
+    for i, uptime in enumerate(uptimes):
       event_type = event_types[i]
       if event_type == 'timer':
         continue
@@ -534,7 +567,7 @@ class Plotter(object):
         plt.plot(times[event_type], values[event_type],
                  color=color_for_name(event_type),
                  linestyle=linestyle_for_name(event_type),
-                 label=('* ' + event_attributes[event_type]['name']))
+                 label=('| ' + event_attributes[event_type]['name']))
 
     times = self._samples['uptime']
     min_time = times[0]
