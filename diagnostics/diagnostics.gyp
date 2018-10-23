@@ -114,6 +114,38 @@
         'diagnosticsd/diagnosticsd_mojo_service.cc',
       ],
     },
+    # Library that provides the DPSL (diagnostics processor support library)
+    # interface.
+    {
+      'target_name': 'libdpsl',
+      'type': 'static_library',
+      'dependencies': [
+        'diagnostics_grpc_protos',
+        'libgrpc_async_adapter',
+      ],
+      'variables': {
+        'exported_deps': [
+          'libbrillo-<(libbase_ver)',
+          'libchrome-<(libbase_ver)',
+        ],
+        'deps': [
+          '<@(exported_deps)',
+        ],
+      },
+      'link_settings': {
+        'variables': {
+          'deps': [
+            '<@(exported_deps)',
+          ],
+        },
+      },
+      'sources': [
+        'dpsl/internal/dpsl_global_context_impl.cc',
+        'dpsl/internal/dpsl_requester_impl.cc',
+        'dpsl/internal/dpsl_rpc_server_impl.cc',
+        'dpsl/internal/dpsl_thread_context_impl.cc',
+      ],
+    },
     # Library that provides core functionality for the telemetry tool.
     {
       'target_name': 'libtelem',
@@ -172,6 +204,17 @@
       },
       'sources': [
         'diagnostics_processor/main.cc',
+      ],
+    },
+    # Executables for DPSL demos.
+    {
+      'target_name': 'diagnostics_dpsl_demo_single_thread',
+      'type': 'executable',
+      'dependencies': [
+        'libdpsl',
+      ],
+      'sources': [
+        'dpsl/demo_single_thread/main.cc',
       ],
     },
     # The telemetry tool executable.
