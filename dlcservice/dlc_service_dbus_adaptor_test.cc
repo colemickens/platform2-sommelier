@@ -12,7 +12,9 @@
 #include <imageloader/dbus-proxy-mocks.h>
 #include <update_engine/dbus-proxy-mocks.h>
 
+#include "dlcservice/boot_slot.h"
 #include "dlcservice/dlc_service_dbus_adaptor.h"
+#include "dlcservice/mock_boot_device.h"
 
 namespace dlcservice {
 
@@ -46,10 +48,15 @@ class DlcServiceDBusAdaptorTest : public testing::Test {
 TEST_F(DlcServiceDBusAdaptorTest, InitTest) {
   auto mock_image_loader_proxy =
       std::make_unique<org::chromium::ImageLoaderInterfaceProxyMock>();
+  auto mock_boot_device = std::make_unique<MockBootDevice>();
+  ON_CALL(*(mock_boot_device.get()), GetBootDevice())
+      .WillByDefault(testing::Return("/dev/sdb5"));
+  ON_CALL(*(mock_boot_device.get()), IsRemovableDevice(testing::_))
+      .WillByDefault(testing::Return(false));
 
   EXPECT_CALL(
       *(mock_image_loader_proxy.get()),
-      LoadDlcImage(kFirstDlc, testing::_, testing::_, testing::_, testing::_))
+      LoadDlcImage(kFirstDlc, "Dlc-B", testing::_, testing::_, testing::_))
       .Times(1);
   EXPECT_CALL(
       *(mock_image_loader_proxy.get()),
@@ -59,14 +66,22 @@ TEST_F(DlcServiceDBusAdaptorTest, InitTest) {
   DlcServiceDBusAdaptor dlc_service_dbus_adaptor(
       std::move(mock_image_loader_proxy),
       std::make_unique<org::chromium::UpdateEngineInterfaceProxyMock>(),
-      manifest_path_, content_path_);
+      std::make_unique<BootSlot>(std::move(mock_boot_device)), manifest_path_,
+      content_path_);
 }
 
 TEST_F(DlcServiceDBusAdaptorTest, GetInstalledTest) {
+  auto mock_boot_device = std::make_unique<MockBootDevice>();
+  ON_CALL(*(mock_boot_device.get()), GetBootDevice())
+      .WillByDefault(testing::Return("/dev/sdb5"));
+  ON_CALL(*(mock_boot_device.get()), IsRemovableDevice(testing::_))
+      .WillByDefault(testing::Return(false));
+
   DlcServiceDBusAdaptor dlc_service_dbus_adaptor(
       std::make_unique<org::chromium::ImageLoaderInterfaceProxyMock>(),
       std::make_unique<org::chromium::UpdateEngineInterfaceProxyMock>(),
-      manifest_path_, content_path_);
+      std::make_unique<BootSlot>(std::move(mock_boot_device)), manifest_path_,
+      content_path_);
 
   std::string dlc_module_list_str;
   EXPECT_TRUE(

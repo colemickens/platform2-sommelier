@@ -8,6 +8,9 @@
 
 #include <chromeos/dbus/service_constants.h>
 
+#include "dlcservice/boot_device.h"
+#include "dlcservice/boot_slot.h"
+
 namespace dlcservice {
 
 namespace {
@@ -28,6 +31,7 @@ void DlcService::RegisterDBusObjectsAsync(
   dbus_adaptor_ = std::make_unique<dlcservice::DlcServiceDBusAdaptor>(
       std::make_unique<org::chromium::ImageLoaderInterfaceProxy>(bus_),
       std::make_unique<org::chromium::UpdateEngineInterfaceProxy>(bus_),
+      std::make_unique<BootSlot>(std::make_unique<BootDevice>()),
       base::FilePath(kManifestDir), base::FilePath(kContentDir));
   dbus_adaptor_->RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(

@@ -17,6 +17,8 @@
 
 namespace dlcservice {
 
+class BootSlot;
+
 // DlcServiceDBusAdaptor is a D-Bus adaptor that manages life-cycles of DLCs
 // (Downloadable Content) and provides an API for the rest of the system to
 // install/uninstall DLCs.
@@ -29,6 +31,7 @@ class DlcServiceDBusAdaptor
           image_loader_proxy,
       std::unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface>
           update_engine_proxy,
+      std::unique_ptr<BootSlot> boot_slot,
       const base::FilePath& manifest_dir,
       const base::FilePath& content_dir);
   ~DlcServiceDBusAdaptor();
@@ -52,6 +55,7 @@ class DlcServiceDBusAdaptor
       image_loader_proxy_;
   std::unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface>
       update_engine_proxy_;
+  std::unique_ptr<BootSlot> boot_slot_;
 
   base::FilePath manifest_dir_;
   base::FilePath content_dir_;
