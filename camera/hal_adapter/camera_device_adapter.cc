@@ -132,6 +132,9 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
 
   internal::ScopedStreams new_streams;
   for (const auto& s : config->streams) {
+    LOGF(INFO) << "id = " << s->id << ", type = " << s->stream_type
+               << ", size = " << s->width << "x" << s->height
+               << ", format = " << s->format;
     uint64_t id = s->id;
     std::unique_ptr<camera3_stream_t>& stream = new_streams[id];
     stream.reset(new camera3_stream_t);
