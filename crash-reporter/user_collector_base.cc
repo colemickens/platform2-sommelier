@@ -256,12 +256,20 @@ UserCollectorBase::ErrorType UserCollectorBase::ConvertAndEnqueueCrash(
   FilePath meta_path = GetCrashPath(crash_path, dump_basename, "meta");
   FilePath minidump_path = GetCrashPath(crash_path, dump_basename, "dmp");
   FilePath log_path = GetCrashPath(crash_path, dump_basename, "log");
+  FilePath proc_log_path = GetCrashPath(crash_path, dump_basename, "proclog");
 
   if (GetLogContents(FilePath(log_config_path_), exec, log_path)) {
     FilePath full_path = log_path;
     if (!NormalizeFilePath(log_path, &full_path))
       full_path = log_path;
     AddCrashMetaData("log", full_path.value());
+  }
+
+  if (GetProcessTree(pid, proc_log_path)) {
+    FilePath full_path = proc_log_path;
+    if (!NormalizeFilePath(proc_log_path, &full_path))
+      full_path = proc_log_path;
+    AddCrashMetaUploadFile("process_tree", full_path.value());
   }
 
 #if USE_DIRENCRYPTION

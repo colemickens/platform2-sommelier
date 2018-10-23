@@ -74,6 +74,7 @@ class CrashCollector {
   FRIEND_TEST(CrashCollectorTest, GetCrashDirectoryInfo);
   FRIEND_TEST(CrashCollectorTest, GetCrashPath);
   FRIEND_TEST(CrashCollectorTest, GetLogContents);
+  FRIEND_TEST(CrashCollectorTest, GetProcessTree);
   FRIEND_TEST(CrashCollectorTest, GetUptime);
   FRIEND_TEST(CrashCollectorTest, Initialize);
   FRIEND_TEST(CrashCollectorTest, IsUserSpecificDirectoryEnabled);
@@ -182,6 +183,9 @@ class CrashCollector {
   bool GetLogContents(const base::FilePath& config_path,
                       const std::string& exec_name,
                       const base::FilePath& output_file);
+
+  // Write details about the process tree of |pid| to |output_file|.
+  bool GetProcessTree(pid_t pid, const base::FilePath& output_file);
 
   // Add non-standard meta data to the crash metadata file.  Call
   // before calling WriteCrashMetaData.  Key must not contain "=" or

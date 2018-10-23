@@ -453,6 +453,22 @@ TEST_F(CrashCollectorTest, GetLogContents) {
   EXPECT_EQ("hello world\n", contents);
 }
 
+TEST_F(CrashCollectorTest, GetProcessTree) {
+  const FilePath output_file = test_dir_.Append("log");
+  std::string contents;
+
+  ASSERT_TRUE(collector_.GetProcessTree(getpid(), output_file));
+  ASSERT_TRUE(base::PathExists(output_file));
+  EXPECT_TRUE(base::ReadFileToString(output_file, &contents));
+  EXPECT_LT(300, contents.size());
+  base::DeleteFile(FilePath(output_file), false);
+
+  ASSERT_TRUE(collector_.GetProcessTree(0, output_file));
+  ASSERT_TRUE(base::PathExists(output_file));
+  EXPECT_TRUE(base::ReadFileToString(output_file, &contents));
+  EXPECT_GT(100, contents.size());
+}
+
 TEST_F(CrashCollectorTest, TruncatedLog) {
   FilePath config_file = test_dir_.Append("crash_config");
   FilePath output_file = test_dir_.Append("crash_log");

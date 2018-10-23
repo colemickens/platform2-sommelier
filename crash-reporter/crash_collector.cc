@@ -69,6 +69,10 @@ constexpr size_t kMaxLogSize = 1024 * 1024;
 
 const char kGzipPath[] = "/bin/gzip";
 
+// Limit how many processes we walk back up.  This avoids any possible races
+// and loops, and we probably don't need that many in the first place.
+constexpr size_t kMaxParentProcessLogs = 8;
+
 }  // namespace
 
 const char* const CrashCollector::kUnknownVersion = "unknown";
@@ -706,6 +710,67 @@ bool CrashCollector::GetLogContents(const FilePath& config_path,
       static_cast<int>(log_contents.length())) {
     LOG(WARNING) << "Error writing sanitized log to "
                  << output_file.value().c_str();
+    return false;
+  }
+
+  return true;
+}
+
+bool CrashCollector::GetProcessTree(pid_t pid,
+                                    const base::FilePath& output_file) {
+  std::ostringstream stream;
+
+  // Grab a limited number of parent process details.
+  for (size_t depth = 0; depth < kMaxParentProcessLogs; ++depth) {
+    std::string contents;
+
+    stream << "### Process " << pid << std::endl;
+
+    const FilePath proc_path = GetProcessPath(pid);
+    const FilePath status_path = proc_path.Append("status");
+
+    // Read the command line and append it to the log.
+    if (!base::ReadFileToString(proc_path.Append("cmdline"), &contents))
+      break;
+    base::ReplaceChars(contents, std::string(1, '\0'), " ", &contents);
+    stream << "cmdline: " << contents << std::endl;
+
+    // Read the status file and append it to the log.
+    if (!base::ReadFileToString(proc_path.Append("status"), &contents))
+      break;
+    stream << contents << std::endl;
+
+    // Pull out the parent pid from the status file.  The line will look like:
+    // PPid:\t1234
+    base::StringPairs pairs;
+    if (!base::SplitStringIntoKeyValuePairs(contents, ':', '\n', &pairs))
+      break;
+    pid = 0;
+    for (const auto& key_value : pairs) {
+      if (key_value.first == "PPid") {
+        std::string value;
+        int ppid;
+
+        // Parse the parent pid.  Set it only if it's valid.
+        base::TrimWhitespaceASCII(key_value.second, base::TRIM_ALL, &value);
+        if (base::StringToInt(value, &ppid))
+          pid = ppid;
+        break;
+      }
+    }
+    // If we couldn't find the parent pid, break out.
+    if (pid == 0)
+      break;
+  }
+
+  // Always do this after log collection is "finished" so we don't accidentally
+  // leak data.
+  std::string log = stream.str();
+  StripSensitiveData(&log);
+
+  if (WriteNewFile(output_file, log.data(), log.size()) !=
+      static_cast<int>(log.size())) {
+    LOG(WARNING) << "Error writing sanitized log to " << output_file.value();
     return false;
   }
 
