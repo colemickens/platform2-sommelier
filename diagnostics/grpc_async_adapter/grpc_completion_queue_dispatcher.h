@@ -11,7 +11,7 @@
 #include <base/callback.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
-#include <base/sequence_checker.h>
+#include <base/sequence_checker_impl.h>
 #include <base/threading/simple_thread.h>
 
 namespace base {
@@ -114,7 +114,7 @@ class GrpcCompletionQueueDispatcher {
   // the corresponding event fires.
   std::map<const void*, TagAvailableCallback> tag_to_callback_map_;
 
-  base::SequenceChecker sequence_checker_;
+  base::SequenceCheckerImpl sequence_checker_;
 
   DISALLOW_COPY_AND_ASSIGN(GrpcCompletionQueueDispatcher);
 };
