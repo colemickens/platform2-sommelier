@@ -135,6 +135,8 @@ class Newblue {
 
   virtual ~Newblue() = default;
 
+  virtual LibNewblue* libnewblue() { return libnewblue_.get(); }
+
   base::WeakPtr<Newblue> GetWeakPtr();
 
   // Initializes the LE stack (blocking call).

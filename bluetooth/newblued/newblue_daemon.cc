@@ -108,7 +108,10 @@ bool NewblueDaemon::Init(scoped_refptr<dbus::Bus> bus,
 
   adapter_interface_handler_ = std::make_unique<AdapterInterfaceHandler>(
       bus_, newblue_.get(), exported_object_manager_wrapper_.get());
-
+  advertising_manager_interface_handler_ =
+      std::make_unique<AdvertisingManagerInterfaceHandler>(
+          newblue_->libnewblue(), bus_, exported_object_manager_wrapper_.get());
+  advertising_manager_interface_handler_->Init();
   agent_manager_interface_handler_ =
       std::make_unique<AgentManagerInterfaceHandler>(
           bus_, exported_object_manager_wrapper_.get());

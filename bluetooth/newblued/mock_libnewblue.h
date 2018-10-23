@@ -34,6 +34,7 @@ class MockLibNewblue : public LibNewblue {
   MOCK_METHOD4(HciDiscoverLeStart,
                uniq_t(hciDeviceDiscoveredLeCbk, void*, bool, bool));
   MOCK_METHOD1(HciDiscoverLeStop, bool(uniq_t));
+  MOCK_METHOD1(HciAdvSetEnable, bool(hci_adv_set_t));
 
   // l2cap.h
   MOCK_METHOD0(L2cInit, int());

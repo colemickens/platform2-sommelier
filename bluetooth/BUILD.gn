@@ -65,6 +65,7 @@ static_library("libnewblued") {
   configs += [ ":target_defaults" ]
   sources = [
     "newblued/adapter_interface_handler.cc",
+    "newblued/advertising_manager_interface_handler.cc",
     "newblued/agent_manager_interface_handler.cc",
     "newblued/newblue.cc",
     "newblued/newblue_daemon.cc",
@@ -116,6 +117,7 @@ if (use.test) {
       "dispatcher/object_manager_interface_multiplexer_unittest.cc",
       "dispatcher/suspend_manager_unittest.cc",
       "dispatcher/test_helper.cc",
+      "newblued/advertising_manager_interface_handler_unittest.cc",
       "newblued/agent_manager_interface_handler_test.cc",
       "newblued/newblue_daemon_unittest.cc",
       "newblued/newblue_unittest.cc",

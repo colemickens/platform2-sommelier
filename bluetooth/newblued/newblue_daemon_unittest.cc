@@ -140,6 +140,15 @@ class NewblueDaemonTest : public ::testing::Test {
     return exported_agent_manager_object;
   }
 
+  scoped_refptr<dbus::MockExportedObject> SetupExportedAdapterObject() {
+    dbus::ObjectPath adapter_object_path(kAdapterObjectPath);
+    scoped_refptr<dbus::MockExportedObject> exported_adapter_object =
+        new dbus::MockExportedObject(bus_.get(), adapter_object_path);
+    EXPECT_CALL(*bus_, GetExportedObject(adapter_object_path))
+        .WillRepeatedly(Return(exported_adapter_object.get()));
+    return exported_adapter_object;
+  }
+
   void SetupBluezObjectProxy() {
     dbus::ObjectPath object_path(
         bluez_object_manager::kBluezObjectManagerServicePath);
@@ -245,6 +254,8 @@ TEST_F(NewblueDaemonTest, InitFailed) {
       SetupExportedRootObject();
   scoped_refptr<dbus::MockExportedObject> exported_agent_manager_object =
       SetupExportedAgentManagerObject();
+  scoped_refptr<dbus::MockExportedObject> exported_adapter_object =
+      SetupExportedAdapterObject();
 
   // Newblue::Init() fails
   ExpectTestInit(exported_root_object);
@@ -405,6 +416,8 @@ TEST_F(NewblueDaemonTest, IdleMode) {
       SetupExportedRootObject();
   scoped_refptr<dbus::MockExportedObject> exported_agent_manager_object =
       SetupExportedAgentManagerObject();
+  scoped_refptr<dbus::MockExportedObject> exported_adapter_object =
+      SetupExportedAdapterObject();
 
   auto libnewblue = std::make_unique<MockLibNewblue>();
   libnewblue_ = libnewblue.get();

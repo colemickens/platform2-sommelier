@@ -53,6 +53,39 @@ class LibNewblue {
                      hciDiscoverLeStop,
                      /* NOLINTNEXTLINE(readability/casting) */
                      bool(uniq_t));
+  LIBNEWBLUE_METHOD0(HciAdvIsPowerLevelSettingSupported,
+                     hciAdvIsPowerLevelSettingSupported,
+                     bool());
+  LIBNEWBLUE_METHOD0(HciAdvSetAllocate, hciAdvSetAllocate, hci_adv_set_t());
+  LIBNEWBLUE_METHOD1(HciAdvSetFree,
+                     hciAdvSetFree,
+                     /* NOLINTNEXTLINE(readability/casting) */
+                     bool(hci_adv_set_t));
+  LIBNEWBLUE_METHOD4(HciAdvSetConfigureData,
+                     hciAdvSetConfigureData,
+                     /* NOLINTNEXTLINE(readability/casting) */
+                     bool(hci_adv_set_t, bool, const uint8_t*, uint32_t));
+  virtual bool HciAdvSetSetAdvParams(hci_adv_set_t set,
+                                     uint16_t advIntervalMin,
+                                     uint16_t advIntervalMax,
+                                     uint8_t advType,
+                                     uint8_t ownAddressType,
+                                     struct bt_addr* directAddr,
+                                     uint8_t advChannelMap,
+                                     uint8_t advFilterPolicy,
+                                     int8_t advDesiredTxPowerLevel) {
+    return hciAdvSetSetAdvParams(set, advIntervalMin, advIntervalMax, advType,
+                                 ownAddressType, directAddr, advChannelMap,
+                                 advFilterPolicy, advDesiredTxPowerLevel);
+  }
+  LIBNEWBLUE_METHOD1(HciAdvSetEnable,
+                     hciAdvSetEnable,
+                     /* NOLINTNEXTLINE(readability/casting) */
+                     bool(hci_adv_set_t));
+  LIBNEWBLUE_METHOD1(HciAdvSetDisable,
+                     hciAdvSetDisable,
+                     /* NOLINTNEXTLINE(readability/casting) */
+                     bool(hci_adv_set_t));
 
   // l2cap.h
   LIBNEWBLUE_METHOD0(L2cInit, l2cInit, int());

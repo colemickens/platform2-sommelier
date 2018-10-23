@@ -18,6 +18,7 @@
 #include "bluetooth/common/exported_object_manager_wrapper.h"
 #include "bluetooth/common/util.h"
 #include "bluetooth/newblued/adapter_interface_handler.h"
+#include "bluetooth/newblued/advertising_manager_interface_handler.h"
 #include "bluetooth/newblued/agent_manager_interface_handler.h"
 #include "bluetooth/newblued/newblue.h"
 #include "bluetooth/newblued/stack_sync_monitor.h"
@@ -136,7 +137,8 @@ class NewblueDaemon : public BluetoothDaemon {
   StackSyncMonitor stack_sync_monitor_;
 
   std::unique_ptr<AdapterInterfaceHandler> adapter_interface_handler_;
-
+  std::unique_ptr<AdvertisingManagerInterfaceHandler>
+      advertising_manager_interface_handler_;
   std::unique_ptr<AgentManagerInterfaceHandler>
       agent_manager_interface_handler_;
 
