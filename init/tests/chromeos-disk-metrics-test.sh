@@ -33,16 +33,36 @@ STORAGE_INFO_FILE="tests/storage_info_1.txt"
 run_test sata_disk_metrics 1
 run_test emmc_disk_metrics 1
 run_test sindin8de2_disk_metrics 1
+run_test nvme_disk_metrics 1
+run_test ufs_disk_metrics 1
 
 STORAGE_INFO_FILE="tests/storage_info_2.txt"
 run_test sata_disk_metrics 2
 run_test emmc_disk_metrics 2
 run_test sindin8de2_disk_metrics 2
+run_test nvme_disk_metrics 2
+run_test ufs_disk_metrics 2
 
 STORAGE_INFO_FILE="tests/storage_info_sindin8de2.txt"
 run_test sata_disk_metrics 3
 run_test emmc_disk_metrics 3
 run_test sindin8de2_disk_metrics 3
+run_test nvme_disk_metrics 3
+run_test ufs_disk_metrics 3
+
+STORAGE_INFO_FILE="tests/storage_info_4.txt"
+run_test sata_disk_metrics 4
+run_test emmc_disk_metrics 4
+run_test sindin8de2_disk_metrics 4
+run_test nvme_disk_metrics 4
+run_test ufs_disk_metrics 4
+
+STORAGE_INFO_FILE="tests/storage_info_5.txt"
+run_test sata_disk_metrics 5
+run_test emmc_disk_metrics 5
+run_test sindin8de2_disk_metrics 5
+run_test nvme_disk_metrics 5
+run_test ufs_disk_metrics 5
 
 
 rm -rf "${DISK_TEMP}"

@@ -81,6 +81,33 @@ sindin8de2_disk_metrics() {
   fi
 }
 
+nvme_disk_metrics() {
+  local used
+
+  # Extract revelevant NVMe information from this file, if any.
+  used="$(sed -ne "/Percentage Used/s/[^0-9]*//p" \
+          "${STORAGE_INFO_FILE}" | sed -ne "s/%//p")"
+  if [ -n "${used}" ]; then
+    metrics_client -s "Platform.Storage.Nvme.PercentageUsed" \
+                     "$(printf "%d" "${used}")"
+  fi
+}
+
+ufs_disk_metrics() {
+  local life method type
+
+  # Extract revelevant UFS information from this file, if any.
+  for method in 'a' 'b'; do
+    life="$(sed -ne "/life_time_estimation_${method}/s/.*:\(0x.*\)$/\1/p" \
+            "${STORAGE_INFO_FILE}")"
+    if [ -n "${life}" ]; then
+      type="$(echo "${method}" | sed 's/.*/\u&/')"
+      metrics_client -s "Platform.Storage.Ufs.LifeUsed.Type${type}" \
+                     "$(printf "%d" "${life}")"
+    fi
+  done
+}
+
 # Invoke main if not in test mode, otherwise let the test code call.
 main() {
   if [ ${FLAGS_test} -eq ${FLAGS_TRUE} ]; then
@@ -95,5 +122,7 @@ main() {
   sata_disk_metrics
   emmc_disk_metrics
   sindin8de2_disk_metrics
+  nvme_disk_metrics
+  ufs_disk_metrics
 }
 main "$@"
