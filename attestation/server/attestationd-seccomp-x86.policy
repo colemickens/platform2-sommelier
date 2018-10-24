@@ -51,6 +51,7 @@ poll: 1
 
 open: 1
 openat: 1
+creat: 1
 read: 1
 write: 1
 close: 1

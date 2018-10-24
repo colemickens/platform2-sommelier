@@ -17,6 +17,7 @@ getegid: 1
 getuid: 1
 open: 1
 openat: 1
+creat: 1
 stat: 1
 lstat: 1
 sendmsg: 1
