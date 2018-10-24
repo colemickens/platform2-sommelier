@@ -9,6 +9,7 @@
 #include <base/bind.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop/message_loop.h>
+#include <base/run_loop.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_manager.h>
@@ -69,13 +70,13 @@ TEST_F(StackSyncMonitorTest, PowerDown) {
   // BlueZ adapter power on.
   monitor_.bluez_powered_.ReplaceValue(true);
   properties_->NotifyPropertyChanged(bluetooth_adapter::kPoweredProperty);
-  message_loop_.RunUntilIdle();
+  base::RunLoop().RunUntilIdle();
   EXPECT_FALSE(stack_sync_quitting_);
 
   // BlueZ adapter power down, call BluezDownCallback.
   monitor_.bluez_powered_.ReplaceValue(false);
   properties_->NotifyPropertyChanged(bluetooth_adapter::kPoweredProperty);
-  message_loop_.RunUntilIdle();
+  base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(stack_sync_quitting_);
 }
 
@@ -94,7 +95,7 @@ TEST_F(StackSyncMonitorTest, BluezStackSyncQuitting) {
       bluetooth_adapter::kStackSyncQuittingProperty);
   monitor_.bluez_powered_.ReplaceValue(false);
   properties_->NotifyPropertyChanged(bluetooth_adapter::kPoweredProperty);
-  message_loop_.RunUntilIdle();
+  base::RunLoop().RunUntilIdle();
   EXPECT_FALSE(stack_sync_quitting_);
 }
 
@@ -108,7 +109,7 @@ TEST_F(StackSyncMonitorTest, NoCallback) {
   // BlueZ adapter power down, but no callback is provided.
   monitor_.bluez_powered_.ReplaceValue(false);
   properties_->NotifyPropertyChanged(bluetooth_adapter::kPoweredProperty);
-  message_loop_.RunUntilIdle();
+  base::RunLoop().RunUntilIdle();
   EXPECT_FALSE(stack_sync_quitting_);
 }
 

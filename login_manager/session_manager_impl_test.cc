@@ -1718,7 +1718,7 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicyExWithoutSession) {
   ASSERT_FALSE(user_policy_services_.count(kSaneEmail));
 
   // Make sure the policy service is deleted.
-  base::MessageLoop::current()->RunUntilIdle();
+  base::RunLoop().RunUntilIdle();
 }
 
 TEST_F(SessionManagerImplTest, StoreDeviceLocalAccountPolicyNoAccount) {

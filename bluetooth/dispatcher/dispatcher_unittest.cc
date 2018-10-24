@@ -6,6 +6,7 @@
 #include <vector>
 
 #include <base/message_loop/message_loop.h>
+#include <base/run_loop.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
@@ -46,7 +47,7 @@ class DispatcherTest : public ::testing::Test {
     // Force MessageLoop to run pending tasks as effect of instantiating
     // MockObjectManager. Needed to avoid memory leaks because pending tasks
     // are unowned pointers that will only self destruct after being run.
-    message_loop_.RunUntilIdle();
+    base::RunLoop().RunUntilIdle();
     dispatcher_ = std::make_unique<Dispatcher>(bus_);
   }
 

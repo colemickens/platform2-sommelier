@@ -5,6 +5,7 @@
 #include <memory>
 
 #include <base/message_loop/message_loop.h>
+#include <base/run_loop.h>
 #include <brillo/bind_lambda.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_manager.h>
@@ -59,7 +60,7 @@ class ObjectManagerInterfaceMultiplexerTest : public ::testing::Test {
     // Force MessageLoop to run all pending tasks as an effect of instantiating
     // MockObjectManager. This is needed to avoid memory leak as pending tasks
     // hold pointers.
-    message_loop_.RunUntilIdle();
+    base::RunLoop().RunUntilIdle();
 
     interface_multiplexer_ =
         std::make_unique<MockObjectManagerInterfaceMultiplexer>(

@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/message_loop/message_loop.h>
+#include <base/run_loop.h>
 #include <brillo/bind_lambda.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
@@ -121,7 +122,7 @@ class ImpersonationObjectManagerInterfaceTest : public ::testing::Test {
     // Force MessageLoop to run pending tasks as effect of instantiating
     // MockObjectManager. Needed to avoid memory leaks because pending tasks
     // are unowned pointers that will only self destruct after being run.
-    message_loop_.RunUntilIdle();
+    base::RunLoop().RunUntilIdle();
     auto exported_object_manager =
         std::make_unique<brillo::dbus_utils::MockExportedObjectManager>(
             bus_, object_manager_path);

@@ -10,6 +10,7 @@
 
 #include <base/bind.h>
 #include <base/message_loop/message_loop.h>
+#include <base/run_loop.h>
 #include <gtest/gtest.h>
 
 #include "bluetooth/newblued/mock_libnewblue.h"
@@ -129,14 +130,14 @@ TEST_F(NewblueTest, ListenReadyForUp) {
   bool success = newblue_->ListenReadyForUp(
       base::Bind(&NewblueTest::OnReadyForUp, base::Unretained(this)));
   EXPECT_TRUE(success);
-  message_loop_.RunUntilIdle();
+  base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(is_ready_for_up_);
 
   // If libnewblue says the stack is ready for up again, ignore that.
   // We shouldn't bring up the stack more than once.
   is_ready_for_up_ = false;
   up_callback(newblue_.get());
-  message_loop_.RunUntilIdle();
+  base::RunLoop().RunUntilIdle();
   EXPECT_FALSE(is_ready_for_up_);
 }
 
@@ -178,7 +179,7 @@ TEST_F(NewblueTest, StartDiscovery) {
       5, static_cast<uint8_t>(EirType::NAME_SHORT), 'b', 'o', 'b', '\0'};
   inquiry_response_callback(inquiry_response_callback_data, &addr2, -102,
                             HCI_ADV_TYPE_ADV_IND, &eir2, arraysize(eir2));
-  message_loop_.RunUntilIdle();
+  base::RunLoop().RunUntilIdle();
 
   EXPECT_EQ(2, discovered_devices_.size());
   EXPECT_EQ("alice", discovered_devices_[0].name);
@@ -194,7 +195,7 @@ TEST_F(NewblueTest, StartDiscovery) {
   inquiry_response_callback(inquiry_response_callback_data, &addr1, -103,
                             HCI_ADV_TYPE_SCAN_RSP, &eir3, arraysize(eir3));
 
-  message_loop_.RunUntilIdle();
+  base::RunLoop().RunUntilIdle();
 
   // The third discovery event should be an update to the first device, not a
   // new device.
@@ -210,7 +211,7 @@ TEST_F(NewblueTest, StartDiscovery) {
   // Any inquiry response after StopDiscovery should be ignored.
   inquiry_response_callback(inquiry_response_callback_data, &addr1, -101,
                             HCI_ADV_TYPE_SCAN_RSP, &eir1, arraysize(eir1));
-  message_loop_.RunUntilIdle();
+  base::RunLoop().RunUntilIdle();
   // Check that discovered_devices_ is still the same.
   EXPECT_EQ(3, discovered_devices_.size());
 }
@@ -358,7 +359,7 @@ TEST_F(NewblueTest, PairStateChangedToFailed) {
       6, static_cast<uint8_t>(EirType::NAME_SHORT), 'a', 'l', 'i', 'c', 'e'};
   inquiry_response_callback(inquiry_response_callback_data, &addr1, -101,
                             HCI_ADV_TYPE_SCAN_RSP, &eir1, arraysize(eir1));
-  message_loop_.RunUntilIdle();
+  base::RunLoop().RunUntilIdle();
 
   EXPECT_EQ(1, discovered_devices_.size());
   EXPECT_EQ("alice", discovered_devices_[0].name);
@@ -377,7 +378,7 @@ TEST_F(NewblueTest, PairStateChangedToFailed) {
                                            .peerAddr = addr1};
   pair_state_changed_callback_(pair_state_changed_callback_data_, &state_change,
                                kPairStateChangeHandle);
-  message_loop_.RunUntilIdle();
+  base::RunLoop().RunUntilIdle();
 
   EXPECT_EQ(1, discovered_devices_.size());
   EXPECT_EQ("alice", discovered_devices_[0].name);
@@ -391,7 +392,7 @@ TEST_F(NewblueTest, PairStateChangedToFailed) {
 
   pair_state_changed_callback_(pair_state_changed_callback_data_, &state_change,
                                kPairStateChangeHandle);
-  message_loop_.RunUntilIdle();
+  base::RunLoop().RunUntilIdle();
 
   EXPECT_EQ(1, discovered_devices_.size());
   EXPECT_EQ("alice", discovered_devices_[0].name);
@@ -419,7 +420,7 @@ TEST_F(NewblueTest, PairStateChangedToPairedAndForgotten) {
       6, static_cast<uint8_t>(EirType::NAME_SHORT), 'a', 'l', 'i', 'c', 'e'};
   inquiry_response_callback(inquiry_response_callback_data, &addr1, -101,
                             HCI_ADV_TYPE_SCAN_RSP, &eir1, arraysize(eir1));
-  message_loop_.RunUntilIdle();
+  base::RunLoop().RunUntilIdle();
 
   EXPECT_EQ(1, discovered_devices_.size());
   EXPECT_EQ("alice", discovered_devices_[0].name);
@@ -438,7 +439,7 @@ TEST_F(NewblueTest, PairStateChangedToPairedAndForgotten) {
                                            .peerAddr = addr1};
   pair_state_changed_callback_(pair_state_changed_callback_data_, &state_change,
                                kPairStateChangeHandle);
-  message_loop_.RunUntilIdle();
+  base::RunLoop().RunUntilIdle();
 
   EXPECT_EQ(1, discovered_devices_.size());
   EXPECT_EQ("alice", discovered_devices_[0].name);
@@ -452,7 +453,7 @@ TEST_F(NewblueTest, PairStateChangedToPairedAndForgotten) {
 
   pair_state_changed_callback_(pair_state_changed_callback_data_, &state_change,
                                kPairStateChangeHandle);
-  message_loop_.RunUntilIdle();
+  base::RunLoop().RunUntilIdle();
 
   EXPECT_EQ(1, discovered_devices_.size());
   EXPECT_EQ("alice", discovered_devices_[0].name);
@@ -466,7 +467,7 @@ TEST_F(NewblueTest, PairStateChangedToPairedAndForgotten) {
 
   pair_state_changed_callback_(pair_state_changed_callback_data_, &state_change,
                                kPairStateChangeHandle);
-  message_loop_.RunUntilIdle();
+  base::RunLoop().RunUntilIdle();
 
   EXPECT_EQ(1, discovered_devices_.size());
   EXPECT_EQ("alice", discovered_devices_[0].name);
@@ -478,7 +479,7 @@ TEST_F(NewblueTest, PairStateChangedToPairedAndForgotten) {
   newblue_->UnregisterAsPairObserver(pair_observer_handle);
   pair_state_changed_callback_(pair_state_changed_callback_data_, &state_change,
                                kPairStateChangeHandle);
-  message_loop_.RunUntilIdle();
+  base::RunLoop().RunUntilIdle();
 
   // Pairing finished successfully.
   state_change.pairState = SM_PAIR_STATE_PAIRED;
@@ -486,7 +487,7 @@ TEST_F(NewblueTest, PairStateChangedToPairedAndForgotten) {
 
   pair_state_changed_callback_(pair_state_changed_callback_data_, &state_change,
                                kPairStateChangeHandle);
-  message_loop_.RunUntilIdle();
+  base::RunLoop().RunUntilIdle();
 
   EXPECT_EQ(1, discovered_devices_.size());
   EXPECT_EQ("alice", discovered_devices_[0].name);
@@ -522,7 +523,7 @@ TEST_F(NewblueTest, Pair) {
 
   inquiry_response_callback(inquiry_response_callback_data, &addr, -101,
                             HCI_ADV_TYPE_SCAN_RSP, &eir, arraysize(eir));
-  message_loop_.RunUntilIdle();
+  base::RunLoop().RunUntilIdle();
 
   EXPECT_EQ(1, discovered_devices_.size());
   EXPECT_EQ("mouse", discovered_devices_[0].name);
@@ -534,7 +535,7 @@ TEST_F(NewblueTest, Pair) {
   EXPECT_CALL(*libnewblue_, SmPair(_, _)).WillOnce(Return());
 
   EXPECT_TRUE(newblue_->Pair(device_addr));
-  message_loop_.RunUntilIdle();
+  base::RunLoop().RunUntilIdle();
 }
 
 TEST_F(NewblueTest, PairWithUnknownDevice) {
@@ -570,7 +571,7 @@ TEST_F(NewblueTest, CancelPairing) {
 
   inquiry_response_callback(inquiry_response_callback_data, &addr, -101,
                             HCI_ADV_TYPE_SCAN_RSP, &eir, arraysize(eir));
-  message_loop_.RunUntilIdle();
+  base::RunLoop().RunUntilIdle();
 
   EXPECT_EQ(1, discovered_devices_.size());
   EXPECT_EQ("mouse", discovered_devices_[0].name);
@@ -586,7 +587,7 @@ TEST_F(NewblueTest, CancelPairing) {
 
   EXPECT_CALL(*libnewblue_, SmPair(_, _)).WillOnce(Return());
   EXPECT_TRUE(newblue_->Pair(device_addr));
-  message_loop_.RunUntilIdle();
+  base::RunLoop().RunUntilIdle();
 
   // Pairing started.
   struct smPairStateChange state_change = {.pairState = SM_PAIR_STATE_START,
@@ -594,7 +595,7 @@ TEST_F(NewblueTest, CancelPairing) {
                                            .peerAddr = addr};
   pair_state_changed_callback_(pair_state_changed_callback_data_, &state_change,
                                kPairStateChangeHandle);
-  message_loop_.RunUntilIdle();
+  base::RunLoop().RunUntilIdle();
 
   EXPECT_EQ(1, discovered_devices_.size());
   EXPECT_EQ("mouse", discovered_devices_[0].name);
@@ -606,7 +607,7 @@ TEST_F(NewblueTest, CancelPairing) {
   // Cancel pairing.
   EXPECT_CALL(*libnewblue_, SmUnpair(_)).WillOnce(Return());
   EXPECT_TRUE(newblue_->CancelPair(device_addr));
-  message_loop_.RunUntilIdle();
+  base::RunLoop().RunUntilIdle();
 }
 
 TEST_F(NewblueTest, CancelPairingWithUnknownDevice) {
@@ -628,7 +629,7 @@ TEST_F(NewblueTest, PasskeyDisplayObserver) {
       .valid = true, .passkey = 123456, .peerAddr = peer_addr};
   passkey_display_callback_(passkey_display_callback_data_, &passkey_display,
                             kPasskeyDisplayObserverHandle);
-  message_loop_.RunUntilIdle();
+  base::RunLoop().RunUntilIdle();
   EXPECT_THAT(pairing_agent.displayed_passkeys,
               ElementsAre(Pair("06:05:04:03:02:01", 123456)));
 }

@@ -11,6 +11,7 @@
 
 #include <base/memory/ref_counted.h>
 #include <base/message_loop/message_loop.h>
+#include <base/run_loop.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
@@ -65,7 +66,7 @@ class NewblueDaemonTest : public ::testing::Test {
     // Force MessageLoop to run all pending tasks as an effect of instantiating
     // MockObjectManager. This is needed to avoid memory leak as pending tasks
     // hold pointers.
-    message_loop_.RunUntilIdle();
+    base::RunLoop().RunUntilIdle();
   }
 
   // The mocked dbus::ExportedObject::ExportMethod needs to call its callback.
