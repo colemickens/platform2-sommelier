@@ -13,7 +13,8 @@ namespace wimax_manager {
 
 namespace {
 
-base::LazyInstance<DBusControl> g_dbus_control = LAZY_INSTANCE_INITIALIZER;
+base::LazyInstance<DBusControl>::DestructorAtExit g_dbus_control =
+    LAZY_INSTANCE_INITIALIZER;
 
 }  // namespace
 

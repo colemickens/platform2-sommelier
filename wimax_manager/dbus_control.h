@@ -29,7 +29,7 @@ class DBusControl {
   static DBus::Connection* GetConnection();
 
  private:
-  friend struct base::DefaultLazyInstanceTraits<DBusControl>;
+  friend base::LazyInstanceTraitsBase<DBusControl>;
 
   DBusControl();
   ~DBusControl();
