@@ -61,7 +61,7 @@ MojoConnector::MojoConnector(): ipc_thread_("IpcThread") {
           base::Thread::Options(base::MessageLoop::TYPE_IO, 0))) {
     LOG(ERROR) << "Failed to start IPC Thread";
   }
-  mojo::edk::InitIPCSupport(this, ipc_thread_.task_runner());
+  mojo::edk::InitIPCSupport(ipc_thread_.task_runner());
 }
 
 void MojoConnector::ReceiveMojoInvitationFileDescriptor(int fd_int) {
@@ -112,7 +112,7 @@ void MojoConnector::ConnectToVideoCaptureService() {
 
 void MojoConnector::ConnectToVideoCaptureServiceOnIpcThread() {
   media_perception_service_impl_->ConnectToVideoCaptureService(
-      mojo::GetProxy(&device_factory_));
+      mojo::MakeRequest(&device_factory_));
   device_factory_.set_connection_error_handler(
       base::Bind(&MojoConnector::OnDeviceFactoryConnectionErrorOrClosed,
                  base::Unretained(this)));
@@ -173,7 +173,7 @@ void MojoConnector::SetActiveDeviceOnIpcThread(
     std::string device_id,
     const VideoCaptureServiceClient::SetActiveDeviceCallback& callback) {
   device_factory_->CreateDevice(
-      device_id, mojo::GetProxy(&active_device_),
+      device_id, mojo::MakeRequest(&active_device_),
       base::Bind(&MojoConnector::OnSetActiveDeviceCallback,
                  base::Unretained(this), callback));
 }
@@ -248,8 +248,9 @@ void MojoConnector::CreateVirtualDeviceOnIpcThread(
     const VideoCaptureServiceClient::VirtualDeviceCallback& callback) {
   media::mojom::VideoCaptureDeviceInfoPtr info =
       media::mojom::VideoCaptureDeviceInfo::New();
-  info->supported_formats =
-      mojo::Array<media::mojom::VideoCaptureFormatPtr>::New(0);
+  // TODO(b/3743548): After libchrome uprev, assigning to std::vector<> is
+  // just redundant, so should be removed.
+  info->supported_formats = std::vector<media::mojom::VideoCaptureFormatPtr>();
   info->descriptor = media::mojom::VideoCaptureDeviceDescriptor::New();
   info->descriptor->model_id = video_device.model_id;
   info->descriptor->device_id = video_device.id;
@@ -280,7 +281,5 @@ void MojoConnector::PushFrameToVirtualDeviceOnIpcThread(
       GetVideoCapturePixelFormatFromPixelFormat(pixel_format), frame_width,
       frame_height);
 }
-
-void MojoConnector::OnShutdownComplete() { mojo::edk::ShutdownIPCSupport(); }
 
 }  // namespace mri

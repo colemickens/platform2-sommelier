@@ -9,7 +9,6 @@
 #include <base/single_thread_task_runner.h>
 #include <base/threading/thread.h>
 #include <mojo/edk/embedder/embedder.h>
-#include <mojo/edk/embedder/process_delegate.h>
 #include <mojo/public/cpp/bindings/binding.h>
 #include <memory>
 #include <string>
@@ -22,7 +21,7 @@
 
 namespace mri {
 
-class MojoConnector : public mojo::edk::ProcessDelegate {
+class MojoConnector {
  public:
   MojoConnector();
   ~MojoConnector() {}
@@ -74,9 +73,6 @@ class MojoConnector : public mojo::edk::ProcessDelegate {
 
   // Handler for when device pointer connection is closed or errors out.
   void OnDeviceFactoryConnectionErrorOrClosed();
-
-  // mojo::edk::ProcessDelegate:
-  void OnShutdownComplete() override;
 
   void AcceptConnectionOnIpcThread(base::ScopedFD fd);
 

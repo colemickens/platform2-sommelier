@@ -26,12 +26,12 @@ void ProducerImpl::RegisterVirtualDeviceAtFactory(
     media::mojom::VideoCaptureDeviceInfoPtr info) {
   (*factory)->AddSharedMemoryVirtualDevice(std::move(info),
                                            CreateInterfacePtr(), true,
-                                           mojo::GetProxy(&virtual_device_));
+                                           mojo::MakeRequest(&virtual_device_));
 }
 
 void ProducerImpl::OnNewBuffer(int32_t buffer_id,
                                media::mojom::VideoBufferHandlePtr buffer_handle,
-                               const mojo::Callback<void()>& callback) {
+                               const OnNewBufferCallback& callback) {
   CHECK(buffer_handle->is_shared_memory_via_raw_file_descriptor());
   std::unique_ptr<SharedMemoryProvider> shared_memory_provider =
       SharedMemoryProvider::CreateFromRawFileDescriptor(
