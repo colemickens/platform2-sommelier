@@ -35,24 +35,27 @@ bool CrosConfigIdentityArm::Fake(
   if (base::WriteFile(*sku_id_file_out, sku_id_char,
                       sizeof(sku_id)) != sizeof(sku_id)) {
     CROS_CONFIG_LOG(ERROR) << "Failed to write sku-id file";
+    free(sku_id_char);
     return false;
   }
 
+  free(sku_id_char);
   return true;
 }
 
 bool CrosConfigIdentityArm::ReadInfo(const base::FilePath& dt_compatible_file,
                                      const base::FilePath& sku_id_file) {
-  char *sku_id_char = reinterpret_cast<char*>(malloc(sizeof(sku_id_)));
   if (!base::ReadFileToString(dt_compatible_file, &compatible_devices_)) {
     CROS_CONFIG_LOG(ERROR) << "Failed to read device-tree compatible file: "
                            << dt_compatible_file.MaybeAsASCII();
     return false;
   }
 
+  char *sku_id_char = reinterpret_cast<char*>(malloc(sizeof(sku_id_)));
   if (base::ReadFile(sku_id_file, sku_id_char,
                      sizeof(sku_id_)) != sizeof(sku_id_)) {
     CROS_CONFIG_LOG(WARNING) << "Cannot read product_sku file ";
+    free(sku_id_char);
     return false;
   }
   std::memcpy(&sku_id_, sku_id_char, sizeof(sku_id_));
@@ -60,6 +63,7 @@ bool CrosConfigIdentityArm::ReadInfo(const base::FilePath& dt_compatible_file,
   CROS_CONFIG_LOG(INFO) << "Read device-tree compatible list: "
                         << compatible_devices_
                         << ", sku_id: " << sku_id_;
+  free(sku_id_char);
   return true;
 }
 
