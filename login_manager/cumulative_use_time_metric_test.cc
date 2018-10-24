@@ -38,7 +38,9 @@ base::Time GetReferenceTime() {
   exploded_reference_time.second = 32;
   exploded_reference_time.millisecond = 512;
 
-  return base::Time::FromLocalExploded(exploded_reference_time);
+  base::Time time;
+  CHECK(base::Time::FromLocalExploded(exploded_reference_time, &time));
+  return time;
 }
 
 // Returns arbitrary time ticks to be used as reference for test ticks clock.
