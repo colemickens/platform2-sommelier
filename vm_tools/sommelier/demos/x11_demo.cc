@@ -8,12 +8,16 @@
 #include <X11/Xutil.h>
 
 #include "base/logging.h"
+#include "brillo/syslog_logging.h"
 
 // Creates an X window the same size as the display and fills its background
 // with a solid color that can be specified as the only parameter (in hex or
 // base 10). Closes on any keypress.
 int main(int argc, char* argv[]) {
-  uint32_t bgcolor = 0xFF0000;
+  brillo::InitLog(brillo::kLogToSyslog);
+  LOG(INFO) << "Starting x11_demo application";
+
+  uint32_t bgcolor = 0x99EE44;
   if (argc > 1) {
     bgcolor = strtoul(argv[1], nullptr, 0);
   }
@@ -43,13 +47,17 @@ int main(int argc, char* argv[]) {
   XSelectInput(dpy, win, KeyPressMask);
   XMapWindow(dpy, win);
 
+  LOG(INFO) << "x11_demo application displaying, waiting for keypress";
   XEvent evt;
   for (;;) {
     XNextEvent(dpy, &evt);
-    if (evt.type == KeyPress)
+    if (evt.type == KeyPress) {
+      LOG(INFO) << "x11_demo application detected keypress";
       break;
+    }
   }
 
   XCloseDisplay(dpy);
+  LOG(INFO) << "x11_demo application exiting";
   return 0;
 }

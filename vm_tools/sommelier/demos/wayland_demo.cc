@@ -10,6 +10,7 @@
 
 #include "base/logging.h"
 #include "base/memory/shared_memory.h"
+#include "brillo/syslog_logging.h"
 
 struct demo_data {
   uint32_t bgcolor;
@@ -56,6 +57,7 @@ void keyboard_key(void* data,
   struct demo_data* data_ptr = reinterpret_cast<struct demo_data*>(data);
   // Key pressed.
   if (state == 1) {
+    LOG(INFO) << "wayland_demo application detected keypress";
     data_ptr->done = true;
   }
 }
@@ -162,11 +164,14 @@ void output_done(void* data, struct wl_output* output) {}
 void output_scale(void* data, struct wl_output* output, int32_t factor) {}
 
 int main(int argc, char* argv[]) {
+  brillo::InitLog(brillo::kLogToSyslog);
+  LOG(INFO) << "Starting wayland_demo application";
+
   struct demo_data data;
   memset(&data, 0, sizeof(data));
   data.done = false;
 
-  data.bgcolor = 0xFF0000;
+  data.bgcolor = 0x3388DD;
   if (argc > 1) {
     data.bgcolor = strtoul(argv[1], nullptr, 0);
   }
@@ -257,9 +262,11 @@ int main(int argc, char* argv[]) {
   wl_surface_commit(data.surface);
 
   demo_draw(&data, nullptr, 0);
+  LOG(INFO) << "wayland_demo application displaying, waiting for keypress";
   do {
   } while (wl_display_dispatch(display) != -1 && !data.done);
 
   wl_display_disconnect(display);
+  LOG(INFO) << "wayland_demo application exiting";
   return 0;
 }

@@ -107,6 +107,7 @@
       'type': 'executable',
       'variables': {
         'deps': [
+          'libbrillo-<(libbase_ver)',
           'libchrome-<(libbase_ver)',
           'wayland-client',
         ],
@@ -125,6 +126,7 @@
       'type': 'executable',
       'variables': {
         'deps': [
+          'libbrillo-<(libbase_ver)',
           'libchrome-<(libbase_ver)',
         ],
       },
