@@ -12,4 +12,4 @@ ConditionPathExists=!/root/.factory_installer
 [Service]
 Type=oneshot
 RemainAfterExit=true
-ExecStart=/bin/sh /usr/share/cros/init/crx-import.sh
+ExecStart=/usr/share/cros/init/crx-import.sh

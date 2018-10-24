@@ -61,11 +61,15 @@ include(sepolicy/file_contexts/coreutils)
 
 /usr/share/policy(/.*)?         u:object_r:cros_seccomp_policy_file:s0
 
-/usr/share/cros/init(/.*)?      u:object_r:cros_init_shell_scripts:s0
-/usr/share/cros/init/ui-respawn u:object_r:cros_init_ui_respawn_shell_script:s0
-/usr/share/cros/init/ui-pre-start u:object_r:cros_init_ui_pre_start_shell_script:s0
 /usr/bin/start_bluetoothd.sh    u:object_r:cros_init_start_bluetoothd_shell_script:s0
 /usr/bin/start_bluetoothlog.sh  u:object_r:cros_init_start_bluetoothlog_shell_script:s0
+/usr/share/cros/init(/.*)?      u:object_r:cros_init_shell_scripts:s0
+/usr/share/cros/init/activate_date.sh u:object_r:cros_init_activate_date_script:s0
+/usr/share/cros/init/crx-import.sh u:object_r:cros_init_crx_import_script:s0
+/usr/share/cros/init/lockbox-cache.sh u:object_r:cros_init_lockbox_cache_script:s0
+/usr/share/cros/init/powerd-pre-start.sh u:object_r:cros_init_powerd_pre_start_script:s0
+/usr/share/cros/init/ui-pre-start u:object_r:cros_init_ui_pre_start_shell_script:s0
+/usr/share/cros/init/ui-respawn u:object_r:cros_init_ui_respawn_shell_script:s0
 
 /var                            u:object_r:cros_var:s0
 /var/empty                      u:object_r:cros_var_empty:s0

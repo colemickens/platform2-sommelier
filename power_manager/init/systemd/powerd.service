@@ -28,7 +28,7 @@ Environment=MAX_NITS_PREF=internal_backlight_max_nits
 Environment=PM_TEST_DELAY_FILE=/sys/power/pm_test_delay
 Environment=VMODULE_ARG=
 
-ExecStartPre=/bin/sh -u /usr/share/cros/init/powerd-pre-start.sh
+ExecStartPre=/usr/share/cros/init/powerd-pre-start.sh
 
 ExecStart=/sbin/minijail0 -u power -g power -G -i  \
   --                                               \
