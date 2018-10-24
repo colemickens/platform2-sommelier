@@ -65,22 +65,22 @@ class Rhs(symbol.BaseSymbol):
             pass
         elif self.add_optional(Terminal):
             pass
-        elif self.add_token_optional('['):
+        elif self.add_optional(Option_Start):
             self.add(Rhs)
-            self.add_token(']')
-        elif self.add_token_optional('{'):
+            self.add(Option_End)
+        elif self.add_optional(Repeat_Start):
             self.add(Rhs)
-            self.add_token('}')
-        elif self.add_token_optional('('):
+            self.add(Repeat_End)
+        elif self.add_optional(Group_Start):
             self.add(Rhs)
-            self.add_token(')')
+            self.add(Group_End)
         else:
             raise symbol.SymbolException(
                 'Unexpected token "%s"' % self._current_token())
 
-        if self.add_token_optional('|'):
+        if self.add_optional(Concat):
             self.add(Rhs)
-        elif self.add_token_optional(','):
+        elif self.add_optional(Or):
             self.add(Rhs)
 
         self._pop_depth()
@@ -88,7 +88,38 @@ class Rhs(symbol.BaseSymbol):
                       (self._get_depth() * self._LOG_TAB))
 
 
-class Terminal(symbol.BaseSymbol):
+class Elementary_Symbol(symbol.BaseSymbol):
+    """
+    Parse tree node representing any elementary EBNF symbol.
+
+    An elementary symbol is either an output symbol (a terminal or a
+    non-terminal identifier) or an EBNF operator. This class exists primarily
+    for ease of parse tree traversal.
+    """
+    pass
+
+
+class Output(Elementary_Symbol):
+    """Parse tree node representing an output symbol."""
+    pass
+
+
+class Operator(Elementary_Symbol):
+    """Parse tree node representing an EBNF operator."""
+    pass
+
+
+class StartOperator(Operator):
+    """Operator node representing a start symbol for multi-symbol operators."""
+    pass
+
+
+class EndOperator(Operator):
+    """Operator node representing an end symbol for multi-symbol operators."""
+    pass
+
+
+class Terminal(Output):
     """Parse tree node representing a terminal within an EBNF rule."""
 
     def __init__(self):
@@ -111,7 +142,7 @@ class Terminal(symbol.BaseSymbol):
                       (self._get_depth() * self._LOG_TAB))
 
 
-class Identifier(symbol.BaseSymbol):
+class Identifier(Output):
     """Parse tree node representing a identifier within an EBNF rule."""
 
     def __init__(self):
@@ -130,6 +161,69 @@ class Identifier(symbol.BaseSymbol):
         self._pop_depth()
         logging.debug('%sFinished adding Identifier.',
                       (self._get_depth() * self._LOG_TAB))
+
+
+class Concat(Operator):
+    """Parse tree node representing a concatenation operator."""
+
+    def __init__(self):
+        super(Concat, self).__init__()
+        self.add_token(',')
+
+
+class Or(Operator):
+    """Parse tree node representing an or operator."""
+
+    def __init__(self):
+        super(Or, self).__init__()
+        self.add_token('|')
+
+
+class Option_Start(StartOperator):
+    """Parse tree node representing the start of an optional section."""
+
+    def __init__(self):
+        super(Option_Start, self).__init__()
+        self.add_token('[')
+
+
+class Option_End(EndOperator):
+    """Parse tree node representing the end of an optional section."""
+    def __init__(self):
+        super(Option_End, self).__init__()
+        self.add_token(']')
+
+
+class Repeat_Start(StartOperator):
+    """Parse tree node representing the start of a repeat section."""
+
+    def __init__(self):
+        super(Repeat_Start, self).__init__()
+        self.add_token('{')
+
+
+class Repeat_End(EndOperator):
+    """Parse tree node representing the end of a repeat section."""
+
+    def __init__(self):
+        super(Repeat_End, self).__init__()
+        self.add_token('}')
+
+
+class Group_Start(StartOperator):
+    """Parse tree node representing the start of a grouped section."""
+
+    def __init__(self):
+        super(Group_Start, self).__init__()
+        self.add_token('(')
+
+
+class Group_End(EndOperator):
+    """Parse tree node representing the end of a grouped section."""
+
+    def __init__(self):
+        super(Group_End, self).__init__()
+        self.add_token(')')
 
 
 class EbnfToken(symbol.BaseSymbol):

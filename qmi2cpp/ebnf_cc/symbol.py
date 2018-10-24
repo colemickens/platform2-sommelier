@@ -36,6 +36,7 @@ class BaseSymbol(object):
 
     def __init__(self):
         self._children = []
+        self._curr_index = 0
 
     @staticmethod
     def set_token_stream(stream):
@@ -55,6 +56,7 @@ class BaseSymbol(object):
         be parsed to form a symbol_class.
         """
         self._children.append(symbol_class())
+        return True
 
     def add_optional(self, symbol_class):
         """Attempts to add a child symbol of type symbol_class.
@@ -84,6 +86,7 @@ class BaseSymbol(object):
         """
         self._children.append(Token(token_str))
         self._advance_token()
+        return True
 
     def add_token_optional(self, token_str):
         """Attempts to add token_str as a child symbol.
@@ -96,6 +99,27 @@ class BaseSymbol(object):
         except SymbolException:
             return False
         return True
+
+    def get_next(self, next_type=None):
+        """
+        Traverse parse tree for the next node of the specified type.
+
+        This call updates the current location of the parse tree to that the
+        returned node. If no node is found that matches the specified type, the
+        method will return None, as will all subsequent calls.
+        """
+        if self._curr_index < len(self._children):
+            if (next_type and
+                    isinstance(self._children[self._curr_index], next_type)):
+                self._curr_index += 1
+                return self._children[self._curr_index - 1]
+
+            next_obj = self._children[self._curr_index].get_next(next_type)
+            if next_obj is None:
+                self._curr_index += 1
+                return self.get_next(next_type)
+            return next_obj
+        return None
 
     @staticmethod
     def _current_token():
@@ -111,17 +135,17 @@ class BaseSymbol(object):
 
     @staticmethod
     def _push_depth():
-        """Adds indent to subsequent line insertions."""
+        """Increments indentation for debug logging."""
         BaseSymbol._depth += 1
 
     @staticmethod
     def _pop_depth():
-        """Removes indent from subsequent line insertions."""
+        """Decrements indentation for debug logging."""
         BaseSymbol._depth -= 1
 
     @staticmethod
     def _get_depth():
-        """Gets current indentation of file."""
+        """Gets indentation for debug logging."""
         return BaseSymbol._depth
 
     def __repr__(self):
@@ -139,10 +163,17 @@ class Token(BaseSymbol):
     """Symbol class representing a specific token."""
 
     def __init__(self, token_str):
+        super(Token, self).__init__()
         if self._current_token() != token_str:
             raise SymbolException('Expected token "%s", but found "%s".' %
                                   (token_str, self._current_token()))
         self._str = token_str
+
+    def get_next(self, next_type=None):
+        if next_type is None and self._curr_index == 0:
+            self._curr_index = 1
+            return self._str
+        return None
 
     def __repr__(self):
         return 'Token(%s)' % self._str
