@@ -33,6 +33,7 @@
 #include <base/logging.h>
 #include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
@@ -710,28 +711,7 @@ std::unique_ptr<dbus::Response> Service::SharePath(
     return dbus_response;
   }
 
-  // Build the source and destination directories.
-  base::FilePath src = base::FilePath("/home/user").Append(request.owner_id());
-  base::FilePath dst =
-      iter->second.root_dir().GetPath().Append(&kServerRoot[1]);
-
-  // Used later to strip out the prefix from the destination so that we return
-  // the relative path to the shared target.
-  const size_t prefix_len = dst.value().size();
-
-  switch (request.storage_location()) {
-    case SharePathRequest::DOWNLOADS:
-      src = src.Append("Downloads");
-      dst = dst.Append("Downloads");
-      break;
-    default:
-      LOG(ERROR) << "Unknown storage location: " << request.storage_location();
-      response.set_failure_reason("Unknown storage location");
-      writer.AppendProtoAsArrayOfBytes(response);
-      return dbus_response;
-  }
-
-  // Get the remaining path.
+  // Validate path.
   base::FilePath path(request.shared_path().path());
   if (path.IsAbsolute() || path.ReferencesParent() ||
       path.BaseName().value() == ".") {
@@ -743,6 +723,85 @@ std::unique_ptr<dbus::Response> Service::SharePath(
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
+
+  // Validate owner_id.
+  base::FilePath owner_id(request.owner_id());
+  bool owner_id_required =
+      request.storage_location() == SharePathRequest::DOWNLOADS;
+  if (owner_id.ReferencesParent() || owner_id.BaseName() != owner_id ||
+      (owner_id_required && owner_id.value().size() == 0)) {
+    LOG(ERROR) << "owner_id references parent, or is "
+                  "more than 1 component, or is required and not populated";
+    response.set_failure_reason("owner_id must be a single valid component");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Validate drivefs_mount_name.
+  base::FilePath drivefs_mount_name(request.drivefs_mount_name());
+  bool drivefs_mount_name_required =
+      request.storage_location() == SharePathRequest::DRIVEFS_MY_DRIVE ||
+      request.storage_location() == SharePathRequest::DRIVEFS_TEAM_DRIVES ||
+      request.storage_location() == SharePathRequest::DRIVEFS_COMPUTERS;
+  if (drivefs_mount_name.ReferencesParent() ||
+      drivefs_mount_name.BaseName() != drivefs_mount_name ||
+      (drivefs_mount_name_required &&
+       !base::StartsWith(drivefs_mount_name.value(), "drivefs-",
+                         base::CompareCase::SENSITIVE))) {
+    LOG(ERROR) << "drivefs_mount_name references parent, or is "
+                  "more than 1 component, or is required and not populated";
+    response.set_failure_reason(
+        "drivefs_mount_name must be a single valid component");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Build the source and destination directories.
+  base::FilePath src;
+  base::FilePath dst =
+      iter->second.root_dir().GetPath().Append(&kServerRoot[1]);
+
+  // Used later to strip out the prefix from the destination so that we return
+  // the relative path to the shared target.
+  const size_t prefix_len = dst.value().size();
+
+  switch (request.storage_location()) {
+    case SharePathRequest::DOWNLOADS:
+      src = base::FilePath("/home/user/")
+                .Append(owner_id)
+                .Append("Downloads");
+      dst = dst.Append("Downloads");
+      break;
+    case SharePathRequest::DRIVEFS_MY_DRIVE:
+      src = base::FilePath("/media/fuse/")
+                .Append(drivefs_mount_name)
+                .Append("root");
+      dst = dst.Append("Google Drive").Append("My Drive");
+      break;
+    case SharePathRequest::DRIVEFS_TEAM_DRIVES:
+      src = base::FilePath("/media/fuse/")
+                .Append(drivefs_mount_name)
+                .Append("team_drives");
+      dst = dst.Append("Google Drive").Append("Team Drives");
+      break;
+    case SharePathRequest::DRIVEFS_COMPUTERS:
+      src = base::FilePath("/media/fuse/")
+                .Append(drivefs_mount_name)
+                .Append("Computers");
+      dst = dst.Append("Google Drive").Append("Computers");
+      break;
+    case SharePathRequest::REMOVABLE:
+      src = base::FilePath("/media/removable");
+      dst = dst.Append("removable");
+      break;
+    default:
+      LOG(ERROR) << "Unknown storage location: " << request.storage_location();
+      response.set_failure_reason("Unknown storage location");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+  }
+
+  // Get the remaining path.
 
   src = src.Append(path);
   if (!base::PathExists(src)) {
