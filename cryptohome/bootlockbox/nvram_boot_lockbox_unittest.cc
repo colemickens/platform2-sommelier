@@ -24,7 +24,7 @@ class NVRamBootLockboxTest : public testing::Test {
   void SetUp() override {
     base::ScopedTempDir temp_directory;
     ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
-    file_path_ = temp_directory.path().Append(kTestFilePath);
+    file_path_ = temp_directory.GetPath().Append(kTestFilePath);
     nvram_boot_lockbox_ =
         std::make_unique<NVRamBootLockbox>(&fake_tpm_nvspace_utility_,
                                            file_path_);

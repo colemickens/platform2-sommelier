@@ -92,7 +92,7 @@ class KernelCollectorTest : public ::testing::Test {
     ASSERT_FALSE(base::PathExists(test_eventlog_));
     collector_.OverrideEventLogPath(test_eventlog_);
 
-    test_bios_log_ = scoped_temp_dir_.path().Append("bios_log");
+    test_bios_log_ = scoped_temp_dir_.GetPath().Append("bios_log");
     ASSERT_FALSE(base::PathExists(test_bios_log_));
     collector_.OverrideBiosLogPath(test_bios_log_);
     brillo::ClearLog();
