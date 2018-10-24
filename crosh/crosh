@@ -1812,13 +1812,13 @@ HELP_verify_ro="
 USAGE_verify_ro=''
 cmd_verify_ro() (
   local cr50_image="/opt/google/cr50/firmware/cr50.bin.prod"
-  local ro_db="/opt/google/cr50/ro_db/verify_ro.db"
+  local ro_db="/opt/google/cr50/ro_db"
 
   if [ $# -ne 0 ]; then
     help "too many arguments"
     return 1
   fi
-  if [ ! -f "${cr50_image}" -o ! -f "${ro_db}" ]; then
+  if [ ! -f "${cr50_image}" -o ! -d "${ro_db}" ]; then
     echo "This device can not be used for RO verification"
     return 1
   fi
