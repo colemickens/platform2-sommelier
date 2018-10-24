@@ -179,8 +179,8 @@ bool SetupListenerService(base::Thread* grpc_thread,
     return false;
   }
 
-  base::WaitableEvent event(false /*manual_reset*/,
-                            false /*initially_signaled*/);
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
   bool ret = grpc_thread->task_runner()->PostTask(
       FROM_HERE, base::Bind(&RunListenerService, listener_impl,
                             listener_address, &event, server_copy));
@@ -764,8 +764,8 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   // Associate a WaitableEvent with this VM.  This needs to happen before
   // starting the VM to avoid a race where the VM reports that it's ready
   // before it gets added as a pending VM.
-  base::WaitableEvent event(false /*manual_reset*/,
-                            false /*initially_signaled*/);
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
   startup_listener_->AddPendingVm(vsock_cid, &event);
 
   // Start the VM and build the response.

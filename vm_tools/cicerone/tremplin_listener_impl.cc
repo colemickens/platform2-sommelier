@@ -52,8 +52,8 @@ grpc::Status TremplinListenerImpl::TremplinReady(
   }
 
   bool result = false;
-  base::WaitableEvent event(false /*manual_reset*/,
-                            false /*initially_signaled*/);
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
   task_runner_->PostTask(
       FROM_HERE, base::Bind(&vm_tools::cicerone::Service::ConnectTremplin,
                             service_, cid, &result, &event));
@@ -80,8 +80,8 @@ grpc::Status TremplinListenerImpl::UpdateCreateStatus(
   }
 
   bool result = false;
-  base::WaitableEvent event(false /*manual_reset*/,
-                            false /*initially_signaled*/);
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
   if (request->status() == tremplin::ContainerCreationProgress::DOWNLOADING) {
     task_runner_->PostTask(
         FROM_HERE,

@@ -58,8 +58,8 @@ grpc::Status ContainerListenerImpl::ContainerReady(
                         "Failed parsing cid for ContainerListener");
   }
   bool result = false;
-  base::WaitableEvent event(false /*manual_reset*/,
-                            false /*initially_signaled*/);
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
   task_runner_->PostTask(
       FROM_HERE,
       base::Bind(&vm_tools::cicerone::Service::ContainerStartupCompleted,
@@ -87,8 +87,8 @@ grpc::Status ContainerListenerImpl::ContainerShutdown(
                         "Failed parsing cid for ContainerListener");
   }
   bool result = false;
-  base::WaitableEvent event(false /*manual_reset*/,
-                            false /*initially_signaled*/);
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
   task_runner_->PostTask(
       FROM_HERE, base::Bind(&vm_tools::cicerone::Service::ContainerShutdown,
                             service_, request->token(), cid, &result, &event));
@@ -146,8 +146,8 @@ grpc::Status ContainerListenerImpl::UpdateApplicationList(
       }
     }
   }
-  base::WaitableEvent event(false /*manual_reset*/,
-                            false /*initially_signaled*/);
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
   bool result = false;
   task_runner_->PostTask(
       FROM_HERE,
@@ -178,8 +178,8 @@ grpc::Status ContainerListenerImpl::OpenUrl(
     return grpc::Status(grpc::FAILED_PRECONDITION,
                         "Failed parsing cid for ContainerListener");
   }
-  base::WaitableEvent event(false /*manual_reset*/,
-                            false /*initially_signaled*/);
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
   bool result = false;
   task_runner_->PostTask(
       FROM_HERE,
@@ -214,8 +214,8 @@ grpc::Status ContainerListenerImpl::InstallLinuxPackageProgress(
           request->status()));
   progress_signal.set_progress_percent(request->progress_percent());
   progress_signal.set_failure_details(request->failure_details());
-  base::WaitableEvent event(false /*manual_reset*/,
-                            false /*initially_signaled*/);
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
   bool result = false;
   task_runner_->PostTask(
       FROM_HERE,
@@ -260,8 +260,8 @@ grpc::Status ContainerListenerImpl::UninstallPackageProgress(
       return grpc::Status(grpc::FAILED_PRECONDITION,
                           "Invalid status field in protobuf request");
   }
-  base::WaitableEvent event(false /*manual_reset*/,
-                            false /*initially_signaled*/);
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
   bool result = false;
   task_runner_->PostTask(
       FROM_HERE,
@@ -296,8 +296,8 @@ grpc::Status ContainerListenerImpl::OpenTerminal(
   }
   vm_tools::apps::TerminalParams terminal_params;
   terminal_params.mutable_params()->CopyFrom(request->params());
-  base::WaitableEvent event(false /*manual_reset*/,
-                            false /*initially_signaled*/);
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
   bool result = false;
   task_runner_->PostTask(
       FROM_HERE, base::Bind(&vm_tools::cicerone::Service::OpenTerminal,
@@ -325,8 +325,8 @@ grpc::Status ContainerListenerImpl::UpdateMimeTypes(
   mime_types.mutable_mime_type_mappings()->insert(
       request->mime_type_mappings().begin(),
       request->mime_type_mappings().end());
-  base::WaitableEvent event(false /*manual_reset*/,
-                            false /*initially_signaled*/);
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
   bool result = false;
   task_runner_->PostTask(
       FROM_HERE, base::Bind(&vm_tools::cicerone::Service::UpdateMimeTypes,

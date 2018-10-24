@@ -219,6 +219,7 @@ std::unique_ptr<Service> Service::Create(base::Closure quit_closure) {
 
 Service::Service(base::Closure quit_closure)
     : next_server_handle_(1),
+      watcher_(FROM_HERE),
       quit_closure_(std::move(quit_closure)),
       weak_factory_(this) {}
 

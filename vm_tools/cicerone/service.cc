@@ -139,8 +139,8 @@ bool SetupListenerService(base::Thread* grpc_thread,
     return false;
   }
 
-  base::WaitableEvent event(false /*manual_reset*/,
-                            false /*initially_signaled*/);
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
   bool ret = grpc_thread->task_runner()->PostTask(
       FROM_HERE, base::Bind(&RunListenerService, listener_impl,
                             listener_address, &event, server_copy));
@@ -738,7 +738,7 @@ void Service::UpdateMimeTypes(const std::string& container_token,
                               const uint32_t cid,
                               bool* result,
                               base::WaitableEvent* event) {
-  DCHECK(sequence_checker_.CalledOnValidSequencedThread());
+  DCHECK(sequence_checker_.CalledOnValidSequence());
   CHECK(result);
   CHECK(event);
   *result = false;
