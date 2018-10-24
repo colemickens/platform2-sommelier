@@ -12,7 +12,10 @@ allow $1 self:capability net_admin;
 
 define(`minijail_mountdev',
 minijail_mounts($1);
+arc_nyc_cts_fails(`
+# neverallows { domain -kernel -xxxxx} *:capability mknod;
 allow $1 $1:capability mknod;
+', ($1))
 allow $1 logger_device:sock_file getattr;
 filetrans_pattern_no_target_perm($1, tmpfs, device, chr_file);
 filetrans_pattern_no_target_perm($1, tmpfs, null_device, chr_file, "null");
@@ -24,8 +27,12 @@ allow $1 tmpfs:lnk_file create;
 
 # minijail_mounts(domain, extra_mount, extra_mounton, extra_getattr)
 define(`minijail_mounts', `
-allow $1 { proc tmpfs $2 }:filesystem { mount unmount remount};
-allow $1 { labeledfs device sysfs }:filesystem { unmount remount };
+# neverallows { domain -xxxxx} fs_type:filesytem { mount remount }
+arc_nyc_cts_fails(`
+allow $1 { proc tmpfs $2 }:filesystem { mount remount};
+allow $1 { labeledfs device sysfs }:filesystem { remount };
+', ($1))
+allow $1 { proc tmpfs labeledfs device sysfs $2}:filesystem unmount;
 allow $1 { rootfs cros_var cros_var_empty tmpfs $3 }:dir mounton;
 allow $1 { rootfs cros_var cros_var_empty tmpfs $3 }:file mounton;
 allow $1 { rootfs cros_var cros_var_empty tmpfs $3 $4 }:dir getattr;
