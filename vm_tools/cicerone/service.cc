@@ -1282,6 +1282,7 @@ std::unique_ptr<dbus::Response> Service::LaunchVshd(
 
   response.set_success(true);
   response.set_failure_reason(error_msg);
+  response.set_cid(vm->cid());
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }

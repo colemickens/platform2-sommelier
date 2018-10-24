@@ -111,7 +111,9 @@ bool LaunchVshd(dbus::ObjectProxy* cicerone_proxy,
                 const std::string& owner_id,
                 const std::string& vm_name,
                 const std::string& container_name,
-                unsigned int port) {
+                unsigned int port,
+                uint32_t* cid) {
+  DCHECK(cid);
   dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
                                vm_tools::cicerone::kLaunchVshdMethod);
   dbus::MessageWriter writer(&method_call);
@@ -143,9 +145,11 @@ bool LaunchVshd(dbus::ObjectProxy* cicerone_proxy,
 
   if (!response.success()) {
     LOG(ERROR) << "Failed to launch vshd for " << vm_name << ":"
-               << container_name;
+               << container_name << ": " << response.failure_reason();
     return false;
   }
+
+  *cid = response.cid();
 
   return true;
 }
@@ -191,8 +195,9 @@ bool ListenForVshd(dbus::ObjectProxy* cicerone_proxy,
   }
 
   // The socket is listening. Request that cicerone start vshd.
-  if (!LaunchVshd(cicerone_proxy, owner_id, vm_name,
-                  container_name, addr.svm_port))
+  uint32_t expected_cid;
+  if (!LaunchVshd(cicerone_proxy, owner_id, vm_name, container_name,
+                  addr.svm_port, &expected_cid))
     return false;
 
   struct pollfd pollfds[] = {
@@ -212,6 +217,12 @@ bool ListenForVshd(dbus::ObjectProxy* cicerone_proxy,
               &addr_size, SOCK_CLOEXEC)));
   if (!peer_sock_fd->is_valid()) {
     PLOG(ERROR) << "Failed to accept connection from daemon";
+    return false;
+  }
+
+  if (peer_addr.svm_cid != expected_cid) {
+    LOG(ERROR) << "Received connection from VM " << peer_addr.svm_cid
+               << " but expected " << expected_cid;
     return false;
   }
 
