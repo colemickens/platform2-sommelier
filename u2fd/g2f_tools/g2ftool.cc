@@ -25,11 +25,16 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(raw, false, "{action} send raw HID command");
   DEFINE_bool(msg, false, "{action} send U2F message");
   DEFINE_bool(wink, false, "{action} wink");
+  DEFINE_bool(reg, false, "{action} send U2F_REGISTER message");
+  DEFINE_bool(auth, false, "{action} send U2F_AUTHENTICATE message");
   DEFINE_bool(lock, false, "lock channel before action");
   DEFINE_int32(ping_size, 10, "size of ping data");
   DEFINE_int32(lock_timeout, 10, "lock_timeout in seconds [0..10]");
   DEFINE_string(payload, "", "request payload bytes (hex) for --raw or --msg");
-  DEFINE_int32(cc, -1, "command code to send for --raw")
+  DEFINE_int32(cc, -1, "command code to send for --raw");
+  DEFINE_string(challenge, "", "challenge parameter for --reg or --auth");
+  DEFINE_string(application, "", "application parameter for --reg or --auth");
+  DEFINE_string(key_handle, "", "key handle parameter for --auth");
   DEFINE_int32(v, 0, "verbosity level (up to 3)");
 
   brillo::FlagHelper::Init(argc, argv, "g2ftool - G2F testing tool");
@@ -47,9 +52,10 @@ int main(int argc, char* argv[]) {
 
   g2f_client::HidDevice hid_device(FLAGS_dev);
   g2f_client::U2FHid u2f_hid(&hid_device);
+  g2f_client::U2F u2f(&u2f_hid);
 
   const std::vector<bool> actions = {FLAGS_ping, FLAGS_wink, FLAGS_raw,
-                                     FLAGS_msg};
+                                     FLAGS_msg, FLAGS_reg, FLAGS_auth};
   if (std::count(actions.cbegin(), actions.cend(), true) != 1) {
     LOG(ERROR) << "Must specify exactly one action";
     return EX_USAGE;
@@ -109,6 +115,72 @@ int main(int argc, char* argv[]) {
       return EX_SOFTWARE;
     }
     std::cout << base::HexEncode(response.data(), response.size())
+              << std::endl;
+  } else if (FLAGS_reg) {
+    brillo::Blob challenge;
+    if (!FLAGS_challenge.empty() &&
+        !base::HexStringToBytes(FLAGS_challenge, &challenge)) {
+      LOG(ERROR) << "Failed to convert --reg_challenge to bytes" << std::endl;
+      return EX_USAGE;
+    }
+    brillo::Blob application;
+    if (!FLAGS_application.empty() &&
+        !base::HexStringToBytes(FLAGS_application, &application)) {
+      std::cout << "Failed to convert --reg_application to bytes" << std::endl;
+      return EX_USAGE;
+    }
+    brillo::Blob public_key;
+    brillo::Blob key_handle;
+    brillo::Blob certificate_and_signature;
+    if (!u2f.Register(challenge, application,
+                          &public_key, &key_handle,
+                          &certificate_and_signature)) {
+      return EX_SOFTWARE;
+    }
+    std::cout << "public_key="
+              << base::HexEncode(public_key.data(), public_key.size())
+              << std::endl
+              << "key_handle="
+              << base::HexEncode(key_handle.data(), key_handle.size())
+              << std::endl
+              << "certificate_and_signature="
+              << base::HexEncode(certificate_and_signature.data(),
+                                 certificate_and_signature.size())
+              << std::endl;
+  } else if (FLAGS_auth) {
+    brillo::Blob challenge;
+    if (!FLAGS_challenge.empty() &&
+        !base::HexStringToBytes(FLAGS_challenge, &challenge)) {
+      std::cout << "Failed to convert --challenge to bytes" << std::endl;
+      return EX_USAGE;
+    }
+    brillo::Blob application;
+    if (!FLAGS_application.empty() &&
+        !base::HexStringToBytes(FLAGS_application, &application)) {
+      std::cout << "Failed to convert --application to bytes" << std::endl;
+      return EX_USAGE;
+    }
+    brillo::Blob key_handle;
+    if (!FLAGS_key_handle.empty() &&
+        !base::HexStringToBytes(FLAGS_key_handle, &key_handle)) {
+      std::cout << "Failed to convert --key_handle to bytes" << std::endl;
+      return EX_USAGE;
+    }
+    bool presence_verified;
+    brillo::Blob counter;
+    brillo::Blob signature;
+    if (!u2f.Authenticate(challenge, application, key_handle,
+                              &presence_verified, &counter,
+                              &signature)) {
+      return EX_SOFTWARE;
+    }
+    std::cout << "presence_verified=" << presence_verified
+              << std::endl
+              << "counter="
+              << base::HexEncode(counter.data(), counter.size())
+              << std::endl
+              << "signature="
+              << base::HexEncode(signature.data(), signature.size())
               << std::endl;
   }
 

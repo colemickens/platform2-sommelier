@@ -82,7 +82,7 @@ class U2FHid {
   using CommandCode = u2f::U2fHid::U2fHidCommand;
   using ErrorCode = u2f::U2fHid::U2fHidError;
 
-  // Represents a U2F command, eg REGISTER or AUTHENTICATE.
+  // Represents a U2F command, e.g. REGISTER or AUTHENTICATE.
   struct Command {
     uint8_t cmd;
     brillo::Blob payload;
@@ -120,6 +120,7 @@ class U2FHid {
   // Creates a new instance for the specified hid_device, which must
   // outlive this instance.
   explicit U2FHid(HidDevice* hid_device);
+  virtual ~U2FHid() = default;
 
   // Sends a raw Command and retrieves the response. Returns
   // true on success.
@@ -136,7 +137,8 @@ class U2FHid {
   // This sends the specified message to the device. The message
   // should be formatted according to section 4.1.1 of the FIDO
   // U2F HID spec. This sends a U2FHID_MSG command.
-  bool Msg(const brillo::Blob& request, brillo::Blob* response);
+  virtual bool Msg(const brillo::Blob& request,
+                   brillo::Blob* response);
   // This sends a ping of the specified size to the device.
   // This is a U2FHID_PING command.
   bool Ping(size_t size);
@@ -169,7 +171,76 @@ class U2FHid {
   uint8_t caps_;
 };
 
-// class U2F
+// Represents the U2F layer, responsible for sending
+// register, authenticate, etc messages.
+class U2F {
+ public:
+  // Creates a new instance to wrap the specified
+  // u2f_device, which must outlive this instance.
+  explicit U2F(U2FHid* u2f_device) : u2f_device_(u2f_device) {}
+
+  // This sends a U2F_REGISTER message.
+  bool Register(const brillo::Blob& challenge,
+                const brillo::Blob& application,
+                brillo::Blob* public_key,
+                brillo::Blob* key_handle,
+                brillo::Blob* certificate_and_signature);
+  // This sends a U2F_AUTHENTICATE message.
+  bool Authenticate(const brillo::Blob& challenge,
+                    const brillo::Blob& application,
+                    const brillo::Blob& key_handle,
+                    bool* presence_verified,
+                    brillo::Blob* counter,
+                    brillo::Blob* signature);
+
+  static void AppendBlob(const brillo::Blob& from,
+                         brillo::Blob* to);
+
+ private:
+  // Sends a U2F message, checks that the response is sufficiently
+  // long, and that the returned status word is SW_NO_ERROR. The
+  // size specified should not include the two SW1 and SW2 bytes.
+  // Returns false if size or status conditions are not met.
+  bool SendMsg(const brillo::Blob& request,
+               int min_response_size,
+               brillo::Blob* response);
+
+  // Copies data from a blob and appends to the end of another.
+  // Start position is specified by from_it, which is updated
+  // to point to the next unread byte, allowing subsequent calls
+  // to re-use the same iterator to read the next available bytes.
+  // Returns false if the source blob did not have enough data to
+  // copy the requested length, true otherwise.
+  static bool AppendFromResponse(const brillo::Blob& from,
+                                 brillo::Blob::iterator* from_it,
+                                 size_t length,
+                                 brillo::Blob* to);
+
+  U2FHid* u2f_device_;
+
+  // This is the minimum set of sizes necessary to successfully
+  // parse the response into sections; this does not imply that
+  // further parsing of individual sections (e.g. the certificate)
+  // will succeed.
+  static constexpr int kRegResponseMinSize =
+      1 +   // Reserved Byte (legacy reasons)
+      65 +  // User Public key
+      1 +   // Key Handle Length
+      1 +   // Key Handle (minimum)
+      1;    // Certificate + signature (minimum)
+  static constexpr int kRegResponseStartOffset = 1;
+  static constexpr int kRegResponsePublicKeyLength = 65;
+
+  // This size should be interpreted in the same way as
+  // kRegResponseMinSize above.
+  static constexpr int kAuthResponseMinSize =
+      1 +  // User presence
+      4 +  // Counter
+      1;   // Signature
+
+  static constexpr int kAuthResponseCounterOffset = 1;
+  static constexpr int kAuthResponseCounterLength = 4;
+};
 
 }  // namespace g2f_client
 

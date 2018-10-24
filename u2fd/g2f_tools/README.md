@@ -24,3 +24,25 @@ You may like to increase verbosity to see details of the messages sent:
 ```
 g2ftool --dev=/dev/hidraw<n> --v=3 --ping
 ```
+
+### Register
+
+Sends a U2F_REGISTER message.
+
+```
+g2ftool --dev=/dev/hidraw<n> --reg --application=<sha256(app)>
+                                   --challenge=<sha256(challenge)>
+```
+
+Output will include a key_handle for this new registration.
+
+### Authenticate
+
+Sends a U2F_AUTHENTICATE message.
+
+```
+g2ftool --dev=/dev/hidraw<n> --auth
+                             --application=<value provided at registration>
+                             --challenge=<value provided at registration>
+                             --key_handle<value returned after registration>
+```

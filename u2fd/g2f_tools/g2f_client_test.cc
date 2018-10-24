@@ -537,5 +537,253 @@ TEST_F(U2FHidTest, Wink) {
   EXPECT_TRUE(hid_.Wink());
 }
 
+
+class MockU2FHid : public U2FHid {
+ public:
+  MockU2FHid() : U2FHid(nullptr) {}
+  MOCK_METHOD2(Msg,
+               bool(const brillo::Blob& request,
+                    brillo::Blob* response));
+};
+
+
+class U2FTest : public ::testing::Test {
+ public:
+  U2FTest() : u2f_(&u2f_hid_) {}
+  virtual ~U2FTest() = default;
+
+  void SetUp() {
+  }
+
+ protected:
+  void RunRegisterExpectFail() {
+    const brillo::Blob challenge(32, 0xaa);
+    const brillo::Blob application(32, 0xbb);
+
+    brillo::Blob public_key;
+    brillo::Blob key_handle;
+    brillo::Blob cert;
+
+    EXPECT_FALSE(
+        u2f_.Register(challenge,
+                      application,
+                      &public_key,
+                      &key_handle,
+                      &cert));
+  }
+
+  void RunAuthenticateExpectFail() {
+    const brillo::Blob challenge(32, 0xaa);
+    const brillo::Blob application(32, 0xbb);
+    const brillo::Blob key_handle(27, 0xde);
+
+    bool presence_verified = false;
+    brillo::Blob counter;
+    brillo::Blob signature;
+
+    EXPECT_FALSE(
+        u2f_.Authenticate(challenge,
+                          application,
+                          key_handle,
+                          &presence_verified,
+                          &counter,
+                          &signature));
+  }
+
+  MockU2FHid u2f_hid_;
+  U2F u2f_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(U2FTest);
+};
+
+TEST_F(U2FTest, RegisterSuccess) {
+  const brillo::Blob expected_public_key(65, 0x65);
+  const brillo::Blob expected_key_handle(13, 0xde);
+  const brillo::Blob expected_cert(29, 0xfc);
+  // See section 4.3 of U2F Raw Message Format spec
+  // for details.
+  brillo::Blob response = {
+    0x05,  // Reserved (legacy reasons)
+  };
+  // Public key, fixed size.
+  U2F::AppendBlob(expected_public_key, &response);
+  // Key handle, variable size.
+  response.push_back(expected_key_handle.size());
+  U2F::AppendBlob(expected_key_handle, &response);
+  // Cert and signature, variable size.
+  U2F::AppendBlob(expected_cert, &response);
+  // Status code: SW_NO_ERROR
+  response.push_back(0x90);  // Sw1
+  response.push_back(0x00);  // Sw2
+
+  EXPECT_CALL(u2f_hid_, Msg(_, _))
+      .WillOnce(DoAll(
+          SetArgPointee<1>(response),
+          Return(true)));
+
+  const brillo::Blob challenge(32, 0xaa);
+  const brillo::Blob application(32, 0xbb);
+
+  brillo::Blob public_key;
+  brillo::Blob key_handle;
+  brillo::Blob cert;
+
+  EXPECT_TRUE(
+      u2f_.Register(challenge,
+                    application,
+                    &public_key,
+                    &key_handle,
+                    &cert));
+
+  EXPECT_THAT(public_key,
+              ContainerEq(expected_public_key));
+  EXPECT_THAT(key_handle,
+              ContainerEq(expected_key_handle));
+  EXPECT_THAT(cert,
+              ContainerEq(expected_cert));
+}
+
+TEST_F(U2FTest, RegisterMsgFails) {
+  EXPECT_CALL(u2f_hid_, Msg(_, _))
+      .WillOnce(Return(false));
+
+  RunRegisterExpectFail();
+}
+
+TEST_F(U2FTest, RegisterBadStatus) {
+  brillo::Blob response = {
+    // Dummy data, unused.
+    0xDE, 0xAD, 0xBE, 0xEF,
+    // Status code: SW_WRONG_DATA
+    0x6A,  // SW1
+    0x80,  // SW2
+  };
+
+  EXPECT_CALL(u2f_hid_, Msg(_, _))
+      .WillOnce(DoAll(
+          SetArgPointee<1>(response),
+          Return(true)));
+
+  RunRegisterExpectFail();
+}
+
+TEST_F(U2FTest, RegisterShortResponse) {
+  // See section 4.3 of U2F Raw Message Format spec
+  // for details.
+  brillo::Blob response = {
+    0x05,  // Reserved (legacy reasons)
+    // Rest of response should go here (intentionally missing).
+    // Status code: SW_NO_ERROR
+    0x90,  // SW1
+    0x00,  // SW2
+  };
+
+  EXPECT_CALL(u2f_hid_, Msg(_, _))
+      .WillOnce(DoAll(
+          SetArgPointee<1>(response),
+          Return(true)));
+
+  RunRegisterExpectFail();
+}
+
+TEST_F(U2FTest, AuthenticateSuccess) {
+  brillo::Blob response = {
+    0x01,  // Presence verified
+
+    0x01,  // Counter
+    0x02,
+    0x03,
+    0x04,
+
+    0xde,  // Signature
+    0xad,
+    0xbe,
+    0xef,
+
+    0x90,  // Status code: SW_NO_ERROR
+    0x00
+  };
+
+  EXPECT_CALL(u2f_hid_, Msg(_, _))
+      .WillOnce(DoAll(
+          SetArgPointee<1>(response),
+          Return(true)));
+
+  const brillo::Blob challenge(32, 0xaa);
+  const brillo::Blob application(32, 0xbb);
+  const brillo::Blob key_handle(27, 0xde);
+
+  bool presence_verified = false;
+  brillo::Blob counter;
+  brillo::Blob signature;
+
+  EXPECT_TRUE(
+      u2f_.Authenticate(challenge,
+                        application,
+                        key_handle,
+                        &presence_verified,
+                        &counter,
+                        &signature));
+
+  EXPECT_TRUE(presence_verified);
+  EXPECT_THAT(counter, ElementsAre(1, 2, 3, 4));
+  EXPECT_THAT(signature, ElementsAre(0xde, 0xad, 0xbe, 0xef));
+}
+
+
+TEST_F(U2FTest, AuthenticateMsgFail) {
+  EXPECT_CALL(u2f_hid_, Msg(_, _))
+      .WillOnce(Return(false));
+
+  RunAuthenticateExpectFail();
+}
+
+
+TEST_F(U2FTest, AuthenticateBadStatus) {
+  brillo::Blob response = {
+    0x01,  // Presence verified
+
+    0x01,  // Counter
+    0x02,
+    0x03,
+    0x04,
+
+    0xde,  // Signature
+    0xad,
+    0xbe,
+    0xef,
+
+    0x6A,  // Status code: U2F_SW_NO_ERROR
+    0x80
+  };
+
+  EXPECT_CALL(u2f_hid_, Msg(_, _))
+      .WillOnce(DoAll(
+          SetArgPointee<1>(response),
+          Return(true)));
+
+  RunAuthenticateExpectFail();
+}
+
+TEST_F(U2FTest, AuthenticateShortReponse) {
+  brillo::Blob response = {
+    0x01,  // Presence verified
+
+    // Remainder of response should go here
+    // (intentionally left blank)
+
+    0x90,  // Status code: SW_NO_ERROR
+    0x00
+  };
+
+  EXPECT_CALL(u2f_hid_, Msg(_, _))
+      .WillOnce(DoAll(
+          SetArgPointee<1>(response),
+          Return(true)));
+
+  RunAuthenticateExpectFail();
+}
+
 }  // namespace
 }  // namespace g2f_client

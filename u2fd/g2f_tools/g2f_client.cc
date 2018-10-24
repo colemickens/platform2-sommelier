@@ -17,6 +17,7 @@
 #include <brillo/syslog_logging.h>
 #include <crypto/random.h>
 
+#include <trunks/cr50_headers/u2f.h>
 #include "u2fd/g2f_tools/g2f_client.h"
 
 namespace {
@@ -490,6 +491,212 @@ bool U2FHid::Wink() {
     LOG(ERROR) << "Wink response contains unexpected data";
     return false;
   }
+  return true;
+}
+
+bool U2F::SendMsg(const brillo::Blob& request,
+                  int min_response_size,
+                  brillo::Blob* response) {
+  brillo::Blob raw_response;
+  if (!u2f_device_->Msg(request, response)) {
+    LOG(ERROR) << "Sending U2F message failed";
+    return false;
+  }
+
+  if (response->size() < 2 /* SW1 + SW2 */) {
+    LOG(ERROR) << "Malformed response received, size: "
+               << response->size();
+    return false;
+  }
+
+  uint16_t status;
+  // The final two bytes of the response are SW1 and SW2,
+  // which respectively make up the MSB and LSB of the
+  // 16-bit return status word.
+  status = response->back();
+  response->pop_back();
+  status |= response->back() << 8;
+  response->pop_back();
+
+  if (status != U2F_SW_NO_ERROR) {
+    LOG(ERROR) << "Bad status received: 0x"
+               << std::hex << status;
+    return false;
+  }
+
+  if (response->size() < min_response_size) {
+    LOG(ERROR) << "Response too short, size: "
+               << response->size();
+    return false;
+  }
+
+  return true;
+}
+
+void U2F::AppendBlob(const brillo::Blob& from,
+                brillo::Blob* to) {
+  std::copy(from.begin(), from.end(),
+            std::back_inserter(*to));
+}
+
+bool U2F::AppendFromResponse(const brillo::Blob& from,
+                             brillo::Blob::iterator* from_it,
+                             size_t length,
+                             brillo::Blob* to) {
+  if (*from_it + length > from.end()) {
+    LOG(ERROR) << "Attempting to copy " << length << " bytes from response, "
+               << "but only " << from.end() - *from_it << " available. ";
+    return false;
+  }
+  std::copy_n(*from_it, length, std::back_inserter(*to));
+  *from_it += length;
+  return true;
+}
+
+namespace {
+
+bool CheckBlobLength(const brillo::Blob& blob, int expected_length,
+                     const std::string& name) {
+  if (blob.size() != expected_length) {
+    LOG(ERROR) << "Invalid " << name << " length, expected "
+               << expected_length << ", but got "
+               << blob.size();
+    return false;
+  } else {
+    return true;
+  }
+}
+
+}  // namespace
+
+bool U2F::Register(const brillo::Blob& challenge,
+                   const brillo::Blob& application,
+                   brillo::Blob* public_key,
+                   brillo::Blob* key_handle,
+                   brillo::Blob* certificate_and_signature) {
+  bool challenge_valid = CheckBlobLength(challenge, 32, "challenge");
+  bool application_valid = CheckBlobLength(application, 32, "application");
+  if (!challenge_valid || !application_valid) {
+    return false;
+  }
+
+  // Message format defined in sections 3 and 4.1 of the
+  // U2F Raw Message Formats Spec v1.2.
+  brillo::Blob request = {
+    0x00,   // CLA
+    0x01,   // INS: U2F_REGISTER
+    0x00,   // P1
+    0x00,   // P2
+    64,     // Request length
+  };
+  AppendBlob(challenge, &request);
+  AppendBlob(application, &request);
+  // Final byte is maximum response length.
+  request.push_back(255);
+
+  brillo::Blob response;
+  if (!SendMsg(request, kRegResponseMinSize, &response)) {
+    LOG(ERROR) << "Register failed.";
+    return false;
+  }
+
+  // There is a legacy byte at the beginning; skip over it.
+  auto response_iter = response.begin() + kRegResponseStartOffset;
+
+  // Public key has a fixed length. Size check above guarantees we have
+  // enough data in response to read this.
+  AppendFromResponse(response,
+                     &response_iter,
+                     kRegResponsePublicKeyLength,
+                     public_key);
+
+  // Key handle length is variable and provided in the response. Size
+  // check above guarantees we can read the length, but the length could
+  // be invalid, so reading the number of bytes it specifies could fail.
+  size_t key_handle_length = *response_iter++;
+  if (!AppendFromResponse(response,
+                          &response_iter,
+                          key_handle_length,
+                          key_handle)) {
+    LOG(ERROR) << "Invalid key handle length provided in response.";
+    return false;
+  }
+
+  // Certificate/signature is the final item and takes up the
+  // remainder of the response. If the message is malformed,
+  // the certificate could be missing.
+  size_t cert_sig_length = response.end() - response_iter;
+  if (cert_sig_length == 0) {
+    LOG(ERROR) << "Certificate missing in register response.";
+    return false;
+  }
+  // Length is calculated based on remaining bytes, so this will succeed.
+  AppendFromResponse(response,
+                     &response_iter,
+                     cert_sig_length,
+                     certificate_and_signature);
+
+  return true;
+}
+
+bool U2F::Authenticate(const brillo::Blob& challenge,
+                       const brillo::Blob& application,
+                       const brillo::Blob& key_handle,
+                       bool* presence_verified,
+                       brillo::Blob* counter,
+                       brillo::Blob* signature) {
+  bool challenge_valid = CheckBlobLength(challenge, 32, "challenge");
+  bool application_valid = CheckBlobLength(application, 32, "application");
+  if (!challenge_valid || !application_valid) {
+    return false;
+  }
+
+  if (key_handle.size() > 190) {
+    LOG(ERROR) << "Key handle size too large";
+    return false;
+  }
+  uint8_t req_length = 65 + key_handle.size();
+
+  // Message format defined in sections 3 and 4.1 of the
+  // U2F Raw Message Formats Spec v1.2.
+  brillo::Blob request = {
+    0x00,        // CLA
+    0x02,        // INS: U2F_AUTHENTICATE
+    0x08,        // P1: Sign without presence
+    0x00,        // P2
+    req_length,  // Request length
+  };
+  AppendBlob(challenge, &request);
+  AppendBlob(application, &request);
+  request.push_back(key_handle.size());
+  AppendBlob(key_handle, &request);
+  // Final byte is maximum response length.
+  request.push_back(255);
+
+  brillo::Blob response;
+  if (!SendMsg(request, kAuthResponseMinSize, &response)) {
+    LOG(ERROR) << "Authenticate failed.";
+    return false;
+  }
+
+  // This is stored in the LSB of the first byte.
+  *presence_verified = response[0] & 1;
+
+  // Counter is fixed length.
+  auto response_iter = response.begin() + kAuthResponseCounterOffset;
+  AppendFromResponse(response,
+                     &response_iter,
+                     kAuthResponseCounterLength,
+                     counter);
+
+  // Signature is the final field and occupies the remainder of
+  // the response. Size check above guarantees we have at least
+  // one byte of the response left to read.
+  AppendFromResponse(response,
+                     &response_iter,
+                     response.end() - response_iter,
+                     signature);
+
   return true;
 }
 
