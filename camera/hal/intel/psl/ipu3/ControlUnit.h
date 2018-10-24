@@ -156,9 +156,13 @@ private:  /* Members */
     std::mutex mSofDataLock;
     std::map<uint32_t, unsigned long long> mSofDataMap;
 
-    /* AWB convergence needs to run AWB algorithm 3 times with statistics, so we need to
-       hold request processing when process request 0, 1. */
-    static const int16_t PENDING_REQUEST_FOR_AWB_CONVERGENCE = 1;
+    /*
+     * The best number of frames with statistics used for AWB convergence is 3.
+     * But holding request processing for 2 frames causes too many frame drops.
+     * As a balance, only request 0 is hold so that AWB can take the statistics
+     * from the first real image and do not drop too many frames as well.
+     */
+    static const int16_t PENDING_REQUEST_FOR_AWB_CONVERGENCE = 0;
 };  // class ControlUnit
 
 }  // namespace camera2
