@@ -6,7 +6,10 @@
 #define MEDIA_PERCEPTION_PROTO_MOJOM_CONVERSION_H_
 
 #include "media_perception/device_management.pb.h"
+#include "media_perception/pipeline.pb.h"
 #include "mojom/device_management.mojom.h"
+#include "mojom/media_perception.mojom.h"
+#include "mojom/pipeline.mojom.h"
 
 namespace chromeos {
 namespace media_perception {
@@ -20,6 +23,13 @@ AudioStreamParamsPtr ToMojom(const mri::AudioStreamParams& params);
 AudioDevicePtr ToMojom(const mri::AudioDevice& device);
 DeviceType ToMojom(mri::DeviceType type);
 DeviceTemplatePtr ToMojom(const mri::DeviceTemplate& device_template);
+
+// Pipeline conversions.
+PipelineStatus ToMojom(mri::PipelineStatus status);
+PipelineErrorType ToMojom(mri::PipelineErrorType error_type);
+PipelineErrorPtr ToMojom(const mri::PipelineError& error);
+PipelineStatePtr ToMojom(const mri::PipelineState& state);
+
 
 }  // namespace mojom
 }  // namespace media_perception
@@ -43,6 +53,16 @@ DeviceType ToProto(
     chromeos::media_perception::mojom::DeviceType type);
 DeviceTemplate ToProto(
     const chromeos::media_perception::mojom::DeviceTemplatePtr& template_ptr);
+
+// Pipeline conversions.
+PipelineStatus ToProto(
+    chromeos::media_perception::mojom::PipelineStatus status);
+PipelineErrorType ToProto(
+    chromeos::media_perception::mojom::PipelineErrorType error_type);
+PipelineError ToProto(
+    const chromeos::media_perception::mojom::PipelineErrorPtr& error_ptr);
+PipelineState ToProto(
+    const chromeos::media_perception::mojom::PipelineStatePtr& state_ptr);
 
 }  // namespace mri
 

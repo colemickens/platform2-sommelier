@@ -102,6 +102,53 @@ DeviceTemplatePtr ToMojom(const mri::DeviceTemplate& device_template) {
   return template_ptr;
 }
 
+PipelineStatus ToMojom(mri::PipelineStatus status) {
+  switch (status) {
+    case mri::PipelineStatus::STARTED:
+      return PipelineStatus::STARTED;
+    case mri::PipelineStatus::RUNNING:
+      return PipelineStatus::RUNNING;
+    case mri::PipelineStatus::SUSPENDED:
+      return PipelineStatus::SUSPENDED;
+    case mri::PipelineStatus::ERROR:
+      return PipelineStatus::ERROR;
+    case mri::PIPELINE_STATUS_UNKNOWN:
+      return PipelineStatus::UNKNOWN;
+  }
+  return PipelineStatus::UNKNOWN;
+}
+
+PipelineErrorType ToMojom(mri::PipelineErrorType error_type) {
+  switch (error_type) {
+    case mri::PipelineErrorType::CONFIGURATION:
+      return PipelineErrorType::CONFIGURATION;
+    case mri::PipelineErrorType::STARTUP:
+      return PipelineErrorType::STARTUP;
+    case mri::PipelineErrorType::RUNTIME:
+      return PipelineErrorType::RUNTIME;
+    case mri::PipelineErrorType::CONTENT:
+      return PipelineErrorType::CONTENT;
+    case mri::PIPELINE_ERROR_TYPE_UNKNOWN:
+      return PipelineErrorType::UNKNOWN;
+  }
+  return PipelineErrorType::UNKNOWN;
+}
+
+PipelineErrorPtr ToMojom(const mri::PipelineError& error) {
+  PipelineErrorPtr error_ptr = PipelineError::New();
+  error_ptr->error_type = ToMojom(error.error_type());
+  error_ptr->error_source = error.error_source();
+  error_ptr->error_string = error.error_string();
+  return error_ptr;
+}
+
+PipelineStatePtr ToMojom(const mri::PipelineState& state) {
+  PipelineStatePtr state_ptr = PipelineState::New();
+  state_ptr->status = ToMojom(state.status());
+  state_ptr->error = ToMojom(state.error());
+  return state_ptr;
+}
+
 }  // namespace mojom
 }  // namespace media_perception
 }  // namespace chromeos
@@ -222,6 +269,62 @@ DeviceTemplate ToProto(
   device_template.set_template_name(template_ptr->template_name);
   device_template.set_device_type(ToProto(template_ptr->device_type));
   return device_template;
+}
+
+PipelineStatus ToProto(
+    chromeos::media_perception::mojom::PipelineStatus status) {
+  switch (status) {
+    case chromeos::media_perception::mojom::PipelineStatus::STARTED:
+      return PipelineStatus::STARTED;
+    case chromeos::media_perception::mojom::PipelineStatus::RUNNING:
+      return PipelineStatus::RUNNING;
+    case chromeos::media_perception::mojom::PipelineStatus::SUSPENDED:
+      return PipelineStatus::SUSPENDED;
+    case chromeos::media_perception::mojom::PipelineStatus::ERROR:
+      return PipelineStatus::ERROR;
+    case chromeos::media_perception::mojom::PipelineStatus::UNKNOWN:
+      return PipelineStatus::PIPELINE_STATUS_UNKNOWN;
+  }
+  return PipelineStatus::PIPELINE_STATUS_UNKNOWN;
+}
+
+PipelineErrorType ToProto(
+    chromeos::media_perception::mojom::PipelineErrorType error_type) {
+  switch (error_type) {
+    case chromeos::media_perception::mojom::PipelineErrorType::CONFIGURATION:
+      return PipelineErrorType::CONFIGURATION;
+    case chromeos::media_perception::mojom::PipelineErrorType::STARTUP:
+      return PipelineErrorType::STARTUP;
+    case chromeos::media_perception::mojom::PipelineErrorType::RUNTIME:
+      return PipelineErrorType::RUNTIME;
+    case chromeos::media_perception::mojom::PipelineErrorType::CONTENT:
+      return PipelineErrorType::CONTENT;
+    case chromeos::media_perception::mojom::PipelineErrorType::UNKNOWN:
+      return PipelineErrorType::PIPELINE_ERROR_TYPE_UNKNOWN;
+  }
+  return PipelineErrorType::PIPELINE_ERROR_TYPE_UNKNOWN;
+}
+
+PipelineError ToProto(
+    const chromeos::media_perception::mojom::PipelineErrorPtr& error_ptr) {
+  PipelineError error;
+  if (error_ptr.is_null())
+    return error;
+  error.set_error_type(ToProto(error_ptr->error_type));
+  error.set_error_source(*error_ptr->error_source);
+  error.set_error_string(*error_ptr->error_string);
+  return error;
+}
+
+PipelineState ToProto(
+    const chromeos::media_perception::mojom::PipelineStatePtr& state_ptr) {
+  PipelineState state;
+  if (state_ptr.is_null())
+    return state;
+  state.set_status(ToProto(state_ptr->status));
+
+  *state.mutable_error() = ToProto(state_ptr->error);
+  return state;
 }
 
 }  // namespace mri

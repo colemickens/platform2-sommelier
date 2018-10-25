@@ -17,6 +17,7 @@
       },
       'sources': [
         '<(proto_in_dir)/device_management.proto',
+        '<(proto_in_dir)/pipeline.proto',
       ],
       'includes': ['../common-mk/protoc.gypi'],
     },
@@ -35,6 +36,7 @@
         'mojom/mailbox_holder.mojom',
         'mojom/media_perception.mojom',
         'mojom/media_perception_service.mojom',
+        'mojom/pipeline.mojom',
         'mojom/producer.mojom',
         'mojom/receiver.mojom',
         'mojom/scoped_access_permission.mojom',
