@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 open: return 1
+openat: return 1
 recvfrom: 1
 mmap: 1
 sendmsg: 1

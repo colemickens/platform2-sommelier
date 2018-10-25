@@ -7,6 +7,7 @@ recv: 1
 sendmsg: 1
 # open: return EPERM
 open: return 1
+openat: return 1
 mmap2: 1
 mprotect: 1
 close: 1
