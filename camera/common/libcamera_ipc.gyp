@@ -14,9 +14,12 @@
   'targets': [
     {
       'target_name': 'libcamera_ipc',
+      'variables': {
+        'mojo_root': '../',
+      },
       'includes': [
         '../build/standalone_static_library.gypi',
-        '../mojo/mojom_bindings_gen.gypi',
+        '../../../platform2/common-mk/mojom_bindings_generator.gypi',
       ],
       'sources': [
         '../mojo/algorithm/camera_algorithm.mojom',

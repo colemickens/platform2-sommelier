@@ -22,8 +22,11 @@
     {
       'target_name': 'cros_camera_service',
       'type': 'executable',
+      'variables': {
+        'mojo_root': '../',
+      },
       'includes': [
-        '../mojo/mojom_bindings_gen.gypi',
+        '../../../platform2/common-mk/mojom_bindings_generator.gypi',
       ],
       'libraries': [
         '-ldl',
