@@ -94,10 +94,11 @@ fast_dd() {
   done
 
   # Print a humble info line if the block size is not super, and complain more
-  # loudly if it's really small.
+  # loudly if it's really small (and the partition is big).
   if [ "${block_size}" -ne $((2 * 1024 * 1024)) ]; then
     echo "DD with block size ${block_size}"
-    if [ "${block_size}" -lt $((128 * 1024)) ]; then
+    if [ "${block_size}" -lt $((128 * 1024)) -a \
+         $((user_count * SRC_BLKSIZE)) -gt $((128 * 1024 * 1024)) ]; then
       echo
       echo "WARNING: DOING A SLOW MISALIGNED dd OPERATION. PLEASE FIX"
       echo "count=${user_count} seek=${user_seek} skip=${user_skip}"
