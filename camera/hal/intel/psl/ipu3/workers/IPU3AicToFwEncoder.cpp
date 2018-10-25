@@ -725,22 +725,6 @@ ispYEeNrEncode(aic_config *config, ipu3_uapi_params *params)
 }
 
 void
-ispYTmLutEncode(aic_config *config, ipu3_uapi_params *params)
-{
-    MEMCPY_S(params->acc_param.ytm.entries, sizeof(params->acc_param.ytm.entries),
-        config->yuvp2_2500_config.ytm.entries, sizeof(config->yuvp2_2500_config.ytm.entries));
-
-/* Y_TM disable in HW for C0 */
-#if !defined(HAS_Y_TM)
-    params->acc_param.ytm.enable = 0;
-#else
-    params->acc_param.ytm.enable = config->ytm_en;
-#endif
-
-    params->use.acc_ytm = 1;
-}
-
-void
 ispTccEncode(aic_config *config, ipu3_uapi_params *params)
 {
     params->acc_param.tcc.gen_control.en = 1;
@@ -1235,7 +1219,6 @@ IPU3AicToFwEncoder::encodeParameters(aic_config *config, ipu3_uapi_params *param
     ispChnrEncode(config, params);
     ispChnrC0Encode(config, params);
     ispYEeNrEncode(config, params);
-    ispYTmLutEncode(config, params);
     ispTccEncode(config, params);
     ispAnrEncode(config, params);
     ispBnrEncode(config, params);
