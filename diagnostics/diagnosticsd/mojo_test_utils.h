@@ -10,7 +10,6 @@
 
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
-#include <mojo/public/cpp/system/buffer.h>
 
 namespace diagnostics {
 
@@ -33,11 +32,6 @@ class FakeMojoFdGenerator final {
 
   DISALLOW_COPY_AND_ASSIGN(FakeMojoFdGenerator);
 };
-
-namespace helper {
-std::unique_ptr<mojo::ScopedSharedBufferHandle> WriteToSharedBuffer(
-    const std::string& content);
-}  // namespace helper
 
 }  // namespace diagnostics
 

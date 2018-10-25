@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include <memory>
-#include <string>
 #include <utility>
 
 #include <base/message_loop/message_loop.h>
@@ -17,6 +16,7 @@
 #include "diagnostics/diagnosticsd/diagnosticsd_mojo_service.h"
 #include "diagnostics/diagnosticsd/mock_mojom_diagnosticsd_client.h"
 #include "diagnostics/diagnosticsd/mojo_test_utils.h"
+#include "diagnostics/diagnosticsd/mojo_utils.h"
 
 #include "mojo/diagnosticsd.mojom.h"
 
@@ -35,7 +35,7 @@ namespace diagnostics {
 namespace {
 
 void EmptySendUiMessageToDiagnosticsProcessorWithSizeCallback(
-    mojo::ScopedSharedBufferHandle response_json_message,
+    mojo::ScopedHandle response_json_message,
     int64_t response_json_message_size) {}
 
 class MockDiagnosticsdMojoServiceDelegate
@@ -67,14 +67,14 @@ class DiagnosticsdMojoServiceTest : public testing::Test {
 
   MockDiagnosticsdMojoServiceDelegate* delegate() { return &delegate_; }
 
-  void SendJsonMessage(const std::string& json_message) {
-    std::unique_ptr<mojo::ScopedSharedBufferHandle> shared_buffer =
-        helper::WriteToSharedBuffer(json_message);
-    ASSERT_TRUE(shared_buffer);
-    // TODO(lamzin@google.com): Extract the response JSON message and verify its
-    // value.
+  // TODO(lamzin@google.com): Extract the response JSON message and verify its
+  // value.
+  void SendJsonMessage(base::StringPiece json_message) {
+    mojo::ScopedHandle handle =
+        CreateReadOnlySharedMemoryMojoHandle(json_message);
+    ASSERT_TRUE(handle.is_valid());
     service_->SendUiMessageToDiagnosticsProcessorWithSize(
-        std::move(*shared_buffer.get()), json_message.length(),
+        std::move(handle), json_message.length(),
         base::Bind(&EmptySendUiMessageToDiagnosticsProcessorWithSizeCallback));
   }
 
@@ -88,21 +88,17 @@ class DiagnosticsdMojoServiceTest : public testing::Test {
 
 }  // namespace
 
-// TODO(crbug.com/893756): Causing failures on pre-cq due to unavailability of
-// /dev/shm.
 TEST_F(DiagnosticsdMojoServiceTest,
        SendUiMessageToDiagnosticsProcessorWithSize) {
-  std::string json_message("{\"message\": \"Hello world!\"}");
-  EXPECT_CALL(*delegate(), SendGrpcUiMessageToDiagnosticsProcessor(
-                               base::StringPiece(json_message), _));
+  base::StringPiece json_message("{\"message\": \"Hello world!\"}");
+  EXPECT_CALL(*delegate(),
+              SendGrpcUiMessageToDiagnosticsProcessor(json_message, _));
   ASSERT_NO_FATAL_FAILURE(SendJsonMessage(json_message));
 }
 
-// TODO(crbug.com/893756): Causing failures on pre-cq due to unavailability of
-// /dev/shm.
 TEST_F(DiagnosticsdMojoServiceTest,
        SendUiMessageToDiagnosticsProcessorWithSizeInvalidJSON) {
-  std::string json_message("{\'message\': \'Hello world!\'}");
+  base::StringPiece json_message("{'message': 'Hello world!'}");
   EXPECT_CALL(*delegate(), SendGrpcUiMessageToDiagnosticsProcessor(_, _))
       .Times(0);
   ASSERT_NO_FATAL_FAILURE(SendJsonMessage(json_message));

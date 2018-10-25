@@ -68,7 +68,7 @@ class FakeBrowser final {
   //
   // Must be called only after a successful invocation of
   // BootstrapMojoConnection().
-  bool SendMessageToDiagnosticsProcessor(const std::string& json_message);
+  bool SendUiMessageToDiagnosticsProcessor(const std::string& json_message);
 
  private:
   // Calls |bootstrap_mojo_connection_dbus_method_| with a fake file descriptor.

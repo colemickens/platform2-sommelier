@@ -63,10 +63,10 @@ class DiagnosticsdMojoService final
 
   // chromeos::diagnosticsd::mojom::DiagnosticsdService overrides:
   void SendUiMessageToDiagnosticsProcessor(
-      mojo::ScopedSharedBufferHandle json_message,
+      mojo::ScopedHandle json_message,
       const SendUiMessageToDiagnosticsProcessorCallback& callback) override;
   void SendUiMessageToDiagnosticsProcessorWithSize(
-      mojo::ScopedSharedBufferHandle json_message,
+      mojo::ScopedHandle json_message,
       int64_t json_message_size,
       const SendUiMessageToDiagnosticsProcessorWithSizeCallback& callback)
       override;

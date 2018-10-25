@@ -11,8 +11,6 @@
 
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
-#include <mojo/public/c/system/buffer.h>
-#include <mojo/public/c/system/types.h>
 
 namespace diagnostics {
 
@@ -75,27 +73,5 @@ bool FakeMojoFdGenerator::IsDuplicateFd(int another_fd) const {
   }
   return own_device_id == another_device_id && own_inode == another_inode;
 }
-
-namespace helper {
-std::unique_ptr<mojo::ScopedSharedBufferHandle> WriteToSharedBuffer(
-    const std::string& content) {
-  std::unique_ptr<mojo::ScopedSharedBufferHandle> buffer =
-      std::make_unique<mojo::ScopedSharedBufferHandle>();
-  *buffer = mojo::SharedBufferHandle::Create(content.length());
-  if (!(*buffer)->is_valid()) {
-    return nullptr;
-  }
-
-  mojo::ScopedSharedBufferMapping mapping = (*buffer)->Map(content.length());
-  if (!mapping) {
-    return nullptr;
-  }
-
-  memcpy(mapping.get(), static_cast<const void*>(content.c_str()),
-         content.length());
-  return buffer;
-}
-
-}  // namespace helper
 
 }  // namespace diagnostics

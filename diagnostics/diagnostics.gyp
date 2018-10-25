@@ -112,6 +112,7 @@
         'diagnosticsd/diagnosticsd_dbus_service.cc',
         'diagnosticsd/diagnosticsd_grpc_service.cc',
         'diagnosticsd/diagnosticsd_mojo_service.cc',
+        'diagnosticsd/mojo_utils.cc',
       ],
     },
     # Library that provides the DPSL (diagnostics processor support library)
@@ -310,6 +311,7 @@
             'diagnosticsd/fake_diagnostics_processor.cc',
             'diagnosticsd/file_test_utils.cc',
             'diagnosticsd/mojo_test_utils.cc',
+            'diagnosticsd/mojo_utils_test.cc',
           ],
           'variables': {
             'deps': [

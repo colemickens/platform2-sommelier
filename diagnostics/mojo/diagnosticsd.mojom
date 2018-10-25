@@ -29,16 +29,16 @@ interface DiagnosticsdService {
   // The response will contain the JSON message returned by the
   // diagnostics_processor daemon. The response handle will be unset if the
   // request wasn't delivered to the daemon or the daemon made no reply.
-  SendUiMessageToDiagnosticsProcessor@0(handle<shared_buffer> json_message)
-      => (handle<shared_buffer>? response_json_message);
+  SendUiMessageToDiagnosticsProcessor@0(handle json_message)
+      => (handle? response_json_message);
 
   // TODO(lamzin): remove when mojo library will support retrieving size of
   // mojo handle and shared buffers will compatible across Chrome OS - chrome.
   // Similar to SendUiMessageToDiagnosticsProcessor, but with additional
-  // size parameters and with using "handle" instead of "handle<shared_buffer>".
+  // size parameters.
   SendUiMessageToDiagnosticsProcessorWithSize@1(
-      handle<shared_buffer> json_message, int64 json_message_size) => (
-      handle<shared_buffer>? response_json_message,
+      handle json_message, int64 json_message_size) => (
+      handle? response_json_message,
       int64 response_json_message_size);
 };
 

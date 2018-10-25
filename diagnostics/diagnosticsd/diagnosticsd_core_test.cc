@@ -379,7 +379,8 @@ TEST_F(BootstrappedDiagnosticsdCoreTest,
   fake_diagnostics_processor()->set_handle_message_from_ui_callback(
       run_loop_handle_message.QuitClosure());
 
-  EXPECT_TRUE(fake_browser()->SendMessageToDiagnosticsProcessor(json_message));
+  EXPECT_TRUE(
+      fake_browser()->SendUiMessageToDiagnosticsProcessor(json_message));
 
   run_loop_handle_message.Run();
   EXPECT_EQ(json_message, fake_diagnostics_processor()
@@ -392,7 +393,8 @@ TEST_F(BootstrappedDiagnosticsdCoreTest,
        SendGrpcUiMessageToDiagnosticsProcessorInvalidJSON) {
   const std::string json_message = "{'some_key': 'some_value'}";
 
-  EXPECT_TRUE(fake_browser()->SendMessageToDiagnosticsProcessor(json_message));
+  EXPECT_TRUE(
+      fake_browser()->SendUiMessageToDiagnosticsProcessor(json_message));
   // There's no reliable way to wait till the wrong HandleMessageFromUi(), if
   // the tested code is buggy and calls it, gets executed. The RunUntilIdle() is
   // used to make the test failing at least with some probability in case of

@@ -9,8 +9,10 @@
 
 #include <base/json/json_reader.h>
 #include <base/logging.h>
+#include <base/memory/shared_memory.h>
 #include <base/values.h>
-#include <mojo/public/c/system/types.h>
+
+#include "diagnostics/diagnosticsd/mojo_utils.h"
 
 namespace diagnostics {
 
@@ -25,9 +27,8 @@ void ForwardMojoJsonResponse(
         mojo_response_callback,
     std::string response_json_message) {
   // TODO(lamzin@google.com): Forward the response message contents.
-  mojo_response_callback.Run(
-      mojo::ScopedSharedBufferHandle() /* response_json_message */,
-      0 /* response_json_message_size */);
+  mojo_response_callback.Run(mojo::ScopedHandle() /* response_json_message */,
+                             0 /* response_json_message_size */);
 }
 
 }  // namespace
@@ -47,25 +48,26 @@ DiagnosticsdMojoService::DiagnosticsdMojoService(
 DiagnosticsdMojoService::~DiagnosticsdMojoService() = default;
 
 void DiagnosticsdMojoService::SendUiMessageToDiagnosticsProcessor(
-    mojo::ScopedSharedBufferHandle json_message,
+    mojo::ScopedHandle json_message,
     const SendUiMessageToDiagnosticsProcessorCallback& callback) {
   NOTIMPLEMENTED();
 }
 
 void DiagnosticsdMojoService::SendUiMessageToDiagnosticsProcessorWithSize(
-    mojo::ScopedSharedBufferHandle json_message,
+    mojo::ScopedHandle json_message,
     int64_t json_message_size,
     const SendUiMessageToDiagnosticsProcessorWithSizeCallback& callback) {
-  mojo::ScopedSharedBufferMapping json_message_data =
-      json_message->Map(json_message_size);
-  if (!json_message_data) {
-    LOG(ERROR) << "Mojo Map failed.";
-    callback.Run(mojo::ScopedSharedBufferHandle() /* response_json_message */,
+  std::unique_ptr<base::SharedMemory> shared_memory =
+      GetReadOnlySharedMemoryFromMojoHandle(std::move(json_message),
+                                            json_message_size);
+  if (!shared_memory) {
+    LOG(ERROR) << "Failed to read data from mojo handle";
+    callback.Run(mojo::ScopedHandle() /* response_json_message */,
                  0 /* response_json_message_size */);
     return;
   }
   base::StringPiece json_message_content(
-      static_cast<const char*>(json_message_data.get()), json_message_size);
+      static_cast<const char*>(shared_memory->memory()), json_message_size);
 
   int json_error_code = base::JSONReader::JSON_NO_ERROR;
   int json_error_line, json_error_column;
@@ -82,7 +84,7 @@ void DiagnosticsdMojoService::SendUiMessageToDiagnosticsProcessorWithSize(
                << json_error_column
                << ". JSON parsing message: " << json_error_message
                << ". Error code: " << json_error_code;
-    callback.Run(mojo::ScopedSharedBufferHandle() /* response_json_message */,
+    callback.Run(mojo::ScopedHandle() /* response_json_message */,
                  0 /* response_json_message_size */);
   }
 }

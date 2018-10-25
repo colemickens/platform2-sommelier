@@ -8,12 +8,14 @@
 #include <utility>
 
 #include <base/bind.h>
-#include <base/logging.h>
+#include <base/strings/string_piece.h>
 #include <brillo/bind_lambda.h>
 #include <dbus/message.h>
 #include <dbus/diagnosticsd/dbus-constants.h>
 #include <mojo/public/cpp/bindings/interface_request.h>
 #include <mojo/public/cpp/system/buffer.h>
+
+#include "diagnostics/diagnosticsd/mojo_utils.h"
 
 namespace diagnostics {
 
@@ -25,7 +27,7 @@ namespace {
 // TODO(lamzin@google.com): Replace this with piping this data through
 // FakeBrowser into the tests.
 void EmptySendUiMessageToDiagnosticsProcessorWithSizeCallback(
-    mojo::ScopedSharedBufferHandle response_json_message,
+    mojo::ScopedHandle response_json_message,
     int64_t response_json_message_size) {}
 
 }  // namespace
@@ -51,17 +53,15 @@ bool FakeBrowser::BootstrapMojoConnection(
   return true;
 }
 
-bool FakeBrowser::SendMessageToDiagnosticsProcessor(
+bool FakeBrowser::SendUiMessageToDiagnosticsProcessor(
     const std::string& json_message) {
-  DCHECK(diagnosticsd_service_ptr_);
-
-  std::unique_ptr<mojo::ScopedSharedBufferHandle> shared_buffer =
-      helper::WriteToSharedBuffer(json_message);
-  if (!shared_buffer) {
+  mojo::ScopedHandle handle =
+      CreateReadOnlySharedMemoryMojoHandle(base::StringPiece(json_message));
+  if (!handle.is_valid()) {
     return false;
   }
   diagnosticsd_service_ptr_->SendUiMessageToDiagnosticsProcessorWithSize(
-      std::move(*shared_buffer.get()), json_message.length(),
+      std::move(handle), json_message.length(),
       base::Bind(&EmptySendUiMessageToDiagnosticsProcessorWithSizeCallback));
   return true;
 }
