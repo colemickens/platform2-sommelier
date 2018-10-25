@@ -32,24 +32,24 @@ const metadata_value_t streamTypeValues[] = {
     { "BIDIRECTIONAL", CAMERA3_STREAM_BIDIRECTIONAL }
 };
 
-RequestThread::RequestThread(int cameraId, ICameraHw *aCameraHW) :
-    mCameraId(cameraId),
-    mCameraHw(aCameraHW),
-    mRequestsInHAL(0),
-    mWaitingRequest(nullptr),
-    mBlockAction(REQBLK_NONBLOCKING),
-    mInitialized(false),
-    mResultProcessor(nullptr),
-    mStreamSeqNo(0),
-    mCameraThread("Cam3ReqThread"),
-    mWaitRequest(true, false)
-{
-    LOG1("@%s", __FUNCTION__);
+RequestThread::RequestThread(int cameraId, ICameraHw* aCameraHW)
+    : mCameraId(cameraId),
+      mCameraHw(aCameraHW),
+      mRequestsInHAL(0),
+      mWaitingRequest(nullptr),
+      mBlockAction(REQBLK_NONBLOCKING),
+      mInitialized(false),
+      mResultProcessor(nullptr),
+      mStreamSeqNo(0),
+      mCameraThread("Cam3ReqThread"),
+      mWaitRequest(base::WaitableEvent::ResetPolicy::MANUAL,
+                   base::WaitableEvent::InitialState::NOT_SIGNALED) {
+  LOG1("@%s", __FUNCTION__);
 
-    // Run Cam3ReqThread thread
-    if (run() != OK) {
-        LOGE("Failed to run Cam3ReqThread thread");
-    }
+  // Run Cam3ReqThread thread
+  if (run() != OK) {
+    LOGE("Failed to run Cam3ReqThread thread");
+  }
 }
 
 RequestThread::~RequestThread()

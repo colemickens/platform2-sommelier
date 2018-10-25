@@ -115,7 +115,7 @@ int32_t CameraDeviceAdapter::Initialize(
   // device at any time.
   DCHECK(!callback_ops_delegate_);
   callback_ops_delegate_.reset(new Camera3CallbackOpsDelegate(
-      this, camera_callback_ops_thread_.task_runner()));
+      camera_callback_ops_thread_.task_runner()));
   callback_ops_delegate_->Bind(
       callback_ops.PassInterface(),
       base::Bind(&CameraDeviceAdapter::ResetCallbackOpsDelegateOnThread,
@@ -145,7 +145,7 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
     stream->data_space = static_cast<android_dataspace_t>(s->data_space);
     stream->rotation = static_cast<camera3_stream_rotation_t>(s->rotation);
     stream->crop_rotate_scale_degrees = 0;
-    if (s->crop_rotate_scale_info != nullptr) {
+    if (s->crop_rotate_scale_info) {
       stream->crop_rotate_scale_degrees =
           static_cast<camera3_stream_rotation_t>(
               s->crop_rotate_scale_info->crop_rotate_scale_degrees);
@@ -227,7 +227,6 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
   DCHECK_GT(num_output_buffers, 0);
   req.num_output_buffers = num_output_buffers;
 
-  DCHECK(!request->output_buffers.is_null());
   std::vector<camera3_stream_buffer_t> output_buffers(num_output_buffers);
   {
     base::AutoLock streams_lock(streams_lock_);

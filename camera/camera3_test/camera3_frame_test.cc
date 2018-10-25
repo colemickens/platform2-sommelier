@@ -273,7 +273,8 @@ Camera3FrameFixture::ConvertToImageAndRotate(BufferHandleUniquePtr buffer,
     return image;
   }
   if (format != ImageFormat::IMAGE_FORMAT_I420) {
-    LOG(ERROR) << "Do not support rotate image with format: " << format;
+    LOG(ERROR) << "Do not support rotate image with format: "
+               << static_cast<int>(format);
     return image;
   }
 

@@ -115,7 +115,8 @@ void CameraAlgorithmOpsImpl::Request(mojo::Array<uint8_t> req_header,
     LOGF(ERROR) << "Return callback is not registered yet";
     return;
   }
-  std::vector<uint8_t> header = req_header.PassStorage();
+  // TODO(b/37434548): This can be removed after libchrome uprev.
+  const std::vector<uint8_t>& header = req_header;
   cam_algo_->request(header.data(), header.size(), buffer_handle);
   VLOGF_EXIT();
 }
@@ -125,7 +126,8 @@ void CameraAlgorithmOpsImpl::DeregisterBuffers(
   DCHECK(cam_algo_);
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   VLOGF_ENTER();
-  std::vector<int32_t> handles = buffer_handles.PassStorage();
+  // TODO(b/37434548): This can be removed after libchrome uprev.
+  const std::vector<int32_t>& handles = buffer_handles;
   cam_algo_->deregister_buffers(handles.data(), handles.size());
   VLOGF_EXIT();
 }

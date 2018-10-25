@@ -19,8 +19,7 @@ class CameraDeviceAdapter;
 class Camera3CallbackOpsDelegate
     : public internal::MojoChannel<mojom::Camera3CallbackOps> {
  public:
-  Camera3CallbackOpsDelegate(
-      CameraDeviceAdapter* camera_device_adapter,
+  explicit Camera3CallbackOpsDelegate(
       scoped_refptr<base::SingleThreadTaskRunner> task_runner);
 
   ~Camera3CallbackOpsDelegate() = default;
@@ -33,8 +32,6 @@ class Camera3CallbackOpsDelegate
   void ProcessCaptureResultOnThread(mojom::Camera3CaptureResultPtr result);
 
   void NotifyOnThread(mojom::Camera3NotifyMsgPtr msg);
-
-  CameraDeviceAdapter* camera_device_adapter_;
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(Camera3CallbackOpsDelegate);
 };

@@ -87,7 +87,8 @@ bool JpegCompressorImpl::CompressImage(const void* image,
 
   if (method_used == nullptr) {
     // TODO(shik): Map mode from enum to string for better readability.
-    LOGF(ERROR) << "Failed to compress image with mode = " << mode;
+    LOGF(ERROR) << "Failed to compress image with mode = "
+                << static_cast<int>(mode);
     return false;
   }
 

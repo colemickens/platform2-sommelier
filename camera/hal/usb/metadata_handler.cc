@@ -596,7 +596,7 @@ int MetadataHandler::FillMetadataFromDeviceInfo(
       ae_antibanding_mode = ANDROID_CONTROL_AE_ANTIBANDING_MODE_60HZ;
     } else {
       LOGF(ERROR) << "Invalid power line frequency setting: "
-                  << device_info.power_line_frequency;
+                  << static_cast<int>(device_info.power_line_frequency);
       return -EINVAL;
     }
   }

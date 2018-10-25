@@ -407,7 +407,7 @@ int ImageProcessor::MJPGToI420(const FrameBuffer& in_frame,
         // JDA.
         jda_available_ = jda_->Start();
       }
-      LOGF(WARNING) << "JDA Fail: " << error;
+      LOGF(WARNING) << "JDA Fail: " << static_cast<int>(error);
       // Don't fallback in test mode. So we can know the JDA is not working.
       if (force_jpeg_hw_decode_)
         return -EINVAL;

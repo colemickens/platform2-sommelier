@@ -21,10 +21,8 @@
 namespace cros {
 
 Camera3CallbackOpsDelegate::Camera3CallbackOpsDelegate(
-    CameraDeviceAdapter* camera_device_adapter,
     scoped_refptr<base::SingleThreadTaskRunner> task_runner)
-    : internal::MojoChannel<mojom::Camera3CallbackOps>(task_runner),
-      camera_device_adapter_(camera_device_adapter) {}
+    : internal::MojoChannel<mojom::Camera3CallbackOps>(task_runner) {}
 
 void Camera3CallbackOpsDelegate::ProcessCaptureResult(
     mojom::Camera3CaptureResultPtr result) {

@@ -145,6 +145,7 @@ cros::mojom::CameraMetadataPtr SerializeCameraMetadata(
     result->data_count = get_camera_metadata_data_count(metadata);
     result->data_capacity = get_camera_metadata_data_capacity(metadata);
 
+    std::vector<cros::mojom::CameraMetadataEntryPtr> entries;
     for (size_t i = 0; i < result->entry_count; ++i) {
       camera_metadata_ro_entry_t src;
       get_camera_metadata_ro_entry(metadata, i, &src);
@@ -164,8 +165,9 @@ cros::mojom::CameraMetadataPtr SerializeCameraMetadata(
       std::vector<uint8_t> dst_data(src_data_size);
       memcpy(dst_data.data(), src.data.u8, src_data_size);
       dst->data = std::move(dst_data);
-      result->entries.push_back(std::move(dst));
+      entries.emplace_back(std::move(dst));
     }
+    result->entries = std::move(entries);
     VLOGF(1) << "Serialized metadata size=" << result->size;
   }
   return result;

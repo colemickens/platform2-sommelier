@@ -97,7 +97,7 @@ void JpegEncodeAcceleratorImpl::InitializeOnIpcThread(
     return;
   }
 
-  auto request = mojo::GetProxy(&jea_ptr_);
+  auto request = mojo::MakeRequest(&jea_ptr_);
 
   mojo_channel_manager_->CreateJpegEncodeAccelerator(std::move(request));
   jea_ptr_.set_connection_error_handler(

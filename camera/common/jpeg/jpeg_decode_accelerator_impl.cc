@@ -99,7 +99,7 @@ void JpegDecodeAcceleratorImpl::InitializeOnIpcThread(
     return;
   }
 
-  auto request = mojo::GetProxy(&jda_ptr_);
+  auto request = mojo::MakeRequest(&jda_ptr_);
 
   mojo_channel_manager_->CreateJpegDecodeAccelerator(std::move(request));
   jda_ptr_.set_connection_error_handler(

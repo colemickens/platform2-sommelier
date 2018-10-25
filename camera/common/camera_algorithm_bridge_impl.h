@@ -60,10 +60,10 @@ class CameraAlgorithmBridgeImpl : public CameraAlgorithmBridge {
   void RegisterBufferOnIpcThread(int buffer_fd,
                                  base::Callback<void(int32_t)> cb);
 
-  void RequestOnIpcThread(mojo::Array<uint8_t> req_header,
+  void RequestOnIpcThread(std::vector<uint8_t> req_header,
                           int32_t buffer_handle);
 
-  void DeregisterBuffersOnIpcThread(mojo::Array<int32_t> buffer_handles);
+  void DeregisterBuffersOnIpcThread(std::vector<int32_t> buffer_handles);
 
   // Return callback registered by HAL
   const camera_algorithm_callback_ops_t* callback_ops_;
