@@ -24,6 +24,7 @@ group("all") {
 }
 
 pkg_config("target_defaults") {
+  defines = [ "USE_TPM2=${use.tpm2}" ]
   pkg_deps = [
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
@@ -67,7 +68,7 @@ static_library("liboobeconfig") {
 }
 
 pkg_config("crypto") {
-  pkg_deps = ["libcrypto"]
+  pkg_deps = [" libcrypto", "libtpmcrypto" ]
 }
 
 static_library("libload_oobe_config_usb") {

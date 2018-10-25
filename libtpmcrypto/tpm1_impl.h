@@ -7,6 +7,8 @@
 
 #include "libtpmcrypto/tpm.h"
 
+#include <string>
+
 #include <trousers/tss.h>
 
 namespace brillo {
@@ -25,6 +27,12 @@ class Tpm1Impl : public Tpm {
 
   bool Unseal(const brillo::Blob& sealed_value,
               brillo::SecureBlob* value) override;
+
+  bool GetNVAttributes(uint32_t index, uint32_t* attributes) override;
+  bool NVReadNoAuth(uint32_t index,
+                    uint32_t offset,
+                    size_t size,
+                    std::string* data) override;
 
  private:
   // Tries to connect to the TPM

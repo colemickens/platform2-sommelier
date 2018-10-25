@@ -55,6 +55,17 @@ class FakeTpm : public Tpm {
     return true;
   }
 
+  bool GetNVAttributes(uint32_t index, uint32_t* attributes) override {
+    return true;
+  }
+
+  bool NVReadNoAuth(uint32_t index,
+                    uint32_t offset,
+                    size_t size,
+                    std::string* data) override {
+    return true;
+  }
+
   DISALLOW_COPY_AND_ASSIGN(FakeTpm);
 };
 

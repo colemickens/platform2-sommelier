@@ -7,13 +7,17 @@
 
 #include <stddef.h>
 
+#include <memory>
+#include <string>
+
 #include <base/compiler_specific.h>
 #include <base/macros.h>
+#include <brillo/brillo_export.h>
 #include <brillo/secure_blob.h>
 
 namespace tpmcrypto {
 
-class Tpm {
+class BRILLO_EXPORT Tpm {
  public:
   virtual ~Tpm() = default;
 
@@ -37,11 +41,36 @@ class Tpm {
   virtual bool Unseal(const brillo::Blob& sealed_value,
                       brillo::SecureBlob* value) WARN_UNUSED_RESULT = 0;
 
+  // Gets the attributes of an index in the NVRAM.
+  //
+  // Parameters
+  //   index - The index in the NVRAM area.
+  //   attributes - The output attributs of the NVRAM aread.
+  //
+  // Returns true on success;
+  virtual bool GetNVAttributes(uint32_t index, uint32_t* attributes) = 0;
+
+  // Reads the content of an NVRAM without authorization.
+  //
+  // Parameters
+  //   index - The index in the NVRAM area.
+  //   offset - The offset to read the data from.
+  //   size - The size of the data in the NVRAM read.
+  //   data - The output data read from the NVRAM area.
+  //
+  // Returns true on success;
+  virtual bool NVReadNoAuth(uint32_t index,
+                            uint32_t offset,
+                            size_t size,
+                            std::string* data) = 0;
+
  protected:
   Tpm() = default;
 
   DISALLOW_COPY_AND_ASSIGN(Tpm);
 };
+
+BRILLO_EXPORT std::unique_ptr<Tpm> CreateTpmInstance();
 
 }  // namespace tpmcrypto
 

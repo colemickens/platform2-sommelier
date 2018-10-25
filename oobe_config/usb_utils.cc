@@ -28,16 +28,6 @@ const char kKeyFile[] = "validation_key.pub";
 const char kDevDiskById[] = "/dev/disk/by-id/";
 const char kUsbDevicePathSigFile[] = "usb_device_path.sig";
 
-int RunCommand(const vector<string>& command) {
-  LOG(INFO) << "Command: " << base::JoinString(command, " ");
-
-  brillo::ProcessImpl proc;
-  for (const auto& arg : command) {
-    proc.AddArg(arg);
-  }
-  return proc.Run();
-}
-
 bool Sign(const FilePath& priv_key,
           const string& src_content,
           const FilePath& dst) {

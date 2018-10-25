@@ -15,9 +15,10 @@ using trunks::AuthorizationDelegate;
 using trunks::GetErrorString;
 using trunks::HmacSession;
 using trunks::PolicySession;
-using trunks::TrunksFactoryImpl;
 using trunks::TPM_RC;
 using trunks::TPM_RC_SUCCESS;
+using trunks::TPMS_NV_PUBLIC;
+using trunks::TrunksFactoryImpl;
 
 namespace tpmcrypto {
 
@@ -25,6 +26,10 @@ using PcrMap = std::map<uint32_t, std::string>;
 
 Tpm2Impl::Tpm2Impl() = default;
 Tpm2Impl::~Tpm2Impl() = default;
+
+std::unique_ptr<Tpm> CreateTpmInstance() {
+  return std::make_unique<Tpm2Impl>();
+}
 
 bool Tpm2Impl::SealToPCR0(const SecureBlob& value, Blob* sealed_value) {
   CHECK(sealed_value);
@@ -140,6 +145,42 @@ bool Tpm2Impl::UnsealData(AuthorizationDelegate* policy_delegate,
   }
 
   value->assign(unsealed_data.begin(), unsealed_data.end());
+  return true;
+}
+
+bool Tpm2Impl::GetNVAttributes(uint32_t index, uint32_t* attributes) {
+  CHECK(attributes);
+  if (!EnsureInitialized()) {
+    return false;
+  }
+  TPMS_NV_PUBLIC space_info;
+  TPM_RC result = tpm_utility_->GetNVSpacePublicArea(index, &space_info);
+  if (result != trunks::TPM_RC_SUCCESS) {
+    PLOG(ERROR) << "Failed to get the NVRAM space attributes";
+    return false;
+  }
+  *attributes = space_info.attributes;
+  return true;
+}
+
+bool Tpm2Impl::NVReadNoAuth(uint32_t index,
+                            uint32_t offset,
+                            size_t size,
+                            std::string* data) {
+  CHECK(data);
+  if (!EnsureInitialized()) {
+    return false;
+  }
+  const std::string kWellKnownPassword = "";
+  auto pw_auth = factory_impl_->GetPasswordAuthorization(kWellKnownPassword);
+
+  trunks::TPM_RC result = tpm_utility_->ReadNVSpace(
+      index, offset, size, false /* using_owner_authorization */, data,
+      pw_auth.get());
+  if (result != trunks::TPM_RC_SUCCESS) {
+    PLOG(ERROR) << "Failed to read TPM space index: " << index;
+    return false;
+  }
   return true;
 }
 

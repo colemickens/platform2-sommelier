@@ -34,6 +34,12 @@ class Tpm2Impl : public Tpm {
   bool Unseal(const brillo::Blob& sealed_value,
               brillo::SecureBlob* value) override;
 
+  bool GetNVAttributes(uint32_t index, uint32_t* attributes) override;
+  bool NVReadNoAuth(uint32_t index,
+                    uint32_t offset,
+                    size_t size,
+                    std::string* data) override;
+
  private:
   // If already initialized this returns true, otherwise attempts to
   // initialize and returns whether initialization was successful.

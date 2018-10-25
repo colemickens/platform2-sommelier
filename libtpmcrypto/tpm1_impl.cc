@@ -4,6 +4,9 @@
 
 #include "libtpmcrypto/tpm1_impl.h"
 
+#include <memory>
+#include <string>
+
 #include <base/logging.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
@@ -17,6 +20,7 @@ using brillo::SecureBlob;
 using trousers::ScopedTssContext;
 using trousers::ScopedTssKey;
 using trousers::ScopedTssMemory;
+using trousers::ScopedTssNvStore;
 using trousers::ScopedTssPcrs;
 
 namespace tpmcrypto {
@@ -31,6 +35,10 @@ constexpr unsigned int kTpmConnectIntervalMs = 100;
 
 Tpm1Impl::Tpm1Impl() = default;
 Tpm1Impl::~Tpm1Impl() = default;
+
+std::unique_ptr<Tpm> CreateTpmInstance() {
+  return std::make_unique<Tpm1Impl>();
+}
 
 bool Tpm1Impl::SealToPCR0(const brillo::SecureBlob& value, Blob* sealed_value) {
   CHECK(sealed_value);
@@ -273,6 +281,99 @@ bool Tpm1Impl::LoadSrk(TSS_HCONTEXT context_handle,
   }
 
   *srk_handle = local_srk_handle.release();
+  return true;
+}
+
+bool Tpm1Impl::GetNVAttributes(uint32_t index, uint32_t* attributes) {
+  CHECK(attributes);
+  ScopedTssContext context_handle;
+  TSS_HTPM tpm_handle;
+  if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
+    LOG(ERROR) << "GetNVAttributes: Failed to connect to the TPM.";
+    return false;
+  }
+
+  TSS_RESULT result;
+  UINT32 nv_index_data_length = sizeof(TPM_NV_DATA_PUBLIC);
+  ScopedTssMemory nv_index_data(context_handle);
+  if (TPM_ERROR(result = Tspi_TPM_GetCapability(
+                    tpm_handle, TSS_TPMCAP_NV_INDEX, sizeof(index),
+                    reinterpret_cast<BYTE*>(&index), &nv_index_data_length,
+                    nv_index_data.ptr()))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_TPM_GetCapability";
+    return false;
+  }
+  if (nv_index_data_length == 0) {
+    LOG(ERROR) << "The NV index public data length is not valid";
+    return false;
+  }
+
+  TPM_NV_DATA_PUBLIC nv_data_public;
+  UINT64 offset = 0;
+  if (TPM_ERROR(result = Trspi_UnloadBlob_NV_DATA_PUBLIC(
+                    &offset, *nv_index_data.ptr(), &nv_data_public))) {
+    TPM_LOG(ERROR, result) << "Error unloading NV public data.";
+    return false;
+  }
+
+  *attributes = nv_data_public.permission.attributes;
+  return true;
+}
+
+bool Tpm1Impl::NVReadNoAuth(uint32_t index,
+                            uint32_t offset,
+                            size_t size,
+                            std::string* data) {
+  CHECK(data);
+  ScopedTssContext context_handle;
+  TSS_HTPM tpm_handle;
+  if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
+    LOG(ERROR) << "NVReadNoAuth: Failed to connect to the TPM.";
+    return false;
+  }
+
+  // Create an NVRAM store object handle.
+  TSS_RESULT result;
+  ScopedTssNvStore nv_handle(context_handle);
+  result = Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_NV, 0,
+                                     nv_handle.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "Could not acquire an NVRAM object handle";
+    return false;
+  }
+  result = Tspi_SetAttribUint32(nv_handle, TSS_TSPATTRIB_NV_INDEX, 0, index);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "Could not set index on NVRAM object: " << index;
+    return false;
+  }
+
+  SecureBlob blob(size);
+  // Read from NVRAM in conservatively small chunks. This is a limitation of the
+  // TPM that is left for the application layer to deal with. The maximum size
+  // that is supported here can vary between vendors / models, so we'll be
+  // conservative. FWIW, the Infineon chips seem to handle up to 1024.
+  const UINT32 kMaxDataSize = 128;
+  UINT32 offset_l = 0;
+  while (offset_l < size) {
+    UINT32 chunk_size = size - offset_l;
+    if (chunk_size > kMaxDataSize)
+      chunk_size = kMaxDataSize;
+    ScopedTssMemory space_data(context_handle);
+    if ((result = Tspi_NV_ReadValue(nv_handle, offset_l + offset, &chunk_size,
+                                    space_data.ptr()))) {
+      TPM_LOG(ERROR, result) << "Could not read from NVRAM space: " << index;
+      return false;
+    }
+    if (!space_data.value()) {
+      LOG(ERROR) << "No data read from NVRAM space: " << index;
+      return false;
+    }
+    CHECK(offset_l + chunk_size <= blob.size());
+    unsigned char* buffer = blob.data() + offset_l;
+    memcpy(buffer, space_data.value(), chunk_size);
+    offset_l += chunk_size;
+  }
+  *data = std::string(blob.begin(), blob.end());
   return true;
 }
 

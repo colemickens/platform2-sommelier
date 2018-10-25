@@ -7,12 +7,14 @@
 #include <sys/mount.h>
 
 #include <map>
-#include <vector>
+#include <utility>
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/strings/string_number_conversions.h>
+#include <libtpmcrypto/tpm.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 
@@ -23,9 +25,21 @@ using base::ScopedTempDir;
 using std::map;
 using std::string;
 using std::unique_ptr;
-using std::vector;
 
 namespace oobe_config {
+
+namespace {
+#if USE_TPM2
+// TPMA_NV_PPWRITE | TPMA_NV_AUTHREAD | TPMA_NV_NO_DA | TPMA_NV_WRITTEN |
+// TPMA_NV_PLATFORMCREATE
+constexpr uint32_t kTpmPermissions = 0x62040001;
+#else
+// TPM_NV_PER_PPWRITE
+constexpr uint32_t kTpmPermissions =  0x1;
+#endif
+
+constexpr uint32_t kHashIndexInTpmNvram = 0x100c;
+}  // namespace
 
 unique_ptr<LoadOobeConfigUsb> LoadOobeConfigUsb::CreateInstance() {
   return std::make_unique<LoadOobeConfigUsb>(FilePath(kStatefulDir),
@@ -92,13 +106,56 @@ bool LoadOobeConfigUsb::ReadFiles() {
 }
 
 bool LoadOobeConfigUsb::VerifyPublicKey() {
-  // TODO(ahassani): calculate the SHA256 of the public key and return false if
-  // doesn't match the one in TPM.
-  // /stateful/unencrypted/oobe_auto_config/validation_key.pub is the key used
-  // for verifying signatures. The binary SHA256 digest of this file should
-  // match the 32 bytes in the TPM at index 0x100c, otherwise abort.
+  std::unique_ptr<tpmcrypto::Tpm> tpm_crypto = tpmcrypto::CreateTpmInstance();
 
-  return false;
+  uint32_t attributes = 0;
+  if (!tpm_crypto->GetNVAttributes(kHashIndexInTpmNvram, &attributes)) {
+    LOG(ERROR) << "Failed to get NV attributes.";
+    return false;
+  }
+  if (attributes != kTpmPermissions) {
+    LOG(ERROR) << "Attributes given (" << attributes
+               << ") does not match the expected (" << kTpmPermissions << ").";
+    return false;
+  }
+
+  string hash_from_tpm;
+  if (!tpm_crypto->NVReadNoAuth(kHashIndexInTpmNvram, 0 /* offset */,
+                                SHA256_DIGEST_LENGTH, &hash_from_tpm)) {
+    LOG(ERROR) << "Failed to read the hash value from TPM.";
+    return false;
+  }
+  if (hash_from_tpm.size() != SHA256_DIGEST_LENGTH) {
+    LOG(ERROR) << "NVReadNoAuth() returned data with size "
+               << hash_from_tpm.size() << " != " << SHA256_DIGEST_LENGTH;
+    return false;
+  }
+
+  string public_key_content;
+  if (!base::ReadFileToString(pub_key_file_, &public_key_content)) {
+    PLOG(ERROR) << "Failed to read the public key: " << pub_key_file_.value();
+    return false;
+  }
+
+  // Calculating the hash of the public key.
+  char hash_from_public_key[SHA256_DIGEST_LENGTH];
+  auto address = reinterpret_cast<unsigned char*>(hash_from_public_key);
+  if (SHA256(reinterpret_cast<const unsigned char*>(public_key_content.c_str()),
+             public_key_content.length(), address) != address) {
+    LOG(ERROR) << "openssl returned an invalid hash pointer!";
+    return false;
+  }
+
+  // Finally, compare the two hashes to see if they are equal.
+  if (string(hash_from_public_key, SHA256_DIGEST_LENGTH) != hash_from_tpm) {
+    LOG(ERROR) << "Public key hash ("
+               << base::HexEncode(hash_from_public_key, SHA256_DIGEST_LENGTH)
+               << ") does not match the hash in the TPM ("
+               << base::HexEncode(hash_from_tpm.data(), SHA256_DIGEST_LENGTH)
+               << ")";
+    return false;
+  }
+  return true;
 }
 
 bool LoadOobeConfigUsb::LocateUsbDevice(FilePath* device_id) {

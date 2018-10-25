@@ -38,8 +38,6 @@ class ScopedPathUnlinker {
   DISALLOW_COPY_AND_ASSIGN(ScopedPathUnlinker);
 };
 
-int RunCommand(const std::vector<std::string>& command);
-
 // Using |priv_key|, signs |src| file, and writes the digest into |dst|.
 bool Sign(const base::FilePath& priv_key,
           const base::FilePath& src,
