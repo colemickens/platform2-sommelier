@@ -42,11 +42,6 @@ record id and label.
 
 ## HARDWARE
 
-### FakeBiometric
-
-FakeBiometric is the biometrics manager for a fake sensor which simulates a real
-biometric sensor and its interaction with biod. It is used to test biod.
-
 ### FpcBiometric
 
 FpcBiometric is the biometrics manager for a real sensor and has its own
@@ -78,12 +73,6 @@ encrypted when the users log out and decrypted when the users log in. Cryptohome
 provides a layer of security to biod.
 
 ## TESTING TOOLS
-
-### fake_biometric_tool
-
-fake_biometric_tool provides the interface for users to send D-bus messages as
-FakeBiometric to fake the behavior of a biometric sensor. It can be used to test
-the behavior of biod.
 
 ### biod_client_tool
 
