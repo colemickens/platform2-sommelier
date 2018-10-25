@@ -35,8 +35,6 @@ class Dlc {
   bool Mount(HelperProcessProxy* proxy,
              const std::string& a_or_b,
              const base::FilePath& mount_point);
-  // Check if ID is valid.
-  static bool IsIdValid(const std::string& id);
 
  private:
   FRIEND_TEST_ALL_PREFIXES(DlcTest, MountDlc);

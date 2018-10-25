@@ -35,26 +35,4 @@ TEST(DlcTest, MountDlc) {
                         AOrB::kDlcA, base::FilePath()));
 }
 
-TEST(DlcTest, IsIdValid) {
-  // alpha numerical IDs:
-  EXPECT_TRUE(Dlc::IsIdValid("alpha"));
-  EXPECT_TRUE(Dlc::IsIdValid("01234"));
-  EXPECT_TRUE(Dlc::IsIdValid("alphanum01234"));
-  EXPECT_TRUE(Dlc::IsIdValid("01234alphanumerical"));
-  EXPECT_TRUE(Dlc::IsIdValid("dash-id0123"));
-  EXPECT_TRUE(Dlc::IsIdValid("underscore_id_0123"));
-  EXPECT_TRUE(Dlc::IsIdValid("0123-a_dash-id"));
-  EXPECT_TRUE(Dlc::IsIdValid(u8"unicode_id"));
-  // first char is illegal:
-  EXPECT_FALSE(Dlc::IsIdValid("-non-alpha"));
-  EXPECT_FALSE(Dlc::IsIdValid("_non-alpha"));
-  EXPECT_FALSE(Dlc::IsIdValid(".non-alpha"));
-  // non-alpha numerical IDs:
-  EXPECT_FALSE(Dlc::IsIdValid("dot.id"));
-  EXPECT_FALSE(Dlc::IsIdValid("../../../../evilid"));
-  EXPECT_FALSE(Dlc::IsIdValid(u8"unicode_id_#"));
-  // ID is too long.
-  EXPECT_FALSE(Dlc::IsIdValid("id-is-too-looooooooong"));
-}
-
 }  // namespace imageloader

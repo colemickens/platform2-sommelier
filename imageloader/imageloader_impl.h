@@ -111,6 +111,7 @@ class ImageLoaderImpl {
  private:
   FRIEND_TEST_ALL_PREFIXES(ImageLoaderTest, RemoveImageAtPathRemovable);
   FRIEND_TEST_ALL_PREFIXES(ImageLoaderTest, RemoveImageAtPathNotRemovable);
+  FRIEND_TEST_ALL_PREFIXES(ImageLoaderTest, ValidIdTest);
 
   // The configuration traits.
   ImageLoaderConfig config_;
@@ -119,6 +120,9 @@ class ImageLoaderImpl {
   bool RemoveComponentAtPath(const std::string& name,
                              const base::FilePath& component_root,
                              const base::FilePath& component_path);
+
+  // Report if a component name is valid or not.
+  static bool IsIdValid(const std::string& id);
 
   DISALLOW_COPY_AND_ASSIGN(ImageLoaderImpl);
 };

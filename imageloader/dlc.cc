@@ -21,21 +21,16 @@ constexpr char kRootPathRootfs[] = "/opt/google/dlc/";
 constexpr char kRootPathStateful[] = "/home/chronos/dlc/";
 // The name of the image.
 constexpr char kImageName[] = "dlc.img";
-// Maximum ID length.
-constexpr size_t kMaxIdLength = 20;
 
 base::FilePath GetManifestPath(const std::string& id) {
-  LOG_IF(FATAL, !Dlc::IsIdValid(id)) << "Invalid id";
   return base::FilePath(kRootPathRootfs).Append(id).Append("imageloader.json");
 }
 
 base::FilePath GetTablePath(const std::string& id) {
-  LOG_IF(FATAL, !Dlc::IsIdValid(id)) << "Invalid id";
   return base::FilePath(kRootPathRootfs).Append(id).Append("table");
 }
 
 base::FilePath GetImagePath(const std::string& id, AOrB a_or_b) {
-  LOG_IF(FATAL, !Dlc::IsIdValid(id)) << "Invalid id";
   base::FilePath root = base::FilePath(kRootPathStateful).Append(id);
   if (a_or_b == AOrB::kDlcA) {
     return root.Append("dlc_a").Append(kImageName);
@@ -63,11 +58,6 @@ Dlc::Dlc(const std::string& id) : id_(id) {}
 bool Dlc::Mount(HelperProcessProxy* proxy,
                 const std::string& a_or_b_str,
                 const base::FilePath& mount_point) {
-  // If |id_| is invalid, we abort the operation.
-  if (!IsIdValid(id_)) {
-    return false;
-  }
-
   AOrB a_or_b = GetImageAOrB(a_or_b_str);
 
   if (a_or_b == AOrB::kUnknown) {
@@ -77,20 +67,6 @@ bool Dlc::Mount(HelperProcessProxy* proxy,
 
   return Mount(proxy, GetImagePath(id_, a_or_b), GetManifestPath(id_),
                GetTablePath(id_), a_or_b, mount_point);
-}
-
-bool Dlc::IsIdValid(const std::string& id) {
-  // |id| can not be empty or start with a non-alphanumerical character.
-  if (id.empty() || id.length() > kMaxIdLength ||
-      (!isalpha(id[0]) && !isdigit(id[0]))) {
-    return false;
-  }
-  // id can only contain alphanumerical character plus '_' and '-'.
-  for (const char& c : id) {
-    if (!isalpha(c) && !isdigit(c) && c != '_' && c != '-')
-      return false;
-  }
-  return true;
 }
 
 bool Dlc::Mount(HelperProcessProxy* proxy,

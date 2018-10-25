@@ -34,6 +34,8 @@ using imageloader::kBadResult;
 constexpr char kLatestVersionFile[] = "latest-version";
 // The maximum size of the latest-version file.
 constexpr int kMaximumLatestVersionSize = 4096;
+// Maximum ID length.
+constexpr size_t kMaxIdLength = 40;
 
 // |mount_base_path| is the subfolder where all components are mounted.
 // For example "/mnt/imageloader."
@@ -59,9 +61,32 @@ bool AssertComponentDirPerms(const base::FilePath& path) {
 
 }  // namespace
 
+// static
+bool ImageLoaderImpl::IsIdValid(const std::string& id) {
+  // |id| can not be empty or start with a non-alphanumerical character.
+  if (id.empty() || id.length() > kMaxIdLength ||
+      (!isalpha(id[0]) && !isdigit(id[0]))) {
+    LOG(ERROR) << "Invalid ID: " << id;
+    return false;
+  }
+  // id can only contain alphanumerical character plus '_' and '-'.
+  for (const char& c : id) {
+    if (!isalpha(c) && !isdigit(c) && c != '_' && c != '-') {
+      LOG(ERROR) << "Invalid ID: " << id;
+      return false;
+    }
+  }
+  return true;
+}
+
+
 bool ImageLoaderImpl::LoadComponent(const std::string& name,
                                     const std::string& mount_point_str,
                                     HelperProcessProxy* proxy) {
+  if (!IsIdValid(name)) {
+    return false;
+  }
+
   base::FilePath component_path;
   if (!GetPathToCurrentComponentVersion(name, &component_path)) {
     return false;
@@ -80,6 +105,10 @@ bool ImageLoaderImpl::LoadComponent(const std::string& name,
 
 std::string ImageLoaderImpl::LoadComponent(const std::string& name,
                                            HelperProcessProxy* proxy) {
+  if (!IsIdValid(name)) {
+    return kBadResult;
+  }
+
   base::FilePath component_path;
   if (!GetPathToCurrentComponentVersion(name, &component_path)) {
     return kBadResult;
@@ -91,6 +120,9 @@ std::string ImageLoaderImpl::LoadComponent(const std::string& name,
 std::string ImageLoaderImpl::LoadDlcImage(const std::string& id,
                                           const std::string& a_or_b,
                                           HelperProcessProxy* proxy) {
+  if (!IsIdValid(id)) {
+    return kBadResult;
+  }
   base::FilePath mount_point(GetMountPoint(config_.mount_path, id));
 
   Dlc dlc(id);
@@ -102,6 +134,10 @@ std::string ImageLoaderImpl::LoadComponentAtPath(
     const std::string& name,
     const base::FilePath& component_path,
     HelperProcessProxy* proxy) {
+  if (!IsIdValid(name)) {
+    return kBadResult;
+  }
+
   std::unique_ptr<Component> component =
       Component::Create(component_path, config_.keys);
   if (!component) {
@@ -116,6 +152,10 @@ std::string ImageLoaderImpl::LoadComponentAtPath(
 }
 
 bool ImageLoaderImpl::RemoveComponent(const std::string& name) {
+  if (!IsIdValid(name)) {
+    return false;
+  }
+
   base::FilePath component_root(GetComponentRoot(name));
   base::FilePath component_path;
   if (!GetPathToCurrentComponentVersion(name, &component_path)) {
@@ -139,6 +179,10 @@ bool ImageLoaderImpl::Cleanup(const base::FilePath& path,
 
 bool ImageLoaderImpl::UnloadDlcImage(const std::string& id,
                                      HelperProcessProxy* proxy) {
+  if (!IsIdValid(id)) {
+    return false;
+  }
+
   return proxy->SendUnmountCommand(
       GetMountPoint(config_.mount_path, id).value());
 }
@@ -147,6 +191,10 @@ bool ImageLoaderImpl::RemoveComponentAtPath(
     const std::string& name,
     const base::FilePath& component_root,
     const base::FilePath& component_path) {
+  if (!IsIdValid(name)) {
+    return false;
+  }
+
   // Check if component is removable.
   std::unique_ptr<Component> component =
       Component::Create(component_path, config_.keys);
@@ -171,6 +219,10 @@ bool ImageLoaderImpl::RegisterComponent(
     const std::string& name,
     const std::string& version,
     const std::string& component_folder_abs_path) {
+  if (!IsIdValid(name)) {
+    return false;
+  }
+
   base::FilePath components_dir(config_.storage_dir);
 
   // If the directory is writable by others, do not trust the components.
@@ -257,6 +309,10 @@ bool ImageLoaderImpl::RegisterComponent(
 }
 
 std::string ImageLoaderImpl::GetComponentVersion(const std::string& name) {
+  if (!IsIdValid(name)) {
+    return kBadResult;
+  }
+
   base::FilePath component_path;
   if (!GetPathToCurrentComponentVersion(name, &component_path)) {
     return kBadResult;
@@ -272,6 +328,10 @@ std::string ImageLoaderImpl::GetComponentVersion(const std::string& name) {
 
 bool ImageLoaderImpl::GetComponentMetadata(
     const std::string& name, std::map<std::string, std::string>* out_metadata) {
+  if (!IsIdValid(name)) {
+    return false;
+  }
+
   base::FilePath component_path;
   if (!GetPathToCurrentComponentVersion(name, &component_path)) {
     return false;
