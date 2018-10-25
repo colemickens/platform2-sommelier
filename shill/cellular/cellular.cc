@@ -14,9 +14,11 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/files/file_path.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/adaptor_interfaces.h"
@@ -24,6 +26,7 @@
 #include "shill/cellular/cellular_capability.h"
 #include "shill/cellular/cellular_service.h"
 #include "shill/cellular/mobile_operator_info.h"
+#include "shill/connection.h"
 #include "shill/control_interface.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
@@ -32,7 +35,9 @@
 #include "shill/external_task.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
+#include "shill/net/netlink_sock_diag.h"
 #include "shill/net/rtnl_handler.h"
+#include "shill/net/sockets.h"
 #include "shill/ppp_daemon.h"
 #include "shill/ppp_device.h"
 #include "shill/ppp_device_factory.h"
@@ -54,6 +59,17 @@ namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
 static string ObjectID(Cellular* c) { return c->GetRpcIdentifier(); }
 }
+
+namespace {
+// We want this value to be large enough such that FIN-WAIT-1 sockets will
+// timeout before the relevant address blackhole expires. Given the exponential
+// backoff of TCP retries, and the default of 8 FIN retries, we must wait at
+// least TCP_RTO_MIN * (2^10 - 1) =~ 204 seconds. Round up to the nearest
+// hundred for good measure.
+constexpr base::TimeDelta kAddressBlackholeLifetime =
+  base::TimeDelta::FromSeconds(300);
+}  // namespace
+
 
 // static
 const char Cellular::kAllowRoaming[] = "AllowRoaming";
@@ -111,6 +127,12 @@ Cellular::Cellular(ModemInfo* modem_info,
   serving_operator_info_->Init();
   home_provider_info_->AddObserver(this);
   serving_operator_info_->AddObserver(this);
+
+  socket_destroyer_ = NetlinkSockDiag::Create(std::make_unique<Sockets>());
+  if (!socket_destroyer_) {
+    LOG(WARNING) << "Socket destroyer failed to initialize; "
+                 << "IPv6 will be unavailable.";
+  }
 
   SLOG(this, 2) << "Cellular device " << this->link_name()
                 << " initialized.";
@@ -315,6 +337,26 @@ void Cellular::Stop(Error* error,
                            weak_ptr_factory_.GetWeakPtr(),
                            callback);
   capability_->StopModem(error, cb);
+  // Sockets should be destroyed here to ensure we make new connections
+  // when we next enable cellular. Since the carrier may assign us a new IP
+  // on reconnection and some carriers don't like when packets are sent from
+  // this device using the old IP, we need to make sure we prevent further
+  // packets from going out.
+  if (manager() && manager()->device_info() && socket_destroyer_) {
+    DisableIPv6();
+
+    for (const auto& address : GetAddresses()) {
+      if (address.family() != IPAddress::kFamilyIPv6 &&
+          address.family() != IPAddress::kFamilyIPv4) {
+        LOG(ERROR) << "Interface has address of unexpected family: "
+                   << address.family();
+      }
+      rtnl_handler()->RemoveInterfaceAddress(interface_index(),
+                                             address);
+      socket_destroyer_->DestroySockets(IPPROTO_TCP, address);
+      BlackholeAddress(address, kAddressBlackholeLifetime);
+    }
+  }
 }
 
 bool Cellular::IsUnderlyingDeviceEnabled() const {
@@ -437,7 +479,7 @@ bool Cellular::IsIPv6Allowed() const {
   //
   // TODO(akhouderchah): Test IPv6 support on more devices, and change to a
   // blacklist.
-  if (!device_id_)
+  if (!device_id_ || !socket_destroyer_)
     return false;
 
   static constexpr DeviceId ipv6_whitelist[] = {
@@ -540,6 +582,10 @@ void Cellular::OnAfterResume() {
       LOG(WARNING) << "Modem restart failed: " << error;
     }
   }
+
+  // Re-enable IPv6 so we can renegotiate an IP address.
+  EnableIPv6();
+
   // TODO(quiche): Consider if this should be conditional. If, e.g.,
   // the device was still disabling when we suspended, will trying to
   // renew DHCP here cause problems?
@@ -580,6 +626,20 @@ void Cellular::OnScanReply(const Stringmaps& found_networks,
   }
 
   set_found_networks(found_networks);
+}
+
+std::vector<IPAddress> Cellular::GetAddresses() const {
+  std::vector<DeviceInfo::AddressData> address_data;
+  if (!manager()->device_info()->GetAddresses(interface_index(), &address_data))
+    LOG(WARNING) << "Could not get addresses for modem";
+  std::vector<IPAddress> addresses;
+  for (const auto& data : address_data) {
+    if (data.address.family() != IPAddress::kFamilyIPv6 &&
+        data.address.family() != IPAddress::kFamilyIPv4)
+      continue;
+    addresses.push_back(data.address);
+  }
+  return addresses;
 }
 
 // Called from an asyc D-Bus function

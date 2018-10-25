@@ -30,6 +30,7 @@ namespace shill {
 class CellularCapability;
 class Error;
 class ExternalTask;
+class NetlinkSockDiag;
 class PPPDeviceFactory;
 class ProcessManager;
 
@@ -225,6 +226,8 @@ class Cellular : public Device,
   std::string GetDeviceId(Error* error);
   void OnModemStateChanged(ModemState new_state);
   void OnScanReply(const Stringmaps& found_networks, const Error& error);
+
+  std::vector<IPAddress> GetAddresses() const;
 
   // accessor to read the allow roaming property
   bool allow_roaming_property() const { return allow_roaming_; }
@@ -570,6 +573,8 @@ class Cellular : public Device,
   std::unique_ptr<ExternalTask> ppp_task_;
   PPPDeviceRefPtr ppp_device_;
   bool is_ppp_authenticating_;
+
+  std::unique_ptr<NetlinkSockDiag> socket_destroyer_;
 
   // Sometimes modems may be stuck in the SEARCHING state during the lack of
   // presence of a network. During this indefinite duration of time, keeping
