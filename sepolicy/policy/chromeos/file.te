@@ -4,6 +4,9 @@ type cros_usr_dirs, file_type, cros_system_file_type;
 type cros_etc, file_type, cros_system_file_type;
 allow chromeos_domain cros_system_file_type:dir search;
 
+type cros_kernel_modules_ko_file, file_type;
+type cros_kernel_modules_file, file_type;
+
 type cros_dev_image_files, file_type;
 
 type cros_seccomp_policy_file, file_type;
@@ -89,12 +92,15 @@ type cros_tlsdate_log, file_type, cros_log_type;
 
 type cros_run, file_type;
 type cros_run_dbus, file_type;
+type cros_run_udev, file_type;
 type cras_socket, file_type; # compatible to existing Android names.
 
 type cros_network_conf_file, file_type;
 type cros_passwd_file, file_type;
 type cros_rsyslog_conf_file, file_type;
+type cros_modprobe_conf_file, file_type;
 type cros_tz_data_file, file_type;
+type cros_udev_conf_file, file_type;
 r_dir_file(chromeos_domain, cros_tz_data_file)
 
 type cros_ld_conf_cache, file_type;

@@ -96,11 +96,14 @@ include(sepolicy/file_contexts/coreutils)
 /etc/init(/.*)?                 u:object_r:cros_init_conf_file:s0
 /etc/ld.so.*                    u:object_r:cros_ld_conf_cache:s0
 /etc/ld.so.cache~               u:object_r:cros_ld_conf_cache:s0
+/etc/modprobe.d(/.*)?           u:object_r:cros_modprobe_conf_file:s0
 /etc/nsswitch.conf              u:object_r:cros_network_conf_file:s0
 /etc/passwd                     u:object_r:cros_passwd_file:s0
 /etc/resolv.conf                u:object_r:cros_network_conf_file:s0
 /etc/rsyslog(.*)?               u:object_r:cros_rsyslog_conf_file:s0
 /etc/selinux(/.*)?              u:object_r:cros_selinux_config_file:s0
+/etc/systemd/network(/.*)?      u:object_r:cros_network_conf_file:s0
+/etc/udev(/.*)?                 u:object_r:cros_udev_conf_file:s0
 
 # These files are mounted into the mini-container before real /data, /cache are
 # available.
@@ -143,6 +146,8 @@ is_arc_nyc(`
 
 (/usr)?/lib64(/.*)?                    u:object_r:cros_system_file:s0
 (/usr)?/lib(/.*)?                      u:object_r:cros_system_file:s0
+/lib/modules(/.*)?                     u:object_r:cros_kernel_modules_file:s0
+/lib/modules/.*\.ko                    u:object_r:cros_kernel_modules_ko_file:s0
 
 # Downloads files
 /home/chronos/user/Downloads(/.*)*   u:object_r:cros_downloads_file:s0
