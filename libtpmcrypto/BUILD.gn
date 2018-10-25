@@ -1,0 +1,65 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+group("all") {
+  deps = [
+    ":libtpmcrypto",
+  ]
+  if (use.test) {
+    deps += [ ":tpmcrypto_test" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "protobuf-lite",
+  ]
+}
+
+proto_library("tpm_encrypted_data_proto") {
+  proto_in_dir = "."
+  proto_out_dir = "include/libtpmcrypto"
+  sources = [
+    "tpm_encrypted_data.proto",
+  ]
+}
+
+shared_library("libtpmcrypto") {
+  configs += [
+    ":target_defaults",
+    "//common-mk:visibility_default",
+  ]
+  sources = [
+    "tpm_proto_utils.cc",
+  ]
+  deps = [
+    ":tpm_encrypted_data_proto",
+  ]
+}
+
+if (use.test) {
+  pkg_config("test_config") {
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+  }
+
+  executable("tpmcrypto_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
+    ]
+    sources = [
+      "tpm_proto_utils_test.cc",
+    ]
+    deps = [
+      ":libtpmcrypto",
+      "//common-mk/testrunner",
+    ]
+  }
+}

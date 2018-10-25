@@ -69,6 +69,7 @@ copies.
 | [libchromeos-ui](./libchromeos-ui/) ||
 | [libcontainer](./libcontainer/) ||
 | [libpasswordprovider](./libpasswordprovider/) | Password Provider library for securely managing credentials with system services |
+| [libtpmcrypto](./libtpmcrypto/) | Library for AES256-GCM encryption with TPM sealed keys |
 | [login_manager](./login_manager/) | Session manager for handling the life cycle of the main session (e.g. Chrome) |
 | [lorgnette](./lorgnette/) | Daemon for managing attached USB scanners via [SANE](https://en.wikipedia.org/wiki/Scanner_Access_Now_Easy) |
 | [media_perception](./media_perception/) | Media perception service for select platforms |

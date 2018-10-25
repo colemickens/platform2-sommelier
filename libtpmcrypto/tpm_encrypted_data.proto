@@ -1,0 +1,23 @@
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+syntax = "proto3";
+option optimize_for = LITE_RUNTIME;
+
+package tpmcrypto;
+
+// Holds encrypted data and information required to decrypt it.
+message TpmEncryptedData {
+  // A key that has been sealed to the TPM.
+  bytes sealed_key = 1;
+
+  // The initialization vector used during encryption.
+  bytes iv = 2;
+
+  // Tag from GCM encryption.
+  bytes tag = 3;
+
+  // Encrypted content.
+  bytes encrypted_data = 4;
+}
