@@ -35,7 +35,8 @@ OutputFrameWorker::OutputFrameWorker(std::shared_ptr<cros::V4L2VideoNode> node, 
                 mNeedPostProcess(false),
                 mNodeName(nodeName),
                 mProcessor(cameraId),
-                mCameraThread("OutputFrameWorker" + std::to_string(nodeName))
+                mCameraThread("OutputFrameWorker" + std::to_string(nodeName)),
+                mDoAsyncProcess(false)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     if (mNode) {
@@ -138,6 +139,11 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
     mPollMe = false;
     status_t status = NO_ERROR;
 
+    mProcessingData.mOutputBuffer = nullptr;
+    mProcessingData.mWorkingBuffer = nullptr;
+    mProcessingData.mMsg = nullptr;
+    mDoAsyncProcess = false;
+
     if (!mStream) {
         return NO_ERROR;
     }
@@ -188,7 +194,14 @@ status_t OutputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
         processingData.mWorkingBuffer = buffer;
     processingData.mMsg = msg;
 
-    mProcessingDataQueue.push(std::move(processingData));
+    if (isAsyncProcessingNeeded(processingData.mOutputBuffer)) {
+        LOG2("process request async, mStream %p in req %d", mStream, request->getId());
+        mProcessingDataQueue.push(std::move(processingData));
+        mDoAsyncProcess = true;
+    } else {
+        LOG2("process request sync, mStream %p in req %d", mStream, request->getId());
+        mProcessingData = std::move(processingData);
+    }
     }
 
     mPollMe = true;
@@ -230,19 +243,23 @@ status_t OutputFrameWorker::postRun()
         return UNKNOWN_ERROR;
     }
 
-    {
-    std::lock_guard<std::mutex> l(mProcessingDataLock);
-    if (mProcessingDataQueue.empty()) {
-        LOG1("No processing data available!");
-        mMsg = nullptr;
-        return OK;
-    }
-    }
+    if (mDoAsyncProcess) {
+        {
+        std::lock_guard<std::mutex> l(mProcessingDataLock);
+        if (mProcessingDataQueue.empty()) {
+            LOG1("No processing data available!");
+            mMsg = nullptr;
+            return OK;
+        }
+        }
 
-    base::Callback<status_t()> closure =
-            base::Bind(&OutputFrameWorker::handlePostRun, base::Unretained(this));
+        base::Callback<status_t()> closure =
+                base::Bind(&OutputFrameWorker::handlePostRun, base::Unretained(this));
 
-    mCameraThread.PostTaskAsync<status_t>(FROM_HERE, closure);
+        mCameraThread.PostTaskAsync<status_t>(FROM_HERE, closure);
+    } else if (mProcessingData.mMsg != nullptr) {
+        processData(std::move(mProcessingData));
+    }
 
     mMsg = nullptr;
     return OK;
@@ -250,10 +267,6 @@ status_t OutputFrameWorker::postRun()
 
 status_t OutputFrameWorker::handlePostRun()
 {
-    status_t status = OK;
-    CameraStream *stream;
-    Camera3Request* request = nullptr;
-
     ProcessingData processingData;
     {
     std::lock_guard<std::mutex> l(mProcessingDataLock);
@@ -262,7 +275,29 @@ status_t OutputFrameWorker::handlePostRun()
     mProcessingDataQueue.pop();
     }
 
-    request = processingData.mMsg->cbMetadataMsg.request;
+    return processData(std::move(processingData));
+}
+
+bool OutputFrameWorker::isAsyncProcessingNeeded(std::shared_ptr<CameraBuffer> outBuf)
+{
+    if (mNeedPostProcess && outBuf != nullptr) return true;
+
+    Camera3Request* request = mMsg->cbMetadataMsg.request;
+    for (size_t i = 0; i < mListeners.size(); i++) {
+        std::shared_ptr<CameraBuffer> listenerBuf = findBuffer(request, mListeners[i]);
+        if (listenerBuf != nullptr && mListenerProcessors[i]->needPostProcess()) {
+            return true;
+        }
+    }
+    return false;
+}
+
+status_t OutputFrameWorker::processData(ProcessingData processingData)
+{
+    status_t status = OK;
+    CameraStream *stream = nullptr;
+
+    Camera3Request* request = processingData.mMsg->cbMetadataMsg.request;
     // Handle for listeners at first
     for (size_t i = 0; i < mListeners.size(); i++) {
         camera3_stream_t* listener = mListeners[i];

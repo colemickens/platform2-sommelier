@@ -82,6 +82,12 @@ private:
         std::unique_ptr<JpegEncodeTask> mJpegTask;
     };
 
+    struct ProcessingData {
+        std::shared_ptr<CameraBuffer> mOutputBuffer;
+        std::shared_ptr<CameraBuffer> mWorkingBuffer;
+        std::shared_ptr<DeviceMessage> mMsg;
+    };
+
 private:
     status_t handlePostRun();
     bool isHalUsingRequestBuffer();
@@ -90,6 +96,8 @@ private:
     status_t prepareBuffer(std::shared_ptr<CameraBuffer>& buffer);
     bool checkListenerBuffer(Camera3Request* request);
     void dump(std::shared_ptr<CameraBuffer> buf, const CameraStream* stream);
+    status_t processData(ProcessingData processingData);
+    bool isAsyncProcessingNeeded(std::shared_ptr<CameraBuffer> outBuf);
 
 private:
     camera3_stream_t* mStream; /* OutputFrameWorker doesn't own mStream */
@@ -109,13 +117,10 @@ private:
      */
     cros::CameraThread mCameraThread;
 
-    struct ProcessingData {
-        std::shared_ptr<CameraBuffer> mOutputBuffer;
-        std::shared_ptr<CameraBuffer> mWorkingBuffer;
-        std::shared_ptr<DeviceMessage> mMsg;
-    };
     std::queue<ProcessingData> mProcessingDataQueue;
     std::mutex mProcessingDataLock;
+    ProcessingData mProcessingData;
+    bool mDoAsyncProcess;
 };
 
 } /* namespace camera2 */
