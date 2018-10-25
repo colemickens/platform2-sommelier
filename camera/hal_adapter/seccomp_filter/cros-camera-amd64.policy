@@ -60,6 +60,7 @@ pipe2: 1
 pipe: 1
 poll: 1
 prctl: 1
+prlimit64: arg2 == 0 && arg3 != 0
 read: 1
 readlink: 1
 readlinkat: 1

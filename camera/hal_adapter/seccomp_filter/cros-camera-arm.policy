@@ -24,6 +24,7 @@ getdents64: 1
 getegid32: 1
 geteuid32: 1
 getgid32: 1
+getpid: 1
 getrandom: 1
 getsockname: 1
 gettid: 1
