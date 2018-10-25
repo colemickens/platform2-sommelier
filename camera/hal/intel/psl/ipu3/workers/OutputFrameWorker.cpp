@@ -283,6 +283,9 @@ bool OutputFrameWorker::isAsyncProcessingNeeded(std::shared_ptr<CameraBuffer> ou
     if (mNeedPostProcess && outBuf != nullptr) return true;
 
     Camera3Request* request = mMsg->cbMetadataMsg.request;
+    if (request->hasInputBuf()) {
+        return true;
+    }
     for (size_t i = 0; i < mListeners.size(); i++) {
         std::shared_ptr<CameraBuffer> listenerBuf = findBuffer(request, mListeners[i]);
         if (listenerBuf != nullptr && mListenerProcessors[i]->needPostProcess()) {
@@ -298,6 +301,8 @@ status_t OutputFrameWorker::processData(ProcessingData processingData)
     CameraStream *stream = nullptr;
 
     Camera3Request* request = processingData.mMsg->cbMetadataMsg.request;
+    bool needReprocess = request->hasInputBuf();
+
     // Handle for listeners at first
     for (size_t i = 0; i < mListeners.size(); i++) {
         camera3_stream_t* listener = mListeners[i];
@@ -317,7 +322,7 @@ status_t OutputFrameWorker::processData(ProcessingData processingData)
                                                  processingData.mWorkingBuffer,
                                                  listenerBuf,
                                                  processingData.mMsg->pMsg.processingSettings,
-                                                 request);
+                                                 request, needReprocess);
             CheckError(status != OK, status, "@%s, process for listener %p failed! [%d]!", __FUNCTION__,
                      listener, status);
         } else {
@@ -337,7 +342,7 @@ status_t OutputFrameWorker::processData(ProcessingData processingData)
     }
 
     if (processingData.mOutputBuffer == nullptr) {
-        if (request->hasInputBuf()) {
+        if (needReprocess) {
             const camera3_stream_buffer* inputBuf = request->getInputBuffer();
             CheckError(!inputBuf, UNKNOWN_ERROR, "@%s, getInputBuffer fails", __FUNCTION__);
 
@@ -358,30 +363,13 @@ status_t OutputFrameWorker::processData(ProcessingData processingData)
     }
 
     stream = processingData.mOutputBuffer->getOwner();
-    if (mNeedPostProcess) {
+    if (mNeedPostProcess || needReprocess) {
         status = mProcessor.processFrame(processingData.mWorkingBuffer,
                                          processingData.mOutputBuffer,
                                          processingData.mMsg->pMsg.processingSettings,
-                                         request);
+                                         request,
+                                         needReprocess);
         CheckError(status != OK, status, "@%s, postprocess failed! [%d]!", __FUNCTION__, status);
-    } else {
-        bool hasInputBuf = request->hasInputBuf();
-        if (hasInputBuf) {
-            const camera3_stream_buffer* inputBuf = request->getInputBuffer();
-            CheckError(!inputBuf, UNKNOWN_ERROR, "@%s, getInputBuffer fails", __FUNCTION__);
-
-            int fmt = inputBuf->stream->format;
-            CheckError((fmt != HAL_PIXEL_FORMAT_YCbCr_420_888), UNKNOWN_ERROR,
-                "@%s, input stream is not YCbCr_420_888, format:%x", __FUNCTION__, fmt);
-
-            const CameraStreamNode* s = request->getInputStream();
-            CheckError(!s, UNKNOWN_ERROR, "@%s, getInputStream fails", __FUNCTION__);
-
-            std::shared_ptr<CameraBuffer> buf = request->findBuffer(s);
-            CheckError((buf == nullptr), UNKNOWN_ERROR, "@%s, findBuffer fails", __FUNCTION__);
-
-            buf->getOwner()->captureDone(buf, request);
-        }
     }
 
     dump(processingData.mOutputBuffer, stream);
@@ -542,13 +530,98 @@ status_t OutputFrameWorker::SWPostProcessor::configure(
     return OK;
 }
 
+status_t OutputFrameWorker::SWPostProcessor::cropFrameToSameAspectRatio(
+                               std::shared_ptr<CameraBuffer>& srcBuf,
+                               std::shared_ptr<CameraBuffer>& dstBuf)
+{
+    CheckError((srcBuf == nullptr), UNKNOWN_ERROR, "@%s, srcBuf is nullptr", __FUNCTION__);
+    CheckError((dstBuf == nullptr), UNKNOWN_ERROR, "@%s, dstBuf is nullptr", __FUNCTION__);
+    CheckError(((srcBuf->format() != HAL_PIXEL_FORMAT_YCbCr_420_888) &&
+               (srcBuf->format() != HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) &&
+               (srcBuf->format() != HAL_PIXEL_FORMAT_NV12_LINEAR_CAMERA_INTEL)),
+               UNKNOWN_ERROR,
+               "@%s, invalid srcBuf format %x", __FUNCTION__, srcBuf->format());
+
+    LOG2("@%s, src w:%d, h:%d; dst w:%d, h:%d", __FUNCTION__,
+          srcBuf->width(), srcBuf->height(), dstBuf->width(), dstBuf->height());
+
+    if (srcBuf->width() * dstBuf->height() == srcBuf->height() * dstBuf->width()) {
+        return OK;
+    }
+
+    uint32_t w = 0;
+    uint32_t h = 0;
+    if (srcBuf->width() * dstBuf->height() < srcBuf->height() * dstBuf->width()) {
+        w = srcBuf->width();
+        h = srcBuf->width() * dstBuf->height() / dstBuf->width();
+    } else {
+        w = srcBuf->height() * dstBuf->width() / dstBuf->height();
+        h = srcBuf->height();
+    }
+    LOG2("@%s, src w:%d, h:%d; dst w:%d, h:%d; crop to w:%d, h:%d", __FUNCTION__,
+          srcBuf->width(), srcBuf->height(), dstBuf->width(), dstBuf->height(), w, h);
+
+    std::shared_ptr<CameraBuffer> buf = MemoryUtils::allocateHeapBuffer(w, h, w,
+                            srcBuf->v4l2Fmt(), mCameraId, PAGE_ALIGN(w * h * 3 / 2));
+    CheckError((buf.get() == nullptr), NO_MEMORY, "@%s, no memory for crop", __FUNCTION__);
+    status_t status = buf->lock();
+    CheckError(status != NO_ERROR, UNKNOWN_ERROR, "@%s, lock fails", __FUNCTION__);
+
+    status = ImageScalerCore::cropFrame(srcBuf, buf);
+    CheckError(status != NO_ERROR, status, "@%s, cropFrame fails", __FUNCTION__);
+
+    mPostProcessBufs.push_back(buf);
+
+    return OK;
+}
+
+status_t OutputFrameWorker::SWPostProcessor::scaleFrame(
+                               std::shared_ptr<CameraBuffer>& srcBuf,
+                               std::shared_ptr<CameraBuffer>& dstBuf)
+{
+    CheckError((srcBuf == nullptr), UNKNOWN_ERROR, "@%s, srcBuf is nullptr", __FUNCTION__);
+    CheckError((dstBuf == nullptr), UNKNOWN_ERROR, "@%s, dstBuf is nullptr", __FUNCTION__);
+    CheckError(((srcBuf->format() != HAL_PIXEL_FORMAT_YCbCr_420_888) &&
+               (srcBuf->format() != HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) &&
+               (srcBuf->format() != HAL_PIXEL_FORMAT_NV12_LINEAR_CAMERA_INTEL)), UNKNOWN_ERROR,
+               "@%s, invalid srcBuf format %x", __FUNCTION__, srcBuf->format());
+
+    LOG2("@%s, src w:%d, h:%d; dst w:%d, h:%d", __FUNCTION__,
+          srcBuf->width(), srcBuf->height(), dstBuf->width(), dstBuf->height());
+
+    if (srcBuf->width() * dstBuf->height() != srcBuf->height() * dstBuf->width()) {
+        LOGE("@%s, src w:%d, h:%d; dst w:%d, h:%d, not the same aspect ratio", __FUNCTION__,
+              srcBuf->width(), srcBuf->height(), dstBuf->width(), dstBuf->height());
+        return BAD_VALUE;
+    }
+
+    if (srcBuf->width() == dstBuf->width() && srcBuf->height() == dstBuf->height()) {
+        return OK;
+    }
+
+    std::shared_ptr<CameraBuffer> buf = MemoryUtils::allocateHeapBuffer(
+                                dstBuf->width(), dstBuf->height(),
+                                dstBuf->width(),
+                                srcBuf->v4l2Fmt(), mCameraId,
+                                PAGE_ALIGN(dstBuf->width() * dstBuf->height() * 3 / 2));
+    CheckError((buf.get() == nullptr), UNKNOWN_ERROR, "@%s, no memory for crop", __FUNCTION__);
+    status_t status = buf->lock();
+    CheckError(status != NO_ERROR, UNKNOWN_ERROR, "@%s, lock fails", __FUNCTION__);
+
+    ImageScalerCore::scaleFrame(srcBuf, buf);
+    mPostProcessBufs.push_back(buf);
+
+    return OK;
+}
+
 status_t OutputFrameWorker::SWPostProcessor::processFrame(
                                std::shared_ptr<CameraBuffer>& input,
                                std::shared_ptr<CameraBuffer>& output,
                                std::shared_ptr<ProcUnitSettings>& settings,
-                               Camera3Request* request)
+                               Camera3Request* request,
+                               bool needReprocess)
 {
-    if (mProcessType == PROCESS_NONE) {
+    if (mProcessType == PROCESS_NONE && needReprocess == false) {
         return NO_ERROR;
     }
 
@@ -626,66 +699,53 @@ status_t OutputFrameWorker::SWPostProcessor::processFrame(
                    __FUNCTION__, status);
     }
 
-    // Jpeg input buffer is always mPostProcessBufs.back()
-    if (mProcessType & PROCESS_JPEG_ENCODING) {
-        // get input frame buffer, for yuv reprocessing
-        bool hasInputBuf = request->hasInputBuf();
-        if (hasInputBuf) {
-            const camera3_stream_buffer* inputBuf = request->getInputBuffer();
-            CheckError(!inputBuf, UNKNOWN_ERROR, "@%s, getInputBuffer fails", __FUNCTION__);
+    // get input frame buffer, for yuv reprocessing
+    if (needReprocess) {
+        const camera3_stream_buffer* inputBuf = request->getInputBuffer();
+        CheckError(!inputBuf, UNKNOWN_ERROR, "@%s, getInputBuffer fails", __FUNCTION__);
 
-            int fmt = inputBuf->stream->format;
-            CheckError((fmt != HAL_PIXEL_FORMAT_YCbCr_420_888), UNKNOWN_ERROR,
-            "@%s, input stream is not YCbCr_420_888, format:%x", __FUNCTION__, fmt);
+        int fmt = inputBuf->stream->format;
+        CheckError((fmt != HAL_PIXEL_FORMAT_YCbCr_420_888), UNKNOWN_ERROR,
+                "@%s, input stream is not YCbCr_420_888, format:%x", __FUNCTION__, fmt);
 
-            const CameraStreamNode* s = request->getInputStream();
-            CheckError(!s, UNKNOWN_ERROR, "@%s, getInputStream fails", __FUNCTION__);
+        const CameraStreamNode* s = request->getInputStream();
+        CheckError(!s, UNKNOWN_ERROR, "@%s, getInputStream fails", __FUNCTION__);
 
-            std::shared_ptr<CameraBuffer> buf = request->findBuffer(s);
-            CheckError((buf == nullptr), UNKNOWN_ERROR, "@%s, findBuffer fails", __FUNCTION__);
+        std::shared_ptr<CameraBuffer> buf = request->findBuffer(s);
+        CheckError((buf == nullptr), UNKNOWN_ERROR, "@%s, findBuffer fails", __FUNCTION__);
 
-            if (!buf->isLocked()) {
-                status_t ret = buf->lock();
-                CheckError(ret != NO_ERROR, NO_MEMORY, "@%s, lock fails", __FUNCTION__);
-            }
-
-            mPostProcessBufs.push_back(buf);
+        if (!buf->isLocked()) {
+            status_t ret = buf->lock();
+            CheckError(ret != NO_ERROR, NO_MEMORY, "@%s, lock fails", __FUNCTION__);
         }
 
-        // check if it needs to do crop
-        bool needCrop = false;
+        mPostProcessBufs.push_back(buf);
+    }
+
+    int processType = PROCESS_NONE;
+    if ((mProcessType & PROCESS_JPEG_ENCODING) || needReprocess) {
+        // cropping
         std::shared_ptr<CameraBuffer> srcBuf = mPostProcessBufs.back();
         if (srcBuf->width() * output->height() != srcBuf->height() * output->width()) {
-            needCrop = true;
+            processType |= PROCESS_CROP;
+            status_t ret = cropFrameToSameAspectRatio(srcBuf, output);
+            CheckError((ret != OK), UNKNOWN_ERROR, "@%s, cropFrame fails", __FUNCTION__);
         }
 
-        if (needCrop) {
-            uint32_t w = 0;
-            uint32_t h = 0;
-            if (srcBuf->width() * output->height() < srcBuf->height() * output->width()) {
-                w = srcBuf->width();
-                h = srcBuf->width() * output->height() / output->width();
-            } else {
-                w = srcBuf->height() * output->width() / output->height();
-                h = srcBuf->height();
+        // scaling, jpeg encoder can do scaling, so it's unnecessary to do scaling for jpeg
+        if (!(mProcessType & PROCESS_JPEG_ENCODING)) {
+            srcBuf = mPostProcessBufs.back();
+            if (srcBuf->width() != output->width() || srcBuf->height() != output->height()) {
+                processType |= PROCESS_SCALING;
+                status_t ret = scaleFrame(srcBuf, output);
+                CheckError((ret != OK), UNKNOWN_ERROR, "@%s, scaleFrame fails", __FUNCTION__);
             }
-            LOG2("@%s, src w:%d, h:%d; out W:%d, h:%d; crop to w:%d, h:%d", __FUNCTION__,
-            srcBuf->width(), srcBuf->height(), output->width(), output->height(), w, h);
-
-            std::shared_ptr<CameraBuffer> dstBuf = MemoryUtils::allocateHeapBuffer(w, h, w,
-                                    srcBuf->v4l2Fmt(), mCameraId, PAGE_ALIGN(w * h * 3 / 2));
-            CheckError((dstBuf.get() == nullptr), NO_MEMORY, "@%s, no memory for crop", __FUNCTION__);
-            status = dstBuf->lock();
-            CheckError(status != NO_ERROR, status, "@%s, Failed to lock", __FUNCTION__);
-
-            status = ImageScalerCore::cropFrame(srcBuf, dstBuf);
-            CheckError(status != NO_ERROR, status, "@%s, cropFrame fails", __FUNCTION__);
-
-            mPostProcessBufs.push_back(dstBuf);
         }
+    }
 
+    // Jpeg input buffer is always mPostProcessBufs.back()
+    if (mProcessType & PROCESS_JPEG_ENCODING) {
         mPostProcessBufs.back()->setRequestId(request->getId());
-
         mPostProcessBufs.back()->dumpImage(CAMERA_DUMP_JPEG, "before_nv12_to_jpeg.nv12");
 
         // update settings for jpeg
@@ -697,18 +757,26 @@ status_t OutputFrameWorker::SWPostProcessor::processFrame(
         if (status != OK) {
             LOGE("@%s, convertJpeg fails, status:%d", __FUNCTION__, status);
         }
+    } else if (needReprocess && output->format() == HAL_PIXEL_FORMAT_YCbCr_420_888) {
+        //YUV reprocess
+        ImageScalerCore::scaleFrame(mPostProcessBufs.back(), output);
+    }
 
-        if (needCrop) {
-            std::shared_ptr<CameraBuffer> dstBuf = mPostProcessBufs.back();
-            dstBuf.reset();
-            mPostProcessBufs.pop_back();
-        }
-
-        if (hasInputBuf) {
-            std::shared_ptr<CameraBuffer> buf = mPostProcessBufs.back();
+    int relasePostProcessBufCnt = (processType & PROCESS_SCALING ? 1 : 0) +
+                                  (processType & PROCESS_CROP ? 1 : 0);
+    while (relasePostProcessBufCnt--) {
+        std::shared_ptr<CameraBuffer> buf = std::move(mPostProcessBufs.back());
+        if (buf->isLocked()) {
             buf->unlock();
-            buf->getOwner()->captureDone(buf, request);
         }
+        buf.reset();
+        mPostProcessBufs.pop_back();
+    }
+
+    if (needReprocess) {
+        std::shared_ptr<CameraBuffer> inputBuf = mPostProcessBufs.back();
+        inputBuf->unlock();
+        inputBuf->getOwner()->captureDone(inputBuf, request);
     }
 
     return status;

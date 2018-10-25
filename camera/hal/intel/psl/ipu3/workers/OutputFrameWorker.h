@@ -46,9 +46,10 @@ private:
         enum PostProcessType {
             // Processe frame in order
             PROCESS_NONE = 0,
-            PROCESS_ROTATE = 1<<0,
-            PROCESS_SCALING = 1<<1,
-            PROCESS_JPEG_ENCODING = 1<<2
+            PROCESS_ROTATE = 1 << 0,
+            PROCESS_SCALING = 1 << 1,
+            PROCESS_CROP = 1 << 2,
+            PROCESS_JPEG_ENCODING = 1 << 3
         };
 
     public:
@@ -60,10 +61,15 @@ private:
         bool needPostProcess() const {
             return (mProcessType != PROCESS_NONE);
         };
+        status_t cropFrameToSameAspectRatio(std::shared_ptr<CameraBuffer>& srcBuf,
+                            std::shared_ptr<CameraBuffer>& dstBuf);
+        status_t scaleFrame(std::shared_ptr<CameraBuffer>& srcBuf,
+                            std::shared_ptr<CameraBuffer>& dstBuf);
         status_t processFrame(std::shared_ptr<CameraBuffer>& input,
                               std::shared_ptr<CameraBuffer>& output,
                               std::shared_ptr<ProcUnitSettings>& settings,
-                              Camera3Request* request);
+                              Camera3Request* request,
+                              bool needReprocess);
 
     private:
         int getRotationDegrees(camera3_stream_t* stream) const;
