@@ -50,11 +50,6 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
   void CreateJpegEncodeAcceleratorOnIpcThread(
       mojom::JpegEncodeAcceleratorRequest request);
 
-  // This function will use the lock protect member |reference_count_| but it
-  // won't use |static_lock_| first. It is locked in destructor.
-  // It reset |dispatcher_| on |ipc_thread_| thread.
-  void DestroyOnIpcThreadLocked();
-
   // Error handler for camera dispatcher Mojo channel.
   static void OnDispatcherError();
 
@@ -66,7 +61,7 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
   static base::Thread* ipc_thread_;
   // A mutex to guard static variable.
   static base::Lock static_lock_;
-  static int reference_count_;
+  static bool mojo_initialized_;
 
   DISALLOW_COPY_AND_ASSIGN(CameraMojoChannelManagerImpl);
 };

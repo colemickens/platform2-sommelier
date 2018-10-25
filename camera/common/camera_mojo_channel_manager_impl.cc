@@ -22,7 +22,7 @@ namespace cros {
 mojom::CameraHalDispatcherPtr CameraMojoChannelManagerImpl::dispatcher_;
 base::Thread* CameraMojoChannelManagerImpl::ipc_thread_ = nullptr;
 base::Lock CameraMojoChannelManagerImpl::static_lock_;
-int CameraMojoChannelManagerImpl::reference_count_ = 0;
+bool CameraMojoChannelManagerImpl::mojo_initialized_ = false;
 
 // static
 std::unique_ptr<CameraMojoChannelManager>
@@ -38,58 +38,27 @@ CameraMojoChannelManagerImpl::CameraMojoChannelManagerImpl() {
 }
 
 CameraMojoChannelManagerImpl::~CameraMojoChannelManagerImpl() {
-  base::AutoLock l(static_lock_);
   VLOGF_ENTER();
-
-  reference_count_--;
-
-  ipc_thread_->task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(&CameraMojoChannelManagerImpl::DestroyOnIpcThreadLocked,
-                 base::Unretained(this)));
-
-  if (reference_count_ == 0) {
-    ipc_thread_->Stop();
-    delete ipc_thread_;
-    ipc_thread_ = nullptr;
-  }
-
-  VLOGF_EXIT();
-}
-
-void CameraMojoChannelManagerImpl::DestroyOnIpcThreadLocked() {
-  DCHECK(ipc_thread_->task_runner()->BelongsToCurrentThread());
-
-  // There is not any mojo users.
-  // We enter this function only from destructor. The lock is used in the
-  // destructor.
-  if (reference_count_ == 0) {
-    dispatcher_.reset();
-    mojo::edk::ShutdownIPCSupport(base::Bind(&base::DoNothing));
-  }
-
-  VLOGF_EXIT();
 }
 
 bool CameraMojoChannelManagerImpl::Start() {
   base::AutoLock l(static_lock_);
 
-  reference_count_++;
-  if (reference_count_ > 1) {
+  if (mojo_initialized_) {
     return true;
   }
 
   ipc_thread_ = new base::Thread("MojoIpcThread");
-  mojo::edk::Init();
   if (!ipc_thread_->StartWithOptions(
           base::Thread::Options(base::MessageLoop::TYPE_IO, 0))) {
     LOGF(ERROR) << "Failed to start IPC Thread";
     delete ipc_thread_;
     ipc_thread_ = nullptr;
-    reference_count_--;
     return false;
   }
+  mojo::edk::Init();
   mojo::edk::InitIPCSupport(ipc_thread_->task_runner());
+  mojo_initialized_ = true;
 
   return true;
 }
