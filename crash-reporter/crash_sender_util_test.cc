@@ -17,6 +17,7 @@
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
+#include <brillo/key_value_store.h>
 #include <gtest/gtest.h>
 
 #include "crash-reporter/crash_sender_paths.h"
@@ -273,6 +274,11 @@ TEST_F(CrashSenderUtilTest, RemoveInvalidCrashFiles) {
                                     "payload=" + absolute_log.value() + "\n"));
   ASSERT_TRUE(test_util::CreateFile(absolute_log, ""));
 
+  // This should be removed, since metadata is corrupted.
+  const base::FilePath corrupted_meta =
+      crash_directory.Append("corrupted.meta");
+  ASSERT_TRUE(test_util::CreateFile(corrupted_meta, "!@#$%^&*\n"));
+
   // This should be removed, since no payload info is recorded.
   const base::FilePath empty_meta = crash_directory.Append("empty.meta");
   ASSERT_TRUE(test_util::CreateFile(empty_meta, ""));
@@ -297,6 +303,7 @@ TEST_F(CrashSenderUtilTest, RemoveInvalidCrashFiles) {
   EXPECT_TRUE(base::PathExists(absolute_meta));
   EXPECT_TRUE(base::PathExists(absolute_log));
   EXPECT_FALSE(base::PathExists(empty_meta));
+  EXPECT_FALSE(base::PathExists(corrupted_meta));
   EXPECT_FALSE(base::PathExists(nonexistent_meta));
   EXPECT_FALSE(base::PathExists(unknown_meta));
   EXPECT_FALSE(base::PathExists(unknown_xxx));
@@ -372,13 +379,14 @@ TEST_F(CrashSenderUtilTest, GetMetaFiles) {
 }
 
 TEST_F(CrashSenderUtilTest, GetBaseNameFromMetadata) {
-  std::string metadata = "";
+  brillo::KeyValueStore metadata;
+  metadata.LoadFromString("");
   EXPECT_EQ("", GetBaseNameFromMetadata(metadata, "payload").value());
 
-  metadata = "payload=test.log\n";
+  metadata.LoadFromString("payload=test.log\n");
   EXPECT_EQ("test.log", GetBaseNameFromMetadata(metadata, "payload").value());
 
-  metadata = "payload=/foo/test.log\n";
+  metadata.LoadFromString("payload=/foo/test.log\n");
   EXPECT_EQ("test.log", GetBaseNameFromMetadata(metadata, "payload").value());
 }
 
@@ -397,6 +405,26 @@ TEST_F(CrashSenderUtilTest, GetKindFromPayloadPath) {
   // The directory name should not afect the function.
   EXPECT_EQ("minidump",
             GetKindFromPayloadPath(base::FilePath("/1.2.3/foo.dmp.gz")));
+}
+
+TEST_F(CrashSenderUtilTest, ParseMetadata) {
+  brillo::KeyValueStore metadata;
+  EXPECT_TRUE(ParseMetadata("", &metadata));
+  EXPECT_TRUE(ParseMetadata("log=test.log\n", &metadata));
+  EXPECT_TRUE(ParseMetadata("#comment\nlog=test.log\n", &metadata));
+
+  // Underscores, dashes, and periods should allowed, as Chrome uses them.
+  // https://crbug.com/821530.
+  EXPECT_TRUE(ParseMetadata("abcABC012_.-=test.log\n", &metadata));
+  std::string value;
+  EXPECT_TRUE(metadata.GetString("abcABC012_.-", &value));
+  EXPECT_EQ("test.log", value);
+
+  // Invalid metadata should be detected.
+  EXPECT_FALSE(ParseMetadata("=test.log\n", &metadata));
+  EXPECT_FALSE(ParseMetadata("***\n", &metadata));
+  EXPECT_FALSE(ParseMetadata("***=test.log\n", &metadata));
+  EXPECT_FALSE(ParseMetadata("log\n", &metadata));
 }
 
 TEST_F(CrashSenderUtilTest, Sender) {

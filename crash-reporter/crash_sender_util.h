@@ -10,8 +10,9 @@
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <session_manager/dbus-proxies.h>
 #include <base/files/scoped_temp_dir.h>
+#include <brillo/key_value_store.h>
+#include <session_manager/dbus-proxies.h>
 
 namespace util {
 
@@ -84,14 +85,19 @@ void RemoveReportFiles(const base::FilePath& meta_file);
 // the timestamp in the old-to-new order.
 std::vector<base::FilePath> GetMetaFiles(const base::FilePath& crash_dir);
 
-// Gets the base name of the path pointed by |key| in the given meta
-// data. Returns an empty path if the key is not found.
-base::FilePath GetBaseNameFromMetadata(const std::string& metadata,
+// Gets the base name of the path pointed by |key| in the given metadata.
+// Returns an empty path if the key is not found.
+base::FilePath GetBaseNameFromMetadata(const brillo::KeyValueStore& metadata,
                                        const std::string& key);
 
 // Returns which kind of report from the given payload path. Returns an empty
 // string if the kind is unknown.
 std::string GetKindFromPayloadPath(const base::FilePath& payload_path);
+
+// Parses |raw_metadata| into |metadata|. Keys in metadata are validated (keys
+// should consist of expected characters). Returns true on success.
+bool ParseMetadata(const std::string& raw_metadata,
+                   brillo::KeyValueStore* metadata);
 
 // A helper class for sending crashes. The behaviors can be customized with
 // Options class for unit testing.

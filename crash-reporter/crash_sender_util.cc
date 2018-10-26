@@ -22,7 +22,6 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
-#include <brillo/key_value_store.h>
 
 #include "crash-reporter/crash_sender_paths.h"
 #include "crash-reporter/paths.h"
@@ -48,21 +47,27 @@ void ShowUsageAndExit() {
   exit(EXIT_SUCCESS);
 }
 
-// Tries to find |key| in a key-value string |contents|, and writes the value to
-// |value|. Returns true on success.
-bool GetKeyValueFromString(const std::string& contents,
-                           const std::string& key,
-                           std::string* value) {
-  brillo::KeyValueStore store;
-  store.LoadFromString(contents);
-  return store.GetString(key, value);
-}
 
 // Returns true if the given report kind is known.
 // TODO(satorux): Move collector constants to a common file.
 bool IsKnownKind(const std::string& kind) {
   return (kind == "minidump" || kind == "kcrash" || kind == "log" ||
           kind == "devcore" || kind == "eccrash");
+}
+
+// Returns true if the given key is valid for crash metadata.
+bool IsValidKey(const std::string& key) {
+  if (key.empty())
+    return false;
+
+  for (const char c : key) {
+    if (!(base::IsAsciiAlpha(c) || base::IsAsciiDigit(c) || c == '_' ||
+          c == '-' || c == '.')) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 }  // namespace
@@ -203,16 +208,23 @@ void RemoveInvalidCrashFiles(const base::FilePath& crash_dir) {
       continue;
     }
 
-    std::string metadata;
-    if (!base::ReadFileToString(meta_file, &metadata)) {
+    std::string raw_metadata;
+    if (!base::ReadFileToString(meta_file, &raw_metadata)) {
       PLOG(WARNING) << "Igonoring: metadata file is inaccessible";
+      continue;
+    }
+
+    brillo::KeyValueStore metadata;
+    if (!ParseMetadata(raw_metadata, &metadata)) {
+      LOG(ERROR) << "Removing: corrupted metadata" << raw_metadata;
+      RemoveReportFiles(meta_file);
       continue;
     }
 
     base::FilePath payload_path = GetBaseNameFromMetadata(metadata, "payload");
     if (payload_path.empty()) {
       LOG(ERROR) << "Removing: payload is not found in the meta data: "
-                 << metadata;
+                 << raw_metadata;
       RemoveReportFiles(meta_file);
       continue;
     }
@@ -274,10 +286,10 @@ std::vector<base::FilePath> GetMetaFiles(const base::FilePath& crash_dir) {
   return meta_files;
 }
 
-base::FilePath GetBaseNameFromMetadata(const std::string& metadata,
+base::FilePath GetBaseNameFromMetadata(const brillo::KeyValueStore& metadata,
                                        const std::string& key) {
   std::string value;
-  if (!GetKeyValueFromString(metadata, key, &value))
+  if (!metadata.GetString(key, &value))
     return base::FilePath();
 
   return base::FilePath(value).BaseName();
@@ -299,6 +311,19 @@ std::string GetKindFromPayloadPath(const base::FilePath& payload_path) {
     return "minidump";
 
   return extension;
+}
+
+bool ParseMetadata(const std::string& raw_metadata,
+                   brillo::KeyValueStore* metadata) {
+  if (!metadata->LoadFromString(raw_metadata))
+    return false;
+
+  for (const auto& key : metadata->GetKeys()) {
+    if (!IsValidKey(key))
+      return false;
+  }
+
+  return true;
 }
 
 Sender::Sender(const Sender::Options& options)

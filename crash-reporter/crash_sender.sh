@@ -522,14 +522,6 @@ is_complete_metadata() {
   grep -q "done=1" "$1"
 }
 
-# Make sure the file is sane.  If the disk was corrupted, we should just delete.
-is_valid_metadata() {
-  # Delete comments, blank lines, and lines that start with valid keys.
-  # We allow underscores, dashes, and periods as Chrome uses them.
-  # https://crbug.com/821530
-  [ -z "$(sed -E -e '/^#/d' -e '/^$/d' -e '/^[a-zA-Z0-9_.-]+=/d' "$1")" ]
-}
-
 # Remove the given report path.
 # NOTE: Mirrors crash_sender_util.cc:RemoveReportFiles().
 remove_report() {
@@ -566,13 +558,6 @@ send_crashes() {
       else
         lecho "Ignoring recent incomplete metadata."
       fi
-      continue
-    fi
-
-    # Make sure key values are sane in case the meta file was corrupted.
-    if ! is_valid_metadata "${meta_path}"; then
-      lecho "Removing corrupted metadata."
-      remove_report "${meta_path}"
       continue
     fi
 
