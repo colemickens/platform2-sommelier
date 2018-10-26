@@ -195,7 +195,6 @@ class CameraClient {
 
     // Convert |cache_frame_| to the |buffer| with corresponding format.
     int WriteStreamBuffer(int stream_index,
-                          int num_streams,
                           const android::CameraMetadata& metadata,
                           const camera3_stream_buffer_t* buffer);
 

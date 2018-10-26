@@ -595,10 +595,29 @@ void CameraClient::RequestHandler::HandleRequest(
     }
   }
 
+  // Get frame data from device only for the first buffer.
+  // We reuse the buffer for all streams.
+  int32_t pattern_mode = ANDROID_SENSOR_TEST_PATTERN_MODE_OFF;
+  if (metadata->exists(ANDROID_SENSOR_TEST_PATTERN_MODE)) {
+    camera_metadata_entry entry =
+        metadata->find(ANDROID_SENSOR_TEST_PATTERN_MODE);
+    pattern_mode = entry.data.i32[0];
+  }
+
+  int ret;
+  do {
+    VLOGFID(2, device_id_) << "before DequeueV4L2Buffer";
+    ret = DequeueV4L2Buffer(pattern_mode);
+  } while (ret == -EAGAIN);
+
+  if (ret) {
+    HandleAbortedRequest(&capture_result);
+    return;
+  }
+
   // Handle each stream output buffer and convert it to corresponding format.
   for (size_t i = 0; i < capture_result.num_output_buffers; i++) {
-    int ret = WriteStreamBuffer(i, capture_result.num_output_buffers, *metadata,
-                                &capture_result.output_buffers[i]);
+    ret = WriteStreamBuffer(i, *metadata, &capture_result.output_buffers[i]);
     if (ret) {
       LOGFID(ERROR, device_id_)
           << "Handle stream buffer failed for output buffer id: " << i;
@@ -608,8 +627,15 @@ void CameraClient::RequestHandler::HandleRequest(
     }
   }
 
+  // Return v4l2 buffer.
+  ret = EnqueueV4L2Buffer();
+  if (ret) {
+    HandleAbortedRequest(&capture_result);
+    return;
+  }
+
   NotifyShutter(capture_result.frame_number);
-  int ret = metadata_handler_->PostHandleRequest(
+  ret = metadata_handler_->PostHandleRequest(
       capture_result.frame_number, current_v4l2_buffer_timestamp_, metadata);
   if (ret) {
     LOGFID(WARNING, device_id_)
@@ -809,7 +835,6 @@ bool CameraClient::RequestHandler::ShouldEnableConstantFrameRate(
 
 int CameraClient::RequestHandler::WriteStreamBuffer(
     int stream_index,
-    int num_streams,
     const android::CameraMetadata& metadata,
     const camera3_stream_buffer_t* buffer) {
   DCHECK(task_runner_->BelongsToCurrentThread());
@@ -822,25 +847,6 @@ int CameraClient::RequestHandler::WriteStreamBuffer(
 
   int ret = 0;
 
-  // Get frame data from device only for the first buffer.
-  // We reuse the buffer for all streams.
-  if (stream_index == 0) {
-    int32_t pattern_mode = ANDROID_SENSOR_TEST_PATTERN_MODE_OFF;
-    if (metadata.exists(ANDROID_SENSOR_TEST_PATTERN_MODE)) {
-      camera_metadata_ro_entry entry =
-          metadata.find(ANDROID_SENSOR_TEST_PATTERN_MODE);
-      pattern_mode = entry.data.i32[0];
-    }
-
-    do {
-      // Add log here to see timestamp log.
-      VLOGFID(2, device_id_) << "before DequeueV4L2Buffer";
-      ret = DequeueV4L2Buffer(pattern_mode);
-    } while (ret == -EAGAIN);
-    if (ret) {
-      return ret;
-    }
-  }
 
   GrallocFrameBuffer output_frame(*buffer->buffer, buffer->stream->width,
                                   buffer->stream->height);
@@ -884,13 +890,6 @@ int CameraClient::RequestHandler::WriteStreamBuffer(
     return -EINVAL;
   }
 
-  // Return v4l2 buffer when last stream buffer is handled.
-  if (stream_index + 1 == num_streams) {
-    ret = EnqueueV4L2Buffer();
-    if (ret) {
-      return ret;
-    }
-  }
   return 0;
 }
 
@@ -972,24 +971,30 @@ int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode) {
   DCHECK(task_runner_->BelongsToCurrentThread());
   uint32_t buffer_id, data_size;
   uint64_t timestamp;
+  // If device_->GetNextFrameBuffer returns error, the buffer is still in driver
+  // side. Therefore we don't need to enqueue the buffer.
   int ret = device_->GetNextFrameBuffer(&buffer_id, &data_size, &timestamp);
   if (ret) {
     LOGFID(ERROR, device_id_)
         << "GetNextFrameBuffer failed: " << strerror(-ret);
     return ret;
   }
+  // after this part, we got a buffer from V4L2 device,
+  // so we need to return the buffer back if any error happens.
   current_v4l2_buffer_id_ = buffer_id;
 
   ret = input_buffers_[buffer_id]->SetDataSize(data_size);
   if (ret) {
     LOGFID(ERROR, device_id_)
         << "Set data size failed for input buffer id: " << buffer_id;
+    EnqueueV4L2Buffer();
     return ret;
   }
 
   current_v4l2_buffer_timestamp_ = timestamp;
 
   if (!test_pattern_->SetTestPatternMode(pattern_mode)) {
+    EnqueueV4L2Buffer();
     return -EINVAL;
   }
 
@@ -999,6 +1004,7 @@ int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode) {
     if (ret) {
       LOGFID(ERROR, device_id_)
           << "Set image source failed for input buffer id: " << buffer_id;
+      EnqueueV4L2Buffer();
       // Try again when captured frame is not a valid MJPEG.
       return -EAGAIN;
     }
@@ -1007,6 +1013,7 @@ int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode) {
                                  crop_rotate_scale_degrees_, true);
     if (ret) {
       LOGFID(ERROR, device_id_) << "Set image source failed for test pattern";
+      EnqueueV4L2Buffer();
       return ret;
     }
   }
