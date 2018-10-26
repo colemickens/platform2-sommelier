@@ -6,12 +6,12 @@
 
 #include "compile_time_macros.h"
 
-{% for device_name, skus in device_properties.iteritems() -%}
+{% for ec_build_target, skus in device_properties.iteritems() -%}
   {%- if device_properties | length > 1 -%}
     {% if loop.first %}
-#if defined(BOARD_{{ device_name | upper }})
+#if defined(BOARD_{{ ec_build_target | upper }})
     {%- else %}
-#elif defined(BOARD_{{ device_name | upper }})
+#elif defined(BOARD_{{ ec_build_target | upper }})
     {%- endif -%}
   {%- endif %}
 
@@ -30,6 +30,7 @@ const struct sku_info ALL_SKUS[] = {
 #endif
   {%- endif %}
 {% else -%}
+  {#- Ensures we get an empty struct def even if no ec targets are defined. -#}
   const struct sku_info ALL_SKUS[] = {};
 {%- endfor %}
 

@@ -433,7 +433,7 @@ def GenerateEcCBindings(config):
     if 'build-targets' not in firmware:
       # Do not consider it an error if a config explicitly specifies no
       # firmware.
-      if 'no-firmware' not in firmware or not firmware['no-firmware']:
+      if 'no-firmware' not in firmware:
         print("WARNING: config missing 'firmware.build-targets', skipping",
               file=sys.stderr)
     elif 'ec' not in firmware['build-targets']:
@@ -454,7 +454,10 @@ def GenerateEcCBindings(config):
 
       hwprops = config.get('hardware-properties', None)
       if hwprops:
+        # |flag| is a user specified property of the hardware, for example
+        # 'is-lid-convertible', which means that the device can rotate 360.
         for flag, value in hwprops.iteritems():
+          # Convert the name of the flag to a valid C identifier.
           clean_flag = flag.replace('-', '_')
           flag_set.add(clean_flag)
           flag_values[clean_flag] = value
@@ -464,10 +467,10 @@ def GenerateEcCBindings(config):
 
   flags = list(flag_set)
   flags.sort()
-  for device_name in device_properties.iterkeys():
+  for ec_build_target in device_properties.iterkeys():
     # Order struct definitions by sku.
-    device_properties[device_name] = \
-        sorted(device_properties[device_name].items())
+    device_properties[ec_build_target] = \
+        sorted(device_properties[ec_build_target].items())
 
   h_template_path = os.path.join(
       this_dir, TEMPLATE_DIR, (EC_OUTPUT_NAME + ".h" + TEMPLATE_SUFFIX))
