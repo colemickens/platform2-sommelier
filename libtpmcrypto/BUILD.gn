@@ -20,6 +20,7 @@ pkg_config("target_defaults") {
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
     "protobuf-lite",
+    "openssl",
   ]
 }
 
@@ -37,6 +38,7 @@ shared_library("libtpmcrypto") {
     "//common-mk:visibility_default",
   ]
   sources = [
+    "tpm_crypto_impl.cc",
     "tpm_proto_utils.cc",
   ]
   deps = [
@@ -65,6 +67,7 @@ if (use.test) {
       ":test_config",
     ]
     sources = [
+      "tpm_crypto_impl_test.cc",
       "tpm_proto_utils_test.cc",
     ]
     deps = [
