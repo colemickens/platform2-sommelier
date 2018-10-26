@@ -15,6 +15,7 @@ group("all") {
 }
 
 pkg_config("target_defaults") {
+  defines = [ "USE_TPM2=${use.tpm2}" ]
   pkg_deps = [
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
@@ -41,6 +42,10 @@ shared_library("libtpmcrypto") {
   deps = [
     ":tpm_encrypted_data_proto",
   ]
+  if (use.tpm2) {
+    sources += [ "tpm2_impl.cc" ]
+    libs = [ "-ltrunks" ]
+  }
 }
 
 if (use.test) {
