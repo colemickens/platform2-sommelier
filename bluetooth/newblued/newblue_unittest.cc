@@ -246,11 +246,13 @@ TEST_F(NewblueTest, UpdateEirNormal) {
       // Manufacturer data
       5, static_cast<uint8_t>(EirType::MANUFACTURER_DATA), 0x0E, 0x00, 0x55,
       0x66};
-  Uuid battery_service_uuid16({0x18, 0x0F});
-  Uuid blood_pressure_uuid32({0x00, 0x00, 0x18, 0x10});
-  Uuid bond_management_service_uuid32({0x00, 0x00, 0x18, 0x1E});
-  Uuid uuid128({0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09,
-                0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F});
+  Uuid battery_service_uuid16(std::vector<uint8_t>({0x18, 0x0F}));
+  Uuid blood_pressure_uuid32(std::vector<uint8_t>({0x00, 0x00, 0x18, 0x10}));
+  Uuid bond_management_service_uuid32(
+      std::vector<uint8_t>({0x00, 0x00, 0x18, 0x1E}));
+  Uuid uuid128(
+      std::vector<uint8_t>({0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+                            0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F}));
 
   Newblue::UpdateEir(&device, std::vector<uint8_t>(eir, eir + arraysize(eir)));
 
@@ -321,8 +323,8 @@ TEST_F(NewblueTest, UpdateEirAbnormal) {
       3, static_cast<uint8_t>(EirType::SVC_DATA16), 0x0F, 0x18,
       // Wrong field length (4, should be 3)
       4, static_cast<uint8_t>(EirType::GAP_APPEARANCE), 0x01, 0x02, 0x03};
-  Uuid battery_service_uuid16({0x18, 0x0F});
-  Uuid blood_pressure_uuid16({0x18, 0x10});
+  Uuid battery_service_uuid16(std::vector<uint8_t>({0x18, 0x0F}));
+  Uuid blood_pressure_uuid16(std::vector<uint8_t>({0x18, 0x10}));
 
   Newblue::UpdateEir(&device, std::vector<uint8_t>(eir, eir + arraysize(eir)));
 

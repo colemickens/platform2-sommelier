@@ -50,6 +50,32 @@ TEST(UUIDTest, UuidConstruction) {
   EXPECT_EQ(uuid16_value, uuid16.value());
   EXPECT_EQ(uuid32_value, uuid32.value());
   EXPECT_EQ(uuid128_value, uuid128.value());
+
+  Uuid uuid_16("0102");
+  Uuid uuid_16_invalid("102");
+  EXPECT_EQ(UuidFormat::UUID16, uuid_16.format());
+  EXPECT_EQ(uuid16_value, uuid_16.value());
+  EXPECT_EQ(UuidFormat::UUID_INVALID, uuid_16_invalid.format());
+
+  Uuid uuid_32("01020304");
+  Uuid uuid_32_invalid("0102030405");
+  EXPECT_EQ(UuidFormat::UUID32, uuid_32.format());
+  EXPECT_EQ(uuid32_value, uuid_32.value());
+  EXPECT_EQ(UuidFormat::UUID_INVALID, uuid_32_invalid.format());
+
+  Uuid uuid_128("00010203-0405-0607-0809-101112131415");
+  Uuid uuid_too_long("00010203-0405-0607-0809-1011-1213-1415");
+  Uuid uuid_too_short("00010203-0405-0607-0809101112131415");
+  Uuid uuid_non_digit("00010203-0405-0607-0809-1011-2131415");
+  Uuid uuid_misplaced("0001-002030405-0607-0809-101112131415");
+  Uuid uuid_at("00010203-0405-0607@0809-101112131415");
+  EXPECT_EQ(UuidFormat::UUID128, uuid_128.format());
+  EXPECT_EQ(uuid128_value, uuid_128.value());
+  EXPECT_EQ(UuidFormat::UUID_INVALID, uuid_too_long.format());
+  EXPECT_EQ(UuidFormat::UUID_INVALID, uuid_too_short.format());
+  EXPECT_EQ(UuidFormat::UUID_INVALID, uuid_non_digit.format());
+  EXPECT_EQ(UuidFormat::UUID_INVALID, uuid_misplaced.format());
+  EXPECT_EQ(UuidFormat::UUID_INVALID, uuid_at.format());
 }
 
 TEST(UUIDTest, UuidOperators) {

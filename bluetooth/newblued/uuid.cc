@@ -7,8 +7,23 @@
 #include <algorithm>
 
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_number_conversions.h>
 
 namespace bluetooth {
+
+namespace {
+std::vector<uint8_t> UuidStrToBytes(std::string uuid_str) {
+  std::vector<uint8_t> value;
+  // Remove only 4 '-'s in uuid 128.
+  for (int i = 8; i < 24 && i < uuid_str.size(); i += 4) {
+    if (uuid_str[i] != '-')
+      return value;
+    uuid_str.erase(i, 1);
+  }
+  base::HexStringToBytes(uuid_str, &value);
+  return value;
+}
+}  // namespace
 
 Uuid::Uuid(const std::vector<uint8_t>& value) {
   switch (value.size()) {
@@ -37,6 +52,8 @@ Uuid::Uuid(const std::vector<uint8_t>& value) {
       value128_[10], value128_[11], value128_[12], value128_[13], value128_[14],
       value128_[15]);
 }
+
+Uuid::Uuid(const std::string& uuid_str) : Uuid(UuidStrToBytes(uuid_str)) {}
 
 bool Uuid::operator<(const Uuid& uuid) const {
   return value128_ < uuid.value();

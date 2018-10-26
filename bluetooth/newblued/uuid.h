@@ -49,6 +49,14 @@ class Uuid {
   // {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B,
   //  0x0C, 0x0D, 0x0E, 0x0F}: a 128-bit UUID represent a user-defined service
   explicit Uuid(const std::vector<uint8_t>& value);
+
+  // Parses |uuid_str| into Uuid. Malformatted |uuid_str| results in
+  // UUID_INVALID. Supported formats include:
+  // UUID16:  xxxx
+  // UUID32:  xxxxxxxx
+  // UUID128: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+  explicit Uuid(const std::string& uuid_str);
+
   UuidFormat format() const { return format_; }
   // If |format_| is UuidFormat::UUID_INVALID, the return value is not valid.
   const std::array<uint8_t, 16>& value() const { return value128_; }
