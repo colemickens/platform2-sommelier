@@ -791,6 +791,8 @@ std::unique_ptr<dbus::Response> Service::SharePath(
                 .Append("Computers");
       dst = dst.Append("Google Drive").Append("Computers");
       break;
+    // Note: DriveFs .Trash directory must not ever be shared since it would
+    // allow linux apps to make permanent deletes to Drive.
     case SharePathRequest::REMOVABLE:
       src = base::FilePath("/media/removable");
       dst = dst.Append("removable");
