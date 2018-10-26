@@ -328,6 +328,9 @@ class ArcSetup {
   // Creates /dev/.coldboot_done file in the container's mount namespace
   void CreateDevColdbootDoneOnPreChroot(const base::FilePath& rootfs);
 
+  // Converts |version_str| to the enum.
+  AndroidSdkVersion SdkVersionFromString(const std::string& version_str);
+
   // Gets the image's SDK version. This function returns UNKNOWN when the system
   // image hasn't been mounted yet.
   AndroidSdkVersion GetSdkVersion();

@@ -233,23 +233,6 @@ std::vector<base::FilePath> PrependPath(It first,
   return result;
 }
 
-AndroidSdkVersion SdkVersionFromString(const std::string& version_str) {
-  int version;
-  if (base::StringToInt(version_str, &version)) {
-    switch (version) {
-      case 23:
-        return AndroidSdkVersion::ANDROID_M;
-      case 25:
-        return AndroidSdkVersion::ANDROID_N_MR1;
-      case 28:
-        return AndroidSdkVersion::ANDROID_P;
-    }
-  }
-
-  LOG(ERROR) << "Unknown SDK version : " << version_str;
-  return AndroidSdkVersion::UNKNOWN;
-}
-
 // Returns SDK version upgrade type to be sent to UMA.
 ArcSdkVersionUpgradeType GetUpgradeType(AndroidSdkVersion system_sdk_version,
                                         AndroidSdkVersion data_sdk_version) {
@@ -268,6 +251,7 @@ ArcSdkVersionUpgradeType GetUpgradeType(AndroidSdkVersion system_sdk_version,
     return ArcSdkVersionUpgradeType::N_TO_P;
   }
   if (data_sdk_version < system_sdk_version) {
+    // TODO(niwa): Handle P to Q upgrade.
     LOG(ERROR) << "Unexpected Upgrade: data_sdk_version="
                << static_cast<int>(data_sdk_version) << " system_sdk_version="
                << static_cast<int>(system_sdk_version);
@@ -285,6 +269,7 @@ ArcSdkVersionUpgradeType GetUpgradeType(AndroidSdkVersion system_sdk_version,
 bool ShouldDeleteAndroidData(AndroidSdkVersion system_sdk_version,
                              AndroidSdkVersion data_sdk_version) {
   // Downgraded from P to N. (b/80113276)
+  // TODO(niwa): Handle Q to P too.
   if (data_sdk_version == AndroidSdkVersion::ANDROID_P &&
       system_sdk_version == AndroidSdkVersion::ANDROID_N_MR1) {
     LOG(INFO) << "Clearing /data dir because ARC was downgraded from P to N.";
@@ -704,7 +689,7 @@ void ArcSetup::SetUpAndroidData() {
     SetUpGservicesCache();
   }
 
-  if (GetSdkVersion() == AndroidSdkVersion::ANDROID_P)
+  if (GetSdkVersion() >= AndroidSdkVersion::ANDROID_P)
     SetUpNetwork();
 }
 
@@ -1638,6 +1623,30 @@ void ArcSetup::CleanUpBinFmtMiscSetUp() {
   }
 }
 
+AndroidSdkVersion ArcSetup::SdkVersionFromString(
+    const std::string& version_str) {
+  int version;
+  if (base::StringToInt(version_str, &version)) {
+    switch (version) {
+      case 23:
+        return AndroidSdkVersion::ANDROID_M;
+      case 25:
+        return AndroidSdkVersion::ANDROID_N_MR1;
+      case 28: {
+        // TODO(yusukes): Remove the hack once master-arc-dev starts using >28.
+        const std::string version_release_str =
+            GetSystemBuildProperyOrDie("ro.build.version.release");
+        LOG(INFO) << "Release version string: " << version_release_str;
+        return version_release_str == "Q" ? AndroidSdkVersion::ANDROID_Q
+                                          : AndroidSdkVersion::ANDROID_P;
+      }
+    }
+  }
+
+  LOG(ERROR) << "Unknown SDK version : " << version_str;
+  return AndroidSdkVersion::UNKNOWN;
+}
+
 AndroidSdkVersion ArcSetup::GetSdkVersion() {
   const std::string version_str =
       GetSystemBuildProperyOrDie("ro.build.version.sdk");
@@ -2066,7 +2075,7 @@ void ArcSetup::OnSetup() {
   CleanUpStaleMountPoints();
   RestoreContext();
   SetUpGraphicsSysfsContext();
-  if (GetSdkVersion() == AndroidSdkVersion::ANDROID_P)
+  if (GetSdkVersion() >= AndroidSdkVersion::ANDROID_P)
     SetUpPowerSysfsContext();
   MakeMountPointsReadOnly();
   SetUpCameraProperty();
@@ -2250,6 +2259,7 @@ void ArcSetup::OnUpdateRestoreconLast() {
           arc_paths_->android_mutable_source.Append("cache"));
       break;
     case AndroidSdkVersion::ANDROID_P:
+    case AndroidSdkVersion::ANDROID_Q:
       // The order of files to read is important. Do not reorder.
       context_files.push_back(
           arc_paths_->android_rootfs_directory.Append("plat_file_contexts"));

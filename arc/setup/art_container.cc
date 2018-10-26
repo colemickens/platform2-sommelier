@@ -331,7 +331,7 @@ bool ArtContainer::PatchImage(const std::string& isa, uint64_t offset_seed) {
           "--output-image-file=/data/dalvik-cache/%s/system@framework@boot.art",
           isa.c_str());
       break;
-    // For Android P and after, use --output-image-directory.
+    // For Android P, use --output-image-directory.
     default:
       output_arg = base::StringPrintf(
           "--output-image-directory=/data/dalvik-cache/%s", isa.c_str());
