@@ -33,12 +33,10 @@ pkg_config("target_defaults") {
 static_library("libbiod") {
   configs += [ ":target_defaults" ]
   sources = [
-    "bio_library.cc",
     "biod_metrics.cc",
     "biod_storage.cc",
     "biometrics_daemon.cc",
     "cros_fp_biometrics_manager.cc",
-    "fpc_biometrics_manager.cc",
     "scoped_umask.cc",
     "uinput_device.cc",
   ]
@@ -47,10 +45,8 @@ static_library("libbiod") {
 executable("biod") {
   configs += [ ":target_defaults" ]
   sources = [
-    "fpc/fpc_platform_utils.cc",
     "main.cc",
   ]
-  libs = [ "-ldl" ]
   deps = [
     ":libbiod",
   ]

@@ -42,12 +42,9 @@ record id and label.
 
 ## HARDWARE
 
-### FpcBiometric
+### CrosFpBiometric
 
-FpcBiometric is the biometrics manager for a real sensor and has its own
-algorithms library (called libfp.so) for building, serializing, updating and
-matching records. libfp.so is provided by the hardware vendor and dynamically
-loaded at runtime.
+TODO
 
 ## CHROME
 
