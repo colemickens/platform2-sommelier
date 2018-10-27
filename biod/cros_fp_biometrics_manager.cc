@@ -640,7 +640,6 @@ bool CrosFpBiometricsManager::CrosFpDevice::UpdateEntropy(bool reset) {
                << block_id << ", new block_id: " << new_block_id;
     return false;
   }
-  LOG(INFO) << "Entropy source has been successfully reset.";
   return true;
 }
 
