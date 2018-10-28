@@ -88,6 +88,7 @@ TEST_F(BackgroundTransceiverTest, Asynchronous) {
   } while (output == "not_assigned");
   // The call to our mock should have happened on the background thread.
   EXPECT_EQ(std::string(kTestThreadName), output);
+  test_thread_.Stop();
 }
 
 TEST_F(BackgroundTransceiverTest, Synchronous) {
