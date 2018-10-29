@@ -12,7 +12,7 @@ allow $1 self:capability net_admin;
 
 define(`minijail_mountdev',
 minijail_mounts($1);
-arc_nyc_cts_fails(`
+arc_cts_fails_release(`
 # neverallows { domain -kernel -xxxxx} *:capability mknod;
 allow $1 $1:capability mknod;
 ', ($1))
@@ -28,7 +28,7 @@ allow $1 tmpfs:lnk_file create;
 # minijail_mounts(domain, extra_mount, extra_mounton, extra_getattr)
 define(`minijail_mounts', `
 # neverallows { domain -xxxxx} fs_type:filesytem { mount remount }
-arc_nyc_cts_fails(`
+arc_cts_fails_release(`
 allow $1 { proc tmpfs $2 }:filesystem { mount remount};
 allow $1 { labeledfs device sysfs }:filesystem { remount };
 ', ($1))

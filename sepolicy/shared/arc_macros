@@ -28,8 +28,8 @@ undefine(`_broke_cts')
 
 divert
 
-# Wraps policies that fails NYC CTS.
-# arc_nyc_cts_fails(policies, affected_scontexts)
-define(`arc_nyc_cts_fails', `
-break_cts((`n'), $1, $2)
+# Wraps policies that fails CTS.
+# arc_cts_fails_release(policies, affected_scontexts)
+define(`arc_cts_fails_release', `
+break_cts((`n', `p'), $1, $2)
 ')
