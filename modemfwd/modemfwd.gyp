@@ -10,6 +10,7 @@
         'libbrillo-<(libbase_ver)',
         'libcros_config',
         'libshill-client',
+        'liblzma',
         # system_api depends on protobuf. It must appear before protobuf
         # here or the linker flags won't be in the right order.
         'system_api',
@@ -39,6 +40,7 @@
         'modemfw-protos',
       ],
       'sources': [
+        'file_decompressor.cc',
         'firmware_directory.cc',
         'journal.cc',
         'modem.cc',
@@ -80,6 +82,7 @@
             ],
           },
           'sources': [
+            'file_decompressor_test.cc',
             'firmware_directory_stub.cc',
             'firmware_directory_test.cc',
             'journal_test.cc',
