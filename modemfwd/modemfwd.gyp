@@ -47,6 +47,7 @@
         'modem_helper_directory.cc',
         'modem_tracker.cc',
         'proto_file_io.cc',
+        'scoped_temp_file.cc',
       ],
     },
     {

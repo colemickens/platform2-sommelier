@@ -14,6 +14,7 @@
 #include "modemfwd/firmware_directory_stub.h"
 #include "modemfwd/mock_modem_helper.h"
 #include "modemfwd/modem_helper_directory_stub.h"
+#include "modemfwd/scoped_temp_file.h"
 
 using ::testing::_;
 using ::testing::Return;
@@ -31,39 +32,28 @@ constexpr char kMainFirmwareVersion[] = "1.0";
 constexpr char kCarrierFirmwarePath[] = "carrier_firmware.fls";
 constexpr char kCarrierFirmwareVersion[] = "1.0";
 
-class ScopedTempFile {
- public:
-  ScopedTempFile() { CHECK(base::CreateTemporaryFile(&temp_file_path_)); }
-  ~ScopedTempFile() {
-    base::DeleteFile(temp_file_path_, false /* recursive */);
-  }
-
-  const base::FilePath& path() { return temp_file_path_; }
-
- private:
-  base::FilePath temp_file_path_;
-};
-
 }  // namespace
 
 class JournalTest : public ::testing::Test {
  public:
   JournalTest()
-      : firmware_directory_(new FirmwareDirectoryStub),
+      : journal_file_(ScopedTempFile::Create()),
+        firmware_directory_(new FirmwareDirectoryStub),
         modem_helper_directory_(new ModemHelperDirectoryStub) {
+    CHECK(journal_file_);
     EXPECT_CALL(modem_helper_, GetFirmwareInfo(_)).Times(0);
     modem_helper_directory_->AddHelper(kDeviceId, &modem_helper_);
   }
 
  protected:
   void SetUpJournal(const std::string& journal_text) {
-    CHECK_EQ(base::WriteFile(journal_file_.path(), journal_text.data(),
+    CHECK_EQ(base::WriteFile(journal_file_->path(), journal_text.data(),
                              journal_text.size()),
              journal_text.size());
   }
 
   std::unique_ptr<Journal> GetJournal() {
-    return OpenJournal(journal_file_.path(), firmware_directory_.get(),
+    return OpenJournal(journal_file_->path(), firmware_directory_.get(),
                        modem_helper_directory_.get());
   }
 
@@ -83,8 +73,7 @@ class JournalTest : public ::testing::Test {
   MockModemHelper modem_helper_;
 
  private:
-  ScopedTempFile journal_file_;
-
+  std::unique_ptr<ScopedTempFile> journal_file_;
   std::unique_ptr<FirmwareDirectoryStub> firmware_directory_;
   std::unique_ptr<ModemHelperDirectoryStub> modem_helper_directory_;
 };

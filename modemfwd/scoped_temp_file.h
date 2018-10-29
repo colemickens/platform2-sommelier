@@ -1,0 +1,33 @@
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#ifndef MODEMFWD_SCOPED_TEMP_FILE_H_
+#define MODEMFWD_SCOPED_TEMP_FILE_H_
+
+#include <memory>
+
+#include <base/files/file_path.h>
+#include <base/macros.h>
+
+namespace modemfwd {
+
+class ScopedTempFile {
+ public:
+  static std::unique_ptr<ScopedTempFile> Create();
+
+  ~ScopedTempFile();
+
+  const base::FilePath& path() const { return path_; }
+
+ private:
+  explicit ScopedTempFile(const base::FilePath& path);
+
+  const base::FilePath path_;
+
+  DISALLOW_COPY_AND_ASSIGN(ScopedTempFile);
+};
+
+}  // namespace modemfwd
+
+#endif  // MODEMFWD_SCOPED_TEMP_FILE_H_
