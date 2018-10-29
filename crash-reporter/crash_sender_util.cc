@@ -196,6 +196,13 @@ void RemoveInvalidCrashFiles(const base::FilePath& crash_dir) {
 
   for (const auto& meta_file : meta_files) {
     LOG(INFO) << "Checking metadata: " << meta_file.value();
+
+    if (!IsMock() && !IsOfficialImage()) {
+      LOG(ERROR) << "Removing: Not an official OS version";
+      RemoveReportFiles(meta_file);
+      continue;
+    }
+
     std::string metadata;
     if (!base::ReadFileToString(meta_file, &metadata)) {
       PLOG(WARNING) << "Igonoring: metadata file is inaccessible";

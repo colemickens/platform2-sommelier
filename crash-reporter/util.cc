@@ -4,6 +4,8 @@
 
 #include "crash-reporter/util.h"
 
+#include <stdlib.h>
+
 #include <map>
 
 #include <base/files/file_util.h>
@@ -40,6 +42,20 @@ bool IsTestImage() {
     return false;
   }
   return base::StartsWith(channel, "test", base::CompareCase::SENSITIVE);
+}
+
+bool IsOfficialImage() {
+  const char* value = getenv("FORCE_OFFICIAL");
+  if (value && std::string(value) != "0")
+    return true;
+
+  std::string description;
+  if (!GetCachedKeyValueDefault(base::FilePath(paths::kLsbRelease),
+                                "CHROMEOS_RELEASE_DESCRIPTION", &description)) {
+    return false;
+  }
+
+  return description.find("Official") != std::string::npos;
 }
 
 bool GetCachedKeyValue(const base::FilePath& base_name,

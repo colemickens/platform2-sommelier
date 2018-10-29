@@ -4,11 +4,13 @@
 
 #include "crash-reporter/util.h"
 
+#include <stdlib.h>
+
+#include <memory>
+
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
-
-#include <memory>
 
 #include "crash-reporter/crash_sender_paths.h"
 #include "crash-reporter/paths.h"
@@ -81,6 +83,29 @@ TEST_F(CrashCommonUtilTest, IsTestImage) {
                                          paths::kCrashTestInProgress),
                             ""));
   EXPECT_FALSE(IsTestImage());
+}
+
+TEST_F(CrashCommonUtilTest, IsOfficialImage) {
+  EXPECT_FALSE(IsOfficialImage());
+
+  // Check if FORCE_OFFICIAL is handled correctly.
+  setenv("FORCE_OFFICIAL", "0", 1 /* overwrite */);
+  EXPECT_FALSE(IsOfficialImage());
+
+  setenv("FORCE_OFFICIAL", "1", 1 /* overwrite */);
+  EXPECT_TRUE(IsOfficialImage());
+  unsetenv("FORCE_OFFICIAL");
+
+  // Check if lsb-release is handled correctly.
+  ASSERT_TRUE(test_util::CreateFile(
+      paths::Get("/etc/lsb-release"),
+      "CHROMEOS_RELEASE_DESCRIPTION=10964.0 (Test Build) developer-build"));
+  EXPECT_FALSE(IsOfficialImage());
+
+  ASSERT_TRUE(test_util::CreateFile(
+      paths::Get("/etc/lsb-release"),
+      "CHROMEOS_RELEASE_DESCRIPTION=10964.0 (Official Build) canary-channel"));
+  EXPECT_TRUE(IsOfficialImage());
 }
 
 TEST_F(CrashCommonUtilTest, GetCachedKeyValue) {

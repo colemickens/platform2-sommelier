@@ -80,6 +80,8 @@ is_mock_successful() {
   return 1
 }
 
+# Returns 0 if we should consider ourselves to be running on an official image.
+# NOTE: NOTE: Mirrors util.cc:IsOfficialImage().
 is_official_image() {
   [ ${FORCE_OFFICIAL} -ne 0 ] && return 0
   grep ^CHROMEOS_RELEASE_DESCRIPTION /etc/lsb-release | grep -q Official
@@ -577,12 +579,6 @@ send_crashes() {
     # Ignore device coredump if device coredump uploading is not allowed.
     if [ "${kind}" = "devcore" ] && ! is_device_coredump_upload_allowed; then
       lecho "Ignoring device coredump. Device coredump upload not allowed."
-      continue
-    fi
-
-    if ! is_mock && ! is_official_image; then
-      lecho "Not an official OS version.  Removing crash."
-      remove_report "${meta_path}"
       continue
     fi
 

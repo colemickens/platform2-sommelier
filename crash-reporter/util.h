@@ -22,6 +22,9 @@ bool IsDeveloperImage();
 // Returns true if running on a test image.
 bool IsTestImage();
 
+// Returns true if running on an official image.
+bool IsOfficialImage();
+
 // Tries to find |key| in a key-value file named |base_name| in |directories| in
 // the specified order, and writes the value to |value|. This function returns
 // as soon as the key is found (i.e. if the key is found in the first directory,

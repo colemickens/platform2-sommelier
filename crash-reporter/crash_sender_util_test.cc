@@ -252,6 +252,9 @@ TEST_F(CrashSenderUtilTest, RemoveOrphanedCrashFiles) {
 }
 
 TEST_F(CrashSenderUtilTest, RemoveInvalidCrashFiles) {
+  // TearDown() ensures that the variable will be unset.
+  setenv("FORCE_OFFICIAL", "1", 1 /* overwrite */);
+
   const base::FilePath crash_directory =
       paths::Get(paths::kSystemCrashDirectory);
   ASSERT_TRUE(base::CreateDirectory(crash_directory));
@@ -297,6 +300,11 @@ TEST_F(CrashSenderUtilTest, RemoveInvalidCrashFiles) {
   EXPECT_FALSE(base::PathExists(nonexistent_meta));
   EXPECT_FALSE(base::PathExists(unknown_meta));
   EXPECT_FALSE(base::PathExists(unknown_xxx));
+
+  // All crash files should be removed for an unofficial build.
+  setenv("FORCE_OFFICIAL", "0", 1 /* overwrite */);
+  RemoveInvalidCrashFiles(crash_directory);
+  EXPECT_TRUE(base::IsDirectoryEmpty(crash_directory));
 }
 
 TEST_F(CrashSenderUtilTest, RemoveReportFiles) {
