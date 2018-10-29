@@ -140,23 +140,29 @@ void MojoConnector::OnDeviceInfosReceived(
     const VideoCaptureServiceClient::GetDevicesCallback& callback,
     mojo::Array<media::mojom::VideoCaptureDeviceInfoPtr> infos) {
   LOG(INFO) << "Got callback for device infos.";
-  std::vector<VideoDevice> devices;
+  std::vector<SerializedVideoDevice> devices;
   for (const auto& capture_device : infos) {
     VideoDevice device;
-    device.id = capture_device->descriptor->device_id;
-    device.display_name = capture_device->descriptor->display_name;
-    device.model_id = capture_device->descriptor->model_id;
-    LOG(INFO) << "Device: " << device.display_name;
+    device.set_id(capture_device->descriptor->device_id);
+    device.set_display_name(capture_device->descriptor->display_name);
+    device.set_model_id(capture_device->descriptor->model_id);
+    LOG(INFO) << "Device: " << device.display_name();
     for (const auto& capture_format : capture_device->supported_formats) {
-      CaptureFormat supported_format;
-      supported_format.frame_width = capture_format->frame_size->width;
-      supported_format.frame_height = capture_format->frame_size->height;
-      supported_format.frame_rate = capture_format->frame_rate;
-      supported_format.pixel_format = GetPixelFormatFromVideoCapturePixelFormat(
-          capture_format->pixel_format);
-      device.supported_formats.push_back(supported_format);
+      VideoStreamParams supported_format;
+      supported_format.set_width_in_pixels(capture_format->frame_size->width);
+      supported_format.set_height_in_pixels(capture_format->frame_size->height);
+      supported_format.set_frame_rate_in_frames_per_second(
+          capture_format->frame_rate);
+      supported_format.set_pixel_format(
+          GetPixelFormatFromVideoCapturePixelFormat(
+          capture_format->pixel_format));
+      *device.add_supported_configurations() = supported_format;
     }
-    devices.push_back(device);
+    const int size = device.ByteSize();
+    std::vector<uint8_t> bytes(size, 0);
+    CHECK(device.SerializeToArray(bytes.data(), size))
+        << "Failed to serialize mri::VideoDevice proto.";
+    devices.push_back(bytes);
   }
   callback(devices);
 }
@@ -185,7 +191,7 @@ void MojoConnector::OnSetActiveDeviceCallback(
 }
 
 void MojoConnector::StartVideoCapture(
-    const CaptureFormat& capture_format,
+    const VideoStreamParams& capture_format,
     std::function<void(uint64_t timestamp_in_microseconds, const uint8_t* data,
                        int data_size)>
         frame_handler) {
@@ -198,23 +204,24 @@ void MojoConnector::StartVideoCapture(
 }
 
 void MojoConnector::StartVideoCaptureOnIpcThread(
-    const CaptureFormat& capture_format) {
+    const VideoStreamParams& capture_format) {
   LOG(INFO) << "Starting video capture on ipc thread.";
 
   auto requested_settings = media::mojom::VideoCaptureParams::New();
   requested_settings->requested_format =
       media::mojom::VideoCaptureFormat::New();
 
-  requested_settings->requested_format->frame_rate = capture_format.frame_rate;
+  requested_settings->requested_format->frame_rate =
+      capture_format.frame_rate_in_frames_per_second();
 
   requested_settings->requested_format->pixel_format =
-      GetVideoCapturePixelFormatFromPixelFormat(capture_format.pixel_format);
+      GetVideoCapturePixelFormatFromPixelFormat(capture_format.pixel_format());
 
   requested_settings->requested_format->frame_size = gfx::mojom::Size::New();
   requested_settings->requested_format->frame_size->width =
-      capture_format.frame_width;
+      capture_format.width_in_pixels();
   requested_settings->requested_format->frame_size->height =
-      capture_format.frame_height;
+      capture_format.height_in_pixels();
 
   requested_settings->buffer_type =
       media::mojom::VideoCaptureBufferType::kSharedMemoryViaRawFileDescriptor;
@@ -252,13 +259,18 @@ void MojoConnector::CreateVirtualDeviceOnIpcThread(
   // just redundant, so should be removed.
   info->supported_formats = std::vector<media::mojom::VideoCaptureFormatPtr>();
   info->descriptor = media::mojom::VideoCaptureDeviceDescriptor::New();
-  info->descriptor->model_id = video_device.model_id;
-  info->descriptor->device_id = video_device.id;
-  info->descriptor->display_name = video_device.display_name;
+  info->descriptor->model_id = video_device.model_id();
+  info->descriptor->device_id = video_device.id();
+  info->descriptor->display_name = video_device.display_name();
   info->descriptor->capture_api = media::mojom::VideoCaptureApi::VIRTUAL_DEVICE;
   producer_impl->RegisterVirtualDeviceAtFactory(&device_factory_,
                                                 std::move(info));
-  callback(video_device);
+
+  const int size = video_device.ByteSize();
+  std::vector<uint8_t> bytes(size /*count*/, 0 /*value*/);
+  CHECK(video_device.SerializeToArray(bytes.data(), size))
+      << "Failed to serialize mri::VideoDevice proto.";
+  callback(bytes);
 }
 
 void MojoConnector::PushFrameToVirtualDevice(

@@ -14,6 +14,12 @@
 #include <utility>
 #include <vector>
 
+// Typdefs for readability. Serialized protos are passed back and forth across
+// the boundary between platform2 code and librtanalytics.so
+using SerializedVideoStreamParams = std::vector<uint8_t>;
+using SerializedVideoDevice = std::vector<uint8_t>;
+using RawPixelFormat = uint32_t;
+
 namespace mri {
 
 enum DeviceAccessResultCode {
@@ -23,36 +29,14 @@ enum DeviceAccessResultCode {
   ERROR_DEVICE_NOT_FOUND
 };
 
-enum PixelFormat { FORMAT_UNKNOWN, I420, MJPEG };
-
-struct CaptureFormat {
-  int frame_width;
-  int frame_height;
-  float frame_rate;  // In frames per second.
-  PixelFormat pixel_format;
-};
-
-struct VideoDevice {
-  // Obfuscated unique id for this video device.
-  std::string id;
-
-  // Human readable name of the video device.
-  std::string display_name;
-
-  // Model id string.
-  std::string model_id;
-
-  // List of supported formats for the camera.
-  std::vector<CaptureFormat> supported_formats;
-};
-
 // Provides the interface definition for the rtanalytics library to interact
 // with the Chrome Video Capture Service.
 class VideoCaptureServiceClient {
  public:
-  using GetDevicesCallback = std::function<void(std::vector<VideoDevice>)>;
+  using GetDevicesCallback = std::function<void(
+      std::vector<SerializedVideoDevice>)>;
   using SetActiveDeviceCallback = std::function<void(DeviceAccessResultCode)>;
-  using VirtualDeviceCallback = std::function<void(VideoDevice)>;
+  using VirtualDeviceCallback = std::function<void(SerializedVideoDevice)>;
   using FrameHandler =
       std::function<void(uint64_t timestamp_us, const uint8_t* data,
                          int data_size, int frame_width, int frame_height)>;
@@ -75,17 +59,20 @@ class VideoCaptureServiceClient {
 
   // Starts video capture on the active device. Frames will be forwarded to
   // the frame handler.
-  virtual void StartVideoCapture(const CaptureFormat& capture_format) = 0;
+  virtual void StartVideoCapture(
+      const SerializedVideoStreamParams& capture_format) = 0;
 
   // Interface for creating a virtual device with a set of parameters.
-  virtual void CreateVirtualDevice(const VideoDevice& video_device,
-                                   const VirtualDeviceCallback& callback) = 0;
+  virtual void CreateVirtualDevice(
+      const SerializedVideoDevice& video_device,
+      const VirtualDeviceCallback& callback) = 0;
 
   // Pushes frame data to the specified virtual device, if opened.
   virtual void PushFrameToVirtualDevice(const std::string& device_id,
                                         uint64_t timestamp_us,
                                         std::unique_ptr<const uint8_t[]> data,
-                                        int data_size, PixelFormat pixel_format,
+                                        int data_size,
+                                        RawPixelFormat pixel_format,
                                         int frame_width, int frame_height) = 0;
 
   // Closes the specified virtual device.
@@ -94,6 +81,8 @@ class VideoCaptureServiceClient {
   // Stops video capture from the active device.
   virtual void StopVideoCapture() = 0;
 
+  // Set the frame handler. Made virtual to support testing/mocking, clients are
+  // not expected to override this function.
   virtual void SetFrameHandler(FrameHandler handler) {
     frame_handler_ = std::move(handler);
   }

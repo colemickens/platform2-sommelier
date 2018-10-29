@@ -35,14 +35,16 @@ class VideoCaptureServiceClientImpl : public VideoCaptureServiceClient {
   void GetDevices(const GetDevicesCallback& callback) override;
   void SetActiveDevice(const std::string& device_id,
                        const SetActiveDeviceCallback& callback) override;
-  void StartVideoCapture(const CaptureFormat& capture_format) override;
+  void StartVideoCapture(
+      const SerializedVideoStreamParams& capture_format) override;
   void StopVideoCapture() override;
-  void CreateVirtualDevice(const VideoDevice& video_device,
+  void CreateVirtualDevice(const SerializedVideoDevice& video_device,
                            const VirtualDeviceCallback& callback) override;
   void PushFrameToVirtualDevice(const std::string& device_id,
                                 uint64_t timestamp_in_microseconds,
                                 std::unique_ptr<const uint8_t[]> data,
-                                int data_size, PixelFormat pixel_format,
+                                int data_size,
+                                RawPixelFormat pixel_format,
                                 int frame_width, int frame_height) override;
   void CloseVirtualDevice(const std::string& device_id) override;
 

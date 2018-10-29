@@ -7,6 +7,8 @@
 #include <utility>
 #include <base/single_thread_task_runner.h>
 
+#include "media_perception/device_management.pb.h"
+
 namespace mri {
 
 void VideoCaptureServiceClientImpl::SetMojoConnector(
@@ -41,11 +43,15 @@ void VideoCaptureServiceClientImpl::SetActiveDevice(
 }
 
 void VideoCaptureServiceClientImpl::StartVideoCapture(
-    const CaptureFormat& capture_format) {
-  requested_frame_width_ = capture_format.frame_width;
-  requested_frame_height_ = capture_format.frame_height;
+    const SerializedVideoStreamParams& capture_format) {
+  VideoStreamParams format;
+  CHECK(format.ParseFromArray(capture_format.data(), capture_format.size()))
+      << "Failed to deserialize mri::VideoStreamParams proto.";
+
+  requested_frame_width_ = format.width_in_pixels();
+  requested_frame_height_ = format.height_in_pixels();
   mojo_connector_->StartVideoCapture(
-      capture_format, std::bind(&VideoCaptureServiceClientImpl::OnNewFrameData,
+      format, std::bind(&VideoCaptureServiceClientImpl::OnNewFrameData,
                                 this, std::placeholders::_1,
                                 std::placeholders::_2, std::placeholders::_3));
 }
@@ -65,19 +71,24 @@ void VideoCaptureServiceClientImpl::OnNewFrameData(
 }
 
 void VideoCaptureServiceClientImpl::CreateVirtualDevice(
-    const VideoDevice& video_device, const VirtualDeviceCallback& callback) {
+    const SerializedVideoDevice& video_device,
+    const VirtualDeviceCallback& callback) {
+  VideoDevice device;
+  CHECK(device.ParseFromArray(video_device.data(), video_device.size()))
+      << "Failed to deserialze mri::VideoDevice proto.";
+
   auto producer_impl = std::make_shared<ProducerImpl>();
-  mojo_connector_->CreateVirtualDevice(video_device, producer_impl, callback);
+  mojo_connector_->CreateVirtualDevice(device, producer_impl, callback);
 
   std::lock_guard<std::mutex> lock(device_id_to_producer_map_lock_);
   device_id_to_producer_map_.insert(
-      std::make_pair(video_device.id, producer_impl));
+      std::make_pair(device.id(), producer_impl));
 }
 
 void VideoCaptureServiceClientImpl::PushFrameToVirtualDevice(
     const std::string& device_id, uint64_t timestamp_in_microseconds,
     std::unique_ptr<const uint8_t[]> data, int data_size,
-    PixelFormat pixel_format, int frame_width, int frame_height) {
+    RawPixelFormat pixel_format, int frame_width, int frame_height) {
   std::lock_guard<std::mutex> lock(device_id_to_producer_map_lock_);
   std::map<std::string, std::shared_ptr<ProducerImpl>>::iterator it =
       device_id_to_producer_map_.find(device_id);
@@ -87,7 +98,8 @@ void VideoCaptureServiceClientImpl::PushFrameToVirtualDevice(
   }
   mojo_connector_->PushFrameToVirtualDevice(
       it->second, base::TimeDelta::FromMicroseconds(timestamp_in_microseconds),
-      std::move(data), data_size, pixel_format, frame_width, frame_height);
+      std::move(data), data_size, static_cast<PixelFormat>(pixel_format),
+      frame_width, frame_height);
 }
 
 void VideoCaptureServiceClientImpl::CloseVirtualDevice(

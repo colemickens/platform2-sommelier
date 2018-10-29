@@ -13,6 +13,7 @@
 #include <memory>
 #include <string>
 
+#include "media_perception/device_management.pb.h"
 #include "media_perception/media_perception_service_impl.h"
 #include "media_perception/producer_impl.h"
 #include "media_perception/receiver_impl.h"
@@ -47,7 +48,7 @@ class MojoConnector {
       const VideoCaptureServiceClient::SetActiveDeviceCallback& callback);
 
   // Starts video capture on the active device.
-  void StartVideoCapture(const CaptureFormat& capture_format,
+  void StartVideoCapture(const VideoStreamParams& capture_format,
                          std::function<void(uint64_t timestamp_in_microseconds,
                                             const uint8_t* data, int data_size)>
                              frame_handler);
@@ -93,7 +94,7 @@ class MojoConnector {
       const VideoCaptureServiceClient::SetActiveDeviceCallback& callback,
       video_capture::mojom::DeviceAccessResultCode code);
 
-  void StartVideoCaptureOnIpcThread(const CaptureFormat& capture_format);
+  void StartVideoCaptureOnIpcThread(const VideoStreamParams& capture_format);
 
   void StopVideoCaptureOnIpcThread();
 
