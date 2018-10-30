@@ -42,6 +42,7 @@
       'sources': [
         'file_decompressor.cc',
         'firmware_directory.cc',
+        'firmware_file.cc',
         'journal.cc',
         'modem.cc',
         'modem_flasher.cc',
@@ -85,6 +86,7 @@
             'file_decompressor_test.cc',
             'firmware_directory_stub.cc',
             'firmware_directory_test.cc',
+            'firmware_file_test.cc',
             'journal_test.cc',
             'modem_flasher_test.cc',
           ],

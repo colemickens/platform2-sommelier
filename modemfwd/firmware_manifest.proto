@@ -6,11 +6,17 @@ syntax = "proto3";
 
 package modemfwd;
 
+enum Compression {
+  NONE = 0;
+  XZ = 1;
+}
+
 message MainFirmware {
   string filename = 1;
   string device_id = 2;
   string version = 3;
   string variant = 4;
+  Compression compression = 5;
 }
 
 message CarrierFirmware {
@@ -19,6 +25,7 @@ message CarrierFirmware {
   repeated string carrier_id = 3;
   string version = 4;
   string variant = 5;
+  Compression compression = 6;
 }
 
 message FirmwareManifest {

@@ -10,17 +10,9 @@
 
 #include <base/files/file_path.h>
 
+#include "modemfwd/firmware_file_info.h"
+
 namespace modemfwd {
-
-struct FirmwareFileInfo {
-  FirmwareFileInfo() = default;
-  FirmwareFileInfo(const base::FilePath& firmware_path,
-                   const std::string& version)
-      : firmware_path(firmware_path), version(version) {}
-
-  base::FilePath firmware_path;
-  std::string version;
-};
 
 class FirmwareDirectory {
  public:

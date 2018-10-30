@@ -15,6 +15,8 @@
 #include "modemfwd/proto_bindings/firmware_manifest.pb.h"
 #include "modemfwd/proto_file_io.h"
 
+namespace modemfwd {
+
 namespace {
 
 const char kManifestName[] = "firmware_manifest.prototxt";
@@ -41,9 +43,20 @@ std::string GetModemFirmwareVariant() {
   return variant;
 }
 
-}  // namespace
+FirmwareFileInfo::Compression ToFirmwareFileInfoCompression(
+    Compression compression) {
+  switch (compression) {
+    case Compression::NONE:
+      return FirmwareFileInfo::Compression::NONE;
+    case Compression::XZ:
+      return FirmwareFileInfo::Compression::XZ;
+    default:
+      LOG(FATAL) << "Invalid compression: " << compression;
+      return FirmwareFileInfo::Compression::NONE;
+  }
+}
 
-namespace modemfwd {
+}  // namespace
 
 const char FirmwareDirectory::kGenericCarrierId[] = "generic";
 
@@ -65,6 +78,8 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
           !file_info.filename().empty() && !file_info.version().empty()) {
         out_info->firmware_path = directory_.Append(file_info.filename());
         out_info->version = file_info.version();
+        out_info->compression =
+            ToFirmwareFileInfoCompression(file_info.compression());
         return true;
       }
     }
@@ -103,6 +118,8 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
         if (supported_carrier == carrier_id) {
           out_info->firmware_path = directory_.Append(file_info.filename());
           out_info->version = file_info.version();
+          out_info->compression =
+              ToFirmwareFileInfoCompression(file_info.compression());
           return true;
         }
       }

@@ -9,6 +9,7 @@
 
 #include <base/stl_util.h>
 
+#include "modemfwd/firmware_file.h"
 #include "modemfwd/modem.h"
 
 namespace modemfwd {
@@ -36,13 +37,18 @@ void ModemFlasher::TryFlash(Modem* modem) {
                << ", currently installed main firmware version: "
                << modem->GetMainFirmwareVersion();
     if (file_info.version != modem->GetMainFirmwareVersion()) {
+      FirmwareFile firmware_file;
+      if (!firmware_file.PrepareFrom(file_info))
+        return;
+
       // We found different firmware! Flash the modem, and since it will
       // reboot afterwards, we can wait to get called again to check the
       // carrier firmware.
       journal_->MarkStartOfFlashingMainFirmware(device_id);
-      if (modem->FlashMainFirmware(file_info.firmware_path)) {
+      if (modem->FlashMainFirmware(firmware_file.path_on_filesystem())) {
+        // Refer to |firmware_file.path_for_logging()| in the log and journal.
         main_fw_checked_.insert(equipment_id);
-        DLOG(INFO) << "Flashed " << file_info.firmware_path.value()
+        DLOG(INFO) << "Flashed " << firmware_file.path_for_logging().value()
                    << " to the modem";
       } else {
         blacklist_.insert(equipment_id);
@@ -95,11 +101,16 @@ void ModemFlasher::TryFlash(Modem* modem) {
 
   if (!has_carrier_fw || carrier_fw_id != current_carrier ||
       carrier_fw_version != file_info.version) {
+    FirmwareFile firmware_file;
+    if (!firmware_file.PrepareFrom(file_info))
+      return;
+
     journal_->MarkStartOfFlashingCarrierFirmware(device_id, current_carrier);
-    if (modem->FlashCarrierFirmware(file_info.firmware_path)) {
+    if (modem->FlashCarrierFirmware(firmware_file.path_on_filesystem())) {
+      // Refer to |firmware_file.path_for_logging()| in the log and journal.
       last_carrier_fw_flashed_.insert(
-          std::make_pair(equipment_id, file_info.firmware_path));
-      DLOG(INFO) << "Flashed " << file_info.firmware_path.value()
+          std::make_pair(equipment_id, firmware_file.path_for_logging()));
+      DLOG(INFO) << "Flashed " << firmware_file.path_for_logging().value()
                  << " to the modem";
     } else {
       blacklist_.insert(equipment_id);
