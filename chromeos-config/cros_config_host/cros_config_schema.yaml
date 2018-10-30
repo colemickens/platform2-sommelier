@@ -162,6 +162,12 @@ properties:
                   type: string
                 main-image: *bcs_file_name
                 main-rw-image: *bcs_file_name
+                name:
+                  description: This is a human-recognizable name used to refer to the firmware.
+                    It will be used when generating the shellball via firmware packer.
+                    Mainly, this is only for compatibility testing with device tree (since DT
+                    allowed firmwares to be named).
+                  type: string
                 no-firmware:
                   description: If present this indicates that this model has no firmware at present.
                     This means that it will be omitted from the firmware updater
