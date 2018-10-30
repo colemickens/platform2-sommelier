@@ -49,7 +49,12 @@ TEST(MacAddressGenerator, Flags) {
 // chance of triggering a collision in this range.  So if the generator returns
 // 2^25 unique addresses then we can be fairly certain that it won't give out
 // duplicate addresses.
-TEST(MacAddressGenerator, Duplicates) {
+// This test is currently disabled because it takes a long time to run
+// (~minutes).  We ran it on the CQ for several months without issue so we can
+// be pretty confident that the current implementation does not produce
+// duplicates.  If you make any changes to the mac address generation code,
+// please re-enable this test.
+TEST(MacAddressGenerator, DISABLED_Duplicates) {
   constexpr uint32_t kNumAddresses = (1 << 25);
 
   MacAddressGenerator generator;
