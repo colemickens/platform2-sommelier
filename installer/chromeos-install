@@ -618,10 +618,12 @@ install_stateful() {
     udevadm trigger
     udevadm settle
 
+    local stateful_device="$(cgpt find -l STATE "${FLAGS_payload_image}")"
+
     finish_oobe_auto_config \
-      --priv_key="${FLAGS_oobe_priv_key}" \
-      --pub_key="${FLAGS_oobe_pub_key}" \
-      --src_device="${FLAGS_payload_image}" \
+      --private_key="${FLAGS_oobe_priv_key}" \
+      --public_key="${FLAGS_oobe_pub_key}" \
+      --src_stateful_dev="${stateful_device}" \
       --src_stateful="${ROOT}/mnt/stateful_partition" \
       --dst_stateful="${TMPMNT}"
   fi
