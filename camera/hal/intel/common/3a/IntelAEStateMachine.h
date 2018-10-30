@@ -58,6 +58,8 @@ protected:
     uint8_t     mAeRunCount;
     uint8_t     mAeConvergedCount;
     uint8_t     mCurrentAeState;
+    static const uint8_t PRECAPTURE_STATE_MAX_COUNT = 75;
+    uint8_t     mAePreCaptureCount;
 };
 
 /**
