@@ -176,6 +176,13 @@ TEST_F(CrosConfigTest, CheckMultilineString) {
   ASSERT_EQ("CROS_USB_PD_CHARGER0 LEFT\nCROS_USB_PD_CHARGER1 RIGHT\n", val);
 }
 
+TEST_F(CrosConfigTest, CheckBooleanProperty) {
+  InitConfig("Some");
+  std::string val;
+  ASSERT_TRUE(cros_config_.GetString("/hardware-properties", "is-lid-convertible", &val));
+  ASSERT_EQ("true", val);
+}
+
 TEST_F(CrosConfigTest, CheckCustomizationId) {
   // Assert a model can be looked up based on the customization-id value.
   InitConfig("SomeCustomization", -1, "SomeCustomization");

@@ -13,6 +13,12 @@
             "ucm-suffix": "some"
           }
         },
+        "hardware-properties": {
+          "has-base-accelerometer": true,
+          "has-base-gyroscope": true,
+          "has-lid-accelerometer": true,
+          "is-lid-convertible": true
+        },
         "identity": {
           "platform-name": "Some",
           "sku-id": 0,
@@ -59,6 +65,9 @@
             "ucm-suffix": "some"
           }
         },
+        "hardware-properties": {
+          "is-lid-convertible": false
+        },
         "identity": {
           "platform-name": "Some",
           "sku-id": 1,
@@ -97,6 +106,9 @@
             "ucm-suffix": "another"
           }
         },
+        "hardware-properties": {
+          "is-lid-convertible": true
+        },
         "identity": {
           "platform-name": "Another",
           "smbios-name-match": "Another"
@@ -122,6 +134,9 @@
           "build-properties": {
             "first-api-level": "27"
           }
+        },
+        "hardware-properties": {
+          "is-lid-convertible": false
         },
         "identity": {
           "platform-name": "Some",
@@ -157,6 +172,9 @@
           "build-properties": {
             "first-api-level": "27"
           }
+        },
+        "hardware-properties": {
+          "is-lid-convertible": false
         },
         "identity": {
           "platform-name": "Some",
@@ -192,6 +210,9 @@
             "first-api-level": "27"
           }
         },
+        "hardware-properties": {
+          "is-lid-convertible": false
+        },
         "identity": {
           "platform-name": "Some",
           "sku-id": 8,
@@ -226,6 +247,9 @@
           "build-properties": {
             "first-api-level": "27"
           }
+        },
+        "hardware-properties": {
+          "is-lid-convertible": false
         },
         "identity": {
           "platform-name": "Some",
