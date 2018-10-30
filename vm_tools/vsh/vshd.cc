@@ -181,7 +181,7 @@ int main(int argc, char** argv) {
       } else if (i == 1) {
         // sock_fd.
         struct sockaddr_vm peer_addr;
-        socklen_t addr_size;
+        socklen_t addr_size = sizeof(peer_addr);
         base::ScopedFD peer_sock_fd(HANDLE_EINTR(accept4(
             sock_fd.get(), reinterpret_cast<struct sockaddr*>(&peer_addr),
             &addr_size, SOCK_CLOEXEC)));
