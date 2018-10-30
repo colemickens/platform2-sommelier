@@ -17,9 +17,9 @@ namespace arc {
 //  * More than ~80% of the file is read.
 //  * The mini instance does not load the file.
 constexpr std::array<const char* const, 44> kImportantFilesN{{
+    "ArcDocumentsUI.apk",
     "Bluetooth.apk",
     "Bluetooth.odex",
-    "DocumentsUI.apk",
     "DownloadProvider.apk",
     "ManagedProvisioning.apk",
     "PrebuiltGmsCoreRelease.apk",
