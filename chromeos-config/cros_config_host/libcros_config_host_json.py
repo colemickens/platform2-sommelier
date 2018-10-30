@@ -134,10 +134,13 @@ class CrosConfigJson(CrosConfigBaseImpl):
       if fw and identity not in processed:
         fw_str = str(fw)
         shared_model = None
-        if fw_str in fw_by_model:
-          shared_model = fw_by_model[fw_str]
-        else:
-          fw_by_model[fw_str] = config.GetName()
+        if fw_str not in fw_by_model:
+          # Use the explict name of the firmware, else use the device name
+          # This supports equivalence testing with DT since it allowed
+          # naming firmware images.
+          fw_by_model[fw_str] = fw.get('name', config.GetName())
+
+        shared_model = fw_by_model[fw_str]
 
         build_config = config.GetProperties('/firmware/build-targets')
         if build_config:

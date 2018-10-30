@@ -39,19 +39,6 @@ class FdtLibTest(unittest.TestCase):
     models = [m.name for m in models_node.subnodes.values()]
     self.assertSequenceEqual(models, ['some', 'another', 'whitelabel'])
 
-  def testPropertyOrder(self):
-    firmware = self.test_fdt.GetNode('/chromeos/models/another/firmware')
-
-    self.assertSequenceEqual(firmware.props.keys(), ANOTHER_FIRMWARE_NAMES)
-
-  def testGetStringProperty(self):
-    firmware = self.test_fdt.GetNode('/chromeos/models/another/firmware')
-    bcs_overlay = firmware.props['bcs-overlay'].value
-    self.assertEqual(bcs_overlay, 'overlay-another-private')
-    firmware = self.test_fdt.GetNode('/chromeos/models/another')
-    value = firmware.props['wallpaper'].value
-    self.assertEqual(value, 'default')
-
   def testLookupPhandle(self):
     firmware = self.test_fdt.GetNode('/chromeos/models/some/firmware')
     shared = self.test_fdt.GetNode('/chromeos/family/firmware/some')

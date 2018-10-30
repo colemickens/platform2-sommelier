@@ -248,7 +248,7 @@ class CommonTests(object):
     expected = OrderedDict(
         [('another',
           FirmwareInfo(model='another',
-                       shared_model=None,
+                       shared_model='another',
                        key_id='ANOTHER',
                        have_image=True,
                        bios_build_target='another',

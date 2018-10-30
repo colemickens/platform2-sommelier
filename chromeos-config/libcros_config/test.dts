@@ -40,6 +40,23 @@
 				libpayload = "some";
 			};
 		};
+		another_shared: another {
+			bcs-overlay = "overlay-another-private";
+			ec-image = "bcs://Another_EC.1111.11.1.tbz2";
+			main-image = "bcs://Another.1111.11.1.tbz2";
+			main-rw-image = "bcs://Another_RW.1111.11.1.tbz2";
+			extra = "${FILESDIR}/extra";
+			tools = "${FILESDIR}/tools1", "${FILESDIR}/tools2";
+			build-targets {
+				base = "another_base";
+				ec_extras = "extra1", "extra2";
+				coreboot = "another";
+				cr50 = "another_cr50";
+				ec = "another";
+				depthcharge = "another";
+				libpayload = "another";
+			};
+		};
 	};
 	mapping {
 		sku-map@0 {
@@ -160,22 +177,8 @@
 			};
 		};
 		firmware {
-			bcs-overlay = "overlay-another-private";
-			ec-image = "bcs://Another_EC.1111.11.1.tbz2";
-			main-image = "bcs://Another.1111.11.1.tbz2";
-			main-rw-image = "bcs://Another_RW.1111.11.1.tbz2";
 			key-id = "ANOTHER";
-			extra = "${FILESDIR}/extra";
-			tools = "${FILESDIR}/tools1", "${FILESDIR}/tools2";
-			build-targets {
-				base = "another_base";
-				ec_extras = "extra1", "extra2";
-				coreboot = "another";
-				cr50 = "another_cr50";
-				ec = "another";
-				depthcharge = "another";
-				libpayload = "another";
-			};
+			shares = <&another_shared>;
 		};
 		thermal {
 			dptf-dv = "another/dptf.dv";
