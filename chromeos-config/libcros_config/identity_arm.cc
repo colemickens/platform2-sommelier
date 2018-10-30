@@ -6,11 +6,14 @@
 #include "chromeos-config/libcros_config/identity_arm.h"
 
 #include <string>
+#include <arpa/inet.h>
 
 #include <base/logging.h>
 #include <base/files/file_util.h>
 
 namespace brillo {
+
+static const int SKU_ID_LEN = 4;
 
 CrosConfigIdentityArm::CrosConfigIdentityArm() {}
 
@@ -27,19 +30,18 @@ bool CrosConfigIdentityArm::Fake(
     CROS_CONFIG_LOG(ERROR) << "Failed to write device-tree compatible file";
     return false;
   }
-
-  char *sku_id_char = reinterpret_cast<char*>(malloc(sizeof(sku_id)));
+  char sku_id_char[SKU_ID_LEN];
+  uint32_t sku_id_fdt = htonl(sku_id);
   *sku_id_file_out = base::FilePath("sku-id");
 
-  std::memcpy(sku_id_char, &sku_id, sizeof(sku_id));
+  std::memcpy(sku_id_char, &sku_id_fdt, SKU_ID_LEN);
+
   if (base::WriteFile(*sku_id_file_out, sku_id_char,
-                      sizeof(sku_id)) != sizeof(sku_id)) {
+                      SKU_ID_LEN) != SKU_ID_LEN) {
     CROS_CONFIG_LOG(ERROR) << "Failed to write sku-id file";
-    free(sku_id_char);
     return false;
   }
 
-  free(sku_id_char);
   return true;
 }
 
@@ -51,19 +53,17 @@ bool CrosConfigIdentityArm::ReadInfo(const base::FilePath& dt_compatible_file,
     return false;
   }
 
-  char *sku_id_char = reinterpret_cast<char*>(malloc(sizeof(sku_id_)));
-  if (base::ReadFile(sku_id_file, sku_id_char,
-                     sizeof(sku_id_)) != sizeof(sku_id_)) {
+  char sku_id_char[SKU_ID_LEN];
+  if (base::ReadFile(sku_id_file, sku_id_char, SKU_ID_LEN) != SKU_ID_LEN) {
     CROS_CONFIG_LOG(WARNING) << "Cannot read product_sku file ";
-    free(sku_id_char);
     return false;
   }
-  std::memcpy(&sku_id_, sku_id_char, sizeof(sku_id_));
+  std::memcpy(&sku_id_, sku_id_char, SKU_ID_LEN);
+  sku_id_ = ntohl(sku_id_);
 
   CROS_CONFIG_LOG(INFO) << "Read device-tree compatible list: "
                         << compatible_devices_
                         << ", sku_id: " << sku_id_;
-  free(sku_id_char);
   return true;
 }
 
