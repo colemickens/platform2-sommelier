@@ -3645,6 +3645,29 @@ int main(int argc, char **argv) {
       }
       ctx.shm_driver = strcmp(shm_driver, "virtwl") ? SHM_DRIVER_VIRTWL_DMABUF
                                                     : SHM_DRIVER_VIRTWL;
+      // Check for compatibility with virtwl-dmabuf.
+      if (ctx.shm_driver == SHM_DRIVER_VIRTWL_DMABUF) {
+        struct virtwl_ioctl_new new_dmabuf = {
+            .type = VIRTWL_IOCTL_NEW_DMABUF,
+            .fd = -1,
+            .flags = 0,
+            .dmabuf =
+                {
+                    .width = 0, .height = 0, .format = 0,
+                },
+        };
+        if (ioctl(ctx.virtwl_fd, VIRTWL_IOCTL_NEW, &new_dmabuf) == -1 &&
+            errno == ENOTTY) {
+          fprintf(stderr,
+                  "warning: virtwl-dmabuf driver not supported by host, using "
+                  "virtwl instead\n");
+          ctx.shm_driver = SHM_DRIVER_VIRTWL;
+        } else if (new_dmabuf.fd >= 0) {
+          // Close the returned dmabuf fd in case the invalid dmabuf metadata
+          // given above actually manages to return an fd successfully.
+          close(new_dmabuf.fd);
+        }
+      }
     }
   } else if (ctx.drm_device) {
     ctx.shm_driver = SHM_DRIVER_DMABUF;
