@@ -328,8 +328,10 @@ bool SessionManagerService::HandleExit(const siginfo_t& status) {
 
   liveness_checker_->Stop();
 
-  if (impl_->ShouldEndSession()) {
-    LOG(ERROR) << "Choosing to end session rather than restart browser.";
+  std::string end_reason;
+  if (impl_->ShouldEndSession(&end_reason)) {
+    LOG(ERROR) << "Ending session rather than restarting browser: "
+               << end_reason << ".";
     SetExitAndScheduleShutdown(CRASH_WHILE_RESTART_DISABLED);
     return true;
   }

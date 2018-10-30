@@ -1921,9 +1921,9 @@ TEST_F(SessionManagerImplTest, RestartJobSuccess) {
 
 TEST_F(SessionManagerImplTest, SupervisedUserCreation) {
   impl_->HandleSupervisedUserCreationStarting();
-  EXPECT_TRUE(impl_->ShouldEndSession());
+  EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
   impl_->HandleSupervisedUserCreationFinished();
-  EXPECT_FALSE(impl_->ShouldEndSession());
+  EXPECT_FALSE(impl_->ShouldEndSession(nullptr));
 }
 
 TEST_F(SessionManagerImplTest, LockScreen) {
@@ -1932,7 +1932,7 @@ TEST_F(SessionManagerImplTest, LockScreen) {
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->LockScreen(&error));
   EXPECT_FALSE(error.get());
-  EXPECT_TRUE(impl_->ShouldEndSession());
+  EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
 }
 
 TEST_F(SessionManagerImplTest, LockScreen_DuringSupervisedUserCreation) {
@@ -1941,17 +1941,17 @@ TEST_F(SessionManagerImplTest, LockScreen_DuringSupervisedUserCreation) {
   EXPECT_CALL(*exported_object(), SendSignal(_)).Times(AnyNumber());
 
   impl_->HandleSupervisedUserCreationStarting();
-  EXPECT_TRUE(impl_->ShouldEndSession());
+  EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->LockScreen(&error));
   EXPECT_FALSE(error.get());
-  EXPECT_TRUE(impl_->ShouldEndSession());
+  EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
   impl_->HandleLockScreenShown();
-  EXPECT_TRUE(impl_->ShouldEndSession());
+  EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
   impl_->HandleLockScreenDismissed();
-  EXPECT_TRUE(impl_->ShouldEndSession());
+  EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
   impl_->HandleSupervisedUserCreationFinished();
-  EXPECT_FALSE(impl_->ShouldEndSession());
+  EXPECT_FALSE(impl_->ShouldEndSession(nullptr));
 }
 
 TEST_F(SessionManagerImplTest, LockScreen_InterleavedSupervisedUserCreation) {
@@ -1960,17 +1960,17 @@ TEST_F(SessionManagerImplTest, LockScreen_InterleavedSupervisedUserCreation) {
   EXPECT_CALL(*exported_object(), SendSignal(_)).Times(AnyNumber());
 
   impl_->HandleSupervisedUserCreationStarting();
-  EXPECT_TRUE(impl_->ShouldEndSession());
+  EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->LockScreen(&error));
   EXPECT_FALSE(error.get());
-  EXPECT_TRUE(impl_->ShouldEndSession());
+  EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
   impl_->HandleLockScreenShown();
-  EXPECT_TRUE(impl_->ShouldEndSession());
+  EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
   impl_->HandleSupervisedUserCreationFinished();
-  EXPECT_TRUE(impl_->ShouldEndSession());
+  EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
   impl_->HandleLockScreenDismissed();
-  EXPECT_FALSE(impl_->ShouldEndSession());
+  EXPECT_FALSE(impl_->ShouldEndSession(nullptr));
 }
 
 TEST_F(SessionManagerImplTest, LockScreen_MultiSession) {
@@ -1980,7 +1980,7 @@ TEST_F(SessionManagerImplTest, LockScreen_MultiSession) {
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->LockScreen(&error));
   EXPECT_FALSE(error.get());
-  EXPECT_EQ(TRUE, impl_->ShouldEndSession());
+  EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
 }
 
 TEST_F(SessionManagerImplTest, LockScreen_NoSession) {
@@ -2005,7 +2005,7 @@ TEST_F(SessionManagerImplTest, LockScreen_UserAndGuest) {
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->LockScreen(&error));
   ASSERT_FALSE(error.get());
-  EXPECT_EQ(TRUE, impl_->ShouldEndSession());
+  EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
 }
 
 TEST_F(SessionManagerImplTest, LockUnlockScreen) {
@@ -2019,13 +2019,13 @@ TEST_F(SessionManagerImplTest, LockUnlockScreen) {
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   EXPECT_TRUE(impl_->LockScreen(&error));
   EXPECT_FALSE(error.get());
-  EXPECT_EQ(TRUE, impl_->ShouldEndSession());
+  EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
 
   EXPECT_CALL(*exported_object(),
               SendSignal(SignalEq(login_manager::kScreenIsLockedSignal)))
       .Times(1);
   impl_->HandleLockScreenShown();
-  EXPECT_EQ(TRUE, impl_->ShouldEndSession());
+  EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
 
   EXPECT_TRUE(impl_->IsScreenLocked());
 
@@ -2038,7 +2038,7 @@ TEST_F(SessionManagerImplTest, LockUnlockScreen) {
                                      InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   impl_->HandleLockScreenDismissed();
-  EXPECT_EQ(FALSE, impl_->ShouldEndSession());
+  EXPECT_FALSE(impl_->ShouldEndSession(nullptr));
 
   EXPECT_FALSE(impl_->IsScreenLocked());
 }

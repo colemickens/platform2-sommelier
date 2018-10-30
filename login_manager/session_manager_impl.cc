@@ -390,8 +390,24 @@ void SessionManagerImpl::AnnounceSessionStopped() {
   adaptor_.SendSessionStateChangedSignal(kStopped);
 }
 
-bool SessionManagerImpl::ShouldEndSession() {
-  return screen_locked_ || supervised_user_creation_ongoing_;
+bool SessionManagerImpl::ShouldEndSession(std::string* reason_out) {
+  auto set_reason = [&](const std::string& reason) {
+    if (reason_out)
+      *reason_out = reason;
+  };
+
+  if (screen_locked_) {
+    set_reason("screen is locked");
+    return true;
+  }
+
+  if (supervised_user_creation_ongoing_) {
+    set_reason("supervised user creation ongoing");
+    return true;
+  }
+
+  set_reason("");
+  return false;
 }
 
 bool SessionManagerImpl::Initialize() {
