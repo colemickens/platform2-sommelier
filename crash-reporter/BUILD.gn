@@ -101,6 +101,7 @@ pkg_config("crash_sender_config") {
   pkg_deps = [
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
+    "libmetrics-${libbase_ver}",
     "libminijail",
     "libsession_manager-client",
   ]
@@ -194,6 +195,7 @@ if (use.cheets) {
 if (use.test) {
   pkg_config("crash_reporter_test_config") {
     pkg_deps = [
+      "libmetrics-${libbase_ver}",
       "libsession_manager-client-test",
     ]
   }

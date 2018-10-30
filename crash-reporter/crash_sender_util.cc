@@ -196,9 +196,27 @@ void RemoveOrphanedCrashFiles(const base::FilePath& crash_dir) {
   }
 }
 
-bool ShouldRemove(const base::FilePath& meta_file, std::string* reason) {
+bool ShouldRemove(const base::FilePath& meta_file,
+                  MetricsLibraryInterface* metrics_lib,
+                  std::string* reason) {
   if (!IsMock() && !IsOfficialImage()) {
     *reason = "Not an official OS version";
+    return true;
+  }
+
+  // AreMetricsEnabled() returns false in guest mode, thus IsGuestMode() should
+  // also be checked here (otherwise, all crash files are deleted in guest
+  // mode).
+  //
+  // Note that this check is slightly racey, but should be rare enough for us
+  // not to care:
+  //
+  // - crash_sender checks IsGuestMode() and it returns false
+  // - User logs in to guest mode
+  // - crash_sender checks AreMetricsEnabled() and it's now false
+  // - Reports are deleted
+  if (!metrics_lib->IsGuestMode() && !metrics_lib->AreMetricsEnabled()) {
+    *reason = "Crash reporting is disabled";
     return true;
   }
 
@@ -239,14 +257,15 @@ bool ShouldRemove(const base::FilePath& meta_file, std::string* reason) {
   return false;
 }
 
-void RemoveInvalidCrashFiles(const base::FilePath& crash_dir) {
+void RemoveInvalidCrashFiles(const base::FilePath& crash_dir,
+                             MetricsLibraryInterface* metrics_lib) {
   std::vector<base::FilePath> meta_files = GetMetaFiles(crash_dir);
 
   for (const auto& meta_file : meta_files) {
     LOG(INFO) << "Checking metadata: " << meta_file.value();
 
     std::string reason;
-    if (ShouldRemove(meta_file, &reason)) {
+    if (ShouldRemove(meta_file, metrics_lib, &reason)) {
       LOG(ERROR) << "Removing: " << reason;
       RemoveReportFiles(meta_file);
     }
@@ -330,8 +349,11 @@ bool ParseMetadata(const std::string& raw_metadata,
   return true;
 }
 
-Sender::Sender(const Sender::Options& options)
-    : shell_script_(options.shell_script), proxy_(options.proxy) {}
+Sender::Sender(std::unique_ptr<MetricsLibraryInterface> metrics_lib,
+               const Sender::Options& options)
+    : metrics_lib_(std::move(metrics_lib)),
+      shell_script_(options.shell_script),
+      proxy_(options.proxy) {}
 
 bool Sender::Init() {
   if (!scoped_temp_dir_.CreateUniqueTempDir()) {
@@ -348,7 +370,7 @@ bool Sender::SendCrashes(const base::FilePath& crash_dir) {
   }
 
   RemoveOrphanedCrashFiles(crash_dir);
-  RemoveInvalidCrashFiles(crash_dir);
+  RemoveInvalidCrashFiles(crash_dir, metrics_lib_.get());
 
   const int child_pid = fork();
   if (child_pid == 0) {

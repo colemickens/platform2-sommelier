@@ -7,6 +7,7 @@
 #include <stdlib.h>
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/command_line.h>
@@ -20,6 +21,7 @@
 #include <brillo/key_value_store.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library_mock.h>
 
 #include "crash-reporter/crash_sender_paths.h"
 #include "crash-reporter/paths.h"
@@ -29,6 +31,11 @@ using testing::HasSubstr;
 
 namespace util {
 namespace {
+
+// Enum types for setting the runtime conditions.
+enum BuildType { kOfficialBuild, kUnofficialBuild };
+enum SessionType { kSignInMode, kGuestMode };
+enum MetricsFlag { kMetricsEnabled, kMetricsDisabled };
 
 // Prases the output file from fake_crash_sender.sh to a vector of items per
 // line. Example:
@@ -66,7 +73,6 @@ bool TouchFileHelper(const base::FilePath& file_name,
 }
 
 // Creates lsb-release file with information about the build type.
-enum BuildType { kOfficialBuild, kUnofficialBuild };
 bool CreateLsbReleaseFile(BuildType type) {
   std::string label = "Official build";
   if (type == kUnofficialBuild)
@@ -79,6 +85,7 @@ bool CreateLsbReleaseFile(BuildType type) {
 class CrashSenderUtilTest : public testing::Test {
  private:
   void SetUp() override {
+    metrics_lib_ = std::make_unique<MetricsLibraryMock>();
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     test_dir_ = temp_dir_.GetPath();
     paths::SetPrefixForTesting(test_dir_);
@@ -146,6 +153,21 @@ class CrashSenderUtilTest : public testing::Test {
     return true;
   }
 
+  // Sets the runtime condtions that affect behaviors of ShouldRemove().
+  // Returns true on success.
+  bool SetConditions(BuildType build_type,
+                     SessionType session_type,
+                     MetricsFlag metrics_flag) {
+    if (!CreateLsbReleaseFile(build_type))
+      return false;
+
+    metrics_lib_->set_guest_mode(session_type == kGuestMode);
+    metrics_lib_->set_metrics_enabled(metrics_flag == kMetricsEnabled);
+
+    return true;
+  }
+
+  std::unique_ptr<MetricsLibraryMock> metrics_lib_;
   base::ScopedTempDir temp_dir_;
   base::FilePath test_dir_;
 
@@ -323,7 +345,7 @@ TEST_F(CrashSenderUtilTest, RemoveOrphanedCrashFiles) {
 }
 
 TEST_F(CrashSenderUtilTest, ShouldRemove) {
-  ASSERT_TRUE(CreateLsbReleaseFile(kOfficialBuild));
+  ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsEnabled));
 
   const base::FilePath crash_directory =
       paths::Get(paths::kSystemCrashDirectory);
@@ -333,37 +355,44 @@ TEST_F(CrashSenderUtilTest, ShouldRemove) {
   std::string reason;
 
   // The following files should not be removed.
-  EXPECT_FALSE(ShouldRemove(good_meta_, &reason));
-  EXPECT_FALSE(ShouldRemove(absolute_meta_, &reason));
+  EXPECT_FALSE(ShouldRemove(good_meta_, metrics_lib_.get(), &reason));
+  EXPECT_FALSE(ShouldRemove(absolute_meta_, metrics_lib_.get(), &reason));
 
   // The following files should be removed.
-  EXPECT_TRUE(ShouldRemove(empty_meta_, &reason));
+  EXPECT_TRUE(ShouldRemove(empty_meta_, metrics_lib_.get(), &reason));
   EXPECT_THAT(reason, HasSubstr("Payload is not found"));
 
-  EXPECT_TRUE(ShouldRemove(corrupted_meta_, &reason));
+  EXPECT_TRUE(ShouldRemove(corrupted_meta_, metrics_lib_.get(), &reason));
   EXPECT_THAT(reason, HasSubstr("Corrupted metadata"));
 
-  EXPECT_TRUE(ShouldRemove(nonexistent_meta_, &reason));
+  EXPECT_TRUE(ShouldRemove(nonexistent_meta_, metrics_lib_.get(), &reason));
   EXPECT_THAT(reason, HasSubstr("Missing payload"));
 
-  EXPECT_TRUE(ShouldRemove(unknown_meta_, &reason));
+  EXPECT_TRUE(ShouldRemove(unknown_meta_, metrics_lib_.get(), &reason));
   EXPECT_THAT(reason, HasSubstr("Unknown kind"));
 
-  ASSERT_TRUE(CreateLsbReleaseFile(kUnofficialBuild));
-  EXPECT_TRUE(ShouldRemove(good_meta_, &reason));
+  ASSERT_TRUE(SetConditions(kUnofficialBuild, kSignInMode, kMetricsEnabled));
+  EXPECT_TRUE(ShouldRemove(good_meta_, metrics_lib_.get(), &reason));
   EXPECT_THAT(reason, HasSubstr("Not an official OS version"));
+
+  ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsDisabled));
+  EXPECT_TRUE(ShouldRemove(good_meta_, metrics_lib_.get(), &reason));
+  EXPECT_THAT(reason, HasSubstr("Crash reporting is disabled"));
+
+  // Valid crash files should be kept in the guest mode.
+  ASSERT_TRUE(SetConditions(kOfficialBuild, kGuestMode, kMetricsDisabled));
+  EXPECT_FALSE(ShouldRemove(good_meta_, metrics_lib_.get(), &reason));
 }
 
 TEST_F(CrashSenderUtilTest, RemoveInvalidCrashFiles) {
-  ASSERT_TRUE(CreateLsbReleaseFile(kOfficialBuild));
+  ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsEnabled));
 
   const base::FilePath crash_directory =
       paths::Get(paths::kSystemCrashDirectory);
   ASSERT_TRUE(CreateDirectory(crash_directory));
   ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
 
-  RemoveInvalidCrashFiles(crash_directory);
-
+  RemoveInvalidCrashFiles(crash_directory, metrics_lib_.get());
   // Check what files were removed.
   EXPECT_TRUE(base::PathExists(good_meta_));
   EXPECT_TRUE(base::PathExists(good_log_));
@@ -376,9 +405,23 @@ TEST_F(CrashSenderUtilTest, RemoveInvalidCrashFiles) {
   EXPECT_FALSE(base::PathExists(unknown_xxx_));
 
   // All crash files should be removed for an unofficial build.
-  ASSERT_TRUE(CreateLsbReleaseFile(kUnofficialBuild));
-  RemoveInvalidCrashFiles(crash_directory);
+  ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
+  ASSERT_TRUE(SetConditions(kUnofficialBuild, kSignInMode, kMetricsEnabled));
+  RemoveInvalidCrashFiles(crash_directory, metrics_lib_.get());
   EXPECT_TRUE(base::IsDirectoryEmpty(crash_directory));
+
+  // All crash files should be removed if metrics are disabled.
+  ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
+  ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsDisabled));
+  RemoveInvalidCrashFiles(crash_directory, metrics_lib_.get());
+  EXPECT_TRUE(base::IsDirectoryEmpty(crash_directory));
+
+  // Valid crash files should be kept in the guest mode, thus the directory
+  // won't be empty.
+  ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
+  ASSERT_TRUE(SetConditions(kOfficialBuild, kGuestMode, kMetricsDisabled));
+  RemoveInvalidCrashFiles(crash_directory, metrics_lib_.get());
+  EXPECT_FALSE(base::IsDirectoryEmpty(crash_directory));
 }
 
 TEST_F(CrashSenderUtilTest, RemoveReportFiles) {
@@ -519,7 +562,7 @@ TEST_F(CrashSenderUtilTest, Sender) {
   Sender::Options options;
   options.shell_script = base::FilePath("fake_crash_sender.sh");
   options.proxy = mock.release();
-  Sender sender(options);
+  Sender sender(std::move(metrics_lib_), options);
   ASSERT_TRUE(sender.Init());
 
   // Send crashes.

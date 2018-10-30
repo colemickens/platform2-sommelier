@@ -16,6 +16,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <brillo/syslog_logging.h>
 #include <libminijail.h>
+#include <metrics/metrics_library.h>
 #include <scoped_minijail.h>
 
 #include "crash-reporter/crash_sender_paths.h"
@@ -99,8 +100,10 @@ int RunChildMain(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
+  auto metrics_lib = std::make_unique<MetricsLibrary>();
+  metrics_lib->Init();
   util::Sender::Options options;
-  util::Sender sender(options);
+  util::Sender sender(std::move(metrics_lib), options);
   if (!sender.Init()) {
     LOG(ERROR) << "Failed to initialize util::Sender";
     return EXIT_FAILURE;

@@ -576,15 +576,6 @@ send_crashes() {
       continue
     fi
 
-    # Remove existing crashes in case user consent has not (yet) been given or
-    # has been revoked.  This must come after the guest mode check because
-    # ${METRICS_CLIENT} always returns "not consented" in guest mode.
-    if ! ${METRICS_CLIENT} -c; then
-      lecho "Crash reporting is disabled.  Removing crash."
-      remove_report "${meta_path}"
-      continue
-    fi
-
     # Skip report if the upload rate is exceeded.  (Don't exit right now because
     # subsequent reports may be candidates for deletion.)
     if ! check_rate; then

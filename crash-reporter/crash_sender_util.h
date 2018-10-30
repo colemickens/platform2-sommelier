@@ -12,6 +12,7 @@
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <brillo/key_value_store.h>
+#include <metrics/metrics_library.h>
 #include <session_manager/dbus-proxies.h>
 
 namespace util {
@@ -74,12 +75,16 @@ base::FilePath GetBasePartOfCrashFile(const base::FilePath& file_name);
 void RemoveOrphanedCrashFiles(const base::FilePath& crash_dir);
 
 // Returns true and reports the reason, if report files associated with the
-// given meta file should be removed.
-bool ShouldRemove(const base::FilePath& meta_file, std::string* reason);
+// given meta file should be removed. |metrics_lib| is used to check if metrics
+// are enabled, etc.
+bool ShouldRemove(const base::FilePath& meta_file,
+                  MetricsLibraryInterface* metrics_lib,
+                  std::string* reason);
 
 // Removes invalid files in |crash_dir|, that are unknown, corrupted, or invalid
-// in other ways.
-void RemoveInvalidCrashFiles(const base::FilePath& crash_dir);
+// in other ways. See ShouldRemove() for |metrics_lib|.
+void RemoveInvalidCrashFiles(const base::FilePath& crash_dir,
+                             MetricsLibraryInterface* metrics_lib);
 
 // Removes report files associated with the given meta file.
 // More specifically, if "foo.meta" is given, "foo.*" will be removed.
@@ -115,7 +120,8 @@ class Sender {
     org::chromium::SessionManagerInterfaceProxyInterface* proxy = nullptr;
   };
 
-  explicit Sender(const Options& options);
+  Sender(std::unique_ptr<MetricsLibraryInterface> metrics_lib,
+         const Options& options);
 
   // Initializes the sender object. Returns true on success.
   bool Init();
@@ -133,6 +139,7 @@ class Sender {
   const base::FilePath& temp_dir() const { return scoped_temp_dir_.GetPath(); }
 
  private:
+  std::unique_ptr<MetricsLibraryInterface> metrics_lib_;
   const base::FilePath shell_script_;
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface> proxy_;
   base::ScopedTempDir scoped_temp_dir_;
