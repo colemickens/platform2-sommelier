@@ -280,7 +280,7 @@ impl Dbus for MockDbus {
     // Processes any mock chrome events.  Events are strings separated by
     // newlines sent to the event pipe.  We could check if the pipe fired in
     // the watcher, but it's less code to just do a non-blocking read.
-    fn process_chrome_events(&mut self, _watcher: &mut FileWatcher) ->
+    fn process_dbus_events(&mut self, _watcher: &mut FileWatcher) ->
         Result<Vec<(Event_Type, i64)>> {
             let mut events: Vec<(Event_Type, i64)> = Vec::new();
             let mut buf = [0u8; 4096];

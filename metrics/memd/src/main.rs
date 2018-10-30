@@ -679,9 +679,10 @@ trait Dbus {
     // Returns a vector of file descriptors that can be registered with a
     // Watcher.
     fn get_fds(&self) -> &Vec<RawFd>;
-    // Processes incoming Chrome dbus events as indicated by |watcher|.
-    // Returns counts of tab discards and browser-detected OOMs.
-    fn process_chrome_events(&mut self, watcher: &mut FileWatcher) ->
+    // Processes incoming dbus events as indicated by |watcher|.  Returns
+    // vectors of tab discards reported by chrome, and OOM kills reported by
+    // the anomaly detector.
+    fn process_dbus_events(&mut self, watcher: &mut FileWatcher) ->
         Result<Vec<(Event_Type, i64)>>;
 }
 
@@ -701,14 +702,14 @@ impl Dbus for GenuineDbus {
     // event signals, and return a vector of pairs, each pair containing the
     // event type and time stamp of each incoming event.
     //
-    // For debugging:
+    // Debugging example:
     //
     // INTERFACE=org.chromium.MetricsEventServiceInterface
     // dbus-monitor --system type=signal,interface=$INTERFACE
     // PAYLOAD=array:byte:0x10,0xa8,0xa2,0xc5,0x51
     // dbus-send --system --type=signal / $INTERFACE.ChromeEvent $PAYLOAD
     //
-    fn process_chrome_events(&mut self, watcher: &mut FileWatcher) ->
+    fn process_dbus_events(&mut self, watcher: &mut FileWatcher) ->
         Result<(Vec<(Event_Type, i64)>)> {
         let mut events: Vec<(Event_Type, i64)> = Vec::new();
         for &fd in self.fds.iter() {
@@ -719,9 +720,10 @@ impl Dbus for GenuineDbus {
             for connection_item in handle {
                 // Only consider signals.
                 if let dbus::ConnectionItem::Signal(ref message) = connection_item {
-                    // Only consider signals with "ChromeEvent" members.
+                    // Only consider signals with "ChromeEvent" or
+                    // "AnomalyEvent" members.
                     if let Some(member) = message.member() {
-                        if &*member != "ChromeEvent" {
+                        if &*member != "ChromeEvent" && &*member != "AnomalyEvent" {
                             // Do not report spurious "NameAcquired" signal to avoid spam.
                             if &*member != "NameAcquired" {
                                 warn!("unexpected dbus signal member {}", &*member);
@@ -751,6 +753,10 @@ impl GenuineDbus {
     // information from Chrome about events of interest (e.g. tab discards).
     fn new() -> Result<GenuineDbus> {
         let connection = Connection::get_private(BusType::System)?;
+        let _m = connection.add_match(
+            concat!("type='signal',",
+                    "interface='org.chromium.AnomalyEventServiceInterface',",
+                    "member='AnomalyEvent'"));
         let _m = connection.add_match(
             concat!("type='signal',",
                     "interface='org.chromium.MetricsEventServiceInterface',",
@@ -1034,16 +1040,17 @@ impl<'a> Sampler<'a> {
                     event_is_interesting = true;
                 }
 
-                // Check for Chrome events.
-                let events = self.dbus.process_chrome_events(&mut self.watcher)?;
+                // Check for dbus events.
+                let events = self.dbus.process_dbus_events(&mut self.watcher)?;
                 if events.len() > 0 {
-                    debug!("chrome events at {}: {:?}", self.current_time, events);
+                    debug!("dbus events at {}: {:?}", self.current_time, events);
                     event_is_interesting = true;
                 }
                 for event in events {
                     let sample_type = match event.0 {
                         Event_Type::TAB_DISCARD => SampleType::TabDiscard,
                         Event_Type::OOM_KILL => SampleType::OomKillBrowser,
+                        Event_Type::OOM_KILL_KERNEL => SampleType::OomKillKernel,
                         _ => {
                             warn!("unknown event type {:?}", event.0);
                             continue;
@@ -1188,9 +1195,10 @@ enum SampleType {
     EnterLowMem,        // Entering low-memory state, from the kernel low-mem notifier.
     LeaveLowMem,        // Leaving low-memory state, from the kernel low-mem notifier.
     OomKillBrowser,     // Chrome browser letting us know it detected OOM kill.
+    OomKillKernel,      // Anomaly collector letting us know it detected OOM kill.
     Sleeper,            // Memd was not running for a long time.
     TabDiscard,         // Chrome browser letting us know about a tab discard.
-    Timer,              // Event was generated after FAST_POLL_PERIOD_DURATION with no other events.
+    Timer,              // Event was produced after FAST_POLL_PERIOD_DURATION with no other events.
     Uninitialized,      // Internal use.
 }
 
@@ -1212,7 +1220,9 @@ impl SampleType {
     // because the timestamps of samples generated externally may be skewed.
     fn has_internal_timestamp(&self) -> bool {
         match self {
-            &SampleType::TabDiscard | &SampleType::OomKillBrowser => false,
+            &SampleType::TabDiscard |
+            &SampleType::OomKillBrowser |
+            &SampleType::OomKillKernel => false,
             _ => true
         }
     }
@@ -1225,6 +1235,7 @@ impl SampleType {
             SampleType::EnterLowMem => "lowmem",
             SampleType::LeaveLowMem => "lealow",
             SampleType::OomKillBrowser => "oomkll",  // OOM from chrome
+            SampleType::OomKillKernel => "keroom",   // OOM from kernel
             SampleType::Sleeper => "sleepr",
             SampleType::TabDiscard => "discrd",
             SampleType::Timer => "timer",
