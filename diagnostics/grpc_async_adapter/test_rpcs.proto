@@ -19,7 +19,16 @@ message EchoIntRpcResponse {
   int32 echoed_int = 1;
 }
 
+message HeavyRpcRequest {
+  string data = 1;
+}
+
+message HeavyRpcResponse {
+  string data = 1;
+}
+
 service ExampleService {
   rpc EmptyRpc(EmptyRpcRequest) returns (EmptyRpcResponse);
   rpc EchoIntRpc(EchoIntRpcRequest) returns (EchoIntRpcResponse);
+  rpc HeavyRpc(HeavyRpcRequest) returns (HeavyRpcResponse);
 }

@@ -183,6 +183,9 @@ class AsyncGrpcClientServerTest : public ::testing::Test {
     server_->RegisterHandler(
         &test_rpcs::ExampleService::AsyncService::RequestEchoIntRpc,
         pending_echo_int_rpcs_.GetRpcHandlerCallback());
+    server_->RegisterHandler(
+        &test_rpcs::ExampleService::AsyncService::RequestHeavyRpc,
+        pending_heavy_rpcs_.GetRpcHandlerCallback());
     ASSERT_TRUE(server_->Start());
 
     // Create the AsyncGrpcClient.
@@ -216,6 +219,9 @@ class AsyncGrpcClientServerTest : public ::testing::Test {
   PendingIncomingRpcQueue<test_rpcs::EchoIntRpcRequest,
                           test_rpcs::EchoIntRpcResponse>
       pending_echo_int_rpcs_;
+  PendingIncomingRpcQueue<test_rpcs::HeavyRpcRequest,
+                          test_rpcs::HeavyRpcResponse>
+      pending_heavy_rpcs_;
 
  private:
   std::string GetDomainSocketAddress() { return "unix:" + tmpfile_.value(); }
@@ -333,7 +339,7 @@ TEST_F(AsyncGrpcClientServerTest, ShutdownWhileRpcIsPending) {
   pending_empty_rpc->handler_done_callback.Run(std::move(empty_rpc_response));
 }
 
-// Initate a shutdown of the server and immediately send a response.
+// Initiate a shutdown of the server and immediately send a response.
 // This should not crash, but we expect that the cancellation arrives at the
 // sender.
 TEST_F(AsyncGrpcClientServerTest, SendResponseAfterInitiatingShutdown) {
@@ -382,6 +388,67 @@ TEST_F(AsyncGrpcClientServerTest, ManyRpcs) {
     EXPECT_FALSE(rpc_replies[i].IsError());
     EXPECT_EQ(i, rpc_replies[i].response().echoed_int());
   }
+}
+
+// Test that heavy, but within the acceptable bounds, requests and responses are
+// handled correctly.
+TEST_F(AsyncGrpcClientServerTest, HeavyRpcData) {
+  const int kDataSize = 3 * 1024 * 1024;
+  const std::string kData(kDataSize, '\1');
+
+  RpcReply<test_rpcs::HeavyRpcResponse> rpc_reply;
+  test_rpcs::HeavyRpcRequest request;
+  request.set_data(kData);
+  client_->CallRpc(&test_rpcs::ExampleService::Stub::AsyncHeavyRpc, request,
+                   rpc_reply.MakeWriter());
+
+  pending_heavy_rpcs_.WaitUntilPendingRpcCount(1);
+  auto pending_rpc = pending_heavy_rpcs_.GetOldestPendingRpc();
+  EXPECT_EQ(kData, pending_rpc->request->data());
+
+  auto response = std::make_unique<test_rpcs::HeavyRpcResponse>();
+  response->set_data(kData);
+  pending_rpc->handler_done_callback.Run(std::move(response));
+
+  rpc_reply.Wait();
+  EXPECT_FALSE(rpc_reply.IsError());
+  EXPECT_EQ(kData, rpc_reply.response().data());
+}
+
+// Test than an excessively big request gets rejected.
+TEST_F(AsyncGrpcClientServerTest, ExcessivelyBigRpcRequest) {
+  const int kDataSize = 5 * 1024 * 1024;
+  const std::string kData(kDataSize, '\1');
+
+  RpcReply<test_rpcs::HeavyRpcResponse> rpc_reply;
+  test_rpcs::HeavyRpcRequest request;
+  request.set_data(kData);
+  client_->CallRpc(&test_rpcs::ExampleService::Stub::AsyncHeavyRpc, request,
+                   rpc_reply.MakeWriter());
+
+  rpc_reply.Wait();
+  EXPECT_TRUE(rpc_reply.IsError());
+}
+
+// Test than an excessively big response gets rejected and results in the
+// request being resolved with an error.
+TEST_F(AsyncGrpcClientServerTest, ExcessivelyBigRpcResponse) {
+  const int kDataSize = 5 * 1024 * 1024;
+  const std::string kData(kDataSize, '\1');
+
+  RpcReply<test_rpcs::HeavyRpcResponse> rpc_reply;
+  client_->CallRpc(&test_rpcs::ExampleService::Stub::AsyncHeavyRpc,
+                   test_rpcs::HeavyRpcRequest(), rpc_reply.MakeWriter());
+
+  pending_heavy_rpcs_.WaitUntilPendingRpcCount(1);
+  auto pending_rpc = pending_heavy_rpcs_.GetOldestPendingRpc();
+
+  auto response = std::make_unique<test_rpcs::HeavyRpcResponse>();
+  response->set_data(kData);
+  pending_rpc->handler_done_callback.Run(std::move(response));
+
+  rpc_reply.Wait();
+  EXPECT_TRUE(rpc_reply.IsError());
 }
 
 }  // namespace diagnostics
