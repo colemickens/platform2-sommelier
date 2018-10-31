@@ -5,8 +5,6 @@
 // This is the Chaps client PAM module. It loads the users token into the
 // user-slot when they login.
 
-#include <grp.h>
-#include <pwd.h>
 #include <security/pam_appl.h>
 #include <security/pam_modules.h>
 
@@ -16,6 +14,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
+#include <brillo/userdb_utils.h>
 
 #include "chaps/chaps_utility.h"
 #include "chaps/isolate.h"
@@ -63,30 +62,12 @@ EXPORT_SPEC void DisableMock() {
 
 }  // namespace chaps
 
-static bool GetChapsdUser(uid_t* uid, gid_t* gid) {
-  CHECK(uid);
-  CHECK(gid);
-  long buf_length = sysconf(_SC_GETPW_R_SIZE_MAX);  // NOLINT long
-  if (buf_length < 0) {
-    buf_length = 4096;
-  }
-  passwd passwd_buf;
-  passwd* chaps_pwd = nullptr;
-  std::vector<char> buf(buf_length);
-  if (getpwnam_r(chaps::kChapsdProcessUser, &passwd_buf, buf.data(), buf_length,
-                 &chaps_pwd) || chaps_pwd == nullptr) {
-    return false;
-  }
-  *uid = chaps_pwd->pw_uid;
-  *gid = chaps_pwd->pw_gid;
-  return true;
-}
-
 static bool Init() {
   if (!g_is_initialized) {
     uid_t chapsd_uid;
     gid_t chapsd_gid;
-    if (!GetChapsdUser(&chapsd_uid, &chapsd_gid)) {
+    if (!brillo::userdb::GetUserInfo(chaps::kChapsdProcessUser, &chapsd_uid,
+                                     &chapsd_gid)) {
       LOG(ERROR) << "Failed to get chapsd user";
       return false;
     }
