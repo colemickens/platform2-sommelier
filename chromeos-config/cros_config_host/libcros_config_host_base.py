@@ -11,6 +11,34 @@ import os
 
 from cros_config_schema import GetValidSchemaProperties
 
+# Defines a list of undiffable properties between the device-tree impl and
+# the YAML based impl.  These properties are accounted for in other API level
+# diffs, but they changed between the schemas and therefore can't be diffed.
+INCOMPATIBLE_PROPERTIES = {
+  '/' : [
+    'brand-code',         # Moved due to Whitelabel/Product changes.
+    'name',               # Only in YAML
+  ],
+  '/audio/main' : [
+    # There are errors in the cros_config_host device-tree impl.
+    # There are runtime properties anyway and will be checked as part of the
+    # cros_config verification.
+    'cras-config-dir',
+    'ucm-suffix',
+  ],
+  '/firmware' : [
+    'key-id',             # Moved to firmware-signing in YAML,
+    'name',               # Doesn't exist in DT impl
+  ],
+  '/firmware-signing' : [
+    'key-id',             # Moved from firmware in DT
+    'signature-id',       # Only in YAML
+  ],
+  '/thermal' : [
+    'dptf-dv',            # Changed to explicit files in YAML
+  ],
+}
+
 # Represents a single touch firmware file which needs to be installed:
 #   source: source filename of firmware file. This is installed in a
 #       directory in the root filesystem
@@ -275,8 +303,11 @@ class CrosConfigBaseImpl(object):
       value_map = {}
       for path in schema_properties:
         for schema_property in schema_properties[path]:
-          value_map['%s::%s' % (path, schema_property)] = device.GetProperty(
-              path, schema_property)
+          # Exclude incompatible properties for now until the migration
+          # is done and we aren't trying to diff properties any longer.
+          if schema_property not in INCOMPATIBLE_PROPERTIES.get(path, []):
+            value_map['%s::%s' % (path, schema_property)] = device.GetProperty(
+                path, schema_property)
       result['GetProperty_%s' % device.GetName()] = value_map
     return result
 
