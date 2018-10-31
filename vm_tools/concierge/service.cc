@@ -244,7 +244,7 @@ bool GetDiskPathFromName(
     StorageLocation storage_location,
     bool create_parent_dir,
     base::FilePath* path_out,
-    enum DiskImageType preferred_image_type = DiskImageType::DISK_IMAGE_QCOW2) {
+    enum DiskImageType preferred_image_type = DiskImageType::DISK_IMAGE_AUTO) {
   if (!base::ContainsOnlyChars(cryptohome_id, kValidCryptoHomeCharacters)) {
     LOG(ERROR) << "Invalid cryptohome_id specified";
     return false;
@@ -305,7 +305,8 @@ bool GetDiskPathFromName(
     *path_out = raw_path;
   } else if (preferred_image_type == DISK_IMAGE_QCOW2) {
     *path_out = qcow2_path;
-  } else if (preferred_image_type == DISK_IMAGE_RAW) {
+  } else if (preferred_image_type == DISK_IMAGE_RAW ||
+             preferred_image_type == DISK_IMAGE_AUTO) {
     *path_out = raw_path;
   } else {
     LOG(ERROR) << "Unknown image type " << preferred_image_type;
@@ -1088,7 +1089,8 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
     return dbus_response;
   }
 
-  if (request.image_type() == DISK_IMAGE_RAW) {
+  if (request.image_type() == DISK_IMAGE_RAW ||
+      request.image_type() == DISK_IMAGE_AUTO) {
     LOG(INFO) << "Creating raw disk at: " << disk_path.value() << " size "
               << request.disk_size();
     base::ScopedFD fd(
@@ -1105,17 +1107,50 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
     int ret = ftruncate(fd.get(), request.disk_size());
     if (ret != 0) {
       PLOG(ERROR) << "Failed to truncate raw disk";
+      unlink(disk_path.value().c_str());
       response.set_status(DISK_STATUS_FAILED);
       response.set_failure_reason("Failed to truncate raw disk file");
       writer.AppendProtoAsArrayOfBytes(response);
 
       return dbus_response;
     }
-    response.set_status(DISK_STATUS_CREATED);
-    response.set_disk_path(disk_path.value());
-    writer.AppendProtoAsArrayOfBytes(response);
 
-    return dbus_response;
+    // If a raw disk was explicitly requested, return early without checking
+    // for FALLOC_FL_PUNCH_HOLE support.
+    if (request.image_type() == DISK_IMAGE_RAW) {
+      response.set_status(DISK_STATUS_CREATED);
+      response.set_disk_path(disk_path.value());
+      writer.AppendProtoAsArrayOfBytes(response);
+
+      return dbus_response;
+    }
+
+    ret = fallocate(fd.get(), FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE, 0,
+                    request.disk_size());
+    if (ret == 0) {
+      LOG(INFO) << "fallocate(FALLOC_FL_PUNCH_HOLE) is supported";
+      response.set_status(DISK_STATUS_CREATED);
+      response.set_disk_path(disk_path.value());
+      writer.AppendProtoAsArrayOfBytes(response);
+
+      return dbus_response;
+    }
+
+    // If hole punch is not available and the type is DISK_IMAGE_AUTO,
+    // try to create a qcow2 file instead.
+    LOG(INFO) << "fallocate(FALLOC_FL_PUNCH_HOLE) not supported for raw file: "
+              << strerror(errno);
+    unlink(disk_path.value().c_str());
+    if (!GetDiskPathFromName(request.disk_path(), request.cryptohome_id(),
+                             request.storage_location(),
+                             true, /* create_parent_dir */
+                             &disk_path, DISK_IMAGE_QCOW2)) {
+      response.set_status(DISK_STATUS_FAILED);
+      response.set_failure_reason("Failed to create vm image");
+      writer.AppendProtoAsArrayOfBytes(response);
+
+      return dbus_response;
+    }
   }
 
   LOG(INFO) << "Creating qcow2 disk at: " << disk_path.value() << " size "

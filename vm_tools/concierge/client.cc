@@ -44,6 +44,7 @@ constexpr int kExportDiskTimeoutMs = 15 * 60 * 1000;
 
 constexpr char kImageTypeQcow2[] = "qcow2";
 constexpr char kImageTypeRaw[] = "raw";
+constexpr char kImageTypeAuto[] = "auto";
 constexpr int64_t kMinimumDiskSize = 1ll * 1024 * 1024 * 1024;  // 1 GiB
 constexpr char kRemovableMediaRoot[] = "/media/removable";
 constexpr char kStorageCryptohomeRoot[] = "cryptohome-root";
@@ -399,6 +400,8 @@ int CreateDiskImage(dbus::ObjectProxy* proxy,
     request.set_image_type(vm_tools::concierge::DISK_IMAGE_RAW);
   } else if (image_type == kImageTypeQcow2) {
     request.set_image_type(vm_tools::concierge::DISK_IMAGE_QCOW2);
+  } else if (image_type == kImageTypeAuto) {
+    request.set_image_type(vm_tools::concierge::DISK_IMAGE_AUTO);
   } else {
     LOG(ERROR) << "'" << image_type << "' is not a valid disk image type";
     return -1;
@@ -873,7 +876,7 @@ int main(int argc, char** argv) {
   DEFINE_string(cryptohome_id, "", "User cryptohome id");
   DEFINE_string(disk_path, "", "Path to the disk image to create");
   DEFINE_uint64(disk_size, 0, "Size of the disk image to create");
-  DEFINE_string(image_type, "qcow2", "Disk image type");
+  DEFINE_string(image_type, "auto", "Disk image type");
   DEFINE_string(storage_location, "cryptohome-root",
                 "Location to store the disk image");
 
