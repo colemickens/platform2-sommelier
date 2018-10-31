@@ -1,2 +1,1 @@
-SUBSYSTEM=="fpc_sensor" OWNER="root", GROUP="biod" MODE="0660"
 SUBSYSTEM=="chromeos", KERNEL=="cros_fp" OWNER="root", GROUP="biod" MODE="0660"
