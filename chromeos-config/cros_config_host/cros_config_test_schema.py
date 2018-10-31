@@ -1,3 +1,4 @@
+#!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 # Copyright 2018 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -109,7 +110,7 @@ def MergeConfig(yaml_file, filter_name):
   """
   yaml_with_imports = libcros_schema.ApplyImports(yaml_file)
   json_transformed_file = TransformConfig(yaml_with_imports, filter_name)
-  return libcros_schema.FormatJson(json_transformed_file)
+  return json_transformed_file
 
 
 def Start(config, filter_name, output, schema):
@@ -132,11 +133,13 @@ def Start(config, filter_name, output, schema):
   if schema is None:
     schema = default_test_schema
   with open(schema, 'r') as schema_stream:
-    libcros_schema.ValidateConfigSchema(schema_stream.read(), json_transform)
+    libcros_schema.ValidateConfigSchema(
+        schema_stream.read(), libcros_schema.FormatJson(json_transform))
 
   if output:
     with open(output, 'w') as output_stream:
-      output_stream.write(json_transform)
+      # Using print function adds proper trailing newline.
+      print(json_transform, file=output_stream)
   else:
     print(json_transform)
 

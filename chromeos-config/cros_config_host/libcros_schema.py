@@ -46,7 +46,7 @@ def FormatJson(config):
   Args:
     config: Dictionary to be output
   """
-  return json.dumps(config, sort_keys=True, indent=2, separators=(',', ':'))
+  return json.dumps(config, sort_keys=True, indent=2, separators=(',', ': '))
 
 
 def GetValidSchemaProperties(schema_node, path, result):

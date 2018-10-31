@@ -1,4 +1,5 @@
 #!/usr/bin/env python2
+# -*- coding: utf-8 -*-
 # Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -13,9 +14,12 @@ import jsonschema
 import os
 import unittest
 import re
-import tempfile
 
 import cros_config_schema
+import libcros_schema
+
+from chromite.lib import cros_test_lib
+
 
 BASIC_CONFIG = """
 reef-9042-fw: &reef-9042-fw
@@ -61,26 +65,7 @@ chromeos:
 this_dir = os.path.dirname(__file__)
 
 
-class GetNamedTupleTests(unittest.TestCase):
-
-  def testRecursiveDicts(self):
-    val = {'a': {'b': 1, 'c': 2}}
-    val_tuple = cros_config_schema.GetNamedTuple(val)
-    self.assertEqual(val['a']['b'], val_tuple.a.b)
-    self.assertEqual(val['a']['c'], val_tuple.a.c)
-
-  def testListInRecursiveDicts(self):
-    val = {'a': {'b': [{'c': 2}]}}
-    val_tuple = cros_config_schema.GetNamedTuple(val)
-    self.assertEqual(val['a']['b'][0]['c'], val_tuple.a.b[0].c)
-
-  def testDashesReplacedWithUnderscores(self):
-    val = {'a-b': 1}
-    val_tuple = cros_config_schema.GetNamedTuple(val)
-    self.assertEqual(val['a-b'], val_tuple.a_b)
-
-
-class MergeDictionaries(unittest.TestCase):
+class MergeDictionaries(cros_test_lib.TestCase):
 
   def testBaseKeyMerge(self):
     primary = {'a': {'b': 1, 'c': 2}}
@@ -95,7 +80,7 @@ class MergeDictionaries(unittest.TestCase):
     self.assertEqual({'a': {'b': 1, 'c': [1, 2, 3, 4]}}, primary)
 
 
-class ParseArgsTests(unittest.TestCase):
+class ParseArgsTests(cros_test_lib.TestCase):
 
   def testParseArgs(self):
     argv = ['-s', 'schema', '-c', 'config', '-o', 'output', '-f' 'True']
@@ -112,13 +97,13 @@ class ParseArgsTests(unittest.TestCase):
     self.assertEqual(args.configs, ['m1' 'm2' 'm3'])
 
 
-class TransformConfigTests(unittest.TestCase):
+class TransformConfigTests(cros_test_lib.TestCase):
 
   def testBasicTransform(self):
     result = cros_config_schema.TransformConfig(BASIC_CONFIG)
     json_dict = json.loads(result)
     self.assertEqual(len(json_dict), 1)
-    json_obj = cros_config_schema.GetNamedTuple(json_dict)
+    json_obj = libcros_schema.GetNamedTuple(json_dict)
     self.assertEqual(1, len(json_obj.chromeos.configs))
     model = json_obj.chromeos.configs[0]
     self.assertEqual('basking', model.name)
@@ -131,7 +116,7 @@ class TransformConfigTests(unittest.TestCase):
     result = cros_config_schema.TransformConfig(
         BASIC_CONFIG, model_filter_regex='abc123')
     json_dict = json.loads(result)
-    json_obj = cros_config_schema.GetNamedTuple(json_dict)
+    json_obj = libcros_schema.GetNamedTuple(json_dict)
     self.assertEqual(0, len(json_obj.chromeos.configs))
 
   def testTransformConfig_FilterMatch(self):
@@ -182,7 +167,7 @@ chromeos:
     result = cros_config_schema.TransformConfig(
         scoped_config, model_filter_regex='bar')
     json_dict = json.loads(result)
-    json_obj = cros_config_schema.GetNamedTuple(json_dict)
+    json_obj = libcros_schema.GetNamedTuple(json_dict)
     self.assertEqual(1, len(json_obj.chromeos.configs))
     model = json_obj.chromeos.configs[0]
     self.assertEqual('bar', model.name)
@@ -217,7 +202,7 @@ chromeos:
 """
     result = cros_config_schema.TransformConfig(scoped_config)
     json_dict = json.loads(result)
-    json_obj = cros_config_schema.GetNamedTuple(json_dict)
+    json_obj = libcros_schema.GetNamedTuple(json_dict)
     config = json_obj.chromeos.configs[0]
     self.assertEqual(
         'overridden-by-product-scope', config.audio.main.cras_config_dir)
@@ -225,7 +210,7 @@ chromeos:
         'overridden-by-device-scope', config.audio.main.ucm_suffix)
 
 
-class ValidateConfigSchemaTests(unittest.TestCase):
+class ValidateConfigSchemaTests(cros_test_lib.TestCase):
 
   def setUp(self):
     with open(os.path.join(this_dir,
@@ -233,14 +218,14 @@ class ValidateConfigSchemaTests(unittest.TestCase):
       self._schema = schema_stream.read()
 
   def testBasicSchemaValidation(self):
-    cros_config_schema.ValidateConfigSchema(
+    libcros_schema.ValidateConfigSchema(
         self._schema, cros_config_schema.TransformConfig(BASIC_CONFIG))
 
   def testMissingRequiredElement(self):
     config = re.sub(r' *cras-config-dir: .*', '', BASIC_CONFIG)
     config = re.sub(r' *volume: .*', '', BASIC_CONFIG)
     try:
-      cros_config_schema.ValidateConfigSchema(
+      libcros_schema.ValidateConfigSchema(
           self._schema, cros_config_schema.TransformConfig(config))
     except jsonschema.ValidationError as err:
       self.assertIn('required', err.__str__())
@@ -249,14 +234,14 @@ class ValidateConfigSchemaTests(unittest.TestCase):
   def testReferencedNonExistentTemplateVariable(self):
     config = re.sub(r' *$card: .*', '', BASIC_CONFIG)
     try:
-      cros_config_schema.ValidateConfigSchema(
+      libcros_schema.ValidateConfigSchema(
           self._schema, cros_config_schema.TransformConfig(config))
     except cros_config_schema.ValidationError as err:
       self.assertIn('Referenced template variable', err.__str__())
       self.assertIn('cras-config-dir', err.__str__())
 
 
-class ValidateConfigTests(unittest.TestCase):
+class ValidateConfigTests(cros_test_lib.TestCase):
 
   def testBasicValidation(self):
     cros_config_schema.ValidateConfig(
@@ -391,7 +376,8 @@ chromeos:
     cros_config_schema.ValidateConfig(
         cros_config_schema.TransformConfig(config))
 
-class FilterBuildElements(unittest.TestCase):
+
+class FilterBuildElements(cros_test_lib.TestCase):
 
   def testBasicFilterBuildElements(self):
     json_dict = json.loads(
@@ -400,7 +386,7 @@ class FilterBuildElements(unittest.TestCase):
     self.assertNotIn('firmware', json_dict['chromeos']['configs'][0])
 
 
-class GetValidSchemaProperties(unittest.TestCase):
+class GetValidSchemaProperties(cros_test_lib.TestCase):
 
   def testGetValidSchemaProperties(self):
     schema_props = cros_config_schema.GetValidSchemaProperties()
@@ -408,7 +394,7 @@ class GetValidSchemaProperties(unittest.TestCase):
     self.assertIn('key-id', schema_props['/firmware-signing'])
 
 
-class MainTests(unittest.TestCase):
+class MainTests(cros_test_lib.TempDirTestCase):
   def assertFileEqual(self, file_expected, file_actual, regen_cmd=''):
     self.assertTrue(os.path.isfile(file_expected),
                     "Expected file does not exist at path: {}" \
@@ -442,8 +428,8 @@ class MainTests(unittest.TestCase):
                                     repr(line_actual)))
 
   def testMainWithExampleWithBuildAndMosysCBindings(self):
-    json_output = tempfile.mktemp()
-    c_output = tempfile.mktemp()
+    json_output = os.path.join(self.tempdir, 'output.json')
+    c_output = os.path.join(self.tempdir, 'output.c')
     cros_config_schema.Main(
         None,
         os.path.join(this_dir, '../libcros_config/test.yaml'),
@@ -462,11 +448,8 @@ class MainTests(unittest.TestCase):
     expected_c_file = os.path.join(this_dir, '../libcros_config/test.c')
     self.assertFileEqual(expected_c_file, c_output, regen_cmd)
 
-    os.remove(json_output)
-    os.remove(c_output)
-
   def testMainWithExampleWithoutBuild(self):
-    output = tempfile.mktemp()
+    output = os.path.join(self.tempdir, 'output')
     cros_config_schema.Main(
         None,
         os.path.join(this_dir, '../libcros_config/test.yaml'),
@@ -481,11 +464,10 @@ class MainTests(unittest.TestCase):
 
     expected_file = os.path.join(this_dir, '../libcros_config/test.json')
     self.assertFileEqual(expected_file, output, regen_cmd)
-    os.remove(output)
 
   def testMainArmExample(self):
-    json_output = tempfile.mktemp()
-    c_output = tempfile.mktemp()
+    json_output = os.path.join(self.tempdir, 'output.json')
+    c_output = os.path.join(self.tempdir, 'output.c')
     cros_config_schema.Main(
         None,
         os.path.join(this_dir, '../libcros_config/test_arm.yaml'),
@@ -507,11 +489,8 @@ class MainTests(unittest.TestCase):
                                    '../libcros_config/test_arm.c')
     self.assertFileEqual(expected_c_file, c_output, regen_cmd)
 
-    os.remove(json_output)
-    os.remove(c_output)
-
   def testMainImportExample(self):
-    output = tempfile.mktemp()
+    output = os.path.join(self.tempdir, 'output')
     cros_config_schema.Main(
         None,
         os.path.join(this_dir, '../libcros_config/test_import.yaml'),
@@ -523,10 +502,8 @@ class MainTests(unittest.TestCase):
     expected_file = os.path.join(this_dir, '../libcros_config/test_import.json')
     self.assertFileEqual(expected_file, output, regen_cmd)
 
-    os.remove(output)
-
   def testMainMergeExample(self):
-    output = tempfile.mktemp()
+    output = os.path.join(self.tempdir, 'output')
     base_path = os.path.join(this_dir, '../libcros_config')
     cros_config_schema.Main(
         None,
@@ -541,8 +518,6 @@ class MainTests(unittest.TestCase):
                  'libcros_config/test_merge_overlay.yaml')
     expected_file = os.path.join(this_dir, '../libcros_config/test_merge.json')
     self.assertFileEqual(expected_file, output, regen_cmd)
-
-    os.remove(output)
 
   def testEcCodegenManyBoards(self):
     input_json = """

@@ -1,3 +1,4 @@
+#!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 # Copyright 2018 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -102,10 +103,6 @@ class TransformConfigTests(cros_test_lib.TestCase):
 
 class MainTests(cros_test_lib.TempDirTestCase):
 
-  def readFile(self, filename):
-    raw = osutils.ReadFile(filename)
-    return json.loads(raw.decode('string-escape').strip('"'))
-
   def testMainImportNoFilter(self):
     output = os.path.join(self.tempdir, 'output.json')
     cros_config_test_schema.Start(
@@ -113,7 +110,7 @@ class MainTests(cros_test_lib.TempDirTestCase):
         None,
         output,
         None)
-    json_dict = self.readFile(output)
+    json_dict = json.loads(osutils.ReadFile(output))
     json_obj = libcros_schema.GetNamedTuple(json_dict)
     self.assertEqual(2, len(json_obj.chromeos.devices))
 
@@ -132,7 +129,7 @@ class MainTests(cros_test_lib.TempDirTestCase):
         'nautilus',
         output,
         None)
-    json_dict = self.readFile(output)
+    json_dict = json.loads(osutils.ReadFile(output))
     json_obj = libcros_schema.GetNamedTuple(json_dict)
     self.assertEqual(1, len(json_obj.chromeos.devices))
 
@@ -147,7 +144,7 @@ class MainTests(cros_test_lib.TempDirTestCase):
         'nautiluslte',
         output,
         None)
-    json_dict = self.readFile(output)
+    json_dict = json.loads(osutils.ReadFile(output))
     json_obj = libcros_schema.GetNamedTuple(json_dict)
     self.assertEqual(1, len(json_obj.chromeos.devices))
 

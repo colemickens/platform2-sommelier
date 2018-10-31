@@ -1,4 +1,5 @@
 #!/usr/bin/env python2
+# -*- coding: utf-8 -*-
 # Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -11,11 +12,12 @@ import collections
 import copy
 from jinja2 import Template
 import json
-from jsonschema import validate
 import os
 import re
 import sys
 import yaml
+
+import  libcros_schema
 
 this_dir = os.path.dirname(__file__)
 
@@ -37,29 +39,6 @@ TEMPLATE_DIR = 'templates'
 TEMPLATE_SUFFIX = '.jinja2'
 
 
-def GetNamedTuple(mapping):
-  """Converts a mapping into Named Tuple recursively.
-
-  Args:
-    mapping: A mapping object to be converted.
-
-  Returns:
-    A named tuple generated from mapping
-  """
-  if not isinstance(mapping, collections.Mapping):
-    return mapping
-  new_mapping = {}
-  for k, v in mapping.iteritems():
-    if type(v) is list:
-      new_list = []
-      for val in v:
-        new_list.append(GetNamedTuple(val))
-      new_mapping[k.replace('-', '_').replace('@', '_')] = new_list
-    else:
-      new_mapping[k.replace('-', '_').replace('@', '_')] = GetNamedTuple(v)
-  return collections.namedtuple('Config', new_mapping.iterkeys())(**new_mapping)
-
-
 def MergeDictionaries(primary, overlay):
   """Merges the overlay dictionary onto the primary dictionary.
 
@@ -77,7 +56,7 @@ def MergeDictionaries(primary, overlay):
       primary[overlay_key] = overlay_value
     elif isinstance(overlay_value, collections.Mapping):
       MergeDictionaries(primary[overlay_key], overlay_value)
-    elif type(overlay_value) is list:
+    elif isinstance(overlay_value, list):
       primary[overlay_key].extend(overlay_value)
     else:
       primary[overlay_key] = overlay_value
@@ -142,7 +121,7 @@ def _SetTemplateVars(template_input, template_vars):
   for key, val in template_input.iteritems():
     if isinstance(val, collections.Mapping):
       _SetTemplateVars(val, template_vars)
-    elif type(val) is not list:
+    elif not isinstance(val, list):
       to_add[key] = val
 
   # Do this last so all variables from the parent scope win.
@@ -242,7 +221,7 @@ def _DeleteTemplateOnlyVars(template_input):
     val = template_input[key]
     if isinstance(val, collections.Mapping):
       _DeleteTemplateOnlyVars(val)
-    elif type(val) is list:
+    elif isinstance(val, list):
       for v in val:
         if isinstance(v, collections.Mapping):
           _DeleteTemplateOnlyVars(v)
@@ -314,12 +293,12 @@ def TransformConfig(config, model_filter_regex=None):
   # Drop everything except for configs since they were just used as shared
   # config in the source yaml.
   json_config = {
-    CHROMEOS: {
-      CONFIGS: configs,
-    },
+      CHROMEOS: {
+          CONFIGS: configs,
+      },
   }
 
-  return _FormatJson(json_config)
+  return libcros_schema.FormatJson(json_config)
 
 def _IsLegacyMigration(platform_name):
   """Determines if the platform was migrated from FDT impl.
@@ -415,6 +394,7 @@ const struct config_map *cros_config_get_config_map(int *num_entries) {
 
   return file_format % (',\n'.join(structs), len(structs))
 
+
 def GenerateEcCBindings(config):
   """Generates EC C struct bindings
 
@@ -473,28 +453,16 @@ def GenerateEcCBindings(config):
         sorted(device_properties[ec_build_target].items())
 
   h_template_path = os.path.join(
-      this_dir, TEMPLATE_DIR, (EC_OUTPUT_NAME + ".h" + TEMPLATE_SUFFIX))
+      this_dir, TEMPLATE_DIR, (EC_OUTPUT_NAME + '.h' + TEMPLATE_SUFFIX))
   h_template = Template(open(h_template_path).read())
 
   c_template_path = os.path.join(
-      this_dir, TEMPLATE_DIR, (EC_OUTPUT_NAME + ".c" + TEMPLATE_SUFFIX))
+      this_dir, TEMPLATE_DIR, (EC_OUTPUT_NAME + '.c' + TEMPLATE_SUFFIX))
   c_template = Template(open(c_template_path).read())
 
   h_output = h_template.render(flags=flags)
   c_output = c_template.render(device_properties=device_properties, flags=flags)
   return (h_output, c_output)
-
-def _FormatJson(config):
-  """Formats JSON for output or printing.
-
-  Args:
-    config: Dictionary to be output
-  """
-  # Work around bug in json dumps that adds trailing spaces with indent set.
-  return re.sub(
-      ', $',
-      ',',
-      json.dumps(config, sort_keys=True, indent=2), flags=re.MULTILINE)
 
 
 def FilterBuildElements(config):
@@ -509,7 +477,7 @@ def FilterBuildElements(config):
   for config in json_config[CHROMEOS][CONFIGS]:
     _FilterBuildElements(config, '')
 
-  return _FormatJson(json_config)
+  return libcros_schema.FormatJson(json_config)
 
 
 def _FilterBuildElements(config, path):
@@ -552,6 +520,7 @@ def GetValidSchemaProperties(
   _GetValidSchemaProperties(schema_node, [], result)
   return result
 
+
 def _GetValidSchemaProperties(schema_node, path, result):
   """Recursively finds the valid properties for a given node
 
@@ -563,31 +532,16 @@ def _GetValidSchemaProperties(schema_node, path, result):
   full_path = '/%s' % '/'.join(path)
   for key in schema_node:
     new_path = path + [key]
-    type = schema_node[key]['type']
+    node_type = schema_node[key]['type']
 
-    if type == 'object':
+    if node_type == 'object':
       if 'properties' in schema_node[key]:
         _GetValidSchemaProperties(
             schema_node[key]['properties'], new_path, result)
-    elif type == 'string':
+    elif node_type == 'string':
       all_props = result.get(full_path, [])
       all_props.append(key)
       result[full_path] = all_props
-
-def ValidateConfigSchema(schema, config):
-  """Validates a transformed cros config against the schema specified
-
-  Verifies that the config complies with the schema supplied.
-
-  Args:
-    schema: Source schema used to verify the config.
-    config: Config (transformed) that will be verified.
-  """
-  json_config = json.loads(config)
-  schema_yaml = yaml.load(schema)
-  schema_json_from_yaml = json.dumps(schema_yaml, sort_keys=True, indent=2)
-  schema_json = json.loads(schema_json_from_yaml)
-  validate(json_config, schema_json)
 
 
 class ValidationError(Exception):
@@ -605,6 +559,7 @@ def _ValidateUniqueIdentities(json_config):
                 for config in json_config['chromeos']['configs']]
   if len(identities) != len(set(identities)):
     raise ValidationError('Identities are not unique: %s' % identities)
+
 
 def _ValidateWhitelabelBrandChangesOnly(json_config):
   """Verifies that whitelabel changes are contained to branding information.
@@ -648,6 +603,7 @@ def _ValidateWhitelabelBrandChangesOnly(json_config):
                                  base_str,
                                  compare_str))
 
+
 def _ValidateHardwarePropertiesAreBoolean(json_config):
   """Checks that all fields under hardware-properties are boolean
 
@@ -667,6 +623,7 @@ def _ValidateHardwarePropertiesAreBoolean(json_config):
               ('All configs under hardware-properties must be boolean flags\n'
                'However, key \'{}\' has value \'{}\'.').format(key, value))
 
+
 def ValidateConfig(config):
   """Validates a transformed cros config for general business rules.
 
@@ -681,57 +638,6 @@ def ValidateConfig(config):
   _ValidateWhitelabelBrandChangesOnly(json_config)
   _ValidateHardwarePropertiesAreBoolean(json_config)
 
-def _FindImports(config_file, includes):
-  """Recursively looks up and finds files to include for yaml.
-
-  Args:
-    config_file: Path to the config file for which to apply imports.
-    includes: List that is built up through processing the files.
-  """
-  working_dir = os.path.dirname(config_file)
-  with open(config_file, 'r') as config_stream:
-    config_lines = config_stream.readlines()
-    yaml_import_lines = []
-    found_imports = False
-    # Parsing out just the imports snippet is required because the YAML
-    # isn't valid until the imports are eval'd
-    for line in config_lines:
-      if re.match("^imports", line):
-        found_imports = True
-        yaml_import_lines.append(line)
-      elif found_imports:
-        match = re.match(" *- (.*)", line)
-        if match:
-          yaml_import_lines.append(line)
-        else:
-          break
-
-    if yaml_import_lines:
-      yaml_import = yaml.load("\n".join(yaml_import_lines))
-
-      for import_file in yaml_import.get("imports", []):
-        full_path = os.path.join(working_dir, import_file)
-        _FindImports(full_path, includes)
-    includes.append(config_file)
-
-def ApplyImports(config_file):
-  """Parses the imports statements and applies them to a result config.
-
-  Args:
-    config_file: Path to the config file for which to apply imports.
-
-  Returns:
-    Raw config with the imports applied.
-  """
-  import_files = []
-  _FindImports(config_file, import_files)
-
-  all_yaml_files = []
-  for import_file in import_files:
-    with open(import_file, 'r') as yaml_stream:
-      all_yaml_files.append(yaml_stream.read())
-
-  return '\n'.join(all_yaml_files)
 
 def MergeConfigs(configs):
   """Evaluates and merges all config files into a single configuration.
@@ -744,7 +650,7 @@ def MergeConfigs(configs):
   """
   json_files = []
   for yaml_file in configs:
-    yaml_with_imports = ApplyImports(yaml_file)
+    yaml_with_imports = libcros_schema.ApplyImports(yaml_file)
     json_transformed_file = TransformConfig(yaml_with_imports)
     json_files.append(json.loads(json_transformed_file))
 
@@ -777,7 +683,8 @@ def MergeConfigs(configs):
       if not matched:
         result_json['chromeos']['configs'].append(to_merge_config)
 
-  return _FormatJson(result_json)
+  return libcros_schema.FormatJson(result_json)
+
 
 def Main(schema,
          config,
@@ -813,33 +720,35 @@ def Main(schema,
   json_transform = full_json_transform
 
   with open(schema, 'r') as schema_stream:
-    ValidateConfigSchema(schema_stream.read(), json_transform)
+    libcros_schema.ValidateConfigSchema(schema_stream.read(), json_transform)
     ValidateConfig(json_transform)
     if filter_build_details:
       json_transform = FilterBuildElements(json_transform)
   if output:
     with open(output, 'w') as output_stream:
-      # Using print function adds proper trailing newline
+      # Using print function adds proper trailing newline.
       print(json_transform, file=output_stream)
   else:
     print(json_transform)
   if gen_c_bindings_output:
     with open(gen_c_bindings_output, 'w') as output_stream:
-      # Using print function adds proper trailing newline
+      # Using print function adds proper trailing newline.
       print(GenerateMosysCBindings(full_json_transform), file=output_stream)
 
 
-def main(_argv=None):
+# The distutils generated command line wrappers will not pass us argv.
+def main(argv=None):
   """Main program which parses args and runs
 
   Args:
-    _argv: Intended to be the list of arguments to the program, or None to use
-        sys.argv (but at present this is unused)
+    argv: List of command line arguments, if None uses sys.argv.
   """
-  args = ParseArgs(sys.argv[1:])
-  Main(args.schema, args.config, args.output, args.filter,
-       args.generated_c_output, args.configs)
+  if argv is None:
+    argv = sys.argv[1:]
+  opts = ParseArgs(argv)
+  Main(opts.schema, opts.config, opts.output, opts.filter,
+       opts.generated_c_output, opts.configs)
 
 
 if __name__ == '__main__':
-  main()
+  sys.exit(main(sys.argv[1:]))
