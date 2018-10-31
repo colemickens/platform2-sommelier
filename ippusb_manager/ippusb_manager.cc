@@ -63,7 +63,8 @@ void SpawnXD(const std::string& socket_path, UsbPrinterInfo* printer_info) {
       "-l",
       base::StringPrintf("--bus-device=%03d:%03d", printer_info->bus(),
                          printer_info->device()),
-      "--uds-path=" + socket_path
+      "--uds-path=" + socket_path,
+      "--no-broadcast"
   };
 
   // This vector does not modify the underlying strings, it's just used for
