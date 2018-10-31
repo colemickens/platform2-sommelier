@@ -23,8 +23,10 @@ void OnConnectionClosedOrError(
 
 MediaPerceptionServiceImpl::MediaPerceptionServiceImpl(
     mojo::ScopedMessagePipeHandle pipe,
-    base::Closure connection_error_handler)
-    : binding_(this, std::move(pipe)) {
+    base::Closure connection_error_handler,
+    std::shared_ptr<VideoCaptureServiceClient> video_capture_service_client)
+    : binding_(this, std::move(pipe)),
+      video_capture_service_client_(video_capture_service_client) {
   binding_.set_connection_error_handler(std::move(connection_error_handler));
 }
 
@@ -36,7 +38,8 @@ void MediaPerceptionServiceImpl::GetController(
 
   // Use a connection error handler to strongly bind |controller| to |request|.
   MediaPerceptionControllerImpl* const controller =
-      new MediaPerceptionControllerImpl(std::move(request));
+      new MediaPerceptionControllerImpl(std::move(request),
+                                        video_capture_service_client_);
   controller->set_connection_error_handler(
       base::Bind(&OnConnectionClosedOrError, base::Unretained(controller)));
 }

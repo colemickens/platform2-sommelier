@@ -5,6 +5,7 @@
 #include "media_perception/media_perception_controller_impl.h"
 
 #include <base/bind.h>
+#include <memory>
 #include <utility>
 
 #include "base/logging.h"
@@ -24,8 +25,10 @@ void OnConnectionClosedOrError(
 }  // namespace
 
 MediaPerceptionControllerImpl::MediaPerceptionControllerImpl(
-    chromeos::media_perception::mojom::MediaPerceptionControllerRequest request)
-  : binding_(this, std::move(request)) {}
+    chromeos::media_perception::mojom::MediaPerceptionControllerRequest request,
+    std::shared_ptr<VideoCaptureServiceClient> video_capture_service_client)
+  : binding_(this, std::move(request)),
+    video_capture_service_client_(video_capture_service_client) {}
 
 void MediaPerceptionControllerImpl::set_connection_error_handler(
     base::Closure connection_error_handler) {
@@ -39,7 +42,8 @@ void MediaPerceptionControllerImpl::ActivateMediaPerception(
   // Use a connection error handler to strongly bind |media_perception_impl|
   // to |request|.
   MediaPerceptionImpl* const media_perception_impl =
-      new MediaPerceptionImpl(std::move(request));
+      new MediaPerceptionImpl(std::move(request),
+                              video_capture_service_client_);
   media_perception_impl->set_connection_error_handler(
       base::Bind(&OnConnectionClosedOrError,
                  base::Unretained(media_perception_impl)));

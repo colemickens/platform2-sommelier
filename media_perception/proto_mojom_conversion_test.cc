@@ -96,8 +96,8 @@ TEST(ProtoMojomConversionTest, VideoDeviceToMojom) {
 
   VideoDevicePtr device_ptr = ToMojom(device);
   EXPECT_EQ(device_ptr->id, "id");
-  EXPECT_EQ(device_ptr->display_name, "display_name");
-  EXPECT_EQ(device_ptr->model_id, "model_id");
+  EXPECT_EQ(*device_ptr->display_name, "display_name");
+  EXPECT_EQ(*device_ptr->model_id, "model_id");
   EXPECT_EQ(device_ptr->in_use, true);
   EXPECT_EQ(device_ptr->configuration->width_in_pixels, 1);
   EXPECT_EQ(device_ptr->configuration->height_in_pixels, 2);
@@ -133,7 +133,7 @@ TEST(ProtoMojomConversionTest, AudioDeviceToMojom) {
       "id", "display_name");
   AudioDevicePtr device_ptr = ToMojom(device);
   EXPECT_EQ(device_ptr->id, "id");
-  EXPECT_EQ(device_ptr->display_name, "display_name");
+  EXPECT_EQ(*device_ptr->display_name, "display_name");
   EXPECT_EQ(device_ptr->configuration->frequency_in_hz, 1);
   EXPECT_EQ(device_ptr->configuration->num_channels, 2);
   EXPECT_EQ(device_ptr->supported_configurations.size(),
@@ -161,8 +161,8 @@ TEST(ProtoMojomConversionTest, PipelineErrorToMojom) {
 
   PipelineErrorPtr error_ptr = ToMojom(error);
   EXPECT_EQ(error_ptr->error_type, PipelineErrorType::CONFIGURATION);
-  EXPECT_EQ(error_ptr->error_source, kMockErrorSource);
-  EXPECT_EQ(error_ptr->error_string, kMockErrorString);
+  EXPECT_EQ(*error_ptr->error_source, kMockErrorSource);
+  EXPECT_EQ(*error_ptr->error_string, kMockErrorString);
 }
 
 TEST(ProtoMojomConversionTest, PipelineStateToMojom) {
@@ -179,8 +179,8 @@ TEST(ProtoMojomConversionTest, PipelineStateToMojom) {
 
   PipelineErrorPtr& error_ptr = state_ptr->error;
   EXPECT_EQ(error_ptr->error_type, PipelineErrorType::CONFIGURATION);
-  EXPECT_EQ(error_ptr->error_source, kMockErrorSource);
-  EXPECT_EQ(error_ptr->error_string, kMockErrorString);
+  EXPECT_EQ(*error_ptr->error_source, kMockErrorSource);
+  EXPECT_EQ(*error_ptr->error_string, kMockErrorString);
 }
 
 }  // namespace
@@ -333,13 +333,13 @@ TEST(ProtoMojomConversionTest, DeviceTemplateToProto) {
 }
 
 TEST(ProtoMojomConversionTest, PipelineErrorToProto) {
-  // Construct mojom ptr for PipelineErro
+  // Construct mojom ptr for PipelineError.
   chromeos::media_perception::mojom::PipelineErrorPtr error_ptr =
     chromeos::media_perception::mojom::PipelineError::New();
   error_ptr->error_type =
     chromeos::media_perception::mojom::PipelineErrorType::CONFIGURATION;
-  error_ptr->error_source = kMockErrorSource;
-  error_ptr->error_string = kMockErrorString;
+  *error_ptr->error_source = kMockErrorSource;
+  *error_ptr->error_string = kMockErrorString;
 
   PipelineError error = ToProto(error_ptr);
   EXPECT_EQ(error.error_type(), PipelineErrorType::CONFIGURATION);
@@ -357,8 +357,8 @@ TEST(ProtoMojomConversionTest, PipelineStateToProto) {
 
   state_ptr->error->error_type =
     chromeos::media_perception::mojom::PipelineErrorType::CONFIGURATION;
-  state_ptr->error->error_source = kMockErrorSource;
-  state_ptr->error->error_string = kMockErrorString;
+  *state_ptr->error->error_source = kMockErrorSource;
+  *state_ptr->error->error_string = kMockErrorString;
 
   PipelineState state = ToProto(state_ptr);
   EXPECT_EQ(state.status(), PipelineStatus::RUNNING);

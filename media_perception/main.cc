@@ -341,6 +341,7 @@ int main(int argc, char** argv) {
   mri::MojoConnector mojo_connector;
   mri::CrOSDbusService* cros_dbus_service = new mri::CrOSDbusService();
   cros_dbus_service->SetMojoConnector(&mojo_connector);
+
   mri::VideoCaptureServiceClientImpl* vidcap_client =
       new mri::VideoCaptureServiceClientImpl();
   vidcap_client->SetMojoConnector(&mojo_connector);
@@ -349,6 +350,7 @@ int main(int argc, char** argv) {
   auto cras =
       std::unique_ptr<mri::CrasClientWrapper>(new mri::CrasClientImpl());
   auto vidcap = std::unique_ptr<mri::VideoCaptureServiceClient>(vidcap_client);
+
   const int return_value = run_rtanalytics(argc, argv, std::move(dbus),
                                            std::move(cras), std::move(vidcap));
   return return_value;

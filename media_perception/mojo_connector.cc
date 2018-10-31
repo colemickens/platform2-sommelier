@@ -62,6 +62,13 @@ MojoConnector::MojoConnector(): ipc_thread_("IpcThread") {
     LOG(ERROR) << "Failed to start IPC Thread";
   }
   mojo::edk::InitIPCSupport(ipc_thread_.task_runner());
+
+  unique_device_counter_ = 1;
+}
+
+void MojoConnector::SetVideoCaptureServiceClient(
+    std::shared_ptr<VideoCaptureServiceClient> video_capture_service_client) {
+  video_capture_service_client_ = video_capture_service_client;
 }
 
 void MojoConnector::ReceiveMojoInvitationFileDescriptor(int fd_int) {
@@ -96,7 +103,8 @@ void MojoConnector::AcceptConnectionOnIpcThread(base::ScopedFD fd) {
   media_perception_service_impl_ = std::make_unique<MediaPerceptionServiceImpl>(
       std::move(child_pipe),
       base::Bind(&MojoConnector::OnConnectionErrorOrClosed,
-                 base::Unretained(this)));
+                 base::Unretained(this)),
+      video_capture_service_client_);
 }
 
 void MojoConnector::ConnectToVideoCaptureService() {
@@ -136,6 +144,25 @@ void MojoConnector::GetDevicesOnIpcThread(
       &MojoConnector::OnDeviceInfosReceived, base::Unretained(this), callback));
 }
 
+std::string MojoConnector::GetObfuscatedDeviceId(
+    const std::string& device_id,
+    const std::string& display_name) {
+  const std::string unique_id = device_id + display_name;
+  std::map<std::string, std::string>::iterator it =
+      unique_id_map_.find(unique_id);
+  if (it == unique_id_map_.end()) {
+    std::string obfuscated_id = std::to_string(unique_device_counter_);
+    unique_id_map_.insert(
+        std::make_pair(unique_id, obfuscated_id));
+    // Increment the counter so the next obfuscated id is different.
+    unique_device_counter_++;
+    return obfuscated_id;
+  }
+
+  // Obfuscated id already created for this device.
+  return it->second;
+}
+
 void MojoConnector::OnDeviceInfosReceived(
     const VideoCaptureServiceClient::GetDevicesCallback& callback,
     std::vector<media::mojom::VideoCaptureDeviceInfoPtr> infos) {
@@ -143,7 +170,12 @@ void MojoConnector::OnDeviceInfosReceived(
   std::vector<SerializedVideoDevice> devices;
   for (const auto& capture_device : infos) {
     VideoDevice device;
-    device.set_id(capture_device->descriptor->device_id);
+    const std::string device_id = capture_device->descriptor->device_id;
+    const std::string obfuscated_device_id = GetObfuscatedDeviceId(
+        device_id, capture_device->descriptor->display_name);
+    obfuscated_device_id_map_.insert(
+        std::make_pair(obfuscated_device_id, device_id));
+    device.set_id(obfuscated_device_id);
     device.set_display_name(capture_device->descriptor->display_name);
     device.set_model_id(capture_device->descriptor->model_id);
     LOG(INFO) << "Device: " << device.display_name();
@@ -178,8 +210,14 @@ void MojoConnector::SetActiveDevice(
 void MojoConnector::SetActiveDeviceOnIpcThread(
     std::string device_id,
     const VideoCaptureServiceClient::SetActiveDeviceCallback& callback) {
+  std::map<std::string, std::string>::iterator it =
+      obfuscated_device_id_map_.find(device_id);
+  if (it == obfuscated_device_id_map_.end()) {
+    LOG(ERROR) << "Device id not found in obfuscated_device_id map.";
+    return;
+  }
   device_factory_->CreateDevice(
-      device_id, mojo::MakeRequest(&active_device_),
+      it->second, mojo::MakeRequest(&active_device_),
       base::Bind(&MojoConnector::OnSetActiveDeviceCallback,
                  base::Unretained(this), callback));
 }
@@ -295,3 +333,4 @@ void MojoConnector::PushFrameToVirtualDeviceOnIpcThread(
 }
 
 }  // namespace mri
+

@@ -5,8 +5,10 @@
 #ifndef MEDIA_PERCEPTION_MEDIA_PERCEPTION_CONTROLLER_IMPL_H_
 #define MEDIA_PERCEPTION_MEDIA_PERCEPTION_CONTROLLER_IMPL_H_
 
+#include <memory>
 #include <mojo/public/cpp/bindings/binding.h>
 
+#include "media_perception/video_capture_service_client.h"
 #include "mojom/media_perception_service.mojom.h"
 
 namespace mri {
@@ -16,7 +18,8 @@ class MediaPerceptionControllerImpl :
  public:
   MediaPerceptionControllerImpl(
       chromeos::media_perception::mojom::MediaPerceptionControllerRequest
-      request);
+      request,
+      std::shared_ptr<VideoCaptureServiceClient> video_capture_service_client);
 
   void set_connection_error_handler(base::Closure connection_error_handler);
 
@@ -28,6 +31,8 @@ class MediaPerceptionControllerImpl :
  private:
   mojo::Binding<chromeos::media_perception::mojom::MediaPerceptionController>
       binding_;
+
+  std::shared_ptr<VideoCaptureServiceClient> video_capture_service_client_;
 
   DISALLOW_COPY_AND_ASSIGN(MediaPerceptionControllerImpl);
 };

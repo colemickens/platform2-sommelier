@@ -126,8 +126,10 @@
           'includes': ['../common-mk/common_test.gypi'],
           'dependencies': ['media_perception_service_lib'],
           'sources': [
-            '../common-mk/testrunner.cc',
+            'fake_video_capture_service_client.cc',
+            'media_perception_impl_test.cc',
             'proto_mojom_conversion_test.cc',
+            'testrunner.cc',
           ],
         },
       ],

@@ -5,6 +5,8 @@
 #ifndef MEDIA_PERCEPTION_PROTO_MOJOM_CONVERSION_H_
 #define MEDIA_PERCEPTION_PROTO_MOJOM_CONVERSION_H_
 
+#include <vector>
+
 #include "media_perception/device_management.pb.h"
 #include "media_perception/pipeline.pb.h"
 #include "mojom/device_management.mojom.h"
@@ -36,6 +38,8 @@ PipelineStatePtr ToMojom(const mri::PipelineState& state);
 }  // namespace chromeos
 
 namespace mri {
+
+std::vector<uint8_t> SerializeVideoDeviceProto(const VideoDevice& device);
 
 PixelFormat ToProto(
     chromeos::media_perception::mojom::PixelFormat format);

@@ -5,8 +5,10 @@
 #ifndef MEDIA_PERCEPTION_MEDIA_PERCEPTION_IMPL_H_
 #define MEDIA_PERCEPTION_MEDIA_PERCEPTION_IMPL_H_
 
+#include <memory>
 #include <mojo/public/cpp/bindings/binding.h>
 
+#include "media_perception/video_capture_service_client.h"
 #include "mojom/media_perception.mojom.h"
 
 namespace mri {
@@ -15,13 +17,19 @@ class MediaPerceptionImpl :
   public chromeos::media_perception::mojom::MediaPerception {
  public:
   MediaPerceptionImpl(
-      chromeos::media_perception::mojom::MediaPerceptionRequest request);
+      chromeos::media_perception::mojom::MediaPerceptionRequest request,
+      std::shared_ptr<VideoCaptureServiceClient> vidcap_client);
+
+  // chromeos::media_perception::mojom::MediaPerception:
+  void GetVideoDevices(const GetVideoDevicesCallback& callback) override;
 
   void set_connection_error_handler(base::Closure connection_error_handler);
 
  private:
   mojo::Binding<chromeos::media_perception::mojom::MediaPerception>
       binding_;
+
+  std::shared_ptr<VideoCaptureServiceClient> vidcap_client_;
 
   DISALLOW_COPY_AND_ASSIGN(MediaPerceptionImpl);
 };

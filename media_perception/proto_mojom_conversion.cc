@@ -155,6 +155,15 @@ PipelineStatePtr ToMojom(const mri::PipelineState& state) {
 
 namespace mri {
 
+std::vector<uint8_t> SerializeVideoDeviceProto(const VideoDevice& device) {
+  const int size = device.ByteSizeLong();
+  std::vector<uint8_t> bytes(size, 0);
+
+  CHECK(device.SerializeToArray(bytes.data(), size))
+      << "Failed to serialize proto.";
+  return bytes;
+}
+
 PixelFormat ToProto(
     chromeos::media_perception::mojom::PixelFormat format) {
   switch (format) {

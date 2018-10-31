@@ -1,8 +1,13 @@
 // Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+//
+// Next MinVersion: 1
 
 module chromeos.media_perception.mojom;
 
+import "mojom/device_management.mojom";
+
 interface MediaPerception {
+  GetVideoDevices@1() => (array<VideoDevice> devices);
 };
