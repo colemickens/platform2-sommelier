@@ -292,7 +292,7 @@ class CommonTests(object):
          ('whitelabel',
           FirmwareInfo(model='whitelabel',
                        shared_model='some',
-                       key_id='',
+                       key_id='WHITELABEL1',
                        have_image=True,
                        bios_build_target='some',
                        ec_build_target='some',

@@ -202,6 +202,7 @@
 		oem-id = "1";
 		firmware {
 			shares = <&shared>;
+			key-id = "WHITELABEL1";
 		};
 		submodels {
 			some_whitelabel_touch: touch {

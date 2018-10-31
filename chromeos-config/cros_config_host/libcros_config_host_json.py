@@ -11,6 +11,7 @@ for CLI access to this library.
 from __future__ import print_function
 
 from collections import OrderedDict
+import copy
 import json
 
 from cros_config_schema import TransformConfig
@@ -166,7 +167,6 @@ class CrosConfigJson(CrosConfigBaseImpl):
         name = config.GetName()
 
         if sig_in_customization_id:
-          key_id = ''
           sig_id = 'sig-id-in-customization-id'
         else:
           sig_id = config.GetValue(fw_signer_config, 'signature-id')
@@ -179,15 +179,19 @@ class CrosConfigJson(CrosConfigBaseImpl):
         config.firmware_info[name] = info
 
         if sig_in_customization_id:
-          for config in self._configs:
-            if config.GetName() == name:
-              identity = str(config.GetProperties('/identity'))
-              processed.add(identity)
-              fw_signer_config = config.GetProperties('/firmware-signing')
-              key_id = config.GetValue(fw_signer_config, 'key-id')
-              sig_id = config.GetValue(fw_signer_config, 'signature-id')
-              config.firmware_info[sig_id] = info._replace(
-                  model=sig_id, key_id=key_id, have_image=False, sig_id=sig_id)
+          for wl_config in self._configs:
+            if wl_config.GetName() == name:
+              wl_identity = str(wl_config.GetProperties('/identity'))
+              processed.add(wl_identity)
+              fw_signer_config = wl_config.GetProperties('/firmware-signing')
+              wl_key_id = wl_config.GetValue(fw_signer_config, 'key-id')
+              wl_sig_id = wl_config.GetValue(fw_signer_config, 'signature-id')
+              wl_fw_info = copy.deepcopy(info)
+              wl_config.firmware_info[wl_sig_id] = wl_fw_info._replace(
+                  model=wl_sig_id,
+                  key_id=wl_key_id,
+                  have_image=False,
+                  sig_id=wl_sig_id)
 
   def GetDeviceConfigs(self):
     return self._configs
