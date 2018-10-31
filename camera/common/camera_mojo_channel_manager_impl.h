@@ -38,7 +38,7 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
   mojom::CameraAlgorithmOpsPtr CreateCameraAlgorithmOpsPtr() final;
 
  private:
-  bool Start();
+  bool InitializeMojoEnv();
 
   // Ensure camera dispatcher Mojo channel connected.
   // It should be called for any public API that needs |dispatcher_|.
@@ -49,6 +49,10 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
 
   void CreateJpegEncodeAcceleratorOnIpcThread(
       mojom::JpegEncodeAcceleratorRequest request);
+
+  static void TearDownMojoEnv();
+
+  static void TearDownMojoEnvLockedOnThread();
 
   // Error handler for camera dispatcher Mojo channel.
   static void OnDispatcherError();

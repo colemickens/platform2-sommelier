@@ -33,34 +33,12 @@ CameraMojoChannelManager::CreateInstance() {
 
 CameraMojoChannelManagerImpl::CameraMojoChannelManagerImpl() {
   VLOGF_ENTER();
-  bool success = Start();
-  DCHECK(success);
+  bool success = InitializeMojoEnv();
+  CHECK(success);
 }
 
 CameraMojoChannelManagerImpl::~CameraMojoChannelManagerImpl() {
   VLOGF_ENTER();
-}
-
-bool CameraMojoChannelManagerImpl::Start() {
-  base::AutoLock l(static_lock_);
-
-  if (mojo_initialized_) {
-    return true;
-  }
-
-  ipc_thread_ = new base::Thread("MojoIpcThread");
-  if (!ipc_thread_->StartWithOptions(
-          base::Thread::Options(base::MessageLoop::TYPE_IO, 0))) {
-    LOGF(ERROR) << "Failed to start IPC Thread";
-    delete ipc_thread_;
-    ipc_thread_ = nullptr;
-    return false;
-  }
-  mojo::edk::Init();
-  mojo::edk::InitIPCSupport(ipc_thread_->task_runner());
-  mojo_initialized_ = true;
-
-  return true;
 }
 
 void CameraMojoChannelManagerImpl::CreateJpegDecodeAccelerator(
@@ -125,6 +103,29 @@ void CameraMojoChannelManagerImpl::CreateJpegEncodeAcceleratorOnIpcThread(
   }
 }
 
+bool CameraMojoChannelManagerImpl::InitializeMojoEnv() {
+  VLOGF_ENTER();
+
+  base::AutoLock l(static_lock_);
+
+  if (mojo_initialized_) {
+    return true;
+  }
+
+  ipc_thread_ = new base::Thread("MojoIpcThread");
+  if (!ipc_thread_->StartWithOptions(
+          base::Thread::Options(base::MessageLoop::TYPE_IO, 0))) {
+    LOGF(ERROR) << "Failed to start IPC Thread";
+    delete ipc_thread_;
+    ipc_thread_ = nullptr;
+    return false;
+  }
+  mojo::edk::Init();
+  mojo::edk::InitIPCSupport(ipc_thread_->task_runner());
+  mojo_initialized_ = true;
+  return true;
+}
+
 void CameraMojoChannelManagerImpl::EnsureDispatcherConnectedOnIpcThread() {
   DCHECK(ipc_thread_->task_runner()->BelongsToCurrentThread());
   VLOGF_ENTER();
@@ -155,12 +156,40 @@ void CameraMojoChannelManagerImpl::EnsureDispatcherConnectedOnIpcThread() {
 }
 
 // static
+__attribute__((destructor(101))) void
+CameraMojoChannelManagerImpl::TearDownMojoEnv() {
+  VLOGF_ENTER();
+
+  base::AutoLock l(static_lock_);
+
+  if (!mojo_initialized_) {
+    return;
+  }
+
+  ipc_thread_->task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind(CameraMojoChannelManagerImpl::TearDownMojoEnvLockedOnThread));
+  ipc_thread_->Stop();
+  delete ipc_thread_;
+  ipc_thread_ = nullptr;
+}
+
+// static
+void CameraMojoChannelManagerImpl::TearDownMojoEnvLockedOnThread() {
+  DCHECK(ipc_thread_->task_runner()->BelongsToCurrentThread());
+
+  if (dispatcher_.is_bound()) {
+    dispatcher_.reset();
+  }
+  mojo::edk::ShutdownIPCSupport();
+}
+
+// static
 void CameraMojoChannelManagerImpl::OnDispatcherError() {
   DCHECK(ipc_thread_->task_runner()->BelongsToCurrentThread());
   VLOGF_ENTER();
   LOGF(ERROR) << "Mojo channel to CameraHalDispatcher is broken";
   dispatcher_.reset();
-  VLOGF_EXIT();
 }
 
 }  // namespace cros
