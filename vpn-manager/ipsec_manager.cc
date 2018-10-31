@@ -4,7 +4,6 @@
 
 #include "vpn-manager/ipsec_manager.h"
 
-#include <grp.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -22,6 +21,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <brillo/process.h>
+#include <brillo/userdb_utils.h>
 #include <openssl/pem.h>
 #include <openssl/x509.h>
 
@@ -505,17 +505,13 @@ bool IpsecManager::WriteConfigFiles() {
 
 bool IpsecManager::Start() {
   if (!ipsec_group_) {
-    struct group group_buffer;
-    struct group* group_result = nullptr;
-    char buffer[256];
-    if (getgrnam_r(kIpsecGroupName, &group_buffer, buffer, sizeof(buffer),
-                   &group_result) != 0 ||
-        !group_result) {
+    gid_t gid;
+    if (!brillo::userdb::GetGroupInfo(kIpsecGroupName, &gid)) {
       LOG(ERROR) << "Cannot find group id for " << kIpsecGroupName;
       RegisterError(kServiceErrorInternal);
       return false;
     }
-    ipsec_group_ = group_result->gr_gid;
+    ipsec_group_ = gid;
     DLOG(INFO) << "Using ipsec group " << ipsec_group_;
   }
   if (!WriteConfigFiles() || !StartStarter()) {
