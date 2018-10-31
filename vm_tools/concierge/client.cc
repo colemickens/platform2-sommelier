@@ -46,6 +46,7 @@ constexpr char kImageTypeQcow2[] = "qcow2";
 constexpr char kImageTypeRaw[] = "raw";
 constexpr char kImageTypeAuto[] = "auto";
 constexpr int64_t kMinimumDiskSize = 1ll * 1024 * 1024 * 1024;  // 1 GiB
+constexpr int64_t kDiskSizeMask = ~511ll;  // Round to disk block size.
 constexpr char kRemovableMediaRoot[] = "/media/removable";
 constexpr char kStorageCryptohomeRoot[] = "cryptohome-root";
 constexpr char kStorageCryptohomeDownloads[] = "cryptohome-downloads";
@@ -701,7 +702,7 @@ int StartTerminaVm(dbus::ObjectProxy* proxy,
   if (!cryptohome_id.empty()) {
     int64_t disk_size =
         base::SysInfo::AmountOfFreeDiskSpace(base::FilePath("/home"));
-    disk_size = (disk_size * 9) / 10;
+    disk_size = ((disk_size * 9) / 10) & kDiskSizeMask;
 
     if (disk_size < kMinimumDiskSize)
       disk_size = kMinimumDiskSize;
