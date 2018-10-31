@@ -8,7 +8,6 @@
 #include <fcntl.h>  // For file creation modes.
 #include <inttypes.h>
 #include <linux/limits.h>  // PATH_MAX
-#include <pwd.h>           // For struct passwd.
 #include <sys/types.h>     // for mode_t.
 #include <sys/wait.h>      // For waitpid.
 #include <unistd.h>        // For execv and fork.
@@ -31,6 +30,7 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/key_value_store.h>
 #include <brillo/process.h>
+#include <brillo/userdb_utils.h>
 
 #include "crash-reporter/paths.h"
 #include "crash-reporter/util.h"
@@ -430,25 +430,6 @@ FilePath CrashCollector::GetCrashDirectoryInfo(uid_t process_euid,
   }
 }
 
-bool CrashCollector::GetUserInfoFromName(const std::string& name,
-                                         uid_t* uid,
-                                         gid_t* gid) {
-  char storage[256];
-  struct passwd passwd_storage;
-  struct passwd* passwd_result = nullptr;
-
-  if (getpwnam_r(name.c_str(), &passwd_storage, storage, sizeof(storage),
-                 &passwd_result) != 0 ||
-      passwd_result == nullptr) {
-    LOG(ERROR) << "Cannot find user named " << name;
-    return false;
-  }
-
-  *uid = passwd_result->pw_uid;
-  *gid = passwd_result->pw_gid;
-  return true;
-}
-
 bool CrashCollector::GetCreatedCrashDirectoryByEuid(uid_t euid,
                                                     FilePath* crash_directory,
                                                     bool* out_of_capacity) {
@@ -465,8 +446,8 @@ bool CrashCollector::GetCreatedCrashDirectoryByEuid(uid_t euid,
     return true;
   }
 
-  if (!GetUserInfoFromName(kDefaultUserName, &default_user_id,
-                           &default_user_group)) {
+  if (!brillo::userdb::GetUserInfo(kDefaultUserName, &default_user_id,
+                                   &default_user_group)) {
     LOG(ERROR) << "Could not find default user info";
     return false;
   }

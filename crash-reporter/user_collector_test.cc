@@ -440,14 +440,6 @@ TEST_F(UserCollectorTest, GetStateFromStatus) {
   EXPECT_EQ("Z (zombie)", state);
 }
 
-TEST_F(UserCollectorTest, GetUserInfoFromName) {
-  gid_t gid = 100;
-  uid_t uid = 100;
-  EXPECT_TRUE(collector_.GetUserInfoFromName("root", &uid, &gid));
-  EXPECT_EQ(0, uid);
-  EXPECT_EQ(0, gid);
-}
-
 TEST_F(UserCollectorTest, ClobberContainerDirectory) {
   // Try a path that is not writable.
   ASSERT_FALSE(collector_.ClobberContainerDirectory(FilePath("/bad/path")));

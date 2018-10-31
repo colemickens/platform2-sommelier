@@ -132,7 +132,6 @@ class CrashCollector {
                                        mode_t* mode,
                                        uid_t* directory_owner,
                                        gid_t* directory_group);
-  bool GetUserInfoFromName(const std::string& name, uid_t* uid, gid_t* gid);
 
   // Determines the crash directory for given euid, and creates the
   // directory if necessary with appropriate permissions.  If
