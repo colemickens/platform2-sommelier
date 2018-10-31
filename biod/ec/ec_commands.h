@@ -4721,6 +4721,20 @@ struct __ec_align2 ec_response_pd_chip_info {
 	};
 };
 
+struct __ec_align2 ec_response_pd_chip_info_v1 {
+	uint16_t vendor_id;
+	uint16_t product_id;
+	uint16_t device_id;
+	union {
+		uint8_t fw_version_string[8];
+		uint64_t fw_version_number;
+	};
+	union {
+		uint8_t min_req_fw_version_string[8];
+		uint64_t min_req_fw_version_number;
+	};
+};
+
 /* Run RW signature verification and get status */
 #define EC_CMD_RWSIG_CHECK_STATUS	0x011C
 
@@ -4939,6 +4953,8 @@ struct __ec_align2 ec_params_fp_passthru {
 #define FP_MODE_ENROLL_IMAGE   (1<<5)
 /* Try to match the current finger image */
 #define FP_MODE_MATCH          (1<<6)
+/* Reset and re-initialize the sensor. */
+#define FP_MODE_RESET_SENSOR   (1<<7)
 /* special value: don't change anything just read back current mode */
 #define FP_MODE_DONT_CHANGE    (1<<31)
 
@@ -4949,6 +4965,7 @@ struct __ec_align2 ec_params_fp_passthru {
 			FP_MODE_ENROLL_SESSION | \
 			FP_MODE_ENROLL_IMAGE   | \
 			FP_MODE_MATCH          | \
+			FP_MODE_RESET_SENSOR   | \
 			FP_MODE_DONT_CHANGE)
 
 /* Capture types defined in bits [30..28] */
@@ -5054,10 +5071,11 @@ struct __ec_align4 ec_response_fp_info {
 #define FP_CONTEXT_USERID_WORDS (32 / sizeof(uint32_t))
 #define FP_CONTEXT_TAG_BYTES 16
 #define FP_CONTEXT_SALT_BYTES 16
+#define FP_CONTEXT_TPM_BYTES 32
 
 struct ec_fp_template_encryption_metadata {
 	/*
-	 * Version of the structure format (N=1).
+	 * Version of the structure format (N=2).
 	 */
 	uint16_t struct_version;
 	/* Reserved bytes, set to 0. */
@@ -5115,6 +5133,18 @@ struct __ec_align2 ec_response_fp_stats {
 	} overall_t0;
 	uint8_t timestamps_invalid;
 	int8_t template_matched;
+};
+
+#define EC_CMD_FP_SEED 0x0408
+struct __ec_align4 ec_params_fp_seed {
+	/*
+	 * Version of the structure format (N=2).
+	 */
+	uint16_t struct_version;
+	/* Reserved bytes, set to 0. */
+	uint16_t reserved;
+	/* Seed from the TPM. */
+	uint8_t seed[FP_CONTEXT_TPM_BYTES];
 };
 
 /*****************************************************************************/

@@ -815,8 +815,7 @@ void CrosFpBiometricsManager::SetDiskAccesses(bool allow) {
 }
 
 bool CrosFpBiometricsManager::ResetSensor() {
-  // TODO(pmalani): FP_MODE_RESET_SENSOR
-  if (!cros_dev_->FpMode((1 << 7))) {
+  if (!cros_dev_->FpMode(FP_MODE_RESET_SENSOR)) {
     LOG(ERROR) << "Failed to send reset_sensor command to FPMCU.";
     return false;
   }
