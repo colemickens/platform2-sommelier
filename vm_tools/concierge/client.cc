@@ -437,8 +437,11 @@ int CreateDiskImage(dbus::ObjectProxy* proxy,
     return -1;
   }
 
-  if (response.status() != vm_tools::concierge::DISK_STATUS_EXISTS &&
-      response.status() != vm_tools::concierge::DISK_STATUS_CREATED) {
+  if (response.status() == vm_tools::concierge::DISK_STATUS_EXISTS) {
+    LOG(INFO) << "Disk image already exists: " << response.disk_path();
+  } else if (response.status() == vm_tools::concierge::DISK_STATUS_CREATED) {
+    LOG(INFO) << "Disk image created: " << response.disk_path();
+  } else {
     LOG(ERROR) << "Failed to create disk image: " << response.failure_reason();
     return -1;
   }
