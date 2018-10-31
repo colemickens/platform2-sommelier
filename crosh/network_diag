@@ -808,6 +808,7 @@ diag_hosts () {
     "accounts.google.com"
     "accounts.gstatic.com"
     "accounts.youtube.com"
+    "chromeos-ca.gstatic.com"
     "clients1.google.com"
     "clients2.google.com"
     "clients3.google.com"
