@@ -6,7 +6,6 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <pwd.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -16,6 +15,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/userdb_utils.h>
 
 #include "debugd/src/process_with_output.h"
 
@@ -32,20 +32,10 @@ constexpr char kUidMapFileFormat[] = "/proc/%d/uid_map";
 // this file.
 constexpr uid_t kInvalidUid = static_cast<uid_t>(-1);
 
-uid_t GetUidForUsername(const char* user_name) {
-  struct passwd pwd;
-  struct passwd* ppwd = nullptr;
-
-  ssize_t buf_size = sysconf(_SC_GETPW_R_SIZE_MAX);
-  if (buf_size == -1)
-    buf_size = 65536;  // A random guess.
-  std::unique_ptr<char[]> buf(new char[buf_size]);
-  getpwnam_r(user_name, &pwd, buf.get(), buf_size, &ppwd);
-
-  if (ppwd == nullptr)
-    return kInvalidUid;
-
-  return ppwd->pw_uid;
+uid_t GetUidForUsername(const std::string& user_name) {
+  uid_t uid;
+  return brillo::userdb::GetUserInfo(user_name, &uid, nullptr) ? uid
+                                                               : kInvalidUid;
 }
 
 bool IsValidUid(const uid_t uid) {
