@@ -18,7 +18,7 @@
 // use helper functions std::ref() and std::cref() to create non-const and
 // const references respectively. In such a case, the type of contained data
 // will be std::reference_wrapper<T>. See 'References' unit tests in
-// any_unittest.cc for examples.
+// any_test.cc for examples.
 
 #ifndef LIBBRILLO_BRILLO_ANY_H_
 #define LIBBRILLO_BRILLO_ANY_H_

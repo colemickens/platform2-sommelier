@@ -49,7 +49,7 @@
 //  - static void Write(dbus::MessageWriter* writer, const CustomType& value);
 //  - static bool Read(dbus::MessageReader* reader, CustomType* value);
 // See an example in DBusUtils.CustomStruct unit test in
-// brillo/dbus/data_serialization_unittest.cc.
+// brillo/dbus/data_serialization_test.cc.
 
 #include <map>
 #include <memory>

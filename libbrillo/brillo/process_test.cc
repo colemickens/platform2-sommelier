@@ -12,8 +12,8 @@
 #include <gtest/gtest.h>
 
 #include "brillo/process_mock.h"
-#include "brillo/unittest_utils.h"
 #include "brillo/test_helpers.h"
+#include "brillo/unittest_utils.h"
 
 using base::FilePath;
 

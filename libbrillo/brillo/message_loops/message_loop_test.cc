@@ -7,7 +7,7 @@
 // These are the common tests for all the brillo::MessageLoop implementations
 // that should conform to this interface's contracts. For extra
 // implementation-specific tests see the particular implementation unittests in
-// the *_unittest.cc files.
+// the *_test.cc files.
 
 #include <memory>
 #include <vector>
@@ -18,9 +18,9 @@
 #include <gtest/gtest.h>
 
 #include <brillo/bind_lambda.h>
-#include <brillo/unittest_utils.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <brillo/message_loops/message_loop_utils.h>
+#include <brillo/unittest_utils.h>
 
 using base::Bind;
 using base::TimeDelta;
