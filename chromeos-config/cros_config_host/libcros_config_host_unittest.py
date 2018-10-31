@@ -10,6 +10,8 @@ from __future__ import print_function
 from collections import OrderedDict
 from contextlib import contextmanager
 from io import BytesIO
+import copy
+import json
 import os
 import sys
 import unittest
@@ -50,9 +52,20 @@ def capture_sys_output():
   finally:
     sys.stdout, sys.stderr = old_out, old_err
 
+def _FormatNamedTuplesDict(value):
+   result = copy.deepcopy(value)
+   for key, value in result.iteritems():
+     result[key] = value._asdict()
+
+   return json.dumps(result, indent=2)
+
 
 class CommonTests(object):
   """Shared tests between the YAML and FDT implementations."""
+
+  def _assertEqualsNamedTuplesDict(self, expected, result):
+    self.assertEqual(
+        _FormatNamedTuplesDict(expected), _FormatNamedTuplesDict(result))
 
   def testGetProperty(self):
     config = CrosConfig(self.filepath)
@@ -322,7 +335,7 @@ class CommonTests(object):
                        tools=[],
                        sig_id='whitelabel-whitelabel2'))])
     result = CrosConfig(self.filepath).GetFirmwareInfo()
-    self.assertEqual(result, expected)
+    self._assertEqualsNamedTuplesDict(result, expected)
 
 
 class CrosConfigHostTestFdt(unittest.TestCase, CommonTests):
