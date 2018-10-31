@@ -171,21 +171,6 @@ TEST_F(MountTaskTest, MountTest) {
   ASSERT_TRUE(event_.IsSignaled());
 }
 
-TEST_F(MountTaskTest, UnmountTest) {
-  EXPECT_CALL(*mount_, UnmountCryptohome())
-      .WillOnce(Return(true));
-
-  ASSERT_FALSE(event_.IsSignaled());
-  scoped_refptr<MountTaskUnmount> mount_task
-      = new MountTaskUnmount(NULL, mount_.get(), NextSequence());
-  mount_task->set_complete_event(&event_);
-  mount_task->set_result(&result_);
-  runner_.task_runner()->PostTask(FROM_HERE,
-      base::Bind(&MountTaskUnmount::Run, mount_task.get()));
-  event_.TimedWait(wait_time_);
-  ASSERT_TRUE(event_.IsSignaled());
-}
-
 TEST_F(MountTaskTest, ResetTpmContext) {
   ASSERT_FALSE(event_.IsSignaled());
   scoped_refptr<MountTaskResetTpmContext> mount_task

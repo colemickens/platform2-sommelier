@@ -323,22 +323,6 @@ class MountTaskMount : public MountTask {
   DISALLOW_COPY_AND_ASSIGN(MountTaskMount);
 };
 
-// Implements asychronous calls to Mount::Unmount()
-class MountTaskUnmount : public MountTask {
- public:
-  MountTaskUnmount(MountTaskObserver* observer,
-                   Mount* mount,
-                   int sequence_id)
-      : MountTask(observer, mount, sequence_id) {
-  }
-  virtual ~MountTaskUnmount() { }
-
-  virtual void Run();
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(MountTaskUnmount);
-};
-
 // Implements asychronous reset of the TPM context
 class MountTaskResetTpmContext : public MountTask {
  public:
@@ -354,25 +338,6 @@ class MountTaskResetTpmContext : public MountTask {
   DISALLOW_COPY_AND_ASSIGN(MountTaskResetTpmContext);
 };
 
-// Implements asynchronous updating of the current user (if any)
-// activity timestamp
-class MountTaskUpdateCurrentUserActivityTimestamp : public MountTask {
- public:
-  MountTaskUpdateCurrentUserActivityTimestamp(MountTaskObserver* observer,
-                                              Mount* mount,
-                                              int time_shift_sec,
-                                              int sequence_id)
-      : MountTask(observer, mount, sequence_id),
-        time_shift_sec_(time_shift_sec) {}
-  virtual ~MountTaskUpdateCurrentUserActivityTimestamp() { }
-
-  virtual void Run();
-
- private:
-  const int time_shift_sec_;
-  DISALLOW_COPY_AND_ASSIGN(MountTaskUpdateCurrentUserActivityTimestamp);
-};
-
 // Implements asynchronous initialization of Pkcs11.
 class MountTaskPkcs11Init : public MountTask {
  public:
@@ -386,23 +351,6 @@ class MountTaskPkcs11Init : public MountTask {
  private:
   std::unique_ptr<MountTaskResult> pkcs11_init_result_;
   DISALLOW_COPY_AND_ASSIGN(MountTaskPkcs11Init);
-};
-
-// Asynchronous install attr finalization. Not really a 'mount task' per se but
-// we want to use the thread.
-class MountTaskInstallAttrsFinalize : public MountTask {
- public:
-  MountTaskInstallAttrsFinalize(MountTaskObserver* observer,
-                                InstallAttributes* attrs,
-                                int sequence_id)
-      : MountTask(observer, NULL, sequence_id),
-        install_attrs_(attrs) { }
-  virtual ~MountTaskInstallAttrsFinalize() { }
-
-  virtual void Run();
- private:
-  InstallAttributes *install_attrs_;
-  DISALLOW_COPY_AND_ASSIGN(MountTaskInstallAttrsFinalize);
 };
 
 }  // namespace cryptohome

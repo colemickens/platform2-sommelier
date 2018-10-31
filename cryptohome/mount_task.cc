@@ -78,14 +78,6 @@ void MountTaskMount::Run() {
     mount_->UpdateCurrentUserActivityTimestamp(0);
 }
 
-void MountTaskUnmount::Run() {
-  if (mount_) {
-    bool status = mount_->UnmountCryptohome();
-    result()->set_return_status(status);
-  }
-  MountTask::Notify();
-}
-
 void MountTaskResetTpmContext::Run() {
   if (mount_) {
     Crypto* crypto = mount_->crypto();
@@ -93,15 +85,6 @@ void MountTaskResetTpmContext::Run() {
       crypto->EnsureTpm(true);
     }
   }
-  MountTask::Notify();
-}
-
-void MountTaskUpdateCurrentUserActivityTimestamp::Run() {
-  bool rc = false;
-  if (mount_) {
-    rc = mount_->UpdateCurrentUserActivityTimestamp(time_shift_sec_);
-  }
-  result()->set_return_status(rc);
   MountTask::Notify();
 }
 
@@ -122,10 +105,6 @@ void MountTaskPkcs11Init::Run() {
     result()->set_return_status(1);
   }
   MountTask::Notify();
-}
-
-void MountTaskInstallAttrsFinalize::Run() {
-  install_attrs_->Finalize();
 }
 
 }  // namespace cryptohome
