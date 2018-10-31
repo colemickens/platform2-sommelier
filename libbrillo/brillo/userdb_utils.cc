@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
 
 namespace brillo {
 namespace userdb {
@@ -23,7 +24,9 @@ bool GetUserInfo(const std::string& user, uid_t* uid, gid_t* gid) {
   passwd pwd_buf;
   passwd* pwd = nullptr;
   std::vector<char> buf(buf_len);
-  if (getpwnam_r(user.c_str(), &pwd_buf, buf.data(), buf_len, &pwd) || !pwd) {
+  if (HANDLE_EINTR(
+          getpwnam_r(user.c_str(), &pwd_buf, buf.data(), buf_len, &pwd)) ||
+      !pwd) {
     PLOG(ERROR) << "Unable to find user " << user;
     return false;
   }
@@ -42,7 +45,9 @@ bool GetGroupInfo(const std::string& group, gid_t* gid) {
   struct group grp_buf;
   struct group* grp = nullptr;
   std::vector<char> buf(buf_len);
-  if (getgrnam_r(group.c_str(), &grp_buf, buf.data(), buf_len, &grp) || !grp) {
+  if (HANDLE_EINTR(
+          getgrnam_r(group.c_str(), &grp_buf, buf.data(), buf_len, &grp)) ||
+      !grp) {
     PLOG(ERROR) << "Unable to find group " << group;
     return false;
   }
