@@ -4,8 +4,6 @@
 
 #include "cros-disks/platform.h"
 
-#include <grp.h>
-#include <pwd.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -19,18 +17,12 @@
 #include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/userdb_utils.h>
 
 using base::FilePath;
 using std::string;
 using std::unique_ptr;
 using std::vector;
-
-namespace {
-
-const unsigned kFallbackGroupBufferSize = 16384;
-const unsigned kFallbackPasswordBufferSize = 16384;
-
-}  // namespace
 
 namespace cros_disks {
 
@@ -135,49 +127,13 @@ string Platform::GetDirectoryFallbackName(const string& path,
 }
 
 bool Platform::GetGroupId(const string& group_name, gid_t* group_id) const {
-  long buffer_size = sysconf(_SC_GETGR_R_SIZE_MAX);  // NOLINT(runtime/int)
-  if (buffer_size <= 0)
-    buffer_size = kFallbackGroupBufferSize;
-
-  group group_buffer, *group_buffer_ptr = nullptr;
-  vector<char> buffer(buffer_size);
-  getgrnam_r(group_name.c_str(), &group_buffer, buffer.data(), buffer_size,
-             &group_buffer_ptr);
-  if (group_buffer_ptr == nullptr) {
-    PLOG(WARNING) << "Failed to determine group ID of group '" << group_name
-                  << "'";
-    return false;
-  }
-
-  if (group_id)
-    *group_id = group_buffer.gr_gid;
-  return true;
+  return brillo::userdb::GetGroupInfo(group_name, group_id);
 }
 
 bool Platform::GetUserAndGroupId(const string& user_name,
                                  uid_t* user_id,
                                  gid_t* group_id) const {
-  long buffer_size = sysconf(_SC_GETPW_R_SIZE_MAX);  // NOLINT(runtime/int)
-  if (buffer_size <= 0)
-    buffer_size = kFallbackPasswordBufferSize;
-
-  passwd password_buffer, *password_buffer_ptr = nullptr;
-  vector<char> buffer(buffer_size);
-  getpwnam_r(user_name.c_str(), &password_buffer, buffer.data(), buffer_size,
-             &password_buffer_ptr);
-  if (password_buffer_ptr == nullptr) {
-    PLOG(WARNING) << "Failed to determine user and group ID of user '"
-                  << user_name << "'";
-    return false;
-  }
-
-  if (user_id)
-    *user_id = password_buffer.pw_uid;
-
-  if (group_id)
-    *group_id = password_buffer.pw_gid;
-
-  return true;
+  return brillo::userdb::GetUserInfo(user_name, user_id, group_id);
 }
 
 bool Platform::GetOwnership(const string& path,
