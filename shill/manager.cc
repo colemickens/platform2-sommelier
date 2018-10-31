@@ -4,7 +4,6 @@
 
 #include "shill/manager.h"
 
-#include <pwd.h>
 #include <stdio.h>
 #include <sys/types.h>
 #include <time.h>
@@ -24,6 +23,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <brillo/userdb_utils.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/adaptor_interfaces.h"
@@ -2704,13 +2704,11 @@ void Manager::UpdateBlackholeBrowserTraffic() {
 
 void Manager::ComputeBrowserTrafficUids() {
   for (const auto& username : kBrowserTrafficUsernames) {
-    struct passwd* entry = getpwnam(username);  // NOLINT(runtime/threadsafe_fn)
-    if (!entry) {
+    uid_t uid;
+    if (!brillo::userdb::GetUserInfo(username, &uid, nullptr))
       LOG(WARNING) << "Unable to look up UID for " << username << ", skipping";
-    } else {
-      browser_traffic_uids_.push_back(
-          static_cast<uint32_t>(entry->pw_uid));
-    }
+    else
+      browser_traffic_uids_.push_back(static_cast<uint32_t>(uid));
   }
 }
 
