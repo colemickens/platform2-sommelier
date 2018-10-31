@@ -30,6 +30,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/object_proxy.h>
 
+#include "vm_tools/cicerone/tzif_parser.h"
 #include "vm_tools/common/constants.h"
 
 using std::string;
@@ -808,6 +809,7 @@ bool Service::Init() {
       {kUninstallPackageOwningFileMethod, &Service::UninstallPackageOwningFile},
       {kCreateLxdContainerMethod, &Service::CreateLxdContainer},
       {kStartLxdContainerMethod, &Service::StartLxdContainer},
+      {kSetTimezoneMethod, &Service::SetTimezone},
       {kGetLxdContainerUsernameMethod, &Service::GetLxdContainerUsername},
       {kSetUpLxdContainerUserMethod, &Service::SetUpLxdContainerUser},
       {kGetDebugInformation, &Service::GetDebugInformation},
@@ -1624,6 +1626,59 @@ std::unique_ptr<dbus::Response> Service::StartLxdContainer(
   }
 
   response.set_failure_reason(error_msg);
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::SetTimezone(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  SetTimezoneRequest request;
+  SetTimezoneResponse response;
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse SetTimezoneRequest from message";
+    response.add_failure_reasons(
+        "unable to parse SetTimezoneRequest from message");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  LOG(INFO) << "Received request to SetTimezone to " << request.timezone_name();
+
+  TzifParser tp;
+  std::string posix_tz_string;
+  if (!tp.GetPosixTimezone(request.timezone_name(), &posix_tz_string)) {
+    LOG(WARNING) << "Reading POSIX TZ string failed for timezone "
+                 << request.timezone_name();
+    posix_tz_string = "";
+  }
+
+  response.set_successes(0);
+  for (const auto& elem : vms_) {
+    const std::string& vm_name = elem.first.second;
+    std::string error_msg;
+    VirtualMachine::SetTimezoneResults results;
+    bool success = elem.second->SetTimezone(
+        request.timezone_name(), posix_tz_string, &results, &error_msg);
+    if (success) {
+      response.set_successes(response.successes() + results.successes);
+      for (int i = 0; i < results.failure_reasons.size(); i++) {
+        response.add_failure_reasons("VM " + vm_name + ": " +
+                                     results.failure_reasons[i]);
+      }
+    } else {
+      response.add_failure_reasons("Setting timezone failed entirely for VM " +
+                                   vm_name + ": " + error_msg);
+    }
+  }
+
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }

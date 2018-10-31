@@ -238,6 +238,9 @@ class Service final : public base::MessageLoopForIO::Watcher {
   std::unique_ptr<dbus::Response> StartLxdContainer(
       dbus::MethodCall* method_call);
 
+  // Handles a request to set the default timezone for an LXD instance.
+  std::unique_ptr<dbus::Response> SetTimezone(dbus::MethodCall* method_call);
+
   // Handles a request to get the primary username for an LXD container.
   std::unique_ptr<dbus::Response> GetLxdContainerUsername(
       dbus::MethodCall* method_call);

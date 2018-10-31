@@ -221,6 +221,27 @@ message GetContainerInfoResponse {
   fixed32 ipv4_address = 3;
 }
 
+message SetTimezoneRequest {
+  // Timezone name as per values from the timezone-data package in
+  // /usr/share/zoneinfo.
+  string timezone_name = 1;
+
+  // Timezone properties in POSIX compatible TZ environment variable format
+  // (see 'man timezone'). Used if the guest VM does not support timezone-data
+  // timezone names.
+  //
+  // cicerone/tzif_parser.h can extract these strings from TZif files.
+  string posix_tz_string = 2;
+}
+
+message SetTimezoneResponse {
+  // The number of LXD containers for which the timezone was successfully set.
+  int32 successes = 1;
+
+  // The failure_reason if the request was unsuccessful.
+  repeated string failure_reasons = 2;
+}
+
 // Tremplin service methods.
 service Tremplin {
   rpc CreateContainer(CreateContainerRequest) returns (CreateContainerResponse);
@@ -230,6 +251,7 @@ service Tremplin {
   rpc SetUpUser(SetUpUserRequest) returns (SetUpUserResponse);
   rpc GetContainerInfo(GetContainerInfoRequest)
       returns (GetContainerInfoResponse);
+  rpc SetTimezone(SetTimezoneRequest) returns (SetTimezoneResponse);
 }
 
 // Service that is notified of events from tremplin.

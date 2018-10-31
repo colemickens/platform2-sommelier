@@ -198,6 +198,51 @@ int StartLxdContainer(dbus::ObjectProxy* proxy,
   }
 }
 
+int SetTimezone(dbus::ObjectProxy* proxy, const string& timezone_name) {
+  LOG(INFO) << "Setting timezone for VMs to " << timezone_name;
+
+  dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
+                               vm_tools::cicerone::kSetTimezoneMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  vm_tools::cicerone::SetTimezoneRequest request;
+  request.set_timezone_name(timezone_name);
+
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode SetTimezone protobuf";
+    return -1;
+  }
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to cicerone service";
+    return -1;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  vm_tools::cicerone::SetTimezoneResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse response protobuf";
+    return -1;
+  }
+
+  int failure_count = response.failure_reasons_size();
+  if (failure_count != 0) {
+    LOG(ERROR) << "Failed to set timezone for " << failure_count
+               << " containers";
+    for (int i = 0; i < failure_count; i++) {
+      LOG(ERROR) << "SetTimezone failure reason: "
+                 << response.failure_reasons(i);
+    }
+    return -1;
+  }
+
+  LOG(INFO) << "Successfully set timezone for " << response.successes()
+            << " containers to " << timezone_name;
+  return 0;
+}
+
 int GetLxdContainerUsername(dbus::ObjectProxy* proxy,
                             const string& vm_name,
                             const string& container_name,
@@ -736,6 +781,7 @@ int main(int argc, char** argv) {
   // Operations.
   DEFINE_bool(create_lxd_container, false, "Create an LXD container");
   DEFINE_bool(start_lxd_container, false, "Start an LXD container");
+  DEFINE_bool(set_timezone, false, "Set timezone for all known LXD containers");
   DEFINE_bool(get_username, false, "Get the primary username in a container");
   DEFINE_bool(set_up_lxd_user, false, "Set up a user in an LXD container");
   DEFINE_bool(launch_application, false,
@@ -756,6 +802,9 @@ int main(int argc, char** argv) {
   DEFINE_string(application, "", "Name of the application to launch");
   DEFINE_string(output_filepath, "",
                 "Filename with path to write appliction icon to");
+  DEFINE_string(timezone_name, "",
+                "The timezone to set, for example 'America/Denver'. "
+                "See /usr/share/zoneinfo for other valid names.");
   DEFINE_int32(icon_size, 48,
                "The size of the icon to get is this icon_size by icon_size");
   DEFINE_int32(scale, 1, "The scale that the icon is designed to use with");
@@ -788,26 +837,31 @@ int main(int argc, char** argv) {
   // false => 0 and true => 1.
   // clang-format off
   if (FLAGS_create_lxd_container + FLAGS_start_lxd_container +
-      FLAGS_set_up_lxd_user + FLAGS_get_username + FLAGS_launch_application +
-      FLAGS_get_icon + FLAGS_get_info + FLAGS_install_package +
-      FLAGS_uninstall_application + FLAGS_package_info != 1) {
+      FLAGS_set_timezone + FLAGS_set_up_lxd_user + FLAGS_get_username +
+      FLAGS_launch_application + FLAGS_get_icon + FLAGS_get_info +
+      FLAGS_install_package + FLAGS_uninstall_application +
+      FLAGS_package_info!= 1) {
     // clang-format on
     LOG(ERROR) << "Exactly one of --create_lxd_container, "
-               << "--start_lxd_container, --set_up_lxd_user, "
+               << "--start_lxd_container, --set_up_lxd_user, --set_timezone, "
                << "--get_username, --launch_application, --get_icon, "
                << "--get_info, --install_package, --uninstall_application, or "
                << "--package_info must be provided";
     return -1;
   }
 
-  // Check for the get_info command early because it has the unique property of
-  // not requiring owner ID, VM name, or container name.
+  // Check for the get_info and set_timezone commands early because they do
+  // not require owner ID, VM name, or container name.
   if (FLAGS_get_info) {
     return GetInfo(proxy);
   }
 
-  // Every D-Bus method for cicerone, other than the above get_info method,
-  // requires owner ID, VM name, and container name.
+  if (FLAGS_set_timezone) {
+    return SetTimezone(proxy, FLAGS_timezone_name);
+  }
+
+  // Every other D-Bus method for cicerone requires owner ID, VM name, and
+  // container name.
   if (FLAGS_owner_id.empty()) {
     LOG(ERROR) << "--owner_id is required";
     return -1;

@@ -57,6 +57,51 @@ bool VirtualMachine::ConnectTremplin() {
   return tremplin_stub_ != nullptr;
 }
 
+bool VirtualMachine::SetTimezone(
+    const std::string& timezone_name,
+    const std::string& posix_tz_string,
+    VirtualMachine::SetTimezoneResults* out_results,
+    std::string* out_error) {
+  DCHECK(out_results);
+  DCHECK(out_error);
+  if (!tremplin_stub_) {
+    *out_error = "tremplin is not connected";
+    return false;
+  }
+  LOG(INFO) << "Setting timezone to: " << timezone_name;
+
+  vm_tools::tremplin::SetTimezoneRequest request;
+  vm_tools::tremplin::SetTimezoneResponse response;
+
+  request.set_timezone_name(timezone_name);
+  request.set_posix_tz_string(posix_tz_string);
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+
+  grpc::Status status = tremplin_stub_->SetTimezone(&ctx, request, &response);
+  if (!status.ok()) {
+    LOG(ERROR) << "SetTimezone RPC failed: " << status.error_message();
+    out_error->assign(status.error_message());
+    return false;
+  }
+
+  int failure_count = response.failure_reasons_size();
+  if (failure_count != 0) {
+    LOG(ERROR) << "Failed to set timezone for " << failure_count
+               << " containers";
+  }
+  out_results->failure_reasons.clear();
+  for (int i = 0; i < failure_count; i++) {
+    out_results->failure_reasons.push_back(response.failure_reasons(i));
+  }
+
+  out_results->successes = response.successes();
+  return true;
+}
+
 bool VirtualMachine::RegisterContainer(const std::string& container_token,
                                        const uint32_t garcon_vsock_port,
                                        const std::string& container_ip) {

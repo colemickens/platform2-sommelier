@@ -70,6 +70,12 @@ class VirtualMachine {
     uint32_t ipv4_address;
   };
 
+  // Results of a set timezone request
+  struct SetTimezoneResults {
+    int successes;
+    std::vector<std::string> failure_reasons;
+  };
+
   VirtualMachine(uint32_t container_subnet,
                  uint32_t container_netmask,
                  uint32_t ipv4_address,
@@ -90,6 +96,21 @@ class VirtualMachine {
 
   // Connect to the tremplin instance in the VM.
   bool ConnectTremplin();
+
+  // Tries to set the default timezone for all containers in this VM to
+  // |timezone_name|. If that fails, falls back to setting the TZ environment
+  // variable to |posix_tz_string|.
+  //
+  // If setting the timezone fails entirely due to high-level issues
+  // (e.g. tremplin not connected, rpc failed), this will return false and set
+  // |out_error|.
+  //
+  // Otherwise, the results from individual containers will be stored in
+  // |out_results|.
+  bool SetTimezone(const std::string& timezone_name,
+                   const std::string& posix_tz_string,
+                   SetTimezoneResults* out_results,
+                   std::string* out_error);
 
   // Registers a container with the VM using the |container_ip| address,
   // |vsock_garcon_port|, and |container_token|. Returns true if the token is
