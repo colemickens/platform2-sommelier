@@ -4,8 +4,6 @@
 
 #include "vm_tools/concierge/subnet_pool.h"
 
-#include <arpa/inet.h>
-
 #include <string>
 #include <utility>
 
@@ -43,41 +41,6 @@ constexpr size_t kVmSubnetPrefix = 30;
 
 }  // namespace
 
-SubnetPool::Subnet::Subnet(uint32_t network_id,
-                           size_t prefix,
-                           base::Closure release_cb)
-    : network_id_(network_id),
-      prefix_(prefix),
-      release_cb_(std::move(release_cb)) {
-  CHECK_LT(prefix, 32);
-}
-
-SubnetPool::Subnet::~Subnet() {
-  release_cb_.Run();
-}
-
-uint32_t SubnetPool::Subnet::AddressAtOffset(uint32_t offset) const {
-  if (offset >= AvailableCount())
-    return INADDR_ANY;
-
-  // The first usable IP is after the network id.
-  return htonl(network_id_ + 1 + offset);
-}
-
-size_t SubnetPool::Subnet::AvailableCount() const {
-  // The available IP count is all IPs in a subnet, minus the network ID
-  // and the broadcast address.
-  return (1 << (32 - prefix_)) - 2;
-}
-
-uint32_t SubnetPool::Subnet::Netmask() const {
-  return htonl(0xffffffff << (32 - prefix_));
-}
-
-size_t SubnetPool::Subnet::Prefix() const {
-  return prefix_;
-}
-
 SubnetPool::SubnetPool() {
   // The first address is always reserved for the ARC++ container.
   vm_subnets_.set(0);
@@ -93,28 +56,7 @@ SubnetPool::~SubnetPool() {
   }
 }
 
-std::unique_ptr<SubnetPool::Subnet> SubnetPool::CreateVMForTesting(
-    size_t index) {
-  DCHECK(!vm_subnets_.test(index));
-  vm_subnets_.set(index);
-  return base::WrapUnique(new Subnet(
-      kVmBaseAddress + (index * kVmAddressesPerIndex), kVmSubnetPrefix,
-      base::Bind(&SubnetPool::ReleaseVM, weak_ptr_factory_.GetWeakPtr(),
-                 index)));
-}
-
-std::unique_ptr<SubnetPool::Subnet> SubnetPool::CreateContainerForTesting(
-    size_t index) {
-  DCHECK(!container_subnets_.test(index));
-  container_subnets_.set(index);
-  return base::WrapUnique(
-      new Subnet(kContainerBaseAddress + (index * kContainerAddressesPerIndex),
-                 kContainerSubnetPrefix,
-                 base::Bind(&SubnetPool::ReleaseContainer,
-                            weak_ptr_factory_.GetWeakPtr(), index)));
-}
-
-std::unique_ptr<SubnetPool::Subnet> SubnetPool::AllocateVM() {
+std::unique_ptr<Subnet> SubnetPool::AllocateVM() {
   // Find the first un-allocated subnet.
   size_t index = 0;
   while (index < vm_subnets_.size() && vm_subnets_.test(index)) {
@@ -133,7 +75,7 @@ std::unique_ptr<SubnetPool::Subnet> SubnetPool::AllocateVM() {
                  index)));
 }
 
-std::unique_ptr<SubnetPool::Subnet> SubnetPool::AllocateContainer() {
+std::unique_ptr<Subnet> SubnetPool::AllocateContainer() {
   // Find the first un-allocated subnet.
   size_t index = 0;
   while (index < container_subnets_.size() && container_subnets_.test(index)) {

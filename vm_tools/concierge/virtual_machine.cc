@@ -35,7 +35,6 @@ namespace {
 
 using ProcessExitBehavior = VirtualMachine::ProcessExitBehavior;
 using ProcessStatus = VirtualMachine::ProcessStatus;
-using Subnet = SubnetPool::Subnet;
 
 // Path to the crosvm binary.
 constexpr char kCrosvmBin[] = "/usr/bin/crosvm";
@@ -542,8 +541,7 @@ bool VirtualMachine::SetResolvConfig(
   return true;
 }
 
-void VirtualMachine::SetContainerSubnet(
-    std::unique_ptr<SubnetPool::Subnet> subnet) {
+void VirtualMachine::SetContainerSubnet(std::unique_ptr<Subnet> subnet) {
   container_subnet_ = std::move(subnet);
 }
 
@@ -587,7 +585,7 @@ void VirtualMachine::set_stub_for_testing(
 
 std::unique_ptr<VirtualMachine> VirtualMachine::CreateForTesting(
     MacAddress mac_addr,
-    std::unique_ptr<SubnetPool::Subnet> subnet,
+    std::unique_ptr<Subnet> subnet,
     uint32_t vsock_cid,
     base::FilePath runtime_dir,
     std::unique_ptr<vm_tools::Maitred::Stub> stub) {

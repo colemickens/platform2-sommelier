@@ -33,6 +33,7 @@
 #include <gtest/gtest.h>
 
 #include "vm_tools/concierge/mac_address_generator.h"
+#include "vm_tools/concierge/subnet.h"
 #include "vm_tools/concierge/subnet_pool.h"
 #include "vm_tools/concierge/virtual_machine.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
@@ -49,7 +50,6 @@ namespace {
 
 using ProcessExitBehavior = VirtualMachine::ProcessExitBehavior;
 using ProcessStatus = VirtualMachine::ProcessStatus;
-using Subnet = SubnetPool::Subnet;
 
 // Converts an IPv4 address in network byte order into a string.
 bool IPv4AddressToString(uint32_t addr, string* address) {

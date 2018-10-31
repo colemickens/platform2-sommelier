@@ -15,6 +15,7 @@
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 
+#include "vm_tools/concierge/subnet.h"
 #include "vm_tools/concierge/subnet_pool.h"
 
 using std::string;
@@ -23,9 +24,6 @@ namespace vm_tools {
 namespace concierge {
 namespace {
 
-constexpr size_t kContainerBaseAddress = 0x64735cc0;  // 100.115.92.192
-constexpr size_t kVmBaseAddress = 0x64735c00;         // 100.115.92.0
-
 // The first subnet that will be allocated by the SubnetPool.  Subnet 0 is
 // reserved for ARC++.
 constexpr size_t kFirstSubnet = 1;
@@ -33,43 +31,13 @@ constexpr size_t kFirstSubnet = 1;
 // The maximum number of subnets that can be allocated at a given time.
 constexpr size_t kMaxSubnets = 32;
 
-class SubnetTest : public ::testing::TestWithParam<size_t> {
- protected:
-  SubnetPool pool_;
-};
-
 }  // namespace
-
-TEST_P(SubnetTest, VmAddressAtOffset) {
-  size_t index = GetParam();
-  auto subnet = pool_.CreateVMForTesting(index);
-  ASSERT_TRUE(subnet);
-
-  uint32_t address = htonl(kVmBaseAddress + index * 4 + 1);
-  EXPECT_EQ(address, subnet->AddressAtOffset(0));
-}
-
-TEST_P(SubnetTest, ContainerAddressAtOffset) {
-  size_t index = GetParam();
-  if (index > 3)
-    return;
-
-  auto subnet = pool_.CreateContainerForTesting(index);
-  ASSERT_TRUE(subnet);
-
-  uint32_t address = htonl(kContainerBaseAddress + index * 16 + 1);
-  EXPECT_EQ(address, subnet->AddressAtOffset(0));
-}
-
-INSTANTIATE_TEST_CASE_P(AllValues,
-                        SubnetTest,
-                        ::testing::Range(kFirstSubnet, kMaxSubnets));
 
 // Tests that the SubnetPool does not allocate more than 64 subnets at a time.
 TEST(SubnetPool, AllocationRange) {
   SubnetPool pool;
 
-  std::deque<std::unique_ptr<SubnetPool::Subnet>> subnets;
+  std::deque<std::unique_ptr<Subnet>> subnets;
   for (size_t i = kFirstSubnet; i < kMaxSubnets; ++i) {
     auto subnet = pool.AllocateVM();
     ASSERT_TRUE(subnet);
@@ -85,7 +53,7 @@ TEST(SubnetPool, Release) {
   SubnetPool pool;
 
   // First allocate all the subnets.
-  std::deque<std::unique_ptr<SubnetPool::Subnet>> subnets;
+  std::deque<std::unique_ptr<Subnet>> subnets;
   for (size_t i = kFirstSubnet; i < kMaxSubnets; ++i) {
     auto subnet = pool.AllocateVM();
     ASSERT_TRUE(subnet);

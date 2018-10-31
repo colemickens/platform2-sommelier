@@ -87,6 +87,7 @@
         'concierge/shill_client.cc',
         'concierge/ssh_keys.cc',
         'concierge/startup_listener_impl.cc',
+        'concierge/subnet.cc',
         'concierge/subnet_pool.cc',
         'concierge/tap_device_builder.cc',
         'concierge/virtual_machine.cc',
@@ -254,6 +255,7 @@
           'sources': [
             'concierge/mac_address_generator_test.cc',
             'concierge/subnet_pool_test.cc',
+            'concierge/subnet_test.cc',
             'concierge/virtual_machine_test.cc',
           ],
         },

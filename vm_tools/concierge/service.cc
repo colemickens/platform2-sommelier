@@ -51,6 +51,7 @@
 #include "vm_tools/common/constants.h"
 #include "vm_tools/concierge/seneschal_server_proxy.h"
 #include "vm_tools/concierge/ssh_keys.h"
+#include "vm_tools/concierge/subnet.h"
 
 using std::string;
 
@@ -59,7 +60,6 @@ namespace concierge {
 
 namespace {
 
-using Subnet = SubnetPool::Subnet;
 using ProcessExitBehavior = VirtualMachine::ProcessExitBehavior;
 using ProcessStatus = VirtualMachine::ProcessStatus;
 
@@ -983,8 +983,7 @@ bool Service::StartTermina(VirtualMachine* vm, string* failure_reason) {
   LOG(INFO) << "Starting lxd";
 
   // Allocate the subnet for lxd's bridge to use.
-  std::unique_ptr<SubnetPool::Subnet> container_subnet =
-      subnet_pool_.AllocateContainer();
+  std::unique_ptr<Subnet> container_subnet = subnet_pool_.AllocateContainer();
   if (!container_subnet) {
     LOG(ERROR) << "Could not allocate container subnet";
     *failure_reason = "could not allocate container subnet";
