@@ -11,13 +11,16 @@
 
 #include <brillo/asan.h>
 #include <brillo/brillo_export.h>
+#include <brillo/secure_allocator.h>
 
 namespace brillo {
 
-// TODO(sarthakkukreti): remove temp. SecureVector once we break SecureBlob's
-// dependence on std::vector<uint8_t>
 using Blob = std::vector<uint8_t>;
-using SecureVector = std::vector<uint8_t>;
+// Define SecureVector as a vector using a SecureAllocator.
+// Over time, the goal is to remove the differentiating functions
+// from SecureBlob (to_string(), char_data()) till it converges with
+// SecureVector.
+using SecureVector = std::vector<uint8_t, SecureAllocator<uint8_t>>;
 
 // Conversion of Blob to/from std::string, where the string holds raw byte
 // contents.
@@ -29,10 +32,11 @@ BRILLO_EXPORT Blob CombineBlobs(const std::initializer_list<Blob>& blobs);
 
 // SecureBlob erases the contents on destruction.  It does not guarantee erasure
 // on resize, assign, etc.
-class BRILLO_EXPORT SecureBlob : public Blob {
+class BRILLO_EXPORT SecureBlob : public SecureVector {
  public:
   SecureBlob() = default;
-  using Blob::vector;  // Inherit standard constructors from vector.
+  // Inherit standard constructors from SecureVector.
+  using SecureVector::vector;
   explicit SecureBlob(const Blob& blob);
   explicit SecureBlob(const std::string& data);
   ~SecureBlob();

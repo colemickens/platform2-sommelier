@@ -54,26 +54,25 @@ SecureBlob::SecureBlob(const std::string& data)
     : SecureBlob(data.begin(), data.end()) {}
 
 SecureBlob::~SecureBlob() {
-  clear();
+  SecureVector::clear();
 }
 
 void SecureBlob::resize(size_type count) {
   if (count < size()) {
     SecureMemset(data() + count, 0, capacity() - count);
   }
-  Blob::resize(count);
+  SecureVector::resize(count);
 }
 
 void SecureBlob::resize(size_type count, const value_type& value) {
   if (count < size()) {
     SecureMemset(data() + count, 0, capacity() - count);
   }
-  Blob::resize(count, value);
+  SecureVector::resize(count, value);
 }
 
 void SecureBlob::clear() {
-  SecureMemset(data(), 0, capacity());
-  Blob::clear();
+  SecureVector::clear();
 }
 
 std::string SecureBlob::to_string() const {
