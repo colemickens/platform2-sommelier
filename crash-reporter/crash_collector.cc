@@ -614,20 +614,19 @@ bool CrashCollector::CheckHasCapacity(const FilePath& crash_directory,
   // readdir is safe for glibc because it guarantees readdir is thread safe,
   // and atm we aren't supporting other C libraries
   while ((ent = readdir(dir))) {
-    if ((strcmp(ent->d_name, ".") == 0) || (strcmp(ent->d_name, "..") == 0))
+    // Only count crash reports.  Ignore all other supplemental files.
+    // We define "crash reports" as .meta, .dmp, or .core files.
+    // This does mean that we ignore random files that might accumulate but
+    // didn't come from us, but not a lot we can do about that.  Our crash
+    // sender process should clean up unknown files independently.
+    const base::FilePath filename(ent->d_name);
+    const std::string ext = filename.FinalExtension();
+    if (ext != ".core" && ext != ".dmp" && ext != ".meta")
       continue;
 
-    std::string filename(ent->d_name);
-    size_t last_dot = filename.rfind(".");
-    std::string basename;
-    // If there is a valid looking extension, use the base part of the
-    // name.  If the only dot is the first byte (aka a dot file), treat
-    // it as unique to avoid allowing a directory full of dot files
-    // from accumulating.
-    if (last_dot != std::string::npos && last_dot != 0)
-      basename = filename.substr(0, last_dot);
-    else
-      basename = filename;
+    // Track the basenames as our unique identifiers.  When the core/dmp files
+    // are part of a single report, this will count them as one report.
+    const std::string basename = filename.RemoveFinalExtension().value();
     basenames.insert(basename);
 
     if (basenames.size() >= static_cast<size_t>(kMaxCrashDirectorySize)) {

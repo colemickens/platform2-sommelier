@@ -339,6 +339,13 @@ TEST_F(CrashCollectorTest, CheckHasCapacityUsual) {
     EXPECT_TRUE(CheckHasCapacity());
   }
 
+  // Test supplemental files fit with longer names.
+  for (int i = 0; i < CrashCollector::kMaxCrashDirectorySize - 1; ++i) {
+    ASSERT_TRUE(test_util::CreateFile(
+        test_dir_.Append(StringPrintf("file%d.log.gz", i)), ""));
+    EXPECT_TRUE(CheckHasCapacity());
+  }
+
   // Test an additional kMaxCrashDirectorySize - 1 meta files fit.
   for (int i = 0; i < CrashCollector::kMaxCrashDirectorySize - 1; ++i) {
     ASSERT_TRUE(test_util::CreateFile(
@@ -379,7 +386,7 @@ TEST_F(CrashCollectorTest, CheckHasCapacityStrangeNames) {
     EXPECT_TRUE(CheckHasCapacity());
   }
   ASSERT_TRUE(test_util::CreateFile(test_dir_.Append("normal.meta"), ""));
-  EXPECT_FALSE(CheckHasCapacity());
+  EXPECT_TRUE(CheckHasCapacity());
 }
 
 TEST_F(CrashCollectorTest, MetaData) {
