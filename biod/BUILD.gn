@@ -6,6 +6,7 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
+    ":bio_crypto_init",
     ":bio_wash",
     ":biod",
     ":biod_client_tool",
@@ -47,6 +48,17 @@ executable("biod") {
   sources = [
     "main.cc",
   ]
+  deps = [
+    ":libbiod",
+  ]
+}
+
+executable("bio_crypto_init") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "bio_crypto_init.cc",
+  ]
+  libs = [ "-ldl" ]
   deps = [
     ":libbiod",
   ]
