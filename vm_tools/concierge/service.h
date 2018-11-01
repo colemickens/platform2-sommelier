@@ -101,9 +101,6 @@ class Service final : public base::MessageLoopForIO::Watcher {
   // Handles a request to list existing disk images.
   std::unique_ptr<dbus::Response> ListVmDisks(dbus::MethodCall* method_call);
 
-  // Handles a request to start a container in a VM.
-  std::unique_ptr<dbus::Response> StartContainer(dbus::MethodCall* method_call);
-
   // Handles a request to get the SSH keys for a container.
   std::unique_ptr<dbus::Response> GetContainerSshKeys(
       dbus::MethodCall* method_call);

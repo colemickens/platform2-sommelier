@@ -423,7 +423,6 @@ bool Service::Init() {
       {kDestroyDiskImageMethod, &Service::DestroyDiskImage},
       {kExportDiskImageMethod, &Service::ExportDiskImage},
       {kListVmDisksMethod, &Service::ListVmDisks},
-      {kStartContainerMethod, &Service::StartContainer},
       {kGetContainerSshKeysMethod, &Service::GetContainerSshKeys},
       {kSyncVmTimesMethod, &Service::SyncVmTimes},
   };
@@ -1400,125 +1399,6 @@ std::unique_ptr<dbus::Response> Service::ListVmDisks(
     }
   }
   response.set_total_size(total_size);
-
-  writer.AppendProtoAsArrayOfBytes(response);
-  return dbus_response;
-}
-
-std::unique_ptr<dbus::Response> Service::StartContainer(
-    dbus::MethodCall* method_call) {
-  DCHECK(sequence_checker_.CalledOnValidSequence());
-  LOG(INFO) << "Received StartContainer request";
-  std::unique_ptr<dbus::Response> dbus_response(
-      dbus::Response::FromMethodCall(method_call));
-
-  dbus::MessageReader reader(method_call);
-  dbus::MessageWriter writer(dbus_response.get());
-
-  StartContainerRequest request;
-  StartContainerResponse response;
-  response.set_status(CONTAINER_STATUS_UNKNOWN);
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse StartContainerRequest from message";
-    response.set_status(CONTAINER_STATUS_FAILURE);
-    response.set_failure_reason("Unable to parse StartContainerRequest");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  auto iter = FindVm(request.cryptohome_id(), request.vm_name());
-  if (iter == vms_.end()) {
-    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
-    response.set_status(CONTAINER_STATUS_FAILURE);
-    response.set_failure_reason("Requested VM does not exist");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  std::string container_name = request.container_name().empty()
-                                   ? kDefaultContainerName
-                                   : request.container_name();
-  LOG(INFO) << "Checking if container " << container_name << " is running";
-  if (IsContainerRunning(request.cryptohome_id(), request.vm_name(),
-                         container_name)) {
-    LOG(INFO) << "Container " << container_name << " is already running.";
-    response.set_status(CONTAINER_STATUS_RUNNING);
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  std::string guest_private_key;
-  std::string host_public_key;
-  if (!request.cryptohome_id().empty()) {
-    // Get the SSH keys needed by the container.
-    host_public_key = GetHostSshPublicKey(request.cryptohome_id());
-    if (host_public_key.empty()) {
-      LOG(ERROR) << "Failed getting the host ssh public key";
-      response.set_status(CONTAINER_STATUS_FAILURE);
-      response.set_failure_reason(
-          "Failed generating/loading host ssh public key");
-      writer.AppendProtoAsArrayOfBytes(response);
-      return dbus_response;
-    }
-    guest_private_key = GetGuestSshPrivateKey(
-        request.cryptohome_id(), request.vm_name(), container_name);
-    if (guest_private_key.empty()) {
-      LOG(ERROR) << "Failed getting the guest ssh private key";
-      response.set_status(CONTAINER_STATUS_FAILURE);
-      response.set_failure_reason(
-          "Failed generating/loading guest ssh private key");
-      writer.AppendProtoAsArrayOfBytes(response);
-      return dbus_response;
-    }
-  } else {
-    LOG(WARNING) << "No cyptohome_id set in the StartContainer call, SSH will "
-                 << "not be started for SFTP mounting";
-  }
-
-  // This executes the run_container.sh script in the VM which will startup
-  // a container. We need to construct the command for that with the proper
-  // parameters.
-  std::string container_token = GetContainerToken(
-      request.cryptohome_id(), request.vm_name(), container_name);
-  if (container_token.empty()) {
-    // If we don't have a valid container token, then we will never be able to
-    // notify the caller of successful container startup so don't even try.
-    LOG(ERROR) << "Failed to get a container token from cicerone";
-    response.set_status(CONTAINER_STATUS_FAILURE);
-    response.set_failure_reason(
-        "Failed getting a container token from cicerone");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-  std::vector<std::string> container_args = {
-      "/sbin/minijail0",
-      "-u",
-      "chronos",
-      "-G",
-      "/usr/bin/run_container.sh",
-      "--container_name",
-      container_name,
-      "--container_token",
-      container_token,
-  };
-  if (!request.container_username().empty()) {
-    container_args.emplace_back("--user");
-    container_args.emplace_back(request.container_username());
-  }
-  if (!guest_private_key.empty() && !host_public_key.empty()) {
-    container_args.emplace_back("--guest_private_key");
-    container_args.emplace_back(std::move(guest_private_key));
-    container_args.emplace_back("--host_public_key");
-    container_args.emplace_back(std::move(host_public_key));
-  }
-
-  // Now execute the startup script in the VM.
-  response.set_status(CONTAINER_STATUS_STARTING);
-  if (!iter->second->StartProcess(std::move(container_args), kLxdEnv,
-                                  ProcessExitBehavior::ONE_SHOT)) {
-    response.set_status(CONTAINER_STATUS_FAILURE);
-    response.set_failure_reason("Failed asynchronous container startup");
-  }
 
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;

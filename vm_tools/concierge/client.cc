@@ -772,76 +772,6 @@ int StartTerminaVm(dbus::ObjectProxy* proxy,
   return LogVmStatus(request.name(), response);
 }
 
-int StartContainer(dbus::ObjectProxy* proxy,
-                   string name,
-                   string container_name,
-                   string cryptohome_id) {
-  if (name.empty()) {
-    LOG(ERROR) << "--name is required";
-    return -1;
-  }
-
-  if (container_name.empty()) {
-    LOG(ERROR) << "--container_name is required";
-    return -1;
-  }
-
-  LOG(INFO) << "Starting VM Container '" << name << ":" << container_name
-            << "'";
-
-  dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
-                               vm_tools::concierge::kStartContainerMethod);
-  dbus::MessageWriter writer(&method_call);
-
-  vm_tools::concierge::StartContainerRequest request;
-  request.set_vm_name(name);
-  request.set_container_name(container_name);
-  request.set_cryptohome_id(cryptohome_id);
-
-  if (!writer.AppendProtoAsArrayOfBytes(request)) {
-    LOG(ERROR) << "Failed to encode StartContainerRequest protobuf";
-    return -1;
-  }
-
-  std::unique_ptr<dbus::Response> dbus_response =
-      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
-  if (!dbus_response) {
-    LOG(ERROR) << "Failed to send dbus message to concierge service";
-    return -1;
-  }
-
-  dbus::MessageReader reader(dbus_response.get());
-  vm_tools::concierge::StartContainerResponse response;
-  if (!reader.PopArrayOfBytesAsProto(&response)) {
-    LOG(ERROR) << "Failed to parse response protobuf";
-    return -1;
-  }
-
-  int ret = -1;
-  std::string status;
-  switch (response.status()) {
-    case vm_tools::concierge::CONTAINER_STATUS_RUNNING:
-      status = "Running";
-      ret = 0;
-      break;
-    case vm_tools::concierge::CONTAINER_STATUS_STARTING:
-      status = "Starting";
-      ret = 0;
-      break;
-    case vm_tools::concierge::CONTAINER_STATUS_FAILURE:
-      status = "Failure";
-      break;
-    default:
-      status = "Unknown";
-      break;
-  }
-
-  LOG(INFO) << "Container state for '" << name << ":" << container_name << "'"
-            << " is now " << status;
-
-  return ret;
-}
-
 int SyncVmTimes(dbus::ObjectProxy* proxy) {
   LOG(INFO) << "Setting VM times";
 
@@ -891,7 +821,6 @@ int main(int argc, char** argv) {
   DEFINE_bool(list_disks, false, "List disk images");
   DEFINE_bool(start_termina_vm, false,
               "Start a termina VM with a default config");
-  DEFINE_bool(start_container, false, "Starts a container within a VM");
   DEFINE_bool(launch_application, false,
               "Launches an application in a container");
   DEFINE_bool(get_icon, false, "Get an app icon from a container within a VM");
@@ -945,13 +874,12 @@ int main(int argc, char** argv) {
   if (FLAGS_start + FLAGS_stop + FLAGS_stop_all + FLAGS_get_vm_info +
       FLAGS_create_disk + FLAGS_create_external_disk + FLAGS_start_termina_vm +
       FLAGS_destroy_disk + FLAGS_export_disk + FLAGS_list_disks +
-      FLAGS_start_container + FLAGS_sync_time != 1) {
+      FLAGS_sync_time != 1) {
     // clang-format on
     LOG(ERROR) << "Exactly one of --start, --stop, --stop_all, --get_vm_info, "
                << "--create_disk, --create_external_disk --destroy_disk, "
                << "--export_disk --list_disks, --start_termina_vm, "
-               << "--start_container, or --sync_time "
-               << "must be provided";
+               << "or --sync_time must be provided";
     return -1;
   }
 
@@ -991,10 +919,6 @@ int main(int argc, char** argv) {
         proxy, std::move(FLAGS_name), std::move(FLAGS_cryptohome_id),
         std::move(FLAGS_removable_media), std::move(FLAGS_image_name),
         std::move(FLAGS_image_type));
-  } else if (FLAGS_start_container) {
-    return StartContainer(proxy, std::move(FLAGS_name),
-                          std::move(FLAGS_container_name),
-                          std::move(FLAGS_cryptohome_id));
   } else if (FLAGS_sync_time) {
     return SyncVmTimes(proxy);
   }
