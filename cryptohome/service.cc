@@ -1660,6 +1660,20 @@ gboolean Service::IsMountedForUser(gchar *userid,
   return TRUE;
 }
 
+void Service::DoUpdateTimestamp(scoped_refptr<cryptohome::Mount> mount) {
+  mount->UpdateCurrentUserActivityTimestamp(0);
+}
+
+void Service::DoMount(scoped_refptr<cryptohome::Mount> mount,
+                      const UsernamePasskey& credentials,
+                      const Mount::MountArgs& mount_args,
+                      base::WaitableEvent* event,
+                      MountError* return_code,
+                      bool* return_status) {
+  *return_status = mount->MountCryptohome(credentials, mount_args, return_code);
+  event->Signal();
+}
+
 gboolean Service::Mount(const gchar *userid,
                         const gchar *key,
                         gboolean create_if_missing,
@@ -1765,9 +1779,6 @@ gboolean Service::Mount(const gchar *userid,
     install_attrs_->Finalize();
 
   ReportTimerStart(kSyncMountTimer);
-  MountTaskResult result;
-  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
-                            base::WaitableEvent::InitialState::NOT_SIGNALED);
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = create_if_missing;
   mount_args.is_ephemeral = is_ephemeral;
@@ -1775,31 +1786,41 @@ gboolean Service::Mount(const gchar *userid,
   // TODO(kinaba): Currently Mount is not used for type of accounts that
   // we need to force dircrypto. Add an option when it becomes necessary.
   mount_args.force_dircrypto = false;
-  scoped_refptr<MountTaskMount> mount_task = new MountTaskMount(
-                                                            NULL,
-                                                            user_mount.get(),
-                                                            credentials,
-                                                            mount_args,
-                                                            NextSequence());
-  mount_task->set_result(&result);
-  mount_task->set_complete_event(&event);
 
-  mount_thread_.task_runner()->PostTask(FROM_HERE,
-      base::Bind(&MountTaskMount::Run, mount_task.get()));
+  MountError return_code = MOUNT_ERROR_NONE;
+  bool return_status = false;
+
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
+
+  mount_thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind(&Service::DoMount, base::Unretained(this),
+                 base::RetainedRef(user_mount), base::ConstRef(credentials),
+                 base::ConstRef(mount_args), base::Unretained(&event),
+                 base::Unretained(&return_code),
+                 base::Unretained(&return_status)));
+
   event.Wait();
+
+  // Update the timestamp for old user detection in the background.
+  mount_thread_.task_runner()->PostTask(
+      FROM_HERE, base::Bind(&Service::DoUpdateTimestamp, base::Unretained(this),
+                            base::RetainedRef(user_mount)));
+
   // We only report successful mounts.
-  if (result.return_status() && !result.return_code())
+  if (return_status && !return_code)
     ReportTimerStop(kSyncMountTimer);
 
   user_mount->set_pkcs11_state(cryptohome::Mount::kUninitialized);
-  if (result.return_status()) {
-    InitializePkcs11(result.mount().get());
+  if (return_status) {
+    InitializePkcs11(user_mount.get());
   } else {
-    RemoveMount(result.mount().get());
+    RemoveMount(user_mount.get());
   }
 
-  *OUT_error_code = result.return_code();
-  *OUT_result = result.return_status();
+  *OUT_error_code = return_code;
+  *OUT_result = return_status;
   return TRUE;
 }
 

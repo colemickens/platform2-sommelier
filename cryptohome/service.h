@@ -298,6 +298,14 @@ class Service : public brillo::dbus::AbstractDbusService,
                                     gboolean *OUT_is_ephemeral_mount,
                                     GError **error);
   virtual gboolean IsMounted(gboolean *OUT_is_mounted, GError **error);
+
+  void DoUpdateTimestamp(scoped_refptr<Mount> mount);
+  void DoMount(scoped_refptr<cryptohome::Mount> mount,
+               const UsernamePasskey& credentials,
+               const Mount::MountArgs& mount_args,
+               base::WaitableEvent* event,
+               MountError* return_code,
+               bool* return_status);
   virtual gboolean Mount(const gchar *user,
                          const gchar *key,
                          gboolean create_if_missing,
