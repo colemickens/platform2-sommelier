@@ -480,8 +480,10 @@ class Plotter(object):
 
     # Round up max values so that they aren't ugly.  This increases them a max
     # of 10%.
-    for label in max_values:
-      max_values[label] = round_up(max_values[label], 2)
+    for (label, value) in max_values.items():
+      max_values[label] = round_up(value, 2)
+    for (group_name, value) in max_values_by_group.items():
+      max_values_by_group[group_name] = round_up(value, 2)
 
     # Scale so that max_value is mapped to 100.
     for label in max_values:
