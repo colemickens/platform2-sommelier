@@ -107,7 +107,7 @@ std::string HexEncode(const brillo::SecureBlob& data) {
 }
 
 brillo::SecureBlob Sha256(const std::string& str) {
-  brillo::SecureBlob blob(str.data(), str.data() + str.size());
+  brillo::SecureBlob blob(str);
   return cryptohome::CryptoLib::Sha256(blob);
 }
 

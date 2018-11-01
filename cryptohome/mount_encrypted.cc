@@ -288,8 +288,8 @@ void remove_pending() {
 static result_code finalize_from_cmdline(char* key) {
   // Load the system key.
   brillo::SecureBlob system_key;
-  if (!base::HexStringToBytes(key, &system_key) ||
-      system_key.size() != DIGEST_LENGTH) {
+  if (!brillo::SecureBlob::HexStringToSecureBlob(std::string(key), &system_key)
+      || system_key.size() != DIGEST_LENGTH) {
     LOG(ERROR) << "Failed to parse system key.";
     return RESULT_FAIL_FATAL;
   }
@@ -319,7 +319,8 @@ static result_code finalize_from_cmdline(char* key) {
     return RESULT_FAIL_FATAL;
   }
   brillo::SecureBlob encryption_key_blob;
-  if (!base::HexStringToBytes(encryption_key, &encryption_key_blob)) {
+  if (!brillo::SecureBlob::HexStringToSecureBlob(std::string(encryption_key),
+                                                 &encryption_key_blob)) {
     ERROR("Failed to decode encryption key.");
     return RESULT_FAIL_FATAL;
   }

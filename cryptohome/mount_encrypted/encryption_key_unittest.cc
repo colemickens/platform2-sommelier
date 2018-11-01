@@ -287,7 +287,7 @@ class EncryptionKeyTest : public testing::Test {
     EXPECT_EQ(key_->encryption_key().size(), kEncryptionKeySize);
     if (expected_key) {
       EXPECT_EQ(
-          std::vector<uint8_t>(expected_key, expected_key + kEncryptionKeySize),
+          brillo::SecureBlob(expected_key, expected_key + kEncryptionKeySize),
           key_->encryption_key());
     }
     EXPECT_FALSE(key_->is_fresh());
@@ -560,8 +560,8 @@ TEST_F(EncryptionKeyTest, EncStatefulTpmOwnedExisting) {
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
   ExpectLockboxValid(true);
   EXPECT_EQ(
-      std::vector<uint8_t>(kLockboxV2Contents,
-                           kLockboxV2Contents + sizeof(kLockboxV2Contents)),
+      brillo::SecureBlob(kLockboxV2Contents,
+                         kLockboxV2Contents + sizeof(kLockboxV2Contents)),
       tpm_->GetLockboxSpace()->contents());
 }
 
