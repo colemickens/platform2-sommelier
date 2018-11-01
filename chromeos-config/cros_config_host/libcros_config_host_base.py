@@ -78,10 +78,12 @@ BaseFile = namedtuple('BaseFile', ['source', 'dest'])
 #       same as the model, since that is what we use for signature ID. But for
 #       zero-touch whitelabel this is 'sig-id-in-customization-id' since we do
 #       not know the signature ID until we look up in VPD.
+#   brand-code: Uniquely identifies a given brand (see go/chromeos-rlz)
 FirmwareInfo = namedtuple('FirmwareInfo', [
     'model', 'shared_model', 'key_id', 'have_image', 'bios_build_target',
     'ec_build_target', 'main_image_uri', 'main_rw_image_uri', 'ec_image_uri',
-    'pd_image_uri', 'extra', 'create_bios_rw_image', 'tools', 'sig_id'
+    'pd_image_uri', 'extra', 'create_bios_rw_image', 'tools', 'sig_id',
+    'brand_code'
 ])
 
 class PathComponent(object):

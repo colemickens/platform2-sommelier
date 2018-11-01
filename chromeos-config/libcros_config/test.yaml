@@ -93,6 +93,7 @@ some_config: &some_config
 
 some_whitelabel_config: &some_whitelabel_config
   <<: *some_base_config
+  brand-code: "{{$brand-code}}"
   identity:
     platform-name: "Some"
     smbios-name-match: "Some"

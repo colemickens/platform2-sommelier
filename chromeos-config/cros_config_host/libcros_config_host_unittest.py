@@ -273,7 +273,8 @@ class CommonTests(object):
                        extra=['${FILESDIR}/extra'],
                        create_bios_rw_image=False,
                        tools=['${FILESDIR}/tools1', '${FILESDIR}/tools2'],
-                       sig_id='another')),
+                       sig_id='another',
+                       brand_code='')),
          ('some',
           FirmwareInfo(model='some',
                        shared_model='some',
@@ -288,7 +289,8 @@ class CommonTests(object):
                        extra=[],
                        create_bios_rw_image=False,
                        tools=[],
-                       sig_id='some')),
+                       sig_id='some',
+                       brand_code='')),
          ('whitelabel',
           FirmwareInfo(model='whitelabel',
                        shared_model='some',
@@ -303,7 +305,8 @@ class CommonTests(object):
                        extra=[],
                        create_bios_rw_image=False,
                        tools=[],
-                       sig_id='sig-id-in-customization-id')),
+                       sig_id='sig-id-in-customization-id',
+                       brand_code='')),
          ('whitelabel-whitelabel1',
           FirmwareInfo(model='whitelabel-whitelabel1',
                        shared_model='some',
@@ -318,7 +321,8 @@ class CommonTests(object):
                        extra=[],
                        create_bios_rw_image=False,
                        tools=[],
-                       sig_id='whitelabel-whitelabel1')),
+                       sig_id='whitelabel-whitelabel1',
+                       brand_code='WLBA')),
          ('whitelabel-whitelabel2',
           FirmwareInfo(model='whitelabel-whitelabel2',
                        shared_model='some',
@@ -333,7 +337,8 @@ class CommonTests(object):
                        extra=[],
                        create_bios_rw_image=False,
                        tools=[],
-                       sig_id='whitelabel-whitelabel2'))])
+                       sig_id='whitelabel-whitelabel2',
+                       brand_code='WLBB'))])
     result = CrosConfig(self.filepath).GetFirmwareInfo()
     self._assertEqualsNamedTuplesDict(result, expected)
 

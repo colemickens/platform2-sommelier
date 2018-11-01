@@ -135,6 +135,7 @@
             "first-api-level": "27"
           }
         },
+        "brand-code": "WLBA",
         "hardware-properties": {
           "is-lid-convertible": false
         },
@@ -173,6 +174,7 @@
             "first-api-level": "27"
           }
         },
+        "brand-code": "WLBA",
         "hardware-properties": {
           "is-lid-convertible": false
         },
@@ -210,6 +212,7 @@
             "first-api-level": "27"
           }
         },
+        "brand-code": "WLBB",
         "hardware-properties": {
           "is-lid-convertible": false
         },
@@ -248,6 +251,7 @@
             "first-api-level": "27"
           }
         },
+        "brand-code": "WLBB",
         "hardware-properties": {
           "is-lid-convertible": false
         },

@@ -132,6 +132,7 @@ class CrosConfigJson(CrosConfigBaseImpl):
     for config in self._configs:
       fw = config.GetFirmwareConfig()
       identity = str(config.GetProperties('/identity'))
+      brand_code = config.GetProperty('/', 'brand-code')
       if fw and identity not in processed:
         fw_str = str(fw)
         shared_model = None
@@ -168,6 +169,7 @@ class CrosConfigJson(CrosConfigBaseImpl):
 
         if sig_in_customization_id:
           sig_id = 'sig-id-in-customization-id'
+          brand_code = ''
         else:
           sig_id = config.GetValue(fw_signer_config, 'signature-id')
           processed.add(identity)
@@ -175,12 +177,14 @@ class CrosConfigJson(CrosConfigBaseImpl):
         info = FirmwareInfo(name, shared_model, key_id, have_image,
                             bios_build_target, ec_build_target, main_image_uri,
                             main_rw_image_uri, ec_image_uri, pd_image_uri,
-                            extra, create_bios_rw_image, tools, sig_id)
+                            extra, create_bios_rw_image, tools, sig_id,
+                            brand_code)
         config.firmware_info[name] = info
 
         if sig_in_customization_id:
           for wl_config in self._configs:
             if wl_config.GetName() == name:
+              wl_brand_code = wl_config.GetProperty('/', 'brand-code')
               wl_identity = str(wl_config.GetProperties('/identity'))
               processed.add(wl_identity)
               fw_signer_config = wl_config.GetProperties('/firmware-signing')
@@ -191,7 +195,8 @@ class CrosConfigJson(CrosConfigBaseImpl):
                   model=wl_sig_id,
                   key_id=wl_key_id,
                   have_image=False,
-                  sig_id=wl_sig_id)
+                  sig_id=wl_sig_id,
+                  brand_code=wl_brand_code)
 
   def GetDeviceConfigs(self):
     return self._configs

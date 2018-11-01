@@ -601,6 +601,7 @@ class CrosConfigFdt(CrosConfigBaseImpl):
       base_model = whitelabel if whitelabel else self
       firmware_node = self.PathNode('/firmware')
       base_firmware_node = base_model.PathNode('/firmware')
+      brand_code = base_model.GetStr('brand-code')
 
       # If this model shares firmware with another model, get our
       # images from there.
@@ -662,7 +663,7 @@ class CrosConfigFdt(CrosConfigBaseImpl):
       info = FirmwareInfo(self.name, shared_model, key_id, have_image,
                           bios_build_target, ec_build_target, main_image_uri,
                           main_rw_image_uri, ec_image_uri, pd_image_uri, extra,
-                          create_bios_rw_image, tools, sig_id)
+                          create_bios_rw_image, tools, sig_id, brand_code)
 
       # Handle the alternative schema, where whitelabels are in a single model
       # and have whitelabel tags to distinguish them.
@@ -672,13 +673,15 @@ class CrosConfigFdt(CrosConfigBaseImpl):
         # Sort these to get a deterministic ordering with yaml (for tests).
         for name in sorted(whitelabels.subnodes):
           whitelabel = whitelabels.subnodes[name]
-          key_id = whitelabel.GetStr('key-id')
+          wl_key_id = whitelabel.GetStr('key-id')
+          wl_brand_code = whitelabel.GetStr('brand-code')
           whitelabel_name = '%s-%s' % (base_model.name, whitelabel.name)
           result[whitelabel_name] = info._replace(
               model=whitelabel_name,
-              key_id=key_id,
+              key_id=wl_key_id,
               have_image=False,
-              sig_id=whitelabel_name)
+              sig_id=whitelabel_name,
+              brand_code=wl_brand_code)
       return result
 
     def GetWallpaperFiles(self):
