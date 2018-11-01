@@ -385,7 +385,7 @@ cleanup_on_failure() {
     if [ -b "${DST-}" ]; then
       # Generate the diagnostics log that can be used by a caller.
       echo "Running a hw diagnostics test -- this might take a couple minutes."
-      badblocks -sv "${DST}" 2>&1 | tee "${HARDWARE_DIAGNOSTICS_PATH}"
+      badblocks -e 100 -sv "${DST}" 2>&1 | tee "${HARDWARE_DIAGNOSTICS_PATH}"
     fi
 
     if [ -f /usr/share/misc/storage-info-common.sh ]; then
