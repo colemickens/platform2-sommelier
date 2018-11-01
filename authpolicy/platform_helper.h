@@ -55,9 +55,6 @@ bool PerformPipeIo(int stdin_fd,
 // success. Should never block.
 base::ScopedFD DuplicatePipe(int src_fd);
 
-// Gets a user id by name. Dies on error.
-uid_t GetUserId(const char* user_name);
-
 // Gets the current effective user id.
 uid_t GetEffectiveUserId();
 

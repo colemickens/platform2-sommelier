@@ -8,6 +8,7 @@
 #include <base/memory/weak_ptr.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/syslog_logging.h>
+#include <brillo/userdb_utils.h>
 #include <install_attributes/libinstallattributes.h>
 
 #include "authpolicy/authpolicy.h"
@@ -90,14 +91,18 @@ int main(int /* argc */, char* /* argv */ []) {
   brillo::InitLog(brillo::kLogToSyslog);
 
   // Verify we're running as authpolicyd user.
-  uid_t authpolicyd_uid = authpolicy::GetUserId(kAuthPolicydUser);
+  uid_t authpolicyd_uid;
+  CHECK(
+      brillo::userdb::GetUserInfo(kAuthPolicydUser, &authpolicyd_uid, nullptr));
   if (authpolicyd_uid != authpolicy::GetEffectiveUserId()) {
     LOG(ERROR) << "Failed to verify effective UID (must run as authpolicyd).";
     exit(kExitCodeStartupFailure);
   }
 
   // Make it possible to switch to authpolicyd-exec without caps and drop caps.
-  uid_t authpolicyd_exec_uid = authpolicy::GetUserId(kAuthPolicydExecUser);
+  uid_t authpolicyd_exec_uid;
+  CHECK(brillo::userdb::GetUserInfo(kAuthPolicydExecUser, &authpolicyd_exec_uid,
+                                    nullptr));
   if (!authpolicy::SetSavedUserAndDropCaps(authpolicyd_exec_uid)) {
     LOG(ERROR) << "Failed to establish user ids and drop caps.";
     exit(kExitCodeStartupFailure);

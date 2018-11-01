@@ -7,7 +7,6 @@
 #include <fcntl.h>
 #include <linux/capability.h>
 #include <poll.h>
-#include <pwd.h>
 #include <sys/capability.h>
 #include <sys/prctl.h>
 #include <sysexits.h>
@@ -31,8 +30,6 @@ const size_t kMaxReadSize = 16 * 1024 * 1024;  // 16 MB
 const size_t kBufferSize = PIPE_BUF;  // ~4 Kb on my system
 // Timeout used for poll()ing pipes.
 const int kPollTimeoutMilliseconds = 30000;
-// Default buffer length for getpwnam_r.
-const int kDefaultBufLen = 65536;
 
 // Creates a non-blocking local pipe and returns the read and the write end.
 bool CreatePipe(base::ScopedFD* pipe_read_end, base::ScopedFD* pipe_write_end) {
@@ -288,18 +285,6 @@ base::ScopedFD WriteStringAndPipeToPipe(const std::string& str, int fd) {
     return base::ScopedFD();
   }
   return pipe_read_end;
-}
-
-uid_t GetUserId(const char* user_name) {
-  // Load the passwd entry.
-  int buf_len = sysconf(_SC_GETPW_R_SIZE_MAX);
-  if (buf_len == -1)
-    buf_len = kDefaultBufLen;
-  struct passwd user_info, *user_infop;
-  std::vector<char> buf(buf_len);
-  CHECK_EQ(0, HANDLE_EINTR(getpwnam_r(user_name, &user_info, buf.data(),
-                                      buf_len, &user_infop)));
-  return user_info.pw_uid;
 }
 
 uid_t GetEffectiveUserId() {
