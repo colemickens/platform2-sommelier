@@ -253,7 +253,7 @@ The schema definition is below:
 | --------- | ------ | --------- | -------- | ----------- |  ----------- |
 | arc | [arc](#arc) |  | False |  |  |
 | audio | [audio](#audio) |  | False |  |  |
-| brand-code | string | ```^[A-Z]{4}$``` | False |  | Brand code of the model (also called RLZ code). |
+| brand-code | string |  | False |  | Brand code of the model (also called RLZ code). |
 | firmware | [firmware](#firmware) |  | True |  |  |
 | firmware-signing | [firmware-signing](#firmware-signing) |  | False |  |  |
 | hardware-properties | [hardware-properties](#hardware-properties) |  | False |  | Contains boolean flags for hardware properties of this board, for example if it's convertible, has a touchscreen, has a camera, etc. This information is used to auto-generate C code that is consumed by the EC build process in order to do run-time configuration. If a value is defined within a config file, but not for a specific model, that value will be assumed to be false for that model. All properties must be booleans. If non-boolean properties are desired, the generation code in cros_config_schema.py must be updated to support them. |

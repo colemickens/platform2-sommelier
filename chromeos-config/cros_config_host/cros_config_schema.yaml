@@ -127,7 +127,6 @@ properties:
             brand-code:
               description: Brand code of the model (also called RLZ code).
               type: string
-              pattern: "^[A-Z]{4}$"
             firmware:
               type: object
               properties:
