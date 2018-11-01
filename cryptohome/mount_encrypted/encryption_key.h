@@ -78,6 +78,11 @@ class EncryptionKey {
   // a usable system key to be present.
   void PersistEncryptionKey(const brillo::SecureBlob& encryption_key);
 
+  // Get a key derived from |system_key_| by performing an HMAC256 operation on
+  // it with |label| being the data to do the HMAC operation on.
+  // If |system_key_| is empty, it returns an empty blob.
+  brillo::SecureBlob GetDerivedSystemKey(const std::string& label) const;
+
   const brillo::SecureBlob& encryption_key() const { return encryption_key_; }
   bool is_fresh() const {
     return encryption_key_status_ == EncryptionKeyStatus::kFresh;

@@ -323,6 +323,17 @@ void EncryptionKey::PersistEncryptionKey(
   Finalize();
 }
 
+brillo::SecureBlob EncryptionKey::GetDerivedSystemKey(
+    const std::string& label) const {
+  if (!system_key_.empty() &&
+      system_key_status_ == EncryptionKey::SystemKeyStatus::kNVRAMEncstateful) {
+    return cryptohome::CryptoLib::HmacSha256(system_key_,
+                                             brillo::SecureBlob(label));
+  }
+
+  return brillo::SecureBlob();
+}
+
 void EncryptionKey::Finalize() {
   CHECK(!system_key_.empty());
   CHECK(!encryption_key_.empty());

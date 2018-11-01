@@ -32,12 +32,14 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
 
 #include <metrics/metrics_library.h>
 
+#include <cryptohome/cryptolib.h>
 #include "cryptohome/mount_encrypted.h"
 #include "cryptohome/mount_encrypted/encryption_key.h"
 #include "cryptohome/mount_encrypted/tpm.h"
@@ -48,6 +50,10 @@
 #define BUF_SIZE 1024
 #define PROP_SIZE 64
 
+constexpr char kBioCryptoInitPath[] = "/usr/bin/bio_crypto_init";
+constexpr char kBioTpmSeedSalt[] = "biod";
+constexpr char kBioTpmSeedTmpDir[] = "/run/bio_crypto_init";
+constexpr char kBioTpmSeedFile[] = "seed";
 static const gchar* const kEncryptedFSType = "ext4";
 static const gchar* const kCryptDevName = "encstateful";
 static const gchar* const kNvramExport = "/tmp/lockbox.nvram";
@@ -57,6 +63,8 @@ static const uint64_t kSectorSize = 512;
 static const uint64_t kExt4BlockSize = 4096;
 static const uint64_t kExt4MinBytes = 16 * 1024 * 1024;
 static const int kCryptAllowDiscard = 1;
+static const uid_t kBiodUid = 282;
+static const gid_t kBiodGid = 282;
 
 enum migration_method {
   MIGRATE_TEST_ONLY,
@@ -860,6 +868,50 @@ void RecordEnumeratedHistogram(MetricsLibrary* metrics,
                          static_cast<int>(Enum::kCount));
 }
 
+/*
+ * Send a secret derived from the system key to the biometric managers, if
+ * available, via a tmpfs file which will be read by bio_crypto_init.
+ */
+bool SendSecretToBiodTmpFile(const EncryptionKey& key) {
+  /* If there isn't a bio-sensor, don't bother. */
+  if (!base::PathExists(base::FilePath(kBioCryptoInitPath))) {
+    LOG(INFO) << "There is no biod, so skip sending TPM seed.";
+    return true;
+  }
+
+  brillo::SecureBlob tpm_seed =
+      key.GetDerivedSystemKey(std::string(kBioTpmSeedSalt));
+  if (tpm_seed.empty()) {
+    LOG(ERROR) << "TPM Seed provided is empty, not writing to tmpfs.";
+    return false;
+  }
+
+  auto dirname = base::FilePath(kBioTpmSeedTmpDir);
+  if (!base::CreateDirectory(dirname)) {
+    LOG(ERROR) << "Failed to create dir for TPM seed.";
+    return false;
+  }
+
+  if (chown(kBioTpmSeedTmpDir, kBiodUid, kBiodGid) == -1) {
+    PLOG(ERROR) << "Failed to change ownership of biod tmpfs dir.";
+    return false;
+  }
+
+  auto filename = dirname.Append(kBioTpmSeedFile);
+  if (base::WriteFile(filename, tpm_seed.char_data(), tpm_seed.size()) !=
+      tpm_seed.size()) {
+    LOG(ERROR) << "Failed to write TPM seed to tmpfs file.";
+    return false;
+  }
+
+  if (chown(filename.value().c_str(), kBiodUid, kBiodGid) == -1) {
+    PLOG(ERROR) << "Failed to change ownership of biod tmpfs file.";
+    return false;
+  }
+
+  return true;
+}
+
 int main(int argc, char* argv[]) {
   result_code rc;
 
@@ -916,6 +968,15 @@ int main(int argc, char* argv[]) {
                             key.encryption_key_status());
   if (rc != RESULT_SUCCESS) {
     return rc;
+  }
+
+  /* Log errors during sending seed to biod, but don't stop execution. */
+  if (!use_factory_system_key && has_chromefw()) {
+    if (!SendSecretToBiodTmpFile(key)) {
+      LOG(ERROR) << "Failed to send TPM secret to biod.";
+    }
+  } else {
+    LOG(ERROR) << "Failed to load system key, biod won't get a TPM seed.";
   }
 
   std::string encryption_key_hex =
