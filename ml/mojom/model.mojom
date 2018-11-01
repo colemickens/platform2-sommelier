@@ -21,10 +21,14 @@ enum ModelId {
   kMax = SMART_DIM,
 };
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+// Remove the kMax in favour of kMaxValue after Mojo uprev (crbug.com/909719)
 enum CreateGraphExecutorResult {
   OK = 0,
-  MODEL_INTERPRETATION_ERROR,
-  MEMORY_ALLOCATION_ERROR,
+  MODEL_INTERPRETATION_ERROR = 1,
+  MEMORY_ALLOCATION_ERROR = 2,
+  kMax = MEMORY_ALLOCATION_ERROR,
 };
 
 struct ModelSpec {

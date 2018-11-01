@@ -12,17 +12,21 @@ module chromeos.machine_learning.mojom;
 
 import "ml/mojom/tensor.mojom";
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+// Remove the kMax in favour of kMaxValue after Mojo uprev (crbug.com/909719)
 enum ExecuteResult {
   OK = 0,
-  INPUT_MISSING_ERROR,
-  UNKNOWN_INPUT_ERROR,
-  INPUT_TYPE_ERROR,
-  INPUT_SHAPE_ERROR,
-  INPUT_FORMAT_ERROR,
-  OUTPUT_MISSING_ERROR,
-  UNKNOWN_OUTPUT_ERROR,
-  DUPLICATE_OUTPUT_ERROR,
-  EXECUTION_ERROR,
+  INPUT_MISSING_ERROR = 1,
+  UNKNOWN_INPUT_ERROR = 2,
+  INPUT_TYPE_ERROR = 3,
+  INPUT_SHAPE_ERROR = 4,
+  INPUT_FORMAT_ERROR = 5,
+  OUTPUT_MISSING_ERROR = 6,
+  UNKNOWN_OUTPUT_ERROR = 7,
+  DUPLICATE_OUTPUT_ERROR = 8,
+  EXECUTION_ERROR = 9,
+  kMax = EXECUTION_ERROR,
 };
 
 // API for performing inference on a TensorFlow graph. A given graph can be

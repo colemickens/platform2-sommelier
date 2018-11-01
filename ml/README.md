@@ -30,12 +30,23 @@ understand its resource costs in the wild:
 * MachineLearningService.CpuUsageMilliPercent: Fraction of total CPU resources
   consumed by the daemon every 5 minutes, in units of milli-percent (1/100,000).
 
-TODO(alanlxl): Additional metrics to be added, ideally per-model, to understand
-levels of performance that clients are getting:
+Additional metrics added in order to understand the resource costs of each
+request:
 
-* LoadModel time
-* CreateGraphExecutor time
-* Model inference time
+* MachineLearningService.|request|.Event: OK/ErrorType of the request.
+* MachineLearningService.|request|.PrivateMemoryDeltaKb: Private (unshared)
+  memory delta caused by the request.
+* MachineLearningService.|request|.ElapsedTimeMicrosec: Time cost of the
+  request.
+* MachineLearningService.|request|.CpuTimeMicrosec: CPU time usage of the
+  request, which is scaled to one CPU core, namely it may be greater than
+  ElapsedTimeMicrosec if there are multi cores.
+
+The above request can be following:
+
+* LoadModel
+* CreateGraphExecutor
+* Execute (model inference)
 
 ## Design docs
 

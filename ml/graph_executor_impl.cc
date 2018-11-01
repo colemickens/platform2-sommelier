@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "ml/graph_executor_impl.h"
+#include "ml/request_metrics.h"
 
 #include <set>
 #include <utility>
@@ -21,6 +22,9 @@ using ::chromeos::machine_learning::mojom::Int64List;
 using ::chromeos::machine_learning::mojom::Tensor;
 using ::chromeos::machine_learning::mojom::TensorPtr;
 using ::chromeos::machine_learning::mojom::ValueList;
+
+// Base name for UMA metrics related to graph execution
+constexpr char kMetricsNameBase[] = "ExecuteResult";
 
 // Verifies |tensor| is valid (i.e. is of type |TensorType| and of the correct
 // shape for this input) and copies its data into the graph |interpreter| at
@@ -166,6 +170,10 @@ void GraphExecutorImpl::Execute(
     std::unordered_map<std::string, TensorPtr> tensors,
     const std::vector<std::string>& outputs,
     const ExecuteCallback& callback) {
+
+  RequestMetrics<ExecuteResult> request_metrics(kMetricsNameBase);
+  request_metrics.StartRecordingPerformanceMetrics();
+
   // Validate input and output names (before executing graph, for efficiency).
 
   for (const auto& kv : tensors) {
@@ -175,11 +183,13 @@ void GraphExecutorImpl::Execute(
     if (name_lookup == required_inputs_.end() ||
         name_lookup->second >= interpreter_->tensors_size()) {
       callback.Run(ExecuteResult::UNKNOWN_INPUT_ERROR, base::nullopt);
+      request_metrics.RecordRequestEvent(ExecuteResult::UNKNOWN_INPUT_ERROR);
       return;
     }
   }
   if (tensors.size() != required_inputs_.size()) {
     callback.Run(ExecuteResult::INPUT_MISSING_ERROR, base::nullopt);
+    request_metrics.RecordRequestEvent(ExecuteResult::INPUT_MISSING_ERROR);
     return;
   }
 
@@ -189,6 +199,7 @@ void GraphExecutorImpl::Execute(
     if (name_lookup == required_outputs_.end() ||
         name_lookup->second >= interpreter_->tensors_size()) {
       callback.Run(ExecuteResult::UNKNOWN_OUTPUT_ERROR, base::nullopt);
+      request_metrics.RecordRequestEvent(ExecuteResult::UNKNOWN_OUTPUT_ERROR);
       return;
     }
 
@@ -196,11 +207,13 @@ void GraphExecutorImpl::Execute(
     const auto insert_result = seen_outputs.insert(cur_output_name);
     if (!insert_result.second) {
       callback.Run(ExecuteResult::DUPLICATE_OUTPUT_ERROR, base::nullopt);
+      request_metrics.RecordRequestEvent(ExecuteResult::DUPLICATE_OUTPUT_ERROR);
       return;
     }
   }
   if (outputs.size() != required_outputs_.size()) {
     callback.Run(ExecuteResult::OUTPUT_MISSING_ERROR, base::nullopt);
+    request_metrics.RecordRequestEvent(ExecuteResult::OUTPUT_MISSING_ERROR);
     return;
   }
 
@@ -218,6 +231,7 @@ void GraphExecutorImpl::Execute(
       LOG(ERROR) << "TF lite graph contains invalid input node " << cur_input_id
                  << " of type " << cur_input_type << ".";
       callback.Run(ExecuteResult::EXECUTION_ERROR, base::nullopt);
+      request_metrics.RecordRequestEvent(ExecuteResult::EXECUTION_ERROR);
       return;
     }
 
@@ -227,6 +241,7 @@ void GraphExecutorImpl::Execute(
                                              interpreter_.get());
     if (populate_input_result != ExecuteResult::OK) {
       callback.Run(populate_input_result, base::nullopt);
+      request_metrics.RecordRequestEvent(populate_input_result);
       return;
     }
   }
@@ -235,6 +250,7 @@ void GraphExecutorImpl::Execute(
   if (interpreter_->Invoke() != kTfLiteOk) {
     LOG(ERROR) << "TF lite graph execution failed unexpectedly.";
     callback.Run(ExecuteResult::EXECUTION_ERROR, base::nullopt);
+    request_metrics.RecordRequestEvent(ExecuteResult::EXECUTION_ERROR);
     return;
   }
 
@@ -253,6 +269,7 @@ void GraphExecutorImpl::Execute(
       LOG(ERROR) << "TF lite graph contains invalid output node "
                  << cur_output_id << " of type " << cur_output_type << ".";
       callback.Run(ExecuteResult::EXECUTION_ERROR, base::nullopt);
+      request_metrics.RecordRequestEvent(ExecuteResult::EXECUTION_ERROR);
       return;
     }
 
@@ -262,11 +279,14 @@ void GraphExecutorImpl::Execute(
                                                *--output_tensors.end());
     if (populate_output_result != ExecuteResult::OK) {
       callback.Run(populate_output_result, base::nullopt);
+      request_metrics.RecordRequestEvent(populate_output_result);
       return;
     }
   }
 
   callback.Run(ExecuteResult::OK, std::move(output_tensors));
+  request_metrics.FinishRecordingPerformanceMetrics();
+  request_metrics.RecordRequestEvent(ExecuteResult::OK);
 }
 
 }  // namespace ml

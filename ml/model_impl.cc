@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "ml/model_impl.h"
+#include "ml/request_metrics.h"
 
 #include <utility>
 
@@ -18,6 +19,9 @@ using ::chromeos::machine_learning::mojom::CreateGraphExecutorResult;
 using ::chromeos::machine_learning::mojom::GraphExecutor;
 using ::chromeos::machine_learning::mojom::GraphExecutorRequest;
 using ::chromeos::machine_learning::mojom::ModelRequest;
+
+// Base name for UMA metrics related to CreateGraphExecutor calls
+constexpr char kMetricsNameBase[] = "CreateGraphExecutorResult";
 
 ModelImpl::ModelImpl(const std::map<std::string, int>& required_inputs,
                      const std::map<std::string, int>& required_outputs,
@@ -39,9 +43,13 @@ int ModelImpl::num_graph_executors_for_testing() const {
 
 void ModelImpl::CreateGraphExecutor(
     GraphExecutorRequest request, const CreateGraphExecutorCallback& callback) {
+  RequestMetrics<CreateGraphExecutorResult> request_metrics(kMetricsNameBase);
+  request_metrics.StartRecordingPerformanceMetrics();
   if (model_ == nullptr) {
     LOG(ERROR) << "Null model provided.";
     callback.Run(CreateGraphExecutorResult::MODEL_INTERPRETATION_ERROR);
+    request_metrics.RecordRequestEvent(
+        CreateGraphExecutorResult::MODEL_INTERPRETATION_ERROR);
     return;
   }
 
@@ -53,12 +61,16 @@ void ModelImpl::CreateGraphExecutor(
   if (resolve_status != kTfLiteOk || !interpreter) {
     LOG(ERROR) << "Could not resolve model ops.";
     callback.Run(CreateGraphExecutorResult::MODEL_INTERPRETATION_ERROR);
+    request_metrics.RecordRequestEvent(
+        CreateGraphExecutorResult::MODEL_INTERPRETATION_ERROR);
     return;
   }
 
   // Allocate memory for tensors.
   if (interpreter->AllocateTensors() != kTfLiteOk) {
     callback.Run(CreateGraphExecutorResult::MEMORY_ALLOCATION_ERROR);
+    request_metrics.RecordRequestEvent(
+        CreateGraphExecutorResult::MEMORY_ALLOCATION_ERROR);
     return;
   }
 
@@ -70,6 +82,8 @@ void ModelImpl::CreateGraphExecutor(
                  graph_executors_.begin()));
 
   callback.Run(CreateGraphExecutorResult::OK);
+  request_metrics.FinishRecordingPerformanceMetrics();
+  request_metrics.RecordRequestEvent(CreateGraphExecutorResult::OK);
 }
 
 void ModelImpl::EraseGraphExecutor(

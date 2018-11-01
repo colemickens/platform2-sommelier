@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "ml/machine_learning_service_impl.h"
+#include "ml/request_metrics.h"
 
 #include <memory>
 #include <utility>
@@ -24,6 +25,8 @@ using ::chromeos::machine_learning::mojom::ModelRequest;
 using ::chromeos::machine_learning::mojom::ModelSpecPtr;
 
 constexpr char kSystemModelDir[] = "/opt/google/chrome/ml_models/";
+// Base name for UMA metrics related to LoadModel requests
+constexpr char kMetricsNameBase[] = "LoadModelResult";
 
 // To avoid passing a lambda as a base::Closure.
 void DeleteModelImpl(const ModelImpl* const model_impl) {
@@ -51,8 +54,11 @@ MachineLearningServiceImpl::MachineLearningServiceImpl(
 void MachineLearningServiceImpl::LoadModel(ModelSpecPtr spec,
                                            ModelRequest request,
                                            const LoadModelCallback& callback) {
+  RequestMetrics<LoadModelResult> request_metrics(kMetricsNameBase);
+  request_metrics.StartRecordingPerformanceMetrics();
   if (spec->id <= ModelId::UNKNOWN || spec->id > ModelId::kMax) {
     callback.Run(LoadModelResult::MODEL_SPEC_ERROR);
+    request_metrics.RecordRequestEvent(LoadModelResult::MODEL_SPEC_ERROR);
     return;
   }
 
@@ -62,6 +68,7 @@ void MachineLearningServiceImpl::LoadModel(ModelSpecPtr spec,
   if (metadata_lookup == model_metadata_.end()) {
     LOG(ERROR) << "No metadata present for model ID " << spec->id << ".";
     callback.Run(LoadModelResult::LOAD_MODEL_ERROR);
+    request_metrics.RecordRequestEvent(LoadModelResult::LOAD_MODEL_ERROR);
     return;
   }
   const ModelMetadata& metadata = metadata_lookup->second;
@@ -73,6 +80,7 @@ void MachineLearningServiceImpl::LoadModel(ModelSpecPtr spec,
   if (model == nullptr) {
     LOG(ERROR) << "Failed to load model file '" << model_path << "'.";
     callback.Run(LoadModelResult::LOAD_MODEL_ERROR);
+    request_metrics.RecordRequestEvent(LoadModelResult::LOAD_MODEL_ERROR);
     return;
   }
 
@@ -83,6 +91,8 @@ void MachineLearningServiceImpl::LoadModel(ModelSpecPtr spec,
   model_impl->set_connection_error_handler(
       base::Bind(&DeleteModelImpl, base::Unretained(model_impl)));
   callback.Run(LoadModelResult::OK);
+  request_metrics.FinishRecordingPerformanceMetrics();
+  request_metrics.RecordRequestEvent(LoadModelResult::OK);
 }
 
 }  // namespace ml
