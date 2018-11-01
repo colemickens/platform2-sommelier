@@ -79,13 +79,17 @@ fn non_blocking_select(high_fd: i32, inout_read_fds: &mut libc::fd_set) -> i32 {
     };
     let null = std::ptr::null_mut();
     // Safe because we're passing valid values and addresses.
-    unsafe {
+    let n = unsafe {
         libc::select(high_fd,
                      inout_read_fds,
                      null,
                      null,
                      &mut null_timeout as *mut libc::timeval)
+    };
+    if n < 0 {
+        panic!("select: {}", strerror(errno()));
     }
+    n
 }
 
 fn mkfifo(path: &PathBuf) -> Result<()> {
@@ -103,7 +107,7 @@ fn mkfifo(path: &PathBuf) -> Result<()> {
 // The types of events which are generated internally for testing.  They
 // simulate state changes (for instance, change in the memory pressure level),
 // chrome events, and kernel events.
-#[derive(Clone,Copy,PartialEq)]
+#[derive(Clone,Copy,Debug,PartialEq)]
 enum TestEventType {
     EnterHighPressure,    // enter low available RAM (below margin) state
     EnterLowPressure,     // enter high available RAM state
@@ -113,6 +117,7 @@ enum TestEventType {
 }
 
 // Internally generated event for testing.
+#[derive(Debug)]
 struct TestEvent {
     time: i64,
     event_type: TestEventType,
@@ -120,6 +125,7 @@ struct TestEvent {
 
 impl TestEvent {
     fn deliver(&self, paths: &Paths, dbus_fifo: &mut File, low_mem_device: &mut File, time: i64) {
+        debug!("delivering {:?}", self);
         match self.event_type {
             TestEventType::EnterLowPressure =>
                 self.low_mem_notify(LOW_MEM_HIGH_AVAILABLE, &paths, low_mem_device),
@@ -136,9 +142,11 @@ impl TestEvent {
         write_string(&amount.to_string(), &paths.available, false).
             expect("available file: write failed");
         if amount == LOW_MEM_LOW_AVAILABLE {
+            debug!("making low-mem device ready to read");
             // Make low-mem device ready-to-read.
             write!(low_mem_device, ".").expect("low-mem-device: write failed");
         } else {
+            debug!("clearing low-mem device");
             let mut buf = [0; PAGE_SIZE];
             read_nonblocking_pipe(&mut low_mem_device, &mut buf)
                 .expect("low-mem-device: clear failed");
@@ -203,47 +211,54 @@ impl Timer for MockTimer {
               high_fd: i32,
               inout_read_fds: &mut libc::fd_set,
               timeout: &Duration) -> i32 {
-        // First check for pending events which may have been delivered during
-        // a preceding sleep.
+        // First check for existing active fds (for instance, the low-mem
+        // device).  We must save the original fd_set because when
+        // non_blocking_select returns 0, the fd_set is cleared.
+        let saved_inout_read_fds = inout_read_fds.clone();
         let n = non_blocking_select(high_fd, inout_read_fds);
         if n != 0 {
             return n;
         }
-        // Now time can start passing, as long as there are more events.
         let timeout_ms = duration_to_millis(&timeout);
         let end_time = self.current_time + timeout_ms;
-        if self.event_index == self.test_events.len() {
-            // No more events to deliver, so no need for further select() calls.
-            self.quit_request = true;
-            self.current_time = end_time;
-            return 0;
+        // Assume no events occur and we hit the timeout.  Fix later as needed.
+        self.current_time = end_time;
+        loop {
+            if self.event_index == self.test_events.len() {
+                // No more events to deliver, so no need for further select() calls.
+                self.quit_request = true;
+                return 0;
+            }
+            // There are still event to be delivered.
+            let first_event_time = self.test_events[self.event_index].time;
+            // We interpret the event time to be event.time + epsilon.  Thus if
+            // |first_event_time| is equal to |end_time|, we time out.
+            if first_event_time >= end_time {
+                // No event to deliver before the timeout.
+	        debug!("returning because fev = {}", first_event_time);
+                return 0;
+            }
+            // Deliver all events with the time stamp of the first event.  (There
+            // is at least one.)
+            while {
+                self.test_events[self.event_index].deliver(&self.paths,
+                                                           &mut self.dbus_fifo_out,
+                                                           &mut self.low_mem_device,
+                                                           first_event_time);
+                self.event_index += 1;
+                self.event_index < self.test_events.len() &&
+                    self.test_events[self.event_index].time == first_event_time
+            } {}
+            // One or more events were delivered, and some of them may fire a
+            // select.  First restore the original fd_set.
+            *inout_read_fds = saved_inout_read_fds.clone();
+            let n = non_blocking_select(high_fd, inout_read_fds);
+            if n > 0 {
+	        debug!("returning at {} with {} events", first_event_time, n);
+                self.current_time = first_event_time;
+                return n;
+            }
         }
-        // There are still event to be delivered.
-        let first_event_time = self.test_events[self.event_index].time;
-        if first_event_time > end_time {
-            // No event to deliver before the timeout, thus no events to look for.
-            self.current_time = end_time;
-            return 0;
-        }
-        // Deliver all events with the time stamp of the first event.  (There
-        // is at least one.)
-        while {
-            self.test_events[self.event_index].deliver(&self.paths,
-                                                       &mut self.dbus_fifo_out,
-                                                       &mut self.low_mem_device,
-                                                       first_event_time);
-            self.event_index += 1;
-            self.event_index < self.test_events.len() &&
-                self.test_events[self.event_index].time == first_event_time
-        } {}
-        // One or more events were delivered, so run another select.
-        let n = non_blocking_select(high_fd, inout_read_fds);
-        if n > 0 {
-            self.current_time = first_event_time;
-        } else {
-            self.current_time = end_time;
-        }
-        n
     }
 
     // Mock sleep produces all events that would happen during that sleep, then
@@ -441,6 +456,12 @@ const TEST_DESCRIPTORS: &[&str] = &[
     ..00000...|.111111111|1...
     ",
 
+    // Discard a tab in slow-poll mode.
+    "
+    ....1.......
+    ....00000...
+    ",
+
 ];
 
 fn trim_descriptor(descriptor: &str) -> Vec<Vec<u8>> {
@@ -540,14 +561,14 @@ fn time_from_sample_string(line: &str) -> Result<i64> {
 }
 
 macro_rules! assert_approx_eq {
-    ($x:expr, $y: expr, $tolerance: expr, $format:expr $(, $arg:expr)*) => {{
-        let x = $x;
-        let y = $y;
+    ($actual:expr, $expected: expr, $tolerance: expr, $format:expr $(, $arg:expr)*) => {{
+        let actual = $actual;
+        let expected = $expected;
         let tolerance = $tolerance;
-        let y_min = y - tolerance;
-        let y_max = y + tolerance;
-        assert!(x < y_max && x > y_min, concat!("(expected: {}, actual: {}) ", $format),
-                y, x $(, $arg)*);
+        let expected_min = expected - tolerance;
+        let expected_max = expected + tolerance;
+        assert!(actual < expected_max && actual > expected_min,
+                concat!("(expected: {}, actual: {}) ", $format), expected, actual $(, $arg)*);
     }}
 }
 

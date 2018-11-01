@@ -934,13 +934,17 @@ impl<'a> Sampler<'a> {
         debug!("entering slow poll at {}", self.current_time);
         // Idiom for do ... while.
         while {
-            self.timer.sleep(&SLOW_POLL_PERIOD_DURATION);
+            let fired_count = {
+                let mut watcher = &mut self.watcher;
+                watcher.watch(&SLOW_POLL_PERIOD_DURATION, &mut *self.timer)?
+            };
+            debug!("fired count: {} at {}", fired_count, self.timer.now());
             self.quit_request = self.timer.quit_request();
             if let Some(ref available_file) = self.files.available_file_option.as_ref() {
                 self.current_available = pread_u32(available_file)?;
             }
             self.refresh_time();
-            self.should_poll_slowly() && !self.quit_request
+            self.should_poll_slowly() && !self.quit_request && fired_count == 0
         } {}
         Ok(())
     }
