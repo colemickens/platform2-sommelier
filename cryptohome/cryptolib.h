@@ -47,10 +47,12 @@ class CryptoLib {
   // TODO(jorgelo,crbug.com/728047): Review current usage of these functions and
   // consider making the functions that take a plain Blob also return a plain
   // Blob.
-  static brillo::SecureBlob Sha1(const brillo::Blob& data);
+  static brillo::Blob Sha1(const brillo::Blob& data);
+  static brillo::SecureBlob Sha1ToSecureBlob(const brillo::Blob& data);
   static brillo::SecureBlob Sha1(const brillo::SecureBlob& data);
 
-  static brillo::SecureBlob Sha256(const brillo::Blob& data);
+  static brillo::Blob Sha256(const brillo::Blob& data);
+  static brillo::SecureBlob Sha256ToSecureBlob(const brillo::Blob& data);
   static brillo::SecureBlob Sha256(const brillo::SecureBlob& data);
 
   static brillo::SecureBlob HmacSha512(const brillo::SecureBlob& key,
@@ -64,8 +66,8 @@ class CryptoLib {
                                        const brillo::SecureBlob& data);
 
   static size_t GetAesBlockSize();
-  static bool PasskeyToAesKey(const brillo::Blob& passkey,
-                              const brillo::Blob& salt,
+  static bool PasskeyToAesKey(const brillo::SecureBlob& passkey,
+                              const brillo::SecureBlob& salt,
                               unsigned int rounds,
                               brillo::SecureBlob* key,
                               brillo::SecureBlob* iv);
@@ -77,7 +79,7 @@ class CryptoLib {
   //   key - The AES key to use in decryption
   //   iv - The initialization vector to use
   //   plaintext - The unwrapped (decrypted) data
-  static bool AesDecrypt(const brillo::Blob& ciphertext,
+  static bool AesDecrypt(const brillo::SecureBlob& ciphertext,
                         const brillo::SecureBlob& key,
                         const brillo::SecureBlob& iv,
                         brillo::SecureBlob* plaintext);
@@ -91,13 +93,13 @@ class CryptoLib {
   //   key - The AES key to use
   //   iv - The initialization vector to use
   //   ciphertext - On success, the encrypted data
-  static bool AesEncrypt(const brillo::Blob& plaintext,
+  static bool AesEncrypt(const brillo::SecureBlob& plaintext,
                          const brillo::SecureBlob& key,
                          const brillo::SecureBlob& iv,
                          brillo::SecureBlob* ciphertext);
 
   // Same as AesDecrypt, but allows using either CBC or ECB
-  static bool AesDecryptSpecifyBlockMode(const brillo::Blob& ciphertext,
+  static bool AesDecryptSpecifyBlockMode(const brillo::SecureBlob& ciphertext,
                                          unsigned int start, unsigned int count,
                                          const brillo::SecureBlob& key,
                                          const brillo::SecureBlob& iv,
@@ -105,7 +107,7 @@ class CryptoLib {
                                          brillo::SecureBlob* plaintext);
 
   // Same as AesEncrypt, but allows using either CBC or ECB
-  static bool AesEncryptSpecifyBlockMode(const brillo::Blob& plaintext,
+  static bool AesEncryptSpecifyBlockMode(const brillo::SecureBlob& plaintext,
                                          unsigned int start, unsigned int count,
                                          const brillo::SecureBlob& key,
                                          const brillo::SecureBlob& iv,
@@ -145,6 +147,8 @@ class CryptoLib {
   // Parameters
   //   blob - The binary blob to convert
   static std::string BlobToHex(const brillo::Blob& blob);
+  static std::string SecureBlobToHex(const brillo::SecureBlob& blob);
+
   // Parameters
   //   blob - The binary blob to convert
   //   buffer (IN/OUT) - Where to store the converted blob
@@ -152,7 +156,9 @@ class CryptoLib {
   static void BlobToHexToBuffer(const brillo::Blob& blob,
                                 void* buffer,
                                 size_t buffer_length);
-
+  static void SecureBlobToHexToBuffer(const brillo::SecureBlob& blob,
+                                      void* buffer,
+                                      size_t buffer_length);
   // Computes an HMAC over the iv and encrypted_data fields of an EncryptedData
   // protobuf.
   // Parameters

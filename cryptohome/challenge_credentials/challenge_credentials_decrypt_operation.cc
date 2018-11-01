@@ -191,7 +191,8 @@ SecureBlob ChallengeCredentialsDecryptOperation::ConstructPasskey() const {
   DCHECK(salt_signature_);
   // Use a digest of the salt signature, to make the resulting passkey
   // reasonably short, and to avoid any potential bias.
-  const SecureBlob salt_signature_hash = CryptoLib::Sha256(*salt_signature_);
+  const SecureBlob salt_signature_hash =
+      CryptoLib::Sha256ToSecureBlob(*salt_signature_);
   return SecureBlob::Combine(*unsealed_secret_, salt_signature_hash);
 }
 

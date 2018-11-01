@@ -93,7 +93,7 @@ bool NVRamBootLockbox::Load() {
     return false;
   }
 
-  brillo::SecureBlob digest_blob = CryptoLib::Sha256(data);
+  brillo::Blob digest_blob = CryptoLib::Sha256(data);
   std::string digest(digest_blob.begin(), digest_blob.end());
 
   if (digest != root_digest_) {
@@ -130,7 +130,7 @@ bool NVRamBootLockbox::FlushAndUpdate(const KeyValueMap& keyvals) {
   brillo::Blob content(message.ByteSize());
   message.SerializeWithCachedSizesToArray(content.data());
 
-  brillo::SecureBlob digest_blob = CryptoLib::Sha256(content);
+  brillo::Blob digest_blob = CryptoLib::Sha256(content);
   std::string digest(digest_blob.begin(), digest_blob.end());
 
   // It is hard to make this atomic. In the case the file digest

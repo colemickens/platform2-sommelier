@@ -429,7 +429,7 @@ uint32_t TlclInitNvAuthPolicy(uint32_t pcr_selection_bitmap,
     }
   }
 
-  brillo::SecureBlob digest = cryptohome::CryptoLib::Sha256(input);
+  brillo::SecureBlob digest = cryptohome::CryptoLib::Sha256ToSecureBlob(input);
   memcpy(auth_policy, digest.data(), digest.size());
   return TPM_SUCCESS;
 }

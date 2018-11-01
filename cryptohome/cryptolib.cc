@@ -26,11 +26,11 @@ using brillo::SecureBlob;
 
 namespace {
 
-template <class T>
-SecureBlob Sha1Helper(const T& data) {
+template <class T, class U>
+T Sha1Helper(const U& data) {
   SHA_CTX sha_context;
   unsigned char md_value[SHA_DIGEST_LENGTH];
-  SecureBlob hash;
+  T hash;
 
   SHA1_Init(&sha_context);
   SHA1_Update(&sha_context, data.data(), data.size());
@@ -42,11 +42,11 @@ SecureBlob Sha1Helper(const T& data) {
   return hash;
 }
 
-template <class T>
-SecureBlob Sha256Helper(const T& data) {
+template <class T, class U>
+T Sha256Helper(const U& data) {
   SHA256_CTX sha_context;
   unsigned char md_value[SHA256_DIGEST_LENGTH];
-  SecureBlob hash;
+  T hash;
 
   SHA256_Init(&sha_context);
   SHA256_Update(&sha_context, data.data(), data.size());
@@ -76,6 +76,25 @@ brillo::SecureBlob HmacSha256Helper(const brillo::SecureBlob& key,
   HMAC(EVP_sha256(), key.data(), key.size(), data.data(), data.size(), mac,
        NULL);
   return brillo::SecureBlob(std::begin(mac), std::end(mac));
+}
+
+template <class T>
+void BlobToHexToBufferHelper(const T& data,
+                             void* buffer,
+                             size_t buffer_length) {
+  static const char table[] = "0123456789abcdef";
+  char* char_buffer = reinterpret_cast<char*>(buffer);
+  char* char_buffer_end = char_buffer + buffer_length;
+  for (uint8_t byte : data) {
+    if (char_buffer == char_buffer_end)
+      break;
+    *char_buffer++ = table[(byte >> 4) & 0x0f];
+    if (char_buffer == char_buffer_end)
+      break;
+    *char_buffer++ = table[byte & 0x0f];
+  }
+  if (char_buffer != char_buffer_end)
+    *char_buffer = '\x00';
 }
 
 }  // namespace
@@ -130,20 +149,28 @@ bool CryptoLib::CreateRsaKey(size_t key_bits, SecureBlob* n, SecureBlob* p) {
   return true;
 }
 
-brillo::SecureBlob CryptoLib::Sha1(const brillo::Blob& data) {
-  return Sha1Helper(data);
+brillo::Blob CryptoLib::Sha1(const brillo::Blob& data) {
+  return Sha1Helper<brillo::Blob, brillo::Blob>(data);
+}
+
+brillo::SecureBlob CryptoLib::Sha1ToSecureBlob(const brillo::Blob& data) {
+  return Sha1Helper<brillo::SecureBlob, brillo::Blob>(data);
 }
 
 brillo::SecureBlob CryptoLib::Sha1(const brillo::SecureBlob& data) {
-  return Sha1Helper(data);
+  return Sha1Helper<brillo::SecureBlob, brillo::SecureBlob>(data);
 }
 
-brillo::SecureBlob CryptoLib::Sha256(const brillo::Blob& data) {
-  return Sha256Helper(data);
+brillo::Blob CryptoLib::Sha256(const brillo::Blob& data) {
+  return Sha256Helper<brillo::Blob, brillo::Blob>(data);
+}
+
+brillo::SecureBlob CryptoLib::Sha256ToSecureBlob(const brillo::Blob& data) {
+  return Sha256Helper<brillo::SecureBlob, brillo::Blob>(data);
 }
 
 brillo::SecureBlob CryptoLib::Sha256(const brillo::SecureBlob& data) {
-  return Sha256Helper(data);
+  return Sha256Helper<brillo::SecureBlob, brillo::SecureBlob>(data);
 }
 
 brillo::SecureBlob CryptoLib::HmacSha512(const brillo::SecureBlob& key,
@@ -170,8 +197,9 @@ size_t CryptoLib::GetAesBlockSize() {
   return EVP_CIPHER_block_size(EVP_aes_256_cbc());
 }
 
-bool CryptoLib::PasskeyToAesKey(const brillo::Blob& passkey,
-                                const brillo::Blob& salt, unsigned int rounds,
+bool CryptoLib::PasskeyToAesKey(const brillo::SecureBlob& passkey,
+                                const brillo::SecureBlob& salt,
+                                unsigned int rounds,
                                 SecureBlob* key, SecureBlob* iv) {
   if (salt.size() != PKCS5_SALT_LEN) {
     LOG(ERROR) << "Bad salt size.";
@@ -203,7 +231,7 @@ bool CryptoLib::PasskeyToAesKey(const brillo::Blob& passkey,
   return true;
 }
 
-bool CryptoLib::AesEncrypt(const brillo::Blob& plaintext,
+bool CryptoLib::AesEncrypt(const SecureBlob& plaintext,
                            const SecureBlob& key,
                            const SecureBlob& iv,
                            SecureBlob* ciphertext) {
@@ -212,7 +240,7 @@ bool CryptoLib::AesEncrypt(const brillo::Blob& plaintext,
                                     ciphertext);
 }
 
-bool CryptoLib::AesDecrypt(const brillo::Blob& ciphertext,
+bool CryptoLib::AesDecrypt(const SecureBlob& ciphertext,
                            const SecureBlob& key,
                            const SecureBlob& iv,
                            SecureBlob* plaintext) {
@@ -230,7 +258,7 @@ bool CryptoLib::AesDecrypt(const brillo::Blob& ciphertext,
 // will drastically alter the decryption.  And an incorrect PaddingScheme will
 // result in the padding verification failing, for which the method call fails,
 // even if the key and initialization vector were correct.
-bool CryptoLib::AesDecryptSpecifyBlockMode(const brillo::Blob& encrypted,
+bool CryptoLib::AesDecryptSpecifyBlockMode(const SecureBlob& encrypted,
                                            unsigned int start,
                                            unsigned int count,
                                            const SecureBlob& key,
@@ -378,7 +406,7 @@ bool CryptoLib::AesDecryptSpecifyBlockMode(const brillo::Blob& encrypted,
 // larger than the block size.  We use ECB only when mixing the user passkey
 // into the TPM-encrypted blob, since we only encrypt a single block of that
 // data.
-bool CryptoLib::AesEncryptSpecifyBlockMode(const brillo::Blob& plain_text,
+bool CryptoLib::AesEncryptSpecifyBlockMode(const SecureBlob& plain_text,
                                            unsigned int start,
                                            unsigned int count,
                                            const SecureBlob& key,
@@ -632,22 +660,22 @@ std::string CryptoLib::BlobToHex(const brillo::Blob& blob) {
   return buffer;
 }
 
+std::string CryptoLib::SecureBlobToHex(const brillo::SecureBlob& blob) {
+  std::string buffer(blob.size() * 2, '\x00');
+  SecureBlobToHexToBuffer(blob, &buffer[0], buffer.size());
+  return buffer;
+}
+
 void CryptoLib::BlobToHexToBuffer(const brillo::Blob& blob,
                                   void* buffer,
                                   size_t buffer_length) {
-  static const char table[] = "0123456789abcdef";
-  char* char_buffer = reinterpret_cast<char*>(buffer);
-  char* char_buffer_end = char_buffer + buffer_length;
-  for (uint8_t byte : blob) {
-    if (char_buffer == char_buffer_end)
-      break;
-    *char_buffer++ = table[(byte >> 4) & 0x0f];
-    if (char_buffer == char_buffer_end)
-      break;
-    *char_buffer++ = table[byte & 0x0f];
-  }
-  if (char_buffer != char_buffer_end)
-    *char_buffer = '\x00';
+  BlobToHexToBufferHelper(blob, buffer, buffer_length);
+}
+
+void CryptoLib::SecureBlobToHexToBuffer(const brillo::SecureBlob& blob,
+                                        void* buffer,
+                                        size_t buffer_length) {
+  BlobToHexToBufferHelper(blob, buffer, buffer_length);
 }
 
 std::string CryptoLib::ComputeEncryptedDataHMAC(

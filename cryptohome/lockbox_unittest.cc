@@ -200,7 +200,7 @@ TEST_P(LockboxTest, StoreOk) {
     EXPECT_CALL(tpm_, GetNvramSize(0xdeadbeef))
         .WillOnce(
             Return(LockboxContents::GetNvramSize(NvramVersion::kDefault)));
-    EXPECT_CALL(tpm_, GetRandomDataBlob(key_material.size(), _))
+    EXPECT_CALL(tpm_, GetRandomDataSecureBlob(key_material.size(), _))
         .WillRepeatedly(DoAll(SetArgPointee<1>(key_material), Return(true)));
     EXPECT_CALL(tpm_, WriteNvram(0xdeadbeef, _)).WillOnce(Return(true));
     EXPECT_CALL(tpm_, WriteLockNvram(0xdeadbeef)).WillRepeatedly(Return(true));
@@ -210,7 +210,8 @@ TEST_P(LockboxTest, StoreOk) {
   EXPECT_CALL(process_, AddArg("/usr/sbin/mount-encrypted")).Times(1);
   EXPECT_CALL(process_, AddArg("finalize")).Times(1);
   EXPECT_CALL(process_,
-              AddArg(CryptoLib::BlobToHex(CryptoLib::Sha256(key_material))))
+              AddArg(CryptoLib::SecureBlobToHex(
+                         CryptoLib::Sha256(key_material))))
       .Times(1);
   EXPECT_CALL(process_, BindFd(_, 1)).Times(1);
   EXPECT_CALL(process_, BindFd(_, 2)).Times(1);

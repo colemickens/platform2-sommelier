@@ -53,7 +53,7 @@ bool ReadKeyFile(const base::FilePath& path,
   }
 
   if (!cryptohome::CryptoLib::AesDecryptSpecifyBlockMode(
-          brillo::Blob(ciphertext.begin(), ciphertext.end()), 0,
+          brillo::SecureBlob(ciphertext), 0,
           ciphertext.size(), encryption_key,
           brillo::SecureBlob(cryptohome::kAesBlockSize),
           cryptohome::CryptoLib::kPaddingStandard, cryptohome::CryptoLib::kCbc,
@@ -107,7 +107,7 @@ std::string HexEncode(const brillo::SecureBlob& data) {
 }
 
 brillo::SecureBlob Sha256(const std::string& str) {
-  brillo::Blob blob(str.data(), str.data() + str.size());
+  brillo::SecureBlob blob(str.data(), str.data() + str.size());
   return cryptohome::CryptoLib::Sha256(blob);
 }
 

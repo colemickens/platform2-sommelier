@@ -230,7 +230,7 @@ bool BootLockbox::VerifySignature(const brillo::Blob& public_key,
     LOG(ERROR) << "Failed to decode public key.";
     return false;
   }
-  brillo::SecureBlob digest = CryptoLib::Sha256(signed_data);
+  brillo::SecureBlob digest = CryptoLib::Sha256ToSecureBlob(signed_data);
   if (!RSA_verify(NID_sha256, digest.data(), digest.size(),
                   signature.data(), signature.size(), rsa.get())) {
     LOG(ERROR) << "Failed to verify signature.";

@@ -69,7 +69,8 @@ int Tpm::TpmVersionInfo::GetFingerprint() const {
                          vendor_specific.size());
   encoded_parameters.append(vendor_specific);
   brillo::SecureBlob hash = CryptoLib::Sha256(
-      brillo::Blob(encoded_parameters.begin(), encoded_parameters.end()));
+      brillo::SecureBlob(encoded_parameters.begin(),
+                         encoded_parameters.end()));
 
   // Return the first 31 bits from |hash|.
   int result = hash[0] | hash[1] << 8 | hash[2] << 16 | hash[3] << 24;

@@ -134,7 +134,7 @@ bool Lockbox::Store(const brillo::Blob& blob, LockboxError* error) {
   // Grab key material from the TPM.
   brillo::SecureBlob key_material(contents->key_material_size());
   if (IsKeyMaterialInLockbox()) {
-    if (!tpm_->GetRandomDataBlob(key_material.size(), &key_material)) {
+    if (!tpm_->GetRandomDataSecureBlob(key_material.size(), &key_material)) {
       LOG(ERROR) << "Failed to get key material from the TPM.";
       *error = LockboxError::kTpmError;
       return false;
@@ -188,7 +188,7 @@ void Lockbox::FinalizeMountEncrypted(const brillo::Blob& entropy) const {
   int rc;
 
   // Take hash of entropy and convert to hex string for cmdline.
-  SecureBlob hash = CryptoLib::Sha256(entropy);
+  SecureBlob hash = CryptoLib::Sha256ToSecureBlob(entropy);
   hex = CryptoLib::BlobToHex(hash);
 
   process_->Reset(0);

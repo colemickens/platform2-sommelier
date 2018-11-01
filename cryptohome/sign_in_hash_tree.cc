@@ -257,8 +257,7 @@ std::vector<uint8_t> SignInHashTree::CalculateHash(const Label& label) {
     input_buffer.insert(input_buffer.end(), child_hash.begin(),
                         child_hash.end());
   }
-  brillo::SecureBlob result_hash = CryptoLib::Sha256(input_buffer);
-  ret_val.assign(result_hash.begin(), result_hash.end());
+  ret_val = CryptoLib::Sha256(input_buffer);
 
   // Update the hash cache with the new value.
   UpdateInnerHashArray(label.cache_index(), ret_val.data(), ret_val.size());
@@ -281,7 +280,7 @@ void SignInHashTree::UpdateHashCacheLabelPath(const Label& label) {
       input_buffer.insert(input_buffer.end(), array_address,
                           array_address + kHashSize);
     }
-    brillo::SecureBlob result_hash = CryptoLib::Sha256(input_buffer);
+    brillo::Blob result_hash = CryptoLib::Sha256(input_buffer);
     UpdateInnerHashArray(parent.cache_index(), result_hash.data(),
                          result_hash.size());
     cur_label = parent;

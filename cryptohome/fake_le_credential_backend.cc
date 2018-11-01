@@ -82,7 +82,7 @@ bool FakeLECredentialBackend::InsertCredential(
 
   // Actual TPM will actually calculate the MAC, but for testing,
   // just a SHA should be sufficient.
-  brillo::SecureBlob hash = CryptoLib::Sha256(*cred_metadata);
+  brillo::SecureBlob hash = CryptoLib::Sha256ToSecureBlob(*cred_metadata);
   mac->assign(hash.begin(), hash.end());
 
   struct FakeLELogEntry fake_entry;
@@ -176,7 +176,7 @@ bool FakeLECredentialBackend::CheckCredential(
     return false;
   }
 
-  brillo::SecureBlob hash = CryptoLib::Sha256(*new_cred_metadata);
+  brillo::SecureBlob hash = CryptoLib::Sha256ToSecureBlob(*new_cred_metadata);
   new_mac->assign(hash.begin(), hash.end());
 
   struct FakeLELogEntry fake_entry;
@@ -240,7 +240,7 @@ bool FakeLECredentialBackend::ResetCredential(
     return false;
   }
 
-  brillo::SecureBlob hash = CryptoLib::Sha256(*new_cred_metadata);
+  brillo::SecureBlob hash = CryptoLib::Sha256ToSecureBlob(*new_cred_metadata);
   new_mac->assign(hash.begin(), hash.end());
 
   struct FakeLELogEntry fake_entry;
@@ -347,7 +347,7 @@ bool FakeLECredentialBackend::ReplayLogOperation(
     return false;
   }
 
-  brillo::SecureBlob hash = CryptoLib::Sha256(*new_cred_metadata);
+  brillo::SecureBlob hash = CryptoLib::Sha256ToSecureBlob(*new_cred_metadata);
   new_mac->assign(hash.begin(), hash.end());
 
   return true;
@@ -380,7 +380,8 @@ std::vector<uint8_t> FakeLECredentialBackend::RecalculateRootHash(
         ++it;
       }
     }
-    brillo::SecureBlob result_hash = CryptoLib::Sha256(input_buffer);
+    brillo::SecureBlob result_hash =
+        CryptoLib::Sha256ToSecureBlob(input_buffer);
     cur_hash.assign(result_hash.begin(), result_hash.end());
     cur_label = cur_label >> kBitsPerLevel;
   }

@@ -113,7 +113,7 @@ const struct {
   { 5, UINT32_MAX }
 };
 
-typedef SecureBlob HashFunction(const brillo::Blob& data);
+typedef SecureBlob HashFunction(const brillo::SecureBlob& data);
 
 struct HashDescription {
   SecureBlob GetPcrAfterExtendingUsername(const SecureBlob& user_name) {
