@@ -18,11 +18,14 @@
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
 #include <brillo/key_value_store.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "crash-reporter/crash_sender_paths.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/test_util.h"
+
+using testing::HasSubstr;
 
 namespace util {
 namespace {
@@ -62,6 +65,17 @@ bool TouchFileHelper(const base::FilePath& file_name,
   return base::TouchFile(file_name, modified_time, modified_time);
 }
 
+// Creates lsb-release file with information about the build type.
+enum BuildType { kOfficialBuild, kUnofficialBuild };
+bool CreateLsbReleaseFile(BuildType type) {
+  std::string label = "Official build";
+  if (type == kUnofficialBuild)
+    label = "Test build";
+
+  return test_util::CreateFile(paths::Get("/etc/lsb-release"),
+                               "CHROMEOS_RELEASE_DESCRIPTION=" + label + "\n");
+}
+
 class CrashSenderUtilTest : public testing::Test {
  private:
   void SetUp() override {
@@ -86,8 +100,64 @@ class CrashSenderUtilTest : public testing::Test {
   }
 
  protected:
+  // Creates test crash files in |crash_directory|. Returns true on success.
+  bool CreateTestCrashFiles(const base::FilePath& crash_directory) {
+    // These should be kept, since the payload is a known kind and exists.
+    good_meta_ = crash_directory.Append("good.meta");
+    good_log_ = crash_directory.Append("good.log");
+    if (!test_util::CreateFile(good_meta_, "payload=good.log\n"))
+      return false;
+    if (!test_util::CreateFile(good_log_, ""))
+      return false;
+
+    // These should be kept, the payload path is absolute but should be handled
+    // properly.
+    absolute_meta_ = crash_directory.Append("absolute.meta");
+    absolute_log_ = crash_directory.Append("absolute.log");
+    if (!test_util::CreateFile(absolute_meta_,
+                               "payload=" + absolute_log_.value() + "\n"))
+      return false;
+    if (!test_util::CreateFile(absolute_log_, ""))
+      return false;
+
+    // This should be removed, since metadata is corrupted.
+    corrupted_meta_ = crash_directory.Append("corrupted.meta");
+    if (!test_util::CreateFile(corrupted_meta_, "!@#$%^&*\n"))
+      return false;
+
+    // This should be removed, since no payload info is recorded.
+    empty_meta_ = crash_directory.Append("empty.meta");
+    if (!test_util::CreateFile(empty_meta_, ""))
+      return false;
+
+    // This should be removed, since the payload file does not exist.
+    nonexistent_meta_ = crash_directory.Append("nonexistent.meta");
+    if (!test_util::CreateFile(nonexistent_meta_, "payload=nonexistent.log\n"))
+      return false;
+
+    // These should be removed, since the payload is an unknown kind.
+    unknown_meta_ = crash_directory.Append("unknown.meta");
+    unknown_xxx_ = crash_directory.Append("unknown.xxx");
+    if (!test_util::CreateFile(unknown_meta_, "payload=unknown.xxx\n"))
+      return false;
+    if (!test_util::CreateFile(unknown_xxx_, ""))
+      return false;
+
+    return true;
+  }
+
   base::ScopedTempDir temp_dir_;
   base::FilePath test_dir_;
+
+  base::FilePath good_meta_;
+  base::FilePath good_log_;
+  base::FilePath absolute_meta_;
+  base::FilePath absolute_log_;
+  base::FilePath empty_meta_;
+  base::FilePath corrupted_meta_;
+  base::FilePath nonexistent_meta_;
+  base::FilePath unknown_meta_;
+  base::FilePath unknown_xxx_;
 };
 
 }  // namespace
@@ -252,64 +322,61 @@ TEST_F(CrashSenderUtilTest, RemoveOrphanedCrashFiles) {
   EXPECT_FALSE(base::PathExists(old4_log));
 }
 
-TEST_F(CrashSenderUtilTest, RemoveInvalidCrashFiles) {
-  // TearDown() ensures that the variable will be unset.
-  setenv("FORCE_OFFICIAL", "1", 1 /* overwrite */);
+TEST_F(CrashSenderUtilTest, ShouldRemove) {
+  ASSERT_TRUE(CreateLsbReleaseFile(kOfficialBuild));
 
   const base::FilePath crash_directory =
       paths::Get(paths::kSystemCrashDirectory);
-  ASSERT_TRUE(base::CreateDirectory(crash_directory));
+  ASSERT_TRUE(CreateDirectory(crash_directory));
+  ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
 
-  // These should be kept, since the payload is a known kind and exists.
-  const base::FilePath good_meta = crash_directory.Append("good.meta");
-  const base::FilePath good_log = crash_directory.Append("good.log");
-  ASSERT_TRUE(test_util::CreateFile(good_meta, "payload=good.log\n"));
-  ASSERT_TRUE(test_util::CreateFile(good_log, ""));
+  std::string reason;
 
-  // These should be kept, the payload path is absolute but should be handled
-  // properly.
-  const base::FilePath absolute_meta = crash_directory.Append("absolute.meta");
-  const base::FilePath absolute_log = crash_directory.Append("absolute.log");
-  ASSERT_TRUE(test_util::CreateFile(absolute_meta,
-                                    "payload=" + absolute_log.value() + "\n"));
-  ASSERT_TRUE(test_util::CreateFile(absolute_log, ""));
+  // The following files should not be removed.
+  EXPECT_FALSE(ShouldRemove(good_meta_, &reason));
+  EXPECT_FALSE(ShouldRemove(absolute_meta_, &reason));
 
-  // This should be removed, since metadata is corrupted.
-  const base::FilePath corrupted_meta =
-      crash_directory.Append("corrupted.meta");
-  ASSERT_TRUE(test_util::CreateFile(corrupted_meta, "!@#$%^&*\n"));
+  // The following files should be removed.
+  EXPECT_TRUE(ShouldRemove(empty_meta_, &reason));
+  EXPECT_THAT(reason, HasSubstr("Payload is not found"));
 
-  // This should be removed, since no payload info is recorded.
-  const base::FilePath empty_meta = crash_directory.Append("empty.meta");
-  ASSERT_TRUE(test_util::CreateFile(empty_meta, ""));
+  EXPECT_TRUE(ShouldRemove(corrupted_meta_, &reason));
+  EXPECT_THAT(reason, HasSubstr("Corrupted metadata"));
 
-  // This should be removed, since the payload file does not exist.
-  const base::FilePath nonexistent_meta =
-      crash_directory.Append("nonexistent.meta");
-  ASSERT_TRUE(
-      test_util::CreateFile(nonexistent_meta, "payload=nonexistent.log\n"));
+  EXPECT_TRUE(ShouldRemove(nonexistent_meta_, &reason));
+  EXPECT_THAT(reason, HasSubstr("Missing payload"));
 
-  // These should be removed, since the payload is an unknown kind.
-  const base::FilePath unknown_meta = crash_directory.Append("unknown.meta");
-  const base::FilePath unknown_xxx = crash_directory.Append("unknown.xxx");
-  ASSERT_TRUE(test_util::CreateFile(unknown_meta, "payload=unknown.xxx\n"));
-  ASSERT_TRUE(test_util::CreateFile(unknown_xxx, ""));
+  EXPECT_TRUE(ShouldRemove(unknown_meta_, &reason));
+  EXPECT_THAT(reason, HasSubstr("Unknown kind"));
+
+  ASSERT_TRUE(CreateLsbReleaseFile(kUnofficialBuild));
+  EXPECT_TRUE(ShouldRemove(good_meta_, &reason));
+  EXPECT_THAT(reason, HasSubstr("Not an official OS version"));
+}
+
+TEST_F(CrashSenderUtilTest, RemoveInvalidCrashFiles) {
+  ASSERT_TRUE(CreateLsbReleaseFile(kOfficialBuild));
+
+  const base::FilePath crash_directory =
+      paths::Get(paths::kSystemCrashDirectory);
+  ASSERT_TRUE(CreateDirectory(crash_directory));
+  ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
 
   RemoveInvalidCrashFiles(crash_directory);
 
   // Check what files were removed.
-  EXPECT_TRUE(base::PathExists(good_meta));
-  EXPECT_TRUE(base::PathExists(good_log));
-  EXPECT_TRUE(base::PathExists(absolute_meta));
-  EXPECT_TRUE(base::PathExists(absolute_log));
-  EXPECT_FALSE(base::PathExists(empty_meta));
-  EXPECT_FALSE(base::PathExists(corrupted_meta));
-  EXPECT_FALSE(base::PathExists(nonexistent_meta));
-  EXPECT_FALSE(base::PathExists(unknown_meta));
-  EXPECT_FALSE(base::PathExists(unknown_xxx));
+  EXPECT_TRUE(base::PathExists(good_meta_));
+  EXPECT_TRUE(base::PathExists(good_log_));
+  EXPECT_TRUE(base::PathExists(absolute_meta_));
+  EXPECT_TRUE(base::PathExists(absolute_log_));
+  EXPECT_FALSE(base::PathExists(empty_meta_));
+  EXPECT_FALSE(base::PathExists(corrupted_meta_));
+  EXPECT_FALSE(base::PathExists(nonexistent_meta_));
+  EXPECT_FALSE(base::PathExists(unknown_meta_));
+  EXPECT_FALSE(base::PathExists(unknown_xxx_));
 
   // All crash files should be removed for an unofficial build.
-  setenv("FORCE_OFFICIAL", "0", 1 /* overwrite */);
+  ASSERT_TRUE(CreateLsbReleaseFile(kUnofficialBuild));
   RemoveInvalidCrashFiles(crash_directory);
   EXPECT_TRUE(base::IsDirectoryEmpty(crash_directory));
 }

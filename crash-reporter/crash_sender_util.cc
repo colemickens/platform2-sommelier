@@ -196,55 +196,59 @@ void RemoveOrphanedCrashFiles(const base::FilePath& crash_dir) {
   }
 }
 
+bool ShouldRemove(const base::FilePath& meta_file, std::string* reason) {
+  if (!IsMock() && !IsOfficialImage()) {
+    *reason = "Not an official OS version";
+    return true;
+  }
+
+  std::string raw_metadata;
+  if (!base::ReadFileToString(meta_file, &raw_metadata)) {
+    PLOG(WARNING) << "Igonoring: metadata file is inaccessible";
+    return false;
+  }
+
+  brillo::KeyValueStore metadata;
+  if (!ParseMetadata(raw_metadata, &metadata)) {
+    *reason = "Corrupted metadata: " + raw_metadata;
+    return true;
+  }
+
+  base::FilePath payload_path = GetBaseNameFromMetadata(metadata, "payload");
+  if (payload_path.empty()) {
+    *reason = "Payload is not found in the meta data: " + raw_metadata;
+    return true;
+  }
+
+  // Make it an absolute path.
+  payload_path = meta_file.DirName().Append(payload_path);
+
+  if (!base::PathExists(payload_path)) {
+    // TODO(satorux): logging_CrashSender.py expects "Missing payload" in the
+    // error message. Revise the autotest once the rewrite to C++ is complete.
+    *reason = "Missing payload: " + payload_path.value();
+    return true;
+  }
+
+  const std::string kind = GetKindFromPayloadPath(payload_path);
+  if (!IsKnownKind(kind)) {
+    *reason = "Unknown kind: " + kind;
+    return true;
+  }
+
+  return false;
+}
+
 void RemoveInvalidCrashFiles(const base::FilePath& crash_dir) {
   std::vector<base::FilePath> meta_files = GetMetaFiles(crash_dir);
 
   for (const auto& meta_file : meta_files) {
     LOG(INFO) << "Checking metadata: " << meta_file.value();
 
-    if (!IsMock() && !IsOfficialImage()) {
-      LOG(ERROR) << "Removing: Not an official OS version";
+    std::string reason;
+    if (ShouldRemove(meta_file, &reason)) {
+      LOG(ERROR) << "Removing: " << reason;
       RemoveReportFiles(meta_file);
-      continue;
-    }
-
-    std::string raw_metadata;
-    if (!base::ReadFileToString(meta_file, &raw_metadata)) {
-      PLOG(WARNING) << "Igonoring: metadata file is inaccessible";
-      continue;
-    }
-
-    brillo::KeyValueStore metadata;
-    if (!ParseMetadata(raw_metadata, &metadata)) {
-      LOG(ERROR) << "Removing: corrupted metadata" << raw_metadata;
-      RemoveReportFiles(meta_file);
-      continue;
-    }
-
-    base::FilePath payload_path = GetBaseNameFromMetadata(metadata, "payload");
-    if (payload_path.empty()) {
-      LOG(ERROR) << "Removing: payload is not found in the meta data: "
-                 << raw_metadata;
-      RemoveReportFiles(meta_file);
-      continue;
-    }
-
-    // Make it an absolute path.
-    payload_path = meta_file.DirName().Append(payload_path);
-
-    if (!base::PathExists(payload_path)) {
-      // TODO(satorux): logging_CrashSender.py expects "Missing payload" in the
-      // error message. Revise the autotest once the rewrite to C++ is complete.
-      LOG(ERROR) << "Removing: Missing payload: " << payload_path.value();
-      RemoveReportFiles(meta_file);
-      continue;
-    }
-
-    const std::string kind = GetKindFromPayloadPath(payload_path);
-    if (!IsKnownKind(kind)) {
-      LOG(ERROR) << "Removing: unknown kind: " << kind;
-      RemoveReportFiles(meta_file);
-      continue;
     }
   }
 }

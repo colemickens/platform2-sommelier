@@ -73,6 +73,10 @@ base::FilePath GetBasePartOfCrashFile(const base::FilePath& file_name);
 // without corresponding meta file.
 void RemoveOrphanedCrashFiles(const base::FilePath& crash_dir);
 
+// Returns true and reports the reason, if report files associated with the
+// given meta file should be removed.
+bool ShouldRemove(const base::FilePath& meta_file, std::string* reason);
+
 // Removes invalid files in |crash_dir|, that are unknown, corrupted, or invalid
 // in other ways.
 void RemoveInvalidCrashFiles(const base::FilePath& crash_dir);
