@@ -37,8 +37,9 @@ NVRamBootLockbox::~NVRamBootLockbox() {}
 
 bool NVRamBootLockbox::Store(const std::string& key,
                              const std::string& digest) {
-  if (nvspace_state_ == NVSpaceState::kNVSpaceWriteLocked) {
-    LOG(WARNING) << "NV space is already locked.";
+  if (nvspace_state_ == NVSpaceState::kNVSpaceWriteLocked ||
+      nvspace_state_ == NVSpaceState::kNVSpaceUndefined) {
+    LOG(WARNING) << "NVRamBootLockbox is not ready.";
     return false;
   }
 
@@ -67,6 +68,7 @@ bool NVRamBootLockbox::Finalize() {
     nvspace_state_ = NVSpaceState::kNVSpaceWriteLocked;
     return true;
   }
+  nvspace_state_ = NVSpaceState::kNVSpaceError;
   return false;
 }
 
@@ -75,6 +77,7 @@ bool NVRamBootLockbox::DefineSpace() {
     nvspace_state_ = NVSpaceState::kNVSpaceUninitialized;
     return true;
   }
+  nvspace_state_ = NVSpaceState::kNVSpaceError;
   return false;
 }
 
@@ -143,11 +146,9 @@ bool NVRamBootLockbox::FlushAndUpdate(const KeyValueMap& keyvals) {
     LOG(ERROR) << "Failed to write boot lockbox NVRAM space";
     return false;
   }
-  nvspace_state_ = NVSpaceState::kNVSpaceNormal;
 
   brillo::SyncFileOrDirectory(boot_lockbox_filepath_,
                               false /* is directory */, true /* data sync */);
-
   key_value_store_ = keyvals;
   root_digest_ = digest;
   return true;
@@ -155,6 +156,10 @@ bool NVRamBootLockbox::FlushAndUpdate(const KeyValueMap& keyvals) {
 
 NVSpaceState NVRamBootLockbox::GetState() {
   return nvspace_state_;
+}
+
+void NVRamBootLockbox::SetState(const NVSpaceState state) {
+  nvspace_state_ = state;
 }
 
 }  // namespace cryptohome

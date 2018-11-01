@@ -56,6 +56,8 @@ TEST_F(NVRamBootLockboxTest, StoreFail) {
 TEST_F(NVRamBootLockboxTest, LoadFailDigestMisMatch) {
   std::string key = "test_key";
   std::string value = "test_value";
+  // avoid early failure.
+  nvram_boot_lockbox_->SetState(NVSpaceState::kNVSpaceNormal);
   EXPECT_TRUE(nvram_boot_lockbox_->Store(key, value));
   // modify the proto file.
   std::string invalid_proto = "aaa";
@@ -67,6 +69,7 @@ TEST_F(NVRamBootLockboxTest, LoadFailDigestMisMatch) {
 TEST_F(NVRamBootLockboxTest, StoreLoadReadSuccess) {
   std::string key = "test_key";
   std::string value = "test_value_digest";
+  nvram_boot_lockbox_->SetState(NVSpaceState::kNVSpaceNormal);
   EXPECT_TRUE(nvram_boot_lockbox_->Store(key, value));
   EXPECT_TRUE(nvram_boot_lockbox_->Load());
   std::string stored_value;

@@ -31,7 +31,7 @@ int BootLockboxService::OnInit() {
   if (!boot_lockbox_->Load() &&
       boot_lockbox_->GetState() == NVSpaceState::kNVSpaceUndefined ) {
     LOG(INFO) << "NVSpace is not defined, define it now";
-    if (!nvspace_utility_->DefineNVSpace()) {
+    if (!boot_lockbox_->DefineSpace()) {
       LOG(ERROR) << "Failed to create nvspace";
       return EX_UNAVAILABLE;
     }

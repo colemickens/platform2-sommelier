@@ -10,6 +10,7 @@
 
 #include <base/files/file_path.h>
 #include <brillo/secure_blob.h>
+#include <gtest/gtest_prod.h>
 
 #include "cryptohome/bootlockbox/tpm_nvspace_interface.h"
 
@@ -59,6 +60,10 @@ class NVRamBootLockbox {
   // digest stored in NVRAM space.
   virtual bool Load();
 
+ protected:
+  // Set BootLockbox state.
+  virtual void SetState(const NVSpaceState state);
+
  private:
   // Writes to file, updates the digest in NVRAM space and updates local
   // local key_value_store_.
@@ -75,6 +80,9 @@ class NVRamBootLockbox {
 
   TPMNVSpaceUtilityInterface* tpm_nvspace_utility_;
   NVSpaceState nvspace_state_{NVSpaceState::kNVSpaceError};
+
+  FRIEND_TEST(NVRamBootLockboxTest, LoadFailDigestMisMatch);
+  FRIEND_TEST(NVRamBootLockboxTest, StoreLoadReadSuccess);
 };
 
 }  // namespace cryptohome
