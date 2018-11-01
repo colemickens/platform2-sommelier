@@ -770,8 +770,7 @@ bool CrosFpBiometricsManager::ResetSensor() {
       return false;
     }
 
-    // TODO(pmalani): FP_MODE_RESET_SENSOR
-    if (!(cur_mode & (1 << 7))) {
+    if (!(cur_mode & FP_MODE_RESET_SENSOR)) {
       reset_complete = true;
       break;
     }
