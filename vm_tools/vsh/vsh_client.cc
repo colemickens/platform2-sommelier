@@ -229,6 +229,7 @@ void VshClient::HandleStdinReadable() {
   if (count < 0) {
     PLOG(ERROR) << "Failed to read from stdin";
     Shutdown();
+    return;
   } else if (count == 0) {
     brillo::MessageLoop* message_loop = brillo::MessageLoop::current();
     message_loop->CancelTask(stdin_task_);
