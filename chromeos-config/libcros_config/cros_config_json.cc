@@ -80,17 +80,14 @@ bool CrosConfigJson::SelectConfigByIdentity(
                 sku_match = current_sku_id == find_sku_id;
               }
 
-              bool vpd_tag_match = true;
-              std::string current_vpd_tag;
-              if ((identity_dict->GetString("whitelabel-tag",
-                                           &current_vpd_tag) ||
-                  identity_dict->GetString("customization-id",
-                                           &current_vpd_tag)) &&
-                  !current_vpd_tag.empty()) {
-                // Currently, the find_whitelabel_name can be either the
-                // whitelabel-tag or the customization-id.
-                vpd_tag_match = current_vpd_tag == find_whitelabel_name;
+              std::string current_vpd_tag = "";
+              identity_dict->GetString("whitelabel-tag", &current_vpd_tag);
+              if (current_vpd_tag.empty()) {
+                identity_dict->GetString("customization-id", &current_vpd_tag);
               }
+              // Currently, the find_whitelabel_name can be either the
+              // whitelabel-tag or the customization-id.
+              bool vpd_tag_match = current_vpd_tag == find_whitelabel_name;
 
               if (platform_specific_match && sku_match && vpd_tag_match) {
                 config_dict_ = config_dict;

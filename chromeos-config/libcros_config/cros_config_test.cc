@@ -230,20 +230,6 @@ TEST_F(CrosConfigTest, CheckWhitelabelEmptyMatchesDefault) {
   ASSERT_EQ("whitelabel-default-wallpaper", val);
 }
 
-TEST_F(CrosConfigTest, CheckWhitelabelUnknownMatchesDefault) {
-  InitConfigArm("google,whitelabel", -1, "unknown");
-  std::string val;
-  ASSERT_TRUE(cros_config_.GetString("/", "wallpaper", &val));
-  ASSERT_EQ("whitelabel-default-wallpaper", val);
-}
-
-TEST_F(CrosConfigTest, CheckWhitelabelTagIgnoredForNonWhitelabel) {
-  InitConfigArm("google,some", -1, "whitelabel-tag-to-ignore");
-  std::string val;
-  ASSERT_TRUE(cros_config_.GetString("/", "wallpaper", &val));
-  ASSERT_EQ("some-wallpaper", val);
-}
-
 TEST_F(CrosConfigTest, CheckArmNoIdentityMatch) {
   base::FilePath filepath(TEST_FILE_ARM);
   ASSERT_FALSE(cros_config_.InitForTestArm(filepath, "invalid", -1, ""));
