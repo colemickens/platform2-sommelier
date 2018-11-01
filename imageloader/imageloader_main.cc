@@ -6,13 +6,13 @@
 
 #include <iostream>
 #include <memory>
-#include <pwd.h>
 #include <sys/mount.h>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
+#include <brillo/userdb_utils.h>
 
 #include "imageloader/component.h"
 #include "imageloader/helper_process_proxy.h"
@@ -93,13 +93,13 @@ bool CreateComponentsPath() {
       return false;
     }
     // Set ownership user/groups as imageloaderd:imageloaderd
-    struct passwd* pwd;
-    pwd = getpwnam("imageloaderd");
-    if (pwd == NULL) {
+    uid_t uid;
+    gid_t gid;
+    if (!brillo::userdb::GetUserInfo("imageloaderd", &uid, &gid)) {
       PLOG(ERROR) << "Can not get uid/gid.";
       return false;
     }
-    if (chown(kComponentsPath, pwd->pw_uid, pwd->pw_gid) != 0) {
+    if (chown(kComponentsPath, uid, gid) != 0) {
       PLOG(ERROR) << "Can not set ownership for path: " << kComponentsPath;
       return false;
     }
