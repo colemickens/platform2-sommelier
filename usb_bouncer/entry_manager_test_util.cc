@@ -86,6 +86,10 @@ void EntryManagerTestUtil::RefreshDB(bool include_user_db, bool new_db) {
   }
 }
 
+void EntryManagerTestUtil::ReplaceDB(const RuleDB& replacement) {
+  *entry_manager_->global_entries_ = replacement;
+}
+
 void EntryManagerTestUtil::ExpireEntry(bool expect_user,
                                        const std::string& devpath,
                                        const std::string& rule) {

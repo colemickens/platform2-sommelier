@@ -76,5 +76,26 @@
         },
       ],
     }],
+    ['USE_fuzzer == 1', {
+      'targets': [
+        {
+          'target_name': 'usb_bouncer_fuzzer',
+          'type': 'executable',
+          'variables': {
+            'deps': ['libprotobuf-mutator'],
+          },
+          'includes': [
+            '../common-mk/common_fuzzer.gypi',
+          ],
+          'dependencies': [
+            'usb_bouncer_common',
+          ],
+          'sources': [
+            'entry_manager_test_util.cc',
+            'usb_bouncer_fuzzer.cc',
+          ],
+        },
+      ],
+    }],
   ],
 }
