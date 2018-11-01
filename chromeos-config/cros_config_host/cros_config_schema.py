@@ -321,6 +321,13 @@ def TransformConfig(config, model_filter_regex=None):
 
   return _FormatJson(json_config)
 
+def _IsLegacyMigration(platform_name):
+  """Determines if the platform was migrated from FDT impl.
+
+  Args:
+    platform_name: Platform name to be checked
+  """
+  return platform_name in ['Coral', 'Fizz']
 
 def GenerateMosysCBindings(config):
   """Generates Mosys C struct bindings
@@ -365,6 +372,14 @@ def GenerateMosysCBindings(config):
     sku_id = identity.get('sku-id', -1)
     device_tree_compatible_match = identity.get(
         'device-tree-compatible-match', '')
+    if _IsLegacyMigration(platform_name):
+      # The mosys device-tree impl hard-coded this logic.
+      # Since we've already launched without this on new platforms,
+      # we have to keep to special backwards compatibility.
+      if whitelabel_tag:
+        customization = ('%s-%s' % (name, customization))
+      customization =  customization.upper()
+
     if device_tree_compatible_match:
       structs.append(
           struct_format_arm % (platform_name,
