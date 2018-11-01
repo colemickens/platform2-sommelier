@@ -34,6 +34,7 @@ class VerifyRoTool : public SubprocessTool {
   //     BID_TYPE=5a534b4d
   //     BID_TYPE_INV=a5acb4b2
   //     BID_FLAGS=00007f80
+  //     BID_RLZ=ZSKM
   std::string GetGscOnUsbBoardID();
 
   // Returns the RW firmware version in the given GSC |image_file| on success or

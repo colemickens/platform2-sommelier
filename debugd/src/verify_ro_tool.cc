@@ -93,8 +93,9 @@ std::string VerifyRoTool::GetGscOnUsbBoardID() {
   // BID_TYPE=5a534b4d
   // BID_TYPE_INV=a5acb4b2
   // BID_FLAGS=00007f80
+  // BID_RLZ=ZSKM
   return GetKeysValuesFromProcessOutput(
-      output, {"BID_TYPE", "BID_TYPE_INV", "BID_FLAGS"});
+      output, {"BID_TYPE", "BID_TYPE_INV", "BID_FLAGS", "BID_RLZ"});
 }
 
 std::string VerifyRoTool::GetGscImageRWFirmwareVer(
