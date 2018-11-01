@@ -48,6 +48,10 @@ class ProcessManagerServiceInterface {
 
   // Check if |pid| is the currently-managed browser process.
   virtual bool IsBrowser(pid_t pid) = 0;
+
+  // Returns the last time that the browser was restarted after exiting
+  // (typically due to a crash).
+  virtual base::TimeTicks GetLastBrowserRestartTime() = 0;
 };
 }  // namespace login_manager
 

@@ -115,10 +115,11 @@ class SessionManagerImpl
   // minimum amount of time we must wait before killing the containers.
   static const base::TimeDelta kContainerTimeout;
 
-  // Time window after suspend/resume in which the session should be ended if
-  // Chrome crashes. This is done as a precaution to avoid showing an unlocked
-  // screen if the crash made Chrome fail to lock the screen:
+  // Time window before or after suspend/resume in which the session should be
+  // ended if Chrome crashes. This is done as a precaution to avoid showing an
+  // unlocked screen if the crash made Chrome fail to lock the screen:
   // https://crbug.com/867970
+  static const base::TimeDelta kCrashBeforeSuspendInterval;
   static const base::TimeDelta kCrashAfterSuspendInterval;
 
   // The Delegate interface performs actions on behalf of SessionManagerImpl.

@@ -2073,7 +2073,38 @@ TEST_F(SessionManagerImplTest, LockUnlockScreen) {
   EXPECT_FALSE(impl_->IsScreenLocked());
 }
 
+TEST_F(SessionManagerImplTest, EndSessionBeforeSuspend) {
+  const base::TimeTicks crash_time = tick_clock_->NowTicks();
+  auto set_expectations = [&](bool should_stop) {
+    EXPECT_CALL(manager_, GetLastBrowserRestartTime())
+        .WillRepeatedly(Return(crash_time));
+    EXPECT_CALL(manager_, ScheduleShutdown()).Times(should_stop ? 1 : 0);
+  };
+
+  // The session should be ended in response to a SuspendImminent signal.
+  set_expectations(true);
+  dbus::Signal imminent_signal(power_manager::kPowerManagerInterface,
+                               power_manager::kSuspendImminentSignal);
+  suspend_imminent_callback_.Run(&imminent_signal);
+  Mock::VerifyAndClearExpectations(&manager_);
+
+  // It should also be ended if a small amount of time passes between the
+  // restart and the signal.
+  tick_clock_->Advance(SessionManagerImpl::kCrashBeforeSuspendInterval);
+  set_expectations(true);
+  suspend_imminent_callback_.Run(&imminent_signal);
+  Mock::VerifyAndClearExpectations(&manager_);
+
+  // We shouldn't end the session after the specified interval has elapsed.
+  tick_clock_->Advance(base::TimeDelta::FromSeconds(1));
+  set_expectations(false);
+  suspend_imminent_callback_.Run(&imminent_signal);
+}
+
 TEST_F(SessionManagerImplTest, EndSessionDuringAndAfterSuspend) {
+  EXPECT_CALL(manager_, GetLastBrowserRestartTime())
+      .WillRepeatedly(Return(base::TimeTicks()));
+
   // Initially, we should restart Chrome if it crashes.
   EXPECT_FALSE(impl_->ShouldEndSession(nullptr));
 

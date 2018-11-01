@@ -21,7 +21,6 @@ class MockProcessManagerService : public ProcessManagerServiceInterface {
   ~MockProcessManagerService() override;
 
   MOCK_METHOD0(ScheduleShutdown, void());
-  MOCK_METHOD0(ShouldRunBrowser, bool());
   MOCK_METHOD0(RunBrowser, void());
   MOCK_METHOD2(AbortBrowser, void(int, const std::string&));
   MOCK_METHOD3(RestartBrowserWithArgs,
@@ -34,7 +33,7 @@ class MockProcessManagerService : public ProcessManagerServiceInterface {
                void(const std::string& username,
                     const std::vector<std::string>& flags));
   MOCK_METHOD1(IsBrowser, bool(pid_t));
-  MOCK_METHOD1(IsManagedProcess, bool(pid_t));
+  MOCK_METHOD0(GetLastBrowserRestartTime, base::TimeTicks());
 };
 }  // namespace login_manager
 

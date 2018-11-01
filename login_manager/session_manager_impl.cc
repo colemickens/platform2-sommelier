@@ -119,6 +119,8 @@ constexpr char SessionManagerImpl::kScreenUnlockedImpulse[] = "screen-unlocked";
 constexpr base::TimeDelta SessionManagerImpl::kContainerTimeout =
     base::TimeDelta::FromSeconds(3);
 
+constexpr base::TimeDelta SessionManagerImpl::kCrashBeforeSuspendInterval =
+    base::TimeDelta::FromSeconds(5);
 constexpr base::TimeDelta SessionManagerImpl::kCrashAfterSuspendInterval =
     base::TimeDelta::FromSeconds(5);
 
@@ -1056,11 +1058,15 @@ void SessionManagerImpl::GetServerBackedStateKeys(
 void SessionManagerImpl::OnSuspendImminent(dbus::Signal* signal) {
   suspend_ongoing_ = true;
 
-  // TODO(derat): Also check if Chrome last crashed within ~5 seconds of
-  // tick_clock_->NowTicks() and end the session if so:
-  // https://crbug.com/867970. We'll probably need to expose the last crash time
-  // from ProcessManagerServiceInterface (implemented by SessionManagerService)
-  // and then call StopSession here.
+  // If Chrome crashed recently, it might've missed this SuspendImminent signal
+  // and failed to lock the screen. Stop the session as a precaution:
+  // https://crbug.com/867970
+  const base::TimeTicks start_time = manager_->GetLastBrowserRestartTime();
+  if (!start_time.is_null() &&
+      tick_clock_->NowTicks() - start_time <= kCrashBeforeSuspendInterval) {
+    LOG(INFO) << "Stopping session for suspend after recent browser restart";
+    StopSession("" /* deprecated argument */);
+  }
 }
 
 void SessionManagerImpl::OnSuspendDone(dbus::Signal* signal) {

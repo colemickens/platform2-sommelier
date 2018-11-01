@@ -156,6 +156,7 @@ class SessionManagerService
   void SetFlagsForUser(const std::string& account_id,
                        const std::vector<std::string>& flags) override;
   bool IsBrowser(pid_t pid) override;
+  base::TimeTicks GetLastBrowserRestartTime() override;
 
   // ChildExitHandler overrides:
   // Handles only browser exit (i.e. IsBrowser(pid) returns true).
@@ -230,6 +231,7 @@ class SessionManagerService
   void MaybeStopAllVms();
 
   std::unique_ptr<BrowserJobInterface> browser_;
+  base::TimeTicks last_browser_restart_time_;
   bool exit_on_child_done_;
   const base::TimeDelta kill_timeout_;
 

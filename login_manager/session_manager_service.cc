@@ -303,6 +303,10 @@ bool SessionManagerService::IsBrowser(pid_t pid) {
   return (browser_->CurrentPid() > 0 && pid == browser_->CurrentPid());
 }
 
+base::TimeTicks SessionManagerService::GetLastBrowserRestartTime() {
+  return last_browser_restart_time_;
+}
+
 bool SessionManagerService::HandleExit(const siginfo_t& status) {
   if (!IsBrowser(status.si_pid))
     return false;
@@ -342,6 +346,7 @@ bool SessionManagerService::HandleExit(const siginfo_t& status) {
   } else if (browser_->ShouldRunBrowser()) {
     // TODO(cmasone): deal with fork failing in RunBrowser()
     RunBrowser();
+    last_browser_restart_time_ = base::TimeTicks::Now();
   } else {
     LOG(INFO) << "Should NOT run " << browser_->GetName() << " again.";
     AllowGracefulExitOrRunForever();
