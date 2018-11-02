@@ -5066,6 +5066,9 @@ struct __ec_align4 ec_response_fp_info {
 #define FP_FRAME_GET_BUFFER_INDEX(offset) ((offset) >> FP_FRAME_INDEX_SHIFT)
 #define FP_FRAME_OFFSET_MASK       0x0FFFFFFF
 
+/* Version of the format of the encrypted templates. */
+#define FP_TEMPLATE_FORMAT_VERSION 3
+
 /* Constants for encryption parameters */
 #define FP_CONTEXT_NONCE_BYTES 12
 #define FP_CONTEXT_USERID_WORDS (32 / sizeof(uint32_t))
@@ -5075,7 +5078,7 @@ struct __ec_align4 ec_response_fp_info {
 
 struct ec_fp_template_encryption_metadata {
 	/*
-	 * Version of the structure format (N=2).
+	 * Version of the structure format (N=3).
 	 */
 	uint16_t struct_version;
 	/* Reserved bytes, set to 0. */
@@ -5138,7 +5141,7 @@ struct __ec_align2 ec_response_fp_stats {
 #define EC_CMD_FP_SEED 0x0408
 struct __ec_align4 ec_params_fp_seed {
 	/*
-	 * Version of the structure format (N=2).
+	 * Version of the structure format (N=3).
 	 */
 	uint16_t struct_version;
 	/* Reserved bytes, set to 0. */

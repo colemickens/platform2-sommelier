@@ -13,12 +13,18 @@
 // mount-encrypted. Consequently, closing the FD should be enough to delete
 // the file.
 
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/process/process.h>
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
 #include <brillo/secure_blob.h>
+
+#include "biod/cros_fp_biometrics_manager.h"
 
 extern "C" {
 // Cros EC host commands definition as used by cros_fp.
@@ -51,10 +57,76 @@ bool NukeFile(const base::FilePath& filepath) {
   return ret;
 }
 
+// This will block until the EC has booted the RW firmware.
+bool WaitOnEcRW(const base::ScopedFD& cros_fp_fd) {
+  // TODO(b/117909326): refactor CrosFpDevice to be able to use
+  // CrosFpBiometricsManager::CrosFpDevice::WaitOnEcBoot() directly.
+  int tries = 50;
+  ec_current_image image = EC_IMAGE_UNKNOWN;
+
+  while (tries) {
+    tries--;
+    // Check the EC has the right image.
+    biod::EcCommand<biod::EmptyParam, struct ec_response_get_version> cmd(
+        EC_CMD_GET_VERSION);
+    if (!cmd.Run(cros_fp_fd.get())) {
+      LOG(ERROR) << "Failed to retrieve cros_fp firmware version.";
+      base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(500));
+      continue;
+    }
+    image = static_cast<ec_current_image>(cmd.Resp()->current_image);
+    if (image == EC_IMAGE_RW) {
+      LOG(INFO) << "EC booted to RW.";
+      return true;
+    }
+    base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(100));
+  }
+  LOG(ERROR) << "EC rebooted to incorrect image " << image;
+  return false;
+}
+
+bool WriteSeedToCrosFp(const brillo::SecureBlob& seed) {
+  bool ret = true;
+  auto fd = base::ScopedFD(
+      open(biod::CrosFpBiometricsManager::kCrosFpPath, O_RDWR | O_CLOEXEC));
+  if (!fd.is_valid()) {
+    PLOG(ERROR) << "Couldn't open FP device for ioctl.";
+    return false;
+  }
+
+  if (!WaitOnEcRW(fd)) {
+    LOG(ERROR) << "FP device did not boot to RW.";
+    return false;
+  }
+
+  biod::EcCommand<struct ec_params_fp_seed, biod::EmptyParam> cmd(
+      EC_CMD_FP_SEED);
+  struct ec_params_fp_seed* req = cmd.Req();
+  req->struct_version = FP_TEMPLATE_FORMAT_VERSION;
+  std::copy(seed.char_data(), seed.char_data() + sizeof(req->seed), req->seed);
+
+  if (!cmd.Run(fd.get())) {
+    LOG(ERROR) << "Failed to set TPM seed.";
+    ret = false;
+  } else {
+    LOG(INFO) << "Successfully set FP seed.";
+  }
+  std::fill(req->seed, req->seed + sizeof(req->seed), 0);
+  // Clear intermediate buffers. We expect the command to fail since the SBP
+  // will reject the new seed.
+  cmd.Run(fd.get());
+
+  return ret;
+}
+
 bool DoProgramSeed(const brillo::SecureBlob& tpm_seed) {
   bool ret = true;
 
-  // TODO(b/117909326): Write |tpm_seed| to the various BiometricManagers.
+  if (!WriteSeedToCrosFp(tpm_seed)) {
+    LOG(ERROR) << "Failed to send seed to CrOS FP device.";
+    ret = false;
+  }
+
   return ret;
 }
 
@@ -109,6 +181,5 @@ int main(int argc, char* argv[]) {
     process.Terminate(-1, false);
   }
 
-  // TODO(b/117909326): Emit upstart signal to start biod.
   return exit_code;
 }
