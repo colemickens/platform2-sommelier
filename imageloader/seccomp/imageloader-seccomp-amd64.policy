@@ -21,6 +21,7 @@ futex: 1
 getdents: 1
 geteuid: 1
 getpid: 1
+getrandom: 1
 getresgid: 1
 getresuid: 1
 getsockname: 1
