@@ -27,7 +27,6 @@
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "shill/async_connection.h"
 #include "shill/connection.h"
 #include "shill/connection_tester.h"
 #include "shill/control_interface.h"

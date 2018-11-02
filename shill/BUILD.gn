@@ -276,7 +276,6 @@ static_library("libshill") {
   all_dependent_configs = [ ":libshill_all_dependent_config" ]
   sources = [
     "active_link_monitor.cc",
-    "async_connection.cc",
     "certificate_file.cc",
     "connection.cc",
     "connection_diagnostics.cc",
@@ -630,7 +629,6 @@ if (use.test) {
     configs -= [ "//common-mk:no_exceptions" ]
     sources = [
       "active_link_monitor_test.cc",
-      "async_connection_test.cc",
       "certificate_file_test.cc",
       "connection_diagnostics_test.cc",
       "connection_info_reader_test.cc",
@@ -681,7 +679,6 @@ if (use.test) {
       "mock_active_link_monitor.cc",
       "mock_adaptors.cc",
       "mock_ares.cc",
-      "mock_async_connection.cc",
       "mock_certificate_file.cc",
       "mock_connection.cc",
       "mock_connection_info_reader.cc",

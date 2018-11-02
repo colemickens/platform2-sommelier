@@ -22,7 +22,6 @@
 #include <gtest/gtest.h>
 
 #include "shill/http_url.h"
-#include "shill/mock_async_connection.h"
 #include "shill/mock_connection.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
