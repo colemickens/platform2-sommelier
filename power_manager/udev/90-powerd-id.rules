@@ -1,15 +1,17 @@
 # Identify internal input devices.
-SUBSYSTEM=="input", ENV{ID_INPUT_KEYBOARD}=="1",    DRIVERS=="atkbd",        ENV{POWERD_ROLE}="internal_keyboard"
-SUBSYSTEM=="input", ENV{ID_INPUT_KEYBOARD}=="1",    DRIVERS=="cros-ec-keyb", ENV{POWERD_ROLE}="internal_keyboard"
-SUBSYSTEM=="input", ENV{ID_INPUT_TOUCHPAD}=="1",    SUBSYSTEMS=="i2c",       ENV{POWERD_ROLE}="internal_touchpad"
-SUBSYSTEM=="input", ENV{ID_INPUT_TOUCHPAD}=="1",    SUBSYSTEMS=="serio",     ENV{POWERD_ROLE}="internal_touchpad"
-SUBSYSTEM=="input", ENV{ID_INPUT_TOUCHSCREEN}=="1", SUBSYSTEMS=="i2c",       ENV{POWERD_ROLE}="internal_touchscreen"
-SUBSYSTEM=="input", ATTRS{name}=="cros_fp_input",                            ENV{POWERD_ROLE}="cros_fingerprint"
+SUBSYSTEM=="input", ENV{ID_INPUT_KEYBOARD}=="1",    DRIVERS=="atkbd",         ENV{POWERD_ROLE}="internal_keyboard"
+SUBSYSTEM=="input", ENV{ID_INPUT_KEYBOARD}=="1",    DRIVERS=="cros-ec-keyb",  ENV{POWERD_ROLE}="internal_keyboard"
+SUBSYSTEM=="input", ENV{ID_INPUT_TOUCHPAD}=="1",    SUBSYSTEMS=="i2c",        ENV{POWERD_ROLE}="internal_touchpad"
+SUBSYSTEM=="input", ENV{ID_INPUT_TOUCHPAD}=="1",    SUBSYSTEMS=="serio",      ENV{POWERD_ROLE}="internal_touchpad"
+SUBSYSTEM=="input", ENV{ID_INPUT_TOUCHSCREEN}=="1", SUBSYSTEMS=="i2c",        ENV{POWERD_ROLE}="internal_touchscreen"
+SUBSYSTEM=="input", ATTRS{name}=="cros_fp_input",                             ENV{POWERD_ROLE}="cros_fingerprint"
 
 # Udev does not make distinction between regular tablets and stylus devices
 # complementing touchscreens, but if we see a "tablet" on an internal bus,
 # it must be such stylus.
-SUBSYSTEM=="input", ENV{ID_INPUT_TABLET}=="1",      SUBSYSTEMS=="i2c",       ENV{POWERD_ROLE}="internal_stylus"
+SUBSYSTEM=="input", ENV{ID_INPUT_TABLET}=="1",      SUBSYSTEMS=="i2c",        ENV{POWERD_ROLE}="internal_stylus"
 
-SUBSYSTEM=="input", SUBSYSTEMS=="usb", DRIVERS=="usbhid", ENV{POWERD_ROLE}="external_input"
-SUBSYSTEM=="input", SUBSYSTEMS=="usb", DRIVERS=="btusb",  ENV{POWERD_ROLE}="external_input"
+SUBSYSTEM=="input", SUBSYSTEMS=="usb",              DRIVERS=="usbhid",        ENV{POWERD_ROLE}="external_input"
+SUBSYSTEM=="input", SUBSYSTEMS=="usb",              DRIVERS=="btusb",         ENV{POWERD_ROLE}="external_input"
+# ATTR{id/bustype}=="0005" means bluetooth bus.
+SUBSYSTEM=="input", SUBSYSTEMS=="hid",              ATTR{id/bustype}=="0005", ENV{POWERD_ROLE}="external_input"
