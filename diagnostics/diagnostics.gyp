@@ -146,6 +146,23 @@
         'diagnostics_processor/main.cc',
       ],
     },
+    # The telemetry tool executable.
+    {
+      'target_name': 'telem',
+      'type': 'executable',
+      'dependencies': [
+        'diagnostics_grpc_protos',
+        'libgrpc_async_adapter',
+      ],
+      'variables': {
+        'deps': [
+          'libbrillo-<(libbase_ver)',
+        ],
+      },
+      'sources': [
+        'telem/main.cc',
+      ],
+    },
   ],
   'conditions': [
     ['USE_test == 1', {
