@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "vm_tools/concierge/termina_vm.h"
+
 #include <arpa/inet.h>
 #include <stdint.h>
 #include <sys/mount.h>
@@ -35,7 +37,6 @@
 #include "vm_tools/concierge/mac_address_generator.h"
 #include "vm_tools/concierge/subnet.h"
 #include "vm_tools/concierge/subnet_pool.h"
-#include "vm_tools/concierge/virtual_machine.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
 
 #include "vm_guest.grpc.pb.h"  // NOLINT(build/include)
@@ -68,11 +69,11 @@ bool IPv4AddressToString(uint32_t addr, string* address) {
 // Name of the unix domain socket for the grpc server.
 constexpr char kServerSocket[] = "server";
 
-// Test fixture for actually testing the VirtualMachine functionality.
-class VirtualMachineTest : public ::testing::Test {
+// Test fixture for actually testing the TerminaVm functionality.
+class TerminaVmTest : public ::testing::Test {
  public:
-  VirtualMachineTest() = default;
-  ~VirtualMachineTest() override = default;
+  TerminaVmTest() = default;
+  ~TerminaVmTest() override = default;
 
   // Called by FakeMaitredService to indicate a test failure.
   void TestFailed(string reason);
@@ -110,16 +111,16 @@ class VirtualMachineTest : public ::testing::Test {
 
  protected:
   // Actual virtual machine being tested.
-  std::unique_ptr<VirtualMachine> vm_;
+  std::unique_ptr<TerminaVm> vm_;
 
   // Expected LaunchProcessRequests. Tests should fill this with all the
-  // LaunchProcessRequests that it expects the VirtualMachine to receive. These
+  // LaunchProcessRequests that it expects the TerminaVm to receive. These
   // will be moved into the FakeMaitredService the first time it receives a
   // LaunchProcess RPC.
   std::deque<vm_tools::LaunchProcessRequest> launch_requests_;
 
   // Expected MountRequests.  Tests should fill this with all the MountRequests
-  // that they expect a VirtualMachine to receive.  These will be moved to the
+  // that they expect a TerminaVm to receive.  These will be moved to the
   // FakeMaitredService the firest time it receives a Mount RPC.
   std::deque<vm_tools::MountRequest> mount_requests_;
 
@@ -147,14 +148,14 @@ class VirtualMachineTest : public ::testing::Test {
   // grpc::Server that will handle the requests.
   std::shared_ptr<grpc::Server> server_;
 
-  base::WeakPtrFactory<VirtualMachineTest> weak_factory_{this};
-  DISALLOW_COPY_AND_ASSIGN(VirtualMachineTest);
+  base::WeakPtrFactory<TerminaVmTest> weak_factory_{this};
+  DISALLOW_COPY_AND_ASSIGN(TerminaVmTest);
 };
 
 // Test server that verifies the RPCs it receives with the expected RPCs.
 class FakeMaitredService final : public vm_tools::Maitred::Service {
  public:
-  explicit FakeMaitredService(VirtualMachineTest* vm_test);
+  explicit FakeMaitredService(TerminaVmTest* vm_test);
   ~FakeMaitredService() override = default;
 
   // Maitred::Service overrides.
@@ -190,15 +191,15 @@ class FakeMaitredService final : public vm_tools::Maitred::Service {
 
   // Non-owning pointer to the test fixture.  Valid for the lifetime of this
   // object because this lives on the grpc thread, which is a member of the test
-  // fixture.  The cross-thread access is safe because all the VirtualMachine
+  // fixture.  The cross-thread access is safe because all the TerminaVm
   // RPCs are synchronous, which means the main thread will be blocked while the
   // grpc thread is processing the RPC.
-  VirtualMachineTest* vm_test_;
+  TerminaVmTest* vm_test_;
 
   DISALLOW_COPY_AND_ASSIGN(FakeMaitredService);
 };
 
-FakeMaitredService::FakeMaitredService(VirtualMachineTest* vm_test)
+FakeMaitredService::FakeMaitredService(TerminaVmTest* vm_test)
     : launch_requests_initialized_(false),
       mount_requests_initialized_(false),
       vm_test_(vm_test) {}
@@ -318,7 +319,7 @@ grpc::Status FakeMaitredService::SetTime(
 
 // Runs on the grpc thread and starts the grpc server.
 void StartFakeMaitredService(
-    VirtualMachineTest* vm_test,
+    TerminaVmTest* vm_test,
     scoped_refptr<base::SingleThreadTaskRunner> main_task_runner,
     base::FilePath listen_path,
     base::Callback<void(std::shared_ptr<grpc::Server>)> server_cb) {
@@ -340,7 +341,7 @@ void StartFakeMaitredService(
   }
 }
 
-void VirtualMachineTest::SetUp() {
+void TerminaVmTest::SetUp() {
   // Create the temporary directory.
   ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
 
@@ -353,7 +354,7 @@ void VirtualMachineTest::SetUp() {
       base::Bind(
           &StartFakeMaitredService, this, base::ThreadTaskRunnerHandle::Get(),
           temp_dir_.GetPath().Append(kServerSocket),
-          base::Bind(&VirtualMachineTest::ServerStartCallback,
+          base::Bind(&TerminaVmTest::ServerStartCallback,
                      weak_factory_.GetWeakPtr(), run_loop.QuitClosure())));
 
   run_loop.Run();
@@ -378,14 +379,14 @@ void VirtualMachineTest::SetUp() {
   ASSERT_TRUE(IPv4AddressToString(subnet->Netmask(), &netmask_));
   ASSERT_TRUE(IPv4AddressToString(subnet->AddressAtOffset(0), &gateway_));
 
-  // Create the VirtualMachine.
-  vm_ = VirtualMachine::CreateForTesting(std::move(mac_addr), std::move(subnet),
-                                         vsock_cid, temp_dir_.GetPath(),
-                                         std::move(stub));
+  // Create the TerminaVm.
+  vm_ = TerminaVm::CreateForTesting(std::move(mac_addr), std::move(subnet),
+                                    vsock_cid, temp_dir_.GetPath(),
+                                    std::move(stub));
   ASSERT_TRUE(vm_);
 }
 
-void VirtualMachineTest::TearDown() {
+void TerminaVmTest::TearDown() {
   // Do the opposite of SetUp to make sure things get cleaned up in the right
   // order.
   vm_.reset();
@@ -394,33 +395,34 @@ void VirtualMachineTest::TearDown() {
   server_thread_.Stop();
 }
 
-void VirtualMachineTest::ServerStartCallback(
-    base::Closure quit, std::shared_ptr<grpc::Server> server) {
+void TerminaVmTest::ServerStartCallback(base::Closure quit,
+                                        std::shared_ptr<grpc::Server> server) {
   server_.swap(server);
   quit.Run();
 }
 
-void VirtualMachineTest::TestFailed(string reason) {
+void TerminaVmTest::TestFailed(string reason) {
   failed_ = true;
   failure_reason_ = std::move(reason);
 }
 
 }  // namespace
 
-TEST_F(VirtualMachineTest, ConfigureNetwork) {
+TEST_F(TerminaVmTest, ConfigureNetwork) {
   ASSERT_TRUE(vm_->ConfigureNetwork({"8.8.8.8"}, {}));
 
   EXPECT_FALSE(failed_) << "Failure reason: " << failure_reason_;
 }
 
-TEST_F(VirtualMachineTest, SetTime) {
-  grpc::Status s = vm_->SetTime();
-  EXPECT_TRUE(s.ok()) << s.error_message();
+TEST_F(TerminaVmTest, SetTime) {
+  string reason;
+  bool success = vm_->SetTime(&reason);
+  EXPECT_TRUE(success) << reason;
 
   EXPECT_FALSE(failed_) << "Failure reason: " << failure_reason_;
 }
 
-TEST_F(VirtualMachineTest, Mount) {
+TEST_F(TerminaVmTest, Mount) {
   struct {
     const char* source;
     const char* target;

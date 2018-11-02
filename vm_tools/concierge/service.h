@@ -31,7 +31,8 @@
 #include "vm_tools/concierge/shill_client.h"
 #include "vm_tools/concierge/startup_listener_impl.h"
 #include "vm_tools/concierge/subnet_pool.h"
-#include "vm_tools/concierge/virtual_machine.h"
+#include "vm_tools/concierge/termina_vm.h"
+#include "vm_tools/concierge/vm_interface.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
 
 namespace vm_tools {
@@ -118,7 +119,7 @@ class Service final : public base::MessageLoopForIO::Watcher {
                              std::vector<std::string> search_domains);
 
   // Helper for starting termina VMs, e.g. starting lxd.
-  bool StartTermina(VirtualMachine* vm, std::string* failure_reason);
+  bool StartTermina(TerminaVm* vm, std::string* failure_reason);
 
   // Helpers for notifying cicerone of VM started/stopped events, generating
   // container tokens and querying if a container is running.
@@ -144,7 +145,7 @@ class Service final : public base::MessageLoopForIO::Watcher {
                          bool is_connected);
 
   using VmMap = std::map<std::pair<std::string, std::string>,
-                         std::unique_ptr<VirtualMachine>>;
+                         std::unique_ptr<VmInterface>>;
 
   // Returns an iterator to vm with key (|owner_id|, |vm_name|). If no such
   // element exists, tries the former with |owner_id| equal to empty string.
@@ -175,6 +176,10 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   // Active VMs keyed by (owner_id, vm_name).
   VmMap vms_;
+
+  // Active termina VMs.  Must come after |vms_| so that we don't end up with
+  // dangling pointers.
+  std::vector<TerminaVm*> termina_vms_;
 
   // The shill D-Bus client.
   std::unique_ptr<ShillClient> shill_client_;

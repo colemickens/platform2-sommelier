@@ -20,6 +20,7 @@
 
 #include <linux/vm_sockets.h>  // Needs to come after sys/socket.h
 
+#include <algorithm>
 #include <map>
 #include <utility>
 #include <vector>
@@ -529,7 +530,8 @@ void Service::HandleChildExit() {
     // See if this is a process we launched.
     VmMap::key_type key;
     for (const auto& pair : vms_) {
-      if (pid == pair.second->pid()) {
+      VmInterface::Info info = pair.second->GetInfo();
+      if (pid == info.pid) {
         key = pair.first;
         break;
       }
@@ -600,17 +602,30 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   auto iter = FindVm(request.owner_id(), request.name());
   if (iter != vms_.end()) {
     LOG(INFO) << "VM with requested name is already running";
-    auto& vm = iter->second;
-    VmInfo* vm_info = response.mutable_vm_info();
-    vm_info->set_ipv4_address(vm->IPv4Address());
-    vm_info->set_pid(vm->pid());
-    vm_info->set_cid(vm->cid());
-    vm_info->set_seneschal_server_handle(vm->seneschal_server_handle());
 
+    VmInterface::Info vm = iter->second->GetInfo();
+
+    VmInfo* vm_info = response.mutable_vm_info();
+    vm_info->set_ipv4_address(vm.ipv4_address);
+    vm_info->set_pid(vm.pid);
+    vm_info->set_cid(vm.cid);
+    vm_info->set_seneschal_server_handle(vm.seneschal_server_handle);
+    switch (vm.status) {
+      case VmInterface::Status::STARTING: {
+        response.set_status(VM_STATUS_STARTING);
+        break;
+      }
+      case VmInterface::Status::RUNNING: {
+        response.set_status(VM_STATUS_RUNNING);
+        break;
+      }
+      default: {
+        response.set_status(VM_STATUS_UNKNOWN);
+        break;
+      }
+    }
     response.set_success(true);
-    response.set_status(request.start_termina() && !vm->IsTremplinStarted()
-                            ? VM_STATUS_STARTING
-                            : VM_STATUS_RUNNING);
+
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -659,7 +674,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     return dbus_response;
   }
 
-  std::vector<VirtualMachine::Disk> disks;
+  std::vector<TerminaVm::Disk> disks;
   base::ScopedFD storage_fd;
   // Check if an opened storage image was passed over D-BUS.
   if (request.use_fd_for_storage()) {
@@ -691,7 +706,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
 
     base::FilePath fd_path = base::FilePath(kProcFileDescriptorsPath)
                                  .Append(base::IntToString(raw_fd));
-    disks.emplace_back(VirtualMachine::Disk{
+    disks.push_back(TerminaVm::Disk{
         .path = std::move(fd_path),
         .writable = true,
     });
@@ -705,7 +720,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
       return dbus_response;
     }
 
-    disks.emplace_back(VirtualMachine::Disk{
+    disks.push_back(TerminaVm::Disk{
         .path = base::FilePath(disk.path()),
         .writable = disk.writable(),
     });
@@ -763,10 +778,10 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   startup_listener_.AddPendingVm(vsock_cid, &event);
 
   // Start the VM and build the response.
-  auto vm = VirtualMachine::Create(
-      std::move(kernel), std::move(rootfs), std::move(disks),
-      std::move(mac_address), std::move(subnet), vsock_cid,
-      std::move(server_proxy), std::move(runtime_dir));
+  auto vm =
+      TerminaVm::Create(std::move(kernel), std::move(rootfs), std::move(disks),
+                        std::move(mac_address), std::move(subnet), vsock_cid,
+                        std::move(server_proxy), std::move(runtime_dir));
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
 
@@ -902,6 +917,12 @@ std::unique_ptr<dbus::Response> Service::StopVm(dbus::MethodCall* method_call) {
   // Notify cicerone that we have stopped a VM.
   NotifyCiceroneOfVmStopped(request.owner_id(), request.name());
 
+  // If this is a termina VM, remove it from the list.
+  auto termina_vm =
+      std::find(termina_vms_.begin(), termina_vms_.end(), iter->second.get());
+  if (termina_vm != termina_vms_.end()) {
+    termina_vms_.erase(termina_vm);
+  }
   vms_.erase(iter);
   response.set_success(true);
   writer.AppendProtoAsArrayOfBytes(response);
@@ -924,6 +945,7 @@ std::unique_ptr<dbus::Response> Service::StopAllVms(
     iter.second.reset();
   }
 
+  termina_vms_.clear();
   vms_.clear();
 
   return nullptr;
@@ -958,12 +980,13 @@ std::unique_ptr<dbus::Response> Service::GetVmInfo(
     return dbus_response;
   }
 
-  auto& vm = iter->second;
+  VmInterface::Info vm = iter->second->GetInfo();
+
   VmInfo* vm_info = response.mutable_vm_info();
-  vm_info->set_ipv4_address(vm->IPv4Address());
-  vm_info->set_pid(vm->pid());
-  vm_info->set_cid(vm->cid());
-  vm_info->set_seneschal_server_handle(vm->seneschal_server_handle());
+  vm_info->set_ipv4_address(vm.ipv4_address);
+  vm_info->set_pid(vm.pid);
+  vm_info->set_cid(vm.cid);
+  vm_info->set_seneschal_server_handle(vm.seneschal_server_handle);
 
   response.set_success(true);
   writer.AppendProtoAsArrayOfBytes(response);
@@ -993,13 +1016,12 @@ SyncVmTimesResponse Service::SyncVmTimesInternal() {
 
   int failures = 0;
   int requests = 0;
-  for (const auto& iter : vms_) {
+  for (TerminaVm* termina_vm : termina_vms_) {
     requests++;
-    grpc::Status s = iter.second->SetTime();
-    if (!s.ok()) {
+    string failure_reason;
+    if (!termina_vm->SetTime(&failure_reason)) {
       failures++;
-      string* tmp = response.add_failure_reason();
-      *tmp = s.error_message();
+      response.add_failure_reason(std::move(failure_reason));
     }
   }
   response.set_requests(requests);
@@ -1008,9 +1030,12 @@ SyncVmTimesResponse Service::SyncVmTimesInternal() {
   return response;
 }
 
-bool Service::StartTermina(VirtualMachine* vm, string* failure_reason) {
+bool Service::StartTermina(TerminaVm* vm, string* failure_reason) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
   LOG(INFO) << "Starting lxd";
+
+  // Keep track of this VM as a termina VM.
+  termina_vms_.push_back(vm);
 
   // Allocate the subnet for lxd's bridge to use.
   std::unique_ptr<Subnet> container_subnet = subnet_pool_.AllocateContainer();
@@ -1649,8 +1674,8 @@ void Service::OnResolvConfigChanged(std::vector<string> nameservers,
                                     std::vector<string> search_domains) {
   nameservers_ = std::move(nameservers);
   search_domains_ = std::move(search_domains);
-  for (auto& iter : vms_) {
-    iter.second->SetResolvConfig(nameservers_, search_domains_);
+  for (TerminaVm* termina_vm : termina_vms_) {
+    termina_vm->SetResolvConfig(nameservers_, search_domains_);
   }
 }
 
@@ -1746,7 +1771,12 @@ void Service::OnTremplinStartedSignal(dbus::Signal* signal) {
   LOG(INFO) << "Received TremplinStartedSignal for owner: "
             << tremplin_started_signal.owner_id()
             << ", vm: " << tremplin_started_signal.vm_name();
-  iter->second->SetTremplinStarted();
+
+  // Tremplin only runs in termina VMs.
+  auto termina_vm =
+      std::find(termina_vms_.begin(), termina_vms_.end(), iter->second.get());
+  DCHECK(termina_vm != termina_vms_.end());
+  (*termina_vm)->SetTremplinStarted();
 }
 
 void Service::OnSignalConnected(const std::string& interface_name,

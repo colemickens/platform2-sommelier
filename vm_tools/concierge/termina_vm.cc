@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "vm_tools/concierge/virtual_machine.h"
+#include "vm_tools/concierge/termina_vm.h"
 
 #include <arpa/inet.h>
 #include <linux/capability.h>
@@ -124,7 +124,7 @@ bool WaitForChild(pid_t child, base::TimeDelta timeout) {
 
 }  // namespace
 
-VirtualMachine::VirtualMachine(
+TerminaVm::TerminaVm(
     MacAddress mac_addr,
     std::unique_ptr<Subnet> subnet,
     uint32_t vsock_cid,
@@ -141,22 +141,22 @@ VirtualMachine::VirtualMachine(
   CHECK(runtime_dir_.Set(runtime_dir));
 }
 
-VirtualMachine::~VirtualMachine() {
+TerminaVm::~TerminaVm() {
   Shutdown();
 }
 
-std::unique_ptr<VirtualMachine> VirtualMachine::Create(
+std::unique_ptr<TerminaVm> TerminaVm::Create(
     base::FilePath kernel,
     base::FilePath rootfs,
-    std::vector<VirtualMachine::Disk> disks,
+    std::vector<TerminaVm::Disk> disks,
     MacAddress mac_addr,
     std::unique_ptr<Subnet> subnet,
     uint32_t vsock_cid,
     std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
     base::FilePath runtime_dir) {
-  auto vm = base::WrapUnique(new VirtualMachine(
-      std::move(mac_addr), std::move(subnet), vsock_cid,
-      std::move(seneschal_server_proxy), std::move(runtime_dir)));
+  auto vm = base::WrapUnique(
+      new TerminaVm(std::move(mac_addr), std::move(subnet), vsock_cid,
+                    std::move(seneschal_server_proxy), std::move(runtime_dir)));
 
   if (!vm->Start(std::move(kernel), std::move(rootfs), std::move(disks))) {
     vm.reset();
@@ -165,9 +165,9 @@ std::unique_ptr<VirtualMachine> VirtualMachine::Create(
   return vm;
 }
 
-bool VirtualMachine::Start(base::FilePath kernel,
-                           base::FilePath rootfs,
-                           std::vector<VirtualMachine::Disk> disks) {
+bool TerminaVm::Start(base::FilePath kernel,
+                      base::FilePath rootfs,
+                      std::vector<TerminaVm::Disk> disks) {
   // Set up the tap device.
   base::ScopedFD tap_fd =
       BuildTapDevice(mac_addr_, GatewayAddress(), Netmask());
@@ -258,7 +258,7 @@ bool VirtualMachine::Start(base::FilePath kernel,
   return true;
 }
 
-bool VirtualMachine::Shutdown() {
+bool TerminaVm::Shutdown() {
   // Do a sanity check here to make sure the process is still around.  It may
   // have crashed and we don't want to be waiting around for an RPC response
   // that's never going to come.  kill with a signal value of 0 is explicitly
@@ -324,9 +324,8 @@ bool VirtualMachine::Shutdown() {
   return false;
 }
 
-bool VirtualMachine::ConfigureNetwork(
-    const std::vector<string>& nameservers,
-    const std::vector<string>& search_domains) {
+bool TerminaVm::ConfigureNetwork(const std::vector<string>& nameservers,
+                                 const std::vector<string>& search_domains) {
   LOG(INFO) << "Configuring network for VM " << vsock_cid_;
 
   vm_tools::NetworkConfigRequest request;
@@ -356,11 +355,11 @@ bool VirtualMachine::ConfigureNetwork(
   return true;
 }
 
-bool VirtualMachine::Mount(string source,
-                           string target,
-                           string fstype,
-                           uint64_t mountflags,
-                           string options) {
+bool TerminaVm::Mount(string source,
+                      string target,
+                      string fstype,
+                      uint64_t mountflags,
+                      string options) {
   LOG(INFO) << "Mounting " << source << " on " << target << " inside VM "
             << vsock_cid_;
 
@@ -390,8 +389,7 @@ bool VirtualMachine::Mount(string source,
   return true;
 }
 
-bool VirtualMachine::StartTermina(std::string lxd_subnet,
-                                  std::string* out_error) {
+bool TerminaVm::StartTermina(std::string lxd_subnet, std::string* out_error) {
   vm_tools::StartTerminaRequest request;
   vm_tools::StartTerminaResponse response;
 
@@ -413,28 +411,27 @@ bool VirtualMachine::StartTermina(std::string lxd_subnet,
   return true;
 }
 
-bool VirtualMachine::AttachUsbDevice(uint8_t bus,
-                                     uint8_t addr,
-                                     uint16_t vid,
-                                     uint16_t pid,
-                                     int fd,
-                                     UsbControlResponse* response) {
+bool TerminaVm::AttachUsbDevice(uint8_t bus,
+                                uint8_t addr,
+                                uint16_t vid,
+                                uint16_t pid,
+                                int fd,
+                                UsbControlResponse* response) {
   // Stubbed out pending future patch
   return false;
 }
 
-bool VirtualMachine::DetachUsbDevice(uint8_t port,
-                                     UsbControlResponse* response) {
+bool TerminaVm::DetachUsbDevice(uint8_t port, UsbControlResponse* response) {
   // Stubbed out pending future patch
   return false;
 }
 
-bool VirtualMachine::ListUsbDevice(std::vector<UsbDevice>* device) {
+bool TerminaVm::ListUsbDevice(std::vector<UsbDevice>* device) {
   // Stubbed out pending future patch
   return false;
 }
 
-bool VirtualMachine::Mount9P(uint32_t port, string target) {
+bool TerminaVm::Mount9P(uint32_t port, string target) {
   LOG(INFO) << "Mounting 9P file system from port " << port << " on " << target;
 
   vm_tools::Mount9PRequest request;
@@ -460,9 +457,8 @@ bool VirtualMachine::Mount9P(uint32_t port, string target) {
   return true;
 }
 
-bool VirtualMachine::SetResolvConfig(
-    const std::vector<string>& nameservers,
-    const std::vector<string>& search_domains) {
+bool TerminaVm::SetResolvConfig(const std::vector<string>& nameservers,
+                                const std::vector<string>& search_domains) {
   LOG(INFO) << "Setting resolv config for VM " << vsock_cid_;
 
   vm_tools::SetResolvConfigRequest request;
@@ -493,7 +489,9 @@ bool VirtualMachine::SetResolvConfig(
   return true;
 }
 
-grpc::Status VirtualMachine::SetTime() {
+bool TerminaVm::SetTime(string* failure_reason) {
+  DCHECK(failure_reason);
+
   base::Time now = base::Time::Now();
   struct timeval current = now.ToTimeVal();
 
@@ -513,61 +511,77 @@ grpc::Status VirtualMachine::SetTime() {
   if (!status.ok()) {
     LOG(ERROR) << "Failed to set guest time on VM " << vsock_cid_ << ":"
                << status.error_message();
+
+    *failure_reason = status.error_message();
+    return false;
   }
-  return status;
+  return true;
 }
 
-void VirtualMachine::SetContainerSubnet(std::unique_ptr<Subnet> subnet) {
+void TerminaVm::SetContainerSubnet(std::unique_ptr<Subnet> subnet) {
   container_subnet_ = std::move(subnet);
 }
 
-uint32_t VirtualMachine::GatewayAddress() const {
+uint32_t TerminaVm::GatewayAddress() const {
   return subnet_->AddressAtOffset(kHostAddressOffset);
 }
 
-uint32_t VirtualMachine::IPv4Address() const {
+uint32_t TerminaVm::IPv4Address() const {
   return subnet_->AddressAtOffset(kGuestAddressOffset);
 }
 
-uint32_t VirtualMachine::Netmask() const {
+uint32_t TerminaVm::Netmask() const {
   return subnet_->Netmask();
 }
 
-uint32_t VirtualMachine::ContainerNetmask() const {
+uint32_t TerminaVm::ContainerNetmask() const {
   if (container_subnet_)
     return container_subnet_->Netmask();
 
   return INADDR_ANY;
 }
 
-size_t VirtualMachine::ContainerPrefix() const {
+size_t TerminaVm::ContainerPrefix() const {
   if (container_subnet_)
     return container_subnet_->Prefix();
 
   return 0;
 }
 
-uint32_t VirtualMachine::ContainerSubnet() const {
+uint32_t TerminaVm::ContainerSubnet() const {
   if (container_subnet_)
     return container_subnet_->AddressAtOffset(0);
 
   return INADDR_ANY;
 }
 
-void VirtualMachine::set_stub_for_testing(
+VmInterface::Info TerminaVm::GetInfo() {
+  VmInterface::Info info = {
+      .ipv4_address = IPv4Address(),
+      .pid = pid(),
+      .cid = cid(),
+      .seneschal_server_handle = seneschal_server_handle(),
+      .status = IsTremplinStarted() ? VmInterface::Status::RUNNING
+                                    : VmInterface::Status::STARTING,
+  };
+
+  return info;
+}
+
+void TerminaVm::set_stub_for_testing(
     std::unique_ptr<vm_tools::Maitred::Stub> stub) {
   stub_ = std::move(stub);
 }
 
-std::unique_ptr<VirtualMachine> VirtualMachine::CreateForTesting(
+std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
     MacAddress mac_addr,
     std::unique_ptr<Subnet> subnet,
     uint32_t vsock_cid,
     base::FilePath runtime_dir,
     std::unique_ptr<vm_tools::Maitred::Stub> stub) {
-  auto vm = base::WrapUnique(
-      new VirtualMachine(std::move(mac_addr), std::move(subnet), vsock_cid,
-                         nullptr, std::move(runtime_dir)));
+  auto vm = base::WrapUnique(new TerminaVm(std::move(mac_addr),
+                                           std::move(subnet), vsock_cid,
+                                           nullptr, std::move(runtime_dir)));
 
   vm->set_stub_for_testing(std::move(stub));
 

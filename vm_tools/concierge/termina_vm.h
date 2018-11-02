@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef VM_TOOLS_CONCIERGE_VIRTUAL_MACHINE_H_
-#define VM_TOOLS_CONCIERGE_VIRTUAL_MACHINE_H_
+#ifndef VM_TOOLS_CONCIERGE_TERMINA_VM_H_
+#define VM_TOOLS_CONCIERGE_TERMINA_VM_H_
 
 #include <stdint.h>
 #include <unistd.h>
@@ -23,7 +23,7 @@
 #include "vm_tools/concierge/seneschal_server_proxy.h"
 #include "vm_tools/concierge/subnet.h"
 #include "vm_tools/concierge/subnet_pool.h"
-#include "vm_tools/concierge/usb_control.h"
+#include "vm_tools/concierge/vm_interface.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
 
 #include "vm_guest.grpc.pb.h"  // NOLINT(build/include)
@@ -31,8 +31,8 @@
 namespace vm_tools {
 namespace concierge {
 
-// Represents a single instance of a running virtual machine.
-class VirtualMachine {
+// Represents a single instance of a running termina VM.
+class TerminaVm final : public VmInterface {
  public:
   // Type of a disk image.
   enum class DiskImageType {
@@ -54,7 +54,7 @@ class VirtualMachine {
 
   // Starts a new virtual machine.  Returns nullptr if the virtual machine
   // failed to start for any reason.
-  static std::unique_ptr<VirtualMachine> Create(
+  static std::unique_ptr<TerminaVm> Create(
       base::FilePath kernel,
       base::FilePath rootfs,
       std::vector<Disk> disks,
@@ -63,15 +63,7 @@ class VirtualMachine {
       uint32_t vsock_cid,
       std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
       base::FilePath runtime_dir);
-  ~VirtualMachine();
-
-  // Shuts down the VM.  First attempts a clean shutdown of the VM by sending
-  // a Shutdown RPC to maitre'd.  If that fails, attempts to shut down the VM
-  // using the control socket for the hypervisor.  If that fails, then sends a
-  // SIGTERM to the hypervisor.  Finally, if nothing works forcibly stops the VM
-  // by sending it a SIGKILL.  Returns true if the VM was shut down and false
-  // otherwise.
-  bool Shutdown();
+  ~TerminaVm() override;
 
   // Configures the network interfaces inside the VM.  Returns true iff
   // successful.
@@ -89,20 +81,6 @@ class VirtualMachine {
   // Starts Termina-specific services in the guest.
   bool StartTermina(std::string lxd_subnet, std::string* out_error);
 
-  // Attach an usb device at host bus:addr, with vid, pid and an opened fd.
-  bool AttachUsbDevice(uint8_t bus,
-                       uint8_t addr,
-                       uint16_t vid,
-                       uint16_t pid,
-                       int fd,
-                       UsbControlResponse* response);
-
-  // Detach the usb device at guest port.
-  bool DetachUsbDevice(uint8_t port, UsbControlResponse* response);
-
-  // List all usb devices attached to guest.
-  bool ListUsbDevice(std::vector<UsbDevice>* devices);
-
   // Mount a 9p file system inside the VM.  The guest VM connects to a server
   // listening on the vsock port |port| and mounts the file system on |target|.
   bool Mount9P(uint32_t port, std::string target);
@@ -113,7 +91,7 @@ class VirtualMachine {
                        const std::vector<std::string>& search_domains);
 
   // Set the guest time to the current time as given by gettimeofday.
-  grpc::Status SetTime();
+  bool SetTime(std::string* failure_reason);
 
   // Sets the container subnet for this VM to |subnet|. This subnet is intended
   // to be provided to a container runtime as a DHCP pool.
@@ -161,7 +139,25 @@ class VirtualMachine {
   bool IsTremplinStarted() const { return is_tremplin_started_; }
   void SetTremplinStarted() { is_tremplin_started_ = true; }
 
-  static std::unique_ptr<VirtualMachine> CreateForTesting(
+  // VmInterface overrides.
+  // Shuts down the VM.  First attempts a clean shutdown of the VM by sending
+  // a Shutdown RPC to maitre'd.  If that fails, attempts to shut down the VM
+  // using the control socket for the hypervisor.  If that fails, then sends a
+  // SIGTERM to the hypervisor.  Finally, if nothing works forcibly stops the VM
+  // by sending it a SIGKILL.  Returns true if the VM was shut down and false
+  // otherwise.
+  bool Shutdown() override;
+  VmInterface::Info GetInfo() override;
+  bool AttachUsbDevice(uint8_t bus,
+                       uint8_t addr,
+                       uint16_t vid,
+                       uint16_t pid,
+                       int fd,
+                       UsbControlResponse* response) override;
+  bool DetachUsbDevice(uint8_t port, UsbControlResponse* response) override;
+  bool ListUsbDevice(std::vector<UsbDevice>* devices) override;
+
+  static std::unique_ptr<TerminaVm> CreateForTesting(
       MacAddress mac_addr,
       std::unique_ptr<Subnet> subnet,
       uint32_t vsock_cid,
@@ -169,11 +165,11 @@ class VirtualMachine {
       std::unique_ptr<vm_tools::Maitred::Stub> stub);
 
  private:
-  VirtualMachine(MacAddress mac_addr,
-                 std::unique_ptr<Subnet> subnet,
-                 uint32_t vsock_cid,
-                 std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
-                 base::FilePath runtime_dir);
+  TerminaVm(MacAddress mac_addr,
+            std::unique_ptr<Subnet> subnet,
+            uint32_t vsock_cid,
+            std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
+            base::FilePath runtime_dir);
 
   // Starts the VM with the given kernel and root file system.
   bool Start(base::FilePath kernel,
@@ -212,10 +208,10 @@ class VirtualMachine {
   // Whether a TremplinStartedSignal has been received for the VM.
   bool is_tremplin_started_ = false;
 
-  DISALLOW_COPY_AND_ASSIGN(VirtualMachine);
+  DISALLOW_COPY_AND_ASSIGN(TerminaVm);
 };
 
 }  // namespace concierge
 }  // namespace vm_tools
 
-#endif  // VM_TOOLS_CONCIERGE_VIRTUAL_MACHINE_H_
+#endif  // VM_TOOLS_CONCIERGE_TERMINA_VM_H_
