@@ -689,7 +689,6 @@ if (use.test) {
       "mock_device_info.cc",
       "mock_dns_client.cc",
       "mock_dns_client_factory.cc",
-      "mock_dns_server_tester.cc",
       "mock_event_dispatcher.cc",
       "mock_external_task.cc",
       "mock_http_request.cc",
