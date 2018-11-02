@@ -1,11 +1,11 @@
 #!/bin/sh
-mosys platform vendor
-mosys platform name
-mosys platform model
-mosys platform chassis
-mosys platform sku
-mosys platform brand
-mosys platform customization
-mosys platform signature
-mosys platform version
-mosys platform family
+echo "vendor": $(mosys platform vendor)
+echo "name": $(mosys platform name)
+echo "model": $(mosys platform model)
+echo "chassis": $(mosys platform chassis)
+echo "sku": $(mosys platform sku)
+echo "brand": $(mosys platform brand)
+echo "customization": $(mosys platform customization)
+echo "signature": $(mosys platform signature)
+echo "version": $(mosys platform version)
+echo "family": $(mosys platform family)
