@@ -13,8 +13,6 @@
 
 class MetricsLibraryMock : public MetricsLibraryInterface {
  public:
-  bool metrics_enabled_ = true;
-
   MOCK_METHOD0(Init, void());
   MOCK_METHOD5(SendToUMA,
                bool(const std::string& name,
@@ -37,6 +35,14 @@ class MetricsLibraryMock : public MetricsLibraryInterface {
                     int num_samples));
 #endif
   bool AreMetricsEnabled() override { return metrics_enabled_; };
+  bool IsGuestMode() override { return guest_mode_; }
+
+  void set_metrics_enabled(bool value) { metrics_enabled_ = value; }
+  void set_guest_mode(bool value) { guest_mode_ = value; }
+
+ private:
+  bool metrics_enabled_ = true;
+  bool guest_mode_ = false;
 };
 
 #endif  // METRICS_METRICS_LIBRARY_MOCK_H_

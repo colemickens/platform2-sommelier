@@ -175,6 +175,8 @@ class TestMetricsLibrary : public MetricsLibraryInterface {
 
   void Init() override {}
 
+  bool IsGuestMode() override { return false; }
+
   bool AreMetricsEnabled() override { return true; }
 
   bool SendEnumToUMA(const std::string& name, int sample, int max) override {

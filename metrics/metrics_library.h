@@ -20,6 +20,7 @@ class MetricsLibraryInterface {
  public:
   virtual void Init() = 0;
   virtual bool AreMetricsEnabled() = 0;
+  virtual bool IsGuestMode() = 0;
   virtual bool SendToUMA(
       const std::string& name, int sample, int min, int max, int nbuckets) = 0;
   virtual bool SendEnumToUMA(const std::string& name, int sample, int max) = 0;
@@ -47,7 +48,7 @@ class MetricsLibrary : public MetricsLibraryInterface {
   void Init() override;
 
   // Returns whether or not the machine is running in guest mode.
-  virtual bool IsGuestMode();
+  bool IsGuestMode() override;
 
   // Returns whether or not metrics collection is enabled.
   bool AreMetricsEnabled() override;
