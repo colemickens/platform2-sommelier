@@ -33,9 +33,6 @@ namespace vm_tools {
 namespace concierge {
 namespace {
 
-using ProcessExitBehavior = VirtualMachine::ProcessExitBehavior;
-using ProcessStatus = VirtualMachine::ProcessStatus;
-
 // Path to the crosvm binary.
 constexpr char kCrosvmBin[] = "/usr/bin/crosvm";
 
@@ -325,72 +322,6 @@ bool VirtualMachine::Shutdown() {
 
   LOG(ERROR) << "Failed to kill VM " << vsock_cid_ << " with SIGKILL";
   return false;
-}
-
-bool VirtualMachine::LaunchProcess(std::vector<string> args,
-                                   std::map<string, string> env,
-                                   bool respawn,
-                                   bool wait_for_exit,
-                                   int64_t timeout_seconds) {
-  CHECK(!args.empty());
-  DCHECK(!(respawn && wait_for_exit));
-
-  LOG(INFO) << "Launching " << args[0] << " inside VM " << vsock_cid_;
-
-  vm_tools::LaunchProcessRequest request;
-  vm_tools::LaunchProcessResponse response;
-
-  google::protobuf::RepeatedPtrField<string> argv(args.begin(), args.end());
-  request.mutable_argv()->Swap(&argv);
-
-  google::protobuf::Map<string, string> environ(env.begin(), env.end());
-  request.mutable_env()->swap(environ);
-
-  request.set_respawn(respawn);
-  request.set_wait_for_exit(wait_for_exit);
-
-  grpc::ClientContext ctx;
-  ctx.set_deadline(
-      gpr_time_add(gpr_now(GPR_CLOCK_MONOTONIC),
-                   gpr_time_from_seconds(timeout_seconds, GPR_TIMESPAN)));
-
-  grpc::Status status = stub_->LaunchProcess(&ctx, request, &response);
-  if (!status.ok()) {
-    LOG(ERROR) << "Failed to launch " << args[0] << ": "
-               << status.error_message();
-    return false;
-  }
-
-  // If waiting for the process to exit, a success means the process had to
-  // return 0. Otherwise, just check that the process launched successfully.
-  if (response.status() == vm_tools::EXITED && wait_for_exit) {
-    return response.code() == 0;
-  } else if (response.status() == vm_tools::LAUNCHED && !wait_for_exit) {
-    return true;
-  }
-
-  return false;
-}
-
-bool VirtualMachine::StartProcess(std::vector<string> args,
-                                  std::map<string, string> env,
-                                  ProcessExitBehavior exit_behavior) {
-  return LaunchProcess(std::move(args), std::move(env),
-                       exit_behavior == ProcessExitBehavior::RESPAWN_ON_EXIT,
-                       false, kDefaultTimeoutSeconds);
-}
-
-bool VirtualMachine::RunProcess(std::vector<string> args,
-                                std::map<string, string> env) {
-  return LaunchProcess(std::move(args), std::move(env), false, true,
-                       kDefaultTimeoutSeconds);
-}
-
-bool VirtualMachine::RunProcessWithTimeout(std::vector<string> args,
-                                           std::map<string, string> env,
-                                           base::TimeDelta timeout) {
-  return LaunchProcess(std::move(args), std::move(env), false, true,
-                       timeout.InSeconds());
 }
 
 bool VirtualMachine::ConfigureNetwork(

@@ -60,9 +60,6 @@ namespace concierge {
 
 namespace {
 
-using ProcessExitBehavior = VirtualMachine::ProcessExitBehavior;
-using ProcessStatus = VirtualMachine::ProcessStatus;
-
 // Path to the runtime directory used by VMs.
 constexpr char kRuntimeDir[] = "/run/vm";
 

@@ -48,9 +48,6 @@ namespace vm_tools {
 namespace concierge {
 namespace {
 
-using ProcessExitBehavior = VirtualMachine::ProcessExitBehavior;
-using ProcessStatus = VirtualMachine::ProcessStatus;
-
 // Converts an IPv4 address in network byte order into a string.
 bool IPv4AddressToString(uint32_t addr, string* address) {
   CHECK(address);
@@ -421,62 +418,6 @@ TEST_F(VirtualMachineTest, SetTime) {
   EXPECT_TRUE(s.ok()) << s.error_message();
 
   EXPECT_FALSE(failed_) << "Failure reason: " << failure_reason_;
-}
-
-TEST_F(VirtualMachineTest, LaunchProcess) {
-  struct {
-    std::vector<string> argv;
-    std::map<string, string> env;
-    bool respawn;
-    bool wait_for_exit;
-  } messages[] = {
-      {
-          .argv = {"test", "program"},
-          .env = {{"HELLO", "WORLD"}},
-          .respawn = true,
-          .wait_for_exit = false,
-      },
-      {
-          .argv = {"other", "program"},
-          .env = {},
-          .respawn = false,
-          .wait_for_exit = false,
-      },
-      {
-          .argv = {"synchronous", "program"},
-          .env = {{"test", "env"}},
-          .respawn = false,
-          .wait_for_exit = true,
-      },
-  };
-
-  // Build up the expected protobufs.
-  for (const auto& msg : messages) {
-    vm_tools::LaunchProcessRequest request;
-
-    google::protobuf::RepeatedPtrField<string> argv(msg.argv.begin(),
-                                                    msg.argv.end());
-    request.mutable_argv()->Swap(&argv);
-    google::protobuf::Map<string, string> env(msg.env.begin(), msg.env.end());
-    request.mutable_env()->swap(env);
-    request.set_respawn(msg.respawn);
-    request.set_wait_for_exit(msg.wait_for_exit);
-
-    launch_requests_.emplace_back(std::move(request));
-  }
-
-  // Now make the requests.
-  for (auto& msg : messages) {
-    if (msg.wait_for_exit) {
-      vm_->RunProcess(std::move(msg.argv), std::move(msg.env));
-    } else {
-      vm_->StartProcess(std::move(msg.argv), std::move(msg.env),
-                        msg.respawn ? ProcessExitBehavior::RESPAWN_ON_EXIT
-                                    : ProcessExitBehavior::ONE_SHOT);
-    }
-
-    EXPECT_FALSE(failed_) << "Failure reason: " << failure_reason_;
-  }
 }
 
 TEST_F(VirtualMachineTest, Mount) {

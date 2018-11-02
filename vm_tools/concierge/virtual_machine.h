@@ -33,33 +33,6 @@ namespace concierge {
 // Represents a single instance of a running virtual machine.
 class VirtualMachine {
  public:
-  // Describes how maitre'd should handle exits for processes launched via the
-  // StartProcess() function.
-  enum class ProcessExitBehavior {
-    // Don't respawn the process when it exits.
-    ONE_SHOT,
-    // Respawn the process when it exits.
-    RESPAWN_ON_EXIT,
-  };
-
-  // Describes the status of a process launched inside the VM.
-  enum class ProcessStatus {
-    // ¯\_(ツ)_/¯
-    UNKNOWN,
-
-    // The process exited normally.
-    EXITED,
-
-    // The process was killed by a signal.
-    SIGNALED,
-
-    // Successfully launched but may or may not have exited yet.
-    LAUNCHED,
-
-    // One or more setup steps failed and the process did not launch.
-    FAILED,
-  };
-
   // Type of a disk image.
   enum class DiskImageType {
     // Raw disk image file.
@@ -98,25 +71,6 @@ class VirtualMachine {
   // by sending it a SIGKILL.  Returns true if the VM was shut down and false
   // otherwise.
   bool Shutdown();
-
-  // Launches a process inside the VM and returns without waiting for it to
-  // exit. |args[0]| must be either the name of a program in the default PATH
-  // inside the VM or the path to the program to be executed.
-  bool StartProcess(std::vector<std::string> args,
-                    std::map<std::string, std::string> env,
-                    ProcessExitBehavior exit_behavior);
-
-  // Launches a process inside the VM and synchronously waits for it to exit.
-  // |args[0]| must be either the name of a program in the default PATH
-  // inside the VM or the path to the program to be executed.
-  bool RunProcess(std::vector<std::string> args,
-                  std::map<std::string, std::string> env);
-
-  // Like RunProcess, but overrides the default timeout for a process to exit
-  // with |timeout_seconds|.
-  bool RunProcessWithTimeout(std::vector<std::string> args,
-                             std::map<std::string, std::string> env,
-                             base::TimeDelta timeout);
 
   // Configures the network interfaces inside the VM.  Returns true iff
   // successful.
@@ -210,14 +164,6 @@ class VirtualMachine {
   bool Start(base::FilePath kernel,
              base::FilePath rootfs,
              std::vector<Disk> disks);
-
-  // Launches a process inside the VM.  Shared implementation of both
-  // StartProcess and RunProcess.
-  bool LaunchProcess(std::vector<std::string> args,
-                     std::map<std::string, std::string> env,
-                     bool respawn,
-                     bool wait_for_exit,
-                     int64_t timeout_seconds);
 
   void set_stub_for_testing(std::unique_ptr<vm_tools::Maitred::Stub> stub);
 
