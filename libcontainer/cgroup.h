@@ -27,7 +27,7 @@ class Cgroup {
     DEVICES,
     FREEZER,
     SCHEDTUNE,
-
+    MEMORY,
     NUM_TYPES,
   };
 

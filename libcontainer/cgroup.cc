@@ -29,7 +29,7 @@ namespace {
 Cgroup::CgroupFactory g_cgroup_factory = nullptr;
 
 constexpr const char* kCgroupNames[Cgroup::Type::NUM_TYPES] = {
-    "cpu", "cpuacct", "cpuset", "devices", "freezer", "schedtune"};
+    "cpu", "cpuacct", "cpuset", "devices", "freezer", "schedtune", "memory"};
 
 base::ScopedFD OpenCgroupFile(const base::FilePath& cgroup_path,
                               base::StringPiece name,
