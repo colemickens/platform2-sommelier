@@ -19,7 +19,6 @@
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
-#include "shill/mock_property_store.h"
 #include "shill/mock_store.h"
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/technology.h"

@@ -7,8 +7,8 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
-#include "shill/mock_property_store.h"
 #include "shill/mock_store.h"
+#include "shill/property_store.h"
 
 using std::string;
 using std::unique_ptr;

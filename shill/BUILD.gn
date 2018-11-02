@@ -711,7 +711,6 @@ if (use.test) {
       "mock_ppp_device_factory.cc",
       "mock_process_manager.cc",
       "mock_profile.cc",
-      "mock_property_store.cc",
       "mock_resolver.cc",
       "mock_routing_table.cc",
       "mock_service.cc",
