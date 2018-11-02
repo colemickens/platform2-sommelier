@@ -479,11 +479,15 @@ status_t ControlUnit::handleNewRequest(std::shared_ptr<RequestCtrlState> state)
      * Use dummy stats if no stats is received.
      *
      * Use the latest valid stats for still capture,
-     * it comes from video pipe (during still preview)
+     * it comes from video pipe (during still preview).
+     *
+     * Holding request if there is enough requests processing in CIO2
+     * when has VIDEO pipe.
      */
-    if (mLatestRequestId > PENDING_REQUEST_FOR_AWB_CONVERGENCE ||
+    if ((mLatestRequestId > PENDING_REQUEST_FOR_AWB_CONVERGENCE &&
+         mWaitingForCapture.size() < MAX_CIO2_PROCESSING_REQUEST_NUM) ||
         mLatestRequestId == -1 ||
-        reqState->request->getBufferCountOfFormat(HAL_PIXEL_FORMAT_BLOB) > 0 ||
+        !mImguUnit->hasVideoPipe() ||
         (mLatestStatistics != nullptr &&
          mLatestRequestId == mLatestStatistics->id)) {
       mPendingRequests.erase(mPendingRequests.begin());
@@ -679,29 +683,33 @@ status_t ControlUnit::handleNewStat(MessageStats msg)
         return status;
     }
 
-    bool cio2Starving = false;
+    // If enough requests are processing, don't need to process next request.
+    if (mWaitingForCapture.size() >= MAX_CIO2_PROCESSING_REQUEST_NUM) {
+        return NO_ERROR;
+    }
+
+    size_t reqCount = 1;
     if (statsId == mLatestRequestId && mLatestRequestId >= PENDING_REQUEST_FOR_AWB_CONVERGENCE) {
         // The 0 ~ PENDING_REQUEST_FOR_AWB_CONVERGENCE request will run with new statistics to speed
         // AWB converging process. Otherwise, queue all pending requests to CIO2.
-        cio2Starving = true;
+        reqCount = MAX_CIO2_PROCESSING_REQUEST_NUM;
     }
 
     // Process request
-    do {
+    for (size_t i = 0; i < reqCount && !mPendingRequests.empty(); i++) {
         std::shared_ptr<RequestCtrlState> reqState = mPendingRequests[0];
         mPendingRequests.erase(mPendingRequests.begin());
 
         CheckAndCallbackError((!reqState || reqState->request == nullptr), mErrCb,
                               UNKNOWN_ERROR, "@%s, reqState is nullptr, find BUG!", __FUNCTION__);
 
-        LOG2("@%s: process reqState %d, with stat id of req %d", __FUNCTION__,
-                reqState->request->getId(), statsId);
+        LOG2("@%s: process reqState %d", __FUNCTION__, reqState->request->getId());
 
         status = processRequestForCapture(reqState, mLatestStatistics);
         CheckAndCallbackError(status != OK, mErrCb, status,
                               "@%s: Failed to process request %d for capture",
                                __FUNCTION__, reqState->request->getId());
-    } while (cio2Starving && !mPendingRequests.empty());
+    }
 
     return status;
 }

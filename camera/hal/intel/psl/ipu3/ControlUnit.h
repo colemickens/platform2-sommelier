@@ -124,6 +124,7 @@ private:  /* Members */
     SharedItemPool<CaptureUnitSettings> mCaptureUnitSettingsPool;
     SharedItemPool<ProcUnitSettings> mProcUnitSettingsPool;
 
+    static const int16_t MAX_CIO2_PROCESSING_REQUEST_NUM = 4;
     std::map<int, std::shared_ptr<RequestCtrlState>> mWaitingForCapture;
     std::vector<std::shared_ptr<RequestCtrlState>> mPendingRequests;
     std::shared_ptr<IPU3CapturedStatistics>  mLatestStatistics;

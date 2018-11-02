@@ -50,6 +50,7 @@ public:
     void cleanListener();
 
     status_t configStreams(std::vector<camera3_stream_t*> &activeStreams);
+    bool hasVideoPipe() { return (mImguPipe[GraphConfig::PIPE_VIDEO] != nullptr); }
     status_t completeRequest(std::shared_ptr<ProcUnitSettings> &processingSettings,
                              ICaptureEventListener::CaptureBuffers &captureBufs,
                              bool updateMeta);
