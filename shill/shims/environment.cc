@@ -14,20 +14,14 @@ namespace shill {
 
 namespace shims {
 
-namespace {
-
-base::LazyInstance<Environment>::Leaky g_environment =
-    LAZY_INSTANCE_INITIALIZER;
-
-}  // namespace
-
 Environment::Environment() {}
 
 Environment::~Environment() {}
 
 // static
 Environment* Environment::GetInstance() {
-  return g_environment.Pointer();
+  static base::NoDestructor<Environment> instance;
+  return instance.get();
 }
 
 bool Environment::GetVariable(const string& name, string* value) {

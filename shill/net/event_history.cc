@@ -8,6 +8,8 @@
 
 #include <deque>
 
+#include <base/logging.h>
+
 #include "shill/net/shill_time.h"
 
 using std::deque;

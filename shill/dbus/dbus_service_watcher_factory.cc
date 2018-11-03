@@ -10,16 +10,12 @@
 
 namespace shill {
 
-namespace {
-base::LazyInstance<DBusServiceWatcherFactory>::Leaky
-    g_dbus_service_watcher_factory = LAZY_INSTANCE_INITIALIZER;
-}  // namespace
-
 DBusServiceWatcherFactory::DBusServiceWatcherFactory() {}
 DBusServiceWatcherFactory::~DBusServiceWatcherFactory() {}
 
 DBusServiceWatcherFactory* DBusServiceWatcherFactory::GetInstance() {
-  return g_dbus_service_watcher_factory.Pointer();
+  static base::NoDestructor<DBusServiceWatcherFactory> instance;
+  return instance.get();
 }
 
 std::unique_ptr<ChromeosDBusServiceWatcher>

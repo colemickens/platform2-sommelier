@@ -8,16 +8,12 @@
 
 namespace shill {
 
-namespace {
-base::LazyInstance<IcmpSessionFactory>::Leaky g_icmp_session_factory =
-    LAZY_INSTANCE_INITIALIZER;
-}  // namespace
-
 IcmpSessionFactory::IcmpSessionFactory() {}
 IcmpSessionFactory::~IcmpSessionFactory() {}
 
 IcmpSessionFactory* IcmpSessionFactory::GetInstance() {
-  return g_icmp_session_factory.Pointer();
+  static base::NoDestructor<IcmpSessionFactory> instance;
+  return instance.get();
 }
 
 std::unique_ptr<IcmpSession> IcmpSessionFactory::CreateIcmpSession(

@@ -9,7 +9,8 @@
 #include <string>
 #include <vector>
 
-#include <base/lazy_instance.h>
+#include <base/macros.h>
+#include <base/no_destructor.h>
 
 #include "shill/dns_client.h"
 #include "shill/event_dispatcher.h"
@@ -36,7 +37,7 @@ class DnsClientFactory {
   DnsClientFactory();
 
  private:
-  friend base::LazyInstanceTraitsBase<DnsClientFactory>;
+  friend class base::NoDestructor<DnsClientFactory>;
 
   DISALLOW_COPY_AND_ASSIGN(DnsClientFactory);
 };

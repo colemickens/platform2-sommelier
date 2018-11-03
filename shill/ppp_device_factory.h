@@ -7,7 +7,8 @@
 
 #include <string>
 
-#include <base/lazy_instance.h>
+#include <base/macros.h>
+#include <base/no_destructor.h>
 
 namespace shill {
 
@@ -36,7 +37,7 @@ class PPPDeviceFactory {
   PPPDeviceFactory();
 
  private:
-  friend base::LazyInstanceTraitsBase<PPPDeviceFactory>;
+  friend class base::NoDestructor<PPPDeviceFactory>;
 
   DISALLOW_COPY_AND_ASSIGN(PPPDeviceFactory);
 };

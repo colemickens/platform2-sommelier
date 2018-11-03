@@ -9,7 +9,8 @@
 #include <string>
 
 #include <base/callback.h>
-#include <base/lazy_instance.h>
+#include <base/macros.h>
+#include <base/no_destructor.h>
 #include <dbus/bus.h>
 
 namespace shill {
@@ -32,7 +33,7 @@ class DBusServiceWatcherFactory {
   DBusServiceWatcherFactory();
 
  private:
-  friend base::LazyInstanceTraitsBase<DBusServiceWatcherFactory>;
+  friend class base::NoDestructor<DBusServiceWatcherFactory>;
 
   DISALLOW_COPY_AND_ASSIGN(DBusServiceWatcherFactory);
 };

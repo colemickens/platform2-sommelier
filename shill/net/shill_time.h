@@ -10,7 +10,8 @@
 
 #include <string>
 
-#include <base/lazy_instance.h>
+#include <base/macros.h>
+#include <base/no_destructor.h>
 
 #include "shill/net/shill_export.h"
 
@@ -69,7 +70,7 @@ class SHILL_EXPORT Time {
   Time();
 
  private:
-  friend base::LazyInstanceTraitsBase<Time>;
+  friend class base::NoDestructor<Time>;
 
   DISALLOW_COPY_AND_ASSIGN(Time);
 };

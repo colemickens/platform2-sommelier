@@ -5,7 +5,8 @@
 #ifndef SHILL_FILE_IO_H_
 #define SHILL_FILE_IO_H_
 
-#include <base/lazy_instance.h>
+#include <base/macros.h>
+#include <base/no_destructor.h>
 
 namespace shill {
 
@@ -26,7 +27,7 @@ class FileIO {
   FileIO();
 
  private:
-  friend base::LazyInstanceTraitsBase<FileIO>;
+  friend class base::NoDestructor<FileIO>;
 
   DISALLOW_COPY_AND_ASSIGN(FileIO);
 };

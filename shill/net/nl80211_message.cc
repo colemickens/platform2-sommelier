@@ -42,17 +42,11 @@
 #include "shill/net/nl80211_attribute.h"  // For Nl80211AttributeMac
 
 using base::Bind;
-using base::LazyInstance;
 using base::StringAppendF;
 using std::map;
 using std::string;
 
 namespace shill {
-
-namespace {
-LazyInstance<Nl80211MessageDataCollector>::Leaky g_datacollector =
-    LAZY_INSTANCE_INITIALIZER;
-}  // namespace
 
 const uint8_t Nl80211Frame::kMinimumFrameByteCount = 26;
 const uint8_t Nl80211Frame::kFrameTypeMask = 0xfc;
@@ -712,9 +706,9 @@ std::unique_ptr<NetlinkMessage> Nl80211Message::CreateMessage(
 // Data Collector
 //
 
-Nl80211MessageDataCollector *
-    Nl80211MessageDataCollector::GetInstance() {
-  return g_datacollector.Pointer();
+Nl80211MessageDataCollector* Nl80211MessageDataCollector::GetInstance() {
+  static base::NoDestructor<Nl80211MessageDataCollector> instance;
+  return instance.get();
 }
 
 Nl80211MessageDataCollector::Nl80211MessageDataCollector() {

@@ -7,7 +7,8 @@
 
 #include <ares.h>
 
-#include <base/lazy_instance.h>
+#include <base/macros.h>
+#include <base/no_destructor.h>
 
 namespace shill {
 
@@ -58,7 +59,7 @@ class Ares {
   Ares();
 
  private:
-  friend base::LazyInstanceTraitsBase<Ares>;
+  friend class base::NoDestructor<Ares>;
 
   DISALLOW_COPY_AND_ASSIGN(Ares);
 };

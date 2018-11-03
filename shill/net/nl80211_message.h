@@ -9,7 +9,8 @@
 #include <memory>
 #include <string>
 
-#include <base/lazy_instance.h>
+#include <base/macros.h>
+#include <base/no_destructor.h>
 
 #include "shill/net/byte_string.h"
 #include "shill/net/generic_netlink_message.h"
@@ -558,7 +559,7 @@ class Nl80211MessageDataCollector {
   Nl80211MessageDataCollector();
 
  private:
-  friend base::LazyInstanceTraitsBase<Nl80211MessageDataCollector>;
+  friend class base::NoDestructor<Nl80211MessageDataCollector>;
 
   // In order to limit the output from this class, I keep track of types I
   // haven't yet printed.

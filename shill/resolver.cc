@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/strings/string_util.h>
 
 #include "shill/dns_util.h"
@@ -26,10 +27,6 @@ static auto kModuleLogScope = ScopeLogger::kResolver;
 static string ObjectID(Resolver* r) { return "(resolver)"; }
 }
 
-namespace {
-base::LazyInstance<Resolver>::Leaky g_resolver = LAZY_INSTANCE_INITIALIZER;
-}  // namespace
-
 const char Resolver::kDefaultIgnoredSearchList[] = "gateway.2wire.net";
 
 Resolver::Resolver() {}
@@ -37,7 +34,8 @@ Resolver::Resolver() {}
 Resolver::~Resolver() {}
 
 Resolver* Resolver::GetInstance() {
-  return g_resolver.Pointer();
+  static base::NoDestructor<Resolver> instance;
+  return instance.get();
 }
 
 bool Resolver::SetDNSFromLists(const std::vector<std::string>& dns_servers,

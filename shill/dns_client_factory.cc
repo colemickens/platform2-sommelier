@@ -11,18 +11,12 @@ using std::vector;
 
 namespace shill {
 
-namespace {
-
-base::LazyInstance<DnsClientFactory>::Leaky g_dns_client_factory =
-    LAZY_INSTANCE_INITIALIZER;
-
-}  // namespace
-
 DnsClientFactory::DnsClientFactory() {}
 DnsClientFactory::~DnsClientFactory() {}
 
 DnsClientFactory* DnsClientFactory::GetInstance() {
-  return g_dns_client_factory.Pointer();
+  static base::NoDestructor<DnsClientFactory> instance;
+  return instance.get();
 }
 
 std::unique_ptr<DnsClient> DnsClientFactory::CreateDnsClient(

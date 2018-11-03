@@ -4,14 +4,9 @@
 
 #include "shill/net/io_handler_factory_container.h"
 
+#include <base/logging.h>
+
 namespace shill {
-
-namespace {
-
-base::LazyInstance<IOHandlerFactoryContainer>::Leaky
-    g_io_handler_factory_container = LAZY_INSTANCE_INITIALIZER;
-
-}  // namespace
 
 IOHandlerFactoryContainer::IOHandlerFactoryContainer()
     : factory_(new IOHandlerFactory()) {}
@@ -19,7 +14,8 @@ IOHandlerFactoryContainer::IOHandlerFactoryContainer()
 IOHandlerFactoryContainer::~IOHandlerFactoryContainer() {}
 
 IOHandlerFactoryContainer* IOHandlerFactoryContainer::GetInstance() {
-  return g_io_handler_factory_container.Pointer();
+  static base::NoDestructor<IOHandlerFactoryContainer> instance;
+  return instance.get();
 }
 
 void IOHandlerFactoryContainer::SetIOHandlerFactory(IOHandlerFactory* factory) {

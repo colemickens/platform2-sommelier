@@ -10,18 +10,12 @@ using std::string;
 
 namespace shill {
 
-namespace {
-
-base::LazyInstance<PPPDeviceFactory>::Leaky g_ppp_device_factory =
-    LAZY_INSTANCE_INITIALIZER;
-
-}  // namespace
-
 PPPDeviceFactory::PPPDeviceFactory() {}
 PPPDeviceFactory::~PPPDeviceFactory() {}
 
 PPPDeviceFactory* PPPDeviceFactory::GetInstance() {
-  return g_ppp_device_factory.Pointer();
+  static base::NoDestructor<PPPDeviceFactory> instance;
+  return instance.get();
 }
 
 PPPDevice* PPPDeviceFactory::CreatePPPDevice(

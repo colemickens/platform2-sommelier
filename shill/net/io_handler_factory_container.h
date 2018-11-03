@@ -7,7 +7,8 @@
 
 #include <memory>
 
-#include <base/lazy_instance.h>
+#include <base/macros.h>
+#include <base/no_destructor.h>
 
 #include "shill/net/io_handler_factory.h"
 
@@ -33,7 +34,7 @@ class SHILL_EXPORT IOHandlerFactoryContainer {
   IOHandlerFactoryContainer();
 
  private:
-  friend base::LazyInstanceTraitsBase<IOHandlerFactoryContainer>;
+  friend class base::NoDestructor<IOHandlerFactoryContainer>;
   std::unique_ptr<IOHandlerFactory> factory_;
 
   DISALLOW_COPY_AND_ASSIGN(IOHandlerFactoryContainer);

@@ -7,7 +7,8 @@
 
 #include <memory>
 
-#include <base/lazy_instance.h>
+#include <base/macros.h>
+#include <base/no_destructor.h>
 #include <gmock/gmock.h>
 
 #include "shill/icmp_session_factory.h"
@@ -28,7 +29,7 @@ class MockIcmpSessionFactory : public IcmpSessionFactory {
   MockIcmpSessionFactory();
 
  private:
-  friend base::LazyInstanceTraitsBase<MockIcmpSessionFactory>;
+  friend class base::NoDestructor<MockIcmpSessionFactory>;
 
   DISALLOW_COPY_AND_ASSIGN(MockIcmpSessionFactory);
 };

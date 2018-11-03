@@ -7,7 +7,8 @@
 
 #include <memory>
 
-#include <base/lazy_instance.h>
+#include <base/macros.h>
+#include <base/no_destructor.h>
 
 #include "shill/icmp_session.h"
 
@@ -27,7 +28,7 @@ class IcmpSessionFactory {
   IcmpSessionFactory();
 
  private:
-  friend base::LazyInstanceTraitsBase<IcmpSessionFactory>;
+  friend class base::NoDestructor<IcmpSessionFactory>;
 
   DISALLOW_COPY_AND_ASSIGN(IcmpSessionFactory);
 };

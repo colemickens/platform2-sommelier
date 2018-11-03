@@ -14,23 +14,19 @@ using std::string;
 
 namespace shill {
 
-namespace {
-
-// As Time may be instantiated by MemoryLogMessage during a callback of
-// AtExitManager, it needs to be a leaky singleton to avoid
-// AtExitManager::RegisterCallback() from potentially being called within a
-// callback of AtExitManager, which will lead to a crash. Making Time leaky is
-// fine as it does not need to clean up or release any resource at destruction.
-base::LazyInstance<Time>::Leaky g_time = LAZY_INSTANCE_INITIALIZER;
-
-}  // namespace
-
 Time::Time() { }
 
 Time::~Time() { }
 
 Time* Time::GetInstance() {
-  return g_time.Pointer();
+  // As Time may be instantiated by MemoryLogMessage during a callback of
+  // AtExitManager, it needs to be a leaky singleton to avoid
+  // AtExitManager::RegisterCallback() from potentially being called within a
+  // callback of AtExitManager, which will lead to a crash. Making Time leaky is
+  // fine as it does not need to clean up or release any resource at
+  // destruction.
+  static base::NoDestructor<Time> instance;
+  return instance.get();
 }
 
 bool Time::GetSecondsMonotonic(time_t* seconds) {

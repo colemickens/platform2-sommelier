@@ -9,8 +9,8 @@
 #include <string>
 #include <vector>
 
-#include <base/lazy_instance.h>
 #include <base/macros.h>
+#include <base/no_destructor.h>
 #include <gtest/gtest_prod.h>
 
 #include "shill/callbacks.h"
@@ -111,8 +111,7 @@ class ScopeLogger {
   int verbose_level() const { return verbose_level_; }
 
  private:
-  // Required for constructing LazyInstance<ScopeLogger>.
-  friend base::LazyInstanceTraitsBase<ScopeLogger>;
+  friend class base::NoDestructor<ScopeLogger>;
   friend class ScopeLoggerTest;
   FRIEND_TEST(ScopeLoggerTest, GetEnabledScopeNames);
   FRIEND_TEST(ScopeLoggerTest, SetScopeEnabled);

@@ -6,20 +6,13 @@
 
 namespace shill {
 
-namespace {
-
-base::LazyInstance<MockPPPDeviceFactory>::Leaky g_mock_ppp_device_factory =
-    LAZY_INSTANCE_INITIALIZER;
-
-}  // namespace
-
 MockPPPDeviceFactory::MockPPPDeviceFactory() {}
 MockPPPDeviceFactory::~MockPPPDeviceFactory() {}
 
 MockPPPDeviceFactory* MockPPPDeviceFactory::GetInstance() {
-  MockPPPDeviceFactory* instance = g_mock_ppp_device_factory.Pointer();
-  testing::Mock::AllowLeak(instance);
-  return instance;
+  static base::NoDestructor<MockPPPDeviceFactory> instance;
+  testing::Mock::AllowLeak(instance.get());
+  return instance.get();
 }
 
 }  // namespace shill

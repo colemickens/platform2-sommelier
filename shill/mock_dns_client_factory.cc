@@ -6,18 +6,13 @@
 
 namespace shill {
 
-namespace {
-base::LazyInstance<MockDnsClientFactory>::Leaky g_mock_dns_client_factory =
-    LAZY_INSTANCE_INITIALIZER;
-}  // namespace
-
 MockDnsClientFactory::MockDnsClientFactory() {}
 MockDnsClientFactory::~MockDnsClientFactory() {}
 
 MockDnsClientFactory* MockDnsClientFactory::GetInstance() {
-  MockDnsClientFactory* instance = g_mock_dns_client_factory.Pointer();
-  testing::Mock::AllowLeak(instance);
-  return instance;
+  static base::NoDestructor<MockDnsClientFactory> instance;
+  testing::Mock::AllowLeak(instance.get());
+  return instance.get();
 }
 
 }  // namespace shill

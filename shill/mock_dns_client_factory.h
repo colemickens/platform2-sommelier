@@ -9,7 +9,8 @@
 #include <string>
 #include <vector>
 
-#include <base/lazy_instance.h>
+#include <base/macros.h>
+#include <base/no_destructor.h>
 #include <gmock/gmock.h>
 
 #include "shill/dns_client_factory.h"
@@ -38,7 +39,7 @@ class MockDnsClientFactory : public DnsClientFactory {
   MockDnsClientFactory();
 
  private:
-  friend base::LazyInstanceTraitsBase<MockDnsClientFactory>;
+  friend class base::NoDestructor<MockDnsClientFactory>;
 
   DISALLOW_COPY_AND_ASSIGN(MockDnsClientFactory);
 };

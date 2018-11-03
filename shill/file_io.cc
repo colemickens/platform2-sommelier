@@ -11,19 +11,14 @@
 
 namespace shill {
 
-namespace {
-
-base::LazyInstance<FileIO>::Leaky g_file_io = LAZY_INSTANCE_INITIALIZER;
-
-}  // namespace
-
 FileIO::FileIO() {}
 
 FileIO::~FileIO() {}
 
 // static
 FileIO* FileIO::GetInstance() {
-  return g_file_io.Pointer();
+  static base::NoDestructor<FileIO> instance;
+  return instance.get();
 }
 
 ssize_t FileIO::Write(int fd, const void* buf, size_t count) {

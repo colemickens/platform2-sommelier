@@ -7,7 +7,8 @@
 
 #include <string>
 
-#include <base/lazy_instance.h>
+#include <base/macros.h>
+#include <base/no_destructor.h>
 #include <gmock/gmock.h>
 
 #include "shill/ppp_device_factory.h"
@@ -33,7 +34,7 @@ class MockPPPDeviceFactory : public PPPDeviceFactory {
   MockPPPDeviceFactory();
 
  private:
-  friend base::LazyInstanceTraitsBase<MockPPPDeviceFactory>;
+  friend class base::NoDestructor<MockPPPDeviceFactory>;
 
   DISALLOW_COPY_AND_ASSIGN(MockPPPDeviceFactory);
 };

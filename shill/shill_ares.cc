@@ -6,16 +6,13 @@
 
 namespace shill {
 
-namespace {
-base::LazyInstance<Ares>::Leaky g_ares = LAZY_INSTANCE_INITIALIZER;
-}  // namespace
-
 Ares::Ares() { }
 
 Ares::~Ares() { }
 
 Ares* Ares::GetInstance() {
-  return g_ares.Pointer();
+  static base::NoDestructor<Ares> instance;
+  return instance.get();
 }
 
 void Ares::Destroy(ares_channel channel) {

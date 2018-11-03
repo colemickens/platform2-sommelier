@@ -57,18 +57,16 @@ const char* const kScopeNames[] = {
 static_assert(arraysize(kScopeNames) == ScopeLogger::kNumScopes,
               "Scope tags do not have expected number of strings");
 
-// ScopeLogger needs to be a 'leaky' singleton as it needs to survive to
-// handle logging till the very end of the shill process. Making ScopeLogger
-// leaky is fine as it does not need to clean up or release any resource at
-// destruction.
-base::LazyInstance<ScopeLogger>::Leaky g_scope_logger =
-    LAZY_INSTANCE_INITIALIZER;
-
 }  // namespace
 
 // static
 ScopeLogger* ScopeLogger::GetInstance() {
-  return g_scope_logger.Pointer();
+  // ScopeLogger needs to be a 'leaky' singleton as it needs to survive to
+  // handle logging till the very end of the shill process. Making ScopeLogger
+  // leaky is fine as it does not need to clean up or release any resource at
+  // destruction.
+  static base::NoDestructor<ScopeLogger> instance;
+  return instance.get();
 }
 
 ScopeLogger::ScopeLogger()

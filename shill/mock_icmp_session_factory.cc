@@ -6,18 +6,13 @@
 
 namespace shill {
 
-namespace {
-base::LazyInstance<MockIcmpSessionFactory>::Leaky g_mock_icmp_session_factory =
-    LAZY_INSTANCE_INITIALIZER;
-}  // namespace
-
 MockIcmpSessionFactory::MockIcmpSessionFactory() {}
 MockIcmpSessionFactory::~MockIcmpSessionFactory() {}
 
 MockIcmpSessionFactory* MockIcmpSessionFactory::GetInstance() {
-  MockIcmpSessionFactory* instance = g_mock_icmp_session_factory.Pointer();
-  testing::Mock::AllowLeak(instance);
-  return instance;
+  static base::NoDestructor<MockIcmpSessionFactory> instance;
+  testing::Mock::AllowLeak(instance.get());
+  return instance.get();
 }
 
 }  // namespace shill

@@ -9,8 +9,9 @@
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/lazy_instance.h>
+#include <base/macros.h>
 #include <base/memory/ref_counted.h>
+#include <base/no_destructor.h>
 
 #include "shill/refptr_types.h"
 
@@ -55,8 +56,8 @@ class Resolver {
   Resolver();
 
  private:
-  friend base::LazyInstanceTraitsBase<Resolver>;
   friend class ResolverTest;
+  friend class base::NoDestructor<Resolver>;
 
   base::FilePath path_;
   std::vector<std::string> ignored_search_list_;
