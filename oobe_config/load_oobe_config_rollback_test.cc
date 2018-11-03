@@ -42,16 +42,16 @@ TEST_F(LoadOobeConfigRollbackTest, SimpleTest) {
 }
 
 TEST_F(LoadOobeConfigRollbackTest, CheckNotRollbackStages) {
-  EXPECT_FALSE(load_config_->CheckFirstStage());
-  EXPECT_FALSE(load_config_->CheckSecondStage());
-  EXPECT_FALSE(load_config_->CheckThirdStage());
+  EXPECT_FALSE(oobe_config_->CheckFirstStage());
+  EXPECT_FALSE(oobe_config_->CheckSecondStage());
+  EXPECT_FALSE(oobe_config_->CheckThirdStage());
 }
 
 TEST_F(LoadOobeConfigRollbackTest, CheckFirstStage) {
   oobe_config_->WriteFile(kUnencryptedStatefulRollbackDataPath, "");
-  EXPECT_TRUE(load_config_->CheckFirstStage());
-  EXPECT_FALSE(load_config_->CheckSecondStage());
-  EXPECT_FALSE(load_config_->CheckThirdStage());
+  EXPECT_TRUE(oobe_config_->CheckFirstStage());
+  EXPECT_FALSE(oobe_config_->CheckSecondStage());
+  EXPECT_FALSE(oobe_config_->CheckThirdStage());
 }
 
 TEST_F(LoadOobeConfigRollbackTest, CheckSecondStage) {
@@ -60,9 +60,9 @@ TEST_F(LoadOobeConfigRollbackTest, CheckSecondStage) {
   oobe_config_->WriteFile(kUnencryptedStatefulRollbackDataPath, "");
   // First stage already created this.
   oobe_config_->WriteFile(kEncryptedStatefulRollbackDataPath, "");
-  EXPECT_FALSE(load_config_->CheckFirstStage());
-  EXPECT_TRUE(load_config_->CheckSecondStage());
-  EXPECT_FALSE(load_config_->CheckThirdStage());
+  EXPECT_FALSE(oobe_config_->CheckFirstStage());
+  EXPECT_TRUE(oobe_config_->CheckSecondStage());
+  EXPECT_FALSE(oobe_config_->CheckThirdStage());
 }
 
 TEST_F(LoadOobeConfigRollbackTest, CheckThirdStage) {
@@ -70,9 +70,9 @@ TEST_F(LoadOobeConfigRollbackTest, CheckThirdStage) {
   oobe_config_->WriteFile(kSecondStageCompletedFile, "");
   // Third stage needs this.
   oobe_config_->WriteFile(kEncryptedStatefulRollbackDataPath, "");
-  EXPECT_FALSE(load_config_->CheckFirstStage());
-  EXPECT_FALSE(load_config_->CheckSecondStage());
-  EXPECT_TRUE(load_config_->CheckThirdStage());
+  EXPECT_FALSE(oobe_config_->CheckFirstStage());
+  EXPECT_FALSE(oobe_config_->CheckSecondStage());
+  EXPECT_TRUE(oobe_config_->CheckThirdStage());
 }
 
 }  // namespace oobe_config

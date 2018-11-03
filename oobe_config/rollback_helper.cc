@@ -13,6 +13,7 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 
+#include "oobe_config/oobe_config.h"
 #include "oobe_config/rollback_constants.h"
 
 namespace oobe_config {
@@ -127,21 +128,15 @@ bool PrepareSave(const base::FilePath& root_path,
 
 bool FinishRestore(const base::FilePath& root_path,
                    bool ignore_permissions_for_testing) {
-  /* TODO(hunyadym):
-    if [ ! -f /var/lib/oobe_config_restore/first_stage_completed ] ; then
-      echo "First stage not yet completed."
-      exit
-    fi
-    if [ -f /var/lib/oobe_config_restore/second_stage_completed ] ; then
-      echo "Second stage already completed."
-      exit
-    fi
+  OobeConfig oobe_config;
+  if (!root_path.empty()) {
+    oobe_config.set_prefix_path_for_testing(root_path);
+  }
 
-    if [ ! -f /var/lib/oobe_config_restore/rollback_data ] ; then
-      echo "Unencrypted rollback_data is not present."
-      exit
-    fi
-  */
+  if (!oobe_config.CheckSecondStage()) {
+    LOG(ERROR) << "Finish restore is not in stage 2.";
+    return false;
+  }
 
   base::FilePath restore_path = PrefixAbsolutePath(root_path, kRestoreTempPath);
   // Restore install attributes. /home/.shadow should already exist at OOBE

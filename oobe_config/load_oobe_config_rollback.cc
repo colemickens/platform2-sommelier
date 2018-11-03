@@ -28,88 +28,6 @@ LoadOobeConfigRollback::LoadOobeConfigRollback(
       allow_unencrypted_(allow_unencrypted),
       power_manager_proxy_(power_manager_proxy) {}
 
-bool LoadOobeConfigRollback::CheckFirstStage() {
-  // Check whether we're in the first stage.
-  if (!oobe_config_->FileExists(kUnencryptedStatefulRollbackDataPath)) {
-    LOG(INFO) << "Rollback data "
-              << kUnencryptedStatefulRollbackDataPath.value()
-              << " does not exist.";
-    return false;
-  }
-  if (oobe_config_->FileExists(kFirstStageCompletedFile)) {
-    LOG(INFO) << "First stage already completed.";
-    return false;
-  }
-
-  // At this point, we should be in the first stage. We verify, that the other
-  // files are in a consistent state.
-  if (oobe_config_->FileExists(kSecondStageCompletedFile)) {
-    LOG(ERROR) << "Second stage is completed but first stage is not.";
-    return false;
-  }
-  if (oobe_config_->FileExists(kEncryptedStatefulRollbackDataPath)) {
-    LOG(ERROR) << "Both encrypted and unencrypted rollback data path exists.";
-    return false;
-  }
-
-  // Everything is awesome.
-  return true;
-}
-
-bool LoadOobeConfigRollback::CheckSecondStage() {
-  // Check whether we're in the second stage.
-  if (!oobe_config_->FileExists(kFirstStageCompletedFile)) {
-    LOG(INFO) << "First stage not yet completed.";
-    return false;
-  }
-  if (oobe_config_->FileExists(kSecondStageCompletedFile)) {
-    LOG(INFO) << "Second stage already completed.";
-    return false;
-  }
-
-  // At this point, we should be in the second stage. We verify, that the other
-  // files are in a consistent state.
-  if (!oobe_config_->FileExists(kUnencryptedStatefulRollbackDataPath)) {
-    LOG(ERROR) << "Rollback data "
-               << kUnencryptedStatefulRollbackDataPath.value()
-               << " should exist in second stage.";
-    return false;
-  }
-  if (!oobe_config_->FileExists(kEncryptedStatefulRollbackDataPath)) {
-    LOG(ERROR) << "Rollback data " << kEncryptedStatefulRollbackDataPath.value()
-               << " should exist in second stage.";
-    return false;
-  }
-  return true;
-}
-
-bool LoadOobeConfigRollback::CheckThirdStage() {
-  if (!oobe_config_->FileExists(kSecondStageCompletedFile)) {
-    LOG(INFO) << "Second stage not yet completed.";
-    return false;
-  }
-
-  // At this point, we should be in the third stage. We verify, that the other
-  // files are in a consistent state.
-  if (!oobe_config_->FileExists(kFirstStageCompletedFile)) {
-    LOG(ERROR) << "First stage should be already completed.";
-    return false;
-  }
-  if (oobe_config_->FileExists(kUnencryptedStatefulRollbackDataPath)) {
-    LOG(ERROR) << "Rollback data "
-               << kUnencryptedStatefulRollbackDataPath.value()
-               << " should not exist in third stage.";
-    return false;
-  }
-  if (!oobe_config_->FileExists(kEncryptedStatefulRollbackDataPath)) {
-    LOG(ERROR) << "Rollback data " << kEncryptedStatefulRollbackDataPath.value()
-               << " should exist in third stage.";
-    return false;
-  }
-
-  return true;
-}
-
 bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
                                                string* enrollment_domain) {
   *config = "";
@@ -121,12 +39,11 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
     return false;
   }
 
-  if (CheckFirstStage()) {
-    OobeConfig oobe_config;
+  if (oobe_config_->CheckFirstStage()) {
     // In the first stage we decrypt the proto from kUnencryptedRollbackDataPath
     // and save it unencrypted to kEncryptedStatefulRollbackDataPath.
     if (allow_unencrypted_) {
-      oobe_config.UnencryptedRollbackRestore();
+      oobe_config_->UnencryptedRollbackRestore();
     } else {
       // TODO(zentaro): Add encrypted rollback restore.
       LOG(ERROR) << "Encrypted rollback is not yet supported.";
@@ -134,7 +51,7 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
     }
 
     // We create kFirstStageCompletedFile after this.
-    oobe_config.WriteFile(kFirstStageCompletedFile, "");
+    oobe_config_->WriteFile(kFirstStageCompletedFile, "");
     // If all succeeded, we reboot.
     if (base::PathExists(kFirstStageCompletedFile) && power_manager_proxy_) {
       LOG(INFO) << "Rebooting device.";
@@ -149,19 +66,18 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
     return false;
   }
 
-  if (CheckSecondStage()) {
+  if (oobe_config_->CheckSecondStage()) {
     // This shouldn't happen, the script failed to execute. We fail and return
     // false.
     LOG(ERROR) << "Rollback restore is in invalid state (stage 2).";
     return false;
   }
 
-  if (CheckThirdStage()) {
-    OobeConfig oobe_config;
+  if (oobe_config_->CheckThirdStage()) {
     // We load the proto from kEncryptedStatefulRollbackDataPath.
     string rollback_data_str;
-    if (!oobe_config.ReadFile(kEncryptedStatefulRollbackDataPath,
-                              &rollback_data_str)) {
+    if (!oobe_config_->ReadFile(kEncryptedStatefulRollbackDataPath,
+                                &rollback_data_str)) {
       return false;
     }
     RollbackData rollback_data;
@@ -176,7 +92,7 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
     }
     // If it succeeded, we remove all files from
     // kEncryptedStatefulRollbackDataPath.
-    oobe_config.CleanupEncryptedStatefulDirectory();
+    oobe_config_->CleanupEncryptedStatefulDirectory();
     return true;
   }
   // We are not in any legitimate rollback stage.

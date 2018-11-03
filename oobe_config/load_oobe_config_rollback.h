@@ -32,29 +32,6 @@ class LoadOobeConfigRollback : public LoadOobeConfigInterface {
                          std::string* enrollment_domain) override;
 
  private:
-  friend class LoadOobeConfigRollbackTest;
-  FRIEND_TEST(LoadOobeConfigRollbackTest, CheckNotRollbackStages);
-  FRIEND_TEST(LoadOobeConfigRollbackTest, CheckFirstStage);
-  FRIEND_TEST(LoadOobeConfigRollbackTest, CheckSecondStage);
-  FRIEND_TEST(LoadOobeConfigRollbackTest, CheckThirdStage);
-
-  // There are 3 different stages for rollback data restore:
-  // - 1st stage: rollback_data is present in kUnencryptedRollbackDataPath,
-  //   first_stage_completed is not present. We have to extract the files from
-  //   kUnencryptedRollbackDataPath and place them in kRestoreDestinationPath.
-  // - 2nd stage: first_stage_completed is present, second_stage_completed is
-  //   not present. oobe_config_finish_restore.sh takes care of this stage.
-  // - 3rd stage: second_stage_completed is present. We restore data from
-  //   kEncryptedRollbackDataPath, and remove everything indicating that a
-  //   rollback happened.
-
-  // Checks that we're in the first stage.
-  bool CheckFirstStage();
-  // Checks that we're in the second stage.
-  bool CheckSecondStage();
-  // Checks that we're in the third stage.
-  bool CheckThirdStage();
-
   // Assembles a JSON config for Chrome based on rollback_data.
   bool AssembleConfig(const RollbackData& rollback_data, std::string* config);
 

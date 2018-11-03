@@ -85,6 +85,11 @@ TEST(OobeConfigFinishRestoreTest, FinishRestoreTest) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath temp_path = temp_dir.GetPath();
 
+  WriteTestFile(
+      PrefixAbsolutePath(temp_path, kUnencryptedStatefulRollbackDataPath));
+  WriteTestFile(
+      PrefixAbsolutePath(temp_path, kEncryptedStatefulRollbackDataPath));
+
   WriteTestFile(PrefixAbsolutePath(
       temp_path, kRestoreTempPath.Append(kInstallAttributesFileName)));
   WriteTestFile(PrefixAbsolutePath(temp_path,
@@ -105,6 +110,9 @@ TEST(OobeConfigFinishRestoreTest, FinishRestoreTest) {
       PrefixAbsolutePath(temp_path, kPolicyFileDirectory)));
   ASSERT_TRUE(base::CreateDirectory(
       PrefixAbsolutePath(temp_path, kShillDefaultProfilePath.DirName())));
+
+  // Make sure the first stage completed file exists.
+  WriteTestFile(PrefixAbsolutePath(temp_path, kFirstStageCompletedFile));
 
   ASSERT_TRUE(
       FinishRestore(temp_path, /*ignore_permissions_for_testing=*/true));

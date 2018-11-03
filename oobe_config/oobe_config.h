@@ -51,6 +51,10 @@ class OobeConfig {
   bool WriteFile(const base::FilePath& file_path,
                  const std::string& data) const;
 
+  bool CheckFirstStage() const;
+  bool CheckSecondStage() const;
+  bool CheckThirdStage() const;
+
  private:
   // Returns the file path of |file_path| which includes the prefix if set.
   // |file_path| must be an absolute path starting with "/".

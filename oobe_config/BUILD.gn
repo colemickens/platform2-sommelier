@@ -149,6 +149,7 @@ executable("rollback_prepare_save") {
     "rollback_prepare_save_main.cc",
   ]
   deps = [
+    ":liboobeconfig",
     ":librollback_helper",
   ]
 }
@@ -160,6 +161,7 @@ executable("rollback_finish_restore") {
     "rollback_finish_restore_main.cc",
   ]
   deps = [
+    ":liboobeconfig",
     ":librollback_helper",
   ]
 }
