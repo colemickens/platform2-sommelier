@@ -16,15 +16,11 @@ class Config {
   Config();
   virtual ~Config();
 
-  virtual std::string GetRunDirectory();
-  virtual std::string GetStorageDirectory();
-  virtual std::string GetUserStorageDirectory();
+  virtual std::string GetRunDirectory() const;
+  virtual std::string GetStorageDirectory() const;
+  virtual std::string GetUserStorageDirectory() const;
 
  private:
-  static const char kDefaultRunDirectory[];
-  static const char kDefaultStorageDirectory[];
-  static const char kDefaultUserStorageDirectory[];
-
   DISALLOW_COPY_AND_ASSIGN(Config);
 };
 

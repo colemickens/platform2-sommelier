@@ -6,26 +6,27 @@
 
 namespace shill {
 
-// static
-const char Config::kDefaultRunDirectory[] = RUNDIR;
-// static
-const char Config::kDefaultStorageDirectory[] = "/var/cache/shill";
-// static
-const char Config::kDefaultUserStorageDirectory[] = RUNDIR "/user_profiles/";
+namespace {
 
-Config::Config() {}
+const char kDefaultRunDirectory[] = RUNDIR;
+const char kDefaultStorageDirectory[] = "/var/cache/shill";
+const char kDefaultUserStorageDirectory[] = RUNDIR "/user_profiles/";
 
-Config::~Config() {}
+}  // namespace
 
-std::string Config::GetRunDirectory() {
+Config::Config() = default;
+
+Config::~Config() = default;
+
+std::string Config::GetRunDirectory() const {
   return kDefaultRunDirectory;
 }
 
-std::string Config::GetStorageDirectory() {
+std::string Config::GetStorageDirectory() const {
   return kDefaultStorageDirectory;
 }
 
-std::string Config::GetUserStorageDirectory() {
+std::string Config::GetUserStorageDirectory() const {
   return kDefaultUserStorageDirectory;
 }
 

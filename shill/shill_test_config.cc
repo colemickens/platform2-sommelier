@@ -8,22 +8,23 @@
 
 #include "shill/logging.h"
 
-using std::string;
-
 namespace shill {
 
 TestConfig::TestConfig() {
   CHECK(dir_.CreateUniqueTempDir());
 }
 
-TestConfig::~TestConfig() {
-}
+TestConfig::~TestConfig() = default;
 
-string TestConfig::GetRunDirectory() {
+std::string TestConfig::GetRunDirectory() const {
   return dir_.GetPath().value();
 }
 
-string TestConfig::GetStorageDirectory() {
+std::string TestConfig::GetStorageDirectory() const {
+  return dir_.GetPath().value();
+}
+
+std::string TestConfig::GetUserStorageDirectory() const {
   return dir_.GetPath().value();
 }
 
