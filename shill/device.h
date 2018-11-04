@@ -18,8 +18,6 @@
 #include "shill/adaptor_interfaces.h"
 #include "shill/callbacks.h"
 #include "shill/connection_diagnostics.h"
-#include "shill/connection_tester.h"
-#include "shill/connectivity_trial.h"
 #include "shill/dns_server_tester.h"
 #include "shill/event_dispatcher.h"
 #include "shill/geolocation_info.h"
@@ -647,7 +645,7 @@ class Device : public base::RefCounted<Device> {
       uint64_t(Device::*get)(Error*));
 
   // Called by the ConnectionTester whenever a connectivity test completes.
-  virtual void ConnectionTesterCallback();
+  virtual void ConnectionTesterCallback(const PortalDetector::Result& result);
 
   // Property getters reserved for subclasses
   ControlInterface* control_interface() const { return control_interface_; }
@@ -860,7 +858,7 @@ class Device : public base::RefCounted<Device> {
   // unreliable.
   base::CancelableClosure reliable_link_callback_;
 
-  std::unique_ptr<ConnectionTester> connection_tester_;
+  std::unique_ptr<PortalDetector> connection_tester_;
   base::Callback<void()> connection_tester_callback_;
 
   // Track whether packets from non-optimal routes will be accepted by this

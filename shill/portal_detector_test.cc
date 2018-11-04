@@ -9,15 +9,17 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <brillo/http/http_request.h>
+#include <brillo/http/mock_connection.h>
+#include <brillo/http/mock_transport.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/connectivity_trial.h"
 #include "shill/mock_connection.h"
-#include "shill/mock_connectivity_trial.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_event_dispatcher.h"
+#include "shill/mock_http_request.h"
 #include "shill/net/mock_time.h"
 
 using base::Bind;
@@ -47,8 +49,7 @@ const char* const kDNSServers[] = {kDNSServer0, kDNSServer1};
 }  // namespace
 
 MATCHER_P(IsResult, result, "") {
-  return (result.trial_result.phase == arg.trial_result.phase &&
-          result.trial_result.status == arg.trial_result.status &&
+  return (result.phase == arg.phase && result.status == arg.status &&
           result.final == arg.final);
 }
 
@@ -59,13 +60,16 @@ class PortalDetectorTest : public Test {
       : device_info_(
             new NiceMock<MockDeviceInfo>(&control_, nullptr, nullptr, nullptr)),
         connection_(new StrictMock<MockConnection>(device_info_.get())),
+        transport_(std::make_shared<brillo::http::MockTransport>()),
+        brillo_connection_(
+            std::make_shared<brillo::http::MockConnection>(transport_)),
         portal_detector_(
-            new PortalDetector(connection_.get(), &dispatcher_,
+            new PortalDetector(connection_.get(),
+                               &dispatcher_,
                                callback_target_.result_callback())),
-        connectivity_trial_(new StrictMock<MockConnectivityTrial>(
-            connection_, PortalDetector::kRequestTimeoutSeconds)),
         interface_name_(kInterfaceName),
-        dns_servers_(kDNSServers, kDNSServers + 2) {
+        dns_servers_(kDNSServers, kDNSServers + 2),
+        http_request_(nullptr) {
     current_time_.tv_sec = current_time_.tv_usec = 0;
   }
 
@@ -78,18 +82,21 @@ class PortalDetectorTest : public Test {
         .WillRepeatedly(Invoke(this, &PortalDetectorTest::GetTimeMonotonic));
     EXPECT_CALL(*connection_, dns_servers())
         .WillRepeatedly(ReturnRef(dns_servers_));
-    portal_detector_->connectivity_trial_
-        .reset(connectivity_trial_);  // Passes ownership
-    EXPECT_TRUE(portal_detector()->connectivity_trial_.get());
+    EXPECT_FALSE(portal_detector_->http_request_.get());
   }
 
   void TearDown() override {
-    if (portal_detector()->connectivity_trial_.get()) {
-      EXPECT_CALL(*connectivity_trial(), Stop());
+    Mock::VerifyAndClearExpectations(&http_request_);
+    if (portal_detector()->http_request_) {
+      EXPECT_CALL(*http_request(), Stop());
 
       // Delete the portal detector while expectations still exist.
       portal_detector_.reset();
     }
+    testing::Mock::VerifyAndClearExpectations(brillo_connection_.get());
+    brillo_connection_.reset();
+    testing::Mock::VerifyAndClearExpectations(transport_.get());
+    transport_.reset();
   }
 
  protected:
@@ -111,14 +118,30 @@ class PortalDetectorTest : public Test {
     Callback<void(const PortalDetector::Result&)> result_callback_;
   };
 
-  bool StartPortalRequest(
-      const ConnectivityTrial::PortalDetectionProperties& props) {
-    bool ret = portal_detector_->Start(props);
+  void AssignHttpRequest() {
+    http_request_ = new StrictMock<MockHttpRequest>(connection_);
+    portal_detector_->http_request_.reset(http_request_);  // Passes ownership.
+  }
+
+  bool StartPortalRequest(const PortalDetector::Properties& props, int delay) {
+    bool ret = portal_detector_->StartAfterDelay(props, delay);
+    if (ret) {
+      AssignHttpRequest();
+    }
     return ret;
   }
 
+  void StartTrialTask() {
+    EXPECT_CALL(*http_request(), Start(_, _, _))
+        .WillOnce(Return(HttpRequest::kResultInProgress));
+    EXPECT_CALL(
+        dispatcher(),
+        PostDelayedTask(_, _, PortalDetector::kRequestTimeoutSeconds * 1000));
+    portal_detector()->StartTrialTask();
+  }
+
+  MockHttpRequest* http_request() { return http_request_; }
   PortalDetector* portal_detector() { return portal_detector_.get(); }
-  MockConnectivityTrial* connectivity_trial() { return connectivity_trial_; }
   MockEventDispatcher& dispatcher() { return dispatcher_; }
   CallbackTarget& callback_target() { return callback_target_; }
 
@@ -127,13 +150,17 @@ class PortalDetectorTest : public Test {
     EXPECT_FALSE(portal_detector_->failures_in_content_phase_);
     EXPECT_TRUE(callback_target_.result_callback().
                 Equals(portal_detector_->portal_result_callback_));
+    EXPECT_FALSE(portal_detector_->http_request_.get());
   }
 
   void ExpectAttemptRetry(const PortalDetector::Result& result) {
-    EXPECT_CALL(callback_target(),
-                ResultCallback(IsResult(result)));
-    EXPECT_CALL(*connectivity_trial(),
-                Retry(PortalDetector::kMinTimeBetweenAttemptsSeconds * 1000));
+    EXPECT_CALL(callback_target(), ResultCallback(IsResult(result)));
+
+    // Expect the trial to schedule the next attempt.
+    EXPECT_CALL(
+        dispatcher(),
+        PostDelayedTask(_, _,
+                        PortalDetector::kMinTimeBetweenAttemptsSeconds * 1000));
   }
 
   void AdvanceTime(int milliseconds) {
@@ -142,11 +169,29 @@ class PortalDetectorTest : public Test {
   }
 
   void StartAttempt() {
-    EXPECT_CALL(*connectivity_trial(), Start(_, _)).WillOnce(Return(true));
+    EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
+    PortalDetector::Properties props =
+        PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+    EXPECT_TRUE(StartPortalRequest(props, 0));
+    StartTrialTask();
+  }
 
-    ConnectivityTrial::PortalDetectionProperties props =
-        ConnectivityTrial::PortalDetectionProperties(kHttpUrl, kHttpsUrl);
-    EXPECT_TRUE(StartPortalRequest(props));
+  void StartSingleTrial() {
+    EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
+    PortalDetector::Properties props =
+        PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+    EXPECT_TRUE(portal_detector()->StartSingleTrial(props));
+    EXPECT_TRUE(portal_detector()->single_trial_);
+    AssignHttpRequest();
+  }
+
+  void ExpectRequestSuccessWithStatus(int status_code) {
+    EXPECT_CALL(*brillo_connection_, GetResponseStatusCode())
+        .WillOnce(Return(status_code));
+
+    auto response =
+        std::make_shared<brillo::http::Response>(brillo_connection_);
+    portal_detector_->RequestSuccessCallback(response);
   }
 
  private:
@@ -159,13 +204,15 @@ class PortalDetectorTest : public Test {
   MockControl control_;
   std::unique_ptr<MockDeviceInfo> device_info_;
   scoped_refptr<MockConnection> connection_;
+  std::shared_ptr<brillo::http::MockTransport> transport_;
+  std::shared_ptr<brillo::http::MockConnection> brillo_connection_;
   CallbackTarget callback_target_;
   std::unique_ptr<PortalDetector> portal_detector_;
-  MockConnectivityTrial* connectivity_trial_;
   StrictMock<MockTime> time_;
   struct timeval current_time_;
   const string interface_name_;
   vector<string> dns_servers_;
+  MockHttpRequest* http_request_;
 };
 
 // static
@@ -176,72 +223,64 @@ TEST_F(PortalDetectorTest, Constructor) {
 }
 
 TEST_F(PortalDetectorTest, InvalidURL) {
-  EXPECT_CALL(*connectivity_trial(), Start(_, _)).WillOnce(Return(false));
-  ConnectivityTrial::PortalDetectionProperties props =
-      ConnectivityTrial::PortalDetectionProperties(kBadURL, kHttpsUrl);
-  EXPECT_FALSE(portal_detector()->Start(props));
+  EXPECT_FALSE(portal_detector()->IsActive());
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0)).Times(0);
+  PortalDetector::Properties props =
+      PortalDetector::Properties(kBadURL, kHttpsUrl);
+  EXPECT_FALSE(StartPortalRequest(props, 0));
   ExpectReset();
+
+  EXPECT_FALSE(portal_detector()->Retry(0));
+  EXPECT_FALSE(portal_detector()->IsActive());
+}
+
+TEST_F(PortalDetectorTest, IsActive) {
+  // Before the trial is started, should not be active.
+  EXPECT_FALSE(portal_detector()->IsActive());
+
+  // Once the trial is started, IsActive should return true.
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
+  PortalDetector::Properties props =
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+  EXPECT_TRUE(StartPortalRequest(props, 0));
+
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 3000));
+  StartTrialTask();
+  EXPECT_TRUE(portal_detector()->IsActive());
+
+  // Finish the trial, IsActive should return false.
+  EXPECT_CALL(*http_request(), Stop()).Times(2);
+  portal_detector()->CompleteTrial(PortalDetector::Result(
+      PortalDetector::Phase::kContent, PortalDetector::Status::kFailure));
+  EXPECT_FALSE(portal_detector()->IsActive());
 }
 
 TEST_F(PortalDetectorTest, StartAttemptFailed) {
-  ConnectivityTrial::PortalDetectionProperties props =
-      ConnectivityTrial::PortalDetectionProperties(kHttpUrl, kHttpsUrl);
-  EXPECT_CALL(*connectivity_trial(), Start(props, 0)).WillOnce(Return(true));
-  EXPECT_TRUE(StartPortalRequest(props));
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
+  PortalDetector::Properties props =
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+  EXPECT_TRUE(StartPortalRequest(props, 0));
 
   // Expect that the request will be started -- return failure.
-  ConnectivityTrial::Result errorResult =
-      ConnectivityTrial::GetPortalResultForRequestResult(
-          HttpRequest::kResultConnectionFailure);
+  EXPECT_CALL(*http_request(), Start(_, _, _))
+      .WillOnce(Return(HttpRequest::kResultDNSFailure));
+
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0)).Times(0);
+  EXPECT_CALL(*http_request(), Stop()).Times(2);
 
   // Expect a non-final failure to be relayed to the caller.
-  ExpectAttemptRetry(
-      PortalDetector::Result(
-          ConnectivityTrial::Result(
-              ConnectivityTrial::kPhaseConnection,
-              ConnectivityTrial::kStatusFailure),
-          kNumAttempts,
-          false));
+  ExpectAttemptRetry(PortalDetector::Result(PortalDetector::Phase::kDNS,
+                                            PortalDetector::Status::kFailure,
+                                            kNumAttempts, false));
 
-  portal_detector()->CompleteAttempt(errorResult);
-}
-
-TEST_F(PortalDetectorTest, IsInProgress) {
-  EXPECT_FALSE(portal_detector()->IsInProgress());
-  // Starting the attempt immediately should result with IsInProgress returning
-  // true
-  EXPECT_CALL(*connectivity_trial(), Start(_, _))
-      .Times(2)
-      .WillRepeatedly(Return(true));
-  ConnectivityTrial::PortalDetectionProperties props =
-      ConnectivityTrial::PortalDetectionProperties(kHttpUrl, kHttpsUrl);
-  EXPECT_TRUE(StartPortalRequest(props));
-  EXPECT_CALL(*connectivity_trial(), IsActive()).WillOnce(Return(true));
-  EXPECT_TRUE(portal_detector()->IsInProgress());
-
-  // Starting the attempt with a delay should result with IsInProgress returning
-  // false
-  EXPECT_CALL(*connectivity_trial(), IsActive()).WillOnce(Return(false));
-  portal_detector()->StartAfterDelay(props, 2);
-  EXPECT_FALSE(portal_detector()->IsInProgress());
-
-  // Advance time, IsInProgress should now be true
-  EXPECT_CALL(*connectivity_trial(), IsActive()).WillOnce(Return(true));
-  AdvanceTime(2000);
-  EXPECT_TRUE(portal_detector()->IsInProgress());
-
-  // Times beyond the start time before the attempt finishes should also return
-  // true
-  EXPECT_CALL(*connectivity_trial(), IsActive()).WillOnce(Return(true));
-  AdvanceTime(1000);
-  EXPECT_TRUE(portal_detector()->IsInProgress());
+  portal_detector()->StartTrialTask();
 }
 
 TEST_F(PortalDetectorTest, AdjustStartDelayImmediate) {
-  ConnectivityTrial::PortalDetectionProperties props =
-      ConnectivityTrial::PortalDetectionProperties(kHttpUrl, kHttpsUrl);
-  EXPECT_CALL(*connectivity_trial(), Start(props, 0)).WillOnce(Return(true));
-  EXPECT_TRUE(StartPortalRequest(props));
+  PortalDetector::Properties props =
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
+  EXPECT_TRUE(StartPortalRequest(props, 0));
 
   // A second attempt should be delayed by kMinTimeBetweenAttemptsSeconds.
   EXPECT_TRUE(portal_detector()->AdjustStartDelay(0)
@@ -251,12 +290,11 @@ TEST_F(PortalDetectorTest, AdjustStartDelayImmediate) {
 TEST_F(PortalDetectorTest, AdjustStartDelayAfterDelay) {
   const int kDelaySeconds = 123;
   // The first attempt should be delayed by kDelaySeconds.
-  ConnectivityTrial::PortalDetectionProperties props =
-      ConnectivityTrial::PortalDetectionProperties(kHttpUrl, kHttpsUrl);
-  EXPECT_CALL(*connectivity_trial(), Start(props, kDelaySeconds * 1000))
-      .WillOnce(Return(true));
+  PortalDetector::Properties props =
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, kDelaySeconds * 1000));
 
-  portal_detector()->StartAfterDelay(props, kDelaySeconds);
+  EXPECT_TRUE(StartPortalRequest(props, kDelaySeconds));
 
   AdvanceTime(kDelaySeconds * 1000);
 
@@ -265,122 +303,129 @@ TEST_F(PortalDetectorTest, AdjustStartDelayAfterDelay) {
               == PortalDetector::kMinTimeBetweenAttemptsSeconds);
 }
 
+TEST_F(PortalDetectorTest, StartRepeated) {
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0)).Times(1);
+  PortalDetector::Properties props =
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+  EXPECT_TRUE(StartPortalRequest(props, 0));
+
+  // A second call should cancel the existing trial and set up the new one.
+  EXPECT_CALL(*http_request(), Stop());
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 10 * 1000)).Times(1);
+  EXPECT_TRUE(portal_detector()->StartAfterDelay(props, 10));
+}
+
+TEST_F(PortalDetectorTest, TrialRetry) {
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
+  PortalDetector::Properties props =
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+  EXPECT_TRUE(StartPortalRequest(props, 0));
+
+  // Expect that the request will be started -- return failure.
+  EXPECT_CALL(*http_request(), Start(_, _, _))
+      .WillOnce(Return(HttpRequest::kResultConnectionFailure));
+  EXPECT_CALL(*http_request(), Stop()).Times(2);
+  EXPECT_CALL(dispatcher(),
+              PostDelayedTask(
+                  _, _, PortalDetector::kMinTimeBetweenAttemptsSeconds * 1000));
+  portal_detector()->StartTrialTask();
+
+  const int kRetryDelay = 7;
+  EXPECT_CALL(*http_request(), Stop());
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, kRetryDelay)).Times(1);
+  EXPECT_TRUE(portal_detector()->Retry(kRetryDelay));
+}
+
+TEST_F(PortalDetectorTest, TrialRetryFail) {
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
+  PortalDetector::Properties props =
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+  EXPECT_TRUE(StartPortalRequest(props, 0));
+
+  EXPECT_CALL(*http_request(), Stop());
+  portal_detector()->Stop();
+
+  EXPECT_FALSE(portal_detector()->Retry(0));
+}
+
 TEST_F(PortalDetectorTest, AttemptCount) {
   EXPECT_FALSE(portal_detector()->IsInProgress());
   // Expect the PortalDetector to immediately post a task for the each attempt.
-  EXPECT_CALL(*connectivity_trial(), Start(_, _))
-      .Times(2)
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*connectivity_trial(), IsActive()).WillOnce(Return(false));
-  ConnectivityTrial::PortalDetectionProperties props =
-      ConnectivityTrial::PortalDetectionProperties(kHttpUrl, kHttpsUrl);
-  portal_detector()->StartAfterDelay(props, 2);
-
-  EXPECT_FALSE(portal_detector()->IsInProgress());
-
-  // Expect that the request will be started -- return failure.
-  EXPECT_CALL(*connectivity_trial(), Retry(0))
-      .Times(PortalDetector::kMaxRequestAttempts - 1);
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, _)).Times(4);
+  PortalDetector::Properties props =
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+  EXPECT_TRUE(StartPortalRequest(props, 2));
 
   {
     InSequence s;
 
     // Expect non-final failures for all attempts but the last.
     EXPECT_CALL(callback_target(),
-                ResultCallback(IsResult(
-                    PortalDetector::Result(
-                        ConnectivityTrial::Result(
-                            ConnectivityTrial::kPhaseDNS,
-                            ConnectivityTrial::kStatusFailure),
-                        kNumAttempts,
-                        false))))
+                ResultCallback(IsResult(PortalDetector::Result(
+                    PortalDetector::Phase::kDNS,
+                    PortalDetector::Status::kFailure, kNumAttempts, false))))
         .Times(PortalDetector::kMaxRequestAttempts - 1);
 
     // Expect a single final failure.
     EXPECT_CALL(callback_target(),
-                ResultCallback(IsResult(
-                    PortalDetector::Result(
-                        ConnectivityTrial::Result(
-                            ConnectivityTrial::kPhaseDNS,
-                            ConnectivityTrial::kStatusFailure),
-                        kNumAttempts,
-                        true))))
+                ResultCallback(IsResult(PortalDetector::Result(
+                    PortalDetector::Phase::kDNS,
+                    PortalDetector::Status::kFailure, kNumAttempts, true))))
         .Times(1);
   }
 
-  // Expect the PortalDetector to stop the ConnectivityTrial after
+  // Expect the PortalDetector to stop the trial after
   // the final attempt.
-  EXPECT_CALL(*connectivity_trial(), Stop()).Times(1);
+  EXPECT_CALL(*http_request(), Stop()).Times(4);
 
-  EXPECT_CALL(*connectivity_trial(), IsActive()).WillOnce(Return(true));
-  portal_detector()->Start(props);
+  portal_detector()->StartAfterDelay(props, 0);
   for (int i = 0; i < PortalDetector::kMaxRequestAttempts; i++) {
-    EXPECT_TRUE(portal_detector()->IsInProgress());
     AdvanceTime(PortalDetector::kMinTimeBetweenAttemptsSeconds * 1000);
-    ConnectivityTrial::Result r =
-        ConnectivityTrial::GetPortalResultForRequestResult(
-            HttpRequest::kResultDNSFailure);
+    PortalDetector::Result r = PortalDetector::GetPortalResultForRequestResult(
+        HttpRequest::kResultDNSFailure);
     portal_detector()->CompleteAttempt(r);
   }
 
-  EXPECT_FALSE(portal_detector()->IsInProgress());
   ExpectReset();
 }
 
-// Exactly like AttemptCount, except that the termination conditions are
-// different because we're triggering a different sort of error.
+// // Exactly like AttemptCount, except that the termination conditions are
+// // different because we're triggering a different sort of error.
 TEST_F(PortalDetectorTest, ReadBadHeadersRetry) {
   EXPECT_FALSE(portal_detector()->IsInProgress());
   // Expect the PortalDetector to immediately post a task for the each attempt.
-  EXPECT_CALL(*connectivity_trial(), Start(_, 0))
-      .Times(2)
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, _)).Times(3);
+  PortalDetector::Properties props =
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+  EXPECT_TRUE(StartPortalRequest(props, 0));
 
-  ConnectivityTrial::PortalDetectionProperties props =
-      ConnectivityTrial::PortalDetectionProperties(kHttpUrl, kHttpsUrl);
-  EXPECT_TRUE(StartPortalRequest(props));
-
-  // Expect that the request will be started -- return failure.
-  EXPECT_CALL(*connectivity_trial(), Retry(0))
-      .Times(PortalDetector::kMaxFailuresInContentPhase - 1);
   {
     InSequence s;
 
     // Expect non-final failures for all attempts but the last.
     EXPECT_CALL(callback_target(),
-                ResultCallback(IsResult(
-                    PortalDetector::Result(
-                        ConnectivityTrial::Result(
-                            ConnectivityTrial::kPhaseContent,
-                            ConnectivityTrial::kStatusFailure),
-                        kNumAttempts,
-                        false))))
+                ResultCallback(IsResult(PortalDetector::Result(
+                    PortalDetector::Phase::kContent,
+                    PortalDetector::Status::kFailure, kNumAttempts, false))))
         .Times(PortalDetector::kMaxFailuresInContentPhase - 1);
 
     // Expect a single final failure.
     EXPECT_CALL(callback_target(),
-                ResultCallback(IsResult(
-                    PortalDetector::Result(
-                        ConnectivityTrial::Result(
-                            ConnectivityTrial::kPhaseContent,
-                            ConnectivityTrial::kStatusFailure),
-                        kNumAttempts,
-                        true))))
+                ResultCallback(IsResult(PortalDetector::Result(
+                    PortalDetector::Phase::kContent,
+                    PortalDetector::Status::kFailure, kNumAttempts, true))))
         .Times(1);
   }
 
   // Expect the PortalDetector to stop the current request each time, plus
   // an extra time in PortalDetector::Stop().
-  EXPECT_CALL(*connectivity_trial(), Stop()).Times(1);
+  EXPECT_CALL(*http_request(), Stop()).Times(3);
 
-  EXPECT_CALL(*connectivity_trial(), IsActive()).WillOnce(Return(true));
-  portal_detector()->Start(props);
+  portal_detector()->StartAfterDelay(props, 0);
   for (int i = 0; i < PortalDetector::kMaxFailuresInContentPhase; i++) {
-    EXPECT_TRUE(portal_detector()->IsInProgress());
     AdvanceTime(PortalDetector::kMinTimeBetweenAttemptsSeconds * 1000);
-    ConnectivityTrial::Result r =
-        ConnectivityTrial::Result(ConnectivityTrial::kPhaseContent,
-                                  ConnectivityTrial::kStatusFailure);
+    PortalDetector::Result r = PortalDetector::Result(
+        PortalDetector::Phase::kContent, PortalDetector::Status::kFailure);
     portal_detector()->CompleteAttempt(r);
   }
 
@@ -390,50 +435,38 @@ TEST_F(PortalDetectorTest, ReadBadHeadersRetry) {
 TEST_F(PortalDetectorTest, ReadBadHeader) {
   StartAttempt();
 
-  ExpectAttemptRetry(
-      PortalDetector::Result(
-          ConnectivityTrial::Result(
-              ConnectivityTrial::kPhaseContent,
-              ConnectivityTrial::kStatusFailure),
-          kNumAttempts,
-          false));
+  ExpectAttemptRetry(PortalDetector::Result(PortalDetector::Phase::kContent,
+                                            PortalDetector::Status::kFailure,
+                                            kNumAttempts, false));
 
-  ConnectivityTrial::Result r =
-      ConnectivityTrial::Result(ConnectivityTrial::kPhaseContent,
-                                ConnectivityTrial::kStatusFailure);
+  EXPECT_CALL(*http_request(), Stop());
+  PortalDetector::Result r = PortalDetector::Result(
+      PortalDetector::Phase::kContent, PortalDetector::Status::kFailure);
   portal_detector()->CompleteAttempt(r);
 }
 
 TEST_F(PortalDetectorTest, RequestTimeout) {
   StartAttempt();
-  ExpectAttemptRetry(
-      PortalDetector::Result(
-          ConnectivityTrial::Result(
-              ConnectivityTrial::kPhaseUnknown,
-              ConnectivityTrial::kStatusTimeout),
-          kNumAttempts,
-          false));
+  ExpectAttemptRetry(PortalDetector::Result(PortalDetector::Phase::kUnknown,
+                                            PortalDetector::Status::kTimeout,
+                                            kNumAttempts, false));
 
-  ConnectivityTrial::Result r =
-      ConnectivityTrial::Result(ConnectivityTrial::kPhaseUnknown,
-                                ConnectivityTrial::kStatusTimeout);
+  EXPECT_CALL(*http_request(), Stop());
+  PortalDetector::Result r = PortalDetector::Result(
+      PortalDetector::Phase::kUnknown, PortalDetector::Status::kTimeout);
   portal_detector()->CompleteAttempt(r);
 }
 
 TEST_F(PortalDetectorTest, ReadPartialHeaderTimeout) {
   StartAttempt();
 
-  ExpectAttemptRetry(
-      PortalDetector::Result(
-          ConnectivityTrial::Result(
-              ConnectivityTrial::kPhaseContent,
-              ConnectivityTrial::kStatusTimeout),
-          kNumAttempts,
-          false));
+  ExpectAttemptRetry(PortalDetector::Result(PortalDetector::Phase::kContent,
+                                            PortalDetector::Status::kTimeout,
+                                            kNumAttempts, false));
 
-  ConnectivityTrial::Result r =
-      ConnectivityTrial::Result(ConnectivityTrial::kPhaseContent,
-                                ConnectivityTrial::kStatusTimeout);
+  EXPECT_CALL(*http_request(), Stop());
+  PortalDetector::Result r = PortalDetector::Result(
+      PortalDetector::Phase::kContent, PortalDetector::Status::kTimeout);
   portal_detector()->CompleteAttempt(r);
 }
 
@@ -441,37 +474,98 @@ TEST_F(PortalDetectorTest, ReadCompleteHeader) {
   StartAttempt();
 
   EXPECT_CALL(callback_target(),
-              ResultCallback(IsResult(
-                  PortalDetector::Result(
-                      ConnectivityTrial::Result(
-                          ConnectivityTrial::kPhaseContent,
-                          ConnectivityTrial::kStatusSuccess),
-                      kNumAttempts,
-                      true))));
+              ResultCallback(IsResult(PortalDetector::Result(
+                  PortalDetector::Phase::kContent,
+                  PortalDetector::Status::kSuccess, kNumAttempts, true))));
 
-  EXPECT_CALL(*connectivity_trial(), Stop()).Times(1);
-  ConnectivityTrial::Result r =
-      ConnectivityTrial::Result(ConnectivityTrial::kPhaseContent,
-                                ConnectivityTrial::kStatusSuccess);
+  EXPECT_CALL(*http_request(), Stop());
+  PortalDetector::Result r = PortalDetector::Result(
+      PortalDetector::Phase::kContent, PortalDetector::Status::kSuccess);
   portal_detector()->CompleteAttempt(r);
 }
 
-TEST_F(PortalDetectorTest, ReadMatchingHeader) {
+TEST_F(PortalDetectorTest, RequestSucess) {
   StartAttempt();
 
   EXPECT_CALL(callback_target(),
-              ResultCallback(IsResult(
-                  PortalDetector::Result(
-                      ConnectivityTrial::Result(
-                          ConnectivityTrial::kPhaseContent,
-                          ConnectivityTrial::kStatusSuccess),
-                      kNumAttempts,
-                      true))));
-  EXPECT_CALL(*connectivity_trial(), Stop()).Times(1);
-  ConnectivityTrial::Result r =
-      ConnectivityTrial::Result(ConnectivityTrial::kPhaseContent,
-                                ConnectivityTrial::kStatusSuccess);
-  portal_detector()->CompleteAttempt(r);
+              ResultCallback(IsResult(PortalDetector::Result(
+                  PortalDetector::Phase::kContent,
+                  PortalDetector::Status::kSuccess, kNumAttempts, true))));
+  EXPECT_CALL(*http_request(), Stop()).Times(2);
+  ExpectRequestSuccessWithStatus(204);
 }
+
+TEST_F(PortalDetectorTest, RequestFail) {
+  StartAttempt();
+
+  EXPECT_CALL(callback_target(),
+              ResultCallback(IsResult(PortalDetector::Result(
+                  PortalDetector::Phase::kContent,
+                  PortalDetector::Status::kFailure, kNumAttempts, false))));
+  EXPECT_CALL(*http_request(), Stop()).Times(2);
+  EXPECT_CALL(dispatcher(),
+              PostDelayedTask(
+                  _, _, PortalDetector::kMinTimeBetweenAttemptsSeconds * 1000));
+  ExpectRequestSuccessWithStatus(123);
+}
+
+TEST_F(PortalDetectorTest, StartSingleTrial) {
+  StartSingleTrial();
+
+  EXPECT_CALL(*http_request(), Start(_, _, _))
+      .WillOnce(Return(HttpRequest::kResultDNSFailure));
+  EXPECT_CALL(*http_request(), Stop()).Times(2);
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, _)).Times(0);
+  portal_detector()->StartTrialTask();
+}
+
+struct ResultMapping {
+  ResultMapping() : http_result(HttpRequest::kResultUnknown), portal_result() {}
+  ResultMapping(HttpRequest::Result in_http_result,
+                const PortalDetector::Result& in_portal_result)
+      : http_result(in_http_result), portal_result(in_portal_result) {}
+  HttpRequest::Result http_result;
+  PortalDetector::Result portal_result;
+};
+
+class PortalDetectorResultMappingTest
+    : public testing::TestWithParam<ResultMapping> {};
+
+TEST_P(PortalDetectorResultMappingTest, MapResult) {
+  PortalDetector::Result trial_result =
+      PortalDetector::GetPortalResultForRequestResult(GetParam().http_result);
+  EXPECT_EQ(trial_result.phase, GetParam().portal_result.phase);
+  EXPECT_EQ(trial_result.status, GetParam().portal_result.status);
+}
+
+INSTANTIATE_TEST_CASE_P(
+    TrialResultMappingTest,
+    PortalDetectorResultMappingTest,
+    ::testing::Values(
+        ResultMapping(HttpRequest::kResultUnknown,
+                      PortalDetector::Result(PortalDetector::Phase::kUnknown,
+                                             PortalDetector::Status::kFailure)),
+        ResultMapping(HttpRequest::kResultInProgress,
+                      PortalDetector::Result(PortalDetector::Phase::kUnknown,
+                                             PortalDetector::Status::kFailure)),
+        ResultMapping(HttpRequest::kResultDNSFailure,
+                      PortalDetector::Result(PortalDetector::Phase::kDNS,
+                                             PortalDetector::Status::kFailure)),
+        ResultMapping(HttpRequest::kResultDNSTimeout,
+                      PortalDetector::Result(PortalDetector::Phase::kDNS,
+                                             PortalDetector::Status::kTimeout)),
+        ResultMapping(HttpRequest::kResultConnectionFailure,
+                      PortalDetector::Result(PortalDetector::Phase::kConnection,
+                                             PortalDetector::Status::kFailure)),
+        ResultMapping(HttpRequest::kResultHTTPFailure,
+                      PortalDetector::Result(PortalDetector::Phase::kHTTP,
+                                             PortalDetector::Status::kFailure)),
+        ResultMapping(HttpRequest::kResultHTTPTimeout,
+                      PortalDetector::Result(PortalDetector::Phase::kHTTP,
+                                             PortalDetector::Status::kTimeout)),
+        ResultMapping(
+            HttpRequest::kResultSuccess,
+            PortalDetector::Result(PortalDetector::Phase::kContent,
+                                   PortalDetector::Status::kFailure))));
 
 }  // namespace shill

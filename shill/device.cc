@@ -28,7 +28,6 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/connection.h"
-#include "shill/connection_tester.h"
 #include "shill/control_interface.h"
 #include "shill/dhcp/dhcp_config.h"
 #include "shill/dhcp/dhcp_properties.h"
@@ -872,7 +871,12 @@ void Device::HelpRegisterConstDerivedUint64(
           new CustomAccessor<Device, uint64_t>(this, get, nullptr)));
 }
 
-void Device::ConnectionTesterCallback() {
+void Device::ConnectionTesterCallback(const PortalDetector::Result& result) {
+  LOG(INFO) << StringPrintf(
+      "ConnectionTester completed with phase==%s, "
+      "status==%s",
+      PortalDetector::PhaseToString(result.phase).c_str(),
+      PortalDetector::StatusToString(result.status).c_str());
   LOG(INFO) << "Device " << link_name() << ": Completed Connectivity Test";
   return;
 }
@@ -1352,11 +1356,9 @@ bool Device::StartPortalDetection() {
       connection_,
       dispatcher_,
       Bind(&Device::PortalDetectorCallback, weak_ptr_factory_.GetWeakPtr())));
-  ConnectivityTrial::PortalDetectionProperties props =
-      ConnectivityTrial::PortalDetectionProperties(
-          manager_->GetPortalCheckHttpUrl(),
-          manager_->GetPortalCheckHttpsUrl());
-  if (!portal_detector_->Start(props)) {
+  PortalDetector::Properties props = PortalDetector::Properties(
+      manager_->GetPortalCheckHttpUrl(), manager_->GetPortalCheckHttpsUrl());
+  if (!portal_detector_->StartAfterDelay(props, 0)) {
     LOG(ERROR) << "Device " << link_name()
                << ": Portal detection failed to start: likely bad URL: "
                << props.http_url_string << " or " << props.https_url_string;
@@ -1407,11 +1409,10 @@ void Device::StopConnectionDiagnostics() {
 bool Device::StartConnectivityTest() {
   LOG(INFO) << "Device " << link_name() << " starting connectivity test.";
 
-  connection_tester_.reset(new ConnectionTester(
-      connection_,
-      dispatcher_,
+  connection_tester_.reset(new PortalDetector(
+      connection_, dispatcher_,
       Bind(&Device::ConnectionTesterCallback, weak_ptr_factory_.GetWeakPtr())));
-  connection_tester_->Start();
+  connection_tester_->StartSingleTrial(PortalDetector::Properties());
   return true;
 }
 
@@ -1673,10 +1674,8 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
   if (state == Service::kStatePortal && connection_->IsDefault() &&
       manager_->GetPortalCheckInterval() != 0) {
     CHECK(portal_detector_.get());
-    ConnectivityTrial::PortalDetectionProperties props =
-        ConnectivityTrial::PortalDetectionProperties(
-            manager_->GetPortalCheckHttpUrl(),
-            manager_->GetPortalCheckHttpsUrl());
+    PortalDetector::Properties props = PortalDetector::Properties(
+        manager_->GetPortalCheckHttpUrl(), manager_->GetPortalCheckHttpsUrl());
     if (!portal_detector_->StartAfterDelay(
             props, manager_->GetPortalCheckInterval())) {
       LOG(ERROR) << "Device " << link_name()
@@ -1699,17 +1698,13 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
 
 void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
   if (!result.final) {
-    SLOG(this, 2) << "Device " << link_name()
-                  << ": Received non-final status: "
-                  << ConnectivityTrial::StatusToString(
-                      result.trial_result.status);
+    SLOG(this, 2) << "Device " << link_name() << ": Received non-final status: "
+                  << PortalDetector::StatusToString(result.status);
     return;
   }
 
-  SLOG(this, 2) << "Device " << link_name()
-                << ": Received final status: "
-                << ConnectivityTrial::StatusToString(
-                    result.trial_result.status);
+  SLOG(this, 2) << "Device " << link_name() << ": Received final status: "
+                << PortalDetector::StatusToString(result.status);
 
   portal_attempts_to_online_ += result.num_attempts;
 
@@ -1720,7 +1715,7 @@ void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
       portal_status,
       Metrics::kPortalResultMax);
 
-  if (result.trial_result.status == ConnectivityTrial::kStatusSuccess) {
+  if (result.status == PortalDetector::Status::kSuccess) {
     SetServiceConnectedState(Service::kStateOnline);
 
     metrics()->SendToUMA(
@@ -1734,8 +1729,8 @@ void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
     // Set failure phase and status.
     if (selected_service_) {
       selected_service_->SetPortalDetectionFailure(
-          ConnectivityTrial::PhaseToString(result.trial_result.phase),
-          ConnectivityTrial::StatusToString(result.trial_result.status));
+          PortalDetector::PhaseToString(result.phase),
+          PortalDetector::StatusToString(result.status));
     }
     SetServiceConnectedState(Service::kStatePortal);
 

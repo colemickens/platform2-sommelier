@@ -8,7 +8,6 @@
 #include <base/strings/stringprintf.h>
 
 #include "shill/connection.h"
-#include "shill/connectivity_trial.h"
 #include "shill/device_info.h"
 #include "shill/dns_client.h"
 #include "shill/dns_client_factory.h"
@@ -165,8 +164,7 @@ ConnectionDiagnostics::~ConnectionDiagnostics() {
   Stop();
 }
 
-bool ConnectionDiagnostics::Start(
-    const ConnectivityTrial::PortalDetectionProperties& props) {
+bool ConnectionDiagnostics::Start(const PortalDetector::Properties& props) {
   SLOG(this, 3) << __func__ << "(" << props.http_url_string << ")";
 
   if (running()) {
@@ -181,7 +179,7 @@ bool ConnectionDiagnostics::Start(
     return false;
   }
 
-  if (!portal_detector_->Start(props)) {
+  if (!portal_detector_->StartAfterDelay(props, 0)) {
     Stop();
     return false;
   }
@@ -279,16 +277,16 @@ void ConnectionDiagnostics::StartAfterPortalDetectionInternal(
   SLOG(this, 3) << __func__;
 
   Result result_type;
-  if (result.trial_result.status == ConnectivityTrial::kStatusSuccess) {
+  if (result.status == PortalDetector::Status::kSuccess) {
     result_type = kResultSuccess;
-  } else if (result.trial_result.status == ConnectivityTrial::kStatusTimeout) {
+  } else if (result.status == PortalDetector::Status::kTimeout) {
     result_type = kResultTimeout;
   } else {
     result_type = kResultFailure;
   }
 
-  switch (result.trial_result.phase) {
-    case ConnectivityTrial::kPhaseContent: {
+  switch (result.phase) {
+    case PortalDetector::Phase::kContent: {
       AddEvent(kTypePortalDetection, kPhasePortalDetectionEndContent,
                result_type);
       // We have found the issue if we end in the content phase.
@@ -296,14 +294,13 @@ void ConnectionDiagnostics::StartAfterPortalDetectionInternal(
                                                         : kIssueCaptivePortal);
       break;
     }
-    case ConnectivityTrial::kPhaseDNS: {
+    case PortalDetector::Phase::kDNS: {
       AddEvent(kTypePortalDetection, kPhasePortalDetectionEndDNS, result_type);
-      if (result.trial_result.status == ConnectivityTrial::kStatusSuccess) {
+      if (result.status == PortalDetector::Status::kSuccess) {
         LOG(ERROR) << __func__ << ": portal detection should not end with "
                                   "success status in DNS phase";
         ReportResultAndStop(kIssueInternalError);
-      } else if (result.trial_result.status ==
-                 ConnectivityTrial::kStatusTimeout) {
+      } else if (result.status == PortalDetector::Status::kTimeout) {
         // DNS timeout occurred in portal detection. Ping DNS servers to make
         // sure they are reachable.
         dispatcher_->PostTask(FROM_HERE,
@@ -314,13 +311,13 @@ void ConnectionDiagnostics::StartAfterPortalDetectionInternal(
       }
       break;
     }
-    case ConnectivityTrial::kPhaseConnection:
-    case ConnectivityTrial::kPhaseHTTP:
-    case ConnectivityTrial::kPhaseUnknown:
+    case PortalDetector::Phase::kConnection:
+    case PortalDetector::Phase::kHTTP:
+    case PortalDetector::Phase::kUnknown:
     default: {
       AddEvent(kTypePortalDetection, kPhasePortalDetectionEndOther,
                result_type);
-      if (result.trial_result.status == ConnectivityTrial::kStatusSuccess) {
+      if (result.status == PortalDetector::Status::kSuccess) {
         LOG(ERROR) << __func__
                    << ": portal detection should not end with success status in"
                       " Connection/HTTP/Unknown phase";

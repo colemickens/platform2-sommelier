@@ -11,7 +11,6 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/adaptor_interfaces.h"
-#include "shill/connectivity_trial.h"
 #include "shill/control_interface.h"
 #include "shill/link_monitor.h"
 #include "shill/manager.h"
@@ -129,8 +128,8 @@ void DefaultProfile::LoadManagerProperties(Manager::Properties* manager_props,
   }
 
   // This used to be loaded from the default profile, but now it is fixed.
-  manager_props->portal_http_url = ConnectivityTrial::kDefaultHttpUrl;
-  manager_props->portal_https_url = ConnectivityTrial::kDefaultHttpsUrl;
+  manager_props->portal_http_url = PortalDetector::kDefaultHttpUrl;
+  manager_props->portal_https_url = PortalDetector::kDefaultHttpsUrl;
 
   std::string check_interval;
   if (!storage()->GetString(kStorageId, kStoragePortalCheckInterval,

@@ -15,7 +15,6 @@
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
 
-#include "shill/connectivity_trial.h"
 #include "shill/event_dispatcher.h"
 #include "shill/portal_detector.h"
 #include "shill/power_manager.h"

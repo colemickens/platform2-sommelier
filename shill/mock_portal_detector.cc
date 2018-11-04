@@ -5,7 +5,6 @@
 #include "shill/mock_portal_detector.h"
 
 #include "shill/connection.h"
-#include "shill/connectivity_trial.h"
 
 namespace shill {
 

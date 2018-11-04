@@ -4284,10 +4284,8 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
             manager->props_.ignored_dns_search_paths);
   EXPECT_EQ(LinkMonitor::kDefaultLinkMonitorTechnologies,
             manager->props_.link_monitor_technologies);
-  EXPECT_EQ(ConnectivityTrial::kDefaultHttpUrl,
-            manager->props_.portal_http_url);
-  EXPECT_EQ(ConnectivityTrial::kDefaultHttpsUrl,
-            manager->props_.portal_https_url);
+  EXPECT_EQ(PortalDetector::kDefaultHttpUrl, manager->props_.portal_http_url);
+  EXPECT_EQ(PortalDetector::kDefaultHttpsUrl, manager->props_.portal_https_url);
   EXPECT_EQ(PortalDetector::kDefaultCheckIntervalSeconds,
             manager->props_.portal_check_interval_seconds);
 
