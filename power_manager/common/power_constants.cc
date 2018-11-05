@@ -84,6 +84,8 @@ const char kSetWifiTransmitPowerForTabletModePref[] =
     "set_wifi_transmit_power_for_tablet_mode";
 const char kSetWifiTransmitPowerForProximityPref[] =
     "set_wifi_transmit_power_for_proximity";
+const char kSetCellularTransmitPowerForTabletModePref[] =
+    "set_cellular_transmit_power_for_tablet_mode";
 const char kSetCellularTransmitPowerForProximityPref[] =
     "set_cellular_transmit_power_for_proximity";
 const char kSetCellularTransmitPowerDprGpioPref[] =

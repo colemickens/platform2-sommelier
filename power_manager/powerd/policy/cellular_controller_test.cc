@@ -69,9 +69,12 @@ class CellularControllerTest : public ::testing::Test {
 
  protected:
   // Calls |controller_|'s Init() method.
-  void Init(bool enable_proximity, int64_t dpr_gpio_number) {
-    prefs_.SetInt64(kSetCellularTransmitPowerForProximityPref,
-                    enable_proximity);
+  void Init(bool honor_proximity,
+            bool honor_tablet_mode,
+            int64_t dpr_gpio_number) {
+    prefs_.SetInt64(kSetCellularTransmitPowerForProximityPref, honor_proximity);
+    prefs_.SetInt64(kSetCellularTransmitPowerForTabletModePref,
+                    honor_tablet_mode);
     if (dpr_gpio_number != kUnknownDprGpioNumber) {
       prefs_.SetInt64(kSetCellularTransmitPowerDprGpioPref, dpr_gpio_number);
     }
@@ -87,7 +90,7 @@ class CellularControllerTest : public ::testing::Test {
 };
 
 TEST_F(CellularControllerTest, LowPowerOnSensorDetect) {
-  Init(true, kFakeDprGpioNumber);
+  Init(true, false, kFakeDprGpioNumber);
   controller_.ProximitySensorDetected(UserProximity::NEAR);
   EXPECT_EQ(1, delegate_.num_set_calls());
   EXPECT_EQ(RadioTransmitPower::LOW, delegate_.last_transmit_power());
@@ -95,7 +98,7 @@ TEST_F(CellularControllerTest, LowPowerOnSensorDetect) {
 }
 
 TEST_F(CellularControllerTest, PowerChangeOnProximityChange) {
-  Init(true, kFakeDprGpioNumber);
+  Init(true, false, kFakeDprGpioNumber);
   controller_.ProximitySensorDetected(UserProximity::NEAR);
   EXPECT_EQ(RadioTransmitPower::LOW, delegate_.last_transmit_power());
   EXPECT_EQ(kFakeDprGpioNumber, delegate_.last_dpr_gpio_number());
@@ -109,8 +112,8 @@ TEST_F(CellularControllerTest, PowerChangeOnProximityChange) {
   EXPECT_EQ(kFakeDprGpioNumber, delegate_.last_dpr_gpio_number());
 }
 
-TEST_F(CellularControllerTest, SettingHonoredWhenOff) {
-  Init(false, kFakeDprGpioNumber);
+TEST_F(CellularControllerTest, ProximityIgnoredWhenOff) {
+  Init(false, false, kFakeDprGpioNumber);
   controller_.ProximitySensorDetected(UserProximity::NEAR);
   EXPECT_EQ(0, delegate_.num_set_calls());
 
@@ -119,11 +122,50 @@ TEST_F(CellularControllerTest, SettingHonoredWhenOff) {
 }
 
 TEST_F(CellularControllerTest, DprGpioNumberNotSpecified) {
-  EXPECT_DEATH(Init(true, kUnknownDprGpioNumber), ".*");
+  EXPECT_DEATH(Init(true, false, kUnknownDprGpioNumber), ".*");
 }
 
 TEST_F(CellularControllerTest, DprGpioNumberInvalid) {
-  EXPECT_DEATH(Init(true, kInvalidDprGpioNumber), ".*");
+  EXPECT_DEATH(Init(true, false, kInvalidDprGpioNumber), ".*");
+}
+
+TEST_F(CellularControllerTest, TabletMode) {
+  Init(false, true, kFakeDprGpioNumber);
+
+  controller_.HandleTabletModeChange(TabletMode::ON);
+  EXPECT_EQ(RadioTransmitPower::LOW, delegate_.last_transmit_power());
+  EXPECT_EQ(kFakeDprGpioNumber, delegate_.last_dpr_gpio_number());
+
+  controller_.HandleTabletModeChange(TabletMode::OFF);
+  EXPECT_EQ(RadioTransmitPower::HIGH, delegate_.last_transmit_power());
+  EXPECT_EQ(kFakeDprGpioNumber, delegate_.last_dpr_gpio_number());
+}
+
+TEST_F(CellularControllerTest, TabletModeIgnoredWhenOff) {
+  Init(true, false, kFakeDprGpioNumber);
+  controller_.ProximitySensorDetected(UserProximity::FAR);
+  EXPECT_EQ(RadioTransmitPower::HIGH, delegate_.last_transmit_power());
+
+  controller_.HandleTabletModeChange(TabletMode::ON);
+  EXPECT_EQ(RadioTransmitPower::HIGH, delegate_.last_transmit_power());
+}
+
+TEST_F(CellularControllerTest, ProximityAndTabletMode) {
+  Init(true, true, kFakeDprGpioNumber);
+  controller_.HandleTabletModeChange(TabletMode::ON);
+  EXPECT_EQ(RadioTransmitPower::LOW, delegate_.last_transmit_power());
+
+  controller_.ProximitySensorDetected(UserProximity::FAR);
+  EXPECT_EQ(RadioTransmitPower::LOW, delegate_.last_transmit_power());
+
+  controller_.HandleTabletModeChange(TabletMode::OFF);
+  EXPECT_EQ(RadioTransmitPower::HIGH, delegate_.last_transmit_power());
+
+  controller_.HandleProximityChange(UserProximity::NEAR);
+  EXPECT_EQ(RadioTransmitPower::LOW, delegate_.last_transmit_power());
+
+  controller_.HandleProximityChange(UserProximity::FAR);
+  EXPECT_EQ(RadioTransmitPower::HIGH, delegate_.last_transmit_power());
 }
 
 }  // namespace policy

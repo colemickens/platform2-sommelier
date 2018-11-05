@@ -497,6 +497,7 @@ void Daemon::HandleTabletModeChange(TabletMode mode) {
   for (auto controller : all_backlight_controllers_)
     controller->HandleTabletModeChange(mode);
   wifi_controller_->HandleTabletModeChange(mode);
+  cellular_controller_->HandleTabletModeChange(mode);
 }
 
 void Daemon::ShutDownForPowerButtonWithNoDisplay() {

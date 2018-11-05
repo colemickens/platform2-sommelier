@@ -216,6 +216,9 @@ extern const char kSetWifiTransmitPowerForTabletModePref[];
 // If true, update wifi transmit power based on proximity sensors.
 extern const char kSetWifiTransmitPowerForProximityPref[];
 
+// If true, update cellular transmit power when in tablet vs. clamshell mode.
+extern const char kSetCellularTransmitPowerForTabletModePref[];
+
 // If true, update cellular transmit power based on proximity sensors.
 extern const char kSetCellularTransmitPowerForProximityPref[];
 

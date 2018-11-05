@@ -40,6 +40,9 @@ class CellularController : public SarHandler::Delegate {
   // Ownership of raw pointers remains with the caller.
   void Init(Delegate* delegate, PrefsInterface* prefs);
 
+  // Called when the tablet mode changes.
+  void HandleTabletModeChange(TabletMode mode);
+
   // SarHandler::Delegate overrides:
   void ProximitySensorDetected(UserProximity proximity) override;
   void HandleProximityChange(UserProximity proximity) override;
@@ -48,12 +51,16 @@ class CellularController : public SarHandler::Delegate {
   // Updates transmit power via |delegate_|.
   void UpdateTransmitPower();
 
+  RadioTransmitPower DetermineTransmitPower() const;
+
   Delegate* delegate_ = nullptr;  // Not owned.
 
+  TabletMode tablet_mode_ = TabletMode::UNSUPPORTED;
   UserProximity proximity_ = UserProximity::UNKNOWN;
 
   // True if powerd has been configured to set cellular transmit power in
-  // response to proximity changes.
+  // response to tablet mode or proximity changes.
+  bool set_transmit_power_for_tablet_mode_ = false;
   bool set_transmit_power_for_proximity_ = false;
 
   // GPIO number for the dynamic power reduction signal of a built-in cellular
