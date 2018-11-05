@@ -728,7 +728,8 @@ std::unique_ptr<dbus::Response> Service::SharePath(
   // Validate owner_id.
   base::FilePath owner_id(request.owner_id());
   bool owner_id_required =
-      request.storage_location() == SharePathRequest::DOWNLOADS;
+      request.storage_location() == SharePathRequest::DOWNLOADS ||
+      request.storage_location() == SharePathRequest::MY_FILES;
   if (owner_id.ReferencesParent() || owner_id.BaseName() != owner_id ||
       (owner_id_required && owner_id.value().size() == 0)) {
     LOG(ERROR) << "owner_id references parent, or is "
@@ -771,31 +772,35 @@ std::unique_ptr<dbus::Response> Service::SharePath(
       src = base::FilePath("/home/user/")
                 .Append(owner_id)
                 .Append("Downloads");
-      dst = dst.Append("Downloads");
+      dst = dst.Append("MyFiles").Append("Downloads");
       break;
     case SharePathRequest::DRIVEFS_MY_DRIVE:
       src = base::FilePath("/media/fuse/")
                 .Append(drivefs_mount_name)
                 .Append("root");
-      dst = dst.Append("Google Drive").Append("My Drive");
+      dst = dst.Append("GoogleDrive").Append("MyDrive");
       break;
     case SharePathRequest::DRIVEFS_TEAM_DRIVES:
       src = base::FilePath("/media/fuse/")
                 .Append(drivefs_mount_name)
                 .Append("team_drives");
-      dst = dst.Append("Google Drive").Append("Team Drives");
+      dst = dst.Append("GoogleDrive").Append("TeamDrives");
       break;
     case SharePathRequest::DRIVEFS_COMPUTERS:
       src = base::FilePath("/media/fuse/")
                 .Append(drivefs_mount_name)
                 .Append("Computers");
-      dst = dst.Append("Google Drive").Append("Computers");
+      dst = dst.Append("GoogleDrive").Append("Computers");
       break;
     // Note: DriveFs .Trash directory must not ever be shared since it would
     // allow linux apps to make permanent deletes to Drive.
     case SharePathRequest::REMOVABLE:
       src = base::FilePath("/media/removable");
       dst = dst.Append("removable");
+      break;
+    case SharePathRequest::MY_FILES:
+      src = base::FilePath("/home/user/").Append(owner_id).Append("MyFiles");
+      dst = dst.Append("MyFiles");
       break;
     default:
       LOG(ERROR) << "Unknown storage location: " << request.storage_location();
