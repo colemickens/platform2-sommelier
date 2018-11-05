@@ -15,7 +15,7 @@
 namespace diagnostics {
 
 std::unique_ptr<base::SharedMemory> GetReadOnlySharedMemoryFromMojoHandle(
-    mojo::ScopedHandle handle, int64_t size) {
+    mojo::ScopedHandle handle) {
   base::PlatformFile platform_file;
   auto result = mojo::UnwrapPlatformFile(std::move(handle), &platform_file);
   if (result != MOJO_RESULT_OK) {
@@ -24,7 +24,14 @@ std::unique_ptr<base::SharedMemory> GetReadOnlySharedMemoryFromMojoHandle(
   auto shared_memory = std::make_unique<base::SharedMemory>(
       base::SharedMemoryHandle(platform_file, true /* iauto_close */),
       true /* read_only */);
-  if (!shared_memory->Map(size)) {
+
+  base::SharedMemoryHandle dup_shared_memory_handle =
+      base::SharedMemory::DuplicateHandle(shared_memory->handle());
+  const int64_t file_size = base::File(dup_shared_memory_handle.fd).GetLength();
+  if (file_size <= 0) {
+    return nullptr;
+  }
+  if (!shared_memory->Map(file_size)) {
     return nullptr;
   }
   return shared_memory;
@@ -32,6 +39,7 @@ std::unique_ptr<base::SharedMemory> GetReadOnlySharedMemoryFromMojoHandle(
 
 mojo::ScopedHandle CreateReadOnlySharedMemoryMojoHandle(
     base::StringPiece content) {
+  DCHECK(!content.empty());
   base::SharedMemory shared_memory;
   base::SharedMemoryCreateOptions options;
   options.size = content.length();

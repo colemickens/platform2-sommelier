@@ -20,8 +20,7 @@ TEST(MojoUtils, CreateMojoHandleAndRetrieveContent) {
   EXPECT_TRUE(handle.is_valid());
 
   std::unique_ptr<base::SharedMemory> shared_memory =
-      GetReadOnlySharedMemoryFromMojoHandle(std::move(handle), content.size());
-
+      GetReadOnlySharedMemoryFromMojoHandle(std::move(handle));
   base::StringPiece actual(static_cast<char*>(shared_memory->memory()),
                            shared_memory->mapped_size());
   EXPECT_EQ(content, actual);

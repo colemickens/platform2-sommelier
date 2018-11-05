@@ -37,7 +37,7 @@ class DiagnosticsdMojoService final
     virtual ~Delegate() = default;
 
     // Called when diagnosticsd daemon mojo function
-    // |SendUiMessageToDiagnosticsProcessorWithSize| was called.
+    // |SendUiMessageToDiagnosticsProcessor| was called.
     //
     // Calls gRPC HandleMessageFromUiRequest method on diagnostics processor and
     // puts |json_message| to the gRPC |HandleMessageFromUiRequest| request
@@ -65,11 +65,6 @@ class DiagnosticsdMojoService final
   void SendUiMessageToDiagnosticsProcessor(
       mojo::ScopedHandle json_message,
       const SendUiMessageToDiagnosticsProcessorCallback& callback) override;
-  void SendUiMessageToDiagnosticsProcessorWithSize(
-      mojo::ScopedHandle json_message,
-      int64_t json_message_size,
-      const SendUiMessageToDiagnosticsProcessorWithSizeCallback& callback)
-      override;
 
  private:
   // Unowned. The delegate should outlive this instance.

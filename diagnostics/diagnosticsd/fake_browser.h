@@ -56,7 +56,7 @@ class FakeBrowser final {
   // It's not allowed to call this method again after a successful completion.
   bool BootstrapMojoConnection(FakeMojoFdGenerator* fake_mojo_fd_generator);
 
-  // Call the |SendUiMessageToDiagnosticsProcessorWithSize| Mojo method
+  // Call the |SendUiMessageToDiagnosticsProcessor| Mojo method
   // on diagnosticsd daemon, which will call the |HandleMessageFromUi| gRPC
   // method on diagnostic processor.
   //

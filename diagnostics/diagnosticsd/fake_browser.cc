@@ -26,9 +26,8 @@ namespace {
 
 // TODO(lamzin@google.com): Replace this with piping this data through
 // FakeBrowser into the tests.
-void EmptySendUiMessageToDiagnosticsProcessorWithSizeCallback(
-    mojo::ScopedHandle response_json_message,
-    int64_t response_json_message_size) {}
+void EmptySendUiMessageToDiagnosticsProcessorCallback(
+    mojo::ScopedHandle response_json_message) {}
 
 }  // namespace
 
@@ -60,9 +59,9 @@ bool FakeBrowser::SendUiMessageToDiagnosticsProcessor(
   if (!handle.is_valid()) {
     return false;
   }
-  diagnosticsd_service_ptr_->SendUiMessageToDiagnosticsProcessorWithSize(
-      std::move(handle), json_message.length(),
-      base::Bind(&EmptySendUiMessageToDiagnosticsProcessorWithSizeCallback));
+  diagnosticsd_service_ptr_->SendUiMessageToDiagnosticsProcessor(
+      std::move(handle),
+      base::Bind(&EmptySendUiMessageToDiagnosticsProcessorCallback));
   return true;
 }
 

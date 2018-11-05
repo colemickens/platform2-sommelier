@@ -34,9 +34,8 @@ namespace diagnostics {
 
 namespace {
 
-void EmptySendUiMessageToDiagnosticsProcessorWithSizeCallback(
-    mojo::ScopedHandle response_json_message,
-    int64_t response_json_message_size) {}
+void EmptySendUiMessageToDiagnosticsProcessorCallback(
+    mojo::ScopedHandle response_json_message) {}
 
 class MockDiagnosticsdMojoServiceDelegate
     : public DiagnosticsdMojoService::Delegate {
@@ -73,9 +72,9 @@ class DiagnosticsdMojoServiceTest : public testing::Test {
     mojo::ScopedHandle handle =
         CreateReadOnlySharedMemoryMojoHandle(json_message);
     ASSERT_TRUE(handle.is_valid());
-    service_->SendUiMessageToDiagnosticsProcessorWithSize(
-        std::move(handle), json_message.length(),
-        base::Bind(&EmptySendUiMessageToDiagnosticsProcessorWithSizeCallback));
+    service_->SendUiMessageToDiagnosticsProcessor(
+        std::move(handle),
+        base::Bind(&EmptySendUiMessageToDiagnosticsProcessorCallback));
   }
 
  private:
@@ -88,8 +87,7 @@ class DiagnosticsdMojoServiceTest : public testing::Test {
 
 }  // namespace
 
-TEST_F(DiagnosticsdMojoServiceTest,
-       SendUiMessageToDiagnosticsProcessorWithSize) {
+TEST_F(DiagnosticsdMojoServiceTest, SendUiMessageToDiagnosticsProcessor) {
   base::StringPiece json_message("{\"message\": \"Hello world!\"}");
   EXPECT_CALL(*delegate(),
               SendGrpcUiMessageToDiagnosticsProcessor(json_message, _));
@@ -97,7 +95,7 @@ TEST_F(DiagnosticsdMojoServiceTest,
 }
 
 TEST_F(DiagnosticsdMojoServiceTest,
-       SendUiMessageToDiagnosticsProcessorWithSizeInvalidJSON) {
+       SendUiMessageToDiagnosticsProcessorInvalidJSON) {
   base::StringPiece json_message("{'message': 'Hello world!'}");
   EXPECT_CALL(*delegate(), SendGrpcUiMessageToDiagnosticsProcessor(_, _))
       .Times(0);
