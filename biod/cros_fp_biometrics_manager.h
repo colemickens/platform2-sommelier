@@ -12,10 +12,17 @@
 #include <unordered_set>
 #include <vector>
 
+#include <sys/ioctl.h>
+
 #include <base/files/file_util.h>
 #include <base/values.h>
 
 #include "biod/biod_storage.h"
+extern "C" {
+// Cros EC host commands definition as used by cros_fp.
+#include "biod/ec/cros_ec_dev.h"
+#include "biod/ec/ec_commands.h"
+}
 
 namespace biod {
 
@@ -52,6 +59,9 @@ class CrosFpBiometricsManager : public BiometricsManager {
   bool ResetSensor() override;
 
   bool ResetEntropy() override;
+
+  // Kernel device exposing the MCU command interface.
+  static constexpr char kCrosFpPath[] = "/dev/cros_fp";
 
  protected:
   void EndEnrollSession() override;
@@ -147,6 +157,60 @@ class CrosFpBiometricsManager : public BiometricsManager {
 
   DISALLOW_COPY_AND_ASSIGN(CrosFpBiometricsManager);
 };
+
+// Empty request or response for the EcCommand template below.
+struct EmptyParam {};
+// empty struct is one byte in C++, get the size we want instead.
+template <typename T>
+constexpr size_t realsizeof() {
+  return std::is_empty<T>::value ? 0 : sizeof(T);
+}
+
+// Helper to build and send the command structures for cros_fp.
+template <typename O, typename I>
+class EcCommand {
+ public:
+  explicit EcCommand(uint32_t cmd, uint32_t ver = 0, const O& req = {})
+      : data_({
+            .cmd = {.version = ver,
+                    .command = cmd,
+                    .result = 0xff,
+                    .outsize = realsizeof<O>(),
+                    .insize = realsizeof<I>()},
+            .req = req,
+        }) {}
+
+  void SetRespSize(uint32_t insize) { data_.cmd.insize = insize; }
+  void SetReqSize(uint32_t outsize) { data_.cmd.outsize = outsize; }
+  void SetReq(const O& req) { data_.req = req; }
+
+  bool Run(int ec_fd) {
+    data_.cmd.result = 0xff;
+    int result = ioctl(ec_fd, CROS_EC_DEV_IOCXCMD_V2, &data_);
+    if (result < 0) {
+      PLOG(ERROR) << "FPMCU ioctl failed, command: " << data_.cmd.command;
+      return false;
+    }
+
+    return (static_cast<uint32_t>(result) == data_.cmd.insize);
+  }
+
+  I* Resp() { return &data_.resp; }
+  O* Req() { return &data_.req; }
+  uint16_t Result() { return data_.cmd.result; }
+
+ private:
+  struct {
+    struct cros_ec_command_v2 cmd;
+    union {
+      O req;
+      I resp;
+    };
+  } data_;
+
+  DISALLOW_COPY_AND_ASSIGN(EcCommand);
+};
+
 }  // namespace biod
 
 #endif  // BIOD_CROS_FP_BIOMETRICS_MANAGER_H_
