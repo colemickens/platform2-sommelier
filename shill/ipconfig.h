@@ -18,6 +18,7 @@
 #include "shill/property_store.h"
 #include "shill/refptr_types.h"
 #include "shill/routing_table_entry.h"
+#include "shill/timeout_set.h"
 
 namespace shill {
 class ControlInterface;
@@ -44,6 +45,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
   struct Properties {
     Properties() : address_family(IPAddress::kFamilyUnknown),
                    subnet_prefix(0),
+                   blackholed_addrs(nullptr),
                    default_route(true),
                    blackhole_ipv6(false),
                    mtu(kUndefinedMTU),
@@ -76,6 +78,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
     std::vector<std::string> allowed_iifs;
     // List of uids that have their traffic blocked.
     std::vector<uint32_t> blackholed_uids;
+    TimeoutSet<IPAddress>* blackholed_addrs;
     // Set the flag to true when the interface should be set as the default
     // route.
     bool default_route;
@@ -206,6 +209,8 @@ class IPConfig : public base::RefCounted<IPConfig> {
   // Returns whether the function call changed the configuration.
   bool SetBlackholedUids(const std::vector<uint32_t>& uids);
   bool ClearBlackholedUids();
+  bool SetBlackholedAddrs(TimeoutSet<IPAddress>* addrs);
+  bool ClearBlackholedAddrs();
 
  protected:
   // Inform RPC listeners of changes to our properties. MAY emit

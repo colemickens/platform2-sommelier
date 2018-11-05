@@ -9,6 +9,7 @@
 
 #include <set>
 
+#include <base/bind.h>
 #include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 
@@ -93,6 +94,7 @@ Connection::Connection(int interface_index,
       interface_name_(interface_name),
       technology_(technology),
       per_device_routing_(false),
+      blackholed_addrs_(nullptr),
       fixed_ip_params_(fixed_ip_params),
       table_id_(RT_TABLE_MAIN),
       blackhole_table_id_(RT_TABLE_UNSPEC),
@@ -287,7 +289,8 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
     routing_table_->FreeTableId(blackhole_table_id_);
     blackhole_table_id_ = RT_TABLE_UNSPEC;
   }
-  if (!properties.blackholed_uids.empty()) {
+  blackholed_addrs_ = properties.blackholed_addrs;
+  if (!properties.blackholed_uids.empty() || blackholed_addrs_) {
     blackholed_uids_ = properties.blackholed_uids;
     blackhole_table_id_ = routing_table_->AllocTableId();
     CHECK(blackhole_table_id_);
@@ -364,6 +367,20 @@ void Connection::UpdateRoutingPolicy() {
       entry.family = IPAddress::kFamilyIPv6;
       routing_table_->AddRule(interface_index_, entry);
       rule_created = true;
+    }
+
+    if (blackholed_addrs_) {
+      blackholed_addrs_->Apply(base::Bind(
+          [](Connection* connection, const IPAddress& addr) {
+            // Add |addr| to blackhole table.
+            RoutingPolicyEntry entry(addr.family(), connection->metric_,
+                                     connection->blackhole_table_id_);
+            entry.src = addr;
+            connection->routing_table_->AddRule(connection->interface_index_,
+                                                entry);
+          },
+          base::Unretained(this)));
+      rule_created = rule_created || !blackholed_addrs_->IsEmpty();
     }
   }
 

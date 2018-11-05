@@ -161,6 +161,18 @@ bool IPConfig::ClearBlackholedUids() {
   return SetBlackholedUids(std::vector<uint32_t>());
 }
 
+bool IPConfig::SetBlackholedAddrs(TimeoutSet<IPAddress>* addrs) {
+  if (properties_.blackholed_addrs == addrs) {
+    return false;
+  }
+  properties_.blackholed_addrs = addrs;
+  return true;
+}
+
+bool IPConfig::ClearBlackholedAddrs() {
+  return SetBlackholedAddrs(nullptr);
+}
+
 void IPConfig::UpdateProperties(const Properties& properties,
                                 bool new_lease_acquired) {
   // Take a reference of this instance to make sure we don't get destroyed in
