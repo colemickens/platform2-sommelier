@@ -20,6 +20,26 @@ constexpr size_t kVmBaseAddress = 0x64735c00;         // 100.115.92.0
 constexpr size_t kContainerSubnetPrefix = 28;
 constexpr size_t kVmSubnetPrefix = 30;
 
+// kExpectedAvailableCount[i] == AvailableCount() for subnet with prefix i.
+constexpr size_t kExpectedAvailableCount[] = {
+    0xfffffffe, 0x7ffffffe, 0x3ffffffe, 0x1ffffffe, 0xffffffe, 0x7fffffe,
+    0x3fffffe,  0x1fffffe,  0xfffffe,   0x7ffffe,   0x3ffffe,  0x1ffffe,
+    0xffffe,    0x7fffe,    0x3fffe,    0x1fffe,    0xfffe,    0x7ffe,
+    0x3ffe,     0x1ffe,     0xffe,      0x7fe,      0x3fe,     0x1fe,
+    0xfe,       0x7e,       0x3e,       0x1e,       0xe,       0x6,
+    0x2,        0x0,
+};
+
+// kExpectedNetmask[i] == Netmask() for subnet with prefix i.
+constexpr uint32_t kExpectedNetmask[] = {
+    0x00000000, 0x80000000, 0xc0000000, 0xe0000000, 0xf0000000, 0xf8000000,
+    0xfc000000, 0xfe000000, 0xff000000, 0xff800000, 0xffc00000, 0xffe00000,
+    0xfff00000, 0xfff80000, 0xfffc0000, 0xfffe0000, 0xffff0000, 0xffff8000,
+    0xffffc000, 0xffffe000, 0xfffff000, 0xfffff800, 0xfffffc00, 0xfffffe00,
+    0xffffff00, 0xffffff80, 0xffffffc0, 0xffffffe0, 0xfffffff0, 0xfffffff8,
+    0xfffffffc, 0xfffffffe,
+};
+
 class VmSubnetTest : public ::testing::TestWithParam<size_t> {};
 class ContainerSubnetTest : public ::testing::TestWithParam<size_t> {};
 class PrefixTest : public ::testing::TestWithParam<size_t> {};
@@ -66,14 +86,14 @@ TEST_P(PrefixTest, AvailableCount) {
   size_t prefix = GetParam();
 
   Subnet subnet(0, prefix, base::Bind(&DoNothing));
-  EXPECT_EQ((1ull << (32 - prefix)) - 2, subnet.AvailableCount());
+  EXPECT_EQ(kExpectedAvailableCount[prefix], subnet.AvailableCount());
 }
 
 TEST_P(PrefixTest, Netmask) {
   size_t prefix = GetParam();
 
   Subnet subnet(0, prefix, base::Bind(&DoNothing));
-  EXPECT_EQ(htonl(0xffffffff << (32 - prefix)), subnet.Netmask());
+  EXPECT_EQ(htonl(kExpectedNetmask[prefix]), subnet.Netmask());
 }
 
 INSTANTIATE_TEST_CASE_P(AllValues,

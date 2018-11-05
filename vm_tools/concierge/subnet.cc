@@ -39,7 +39,7 @@ size_t Subnet::AvailableCount() const {
 }
 
 uint32_t Subnet::Netmask() const {
-  return htonl(0xffffffff << (32 - prefix_));
+  return htonl((0xffffffffull << (32 - prefix_)) & 0xffffffff);
 }
 
 size_t Subnet::Prefix() const {
