@@ -216,6 +216,13 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
   if (!request->input_buffer.is_null()) {
     base::AutoLock streams_lock(streams_lock_);
     base::AutoLock buffer_handles_lock(buffer_handles_lock_);
+    if (request->input_buffer->buffer_handle) {
+      if (RegisterBufferLocked(
+              std::move(request->input_buffer->buffer_handle))) {
+        LOGF(ERROR) << "Failed to register input buffer";
+        return -EINVAL;
+      }
+    }
     input_buffer.buffer =
         const_cast<const native_handle_t**>(&input_buffer_handle);
     internal::DeserializeStreamBuffer(request->input_buffer, streams_,
@@ -236,6 +243,12 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
     base::AutoLock buffer_handles_lock(buffer_handles_lock_);
     for (size_t i = 0; i < num_output_buffers; ++i) {
       mojom::Camera3StreamBufferPtr& out_buf_ptr = request->output_buffers[i];
+      if (out_buf_ptr->buffer_handle) {
+        if (RegisterBufferLocked(std::move(out_buf_ptr->buffer_handle))) {
+          LOGF(ERROR) << "Failed to register output buffer";
+          return -EINVAL;
+        }
+      }
       internal::DeserializeStreamBuffer(out_buf_ptr, streams_, buffer_handles_,
                                         &output_buffers.at(i));
     }
@@ -313,41 +326,10 @@ int32_t CameraDeviceAdapter::RegisterBuffer(
     uint32_t height,
     mojo::Array<uint32_t> strides,
     mojo::Array<uint32_t> offsets) {
-  if (!IsMatchingFormat(hal_pixel_format, drm_format)) {
-    LOG(ERROR) << "HAL pixel format " << hal_pixel_format
-               << " does not match DRM format " << FormatToString(drm_format);
-    return -EINVAL;
-  }
-  size_t num_planes = fds.size();
-
-  std::unique_ptr<camera_buffer_handle_t> buffer_handle(
-      new camera_buffer_handle_t());
-  buffer_handle->base.version = sizeof(buffer_handle->base);
-  buffer_handle->base.numFds = kCameraBufferHandleNumFds;
-  buffer_handle->base.numInts = kCameraBufferHandleNumInts;
-
-  buffer_handle->magic = kCameraBufferMagic;
-  buffer_handle->buffer_id = buffer_id;
-  buffer_handle->type = static_cast<int32_t>(type);
-  buffer_handle->drm_format = drm_format;
-  buffer_handle->hal_pixel_format = static_cast<uint32_t>(hal_pixel_format);
-  buffer_handle->width = width;
-  buffer_handle->height = height;
-  for (size_t i = 0; i < num_planes; ++i) {
-    buffer_handle->fds[i] = UnwrapPlatformHandle(std::move(fds[i]));
-    buffer_handle->strides[i] = strides[i];
-    buffer_handle->offsets[i] = offsets[i];
-  }
-  {
-    base::AutoLock l(buffer_handles_lock_);
-    buffer_handles_[buffer_id] = std::move(buffer_handle);
-  }
-
-  VLOGF(1) << std::hex << "Buffer 0x" << buffer_id << " registered: "
-           << "format: " << FormatToString(drm_format)
-           << " dimension: " << std::dec << width << "x" << height
-           << " num_planes: " << num_planes;
-  return 0;
+  base::AutoLock l(buffer_handles_lock_);
+  return CameraDeviceAdapter::RegisterBufferLocked(
+      buffer_id, type, std::move(fds), drm_format, hal_pixel_format, width,
+      height, std::move(strides), std::move(offsets));
 }
 
 int32_t CameraDeviceAdapter::Close() {
@@ -429,6 +411,59 @@ void CameraDeviceAdapter::Notify(const camera3_callback_ops_t* ops,
     LOGF(ERROR) << "Fatal device error; aborting the camera service";
     _exit(EIO);
   }
+}
+
+int32_t CameraDeviceAdapter::RegisterBufferLocked(
+    uint64_t buffer_id,
+    mojom::Camera3DeviceOps::BufferType type,
+    mojo::Array<mojo::ScopedHandle> fds,
+    uint32_t drm_format,
+    mojom::HalPixelFormat hal_pixel_format,
+    uint32_t width,
+    uint32_t height,
+    mojo::Array<uint32_t> strides,
+    mojo::Array<uint32_t> offsets) {
+  if (!IsMatchingFormat(hal_pixel_format, drm_format)) {
+    LOG(ERROR) << "HAL pixel format " << hal_pixel_format
+               << " does not match DRM format " << FormatToString(drm_format);
+    return -EINVAL;
+  }
+  size_t num_planes = fds.size();
+
+  std::unique_ptr<camera_buffer_handle_t> buffer_handle(
+      new camera_buffer_handle_t());
+  buffer_handle->base.version = sizeof(buffer_handle->base);
+  buffer_handle->base.numFds = kCameraBufferHandleNumFds;
+  buffer_handle->base.numInts = kCameraBufferHandleNumInts;
+
+  buffer_handle->magic = kCameraBufferMagic;
+  buffer_handle->buffer_id = buffer_id;
+  buffer_handle->type = static_cast<int32_t>(type);
+  buffer_handle->drm_format = drm_format;
+  buffer_handle->hal_pixel_format = static_cast<uint32_t>(hal_pixel_format);
+  buffer_handle->width = width;
+  buffer_handle->height = height;
+  for (size_t i = 0; i < num_planes; ++i) {
+    buffer_handle->fds[i] = UnwrapPlatformHandle(std::move(fds[i]));
+    buffer_handle->strides[i] = strides[i];
+    buffer_handle->offsets[i] = offsets[i];
+  }
+  buffer_handles_[buffer_id] = std::move(buffer_handle);
+
+  VLOGF(1) << std::hex << "Buffer 0x" << buffer_id << " registered: "
+           << "format: " << FormatToString(drm_format)
+           << " dimension: " << std::dec << width << "x" << height
+           << " num_planes: " << num_planes;
+  return 0;
+}
+
+int32_t CameraDeviceAdapter::RegisterBufferLocked(
+    mojom::CameraBufferHandlePtr buffer) {
+  return RegisterBufferLocked(
+      buffer->buffer_id, mojom::Camera3DeviceOps::BufferType::GRALLOC,
+      std::move(buffer->fds), buffer->drm_format, buffer->hal_pixel_format,
+      buffer->width, buffer->height, std::move(buffer->strides),
+      std::move(buffer->offsets));
 }
 
 mojom::Camera3CaptureResultPtr CameraDeviceAdapter::PrepareCaptureResult(

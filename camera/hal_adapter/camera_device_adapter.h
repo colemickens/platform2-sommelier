@@ -113,6 +113,17 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   static void Notify(const camera3_callback_ops_t* ops,
                      const camera3_notify_msg_t* msg);
 
+  int32_t RegisterBufferLocked(uint64_t buffer_id,
+                               mojom::Camera3DeviceOps::BufferType type,
+                               mojo::Array<mojo::ScopedHandle> fds,
+                               uint32_t drm_format,
+                               mojom::HalPixelFormat hal_pixel_format,
+                               uint32_t width,
+                               uint32_t height,
+                               mojo::Array<uint32_t> strides,
+                               mojo::Array<uint32_t> offsets);
+  int32_t RegisterBufferLocked(mojom::CameraBufferHandlePtr buffer);
+
   // NOTE: All the fds in |result| (e.g. fences and buffer handles) will be
   // closed after the function returns.  The caller needs to dup a fd in
   // |result| if the fd will be accessed after calling ProcessCaptureResult.
