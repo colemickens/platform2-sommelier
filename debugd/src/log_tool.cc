@@ -69,6 +69,7 @@ const Log kCommandLogs[] = {
   { "atrus_logs", "cat /var/log/atrus.log 2>/dev/null" },
   { "authpolicy", "cat /var/log/authpolicy.log" },
   { "bootstat_summary", "/usr/bin/bootstat_summary"},
+  { "bio_crypto_init.log", "cat /var/log/bio_crypto_init/bio_crypto_init.log" },
   { "biod.LATEST", "cat /var/log/biod/biod.LATEST" },
   { "biod.PREVIOUS", "cat /var/log/biod/biod.PREVIOUS" },
   { "bios_info", "cat /var/log/bios_info.txt" },
