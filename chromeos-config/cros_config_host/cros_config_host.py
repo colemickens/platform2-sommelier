@@ -18,8 +18,6 @@ import os
 import sys
 
 from libcros_config_host import CrosConfig
-from libcros_config_host_fdt import CrosConfigFdt
-from libcros_config_host import FORMAT_YAML
 
 def DumpConfig(config):
   """Dumps all of the config to stdout
@@ -156,47 +154,6 @@ def GetFirmwareBuildCombinations(config, targets):
     for value in target_values:
       print(value)
 
-def WriteTargetDirectories():
-  """Writes out a file containing the directory target info"""
-  target_dirs = CrosConfigFdt.GetTargetDirectories()
-  print('''/*
- * This is a generated file, DO NOT EDIT!'
- *
- * This provides a map from property name to target directory for all PropFile
- * objects defined in the schema.
- */
-
-/ {
-\tchromeos {
-\t\tschema {
-\t\t\ttarget-dirs {''')
-  for name in sorted(target_dirs.keys()):
-    print('\t\t\t\t%s = "%s";' % (name, target_dirs[name]))
-  print('''\t\t\t};
-\t\t};
-\t};
-};
-''')
-
-def WritePhandleProperties():
-  """Writes out a file containing the directory target info"""
-  phandle_props = CrosConfigFdt.GetPhandleProperties()
-  quoted = ['"%s"' % prop for prop in sorted(phandle_props)]
-  print('''/*
- * This is a generated file, DO NOT EDIT!'
- *
- * This provides a list of property names which are used as phandles in the
- * schema.
- */
-
-/ {
-\tchromeos {
-\t\tschema {
-\t\t\tphandle-properties = %s;
-\t\t};
-\t};
-};
-''' % (', '.join(quoted)))
 
 def GetWallpaperFiles(config):
   """Get the wallpaper files needed for installation
@@ -325,12 +282,6 @@ def main(argv=None):
   if not opts.model and 'CROS_CONFIG_MODEL' in os.environ:
     opts.model = os.environ['CROS_CONFIG_MODEL']
 
-  if opts.subcommand == 'write-target-dirs':
-    WriteTargetDirectories()
-    return
-  elif opts.subcommand == 'write-phandle-properties':
-    WritePhandleProperties()
-    return
   config = CrosConfig(opts.config, model_filter_regex=opts.model)
   # Get all models we are invoking on (if any).
   if opts.model and not config.GetDeviceConfigs():

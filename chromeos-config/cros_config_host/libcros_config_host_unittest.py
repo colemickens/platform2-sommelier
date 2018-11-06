@@ -16,12 +16,10 @@ import os
 import sys
 import unittest
 
-import fdt_util
-from libcros_config_host import CrosConfig, FORMAT_FDT
+from libcros_config_host import CrosConfig
 from libcros_config_host_base import BaseFile, TouchFile, FirmwareInfo
 
 
-DTS_FILE = '../libcros_config/test.dts'
 YAML_FILE = '../libcros_config/test.yaml'
 MODELS = sorted(['some', 'another', 'whitelabel'])
 ANOTHER_BUCKET = ('gs://chromeos-binaries/HOME/bcs-another-private/overlay-'
@@ -60,8 +58,9 @@ def _FormatNamedTuplesDict(value):
    return json.dumps(result, indent=2)
 
 
-class CommonTests(object):
-  """Shared tests between the YAML and FDT implementations."""
+class CrosConfigHostTest(unittest.TestCase):
+  def setUp(self):
+    self.filepath = os.path.join(os.path.dirname(__file__), YAML_FILE)
 
   def _assertEqualsNamedTuplesDict(self, expected, result):
     self.assertEqual(
@@ -341,153 +340,6 @@ class CommonTests(object):
                        brand_code='WLBB'))])
     result = CrosConfig(self.filepath).GetFirmwareInfo()
     self._assertEqualsNamedTuplesDict(result, expected)
-
-
-class CrosConfigHostTestFdt(unittest.TestCase, CommonTests):
-  """Tests for master configuration in device tree format"""
-  def setUp(self):
-    path = os.path.join(os.path.dirname(__file__), DTS_FILE)
-    (self.filepath, self.temp_file) = fdt_util.EnsureCompiled(path)
-
-  def tearDown(self):
-    os.remove(self.temp_file.name)
-
-  def testGoodDtbFile(self):
-    self.assertIsNotNone(CrosConfig(self.filepath))
-
-  def testNodeSubnames(self):
-    config = CrosConfig(self.filepath)
-    for name, model in config.models.iteritems():
-      self.assertEqual(name, model.name)
-
-  def testPathNode(self):
-    config = CrosConfig(self.filepath)
-    self.assertIsNotNone(config.models['another'].PathNode('/firmware'))
-
-  def testBadPathNode(self):
-    config = CrosConfig(self.filepath)
-    self.assertIsNone(config.models['another'].PathNode('/dne'))
-
-  def testPathProperty(self):
-    config = CrosConfig(self.filepath)
-    another = config.models['another']
-    ec_image = another.PathProperty('/firmware', 'ec-image')
-    self.assertEqual(ec_image.value, 'bcs://Another_EC.1111.11.1.tbz2')
-
-  def testBadPathProperty(self):
-    config = CrosConfig(self.filepath)
-    another = config.models['another']
-    self.assertIsNone(another.PathProperty('/firmware', 'dne'))
-    self.assertIsNone(another.PathProperty('/dne', 'ec-image'))
-
-  def testSinglePhandleFollowProperty(self):
-    config = CrosConfig(self.filepath)
-    another = config.models['another']
-    bcs_overlay = another.PathProperty('/firmware', 'bcs-overlay')
-    self.assertEqual(bcs_overlay.value, 'overlay-another-private')
-
-  def testSinglePhandleFollowNode(self):
-    config = CrosConfig(self.filepath)
-    another = config.models['another']
-    target = another.PathProperty('/firmware/build-targets', 'coreboot')
-    self.assertEqual(target.value, 'another')
-
-  def testGetMergedPropertiesAnother(self):
-    config = CrosConfig(self.filepath)
-    another = config.models['another']
-    stylus = another.PathNode('touch/stylus')
-    props = another.GetMergedProperties(stylus, 'touch-type')
-    self.assertSequenceEqual(
-        props,
-        {'version': 'another-version',
-         'vendor': 'some_stylus_vendor',
-         'firmware-bin': '{vendor}/{version}.hex',
-         'firmware-symlink': '{vendor}_firmware_{MODEL}.bin'})
-
-  def testGetMergedPropertiesSome(self):
-    config = CrosConfig(self.filepath)
-    some = config.models['some']
-    touchscreen = some.PathNode('touch/touchscreen@0')
-    props = some.GetMergedProperties(touchscreen, 'touch-type')
-    self.assertEqual(
-        props,
-        {'pid': 'some-other-pid',
-         'version': 'some-other-version',
-         'vendor': 'some_touch_vendor',
-         'firmware-bin': '{vendor}/{pid}_{version}.bin',
-         'firmware-symlink': '{vendor}ts_i2c_{pid}.bin'})
-
-  def testGetMergedPropertiesDefault(self):
-    """Test that the 'default' property is used when collecting properties"""
-    config = CrosConfig(self.filepath)
-    another = config.models['another']
-    audio = another.PathNode('/audio/main')
-    props = another.GetMergedProperties(audio, 'audio-type')
-    self.assertSequenceEqual(
-        props,
-        {'cras-config-dir': 'another',
-         'ucm-suffix': 'another',
-         'topology-name': 'another',
-         'card': 'a-card',
-         'volume': 'cras-config/{cras-config-dir}/{card}',
-         'dsp-ini': 'cras-config/{cras-config-dir}/dsp.ini',
-         'hifi-conf': 'ucm-config/{card}.{ucm-suffix}/HiFi.conf',
-         'alsa-conf': 'ucm-config/{card}.{ucm-suffix}/{card}.' +
-                      '{ucm-suffix}.conf',
-         'topology-bin': 'topology/{topology-name}-tplg.bin'})
-
-  def testWriteTargetDirectories(self):
-    """Test that we can write out a list of file paths"""
-    config = CrosConfig(self.filepath)
-    target_dirs = config.GetTargetDirectories()
-    self.assertEqual(target_dirs['dptf-dv'], '/etc/dptf')
-    self.assertEqual(target_dirs['hifi-conf'], '/usr/share/alsa/ucm')
-    self.assertEqual(target_dirs['alsa-conf'], '/usr/share/alsa/ucm')
-    self.assertEqual(target_dirs['volume'], '/etc/cras')
-    self.assertEqual(target_dirs['dsp-ini'], '/etc/cras')
-    self.assertEqual(target_dirs['cras-config-dir'], '/etc/cras')
-
-  def testSubmodel(self):
-    """Test that we can read properties from the submodel"""
-    config = CrosConfig(self.filepath)
-    some = config.models['some']
-    self.assertEqual(
-        some.SubmodelPathProperty('touch', '/audio/main', 'ucm-suffix').value,
-        'some')
-    self.assertEqual(
-        some.SubmodelPathProperty('touch', '/touch', 'present').value, 'yes')
-    self.assertEqual(
-        some.SubmodelPathProperty('notouch', '/touch', 'present').value, 'no')
-
-  def testGetProperty(self):
-    """Test that we can read properties from non-model nodes"""
-    config = CrosConfig(self.filepath)
-    # pylint: disable=protected-access
-    touch = config.GetFamilyNode('/touch/some-touchscreen')
-    self.assertEqual(touch.name, 'some-touchscreen')
-    self.assertEqual(touch.Property('vendor').value, 'some_touch_vendor')
-    self.assertEqual(
-        config.GetFamilyProperty('/touch/some-touchscreen', 'vendor').value,
-        'some_touch_vendor')
-
-  def testDefaultConfig(self):
-    if 'SYSROOT' in os.environ:
-      del os.environ['SYSROOT']
-    with self.assertRaisesRegexp(ValueError,
-                                 'No master configuration is available'):
-      CrosConfig()
-
-    os.environ['SYSROOT'] = 'fred'
-    with self.assertRaises(IOError) as e:
-      CrosConfig()
-    self.assertIn('fred/usr/share/chromeos-config/config.dtb',
-                  str(e.exception))
-
-
-class CrosConfigHostTestYaml(unittest.TestCase, CommonTests):
-  """Tests for master configuration in yaml format"""
-  def setUp(self):
-    self.filepath = os.path.join(os.path.dirname(__file__), YAML_FILE)
 
 
 if __name__ == '__main__':

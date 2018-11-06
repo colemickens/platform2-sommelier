@@ -13,13 +13,9 @@ from __future__ import print_function
 import os
 import sys
 
-import libcros_config_host_fdt
 import libcros_config_host_json
 
 UNIBOARD_CONFIG_INSTALL_DIR = 'usr/share/chromeos-config'
-
-# We support two configuration file format
-(FORMAT_FDT, FORMAT_YAML) = range(2)
 
 def CrosConfig(fname=None, model_filter_regex=None):
   """Create a new CrosConfigBaseImpl object
@@ -31,10 +27,6 @@ def CrosConfig(fname=None, model_filter_regex=None):
     fname: Filename of config file
     model_filter_regex: Only returns configs that match the filter
   """
-  if fname and ('.yaml' in fname or '.json' in fname):
-    config_format = FORMAT_YAML
-  else:
-    config_format = FORMAT_FDT
   if not fname:
     if 'SYSROOT' not in os.environ:
       raise ValueError('No master configuration is available outside the '
@@ -44,22 +36,10 @@ def CrosConfig(fname=None, model_filter_regex=None):
         UNIBOARD_CONFIG_INSTALL_DIR,
         'yaml',
         'config.yaml')
-    if os.path.exists(fname):
-      config_format = FORMAT_YAML
-    else:
-      fname = os.path.join(
-          os.environ['SYSROOT'], UNIBOARD_CONFIG_INSTALL_DIR, 'config.dtb')
-      config_format = FORMAT_FDT
   if fname == '-':
     infile = sys.stdin
   else:
     infile = open(fname)
 
-  if config_format == FORMAT_FDT:
-    return libcros_config_host_fdt.CrosConfigFdt(
-        infile, model_filter_regex=model_filter_regex)
-  elif config_format == FORMAT_YAML:
-    return libcros_config_host_json.CrosConfigJson(
-        infile, model_filter_regex=model_filter_regex)
-  else:
-    raise ValueError("Invalid config format '%s' requested" % config_format)
+  return libcros_config_host_json.CrosConfigJson(
+      infile, model_filter_regex=model_filter_regex)
