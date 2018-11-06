@@ -45,9 +45,7 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
     if (allow_unencrypted_) {
       oobe_config_->UnencryptedRollbackRestore();
     } else {
-      // TODO(zentaro): Add encrypted rollback restore.
-      LOG(ERROR) << "Encrypted rollback is not yet supported.";
-      return false;
+      oobe_config_->EncryptedRollbackRestore();
     }
 
     // We create kFirstStageCompletedFile after this.

@@ -73,6 +73,8 @@ int RunDaemon(bool allow_unencrypted) {
 // Execute the first stage of the restore process itself immediately (without
 // waiting for Chrome to initiate it). Use only for testing.
 constexpr char kTestUnencrypted[] = "test-unencrypted";
+constexpr char kTestEncrypted[] = "test-encrypted";
+
 // Starts the service using unencrypted rollback data. Use only for testing.
 constexpr char kAllowUnencrypted[] = "allow-unencrypted";
 
@@ -83,6 +85,8 @@ int main(int argc, char* argv[]) {
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   if (cl->HasSwitch(kTestUnencrypted)) {
     return oobe_config::OobeConfig().UnencryptedRollbackRestore();
+  } else if (cl->HasSwitch(kTestEncrypted)) {
+    return oobe_config::OobeConfig().EncryptedRollbackRestore();
   } else if (cl->HasSwitch(kAllowUnencrypted)) {
     return oobe_config::RunDaemon(/*allow_unencrypted=*/true);
   } else {

@@ -34,7 +34,6 @@ int main(int argc, char* argv[]) {
   if (cl->HasSwitch(kTestUnencrypted)) {
     oobe_config::OobeConfig().UnencryptedRollbackSave();
   } else {
-    // Encrypted data save is not supported yet.
-    LOG(INFO) << "Not supported yet.";
+    oobe_config::OobeConfig().EncryptedRollbackSave();
   }
 }
