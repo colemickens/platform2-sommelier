@@ -23,7 +23,6 @@ setup(
             'cros_config_schema = cros_config_host.cros_config_schema:main',
             'cros_config_test_schema = \
                 cros_config_host.cros_config_test_schema:main',
-            'validate_config = cros_config_host.validate_config:Main',
         ],
     },
     description='Access to the master configuration from the host',
