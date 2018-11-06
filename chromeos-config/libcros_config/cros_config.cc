@@ -5,7 +5,6 @@
 // Library to provide access to the Chrome OS master configuration
 
 #include "chromeos-config/libcros_config/cros_config.h"
-#include "chromeos-config/libcros_config/cros_config_fdt.h"
 #include "chromeos-config/libcros_config/cros_config_json.h"
 #include "chromeos-config/libcros_config/identity_x86.h"
 
@@ -27,9 +26,7 @@ const char kProductName[] = "/sys/devices/virtual/dmi/id/product_name";
 const char kProductSku[] = "/sys/devices/virtual/dmi/id/product_sku";
 const char kArmSkuId[] = "/proc/device-tree/firmware/coreboot/sku-id";
 const char kDeviceTreeCompatiblePath[] = "/proc/device-tree/compatible";
-const char kConfigDtbPath[] = "/usr/share/chromeos-config/config.dtb";
 const char kConfigJsonPath[] = "/usr/share/chromeos-config/config.json";
-const char kDtbExtension[] = ".dtb";
 }  // namespace
 
 namespace brillo {
@@ -103,9 +100,6 @@ bool CrosConfig::InitModel(const int sku_id) {
   bool init_config = false;
   if (base::PathExists(json_path)) {
     init_config = InitCrosConfig(json_path);
-  } else {
-    base::FilePath dtb_path(kConfigDtbPath);
-    init_config = InitCrosConfig(dtb_path);
   }
   if (!init_config) {
     return false;
@@ -235,11 +229,7 @@ bool CrosConfig::InitCrosConfig(const base::FilePath& filepath) {
     return false;
   }
 
-  if (filepath.MatchesExtension(kDtbExtension)) {
-    cros_config_ = std::make_unique<CrosConfigFdt>();
-  } else {
-    cros_config_ = std::make_unique<CrosConfigJson>();
-  }
+  cros_config_ = std::make_unique<CrosConfigJson>();
 
   cros_config_->ReadConfigFile(filepath);
 

@@ -28,11 +28,7 @@ std::vector<std::string> GetCrosConfigCommand(
     const std::vector<std::string>& params) {
   std::vector<std::string> cmd = {
       base::StringPrintf("%s/cros_config", installed_dir),
-#ifndef USE_JSON
-      "--test_database=test.dtb",
-#else
-      "--test_database=test.json",
-#endif
+      "--test_file=test.json",
       "--test_name=Another"};
   cmd.insert(cmd.end(), params.begin(), params.end());
   return cmd;

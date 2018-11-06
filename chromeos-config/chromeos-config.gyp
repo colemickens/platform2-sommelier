@@ -12,7 +12,6 @@
       'type': 'shared_library',
       'sources': [
         'libcros_config/cros_config.cc',
-        'libcros_config/cros_config_fdt.cc',
         'libcros_config/cros_config_impl.cc',
         'libcros_config/cros_config_json.cc',
         'libcros_config/fake_cros_config.cc',
@@ -58,39 +57,8 @@
           ],
         },
         {
-          'target_name': 'cros_config_json_test',
-          'type': 'executable',
-          'defines': [
-            'USE_JSON',
-          ],
-          'includes': ['../common-mk/common_test.gypi'],
-          'include_dirs': [
-            'libcros_config',
-          ],
-          'dependencies': [
-            'libcros_config',
-          ],
-          'sources': [
-            'libcros_config/cros_config_test.cc',
-          ],
-        },
-        {
           'target_name': 'cros_config_main_test',
           'type': 'executable',
-          'includes': ['../common-mk/common_test.gypi'],
-          'dependencies': [
-            'cros_config',
-          ],
-          'sources': [
-            'cros_config_main_test.cc',
-          ],
-        },
-        {
-          'target_name': 'cros_config_main_json_test',
-          'type': 'executable',
-          'defines': [
-            'USE_JSON',
-          ],
           'includes': ['../common-mk/common_test.gypi'],
           'dependencies': [
             'cros_config',
