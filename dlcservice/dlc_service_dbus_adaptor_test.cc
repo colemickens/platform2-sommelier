@@ -10,11 +10,13 @@
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <gtest/gtest.h>
 #include <imageloader/dbus-proxy-mocks.h>
+#include <update_engine/dbus-constants.h>
 #include <update_engine/dbus-proxy-mocks.h>
 
 #include "dlcservice/boot_slot.h"
 #include "dlcservice/dlc_service_dbus_adaptor.h"
 #include "dlcservice/mock_boot_device.h"
+#include "dlcservice/utils.h"
 
 namespace dlcservice {
 
@@ -32,10 +34,23 @@ class DlcServiceDBusAdaptorTest : public testing::Test {
     content_path_ = scoped_temp_dir_.GetPath().Append("stateful");
     base::CreateDirectory(manifest_path_);
     base::CreateDirectory(content_path_);
-    // Create DLC sub-folders.
+
+    // Create DLC manifest sub-directories.
     base::CreateDirectory(manifest_path_.Append(kFirstDlc));
     base::CreateDirectory(manifest_path_.Append(kSecondDlc));
-    base::CreateDirectory(content_path_.Append(kFirstDlc));
+
+    // Create DLC content sub-directories.
+    base::FilePath image_a_path =
+        utils::GetDlcModuleImagePath(content_path_, kFirstDlc, 0);
+    base::CreateDirectory(image_a_path.DirName());
+    // Create empty image files.
+    base::File image_a(image_a_path,
+                       base::File::FLAG_OPEN_ALWAYS | base::File::FLAG_READ);
+    base::FilePath image_b_path =
+        utils::GetDlcModuleImagePath(content_path_, kFirstDlc, 1);
+    base::CreateDirectory(image_b_path.DirName());
+    base::File image_b(image_b_path,
+                       base::File::FLAG_OPEN_ALWAYS | base::File::FLAG_READ);
   }
 
  protected:
@@ -90,6 +105,57 @@ TEST_F(DlcServiceDBusAdaptorTest, GetInstalledTest) {
   EXPECT_TRUE(dlc_module_list.ParseFromString(dlc_module_list_str));
   EXPECT_EQ(dlc_module_list.dlc_module_infos_size(), 1);
   EXPECT_EQ(dlc_module_list.dlc_module_infos(0).dlc_id(), kFirstDlc);
+}
+
+TEST_F(DlcServiceDBusAdaptorTest, UninstallTest) {
+  auto mock_image_loader_proxy =
+      std::make_unique<org::chromium::ImageLoaderInterfaceProxyMock>();
+  ON_CALL(*(mock_image_loader_proxy.get()),
+          UnloadDlcImage(testing::_, testing::_, testing::_, testing::_))
+      .WillByDefault(
+          DoAll(testing::SetArgPointee<1>(true), testing::Return(true)));
+  auto mock_update_engine_proxy =
+      std::make_unique<org::chromium::UpdateEngineInterfaceProxyMock>();
+  std::string update_status_idle = update_engine::kUpdateStatusIdle;
+  ON_CALL(*(mock_update_engine_proxy.get()),
+          GetStatus(testing::_, testing::_, testing::_, testing::_, testing::_,
+                    testing::_, testing::_))
+      .WillByDefault(DoAll(testing::SetArgPointee<2>(update_status_idle),
+                           testing::Return(true)));
+
+  DlcServiceDBusAdaptor dlc_service_dbus_adaptor(
+      std::move(mock_image_loader_proxy), std::move(mock_update_engine_proxy),
+      std::make_unique<BootSlot>(std::make_unique<MockBootDevice>()),
+      manifest_path_, content_path_);
+  EXPECT_TRUE(dlc_service_dbus_adaptor.Uninstall(nullptr, kFirstDlc));
+  EXPECT_FALSE(base::PathExists(content_path_.Append(kFirstDlc)));
+}
+
+TEST_F(DlcServiceDBusAdaptorTest, UninstallFailureTest) {
+  DlcServiceDBusAdaptor dlc_service_dbus_adaptor(
+      std::make_unique<org::chromium::ImageLoaderInterfaceProxyMock>(),
+      std::make_unique<org::chromium::UpdateEngineInterfaceProxyMock>(),
+      std::make_unique<BootSlot>(std::make_unique<MockBootDevice>()),
+      manifest_path_, content_path_);
+
+  EXPECT_FALSE(dlc_service_dbus_adaptor.Uninstall(nullptr, kSecondDlc));
+}
+
+TEST_F(DlcServiceDBusAdaptorTest, UninstallUnmountFailureTest) {
+  auto mock_image_loader_proxy =
+      std::make_unique<org::chromium::ImageLoaderInterfaceProxyMock>();
+  ON_CALL(*(mock_image_loader_proxy.get()),
+          UnloadDlcImage(testing::_, testing::_, testing::_, testing::_))
+      .WillByDefault(
+          DoAll(testing::SetArgPointee<1>(false), testing::Return(true)));
+
+  DlcServiceDBusAdaptor dlc_service_dbus_adaptor(
+      std::move(mock_image_loader_proxy),
+      std::make_unique<org::chromium::UpdateEngineInterfaceProxyMock>(),
+      std::make_unique<BootSlot>(std::make_unique<MockBootDevice>()),
+      manifest_path_, content_path_);
+  EXPECT_FALSE(dlc_service_dbus_adaptor.Uninstall(nullptr, kFirstDlc));
+  EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
 }
 
 }  // namespace dlcservice

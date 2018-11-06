@@ -28,7 +28,7 @@ class BootSlot {
   // slot the system is currently booted from.
   bool GetCurrentSlot(std::string* boot_disk_name_out,
                       int* num_slots_out,
-                      unsigned int* current_slot_out);
+                      int* current_slot_out);
 
  private:
   FRIEND_TEST(BootSlotTest, SplitPartitionNameTest);
@@ -50,7 +50,7 @@ class BootSlot {
   // |partition_name|, |slot| and |num_slots|. In case of invalid data, returns
   // -1.
   int GetPartitionNumber(const std::string& partition_name,
-                         unsigned int slot,
+                         int slot,
                          int num_slots);
 
   std::unique_ptr<BootDeviceInterface> boot_device_;

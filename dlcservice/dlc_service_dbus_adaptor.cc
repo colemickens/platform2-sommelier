@@ -12,8 +12,10 @@
 #include <brillo/errors/error.h>
 #include <brillo/errors/error_codes.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
+#include <update_engine/dbus-constants.h>
 
 #include "dlcservice/boot_slot.h"
+#include "dlcservice/utils.h"
 
 namespace dlcservice {
 
@@ -28,12 +30,6 @@ void LogAndSetError(brillo::ErrorPtr* err, const std::string& msg) {
   if (err)
     *err = brillo::Error::Create(FROM_HERE, "dlcservice", "INTERNAL", msg);
   LOG(ERROR) << msg;
-}
-
-// Returns the path to a DLC module.
-base::FilePath GetDlcModulePath(const base::FilePath& dlc_module_root_path,
-                                const std::string& dlc_module_id) {
-  return dlc_module_root_path.Append(dlc_module_id);
 }
 
 }  // namespace
@@ -63,13 +59,61 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
                                     const std::string& in_id,
                                     std::string* mount_point_out) {
   // TODO(xiaochu): implement this.
-  *mount_point_out = "";
-  return true;
+  LogAndSetError(err, "This API is not implemented.");
+  return false;
 }
 
 bool DlcServiceDBusAdaptor::Uninstall(brillo::ErrorPtr* err,
                                       const std::string& id_in) {
-  // TODO(xiaochu): implement this.
+  // Initialize supported DLC module id list.
+  std::vector<std::string> dlc_module_ids = ScanDlcModules();
+  // Checks if the DLC module id is valid.
+  if (std::find(dlc_module_ids.begin(), dlc_module_ids.end(), id_in) ==
+      dlc_module_ids.end()) {
+    LogAndSetError(err, "The DLC ID provided is invalid.");
+    return false;
+  }
+  // Checks if the DLC module is installed.
+  const base::FilePath dlc_module_content_path =
+      utils::GetDlcModulePath(content_dir_, id_in);
+  if (!base::PathExists(dlc_module_content_path) ||
+      !base::PathExists(utils::GetDlcModuleImagePath(content_dir_, id_in, 0)) ||
+      !base::PathExists(utils::GetDlcModuleImagePath(content_dir_, id_in, 1))) {
+    LogAndSetError(err, "The DLC module is not installed properly.");
+    return false;
+  }
+  // Unmounts the DLC module image.
+  bool success = false;
+  if (!image_loader_proxy_->UnloadDlcImage(id_in, &success, nullptr)) {
+    LogAndSetError(err, "Imageloader is not available.");
+    return false;
+  }
+  if (!success) {
+    LogAndSetError(err, "Imageloader UnloadDlcImage failed.");
+    return false;
+  }
+  // Checks whether update_engine is busy.
+  int64_t last_checked_time = 0;
+  double progress = 0;
+  std::string current_operation;
+  std::string new_version;
+  int64_t new_size = 0;
+  if (!update_engine_proxy_->GetStatus(&last_checked_time, &progress,
+                                       &current_operation, &new_version,
+                                       &new_size, nullptr)) {
+    LogAndSetError(err, "Update Engine is not available.");
+    return false;
+  }
+  if (current_operation != update_engine::kUpdateStatusIdle &&
+      current_operation != update_engine::kUpdateStatusUpdatedNeedReboot) {
+    LogAndSetError(err, "Update Engine is performing operations.");
+    return false;
+  }
+  // Deletes the DLC module images.
+  if (!base::DeleteFile(dlc_module_content_path, true)) {
+    LogAndSetError(err, "DLC image folder could not be deleted.");
+    return false;
+  }
   return true;
 }
 
@@ -82,7 +126,7 @@ bool DlcServiceDBusAdaptor::GetInstalled(brillo::ErrorPtr* err,
   DlcModuleList dlc_module_list;
   for (const auto& dlc_module_id : dlc_module_ids) {
     auto dlc_module_content_path =
-        GetDlcModulePath(content_dir_, dlc_module_id);
+        utils::GetDlcModulePath(content_dir_, dlc_module_id);
     if (base::PathExists(dlc_module_content_path)) {
       DlcModuleInfo* dlc_module_info = dlc_module_list.add_dlc_module_infos();
       dlc_module_info->set_dlc_id(dlc_module_id);
@@ -101,7 +145,7 @@ void DlcServiceDBusAdaptor::LoadDlcModuleImages() {
 
   std::string boot_disk_name;
   int num_slots;
-  unsigned int current_slot;
+  int current_slot;
   if (!boot_slot_->GetCurrentSlot(&boot_disk_name, &num_slots, &current_slot)) {
     LOG(ERROR) << "Can not get current boot slot.";
     return;
@@ -109,7 +153,7 @@ void DlcServiceDBusAdaptor::LoadDlcModuleImages() {
   // Load all installed DLC modules.
   for (const auto& dlc_module_id : dlc_module_ids) {
     auto dlc_module_content_path =
-        GetDlcModulePath(content_dir_, dlc_module_id);
+        utils::GetDlcModulePath(content_dir_, dlc_module_id);
     if (!base::PathExists(dlc_module_content_path))
       continue;
     // Mount the installed DLC image.

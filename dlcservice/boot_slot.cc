@@ -28,7 +28,7 @@ BootSlot::~BootSlot() {}
 
 bool BootSlot::GetCurrentSlot(std::string* boot_disk_name_out,
                               int* num_slots_out,
-                              unsigned int* current_slot_out) {
+                              int* current_slot_out) {
   if (!boot_disk_name_out || !num_slots_out || !current_slot_out)
     return false;
 
@@ -126,7 +126,7 @@ bool BootSlot::SplitPartitionName(const std::string& partition_name,
 }
 
 int BootSlot::GetPartitionNumber(const std::string& partition_name,
-                                 unsigned int slot,
+                                 int slot,
                                  int num_slots) {
   if (slot >= num_slots) {
     LOG(ERROR) << "Invalid slot number: " << slot << ", we only have "

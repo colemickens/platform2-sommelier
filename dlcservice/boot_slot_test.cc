@@ -104,7 +104,7 @@ TEST_F(BootSlotTest, GetPartitionNumberTest) {
 TEST_F(BootSlotTest, GetCurrentSlotTest) {
   std::string boot_disk_name;
   int num_slots;
-  unsigned int current_slot;
+  int current_slot;
 
   // Boot from A slot.
   ON_CALL(*boot_device_, GetBootDevice())

@@ -50,6 +50,8 @@ static_library("libdlcservice") {
     "dlc_service.h",
     "dlc_service_dbus_adaptor.cc",
     "dlc_service_dbus_adaptor.h",
+    "utils.cc",
+    "utils.h",
   ]
   deps = [
     ":dlcservice_adaptors",
