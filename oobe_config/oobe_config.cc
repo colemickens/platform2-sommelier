@@ -4,16 +4,30 @@
 
 #include "oobe_config/oobe_config.h"
 
+#include <map>
+#include <utility>
+
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <map>
 #include <policy/resilient_policy_util.h>
 
 #include "oobe_config/rollback_constants.h"
 #include "oobe_config/rollback_data.pb.h"
+// TODO(zentaro): Replace with <libtpmcrypto/tpm_crypto_impl.h> when
+// CL:1308515 lands.
+#include "oobe_config/tpm_crypto_impl.h"
 
 namespace oobe_config {
+
+OobeConfig::OobeConfig() {
+  crypto_ = std::make_unique<tpmcrypto::TpmCryptoImpl>();
+}
+
+OobeConfig::OobeConfig(std::unique_ptr<tpmcrypto::TpmCrypto> crypto)
+    : crypto_(std::move(crypto)) {}
+
+OobeConfig::~OobeConfig() = default;
 
 base::FilePath OobeConfig::GetPrefixedFilePath(
     const base::FilePath& file_path) const {
@@ -86,6 +100,21 @@ bool OobeConfig::GetRollbackData(RollbackData* rollback_data) const {
   return true;
 }
 
+bool OobeConfig::GetSerializedRollbackData(
+    std::string* serialized_rollback_data) const {
+  RollbackData rollback_data;
+  if (!GetRollbackData(&rollback_data)) {
+    return false;
+  }
+
+  if (!rollback_data.SerializeToString(serialized_rollback_data)) {
+    LOG(ERROR) << "Couldn't serialize proto.";
+    return false;
+  }
+
+  return true;
+}
+
 bool OobeConfig::RestoreRollbackData(const RollbackData& rollback_data) const {
   WriteFile(kRestoreTempPath.Append(kInstallAttributesFileName),
             rollback_data.install_attributes());
@@ -111,18 +140,32 @@ bool OobeConfig::RestoreRollbackData(const RollbackData& rollback_data) const {
 }
 
 bool OobeConfig::UnencryptedRollbackSave() const {
-  RollbackData rollback_data;
-  if (!GetRollbackData(&rollback_data)) {
+  std::string serialized_rollback_data;
+  if (!GetSerializedRollbackData(&serialized_rollback_data)) {
     return false;
   }
 
-  // Write proto to an unencrypted file.
-  std::string rollback_data_str;
-  if (!rollback_data.SerializeToString(&rollback_data_str)) {
-    LOG(ERROR) << "Couldn't serialize proto.";
+  if (!WriteFile(kUnencryptedStatefulRollbackDataPath,
+                 serialized_rollback_data)) {
     return false;
   }
-  if (!WriteFile(kUnencryptedStatefulRollbackDataPath, rollback_data_str)) {
+
+  return true;
+}
+
+bool OobeConfig::EncryptedRollbackSave() const {
+  std::string serialized_rollback_data;
+  if (!GetSerializedRollbackData(&serialized_rollback_data)) {
+    return false;
+  }
+
+  LOG(INFO) << "Encrypting rollback data size="
+            << serialized_rollback_data.size();
+  std::string encrypted;
+  brillo::SecureBlob blob(serialized_rollback_data);
+  crypto_->Encrypt(blob, &encrypted);
+
+  if (!WriteFile(kUnencryptedStatefulRollbackDataPath, encrypted)) {
     return false;
   }
 
@@ -134,6 +177,35 @@ bool OobeConfig::UnencryptedRollbackRestore() const {
   if (!ReadFile(kUnencryptedStatefulRollbackDataPath, &rollback_data_str)) {
     return false;
   }
+  // Write the unencrypted data immediately to
+  // kEncryptedStatefulRollbackDataPath.
+  if (!WriteFile(kEncryptedStatefulRollbackDataPath, rollback_data_str)) {
+    return false;
+  }
+
+  RollbackData rollback_data;
+  if (!rollback_data.ParseFromString(rollback_data_str)) {
+    LOG(ERROR) << "Couldn't parse proto.";
+    return false;
+  }
+  LOG(INFO) << "Parsed " << kUnencryptedStatefulRollbackDataPath.value();
+
+  // Data is already unencrypted, restore it.
+  return RestoreRollbackData(rollback_data);
+}
+
+bool OobeConfig::EncryptedRollbackRestore() const {
+  std::string encrypted_data;
+  if (!ReadFile(kUnencryptedStatefulRollbackDataPath, &encrypted_data)) {
+    return false;
+  }
+
+  // Decrypt the data.
+  LOG(INFO) << "Decrypting rollback data size=" << encrypted_data.size();
+  brillo::SecureBlob serialized_rollback_data;
+  crypto_->Decrypt(encrypted_data, &serialized_rollback_data);
+  std::string rollback_data_str = serialized_rollback_data.to_string();
+
   // Write the unencrypted data immediately to
   // kEncryptedStatefulRollbackDataPath.
   if (!WriteFile(kEncryptedStatefulRollbackDataPath, rollback_data_str)) {

@@ -5,8 +5,14 @@
 #ifndef OOBE_CONFIG_OOBE_CONFIG_H_
 #define OOBE_CONFIG_OOBE_CONFIG_H_
 
-#include <base/files/file_path.h>
+#include <memory>
 #include <string>
+
+#include <base/files/file_path.h>
+
+namespace tpmcrypto {
+class TpmCrypto;
+}
 
 namespace oobe_config {
 
@@ -16,13 +22,21 @@ class RollbackData;
 // |set_prefix_path_for_testing|.
 class OobeConfig {
  public:
-  OobeConfig() {}
+  OobeConfig();
+  explicit OobeConfig(std::unique_ptr<tpmcrypto::TpmCrypto> crypto);
+  ~OobeConfig();
 
   // Saves the rollback data into an unencrypted file. Only use for testing.
   bool UnencryptedRollbackSave() const;
 
+  // Saves the rollback data into an encrypted file.
+  bool EncryptedRollbackSave() const;
+
   // Restores the rollback data from an unencrypted file. Only use for testing.
   bool UnencryptedRollbackRestore() const;
+
+  // Restores the rollback data from an encrypted file.
+  bool EncryptedRollbackRestore() const;
 
   // Removes all files from kEncryptedStatefulRollbackDataPath.
   void CleanupEncryptedStatefulDirectory() const;
@@ -71,6 +85,10 @@ class OobeConfig {
   bool WriteFileWithoutPrefix(const base::FilePath& file_path,
                               const std::string& data) const;
 
+  // Gets the files needed for rollback and stores them in a |RollbackData|
+  // proto, then returns the serialized proto |serialized_rollback_data|.
+  bool GetSerializedRollbackData(std::string* serialized_rollback_data) const;
+
   // Gets the files needed for rollback and returns them in |rollback_data|.
   // Returns true if succeeded, false otherwise.
   bool GetRollbackData(RollbackData* rollback_data) const;
@@ -82,6 +100,9 @@ class OobeConfig {
   // We're prefixing all paths for testing with a temp directory. Empty (no
   // prefix) by default.
   base::FilePath prefix_path_for_testing_;
+
+  // Class for implementing crypto.
+  std::unique_ptr<tpmcrypto::TpmCrypto> crypto_;
 
   DISALLOW_COPY_AND_ASSIGN(OobeConfig);
 };
