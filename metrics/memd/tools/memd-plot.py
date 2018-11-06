@@ -275,24 +275,28 @@ graph_attributes = {
         'optional': True,
         'differentiate': True,
         'group': 'pages',
+        'smooth': 3,
         'off': True,
     },
     'pgalloc_dma': {
         'optional': True,
         'differentiate': True,
         'group': 'pages',
+        'smooth': 3,
         'off': True,
     },
     'pgalloc_dma32': {
         'optional': True,
         'differentiate': True,
         'group': 'pages',
+        'smooth': 3,
         'off': True,
     },
     'pgalloc_normal': {
         'optional': True,
         'differentiate': True,
         'group': 'pages',
+        'smooth': 3,
         'off': True,
     },
     'pgmajfault': {
@@ -369,19 +373,7 @@ class Plotter(object):
     # Interactive input state
     self._ii_state = 'base'
     self._labels = {}
-
-  def key_for_name(self, label):
-    """Returns the one-character key for string |label|.
-
-    Returns a one-character string used to interactively identify a label,
-    using consecutive characters A to Z.
-    """
-    if label not in label_keys:
-      key = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[self._label_key_index]
-      label_keys[label] = key
-      key_labels[key] = label
-      self._label_key_index += 1
-    return label_keys[label]
+    self._plot_labels = {}
 
   def normalize_samples(self):
     """Normalizes the arrays of values in |samples|
@@ -407,13 +399,10 @@ class Plotter(object):
 
     self._labels = found_labels & known_labels
 
-    # Convert uptimes to float (needed by filtering step).
-    uptimes = [float(t) for t in self._samples['uptime']]
-    self._samples['uptime'] = uptimes
-
-    # Convert values to floats and scale them by given scale factor (if any).
+    # Scale values by given scale factor (if any).
     # Also filter values (average over window, and compute derivative).
     # A bit hacky since there may be reboots.
+    uptimes = self._samples['uptime']
     for label in self._labels:
       attr = graph_attributes[label]
 
@@ -421,7 +410,7 @@ class Plotter(object):
         continue
 
       scale = attr['scale'] if 'scale' in attr else 1
-      self._samples[label] = [scale * float(x) for x in self._samples[label]]
+      self._samples[label] = [scale * x for x in self._samples[label]]
 
       if 'differentiate' in attr:
         s = self._samples[label]
@@ -436,7 +425,6 @@ class Plotter(object):
 
     # Shift uptimes to a zero base and adjust for gaps between clips, including
     # negative gaps due to reboots.
-    uptimes = self._samples['uptime']
     offset = 0.0
     last_uptime = -1.0
     adjusted_uptimes = []
@@ -521,7 +509,7 @@ class Plotter(object):
 
     on = 'off' not in graph_attributes[label]
     legend_entry = '%s) %s (100 = %s)' % (
-        self.key_for_name(label),
+        label_keys[label],
         label,
         eng_notation(max_values[label]))
 
@@ -541,9 +529,7 @@ class Plotter(object):
     add_grid(fig, int(self._samples['uptime'][-1]))
 
     # Graphs.
-    plot_labels = [label for label in self._labels
-                   if 'ignore' not in graph_attributes[label]]
-    for plot_label in plot_labels:
+    for plot_label in sorted(self._plot_labels):
       self.plot_values(plot_label)
 
     # Events.
@@ -592,7 +578,28 @@ class Plotter(object):
 
     plt.legend(fontsize=12)
 
+  def merge_pgalloc(self):
+    """Combines the 'pgalloc_*' quantities into a single 'pgalloc'.
+
+    Adds up all kinds of page allocation into a single one, for legacy logs.
+    New logs are produced with a single 'pgalloc' quantity, old logs break it
+    down by zone.
+    """
+
+    if 'pgalloc' in self._samples:
+      return
+
+    pgalloc_samples = None
+    for (label, values) in self._samples.iteritems():
+      if label.startswith('pgalloc_'):
+        if pgalloc_samples is None:
+          pgalloc_samples = values[:]
+        else:
+          pgalloc_samples = map(sum, zip(pgalloc_samples, values))
+    self._samples['pgalloc'] = pgalloc_samples
+
   def run(self):
+    """Reads the samples and plots them interactively."""
     field_names = None
     field_names_set = None
     lines = []
@@ -632,8 +639,11 @@ class Plotter(object):
     # Build an array of values for each field.
     for line in lines:
       for name, value in zip(field_names, line):
+        if name != 'type':
+          value = float(value)
         self._samples[name].append(value)
 
+    self.merge_pgalloc()
     self.normalize_samples()
     self.plot_samples()
 
@@ -648,10 +658,21 @@ class Plotter(object):
       name, value = line.split()
       self._memd_parameters[name] = int(value)
 
+  def assign_keys_to_labels(self):
+    self._plot_labels = [label for label in self._labels
+                         if 'ignore' not in graph_attributes[label]]
+    label_index = 0
+    for label in sorted(self._plot_labels):
+      key = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[label_index]
+      label_keys[label] = key
+      key_labels[key] = label
+      label_index += 1
+
   def plot_samples(self):
     """Does all the interactive plotting work."""
     # Add None values to create breaks in plotted lines.
     self.add_gaps_to_samples()
+    self.assign_keys_to_labels()
     fig = plt.figure(figsize=(30, 10))
     fig.canvas.mpl_connect('key_press_event', self.keypress_callback)
     initialize_pyplot_keymap()
