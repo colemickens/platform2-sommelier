@@ -45,6 +45,7 @@
     'USE_device_mapper%': 0,
     'USE_dhcpv6%': 0,
     'USE_direncryption%': 0,
+    'USE_dlc%': 0,
     'USE_feedback%': 0,
     'USE_ftdi_tpm%': 0,
     'USE_fuzzer%': 0,
