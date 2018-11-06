@@ -7,8 +7,10 @@
 
 #include <cmath>
 #include <limits>
+#include <unordered_map>
 #include <vector>
 
+#include "common/utils/camera_config.h"
 #include "cros-camera/common.h"
 #include "hal/usb/stream_format.h"
 
@@ -252,8 +254,41 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
                                HAL_PIXEL_FORMAT_YCbCr_420_888,
                                HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED};
 
+  std::unordered_map<int, int> max_hal_width_by_format;
+  std::unordered_map<int, int> max_hal_height_by_format;
+  CameraConfig camera_config(constants::kCrosCameraConfigPathString);
+  max_hal_width_by_format[HAL_PIXEL_FORMAT_BLOB] = camera_config.GetInteger(
+      constants::kCrosMaxBlobWidth, std::numeric_limits<int>::max());
+  max_hal_width_by_format[HAL_PIXEL_FORMAT_YCbCr_420_888] =
+      camera_config.GetInteger(constants::kCrosMaxYuvWidth,
+                               std::numeric_limits<int>::max());
+  max_hal_width_by_format[HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED] =
+      camera_config.GetInteger(constants::kCrosMaxPrivateWidth,
+                               std::numeric_limits<int>::max());
+
+  max_hal_height_by_format[HAL_PIXEL_FORMAT_BLOB] = camera_config.GetInteger(
+      constants::kCrosMaxBlobHeight, std::numeric_limits<int>::max());
+  max_hal_height_by_format[HAL_PIXEL_FORMAT_YCbCr_420_888] =
+      camera_config.GetInteger(constants::kCrosMaxYuvHeight,
+                               std::numeric_limits<int>::max());
+  max_hal_height_by_format[HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED] =
+      camera_config.GetInteger(constants::kCrosMaxPrivateHeight,
+                               std::numeric_limits<int>::max());
+
   for (const auto& supported_format : supported_formats) {
     for (const auto& format : hal_formats) {
+      if (supported_format.width > max_hal_width_by_format[format]) {
+        LOGF(INFO) << "Filter Format: 0x" << std::hex << format << std::dec
+                   << "-width " << supported_format.width << ". max is "
+                   << max_hal_width_by_format[format];
+        continue;
+      }
+      if (supported_format.height > max_hal_height_by_format[format]) {
+        LOGF(INFO) << "Filter Format: 0x" << std::hex << format << std::dec
+                   << "-height " << supported_format.height << ". max is "
+                   << max_hal_height_by_format[format];
+        continue;
+      }
       stream_configurations.push_back(format);
       stream_configurations.push_back(supported_format.width);
       stream_configurations.push_back(supported_format.height);

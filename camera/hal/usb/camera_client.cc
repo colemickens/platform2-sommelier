@@ -446,7 +446,9 @@ bool CameraClient::ShouldUseNativeSensorRatio(
   resolution->width = 0;
   resolution->height = 0;
 
-  VLOGFID(1, id_) << "native aspect ratio:" << target_aspect_ratio;
+  VLOGFID(1, id_) << "native aspect ratio:" << target_aspect_ratio << ",("
+                  << device_info_.sensor_info_pixel_array_size_width << ", "
+                  << device_info_.sensor_info_pixel_array_size_height << ")";
   for (const auto& format : qualified_formats_) {
     float max_fps = GetMaximumFrameRate(format);
     if (max_fps < 29.0) {

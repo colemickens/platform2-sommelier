@@ -25,7 +25,7 @@
       'target_name': 'libcamera_hal',
       'type': 'shared_library',
       'sources': [
-        '../../common/utils/test_config.cc',
+        '../../common/utils/camera_config.cc',
         'cached_frame.cc',
         'camera_characteristics.cc',
         'camera_client.cc',
@@ -45,7 +45,7 @@
     ['USE_test == 1', {
       'targets': [
         {
-          'target_name': 'image_processor_unittest',
+          'target_name': 'image_processor_test',
           'type': 'executable',
           'includes': [
             '../../../../platform2/common-mk/common_test.gypi',
@@ -53,7 +53,7 @@
           'sources': [
             'frame_buffer.cc',
             'image_processor.cc',
-            'unittest/image_processor_unittest.cc',
+            'unittest/image_processor_test.cc',
           ],
         },
       ],

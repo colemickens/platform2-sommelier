@@ -14,7 +14,7 @@
 
 #include <hardware/camera3.h>
 
-#include "common/utils/test_config.h"
+#include "common/utils/camera_config.h"
 #include "cros-camera/common.h"
 #include "cros-camera/constants.h"
 #include "cros-camera/exif_utils.h"
@@ -73,10 +73,12 @@ static const int kRationalPrecision = 10000;
 
 ImageProcessor::ImageProcessor()
     : jpeg_compressor_(JpegCompressor::GetInstance()) {
-  force_jpeg_hw_encode_ = TestConfig().GetBoolean(
-      constants::kCrosForceJpegHardwareEncodeOption, false);
-  force_jpeg_hw_decode_ = TestConfig().GetBoolean(
-      constants::kCrosForceJpegHardwareDecodeOption, false);
+  force_jpeg_hw_encode_ =
+      CameraConfig(constants::kCrosCameraTestConfigPathString)
+          .GetBoolean(constants::kCrosForceJpegHardwareEncodeOption, false);
+  force_jpeg_hw_decode_ =
+      CameraConfig(constants::kCrosCameraTestConfigPathString)
+          .GetBoolean(constants::kCrosForceJpegHardwareDecodeOption, false);
   LOGF(INFO) << "Force JPEG Hardware encode: " << force_jpeg_hw_encode_;
   LOGF(INFO) << "Force JPEG Hardware decode: " << force_jpeg_hw_decode_;
 

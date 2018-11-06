@@ -13,8 +13,9 @@ namespace constants {
 const char kCrosCameraAlgoSocketPathString[] = "/run/camera/camera-algo.sock";
 const char kCrosCameraSocketPathString[] = "/run/camera/camera3.sock";
 const char kCrosCameraTestConfigPathString[] = "/run/camera/test_config.json";
+const char kCrosCameraConfigPathString[] = "/etc/camera/camera_config.json";
 
-// Options for |TestConfigParser|:
+// ------Configuration for |kCrosCameraTestConfigPathString|-------
 // boolean value used in test mode for forcing hardware jpeg encode/decode in
 // USB HAL (won't fallback to SW encode/decode).
 const char kCrosForceJpegHardwareEncodeOption[] = "force_jpeg_hw_enc";
@@ -25,6 +26,20 @@ const char kCrosForceJpegHardwareDecodeOption[] = "force_jpeg_hw_dec";
 const char kCrosEnableFrontCameraOption[] = "enable_front_camera";
 const char kCrosEnableBackCameraOption[] = "enable_back_camera";
 const char kCrosEnableExternalCameraOption[] = "enable_external_camera";
+// ------End configuration for |kCrosCameraTestConfigPathString|-------
+
+// ------Configuration for |kCrosCameraConfigPathString|-------
+// Restrict max resolutions for android hal formats.
+// HAL_PIXEL_FORMAT_BLOB
+const char kCrosMaxBlobWidth[] = "max_blob_width";
+const char kCrosMaxBlobHeight[] = "max_blob_height";
+// HAL_PIXEL_FORMAT_YCbCr_420_888
+const char kCrosMaxYuvWidth[] = "max_yuv_width";
+const char kCrosMaxYuvHeight[] = "max_yuv_height";
+// HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED
+const char kCrosMaxPrivateWidth[] = "max_private_width";
+const char kCrosMaxPrivateHeight[] = "max_private_height";
+// ------End configuration for |kCrosCameraConfigPathString|-------
 
 }  // namespace constants
 }  // namespace cros
