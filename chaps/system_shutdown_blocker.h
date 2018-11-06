@@ -33,15 +33,19 @@ class SystemShutdownBlocker {
   // |origin_thread_task_runner_|.
   void Unblock(int slot_id);
 
+ private:
   // Creates a lock file readable by powerd with chapsd's PID and marks the slot
   // as blocked in |blocked_slots|.
   void PerformBlock(int slot_id);
 
-  // Deletes the lock file if the slot is marked as blocked in |blocked_slots_|,
-  // otherwise no-op.
-  void PerformUnblock(int slot_id);
+  // Calls |PerformUnblock()| and removes the block mark if the slot is marked
+  // as blocked in |blocked_slots_|, otherwise no-op.
+  void PerformUnblockIfBlocked(int slot_id);
 
- private:
+  // Deletes the lock file and returns whether or not the slot is unblocked
+  // (i.e. lock file removed).
+  bool PerformUnblock(int slot_id);
+
   // Gets the corresponding lock file path for |slot_id|
   // (/run/lock/power_override/chapsd_token_init_slot_<<<SLOT_ID>>>.lock).
   base::FilePath GetPowerdLockFilePath(int slot_id) const;

@@ -21,6 +21,7 @@ SystemShutdownBlocker::SystemShutdownBlocker(
 SystemShutdownBlocker::~SystemShutdownBlocker() {
   for (int slot_id : blocked_slots_)
     PerformUnblock(slot_id);
+  blocked_slots_.clear();
 }
 
 void SystemShutdownBlocker::Block(int slot_id,
@@ -32,18 +33,20 @@ void SystemShutdownBlocker::Block(int slot_id,
   origin_thread_task_runner_->PostTask(FROM_HERE, perform_block_task);
 
   // Post delayed unblock task (fallback).
-  auto perform_unblock_task = base::Bind(&SystemShutdownBlocker::PerformUnblock,
-                                         base::Unretained(this),
-                                         slot_id);
+  auto perform_unblock_task =
+      base::Bind(&SystemShutdownBlocker::PerformUnblockIfBlocked,
+                 base::Unretained(this),
+                 slot_id);
   origin_thread_task_runner_->PostDelayedTask(FROM_HERE, perform_unblock_task,
                                               fallback_timeout);
 }
 
 void SystemShutdownBlocker::Unblock(int slot_id) {
   // Post unblock task.
-  auto perform_unblock_task = base::Bind(&SystemShutdownBlocker::PerformUnblock,
-                                         base::Unretained(this),
-                                         slot_id);
+  auto perform_unblock_task =
+      base::Bind(&SystemShutdownBlocker::PerformUnblockIfBlocked,
+                 base::Unretained(this),
+                 slot_id);
   origin_thread_task_runner_->PostTask(FROM_HERE, perform_unblock_task);
 }
 
@@ -74,22 +77,24 @@ void SystemShutdownBlocker::PerformBlock(int slot_id) {
   LOG(INFO) << "Created lock file: " << lock_path.value();
 }
 
-void SystemShutdownBlocker::PerformUnblock(int slot_id) {
-  if (blocked_slots_.find(slot_id) == blocked_slots_.end())
-    return;
+void SystemShutdownBlocker::PerformUnblockIfBlocked(int slot_id) {
+  if (blocked_slots_.count(slot_id) && PerformUnblock(slot_id))
+    blocked_slots_.erase(slot_id);
+}
 
+bool SystemShutdownBlocker::PerformUnblock(int slot_id) {
   const base::FilePath lock_path = GetPowerdLockFilePath(slot_id);
   if (!base::PathExists(lock_path)) {
     LOG(WARNING) << "Couldn't delete lock file (not existant): "
                  << lock_path.value();
-    return;
+    return true;
   }
   if (!base::DeleteFile(lock_path, false /* recursive */)) {
     PLOG(ERROR) << "Couldn't delete lock file: " << lock_path.value();
-    return;
+    return false;
   }
-  blocked_slots_.erase(slot_id);
   LOG(INFO) << "Deleted lock file: " << lock_path.value();
+  return true;
 }
 
 base::FilePath SystemShutdownBlocker::GetPowerdLockFilePath(int slot_id) const {
