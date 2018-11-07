@@ -16,9 +16,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/posix/eintr_wrapper.h>
 #include <base/process/process.h>
-#include <base/strings/stringprintf.h>
 #include <chromeos/libminijail.h>
 #include <scoped_minijail.h>
 
@@ -315,45 +313,36 @@ bool ArtContainer::PatchImage(const std::string& isa, uint64_t offset_seed) {
                << strerror(-ret);
     return false;
   }
-  int32_t offset = ChooseRelocationOffsetDelta(
-      kArtBaseAddressMinDelta, kArtBaseAddressMaxDelta, offset_seed);
-  std::string input_image_location_arg =
-      "--input-image-location=/system/framework/boot.art";
-  // Use different output arg for N and P.
-  std::string output_arg;
 
+  std::string output_arg;
   switch (sdk_version_) {
     case AndroidSdkVersion::UNKNOWN:
       LOG(ERROR) << "Unknown Android sdk version.";
       return false;
     case AndroidSdkVersion::ANDROID_N_MR1:
-      output_arg = base::StringPrintf(
-          "--output-image-file=/data/dalvik-cache/%s/system@framework@boot.art",
-          isa.c_str());
+      output_arg = "--output-image-file=/data/dalvik-cache/" + isa +
+                   "/system@framework@boot.art";
       break;
     // For Android P, use --output-image-directory.
     default:
-      output_arg = base::StringPrintf(
-          "--output-image-directory=/data/dalvik-cache/%s", isa.c_str());
+      output_arg = "--output-image-directory=/data/dalvik-cache/" + isa;
       break;
   }
 
-  std::string instructionset_arg =
-      base::StringPrintf("--instruction-set=%s", isa.c_str());
-  std::string base_offset_arg =
-      base::StringPrintf("--base-offset-delta=%d", offset);
+  std::string isa_arg = "--instruction-set=" + isa;
 
-  LOG(INFO) << "Relocate images: " << kPatchOat << " "
-            << input_image_location_arg << " " << output_arg << " "
-            << instructionset_arg << " "
-            << "--base-offset-delta=0x******* ";
+  int32_t offset = ChooseRelocationOffsetDelta(
+      kArtBaseAddressMinDelta, kArtBaseAddressMaxDelta, offset_seed);
+  std::string base_offset_arg = "--base-offset-delta=" + std::to_string(offset);
 
   const char* argv[] = {kPatchOat,
-                        input_image_location_arg.c_str(),
+                        "--input-image-location=/system/framework/boot.art",
                         output_arg.c_str(),
-                        instructionset_arg.c_str(),
+                        isa_arg.c_str(),
                         base_offset_arg.c_str(),
+                        "--dump-timings",
                         nullptr};
+
   // Set LD_PRELOAD to redirect all logd messages to stderr.
   base::FilePath liblog_stderr_path =
       art_paths_->art_rootfs_directory.Append("system/lib")
@@ -366,6 +355,7 @@ bool ArtContainer::PatchImage(const std::string& isa, uint64_t offset_seed) {
   } else {
     LOG(ERROR) << "liblog_stderr does not exist, logd message not available";
   }
+  LOG(INFO) << "Running " << kPatchOat << " for isa " << isa;
   // Need a android environment, no preload.
   // TODO(xzhou): Fix b/65159408 and run container as non root user.
   ret = minijail_run_no_preload(art_jail.get(), argv[0],
