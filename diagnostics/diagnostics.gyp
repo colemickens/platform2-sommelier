@@ -114,6 +114,34 @@
         'diagnosticsd/diagnosticsd_mojo_service.cc',
       ],
     },
+    # Library that provides core functionality for the telemetry tool.
+    {
+      'target_name': 'libtelem',
+      'type': 'static_library',
+      'dependencies': [
+        'diagnostics_grpc_protos',
+        'libgrpc_async_adapter',
+      ],
+      'variables': {
+        'exported_deps': [
+          'libbrillo-<(libbase_ver)',
+          'libchrome-<(libbase_ver)',
+        ],
+        'deps': [
+          '<@(exported_deps)',
+        ],
+      },
+      'all_dependent_settings': {
+        'variables': {
+          'deps': [
+            '<@(exported_deps)',
+          ],
+        },
+      },
+      'sources': [
+        'telem/telem_connection.cc',
+      ],
+    },
     # The diagnosticsd daemon executable.
     {
       'target_name': 'diagnosticsd',
@@ -151,12 +179,12 @@
       'target_name': 'telem',
       'type': 'executable',
       'dependencies': [
-        'diagnostics_grpc_protos',
-        'libgrpc_async_adapter',
+        'libtelem',
       ],
       'variables': {
         'deps': [
           'libbrillo-<(libbase_ver)',
+          'libchrome-<(libbase_ver)',
         ],
       },
       'sources': [
