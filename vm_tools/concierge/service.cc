@@ -1225,6 +1225,24 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
     return dbus_response;
   }
 
+  // Stop the associated VM if it is still running.
+  auto iter = FindVm(request.cryptohome_id(), request.disk_path());
+  if (iter != vms_.end()) {
+    LOG(INFO) << "Shutting down VM";
+    if (!iter->second->Shutdown()) {
+      LOG(ERROR) << "Unable to shut down VM";
+
+      response.set_status(DISK_STATUS_FAILED);
+      response.set_failure_reason("Unable to shut down VM");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+    }
+
+    // Notify cicerone that we have stopped a VM.
+    NotifyCiceroneOfVmStopped(request.cryptohome_id(), request.disk_path());
+    vms_.erase(iter);
+  }
+
   base::FilePath disk_path;
   if (!GetDiskPathFromName(request.disk_path(), request.cryptohome_id(),
                            request.storage_location(),
