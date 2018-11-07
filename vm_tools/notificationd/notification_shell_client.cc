@@ -101,7 +101,9 @@ void NotificationShellClient::NotificationClient::
 
 NotificationShellClient::NotificationShellClient(
     NotificationShellInterface* interface, base::Closure quit_closure)
-    : interface_(interface), quit_closure_(std::move(quit_closure)) {}
+    : watcher_(FROM_HERE),
+      interface_(interface),
+      quit_closure_(std::move(quit_closure)) {}
 
 void NotificationShellClient::OnFileCanReadWithoutBlocking(int fd) {
   DCHECK_EQ(event_loop_fd_.get(), fd);
