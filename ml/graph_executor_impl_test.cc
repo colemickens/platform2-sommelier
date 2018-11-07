@@ -4,12 +4,15 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/macros.h>
 #include <base/run_loop.h>
 #include <base/callback_helpers.h>
+#include <brillo/bind_lambda.h>
 #include <brillo/test_helpers.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -80,38 +83,41 @@ TEST(GraphExecutorTest, TestOk) {
   GraphExecutorPtr graph_executor;
   const std::map<std::string, int> input_names = {{"in_tensor", 0}};
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
-  const GraphExecutorImpl graph_executor_impl(input_names, output_names,
-                                              IdentityInterpreter(),
-                                              mojo::GetProxy(&graph_executor));
+  const GraphExecutorImpl graph_executor_impl(
+      input_names, output_names, IdentityInterpreter(),
+      mojo::MakeRequest(&graph_executor));
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Execute once.
   {
-    mojo::Map<mojo::String, TensorPtr> inputs;
-    inputs.insert("in_tensor", NewTensor<double>({1}, {0.5}));
-    mojo::Array<mojo::String> outputs({"out_tensor"});
+    std::unordered_map<std::string, TensorPtr> inputs;
+    inputs.emplace("in_tensor", NewTensor<double>({1}, {0.5}));
+    std::vector<std::string> outputs({"out_tensor"});
 
     bool callback_done = false;
     graph_executor->Execute(
         std::move(inputs), std::move(outputs),
-        [&callback_done](const ExecuteResult result,
-                         const mojo::Array<TensorPtr> outputs) {
-          // Check that the inference succeeded and gives the expected number of
-          // outputs.
-          EXPECT_EQ(result, ExecuteResult::OK);
-          ASSERT_EQ(outputs.size(), 1);
+        base::Bind(
+            [](bool* callback_done, const ExecuteResult result,
+               base::Optional<std::vector<TensorPtr>> outputs) {
+              // Check that the inference succeeded and gives the expected
+              // number of outputs.
+              EXPECT_EQ(result, ExecuteResult::OK);
+              ASSERT_TRUE(outputs.has_value());
+              ASSERT_EQ(outputs->size(), 1);
 
-          // Check that the output tensor has the right type and format.
-          const TensorView<double> out_tensor(outputs[0]);
-          EXPECT_TRUE(out_tensor.IsValidType());
-          EXPECT_TRUE(out_tensor.IsValidFormat());
+              // Check that the output tensor has the right type and format.
+              const TensorView<double> out_tensor((*outputs)[0]);
+              EXPECT_TRUE(out_tensor.IsValidType());
+              EXPECT_TRUE(out_tensor.IsValidFormat());
 
-          // Check the output tensor has the expected shape and values.
-          EXPECT_THAT(out_tensor.GetShape(), ElementsAre(1));
-          EXPECT_THAT(out_tensor.GetValues(), ElementsAre(0.5));
+              // Check the output tensor has the expected shape and values.
+              EXPECT_THAT(out_tensor.GetShape(), ElementsAre(1));
+              EXPECT_THAT(out_tensor.GetValues(), ElementsAre(0.5));
 
-          callback_done = true;
-        });
+              *callback_done = true;
+            },
+            &callback_done));
 
     base::RunLoop().RunUntilIdle();
     EXPECT_TRUE(callback_done);
@@ -119,31 +125,34 @@ TEST(GraphExecutorTest, TestOk) {
 
   // Execute again with different input.
   {
-    mojo::Map<mojo::String, TensorPtr> inputs;
-    inputs.insert("in_tensor", NewTensor<double>({1}, {0.75}));
-    mojo::Array<mojo::String> outputs({"out_tensor"});
+    std::unordered_map<std::string, TensorPtr> inputs;
+    inputs.emplace("in_tensor", NewTensor<double>({1}, {0.75}));
+    std::vector<std::string> outputs({"out_tensor"});
 
     bool callback_done = false;
     graph_executor->Execute(
         std::move(inputs), std::move(outputs),
-        [&callback_done](const ExecuteResult result,
-                         const mojo::Array<TensorPtr> outputs) {
-          // Check that the inference succeeded and gives the expected number of
-          // outputs.
-          EXPECT_EQ(result, ExecuteResult::OK);
-          ASSERT_EQ(outputs.size(), 1);
+        base::Bind(
+            [](bool* callback_done, const ExecuteResult result,
+               base::Optional<std::vector<TensorPtr>> outputs) {
+              // Check that the inference succeeded and gives the expected
+              // number of outputs.
+              EXPECT_EQ(result, ExecuteResult::OK);
+              ASSERT_TRUE(outputs.has_value());
+              ASSERT_EQ(outputs->size(), 1);
 
-          // Check that the output tensor has the right type and format.
-          const TensorView<double> out_tensor(outputs[0]);
-          EXPECT_TRUE(out_tensor.IsValidType());
-          EXPECT_TRUE(out_tensor.IsValidFormat());
+              // Check that the output tensor has the right type and format.
+              const TensorView<double> out_tensor((*outputs)[0]);
+              EXPECT_TRUE(out_tensor.IsValidType());
+              EXPECT_TRUE(out_tensor.IsValidFormat());
 
-          // Check the output tensor has the expected shape and values.
-          EXPECT_THAT(out_tensor.GetShape(), ElementsAre(1));
-          EXPECT_THAT(out_tensor.GetValues(), ElementsAre(0.75));
+              // Check the output tensor has the expected shape and values.
+              EXPECT_THAT(out_tensor.GetShape(), ElementsAre(1));
+              EXPECT_THAT(out_tensor.GetValues(), ElementsAre(0.75));
 
-          callback_done = true;
-        });
+              *callback_done = true;
+            },
+            &callback_done));
 
     base::RunLoop().RunUntilIdle();
     EXPECT_TRUE(callback_done);
@@ -191,37 +200,40 @@ TEST(GraphExecutorTest, TestNarrowing) {
   GraphExecutorPtr graph_executor;
   const std::map<std::string, int> input_names = {{"in_tensor", 0}};
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
-  const GraphExecutorImpl graph_executor_impl(input_names, output_names,
-                                              std::move(interpreter),
-                                              mojo::GetProxy(&graph_executor));
+  const GraphExecutorImpl graph_executor_impl(
+      input_names, output_names, std::move(interpreter),
+      mojo::MakeRequest(&graph_executor));
   ASSERT_TRUE(graph_executor.is_bound());
 
   // We represent bools with int64 tensors.
-  mojo::Map<mojo::String, TensorPtr> inputs;
-  inputs.insert("in_tensor", NewTensor<int64_t>({1}, {true}));
-  mojo::Array<mojo::String> outputs({"out_tensor"});
+  std::unordered_map<std::string, TensorPtr> inputs;
+  inputs.emplace("in_tensor", NewTensor<int64_t>({1}, {true}));
+  std::vector<std::string> outputs({"out_tensor"});
 
   bool callback_done = false;
   graph_executor->Execute(
       std::move(inputs), std::move(outputs),
-      [&callback_done](const ExecuteResult result,
-                       const mojo::Array<TensorPtr> outputs) {
-        // Check that the inference succeeded and gives the expected number of
-        // outputs.
-        EXPECT_EQ(result, ExecuteResult::OK);
-        ASSERT_EQ(outputs.size(), 1);
+      base::Bind(
+          [](bool* callback_done, const ExecuteResult result,
+             base::Optional<std::vector<TensorPtr>> outputs) {
+            // Check that the inference succeeded and gives the expected number
+            // of outputs.
+            EXPECT_EQ(result, ExecuteResult::OK);
+            ASSERT_TRUE(outputs.has_value());
+            ASSERT_EQ(outputs->size(), 1);
 
-        // Check that the output tensor has the right type and format.
-        const TensorView<int64_t> out_tensor(outputs[0]);
-        EXPECT_TRUE(out_tensor.IsValidType());
-        EXPECT_TRUE(out_tensor.IsValidFormat());
+            // Check that the output tensor has the right type and format.
+            const TensorView<int64_t> out_tensor((*outputs)[0]);
+            EXPECT_TRUE(out_tensor.IsValidType());
+            EXPECT_TRUE(out_tensor.IsValidFormat());
 
-        // Check the output tensor has the expected shape and values.
-        EXPECT_THAT(out_tensor.GetShape(), ElementsAre(1));
-        EXPECT_THAT(out_tensor.GetValues(), ElementsAre(1));
+            // Check the output tensor has the expected shape and values.
+            EXPECT_THAT(out_tensor.GetShape(), ElementsAre(1));
+            EXPECT_THAT(out_tensor.GetValues(), ElementsAre(1));
 
-        callback_done = true;
-      });
+            *callback_done = true;
+          },
+          &callback_done));
 
   base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(callback_done);
@@ -233,26 +245,28 @@ TEST(GraphExecutorTest, TestInvalidOutputName) {
   GraphExecutorPtr graph_executor;
   const std::map<std::string, int> input_names = {{"in_tensor", 0}};
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
-  const GraphExecutorImpl graph_executor_impl(input_names, output_names,
-                                              IdentityInterpreter(),
-                                              mojo::GetProxy(&graph_executor));
+  const GraphExecutorImpl graph_executor_impl(
+      input_names, output_names, IdentityInterpreter(),
+      mojo::MakeRequest(&graph_executor));
   ASSERT_TRUE(graph_executor.is_bound());
 
-  mojo::Map<mojo::String, TensorPtr> inputs;
-  inputs.insert("in_tensor", NewTensor<double>({1}, {0.5}));
+  std::unordered_map<std::string, TensorPtr> inputs;
+  inputs.emplace("in_tensor", NewTensor<double>({1}, {0.5}));
   // Ask for the input tensor (which isn't in our "outputs" list).
-  mojo::Array<mojo::String> outputs({"in_tensor"});
+  std::vector<std::string> outputs({"in_tensor"});
 
   bool callback_done = false;
   graph_executor->Execute(
       std::move(inputs), std::move(outputs),
-      [&callback_done](const ExecuteResult result,
-                       const mojo::Array<TensorPtr> outputs) {
-        EXPECT_EQ(result, ExecuteResult::UNKNOWN_OUTPUT_ERROR);
-        EXPECT_TRUE(outputs.is_null());
+      base::Bind(
+          [](bool* callback_done, const ExecuteResult result,
+             base::Optional<std::vector<TensorPtr>> outputs) {
+            EXPECT_EQ(result, ExecuteResult::UNKNOWN_OUTPUT_ERROR);
+            EXPECT_FALSE(outputs.has_value());
 
-        callback_done = true;
-      });
+            *callback_done = true;
+          },
+          &callback_done));
 
   base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(callback_done);
@@ -264,24 +278,26 @@ TEST(GraphExecutorTest, TestMissingOutputName) {
   GraphExecutorPtr graph_executor;
   const std::map<std::string, int> input_names = {{"in_tensor", 0}};
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
-  const GraphExecutorImpl graph_executor_impl(input_names, output_names,
-                                              IdentityInterpreter(),
-                                              mojo::GetProxy(&graph_executor));
+  const GraphExecutorImpl graph_executor_impl(
+      input_names, output_names, IdentityInterpreter(),
+      mojo::MakeRequest(&graph_executor));
   ASSERT_TRUE(graph_executor.is_bound());
 
-  mojo::Map<mojo::String, TensorPtr> inputs;
-  inputs.insert("in_tensor", NewTensor<double>({1}, {0.5}));
+  std::unordered_map<std::string, TensorPtr> inputs;
+  inputs.emplace("in_tensor", NewTensor<double>({1}, {0.5}));
 
   bool callback_done = false;
   graph_executor->Execute(
-      std::move(inputs), mojo::Array<mojo::String>(),
-      [&callback_done](const ExecuteResult result,
-                       const mojo::Array<TensorPtr> outputs) {
-        EXPECT_EQ(result, ExecuteResult::OUTPUT_MISSING_ERROR);
-        EXPECT_TRUE(outputs.is_null());
+      std::move(inputs), {},
+      base::Bind(
+          [](bool* callback_done, const ExecuteResult result,
+             base::Optional<std::vector<TensorPtr>> outputs) {
+            EXPECT_EQ(result, ExecuteResult::OUTPUT_MISSING_ERROR);
+            EXPECT_FALSE(outputs.has_value());
 
-        callback_done = true;
-      });
+            *callback_done = true;
+          },
+          &callback_done));
 
   base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(callback_done);
@@ -293,26 +309,28 @@ TEST(GraphExecutorTest, TestDuplicateOutputName) {
   GraphExecutorPtr graph_executor;
   const std::map<std::string, int> input_names = {{"in_tensor", 0}};
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
-  const GraphExecutorImpl graph_executor_impl(input_names, output_names,
-                                              IdentityInterpreter(),
-                                              mojo::GetProxy(&graph_executor));
+  const GraphExecutorImpl graph_executor_impl(
+      input_names, output_names, IdentityInterpreter(),
+      mojo::MakeRequest(&graph_executor));
   ASSERT_TRUE(graph_executor.is_bound());
 
-  mojo::Map<mojo::String, TensorPtr> inputs;
-  inputs.insert("in_tensor", NewTensor<double>({1}, {0.5}));
+  std::unordered_map<std::string, TensorPtr> inputs;
+  inputs.emplace("in_tensor", NewTensor<double>({1}, {0.5}));
   // Ask for two copies of the output tensor.
-  mojo::Array<mojo::String> outputs({"out_tensor", "out_tensor"});
+  std::vector<std::string> outputs({"out_tensor", "out_tensor"});
 
   bool callback_done = false;
   graph_executor->Execute(
       std::move(inputs), std::move(outputs),
-      [&callback_done](const ExecuteResult result,
-                       const mojo::Array<TensorPtr> outputs) {
-        EXPECT_EQ(result, ExecuteResult::DUPLICATE_OUTPUT_ERROR);
-        EXPECT_TRUE(outputs.is_null());
+      base::Bind(
+          [](bool* callback_done, const ExecuteResult result,
+             base::Optional<std::vector<TensorPtr>> outputs) {
+            EXPECT_EQ(result, ExecuteResult::DUPLICATE_OUTPUT_ERROR);
+            EXPECT_FALSE(outputs.has_value());
 
-        callback_done = true;
-      });
+            *callback_done = true;
+          },
+          &callback_done));
 
   base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(callback_done);
@@ -324,26 +342,28 @@ TEST(GraphExecutorTest, TestInvalidInputName) {
   GraphExecutorPtr graph_executor;
   const std::map<std::string, int> input_names = {{"in_tensor", 0}};
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
-  const GraphExecutorImpl graph_executor_impl(input_names, output_names,
-                                              IdentityInterpreter(),
-                                              mojo::GetProxy(&graph_executor));
+  const GraphExecutorImpl graph_executor_impl(
+      input_names, output_names, IdentityInterpreter(),
+      mojo::MakeRequest(&graph_executor));
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Specify a value for the output tensor (which isn't in our "inputs" list).
-  mojo::Map<mojo::String, TensorPtr> inputs;
-  inputs.insert("out_tensor", NewTensor<double>({1}, {0.5}));
-  mojo::Array<mojo::String> outputs({"out_tensor"});
+  std::unordered_map<std::string, TensorPtr> inputs;
+  inputs.emplace("out_tensor", NewTensor<double>({1}, {0.5}));
+  std::vector<std::string> outputs({"out_tensor"});
 
   bool callback_done = false;
   graph_executor->Execute(
       std::move(inputs), std::move(outputs),
-      [&callback_done](const ExecuteResult result,
-                       const mojo::Array<TensorPtr> outputs) {
-        EXPECT_EQ(result, ExecuteResult::UNKNOWN_INPUT_ERROR);
-        EXPECT_TRUE(outputs.is_null());
+      base::Bind(
+          [](bool* callback_done, const ExecuteResult result,
+             base::Optional<std::vector<TensorPtr>> outputs) {
+            EXPECT_EQ(result, ExecuteResult::UNKNOWN_INPUT_ERROR);
+            EXPECT_FALSE(outputs.has_value());
 
-        callback_done = true;
-      });
+            *callback_done = true;
+          },
+          &callback_done));
 
   base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(callback_done);
@@ -355,24 +375,26 @@ TEST(GraphExecutorTest, TestMissingInputName) {
   GraphExecutorPtr graph_executor;
   const std::map<std::string, int> input_names = {{"in_tensor", 0}};
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
-  const GraphExecutorImpl graph_executor_impl(input_names, output_names,
-                                              IdentityInterpreter(),
-                                              mojo::GetProxy(&graph_executor));
+  const GraphExecutorImpl graph_executor_impl(
+      input_names, output_names, IdentityInterpreter(),
+      mojo::MakeRequest(&graph_executor));
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Specify a value for the output tensor (which isn't in our "inputs" list).
-  mojo::Array<mojo::String> outputs({"out_tensor"});
+  std::vector<std::string> outputs({"out_tensor"});
 
   bool callback_done = false;
   graph_executor->Execute(
-      mojo::Map<mojo::String, TensorPtr>(), std::move(outputs),
-      [&callback_done](const ExecuteResult result,
-                       const mojo::Array<TensorPtr> outputs) {
-        EXPECT_EQ(result, ExecuteResult::INPUT_MISSING_ERROR);
-        EXPECT_TRUE(outputs.is_null());
+      {}, std::move(outputs),
+      base::Bind(
+          [](bool* callback_done, const ExecuteResult result,
+             base::Optional<std::vector<TensorPtr>> outputs) {
+            EXPECT_EQ(result, ExecuteResult::INPUT_MISSING_ERROR);
+            EXPECT_FALSE(outputs.has_value());
 
-        callback_done = true;
-      });
+            *callback_done = true;
+          },
+          &callback_done));
 
   base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(callback_done);
@@ -384,26 +406,28 @@ TEST(GraphExecutorTest, TestWrongInputType) {
   GraphExecutorPtr graph_executor;
   const std::map<std::string, int> input_names = {{"in_tensor", 0}};
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
-  const GraphExecutorImpl graph_executor_impl(input_names, output_names,
-                                              IdentityInterpreter(),
-                                              mojo::GetProxy(&graph_executor));
+  const GraphExecutorImpl graph_executor_impl(
+      input_names, output_names, IdentityInterpreter(),
+      mojo::MakeRequest(&graph_executor));
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Give an int tensor when a float tensor is expected.
-  mojo::Map<mojo::String, TensorPtr> inputs;
-  inputs.insert("in_tensor", NewTensor<int64_t>({1}, {123}));
-  mojo::Array<mojo::String> outputs({"out_tensor"});
+  std::unordered_map<std::string, TensorPtr> inputs;
+  inputs.emplace("in_tensor", NewTensor<int64_t>({1}, {123}));
+  std::vector<std::string> outputs({"out_tensor"});
 
   bool callback_done = false;
   graph_executor->Execute(
       std::move(inputs), std::move(outputs),
-      [&callback_done](const ExecuteResult result,
-                       const mojo::Array<TensorPtr> outputs) {
-        EXPECT_EQ(result, ExecuteResult::INPUT_TYPE_ERROR);
-        EXPECT_TRUE(outputs.is_null());
+      base::Bind(
+          [](bool* callback_done, const ExecuteResult result,
+             base::Optional<std::vector<TensorPtr>> outputs) {
+            EXPECT_EQ(result, ExecuteResult::INPUT_TYPE_ERROR);
+            EXPECT_FALSE(outputs.has_value());
 
-        callback_done = true;
-      });
+            *callback_done = true;
+          },
+          &callback_done));
 
   base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(callback_done);
@@ -415,26 +439,28 @@ TEST(GraphExecutorTest, TestWrongInputShape) {
   GraphExecutorPtr graph_executor;
   const std::map<std::string, int> input_names = {{"in_tensor", 0}};
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
-  const GraphExecutorImpl graph_executor_impl(input_names, output_names,
-                                              IdentityInterpreter(),
-                                              mojo::GetProxy(&graph_executor));
+  const GraphExecutorImpl graph_executor_impl(
+      input_names, output_names, IdentityInterpreter(),
+      mojo::MakeRequest(&graph_executor));
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Give a 1x1 tensor when a scalar is expected.
-  mojo::Map<mojo::String, TensorPtr> inputs;
-  inputs.insert("in_tensor", NewTensor<double>({1, 1}, {0.5}));
-  mojo::Array<mojo::String> outputs({"out_tensor"});
+  std::unordered_map<std::string, TensorPtr> inputs;
+  inputs.emplace("in_tensor", NewTensor<double>({1, 1}, {0.5}));
+  std::vector<std::string> outputs({"out_tensor"});
 
   bool callback_done = false;
   graph_executor->Execute(
       std::move(inputs), std::move(outputs),
-      [&callback_done](const ExecuteResult result,
-                       const mojo::Array<TensorPtr> outputs) {
-        EXPECT_EQ(result, ExecuteResult::INPUT_SHAPE_ERROR);
-        EXPECT_TRUE(outputs.is_null());
+      base::Bind(
+          [](bool* callback_done, const ExecuteResult result,
+             base::Optional<std::vector<TensorPtr>> outputs) {
+            EXPECT_EQ(result, ExecuteResult::INPUT_SHAPE_ERROR);
+            EXPECT_FALSE(outputs.has_value());
 
-        callback_done = true;
-      });
+            *callback_done = true;
+          },
+          &callback_done));
 
   base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(callback_done);
@@ -447,26 +473,28 @@ TEST(GraphExecutorTest, TestInvalidInputFormat) {
   GraphExecutorPtr graph_executor;
   const std::map<std::string, int> input_names = {{"in_tensor", 0}};
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
-  const GraphExecutorImpl graph_executor_impl(input_names, output_names,
-                                              IdentityInterpreter(),
-                                              mojo::GetProxy(&graph_executor));
+  const GraphExecutorImpl graph_executor_impl(
+      input_names, output_names, IdentityInterpreter(),
+      mojo::MakeRequest(&graph_executor));
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Give a tensor with scalar shape but multiple values.
-  mojo::Map<mojo::String, TensorPtr> inputs;
-  inputs.insert("in_tensor", NewTensor<double>({1}, {0.5, 0.5}));
-  mojo::Array<mojo::String> outputs({"out_tensor"});
+  std::unordered_map<std::string, TensorPtr> inputs;
+  inputs.emplace("in_tensor", NewTensor<double>({1}, {0.5, 0.5}));
+  std::vector<std::string> outputs({"out_tensor"});
 
   bool callback_done = false;
   graph_executor->Execute(
       std::move(inputs), std::move(outputs),
-      [&callback_done](const ExecuteResult result,
-                       const mojo::Array<TensorPtr> outputs) {
-        EXPECT_EQ(result, ExecuteResult::INPUT_FORMAT_ERROR);
-        EXPECT_TRUE(outputs.is_null());
+      base::Bind(
+          [](bool* callback_done, const ExecuteResult result,
+             base::Optional<std::vector<TensorPtr>> outputs) {
+            EXPECT_EQ(result, ExecuteResult::INPUT_FORMAT_ERROR);
+            EXPECT_FALSE(outputs.has_value());
 
-        callback_done = true;
-      });
+            *callback_done = true;
+          },
+          &callback_done));
 
   base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(callback_done);
@@ -499,26 +527,28 @@ TEST(GraphExecutorTest, TestInvalidInputNodeType) {
   GraphExecutorPtr graph_executor;
   const std::map<std::string, int> input_names = {{"in_tensor", 0}};
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
-  const GraphExecutorImpl graph_executor_impl(input_names, output_names,
-                                              std::move(interpreter),
-                                              mojo::GetProxy(&graph_executor));
+  const GraphExecutorImpl graph_executor_impl(
+      input_names, output_names, std::move(interpreter),
+      mojo::MakeRequest(&graph_executor));
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Graph execution should fail before we get to input type checking.
-  mojo::Map<mojo::String, TensorPtr> inputs;
-  inputs.insert("in_tensor", NewTensor<double>({}, {}));
-  mojo::Array<mojo::String> outputs({"out_tensor"});
+  std::unordered_map<std::string, TensorPtr> inputs;
+  inputs.emplace("in_tensor", NewTensor<double>({}, {}));
+  std::vector<std::string> outputs({"out_tensor"});
 
   bool callback_done = false;
   graph_executor->Execute(
       std::move(inputs), std::move(outputs),
-      [&callback_done](const ExecuteResult result,
-                       const mojo::Array<TensorPtr> outputs) {
-        EXPECT_EQ(result, ExecuteResult::EXECUTION_ERROR);
-        EXPECT_TRUE(outputs.is_null());
+      base::Bind(
+          [](bool* callback_done, const ExecuteResult result,
+             base::Optional<std::vector<TensorPtr>> outputs) {
+            EXPECT_EQ(result, ExecuteResult::EXECUTION_ERROR);
+            EXPECT_FALSE(outputs.has_value());
 
-        callback_done = true;
-      });
+            *callback_done = true;
+          },
+          &callback_done));
 
   base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(callback_done);
@@ -531,19 +561,21 @@ TEST(GraphExecutorTest, TestExecutionFailure) {
   const std::map<std::string, int> inputs_outputs;
   const GraphExecutorImpl graph_executor_impl(
       inputs_outputs, inputs_outputs, std::make_unique<tflite::Interpreter>(),
-      mojo::GetProxy(&graph_executor));
+      mojo::MakeRequest(&graph_executor));
   ASSERT_TRUE(graph_executor.is_bound());
 
   bool callback_done = false;
   graph_executor->Execute(
-      mojo::Map<mojo::String, TensorPtr>(), mojo::Array<mojo::String>(),
-      [&callback_done](const ExecuteResult result,
-                       const mojo::Array<TensorPtr> outputs) {
-        EXPECT_EQ(result, ExecuteResult::EXECUTION_ERROR);
-        EXPECT_TRUE(outputs.is_null());
+      {}, {},
+      base::Bind(
+          [](bool* callback_done, const ExecuteResult result,
+             base::Optional<std::vector<TensorPtr>> outputs) {
+            EXPECT_EQ(result, ExecuteResult::EXECUTION_ERROR);
+            EXPECT_FALSE(outputs.has_value());
 
-        callback_done = true;
-      });
+            *callback_done = true;
+          },
+          &callback_done));
 
   base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(callback_done);
@@ -576,26 +608,28 @@ TEST(GraphExecutorTest, TestInvalidOutputNodeType) {
   GraphExecutorPtr graph_executor;
   const std::map<std::string, int> input_names = {{"in_tensor", 0}};
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
-  const GraphExecutorImpl graph_executor_impl(input_names, output_names,
-                                              std::move(interpreter),
-                                              mojo::GetProxy(&graph_executor));
+  const GraphExecutorImpl graph_executor_impl(
+      input_names, output_names, std::move(interpreter),
+      mojo::MakeRequest(&graph_executor));
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Populate input.
-  mojo::Map<mojo::String, TensorPtr> inputs;
-  inputs.insert("in_tensor", NewTensor<double>({1}, {0.5}));
-  mojo::Array<mojo::String> outputs({"out_tensor"});
+  std::unordered_map<std::string, TensorPtr> inputs;
+  inputs.emplace("in_tensor", NewTensor<double>({1}, {0.5}));
+  std::vector<std::string> outputs({"out_tensor"});
 
   bool callback_done = false;
   graph_executor->Execute(
       std::move(inputs), std::move(outputs),
-      [&callback_done](const ExecuteResult result,
-                       const mojo::Array<TensorPtr> outputs) {
-        EXPECT_EQ(result, ExecuteResult::EXECUTION_ERROR);
-        EXPECT_TRUE(outputs.is_null());
+      base::Bind(
+          [](bool* callback_done, const ExecuteResult result,
+             base::Optional<std::vector<TensorPtr>> outputs) {
+            EXPECT_EQ(result, ExecuteResult::EXECUTION_ERROR);
+            EXPECT_FALSE(outputs.has_value());
 
-        callback_done = true;
-      });
+            *callback_done = true;
+          },
+          &callback_done));
 
   base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(callback_done);
@@ -629,26 +663,28 @@ TEST(GraphExecutorTest, TestInvalidOutputNodeShape) {
   GraphExecutorPtr graph_executor;
   const std::map<std::string, int> input_names = {{"in_tensor", 0}};
   const std::map<std::string, int> output_names = {{"out_tensor", 1}};
-  const GraphExecutorImpl graph_executor_impl(input_names, output_names,
-                                              std::move(interpreter),
-                                              mojo::GetProxy(&graph_executor));
+  const GraphExecutorImpl graph_executor_impl(
+      input_names, output_names, std::move(interpreter),
+      mojo::MakeRequest(&graph_executor));
   ASSERT_TRUE(graph_executor.is_bound());
 
   // Populate input.
-  mojo::Map<mojo::String, TensorPtr> inputs;
-  inputs.insert("in_tensor", NewTensor<double>({1}, {0.5}));
-  mojo::Array<mojo::String> outputs({"out_tensor"});
+  std::unordered_map<std::string, TensorPtr> inputs;
+  inputs.emplace("in_tensor", NewTensor<double>({1}, {0.5}));
+  std::vector<std::string> outputs({"out_tensor"});
 
   bool callback_done = false;
   graph_executor->Execute(
       std::move(inputs), std::move(outputs),
-      [&callback_done](const ExecuteResult result,
-                       const mojo::Array<TensorPtr> outputs) {
-        EXPECT_EQ(result, ExecuteResult::EXECUTION_ERROR);
-        EXPECT_TRUE(outputs.is_null());
+      base::Bind(
+          [](bool* callback_done, const ExecuteResult result,
+             base::Optional<std::vector<TensorPtr>> outputs) {
+            EXPECT_EQ(result, ExecuteResult::EXECUTION_ERROR);
+            EXPECT_FALSE(outputs.has_value());
 
-        callback_done = true;
-      });
+            *callback_done = true;
+          },
+          &callback_done));
 
   base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(callback_done);

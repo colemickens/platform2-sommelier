@@ -4,11 +4,14 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/macros.h>
 #include <base/run_loop.h>
+#include <brillo/bind_lambda.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/interface_request.h>
@@ -48,19 +51,21 @@ TEST_F(ModelImplTest, TestBadModel) {
   // Pass nullptr instead of a valid model.
   ModelPtr model_ptr;
   const ModelImpl model_impl(model_inputs_, model_outputs_, nullptr /*model*/,
-                             mojo::GetProxy(&model_ptr));
+                             mojo::MakeRequest(&model_ptr));
   ASSERT_TRUE(model_ptr.is_bound());
 
   // Ensure that creating a graph executor fails.
   bool callback_done = false;
   GraphExecutorPtr graph_executor_ptr;
   model_ptr->CreateGraphExecutor(
-      mojo::GetProxy(&graph_executor_ptr),
-      [&callback_done](const CreateGraphExecutorResult result) {
-        EXPECT_EQ(result,
-                  CreateGraphExecutorResult::MODEL_INTERPRETATION_ERROR);
-        callback_done = true;
-      });
+      mojo::MakeRequest(&graph_executor_ptr),
+      base::Bind(
+          [](bool* callback_done, const CreateGraphExecutorResult result) {
+            EXPECT_EQ(result,
+                      CreateGraphExecutorResult::MODEL_INTERPRETATION_ERROR);
+            *callback_done = true;
+          },
+          &callback_done));
 
   base::RunLoop().RunUntilIdle();
   ASSERT_TRUE(callback_done);
@@ -76,50 +81,55 @@ TEST_F(ModelImplTest, TestExampleModel) {
   // Create model object.
   ModelPtr model_ptr;
   const ModelImpl model_impl(model_inputs_, model_outputs_, std::move(model),
-                             mojo::GetProxy(&model_ptr));
+                             mojo::MakeRequest(&model_ptr));
   ASSERT_TRUE(model_ptr.is_bound());
 
   // Create a graph executor.
   bool cge_callback_done = false;
   GraphExecutorPtr graph_executor_ptr;
   model_ptr->CreateGraphExecutor(
-      mojo::GetProxy(&graph_executor_ptr),
-      [&cge_callback_done](const CreateGraphExecutorResult result) {
-        EXPECT_EQ(result, CreateGraphExecutorResult::OK);
-        cge_callback_done = true;
-      });
+      mojo::MakeRequest(&graph_executor_ptr),
+      base::Bind(
+          [](bool* cge_callback_done, const CreateGraphExecutorResult result) {
+            EXPECT_EQ(result, CreateGraphExecutorResult::OK);
+            *cge_callback_done = true;
+          },
+          &cge_callback_done));
 
   base::RunLoop().RunUntilIdle();
   ASSERT_TRUE(cge_callback_done);
 
   // Construct input/output for graph execution.
-  mojo::Map<mojo::String, TensorPtr> inputs;
-  inputs.insert("x", NewTensor<double>({1}, {0.5}));
-  inputs.insert("y", NewTensor<double>({1}, {0.25}));
-  mojo::Array<mojo::String> outputs({"z"});
+  std::unordered_map<std::string, TensorPtr> inputs;
+  inputs.emplace("x", NewTensor<double>({1}, {0.5}));
+  inputs.emplace("y", NewTensor<double>({1}, {0.25}));
+  std::vector<std::string> outputs({"z"});
 
   // Execute graph.
   bool exe_callback_done = false;
   graph_executor_ptr->Execute(
       std::move(inputs), std::move(outputs),
-      [&exe_callback_done](const ExecuteResult result,
-                           const mojo::Array<TensorPtr> outputs) {
-        // Check that the inference succeeded and gives the expected number of
-        // outputs.
-        EXPECT_EQ(result, ExecuteResult::OK);
-        ASSERT_EQ(outputs.size(), 1);
+      base::Bind(
+          [](bool* exe_callback_done, const ExecuteResult result,
+             base::Optional<std::vector<TensorPtr>> outputs) {
+            // Check that the inference succeeded and gives the expected number
+            // of outputs.
+            EXPECT_EQ(result, ExecuteResult::OK);
+            ASSERT_TRUE(outputs.has_value());
+            ASSERT_EQ(outputs->size(), 1);
 
-        // Check that the output tensor has the right type and format.
-        const TensorView<double> out_tensor(outputs[0]);
-        EXPECT_TRUE(out_tensor.IsValidType());
-        EXPECT_TRUE(out_tensor.IsValidFormat());
+            // Check that the output tensor has the right type and format.
+            const TensorView<double> out_tensor((*outputs)[0]);
+            EXPECT_TRUE(out_tensor.IsValidType());
+            EXPECT_TRUE(out_tensor.IsValidFormat());
 
-        // Check the output tensor has the expected shape and values.
-        EXPECT_THAT(out_tensor.GetShape(), ElementsAre(1));
-        EXPECT_THAT(out_tensor.GetValues(), ElementsAre(0.75));
+            // Check the output tensor has the expected shape and values.
+            EXPECT_THAT(out_tensor.GetShape(), ElementsAre(1));
+            EXPECT_THAT(out_tensor.GetValues(), ElementsAre(0.75));
 
-        exe_callback_done = true;
-      });
+            *exe_callback_done = true;
+          },
+          &exe_callback_done));
 
   base::RunLoop().RunUntilIdle();
   ASSERT_TRUE(exe_callback_done);
@@ -134,18 +144,20 @@ TEST_F(ModelImplTest, TestGraphExecutorCleanup) {
   // Create model object.
   ModelPtr model_ptr;
   const ModelImpl model_impl(model_inputs_, model_outputs_, std::move(model),
-                             mojo::GetProxy(&model_ptr));
+                             mojo::MakeRequest(&model_ptr));
   ASSERT_TRUE(model_ptr.is_bound());
 
   // Create one graph executor.
   bool cge1_callback_done = false;
   GraphExecutorPtr graph_executor_1_ptr;
   model_ptr->CreateGraphExecutor(
-      mojo::GetProxy(&graph_executor_1_ptr),
-      [&cge1_callback_done](const CreateGraphExecutorResult result) {
-        EXPECT_EQ(result, CreateGraphExecutorResult::OK);
-        cge1_callback_done = true;
-      });
+      mojo::MakeRequest(&graph_executor_1_ptr),
+      base::Bind(
+          [](bool* cge1_callback_done, const CreateGraphExecutorResult result) {
+            EXPECT_EQ(result, CreateGraphExecutorResult::OK);
+            *cge1_callback_done = true;
+          },
+          &cge1_callback_done));
 
   base::RunLoop().RunUntilIdle();
   ASSERT_TRUE(cge1_callback_done);
@@ -156,11 +168,13 @@ TEST_F(ModelImplTest, TestGraphExecutorCleanup) {
   bool cge2_callback_done = false;
   GraphExecutorPtr graph_executor_2_ptr;
   model_ptr->CreateGraphExecutor(
-      mojo::GetProxy(&graph_executor_2_ptr),
-      [&cge2_callback_done](const CreateGraphExecutorResult result) {
-        EXPECT_EQ(result, CreateGraphExecutorResult::OK);
-        cge2_callback_done = true;
-      });
+      mojo::MakeRequest(&graph_executor_2_ptr),
+      base::Bind(
+          [](bool* cge2_callback_done, const CreateGraphExecutorResult result) {
+            EXPECT_EQ(result, CreateGraphExecutorResult::OK);
+            *cge2_callback_done = true;
+          },
+          &cge2_callback_done));
 
   base::RunLoop().RunUntilIdle();
   ASSERT_TRUE(cge2_callback_done);

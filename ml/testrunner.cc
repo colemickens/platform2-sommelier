@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <base/at_exit.h>
 #include <base/command_line.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <brillo/flag_helper.h>
@@ -11,6 +12,7 @@
 
 int main(int argc, char** argv) {
   SetUpTests(&argc, argv, true);
+  base::AtExitManager at_exit;
 
   (new brillo::BaseMessageLoop())->SetAsCurrent();
 
