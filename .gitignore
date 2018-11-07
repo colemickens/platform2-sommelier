@@ -53,3 +53,6 @@ tags_sorted_by_file
 
 # Nested git repos.
 /glbench/images/
+
+# Cargo build directories.
+target/
