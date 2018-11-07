@@ -143,6 +143,8 @@ BluezAgentManagerInterfaceHandler::BluezAgentManagerInterfaceHandler() {
                       ForwardingRule::FORWARD_ALL);
   AddMethodForwarding(bluetooth_agent_manager::kRequestDefaultAgent,
                       ForwardingRule::FORWARD_ALL);
+
+  SetObjectExportRule(ObjectExportRule::ALL_SERVICES);
 }
 
 BluezProfileManagerInterfaceHandler::BluezProfileManagerInterfaceHandler() {

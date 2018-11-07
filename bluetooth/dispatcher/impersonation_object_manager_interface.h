@@ -22,6 +22,15 @@
 
 namespace bluetooth {
 
+// When impersonating multiple services, this rule describes whether to export
+// an object depending on which impersonated service exports it.
+enum class ObjectExportRule {
+  // Exports the object if any impersonated service exports it.
+  ANY_SERVICE,
+  // Exports the object if all impersonated services export it.
+  ALL_SERVICES,
+};
+
 enum class ForwardingRule {
   // Forwards to default service only.
   FORWARD_DEFAULT,
@@ -47,6 +56,9 @@ class InterfaceHandler {
   // Returns a list of method names that this interface exposes.
   virtual const std::map<std::string, ForwardingRule>& GetMethodForwardings()
       const = 0;
+
+  // Returns the object export rule.
+  virtual ObjectExportRule GetObjectExportRule() const = 0;
 };
 
 // Impersonates other services' object manager interface to another exported
@@ -90,7 +102,15 @@ class ImpersonationObjectManagerInterface
       dbus::ExportedObject::ResponseSender response_sender);
 
  private:
+  void TriggerPropertiesChanged(const std::string& service,
+                                const dbus::ObjectPath& object_path,
+                                const std::string& interface_name);
+
+  bool ShouldInterfaceBeExported(const std::string& object_path) const;
+
   bool HasImpersonatedServicesForObject(const std::string& object_path) const;
+  int GetImpersonatedServicesCountForObject(
+      const std::string& object_path) const;
   void AddImpersonatedServiceForObject(const std::string& object_path,
                                        const std::string& service_name);
   void RemoveImpersonatedServiceForObject(const std::string& object_path,

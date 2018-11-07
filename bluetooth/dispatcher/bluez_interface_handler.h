@@ -28,6 +28,10 @@ class BluezInterfaceHandler : public InterfaceHandler {
     return method_forwardings_;
   }
 
+  ObjectExportRule GetObjectExportRule() const override {
+    return object_export_rule_;
+  }
+
  protected:
   template <typename T>
   void AddPropertyFactory(const std::string& property_name) {
@@ -44,9 +48,14 @@ class BluezInterfaceHandler : public InterfaceHandler {
     method_forwardings_[method_name] = forwarding_rule;
   }
 
+  void SetObjectExportRule(ObjectExportRule object_export_rule) {
+    object_export_rule_ = object_export_rule;
+  }
+
  private:
   InterfaceHandler::PropertyFactoryMap property_factory_map_;
   std::map<std::string, ForwardingRule> method_forwardings_;
+  ObjectExportRule object_export_rule_ = ObjectExportRule::ANY_SERVICE;
 
   DISALLOW_COPY_AND_ASSIGN(BluezInterfaceHandler);
 };

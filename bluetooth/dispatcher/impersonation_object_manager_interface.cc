@@ -61,13 +61,21 @@ dbus::PropertySet* ImpersonationObjectManagerInterface::CreateProperties(
 
   // When CreateProperties is called that means the source service exports
   // interface |interface_name| on object |object_path|. So here we mimic
-  // that to our exported object manager. However we skip adding exported
-  // if another service has already exposed this object at this interface.
-  if (!HasImpersonatedServicesForObject(object_path.value())) {
+  // that to our exported object manager.
+  AddImpersonatedServiceForObject(object_path.value(), service_name);
+  if (ShouldInterfaceBeExported(object_path.value()) &&
+      exported_object_manager_wrapper_->GetExportedInterface(
+          object_path, interface_name) == nullptr) {
     exported_object_manager_wrapper_->AddExportedInterface(object_path,
                                                            interface_name);
+    // If the exporting service is not the default service, that means the
+    // default service has exported the object before. To avoid missing the
+    // properties update by the default service, here we update them.
+    std::string default_service =
+        GetDefaultServiceForObject(object_path.value());
+    if (default_service != service_name)
+      TriggerPropertiesChanged(default_service, object_path, interface_name);
   }
-  AddImpersonatedServiceForObject(object_path.value(), service_name);
 
   return property_set.release();
 }
@@ -120,18 +128,17 @@ void ImpersonationObjectManagerInterface::ObjectRemoved(
   // Whenever we detect that an interface has been removed from the impersonated
   // service, we immediately unexport the same interface from the impersonating
   // service if this is the last service exposing this object at this interface.
-  if (!HasImpersonatedServicesForObject(object_path.value())) {
+  if (!ShouldInterfaceBeExported(object_path.value()) &&
+      exported_object_manager_wrapper_->GetExportedInterface(
+          object_path, interface_name) != nullptr) {
     exported_object_manager_wrapper_->RemoveExportedInterface(object_path,
                                                               interface_name);
-  } else {
+  } else if (HasImpersonatedServicesForObject(object_path.value())) {
     // One of the services removed this object, but there is still other
     // services exposing this object. Update all the property values to reflect
     // the properties of the other service's object.
-    std::string service = GetDefaultServiceForObject(object_path.value());
-    for (const auto& kv : interface_handler_->GetPropertyFactoryMap()) {
-      std::string property_name = kv.first;
-      OnPropertyChanged(service, object_path, interface_name, property_name);
-    }
+    TriggerPropertiesChanged(GetDefaultServiceForObject(object_path.value()),
+                             object_path, interface_name);
   }
 }
 
@@ -173,9 +180,38 @@ void ImpersonationObjectManagerInterface::HandleForwardMessage(
   DBusUtil::ForwardMethodCall(bus, service_name, method_call, response_sender);
 }
 
+void ImpersonationObjectManagerInterface::TriggerPropertiesChanged(
+    const std::string& service,
+    const dbus::ObjectPath& object_path,
+    const std::string& interface_name) {
+  for (const auto& kv : interface_handler_->GetPropertyFactoryMap()) {
+    const std::string& property_name = kv.first;
+    OnPropertyChanged(service, object_path, interface_name, property_name);
+  }
+}
+
+bool ImpersonationObjectManagerInterface::ShouldInterfaceBeExported(
+    const std::string& object_path) const {
+  switch (interface_handler_->GetObjectExportRule()) {
+    case ObjectExportRule::ALL_SERVICES:
+      return GetImpersonatedServicesCountForObject(object_path) ==
+             service_names().size();
+    case ObjectExportRule::ANY_SERVICE:
+      return HasImpersonatedServicesForObject(object_path);
+  }
+}
+
 bool ImpersonationObjectManagerInterface::HasImpersonatedServicesForObject(
     const std::string& object_path) const {
-  return base::ContainsKey(impersonated_services_, object_path);
+  return GetImpersonatedServicesCountForObject(object_path) > 0;
+}
+
+int ImpersonationObjectManagerInterface::GetImpersonatedServicesCountForObject(
+    const std::string& object_path) const {
+  if (!base::ContainsKey(impersonated_services_, object_path))
+    return 0;
+
+  return impersonated_services_.at(object_path).size();
 }
 
 std::string ImpersonationObjectManagerInterface::GetDefaultServiceForObject(
@@ -233,15 +269,19 @@ void ImpersonationObjectManagerInterface::OnPropertyChanged(
   // When property value change is detected from the impersonated service,
   // we immediately update the corresponding property of the impersonating
   // service.
-  exported_object_manager_wrapper_
-      ->GetExportedInterface(object_path, interface_name)
-      ->SyncPropertyToExportedProperty(
-          property_name,
-          static_cast<PropertySet*>(
-              GetObjectManager(service_name)
-                  ->GetProperties(object_path, interface_name))
-              ->GetProperty(property_name),
-          property_factory);
+  ExportedInterface* exported_interface =
+      exported_object_manager_wrapper_->GetExportedInterface(object_path,
+                                                             interface_name);
+  if (exported_interface == nullptr)
+    return;
+
+  exported_interface->SyncPropertyToExportedProperty(
+      property_name,
+      static_cast<PropertySet*>(
+          GetObjectManager(service_name)
+              ->GetProperties(object_path, interface_name))
+          ->GetProperty(property_name),
+      property_factory);
 }
 
 void ImpersonationObjectManagerInterface::

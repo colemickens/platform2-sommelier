@@ -139,7 +139,9 @@ ExportedObject::~ExportedObject() {
 
 ExportedInterface* ExportedObject::GetExportedInterface(
     const std::string& interface_name) {
-  CHECK(base::ContainsKey(exported_interfaces_, interface_name));
+  if (!base::ContainsKey(exported_interfaces_, interface_name))
+    return nullptr;
+
   return exported_interfaces_.find(interface_name)->second.get();
 }
 
@@ -218,11 +220,8 @@ void ExportedObjectManagerWrapper::RemoveExportedInterface(
 ExportedInterface* ExportedObjectManagerWrapper::GetExportedInterface(
     const dbus::ObjectPath& object_path, const std::string& interface_name) {
   ExportedObject* exported_object = GetExportedObject(object_path);
-  if (!exported_object) {
-    LOG(WARNING) << "Object " << object_path.value()
-                 << " hasn't been added before";
+  if (!exported_object)
     return nullptr;
-  }
 
   return exported_object->GetExportedInterface(interface_name);
 }
