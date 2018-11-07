@@ -83,6 +83,9 @@ class Service final : public base::MessageLoopForIO::Watcher {
   // Handles a request to share a path with a running server.
   std::unique_ptr<dbus::Response> SharePath(dbus::MethodCall* method_call);
 
+  // Handles a request to share a path with a running server.
+  std::unique_ptr<dbus::Response> UnsharePath(dbus::MethodCall* method_call);
+
   // Forcibly kills a server if it hasn't already exited.
   void KillServer(uint32_t handle);
 

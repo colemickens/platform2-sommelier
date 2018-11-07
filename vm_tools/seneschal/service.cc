@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <grp.h>
 #include <limits.h>
+#include <mntent.h>
 #include <signal.h>
 #include <stdint.h>
 #include <sys/mount.h>
@@ -283,6 +284,7 @@ bool Service::Init() {
       {kStartServerMethod, &Service::StartServer},
       {kStopServerMethod, &Service::StopServer},
       {kSharePathMethod, &Service::SharePath},
+      {kUnsharePathMethod, &Service::UnsharePath},
   };
 
   for (const auto& iter : kServiceMethods) {
@@ -894,6 +896,123 @@ std::unique_ptr<dbus::Response> Service::SharePath(
 
   response.set_success(true);
   response.set_path(dst.value().substr(prefix_len));
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+// Handles a request to unshare a path with a running server.
+std::unique_ptr<dbus::Response> Service::UnsharePath(
+    dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received request to unshare path with server";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  UnsharePathRequest request;
+  UnsharePathResponse response;
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse UnsharePathRequest from message";
+    response.set_failure_reason("Unable to parse protobuf");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  const auto& iter = servers_.find(request.handle());
+  if (iter == servers_.end()) {
+    LOG(ERROR) << "Requested server does not exist";
+    response.set_failure_reason("Requested server does not exist");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Validate path.
+  base::FilePath path(request.path());
+  if (path.IsAbsolute() || path.ReferencesParent() ||
+      path.BaseName().value() == ".") {
+    LOG(ERROR) << "Requested path references parent, is absolute, or ends "
+               << "with ./";
+    response.set_failure_reason(
+        "Path must be relative and cannot reference parent components nor end "
+        "with \".\"");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  base::FilePath server_root =
+      iter->second.root_dir().GetPath().Append(&kServerRoot[1]);
+  base::FilePath dst = server_root.Append(path);
+  // Ensure path exists.
+  if (!base::PathExists(dst)) {
+    LOG(ERROR) << "Unshare path does not exist";
+    response.set_failure_reason("Unshare path does not exist");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Ensure path is listed in /proc/self/mounts and has no parents within
+  // server_root.
+  bool path_is_mount = false;
+  bool path_has_parent_mount = false;
+  base::ScopedFILE mountinfo(fopen("/proc/self/mounts", "r"));
+  if (!mountinfo) {
+    LOG(ERROR) << "Failed to open /proc/self/mounts";
+    response.set_failure_reason("Failed to open /proc/self/mounts");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  // List of paths to be unmounted includes path and any children.
+  std::vector<base::FilePath> mount_points;
+  char buf[1024 + 4];
+  struct mntent entry;
+  while (getmntent_r(mountinfo.get(), &entry, buf, sizeof(buf)) != nullptr) {
+    base::FilePath mount_point(entry.mnt_dir);
+    if (mount_point == dst) {
+      path_is_mount = true;
+      mount_points.emplace_back(mount_point);
+    } else if (dst.IsParent(mount_point)) {
+      mount_points.emplace_back(mount_point);
+    } else if (server_root.IsParent(mount_point) && mount_point.IsParent(dst)) {
+      path_has_parent_mount = true;
+    }
+  }
+  if (!path_is_mount) {
+    LOG(ERROR) << "Path is not a mount point";
+    response.set_failure_reason("Path is not a mount point");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  if (path_has_parent_mount) {
+    LOG(ERROR) << "Path has a parent mount point";
+    response.set_failure_reason("Path has a parent mount point");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // In reverse order, unmount paths.
+  for (auto iter = mount_points.rbegin(), end = mount_points.rend();
+       iter != end; ++iter) {
+    if (umount(iter->value().c_str()) != 0) {
+      LOG(ERROR) << "Failed to unmount";
+      response.set_failure_reason("Failed to unmount");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+    }
+  }
+  // Remove path.  Recursive is required to delete any children mount dirs that
+  // were created prior to this path being mounted.  Recursive delete is safe
+  // since all mounts at this path and with any children have been unmounted.
+  if (!base::DeleteFile(dst, true)) {
+    LOG(ERROR) << "Delete path failed";
+    response.set_failure_reason("Delete path failed");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  response.set_success(true);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }

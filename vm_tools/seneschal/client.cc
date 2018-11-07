@@ -27,6 +27,13 @@ using std::string;
 
 namespace {
 
+constexpr char kStorageDownloads[] = "downloads";
+constexpr char kStorageMyFiles[] = "myfiles";
+constexpr char kStorageMyDrive[] = "mydrive";
+constexpr char kStorageTeamDrives[] = "teamdrives";
+constexpr char kStorageComputers[] = "computers";
+constexpr char kStorageRemovable[] = "removable";
+
 int StartServer(dbus::ObjectProxy* proxy, uint64_t port, uint64_t accept_cid) {
   if (port == 0) {
     LOG(ERROR) << "--port is required";
@@ -138,6 +145,8 @@ int StopServer(dbus::ObjectProxy* proxy, uint64_t handle) {
 int SharePath(dbus::ObjectProxy* proxy,
               uint64_t handle,
               string owner_id,
+              string drivefs_mount_name,
+              string storage_location,
               string path,
               bool writable) {
   if (handle == 0) {
@@ -151,12 +160,58 @@ int SharePath(dbus::ObjectProxy* proxy,
     return EXIT_FAILURE;
   }
 
-  if (path.empty()) {
-    LOG(ERROR) << "--path is required";
+  vm_tools::seneschal::SharePathRequest_StorageLocation location;
+  if (storage_location == kStorageDownloads) {
+    if (owner_id.empty()) {
+      LOG(ERROR) << "--owner_id is required for --storage_location=downloads";
+      return EXIT_FAILURE;
+    }
+    location = vm_tools::seneschal::SharePathRequest::DOWNLOADS;
+  } else if (storage_location == kStorageMyFiles) {
+    if (owner_id.empty()) {
+      LOG(ERROR) << "--owner_id is required for --storage_location=myfiles";
+      return EXIT_FAILURE;
+    }
+    location = vm_tools::seneschal::SharePathRequest::MY_FILES;
+  } else if (storage_location == kStorageMyDrive) {
+    if (drivefs_mount_name.empty()) {
+      LOG(ERROR)
+          << "--drivefs_mount_name is required for --storage_location=mydrive";
+      return EXIT_FAILURE;
+    }
+    location = vm_tools::seneschal::SharePathRequest::DRIVEFS_MY_DRIVE;
+  } else if (storage_location == kStorageTeamDrives) {
+    if (drivefs_mount_name.empty()) {
+      LOG(ERROR) << "--drivefs_mount_name is required for "
+                    "--storage_location=teamdrives";
+      return EXIT_FAILURE;
+    }
+    location = vm_tools::seneschal::SharePathRequest::DRIVEFS_TEAM_DRIVES;
+  } else if (storage_location == kStorageComputers) {
+    if (drivefs_mount_name.empty()) {
+      LOG(ERROR) << "--drivefs_mount_name is required for "
+                    "--storage_location=computers";
+      return EXIT_FAILURE;
+    }
+    location = vm_tools::seneschal::SharePathRequest::DRIVEFS_COMPUTERS;
+  } else if (storage_location == kStorageRemovable) {
+    location = vm_tools::seneschal::SharePathRequest::REMOVABLE;
+  } else {
+    LOG(ERROR) << "--storage_location is required "
+                  "(myfiles|downloads|mydrive|teamdrives|computers|removable)";
     return EXIT_FAILURE;
   }
 
-  LOG(INFO) << "Sharing " << path << " with server " << handle;
+  // Relative path required, but allow use of '/' to represent root.
+  if (path.empty()) {
+    LOG(ERROR) << "--path is required";
+    return EXIT_FAILURE;
+  } else if (path == "/") {
+    path = "";
+  }
+
+  LOG(INFO) << "Sharing " << storage_location << ":" << path << " with server "
+            << handle;
 
   dbus::MethodCall method_call(vm_tools::seneschal::kSeneschalInterface,
                                vm_tools::seneschal::kSharePathMethod);
@@ -165,8 +220,8 @@ int SharePath(dbus::ObjectProxy* proxy,
   vm_tools::seneschal::SharePathRequest request;
   request.set_handle(static_cast<uint32_t>(handle));
   request.set_owner_id(std::move(owner_id));
-  request.set_storage_location(
-      vm_tools::seneschal::SharePathRequest::DOWNLOADS);
+  request.set_drivefs_mount_name(std::move(drivefs_mount_name));
+  request.set_storage_location(location);
 
   vm_tools::seneschal::SharedPath* shared_path = request.mutable_shared_path();
   shared_path->set_path(std::move(path));
@@ -198,7 +253,63 @@ int SharePath(dbus::ObjectProxy* proxy,
   }
 
   std::cout << request.shared_path().path() << " is available at path "
-            << "/mnt/shared" << response.path() << std::endl;
+            << "/mnt/chromeos" << response.path() << std::endl;
+  return EXIT_SUCCESS;
+}
+
+int UnsharePath(dbus::ObjectProxy* proxy, uint64_t handle, string path) {
+  if (handle == 0) {
+    LOG(ERROR) << "--handle is required";
+    return EXIT_FAILURE;
+  }
+
+  if (handle > static_cast<uint64_t>(std::numeric_limits<uint32_t>::max())) {
+    LOG(ERROR) << "--handle value is too large; maximum value allowed is "
+               << std::numeric_limits<uint32_t>::max();
+    return EXIT_FAILURE;
+  }
+
+  if (path.empty()) {
+    LOG(ERROR) << "--path is required";
+    return EXIT_FAILURE;
+  }
+
+  LOG(INFO) << "Unsharing " << path << " with server " << handle;
+
+  dbus::MethodCall method_call(vm_tools::seneschal::kSeneschalInterface,
+                               vm_tools::seneschal::kUnsharePathMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  vm_tools::seneschal::UnsharePathRequest request;
+  request.set_handle(static_cast<uint32_t>(handle));
+  request.set_path(std::move(path));
+
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode UnsharePathRequest protobuf";
+    return EXIT_FAILURE;
+  }
+
+  std::unique_ptr<dbus::Response> dbus_response = proxy->CallMethodAndBlock(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to seneschal service";
+    return EXIT_FAILURE;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  vm_tools::seneschal::UnsharePathResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse response protobuf";
+    return EXIT_FAILURE;
+  }
+
+  if (!response.success()) {
+    std::cout << "Unable to unshare path: " << response.failure_reason()
+              << std::endl;
+    return EXIT_FAILURE;
+  }
+
+  std::cout << request.path() << " unshared successfully" << std::endl;
   return EXIT_SUCCESS;
 }
 
@@ -255,10 +366,17 @@ int main(int argc, char** argv) {
   DEFINE_bool(start, false, "Start a new server");
   DEFINE_bool(stop, false, "Stop a running server");
   DEFINE_bool(share_path, false, "Share a path with a running server");
+  DEFINE_bool(unshare_path, false, "Unshare a path with a running server");
 
   // Parameters.
   DEFINE_string(vm_name, "", "The name for the VM");
   DEFINE_string(owner_id, "", "The cryptohome id of the user");
+  DEFINE_string(drivefs_mount_name, "",
+                "The DriveFS mount directory name at /media/fuse with format "
+                "drivefs-<drivefs-hash>");
+  DEFINE_string(storage_location, kStorageMyFiles,
+                "The storage location of path to share "
+                "(myfiles|downloads|mydrive|teamdrives|computers|removable)");
   DEFINE_uint64(handle, 0, "The handle for the server");
   DEFINE_uint64(port, 0, "Port number on which the server should listen");
   DEFINE_uint64(
@@ -290,8 +408,9 @@ int main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
-  if (FLAGS_start + FLAGS_stop + FLAGS_share_path != 1) {
-    LOG(ERROR) << "Exactly one of --start, --stop, or --share_path is required";
+  if (FLAGS_start + FLAGS_stop + FLAGS_share_path + FLAGS_unshare_path != 1) {
+    LOG(ERROR) << "Exactly one of --start, --stop, --share_path, or "
+                  "--unshare_path is required";
     return EXIT_FAILURE;
   }
 
@@ -299,26 +418,34 @@ int main(int argc, char** argv) {
     return StartServer(proxy, FLAGS_port, FLAGS_accept_cid);
   } else if (FLAGS_stop) {
     return StopServer(proxy, FLAGS_handle);
-  } else if (FLAGS_share_path) {
+  } else if (FLAGS_share_path || FLAGS_unshare_path) {
     if (FLAGS_handle == 0 && FLAGS_vm_name.empty()) {
       LOG(ERROR) << "--handle or --vm_name is required";
       return EXIT_FAILURE;
     }
 
-    if (FLAGS_owner_id.empty()) {
-      LOG(ERROR) << "--owner_id is required";
-      return EXIT_FAILURE;
-    }
-
     uint64_t handle = FLAGS_handle;
-    if (handle == 0 && !GetServerHandle(bus, FLAGS_owner_id,
-                                        std::move(FLAGS_vm_name), &handle)) {
-      LOG(ERROR) << "Failed to get server handle";
-      return EXIT_FAILURE;
+    if (handle == 0) {
+      if (FLAGS_owner_id.empty()) {
+        LOG(ERROR) << "--owner_id is required if --handle not set";
+        return EXIT_FAILURE;
+      }
+
+      if (!GetServerHandle(bus, FLAGS_owner_id, std::move(FLAGS_vm_name),
+                           &handle)) {
+        LOG(ERROR) << "Failed to get server handle";
+        return EXIT_FAILURE;
+      }
     }
 
-    return SharePath(proxy, handle, std::move(FLAGS_owner_id),
-                     std::move(FLAGS_path), FLAGS_writable);
+    if (FLAGS_share_path) {
+      return SharePath(proxy, handle, std::move(FLAGS_owner_id),
+                       std::move(FLAGS_drivefs_mount_name),
+                       std::move(FLAGS_storage_location), std::move(FLAGS_path),
+                       FLAGS_writable);
+    } else if (FLAGS_unshare_path) {
+      return UnsharePath(proxy, handle, std::move(FLAGS_path));
+    }
   }
 
   NOTREACHED();
