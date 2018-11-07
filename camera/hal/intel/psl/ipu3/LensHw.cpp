@@ -72,7 +72,6 @@ status_t LensHw::init()
     return NO_ERROR;
 }
 
-
 status_t LensHw::setLens(std::shared_ptr<MediaEntity> entity)
 {
     LOG1("@%s", __FUNCTION__);
@@ -82,7 +81,9 @@ status_t LensHw::setLens(std::shared_ptr<MediaEntity> entity)
         return BAD_VALUE;
     }
     std::shared_ptr<cros::V4L2Subdevice> lens;
-    entity->getDevice((std::shared_ptr<cros::V4L2Device>&) lens);
+    status_t status = entity->getDevice((std::shared_ptr<cros::V4L2Device>&) lens);
+    CheckError(status != NO_ERROR, status, "entity->getDevice fails, status:%d", status);
+
     mLensSubdev = lens;
 
     return NO_ERROR;
