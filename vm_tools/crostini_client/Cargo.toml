@@ -1,0 +1,24 @@
+[package]
+name = "crostini_client"
+version = "0.1.0"
+authors = ["The Chromium OS Authors"]
+build = "build.rs"
+
+[[bin]]
+name = "crostini_client"
+path = "main.rs"
+
+[profile.release]
+lto = true
+panic = 'abort'
+overflow-checks = true
+
+[workspace]
+
+[dependencies]
+dbus = "=0.6.3"
+getopts = "=0.2.18"
+protobuf = "=2.1.4"
+
+[build-dependencies]
+protoc-rust = "2.0"
