@@ -192,6 +192,28 @@ bool Mount9P(vm_tools::Maitred::Stub* stub, base::FilePath path) {
   return true;
 }
 
+bool SetTime(vm_tools::Maitred::Stub* stub, uint64_t time) {
+  LOG(INFO) << "Attempting to set time of day";
+
+  vm_tools::SetTimeRequest request;
+  google::protobuf::Timestamp* timestamp = request.mutable_time();
+  timestamp->set_seconds(time);
+  timestamp->set_nanos(0);
+
+  // Make the RPC.
+  grpc::ClientContext ctx;
+  vm_tools::EmptyMessage response;
+
+  grpc::Status status = stub->SetTime(&ctx, request, &response);
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to send SetTime RPC: " << status.error_message();
+    return false;
+  }
+
+  LOG(INFO) << "Successfully set time.";
+  return true;
+}
+
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -206,6 +228,8 @@ int main(int argc, char* argv[]) {
   DEFINE_string(mount, "", "Path to MountRequest text proto file");
   DEFINE_string(mount_9p, "", "Path to Mount9PRequest text proto file");
   DEFINE_bool(shutdown, false, "Shutdown the VM");
+  DEFINE_uint64(set_time_sec, 0,
+                "Set VM time to specified seconds since epoch.");
   brillo::FlagHelper::Init(argc, argv, "maitred client tool");
   if (FLAGS_cid == 0) {
     LOG(ERROR) << "--cid flag is required";
@@ -245,6 +269,8 @@ int main(int argc, char* argv[]) {
     success = Mount9P(&stub, base::FilePath(FLAGS_mount_9p));
   } else if (FLAGS_shutdown) {
     Shutdown(&stub);
+  } else if (FLAGS_set_time_sec != 0) {
+    success = SetTime(&stub, FLAGS_set_time_sec);
   } else {
     LOG(WARNING) << "No commands specified";
   }
