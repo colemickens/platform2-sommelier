@@ -857,8 +857,8 @@ std::unique_ptr<dbus::Response> Service::StopVm(dbus::MethodCall* method_call) {
   auto iter = FindVm(request.owner_id(), request.name());
   if (iter == vms_.end()) {
     LOG(ERROR) << "Requested VM does not exist";
-
-    response.set_failure_reason("Requested VM does not exist");
+    // This is not an error to Chrome
+    response.set_success(true);
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
