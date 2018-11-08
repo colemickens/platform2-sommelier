@@ -108,5 +108,23 @@
         },
       ],
     }],
+    # Fuzzer target.
+    ['USE_fuzzer == 1', {
+      'targets': [
+        {
+          'target_name': 'imageloader_helper_process_receiver_fuzzer',
+          'type': 'executable',
+          'includes': [
+            '../common-mk/common_fuzzer.gypi',
+          ],
+          'dependencies': [
+            'libimageloader_static',
+          ],
+          'sources': [
+            'helper_process_receiver_fuzzer.cc',
+          ],
+        },
+      ],
+    }],
   ],
 }

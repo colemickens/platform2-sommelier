@@ -25,6 +25,9 @@ class HelperProcessReceiver : public brillo::Daemon,
  public:
   explicit HelperProcessReceiver(base::ScopedFD control_fd);
 
+  // Helper function defined in helper_process_receiver_fuzzer.cc.
+  friend void helper_process_receiver_fuzzer_run(const uint8_t*, size_t);
+
  protected:
   // Overrides Daemon init callback.
   int OnInit() override;
