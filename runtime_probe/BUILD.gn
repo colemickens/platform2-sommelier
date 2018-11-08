@@ -1,0 +1,43 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":runtime_probe",
+    ":libruntime_probe",
+  ]
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # before protobuf here or the linker flags won't be in the right
+    # order.
+    "system_api",
+    "protobuf",
+  ]
+}
+
+static_library("libruntime_probe") {
+  configs += [
+    ":target_defaults",
+  ]
+  sources = [
+    "daemon.cc",
+  ]
+}
+
+executable("runtime_probe") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "simple_main.cc",
+  ]
+  deps = [
+    ":libruntime_probe",
+  ]
+}

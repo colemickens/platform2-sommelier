@@ -89,6 +89,7 @@ copies.
 | [power_manager](./power_manager/) | Userspace power management daemon and associated tools |
 | [regions](./regions/) ||
 | [run_oci](./run_oci/) | Minimalistic container runtime |
+| [runtime_probe](./runtime_probe/) | Runtime Probe tool for ChromeOS (part of HWID evolution) |
 | [salsa](./salsa/) | Touchpad experimentation framework |
 | [screenshot](./screenshot/) | Tiny command to take a screenshot |
 | [secure_erase_file](./secure_erase_file/) | Helper tools for securely erasing files from storage (e.g. keys and PII data) |
