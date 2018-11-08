@@ -14,23 +14,19 @@
 
 namespace diagnostics {
 
-DiagnosticsdMojoService::DiagnosticsdMojoService(Delegate* delegate)
-    : delegate_(delegate) {
+DiagnosticsdMojoService::DiagnosticsdMojoService(
+    Delegate* delegate,
+    MojomDiagnosticsdServiceRequest self_interface_request,
+    MojomDiagnosticsdClientPtr client_ptr)
+    : delegate_(delegate),
+      self_binding_(this /* impl */, std::move(self_interface_request)),
+      client_ptr_(std::move(client_ptr)) {
   DCHECK(delegate_);
+  DCHECK(self_binding_.is_bound());
+  DCHECK(client_ptr_);
 }
 
 DiagnosticsdMojoService::~DiagnosticsdMojoService() = default;
-
-void DiagnosticsdMojoService::Init(MojomDiagnosticsdServiceClientPtr client_ptr,
-                                   const InitCallback& callback) {
-  VLOG(0) << "Received Init Mojo request";
-  if (!client_ptr) {
-    LOG(ERROR) << "Invalid Mojo client interface pointer passed to Init";
-  } else {
-    client_ptr_ = std::move(client_ptr);
-  }
-  callback.Run();
-}
 
 void DiagnosticsdMojoService::SendUiMessageToDiagnosticsProcessor(
     mojo::ScopedSharedBufferHandle json_message,

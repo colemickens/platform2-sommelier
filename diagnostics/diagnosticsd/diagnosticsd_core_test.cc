@@ -29,12 +29,13 @@
 #include <google/protobuf/util/message_differencer.h>
 #include <gtest/gtest.h>
 #include <mojo/edk/embedder/embedder.h>
+#include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/bindings/interface_ptr.h>
 
 #include "diagnostics/diagnosticsd/diagnosticsd_core.h"
 #include "diagnostics/diagnosticsd/fake_browser.h"
 #include "diagnostics/diagnosticsd/fake_diagnostics_processor.h"
 #include "diagnostics/diagnosticsd/mojo_test_utils.h"
-
 #include "diagnosticsd.pb.h"  // NOLINT(build/include)
 #include "mojo/diagnosticsd.mojom.h"
 
@@ -55,7 +56,9 @@ const char kDiagnosticsProcessorGrpcUriTemplate[] =
     "unix:%s/test_diagnostics_processor_socket";
 
 using MojomDiagnosticsdService =
-    chromeos::diagnostics::mojom::DiagnosticsdService;
+    chromeos::diagnosticsd::mojom::DiagnosticsdService;
+using MojomDiagnosticsdServiceFactory =
+    chromeos::diagnosticsd::mojom::DiagnosticsdServiceFactory;
 
 namespace {
 
@@ -77,18 +80,21 @@ base::Callback<void(std::unique_ptr<ValueType>)> MakeAsyncResponseWriter(
 
 class MockDiagnosticsdCoreDelegate : public DiagnosticsdCore::Delegate {
  public:
-  std::unique_ptr<mojo::Binding<MojomDiagnosticsdService>>
-  BindDiagnosticsdMojoService(MojomDiagnosticsdService* mojo_service,
-                              base::ScopedFD mojo_pipe_fd) override {
+  std::unique_ptr<mojo::Binding<MojomDiagnosticsdServiceFactory>>
+  BindDiagnosticsdMojoServiceFactory(
+      MojomDiagnosticsdServiceFactory* mojo_service_factory,
+      base::ScopedFD mojo_pipe_fd) override {
     // Redirect to a separate mockable method to workaround GMock's issues with
-    // move-only return values.
-    return std::unique_ptr<mojo::Binding<MojomDiagnosticsdService>>(
-        BindDiagnosticsdMojoServiceImpl(mojo_service, mojo_pipe_fd.get()));
+    // move-only types.
+    return std::unique_ptr<mojo::Binding<MojomDiagnosticsdServiceFactory>>(
+        BindDiagnosticsdMojoServiceFactoryImpl(mojo_service_factory,
+                                               mojo_pipe_fd.get()));
   }
 
-  MOCK_METHOD2(BindDiagnosticsdMojoServiceImpl,
-               mojo::Binding<MojomDiagnosticsdService>*(
-                   MojomDiagnosticsdService* mojo_service, int mojo_pipe_fd));
+  MOCK_METHOD2(BindDiagnosticsdMojoServiceFactoryImpl,
+               mojo::Binding<MojomDiagnosticsdServiceFactory>*(
+                   MojomDiagnosticsdServiceFactory* mojo_service_factory,
+                   int mojo_pipe_fd));
   MOCK_METHOD0(BeginDaemonShutdown, void());
 };
 
@@ -116,8 +122,9 @@ class DiagnosticsdCoreTest : public testing::Test {
 
     SetUpDBus();
 
-    fake_browser_.reset(new FakeBrowser(
-        &mojo_service_interface_ptr_, bootstrap_mojo_connection_dbus_method_));
+    fake_browser_ =
+        std::make_unique<FakeBrowser>(&mojo_service_factory_interface_ptr_,
+                                      bootstrap_mojo_connection_dbus_method_);
   }
 
   void TearDown() override {
@@ -133,8 +140,9 @@ class DiagnosticsdCoreTest : public testing::Test {
 
   MockDiagnosticsdCoreDelegate* core_delegate() { return &core_delegate_; }
 
-  mojo::InterfacePtr<MojomDiagnosticsdService>* mojo_service_interface_ptr() {
-    return &mojo_service_interface_ptr_;
+  mojo::InterfacePtr<MojomDiagnosticsdServiceFactory>*
+  mojo_service_factory_interface_ptr() {
+    return &mojo_service_factory_interface_ptr_;
   }
 
   FakeBrowser* fake_browser() {
@@ -142,27 +150,28 @@ class DiagnosticsdCoreTest : public testing::Test {
     return fake_browser_.get();
   }
 
-  // Set up mock for BindDiagnosticsdMojoService() that simulates successful
-  // Mojo service binding to the given file descriptor. After the mock gets
-  // triggered, |mojo_service_interface_ptr_| become initialized to point to the
-  // tested Mojo service.
+  // Set up mock for BindDiagnosticsdMojoServiceFactory() that simulates
+  // successful Mojo service binding to the given file descriptor. After the
+  // mock gets triggered, |mojo_service_factory_interface_ptr_| become
+  // initialized to point to the tested Mojo service.
   void SetSuccessMockBindDiagnosticsdMojoService(
       FakeMojoFdGenerator* fake_mojo_fd_generator) {
-    EXPECT_CALL(core_delegate_, BindDiagnosticsdMojoServiceImpl(_, _))
-        .WillOnce(Invoke(
-            [fake_mojo_fd_generator, this](
-                MojomDiagnosticsdService* mojo_service, int mojo_pipe_fd) {
-              // Verify the file descriptor is a duplicate of an expected one.
-              EXPECT_TRUE(fake_mojo_fd_generator->IsDuplicateFd(mojo_pipe_fd));
-              // Initialize a Mojo binding that, instead of working through the
-              // given (fake) file descriptor, talks to the test endpoint
-              // |mojo_service_interface_ptr_|.
-              auto mojo_service_binding =
-                  std::make_unique<mojo::Binding<MojomDiagnosticsdService>>(
-                      mojo_service, &mojo_service_interface_ptr_);
-              DCHECK(mojo_service_interface_ptr_);
-              return mojo_service_binding.release();
-            }));
+    EXPECT_CALL(core_delegate_, BindDiagnosticsdMojoServiceFactoryImpl(_, _))
+        .WillOnce(Invoke([fake_mojo_fd_generator, this](
+                             MojomDiagnosticsdServiceFactory*
+                                 mojo_service_factory,
+                             int mojo_pipe_fd) {
+          // Verify the file descriptor is a duplicate of an expected one.
+          EXPECT_TRUE(fake_mojo_fd_generator->IsDuplicateFd(mojo_pipe_fd));
+          // Initialize a Mojo binding that, instead of working through the
+          // given (fake) file descriptor, talks to the test endpoint
+          // |mojo_service_interface_ptr_|.
+          auto mojo_service_factory_binding =
+              std::make_unique<mojo::Binding<MojomDiagnosticsdServiceFactory>>(
+                  mojo_service_factory, &mojo_service_factory_interface_ptr_);
+          DCHECK(mojo_service_factory_interface_ptr_);
+          return mojo_service_factory_binding.release();
+        }));
   }
 
   dbus::ExportedObject::MethodCallCallback
@@ -245,8 +254,9 @@ class DiagnosticsdCoreTest : public testing::Test {
   // Mock D-Bus integration helper for the object exposed by the tested code.
   scoped_refptr<StrictMock<dbus::MockExportedObject>> diagnosticsd_dbus_object_;
 
-  // Mojo interface to the service exposed by the tested code.
-  mojo::InterfacePtr<MojomDiagnosticsdService> mojo_service_interface_ptr_;
+  // Mojo interface to the service factory exposed by the tested code.
+  mojo::InterfacePtr<MojomDiagnosticsdServiceFactory>
+      mojo_service_factory_interface_ptr_;
 
   StrictMock<MockDiagnosticsdCoreDelegate> core_delegate_;
 
@@ -270,14 +280,14 @@ TEST_F(DiagnosticsdCoreTest, MojoBootstrapSuccess) {
 
   EXPECT_TRUE(fake_browser()->BootstrapMojoConnection(&fake_mojo_fd_generator));
 
-  EXPECT_TRUE(*mojo_service_interface_ptr());
+  EXPECT_TRUE(*mojo_service_factory_interface_ptr());
 }
 
 // Test failure to bootstrap the Mojo service due to en error returned by
 // BindDiagnosticsdMojoService() delegate method.
 TEST_F(DiagnosticsdCoreTest, MojoBootstrapErrorToBind) {
   FakeMojoFdGenerator fake_mojo_fd_generator;
-  EXPECT_CALL(*core_delegate(), BindDiagnosticsdMojoServiceImpl(_, _))
+  EXPECT_CALL(*core_delegate(), BindDiagnosticsdMojoServiceFactoryImpl(_, _))
       .WillOnce(Return(nullptr));
   EXPECT_CALL(*core_delegate(), BeginDaemonShutdown());
 
@@ -318,9 +328,8 @@ TEST_F(DiagnosticsdCoreTest, MojoBootstrapSuccessThenAbort) {
 
   EXPECT_CALL(*core_delegate(), BeginDaemonShutdown());
 
-  // Abort the Mojo connection by closing the |mojo_service_interface_ptr()|
-  // endpoint.
-  mojo_service_interface_ptr()->reset();
+  // Abort the Mojo connection by closing the browser-side endpoint.
+  mojo_service_factory_interface_ptr()->reset();
   base::RunLoop().RunUntilIdle();
   Mock::VerifyAndClearExpectations(core_delegate());
 }
@@ -339,7 +348,7 @@ class BootstrappedDiagnosticsdCoreTest : public DiagnosticsdCoreTest {
     SetSuccessMockBindDiagnosticsdMojoService(&fake_mojo_fd_generator);
     ASSERT_TRUE(
         fake_browser()->BootstrapMojoConnection(&fake_mojo_fd_generator));
-    ASSERT_TRUE(*mojo_service_interface_ptr());
+    ASSERT_TRUE(*mojo_service_factory_interface_ptr());
 
     fake_diagnostics_processor_ = std::make_unique<FakeDiagnosticsProcessor>(
         diagnostics_processor_grpc_uri(), diagnosticsd_grpc_uri());

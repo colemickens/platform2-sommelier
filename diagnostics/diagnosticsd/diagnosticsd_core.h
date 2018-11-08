@@ -32,27 +32,30 @@ namespace diagnostics {
 
 // Integrates together all pieces which implement separate IPC services exposed
 // by the diagnosticsd daemon and IPC clients.
-class DiagnosticsdCore final : public DiagnosticsdDBusService::Delegate,
-                               public DiagnosticsdGrpcService::Delegate,
-                               public DiagnosticsdMojoService::Delegate {
+class DiagnosticsdCore final
+    : public DiagnosticsdDBusService::Delegate,
+      public DiagnosticsdGrpcService::Delegate,
+      public DiagnosticsdMojoService::Delegate,
+      public chromeos::diagnosticsd::mojom::DiagnosticsdServiceFactory {
  public:
   class Delegate {
    public:
-    using MojomDiagnosticsdService =
-        chromeos::diagnostics::mojom::DiagnosticsdService;
+    using MojomDiagnosticsdServiceFactory =
+        chromeos::diagnosticsd::mojom::DiagnosticsdServiceFactory;
 
     virtual ~Delegate() = default;
 
-    // Binds the given |mojo_service| to the Mojo message pipe that works via
-    // the given |mojo_pipe_fd|. On success, returns the created Mojo binding,
-    // otherwise returns nullptr.
+    // Binds the given |mojo_service_factory| to the Mojo message pipe that
+    // works via the given |mojo_pipe_fd|. On success, returns the created Mojo
+    // binding, otherwise returns nullptr.
     //
     // In production this method must be called no more than once during the
     // lifetime of the daemon, since Mojo EDK gives no guarantee to support
     // repeated initialization with different parent handles.
-    virtual std::unique_ptr<mojo::Binding<MojomDiagnosticsdService>>
-    BindDiagnosticsdMojoService(MojomDiagnosticsdService* mojo_service,
-                                base::ScopedFD mojo_pipe_fd) = 0;
+    virtual std::unique_ptr<mojo::Binding<MojomDiagnosticsdServiceFactory>>
+    BindDiagnosticsdMojoServiceFactory(
+        MojomDiagnosticsdServiceFactory* mojo_service_factory,
+        base::ScopedFD mojo_pipe_fd) = 0;
 
     // Begins the graceful shutdown of the diagnosticsd daemon.
     virtual void BeginDaemonShutdown() = 0;
@@ -88,12 +91,14 @@ class DiagnosticsdCore final : public DiagnosticsdDBusService::Delegate,
       brillo::dbus_utils::AsyncEventSequencer* sequencer);
 
  private:
-  using MojomDiagnosticsdService =
-      chromeos::diagnostics::mojom::DiagnosticsdService;
+  using MojomDiagnosticsdClientPtr =
+      chromeos::diagnosticsd::mojom::DiagnosticsdClientPtr;
+  using MojomDiagnosticsdServiceRequest =
+      chromeos::diagnosticsd::mojom::DiagnosticsdServiceRequest;
 
   // DiagnosticsdDBusService::Delegate overrides:
-  bool StartMojoService(base::ScopedFD mojo_pipe_fd,
-                        std::string* error_message) override;
+  bool StartMojoServiceFactory(base::ScopedFD mojo_pipe_fd,
+                               std::string* error_message) override;
 
   // Shuts down the self instance after a Mojo fatal error happens.
   void ShutDownDueToMojoError(const std::string& debug_reason);
@@ -101,6 +106,11 @@ class DiagnosticsdCore final : public DiagnosticsdDBusService::Delegate,
   // DiagnosticsdMojoService::Delegate overrides:
   void SendGrpcUiMessageToDiagnosticsProcessor(
       base::StringPiece json_message) override;
+
+  // chromeos::diagnosticsd::mojom::DiagnosticsdServiceFactory overrides:
+  void GetService(MojomDiagnosticsdServiceRequest service,
+                  MojomDiagnosticsdClientPtr client,
+                  const GetServiceCallback& callback) override;
 
   // Unowned. The delegate should outlive this instance.
   Delegate* const delegate_;
@@ -132,18 +142,23 @@ class DiagnosticsdCore final : public DiagnosticsdDBusService::Delegate,
 
   // Mojo-related members:
 
+  // Binding that connects this instance (which is an implementation of
+  // chromeos::diagnosticsd::mojom::DiagnosticsdServiceFactory) with the message
+  // pipe set up on top of the received file descriptor.
+  //
+  // Gets created after the BootstrapMojoConnection D-Bus method is called.
+  std::unique_ptr<mojo::Binding<DiagnosticsdServiceFactory>>
+      mojo_service_factory_binding_;
   // Implementation of the Mojo interface exposed by the diagnosticsd daemon and
   // a proxy that allows sending outgoing Mojo requests.
   //
-  // Gets created after the BootstrapMojoConnection D-Bus method is called.
+  // Gets created after the GetService() Mojo method is called.
   std::unique_ptr<DiagnosticsdMojoService> mojo_service_;
-  // Binding that connects |mojo_service_| with the message pipe set up on top
-  // of the received file descriptor.
-  std::unique_ptr<mojo::Binding<MojomDiagnosticsdService>>
-      mojo_service_binding_;
-  // Whether binding of the Mojo service was attempted. This flag is useful
-  // during shutdown when |mojo_service_| and |mojo_service_binding_| may
-  // already get destroyed.
+  // Whether binding of the Mojo service was attempted.
+  //
+  // This flag is needed for detecting repeated Mojo bootstrapping attempts
+  // (alternative ways, like checking |mojo_service_factory_binding_|, are
+  // unreliable during shutdown).
   bool mojo_service_bind_attempted_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(DiagnosticsdCore);

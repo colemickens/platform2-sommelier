@@ -5,38 +5,38 @@
 // API exposed by the diagnosticsd daemon. Normally the consumer of this API is
 // the browser.
 
-// NOTE: This mojom should be kept in sync with the copy in Chromium's repo.
+// NOTE: This mojom should be kept in sync with the copy in Chromium's repo in
+// src/chrome/services/diagnosticsd/public/mojom/diagnosticsd.mojom.
 
-module chromeos.diagnostics.mojom;
+module chromeos.diagnosticsd.mojom;
+
+// Factory interface exposed by the diagnosticsd daemon, which allows both
+// endpoints (the diagnosticsd and the browser) to exchange with their
+// interfaces (DiagnosticsdService and DiagnosticsdClient correspondingly).
+interface DiagnosticsdServiceFactory {
+  // Returns an interface to DiagnosticsdService in response to the passed
+  // interface to DiagnosticsdClient.
+  GetService@0(DiagnosticsdService& service, DiagnosticsdClient client) => ();
+};
 
 // Interface exposed by the diagnosticsd daemon.
 interface DiagnosticsdService {
-  // Performs initialization, with passing a client handle that allows for
-  // bidirectional communication. This should be called before calling any other
-  // methods on the interface.
-  Init@0(DiagnosticsdServiceClient client_ptr) => ();
-
   // Sends a message, originating from the diagnostics UI extension (hosted by
   // the browser), to the diagnostics_processor daemon. The message contents are
   // serialized JSON. Delivery of the message is not guaranteed (for example, if
   // the diagnostics_processor daemon isn't running at the moment).
-  SendUiMessageToDiagnosticsProcessor@1(handle<shared_buffer> json_message)
+  SendUiMessageToDiagnosticsProcessor@0(handle<shared_buffer> json_message)
       => ();
 
   // TODO(lamzin): remove when mojo library will support retrieving size of
   // shared buffer.
   // The same as SendUiMessageToDiagnosticsProcessor, but with additional
   // parameter json_message_size.
-  SendUiMessageToDiagnosticsProcessorWithSize@2(
+  SendUiMessageToDiagnosticsProcessorWithSize@1(
     handle<shared_buffer> json_message, int64 json_message_size) => ();
 };
 
-// Interface exposed by the consumer of DiagnosticsdService.
-interface DiagnosticsdServiceClient {
-  // Sends a message, originating from the diagnostics_processor daemon, to the
-  // diagnostics UI extension (hosted by the browser). The message contents are
-  // serialized JSON. Delivery of the message is not guaranteed (for example, if
-  // the diagnostics UI extension isn't running at the moment).
-  SendDiagnosticsProcessorMessageToUi@0(handle<shared_buffer> json_message)
-      => ();
+// Interface exposed by the consumer of DiagnosticsdService. In production this
+// is the browser.
+interface DiagnosticsdClient {
 };

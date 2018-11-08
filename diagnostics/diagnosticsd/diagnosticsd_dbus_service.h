@@ -26,15 +26,15 @@ class DiagnosticsdDBusService final {
 
     // Called when a Mojo invitation is received via a D-Bus call.
     //
-    // Should start the diagnosticsd Mojo service that talks through the pipe
-    // specified by the passed |mojo_pipe_fd|. Should return whether the new
-    // Mojo service was successfully started, and when false should fill
+    // Should start the diagnosticsd Mojo service factory that talks through the
+    // pipe specified by the passed |mojo_pipe_fd|. Should return whether the
+    // Mojo service factory was successfully started, and when false should fill
     // |*error_message|.
     //
     // In production the pipe's parent side end belongs to the Chrome browser
     // process.
-    virtual bool StartMojoService(base::ScopedFD mojo_pipe_fd,
-                                  std::string* error_message) = 0;
+    virtual bool StartMojoServiceFactory(base::ScopedFD mojo_pipe_fd,
+                                         std::string* error_message) = 0;
   };
 
   explicit DiagnosticsdDBusService(Delegate* delegate);

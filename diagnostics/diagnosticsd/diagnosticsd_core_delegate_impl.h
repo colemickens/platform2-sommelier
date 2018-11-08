@@ -21,9 +21,10 @@ class DiagnosticsdCoreDelegateImpl final : public DiagnosticsdCore::Delegate {
   ~DiagnosticsdCoreDelegateImpl() override;
 
   // DiagnosticsdCore::Delegate overrides:
-  std::unique_ptr<mojo::Binding<MojomDiagnosticsdService>>
-  BindDiagnosticsdMojoService(MojomDiagnosticsdService* mojo_service,
-                              base::ScopedFD mojo_pipe_fd) override;
+  std::unique_ptr<mojo::Binding<MojomDiagnosticsdServiceFactory>>
+  BindDiagnosticsdMojoServiceFactory(
+      MojomDiagnosticsdServiceFactory* mojo_service_factory,
+      base::ScopedFD mojo_pipe_fd) override;
   void BeginDaemonShutdown() override;
 
  private:

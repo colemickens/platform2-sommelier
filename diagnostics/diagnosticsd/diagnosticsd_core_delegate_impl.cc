@@ -16,8 +16,8 @@
 
 namespace diagnostics {
 
-using MojomDiagnosticsdService =
-    chromeos::diagnostics::mojom::DiagnosticsdService;
+using MojomDiagnosticsdServiceFactory =
+    chromeos::diagnosticsd::mojom::DiagnosticsdServiceFactory;
 
 DiagnosticsdCoreDelegateImpl::DiagnosticsdCoreDelegateImpl(
     brillo::Daemon* daemon)
@@ -27,9 +27,10 @@ DiagnosticsdCoreDelegateImpl::DiagnosticsdCoreDelegateImpl(
 
 DiagnosticsdCoreDelegateImpl::~DiagnosticsdCoreDelegateImpl() = default;
 
-std::unique_ptr<mojo::Binding<MojomDiagnosticsdService>>
-DiagnosticsdCoreDelegateImpl::BindDiagnosticsdMojoService(
-    MojomDiagnosticsdService* mojo_service, base::ScopedFD mojo_pipe_fd) {
+std::unique_ptr<mojo::Binding<MojomDiagnosticsdServiceFactory>>
+DiagnosticsdCoreDelegateImpl::BindDiagnosticsdMojoServiceFactory(
+    MojomDiagnosticsdServiceFactory* mojo_service_factory,
+    base::ScopedFD mojo_pipe_fd) {
   DCHECK(mojo_pipe_fd.is_valid());
 
   mojo::edk::SetParentPipeHandle(mojo::edk::ScopedPlatformHandle(
@@ -43,8 +44,8 @@ DiagnosticsdCoreDelegateImpl::BindDiagnosticsdMojoService(
     return nullptr;
   }
 
-  return std::make_unique<mojo::Binding<MojomDiagnosticsdService>>(
-      mojo_service, std::move(mojo_pipe_handle));
+  return std::make_unique<mojo::Binding<MojomDiagnosticsdServiceFactory>>(
+      mojo_service_factory, std::move(mojo_pipe_handle));
 }
 
 void DiagnosticsdCoreDelegateImpl::BeginDaemonShutdown() {

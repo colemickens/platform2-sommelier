@@ -52,7 +52,8 @@ bool DiagnosticsdDBusService::DoBootstrapMojoConnection(
     return false;
   }
 
-  return delegate_->StartMojoService(std::move(mojo_fd_copy), error_message);
+  return delegate_->StartMojoServiceFactory(std::move(mojo_fd_copy),
+                                            error_message);
 }
 
 }  // namespace diagnostics

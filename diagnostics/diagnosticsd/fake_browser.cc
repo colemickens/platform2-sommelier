@@ -8,24 +8,55 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/logging.h>
 #include <brillo/bind_lambda.h>
 #include <dbus/message.h>
 #include <dbus/diagnosticsd/dbus-constants.h>
+#include <mojo/public/cpp/bindings/callback.h>
+#include <mojo/public/cpp/bindings/interface_request.h>
+#include <mojo/public/cpp/system/buffer.h>
 
 namespace diagnostics {
 
 FakeBrowser::FakeBrowser(
-    MojomDiagnosticsdServicePtr* diagnosticsd_service_ptr,
+    MojomDiagnosticsdServiceFactoryPtr* diagnosticsd_service_factory_ptr,
     DBusMethodCallCallback bootstrap_mojo_connection_dbus_method)
-    : diagnosticsd_service_ptr_(diagnosticsd_service_ptr),
+    : diagnosticsd_service_factory_ptr_(diagnosticsd_service_factory_ptr),
       bootstrap_mojo_connection_dbus_method_(
-          bootstrap_mojo_connection_dbus_method) {}
+          bootstrap_mojo_connection_dbus_method),
+      diagnosticsd_client_binding_(&diagnosticsd_client_ /* impl */) {
+  DCHECK(diagnosticsd_service_factory_ptr);
+  DCHECK(!bootstrap_mojo_connection_dbus_method.is_null());
+}
 
 FakeBrowser::~FakeBrowser() = default;
 
 bool FakeBrowser::BootstrapMojoConnection(
     FakeMojoFdGenerator* fake_mojo_fd_generator) {
-  // Prepare input data for the call.
+  if (!CallBootstrapMojoConnectionDBusMethod(fake_mojo_fd_generator))
+    return false;
+  CallGetServiceMojoMethod();
+  return true;
+}
+
+bool FakeBrowser::SendMessageToDiagnosticsProcessor(
+    const std::string& json_message) {
+  DCHECK(diagnosticsd_service_ptr_);
+
+  std::unique_ptr<mojo::ScopedSharedBufferHandle> shared_buffer =
+      helper::WriteToSharedBuffer(json_message);
+  if (!shared_buffer) {
+    return false;
+  }
+  diagnosticsd_service_ptr_->SendUiMessageToDiagnosticsProcessorWithSize(
+      std::move(*shared_buffer.get()), json_message.length(),
+      mojo::Callback<void()>());
+  return true;
+}
+
+bool FakeBrowser::CallBootstrapMojoConnectionDBusMethod(
+    FakeMojoFdGenerator* fake_mojo_fd_generator) {
+  // Prepare input data for the D-Bus call.
   const int kFakeMethodCallSerial = 1;
   dbus::MethodCall method_call(kDiagnosticsdServiceInterface,
                                kDiagnosticsdBootstrapMojoConnectionMethod);
@@ -33,7 +64,7 @@ bool FakeBrowser::BootstrapMojoConnection(
   dbus::MessageWriter message_writer(&method_call);
   message_writer.AppendFileDescriptor(fake_mojo_fd_generator->MakeFd().get());
 
-  // Storage for the output data returned by the call.
+  // Storage for the output data returned by the D-Bus call.
   std::unique_ptr<dbus::Response> response;
   const auto response_writer_callback = base::Bind(
       [](std::unique_ptr<dbus::Response>* response,
@@ -42,7 +73,7 @@ bool FakeBrowser::BootstrapMojoConnection(
       },
       &response);
 
-  // Call the tested method and extract its result.
+  // Call the D-Bus method and extract its result.
   if (bootstrap_mojo_connection_dbus_method_.is_null())
     return false;
   bootstrap_mojo_connection_dbus_method_.Run(&method_call,
@@ -50,17 +81,22 @@ bool FakeBrowser::BootstrapMojoConnection(
   return response && response->GetMessageType() != dbus::Message::MESSAGE_ERROR;
 }
 
-bool FakeBrowser::SendMessageToDiagnosticsProcessor(
-    const std::string& json_message) {
-  std::unique_ptr<mojo::ScopedSharedBufferHandle> shared_buffer =
-      helper::WriteToSharedBuffer(json_message);
-  if (!shared_buffer) {
-    return false;
-  }
-  diagnosticsd_service_ptr_->get()->SendUiMessageToDiagnosticsProcessorWithSize(
-      std::move(*shared_buffer.get()), json_message.length(),
-      mojo::Callback<void()>());
-  return true;
+void FakeBrowser::CallGetServiceMojoMethod() {
+  // Queue a Mojo GetService() method call that allows to establish full-duplex
+  // Mojo communication with the tested Mojo service.
+  // After this call, |diagnosticsd_service_ptr_| can be used for requests to
+  // the tested service and |diagnosticsd_client_| for receiving requests made
+  // by the tested service.
+  // Note that despite that GetService() is an asynchronous call, it's actually
+  // allowed to use |diagnosticsd_service_ptr_| straight away, before the call
+  // completes.
+  MojomDiagnosticsdClientPtr diagnosticsd_client_proxy;
+  diagnosticsd_client_binding_.Bind(
+      mojo::MakeRequest(&diagnosticsd_client_proxy));
+  (*diagnosticsd_service_factory_ptr_)
+      ->GetService(mojo::MakeRequest(&diagnosticsd_service_ptr_),
+                   std::move(diagnosticsd_client_proxy),
+                   mojo::Callback<void()>());
 }
 
 }  // namespace diagnostics

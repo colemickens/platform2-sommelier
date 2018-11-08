@@ -28,14 +28,14 @@ class MockDiagnosticsdDBusServiceDelegate
     : public DiagnosticsdDBusService::Delegate {
  public:
   // Delegate overrides:
-  bool StartMojoService(base::ScopedFD mojo_pipe_fd,
-                        std::string* error_message) override {
+  bool StartMojoServiceFactory(base::ScopedFD mojo_pipe_fd,
+                               std::string* error_message) override {
     // Redirect to a separate mockable method to workaround GMock's issues with
     // move-only parameters.
-    return StartMojoServiceImpl(mojo_pipe_fd.get(), error_message);
+    return StartMojoServiceFactoryImpl(mojo_pipe_fd.get(), error_message);
   }
 
-  MOCK_METHOD2(StartMojoServiceImpl,
+  MOCK_METHOD2(StartMojoServiceFactoryImpl,
                bool(int mojo_pipe_fd, std::string* error_message));
 };
 
@@ -53,7 +53,7 @@ class DiagnosticsdDBusServiceTest : public testing::Test {
 TEST_F(DiagnosticsdDBusServiceTest, BootstrapMojoConnectionBasic) {
   const FakeMojoFdGenerator fake_mojo_fd_generator;
 
-  EXPECT_CALL(delegate_, StartMojoServiceImpl(_, _))
+  EXPECT_CALL(delegate_, StartMojoServiceFactoryImpl(_, _))
       .WillOnce(DoAll(
           WithArg<0 /* mojo_pipe_fd */>(
               Invoke([&fake_mojo_fd_generator](int mojo_pipe_fd) {

@@ -94,8 +94,8 @@ void DiagnosticsdCore::RegisterDBusObjectsAsync(
       true /* failure_is_fatal */));
 }
 
-bool DiagnosticsdCore::StartMojoService(base::ScopedFD mojo_pipe_fd,
-                                        std::string* error_message) {
+bool DiagnosticsdCore::StartMojoServiceFactory(base::ScopedFD mojo_pipe_fd,
+                                               std::string* error_message) {
   DCHECK(mojo_pipe_fd.is_valid());
 
   if (mojo_service_bind_attempted_) {
@@ -118,20 +118,44 @@ bool DiagnosticsdCore::StartMojoService(base::ScopedFD mojo_pipe_fd,
   }
 
   mojo_service_bind_attempted_ = true;
-  mojo_service_ =
-      std::make_unique<DiagnosticsdMojoService>(this /* delegate */);
-  mojo_service_binding_ = delegate_->BindDiagnosticsdMojoService(
-      mojo_service_.get(), std::move(mojo_pipe_fd));
-  if (!mojo_service_binding_) {
+  mojo_service_factory_binding_ = delegate_->BindDiagnosticsdMojoServiceFactory(
+      this /* mojo_service_factory */, std::move(mojo_pipe_fd));
+  if (!mojo_service_factory_binding_) {
     *error_message = "Failed to bootstrap Mojo";
     ShutDownDueToMojoError("Mojo bootstrap failed" /* debug_reason */);
     return false;
   }
-  mojo_service_binding_->set_connection_error_handler(base::Bind(
+  mojo_service_factory_binding_->set_connection_error_handler(base::Bind(
       &DiagnosticsdCore::ShutDownDueToMojoError, base::Unretained(this),
       "Mojo connection error" /* debug_reason */));
   LOG(INFO) << "Successfully bootstrapped Mojo connection";
   return true;
+}
+
+void DiagnosticsdCore::GetService(MojomDiagnosticsdServiceRequest service,
+                                  MojomDiagnosticsdClientPtr client,
+                                  const GetServiceCallback& callback) {
+  // Mojo guarantees that these parameters are nun-null (see
+  // VALIDATION_ERROR_UNEXPECTED_INVALID_HANDLE).
+  DCHECK(service.is_pending());
+  DCHECK(client);
+
+  if (mojo_service_) {
+    LOG(WARNING) << "GetService Mojo method called multiple times";
+    // We should not normally be called more than once, so don't bother with
+    // trying to reuse objects from the previous call. However, make sure we
+    // don't have duplicate instances of the service at any moment of time.
+    mojo_service_.reset();
+  }
+
+  // Create an instance of DiagnosticsdMojoService that will handle incoming
+  // Mojo calls. Pass |service| to it to fulfill the remote endpoint's request,
+  // allowing it to call into |mojo_service_|. Pass also |client| to allow
+  // |mojo_service_| to do calls in the opposite direction.
+  mojo_service_ = std::make_unique<DiagnosticsdMojoService>(
+      this /* delegate */, std::move(service), std::move(client));
+
+  callback.Run();
 }
 
 void DiagnosticsdCore::ShutDownDueToMojoError(const std::string& debug_reason) {
@@ -140,8 +164,8 @@ void DiagnosticsdCore::ShutDownDueToMojoError(const std::string& debug_reason) {
   // guarantee to support repeated bootstraps. Therefore tear down and exit from
   // our process and let upstart to restart us again.
   LOG(INFO) << "Shutting down due to: " << debug_reason;
-  mojo_service_binding_.reset();
   mojo_service_.reset();
+  mojo_service_factory_binding_.reset();
   delegate_->BeginDaemonShutdown();
 }
 
