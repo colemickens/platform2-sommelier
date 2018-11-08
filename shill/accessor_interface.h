@@ -59,26 +59,30 @@ using Uint16s = std::vector<uint16_t>;
 
 // Using a smart pointer here allows pointers to classes derived from
 // AccessorInterface<> to be stored in maps and other STL container types.
-using BoolAccessor = std::shared_ptr<AccessorInterface<bool>>;
-using Int16Accessor = std::shared_ptr<AccessorInterface<int16_t>>;
-using Int32Accessor = std::shared_ptr<AccessorInterface<int32_t>>;
+using BoolAccessor = std::unique_ptr<AccessorInterface<bool>>;
+using Int16Accessor = std::unique_ptr<AccessorInterface<int16_t>>;
+using Int32Accessor = std::unique_ptr<AccessorInterface<int32_t>>;
 // See comment above RpcIdentifiers typedef, for the reason why the
 // RpcIdentifiersAccessor exists (even though it has the same
 // underlying type as StringsAccessor).
-using RpcIdentifierAccessor = std::shared_ptr<AccessorInterface<RpcIdentifier>>;
+using RpcIdentifierAccessor = std::unique_ptr<AccessorInterface<RpcIdentifier>>;
 using RpcIdentifiersAccessor =
-    std::shared_ptr<AccessorInterface<std::vector<std::string>>>;
-using StringAccessor = std::shared_ptr<AccessorInterface<std::string>>;
-using StringmapAccessor = std::shared_ptr<AccessorInterface<Stringmap>>;
-using StringmapsAccessor = std::shared_ptr<AccessorInterface<Stringmaps>>;
-using StringsAccessor = std::shared_ptr<AccessorInterface<Strings>>;
-using KeyValueStoreAccessor = std::shared_ptr<AccessorInterface<KeyValueStore>>;
-using Uint8Accessor = std::shared_ptr<AccessorInterface<uint8_t>>;
-using ByteArrayAccessor = std::shared_ptr<AccessorInterface<ByteArray>>;
-using Uint16Accessor = std::shared_ptr<AccessorInterface<uint16_t>>;
-using Uint16sAccessor = std::shared_ptr<AccessorInterface<Uint16s>>;
-using Uint32Accessor = std::shared_ptr<AccessorInterface<uint32_t>>;
-using Uint64Accessor = std::shared_ptr<AccessorInterface<uint64_t>>;
+    std::unique_ptr<AccessorInterface<std::vector<std::string>>>;
+using StringAccessor = std::unique_ptr<AccessorInterface<std::string>>;
+using StringmapAccessor = std::unique_ptr<AccessorInterface<Stringmap>>;
+using StringmapsAccessor = std::unique_ptr<AccessorInterface<Stringmaps>>;
+using StringsAccessor = std::unique_ptr<AccessorInterface<Strings>>;
+using KeyValueStoreAccessor = std::unique_ptr<AccessorInterface<KeyValueStore>>;
+using Uint8Accessor = std::unique_ptr<AccessorInterface<uint8_t>>;
+using ByteArrayAccessor = std::unique_ptr<AccessorInterface<ByteArray>>;
+using Uint16Accessor = std::unique_ptr<AccessorInterface<uint16_t>>;
+using Uint16sAccessor = std::unique_ptr<AccessorInterface<Uint16s>>;
+using Uint32Accessor = std::unique_ptr<AccessorInterface<uint32_t>>;
+using Uint64Accessor = std::unique_ptr<AccessorInterface<uint64_t>>;
+
+template <typename T>
+using AccessorMap =
+    std::map<std::string, std::unique_ptr<AccessorInterface<T>>>;
 
 }  // namespace shill
 

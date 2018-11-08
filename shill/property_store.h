@@ -231,50 +231,42 @@ class PropertyStore {
   void RegisterConstByteArray(const std::string& name, const ByteArray* prop);
   void RegisterWriteOnlyByteArray(const std::string& name, ByteArray* prop);
 
-  void RegisterDerivedBool(const std::string& name,
-                           const BoolAccessor& accessor);
-  void RegisterDerivedInt32(const std::string& name,
-                            const Int32Accessor& accessor);
+  void RegisterDerivedBool(const std::string& name, BoolAccessor accessor);
+  void RegisterDerivedInt32(const std::string& name, Int32Accessor accessor);
   void RegisterDerivedKeyValueStore(const std::string& name,
-                                    const KeyValueStoreAccessor& accessor);
+                                    KeyValueStoreAccessor accessor);
   void RegisterDerivedRpcIdentifier(const std::string& name,
-                                    const RpcIdentifierAccessor& acc);
+                                    RpcIdentifierAccessor acc);
   void RegisterDerivedRpcIdentifiers(const std::string& name,
-                                     const RpcIdentifiersAccessor& accessor);
-  void RegisterDerivedString(const std::string& name,
-                             const StringAccessor& accessor);
+                                     RpcIdentifiersAccessor accessor);
+  void RegisterDerivedString(const std::string& name, StringAccessor accessor);
   void RegisterDerivedStringmap(const std::string& name,
-                                const StringmapAccessor& accessor);
+                                StringmapAccessor accessor);
   void RegisterDerivedStringmaps(const std::string& name,
-                                 const StringmapsAccessor& accessor);
+                                 StringmapsAccessor accessor);
   void RegisterDerivedStrings(const std::string& name,
-                              const StringsAccessor& accessor);
-  void RegisterDerivedUint16(const std::string& name,
-                             const Uint16Accessor& accessor);
-  void RegisterDerivedUint64(const std::string& name,
-                             const Uint64Accessor& accessor);
+                              StringsAccessor accessor);
+  void RegisterDerivedUint16(const std::string& name, Uint16Accessor accessor);
+  void RegisterDerivedUint64(const std::string& name, Uint64Accessor accessor);
   void RegisterDerivedUint16s(const std::string& name,
-                              const Uint16sAccessor& accessor);
+                              Uint16sAccessor accessor);
   void RegisterDerivedByteArray(const std::string& name,
-                                const ByteArrayAccessor& accessor);
+                                ByteArrayAccessor accessor);
 
  private:
   template <class V>
-  bool GetProperty(
-      const std::string& name,
-      V* value,
-      Error* error,
-      const std::map<std::string,
-                     std::shared_ptr<AccessorInterface<V>>>& collection,
-      const std::string& value_type_english) const;
+  bool GetProperty(const std::string& name,
+                   V* value,
+                   Error* error,
+                   const AccessorMap<V>& collection,
+                   const std::string& value_type_english) const;
 
   template <class V>
-  bool SetProperty(
-      const std::string& name,
-      const V& value,
-      Error* error,
-      std::map<std::string, std::shared_ptr<AccessorInterface<V>>>* collection,
-      const std::string& value_type_english);
+  bool SetProperty(const std::string& name,
+                   const V& value,
+                   Error* error,
+                   AccessorMap<V>* collection,
+                   const std::string& value_type_english);
 
   // These are std::maps instead of something cooler because the common
   // operation is iterating through them and returning all properties.

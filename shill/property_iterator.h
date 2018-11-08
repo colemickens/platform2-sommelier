@@ -39,13 +39,8 @@ class ReadablePropertyConstIterator {
  private:
   friend class PropertyStore;
 
-  using VAccessorPtr = std::shared_ptr<AccessorInterface<V>>;
-
-  explicit ReadablePropertyConstIterator(
-      const typename std::map<std::string, VAccessorPtr>& collection)
-      : collection_(collection),
-        it_(collection_.begin()),
-        value_() {
+  explicit ReadablePropertyConstIterator(const AccessorMap<V>& collection)
+      : collection_(collection), it_(collection_.begin()), value_() {
     if (MustAdvance()) {
       Advance();
     }
@@ -59,8 +54,8 @@ class ReadablePropertyConstIterator {
     return error.IsSuccess();
   }
 
-  const typename std::map<std::string, VAccessorPtr>& collection_;
-  typename std::map<std::string, VAccessorPtr>::const_iterator it_;
+  const AccessorMap<V>& collection_;
+  typename AccessorMap<V>::const_iterator it_;
   V value_;
 };
 

@@ -25,7 +25,7 @@ namespace shill {
 //
 //   bool foo = true;
 //   map<string, BoolAccessor> accessors;
-//   accessors["foo"] = BoolAccessor(new PropertyAccessor<bool>(&foo));
+//   accessors["foo"].reset(new PropertyAccessor<bool>(&foo));
 //   bool new_foo = accessors["foo"]->Get();  // new_foo == true
 //   accessors["foo"]->Set(false);  // returns true, because setting is allowed.
 //                                  // foo == false, new_foo == true
