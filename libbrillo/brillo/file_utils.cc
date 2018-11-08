@@ -186,11 +186,6 @@ bool TouchFile(const base::FilePath& path) {
   return TouchFile(path, kPermissions600, geteuid(), getegid());
 }
 
-bool WriteBlobToFile(const base::FilePath& path, const Blob& blob) {
-  return WriteToFile(path, reinterpret_cast<const char*>(blob.data()),
-                     blob.size());
-}
-
 bool WriteStringToFile(const base::FilePath& path, const std::string& data) {
   return WriteToFile(path, data.data(), data.size());
 }
@@ -306,13 +301,6 @@ bool WriteToFileAtomic(const base::FilePath& path,
   }
 
   return true;
-}
-
-bool WriteBlobToFileAtomic(const base::FilePath& path,
-                           const Blob& blob,
-                           mode_t mode) {
-  return WriteToFileAtomic(path, reinterpret_cast<const char*>(blob.data()),
-                           blob.size(), mode);
 }
 
 }  // namespace brillo
