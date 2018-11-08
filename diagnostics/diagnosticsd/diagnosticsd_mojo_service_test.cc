@@ -46,16 +46,20 @@ class DiagnosticsdMojoServiceTest : public testing::Test {
 
 }  // namespace
 
+// TODO(crbug.com/893756): Causing failures on pre-cq due to unavailability of
+// /dev/shm.
 TEST_F(DiagnosticsdMojoServiceTest,
-       SendUiMessageToDiagnosticsProcessorWithSize) {
+       DISABLED_SendUiMessageToDiagnosticsProcessorWithSize) {
   std::string json_message("{\"message\": \"Hello world!\"}");
   EXPECT_CALL(delegate_, SendGrpcUiMessageToDiagnosticsProcessor(
                              base::StringPiece(json_message)));
   SendJsonMessage(json_message);
 }
 
+// TODO(crbug.com/893756): Causing failures on pre-cq due to unavailability of
+// /dev/shm.
 TEST_F(DiagnosticsdMojoServiceTest,
-       SendUiMessageToDiagnosticsProcessorWithSizeInvalidJSON) {
+       DISABLED_SendUiMessageToDiagnosticsProcessorWithSizeInvalidJSON) {
   std::string json_message("{\'message\': \'Hello world!\'}");
   EXPECT_CALL(delegate_, SendGrpcUiMessageToDiagnosticsProcessor(_)).Times(0);
   SendJsonMessage(json_message);

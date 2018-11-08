@@ -281,8 +281,10 @@ TEST_F(DiagnosticsdCoreTest, MojoBootstrapSuccessThenAbort) {
   Mock::VerifyAndClearExpectations(core_delegate());
 }
 
+// TODO(crbug.com/893756): Causing failures on pre-cq due to unavailability of
+// /dev/shm.
 // Test that diagnostics processor will receive message from browser.
-TEST_F(DiagnosticsdCoreTest, SendGrpcUiMessageToDiagnosticsProcessor) {
+TEST_F(DiagnosticsdCoreTest, DISABLED_SendGrpcUiMessageToDiagnosticsProcessor) {
   const std::string json_message = "{\"some_key\": \"some_value\"}";
 
   base::RunLoop run_loop_handle_message;
@@ -310,10 +312,12 @@ TEST_F(DiagnosticsdCoreTest, SendGrpcUiMessageToDiagnosticsProcessor) {
   run_loop_shutdown.Run();
 }
 
+// TODO(crbug.com/893756): Causing failures on pre-cq due to unavailability of
+// /dev/shm.
 // Test that diagnostics processor will not receive message from browser
 // if JSON message is invalid.
 TEST_F(DiagnosticsdCoreTest,
-       SendGrpcUiMessageToDiagnosticsProcessorInvalidJSON) {
+       DISABLED_SendGrpcUiMessageToDiagnosticsProcessorInvalidJSON) {
   const std::string json_message = "{'some_key': 'some_value'}";
 
   FakeDiagnosticsProcessor fake_diagnostics_processor(
