@@ -55,7 +55,7 @@ class MetricsDaemonTest : public testing::Test {
  protected:
   std::string kFakeDiskStats0;
   std::string kFakeDiskStats1;
-  base::FilePath fake_temperature_dir;
+  base::FilePath fake_temperature_dir_;
 
   virtual void SetUp() {
     kFakeDiskStats0 = base::StringPrintf(
@@ -75,8 +75,8 @@ class MetricsDaemonTest : public testing::Test {
                  kFakeCpuinfoMaxFreqPath, base::TimeDelta::FromMinutes(30),
                  kMetricsServer, kMetricsFilePath, "/", backing_dir_path);
 
-    CHECK(base::CreateNewTempDirectory("", &fake_temperature_dir));
-    daemon_.SetTemperatureZonePathBaseForTest(fake_temperature_dir);
+    CHECK(base::CreateNewTempDirectory("", &fake_temperature_dir_));
+    daemon_.SetThermalZonePathBaseForTest(fake_temperature_dir_);
 
     // Replace original persistent values with mock ones.
     base::FilePath m1 = backing_dir_path.Append("1.mock");
@@ -177,30 +177,28 @@ class MetricsDaemonTest : public testing::Test {
   // representation of |value|.
   void CreateUint64ValueFile(const base::FilePath& path, uint64_t value) {
     base::DeleteFile(path, false);
-    std::string value_string = base::Uint64ToString(value);
+    std::string value_string = base::Uint64ToString(value) + "\n";
     ASSERT_EQ(value_string.length(), base::WriteFile(path, value_string.c_str(),
                                                      value_string.length()));
   }
 
-  // Creates two input files containing a temperature zone type and a
+  // Creates two input files containing a thermal zone type and a
   // temperature value at the appropriate zone path given by
-  // fake_temperature_dir, the temperature zone format, and |zone|.
+  // fake_temperature_dir_, sysfs' thermal zone format, and |zone|.
   void CreateFakeTemperatureSamplesFiles(int zone,
                                          const std::string& type,
                                          uint64_t value) {
-    std::string temperature_zone =
-        base::StringPrintf(MetricsDaemon::kSysfsTemperatureZoneFormat, zone);
-    base::FilePath zone_path = fake_temperature_dir.Append(temperature_zone);
+    std::string thermal_zone = base::StringPrintf("thermal_zone%d", zone);
+    base::FilePath zone_path = fake_temperature_dir_.Append(thermal_zone);
     CHECK(base::CreateDirectory(zone_path));
-    base::FilePath type_path =
-        zone_path.Append(MetricsDaemon::kSysfsTemperatureTypeFile);
 
-    ASSERT_EQ(type.length(),
-              base::WriteFile(type_path, type.c_str(), type.length()));
+    base::FilePath type_path = zone_path.Append("type");
+    std::string type_string = type + "\n";
+    ASSERT_EQ(
+        base::WriteFile(type_path, type_string.c_str(), type_string.length()),
+        type_string.length());
 
-    base::FilePath value_path =
-        zone_path.Append(MetricsDaemon::kSysfsTemperatureValueFile);
-    CreateUint64ValueFile(value_path, value);
+    CreateUint64ValueFile(zone_path.Append("temp"), value);
   }
 
   // The MetricsDaemon under test.
@@ -338,18 +336,17 @@ TEST_F(MetricsDaemonTest, SendTemperatureSamplesReadError) {
   daemon_.SendTemperatureSamples();
 
   // Break zones 0 and 1 by deleting input files.
-  std::string temperature_zone_zero =
-      base::StringPrintf(MetricsDaemon::kSysfsTemperatureZoneFormat, 0);
+  std::string thermal_zone_zero =
+      base::StringPrintf(MetricsDaemon::kSysfsThermalZoneFormat, 0);
   base::FilePath zone_path_zero =
-      fake_temperature_dir.Append(temperature_zone_zero);
+      fake_temperature_dir_.Append(thermal_zone_zero);
   base::FilePath value_path_zero =
       zone_path_zero.Append(MetricsDaemon::kSysfsTemperatureValueFile);
   base::DeleteFile(value_path_zero, false);
 
-  std::string temperature_zone_one =
-      base::StringPrintf(MetricsDaemon::kSysfsTemperatureZoneFormat, 1);
-  base::FilePath zone_path_one =
-      fake_temperature_dir.Append(temperature_zone_one);
+  std::string thermal_zone_one =
+      base::StringPrintf(MetricsDaemon::kSysfsThermalZoneFormat, 1);
+  base::FilePath zone_path_one = fake_temperature_dir_.Append(thermal_zone_one);
   base::FilePath type_path_one =
       zone_path_one.Append(MetricsDaemon::kSysfsTemperatureTypeFile);
   base::DeleteFile(type_path_one, false);

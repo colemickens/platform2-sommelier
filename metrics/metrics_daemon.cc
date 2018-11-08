@@ -170,7 +170,7 @@ const char MetricsDaemon::kOrigDataSizeName[] = "orig_data_size";
 const char MetricsDaemon::kZeroPagesName[] = "zero_pages";
 const char MetricsDaemon::kMMStatName[] = "mm_stat";
 
-constexpr char MetricsDaemon::kSysfsTemperatureZoneFormat[];
+constexpr char MetricsDaemon::kSysfsThermalZoneFormat[];
 constexpr char MetricsDaemon::kSysfsTemperatureValueFile[];
 constexpr char MetricsDaemon::kSysfsTemperatureTypeFile[];
 
@@ -212,7 +212,7 @@ MetricsDaemon::MetricsDaemon()
       latest_cpu_use_ticks_(0),
       detachable_base_active_time_(0),
       detachable_base_suspended_time_(0),
-      temperature_zones_count_(-1) {}
+      thermal_zone_count_(-1) {}
 
 MetricsDaemon::~MetricsDaemon() {}
 
@@ -641,34 +641,33 @@ bool MetricsDaemon::VmStatsReadStats(struct VmstatRecord* stats) {
   return VmStatsParseStats(&vmstat_stream, stats);
 }
 
-void MetricsDaemon::SetTemperatureZonePathBaseForTest(
-    const base::FilePath& path) {
+void MetricsDaemon::SetThermalZonePathBaseForTest(const base::FilePath& path) {
   zone_path_base_ = path;
 }
 
 std::map<std::string, uint64_t> MetricsDaemon::ReadSensorTemperatures() {
   // -1 value means we haven't yet determined how many zones there are
   // this run, we'll iterate until we get an error reading a file.
-  bool update_zones_count = temperature_zones_count_ == -1;
+  bool update_zone_count = thermal_zone_count_ == -1;
 
   std::map<std::string, uint64_t> readings;
-  for (int zone = 0; zone < temperature_zones_count_ || update_zones_count;
-       zone++) {
-    std::string temperature_zone =
-        base::StringPrintf(MetricsDaemon::kSysfsTemperatureZoneFormat, zone);
-    FilePath zone_path = zone_path_base_.Append(temperature_zone);
+  for (int zone = 0; zone < thermal_zone_count_ || update_zone_count; zone++) {
+    std::string thermal_zone =
+        base::StringPrintf(MetricsDaemon::kSysfsThermalZoneFormat, zone);
+    FilePath zone_path = zone_path_base_.Append(thermal_zone);
     std::string type;
     bool type_read_success = base::ReadFileToString(
         zone_path.Append(kSysfsTemperatureTypeFile), &type);
 
     if (!type_read_success) {
-      if (update_zones_count) {
+      if (update_zone_count) {
         // We failed to read from a zone. Since this is the first time during
         // this loop, the last valid zone must have been (|zone| - 1), meaning
-        // the number of temperature zones must equal |zone|.
-        temperature_zones_count_ = zone;
+        // the number of thermal zones must equal |zone|.
+        thermal_zone_count_ = zone;
         break;
       }
+      LOG(WARNING) << "Failed to read type file for zone " << zone_path.value();
       // This read failed so we'll skip reading the value, but there are more
       // zones to read from so remain in the loop.
       continue;
@@ -677,6 +676,7 @@ std::map<std::string, uint64_t> MetricsDaemon::ReadSensorTemperatures() {
     uint64_t temperature = 0;
     if (ReadFileToUint64(zone_path.Append(kSysfsTemperatureValueFile),
                          &temperature, true)) {
+      base::TrimWhitespaceASCII(type, base::TRIM_TRAILING, &type);
       readings.emplace(type, temperature);
     }
   }
@@ -684,7 +684,6 @@ std::map<std::string, uint64_t> MetricsDaemon::ReadSensorTemperatures() {
 }
 
 void MetricsDaemon::SendTemperatureSamples() {
-  std::map<std::string, uint64_t> samples = ReadSensorTemperatures();
   for (const auto& entry : ReadSensorTemperatures()) {
     std::string metric_name;
     // Name for CPU sensor is platform dependent.
