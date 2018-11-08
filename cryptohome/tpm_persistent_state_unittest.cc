@@ -63,8 +63,14 @@ class TpmPersistentStateTest : public ::testing::Test {
     files_[path] = blob;
     return true;
   }
+
+  bool FileWriteSecureBlob(const base::FilePath& path,
+                           const brillo::SecureBlob& sblob) {
+    return FileWrite(path, brillo::Blob(sblob.begin(), sblob.end()));
+  }
+
   bool FileWriteAtomic(const base::FilePath& path,
-                       const brillo::Blob& blob,
+                       const brillo::SecureBlob& blob,
                        mode_t /* mode */) {
     return FileWrite(path, blob);
   }
@@ -80,9 +86,10 @@ class TpmPersistentStateTest : public ::testing::Test {
       .WillByDefault(Invoke(this, &TpmPersistentStateTest::GetFileSize));
     ON_CALL(platform_, ReadFile(_, _))
       .WillByDefault(Invoke(this, &TpmPersistentStateTest::FileRead));
-    ON_CALL(platform_, WriteFile(_, _))
-      .WillByDefault(Invoke(this, &TpmPersistentStateTest::FileWrite));
-    ON_CALL(platform_, WriteFileAtomicDurable(_, _, _))
+    ON_CALL(platform_, WriteSecureBlobToFile(_, _))
+      .WillByDefault(Invoke(this,
+                            &TpmPersistentStateTest::FileWriteSecureBlob));
+    ON_CALL(platform_, WriteSecureBlobToFileAtomicDurable(_, _, _))
       .WillByDefault(Invoke(this, &TpmPersistentStateTest::FileWriteAtomic));
     ON_CALL(platform_, DataSyncFile(_))
       .WillByDefault(Return(true));
@@ -193,7 +200,8 @@ TEST_F(TpmPersistentStateTest, TpmStatusCached) {
   EXPECT_EQ(password, result);
 
   // Each change to state leads to write.
-  EXPECT_CALL(platform_, WriteFileAtomicDurable(kTpmStatusFile, _, _))
+  EXPECT_CALL(platform_,
+              WriteSecureBlobToFileAtomicDurable(kTpmStatusFile, _, _))
       .Times(2);
   EXPECT_TRUE(tpm_persistent_state_.SetSealedPassword(password));
   EXPECT_TRUE(tpm_persistent_state_.ClearDependency(

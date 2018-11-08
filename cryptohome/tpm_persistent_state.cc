@@ -218,7 +218,7 @@ bool TpmPersistentState::StoreTpmStatus() {
     if (platform_->GetFileSize(kTpmStatusFile, &file_size)) {
       SecureBlob random(file_size);
       CryptoLib::GetSecureRandom(random.data(), random.size());
-      platform_->WriteFile(kTpmStatusFile, random);
+      platform_->WriteSecureBlobToFile(kTpmStatusFile, random);
       platform_->DataSyncFile(kTpmStatusFile);
     }
     platform_->DeleteFile(kTpmStatusFile, false);
@@ -227,7 +227,8 @@ bool TpmPersistentState::StoreTpmStatus() {
   SecureBlob final_blob(tpm_status_.ByteSize());
   tpm_status_.SerializeWithCachedSizesToArray(
       static_cast<google::protobuf::uint8*>(final_blob.data()));
-  return platform_->WriteFileAtomicDurable(kTpmStatusFile, final_blob, 0600);
+  return platform_->WriteSecureBlobToFileAtomicDurable(kTpmStatusFile,
+                                                       final_blob, 0600);
 }
 
 bool TpmPersistentState::IsReadyLocked() {

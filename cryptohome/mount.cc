@@ -1245,7 +1245,7 @@ bool Mount::StoreVaultKeysetForUser(
   SecureBlob final_blob(serialized.ByteSize());
   serialized.SerializeWithCachedSizesToArray(
       static_cast<google::protobuf::uint8*>(final_blob.data()));
-  return platform_->WriteFileAtomicDurable(
+  return platform_->WriteSecureBlobToFileAtomicDurable(
       GetUserLegacyKeyFileForUser(obfuscated_username, index),
       final_blob,
       kKeyFilePermissions);

@@ -273,8 +273,8 @@ bool Crypto::GetOrCreateSalt(const FilePath& path,
     // If this salt doesn't exist, automatically create it.
     local_salt.resize(length);
     CryptoLib::GetSecureRandom(local_salt.data(), local_salt.size());
-    if (!platform_->WriteFileAtomicDurable(path, local_salt,
-                                           kSaltFilePermissions)) {
+    if (!platform_->WriteSecureBlobToFileAtomicDurable(
+            path, local_salt, kSaltFilePermissions)) {
       LOG(ERROR) << "Could not write user salt";
       return false;
     }

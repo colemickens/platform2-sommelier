@@ -592,7 +592,12 @@ bool Platform::WriteOpenFile(FILE* fp, const brillo::Blob& blob) {
 
 bool Platform::WriteFile(const FilePath& path,
                          const brillo::Blob& blob) {
-  return brillo::WriteBlobToFile(path, blob);
+  return brillo::WriteBlobToFile<brillo::Blob>(path, blob);
+}
+
+bool Platform::WriteSecureBlobToFile(const FilePath& path,
+                                     const brillo::SecureBlob& blob) {
+  return brillo::WriteBlobToFile<brillo::SecureBlob>(path, blob);
 }
 
 bool Platform::WriteStringToFile(const FilePath& path,
@@ -628,7 +633,13 @@ std::string Platform::GetRandomSuffix() {
 bool Platform::WriteFileAtomic(const FilePath& path,
                                const brillo::Blob& blob,
                                mode_t mode) {
-  return brillo::WriteBlobToFileAtomic(path, blob, mode);
+  return brillo::WriteBlobToFileAtomic<brillo::Blob>(path, blob, mode);
+}
+
+bool Platform::WriteSecureBlobToFileAtomic(const FilePath& path,
+                                           const brillo::SecureBlob& blob,
+                                           mode_t mode) {
+  return brillo::WriteBlobToFileAtomic<brillo::SecureBlob>(path, blob, mode);
 }
 
 bool Platform::WriteStringToFileAtomic(const FilePath& path,
@@ -643,6 +654,17 @@ bool Platform::WriteFileAtomicDurable(const FilePath& path,
   const std::string data(reinterpret_cast<const char*>(blob.data()),
                          blob.size());
   return WriteStringToFileAtomicDurable(path, data, mode);
+}
+
+bool Platform::WriteSecureBlobToFileAtomicDurable(
+    const FilePath& path,
+    const brillo::SecureBlob& blob,
+    mode_t mode) {
+  if (!WriteSecureBlobToFileAtomic(path, blob, mode))
+    return false;
+
+  WriteChecksum(path, blob.data(), blob.size(), mode);
+  return SyncDirectory(FilePath(path).DirName());
 }
 
 bool Platform::WriteStringToFileAtomicDurable(const FilePath& path,

@@ -403,6 +403,8 @@ class Platform {
   //  blob/data - blob/string/array to populate from
   // (size      - array size)
   virtual bool WriteFile(const base::FilePath& path, const brillo::Blob& blob);
+  virtual bool WriteSecureBlobToFile(const base::FilePath& path,
+                                     const brillo::SecureBlob& blob);
   virtual bool WriteStringToFile(const base::FilePath& path,
                                  const std::string& data);
   virtual bool WriteArrayToFile(const base::FilePath& path, const char* data,
@@ -422,6 +424,9 @@ class Platform {
   virtual bool WriteFileAtomic(const base::FilePath& path,
                                const brillo::Blob& blob,
                                mode_t mode);
+  virtual bool WriteSecureBlobToFileAtomic(const base::FilePath& path,
+                                           const brillo::SecureBlob& blob,
+                                           mode_t mode);
   virtual bool WriteStringToFileAtomic(const base::FilePath& path,
                                        const std::string& data,
                                        mode_t mode);
@@ -440,6 +445,10 @@ class Platform {
   virtual bool WriteFileAtomicDurable(const base::FilePath& path,
                                       const brillo::Blob& blob,
                                       mode_t mode);
+  virtual bool WriteSecureBlobToFileAtomicDurable(
+      const base::FilePath& path,
+      const brillo::SecureBlob& blob,
+      mode_t mode);
   virtual bool WriteStringToFileAtomicDurable(const base::FilePath& path,
                                               const std::string& data,
                                               mode_t mode);

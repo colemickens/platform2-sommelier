@@ -274,7 +274,7 @@ void TestUser::GenerateCredentials(bool force_ecryptfs) {
   EXPECT_CALL(platform, CreateDirectory(_))
     .WillRepeatedly(Return(true));
   // Grab the generated credential
-  EXPECT_CALL(platform, WriteFileAtomicDurable(keyset_path, _, _))
+  EXPECT_CALL(platform, WriteSecureBlobToFileAtomicDurable(keyset_path, _, _))
     .WillOnce(DoAll(SaveArg<1>(&credentials), Return(true)));
   Mount::MountArgs mount_args;
   mount_args.create_as_ecryptfs = force_ecryptfs;

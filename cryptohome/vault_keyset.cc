@@ -297,8 +297,8 @@ bool VaultKeyset::Save(const FilePath& filename) {
       static_cast<google::protobuf::uint8*>(contents.data());
   serialized_.SerializeWithCachedSizesToArray(buf);
 
-  bool ok = platform_->WriteFileAtomicDurable(filename, contents,
-                                              kVaultFilePermissions);
+  bool ok = platform_->WriteSecureBlobToFileAtomicDurable(
+      filename, contents, kVaultFilePermissions);
   return ok;
 }
 

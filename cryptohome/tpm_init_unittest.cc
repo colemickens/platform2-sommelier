@@ -123,10 +123,16 @@ class TpmInitTest : public ::testing::Test {
     files_[path] = blob;
     return true;
   }
+  bool FileWriteFromSecureBlob(const base::FilePath& path,
+                               const brillo::SecureBlob& sblob) {
+    brillo::Blob blob(sblob.begin(), sblob.end());
+    files_[path] = blob;
+    return true;
+  }
   bool FileWriteAtomic(const base::FilePath& path,
-                       const brillo::Blob& blob,
+                       const brillo::SecureBlob& sblob,
                        mode_t /* mode */) {
-    return FileWrite(path, blob);
+    return FileWriteFromSecureBlob(path, sblob);
   }
   bool FileWriteString(const base::FilePath& path, const std::string& str) {
     brillo::Blob blob(str.begin(), str.end());
@@ -192,11 +198,11 @@ class TpmInitTest : public ::testing::Test {
       .WillByDefault(Invoke(this, &TpmInitTest::FileRead));
     ON_CALL(platform_, ReadFileToSecureBlob(_, _))
       .WillByDefault(Invoke(this, &TpmInitTest::FileReadToSecureBlob));
-    ON_CALL(platform_, WriteFile(_, _))
-      .WillByDefault(Invoke(this, &TpmInitTest::FileWrite));
-    ON_CALL(platform_, WriteFileAtomic(_, _, _))
+    ON_CALL(platform_, WriteSecureBlobToFile(_, _))
+      .WillByDefault(Invoke(this, &TpmInitTest::FileWriteFromSecureBlob));
+    ON_CALL(platform_, WriteSecureBlobToFileAtomic(_, _, _))
       .WillByDefault(Invoke(this, &TpmInitTest::FileWriteAtomic));
-    ON_CALL(platform_, WriteFileAtomicDurable(_, _, _))
+    ON_CALL(platform_, WriteSecureBlobToFileAtomicDurable(_, _, _))
       .WillByDefault(Invoke(this, &TpmInitTest::FileWriteAtomic));
     ON_CALL(platform_, DataSyncFile(_))
       .WillByDefault(Return(true));
@@ -313,7 +319,8 @@ TEST_F(TpmInitTest, RemoveTpmOwnerDependencySuccess) {
   auto dependency = TpmPersistentState::TpmOwnerDependency::kAttestation;
   EXPECT_CALL(tpm_, RemoveOwnerDependency(dependency))
       .WillOnce(Return(true));
-  EXPECT_CALL(platform_, WriteFileAtomicDurable(kTpmStatusFile, _, _))
+  EXPECT_CALL(platform_,
+              WriteSecureBlobToFileAtomicDurable(kTpmStatusFile, _, _))
       .Times(1);
   tpm_init_.RemoveTpmOwnerDependency(dependency);
   GetTpmStatus(&tpm_status);
@@ -327,7 +334,8 @@ TEST_F(TpmInitTest, RemoveTpmOwnerDependencyAlreadyRemoved) {
   auto dependency = TpmPersistentState::TpmOwnerDependency::kAttestation;
   EXPECT_CALL(tpm_, RemoveOwnerDependency(dependency))
       .WillOnce(Return(true));
-  EXPECT_CALL(platform_, WriteFileAtomicDurable(kTpmStatusFile, _, _))
+  EXPECT_CALL(platform_,
+              WriteSecureBlobToFileAtomicDurable(kTpmStatusFile, _, _))
       .Times(0);
   tpm_init_.RemoveTpmOwnerDependency(dependency);
   GetTpmStatus(&tpm_status);
@@ -341,7 +349,8 @@ TEST_F(TpmInitTest, RemoveTpmOwnerDependencyTpmFailure) {
   auto dependency = TpmPersistentState::TpmOwnerDependency::kAttestation;
   EXPECT_CALL(tpm_, RemoveOwnerDependency(dependency))
       .WillOnce(Return(false));
-  EXPECT_CALL(platform_, WriteFileAtomicDurable(kTpmStatusFile, _, _))
+  EXPECT_CALL(platform_,
+              WriteSecureBlobToFileAtomicDurable(kTpmStatusFile, _, _))
       .Times(0);
   tpm_init_.RemoveTpmOwnerDependency(dependency);
   GetTpmStatus(&tpm_status);
@@ -352,7 +361,8 @@ TEST_F(TpmInitTest, RemoveTpmOwnerDependencyNoTpmStatus) {
   auto dependency = TpmPersistentState::TpmOwnerDependency::kAttestation;
   EXPECT_CALL(tpm_, RemoveOwnerDependency(dependency))
       .WillOnce(Return(true));
-  EXPECT_CALL(platform_, WriteFileAtomicDurable(kTpmStatusFile, _, _))
+  EXPECT_CALL(platform_,
+              WriteSecureBlobToFileAtomicDurable(kTpmStatusFile, _, _))
       .Times(0);
   tpm_init_.RemoveTpmOwnerDependency(dependency);
 }

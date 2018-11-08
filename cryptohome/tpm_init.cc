@@ -400,8 +400,8 @@ bool TpmInit::CreateCryptohomeKey() {
 }
 
 bool TpmInit::SaveCryptohomeKey(const brillo::SecureBlob& wrapped_key) {
-  bool ok = platform_->WriteFileAtomicDurable(kDefaultCryptohomeKeyFile,
-                                              wrapped_key, 0600);
+  bool ok = platform_->WriteSecureBlobToFileAtomicDurable(
+      kDefaultCryptohomeKeyFile, wrapped_key, 0600);
   if (!ok)
     LOG(ERROR) << "Error writing key file of desired size: "
                << wrapped_key.size();

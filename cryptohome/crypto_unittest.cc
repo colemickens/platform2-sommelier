@@ -245,7 +245,7 @@ TEST_F(CryptoTest, SaltCreateTest) {
   FilePath salt_path(FilePath(kImageDir).Append("crypto_test_salt"));
   EXPECT_CALL(platform, FileExists(salt_path))
       .WillOnce(Return(false));
-  EXPECT_CALL(platform, WriteFileAtomicDurable(salt_path, _, _))
+  EXPECT_CALL(platform, WriteSecureBlobToFileAtomicDurable(salt_path, _, _))
       .WillOnce(DoAll(SaveArg<1>(salt_ptr), Return(true)));
   crypto.GetOrCreateSalt(salt_path, 32, false, &salt);
 
@@ -261,7 +261,7 @@ TEST_F(CryptoTest, SaltCreateTest) {
   int64_t salt_size = 32;
   EXPECT_CALL(platform, GetFileSize(salt_path, _))
       .WillOnce(DoAll(SetArgPointee<1>(salt_size), Return(true)));
-  EXPECT_CALL(platform, WriteFileAtomicDurable(salt_path, _, _))
+  EXPECT_CALL(platform, WriteSecureBlobToFileAtomicDurable(salt_path, _, _))
       .WillOnce(DoAll(SaveArg<1>(salt_ptr), Return(true)));
   crypto.GetOrCreateSalt(salt_path, 32, true, &new_salt);
   ASSERT_EQ(32, new_salt.size());
