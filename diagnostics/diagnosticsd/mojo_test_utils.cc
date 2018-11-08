@@ -8,6 +8,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/un.h>
+#include <unistd.h>
+#include <cstdint>
+#include <cstring>
 
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
