@@ -447,7 +447,7 @@ class CrosConfigBaseImpl(object):
       # Skip device_targetss with no build targets
       if not device_targets:
         continue
-      targets = [device_targets[c] for c in components]
+      targets = [device_targets[c] for c in components if c in device_targets]
 
       # Always name firmware combinations after the 'coreboot' name.
       # TODO(teravest): Add a 'name' field.

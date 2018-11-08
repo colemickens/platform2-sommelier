@@ -152,13 +152,20 @@ class CrosConfigHostTest(unittest.TestCase):
     self.assertEqual(lines[3].split(), ['missing', 'cras/'])
 
 
-  def testFimwareBuildCombinations(self):
+  def testFirmwareBuildCombinations(self):
     """Test generating a dict of firmware build combinations."""
     config = CrosConfig(self.filepath)
     expected = OrderedDict(
         [('another', ['another', 'another']),
          ('some', ['some', 'some'])])
     result = config.GetFirmwareBuildCombinations(['coreboot', 'depthcharge'])
+    self.assertEqual(result, expected)
+
+    # Should not explode when devices do not specify requested target.
+    expected = OrderedDict(
+        [('another', ['another_base']),
+         ('some', [])])
+    result = config.GetFirmwareBuildCombinations(['base'])
     self.assertEqual(result, expected)
 
     os.environ['FW_NAME'] = 'another'
