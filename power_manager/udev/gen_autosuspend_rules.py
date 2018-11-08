@@ -185,6 +185,10 @@ USB_IDS += [
   "18d1:5025",
   # Google USB-C to 3.5mm Digital Headphone Jack Adapter "Mir" (HID only)
   "18d1:5029",
+  # Google USB-C to 3.5mm Digital Headphone Jack Adapter 2018 "Condor"
+  "18d1:5034",
+  # Google Pixel USB-C Earbuds "Blackbird"
+  "18d1:5033",
   # Libratone Q Adapt In-Ear USB-C Earphones, Made for Google
   "03eb:2433",
   # Moshi USB-C to 3.5 mm Adapter/Charger, Made for Google
@@ -193,6 +197,8 @@ USB_IDS += [
   "282b:0026",
   # AiAiAi TMA-2 C60 Cable, Made for Google
   "0572:1a08",
+  # Apple USB-C to 3.5mm Headphone Jack Adapter
+  "05ac:110a",
 ]
 
 # List of PCI devices (vendorid:deviceid) for which it is safe to enable
