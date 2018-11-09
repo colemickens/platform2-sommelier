@@ -35,6 +35,7 @@ pkg_config("target_defaults") {
 static_library("libcommon") {
   configs += [ ":target_defaults" ]
   sources = [
+    "common/dbus_client.cc",
     "common/dbus_daemon.cc",
     "common/exported_object_manager_wrapper.cc",
     "common/property.cc",
@@ -105,6 +106,7 @@ if (use.test) {
       ":test_config",
     ]
     sources = [
+      "common/dbus_client_test.cc",
       "common/exported_object_manager_wrapper_unittest.cc",
       "common/property_unittest.cc",
       "dispatcher/catch_all_forwarder_unittest.cc",

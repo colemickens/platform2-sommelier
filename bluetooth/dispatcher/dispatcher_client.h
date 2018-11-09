@@ -8,9 +8,11 @@
 #include <memory>
 #include <string>
 
+#include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <dbus/bus.h>
 
+#include "bluetooth/common/dbus_client.h"
 #include "bluetooth/dispatcher/catch_all_forwarder.h"
 #include "bluetooth/dispatcher/dbus_connection_factory.h"
 
@@ -29,25 +31,14 @@ class DispatcherClient {
   // Bluetooth backend service (BlueZ/NewBlue).
   scoped_refptr<dbus::Bus> GetClientBus();
 
-  // Registers a listener to be notified when this client becomes unavailable
-  // (disconnected from D-Bus). This should be called only once.
-  void WatchClientUnavailable(const base::Closure& client_unavailable_callback);
-
   // Starts "upward forwarding": forwarding method calls from server to client.
   void StartUpwardForwarding();
 
- private:
-  // Accepts matched messages from D-Bus daemon, relays it to |HandleMessage|.
-  // This adapter is needed since libdbus only accepts static C function as
-  // the callback.
-  static DBusHandlerResult HandleMessageThunk(DBusConnection* connection,
-                                              DBusMessage* raw_message,
-                                              void* user_data);
-  DBusHandlerResult HandleMessage(DBusConnection* connection,
-                                  DBusMessage* raw_message);
+  // Returns the DBusClient.
+  DBusClient* GetDBusClient();
 
-  // The main D-Bus connection. Used for listening to NameOwnerChanged to detect
-  // the client becoming unavailable.
+ private:
+  // The main D-Bus connection.
   scoped_refptr<dbus::Bus> bus_;
   // The D-Bus connection specific for message forwarding to Bluetooth service.
   scoped_refptr<dbus::Bus> client_bus_;
@@ -56,11 +47,8 @@ class DispatcherClient {
 
   // D-Bus address of this client.
   std::string client_address_;
-  // The D-Bus match rule that has been registered to D-Bus daemon.
-  std::string client_availability_match_rule_;
 
-  // Callback to call when the client becomes unavailable.
-  base::Closure client_unavailable_callback_;
+  std::unique_ptr<DBusClient> dbus_client_;
 
   std::unique_ptr<CatchAllForwarder> catch_all_forwarder_;
 
