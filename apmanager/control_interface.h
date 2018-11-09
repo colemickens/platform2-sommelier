@@ -5,6 +5,8 @@
 #ifndef APMANAGER_CONTROL_INTERFACE_H_
 #define APMANAGER_CONTROL_INTERFACE_H_
 
+#include <memory>
+
 #include <base/callback.h>
 #include <base/macros.h>
 

@@ -5,6 +5,7 @@
 #ifndef APMANAGER_DBUS_PERMISSION_BROKER_DBUS_PROXY_H_
 #define APMANAGER_DBUS_PERMISSION_BROKER_DBUS_PROXY_H_
 
+#include <memory>
 #include <string>
 
 #include <base/macros.h>

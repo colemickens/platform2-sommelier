@@ -6,6 +6,7 @@
 #define APMANAGER_DEVICE_INFO_H_
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include <base/callback.h>

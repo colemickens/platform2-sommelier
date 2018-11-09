@@ -5,6 +5,7 @@
 #ifndef APMANAGER_HOSTAPD_MONITOR_H_
 #define APMANAGER_HOSTAPD_MONITOR_H_
 
+#include <memory>
 #include <string>
 
 #include <base/cancelable_callback.h>

@@ -5,6 +5,8 @@
 #ifndef APMANAGER_MOCK_CONTROL_H_
 #define APMANAGER_MOCK_CONTROL_H_
 
+#include <memory>
+
 #include <base/macros.h>
 #include <gmock/gmock.h>
 

@@ -5,6 +5,9 @@
 #ifndef APMANAGER_DBUS_SERVICE_DBUS_ADAPTOR_H_
 #define APMANAGER_DBUS_SERVICE_DBUS_ADAPTOR_H_
 
+#include <memory>
+#include <string>
+
 #include <base/macros.h>
 
 #include <dbus_bindings/org.chromium.apmanager.Service.h>

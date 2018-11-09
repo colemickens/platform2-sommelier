@@ -5,6 +5,7 @@
 #ifndef APMANAGER_SHILL_MANAGER_H_
 #define APMANAGER_SHILL_MANAGER_H_
 
+#include <memory>
 #include <set>
 #include <string>
 

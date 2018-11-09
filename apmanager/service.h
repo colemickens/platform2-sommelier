@@ -5,6 +5,7 @@
 #ifndef APMANAGER_SERVICE_H_
 #define APMANAGER_SERVICE_H_
 
+#include <memory>
 #include <string>
 
 #include <base/callback.h>

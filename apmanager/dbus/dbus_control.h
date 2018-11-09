@@ -5,6 +5,8 @@
 #ifndef APMANAGER_DBUS_DBUS_CONTROL_H_
 #define APMANAGER_DBUS_DBUS_CONTROL_H_
 
+#include <memory>
+
 #include <base/macros.h>
 #include <brillo/dbus/exported_object_manager.h>
 #include <dbus/bus.h>

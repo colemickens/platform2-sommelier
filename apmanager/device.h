@@ -5,6 +5,7 @@
 #ifndef APMANAGER_DEVICE_H_
 #define APMANAGER_DEVICE_H_
 
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>

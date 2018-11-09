@@ -6,6 +6,8 @@
 #define APMANAGER_DBUS_MANAGER_DBUS_ADAPTOR_H_
 
 #include <map>
+#include <memory>
+#include <utility>
 
 #include <base/macros.h>
 #include <brillo/dbus/dbus_service_watcher.h>

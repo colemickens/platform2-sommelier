@@ -5,6 +5,8 @@
 #ifndef APMANAGER_DEVICE_DBUS_ADAPTOR_H_
 #define APMANAGER_DEVICE_DBUS_ADAPTOR_H_
 
+#include <string>
+
 #include <base/macros.h>
 
 #include <dbus_bindings/org.chromium.apmanager.Device.h>

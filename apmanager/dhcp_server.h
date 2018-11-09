@@ -5,6 +5,7 @@
 #ifndef APMANAGER_DHCP_SERVER_H_
 #define APMANAGER_DHCP_SERVER_H_
 
+#include <memory>
 #include <string>
 
 #include <base/macros.h>

@@ -5,6 +5,7 @@
 #ifndef APMANAGER_MANAGER_H_
 #define APMANAGER_MANAGER_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 

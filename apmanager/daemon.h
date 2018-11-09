@@ -5,6 +5,8 @@
 #ifndef APMANAGER_DAEMON_H_
 #define APMANAGER_DAEMON_H_
 
+#include <memory>
+
 #include <base/callback_forward.h>
 #include <brillo/daemons/daemon.h>
 
