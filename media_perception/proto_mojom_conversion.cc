@@ -11,6 +11,13 @@ namespace chromeos {
 namespace media_perception {
 namespace mojom {
 
+SuccessStatusPtr ToMojom(const mri::SuccessStatus& status) {
+  SuccessStatusPtr status_ptr = SuccessStatus::New();
+  status_ptr->success = status.success();
+  status_ptr->failure_reason = status.failure_reason();
+  return status_ptr;
+}
+
 PixelFormat ToMojom(mri::PixelFormat format) {
   switch (format) {
     case mri::PixelFormat::I420:
@@ -247,8 +254,27 @@ std::vector<uint8_t> SerializeVideoDeviceProto(const VideoDevice& device) {
   std::vector<uint8_t> bytes(size, 0);
 
   CHECK(device.SerializeToArray(bytes.data(), size))
-      << "Failed to serialize proto.";
+      << "Failed to serialize device proto.";
   return bytes;
+}
+
+std::vector<uint8_t> SerializeSuccessStatusProto(const SuccessStatus& status) {
+  const int size = status.ByteSizeLong();
+  std::vector<uint8_t> bytes(size, 0);
+
+  CHECK(status.SerializeToArray(bytes.data(), size))
+      << "Failed to serialize success status proto.";
+  return bytes;
+}
+
+SuccessStatus ToProto(
+    const chromeos::media_perception::mojom::SuccessStatusPtr& status_ptr) {
+  SuccessStatus status;
+  if (status_ptr.is_null())
+    return status;
+  status.set_success(status_ptr->success);
+  status.set_failure_reason(*status_ptr->failure_reason);
+  return status;
 }
 
 PixelFormat ToProto(

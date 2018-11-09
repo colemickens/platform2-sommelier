@@ -8,6 +8,7 @@
 #include <memory>
 #include <mojo/public/cpp/bindings/binding.h>
 
+#include "media_perception/rtanalytics.h"
 #include "media_perception/video_capture_service_client.h"
 #include "mojom/media_perception_service.mojom.h"
 
@@ -22,7 +23,8 @@ class MediaPerceptionServiceImpl :
   MediaPerceptionServiceImpl(
       mojo::ScopedMessagePipeHandle pipe,
       base::Closure connection_error_handler,
-      std::shared_ptr<VideoCaptureServiceClient> video_capture_service_client);
+      std::shared_ptr<VideoCaptureServiceClient> video_capture_service_client,
+      std::shared_ptr<Rtanalytics> rtanalytics);
 
   void ConnectToVideoCaptureService(
       video_capture::mojom::DeviceFactoryRequest request);
@@ -42,6 +44,8 @@ class MediaPerceptionServiceImpl :
       binding_;
 
   std::shared_ptr<VideoCaptureServiceClient> video_capture_service_client_;
+
+  std::shared_ptr<Rtanalytics> rtanalytics_;
 
   DISALLOW_COPY_AND_ASSIGN(MediaPerceptionServiceImpl);
 };

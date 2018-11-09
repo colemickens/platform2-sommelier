@@ -4,6 +4,7 @@
 
 #include "media_perception/mojo_connector.h"
 
+#include <map>
 #include <utility>
 #include <vector>
 
@@ -71,6 +72,11 @@ void MojoConnector::SetVideoCaptureServiceClient(
   video_capture_service_client_ = video_capture_service_client;
 }
 
+void MojoConnector::SetRtanalytics(
+    std::shared_ptr<Rtanalytics> rtanalytics) {
+  rtanalytics_ = rtanalytics;
+}
+
 void MojoConnector::ReceiveMojoInvitationFileDescriptor(int fd_int) {
   base::ScopedFD fd(fd_int);
   if (!fd.is_valid()) {
@@ -104,7 +110,8 @@ void MojoConnector::AcceptConnectionOnIpcThread(base::ScopedFD fd) {
       std::move(child_pipe),
       base::Bind(&MojoConnector::OnConnectionErrorOrClosed,
                  base::Unretained(this)),
-      video_capture_service_client_);
+      video_capture_service_client_,
+      rtanalytics_);
 }
 
 void MojoConnector::ConnectToVideoCaptureService() {

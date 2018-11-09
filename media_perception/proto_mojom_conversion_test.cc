@@ -80,6 +80,16 @@ mri::AudioDevice CreateAudioDeviceProto(
   return device;
 }
 
+TEST(ProtoMojomConversionTest, SuccessStatusToMojom) {
+  mri::SuccessStatus status;
+  status.set_success(false);
+  status.set_failure_reason("failed");
+
+  SuccessStatusPtr status_ptr = ToMojom(status);
+  EXPECT_EQ(status_ptr->success, false);
+  EXPECT_EQ(*status_ptr->failure_reason, "failed");
+}
+
 TEST(ProtoMojomConversionTest, VideoStreamParamsToMojom) {
   mri::VideoStreamParams params = CreateVideoStreamParamsProto(1, 2, 3);
 
@@ -322,6 +332,17 @@ chromeos::media_perception::mojom::AudioDevicePtr CreateAudioDevicePtr(
   }
   device_ptr->configuration = CreateAudioStreamParamsPtr(1, 2);
   return device_ptr;
+}
+
+TEST(ProtoMojomConversionTest, SuccessStatusToProto) {
+  chromeos::media_perception::mojom::SuccessStatusPtr status_ptr =
+      chromeos::media_perception::mojom::SuccessStatus::New();
+  status_ptr->success = true;
+  *status_ptr->failure_reason = "failed";
+
+  SuccessStatus status = ToProto(status_ptr);
+  EXPECT_EQ(status.success(), true);
+  EXPECT_EQ(status.failure_reason(), "failed");
 }
 
 TEST(ProtoMojomConversionTest, VideoStreamParamsToProto) {

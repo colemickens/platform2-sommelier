@@ -10,6 +10,7 @@
 #include "media_perception/common.pb.h"
 #include "media_perception/device_management.pb.h"
 #include "media_perception/frame_perception.pb.h"
+#include "media_perception/media_perception_mojom.pb.h"
 #include "media_perception/pipeline.pb.h"
 #include "mojom/common.mojom.h"
 #include "mojom/device_management.mojom.h"
@@ -21,6 +22,7 @@ namespace chromeos {
 namespace media_perception {
 namespace mojom {
 
+SuccessStatusPtr ToMojom(const mri::SuccessStatus& status);
 PixelFormat ToMojom(mri::PixelFormat format);
 VideoStreamParamsPtr ToMojom(const mri::VideoStreamParams& params);
 VideoDevicePtr ToMojom(const mri::VideoDevice& device);
@@ -55,7 +57,10 @@ PipelineStatePtr ToMojom(const mri::PipelineState& state);
 namespace mri {
 
 std::vector<uint8_t> SerializeVideoDeviceProto(const VideoDevice& device);
+std::vector<uint8_t> SerializeSuccessStatusProto(const SuccessStatus& status);
 
+SuccessStatus ToProto(
+    const chromeos::media_perception::mojom::SuccessStatusPtr& status_ptr);
 PixelFormat ToProto(
     chromeos::media_perception::mojom::PixelFormat format);
 VideoStreamParams ToProto(

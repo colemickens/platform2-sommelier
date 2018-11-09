@@ -5,9 +5,9 @@
 #ifndef MEDIA_PERCEPTION_MOJO_CONNECTOR_H_
 #define MEDIA_PERCEPTION_MOJO_CONNECTOR_H_
 
+#include <map>
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 #include <base/bind.h>
@@ -20,6 +20,7 @@
 #include "media_perception/media_perception_service_impl.h"
 #include "media_perception/producer_impl.h"
 #include "media_perception/receiver_impl.h"
+#include "media_perception/rtanalytics.h"
 #include "media_perception/video_capture_service_client.h"
 #include "mojom/media_perception_service.mojom.h"
 
@@ -36,6 +37,10 @@ class MojoConnector {
   // object.
   void SetVideoCaptureServiceClient(
       std::shared_ptr<VideoCaptureServiceClient> video_capture_service_client);
+
+  // Set a shared pointer member variable of the rtanalytics object.
+  void SetRtanalytics(
+      std::shared_ptr<Rtanalytics> rtanalytics);
 
   // Use the Mojo connector to ensure the video capture servicec is started in
   // Chrome and get access to the video capture service Mojo API.
@@ -127,6 +132,9 @@ class MojoConnector {
 
   // Stores pointer to the video capture service client object.
   std::shared_ptr<VideoCaptureServiceClient> video_capture_service_client_;
+
+  // Stores pointer to the rtanalytics object.
+  std::shared_ptr<Rtanalytics> rtanalytics_;
 
   // Implementation for the media perception service Mojo interface.
   std::unique_ptr<MediaPerceptionServiceImpl> media_perception_service_impl_;

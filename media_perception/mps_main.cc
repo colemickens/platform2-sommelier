@@ -10,17 +10,16 @@
 #include "media_perception/cras_client_wrapper.h"
 #include "media_perception/cros_dbus_service.h"
 #include "media_perception/dbus_service.h"
-#include "media_perception/mojo_connector.h"
+#include "media_perception/rtanalytics.h"
+#include "media_perception/video_capture_service_client.h"
 #include "media_perception/video_capture_service_client_impl.h"
 
-using DbusServicePtr = std::unique_ptr<mri::DbusService>;
-using CrasClientWrapperPtr = std::unique_ptr<mri::CrasClientWrapper>;
-using VideoCaptureServiceClientPtr =
-    std::unique_ptr<mri::VideoCaptureServiceClient>;
-// This is a reference to run_rtanalytics() in the RTA library.
-extern "C" int run_rtanalytics(int argc, char** argv, DbusServicePtr&& dbus,
-                               CrasClientWrapperPtr&& cras,
-                               VideoCaptureServiceClientPtr&& vidcap);
+// Rtanalytics implementation to be fulfilled by the library side.
+extern "C" void init_mps(
+    int argc, char** argv,
+    std::shared_ptr<mri::CrasClientWrapper> cras,
+    std::shared_ptr<mri::VideoCaptureServiceClient> vidcap,
+    std::shared_ptr<mri::Rtanalytics>* rtanalytics);
 
 int main(int argc, char** argv) {
   // Needs to exist for creating and starting ipc_thread.
@@ -36,10 +35,20 @@ int main(int argc, char** argv) {
 
   auto dbus = std::unique_ptr<mri::DbusService>(cros_dbus_service);
   auto cras =
-      std::unique_ptr<mri::CrasClientWrapper>(new mri::CrasClientImpl());
-  auto vidcap = std::unique_ptr<mri::VideoCaptureServiceClient>(vidcap_client);
+      std::shared_ptr<mri::CrasClientWrapper>(new mri::CrasClientImpl());
+  auto vidcap = std::shared_ptr<mri::VideoCaptureServiceClient>(vidcap_client);
+  mojo_connector.SetVideoCaptureServiceClient(vidcap);
 
-  const int return_value = run_rtanalytics(argc, argv, std::move(dbus),
-                                           std::move(cras), std::move(vidcap));
-  return return_value;
+  auto rtanalytics = std::shared_ptr<mri::Rtanalytics>();
+  init_mps(argc, argv, cras, vidcap, &rtanalytics);
+  mojo_connector.SetRtanalytics(rtanalytics);
+
+  cros_dbus_service->Connect(mri::Service::MEDIA_PERCEPTION);
+  if (!cros_dbus_service->IsConnected()) {
+    LOG(ERROR) << "Failed to connect to D-Bus.";
+    return EXIT_FAILURE;
+  }
+  cros_dbus_service->PollMessageQueue();
+
+  return EXIT_SUCCESS;
 }

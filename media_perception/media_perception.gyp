@@ -19,6 +19,7 @@
         '<(proto_in_dir)/common.proto',
         '<(proto_in_dir)/device_management.proto',
         '<(proto_in_dir)/frame_perception.proto',
+        '<(proto_in_dir)/media_perception_mojom.proto',
         '<(proto_in_dir)/pipeline.proto',
       ],
       'includes': ['../common-mk/protoc.gypi'],
@@ -121,6 +122,22 @@
         ],
       },
     },
+    {
+      'target_name': 'mps_main',
+      'type': 'executable',
+      'dependencies': [
+        'media_perception_service_lib',
+      ],
+      'sources': ['mps_main.cc'],
+      'link_settings': {
+        'ldflags': [
+          '-L .',
+        ],
+        'libraries': [
+          '-lrtanalytics -ldl',
+        ],
+      },
+    },
   ],
   'conditions': [
     ['USE_test == 1', {
@@ -131,6 +148,7 @@
           'includes': ['../common-mk/common_test.gypi'],
           'dependencies': ['media_perception_service_lib'],
           'sources': [
+            'fake_rtanalytics.cc',
             'fake_video_capture_service_client.cc',
             'media_perception_impl_test.cc',
             'proto_mojom_conversion_test.cc',

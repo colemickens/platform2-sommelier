@@ -9,6 +9,7 @@
 #include <mojo/public/cpp/bindings/binding.h>
 
 #include "media_perception/video_capture_service_client.h"
+#include "media_perception/rtanalytics.h"
 #include "mojom/media_perception_service.mojom.h"
 
 namespace mri {
@@ -19,7 +20,8 @@ class MediaPerceptionControllerImpl :
   MediaPerceptionControllerImpl(
       chromeos::media_perception::mojom::MediaPerceptionControllerRequest
       request,
-      std::shared_ptr<VideoCaptureServiceClient> video_capture_service_client);
+      std::shared_ptr<VideoCaptureServiceClient> video_capture_service_client,
+      std::shared_ptr<Rtanalytics> rtanalytics);
 
   void set_connection_error_handler(base::Closure connection_error_handler);
 
@@ -33,6 +35,8 @@ class MediaPerceptionControllerImpl :
       binding_;
 
   std::shared_ptr<VideoCaptureServiceClient> video_capture_service_client_;
+
+  std::shared_ptr<Rtanalytics> rtanalytics_;
 
   DISALLOW_COPY_AND_ASSIGN(MediaPerceptionControllerImpl);
 };

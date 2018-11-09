@@ -8,6 +8,29 @@ module chromeos.media_perception.mojom;
 
 import "mojom/device_management.mojom";
 
+struct SuccessStatus {
+  // Whether or not the action succeeded.
+  bool success@0;
+  string? failure_reason@1;
+};
+
+// Feature or configuration specific functionality belongs in these interfaces.
+struct PerceptionInterfaceRequests {
+};
+
 interface MediaPerception {
+  // Sets up the pipeline configuration to select a desired featureset. Media
+  // perception service responds back with the InterfaceType(s) that the client
+  // needs to have implemented.
+  // Client of the MediaPerception service needs to provide an implemented
+  // interface for the requests that are returned.
+  SetupConfiguration@0(string configuration_name) =>
+	  (SuccessStatus status,
+	   PerceptionInterfaceRequests requests);
+
+  // ------------------- Start of device management definitions. -------------
+
   GetVideoDevices@1() => (array<VideoDevice> devices);
+
+  // ------------------- End of device management definitions. ---------------
 };

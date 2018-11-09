@@ -11,6 +11,7 @@
 #include <gtest/gtest.h>
 
 #include "media_perception/device_management.pb.h"
+#include "media_perception/fake_rtanalytics.h"
 #include "media_perception/fake_video_capture_service_client.h"
 #include "media_perception/media_perception_impl.h"
 #include "media_perception/proto_mojom_conversion.h"
@@ -24,14 +25,18 @@ class MediaPerceptionImplTest : public testing::Test {
     fake_vidcap_client_ = new FakeVideoCaptureServiceClient();
     vidcap_client_ = std::shared_ptr<VideoCaptureServiceClient>(
         fake_vidcap_client_);
+    fake_rtanalytics_ = new FakeRtanalytics();
+    rtanalytics_ = std::shared_ptr<Rtanalytics>(fake_rtanalytics_);
     media_perception_impl_ = std::make_unique<MediaPerceptionImpl>(
         mojo::MakeRequest(&media_perception_ptr_),
-        vidcap_client_);
+        vidcap_client_, rtanalytics_);
   }
 
   chromeos::media_perception::mojom::MediaPerceptionPtr media_perception_ptr_;
   FakeVideoCaptureServiceClient* fake_vidcap_client_;
   std::shared_ptr<VideoCaptureServiceClient> vidcap_client_;
+  FakeRtanalytics* fake_rtanalytics_;
+  std::shared_ptr<Rtanalytics> rtanalytics_;
   std::unique_ptr<MediaPerceptionImpl> media_perception_impl_;
 };
 
@@ -68,6 +73,24 @@ TEST_F(MediaPerceptionImplTest, TestGetDevices) {
       }, &get_devices_callback_done));
   base::RunLoop().RunUntilIdle();
   ASSERT_TRUE(get_devices_callback_done);
+}
+
+TEST_F(MediaPerceptionImplTest, TestSetupConfiguration) {
+  bool setup_configuration_callback_done = false;
+
+  media_perception_ptr_->SetupConfiguration(
+      "test_configuration",
+      base::Bind([](
+          bool* setup_configuration_callback_done,
+          chromeos::media_perception::mojom::SuccessStatusPtr status,
+          chromeos::media_perception::mojom::PerceptionInterfaceRequestsPtr
+          requests) {
+        EXPECT_EQ(status->success, true);
+        EXPECT_EQ(*status->failure_reason, "test_configuration");
+        *setup_configuration_callback_done = true;
+      }, &setup_configuration_callback_done));
+  base::RunLoop().RunUntilIdle();
+  ASSERT_TRUE(setup_configuration_callback_done);
 }
 
 }  // namespace
