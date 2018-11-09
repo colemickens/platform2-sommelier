@@ -25,7 +25,7 @@ class FakeDeviceAdaptor : public DeviceAdaptorInterface {
   void SetInUse(bool in_use) override;
   bool GetInUse() override;
 
-private:
+ private:
   std::string device_name_;
   std::string preferred_ap_interface_;
   bool in_use_;

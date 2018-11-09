@@ -7,7 +7,6 @@
 #include <base/bind.h>
 
 #include "apmanager/control_interface.h"
-#include "apmanager/manager.h"
 
 using std::string;
 

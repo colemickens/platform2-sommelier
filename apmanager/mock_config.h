@@ -16,7 +16,7 @@ namespace apmanager {
 
 class MockConfig : public Config {
  public:
-  MockConfig(Manager* manager);
+  explicit MockConfig(Manager* manager);
   ~MockConfig() override;
 
   MOCK_METHOD2(GenerateConfigFile,

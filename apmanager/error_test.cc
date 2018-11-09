@@ -68,4 +68,4 @@ TEST_F(ErrorTest, ToDBusError) {
   VerifyDBusError(Error::kInvalidConfiguration, kErrorInvalidConfiguration);
 }
 
-}  // namespace shill
+}  // namespace apmanager

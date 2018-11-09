@@ -7,9 +7,9 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "apmanager/error.h"
 #include "apmanager/daemon.h"
 #include "apmanager/device.h"
+#include "apmanager/error.h"
 #include "apmanager/manager.h"
 
 using std::string;
@@ -133,10 +133,10 @@ bool Config::ValidatePassphrase(Error* error, const string& value) {
   if (value.length() < kPassphraseMinLength ||
       value.length() > kPassphraseMaxLength) {
     Error::PopulateAndLog(
-        error,
-        Error::kInvalidArguments,
-        base::StringPrintf("Passphrase must contain between %d and %d characters",
-                           kPassphraseMinLength, kPassphraseMaxLength),
+        error, Error::kInvalidArguments,
+        base::StringPrintf(
+            "Passphrase must contain between %d and %d characters",
+            kPassphraseMinLength, kPassphraseMaxLength),
         FROM_HERE);
 
     return false;

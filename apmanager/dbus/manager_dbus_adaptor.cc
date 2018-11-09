@@ -10,7 +10,6 @@
 
 using brillo::dbus_utils::ExportedObjectManager;
 using org::chromium::apmanager::ManagerAdaptor;
-using std::string;
 
 namespace apmanager {
 

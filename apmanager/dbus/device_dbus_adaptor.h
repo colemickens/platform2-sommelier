@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef APMANAGER_DEVICE_DBUS_ADAPTOR_H_
-#define APMANAGER_DEVICE_DBUS_ADAPTOR_H_
+#ifndef APMANAGER_DBUS_DEVICE_DBUS_ADAPTOR_H_
+#define APMANAGER_DBUS_DEVICE_DBUS_ADAPTOR_H_
 
 #include <string>
 
@@ -43,4 +43,4 @@ class DeviceDBusAdaptor : public org::chromium::apmanager::DeviceInterface,
 
 }  // namespace apmanager
 
-#endif  // APMANAGER_DEVICE_DBUS_ADAPTOR_H_
+#endif  // APMANAGER_DBUS_DEVICE_DBUS_ADAPTOR_H_
