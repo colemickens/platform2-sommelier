@@ -5,13 +5,8 @@
 #include "apmanager/dbus/config_dbus_adaptor.h"
 
 #include <base/strings/stringprintf.h>
-#include <dbus_bindings/org.chromium.apmanager.Manager.h>
-
-#if !defined(__ANDROID__)
 #include <chromeos/dbus/service_constants.h>
-#else
-#include <dbus/apmanager/dbus-constants.h>
-#endif  // __ANDROID__
+#include <dbus_bindings/org.chromium.apmanager.Manager.h>
 
 #include "apmanager/config.h"
 #include "apmanager/error.h"

@@ -11,11 +11,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#if !defined(__ANDROID__)
 #include <chromeos/dbus/service_constants.h>
-#else
-#include "dbus/apmanager/dbus-constants.h"
-#endif
 
 #include "apmanager/error.h"
 #include "apmanager/fake_config_adaptor.h"
@@ -68,11 +64,7 @@ const char kExpected80211gCtrlIfaceConfigContent[] =
     "interface=uap0\n"
     "hw_mode=g\n"
     "ctrl_interface=/run/apmanager/hostapd/ctrl_iface\n"
-#if !defined(__ANDROID__)
     "ctrl_interface_group=apmanager\n"
-#else
-    "ctrl_interface_group=system\n"
-#endif  // __ANDROID__
     "driver=nl80211\n"
     "fragm_threshold=2346\n"
     "rts_threshold=2347\n";

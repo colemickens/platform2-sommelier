@@ -28,12 +28,6 @@ class ShillManager {
   virtual void ClaimInterface(const std::string& interface_name);
   // Release the given interface |interface_name| to shill.
   virtual void ReleaseInterface(const std::string& interface_name);
-#if defined(__BRILLO__)
-  // Setup an AP mode interface.
-  virtual bool SetupApModeInterface(std::string* interface_name);
-  // Setup a station mode interface.
-  virtual bool SetupStationModeInterface(std::string* interface_name);
-#endif  // __BRILLO__
 
  private:
   void OnShillServiceAppeared();

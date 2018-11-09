@@ -9,11 +9,7 @@
 #include <brillo/errors/error.h>
 #include <brillo/errors/error_codes.h>
 
-#if defined(__ANDROID__)
-#include <dbus/service_constants.h>
-#else
 #include <chromeos/dbus/service_constants.h>
-#endif  // __ANDROID__
 
 using std::string;
 

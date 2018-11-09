@@ -34,11 +34,8 @@ const char kHelpMessage[] = "\n"
 
 namespace {
 
-#if !defined(__ANDROID__)
 const char kLoggerCommand[] = "/usr/bin/logger";
 const char kLoggerUser[] = "syslog";
-#endif  // __ANDROID__
-
 const char kSeccompFilePath[] = "/usr/share/policy/apmanager-seccomp.policy";
 
 }  // namespace
@@ -56,7 +53,6 @@ void SetupLogging(brillo::Minijail* minijail,
   }
   brillo::InitLog(log_flags);
 
-#if !defined(__ANDROID__)
   // Logger utility doesn't exist on Android, so do not run it on Android.
   // TODO(zqiu): add support to redirect stderr logs from child processes
   // to Android logging facility.
@@ -88,7 +84,6 @@ void SetupLogging(brillo::Minijail* minijail,
     }
     close(logger_stdin_fd);
   }
-#endif  // __ANDROID__
 }
 
 void DropPrivileges(brillo::Minijail* minijail) {
@@ -115,11 +110,10 @@ void OnStartup(const char* daemon_name, base::CommandLine* cl) {
   // so there is no need to drop privileges to the "system" user again.
   // Drop user privileges when we're running apmanager under a different
   // user/group.
-#if !defined(__ANDROID__)
+
   // Now that the daemon has all the resources it needs to run, we can drop
   // privileges further.
   DropPrivileges(minijail);
-#endif  // __ANDROID
 }
 
 int main(int argc, char* argv[]) {

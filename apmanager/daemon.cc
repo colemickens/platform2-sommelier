@@ -13,13 +13,8 @@
 namespace apmanager {
 
 // static
-#if !defined(__ANDROID__)
 const char Daemon::kAPManagerGroupName[] = "apmanager";
 const char Daemon::kAPManagerUserName[] = "apmanager";
-#else
-const char Daemon::kAPManagerGroupName[] = "system";
-const char Daemon::kAPManagerUserName[] = "system";
-#endif  // __ANDROID__
 
 Daemon::Daemon(const base::Closure& startup_callback)
     : startup_callback_(startup_callback) {

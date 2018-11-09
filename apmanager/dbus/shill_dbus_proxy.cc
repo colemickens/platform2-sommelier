@@ -6,12 +6,7 @@
 
 #include <base/bind.h>
 #include <brillo/errors/error.h>
-
-#if !defined(__ANDROID__)
 #include <chromeos/dbus/service_constants.h>
-#else
-#include <dbus/apmanager/dbus-constants.h>
-#endif  // __ANDROID__
 
 #include "apmanager/event_dispatcher.h"
 
@@ -69,36 +64,6 @@ bool ShillDBusProxy::ReleaseInterface(const string& interface_name) {
   }
   return true;
 }
-
-#if defined(__BRILLO__)
-bool ShillDBusProxy::SetupApModeInterface(string* interface_name) {
-  if (!service_available_) {
-    LOG(ERROR) << "SetupApModeInterface failed: service not available";
-    return false;
-  }
-  brillo::ErrorPtr error;
-  if (!manager_proxy_->SetupApModeInterface(interface_name, &error)) {
-    LOG(ERROR) << "Failed to setup AP mode interface from shill: "
-               << error->GetCode() << " " << error->GetMessage();
-    return false;
-  }
-  return true;
-}
-
-bool ShillDBusProxy::SetupStationModeInterface(string* interface_name) {
-  if (!service_available_) {
-    LOG(ERROR) << "SetupStationModeInterface failed: service not available";
-    return false;
-  }
-  brillo::ErrorPtr error;
-  if (!manager_proxy_->SetupStationModeInterface(interface_name, &error)) {
-    LOG(ERROR) << "Failed to setup station mode interface from shill: "
-               << error->GetCode() << " " << error->GetMessage();
-    return false;
-  }
-  return true;
-}
-#endif  // __BRILLO__
 
 void ShillDBusProxy::OnServiceAvailable(bool available) {
   LOG(INFO) << __func__ << ": " << available;

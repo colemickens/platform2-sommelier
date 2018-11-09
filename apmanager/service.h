@@ -25,10 +25,6 @@ namespace apmanager {
 
 class Manager;
 
-#if defined(__BRILLO__)
-class EventDispatcher;
-#endif  // __BRILLO__
-
 class Service : public base::RefCounted<Service> {
  public:
   Service(Manager* manager, int service_identifier);
@@ -54,21 +50,6 @@ class Service : public base::RefCounted<Service> {
   static const char kStateStarting[];
   static const char kStateStarted[];
   static const char kStateFailed[];
-
-#if defined(__BRILLO__)
-  static const int kAPInterfaceCheckIntervalMilliseconds;
-  static const int kAPInterfaceCheckMaxAttempts;
-
-  // Task to check enumeration status of the specified AP interface
-  // |interface_name|.
-  void APInterfaceCheckTask(
-      const std::string& interface_name,
-      int check_count,
-      const base::Callback<void(const Error&)>& result_callback);
-
-  // Handle asynchronous service start failures.
-  void HandleStartFailure();
-#endif  // __BRILLO__
 
   bool StartInternal(Error* error);
 
@@ -99,11 +80,6 @@ class Service : public base::RefCounted<Service> {
   FileWriter* file_writer_;
   ProcessFactory* process_factory_;
   std::unique_ptr<HostapdMonitor> hostapd_monitor_;
-#if defined(__BRILLO__)
-  EventDispatcher* event_dispatcher_;
-  bool start_in_progress_;
-#endif  // __BRILLO__
-
   base::WeakPtrFactory<Service> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(Service);
 };

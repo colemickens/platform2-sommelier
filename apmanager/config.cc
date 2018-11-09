@@ -5,12 +5,7 @@
 #include "apmanager/config.h"
 
 #include <base/strings/stringprintf.h>
-
-#if !defined(__ANDROID__)
 #include <chromeos/dbus/service_constants.h>
-#else
-#include <dbus/apmanager/dbus-constants.h>
-#endif  // __ANDROID__
 
 #include "apmanager/error.h"
 #include "apmanager/daemon.h"

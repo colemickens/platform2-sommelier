@@ -55,14 +55,6 @@ class Manager {
   virtual void ClaimInterface(const std::string& interface_name);
   // Release the given interface |interface_name| to shill.
   virtual void ReleaseInterface(const std::string& interface_name);
-#if defined(__BRILLO__)
-  // Setup an AP mode interface. Returns true and sets |interface_name|
-  // on success, false otherwise.
-  virtual bool SetupApModeInterface(std::string* interface_name);
-  // Setup a station mode interface. Returns true and sets |interface_name|
-  // on success, false otherwise.
-  virtual bool SetupStationModeInterface(std::string* interface_name);
-#endif  // __BRILLO__
 
   // Request/release access to DHCP port for the specified interface.
   virtual void RequestDHCPPortAccess(const std::string& interface);

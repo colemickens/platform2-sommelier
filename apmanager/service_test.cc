@@ -9,14 +9,9 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/process_mock.h>
+#include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#if !defined(__ANDROID__)
-#include <chromeos/dbus/service_constants.h>
-#else
-#include <dbus/apmanager/dbus-constants.h>
-#endif  // __ANDROID__
 
 #include "apmanager/error.h"
 #include "apmanager/fake_config_adaptor.h"
@@ -38,17 +33,10 @@ using ::testing::ReturnNew;
 using ::testing::SetArgPointee;
 
 namespace {
-  const int kServiceIdentifier = 1;
-  const char kHostapdConfig[] = "ssid=test\n";
-#if !defined(__ANDROID__)
-  const char kBinSleep[] = "/bin/sleep";
-  const char kHostapdConfigFilePath[] =
-      "/run/apmanager/hostapd/hostapd-1.conf";
-#else
-  const char kBinSleep[] = "/system/bin/sleep";
-  const char kHostapdConfigFilePath[] =
-      "/data/misc/apmanager/hostapd/hostapd-1.conf";
-#endif  // __ANDROID__
+const int kServiceIdentifier = 1;
+const char kHostapdConfig[] = "ssid=test\n";
+const char kBinSleep[] = "/bin/sleep";
+const char kHostapdConfigFilePath[] = "/run/apmanager/hostapd/hostapd-1.conf";
 }  // namespace
 
 namespace apmanager {

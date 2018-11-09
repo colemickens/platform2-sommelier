@@ -94,16 +94,6 @@ void Manager::ReleaseInterface(const string& interface_name) {
   shill_manager_.ReleaseInterface(interface_name);
 }
 
-#if defined(__BRILLO__)
-bool Manager::SetupApModeInterface(string* interface_name) {
-  return shill_manager_.SetupApModeInterface(interface_name);
-}
-
-bool Manager::SetupStationModeInterface(string* interface_name) {
-  return shill_manager_.SetupStationModeInterface(interface_name);
-}
-#endif  // __BRILLO__
-
 void Manager::RequestDHCPPortAccess(const string& interface) {
   firewall_manager_.RequestDHCPPortAccess(interface);
 }

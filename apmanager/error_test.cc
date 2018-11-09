@@ -8,13 +8,8 @@
 
 #include <brillo/errors/error.h>
 #include <brillo/errors/error_codes.h>
-#include <gtest/gtest.h>
-
-#if defined(__ANDROID__)
-#include <dbus/service_constants.h>
-#else
 #include <chromeos/dbus/service_constants.h>
-#endif  // __ANDROID__
+#include <gtest/gtest.h>
 
 using std::string;
 using testing::Test;

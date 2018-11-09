@@ -39,18 +39,6 @@ void ShillManager::ReleaseInterface(const string& interface_name) {
   claimed_interfaces_.erase(interface_name);
 }
 
-#if defined(__BRILLO__)
-bool ShillManager::SetupApModeInterface(string* interface_name) {
-  CHECK(shill_proxy_) << "Proxy not initialized yet";
-  return shill_proxy_->SetupApModeInterface(interface_name);
-}
-
-bool ShillManager::SetupStationModeInterface(string* interface_name) {
-  CHECK(shill_proxy_) << "Proxy not initialized yet";
-  return shill_proxy_->SetupStationModeInterface(interface_name);
-}
-#endif  // __BRILLO__
-
 void ShillManager::OnShillServiceAppeared() {
   LOG(INFO) << __func__;
   // Claim all interfaces from shill service in case this is a new instance.

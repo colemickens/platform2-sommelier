@@ -17,12 +17,6 @@ class ShillProxyInterface {
   virtual bool ClaimInterface(const std::string& interface_name) = 0;
   // Release the given interface |interface_name| to shill.
   virtual bool ReleaseInterface(const std::string& interface_name) = 0;
-#if defined(__BRILLO__)
-  // Setup an AP mode interface.
-  virtual bool SetupApModeInterface(std::string* interface_name) = 0;
-  // Setup a station mode interface.
-  virtual bool SetupStationModeInterface(std::string* interface_name) = 0;
-#endif  // __BRILLO__
 };
 
 }  // namespace apmanager

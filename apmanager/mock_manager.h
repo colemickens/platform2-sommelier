@@ -29,10 +29,6 @@ class MockManager : public Manager {
   MOCK_METHOD1(ReleaseInterface, void(const std::string& interface_name));
   MOCK_METHOD1(RequestDHCPPortAccess, void(const std::string& interface));
   MOCK_METHOD1(ReleaseDHCPPortAccess, void(const std::string& interface));
-#if defined(__BRILLO__)
-  MOCK_METHOD1(SetupApModeInterface, bool(std::string* interface_name));
-  MOCK_METHOD1(SetupStationModeInterface, bool(std::string* interface_name));
-#endif  // __BRILLO__
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockManager);

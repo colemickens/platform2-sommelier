@@ -7,15 +7,10 @@
 #include "apmanager/dbus/config_dbus_adaptor.h"
 #include "apmanager/dbus/device_dbus_adaptor.h"
 #include "apmanager/dbus/manager_dbus_adaptor.h"
+#include "apmanager/dbus/permission_broker_dbus_proxy.h"
 #include "apmanager/dbus/service_dbus_adaptor.h"
 #include "apmanager/dbus/shill_dbus_proxy.h"
 #include "apmanager/manager.h"
-
-#if !defined(__ANDROID__)
-#include "apmanager/dbus/permission_broker_dbus_proxy.h"
-#else
-#include "apmanager/dbus/firewalld_dbus_proxy.h"
-#endif  //__ANDROID__
 
 using brillo::dbus_utils::AsyncEventSequencer;
 using brillo::dbus_utils::ExportedObjectManager;
@@ -104,15 +99,9 @@ std::unique_ptr<ServiceAdaptorInterface> DBusControl::CreateServiceAdaptor(
 std::unique_ptr<FirewallProxyInterface> DBusControl::CreateFirewallProxy(
     const base::Closure& service_appeared_callback,
     const base::Closure& service_vanished_callback) {
-#if !defined(__ANDROID__)
   return std::unique_ptr<FirewallProxyInterface>(
       new PermissionBrokerDBusProxy(
           bus_, service_appeared_callback, service_vanished_callback));
-#else
-  return std::unique_ptr<FirewallProxyInterface>(
-      new FirewalldDBusProxy(
-          bus_, service_appeared_callback, service_vanished_callback));
-#endif  // __ANDROID__
 }
 
 std::unique_ptr<ShillProxyInterface> DBusControl::CreateShillProxy(

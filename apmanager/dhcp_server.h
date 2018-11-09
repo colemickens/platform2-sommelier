@@ -38,9 +38,6 @@ class DHCPServer {
   static const char kAddressRangeHighFormat[];
   static const int kServerAddressPrefix;
   static const int kTerminationTimeoutSeconds;
-#if defined(__ANDROID__)
-  static const char kDnsmasqPidFilePath[];
-#endif  // __ANDROID__
 
   uint16_t server_address_index_;
   std::string interface_name_;

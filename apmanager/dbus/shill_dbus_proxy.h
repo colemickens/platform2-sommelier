@@ -26,10 +26,6 @@ class ShillDBusProxy : public ShillProxyInterface {
   // Implementation of ShillProxyInterface.
   bool ClaimInterface(const std::string& interface_name) override;
   bool ReleaseInterface(const std::string& interface_name) override;
-#if defined(__BRILLO__)
-  bool SetupApModeInterface(std::string* interface_name) override;
-  bool SetupStationModeInterface(std::string* interface_name) override;
-#endif  // __BRILLO__
 
  private:
   void OnServiceAvailable(bool service_available);

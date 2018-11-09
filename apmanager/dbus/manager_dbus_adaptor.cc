@@ -4,11 +4,7 @@
 
 #include "apmanager/dbus/manager_dbus_adaptor.h"
 
-#if !defined(__ANDROID__)
 #include <chromeos/dbus/service_constants.h>
-#else
-#include <dbus/apmanager/dbus-constants.h>
-#endif  // __ANDROID__
 
 #include "apmanager/manager.h"
 
