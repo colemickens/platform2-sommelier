@@ -312,6 +312,14 @@ TEST_F(InputDeviceControllerTest, HandleTabletMode) {
   EXPECT_EQ("0", GetSysattr(kTouchscreenSyspath, kInhibited));
   EXPECT_EQ(kEnabled, GetSysattr(kTouchscreenSyspath, kPowerWakeup));
 
+  // Lid-closed mode should take precedence over tablet mode. (See b/119287727)
+  input_device_controller_.SetTabletMode(TabletMode::ON);
+  input_device_controller_.SetLidState(LidState::CLOSED);
+  EXPECT_EQ("1", GetSysattr(kKeyboardSyspath, kInhibited));
+  EXPECT_EQ(kDisabled, GetSysattr(kKeyboardSyspath, kPowerWakeup));
+  EXPECT_EQ("1", GetSysattr(kTouchscreenSyspath, kInhibited));
+  EXPECT_EQ(kDisabled, GetSysattr(kTouchscreenSyspath, kPowerWakeup));
+
   // Display-off mode should take precedence over tablet mode.
   input_device_controller_.SetDisplayMode(DisplayMode::PRESENTATION);
   input_device_controller_.SetLidState(LidState::OPEN);

@@ -266,10 +266,11 @@ InputDeviceController::Mode InputDeviceController::GetMode() const {
       lid_state_ == LidState::OPEN)
     return Mode::DISPLAY_OFF;
 
-  if (tablet_mode_ == TabletMode::ON)
-    return Mode::TABLET;
-  else if (lid_state_ == LidState::CLOSED)
+  // Prioritize Mode::CLOSED over Mode::TABLET.
+  if (lid_state_ == LidState::CLOSED)
     return Mode::CLOSED;
+  else if (tablet_mode_ == TabletMode::ON)
+    return Mode::TABLET;
   else
     return Mode::LAPTOP;
 }
