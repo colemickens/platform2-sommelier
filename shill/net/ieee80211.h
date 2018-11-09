@@ -5,6 +5,10 @@
 #ifndef SHILL_NET_IEEE80211_H_
 #define SHILL_NET_IEEE80211_H_
 
+#include <stdint.h>
+
+#include <string>
+
 namespace shill {
 
 namespace IEEE_80211 {
@@ -157,7 +161,7 @@ enum ExtendedCapOctet {
 
 // Status/reason code returned by nl80211 messages: Authenticate,
 // Deauthenticate, Associate, and Reassociate.
-enum WiFiReasonCode {
+enum WiFiReasonCode : uint16_t {
   kReasonCodeReserved0 = 0,  // 0 is reserved.
   kReasonCodeUnspecified = 1,
   kReasonCodePreviousAuthenticationInvalid = 2,
@@ -200,7 +204,7 @@ enum WiFiReasonCode {
   kReasonCodeInvalid = UINT16_MAX
 };
 
-enum WiFiStatusCode {
+enum WiFiStatusCode : uint16_t {
   kStatusCodeSuccessful = 0,
   kStatusCodeFailure = 1,
   // 2-9 are reserved.
@@ -245,6 +249,16 @@ enum WiFiStatusCode {
   kStatusCodeMax,
   kStatusCodeInvalid = UINT16_MAX
 };
+
+// Returns a string representing the specified |reason|, which is an integer
+// value corresponding to the NL80211_ATTR_REASON_CODE attribute acquired from
+// the kernel.
+std::string ReasonToString(WiFiReasonCode reason);
+
+// Returns a string representing the specified |status|, which is an integer
+// value corresponding to the NL80211_ATTR_STATUS_CODE attribute acquired from
+// the kernel.
+std::string StatusToString(WiFiStatusCode status);
 
 }  // namespace IEEE_80211
 

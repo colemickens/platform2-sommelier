@@ -44,19 +44,11 @@ class SHILL_EXPORT Nl80211Message : public GenericNetlinkMessage {
   uint32_t sequence_number() const { return sequence_number_; }
   void set_sequence_number(uint32_t seq) { sequence_number_ = seq; }
 
-  // Returns a string representing the passed-in |status| or |reason|, the
-  // value of which has been acquired from the kernel (for example, from the
-  // NL80211_ATTR_STATUS_CODE or NL80211_ATTR_REASON_CODE attribute).
-  static std::string StringFromReason(uint16_t reason);
-  static std::string StringFromStatus(uint16_t status);
-
   // Message factory for all types of Nl80211 message.
   static std::unique_ptr<NetlinkMessage> CreateMessage(
       const NetlinkPacket& packet);
 
  private:
-  static std::map<uint16_t, std::string>* reason_code_string_;
-  static std::map<uint16_t, std::string>* status_code_string_;
   static uint16_t nl80211_message_type_;
 
   DISALLOW_COPY_AND_ASSIGN(Nl80211Message);
