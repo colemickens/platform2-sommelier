@@ -16,6 +16,7 @@
 
 #include "bluetooth/common/bluetooth_daemon.h"
 #include "bluetooth/common/exported_object_manager_wrapper.h"
+#include "bluetooth/newblued/adapter_interface_handler.h"
 #include "bluetooth/newblued/agent_manager_interface_handler.h"
 #include "bluetooth/newblued/newblue.h"
 #include "bluetooth/newblued/stack_sync_monitor.h"
@@ -50,19 +51,6 @@ class NewblueDaemon : public BluetoothDaemon {
   void SetupPropertyMethodHandlers(
       brillo::dbus_utils::DBusInterface* prop_interface,
       brillo::dbus_utils::ExportedPropertySet* property_set);
-
-  // Exports org.bluez.Adapter1 interface on object /org/bluez/hci0.
-  // The properties of this object will be ignored by btdispatch, but the object
-  // still has to be exposed to be able to receive org.bluez.Adapter1 method
-  // calls, e.g. StartDiscovery(), StopDiscovery().
-  void ExportAdapterInterface();
-
-  // Installs org.bluez.Adapter1 method handlers.
-  void AddAdapterMethodHandlers(ExportedInterface* adapter_interface);
-
-  // D-Bus method handlers for adapter object.
-  bool HandleStartDiscovery(brillo::ErrorPtr* error, dbus::Message* message);
-  bool HandleStopDiscovery(brillo::ErrorPtr* error, dbus::Message* message);
 
   // Installs org.bluez.Device1 method handlers.
   void AddDeviceMethodHandlers(ExportedInterface* device_interface);
@@ -140,6 +128,8 @@ class NewblueDaemon : public BluetoothDaemon {
   DBusDaemon* dbus_daemon_;
 
   StackSyncMonitor stack_sync_monitor_;
+
+  std::unique_ptr<AdapterInterfaceHandler> adapter_interface_handler_;
 
   std::unique_ptr<AgentManagerInterfaceHandler>
       agent_manager_interface_handler_;

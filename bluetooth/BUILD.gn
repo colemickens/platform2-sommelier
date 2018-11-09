@@ -62,6 +62,7 @@ static_library("libdispatcher") {
 static_library("libnewblued") {
   configs += [ ":target_defaults" ]
   sources = [
+    "newblued/adapter_interface_handler.cc",
     "newblued/agent_manager_interface_handler.cc",
     "newblued/newblue.cc",
     "newblued/newblue_daemon.cc",

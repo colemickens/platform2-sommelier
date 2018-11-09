@@ -103,6 +103,9 @@ bool NewblueDaemon::Init(scoped_refptr<dbus::Bus> bus,
     return false;
   }
 
+  adapter_interface_handler_ = std::make_unique<AdapterInterfaceHandler>(
+      bus_, newblue_.get(), exported_object_manager_wrapper_.get());
+
   agent_manager_interface_handler_ =
       std::make_unique<AgentManagerInterfaceHandler>(
           bus_, exported_object_manager_wrapper_.get());
@@ -142,7 +145,8 @@ void NewblueDaemon::OnHciReadyForUp() {
     dbus_daemon_->QuitWithExitCode(EX_UNAVAILABLE);
     return;
   }
-  ExportAdapterInterface();
+  adapter_interface_handler_->Init(
+      base::Bind(&NewblueDaemon::OnDeviceDiscovered, base::Unretained(this)));
   stack_sync_monitor_.RegisterBluezDownCallback(
       bus_.get(),
       base::Bind(&NewblueDaemon::OnBluezDown, weak_ptr_factory_.GetWeakPtr()));
@@ -171,72 +175,6 @@ void NewblueDaemon::SetupPropertyMethodHandlers(
   prop_interface->AddSimpleMethodHandlerWithError(
       dbus::kPropertiesSet, base::Unretained(property_set),
       &brillo::dbus_utils::ExportedPropertySet::HandleSet);
-}
-
-void NewblueDaemon::ExportAdapterInterface() {
-  dbus::ObjectPath adapter_object_path(kAdapterObjectPath);
-  exported_object_manager_wrapper_->AddExportedInterface(
-      adapter_object_path, bluetooth_adapter::kBluetoothAdapterInterface);
-  ExportedInterface* adapter_interface =
-      exported_object_manager_wrapper_->GetExportedInterface(
-          adapter_object_path, bluetooth_adapter::kBluetoothAdapterInterface);
-
-  // Expose the "Powered" property of the adapter. This property is only
-  // controlled by BlueZ, so newblued's "Powered" property is ignored by
-  // btdispatch. However, it is useful to have the dummy "Powered" property
-  // for testing when Chrome (or any client) connects directly to newblued
-  // instead of via btdispatch.
-  adapter_interface
-      ->EnsureExportedPropertyRegistered<bool>(
-          bluetooth_adapter::kPoweredProperty)
-      ->SetValue(true);
-  adapter_interface
-      ->EnsureExportedPropertyRegistered<bool>(
-          bluetooth_adapter::kStackSyncQuittingProperty)
-      ->SetValue(false);
-
-  AddAdapterMethodHandlers(adapter_interface);
-
-  adapter_interface->ExportAsync(
-      base::Bind(&OnInterfaceExported, adapter_object_path.value(),
-                 bluetooth_adapter::kBluetoothAdapterInterface));
-}
-
-void NewblueDaemon::AddAdapterMethodHandlers(
-    ExportedInterface* adapter_interface) {
-  CHECK(adapter_interface);
-
-  adapter_interface->AddSimpleMethodHandlerWithErrorAndMessage(
-      bluetooth_adapter::kStartDiscovery, base::Unretained(this),
-      &NewblueDaemon::HandleStartDiscovery);
-  adapter_interface->AddSimpleMethodHandlerWithErrorAndMessage(
-      bluetooth_adapter::kStopDiscovery, base::Unretained(this),
-      &NewblueDaemon::HandleStopDiscovery);
-}
-
-bool NewblueDaemon::HandleStartDiscovery(brillo::ErrorPtr* error,
-                                         dbus::Message* message) {
-  VLOG(1) << __func__;
-  bool ret = newblue_->StartDiscovery(
-      base::Bind(&NewblueDaemon::OnDeviceDiscovered, base::Unretained(this)));
-  if (!ret) {
-    brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
-                         bluetooth_adapter::kErrorFailed,
-                         "Failed to start discovery");
-  }
-  return ret;
-}
-
-bool NewblueDaemon::HandleStopDiscovery(brillo::ErrorPtr* error,
-                                        dbus::Message* message) {
-  VLOG(1) << __func__;
-  bool ret = newblue_->StopDiscovery();
-  if (!ret) {
-    brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
-                         bluetooth_adapter::kErrorFailed,
-                         "Failed to stop discovery");
-  }
-  return ret;
 }
 
 void NewblueDaemon::AddDeviceMethodHandlers(
