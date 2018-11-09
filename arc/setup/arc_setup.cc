@@ -106,6 +106,10 @@ constexpr char kHostSideDalvikCacheDirectoryInContainer[] =
     "/var/run/arc/dalvik-cache";
 constexpr char kHostDownloadsDirectory[] = "/home/chronos/user/Downloads";
 constexpr char kMediaDestDirectory[] = "/run/arc/media/removable";
+constexpr char kMediaDestDefaultDirectory[] =
+    "/run/arc/media/removable-default";
+constexpr char kMediaDestReadDirectory[] = "/run/arc/media/removable-read";
+constexpr char kMediaDestWriteDirectory[] = "/run/arc/media/removable-write";
 constexpr char kMediaMountDirectory[] = "/run/arc/media";
 constexpr char kMediaProfileFile[] = "media_profiles.xml";
 constexpr char kObbMountDirectory[] = "/run/arc/obb";
@@ -503,6 +507,9 @@ struct ArcPaths {
   const base::FilePath host_side_dalvik_cache_directory_in_container{
       kHostSideDalvikCacheDirectoryInContainer};
   const base::FilePath media_dest_directory{kMediaDestDirectory};
+  const base::FilePath media_dest_default_directory{kMediaDestDefaultDirectory};
+  const base::FilePath media_dest_read_directory{kMediaDestReadDirectory};
+  const base::FilePath media_dest_write_directory{kMediaDestWriteDirectory};
   const base::FilePath media_mount_directory{kMediaMountDirectory};
   const base::FilePath media_profile_file{kMediaProfileFile};
   const base::FilePath obb_mount_directory{kObbMountDirectory};
@@ -1300,9 +1307,12 @@ void ArcSetup::SetUpMountPointForRemovableMedia() {
                                "tmpfs", MS_NOSUID | MS_NODEV | MS_NOEXEC,
                                media_mount_options.c_str()));
   EXIT_IF(!arc_mounter_->SharedMount(arc_paths_->media_mount_directory));
-  EXIT_IF(
-      !InstallDirectory(0755, kMediaUid, kMediaGid,
-                        arc_paths_->media_mount_directory.Append("removable")));
+  for (auto* directory : {"removable", "removable-default", "removable-read",
+                          "removable-write"}) {
+    EXIT_IF(
+        !InstallDirectory(0755, kMediaUid, kMediaGid,
+                          arc_paths_->media_mount_directory.Append(directory)));
+  }
 }
 
 void ArcSetup::SetUpMountPointForAdbd() {
@@ -1320,6 +1330,11 @@ void ArcSetup::SetUpMountPointForAdbd() {
 
 void ArcSetup::CleanUpStaleMountPoints() {
   EXIT_IF(!arc_mounter_->UmountIfExists(arc_paths_->media_dest_directory));
+  EXIT_IF(
+      !arc_mounter_->UmountIfExists(arc_paths_->media_dest_default_directory));
+  EXIT_IF(!arc_mounter_->UmountIfExists(arc_paths_->media_dest_read_directory));
+  EXIT_IF(
+      !arc_mounter_->UmountIfExists(arc_paths_->media_dest_write_directory));
 }
 
 void ArcSetup::SetUpSharedMountPoints() {
@@ -1659,6 +1674,12 @@ void ArcSetup::UnmountOnStop() {
       arc_paths_->shared_mount_directory.Append("demo_apps")));
   IGNORE_ERRORS(arc_mounter_->UmountIfExists(arc_paths_->adbd_mount_directory));
   IGNORE_ERRORS(arc_mounter_->UmountIfExists(arc_paths_->media_dest_directory));
+  IGNORE_ERRORS(
+      arc_mounter_->UmountIfExists(arc_paths_->media_dest_default_directory));
+  IGNORE_ERRORS(
+      arc_mounter_->UmountIfExists(arc_paths_->media_dest_read_directory));
+  IGNORE_ERRORS(
+      arc_mounter_->UmountIfExists(arc_paths_->media_dest_write_directory));
   IGNORE_ERRORS(
       arc_mounter_->UmountIfExists(arc_paths_->media_mount_directory));
   IGNORE_ERRORS(arc_mounter_->Umount(arc_paths_->sdcard_mount_directory));
