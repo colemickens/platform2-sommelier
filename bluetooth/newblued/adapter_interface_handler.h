@@ -5,12 +5,17 @@
 #ifndef BLUETOOTH_NEWBLUED_ADAPTER_INTERFACE_HANDLER_H_
 #define BLUETOOTH_NEWBLUED_ADAPTER_INTERFACE_HANDLER_H_
 
+#include <map>
+#include <memory>
+#include <string>
+
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <brillo/errors/error.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 
+#include "bluetooth/common/dbus_client.h"
 #include "bluetooth/common/exported_object_manager_wrapper.h"
 #include "bluetooth/newblued/newblue.h"
 
@@ -38,6 +43,11 @@ class AdapterInterfaceHandler {
   bool HandleStartDiscovery(brillo::ErrorPtr* error, dbus::Message* message);
   bool HandleStopDiscovery(brillo::ErrorPtr* error, dbus::Message* message);
 
+  bool UpdateDiscovery(int n_discovery_clients);
+
+  // Called when a client is disconnected from D-Bus.
+  void OnClientUnavailable(const std::string& client_address);
+
   scoped_refptr<dbus::Bus> bus_;
 
   Newblue* newblue_;
@@ -45,6 +55,12 @@ class AdapterInterfaceHandler {
   ExportedObjectManagerWrapper* exported_object_manager_wrapper_;
 
   Newblue::DeviceDiscoveredCallback device_discovered_callback_;
+
+  // Clients which currently have active discovery mapped by its D-Bus address.
+  // (D-Bus address -> DBusClient object).
+  std::map<std::string, std::unique_ptr<DBusClient>> discovery_clients_;
+
+  bool is_discovering_ = false;
 
   // Must come last so that weak pointers will be invalidated before other
   // members are destroyed.

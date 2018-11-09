@@ -34,6 +34,7 @@ namespace bluetooth {
 namespace {
 
 constexpr char kTestSender[] = ":1.1";
+constexpr char kTestSender2[] = ":1.2";
 constexpr int kTestSerial = 10;
 constexpr char kTestDeviceAddress[] = "06:05:04:03:02:01";
 constexpr char kTestDeviceObjectPath[] =
@@ -312,7 +313,8 @@ TEST_F(NewblueDaemonTest, DiscoveryAPI) {
   ASSERT_FALSE(start_discovery_handler.is_null());
   ASSERT_FALSE(stop_discovery_handler.is_null());
 
-  // StartDiscovery
+  // StartDiscovery by the first client, it should return D-Bus success and
+  // should trigger NewBlue StartDiscovery.
   dbus::MethodCall start_discovery_method_call(
       bluetooth_adapter::kBluetoothAdapterInterface,
       bluetooth_adapter::kStartDiscovery);
@@ -320,7 +322,6 @@ TEST_F(NewblueDaemonTest, DiscoveryAPI) {
   start_discovery_method_call.SetSender(kTestSender);
   start_discovery_method_call.SetSerial(kTestSerial);
   std::unique_ptr<dbus::Response> start_discovery_response;
-
   Newblue::DeviceDiscoveredCallback on_device_discovered;
   EXPECT_CALL(*newblue_, StartDiscovery(_))
       .WillOnce(DoAll(SaveArg<0>(&on_device_discovered), Return(true)));
@@ -329,6 +330,23 @@ TEST_F(NewblueDaemonTest, DiscoveryAPI) {
       base::Bind(&SaveResponse, &start_discovery_response));
   EXPECT_EQ("", start_discovery_response->GetErrorName());
   ASSERT_FALSE(on_device_discovered.is_null());
+  // StartDiscovery again by the same client, it should return D-Bus error and
+  // should not affect NewBlue discovery state.
+  EXPECT_CALL(*newblue_, StartDiscovery(_)).Times(0);
+  start_discovery_handler.Run(
+      &start_discovery_method_call,
+      base::Bind(&SaveResponse, &start_discovery_response));
+  EXPECT_EQ(bluetooth_adapter::kErrorInProgress,
+            start_discovery_response->GetErrorName());
+  // StartDiscovery by a different client, it should return D-Bus success and
+  // should not affect NewBlue discovery state since it has already been
+  // started.
+  start_discovery_method_call.SetSender(kTestSender2);
+  EXPECT_CALL(*newblue_, StartDiscovery(_)).Times(0);
+  start_discovery_handler.Run(
+      &start_discovery_method_call,
+      base::Bind(&SaveResponse, &start_discovery_response));
+  EXPECT_EQ("", start_discovery_response->GetErrorName());
 
   // Device discovered.
   dbus::ObjectPath device_object_path(kTestDeviceObjectPath);
@@ -341,7 +359,9 @@ TEST_F(NewblueDaemonTest, DiscoveryAPI) {
   Device device(kTestDeviceAddress);
   on_device_discovered.Run(device);
 
-  // StopDiscovery
+  // StopDiscovery by the first client, it should return D-Bus success and
+  // should not affect NewBlue discovery state since there is still another
+  // client having discovery session.
   dbus::MethodCall stop_discovery_method_call(
       bluetooth_adapter::kBluetoothAdapterInterface,
       bluetooth_adapter::kStopDiscovery);
@@ -349,6 +369,23 @@ TEST_F(NewblueDaemonTest, DiscoveryAPI) {
   stop_discovery_method_call.SetSender(kTestSender);
   stop_discovery_method_call.SetSerial(kTestSerial);
   std::unique_ptr<dbus::Response> stop_discovery_response;
+  EXPECT_CALL(*newblue_, StopDiscovery()).Times(0);
+  stop_discovery_handler.Run(
+      &stop_discovery_method_call,
+      base::Bind(&SaveResponse, &stop_discovery_response));
+  EXPECT_EQ("", stop_discovery_response->GetErrorName());
+  // StopDiscovery again by the same client, it should return D-Bus error, and
+  // should not affect the NewBlue discovery state.
+  EXPECT_CALL(*newblue_, StopDiscovery()).Times(0);
+  stop_discovery_handler.Run(
+      &stop_discovery_method_call,
+      base::Bind(&SaveResponse, &stop_discovery_response));
+  EXPECT_EQ(bluetooth_adapter::kErrorFailed,
+            stop_discovery_response->GetErrorName());
+  // StopDiscovery by the other client, it should return D-Bus success, and
+  // should trigger NewBlue's StopDiscovery since there is no more client having
+  // a discovery session.
+  stop_discovery_method_call.SetSender(kTestSender2);
   EXPECT_CALL(*newblue_, StopDiscovery()).WillOnce(Return(true));
   stop_discovery_handler.Run(
       &stop_discovery_method_call,

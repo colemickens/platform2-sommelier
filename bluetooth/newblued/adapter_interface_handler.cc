@@ -4,6 +4,11 @@
 
 #include "bluetooth/newblued/adapter_interface_handler.h"
 
+#include <memory>
+#include <string>
+
+#include <base/stl_util.h>
+#include <base/strings/stringprintf.h>
 #include <brillo/errors/error.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/object_path.h>
@@ -62,25 +67,94 @@ void AdapterInterfaceHandler::Init(
 bool AdapterInterfaceHandler::HandleStartDiscovery(brillo::ErrorPtr* error,
                                                    dbus::Message* message) {
   VLOG(1) << __func__;
-  bool ret = newblue_->StartDiscovery(device_discovered_callback_);
-  if (!ret) {
+
+  const std::string& client_address = message->GetSender();
+
+  if (base::ContainsKey(discovery_clients_, client_address)) {
+    brillo::Error::AddTo(
+        error, FROM_HERE, brillo::errors::dbus::kDomain,
+        bluetooth_adapter::kErrorInProgress,
+        base::StringPrintf("Client already has a discovery session: %s",
+                           client_address.c_str()));
+    return false;
+  }
+
+  if (!UpdateDiscovery(discovery_clients_.size() + 1)) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
                          bluetooth_adapter::kErrorFailed,
                          "Failed to start discovery");
+    return false;
   }
-  return ret;
+
+  discovery_clients_[client_address] =
+      std::make_unique<DBusClient>(bus_, client_address);
+  discovery_clients_[client_address]->WatchClientUnavailable(
+      base::Bind(&AdapterInterfaceHandler::OnClientUnavailable,
+                 weak_ptr_factory_.GetWeakPtr(), client_address));
+
+  return true;
 }
 
 bool AdapterInterfaceHandler::HandleStopDiscovery(brillo::ErrorPtr* error,
                                                   dbus::Message* message) {
   VLOG(1) << __func__;
-  bool ret = newblue_->StopDiscovery();
-  if (!ret) {
+
+  const std::string& client_address = message->GetSender();
+
+  if (!base::ContainsKey(discovery_clients_, client_address)) {
+    brillo::Error::AddTo(
+        error, FROM_HERE, brillo::errors::dbus::kDomain,
+        bluetooth_adapter::kErrorFailed,
+        base::StringPrintf("Client doesn't have a discovery session: %s",
+                           client_address.c_str()));
+    return false;
+  }
+
+  if (!UpdateDiscovery(discovery_clients_.size() - 1)) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
                          bluetooth_adapter::kErrorFailed,
                          "Failed to stop discovery");
+    return false;
   }
-  return ret;
+
+  discovery_clients_.erase(client_address);
+
+  return true;
+}
+
+bool AdapterInterfaceHandler::UpdateDiscovery(int n_discovery_clients) {
+  VLOG(1) << "Updating discovery for would be " << n_discovery_clients
+          << " clients.";
+  if (n_discovery_clients > 0 && !is_discovering_) {
+    // There is at least one client requesting for discovery, and it's not
+    // currently discovering.
+    VLOG(1) << "Trying to start discovery";
+    if (!newblue_->StartDiscovery(device_discovered_callback_)) {
+      LOG(ERROR) << "Failed to start discovery";
+      return false;
+    }
+    is_discovering_ = true;
+  } else if (n_discovery_clients == 0 && is_discovering_) {
+    // There is no client requesting for discovery, and it's currently
+    // discovering.
+    VLOG(1) << "Trying to stop discovery";
+    if (!newblue_->StopDiscovery()) {
+      LOG(ERROR) << "Failed to stop discovery";
+      return false;
+    }
+    is_discovering_ = false;
+  } else {
+    VLOG(1) << "No need to change discovery state";
+  }
+
+  return true;
+}
+
+void AdapterInterfaceHandler::OnClientUnavailable(
+    const std::string& client_address) {
+  VLOG(1) << "Discovery client becomes unavailable, address " << client_address;
+  discovery_clients_.erase(client_address);
+  UpdateDiscovery(discovery_clients_.size());
 }
 
 }  // namespace bluetooth
