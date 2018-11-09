@@ -7,6 +7,8 @@
 #include <memory>
 #include <utility>
 
+#include <base/message_loop/message_loop.h>
+#include <base/run_loop.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/bind_lambda.h>
 #include <dbus/mock_bus.h>
@@ -40,6 +42,8 @@ class DispatcherClientTest : public ::testing::Test {
  public:
   void SetUp() override {
     bus_ = new dbus::MockBus(dbus::Bus::Options());
+    EXPECT_CALL(*bus_, GetOriginTaskRunner())
+        .WillRepeatedly(Return(message_loop_.task_runner().get()));
     dbus_connection_factory_ = std::make_unique<MockDBusConnectionFactory>();
     EXPECT_CALL(*bus_, AssertOnDBusThread()).Times(AnyNumber());
   }
@@ -49,6 +53,7 @@ class DispatcherClientTest : public ::testing::Test {
   void OnClientUnavailable() { client_unavailable_callback_count_++; }
 
  protected:
+  base::MessageLoop message_loop_;
   scoped_refptr<dbus::MockBus> bus_;
   std::unique_ptr<MockDBusConnectionFactory> dbus_connection_factory_;
 
@@ -75,6 +80,7 @@ TEST_F(DispatcherClientTest, WatchClientUnavailable) {
   // Other signals shouldn't trigger client unavailable callback.
   dbus::Signal signal_other(kTestInterfaceName, kTestMethodName);
   handle_message(nullptr, signal_other.raw_message(), client.get());
+  base::RunLoop().RunUntilIdle();
   EXPECT_EQ(0, client_unavailable_callback_count_);
 
   // NameOwnerChanged signal with the right parameters should trigger client
@@ -89,6 +95,7 @@ TEST_F(DispatcherClientTest, WatchClientUnavailable) {
   writer.AppendString("");                  // 3rd arg = new owner
   handle_message(nullptr, signal_name_owner_changed.raw_message(),
                  client.get());
+  base::RunLoop().RunUntilIdle();
   EXPECT_EQ(1, client_unavailable_callback_count_);
 
   EXPECT_CALL(*bus_, RemoveMatch(match_rule, _)).Times(1);

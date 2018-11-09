@@ -7,7 +7,9 @@
 #include <memory>
 #include <string>
 
+#include <base/location.h>
 #include <base/strings/stringprintf.h>
+#include <base/task_runner.h>
 #include <dbus/message.h>
 #include <dbus/scoped_dbus_error.h>
 
@@ -140,7 +142,8 @@ DBusHandlerResult DispatcherClient::HandleMessage(DBusConnection* connection,
     if (reader.PopString(&address) && reader.PopString(&old_owner) &&
         reader.PopString(&new_owner) && address == client_address_ &&
         old_owner == client_address_ && new_owner.empty())
-      client_unavailable_callback_.Run();
+      bus_->GetOriginTaskRunner()->PostTask(FROM_HERE,
+                                            client_unavailable_callback_);
   }
 
   // Always return unhandled to let other handlers handle the same signal.
