@@ -23,8 +23,6 @@
 #include <string>
 
 #define USER_NS_SHIFT 655360
-#define MEDIA_RW_UID (1023 + USER_NS_SHIFT)
-#define MEDIA_RW_GID (1023 + USER_NS_SHIFT)
 #define CHRONOS_UID 1000
 #define CHRONOS_GID 1000
 
@@ -238,8 +236,9 @@ void setup_passthrough_ops(struct fuse_operations* passthrough_ops) {
 }  // namespace
 
 int main(int argc, char** argv) {
-  if (argc != 4) {
-    fprintf(stderr, "usage: %s <source> <destination> <umask>\n", argv[0]);
+  if (argc != 6) {
+    fprintf(stderr, "usage: %s <source> <destination> <umask> <uid> <gid>\n",
+            argv[0]);
     return 1;
   }
 
@@ -255,10 +254,15 @@ int main(int argc, char** argv) {
   struct fuse_operations passthrough_ops;
   setup_passthrough_ops(&passthrough_ops);
 
+  uid_t uid = std::stoi(argv[4]) + USER_NS_SHIFT;
+  gid_t gid = std::stoi(argv[5]) + USER_NS_SHIFT;
   std::string fuse_subdir_opt(std::string("subdir=") + argv[1]);
-  std::string fuse_uid_opt(std::string("uid=") + std::to_string(MEDIA_RW_UID));
-  std::string fuse_gid_opt(std::string("gid=") + std::to_string(MEDIA_RW_GID));
+  std::string fuse_uid_opt(std::string("uid=") + std::to_string(uid));
+  std::string fuse_gid_opt(std::string("gid=") + std::to_string(gid));
   std::string fuse_umask_opt(std::string("umask=") + argv[3]);
+  fprintf(stderr, "subdir_opt(%s) uid_opt(%s) gid_opt(%s) umask_opt(%s)",
+          fuse_subdir_opt.c_str(), fuse_uid_opt.c_str(), fuse_gid_opt.c_str(),
+          fuse_umask_opt.c_str());
 
   const char* fuse_argv[] = {
       argv[0], argv[2], "-f", "-o", "allow_other", "-o", "default_permissions",

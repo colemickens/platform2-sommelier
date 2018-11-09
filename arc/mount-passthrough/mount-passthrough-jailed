@@ -11,14 +11,16 @@ SOURCE_IN_CONTAINER=/mnt/source
 DEST_IN_CONTAINER=/mnt/dest
 
 main() {
-  if [ $# -ne 3 ]; then
-    echo "Usage: $0 source dest umask"
+  if [ $# -ne 5 ]; then
+    echo "Usage: $0 source dest umask uid gid"
     exit 1
   fi
 
   local source="$1"
   local dest="$2"
   local umask="$3"
+  local uid="$4"
+  local gid="$5"
 
   # Set large enough open file limit since this process handles many open files.
   ulimit -n 8192
@@ -82,7 +84,8 @@ main() {
 
   # Finally, specify command line arguments.
   set -- "$@" -- /usr/bin/mount-passthrough
-  set -- "$@" "${SOURCE_IN_CONTAINER}" "${DEST_IN_CONTAINER}" "${umask}"
+  set -- "$@" "${SOURCE_IN_CONTAINER}" "${DEST_IN_CONTAINER}" "${umask}" \
+      "${uid}" "${gid}"
 
   exec minijail0 "$@"
 }
