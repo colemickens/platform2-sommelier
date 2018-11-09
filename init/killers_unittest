@@ -140,6 +140,7 @@ main() {
   TMPDIR="${T:-.}"
 
   . ./killers
+  LOGPATH="${TMPDIR}/${LOGPATH##*/}"
   . /usr/bin/shunit2
 }
 

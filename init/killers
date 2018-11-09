@@ -8,6 +8,9 @@
 readonly SIGTERM_TIMEOUT=2500
 readonly SIGKILL_TIMEOUT=2000
 
+# Where to write debug logs to.
+LOGPATH="/var/log/shutdown_force_kill_processes"
+
 # Send SIGTERM once to all processes that match regex in $1, then wait for
 # them all to terminate.  If processes matching $1 are still running after
 # SIGTERM_TIMEOUT msec they are all sent SIGKILL once.  If processes matching
@@ -87,7 +90,7 @@ kill_with_open_files_on_path_and_mountpoints() {
   fi
 
   # pids should have been empty. Since it is not, we log for future inspection.
-  lsof -n "$@" > /var/log/shutdown_force_kill_processes
+  lsof -n "$@" >"${LOGPATH}"
 
   # First try a gentle kill -TERM
   for i in 1 2 3 4 5 6 7 8 9 10; do
