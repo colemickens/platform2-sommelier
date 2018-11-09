@@ -122,14 +122,6 @@ class DHCPConfig : public IPConfig {
   FRIEND_TEST(DHCPConfigTest, StopDuringRequestIP);
   FRIEND_TEST(DHCPProviderTest, CreateIPv4Config);
 
-  static const int kAcquisitionTimeoutSeconds;
-
-  static const int kDHCPCDExitPollMilliseconds;
-  static const int kDHCPCDExitWaitMilliseconds;
-  static const char kDHCPCDPath[];
-  static const char kDHCPCDUser[];
-  static const char kDHCPCDGroup[];
-
   // Starts dhcpcd, returns true on success and false otherwise.
   bool Start();
 

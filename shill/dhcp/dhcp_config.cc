@@ -37,13 +37,14 @@ static string ObjectID(DHCPConfig* d) {
 }
 }
 
-// static
-const int DHCPConfig::kAcquisitionTimeoutSeconds = 30;
-const int DHCPConfig::kDHCPCDExitPollMilliseconds = 50;
-const int DHCPConfig::kDHCPCDExitWaitMilliseconds = 3000;
-const char DHCPConfig::kDHCPCDPath[] = "/sbin/dhcpcd";
-const char DHCPConfig::kDHCPCDUser[] = "dhcp";
-const char DHCPConfig::kDHCPCDGroup[] = "dhcp";
+namespace {
+
+constexpr int kAcquisitionTimeoutSeconds = 30;
+constexpr char kDHCPCDPath[] = "/sbin/dhcpcd";
+constexpr char kDHCPCDUser[] = "dhcp";
+constexpr char kDHCPCDGroup[] = "dhcp";
+
+}  // namespace
 
 DHCPConfig::DHCPConfig(ControlInterface* control_interface,
                        EventDispatcher* dispatcher,
