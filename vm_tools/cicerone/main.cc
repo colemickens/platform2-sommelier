@@ -23,7 +23,11 @@ int main(int argc, char** argv) {
 
   base::RunLoop run_loop;
 
-  auto service = vm_tools::cicerone::Service::Create(run_loop.QuitClosure());
+  dbus::Bus::Options opts;
+  opts.bus_type = dbus::Bus::SYSTEM;
+
+  auto service = vm_tools::cicerone::Service::Create(
+      run_loop.QuitClosure(), new dbus::Bus(std::move(opts)));
   CHECK(service);
 
   run_loop.Run();

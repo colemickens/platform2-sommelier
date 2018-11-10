@@ -39,13 +39,20 @@ namespace cicerone {
 class Service final : public base::MessageLoopForIO::Watcher {
  public:
   // Creates a new Service instance.  |quit_closure| is posted to the TaskRunner
-  // for the current thread when this process receives a SIGTERM.
-  static std::unique_ptr<Service> Create(base::Closure quit_closure);
+  // for the current thread when this process receives a SIGTERM. |bus| is a
+  // connection to the SYSTEM dbus
+  static std::unique_ptr<Service> Create(base::Closure quit_closure,
+                                         scoped_refptr<dbus::Bus> bus);
+
   ~Service() override;
 
   // base::MessageLoopForIO::Watcher overrides.
   void OnFileCanReadWithoutBlocking(int fd) override;
   void OnFileCanWriteWithoutBlocking(int fd) override;
+
+  ContainerListenerImpl* GetContainerListenerImpl() const {
+    return container_listener_.get();
+  }
 
   // Connect to the Tremplin instance on the VM with the given |cid|.
   void ConnectTremplin(const uint32_t cid,
@@ -171,10 +178,10 @@ class Service final : public base::MessageLoopForIO::Watcher {
                        base::WaitableEvent* event);
 
  private:
-  explicit Service(base::Closure quit_closure);
+  explicit Service(base::Closure quit_closure, scoped_refptr<dbus::Bus> bus);
 
-  // Initializes the service by connecting to the system DBus daemon, exporting
-  // its methods, and taking ownership of it's name.
+  // Initializes the service by exporting our DBus methods, taking ownership of
+  // its name, and starting our gRPC servers
   bool Init();
 
   // Handles the termination of a child process.

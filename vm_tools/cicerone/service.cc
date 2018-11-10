@@ -233,8 +233,10 @@ std::string ReplaceLocalhostInUrl(const std::string& url,
 
 }  // namespace
 
-std::unique_ptr<Service> Service::Create(base::Closure quit_closure) {
-  auto service = base::WrapUnique(new Service(std::move(quit_closure)));
+std::unique_ptr<Service> Service::Create(base::Closure quit_closure,
+                                         scoped_refptr<dbus::Bus> bus) {
+  auto service =
+      base::WrapUnique(new Service(std::move(quit_closure), std::move(bus)));
 
   if (!service->Init()) {
     service.reset();
@@ -243,8 +245,9 @@ std::unique_ptr<Service> Service::Create(base::Closure quit_closure) {
   return service;
 }
 
-Service::Service(base::Closure quit_closure)
+Service::Service(base::Closure quit_closure, scoped_refptr<dbus::Bus> bus)
     : watcher_(FROM_HERE),
+      bus_(std::move(bus)),
       quit_closure_(std::move(quit_closure)),
       weak_ptr_factory_(this) {
   container_listener_ =
@@ -256,6 +259,10 @@ Service::Service(base::Closure quit_closure)
 Service::~Service() {
   if (grpc_server_container_) {
     grpc_server_container_->Shutdown();
+  }
+
+  if (grpc_server_tremplin_) {
+    grpc_server_tremplin_->Shutdown();
   }
 }
 
@@ -774,10 +781,6 @@ void Service::UpdateMimeTypes(const std::string& container_token,
 }
 
 bool Service::Init() {
-  dbus::Bus::Options opts;
-  opts.bus_type = dbus::Bus::SYSTEM;
-  bus_ = new dbus::Bus(std::move(opts));
-
   if (!bus_->Connect()) {
     LOG(ERROR) << "Failed to connect to system bus";
     return false;
