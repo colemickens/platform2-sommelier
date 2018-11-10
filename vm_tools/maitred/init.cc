@@ -24,7 +24,6 @@
 // These usually need to come after the sys/ includes.
 #include <linux/dm-ioctl.h>
 #include <linux/loop.h>
-#include <linux/vm_sockets.h>
 
 #include <algorithm>
 #include <limits>
@@ -48,13 +47,7 @@
 #include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
-#include <base/strings/stringprintf.h>
 #include <base/time/time.h>
-#include <grpc++/grpc++.h>
-
-#include "vm_tools/common/constants.h"
-
-#include "vm_host.grpc.pb.h"  // NOLINT(build/include)
 
 using std::string;
 
@@ -1224,47 +1217,6 @@ void Init::Worker::OnFileCanReadWithoutBlocking(int fd) {
     } else {
       LOG(WARNING) << "Unknown exit status " << status << " for process "
                    << pid;
-    }
-
-    // TODO(jkardatzke): REMOVE THIS UGLY HACK
-    // This is a TEMPORARY hack to detect failure in starting a container so
-    // that we can send a message back to the host to notify it. Long term the
-    // plan is to use the LXD REST API, and once we do that we can remove this.
-    if (!info.wait_for_exit && info.argv.size() > 0 &&
-        info.argv[0] == "/sbin/minijail0" &&
-        (WIFSIGNALED(status) || (WIFEXITED(status) && WEXITSTATUS(status)))) {
-      // There was a failure in the script, it exited with a signal or a failure
-      // code. We don't need to log the details of it because we already did
-      // that above.
-
-      // Extract the container name parameter.
-      bool token_next = false;
-      string container_name;
-      for (const auto& arg : info.argv) {
-        if (token_next) {
-          container_name = arg;
-          break;
-        }
-        if (arg == "--container_name") {
-          token_next = true;
-        }
-      }
-      LOG(ERROR) << "Detected failure in run_container.sh execution for "
-                 << "container " << container_name;
-      vm_tools::StartupListener::Stub stub(grpc::CreateChannel(
-          base::StringPrintf("vsock:%u:%u", VMADDR_CID_HOST,
-                             vm_tools::kStartupListenerPort),
-          grpc::InsecureChannelCredentials()));
-      grpc::ClientContext ctx;
-      vm_tools::EmptyMessage empty;
-      vm_tools::ContainerName container_id;
-      container_id.set_name(container_name);
-      grpc::Status status =
-          stub.ContainerStartupFailed(&ctx, container_id, &empty);
-      if (!status.ok()) {
-        LOG(WARNING) << "Failed to notify host system that container startup "
-                     << "failed: " << status.error_message();
-      }
     }
 
     if (!info.respawn) {

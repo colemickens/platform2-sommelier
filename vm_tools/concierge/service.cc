@@ -329,10 +329,7 @@ Service::Service(base::Closure quit_closure)
     : watcher_(FROM_HERE),
       next_seneschal_server_port_(kFirstSeneschalServerPort),
       quit_closure_(std::move(quit_closure)),
-      weak_ptr_factory_(this) {
-  startup_listener_ =
-      std::make_unique<StartupListenerImpl>(weak_ptr_factory_.GetWeakPtr());
-}
+      weak_ptr_factory_(this) {}
 
 Service::~Service() {
   if (grpc_server_vm_) {
@@ -361,35 +358,6 @@ void Service::OnFileCanReadWithoutBlocking(int fd) {
 
 void Service::OnFileCanWriteWithoutBlocking(int fd) {
   NOTREACHED();
-}
-
-void Service::ContainerStartupFailed(const std::string& container_name,
-                                     const uint32_t cid) {
-  DCHECK(sequence_checker_.CalledOnValidSequence());
-  VmMap::key_type vm_key;
-  for (auto& vm : vms_) {
-    if (vm.second->cid() == cid) {
-      vm_key = vm.first;
-      break;
-    }
-  }
-  if (vm_key.second.empty()) {
-    LOG(ERROR) << "Received indication container startup failed but could not "
-               << "match to VM cid: " << cid;
-    return;
-  }
-
-  LOG(ERROR) << "Startup of container " << container_name << " for owner "
-             << vm_key.first << " VM " << vm_key.second << " failed.";
-
-  // Send the D-Bus signal out to indicate the container startup failed.
-  dbus::Signal signal(kVmConciergeInterface, kContainerStartupFailedSignal);
-  ContainerStartedSignal proto;
-  proto.set_owner_id(vm_key.first);
-  proto.set_vm_name(vm_key.second);
-  proto.set_container_name(container_name);
-  dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
-  exported_object_->SendSignal(&signal);
 }
 
 bool Service::Init() {
@@ -472,8 +440,8 @@ bool Service::Init() {
     return false;
   }
 
-  // Setup & start the gRPC listener service.
-  if (!SetupListenerService(&grpc_thread_vm_, startup_listener_.get(),
+  // Setup & start the gRPC listener services.
+  if (!SetupListenerService(&grpc_thread_vm_, &startup_listener_,
                             base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY,
                                                vm_tools::kStartupListenerPort),
                             &grpc_server_vm_)) {
@@ -764,7 +732,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   // before it gets added as a pending VM.
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
-  startup_listener_->AddPendingVm(vsock_cid, &event);
+  startup_listener_.AddPendingVm(vsock_cid, &event);
 
   // Start the VM and build the response.
   auto vm = VirtualMachine::Create(
@@ -774,7 +742,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
 
-    startup_listener_->RemovePendingVm(vsock_cid);
+    startup_listener_.RemovePendingVm(vsock_cid);
     response.set_failure_reason("Unable to start VM");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
@@ -786,7 +754,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
     LOG(ERROR) << "VM failed to start in " << kVmStartupTimeout.InSeconds()
                << " seconds";
 
-    startup_listener_->RemovePendingVm(vsock_cid);
+    startup_listener_.RemovePendingVm(vsock_cid);
     response.set_failure_reason("VM failed to start in time");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;

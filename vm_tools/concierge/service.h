@@ -51,11 +51,6 @@ class Service final : public base::MessageLoopForIO::Watcher {
   void OnFileCanReadWithoutBlocking(int fd) override;
   void OnFileCanWriteWithoutBlocking(int fd) override;
 
-  // Notifies the service that a container with |container_name| and VSOCK
-  // |cid| has failed startup.
-  void ContainerStartupFailed(const std::string& container_name,
-                              const uint32_t cid);
-
  private:
   explicit Service(base::Closure quit_closure);
 
@@ -168,7 +163,7 @@ class Service final : public base::MessageLoopForIO::Watcher {
   std::unique_ptr<ShillClient> shill_client_;
 
   // The StartupListener service.
-  std::unique_ptr<StartupListenerImpl> startup_listener_;
+  StartupListenerImpl startup_listener_;
 
   // Thread on which the StartupListener service lives.
   base::Thread grpc_thread_vm_{"gRPC VM Server Thread"};

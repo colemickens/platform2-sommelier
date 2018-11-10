@@ -10,8 +10,6 @@
 #include <map>
 
 #include <base/macros.h>
-#include <base/memory/weak_ptr.h>
-#include <base/sequenced_task_runner.h>
 #include <base/synchronization/lock.h>
 #include <base/synchronization/waitable_event.h>
 #include <grpc++/grpc++.h>
@@ -21,24 +19,17 @@
 namespace vm_tools {
 namespace concierge {
 
-class Service;
-
 // Listens for VMs to announce that they are ready before signaling the
 // WaitableEvent associated with that VM.
 class StartupListenerImpl final : public vm_tools::StartupListener::Service {
  public:
-  explicit StartupListenerImpl(
-      base::WeakPtr<vm_tools::concierge::Service> service);
+  StartupListenerImpl() = default;
   ~StartupListenerImpl() override = default;
 
   // StartupListener overrides.
   grpc::Status VmReady(grpc::ServerContext* ctx,
                        const vm_tools::EmptyMessage* request,
                        vm_tools::EmptyMessage* response) override;
-  grpc::Status ContainerStartupFailed(
-      grpc::ServerContext* ctx,
-      const vm_tools::ContainerName* request,
-      vm_tools::EmptyMessage* response) override;
 
   // Add the VM with the vsock context id |cid| to the set of VMs that have
   // been started but have not checked in as ready yet.
@@ -48,9 +39,6 @@ class StartupListenerImpl final : public vm_tools::StartupListener::Service {
   void RemovePendingVm(uint32_t cid);
 
  private:
-  base::WeakPtr<vm_tools::concierge::Service> service_;  // not owned
-  scoped_refptr<base::SequencedTaskRunner> task_runner_;
-
   // VMs that have been started but have not checked in as being ready yet.
   std::map<uint32_t, base::WaitableEvent*> pending_vms_;
 
