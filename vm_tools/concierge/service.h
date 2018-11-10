@@ -125,9 +125,6 @@ class Service final : public base::MessageLoopForIO::Watcher {
   std::string GetContainerToken(const std::string& owner_id,
                                 const std::string& vm_name,
                                 const std::string& container_name);
-  bool IsContainerRunning(const std::string& owner_id,
-                          const std::string& vm_name,
-                          const std::string& container_name);
 
   void OnTremplinStartedSignal(dbus::Signal* signal);
 

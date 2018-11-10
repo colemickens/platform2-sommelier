@@ -1546,34 +1546,6 @@ std::string Service::GetContainerToken(const std::string& owner_id,
   return response.container_token();
 }
 
-bool Service::IsContainerRunning(const std::string& owner_id,
-                                 const std::string& vm_name,
-                                 const std::string& container_name) {
-  DCHECK(sequence_checker_.CalledOnValidSequence());
-  dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
-                               vm_tools::cicerone::kIsContainerRunningMethod);
-  dbus::MessageWriter writer(&method_call);
-  vm_tools::cicerone::IsContainerRunningRequest request;
-  vm_tools::cicerone::IsContainerRunningResponse response;
-  request.set_owner_id(owner_id);
-  request.set_vm_name(vm_name);
-  request.set_container_name(container_name);
-  writer.AppendProtoAsArrayOfBytes(request);
-  std::unique_ptr<dbus::Response> dbus_response =
-      cicerone_service_proxy_->CallMethodAndBlock(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response) {
-    LOG(ERROR) << "Failed querying cicerone for container running";
-    return false;
-  }
-  dbus::MessageReader reader(dbus_response.get());
-  if (!reader.PopArrayOfBytesAsProto(&response)) {
-    LOG(ERROR) << "Failed parsing proto response";
-    return false;
-  }
-  return response.container_running();
-}
-
 void Service::OnTremplinStartedSignal(dbus::Signal* signal) {
   DCHECK_EQ(signal->GetInterface(), vm_tools::cicerone::kVmCiceroneInterface);
   DCHECK_EQ(signal->GetMember(), vm_tools::cicerone::kTremplinStartedSignal);
