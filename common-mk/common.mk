@@ -319,8 +319,8 @@ endif
 # The same goes for CFLAGS.
 COMMON_CFLAGS-gcc := -fvisibility=internal -ggdb3 -Wa,--noexecstack
 COMMON_CFLAGS-clang := -fvisibility=hidden -ggdb
-COMMON_CFLAGS := -Wall -Wunused -Wno-unused-parameter -Werror -Wformat=2 \
-  -fno-strict-aliasing $(SSP_CFLAGS) -O1
+COMMON_CFLAGS := -Wall -Wunused -Wno-unused-parameter -Wunreachable-code \
+  -Werror -Wformat=2 -fno-strict-aliasing $(SSP_CFLAGS) -O1
 CXXFLAGS += $(COMMON_CFLAGS) $(COMMON_CFLAGS-$(CXXDRIVER)) -std=gnu++14
 CFLAGS += $(COMMON_CFLAGS) $(COMMON_CFLAGS-$(CDRIVER)) -std=gnu11
 # We undefine _FORTIFY_SOURCE because some distros enable it by default in

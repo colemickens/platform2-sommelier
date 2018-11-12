@@ -108,6 +108,7 @@
       '-Wno-psabi',
       '-Wunused',
       '-Wno-unused-parameter',
+      '-Wunreachable-code',
       '-ggdb3',
       '-fstack-protector-strong',
       '-Wformat=2',
