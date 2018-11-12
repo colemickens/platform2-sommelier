@@ -30,6 +30,9 @@ service Diagnosticsd {
   // for making the request.
   rpc PerformWebRequest(PerformWebRequestParameter)
       returns (PerformWebRequestResponse) {}
+
+  // Runs EC command using the EC driver and returns the command response.
+  rpc RunEcCommand(RunEcCommandRequest) returns (RunEcCommandResponse) {}
 }
 
 // Parameters for the SendMessageToUi RPC.
@@ -186,4 +189,37 @@ message PerformWebRequestResponse {
   // HTTP status code. This field is set when |status| is |STATUS_OK| or
   // |STATUS_HTTP_ERROR|.
   int32 http_status = 2;
+}
+
+// Parameters for the RunEcCommand RPC.
+message RunEcCommandRequest {
+  // Data blob with encoded EC command. The maximum allowed size is 32 bytes.
+  // Should to be non-empty.
+  //
+  // TODO(lamzin): add payload filtering.
+  bytes payload = 1;
+}
+
+// Return value of the RunEcCommand RPC.
+message RunEcCommandResponse {
+  // Status of the EC command run request.
+  enum Status {
+    STATUS_UNSET = 0;
+    // The EC command run was successfully completed.
+    STATUS_OK = 1;
+    // The EC command run was rejected due to the empty request payload.
+    STATUS_ERROR_INPUT_PAYLOAD_EMPTY = 2;
+    // The EC command run was rejected due to the request payload being too
+    // large.
+    STATUS_ERROR_INPUT_PAYLOAD_MAX_SIZE_EXCEEDED = 3;
+    // The EC command run was failed due to EC driver error.
+    STATUS_ERROR_ACCESSING_DRIVER = 4;
+  }
+
+  // Is guaranteed to be distinct from |STATUS_UNSET|.
+  Status status = 1;
+
+  // Data blob with encoded EC command response. This field is set when
+  // |status| is |STATUS_OK|.
+  bytes payload = 2;
 }
