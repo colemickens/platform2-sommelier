@@ -429,17 +429,17 @@ class MainTests(cros_test_lib.TempDirTestCase):
 
   def testMainWithExampleWithBuildAndMosysCBindings(self):
     json_output = os.path.join(self.tempdir, 'output.json')
-    c_output = os.path.join(self.tempdir, 'output.c')
+    c_output = os.path.join(self.tempdir, 'config.c')
     cros_config_schema.Main(
         None,
         os.path.join(this_dir, '../libcros_config/test.yaml'),
         json_output,
-        gen_c_bindings_output=c_output)
+        gen_c_output_dir=self.tempdir)
     regen_cmd = ('To regenerate the expected output, run:\n'
                  '\tpython -m cros_config_host.cros_config_schema '
                  '-c libcros_config/test.yaml '
                  '-o libcros_config/test_build.json '
-                 '-g libcros_config/test.c')
+                 '-g libcros_config')
 
     expected_json_file = \
             os.path.join(this_dir, '../libcros_config/test_build.json')
@@ -467,26 +467,25 @@ class MainTests(cros_test_lib.TempDirTestCase):
 
   def testMainArmExample(self):
     json_output = os.path.join(self.tempdir, 'output.json')
-    c_output = os.path.join(self.tempdir, 'output.c')
+    c_output = os.path.join(self.tempdir, 'config.c')
     cros_config_schema.Main(
         None,
         os.path.join(this_dir, '../libcros_config/test_arm.yaml'),
         json_output,
         filter_build_details=True,
-        gen_c_bindings_output=c_output)
+        gen_c_output_dir=self.tempdir)
     regen_cmd = ('To regenerate the expected output, run:\n'
                  '\tpython -m cros_config_host.cros_config_schema '
                  '-f True '
                  '-c libcros_config/test_arm.yaml '
                  '-o libcros_config/test_arm.json '
-                 '-g libcros_config/test_arm.c')
+                 '-g libcros_config')
 
     expected_json_file = \
             os.path.join(this_dir, '../libcros_config/test_arm.json')
     self.assertFileEqual(expected_json_file, json_output, regen_cmd)
 
-    expected_c_file = os.path.join(this_dir,
-                                   '../libcros_config/test_arm.c')
+    expected_c_file = os.path.join(this_dir, '../libcros_config/test_arm.c')
     self.assertFileEqual(expected_c_file, c_output, regen_cmd)
 
   def testMainImportExample(self):
@@ -611,6 +610,23 @@ class MainTests(cros_test_lib.TempDirTestCase):
     h_actual, c_actual = cros_config_schema.GenerateEcCBindings(input_json)
     self.assertMultilineStringEqual(h_expected, h_actual)
     self.assertMultilineStringEqual(c_expected, c_actual)
+
+  def testEcCodegenMain(self):
+    output = os.path.join(self.tempdir, 'output')
+    cros_config_schema.Main(
+        None,
+        os.path.join(this_dir, '../libcros_config/test.yaml'),
+        output,
+        gen_c_output_dir=self.tempdir)
+
+    h_expected = os.path.join(this_dir, '../libcros_config/ec_test_one.h')
+    c_expected = os.path.join(this_dir, '../libcros_config/ec_test_one.c')
+
+    h_actual = os.path.join(self.tempdir, "ec_config.h")
+    c_actual = os.path.join(self.tempdir, "ec_config.c")
+
+    self.assertFileEqual(h_expected, h_actual)
+    self.assertFileEqual(c_expected, c_actual)
 
 if __name__ == '__main__':
   unittest.main()
