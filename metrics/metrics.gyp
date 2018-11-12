@@ -188,5 +188,20 @@
         },
       ],
     }],
+    ['USE_fuzzer == 1', {
+      'targets': [
+        {
+          'target_name': 'metrics_library_consent_id_fuzzer',
+          'type': 'executable',
+          'dependencies': [
+            '../metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
+          ],
+          'includes': ['../common-mk/common_fuzzer.gypi'],
+          'sources': [
+            'metrics_library_consent_id_fuzzer.cc',
+          ],
+        },
+      ],
+    }],
   ],
 }

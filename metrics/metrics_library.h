@@ -11,6 +11,7 @@
 #include <string>
 
 #include <base/compiler_specific.h>
+#include <base/files/file_path.h>
 #include <base/macros.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -161,6 +162,8 @@ class MetricsLibrary : public MetricsLibraryInterface {
                          int num_samples) override;
 #endif
 
+  void SetConsentFileForTest(const base::FilePath& consent_file);
+
  private:
   friend class CMetricsLibraryTest;
   friend class MetricsLibraryTest;
@@ -174,8 +177,8 @@ class MetricsLibrary : public MetricsLibraryInterface {
   // Cached state of whether or not metrics were enabled.
   static bool cached_enabled_;
 
-  std::string uma_events_file_;
-  std::string consent_file_;
+  base::FilePath uma_events_file_;
+  base::FilePath consent_file_;
 
   std::unique_ptr<policy::PolicyProvider> policy_provider_;
 

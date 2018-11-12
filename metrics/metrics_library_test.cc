@@ -37,11 +37,11 @@ ACTION_P(SetMetricsPolicy, enabled) {
 class MetricsLibraryTest : public testing::Test {
  protected:
   void SetUp() override {
-    lib_.consent_file_ = kTestConsentIdFile.value();
+    lib_.SetConsentFileForTest(kTestConsentIdFile);
     EXPECT_TRUE(lib_.uma_events_file_.empty());
     lib_.Init();
     EXPECT_FALSE(lib_.uma_events_file_.empty());
-    lib_.uma_events_file_ = kTestUMAEventsFile.value();
+    lib_.SetOutputFile(kTestUMAEventsFile.value());
     EXPECT_EQ(0, WriteFile(kTestUMAEventsFile, "", 0));
     device_policy_ = new policy::MockDevicePolicy();
     EXPECT_CALL(*device_policy_, LoadPolicy())
@@ -218,7 +218,7 @@ class CMetricsLibraryTest : public testing::Test {
     EXPECT_TRUE(ml.uma_events_file_.empty());
     CMetricsLibraryInit(lib_);
     EXPECT_FALSE(ml.uma_events_file_.empty());
-    ml.uma_events_file_ = kTestUMAEventsFile.value();
+    ml.SetOutputFile(kTestUMAEventsFile.value());
     EXPECT_EQ(0, WriteFile(kTestUMAEventsFile, "", 0));
     device_policy_ = new policy::MockDevicePolicy();
     EXPECT_CALL(*device_policy_, LoadPolicy())
