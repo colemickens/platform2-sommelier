@@ -24,10 +24,7 @@ class MockHelperProcessProxy : public HelperProcessProxy {
   // Sends a message telling the helper process to mount the file backed by |fd|
   // at the |path|.
   MOCK_METHOD4(SendMountCommand,
-               bool(int,
-                    const std::string&,
-                    brillo::imageloader::FileSystem,
-                    const std::string&));
+               bool(int, const std::string&, FileSystem, const std::string&));
 
   MOCK_METHOD3(SendUnmountAllCommand, bool(bool,
                                            const std::string&,

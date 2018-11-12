@@ -24,11 +24,11 @@
 #include <base/files/file_path.h>
 #include <base/gtest_prod_util.h>
 #include <base/macros.h>
-#include <brillo/imageloader/manifest.h>
 #include <crypto/secure_hash.h>
 
 #include "imageloader/helper_process_proxy.h"
 #include "imageloader/imageloader_impl.h"
+#include "imageloader/manifest.h"
 
 namespace imageloader {
 
@@ -57,7 +57,7 @@ class Component {
 
   // Return a reference to the parsed manifest object, which is stored in
   // memory.
-  const brillo::imageloader::Manifest& manifest();
+  const Manifest& manifest();
 
  private:
   // Constructs a Component. We want to avoid using this where possible since
@@ -87,7 +87,7 @@ class Component {
   size_t key_number_;
   std::string manifest_raw_;
   std::string manifest_sig_;
-  brillo::imageloader::Manifest manifest_;
+  Manifest manifest_;
 
   DISALLOW_COPY_AND_ASSIGN(Component);
 };

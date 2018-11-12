@@ -13,7 +13,8 @@
 
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
-#include <brillo/imageloader/manifest.h>
+
+#include "imageloader/manifest.h"
 
 // Forward declare classes in sys/socket.h
 struct msghdr;
@@ -40,7 +41,7 @@ class HelperProcessProxy {
   // at the |path|.
   virtual bool SendMountCommand(int fd,
                                 const std::string& path,
-                                brillo::imageloader::FileSystem fs_type,
+                                FileSystem fs_type,
                                 const std::string& table);
 
   // Sends a message telling the helper process to enumerate all mount point

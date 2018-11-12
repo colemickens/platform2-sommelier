@@ -2,24 +2,22 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBBRILLO_BRILLO_IMAGELOADER_MANIFEST_H_
-#define LIBBRILLO_BRILLO_IMAGELOADER_MANIFEST_H_
+#ifndef IMAGELOADER_MANIFEST_H_
+#define IMAGELOADER_MANIFEST_H_
 
 #include <map>
 #include <string>
 #include <vector>
 
 #include <base/macros.h>
-#include <brillo/brillo_export.h>
 
-namespace brillo {
 namespace imageloader {
 
 // The supported file systems for images.
 enum class FileSystem { kExt4, kSquashFS };
 
 // A class to parse and store imageloader.json manifest.
-class BRILLO_EXPORT Manifest {
+class Manifest {
  public:
   Manifest();
   // Parse the manifest raw string. Return true if successful.
@@ -47,6 +45,5 @@ class BRILLO_EXPORT Manifest {
 };
 
 }  // namespace imageloader
-}  // namespace brillo
 
-#endif  // LIBBRILLO_BRILLO_IMAGELOADER_MANIFEST_H_
+#endif  // IMAGELOADER_MANIFEST_H_

@@ -155,8 +155,7 @@ TEST_F(ComponentTest, TestCopyAndMountComponentExt4) {
   // mock here. The platform_ImageLoader autotest tests the real helper
   // process running as a dbus service.
   auto helper_mock = std::make_unique<MockHelperProcessProxy>();
-  EXPECT_CALL(*helper_mock,
-              SendMountCommand(_, _, brillo::imageloader::FileSystem::kExt4, _))
+  EXPECT_CALL(*helper_mock, SendMountCommand(_, _, FileSystem::kExt4, _))
       .Times(1);
   ON_CALL(*helper_mock, SendMountCommand(_, _, _, _))
       .WillByDefault(testing::Return(true));
@@ -186,9 +185,7 @@ TEST_F(ComponentTest, TestCopyAndMountComponentSquashfs) {
   // mock here. The platform_ImageLoader autotest tests the real helper
   // process running as a dbus service.
   auto helper_mock = std::make_unique<MockHelperProcessProxy>();
-  EXPECT_CALL(
-      *helper_mock,
-      SendMountCommand(_, _, brillo::imageloader::FileSystem::kSquashFS, _))
+  EXPECT_CALL(*helper_mock, SendMountCommand(_, _, FileSystem::kSquashFS, _))
       .Times(1);
   ON_CALL(*helper_mock, SendMountCommand(_, _, _, _))
       .WillByDefault(testing::Return(true));

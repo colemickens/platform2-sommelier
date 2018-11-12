@@ -69,11 +69,10 @@ std::unique_ptr<CommandResponse> HelperProcessProxy::SendCommand(
   return WaitForResponse();
 }
 
-bool HelperProcessProxy::SendMountCommand(
-    int fd,
-    const std::string& path,
-    brillo::imageloader::FileSystem fs_type,
-    const std::string& table) {
+bool HelperProcessProxy::SendMountCommand(int fd,
+                                          const std::string& path,
+                                          FileSystem fs_type,
+                                          const std::string& table) {
   struct msghdr msg = {0};
   char fds[CMSG_SPACE(sizeof(fd))];
   memset(fds, '\0', sizeof(fds));
@@ -85,10 +84,10 @@ bool HelperProcessProxy::SendMountCommand(
 
   // Convert the internal enum to the protobuf enum.
   switch (fs_type) {
-    case brillo::imageloader::FileSystem::kExt4:
+    case FileSystem::kExt4:
       image_command.mutable_mount_command()->set_fs_type(MountCommand::EXT4);
       break;
-    case brillo::imageloader::FileSystem::kSquashFS:
+    case FileSystem::kSquashFS:
       image_command.mutable_mount_command()->set_fs_type(MountCommand::SQUASH);
       break;
     default:

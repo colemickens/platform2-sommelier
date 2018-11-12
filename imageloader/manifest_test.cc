@@ -4,9 +4,8 @@
 
 #include <gtest/gtest.h>
 
-#include <brillo/imageloader/manifest.h>
+#include "imageloader/manifest.h"
 
-namespace brillo {
 namespace imageloader {
 
 class ManifestTest : public testing::Test {};
@@ -34,7 +33,7 @@ TEST_F(ManifestTest, ParseManifest) {
                                    R"(
     }
   )";
-  brillo::imageloader::Manifest manifest;
+  Manifest manifest;
   // Parse the manifest raw string.
   ASSERT_TRUE(manifest.ParseManifest(manifest_raw));
   EXPECT_EQ(manifest.fs_type(), FileSystem::kExt4);
@@ -46,4 +45,3 @@ TEST_F(ManifestTest, ParseManifest) {
 }
 
 }  // namespace imageloader
-}  // namespace brillo

@@ -6,10 +6,10 @@
 
 #include <memory>
 
-#include <brillo/imageloader/manifest.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "imageloader/manifest.h"
 #include "imageloader/mock_helper_process_proxy.h"
 #include "imageloader/test_utilities.h"
 
@@ -23,8 +23,7 @@ TEST(DlcTest, MountDlc) {
 
   auto proxy = std::make_unique<MockHelperProcessProxy>();
   EXPECT_CALL(*proxy, SendMountCommand(testing::_, testing::_,
-                                       brillo::imageloader::FileSystem::kExt4,
-                                       testing::_))
+                                       FileSystem::kExt4, testing::_))
       .Times(1);
   ON_CALL(*proxy,
           SendMountCommand(testing::_, testing::_, testing::_, testing::_))

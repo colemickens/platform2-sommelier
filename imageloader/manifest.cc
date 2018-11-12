@@ -2,15 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <brillo/imageloader/manifest.h>
-
 #include <memory>
 #include <utility>
 
 #include <base/json/json_string_value_serializer.h>
 #include <base/strings/string_number_conversions.h>
 
-namespace brillo {
+#include "imageloader/manifest.h"
+
 namespace imageloader {
 
 namespace {
@@ -186,4 +185,3 @@ const std::map<std::string, std::string> Manifest::metadata() const {
 }
 
 }  // namespace imageloader
-}  // namespace brillo

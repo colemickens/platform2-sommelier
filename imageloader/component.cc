@@ -92,10 +92,10 @@ base::FilePath GetTablePath(const base::FilePath& component_dir) {
 }
 
 base::FilePath GetImagePath(const base::FilePath& component_dir,
-                            brillo::imageloader::FileSystem fs_type) {
-  if (fs_type == brillo::imageloader::FileSystem::kExt4) {
+                            FileSystem fs_type) {
+  if (fs_type == FileSystem::kExt4) {
     return component_dir.Append(kImageFileNameExt4);
-  } else if (fs_type == brillo::imageloader::FileSystem::kSquashFS) {
+  } else if (fs_type == FileSystem::kSquashFS) {
     return component_dir.Append(kImageFileNameSquashFS);
   } else {
     NOTREACHED();
@@ -160,7 +160,7 @@ std::unique_ptr<Component> Component::Create(
   return component;
 }
 
-const brillo::imageloader::Manifest& Component::manifest() {
+const Manifest& Component::manifest() {
   return manifest_;
 }
 
