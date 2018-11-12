@@ -1823,7 +1823,9 @@ cmd_verify_ro() (
     echo "This device can not be used for RO verification"
     return 1
   fi
-  "${EXEC_verify_ro}" "${cr50_image}" "${ro_db}"
+
+  debugd_poll UpdateAndVerifyFWOnUsb \
+    "fd:1" "string:${cr50_image}" "string:${ro_db}"
 )
 
 USAGE_c='<container name> [args]'

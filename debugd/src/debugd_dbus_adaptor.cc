@@ -521,4 +521,19 @@ bool DebugdDBusAdaptor::VerifyDeviceOnUsbROIntegrity(
   return verify_ro_tool_->VerifyDeviceOnUsbROIntegrity(error, ro_desc_file);
 }
 
+bool DebugdDBusAdaptor::UpdateAndVerifyFWOnUsbStart(
+    brillo::ErrorPtr* error,
+    const base::ScopedFD& outfd,
+    const std::string& image_file,
+    const std::string& ro_db_dir,
+    std::string* handle) {
+  return verify_ro_tool_->UpdateAndVerifyFWOnUsb(
+      error, outfd, image_file, ro_db_dir, handle);
+}
+
+bool DebugdDBusAdaptor::UpdateAndVerifyFWOnUsbStop(brillo::ErrorPtr* error,
+                                     const std::string& handle) {
+  return verify_ro_tool_->Stop(handle, error);
+}
+
 }  // namespace debugd

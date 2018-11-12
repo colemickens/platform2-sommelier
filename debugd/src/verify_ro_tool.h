@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/files/scoped_file.h>
 #include <base/macros.h>
 #include <brillo/errors/error.h>
 
@@ -63,6 +64,18 @@ class VerifyRoTool : public SubprocessTool {
   bool VerifyDeviceOnUsbROIntegrity(
       brillo::ErrorPtr* error, const std::string& ro_desc_file);
 
+  // Checks and updates the Cr50 FW and verifies the AP and EC RO FW integrity
+  // of the the USB-connected DUT. This function binds stdout and stderr of the
+  // process it calls internally to |outfd| and stores the process handle in
+  // |handle|.
+  //
+  // Returns whether the entire process is successful.
+  bool UpdateAndVerifyFWOnUsb(brillo::ErrorPtr* error,
+                              const base::ScopedFD& outfd,
+                              const std::string& image_file,
+                              const std::string& ro_db_dir,
+                              std::string* handle);
+
  private:
   // Reads contents of the given firmware |image_file| and gets the values of
   // |keys| from the contents. Returns lines of the "key=value" pairs, one line
@@ -70,6 +83,11 @@ class VerifyRoTool : public SubprocessTool {
   // problem reading |image_file|.
   std::string GetKeysValuesFromImage(const std::string& image_file,
                                      const std::vector<std::string>& keys);
+
+  // Checks and returns if |path| points to a valid cr50 resource location,
+  // i.e., a file or dir under /opt/google/cr50. If |is_dir| is set, returns
+  // false if |path| isn't a dir.
+  bool CheckCr50ResourceLocation(const std::string& path, bool is_dir);
 
   DISALLOW_COPY_AND_ASSIGN(VerifyRoTool);
 };

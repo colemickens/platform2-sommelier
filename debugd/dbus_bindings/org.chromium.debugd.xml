@@ -1015,5 +1015,42 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
+    <method name="UpdateAndVerifyFWOnUsbStart">
+      <tp:docstring>
+        Start updating the GSC FW of the USB-connected device (only if the
+        device's FW is not up-to-date) and verifying AP and EC RO FW integrity
+        of the device.
+      </tp:docstring>
+      <arg name="outfd" type="h" direction="in">
+        <tp:docstring>
+          File descriptor to forward process output to.
+        </tp:docstring>
+      </arg>
+      <arg name="image_file" type="s" direction="in">
+        <tp:docstring>
+          Path to the local Cr50 image file.
+        </tp:docstring>
+      </arg>
+      <arg name="ro_db_dir" type="s" direction="in">
+        <tp:docstring>
+          Path to the local RO descriptor files folder.
+        </tp:docstring>
+      </arg>
+      <arg name="handle" type="s" direction="out">
+        <tp:docstring>
+          Opaque handle for the VerifyRo process.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
+    <method name="UpdateAndVerifyFWOnUsbStop">
+      <tp:docstring>
+        Stops a running VerifyRo.
+      </tp:docstring>
+      <arg name="handle" type="s" direction="in">
+        Handle to the VerifyRo process to stop.
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
   </interface>
 </node>

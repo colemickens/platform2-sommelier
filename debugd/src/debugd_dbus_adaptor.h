@@ -182,6 +182,13 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
       brillo::ErrorPtr* error, const std::string& image_file) override;
   bool VerifyDeviceOnUsbROIntegrity(
       brillo::ErrorPtr* error, const std::string& ro_desc_file) override;
+  bool UpdateAndVerifyFWOnUsbStart(brillo::ErrorPtr* error,
+                                   const base::ScopedFD& outfd,
+                                   const std::string& image_file,
+                                   const std::string& ro_db_dir,
+                                   std::string* handle) override;
+  bool UpdateAndVerifyFWOnUsbStop(
+      brillo::ErrorPtr* error, const std::string& handle) override;
 
  private:
   brillo::dbus_utils::DBusObject dbus_object_;
