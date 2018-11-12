@@ -769,7 +769,6 @@ if (use.test) {
       "virtual_device_test.cc",
       "vpn/mock_vpn_provider.cc",
     ]
-    defines = [ "SYSROOT=\"${sysroot}\"" ]
     deps = [
       ":libshill",
     ]

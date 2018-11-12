@@ -10,6 +10,7 @@ declare_args() {
   pkg_config = ""
 
   # The logical root directory for headers and libraries.
+  # Trailing slash should not be added (except root path).
   sysroot = ""
 
   # The libdir of the target board. e.g. /usr/lib64
@@ -56,6 +57,15 @@ if (current_cpu == "") {
 }
 if (current_os == "") {
   current_os = target_os
+}
+
+# Practically sysroot is used as a prefix of paths, e.g.
+# "${sysroot}/usr/include". If sysroot is root (= "/"), it will be
+# "//usr/include". However, in GN, paths starting with "//" represents the path
+# to the GN root, rather than the file system root, which is unexpected.
+# To support that case, replace sysroot with "/.", if sysroot is "/".
+if (sysroot == "/") {
+  sysroot = "/."
 }
 
 # All binary targets will get this list of configs by default.
