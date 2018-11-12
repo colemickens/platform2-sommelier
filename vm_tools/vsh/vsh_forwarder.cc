@@ -396,17 +396,29 @@ bool VshForwarder::HandleSigchld(const struct signalfd_siginfo& siginfo) {
   status_message->set_description("target process has exited");
   status_message->set_code(siginfo.ssi_status);
 
+  exit_pending_ = true;
+
   if (!SendMessage(sock_fd_.get(), host_message)) {
     LOG(ERROR) << "Failed to send host message";
   }
 
-  Shutdown();
   return true;
 }
 
 // Receives a guest message from the host and takes action.
 void VshForwarder::HandleVsockReadable() {
   GuestMessage guest_message;
+
+  // If we're expecting the remote side to exit, check that the socket
+  // is actually still valid before using it.
+  if (exit_pending_) {
+    char dummy;
+    if (recv(sock_fd_.get(), &dummy, 1, MSG_PEEK) < 0) {
+      Shutdown();
+      return;
+    }
+  }
+
   if (!RecvMessage(sock_fd_.get(), &guest_message)) {
     PLOG(ERROR) << "Failed to receive message from client";
     Shutdown();

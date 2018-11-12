@@ -46,6 +46,10 @@ using std::string;
 namespace vm_tools {
 namespace vsh {
 
+// Pick a default exit status that will make it obvious if the remote end
+// exited abnormally.
+constexpr int kDefaultExitCode = 123;
+
 std::unique_ptr<VshClient> VshClient::Create(base::ScopedFD sock_fd,
                                              const std::string& user,
                                              const std::string& container) {
@@ -60,7 +64,8 @@ std::unique_ptr<VshClient> VshClient::Create(base::ScopedFD sock_fd,
 
 VshClient::VshClient(base::ScopedFD sock_fd)
     : sock_fd_(std::move(sock_fd)),
-      stdin_task_(brillo::MessageLoop::kTaskIdNull) {}
+      stdin_task_(brillo::MessageLoop::kTaskIdNull),
+      exit_code_(kDefaultExitCode) {}
 
 bool VshClient::Init(const std::string& user, const std::string& container) {
   // Set up the connection with the guest. The setup process is:
