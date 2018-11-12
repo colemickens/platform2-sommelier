@@ -65,7 +65,7 @@ action("cloud_policy_proto_generator") {
 }
 
 proto_library("policy-protos") {
-  proto_in_dir = "${sysroot}/usr/include/proto"
+  proto_in_dir = "${sysroot}/usr/share/protofiles"
   proto_out_dir = "include/bindings"
   sources = [
     "${proto_in_dir}/chrome_device_policy.proto",
@@ -75,6 +75,17 @@ proto_library("policy-protos") {
   # policy-protos.a is used by a shared_libary object: https://crbug.com/715795
   # Build it with '-fPIC' instead of '-fPIE'.
   configs = [ "//common-mk:pic" ]
+}
+
+goproto_library("policy-goprotos") {
+  proto_in_dir = "${sysroot}/usr/share/protofiles"
+  # Package name needs to match with the one declared in .proto files.
+  proto_out_dir = "go/src/chromiumos/policy/enterprise_management"
+  sources = [
+    "${proto_in_dir}/chrome_device_policy.proto",
+    "${proto_in_dir}/chrome_extension_policy.proto",
+    "${proto_in_dir}/device_management_backend.proto",
+  ]
 }
 
 proto_library("user_policy-protos") {

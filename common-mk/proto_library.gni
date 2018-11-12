@@ -20,8 +20,6 @@
 #       Deps applied to the generated library.
 #   gen_python (optional)
 #       If true, generates Python binding.
-#   gen_go (optional)
-#       If true, generates Go binding.
 #   gen_go_grpc (optional)
 #       If true, generates Go GRPC.
 #   gen_grpc (optional)
@@ -38,7 +36,6 @@ template("proto_library") {
                              "proto_in_dir",
                              "proto_out_dir",
                              "gen_python",
-                             "gen_go",
                              "gen_go_grpc",
                              "gen_grpc",
 
@@ -63,9 +60,6 @@ template("proto_library") {
     if (!defined(gen_python)) {
       gen_python = false
     }
-    if (!defined(gen_go)) {
-      gen_go = false
-    }
     if (!defined(gen_go_grpc)) {
       gen_go_grpc = false
     }
@@ -84,14 +78,6 @@ template("proto_library") {
     }
     args += [ "${proto_in_dir}/{{source_name_part}}.proto" ]
     outputs = []
-    if (gen_go) {
-      go_dir = "${root_gen_dir}/${proto_out_dir}"
-      args += [
-        "--go_out",
-        "${go_dir}",
-      ]
-      outputs += [ "${go_dir}/{{source_name_part}}.pb.go" ]
-    }
     if (gen_python) {
       python_dir = "${root_gen_dir}/${proto_out_dir}/py"
       args += [
@@ -117,7 +103,7 @@ template("proto_library") {
       args += [ "--go_out=plugins=grpc:${go_dir}" ]
       outputs += [ "${go_dir}/{{source_name_part}}.pb.go" ]
     }
-    if (!gen_grpc && !gen_go_grpc && !gen_go && !gen_python) {
+    if (!gen_grpc && !gen_go_grpc && !gen_python) {
       args += [
         "--cpp_out",
         "${cc_dir}",
@@ -151,6 +137,45 @@ template("proto_library") {
     ]
     if (defined(invoker.deps)) {
       deps += invoker.deps
+    }
+  }
+}
+
+# Compile protocol buffers to Go.
+#
+# Parameters:
+#   proto_in_dir
+#       Input directory.
+#   proto_out_dir
+#       Output directory. Relative to gen directory.
+#   sources
+#       The proto file paths.
+template("goproto_library") {
+  action(target_name) {
+    # For go, it is necessary to generate the code in one command line,
+    # otherwise file descriptor var name will conflict.
+    # cf) https://github.com/golang/protobuf/issues/109
+
+    proto_in_dir = rebase_path(invoker.proto_in_dir)
+    proto_out_dir = invoker.proto_out_dir
+
+    # Build protoc command line to run.
+    script = "//common-mk/file_generator_wrapper.py"
+    args = [
+        "protoc",
+        "--proto_path", proto_in_dir,
+        "--proto_path", "${sysroot}/usr/share/proto",
+        "--go_out", "${root_gen_dir}/${proto_out_dir}"
+    ]
+    foreach(source, invoker.sources) {
+      args += [ rebase_path(source) ]
+    }
+
+    # Output dependency.
+    outputs = []
+    foreach(source, invoker.sources) {
+      name = get_path_info(source, "name")
+      outputs += [ "${root_gen_dir}/${proto_out_dir}/${name}.pb.go"]
     }
   }
 }

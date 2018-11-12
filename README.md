@@ -85,6 +85,7 @@ copies.
 | [p2p](./p2p/) | Service for sharing files between CrOS devices (e.g. updates) |
 | [peerd](./peerd/) | Daemon for communicating with local peers |
 | [permission_broker](./permission_broker/) ||
+| [policy_proto](./policy_proto/) | Build file to compile policy proto file |
 | [portier](./portier/) | Multi-Network Neighbor Discovery Proxy service for Chrome OS |
 | [power_manager](./power_manager/) | Userspace power management daemon and associated tools |
 | [regions](./regions/) ||
