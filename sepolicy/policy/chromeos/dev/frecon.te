@@ -3,3 +3,7 @@ type frecon, domain, chromeos_domain;
 permissive frecon;
 
 domain_auto_trans(cros_init_scripts, frecon_exec, frecon);
+
+has_arc(
+typeattribute frecon netdomain;
+)

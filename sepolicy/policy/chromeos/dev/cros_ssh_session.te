@@ -1,3 +1,7 @@
 type cros_ssh_session, domain, chromeos_domain;
 
 permissive cros_ssh_session;
+
+has_arc(
+typeattribute cros_ssh_session netdomain;
+)
