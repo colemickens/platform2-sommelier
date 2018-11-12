@@ -68,6 +68,17 @@ struct SupportedFormat {
   // fourcc are 640x480 YUYV. If frame rates are 15.0 and 30.0, the camera
   // supports outputting 640x480 YUYV in 15fps or 30fps.
   std::vector<float> frame_rates;
+
+  uint32_t area() const { return width * height; }
+  bool operator<(const SupportedFormat& rhs) const {
+    if (area() == rhs.area()) {
+      return width < rhs.width;
+    }
+    return area() < rhs.area();
+  }
+  bool operator==(const SupportedFormat& rhs) const {
+    return width == rhs.width && height == rhs.height;
+  }
 };
 
 typedef std::vector<SupportedFormat> SupportedFormats;
@@ -76,14 +87,12 @@ struct Size {
   Size(uint32_t w, uint32_t h) : width(w), height(h) {}
   uint32_t width;
   uint32_t height;
-  uint64_t Area() const { return static_cast<uint64_t>(width) * height; }
+  uint32_t area() const { return width * height; }
   bool operator<(const Size& rhs) const {
-    if (Area() != rhs.Area()) {
-      return Area() < rhs.Area();
+    if (area() == rhs.area()) {
+      return width < rhs.width;
     }
-    // No need to compare by height even if widths are same, because we compare
-    // by area first.
-    return width < rhs.width;
+    return area() < rhs.area();
   }
   bool operator==(const Size& rhs) const {
     return width == rhs.width && height == rhs.height;

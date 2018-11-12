@@ -10,6 +10,7 @@
 #include <linux/videodev2.h>
 #include <sys/ioctl.h>
 
+#include <algorithm>
 #include <limits>
 
 #include <base/files/file_enumerator.h>
@@ -390,6 +391,13 @@ const SupportedFormats V4L2CameraDevice::GetDeviceSupportedFormats(
       formats.push_back(supported_format);
     }
   }
+
+  // Sort the resolution from high to low for easier reading and consistent of
+  // different camera modules.
+  // CTS uses the first 2 resolutions to create streams. It also let CTS choose
+  // high resolutions.
+  std::sort(formats.begin(), formats.end());
+  std::reverse(formats.begin(), formats.end());
   return formats;
 }
 
