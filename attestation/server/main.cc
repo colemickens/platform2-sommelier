@@ -75,7 +75,7 @@ bool GetAttestationEnrollmentData(const std::string& abe_data_hex,
   abe_data->clear();
   if (abe_data_hex.empty()) return true;  // no data is ok.
   // The data must be a valid 32-byte hex string.
-  return base::HexStringToBytes(abe_data_hex, abe_data) &&
+  return brillo::SecureBlob::HexStringToSecureBlob(abe_data_hex, abe_data) &&
          abe_data->size() == 32;
 }
 
