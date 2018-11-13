@@ -3,18 +3,28 @@
 // found in the LICENSE file.
 
 #include <utility>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
 #include <base/run_loop.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_tokenizer.h>
+#include <base/strings/string_util.h>
 #include <base/threading/thread_task_runner_handle.h>
+#include <base/time/time.h>
 
 #include "diagnostics/telem/telem_connection.h"
+#include "diagnostics/telem/telemetry_item_enum.h"
 #include "diagnosticsd.pb.h"  // NOLINT(build/include)
 
 namespace {
+// Generic callback which moves the response to its destination. All
+// specific parsing logic is left to other methods, allowing this
+// single callback to be used for each gRPC request.
 template <typename ResponseType>
 void OnRpcResponseReceived(std::unique_ptr<ResponseType>* response_destination,
                            base::Closure run_loop_quit_closure,
@@ -27,83 +37,189 @@ void OnRpcResponseReceived(std::unique_ptr<ResponseType>* response_destination,
 
 namespace diagnostics {
 
-TelemConnection::TelemConnection(const std::string& target_uri)
-    : target_uri_(target_uri) {}
+TelemConnection::TelemConnection() {
+  owned_client_impl_ = std::make_unique<AsyncGrpcClientAdapterImpl>();
+  client_impl_ = owned_client_impl_.get();
+}
+
+TelemConnection::TelemConnection(AsyncGrpcClientAdapter* client)
+    : client_impl_(client) {}
 
 TelemConnection::~TelemConnection() {
   ShutdownClient();
 }
 
-void TelemConnection::Connect() {
-  if (!client_) {
-    client_ = std::make_unique<AsyncGrpcClient<grpc_api::Diagnosticsd>>(
-        base::ThreadTaskRunnerHandle::Get(), target_uri_);
-    VLOG(0) << "Created gRPC diagnosticsd client on " << target_uri_;
-  } else {
-    VLOG(0) << "gRPC diagnosticsd client already exists.";
-  }
+void TelemConnection::Connect(const std::string& target_uri) {
+  DCHECK(!client_impl_->IsConnected());
+
+  client_impl_->Connect(target_uri);
 }
 
-void TelemConnection::GetItem(TelemetryItemEnum item) {
-  switch (item) {
-    case TelemetryItemEnum::kMemInfo:
-      GetProcMessage(grpc_api::GetProcDataRequest::FILE_MEMINFO);
-      break;
-    case TelemetryItemEnum::KAcpiButton:
-      GetProcMessage(grpc_api::GetProcDataRequest::DIRECTORY_ACPI_BUTTON);
-      break;
-    default:
-      LOG(ERROR) << "Undefined telemetry item: " << static_cast<int>(item);
+const base::Value* TelemConnection::GetItem(TelemetryItemEnum item,
+                                            base::TimeDelta acceptable_age) {
+  // First, check to see if the desired telemetry information is
+  // present and valid in the cache. If so, just return it.
+  if (!cache_.IsValid(item, acceptable_age)) {
+    // When no valid cached data is present, make a gRPC request to
+    // obtain the appropriate telemetry data. This may result in
+    // more data being fetched and cached than just the desired item.
+    switch (item) {
+      case TelemetryItemEnum::kUptime:
+        UpdateProcData(grpc_api::GetProcDataRequest::FILE_UPTIME);
+        break;
+      case TelemetryItemEnum::kMemTotalMebibytes:  // FALLTHROUGH
+      case TelemetryItemEnum::kMemFreeMebibytes:
+        UpdateProcData(grpc_api::GetProcDataRequest::FILE_MEMINFO);
+        break;
+      case TelemetryItemEnum::kLoadAvg:
+        UpdateProcData(grpc_api::GetProcDataRequest::FILE_LOADAVG);
+        break;
+      case TelemetryItemEnum::kStat:
+        UpdateProcData(grpc_api::GetProcDataRequest::FILE_STAT);
+        break;
+      case TelemetryItemEnum::kAcpiButton:
+        UpdateProcData(grpc_api::GetProcDataRequest::DIRECTORY_ACPI_BUTTON);
+        break;
+      case TelemetryItemEnum::kNetStat:
+        UpdateProcData(grpc_api::GetProcDataRequest::FILE_NET_NETSTAT);
+        break;
+      case TelemetryItemEnum::kNetDev:
+        UpdateProcData(grpc_api::GetProcDataRequest::FILE_NET_DEV);
+        break;
+    }
   }
+
+  return cache_.GetParsedData(item);
 }
 
-void TelemConnection::GetProcMessage(grpc_api::GetProcDataRequest::Type type) {
-  switch (type) {
-    case grpc_api::GetProcDataRequest::FILE_MEMINFO:
-      GetProcFile(type);
-      break;
-    case grpc_api::GetProcDataRequest::DIRECTORY_ACPI_BUTTON:
-      GetProcDirectory(type);
-      break;
-    // TODO(pmoy@chromium.org): Add the rest of the GetProcDataRequest types.
-    default:
-      LOG(ERROR) << "GetProcData gRPC request type unset or invalid: " << type;
-  }
-}
-
-void TelemConnection::GetProcFile(grpc_api::GetProcDataRequest::Type type) {
-  // Send a test RPC and print out the response.
+// Sends a GetProcDataRequest, then parses and caches the response.
+// If the response format for a specific telemetry item is incorrectly
+// formatted, that item will be ignored and not cached, but other,
+// correctly formatted telemetry items from the same response will
+// still be parsed and cached.
+void TelemConnection::UpdateProcData(grpc_api::GetProcDataRequest::Type type) {
   grpc_api::GetProcDataRequest request;
   request.set_type(type);
+  std::unique_ptr<grpc_api::GetProcDataResponse> response;
   base::RunLoop run_loop;
-  std::unique_ptr<diagnostics::grpc_api::GetProcDataResponse> response;
-  client_->CallRpc(
-      &diagnostics::grpc_api::Diagnosticsd::Stub::AsyncGetProcData, request,
-      base::Bind(
-          &OnRpcResponseReceived<diagnostics::grpc_api::GetProcDataResponse>,
-          base::Unretained(&response), run_loop.QuitClosure()));
+
+  client_impl_->GetProcData(
+      request, base::Bind(&OnRpcResponseReceived<grpc_api::GetProcDataResponse>,
+                          base::Unretained(&response), run_loop.QuitClosure()));
   VLOG(0) << "Sent GetProcDataRequest";
   run_loop.Run();
 
-  // When reading a single file, we expect a single file_dump response.
-  if (!response || response->file_dump_size() != 1) {
-    VLOG(0) << "RPC Response Error!";
-  } else {
-    VLOG(0) << "RPC Response Good: " << response->file_dump(0).path() << " "
-            << response->file_dump(0).contents();
+  if (!response) {
+    LOG(ERROR) << "No ProcDataResponse received.";
+    return;
   }
-}
 
-void TelemConnection::GetProcDirectory(
-    grpc_api::GetProcDataRequest::Type type) {
-  // TODO(pmoy@chromium.org): Add a method for reading directories.
-  NOTIMPLEMENTED();
+  // Parse the response and cache the parsed data.
+  switch (type) {
+    case grpc_api::GetProcDataRequest::FILE_UPTIME:
+      ExtractDataFromProcUptime(*response);
+      break;
+    case grpc_api::GetProcDataRequest::FILE_MEMINFO:
+      ExtractDataFromProcMeminfo(*response);
+      break;
+    case grpc_api::GetProcDataRequest::FILE_LOADAVG:
+      ExtractDataFromProcLoadavg(*response);
+      break;
+    case grpc_api::GetProcDataRequest::FILE_STAT:
+      ExtractDataFromProcStat(*response);
+      break;
+    case grpc_api::GetProcDataRequest::DIRECTORY_ACPI_BUTTON:
+      ExtractDataFromProcAcpiButton(*response);
+      break;
+    case grpc_api::GetProcDataRequest::FILE_NET_NETSTAT:
+      ExtractDataFromProcNetStat(*response);
+      break;
+    case grpc_api::GetProcDataRequest::FILE_NET_DEV:
+      ExtractDataFromProcNetDev(*response);
+      break;
+    default:
+      LOG(ERROR) << "Bad ProcDataRequest type: " << type;
+      return;
+  }
 }
 
 void TelemConnection::ShutdownClient() {
   base::RunLoop loop;
-  client_->Shutdown(loop.QuitClosure());
+  client_impl_->Shutdown(loop.QuitClosure());
   loop.Run();
+}
+
+// Parse the raw /proc/meminfo file.
+void TelemConnection::ExtractDataFromProcMeminfo(
+    const grpc_api::GetProcDataResponse& response) {
+  // Make sure we received exactly one file in the response.
+  if (response.file_dump_size() != 1) {
+    LOG(ERROR) << "Bad GetProcDataResponse from request of type FILE_MEMINFO.";
+    return;
+  }
+
+  // Parse the meminfo response for kMemTotal and kMemFree.
+  base::StringPairs keyVals;
+  base::SplitStringIntoKeyValuePairs(response.file_dump(0).contents(), ':',
+                                     '\n', &keyVals);
+
+  for (int i = 0; i < keyVals.size(); i++) {
+    if (keyVals[i].first == "MemTotal") {
+      // Convert from kB to MB and cache the result.
+      int memtotal_mb;
+      base::StringTokenizer t(keyVals[i].second, " ");
+      if (t.GetNext() && base::StringToInt(t.token(), &memtotal_mb) &&
+          t.GetNext() && t.token() == "kB") {
+        memtotal_mb /= 1024;
+        cache_.SetParsedData(TelemetryItemEnum::kMemTotalMebibytes,
+                             std::make_unique<base::Value>(memtotal_mb));
+      } else {
+        LOG(ERROR) << "Incorrectly formatted MemTotal.";
+      }
+    } else if (keyVals[i].first == "MemFree") {
+      // Convert from kB to MB and cache the result.
+      int memfree_mb;
+      base::StringTokenizer t(keyVals[i].second, " ");
+      if (t.GetNext() && base::StringToInt(t.token(), &memfree_mb) &&
+          t.GetNext() && t.token() == "kB") {
+        memfree_mb /= 1024;
+        cache_.SetParsedData(TelemetryItemEnum::kMemFreeMebibytes,
+                             std::make_unique<base::Value>(memfree_mb));
+      } else {
+        LOG(ERROR) << "Incorrectly formatted MemFree.";
+      }
+    }
+  }
+}
+
+void TelemConnection::ExtractDataFromProcUptime(
+    const grpc_api::GetProcDataResponse& response) {
+  NOTIMPLEMENTED();
+}
+
+void TelemConnection::ExtractDataFromProcLoadavg(
+    const grpc_api::GetProcDataResponse& response) {
+  NOTIMPLEMENTED();
+}
+
+void TelemConnection::ExtractDataFromProcStat(
+    const grpc_api::GetProcDataResponse& response) {
+  NOTIMPLEMENTED();
+}
+
+void TelemConnection::ExtractDataFromProcAcpiButton(
+    const grpc_api::GetProcDataResponse& response) {
+  NOTIMPLEMENTED();
+}
+
+void TelemConnection::ExtractDataFromProcNetStat(
+    const grpc_api::GetProcDataResponse& response) {
+  NOTIMPLEMENTED();
+}
+
+void TelemConnection::ExtractDataFromProcNetDev(
+    const grpc_api::GetProcDataResponse& response) {
+  NOTIMPLEMENTED();
 }
 
 }  // namespace diagnostics

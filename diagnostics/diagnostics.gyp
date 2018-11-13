@@ -171,6 +171,8 @@
         },
       },
       'sources': [
+        'telem/async_grpc_client_adapter_impl.cc',
+        'telem/telem_cache.cc',
         'telem/telem_connection.cc',
       ],
     },
@@ -311,6 +313,25 @@
             'diagnosticsd/file_test_utils.cc',
             'diagnosticsd/mojo_test_utils.cc',
             'diagnosticsd/mojo_utils_test.cc',
+          ],
+          'variables': {
+            'deps': [
+              'libchrome-<(libbase_ver)',
+              'libchrome-test-<(libbase_ver)',
+            ],
+          },
+        },
+        {
+          'target_name': 'libtelem_test',
+          'type': 'executable',
+          'includes': ['../common-mk/common_test.gypi'],
+          'dependencies': [
+            '../common-mk/testrunner.gyp:testrunner',
+            'libtelem',
+          ],
+          'sources': [
+            'telem/telem_cache_test.cc',
+            'telem/telem_connection_test.cc',
           ],
           'variables': {
             'deps': [
