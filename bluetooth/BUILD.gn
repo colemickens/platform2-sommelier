@@ -13,7 +13,7 @@ group("all") {
     ":newblued",
   ]
   if (use.test) {
-    deps += [ ":btdispatch_test" ]
+    deps += [ ":bluetooth_test" ]
   }
 }
 
@@ -98,7 +98,7 @@ if (use.test) {
   pkg_config("test_config") {
     pkg_deps = [ "libchrome-test-${libbase_ver}" ]
   }
-  executable("btdispatch_test") {
+  executable("bluetooth_test") {
     configs += [
       "//common-mk:test",
       ":target_defaults",
