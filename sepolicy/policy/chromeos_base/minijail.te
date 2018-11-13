@@ -12,6 +12,7 @@ domain_auto_trans(cros_init_scripts, cros_minijail_exec, minijail);
 
 minijail_static_uses_tmpfile(minijail, minijail);
 minijail_mounts(minijail, , cros_minijail_minijail_tmp_file, cros_var_log);
+minijail_mountdev(minijail, cros_minijail_minijail_tmp_file);
 minijail_seccomp(minijail);
 minijail_netns_new(minijail);
 minijail_chroot(minijail);

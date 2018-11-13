@@ -10,6 +10,7 @@ allowxperm $1 $1:unix_dgram_socket ioctl { SIOCSIFFLAGS SIOCGIFFLAGS };
 allow $1 self:capability net_admin;
 ')
 
+# minijail_mountdev(domain, tmpfile_label)
 define(`minijail_mountdev',
 minijail_mounts($1);
 arc_cts_fails_release(`
@@ -17,11 +18,11 @@ arc_cts_fails_release(`
 allow $1 $1:capability mknod;
 ', ($1))
 allow $1 logger_device:sock_file getattr;
-filetrans_pattern_no_target_perm($1, tmpfs, device, chr_file);
-filetrans_pattern_no_target_perm($1, tmpfs, null_device, chr_file, "null");
-filetrans_pattern_no_target_perm($1, tmpfs, zero_device, chr_file, "zero");
-filetrans_pattern_no_target_perm($1, tmpfs, urandom_device, chr_file, "urandom");
-filetrans_pattern($1, tmpfs, devpts, lnk_file, "ptmx");
+filetrans_pattern_no_target_perm($1, { tmpfs $2 }, device, chr_file);
+filetrans_pattern_no_target_perm($1, { tmpfs $2 }, null_device, chr_file, "null");
+filetrans_pattern_no_target_perm($1, { tmpfs $2 }, zero_device, chr_file, "zero");
+filetrans_pattern_no_target_perm($1, { tmpfs $2 }, urandom_device, chr_file, "urandom");
+filetrans_pattern($1, { tmpfs $2 }, devpts, lnk_file, "ptmx");
 allow $1 tmpfs:lnk_file create;
 )
 

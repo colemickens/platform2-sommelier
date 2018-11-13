@@ -47,6 +47,7 @@ allow chromeos_domain fs_type:filesystem getattr;
 allow chromeos_domain cros_system_file:file execute;
 r_dir_file(chromeos_domain, cros_system_file)
 
+allow chromeos_domain cros_var_log:dir r_dir_perms;
 
 # Do the same xperm restriction as Android for ioctl.
 

@@ -1,22 +1,19 @@
 type cros_anomaly_collector, chromeos_domain, domain, mlstrustedobject;
 
-permissive cros_anomaly_collector;
-
-from_minijail_preload(cros_anomaly_collector, cros_anomaly_collector_exec);
+from_minijail_static(cros_anomaly_collector, cros_anomaly_collector_exec);
 cros_dbus_client(cros_anomaly_collector)
 uma_writer(cros_anomaly_collector)
 
 allow cros_anomaly_collector cros_syslog:file r_file_perms;
 
 type cros_anomaly_collector_tmp_file, file_type, cros_tmpfile_type;
-filetrans_pattern(cros_anomaly_collector, tmpfs, cros_anomaly_collector_tmp_file, file);
+filetrans_pattern(cros_anomaly_collector, {tmpfs cros_minijail_minijail_tmp_file}, cros_anomaly_collector_tmp_file, file);
 
-minijail_mountdev(cros_anomaly_collector);
+# minijail mounts it.
 minijail_mounts(
-  cros_anomaly_collector,
+  minijail,
   , # extra mount
-  {cros_anomaly_collector_tmp_file cros_run}, # mounton
+  {cros_minijail_minijail_tmp_file cros_run}, # mounton
   {cros_run_dbus cros_var cros_var_spool cros_var_log} # getattr
 );
-minijail_chroot(cros_anomaly_collector);
 log_writer(cros_anomaly_collector);
