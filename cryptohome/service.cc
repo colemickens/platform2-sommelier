@@ -980,17 +980,23 @@ void Service::DoCheckKeyEx(AccountIdentifier* identifier,
         break;
       }
       mounts_lock_.Release();
+      // Entered the right creds, so reset LE credentials.
+      homedirs_->ResetLECredentials(credentials);
       SendReply(context, reply);
       return;
     }
   }
   mounts_lock_.Release();
 
-  if (!homedirs_->Exists(credentials.GetObfuscatedUsername(system_salt_))) {
+  if (homedirs_->Exists(credentials.GetObfuscatedUsername(system_salt_))) {
+    if (homedirs_->AreCredentialsValid(credentials)) {
+      homedirs_->ResetLECredentials(credentials);
+    } else {
+      // TODO(wad) Should this pass along KEY_NOT_FOUND too?
+      reply.set_error(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
+    }
+  } else {
     reply.set_error(CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
-  } else if (!homedirs_->AreCredentialsValid(credentials)) {
-    // TODO(wad) Should this pass along KEY_NOT_FOUND too?
-    reply.set_error(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
   }
   SendReply(context, reply);
 }

@@ -32,6 +32,12 @@ class MockFileEnumerator : public FileEnumerator {
   }
   virtual ~MockFileEnumerator() {}
 
+  void AddFileEntry(base::FilePath path) {
+    // Add a placeholder struct stat.
+    struct stat s;
+    entries_.emplace_back(FileInfo(path, s));
+  }
+
   MOCK_METHOD0(Next, base::FilePath(void));
   MOCK_METHOD0(GetInfo, FileInfo(void));
 

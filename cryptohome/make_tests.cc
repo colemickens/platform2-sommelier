@@ -39,6 +39,7 @@ using brillo::SecureBlob;
 using ::testing::AnyOf;
 using ::testing::DoAll;
 using ::testing::InSequence;
+using ::testing::Invoke;
 using ::testing::NiceMock;
 using ::testing::Mock;
 using ::testing::Property;
@@ -288,17 +289,13 @@ void TestUser::InjectKeyset(MockPlatform* platform, bool enumerate) {
     .WillRepeatedly(DoAll(SetArgPointee<1>(credentials),
                           Return(true)));
   if (enumerate) {
-    MockFileEnumerator* files = new MockFileEnumerator();
     EXPECT_CALL(*platform, GetFileEnumerator(base_path, false, _))
-      .WillOnce(Return(files));
-    {
-      InSequence s;
-      // Single key.
-      EXPECT_CALL(*files, Next())
-        .WillOnce(Return(keyset_path));
-      EXPECT_CALL(*files, Next())
-        .WillOnce(Return(FilePath()));
-    }
+        .WillRepeatedly(Invoke([&](base::FilePath path, bool rec, int type) {
+          MockFileEnumerator* files = new NiceMock<MockFileEnumerator>();
+          // Single key.
+          files->AddFileEntry(keyset_path);
+          return files;
+        }));
   }
 }
 
