@@ -1207,9 +1207,22 @@ bool SessionManagerImpl::UpgradeArcContainer(
   }
   LOG(INFO) << "Android container is running with PID " << pid;
   base::ScopedFD server_socket;
-  if (!CreateArcServerSocket(&server_socket, error)) {
-    DCHECK(*error);
-    return false;
+  if (request.create_socket_in_chrome()) {
+    // There is nothing to do here, but since passing an invalid handle is not
+    // allowed by the dbus binding, open /dev/null and return a handle to the
+    // file.
+    server_socket.reset(open("/dev/null", O_RDONLY | O_CLOEXEC));
+    if (!server_socket.is_valid()) {
+      constexpr char kMessage[] = "Failed to open /dev/null";
+      PLOG(ERROR) << kMessage;
+      *error = CreateError(dbus_error::kContainerStartupFail, kMessage);
+      return false;
+    }
+  } else {
+    if (!CreateArcServerSocket(&server_socket, error)) {
+      DCHECK(*error);
+      return false;
+    }
   }
   DCHECK(server_socket.is_valid());
 
