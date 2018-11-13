@@ -1,0 +1,27 @@
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "shill/cellular/verizon_subscription_state.h"
+
+#include <memory>
+#include <vector>
+
+#include <stdint.h>
+
+namespace shill {
+namespace {
+
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
+  const std::vector<uint8_t> raw_data(data, data + size);
+  std::unique_ptr<CellularPco> pco = CellularPco::CreateFromRawData(raw_data);
+  if (pco) {
+    SubscriptionState subscription_state;
+    FindVerizonSubscriptionStateFromPco(*pco, &subscription_state);
+  }
+
+  return 0;
+}
+
+}  // namespace
+}  // namespace shill

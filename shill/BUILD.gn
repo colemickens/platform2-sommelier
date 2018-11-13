@@ -28,7 +28,12 @@ group("all") {
     deps += [ ":shill-pppd-plugin" ]
   }
   if (use.fuzzer) {
-    deps += [ ":rtnl_handler_fuzzer" ]
+    deps += [
+      ":cellular_pco_fuzzer",
+      ":nl80211_message_fuzzer",
+      ":rtnl_handler_fuzzer",
+      ":verizon_subscription_state_fuzzer",
+    ]
   }
   if (use.test) {
     deps += [
@@ -593,6 +598,38 @@ if (use.cellular || use.vpn || use.pppoe) {
 }
 
 if (use.fuzzer) {
+  pkg_config("fuzzed_data_config") {
+    pkg_deps = [
+      "libchrome-test-${libbase_ver}",
+    ]
+  }
+  executable("cellular_pco_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":fuzzed_data_config",
+      ":target_defaults",
+    ]
+    configs -= [ "//common-mk:no_exceptions" ]
+    sources = [
+      "cellular/cellular_pco_fuzzer.cc",
+    ]
+    deps = [
+      ":libshill",
+    ]
+  }
+  executable("nl80211_message_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+    ]
+    configs -= [ "//common-mk:no_exceptions" ]
+    sources = [
+      "net/nl80211_message_fuzzer.cc",
+    ]
+    deps = [
+      ":libshill",
+    ]
+  }
   executable("rtnl_handler_fuzzer") {
     configs += [
       "//common-mk/common_fuzzer",
@@ -601,6 +638,19 @@ if (use.fuzzer) {
     configs -= [ "//common-mk:no_exceptions" ]
     sources = [
       "net/rtnl_handler_fuzzer.cc",
+    ]
+    deps = [
+      ":libshill",
+    ]
+  }
+  executable("verizon_subscription_state_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults",
+    ]
+    configs -= [ "//common-mk:no_exceptions" ]
+    sources = [
+      "cellular/verizon_subscription_state_fuzzer.cc",
     ]
     deps = [
       ":libshill",
