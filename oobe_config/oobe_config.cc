@@ -237,82 +237,89 @@ void OobeConfig::CleanupEncryptedStatefulDirectory() const {
 bool OobeConfig::CheckFirstStage() const {
   // Check whether we're in the first stage.
   if (!FileExists(kUnencryptedStatefulRollbackDataPath)) {
-    LOG(INFO) << "Rollback data "
+    LOG(INFO) << "CheckFirstStage: Rollback data "
               << kUnencryptedStatefulRollbackDataPath.value()
               << " does not exist.";
     return false;
   }
   if (FileExists(kFirstStageCompletedFile)) {
-    LOG(INFO) << "First stage already completed.";
+    LOG(INFO) << "CheckFirstStage: First stage already completed.";
     return false;
   }
 
   // At this point, we should be in the first stage. We verify, that the other
   // files are in a consistent state.
   if (FileExists(kSecondStageCompletedFile)) {
-    LOG(ERROR) << "Second stage is completed but first stage is not.";
+    LOG(ERROR)
+        << "CheckFirstStage: Second stage is completed but first stage is not.";
     return false;
   }
   if (FileExists(kEncryptedStatefulRollbackDataPath)) {
-    LOG(ERROR) << "Both encrypted and unencrypted rollback data path exists.";
+    LOG(ERROR) << "CheckFirstStage: Both encrypted and unencrypted rollback "
+                  "data path exists.";
     return false;
   }
 
-  // Everything is awesome.
+  LOG(INFO) << "CheckFirstStage: OK.";
   return true;
 }
 
 bool OobeConfig::CheckSecondStage() const {
   // Check whether we're in the second stage.
   if (!FileExists(kFirstStageCompletedFile)) {
-    LOG(INFO) << "First stage not yet completed.";
+    LOG(INFO) << "CheckSecondStage: First stage not yet completed.";
     return false;
   }
   if (FileExists(kSecondStageCompletedFile)) {
-    LOG(INFO) << "Second stage already completed.";
+    LOG(INFO) << "CheckSecondStage: Second stage already completed.";
     return false;
   }
 
   // At this point, we should be in the second stage. We verify, that the other
   // files are in a consistent state.
   if (!FileExists(kUnencryptedStatefulRollbackDataPath)) {
-    LOG(ERROR) << "Rollback data "
+    LOG(ERROR) << "CheckSecondStage: Rollback data "
                << kUnencryptedStatefulRollbackDataPath.value()
                << " should exist in second stage.";
     return false;
   }
   if (!FileExists(kEncryptedStatefulRollbackDataPath)) {
-    LOG(ERROR) << "Rollback data " << kEncryptedStatefulRollbackDataPath.value()
+    LOG(ERROR) << "CheckSecondStage: Rollback data "
+               << kEncryptedStatefulRollbackDataPath.value()
                << " should exist in second stage.";
     return false;
   }
+
+  LOG(INFO) << "CheckSecondStage: OK.";
   return true;
 }
 
 bool OobeConfig::CheckThirdStage() const {
   if (!FileExists(kSecondStageCompletedFile)) {
-    LOG(INFO) << "Second stage not yet completed.";
+    LOG(INFO) << "CheckThirdStage: Second stage not yet completed.";
     return false;
   }
 
   // At this point, we should be in the third stage. We verify, that the other
   // files are in a consistent state.
   if (!FileExists(kFirstStageCompletedFile)) {
-    LOG(ERROR) << "First stage should be already completed.";
+    LOG(ERROR) << "CheckThirdStage: First stage should be already completed.";
     return false;
   }
   if (FileExists(kUnencryptedStatefulRollbackDataPath)) {
-    LOG(ERROR) << "Rollback data "
+    LOG(ERROR) << "CheckThirdStage: Rollback data "
                << kUnencryptedStatefulRollbackDataPath.value()
                << " should not exist in third stage.";
     return false;
   }
   if (!FileExists(kEncryptedStatefulRollbackDataPath)) {
-    LOG(ERROR) << "Rollback data " << kEncryptedStatefulRollbackDataPath.value()
+    LOG(ERROR) << "CheckThirdStage: Rollback data "
+               << kEncryptedStatefulRollbackDataPath.value()
                << " should exist in third stage.";
     return false;
   }
 
+  LOG(INFO) << "CheckThirdStage: OK.";
   return true;
 }
 

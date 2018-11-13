@@ -138,6 +138,7 @@ bool FinishRestore(const base::FilePath& root_path,
     return false;
   }
 
+  LOG(INFO) << "Starting rollback restore stage 2.";
   base::FilePath restore_path = PrefixAbsolutePath(root_path, kRestoreTempPath);
   // Restore install attributes. /home/.shadow should already exist at OOBE
   // time. Owner should be root:root, with permissions 644.

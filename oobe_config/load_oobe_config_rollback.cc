@@ -30,6 +30,8 @@ LoadOobeConfigRollback::LoadOobeConfigRollback(
 
 bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
                                                string* enrollment_domain) {
+  LOG(INFO) << "Looking for rollback state.";
+
   *config = "";
   *enrollment_domain = "";
 
@@ -40,6 +42,8 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
   }
 
   if (oobe_config_->CheckFirstStage()) {
+    LOG(INFO) << "Starting rollback restore stage 1.";
+
     // In the first stage we decrypt the proto from kUnencryptedRollbackDataPath
     // and save it unencrypted to kEncryptedStatefulRollbackDataPath.
     if (allow_unencrypted_) {
@@ -72,6 +76,8 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
   }
 
   if (oobe_config_->CheckThirdStage()) {
+    LOG(INFO) << "Starting rollback restore stage 3.";
+
     // We load the proto from kEncryptedStatefulRollbackDataPath.
     string rollback_data_str;
     if (!oobe_config_->ReadFile(kEncryptedStatefulRollbackDataPath,
@@ -88,12 +94,18 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
       LOG(ERROR) << "Failed to assemble config.";
       return false;
     }
+
     // If it succeeded, we remove all files from
     // kEncryptedStatefulRollbackDataPath.
+    LOG(INFO) << "Cleaning up rollback data.";
     oobe_config_->CleanupEncryptedStatefulDirectory();
+
+    LOG(INFO) << "Rollback restore completed successfully.";
     return true;
   }
+
   // We are not in any legitimate rollback stage.
+  LOG(ERROR) << "Rollback is in an invalid state.";
   return false;
 }
 

@@ -46,6 +46,7 @@ void OobeConfigRestoreService::ProcessAndGetOobeAutoConfig(
   DCHECK(error);
   DCHECK(oobe_config_blob);
 
+  LOG(INFO) << "Chrome requested OOBE config.";
   power_manager_proxy_ = std::make_unique<org::chromium::PowerManagerProxy>(
       dbus_object_->GetBus());
 

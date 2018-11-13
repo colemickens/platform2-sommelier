@@ -64,12 +64,16 @@ class OobeConfigRestoreDaemon : public brillo::DBusServiceDaemon {
 // Runs OobeConfigRestoreDaemon.
 int RunDaemon(bool allow_unencrypted, bool force_start) {
   if (!force_start && base::PathExists(base::FilePath(kOobeCompletedFile))) {
+    LOG(INFO) << "OOBE is already complete.";
     return 0;
   }
 
-  OobeConfigRestoreDaemon daemon(allow_unencrypted);
+  if (allow_unencrypted) {
+    LOG(WARNING) << "OOBE config is starting in unencrypted mode";
+  }
 
   LOG(INFO) << "Starting oobe_config_restore daemon";
+  OobeConfigRestoreDaemon daemon(allow_unencrypted);
   int res = daemon.Run();
 
   LOG(INFO) << "oobe_config_restore stopping with exit code " << res;
