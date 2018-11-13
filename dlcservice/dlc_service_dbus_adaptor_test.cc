@@ -158,4 +158,40 @@ TEST_F(DlcServiceDBusAdaptorTest, UninstallUnmountFailureTest) {
   EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
 }
 
+TEST_F(DlcServiceDBusAdaptorTest, InstallTest) {
+  auto mock_boot_device = std::make_unique<MockBootDevice>();
+  ON_CALL(*(mock_boot_device.get()), GetBootDevice())
+      .WillByDefault(testing::Return("/dev/sdb5"));
+  ON_CALL(*(mock_boot_device.get()), IsRemovableDevice(testing::_))
+      .WillByDefault(testing::Return(false));
+  auto mock_image_loader_proxy =
+      std::make_unique<org::chromium::ImageLoaderInterfaceProxyMock>();
+  std::string mount_path_expected = "/run/imageloader/dlc-id";
+  ON_CALL(
+      *(mock_image_loader_proxy.get()),
+      LoadDlcImage(testing::_, testing::_, testing::_, testing::_, testing::_))
+      .WillByDefault(DoAll(testing::SetArgPointee<2>(mount_path_expected),
+                           testing::Return(true)));
+  auto mock_update_engine_proxy =
+      std::make_unique<org::chromium::UpdateEngineInterfaceProxyMock>();
+  ON_CALL(*(mock_update_engine_proxy.get()),
+          AttemptInstall(testing::_, testing::_, testing::_))
+      .WillByDefault(testing::Return(true));
+  std::string update_status_idle = update_engine::kUpdateStatusIdle;
+  ON_CALL(*(mock_update_engine_proxy.get()),
+          GetStatus(testing::_, testing::_, testing::_, testing::_, testing::_,
+                    testing::_, testing::_))
+      .WillByDefault(DoAll(testing::SetArgPointee<2>(update_status_idle),
+                           testing::Return(true)));
+
+  DlcServiceDBusAdaptor dlc_service_dbus_adaptor(
+      std::move(mock_image_loader_proxy), std::move(mock_update_engine_proxy),
+      std::make_unique<BootSlot>(std::move(mock_boot_device)), manifest_path_,
+      content_path_);
+  std::string mount_path;
+  EXPECT_TRUE(
+      dlc_service_dbus_adaptor.Install(nullptr, kSecondDlc, &mount_path));
+  EXPECT_EQ(mount_path, mount_path_expected);
+}
+
 }  // namespace dlcservice

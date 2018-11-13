@@ -51,6 +51,12 @@ class DlcServiceDBusAdaptor
   // Scans manifest_dir_ for a list of supported DLC modules and returns them.
   std::vector<std::string> ScanDlcModules();
 
+  // Waits for Update Engine to be idle.
+  bool WaitForUpdateEngineIdle();
+
+  // Checks if Update Engine is in a state among |status_list|.
+  bool CheckForUpdateEngineStatus(const std::vector<std::string>& status_list);
+
   std::unique_ptr<org::chromium::ImageLoaderInterfaceProxyInterface>
       image_loader_proxy_;
   std::unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface>
