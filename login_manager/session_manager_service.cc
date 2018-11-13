@@ -515,6 +515,7 @@ void SessionManagerService::CleanupChildren(base::TimeDelta timeout,
           : ArcContainerStopReason::BROWSER_SHUTDOWN);
   browser_->WaitAndAbort(timeout);
   key_gen_.EnsureJobExit(timeout);
+  android_container_->EnsureJobExit(SessionManagerImpl::kContainerTimeout);
 }
 
 bool SessionManagerService::OnTerminationSignal(
