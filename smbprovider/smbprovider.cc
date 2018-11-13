@@ -513,7 +513,7 @@ void SmbProvider::StartCopy(const ProtoBlob& options_blob,
   }
 
   ErrorType error = StartCopy(options, source_path, target_path, copy_token);
-  if (error != ERROR_OK || error != ERROR_COPY_PENDING) {
+  if (error != ERROR_OK && error != ERROR_COPY_PENDING) {
     LogAndSetError(options, error, error_code);
     return;
   }
