@@ -632,29 +632,6 @@ class SessionManagerImplTest : public ::testing::Test,
     VerifyAndClearExpectations();
   }
 
-  void ExpectUpgradeArcContainer() {
-    EXPECT_CALL(
-        utils_,
-        CreateServerHandle(
-            // Use Field() since NamedPlatformHandle does not have operator==().
-            Field(&NamedPlatformHandle::name,
-                  SessionManagerImpl::kArcBridgeSocketPath)))
-        .WillOnce(Invoke(this, &SessionManagerImplTest::CreateDummyHandle));
-    EXPECT_CALL(utils_,
-                GetGroupInfo(SessionManagerImpl::kArcBridgeSocketGroup, _))
-        .WillOnce(DoAll(SetArgPointee<1>(getgid()), Return(true)));
-    EXPECT_CALL(
-        utils_,
-        ChangeOwner(base::FilePath(SessionManagerImpl::kArcBridgeSocketPath),
-                    -1, _))
-        .WillOnce(Return(true));
-    EXPECT_CALL(
-        utils_,
-        SetPosixFilePermissions(
-            base::FilePath(SessionManagerImpl::kArcBridgeSocketPath), 0660))
-        .WillOnce(Return(true));
-  }
-
   std::unique_ptr<PolicyService> CreateUserPolicyService(
       const string& username) {
     std::unique_ptr<MockPolicyService> policy_service =
@@ -762,11 +739,6 @@ class SessionManagerImplTest : public ::testing::Test,
     dbus::MessageWriter writer(response.get());
     writer.AppendBool(network_synchronized);
     time_sync_callback.Run(response.get());
-  }
-
-  ScopedPlatformHandle CreateDummyHandle(
-      const NamedPlatformHandle& named_handle) {
-    return ScopedPlatformHandle(open("/dev/null", O_RDONLY));
   }
 
   // These are bare pointers, not unique_ptrs, because we need to give them
@@ -2247,9 +2219,6 @@ TEST_F(SessionManagerImplTest, StartArcMiniContainer) {
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
   brillo::ErrorPtr error;
-  // When starting an instance for the login screen, CreateServerHandle() should
-  // never be called.
-  EXPECT_CALL(utils_, CreateServerHandle(_)).Times(0);
   std::string container_instance_id;
   EXPECT_TRUE(impl_->StartArcMiniContainer(
       &error, SerializeAsBlob(StartArcMiniContainerRequest()),
@@ -2300,7 +2269,6 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainer) {
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
   brillo::ErrorPtr error;
-  EXPECT_CALL(utils_, CreateServerHandle(_)).Times(0);
   std::string container_instance_id;
   EXPECT_TRUE(impl_->StartArcMiniContainer(
       &error, SerializeAsBlob(StartArcMiniContainerRequest()),
@@ -2332,12 +2300,9 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainer) {
 
   auto upgrade_request = CreateUpgradeArcContainerRequest();
   upgrade_request.set_scan_vendor_priv_app(true);
-  ExpectUpgradeArcContainer();
-  brillo::dbus_utils::FileDescriptor server_socket_fd_for_upgrade;
-  EXPECT_TRUE(impl_->UpgradeArcContainer(
-      &error, SerializeAsBlob(upgrade_request), &server_socket_fd_for_upgrade));
+  EXPECT_TRUE(
+      impl_->UpgradeArcContainer(&error, SerializeAsBlob(upgrade_request)));
   EXPECT_FALSE(error.get());
-  EXPECT_LE(0, server_socket_fd_for_upgrade.get());
   EXPECT_TRUE(android_container_.running());
   {
     brillo::ErrorPtr error;
@@ -2379,14 +2344,11 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainerWithSupervisionTransition) {
   upgrade_request.set_supervision_transition(
       login_manager::
           UpgradeArcContainerRequest_SupervisionTransition_CHILD_TO_REGULAR);
-  ExpectUpgradeArcContainer();
 
   brillo::ErrorPtr error;
-  brillo::dbus_utils::FileDescriptor server_socket_fd_for_upgrade;
-  EXPECT_TRUE(impl_->UpgradeArcContainer(
-      &error, SerializeAsBlob(upgrade_request), &server_socket_fd_for_upgrade));
+  EXPECT_TRUE(
+      impl_->UpgradeArcContainer(&error, SerializeAsBlob(upgrade_request)));
   EXPECT_FALSE(error.get());
-  EXPECT_LE(0, server_socket_fd_for_upgrade.get());
   EXPECT_TRUE(android_container_.running());
 }
 
@@ -2404,7 +2366,6 @@ TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
   brillo::ErrorPtr error;
-  EXPECT_CALL(utils_, CreateServerHandle(_)).Times(0);
   std::string container_instance_id;
   EXPECT_TRUE(impl_->StartArcMiniContainer(
       &error, SerializeAsBlob(StartArcMiniContainerRequest()),
@@ -2443,10 +2404,8 @@ TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
 
   auto upgrade_request = CreateUpgradeArcContainerRequest();
   upgrade_request.set_packages_cache_mode(GetParam());
-  ExpectUpgradeArcContainer();
-  brillo::dbus_utils::FileDescriptor server_socket_fd_for_upgrade;
-  EXPECT_TRUE(impl_->UpgradeArcContainer(
-      &error, SerializeAsBlob(upgrade_request), &server_socket_fd_for_upgrade));
+  EXPECT_TRUE(
+      impl_->UpgradeArcContainer(&error, SerializeAsBlob(upgrade_request)));
   EXPECT_TRUE(android_container_.running());
 
   EXPECT_TRUE(impl_->StopArcInstance(&error));
@@ -2475,7 +2434,6 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainerForDemoSession) {
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
   brillo::ErrorPtr error;
-  EXPECT_CALL(utils_, CreateServerHandle(_)).Times(0);
   std::string container_instance_id;
   EXPECT_TRUE(impl_->StartArcMiniContainer(
       &error, SerializeAsBlob(StartArcMiniContainerRequest()),
@@ -2511,10 +2469,8 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainerForDemoSession) {
   upgrade_request.set_is_demo_session(true);
   upgrade_request.set_demo_session_apps_path(
       "/run/imageloader/0.1/demo_apps/img.squash");
-  ExpectUpgradeArcContainer();
-  brillo::dbus_utils::FileDescriptor server_socket_fd_for_upgrade;
-  EXPECT_TRUE(impl_->UpgradeArcContainer(
-      &error, SerializeAsBlob(upgrade_request), &server_socket_fd_for_upgrade));
+  EXPECT_TRUE(
+      impl_->UpgradeArcContainer(&error, SerializeAsBlob(upgrade_request)));
   EXPECT_TRUE(android_container_.running());
 
   EXPECT_TRUE(impl_->StopArcInstance(&error));
@@ -2536,7 +2492,6 @@ TEST_F(SessionManagerImplTest,
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
   brillo::ErrorPtr error;
-  EXPECT_CALL(utils_, CreateServerHandle(_)).Times(0);
   std::string container_instance_id;
   EXPECT_TRUE(impl_->StartArcMiniContainer(
       &error, SerializeAsBlob(StartArcMiniContainerRequest()),
@@ -2567,10 +2522,8 @@ TEST_F(SessionManagerImplTest,
 
   auto upgrade_request = CreateUpgradeArcContainerRequest();
   upgrade_request.set_is_demo_session(true);
-  ExpectUpgradeArcContainer();
-  brillo::dbus_utils::FileDescriptor server_socket_fd_for_upgrade;
-  EXPECT_TRUE(impl_->UpgradeArcContainer(
-      &error, SerializeAsBlob(upgrade_request), &server_socket_fd_for_upgrade));
+  EXPECT_TRUE(
+      impl_->UpgradeArcContainer(&error, SerializeAsBlob(upgrade_request)));
   EXPECT_TRUE(android_container_.running());
 
   EXPECT_TRUE(impl_->StopArcInstance(&error));
@@ -2641,15 +2594,11 @@ TEST_F(SessionManagerImplTest, ArcLcdDensity) {
 TEST_F(SessionManagerImplTest, ArcNoSession) {
   SetUpArcMiniContainer();
 
-  ExpectUpgradeArcContainer();
   brillo::ErrorPtr error;
   UpgradeArcContainerRequest request = CreateUpgradeArcContainerRequest();
-  brillo::dbus_utils::FileDescriptor server_socket_fd;
-  EXPECT_FALSE(impl_->UpgradeArcContainer(&error, SerializeAsBlob(request),
-                                          &server_socket_fd));
+  EXPECT_FALSE(impl_->UpgradeArcContainer(&error, SerializeAsBlob(request)));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kSessionDoesNotExist, error->GetCode());
-  EXPECT_GT(0, server_socket_fd.get());
 }
 
 TEST_F(SessionManagerImplTest, ArcLowDisk) {
@@ -2659,7 +2608,6 @@ TEST_F(SessionManagerImplTest, ArcLowDisk) {
   ON_CALL(utils_, AmountOfFreeDiskSpace(_)).WillByDefault(Return(0));
 
   brillo::ErrorPtr error;
-  ExpectUpgradeArcContainer();
 
   EXPECT_CALL(*exported_object(),
               SendSignal(SignalEq(login_manager::kArcInstanceStopped,
@@ -2668,12 +2616,9 @@ TEST_F(SessionManagerImplTest, ArcLowDisk) {
       .Times(1);
 
   UpgradeArcContainerRequest request = CreateUpgradeArcContainerRequest();
-  brillo::dbus_utils::FileDescriptor server_socket_fd;
-  EXPECT_FALSE(impl_->UpgradeArcContainer(&error, SerializeAsBlob(request),
-                                          &server_socket_fd));
+  EXPECT_FALSE(impl_->UpgradeArcContainer(&error, SerializeAsBlob(request)));
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kLowFreeDisk, error->GetCode());
-  EXPECT_GT(0, server_socket_fd.get());
 }
 
 TEST_F(SessionManagerImplTest, ArcUpgradeCrash) {
@@ -2718,12 +2663,8 @@ TEST_F(SessionManagerImplTest, ArcUpgradeCrash) {
   {
     brillo::ErrorPtr error;
     UpgradeArcContainerRequest request = CreateUpgradeArcContainerRequest();
-    ExpectUpgradeArcContainer();
-    brillo::dbus_utils::FileDescriptor server_socket_fd;
-    EXPECT_TRUE(impl_->UpgradeArcContainer(&error, SerializeAsBlob(request),
-                                           &server_socket_fd));
+    EXPECT_TRUE(impl_->UpgradeArcContainer(&error, SerializeAsBlob(request)));
     EXPECT_FALSE(error.get());
-    EXPECT_LE(0, server_socket_fd.get());
   }
   EXPECT_TRUE(android_container_.running());
 
@@ -2759,7 +2700,6 @@ TEST_F(SessionManagerImplTest, LocaleAndPreferredLanguages) {
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
 
   brillo::ErrorPtr error;
-  EXPECT_CALL(utils_, CreateServerHandle(_)).Times(0);
   std::string container_instance_id;
   EXPECT_TRUE(impl_->StartArcMiniContainer(
       &error, SerializeAsBlob(StartArcMiniContainerRequest()),
@@ -2789,12 +2729,9 @@ TEST_F(SessionManagerImplTest, LocaleAndPreferredLanguages) {
   upgrade_request.set_locale("fr_FR");
   upgrade_request.add_preferred_languages("ru");
   upgrade_request.add_preferred_languages("en");
-  ExpectUpgradeArcContainer();
-  brillo::dbus_utils::FileDescriptor server_socket_fd_for_upgrade;
-  EXPECT_TRUE(impl_->UpgradeArcContainer(
-      &error, SerializeAsBlob(upgrade_request), &server_socket_fd_for_upgrade));
+  EXPECT_TRUE(
+      impl_->UpgradeArcContainer(&error, SerializeAsBlob(upgrade_request)));
   EXPECT_FALSE(error.get());
-  EXPECT_LE(0, server_socket_fd_for_upgrade.get());
   EXPECT_TRUE(android_container_.running());
 }
 #else  // !USE_CHEETS

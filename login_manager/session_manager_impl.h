@@ -9,7 +9,6 @@
 
 #include <stdint.h>
 #include <stdlib.h>
-#include <unistd.h>
 
 #include <map>
 #include <memory>
@@ -93,12 +92,6 @@ class SessionManagerImpl
 
   // Name of impulse emitted when user session starts.
   static const char kStartUserSessionImpulse[];
-
-  // A UNIX domain server socket path for communicating with the container.
-  static const char kArcBridgeSocketPath[];
-
-  // The group of the socket file.
-  static const char kArcBridgeSocketGroup[];
 
   // Android container messages.
   static const char kStartArcInstanceImpulse[];
@@ -297,8 +290,7 @@ class SessionManagerImpl
                              const std::vector<uint8_t>& in_request,
                              std::string* out_container_instance_id) override;
   bool UpgradeArcContainer(brillo::ErrorPtr* error,
-                           const std::vector<uint8_t>& in_request,
-                           brillo::dbus_utils::FileDescriptor* out_fd) override;
+                           const std::vector<uint8_t>& in_request) override;
   bool StopArcInstance(brillo::ErrorPtr* error) override;
   bool SetArcCpuRestriction(brillo::ErrorPtr* error,
                             uint32_t in_restriction_state) override;
@@ -398,9 +390,6 @@ class SessionManagerImpl
   void RestartDevice(const std::string& reason);
 
 #if USE_CHEETS
-  // Creates a server socket for ARC and stores the descriptor in |out_fd|.
-  bool CreateArcServerSocket(base::ScopedFD* out_fd, brillo::ErrorPtr* error);
-
   // Starts the Android container for ARC. If the container has started,
   // container_instance_id will be returned. Otherwise, an empty string
   // is returned and brillo::Error instance is set to |error_out|.

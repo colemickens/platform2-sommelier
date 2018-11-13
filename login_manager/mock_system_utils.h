@@ -55,18 +55,10 @@ class MockSystemUtils : public SystemUtils {
   MOCK_METHOD2(AtomicFileWrite,
                bool(const base::FilePath& filename, const std::string& data));
   MOCK_METHOD1(AmountOfFreeDiskSpace, int64_t(const base::FilePath& path));
-  MOCK_METHOD2(GetGroupInfo,
-               bool(const std::string& group_name, gid_t* out_gid));
   MOCK_METHOD3(GetGidAndGroups,
                bool(uid_t uid, gid_t* out_gid, std::vector<gid_t>*));
   MOCK_METHOD3(SetIDs,
                int(uid_t uid, gid_t gid, const std::vector<gid_t>& gids));
-  MOCK_METHOD3(ChangeOwner,
-               bool(const base::FilePath& filename, pid_t pid, gid_t gid));
-  MOCK_METHOD2(SetPosixFilePermissions,
-               bool(const base::FilePath& filename, mode_t mode));
-  MOCK_METHOD1(CreateServerHandle,
-               ScopedPlatformHandle(const NamedPlatformHandle& named_handle));
 
   MOCK_METHOD2(ReadFileToString, bool(const base::FilePath&, std::string*));
   MOCK_METHOD2(WriteStringToFile,

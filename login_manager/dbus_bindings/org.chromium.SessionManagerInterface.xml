@@ -602,10 +602,6 @@
         UpgradeArcContainer:
         @request: Serialized UpgradeArcContainerRequest proto message
                   containing ARC upgrade options.
-        @fd: Output parameter containing a file descriptor. Chrome can listen
-             to the server socket to establish a connection to the container's
-             arcbridgeservice. It is caller's responsibility to close the
-             returned FD.
 
         Upgrades an existing ARC mini-container to a fully featured container.
         This method is only available if the board supports ARC.  This method
@@ -617,7 +613,6 @@
     -->
     <method name="UpgradeArcContainer">
       <arg type="ay" name="request" direction="in" />
-      <arg type="h" name="fd" direction="out" />
     </method>
 
     <!--

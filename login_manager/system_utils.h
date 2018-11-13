@@ -18,7 +18,6 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
-#include <login_manager/named_platform_handle_utils.h>
 
 namespace base {
 class FilePath;
@@ -145,9 +144,6 @@ class SystemUtils {
   // containing |path|.
   virtual int64_t AmountOfFreeDiskSpace(const base::FilePath& path) = 0;
 
-  // Calls brillo::userdb::GetGroupInfo().
-  virtual bool GetGroupInfo(const std::string& group_name, gid_t* out_gid) = 0;
-
   // Gets the matching group ID for a user ID, as well as supplementary groups.
   virtual bool GetGidAndGroups(uid_t uid,
                                gid_t* out_gid,
@@ -155,20 +151,6 @@ class SystemUtils {
 
   // Sets user ID, group ID, supplementary groups, and starts a new session.
   virtual int SetIDs(uid_t uid, gid_t gid, const std::vector<gid_t>& gids) = 0;
-
-  // Changes ownership of |filename|. When |pid| or |gid| is -1, that ID is
-  // not changed. Returns true upon success.
-  virtual bool ChangeOwner(const base::FilePath& filename,
-                           pid_t pid,
-                           gid_t gid) = 0;
-
-  // Calls base::SetPosixFilePermissions().
-  virtual bool SetPosixFilePermissions(const base::FilePath& filename,
-                                       mode_t mode) = 0;
-
-  // Calls mojo::edk::CreateServerHandle().
-  virtual ScopedPlatformHandle CreateServerHandle(
-      const NamedPlatformHandle& named_handle) = 0;
 
   // Reads file content from file at |path| into string at |str_out|.
   virtual bool ReadFileToString(const base::FilePath& path,

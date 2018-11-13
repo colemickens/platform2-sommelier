@@ -343,11 +343,6 @@ base::FilePath SystemUtilsImpl::PutInsideBaseDir(const base::FilePath& path) {
   return base_dir_for_testing_.Append(to_append);
 }
 
-bool SystemUtilsImpl::GetGroupInfo(const std::string& group_name,
-                                   gid_t* out_gid) {
-  return brillo::userdb::GetGroupInfo(group_name, out_gid);
-}
-
 bool SystemUtilsImpl::GetGidAndGroups(uid_t uid,
                                       gid_t* out_gid,
                                       std::vector<gid_t>* out_groups) {
@@ -414,32 +409,6 @@ int SystemUtilsImpl::SetIDs(uid_t uid,
   if (setsid() == -1)
     RAW_LOG(ERROR, "Can't setsid");
   return 0;
-}
-
-bool SystemUtilsImpl::ChangeOwner(const base::FilePath& filename,
-                                  pid_t pid,
-                                  gid_t gid) {
-  if (HANDLE_EINTR(
-          chown(PutInsideBaseDir(filename).value().c_str(), pid, gid)) < 0) {
-    PLOG(ERROR) << "Failed to change owner: " << filename.value();
-    return false;
-  }
-  return true;
-}
-
-bool SystemUtilsImpl::SetPosixFilePermissions(const base::FilePath& filename,
-                                              mode_t mode) {
-  return base::SetPosixFilePermissions(PutInsideBaseDir(filename), mode);
-}
-
-ScopedPlatformHandle SystemUtilsImpl::CreateServerHandle(
-    const NamedPlatformHandle& named_handle) {
-  const base::FilePath filename_in_base_dir =
-      PutInsideBaseDir(base::FilePath(named_handle.name));
-  NamedPlatformHandle named_handle_in_base_dir(filename_in_base_dir.value());
-  // TODO(yusukes): Once libmojo is updated to >=r415560, call
-  // mojo::edk::CreateServerHandle() instead.
-  return login_manager::CreateServerHandle(named_handle_in_base_dir);
 }
 
 bool SystemUtilsImpl::ReadFileToString(const base::FilePath& path,

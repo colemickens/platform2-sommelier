@@ -5,11 +5,8 @@
 #include "login_manager/session_manager_impl.h"
 
 #include <errno.h>
-#include <fcntl.h>
 #include <stdint.h>
 #include <sys/socket.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 
 #include <algorithm>
 #include <iterator>
@@ -94,10 +91,6 @@ constexpr char SessionManagerImpl::kStatefulPreservationRequestFile[] =
 
 constexpr char SessionManagerImpl::kStartUserSessionImpulse[] =
     "start-user-session";
-
-constexpr char SessionManagerImpl::kArcBridgeSocketPath[] =
-    "/run/chrome/arc_bridge.sock";
-constexpr char SessionManagerImpl::kArcBridgeSocketGroup[] = "arc-bridge";
 
 // ARC related impulse (systemd unit start or Upstart signal).
 constexpr char SessionManagerImpl::kStartArcInstanceImpulse[] =
@@ -1224,9 +1217,7 @@ bool SessionManagerImpl::StartArcMiniContainer(
 }
 
 bool SessionManagerImpl::UpgradeArcContainer(
-    brillo::ErrorPtr* error,
-    const std::vector<uint8_t>& in_request,
-    brillo::dbus_utils::FileDescriptor* out_fd) {
+    brillo::ErrorPtr* error, const std::vector<uint8_t>& in_request) {
 #if USE_CHEETS
   // Stop the existing instance if it fails to continue to boot an existing
   // container. Using Unretained() is okay because the closure will be called
@@ -1249,25 +1240,6 @@ bool SessionManagerImpl::UpgradeArcContainer(
     return false;
   }
   LOG(INFO) << "Android container is running with PID " << pid;
-  base::ScopedFD server_socket;
-  if (request.create_socket_in_chrome()) {
-    // There is nothing to do here, but since passing an invalid handle is not
-    // allowed by the dbus binding, open /dev/null and return a handle to the
-    // file.
-    server_socket.reset(open("/dev/null", O_RDONLY | O_CLOEXEC));
-    if (!server_socket.is_valid()) {
-      constexpr char kMessage[] = "Failed to open /dev/null";
-      PLOG(ERROR) << kMessage;
-      *error = CreateError(dbus_error::kContainerStartupFail, kMessage);
-      return false;
-    }
-  } else {
-    if (!CreateArcServerSocket(&server_socket, error)) {
-      DCHECK(*error);
-      return false;
-    }
-  }
-  DCHECK(server_socket.is_valid());
 
   // |arc_start_time_| is initialized when the container is upgraded (rather
   // than when the mini-container starts) since we are interested in measuring
@@ -1315,8 +1287,6 @@ bool SessionManagerImpl::UpgradeArcContainer(
   }
 
   login_metrics_->StartTrackingArcUseTime();
-
-  *out_fd = server_socket.get();
 
   ignore_result(scoped_runner.Release());
   return true;
@@ -1633,46 +1603,6 @@ void SessionManagerImpl::RestartDevice(const std::string& reason) {
 }
 
 #if USE_CHEETS
-bool SessionManagerImpl::CreateArcServerSocket(base::ScopedFD* out_fd,
-                                               brillo::ErrorPtr* error) {
-  ScopedPlatformHandle socket_fd(
-      system_->CreateServerHandle(NamedPlatformHandle(kArcBridgeSocketPath)));
-  if (!socket_fd.is_valid()) {
-    constexpr char kMessage[] = "Failed to create a server socket";
-    LOG(ERROR) << kMessage;
-    *error = CreateError(dbus_error::kContainerStartupFail, kMessage);
-    return false;
-  }
-
-  // Change permissions on the socket.
-  gid_t arc_bridge_gid = -1;
-  if (!system_->GetGroupInfo(kArcBridgeSocketGroup, &arc_bridge_gid)) {
-    constexpr char kMessage[] = "Failed to get arc-bridge gid";
-    LOG(ERROR) << kMessage;
-    *error = CreateError(dbus_error::kContainerStartupFail, kMessage);
-    return false;
-  }
-
-  if (!system_->ChangeOwner(base::FilePath(kArcBridgeSocketPath), -1,
-                            arc_bridge_gid)) {
-    constexpr char kMessage[] = "Failed to change group of the socket";
-    PLOG(ERROR) << kMessage;
-    *error = CreateError(dbus_error::kContainerStartupFail, kMessage);
-    return false;
-  }
-
-  if (!system_->SetPosixFilePermissions(base::FilePath(kArcBridgeSocketPath),
-                                        0660)) {
-    constexpr char kMessage[] = "Failed to change permissions of the socket";
-    PLOG(ERROR) << kMessage;
-    *error = CreateError(dbus_error::kContainerStartupFail, kMessage);
-    return false;
-  }
-
-  out_fd->reset(socket_fd.release());
-  return true;
-}
-
 std::string SessionManagerImpl::StartArcContainer(
     const std::vector<std::string>& env_vars, brillo::ErrorPtr* error_out) {
   init_controller_->TriggerImpulse(kStartArcInstanceImpulse, env_vars,
