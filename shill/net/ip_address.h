@@ -130,6 +130,12 @@ class SHILL_EXPORT IPAddress {
   bool IntoString(std::string* address_string) const;
   // Similar to IntoString, but returns by value. Convenient for logging.
   std::string ToString() const;
+  // Places |address.ToString| onto the output stream.
+  friend std::ostream& operator<<(std::ostream& os, const IPAddress address) {
+    os << address.ToString();
+    return os;
+  }
+
 
   // Populates the address and family portion of a sockaddr_in or
   // sockaddr_in6 structure, depending on the IPAddress family.  Returns true
