@@ -2814,18 +2814,6 @@ TEST_F(SessionManagerImplTest, LocaleAndPreferredLanguages) {
   EXPECT_LE(0, server_socket_fd_for_upgrade.get());
   EXPECT_TRUE(android_container_.running());
 }
-
-TEST_F(SessionManagerImplTest, ArcRemoveData) {
-  // Test that RemoveArcData() triggers Upstart event.
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulseInternal(SessionManagerImpl::kRemoveArcDataImpulse,
-                                     ElementsAre(StartsWith("CHROMEOS_USER=")),
-                                     InitDaemonController::TriggerMode::SYNC))
-      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_->RemoveArcData(&error, kSaneEmail));
-  EXPECT_FALSE(error.get());
-}
 #else  // !USE_CHEETS
 
 TEST_F(SessionManagerImplTest, ArcUnavailable) {
@@ -2839,15 +2827,6 @@ TEST_F(SessionManagerImplTest, ArcUnavailable) {
   ASSERT_TRUE(error.get());
   EXPECT_EQ(dbus_error::kNotAvailable, error->GetCode());
   EXPECT_TRUE(container_instance_id.empty());
-}
-
-// When USE_CHEETS is not defined, ArcRemoveData should immediately return
-// dbus_error::kNotAvailable.
-TEST_F(SessionManagerImplTest, ArcRemoveData) {
-  brillo::ErrorPtr error;
-  EXPECT_FALSE(impl_->RemoveArcData(&error, kSaneEmail));
-  ASSERT_TRUE(error.get());
-  EXPECT_EQ(dbus_error::kNotAvailable, error->GetCode());
 }
 #endif
 

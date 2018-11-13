@@ -686,17 +686,6 @@
     <method name="GetArcStartTimeTicks">
       <arg type="x" name="start_time" direction="out" />
     </method>
-
-    <!--
-         RemoveArcData:
-         @account_id: Account ID of the user whose ARC data is removed.
-
-         Removes ARC data from the user's profile.  This does not remove ARC
-         system data such as root images.
-    -->
-    <method name="RemoveArcData">
-      <arg type="s" name="account_id" direction="in" />
-    </method>
   </interface>
   <!-- ********************************************************************* -->
 </node>

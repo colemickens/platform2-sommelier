@@ -108,7 +108,6 @@ constexpr char SessionManagerImpl::kStopArcInstanceImpulse[] =
 constexpr char SessionManagerImpl::kContinueArcBootImpulse[] =
     "continue-arc-boot";
 constexpr char SessionManagerImpl::kArcBootedImpulse[] = "arc-booted";
-constexpr char SessionManagerImpl::kRemoveArcDataImpulse[] = "remove-arc-data";
 
 // Lock state related impulse (systemd unit start or Upstart signal).
 constexpr char SessionManagerImpl::kScreenLockedImpulse[] = "screen-locked";
@@ -1430,29 +1429,6 @@ bool SessionManagerImpl::GetArcStartTimeTicks(brillo::ErrorPtr* error,
   *error = CreateError(dbus_error::kNotAvailable, "ARC not supported.");
   return false;
 #endif  // !USE_CHEETS
-}
-
-bool SessionManagerImpl::RemoveArcData(brillo::ErrorPtr* error,
-                                       const std::string& in_account_id) {
-#if USE_CHEETS
-  std::string actual_account_id;
-  if (!NormalizeAccountId(in_account_id, &actual_account_id, error)) {
-    DCHECK(*error);
-    return false;
-  }
-  if (!init_controller_->TriggerImpulse(
-          kRemoveArcDataImpulse, {"CHROMEOS_USER=" + actual_account_id},
-          InitDaemonController::TriggerMode::SYNC)) {
-    constexpr char kMessage[] = "Emitting remove-arc-data impulse failed.";
-    LOG(ERROR) << kMessage;
-    *error = CreateError(dbus_error::kEmitFailed, kMessage);
-    return false;
-  }
-  return true;
-#else
-  *error = CreateError(dbus_error::kNotAvailable, "ARC not supported.");
-  return false;
-#endif  // USE_CHEETS
 }
 
 void SessionManagerImpl::OnPolicyPersisted(bool success) {

@@ -105,7 +105,6 @@ class SessionManagerImpl
   static const char kStopArcInstanceImpulse[];
   static const char kContinueArcBootImpulse[];
   static const char kArcBootedImpulse[];
-  static const char kRemoveArcDataImpulse[];
 
   // Lock screen state messages.
   static const char kScreenLockedImpulse[];
@@ -307,8 +306,6 @@ class SessionManagerImpl
                      const std::string& in_account_id) override;
   bool GetArcStartTimeTicks(brillo::ErrorPtr* error,
                             int64_t* out_start_time) override;
-  bool RemoveArcData(brillo::ErrorPtr* error,
-                     const std::string& in_account_id) override;
 
   // PolicyService::Delegate implementation:
   void OnPolicyPersisted(bool success) override;
@@ -428,12 +425,6 @@ class SessionManagerImpl
   void OnAndroidContainerStopped(const std::string& container_instance_id,
                                  pid_t pid,
                                  ArcContainerStopReason reason);
-
-  // Renames android-data/ in the user's home directory to android-data-old/,
-  // then recursively removes the renamed directory. Returns false when it
-  // fails to rename android-data/.
-  bool RemoveArcDataInternal(const base::FilePath& android_data_dir,
-                             const base::FilePath& android_data_old_dir);
 #endif
 
   bool session_started_ = false;
