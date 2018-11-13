@@ -352,7 +352,8 @@ static bool parse_text(Bytes* bytes,
 SmsMessageFragment* SmsMessageFragment::CreateFragment(const uint8_t* pdu,
                                                        size_t pdu_len,
                                                        int index) {
-  if (false) {  // Change to true for debug logging of PDU data
+  // Extra parentheses quiets 'unreachable-code' warnings.
+  if ((false)) {  // Change to true for debug logging of PDU data
     std::string hexpdu;
     static const char kHexDigits[]="0123456789abcdef";
     for (unsigned int i = 0 ; i < pdu_len ; i++) {
