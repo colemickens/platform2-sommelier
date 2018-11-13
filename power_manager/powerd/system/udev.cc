@@ -5,7 +5,6 @@
 #include "power_manager/powerd/system/udev.h"
 
 #include <libudev.h>
-#include <linux/input.h>
 
 #include <utility>
 
@@ -14,7 +13,6 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
-#include <base/strings/string_number_conversions.h>
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/tagged_device.h"
@@ -26,7 +24,7 @@ namespace system {
 
 namespace {
 
-const char kBluetoothSysfsPath[] = "/sys/class/bluetooth/hci0";
+const char kChromeOSClassPath[] = "/sys/class/chromeos/";
 const char kFingerprintSysfsPath[] = "/sys/class/chromeos/cros_fp";
 const char kPowerdRoleCrosFP[] = "cros_fingerprint";
 const char kPowerdRoleVar[] = "POWERD_ROLE";
@@ -59,44 +57,6 @@ UdevEvent::Action StrToAction(const char* action_str) {
     return UdevEvent::Action::UNKNOWN;
 }
 
-bool IsFingerprintDevice(struct udev_device* device) {
-  if (HasPowerdRole(device, kPowerdRoleCrosFP))
-    return true;
-
-  // We assign powerd roles to the input device. In case |syspath| points to
-  // a event device, look also at the parent device to see if it has
-  // |kPowerdRoleCrosFP| role.
-  struct udev_device* parent = udev_device_get_parent(device);
-  return parent && HasPowerdRole(parent, kPowerdRoleCrosFP);
-}
-
-bool IsBluetoothDevice(struct udev_device* device) {
-  const char* num_str = udev_device_get_sysattr_value(device, "id/bustype");
-  int num = 0;
-
-  if (num_str && base::StringToInt(num_str, &num) && num == BUS_BLUETOOTH)
-    return true;
-
-  // Also check parent device because event device doesn't expose |id/bustype|
-  // attribute and this breaks logic in input_watcher.cc to detect wake sources.
-  struct udev_device* parent = udev_device_get_parent(device);
-  return parent && IsBluetoothDevice(parent);
-}
-
-base::FilePath ResolvePathSymlink(const base::FilePath& link_path) {
-  if (!base::IsLink(link_path))
-    return link_path;
-
-  base::FilePath actual_path;
-  if (!base::ReadSymbolicLink(link_path, &actual_path)) {
-    PLOG(ERROR) << "Failed to read symlink " << link_path.value();
-    return base::FilePath();
-  }
-
-  return actual_path.IsAbsolute() ? actual_path
-                                  : link_path.DirName().Append(actual_path);
-}
-
 struct UdevDeviceDeleter {
   void operator()(udev_device* dev) {
     if (dev)
@@ -104,7 +64,7 @@ struct UdevDeviceDeleter {
   }
 };
 
-}  // namespace
+};  // namespace
 
 Udev::Udev() : udev_(NULL), udev_monitor_(NULL), watcher_(FROM_HERE) {}
 
@@ -319,25 +279,38 @@ base::FilePath Udev::FindParentWithSysattr(const std::string& syspath,
 }
 
 base::FilePath Udev::FindWakeCapableParent(const std::string& syspath) {
+  base::FilePath wakeup_device_path;
   struct udev_device* device =
       udev_device_new_from_syspath(udev_, syspath.c_str());
   if (!device)
-    return base::FilePath();
+    return wakeup_device_path;
 
-  // Special cases when input device doesn't have parent wake capable device.
-  std::string path_with_wake_parent;
-  if (IsBluetoothDevice(device)) {
-    path_with_wake_parent =
-        ResolvePathSymlink(base::FilePath(kBluetoothSysfsPath)).value();
-  } else if (IsFingerprintDevice(device)) {
-    path_with_wake_parent =
-        ResolvePathSymlink(base::FilePath(kFingerprintSysfsPath)).value();
+  // Returns a pointer to the parent device. No additional reference to
+  // the |device| is acquired, but the |device| owns a reference to the
+  // |parent|.
+  struct udev_device* parent = udev_device_get_parent(device);
+  // We assign powerd roles to the input device. In case |syspath| points to
+  // a event device, look also at the parent device to see if it has
+  // |kPowerdRoleCrosFP| role.
+  if (HasPowerdRole(device, kPowerdRoleCrosFP) ||
+      HasPowerdRole(parent, kPowerdRoleCrosFP)) {
+    base::FilePath actual_fp_path;
+    if (!base::ReadSymbolicLink(base::FilePath(kFingerprintSysfsPath),
+                                &actual_fp_path)) {
+      PLOG(ERROR) << "Failed to read symlink " << kFingerprintSysfsPath
+                  << " for fingerprint device";
+    } else {
+      std::string wakeup_path =
+          base::FilePath(kChromeOSClassPath).Append(actual_fp_path).value();
+      wakeup_device_path =
+          FindParentWithSysattr(wakeup_path, kPowerWakeup, kUSBDevice);
+    }
   } else {
-    path_with_wake_parent = syspath;
+    wakeup_device_path =
+        FindParentWithSysattr(syspath, kPowerWakeup, kUSBDevice);
   }
-
   udev_device_unref(device);
-  return FindParentWithSysattr(path_with_wake_parent, kPowerWakeup, kUSBDevice);
+  return wakeup_device_path;
 }
 
 bool Udev::GetDeviceInfo(struct udev_device* dev,
