@@ -630,10 +630,11 @@ std::pair<std::string, std::string> V4L2CameraDevice::FindExternalCamera() {
     return std::make_pair("", "");
   }
 
-  for (const auto& device : video_devices) {
-    VLOG(1) << __func__ << ": Find external camera " << device.first
-            << ", path: " << device.second;
-    return device;
+  if (video_devices.size() == 1) {
+    const auto& device = video_devices.begin();
+    VLOG(1) << __func__ << ": Find external camera " << device->first
+            << ", path: " << device->second;
+    return *device;
   }
   return std::make_pair("", "");
 }
