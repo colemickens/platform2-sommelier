@@ -4,6 +4,7 @@
 
 #include <base/command_line.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/syslog_logging.h>
@@ -18,6 +19,9 @@ using brillo::dbus_utils::DBusObject;
 namespace oobe_config {
 
 namespace {
+
+// The path to the file that indicates if OOBE has compled.
+constexpr char kOobeCompletedFile[] = "/home/chronos/.oobe_completed";
 
 void InitLog() {
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
@@ -58,7 +62,11 @@ class OobeConfigRestoreDaemon : public brillo::DBusServiceDaemon {
 };
 
 // Runs OobeConfigRestoreDaemon.
-int RunDaemon(bool allow_unencrypted) {
+int RunDaemon(bool allow_unencrypted, bool force_start) {
+  if (!force_start && base::PathExists(base::FilePath(kOobeCompletedFile))) {
+    return 0;
+  }
+
   OobeConfigRestoreDaemon daemon(allow_unencrypted);
 
   LOG(INFO) << "Starting oobe_config_restore daemon";
@@ -78,6 +86,9 @@ constexpr char kTestEncrypted[] = "test-encrypted";
 // Starts the service using unencrypted rollback data. Use only for testing.
 constexpr char kAllowUnencrypted[] = "allow-unencrypted";
 
+// Starts the service even if OOBE is already complete. Use only for testing.
+constexpr char kForceStart[] = "force-start";
+
 int main(int argc, char* argv[]) {
   oobe_config::InitLog();
 
@@ -87,9 +98,8 @@ int main(int argc, char* argv[]) {
     return oobe_config::OobeConfig().UnencryptedRollbackRestore();
   } else if (cl->HasSwitch(kTestEncrypted)) {
     return oobe_config::OobeConfig().EncryptedRollbackRestore();
-  } else if (cl->HasSwitch(kAllowUnencrypted)) {
-    return oobe_config::RunDaemon(/*allow_unencrypted=*/true);
   } else {
-    return oobe_config::RunDaemon(/*allow_unencrypted=*/false);
+    return oobe_config::RunDaemon(cl->HasSwitch(kAllowUnencrypted),
+                                  cl->HasSwitch(kForceStart));
   }
 }
