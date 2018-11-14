@@ -196,7 +196,6 @@ For a detailed example of how merging works, see the following test files:
 2. [test_merge_overlay.yaml](https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/chromeos-config/libcros_config/test_merge_overlay.yaml) - Second file passed (winner of any conflicts).
 3. [test_merge.json](https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/chromeos-config/libcros_config/test_merge.json) - Result generated from the merge.
 
-
 ### YAML Transform (to JSON)
 
 In addition to the templating evaluation discussed above, the YAML is converted
@@ -228,6 +227,20 @@ Based on this algorithm, some key points are:
   supports the generation of the sku/config payloads.
 * 'product' generally defines identity/branding information only. The main
   reason multiple products are supported is for the whitelabel case.
+
+### Making changes to a YAML model file
+
+When modifying a `model.yaml` file there are few steps that need to be taken to
+ manifest the change in a board target. Since the actual work to combine and
+ process the YAML files is done in the chromeos-config ebuild, it needs to be
+ remerged after the input YAML has been modified.
+
+
+1. Start cros_workon on the ebuild where your source model.yaml lives: `cros_workon start chromeos-base/chrome-config-bsp-{BOARD}`
+1. Make and install your incremental changes: `cros_workon_make chromeos-base/chrome-config-bsp-{BOARD} --install`
+1. Remerge the chromeos-config ebuild: `emerge-$BORAD chromeos-config`
+
+Note: The config-bsp overlay path may be slightly different depending on the board and if it is public or private.
 
 ### Schema Validation
 
