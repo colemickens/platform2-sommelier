@@ -371,7 +371,7 @@ class BootstrappedDiagnosticsdCoreTest : public DiagnosticsdCoreTest {
 
 // Test that diagnostics processor will receive message from browser.
 TEST_F(BootstrappedDiagnosticsdCoreTest,
-       DISABLED_SendGrpcUiMessageToDiagnosticsProcessor) {
+       SendGrpcUiMessageToDiagnosticsProcessor) {
   const std::string json_message = "{\"some_key\": \"some_value\"}";
 
   base::RunLoop run_loop_handle_message;
@@ -388,7 +388,7 @@ TEST_F(BootstrappedDiagnosticsdCoreTest,
 // Test that diagnostics processor will not receive message from browser
 // if JSON message is invalid.
 TEST_F(BootstrappedDiagnosticsdCoreTest,
-       DISABLED_SendGrpcUiMessageToDiagnosticsProcessorInvalidJSON) {
+       SendGrpcUiMessageToDiagnosticsProcessorInvalidJSON) {
   const std::string json_message = "{'some_key': 'some_value'}";
 
   EXPECT_TRUE(fake_browser()->SendMessageToDiagnosticsProcessor(json_message));
