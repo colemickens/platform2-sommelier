@@ -4,10 +4,12 @@
 
 #include "oobe_config/rollback_helper.h"
 
+#include <set>
+#include <vector>
+
 #include <pwd.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <vector>
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
@@ -183,26 +185,44 @@ bool FinishRestore(const base::FilePath& root_path,
     }
   }
 
-  // Delete all files from the directory.
+  // Delete all files from the directory except the ones needed
+  // for stage 3.
+  LOG(INFO) << "Cleaning up rollback restore stage 1 and 2 files.";
+  std::set<std::string> excluded_files;
+  excluded_files.emplace(
+      PrefixAbsolutePath(root_path, kFirstStageCompletedFile).value());
+  excluded_files.emplace(
+      PrefixAbsolutePath(root_path, kEncryptedStatefulRollbackDataPath)
+          .value());
+
   base::FileEnumerator folder_enumerator(
       restore_path, false,
       base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES);
   for (auto file = folder_enumerator.Next(); !file.empty();
        file = folder_enumerator.Next()) {
-    if (!base::DeleteFile(file, true)) {
-      PLOG(ERROR) << "Couldn't delete " << file.value();
+    if (excluded_files.count(file.value()) == 0) {
+      if (!base::DeleteFile(file, true)) {
+        PLOG(ERROR) << "Couldn't delete " << file.value();
+      } else {
+        LOG(INFO) << "Deleted rollback data file: " << file.value();
+      }
+    } else {
+      LOG(INFO) << "Preserving rollback data file: " << file.value();
     }
   }
 
-  /* TODO(hunyadym):
-    # We remove the original data (oobe_config_restore has no permission to do
-    # it).
-    # We already checked that the data is saved.
-    rm /mnt/stateful_partition/unencrypted/preserve/rollback_data
+  // Delete the original preserved data.
+  base::FilePath rollback_data_file =
+      PrefixAbsolutePath(root_path, kUnencryptedStatefulRollbackDataPath);
+  if (!base::DeleteFile(rollback_data_file, true)) {
+    PLOG(ERROR) << "Couldn't delete " << rollback_data_file.value();
+  } else {
+    LOG(INFO) << "Deleted encrypted rollback data.";
+  }
 
-    # We indicate that the first stage is completed.
-    touch /var/lib/oobe_config_restore/second_stage_completed
-  */
+  // Indicate that the second stage completed.
+  oobe_config.WriteFile(kSecondStageCompletedFile, "");
+  LOG(INFO) << "Rollback restore stage 2 completed.";
 
   return true;
 }
