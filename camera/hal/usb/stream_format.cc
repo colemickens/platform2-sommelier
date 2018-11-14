@@ -66,6 +66,11 @@ std::vector<int32_t> GetJpegAvailableThumbnailSizes(
     double aspect_ratio =
         static_cast<double>(supported_format.width) / supported_format.height;
 
+    if (supported_format.width < 192) {
+      // Use the same resolution as the thumbnail size.
+      sizes.push_back({supported_format.width, supported_format.height});
+      continue;
+    }
     // Note that we only support to generate thumbnails with (width % 8 == 0)
     // and (height % 2 == 0) for now, so set width as multiple of 32 is good for
     // the two common ratios 4:3 and 16:9. When width is 192, the thumbnail
