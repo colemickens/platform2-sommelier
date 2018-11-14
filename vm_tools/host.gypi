@@ -146,6 +146,7 @@
         'cicerone/container_listener_impl.cc',
         'cicerone/service.cc',
         'cicerone/tremplin_listener_impl.cc',
+        'cicerone/tzif_parser.cc',
         'cicerone/virtual_machine.cc',
       ],
     },
@@ -241,6 +242,7 @@
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
+            'cicerone/tzif_parser_test.cc',
             'cicerone/virtual_machine_test.cc',
           ],
         },
