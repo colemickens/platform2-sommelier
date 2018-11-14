@@ -68,9 +68,9 @@ int main(int argc, char* argv[]) {
     }
     if (!u2f_hid.Lock(static_cast<uint8_t>(FLAGS_lock_timeout))) {
       return EX_SOFTWARE;
-      std::cout << "Locked for " << FLAGS_lock_timeout << " seconds."
-                << std::endl;
     }
+    std::cout << "Locked for " << FLAGS_lock_timeout << " seconds."
+              << std::endl;
   }
 
   if (FLAGS_ping) {
