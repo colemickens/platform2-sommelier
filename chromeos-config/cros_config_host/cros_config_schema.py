@@ -555,10 +555,21 @@ def _ValidateUniqueIdentities(json_config):
   Args:
     json_config: JSON config dictionary
   """
-  identities = [str(config['identity'])
-                for config in json_config['chromeos']['configs']]
-  if len(identities) != len(set(identities)):
-    raise ValidationError('Identities are not unique: %s' % identities)
+  identities = set()
+  duplicate_identities = set()
+  for config in json_config['chromeos']['configs']:
+    if 'identity' not in config:
+      raise ValidationError(
+          'Missing identity for config: %s' % str(config))
+    identity_str = str(config['identity'])
+    if identity_str in identities:
+      duplicate_identities.add(identity_str)
+    else:
+      identities.add(identity_str)
+
+  if duplicate_identities:
+    raise ValidationError(
+        'Identities are not unique: %s' % duplicate_identities)
 
 
 def _ValidateWhitelabelBrandChangesOnly(json_config):
