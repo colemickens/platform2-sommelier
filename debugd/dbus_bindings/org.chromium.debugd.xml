@@ -911,11 +911,10 @@
     <method name="CampfireEnableAltOS">
       <tp:docstring>
         Enable Alt OS mode, create partition for Alt OS if not exists.
-        TODO
       </tp:docstring>
       <arg name="size_gb" type="i" direction="in">
         <tp:docstring>
-          The size of AltOS partition in GB.
+          The size of Alt OS partition in GB.
         </tp:docstring>
       </arg>
       <arg name="result" type="s" direction="out">
