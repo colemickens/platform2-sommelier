@@ -784,8 +784,6 @@ void CameraClient::RequestHandler::HandleAbortedRequest(
 bool CameraClient::RequestHandler::ShouldEnableConstantFrameRate(
     const android::CameraMetadata& metadata) {
   if (device_info_.constant_framerate_unsupported) {
-    LOGF(ERROR) << "All usb camera modules should support constant frame rate "
-                   "in HAL v3";
     return false;
   }
 

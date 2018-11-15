@@ -329,6 +329,10 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
     VLOGF(1) << "Found a built-in camera";
     info = *info_ptr;
     num_builtin_cameras_ = std::max(num_builtin_cameras_, info.camera_id + 1);
+    if (info.constant_framerate_unsupported) {
+      LOGF(WARNING) << "Camera module " << vid << ":" << pid
+                    << " does not support constant frame rate";
+    }
   } else {
     VLOGF(1) << "Found an external camera";
     if (callbacks_ == nullptr) {
