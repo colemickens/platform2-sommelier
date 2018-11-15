@@ -7,6 +7,9 @@
 #include <arpa/inet.h>
 #include <stdint.h>
 
+#include <utility>
+#include <vector>
+
 #include <base/bind.h>
 #include <gtest/gtest.h>
 
@@ -16,9 +19,11 @@ namespace {
 
 constexpr size_t kContainerBaseAddress = 0x64735cc0;  // 100.115.92.192
 constexpr size_t kVmBaseAddress = 0x64735c00;         // 100.115.92.0
+constexpr size_t kPluginBaseAddress = 0x64735c80;     // 100.115.92.128
 
 constexpr size_t kContainerSubnetPrefix = 28;
 constexpr size_t kVmSubnetPrefix = 30;
+constexpr size_t kPluginSubnetPrefix = 28;
 
 // kExpectedAvailableCount[i] == AvailableCount() for subnet with prefix i.
 constexpr size_t kExpectedAvailableCount[] = {
@@ -98,7 +103,7 @@ TEST_P(PrefixTest, Netmask) {
 
 INSTANTIATE_TEST_CASE_P(AllValues,
                         PrefixTest,
-                        ::testing::Range(size_t{0}, size_t{32}));
+                        ::testing::Range(size_t{8}, size_t{32}));
 
 // Tests that the Subnet runs the provided cleanup callback when it gets
 // destroyed.
@@ -108,6 +113,60 @@ TEST(Subnet, Cleanup) {
   { Subnet subnet(0, 24, base::Bind(&SetTrue, &called)); }
 
   EXPECT_TRUE(called);
+}
+
+// Tests that the subnet rejects attempts to allocate addresses outside its
+// range.
+TEST(PluginSubnet, OutOfBounds) {
+  Subnet subnet(kPluginBaseAddress, kPluginSubnetPrefix,
+                base::Bind(&base::DoNothing));
+
+  EXPECT_FALSE(subnet.Allocate(kPluginBaseAddress - 1));
+  EXPECT_FALSE(subnet.Allocate(kPluginBaseAddress));
+  EXPECT_FALSE(subnet.Allocate(kPluginBaseAddress +
+                               (1ull << (32 - kPluginSubnetPrefix)) - 1));
+  EXPECT_FALSE(subnet.Allocate(kPluginBaseAddress +
+                               (1ull << (32 - kPluginSubnetPrefix))));
+}
+
+// Tests that the subnet rejects attempts to allocate the same address twice.
+TEST(PluginSubnet, DuplicateAddress) {
+  Subnet subnet(kPluginBaseAddress, kPluginSubnetPrefix,
+                base::Bind(&base::DoNothing));
+
+  auto addr = subnet.Allocate(kPluginBaseAddress + 1);
+  EXPECT_TRUE(addr);
+  EXPECT_FALSE(subnet.Allocate(kPluginBaseAddress + 1));
+}
+
+// Tests that the subnet allows allocating all addresses in the subnet's range.
+TEST(PluginSubnet, Allocate) {
+  Subnet subnet(kPluginBaseAddress, kPluginSubnetPrefix,
+                base::Bind(&base::DoNothing));
+
+  std::vector<std::unique_ptr<SubnetAddress>> addrs;
+  addrs.reserve(subnet.AvailableCount());
+
+  for (size_t offset = 0; offset < subnet.AvailableCount(); ++offset) {
+    // Offset by one since the network id is not allocatable.
+    auto addr = subnet.Allocate(kPluginBaseAddress + offset + 1);
+    EXPECT_TRUE(addr);
+    EXPECT_EQ(htonl(kPluginBaseAddress + offset + 1), addr->Address());
+    addrs.emplace_back(std::move(addr));
+  }
+}
+
+// Tests that the subnet frees addresses when they are destroyed.
+TEST(PluginSubnet, Free) {
+  Subnet subnet(kPluginBaseAddress, kPluginSubnetPrefix,
+                base::Bind(&base::DoNothing));
+
+  {
+    auto addr = subnet.Allocate(kPluginBaseAddress + 1);
+    EXPECT_TRUE(addr);
+  }
+
+  EXPECT_TRUE(subnet.Allocate(kPluginBaseAddress + 1));
 }
 
 }  // namespace concierge

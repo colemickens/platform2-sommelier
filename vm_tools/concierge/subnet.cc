@@ -8,20 +8,56 @@
 
 #include <utility>
 
+#include <base/bind.h>
 #include <base/logging.h>
 
 namespace vm_tools {
 namespace concierge {
 
+SubnetAddress::SubnetAddress(uint32_t addr, base::Closure release_cb)
+    : addr_(addr), release_cb_(std::move(release_cb)) {}
+
+SubnetAddress::~SubnetAddress() {
+  release_cb_.Run();
+}
+
+uint32_t SubnetAddress::Address() const {
+  return htonl(addr_);
+}
+
 Subnet::Subnet(uint32_t network_id, size_t prefix, base::Closure release_cb)
     : network_id_(network_id),
       prefix_(prefix),
-      release_cb_(std::move(release_cb)) {
+      release_cb_(std::move(release_cb)),
+      weak_factory_(this) {
   CHECK_LT(prefix, 32);
+
+  addrs_.resize(1ull << (32 - prefix), false);
+
+  // Mark the network id and broadcast address as allocated.
+  addrs_.front() = true;
+  addrs_.back() = true;
 }
 
 Subnet::~Subnet() {
   release_cb_.Run();
+}
+
+std::unique_ptr<SubnetAddress> Subnet::Allocate(uint32_t addr) {
+  if (addr <= network_id_ || addr >= network_id_ + addrs_.size() - 1) {
+    // Address is out of bounds.
+    return nullptr;
+  }
+
+  uint32_t offset = addr - network_id_;
+  if (addrs_[offset]) {
+    // Address is already allocated.
+    return nullptr;
+  }
+
+  addrs_[offset] = true;
+  return std::make_unique<SubnetAddress>(
+      addr, base::Bind(&Subnet::Free, weak_factory_.GetWeakPtr(), offset));
 }
 
 uint32_t Subnet::AddressAtOffset(uint32_t offset) const {
@@ -35,7 +71,7 @@ uint32_t Subnet::AddressAtOffset(uint32_t offset) const {
 size_t Subnet::AvailableCount() const {
   // The available IP count is all IPs in a subnet, minus the network ID
   // and the broadcast address.
-  return (1ull << (32 - prefix_)) - 2;
+  return addrs_.size() - 2;
 }
 
 uint32_t Subnet::Netmask() const {
@@ -44,6 +80,13 @@ uint32_t Subnet::Netmask() const {
 
 size_t Subnet::Prefix() const {
   return prefix_;
+}
+
+void Subnet::Free(uint32_t offset) {
+  DCHECK_NE(offset, 0);
+  DCHECK_LT(offset, addrs_.size() - 1);
+
+  addrs_[offset] = false;
 }
 
 }  // namespace concierge
