@@ -163,9 +163,11 @@ class SambaInterface : public TgtManager::Delegate {
   // TgtManager::Delegate:
   void OnTgtRenewed() override;
 
-  // Disable retry sleep for unit tests.
+  // Disables sleep between kinit tries for unit tests.
   void DisableRetrySleepForTesting();
 
+  // Disables seccomp filtering for unit tests as they might make different
+  // syscalls than production code.
   void DisableSeccompForTesting(bool disabled) {
     disable_seccomp_for_testing_ = disabled;
   }
@@ -524,6 +526,7 @@ class SambaInterface : public TgtManager::Delegate {
   // Keeps track of whether AutoCheckMachinePasswordChange() ran or not.
   bool did_password_change_check_run_for_testing_ = false;
 
+  // Disables seccomp filtering for unit tests.
   bool disable_seccomp_for_testing_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(SambaInterface);

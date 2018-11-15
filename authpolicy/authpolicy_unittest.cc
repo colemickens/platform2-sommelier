@@ -241,6 +241,8 @@ class TestPathService : public PathService {
     Insert(Path::NET, stub_path.Append("stub_net").value());
     Insert(Path::SMBCLIENT, stub_path.Append("stub_smbclient").value());
     Insert(Path::DAEMON_STORE, base_path.Append(kDaemonStoreDir).value());
+    Insert(Path::FLAGS_DEFAULT_LEVEL,
+           base_path.Append("flags_default_level").value());
 
     // Fill in the rest of the paths and build dependend paths.
     Initialize();
@@ -2220,7 +2222,7 @@ TEST_F(AuthPolicyTest, LoadsBackupAndRestoresState) {
 
 // By default, nothing should call the (expensive) anonymizer since no sensitive
 // data is logged. Only if logging is enabled it should be called.
-TEST_F(AuthPolicyTest, AnonymizerNotCalled) {
+TEST_F(AuthPolicyTest, AnonymizerNotCalledWithoutLogging) {
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   MarkDeviceAsLocked();
 
@@ -2231,6 +2233,15 @@ TEST_F(AuthPolicyTest, AnonymizerNotCalled) {
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
 
   EXPECT_FALSE(samba().GetAnonymizerForTesting()->process_called_for_testing());
+}
+
+// If log output is requested, the logs should be anonymized.
+TEST_F(AuthPolicyTest, AnonymizerCalledWithLogging) {
+  // Turn on max logging and trigger an error. This triggers debug logging
+  // which should be anonymized.
+  samba().SetDefaultLogLevel(AuthPolicyFlags::kMaxLevel);
+  ignore_result(Join(kTooLongMachineName, kUserPrincipal, MakePasswordFd()));
+  EXPECT_TRUE(samba().GetAnonymizerForTesting()->process_called_for_testing());
 }
 
 // Re-enable seccomp filters and check that they are actually in effect.
