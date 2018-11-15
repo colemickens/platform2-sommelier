@@ -25,7 +25,6 @@ copies.
 
 | Project | Description |
 |---------|-------------|
-| [apmanager](./apmanager/) | Service for managing a WiFi Access Point (AP) |
 | [arc](./arc/) | Tools/deamons/init-scripts to run ARC |
 | [attestation](./attestation/) | Daemon and client for managing remote attestation |
 | [authpolicy](./authpolicy/) | Daemon for integrating with Microsoft Active Directory (AD) domains |
