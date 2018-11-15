@@ -455,6 +455,12 @@ int HandleJoin(const std::string& command_line,
     return kExitCodeError;
   }
 
+  // Stub seccomp failure.
+  if (machine_name == base::ToUpperASCII(kSeccompMachineName)) {
+    TriggerSeccompFailure();
+    return kExitCodeOk;
+  }
+
   // Stub insufficient quota error.
   if (Contains(command_line, kUserFlag + kInsufficientQuotaUserPrincipal)) {
     WriteOutput(kInsufficientQuotaError, "");
@@ -570,6 +576,8 @@ int HandleGpoList(const std::string& smb_conf_path) {
   if (machine_name == base::ToUpperASCII(kGpoDownloadErrorMachineName)) {
     // Stub GPO list that triggers a download error in smbclient.
     gpos += PrintGpo(kErrorGpoGuid, 1, 1, kGpFlagAllEnabled);
+  } else if (machine_name == base::ToUpperASCII(kSeccompMachineName)) {
+    gpos += PrintGpo(kSeccompGpoGuid, 1, 1, kGpFlagAllEnabled);
   } else if (machine_name == base::ToUpperASCII(kOneGpoMachineName)) {
     // Stub GPO list that downloads one GPO if present.
     gpos += PrintGpo(kGpo1Guid, 1, 1, kGpFlagAllEnabled);

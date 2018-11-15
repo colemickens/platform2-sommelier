@@ -50,6 +50,8 @@ extern const char kPasswordChangedUserName[];
 extern const char kNoPwdFieldsUserPrincipal[];
 // Corresponding user name.
 extern const char kNoPwdFieldsUserName[];
+// Triggers kinit to call a syscall that is not whitelisted.
+extern const char kSeccompUserPrincipal[];
 // Triggers an error in net ads join for missing or bad createcomputer argument.
 extern const char kExpectOuUserPrincipal[];
 
@@ -138,6 +140,8 @@ extern const char kUnaffiliatedMachineName[];
 // Triggers kinit to be retried a few times for the machine TGT (simulates that
 // the account hasn't propagated yet).
 extern const char kPropagationRetryMachineName[];
+// Triggers net ads join to call a syscall that is not whitelisted.
+extern const char kSeccompMachineName[];
 
 // How many times an account propagation error is simulated if
 // |kPropagationRetryMachineName| is used.
@@ -149,6 +153,8 @@ extern const char kGpo1Guid[];
 extern const char kGpo2Guid[];
 // Stub GPO GUID, triggers a GPO download error in smbclient.
 extern const char kErrorGpoGuid[];
+// Stub GPO GUID, triggers a seccomp failure in smbclient.
+extern const char kSeccompGpoGuid[];
 
 // Filename of stub GPO 1 file. This PREG file is written by tests and smbclient
 // can be triggered to "download" it, e.g. by using kOneGpoMachineName.
@@ -188,6 +194,9 @@ std::string GetKrb5CCFilePath();
 
 // Checks that |password| is UTF-8 encoded and 256 characters long.
 void CheckMachinePassword(const std::string& password);
+
+// Makes an invalid system call (not in any of the *seccomp.policy files).
+void TriggerSeccompFailure();
 
 }  // namespace authpolicy
 

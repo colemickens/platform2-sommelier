@@ -166,7 +166,9 @@ class SambaInterface : public TgtManager::Delegate {
   // Disable retry sleep for unit tests.
   void DisableRetrySleepForTesting();
 
-  void DisableSeccompForTesting() { disable_seccomp_for_testing_ = true; }
+  void DisableSeccompForTesting(bool disabled) {
+    disable_seccomp_for_testing_ = disabled;
+  }
 
   void SetFixedAuthTriesForTesting(int auth_tries) {
     auth_tries_for_testing_ = auth_tries;

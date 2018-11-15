@@ -444,7 +444,7 @@ class AuthPolicyTest : public testing::Test {
 
     // Unit tests usually run code that only exists in tests (like the
     // framework), so disable the seccomp filters.
-    samba().DisableSeccompForTesting();
+    samba().DisableSeccompForTesting(true);
   }
 
   // Stub method called by the Session Manager mock to store policy. Validates
@@ -2231,6 +2231,35 @@ TEST_F(AuthPolicyTest, AnonymizerNotCalled) {
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
 
   EXPECT_FALSE(samba().GetAnonymizerForTesting()->process_called_for_testing());
+}
+
+// Re-enable seccomp filters and check that they are actually in effect.
+TEST_F(AuthPolicyTest, SeccompFiltersEnabled) {
+  // Re-enable seccomp filtering and trigger it in net ads join.
+  samba().DisableSeccompForTesting(false);
+  EXPECT_EQ(ERROR_NET_FAILED,
+            Join(kSeccompMachineName, kUserPrincipal, MakePasswordFd()));
+
+  // Disable seccomp filtering again, make sure net ads join works this time.
+  samba().DisableSeccompForTesting(true);
+  EXPECT_EQ(ERROR_NONE,
+            Join(kSeccompMachineName, kUserPrincipal, MakePasswordFd()));
+
+  MarkDeviceAsLocked();
+
+  // Same with kinit. Check whether kinit can trigger seccomp failures.
+  samba().DisableSeccompForTesting(false);
+  EXPECT_EQ(ERROR_KINIT_FAILED,
+            Auth(kSeccompUserPrincipal, "", MakePasswordFd()));
+  samba().DisableSeccompForTesting(true);
+  EXPECT_EQ(ERROR_NONE, Auth(kSeccompUserPrincipal, "", MakePasswordFd()));
+
+  // Finally, check whether smbclient can trigger seccomp failures.
+  samba().DisableSeccompForTesting(false);
+  validate_device_policy_ = &CheckDevicePolicyEmpty;
+  FetchAndValidateDevicePolicy(ERROR_SMBCLIENT_FAILED);
+  samba().DisableSeccompForTesting(true);
+  FetchAndValidateDevicePolicy(ERROR_NONE);
 }
 
 }  // namespace authpolicy

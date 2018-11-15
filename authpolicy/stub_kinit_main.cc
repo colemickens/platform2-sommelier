@@ -203,6 +203,13 @@ int HandleCommandLine(const std::string& command_line) {
     return kExitCodeOk;
   }
 
+  // Stub seccomp failure.
+  if (StartsWithCaseSensitive(command_line, kSeccompUserPrincipal)) {
+    TriggerSeccompFailure();
+    WriteKrb5CC(kValidKrb5CCData);
+    return kExitCodeOk;
+  }
+
   // Stub valid user principal. Switch behavior based on password.
   if (StartsWithCaseSensitive(command_line, kUserPrincipal) ||
       StartsWithCaseSensitive(command_line, kPasswordChangedUserPrincipal) ||

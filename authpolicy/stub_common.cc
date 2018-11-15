@@ -4,12 +4,15 @@
 
 #include "authpolicy/stub_common.h"
 
+// For getresuid
+#include <unistd.h>
+
 #include <base/files/file_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/utf_string_conversions.h>
-#include "authpolicy/samba_helper.h"
 
 #include "authpolicy/constants.h"
+#include "authpolicy/samba_helper.h"
 
 namespace authpolicy {
 
@@ -41,6 +44,7 @@ const char kPasswordChangedUserPrincipal[] =
 const char kPasswordChangedUserName[] = "password_changed";
 const char kNoPwdFieldsUserPrincipal[] = "no_pwd_fields@REALM.EXAMPLE.COM";
 const char kNoPwdFieldsUserName[] = "no_pwd_fields";
+const char kSeccompUserPrincipal[] = "seccomp@REALM.EXAMPLE.COM";
 const char kExpectOuUserPrincipal[] = "expect_ou@REALM.EXAMPLE.COM";
 
 const char kExpectedOuCreatecomputer[] =
@@ -89,10 +93,12 @@ const char kChangePasswordMachineName[] = "changepassword";
 const char kPingServerFailMachineName[] = "pingfail";
 const char kUnaffiliatedMachineName[] = "unaffiliated";
 const char kPropagationRetryMachineName[] = "propagat.nretry";
+const char kSeccompMachineName[] = "seccomp";
 
 const char kGpo1Guid[] = "{11111111-1111-1111-1111-111111111111}";
 const char kGpo2Guid[] = "{22222222-2222-2222-2222-222222222222}";
 const char kErrorGpoGuid[] = "{eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee}";
+const char kSeccompGpoGuid[] = "{seccomps-ecco-mpse-ccom-pseccompsecc}";
 
 const char kGpo1Filename[] = "stub_registry_1.pol";
 const char kGpo2Filename[] = "stub_registry_2.pol";
@@ -173,6 +179,13 @@ void CheckMachinePassword(const std::string& password) {
   std::wstring wide_password;
   CHECK(base::UTF8ToWide(password.data(), password.size(), &wide_password));
   CHECK_EQ(kMachinePasswordCodePoints, wide_password.size());
+}
+
+void TriggerSeccompFailure() {
+  // If the tests start failing because this call got added to some seccomp
+  // file, switch to any other syscall that is not whitelisted.
+  uid_t unused_uid;
+  getresuid(&unused_uid, &unused_uid, &unused_uid);
 }
 
 }  // namespace authpolicy

@@ -96,6 +96,8 @@ int HandleCommandLine(const std::string& command_line) {
       source_path = gpo_dir.Append(kGpo2Filename);
     else if (Contains(item.local_path_, kErrorGpoGuid))
       download_error = true;
+    else if (Contains(item.local_path_, kSeccompGpoGuid))
+      TriggerSeccompFailure();
     else
       NOTREACHED() << "UNHANDLED DOWNLOAD ITEM '" << item.local_path_ << "'";
 
