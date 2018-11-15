@@ -275,11 +275,15 @@ bool JpegCompressorImpl::Encode(const void* inYuv,
   }
 
   if (!Compress(&cinfo, static_cast<const uint8_t*>(inYuv))) {
-    return false;
+    is_encode_success_ = false;
   }
-  jpeg_finish_compress(&cinfo);
 
-  *out_data_size = is_encode_success_ ? out_data_size_ : 0;
+  jpeg_finish_compress(&cinfo);
+  jpeg_destroy_compress(&cinfo);
+
+  if (is_encode_success_) {
+    *out_data_size = out_data_size_;
+  }
   return is_encode_success_;
 }
 
