@@ -23,13 +23,9 @@
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
 #include <brillo/secure_blob.h>
+#include <chromeos/ec/ec_commands.h>
 
 #include "biod/cros_fp_biometrics_manager.h"
-
-extern "C" {
-// Cros EC host commands definition as used by cros_fp.
-#include "biod/ec/ec_commands.h"
-}
 
 namespace {
 

@@ -16,13 +16,10 @@
 
 #include <base/files/file_util.h>
 #include <base/values.h>
+#include <chromeos/ec/cros_ec_dev.h>
+#include <chromeos/ec/ec_commands.h>
 
 #include "biod/biod_storage.h"
-extern "C" {
-// Cros EC host commands definition as used by cros_fp.
-#include "biod/ec/cros_ec_dev.h"
-#include "biod/ec/ec_commands.h"
-}
 
 namespace biod {
 
