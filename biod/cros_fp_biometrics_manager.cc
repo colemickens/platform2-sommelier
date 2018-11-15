@@ -17,7 +17,6 @@
 #include <base/base64.h>
 #include <base/bind.h>
 #include <base/logging.h>
-#include <base/message_loop/message_loop.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_piece.h>
 #include <base/strings/stringprintf.h>
@@ -51,72 +50,6 @@ const int kMaxPacketSize = 544;
 namespace biod {
 
 constexpr char CrosFpBiometricsManager::kCrosFpPath[];
-
-class CrosFpBiometricsManager::CrosFpDevice : public MessageLoopForIO::Watcher {
- public:
-  using MkbpCallback = base::Callback<void(const uint32_t event)>;
-
-  explicit CrosFpDevice(const MkbpCallback& mkbp_event)
-      : mkbp_event_(mkbp_event),
-        fd_watcher_(std::make_unique<MessageLoopForIO::FileDescriptorWatcher>(
-            FROM_HERE)) {}
-  ~CrosFpDevice();
-
-  static std::unique_ptr<CrosFpDevice> Open(const MkbpCallback& callback);
-
-  bool FpMode(uint32_t mode);
-  bool GetFpMode(uint32_t* mode);
-  bool GetFpStats(int* capture_ms, int* matcher_ms, int* overall_ms);
-  bool GetDirtyMap(std::bitset<32>* bitmap);
-  bool GetTemplate(int index, VendorTemplate* out);
-  bool UploadTemplate(const VendorTemplate& tmpl);
-  bool SetContext(std::string user_id);
-  bool ResetContext();
-  // Initialise the entropy in the SBP. If |reset| is true, the old entropy will
-  // be deleted. If |reset| is false, we will only add entropy, and only if no
-  // entropy had been added before.
-  bool InitEntropy(bool reset = false);
-
-  int MaxTemplateCount() { return info_.template_max; }
-  int TemplateVersion() { return info_.template_version; }
-
- protected:
-  // MessageLoopForIO::Watcher overrides:
-  void OnFileCanReadWithoutBlocking(int fd) override;
-  void OnFileCanWriteWithoutBlocking(int fd) override {}
-
- private:
-  bool Init();
-
-  bool EcDevInit();
-  bool EcProtoInfo(ssize_t* max_read, ssize_t* max_write);
-  bool WaitOnEcBoot(ec_current_image expected_image);
-  bool EcReboot(ec_current_image to_image);
-  // Run the EC command to generate new entropy in the underlying MCU.
-  // |reset| specifies whether we want to merely add entropy (false), or perform
-  // a reset, which erases old entropy(true).
-  bool AddEntropy(bool reset);
-  // Get block id from rollback info.
-  bool GetRollBackInfoId(int32_t* block_id);
-  bool FpFrame(int index, std::vector<uint8_t>* frame);
-  bool UpdateFpInfo();
-  // Run a sequence of EC commands to update the entropy in the
-  // MCU. If |reset| is set to true, it will additionally erase the existing
-  // entropy too.
-  bool UpdateEntropy(bool reset);
-
-  base::ScopedFD cros_fd_;
-  ssize_t max_read_size_;
-  ssize_t max_write_size_;
-  struct ec_response_fp_info info_;
-
-  MkbpCallback mkbp_event_;
-  UinputDevice input_device_;
-
-  std::unique_ptr<MessageLoopForIO::FileDescriptorWatcher> fd_watcher_;
-
-  DISALLOW_COPY_AND_ASSIGN(CrosFpDevice);
-};
 
 CrosFpBiometricsManager::CrosFpDevice::~CrosFpDevice() {
   // Current session is gone, clean-up temporary state in the FP MCU.
@@ -277,8 +210,9 @@ bool CrosFpBiometricsManager::CrosFpDevice::GetFpStats(int* capture_ms,
   return true;
 }
 
+// static
 bool CrosFpBiometricsManager::CrosFpDevice::WaitOnEcBoot(
-    ec_current_image expected_image) {
+    const base::ScopedFD& cros_fp_fd, ec_current_image expected_image) {
   int tries = 50;
   ec_current_image image = EC_IMAGE_UNKNOWN;
 
@@ -287,7 +221,7 @@ bool CrosFpBiometricsManager::CrosFpDevice::WaitOnEcBoot(
     // Check the EC has the right image.
     EcCommand<EmptyParam, struct ec_response_get_version> cmd(
         EC_CMD_GET_VERSION);
-    if (!cmd.Run(cros_fd_.get())) {
+    if (!cmd.Run(cros_fp_fd.get())) {
       LOG(ERROR) << "Failed to retrieve cros_fp firmware version.";
       base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(500));
       continue;
@@ -312,7 +246,7 @@ bool CrosFpBiometricsManager::CrosFpDevice::EcReboot(
   // Don't expect a return code, cros_fp has rebooted.
   cmd_reboot.Run(cros_fd_.get());
 
-  if (!WaitOnEcBoot(EC_IMAGE_RO)) {
+  if (!WaitOnEcBoot(cros_fd_, EC_IMAGE_RO)) {
     LOG(ERROR) << "EC did not come back up after reboot.";
     return false;
   }
@@ -333,7 +267,7 @@ bool CrosFpBiometricsManager::CrosFpDevice::EcReboot(
   // received the instructions.
   base::PlatformThread::Sleep(base::TimeDelta::FromSeconds(3));
 
-  if (!WaitOnEcBoot(to_image)) {
+  if (!WaitOnEcBoot(cros_fd_, to_image)) {
     LOG(ERROR) << "EC did not load the right image.";
     return false;
   }

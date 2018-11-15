@@ -53,34 +53,6 @@ bool NukeFile(const base::FilePath& filepath) {
   return ret;
 }
 
-// This will block until the EC has booted the RW firmware.
-bool WaitOnEcRW(const base::ScopedFD& cros_fp_fd) {
-  // TODO(b/117909326): refactor CrosFpDevice to be able to use
-  // CrosFpBiometricsManager::CrosFpDevice::WaitOnEcBoot() directly.
-  int tries = 50;
-  ec_current_image image = EC_IMAGE_UNKNOWN;
-
-  while (tries) {
-    tries--;
-    // Check the EC has the right image.
-    biod::EcCommand<biod::EmptyParam, struct ec_response_get_version> cmd(
-        EC_CMD_GET_VERSION);
-    if (!cmd.Run(cros_fp_fd.get())) {
-      LOG(ERROR) << "Failed to retrieve cros_fp firmware version.";
-      base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(500));
-      continue;
-    }
-    image = static_cast<ec_current_image>(cmd.Resp()->current_image);
-    if (image == EC_IMAGE_RW) {
-      LOG(INFO) << "EC booted to RW.";
-      return true;
-    }
-    base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(100));
-  }
-  LOG(ERROR) << "EC rebooted to incorrect image " << image;
-  return false;
-}
-
 bool WriteSeedToCrosFp(const brillo::SecureBlob& seed) {
   bool ret = true;
   auto fd = base::ScopedFD(
@@ -90,7 +62,8 @@ bool WriteSeedToCrosFp(const brillo::SecureBlob& seed) {
     return false;
   }
 
-  if (!WaitOnEcRW(fd)) {
+  if (!biod::CrosFpBiometricsManager::CrosFpDevice::WaitOnEcBoot(fd,
+                                                                 EC_IMAGE_RW)) {
     LOG(ERROR) << "FP device did not boot to RW.";
     return false;
   }
