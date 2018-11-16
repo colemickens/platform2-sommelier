@@ -143,6 +143,9 @@ constexpr gid_t kHostRootGid = 0;
 constexpr uid_t kHostChronosUid = 1000;
 constexpr gid_t kHostChronosGid = 1000;
 
+constexpr uid_t kHostArcCameraUid = 603;
+constexpr gid_t kHostArcCameraGid = 603;
+
 constexpr uid_t kShiftUid = 655360;
 constexpr gid_t kShiftGid = 655360;
 constexpr uid_t kRootUid = AID_ROOT + kShiftUid;
@@ -876,6 +879,8 @@ void ArcSetup::ApplyPerBoardConfigurations() {
     if (base::PathExists(generated_media_profile_xml)) {
       EXIT_IF(
           !base::CopyFile(generated_media_profile_xml, new_media_profile_xml));
+      EXIT_IF(
+          !Chown(kHostArcCameraUid, kHostArcCameraGid, new_media_profile_xml));
     }
   }
 
