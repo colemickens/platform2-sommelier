@@ -37,6 +37,7 @@ openat: 1
 ppoll: 1
 pread64: 1
 prlimit64: arg2 == 0 && arg3 != 0
+pselect6: 1
 read: 1
 readlinkat: 1
 recvmsg: 1
