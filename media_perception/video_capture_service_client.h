@@ -94,7 +94,7 @@ class VideoCaptureServiceClient {
   // Stops video capture from the active device.
   virtual void StopVideoCapture() = 0;
 
-  void SetFrameHandler(FrameHandler handler) {
+  virtual void SetFrameHandler(FrameHandler handler) {
     frame_handler_ = std::move(handler);
   }
 
