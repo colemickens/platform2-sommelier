@@ -463,6 +463,9 @@ REGIONS_LIST = [
         'bg', ['xkb:bg::bul', 'xkb:bg:phonetic:bul'], 'Europe/Sofia', [
             'bg', 'tr', 'en-US'], KML.ANSI,
         'Bulgaria'),
+    Region(
+        'jp.us', 'xkb:us::eng', 'Asia/Tokyo', 'ja', KML.ANSI,
+        'Japan with US keyboard'),
     ]
 
 """A list of :py:class:`regions.Region` objects for
@@ -1266,7 +1269,7 @@ def main(args=sys.argv[1:], out=None):
         out.write(line[column_no].ljust(max_lengths[column_no] + 2))
       out.write('\n')
   else:
-    exit('Sorry, unknown format specified: %s' % args.format)
+    sys.exit('Sorry, unknown format specified: %s' % args.format)
 
 
 if __name__ == '__main__':
