@@ -12,20 +12,7 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
-#include "hermes/esim.h"
-#include "hermes/lpd.h"
 #include "hermes/smdp.h"
-
-// TODO(jruthe): update this with some actual functionality to mimic caller.
-void ErrorCallback(hermes::LpdError error) {}
-
-void SuccessCallback() {}
-
-void OnInitialization(hermes::Lpd* lpd) {
-  lpd->InstallProfile(base::Bind(&SuccessCallback), base::Bind(&ErrorCallback));
-}
-
-void InitError(hermes::LpdError error) {}
 
 void Usage() {
   LOG(INFO) << "usage: ./hermes <smdp_hostname> <imei_number>";
@@ -43,11 +30,6 @@ int main(int argc, char** argv) {
   logging::SetMinLogLevel(FLAGS_log_level);
 
   base::MessageLoop message_loop(base::MessageLoop::TYPE_IO);
-  auto esim = hermes::Esim::Create(FLAGS_imei, FLAGS_matching_id);
-  CHECK(esim);
-  hermes::Lpd lpd(std::move(esim),
-                  std::make_unique<hermes::Smdp>(FLAGS_smdp_hostname));
-  lpd.Initialize(base::Bind(&OnInitialization, &lpd), base::Bind(&InitError));
   base::RunLoop().Run();
 
   return EXIT_SUCCESS;
