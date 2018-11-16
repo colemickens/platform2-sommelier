@@ -30,6 +30,7 @@
 #include "vm_tools/concierge/mac_address_generator.h"
 #include "vm_tools/concierge/shill_client.h"
 #include "vm_tools/concierge/startup_listener_impl.h"
+#include "vm_tools/concierge/subnet.h"
 #include "vm_tools/concierge/subnet_pool.h"
 #include "vm_tools/concierge/termina_vm.h"
 #include "vm_tools/concierge/vm_interface.h"
@@ -70,6 +71,10 @@ class Service final : public base::MessageLoopForIO::Watcher {
   // Handles a request to start a VM.  |method_call| must have a StartVmRequest
   // protobuf serialized as an array of bytes.
   std::unique_ptr<dbus::Response> StartVm(dbus::MethodCall* method_call);
+
+  // Handles a request to start a plugin-based VM.  |method_call| must have a
+  // StartPluginVmRequest protobuf serialized as an array of bytes.
+  std::unique_ptr<dbus::Response> StartPluginVm(dbus::MethodCall* method_call);
 
   // Handles a request to stop a VM.  |method_call| must have a StopVmRequest
   // protobuf serialized as an array of bytes.
@@ -173,6 +178,10 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   // The port number to assign to the next shared directory server.
   uint32_t next_seneschal_server_port_;
+
+  // The subnet for plugin VMs.
+  std::unique_ptr<Subnet> plugin_subnet_;
+  std::unique_ptr<SubnetAddress> plugin_gateway_;
 
   // Active VMs keyed by (owner_id, vm_name).
   VmMap vms_;

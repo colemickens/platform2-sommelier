@@ -60,6 +60,12 @@ constexpr char kCryptohomeUser[] = "/home/user";
 // Downloads directory for a user.
 constexpr char kDownloadsDir[] = "Downloads";
 
+// Base address for the plugin VM subnet.
+constexpr uint32_t kPluginBaseAddress = 0x64735c80;  // 100.115.92.128
+
+// Mac address to assign to plugin VMs.
+constexpr uint8_t kPluginVmMacAddress[] = {0x42, 0x02, 0x1f, 0xf4, 0x2d, 0xb0};
+
 // Converts an IPv4 address in network byte order into a string.
 void IPv4AddressToString(uint32_t addr, string* address) {
   CHECK(address);
@@ -773,6 +779,52 @@ int StartTerminaVm(dbus::ObjectProxy* proxy,
   return LogVmStatus(request.name(), response);
 }
 
+int StartPluginVm(dbus::ObjectProxy* proxy, string name, string cryptohome_id) {
+  if (name.empty()) {
+    LOG(ERROR) << "--name is required";
+    return -1;
+  }
+
+  LOG(INFO) << "Starting plugin VM '" << name << "'";
+
+  dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
+                               vm_tools::concierge::kStartPluginVmMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  vm_tools::concierge::StartPluginVmRequest request;
+  request.set_name(std::move(name));
+  request.set_owner_id(std::move(cryptohome_id));
+  request.set_cpus(base::SysInfo::NumberOfProcessors());
+
+  // Add 2 to the base address because the network id cannot be used and the
+  // first address is the gateway.
+  request.set_guest_ipv4_address(htonl(kPluginBaseAddress + 2));
+  request.set_host_mac_address(
+      reinterpret_cast<const char*>(kPluginVmMacAddress),
+      sizeof(kPluginVmMacAddress));
+
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode StartVmRequest protobuf";
+    return -1;
+  }
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to concierge service";
+    return -1;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  vm_tools::concierge::StartVmResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse response protobuf";
+    return -1;
+  }
+
+  return LogVmStatus(request.name(), response);
+}
+
 int SyncVmTimes(dbus::ObjectProxy* proxy) {
   LOG(INFO) << "Setting VM times";
 
@@ -978,6 +1030,7 @@ int main(int argc, char** argv) {
   DEFINE_bool(list_disks, false, "List disk images");
   DEFINE_bool(start_termina_vm, false,
               "Start a termina VM with a default config");
+  DEFINE_bool(start_plugin_vm, false, "Start a plugin VM");
   DEFINE_bool(launch_application, false,
               "Launches an application in a container");
   DEFINE_bool(get_icon, false, "Get an app icon from a container within a VM");
@@ -1042,13 +1095,13 @@ int main(int argc, char** argv) {
       FLAGS_create_disk + FLAGS_create_external_disk + FLAGS_start_termina_vm +
       FLAGS_destroy_disk + FLAGS_export_disk + FLAGS_list_disks +
       FLAGS_sync_time + FLAGS_attach_usb +
-      FLAGS_detach_usb + FLAGS_list_usb_devices != 1) {
+      FLAGS_detach_usb + FLAGS_list_usb_devices + FLAGS_start_plugin_vm!= 1) {
     // clang-format on
     LOG(ERROR) << "Exactly one of --start, --stop, --stop_all, --get_vm_info, "
                << "--create_disk, --create_external_disk --destroy_disk, "
                << "--export_disk --list_disks, --start_termina_vm, "
                << "--sync_time, --attach_usb, --detach_usb, "
-               << "or --list_usb_devices must be provided";
+               << "--start_plugin_vm, or --list_usb_devices must be provided";
     return -1;
   }
 
@@ -1088,6 +1141,9 @@ int main(int argc, char** argv) {
         proxy, std::move(FLAGS_name), std::move(FLAGS_cryptohome_id),
         std::move(FLAGS_removable_media), std::move(FLAGS_image_name),
         std::move(FLAGS_image_type));
+  } else if (FLAGS_start_plugin_vm) {
+    return StartPluginVm(proxy, std::move(FLAGS_name),
+                         std::move(FLAGS_cryptohome_id));
   } else if (FLAGS_sync_time) {
     return SyncVmTimes(proxy);
   } else if (FLAGS_attach_usb) {

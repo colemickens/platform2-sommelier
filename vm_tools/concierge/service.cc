@@ -40,6 +40,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/synchronization/waitable_event.h>
+#include <base/sys_info.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <base/version.h>
@@ -50,6 +51,7 @@
 #include <vm_concierge/proto_bindings/service.pb.h>
 
 #include "vm_tools/common/constants.h"
+#include "vm_tools/concierge/plugin_vm.h"
 #include "vm_tools/concierge/seneschal_server_proxy.h"
 #include "vm_tools/concierge/ssh_keys.h"
 #include "vm_tools/concierge/subnet.h"
@@ -120,6 +122,10 @@ const std::map<string, string> kLxdEnv = {
     {"LXD_CONF", "/mnt/stateful/lxd_conf"},
     {"LXD_UNPRIVILEGED_ONLY", "true"},
 };
+
+// Base address for the plugin vm subnet.
+constexpr size_t kPluginBaseAddress = 0x64735c80;  // 100.115.92.128
+constexpr size_t kPluginSubnetPrefix = 28;
 
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is created
@@ -314,6 +320,32 @@ bool GetDiskPathFromName(
   return true;
 }
 
+bool GetPluginStatefulDirectory(const string& vm_id,
+                                const string& cryptohome_id,
+                                base::FilePath* path_out) {
+  string dirname;
+  base::Base64UrlEncode(vm_id, base::Base64UrlEncodePolicy::INCLUDE_PADDING,
+                        &dirname);
+
+  base::FilePath storage_path = base::FilePath(kCryptohomeRoot)
+                                    .Append(cryptohome_id)
+                                    .Append("pvm")
+                                    .Append(dirname);
+  if (!base::DirectoryExists(storage_path)) {
+    base::File::Error dir_error;
+    if (!base::CreateDirectoryAndGetError(storage_path, &dir_error)) {
+      LOG(ERROR) << "Failed to create stateful pvm directory in /home/root: "
+                 << base::File::ErrorToString(dir_error);
+      return false;
+    }
+  }
+
+  *path_out = storage_path;
+  return true;
+}
+
+void DoNothing() {}
+
 }  // namespace
 
 std::unique_ptr<Service> Service::Create(base::Closure quit_closure) {
@@ -336,6 +368,11 @@ Service::Service(base::Closure quit_closure)
       resync_vm_clocks_on_resume_(false),
 #endif
       weak_ptr_factory_(this) {
+  plugin_subnet_ = std::make_unique<Subnet>(
+      kPluginBaseAddress, kPluginSubnetPrefix, base::Bind(&DoNothing));
+
+  // The first address is the gateway and cannot be used by VMs.
+  plugin_gateway_ = plugin_subnet_->Allocate(kPluginBaseAddress + 1);
 }
 
 Service::~Service() {
@@ -388,6 +425,7 @@ bool Service::Init() {
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
   const std::map<const char*, ServiceMethod> kServiceMethods = {
       {kStartVmMethod, &Service::StartVm},
+      {kStartPluginVmMethod, &Service::StartPluginVm},
       {kStopVmMethod, &Service::StopVm},
       {kStopAllVmsMethod, &Service::StopAllVms},
       {kGetVmInfoMethod, &Service::GetVmInfo},
@@ -870,6 +908,171 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   vm_info->set_pid(vm->pid());
   vm_info->set_cid(vsock_cid);
   vm_info->set_seneschal_server_handle(seneschal_server_handle);
+  writer.AppendProtoAsArrayOfBytes(response);
+
+  vms_[std::make_pair(request.owner_id(), request.name())] = std::move(vm);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::StartPluginVm(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received StartPluginVm request";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  StartPluginVmRequest request;
+  StartVmResponse response;
+  // We change to a success status later if necessary.
+  response.set_status(VM_STATUS_FAILURE);
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse StartPluginVmRequest from message";
+    response.set_failure_reason("Unable to parse protobuf");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Make sure the VM has a name.
+  if (request.name().empty()) {
+    LOG(ERROR) << "Ignoring request with empty name";
+    response.set_failure_reason("Missing VM name");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  auto iter = FindVm(request.owner_id(), request.name());
+  if (iter != vms_.end()) {
+    LOG(INFO) << "VM with requested name is already running";
+
+    VmInterface::Info vm = iter->second->GetInfo();
+
+    VmInfo* vm_info = response.mutable_vm_info();
+    vm_info->set_ipv4_address(vm.ipv4_address);
+    vm_info->set_pid(vm.pid);
+    vm_info->set_cid(vm.cid);
+    vm_info->set_seneschal_server_handle(vm.seneschal_server_handle);
+    switch (vm.status) {
+      case VmInterface::Status::STARTING: {
+        response.set_status(VM_STATUS_STARTING);
+        break;
+      }
+      case VmInterface::Status::RUNNING: {
+        response.set_status(VM_STATUS_RUNNING);
+        break;
+      }
+      default: {
+        response.set_status(VM_STATUS_UNKNOWN);
+        break;
+      }
+    }
+    response.set_success(true);
+
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Mark the mac address as in use and make sure it is not already in use.
+  if (request.host_mac_address().size() != sizeof(MacAddress)) {
+    LOG(ERROR) << "Mac address is not exactly " << sizeof(MacAddress)
+               << " bytes";
+    response.set_failure_reason("Invalid mac address length");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Copy over the mac address.
+  MacAddress mac_addr;
+  memcpy(&mac_addr, request.host_mac_address().data(), sizeof(MacAddress));
+
+  if (!mac_address_generator_.Insert(mac_addr)) {
+    LOG(ERROR) << "Invalid mac address";
+    response.set_failure_reason("Invalid mac address");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Mark the ip address as in use.
+  auto ipv4_addr =
+      plugin_subnet_->Allocate(ntohl(request.guest_ipv4_address()));
+  if (!ipv4_addr) {
+    LOG(ERROR) << "Invalid IP address or address already in use";
+    response.set_failure_reason("Invalid IP address or address already in use");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Check the CPU count.
+  if (request.cpus() == 0 ||
+      request.cpus() > base::SysInfo::NumberOfProcessors()) {
+    LOG(ERROR) << "Invalid number of CPUs: " << request.cpus();
+    response.set_failure_reason("Invalid CPU count");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Get the stateful directory.
+  base::FilePath stateful_dir;
+  if (!GetPluginStatefulDirectory(request.name(), request.owner_id(),
+                                  &stateful_dir)) {
+    LOG(ERROR) << "Unable to create stateful directory for VM";
+
+    response.set_failure_reason("Unable to create stateful directory");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Create the runtime directory.
+  base::FilePath runtime_dir;
+  if (!base::CreateTemporaryDirInDir(base::FilePath(kRuntimeDir), "vm.",
+                                     &runtime_dir)) {
+    PLOG(ERROR) << "Unable to create runtime directory for VM";
+
+    response.set_failure_reason(
+        "Internal error: unable to create runtime directory");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // Now start the VM.
+  auto vm =
+      PluginVm::Create(request.cpus(), request.params(), std::move(mac_addr),
+                       std::move(ipv4_addr), plugin_subnet_->Netmask(),
+                       plugin_subnet_->AddressAtOffset(0),
+                       std::move(stateful_dir), std::move(runtime_dir));
+  if (!vm) {
+    LOG(ERROR) << "Unable to start VM";
+    response.set_failure_reason("Unable to start VM");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  VmInterface::Info info = vm->GetInfo();
+
+  VmInfo* vm_info = response.mutable_vm_info();
+  vm_info->set_ipv4_address(info.ipv4_address);
+  vm_info->set_pid(info.pid);
+  vm_info->set_cid(info.cid);
+  vm_info->set_seneschal_server_handle(info.seneschal_server_handle);
+  switch (info.status) {
+    case VmInterface::Status::STARTING: {
+      response.set_status(VM_STATUS_STARTING);
+      break;
+    }
+    case VmInterface::Status::RUNNING: {
+      response.set_status(VM_STATUS_RUNNING);
+      break;
+    }
+    default: {
+      response.set_status(VM_STATUS_UNKNOWN);
+      break;
+    }
+  }
+  response.set_success(true);
   writer.AppendProtoAsArrayOfBytes(response);
 
   vms_[std::make_pair(request.owner_id(), request.name())] = std::move(vm);
