@@ -72,10 +72,10 @@ class CrosFpBiometricsManager::CrosFpDevice : public MessageLoopForIO::Watcher {
   bool UploadTemplate(const VendorTemplate& tmpl);
   bool SetContext(std::string user_id);
   bool ResetContext();
-  // Run a sequence of EC commands to update the entropy in the
-  // MCU. If |reset| is set to true, it will additionally erase the existing
-  // entropy too.
-  bool UpdateEntropy(bool reset);
+  // Initialise the entropy in the SBP. If |reset| is true, the old entropy will
+  // be deleted. If |reset| is false, we will only add entropy, and only if no
+  // entropy had been added before.
+  bool InitEntropy(bool reset = false);
 
   int MaxTemplateCount() { return info_.template_max; }
   int TemplateVersion() { return info_.template_version; }
@@ -98,9 +98,12 @@ class CrosFpBiometricsManager::CrosFpDevice : public MessageLoopForIO::Watcher {
   bool AddEntropy(bool reset);
   // Get block id from rollback info.
   bool GetRollBackInfoId(int32_t* block_id);
-  bool SetUpFp();
   bool FpFrame(int index, std::vector<uint8_t>* frame);
   bool UpdateFpInfo();
+  // Run a sequence of EC commands to update the entropy in the
+  // MCU. If |reset| is set to true, it will additionally erase the existing
+  // entropy too.
+  bool UpdateEntropy(bool reset);
 
   base::ScopedFD cros_fd_;
   ssize_t max_read_size_;
@@ -379,21 +382,21 @@ bool CrosFpBiometricsManager::CrosFpDevice::GetRollBackInfoId(
   return true;
 }
 
-bool CrosFpBiometricsManager::CrosFpDevice::SetUpFp() {
+bool CrosFpBiometricsManager::CrosFpDevice::InitEntropy(bool reset) {
   int32_t block_id;
   if (!GetRollBackInfoId(&block_id)) {
     LOG(ERROR) << "Failed to read block ID from FPMCU.";
     return false;
   }
 
-  if (block_id != 0) {
+  if (!reset && block_id != 0) {
     // Secret has been set.
     LOG(INFO) << "Entropy source had been initialized previously.";
     return true;
   }
   LOG(INFO) << "Entropy source has not been initialized yet.";
 
-  bool success = UpdateEntropy(false);
+  bool success = UpdateEntropy(reset);
   if (!success) {
     LOG(INFO) << "Entropy addition failed.";
     return false;
@@ -412,7 +415,7 @@ bool CrosFpBiometricsManager::CrosFpDevice::Init() {
   if (!EcDevInit())
     return false;
 
-  if (!SetUpFp()) {
+  if (!InitEntropy(false)) {
     return false;
   }
 
@@ -790,8 +793,8 @@ bool CrosFpBiometricsManager::ResetSensor() {
   return true;
 }
 
-bool CrosFpBiometricsManager::ResetEntropy() {
-  bool success = cros_dev_->UpdateEntropy(true);
+bool CrosFpBiometricsManager::ResetEntropy(bool factory_init) {
+  bool success = cros_dev_->InitEntropy(!factory_init);
   if (!success) {
     LOG(INFO) << "Entropy source reset failed.";
     return false;

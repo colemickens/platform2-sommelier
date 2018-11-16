@@ -55,7 +55,7 @@ class CrosFpBiometricsManager : public BiometricsManager {
 
   bool ResetSensor() override;
 
-  bool ResetEntropy() override;
+  bool ResetEntropy(bool factory_init) override;
 
   // Kernel device exposing the MCU command interface.
   static constexpr char kCrosFpPath[] = "/dev/cros_fp";

@@ -13,6 +13,7 @@
 #include <base/message_loop/message_loop.h>
 #include <base/process/process.h>
 #include <base/time/time.h>
+#include <brillo/flag_helper.h>
 
 #include "biod/cros_fp_biometrics_manager.h"
 
@@ -20,7 +21,9 @@ namespace {
 
 static int64_t kTimeoutSeconds = 30;
 
-int DoBioWash() {
+constexpr char kHelpMessage[] = "bio_wash resets the SBP.";
+
+int DoBioWash(const bool factory_init = false) {
   base::MessageLoopForIO message_loop;
   std::vector<std::unique_ptr<biod::BiometricsManager>> managers;
   // Add all the possible BiometricsManagers available.
@@ -37,7 +40,7 @@ int DoBioWash() {
 
   int ret = 0;
   for (const auto& biometrics_manager : managers) {
-    if (!biometrics_manager->ResetEntropy()) {
+    if (!biometrics_manager->ResetEntropy(factory_init)) {
       LOG(ERROR) << "Failed to reset entropy for sensor type: "
                  << biometrics_manager->GetType();
       ret = -1;
@@ -50,6 +53,10 @@ int DoBioWash() {
 }  // namespace
 
 int main(int argc, char* argv[]) {
+  DEFINE_bool(factory_init, false, "First time initialisation in the factory.");
+
+  brillo::FlagHelper::Init(argc, argv, kHelpMessage);
+
   pid_t pid;
   pid = fork();
 
@@ -59,7 +66,7 @@ int main(int argc, char* argv[]) {
   }
 
   if (pid == 0) {
-    return DoBioWash();
+    return DoBioWash(FLAGS_factory_init);
   }
 
   auto process = base::Process::Open(pid);

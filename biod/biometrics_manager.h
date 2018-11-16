@@ -197,10 +197,9 @@ class BiometricsManager {
 
   // Perform the reset of any internal key/secret which is used for local
   // encryption of data handled by the biometrics manager.
-  //
-  // This function will necessarily clear any previous secret and replace it
-  // with a newly created one.
-  virtual bool ResetEntropy() { return true; }
+  // If |factory_init| is true, we do not actually reset the secret, only
+  // initialise one if hadn't been initialised before.
+  virtual bool ResetEntropy(bool factory_init) = 0;
 
  protected:
   virtual void EndEnrollSession() = 0;
