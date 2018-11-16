@@ -1348,16 +1348,11 @@ TEST_F(AuthPolicyTest, AuthSucceedsPasswordWillExpire) {
             Auth(kUserPrincipal, "", MakeFileDescriptor(kWillExpirePassword)));
 }
 
-// Authentication fails if there's a network issue. Authpolicyd should retry a
-// couple of times in that case.
+// Authentication fails if there's a network issue.
 TEST_F(AuthPolicyTest, AuthFailsNetworkProblem) {
-  const int kNumAuthTries = 5;
-  samba().SetFixedAuthTriesForTesting(kNumAuthTries);
   EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_EQ(ERROR_NETWORK_PROBLEM,
             Auth(kNetworkErrorUserPrincipal, "", MakePasswordFd()));
-  EXPECT_EQ(kNumAuthTries,
-            metrics_->GetNumMetricReports(METRIC_KINIT_FAILED_TRY_COUNT));
 }
 
 // Authentication fails with unsupported encryption type.

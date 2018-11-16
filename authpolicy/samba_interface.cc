@@ -5,7 +5,6 @@
 #include "authpolicy/samba_interface.h"
 
 #include <algorithm>
-#include <limits>
 #include <map>
 #include <string>
 #include <utility>
@@ -90,17 +89,6 @@ constexpr size_t kConfigSizeLimit = 256 * 1024;
 
 // SessionStateChanged signal payload we care about.
 constexpr char kSessionStarted[] = "started";
-
-// Maximum total time for user authentication tries. The last try might exceed
-// this time.
-constexpr base::TimeDelta kAuthMaxTime = base::TimeDelta::FromSeconds(10);
-// Try user authentication at least twice.
-constexpr int kAuthMinTries = 2;
-// Minimum time delta between two user authentication tries. Should be
-// relatively short because we want to reply quickly since the user might be
-// waiting.
-constexpr base::TimeDelta kAuthMinDeltaBetweenTries =
-    base::TimeDelta::FromMilliseconds(500);
 
 // Maximum smbclient tries.
 constexpr int kSmbClientMaxTries = 5;
@@ -592,58 +580,8 @@ ErrorType SambaInterface::AuthenticateUser(
     ActiveDirectoryAccountInfo* account_info) {
   ReloadDebugFlags();
 
-  // Retry strategy in case of network issues (e.g. connecting wifi, see
-  // crbug.com/846725):
-  // - Keep trying for kAuthMaxTime, doing as many tries as fit in.
-  // - Between tries make sure there's at least a time delta of
-  //   kAuthMinDeltaBetweenTries to prevent spamming.
-  // - Try at least kAuthMinTries times in case the first try takes long because
-  //   of some initial network problem.
-  base::TimeDelta max_time = kAuthMaxTime;
-  int min_tries = kAuthMinTries;
-  int max_tries = std::numeric_limits<int>::max();
-  if (auth_tries_for_testing_ > 0) {
-    // Used for tests only. Makes sure there are exactly
-    // |auth_tries_for_testing_| tries.
-    max_time = base::TimeDelta::Max();
-    min_tries = auth_tries_for_testing_;
-    max_tries = auth_tries_for_testing_;
-  }
-
-  const base::Time start_time = base::Time::Now();
-  const base::Time end_time = start_time + max_time;
-  ErrorType error = ERROR_UNKNOWN;
-  int try_count = 0;
-  for (;;) {
-    base::Time current_time = base::Time::Now();
-    base::Time try_start_time = current_time;
-    error = AuthenticateUserInternal(user_principal_name, account_id,
-                                     password_fd, account_info);
-    base::Time try_end_time = base::Time::Now();
-    try_count++;
-
-    // Only retry in case of network problems (e.g. WIFI starting up).
-    if (error != ERROR_NETWORK_PROBLEM)
-      break;
-    // Max number of tries reached?
-    if (try_count >= max_tries)
-      break;
-    // Time limit reached (with at least |min_tries|)?
-    if (try_end_time >= end_time && try_count >= min_tries)
-      break;
-
-    LOG(WARNING) << "AuthenticateUser failed with network problem. Retrying. "
-                 << try_count << " tries, time left "
-                 << (end_time - try_end_time) << ".";
-
-    // Make sure two tries are at least |kAuthMinDeltaBetweenTries| apart to
-    // prevent spamming if tries fail very quickly.
-    base::TimeDelta try_time = try_end_time - try_start_time;
-    if (try_time < kAuthMinDeltaBetweenTries &&
-        !retry_sleep_disabled_for_testing_) {
-      base::PlatformThread::Sleep(kAuthMinDeltaBetweenTries - try_time);
-    }
-  }
+  ErrorType error = AuthenticateUserInternal(user_principal_name, account_id,
+                                             password_fd, account_info);
 
   last_auth_error_ = error;
   return error;

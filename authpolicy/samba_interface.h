@@ -172,10 +172,6 @@ class SambaInterface : public TgtManager::Delegate {
     disable_seccomp_for_testing_ = disabled;
   }
 
-  void SetFixedAuthTriesForTesting(int auth_tries) {
-    auth_tries_for_testing_ = auth_tries;
-  }
-
   // Returns the anonymizer.
   const Anonymizer* GetAnonymizerForTesting() const {
     return anonymizer_.get();
@@ -518,10 +514,6 @@ class SambaInterface : public TgtManager::Delegate {
   // Disables sleeping when retrying net or smbclient (to prevent slowdowns in
   // tests).
   bool retry_sleep_disabled_for_testing_ = false;
-
-  // If set to a value > 0, AuthenticateUser() will retry this number of times
-  // in case of network errors. Only used for testing.
-  int auth_tries_for_testing_ = -1;
 
   // Keeps track of whether AutoCheckMachinePasswordChange() ran or not.
   bool did_password_change_check_run_for_testing_ = false;

@@ -503,7 +503,7 @@ int ParseTgtLifetime(const std::string& klist_out) {
       // If the caller checked klist -s beforehand, the TGT should be valid and
       // these warnings should never be printed.
       time_t now = time(NULL);
-      if (now < valid_from + kTgtWarningGraceTimeSeconds) {
+      if (now + kTgtWarningGraceTimeSeconds < valid_from) {
         LOG(WARNING) << "TGT not yet valid? (now=" << now
                      << ", valid_from=" << valid_from << ")";
       }
