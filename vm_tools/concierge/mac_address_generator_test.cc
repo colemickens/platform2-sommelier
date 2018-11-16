@@ -68,5 +68,27 @@ TEST(MacAddressGenerator, DISABLED_Duplicates) {
   }
 }
 
+// Tests that the MacAddressGenerator rejects addresses that don't have the
+// locally administered bit set.
+TEST(MacAddressGenerator, LocallyAdministered) {
+  MacAddressGenerator generator;
+
+  MacAddress addr = {0xf7, 0x69, 0xe5, 0xc4, 0x1f, 0x74};
+  addr[0] &= static_cast<uint8_t>(0xfd);
+
+  EXPECT_FALSE(generator.Insert(addr));
+}
+
+// Tests that the MacAddressGenerator rejects addresses that have the multicast
+// bit set.
+TEST(MacAddressGenerator, Multicast) {
+  MacAddressGenerator generator;
+
+  MacAddress addr = {0xf7, 0x69, 0xe5, 0xc4, 0x1f, 0x74};
+  addr[0] |= static_cast<uint8_t>(0x01);
+
+  EXPECT_FALSE(generator.Insert(addr));
+}
+
 }  // namespace concierge
 }  // namespace vm_tools
