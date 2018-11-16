@@ -82,6 +82,7 @@
       },
       'sources': [
         'concierge/mac_address_generator.cc',
+        'concierge/plugin_vm.cc',
         'concierge/seneschal_server_proxy.cc',
         'concierge/service.cc',
         'concierge/shill_client.cc',
