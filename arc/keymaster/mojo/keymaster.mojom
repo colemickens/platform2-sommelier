@@ -1,0 +1,24 @@
+// Copyright 2018 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// Next MinVersion: 1
+
+// This file defines the mojo interface between Android and Chrome OS
+// for the keymaster implementation used in ARC.
+
+module arc.mojom;
+
+// TODO(edmanp): define the interface needed by the android keymaster
+
+interface KeymasterServer {
+};
+
+interface KeymasterHost {
+  GetServer@0() => (KeymasterServer server_ptr);
+};
+
+interface KeymasterInstance {
+  Init@0(KeymasterHost host_ptr) => ();
+};
+
