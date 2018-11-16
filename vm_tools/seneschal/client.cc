@@ -33,6 +33,7 @@ constexpr char kStorageMyDrive[] = "mydrive";
 constexpr char kStorageTeamDrives[] = "teamdrives";
 constexpr char kStorageComputers[] = "computers";
 constexpr char kStorageRemovable[] = "removable";
+constexpr char kStoragePlayFiles[] = "playfiles";
 
 int StartServer(dbus::ObjectProxy* proxy, uint64_t port, uint64_t accept_cid) {
   if (port == 0) {
@@ -196,9 +197,12 @@ int SharePath(dbus::ObjectProxy* proxy,
     location = vm_tools::seneschal::SharePathRequest::DRIVEFS_COMPUTERS;
   } else if (storage_location == kStorageRemovable) {
     location = vm_tools::seneschal::SharePathRequest::REMOVABLE;
+  } else if (storage_location == kStoragePlayFiles) {
+    location = vm_tools::seneschal::SharePathRequest::PLAY_FILES;
   } else {
     LOG(ERROR) << "--storage_location is required "
-                  "(myfiles|downloads|mydrive|teamdrives|computers|removable)";
+                  "(myfiles|downloads|mydrive|teamdrives|computers|removable|"
+                  "playfiles)";
     return EXIT_FAILURE;
   }
 
@@ -374,9 +378,10 @@ int main(int argc, char** argv) {
   DEFINE_string(drivefs_mount_name, "",
                 "The DriveFS mount directory name at /media/fuse with format "
                 "drivefs-<drivefs-hash>");
-  DEFINE_string(storage_location, kStorageMyFiles,
-                "The storage location of path to share "
-                "(myfiles|downloads|mydrive|teamdrives|computers|removable)");
+  DEFINE_string(
+      storage_location, kStorageMyFiles,
+      "The storage location of path to share "
+      "(myfiles|downloads|mydrive|teamdrives|computers|removable|playfiles)");
   DEFINE_uint64(handle, 0, "The handle for the server");
   DEFINE_uint64(port, 0, "Port number on which the server should listen");
   DEFINE_uint64(

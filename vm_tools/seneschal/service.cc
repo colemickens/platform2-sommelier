@@ -52,6 +52,8 @@ constexpr char kRuntimeDir[] = "/run/seneschal";
 // The chronos uid and gid.  These are used for file system access.
 constexpr uid_t kChronosUid = 1000;
 constexpr gid_t kChronosGid = 1000;
+// Access to android files requires android-everybody gid.
+constexpr gid_t kSupplementaryGroups[] = {665357};
 
 // The gid of the chronos-access group.
 constexpr gid_t kChronosAccessGid = 1001;
@@ -581,6 +583,9 @@ std::unique_ptr<dbus::Response> Service::StartServer(
     return dbus_response;
   }
 
+  // Add android-everybody for access to android files.
+  minijail_set_supplementary_gids(jail.get(), arraysize(kSupplementaryGroups),
+                                  kSupplementaryGroups);
   // We want this process to share namespaces with its parent.
   minijail_change_uid(jail.get(), kChronosUid);
   minijail_change_gid(jail.get(), kChronosGid);
@@ -803,6 +808,10 @@ std::unique_ptr<dbus::Response> Service::SharePath(
     case SharePathRequest::MY_FILES:
       src = base::FilePath("/home/user/").Append(owner_id).Append("MyFiles");
       dst = dst.Append("MyFiles");
+      break;
+    case SharePathRequest::PLAY_FILES:
+      src = base::FilePath("/run/arc/sdcard/write/emulated/0");
+      dst = dst.Append("PlayFiles");
       break;
     default:
       LOG(ERROR) << "Unknown storage location: " << request.storage_location();
