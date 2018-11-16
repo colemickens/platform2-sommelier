@@ -465,6 +465,8 @@ void PowerSupply::Init(const base::FilePath& power_supply_path,
   prefs_->GetDouble(kPowerSupplyFullFactorPref, &full_factor_);
   full_factor_ = std::min(std::max(kEpsilon, full_factor_), 1.0);
 
+  LOG(INFO) << "Using full factor of " << full_factor_;
+
   prefs_->GetDouble(kUsbMinAcWattsPref, &usb_min_ac_watts_);
 
   int64_t shutdown_time_sec = 0;
