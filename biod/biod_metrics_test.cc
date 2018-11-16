@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-
 #include <base/macros.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -49,34 +48,46 @@ TEST_F(BiodMetricsTest, SendFpUnlockEnabled) {
 }
 
 TEST_F(BiodMetricsTest, SendFpLatencyStatsOnMatch) {
-  EXPECT_CALL(*GetMetricsLibraryMock(), SendToUMA(
-      metrics::kFpMatchDurationCapture, _, _, _, _)).Times(1);
-  EXPECT_CALL(*GetMetricsLibraryMock(), SendToUMA(
-      metrics::kFpMatchDurationMatcher, _, _, _, _)).Times(1);
-  EXPECT_CALL(*GetMetricsLibraryMock(), SendToUMA(
-      metrics::kFpMatchDurationOverall, _, _, _, _)).Times(1);
-  EXPECT_CALL(*GetMetricsLibraryMock(), SendToUMA(
-      metrics::kFpNoMatchDurationCapture, _, _, _, _)).Times(0);
-  EXPECT_CALL(*GetMetricsLibraryMock(), SendToUMA(
-      metrics::kFpNoMatchDurationMatcher, _, _, _, _)).Times(0);
-  EXPECT_CALL(*GetMetricsLibraryMock(), SendToUMA(
-      metrics::kFpNoMatchDurationOverall, _, _, _, _)).Times(0);
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(metrics::kFpMatchDurationCapture, _, _, _, _))
+      .Times(1);
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(metrics::kFpMatchDurationMatcher, _, _, _, _))
+      .Times(1);
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(metrics::kFpMatchDurationOverall, _, _, _, _))
+      .Times(1);
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(metrics::kFpNoMatchDurationCapture, _, _, _, _))
+      .Times(0);
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(metrics::kFpNoMatchDurationMatcher, _, _, _, _))
+      .Times(0);
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(metrics::kFpNoMatchDurationOverall, _, _, _, _))
+      .Times(0);
   biod_metrics_.SendFpLatencyStats(true, 0, 0, 0);
 }
 
 TEST_F(BiodMetricsTest, SendFpLatencyStatsOnNoMatch) {
-  EXPECT_CALL(*GetMetricsLibraryMock(), SendToUMA(
-      metrics::kFpMatchDurationCapture, _, _, _, _)).Times(0);
-  EXPECT_CALL(*GetMetricsLibraryMock(), SendToUMA(
-      metrics::kFpMatchDurationMatcher, _, _, _, _)).Times(0);
-  EXPECT_CALL(*GetMetricsLibraryMock(), SendToUMA(
-      metrics::kFpMatchDurationOverall, _, _, _, _)).Times(0);
-  EXPECT_CALL(*GetMetricsLibraryMock(), SendToUMA(
-      metrics::kFpNoMatchDurationCapture, _, _, _, _)).Times(1);
-  EXPECT_CALL(*GetMetricsLibraryMock(), SendToUMA(
-      metrics::kFpNoMatchDurationMatcher, _, _, _, _)).Times(1);
-  EXPECT_CALL(*GetMetricsLibraryMock(), SendToUMA(
-      metrics::kFpNoMatchDurationOverall, _, _, _, _)).Times(1);
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(metrics::kFpMatchDurationCapture, _, _, _, _))
+      .Times(0);
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(metrics::kFpMatchDurationMatcher, _, _, _, _))
+      .Times(0);
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(metrics::kFpMatchDurationOverall, _, _, _, _))
+      .Times(0);
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(metrics::kFpNoMatchDurationCapture, _, _, _, _))
+      .Times(1);
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(metrics::kFpNoMatchDurationMatcher, _, _, _, _))
+      .Times(1);
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(metrics::kFpNoMatchDurationOverall, _, _, _, _))
+      .Times(1);
   biod_metrics_.SendFpLatencyStats(false, 0, 0, 0);
 }
 

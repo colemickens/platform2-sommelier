@@ -23,7 +23,7 @@ extern const char kFpNoMatchDurationCapture[];
 extern const char kFpNoMatchDurationMatcher[];
 extern const char kFpNoMatchDurationOverall[];
 
-}   // namespace metrics
+}  // namespace metrics
 
 class BiodMetrics {
  public:
@@ -37,7 +37,9 @@ class BiodMetrics {
   bool SendFpUnlockEnabled(bool enabled);
 
   // Send matching/capture latency metrics.
-  bool SendFpLatencyStats(bool matched, int capture_ms, int match_ms,
+  bool SendFpLatencyStats(bool matched,
+                          int capture_ms,
+                          int match_ms,
                           int overall_ms);
 
   void SetMetricsLibraryForTesting(

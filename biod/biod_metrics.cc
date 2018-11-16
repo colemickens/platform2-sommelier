@@ -26,10 +26,9 @@ constexpr char kFpNoMatchDurationMatcher[] =
 constexpr char kFpNoMatchDurationOverall[] =
     "Fingerprint.Unlock.NoMatch.Duration.Overall";
 
-}   // namespace metrics
+}  // namespace metrics
 
-BiodMetrics::BiodMetrics()
-    : metrics_lib_(std::make_unique<MetricsLibrary>()) {
+BiodMetrics::BiodMetrics() : metrics_lib_(std::make_unique<MetricsLibrary>()) {
   metrics_lib_->Init();
 }
 
@@ -67,4 +66,4 @@ void BiodMetrics::SetMetricsLibraryForTesting(
   metrics_lib_ = std::move(metrics_lib);
 }
 
-}   // namespace biod
+}  // namespace biod
