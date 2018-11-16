@@ -76,7 +76,8 @@ class LoadOobeConfigUsbTest : public ::testing::Test {
     EXPECT_TRUE(base::CreateSymbolicLink(dev_id2, dev_id2_sym));
 
     string source_path;
-    base::Environment::Create()->GetVar("SRC", &source_path);
+    std::unique_ptr<base::Environment> env(base::Environment::Create());
+    EXPECT_TRUE(env->GetVar("SRC", &source_path));
     auto public_key = FilePath(source_path).Append("test.pub.key");
     auto private_key = FilePath(source_path).Append("test.pri.key");
 

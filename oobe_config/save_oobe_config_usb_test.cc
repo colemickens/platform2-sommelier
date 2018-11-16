@@ -66,7 +66,8 @@ class SaveOobeConfigUsbTest : public ::testing::Test {
               strlen(dummy_domain));
 
     string source_path;
-    base::Environment::Create()->GetVar("SRC", &source_path);
+    std::unique_ptr<base::Environment> env(base::Environment::Create());
+    EXPECT_TRUE(env->GetVar("SRC", &source_path));
     auto public_key = FilePath(source_path).Append("test.pub.key");
     auto private_key = FilePath(source_path).Append("test.pri.key");
 
