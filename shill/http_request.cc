@@ -72,7 +72,7 @@ HttpRequest::~HttpRequest() {
 }
 
 HttpRequest::Result HttpRequest::Start(
-    const HttpUrl& url,
+    const string& url_string,
     const Callback<void(std::shared_ptr<brillo::http::Response>)>&
         request_success_callback,
     const Callback<void(Result)>& request_error_callback) {
@@ -80,6 +80,12 @@ HttpRequest::Result HttpRequest::Start(
 
   DCHECK(!is_running_);
 
+  HttpUrl url;
+  if (!url.ParseFromString(url_string)) {
+    LOG(ERROR) << "Failed to parse URL string: " << url_string;
+    return kResultInvalidInput;
+  }
+  url_string_ = url_string;
   is_running_ = true;
   server_hostname_ = url.host();
   server_port_ = url.port();
@@ -97,7 +103,7 @@ HttpRequest::Result HttpRequest::Start(
   request_error_callback_ = request_error_callback;
 
   if (addr.SetAddressFromString(server_hostname_)) {
-    StartRequest(server_hostname_, server_port_, server_path_);
+    StartRequest();
   } else {
     SLOG(connection_.get(), 3) << "Looking up host: " << server_hostname_;
     Error error;
@@ -111,12 +117,9 @@ HttpRequest::Result HttpRequest::Start(
   return kResultInProgress;
 }
 
-void HttpRequest::StartRequest(const string& host,
-                               int port,
-                               const string& path) {
-  request_id_ = brillo::http::Get(
-      StringPrintf("%s:%d%s", host.c_str(), port, path.c_str()), {}, transport_,
-      success_callback_, error_callback_);
+void HttpRequest::StartRequest() {
+  request_id_ = brillo::http::Get(url_string_, {}, transport_,
+                                  success_callback_, error_callback_);
 }
 
 void HttpRequest::SuccessCallback(
@@ -221,7 +224,11 @@ void HttpRequest::GetDNSResult(const Error& error, const IPAddress& address) {
     return;
   }
 
-  StartRequest(addr_string, server_port_, server_path_);
+  // Add the host/port to IP mapping to the DNS cache to force curl to resolve
+  // the URL to the given IP. Otherwise, will do its own DNS resolution and not
+  // use the IP we provide to it.
+  transport_->ResolveHostToIp(server_hostname_, server_port_, addr_string);
+  StartRequest();
 }
 
 void HttpRequest::SendStatus(Result result) {

@@ -58,7 +58,6 @@ namespace {
 const char kTextSiteName[] = "www.chromium.org";
 const char kTextURL[] = "http://www.chromium.org/path/to/resource";
 const char kNumericURL[] = "http://10.1.1.1";
-const char kPath[] = "/path/to/resource";
 const char kInterfaceName[] = "int0";
 const char kDNSServer0[] = "8.8.8.8";
 const char kDNSServer1[] = "8.8.4.4";
@@ -203,20 +202,17 @@ class HttpRequestTest : public Test {
     request_->GetDNSResult(error, address);
   }
   HttpRequest::Result StartRequest(const string& url) {
-    HttpUrl http_url;
-    EXPECT_TRUE(http_url.ParseFromString(url));
-    return request_->Start(http_url, target_.request_success_callback(),
+    return request_->Start(url, target_.request_success_callback(),
                            target_.request_error_callback());
   }
   void ExpectCreateConnection(const string& url) {
-    HttpUrl http_url;
-    EXPECT_TRUE(http_url.ParseFromString(url));
-    string url_string = StringPrintf("%s:%d%s", http_url.host().c_str(),
-                                     http_url.port(), http_url.path().c_str());
-    EXPECT_CALL(*transport_,
-                CreateConnection(url_string, brillo::http::request_type::kGet,
-                                 _, "", "", _))
+    EXPECT_CALL(
+        *transport_,
+        CreateConnection(url, brillo::http::request_type::kGet, _, "", "", _))
         .WillOnce(Return(brillo_connection_));
+  }
+  void ExpectResolveHostToIp(const string& host, int port, const string& path) {
+    EXPECT_CALL(*transport_, ResolveHostToIp(host, port, path));
   }
   void FinishRequestAsyncSuccess(
       const brillo::http::SuccessCallback& success_callback) {
@@ -314,8 +310,10 @@ TEST_F(HttpRequestTest, TextRequestSuccess) {
 
   const string resp{"Sample response."};
   ExpectRequestSuccessCallback(resp);
-
-  ExpectCreateConnection(StringPrintf("%s%s", kNumericURL, kPath));
+  HttpUrl url;
+  EXPECT_TRUE(url.ParseFromString(kTextURL));
+  ExpectResolveHostToIp(url.host(), url.port(), kServerAddress);
+  ExpectCreateConnection(kTextURL);
   ExpectFinishRequestAsyncSuccess(resp);
 
   ExpectStop();

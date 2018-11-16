@@ -81,10 +81,6 @@ PortalDetector::PortalDetector(
       portal_result_callback_(callback),
       time_(Time::GetInstance()),
       failures_in_content_phase_(0),
-      request_success_callback_(Bind(&PortalDetector::RequestSuccessCallback,
-                                     weak_ptr_factory_.GetWeakPtr())),
-      request_error_callback_(Bind(&PortalDetector::RequestErrorCallback,
-                                   weak_ptr_factory_.GetWeakPtr())),
       is_active_(false) {}
 
 PortalDetector::~PortalDetector() {
@@ -129,11 +125,13 @@ bool PortalDetector::StartTrial(const Properties& props,
     return false;
   }
   http_url_string_ = props.http_url_string;
+  https_url_string_ = props.https_url_string;
 
-  if (http_request_) {
+  if (http_request_ || https_request_) {
     CleanupTrial();
   } else {
-    http_request_.reset(new HttpRequest(connection_, dispatcher_));
+    http_request_ = std::make_unique<HttpRequest>(connection_, dispatcher_);
+    https_request_ = std::make_unique<HttpRequest>(connection_, dispatcher_);
   }
   StartTrialAfterDelay(start_delay_milliseconds);
   return true;
@@ -149,18 +147,36 @@ void PortalDetector::StartTrialAfterDelay(int start_delay_milliseconds) {
 }
 
 void PortalDetector::StartTrialTask() {
-  HttpUrl url;
-  if (!url.ParseFromString(RandomizeURL(http_url_string_))) {
-    LOG(ERROR) << "Failed to parse URL string: " << http_url_string_;
-    CompleteTrial(Result(Phase::kUnknown, Status::kFailure));
+  base::Callback<void(std::shared_ptr<brillo::http::Response>)>
+      http_request_success_callback(
+          Bind(&PortalDetector::HttpRequestSuccessCallback,
+               weak_ptr_factory_.GetWeakPtr()));
+  base::Callback<void(HttpRequest::Result)> http_request_error_callback(
+      Bind(&PortalDetector::HttpRequestErrorCallback,
+           weak_ptr_factory_.GetWeakPtr()));
+  HttpRequest::Result http_result = http_request_->Start(
+      RandomizeURL(http_url_string_), http_request_success_callback,
+      http_request_error_callback);
+  if (http_result != HttpRequest::kResultInProgress) {
+    CompleteTrial(PortalDetector::GetPortalResultForRequestResult(http_result));
     return;
   }
 
-  HttpRequest::Result result = http_request_->Start(
-      url, request_success_callback_, request_error_callback_);
-  if (result != HttpRequest::kResultInProgress) {
-    CompleteTrial(PortalDetector::GetPortalResultForRequestResult(result));
-    return;
+  base::Callback<void(std::shared_ptr<brillo::http::Response>)>
+      https_request_success_callback(
+          Bind(&PortalDetector::HttpsRequestSuccessCallback,
+               weak_ptr_factory_.GetWeakPtr()));
+  base::Callback<void(HttpRequest::Result)> https_request_error_callback(
+      Bind(&PortalDetector::HttpsRequestErrorCallback,
+           weak_ptr_factory_.GetWeakPtr()));
+  HttpRequest::Result https_result =
+      https_request_->Start(https_url_string_, https_request_success_callback,
+                            https_request_error_callback);
+  if (https_result != HttpRequest::kResultInProgress) {
+    Result trial_result = GetPortalResultForRequestResult(https_result);
+    LOG(ERROR) << StringPrintf("HTTPS probe start failed phase==%s, status==%s",
+                               PhaseToString(trial_result.phase).c_str(),
+                               StatusToString(trial_result.status).c_str());
   }
   is_active_ = true;
 
@@ -188,6 +204,8 @@ void PortalDetector::CleanupTrial() {
 
   if (http_request_)
     http_request_->Stop();
+  if (https_request_)
+    https_request_->Stop();
 
   is_active_ = false;
 }
@@ -199,7 +217,7 @@ void PortalDetector::TimeoutTrialTask() {
 
 bool PortalDetector::Retry(int start_delay_milliseconds) {
   SLOG(connection_.get(), 3) << "In " << __func__;
-  if (!http_request_)
+  if (!http_request_ || !https_request_)
     return false;
 
   CleanupTrial();
@@ -213,14 +231,15 @@ void PortalDetector::Stop() {
   attempt_count_ = 0;
   failures_in_content_phase_ = 0;
   single_trial_ = false;
-  if (!http_request_)
+  if (!http_request_ && !https_request_)
     return;
 
   CleanupTrial();
   http_request_.reset();
+  https_request_.reset();
 }
 
-void PortalDetector::RequestSuccessCallback(
+void PortalDetector::HttpRequestSuccessCallback(
     std::shared_ptr<brillo::http::Response> response) {
   // TODO(matthewmwang): check for 0 length data as well
   if (response->GetStatusCode() == brillo::http::status_code::NoContent) {
@@ -230,8 +249,28 @@ void PortalDetector::RequestSuccessCallback(
   }
 }
 
-void PortalDetector::RequestErrorCallback(HttpRequest::Result result) {
+void PortalDetector::HttpsRequestSuccessCallback(
+    std::shared_ptr<brillo::http::Response> response) {
+  int status_code = response->GetStatusCode();
+  if (status_code == brillo::http::status_code::NoContent) {
+    // HTTPS probe success, probably no portal
+    LOG(INFO) << "HTTPS probe succeeded, probably no portal.";
+  } else {
+    // HTTPS probe didn't get 204, inconclusive
+    LOG(ERROR) << "HTTPS probe returned with status code " << status_code
+              << ". Portal detection inconclusive.";
+  }
+}
+
+void PortalDetector::HttpRequestErrorCallback(HttpRequest::Result result) {
   CompleteTrial(GetPortalResultForRequestResult(result));
+}
+
+void PortalDetector::HttpsRequestErrorCallback(HttpRequest::Result result) {
+  Result trial_result = GetPortalResultForRequestResult(result);
+  LOG(INFO) << "HTTPS probe failed with phase=="
+            << PortalDetector::PhaseToString(trial_result.phase) << ", status=="
+            << PortalDetector::StatusToString(trial_result.status);
 }
 
 // IsInProgress returns true if a trial is actively testing the
@@ -352,6 +391,7 @@ PortalDetector::Result PortalDetector::GetPortalResultForRequestResult(
       return Result(Phase::kHTTP, Status::kFailure);
     case HttpRequest::kResultHTTPTimeout:
       return Result(Phase::kHTTP, Status::kTimeout);
+    case HttpRequest::kResultInvalidInput:
     case HttpRequest::kResultUnknown:
     default:
       return Result(Phase::kUnknown, Status::kFailure);

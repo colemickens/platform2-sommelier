@@ -6,6 +6,7 @@
 #define SHILL_MOCK_HTTP_REQUEST_H_
 
 #include <memory>
+#include <string>
 
 #include <base/macros.h>
 #include <gmock/gmock.h>
@@ -23,10 +24,10 @@ class MockHttpRequest : public HttpRequest {
   MOCK_METHOD3(
       Start,
       HttpRequest::Result(
-          const HttpUrl& url,
+          const std::string& url_string,
           const base::Callback<void(std::shared_ptr<brillo::http::Response>)>&
-              read_event_callback,
-          const base::Callback<void(Result)>& result_callback));
+              request_success_callback,
+          const base::Callback<void(Result)>& request_error_callback));
   MOCK_METHOD0(Stop, void());
 
  private:

@@ -69,7 +69,8 @@ class PortalDetectorTest : public Test {
                                callback_target_.result_callback())),
         interface_name_(kInterfaceName),
         dns_servers_(kDNSServers, kDNSServers + 2),
-        http_request_(nullptr) {
+        http_request_(nullptr),
+        https_request_(nullptr) {
     current_time_.tv_sec = current_time_.tv_usec = 0;
   }
 
@@ -89,6 +90,7 @@ class PortalDetectorTest : public Test {
     Mock::VerifyAndClearExpectations(&http_request_);
     if (portal_detector()->http_request_) {
       EXPECT_CALL(*http_request(), Stop());
+      EXPECT_CALL(*https_request(), Stop());
 
       // Delete the portal detector while expectations still exist.
       portal_detector_.reset();
@@ -120,7 +122,10 @@ class PortalDetectorTest : public Test {
 
   void AssignHttpRequest() {
     http_request_ = new StrictMock<MockHttpRequest>(connection_);
-    portal_detector_->http_request_.reset(http_request_);  // Passes ownership.
+    https_request_ = new StrictMock<MockHttpRequest>(connection_);
+    portal_detector_->http_request_.reset(http_request_);
+    portal_detector_->https_request_.reset(
+        https_request_);  // Passes ownership.
   }
 
   bool StartPortalRequest(const PortalDetector::Properties& props, int delay) {
@@ -134,6 +139,8 @@ class PortalDetectorTest : public Test {
   void StartTrialTask() {
     EXPECT_CALL(*http_request(), Start(_, _, _))
         .WillOnce(Return(HttpRequest::kResultInProgress));
+    EXPECT_CALL(*https_request(), Start(_, _, _))
+        .WillOnce(Return(HttpRequest::kResultInProgress));
     EXPECT_CALL(
         dispatcher(),
         PostDelayedTask(_, _, PortalDetector::kRequestTimeoutSeconds * 1000));
@@ -141,6 +148,7 @@ class PortalDetectorTest : public Test {
   }
 
   MockHttpRequest* http_request() { return http_request_; }
+  MockHttpRequest* https_request() { return https_request_; }
   PortalDetector* portal_detector() { return portal_detector_.get(); }
   MockEventDispatcher& dispatcher() { return dispatcher_; }
   CallbackTarget& callback_target() { return callback_target_; }
@@ -151,6 +159,7 @@ class PortalDetectorTest : public Test {
     EXPECT_TRUE(callback_target_.result_callback().
                 Equals(portal_detector_->portal_result_callback_));
     EXPECT_FALSE(portal_detector_->http_request_.get());
+    EXPECT_FALSE(portal_detector_->https_request_.get());
   }
 
   void ExpectAttemptRetry(const PortalDetector::Result& result) {
@@ -185,13 +194,16 @@ class PortalDetectorTest : public Test {
     AssignHttpRequest();
   }
 
-  void ExpectRequestSuccessWithStatus(int status_code) {
+  void ExpectRequestSuccessWithStatus(int status_code, bool is_http) {
     EXPECT_CALL(*brillo_connection_, GetResponseStatusCode())
         .WillOnce(Return(status_code));
 
     auto response =
         std::make_shared<brillo::http::Response>(brillo_connection_);
-    portal_detector_->RequestSuccessCallback(response);
+    if (is_http)
+      portal_detector_->HttpRequestSuccessCallback(response);
+    else
+      portal_detector_->HttpsRequestSuccessCallback(response);
   }
 
  private:
@@ -213,6 +225,7 @@ class PortalDetectorTest : public Test {
   const string interface_name_;
   vector<string> dns_servers_;
   MockHttpRequest* http_request_;
+  MockHttpRequest* https_request_;
 };
 
 // static
@@ -250,6 +263,7 @@ TEST_F(PortalDetectorTest, IsActive) {
 
   // Finish the trial, IsActive should return false.
   EXPECT_CALL(*http_request(), Stop()).Times(2);
+  EXPECT_CALL(*https_request(), Stop()).Times(2);
   portal_detector()->CompleteTrial(PortalDetector::Result(
       PortalDetector::Phase::kContent, PortalDetector::Status::kFailure));
   EXPECT_FALSE(portal_detector()->IsActive());
@@ -267,6 +281,7 @@ TEST_F(PortalDetectorTest, StartAttemptFailed) {
 
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0)).Times(0);
   EXPECT_CALL(*http_request(), Stop()).Times(2);
+  EXPECT_CALL(*https_request(), Stop()).Times(2);
 
   // Expect a non-final failure to be relayed to the caller.
   ExpectAttemptRetry(PortalDetector::Result(PortalDetector::Phase::kDNS,
@@ -311,6 +326,7 @@ TEST_F(PortalDetectorTest, StartRepeated) {
 
   // A second call should cancel the existing trial and set up the new one.
   EXPECT_CALL(*http_request(), Stop());
+  EXPECT_CALL(*https_request(), Stop());
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 10 * 1000)).Times(1);
   EXPECT_TRUE(portal_detector()->StartAfterDelay(props, 10));
 }
@@ -325,6 +341,7 @@ TEST_F(PortalDetectorTest, TrialRetry) {
   EXPECT_CALL(*http_request(), Start(_, _, _))
       .WillOnce(Return(HttpRequest::kResultConnectionFailure));
   EXPECT_CALL(*http_request(), Stop()).Times(2);
+  EXPECT_CALL(*https_request(), Stop()).Times(2);
   EXPECT_CALL(dispatcher(),
               PostDelayedTask(
                   _, _, PortalDetector::kMinTimeBetweenAttemptsSeconds * 1000));
@@ -332,6 +349,7 @@ TEST_F(PortalDetectorTest, TrialRetry) {
 
   const int kRetryDelay = 7;
   EXPECT_CALL(*http_request(), Stop());
+  EXPECT_CALL(*https_request(), Stop());
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, kRetryDelay)).Times(1);
   EXPECT_TRUE(portal_detector()->Retry(kRetryDelay));
 }
@@ -343,6 +361,7 @@ TEST_F(PortalDetectorTest, TrialRetryFail) {
   EXPECT_TRUE(StartPortalRequest(props, 0));
 
   EXPECT_CALL(*http_request(), Stop());
+  EXPECT_CALL(*https_request(), Stop());
   portal_detector()->Stop();
 
   EXPECT_FALSE(portal_detector()->Retry(0));
@@ -377,6 +396,7 @@ TEST_F(PortalDetectorTest, AttemptCount) {
   // Expect the PortalDetector to stop the trial after
   // the final attempt.
   EXPECT_CALL(*http_request(), Stop()).Times(4);
+  EXPECT_CALL(*https_request(), Stop()).Times(4);
 
   portal_detector()->StartAfterDelay(props, 0);
   for (int i = 0; i < PortalDetector::kMaxRequestAttempts; i++) {
@@ -420,6 +440,7 @@ TEST_F(PortalDetectorTest, ReadBadHeadersRetry) {
   // Expect the PortalDetector to stop the current request each time, plus
   // an extra time in PortalDetector::Stop().
   EXPECT_CALL(*http_request(), Stop()).Times(3);
+  EXPECT_CALL(*https_request(), Stop()).Times(3);
 
   portal_detector()->StartAfterDelay(props, 0);
   for (int i = 0; i < PortalDetector::kMaxFailuresInContentPhase; i++) {
@@ -440,6 +461,7 @@ TEST_F(PortalDetectorTest, ReadBadHeader) {
                                             kNumAttempts, false));
 
   EXPECT_CALL(*http_request(), Stop());
+  EXPECT_CALL(*https_request(), Stop());
   PortalDetector::Result r = PortalDetector::Result(
       PortalDetector::Phase::kContent, PortalDetector::Status::kFailure);
   portal_detector()->CompleteAttempt(r);
@@ -452,6 +474,7 @@ TEST_F(PortalDetectorTest, RequestTimeout) {
                                             kNumAttempts, false));
 
   EXPECT_CALL(*http_request(), Stop());
+  EXPECT_CALL(*https_request(), Stop());
   PortalDetector::Result r = PortalDetector::Result(
       PortalDetector::Phase::kUnknown, PortalDetector::Status::kTimeout);
   portal_detector()->CompleteAttempt(r);
@@ -465,6 +488,7 @@ TEST_F(PortalDetectorTest, ReadPartialHeaderTimeout) {
                                             kNumAttempts, false));
 
   EXPECT_CALL(*http_request(), Stop());
+  EXPECT_CALL(*https_request(), Stop());
   PortalDetector::Result r = PortalDetector::Result(
       PortalDetector::Phase::kContent, PortalDetector::Status::kTimeout);
   portal_detector()->CompleteAttempt(r);
@@ -479,34 +503,61 @@ TEST_F(PortalDetectorTest, ReadCompleteHeader) {
                   PortalDetector::Status::kSuccess, kNumAttempts, true))));
 
   EXPECT_CALL(*http_request(), Stop());
+  EXPECT_CALL(*https_request(), Stop());
   PortalDetector::Result r = PortalDetector::Result(
       PortalDetector::Phase::kContent, PortalDetector::Status::kSuccess);
   portal_detector()->CompleteAttempt(r);
 }
 
-TEST_F(PortalDetectorTest, RequestSucess) {
+TEST_F(PortalDetectorTest, RequestSuccess) {
   StartAttempt();
+
+  // HTTPS probe does not trigger anything (for now)
+  EXPECT_CALL(callback_target(),
+              ResultCallback(IsResult(PortalDetector::Result(
+                  PortalDetector::Phase::kContent,
+                  PortalDetector::Status::kSuccess, kNumAttempts, true))))
+      .Times(0);
+  EXPECT_CALL(*http_request(), Stop()).Times(0);
+  EXPECT_CALL(*https_request(), Stop()).Times(0);
+  ExpectRequestSuccessWithStatus(204, false);
 
   EXPECT_CALL(callback_target(),
               ResultCallback(IsResult(PortalDetector::Result(
                   PortalDetector::Phase::kContent,
                   PortalDetector::Status::kSuccess, kNumAttempts, true))));
   EXPECT_CALL(*http_request(), Stop()).Times(2);
-  ExpectRequestSuccessWithStatus(204);
+  EXPECT_CALL(*https_request(), Stop()).Times(2);
+  ExpectRequestSuccessWithStatus(204, true);
 }
 
 TEST_F(PortalDetectorTest, RequestFail) {
   StartAttempt();
+
+  // HTTPS probe does not trigger anything (for now)
+  EXPECT_CALL(callback_target(),
+              ResultCallback(IsResult(PortalDetector::Result(
+                  PortalDetector::Phase::kContent,
+                  PortalDetector::Status::kFailure, kNumAttempts, false))))
+      .Times(0);
+  EXPECT_CALL(*http_request(), Stop()).Times(0);
+  EXPECT_CALL(*https_request(), Stop()).Times(0);
+  EXPECT_CALL(dispatcher(),
+              PostDelayedTask(
+                  _, _, PortalDetector::kMinTimeBetweenAttemptsSeconds * 1000))
+      .Times(0);
+  ExpectRequestSuccessWithStatus(123, false);
 
   EXPECT_CALL(callback_target(),
               ResultCallback(IsResult(PortalDetector::Result(
                   PortalDetector::Phase::kContent,
                   PortalDetector::Status::kFailure, kNumAttempts, false))));
   EXPECT_CALL(*http_request(), Stop()).Times(2);
+  EXPECT_CALL(*https_request(), Stop()).Times(2);
   EXPECT_CALL(dispatcher(),
               PostDelayedTask(
                   _, _, PortalDetector::kMinTimeBetweenAttemptsSeconds * 1000));
-  ExpectRequestSuccessWithStatus(123);
+  ExpectRequestSuccessWithStatus(123, true);
 }
 
 TEST_F(PortalDetectorTest, StartSingleTrial) {
@@ -515,6 +566,7 @@ TEST_F(PortalDetectorTest, StartSingleTrial) {
   EXPECT_CALL(*http_request(), Start(_, _, _))
       .WillOnce(Return(HttpRequest::kResultDNSFailure));
   EXPECT_CALL(*http_request(), Stop()).Times(2);
+  EXPECT_CALL(*https_request(), Stop()).Times(2);
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, _)).Times(0);
   portal_detector()->StartTrialTask();
 }
@@ -543,6 +595,9 @@ INSTANTIATE_TEST_CASE_P(
     PortalDetectorResultMappingTest,
     ::testing::Values(
         ResultMapping(HttpRequest::kResultUnknown,
+                      PortalDetector::Result(PortalDetector::Phase::kUnknown,
+                                             PortalDetector::Status::kFailure)),
+        ResultMapping(HttpRequest::kResultInvalidInput,
                       PortalDetector::Result(PortalDetector::Phase::kUnknown,
                                              PortalDetector::Status::kFailure)),
         ResultMapping(HttpRequest::kResultInProgress,

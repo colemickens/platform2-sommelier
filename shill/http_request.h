@@ -35,6 +35,7 @@ class HttpRequest {
  public:
   enum Result {
     kResultUnknown,
+    kResultInvalidInput,
     kResultInProgress,
     kResultDNSFailure,
     kResultDNSTimeout,
@@ -55,7 +56,7 @@ class HttpRequest {
   // initialize the DNS client, or kResultInProgress if the request
   // has started successfully and is now in progress.
   virtual Result Start(
-      const HttpUrl& url,
+      const std::string& url_string,
       const base::Callback<void(std::shared_ptr<brillo::http::Response>)>&
           request_success_callback,
       const base::Callback<void(Result)>& request_error_callback);
@@ -71,7 +72,7 @@ class HttpRequest {
   static const int kRequestTimeoutSeconds;
 
   void GetDNSResult(const Error& error, const IPAddress& address);
-  void StartRequest(const std::string& host, int port, const std::string& path);
+  void StartRequest();
   void SuccessCallback(brillo::http::RequestID request_id,
                        std::unique_ptr<brillo::http::Response> response);
   void ErrorCallback(brillo::http::RequestID request_id,
@@ -90,6 +91,7 @@ class HttpRequest {
   std::unique_ptr<DnsClient> dns_client_;
   std::shared_ptr<brillo::http::Transport> transport_;
   brillo::http::RequestID request_id_;
+  std::string url_string_;
   std::string server_hostname_;
   int server_port_;
   std::string server_path_;

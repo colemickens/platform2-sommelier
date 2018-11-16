@@ -210,11 +210,19 @@ class PortalDetector {
   // the start delay completes.
   void StartTrialTask();
 
-  // Callback used to return data read from the HttpRequest.
-  void RequestSuccessCallback(std::shared_ptr<brillo::http::Response> response);
+  // Callback used to return data read from the HTTP HttpRequest.
+  void HttpRequestSuccessCallback(
+      std::shared_ptr<brillo::http::Response> response);
 
-  // Callback used to return the error from the HttpRequest.
-  void RequestErrorCallback(HttpRequest::Result result);
+  // Callback used to return data read from the HTTPS HttpRequest.
+  void HttpsRequestSuccessCallback(
+      std::shared_ptr<brillo::http::Response> response);
+
+  // Callback used to return the error from the HTTP HttpRequest.
+  void HttpRequestErrorCallback(HttpRequest::Result result);
+
+  // Callback used to return the error from the HTTPS HttpRequest.
+  void HttpsRequestErrorCallback(HttpRequest::Result result);
 
   // Internal method used to clean up state and call CompleteAttempt.
   void CompleteTrial(Result result);
@@ -249,12 +257,11 @@ class PortalDetector {
   Time* time_;
   int failures_in_content_phase_;
   int trial_timeout_seconds_;
-  base::Callback<void(std::shared_ptr<brillo::http::Response>)>
-      request_success_callback_;
-  base::Callback<void(HttpRequest::Result)> request_error_callback_;
   std::unique_ptr<HttpRequest> http_request_;
+  std::unique_ptr<HttpRequest> https_request_;
 
   std::string http_url_string_;
+  std::string https_url_string_;
   base::CancelableClosure trial_;
   base::CancelableClosure trial_timeout_;
   bool is_active_;
