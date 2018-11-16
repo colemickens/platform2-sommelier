@@ -127,6 +127,19 @@
             'helper_process_receiver_fuzzer.cc',
           ],
         },
+        {
+          'target_name': 'imageloader_manifest_fuzzer',
+          'type': 'executable',
+          'includes': [
+            '../common-mk/common_fuzzer.gypi',
+          ],
+          'dependencies': [
+            'libimageloader_static',
+          ],
+          'sources': [
+            'manifest_fuzzer.cc',
+          ],
+        },
       ],
     }],
   ],
