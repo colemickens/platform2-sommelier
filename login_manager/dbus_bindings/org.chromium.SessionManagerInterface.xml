@@ -500,6 +500,15 @@
     <method name="StartDeviceWipe" />
 
     <!--
+        ClearCheckEnrollmentVpd:
+
+        Sets check_enrollment="0" in RW_VPD.
+    -->
+    <method name="ClearCheckEnrollmentVpd">
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+    </method>
+
+    <!--
         StartTPMFirmwareUpdate:
         @update_mode: Indicates the requested firmware update mode.
 

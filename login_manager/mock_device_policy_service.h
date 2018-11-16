@@ -49,6 +49,7 @@ class MockDevicePolicyService : public DevicePolicyService {
   MOCK_METHOD0(Initialize, bool(void));
   MOCK_METHOD2(ReportPolicyFileMetrics, void(bool, bool));
   MOCK_METHOD0(InstallAttributesEnterpriseMode, bool(void));
+  MOCK_METHOD1(ClearCheckEnrollmentVpd, void(const Completion&));
 
   void set_crossystem(Crossystem* crossystem) { crossystem_ = crossystem; }
   void set_vpd_process(VpdProcess* vpd_process) { vpd_process_ = vpd_process; }

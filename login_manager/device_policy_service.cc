@@ -71,16 +71,14 @@ std::string GetStrippedReleaseBoard() {
   return base::ToLowerASCII(board);
 }
 
-void HandleVpdUpdateCompletion(bool is_enrolled,
+void HandleVpdUpdateCompletion(bool ignore_error,
                                const PolicyService::Completion& completion,
                                bool success) {
   if (completion.is_null()) {
     return;
   }
 
-  // We have to notify Chrome that the process has finished. Ignore the VPD
-  // update error if the device is not enrolled.
-  if (success || !is_enrolled) {
+  if (success || ignore_error) {
     completion.Run(brillo::ErrorPtr());
     return;
   }
@@ -622,9 +620,20 @@ bool DevicePolicyService::UpdateSystemSettings(const Completion& completion) {
   updates.push_back(std::make_pair(Crossystem::kCheckEnrollment,
                                    std::to_string(is_enrolled)));
 
+  // Note that VPD update errors will be ignored if the device is not enrolled.
   return vpd_process_->RunInBackground(
       updates, false,
-      base::Bind(&HandleVpdUpdateCompletion, is_enrolled, completion));
+      base::Bind(&HandleVpdUpdateCompletion, !is_enrolled, completion));
+}
+
+void DevicePolicyService::ClearCheckEnrollmentVpd(
+    const Completion& completion) {
+  if (!vpd_process_->RunInBackground(
+          {{Crossystem::kCheckEnrollment, "0"}}, false,
+          base::Bind(&HandleVpdUpdateCompletion, false, completion))) {
+    completion.Run(CreateError(dbus_error::kVpdUpdateFailed,
+                               "Failed to run VPD update in the background."));
+  }
 }
 
 PolicyStore* DevicePolicyService::GetChromeStore() {
