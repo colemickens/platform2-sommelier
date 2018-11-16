@@ -65,6 +65,7 @@ class MockPlatform : public Platform {
   MOCK_CONST_METHOD1(DirectoryExists, bool(const std::string& path));
   MOCK_CONST_METHOD1(IsDirectoryEmpty, bool(const std::string& path));
   MOCK_CONST_METHOD1(CreateDirectory, bool(const std::string& path));
+  MOCK_CONST_METHOD1(RemoveEmptyDirectory, bool(const std::string& path));
   MOCK_CONST_METHOD3(SetOwnership,
                      bool(const std::string& path,
                           uid_t user_id,
@@ -337,15 +338,37 @@ TEST_F(DrivefsHelperTest, SetupDirectoryForFUSEAccess_Owned) {
   EXPECT_TRUE(SetupDirectoryForFUSEAccess(kSomeDirPath));
 }
 
-// Verifies that SetupDirectoryForFUSEAccess refuses to chown an existing dir.
+// Verifies that SetupDirectoryForFUSEAccess refuses to chown an existing dir if
+// it can't delete it.
+TEST_F(DrivefsHelperTest,
+       SetupDirectoryForFUSEAccess_AlreadyExistsWithWrongOwnerAndCantDelete) {
+  EXPECT_CALL(platform_, DirectoryExists(kSomeDirPath)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, GetOwnership(kSomeDirPath, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kFilesUID),
+                      SetArgPointee<2>(kFilesAccessGID), Return(true)));
+  EXPECT_CALL(platform_, RemoveEmptyDirectory(kSomeDirPath))
+      .WillOnce(Return(false));
+  EXPECT_CALL(platform_, SetOwnership(_, _, _)).Times(0);
+
+  EXPECT_FALSE(SetupDirectoryForFUSEAccess(kSomeDirPath));
+}
+
+// Verifies that SetupDirectoryForFUSEAccess deletes an empty existing dir with
+// incorrent owners and then performs the usual no directory exists actions.
 TEST_F(DrivefsHelperTest,
        SetupDirectoryForFUSEAccess_AlreadyExistsWithWrongOwner) {
   EXPECT_CALL(platform_, DirectoryExists(kSomeDirPath)).WillOnce(Return(true));
   EXPECT_CALL(platform_, GetOwnership(kSomeDirPath, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(kFilesUID),
                       SetArgPointee<2>(kFilesAccessGID), Return(true)));
-  EXPECT_CALL(platform_, SetOwnership(_, _, _)).Times(0);
-  EXPECT_FALSE(SetupDirectoryForFUSEAccess(kSomeDirPath));
+  EXPECT_CALL(platform_, RemoveEmptyDirectory(kSomeDirPath))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, CreateDirectory(kSomeDirPath)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, SetPermissions(kSomeDirPath, 0770))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, SetOwnership(kSomeDirPath, kMountUID, kFilesAccessGID))
+      .WillOnce(Return(true));
+  EXPECT_TRUE(SetupDirectoryForFUSEAccess(kSomeDirPath));
 }
 
 }  // namespace

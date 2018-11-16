@@ -125,12 +125,14 @@ bool DrivefsHelper::SetupDirectoryForFUSEAccess(
       LOG(WARNING) << "Can't access datadir '" << path << "'";
       return false;
     }
-    if (current_uid != mounter_uid || current_gid != files_gid) {
+    if (current_uid == mounter_uid && current_gid == files_gid) {
+      return true;
+    }
+    if (!platform()->RemoveEmptyDirectory(path)) {
       LOG(WARNING) << "Existing datadir '" << path << "' has unexpected owner "
                    << current_uid << ":" << current_gid;
       return false;
     }
-    return true;
   }
   if (!platform()->CreateDirectory(path)) {
     LOG(ERROR) << "Failed to create datadir '" << path << "'";
