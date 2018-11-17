@@ -40,7 +40,7 @@ class KernelCollectorTest : public ::testing::Test {
  protected:
   void SetUpSuccessfulCollect();
   void SetUpSuccessfulWatchdog(const FilePath&);
-  void ComputeKernelStackSignatureCommon();
+  void ComputeKernelStackSignatureCommon(KernelCollector::ArchKind arch);
   void WatchdogOptedOutHelper(const FilePath&);
   void WatchdogOKHelper(const FilePath&);
   void WatchdogOnlyLastBootHelper(const FilePath&);
@@ -413,23 +413,26 @@ TEST_F(KernelCollectorTest, WatchdogOnlyLastBootOld) {
 }
 
 // Perform tests which are common across architectures
-void KernelCollectorTest::ComputeKernelStackSignatureCommon() {
+void KernelCollectorTest::ComputeKernelStackSignatureCommon(
+    KernelCollector::ArchKind arch) {
+  collector_.set_arch(arch);
+
   const char kStackButNoPC[] =
       "<4>[ 6066.829029]  [<790340af>] __do_softirq+0xa6/0x143\n";
   EXPECT_EQ("kernel--83615F0A",
-            collector_.ComputeKernelStackSignature(kStackButNoPC, false));
+            collector_.ComputeKernelStackSignature(kStackButNoPC));
 
   const char kMissingEverything[] =
       "<4>[ 6066.829029]  [<790340af>] ? __do_softirq+0xa6/0x143\n";
   EXPECT_EQ("kernel-UnspecifiedStackSignature",
-            collector_.ComputeKernelStackSignature(kMissingEverything, false));
+            collector_.ComputeKernelStackSignature(kMissingEverything));
 
   // Long message.
   const char kTruncatedMessage[] =
       "<0>[   87.485611] Kernel panic - not syncing: 01234567890123456789"
       "01234567890123456789X\n";
   EXPECT_EQ("kernel-0123456789012345678901234567890123456789-00000000",
-            collector_.ComputeKernelStackSignature(kTruncatedMessage, false));
+            collector_.ComputeKernelStackSignature(kTruncatedMessage));
 }
 
 TEST_F(KernelCollectorTest, ComputeKernelStackSignatureARM) {
@@ -480,9 +483,7 @@ TEST_F(KernelCollectorTest, ComputeKernelStackSignatureARM) {
 
   collector_.set_arch(KernelCollector::kArchArm);
   EXPECT_EQ("kernel-write_breakme-97D3E92F",
-            collector_.ComputeKernelStackSignature(kBugToPanic, false));
-
-  ComputeKernelStackSignatureCommon();
+            collector_.ComputeKernelStackSignature(kBugToPanic));
 }
 
 TEST_F(KernelCollectorTest, ComputeKernelStackSignatureMIPS) {
@@ -537,9 +538,7 @@ TEST_F(KernelCollectorTest, ComputeKernelStackSignatureMIPS) {
 
   collector_.set_arch(KernelCollector::kArchMips);
   EXPECT_EQ("kernel-lkdtm_do_action-5E600A6B",
-            collector_.ComputeKernelStackSignature(kBugToPanic, false));
-
-  ComputeKernelStackSignatureCommon();
+            collector_.ComputeKernelStackSignature(kBugToPanic));
 }
 
 TEST_F(KernelCollectorTest, ComputeKernelStackSignatureX86) {
@@ -560,12 +559,12 @@ TEST_F(KernelCollectorTest, ComputeKernelStackSignatureX86) {
 
   collector_.set_arch(KernelCollector::kArchX86);
   EXPECT_EQ("kernel-ieee80211_stop_tx_ba_session-DE253569",
-            collector_.ComputeKernelStackSignature(kBugToPanic, false));
+            collector_.ComputeKernelStackSignature(kBugToPanic));
 
   const char kPCButNoStack[] =
       "<0>[ 6066.829029] EIP: [<b82d7c15>] ieee80211_stop_tx_ba_session+";
   EXPECT_EQ("kernel-ieee80211_stop_tx_ba_session-00000000",
-            collector_.ComputeKernelStackSignature(kPCButNoStack, false));
+            collector_.ComputeKernelStackSignature(kPCButNoStack));
 
   const char kBreakmeBug[] =
       "<4>[  180.492137]  [<790970c6>] ? handle_mm_fault+0x67f/0x96d\n"
@@ -589,7 +588,7 @@ TEST_F(KernelCollectorTest, ComputeKernelStackSignatureX86) {
       "<4>[  180.503538]  [<7937b96c>] do_trap+0x8e/0xa7\n"
       "<4>[  180.503555]  [<79003d70>] ? do_invalid_op+0x0/0x80\n";
   EXPECT_EQ("kernel-write_breakme-122AB3CD",
-            collector_.ComputeKernelStackSignature(kBreakmeBug, false));
+            collector_.ComputeKernelStackSignature(kBreakmeBug));
 
   const char kPCLineTooOld[] =
       "<4>[  174.492137]  [<790970c6>] ignored_function+0x67f/0x96d\n"
@@ -601,7 +600,7 @@ TEST_F(KernelCollectorTest, ComputeKernelStackSignatureX86) {
       "<0>[  180.502026] Kernel panic - not syncing: Fatal exception\n"
       "<4>[  180.502806]  [<79379aba>] printk+0x14/0x1a\n";
   EXPECT_EQ("kernel-Fatal exception-ED4C84FE",
-            collector_.ComputeKernelStackSignature(kPCLineTooOld, false));
+            collector_.ComputeKernelStackSignature(kPCLineTooOld));
 
   // Panic without EIP line.
   const char kExamplePanicOnly[] =
@@ -613,7 +612,7 @@ TEST_F(KernelCollectorTest, ComputeKernelStackSignatureX86) {
       "<4>[   87.485674]  [<8133f663>] panic+0x3e/0xe4\n"
       "<4>[   87.485689]  [<810d062e>] write_breakme+0xaa/0x124\n";
   EXPECT_EQ("kernel-Testing panic-E0FC3552",
-            collector_.ComputeKernelStackSignature(kExamplePanicOnly, false));
+            collector_.ComputeKernelStackSignature(kExamplePanicOnly));
 
   // Panic from hung task.
   const char kHungTaskBreakMe[] =
@@ -647,7 +646,7 @@ TEST_F(KernelCollectorTest, ComputeKernelStackSignatureX86) {
       "<5>[  720.460862]  [<81043a8c>] ? __init_kthread_worker+0x2d/0x2d\n"
       "<5>[  720.461106]  [<8137eb9e>] kernel_thread_helper+0x6/0x10\n";
   EXPECT_EQ("kernel-(HANG)-hung_task: blocked tasks-600B37EA",
-            collector_.ComputeKernelStackSignature(kHungTaskBreakMe, false));
+            collector_.ComputeKernelStackSignature(kHungTaskBreakMe));
 
   // Panic with all question marks in the last stack trace.
   const char kUncertainStackTrace[] =
@@ -759,8 +758,98 @@ TEST_F(KernelCollectorTest, ComputeKernelStackSignatureX86) {
   // The first trace contains only uncertain entries and its hash is 00000000,
   // so, if we used that, the signature would be kernel-add_timer-00000000.
   // Instead we use the second-to-last trace for the hash.
-  EXPECT_EQ("kernel-add_timer-B5178878", collector_.ComputeKernelStackSignature(
-                                             kUncertainStackTrace, false));
+  EXPECT_EQ("kernel-add_timer-B5178878",
+            collector_.ComputeKernelStackSignature(kUncertainStackTrace));
+}
 
-  ComputeKernelStackSignatureCommon();
+TEST_F(KernelCollectorTest, ComputeKernelStackSignatureX86_64) {
+  collector_.set_arch(KernelCollector::kArchX86_64);
+  const char kStackTraceWithRIP[] =
+      "<6>[ 1504.062071] tpm_tis tpm_tis: command 0x65 (size 18) returned code "
+      "0x0\n"
+      "<6>[ 1504.489032] tpm_tis tpm_tis: command 0x1e (size 274) returned "
+      "code 0x0\n"
+      "<1>[ 1505.850798] BUG: unable to handle kernel NULL pointer dereference "
+      "at 0000000000000008\n"
+      "<1>[ 1505.850823] IP: [<ffffffff94fb0c27>] list_del_init+0x8/0x1b\n"
+      "<5>[ 1505.850843] PGD 0\n"
+      "<5>[ 1505.850854] Oops: 0002 [#1] SMP\n"
+      "<0>[ 1505.853049] gsmi: Log Shutdown Reason 0x03\n"
+      "<5>[ 1505.853059] Modules linked in: ip6t_REJECT rfcomm i2c_dev uinput "
+      "zram(C) memconsole zsmalloc(C) snd_hda_codec_realtek snd_hda_codec_hdmi "
+      "snd_hda_intel snd_hda_codec snd_hwdep snd_pcm snd_page_alloc fuse "
+      "nf_conntrack_ipv6 nf_defrag_ipv6 ip6table_filter ip6_tables "
+      "snd_seq_midi snd_seq_midi_event snd_rawmidi snd_seq snd_seq_device "
+      "snd_timer r8169 ath9k_btcoex ath9k_common_btcoex ath9k_hw_btcoex ath "
+      "mac80211 cfg80211 ath3k btusb btrtl btbcm btintel bluetooth\n"
+      "<5>[ 1505.853231] CPU 1\n"
+      "<5>[ 1505.853240] Pid: 2663, comm: quipper Tainted: G WC 3.8.11 #1\n"
+      "<5>[ 1505.853254] RIP: 0010:[<ffffffff94fb0c27>] [<ffffffff94fb0c27>] "
+      "list_del_init+0x8/0x1b\n"
+      "<5>[ 1505.853272] RSP: 0000:ffff880171789dd8 EFLAGS: 00010293\n"
+      "<5>[ 1505.853282] RAX: ffff880171789de8 RBX: ffff8801715e6b40 RCX: "
+      "000000000000003c\n"
+      "<5>[ 1505.853294] RDX: 0000000000000000 RSI: 0000000000000004 RDI: "
+      "ffff8801715e6b40\n"
+      "<5>[ 1505.853305] RBP: ffff880171789e20 R08: ffffffff956b7ba8 R09: "
+      "0000000000000000\n"
+      "<5>[ 1505.853317] R10: 0000000000000004 R11: 000000000000000f R12: "
+      "ffff880171789de8\n"
+      "<5>[ 1505.853329] R13: ffff8801715e6c80 R14: ffff880177c040d8 R15: "
+      "ffff880171789f00\n"
+      "<5>[ 1505.853341] FS: 00007fd0e720f740(0000) GS:ffff88017cb00000(0000) "
+      "knlGS:0000000000000000\n"
+      "<5>[ 1505.853353] CS: 0010 DS: 0000 ES: 0000 CR0: 0000000080050033\n"
+      "<5>[ 1505.853364] CR2: 0000000000000008 CR3: 000000016087c000 CR4: "
+      "00000000000607e0\n"
+      "<5>[ 1505.853375] DR0: 0000000000000000 DR1: 0000000000000000 DR2: "
+      "0000000000000000\n"
+      "<5>[ 1505.853386] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: "
+      "0000000000000400\n"
+      "<5>[ 1505.853398] Process quipper (pid: 2663, threadinfo "
+      "ffff880171788000, task ffff880174dda580)\n"
+      "<5>[ 1505.853409] Stack:\n"
+      "<5>[ 1505.853416] ffff880171789e20 ffffffff94fb13c8 ffff8801715e6b40 "
+      "ffff8801715e6c80\n"
+      "<5>[ 1505.853440] 00000000fc9daf41 ffff880171789e30 ffff880175cfac60 "
+      "ffff880171789e30\n"
+      "<5>[ 1505.853463] ffff880174dda838 ffff880171789e60 ffffffff94fb36ea "
+      "ffff880176bb3dc0\n"
+      "<5>[ 1505.853487] Call Trace:\n"
+      "<5>[ 1505.853498] [<ffffffff94fb13c8>] ? namespace_unlock+0x98/0x10e\n"
+      "<5>[ 1505.853510] [<ffffffff94fb36ea>] put_mnt_ns+0x19d/0x1c4\n"
+      "<5>[ 1505.853523] [<ffffffff94f0fb50>] free_nsproxy+0x1d/0x75\n"
+      "<5>[ 1505.853535] [<ffffffff94f0fd5c>] "
+      "switch_task_namespaces+0x47/0x4e\n"
+      "<5>[ 1505.853547] [<ffffffff94f0fd73>] exit_task_namespaces+0x10/0x12\n"
+      "<5>[ 1505.853561] [<ffffffff94ef54ea>] do_exit+0x74b/0x8f7\n"
+      "<5>[ 1505.853573] [<ffffffff94e84a98>] ? "
+      "__percpu_counter_add+0x46/0x51\n"
+      "<5>[ 1505.853587] [<ffffffff94f8a0de>] ? do_munmap+0x353/0x364\n"
+      "<5>[ 1505.853599] [<ffffffff94ef57fb>] do_group_exit+0x42/0xb0\n"
+      "<5>[ 1505.853611] [<ffffffff94ef587d>] sys_exit_group+0x14/0x14\n"
+      "<5>[ 1505.853623] [<ffffffff95353928>] system_call_fastpath+0x16/0x1b\n"
+      "<5>[ 1505.853633] Code: f1 be 00 00 40 00 48 89 e5 e8 fc fe ff ff 48 3d "
+      "00 f0 ff ff 77 0b 48 c7 80 b0 00 00 00 ea ff ff ff 5d c3 48 8b 17 48 8b "
+      "47 08 55 <48> 89 42 08 48 89 e5 48 89 10 48 89 3f 48 89 7f 08 5d c3 0f "
+      "1f\n"
+      "<1>[ 1505.853861] RIP [<ffffffff94fb0c27>] list_del_init+0x8/0x1b\n"
+      "<5>[ 1505.853877] RSP <ffff880171789dd8>\n"
+      "<5>[ 1505.853885] CR2: 0000000000000008\n"
+      "<4>[ 1505.853914] ---[ end trace 6559e9c0a9497905 ]---\n"
+      "<0>[ 1505.861341] Kernel panic - not syncing: Fatal exception\n"
+      "<0>[ 1505.861358] Kernel Offset: 0x13e00000 from 0xffffffff81000000 "
+      "(relocation range: 0xffffffff80000000-0xffffffffbfffffff)\n"
+      "<0>[ 1505.861462] gsmi: Log Shutdown Reason 0x02\n"
+      "";
+
+  EXPECT_EQ("kernel-list_del_init-590B9789",
+            collector_.ComputeKernelStackSignature(kStackTraceWithRIP));
+}
+
+TEST_F(KernelCollectorTest, ComputeKernelStackSignatureCommonAllArches) {
+  ComputeKernelStackSignatureCommon(KernelCollector::kArchArm);
+  ComputeKernelStackSignatureCommon(KernelCollector::kArchMips);
+  ComputeKernelStackSignatureCommon(KernelCollector::kArchX86);
+  ComputeKernelStackSignatureCommon(KernelCollector::kArchX86_64);
 }

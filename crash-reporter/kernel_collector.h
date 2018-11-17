@@ -49,8 +49,7 @@ class KernelCollector : public CrashCollector {
   bool Collect();
 
   // Compute a stack signature string from a kernel dump.
-  std::string ComputeKernelStackSignature(const std::string& kernel_dump,
-                                          bool print_diagnostics);
+  std::string ComputeKernelStackSignature(const std::string& kernel_dump);
 
   // Set the architecture of the crash dumps we are looking at.
   void set_arch(ArchKind arch) { arch_ = arch; }
@@ -166,16 +165,13 @@ class KernelCollector : public CrashCollector {
                           bool* record_found);
 
   void ProcessStackTrace(pcrecpp::StringPiece kernel_dump,
-                         bool print_diagnostics,
                          unsigned* hash,
                          float* last_stack_timestamp,
                          bool* is_watchdog_crash);
   bool FindCrashingFunction(pcrecpp::StringPiece kernel_dump,
-                            bool print_diagnostics,
                             float stack_trace_timestamp,
                             std::string* crashing_function);
   bool FindPanicMessage(pcrecpp::StringPiece kernel_dump,
-                        bool print_diagnostics,
                         std::string* panic_message);
 
   // Returns the architecture kind for which we are built.
