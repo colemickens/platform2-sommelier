@@ -189,27 +189,27 @@
         }],
       ],
     },
+    {
+      'target_name': 'trunks_test',
+      'type': 'static_library',
+      'standalone_static_library': 1,
+      'sources': [
+        'mock_authorization_delegate.cc',
+        'mock_blob_parser.cc',
+        'mock_command_transceiver.cc',
+        'mock_hmac_session.cc',
+        'mock_policy_session.cc',
+        'mock_session_manager.cc',
+        'mock_tpm.cc',
+        'mock_tpm_state.cc',
+        'mock_tpm_utility.cc',
+        'trunks_factory_for_test.cc',
+      ],
+    },
   ],
   'conditions': [
     ['USE_test == 1', {
       'targets': [
-        {
-          'target_name': 'trunks_test',
-          'type': 'static_library',
-          'standalone_static_library': 1,
-          'sources': [
-            'mock_authorization_delegate.cc',
-            'mock_blob_parser.cc',
-            'mock_command_transceiver.cc',
-            'mock_hmac_session.cc',
-            'mock_policy_session.cc',
-            'mock_session_manager.cc',
-            'mock_tpm.cc',
-            'mock_tpm_state.cc',
-            'mock_tpm_utility.cc',
-            'trunks_factory_for_test.cc',
-          ],
-        },
         {
           'target_name': 'trunks_testrunner',
           'type': 'executable',
@@ -268,6 +268,28 @@
           'dependencies': [
             'trunks',
           ],
+        },
+        {
+          'target_name': 'trunks_resource_manager_fuzzer',
+          'type': 'executable',
+          'includes': [
+            '../common-mk/common_fuzzer.gypi',
+            '../common-mk/common_test.gypi',
+          ],
+          'sources': [
+            'fuzzed_command_transceiver.cc',
+            'resource_manager_fuzzer.cc',
+          ],
+          'dependencies': [
+            'trunks',
+            'trunks_test',
+            'trunksd_lib',
+          ],
+          'variables': {
+            'deps': [
+              'libchrome-test-<(libbase_ver)',  # For FuzzedDataProvider
+            ],
+          },
         },
       ],
     }],
