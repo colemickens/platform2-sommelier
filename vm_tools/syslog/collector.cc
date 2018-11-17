@@ -33,7 +33,7 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <chromeos/scoped_minijail.h>
-#include <grpc++/grpc++.h>
+#include <grpcpp/grpcpp.h>
 
 #include "vm_tools/syslog/parser.h"
 

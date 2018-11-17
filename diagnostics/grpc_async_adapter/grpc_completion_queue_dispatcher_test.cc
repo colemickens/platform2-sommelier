@@ -16,8 +16,8 @@
 #include <base/task_runner.h>
 #include <base/time/time.h>
 #include <gmock/gmock.h>
-#include <grpc++/alarm.h>
-#include <grpc++/grpc++.h>
+#include <grpcpp/alarm.h>
+#include <grpcpp/grpcpp.h>
 #include <gtest/gtest.h>
 
 namespace diagnostics {

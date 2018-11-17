@@ -13,7 +13,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/sequenced_task_runner.h>
 #include <base/time/time.h>
-#include <grpc++/grpc++.h>
+#include <grpcpp/grpcpp.h>
 
 #include "container_host.grpc.pb.h"  // NOLINT(build/include)
 

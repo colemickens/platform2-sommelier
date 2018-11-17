@@ -8,7 +8,7 @@
 #include <memory>
 
 #include <base/macros.h>
-#include <grpc++/grpc++.h>
+#include <grpcpp/grpcpp.h>
 #include <string>
 #include <vector>
 

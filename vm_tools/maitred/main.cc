@@ -23,7 +23,7 @@
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/stringprintf.h>
 #include <base/threading/thread.h>
-#include <grpc++/grpc++.h>
+#include <grpcpp/grpcpp.h>
 
 #include "vm_tools/common/constants.h"
 #include "vm_tools/maitred/init.h"

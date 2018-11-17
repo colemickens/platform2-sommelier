@@ -12,7 +12,7 @@
 #include <base/macros.h>
 #include <base/synchronization/lock.h>
 #include <base/synchronization/waitable_event.h>
-#include <grpc++/grpc++.h>
+#include <grpcpp/grpcpp.h>
 
 #include "vm_host.grpc.pb.h"  // NOLINT(build/include)
 

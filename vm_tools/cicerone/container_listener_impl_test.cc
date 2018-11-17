@@ -7,8 +7,8 @@
 #include <string>
 
 #include <gmock/gmock.h>
-#include <grpc++/impl/call.h>
-#include <grpc++/grpc++.h>
+#include <grpcpp/impl/call.h>
+#include <grpcpp/grpcpp.h>
 #include <gtest/gtest.h>
 #include <chromeos/dbus/service_constants.h>
 #include <vm_applications/proto_bindings/apps.pb.h>

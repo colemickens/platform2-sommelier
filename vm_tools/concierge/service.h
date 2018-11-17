@@ -28,7 +28,7 @@
 #include <dbus/bus.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
-#include <grpc++/grpc++.h>
+#include <grpcpp/grpcpp.h>
 
 #include "vm_tools/concierge/power_manager_client.h"
 #include "vm_tools/concierge/shill_client.h"

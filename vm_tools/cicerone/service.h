@@ -23,7 +23,7 @@
 #include <dbus/bus.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
-#include <grpc++/grpc++.h>
+#include <grpcpp/grpcpp.h>
 #include <vm_applications/proto_bindings/apps.pb.h>
 #include <vm_cicerone/proto_bindings/cicerone_service.pb.h>
 #include <vm_concierge/proto_bindings/service.pb.h>

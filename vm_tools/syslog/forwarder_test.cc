@@ -10,7 +10,7 @@
 
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
-#include <grpc++/grpc++.h>
+#include <grpcpp/grpcpp.h>
 #include <gtest/gtest.h>
 
 #include "vm_host.pb.h"  // NOLINT(build/include)

@@ -16,7 +16,7 @@
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
 #include <gmock/gmock.h>
-#include <grpc++/grpc++.h>
+#include <grpcpp/grpcpp.h>
 #include <gtest/gtest.h>
 
 #include "diagnostics/grpc_async_adapter/async_grpc_client.h"

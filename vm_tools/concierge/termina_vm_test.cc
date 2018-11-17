@@ -34,7 +34,7 @@
 #include <google/protobuf/message.h>
 #include <google/protobuf/repeated_field.h>
 #include <google/protobuf/util/message_differencer.h>
-#include <grpc++/grpc++.h>
+#include <grpcpp/grpcpp.h>
 #include <gtest/gtest.h>
 
 #include "vm_tools/concierge/vsock_cid_pool.h"

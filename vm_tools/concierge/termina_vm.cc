@@ -22,7 +22,7 @@
 #include <base/sys_info.h>
 #include <base/time/time.h>
 #include <google/protobuf/repeated_field.h>
-#include <grpc++/grpc++.h>
+#include <grpcpp/grpcpp.h>
 
 #include "vm_tools/common/constants.h"
 #include "vm_tools/concierge/tap_device_builder.h"

@@ -12,7 +12,7 @@
 #include <base/callback.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
-#include <grpc++/grpc++.h>
+#include <grpcpp/grpcpp.h>
 
 namespace base {
 class SequencedTaskRunner;

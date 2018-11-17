@@ -16,7 +16,7 @@
 #include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>
 #include <google/protobuf/repeated_field.h>
-#include <grpc++/grpc++.h>
+#include <grpcpp/grpcpp.h>
 
 #include "container_guest.grpc.pb.h"  // NOLINT(build/include)
 #include "vm_tools/common/constants.h"

@@ -9,7 +9,7 @@
 
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
-#include <grpc++/grpc++.h>
+#include <grpcpp/grpcpp.h>
 
 #include "vm_host.grpc.pb.h"  // NOLINT(build/include)
 

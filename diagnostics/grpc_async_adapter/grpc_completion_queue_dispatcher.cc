@@ -10,7 +10,7 @@
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/sequenced_task_runner.h>
-#include <grpc++/grpc++.h>
+#include <grpcpp/grpcpp.h>
 
 namespace diagnostics {
 namespace internal {

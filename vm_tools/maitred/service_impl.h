@@ -10,7 +10,7 @@
 
 #include <base/callback.h>
 #include <base/macros.h>
-#include <grpc++/grpc++.h>
+#include <grpcpp/grpcpp.h>
 
 #include "vm_guest.grpc.pb.h"  // NOLINT(build/include)
 #include "vm_tools/maitred/init.h"

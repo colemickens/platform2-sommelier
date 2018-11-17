@@ -13,7 +13,7 @@
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
 #include <base/message_loop/message_loop.h>
-#include <grpc++/grpc++.h>
+#include <grpcpp/grpcpp.h>
 
 #include "container_host.grpc.pb.h"  // NOLINT(build/include)
 #include "vm_tools/garcon/package_kit_proxy.h"
