@@ -33,6 +33,9 @@ service Diagnosticsd {
 
   // Runs EC command using the EC driver and returns the command response.
   rpc RunEcCommand(RunEcCommandRequest) returns (RunEcCommandResponse) {}
+
+  // Retrieves EC property.
+  rpc GetEcProperty(GetEcPropertyRequest) returns (GetEcPropertyResponse) {}
 }
 
 // Parameters for the SendMessageToUi RPC.
@@ -221,5 +224,42 @@ message RunEcCommandResponse {
 
   // Data blob with encoded EC command response. This field is set when
   // |status| is |STATUS_OK|.
+  bytes payload = 2;
+}
+
+// Parameters for the GetEcProperty RPC.
+message GetEcPropertyRequest {
+  // EC properties. Each value corresponds to a specific sysfs file exposed by
+  // the EC driver.
+  //
+  // TODO(lamzin): add full list of properties.
+  enum Property {
+    PROPERTY_UNSET = 0;
+    // Relative file path is "properties/global_mic_mute_led".
+    PROPERTY_GLOBAL_MIC_MUTE_LED = 1;
+  }
+
+  // Must be distinct from |PROPERTY_UNSET|.
+  Property property = 1;
+}
+
+// Return value of the GetEcProperty RPC.
+message GetEcPropertyResponse {
+  enum Status {
+    STATUS_UNSET = 0;
+    // The EC property was successfully retrieved.
+    STATUS_OK = 1;
+    // The request was rejected due to some required field being missing.
+    STATUS_ERROR_REQUIRED_FIELD_MISSING = 2;
+    // The EC property retrieving failed due to EC driver error.
+    STATUS_ERROR_ACCESSING_DRIVER = 3;
+  }
+
+  // Is guaranteed to be distinct from |STATUS_UNSET|.
+  Status status = 1;
+
+  // Data blob with the value of the EC property specified by the |property|
+  // request field.
+  // This field is set when |status| is |STATUS_OK|.
   bytes payload = 2;
 }
