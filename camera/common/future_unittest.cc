@@ -32,6 +32,11 @@ class FutureTest : public ::testing::Test {
 
   void SignalCallback(const base::Callback<void()>& cb) { cb.Run(); }
 
+  template <typename T>
+  void SignalCallbackWith(const base::Callback<void(T)>& cb, T val) {
+    cb.Run(std::move(val));
+  }
+
   void CancelCallback() { relay_.CancelAllFutures(); }
 
  protected:
@@ -62,6 +67,27 @@ TEST_F(FutureTest, WaitTest) {
   future = Future<void>::Create(&relay_);
   future->Set();
   ASSERT_TRUE(future->Wait());
+}
+
+TEST_F(FutureTest, GetTest) {
+  auto future = Future<int>::Create(&relay_);
+  thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind(&FutureTest::SignalCallbackWith<int>, base::Unretained(this),
+                 cros::GetFutureCallback(future), 42));
+  ASSERT_EQ(future->Get(), 42);
+}
+
+TEST_F(FutureTest, GetMoveOnlyTest) {
+  auto future = Future<std::unique_ptr<int>>::Create(&relay_);
+  auto ptr = std::make_unique<int>(42);
+  thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind(&FutureTest::SignalCallbackWith<std::unique_ptr<int>>,
+                 base::Unretained(this), cros::GetFutureCallback(future),
+                 base::Passed(std::move(ptr))));
+  ptr = future->Get();
+  ASSERT_EQ(*ptr, 42);
 }
 
 TEST_F(FutureTest, TimeoutTest) {

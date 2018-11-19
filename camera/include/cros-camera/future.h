@@ -65,16 +65,9 @@ class Future : public base::RefCountedThreadSafe<Future<T>> {
   }
 
   /* Sets the value and then wake up the waiter. */
-  void Set(T&& value) {
+  void Set(T value) {
     VLOGF_ENTER();
     value_ = std::move(value);
-    lock_.Signal();
-  }
-
-  /* Sets the value and then wake up the waiter. */
-  void Set(const T& value) {
-    VLOGF_ENTER();
-    value_ = value;
     lock_.Signal();
   }
 
@@ -135,7 +128,7 @@ class Future<void> : public base::RefCountedThreadSafe<Future<void>> {
 
 template <typename T>
 void FutureCallback(scoped_refptr<Future<T>> future, T ret) {
-  future->Set(ret);
+  future->Set(std::move(ret));
 }
 
 template <typename T>

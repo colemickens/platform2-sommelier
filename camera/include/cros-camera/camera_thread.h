@@ -117,8 +117,7 @@ class CROS_CAMERA_EXPORT CameraThread {
   void ProcessSyncTaskOnThread(const base::Callback<T()>& task,
                                scoped_refptr<cros::Future<T>> future) {
     VLOGF_ENTER();
-    auto result = task.Run();
-    future->Set(result);
+    future->Set(task.Run());
   }
 
   template <typename T>
