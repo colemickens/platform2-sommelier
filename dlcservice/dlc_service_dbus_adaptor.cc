@@ -81,21 +81,46 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
   }
 
   // Creates DLC module storage.
+  base::File::Error file_err;
+
   // Creates image A.
   base::FilePath image_a_path =
       utils::GetDlcModuleImagePath(content_dir_, id_in, 0);
-  base::CreateDirectory(image_a_path.DirName());
+  if (!base::CreateDirectoryAndGetError(image_a_path.DirName(), &file_err)) {
+    std::string error_str = "Failed to create slot A DLC directory: " +
+                            base::File::ErrorToString(file_err);
+    LogAndSetError(err, error_str);
+    return false;
+  }
   base::File image_a(image_a_path, base::File::FLAG_CREATE |
                                        base::File::FLAG_READ |
                                        base::File::FLAG_WRITE);
+  if (!image_a.IsValid()) {
+    std::string error_str = "Failed to create slot A DLC image file: " +
+                            base::File::ErrorToString(image_a.error_details());
+    LogAndSetError(err, error_str);
+    return false;
+  }
 
   // Creates image B.
   base::FilePath image_b_path =
       utils::GetDlcModuleImagePath(content_dir_, id_in, 1);
-  base::CreateDirectory(image_b_path.DirName());
+  if (!base::CreateDirectoryAndGetError(image_b_path.DirName(), &file_err)) {
+    std::string error_str = "Failed to create slot B DLC directory: " +
+                            base::File::ErrorToString(file_err);
+    LogAndSetError(err, error_str);
+    return false;
+  }
   base::File image_b(image_b_path, base::File::FLAG_CREATE |
                                        base::File::FLAG_READ |
                                        base::File::FLAG_WRITE);
+  if (!image_b.IsValid()) {
+    std::string error_str = "Failed to create slot B DLC image file: " +
+                            base::File::ErrorToString(image_b.error_details());
+    LogAndSetError(err, error_str);
+    return false;
+  }
+
   // TODO(xiaochu): parse DLC manifest file to set image size.
   // https://crbug.com/904539
   // Currently we set the image file to be 1000K for all DLC modules.
