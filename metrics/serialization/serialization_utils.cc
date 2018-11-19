@@ -100,8 +100,8 @@ bool ReadMessage(int fd, std::string* message_out, size_t* bytes_used_out) {
   CHECK(message_out);
 
   int result;
-  int32_t message_size;
-  const int32_t message_hdr_size = sizeof(message_size);
+  uint32_t message_size;
+  const size_t message_hdr_size = sizeof(message_size);
   // The file containing the metrics does not leave the device, so the writer
   // and the reader always have the same endianness.
   result = HANDLE_EINTR(read(fd, &message_size, sizeof(message_size)));
@@ -123,7 +123,8 @@ bool ReadMessage(int fd, std::string* message_out, size_t* bytes_used_out) {
   // length field and the content.
   if (message_size > SerializationUtils::kMessageMaxLength) {
     LOG(ERROR) << "message too long, length = " << message_size;
-    if (HANDLE_EINTR(lseek(fd, message_size - 4, SEEK_CUR)) == -1) {
+    if (HANDLE_EINTR(lseek(fd, message_size - message_hdr_size, SEEK_CUR)) ==
+        -1) {
       PLOG(ERROR) << "error while skipping message. Aborting.";
       return false;
     }
