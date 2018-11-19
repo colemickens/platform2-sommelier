@@ -18,6 +18,14 @@ std::map<ModelId, ModelMetadata> GetModelMetadata() {
         {{"z", 0}},
       },
     },
+    {
+      ModelId::SMART_DIM, {
+        ModelId::SMART_DIM,
+        "mlservice-model-smart_dim-20181115.tflite",
+        {{"input", 3}},
+        {{"output", 4}},
+      },
+    },
   };
 }
 

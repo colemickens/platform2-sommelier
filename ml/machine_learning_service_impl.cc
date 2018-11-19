@@ -51,7 +51,7 @@ MachineLearningServiceImpl::MachineLearningServiceImpl(
 void MachineLearningServiceImpl::LoadModel(ModelSpecPtr spec,
                                            ModelRequest request,
                                            const LoadModelCallback& callback) {
-  if (spec->id <= ModelId::UNKNOWN || spec->id > ModelId::TEST_MODEL) {
+  if (spec->id <= ModelId::UNKNOWN || spec->id > ModelId::kMax) {
     callback.Run(LoadModelResult::MODEL_SPEC_ERROR);
     return;
   }
