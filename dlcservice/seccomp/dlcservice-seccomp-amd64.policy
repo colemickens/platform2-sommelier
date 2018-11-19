@@ -46,3 +46,13 @@ sendmsg: 1
 recvmsg: 1
 epoll_wait: 1
 getpid: 1
+getdents: 1
+statfs: 1
+mkdir: 1
+futex: 1
+ftruncate: 1
+nanosleep: 1
+chmod: 1
+lstat: 1
+unlink: 1
+rmdir: 1
