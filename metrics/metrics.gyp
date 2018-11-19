@@ -201,6 +201,19 @@
             'metrics_library_consent_id_fuzzer.cc',
           ],
         },
+        {
+          'target_name': 'metrics_serialization_utils_fuzzer',
+          'type': 'executable',
+          'includes': [
+            '../common-mk/common_fuzzer.gypi',
+          ],
+          'dependencies': [
+            '../metrics/libmetrics-<(libbase_ver).gyp:libmetrics-<(libbase_ver)',
+          ],
+          'sources': [
+            'serialization/metrics_serialization_utils_fuzzer.cc',
+          ],
+        },
       ],
     }],
   ],
