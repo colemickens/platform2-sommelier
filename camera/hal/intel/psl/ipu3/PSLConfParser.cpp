@@ -861,9 +861,8 @@ void PSLConfParser::checkField(const char *name, const char **atts)
         mCurrentDataField = FIELD_SENSOR_INFO_IPU3;
     } else if (!strcmp(name, "MediaCtl_elements_IPU3")) {
         mCurrentDataField = FIELD_MEDIACTL_ELEMENTS_IPU3;
-    } else if (isCommonSection(name)) {
-        mCurrentDataField = (DataField) commonFieldForName(name);
     }
+
     LOG1("@%s: name:%s, field %d", __FUNCTION__, name, mCurrentDataField);
     return;
 }
@@ -935,9 +934,8 @@ void PSLConfParser::endElement(void *userData, const char *name)
              || !strcmp(name, "Sensor_info_IPU3")
              || !strcmp(name, "MediaCtl_elements_IPU3") ) {
         ipuParse->mCurrentDataField = FIELD_INVALID;
-    } else if(ipuParse->isCommonSection(name)) {
-        ipuParse->mCurrentDataField = FIELD_INVALID;
     }
+
     return;
 }
 

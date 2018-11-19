@@ -25,67 +25,6 @@
 #include "cros-camera/v4l2_device.h"
 
 NAMESPACE_DECLARATION {
-/**
- * Table to map the name  of the sections in the xml file to the enum used
- * during parsing
- */
-IPSLConfParser::Item IPSLConfParser::sSectionNames[NUMBER_OF_COMMON_SECTIONS] =
-{
-        {HAL_TUNING, "hal_tuning"}
-};
-
-void IPSLConfParser::handleCommonSection(int sectionId, int sensorIndex,
-                                        const char *name, const char **atts)
-{
-    LOG2("@%s: sectionId: %d, sensor: %d", __FUNCTION__, sectionId, sensorIndex);
-    UNUSED(sensorIndex);
-
-    switch(sectionId) {
-    case HAL_TUNING:
-        // HAL tuning section is only once in XML, but the information needs
-        // to be stored for all cameras
-        for (unsigned int i = 0; i < mCaps.size(); i++) {
-            parseHalTuningSection(mCaps[i], i, name, atts);
-        }
-        break;
-    default:
-        LOGE("@%s: Unknown section id %d - BUG?", __FUNCTION__, sectionId);
-    }
-}
-/**
- * Parse the tags from hal_tuning section of the XML that are per camera
- * but that are common for all PSL's
- * Store the results in the CameraCapInfo
- * \param info [OUT]: class used to store the settings
- * \param sensorIndex [IN]: sensor index for per-camera settings
- * \param name [IN]: name of the XML tag to parse
- * \param atts [IN]: value of the XML tag
- */
-void IPSLConfParser::parseHalTuningSection(CameraCapInfo* info, int sensorIndex,
-                                          const char *name, const char **atts)
-{
-   LOG1("@%s: sensor: %d tag: %s", __FUNCTION__, sensorIndex, name);
-}
-
-int IPSLConfParser::commonFieldForName(const char * name)
-{
-    for (int i = 0; i < NUMBER_OF_COMMON_SECTIONS; i++)
-        if (strncmp(name,sSectionNames[i].name, SECTION_NAME_MAX_LENGTH) == 0)
-            return sSectionNames[i].id;
-
-    return -1;
-}
-
-bool IPSLConfParser::isCommonSection(const char * name)
-{
-    return commonFieldForName(name) > 0;
-}
-
-bool IPSLConfParser::isCommonSection(int sectionId)
-{
-    return (sectionId >= COMMON_SECTION_BASE);
-}
-
 /*
  * Helper function for converting string to int for the
  * V4L2 pixel formats requested for media controller set-up.

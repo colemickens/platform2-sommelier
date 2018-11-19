@@ -52,27 +52,10 @@ public:
     static const char *getSensorMediaDeviceName() { return "nullptr"; }
 
 protected:  /* types */
-    static const int COMMON_SECTION_BASE = 0x8000;
-    static const int NUMBER_OF_COMMON_SECTIONS = 1;
     static const size_t SECTION_NAME_MAX_LENGTH = 64;
-    enum DataField {
-        HAL_TUNING = COMMON_SECTION_BASE,
-    };
-    struct Item {
-        int id;
-        const char* name;
-    };
-    static Item sSectionNames[NUMBER_OF_COMMON_SECTIONS];
 
 protected: /* methods */
     static int getPixelFormatAsValue(const char* format);
-    bool isCommonSection(const char *name);
-    bool isCommonSection(int sectionId);
-    int  commonFieldForName(const char *name);
-    void handleCommonSection(int sectionId, int sensorIndex,
-                             const char *name, const char **atts);
-    void parseHalTuningSection(CameraCapInfo* info, int sensorIndex,
-                               const char *name, const char **atts);
 
 protected:
     std::string mXmlFileName;
