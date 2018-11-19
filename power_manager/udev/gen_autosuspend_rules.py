@@ -91,6 +91,8 @@ USB_IDS += [
   "0489:e09f",
   # LiteOn (parrot)
   "04ca:3006",
+  # LiteOn (aleena)
+  "04ca:3016",
   # LiteOn (scarlet)
   "04ca:301a",
   # Atheros (stumpy, stout)
