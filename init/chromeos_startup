@@ -574,6 +574,13 @@ if [ "${DISABLE_STATEFUL_SECURITY_HARDENING}" = "false" ]; then
   umount /sys/kernel/security
 fi
 
+# Skip rollback restore check if not supported on this device.
+if [ -x "$(command -v rollback_finish_restore)" ]; then
+  # If a rollback is in progress, restores preserved data.
+  # If a rollback is not in progress, it just exits.
+  rollback_finish_restore
+fi
+
 bootstat post-startup
 
 # Always return success to avoid killing init
