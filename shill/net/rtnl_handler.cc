@@ -259,18 +259,19 @@ void RTNLHandler::NextRequest(uint32_t seq) {
 }
 
 void RTNLHandler::ParseRTNL(InputData* data) {
-  unsigned char* buf = data->buf;
-  unsigned char* end = buf + data->len;
+  const unsigned char* buf = data->buf;
+  const unsigned char* end = buf + data->len;
 
   while (buf < end) {
-    struct nlmsghdr* hdr = reinterpret_cast<struct nlmsghdr*>(buf);
+    const struct nlmsghdr* hdr = reinterpret_cast<const struct nlmsghdr*>(buf);
     if (!NLMSG_OK(hdr, static_cast<unsigned int>(end - buf)))
       break;
 
     SLOG(this, 5) << __func__ << ": received payload (" << end - buf << ")";
 
     RTNLMessage msg;
-    ByteString payload(reinterpret_cast<unsigned char*>(hdr), hdr->nlmsg_len);
+    ByteString payload(reinterpret_cast<const unsigned char*>(hdr),
+                       hdr->nlmsg_len);
     SLOG(this, 5) << "RTNL received payload length " << payload.GetLength()
                   << ": \"" << payload.HexEncode() << "\"";
     if (!msg.Decode(payload)) {

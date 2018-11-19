@@ -15,9 +15,10 @@ namespace shill {
 
 struct SHILL_EXPORT InputData {
   InputData() : buf(nullptr), len(0) {}
-  InputData(unsigned char* in_buf, ssize_t in_len) : buf(in_buf), len(in_len) {}
+  InputData(const unsigned char* in_buf, ssize_t in_len)
+      : buf(in_buf), len(in_len) {}
 
-  unsigned char* buf;
+  const unsigned char* buf;
   ssize_t len;
 };
 

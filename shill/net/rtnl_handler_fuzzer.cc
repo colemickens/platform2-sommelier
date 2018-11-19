@@ -11,14 +11,14 @@ namespace shill {
 
 class RTNLHandlerFuzz {
  public:
-  static void Run(const uint8_t *data, size_t size) {
+  static void Run(const uint8_t* data, size_t size) {
     base::AtExitManager exit_manager;
-    InputData input((unsigned char *)data, size);
+    InputData input(static_cast<const unsigned char*>(data), size);
     RTNLHandler::GetInstance()->ParseRTNL(&input);
   }
 };
 
-extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   RTNLHandlerFuzz::Run(data, size);
   return 0;
 }

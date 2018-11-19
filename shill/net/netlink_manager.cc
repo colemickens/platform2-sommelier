@@ -661,8 +661,8 @@ void NetlinkManager::OnRawNlMessageReceived(InputData* data) {
     LOG(ERROR) << __func__ << "() called with null header.";
     return;
   }
-  unsigned char* buf = data->buf;
-  unsigned char* end = buf + data->len;
+  const unsigned char* buf = data->buf;
+  const unsigned char* end = buf + data->len;
   while (buf < end) {
     NetlinkPacket packet(buf, end - buf);
     if (!packet.IsValid()) {
