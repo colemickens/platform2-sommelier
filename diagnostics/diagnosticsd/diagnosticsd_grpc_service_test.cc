@@ -10,13 +10,14 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
-#include <base/files/file_util.h>
+#include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <brillo/bind_lambda.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "diagnostics/diagnosticsd/diagnosticsd_grpc_service.h"
+#include "diagnostics/diagnosticsd/file_test_utils.h"
 #include "diagnostics/diagnosticsd/protobuf_test_utils.h"
 
 #include "diagnosticsd.pb.h"  // NOLINT(build/include)
@@ -28,12 +29,47 @@ namespace diagnostics {
 
 namespace {
 
+// Folder path exposed by sysfs EC driver.
+constexpr char kEcDriverSysfsPath[] = "sys/bus/platform/devices/GOOG000C:00/";
+
+// Folder path to EC properties exposed by sysfs EC driver. Relative path to
+// |kEcDriverSysfsPath|.
+constexpr char kEcDriverSysfsPropertiesPath[] = "properties/";
+
+// EC property |global_mic_mute_led|.
+constexpr char kEcPropertyGlobalMicMuteLed[] = "global_mic_mute_led";
+
+constexpr char kFakeFileContentsChars[] = "\0fake row 1\nfake row 2\n";
+
+template <class T>
+base::Callback<void(std::unique_ptr<T>)> GrpcCallbackResponseSaver(
+    std::unique_ptr<T>* response) {
+  return base::Bind(
+      [](std::unique_ptr<T>* response, std::unique_ptr<T> received_response) {
+        *response = std::move(received_response);
+        ASSERT_TRUE(*response);
+      },
+      base::Unretained(response));
+}
+
+std::unique_ptr<grpc_api::GetEcPropertyResponse> MakeEcPropertyResponse(
+    grpc_api::GetEcPropertyResponse::Status status,
+    const std::string& payload) {
+  auto response = std::make_unique<grpc_api::GetEcPropertyResponse>();
+  response->set_status(status);
+  response->set_payload(payload);
+  return response;
+}
+
 class MockDiagnosticsdGrpcServiceDelegate
     : public DiagnosticsdGrpcService::Delegate {};
 
 // Tests for the DiagnosticsdGrpcService class.
 class DiagnosticsdGrpcServiceTest : public testing::Test {
  protected:
+  const std::string kFakeFileContents{std::begin(kFakeFileContentsChars),
+                                      std::end(kFakeFileContentsChars)};
+
   DiagnosticsdGrpcServiceTest() = default;
 
   void SetUp() override {
@@ -43,39 +79,29 @@ class DiagnosticsdGrpcServiceTest : public testing::Test {
 
   DiagnosticsdGrpcService* service() { return &service_; }
 
-  void CreateDirRecursivelyInTempDir(const base::FilePath& relative_dir_path) {
-    if (relative_dir_path == base::FilePath(base::FilePath::kCurrentDirectory))
-      return;
-    CreateDirRecursivelyInTempDir(relative_dir_path.DirName());
-    EXPECT_TRUE(
-        base::CreateDirectory(temp_dir_.GetPath().Append(relative_dir_path)));
-  }
-
-  void StoreFileInTempDir(const base::FilePath& relative_file_path,
-                          const std::string& file_contents) {
-    EXPECT_EQ(base::WriteFile(temp_dir_.GetPath().Append(relative_file_path),
-                              file_contents.c_str(), file_contents.size()),
-              file_contents.size());
-  }
-
   void ExecuteGetProcData(grpc_api::GetProcDataRequest::Type request_type,
                           std::vector<grpc_api::FileDump>* file_dumps) {
     auto request = std::make_unique<grpc_api::GetProcDataRequest>();
     request->set_type(request_type);
     std::unique_ptr<grpc_api::GetProcDataResponse> response;
-    service()->GetProcData(
-        std::move(request),
-        base::Bind(
-            [](std::unique_ptr<grpc_api::GetProcDataResponse>* response,
-               std::unique_ptr<grpc_api::GetProcDataResponse>
-                   received_response) {
-              *response = std::move(received_response);
-            },
-            base::Unretained(&response)));
+    service()->GetProcData(std::move(request),
+                           GrpcCallbackResponseSaver(&response));
+
     // Expect the method to return immediately.
     ASSERT_TRUE(response);
     file_dumps->assign(response->file_dump().begin(),
                        response->file_dump().end());
+  }
+
+  void ExecuteGetEcProperty(
+      grpc_api::GetEcPropertyRequest::Property request_property,
+      std::unique_ptr<grpc_api::GetEcPropertyResponse>* response) {
+    auto request = std::make_unique<grpc_api::GetEcPropertyRequest>();
+    request->set_property(request_property);
+
+    service()->GetEcProperty(std::move(request),
+                             GrpcCallbackResponseSaver(response));
+    ASSERT_TRUE(response);
   }
 
   grpc_api::FileDump MakeFileDump(
@@ -89,6 +115,8 @@ class DiagnosticsdGrpcServiceTest : public testing::Test {
     file_dump.set_contents(file_contents);
     return file_dump;
   }
+
+  base::FilePath temp_dir_path() const { return temp_dir_.GetPath(); }
 
  private:
   base::ScopedTempDir temp_dir_;
@@ -107,6 +135,19 @@ TEST_F(DiagnosticsdGrpcServiceTest, GetProcDataUnsetType) {
       << GetProtosRangeDebugString(file_dumps.begin(), file_dumps.end());
 }
 
+// Test that GetEcProperty() returns invalid property error status when
+// property is unset or invalid.
+TEST_F(DiagnosticsdGrpcServiceTest, GetEcPropertyInputPropertyIsUnset) {
+  std::unique_ptr<grpc_api::GetEcPropertyResponse> response;
+  ExecuteGetEcProperty(grpc_api::GetEcPropertyRequest::PROPERTY_UNSET,
+                       &response);
+  auto expected_response = MakeEcPropertyResponse(
+      grpc_api::GetEcPropertyResponse::STATUS_ERROR_REQUIRED_FIELD_MISSING,
+      std::string());
+  EXPECT_THAT(*response, ProtobufEquals(*expected_response))
+      << "Actual response: {" << response->ShortDebugString() << "}";
+}
+
 namespace {
 
 // Tests for the GetProcData() method of DiagnosticsdGrpcServiceTest when a
@@ -123,10 +164,6 @@ class SingleProcFileDiagnosticsdGrpcServiceTest
           grpc_api::GetProcDataRequest::Type /* proc_data_request_type */,
           std::string /* relative_file_path */>> {
  protected:
-  static constexpr char kFakeFileContentsChars[] = "\0fake row 1\nfake row 2\n";
-  const std::string kFakeFileContents{std::begin(kFakeFileContentsChars),
-                                      std::end(kFakeFileContentsChars)};
-
   // Accessors to individual test parameters from the test parameter tuple
   // returned by gtest's GetParam():
 
@@ -136,19 +173,19 @@ class SingleProcFileDiagnosticsdGrpcServiceTest
   base::FilePath relative_file_path() const {
     return base::FilePath(std::get<1>(GetParam()));
   }
-};
 
-// Need external definition.
-constexpr char
-    SingleProcFileDiagnosticsdGrpcServiceTest::kFakeFileContentsChars[];
+  base::FilePath absolute_file_path() const {
+    return temp_dir_path().Append(relative_file_path());
+  }
+};
 
 }  // namespace
 
 // Test that GetProcData() returns a single item with the requested file data
 // when the file exists.
 TEST_P(SingleProcFileDiagnosticsdGrpcServiceTest, Basic) {
-  CreateDirRecursivelyInTempDir(relative_file_path().DirName());
-  StoreFileInTempDir(relative_file_path(), kFakeFileContents);
+  EXPECT_TRUE(
+      WriteFileAndCreateParentDirs(absolute_file_path(), kFakeFileContents));
 
   std::vector<grpc_api::FileDump> file_dumps;
   ExecuteGetProcData(proc_data_request_type(), &file_dumps);
@@ -181,5 +218,71 @@ INSTANTIATE_TEST_CASE_P(
         std::tie(grpc_api::GetProcDataRequest::FILE_NET_NETSTAT,
                  "proc/net/netstat"),
         std::tie(grpc_api::GetProcDataRequest::FILE_NET_DEV, "proc/net/dev")));
+
+namespace {
+
+// Tests for the GetEcProperty() method of DiagnosticsdGrpcServiceTest.
+//
+// This is a parameterized test with the following parameters:
+// * |ec_property| - property of the GetEcProperty() request to be executed
+//   (see GetEcPropertyRequest::Property);
+// * |sysfs_file_name| - sysfs file in |kEcDriverSysfsPropertiesPath|
+//   properties folder which is expected to be read by the executed
+//   GetEcProperty() request.
+class GetEcPropertyDiagnosticsdGrpcServiceTest
+    : public DiagnosticsdGrpcServiceTest,
+      public testing::WithParamInterface<
+          std::tuple<grpc_api::GetEcPropertyRequest::Property /* ec_property */,
+                     std::string /* sysfs_file_name */>> {
+ protected:
+  grpc_api::GetEcPropertyRequest::Property ec_property() {
+    return std::get<0>(GetParam());
+  }
+
+  std::string sysfs_file_name() const { return std::get<1>(GetParam()); }
+
+  base::FilePath sysfs_file_path() const {
+    return temp_dir_path()
+        .Append(kEcDriverSysfsPath)
+        .Append(kEcDriverSysfsPropertiesPath)
+        .Append(sysfs_file_name());
+  }
+};
+
+}  // namespace
+
+// Test that GetEcProperty() returns EC property value when appropriate
+// sysfs file exists.
+TEST_P(GetEcPropertyDiagnosticsdGrpcServiceTest, SysfsFileExists) {
+  EXPECT_TRUE(
+      WriteFileAndCreateParentDirs(sysfs_file_path(), kFakeFileContents));
+  std::unique_ptr<grpc_api::GetEcPropertyResponse> response;
+  ExecuteGetEcProperty(ec_property(), &response);
+  ASSERT_TRUE(response);
+  auto expected_response = MakeEcPropertyResponse(
+      grpc_api::GetEcPropertyResponse::STATUS_OK, kFakeFileContents);
+  EXPECT_THAT(*response, ProtobufEquals(*expected_response))
+      << "Actual response: {" << response->ShortDebugString() << "}";
+}
+
+// Test that GetEcProperty() returns accessing driver error status when
+// appropriate sysfs file does not exist.
+TEST_P(GetEcPropertyDiagnosticsdGrpcServiceTest, SysfsFileDoesNotExist) {
+  std::unique_ptr<grpc_api::GetEcPropertyResponse> response;
+  ExecuteGetEcProperty(ec_property(), &response);
+  ASSERT_TRUE(response);
+  auto expected_response = MakeEcPropertyResponse(
+      grpc_api::GetEcPropertyResponse::STATUS_ERROR_ACCESSING_DRIVER,
+      std::string());
+  EXPECT_THAT(*response, ProtobufEquals(*expected_response))
+      << "Actual response: {" << response->ShortDebugString() << "}";
+}
+
+INSTANTIATE_TEST_CASE_P(
+    ,
+    GetEcPropertyDiagnosticsdGrpcServiceTest,
+    testing::Values(
+        std::tie(grpc_api::GetEcPropertyRequest::PROPERTY_GLOBAL_MIC_MUTE_LED,
+                 kEcPropertyGlobalMicMuteLed)));
 
 }  // namespace diagnostics

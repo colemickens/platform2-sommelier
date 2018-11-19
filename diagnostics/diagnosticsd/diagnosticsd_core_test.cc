@@ -9,7 +9,6 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/files/file_path.h>
-#include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
@@ -35,7 +34,9 @@
 #include "diagnostics/diagnosticsd/diagnosticsd_core.h"
 #include "diagnostics/diagnosticsd/fake_browser.h"
 #include "diagnostics/diagnosticsd/fake_diagnostics_processor.h"
+#include "diagnostics/diagnosticsd/file_test_utils.h"
 #include "diagnostics/diagnosticsd/mojo_test_utils.h"
+#include "diagnostics/diagnosticsd/protobuf_test_utils.h"
 #include "diagnosticsd.pb.h"  // NOLINT(build/include)
 #include "mojo/diagnosticsd.mojom.h"
 
@@ -408,10 +409,7 @@ TEST_F(BootstrappedDiagnosticsdCoreTest,
 TEST_F(BootstrappedDiagnosticsdCoreTest, GetProcDataGrpcCall) {
   const std::string kFakeFileContents = "foo";
   const base::FilePath file_path = temp_dir_path().Append("proc/uptime");
-  ASSERT_TRUE(base::CreateDirectory(temp_dir_path().Append("proc")));
-  ASSERT_EQ(base::WriteFile(file_path, kFakeFileContents.c_str(),
-                            kFakeFileContents.size()),
-            kFakeFileContents.size());
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(file_path, kFakeFileContents));
 
   grpc_api::GetProcDataRequest request;
   request.set_type(grpc_api::GetProcDataRequest::FILE_UPTIME);
@@ -431,6 +429,31 @@ TEST_F(BootstrappedDiagnosticsdCoreTest, GetProcDataGrpcCall) {
       *response, expected_response))
       << "Obtained: " << response->ShortDebugString()
       << ",\nExpected: " << expected_response.ShortDebugString();
+}
+
+// Test that the GetEcProperty() method exposed by the daemon's gRPC server
+// returns a dump of the corresponding file from the disk.
+TEST_F(BootstrappedDiagnosticsdCoreTest, GetEcPropertyGrpcCall) {
+  const base::FilePath file_path = temp_dir_path().Append(
+      "sys/bus/platform/devices/GOOG000C:00/properties/global_mic_mute_led");
+  const std::string kFakeFileContents = "1";
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(file_path, kFakeFileContents));
+
+  grpc_api::GetEcPropertyRequest request;
+  request.set_property(
+      grpc_api::GetEcPropertyRequest::PROPERTY_GLOBAL_MIC_MUTE_LED);
+  std::unique_ptr<grpc_api::GetEcPropertyResponse> response;
+  base::RunLoop run_loop;
+  fake_diagnostics_processor()->GetEcProperty(
+      request, MakeAsyncResponseWriter(&response, &run_loop));
+  run_loop.Run();
+
+  ASSERT_TRUE(response);
+  grpc_api::GetEcPropertyResponse expected_response;
+  expected_response.set_status(grpc_api::GetEcPropertyResponse::STATUS_OK);
+  expected_response.set_payload(kFakeFileContents);
+  EXPECT_THAT(*response, ProtobufEquals(expected_response))
+      << "Actual: {" << response->ShortDebugString() << "}";
 }
 
 }  // namespace diagnostics

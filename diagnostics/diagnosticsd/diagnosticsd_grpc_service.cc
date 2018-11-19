@@ -4,7 +4,6 @@
 
 #include "diagnostics/diagnosticsd/diagnosticsd_grpc_service.h"
 
-#include <string>
 #include <utility>
 
 #include <base/files/file_util.h>
@@ -13,6 +12,16 @@
 namespace diagnostics {
 
 namespace {
+
+// Folder path exposed by sysfs EC driver.
+constexpr char kEcDriverSysfsPath[] = "sys/bus/platform/devices/GOOG000C:00/";
+
+// Folder path to EC properties exposed by sysfs EC driver. Relative path to
+// |kEcDriverSysfsPath|.
+constexpr char kEcDriverSysfsPropertiesPath[] = "properties/";
+
+// EC property |global_mic_mute_led|.
+constexpr char kEcPropertyGlobalMicMuteLed[] = "global_mic_mute_led";
 
 // Makes a dump of the specified file. Returns whether the dumping succeeded.
 bool MakeFileDump(const base::FilePath& file_path,
@@ -86,6 +95,47 @@ void DiagnosticsdGrpcService::GetProcData(
   }
   VLOG(1) << "Completing GetProcData gRPC request of type " << request->type()
           << ", returning " << reply->file_dump_size() << " items";
+  callback.Run(std::move(reply));
+}
+
+void DiagnosticsdGrpcService::GetEcProperty(
+    std::unique_ptr<grpc_api::GetEcPropertyRequest> request,
+    const GetEcPropertyCallback& callback) {
+  auto reply = std::make_unique<grpc_api::GetEcPropertyResponse>();
+  base::FilePath property_file_path;
+
+  DCHECK(request);
+  switch (request->property()) {
+    case grpc_api::GetEcPropertyRequest::PROPERTY_GLOBAL_MIC_MUTE_LED:
+      property_file_path = base::FilePath(kEcPropertyGlobalMicMuteLed);
+      break;
+    default:
+      LOG(ERROR) << "GetEcProperty gRPC request property is invalid or unset: "
+                 << request->property();
+      reply->set_status(
+          grpc_api::GetEcPropertyResponse::STATUS_ERROR_REQUIRED_FIELD_MISSING);
+      callback.Run(std::move(reply));
+      return;
+  }
+
+  DCHECK(!property_file_path.empty());
+  base::FilePath sysfs_file_path = root_dir_.Append(kEcDriverSysfsPath)
+                                       .Append(kEcDriverSysfsPropertiesPath)
+                                       .Append(property_file_path);
+  // Assign |file_content| to |reply->payload| only in case of successfull file
+  // reading. If case of failed reading |reply->payload| should to be empty.
+  //
+  // |base::ReadFileToString| can store part of file in |file_content| until
+  // I/O error was occured.
+  std::string file_content;
+  if (base::ReadFileToString(sysfs_file_path, &file_content)) {
+    reply->set_status(grpc_api::GetEcPropertyResponse::STATUS_OK);
+    reply->set_payload(std::move(file_content));
+  } else {
+    VPLOG(2) << "Sysfs file " << sysfs_file_path.value() << " read error";
+    reply->set_status(
+        grpc_api::GetEcPropertyResponse::STATUS_ERROR_ACCESSING_DRIVER);
+  }
   callback.Run(std::move(reply));
 }
 

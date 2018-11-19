@@ -31,6 +31,8 @@ class FakeDiagnosticsProcessor final {
  public:
   using GetProcDataCallback =
       base::Callback<void(std::unique_ptr<grpc_api::GetProcDataResponse>)>;
+  using GetEcPropertyCallback =
+      base::Callback<void(std::unique_ptr<grpc_api::GetEcPropertyResponse>)>;
   using HandleMessageFromUiCallback = base::Callback<void(
       std::unique_ptr<grpc_api::HandleMessageFromUiResponse>)>;
 
@@ -43,6 +45,8 @@ class FakeDiagnosticsProcessor final {
   // would do them:
   void GetProcData(const grpc_api::GetProcDataRequest& request,
                    GetProcDataCallback callback);
+  void GetEcProperty(const grpc_api::GetEcPropertyRequest& request,
+                     GetEcPropertyCallback callback);
 
   // Setups callback for the next |HandleMessageFromUi| gRPC call.
   void set_handle_message_from_ui_callback(

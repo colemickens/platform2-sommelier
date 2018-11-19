@@ -6,6 +6,7 @@
 #define DIAGNOSTICS_DIAGNOSTICSD_DIAGNOSTICSD_GRPC_SERVICE_H_
 
 #include <memory>
+#include <string>
 
 #include <base/callback.h>
 #include <base/files/file_path.h>
@@ -30,6 +31,8 @@ class DiagnosticsdGrpcService final {
       base::Callback<void(std::unique_ptr<grpc_api::SendMessageToUiResponse>)>;
   using GetProcDataCallback =
       base::Callback<void(std::unique_ptr<grpc_api::GetProcDataResponse>)>;
+  using GetEcPropertyCallback =
+      base::Callback<void(std::unique_ptr<grpc_api::GetEcPropertyResponse>)>;
 
   explicit DiagnosticsdGrpcService(Delegate* delegate);
   ~DiagnosticsdGrpcService();
@@ -45,6 +48,8 @@ class DiagnosticsdGrpcService final {
       const SendMessageToUiCallback& callback);
   void GetProcData(std::unique_ptr<grpc_api::GetProcDataRequest> request,
                    const GetProcDataCallback& callback);
+  void GetEcProperty(std::unique_ptr<grpc_api::GetEcPropertyRequest> request,
+                     const GetEcPropertyCallback& callback);
 
  private:
   // Constructs and, if successful, appends the dump of the specified file (with

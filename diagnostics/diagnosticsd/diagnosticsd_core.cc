@@ -43,6 +43,10 @@ bool DiagnosticsdCore::StartGrpcCommunication() {
       &grpc_api::Diagnosticsd::AsyncService::RequestGetProcData,
       base::Bind(&DiagnosticsdGrpcService::GetProcData,
                  base::Unretained(&grpc_service_)));
+  grpc_server_.RegisterHandler(
+      &grpc_api::Diagnosticsd::AsyncService::RequestGetEcProperty,
+      base::Bind(&DiagnosticsdGrpcService::GetEcProperty,
+                 base::Unretained(&grpc_service_)));
 
   // Start the gRPC server that listens for incoming gRPC requests.
   VLOG(1) << "Starting gRPC server";
