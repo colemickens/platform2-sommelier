@@ -47,28 +47,40 @@ int32_t gRgbsGridDump = 0;
 
 namespace LogHelper {
 
-void cca_print_error(const char *fmt, va_list ap)
+__attribute__((format(printf, 1, 2)))
+void cca_print_error(const char *fmt, ...)
 {
+    va_list arglist;
+    va_start(arglist, fmt);
     if (gLogCcaLevel & CAMERA_DEBUG_CCA_LOG_ERROR) {
         LOG(ERROR) << base::StringPrintf(LOG_HEADER, "E/", CAMHAL_TAG)
-                   << base::StringPrintV(fmt, ap);
+                   << base::StringPrintV(fmt, arglist);
     }
+    va_end(arglist);
 }
 
-void cca_print_debug(const char *fmt, va_list ap)
+__attribute__((format(printf, 1, 2)))
+void cca_print_debug(const char *fmt, ...)
 {
+    va_list arglist;
+    va_start(arglist, fmt);
     if (gLogCcaLevel & CAMERA_DEBUG_CCA_LOG_DEBUG) {
         VLOG(3) << base::StringPrintf(LOG_HEADER, "D/", CAMHAL_TAG)
-                << base::StringPrintV(fmt, ap);
+                << base::StringPrintV(fmt, arglist);
     }
+    va_end(arglist);
 }
 
-void cca_print_info(const char *fmt, va_list ap)
+__attribute__((format(printf, 1, 2)))
+void cca_print_info(const char *fmt, ...)
 {
+    va_list arglist;
+    va_start(arglist, fmt);
     if (gLogCcaLevel & CAMERA_DEBUG_CCA_LOG_INFO) {
         VLOG(1) << base::StringPrintf(LOG_HEADER, "I/", CAMHAL_TAG)
-                << base::StringPrintV(fmt, ap);
+                << base::StringPrintV(fmt, arglist);
     }
+    va_end(arglist);
 }
 
 void setDebugLevel(void)

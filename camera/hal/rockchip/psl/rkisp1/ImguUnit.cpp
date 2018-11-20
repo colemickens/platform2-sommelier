@@ -665,9 +665,10 @@ ImguUnit::kickstart()
 
     for (const auto &it : mCurPipeConfig->deviceWorkers) {
         // parameter work has been started before
-        if (typeid(*it) == typeid(ParameterWorker))
+        auto& worker = *it;
+        if (typeid(worker) == typeid(ParameterWorker))
             continue ;
-        status = (*it).startWorker();
+        status = worker.startWorker();
         if (status != OK) {
             LOGE("Failed to start workers.");
             return status;
