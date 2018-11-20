@@ -73,6 +73,7 @@
       },
       'sources': [
         'cras_client_impl.cc',
+        'cros_dbus_service.cc',
         'media_perception_controller_impl.cc',
         'media_perception_impl.cc',
         'media_perception_service_impl.cc',
