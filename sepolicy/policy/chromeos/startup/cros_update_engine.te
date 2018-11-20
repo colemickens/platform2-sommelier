@@ -3,3 +3,7 @@ type cros_update_engine, chromeos_domain, domain, mlstrustedobject;
 permissive cros_update_engine;
 
 domain_auto_trans(cros_init, cros_update_engine_exec, cros_update_engine);
+
+cros_dbus_client(cros_update_engine);
+
+filetrans_pattern(cros_update_engine, cros_var_lib, cros_var_lib_update_engine, dir, "update_engine");

@@ -1,0 +1,5 @@
+type cros_chapsd_sh, chromeos_domain, domain, cros_init_scripts_domain;
+
+permissive cros_chapsd_sh;
+
+domain_auto_trans(cros_init, cros_init_chapsd_shell_script, cros_chapsd_sh);

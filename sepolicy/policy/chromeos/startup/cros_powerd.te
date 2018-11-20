@@ -8,3 +8,4 @@ log_writer(cros_powerd);
 uma_writer(cros_powerd);
 
 minijail_mounts(minijail, , cros_powerd_log, );
+cros_dbus_client(cros_powerd);

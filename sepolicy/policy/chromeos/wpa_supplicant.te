@@ -5,3 +5,4 @@ permissive wpa_supplicant;
 domain_auto_trans(minijail, cros_wpa_supplicant_exec, wpa_supplicant);
 
 log_writer(wpa_supplicant);
+cros_dbus_client(wpa_supplicant);

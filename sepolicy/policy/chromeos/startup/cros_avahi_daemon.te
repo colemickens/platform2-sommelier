@@ -5,3 +5,5 @@ permissive cros_avahi_daemon;
 domain_auto_trans(cros_init_scripts, cros_avahi_daemon_exec, cros_avahi_daemon);
 
 log_writer(cros_avahi_daemon);
+
+filetrans_pattern(cros_avahi_daemon, cros_run, cros_run_avahi_daemon, dir, "avahi-daemon");

@@ -53,7 +53,13 @@ filetrans_pattern(cros_init_scripts, cros_var_lib, cros_var_lib_dbus, dir, "dbus
 filetrans_pattern(cros_init_scripts, cros_run, cros_run_dbus, dir, "dbus");
 
 # init/cras.conf
-filetrans_pattern(cros_init_scripts, cros_run, cras_socket, dir, "cras")
+filetrans_pattern(cros_init_scripts, cros_run, cras_socket, dir, "cras");
 
 # init/powerd.conf
-filetrans_pattern(cros_init_scripts, cros_var_log, cros_powerd_log, file, "powerd.out")
+filetrans_pattern(cros_init_scripts, cros_var_log, cros_powerd_log, file, "powerd.out");
+
+# init/anomaly_collector.conf
+filetrans_pattern_no_target_perm(cros_init_scripts, cros_var_lib, cros_var_lib_whitelist, dir, "whitelist");
+
+# init/chaps.conf
+filetrans_pattern_no_target_perm(cros_init_scripts, cros_var_lib, cros_var_lib_chaps, dir, "chaps");
