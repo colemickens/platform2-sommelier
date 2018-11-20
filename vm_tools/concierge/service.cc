@@ -396,6 +396,9 @@ bool Service::Init() {
       {kListVmDisksMethod, &Service::ListVmDisks},
       {kGetContainerSshKeysMethod, &Service::GetContainerSshKeys},
       {kSyncVmTimesMethod, &Service::SyncVmTimes},
+      {kAttachUsbDeviceMethod, &Service::AttachUsbDevice},
+      {kDetachUsbDeviceMethod, &Service::DetachUsbDevice},
+      {kListUsbDeviceMethod, &Service::ListUsbDevices},
   };
 
   for (const auto& iter : kServiceMethods) {
@@ -1461,6 +1464,183 @@ std::unique_ptr<dbus::Response> Service::GetContainerSshKeys(
   response.set_host_private_key(GetHostSshPrivateKey(request.cryptohome_id()));
   response.set_hostname(base::StringPrintf(
       "%s.%s.linux.test", container_name.c_str(), request.vm_name().c_str()));
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::AttachUsbDevice(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received AttachUsbDevice request";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  AttachUsbDeviceRequest request;
+  AttachUsbDeviceResponse response;
+  base::ScopedFD fd;
+
+  response.set_success(false);
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse AttachUsbDeviceRequest from message";
+    response.set_reason("Unable to parse protobuf");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  if (!reader.PopFileDescriptor(&fd)) {
+    LOG(ERROR) << "Unable to parse file descriptor from dbus message";
+    response.set_reason("Unable to parse file descriptor");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  auto iter = FindVm(request.owner_id(), request.vm_name());
+  if (iter == vms_.end()) {
+    LOG(ERROR) << "Requested VM " << request.vm_name() << " does not exist";
+    response.set_reason("Requested VM does not exist");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  if (request.bus_number() > 0xFF) {
+    LOG(ERROR) << "Bus number out of valid range " << request.bus_number();
+    response.set_reason("Invalid bus number");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  if (request.port_number() > 0xFF) {
+    LOG(ERROR) << "Port number out of valid range " << request.port_number();
+    response.set_reason("Invalid port number");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  if (request.vendor_id() > 0xFFFF) {
+    LOG(ERROR) << "Vendor ID out of valid range " << request.vendor_id();
+    response.set_reason("Invalid vendor ID");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  if (request.product_id() > 0xFFFF) {
+    LOG(ERROR) << "Product ID out of valid range " << request.product_id();
+    response.set_reason("Invalid product ID");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  UsbControlResponse usb_response;
+  if (!iter->second->AttachUsbDevice(
+          request.bus_number(), request.port_number(), request.vendor_id(),
+          request.product_id(), fd.get(), &usb_response)) {
+    LOG(ERROR) << "Failed to attach USB device";
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  response.set_success(true);
+  response.set_guest_port(usb_response.port);
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::DetachUsbDevice(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received DetachUsbDevice request";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  DetachUsbDeviceRequest request;
+  DetachUsbDeviceResponse response;
+
+  response.set_success(false);
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse DetachUsbDeviceRequest from message";
+    response.set_reason("Unable to parse protobuf");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  auto iter = FindVm(request.owner_id(), request.vm_name());
+  if (iter == vms_.end()) {
+    LOG(ERROR) << "Requested VM does not exist";
+    response.set_reason("Requested VM does not exist");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  if (request.guest_port() > 0xFF) {
+    LOG(ERROR) << "Guest port number out of valid range "
+               << request.guest_port();
+    response.set_reason("Invalid guest port number");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  UsbControlResponse usb_response;
+  if (!iter->second->DetachUsbDevice(request.guest_port(), &usb_response)) {
+    LOG(ERROR) << "Failed to detach USB device";
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  response.set_success(true);
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::ListUsbDevices(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received ListUsbDevices request";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  ListUsbDeviceRequest request;
+  ListUsbDeviceResponse response;
+
+  response.set_success(false);
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse ListUsbDeviceRequest from message";
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  auto iter = FindVm(request.owner_id(), request.vm_name());
+  if (iter == vms_.end()) {
+    LOG(ERROR) << "Requested VM does not exist";
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  std::vector<UsbDevice> usb_list;
+  if (!iter->second->ListUsbDevice(&usb_list)) {
+    LOG(ERROR) << "Failed to list USB devices";
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+  for (auto usb : usb_list) {
+    UsbDeviceMessage* usb_proto = response.add_usb_devices();
+    usb_proto->set_guest_port(usb.port);
+    usb_proto->set_vendor_id(usb.vid);
+    usb_proto->set_product_id(usb.pid);
+  }
+  response.set_success(true);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }

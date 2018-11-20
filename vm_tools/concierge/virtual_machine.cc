@@ -413,6 +413,27 @@ bool VirtualMachine::StartTermina(std::string lxd_subnet,
   return true;
 }
 
+bool VirtualMachine::AttachUsbDevice(uint8_t bus,
+                                     uint8_t addr,
+                                     uint16_t vid,
+                                     uint16_t pid,
+                                     int fd,
+                                     UsbControlResponse* response) {
+  // Stubbed out pending future patch
+  return false;
+}
+
+bool VirtualMachine::DetachUsbDevice(uint8_t port,
+                                     UsbControlResponse* response) {
+  // Stubbed out pending future patch
+  return false;
+}
+
+bool VirtualMachine::ListUsbDevice(std::vector<UsbDevice>* device) {
+  // Stubbed out pending future patch
+  return false;
+}
+
 bool VirtualMachine::Mount9P(uint32_t port, string target) {
   LOG(INFO) << "Mounting 9P file system from port " << port << " on " << target;
 

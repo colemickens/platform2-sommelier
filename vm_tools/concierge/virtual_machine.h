@@ -23,6 +23,7 @@
 #include "vm_tools/concierge/seneschal_server_proxy.h"
 #include "vm_tools/concierge/subnet.h"
 #include "vm_tools/concierge/subnet_pool.h"
+#include "vm_tools/concierge/usb_control.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
 
 #include "vm_guest.grpc.pb.h"  // NOLINT(build/include)
@@ -87,6 +88,20 @@ class VirtualMachine {
 
   // Starts Termina-specific services in the guest.
   bool StartTermina(std::string lxd_subnet, std::string* out_error);
+
+  // Attach an usb device at host bus:addr, with vid, pid and an opened fd.
+  bool AttachUsbDevice(uint8_t bus,
+                       uint8_t addr,
+                       uint16_t vid,
+                       uint16_t pid,
+                       int fd,
+                       UsbControlResponse* response);
+
+  // Detach the usb device at guest port.
+  bool DetachUsbDevice(uint8_t port, UsbControlResponse* response);
+
+  // List all usb devices attached to guest.
+  bool ListUsbDevice(std::vector<UsbDevice>* devices);
 
   // Mount a 9p file system inside the VM.  The guest VM connects to a server
   // listening on the vsock port |port| and mounts the file system on |target|.

@@ -105,6 +105,14 @@ class Service final : public base::MessageLoopForIO::Watcher {
   std::unique_ptr<dbus::Response> GetContainerSshKeys(
       dbus::MethodCall* method_call);
 
+  std::unique_ptr<dbus::Response> AttachUsbDevice(
+      dbus::MethodCall* method_call);
+
+  std::unique_ptr<dbus::Response> DetachUsbDevice(
+      dbus::MethodCall* method_call);
+
+  std::unique_ptr<dbus::Response> ListUsbDevices(dbus::MethodCall* method_call);
+
   // Handles DNS changes from shill.
   void OnResolvConfigChanged(std::vector<std::string> nameservers,
                              std::vector<std::string> search_domains);
