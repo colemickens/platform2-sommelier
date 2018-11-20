@@ -329,7 +329,13 @@ Service::Service(base::Closure quit_closure)
     : watcher_(FROM_HERE),
       next_seneschal_server_port_(kFirstSeneschalServerPort),
       quit_closure_(std::move(quit_closure)),
-      weak_ptr_factory_(this) {}
+#ifdef __arm__
+      resync_vm_clocks_on_resume_(true),
+#else
+      resync_vm_clocks_on_resume_(false),
+#endif
+      weak_ptr_factory_(this) {
+}
 
 Service::~Service() {
   if (grpc_server_vm_) {
@@ -438,6 +444,25 @@ bool Service::Init() {
     LOG(ERROR) << "Unable to get dbus proxy for "
                << vm_tools::seneschal::kSeneschalServiceName;
     return false;
+  }
+
+  if (resync_vm_clocks_on_resume_) {
+    // Get the D-Bus proxy for listening for power events.
+    powerd_proxy_ = bus_->GetObjectProxy(
+        power_manager::kPowerManagerServiceName,
+        dbus::ObjectPath(power_manager::kPowerManagerServicePath));
+    if (!powerd_proxy_) {
+      LOG(ERROR) << "Unable to get dbus proxy for "
+                 << power_manager::kPowerManagerServiceName;
+      return false;
+    }
+    // Register for resume notifications.
+    powerd_proxy_->ConnectToSignal(
+        power_manager::kPowerManagerInterface,
+        power_manager::kSuspendDoneSignal,
+        base::Bind(&Service::OnSuspendDone, weak_ptr_factory_.GetWeakPtr()),
+        base::Bind(&Service::OnSignalConnected,
+                   weak_ptr_factory_.GetWeakPtr()));
   }
 
   // Setup & start the gRPC listener services.
@@ -953,6 +978,14 @@ std::unique_ptr<dbus::Response> Service::SyncVmTimes(
 
   dbus::MessageWriter writer(dbus_response.get());
 
+  SyncVmTimesResponse response = SyncVmTimesInternal();
+
+  writer.AppendProtoAsArrayOfBytes(response);
+
+  return dbus_response;
+}
+
+SyncVmTimesResponse Service::SyncVmTimesInternal() {
   SyncVmTimesResponse response;
 
   int failures = 0;
@@ -968,9 +1001,8 @@ std::unique_ptr<dbus::Response> Service::SyncVmTimes(
   }
   response.set_requests(requests);
   response.set_failures(failures);
-  writer.AppendProtoAsArrayOfBytes(response);
 
-  return dbus_response;
+  return response;
 }
 
 bool Service::StartTermina(VirtualMachine* vm, string* failure_reason) {
@@ -1540,12 +1572,31 @@ void Service::OnTremplinStartedSignal(dbus::Signal* signal) {
 void Service::OnSignalConnected(const std::string& interface_name,
                                 const std::string& signal_name,
                                 bool is_connected) {
-  DCHECK_EQ(interface_name, vm_tools::cicerone::kVmCiceroneInterface);
-  DCHECK_EQ(signal_name, vm_tools::cicerone::kTremplinStartedSignal);
   if (!is_connected) {
-    LOG(ERROR) << "Failed to connect to Signal.";
+    LOG(ERROR) << "Failed to connect to interface name: " << interface_name
+               << " for signal " << signal_name;
+  } else {
+    LOG(INFO) << "Connected to interface name: " << interface_name
+              << " for signal " << signal_name;
   }
-  is_tremplin_started_signal_connected_ = is_connected;
+
+  if (interface_name == vm_tools::cicerone::kVmCiceroneInterface) {
+    DCHECK_EQ(signal_name, vm_tools::cicerone::kTremplinStartedSignal);
+    is_tremplin_started_signal_connected_ = is_connected;
+  }
+}
+
+void Service::OnSuspendDone(dbus::Signal* signal) {
+  SyncVmTimesResponse response = SyncVmTimesInternal();
+  if (response.failures() != 0) {
+    LOG(ERROR) << "Failed to set " << response.failures() << " out of "
+               << response.requests() << " VM clocks:";
+    for (const string& error : response.failure_reason()) {
+      LOG(ERROR) << error;
+    }
+  } else {
+    LOG(INFO) << "Successfully set " << response.requests() << " VM clocks.";
+  }
 }
 
 Service::VmMap::iterator Service::FindVm(std::string owner_id,

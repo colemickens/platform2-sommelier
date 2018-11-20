@@ -38,6 +38,8 @@ namespace vm_tools {
 
 namespace concierge {
 
+class SyncVmTimesResponse;
+
 // VM Launcher Service responsible for responding to DBus method calls for
 // starting, stopping, and otherwise managing VMs.
 class Service final : public base::MessageLoopForIO::Watcher {
@@ -81,6 +83,9 @@ class Service final : public base::MessageLoopForIO::Watcher {
   // Handles a request to update all VMs' times to the current host time.
   std::unique_ptr<dbus::Response> SyncVmTimes(dbus::MethodCall* method_call);
 
+  // Business logic for SyncVmTimes that can be called without dbus.
+  SyncVmTimesResponse SyncVmTimesInternal();
+
   // Handles a request to create a disk image.
   std::unique_ptr<dbus::Response> CreateDiskImage(
       dbus::MethodCall* method_call);
@@ -123,6 +128,9 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   void OnTremplinStartedSignal(dbus::Signal* signal);
 
+  // Called when powerd announces that a resume just happened.
+  void OnSuspendDone(dbus::Signal* signal);
+
   void OnSignalConnected(const std::string& interface_name,
                          const std::string& signal_name,
                          bool is_connected);
@@ -152,6 +160,7 @@ class Service final : public base::MessageLoopForIO::Watcher {
   dbus::ExportedObject* exported_object_;       // Owned by |bus_|.
   dbus::ObjectProxy* cicerone_service_proxy_;   // Owned by |bus_|.
   dbus::ObjectProxy* seneschal_service_proxy_;  // Owned by |bus_|.
+  dbus::ObjectProxy* powerd_proxy_;             // Owned by |bus_|.
 
   // The port number to assign to the next shared directory server.
   uint32_t next_seneschal_server_port_;
@@ -180,6 +189,9 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   // Signal must be connected before we can call SetTremplinStarted in a VM.
   bool is_tremplin_started_signal_connected_ = false;
+
+  // Whether we should re-synchronize VM clocks on resume from sleep.
+  const bool resync_vm_clocks_on_resume_;
 
   base::WeakPtrFactory<Service> weak_ptr_factory_;
 
