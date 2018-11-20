@@ -97,7 +97,9 @@ std::unique_ptr<VshForwarder> VshForwarder::Create(base::ScopedFD sock_fd,
 }
 
 VshForwarder::VshForwarder(base::ScopedFD sock_fd, bool inherit_env)
-    : sock_fd_(std::move(sock_fd)), inherit_env_(inherit_env) {}
+    : sock_fd_(std::move(sock_fd)),
+      inherit_env_(inherit_env),
+      exit_pending_(false) {}
 
 bool VshForwarder::Init() {
   SetupConnectionRequest connection_request;
