@@ -5,6 +5,7 @@
 #include "camera3_test/camera3_module_fixture.h"
 
 #include <algorithm>
+#include <string>
 
 #include <base/at_exit.h>
 #include <base/bind.h>
@@ -13,6 +14,7 @@
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/strings/string_split.h>
+#include <base/strings/stringprintf.h>
 
 #include "camera3_test/camera3_perf_log.h"
 #include "camera3_test/camera3_test_data_forwarder.h"
@@ -26,6 +28,100 @@ static camera_module_t* g_cam_module = NULL;
 // are trivially destructible. CameraThread is trivially not trivially
 // destructible.
 static cros::CameraThread g_module_thread("Camera3 Test Module Thread");
+
+std::vector<std::tuple<int, int32_t, int32_t, float>> ParseRecordingParams() {
+  // This parameter would be generated and passed by the camera_HAL3 autotest.
+  if (!base::CommandLine::ForCurrentProcess()->HasSwitch("recording_params")) {
+    LOGF(ERROR) << "Missing recording parameters in the test command";
+    // Return invalid parameters to fail the test
+    return {{-1, 0, 0, 0.0}};
+  }
+  std::vector<std::tuple<int, int32_t, int32_t, float>> params;
+  std::string params_str =
+      base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
+          "recording_params");
+  // Expected video recording parameters in the format
+  // "camera_id:width:height:frame_rate". For example:
+  // "0:1280:720:30,0:1920:1080:30,1:1280:720:30" means camcorder profiles
+  // contains 1280x720 and 1920x1080 for camera 0 and just 1280x720 for camera
+  // 1.
+  const size_t kNumParamsInProfile = 4;
+  enum { CAMERA_ID_IDX, WIDTH_IDX, HEIGHT_IDX, FRAME_RATE_IDX };
+  for (const auto& it : base::SplitString(
+           params_str, ",", base::WhitespaceHandling::TRIM_WHITESPACE,
+           base::SplitResult::SPLIT_WANT_ALL)) {
+    auto profile =
+        base::SplitString(it, ":", base::WhitespaceHandling::TRIM_WHITESPACE,
+                          base::SplitResult::SPLIT_WANT_ALL);
+    if (profile.size() != kNumParamsInProfile) {
+      ADD_FAILURE() << "Failed to parse video recording parameters (" << it
+                    << ")";
+      continue;
+    }
+    params.emplace_back(
+        std::stoi(profile[CAMERA_ID_IDX]), std::stoi(profile[WIDTH_IDX]),
+        std::stoi(profile[HEIGHT_IDX]), std::stof(profile[FRAME_RATE_IDX]));
+  }
+
+  std::set<int> param_ids;
+  for (const auto& param : params) {
+    param_ids.insert(std::get<CAMERA_ID_IDX>(param));
+  }
+
+  // We are going to enable usb camera hal on all boards, so there will be more
+  // than one hals on many platforms just like today's nautilus.  The
+  // recording_params is now generated from media_profiles.xml, where the camera
+  // ids are already translated by SuperHAL.  But cros_camera_test is used to
+  // test only one camera hal directly without going through the hal_adapter,
+  // therefore we have to remap the ids here.
+  //
+  // TODO(shik): This is a temporary workaround for SuperHAL camera ids mapping
+  // until we have better ground truth config file.  Here we exploit the fact
+  // that there are at most one back and at most one front internal cameras for
+  // now, and all cameras are sorted by facing in SuperHAL.  I feel bad when
+  // implementing the following hack (sigh).
+  std::vector<std::tuple<int, int32_t, int32_t, float>> result;
+  Camera3Module module;
+  if (module.GetCameraIds().size() < param_ids.size()) {
+    // SuperHAL case
+    for (const auto& cam_id : module.GetTestCameraIds()) {
+      camera_info info;
+      EXPECT_EQ(0, Camera3Module().GetCameraInfo(cam_id, &info));
+      bool found_matching_param = false;
+      for (auto param : params) {
+        if (std::get<CAMERA_ID_IDX>(param) == info.facing) {
+          found_matching_param = true;
+          std::get<CAMERA_ID_IDX>(param) = cam_id;
+          result.emplace_back(param);
+        }
+      }
+      EXPECT_TRUE(found_matching_param);
+    }
+  } else {
+    // Single HAL case
+    for (const auto& cam_id : module.GetTestCameraIds()) {
+      if (std::find_if(
+              params.begin(), params.end(),
+              [&](const std::tuple<int, int32_t, int32_t, float>& item) {
+                return std::get<CAMERA_ID_IDX>(item) == cam_id;
+              }) == params.end()) {
+        ADD_FAILURE() << "Missing video recording parameters for camera "
+                      << cam_id;
+      }
+    }
+    result = std::move(params);
+  }
+
+  LOGF(INFO) << "The parameters will be used for recording test:";
+  for (const auto& param : result) {
+    LOGF(INFO) << base::StringPrintf(
+        "camera id = %d, size = %dx%d, fps = %g",
+        std::get<CAMERA_ID_IDX>(param), std::get<WIDTH_IDX>(param),
+        std::get<HEIGHT_IDX>(param), std::get<FRAME_RATE_IDX>(param));
+  }
+
+  return result;
+}
 
 // static
 void CameraModuleCallbacksHandler::camera_device_status_change(
@@ -560,6 +656,21 @@ TEST_F(Camera3ModuleFixture, RequiredFormats) {
       resolution_list.erase(it);
     }
   };
+  auto GetMaxVideoResolution = [](int cam_id) {
+    auto recording_params = ParseRecordingParams();
+    int32_t width = 0;
+    int32_t height = 0;
+    for (const auto& it : recording_params) {
+      int32_t area = std::get<1>(it) * std::get<2>(it);
+      if (std::get<0>(it) == cam_id &&
+          (width * height < area ||
+           (width * height == area && width < std::get<1>(it)))) {
+        width = std::get<1>(it);
+        height = std::get<2>(it);
+      }
+    }
+    return ResolutionInfo(width, height);
+  };
 
   for (int cam_id = 0; cam_id < cam_module_.GetNumberOfCameras(); cam_id++) {
     ASSERT_TRUE(cam_module_.IsFormatAvailable(cam_id, HAL_PIXEL_FORMAT_BLOB))
@@ -642,9 +753,10 @@ TEST_F(Camera3ModuleFixture, RequiredFormats) {
     // Check all sizes other than FullHD
     if (hw_level == ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED) {
       // Remove all jpeg sizes larger than max video size
+      auto max_video_resolution = GetMaxVideoResolution(cam_id);
       for (auto it = jpeg_resolutions.begin(); it != jpeg_resolutions.end();) {
-        if (it->Width() >= full_hd.Width() &&
-            it->Height() >= full_hd.Height()) {
+        if (it->Width() >= max_video_resolution.Width() &&
+            it->Height() >= max_video_resolution.Height()) {
           it = jpeg_resolutions.erase(it);
         } else {
           it++;
