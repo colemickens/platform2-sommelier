@@ -41,6 +41,7 @@ open: 1
 close: 1
 creat: 1
 fstat64: 1
+stat64: 1
 _llseek: 1
 lseek: 1
 fcntl64: 1
