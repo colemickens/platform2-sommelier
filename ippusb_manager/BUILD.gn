@@ -11,6 +11,9 @@ group("all") {
   if (use.test) {
     deps += [ ":ippusb_manager_testrunner" ]
   }
+  if (use.fuzzer) {
+    deps += [ ":ippusb_manager_usb_fuzzer" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -51,6 +54,26 @@ if (use.test) {
     ]
     deps = [
       "//common-mk/testrunner",
+    ]
+  }
+}
+
+if (use.fuzzer) {
+  pkg_config("ippusb_manager_usb_fuzzer_config") {
+    pkg_deps = [
+      "libchrome-test-${libbase_ver}",
+    ]
+  }
+
+  executable("ippusb_manager_usb_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":ippusb_manager_usb_fuzzer_config",
+      ":target_defaults",
+    ]
+    sources = [
+      "usb.cc",
+      "fuzzers/ippusb_manager_usb_fuzzer.cc",
     ]
   }
 }
