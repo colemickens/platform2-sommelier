@@ -28,6 +28,7 @@
 #include "Intel3aControls.h"
 #include "GraphConfig.h"
 #include "ProcUnitSettings.h"
+#include <cros-camera/v4l2_device.h>
 
 namespace android {
 namespace camera2 {

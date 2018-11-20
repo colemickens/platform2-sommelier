@@ -15,25 +15,14 @@
  */
 
 #define LOG_TAG "CameraBuffer"
+#include <sync/sync.h>
 #include "LogHelper.h"
 #include "Utils.h"
-#include <sys/mman.h>
 #include "PlatformData.h"
-#include "CameraBuffer.h"
-#include "CameraStream.h"
 #include "Camera3GFXFormat.h"
-#include <unistd.h>
-#include <sync/sync.h>
-#include <cros-camera/camera_buffer_manager.h>
+#include "CameraBuffer.h"
 
 NAMESPACE_DECLARATION {
-extern int32_t gDumpInterval;
-extern int32_t gDumpCount;
-
-////////////////////////////////////////////////////////////////////
-// PUBLIC METHODS
-////////////////////////////////////////////////////////////////////
-
 /**
  * CameraBuffer
  *
@@ -43,31 +32,30 @@ extern int32_t gDumpCount;
  * init(), where we initialize the wrapper with the gralloc buffer provided by
  * the framework
  */
-CameraBuffer::CameraBuffer() :  mWidth(0),
-                                mHeight(0),
-                                mSize(0),
-                                mFormat(0),
-                                mV4L2Fmt(0),
-                                mStride(0),
-                                mInit(false),
-                                mLocked(false),
-                                mRegistered(false),
-                                mType(BUF_TYPE_HANDLE),
-                                mGbmBufferManager(nullptr),
-                                mHandle(nullptr),
-                                mHandlePtr(nullptr),
-                                mOwner(nullptr),
-                                mDataPtr(nullptr),
-                                mRequestID(0),
-                                mCameraId(0),
-                                mDmaBufFd(-1)
+CameraBuffer::CameraBuffer() :
+        mWidth(0),
+        mHeight(0),
+        mSize(0),
+        mFormat(0),
+        mV4L2Fmt(0),
+        mStride(0),
+        mInit(false),
+        mLocked(false),
+        mRegistered(false),
+        mType(BUF_TYPE_HANDLE),
+        mGbmBufferManager(nullptr),
+        mHandle(nullptr),
+        mHandlePtr(nullptr),
+        mOwner(nullptr),
+        mDataPtr(nullptr),
+        mRequestID(0),
+        mCameraId(0),
+        mDmaBufFd(-1)
 {
     LOG1("%s default constructor for buf %p", __FUNCTION__, this);
     CLEAR(mUserBuffer);
-    CLEAR(mTimestamp);
     mUserBuffer.release_fence = -1;
     mUserBuffer.acquire_fence = -1;
-
 }
 
 /**
@@ -81,16 +69,9 @@ CameraBuffer::CameraBuffer() :  mWidth(0),
  * \param v4l2fmt [IN] V4l2 format
  * \param usrPtr [IN] Data pointer
  * \param cameraId [IN] id of camera being used
- * \param dataSizeOverride [IN] buffer size input. Default is 0 and frameSize()
-                                is used in that case.
+ * \param dataSizeOverride [IN] buffer size input. Default is 0 and frameSize() is used in that case.
  */
-CameraBuffer::CameraBuffer(int w,
-                           int h,
-                           int s,
-                           int v4l2fmt,
-                           void* usrPtr,
-                           int cameraId,
-                           int dataSizeOverride):
+CameraBuffer::CameraBuffer(int w, int h, int s, int v4l2fmt, void* usrPtr, int cameraId, int dataSizeOverride):
         mWidth(w),
         mHeight(h),
         mSize(0),
@@ -120,7 +101,6 @@ CameraBuffer::CameraBuffer(int w,
         LOGE("Tried to initialize a buffer with nullptr ptr!!");
     }
     CLEAR(mUserBuffer);
-    CLEAR(mTimestamp);
     mUserBuffer.release_fence = -1;
     mUserBuffer.acquire_fence = -1;
 }
@@ -134,6 +114,7 @@ CameraBuffer::CameraBuffer(int w,
  */
 status_t CameraBuffer::init(const camera3_stream_buffer *aBuffer, int cameraId)
 {
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     mType = BUF_TYPE_HANDLE;
     mGbmBufferManager = cros::CameraBufferManager::GetInstance();
     mHandle = *aBuffer->buffer;
@@ -171,10 +152,9 @@ status_t CameraBuffer::init(const camera3_stream_buffer *aBuffer, int cameraId)
     return NO_ERROR;
 }
 
-status_t CameraBuffer::init(int width, int height, int format,
-                            buffer_handle_t handle,
-                            int cameraId)
+status_t CameraBuffer::init(int width, int height, int format, buffer_handle_t handle, int cameraId)
 {
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     mType = BUF_TYPE_HANDLE;
     mGbmBufferManager = cros::CameraBufferManager::GetInstance();
     mHandle = handle;
@@ -200,13 +180,13 @@ status_t CameraBuffer::init(int width, int height, int format,
 
 status_t CameraBuffer::deinit()
 {
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     return deregisterBuffer();
 }
 
 CameraBuffer::~CameraBuffer()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
-
     if (mInit) {
         switch(mType) {
         case BUF_TYPE_MALLOC:
@@ -222,23 +202,26 @@ CameraBuffer::~CameraBuffer()
 
 status_t CameraBuffer::waitOnAcquireFence()
 {
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     const int WAIT_TIME_OUT_MS = 300;
     const int BUFFER_READY = -1;
 
-    if (mUserBuffer.acquire_fence != BUFFER_READY) {
-        LOG2("%s: Fence in HAL is %d", __FUNCTION__, mUserBuffer.acquire_fence);
-        int ret = sync_wait(mUserBuffer.acquire_fence, WAIT_TIME_OUT_MS);
-        if (ret) {
-            mUserBuffer.release_fence = mUserBuffer.acquire_fence;
-            mUserBuffer.acquire_fence = -1;
-            mUserBuffer.status = CAMERA3_BUFFER_STATUS_ERROR;
-            LOGE("Buffer sync_wait fail!");
-            return TIMED_OUT;
-        } else {
-            close(mUserBuffer.acquire_fence);
-        }
-        mUserBuffer.acquire_fence = BUFFER_READY;
+    if (mUserBuffer.acquire_fence == BUFFER_READY) {
+        return NO_ERROR;
     }
+
+    LOG2("%s: Fence in HAL is %d", __FUNCTION__, mUserBuffer.acquire_fence);
+    int ret = sync_wait(mUserBuffer.acquire_fence, WAIT_TIME_OUT_MS);
+    if (ret) {
+        mUserBuffer.release_fence = mUserBuffer.acquire_fence;
+        mUserBuffer.acquire_fence = -1;
+        mUserBuffer.status = CAMERA3_BUFFER_STATUS_ERROR;
+        LOGE("@%s, sync_wait fails, ret:%d", __FUNCTION__, ret);
+        return TIMED_OUT;
+    }
+    close(mUserBuffer.acquire_fence);
+
+    mUserBuffer.acquire_fence = BUFFER_READY;
 
     return NO_ERROR;
 }
@@ -250,8 +233,8 @@ status_t CameraBuffer::waitOnAcquireFence()
  */
 status_t CameraBuffer::getFence(camera3_stream_buffer* buf)
 {
-    if (!buf)
-        return BAD_VALUE;
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
+    CheckError(!buf, BAD_VALUE, "@%s, buf is nullptr", __FUNCTION__);
 
     buf->acquire_fence = mUserBuffer.acquire_fence;
     buf->release_fence = mUserBuffer.release_fence;
@@ -261,11 +244,10 @@ status_t CameraBuffer::getFence(camera3_stream_buffer* buf)
 
 status_t CameraBuffer::registerBuffer()
 {
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     int ret = mGbmBufferManager->Register(mHandle);
-    if (ret) {
-        LOGE("@%s: call Register fail, mHandle:%p, ret:%d", __FUNCTION__, mHandle, ret);
-        return UNKNOWN_ERROR;
-    }
+    CheckError(ret, UNKNOWN_ERROR, "@%s, Register fails, mHandle:%p, ret:%d",
+               __FUNCTION__, mHandle, ret);
 
     mRegistered = true;
     return NO_ERROR;
@@ -273,26 +255,18 @@ status_t CameraBuffer::registerBuffer()
 
 status_t CameraBuffer::deregisterBuffer()
 {
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     if (mRegistered) {
         int ret = mGbmBufferManager->Deregister(mHandle);
-        if (ret) {
-            LOGE("@%s: call Deregister fail, mHandle:%p, ret:%d", __FUNCTION__, mHandle, ret);
-            return UNKNOWN_ERROR;
-        }
+        CheckError(ret, UNKNOWN_ERROR, "@%s: Deregister fails, mHandle:%p, ret:%d",
+                   __FUNCTION__, mHandle, ret);
         mRegistered = false;
     }
 
     return NO_ERROR;
 }
 
-/**
- * lock
- *
- * lock the gralloc buffer with specified flags
- *
- * \param aBuffer [IN] int flags
- */
-status_t CameraBuffer::lock(int flags)
+status_t CameraBuffer::lock_()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     mDataPtr = nullptr;
@@ -306,18 +280,12 @@ status_t CameraBuffer::lock(int flags)
         ret = (mFormat == HAL_PIXEL_FORMAT_BLOB)
                 ? mGbmBufferManager->Lock(mHandle, 0, 0, 0, mStride, 1, &data)
                 : mGbmBufferManager->Lock(mHandle, 0, 0, 0, mWidth, mHeight, &data);
-        if (ret) {
-            LOGE("@%s: call Lock fail, mHandle:%p", __FUNCTION__, mHandle);
-            return UNKNOWN_ERROR;
-        }
+        CheckError(ret, UNKNOWN_ERROR, "@%s: Lock fails, mHandle:%p", __FUNCTION__, mHandle);
         mDataPtr = data;
     } else if (planeNum > 1) {
         struct android_ycbcr ycbrData;
         ret = mGbmBufferManager->LockYCbCr(mHandle, 0, 0, 0, mWidth, mHeight, &ycbrData);
-        if (ret) {
-            LOGE("@%s: call LockYCbCr fail, mHandle:%p", __FUNCTION__, mHandle);
-            return UNKNOWN_ERROR;
-        }
+        CheckError(ret, UNKNOWN_ERROR, "@%s: Lock fails, mHandle:%p", __FUNCTION__, mHandle);
         mDataPtr = ycbrData.y;
     } else {
         LOGE("ERROR @%s: planeNum is 0", __FUNCTION__);
@@ -328,10 +296,8 @@ status_t CameraBuffer::lock(int flags)
         mSize += mGbmBufferManager->GetPlaneSize(mHandle, i);
     }
     LOG2("@%s, mDataPtr:%p, mSize:%d", __FUNCTION__, mDataPtr, mSize);
-    if (!mSize) {
-        LOGE("ERROR @%s: Failed to GetPlaneSize, it's 0", __FUNCTION__);
-        return UNKNOWN_ERROR;
-    }
+
+    CheckError(!mSize, UNKNOWN_ERROR, "ERROR @%s: GetPlaneSize fails, it's 0", __FUNCTION__);
 
     mLocked = true;
 
@@ -341,34 +307,16 @@ status_t CameraBuffer::lock(int flags)
 status_t CameraBuffer::lock()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
-    status_t status;
-    int lockMode;
-
-    if (!mInit) {
-        LOGE("@%s: Error: Cannot lock now this buffer, not initialized", __FUNCTION__);
-        return INVALID_OPERATION;
-    }
+    CheckError(!mInit, INVALID_OPERATION, "@%s: cannot lock, not initialized", __FUNCTION__);
 
     if (mType != BUF_TYPE_HANDLE) {
          mLocked = true;
          return NO_ERROR;
     }
 
-    if (mLocked) {
-        if (mOwner) {
-            LOGE("@%s: Error: stream(%d) already locked", __FUNCTION__,mOwner->seqNo());
-        }
-        return INVALID_OPERATION;
-    }
+    CheckError(mLocked, INVALID_OPERATION, "@%s: already locked", __FUNCTION__);
 
-    lockMode = GRALLOC_USAGE_SW_READ_MASK | GRALLOC_USAGE_SW_WRITE_MASK |
-        GRALLOC_USAGE_HW_CAMERA_MASK;
-    if (!lockMode) {
-        LOGW("@%s:trying to lock a buffer with no flags", __FUNCTION__);
-        return INVALID_OPERATION;
-    }
-
-    status = lock(lockMode);
+    status_t status = lock_();
     if (status != NO_ERROR) {
         mUserBuffer.status = CAMERA3_BUFFER_STATUS_ERROR;
     }
@@ -384,48 +332,30 @@ status_t CameraBuffer::unlock()
          return NO_ERROR;
     }
 
-    if (mLocked) {
-        LOG2("@%s, mHandle:%p, mFormat:%d", __FUNCTION__, mHandle, mFormat);
-        int ret = mGbmBufferManager->Unlock(mHandle);
-        if (ret) {
-            LOGE("@%s: call Unlock fail, mHandle:%p, ret:%d", __FUNCTION__, mHandle, ret);
-            return UNKNOWN_ERROR;
-        }
+    CheckError(!mLocked, INVALID_OPERATION, "@%s: unlock a not locked buffer", __FUNCTION__);
 
-        mLocked = false;
-        return NO_ERROR;
-    }
-    LOGW("@%s:trying to unlock a buffer that is not locked", __FUNCTION__);
-    return INVALID_OPERATION;
-}
+    LOG2("@%s, mHandle:%p, mFormat:%d", __FUNCTION__, mHandle, mFormat);
+    int ret = mGbmBufferManager->Unlock(mHandle);
+    CheckError(ret, UNKNOWN_ERROR, "@%s: Unlock fails, ret:%d", __FUNCTION__, ret);
 
-void CameraBuffer::dump()
-{
-    if (mInit) {
-        LOG1("Buffer dump: handle %p: locked :%d: dataPtr:%p",
-            (void*)&mHandle, mLocked, mDataPtr);
-    } else {
-        LOG1("Buffer dump: Buffer not initialized");
-    }
+    mLocked = false;
+
+    return NO_ERROR;
 }
 
 void CameraBuffer::dumpImage(const int type, const char *name)
 {
-    if (CC_UNLIKELY(LogHelper::isDumpTypeEnable(type))) {
-        dumpImage(name);
-    }
-}
-
-void CameraBuffer::dumpImage(const char *name)
-{
 #ifdef DUMP_IMAGE
+    if (!LogHelper::isDumpTypeEnable(type)) {
+        return;
+    }
+
     if (!isLocked()) {
         status_t status = lock();
         CheckError(status != NO_ERROR, VOID_VALUE, "@%s, lock fails", __FUNCTION__);
     }
 
     dumpToFile(mDataPtr, mSize, mWidth, mHeight, mRequestID, name);
-
     unlock();
 #endif
 }
@@ -440,24 +370,15 @@ namespace MemoryUtils {
  * passed during construction
  */
 std::shared_ptr<CameraBuffer>
-allocateHeapBuffer(int w,
-                   int h,
-                   int s,
-                   int v4l2Fmt,
-                   int cameraId,
-                   int dataSizeOverride)
+allocateHeapBuffer(int w, int h, int s, int v4l2Fmt, int cameraId, int dataSizeOverride)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
-    void *dataPtr;
-
     int dataSize = dataSizeOverride ? dataSizeOverride : frameSize(v4l2Fmt, s, h);
     LOG1("@%s, dataSize:%d", __FUNCTION__, dataSize);
 
+    void *dataPtr = nullptr;
     int ret = posix_memalign(&dataPtr, sysconf(_SC_PAGESIZE), dataSize);
-    if (dataPtr == nullptr || ret != 0) {
-        LOGE("Could not allocate heap camera buffer of size %d", dataSize);
-        return nullptr;
-    }
+    CheckError((dataPtr == nullptr || ret != 0), nullptr, "@%s, posix_memalign fails, size:%d", __FUNCTION__, dataSize);
 
     return std::shared_ptr<CameraBuffer>(new CameraBuffer(w, h, s, v4l2Fmt, dataPtr, cameraId, dataSizeOverride));
 }
@@ -466,28 +387,21 @@ allocateHeapBuffer(int w,
  * Allocates internal GBM buffer
  */
 std::shared_ptr<CameraBuffer>
-allocateHandleBuffer(int w,
-                     int h,
-                     int gfxFmt,
-                     int usage,
-                     int cameraId)
+allocateHandleBuffer(int w, int h, int gfxFmt, int usage, int cameraId)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
-    cros::CameraBufferManager* bufManager = cros::CameraBufferManager::GetInstance();
+    LOG1("%s, [wxh] = [%dx%d], format 0x%x, usage 0x%x", __FUNCTION__, w, h, gfxFmt, usage);
+
     buffer_handle_t handle;
     uint32_t stride = 0;
-
-    LOG1("%s, [wxh] = [%dx%d], format 0x%x, usage 0x%x",
-          __FUNCTION__, w, h, gfxFmt, usage);
+    cros::CameraBufferManager* bufManager = cros::CameraBufferManager::GetInstance();
+    CheckError(bufManager == nullptr, nullptr, "@%s, GetInstance fails", __FUNCTION__);
     int ret = bufManager->Allocate(w, h, gfxFmt, usage, cros::GRALLOC, &handle, &stride);
-    if (ret != 0) {
-        LOGE("Allocate handle failed! %d", ret);
-        return nullptr;
-    }
+    CheckError(ret != 0, nullptr, "@%s, Allocate fails, ret:%d", __FUNCTION__, ret);
 
     std::shared_ptr<CameraBuffer> buffer(new CameraBuffer());
     ret = buffer->init(w, h, gfxFmt, handle, cameraId);
-    CheckError(ret != NO_ERROR, nullptr, "Buffer initialization failed");
+    CheckError(ret != NO_ERROR, nullptr, "@%s, init fails, ret:%d", __FUNCTION__, ret);
 
     return buffer;
 }
