@@ -12,7 +12,6 @@
 #include <brillo/bind_lambda.h>
 #include <dbus/message.h>
 #include <dbus/diagnosticsd/dbus-constants.h>
-#include <mojo/public/cpp/bindings/callback.h>
 #include <mojo/public/cpp/bindings/interface_request.h>
 #include <mojo/public/cpp/system/buffer.h>
 
@@ -50,7 +49,7 @@ bool FakeBrowser::SendMessageToDiagnosticsProcessor(
   }
   diagnosticsd_service_ptr_->SendUiMessageToDiagnosticsProcessorWithSize(
       std::move(*shared_buffer.get()), json_message.length(),
-      mojo::Callback<void()>());
+      base::Bind(&base::DoNothing));
   return true;
 }
 
@@ -95,8 +94,7 @@ void FakeBrowser::CallGetServiceMojoMethod() {
       mojo::MakeRequest(&diagnosticsd_client_proxy));
   (*diagnosticsd_service_factory_ptr_)
       ->GetService(mojo::MakeRequest(&diagnosticsd_service_ptr_),
-                   std::move(diagnosticsd_client_proxy),
-                   mojo::Callback<void()>());
+                   std::move(diagnosticsd_client_proxy), base::Closure());
 }
 
 }  // namespace diagnostics

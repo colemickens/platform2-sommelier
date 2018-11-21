@@ -67,7 +67,7 @@ class DiagnosticsdMojoServiceTest : public testing::Test {
     ASSERT_TRUE(shared_buffer);
     service_->SendUiMessageToDiagnosticsProcessorWithSize(
         std::move(*shared_buffer.get()), json_message.length(),
-        mojo::Callback<void()>());
+        base::Bind(&base::DoNothing));
   }
 
  private:

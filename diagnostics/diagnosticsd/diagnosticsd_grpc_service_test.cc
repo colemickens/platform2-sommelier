@@ -138,6 +138,10 @@ class SingleProcFileDiagnosticsdGrpcServiceTest
   }
 };
 
+// Need external definition.
+constexpr char
+    SingleProcFileDiagnosticsdGrpcServiceTest::kFakeFileContentsChars[];
+
 }  // namespace
 
 // Test that GetProcData() returns a single item with the requested file data

@@ -34,7 +34,8 @@ std::string GetDiagnosticsdGrpcUri(
     case DpslRequester::GrpcClientUri::kLocalDomainSocket:
       return kDiagnosticsdLocalDomainSocketGrpcUri;
   }
-  NOTREACHED() << "Unexpected GrpcClientUri: " << grpc_client_uri;
+  NOTREACHED() << "Unexpected GrpcClientUri: "
+               << static_cast<int>(grpc_client_uri);
   return "";
 }
 
@@ -99,12 +100,20 @@ void DpslRequesterImpl::ScheduleGrpcClientMethodCall(
     GrpcStubMethod grpc_stub_method,
     std::unique_ptr<RequestType> request,
     std::function<void(std::unique_ptr<ResponseType>)> response_callback) {
-  message_loop_->PostTask(
-      location, base::Bind(&DpslRequesterImpl::CallGrpcClientMethod<
-                               GrpcStubMethod, RequestType, ResponseType>,
-                           weak_ptr_factory_.GetWeakPtr(), grpc_stub_method,
-                           base::Passed(std::move(request)),
-                           base::Bind(std::move(response_callback))));
+  message_loop_->task_runner()->PostTask(
+      location,
+      base::Bind(
+          &DpslRequesterImpl::CallGrpcClientMethod<GrpcStubMethod, RequestType,
+                                                   ResponseType>,
+          weak_ptr_factory_.GetWeakPtr(), grpc_stub_method,
+          base::Passed(std::move(request)),
+          base::Bind(
+              [](std::function<void(std::unique_ptr<ResponseType>)>
+                     response_callback,
+                 std::unique_ptr<ResponseType> response) {
+                std::move(response_callback)(std::move(response));
+              },
+              base::Passed(&response_callback))));
 }
 
 template <typename GrpcStubMethod, typename RequestType, typename ResponseType>

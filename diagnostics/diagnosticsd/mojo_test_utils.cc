@@ -79,34 +79,20 @@ bool FakeMojoFdGenerator::IsDuplicateFd(int another_fd) const {
 namespace helper {
 std::unique_ptr<mojo::ScopedSharedBufferHandle> WriteToSharedBuffer(
     const std::string& content) {
-  auto options = MojoCreateSharedBufferOptions{
-      sizeof(MojoCreateSharedBufferOptions),
-      MOJO_CREATE_SHARED_BUFFER_OPTIONS_FLAG_NONE};
-
   std::unique_ptr<mojo::ScopedSharedBufferHandle> buffer =
       std::make_unique<mojo::ScopedSharedBufferHandle>();
-
-  MojoResult mojo_result =
-      mojo::CreateSharedBuffer(&options, content.length(), buffer.get());
-  if (mojo_result != MOJO_RESULT_OK) {
+  *buffer = mojo::SharedBufferHandle::Create(content.length());
+  if (!(*buffer)->is_valid()) {
     return nullptr;
   }
 
-  void* ptr = nullptr;
-
-  mojo_result = mojo::MapBuffer(buffer->get(), 0, content.length(), &ptr,
-                                MOJO_MAP_BUFFER_FLAG_NONE);
-  if (mojo_result != MOJO_RESULT_OK) {
-    mojo::UnmapBuffer(ptr);
+  mojo::ScopedSharedBufferMapping mapping = (*buffer)->Map(content.length());
+  if (!mapping) {
     return nullptr;
   }
 
-  memcpy(ptr, static_cast<const void*>(content.c_str()), content.length());
-
-  mojo_result = mojo::UnmapBuffer(ptr);
-  if (mojo_result != MOJO_RESULT_OK) {
-    return nullptr;
-  }
+  memcpy(mapping.get(), static_cast<const void*>(content.c_str()),
+         content.length());
   return buffer;
 }
 

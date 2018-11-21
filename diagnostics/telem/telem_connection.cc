@@ -53,7 +53,7 @@ void TelemConnection::GetItem(TelemetryItemEnum item) {
       GetProcMessage(grpc_api::GetProcDataRequest::DIRECTORY_ACPI_BUTTON);
       break;
     default:
-      LOG(ERROR) << "Undefined telemetry item: " << item;
+      LOG(ERROR) << "Undefined telemetry item: " << static_cast<int>(item);
   }
 }
 

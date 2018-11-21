@@ -62,14 +62,19 @@ bool DpslThreadContextImpl::IsEventLoopRunning() {
 }
 
 void DpslThreadContextImpl::PostTask(std::function<void()> task) {
-  message_loop_->PostTask(FROM_HERE, base::Bind(std::move(task)));
+  message_loop_->task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind([](std::function<void()> task) { std::move(task)(); },
+                 base::Passed(&task)));
 }
 
 void DpslThreadContextImpl::PostDelayedTask(std::function<void()> task,
                                             int64_t delay_milliseconds) {
   CHECK_GE(delay_milliseconds, 0);
-  message_loop_->PostDelayedTask(
-      FROM_HERE, base::Bind(std::move(task)),
+  message_loop_->task_runner()->PostDelayedTask(
+      FROM_HERE,
+      base::Bind([](std::function<void()> task) { std::move(task)(); },
+                 base::Passed(&task)),
       base::TimeDelta::FromMilliseconds(delay_milliseconds));
 }
 

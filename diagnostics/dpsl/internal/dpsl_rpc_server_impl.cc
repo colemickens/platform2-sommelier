@@ -33,7 +33,8 @@ std::string GetDiagnosticsProcessorGrpcUri(
     case DpslRpcServer::GrpcServerUri::kLocalDomainSocket:
       return kDiagnosticsProcessorLocalDomainSocketGrpcUri;
   }
-  NOTREACHED() << "Unexpected GrpcServerUri: " << grpc_server_uri;
+  NOTREACHED() << "Unexpected GrpcServerUri: "
+               << static_cast<int>(grpc_server_uri);
   return "";
 }
 
