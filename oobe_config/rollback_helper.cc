@@ -24,6 +24,7 @@ const int kDefaultPwnameLength = 1024;
 
 bool PrepareSave(const base::FilePath& root_path,
                  bool ignore_permissions_for_testing) {
+  LOG(INFO) << "Delete and recreate path to save rollback data";
   // Make sure we have an empty folder where only we can write, otherwise exit.
   base::FilePath save_path = PrefixAbsolutePath(root_path, kSaveTempPath);
   if (!base::DeleteFile(save_path, true)) {
@@ -46,6 +47,7 @@ bool PrepareSave(const base::FilePath& root_path,
     uid_t root_uid;
     gid_t root_gid;
 
+    LOG(INFO) << "Setting and verifying permissions for save path";
     if (!GetUidGid(kOobeConfigSaveUsername, &oobe_config_save_uid,
                    &oobe_config_save_gid)) {
       PLOG(ERROR) << "Couldn't get uid and gid of oobe_config_save.";
@@ -77,6 +79,7 @@ bool PrepareSave(const base::FilePath& root_path,
     // Preparing rollback_data file.
 
     // The directory should be root-writeable only.
+    LOG(INFO) << "Verifying only root can write to stateful";
     if (!base::VerifyPathControlledByUser(
             PrefixAbsolutePath(root_path, kStatefulPartition),
             rollback_data_path.DirName(), root_uid, {root_gid})) {
@@ -84,7 +87,9 @@ bool PrepareSave(const base::FilePath& root_path,
                  << rollback_data_path.DirName().value();
       return false;
     }
+
     // Create or wipe the file.
+    LOG(INFO) << "Creating an empty owned rollback file and verifying";
     if (base::WriteFile(rollback_data_path, {}, 0) != 0) {
       PLOG(ERROR) << "Couldn't write " << rollback_data_path.value();
       return false;
@@ -110,6 +115,7 @@ bool PrepareSave(const base::FilePath& root_path,
     }
   }
 
+  LOG(INFO) << "Copying data to save path";
   TryFileCopy(PrefixAbsolutePath(root_path, kInstallAttributesPath),
               save_path.Append(kInstallAttributesFileName));
   TryFileCopy(PrefixAbsolutePath(root_path, kOwnerKeyFilePath),
