@@ -41,18 +41,21 @@ class ImageLoader : public brillo::DBusServiceDaemon,
 
   // Implementations of the public methods interface.
   // Register a component.
-  bool RegisterComponent(brillo::ErrorPtr* err, const std::string& name,
+  bool RegisterComponent(brillo::ErrorPtr* err,
+                         const std::string& name,
                          const std::string& version,
                          const std::string& component_folder_abs_path,
                          bool* out_success) override;
 
   // TODO(kerrnel): errors should probably be returned using the err object.
   // Get component version given component name.
-  bool GetComponentVersion(brillo::ErrorPtr* err, const std::string& name,
+  bool GetComponentVersion(brillo::ErrorPtr* err,
+                           const std::string& name,
                            std::string* out_version) override;
 
   // Load and mount a component.
-  bool LoadComponent(brillo::ErrorPtr* err, const std::string& name,
+  bool LoadComponent(brillo::ErrorPtr* err,
+                     const std::string& name,
                      std::string* out_mount_point) override;
 
   // Load and mount a component from the specified path, which can exist
@@ -69,7 +72,8 @@ class ImageLoader : public brillo::DBusServiceDaemon,
                     std::string* out_mount_point) override;
 
   // Remove a component given component |name|.
-  bool RemoveComponent(brillo::ErrorPtr* err, const std::string& name,
+  bool RemoveComponent(brillo::ErrorPtr* err,
+                       const std::string& name,
                        bool* out_success) override;
 
   // Get component metadata given component |name|.
@@ -79,7 +83,8 @@ class ImageLoader : public brillo::DBusServiceDaemon,
       std::map<std::string, std::string>* out_metadata) override;
 
   // Unmount all mount points given component |name|.
-  bool UnmountComponent(brillo::ErrorPtr* err, const std::string& name,
+  bool UnmountComponent(brillo::ErrorPtr* err,
+                        const std::string& name,
                         bool* out_success) override;
 
   // Unmount the Dlc image mount point given Dlc |id|.

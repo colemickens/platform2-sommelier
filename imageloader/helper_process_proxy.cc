@@ -51,7 +51,6 @@ void HelperProcessProxy::Start(int argc,
 
 std::unique_ptr<CommandResponse> HelperProcessProxy::SendCommand(
     const ImageCommand& image_command, struct msghdr* msg) {
-
   std::vector<char> msg_buf(image_command.ByteSizeLong());
   if (!image_command.SerializeToArray(msg_buf.data(), msg_buf.size()))
     LOG(FATAL) << "error serializing protobuf";

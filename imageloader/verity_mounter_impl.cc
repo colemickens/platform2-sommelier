@@ -43,9 +43,9 @@ bool IsAncestor(const base::FilePath& ancenstor,
   if (descendant_components.size() <= ancenstor_components.size()) {
     return false;
   }
-  return std::mismatch(
-      ancenstor_components.begin(), ancenstor_components.end(),
-      descendant_components.begin()).first == ancenstor_components.end();
+  return std::mismatch(ancenstor_components.begin(), ancenstor_components.end(),
+                       descendant_components.begin())
+             .first == ancenstor_components.end();
 }
 
 }  // namespace imageloader

@@ -15,8 +15,10 @@ namespace imageloader {
 class MockVerityMounter : public VerityMounter {
  public:
   MockVerityMounter() {}
-  MOCK_METHOD3(Mount, bool(const base::ScopedFD&, const base::FilePath&,
-                           const std::string&));
+  MOCK_METHOD3(Mount,
+               bool(const base::ScopedFD&,
+                    const base::FilePath&,
+                    const std::string&));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockVerityMounter);

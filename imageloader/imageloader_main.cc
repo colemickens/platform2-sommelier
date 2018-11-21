@@ -65,8 +65,8 @@ bool Init(const std::string& loadedMountsBase) {
       return false;
     }
     // Mount a tmpfs at loadedMountsBase.
-    if (mount("imageloader", path, "tmpfs",
-              MS_NODEV | MS_NOSUID | MS_NOEXEC, "mode=0755") < 0) {
+    if (mount("imageloader", path, "tmpfs", MS_NODEV | MS_NOSUID | MS_NOEXEC,
+              "mode=0755") < 0) {
       PLOG(ERROR) << "Mount tmpfs failed: " << path;
       return false;
     }
@@ -110,8 +110,7 @@ bool CreateComponentsPath() {
 }  // namespace
 
 int main(int argc, char** argv) {
-  DEFINE_bool(init, false,
-              "Executes one-time setup process for imageloader.");
+  DEFINE_bool(init, false, "Executes one-time setup process for imageloader.");
   DEFINE_bool(dry_run, false,
               "Changes unmount_all to print the paths which would be "
               "affected.");

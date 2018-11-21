@@ -88,16 +88,19 @@ void ImageLoader::OnSubprocessExited(pid_t pid, const siginfo_t& info) {
 }
 
 void ImageLoader::PostponeShutdown() {
-  shutdown_callback_.Reset(base::Bind(&brillo::Daemon::Quit,
-                                      base::Unretained(this)));
+  shutdown_callback_.Reset(
+      base::Bind(&brillo::Daemon::Quit, base::Unretained(this)));
   base::MessageLoop::current()->task_runner()->PostDelayedTask(
       FROM_HERE, shutdown_callback_.callback(),
       base::TimeDelta::FromMilliseconds(kShutdownTimeoutMilliseconds));
 }
 
 bool ImageLoader::RegisterComponent(
-    brillo::ErrorPtr* err, const std::string& name, const std::string& version,
-    const std::string& component_folder_abs_path, bool* out_success) {
+    brillo::ErrorPtr* err,
+    const std::string& name,
+    const std::string& version,
+    const std::string& component_folder_abs_path,
+    bool* out_success) {
   *out_success =
       impl_.RegisterComponent(name, version, component_folder_abs_path);
   PostponeShutdown();
@@ -112,7 +115,8 @@ bool ImageLoader::GetComponentVersion(brillo::ErrorPtr* err,
   return true;
 }
 
-bool ImageLoader::LoadComponent(brillo::ErrorPtr* err, const std::string& name,
+bool ImageLoader::LoadComponent(brillo::ErrorPtr* err,
+                                const std::string& name,
                                 std::string* out_mount_point) {
   *out_mount_point = impl_.LoadComponent(name, helper_process_proxy_.get());
   PostponeShutdown();
@@ -133,14 +137,15 @@ bool ImageLoader::LoadDlcImage(brillo::ErrorPtr* err,
                                const std::string& id,
                                const std::string& a_or_b,
                                std::string* out_mount_point) {
-  *out_mount_point = impl_.LoadDlcImage(id, a_or_b,
-                                        helper_process_proxy_.get());
+  *out_mount_point =
+      impl_.LoadDlcImage(id, a_or_b, helper_process_proxy_.get());
   PostponeShutdown();
   return true;
 }
 
-bool ImageLoader::RemoveComponent(
-    brillo::ErrorPtr* err, const std::string& name, bool* out_success) {
+bool ImageLoader::RemoveComponent(brillo::ErrorPtr* err,
+                                  const std::string& name,
+                                  bool* out_success) {
   *out_success = impl_.RemoveComponent(name);
   PostponeShutdown();
   return true;
@@ -156,14 +161,13 @@ bool ImageLoader::GetComponentMetadata(
   return true;
 }
 
-bool ImageLoader::UnmountComponent(
-    brillo::ErrorPtr* err,
-    const std::string& name,
-    bool* out_success) {
+bool ImageLoader::UnmountComponent(brillo::ErrorPtr* err,
+                                   const std::string& name,
+                                   bool* out_success) {
   base::FilePath component_mount_root =
       base::FilePath(imageloader::ImageLoader::kLoadedMountsBase).Append(name);
-  *out_success = impl_.CleanupAll(
-      false, component_mount_root, nullptr, helper_process_proxy_.get());
+  *out_success = impl_.CleanupAll(false, component_mount_root, nullptr,
+                                  helper_process_proxy_.get());
   PostponeShutdown();
   return true;
 }

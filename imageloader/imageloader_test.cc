@@ -100,7 +100,7 @@ TEST_F(ImageLoaderTest, RegisterComponentAndGetVersion) {
 // attempt registration with ImageLoader.
 TEST_F(ImageLoaderTest, RegisterComponentAfterCrash) {
   // Now create the junk there.
-  const std::string junk_contents ="Bad file contents";
+  const std::string junk_contents = "Bad file contents";
   const base::FilePath junk_path =
       temp_dir_.Append(kTestComponentName).Append(kTestDataVersion);
   ASSERT_TRUE(base::CreateDirectory(junk_path));
@@ -114,8 +114,8 @@ TEST_F(ImageLoaderTest, RegisterComponentAfterCrash) {
 
 TEST_F(ImageLoaderTest, MountValidImage) {
   Keys keys;
-  keys.push_back(std::vector<uint8_t>(std::begin(kDevPublicKey),
-                                      std::end(kDevPublicKey)));
+  keys.push_back(
+      std::vector<uint8_t>(std::begin(kDevPublicKey), std::end(kDevPublicKey)));
 
   auto helper_mock = std::make_unique<MockHelperProcessProxy>();
   EXPECT_CALL(*helper_mock, SendMountCommand(_, _, FileSystem::kSquashFS, _))
@@ -178,8 +178,7 @@ TEST_F(ImageLoaderTest, CleanupAll) {
       std::vector<uint8_t>(std::begin(kDevPublicKey), std::end(kDevPublicKey)));
 
   auto helper_mock = std::make_unique<MockHelperProcessProxy>();
-  EXPECT_CALL(*helper_mock, SendUnmountAllCommand(_, _, _))
-      .Times(1);
+  EXPECT_CALL(*helper_mock, SendUnmountAllCommand(_, _, _)).Times(1);
   ON_CALL(*helper_mock, SendUnmountAllCommand(_, _, _))
       .WillByDefault(testing::Return(true));
 
@@ -281,9 +280,8 @@ TEST_F(ImageLoaderTest, RemoveImageAtPathRemovable) {
   ASSERT_TRUE(component_root.CreateUniqueTempDir());
   base::FilePath component_path = component_root.GetPath().Append("9824.0.4");
   ASSERT_TRUE(base::CreateDirectory(component_path));
-  std::unique_ptr<Component> component =
-      Component::Create(base::FilePath(GetTestDataPath("ext4_component")),
-                        keys);
+  std::unique_ptr<Component> component = Component::Create(
+      base::FilePath(GetTestDataPath("ext4_component")), keys);
   ASSERT_TRUE(component->CopyTo(component_path));
 
   // Remove the component.
@@ -309,8 +307,7 @@ TEST_F(ImageLoaderTest, RemoveImageAtPathNotRemovable) {
   base::FilePath component_path = component_root.GetPath().Append("9824.0.4");
   ASSERT_TRUE(base::CreateDirectory(component_path));
   std::unique_ptr<Component> component =
-      Component::Create(base::FilePath(GetTestComponentPath()),
-                        keys);
+      Component::Create(base::FilePath(GetTestComponentPath()), keys);
   ASSERT_TRUE(component->CopyTo(component_path));
 
   // Remove the component.
@@ -343,8 +340,8 @@ TEST_F(ImageLoaderTest, MountInvalidImage) {
                                        GetTestComponentPath().value()));
 
   base::FilePath table = temp_dir_.Append(kTestComponentName)
-                              .Append(kTestDataVersion)
-                              .Append("table");
+                             .Append(kTestDataVersion)
+                             .Append("table");
   std::string contents = "corrupt";
   ASSERT_EQ(static_cast<int>(contents.size()),
             base::WriteFile(table, contents.data(), contents.size()));
@@ -352,7 +349,8 @@ TEST_F(ImageLoaderTest, MountInvalidImage) {
 }
 
 TEST_F(ImageLoaderTest, SetupTable) {
-  std::string base_table = "0 40 verity payload=ROOT_DEV hashtree=HASH_DEV "
+  std::string base_table =
+      "0 40 verity payload=ROOT_DEV hashtree=HASH_DEV "
       "hashstart=40 alg=sha256 root_hexdigest="
       "34663b9920632778d38a0943a5472cae196bd4bf1d7dfa191506e7a8e7ec84d2 "
       "salt=fcfc9b5a329e44be73a323188ae75ca644122d920161f672f6935623831d07e2";
@@ -407,8 +405,8 @@ TEST_F(ImageLoaderTest, GetMetadata) {
   std::map<std::string, std::string> metadata;
   ASSERT_TRUE(loader.GetComponentMetadata(kMetadataComponentName, &metadata));
   std::map<std::string, std::string> expected_metadata{
-    {"foo", "bar"},
-    {"baz", "quux"},
+      {"foo", "bar"},
+      {"baz", "quux"},
   };
   ASSERT_EQ(expected_metadata, metadata);
 }
@@ -434,8 +432,7 @@ TEST_F(ImageLoaderTest, MetadataFailure) {
                                         GetBadMetadataComponentPath().value()));
 
   ASSERT_FALSE(loader.RegisterComponent(
-      kNonDictMetadataComponentName,
-      kTestOciComponentVersion,
+      kNonDictMetadataComponentName, kTestOciComponentVersion,
       GetNonDictMetadataComponentPath().value()));
 }
 
@@ -462,4 +459,4 @@ TEST_F(ImageLoaderTest, ValidIdTest) {
       ImageLoaderImpl::IsIdValid("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
 }
 
-}   // namespace imageloader
+}  // namespace imageloader

@@ -12,8 +12,10 @@ namespace imageloader {
 TEST(VerityMounterTest, MapperParametersToLoop) {
   // Test valid case.
   int32_t loop = -1;
-  EXPECT_TRUE(MapperParametersToLoop("0 7:6 7:6 4096 4096 3089 3089 sha256 "
-                                     "eef4aa5dc50d181b7f6...", &loop));
+  EXPECT_TRUE(
+      MapperParametersToLoop("0 7:6 7:6 4096 4096 3089 3089 sha256 "
+                             "eef4aa5dc50d181b7f6...",
+                             &loop));
   EXPECT_EQ(loop, 6);
 
   // Make sure notable edge cases are handled correctly.

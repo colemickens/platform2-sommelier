@@ -79,7 +79,6 @@ bool ImageLoaderImpl::IsIdValid(const std::string& id) {
   return true;
 }
 
-
 bool ImageLoaderImpl::LoadComponent(const std::string& name,
                                     const std::string& mount_point_str,
                                     HelperProcessProxy* proxy) {

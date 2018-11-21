@@ -41,7 +41,7 @@ namespace {
 // Path to devices created by device mapper.
 constexpr char kDeviceMapperPath[] = "/dev/mapper";
 
-using dm_task_ptr = std::unique_ptr<dm_task, void(*)(dm_task *)>;
+using dm_task_ptr = std::unique_ptr<dm_task, void (*)(dm_task*)>;
 
 enum class MountStatus { FAIL, RETRY, SUCCESS };
 
@@ -51,7 +51,8 @@ constexpr int DMSETUP_TIMEOUT_SECONDS = 3;
 // Fetches the device mapper table entry with the specified name and writes the
 // type and parameters into the provided pointers.
 // Returns true on success.
-bool MapperGetEntry(const std::string& name, std::string* type,
+bool MapperGetEntry(const std::string& name,
+                    std::string* type,
                     std::string* parameters) {
   auto task = dm_task_ptr(dm_task_create(DM_DEVICE_TABLE), &dm_task_destroy);
   struct dm_info info;
@@ -124,9 +125,8 @@ bool MapperTableLength(const std::string& name, uint64_t* length) {
   char* type;
   char* parameters;
   do {
-    next =
-        dm_get_next_target(task.get(), next, &start, &length_part, &type,
-                           &parameters);
+    next = dm_get_next_target(task.get(), next, &start, &length_part, &type,
+                              &parameters);
     *length += length_part;
   } while (next);
   return true;
@@ -234,14 +234,17 @@ void ClearVerityDevice(const std::string& name) {
 void ClearLoopDevice(const std::string& device_path) {
   base::ScopedFD loop_device_fd(
       open(device_path.c_str(), O_RDONLY | O_CLOEXEC));
-  if (loop_device_fd.is_valid()) ioctl(loop_device_fd.get(), LOOP_CLR_FD, 0);
+  if (loop_device_fd.is_valid())
+    ioctl(loop_device_fd.get(), LOOP_CLR_FD, 0);
 }
 
-bool SetupDeviceMapper(const std::string& device_path, const std::string& table,
+bool SetupDeviceMapper(const std::string& device_path,
+                       const std::string& table,
                        std::string* dev_name) {
   // Now setup the dmsetup table.
   std::string final_table = table;
-  if (!VerityMounter::SetupTable(&final_table, device_path)) return false;
+  if (!VerityMounter::SetupTable(&final_table, device_path))
+    return false;
 
   // Generate a name with a random string of 32 characters: we consider this to
   // have sufficiently low chance of collision to assume the name isn't taken.
@@ -273,8 +276,10 @@ bool CreateDirectoryWithMode(const base::FilePath& full_path, int mode) {
 
   // Iterate through the parents and create the missing ones.
   for (const auto& subpath : base::Reversed(subpaths)) {
-    if (base::DirectoryExists(subpath)) continue;
-    if (mkdir(subpath.value().c_str(), mode) == 0) continue;
+    if (base::DirectoryExists(subpath))
+      continue;
+    if (mkdir(subpath.value().c_str(), mode) == 0)
+      continue;
     // Mkdir failed, but it might have failed with EEXIST, or some other error
     // due to the directory appearing out of thin air. This can occur if two
     // processes are trying to create the same file system tree at the same
@@ -310,10 +315,10 @@ bool CreateMountPointIfNeeded(const base::FilePath& mount_point,
         PLOG(ERROR) << "statfs";
         return false;
       }
-      if ((st_fs.f_type != SQUASHFS_MAGIC && st_fs.f_type != EXT4_SUPER_MAGIC)
-          || !(st_fs.f_flags & ST_NODEV)
-          || !(st_fs.f_flags & ST_NOSUID)
-          || !(st_fs.f_flags & ST_RDONLY)) {
+      if ((st_fs.f_type != SQUASHFS_MAGIC &&
+           st_fs.f_type != EXT4_SUPER_MAGIC) ||
+          !(st_fs.f_flags & ST_NODEV) || !(st_fs.f_flags & ST_NOSUID) ||
+          !(st_fs.f_flags & ST_RDONLY)) {
         LOG(ERROR) << "File system is not the expected type.";
         return false;
       }
@@ -371,7 +376,8 @@ MountStatus GetLoopDevice(const base::ScopedFD& image_fd,
 bool VerityMounter::SetupTable(std::string* table,
                                const std::string& device_path) {
   // Make sure there is only one entry in the device mapper table.
-  if (std::count(table->begin(), table->end(), '\n') > 1) return false;
+  if (std::count(table->begin(), table->end(), '\n') > 1)
+    return false;
 
   // Remove all newlines from the table. This is to workaround the server
   // incorrectly inserting a newline when writing out the table.
@@ -394,8 +400,10 @@ bool VerityMounter::Mount(const base::ScopedFD& image_fd,
                           const std::string& table) {
   // First check if the component is already mounted and avoid unnecessary work.
   bool already_mounted = false;
-  if (!CreateMountPointIfNeeded(mount_point, &already_mounted)) return false;
-  if (already_mounted) return true;
+  if (!CreateMountPointIfNeeded(mount_point, &already_mounted))
+    return false;
+  if (already_mounted)
+    return true;
 
   std::string loop_device_path;
   // We need to retry because another program could grap the loop device,
@@ -456,8 +464,8 @@ bool Unmount(const base::FilePath& mount_point) {
 
 // Returns (mount point, source path) pairs visible to this process. The order
 // can be reversed to help with unmounting.
-std::vector<std::pair<std::string, std::string>>
-    GetAllMountPaths(bool reverse) {
+std::vector<std::pair<std::string, std::string>> GetAllMountPaths(
+    bool reverse) {
   std::vector<std::pair<std::string, std::string>> mount_paths;
   base::ScopedFILE mountinfo(fopen("/proc/self/mounts", "re"));
   if (!mountinfo) {
@@ -491,8 +499,7 @@ bool CleanupImpl(const base::FilePath& mount_point,
 
   // Lookup loop info.
   int32_t loop = -1;
-  if (!MapperNameToLoop(source_path.BaseName().value(), &loop) ||
-      loop < 0) {
+  if (!MapperNameToLoop(source_path.BaseName().value(), &loop) || loop < 0) {
     LOG(ERROR) << "Unable to determine loop device for " << source_path.value();
     return false;
   }

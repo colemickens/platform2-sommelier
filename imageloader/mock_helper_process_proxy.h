@@ -26,9 +26,8 @@ class MockHelperProcessProxy : public HelperProcessProxy {
   MOCK_METHOD4(SendMountCommand,
                bool(int, const std::string&, FileSystem, const std::string&));
 
-  MOCK_METHOD3(SendUnmountAllCommand, bool(bool,
-                                           const std::string&,
-                                           std::vector<std::string>* paths));
+  MOCK_METHOD3(SendUnmountAllCommand,
+               bool(bool, const std::string&, std::vector<std::string>* paths));
 
   MOCK_METHOD1(SendUnmountCommand, bool(const std::string&));
 

@@ -27,7 +27,8 @@ class VerityMounter {
 
   bool Cleanup(const base::FilePath& mount_point);
 
-  bool CleanupAll(bool dry_run, const base::FilePath& parent_dir,
+  bool CleanupAll(bool dry_run,
+                  const base::FilePath& parent_dir,
                   std::vector<base::FilePath>* paths);
 
   // Take the raw table, clean up any newlines, insert the device_path, and add

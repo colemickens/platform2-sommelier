@@ -41,7 +41,8 @@ class ComponentTest : public testing::Test {
   bool TestCopyWithCorruptFile(const std::string& component_name,
                                const std::string& file_name) {
     base::FilePath bad_component_dir = temp_dir_.Append(component_name);
-    if (!base::CreateDirectory(bad_component_dir)) return false;
+    if (!base::CreateDirectory(bad_component_dir))
+      return false;
     if (!base::SetPosixFilePermissions(bad_component_dir, kComponentDirPerms))
       return false;
 
@@ -52,15 +53,18 @@ class ComponentTest : public testing::Test {
 
     std::unique_ptr<Component> bad_component =
         Component::Create(bad_component_dir, keys_);
-    if (!bad_component) return false;
+    if (!bad_component)
+      return false;
 
     base::FilePath file = bad_component_dir.Append(file_name);
     const char data[] = "c";
-    if (!base::AppendToFile(file, data, sizeof(data))) return false;
+    if (!base::AppendToFile(file, data, sizeof(data)))
+      return false;
 
     base::FilePath bad_component_dest =
         temp_dir_.Append(component_name + "invalid");
-    if (!base::CreateDirectory(bad_component_dest)) return false;
+    if (!base::CreateDirectory(bad_component_dest))
+      return false;
 
     if (!base::SetPosixFilePermissions(bad_component_dest, kComponentDirPerms))
       return false;
@@ -70,7 +74,8 @@ class ComponentTest : public testing::Test {
   bool TestInitComponentWithCorruptFile(const std::string& component_name,
                                         const std::string& file_name) {
     base::FilePath bad_component_dir = temp_dir_.Append(component_name);
-    if (!base::CreateDirectory(bad_component_dir)) return false;
+    if (!base::CreateDirectory(bad_component_dir))
+      return false;
     if (!base::SetPosixFilePermissions(bad_component_dir, kComponentDirPerms))
       return false;
 
@@ -82,7 +87,8 @@ class ComponentTest : public testing::Test {
     base::FilePath file = bad_component_dir.Append(file_name);
     // Read the file out and change the last byte.
     std::string file_contents;
-    if (!base::ReadFileToString(file, &file_contents)) return false;
+    if (!base::ReadFileToString(file, &file_contents))
+      return false;
     file_contents[file_contents.size() - 1] =
         ~file_contents[file_contents.size() - 1];
 

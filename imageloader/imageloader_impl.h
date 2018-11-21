@@ -20,11 +20,10 @@ namespace imageloader {
 using Keys = std::vector<std::vector<uint8_t>>;
 
 struct ImageLoaderConfig {
-  ImageLoaderConfig(const Keys& keys, const char* storage_path,
+  ImageLoaderConfig(const Keys& keys,
+                    const char* storage_path,
                     const char* mount_path)
-      : keys(keys),
-        storage_dir(storage_path),
-        mount_path(mount_path) {}
+      : keys(keys), storage_dir(storage_path), mount_path(mount_path) {}
 
   Keys keys;
   base::FilePath storage_dir;
@@ -38,7 +37,8 @@ class ImageLoaderImpl {
       : config_(std::move(config)) {}
 
   // Register a component.
-  bool RegisterComponent(const std::string& name, const std::string& version,
+  bool RegisterComponent(const std::string& name,
+                         const std::string& version,
                          const std::string& component_folder_abs_path);
 
   // Remove a component.
@@ -71,11 +71,13 @@ class ImageLoaderImpl {
 
   // Load the specified DLC image. This returns the mount point or an empty
   // string on failure.
-  std::string LoadDlcImage(const std::string& id, const std::string& a_or_b,
+  std::string LoadDlcImage(const std::string& id,
+                           const std::string& a_or_b,
                            HelperProcessProxy* proxy);
 
   // Load the specified component at a set mount point.
-  bool LoadComponent(const std::string& name, const std::string& mount_point,
+  bool LoadComponent(const std::string& name,
+                     const std::string& mount_point,
                      HelperProcessProxy* proxy);
 
   // Load the specified component from the given path.
