@@ -2,12 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/cellular/verizon_subscription_state.h"
-
+#include <stdint.h>
 #include <memory>
 #include <vector>
 
-#include <stdint.h>
+#include "shill/cellular/verizon_subscription_state.h"
 
 namespace shill {
 namespace {
