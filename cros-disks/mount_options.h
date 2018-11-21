@@ -22,6 +22,7 @@ class MountOptions {
   static const char kOptionNoDev[];
   static const char kOptionNoExec[];
   static const char kOptionNoSuid[];
+  static const char kOptionNoSymFollow[];
   static const char kOptionReadOnly[];
   static const char kOptionReadWrite[];
   static const char kOptionRemount[];

@@ -23,6 +23,7 @@ const char MountOptions::kOptionFlush[] = "flush";
 const char MountOptions::kOptionNoDev[] = "nodev";
 const char MountOptions::kOptionNoExec[] = "noexec";
 const char MountOptions::kOptionNoSuid[] = "nosuid";
+const char MountOptions::kOptionNoSymFollow[] = "nosymfollow";
 const char MountOptions::kOptionReadOnly[] = "ro";
 const char MountOptions::kOptionReadWrite[] = "rw";
 const char MountOptions::kOptionRemount[] = "remount";
