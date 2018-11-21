@@ -803,6 +803,162 @@ int SyncVmTimes(dbus::ObjectProxy* proxy) {
   return -response.failures();
 }
 
+int AttachUsbDevice(dbus::ObjectProxy* proxy,
+                    string vm_name,
+                    string owner_id,
+                    int32_t bus_number,
+                    int32_t port_number,
+                    int32_t vendor_id,
+                    int32_t product_id) {
+  if (vm_name.empty()) {
+    LOG(ERROR) << "--name is required";
+    return -1;
+  }
+
+  std::string path =
+      base::StringPrintf("/dev/bus/usb/%03d/%03d", bus_number, port_number);
+  base::ScopedFD fd(HANDLE_EINTR(open(path.c_str(), O_RDWR | O_CLOEXEC)));
+  if (!fd.is_valid()) {
+    LOG(ERROR) << "Failed to open USB device file, are you root?";
+    return -1;
+  }
+
+  dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
+                               vm_tools::concierge::kAttachUsbDeviceMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  vm_tools::concierge::AttachUsbDeviceRequest request;
+  request.set_vm_name(vm_name);
+  request.set_owner_id(owner_id);
+  request.set_bus_number(bus_number);
+  request.set_port_number(port_number);
+  request.set_vendor_id(vendor_id);
+  request.set_product_id(product_id);
+
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode AttachUsbDeviceRequest protobuf";
+    return -1;
+  }
+
+  writer.AppendFileDescriptor(fd.get());
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to concierge service";
+    return -1;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  vm_tools::concierge::AttachUsbDeviceResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse response protobuf";
+    return -1;
+  }
+
+  if (!response.success()) {
+    LOG(ERROR) << "AttachUsbDeviceRequest failed: " << response.reason();
+    return -1;
+  } else {
+    LOG(INFO) << "USB device attached to guest port " << response.guest_port();
+    return 0;
+  }
+}
+
+int DetachUsbDevice(dbus::ObjectProxy* proxy,
+                    string vm_name,
+                    string owner_id,
+                    int32_t guest_port) {
+  if (vm_name.empty()) {
+    LOG(ERROR) << "--name is required";
+    return -1;
+  }
+
+  dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
+                               vm_tools::concierge::kDetachUsbDeviceMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  vm_tools::concierge::DetachUsbDeviceRequest request;
+  request.set_vm_name(vm_name);
+  request.set_owner_id(owner_id);
+  request.set_guest_port(guest_port);
+
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode DetachUsbDeviceRequest protobuf";
+    return -1;
+  }
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to concierge service";
+    return -1;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  vm_tools::concierge::DetachUsbDeviceResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse response protobuf";
+    return -1;
+  }
+
+  if (!response.success()) {
+    LOG(ERROR) << "DetachUsbDeviceRequest failed: " << response.reason();
+    return -1;
+  } else {
+    LOG(INFO) << "USB device detached from guest";
+    return 0;
+  }
+}
+
+int ListUsbDevices(dbus::ObjectProxy* proxy, string vm_name, string owner_id) {
+  dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
+                               vm_tools::concierge::kListUsbDeviceMethod);
+  if (vm_name.empty()) {
+    LOG(ERROR) << "--name is required";
+    return -1;
+  }
+
+  dbus::MessageWriter writer(&method_call);
+
+  vm_tools::concierge::ListUsbDeviceRequest request;
+  request.set_vm_name(vm_name);
+  request.set_owner_id(owner_id);
+
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode ListUsbDeviceRequest protobuf";
+    return -1;
+  }
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to concierge service";
+    return -1;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  vm_tools::concierge::ListUsbDeviceResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse response protobuf";
+    return -1;
+  }
+
+  if (!response.success()) {
+    LOG(ERROR) << "Failed to list USB devices";
+    return -1;
+  } else {
+    LOG(INFO) << "Guest Port\tVendor ID\tProduct ID\tDevice Name";
+    for (int i = 0; i < response.usb_devices_size(); i++) {
+      auto& usb_device = response.usb_devices(i);
+      LOG(INFO) << usb_device.guest_port() << "\t" << usb_device.vendor_id()
+                << "\t" << usb_device.product_id() << "\t"
+                << usb_device.device_name();
+    }
+    return 0;
+  }
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -825,6 +981,9 @@ int main(int argc, char** argv) {
               "Launches an application in a container");
   DEFINE_bool(get_icon, false, "Get an app icon from a container within a VM");
   DEFINE_bool(sync_time, false, "Update VM times");
+  DEFINE_bool(attach_usb, false, "Attach a USB device to a VM");
+  DEFINE_bool(detach_usb, false, "Detach a USB device from a VM");
+  DEFINE_bool(list_usb_devices, false, "List all USB devices attached to a VM");
 
   // Parameters.
   DEFINE_string(kernel, "", "Path to the VM kernel");
@@ -844,6 +1003,13 @@ int main(int argc, char** argv) {
   DEFINE_string(image_type, "auto", "Disk image type");
   DEFINE_string(storage_location, "cryptohome-root",
                 "Location to store the disk image");
+
+  // USB parameters.
+  DEFINE_int32(bus_number, -1, "USB bus number");
+  DEFINE_int32(port_number, -1, "USB port number");
+  DEFINE_int32(vendor_id, -1, "USB vendor ID");
+  DEFINE_int32(product_id, -1, "USB product ID");
+  DEFINE_int32(guest_port, -1, "Guest USB port allocated to device");
 
   brillo::FlagHelper::Init(argc, argv, "vm_concierge client tool");
   brillo::InitLog(brillo::kLogToStderrIfTty);
@@ -874,12 +1040,14 @@ int main(int argc, char** argv) {
   if (FLAGS_start + FLAGS_stop + FLAGS_stop_all + FLAGS_get_vm_info +
       FLAGS_create_disk + FLAGS_create_external_disk + FLAGS_start_termina_vm +
       FLAGS_destroy_disk + FLAGS_export_disk + FLAGS_list_disks +
-      FLAGS_sync_time != 1) {
+      FLAGS_sync_time + FLAGS_attach_usb +
+      FLAGS_detach_usb + FLAGS_list_usb_devices != 1) {
     // clang-format on
     LOG(ERROR) << "Exactly one of --start, --stop, --stop_all, --get_vm_info, "
                << "--create_disk, --create_external_disk --destroy_disk, "
                << "--export_disk --list_disks, --start_termina_vm, "
-               << "or --sync_time must be provided";
+               << "--sync_time, --attach_usb, --detach_usb, "
+               << "or --list_usb_devices must be provided";
     return -1;
   }
 
@@ -921,6 +1089,16 @@ int main(int argc, char** argv) {
         std::move(FLAGS_image_type));
   } else if (FLAGS_sync_time) {
     return SyncVmTimes(proxy);
+  } else if (FLAGS_attach_usb) {
+    return AttachUsbDevice(
+        proxy, std::move(FLAGS_name), std::move(FLAGS_cryptohome_id),
+        FLAGS_bus_number, FLAGS_port_number, FLAGS_vendor_id, FLAGS_product_id);
+  } else if (FLAGS_detach_usb) {
+    return DetachUsbDevice(proxy, std::move(FLAGS_name),
+                           std::move(FLAGS_cryptohome_id), FLAGS_guest_port);
+  } else if (FLAGS_list_usb_devices) {
+    return ListUsbDevices(proxy, std::move(FLAGS_name),
+                          std::move(FLAGS_cryptohome_id));
   }
 
   // Unreachable.
