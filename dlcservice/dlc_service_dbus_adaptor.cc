@@ -24,6 +24,47 @@ namespace dlcservice {
 
 namespace {
 
+// Permissions for DLC module directories.
+constexpr mode_t kDlcModuleDirectoryPerms = 0755;
+
+// Creates a directory with permissions required for DLC modules.
+bool CreateDirWithDlcPermissions(const base::FilePath& path) {
+  base::File::Error file_err;
+  if (!base::CreateDirectoryAndGetError(path, &file_err)) {
+    LOG(ERROR) << "Failed to create directory '" << path.value()
+               << "': " << base::File::ErrorToString(file_err);
+    return false;
+  }
+  if (!base::SetPosixFilePermissions(path, kDlcModuleDirectoryPerms)) {
+    LOG(ERROR) << "Failed to set directory permissions for '" << path.value()
+               << "'";
+    return false;
+  }
+  return true;
+}
+
+// Creates a directory with an empty image file and resizes it to the given
+// size.
+bool CreateImageFile(const base::FilePath& path, int64_t image_size) {
+  if (!CreateDirWithDlcPermissions(path.DirName())) {
+    return false;
+  }
+  constexpr uint32_t file_flags =
+      base::File::FLAG_CREATE | base::File::FLAG_READ | base::File::FLAG_WRITE;
+  base::File file(path, file_flags);
+  if (!file.IsValid()) {
+    LOG(ERROR) << "Failed to create image file '" << path.value()
+               << "': " << base::File::ErrorToString(file.error_details());
+    return false;
+  }
+  if (!file.SetLength(image_size)) {
+    LOG(ERROR) << "Failed to reserve backup file for DLC module image '"
+               << path.value() << "'";
+    return false;
+  }
+  return true;
+}
+
 // Sets the D-Bus error object and logs the error message.
 void LogAndSetError(brillo::ErrorPtr* err, const std::string& msg) {
   if (err)
@@ -75,60 +116,38 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
 
   // TODO(xiaochu): may detect corrupted DLC modules and recover.
   // https://crbug.com/903432
-  if (base::PathExists(utils::GetDlcModulePath(content_dir_, id_in))) {
+  base::FilePath module_path = utils::GetDlcModulePath(content_dir_, id_in);
+  if (base::PathExists(module_path)) {
     LogAndSetError(err, "The DLC module is installed.");
     return false;
   }
 
+  // Create module directory
+  if (!CreateDirWithDlcPermissions(module_path)) {
+    LogAndSetError(err, "Failed to create DLC module directory");
+    return false;
+  }
+
   // Creates DLC module storage.
-  base::File::Error file_err;
+  // TODO(xiaochu): parse DLC manifest file to set image size.
+  // https://crbug.com/904539
+  // Currently we set the image file to be 1000K for all DLC modules.
+  // This is a reasonable size for test DLC modules for demo purpose.
+  int64_t image_size = 1024 * 1000;
 
   // Creates image A.
   base::FilePath image_a_path =
       utils::GetDlcModuleImagePath(content_dir_, id_in, 0);
-  if (!base::CreateDirectoryAndGetError(image_a_path.DirName(), &file_err)) {
-    std::string error_str = "Failed to create slot A DLC directory: " +
-                            base::File::ErrorToString(file_err);
-    LogAndSetError(err, error_str);
-    return false;
-  }
-  base::File image_a(image_a_path, base::File::FLAG_CREATE |
-                                       base::File::FLAG_READ |
-                                       base::File::FLAG_WRITE);
-  if (!image_a.IsValid()) {
-    std::string error_str = "Failed to create slot A DLC image file: " +
-                            base::File::ErrorToString(image_a.error_details());
-    LogAndSetError(err, error_str);
+  if (!CreateImageFile(image_a_path, image_size)) {
+    LogAndSetError(err, "Failed to create slot A DLC image file");
     return false;
   }
 
   // Creates image B.
   base::FilePath image_b_path =
       utils::GetDlcModuleImagePath(content_dir_, id_in, 1);
-  if (!base::CreateDirectoryAndGetError(image_b_path.DirName(), &file_err)) {
-    std::string error_str = "Failed to create slot B DLC directory: " +
-                            base::File::ErrorToString(file_err);
-    LogAndSetError(err, error_str);
-    return false;
-  }
-  base::File image_b(image_b_path, base::File::FLAG_CREATE |
-                                       base::File::FLAG_READ |
-                                       base::File::FLAG_WRITE);
-  if (!image_b.IsValid()) {
-    std::string error_str = "Failed to create slot B DLC image file: " +
-                            base::File::ErrorToString(image_b.error_details());
-    LogAndSetError(err, error_str);
-    return false;
-  }
-
-  // TODO(xiaochu): parse DLC manifest file to set image size.
-  // https://crbug.com/904539
-  // Currently we set the image file to be 1000K for all DLC modules.
-  // This is a reasonable size for test DLC modules for demo purpose.
-  int image_size = 1024 * 1000;
-  if (!image_a.SetLength(image_size) || !image_b.SetLength(image_size)) {
-    LogAndSetError(err,
-                   "Failed to reserve backup files for DLC module images.");
+  if (!CreateImageFile(image_b_path, image_size)) {
+    LogAndSetError(err, "Failed to create slot B image file");
     return false;
   }
 

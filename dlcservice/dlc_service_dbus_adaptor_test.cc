@@ -192,6 +192,21 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallTest) {
   EXPECT_TRUE(
       dlc_service_dbus_adaptor.Install(nullptr, kSecondDlc, &mount_path));
   EXPECT_EQ(mount_path, mount_path_expected);
+
+  constexpr int expected_permissions = 0755;
+  int permissions;
+  base::FilePath module_path =
+      utils::GetDlcModulePath(content_path_, kSecondDlc);
+  base::GetPosixFilePermissions(module_path, &permissions);
+  EXPECT_EQ(permissions, expected_permissions);
+  base::FilePath image_a_path =
+      utils::GetDlcModuleImagePath(content_path_, kSecondDlc, 0);
+  base::GetPosixFilePermissions(image_a_path.DirName(), &permissions);
+  EXPECT_EQ(permissions, expected_permissions);
+  base::FilePath image_b_path =
+      utils::GetDlcModuleImagePath(content_path_, kSecondDlc, 1);
+  base::GetPosixFilePermissions(image_b_path.DirName(), &permissions);
+  EXPECT_EQ(permissions, expected_permissions);
 }
 
 }  // namespace dlcservice
