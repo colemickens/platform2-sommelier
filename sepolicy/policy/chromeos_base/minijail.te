@@ -26,6 +26,7 @@ allow minijail cros_init_scripts:fifo_file { write ioctl };
 domain_auto_trans({ chromeos_domain -cros_debugd -minijail_executor_domain}, cros_minijail_exec, minijail);
 auditallow {
 chromeos_domain
+-minijail
 -minijail_executor_domain
 -cros_init
 -cros_init_scripts

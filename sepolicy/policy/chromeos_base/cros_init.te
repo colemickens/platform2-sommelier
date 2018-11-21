@@ -37,7 +37,10 @@ execute_file_follow_link(cros_init, sh_exec);
 execute_file_follow_link(cros_init, cros_ionice_exec);
 domain_auto_trans(cros_init, sh_exec, cros_init_scripts);
 domain_auto_trans(cros_init, cros_init_shell_scripts, cros_init_scripts);
+
+dev_only(
 auditallow cros_init cros_init_shell_scripts:file execute;
+)
 
 allow cros_init cros_chrt_exec:file rx_file_perms;
 

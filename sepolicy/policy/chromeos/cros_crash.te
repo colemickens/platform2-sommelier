@@ -21,6 +21,7 @@ domain_auto_trans({chromeos_domain -cros_crash}, cros_crash_reporter_exec, cros_
 auditallow {
 chromeos_domain
 -kernel
+-cros_init
 -chromeos
 -cros_anomaly_collector
 -cros_crash

@@ -3,6 +3,8 @@ define(`has_arc', ifelse(arc_version, `none', $2, $1))
 define(`no_arc', has_arc(, $1))
 define(`is_arc_nyc', ifelse(arc_version, `n', $1, $2))
 
+define(`dev_only', ifelse(use_selinux_develop, `y', $1))
+
 divert(-1)
 define(`_first', `$1');
 define(`_break_cts', `
