@@ -2135,6 +2135,11 @@ TEST_F(ServiceTest, Compare) {
   service10->SetStrength(1);
   EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
 
+  // A service that has been connected before should be considered
+  // above a service that has never been connected to before.
+  service2->has_ever_connected_ = true;
+  EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
+
   scoped_refptr<MockProfile> profile2(
       new MockProfile(control_interface(), metrics(), manager(), ""));
   scoped_refptr<MockProfile> profile10(
@@ -2146,31 +2151,26 @@ TEST_F(ServiceTest, Compare) {
   // When comparing two services with different profiles, prefer the one
   // that is not ephemeral.
   EXPECT_CALL(mock_manager_, IsServiceEphemeral(IsRefPtrTo(service2)))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(mock_manager_, IsServiceEphemeral(IsRefPtrTo(service10)))
       .WillRepeatedly(Return(true));
-  EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
+  EXPECT_CALL(mock_manager_, IsServiceEphemeral(IsRefPtrTo(service10)))
+      .WillRepeatedly(Return(false));
+  EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
   Mock::VerifyAndClearExpectations(&mock_manager_);
 
   // Prefer the service with the more recently applied profile if neither
   // service is ephemeral.
   EXPECT_CALL(mock_manager_, IsServiceEphemeral(_))
       .WillRepeatedly(Return(false));
-  EXPECT_CALL(mock_manager_, IsProfileBefore(IsRefPtrTo(profile2),
-                                             IsRefPtrTo(profile10)))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(mock_manager_, IsProfileBefore(IsRefPtrTo(profile10),
-                                             IsRefPtrTo(profile2)))
+  EXPECT_CALL(mock_manager_,
+              IsProfileBefore(IsRefPtrTo(profile2), IsRefPtrTo(profile10)))
       .WillRepeatedly(Return(false));
-  EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
-
-  // Security.
-  service2->SetSecurity(Service::kCryptoAes, true, true);
+  EXPECT_CALL(mock_manager_,
+              IsProfileBefore(IsRefPtrTo(profile10), IsRefPtrTo(profile2)))
+      .WillRepeatedly(Return(true));
   EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
 
-  // A service that has been connected before should be considered
-  // above a service that has never been connected to before.
-  service10->has_ever_connected_ = true;
+  // Security.
+  service10->SetSecurity(Service::kCryptoAes, true, true);
   EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
 
   // Auto-connect.

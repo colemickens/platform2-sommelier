@@ -1082,11 +1082,6 @@ bool Service::Compare(Manager* manager,
     return ret;
   }
 
-  if (DecideBetween(a->has_ever_connected(), b->has_ever_connected(), &ret)) {
-    *reason = kServiceSortHasEverConnected;
-    return ret;
-  }
-
   if (DecideBetween(a->SecurityLevel(), b->SecurityLevel(), &ret)) {
     *reason = kServiceSortSecurity;
     return ret;
@@ -1107,6 +1102,11 @@ bool Service::Compare(Manager* manager,
     } else {
       return false;
     }
+  }
+
+  if (DecideBetween(a->has_ever_connected(), b->has_ever_connected(), &ret)) {
+    *reason = kServiceSortHasEverConnected;
+    return ret;
   }
 
   if (DecideBetween(a->strength(), b->strength(), &ret)) {
