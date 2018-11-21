@@ -58,7 +58,6 @@ executable("bio_crypto_init") {
   sources = [
     "bio_crypto_init.cc",
   ]
-  libs = [ "-ldl" ]
   deps = [
     ":libbiod",
   ]
@@ -69,7 +68,6 @@ executable("bio_wash") {
   sources = [
     "bio_wash.cc",
   ]
-  libs = [ "-ldl" ]
   deps = [
     ":libbiod",
   ]
