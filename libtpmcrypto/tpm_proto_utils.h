@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef TPMCRYPTO_TPM_PROTO_UTILS_H_
-#define TPMCRYPTO_TPM_PROTO_UTILS_H_
+#ifndef LIBTPMCRYPTO_TPM_PROTO_UTILS_H_
+#define LIBTPMCRYPTO_TPM_PROTO_UTILS_H_
 
 #include <string>
 
@@ -29,4 +29,4 @@ bool ParseTpmCryptoProto(const std::string& serialized,
 
 }  // namespace tpmcrypto
 
-#endif  // TPMCRYPTO_TPM_PROTO_UTILS_H_
+#endif  // LIBTPMCRYPTO_TPM_PROTO_UTILS_H_
