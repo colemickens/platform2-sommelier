@@ -10,11 +10,9 @@
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
+#include <libtpmcrypto/tpm_crypto_impl.h>
 
 #include "oobe_config/rollback_constants.h"
-// TODO(zentaro): Replace with <libtpmcrypto/tpm_crypto_impl.h> when
-// CL:1308515 lands.
-#include "oobe_config/tpm_crypto_impl.h"
 
 namespace oobe_config {
 

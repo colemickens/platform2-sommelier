@@ -11,12 +11,10 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <policy/resilient_policy_util.h>
+#include <libtpmcrypto/tpm_crypto_impl.h>
 
 #include "oobe_config/rollback_constants.h"
 #include "oobe_config/rollback_data.pb.h"
-// TODO(zentaro): Replace with <libtpmcrypto/tpm_crypto_impl.h> when
-// CL:1308515 lands.
-#include "oobe_config/tpm_crypto_impl.h"
 
 namespace oobe_config {
 

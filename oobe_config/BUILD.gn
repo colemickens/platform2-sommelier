@@ -28,6 +28,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
+    "libtpmcrypto",
 
     # system_api depends on protobuf (or protobuf-lite). It must
     # appear before protobuf or the linker flags won't be in the right
@@ -61,7 +62,10 @@ static_library("liboobeconfig") {
     "oobe_config.cc",
     "rollback_constants.cc",
   ]
-  libs = [ "-lpolicy-${libbase_ver}" ]
+  libs = [
+    "-lpolicy-${libbase_ver}",
+    "-ltpmcrypto",
+  ]
   deps = [
     ":oobe_config_proto",
   ]
