@@ -9,6 +9,7 @@ group("all") {
   deps = [
     ":dlcservice",
     ":dlcservice_adaptors",
+    ":dlcservice_util",
     ":libdlcservice",
   ]
   if (use.test) {
@@ -68,6 +69,22 @@ executable("dlcservice") {
   ]
   deps = [
     ":libdlcservice",
+  ]
+}
+
+pkg_config("dlcservice_util_config") {
+  pkg_deps = [
+    "libdlcservice-client",
+  ]
+}
+
+executable("dlcservice_util") {
+  configs += [
+    ":target_defaults",
+    ":dlcservice_util_config",
+  ]
+  sources = [
+    "tools/dlc_service_util.cc",
   ]
 }
 
