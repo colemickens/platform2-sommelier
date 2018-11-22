@@ -7,6 +7,8 @@
 #ifndef HAL_ADAPTER_CAMERA3_DEVICE_OPS_DELEGATE_H_
 #define HAL_ADAPTER_CAMERA3_DEVICE_OPS_DELEGATE_H_
 
+#include <vector>
+
 #include "hal_adapter/cros_camera_mojo_utils.h"
 #include "mojo/camera3.mojom.h"
 
@@ -44,13 +46,13 @@ class Camera3DeviceOpsDelegate final
 
   void RegisterBuffer(uint64_t buffer_id,
                       mojom::Camera3DeviceOps::BufferType type,
-                      mojo::Array<mojo::ScopedHandle> fds,
+                      std::vector<mojo::ScopedHandle> fds,
                       uint32_t drm_format,
                       mojom::HalPixelFormat hal_pixel_format,
                       uint32_t width,
                       uint32_t height,
-                      mojo::Array<uint32_t> strides,
-                      mojo::Array<uint32_t> offsets,
+                      const std::vector<uint32_t>& strides,
+                      const std::vector<uint32_t>& offsets,
                       const RegisterBufferCallback& callback) final;
 
   void Close(const CloseCallback& callback) final;

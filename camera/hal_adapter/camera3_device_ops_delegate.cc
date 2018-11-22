@@ -8,6 +8,7 @@
 
 #include <inttypes.h>
 #include <utility>
+#include <vector>
 
 #include <base/strings/stringprintf.h>
 
@@ -92,20 +93,20 @@ void Camera3DeviceOpsDelegate::Flush(const FlushCallback& callback) {
 void Camera3DeviceOpsDelegate::RegisterBuffer(
     uint64_t buffer_id,
     mojom::Camera3DeviceOps::BufferType type,
-    mojo::Array<mojo::ScopedHandle> fds,
+    std::vector<mojo::ScopedHandle> fds,
     uint32_t drm_format,
     mojom::HalPixelFormat hal_pixel_format,
     uint32_t width,
     uint32_t height,
-    mojo::Array<uint32_t> strides,
-    mojo::Array<uint32_t> offsets,
+    const std::vector<uint32_t>& strides,
+    const std::vector<uint32_t>& offsets,
     const RegisterBufferCallback& callback) {
   VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
   TRACE_CAMERA_SCOPED("buffer_id", buffer_id);
   callback.Run(camera_device_adapter_->RegisterBuffer(
       buffer_id, type, std::move(fds), drm_format, hal_pixel_format, width,
-      height, std::move(strides), std::move(offsets)));
+      height, strides, offsets));
 }
 
 void Camera3DeviceOpsDelegate::Close(const CloseCallback& callback) {

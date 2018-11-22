@@ -106,7 +106,7 @@ void CameraAlgorithmOpsImpl::RegisterBuffer(
   VLOGF_EXIT();
 }
 
-void CameraAlgorithmOpsImpl::Request(mojo::Array<uint8_t> req_header,
+void CameraAlgorithmOpsImpl::Request(const std::vector<uint8_t>& req_header,
                                      int32_t buffer_handle) {
   DCHECK(cam_algo_);
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
@@ -122,7 +122,7 @@ void CameraAlgorithmOpsImpl::Request(mojo::Array<uint8_t> req_header,
 }
 
 void CameraAlgorithmOpsImpl::DeregisterBuffers(
-    mojo::Array<int32_t> buffer_handles) {
+    const std::vector<int32_t>& buffer_handles) {
   DCHECK(cam_algo_);
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   VLOGF_ENTER();

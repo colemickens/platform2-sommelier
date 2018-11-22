@@ -130,7 +130,7 @@ void ArcCameraServiceImpl::OnChannelClosed(const std::string& error_msg) {
   quit_cb_.Run();
 }
 
-void ArcCameraServiceImpl::Connect(const mojo::String& device_path,
+void ArcCameraServiceImpl::Connect(const std::string& device_path,
                                    const ConnectCallback& callback) {
   VLOG(1) << "Receive Connect message, device_path: " << device_path;
   int ret = camera_device_->Connect(device_path);
@@ -196,14 +196,14 @@ void ArcCameraServiceImpl::ReuseFrameBuffer(
 }
 
 void ArcCameraServiceImpl::GetDeviceSupportedFormats(
-    const mojo::String& device_path,
+    const std::string& device_path,
     const GetDeviceSupportedFormatsCallback& callback) {
   VLOG(1) << "Receive GetDeviceSupportedFormats message, device_path: "
           << device_path;
   SupportedFormats formats =
       camera_device_->GetDeviceSupportedFormats(device_path);
 
-  mojo::Array<MojoSupportedFormatPtr> mojo_formats;
+  std::vector<MojoSupportedFormatPtr> mojo_formats;
   for (const auto& format : formats) {
     MojoSupportedFormatPtr mojo_format = MojoSupportedFormat::New();
     mojo_format->width = format.width;
@@ -222,7 +222,7 @@ void ArcCameraServiceImpl::GetCameraDeviceInfos(
   VLOG(1) << "Receive GetCameraDeviceInfos message";
   DeviceInfos device_infos = camera_device_->GetCameraDeviceInfos();
 
-  mojo::Array<MojoDeviceInfoPtr> mojo_device_infos;
+  std::vector<MojoDeviceInfoPtr> mojo_device_infos;
   for (const auto& device_info : device_infos) {
     MojoDeviceInfoPtr info = MojoDeviceInfo::New();
     info->device_path = device_info.device_path;

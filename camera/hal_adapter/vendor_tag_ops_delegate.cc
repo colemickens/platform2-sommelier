@@ -32,7 +32,7 @@ void VendorTagOpsDelegate::GetAllTags(const GetAllTagsCallback& callback) {
   DCHECK(task_runner_->BelongsToCurrentThread());
   std::vector<uint32_t> tags(vendor_tag_ops_->get_tag_count(vendor_tag_ops_));
   vendor_tag_ops_->get_all_tags(vendor_tag_ops_, tags.data());
-  callback.Run(mojo::Array<uint32_t>(std::move(tags)));
+  callback.Run(tags);
 }
 
 void VendorTagOpsDelegate::GetSectionName(
@@ -42,7 +42,7 @@ void VendorTagOpsDelegate::GetSectionName(
   DCHECK_NE(vendor_tag_ops_, nullptr);
   DCHECK(task_runner_->BelongsToCurrentThread());
   callback.Run(
-      mojo::String(vendor_tag_ops_->get_section_name(vendor_tag_ops_, tag)));
+      std::string(vendor_tag_ops_->get_section_name(vendor_tag_ops_, tag)));
 }
 
 void VendorTagOpsDelegate::GetTagName(uint32_t tag,
@@ -51,7 +51,7 @@ void VendorTagOpsDelegate::GetTagName(uint32_t tag,
   DCHECK_NE(vendor_tag_ops_, nullptr);
   DCHECK(task_runner_->BelongsToCurrentThread());
   callback.Run(
-      mojo::String(vendor_tag_ops_->get_tag_name(vendor_tag_ops_, tag)));
+      std::string(vendor_tag_ops_->get_tag_name(vendor_tag_ops_, tag)));
 }
 
 void VendorTagOpsDelegate::GetTagType(uint32_t tag,

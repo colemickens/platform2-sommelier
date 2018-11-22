@@ -31,7 +31,7 @@ class ArcCameraServiceImpl : public ArcCameraService {
   void OnChannelClosed(const std::string& error_msg);
 
   // ArcCameraService:
-  void Connect(const mojo::String& device_path,
+  void Connect(const std::string& device_path,
                const ConnectCallback& callback) override;
   void Disconnect(const DisconnectCallback& callback) override;
   void StreamOn(uint32_t width,
@@ -44,7 +44,7 @@ class ArcCameraServiceImpl : public ArcCameraService {
   void ReuseFrameBuffer(uint32_t buffer_id,
                         const ReuseFrameBufferCallback& callback) override;
   void GetDeviceSupportedFormats(
-      const mojo::String& device_path,
+      const std::string& device_path,
       const GetDeviceSupportedFormatsCallback& callback) override;
   void GetCameraDeviceInfos(
       const GetCameraDeviceInfosCallback& callback) override;

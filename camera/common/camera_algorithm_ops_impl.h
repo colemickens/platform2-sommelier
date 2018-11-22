@@ -7,6 +7,8 @@
 #ifndef COMMON_CAMERA_ALGORITHM_OPS_IMPL_H_
 #define COMMON_CAMERA_ALGORITHM_OPS_IMPL_H_
 
+#include <vector>
+
 #include <base/threading/thread.h>
 #include <mojo/public/cpp/bindings/binding.h>
 
@@ -43,11 +45,11 @@ class CameraAlgorithmOpsImpl : public mojom::CameraAlgorithmOps,
                       const RegisterBufferCallback& callback) override;
 
   // Implementation of mojom::CameraAlgorithmOps::Request interface
-  void Request(mojo::Array<uint8_t> req_headers,
+  void Request(const std::vector<uint8_t>& req_headers,
                int32_t buffer_handle) override;
 
   // Implementation of mojom::CameraAlgorithmOps::DeregisterBuffers interface
-  void DeregisterBuffers(mojo::Array<int32_t> buffer_handles) override;
+  void DeregisterBuffers(const std::vector<int32_t>& buffer_handles) override;
 
  private:
   CameraAlgorithmOpsImpl();

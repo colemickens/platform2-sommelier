@@ -319,17 +319,17 @@ static bool IsMatchingFormat(mojom::HalPixelFormat hal_pixel_format,
 int32_t CameraDeviceAdapter::RegisterBuffer(
     uint64_t buffer_id,
     mojom::Camera3DeviceOps::BufferType type,
-    mojo::Array<mojo::ScopedHandle> fds,
+    std::vector<mojo::ScopedHandle> fds,
     uint32_t drm_format,
     mojom::HalPixelFormat hal_pixel_format,
     uint32_t width,
     uint32_t height,
-    mojo::Array<uint32_t> strides,
-    mojo::Array<uint32_t> offsets) {
+    const std::vector<uint32_t>& strides,
+    const std::vector<uint32_t>& offsets) {
   base::AutoLock l(buffer_handles_lock_);
   return CameraDeviceAdapter::RegisterBufferLocked(
       buffer_id, type, std::move(fds), drm_format, hal_pixel_format, width,
-      height, std::move(strides), std::move(offsets));
+      height, strides, offsets);
 }
 
 int32_t CameraDeviceAdapter::Close() {
@@ -416,13 +416,13 @@ void CameraDeviceAdapter::Notify(const camera3_callback_ops_t* ops,
 int32_t CameraDeviceAdapter::RegisterBufferLocked(
     uint64_t buffer_id,
     mojom::Camera3DeviceOps::BufferType type,
-    mojo::Array<mojo::ScopedHandle> fds,
+    std::vector<mojo::ScopedHandle> fds,
     uint32_t drm_format,
     mojom::HalPixelFormat hal_pixel_format,
     uint32_t width,
     uint32_t height,
-    mojo::Array<uint32_t> strides,
-    mojo::Array<uint32_t> offsets) {
+    const std::vector<uint32_t>& strides,
+    const std::vector<uint32_t>& offsets) {
   if (!IsMatchingFormat(hal_pixel_format, drm_format)) {
     LOG(ERROR) << "HAL pixel format " << hal_pixel_format
                << " does not match DRM format " << FormatToString(drm_format);
@@ -462,8 +462,7 @@ int32_t CameraDeviceAdapter::RegisterBufferLocked(
   return RegisterBufferLocked(
       buffer->buffer_id, mojom::Camera3DeviceOps::BufferType::GRALLOC,
       std::move(buffer->fds), buffer->drm_format, buffer->hal_pixel_format,
-      buffer->width, buffer->height, std::move(buffer->strides),
-      std::move(buffer->offsets));
+      buffer->width, buffer->height, buffer->strides, buffer->offsets);
 }
 
 mojom::Camera3CaptureResultPtr CameraDeviceAdapter::PrepareCaptureResult(
@@ -478,7 +477,7 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::PrepareCaptureResult(
   if (result->output_buffers) {
     base::AutoLock streams_lock(streams_lock_);
     base::AutoLock buffer_handles_lock(buffer_handles_lock_);
-    mojo::Array<mojom::Camera3StreamBufferPtr> output_buffers;
+    std::vector<mojom::Camera3StreamBufferPtr> output_buffers;
     for (size_t i = 0; i < result->num_output_buffers; i++) {
       mojom::Camera3StreamBufferPtr out_buf = internal::SerializeStreamBuffer(
           result->output_buffers + i, streams_, buffer_handles_);

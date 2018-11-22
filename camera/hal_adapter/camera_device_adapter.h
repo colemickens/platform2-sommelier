@@ -95,13 +95,13 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
 
   int32_t RegisterBuffer(uint64_t buffer_id,
                          mojom::Camera3DeviceOps::BufferType type,
-                         mojo::Array<mojo::ScopedHandle> fds,
+                         std::vector<mojo::ScopedHandle> fds,
                          uint32_t drm_format,
                          mojom::HalPixelFormat hal_pixel_format,
                          uint32_t width,
                          uint32_t height,
-                         mojo::Array<uint32_t> strides,
-                         mojo::Array<uint32_t> offsets);
+                         const std::vector<uint32_t>& strides,
+                         const std::vector<uint32_t>& offsets);
 
   int32_t Close();
 
@@ -115,13 +115,13 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
 
   int32_t RegisterBufferLocked(uint64_t buffer_id,
                                mojom::Camera3DeviceOps::BufferType type,
-                               mojo::Array<mojo::ScopedHandle> fds,
+                               std::vector<mojo::ScopedHandle> fds,
                                uint32_t drm_format,
                                mojom::HalPixelFormat hal_pixel_format,
                                uint32_t width,
                                uint32_t height,
-                               mojo::Array<uint32_t> strides,
-                               mojo::Array<uint32_t> offsets);
+                               const std::vector<uint32_t>& strides,
+                               const std::vector<uint32_t>& offsets);
   int32_t RegisterBufferLocked(mojom::CameraBufferHandlePtr buffer);
 
   // NOTE: All the fds in |result| (e.g. fences and buffer handles) will be
