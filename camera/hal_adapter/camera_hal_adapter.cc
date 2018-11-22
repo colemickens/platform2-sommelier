@@ -286,13 +286,23 @@ int32_t CameraHalAdapter::SetCallbacks(
       base::Bind(&CameraHalAdapter::ResetCallbacksDelegateOnThread,
                  base::Unretained(this), callbacks_id));
 
+  // Send latest status to the new client, so all presented external cameras are
+  // available to the client after SetCallbacks() returns.
+  for (const auto& it : torch_mode_status_map_) {
+    int camera_id = it.first;
+    torch_mode_status_t status = it.second;
+    if (camera_id >= num_builtin_cameras_) {
+      // it's an external camera, fire the callback.
+      NotifyCameraDeviceStatusChange(callbacks_delegate.get(), camera_id,
+                                     CAMERA_DEVICE_STATUS_PRESENT);
+    }
+    if (status != default_torch_mode_status_map_[camera_id]) {
+      NotifyTorchModeStatusChange(callbacks_delegate.get(), camera_id, status);
+    }
+  }
+
   base::AutoLock l(callbacks_delegates_lock_);
   callbacks_delegates_[callbacks_id] = std::move(callbacks_delegate);
-
-  // We should fire callbacks after we return from SetCallbacks().
-  camera_module_thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&CameraHalAdapter::SendLatestStatus,
-                            base::Unretained(this), callbacks_id));
 
   return 0;
 }
@@ -577,30 +587,6 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
              << " modules and " << num_builtin_cameras_ << " built-in cameras";
 
   callback.Run(true);
-}
-
-void CameraHalAdapter::SendLatestStatus(int callbacks_id) {
-  base::AutoLock l(callbacks_delegates_lock_);
-  CameraModuleCallbacksDelegate* callbacks_delegate = [&]() {
-    auto it = callbacks_delegates_.find(callbacks_id);
-    return it != callbacks_delegates_.end() ? it->second.get() : nullptr;
-  }();
-  if (!callbacks_delegate) {
-    return;
-  }
-
-  for (const auto& it : torch_mode_status_map_) {
-    int camera_id = it.first;
-    torch_mode_status_t status = it.second;
-    if (camera_id >= num_builtin_cameras_) {
-      // it's an external camera, fire the callback.
-      NotifyCameraDeviceStatusChange(callbacks_delegate, camera_id,
-                                     CAMERA_DEVICE_STATUS_PRESENT);
-    }
-    if (status != default_torch_mode_status_map_[camera_id]) {
-      NotifyTorchModeStatusChange(callbacks_delegate, camera_id, status);
-    }
-  }
 }
 
 void CameraHalAdapter::NotifyCameraDeviceStatusChange(
