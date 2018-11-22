@@ -90,8 +90,6 @@ void ProducerImpl::OnFrameBufferReceived(
   rect->height = height;
   info->visible_rect = std::move(rect);
   info->metadata = mojo_base::mojom::DictionaryValue::New();
-  info->metadata->storage =
-      mojo::Map<mojo::String, mojo::StructPtr<mojo_base::mojom::Value>>();
 
   SharedMemoryProvider* outgoing_buffer =
       outgoing_buffer_id_to_buffer_map_.at(buffer_id).get();

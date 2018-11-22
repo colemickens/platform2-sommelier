@@ -5,6 +5,7 @@
 #include "media_perception/proto_mojom_conversion.h"
 
 #include <utility>
+#include <vector>
 
 namespace chromeos {
 namespace media_perception {
@@ -37,7 +38,7 @@ VideoDevicePtr ToMojom(const mri::VideoDevice& device) {
   device_ptr->id = device.id();
   device_ptr->display_name = device.display_name();
   device_ptr->model_id = device.model_id();
-  mojo::Array<VideoStreamParamsPtr> supported_configurations;
+  std::vector<VideoStreamParamsPtr> supported_configurations;
   for (const mri::VideoStreamParams& params :
        device.supported_configurations()) {
     supported_configurations.push_back(ToMojom(params));
@@ -68,7 +69,7 @@ AudioDevicePtr ToMojom(const mri::AudioDevice& device) {
   AudioDevicePtr device_ptr = AudioDevice::New();
   device_ptr->id = device.id();
   device_ptr->display_name = device.display_name();
-  mojo::Array<AudioStreamParamsPtr> supported_configurations;
+  std::vector<AudioStreamParamsPtr> supported_configurations;
   for (const mri::AudioStreamParams& params :
        device.supported_configurations()) {
     supported_configurations.push_back(ToMojom(params));

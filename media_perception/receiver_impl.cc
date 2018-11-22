@@ -69,7 +69,7 @@ void ReceiverImpl::OnError(::media::mojom::VideoCaptureError error) {
   LOG(ERROR) << "Got call to OnError: " << error;
 }
 
-void ReceiverImpl::OnLog(const mojo::String& message) {
+void ReceiverImpl::OnLog(const std::string& message) {
   LOG(INFO) << "Got call to OnLog: " << message;
 }
 

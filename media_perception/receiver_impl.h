@@ -9,6 +9,7 @@
 #include <map>
 #include <memory>
 #include <mojo/public/cpp/bindings/binding.h>
+#include <string>
 
 #include "base/logging.h"
 #include "media_perception/shared_memory_provider.h"
@@ -40,7 +41,7 @@ class ReceiverImpl : public video_capture::mojom::Receiver {
       ::media::mojom::VideoCaptureFrameDropReason reason) override;
   void OnBufferRetired(int32_t buffer_id) override;
   void OnError(::media::mojom::VideoCaptureError error) override;
-  void OnLog(const mojo::String& message) override;
+  void OnLog(const std::string& message) override;
   void OnStarted() override;
   void OnStartedUsingGpuDecode() override;
 

@@ -163,8 +163,8 @@ void GraphExecutorImpl::set_connection_error_handler(
 }
 
 void GraphExecutorImpl::Execute(
-    mojo::Map<mojo::String, TensorPtr> tensors,
-    mojo::Array<mojo::String> outputs,
+    std::unordered_map<std::string, TensorPtr> tensors,
+    const std::vector<std::string>& outputs,
     const ExecuteCallback& callback) {
   // Validate input and output names (before executing graph, for efficiency).
 
@@ -184,7 +184,7 @@ void GraphExecutorImpl::Execute(
   }
 
   std::set<std::string> seen_outputs;
-  for (const mojo::String& cur_output_name : outputs) {
+  for (const auto& cur_output_name : outputs) {
     const auto name_lookup = required_outputs_.find(cur_output_name);
     if (name_lookup == required_outputs_.end() ||
         name_lookup->second >= interpreter_->tensors_size()) {
@@ -239,8 +239,8 @@ void GraphExecutorImpl::Execute(
   }
 
   // Extract output.
-  mojo::Array<chromeos::machine_learning::mojom::TensorPtr> output_tensors;
-  for (const mojo::String& cur_output_name : outputs) {
+  std::vector<chromeos::machine_learning::mojom::TensorPtr> output_tensors;
+  for (const auto& cur_output_name : outputs) {
     output_tensors.push_back(Tensor::New());
 
     // Always valid, by the output name check at the start of this function.

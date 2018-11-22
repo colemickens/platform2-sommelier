@@ -8,6 +8,8 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 #include <base/callback_forward.h>
 #include <base/macros.h>
@@ -48,10 +50,11 @@ class GraphExecutorImpl
 
  private:
   // chromeos::machine_learning::mojom::GraphExecutor:
-  void Execute(mojo::Map<mojo::String,
+  void Execute(
+      std::unordered_map<std::string,
                          chromeos::machine_learning::mojom::TensorPtr> inputs,
-               mojo::Array<mojo::String> output_names,
-               const ExecuteCallback& callback);
+      const std::vector<std::string>& output_names,
+      const ExecuteCallback& callback);
 
   const std::map<std::string, int>& required_inputs_;
   const std::map<std::string, int>& required_outputs_;

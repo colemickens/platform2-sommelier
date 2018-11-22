@@ -138,7 +138,7 @@ void MojoConnector::GetDevicesOnIpcThread(
 
 void MojoConnector::OnDeviceInfosReceived(
     const VideoCaptureServiceClient::GetDevicesCallback& callback,
-    mojo::Array<media::mojom::VideoCaptureDeviceInfoPtr> infos) {
+    std::vector<media::mojom::VideoCaptureDeviceInfoPtr> infos) {
   LOG(INFO) << "Got callback for device infos.";
   std::vector<SerializedVideoDevice> devices;
   for (const auto& capture_device : infos) {

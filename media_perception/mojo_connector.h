@@ -12,6 +12,7 @@
 #include <mojo/public/cpp/bindings/binding.h>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "media_perception/device_management.pb.h"
 #include "media_perception/media_perception_service_impl.h"
@@ -84,7 +85,7 @@ class MojoConnector {
 
   void OnDeviceInfosReceived(
       const VideoCaptureServiceClient::GetDevicesCallback& callback,
-      mojo::Array<media::mojom::VideoCaptureDeviceInfoPtr> infos);
+      std::vector<media::mojom::VideoCaptureDeviceInfoPtr> infos);
 
   void SetActiveDeviceOnIpcThread(
       std::string device_id,
