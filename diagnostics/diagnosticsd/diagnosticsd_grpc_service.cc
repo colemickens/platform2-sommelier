@@ -28,9 +28,9 @@ bool MakeFileDump(const base::FilePath& file_path,
     PLOG(ERROR) << "Failed to obtain canonical path for " << file_path.value();
     return false;
   }
-  VPLOG(2) << "Read " << file_contents.size() << " bytes from "
-           << file_path.value() << " with canonical path "
-           << canonical_file_path.value();
+  VLOG(2) << "Read " << file_contents.size() << " bytes from "
+          << file_path.value() << " with canonical path "
+          << canonical_file_path.value();
   file_dump->set_path(file_path.value());
   file_dump->set_canonical_path(canonical_file_path.value());
   file_dump->set_contents(std::move(file_contents));
