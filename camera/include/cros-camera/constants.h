@@ -12,7 +12,8 @@ namespace constants {
 
 const char kCrosCameraAlgoSocketPathString[] = "/run/camera/camera-algo.sock";
 const char kCrosCameraSocketPathString[] = "/run/camera/camera3.sock";
-const char kCrosCameraTestConfigPathString[] = "/run/camera/test_config.json";
+const char kCrosCameraTestConfigPathString[] =
+    "/var/cache/camera/test_config.json";
 const char kCrosCameraConfigPathString[] = "/etc/camera/camera_config.json";
 
 // ------Configuration for |kCrosCameraTestConfigPathString|-------
