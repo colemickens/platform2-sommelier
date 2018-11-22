@@ -7,7 +7,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -24,8 +26,14 @@ namespace {
 
 constexpr char kGsctool[] = "/usr/sbin/gsctool";
 constexpr char kCr50VerifyRoScript[] = "/usr/share/cros/cr50-verify-ro.sh";
+
 // Parent dir of where Cr50 image and RO db files are stored.
 constexpr char kCr50ResourcePath[] = "/opt/google/cr50/";
+
+// The user and group kCr50VerifyRoScript is run as in the sandbox.
+constexpr char kFwCheckerAndUpdater[] = "rma_fw_keeper";
+constexpr char kSuzyqAccessGroup[] = "suzy-q";
+
 constexpr char kVerifyRoToolErrorString[] =
     "org.chromium.debugd.error.VerifyRo";
 
@@ -210,11 +218,12 @@ bool VerifyRoTool::UpdateAndVerifyFWOnUsb(brillo::ErrorPtr* error,
     return false;
   }
 
-  ProcessWithId* p =
-      CreateProcess(false /* sandboxed */, false /* access_root_mount_ns */);
-  if (!p) {
+  auto p = std::make_unique<ProcessWithId>();
+
+  p->SandboxAs(kFwCheckerAndUpdater, kSuzyqAccessGroup);
+  if (!p->Init()) {
     DEBUGD_ADD_ERROR(error, kVerifyRoToolErrorString,
-                     "Could not create the verify_ro process.");
+                     "Could not initialize the verify_ro process.");
     return false;
   }
 
@@ -232,6 +241,13 @@ bool VerifyRoTool::UpdateAndVerifyFWOnUsb(brillo::ErrorPtr* error,
   }
 
   *handle = p->id();
+
+  if (!RecordProcess(std::move(p))) {
+    DEBUGD_ADD_ERROR(error, kVerifyRoToolErrorString,
+                     "Failed to record the verify_ro process.");
+    return false;
+  }
+
   return true;
 }
 
