@@ -51,7 +51,7 @@ message FileDump {
   string canonical_path = 2;
 
   // Contents of the file.
-  string contents = 3;
+  bytes contents = 3;
 }
 
 // Parameters for the GetProcData RPC.
