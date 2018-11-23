@@ -493,6 +493,10 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   // mode detection and internal input device event blocking logic.
   builder->AddVmodulePattern("*/ash/wm/tablet_mode/*=1");
 
+  // TODO(https://crbug.com/902315): Needed for investigating issues with
+  // non-autolaunching public session.
+  builder->AddVmodulePattern("existing_user_controller=2");
+
   if (builder->UseFlagIsSet("cheets"))
     builder->AddVmodulePattern("*arc/*=1");
 }
