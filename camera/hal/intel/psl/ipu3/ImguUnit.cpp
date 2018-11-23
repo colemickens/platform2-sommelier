@@ -697,6 +697,7 @@ status_t ImguUnit::ImguPipe::processNextRequest()
         CheckError(status != OK, status, "failed to kick start, status %d", status);
     }
 
+    msg->pMsg.lastRawNonScaledBuffer = nullptr;
     std::vector<std::shared_ptr<IDeviceWorker>>::iterator it = mPipeConfig.deviceWorkers.begin();
     for (;it != mPipeConfig.deviceWorkers.end(); ++it) {
         status = (*it)->prepareRun(msg);
