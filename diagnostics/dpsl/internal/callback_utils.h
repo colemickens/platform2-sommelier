@@ -40,6 +40,25 @@ inline std::function<ReturnType(Arg1Type)> MakeStdFunctionFromCallback(
 
 namespace internal {
 
+template <typename ReturnType, typename... ArgTypes>
+inline ReturnType RunStdFunctionWithArgs(
+    std::function<ReturnType(ArgTypes...)> function, ArgTypes... args) {
+  return function(std::forward<ArgTypes>(args)...);
+}
+
+}  // namespace internal
+
+// Transforms std::function into base::Callback.
+template <typename ReturnType, typename... ArgTypes>
+inline base::Callback<ReturnType(ArgTypes...)> MakeCallbackFromStdFunction(
+    std::function<ReturnType(ArgTypes...)> function) {
+  return base::Bind(
+      &internal::RunStdFunctionWithArgs<ReturnType, ArgTypes...>,
+      base::Passed(std::move(function)));
+}
+
+namespace internal {
+
 template <typename... ArgTypes>
 inline void RunCallbackOnTaskRunner(scoped_refptr<base::TaskRunner> task_runner,
                                     const tracked_objects::Location& location,

@@ -6,13 +6,13 @@
 
 #include <utility>
 
-#include <base/bind.h>
 #include <base/lazy_instance.h>
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/threading/thread_local.h>
 #include <base/time/time.h>
-#include <brillo/bind_lambda.h>
+
+#include "diagnostics/dpsl/internal/callback_utils.h"
 
 namespace diagnostics {
 
@@ -63,18 +63,14 @@ bool DpslThreadContextImpl::IsEventLoopRunning() {
 
 void DpslThreadContextImpl::PostTask(std::function<void()> task) {
   message_loop_->task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind([](std::function<void()> task) { std::move(task)(); },
-                 base::Passed(&task)));
+      FROM_HERE, MakeCallbackFromStdFunction(std::move(task)));
 }
 
 void DpslThreadContextImpl::PostDelayedTask(std::function<void()> task,
                                             int64_t delay_milliseconds) {
   CHECK_GE(delay_milliseconds, 0);
   message_loop_->task_runner()->PostDelayedTask(
-      FROM_HERE,
-      base::Bind([](std::function<void()> task) { std::move(task)(); },
-                 base::Passed(&task)),
+      FROM_HERE, MakeCallbackFromStdFunction(std::move(task)),
       base::TimeDelta::FromMilliseconds(delay_milliseconds));
 }
 

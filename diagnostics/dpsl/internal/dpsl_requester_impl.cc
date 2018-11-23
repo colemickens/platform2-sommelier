@@ -107,13 +107,7 @@ void DpslRequesterImpl::ScheduleGrpcClientMethodCall(
                                                    ResponseType>,
           weak_ptr_factory_.GetWeakPtr(), grpc_stub_method,
           base::Passed(std::move(request)),
-          base::Bind(
-              [](std::function<void(std::unique_ptr<ResponseType>)>
-                     response_callback,
-                 std::unique_ptr<ResponseType> response) {
-                std::move(response_callback)(std::move(response));
-              },
-              base::Passed(&response_callback))));
+          MakeCallbackFromStdFunction(std::move(response_callback))));
 }
 
 template <typename GrpcStubMethod, typename RequestType, typename ResponseType>
