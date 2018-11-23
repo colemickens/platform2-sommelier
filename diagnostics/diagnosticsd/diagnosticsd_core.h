@@ -105,7 +105,8 @@ class DiagnosticsdCore final
 
   // DiagnosticsdMojoService::Delegate overrides:
   void SendGrpcUiMessageToDiagnosticsProcessor(
-      base::StringPiece json_message) override;
+      base::StringPiece json_message,
+      const SendGrpcUiMessageToDiagnosticsProcessorCallback& callback) override;
 
   // chromeos::diagnosticsd::mojom::DiagnosticsdServiceFactory overrides:
   void GetService(MojomDiagnosticsdServiceRequest service,

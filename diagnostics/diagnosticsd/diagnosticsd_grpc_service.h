@@ -27,7 +27,7 @@ class DiagnosticsdGrpcService final {
   };
 
   using SendMessageToUiCallback =
-      base::Callback<void(std::unique_ptr<grpc_api::EmptyMessage>)>;
+      base::Callback<void(std::unique_ptr<grpc_api::SendMessageToUiResponse>)>;
   using GetProcDataCallback =
       base::Callback<void(std::unique_ptr<grpc_api::GetProcDataResponse>)>;
 

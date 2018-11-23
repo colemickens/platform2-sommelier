@@ -5,6 +5,8 @@
 #ifndef DIAGNOSTICS_DIAGNOSTICSD_DIAGNOSTICSD_MOJO_SERVICE_H_
 #define DIAGNOSTICS_DIAGNOSTICSD_DIAGNOSTICSD_MOJO_SERVICE_H_
 
+#include <string>
+
 #include <base/callback.h>
 #include <base/macros.h>
 #include <base/strings/string_piece.h>
@@ -29,16 +31,22 @@ class DiagnosticsdMojoService final
 
   class Delegate {
    public:
+    using SendGrpcUiMessageToDiagnosticsProcessorCallback =
+        base::Callback<void(std::string response_json_message)>;
+
     virtual ~Delegate() = default;
 
     // Called when diagnosticsd daemon mojo function
     // |SendUiMessageToDiagnosticsProcessorWithSize| was called.
     //
-    // Call gRPC HandleMessageFromUiRequest method on diagnostics processor
-    // and put |json_message| to the gRPC
-    // |HandleMessageFromUiRequest| request message.
+    // Calls gRPC HandleMessageFromUiRequest method on diagnostics processor and
+    // puts |json_message| to the gRPC |HandleMessageFromUiRequest| request
+    // message. Result of the call is returned via |callback|; if the request
+    // succeeded, it will receive the message returned by the diagnostics
+    // processor.
     virtual void SendGrpcUiMessageToDiagnosticsProcessor(
-        base::StringPiece json_message) = 0;
+        base::StringPiece json_message,
+        const SendGrpcUiMessageToDiagnosticsProcessorCallback& callback) = 0;
   };
 
   // |delegate| - Unowned pointer; must outlive this instance.

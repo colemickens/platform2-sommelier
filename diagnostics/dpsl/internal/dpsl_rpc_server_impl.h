@@ -34,8 +34,8 @@ class DpslRpcServerImpl final : public DpslRpcServer {
   bool Init();
 
  private:
-  using HandleMessageFromUiCallback =
-      base::Callback<void(std::unique_ptr<grpc_api::EmptyMessage>)>;
+  using HandleMessageFromUiCallback = base::Callback<void(
+      std::unique_ptr<grpc_api::HandleMessageFromUiResponse>)>;
 
   // Methods corresponding to the "DiagnosticsProcessor" gRPC interface (each of
   // these methods just calls the corresponding method of |rpc_handler_|):

@@ -31,8 +31,8 @@ class FakeDiagnosticsProcessor final {
  public:
   using GetProcDataCallback =
       base::Callback<void(std::unique_ptr<grpc_api::GetProcDataResponse>)>;
-  using HandleMessageFromUiCallback =
-      base::Callback<void(std::unique_ptr<grpc_api::EmptyMessage>)>;
+  using HandleMessageFromUiCallback = base::Callback<void(
+      std::unique_ptr<grpc_api::HandleMessageFromUiResponse>)>;
 
   FakeDiagnosticsProcessor(const std::string& grpc_server_uri,
                            const std::string& diagnosticsd_grpc_uri);

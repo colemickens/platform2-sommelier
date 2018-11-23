@@ -14,7 +14,8 @@ import "common.proto";
 service DiagnosticsProcessor {
   // Called when a message is sent by the diagnostics UI extension (hosted by
   // the browser).
-  rpc HandleMessageFromUi(HandleMessageFromUiRequest) returns (EmptyMessage) {}
+  rpc HandleMessageFromUi(HandleMessageFromUiRequest)
+      returns (HandleMessageFromUiResponse) {}
 }
 
 // Parameters for the HandleMessageFromUi RPC.
@@ -22,4 +23,11 @@ message HandleMessageFromUiRequest {
   // Message contents, as sent by the diagnostics UI extension. Should be a
   // valid JSON string.
   string json_message = 1;
+}
+
+// Return value of the HandleMessageFromUi RPC.
+message HandleMessageFromUiResponse {
+  // Response message contents, as sent by the diagnostics_processor daemon.
+  // When set, should be a valid JSON string.
+  string response_json_message = 1;
 }

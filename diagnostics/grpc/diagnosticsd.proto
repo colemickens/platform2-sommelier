@@ -15,7 +15,8 @@ service Diagnosticsd {
   // Sends a message to the diagnostics UI extension (hosted by the browser).
   // Delivery of the message is not guaranteed (for example, if the diagnostics
   // UI extension isn't running at the moment).
-  rpc SendMessageToUi(SendMessageToUiRequest) returns (EmptyMessage) {}
+  rpc SendMessageToUi(SendMessageToUiRequest)
+      returns (SendMessageToUiResponse) {}
 
   // Returns the specified data from the proc filesystem.
   rpc GetProcData(GetProcDataRequest) returns (GetProcDataResponse) {}
@@ -42,6 +43,15 @@ service Diagnosticsd {
 message SendMessageToUiRequest {
   // Message contents. Must be a valid JSON string.
   string json_message = 1;
+}
+
+// Return value of the SendMessageToUi RPC.
+message SendMessageToUiResponse {
+  // Response message contents, as returned by the diagnostics UI extension.
+  // Will be unset when the request was not delivered to any extension or the
+  // extension(s) that received the message completed the request without any
+  // reply.
+  string response_json_message = 1;
 }
 
 // Holds a dump of a file contents.

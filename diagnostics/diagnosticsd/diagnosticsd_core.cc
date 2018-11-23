@@ -170,7 +170,8 @@ void DiagnosticsdCore::ShutDownDueToMojoError(const std::string& debug_reason) {
 }
 
 void DiagnosticsdCore::SendGrpcUiMessageToDiagnosticsProcessor(
-    base::StringPiece json_message) {
+    base::StringPiece json_message,
+    const SendGrpcUiMessageToDiagnosticsProcessorCallback& callback) {
   VLOG(1) << "DiagnosticsdCore::SendGrpcMessageToDiagnosticsdProcessor";
 
   grpc_api::HandleMessageFromUiRequest request;
@@ -179,16 +180,23 @@ void DiagnosticsdCore::SendGrpcUiMessageToDiagnosticsProcessor(
 
   diagnostics_processor_grpc_client_->CallRpc(
       &grpc_api::DiagnosticsProcessor::Stub::AsyncHandleMessageFromUi, request,
-      base::Bind([](std::unique_ptr<grpc_api::EmptyMessage> response) {
-        if (!response) {
-          LOG(ERROR) << "Failed to call HandleMessageFromUiRequest "
-                     << "gRPC method on diagnostics_processor: "
-                     << "EmptyMessage is nullptr";
-        } else {
-          VLOG(1) << "gRPC method HandleMessageFromUiRequest was successfully "
-                  << "called on diagnostics_processor";
-        }
-      }));
+      base::Bind(
+          [](const SendGrpcUiMessageToDiagnosticsProcessorCallback& callback,
+             std::unique_ptr<grpc_api::HandleMessageFromUiResponse> response) {
+            if (!response) {
+              LOG(ERROR)
+                  << "Failed to call HandleMessageFromUiRequest gRPC method on "
+                     "diagnostics_processor: response message is nullptr";
+            } else {
+              VLOG(1) << "gRPC method HandleMessageFromUiRequest was "
+                         "successfully called on diagnostics_processor";
+            }
+            // TODO(lamzin@google.com): Forward the message from the gRPC field.
+            // TODO(lamzin@google.com): Decide whether we should validate the
+            // JSON.
+            callback.Run(std::string() /* response_json_message */);
+          },
+          callback));
 }
 
 }  // namespace diagnostics

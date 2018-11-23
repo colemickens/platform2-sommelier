@@ -55,8 +55,8 @@ class DpslRpcHandler {
   // When |response| is passed as null, the whole request is considered canceled
   // (i.e., the diagnosticsd daemon receives the cancellation error for this
   // request).
-  using HandleMessageFromUiCallback =
-      std::function<void(std::unique_ptr<grpc_api::EmptyMessage> response)>;
+  using HandleMessageFromUiCallback = std::function<void(
+      std::unique_ptr<grpc_api::HandleMessageFromUiResponse> response)>;
 
   virtual ~DpslRpcHandler() = default;
 

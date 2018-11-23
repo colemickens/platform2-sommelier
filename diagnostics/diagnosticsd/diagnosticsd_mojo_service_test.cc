@@ -34,11 +34,17 @@ namespace diagnostics {
 
 namespace {
 
+void EmptySendUiMessageToDiagnosticsProcessorWithSizeCallback(
+    mojo::ScopedSharedBufferHandle response_json_message,
+    int64_t response_json_message_size) {}
+
 class MockDiagnosticsdMojoServiceDelegate
     : public DiagnosticsdMojoService::Delegate {
  public:
-  MOCK_METHOD1(SendGrpcUiMessageToDiagnosticsProcessor,
-               void(base::StringPiece json_message));
+  MOCK_METHOD2(
+      SendGrpcUiMessageToDiagnosticsProcessor,
+      void(base::StringPiece json_message,
+           const SendGrpcUiMessageToDiagnosticsProcessorCallback& callback));
 };
 
 // Tests for the DiagnosticsdMojoService class.
@@ -65,9 +71,11 @@ class DiagnosticsdMojoServiceTest : public testing::Test {
     std::unique_ptr<mojo::ScopedSharedBufferHandle> shared_buffer =
         helper::WriteToSharedBuffer(json_message);
     ASSERT_TRUE(shared_buffer);
+    // TODO(lamzin@google.com): Extract the response JSON message and verify its
+    // value.
     service_->SendUiMessageToDiagnosticsProcessorWithSize(
         std::move(*shared_buffer.get()), json_message.length(),
-        base::Bind(&base::DoNothing));
+        base::Bind(&EmptySendUiMessageToDiagnosticsProcessorWithSizeCallback));
   }
 
  private:
@@ -86,8 +94,8 @@ TEST_F(DiagnosticsdMojoServiceTest,
        SendUiMessageToDiagnosticsProcessorWithSize) {
   std::string json_message("{\"message\": \"Hello world!\"}");
   EXPECT_CALL(*delegate(), SendGrpcUiMessageToDiagnosticsProcessor(
-                               base::StringPiece(json_message)));
-  SendJsonMessage(json_message);
+                               base::StringPiece(json_message), _));
+  ASSERT_NO_FATAL_FAILURE(SendJsonMessage(json_message));
 }
 
 // TODO(crbug.com/893756): Causing failures on pre-cq due to unavailability of
@@ -95,8 +103,9 @@ TEST_F(DiagnosticsdMojoServiceTest,
 TEST_F(DiagnosticsdMojoServiceTest,
        SendUiMessageToDiagnosticsProcessorWithSizeInvalidJSON) {
   std::string json_message("{\'message\': \'Hello world!\'}");
-  EXPECT_CALL(*delegate(), SendGrpcUiMessageToDiagnosticsProcessor(_)).Times(0);
-  SendJsonMessage(json_message);
+  EXPECT_CALL(*delegate(), SendGrpcUiMessageToDiagnosticsProcessor(_, _))
+      .Times(0);
+  ASSERT_NO_FATAL_FAILURE(SendJsonMessage(json_message));
 }
 
 }  // namespace diagnostics

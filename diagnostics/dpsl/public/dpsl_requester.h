@@ -69,8 +69,8 @@ class DpslRequester {
   // which the class was created.
   //
   // When the request fails, DPSL calls the callback with |response| being null.
-  using SendMessageToUiCallback =
-      std::function<void(std::unique_ptr<grpc_api::EmptyMessage> response)>;
+  using SendMessageToUiCallback = std::function<void(
+      std::unique_ptr<grpc_api::SendMessageToUiResponse> response)>;
   using GetProcDataCallback = std::function<void(
       std::unique_ptr<grpc_api::GetProcDataResponse> response)>;
   using GetSysfsDataCallback = std::function<void(

@@ -58,7 +58,8 @@ void DemoRpcHandler::HandleMessageFromUi(
   std::cerr << "Received HandleMessageFromUi request: "
             << request->json_message() << std::endl;
   // Note: every incoming RPC must be answered.
-  callback(std::make_unique<diagnostics::grpc_api::EmptyMessage>());
+  callback(
+      std::make_unique<diagnostics::grpc_api::HandleMessageFromUiResponse>());
   FetchSystemUptime();
 }
 
@@ -87,7 +88,8 @@ void DemoRpcHandler::SendUptimeMessageToUi(const std::string& system_uptime) {
   request->set_json_message("{\"uptime\": \"" + system_uptime + "\"}");
   requester_->SendMessageToUi(
       std::move(request),
-      [](std::unique_ptr<diagnostics::grpc_api::EmptyMessage> response) {
+      [](std::unique_ptr<diagnostics::grpc_api::SendMessageToUiResponse>
+             response) {
         std::cerr << "Sent 'uptime' SendMessageToUi" << std::endl;
       });
 }

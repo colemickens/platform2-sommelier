@@ -56,9 +56,10 @@ FakeDiagnosticsProcessor::handle_message_from_ui_actual_json_message() const {
 void FakeDiagnosticsProcessor::HandleMessageFromUi(
     std::unique_ptr<grpc_api::HandleMessageFromUiRequest> request,
     const HandleMessageFromUiCallback& callback) {
+  DCHECK(handle_message_from_ui_callback_);
   handle_message_from_ui_actual_json_message_.emplace(request->json_message());
-  callback.Run(std::make_unique<grpc_api::EmptyMessage>());
-  handle_message_from_ui_callback_.value().Run();
+  callback.Run(std::make_unique<grpc_api::HandleMessageFromUiResponse>());
+  handle_message_from_ui_callback_->Run();
 }
 
 }  // namespace diagnostics
