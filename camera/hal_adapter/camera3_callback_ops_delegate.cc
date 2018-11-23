@@ -51,10 +51,12 @@ void Camera3CallbackOpsDelegate::ProcessCaptureResultOnThread(
   // ref:
   // https://android.googlesource.com/platform/hardware/libhardware/+/8a6fed0d280014d84fe0f6a802f1cf29600e5bae/include/hardware/camera3.h#284
   TRACE_CAMERA_COUNTER("ResultFrame", result->frame_number);
-  for (const auto& output_buffer : *result->output_buffers) {
-    TRACE_CAMERA_ASYNC_END(base::StringPrintf("frame capture stream %" PRIu64,
-                                              output_buffer->stream_id),
-                           result->frame_number);
+  if (result->output_buffers) {
+    for (const auto& output_buffer : *result->output_buffers) {
+      TRACE_CAMERA_ASYNC_END(base::StringPrintf("frame capture stream %" PRIu64,
+                                                output_buffer->stream_id),
+                             result->frame_number);
+    }
   }
   interface_ptr_->ProcessCaptureResult(std::move(result));
 }
