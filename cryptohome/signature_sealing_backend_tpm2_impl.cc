@@ -5,7 +5,6 @@
 #include "cryptohome/signature_sealing_backend_tpm2_impl.h"
 
 #include <stdint.h>
-
 #include <cstring>
 #include <string>
 #include <utility>
@@ -108,10 +107,9 @@ bool GetAlgIdsByAlgorithm(SignatureSealingBackend::Algorithm algorithm,
       *scheme = trunks::TPM_ALG_RSASSA;
       *hash_alg = trunks::TPM_ALG_SHA512;
       return true;
-    default:
-      NOTREACHED();
-      return false;
   }
+  NOTREACHED();
+  return false;
 }
 
 UnsealingSessionTpm2Impl::UnsealingSessionTpm2Impl(

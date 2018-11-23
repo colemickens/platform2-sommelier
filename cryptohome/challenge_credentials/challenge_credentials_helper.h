@@ -22,21 +22,20 @@
 
 namespace cryptohome {
 
-class KeyChallengeService;
 class ChallengeCredentialsOperation;
+class KeyChallengeService;
 class Tpm;
 class UsernamePasskey;
 
 // This class provides generation of credentials for challenge-protected vault
 // keysets, and verification of key validity for such keysets.
 //
-// It's expected that the consumer code instantiates a single instance of this
-// class and keeps it for performing of all operations. This allows to keep
-// the resource usage imposed by the operations constrained, e.g., to have a
-// limited number of active TPM sessions.
+// It's expected that the consumer code instantiates a single instance during
+// the whole daemon lifetime. This allows to keep the resource usage
+// constrained, e.g., to have a limited number of active TPM sessions.
 //
 // NOTE: This object supports only one operation (GenerateNew() / Decrypt() /
-// Verify()) at a time. Starting a new operation before the previous one
+// VerifyKey()) at a time. Starting a new operation before the previous one
 // completes will lead to cancellation of the previous operation (i.e., the
 // old operation will complete with a failure).
 //
@@ -46,13 +45,12 @@ class ChallengeCredentialsHelper final {
   using KeysetSignatureChallengeInfo =
       SerializedVaultKeyset_SignatureChallengeInfo;
 
-  // This callback reports results of a GenerateNew() call.
+  // This callback reports result of a GenerateNew() call.
   //
   // If the operation succeeds, |username_passkey| will contain the freshly
   // generated credentials that should be used for encrypting the new vault
   // keyset, and |keyset_challenge_info| will be the data to be stored in the
-  // created vault keyset. If the operation fails, both arguments will be
-  // null.
+  // created vault keyset. If the operation fails, both arguments will be null.
   using GenerateNewCallback = base::Callback<void(
       std::unique_ptr<UsernamePasskey> /* username_passkey */,
       std::unique_ptr<KeysetSignatureChallengeInfo>
@@ -66,11 +64,11 @@ class ChallengeCredentialsHelper final {
   using DecryptCallback = base::Callback<void(
       std::unique_ptr<UsernamePasskey> /* username_passkey */)>;
 
-  // This callback reports result of a Verify() call.
+  // This callback reports result of a VerifyKey() call.
   //
   // The |is_key_valid| argument will be true iff the operation succeeds and
   // the provided key is valid for decryption of the given vault keyset.
-  using VerifyCallback = base::Callback<void(bool /* is_key_valid */)>;
+  using VerifyKeyCallback = base::Callback<void(bool /* is_key_valid */)>;
 
   // |tpm| and |key_challenge_service| are non-owned pointers that must stay
   // valid for the whole lifetime of the created object.
@@ -130,7 +128,7 @@ class ChallengeCredentialsHelper final {
   void VerifyKey(const std::string& account_id,
                  const ChallengePublicKeyInfo& public_key_info,
                  const KeysetSignatureChallengeInfo& keyset_challenge_info,
-                 const VerifyCallback& callback);
+                 const VerifyKeyCallback& callback);
 
  private:
   // Aborts the currently running operation, if any, and destroys all resources

@@ -40,8 +40,8 @@ class ChallengeCredentialsDecryptOperation
 
   // If the operation succeeds, |username_passkey| will contain the decrypted
   // credentials that can be used for decryption of the user's vault keyset.
-  using CompletionCallback = base::Callback<void(
-      std::unique_ptr<UsernamePasskey> username_passkey)>;
+  using CompletionCallback =
+      base::Callback<void(std::unique_ptr<UsernamePasskey> username_passkey)>;
 
   // |key_challenge_service| is a non-owned pointer which must outlive the
   // created instance.

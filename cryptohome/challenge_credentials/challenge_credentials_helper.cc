@@ -69,7 +69,7 @@ void ChallengeCredentialsHelper::VerifyKey(
     const std::string& account_id,
     const ChallengePublicKeyInfo& public_key_info,
     const KeysetSignatureChallengeInfo& keyset_challenge_info,
-    const VerifyCallback& callback) {
+    const VerifyKeyCallback& callback) {
   DCHECK(thread_checker_.CalledOnValidThread());
   DCHECK(!callback.is_null());
   // TODO(emaxx, https://crbug.com/842791): This should generate a random

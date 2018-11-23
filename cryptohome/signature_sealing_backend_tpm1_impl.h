@@ -6,7 +6,6 @@
 #define CRYPTOHOME_SIGNATURE_SEALING_BACKEND_TPM1_IMPL_H_
 
 #include <stdint.h>
-
 #include <map>
 #include <memory>
 #include <set>

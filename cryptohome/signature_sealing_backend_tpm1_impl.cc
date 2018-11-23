@@ -4,8 +4,6 @@
 
 #include "cryptohome/signature_sealing_backend_tpm1_impl.h"
 
-#include <stdint.h>
-
 #include <algorithm>
 #include <string>
 #include <utility>
@@ -171,7 +169,7 @@ bool GetRsaModulus(const RSA& rsa, Blob* modulus) {
 }
 
 // Parses the public key that is protecting the sealed data. The key size in
-// bits via |key_size_bits|, and the RSA key public modulus is returned via
+// bits is returned via |key_size_bits|, and the RSA key public modulus via
 // |key_modulus|.
 bool ParseProtectionKeySpki(const Blob& public_key_spki_der,
                             int* key_size_bits,
@@ -210,9 +208,9 @@ bool ParseProtectionKeySpki(const Blob& public_key_spki_der,
   return true;
 }
 
-// Parses the public key that is protecting the sealed data into Trousers. The
-// key size in bits via |key_size_bits|, and the RSA key public modulus is
-// returned via |key_modulus|.
+// Parses the public key that is protecting the sealed data and loads it into
+// Trousers. The key size in bits is returned via |key_size_bits|, and the
+// Trousers handle of the loaded public key via |key_handle|.
 bool ParseAndLoadProtectionKey(TpmImpl* const tpm,
                                TSS_HCONTEXT tpm_context,
                                const Blob& public_key_spki_der,
@@ -360,11 +358,10 @@ bool ObtainCmkMigrationSignatureTicket(
     return false;
   }
   SecureBlob local_cmk_migration_signature_ticket;
-  if (tpm->GetDataAttribute(tpm_context, migdata_handle,
-                             TSS_MIGATTRIB_TICKET_DATA,
-                             TSS_MIGATTRIB_TICKET_SIG_TICKET,
-                             &local_cmk_migration_signature_ticket)
-      != Tpm::kTpmRetryNone) {
+  if (tpm->GetDataAttribute(
+          tpm_context, migdata_handle, TSS_MIGATTRIB_TICKET_DATA,
+          TSS_MIGATTRIB_TICKET_SIG_TICKET,
+          &local_cmk_migration_signature_ticket) != Tpm::kTpmRetryNone) {
     LOG(ERROR) << "Error reading the CMK migration signature ticket";
     return false;
   }
@@ -375,7 +372,7 @@ bool ObtainCmkMigrationSignatureTicket(
   return true;
 }
 
-// Perform the migration of the CMK, passed in |srk_wrapped_cmk|, onto the key
+// Performs the migration of the CMK, passed in |srk_wrapped_cmk|, onto the key
 // specified by |migration_destination_key_pubkey|, using the migration
 // authorization from |migration_authorization_blob| and the CMK migration
 // signature ticket from |cmk_migration_signature_ticket| for authorizing the
@@ -494,8 +491,8 @@ bool MigrateCmk(TpmImpl* tpm,
   SecureBlob local_migrated_cmk_key12_blob;
   if (tpm->GetDataAttribute(
           tpm_context, migdata_handle, TSS_MIGATTRIB_MIGRATIONBLOB,
-          TSS_MIGATTRIB_MIG_XOR_BLOB, &local_migrated_cmk_key12_blob)
-      != Tpm::kTpmRetryNone) {
+          TSS_MIGATTRIB_MIG_XOR_BLOB,
+          &local_migrated_cmk_key12_blob) != Tpm::kTpmRetryNone) {
     LOG(ERROR) << "Failed to read the migrated key blob";
     return false;
   }
@@ -558,10 +555,10 @@ bool ObtainMaApprovalTicket(TpmImpl* const tpm,
     return false;
   }
   SecureBlob local_ma_approval_ticket;
-  if (tpm->GetDataAttribute(
-          tpm_context, migdata_handle, TSS_MIGATTRIB_AUTHORITY_DATA,
-          TSS_MIGATTRIB_AUTHORITY_APPROVAL_HMAC, &local_ma_approval_ticket)
-      != Tpm::kTpmRetryNone) {
+  if (tpm->GetDataAttribute(tpm_context, migdata_handle,
+                            TSS_MIGATTRIB_AUTHORITY_DATA,
+                            TSS_MIGATTRIB_AUTHORITY_APPROVAL_HMAC,
+                            &local_ma_approval_ticket) != Tpm::kTpmRetryNone) {
     LOG(ERROR) << "Error reading migration authority approval ticket";
     return false;
   }
@@ -789,8 +786,8 @@ bool ParseRsaSecretPrimeFromTpmMigrateAsymkeyBlob(
   return true;
 }
 
-// Extract the CMK's private key from the output of the migration procedure: the
-// TPM_KEY12 blob of the migrated CMK in |migrated_cmk_key12_blob|, and the
+// Extracts the CMK's private key from the output of the migration procedure:
+// the TPM_KEY12 blob of the migrated CMK in |migrated_cmk_key12_blob|, and the
 // migration random XOR-mask in |migration_random_blob|. Returns the CMK's
 // secret RSA prime blob via |private_key_blob|.
 bool ExtractCmkPrivateKeyFromMigratedBlob(const Blob& migrated_cmk_key12_blob,
@@ -877,7 +874,7 @@ bool ExtractCmkPrivateKeyFromMigratedBlob(const Blob& migrated_cmk_key12_blob,
   return true;
 }
 
-// Generate the Certified Migratable Key, associated with the protection public
+// Generates the Certified Migratable Key, associated with the protection public
 // key (via the TPM_MSA_COMPOSITE digest passed by |msa_composite_digest|). The
 // |ma_approval_ticket| should contain ticket obtained from the
 // TPM_CMK_ApproveMA command. Returns the CMK TPM_PUBKEY blob via |cmk_pubkey|
@@ -966,8 +963,8 @@ bool GenerateCmk(TpmImpl* const tpm,
   }
   SecureBlob local_cmk_pubkey;
   if (tpm->GetDataAttribute(tpm_handle, cmk_handle, TSS_TSPATTRIB_KEY_BLOB,
-                             TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY,
-                             &local_cmk_pubkey) != Tpm::kTpmRetryNone) {
+                            TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY,
+                            &local_cmk_pubkey) != Tpm::kTpmRetryNone) {
     LOG(ERROR) << "Failed to read the certified migratable public key";
     return false;
   }
@@ -975,8 +972,8 @@ bool GenerateCmk(TpmImpl* const tpm,
   cmk_pubkey->assign(local_cmk_pubkey.begin(), local_cmk_pubkey.end());
   SecureBlob local_srk_wrapped_cmk;
   if (tpm->GetDataAttribute(tpm_handle, cmk_handle, TSS_TSPATTRIB_KEY_BLOB,
-                             TSS_TSPATTRIB_KEYBLOB_BLOB,
-                             &local_srk_wrapped_cmk) != Tpm::kTpmRetryNone) {
+                            TSS_TSPATTRIB_KEYBLOB_BLOB,
+                            &local_srk_wrapped_cmk) != Tpm::kTpmRetryNone) {
     LOG(ERROR) << "Failed to read the certified migratable key";
     return false;
   }
@@ -1148,10 +1145,10 @@ bool SignatureSealingBackendTpm1Impl::CreateSealedSecret(
     return false;
   }
   SecureBlob protection_key_pubkey;
-  if (tpm_->GetDataAttribute(
-          tpm_context, protection_key_handle, TSS_TSPATTRIB_KEY_BLOB,
-          TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY, &protection_key_pubkey)
-      != Tpm::kTpmRetryNone) {
+  if (tpm_->GetDataAttribute(tpm_context, protection_key_handle,
+                             TSS_TSPATTRIB_KEY_BLOB,
+                             TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY,
+                             &protection_key_pubkey) != Tpm::kTpmRetryNone) {
     LOG(ERROR) << "Failed to read the protection public key";
     return false;
   }
@@ -1243,10 +1240,10 @@ SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
     return nullptr;
   }
   SecureBlob protection_key_pubkey;
-  if (tpm_->GetDataAttribute(
-          tpm_context, protection_key_handle, TSS_TSPATTRIB_KEY_BLOB,
-          TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY, &protection_key_pubkey)
-      != Tpm::kTpmRetryNone) {
+  if (tpm_->GetDataAttribute(tpm_context, protection_key_handle,
+                             TSS_TSPATTRIB_KEY_BLOB,
+                             TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY,
+                             &protection_key_pubkey) != Tpm::kTpmRetryNone) {
     LOG(ERROR) << "Failed to read the protection public key";
     return nullptr;
   }
@@ -1271,11 +1268,10 @@ SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
     return nullptr;
   }
   SecureBlob migration_destination_key_pubkey;
-  if (tpm_->GetDataAttribute(tpm_context, migration_destination_key_handle,
-                              TSS_TSPATTRIB_KEY_BLOB,
-                              TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY,
-                              &migration_destination_key_pubkey)
-      != Tpm::kTpmRetryNone) {
+  if (tpm_->GetDataAttribute(
+          tpm_context, migration_destination_key_handle, TSS_TSPATTRIB_KEY_BLOB,
+          TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY,
+          &migration_destination_key_pubkey) != Tpm::kTpmRetryNone) {
     LOG(ERROR) << "Failed to read the migration destination public key";
     return nullptr;
   }
