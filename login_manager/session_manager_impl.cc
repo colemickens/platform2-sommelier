@@ -165,6 +165,10 @@ constexpr char kTPMFirmwareUpdateModeCleanup[] = "cleanup";
 constexpr char kEmptyAccountId[] = "";
 constexpr char kSigEncodeFailMessage[] = "Failed to retrieve policy data.";
 
+// Default path of symlink to log file where stdout and stderr from
+// session_manager and Chrome are redirected.
+constexpr char kDefaultUiLogSymlinkPath[] = "/var/log/ui/ui.LATEST";
+
 const char* ToSuccessSignal(bool success) {
   return success ? "success" : "failure";
 }
@@ -225,6 +229,54 @@ void HandleDBusSignalConnected(const std::string& interface,
   if (!success) {
     LOG(ERROR) << "Failed to connect to D-Bus signal " << interface << "."
                << signal;
+  }
+}
+
+// Replaces the log file that |symlink_path| (typically /var/log/ui/ui.LATEST)
+// points to with a new file containing the same contents. This is used to
+// disconnect Chrome's stderr and stdout after a user logs in:
+// https://crbug.com/904850
+void DisconnectLogFile(const base::FilePath& symlink_path) {
+  base::FilePath log_path;
+  if (!base::ReadSymbolicLink(symlink_path, &log_path))
+    return;
+
+  if (!log_path.IsAbsolute())
+    log_path = symlink_path.DirName().Append(log_path);
+
+  // Perform a basic safety check.
+  if (log_path.DirName() != symlink_path.DirName()) {
+    LOG(WARNING) << "Log file " << log_path.value() << " isn't in same "
+                 << "directory as symlink " << symlink_path.value()
+                 << "; not disconnecting it";
+    return;
+  }
+
+  // Copy the contents to a temp file and then move it over the original path.
+  base::FilePath temp_path;
+  if (!base::CreateTemporaryFileInDir(log_path.DirName(), &temp_path)) {
+    PLOG(WARNING) << "Failed to create temp file in "
+                  << log_path.DirName().value();
+    return;
+  }
+  if (!base::CopyFile(log_path, temp_path)) {
+    PLOG(WARNING) << "Failed to copy " << log_path.value() << " to "
+                  << temp_path.value();
+    return;
+  }
+
+  // Try to to copy permissions so the new file isn't 0600, which makes it hard
+  // to investigate issues on non-dev devices.
+  int mode = 0;
+  if (!base::GetPosixFilePermissions(log_path, &mode) ||
+      !base::SetPosixFilePermissions(temp_path, mode)) {
+    PLOG(WARNING) << "Failed to copy permissions from " << log_path.value()
+                  << " to " << temp_path.value();
+  }
+
+  if (!base::ReplaceFile(temp_path, log_path, nullptr /* error */)) {
+    PLOG(WARNING) << "Failed to rename " << temp_path.value() << " to "
+                  << log_path.value();
   }
 }
 
@@ -358,6 +410,7 @@ SessionManagerImpl::SessionManagerImpl(
       powerd_proxy_(powerd_proxy),
       system_clock_proxy_(system_clock_proxy),
       mitigator_(key_gen),
+      ui_log_symlink_path_(kDefaultUiLogSymlinkPath),
       password_provider_(
           std::make_unique<password_provider::PasswordProvider>()),
       weak_ptr_factory_(this) {
@@ -394,6 +447,11 @@ void SessionManagerImpl::SetPolicyServicesForTesting(
 void SessionManagerImpl::SetTickClockForTesting(
     std::unique_ptr<base::TickClock> clock) {
   tick_clock_ = std::move(clock);
+}
+
+void SessionManagerImpl::SetUiLogSymlinkPathForTesting(
+    const base::FilePath& path) {
+  ui_log_symlink_path_ = path;
 }
 
 void SessionManagerImpl::AnnounceSessionStoppingIfNeeded() {
@@ -616,6 +674,12 @@ bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
         dev_mode_state != DevModeState::DEV_MODE_OFF, is_incognito,
         user_is_owner);
   }
+
+  // Make sure that Chrome's stdout and stderr, which may contain log messages
+  // with user-specific data, don't get saved after the first user logs in:
+  // https://crbug.com/904850
+  if (user_sessions_.empty())
+    DisconnectLogFile(ui_log_symlink_path_);
 
   init_controller_->TriggerImpulse(kStartUserSessionImpulse,
                                    {"CHROMEOS_USER=" + actual_account_id},

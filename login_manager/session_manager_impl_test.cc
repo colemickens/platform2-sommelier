@@ -377,6 +377,9 @@ class SessionManagerImplTest : public ::testing::Test,
     ASSERT_TRUE(utils_.CreateDir(base::FilePath("/run/session_manager")));
     ASSERT_TRUE(utils_.CreateDir(base::FilePath("/mnt/stateful_partition")));
 
+    ASSERT_TRUE(log_dir_.CreateUniqueTempDir());
+    log_symlink_ = log_dir_.GetPath().Append("ui.LATEST");
+
     init_controller_ = new MockInitDaemonController();
     impl_ = std::make_unique<SessionManagerImpl>(
         this /* delegate */, base::WrapUnique(init_controller_), bus_.get(),
@@ -385,6 +388,7 @@ class SessionManagerImplTest : public ::testing::Test,
         &install_attributes_reader_, powerd_proxy_.get(),
         system_clock_proxy_.get());
     impl_->SetSystemClockLastSyncInfoRetryDelayForTesting(base::TimeDelta());
+    impl_->SetUiLogSymlinkPathForTesting(log_symlink_);
 
     device_policy_store_ = new MockPolicyStore();
     ON_CALL(*device_policy_store_, Get())
@@ -829,6 +833,9 @@ class SessionManagerImplTest : public ::testing::Test,
   dbus::ObjectProxy::WaitForServiceToBeAvailableCallback available_callback_;
 
   password_provider::FakePasswordProvider* password_provider_ = nullptr;
+
+  base::ScopedTempDir log_dir_;  // simulates /var/log/ui
+  base::FilePath log_symlink_;   // simulates ui.LATEST; not created by default
 
   std::unique_ptr<SessionManagerImpl> impl_;
   base::ScopedTempDir tmpdir_;
@@ -2196,6 +2203,57 @@ TEST_F(SessionManagerImplTest, ImportValidateAndStoreGeneratedKey) {
 
   impl_->OnKeyGenerated(kSaneEmail, key_file_path);
   EXPECT_FALSE(base::PathExists(key_file_path));
+}
+
+TEST_F(SessionManagerImplTest, DisconnectLogFile) {
+  // Write a log file and create a relative symlink pointing at it.
+  constexpr char kData[] = "fake log data";
+  const base::FilePath kLogFile = log_dir_.GetPath().Append("ui.real");
+  ASSERT_EQ(strlen(kData), base::WriteFile(kLogFile, kData, strlen(kData)));
+  ASSERT_TRUE(base::CreateSymbolicLink(kLogFile.BaseName(), log_symlink_));
+
+  struct stat st;
+  ASSERT_EQ(0, stat(kLogFile.value().c_str(), &st));
+  const ino_t orig_inode = st.st_ino;
+
+  ExpectAndRunStartSession(kSaneEmail);
+
+  // The file should still contain the same data...
+  std::string data;
+  ASSERT_TRUE(base::ReadFileToString(kLogFile, &data));
+  EXPECT_EQ(kData, data);
+
+  // ... but its inode should've changed.
+  ASSERT_EQ(0, stat(kLogFile.value().c_str(), &st));
+  const ino_t updated_inode = st.st_ino;
+  EXPECT_NE(orig_inode, updated_inode);
+
+  // Start a second session. The log file shouldn't be modified this time.
+  constexpr char kEmail2[] = "user2@somewhere.com";
+  ExpectAndRunStartSession(kEmail2);
+  ASSERT_EQ(0, stat(kLogFile.value().c_str(), &st));
+  EXPECT_EQ(updated_inode, st.st_ino);
+}
+
+TEST_F(SessionManagerImplTest, DontDisconnectLogFileInOtherDir) {
+  // Write a log file to a subdirectory and create an absolute symlink.
+  constexpr char kData[] = "fake log data";
+  const base::FilePath kSubdir = log_dir_.GetPath().Append("subdir");
+  ASSERT_TRUE(base::CreateDirectory(kSubdir));
+  const base::FilePath kLogFile = kSubdir.Append("ui.real");
+  ASSERT_EQ(strlen(kData), base::WriteFile(kLogFile, kData, strlen(kData)));
+  ASSERT_TRUE(base::CreateSymbolicLink(kLogFile, log_symlink_));
+
+  struct stat st;
+  ASSERT_EQ(0, stat(kLogFile.value().c_str(), &st));
+  const ino_t orig_inode = st.st_ino;
+
+  ExpectAndRunStartSession(kSaneEmail);
+
+  // The inode should stay the same since the symlink points to a file in a
+  // different directory.
+  ASSERT_EQ(0, stat(kLogFile.value().c_str(), &st));
+  EXPECT_EQ(orig_inode, st.st_ino);
 }
 
 #if USE_CHEETS

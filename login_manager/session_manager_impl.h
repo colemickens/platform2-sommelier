@@ -171,6 +171,7 @@ class SessionManagerImpl
       std::unique_ptr<UserPolicyServiceFactory> user_policy_factory,
       std::unique_ptr<DeviceLocalAccountManager> device_local_account_manager);
   void SetTickClockForTesting(std::unique_ptr<base::TickClock> clock);
+  void SetUiLogSymlinkPathForTesting(const base::FilePath& path);
 
   // SessionManagerInterface implementation.
   // Should set up policy stuff; if false DIE.
@@ -495,6 +496,10 @@ class SessionManagerImpl
 
   // Primary user is the first non-incognito user.
   std::string primary_user_account_id_;
+
+  // Path to symlink pointing at log file containing stdout and stderr for
+  // session_manager and Chrome, e.g. "/var/log/ui/ui.LATEST".
+  base::FilePath ui_log_symlink_path_;
 
   std::unique_ptr<password_provider::PasswordProviderInterface>
       password_provider_;
