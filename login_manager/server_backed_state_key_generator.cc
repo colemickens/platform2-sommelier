@@ -66,9 +66,7 @@ const int ServerBackedStateKeyGenerator::kDeviceStateKeyFutureQuanta;
 
 ServerBackedStateKeyGenerator::ServerBackedStateKeyGenerator(
     SystemUtils* system_utils, LoginMetrics* metrics)
-    : system_utils_(system_utils),
-      metrics_(metrics),
-      machine_info_available_(false) {}
+    : system_utils_(system_utils), metrics_(metrics) {}
 
 ServerBackedStateKeyGenerator::~ServerBackedStateKeyGenerator() {}
 

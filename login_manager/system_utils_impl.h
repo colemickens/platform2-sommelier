@@ -110,8 +110,8 @@ class SystemUtilsImpl : public SystemUtils {
   // If this file exists on the next boot, the stateful partition will be wiped.
   static const char kResetFile[];
 
-  DevModeState dev_mode_state_;
-  VmState vm_state_;
+  DevModeState dev_mode_state_ = DevModeState::DEV_MODE_UNKNOWN;
+  VmState vm_state_ = VmState::UNKNOWN;
   base::ScopedTempDir temp_dir_;
   base::FilePath base_dir_for_testing_;
 

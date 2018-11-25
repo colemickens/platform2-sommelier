@@ -36,9 +36,7 @@ LivenessCheckerImpl::LivenessCheckerImpl(
     : manager_(manager),
       dbus_proxy_(dbus_proxy),
       enable_aborting_(enable_aborting),
-      interval_(interval),
-      last_ping_acked_(true),
-      weak_ptr_factory_(this) {}
+      interval_(interval) {}
 
 LivenessCheckerImpl::~LivenessCheckerImpl() {
   Stop();

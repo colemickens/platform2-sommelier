@@ -117,14 +117,9 @@ SessionManagerService::SessionManagerService(
     LoginMetrics* metrics,
     SystemUtils* utils)
     : browser_(std::move(child_job)),
-      exit_on_child_done_(false),
       kill_timeout_(base::TimeDelta::FromSeconds(kill_timeout)),
       match_rule_(base::StringPrintf("type='method_call', interface='%s'",
                                      kSessionManagerInterface)),
-      screen_lock_dbus_proxy_(nullptr),
-      powerd_dbus_proxy_(nullptr),
-      vm_concierge_dbus_proxy_(nullptr),
-      vm_concierge_available_(false),
       login_metrics_(metrics),
       system_(utils),
       nss_(NssUtil::Create()),
@@ -136,10 +131,7 @@ SessionManagerService::SessionManagerService(
           utils, base::FilePath(kContainerInstallDirectory))),
       enable_browser_abort_on_hang_(enable_browser_abort_on_hang),
       liveness_checking_interval_(hang_detection_interval),
-      aborted_browser_pid_path_(kAbortedBrowserPidPath),
-      shutting_down_(false),
-      shutdown_already_(false),
-      exit_code_(SUCCESS) {
+      aborted_browser_pid_path_(kAbortedBrowserPidPath) {
   DCHECK(browser_);
   SetUpHandlers();
 }

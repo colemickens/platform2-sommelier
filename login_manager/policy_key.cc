@@ -20,8 +20,6 @@ namespace login_manager {
 
 PolicyKey::PolicyKey(const base::FilePath& key_file, NssUtil* nss)
     : key_file_(key_file),
-      have_checked_disk_(false),
-      have_replaced_(false),
       nss_(nss),
       utils_(new SystemUtilsImpl) {}
 

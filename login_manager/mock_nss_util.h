@@ -64,7 +64,7 @@ class MockNssUtil : public NssUtil {
   bool EnsureTempDir();
 
  protected:
-  bool return_bad_db_;
+  bool return_bad_db_ = false;
   crypto::ScopedTestNSSDB test_nssdb_;
   base::ScopedTempDir temp_dir_;
 

@@ -24,7 +24,7 @@ using ::testing::Return;
 
 using crypto::ScopedPK11Slot;
 
-MockNssUtil::MockNssUtil() : return_bad_db_(false) {
+MockNssUtil::MockNssUtil() {
   ON_CALL(*this, GetNssdbSubpath()).WillByDefault(Return(base::FilePath()));
 }
 

@@ -30,9 +30,7 @@ KeyGenerator::Delegate::~Delegate() {}
 KeyGenerator::KeyGenerator(uid_t uid, SystemUtils* utils)
     : uid_(uid),
       utils_(utils),
-      delegate_(NULL),
-      factory_(new GeneratorJob::Factory),
-      generating_(false) {}
+      factory_(std::make_unique<GeneratorJob::Factory>()) {}
 
 KeyGenerator::~KeyGenerator() {}
 

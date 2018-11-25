@@ -87,7 +87,7 @@ class AndroidOciWrapper : public ContainerManagerInterface {
   void KillProcessGroup(pid_t pgid);
 
   // The PID of container's init process.
-  pid_t container_pid_;
+  pid_t container_pid_ = 0;
 
   // This is owned by the caller.
   SystemUtils* const system_utils_;
@@ -99,10 +99,11 @@ class AndroidOciWrapper : public ContainerManagerInterface {
   ExitCallback exit_callback_;
 
   // Keeps the reason why this container is (being) stopped.
-  login_manager::ArcContainerStopReason exit_reason_;
+  login_manager::ArcContainerStopReason exit_reason_ =
+      ArcContainerStopReason::CRASH;
 
   // Whether container is stateful or stateless.
-  StatefulMode stateful_mode_;
+  StatefulMode stateful_mode_ = StatefulMode::STATELESS;
 
   DISALLOW_COPY_AND_ASSIGN(AndroidOciWrapper);
 };

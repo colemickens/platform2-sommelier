@@ -31,7 +31,7 @@ class RegenMitigator : public OwnerKeyLossMitigator {
 
  private:
   KeyGenerator* generator_;
-  bool mitigating_;
+  bool mitigating_ = false;
   DISALLOW_COPY_AND_ASSIGN(RegenMitigator);
 };
 

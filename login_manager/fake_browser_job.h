@@ -55,9 +55,9 @@ class FakeBrowserJob : public BrowserJobInterface {
  private:
   std::unique_ptr<FakeChildProcess> fake_process_;
   const std::string name_;
-  bool running_;
+  bool running_ = false;
   const bool schedule_exit_;
-  bool should_run_;
+  bool should_run_ = true;
   DISALLOW_COPY_AND_ASSIGN(FakeBrowserJob);
 };
 }  // namespace login_manager

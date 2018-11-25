@@ -60,9 +60,9 @@ class LivenessCheckerImpl : public LivenessChecker {
 
   const bool enable_aborting_;
   const base::TimeDelta interval_;
-  bool last_ping_acked_;
+  bool last_ping_acked_ = true;
   base::CancelableClosure liveness_check_;
-  base::WeakPtrFactory<LivenessCheckerImpl> weak_ptr_factory_;
+  base::WeakPtrFactory<LivenessCheckerImpl> weak_ptr_factory_{this};
 
   DISALLOW_COPY_AND_ASSIGN(LivenessCheckerImpl);
 };

@@ -184,12 +184,12 @@ class BrowserJob : public BrowserJobInterface {
 
   // Indicates if we removed login manager flag when session started so we
   // add it back when session stops.
-  bool removed_login_manager_flag_;
+  bool removed_login_manager_flag_ = false;
 
   // Indicates that we already started a session.  Needed because the
   // browser requires us to track the _first_ user to start a session.
   // There is no issue filed to address this.
-  bool session_already_started_;
+  bool session_already_started_ = false;
 
   Config config_;
 

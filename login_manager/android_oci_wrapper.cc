@@ -32,11 +32,7 @@ constexpr char AndroidOciWrapper::kProcFdPath[];
 
 AndroidOciWrapper::AndroidOciWrapper(SystemUtils* system_utils,
                                      const base::FilePath& containers_directory)
-    : container_pid_(0),
-      system_utils_(system_utils),
-      containers_directory_(containers_directory),
-      exit_reason_(ArcContainerStopReason::CRASH),
-      stateful_mode_(StatefulMode::STATELESS) {
+    : system_utils_(system_utils), containers_directory_(containers_directory) {
   DCHECK(system_utils_);
   DCHECK(!containers_directory_.empty());
 }

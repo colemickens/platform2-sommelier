@@ -232,17 +232,18 @@ class SessionManagerService
 
   std::unique_ptr<BrowserJobInterface> browser_;
   base::TimeTicks last_browser_restart_time_;
-  bool exit_on_child_done_;
+  bool exit_on_child_done_ = false;
   const base::TimeDelta kill_timeout_;
 
   scoped_refptr<dbus::Bus> bus_;
   const std::string match_rule_;
-  dbus::ObjectProxy* screen_lock_dbus_proxy_;   // Owned by |bus_|.
-  dbus::ObjectProxy* powerd_dbus_proxy_;        // Owned by |bus_|.
-  dbus::ObjectProxy* vm_concierge_dbus_proxy_;  // Owned by |bus_|.
+  // These proxies are owned by |bus_|.
+  dbus::ObjectProxy* screen_lock_dbus_proxy_ = nullptr;
+  dbus::ObjectProxy* powerd_dbus_proxy_ = nullptr;
+  dbus::ObjectProxy* vm_concierge_dbus_proxy_ = nullptr;
 
   // True when the vm_concierge service is available.
-  bool vm_concierge_available_;
+  bool vm_concierge_available_ = false;
 
   LoginMetrics* login_metrics_;  // Owned by the caller.
   SystemUtils* system_;          // Owned by the caller.
@@ -265,9 +266,8 @@ class SessionManagerService
 
   brillo::AsynchronousSignalHandler signal_handler_;
   std::unique_ptr<ChildExitDispatcher> child_exit_dispatcher_;
-  bool shutting_down_;
-  bool shutdown_already_;
-  ExitCode exit_code_;
+  bool shutting_down_ = false;
+  ExitCode exit_code_ = SUCCESS;
 
   DISALLOW_COPY_AND_ASSIGN(SessionManagerService);
 };

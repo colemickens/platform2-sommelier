@@ -63,11 +63,11 @@ class KeyGenerator : public ChildExitHandler {
 
   uid_t uid_;
   SystemUtils* utils_;
-  Delegate* delegate_;
+  Delegate* delegate_ = nullptr;
 
   std::unique_ptr<GeneratorJobFactoryInterface> factory_;
   std::unique_ptr<GeneratorJobInterface> keygen_job_;
-  bool generating_;
+  bool generating_ = false;
   std::string key_owner_username_;
   std::string temporary_key_filename_;
   DISALLOW_COPY_AND_ASSIGN(KeyGenerator);

@@ -106,8 +106,6 @@ BrowserJob::BrowserJob(const std::vector<std::string>& arguments,
       login_metrics_(metrics),
       system_(utils),
       start_times_(std::deque<time_t>(kRestartTries, 0)),
-      removed_login_manager_flag_(false),
-      session_already_started_(false),
       config_(cfg),
       subprocess_(std::move(subprocess)) {
   // Take over managing kLoginManagerFlag.

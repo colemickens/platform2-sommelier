@@ -88,8 +88,8 @@ class PolicyKey {
 
  private:
   const base::FilePath key_file_;
-  bool have_checked_disk_;
-  bool have_replaced_;
+  bool have_checked_disk_ = false;
+  bool have_replaced_ = false;
   std::vector<uint8_t> key_;
   NssUtil* nss_;
   std::unique_ptr<SystemUtils> utils_;

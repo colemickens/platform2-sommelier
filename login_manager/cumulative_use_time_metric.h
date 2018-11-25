@@ -91,7 +91,7 @@ class CumulativeUseTimeMetric {
   std::unique_ptr<base::TickClock> time_tick_clock_;
 
   // Whether the usage time metric has been initialized.
-  bool initialized_{false};
+  bool initialized_ = false;
 
   // Timer for scheduling tasks that update usage time metric.
   base::RepeatingTimer update_stats_timer_;

@@ -337,13 +337,7 @@ SessionManagerImpl::SessionManagerImpl(
     InstallAttributesReader* install_attributes_reader,
     dbus::ObjectProxy* powerd_proxy,
     dbus::ObjectProxy* system_clock_proxy)
-    : session_started_(false),
-      session_stopping_(false),
-      screen_locked_(false),
-      supervised_user_creation_ongoing_(false),
-      system_clock_synchronized_(false),
-      suspend_ongoing_(false),
-      init_controller_(std::move(init_controller)),
+    : init_controller_(std::move(init_controller)),
       system_clock_last_sync_info_retry_delay_(
           kSystemClockLastSyncInfoRetryDelay),
       tick_clock_(std::make_unique<base::DefaultTickClock>()),

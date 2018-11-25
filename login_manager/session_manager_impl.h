@@ -435,16 +435,16 @@ class SessionManagerImpl
                              const base::FilePath& android_data_old_dir);
 #endif
 
-  bool session_started_;
-  bool session_stopping_;
-  bool screen_locked_;
-  bool supervised_user_creation_ongoing_;
-  bool system_clock_synchronized_;
+  bool session_started_ = false;
+  bool session_stopping_ = false;
+  bool screen_locked_ = false;
+  bool supervised_user_creation_ongoing_ = false;
+  bool system_clock_synchronized_ = false;
   std::string cookie_;
 
   // True if a SuspendImminent D-Bus signal was received from |powerd_proxy_|
   // but the corresponding SuspendDone signal hasn't been received yet.
-  bool suspend_ongoing_;
+  bool suspend_ongoing_ = false;
 
   // Time at which the last SuspendDone signal was received from
   // |powerd_proxy_|.

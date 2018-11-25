@@ -73,11 +73,9 @@ class ResetSigmaskDelegate : public base::LaunchOptions::PreExecDelegate {
 
 }  // namespace
 
-SystemUtilsImpl::SystemUtilsImpl()
-    : dev_mode_state_(DevModeState::DEV_MODE_UNKNOWN),
-      vm_state_(VmState::UNKNOWN) {}
+SystemUtilsImpl::SystemUtilsImpl() = default;
 
-SystemUtilsImpl::~SystemUtilsImpl() {}
+SystemUtilsImpl::~SystemUtilsImpl() = default;
 
 DevModeState SystemUtilsImpl::GetDevModeState() {
   // Return the cached result when possible. There is no reason to run

@@ -92,7 +92,7 @@ class ServerBackedStateKeyGenerator {
   std::vector<StateKeyCallback> pending_callbacks_;
 
   // The data required to generate state keys.
-  bool machine_info_available_;
+  bool machine_info_available_ = false;
   std::string stable_device_secret_;
 
   // TODO(mnissler): Remove these and the corresponding code once the old way
