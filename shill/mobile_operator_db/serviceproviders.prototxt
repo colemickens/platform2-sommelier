@@ -11009,6 +11009,23 @@ mno {
 
 mno {
   data {
+    uuid : "7f39c0e6-beb9-46a3-a7b9-947430092fb9"
+    country : "ro"
+    localized_name {
+      name : "Telekom"
+    }
+    mccmnc : "22603"
+    mobile_apn {
+      apn : "broadband"
+      localized_name {
+        name : "Telekom.ro"
+      }
+    }
+  }
+}
+
+mno {
+  data {
     uuid : "b9ef3bd9-2bc3-4686-b2ad-08c85c5f6497"
     country : "ro"
     localized_name {
