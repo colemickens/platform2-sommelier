@@ -82,10 +82,10 @@ bool Nl80211Message::InitFromPacket(NetlinkPacket* packet,
 }
 
 Nl80211Frame::Nl80211Frame(const ByteString& raw_frame)
-  : frame_type_(kIllegalFrameType),
-    reason_(std::numeric_limits<uint16_t>::max()),
-    status_(std::numeric_limits<uint16_t>::max()),
-    frame_(raw_frame) {
+    : frame_type_(kIllegalFrameType),
+      reason_(std::numeric_limits<uint16_t>::max()),
+      status_(std::numeric_limits<uint16_t>::max()),
+      frame_(raw_frame) {
   const IEEE_80211::ieee80211_frame* frame =
       reinterpret_cast<const IEEE_80211::ieee80211_frame*>(
           frame_.GetConstData());
@@ -152,45 +152,40 @@ bool Nl80211Frame::ToString(string* output) const {
     StringAppendF(output, " %s -> %s", mac_from_.c_str(), mac_to_.c_str());
 
     switch (frame_type_) {
-    case kAssocResponseFrameType:
-      StringAppendF(output, "; AssocResponse status: %u: %s",
-                    status_,
-                    IEEE_80211::StatusToString(
-                        static_cast<IEEE_80211::WiFiStatusCode>(status_))
-                        .c_str());
-      break;
-    case kReassocResponseFrameType:
-      StringAppendF(output, "; ReassocResponse status: %u: %s",
-                    status_,
-                    IEEE_80211::StatusToString(
-                        static_cast<IEEE_80211::WiFiStatusCode>(status_))
-                        .c_str());
-      break;
-    case kAuthFrameType:
-      StringAppendF(output, "; Auth status: %u: %s",
-                    status_,
-                    IEEE_80211::StatusToString(
-                        static_cast<IEEE_80211::WiFiStatusCode>(status_))
-                        .c_str());
-      break;
+      case kAssocResponseFrameType:
+        StringAppendF(output, "; AssocResponse status: %u: %s", status_,
+                      IEEE_80211::StatusToString(
+                          static_cast<IEEE_80211::WiFiStatusCode>(status_))
+                          .c_str());
+        break;
+      case kReassocResponseFrameType:
+        StringAppendF(output, "; ReassocResponse status: %u: %s", status_,
+                      IEEE_80211::StatusToString(
+                          static_cast<IEEE_80211::WiFiStatusCode>(status_))
+                          .c_str());
+        break;
+      case kAuthFrameType:
+        StringAppendF(output, "; Auth status: %u: %s", status_,
+                      IEEE_80211::StatusToString(
+                          static_cast<IEEE_80211::WiFiStatusCode>(status_))
+                          .c_str());
+        break;
 
-    case kDisassocFrameType:
-      StringAppendF(output, "; Disassoc reason %u: %s",
-                    reason_,
-                    IEEE_80211::ReasonToString(
-                        static_cast<IEEE_80211::WiFiReasonCode>(reason_))
-                        .c_str());
-      break;
-    case kDeauthFrameType:
-      StringAppendF(output, "; Deauth reason %u: %s",
-                    reason_,
-                    IEEE_80211::ReasonToString(
-                        static_cast<IEEE_80211::WiFiReasonCode>(reason_))
-                        .c_str());
-      break;
+      case kDisassocFrameType:
+        StringAppendF(output, "; Disassoc reason %u: %s", reason_,
+                      IEEE_80211::ReasonToString(
+                          static_cast<IEEE_80211::WiFiReasonCode>(reason_))
+                          .c_str());
+        break;
+      case kDeauthFrameType:
+        StringAppendF(output, "; Deauth reason %u: %s", reason_,
+                      IEEE_80211::ReasonToString(
+                          static_cast<IEEE_80211::WiFiReasonCode>(reason_))
+                          .c_str());
+        break;
 
-    default:
-      break;
+      default:
+        break;
     }
     output->append(" [frame: ");
   }
@@ -219,9 +214,9 @@ const uint8_t AuthenticateMessage::kCommand = NL80211_CMD_AUTHENTICATE;
 const char AuthenticateMessage::kCommandString[] = "NL80211_CMD_AUTHENTICATE";
 
 const uint8_t CancelRemainOnChannelMessage::kCommand =
-  NL80211_CMD_CANCEL_REMAIN_ON_CHANNEL;
+    NL80211_CMD_CANCEL_REMAIN_ON_CHANNEL;
 const char CancelRemainOnChannelMessage::kCommandString[] =
-  "NL80211_CMD_CANCEL_REMAIN_ON_CHANNEL";
+    "NL80211_CMD_CANCEL_REMAIN_ON_CHANNEL";
 
 const uint8_t ConnectMessage::kCommand = NL80211_CMD_CONNECT;
 const char ConnectMessage::kCommandString[] = "NL80211_CMD_CONNECT";
@@ -302,7 +297,7 @@ const char NotifyCqmMessage::kCommandString[] = "NL80211_CMD_NOTIFY_CQM";
 
 const uint8_t PmksaCandidateMessage::kCommand = NL80211_ATTR_PMKSA_CANDIDATE;
 const char PmksaCandidateMessage::kCommandString[] =
-  "NL80211_ATTR_PMKSA_CANDIDATE";
+    "NL80211_ATTR_PMKSA_CANDIDATE";
 
 const uint8_t RegBeaconHintMessage::kCommand = NL80211_CMD_REG_BEACON_HINT;
 const char RegBeaconHintMessage::kCommandString[] =
@@ -324,8 +319,7 @@ const char ScanAbortedMessage::kCommandString[] = "NL80211_CMD_SCAN_ABORTED";
 const uint8_t GetScanMessage::kCommand = NL80211_CMD_GET_SCAN;
 const char GetScanMessage::kCommandString[] = "NL80211_CMD_GET_SCAN";
 
-GetScanMessage::GetScanMessage()
-    : Nl80211Message(kCommand, kCommandString) {
+GetScanMessage::GetScanMessage() : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
       NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
                                  NetlinkMessage::MessageContext()));
@@ -529,21 +523,18 @@ void Nl80211MessageDataCollector::CollectDebugData(
     return;
 
   LOG(INFO) << "@@const unsigned char "
-             << "k" << message.command_string()
-             << "[] = {";
+            << "k" << message.command_string() << "[] = {";
 
   const unsigned char* rawdata =
       reinterpret_cast<const unsigned char*>(&packet.GetNlMsgHeader());
   for (size_t i = 0; i < sizeof(nlmsghdr); ++i) {
-    LOG(INFO) << "  0x"
-               << std::hex << std::setfill('0') << std::setw(2)
-               << + rawdata[i] << ",";
+    LOG(INFO) << "  0x" << std::hex << std::setfill('0') << std::setw(2)
+              << +rawdata[i] << ",";
   }
   rawdata = packet.GetPayload().GetConstData();
   for (size_t i = 0; i < packet.GetPayload().GetLength(); ++i) {
-    LOG(INFO) << "  0x"
-               << std::hex << std::setfill('0') << std::setw(2)
-               << + rawdata[i] << ",";
+    LOG(INFO) << "  0x" << std::hex << std::setfill('0') << std::setw(2)
+              << +rawdata[i] << ",";
   }
   LOG(INFO) << "};";
   need_to_print[message.command()] = false;
