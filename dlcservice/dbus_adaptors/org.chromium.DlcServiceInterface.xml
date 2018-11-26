@@ -13,22 +13,22 @@
     </tp:docstring>
     <arg name="id" type="s" direction="in">
       <tp:docstring>
-        ID of the DLC.
+        ID of the DLC module.
       </tp:docstring>
     </arg>
     <arg name="mount_point" type="s" direction="out">
       <tp:docstring>
-        The mount path of the DLC.
+        The mount path of the DLC module image.
       </tp:docstring>
     </arg>
   </method>
   <method name="Uninstall">
     <tp:docstring>
-      Uninstall Downloadable Content (DLC).
+      Uninstall a Downloadable Content (DLC) module.
     </tp:docstring>
     <arg name="id" type="s" direction="in">
       <tp:docstring>
-        ID of the DLC.
+        ID of the DLC module.
       </tp:docstring>
     </arg>
   </method>
