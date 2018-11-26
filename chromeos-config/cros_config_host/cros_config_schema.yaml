@@ -151,6 +151,13 @@ properties:
             brand-code:
               description: Brand code of the model (also called RLZ code).
               type: string
+            camera:
+              type: object
+              properties:
+                count:
+                  type: integer
+                  description: Specified the number of cameras on the model.
+              additionalProperties: false
             firmware:
               type: object
               properties:

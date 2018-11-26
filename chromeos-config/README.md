@@ -268,6 +268,7 @@ The schema definition is below:
 | audio | [audio](#audio) |  | False |  |  |
 | bluetooth | [bluetooth](#bluetooth) |  | False |  |  |
 | brand-code | string |  | False |  | Brand code of the model (also called RLZ code). |
+| camera | [camera](#camera) |  | False |  |  |
 | firmware | [firmware](#firmware) |  | True |  |  |
 | firmware-signing | [firmware-signing](#firmware-signing) |  | False |  |  |
 | hardware-properties | [hardware-properties](#hardware-properties) |  | False |  | Contains boolean flags for hardware properties of this board, for example if it's convertible, has a touchscreen, has a camera, etc. This information is used to auto-generate C code that is consumed by the EC build process in order to do run-time configuration. If a value is defined within a config file, but not for a specific model, that value will be assumed to be false for that model. All properties must be booleans. If non-boolean properties are desired, the generation code in cros_config_schema.py must be updated to support them. |
@@ -334,6 +335,11 @@ The schema definition is below:
 | --------- | ------ | --------- | -------- | ----------- |  ----------- |
 | build-path | string |  | True |  | Source of the file relative to the build system. |
 | system-path | string |  | True |  | Installation path for the file on the system image. |
+
+### camera
+| Attribute | Type   | RegEx     | Required | Oneof Group |  Description |
+| --------- | ------ | --------- | -------- | ----------- |  ----------- |
+| count | integer |  | False |  | Specified the number of cameras on the model. |
 
 ### firmware
 | Attribute | Type   | RegEx     | Required | Oneof Group |  Description |
