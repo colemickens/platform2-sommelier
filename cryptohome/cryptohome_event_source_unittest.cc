@@ -6,17 +6,20 @@
 
 #include "cryptohome/cryptohome_event_source.h"
 
-#include "cryptohome/vault_keyset.h"
+#include <memory>
+#include <utility>
 
 #include <base/logging.h>
 #include <gtest/gtest.h>
+
+#include "cryptohome/vault_keyset.h"
 
 namespace cryptohome {
 
 class CryptohomeEventSourceTest : public ::testing::Test {
  public:
-  CryptohomeEventSourceTest() { }
-  virtual ~CryptohomeEventSourceTest() { }
+  CryptohomeEventSourceTest() = default;
+  virtual ~CryptohomeEventSourceTest() = default;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CryptohomeEventSourceTest);
@@ -29,29 +32,19 @@ class EventDestructorWatcher {
 
 class MyEvent : public CryptohomeEventBase {
  public:
-  MyEvent()
-      : destructor_watcher_(NULL),
-        id_(-1) { }
-
-  virtual ~MyEvent() {
+  MyEvent(EventDestructorWatcher* watcher, int id)
+    : destructor_watcher_(watcher), id_(id) {}
+  ~MyEvent() override {
     if (destructor_watcher_) {
       destructor_watcher_->NotifyDestroy(this);
     }
-  }
-
-  void set_destructor_watcher(EventDestructorWatcher* watcher) {
-    destructor_watcher_ = watcher;
-  }
-
-  void set_id(int id) {
-    id_ = id;
   }
 
   int get_id() {
     return id_;
   }
 
-  virtual const char* GetEventName() const {
+  const char* GetEventName() const override {
     return "MyEvent";
   }
 
@@ -63,16 +56,14 @@ class MyEvent : public CryptohomeEventBase {
 class EventSink : public CryptohomeEventSourceSink,
                   public EventDestructorWatcher {
  public:
-  EventSink()
-      : completed_events_() { }
+  EventSink() = default;
+  ~EventSink() override = default;
 
-  virtual ~EventSink() { }
-
-  virtual void NotifyEvent(CryptohomeEventBase* event) {
+  void NotifyEvent(CryptohomeEventBase* event) override {
     completed_events_.push_back(static_cast<MyEvent*>(event)->get_id());
   }
 
-  virtual void NotifyDestroy(CryptohomeEventBase* event) {
+  void NotifyDestroy(CryptohomeEventBase* event) override {
     destroyed_events_.push_back(static_cast<MyEvent*>(event)->get_id());
   }
 
@@ -87,10 +78,7 @@ TEST_F(CryptohomeEventSourceTest, TestEventSink) {
 
   static const int kEventCount = 4096;
   for (int i = 0; i < kEventCount; i++) {
-    MyEvent* event = new MyEvent();
-    event->set_id(i);
-    event->set_destructor_watcher(&event_sink);
-    event_source.AddEvent(event);
+    event_source.AddEvent(std::make_unique<MyEvent>(&event_sink, i));
   }
 
   EXPECT_TRUE(event_source.EventsPending());
@@ -110,10 +98,7 @@ TEST_F(CryptohomeEventSourceTest, TestEventSinkNoClear) {
     event_source.Reset(&event_sink, NULL);
 
     for (int i = 0; i < kEventCount; i++) {
-      MyEvent* event = new MyEvent();
-      event->set_id(i);
-      event->set_destructor_watcher(&event_sink);
-      event_source.AddEvent(event);
+      event_source.AddEvent(std::make_unique<MyEvent>(&event_sink, i));
     }
 
     EXPECT_TRUE(event_source.EventsPending());

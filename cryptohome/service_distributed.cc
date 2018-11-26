@@ -12,6 +12,8 @@
 #include "tpm_manager/common/tpm_manager_constants.h"
 #include "tpm_manager/common/tpm_ownership_dbus_interface.h"
 
+#include <utility>
+
 using attestation::AttestationInterface;
 using attestation::AttestationStatus;
 
@@ -174,14 +176,14 @@ template <typename ReplyProtoType>
 void ServiceDistributed::ProcessStatusReply(int async_id,
                                             const ReplyProtoType& reply) {
   VLOG(1) << __func__;
-  MountTaskResult* r = new MountTaskResult();
+  auto r = std::make_unique<MountTaskResult>();
   VLOG(3) << "attestationd reply:"
           << " async_id=" << async_id << " status=" << reply.status();
   VLOG_IF(1, reply.status() != AttestationStatus::STATUS_SUCCESS)
       << "Attestation daemon returned status " << reply.status();
   r->set_sequence_id(async_id);
   r->set_return_status(reply.status() == AttestationStatus::STATUS_SUCCESS);
-  event_source_.AddEvent(r);
+  event_source_.AddEvent(std::move(r));
 }
 
 template <typename ReplyProtoType>
@@ -190,7 +192,7 @@ void ServiceDistributed::ProcessDataReply(
     int async_id,
     const ReplyProtoType& reply) {
   VLOG(1) << __func__;
-  MountTaskResult* r = new MountTaskResult();
+  auto r = std::make_unique<MountTaskResult>();
   VLOG(3) << "attestationd reply:"
           << " async_id=" << async_id << " status=" << reply.status();
   VLOG_IF(1, reply.status() != AttestationStatus::STATUS_SUCCESS)
@@ -199,7 +201,7 @@ void ServiceDistributed::ProcessDataReply(
   r->set_return_status(reply.status() == AttestationStatus::STATUS_SUCCESS);
   brillo::SecureBlob blob((reply.*func)());
   r->set_return_data(blob);
-  event_source_.AddEvent(r);
+  event_source_.AddEvent(std::move(r));
 }
 
 void ServiceDistributed::ProcessGetEndorsementInfoReply(

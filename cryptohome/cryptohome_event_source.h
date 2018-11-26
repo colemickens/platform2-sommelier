@@ -5,7 +5,7 @@
 // CryptohomeEventSource - Implements a GSource for the glib main event loop.
 // This class is used to marshal asynchronous mount results from the worker
 // thread (see service.h/.cc) over to the main event loop.  That way, all of the
-// dbus messages are received and sent from the one thread, ensuring that
+// D-Bus messages are received and sent from the one thread, ensuring that
 // signals returned by asynchronous commands are serialized with the original
 // call.
 //
@@ -25,6 +25,7 @@
 #include <base/synchronization/lock.h>
 #include <dbus/dbus-glib.h>
 #include <glib-object.h>
+#include <memory>
 #include <vector>
 
 namespace cryptohome {
@@ -51,11 +52,10 @@ class CryptohomeEventSource {
   void HandleDispatch();
 
   // Adds an event to the queue for processing.
-  // This method DOES take ownership of the |event| pointer.
   //
   // Parameters
   //   task_result - The event to add
-  void AddEvent(CryptohomeEventBase* event);
+  void AddEvent(std::unique_ptr<CryptohomeEventBase> event);
 
   // Clears all pending events from the queue
   void Clear();
@@ -66,6 +66,11 @@ class CryptohomeEventSource {
   // getting the instance of this CryptohomeEventSource.
   struct Source : public GSource {
     CryptohomeEventSource* event_source;
+    GPollFD poll_fd;
+  };
+
+  struct SourceDeleter {
+    void operator()(Source* source);
   };
 
   // Called by glib (see GSourceFuncs in the glib documentation)
@@ -80,13 +85,13 @@ class CryptohomeEventSource {
                            gpointer unused_data);
 
   // The event sink that handles event notifications
-  CryptohomeEventSourceSink* sink_;
+  CryptohomeEventSourceSink* sink_ = nullptr;
 
-  // The dbus GSource that we provide
-  Source* source_;
+  // The D-Bus GSource that we provide
+  std::unique_ptr<Source, SourceDeleter> source_;
 
   // Pending events vector
-  std::vector<CryptohomeEventBase*> events_;
+  std::vector<std::unique_ptr<CryptohomeEventBase>> events_;
 
   // Used to provide thread-safe access to events_
   base::Lock events_lock_;
@@ -96,22 +101,21 @@ class CryptohomeEventSource {
 
   // The pipe used for our GPollFD
   int pipe_fds_[2];
-  GPollFD poll_fd_;
 
   DISALLOW_COPY_AND_ASSIGN(CryptohomeEventSource);
 };
 
 class CryptohomeEventBase {
  public:
-  CryptohomeEventBase() { }
-  virtual ~CryptohomeEventBase() { }
+  CryptohomeEventBase() = default;
+  virtual ~CryptohomeEventBase() = default;
 
   virtual const char* GetEventName() const = 0;
 };
 
 class CryptohomeEventSourceSink {
  public:
-  virtual ~CryptohomeEventSourceSink() { }
+  virtual ~CryptohomeEventSourceSink() = default;
   virtual void NotifyEvent(CryptohomeEventBase* event) = 0;
 };
 

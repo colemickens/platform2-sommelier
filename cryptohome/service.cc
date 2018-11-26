@@ -120,25 +120,16 @@ const char kHome[] = "/home";
 
 class TpmInitStatus : public CryptohomeEventBase {
  public:
-  TpmInitStatus()
-      : took_ownership_(false),
-        status_(false) { }
-  virtual ~TpmInitStatus() { }
+  TpmInitStatus(bool took_ownership, bool status)
+      : took_ownership_(took_ownership), status_(status) {}
+  ~TpmInitStatus() override = default;
 
-  virtual const char* GetEventName() const {
+  const char* GetEventName() const override {
     return kTpmInitStatusEventType;
-  }
-
-  void set_took_ownership(bool value) {
-    took_ownership_ = value;
   }
 
   bool get_took_ownership() {
     return took_ownership_;
-  }
-
-  void set_status(bool value) {
-    status_ = value;
   }
 
   bool get_status() {
@@ -320,7 +311,8 @@ void Service::SendReply(DBusGMethodInvocation* context,
   // DBusReply will take ownership of the |reply_str|.
   std::unique_ptr<std::string> reply_str(new std::string);
   reply.SerializeToString(reply_str.get());
-  event_source_.AddEvent(new DBusReply(context, reply_str.release()));
+  event_source_.AddEvent(
+      std::make_unique<DBusReply>(context, reply_str.release()));
 }
 
 void Service::SendDBusErrorReply(DBusGMethodInvocation* context,
@@ -328,7 +320,7 @@ void Service::SendDBusErrorReply(DBusGMethodInvocation* context,
                                  gint code,
                                  const gchar* message) {
   GError* error = g_error_new_literal(domain, code, message);
-  event_source_.AddEvent(new DBusErrorReply(context, error));
+  event_source_.AddEvent(std::make_unique<DBusErrorReply>(context, error));
 }
 
 bool Service::FilterActiveMounts(
@@ -934,11 +926,8 @@ void Service::ConfigureOwnedTpm(bool status, bool took_ownership) {
     // can't do it prior to ownership.
     InitializeInstallAttributes(true);
   }
-  // The event source will free this object
-  TpmInitStatus* tpm_init_status = new TpmInitStatus();
-  tpm_init_status->set_status(status);
-  tpm_init_status->set_took_ownership(took_ownership);
-  event_source_.AddEvent(tpm_init_status);
+  event_source_.AddEvent(
+      std::make_unique<TpmInitStatus>(took_ownership, status));
 
   // Do attestation work after AddEvent because it may take long.
   AttestationInitializeTpmComplete();
@@ -2106,7 +2095,7 @@ void Service::SendDircryptoMigrationProgressSignal(
     DircryptoMigrationStatus status,
     uint64_t current_bytes,
     uint64_t total_bytes) {
-  event_source_.AddEvent(new DircryptoMigrationProgress(
+  event_source_.AddEvent(std::make_unique<DircryptoMigrationProgress>(
       status, current_bytes, total_bytes));
 }
 

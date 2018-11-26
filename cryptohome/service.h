@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/atomic_sequence_num.h>
@@ -65,9 +66,9 @@ class MountTaskObserverBridge : public MountTaskObserver {
     : mount_(mount), source_(source) { }
   virtual ~MountTaskObserverBridge() { }
   virtual bool MountTaskObserve(const MountTaskResult& result) {
-    MountTaskResult *r = new MountTaskResult(result);
+    auto r = std::make_unique<MountTaskResult>(result);
     r->set_mount(mount_);
-    source_->AddEvent(r);
+    source_->AddEvent(std::move(r));
     return true;
   }
 

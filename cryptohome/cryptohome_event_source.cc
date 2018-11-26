@@ -4,9 +4,13 @@
 
 #include "cryptohome/cryptohome_event_source.h"
 
-#include <base/logging.h>
 #include <poll.h>
 #include <unistd.h>
+
+#include <memory>
+#include <utility>
+
+#include <base/logging.h>
 
 namespace cryptohome {
 
@@ -14,35 +18,22 @@ GSourceFuncs CryptohomeEventSource::source_functions_ = {
   CryptohomeEventSource::Prepare,
   CryptohomeEventSource::Check,
   CryptohomeEventSource::Dispatch,
-  NULL
+  nullptr
 };
 
-CryptohomeEventSource::CryptohomeEventSource()
-    : sink_(NULL),
-      source_(NULL),
-      events_(),
-      events_lock_(),
-      poll_fd_() {
+CryptohomeEventSource::CryptohomeEventSource() {
   pipe_fds_[0] = -1;
   pipe_fds_[1] = -1;
 }
 
 CryptohomeEventSource::~CryptohomeEventSource() {
-  if (source_) {
-    g_source_destroy(source_);
-    g_source_unref(source_);
-  }
   Clear();
 }
 
 void CryptohomeEventSource::Reset(CryptohomeEventSourceSink* sink,
                                   GMainContext* main_context) {
   sink_ = sink;
-  if (source_) {
-    g_source_destroy(source_);
-    g_source_unref(source_);
-    source_ = NULL;
-  }
+  source_.reset();
 
   for (int i = 0; i < 2; i++) {
     if (pipe_fds_[i] != -1) {
@@ -54,17 +45,17 @@ void CryptohomeEventSource::Reset(CryptohomeEventSourceSink* sink,
   Clear();
 
   if (!pipe(pipe_fds_)) {
-    poll_fd_.fd = pipe_fds_[0];
-    poll_fd_.events = G_IO_IN | G_IO_HUP | G_IO_ERR;
-    poll_fd_.revents = 0;
-    source_ = static_cast<Source*>(g_source_new(&source_functions_,
-                                                sizeof(Source)));
+    source_.reset(
+        static_cast<Source*>(g_source_new(&source_functions_, sizeof(Source))));
     source_->event_source = this;
-    g_source_add_poll(source_, &poll_fd_);
+    source_->poll_fd.fd = pipe_fds_[0];
+    source_->poll_fd.events = G_IO_IN | G_IO_HUP | G_IO_ERR;
+    source_->poll_fd.revents = 0;
+    g_source_add_poll(source_.get(), &source_->poll_fd);
     if (main_context) {
-      g_source_attach(source_, main_context);
+      g_source_attach(source_.get(), main_context);
     }
-    g_source_set_can_recurse(source_, true);
+    g_source_set_can_recurse(source_.get(), true);
   } else {
     LOG(ERROR) << "Couldn't set up pipe for notifications.";
   }
@@ -97,46 +88,39 @@ void CryptohomeEventSource::HandleDispatch() {
       more = false;
     }
   } while (more);
-  // Now handle pending events
-  more = false;
-  do {
-    events_lock_.Acquire();
-    if (!events_.empty()) {
-      CryptohomeEventBase* event = events_[0];
-      events_.erase(events_.begin());
-      more = !events_.empty();
-      events_lock_.Release();
-      if (sink_) {
-        sink_->NotifyEvent(event);
-      }
-      delete event;
-    } else {
-      more = false;
-      events_lock_.Release();
+
+  // Now handle pending events.
+  std::vector<std::unique_ptr<CryptohomeEventBase>> events;
+  {
+    base::AutoLock lock(events_lock_);
+    events_.swap(events);
+  }
+
+  for (auto& event : events) {
+    if (sink_) {
+      sink_->NotifyEvent(event.get());
     }
-  } while (more);
+  }
 }
 
-void CryptohomeEventSource::AddEvent(CryptohomeEventBase* event) {
-  events_lock_.Acquire();
-  events_.push_back(event);
+void CryptohomeEventSource::AddEvent(
+    std::unique_ptr<CryptohomeEventBase> event) {
+  base::AutoLock lock(events_lock_);
+  events_.push_back(std::move(event));
   if (write(pipe_fds_[1], "G", 1) != 1) {
     LOG(INFO) << "Couldn't notify of pending events through the message pipe."
               << "  Events will be cleared on next call to Prepare().";
   }
-  events_lock_.Release();
 }
 
 void CryptohomeEventSource::Clear() {
-  std::vector<CryptohomeEventBase*> events;
-  events_lock_.Acquire();
-  events_.swap(events);
-  events_lock_.Release();
-  for (std::vector<CryptohomeEventBase*>::const_iterator itr = events.begin();
-       itr != events.end();
-       ++itr) {
-    delete (*itr);
-  }
+  base::AutoLock lock(events_lock_);
+  events_.clear();
+}
+
+void CryptohomeEventSource::SourceDeleter::operator()(Source* source) {
+  g_source_destroy(source);
+  g_source_unref(source);
 }
 
 gboolean CryptohomeEventSource::Prepare(GSource* source, gint* timeout_ms) {
