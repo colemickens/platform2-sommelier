@@ -48,7 +48,6 @@ using std::string;
 
 namespace shill {
 
-const uint8_t Nl80211Frame::kMinimumFrameByteCount = 26;
 const uint8_t Nl80211Frame::kFrameTypeMask = 0xfc;
 
 const char Nl80211Message::kMessageTypeString[] = "nl80211";
@@ -91,31 +90,48 @@ Nl80211Frame::Nl80211Frame(const ByteString& raw_frame)
       reinterpret_cast<const IEEE_80211::ieee80211_frame*>(
           frame_.GetConstData());
 
-  // Now, let's populate the other stuff.
-  if (frame_.GetLength() >= kMinimumFrameByteCount) {
-    mac_from_ =
-        Nl80211AttributeMac::StringFromMacAddress(&frame->destination_mac[0]);
-    mac_to_ = Nl80211AttributeMac::StringFromMacAddress(&frame->source_mac[0]);
-    frame_type_ = frame->frame_control & kFrameTypeMask;
+  if (frame_.GetLength() < sizeof(frame->hdr))
+    return;
 
-    switch (frame_type_) {
+  mac_from_ =
+      Nl80211AttributeMac::StringFromMacAddress(&frame->hdr.destination_mac[0]);
+  mac_to_ =
+      Nl80211AttributeMac::StringFromMacAddress(&frame->hdr.source_mac[0]);
+  frame_type_ = le16toh(frame->hdr.frame_control & kFrameTypeMask);
+
+  // Parse the body, if available.
+  switch (frame_type_) {
     case kAssocResponseFrameType:
     case kReassocResponseFrameType:
-      status_ = le16toh(frame->u.associate_response.status_code);
+      if (frame_.GetLength() <
+          sizeof(frame->hdr) + sizeof(frame->associate_response)) {
+        frame_type_ = kIllegalFrameType;
+        break;
+      }
+      status_ = le16toh(frame->associate_response.status_code);
       break;
 
     case kAuthFrameType:
-      status_ = le16toh(frame->u.authentiate_message.status_code);
+      if (frame_.GetLength() <
+          sizeof(frame->hdr) + sizeof(frame->authentiate_message)) {
+        frame_type_ = kIllegalFrameType;
+        break;
+      }
+      status_ = le16toh(frame->authentiate_message.status_code);
       break;
 
     case kDisassocFrameType:
     case kDeauthFrameType:
-      reason_ = le16toh(frame->u.deauthentiate_message.reason_code);
+      if (frame_.GetLength() <
+          sizeof(frame->hdr) + sizeof(frame->deauthentiate_message)) {
+        frame_type_ = kIllegalFrameType;
+        break;
+      }
+      reason_ = le16toh(frame->deauthentiate_message.reason_code);
       break;
 
     default:
       break;
-    }
   }
 }
 
@@ -130,12 +146,12 @@ bool Nl80211Frame::ToString(string* output) const {
     return true;
   }
 
-  if (frame_.GetLength() < kMinimumFrameByteCount) {
+  if (frame_.GetLength() < sizeof(IEEE_80211::ieee80211_frame().hdr)) {
     output->append(" [invalid frame: ");
   } else {
     StringAppendF(output, " %s -> %s", mac_from_.c_str(), mac_to_.c_str());
 
-    switch (frame_.GetConstData()[0] & kFrameTypeMask) {
+    switch (frame_type_) {
     case kAssocResponseFrameType:
       StringAppendF(output, "; AssocResponse status: %u: %s",
                     status_,

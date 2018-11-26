@@ -129,27 +129,29 @@ const uint16_t kWlanCapMaskImmediateBlockAck = 0x8000;
 // NOTE: the uint16_t stuff is in little-endian format so conversions are
 // required.
 struct ieee80211_frame {
-  uint16_t frame_control;
-  uint16_t duration_usec;
-  uint8_t destination_mac[6];
-  uint8_t source_mac[6];
-  uint8_t address[6];
-  uint16_t sequence_control;
+  struct {
+    uint16_t frame_control;
+    uint16_t duration_usec;
+    uint8_t destination_mac[6];
+    uint8_t source_mac[6];
+    uint8_t address[6];
+    uint16_t sequence_control;
+  } __attribute__((packed)) hdr;
   union {
     struct {
       uint16_t reserved_1;
       uint16_t reserved_2;
       uint16_t status_code;
-    } authentiate_message;
+    } __attribute__((packed)) authentiate_message;
     struct {
       uint16_t reason_code;
-    } deauthentiate_message;
+    } __attribute__((packed)) deauthentiate_message;
     struct {
       uint16_t reserved_1;
       uint16_t status_code;
-    } associate_response;
-  } u;
-};
+    } __attribute__((packed)) associate_response;
+  };
+} __attribute__((packed));
 
 // Enum for the Capabilites bit field of the Extended Capabilities element.
 enum ExtendedCapOctet {

@@ -75,7 +75,6 @@ class SHILL_EXPORT Nl80211Frame {
   uint8_t frame_type() const { return frame_type_; }
 
  private:
-  static const uint8_t kMinimumFrameByteCount;
   static const uint8_t kFrameTypeMask;
 
   std::string mac_from_;

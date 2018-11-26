@@ -36,12 +36,15 @@ TEST(Nl80211FrameTest, ToStringWithNullArgument) {
   Nl80211Frame frame(
       ByteString(kAuthenticateFrame, sizeof(kAuthenticateFrame)));
   EXPECT_FALSE(frame.ToString(nullptr));
+  EXPECT_EQ(frame.frame_type(), Nl80211Frame::kAuthFrameType);
+  EXPECT_EQ(frame.status(), 0);
 }
 
 TEST(Nl80211FrameTest, EmptyFrameToString) {
   Nl80211Frame frame(ByteString{});
   std::string output;
   EXPECT_TRUE(frame.ToString(&output));
+  EXPECT_EQ(frame.frame_type(), Nl80211Frame::kIllegalFrameType);
 }
 
 TEST(Nl80211FrameTest, ToStringWithStatus) {
@@ -67,6 +70,8 @@ TEST(Nl80211FrameTest, ToStringWithReason) {
       "ff, ff, c0, 3f, 0e, 77, e8, 7f, c0, 3f, 0e, 77, e8, 7f, c0, 0e, 02, 00, "
       "]";
   EXPECT_EQ(output, expected_output);
+  EXPECT_EQ(frame.frame_type(), Nl80211Frame::kDeauthFrameType);
+  EXPECT_EQ(frame.reason(), 2);
 }
 
 }  // namespace
