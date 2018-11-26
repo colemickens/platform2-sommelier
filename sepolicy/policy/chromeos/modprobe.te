@@ -3,4 +3,6 @@ type modprobe, chromeos_domain, domain;
 permissive modprobe;
 
 domain_auto_trans(chromeos_domain, cros_modprobe_exec, modprobe);
-auditallow { chromeos_domain -kernel } cros_modprobe_exec:file execute;
+dev_only(
+auditallow { chromeos_domain -kernel -chromeos } cros_modprobe_exec:file execute;
+)
