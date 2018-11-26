@@ -113,6 +113,16 @@ class Daemon : public brillo::DBusServiceDaemon {
         tpm_background_thread_(kTpmThreadName),
         async_init_thread_(kInitThreadName) {}
 
+  ~Daemon() override {
+    // We join these two threads here so that the code running in these two
+    // threads can be certain that all the other members of this class will
+    // be available when the thread is still running.
+    async_init_thread_.Stop();
+#if USE_TPM2
+    tpm_background_thread_.Stop();
+#endif
+  }
+
  protected:
   int OnInit() override {
 #if USE_TPM2
