@@ -45,6 +45,44 @@ const int kLastTemplate = -1;
 // Upper bound of the host command packet transfer size.
 const int kMaxPacketSize = 544;
 
+std::string MatchResultToString(int result) {
+  switch (result) {
+    case EC_MKBP_FP_ERR_MATCH_NO:
+      return "No match";
+    case EC_MKBP_FP_ERR_MATCH_NO_INTERNAL:
+      return "Internal error";
+    case EC_MKBP_FP_ERR_MATCH_NO_LOW_QUALITY:
+      return "Low quality";
+    case EC_MKBP_FP_ERR_MATCH_NO_LOW_COVERAGE:
+      return "Low coverage";
+    case EC_MKBP_FP_ERR_MATCH_YES:
+      return "Finger matched";
+    case EC_MKBP_FP_ERR_MATCH_YES_UPDATED:
+      return "Finger matched, template updated";
+    case EC_MKBP_FP_ERR_MATCH_YES_UPDATE_FAILED:
+      return "Finger matched, template updated failed";
+    default:
+      return "Unknown matcher result";
+  }
+}
+
+std::string EnrollResultToString(int result) {
+  switch (result) {
+    case EC_MKBP_FP_ERR_ENROLL_OK:
+      return "Success";
+    case EC_MKBP_FP_ERR_ENROLL_LOW_QUALITY:
+      return "Low quality";
+    case EC_MKBP_FP_ERR_ENROLL_IMMOBILE:
+      return "Same area";
+    case EC_MKBP_FP_ERR_ENROLL_LOW_COVERAGE:
+      return "Low coverage";
+    case EC_MKBP_FP_ERR_ENROLL_INTERNAL:
+      return "Internal error";
+    default:
+      return "Unknown enrollment result";
+  }
+}
+
 };  // namespace
 
 namespace biod {
@@ -847,7 +885,8 @@ void CrosFpBiometricsManager::DoEnrollImageEvent(InternalRecord record,
   }
 
   int image_result = EC_MKBP_FP_ERRCODE(event);
-  LOG(INFO) << __func__ << " result: " << image_result;
+  LOG(INFO) << __func__ << " result: '" << EnrollResultToString(image_result)
+            << "'";
   ScanResult scan_result;
   switch (image_result) {
     case EC_MKBP_FP_ERR_ENROLL_OK:
@@ -986,8 +1025,8 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
   std::vector<std::string> records;
 
   uint32_t match_idx = EC_MKBP_FP_MATCH_IDX(event);
-  LOG(INFO) << __func__ << " result: " << match_result
-            << " (finger: " << match_idx << ")";
+  LOG(INFO) << __func__ << " result: '" << MatchResultToString(match_result)
+            << "' (finger: " << match_idx << ")";
   switch (match_result) {
     case EC_MKBP_FP_ERR_MATCH_NO_INTERNAL:
       LOG(ERROR) << "Internal error when matching templates: " << std::hex
