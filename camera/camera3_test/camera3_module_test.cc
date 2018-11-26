@@ -13,6 +13,7 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/macros.h>
+#include <base/no_destructor.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
 
@@ -230,8 +231,8 @@ static void InitCameraModuleOnThread(camera_module_t* cam_module) {
 }
 
 // On successfully Initialized, |cam_module_| will pointed to valid
-// camera_module_t. Caller should be responsible to dlclose |cam_hal_handle|, if
-// it's not NULL.
+// camera_module_t. We cannot dlclose |cam_hal_handle| until the lifetime
+// conflict in b/119926433 is resolved.
 static void InitCameraModule(const base::FilePath& camera_hal_path,
                              void** cam_hal_handle,
                              camera_module_t** cam_module) {
@@ -266,7 +267,6 @@ static void InitCameraModuleByFacing(int facing, void** cam_hal_handle) {
     void operator()(void** cam_hal_handle) {
       if (*cam_hal_handle) {
         g_cam_module = NULL;
-        dlclose(*cam_hal_handle);
         *cam_hal_handle = NULL;
       }
     }
@@ -1230,8 +1230,6 @@ TEST_F(Camera3ModuleFixture, ChromeOSRequiredResolution) {
 
 }  // namespace camera3_test
 
-static base::AtExitManager exit_manager;
-
 static void AddGtestFilterNegativePattern(std::string negative) {
   using ::testing::GTEST_FLAG(filter);
 
@@ -1322,9 +1320,6 @@ bool InitializeTest(int* argc, char*** argv, void** cam_hal_handle) {
   ::testing::InitGoogleTest(argc, *argv);
   if (testing::Test::HasFailure()) {
     camera3_test::g_module_thread.Stop();
-    if (cam_hal_handle) {
-      dlclose(cam_hal_handle);
-    }
     return false;
   }
 
@@ -1356,6 +1351,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* Data, size_t Size) {
 
 #else
 int main(int argc, char** argv) {
+  // We have to make it leaky until the lifetime conflict in b/119926433 is
+  // resolved.
+  base::NoDestructor<base::AtExitManager> leaky_at_exit_manager;
   int result = EXIT_FAILURE;
   void* cam_hal_handle = NULL;
   if (!InitializeTest(&argc, &argv, &cam_hal_handle)) {
@@ -1364,10 +1362,6 @@ int main(int argc, char** argv) {
     result = RUN_ALL_TESTS();
   }
   camera3_test::g_module_thread.Stop();
-  if (cam_hal_handle) {
-    // Close Camera HAL
-    dlclose(cam_hal_handle);
-  }
 
   return result;
 }
