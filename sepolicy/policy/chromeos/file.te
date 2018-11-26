@@ -105,6 +105,7 @@ type cros_syslog, file_type, cros_log_type;
 type cros_tlsdate_log, file_type, cros_log_type;
 
 type cros_run, file_type;
+type cros_run_lock, file_type;
 type camera_socket, file_type; # compatible to existing Android names.
 type cras_socket, file_type; # compatible to existing Android names.
 type cros_run_avahi_daemon, file_type;
@@ -114,15 +115,16 @@ type cros_run_power_manager, file_type;
 type cros_run_session_manager, file_type;
 type cros_run_udev, file_type;
 
+type cros_conntrackd_conf_file, file_type;
+type cros_ld_conf_cache, file_type;
+type cros_modprobe_conf_file, file_type;
 type cros_network_conf_file, file_type;
 type cros_passwd_file, file_type;
 type cros_rsyslog_conf_file, file_type;
-type cros_modprobe_conf_file, file_type;
 type cros_tz_data_file, file_type;
 type cros_udev_conf_file, file_type;
-r_dir_file(chromeos_domain, cros_tz_data_file)
 
-type cros_ld_conf_cache, file_type;
+r_dir_file(chromeos_domain, cros_tz_data_file)
 r_dir_file(domain, cros_ld_conf_cache);
 filetrans_pattern(cros_ssh_session, cros_etc, cros_ld_conf_cache, file, "ld.so.cache~");
 filetrans_pattern(frecon, cros_etc, cros_ld_conf_cache, file, "ld.so.cache~");

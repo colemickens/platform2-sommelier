@@ -105,6 +105,7 @@ include(sepolicy/file_contexts/coreutils)
 
 # /etc
 /etc                            u:object_r:cros_etc:s0
+/etc/conntrackd(/.*)?           u:object_r:cros_conntrackd_conf_file:s0
 /etc/group                      u:object_r:cros_passwd_file:s0
 /etc/hosts                      u:object_r:cros_network_conf_file:s0
 /etc/hosts.d(/.*)?              u:object_r:cros_network_conf_file:s0
@@ -130,6 +131,7 @@ include(sepolicy/file_contexts/coreutils)
 # All the following files are created dynamically and need to be labeled at
 # runtime.
 /run                            u:object_r:cros_run:s0
+/run/lock                       u:object_r:cros_run_lock:s0
 /run/arc/debugfs                u:object_r:debugfs:s0
 /run/arc/sdcard(/.*)?           u:object_r:storage_file:s0
 /run/dbus                       u:object_r:cros_run_dbus:s0

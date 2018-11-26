@@ -3,7 +3,7 @@ type cros_arc_setup, cros_miscdomain, domain;
 permissive cros_arc_setup;
 
 domain_auto_trans({cros_init cros_init_scripts cros_session_manager chromeos}, cros_arc_setup_exec, cros_arc_setup);
-auditallow {chromeos cros_session_manager} cros_arc_setup_exec:file execute;
+auditallow { cros_session_manager } cros_arc_setup_exec:file execute;
 filetrans_pattern(cros_arc_setup, cros_run, cras_socket, dir, "cras");
 
-auditallow domain cros_arc_setup:fd use;
+auditallow { domain -chromeos } cros_arc_setup:fd use;
