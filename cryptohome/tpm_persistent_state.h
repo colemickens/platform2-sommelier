@@ -9,6 +9,8 @@
 
 #include <brillo/secure_blob.h>
 
+#include <base/synchronization/lock.h>
+
 #include "tpm_status.pb.h"  // NOLINT(build/include)
 
 namespace cryptohome {
@@ -117,7 +119,17 @@ class TpmPersistentState {
   // Returns true on success, false otherwise.
   bool StoreTpmStatus();
 
+  // Checks whether the TPM is ready. Requires that |tpm_status_lock_| is held.
+  bool IsReadyLocked();
+
+  // Checks whether shall initialize is set. Requires that |tpm_status_lock_| is
+  // held.
+  bool ShallInitializeLocked() const;
+
   Platform* platform_;
+
+  // Protects access to data members held by this class.
+  mutable base::Lock tpm_status_lock_;
 
   // Cached TpmStatus (read_tpm_status_ tells if was already read and cached).
   // TODO(apronin): replace with std::optional / base::Optional when available.

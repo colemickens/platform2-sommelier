@@ -25,6 +25,8 @@ TpmPersistentState::TpmPersistentState(Platform* platform)
     : platform_(platform) {}
 
 bool TpmPersistentState::SetSealedPassword(const SecureBlob& sealed_password) {
+  base::AutoLock lock(tpm_status_lock_);
+
   if (!LoadTpmStatus()) {
     return false;
   }
@@ -44,6 +46,8 @@ bool TpmPersistentState::SetSealedPassword(const SecureBlob& sealed_password) {
 }
 
 bool TpmPersistentState::SetDefaultPassword() {
+  base::AutoLock lock(tpm_status_lock_);
+
   if (!LoadTpmStatus()) {
     return false;
   }
@@ -58,6 +62,8 @@ bool TpmPersistentState::SetDefaultPassword() {
 }
 
 bool TpmPersistentState::GetSealedPassword(SecureBlob* sealed_password) {
+  base::AutoLock lock(tpm_status_lock_);
+
   if (!LoadTpmStatus()) {
     return false;
   }
@@ -81,6 +87,8 @@ bool TpmPersistentState::GetSealedPassword(SecureBlob* sealed_password) {
 }
 
 bool TpmPersistentState::ClearDependency(TpmOwnerDependency dependency) {
+  base::AutoLock lock(tpm_status_lock_);
+
   int32_t flag_to_clear;
   switch (dependency) {
     case TpmOwnerDependency::kInstallAttributes:
@@ -104,6 +112,8 @@ bool TpmPersistentState::ClearDependency(TpmOwnerDependency dependency) {
 }
 
 bool TpmPersistentState::ClearStoredPasswordIfNotNeeded() {
+  base::AutoLock lock(tpm_status_lock_);
+
   if (!LoadTpmStatus()) {
     return false;
   }
@@ -123,6 +133,8 @@ bool TpmPersistentState::ClearStoredPasswordIfNotNeeded() {
 }
 
 bool TpmPersistentState::ClearStatus() {
+  base::AutoLock lock(tpm_status_lock_);
+
   // Ignore errors: just a cleanup - kOpenCryptokiPath is not used.
   platform_->DeleteFileDurable(kOpenCryptokiPath, true);
   // Ignore errors: we will overwrite the status later.
@@ -134,15 +146,14 @@ bool TpmPersistentState::ClearStatus() {
 }
 
 bool TpmPersistentState::IsReady() {
-  if (!read_tpm_ready_) {
-    tpm_ready_ = platform_->FileExists(kTpmOwnedFile);
-    read_tpm_ready_ = true;
-  }
-  return tpm_ready_;
+  base::AutoLock lock(tpm_status_lock_);
+  return IsReadyLocked();
 }
 
 bool TpmPersistentState::SetReady(bool is_ready) {
-  if (IsReady() == is_ready) {
+  base::AutoLock lock(tpm_status_lock_);
+
+  if (IsReadyLocked() == is_ready) {
     return true;
   }
   tpm_ready_ = is_ready;
@@ -160,15 +171,14 @@ bool TpmPersistentState::SetReady(bool is_ready) {
 }
 
 bool TpmPersistentState::ShallInitialize() const {
-  if (!read_shall_initialize_) {
-    shall_initialize_ = platform_->FileExists(kShallInitializeFile);
-    read_shall_initialize_ = true;
-  }
-  return shall_initialize_;
+  base::AutoLock lock(tpm_status_lock_);
+  return ShallInitializeLocked();
 }
 
 bool TpmPersistentState::SetShallInitialize(bool shall_initialize) {
-  if (ShallInitialize() == shall_initialize) {
+  base::AutoLock lock(tpm_status_lock_);
+
+  if (ShallInitializeLocked() == shall_initialize) {
     return true;
   }
   shall_initialize_ = shall_initialize;
@@ -219,5 +229,26 @@ bool TpmPersistentState::StoreTpmStatus() {
       static_cast<google::protobuf::uint8*>(final_blob.data()));
   return platform_->WriteFileAtomicDurable(kTpmStatusFile, final_blob, 0600);
 }
+
+bool TpmPersistentState::IsReadyLocked() {
+  tpm_status_lock_.AssertAcquired();
+
+  if (!read_tpm_ready_) {
+    tpm_ready_ = platform_->FileExists(kTpmOwnedFile);
+    read_tpm_ready_ = true;
+  }
+  return tpm_ready_;
+}
+
+bool TpmPersistentState::ShallInitializeLocked() const {
+  tpm_status_lock_.AssertAcquired();
+
+  if (!read_shall_initialize_) {
+    shall_initialize_ = platform_->FileExists(kShallInitializeFile);
+    read_shall_initialize_ = true;
+  }
+  return shall_initialize_;
+}
+
 
 }  // namespace cryptohome
