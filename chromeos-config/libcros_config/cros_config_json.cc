@@ -192,16 +192,6 @@ bool CrosConfigJson::ReadConfigFile(const base::FilePath& filepath) {
     return false;
   }
 
-  // TODO(crbug.com/xxx): Figure out a way to represent this. For now it is
-  // hard-coded
-  target_dirs_["alsa-conf"] = "/usr/share/alsa/ucm";
-  target_dirs_["cras-config-dir"] = "/etc/cras";
-  target_dirs_["dptf-dv"] = "/etc/dptf";
-  target_dirs_["dsp-ini"] = "/etc/cras";
-  target_dirs_["hifi-conf"] = "/usr/share/alsa/ucm";
-  target_dirs_["topology-bin"] = "/lib/firmware";
-  target_dirs_["volume"] = "/etc/cras";
-
   return true;
 }
 

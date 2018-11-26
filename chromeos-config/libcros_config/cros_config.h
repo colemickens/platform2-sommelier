@@ -94,11 +94,6 @@ class BRILLO_EXPORT CrosConfig : public CrosConfigInterface {
                  const std::string& prop,
                  std::string* val_out) override;
 
-  // CrosConfigInterface:
-  bool GetAbsPath(const std::string& path,
-                  const std::string& prop,
-                  std::string* val_out) override;
-
  private:
   // Common initialization function based on x86 identity.
   // @product_name_file: File containing the product name.

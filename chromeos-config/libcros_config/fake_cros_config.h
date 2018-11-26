@@ -38,26 +38,12 @@ class BRILLO_EXPORT FakeCrosConfig : public CrosConfigInterface {
                  const std::string& prop,
                  std::string* val_out) override;
 
-  // Sets up an entry in the target directory map. This will be used in future
-  // calls to GetAbsPath(). The Fake does not read the schema file, relying
-  // instead on its caller to provide test data. This provides more flexibility
-  // for callers to implement tests as they wish.
-  // @prop: Name of property to set up
-  // @dirname: Directory name to use for that property
-  void SetTargetDir(const std::string& prop, const std::string& dirname);
-
-  // CrosConfigInterface:
-  bool GetAbsPath(const std::string& path,
-                  const std::string& prop,
-                  std::string* val_out) override;
-
  private:
   using PathProp = std::pair<std::string, std::string>;
 
   // This stores the string values, keyed by a pair consisting of the path
   // and the property.
   std::map<PathProp, std::string> values_;
-  std::map<std::string, std::string> target_dirs_;
 
   DISALLOW_COPY_AND_ASSIGN(FakeCrosConfig);
 };

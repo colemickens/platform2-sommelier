@@ -41,24 +41,6 @@ bool CrosConfigImpl::InitCheck() const {
   return true;
 }
 
-bool CrosConfigImpl::GetAbsPath(const std::string& path,
-                                const std::string& prop,
-                                std::string* val_out) {
-  std::string val;
-  if (!GetString(path, prop, &val)) {
-    return false;
-  }
-
-  if (target_dirs_.find(prop) == target_dirs_.end()) {
-    CROS_CONFIG_LOG(ERROR) << "Absolute path requested at path " << path
-                           << " property " << prop << ": not found";
-    return false;
-  }
-  *val_out = target_dirs_[prop] + "/" + val;
-
-  return true;
-}
-
 bool CrosConfigImpl::GetString(const std::string& path,
                                const std::string& prop,
                                std::string* val_out) {

@@ -36,14 +36,6 @@ class CrosConfigInterface {
                          const std::string& prop,
                          std::string* val_out) = 0;
 
-  // Obtain a config property as an absolute path.
-  // This is similar to GetString except that the schema element referred to
-  // must be a PropFile element. It prepends the target directory to the value
-  // returned, producing an absolute path for use at run-time.
-  virtual bool GetAbsPath(const std::string& path,
-                          const std::string& prop,
-                          std::string* val_out) = 0;
-
   // Return true iff library debug logging is enabled.
   // Currently this checks for a non-empty CROS_CONFIG_DEBUG environment
   // variable.

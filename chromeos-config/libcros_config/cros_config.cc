@@ -141,15 +141,6 @@ bool CrosConfig::GetString(const std::string& path,
   return cros_config_->GetString(path, prop, val_out);
 }
 
-bool CrosConfig::GetAbsPath(const std::string& path,
-                            const std::string& prop,
-                            std::string* val_out) {
-  if (!InitCheck()) {
-    return false;
-  }
-  return cros_config_->GetAbsPath(path, prop, val_out);
-}
-
 bool CrosConfig::SelectConfigByIdentityX86(
     const base::FilePath& product_name_file,
     const base::FilePath& product_sku_file,

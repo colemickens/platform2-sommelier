@@ -36,9 +36,6 @@ class CrosConfigImpl : public CrosConfigInterface {
   bool GetString(const std::string& path,
                  const std::string& prop,
                  std::string* val_out) override;
-  bool GetAbsPath(const std::string& path,
-                  const std::string& prop,
-                  std::string* val_out) override;
 
   // Read the config into our internal structures
   // @filepath: path to configuration file (e.g. .dtb).
@@ -64,9 +61,6 @@ class CrosConfigImpl : public CrosConfigInterface {
   bool InitCheck() const;
 
   bool inited_;  // true if the class is ready for use (Init*ed)
-
-  // List of target directories used to obtain absolute paths
-  std::map<std::string, std::string> target_dirs_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CrosConfigImpl);

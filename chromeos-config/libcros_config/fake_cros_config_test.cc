@@ -27,18 +27,6 @@ TEST_F(FakeCrosConfigTest, CheckGetString) {
   ASSERT_TRUE(cros_config_.GetString("/thermal", "dptf-dv", &val));
 }
 
-TEST_F(FakeCrosConfigTest, CheckGetAbsPath) {
-  std::string val;
-
-  cros_config_.SetString("/thermal", "dptf-dv", "testing.dv");
-  ASSERT_FALSE(cros_config_.GetAbsPath("/thermal", "dptf-dv", &val));
-
-  // Add to the map and try again. This should work.
-  cros_config_.SetTargetDir("dptf-dv", "/etc/dptf");
-  ASSERT_TRUE(cros_config_.GetAbsPath("/thermal", "dptf-dv", &val));
-  ASSERT_EQ("/etc/dptf/testing.dv", val);
-}
-
 int main(int argc, char** argv) {
   logging::LoggingSettings settings;
   settings.logging_dest = logging::LOG_TO_FILE;

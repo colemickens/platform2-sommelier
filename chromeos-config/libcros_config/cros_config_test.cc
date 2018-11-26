@@ -94,14 +94,6 @@ TEST_F(CrosConfigTest, CheckPathWithoutSlashError) {
   ASSERT_EQ("", val);
 }
 
-TEST_F(CrosConfigTest, CheckAbsPath) {
-  InitConfig("Another");
-  std::string val;
-
-  ASSERT_TRUE(cros_config_.GetAbsPath("/audio/main", "cras-config-dir", &val));
-  ASSERT_EQ("/etc/cras/another", val);
-}
-
 TEST_F(CrosConfigTest, CheckUiPowerPosition) {
   InitConfig("Some", 1);
   std::string val;
