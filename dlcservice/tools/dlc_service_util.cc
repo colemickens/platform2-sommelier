@@ -8,13 +8,20 @@
 
 #include <base/logging.h>
 #include <brillo/flag_helper.h>
+#include <dbus/bus.h>
+#include <dlcservice/dbus-proxies.h>
+#include <dlcservice/proto_bindings/dlcservice.pb.h>
+
+using org::chromium::DlcServiceInterfaceProxy;
 
 class DlcServiceUtil {
  public:
-  DlcServiceUtil(const std::string& install_dlc_ids,
+  DlcServiceUtil(const scoped_refptr<dbus::Bus>& bus,
+                 const std::string& install_dlc_ids,
                  const std::string& uninstall_dlc_ids,
                  bool list_dlcs)
-      : install_dlc_ids_(install_dlc_ids),
+      : dlc_service_proxy_(std::make_unique<DlcServiceInterfaceProxy>(bus)),
+        install_dlc_ids_(install_dlc_ids),
         uninstall_dlc_ids_(uninstall_dlc_ids),
         list_dlcs_(list_dlcs) {}
 
@@ -58,7 +65,31 @@ class DlcServiceUtil {
     return true;
   }
 
-  bool GetInstalled(int* error_ptr) { return true; }
+  bool GetInstalled(int* error_ptr) {
+    std::string dlc_module_list_string;
+    brillo::ErrorPtr error;
+
+    if (!dlc_service_proxy_->GetInstalled(&dlc_module_list_string, &error)) {
+      LOG(ERROR) << "Failed to get the list of installed DLC modules, "
+                 << error->GetMessage();
+      *error_ptr = EX_SOFTWARE;
+      return false;
+    }
+
+    dlcservice::DlcModuleList dlc_module_list;
+    if (!dlc_module_list.ParseFromString(dlc_module_list_string)) {
+      LOG(ERROR) << "Failed to parse DlcModuleList protobuf";
+      *error_ptr = EX_SOFTWARE;
+      return false;
+    }
+
+    LOG(INFO) << "Installed DLC modules:";
+    for (const auto& dlc_module_info : dlc_module_list.dlc_module_infos()) {
+      LOG(INFO) << dlc_module_info.dlc_id();
+    }
+
+    return true;
+  }
 
   bool ParseDlcIds(const std::string& dlc_ids,
                    std::vector<std::string>* dlc_ids_ptr) {
@@ -77,6 +108,7 @@ class DlcServiceUtil {
     return dlc_ids_out.size() > 0;
   }
 
+  std::unique_ptr<DlcServiceInterfaceProxy> dlc_service_proxy_;
   const std::string install_dlc_ids_;
   const std::string uninstall_dlc_ids_;
   const bool list_dlcs_;
@@ -97,7 +129,13 @@ int main(int argc, const char** argv) {
     return EX_USAGE;
   }
 
-  DlcServiceUtil client{FLAGS_install, FLAGS_uninstall, FLAGS_list};
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+  scoped_refptr<dbus::Bus> bus{new dbus::Bus{options}};
+  if (!bus->Connect())
+    return EX_UNAVAILABLE;
+
+  DlcServiceUtil client{bus, FLAGS_install, FLAGS_uninstall, FLAGS_list};
 
   int error_code;
   return client.Run(&error_code) ? EX_OK : error_code;
