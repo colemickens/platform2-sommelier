@@ -138,6 +138,9 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EncodeBoolean(&policy, key::kDeviceDataRoamingEnabled, kBool);
   EXPECT_EQ(kBool, policy.data_roaming_enabled().data_roaming_enabled());
 
+  EncodeBoolean(&policy, key::kDeviceWiFiFastTransitionEnabled, kBool);
+  EXPECT_EQ(kBool, policy.device_wifi_fast_transition_enabled().enabled());
+
   EncodeString(&policy, key::kDeviceOpenNetworkConfiguration, kString);
   EXPECT_EQ(kString,
             policy.open_network_configuration().open_network_configuration());
@@ -282,6 +285,10 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
                 em::DisplayRotationDefaultProto::ROTATE_180);
   EXPECT_EQ(em::DisplayRotationDefaultProto::ROTATE_180,
             policy.display_rotation_default().display_rotation_default());
+
+  EncodeString(&policy, key::kDeviceDisplayResolution, kString);
+  EXPECT_EQ(kString,
+            policy.device_display_resolution().device_display_resolution());
 
   // The encoder of this policy converts a JSON string to separate values.
   EncodeStringList(&policy, key::kUsbDetachableWhitelist,

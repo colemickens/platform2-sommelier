@@ -235,6 +235,10 @@ void DevicePolicyEncoder::EncodeNetworkPolicies(
     policy->mutable_data_roaming_enabled()->set_data_roaming_enabled(value);
   });
 
+  EncodeBoolean(key::kDeviceWiFiFastTransitionEnabled, [policy](bool value) {
+    policy->mutable_device_wifi_fast_transition_enabled()->set_enabled(value);
+  });
+
   EncodeString(key::kDeviceOpenNetworkConfiguration,
                [policy](const std::string& value) {
                  policy->mutable_open_network_configuration()
@@ -395,6 +399,12 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
   EncodeInteger(key::kDisplayRotationDefault, [policy](int value) {
     policy->mutable_display_rotation_default()->set_display_rotation_default(
         static_cast<em::DisplayRotationDefaultProto_Rotation>(value));
+  });
+
+  EncodeString(key::kDeviceDisplayResolution, [policy](
+                                                  const std::string& value) {
+    policy->mutable_device_display_resolution()->set_device_display_resolution(
+        value);
   });
 
   EncodeStringList(
