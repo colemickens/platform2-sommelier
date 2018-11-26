@@ -54,6 +54,18 @@ type cros_udevd_exec, exec_type, file_type;
 type cros_update_engine_exec, exec_type, file_type;
 type cros_wpa_supplicant_exec, exec_type, file_type;
 
+type cros_home, file_type;
+type cros_home_user, file_type;
+type cros_home_root, file_type;
+type cros_home_chronos, file_type;
+type cros_home_shadow, file_type;
+type cros_home_shadow_uid, file_type;
+type cros_home_shadow_uid_user, file_type;
+type cros_home_shadow_uid_root, file_type;
+type cros_home_shadow_uid_root_android, file_type;
+type cros_home_shadow_uid_root_android_cache, file_type;
+type system_data_file, file_type; # this is Android file label.
+
 type cros_coreutils_exec, exec_type, file_type;
 
 type frecon_exec, exec_type, file_type;

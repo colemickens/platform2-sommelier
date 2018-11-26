@@ -168,7 +168,21 @@ is_arc_nyc(`
 /lib/modules(/.*)?                     u:object_r:cros_kernel_modules_file:s0
 /lib/modules/.*\.ko                    u:object_r:cros_kernel_modules_ko_file:s0
 
-# Downloads files legacy location (in the user's profile root):
-/home/chronos/user/Downloads(/.*)*   u:object_r:cros_downloads_file:s0
-# MyFiles is content managed by users same as Downloads:
-/home/chronos/user/MyFiles(/.*)*   u:object_r:cros_downloads_file:s0
+# /home
+/home                            u:object_r:cros_home:s0
+/home/root(/[0-9a-z]{40})?       u:object_r:cros_home_root:s0
+/home/user(/[0-9a-z]{40})?       u:object_r:cros_home_user:s0
+/home/chronos(/(?!(u-[0-9a-z]{40}|user)).*)?   u:object_r:cros_home_chronos:s0
+/home/chronos/user               u:object_r:cros_home_chronos:s0
+/home/chronos/u-[0-9a-z]{40}     u:object_r:cros_home_chronos:s0
+/home/.shadow                    u:object_r:cros_home_shadow:s0
+/home/.shadow/(?![0-9a-z]{40}).* u:object_r:cros_home_shadow:s0
+# exclude <uid>/mount/root/android-data/data
+/home/.shadow/[0-9a-z]{40}(/(?!mount/root/android-data/data).*)? u:object_r:cros_home_shadow_uid:s0
+/home/.shadow/[0-9a-z]{40}/mount/root(/(?!android-data/data).*)? u:object_r:cros_home_shadow_uid_root:s0
+/home/.shadow/[0-9a-z]{40}/mount/user(/.*)? u:object_r:cros_home_shadow_uid_user:s0
+/home/.shadow/[0-9a-z]{40}/mount/user/Downloads(/.*)? u:object_r:has_arc(media_rw_data_file, cros_downloads_file):s0
+/home/.shadow/[0-9a-z]{40}/mount/user/MyFiles(/.*)?   u:object_r:has_arc(media_rw_data_file, cros_downloads_file):s0
+/home/.shadow/[0-9a-z]{40}/mount/root/android-data u:object_r:cros_home_shadow_uid_root_android:s0
+/home/.shadow/[0-9a-z]{40}/mount/root/android-data/cache(/.*)? u:object_r:cros_home_shadow_uid_root_android_cache:s0
+/home/.shadow/[0-9a-z]{40}/mount/root/android-data/data u:object_r:system_data_file:s0

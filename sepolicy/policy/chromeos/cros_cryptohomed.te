@@ -8,3 +8,16 @@ allow domain cros_cryptohomed:key search;
 
 log_writer(cros_cryptohomed);
 uma_writer(cros_cryptohomed);
+
+filetrans_pattern(cros_cryptohomed, cros_home, cros_home_shadow, dir, ".shadow");
+filetrans_pattern(cros_cryptohomed, cros_home_shadow, cros_home_shadow_uid, dir);
+filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid, cros_home_shadow_uid_root, dir, "root");
+filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid, cros_home_shadow_uid_user, dir, "user");
+filetrans_pattern_no_target_perm(cros_cryptohomed, cros_home_shadow_uid_user, cros_downloads_file, dir, "Downloads");
+filetrans_pattern_no_target_perm(cros_cryptohomed, cros_home_shadow_uid_user, cros_downloads_file, dir, "MyFiles");
+
+dev_only(
+auditallow domain cros_home_shadow_uid_root:dir create;
+auditallow domain cros_home_shadow_uid_user:dir create;
+)
+
