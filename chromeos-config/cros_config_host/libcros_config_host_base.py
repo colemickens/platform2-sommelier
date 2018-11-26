@@ -235,6 +235,15 @@ class DeviceConfig(object):
     """
     pass
 
+  def GetBluetoothFiles(self):
+    """Get a list of bluetooth config files
+
+    Returns:
+      List of BaseFile objects representing the bluetooth files referenced
+      by this device.
+    """
+    pass
+
   def GetThermalFiles(self):
     """Get a list of thermal files
 
@@ -291,6 +300,9 @@ class CrosConfigBaseImpl(object):
     result['GetTouchFirmwareFiles'] = self.GetTouchFirmwareFiles()
     result['GetArcFiles'] = self.GetArcFiles()
     result['GetAudioFiles'] = self.GetAudioFiles()
+    bluetooth_files = self.GetBluetoothFiles()
+    if bluetooth_files:
+      result['GetBluetoothFiles'] = bluetooth_files
     result['GetThermalFiles'] = self.GetThermalFiles()
     result['GetFirmwareInfo'] = self.GetFirmwareInfo()
     for target in ['coreboot', 'ec']:
@@ -392,6 +404,20 @@ class CrosConfigBaseImpl(object):
     file_set = set()
     for device in self.GetDeviceConfigs():
       for files in device.GetAudioFiles():
+        file_set.add(files)
+
+    return sorted(file_set, key=lambda files: files.source)
+
+  def GetBluetoothFiles(self):
+    """Get a list of unique bluetooth files for all devices
+
+    Returns:
+      List of BaseFile objects representing all the bluetooth files referenced
+      by all devices
+    """
+    file_set = set()
+    for device in self.GetDeviceConfigs():
+      for files in device.GetBluetoothFiles():
         file_set.add(files)
 
     return sorted(file_set, key=lambda files: files.source)

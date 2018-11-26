@@ -41,6 +41,12 @@
             "ucm-suffix": "some"
           }
         },
+        "bluetooth": {
+          "config": {
+            "build-path": "some/main.conf",
+            "system-path": "/etc/bluetooth/some/main.conf"
+          }
+        },
         "firmware": {
           "bcs-overlay": "overlay-some-private",
           "build-targets": {
@@ -159,6 +165,12 @@
               }
             ],
             "ucm-suffix": "some"
+          }
+        },
+        "bluetooth": {
+          "config": {
+            "build-path": "some/main.conf",
+            "system-path": "/etc/bluetooth/some/main.conf"
           }
         },
         "firmware": {
@@ -355,6 +367,12 @@
             }
           ]
         },
+        "bluetooth": {
+          "config": {
+            "build-path": "some/main.conf",
+            "system-path": "/etc/bluetooth/some/main.conf"
+          }
+        },
         "brand-code": "WLBA",
         "firmware": {
           "bcs-overlay": "overlay-some-private",
@@ -434,6 +452,12 @@
               "source": "some/hardware_features"
             }
           ]
+        },
+        "bluetooth": {
+          "config": {
+            "build-path": "some/main.conf",
+            "system-path": "/etc/bluetooth/some/main.conf"
+          }
         },
         "brand-code": "WLBA",
         "firmware": {
@@ -514,6 +538,12 @@
             }
           ]
         },
+        "bluetooth": {
+          "config": {
+            "build-path": "some/main.conf",
+            "system-path": "/etc/bluetooth/some/main.conf"
+          }
+        },
         "brand-code": "WLBB",
         "firmware": {
           "bcs-overlay": "overlay-some-private",
@@ -593,6 +623,12 @@
               "source": "some/hardware_features"
             }
           ]
+        },
+        "bluetooth": {
+          "config": {
+            "build-path": "some/main.conf",
+            "system-path": "/etc/bluetooth/some/main.conf"
+          }
         },
         "brand-code": "WLBB",
         "firmware": {

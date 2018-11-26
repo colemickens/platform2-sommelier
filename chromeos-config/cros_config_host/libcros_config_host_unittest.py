@@ -102,6 +102,15 @@ class CrosConfigHostTest(unittest.TestCase):
             source='some/hardware_features',
             dest='/usr/share/chromeos-config/sbin/some/hardware_features')])
 
+  def testGetBluetoothFiles(self):
+    config = CrosConfig(self.filepath)
+    bluetooth_files = config.GetBluetoothFiles()
+    self.assertEqual(
+        bluetooth_files,
+        [BaseFile(
+            source='some/main.conf',
+            dest='/etc/bluetooth/some/main.conf')])
+
   def testGetThermalFiles(self):
     config = CrosConfig(self.filepath)
     thermal_files = config.GetThermalFiles()

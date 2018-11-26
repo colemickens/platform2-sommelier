@@ -64,7 +64,10 @@ class DeviceConfigJson(DeviceConfig):
     file_region = self.GetProperties(path)
     if file_region and 'files' in file_region:
       for item in file_region['files']:
-        result.append(BaseFile(item['source'], item['destination']))
+        if 'build-path' in item:
+          result.append(BaseFile(item['build-path'], item['system-path']))
+        else:
+          result.append(BaseFile(item['source'], item['destination']))
     return result
 
   def GetFirmwareConfig(self):
@@ -91,6 +94,13 @@ class DeviceConfigJson(DeviceConfig):
 
   def GetAudioFiles(self):
     return self._GetFiles('/audio/main')
+
+  def GetBluetoothFiles(self):
+    result = []
+    config = self.GetProperties('/bluetooth/config')
+    if config:
+      result.append(BaseFile(config['build-path'], config['system-path']))
+    return result
 
   def GetThermalFiles(self):
     return self._GetFiles('/thermal')

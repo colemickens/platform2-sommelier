@@ -10,6 +10,7 @@ typeDefs:
     type: string
     description: Build target that will be considered dirty when building/testing
       locally.
+  # TODO(shapiroc): Migrate to use system-file-v2 instead
   system-file: &system_file
     type: object
     properties:
@@ -20,6 +21,22 @@ typeDefs:
         description: Installation path for the file on the system image.
         type: string
     additionalProperties: false
+  # V2 exists because system-file targets were poorly named, so they couldn't
+  # be logically shared for build-time and run-time usage.
+  # E.g. bluetooth config we want to both install and get the path at runtime
+  system-file-v2: &system_file_v2
+    type: object
+    properties:
+      build-path:
+        description: Source of the file relative to the build system.
+        type: string
+      system-path:
+        description: Installation path for the file on the system image.
+        type: string
+    additionalProperties: false
+    required:
+      - build-path
+      - system-path
   firmware-file: &firmware_file
     type: object
     properties:
@@ -124,6 +141,13 @@ properties:
               additionalProperties: false
               required:
               - main
+            bluetooth:
+              type: object
+              properties:
+                config: *system_file_v2
+              additionalProperties: false
+              required:
+              - config
             brand-code:
               description: Brand code of the model (also called RLZ code).
               type: string

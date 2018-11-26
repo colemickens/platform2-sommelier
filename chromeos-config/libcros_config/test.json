@@ -13,6 +13,11 @@
             "ucm-suffix": "some"
           }
         },
+        "bluetooth": {
+          "config": {
+            "system-path": "/etc/bluetooth/some/main.conf"
+          }
+        },
         "hardware-properties": {
           "has-base-accelerometer": true,
           "has-base-gyroscope": true,
@@ -63,6 +68,11 @@
           "main": {
             "cras-config-dir": "some",
             "ucm-suffix": "some"
+          }
+        },
+        "bluetooth": {
+          "config": {
+            "system-path": "/etc/bluetooth/some/main.conf"
           }
         },
         "hardware-properties": {
@@ -135,6 +145,11 @@
             "first-api-level": "27"
           }
         },
+        "bluetooth": {
+          "config": {
+            "system-path": "/etc/bluetooth/some/main.conf"
+          }
+        },
         "brand-code": "WLBA",
         "hardware-properties": {
           "is-lid-convertible": false
@@ -172,6 +187,11 @@
         "arc": {
           "build-properties": {
             "first-api-level": "27"
+          }
+        },
+        "bluetooth": {
+          "config": {
+            "system-path": "/etc/bluetooth/some/main.conf"
           }
         },
         "brand-code": "WLBA",
@@ -212,6 +232,11 @@
             "first-api-level": "27"
           }
         },
+        "bluetooth": {
+          "config": {
+            "system-path": "/etc/bluetooth/some/main.conf"
+          }
+        },
         "brand-code": "WLBB",
         "hardware-properties": {
           "is-lid-convertible": false
@@ -249,6 +274,11 @@
         "arc": {
           "build-properties": {
             "first-api-level": "27"
+          }
+        },
+        "bluetooth": {
+          "config": {
+            "system-path": "/etc/bluetooth/some/main.conf"
           }
         },
         "brand-code": "WLBB",

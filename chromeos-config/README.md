@@ -266,6 +266,7 @@ The schema definition is below:
 | --------- | ------ | --------- | -------- | ----------- |  ----------- |
 | arc | [arc](#arc) |  | False |  |  |
 | audio | [audio](#audio) |  | False |  |  |
+| bluetooth | [bluetooth](#bluetooth) |  | False |  |  |
 | brand-code | string |  | False |  | Brand code of the model (also called RLZ code). |
 | firmware | [firmware](#firmware) |  | True |  |  |
 | firmware-signing | [firmware-signing](#firmware-signing) |  | False |  |  |
@@ -322,6 +323,17 @@ The schema definition is below:
 | --------- | ------ | --------- | -------- | ----------- |  ----------- |
 | destination | string |  | False |  | Installation path for the file on the system image. |
 | source | string |  | False |  | Source of the file relative to the build system. |
+
+### bluetooth
+| Attribute | Type   | RegEx     | Required | Oneof Group |  Description |
+| --------- | ------ | --------- | -------- | ----------- |  ----------- |
+| config | [config](#config) |  | True |  |  |
+
+### config
+| Attribute | Type   | RegEx     | Required | Oneof Group |  Description |
+| --------- | ------ | --------- | -------- | ----------- |  ----------- |
+| build-path | string |  | True |  | Source of the file relative to the build system. |
+| system-path | string |  | True |  | Installation path for the file on the system image. |
 
 ### firmware
 | Attribute | Type   | RegEx     | Required | Oneof Group |  Description |

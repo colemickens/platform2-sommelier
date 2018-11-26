@@ -103,6 +103,21 @@ def GetAudioFiles(config):
     print(files.source)
     print(files.dest)
 
+def GetBluetoothFiles(config):
+  """Print a list of bluetooth files across all devices
+
+  The output is one line for the source file and one line for the install file,
+  e.g.:
+     bluetooth/main.conf
+     /etc/bluetooth/main.conf
+
+  Args:
+    config: A CrosConfig instance
+  """
+  for files in config.GetBluetoothFiles():
+    print(files.source)
+    print(files.dest)
+
 def GetFirmwareBuildTargets(config, target_type):
   """Lists all firmware build-targets of the given type, for all models.
 
@@ -222,6 +237,11 @@ def GetParser(description):
       'get-audio-files',
       help='Lists pairs of audio files in sequence: first line is ' +
       'the source file, second line is the full install pathname')
+  # Parser: get-bluetooth-files
+  subparsers.add_parser(
+      'get-bluetooth-files',
+      help='Lists pairs of bluetooth files in sequence: first line is ' +
+           'the source file, second line is the full install pathname')
   # Parser: get-firmware-build-targets
   build_target_parser = subparsers.add_parser(
       'get-firmware-build-targets',
@@ -309,6 +329,8 @@ def main(argv=None):
     GetArcFiles(config)
   elif opts.subcommand == 'get-audio-files':
     GetAudioFiles(config)
+  elif opts.subcommand == 'get-bluetooth-files':
+    GetBluetoothFiles(config)
   elif opts.subcommand == 'get-firmware-build-targets':
     GetFirmwareBuildTargets(config, opts.type)
   elif opts.subcommand == 'get-thermal-files':
