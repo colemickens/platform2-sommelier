@@ -623,41 +623,6 @@ int Attestation::CreateIdentity(int identity_features,
     return -1;
   }
 
-  // Quote PCR0.
-  SecureBlob external_data;
-  if (!tpm_->GetRandomDataSecureBlob(kQuoteExternalDataSize, &external_data)) {
-    LOG(ERROR) << __func__ << ": GetRandomDataSecureBlob failed.";
-    return -1;
-  }
-  Blob quoted_pcr_value0;
-  SecureBlob quoted_data0;
-  SecureBlob quote0;
-  if (!tpm_->QuotePCR(0,
-                      identity_key_blob,
-                      external_data,
-                      &quoted_pcr_value0,
-                      &quoted_data0,
-                      &quote0)) {
-    LOG(ERROR) << "Attestation: Failed to generate PCR0 quote for identity "
-               << identity << ".";
-    return -1;
-  }
-
-  // Quote PCR1.
-  Blob quoted_pcr_value1;
-  SecureBlob quoted_data1;
-  SecureBlob quote1;
-  if (!tpm_->QuotePCR(1,
-                      identity_key_blob,
-                      external_data,
-                      &quoted_pcr_value1,
-                      &quoted_data1,
-                      &quote1)) {
-    LOG(ERROR) << "Attestation: Failed to generate PCR1 quote for identity "
-               << identity << ".";
-    return -1;
-  }
-
   // This only needs to be done once when we haven't stored credentials yet.
   TPMCredentials* credentials_pb = database_pb_.mutable_credentials();
   if (!credentials_pb->has_endorsement_credential()) {
@@ -699,28 +664,27 @@ int Attestation::CreateIdentity(int identity_features,
   // Store PCR quotes in the identity.
   auto* map = identity_data->mutable_pcr_quotes();
 
-  Quote quote_pb0;
-  quote_pb0.set_quote(quote0.data(), quote0.size());
-  quote_pb0.set_quoted_data(quoted_data0.data(), quoted_data0.size());
-  quote_pb0.set_quoted_pcr_value(BlobToString(quoted_pcr_value0));
-  auto in0 = map->insert(QuoteMap::value_type(0, quote_pb0));
-  if (!in0.second) {
-    LOG(ERROR) << "Attestation: Failed to store PCR0 quote for identity "
-               << identity << ".";
-    return -1;
-  }
+  // Quote PCR0 and PCR1
+  for (int i = 0; i <= 1; i++) {
+    Quote quote_pb;
+    if (!CreatePCRQuote(i, identity_key_blob, &quote_pb)) {
+      // Note that if in the future we regularly uses multiple AIK
+      // (i.e. identity key), then we'll need to print error messages here to
+      // indicate which one of the identity key failed the PCR quote process.
+      return -1;
+    }
 
-  Quote quote_pb1;
-  quote_pb1.set_quote(quote1.data(), quote1.size());
-  quote_pb1.set_quoted_data(quoted_data1.data(), quoted_data1.size());
-  quote_pb1.set_quoted_pcr_value(BlobToString(quoted_pcr_value1));
-  quote_pb1.set_pcr_source_hint(platform_->GetHardwareID());
+    // PCR1 quote needs to have the source hint
+    if (i == 1) {
+      quote_pb.set_pcr_source_hint(platform_->GetHardwareID());
+    }
 
-  auto in1 = map->insert(QuoteMap::value_type(1, quote_pb1));
-  if (!in1.second) {
-    LOG(ERROR) << "Attestation: Failed to store PCR1 quote for identity "
-               << identity << ".";
-    return -1;
+    auto in = map->insert(QuoteMap::value_type(i, quote_pb));
+    if (!in.second) {
+      LOG(ERROR) << "Attestation: Failed to store PCR" << i << " quote for "
+                 << "identity " << identity << ".";
+      return -1;
+    }
   }
 
   // Return the index of the newly created identity.
@@ -1837,79 +1801,93 @@ bool Attestation::MigrateIdentityData() {
     return false;
   }
 
-  bool error = false;
-
   // The identity we're creating will have the next index in identities.
   LOG(INFO) << "Attestation: Migrating existing identity into identity "
             << database_pb_.identities().size() << ".";
-  AttestationDatabase::Identity* identity_data =
-      database_pb_.mutable_identities()->Add();
-  identity_data->set_features(IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID);
+  AttestationDatabase::Identity identity_data;
+  identity_data.set_features(IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID);
   if (database_pb_.has_identity_binding()) {
-    identity_data->mutable_identity_binding()->CopyFrom(
+    identity_data.mutable_identity_binding()->CopyFrom(
         database_pb_.identity_binding());
   } else {
     LOG(ERROR) << "Attestation: Identity Key Binding not found, not migrating.";
-    error = true;
+    return false;
   }
 
   if (database_pb_.has_identity_key()) {
-    identity_data->mutable_identity_key()->CopyFrom(
+    identity_data.mutable_identity_key()->CopyFrom(
         database_pb_.identity_key());
-    identity_data->mutable_identity_key()->clear_identity_credential();
-    if (database_pb_.identity_key().has_identity_credential()) {
-      // Create an identity certificate for this identity and the default PCA.
-      AttestationDatabase::IdentityCertificate identity_certificate;
-      identity_certificate.set_identity(kFirstIdentity);
-      identity_certificate.set_aca(kDefaultPCA);
-      identity_certificate.set_identity_credential(
-          database_pb_.identity_key().identity_credential());
-      auto* map = database_pb_.mutable_identity_certificates();
-      auto in = map->insert(IdentityCertificateMap::value_type(
-          kDefaultPCA, identity_certificate));
-      if (!in.second) {
-        LOG(ERROR) << "Attestation: Could not migrate existing identity.";
-        error = true;
-      }
-    }
-    if (database_pb_.identity_key().has_enrollment_id()) {
-      database_pb_.set_enrollment_id(
-          database_pb_.identity_key().enrollment_id());
-    }
+    identity_data.mutable_identity_key()->clear_identity_credential();
+    // Migration for the other part of the identity_key is moved to the end of
+    // the function, this is so that we don't have to rollback too many things
+    // when there's an error.
   } else {
     LOG(ERROR) << "Attestation: Identity Key not found, not migrating.";
-    error = true;
+    return false;
   }
 
-  if (database_pb_.has_pcr0_quote()) {
-    auto in = identity_data->mutable_pcr_quotes()->insert(
-        QuoteMap::value_type(0, database_pb_.pcr0_quote()));
+  for (int i = 0; i <= 1; i++) {
+    Quote quote_pb;
+    if (i == 0 && database_pb_.has_pcr0_quote()) {
+      quote_pb.CopyFrom(database_pb_.pcr0_quote());
+    } else if (i == 1 && database_pb_.has_pcr1_quote()) {
+      quote_pb.CopyFrom(database_pb_.pcr1_quote());
+    } else {
+      // Attempt to generate the missing PCR quote.
+      SecureBlob identity_key_blob(
+        identity_data.identity_key().identity_key_blob());
+      if (CreatePCRQuote(i, identity_key_blob, &quote_pb)) {
+        if (i == 1) {
+          quote_pb.set_pcr_source_hint(platform_->GetHardwareID());
+        }
+        LOG(WARNING) << "Attestation: Regenerated missing PCR" << i
+                     << " quote during migration.";
+      } else {
+        LOG(ERROR) << "Attestation: Failed to regenerate missing PCR"
+                   << i << " quote during migration.";
+        return false;
+      }
+    }
+
+    // If we arrive here, quote_pb is definitely filled.
+    auto in = identity_data.mutable_pcr_quotes()->insert(
+        QuoteMap::value_type(i, quote_pb));
     if (!in.second) {
       LOG(ERROR) << "Attestation: Could not migrate existing identity.";
-      error = true;
+      return false;
     }
-  } else {
-    LOG(ERROR) << "Attestation: Missing PCR0 quote in existing database.";
-    error = true;
   }
-  if (database_pb_.has_pcr1_quote()) {
-    auto in = identity_data->mutable_pcr_quotes()->insert(
-        QuoteMap::value_type(1, database_pb_.pcr1_quote()));
+
+  // Migrate the other part of identity_key, note that since we are here,
+  // identity_key is guaranteed to exist.
+  if (database_pb_.identity_key().has_identity_credential()) {
+    // Create an identity certificate for this identity and the default PCA.
+    AttestationDatabase::IdentityCertificate identity_certificate;
+    identity_certificate.set_identity(kFirstIdentity);
+    identity_certificate.set_aca(kDefaultPCA);
+    identity_certificate.set_identity_credential(
+      database_pb_.identity_key().identity_credential());
+
+    auto* map = database_pb_.mutable_identity_certificates();
+    auto in = map->insert(IdentityCertificateMap::value_type(
+      kDefaultPCA, identity_certificate));
     if (!in.second) {
       LOG(ERROR) << "Attestation: Could not migrate existing identity.";
-      error = true;
+      return false;
     }
-  } else {
-    LOG(ERROR) << "Attestation: Missing PCR1 quote in existing database.";
-    error = true;
+  }
+  if (database_pb_.identity_key().has_enrollment_id()) {
+    database_pb_.set_enrollment_id(
+      database_pb_.identity_key().enrollment_id());
   }
 
-  if (error) {
-    database_pb_.mutable_identities()->RemoveLast();
-    database_pb_.mutable_identity_certificates()->erase(kDefaultPCA);
-  }
+  // If we are here, we can be sure that identity_data actually holds a
+  // valid identity object, so we save it back into the DB.
+  AttestationDatabase::Identity* new_identity_data =
+    database_pb_.mutable_identities()->Add();
+  new_identity_data->CopyFrom(identity_data);
 
-  return !error;
+  return true;
 }
 
 void Attestation::ClearDatabase() {
@@ -2691,6 +2669,35 @@ void Attestation::ExtendPCR1IfClear() {
   if (hwid.length() == 0 || !tpm_->ExtendPCR(1, extension)) {
     LOG(WARNING) << "Failed to extend PCR1.";
   }
+}
+
+bool Attestation::CreatePCRQuote(
+    uint32_t pcr_index,
+    const SecureBlob& identity_key_blob,
+    Quote* output) {
+  SecureBlob external_data(kQuoteExternalDataSize);
+  CryptoLib::GetSecureRandom(external_data.data(), kQuoteExternalDataSize);
+
+  Blob quoted_pcr_value;
+  SecureBlob quoted_data;
+  SecureBlob quote;
+
+  if (!tpm_->QuotePCR(pcr_index,
+                      identity_key_blob,
+                      external_data,
+                      &quoted_pcr_value,
+                      &quoted_data,
+                      &quote)) {
+    LOG(ERROR) << "Attestation: Failed to generate PCR" << pcr_index
+               << " quote.";
+    return false;
+  }
+
+  output->set_quote(quote.data(), quote.size());
+  output->set_quoted_data(quoted_data.data(), quoted_data.size());
+  output->set_quoted_pcr_value(BlobToString(quoted_pcr_value));
+
+  return true;
 }
 
 bool Attestation::SendPCARequestAndBlock(PCAType pca_type,

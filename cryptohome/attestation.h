@@ -817,6 +817,11 @@ class Attestation : public base::PlatformThread::Delegate,
   // a fallback if the device firmware does not already do this.
   void ExtendPCR1IfClear();
 
+  // Quote the given PCR and fill the result in the Quote object
+  bool CreatePCRQuote(uint32_t pcr_index,
+                      const brillo::SecureBlob& identity_key_blob,
+                      Quote* output);
+
   // Creates a PCA URL for the given |pca_type| and |request_type|.
   std::string GetPCAURL(PCAType pca_type, PCARequestType request_type) const;
 

@@ -224,6 +224,7 @@ class AttestationService : public AttestationInterface {
 
   // Migrates identity date in |database_| if needed. Returns true if the
   // migration was needed and successful.
+  // Note that this function is not multithread safe.
   bool MigrateIdentityData();
 
   // Shutdown to be run on the worker thread.

@@ -709,16 +709,29 @@ TEST_F(AttestationBaseTest, MigrateAttestationDatabaseWithCorruptedFields) {
       default_encrypted_endorsement_credential,
       db.credentials().default_encrypted_endorsement_credential()));
 
-  // The default identity could not be copied from the deprecated database.
+  // The default identity is copied from the deprecated database after
+  // re-generating the PCR0 quote.
   // The deprecated fields have not been cleared so that older code can still
   // use the database.
-  ASSERT_TRUE(db.identities().empty());
+  ASSERT_EQ(1, db.identities().size());
   ASSERT_EQ("identity_binding", db.identity_binding().identity_binding());
   ASSERT_EQ("identity_public_key", db.identity_binding().identity_public_key());
   EXPECT_EQ("pcr1_quote", db.pcr1_quote().quote());
 
+  // Check the migrated identity after re-generating the PCR0 quote is
+  // correct.
+  const AttestationDatabase::Identity& default_identity_data =
+      db.identities().Get(Attestation::kDefaultPCA);
+
+  ASSERT_EQ("identity_binding",
+            default_identity_data.identity_binding().identity_binding());
+  ASSERT_EQ("identity_public_key",
+            default_identity_data.identity_binding().identity_public_key());
+  ASSERT_EQ("pcr1_quote", default_identity_data.pcr_quotes().at(1).quote());
+  ASSERT_TRUE(default_identity_data.pcr_quotes().at(0).has_quote());
+
   // There is no identity certificate since there is no identity.
-  ASSERT_TRUE(db.identity_certificates().empty());
+  ASSERT_EQ(db.identity_certificates().size(), 1);
 }
 
 TEST_F(AttestationBaseTest,
