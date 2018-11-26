@@ -66,10 +66,6 @@ Daemon::Daemon() {}
 
 Daemon::~Daemon() {}
 
-void Daemon::ReleaseDbus() {
-  CHECK(bus_->ReleaseOwnership(kRuntimeProbeServiceName));
-}
-
 int Daemon::OnInit() {
   int exit_code = DBusDaemon::OnInit();
   if (exit_code != EX_OK)
@@ -97,6 +93,17 @@ void Daemon::InitDBus() {
   LOG(INFO) << kRuntimeProbeServicePath << " DBus initialized.";
 }
 
+void Daemon::PostQuitTask() {
+  bus_->GetOriginTaskRunner()->PostTask(
+      FROM_HERE,
+      base::Bind(&Daemon::QuitDaemonInternal, base::Unretained(this)));
+}
+
+void Daemon::QuitDaemonInternal() {
+  bus_->ShutdownAndBlock();
+  Quit();
+}
+
 void Daemon::SendProbeResult(
     const ProbeResult& reply,
     dbus::MethodCall* method_call,
@@ -114,8 +121,8 @@ void Daemon::SendProbeResult(
   } else {
     // TODO(itspeter): b/119939408, PII filter before return.
     response_sender->Run(std::move(message));
-    // TODO(itspeter): b/119937341, Exit program gracefully.
   }
+  PostQuitTask();
 }
 
 void Daemon::ProbeCategories(

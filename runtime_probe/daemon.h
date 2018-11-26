@@ -20,7 +20,6 @@ class Daemon : public brillo::DBusDaemon {
  public:
   Daemon();
   ~Daemon() override;
-  void ReleaseDbus();
 
  protected:
   // brillo::DBusDaemon:
@@ -40,6 +39,15 @@ class Daemon : public brillo::DBusDaemon {
   // Handler of org.chromium.ProbeCategories method calls.
   void ProbeCategories(dbus::MethodCall* method_call,
                        dbus::ExportedObject::ResponseSender response_sender);
+
+  // Schedule an asynchronous D-Bus shutdown and exit the daemon.
+  void PostQuitTask();
+
+  // Underlying function that performs D-Bus shutdown. This QuitDaemonInternal()
+  // is *not* expected to be invoked while we're still processing the method
+  // call, because it will create racing on variable |bus_| (i.e.: freed before
+  // other usage depends on it.)
+  void QuitDaemonInternal();
 
   // Because members are destructed in reverse-order that they appear in the
   // class definition. Member variables should appear before the WeakPtrFactory,
