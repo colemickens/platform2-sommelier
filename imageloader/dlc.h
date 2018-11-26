@@ -4,12 +4,12 @@
 
 // This class is an abstraction for a Chrome OS Downloadable Content (DLC).
 //
-// A DLC is a dynamically installed Chrome OS package that is verified via
-// verity on device. DLC provides a way to install packages on demand instead
-// of bundling all (used/unused) packages into root file system.
+// A DLC module is a dynamically installed Chrome OS package that is verified
+// via verity on device. DLC provides a way to install packages on demand
+// instead of bundling all (used/unused) packages into root file system.
 //
-// This class verfies and mounts a DLC image. A DLC can be installed via API
-// provided by dlc_service.
+// This class verfies and mounts a DLC module image. A DLC module can be
+// installed via API provided by dlc_service.
 
 #ifndef IMAGELOADER_DLC_H_
 #define IMAGELOADER_DLC_H_
@@ -23,8 +23,8 @@
 
 namespace imageloader {
 
-// Enum on the two images (A/B) for one DLC.
-// We keep two copies (A/B) for each DLC in order to sync with platform
+// Enum on the two images (A/B) for one DLC module.
+// We keep two copies (A/B) for each DLC module in order to sync with platform
 // AutoUpdate (A/B update).
 enum class AOrB { kDlcA, kDlcB, kUnknown };
 
@@ -46,7 +46,7 @@ class Dlc {
              const base::FilePath& table_path,
              AOrB a_or_b,
              const base::FilePath& mount_point);
-  // id of the DLC image.
+  // id of the DLC module image.
   std::string id_;
 
   DISALLOW_COPY_AND_ASSIGN(Dlc);

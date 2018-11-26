@@ -89,17 +89,17 @@
   </method>
   <method name="LoadDlcImage">
     <tp:docstring>
-      Loads an image.
+      Loads a DLC module image.
     </tp:docstring>
     <arg name="id" type="s" direction="in">
       <tp:docstring>
-        The id of the image.
+        The id of the DLC module image.
       </tp:docstring>
     </arg>
     <arg name="a_or_b" type="s" direction="in">
       <tp:docstring>
-        Whether to load image A or image B ({"Dlc-A", "Dlc-B"}). Each DLC has
-        two images (A and B) which corresponds to the two rootfs partitions
+        Whether to load image A or image B ({"Dlc-A", "Dlc-B"}). Each DLC module
+        has two images (A and B) which corresponds to the two rootfs partitions
         (Root-A and Root-B). e.g. If current active roofs partition is Root-A,
         then "Dlc-A" should be passed in.
       </tp:docstring>
