@@ -68,7 +68,6 @@
 
 using base::FilePath;
 using brillo::cryptohome::home::GetHashedUserPath;
-using brillo::cryptohome::home::GetRootPath;
 using brillo::cryptohome::home::GetUserPath;
 using brillo::cryptohome::home::SanitizeUserName;
 using brillo::cryptohome::home::kGuestUserName;
@@ -137,12 +136,6 @@ const char kDeviceLocalAccountStateDir[] = "/var/lib/device_local_accounts";
 constexpr char kArcDiskCheckPath[] = "/home";
 constexpr int64_t kArcCriticalDiskFreeBytes = 64 << 20;  // 64MB
 constexpr size_t kArcContainerInstanceIdLength = 16;
-
-// Name of android-data directory.
-const char kAndroidDataDirName[] = "android-data";
-
-// Name of android-data-old directory which RemoveArcDataInternal uses.
-const char kAndroidDataOldDirName[] = "android-data-old";
 
 // To set the CPU limits of the Android container.
 const char kCpuSharesFile[] =
@@ -419,20 +412,6 @@ SessionManagerImpl::SessionManagerImpl(
 SessionManagerImpl::~SessionManagerImpl() {
   device_policy_->set_delegate(NULL);  // Could use WeakPtr instead?
 }
-
-#if USE_CHEETS
-// static
-base::FilePath SessionManagerImpl::GetAndroidDataDirForUser(
-    const std::string& normalized_account_id) {
-  return GetRootPath(normalized_account_id).Append(kAndroidDataDirName);
-}
-
-// static
-base::FilePath SessionManagerImpl::GetAndroidDataOldDirForUser(
-    const std::string& normalized_account_id) {
-  return GetRootPath(normalized_account_id).Append(kAndroidDataOldDirName);
-}
-#endif  // USE_CHEETS
 
 void SessionManagerImpl::SetPolicyServicesForTesting(
     std::unique_ptr<DevicePolicyService> device_policy,
@@ -1707,8 +1686,8 @@ std::string SessionManagerImpl::StartArcContainer(
   // Pass in the same environment variables that were passed to arc-setup
   // (through init, above) into the container invocation as environment values.
   // When the container is started with run_oci, this allows for it to correctly
-  // propagate some information (such as the ANDROID_DATA_DIR) to the hooks so
-  // it can set itself up.
+  // propagate some information (such as the CHROMEOS_USER) to the hooks so it
+  // can set itself up.
   if (!android_container_->StartContainer(
           env_vars,
           base::Bind(&SessionManagerImpl::OnAndroidContainerStopped,
@@ -1736,8 +1715,6 @@ std::vector<std::string> SessionManagerImpl::CreateUpgradeArcEnvVars(
   std::vector<std::string> env_vars = {
       base::StringPrintf("CHROMEOS_DEV_MODE=%d", IsDevMode(system_)),
       base::StringPrintf("CHROMEOS_INSIDE_VM=%d", IsInsideVm(system_)),
-      "ANDROID_DATA_DIR=" + GetAndroidDataDirForUser(account_id).value(),
-      "ANDROID_DATA_OLD_DIR=" + GetAndroidDataOldDirForUser(account_id).value(),
       "CHROMEOS_USER=" + account_id,
       base::StringPrintf("DISABLE_BOOT_COMPLETED_BROADCAST=%d",
                          request.skip_boot_completed_broadcast()),

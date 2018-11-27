@@ -477,13 +477,17 @@ struct ArcPaths {
   static std::unique_ptr<ArcPaths> Create(Mode mode, const Config& config) {
     base::FilePath android_data;
     base::FilePath android_data_old;
-    if (mode == Mode::BOOT_CONTINUE) {
-      // session_manager must start arc-setup job with ANDROID_DATA_DIR
-      // parameter containing the path of the real android-data directory. They
-      // are passed only when the mode is boot-continue.
-      android_data = base::FilePath(config.GetStringOrDie("ANDROID_DATA_DIR"));
-      android_data_old =
-          base::FilePath(config.GetStringOrDie("ANDROID_DATA_OLD_DIR"));
+
+    if (mode == Mode::BOOT_CONTINUE || mode == Mode::REMOVE_DATA) {
+      std::string chromeos_user = config.GetStringOrDie("CHROMEOS_USER");
+      const base::FilePath root_path =
+          brillo::cryptohome::home::GetRootPath(chromeos_user);
+
+      // Ensure the user directory exists.
+      EXIT_IF(root_path.empty() || !base::DirectoryExists(root_path));
+
+      android_data = root_path.Append("android-data");
+      android_data_old = root_path.Append("android-data-old");
     }
     return base::WrapUnique(new ArcPaths(android_data, android_data_old));
   }
@@ -670,9 +674,8 @@ void ArcSetup::SetUpAndroidData() {
   EXIT_IF(!InstallDirectory(0700, kHostRootUid, kHostRootGid,
                             arc_paths_->android_data_directory));
   // To make our bind-mount business easier, we first bind-mount the real
-  // android-data directory ($ANDROID_DATA_DIR) to a fixed path
-  // ($ANDROID_MUTABLE_SOURCE).
-  // Then we do not need to pass around $ANDROID_DATA_DIR in every other places.
+  // android-data directory to a fixed path ($ANDROID_MUTABLE_SOURCE).
+  // Then we do not need to pass the android-data path to other processes.
   EXIT_IF(!arc_mounter_->BindMount(arc_paths_->android_data_directory,
                                    arc_paths_->android_mutable_source));
 
@@ -2237,16 +2240,8 @@ void ArcSetup::OnReadAhead() {
 }
 
 void ArcSetup::OnRemoveData() {
-  const std::string chromeos_user = config_.GetStringOrDie("CHROMEOS_USER");
-  const base::FilePath root_path =
-      brillo::cryptohome::home::GetRootPath(chromeos_user);
-  // Ensure the user directory exists.
-  EXIT_IF(!base::DirectoryExists(root_path));
-
-  const base::FilePath android_data = root_path.Append("android-data");
-  const base::FilePath android_data_old = root_path.Append("android-data-old");
-
-  EXIT_IF(!MoveDirIntoDataOldDir(android_data, android_data_old));
+  EXIT_IF(!MoveDirIntoDataOldDir(arc_paths_->android_data_directory,
+                                 arc_paths_->android_data_old_directory));
 }
 
 void ArcSetup::OnMountSdcard() {

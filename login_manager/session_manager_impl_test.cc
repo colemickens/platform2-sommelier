@@ -353,13 +353,6 @@ class SessionManagerImplTest : public ::testing::Test,
     real_utils_.set_base_dir_for_testing(tmpdir_.GetPath());
     SetSystemSalt(&fake_salt_);
 
-#if USE_CHEETS
-    android_data_dir_ =
-        SessionManagerImpl::GetAndroidDataDirForUser(kSaneEmail);
-    android_data_old_dir_ =
-        SessionManagerImpl::GetAndroidDataOldDirForUser(kSaneEmail);
-#endif  // USE_CHEETS
-
     // AtomicFileWrite calls in TEST_F assume that these directories exist.
     ASSERT_TRUE(utils_.CreateDir(base::FilePath("/run/session_manager")));
     ASSERT_TRUE(utils_.CreateDir(base::FilePath("/mnt/stateful_partition")));
@@ -466,8 +459,7 @@ class SessionManagerImplTest : public ::testing::Test,
 #if USE_CHEETS
   class UpgradeContainerExpectationsBuilder {
    public:
-    explicit UpgradeContainerExpectationsBuilder(SessionManagerImplTest* owner)
-        : owner_(owner), locale_(kDefaultLocale) {}
+    UpgradeContainerExpectationsBuilder() = default;
 
     UpgradeContainerExpectationsBuilder& SetDevMode(bool v) {
       dev_mode_ = v;
@@ -526,8 +518,6 @@ class SessionManagerImplTest : public ::testing::Test,
       return {
           "CHROMEOS_DEV_MODE=" + std::to_string(dev_mode_),
           "CHROMEOS_INSIDE_VM=0",
-          "ANDROID_DATA_DIR=" + owner_->android_data_dir_.value(),
-          "ANDROID_DATA_OLD_DIR=" + owner_->android_data_old_dir_.value(),
           std::string("CHROMEOS_USER=") + kSaneEmail,
           "DISABLE_BOOT_COMPLETED_BROADCAST=" +
               std::to_string(disable_boot_completed_callback_),
@@ -544,7 +534,6 @@ class SessionManagerImplTest : public ::testing::Test,
     }
 
    private:
-    SessionManagerImplTest* const owner_;
     bool dev_mode_ = false;
     bool disable_boot_completed_callback_ = false;
     bool enable_vendor_privileged_ = false;
@@ -552,7 +541,7 @@ class SessionManagerImplTest : public ::testing::Test,
     std::string demo_session_apps_path_;
     bool skip_packages_cache_ = false;
     bool copy_packages_cache_ = false;
-    std::string locale_;
+    std::string locale_ = kDefaultLocale;
     std::string preferred_languages_;
     int supervision_transition_ = 0;
 
@@ -827,11 +816,6 @@ class SessionManagerImplTest : public ::testing::Test,
   std::unique_ptr<SessionManagerImpl> impl_;
   base::ScopedTempDir tmpdir_;
   base::FilePath device_local_accounts_dir_;
-
-#if USE_CHEETS
-  base::FilePath android_data_dir_;
-  base::FilePath android_data_old_dir_;
-#endif  // USE_CHEETS
 
   static const pid_t kDummyPid;
   static const char kNothing[];
@@ -2335,7 +2319,7 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainer) {
   EXPECT_CALL(
       *init_controller_,
       TriggerImpulseInternal(SessionManagerImpl::kContinueArcBootImpulse,
-                             UpgradeContainerExpectationsBuilder(this)
+                             UpgradeContainerExpectationsBuilder()
                                  .SetEnableVendorPrivileged(true)
                                  .Build(),
                              InitDaemonController::TriggerMode::SYNC))
@@ -2385,7 +2369,7 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainerWithSupervisionTransition) {
   EXPECT_CALL(
       *init_controller_,
       TriggerImpulseInternal(SessionManagerImpl::kContinueArcBootImpulse,
-                             UpgradeContainerExpectationsBuilder(this)
+                             UpgradeContainerExpectationsBuilder()
                                  .SetSupervisionTransition(1)
                                  .Build(),
                              InitDaemonController::TriggerMode::SYNC))
@@ -2445,7 +2429,7 @@ TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
                   SessionManagerImpl::kContinueArcBootImpulse,
-                  UpgradeContainerExpectationsBuilder(this)
+                  UpgradeContainerExpectationsBuilder()
                       .SetSkipPackagesCache(skip_packages_cache_setup)
                       .SetCopyPackagesCache(copy_cache_setup)
                       .Build(),
@@ -2510,7 +2494,7 @@ TEST_F(SessionManagerImplTest, UpgradeArcContainerForDemoSession) {
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
                   SessionManagerImpl::kContinueArcBootImpulse,
-                  UpgradeContainerExpectationsBuilder(this)
+                  UpgradeContainerExpectationsBuilder()
                       .SetIsDemoSession(true)
                       .SetDemoSessionAppsPath(
                           "/run/imageloader/0.1/demo_apps/img.squash")
@@ -2570,11 +2554,10 @@ TEST_F(SessionManagerImplTest,
 
   EXPECT_CALL(
       *init_controller_,
-      TriggerImpulseInternal(SessionManagerImpl::kContinueArcBootImpulse,
-                             UpgradeContainerExpectationsBuilder(this)
-                                 .SetIsDemoSession(true)
-                                 .Build(),
-                             InitDaemonController::TriggerMode::SYNC))
+      TriggerImpulseInternal(
+          SessionManagerImpl::kContinueArcBootImpulse,
+          UpgradeContainerExpectationsBuilder().SetIsDemoSession(true).Build(),
+          InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(
@@ -2713,7 +2696,7 @@ TEST_F(SessionManagerImplTest, ArcUpgradeCrash) {
       *init_controller_,
       TriggerImpulseInternal(
           SessionManagerImpl::kContinueArcBootImpulse,
-          UpgradeContainerExpectationsBuilder(this).SetDevMode(true).Build(),
+          UpgradeContainerExpectationsBuilder().SetDevMode(true).Build(),
           InitDaemonController::TriggerMode::SYNC))
       .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
   EXPECT_CALL(*init_controller_,
@@ -2795,7 +2778,7 @@ TEST_F(SessionManagerImplTest, LocaleAndPreferredLanguages) {
   EXPECT_CALL(
       *init_controller_,
       TriggerImpulseInternal(SessionManagerImpl::kContinueArcBootImpulse,
-                             UpgradeContainerExpectationsBuilder(this)
+                             UpgradeContainerExpectationsBuilder()
                                  .SetLocale("fr_FR")
                                  .SetPreferredLanguages("ru,en")
                                  .Build(),
@@ -2848,7 +2831,6 @@ TEST_F(SessionManagerImplTest, SetArcCpuRestrictionFails) {
 
 TEST_F(SessionManagerImplTest, EmitArcBooted) {
 #if USE_CHEETS
-  ASSERT_TRUE(utils_.CreateDir(android_data_dir_));
   EXPECT_CALL(*init_controller_,
               TriggerImpulseInternal(SessionManagerImpl::kArcBootedImpulse,
                                      ElementsAre(StartsWith("CHROMEOS_USER=")),
