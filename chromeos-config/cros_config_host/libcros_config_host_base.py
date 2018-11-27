@@ -19,13 +19,6 @@ INCOMPATIBLE_PROPERTIES = {
     'brand-code',         # Moved due to Whitelabel/Product changes.
     'name',               # Only in YAML
   ],
-  '/audio/main' : [
-    # There are errors in the cros_config_host device-tree impl.
-    # There are runtime properties anyway and will be checked as part of the
-    # cros_config verification.
-    'cras-config-dir',
-    'ucm-suffix',
-  ],
   '/firmware' : [
     'key-id',             # Moved to firmware-signing in YAML,
     'name',               # Doesn't exist in DT impl
