@@ -13,12 +13,22 @@
 # This script isn't intended to be shipped on the device, it's
 # only for manual testing.
 
-rollback_prepare_save
-sudo -u oobe_config_save oobe_config_save
+echo "Staging rollback files..."
+if ! rollback_prepare_save; then
+  echo "rollback_prepare_save failed"
+  exit 1
+fi
+
+echo "Encrypting and saving rollback files..."
+if ! sudo -u oobe_config_save oobe_config_save; then
+  echo "rollback_prepare_save failed"
+  exit 1
+fi
+
+echo "Rebooting with powerwash in 10 seconds..."
+sleep 10
+# Don't write the reset file until after the timeout
 echo "fast safe keepimg rollback" > \
   /mnt/stateful_partition/factory_install_reset
-
-echo "Rebooting with powerwash in 5 seconds..."
-sleep 5
 echo "Rebooting now..."
 reboot
