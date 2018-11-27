@@ -11,6 +11,11 @@ group("all") {
     ":libdisks",
     ":libdisks-adaptors",
   ]
+  if (use.fuzzer) {
+    deps += [
+      ":cros-disks_mount_options_fuzzer",
+    ]
+  }
   if (use.test) {
     deps += [ ":disks_testrunner" ]
   }
@@ -88,6 +93,28 @@ executable("cros-disks") {
   deps = [
     ":libdisks",
   ]
+}
+
+if (use.fuzzer) {
+  pkg_config("fuzzed_data_config") {
+    pkg_deps = [
+      "libchrome-test-${libbase_ver}",
+    ]
+  }
+  executable("cros-disks_mount_options_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":fuzzed_data_config",
+      ":target_defaults",
+    ]
+    configs -= [ "//common-mk:no_exceptions" ]
+    sources = [
+      "mount_options_fuzzer.cc",
+    ]
+    deps = [
+      ":libdisks",
+    ]
+  }
 }
 
 if (use.test) {
