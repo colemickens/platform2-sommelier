@@ -128,4 +128,6 @@ message UserBackupData {
   optional string user_name = 3;
   // Is the user affiliated with the machine's domain?
   optional bool is_user_affiliated = 4;
+  // Realm part of user login "user@realm".
+  optional string user_realm = 5;
 }

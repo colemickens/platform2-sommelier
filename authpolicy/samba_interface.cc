@@ -2080,6 +2080,7 @@ void SambaInterface::MaybeBackupUserAuthState() {
   data.set_pwd_last_set(user_pwd_last_set_);
   data.set_user_name(user_account_.user_name);
   data.set_is_user_affiliated(is_user_affiliated_);
+  data.set_user_realm(user_account_.realm);
 
   // Convert proto to string.
   std::string data_blob;
@@ -2142,6 +2143,9 @@ void SambaInterface::MaybeRestoreUserAuthState() {
   user_pwd_last_set_ = data.pwd_last_set();
   user_account_.user_name = data.user_name();
   is_user_affiliated_ = data.is_user_affiliated();
+  // User realm might be missing in old backup data. New data should have it.
+  if (data.has_user_realm())
+    SetUserRealm(data.user_realm());
   user_logged_in_ = true;
 
   LOG(INFO) << "Backup successfully restored from " << backup_path.value();

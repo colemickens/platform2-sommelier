@@ -2285,6 +2285,23 @@ TEST_F(AuthPolicyTest, LoadsBackupAndRestoresState) {
   EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, kAccountId, MakePasswordFd()));
 }
 
+// Policy fetch after a restart recovers successfully from backup (see
+// https://crbug.com/908772).
+TEST_F(AuthPolicyTest, LoadsBackupOnPolicyFetch) {
+  // Join and authenticate with Cryptohome mounted, so that a backup is written.
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
+  EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, "", MakePasswordFd()));
+  NotifySessionStarted();
+
+  // Restart authpolicyd.
+  samba().ResetForTesting();
+  EXPECT_EQ(ERROR_NONE, samba().Initialize(true /* expect_config */));
+
+  // User policy fetch still works, even without auth.
+  validate_user_policy_ = &CheckUserPolicyEmpty;
+  FetchAndValidateUserPolicy(kAccountId, ERROR_NONE);
+}
+
 // By default, nothing should call the (expensive) anonymizer since no sensitive
 // data is logged. Only if logging is enabled it should be called.
 TEST_F(AuthPolicyTest, AnonymizerNotCalledWithoutLogging) {
