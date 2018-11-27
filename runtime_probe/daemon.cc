@@ -4,10 +4,10 @@
 
 #include <sysexits.h>
 
-#include <memory>  // for std::unique_ptr<>
-#include <string>  // for std::string
-#include <utility>  // for std::move
-#include <vector>  // for std::vector<>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/memory/ptr_util.h>
@@ -31,7 +31,7 @@ void AddFakeResponse(ProbeResult* reply) {
   battery_fields->set_index(1);
 
   std::vector<std::string> virtual_codec_name{
-    "ehdaudioXYZ", "dmic-codec", "i2c-MX98373:01", "i2c-MX98373:00"};
+      "ehdaudioXYZ", "dmic-codec", "i2c-MX98373:01", "i2c-MX98373:00"};
 
   for (auto const& codec_name : virtual_codec_name) {
     AudioCodec* audio_codec_top_level = reply->add_audio_codec();
@@ -46,14 +46,18 @@ void DumpProtocolBuffer(const google::protobuf::Message& protobuf,
                         std::string message_name) {
   // TODO(hmchu): b/119938934, Enable those dump only with --debug flag.
   // Using ERROR to show on the /var/log/messages
-  LOG(ERROR) << "---> Protobuf dump of " << message_name;
-  LOG(ERROR) << "       DebugString():\n\n" << protobuf.DebugString();
-
+  VLOG(1) << "---> Protobuf dump of " << message_name;
+  VLOG(1) << "       DebugString():\n\n" << protobuf.DebugString();
   std::string json_string;
   google::protobuf::util::JsonPrintOptions options;
   MessageToJsonString(protobuf, &json_string, options);
-  LOG(ERROR) << "       JSON output:\n\n" << json_string << "\n";
-  LOG(ERROR) << "<--- Finished Protobuf dump\n";
+  VLOG(1) << "       JSON output:\n\n" << json_string << "\n";
+  VLOG(1) << "<--- Finished Protobuf dump\n";
+}
+
+// Min log level < 0 => --debug flag is passed
+bool IsUnderDebug() {
+  return logging::GetMinLogLevel() < 0;
 }
 
 }  // namespace
@@ -94,10 +98,11 @@ void Daemon::InitDBus() {
 }
 
 void Daemon::SendProbeResult(
-    const ProbeResult& reply, dbus::MethodCall* method_call,
+    const ProbeResult& reply,
+    dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender* response_sender) {
-
-  DumpProtocolBuffer(reply, "ProbeResult");
+  if (IsUnderDebug())
+    DumpProtocolBuffer(reply, "ProbeResult");
 
   std::unique_ptr<dbus::Response> message(
       dbus::Response::FromMethodCall(method_call));
@@ -116,7 +121,6 @@ void Daemon::SendProbeResult(
 void Daemon::ProbeCategories(
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
-
   std::unique_ptr<dbus::Response> message(
       dbus::Response::FromMethodCall(method_call));
   dbus::MessageReader reader(method_call);
@@ -129,7 +133,8 @@ void Daemon::ProbeCategories(
     return SendProbeResult(reply, method_call, &response_sender);
   }
 
-  DumpProtocolBuffer(request, "ProbeRequest");
+  if (IsUnderDebug())
+    DumpProtocolBuffer(request, "ProbeRequest");
 
   // TODO(itspeter): Compose real response base on probe result.
   AddFakeResponse(&reply);

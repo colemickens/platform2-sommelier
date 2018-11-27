@@ -33,14 +33,13 @@ class Daemon : public brillo::DBusDaemon {
   void InitDBus();
 
   // Sugar wrapper for packing protocol buffer with error handling.
-  void SendProbeResult(
-      const ProbeResult &reply, dbus::MethodCall* method_call,
-      dbus::ExportedObject::ResponseSender* response_sender);
+  void SendProbeResult(const ProbeResult& reply,
+                       dbus::MethodCall* method_call,
+                       dbus::ExportedObject::ResponseSender* response_sender);
 
   // Handler of org.chromium.ProbeCategories method calls.
-  void ProbeCategories(
-      dbus::MethodCall* method_call,
-      dbus::ExportedObject::ResponseSender response_sender);
+  void ProbeCategories(dbus::MethodCall* method_call,
+                       dbus::ExportedObject::ResponseSender response_sender);
 
   // Because members are destructed in reverse-order that they appear in the
   // class definition. Member variables should appear before the WeakPtrFactory,
