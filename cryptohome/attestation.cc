@@ -707,7 +707,7 @@ int Attestation::CreateIdentity(int identity_features,
   if (!in0.second) {
     LOG(ERROR) << "Attestation: Failed to store PCR0 quote for identity "
                << identity << ".";
-    return false;
+    return -1;
   }
 
   Quote quote_pb1;
@@ -720,7 +720,7 @@ int Attestation::CreateIdentity(int identity_features,
   if (!in1.second) {
     LOG(ERROR) << "Attestation: Failed to store PCR1 quote for identity "
                << identity << ".";
-    return false;
+    return -1;
   }
 
   // Return the index of the newly created identity.
