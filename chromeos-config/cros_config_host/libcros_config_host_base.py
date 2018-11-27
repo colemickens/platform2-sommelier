@@ -27,9 +27,6 @@ INCOMPATIBLE_PROPERTIES = {
     'key-id',             # Moved from firmware in DT
     'signature-id',       # Only in YAML
   ],
-  '/thermal' : [
-    'dptf-dv',            # Changed to explicit files in YAML
-  ],
 }
 
 # Represents a single touch firmware file which needs to be installed:
