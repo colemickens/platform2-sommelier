@@ -896,7 +896,7 @@ bool Attestation::CreateEnrollRequest(PCAType pca_type,
                " for " << GetPCAName(pca_type) << " does not exist.";
     return false;
   }
-  if (database_pb_.identities().size() < identity) {
+  if (database_pb_.identities().size() <= identity) {
     LOG(ERROR) << __func__ << ": Enrollment is not possible, identity "
                << identity << " does not exist.";
     return false;
@@ -940,7 +940,7 @@ bool Attestation::Enroll(PCAType pca_type,
   const int identity = kFirstIdentity;
   if (!IsTPMReady())
     return false;
-  if (database_pb_.identities().size() < identity) {
+  if (database_pb_.identities().size() <= identity) {
     LOG(ERROR) << __func__ << ": Enrollment is not possible, identity "
                << identity << " does not exist.";
     return false;
