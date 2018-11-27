@@ -66,15 +66,26 @@ class DlcServiceUtil {
   }
 
   bool Uninstall(int* error_ptr) {
+    brillo::ErrorPtr error;
+
     std::vector<std::string> dlc_ids;
     if (!ParseDlcIds(uninstall_dlc_ids_, &dlc_ids)) {
       LOG(ERROR) << "Please specify a list of DLC modules to uninstall";
       *error_ptr = EX_USAGE;
       return false;
     }
-    for (auto& s : dlc_ids) {
-      LOG(INFO) << "Attempting to uninstall DLC module '" << s << "'";
+
+    for (auto& dlc_id : dlc_ids) {
+      LOG(INFO) << "Attempting to uninstall DLC module '" << dlc_id << "'";
+      if (!dlc_service_proxy_->Uninstall(dlc_id, &error)) {
+        LOG(ERROR) << "Failed to uninstall '" << dlc_id << "', "
+                   << error->GetMessage();
+        *error_ptr = EX_SOFTWARE;
+        return false;
+      }
+      LOG(INFO) << "'" << dlc_id << "' successfully uninstalled";
     }
+
     return true;
   }
 
