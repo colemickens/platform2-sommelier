@@ -560,34 +560,26 @@ void ArcSetup::DeleteExecutableFilesInData(
     return;
   }
 
-  if (!base::PathExists(arc_paths_->android_data_old_directory)) {
-    EXIT_IF(!InstallDirectory(0700, kHostRootUid, kHostRootGid,
-                              arc_paths_->android_data_old_directory));
+  // Move data/dalvik-cache.
+  if (should_delete_data_dalvik_cache_directory) {
+    MoveDirIntoDataOldDir(arc_paths_->android_data_directory.Append(
+                              base::FilePath("data/dalvik-cache")),
+                          arc_paths_->android_data_old_directory);
   }
 
-  base::FilePath old_executables_directory;
-  EXIT_IF(!base::CreateTemporaryDirInDir(arc_paths_->android_data_old_directory,
-                                         "old_executables_",
-                                         &old_executables_directory));
-
-  // Move data/dalvik-cache to old_executables_directory.
-  const base::FilePath dalvik_cache_directory =
-      arc_paths_->android_data_directory.Append(
-          base::FilePath("data/dalvik-cache"));
-  if (should_delete_data_dalvik_cache_directory &&
-      base::PathExists(dalvik_cache_directory)) {
-    LOG(INFO) << "Moving " << dalvik_cache_directory.value() << " to "
-              << old_executables_directory.value();
-    if (!base::Move(dalvik_cache_directory, old_executables_directory))
-      PLOG(ERROR) << "Failed to move dalvik-cache";
-  }
-
-  // Move data/app/oat cache.
+  // Move data/app/*/oat cache.
   const base::FilePath app_directory =
       arc_paths_->android_data_directory.Append(base::FilePath("data/app"));
   if (should_delete_data_app_executables && base::PathExists(app_directory)) {
     base::ElapsedTimer timer;
-    MoveDataAppOatDirectory(app_directory, old_executables_directory);
+
+    base::FileEnumerator dir_enum(app_directory, false /* recursive */,
+                                  base::FileEnumerator::DIRECTORIES);
+    for (base::FilePath pkg_directory_name = dir_enum.Next();
+         !pkg_directory_name.empty(); pkg_directory_name = dir_enum.Next()) {
+      MoveDirIntoDataOldDir(pkg_directory_name.Append("oat"),
+                            arc_paths_->android_data_old_directory);
+    }
     LOG(INFO) << "Moving data/app/<package_name>/oat took "
               << timer.Elapsed().InMillisecondsRoundedUp() << "ms";
   }

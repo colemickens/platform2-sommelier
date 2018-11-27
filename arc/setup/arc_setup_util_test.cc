@@ -729,8 +729,17 @@ TEST(ArcSetupUtil, MoveDirIntoDataOldDir_AndroidDataDirIsEmpty) {
 
   EXPECT_TRUE(MoveDirIntoDataOldDir(dir, data_old_dir));
 
-  EXPECT_TRUE(base::IsDirectoryEmpty(dir));
-  EXPECT_TRUE(base::IsDirectoryEmpty(data_old_dir));
+  EXPECT_FALSE(base::DirectoryExists(dir));
+
+  base::FileEnumerator temp_dir_iter(data_old_dir, false /* recursive */,
+                                     base::FileEnumerator::DIRECTORIES);
+  base::FilePath temp_dir;
+  int temp_dir_count = 0;
+  while (!(temp_dir = temp_dir_iter.Next()).empty()) {
+    EXPECT_TRUE(base::IsDirectoryEmpty(temp_dir));
+    ++temp_dir_count;
+  }
+  EXPECT_EQ(1, temp_dir_count);
 }
 
 TEST(ArcSetupUtil, MoveDirIntoDataOldDir_AndroidDataDirIsFile) {
@@ -778,46 +787,6 @@ TEST(ArcSetupUtil, MoveDirIntoDataOldDir_AndroidDataOldIsFile) {
     ++temp_dir_count;
   }
   EXPECT_EQ(1, temp_dir_count);
-}
-
-TEST(ArcSetupUtil, TestMoveDataAppOatDirectory) {
-  base::ScopedTempDir temp_directory;
-  ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
-
-  base::ScopedTempDir temp_target_directory;
-  ASSERT_TRUE(temp_target_directory.CreateUniqueTempDir());
-
-  // Create cache files.
-  ASSERT_TRUE(
-      MkdirRecursively(temp_directory.GetPath().Append("com.a/oat/arm")));
-  ASSERT_TRUE(
-      MkdirRecursively(temp_directory.GetPath().Append("com.a/oat/arm64")));
-  ASSERT_TRUE(CreateOrTruncate(
-      temp_directory.GetPath().Append("com.a/oat/arm/a.dex"), 0755));
-  ASSERT_TRUE(CreateOrTruncate(
-      temp_directory.GetPath().Append("com.a/oat/arm64/a.dex"), 0755));
-  ASSERT_TRUE(MkdirRecursively(temp_directory.GetPath().Append("com.a/apk")));
-
-  EXPECT_TRUE(
-      base::PathExists(temp_directory.GetPath().Append("com.a/oat/arm/a.dex")));
-  EXPECT_TRUE(base::PathExists(
-      temp_directory.GetPath().Append("com.a/oat/arm64/a.dex")));
-  EXPECT_TRUE(base::PathExists(temp_directory.GetPath().Append("com.a/apk")));
-
-  MoveDataAppOatDirectory(temp_directory.GetPath(),
-                          temp_target_directory.GetPath());
-
-  EXPECT_FALSE(
-      base::PathExists(temp_directory.GetPath().Append("com.a/oat/arm/a.dex")));
-  EXPECT_FALSE(base::PathExists(
-      temp_directory.GetPath().Append("com.a/oat/arm64/a.dex")));
-  EXPECT_FALSE(base::PathExists(temp_directory.GetPath().Append("com.a/oat")));
-  EXPECT_TRUE(base::PathExists(temp_directory.GetPath().Append("com.a/apk")));
-
-  EXPECT_TRUE(base::PathExists(
-      temp_target_directory.GetPath().Append("oat-com.a/arm/a.dex")));
-  EXPECT_TRUE(base::PathExists(
-      temp_target_directory.GetPath().Append("oat-com.a/arm64/a.dex")));
 }
 
 TEST(ArcSetupUtil, TestGetChromeOsChannelFromFile) {

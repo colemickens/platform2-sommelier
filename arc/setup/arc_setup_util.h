@@ -240,10 +240,6 @@ uint64_t GetArtCompilationOffsetSeed(const std::string& image_build_id,
 bool MoveDirIntoDataOldDir(const base::FilePath& dir,
                            const base::FilePath& android_data_old_dir);
 
-// Renames to fast remove executable cache in /data/app/package/oat
-void MoveDataAppOatDirectory(const base::FilePath& data_app_directory,
-                             const base::FilePath& temp_data_app_directory);
-
 // Deletes files in |directory|, directory tree is kept to avoid recreating
 // sub-directories.
 bool DeleteFilesInDir(const base::FilePath& directory);

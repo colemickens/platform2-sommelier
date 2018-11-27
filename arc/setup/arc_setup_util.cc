@@ -892,7 +892,7 @@ uint64_t GetArtCompilationOffsetSeed(const std::string& image_build_id,
 
 bool MoveDirIntoDataOldDir(const base::FilePath& dir,
                            const base::FilePath& android_data_old_dir) {
-  if (!base::DirectoryExists(dir) || base::IsDirectoryEmpty(dir))
+  if (!base::DirectoryExists(dir))
     return true;  // Nothing to do.
 
   // Create |android_data_old_dir| if it doesn't exist.
@@ -930,26 +930,6 @@ bool MoveDirIntoDataOldDir(const base::FilePath& dir,
   }
 
   return true;
-}
-
-void MoveDataAppOatDirectory(const base::FilePath& data_app_directory,
-                             const base::FilePath& old_executables_directory) {
-  base::FileEnumerator dir_enum(data_app_directory, false /* recursive */,
-                                base::FileEnumerator::DIRECTORIES);
-  for (base::FilePath pkg_directory_name = dir_enum.Next();
-       !pkg_directory_name.empty(); pkg_directory_name = dir_enum.Next()) {
-    const base::FilePath oat_directory = pkg_directory_name.Append("oat");
-    if (!PathExists(oat_directory))
-      continue;
-
-    const base::FilePath temp_oat_directory = old_executables_directory.Append(
-        "oat-" + pkg_directory_name.BaseName().value());
-    base::File::Error file_error;
-    if (!base::ReplaceFile(oat_directory, temp_oat_directory, &file_error)) {
-      PLOG(ERROR) << "Failed to move cache folder " << oat_directory.value()
-                  << ". Error code: " << file_error;
-    }
-  }
 }
 
 bool DeleteFilesInDir(const base::FilePath& directory) {
