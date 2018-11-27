@@ -1842,14 +1842,17 @@ bool Attestation::MigrateIdentityData() {
   // The identity we're creating will have the next index in identities.
   LOG(INFO) << "Attestation: Migrating existing identity into identity "
             << database_pb_.identities().size() << ".";
-  CHECK(database_pb_.identities().size() == kFirstIdentity);
   AttestationDatabase::Identity* identity_data =
       database_pb_.mutable_identities()->Add();
   identity_data->set_features(IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID);
   if (database_pb_.has_identity_binding()) {
     identity_data->mutable_identity_binding()->CopyFrom(
         database_pb_.identity_binding());
+  } else {
+    LOG(ERROR) << "Attestation: Identity Key Binding not found, not migrating.";
+    error = true;
   }
+
   if (database_pb_.has_identity_key()) {
     identity_data->mutable_identity_key()->CopyFrom(
         database_pb_.identity_key());
@@ -1873,6 +1876,9 @@ bool Attestation::MigrateIdentityData() {
       database_pb_.set_enrollment_id(
           database_pb_.identity_key().enrollment_id());
     }
+  } else {
+    LOG(ERROR) << "Attestation: Identity Key not found, not migrating.";
+    error = true;
   }
 
   if (database_pb_.has_pcr0_quote()) {
@@ -1894,7 +1900,7 @@ bool Attestation::MigrateIdentityData() {
       error = true;
     }
   } else {
-    LOG(ERROR) << "Attestation: Missing PCR0 quote in existing database.";
+    LOG(ERROR) << "Attestation: Missing PCR1 quote in existing database.";
     error = true;
   }
 
