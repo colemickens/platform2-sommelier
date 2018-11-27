@@ -7,6 +7,7 @@
 #include <set>
 
 #include <base/files/file_util.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "imageloader/component.h"
 #include "imageloader/manifest.h"
@@ -42,9 +43,9 @@ base::FilePath GetImagePath(const std::string& id, AOrB a_or_b) {
 }
 
 AOrB GetImageAOrB(const std::string& a_or_b) {
-  if (a_or_b == "Dlc-A") {
+  if (a_or_b == imageloader::kSlotNameA) {
     return AOrB::kDlcA;
-  } else if (a_or_b == "Dlc-B") {
+  } else if (a_or_b == imageloader::kSlotNameB) {
     return AOrB::kDlcB;
   } else {
     return AOrB::kUnknown;

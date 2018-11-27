@@ -12,6 +12,7 @@
 #include <base/files/file_util.h>
 #include <brillo/errors/error.h>
 #include <brillo/errors/error_codes.h>
+#include <chromeos/dbus/service_constants.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <update_engine/dbus-constants.h>
 #include <update_engine/proto_bindings/update_engine.pb.h>
@@ -22,10 +23,6 @@
 namespace dlcservice {
 
 namespace {
-
-// Slot names (A or B) for DLC module images.
-constexpr char kSlotNameA[] = "Dlc-A";
-constexpr char kSlotNameB[] = "Dlc-B";
 
 // Sets the D-Bus error object and logs the error message.
 void LogAndSetError(brillo::ErrorPtr* err, const std::string& msg) {
@@ -151,8 +148,9 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
     return false;
   }
   if (!image_loader_proxy_->LoadDlcImage(
-          id_in, current_slot == 0 ? kSlotNameA : kSlotNameB, mount_point_out,
-          nullptr)) {
+          id_in,
+          current_slot == 0 ? imageloader::kSlotNameA : imageloader::kSlotNameB,
+          mount_point_out, nullptr)) {
     LogAndSetError(err, "Imageloader is not available.");
     return false;
   }
@@ -250,8 +248,9 @@ void DlcServiceDBusAdaptor::LoadDlcModuleImages() {
     // Mount the installed DLC image.
     std::string path;
     image_loader_proxy_->LoadDlcImage(
-        dlc_module_id, current_slot == 0 ? kSlotNameA : kSlotNameB, &path,
-        nullptr);
+        dlc_module_id,
+        current_slot == 0 ? imageloader::kSlotNameA : imageloader::kSlotNameB,
+        &path, nullptr);
     if (path.empty()) {
       LOG(ERROR) << "DLC image " << dlc_module_id << " is corrupted.";
     } else {
