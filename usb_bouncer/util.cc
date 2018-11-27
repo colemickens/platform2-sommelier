@@ -19,6 +19,9 @@
 #include <cstring>
 #include <vector>
 
+#include <usbguard/Device.hpp>
+#include <usbguard/DeviceManager.hpp>
+#include <usbguard/DeviceManagerHooks.hpp>
 #include <usbguard/Rule.hpp>
 
 using brillo::cryptohome::home::GetHashedUserPath;
@@ -57,8 +60,31 @@ std::unique_ptr<SessionManagerInterfaceProxy> SetUpDBus(
   return std::make_unique<SessionManagerInterfaceProxy>(bus);
 }
 
+class UsbguardDeviceManagerHooksImpl : public usbguard::DeviceManagerHooks {
+ public:
+  void dmHookDeviceEvent(usbguard::DeviceManager::EventType event,
+                         std::shared_ptr<usbguard::Device> device) override {
+    lastRule_ = *device->getDeviceRule(false /*include_port*/,
+                                       false /*with_parent_hash*/);
+  }
+
+  uint32_t dmHookAssignID() override {
+    static uint32_t id = 0;
+    return id++;
+  }
+
+  void dmHookDeviceException(const std::string& message) override {
+    LOG(ERROR) << message;
+  }
+
+  std::string getLastRule() { return lastRule_.toString(); }
+
+ private:
+  usbguard::Rule lastRule_;
+};
+
 // As root this will create the necessary files with the required permissions,
-// without root it will tried to create the files and verify the permissions are
+// without root it will try to create the files and verify the permissions are
 // correct.
 bool SetupPermissionsFor(const base::FilePath& path) {
   uid_t proc_uid = getuid();
@@ -143,8 +169,11 @@ std::unique_ptr<RuleDB> GetDBFromPath(const base::FilePath& parent_dir,
 }
 
 std::string GetRuleFromDevPath(const std::string& devpath) {
-  LOG(FATAL) << "Not implemented!";
-  return "";
+  UsbguardDeviceManagerHooksImpl hooks;
+  auto device_manager = usbguard::DeviceManager::create(hooks, "uevent");
+  device_manager->setEnumerationOnlyMode(true);
+  device_manager->scan(devpath);
+  return hooks.getLastRule();
 }
 
 bool ValidateRule(const std::string& rule) {
