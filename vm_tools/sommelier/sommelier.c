@@ -3513,7 +3513,8 @@ int main(int argc, char **argv) {
       close(client_fd);
     } while (1);
 
-    _exit(EXIT_FAILURE);
+    // Control should never reach here.
+    assert(false);
   }
 
   if (client_fd == -1) {
