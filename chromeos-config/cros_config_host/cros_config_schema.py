@@ -563,10 +563,11 @@ def _ValidateUniqueIdentities(json_config):
   identities = set()
   duplicate_identities = set()
   for config in json_config['chromeos']['configs']:
-    if 'identity' not in config:
+    if 'identity' not in config and 'name' not in config:
       raise ValidationError(
           'Missing identity for config: %s' % str(config))
-    identity_str = str(config['identity'])
+    identity_str = "%s-%s" % (
+        config.get('name', ''), str(config.get('identity', {})))
     if identity_str in identities:
       duplicate_identities.add(identity_str)
     else:
@@ -585,7 +586,7 @@ def _ValidateWhitelabelBrandChangesOnly(json_config):
   """
   whitelabels = {}
   for config in json_config['chromeos']['configs']:
-    whitelabel_tag = config['identity'].get('whitelabel-tag', None)
+    whitelabel_tag = config.get('identity', {}).get('whitelabel-tag', None)
     if whitelabel_tag:
       name = '%s - %s' % (config['name'], config['identity'].get('sku-id', 0))
       config_list = whitelabels.get(name, [])

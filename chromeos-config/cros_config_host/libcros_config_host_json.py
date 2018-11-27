@@ -141,7 +141,9 @@ class CrosConfigJson(CrosConfigBaseImpl):
     processed = set()
     for config in self._configs:
       fw = config.GetFirmwareConfig()
-      identity = str(config.GetProperties('/identity'))
+      # For partial configs (public vs private), we need to support the name
+      # for cases where identity isn't specified.
+      identity = config.GetName() + str(config.GetProperties('/identity'))
       brand_code = config.GetProperty('/', 'brand-code')
       if fw and identity not in processed:
         fw_str = str(fw)
@@ -195,7 +197,8 @@ class CrosConfigJson(CrosConfigBaseImpl):
           for wl_config in self._configs:
             if wl_config.GetName() == name:
               wl_brand_code = wl_config.GetProperty('/', 'brand-code')
-              wl_identity = str(wl_config.GetProperties('/identity'))
+              wl_identity_str = str(wl_config.GetProperties('/identity'))
+              wl_identity = wl_config.GetName() + wl_identity_str
               processed.add(wl_identity)
               fw_signer_config = wl_config.GetProperties('/firmware-signing')
               wl_key_id = wl_config.GetValue(fw_signer_config, 'key-id')
