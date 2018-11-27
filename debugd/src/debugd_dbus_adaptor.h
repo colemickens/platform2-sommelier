@@ -171,6 +171,10 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response)
       override;
   void StopVmConcierge() override;
+  void StartVmPluginDispatcher(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response)
+      override;
+  void StopVmPluginDispatcher() override;
   bool SetRlzPingSent(brillo::ErrorPtr* error) override;
   std::string CampfireEnableAltOS(int size_gb) override;
   std::string CampfireDisableAltOS() override;
@@ -225,6 +229,7 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::unique_ptr<U2fTool> u2f_tool_;
   std::unique_ptr<VerifyRoTool> verify_ro_tool_;
   std::unique_ptr<SimpleServiceTool> vm_concierge_tool_;
+  std::unique_ptr<SimpleServiceTool> vm_plugin_dispatcher_tool_;
   std::unique_ptr<WifiPowerTool> wifi_power_tool_;
   std::unique_ptr<WiMaxStatusTool> wimax_status_tool_;
 };

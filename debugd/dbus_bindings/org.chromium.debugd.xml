@@ -901,6 +901,22 @@
       </tp:docstring>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="StartVmPluginDispatcher">
+      <tp:docstring>
+        Starts the VM Plugin Dispatcher service.  Returns true if the service was
+        successfully started and is available over dbus, false otherwise.
+      </tp:docstring>
+      <arg name="status" type="b" direction="out">
+        Whether the VM Plugin dispather service is ready to handle requests.
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+    </method>
+    <method name="StopVmPluginDispatcher">
+      <tp:docstring>
+        Stops the VM Plugin dispatcher service.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
     <method name="SetRlzPingSent">
       <tp:docstring>
         Sets should_send_rlz_ping in RW_VPD to 0. Upon success, proceeds to
