@@ -308,8 +308,11 @@ class CrosConfigBaseImpl(object):
           # Exclude incompatible properties for now until the migration
           # is done and we aren't trying to diff properties any longer.
           if schema_property not in INCOMPATIBLE_PROPERTIES.get(path, []):
-            value_map['%s::%s' % (path, schema_property)] = device.GetProperty(
-                path, schema_property)
+            prop_value = device.GetProperty(path, schema_property)
+            # Only dump populated values; this makes it so the config dumps
+            # don't need to be updated when new schema attributes are added.
+            if prop_value:
+              value_map['%s::%s' % (path, schema_property)] = prop_value
       result['GetProperty_%s' % device.GetName()] = value_map
     return result
 
