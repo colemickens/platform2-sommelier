@@ -704,13 +704,12 @@ std::shared_ptr<GraphConfig> GraphConfigManager::getBaseGraphConfig(MediaType ty
     std::shared_ptr<GraphConfig> gc = nullptr;
 
     if (type == CIO2) {
-        // select graph config for CIO2 in mGraphConfigMap
-        for (auto& it : mGraphConfigMap) {
-            /* graph config from either video/still pipe is workable
-             * as they have the same CIO2 graph config */
-            gc = it.second;
-            break;
-        }
+        /*
+         * select graph config for CIO2 in mGraphConfigMap
+         * graph config from either video/still pipe is workable
+         * as they have the same CIO2 graph config
+         */
+        gc = mGraphConfigMap.begin()->second;
     } else if (type == IMGU_VIDEO || type == IMGU_STILL) {
         gc = mGraphConfigMap[type];
     } else {
