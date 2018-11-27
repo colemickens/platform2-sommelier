@@ -14463,7 +14463,7 @@ mvno {
     uuid : "211ef5b2-97b3-4d07-a0de-25e1a14176e6"
     requires_roaming : true
     localized_name {
-      name : "Fi Network"
+      name : "Google Fi"
     }
     mobile_apn {
       apn : "h2g2"
