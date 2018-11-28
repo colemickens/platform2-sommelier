@@ -27,19 +27,25 @@ using testing::UnorderedElementsAre;
 
 namespace diagnostics {
 
+TEST(DiagnosticsdGrpcServiceConstantsTest, PropertiesPath) {
+  EXPECT_EQ(
+      base::FilePath(kEcDriverSysfsPath).Append(kEcDriverSysfsPropertiesPath),
+      base::FilePath("sys/bus/platform/devices/GOOG000C:00/properties/"));
+}
+
+TEST(DiagnosticsdGrpcServiceConstantsTest, RawFilePath) {
+  EXPECT_EQ(base::FilePath(kEcDriverSysfsPath).Append(kEcRunCommandFilePath),
+            base::FilePath("sys/bus/platform/devices/GOOG000C:00/raw"));
+}
+
 namespace {
 
-// Folder path exposed by sysfs EC driver.
-constexpr char kEcDriverSysfsPath[] = "sys/bus/platform/devices/GOOG000C:00/";
+constexpr char kFakeFileContentsChars[] = "\0fake row 1\nfake row 2\n\0\377";
 
-// Folder path to EC properties exposed by sysfs EC driver. Relative path to
-// |kEcDriverSysfsPath|.
-constexpr char kEcDriverSysfsPropertiesPath[] = "properties/";
-
-// EC property |global_mic_mute_led|.
-constexpr char kEcPropertyGlobalMicMuteLed[] = "global_mic_mute_led";
-
-constexpr char kFakeFileContentsChars[] = "\0fake row 1\nfake row 2\n";
+std::string FakeFileContents() {
+  return std::string(std::begin(kFakeFileContentsChars),
+                     std::end(kFakeFileContentsChars));
+}
 
 template <class T>
 base::Callback<void(std::unique_ptr<T>)> GrpcCallbackResponseSaver(
@@ -50,6 +56,14 @@ base::Callback<void(std::unique_ptr<T>)> GrpcCallbackResponseSaver(
         ASSERT_TRUE(*response);
       },
       base::Unretained(response));
+}
+
+std::unique_ptr<grpc_api::RunEcCommandResponse> MakeRunEcCommandResponse(
+    grpc_api::RunEcCommandResponse::Status status, const std::string& payload) {
+  auto response = std::make_unique<grpc_api::RunEcCommandResponse>();
+  response->set_status(status);
+  response->set_payload(payload);
+  return response;
 }
 
 std::unique_ptr<grpc_api::GetEcPropertyResponse> MakeEcPropertyResponse(
@@ -67,9 +81,6 @@ class MockDiagnosticsdGrpcServiceDelegate
 // Tests for the DiagnosticsdGrpcService class.
 class DiagnosticsdGrpcServiceTest : public testing::Test {
  protected:
-  const std::string kFakeFileContents{std::begin(kFakeFileContentsChars),
-                                      std::end(kFakeFileContentsChars)};
-
   DiagnosticsdGrpcServiceTest() = default;
 
   void SetUp() override {
@@ -91,6 +102,17 @@ class DiagnosticsdGrpcServiceTest : public testing::Test {
     ASSERT_TRUE(response);
     file_dumps->assign(response->file_dump().begin(),
                        response->file_dump().end());
+  }
+
+  void ExecuteRunEcCommand(
+      const std::string request_payload,
+      std::unique_ptr<grpc_api::RunEcCommandResponse>* response) {
+    auto request = std::make_unique<grpc_api::RunEcCommandRequest>();
+    request->set_payload(request_payload);
+
+    service()->RunEcCommand(std::move(request),
+                            GrpcCallbackResponseSaver(response));
+    ASSERT_TRUE(response);
   }
 
   void ExecuteGetEcProperty(
@@ -133,6 +155,18 @@ TEST_F(DiagnosticsdGrpcServiceTest, GetProcDataUnsetType) {
   EXPECT_TRUE(file_dumps.empty())
       << "Obtained: "
       << GetProtosRangeDebugString(file_dumps.begin(), file_dumps.end());
+}
+
+// Test that RunEcCommand() response contains expected |status| and |payload|
+// field values.
+TEST_F(DiagnosticsdGrpcServiceTest, RunEcCommandErrorAccessingDriver) {
+  std::unique_ptr<grpc_api::RunEcCommandResponse> response;
+  ExecuteRunEcCommand(FakeFileContents(), &response);
+  ASSERT_TRUE(response);
+  auto expected_response = MakeRunEcCommandResponse(
+      grpc_api::RunEcCommandResponse::STATUS_ERROR_ACCESSING_DRIVER, "");
+  EXPECT_THAT(*response, ProtobufEquals(*expected_response))
+      << "Actual response: {" << response->ShortDebugString() << "}";
 }
 
 // Test that GetEcProperty() returns invalid property error status when
@@ -185,13 +219,13 @@ class SingleProcFileDiagnosticsdGrpcServiceTest
 // when the file exists.
 TEST_P(SingleProcFileDiagnosticsdGrpcServiceTest, Basic) {
   EXPECT_TRUE(
-      WriteFileAndCreateParentDirs(absolute_file_path(), kFakeFileContents));
+      WriteFileAndCreateParentDirs(absolute_file_path(), FakeFileContents()));
 
   std::vector<grpc_api::FileDump> file_dumps;
   ExecuteGetProcData(proc_data_request_type(), &file_dumps);
 
   const auto kExpectedFileDump = MakeFileDump(
-      relative_file_path(), relative_file_path(), kFakeFileContents);
+      relative_file_path(), relative_file_path(), FakeFileContents());
   EXPECT_THAT(file_dumps,
               UnorderedElementsAre(ProtobufEquals(kExpectedFileDump)))
       << GetProtosRangeDebugString(file_dumps.begin(), file_dumps.end());
@@ -218,6 +252,72 @@ INSTANTIATE_TEST_CASE_P(
         std::tie(grpc_api::GetProcDataRequest::FILE_NET_NETSTAT,
                  "proc/net/netstat"),
         std::tie(grpc_api::GetProcDataRequest::FILE_NET_DEV, "proc/net/dev")));
+
+namespace {
+
+// Tests for the RunEcCommand() method of DiagnosticsdGrpcServiceTest.
+//
+// This is a parameterized test with the following parameters:
+// * |request_payload| - payload of the RunEcCommand() request;
+// * |expected_response_status| - expected RunEcCommand() response status;
+// * |expected_response_payload| - expected RunEcCommand() response payload.
+class RunEcCommandDiagnosticsdGrpcServiceTest
+    : public DiagnosticsdGrpcServiceTest,
+      public testing::WithParamInterface<std::tuple<
+          std::string /* request_payload */,
+          grpc_api::RunEcCommandResponse::Status /* expected_response_status */,
+          std::string /* expected_response_payload */>> {
+ protected:
+  std::string request_payload() const { return std::get<0>(GetParam()); }
+
+  grpc_api::RunEcCommandResponse::Status expected_response_status() const {
+    return std::get<1>(GetParam());
+  }
+
+  std::string expected_response_payload() const {
+    return std::get<2>(GetParam());
+  }
+
+  base::FilePath sysfs_raw_file() const {
+    return temp_dir_path()
+        .Append(kEcDriverSysfsPath)
+        .Append(kEcRunCommandFilePath);
+  }
+};
+
+}  // namespace
+
+// Test that RunEcCommand() response contains expected |status| and |payload|
+// field values.
+TEST_P(RunEcCommandDiagnosticsdGrpcServiceTest, Base) {
+  EXPECT_TRUE(WriteFileAndCreateParentDirs(sysfs_raw_file(), ""));
+  std::unique_ptr<grpc_api::RunEcCommandResponse> response;
+  ExecuteRunEcCommand(request_payload(), &response);
+  ASSERT_TRUE(response);
+  auto expected_response = MakeRunEcCommandResponse(
+      expected_response_status(), expected_response_payload());
+  EXPECT_THAT(*response, ProtobufEquals(*expected_response))
+      << "Actual response: {" << response->ShortDebugString() << "}";
+}
+
+INSTANTIATE_TEST_CASE_P(
+    ,
+    RunEcCommandDiagnosticsdGrpcServiceTest,
+    testing::Values(
+        std::make_tuple(FakeFileContents(),
+                        grpc_api::RunEcCommandResponse::STATUS_OK,
+                        FakeFileContents()),
+        std::make_tuple(std::string("A", kRunEcCommandPayloadMaxSize),
+                        grpc_api::RunEcCommandResponse::STATUS_OK,
+                        std::string("A", kRunEcCommandPayloadMaxSize)),
+        std::make_tuple(
+            "",
+            grpc_api::RunEcCommandResponse::STATUS_ERROR_INPUT_PAYLOAD_EMPTY,
+            ""),
+        std::make_tuple(std::string("A", kRunEcCommandPayloadMaxSize + 1),
+                        grpc_api::RunEcCommandResponse::
+                            STATUS_ERROR_INPUT_PAYLOAD_MAX_SIZE_EXCEEDED,
+                        "")));
 
 namespace {
 
@@ -255,12 +355,12 @@ class GetEcPropertyDiagnosticsdGrpcServiceTest
 // sysfs file exists.
 TEST_P(GetEcPropertyDiagnosticsdGrpcServiceTest, SysfsFileExists) {
   EXPECT_TRUE(
-      WriteFileAndCreateParentDirs(sysfs_file_path(), kFakeFileContents));
+      WriteFileAndCreateParentDirs(sysfs_file_path(), FakeFileContents()));
   std::unique_ptr<grpc_api::GetEcPropertyResponse> response;
   ExecuteGetEcProperty(ec_property(), &response);
   ASSERT_TRUE(response);
   auto expected_response = MakeEcPropertyResponse(
-      grpc_api::GetEcPropertyResponse::STATUS_OK, kFakeFileContents);
+      grpc_api::GetEcPropertyResponse::STATUS_OK, FakeFileContents());
   EXPECT_THAT(*response, ProtobufEquals(*expected_response))
       << "Actual response: {" << response->ShortDebugString() << "}";
 }

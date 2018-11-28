@@ -11,17 +11,28 @@
 
 namespace diagnostics {
 
-namespace {
-
 // Folder path exposed by sysfs EC driver.
-constexpr char kEcDriverSysfsPath[] = "sys/bus/platform/devices/GOOG000C:00/";
+const char kEcDriverSysfsPath[] = "sys/bus/platform/devices/GOOG000C:00/";
 
 // Folder path to EC properties exposed by sysfs EC driver. Relative path to
 // |kEcDriverSysfsPath|.
-constexpr char kEcDriverSysfsPropertiesPath[] = "properties/";
+const char kEcDriverSysfsPropertiesPath[] = "properties/";
 
 // EC property |global_mic_mute_led|.
-constexpr char kEcPropertyGlobalMicMuteLed[] = "global_mic_mute_led";
+const char kEcPropertyGlobalMicMuteLed[] = "global_mic_mute_led";
+
+// Max RunEcCommand request payload size.
+//
+// TODO(lamzin): replace by real payload max size when EC driver will be ready.
+const int64_t kRunEcCommandPayloadMaxSize = 32;
+
+// File for running EC command exposed by sysfs EC driver. Relative path to
+// |kEcDriverSysfsPath|.
+//
+// TODO(lamzin): replace by real file path when EC driver will be ready.
+const char kEcRunCommandFilePath[] = "raw";
+
+namespace {
 
 // Makes a dump of the specified file. Returns whether the dumping succeeded.
 bool MakeFileDump(const base::FilePath& file_path,
@@ -98,6 +109,56 @@ void DiagnosticsdGrpcService::GetProcData(
   callback.Run(std::move(reply));
 }
 
+void DiagnosticsdGrpcService::RunEcCommand(
+    std::unique_ptr<grpc_api::RunEcCommandRequest> request,
+    const RunEcCommandCallback& callback) {
+  DCHECK(request);
+  auto reply = std::make_unique<grpc_api::RunEcCommandResponse>();
+  if (request->payload().empty()) {
+    LOG(ERROR) << "RunEcCommand gRPC request payload is empty";
+    reply->set_status(
+        grpc_api::RunEcCommandResponse::STATUS_ERROR_INPUT_PAYLOAD_EMPTY);
+    callback.Run(std::move(reply));
+    return;
+  }
+  if (request->payload().length() > kRunEcCommandPayloadMaxSize) {
+    LOG(ERROR) << "RunEcCommand gRPC request payload size is exceeded: "
+               << request->payload().length() << " vs "
+               << kRunEcCommandPayloadMaxSize << " allowed";
+    reply->set_status(grpc_api::RunEcCommandResponse::
+                          STATUS_ERROR_INPUT_PAYLOAD_MAX_SIZE_EXCEEDED);
+    callback.Run(std::move(reply));
+    return;
+  }
+
+  base::FilePath raw_file_path =
+      root_dir_.Append(kEcDriverSysfsPath).Append(kEcRunCommandFilePath);
+
+  int write_result = base::WriteFile(raw_file_path, request->payload().c_str(),
+                                     request->payload().length());
+  if (write_result != request->payload().length()) {
+    VPLOG(2) << "RunEcCommand gRPC can not write request payload to the raw "
+             << "file: " << raw_file_path.value();
+    reply->set_status(
+        grpc_api::RunEcCommandResponse::STATUS_ERROR_ACCESSING_DRIVER);
+    callback.Run(std::move(reply));
+    return;
+  }
+
+  // Reply payload must be empty in case of any failure.
+  std::string file_content;
+  if (base::ReadFileToString(raw_file_path, &file_content)) {
+    reply->set_status(grpc_api::RunEcCommandResponse::STATUS_OK);
+    reply->set_payload(std::move(file_content));
+  } else {
+    VPLOG(2) << "RunEcCommand gRPC can not read EC command response from raw "
+             << "file: " << raw_file_path.value();
+    reply->set_status(
+        grpc_api::RunEcCommandResponse::STATUS_ERROR_ACCESSING_DRIVER);
+  }
+  callback.Run(std::move(reply));
+}
+
 void DiagnosticsdGrpcService::GetEcProperty(
     std::unique_ptr<grpc_api::GetEcPropertyRequest> request,
     const GetEcPropertyCallback& callback) {
@@ -122,11 +183,7 @@ void DiagnosticsdGrpcService::GetEcProperty(
   base::FilePath sysfs_file_path = root_dir_.Append(kEcDriverSysfsPath)
                                        .Append(kEcDriverSysfsPropertiesPath)
                                        .Append(property_file_path);
-  // Assign |file_content| to |reply->payload| only in case of successfull file
-  // reading. If case of failed reading |reply->payload| should to be empty.
-  //
-  // |base::ReadFileToString| can store part of file in |file_content| until
-  // I/O error was occured.
+  // Reply payload must be empty in case of any failure.
   std::string file_content;
   if (base::ReadFileToString(sysfs_file_path, &file_content)) {
     reply->set_status(grpc_api::GetEcPropertyResponse::STATUS_OK);

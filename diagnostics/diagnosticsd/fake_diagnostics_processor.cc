@@ -42,6 +42,13 @@ void FakeDiagnosticsProcessor::GetProcData(
       &grpc_api::Diagnosticsd::Stub::AsyncGetProcData, request, callback);
 }
 
+void FakeDiagnosticsProcessor::RunEcCommand(
+    const grpc_api::RunEcCommandRequest& request,
+    RunEcCommandCallback callback) {
+  diagnosticsd_grpc_client_.CallRpc(
+      &grpc_api::Diagnosticsd::Stub::AsyncRunEcCommand, request, callback);
+}
+
 void FakeDiagnosticsProcessor::GetEcProperty(
     const grpc_api::GetEcPropertyRequest& request,
     GetEcPropertyCallback callback) {

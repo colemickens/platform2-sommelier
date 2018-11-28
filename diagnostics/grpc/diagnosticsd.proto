@@ -208,8 +208,6 @@ message PerformWebRequestResponse {
 message RunEcCommandRequest {
   // Data blob with encoded EC command. The maximum allowed size is 32 bytes.
   // Should to be non-empty.
-  //
-  // TODO(lamzin): add payload filtering.
   bytes payload = 1;
 }
 
