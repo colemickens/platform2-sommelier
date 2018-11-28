@@ -52,6 +52,7 @@ extern const char kSparseFileDir[];
 extern const char kAndroidDataDir[];
 extern const char kCacheDir[];
 extern const char kDownloadsDir[];
+extern const char kMyFilesDir[];
 extern const char kGCacheDir[];
 // subdir of kGCacheDir
 extern const char kGCacheVersion1Dir[];
@@ -331,8 +332,8 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   FRIEND_TEST(ServiceInterfaceTest, CheckAsyncTestCredentials);
   friend class MakeTests;
   friend class MountTest;
-  friend class EphemeralTest;
   friend class ChapsDirectoryTest;
+  friend class EphemeralNoUserSystemTest;
 
  private:
   // Returns the names of all tracked subdirectories.
@@ -348,6 +349,10 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //            no need in migration
   virtual bool CreateTrackedSubdirectories(const Credentials& credentials,
                                            bool is_new) const;
+
+  // Bind mounts |user_home|/Downloads to |user_home|/MyFiles/Downloads so Files
+  // app can manage MyFiles as user volume instead of just Downloads.
+  bool BindMyFilesDownloads(const base::FilePath& user_home);
 
   // Creates the cryptohome salt, key, (and vault if necessary) for the
   // specified credentials.
@@ -859,6 +864,12 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   FRIEND_TEST(MountTest, BothFlagsMigrationTest);
   FRIEND_TEST(MountTest, CreateTrackedSubdirectories);
   FRIEND_TEST(MountTest, CreateTrackedSubdirectoriesReplaceExistingDir);
+  FRIEND_TEST(MountTest, BindMyFilesDownloadsSuccess);
+  FRIEND_TEST(MountTest, BindMyFilesDownloadsMissingUserHome);
+  FRIEND_TEST(MountTest, BindMyFilesDownloadsMissingDownloads);
+  FRIEND_TEST(MountTest, BindMyFilesDownloadsMissingMyFilesDownloads);
+  FRIEND_TEST(EphemeralNoUserSystemTest, CreateMyFilesDownloads);
+  FRIEND_TEST(EphemeralNoUserSystemTest, CreateMyFilesDownloadsAlreadyExists);
 
   DISALLOW_COPY_AND_ASSIGN(Mount);
 };

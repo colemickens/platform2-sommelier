@@ -75,6 +75,7 @@ const char kIncognitoUser[] = "incognito";
 // vault, that are visible even if not mounted. Contents is still encrypted.
 const char kCacheDir[] = "Cache";
 const char kDownloadsDir[] = "Downloads";
+const char kMyFilesDir[] = "MyFiles";
 const char kGCacheDir[] = "GCache";
 const char kGCacheVersion1Dir[] = "v1";
 const char kGCacheVersion2Dir[] = "v2";
@@ -790,16 +791,21 @@ bool Mount::MountEphemeralCryptohomeInner(const std::string& username) {
 bool Mount::SetUpEphemeralCryptohome(const FilePath& source_path) {
   CopySkeleton(source_path);
 
-  // Create the Downloads directory if it does not exist so that it can later be
-  // made group accessible when SetupGroupAccess() is called.
-  FilePath downloads_path =
-      FilePath(source_path).Append(kDownloadsDir);
-  if (!platform_->DirectoryExists(downloads_path)) {
-    if (!platform_->CreateDirectory(downloads_path) ||
-        !platform_->SetOwnership(
-            downloads_path, default_user_, default_group_, true)) {
-      LOG(ERROR) << "Couldn't create user Downloads directory: "
-                 << downloads_path.value();
+  // Create the Downloads, MyFiles and MyFiles/Downloads directories if they
+  // don't exist so they can be made group accessible when SetupGroupAccess() is
+  // called.
+  const FilePath user_files_paths[] = {
+      FilePath(source_path).Append(kDownloadsDir),
+      FilePath(source_path).Append(kMyFilesDir),
+      FilePath(source_path).Append(kMyFilesDir).Append(kDownloadsDir),
+  };
+  for (const auto& path : user_files_paths) {
+    if (platform_->DirectoryExists(path))
+        continue;
+
+    if (!platform_->CreateDirectory(path) ||
+        !platform_->SetOwnership(path, default_user_, default_group_, true)) {
+      LOG(ERROR) << "Couldn't create user path directory: " << path.value();
       return false;
     }
   }
@@ -987,6 +993,8 @@ std::vector<FilePath> Mount::GetTrackedSubdirectories() {
       FilePath(kUserHomeSuffix),
       FilePath(kUserHomeSuffix).Append(kCacheDir),
       FilePath(kUserHomeSuffix).Append(kDownloadsDir),
+      FilePath(kUserHomeSuffix).Append(kMyFilesDir),
+      FilePath(kUserHomeSuffix).Append(kMyFilesDir).Append(kDownloadsDir),
       FilePath(kUserHomeSuffix).Append(kGCacheDir),
       FilePath(kUserHomeSuffix).Append(kGCacheDir).Append(kGCacheVersion1Dir),
       FilePath(kUserHomeSuffix).Append(kGCacheDir).Append(kGCacheVersion2Dir),
@@ -1068,6 +1076,34 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
   return result;
 }
 
+bool Mount::BindMyFilesDownloads(const base::FilePath& user_home) {
+  if (!platform_->DirectoryExists(user_home)) {
+    LOG(ERROR) << "Failed to bind MyFiles/Downloads missing directory: "
+               << user_home.value();
+    return false;
+  }
+
+  const FilePath downloads = user_home.Append(kDownloadsDir);
+  if (!platform_->DirectoryExists(downloads)) {
+    LOG(INFO) << "Failed to bind MyFiles/Downloads missing directory: "
+              << downloads.value();
+    return false;
+  }
+
+  const FilePath downloads_in_myfiles =
+      user_home.Append(kMyFilesDir).Append(kDownloadsDir);
+  if (!platform_->DirectoryExists(downloads_in_myfiles)) {
+    LOG(INFO) << "Failed to bind MyFiles/Downloads, missing directory: "
+              << downloads_in_myfiles.value();
+    return false;
+  }
+
+  if (!RememberBind(downloads, downloads_in_myfiles))
+    return false;
+
+  return true;
+}
+
 bool Mount::UpdateCurrentUserActivityTimestamp(int time_shift_sec) {
   std::string obfuscated_username;
   current_user_->GetObfuscatedUsername(&obfuscated_username);
@@ -1097,6 +1133,8 @@ bool Mount::SetupGroupAccess(const FilePath& home_dir) const {
   // Make the following directories group accessible by other system daemons:
   //   {home_dir}
   //   {home_dir}/Downloads
+  //   {home_dir}/MyFiles
+  //   {home_dir}/MyFiles/Downloads
   //   {home_dir}/GCache (only if it exists)
   //   {home_dir}/GCache/v1 (only if it exists)
   //
@@ -1110,6 +1148,8 @@ bool Mount::SetupGroupAccess(const FilePath& home_dir) const {
   } kGroupAccessiblePaths[] = {
       {home_dir},
       {home_dir.Append(kDownloadsDir)},
+      {home_dir.Append(kMyFilesDir)},
+      {home_dir.Append(kMyFilesDir).Append(kDownloadsDir)},
       {home_dir.Append(kGCacheDir), true},
       {home_dir.Append(kGCacheDir).Append(kGCacheVersion1Dir), true},
       {home_dir.Append(kGCacheDir).Append(kGCacheVersion2Dir), true, true},
@@ -1998,6 +2038,18 @@ bool Mount::MountHomesAndDaemonStores(const std::string& username,
   // Mount /home/root/<user_hash>.
   const FilePath root_multi_home = GetRootPath(username);
   if (!RememberBind(root_home, root_multi_home))
+    return false;
+
+  // Mount Downloads to MyFiles/Downloads in:
+  //  - /home/chronos/u-<user_hash>
+  //  - /home/user/<user_hash>
+  //  - /home/chronos/user
+  if (!(BindMyFilesDownloads(new_user_path) &&
+        BindMyFilesDownloads(user_multi_home))) {
+    return false;
+  }
+
+  if (legacy_mount_ && !BindMyFilesDownloads(FilePath(kDefaultHomeDir)))
     return false;
 
   // Mount directories used by daemons to store per-user data.

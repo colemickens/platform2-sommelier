@@ -53,6 +53,7 @@ using base::FilePath;
 using base::PlatformThread;
 using brillo::SecureBlob;
 using ::testing::_;
+using ::testing::AnyOf;
 using ::testing::AtLeast;
 using ::testing::DoAll;
 using ::testing::EndsWith;
@@ -540,8 +541,11 @@ const Mounts kShadowMounts[] = {
   { FilePath("/home/.shadow/b"), FilePath("/home/user/1")},
   { FilePath("/home/.shadow/a"), FilePath("/home/chronos/user")},
   { FilePath("/home/.shadow/b"), FilePath("/home/root/1")},
+  { FilePath("/home/user/b/Downloads"), FilePath("/home/user/b/MyFiles/Downloads")},
+  { FilePath("/home/chronos/u-b/Downloads"), FilePath("/home/chronos/u-b/MyFiles/Downloads")},
+  { FilePath("/home/chronos/user/Downloads"), FilePath("/home/chronos/user/MyFiles/Downloads")},
 };
-const int kShadowMountsCount = 5;
+const int kShadowMountsCount = 8;
 
 const Mounts kLoopDevMounts[] = {
     { FilePath("/dev/loop7"), FilePath("/run/cryptohome/ephemeral_mount/1")},
@@ -720,6 +724,7 @@ TEST_F(ServiceTest, CleanUpStale_EmptyMap_OpenLegacy_ShadowOnly) {
   // Check that when we have a bunch of stale shadow mounts, no active mounts,
   // and some open filehandles to the legacy homedir, all mounts without
   // filehandles are unmounted.
+
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))
     .WillOnce(Invoke(StaleShadowMounts));
   EXPECT_CALL(platform_, GetAttachedLoopDevices())
@@ -738,10 +743,13 @@ TEST_F(ServiceTest, CleanUpStale_EmptyMap_OpenLegacy_ShadowOnly) {
       GetProcessesWithOpenFiles(FilePath("/home/chronos/user"), _))
     .Times(1)
     .WillRepeatedly(SetArgPointee<1>(processes));
-  EXPECT_CALL(platform_,
-      Unmount(Property(&FilePath::value, EndsWith("/1")), true, _))
-    .Times(2)
-    .WillRepeatedly(Return(true));
+  EXPECT_CALL(
+      platform_,
+      Unmount(Property(&FilePath::value,
+                       AnyOf(EndsWith("/1"), EndsWith("/MyFiles/Downloads"))),
+              true, _))
+      .Times(5)
+      .WillRepeatedly(Return(true));
   EXPECT_TRUE(service_.CleanUpStaleMounts(false));
 }
 
@@ -808,6 +816,12 @@ TEST_F(ServiceTestNotInitialized,
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, Unmount(FilePath("/home/chronos/user"), true, _))
     .WillOnce(Return(true));
+
+  EXPECT_CALL(platform_, Unmount(Property(&FilePath::value,
+                                          EndsWith("/MyFiles/Downloads")),
+                                 true, _))
+      .Times(3)
+      .WillRepeatedly(Return(true));
 
   std::vector<std::string> fake_token_list;
   fake_token_list.push_back("/home/chronos/user/token");

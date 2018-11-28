@@ -160,5 +160,7 @@ is_arc_nyc(`
 /lib/modules(/.*)?                     u:object_r:cros_kernel_modules_file:s0
 /lib/modules/.*\.ko                    u:object_r:cros_kernel_modules_ko_file:s0
 
-# Downloads files
+# Downloads files legacy location (in the user's profile root):
 /home/chronos/user/Downloads(/.*)*   u:object_r:cros_downloads_file:s0
+# MyFiles is content managed by users same as Downloads:
+/home/chronos/user/MyFiles(/.*)*   u:object_r:cros_downloads_file:s0
