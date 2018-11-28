@@ -20,11 +20,13 @@ use backends::Backend;
 use proto::system_api::cicerone_service::{self, *};
 use proto::system_api::seneschal_service::*;
 use proto::system_api::service::*;
+use unsafe_misc::get_free_disk_space;
 
 const IMAGE_TYPE_QCOW2: &str = "qcow2";
 const QCOW_IMAGE_EXTENSION: &str = ".qcow2";
 const REMOVABLE_MEDIA_ROOT: &str = "/media/removable";
 const CRYPTOHOME_USER: &str = "/home/user";
+const CRYPTOHOME_ROOT: &str = "/home";
 const DOWNLOADS_DIR: &str = "Downloads";
 const MNT_SHARED_ROOT: &str = "/mnt/shared";
 
@@ -99,6 +101,7 @@ enum ChromeOSError {
     FailedComponentUpdater(String),
     FailedCreateContainer(CreateLxdContainerResponse_Status, String),
     FailedCreateContainerSignal(LxdContainerCreatedSignal_Status, String),
+    FailedGetFreeDiskSpace(i32),
     FailedGetVmInfo,
     FailedListDiskImages(String),
     FailedSetupContainerUser(SetUpLxdContainerUserResponse_Status, String),
@@ -129,6 +132,7 @@ impl fmt::Display for ChromeOSError {
             FailedCreateContainerSignal(s, reason) => {
                 write!(f, "failed to create container: `{:?}`: {}", s, reason)
             }
+            FailedGetFreeDiskSpace(e) => write!(f, "failed to get free disk space: {}", e),
             FailedGetVmInfo => write!(f, "failed to get vm info"),
             FailedSetupContainerUser(s, reason) => {
                 write!(f, "failed to setup container user: `{:?}`: {}", s, reason)
@@ -667,8 +671,8 @@ impl Backend for ChromeOS {
 
     fn vm_start(&mut self, name: &str, user_id_hash: &str) -> Result<(), Box<Error>> {
         self.start_concierge()?;
-        // TODO(zachr): use 90% of free space on /home
-        let disk_size = (5 << 30) & DISK_SIZE_MASK;
+        let free_size = get_free_disk_space(CRYPTOHOME_ROOT).map_err(FailedGetFreeDiskSpace)?;
+        let disk_size = (free_size.saturating_mul(9) / 10) & DISK_SIZE_MASK;
         let disk_image_path = self.create_disk_image(name, user_id_hash, disk_size)?;
         self.start_vm_with_disk(name, user_id_hash, disk_image_path)
     }
