@@ -243,17 +243,17 @@ typedef gboolean (*ProtoDBusMethod)(
 typedef DBusGProxyCall* (*ProtoDBusAsyncMethod)(
     DBusGProxy*, const GArray*, ProtoDBusReplyMethod, gpointer);
 
-brillo::Blob GetSystemSalt(const brillo::dbus::Proxy& proxy) {
+brillo::SecureBlob GetSystemSalt(const brillo::dbus::Proxy& proxy) {
   brillo::glib::ScopedError error;
   brillo::glib::ScopedArray salt;
   if (!org_chromium_CryptohomeInterface_get_system_salt(proxy.gproxy(),
       &brillo::Resetter(&salt).lvalue(),
       &brillo::Resetter(&error).lvalue())) {
     LOG(ERROR) << "GetSystemSalt failed: " << error->message;
-    return brillo::Blob();
+    return brillo::SecureBlob();
   }
 
-  brillo::Blob system_salt;
+  brillo::SecureBlob system_salt;
   system_salt.resize(salt->len);
   if (system_salt.size() == salt->len) {
     memcpy(system_salt.data(), static_cast<const void*>(salt->data), salt->len);

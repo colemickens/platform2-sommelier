@@ -14,7 +14,7 @@
 namespace cryptohome {
 
 std::string BuildObfuscatedUsername(const std::string& username,
-                                    const brillo::Blob& system_salt) {
+                                    const brillo::SecureBlob& system_salt) {
   CHECK(!username.empty());
   SHA_CTX ctx;
   SHA1_Init(&ctx);

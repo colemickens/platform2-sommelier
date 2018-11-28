@@ -33,7 +33,8 @@ class UsernamePasskey : public Credentials {
   // Overridden from cryptohome::Credentials
   std::string username() const;
   const KeyData& key_data() const;
-  std::string GetObfuscatedUsername(const brillo::Blob &system_salt) const;
+  std::string GetObfuscatedUsername(
+      const brillo::SecureBlob &system_salt) const;
   void GetPasskey(brillo::SecureBlob* passkey) const;
 
  private:

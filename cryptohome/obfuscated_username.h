@@ -15,7 +15,7 @@ namespace cryptohome {
 // the user's stateful data (and maybe used for other reasons at some point.)
 // The |username| must be non-empty.
 std::string BuildObfuscatedUsername(const std::string& username,
-                                    const brillo::Blob& system_salt);
+                                    const brillo::SecureBlob& system_salt);
 
 }  // namespace cryptohome
 

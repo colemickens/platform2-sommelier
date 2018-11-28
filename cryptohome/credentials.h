@@ -31,7 +31,7 @@ class Credentials {
   // containing the user's stateful data (and maybe used for other reasons
   // at some point.)
   virtual std::string GetObfuscatedUsername(
-      const brillo::Blob &system_salt) const = 0;
+      const brillo::SecureBlob &system_salt) const = 0;
 
   // Returns the user's passkey
   //

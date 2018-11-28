@@ -18,8 +18,9 @@ const char kUsername[] = "fakeuser";
 const char kSystemSaltHex[] = "01234567890123456789";
 
 TEST(ObfuscatedUsername, BuildObfuscatedUsername) {
-  brillo::Blob system_salt;
-  EXPECT_TRUE(base::HexStringToBytes(kSystemSaltHex, &system_salt));
+  brillo::SecureBlob system_salt;
+  EXPECT_TRUE(brillo::SecureBlob::HexStringToSecureBlob(kSystemSaltHex,
+                                                        &system_salt));
   EXPECT_EQ("bb0ae3fcd181eefb861b4f0ee147a316e51d9f04",
             BuildObfuscatedUsername(kUsername, system_salt));
 }

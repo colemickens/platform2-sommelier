@@ -43,8 +43,9 @@ TEST(UsernamePasskeyTest, UsernameTest) {
 TEST(UsernamePasskeyTest, GetObfuscatedUsernameTest) {
   UsernamePasskey up(kFakeUser, SecureBlob(kFakePasskey));
 
-  brillo::Blob fake_salt;
-  EXPECT_TRUE(base::HexStringToBytes(kFakeSystemSalt, &fake_salt));
+  brillo::SecureBlob fake_salt;
+  EXPECT_TRUE(brillo::SecureBlob::HexStringToSecureBlob(kFakeSystemSalt,
+                                                        &fake_salt));
 
   EXPECT_EQ("bb0ae3fcd181eefb861b4f0ee147a316e51d9f04",
             up.GetObfuscatedUsername(fake_salt));

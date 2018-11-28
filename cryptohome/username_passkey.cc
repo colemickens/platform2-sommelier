@@ -43,7 +43,7 @@ std::string UsernamePasskey::username() const {
 }
 
 std::string UsernamePasskey::GetObfuscatedUsername(
-    const brillo::Blob &system_salt) const {
+    const brillo::SecureBlob &system_salt) const {
   return BuildObfuscatedUsername(username_, system_salt);
 }
 
