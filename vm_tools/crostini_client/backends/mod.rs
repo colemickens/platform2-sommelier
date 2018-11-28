@@ -64,6 +64,7 @@ macro_rules! impl_backend {
         }
 
         /// A backend that has no side effects and returns an error for every method call.
+        #[derive(Default)]
         pub struct DummyUnimplementedBackend;
         impl DummyUnimplementedBackend {
             /// Creates a dummy backend with no implementations.
@@ -95,6 +96,7 @@ macro_rules! impl_backend {
 
         /// A backend that always returns an `Ok` result with a default value and has no side
         /// effects.
+        #[derive(Default)]
         pub struct DummyDefaultBackend;
         impl DummyDefaultBackend {
             pub fn new() -> DummyDefaultBackend {

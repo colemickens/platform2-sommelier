@@ -32,6 +32,7 @@ const MNT_SHARED_ROOT: &str = "/mnt/shared";
 const DISK_SIZE_MASK: u64 = !511;
 const DEFAULT_TIMEOUT_MS: i32 = 80 * 1000;
 const EXPORT_DISK_TIMEOUT_MS: i32 = 15 * 60 * 1000;
+const COMPONENT_UPDATER_TIMEOUT_MS: i32 = 120 * 1000;
 
 // debugd dbus-constants.h
 const DEBUGD_INTERFACE: &str = "org.chromium.debugd";
@@ -154,7 +155,7 @@ impl fmt::Debug for ChromeOSError {
 
 impl Error for ChromeOSError {}
 
-fn dbus_message_to_proto<T: ProtoMessage>(message: Message) -> Result<T, Box<Error>> {
+fn dbus_message_to_proto<T: ProtoMessage>(message: &Message) -> Result<T, Box<Error>> {
     let raw_buffer: Vec<u8> = message.read1()?;
     let mut proto = T::new();
     proto.merge_from_bytes(&raw_buffer)?;
@@ -196,7 +197,7 @@ impl ChromeOS {
         let message = self
             .connection
             .send_with_reply_and_block(method, timeout_millis)?;
-        dbus_message_to_proto(message)
+        dbus_message_to_proto(&message)
     }
 
     fn protobus_wait_for_signal_timeout<O: ProtoMessage>(
@@ -213,7 +214,7 @@ impl ChromeOS {
                 ConnectionItem::Signal(message) => {
                     if let (_, _, Some(msg_interface), Some(msg_signal)) = message.headers() {
                         if msg_interface == interface && signal == msg_signal {
-                            result = dbus_message_to_proto(message);
+                            result = dbus_message_to_proto(&message);
                             break;
                         }
                     }
@@ -234,7 +235,9 @@ impl ChromeOS {
             "org.chromium.ComponentUpdaterService",
             "LoadComponent",
         )?.append1(name);
-        let message = self.connection.send_with_reply_and_block(method, 120000)?;
+        let message = self
+            .connection
+            .send_with_reply_and_block(method, COMPONENT_UPDATER_TIMEOUT_MS)?;
         match message.get1() {
             Some("") | None => Err(FailedComponentUpdater(name.to_owned()).into()),
             _ => Ok(()),
@@ -374,7 +377,7 @@ impl ChromeOS {
             .connection
             .send_with_reply_and_block(method, EXPORT_DISK_TIMEOUT_MS)?;
 
-        let response: ExportDiskImageResponse = dbus_message_to_proto(message)?;
+        let response: ExportDiskImageResponse = dbus_message_to_proto(&message)?;
         match response.status {
             DiskImageStatus::DISK_STATUS_CREATED => Ok(()),
             _ => Err(BadDiskImageStatus(response.status, response.failure_reason).into()),
@@ -695,7 +698,7 @@ impl Backend for ChromeOS {
         self.start_concierge()?;
         let vm_info = self.get_vm_info(name, user_id_hash)?;
         // The VmInfo uses a u64 as the handle, but SharePathRequest uses a u32 for the handle.
-        if vm_info.seneschal_server_handle > u32::max_value() as u64 {
+        if vm_info.seneschal_server_handle > u64::from(u32::max_value()) {
             return Err(FailedGetVmInfo.into());
         }
         let seneschal_handle = vm_info.seneschal_server_handle as u32;

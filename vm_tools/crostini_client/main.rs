@@ -26,7 +26,7 @@ fn make_options() -> Options {
     opts
 }
 
-fn print_usage(program_name: &str, opts: Options) {
+fn print_usage(program_name: &str, opts: &Options) {
     eprintln!("Crostini client\n");
     let brief = format!("USAGE: {} [SUBCOMMAND|FRONTEND]", program_name);
     eprintln!("{}", opts.usage(&brief));
@@ -58,7 +58,7 @@ fn main() -> Result<(), Box<Error>> {
         .collect();
 
     if args.is_empty() {
-        print_usage("crostini_client", make_options());
+        print_usage("crostini_client", &make_options());
         return Ok(());
     }
 
@@ -70,7 +70,7 @@ fn main() -> Result<(), Box<Error>> {
     }
 
     if args.len() == 1 {
-        print_usage(&args[0], make_options());
+        print_usage(&args[0], &make_options());
         return Ok(());
     }
 
