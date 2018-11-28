@@ -132,6 +132,8 @@ void AddArcFlags(ChromiumCommandBuilder* builder,
     builder->AddArg("--arc-transition-migration-required");
   if (builder->UseFlagIsSet("arc_force_2x_scaling"))
     builder->AddArg("--force-remote-shell-scale=2");
+  if (builder->UseFlagIsSet("arcvm"))
+    builder->AddArg("--enable-arcvm");
 }
 
 void AddCrostiniFlags(ChromiumCommandBuilder* builder) {
