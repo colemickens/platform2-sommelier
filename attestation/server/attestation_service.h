@@ -332,8 +332,11 @@ class AttestationService : public AttestationInterface {
     const GetEnrollmentIdRequest& request,
     const std::shared_ptr<GetEnrollmentIdReply>& result);
 
-  // Returns true iff all information required for enrollment with the Google
-  // Attestation CA is available.
+  // Returns true if PrepareForEnrollment() initialization step has been
+  // successfully done.
+  // Note that while in normal circumstance, this returning true means that all
+  // info required for enrollment is available, but that's not always the case,
+  // see the implementation for detail.
   bool IsPreparedForEnrollment();
 
   // Returns true iff enrollment with the default or test Google Attestation CA

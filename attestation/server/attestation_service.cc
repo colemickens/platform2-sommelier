@@ -1011,6 +1011,12 @@ bool AttestationService::IsPreparedForEnrollment() {
     return false;
   }
   const auto& database_pb = database_->GetProtobuf();
+  // Note that this function only checks for the existence of endorsement
+  // credentials, but the identity key, identity key binding and pcr quotes
+  // signed by the identity key are also required for enrollment.
+  // In normal circumstances, existence of the endorsement credentials implies
+  // the existence of the other identity key related pieces, but it is
+  // possible for that not to be true, for instance, see crbug.com/899932
   return database_pb.credentials().has_endorsement_credential() ||
          database_pb.credentials().encrypted_endorsement_credentials().size() >
              TEST_ACA;
