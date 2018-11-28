@@ -397,11 +397,14 @@ int ParseGpoList(const std::string& net_out,
     const std::string directory = base::JoinString(
         std::vector<std::string>(file_parts.begin() + 4, file_parts.end()),
         "\\");
+    uint32_t version =
+        scope == PolicyScope::USER ? gpo.version_user : gpo.version_machine;
 
     protos::GpoEntry* gpo_proto = gpo_list_proto.add_entries();
     gpo_proto->set_name(gpo.name);
     gpo_proto->set_share(share);
     gpo_proto->set_directory(directory);
+    gpo_proto->set_version(version);
   }
 
   // Output data as proto blob.

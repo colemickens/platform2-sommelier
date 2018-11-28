@@ -19,6 +19,7 @@
 #include "authpolicy/authpolicy_flags.h"
 #include "authpolicy/authpolicy_metrics.h"
 #include "authpolicy/constants.h"
+#include "authpolicy/gpo_version_cache.h"
 #include "authpolicy/jail_helper.h"
 #include "authpolicy/path_service.h"
 #include "authpolicy/proto_bindings/active_directory_info.pb.h"
@@ -49,6 +50,12 @@ class ProcessExecutor;
 
 class SambaInterface : public TgtManager::Delegate {
  public:
+  // Re-download GPOs at least once every |kGpoCacheTTL| even if the GPO version
+  // did not change. Don't use a multiple of 24 hours, so that people are not
+  // struck by policy downloads every N-th morning at the same time.
+  static constexpr base::TimeDelta kGpoCacheTTL =
+      base::TimeDelta::FromHours(25);
+
   SambaInterface(AuthPolicyMetrics* metrics,
                  const PathService* path_service,
                  const base::Closure& user_kerberos_files_changed);
@@ -175,6 +182,11 @@ class SambaInterface : public TgtManager::Delegate {
   // Returns the anonymizer.
   const Anonymizer* GetAnonymizerForTesting() const {
     return anonymizer_.get();
+  }
+
+  // Returns the cache for the GPO version.
+  GpoVersionCache* GetGpoVersionCacheForTesting() {
+    return &gpo_version_cache_;
   }
 
   // Renew the user ticket-granting-ticket.
@@ -349,7 +361,7 @@ class SambaInterface : public TgtManager::Delegate {
   ErrorType DownloadGpos(const protos::GpoList& gpo_list,
                          GpoSource source,
                          PolicyScope scope,
-                         std::vector<base::FilePath>* gpo_file_paths) const
+                         std::vector<base::FilePath>* gpo_file_paths)
       WARN_UNUSED_RESULT;
 
   // Parses GPOs and stores them in user/device policy protobufs.
@@ -485,6 +497,9 @@ class SambaInterface : public TgtManager::Delegate {
   // User and device ticket-granting-ticket managers.
   TgtManager user_tgt_manager_;
   TgtManager device_tgt_manager_;
+
+  // Cache for GPO version, used to prevent unnecessary downloads.
+  GpoVersionCache gpo_version_cache_;
 
   // Encryption types to use for kinit and Samba commands. Don't set directly,
   // always set through SetKerberosEncryptionTypes(). Updated by

@@ -19,6 +19,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/threading/platform_thread.h>
+#include <base/time/default_clock.h>
 #include <base/time/time.h>
 #include <policy/device_policy_impl.h>
 
@@ -498,7 +499,8 @@ SambaInterface::SambaInterface(AuthPolicyMetrics* metrics,
                           anonymizer_.get(),
                           this /* TgtManager::Delegate */,
                           Path::DEVICE_KRB5_CONF,
-                          Path::DEVICE_CREDENTIAL_CACHE) {
+                          Path::DEVICE_CREDENTIAL_CACHE),
+      gpo_version_cache_(&flags_) {
   DCHECK(paths_);
   LoadFlagsDefaultLevel();
   user_tgt_manager_.SetKerberosFilesChangedCallback(
@@ -1693,28 +1695,43 @@ ErrorType SambaInterface::GetGpoList(GpoSource source,
 }
 
 struct GpoPaths {
-  std::string server_;    // GPO file path on server (not a local file path!).
-  base::FilePath local_;  // Local GPO file path.
-  GpoPaths(const std::string& server, const std::string& local)
-      : server_(server), local_(local) {}
+  std::string server_;     // GPO file path on server (not a local file path!).
+  base::FilePath local_;   // Local GPO file path.
+  std::string cache_key_;  // Key into the gpo version cache; gpo giud + "-U/M".
+  uint32_t version_;       // User or machine version of the GPO.
+  bool use_cache_;  // Whether to use cached version. False to redownload.
+  GpoPaths(const std::string& server,
+           const base::FilePath& local,
+           const std::string& cache_key,
+           uint32_t version,
+           bool use_cache)
+      : server_(server),
+        local_(local),
+        cache_key_(cache_key),
+        version_(version),
+        use_cache_(use_cache) {}
 };
 
 ErrorType SambaInterface::DownloadGpos(
     const protos::GpoList& gpo_list,
     GpoSource source,
     PolicyScope scope,
-    std::vector<base::FilePath>* gpo_file_paths) const {
+    std::vector<base::FilePath>* gpo_file_paths) {
   metrics_->Report(METRIC_DOWNLOAD_GPO_COUNT, gpo_list.entries_size());
   if (gpo_list.entries_size() == 0) {
     LOG(INFO) << "No GPOs to download";
     return ERROR_NONE;
   }
 
+  // Clean up GPO cache.
+  gpo_version_cache_.RemoveEntriesOlderThan(kGpoCacheTTL);
+
   // Generate all smb source and linux target directories and create targets.
   ErrorType error;
   std::string smb_command = "prompt OFF;lowercase ON;";
   std::string gpo_share;
   std::vector<GpoPaths> gpo_paths;
+  bool anything_to_download = false;
   for (int entry_idx = 0; entry_idx < gpo_list.entries_size(); ++entry_idx) {
     const protos::GpoEntry& gpo = gpo_list.entries(entry_idx);
 
@@ -1756,78 +1773,92 @@ ErrorType SambaInterface::DownloadGpos(
     if (error != ERROR_NONE)
       return error;
 
-    // Build command for smbclient.
-    smb_command += base::StringPrintf("cd %s;lcd %s;get %s;", smb_dir.c_str(),
-                                      linux_dir.c_str(), kPRegFileName);
+    // Figure out whether we can use cached GPO to skip download. As cache key
+    // use {GPO-GUID}-U for user policy and {GPO-GUID}-M for machine policy.
+    // (User and machine policy are two separate files, even though it's the
+    // same GPO). Note that the GPO file may not exist, but that's fine.
+    const char* scope_extension = (scope == PolicyScope::USER ? "-U" : "-M");
+    const std::string cache_key = gpo.name() + scope_extension;
+    const bool use_cache =
+        gpo_version_cache_.MayUseCachedGpo(cache_key, gpo.version());
 
     // Record output file paths.
-    gpo_paths.push_back(GpoPaths(smb_dir + "\\" + kPRegFileName,
-                                 linux_dir + "/" + kPRegFileName));
+    const std::string server_path = smb_dir + "\\" + kPRegFileName;
+    const auto local_path = base::FilePath(linux_dir).Append(kPRegFileName);
+    gpo_paths.push_back(
+        GpoPaths(server_path, local_path, cache_key, gpo.version(), use_cache));
 
-    // Delete any preexisting policy file. Otherwise, if downloading the file
-    // failed, we wouldn't realize it and use a stale version.
-    if (base::PathExists(gpo_paths.back().local_) &&
-        !base::DeleteFile(gpo_paths.back().local_, false)) {
-      LOG(ERROR) << "Failed to delete old GPO file '"
-                 << anonymizer_->Process(gpo_paths.back().local_.value())
-                 << "'";
-      return ERROR_LOCAL_IO;
+    if (!use_cache) {
+      // Delete the stale GPO file if it exists.
+      if (!base::DeleteFile(local_path, false /* recursive */)) {
+        LOG(ERROR) << "Failed to delete old GPO file '"
+                   << anonymizer_->Process(local_path.value()) << "'";
+        return ERROR_LOCAL_IO;
+      }
+
+      // Build command to download the GPO file via smbclient.
+      smb_command += base::StringPrintf("cd %s;lcd %s;get %s;", smb_dir.c_str(),
+                                        linux_dir.c_str(), kPRegFileName);
+      anything_to_download = true;
     }
   }
 
-  const AccountData& account = GetAccount(source);
-  DCHECK(!account.dc_name.empty());
-  const std::string service =
-      base::StringPrintf("//%s/%s", account.dc_name.c_str(), gpo_share.c_str());
+  // Skip smbclient call if there's nothing to download.
+  if (anything_to_download) {
+    const AccountData& account = GetAccount(source);
+    DCHECK(!account.dc_name.empty());
+    const std::string service = base::StringPrintf(
+        "//%s/%s", account.dc_name.c_str(), gpo_share.c_str());
 
-  // The exit code of smbclient corresponds to the LAST command issued. Some
-  // files might be missing and fail to download, which is fine and handled
-  // below. Appending 'exit' makes sure the exit code is not 1 if the last file
-  // happens to be missing.
-  smb_command += "exit;";
+    // The exit code of smbclient corresponds to the LAST command issued. Some
+    // files might be missing and fail to download, which is fine and handled
+    // below. Appending 'exit' makes sure the exit code is not 1 if the last
+    // file happens to be missing.
+    smb_command += "exit;";
 
-  // Download GPO into local directory. Retry a couple of times in case of
-  // network errors, Kerberos authentication may be flaky in some deployments,
-  // see crbug.com/684733.
-  ProcessExecutor smb_client_cmd(
-      {paths_->Get(Path::SMBCLIENT), service, kConfigParam,
-       paths_->Get(account.smb_conf_path), kKerberosParam, kDebugParam,
-       flags_.net_log_level(), kCommandParam, smb_command});
-  const TgtManager& tgt_manager = GetTgtManager(source);
-  smb_client_cmd.SetEnv(kKrb5CCEnvKey,
-                        paths_->Get(tgt_manager.GetCredentialCachePath()));
-  smb_client_cmd.SetEnv(kKrb5ConfEnvKey,  // Kerberos configuration file path.
-                        kFilePrefix + paths_->Get(tgt_manager.GetConfigPath()));
-  int tries, failed_tries = 0;
-  for (tries = 1; tries <= kSmbClientMaxTries; ++tries) {
-    if (tries > 1 && !retry_sleep_disabled_for_testing_)
-      base::PlatformThread::Sleep(kSmbClientRetryDelay);
-    if (jail_helper_.SetupJailAndRun(&smb_client_cmd, Path::SMBCLIENT_SECCOMP,
-                                     TIMER_SMBCLIENT)) {
-      error = ERROR_NONE;
-      break;
+    // Download GPO into local directory. Retry a couple of times in case of
+    // network errors, Kerberos authentication may be flaky in some deployments,
+    // see crbug.com/684733.
+    ProcessExecutor smb_client_cmd(
+        {paths_->Get(Path::SMBCLIENT), service, kConfigParam,
+         paths_->Get(account.smb_conf_path), kKerberosParam, kDebugParam,
+         flags_.net_log_level(), kCommandParam, smb_command});
+    const TgtManager& tgt_manager = GetTgtManager(source);
+    smb_client_cmd.SetEnv(kKrb5CCEnvKey,
+                          paths_->Get(tgt_manager.GetCredentialCachePath()));
+    smb_client_cmd.SetEnv(
+        kKrb5ConfEnvKey,  // Kerberos configuration file path.
+        kFilePrefix + paths_->Get(tgt_manager.GetConfigPath()));
+    int tries, failed_tries = 0;
+    for (tries = 1; tries <= kSmbClientMaxTries; ++tries) {
+      if (tries > 1 && !retry_sleep_disabled_for_testing_)
+        base::PlatformThread::Sleep(kSmbClientRetryDelay);
+      if (jail_helper_.SetupJailAndRun(&smb_client_cmd, Path::SMBCLIENT_SECCOMP,
+                                       TIMER_SMBCLIENT)) {
+        error = ERROR_NONE;
+        break;
+      }
+      failed_tries++;
+      error = GetSmbclientError(smb_client_cmd);
+      if (error != ERROR_NETWORK_PROBLEM)
+        break;
     }
-    failed_tries++;
-    error = GetSmbclientError(smb_client_cmd);
-    if (error != ERROR_NETWORK_PROBLEM)
-      break;
-  }
-  metrics_->Report(METRIC_SMBCLIENT_FAILED_TRY_COUNT, failed_tries);
-  if (error != ERROR_NONE)
-    return error;
+    metrics_->Report(METRIC_SMBCLIENT_FAILED_TRY_COUNT, failed_tries);
+    if (error != ERROR_NONE)
+      return error;
 
-  // Note that the errors are in stdout and the output is in stderr :-/
-  const std::string& smbclient_out_lower =
-      base::ToLowerASCII(smb_client_cmd.GetStdout());
+    // Note that the errors are in stdout and the output is in stderr :-/
+    const std::string& smbclient_out_lower =
+        base::ToLowerASCII(smb_client_cmd.GetStdout());
 
-  // Make sure the GPO files actually downloaded.
-  DCHECK(gpo_file_paths);
-  for (const GpoPaths& gpo_path : gpo_paths) {
-    if (base::PathExists(gpo_path.local_)) {
-      gpo_file_paths->push_back(gpo_path.local_);
-    } else {
-      // Gracefully handle non-existing GPOs. Testing revealed these cases do
-      // exist, see crbug.com/680921.
+    // Gracefully handle non-existing GPOs. Testing revealed these cases do
+    // exist, see crbug.com/680921.
+    for (const GpoPaths& gpo_path : gpo_paths) {
+      if (gpo_path.use_cache_)
+        continue;
+      if (base::PathExists(gpo_path.local_))
+        continue;
+
       const std::string no_file_error_key(
           base::ToLowerASCII(kKeyObjectNameNotFound + gpo_path.server_));
       if (Contains(smbclient_out_lower, no_file_error_key)) {
@@ -1839,9 +1870,21 @@ ErrorType SambaInterface::DownloadGpos(
         smb_client_cmd.LogOutputOnce();
         LOG(ERROR) << "Failed to download preg file '"
                    << anonymizer_->Process(gpo_path.local_.value()) << "'";
+        gpo_version_cache_.Remove(gpo_path.cache_key_);
         return ERROR_SMBCLIENT_FAILED;
       }
     }
+  }
+
+  // Gather a list of existing GPO files and update cache.
+  DCHECK(gpo_file_paths);
+  for (const GpoPaths& gpo_path : gpo_paths) {
+    if (base::PathExists(gpo_path.local_))
+      gpo_file_paths->push_back(gpo_path.local_);
+
+    // Add GPO to the cache even if the file didn't actually download.
+    if (!gpo_path.use_cache_)
+      gpo_version_cache_.Add(gpo_path.cache_key_, gpo_path.version_);
   }
 
   return ERROR_NONE;

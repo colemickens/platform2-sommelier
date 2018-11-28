@@ -19,11 +19,13 @@ message ActiveDirectoryConfig {
 // output, e.g. if filesyspath is
 // \\example.com\SysVol\example.com\Policies\{12345678-90AB-CDEF-1234-567890ABCDEF},
 // then |share| is 'SysVol' and |directory| is
-// example.com\Policies\{12345678-90AB-CDEF-1234-567890ABCDEF}.
+// example.com\Policies\{12345678-90AB-CDEF-1234-567890ABCDEF}. |version| is the
+// user or machine version of the GPO, depending on the policy scope.
 message GpoEntry {
   optional string name = 1;
   optional string share = 2;
   optional string directory = 3;
+  optional uint32 version = 4;
 }
 
 // List of GPOs on server. Agnostic of policy scope (user/machine); GPOs can

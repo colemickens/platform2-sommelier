@@ -17,6 +17,7 @@
 #include <base/message_loop/message_loop.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/test/simple_test_clock.h>
 #include <brillo/asan.h>
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/file_utils.h>
@@ -2362,5 +2363,118 @@ TEST_F(AuthPolicyTest, SeccompFiltersEnabled) {
 }
 
 #endif  // #ifndef BRILLO_ASAN_BUILD
+
+// GPO files are cached and not re-downloaded if the version didn't change.
+TEST_F(AuthPolicyTest, UsesCachedGposForSameVersion) {
+  policy::PRegUserDevicePolicyWriter writer;
+  writer.AppendBoolean(policy::key::kDeviceGuestModeEnabled, kPolicyBool);
+  writer.WriteToFile(stub_gpo1_path_);
+
+  validate_device_policy_ = [](const em::ChromeDeviceSettingsProto& policy) {
+    EXPECT_EQ(kPolicyBool, policy.guest_mode_enabled().guest_mode_enabled());
+  };
+
+  const GpoVersionCache* cache = samba().GetGpoVersionCacheForTesting();
+
+  // Join domain. |kOneGpoKeepVersionMachineName| freezes the GPO version at 1.
+  EXPECT_EQ(ERROR_NONE, Join(kOneGpoKeepVersionMachineName, kUserPrincipal,
+                             MakePasswordFd()));
+  MarkDeviceAsLocked();
+
+  // First policy fetch should be a cache miss with expected version 1.
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+  EXPECT_EQ(1, cache->cache_misses_for_testing());
+  EXPECT_EQ(0, cache->cache_hits_for_testing());
+
+  // Next time should be a cache hit since the version is still 1.
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+  EXPECT_EQ(1, cache->cache_misses_for_testing());
+  EXPECT_EQ(1, cache->cache_hits_for_testing());
+}
+
+// GPO files are re-downloaded if the version changed.
+TEST_F(AuthPolicyTest, DoesNotUseCachedGposForDifferentVersion) {
+  policy::PRegUserDevicePolicyWriter writer;
+  writer.AppendBoolean(policy::key::kDeviceGuestModeEnabled, kPolicyBool);
+  writer.WriteToFile(stub_gpo1_path_);
+
+  validate_device_policy_ = [](const em::ChromeDeviceSettingsProto& policy) {
+    EXPECT_EQ(kPolicyBool, policy.guest_mode_enabled().guest_mode_enabled());
+  };
+
+  GpoVersionCache* cache = samba().GetGpoVersionCacheForTesting();
+
+  // Join domain.
+  EXPECT_EQ(ERROR_NONE,
+            Join(kOneGpoMachineName, kUserPrincipal, MakePasswordFd()));
+  MarkDeviceAsLocked();
+
+  // First policy fetch should be a cache miss with expected version 1.
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+  EXPECT_EQ(1, cache->cache_misses_for_testing());
+  EXPECT_EQ(0, cache->cache_hits_for_testing());
+
+  // Next time should be a cache miss again since |kOneGpoMachineName| caused
+  // the version to increase on every FetchAndValidateDevicePolicy() call.
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+  EXPECT_EQ(2, cache->cache_misses_for_testing());
+  EXPECT_EQ(0, cache->cache_hits_for_testing());
+}
+
+// Caching should not complain about GPOs with missing files.
+TEST_F(AuthPolicyTest, CachesGposWithMissingFile) {
+  const GpoVersionCache* cache = samba().GetGpoVersionCacheForTesting();
+
+  // Write file 1, but omit file 2.
+  policy::PRegUserDevicePolicyWriter writer;
+  writer.WriteToFile(stub_gpo1_path_);
+  EXPECT_FALSE(base::PathExists(stub_gpo2_path_));
+
+  // First time should be a cache miss for both.
+  // Note that with each FetchAndValidateDevicePolicy() call, the effect of
+  // |kTwoGposKeepVersionMachineName| is
+  // - an increase of the version of the first GPO, so that the download code is
+  //   triggered, but
+  // - a freeze of the version of the second GPO, so that it's cached.
+
+  // First time should be a cache miss.
+  JoinAndFetchDevicePolicy(kTwoGposKeepVersionMachineName);
+  EXPECT_EQ(2, cache->cache_misses_for_testing());
+  EXPECT_EQ(0, cache->cache_hits_for_testing());
+
+  // Second time should be a cache miss for the first file (since its version
+  // increased) and a cache hit for the missing second file.
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+  EXPECT_EQ(3, cache->cache_misses_for_testing());
+  EXPECT_EQ(1, cache->cache_hits_for_testing());
+}
+
+// The GPO cache is purged occasionally.
+TEST_F(AuthPolicyTest, PurgesGpoCacheOccasionally) {
+  // Set a testing clock to stub out cache TTL.
+  GpoVersionCache* cache = samba().GetGpoVersionCacheForTesting();
+  auto clock_ptr = std::make_unique<base::SimpleTestClock>();
+  base::SimpleTestClock* clock = clock_ptr.get();
+  cache->SetClockForTesting(std::move(clock_ptr));
+
+  // Pick delta so that one Advance() call won't purge the cache, but two will.
+  base::TimeDelta delta = SambaInterface::kGpoCacheTTL * 2 / 3;
+
+  JoinAndFetchDevicePolicy(kOneGpoKeepVersionMachineName);
+  EXPECT_EQ(1, cache->cache_misses_for_testing());
+  EXPECT_EQ(0, cache->cache_hits_for_testing());
+
+  // First Advance() should NOT cause a cache purge, so we get a cache hit.
+  clock->Advance(delta);
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+  EXPECT_EQ(1, cache->cache_misses_for_testing());
+  EXPECT_EQ(1, cache->cache_hits_for_testing());
+
+  // Second Advance() should cause a cache purge, so we get a cache miss.
+  clock->Advance(delta);
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+  EXPECT_EQ(2, cache->cache_misses_for_testing());
+  EXPECT_EQ(1, cache->cache_hits_for_testing());
+}
 
 }  // namespace authpolicy

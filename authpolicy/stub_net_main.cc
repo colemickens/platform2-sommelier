@@ -572,35 +572,49 @@ int HandleGpoList(const std::string& smb_conf_path) {
   // All other GPO lists use the local GPO.
   std::string gpos = kStubLocalGpo;
 
+  // Increase the version by default, so that GPOs will always reload properly
+  // (prevents nasty surprises in tests). The version is only frozen for GPO
+  // cache tests.
+  const auto test_dir = base::FilePath(smb_conf_path).DirName();
+  const int version = 1 + PostIncTestCounter(test_dir);
+
   if (machine_name == base::ToUpperASCII(kGpoDownloadErrorMachineName)) {
     // Stub GPO list that triggers a download error in smbclient.
-    gpos += PrintGpo(kErrorGpoGuid, 1, 1, kGpFlagAllEnabled);
+    gpos += PrintGpo(kErrorGpoGuid, version, version, kGpFlagAllEnabled);
   } else if (machine_name == base::ToUpperASCII(kSeccompMachineName)) {
-    gpos += PrintGpo(kSeccompGpoGuid, 1, 1, kGpFlagAllEnabled);
+    // Stub GPO list that triggers a seccomp failure in smbclient.
+    gpos += PrintGpo(kSeccompGpoGuid, version, version, kGpFlagAllEnabled);
   } else if (machine_name == base::ToUpperASCII(kOneGpoMachineName)) {
     // Stub GPO list that downloads one GPO if present.
-    gpos += PrintGpo(kGpo1Guid, 1, 1, kGpFlagAllEnabled);
+    gpos += PrintGpo(kGpo1Guid, version, version, kGpFlagAllEnabled);
   } else if (machine_name == base::ToUpperASCII(kTwoGposMachineName)) {
     // Stub GPO list that downloads two GPOs if present.
+    gpos += PrintGpo(kGpo1Guid, version, version, kGpFlagAllEnabled);
+    gpos += PrintGpo(kGpo2Guid, version, version, kGpFlagAllEnabled);
+  } else if (machine_name ==
+             base::ToUpperASCII(kOneGpoKeepVersionMachineName)) {
+    // Stub GPO list with two GPOs and frozen version.
     gpos += PrintGpo(kGpo1Guid, 1, 1, kGpFlagAllEnabled);
+  } else if (machine_name ==
+             base::ToUpperASCII(kTwoGposKeepVersionMachineName)) {
+    // Stub GPO list with two GPOs and freezing the version of the second.
+    gpos += PrintGpo(kGpo1Guid, version, version, kGpFlagAllEnabled);
     gpos += PrintGpo(kGpo2Guid, 1, 1, kGpFlagAllEnabled);
   } else if (machine_name == base::ToUpperASCII(kZeroUserVersionMachineName)) {
     // Stub GPO list that contains a GPO with version_user == 0 (should be
     // ignored during user policy fetch).
-    gpos += PrintGpo(kGpo1Guid, 0, 1, kGpFlagAllEnabled);
+    gpos += PrintGpo(kGpo1Guid, 0, version, kGpFlagAllEnabled);
   } else if (machine_name == base::ToUpperASCII(kDisableUserFlagMachineName)) {
     // Stub GPO list that contains a GPO with kGpFlagUserDisabled set (should be
     // ignored during user policy fetch).
-    gpos += PrintGpo(kGpo1Guid, 1, 1, kGpFlagUserDisabled);
+    gpos += PrintGpo(kGpo1Guid, version, version, kGpFlagUserDisabled);
   } else if (machine_name == base::ToUpperASCII(kLoopbackGpoMachineName)) {
     // Stub GPO list that contains
     //   - GPO1 when querying GPOs for the user account and
     //   - GPO2 when querying GPOs for the device account.
     bool requesting_user_gpos = Contains(smb_conf_path, kSmbConfUser);
-    if (requesting_user_gpos)
-      gpos += PrintGpo(kGpo1Guid, 1, 1, kGpFlagAllEnabled);
-    else
-      gpos += PrintGpo(kGpo2Guid, 1, 1, kGpFlagAllEnabled);
+    const char* gpo_guid = requesting_user_gpos ? kGpo1Guid : kGpo2Guid;
+    gpos += PrintGpo(gpo_guid, version, version, kGpFlagAllEnabled);
   }
 
   WriteOutput(smb_conf_path, gpos);

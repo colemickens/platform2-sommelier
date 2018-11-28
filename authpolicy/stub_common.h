@@ -124,6 +124,11 @@ extern const char kGpoDownloadErrorMachineName[];
 extern const char kOneGpoMachineName[];
 // Triggers downloading two GPOs with user/machine versions > 0 and no flags.
 extern const char kTwoGposMachineName[];
+// Triggers downloading one GPO, where its version is frozen at 1 between net
+// ads gpo list calls.
+extern const char kOneGpoKeepVersionMachineName[];
+// Triggers downloading two GPOs, where the version of the second GPO is frozen.
+extern const char kTwoGposKeepVersionMachineName[];
 // Triggers downloading a GPO with user version 0.
 extern const char kZeroUserVersionMachineName[];
 // Triggers downloading a GPO with the kGpFlagUserDisabled flag set.
