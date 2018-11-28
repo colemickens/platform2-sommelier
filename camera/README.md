@@ -128,10 +128,11 @@ Chrome OS, packages are managed by ebuild files.  The following ebuild files are
 required for a new camera HAL:
 
 - A ebuild file for the newly added camera HAL.  The ebuild file is used to
-  build the camera HAL and install the `camera_hal.so` and `libcam_algo.so`
-  shared libraries into the board sysroot.  To integrate the camera HAL into the
-  OS image, a `virtual/cros-camera-hal` ebuild that includes the newly added
-  camera HAL as `RDEPEND` is required in the baseboard or board overlay.
+  build and install the platform specific camera HAL and the camera algorithm
+  (`libcam_algo.so`) shared libraries into the board sysroot.  To integrate the
+  camera HAL into the OS image, a `virtual/cros-camera-hal` ebuild that includes
+  the newly added camera HAL as `RDEPEND` is required in the baseboard or board
+  overlay.
 
   - Camera HAL ebuild examples: [**Intel Kabylake camera HAL**], [**USB camera HAL**]
 
