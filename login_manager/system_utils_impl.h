@@ -54,20 +54,13 @@ class SystemUtilsImpl : public SystemUtils {
                                    int32_t* file_size_32) override;
   bool Exists(const base::FilePath& file) override;
   bool DirectoryExists(const base::FilePath& dir) override;
-  bool IsDirectoryEmpty(const base::FilePath& dir) override;
-  bool CreateReadOnlyFileInTempDir(base::FilePath* temp_file) override;
-  bool CreateTemporaryDirIn(const base::FilePath& parent_dir,
-                            base::FilePath* out_dir) override;
   bool CreateDir(const base::FilePath& dir) override;
   bool EnumerateFiles(const base::FilePath& root_path,
                       int file_type,
                       std::vector<base::FilePath>* out_files) override;
   bool GetUniqueFilenameInWriteOnlyTempDir(
       base::FilePath* temp_file_path) override;
-  bool RemoveDirTree(const base::FilePath& dir) override;
   bool RemoveFile(const base::FilePath& filename) override;
-  bool RenameDir(const base::FilePath& source,
-                 const base::FilePath& target) override;
   bool AtomicFileWrite(const base::FilePath& filename,
                        const std::string& data) override;
   int64_t AmountOfFreeDiskSpace(const base::FilePath& path) override;

@@ -335,27 +335,14 @@ class SessionManagerImplTest : public ::testing::Test,
         .WillByDefault(Invoke(&real_utils_, &SystemUtilsImpl::Exists));
     ON_CALL(utils_, DirectoryExists(_))
         .WillByDefault(Invoke(&real_utils_, &SystemUtilsImpl::DirectoryExists));
-    ON_CALL(utils_, IsDirectoryEmpty(_))
-        .WillByDefault(
-            Invoke(&real_utils_, &SystemUtilsImpl::IsDirectoryEmpty));
-    ON_CALL(utils_, CreateReadOnlyFileInTempDir(_))
-        .WillByDefault(Invoke(&real_utils_,
-                              &SystemUtilsImpl::CreateReadOnlyFileInTempDir));
-    ON_CALL(utils_, CreateTemporaryDirIn(_, _))
-        .WillByDefault(
-            Invoke(&real_utils_, &SystemUtilsImpl::CreateTemporaryDirIn));
     ON_CALL(utils_, CreateDir(_))
         .WillByDefault(Invoke(&real_utils_, &SystemUtilsImpl::CreateDir));
     ON_CALL(utils_, GetUniqueFilenameInWriteOnlyTempDir(_))
         .WillByDefault(
             Invoke(&real_utils_,
                    &SystemUtilsImpl::GetUniqueFilenameInWriteOnlyTempDir));
-    ON_CALL(utils_, RemoveDirTree(_))
-        .WillByDefault(Invoke(&real_utils_, &SystemUtilsImpl::RemoveDirTree));
     ON_CALL(utils_, RemoveFile(_))
         .WillByDefault(Invoke(&real_utils_, &SystemUtilsImpl::RemoveFile));
-    ON_CALL(utils_, RenameDir(_, _))
-        .WillByDefault(Invoke(&real_utils_, &SystemUtilsImpl::RenameDir));
     ON_CALL(utils_, AtomicFileWrite(_, _))
         .WillByDefault(Invoke(&real_utils_, &SystemUtilsImpl::AtomicFileWrite));
 

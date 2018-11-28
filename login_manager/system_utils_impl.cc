@@ -251,22 +251,6 @@ bool SystemUtilsImpl::Exists(const base::FilePath& file) {
   return base::PathExists(PutInsideBaseDir(file));
 }
 
-bool SystemUtilsImpl::CreateReadOnlyFileInTempDir(base::FilePath* temp_file) {
-  if (!temp_dir_.IsValid() && !temp_dir_.CreateUniqueTempDir())
-    return false;
-  base::FilePath local_temp_file;
-  if (base::CreateTemporaryFileInDir(temp_dir_.GetPath(), &local_temp_file)) {
-    if (chmod(local_temp_file.value().c_str(), 0644) == 0) {
-      *temp_file = local_temp_file;
-      return true;
-    } else {
-      PLOG(ERROR) << "Can't chmod " << local_temp_file.value() << " to 0644.";
-    }
-    RemoveFile(local_temp_file);
-  }
-  return false;
-}
-
 bool SystemUtilsImpl::GetUniqueFilenameInWriteOnlyTempDir(
     base::FilePath* temp_file_path) {
   // Create a temporary directory to put the testing channel in.
@@ -295,13 +279,6 @@ bool SystemUtilsImpl::GetUniqueFilenameInWriteOnlyTempDir(
   return true;
 }
 
-bool SystemUtilsImpl::RemoveDirTree(const base::FilePath& dir) {
-  const base::FilePath dir_in_base_dir = PutInsideBaseDir(dir);
-  if (!base::DirectoryExists(dir_in_base_dir))
-    return false;
-  return base::DeleteFile(dir_in_base_dir, true);
-}
-
 bool SystemUtilsImpl::RemoveFile(const base::FilePath& filename) {
   const base::FilePath filename_in_base_dir = PutInsideBaseDir(filename);
   if (base::DirectoryExists(filename_in_base_dir))
@@ -318,21 +295,6 @@ bool SystemUtilsImpl::AtomicFileWrite(const base::FilePath& filename,
 
 bool SystemUtilsImpl::DirectoryExists(const base::FilePath& dir) {
   return base::DirectoryExists(PutInsideBaseDir(dir));
-}
-
-bool SystemUtilsImpl::CreateTemporaryDirIn(const base::FilePath& parent_dir,
-                                           base::FilePath* out_dir) {
-  return base::CreateTemporaryDirInDir(PutInsideBaseDir(parent_dir), "temp",
-                                       out_dir);
-}
-
-bool SystemUtilsImpl::RenameDir(const base::FilePath& source,
-                                const base::FilePath& target) {
-  const base::FilePath source_in_base_dir = PutInsideBaseDir(source);
-  if (!base::DirectoryExists(source_in_base_dir))
-    return false;
-  return base::ReplaceFile(source_in_base_dir, PutInsideBaseDir(target),
-                           nullptr);
 }
 
 bool SystemUtilsImpl::CreateDir(const base::FilePath& dir) {
@@ -355,12 +317,6 @@ bool SystemUtilsImpl::EnumerateFiles(const base::FilePath& root_path,
   }
 
   return true;
-}
-
-bool SystemUtilsImpl::IsDirectoryEmpty(const base::FilePath& dir) {
-  const base::FilePath dir_in_base_dir = PutInsideBaseDir(dir);
-  return !base::DirectoryExists(dir_in_base_dir) ||
-         base::IsDirectoryEmpty(dir_in_base_dir);
 }
 
 int64_t SystemUtilsImpl::AmountOfFreeDiskSpace(const base::FilePath& path) {
