@@ -13,7 +13,10 @@ group("all") {
     ":libbiod",
   ]
   if (use.test) {
-    deps += [ ":biod_test_runner" ]
+    deps += [ ":biod_test_runner", ]
+  }
+  if (use.fuzzer) {
+    deps += [ ":biod_storage_fuzzer", ]
   }
 }
 
@@ -97,6 +100,25 @@ if (use.test) {
     deps = [
       ":libbiod",
       "//common-mk/testrunner",
+    ]
+  }
+}
+
+if (use.fuzzer) {
+  pkg_config("libchrome_test_config") {
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+  }
+  executable("biod_storage_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":libchrome_test_config",
+      ":target_defaults",
+    ]
+    sources = [
+      "biod_storage_fuzzer.cc"
+    ]
+    deps = [
+      ":libbiod",
     ]
   }
 }
