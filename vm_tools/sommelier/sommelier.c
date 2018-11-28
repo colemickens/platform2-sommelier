@@ -624,6 +624,10 @@ void sl_window_update(struct sl_window* window) {
       if (parent_last_event_serial > sibling_host_surface->last_event_serial)
         continue;
 
+      // Do not use ourselves as the parent.
+      if (sibling->host_surface_id == window->host_surface_id)
+        continue;
+
       parent = sibling;
       parent_last_event_serial = sibling_host_surface->last_event_serial;
     }
