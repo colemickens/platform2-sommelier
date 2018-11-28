@@ -110,17 +110,13 @@ void MakeTests::TearDownSystemSalt() {
 
 void MakeTests::InjectSystemSalt(MockPlatform* platform, const FilePath& path) {
   CHECK(brillo::cryptohome::home::GetSystemSalt());
-  brillo::SecureBlob sec_salt(system_salt);
   EXPECT_CALL(*platform, FileExists(path)).WillRepeatedly(Return(true));
   EXPECT_CALL(*platform, GetFileSize(path, _))
       .WillRepeatedly(
           DoAll(SetArgPointee<1>(system_salt.size()), Return(true)));
 
-  EXPECT_CALL(*platform, ReadFile(path, _))
-      .WillRepeatedly(DoAll(SetArgPointee<1>(system_salt), Return(true)));
-
   EXPECT_CALL(*platform, ReadFileToSecureBlob(path, _))
-      .WillRepeatedly(DoAll(SetArgPointee<1>(sec_salt), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(system_salt), Return(true)));
 }
 
 void MakeTests::InjectEphemeralSkeleton(MockPlatform* platform,

@@ -55,7 +55,7 @@ class MakeTests {
   void TearDownSystemSalt();
 
   std::vector<TestUser> users;
-  brillo::Blob system_salt;
+  brillo::SecureBlob system_salt;
  private:
   DISALLOW_COPY_AND_ASSIGN(MakeTests);
 };
