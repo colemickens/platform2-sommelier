@@ -83,8 +83,8 @@ int HandleCommandLine(const std::string& command_line) {
   // Stub GPO files are written to krb5.conf's directory because it's hard to
   // pass a full file path from a unit test to a stub binary. Note that
   // environment variables are NOT passed through ProcessExecutor.
-  const base::FilePath gpo_dir =
-      base::FilePath(GetKrb5ConfFilePath()).DirName();
+  const base::FilePath krb5_conf_path(GetKrb5ConfFilePath());
+  const base::FilePath gpo_dir = krb5_conf_path.DirName();
 
   std::vector<DownloadItem> items = GetDownloadItems(command_line);
   for (const DownloadItem& item : items) {

@@ -159,10 +159,10 @@ bool FindTokenInLine(const std::string& in_line,
   return !result->empty();
 }
 
-bool ParseGpoVersion(const std::string& str, unsigned int* version) {
+bool ParseGpoVersion(const std::string& str, uint32_t* version) {
   DCHECK(version);
   *version = 0;
-  unsigned int version_hex = 0;
+  uint32_t version_hex = 0;
   if (sscanf(str.c_str(), "%u (0x%08x)", version, &version_hex) != 2 ||
       *version != version_hex)
     return false;

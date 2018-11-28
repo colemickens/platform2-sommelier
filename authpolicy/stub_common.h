@@ -9,6 +9,10 @@
 
 // Common helper methods for stub executables.
 
+namespace base {
+class FilePath;
+}
+
 namespace authpolicy {
 
 extern const int kExitCodeOk;
@@ -180,16 +184,16 @@ bool StartsWithCaseSensitive(const std::string& str, const char* search_for);
 // Writes to stdout and stderr.
 void WriteOutput(const std::string& stdout_str, const std::string& stderr_str);
 
-// Reads the keytab file path from the environment. Returns an empty string on
-// error.
+// Reads the keytab file path from the environment. CHECKs that the environment
+// actually contains a non-empty path.
 std::string GetKeytabFilePath();
 
-// Reads the Kerberos configuration file path from the environment. Returns an
-// empty string on error.
+// Reads the Kerberos configuration file path from the environment. CHECKs that
+// the environment actually contains a non-empty path.
 std::string GetKrb5ConfFilePath();
 
-// Reads the Kerberos credentials cache file path from the environment. Returns
-// an empty string on error.
+// Reads the Kerberos credentials cache file path from the environment. CHECKs
+// that the environment actually contains a non-empty path.
 std::string GetKrb5CCFilePath();
 
 // Checks that |password| is UTF-8 encoded and 256 characters long.
@@ -197,6 +201,13 @@ void CheckMachinePassword(const std::string& password);
 
 // Makes an invalid system call (not in any of the *seccomp.policy files).
 void TriggerSeccompFailure();
+
+// Post increments a file based counter. The code is equivalent to
+// int64_t PostIncTestCounter() { static int64_t count = 0; return count++; }
+// except that it works across processes, so it can be used between stub_*
+// calls. |test_dir| is the test temp directory. Internally, this function inc's
+// the size of a file in |test_dir|.
+int64_t PostIncTestCounter(const base::FilePath& test_dir);
 
 }  // namespace authpolicy
 

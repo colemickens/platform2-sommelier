@@ -61,7 +61,7 @@ class SambaHelperTest : public ::testing::Test {
   }
 
   // Helpers for ParseGpoVersion
-  unsigned int gpo_version_ = 0;
+  uint32_t gpo_version_ = 0;
 
   // Helpers for ParseGpFLags
   int gp_flags_ = kGpFlagInvalid;

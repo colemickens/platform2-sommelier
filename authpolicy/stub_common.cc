@@ -7,7 +7,9 @@
 // For getresuid
 #include <unistd.h>
 
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/strings/string_util.h>
 #include <base/strings/utf_string_conversions.h>
 
@@ -105,25 +107,30 @@ const char kGpo2Filename[] = "stub_registry_2.pol";
 
 const char kExpectedMachinePassFilename[] = "expected_machine_pass";
 
+// Helper file to implement a global counter that works across processes.
+const char kTestCounterFile[] = "test_counter";
+
 namespace {
 
 // Looks up the environment variable with key |env_key|. If |remove_prefix| is
 // false, returns its value. If |remove_prefix| is true, the value is expected
-// to be 'FILE:<path>' and only <path> is returned. Returns an empty string if
-// the variable does not exist or does not have the expected prefix.
+// to be 'FILE:<path>' and only <path> is returned. CHECKs that the environment
+// variable exists, has the expected prefix if |remove_prefix| is true and that
+// the returned path is non-empty.
 std::string GetPathFromEnv(const char* env_key, bool remove_prefix) {
   const char* env_value = getenv(env_key);
-  if (!env_value)
-    return std::string();
-  if (!remove_prefix)
+  CHECK(env_value);
+  if (!remove_prefix) {
+    CHECK_NE(0, env_value[0]);  // Make sure it's not empty.
     return env_value;
+  }
 
   // Remove FILE: prefix.
   std::string prefixed_path = env_value;
-  if (!StartsWithCaseSensitive(prefixed_path, kFilePrefix))
-    return std::string();
-
-  return prefixed_path.substr(strlen(kFilePrefix));
+  CHECK(StartsWithCaseSensitive(prefixed_path, kFilePrefix));
+  std::string value_without_prefix = prefixed_path.substr(strlen(kFilePrefix));
+  CHECK_LT(0u, value_without_prefix.size());  // Make sure it's not empty.
+  return value_without_prefix;
 }
 
 }  // namespace
@@ -186,6 +193,20 @@ void TriggerSeccompFailure() {
   // file, switch to any other syscall that is not whitelisted.
   uid_t unused_uid;
   getresuid(&unused_uid, &unused_uid, &unused_uid);
+}
+
+int64_t PostIncTestCounter(const base::FilePath& test_dir) {
+  const base::FilePath test_path = test_dir.Append(kTestCounterFile);
+  int64_t size;
+  if (!base::GetFileSize(test_path, &size))
+    size = 0;
+
+  // Note: base::WriteFile triggers a seccomp failure, so do it old-school.
+  base::ScopedFILE test_file(fopen(test_path.value().c_str(), "a"));
+  CHECK(test_file);
+  const char zero = 0;
+  CHECK_EQ(1U, fwrite(&zero, 1, 1, test_file.get()));
+  return size;
 }
 
 }  // namespace authpolicy

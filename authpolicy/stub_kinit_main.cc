@@ -53,9 +53,6 @@ const char kTicketExpired[] =
 const char kEncTypeNotSupported[] =
     "KDC has no support for encryption type while getting initial credentials";
 
-// Helper file for simulating account propagation issues.
-const char kPropagationTestFile[] = "propagation_test";
-
 // Returns upper-cased |machine_name|$@REALM.
 std::string MakeMachinePrincipal(const std::string& machine_name) {
   return base::ToUpperASCII(machine_name) + "$@" + kUserRealm;
@@ -81,30 +78,16 @@ bool HasMachinePrincipal(const std::string& command_line) {
 // appended to count retries. Note that each invokation usually happens in a
 // separate process, so a static memory location can't be used for counting.
 bool HasStubAccountPropagated() {
-  const base::FilePath test_dir =
-      base::FilePath(GetKrb5ConfFilePath()).DirName();
-  base::FilePath test_path = test_dir.Append(kPropagationTestFile);
-  int64_t size;
-  if (!base::GetFileSize(test_path, &size))
-    size = 0;
-  if (size == kNumPropagationRetries)
-    return true;
-
-  // Note: base::WriteFile triggers a seccomp failure, so do it old-school.
-  base::ScopedFILE test_file(fopen(test_path.value().c_str(), "a"));
-  CHECK(test_file);
-  const char zero = 0;
-  CHECK_EQ(1U, fwrite(&zero, 1, 1, test_file.get()));
-  return false;
+  const auto test_dir = base::FilePath(GetKrb5ConfFilePath()).DirName();
+  return PostIncTestCounter(test_dir) == kNumPropagationRetries;
 }
 
 // Reads the contents of the file at |kExpectedMachinePassFilename| and returns
 // it in |expected_machine_pass|. Returns false if it doesn't exist.
 bool GetExpectedMachinePassword(std::string* expected_machine_pass) {
-  const base::FilePath test_dir =
-      base::FilePath(GetKrb5ConfFilePath()).DirName();
-  base::FilePath expected_password_path =
-      test_dir.Append(kExpectedMachinePassFilename);
+  const base::FilePath krb5_conf_path(GetKrb5ConfFilePath());
+  const base::FilePath expected_password_path =
+      krb5_conf_path.DirName().Append(kExpectedMachinePassFilename);
   if (!base::PathExists(expected_password_path))
     return false;
 
@@ -117,7 +100,6 @@ bool GetExpectedMachinePassword(std::string* expected_machine_pass) {
 // kKrb5CCEnvKey environment variable.
 void WriteKrb5CC(const std::string& data) {
   const std::string krb5cc_path = GetKrb5CCFilePath();
-  CHECK(!krb5cc_path.empty());
   // Note: base::WriteFile triggers a seccomp failure, so do it old-school.
   base::ScopedFILE krb5cc_file(fopen(krb5cc_path.c_str(), "w"));
   CHECK(krb5cc_file);
@@ -126,11 +108,9 @@ void WriteKrb5CC(const std::string& data) {
 
 // Checks whether the Kerberos configuration file contains the KDC IP.
 bool Krb5ConfContainsKdcIp() {
-  std::string krb5_conf_path = GetKrb5ConfFilePath();
-  CHECK(!krb5_conf_path.empty());
-
+  const base::FilePath krb5_conf_path(GetKrb5ConfFilePath());
   std::string krb5_conf;
-  CHECK(base::ReadFileToString(base::FilePath(krb5_conf_path), &krb5_conf));
+  CHECK(base::ReadFileToString(krb5_conf_path, &krb5_conf));
   return Contains(krb5_conf, kKdcIpKey);
 }
 
@@ -138,7 +118,6 @@ bool Krb5ConfContainsKdcIp() {
 // of the Kerberos ticket.
 int HandleRefresh() {
   const std::string krb5cc_path = GetKrb5CCFilePath();
-  CHECK(!krb5cc_path.empty());
   std::string krb5cc_data;
   CHECK(base::ReadFileToString(base::FilePath(krb5cc_path), &krb5cc_data));
   if (krb5cc_data == kExpiredKrb5CCData) {

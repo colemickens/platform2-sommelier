@@ -86,7 +86,7 @@ bool FindTokenInLine(const std::string& in_line,
 
 // Parses a GPO version string, which consists of a number and the same number
 // as base-16 hex number, e.g. '31 (0x0000001f)'.
-bool ParseGpoVersion(const std::string& str, unsigned int* version);
+bool ParseGpoVersion(const std::string& str, uint32_t* version);
 
 // Parses a group policy flags string, which consists of a number 0-3 and a
 // descriptive name. See |kGpFlag*| for possible values.
