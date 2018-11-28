@@ -90,8 +90,6 @@ class SaveOobeConfigUsbTest : public ::testing::Test {
 };
 
 TEST_F(SaveOobeConfigUsbTest, Save) {
-  EXPECT_CALL(*save_config_, ChangeDeviceOobeConfigDirOwnership())
-      .WillOnce(Return(true));
   EXPECT_TRUE(save_config_->Save());
   EXPECT_TRUE(base::PathExists(
       device_oobe_config_dir_.Append(kConfigFile).AddExtension("sig")));
@@ -105,8 +103,6 @@ TEST_F(SaveOobeConfigUsbTest, Save) {
 }
 
 TEST_F(SaveOobeConfigUsbTest, SaveWithoutEnrollmentDomainFile) {
-  EXPECT_CALL(*save_config_, ChangeDeviceOobeConfigDirOwnership())
-      .WillOnce(Return(true));
   EXPECT_TRUE(base::DeleteFile(enrollment_domain_file_, false));
   EXPECT_TRUE(save_config_->Save());
   EXPECT_TRUE(base::PathExists(
@@ -142,12 +138,6 @@ TEST_F(SaveOobeConfigUsbTest, SaveFailNoUsbStateful) {
 TEST_F(SaveOobeConfigUsbTest, SaveFailNoUsbUnencrypted) {
   EXPECT_TRUE(base::DeleteFile(
       fake_usb_stateful_.GetPath().Append(kUnencryptedOobeConfigDir), true));
-  EXPECT_FALSE(save_config_->Save());
-}
-
-TEST_F(SaveOobeConfigUsbTest, SaveFailSetOwnership) {
-  EXPECT_CALL(*save_config_, ChangeDeviceOobeConfigDirOwnership())
-      .WillOnce(Return(false));
   EXPECT_FALSE(save_config_->Save());
 }
 

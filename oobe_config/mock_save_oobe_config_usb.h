@@ -27,9 +27,6 @@ class MockSaveOobeConfigUsb : public SaveOobeConfigUsb {
                           usb_device,
                           private_key_file,
                           public_key_file) {}
-
-  MOCK_CONST_METHOD0(ChangeDeviceOobeConfigDirOwnership, bool(void));
-  MOCK_CONST_METHOD3(GetUidGid, bool(const std::string&, uid_t*, gid_t*));
 };
 
 }  // namespace oobe_config

@@ -17,6 +17,7 @@ group("all") {
     ":oobe_config_save",
     ":rollback_finish_restore",
     ":rollback_prepare_save",
+    ":store_usb_oobe_config",
   ]
   if (use.test) {
     deps += [ ":oobe_config_test" ]
@@ -106,6 +107,18 @@ executable("finish_oobe_auto_config") {
   ]
   deps = [
     ":libsave_oobe_config_usb",
+  ]
+}
+
+executable("store_usb_oobe_config") {
+  configs += [
+    ":target_defaults",
+  ]
+  sources = [
+    "store_usb_oobe_config.cc",
+  ]
+  deps = [
+    ":libload_oobe_config_usb",
   ]
 }
 

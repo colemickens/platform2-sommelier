@@ -4,7 +4,6 @@
 
 #include "oobe_config/save_oobe_config_usb.h"
 
-#include <pwd.h>
 #include <stdlib.h>
 
 #include <string>
@@ -24,10 +23,6 @@ using std::string;
 using std::vector;
 
 namespace oobe_config {
-
-namespace {
-constexpr char kOobeConfigRestoreUser[] = "oobe_config_restore";
-}  // namespace
 
 SaveOobeConfigUsb::SaveOobeConfigUsb(const FilePath& device_stateful,
                                      const FilePath& usb_stateful,
@@ -98,63 +93,6 @@ bool SaveOobeConfigUsb::SaveInternal() const {
     return false;
   }
 
-  if (!ChangeDeviceOobeConfigDirOwnership()) {
-    return false;
-  }
-  return true;
-}
-
-// Copied from rollback_helper.cc.
-// TODO(ahassani): Find a way to use the one in rollback_helper.cc
-bool SaveOobeConfigUsb::GetUidGid(const string& user,
-                                  uid_t* uid,
-                                  gid_t* gid) const {
-  // Load the passwd entry.
-  constexpr int kDefaultPwnameLength = 1024;
-  int user_name_length = sysconf(_SC_GETPW_R_SIZE_MAX);
-  if (user_name_length == -1) {
-    user_name_length = kDefaultPwnameLength;
-  }
-  if (user_name_length < 0) {
-    return false;
-  }
-  passwd user_info{}, *user_infop;
-  vector<char> user_name_buf(static_cast<size_t>(user_name_length));
-  if (getpwnam_r(user.c_str(), &user_info, user_name_buf.data(),
-                 static_cast<size_t>(user_name_length), &user_infop)) {
-    return false;
-  }
-  *uid = user_info.pw_uid;
-  *gid = user_info.pw_gid;
-  return true;
-}
-
-bool SaveOobeConfigUsb::ChangeDeviceOobeConfigDirOwnership() const {
-  // Find the GID/UID of oobe_config_restore.
-  uid_t uid;
-  gid_t gid;
-  if (!GetUidGid(kOobeConfigRestoreUser, &uid, &gid)) {
-    PLOG(ERROR) << "Failed to get the UID/GID for " << kOobeConfigRestoreUser;
-    return false;
-  }
-
-  // We need to set the oobe_config_restore as the owner of the oobe_auto_config
-  // directory and all files inside it so it can be read/deleted by the oobe
-  // config service.
-  auto device_config_dir = device_stateful_.Append(kUnencryptedOobeConfigDir);
-  vector<FilePath> paths = {device_config_dir};
-  FileEnumerator iter(device_config_dir, false, FileEnumerator::FILES);
-  for (auto path = iter.Next(); !path.empty(); path = iter.Next()) {
-    paths.emplace_back(path);
-  }
-
-  for (const auto& path : paths) {
-    if (lchown(path.value().c_str(), uid, gid) != 0) {
-      PLOG(ERROR) << "Couldn't change ownership of " << path.value() << " to "
-                  << kOobeConfigRestoreUser;
-      return false;
-    }
-  }
   return true;
 }
 

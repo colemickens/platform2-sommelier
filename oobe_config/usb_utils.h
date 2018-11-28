@@ -21,6 +21,8 @@ extern const char kDomainFile[];
 extern const char kKeyFile[];
 extern const char kDevDiskById[];
 extern const char kUsbDevicePathSigFile[];
+extern const char kStoreDir[];
+extern const char kOobeConfigRestoreUser[];
 
 // Use of this class removes a file after it goes out of scope. This means we do
 // not have to worry about keeping tracking which files to delete when.

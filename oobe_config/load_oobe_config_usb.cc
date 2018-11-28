@@ -4,16 +4,20 @@
 
 #include "oobe_config/load_oobe_config_usb.h"
 
+#include <pwd.h>
 #include <sys/mount.h>
+#include <unistd.h>
 
 #include <map>
 #include <utility>
+#include <vector>
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
+#include <brillo/file_utils.h>
 #include <libtpmcrypto/tpm.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
@@ -25,6 +29,7 @@ using base::ScopedTempDir;
 using std::map;
 using std::string;
 using std::unique_ptr;
+using std::vector;
 
 namespace oobe_config {
 
@@ -39,19 +44,44 @@ constexpr uint32_t kTpmPermissions =  0x1;
 #endif
 
 constexpr uint32_t kHashIndexInTpmNvram = 0x100c;
+
+// Copied from rollback_helper.cc.
+// TODO(ahassani): Find a way to use the one in rollback_helper.cc
+bool GetUidGid(const string& user, uid_t* uid, gid_t* gid) {
+  // Load the passwd entry.
+  constexpr int kDefaultPwnameLength = 1024;
+  int user_name_length = sysconf(_SC_GETPW_R_SIZE_MAX);
+  if (user_name_length == -1) {
+    user_name_length = kDefaultPwnameLength;
+  }
+  if (user_name_length < 0) {
+    return false;
+  }
+  passwd user_info{}, *user_infop;
+  vector<char> user_name_buf(static_cast<size_t>(user_name_length));
+  if (getpwnam_r(user.c_str(), &user_info, user_name_buf.data(),
+                 static_cast<size_t>(user_name_length), &user_infop)) {
+    return false;
+  }
+  *uid = user_info.pw_uid;
+  *gid = user_info.pw_gid;
+  return true;
+}
+
 }  // namespace
 
 unique_ptr<LoadOobeConfigUsb> LoadOobeConfigUsb::CreateInstance() {
-  return std::make_unique<LoadOobeConfigUsb>(FilePath(kStatefulDir),
-                                             FilePath(kDevDiskById));
+  return std::make_unique<LoadOobeConfigUsb>(
+      FilePath(kStatefulDir), FilePath(kDevDiskById), FilePath(kStoreDir));
 }
 
 LoadOobeConfigUsb::LoadOobeConfigUsb(const FilePath& stateful_dir,
-                                     const FilePath& device_ids_dir)
+                                     const FilePath& device_ids_dir,
+                                     const FilePath& store_dir)
     : stateful_(stateful_dir),
       device_ids_dir_(device_ids_dir),
-      public_key_(nullptr),
-      config_is_verified_(false) {
+      store_dir_(store_dir),
+      public_key_(nullptr) {
   unencrypted_oobe_config_dir_ = stateful_.Append(kUnencryptedOobeConfigDir);
   pub_key_file_ = unencrypted_oobe_config_dir_.Append(kKeyFile);
   config_signature_file_ =
@@ -180,12 +210,6 @@ bool LoadOobeConfigUsb::LocateUsbDevice(FilePath* device_id) {
   return false;
 }
 
-bool LoadOobeConfigUsb::VerifyEnrollmentDomainInConfig(
-    const string& config, const string& enrollment_domain) {
-  // TODO(ahassani): Implement this.
-  return true;
-}
-
 bool LoadOobeConfigUsb::MountUsbDevice(const FilePath& device_path,
                                        const FilePath& mount_point) {
   LOG(INFO) << "Mounting " << device_path.value() << " on "
@@ -210,17 +234,7 @@ bool LoadOobeConfigUsb::UnmountUsbDevice(const FilePath& mount_point) {
   return true;
 }
 
-bool LoadOobeConfigUsb::GetOobeConfigJson(string* config,
-                                          string* enrollment_domain) {
-  // We have already verified the config, just return it.
-  CHECK(config != nullptr);
-  CHECK(enrollment_domain != nullptr);
-  if (config_is_verified_) {
-    *config = config_;
-    *enrollment_domain = enrollment_domain_;
-    return true;
-  }
-
+bool LoadOobeConfigUsb::Load() {
   if (!ReadFiles()) {
     return false;
   }
@@ -272,21 +286,74 @@ bool LoadOobeConfigUsb::GetOobeConfigJson(string* config,
     return false;
   }
 
-  // The config.json has only an enrollment token, not a plain text domain, so
-  // at some point before enrolling we have to verify that the token in
-  // config.json matches the domain name in enrollment_domain, because that's
-  // what we showed to the user in recovery.
-  if (!VerifyEnrollmentDomainInConfig(config_, enrollment_domain_)) {
-    return false;
-  }
-
-  *config = config_;
-  *enrollment_domain = enrollment_domain_;
-  config_is_verified_ = true;
-
   // Ignore the failure.
   UnmountUsbDevice(usb_mount_path.GetPath());
   return true;
+}
+
+bool LoadOobeConfigUsb::Store() {
+  if (!Load()) {
+    return false;
+  }
+
+  // Find the GID/UID of oobe_config_restore.
+  uid_t uid;
+  gid_t gid;
+  if (!GetUidGid(kOobeConfigRestoreUser, &uid, &gid)) {
+    PLOG(ERROR) << "Failed to get the UID/GID for " << kOobeConfigRestoreUser;
+    return false;
+  }
+
+  map<FilePath, string*> files = {
+      {store_dir_.Append(kConfigFile), &config_},
+      {store_dir_.Append(kDomainFile), &enrollment_domain_}};
+
+  for (const auto& file : files) {
+    if (!brillo::WriteStringToFile(file.first, *file.second)) {
+      PLOG(ERROR) << "Failed to write the config to " << file.first.value();
+      return false;
+    }
+    // Change owners to oobe_config_restore.
+    if (lchown(file.first.value().c_str(), uid, gid) != 0) {
+      PLOG(ERROR) << "Couldn't change ownership of " << file.first.value()
+                  << " to " << kOobeConfigRestoreUser;
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool LoadOobeConfigUsb::GetOobeConfigJson(string* config,
+                                          string* enrollment_domain) {
+  CHECK(config);
+  CHECK(enrollment_domain);
+
+  auto config_file = store_dir_.Append(kConfigFile);
+  if (!base::ReadFileToString(config_file, config)) {
+    PLOG(ERROR) << "Failed to read in the config file: " << config_file.value();
+    return false;
+  }
+
+  auto enrollment_domain_file = store_dir_.Append(kDomainFile);
+  if (!base::ReadFileToString(enrollment_domain_file, enrollment_domain)) {
+    PLOG(ERROR) << "Failed to read in the enrollment_domain file: "
+                << enrollment_domain_file.value();
+    return false;
+  }
+
+  return true;
+}
+
+void LoadOobeConfigUsb::CleanupFilesOnDevice() {
+  if (!base::DirectoryExists(unencrypted_oobe_config_dir_)) {
+    return;
+  }
+
+  if (!base::DeleteFile(unencrypted_oobe_config_dir_, true)) {
+    LOG(ERROR) << "Failed to delete directory "
+               << unencrypted_oobe_config_dir_.value();
+  }
 }
 
 }  // namespace oobe_config

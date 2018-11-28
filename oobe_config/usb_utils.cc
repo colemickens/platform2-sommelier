@@ -27,6 +27,8 @@ const char kDomainFile[] = "enrollment_domain";
 const char kKeyFile[] = "validation_key.pub";
 const char kDevDiskById[] = "/dev/disk/by-id/";
 const char kUsbDevicePathSigFile[] = "usb_device_path.sig";
+const char kStoreDir[] = "/var/lib/oobe_config_restore/";
+const char kOobeConfigRestoreUser[] = "oobe_config_restore";
 
 bool Sign(const FilePath& priv_key,
           const string& src_content,

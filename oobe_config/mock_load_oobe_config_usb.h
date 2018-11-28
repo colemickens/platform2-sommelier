@@ -16,13 +16,11 @@ namespace oobe_config {
 class MockLoadOobeConfigUsb : public LoadOobeConfigUsb {
  public:
   MockLoadOobeConfigUsb(const base::FilePath& stateful_dir,
-                        const base::FilePath& device_ids_dir)
-      : LoadOobeConfigUsb(stateful_dir, device_ids_dir) {}
+                        const base::FilePath& device_ids_dir,
+                        const base::FilePath& store_dir)
+      : LoadOobeConfigUsb(stateful_dir, device_ids_dir, store_dir) {}
 
   MOCK_METHOD0(VerifyPublicKey, bool(void));
-  MOCK_METHOD2(VerifyEnrollmentDomainInConfig,
-               bool(const std::string&, const std::string&));
-
   MOCK_METHOD2(MountUsbDevice,
                bool(const base::FilePath&, const base::FilePath&));
   MOCK_METHOD1(UnmountUsbDevice, bool(const base::FilePath&));

@@ -7,6 +7,7 @@
 #include <string>
 
 #include "oobe_config/load_oobe_config_rollback.h"
+#include "oobe_config/load_oobe_config_usb.h"
 #include "oobe_config/oobe_config.h"
 #include "oobe_config/proto_bindings/oobe_config.pb.h"
 
@@ -63,8 +64,17 @@ void OobeConfigRestoreService::ProcessAndGetOobeAutoConfig(
   } else {
     // TODO(zentaro): This shouldn't be warning in stage 1.
     LOG(WARNING) << "Rollback oobe config not found.";
+
+    // Looking for the config from USB if there is any.
+    auto config_loader = LoadOobeConfigUsb::CreateInstance();
+    if (config_loader->GetOobeConfigJson(&chrome_config_json,
+                                         &unused_enrollment_domain)) {
+      LOG(INFO) << "USB oobe config found :) ";
+    } else {
+      LOG(WARNING) << "USB oobe config not found :(";
+    }
   }
-  // TODO(ahassani): Add USB restore too.
+
   OobeRestoreData data_proto;
   data_proto.set_chrome_config_json(chrome_config_json);
   *error = SerializeProtoToBlob(data_proto, oobe_config_blob) ? 0 : -1;

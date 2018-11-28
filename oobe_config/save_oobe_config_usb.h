@@ -5,8 +5,6 @@
 #ifndef OOBE_CONFIG_SAVE_OOBE_CONFIG_USB_H_
 #define OOBE_CONFIG_SAVE_OOBE_CONFIG_USB_H_
 
-#include <unistd.h>
-
 #include <string>
 
 #include <base/files/file_path.h>
@@ -39,12 +37,6 @@ class SaveOobeConfigUsb {
 
  protected:
   virtual bool SaveInternal() const;
-
-  virtual bool GetUidGid(const std::string& user, uid_t* uid, gid_t* gid) const;
-
-  // Changes the ownership of the device's oobe config directory to
-  // oobe_config_restore.
-  virtual bool ChangeDeviceOobeConfigDirOwnership() const;
 
   // Enumerates /dev/disk/by-id/ to find which persistent disk identifier
   // |usb_device_| corresponds to.

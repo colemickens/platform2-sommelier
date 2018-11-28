@@ -43,6 +43,7 @@ class LoadOobeConfigUsbTest : public ::testing::Test {
     EXPECT_TRUE(fake_device_stateful_.CreateUniqueTempDir());
     EXPECT_TRUE(fake_usb_stateful_.CreateUniqueTempDir());
     EXPECT_TRUE(fake_device_ids_dir_.CreateUniqueTempDir());
+    EXPECT_TRUE(fake_store_dir_.CreateUniqueTempDir());
     EXPECT_TRUE(everything_else_.CreateUniqueTempDir());
     device_oobe_config_dir_ =
         fake_device_stateful_.GetPath().Append(kUnencryptedOobeConfigDir);
@@ -85,12 +86,11 @@ class LoadOobeConfigUsbTest : public ::testing::Test {
     MockSaveOobeConfigUsb save_config(
         fake_device_stateful_.GetPath(), fake_usb_stateful_.GetPath(),
         fake_device_ids_dir_.GetPath(), dev_id2, private_key, public_key);
-    ON_CALL(save_config, ChangeDeviceOobeConfigDirOwnership())
-        .WillByDefault(Return(true));
     EXPECT_TRUE(save_config.Save());
 
     load_config_ = std::make_unique<MockLoadOobeConfigUsb>(
-        fake_device_stateful_.GetPath(), fake_device_ids_dir_.GetPath());
+        fake_device_stateful_.GetPath(), fake_device_ids_dir_.GetPath(),
+        fake_store_dir_.GetPath());
     EXPECT_TRUE(load_config_);
 
     ON_CALL(*load_config_, VerifyPublicKey()).WillByDefault(Return(true));
@@ -103,19 +103,15 @@ class LoadOobeConfigUsbTest : public ::testing::Test {
                         mount_point, true));
                   }),
                   Return(true)));
-    ON_CALL(*load_config_, VerifyEnrollmentDomainInConfig(_, _))
-        .WillByDefault(Return(true));
     ON_CALL(*load_config_, UnmountUsbDevice(_)).WillByDefault(Return(true));
   }
 
-  bool TestGetOobeConfigJson() {
-    string config, enrollment_domain;
-    return load_config_->GetOobeConfigJson(&config, &enrollment_domain);
-  }
+  bool TestGetOobeConfigJson() { return load_config_->Load(); }
 
   ScopedTempDir fake_device_stateful_;
   ScopedTempDir fake_usb_stateful_;
   ScopedTempDir fake_device_ids_dir_;
+  ScopedTempDir fake_store_dir_;
   ScopedTempDir everything_else_;
 
   FilePath device_oobe_config_dir_;
@@ -127,10 +123,9 @@ class LoadOobeConfigUsbTest : public ::testing::Test {
 };
 
 TEST_F(LoadOobeConfigUsbTest, Simple) {
-  string config, enrollment_domain;
-  EXPECT_TRUE(load_config_->GetOobeConfigJson(&config, &enrollment_domain));
-  EXPECT_EQ(config, kDummyConfig);
-  EXPECT_EQ(enrollment_domain, kDummyDomain);
+  EXPECT_TRUE(load_config_->Load());
+  EXPECT_EQ(load_config_->config_, kDummyConfig);
+  EXPECT_EQ(load_config_->enrollment_domain_, kDummyDomain);
 }
 
 TEST_F(LoadOobeConfigUsbTest, FailNoConfig) {
@@ -178,13 +173,6 @@ TEST_F(LoadOobeConfigUsbTest, FailLocateUsbDevice) {
   EXPECT_FALSE(TestGetOobeConfigJson());
 }
 
-TEST_F(LoadOobeConfigUsbTest, FailVerifyEnrollmentDomain) {
-  EXPECT_CALL(*load_config_,
-              VerifyEnrollmentDomainInConfig(kDummyConfig, kDummyDomain))
-      .WillOnce(Return(false));
-  EXPECT_FALSE(TestGetOobeConfigJson());
-}
-
 TEST_F(LoadOobeConfigUsbTest, FailMountUsbDevice) {
   EXPECT_CALL(*load_config_, MountUsbDevice(_, _)).WillOnce(Return(false));
   EXPECT_FALSE(TestGetOobeConfigJson());
@@ -194,6 +182,13 @@ TEST_F(LoadOobeConfigUsbTest, FailMountUsbDevice) {
 TEST_F(LoadOobeConfigUsbTest, UnountUsbDevice) {
   EXPECT_CALL(*load_config_, UnmountUsbDevice(_)).WillOnce(Return(false));
   EXPECT_TRUE(TestGetOobeConfigJson());
+}
+
+TEST_F(LoadOobeConfigUsbTest, Cleanup) {
+  EXPECT_TRUE(TestGetOobeConfigJson());
+  EXPECT_TRUE(base::DirectoryExists(device_oobe_config_dir_));
+  load_config_->CleanupFilesOnDevice();
+  EXPECT_FALSE(base::DirectoryExists(device_oobe_config_dir_));
 }
 
 }  // namespace oobe_config
