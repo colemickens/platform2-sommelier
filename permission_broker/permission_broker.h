@@ -14,6 +14,7 @@
 #include <base/macros.h>
 #include <base/message_loop/message_loop.h>
 #include <base/sequenced_task_runner.h>
+#include <base/time/time.h>
 #include <dbus/bus.h>
 
 #include "container_utils/device_jail_server.h"
@@ -34,7 +35,7 @@ class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
  public:
   PermissionBroker(scoped_refptr<dbus::Bus> bus,
                    const std::string& udev_run_path,
-                   int poll_interval_msecs);
+                   const base::TimeDelta& poll_interval);
   ~PermissionBroker();
 
   // Register the D-Bus object and interfaces.

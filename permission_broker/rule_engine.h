@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <base/time/time.h>
 
 #include "permission_broker/rule.h"
 #include "permission_broker/udev_scopers.h"
@@ -23,7 +24,8 @@ class UdevRule;
 
 class RuleEngine {
  public:
-  RuleEngine(const std::string& udev_run_path, int poll_interval_msecs);
+  RuleEngine(const std::string& udev_run_path,
+             const base::TimeDelta& poll_interval);
   virtual ~RuleEngine();
 
   // Adds |rule| to the end of the existing rule chain. Takes ownership of
@@ -55,7 +57,7 @@ class RuleEngine {
   ScopedUdevPtr udev_;
   std::vector<std::unique_ptr<Rule>> rules_;
 
-  int poll_interval_msecs_;
+  base::TimeDelta poll_interval_;
   std::string udev_run_path_;
 
   DISALLOW_COPY_AND_ASSIGN(RuleEngine);

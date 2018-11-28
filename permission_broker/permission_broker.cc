@@ -90,11 +90,11 @@ class JailRequestHandler : public device_jail::DeviceJailServer::Delegate {
 
 PermissionBroker::PermissionBroker(scoped_refptr<dbus::Bus> bus,
                                    const std::string& udev_run_path,
-                                   int poll_interval_msecs)
+                                   const base::TimeDelta& poll_interval)
     : org::chromium::PermissionBrokerAdaptor(this),
-      rule_engine_(udev_run_path, poll_interval_msecs),
-      dbus_object_(nullptr, bus,
-                   dbus::ObjectPath(kPermissionBrokerServicePath)),
+      rule_engine_(udev_run_path, poll_interval),
+      dbus_object_(
+          nullptr, bus, dbus::ObjectPath(kPermissionBrokerServicePath)),
       port_tracker_(&firewall_),
       usb_control_(std::make_unique<UsbDeviceManager>()) {
   rule_engine_.AddRule(new AllowUsbDeviceRule());

@@ -16,14 +16,12 @@ namespace permission_broker {
 RuleEngine::RuleEngine()
     : udev_(udev_new()) {}
 
-RuleEngine::RuleEngine(
-    const std::string& udev_run_path,
-    int poll_interval_msecs)
-    : udev_(udev_new()) {
+RuleEngine::RuleEngine(const std::string& udev_run_path,
+                       const base::TimeDelta& poll_interval)
+    : udev_(udev_new()),
+      poll_interval_(poll_interval),
+      udev_run_path_(udev_run_path) {
   CHECK(udev_) << "Could not create udev context, is sysfs mounted?";
-
-  poll_interval_msecs_ = poll_interval_msecs;
-  udev_run_path_ = udev_run_path;
 }
 
 RuleEngine::~RuleEngine() {
@@ -85,7 +83,7 @@ void RuleEngine::WaitForEmptyUdevQueue() {
   CHECK_NE(watch, -1) << "Could not add watch for udev run directory.";
 
   while (!udev_queue_get_queue_is_empty(queue)) {
-    if (poll(&udev_poll, 1, poll_interval_msecs_) > 0) {
+    if (poll(&udev_poll, 1, poll_interval_.InMilliseconds()) > 0) {
       char buffer[sizeof(struct inotify_event)];
       const ssize_t result = read(udev_poll.fd, buffer, sizeof(buffer));
       if (result < 0)
