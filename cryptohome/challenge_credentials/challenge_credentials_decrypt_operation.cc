@@ -11,7 +11,6 @@
 #include <base/bind.h>
 #include <base/logging.h>
 
-#include "cryptohome/cryptolib.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/username_passkey.h"
 
@@ -206,21 +205,12 @@ void ChallengeCredentialsDecryptOperation::OnUnsealingChallengeResponse(
 void ChallengeCredentialsDecryptOperation::ProceedIfChallengesDone() {
   if (!salt_signature_ || !unsealed_secret_)
     return;
-  auto username_passkey = std::make_unique<UsernamePasskey>(account_id_.c_str(),
-                                                            ConstructPasskey());
+  auto username_passkey = std::make_unique<UsernamePasskey>(
+      account_id_.c_str(),
+      ConstructPasskey(*unsealed_secret_, *salt_signature_));
   username_passkey->set_key_data(key_data_);
   Complete(&completion_callback_, std::move(username_passkey));
   // |this| can be already destroyed at this point.
-}
-
-SecureBlob ChallengeCredentialsDecryptOperation::ConstructPasskey() const {
-  DCHECK(unsealed_secret_);
-  DCHECK(salt_signature_);
-  // Use a digest of the salt signature, to make the resulting passkey
-  // reasonably short, and to avoid any potential bias.
-  const SecureBlob salt_signature_hash =
-      CryptoLib::Sha256ToSecureBlob(*salt_signature_);
-  return SecureBlob::Combine(*unsealed_secret_, salt_signature_hash);
 }
 
 }  // namespace cryptohome

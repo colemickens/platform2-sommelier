@@ -5,16 +5,17 @@
 #ifndef CRYPTOHOME_CHALLENGE_CREDENTIALS_CHALLENGE_CREDENTIALS_HELPER_H_
 #define CRYPTOHOME_CHALLENGE_CREDENTIALS_CHALLENGE_CREDENTIALS_HELPER_H_
 
+#include <cstdint>
+#include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/callback.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <base/threading/thread_checker.h>
 #include <brillo/secure_blob.h>
-
-#include "cryptohome/challenge_credentials/challenge_credentials_decrypt_operation.h"
 
 #include "key.pb.h"           // NOLINT(build/include)
 #include "rpc.pb.h"           // NOLINT(build/include)
@@ -87,11 +88,21 @@ class ChallengeCredentialsHelper final {
   // challenge request(s) against the specified key.
   //
   // |key_data| must have the |KEY_TYPE_CHALLENGE_RESPONSE| type.
+  //
+  // |pcr_restrictions| is the list of PCR sets; the created credentials will be
+  // protected in a way that decrypting them back is possible iff at least one
+  // of these sets is satisfied. Each PCR value set must be non-empty; pass
+  // empty list of sets in order to have no PCR binding. The used
+  // SignatureSealingBackend implementation may impose constraint on the maximum
+  // allowed number of sets.
+  //
   // The result is reported via |callback|.
-  void GenerateNew(const std::string& account_id,
-                   const KeyData& key_data,
-                   std::unique_ptr<KeyChallengeService> key_challenge_service,
-                   const GenerateNewCallback& callback);
+  void GenerateNew(
+      const std::string& account_id,
+      const KeyData& key_data,
+      const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions,
+      std::unique_ptr<KeyChallengeService> key_challenge_service,
+      const GenerateNewCallback& callback);
 
   // Builds credentials for the given user, based on the encrypted
   // (challenge-protected) representation of the previously created secrets. The
@@ -130,6 +141,13 @@ class ChallengeCredentialsHelper final {
   // Aborts the currently running operation, if any, and destroys all resources
   // associated with it.
   void CancelRunningOperation();
+
+  // Wrapper for the completion callback of GenerateNew(). Cleans up resources
+  // associated with the operation and forwards results to the original
+  // callback.
+  void OnGenerateNewCompleted(
+      const GenerateNewCallback& original_callback,
+      std::unique_ptr<UsernamePasskey> username_passkey);
 
   // Wrapper for the completion callback of Decrypt(). Cleans up resources
   // associated with the operation and forwards results to the original

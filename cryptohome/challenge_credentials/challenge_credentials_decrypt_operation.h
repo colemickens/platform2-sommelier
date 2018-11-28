@@ -85,9 +85,6 @@ class ChallengeCredentialsDecryptOperation final
   // Generates the result if all necessary challenges are completed.
   void ProceedIfChallengesDone();
 
-  // Consructs passkey from the prepared secrets.
-  brillo::SecureBlob ConstructPasskey() const;
-
   Tpm* const tpm_;
   const brillo::Blob delegate_blob_;
   const brillo::Blob delegate_secret_;

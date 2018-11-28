@@ -2107,8 +2107,10 @@ void Service::DoChallengeResponseMountEx(
       SendReply(context, reply);
       return;
     }
+    // TODO(crbug.com/842791): Fill PCR restrictions.
     challenge_credentials_helper_->GenerateNew(
-        account_id, key_data, std::move(key_challenge_service),
+        account_id, key_data, {} /* pcr_restrictions */,
+        std::move(key_challenge_service),
         base::Bind(&Service::OnChallengeResponseMountCredentialsObtained,
                    base::Unretained(this), base::Passed(std::move(identifier)),
                    base::Passed(std::move(authorization)),

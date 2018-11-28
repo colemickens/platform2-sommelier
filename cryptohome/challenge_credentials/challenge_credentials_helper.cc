@@ -9,8 +9,11 @@
 #include <base/bind.h>
 #include <base/logging.h>
 
+#include "cryptohome/challenge_credentials/challenge_credentials_decrypt_operation.h"
+#include "cryptohome/challenge_credentials/challenge_credentials_generate_new_operation.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_operation.h"
 #include "cryptohome/key_challenge_service.h"
+#include "cryptohome/signature_sealing_backend.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/username_passkey.h"
 
@@ -35,6 +38,7 @@ ChallengeCredentialsHelper::~ChallengeCredentialsHelper() {
 void ChallengeCredentialsHelper::GenerateNew(
     const std::string& account_id,
     const KeyData& key_data,
+    const std::vector<std::map<uint32_t, Blob>>& pcr_restrictions,
     std::unique_ptr<KeyChallengeService> key_challenge_service,
     const GenerateNewCallback& callback) {
   DCHECK(thread_checker_.CalledOnValidThread());
@@ -42,10 +46,13 @@ void ChallengeCredentialsHelper::GenerateNew(
   DCHECK(!callback.is_null());
   CancelRunningOperation();
   DCHECK(!key_challenge_service_);
-  // TODO(emaxx, https://crbug.com/842791): This should generate a salt, request
-  // its signature, create a sealed secret, generate credentials from the salt
-  // signature and the secret value.
-  NOTIMPLEMENTED() << "ChallengeCredentialsHelper::GenerateNew";
+  key_challenge_service_ = std::move(key_challenge_service);
+  operation_ = std::make_unique<ChallengeCredentialsGenerateNewOperation>(
+      key_challenge_service_.get(), tpm_, delegate_blob_, delegate_secret_,
+      account_id, key_data, pcr_restrictions,
+      base::Bind(&ChallengeCredentialsHelper::OnGenerateNewCompleted,
+                 base::Unretained(this), callback));
+  operation_->Start();
 }
 
 void ChallengeCredentialsHelper::Decrypt(
@@ -99,6 +106,14 @@ void ChallengeCredentialsHelper::CancelRunningOperation() {
 
     key_challenge_service_.reset();
   }
+}
+
+void ChallengeCredentialsHelper::OnGenerateNewCompleted(
+    const GenerateNewCallback& original_callback,
+    std::unique_ptr<UsernamePasskey> username_passkey) {
+  DCHECK(thread_checker_.CalledOnValidThread());
+  CancelRunningOperation();
+  original_callback.Run(std::move(username_passkey));
 }
 
 void ChallengeCredentialsHelper::OnDecryptCompleted(

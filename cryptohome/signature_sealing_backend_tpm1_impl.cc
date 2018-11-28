@@ -1408,7 +1408,8 @@ SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
   // using the migration destination key will be performed. The security
   // properties of the migration destination key aren't crucial, besides the
   // reasonable amount of entropy, therefore generating using OpenSSL is fine.
-  // TODO(emaxx): Do the RSA key generation in background in advance.
+  //
+  // TODO(crbug.com/909700): Do the RSA key generation in background in advance.
   crypto::ScopedRSA migration_destination_rsa(RSA_generate_key(
       kMigrationDestinationKeySizeBits, kWellKnownExponent, nullptr, nullptr));
   if (!migration_destination_rsa) {

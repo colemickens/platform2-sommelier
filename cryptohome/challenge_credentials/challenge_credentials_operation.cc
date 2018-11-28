@@ -10,6 +10,7 @@
 #include <base/logging.h>
 #include <base/no_destructor.h>
 
+#include "cryptohome/cryptolib.h"
 #include "cryptohome/key_challenge_service.h"
 
 #include "rpc.pb.h"  // NOLINT(build/include)
@@ -17,6 +18,7 @@
 using brillo::Blob;
 using brillo::BlobFromString;
 using brillo::BlobToString;
+using brillo::SecureBlob;
 
 namespace cryptohome {
 
@@ -69,6 +71,16 @@ const brillo::Blob& ChallengeCredentialsOperation::GetSaltConstantPrefix() {
   // losing the trailing null character.
   CHECK(!salt_constant_prefix->back());
   return *salt_constant_prefix;
+}
+
+// static
+SecureBlob ChallengeCredentialsOperation::ConstructPasskey(
+    const SecureBlob& tpm_protected_secret_value, const Blob& salt_signature) {
+  // Use a digest of the salt signature, to make the resulting passkey
+  // reasonably short, and to avoid any potential bias.
+  const Blob salt_signature_hash = CryptoLib::Sha256(salt_signature);
+  return SecureBlob::Combine(tpm_protected_secret_value,
+                             SecureBlob(salt_signature_hash));
 }
 
 ChallengeCredentialsOperation::~ChallengeCredentialsOperation() {

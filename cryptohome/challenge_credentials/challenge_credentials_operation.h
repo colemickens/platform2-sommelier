@@ -55,6 +55,10 @@ class ChallengeCredentialsOperation {
   virtual void Abort() = 0;
 
  protected:
+  static brillo::SecureBlob ConstructPasskey(
+      const brillo::SecureBlob& tpm_protected_secret_value,
+      const brillo::Blob& salt_signature);
+
   // |key_challenge_service| is a non-owned pointer which must outlive the
   // created instance.
   explicit ChallengeCredentialsOperation(

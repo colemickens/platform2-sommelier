@@ -257,6 +257,7 @@ static_library("libcryptohome") {
     "../attestation_task.cc",
     "../bootlockbox/boot_attributes.cc",
     "../challenge_credentials/challenge_credentials_decrypt_operation.cc",
+    "../challenge_credentials/challenge_credentials_generate_new_operation.cc",
     "../challenge_credentials/challenge_credentials_helper.cc",
     "../challenge_credentials/challenge_credentials_operation.cc",
     "../chaps_client_factory.cc",
