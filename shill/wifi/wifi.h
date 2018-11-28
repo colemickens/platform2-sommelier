@@ -558,6 +558,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Request and retrieve information about the currently connected station.
   void RequestStationInfo();
   void OnReceivedStationInfo(const Nl80211Message& nl80211_message);
+  static bool ParseStationBitrate(const AttributeListConstRefPtr& rate_info,
+                                  std::string* out,
+                                  int* rate_out);
   void StopRequestingStationInfo();
 
   void ConnectToSupplicant();

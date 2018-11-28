@@ -2879,6 +2879,67 @@ void WiFi::RequestStationInfo() {
                                 kRequestStationInfoPeriodSeconds * 1000);
 }
 
+// static
+bool WiFi::ParseStationBitrate(const AttributeListConstRefPtr& rate_info,
+                               string* out,
+                               int* rate_out) {
+  uint32_t rate = 0;      // In 100Kbps.
+  uint16_t u16_rate = 0;  // In 100Kbps.
+  uint8_t mcs = 0;
+  uint8_t nss = 0;
+  bool band_flag = false;
+  bool is_short_gi = false;
+  string mcs_info;
+  string nss_info;
+  string band_info;
+
+  if (rate_info->GetU16AttributeValue(NL80211_RATE_INFO_BITRATE, &u16_rate)) {
+    rate = static_cast<uint32_t>(u16_rate);
+  } else {
+    rate_info->GetU32AttributeValue(NL80211_RATE_INFO_BITRATE32, &rate);
+  }
+
+  if (rate_info->GetU8AttributeValue(NL80211_RATE_INFO_MCS, &mcs)) {
+    mcs_info = StringPrintf(" MCS %d", mcs);
+  } else if (rate_info->GetU8AttributeValue(NL80211_RATE_INFO_VHT_MCS, &mcs)) {
+    mcs_info = StringPrintf(" VHT-MCS %d", mcs);
+  }
+
+  if (rate_info->GetU8AttributeValue(NL80211_RATE_INFO_VHT_NSS, &nss)) {
+    nss_info = StringPrintf(" VHT-NSS %d", nss);
+  }
+
+  if (rate_info->GetFlagAttributeValue(NL80211_RATE_INFO_40_MHZ_WIDTH,
+                                       &band_flag) &&
+      band_flag) {
+    band_info = StringPrintf(" 40MHz");
+  } else if (rate_info->GetFlagAttributeValue(NL80211_RATE_INFO_80_MHZ_WIDTH,
+                                              &band_flag) &&
+             band_flag) {
+    band_info = StringPrintf(" 80MHz");
+  } else if (rate_info->GetFlagAttributeValue(NL80211_RATE_INFO_80P80_MHZ_WIDTH,
+                                              &band_flag) &&
+             band_flag) {
+    band_info = StringPrintf(" 80+80MHz");
+  } else if (rate_info->GetFlagAttributeValue(NL80211_RATE_INFO_160_MHZ_WIDTH,
+                                              &band_flag) &&
+             band_flag) {
+    band_info = StringPrintf(" 160MHz");
+  }
+
+  rate_info->GetFlagAttributeValue(NL80211_RATE_INFO_SHORT_GI, &is_short_gi);
+
+  if (rate) {
+    *out = StringPrintf("%d.%d MBit/s%s%s%s%s", rate / 10, rate % 10,
+                        mcs_info.c_str(), band_info.c_str(),
+                        is_short_gi ? " short GI" : "", nss_info.c_str());
+    *rate_out = rate / 10;
+    return true;
+  }
+
+  return false;
+}
+
 void WiFi::OnReceivedStationInfo(const Nl80211Message& nl80211_message) {
   // Verify NL80211_CMD_NEW_STATION
   if (nl80211_message.command() != NewStationMessage::kCommand) {
@@ -2961,61 +3022,23 @@ void WiFi::OnReceivedStationInfo(const Nl80211Message& nl80211_message) {
   }
 
   AttributeListConstRefPtr transmit_info;
-  if (station_info->ConstGetNestedAttributeList(
-      NL80211_STA_INFO_TX_BITRATE, &transmit_info)) {
-    uint32_t rate = 0;  // In 100Kbps.
-    uint16_t u16_rate = 0;  // In 100Kbps.
-    uint8_t mcs = 0;
-    uint8_t nss = 0;
-    bool band_flag = false;
-    bool is_short_gi = false;
-    string mcs_info;
-    string nss_info;
-    string band_info;
-
-    if (transmit_info->GetU16AttributeValue(
-        NL80211_RATE_INFO_BITRATE, &u16_rate)) {
-      rate = static_cast<uint32_t>(u16_rate);
-    } else {
-      transmit_info->GetU32AttributeValue(NL80211_RATE_INFO_BITRATE32, &rate);
+  if (station_info->ConstGetNestedAttributeList(NL80211_STA_INFO_TX_BITRATE,
+                                                &transmit_info)) {
+    string str;
+    int rate;
+    if (ParseStationBitrate(transmit_info, &str, &rate)) {
+      link_statistics_.SetString(kTransmitBitrateProperty, str);
+      metrics()->NotifyWifiTxBitrate(rate);
     }
+  }
 
-    if (transmit_info->GetU8AttributeValue(NL80211_RATE_INFO_MCS, &mcs)) {
-      mcs_info = StringPrintf(" MCS %d", mcs);
-    } else if (transmit_info->GetU8AttributeValue(
-        NL80211_RATE_INFO_VHT_MCS, &mcs)) {
-      mcs_info = StringPrintf(" VHT-MCS %d", mcs);
-    }
-
-    if (transmit_info->GetU8AttributeValue(NL80211_RATE_INFO_VHT_NSS, &nss)) {
-      nss_info = StringPrintf(" VHT-NSS %d", nss);
-    }
-
-    if (transmit_info->GetFlagAttributeValue(NL80211_RATE_INFO_40_MHZ_WIDTH,
-                                             &band_flag) && band_flag) {
-      band_info = StringPrintf(" 40MHz");
-    } else if (transmit_info->GetFlagAttributeValue(
-        NL80211_RATE_INFO_80_MHZ_WIDTH, &band_flag) && band_flag) {
-      band_info = StringPrintf(" 80MHz");
-    } else if (transmit_info->GetFlagAttributeValue(
-        NL80211_RATE_INFO_80P80_MHZ_WIDTH, &band_flag) && band_flag) {
-      band_info = StringPrintf(" 80+80MHz");
-    } else if (transmit_info->GetFlagAttributeValue(
-        NL80211_RATE_INFO_160_MHZ_WIDTH, &band_flag) && band_flag) {
-      band_info = StringPrintf(" 160MHz");
-    }
-
-    transmit_info->GetFlagAttributeValue(NL80211_RATE_INFO_SHORT_GI,
-                                         &is_short_gi);
-    if (rate) {
-      link_statistics_.SetString(kTransmitBitrateProperty,
-                                 StringPrintf("%d.%d MBit/s%s%s%s%s",
-                                              rate / 10, rate % 10,
-                                              mcs_info.c_str(),
-                                              band_info.c_str(),
-                                              is_short_gi ? " short GI" : "",
-                                              nss_info.c_str()));
-      metrics()->NotifyWifiTxBitrate(rate/10);
+  AttributeListConstRefPtr receive_info;
+  if (station_info->ConstGetNestedAttributeList(NL80211_STA_INFO_RX_BITRATE,
+                                                &receive_info)) {
+    string str;
+    int rate;
+    if (ParseStationBitrate(receive_info, &str, &rate)) {
+      link_statistics_.SetString(kReceiveBitrateProperty, str);
     }
   }
 }

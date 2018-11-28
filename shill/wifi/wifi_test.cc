@@ -3313,7 +3313,7 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
   station_info->SetU32AttributeValue(NL80211_STA_INFO_TX_RETRIES,
                                      kTransmitRetries);
   station_info->CreateNestedAttribute(NL80211_STA_INFO_TX_BITRATE,
-                                      "Bitrate Info");
+                                      "TX Bitrate Info");
 
   // Embed transmit bitrate info within the station info element.
   AttributeListRefPtr bitrate_info;
@@ -3366,6 +3366,7 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
   EXPECT_EQ(StringPrintf("%d.%d MBit/s MCS %d 40MHz",
                          kBitrate / 10, kBitrate % 10, kMCS),
             link_statistics.LookupString(kTransmitBitrateProperty, ""));
+  EXPECT_EQ("", link_statistics.LookupString(kReceiveBitrateProperty, ""));
 
   // New station info with VHT rate parameters.
   NewStationMessage new_vht_station;
@@ -3379,8 +3380,10 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
       NL80211_ATTR_STA_INFO, &station_info);
   station_info->CreateU8Attribute(NL80211_STA_INFO_SIGNAL, "Signal");
   station_info->SetU8AttributeValue(NL80211_STA_INFO_SIGNAL, kSignalValue);
+  station_info->CreateNestedAttribute(NL80211_STA_INFO_RX_BITRATE,
+                                      "RX Bitrate Info");
   station_info->CreateNestedAttribute(NL80211_STA_INFO_TX_BITRATE,
-                                      "Bitrate Info");
+                                      "TX Bitrate Info");
 
   // Embed transmit VHT bitrate info within the station info element.
   station_info->GetNestedAttributeList(
@@ -3400,6 +3403,21 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
   bitrate_info->SetFlagAttributeValue(NL80211_RATE_INFO_SHORT_GI, false);
   station_info->SetNestedAttributeHasAValue(NL80211_STA_INFO_TX_BITRATE);
 
+  // Embed receive VHT bitrate info within the station info element.
+  station_info->GetNestedAttributeList(
+      NL80211_STA_INFO_RX_BITRATE, &bitrate_info);
+  bitrate_info->CreateU32Attribute(NL80211_RATE_INFO_BITRATE32, "Bitrate32");
+  bitrate_info->SetU32AttributeValue(NL80211_RATE_INFO_BITRATE32, kVhtBitrate);
+  bitrate_info->CreateU8Attribute(NL80211_RATE_INFO_VHT_MCS, "VHT-MCS");
+  bitrate_info->SetU8AttributeValue(NL80211_RATE_INFO_VHT_MCS, kVhtMCS);
+  bitrate_info->CreateU8Attribute(NL80211_RATE_INFO_VHT_NSS, "VHT-NSS");
+  bitrate_info->SetU8AttributeValue(NL80211_RATE_INFO_VHT_NSS, kVhtNSS);
+  bitrate_info->CreateFlagAttribute(NL80211_RATE_INFO_80_MHZ_WIDTH, "VHT80");
+  bitrate_info->SetFlagAttributeValue(NL80211_RATE_INFO_80_MHZ_WIDTH, true);
+  bitrate_info->CreateFlagAttribute(NL80211_RATE_INFO_SHORT_GI, "SGI");
+  bitrate_info->SetFlagAttributeValue(NL80211_RATE_INFO_SHORT_GI, false);
+  station_info->SetNestedAttributeHasAValue(NL80211_STA_INFO_RX_BITRATE);
+
   new_vht_station.attributes()->SetNestedAttributeHasAValue(
       NL80211_ATTR_STA_INFO);
 
@@ -3408,9 +3426,13 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
   ReportReceivedStationInfo(new_vht_station);
 
   link_statistics = GetLinkStatistics();
-  EXPECT_EQ(StringPrintf("%d.%d MBit/s VHT-MCS %d 80MHz VHT-NSS %d",
-                         kVhtBitrate / 10, kVhtBitrate % 10, kVhtMCS, kVhtNSS),
-            link_statistics.LookupString(kTransmitBitrateProperty, ""));
+  {
+    string rate = StringPrintf("%d.%d MBit/s VHT-MCS %d 80MHz VHT-NSS %d",
+                               kVhtBitrate / 10, kVhtBitrate % 10, kVhtMCS,
+                               kVhtNSS);
+    EXPECT_EQ(rate, link_statistics.LookupString(kTransmitBitrateProperty, ""));
+    EXPECT_EQ(rate, link_statistics.LookupString(kReceiveBitrateProperty, ""));
+  }
 }
 
 TEST_F(WiFiTimerTest, ResumeDispatchesConnectivityReportTask) {
