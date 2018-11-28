@@ -1415,18 +1415,18 @@ int main(int argc, char **argv) {
     SecureBlob blob(serialized.salt().length());
     serialized.salt().copy(blob.char_data(), serialized.salt().length(), 0);
     printf("  Salt:\n");
-    printf("    %s\n", cryptohome::CryptoLib::BlobToHex(blob).c_str());
+    printf("    %s\n", cryptohome::CryptoLib::SecureBlobToHex(blob).c_str());
     blob.resize(serialized.wrapped_keyset().length());
     serialized.wrapped_keyset().copy(blob.char_data(),
                                      serialized.wrapped_keyset().length(), 0);
     printf("  Wrapped (Encrypted) Keyset:\n");
-    printf("    %s\n", cryptohome::CryptoLib::BlobToHex(blob).c_str());
+    printf("    %s\n", cryptohome::CryptoLib::SecureBlobToHex(blob).c_str());
     if (serialized.has_tpm_key()) {
       blob.resize(serialized.tpm_key().length());
       serialized.tpm_key().copy(blob.char_data(),
                                 serialized.tpm_key().length(), 0);
       printf("  TPM-Bound (Encrypted) Vault Encryption Key:\n");
-      printf("    %s\n", cryptohome::CryptoLib::BlobToHex(blob).c_str());
+      printf("    %s\n", cryptohome::CryptoLib::SecureBlobToHex(blob).c_str());
     }
     if (serialized.has_extended_tpm_key()) {
       blob.resize(serialized.extended_tpm_key().length());
@@ -1434,14 +1434,14 @@ int main(int argc, char **argv) {
                                         serialized.extended_tpm_key().length(),
                                         0);
       printf("  TPM-Bound (Encrypted) Vault Encryption Key, PCR extended:\n");
-      printf("    %s\n", cryptohome::CryptoLib::BlobToHex(blob).c_str());
+      printf("    %s\n", cryptohome::CryptoLib::SecureBlobToHex(blob).c_str());
     }
     if (serialized.has_tpm_public_key_hash()) {
       blob.resize(serialized.tpm_public_key_hash().length());
       serialized.tpm_public_key_hash().copy(blob.char_data(),
                                             serialized.tpm_key().length(), 0);
       printf("  TPM Public Key Hash:\n");
-      printf("    %s\n", cryptohome::CryptoLib::BlobToHex(blob).c_str());
+      printf("    %s\n", cryptohome::CryptoLib::SecureBlobToHex(blob).c_str());
     }
     if (serialized.has_password_rounds()) {
       printf("  Password rounds:\n");
@@ -2498,7 +2498,8 @@ int main(int argc, char **argv) {
         reply.GetExtension(
             cryptohome::GetFirmwareManagementParametersReply::reply);
     printf("flags=0x%08x\n", get_fwmp_reply.flags());
-    brillo::SecureBlob hash(get_fwmp_reply.developer_key_hash());
+    brillo::Blob hash =
+        brillo::BlobFromString(get_fwmp_reply.developer_key_hash());
     printf("hash=%s\n", cryptohome::CryptoLib::BlobToHex(hash).c_str());
     printf("GetFirmwareManagementParameters success.\n");
   } else if (!strcmp(
