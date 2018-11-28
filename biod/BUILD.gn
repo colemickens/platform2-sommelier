@@ -40,6 +40,7 @@ static_library("libbiod") {
     "biod_metrics.cc",
     "biod_storage.cc",
     "biometrics_daemon.cc",
+    "cros_fp_device.cc",
     "cros_fp_biometrics_manager.cc",
     "scoped_umask.cc",
     "uinput_device.cc",

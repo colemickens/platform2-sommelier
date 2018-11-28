@@ -25,7 +25,7 @@
 #include <brillo/secure_blob.h>
 #include <chromeos/ec/ec_commands.h>
 
-#include "biod/cros_fp_biometrics_manager.h"
+#include "biod/cros_fp_device.h"
 
 namespace {
 
@@ -55,15 +55,14 @@ bool NukeFile(const base::FilePath& filepath) {
 
 bool WriteSeedToCrosFp(const brillo::SecureBlob& seed) {
   bool ret = true;
-  auto fd = base::ScopedFD(
-      open(biod::CrosFpBiometricsManager::kCrosFpPath, O_RDWR | O_CLOEXEC));
+  auto fd =
+      base::ScopedFD(open(biod::CrosFpDevice::kCrosFpPath, O_RDWR | O_CLOEXEC));
   if (!fd.is_valid()) {
     PLOG(ERROR) << "Couldn't open FP device for ioctl.";
     return false;
   }
 
-  if (!biod::CrosFpBiometricsManager::CrosFpDevice::WaitOnEcBoot(fd,
-                                                                 EC_IMAGE_RW)) {
+  if (!biod::CrosFpDevice::WaitOnEcBoot(fd, EC_IMAGE_RW)) {
     LOG(ERROR) << "FP device did not boot to RW.";
     return false;
   }
