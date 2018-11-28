@@ -10,8 +10,46 @@
 
 namespace mri {
 
-void ReceiverImpl::SetFrameHandler(FrameDataHandler frame_data_handler) {
-  frame_data_handler_ = std::move(frame_data_handler);
+bool ReceiverImpl::HasValidCaptureFormat() {
+  return capture_format_.width_in_pixels() > 0
+      && capture_format_.height_in_pixels() > 0;
+}
+
+void ReceiverImpl::SetCaptureFormat(const VideoStreamParams& params) {
+  capture_format_ = params;
+}
+
+bool ReceiverImpl::CaptureFormatsMatch(const VideoStreamParams& params) {
+  return capture_format_.width_in_pixels() == params.width_in_pixels() &&
+      capture_format_.height_in_pixels() == params.height_in_pixels() &&
+      capture_format_.frame_rate_in_frames_per_second() ==
+      params.frame_rate_in_frames_per_second();
+}
+
+VideoStreamParams ReceiverImpl::GetCaptureFormat() {
+  return capture_format_;
+}
+
+int ReceiverImpl::GetFrameHandlerCount() {
+  return frame_handler_map_.size();
+}
+
+int ReceiverImpl::AddFrameHandler(
+    VideoCaptureServiceClient::FrameHandler frame_handler) {
+  frame_handler_id_counter_++;
+  frame_handler_map_.insert(
+      std::make_pair(frame_handler_id_counter_, std::move(frame_handler)));
+  return frame_handler_id_counter_;
+}
+
+bool ReceiverImpl::RemoveFrameHandler(int frame_handler_id) {
+  std::map<int, VideoCaptureServiceClient::FrameHandler>::iterator it =
+      frame_handler_map_.find(frame_handler_id);
+  if (it == frame_handler_map_.end()) {
+    return false;
+  }
+  frame_handler_map_.erase(frame_handler_id);
+  return true;
 }
 
 video_capture::mojom::ReceiverPtr ReceiverImpl::CreateInterfacePtr() {
@@ -20,6 +58,7 @@ video_capture::mojom::ReceiverPtr ReceiverImpl::CreateInterfacePtr() {
 
 void ReceiverImpl::OnNewBuffer(
     int32_t buffer_id, media::mojom::VideoBufferHandlePtr buffer_handle) {
+  LOG(INFO) << "On new buffer";
   CHECK(buffer_handle->is_shared_memory_via_raw_file_descriptor());
   std::unique_ptr<SharedMemoryProvider> shared_memory_provider =
       SharedMemoryProvider::CreateFromRawFileDescriptor(
@@ -40,18 +79,20 @@ void ReceiverImpl::OnFrameReadyInBuffer(
     int32_t buffer_id, int32_t frame_feedback_id,
     video_capture::mojom::ScopedAccessPermissionPtr permission,
     media::mojom::VideoFrameInfoPtr frame_info) {
-  if (frame_data_handler_ == nullptr) {
-    LOG(ERROR) << "Frame handler is null.";
-    return;
-  }
-
   SharedMemoryProvider* incoming_buffer =
       incoming_buffer_id_to_buffer_map_.at(buffer_id).get();
-  frame_data_handler_(
-      frame_info->timestamp->microseconds,
-      static_cast<const uint8_t*>(
-          incoming_buffer->GetSharedMemoryForInProcessAccess()->memory()),
-      incoming_buffer->GetMemorySizeInBytes());
+  // Loop through all the registered frame handlers and push a frame out.
+  std::map<int, VideoCaptureServiceClient::FrameHandler>::iterator it;
+  for (it = frame_handler_map_.begin();
+       it != frame_handler_map_.end(); it++) {
+    it->second(
+        frame_info->timestamp->microseconds,
+        static_cast<const uint8_t*>(
+            incoming_buffer->GetSharedMemoryForInProcessAccess()->memory()),
+        incoming_buffer->GetMemorySizeInBytes(),
+        capture_format_.width_in_pixels(),
+        capture_format_.height_in_pixels());
+  }
 }
 
 void ReceiverImpl::OnFrameDropped(

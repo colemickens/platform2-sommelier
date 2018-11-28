@@ -56,6 +56,8 @@ PipelineStatePtr ToMojom(const mri::PipelineState& state);
 
 namespace mri {
 
+std::vector<uint8_t> SerializeVideoStreamParamsProto(
+    const VideoStreamParams& params);
 std::vector<uint8_t> SerializeVideoDeviceProto(const VideoDevice& device);
 std::vector<uint8_t> SerializeSuccessStatusProto(const SuccessStatus& status);
 

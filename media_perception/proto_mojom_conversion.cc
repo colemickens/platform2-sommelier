@@ -249,6 +249,16 @@ PipelineStatePtr ToMojom(const mri::PipelineState& state) {
 
 namespace mri {
 
+std::vector<uint8_t> SerializeVideoStreamParamsProto(
+    const VideoStreamParams& params) {
+  const int size = params.ByteSizeLong();
+  std::vector<uint8_t> bytes(size, 0);
+
+  CHECK(params.SerializeToArray(bytes.data(), size))
+      << "Failed to serialize params proto.";
+  return bytes;
+}
+
 std::vector<uint8_t> SerializeVideoDeviceProto(const VideoDevice& device) {
   const int size = device.ByteSizeLong();
   std::vector<uint8_t> bytes(size, 0);

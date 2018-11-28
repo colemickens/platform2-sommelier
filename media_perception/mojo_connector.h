@@ -56,18 +56,18 @@ class MojoConnector {
   // Attempts to acquire exclusive access to a video device. Note that this does
   // not block another client of the video capture service from taking over
   // access on this device, which would disconnect this client.
-  void SetActiveDevice(
-      std::string device_id,
-      const VideoCaptureServiceClient::SetActiveDeviceCallback& callback);
+  void OpenDevice(
+      const std::string& device_id,
+      const VideoCaptureServiceClient::OpenDeviceCallback& callback);
 
   // Starts video capture on the active device.
-  void StartVideoCapture(const VideoStreamParams& capture_format,
-                         std::function<void(uint64_t timestamp_in_microseconds,
-                                            const uint8_t* data, int data_size)>
-                             frame_handler);
+  void StartVideoCapture(
+      const std::string& device_id,
+      std::shared_ptr<ReceiverImpl> receiver_impl,
+      const VideoStreamParams& capture_format);
 
-  // Stops video capture on the active device.
-  void StopVideoCapture();
+  // Stops video capture on the specified active device.
+  void StopVideoCapture(const std::string& device_id);
 
   // Creates a new virtual device that frames can be fed into.
   void CreateVirtualDevice(
@@ -104,17 +104,21 @@ class MojoConnector {
       const VideoCaptureServiceClient::GetDevicesCallback& callback,
       std::vector<media::mojom::VideoCaptureDeviceInfoPtr> infos);
 
-  void SetActiveDeviceOnIpcThread(
-      std::string device_id,
-      const VideoCaptureServiceClient::SetActiveDeviceCallback& callback);
+  void OpenDeviceOnIpcThread(
+      const std::string& device_id,
+      const VideoCaptureServiceClient::OpenDeviceCallback& callback);
 
-  void OnSetActiveDeviceCallback(
-      const VideoCaptureServiceClient::SetActiveDeviceCallback& callback,
+  void OnOpenDeviceCallback(
+      const std::string& device_id,
+      const VideoCaptureServiceClient::OpenDeviceCallback& callback,
       video_capture::mojom::DeviceAccessResultCode code);
 
-  void StartVideoCaptureOnIpcThread(const VideoStreamParams& capture_format);
+  void StartVideoCaptureOnIpcThread(
+      const std::string& device_id,
+      std::shared_ptr<ReceiverImpl> receiver_impl,
+      const VideoStreamParams& capture_format);
 
-  void StopVideoCaptureOnIpcThread();
+  void StopVideoCaptureOnIpcThread(const std::string& device_id);
 
   void CreateVirtualDeviceOnIpcThread(
       const VideoDevice& video_device,
@@ -142,8 +146,10 @@ class MojoConnector {
   // Entry point Mojo object for talking to the video capture service API.
   video_capture::mojom::DeviceFactoryPtr device_factory_;
 
-  // Provides interface to an open device.
-  video_capture::mojom::DevicePtr active_device_;
+  // Store a map from device ids to active devices.
+  std::map<std::string /* obfuscated device_id */,
+      video_capture::mojom::DevicePtr /* active_device */>
+          device_id_to_active_device_map_;
 
   int unique_device_counter_;
 
@@ -159,9 +165,6 @@ class MojoConnector {
   std::map<
       std::string /* obfuscated device_id */,
       std::string /* device_id */> obfuscated_device_id_map_;
-
-  // Provides interface for receiving frames from the video capture service.
-  ReceiverImpl receiver_impl_;
 
   std::mutex vcs_connection_state_mutex_;
   bool is_connected_to_vcs_ = false;

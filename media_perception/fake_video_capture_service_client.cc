@@ -25,14 +25,18 @@ void FakeVideoCaptureServiceClient::GetDevices(
   callback(devices_);
 }
 
-void FakeVideoCaptureServiceClient::SetActiveDevice(
+void FakeVideoCaptureServiceClient::OpenDevice(
     const std::string& device_id,
-    const SetActiveDeviceCallback& callback) {}
+    const OpenDeviceCallback& callback) {}
 
-void FakeVideoCaptureServiceClient::StartVideoCapture(
-    const SerializedVideoStreamParams& capture_format) {}
+bool FakeVideoCaptureServiceClient::IsVideoCaptureStartedForDevice(
+    const std::string& device_id,
+    SerializedVideoStreamParams* capture_format) { return false; }
 
-void FakeVideoCaptureServiceClient::StopVideoCapture() {}
+int FakeVideoCaptureServiceClient::AddFrameHandler(
+    const std::string& device_id,
+    const SerializedVideoStreamParams& capture_format,
+    FrameHandler frame_handler) { return 0; }
 
 void FakeVideoCaptureServiceClient::CreateVirtualDevice(
     const SerializedVideoDevice& video_device,
@@ -48,5 +52,10 @@ void FakeVideoCaptureServiceClient::PushFrameToVirtualDevice(
 
 void FakeVideoCaptureServiceClient::CloseVirtualDevice(
     const std::string& device_id) {}
+
+bool FakeVideoCaptureServiceClient::RemoveFrameHandler(
+    const std::string& device_id, int frame_handler_id) {
+  return false;
+}
 
 }  // namespace mri

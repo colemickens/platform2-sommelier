@@ -15,6 +15,7 @@
 
 #include "media_perception/mojo_connector.h"
 #include "media_perception/producer_impl.h"
+#include "media_perception/receiver_impl.h"
 #include "mojom/media_perception_service.mojom.h"
 
 namespace mri {
@@ -33,11 +34,17 @@ class VideoCaptureServiceClientImpl : public VideoCaptureServiceClient {
   bool Connect() override;
   bool IsConnected() override;
   void GetDevices(const GetDevicesCallback& callback) override;
-  void SetActiveDevice(const std::string& device_id,
-                       const SetActiveDeviceCallback& callback) override;
-  void StartVideoCapture(
-      const SerializedVideoStreamParams& capture_format) override;
-  void StopVideoCapture() override;
+  void OpenDevice(const std::string& device_id,
+                  const OpenDeviceCallback& callback) override;
+  bool IsVideoCaptureStartedForDevice(
+      const std::string& device_id,
+      SerializedVideoStreamParams* capture_format) override;
+  int AddFrameHandler(
+      const std::string& device_id,
+      const SerializedVideoStreamParams& capture_format,
+      FrameHandler handler) override;
+  bool RemoveFrameHandler(
+      const std::string& device_id, int frame_handler_id) override;
   void CreateVirtualDevice(const SerializedVideoDevice& video_device,
                            const VirtualDeviceCallback& callback) override;
   void PushFrameToVirtualDevice(const std::string& device_id,
@@ -49,10 +56,15 @@ class VideoCaptureServiceClientImpl : public VideoCaptureServiceClient {
   void CloseVirtualDevice(const std::string& device_id) override;
 
  private:
-  void OnNewFrameData(uint64_t timestamp_in_microseconds, const uint8_t* data,
-                      int data_size);
-
   MojoConnector* mojo_connector_;
+
+  // Stores a map of device ids to receivers for receiving frame for the correct
+  // mojo object associated with an open device.
+  std::map<std::string /*device_id*/, std::shared_ptr<ReceiverImpl>>
+      device_id_to_receiver_map_;
+
+  // Guards against concurrent changes to |device_id_to_receiver_map_|.
+  mutable std::mutex device_id_to_receiver_map_lock_;
 
   // Stores a map of device ids to producers for pushing frames to the correct
   // mojo object when PushFrameToVirtualDevice is called.
@@ -62,12 +74,8 @@ class VideoCaptureServiceClientImpl : public VideoCaptureServiceClient {
       device_id_to_producer_map_;
 
   // Guards against concurrent changes to |device_id_to_producer_map_|.
+  // TODO(crbug.com/918668): Remove use of locks if possible.
   mutable std::mutex device_id_to_producer_map_lock_;
-
-  // Stores the most recent requested frame width and height for incoming image
-  // frames from the open active device.
-  int requested_frame_width_;
-  int requested_frame_height_;
 };
 
 }  // namespace mri

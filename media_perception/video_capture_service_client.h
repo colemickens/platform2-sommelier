@@ -14,13 +14,14 @@
 #include <utility>
 #include <vector>
 
+
+namespace mri {
+
 // Typdefs for readability. Serialized protos are passed back and forth across
 // the boundary between platform2 code and librtanalytics.so
 using SerializedVideoStreamParams = std::vector<uint8_t>;
 using SerializedVideoDevice = std::vector<uint8_t>;
 using RawPixelFormat = uint32_t;
-
-namespace mri {
 
 enum DeviceAccessResultCode {
   RESULT_UNKNOWN,
@@ -30,12 +31,14 @@ enum DeviceAccessResultCode {
 };
 
 // Provides the interface definition for the rtanalytics library to interact
-// with the Chrome Video Capture Service.
+// with the Chrome Video Capture Service. Note that the
+// VideoCaptureServiceClient is thread-safe and can be shared between multiple
+// clients.
 class VideoCaptureServiceClient {
  public:
   using GetDevicesCallback = std::function<void(
       std::vector<SerializedVideoDevice>)>;
-  using SetActiveDeviceCallback = std::function<void(DeviceAccessResultCode)>;
+  using OpenDeviceCallback = std::function<void(DeviceAccessResultCode)>;
   using VirtualDeviceCallback = std::function<void(SerializedVideoDevice)>;
   using FrameHandler =
       std::function<void(uint64_t timestamp_us, const uint8_t* data,
@@ -52,15 +55,34 @@ class VideoCaptureServiceClient {
   // Gets a list of video devices available.
   virtual void GetDevices(const GetDevicesCallback& callback) = 0;
 
-  // Sets the active device to be opened by the Video Capture Service.
-  // Return value indicates success or failure of setting the active device.
-  virtual void SetActiveDevice(const std::string& device_id,
-                               const SetActiveDeviceCallback& callback) = 0;
+  // Sets a device to be opened by the Video Capture Service with the exact
+  // device_id specified. OpenDeviceCallback provides information on the success
+  // or failure of the request.
+  virtual void OpenDevice(const std::string& device_id,
+                          const OpenDeviceCallback& callback) = 0;
 
-  // Starts video capture on the active device. Frames will be forwarded to
-  // the frame handler.
-  virtual void StartVideoCapture(
-      const SerializedVideoStreamParams& capture_format) = 0;
+  // Determines if a particular device has already started capture and if it
+  // has, fills in the |capture_format| with the current parameters used to
+  // read frames from the device.
+  virtual bool IsVideoCaptureStartedForDevice(
+      const std::string& device_id,
+      SerializedVideoStreamParams* capture_format) = 0;
+
+  // Add a frame handler for a particular device id. Return value is the handler
+  // id. Note that multiple clients can add a frame handler for a single device.
+  // AddFrameHandler will start video capture on a device if it is not already
+  // started. An return value of 0 indicates a failure to add the handler or
+  // start video capture.
+  virtual int AddFrameHandler(
+      const std::string& device_id,
+      const SerializedVideoStreamParams& capture_format,
+      FrameHandler handler) = 0;
+
+  // Remove a frame handler for a particular device by specifying the frame
+  // handler id. Video capture on a particular device will only stop when all
+  // frame handlers are removed for a particular device.
+  virtual bool RemoveFrameHandler(
+      const std::string& device_id, int frame_handler_id) = 0;
 
   // Interface for creating a virtual device with a set of parameters.
   virtual void CreateVirtualDevice(
@@ -77,19 +99,6 @@ class VideoCaptureServiceClient {
 
   // Closes the specified virtual device.
   virtual void CloseVirtualDevice(const std::string& device_id) = 0;
-
-  // Stops video capture from the active device.
-  virtual void StopVideoCapture() = 0;
-
-  // Set the frame handler. Made virtual to support testing/mocking, clients are
-  // not expected to override this function.
-  virtual void SetFrameHandler(FrameHandler handler) {
-    frame_handler_ = std::move(handler);
-  }
-
- protected:
-  // Handler for processing input frames.
-  FrameHandler frame_handler_;
 };
 
 }  // namespace mri

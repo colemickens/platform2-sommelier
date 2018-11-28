@@ -12,6 +12,7 @@
 #include <string>
 
 #include "base/logging.h"
+#include "media_perception/device_management.pb.h"
 #include "media_perception/shared_memory_provider.h"
 #include "media_perception/video_capture_service_client.h"
 #include "mojom/device_factory.mojom.h"
@@ -20,15 +21,32 @@ namespace mri {
 
 class ReceiverImpl : public video_capture::mojom::Receiver {
  public:
-  using FrameDataHandler = std::function<void(
-      uint64_t timestamp_in_microseconds, const uint8_t* data, int data_size)>;
-  ReceiverImpl() : binding_(this) {}
+  ReceiverImpl() :
+    frame_handler_id_counter_(0),
+    binding_(this) {}
+
+  bool HasValidCaptureFormat();
+
+  void SetCaptureFormat(const VideoStreamParams& params);
+
+  VideoStreamParams GetCaptureFormat();
+
+  // Checks if the frame dimensions match the current dimensions.
+  bool CaptureFormatsMatch(const VideoStreamParams& params);
 
   // Creates a local proxy of the ReceiverPtr interface.
   video_capture::mojom::ReceiverPtr CreateInterfacePtr();
 
-  // Sets the handler that will be called when new frames come from the device.
-  void SetFrameHandler(FrameDataHandler frame_data_handler);
+  // Returns the count of active frame handlers on this receiver.
+  int GetFrameHandlerCount();
+
+  // Add a handler that will be called when new frames come from the associated
+  // device. Return value is an id for this frame handler.
+  int AddFrameHandler(VideoCaptureServiceClient::FrameHandler frame_handler);
+
+  // Removes a frame handler on this device with this id. Return value indicates
+  // if the removal was successful.
+  bool RemoveFrameHandler(int frame_handler_id);
 
   // video_capture::mojom::Receiver overrides.
   void OnNewBuffer(int32_t buffer_id,
@@ -46,11 +64,17 @@ class ReceiverImpl : public video_capture::mojom::Receiver {
   void OnStartedUsingGpuDecode() override;
 
  private:
-  // Frame handler for forwarding frames to the client.
-  FrameDataHandler frame_data_handler_;
+  // Incremented to create unique frame handler ids.
+  int frame_handler_id_counter_;
+
+  // Frame handler map for forwarding frames to one or more clients.
+  std::map<int, VideoCaptureServiceClient::FrameHandler> frame_handler_map_;
 
   // Binding of the Recevier interface to message pipe.
   mojo::Binding<video_capture::mojom::Receiver> binding_;
+
+  // Stores the capture format requested from the open device.
+  VideoStreamParams capture_format_;
 
   std::map<int32_t /*buffer_id*/, std::unique_ptr<SharedMemoryProvider>>
       incoming_buffer_id_to_buffer_map_;

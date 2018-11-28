@@ -126,6 +126,8 @@ void MojoConnector::ConnectToVideoCaptureService() {
 }
 
 void MojoConnector::ConnectToVideoCaptureServiceOnIpcThread() {
+  unique_device_counter_ = 1;
+
   media_perception_service_impl_->ConnectToVideoCaptureService(
       mojo::MakeRequest(&device_factory_));
   device_factory_.set_connection_error_handler(
@@ -206,51 +208,76 @@ void MojoConnector::OnDeviceInfosReceived(
   callback(devices);
 }
 
-void MojoConnector::SetActiveDevice(
-    std::string device_id,
-    const VideoCaptureServiceClient::SetActiveDeviceCallback& callback) {
+void MojoConnector::OpenDevice(
+    const std::string& device_id,
+    const VideoCaptureServiceClient::OpenDeviceCallback& callback) {
   ipc_thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&MojoConnector::SetActiveDeviceOnIpcThread,
+      FROM_HERE, base::Bind(&MojoConnector::OpenDeviceOnIpcThread,
                             base::Unretained(this), device_id, callback));
 }
 
-void MojoConnector::SetActiveDeviceOnIpcThread(
-    std::string device_id,
-    const VideoCaptureServiceClient::SetActiveDeviceCallback& callback) {
+void MojoConnector::OpenDeviceOnIpcThread(
+    const std::string& device_id,
+    const VideoCaptureServiceClient::OpenDeviceCallback& callback) {
   std::map<std::string, std::string>::iterator it =
       obfuscated_device_id_map_.find(device_id);
   if (it == obfuscated_device_id_map_.end()) {
     LOG(ERROR) << "Device id not found in obfuscated_device_id map.";
     return;
   }
+
+  std::map<std::string, video_capture::mojom::DevicePtr>::iterator
+      device_it = device_id_to_active_device_map_.find(device_id);
+  // Check to see if the device is already successfully opened.
+  if (device_it != device_id_to_active_device_map_.end()) {
+    callback(DeviceAccessResultCode::SUCCESS);
+    return;
+  }
+
+  video_capture::mojom::DevicePtr new_device;
   device_factory_->CreateDevice(
-      it->second, mojo::MakeRequest(&active_device_),
-      base::Bind(&MojoConnector::OnSetActiveDeviceCallback,
-                 base::Unretained(this), callback));
+      it->second, mojo::MakeRequest(&new_device),
+      base::Bind(&MojoConnector::OnOpenDeviceCallback,
+                 base::Unretained(this), device_id, callback));
+  device_id_to_active_device_map_.insert(
+      std::make_pair(device_id, std::move(new_device)));
 }
 
-void MojoConnector::OnSetActiveDeviceCallback(
-    const VideoCaptureServiceClient::SetActiveDeviceCallback& callback,
+void MojoConnector::OnOpenDeviceCallback(
+    const std::string& device_id,
+    const VideoCaptureServiceClient::OpenDeviceCallback& callback,
     video_capture::mojom::DeviceAccessResultCode code) {
+  // Delete the device from the active device map if we were not successful in
+  // opening it.
+  if (code != video_capture::mojom::DeviceAccessResultCode::SUCCESS) {
+    device_id_to_active_device_map_.erase(device_id);
+  }
   callback(GetDeviceAccessResultCode(code));
 }
 
 void MojoConnector::StartVideoCapture(
-    const VideoStreamParams& capture_format,
-    std::function<void(uint64_t timestamp_in_microseconds, const uint8_t* data,
-                       int data_size)>
-        frame_handler) {
-  LOG(INFO) << "Setting frame handler.";
-  receiver_impl_.SetFrameHandler(std::move(frame_handler));
-  // Mojo code to start video capture and pass frames to the frame handler.
+    const std::string& device_id,
+    std::shared_ptr<ReceiverImpl> receiver_impl,
+    const VideoStreamParams& capture_format) {
   ipc_thread_.task_runner()->PostTask(
       FROM_HERE, base::Bind(&MojoConnector::StartVideoCaptureOnIpcThread,
-                            base::Unretained(this), capture_format));
+                            base::Unretained(this),
+                            device_id,
+                            receiver_impl,
+                            capture_format));
 }
 
 void MojoConnector::StartVideoCaptureOnIpcThread(
+    const std::string& device_id,
+    std::shared_ptr<ReceiverImpl> receiver_impl,
     const VideoStreamParams& capture_format) {
   LOG(INFO) << "Starting video capture on ipc thread.";
+  std::map<std::string, video_capture::mojom::DevicePtr>::iterator
+      it = device_id_to_active_device_map_.find(device_id);
+  if (it == device_id_to_active_device_map_.end()) {
+    LOG(ERROR) << "Device id not found in active device map.";
+    return;
+  }
 
   auto requested_settings = media::mojom::VideoCaptureParams::New();
   requested_settings->requested_format =
@@ -270,18 +297,19 @@ void MojoConnector::StartVideoCaptureOnIpcThread(
 
   requested_settings->buffer_type =
       media::mojom::VideoCaptureBufferType::kSharedMemoryViaRawFileDescriptor;
-  active_device_->Start(std::move(requested_settings),
-                        receiver_impl_.CreateInterfacePtr());
+
+  it->second->Start(std::move(requested_settings),
+                    receiver_impl->CreateInterfacePtr());
 }
 
-void MojoConnector::StopVideoCapture() {
+void MojoConnector::StopVideoCapture(const std::string& device_id) {
   ipc_thread_.task_runner()->PostTask(
       FROM_HERE, base::Bind(&MojoConnector::StopVideoCaptureOnIpcThread,
-                            base::Unretained(this)));
+                            base::Unretained(this), device_id));
 }
 
-void MojoConnector::StopVideoCaptureOnIpcThread() {
-  active_device_ = video_capture::mojom::DevicePtr();
+void MojoConnector::StopVideoCaptureOnIpcThread(const std::string& device_id) {
+  device_id_to_active_device_map_.erase(device_id);
 }
 
 void MojoConnector::CreateVirtualDevice(

@@ -24,11 +24,17 @@ class FakeVideoCaptureServiceClient : public VideoCaptureServiceClient {
   bool Connect() override;
   bool IsConnected() override;
   void GetDevices(const GetDevicesCallback& callback) override;
-  void SetActiveDevice(const std::string& device_id,
-                       const SetActiveDeviceCallback& callback) override;
-  void StartVideoCapture(
-      const SerializedVideoStreamParams& capture_format) override;
-  void StopVideoCapture() override;
+  void OpenDevice(const std::string& device_id,
+                  const OpenDeviceCallback& callback) override;
+  bool IsVideoCaptureStartedForDevice(
+      const std::string& device_id,
+      SerializedVideoStreamParams* capture_format) override;
+  int AddFrameHandler(
+      const std::string& device_id,
+      const SerializedVideoStreamParams& capture_format,
+      FrameHandler handler) override;
+  bool RemoveFrameHandler(
+      const std::string& device_id, int frame_handler_id) override;
   void CreateVirtualDevice(const SerializedVideoDevice& video_device,
                            const VirtualDeviceCallback& callback) override;
   void PushFrameToVirtualDevice(const std::string& device_id,
