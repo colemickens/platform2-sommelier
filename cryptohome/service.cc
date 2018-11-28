@@ -2709,9 +2709,9 @@ void Service::DoGetFirmwareManagementParameters(
     extension->set_flags(flags);
   }
 
-  brillo::SecureBlob hash;
+  brillo::Blob hash;
   if (firmware_management_parameters_->GetDeveloperKeyHash(&hash)) {
-    extension->set_developer_key_hash(hash.to_string());
+    extension->set_developer_key_hash(brillo::BlobToString(hash));
   }
 
   SendReply(context, reply);
@@ -2749,9 +2749,10 @@ void Service::DoSetFirmwareManagementParameters(
     flags = request_pb.flags();
   }
 
-  std::unique_ptr<brillo::SecureBlob> hash;
+  std::unique_ptr<brillo::Blob> hash;
   if (request_pb.has_developer_key_hash()) {
-    hash.reset(new SecureBlob(request_pb.developer_key_hash()));
+    hash.reset(new brillo::Blob(
+        brillo::BlobFromString(request_pb.developer_key_hash())));
   }
 
   if (!firmware_management_parameters_->Store(flags, hash.get())) {

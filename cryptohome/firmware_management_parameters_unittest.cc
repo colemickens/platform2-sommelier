@@ -384,7 +384,7 @@ TEST_F(FirmwareManagementParametersTest, StoreHashSizeBad) {
     .WillOnce(Return(FirmwareManagementParameters::kNvramBytes));
 
   // Return a bad NVRAM size.
-  brillo::SecureBlob bad_hash("wrong-size");
+  brillo::Blob bad_hash = brillo::BlobFromString("wrong-size");
   EXPECT_FALSE(fwmp_.Store(fwmp_flags_, &bad_hash));
   EXPECT_FALSE(fwmp_.IsLoaded());
 }

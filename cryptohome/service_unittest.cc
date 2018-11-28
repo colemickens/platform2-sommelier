@@ -1520,7 +1520,7 @@ TEST_F(ServiceExTest, ListKeysInvalidArgsNoEmail) {
 }
 
 TEST_F(ServiceExTest, GetFirmwareManagementParametersSuccess) {
-  brillo::SecureBlob hash("its_a_hash");
+  brillo::Blob hash = brillo::BlobFromString("its_a_hash");
 
   EXPECT_CALL(fwmp_, Load())
     .WillOnce(Return(true));
@@ -1544,7 +1544,7 @@ TEST_F(ServiceExTest, GetFirmwareManagementParametersSuccess) {
   EXPECT_EQ(reply()
                 ->GetExtension(GetFirmwareManagementParametersReply::reply)
                 .developer_key_hash(),
-            hash.to_string());
+            brillo::BlobToString(hash));
 }
 
 TEST_F(ServiceExTest, GetFirmwareManagementParametersError) {
@@ -1562,7 +1562,7 @@ TEST_F(ServiceExTest, GetFirmwareManagementParametersError) {
 }
 
 TEST_F(ServiceExTest, SetFirmwareManagementParametersSuccess) {
-  brillo::SecureBlob hash("its_a_hash");
+  brillo::Blob hash = brillo::BlobFromString("its_a_hash");
   brillo::Blob out_hash;
 
   EXPECT_CALL(fwmp_, Create())
@@ -1572,7 +1572,7 @@ TEST_F(ServiceExTest, SetFirmwareManagementParametersSuccess) {
 
   SetFirmwareManagementParametersRequest request;
   request.set_flags(0x1234);
-  request.set_developer_key_hash(hash.to_string());
+  request.set_developer_key_hash(brillo::BlobToString(hash));
   service_.DoSetFirmwareManagementParameters(SecureBlobFromProtobuf(request),
                                              NULL);
   DispatchEvents();
@@ -1599,14 +1599,14 @@ TEST_F(ServiceExTest, SetFirmwareManagementParametersNoHash) {
 }
 
 TEST_F(ServiceExTest, SetFirmwareManagementParametersCreateError) {
-  brillo::SecureBlob hash("its_a_hash");
+  brillo::Blob hash = brillo::BlobFromString("its_a_hash");
 
   EXPECT_CALL(fwmp_, Create())
     .WillOnce(Return(false));
 
   SetFirmwareManagementParametersRequest request;
   request.set_flags(0x1234);
-  request.set_developer_key_hash(hash.to_string());
+  request.set_developer_key_hash(brillo::BlobToString(hash));
   service_.DoSetFirmwareManagementParameters(SecureBlobFromProtobuf(request),
                                              NULL);
   DispatchEvents();
@@ -1617,7 +1617,7 @@ TEST_F(ServiceExTest, SetFirmwareManagementParametersCreateError) {
 }
 
 TEST_F(ServiceExTest, SetFirmwareManagementParametersStoreError) {
-  brillo::SecureBlob hash("its_a_hash");
+  brillo::Blob hash = brillo::BlobFromString("its_a_hash");
 
   EXPECT_CALL(fwmp_, Create())
     .WillOnce(Return(true));
@@ -1626,7 +1626,7 @@ TEST_F(ServiceExTest, SetFirmwareManagementParametersStoreError) {
 
   SetFirmwareManagementParametersRequest request;
   request.set_flags(0x1234);
-  request.set_developer_key_hash(hash.to_string());
+  request.set_developer_key_hash(brillo::BlobToString(hash));
   service_.DoSetFirmwareManagementParameters(SecureBlobFromProtobuf(request),
                                              NULL);
   DispatchEvents();
