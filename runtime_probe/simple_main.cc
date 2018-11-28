@@ -3,6 +3,7 @@
  * found in the LICENSE file.
  */
 #include <base/logging.h>
+#include <base/process/launch.h>
 #include <base/values.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
@@ -21,6 +22,16 @@ enum ExitStatus {
 
 using base::DictionaryValue;
 
+// TODO(itspeter): Remove once we can trigger this by probe statement.
+// Test if we can get battery info by ectool.
+void DryRunGetBatteryInfo() {
+  const std::vector<std::string>& ectool_cmd_arg{"/usr/sbin/ectool", "battery"};
+  std::string ectool_output;
+  if (!base::GetAppOutput(ectool_cmd_arg, &ectool_output))
+    VLOG(1) << "Failed to execute command \"ectool battery\"";
+  VLOG(1) << "ectool battery output:\n" << ectool_output;
+}
+
 int main(int argc, char* argv[]) {
   // Flags are subject to change
   DEFINE_string(config_file_path, "", "File path to probe config");
@@ -34,6 +45,11 @@ int main(int argc, char* argv[]) {
   const int log_level = FLAGS_debug ? -1 : 0;
   logging::SetMinLogLevel(log_level);
   LOG(INFO) << "Starting Runtime Probe";
+
+  // TODO(itspeter): b/120265210, before a long-term alternative, call the
+  // ectool to get battery info.
+  if (FLAGS_debug)
+    DryRunGetBatteryInfo();
 
   if (FLAGS_dbus) {
     // For testing purpose
