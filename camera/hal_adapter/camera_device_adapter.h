@@ -143,6 +143,10 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   void ReprocessEffectsOnReprocessEffectThread(
       std::unique_ptr<Camera3CaptureRequest> req);
 
+  void ProcessReprocessRequestOnDeviceOpsThread(
+      std::unique_ptr<Camera3CaptureRequest> req,
+      base::Callback<void(int32_t)> callback);
+
   void ResetDeviceOpsDelegateOnThread();
   void ResetCallbackOpsDelegateOnThread();
 

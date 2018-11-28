@@ -23,6 +23,7 @@
 
 #include "common/camera_buffer_handle.h"
 #include "cros-camera/common.h"
+#include "cros-camera/future.h"
 #include "cros-camera/ipc_util.h"
 #include "hal_adapter/camera3_callback_ops_delegate.h"
 #include "hal_adapter/camera3_device_ops_delegate.h"
@@ -716,12 +717,26 @@ void CameraDeviceAdapter::ReprocessEffectsOnReprocessEffectThread(
       reprocess_result_metadata_.emplace(req->frame_number,
                                          reprocess_result_metadata);
     }
-    reprocess_context.result =
-        camera_device_->ops->process_capture_request(camera_device_, req.get());
+    auto future = cros::Future<int32_t>::Create(nullptr);
+    camera_device_ops_thread_.task_runner()->PostTask(
+        FROM_HERE,
+        base::Bind(
+            &CameraDeviceAdapter::ProcessReprocessRequestOnDeviceOpsThread,
+            base::Unretained(this), base::Passed(&req),
+            cros::GetFutureCallback(future)));
+    reprocess_context.result = future->Get();
     if (reprocess_context.result != 0) {
       LOGF(ERROR) << "Failed to process capture request after reprocessing";
     }
   }
+}
+
+void CameraDeviceAdapter::ProcessReprocessRequestOnDeviceOpsThread(
+    std::unique_ptr<Camera3CaptureRequest> req,
+    base::Callback<void(int32_t)> callback) {
+  VLOGF_ENTER();
+  callback.Run(
+      camera_device_->ops->process_capture_request(camera_device_, req.get()));
 }
 
 void CameraDeviceAdapter::ResetDeviceOpsDelegateOnThread() {
