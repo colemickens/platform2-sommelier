@@ -1,0 +1,255 @@
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// #define LOG_NDEBUG 0
+#define LOG_TAG "MediaCodecEncoder"
+
+#include "arc/codec-test/mediacodec_encoder.h"
+
+#include <memory>
+#include <string>
+#include <utility>
+
+#include <media/NdkMediaFormat.h>
+#include <utils/Log.h>
+
+namespace android {
+namespace {
+// The component name of ArcVideoEncoder.
+constexpr char kArcVideoEncoderName[] = "OMX.arc.h264.encode";
+
+// The values are defined at
+// <android_root>/frameworks/base/media/java/android/media/MediaCodecInfo.java.
+constexpr int32_t COLOR_FormatYUV420Planar = 19;
+#if ANDROID_VERSION >= 0x0900  // Android 9.0 (Pie)
+constexpr int32_t BITRATE_MODE_CBR = 2;
+#endif
+
+// The time interval between two key frames.
+constexpr int32_t kIFrameIntervalSec = 10;
+
+// The timeout of AMediaCodec function calls.
+constexpr int kTimeoutUs = 1000;  // 1ms.
+
+// The tolenrance period between two input buffers are enqueued,
+// and the period between submitting EOS input buffer to receiving the EOS
+// output buffer.
+constexpr int kBufferPeriodTimeoutUs = 1000000;  // 1 sec
+
+}  // namespace
+
+// static
+std::unique_ptr<MediaCodecEncoder> MediaCodecEncoder::Create(
+    std::string input_path, Size visible_size) {
+  if (visible_size.width <= 0 || visible_size.height <= 0 ||
+      visible_size.width % 2 == 1 || visible_size.height % 2 == 1) {
+    ALOGE("Size is not valid: %dx%d", visible_size.width, visible_size.height);
+    return nullptr;
+  }
+  size_t buffer_size = visible_size.width * visible_size.height * 3 / 2;
+
+  std::unique_ptr<InputFileStream> input_file(new InputFileStream(input_path));
+  if (!input_file->IsValid()) {
+    ALOGE("Failed to open file: %s", input_path.c_str());
+    return nullptr;
+  }
+  int file_size = input_file->GetLength();
+  if (file_size < 0 || file_size % buffer_size != 0) {
+    ALOGE("Stream byte size (%d) is not a multiple of frame byte size (%zu).",
+          file_size, buffer_size);
+    return nullptr;
+  }
+
+  AMediaCodec* codec = AMediaCodec_createCodecByName(kArcVideoEncoderName);
+  if (!codec) {
+    ALOGE("Failed to create mediacodec encoder.");
+    return nullptr;
+  }
+
+  return std::unique_ptr<MediaCodecEncoder>(
+      new MediaCodecEncoder(codec, std::move(input_file), visible_size,
+                            buffer_size, file_size / buffer_size));
+}
+
+MediaCodecEncoder::MediaCodecEncoder(
+    AMediaCodec* codec,
+    std::unique_ptr<InputFileStream> input_file,
+    Size size,
+    size_t buffer_size,
+    size_t num_total_frames)
+    : kVisibleSize(size),
+      kBufferSize(buffer_size),
+      kNumTotalFrames(num_total_frames),
+      codec_(codec),
+      input_file_(std::move(input_file)) {}
+
+MediaCodecEncoder::~MediaCodecEncoder() {
+  if (codec_ != nullptr) {
+    AMediaCodec_delete(codec_);
+  }
+}
+
+void MediaCodecEncoder::SetOutputBufferReadyCb(const OutputBufferReadyCb& cb) {
+  output_buffer_ready_cb_ = cb;
+}
+
+void MediaCodecEncoder::Rewind() {
+  input_frame_index_ = 0;
+  input_file_->Rewind();
+}
+
+bool MediaCodecEncoder::Configure(int32_t bitrate, int32_t framerate) {
+  ALOGV("Configure encoder bitrate=%d, framerate=%d", bitrate, framerate);
+  AMediaFormat* format = AMediaFormat_new();
+  AMediaFormat_setString(format, AMEDIAFORMAT_KEY_MIME, "video/avc");
+  AMediaFormat_setInt32(format, AMEDIAFORMAT_KEY_COLOR_FORMAT,
+                        COLOR_FormatYUV420Planar);
+#if ANDROID_VERSION >= 0x0900  // Android 9.0 (Pie)
+  // This attribute is added in ARC++ P.
+  AMediaFormat_setInt32(format, AMEDIAFORMAT_KEY_BITRATE_MODE,
+                        BITRATE_MODE_CBR);
+#endif
+  AMediaFormat_setInt32(format, AMEDIAFORMAT_KEY_I_FRAME_INTERVAL,
+                        kIFrameIntervalSec);
+  AMediaFormat_setInt32(format, AMEDIAFORMAT_KEY_WIDTH, kVisibleSize.width);
+  AMediaFormat_setInt32(format, AMEDIAFORMAT_KEY_HEIGHT, kVisibleSize.height);
+  AMediaFormat_setInt32(format, AMEDIAFORMAT_KEY_BIT_RATE, bitrate);
+  AMediaFormat_setInt32(format, AMEDIAFORMAT_KEY_FRAME_RATE, framerate);
+  bool ret = AMediaCodec_configure(
+                 codec_, format, nullptr /* surface */, nullptr /* crtpto */,
+                 AMEDIACODEC_CONFIGURE_FLAG_ENCODE) == AMEDIA_OK;
+  AMediaFormat_delete(format);
+  if (ret) {
+    bitrate_ = bitrate;
+    framerate_ = framerate;
+  }
+  return ret;
+}
+
+bool MediaCodecEncoder::Start() {
+  return AMediaCodec_start(codec_) == AMEDIA_OK;
+}
+
+bool MediaCodecEncoder::Encode() {
+  bool input_done = false;
+  bool output_done = false;
+  int64_t last_enqueue_input_time = GetNowUs();
+  int64_t send_eos_time;
+  while (!output_done) {
+    // Feed input stream to the encoder.
+    ssize_t index;
+    if (!input_done) {
+      index = AMediaCodec_dequeueInputBuffer(codec_, kTimeoutUs);
+      if (index == AMEDIACODEC_INFO_TRY_AGAIN_LATER) {
+        if (GetNowUs() - last_enqueue_input_time > kBufferPeriodTimeoutUs) {
+          ALOGE("Timeout to dequeue next input buffer.");
+          return false;
+        }
+      } else if (index >= 0) {
+        if (input_frame_index_ == kNumTotalFrames) {
+          if (!FeedEOSInputBuffer(index))
+            return false;
+
+          input_done = true;
+          send_eos_time = GetNowUs();
+        } else {
+          if (!FeedInputBuffer(index))
+            return false;
+
+          last_enqueue_input_time = GetNowUs();
+          ++input_frame_index_;
+        }
+      }
+    }
+
+    // Retreive the encoded output buffer.
+    AMediaCodecBufferInfo info;
+    index = AMediaCodec_dequeueOutputBuffer(codec_, &info, kTimeoutUs);
+    ALOGV("output buffer index: %zu", index);
+    if (index == AMEDIACODEC_INFO_TRY_AGAIN_LATER) {
+      if (input_done && GetNowUs() - send_eos_time > kBufferPeriodTimeoutUs) {
+        ALOGE("Timeout to receive EOS output buffer.");
+        return false;
+      }
+    } else if (index >= 0) {
+      if (info.flags & AMEDIACODEC_BUFFER_FLAG_END_OF_STREAM)
+        output_done = true;
+      if (!ReceiveOutputBuffer(index, info))
+        return false;
+    }
+  }
+  return true;
+}
+
+bool MediaCodecEncoder::Stop() {
+  return AMediaCodec_stop(codec_) == AMEDIA_OK;
+}
+
+size_t MediaCodecEncoder::NumTotalFrames() const {
+  return kNumTotalFrames;
+}
+
+bool MediaCodecEncoder::FeedInputBuffer(size_t index) {
+  ALOGV("input buffer index: %zu", index);
+  uint64_t time_us = input_frame_index_ * 1000000 / framerate_;
+
+  size_t out_size;
+  uint8_t* buf = AMediaCodec_getInputBuffer(codec_, index, &out_size);
+  if (!buf || out_size < kBufferSize) {
+    ALOGE("Failed to getInputBuffer: index=%zu, buf=%p, out_size=%zu", index,
+          buf, out_size);
+    return false;
+  }
+  if (input_file_->Read(reinterpret_cast<char*>(buf), kBufferSize) !=
+      kBufferSize) {
+    ALOGE("Failed to read buffer from file.");
+    return false;
+  }
+
+  media_status_t status = AMediaCodec_queueInputBuffer(
+      codec_, index, 0 /* offset */, kBufferSize, time_us, 0 /* flag */);
+  if (status != AMEDIA_OK) {
+    ALOGE("Failed to queueInputBuffer: %d", static_cast<int>(status));
+    return false;
+  }
+  return true;
+}
+
+bool MediaCodecEncoder::FeedEOSInputBuffer(size_t index) {
+  ALOGV("input buffer index: %zu", index);
+  uint64_t time_us = input_frame_index_ * 1000000 / framerate_;
+
+  media_status_t status = AMediaCodec_queueInputBuffer(
+      codec_, index, 0 /* offset */, kBufferSize, time_us,
+      AMEDIACODEC_BUFFER_FLAG_END_OF_STREAM);
+  if (status != AMEDIA_OK) {
+    ALOGE("Failed to queueInputBuffer: %d", static_cast<int>(status));
+    return false;
+  }
+  return true;
+}
+
+bool MediaCodecEncoder::ReceiveOutputBuffer(size_t index,
+                                            const AMediaCodecBufferInfo& info) {
+  size_t out_size;
+  uint8_t* buf = AMediaCodec_getOutputBuffer(codec_, index, &out_size);
+  if (!buf) {
+    ALOGE("Failed to getOutputBuffer.");
+    return false;
+  }
+
+  if (output_buffer_ready_cb_) {
+    output_buffer_ready_cb_(buf, info.size);
+  }
+
+  media_status_t status =
+      AMediaCodec_releaseOutputBuffer(codec_, index, false /* render */);
+  if (status != AMEDIA_OK) {
+    ALOGE("Failed to releaseOutputBuffer: %d", static_cast<int>(status));
+    return false;
+  }
+  return true;
+}
+
+}  // namespace android
