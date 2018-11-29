@@ -70,7 +70,7 @@ bool Lockbox::Reset(LockboxError* error) {
   }
 
   // If we have authorization, recreate the lockbox space.
-  brillo::Blob owner_password;
+  brillo::SecureBlob owner_password;
   if (tpm_->GetOwnerPassword(&owner_password) && owner_password.size() != 0) {
     if (tpm_->IsNvramDefined(nvram_index_) &&
         !tpm_->DestroyNvram(nvram_index_)) {
@@ -181,15 +181,15 @@ bool Lockbox::Store(const brillo::Blob& blob, LockboxError* error) {
 }
 
 // TODO(keescook) Write unittests for this.
-void Lockbox::FinalizeMountEncrypted(const brillo::Blob& entropy) const {
+void Lockbox::FinalizeMountEncrypted(const brillo::SecureBlob &entropy) const {
   std::string hex;
   FilePath outfile_path;
   FILE* outfile;
   int rc;
 
   // Take hash of entropy and convert to hex string for cmdline.
-  SecureBlob hash = CryptoLib::Sha256ToSecureBlob(entropy);
-  hex = CryptoLib::BlobToHex(hash);
+  SecureBlob hash = CryptoLib::Sha256(entropy);
+  hex = CryptoLib::SecureBlobToHex(hash);
 
   process_->Reset(0);
   process_->AddArg(kMountEncrypted);

@@ -120,7 +120,7 @@ TEST_P(LockboxTest, ResetCreateSpace) {
 
   // Make the owner password available.
   static const char* kOwnerPassword = "sup";
-  brillo::Blob pw;
+  brillo::SecureBlob pw;
   pw.assign(kOwnerPassword, kOwnerPassword + strlen(kOwnerPassword));
   EXPECT_CALL(tpm_, GetOwnerPassword(_))
       .WillRepeatedly(DoAll(SetArgPointee<0>(pw), Return(true)));
@@ -145,7 +145,7 @@ TEST_P(LockboxTest, ResetCreateSpacePreexisting) {
 
   // Make the owner password available.
   static const char* kOwnerPassword = "sup";
-  brillo::Blob pw;
+  brillo::SecureBlob pw;
   pw.assign(kOwnerPassword, kOwnerPassword + strlen(kOwnerPassword));
   EXPECT_CALL(tpm_, GetOwnerPassword(_))
       .WillRepeatedly(DoAll(SetArgPointee<0>(pw), Return(true)));
