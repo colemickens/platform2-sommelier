@@ -10,3 +10,9 @@
 20104:65534
 # pppd calls setuid to root user
 20104:0
+# openvpn starts as 'shill' and drops to 'openvpn' without dropping
+# CAP_SETUID, so ensure 'openvpn' user's CAP_SETUID privs are locked down
+217:217
+# strongSwan starts as 'shill' and drops to 'ipsec' without dropping
+# CAP_SETUID, so ensure 'ipsec' user's CAP_SETUID privs are locked down
+212:212
