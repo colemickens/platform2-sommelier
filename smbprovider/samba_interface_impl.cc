@@ -269,14 +269,14 @@ int32_t SambaInterfaceImpl::CopyFile(const std::string& source_path,
   if (result != 0) {
     return result;
   }
-  DCHECK_GE(source_fd, 0);
+  DCHECK_GT(source_fd, 0);
 
   result = OpenCopyTarget(target_path, &target_fd);
   if (result != 0) {
     CloseCopySourceAndTarget(source_fd, target_fd);
     return result;
   }
-  DCHECK_GE(target_fd, 0);
+  DCHECK_GT(target_fd, 0);
 
   struct stat source_stat;
   result = GetEntryStatus(source_path, &source_stat);
