@@ -154,7 +154,7 @@ class BootLockboxTest : public testing::Test {
 };
 
 TEST_F(BootLockboxTest, NormalUse) {
-  brillo::SecureBlob data(100);
+  brillo::Blob data(100);
   brillo::SecureBlob signature;
   ASSERT_TRUE(lockbox_->Sign(data, &signature));
   EXPECT_LT(0, signature.size());
@@ -164,7 +164,7 @@ TEST_F(BootLockboxTest, NormalUse) {
 }
 
 TEST_F(BootLockboxTest, SignAfterFinalize) {
-  brillo::SecureBlob data(100);
+  brillo::Blob data(100);
   brillo::SecureBlob signature;
   ASSERT_TRUE(lockbox_->Sign(data, &signature));
   ASSERT_TRUE(lockbox_->FinalizeBoot());
@@ -174,7 +174,7 @@ TEST_F(BootLockboxTest, SignAfterFinalize) {
 
 TEST_F(BootLockboxTest, CreateAfterFinalize) {
   ASSERT_TRUE(lockbox_->FinalizeBoot());
-  brillo::SecureBlob data(100);
+  brillo::Blob data(100);
   brillo::SecureBlob signature;
   // Not only signing should fail, but a new key file should not be created
   // or signing attempted, if already finalized.
@@ -192,7 +192,7 @@ TEST_F(BootLockboxTest, VerifyIsFinalized) {
 }
 
 TEST_F(BootLockboxTest, LoadFromFile) {
-  brillo::SecureBlob data(100);
+  brillo::Blob data(100);
   brillo::SecureBlob signature;
   ASSERT_TRUE(lockbox_->Sign(data, &signature));
   // Verify in another instance which needs to load the key.
@@ -200,7 +200,7 @@ TEST_F(BootLockboxTest, LoadFromFile) {
 }
 
 TEST_F(BootLockboxTest, FileErrors) {
-  brillo::SecureBlob data(100);
+  brillo::Blob data(100);
   brillo::SecureBlob signature;
   ASSERT_TRUE(lockbox_->Sign(data, &signature));
 
@@ -215,7 +215,7 @@ TEST_F(BootLockboxTest, FileErrors) {
 
 TEST_F(BootLockboxTest, SignError) {
   EXPECT_CALL(tpm_, Sign(_, _, _, _)).WillRepeatedly(Return(false));
-  brillo::SecureBlob data(100);
+  brillo::Blob data(100);
   brillo::SecureBlob signature;
   ASSERT_FALSE(lockbox_->Sign(data, &signature));
 }
@@ -228,31 +228,32 @@ TEST_F(BootLockboxTest, ExtendPCRError) {
 TEST_F(BootLockboxTest, VerifyWithBadKey) {
   EXPECT_CALL(tpm_, VerifyPCRBoundKey(_, _, _))
       .WillRepeatedly(Return(false));
-  brillo::SecureBlob data(100);
+  brillo::Blob data(100);
   brillo::SecureBlob signature;
   ASSERT_TRUE(lockbox_->Sign(data, &signature));
   ASSERT_FALSE(lockbox_->Verify(data, signature));
 }
 
 TEST_F(BootLockboxTest, VerifyWithNoKey) {
-  brillo::SecureBlob data(100);
+  brillo::Blob data(100);
   brillo::SecureBlob signature;
   ASSERT_FALSE(lockbox_->Verify(data, signature));
 }
 
 TEST_F(BootLockboxTest, VerifyWithBadSignature) {
-  brillo::SecureBlob data(100);
+  brillo::Blob data(100);
   brillo::SecureBlob signature;
   ASSERT_TRUE(lockbox_->Sign(data, &signature));
   ASSERT_TRUE(lockbox_->Verify(data, signature));
-  signature.swap(data);
-  ASSERT_FALSE(lockbox_->Verify(data, signature));
+  brillo::Blob swapped_data(signature.begin(), signature.end());
+  brillo::SecureBlob swapped_signature(data.begin(), data.end());
+  ASSERT_FALSE(lockbox_->Verify(swapped_data, swapped_signature));
 }
 
 TEST_F(BootLockboxTest, EncryptError) {
   // Induce encryption failures; we expect a key cannot be successfully created.
   EXPECT_CALL(crypto_, EncryptWithTpm(_, _)).WillRepeatedly(Return(false));
-  brillo::SecureBlob data(100);
+  brillo::Blob data(100);
   brillo::SecureBlob signature;
   ASSERT_FALSE(lockbox_->Sign(data, &signature));
 }
@@ -261,7 +262,7 @@ TEST_F(BootLockboxTest, DecryptError) {
   // Induce decryption failures; we expect keys can be created and written to
   // 'disk' but they cannot be loaded again.
   EXPECT_CALL(crypto_, DecryptWithTpm(_, _)).WillRepeatedly(Return(false));
-  brillo::SecureBlob data(100);
+  brillo::Blob data(100);
   brillo::SecureBlob signature;
   ASSERT_TRUE(lockbox_->Sign(data, &signature));
   EXPECT_TRUE(lockbox_->Verify(data, signature));
