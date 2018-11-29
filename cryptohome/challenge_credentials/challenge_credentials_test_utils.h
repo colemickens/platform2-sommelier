@@ -37,7 +37,7 @@ MakeChallengeCredentialsDecryptResultWriter(
 void VerifySuccessfulChallengeCredentialsDecryptResult(
     const ChallengeCredentialsDecryptResult& result,
     const std::string& expected_username,
-    const brillo::Blob& expected_passkey);
+    const brillo::SecureBlob& expected_passkey);
 
 // Verifies that the ChallengeCredentialsDecryptOperation result is a
 // failure result.

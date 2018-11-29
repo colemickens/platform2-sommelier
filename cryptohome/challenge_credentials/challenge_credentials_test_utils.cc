@@ -35,7 +35,7 @@ MakeChallengeCredentialsDecryptResultWriter(
 void VerifySuccessfulChallengeCredentialsDecryptResult(
     const ChallengeCredentialsDecryptResult& result,
     const std::string& expected_username,
-    const Blob& expected_passkey) {
+    const SecureBlob& expected_passkey) {
   ASSERT_TRUE(result.username_passkey);
   EXPECT_EQ(expected_username, result.username_passkey->username());
   SecureBlob passkey;

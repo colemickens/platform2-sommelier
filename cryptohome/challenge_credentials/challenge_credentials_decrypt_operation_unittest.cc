@@ -108,8 +108,10 @@ class ChallengeCredentialsDecryptOperationTestBase : public testing::Test {
   // Assert that the tested operation completed with a valid success result.
   void VerifySuccessfulResult() const {
     ASSERT_TRUE(operation_result_);
-    VerifySuccessfulChallengeCredentialsDecryptResult(*operation_result_,
-                                                      kUserEmail, kPasskey);
+    VerifySuccessfulChallengeCredentialsDecryptResult(
+      *operation_result_,
+      kUserEmail,
+      brillo::SecureBlob(kPasskey.begin(), kPasskey.end()));
   }
 
   // Assert that the tested operation completed with a failure result.
