@@ -378,7 +378,7 @@ class FakeSambaInterface : public SambaInterface {
   const struct smbc_dirent* PopulateDirEnt(const FakeEntry& entry);
 
   // Counter for assigning file descriptor when opening.
-  uint32_t next_fd = 0;
+  uint32_t next_fd = 1;
 
   // Root directory of the file system.
   std::unique_ptr<FakeDirectory> root;

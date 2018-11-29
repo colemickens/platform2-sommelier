@@ -10,7 +10,8 @@ namespace smbprovider {
 
 MountTracker::MountTracker(std::unique_ptr<base::TickClock> tick_clock,
                            bool metadata_cache_enabled)
-    : tick_clock_(std::move(tick_clock)),
+    : mounts_(kInitialMountId),
+      tick_clock_(std::move(tick_clock)),
       metadata_cache_enabled_(metadata_cache_enabled) {}
 
 MountTracker::~MountTracker() = default;

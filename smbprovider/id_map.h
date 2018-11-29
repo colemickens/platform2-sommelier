@@ -23,7 +23,8 @@ class IdMap {
  public:
   using MapType = std::unordered_map<int32_t, T>;
 
-  IdMap() = default;
+  explicit IdMap(int initial_value) : next_unused_id_(initial_value) {}
+
   ~IdMap() = default;
 
   int32_t Insert(T value) {
@@ -80,7 +81,7 @@ class IdMap {
 
   MapType ids_;
   std::stack<int32_t> free_ids_;
-  int32_t next_unused_id_ = 0;
+  int32_t next_unused_id_;
   DISALLOW_COPY_AND_ASSIGN(IdMap);
 };
 

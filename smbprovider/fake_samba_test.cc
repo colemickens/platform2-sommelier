@@ -52,10 +52,13 @@ class FakeSambaTest : public testing::Test {
   }
 
   void CloseCopySourceAndTarget(int32_t source_fd, int32_t target_fd) {
-    if (source_fd >= 0) {
+    EXPECT_NE(0, source_fd);
+    EXPECT_NE(0, target_fd);
+
+    if (source_fd > 0) {
       fake_samba_.CloseFile(source_fd);
     }
-    if (target_fd >= 0) {
+    if (target_fd > 0) {
       fake_samba_.CloseFile(target_fd);
     }
   }

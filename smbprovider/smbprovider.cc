@@ -100,7 +100,9 @@ SmbProvider::SmbProvider(
     : org::chromium::SmbProviderAdaptor(this),
       dbus_object_(std::move(dbus_object)),
       mount_manager_(std::move(mount_manager)),
-      kerberos_synchronizer_(std::move(kerberos_synchronizer)) {}
+      kerberos_synchronizer_(std::move(kerberos_synchronizer)),
+      copy_tracker_(kInitialCopyProgressTrackerId),
+      read_dir_tracker_(kInitialReadDirProgressTrackerId) {}
 
 void SmbProvider::RegisterAsync(
     const AsyncEventSequencer::CompletionAction& completion_callback) {

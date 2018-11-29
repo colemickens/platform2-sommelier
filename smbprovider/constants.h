@@ -49,6 +49,18 @@ constexpr uint32_t kReadDirectoryInitialBatchSize = 64;
 // Maximum number of entries to send at a time for read directory.
 constexpr uint32_t kReadDirectoryMaxBatchSize = 2048;
 
+// Initial ID value for the IdMap of file descriptors.
+constexpr uint32_t kInitialFileDescriptorId = 1;
+
+// Initial ID value for the IdMap of mount IDs.
+constexpr uint32_t kInitialMountId = 0;
+
+// Initial ID value for the IdMap of CopyProgress trackers.
+constexpr uint32_t kInitialCopyProgressTrackerId = 0;
+
+// Initial ID value for the IdMap of ReadDirProgress trackers.
+constexpr uint32_t kInitialReadDirProgressTrackerId = 0;
+
 // Entries returned by smbc_getdents() that we ignore.
 extern const char kEntryParent[];
 extern const char kEntrySelf[];

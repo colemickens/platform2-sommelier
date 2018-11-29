@@ -12,7 +12,7 @@ namespace smbprovider {
 
 class IdMapTest : public testing::Test {
  public:
-  IdMapTest() = default;
+  IdMapTest() : map_(0 /* initial_value */) {}
   ~IdMapTest() override = default;
 
  protected:
@@ -157,7 +157,7 @@ TEST_F(IdMapTest, TestInsertWithSpecificId) {
 
   // Subsequent id's will be higher than the specific id.
   const int32_t id2 = map_.Insert("Bar");
-  EXPECT_GT(id2, specific_id);
+  EXPECT_GE(id2, specific_id);
 
   // The specific id can be reused though.
   EXPECT_TRUE(map_.Remove(specific_id));
@@ -174,6 +174,18 @@ TEST_F(IdMapTest, TestInsertAndAt) {
   ExpectFound(id, expected);
   EXPECT_EQ(expected, map_.At(id));
   EXPECT_EQ(1, map_.Count());
+}
+
+TEST_F(IdMapTest, TestInitialMapValue) {
+  // Construct an IdMap with initial Id of 1.
+  IdMap<const std::string> map(1 /* initial_value */);
+
+  const std::string expected = "Foo";
+  const int32_t id = map.Insert(expected);
+  EXPECT_EQ(1, id);
+
+  const int32_t id2 = map.Insert("Bar");
+  EXPECT_EQ(2, id2);
 }
 
 }  // namespace smbprovider

@@ -145,7 +145,7 @@ TEST_F(SmbProviderHelperTest, ReadFromFDErrorOnInvalidFd) {
   int32_t error;
 
   WriteFileOptionsProto proto = CreateWriteFileOptionsProto(
-      0 /* mount_id */, 0 /* file_id */, 0 /* offset */, 0 /* length */);
+      0 /* mount_id */, 1 /* file_id */, 0 /* offset */, 0 /* length */);
 
   // Create a file descriptor that is invalid.
   base::ScopedFD invalid_fd;
@@ -161,7 +161,7 @@ TEST_F(SmbProviderHelperTest, ReadFromFDFailsWithLengthLargerThanData) {
 
   // Send in options with length larger than the data.
   WriteFileOptionsProto proto = CreateWriteFileOptionsProto(
-      0 /* mount_id */, 0 /* file_id */, 0 /* offset */, data.size() + 1);
+      0 /* mount_id */, 1 /* file_id */, 0 /* offset */, data.size() + 1);
   int32_t error;
 
   // Ensure that the fd created is valid.
@@ -179,7 +179,7 @@ TEST_F(SmbProviderHelperTest, ReadFromFDSucceedsWithLengthSmallerThanData) {
 
   // Send in options with length smaller than the data.
   WriteFileOptionsProto proto = CreateWriteFileOptionsProto(
-      0 /* mount_id */, 0 /* file_id */, 0 /* offset */, data.size() - 1);
+      0 /* mount_id */, 1 /* file_id */, 0 /* offset */, data.size() - 1);
   int32_t error;
 
   // Ensure that the fd created is valid.
@@ -200,7 +200,7 @@ TEST_F(SmbProviderHelperTest, ReadFromFDSucceedsWithExactSize) {
 
   // Send in options with length equal to the data.
   WriteFileOptionsProto proto = CreateWriteFileOptionsProto(
-      0 /* mount_id */, 0 /* file_id */, 0 /* offset */, data.size());
+      0 /* mount_id */, 1 /* file_id */, 0 /* offset */, data.size());
   int32_t error;
 
   // Ensure that the fd created is valid.

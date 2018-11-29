@@ -272,7 +272,7 @@ class SmbProviderTest : public testing::Test {
                                base::ScopedFD* fd) {
     EXPECT_GT(0, fd->get());
     fd->reset(temp_file_manager_.CreateTempFile(data).release());
-    EXPECT_LE(0, fd->get());
+    EXPECT_LE(1, fd->get());
   }
   std::string krb5_conf_path_;
   std::string krb5_ccache_path_;
@@ -1043,7 +1043,7 @@ TEST_F(SmbProviderTest, OpenFileSucceedsOnValidFile) {
   smbprovider_->OpenFile(open_file_blob, &error_code, &file_id);
 
   EXPECT_EQ(ERROR_OK, error_code);
-  EXPECT_GE(file_id, 0);
+  EXPECT_GT(file_id, 0);
 
   CloseFileHelper(file_id);
 }
@@ -1456,7 +1456,7 @@ TEST_F(SmbProviderTest, ReadFileFailsWithInvalidProto) {
   smbprovider_->ReadFile(empty_blob, &err, &fd);
 
   EXPECT_EQ(ERROR_DBUS_PARSE_FAILED, CastError(err));
-  EXPECT_LE(0, fd.get());
+  EXPECT_LE(1, fd.get());
 }
 
 // ReadFile fails when passed an invalid file descriptor.
@@ -1468,7 +1468,7 @@ TEST_F(SmbProviderTest, ReadFileFailsWithBadFD) {
   smbprovider_->ReadFile(blob, &err, &fd);
 
   EXPECT_NE(ERROR_OK, CastError(err));
-  EXPECT_LE(0, fd.get());
+  EXPECT_LE(1, fd.get());
 }
 
 // ReadFile fails when passed an unopened file descriptor.
@@ -1480,7 +1480,7 @@ TEST_F(SmbProviderTest, ReadFileFailsWithUnopenedFD) {
   smbprovider_->ReadFile(blob, &err, &fd);
 
   EXPECT_NE(ERROR_OK, CastError(err));
-  EXPECT_LE(0, fd.get());
+  EXPECT_LE(1, fd.get());
 }
 
 // ReadFile fails when passed a negative offset.
@@ -1496,7 +1496,7 @@ TEST_F(SmbProviderTest, ReadFileFailsWithNegativeOffset) {
   smbprovider_->ReadFile(blob, &err, &fd);
 
   EXPECT_NE(ERROR_OK, CastError(err));
-  EXPECT_LE(0, fd.get());
+  EXPECT_LE(1, fd.get());
 }
 
 // ReadFile fails when passed a negative length.
@@ -1512,7 +1512,7 @@ TEST_F(SmbProviderTest, ReadFileFailsWithNegativeLength) {
   smbprovider_->ReadFile(blob, &err, &fd);
 
   EXPECT_NE(ERROR_OK, CastError(err));
-  EXPECT_LE(0, fd.get());
+  EXPECT_LE(1, fd.get());
 }
 
 // ReadFile returns a valid file descriptor on success.
@@ -1524,7 +1524,7 @@ TEST_F(SmbProviderTest, ReadFileReturnsValidFileDescriptor) {
   brillo::dbus_utils::FileDescriptor fd;
   ReadFile(mount_id, file_id, 0 /* offset */, file_data.size(), &fd);
 
-  EXPECT_LE(0, fd.get());
+  EXPECT_LE(1, fd.get());
   CloseFileHelper(file_id);
 }
 
@@ -1678,7 +1678,7 @@ TEST_F(SmbProviderTest, CreatedFileCanBeOpened) {
       CreateOpenFileOptionsBlob(mount_id, path, false /* writeable */);
   smbprovider_->OpenFile(open_file_blob, &error_code, &file_id);
   EXPECT_EQ(ERROR_OK, CastError(error_code));
-  EXPECT_GE(file_id, 0);
+  EXPECT_GT(file_id, 0);
 
   CloseFileHelper(file_id);
 }

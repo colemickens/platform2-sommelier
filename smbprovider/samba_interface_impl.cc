@@ -389,7 +389,8 @@ SambaInterfaceImpl::~SambaInterfaceImpl() {
   smbc_free_context(context_, 0);
 }
 
-SambaInterfaceImpl::SambaInterfaceImpl(SMBCCTX* context) : context_(context) {
+SambaInterfaceImpl::SambaInterfaceImpl(SMBCCTX* context)
+    : context_(context), fds_(kInitialFileDescriptorId) {
   DCHECK(context);
 
   // Load all the required context functions.

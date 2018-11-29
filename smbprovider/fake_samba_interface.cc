@@ -184,7 +184,7 @@ int32_t FakeSambaInterface::CloseFile(int32_t file_id) {
     return close_file_error_;
   }
 
-  DCHECK_GE(file_id, 0);
+  DCHECK_GT(file_id, 0);
   if (!IsFileFDOpen(file_id)) {
     return EBADF;
   }
