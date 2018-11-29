@@ -178,8 +178,8 @@ Crypto::CryptoError Crypto::EnsureTpm(bool reload_key) const {
 }
 
 bool Crypto::DeriveSecretsSCrypt(
-    const brillo::Blob& passkey,
-    const brillo::Blob& salt,
+    const brillo::SecureBlob& passkey,
+    const brillo::SecureBlob& salt,
     std::vector<brillo::SecureBlob*> gen_secrets) const {
   // Scrypt parameters for deriving key material from UserPasskey.
   // N = kUPScryptWorkFactor
@@ -215,7 +215,7 @@ bool Crypto::DeriveSecretsSCrypt(
   return true;
 }
 
-bool Crypto::PasskeyToTokenAuthData(const brillo::Blob& passkey,
+bool Crypto::PasskeyToTokenAuthData(const brillo::SecureBlob& passkey,
                                     const FilePath& salt_file,
                                     SecureBlob* auth_data) const {
   // Use the scrypt algorithm to derive auth data from the passkey.
@@ -313,11 +313,11 @@ Crypto::CryptoError Crypto::TpmErrorToCrypto(
 }
 
 void Crypto::PasswordToPasskey(const char* password,
-                               const brillo::Blob& salt,
+                               const brillo::SecureBlob& salt,
                                SecureBlob* passkey) {
   CHECK(password);
 
-  std::string ascii_salt = CryptoLib::BlobToHex(salt);
+  std::string ascii_salt = CryptoLib::SecureBlobToHex(salt);
   // Convert a raw password to a password hash
   SHA256_CTX sha_context;
   SecureBlob md_value(SHA256_DIGEST_LENGTH);
@@ -329,9 +329,9 @@ void Crypto::PasswordToPasskey(const char* password,
 
   md_value.resize(SHA256_DIGEST_LENGTH / 2);
   SecureBlob local_passkey(SHA256_DIGEST_LENGTH);
-  CryptoLib::BlobToHexToBuffer(md_value,
-                               local_passkey.data(),
-                               local_passkey.size());
+  CryptoLib::SecureBlobToHexToBuffer(md_value,
+                                     local_passkey.data(),
+                                     local_passkey.size());
   passkey->swap(local_passkey);
 }
 
@@ -696,7 +696,7 @@ bool Crypto::DecryptScrypt(const SerializedVaultKeyset& serialized,
   memcpy(included_hash.data(), &decrypted[decrypted.size() - SHA_DIGEST_LENGTH],
          SHA_DIGEST_LENGTH);
   decrypted.resize(decrypted.size() - SHA_DIGEST_LENGTH);
-  brillo::Blob hash = CryptoLib::Sha1(decrypted);
+  brillo::SecureBlob hash = CryptoLib::Sha1(decrypted);
   if (brillo::SecureMemcmp(hash.data(), included_hash.data(), hash.size())) {
     LOG(ERROR) << "Scrypt hash verification failed";
     if (error) {

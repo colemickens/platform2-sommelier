@@ -103,8 +103,8 @@ class Crypto {
   //   gen_secrets (OUT) - Vector containing resulting secrets.
   //
   // The blob in |gen_secrets| should be allocated by the caller.
-  bool DeriveSecretsSCrypt(const brillo::Blob& passkey,
-                           const brillo::Blob& salt,
+  bool DeriveSecretsSCrypt(const brillo::SecureBlob& passkey,
+                           const brillo::SecureBlob& salt,
                            std::vector<brillo::SecureBlob*> gen_secrets) const;
 
   // Converts the passkey to authorization data for a TPM-backed crypto token.
@@ -113,7 +113,7 @@ class Crypto {
   //   passkey - The passkey from which to derive the authorization data.
   //   salt - The salt file used in deriving the authorization data.
   //   auth_data (OUT) - The token authorization data.
-  virtual bool PasskeyToTokenAuthData(const brillo::Blob& passkey,
+  virtual bool PasskeyToTokenAuthData(const brillo::SecureBlob& passkey,
                                       const base::FilePath& salt_file,
                                       brillo::SecureBlob* auth_data) const;
 
@@ -137,7 +137,7 @@ class Crypto {
   //   salt - The salt used during hashing
   //   passkey (OUT) - The passkey
   static void PasswordToPasskey(const char* password,
-                                const brillo::Blob& salt,
+                                const brillo::SecureBlob& salt,
                                 brillo::SecureBlob* passkey);
 
   // Ensures that the TPM is connected

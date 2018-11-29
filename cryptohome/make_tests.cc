@@ -228,7 +228,7 @@ void TestUser::GenerateCredentials(bool force_ecryptfs) {
               base::Bind(&base::DoNothing));
 
   cryptohome::Crypto::PasswordToPasskey(password,
-                                        salt,
+                                        sec_salt,
                                         &passkey);
   UsernamePasskey up(username, passkey);
   if (use_key_data) {
