@@ -23,6 +23,9 @@ group("all") {
       ":p2p-server-unittests",
     ]
   }
+  if (use.fuzzer) {
+    deps += [ ":p2p_http_server_fuzzer" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -255,6 +258,30 @@ if (use.test) {
       ":libp2p-testutil",
       ":libp2p-util",
       "//common-mk/testrunner",
+    ]
+  }
+}
+
+# Fuzzer only.
+if (use.fuzzer) {
+  pkg_config("p2p_http_server_fuzzer_config") {
+    pkg_deps = [
+      "libchrome-test-${libbase_ver}",
+    ]
+  }
+
+  # p2p-http-server fuzzer
+  executable("p2p_http_server_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":p2p_http_server_fuzzer_config",
+    ]
+    sources = [
+      "fuzzers/p2p_http_server_fuzzer.cc",
+    ]
+    deps = [
+      ":libp2p-server",
+      ":libp2p-util",
     ]
   }
 }

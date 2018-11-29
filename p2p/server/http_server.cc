@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "p2p/server/http_server.h"
+#include "p2p/server/http_server_external_process.h"
 
 #include "p2p/common/constants.h"
 #include "p2p/common/server_message.h"
@@ -31,65 +32,6 @@ using p2p::util::StructSerializerWatcher;
 namespace p2p {
 
 namespace server {
-
-class HttpServerExternalProcess : public HttpServer {
- public:
-  HttpServerExternalProcess(MetricsLibraryInterface* metrics_lib,
-                            const FilePath& root_dir,
-                            const FilePath& bin_dir,
-                            uint16_t port);
-  ~HttpServerExternalProcess();
-
-  virtual bool Start();
-
-  virtual bool Stop();
-
-  virtual bool IsRunning();
-
-  virtual uint16_t Port();
-
-  virtual void SetNumConnectionsCallback(NumConnectionsCallback callback);
-
- private:
-  // Helper function to update |num_connections_| and fire
-  // |num_connections_callback_| if something has changed.
-  void UpdateNumConnections(int num_connections);
-
-  // Used for waking up and processing stdout from the child process.
-  // If the output matches lines of the form "num-connections: %d",
-  // calls UpdateNumConnections() with the parsed integer.
-
-  static void OnMessageReceived(const P2PServerMessage& msg, void* user_data);
-
-  // The metrics library object to report metrics to.
-  MetricsLibraryInterface* metrics_lib_;
-
-  // The path to serve files from.
-  FilePath root_dir_;
-
-  // The path to the http-server binary.
-  FilePath http_binary_path_;
-
-  // The TCP port number for the HTTP server is requested to run on. A value
-  // of 0 means that the HTTP server should pick the port number.
-  uint16_t requested_port_;
-
-  // The TCP port number reported from the HTTP server. This is the actual
-  // port number where the HTTP server is listening, while |requested_port_|
-  // can be 0 to indicate the HTTP server should pick the port number.
-  uint16_t port_;
-
-  // The current number of connections to the HTTP server.
-  int num_connections_;
-  GPid pid_;
-  int child_stdout_fd_;
-  NumConnectionsCallback num_connections_callback_;
-
-  // A message watch for child P2PServerMessages.
-  std::unique_ptr<StructSerializerWatcher<P2PServerMessage>> child_watch_;
-
-  DISALLOW_COPY_AND_ASSIGN(HttpServerExternalProcess);
-};
 
 HttpServerExternalProcess::HttpServerExternalProcess(
     MetricsLibraryInterface* metrics_lib,
