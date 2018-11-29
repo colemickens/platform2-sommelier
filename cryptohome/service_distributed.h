@@ -29,8 +29,8 @@ class ServiceDistributed : public Service {
       AttestationGetEnrollmentPreparationsReply* reply) override;
   void AttestationGetTpmStatus(GetTpmStatusReply* reply) override;
   bool AttestationGetDelegateCredentials(
-      brillo::SecureBlob* blob,
-      brillo::SecureBlob* secret,
+      brillo::Blob* blob,
+      brillo::Blob* secret,
       bool* has_reset_lock_permissions) override;
 
   gboolean TpmIsAttestationPrepared(gboolean* OUT_prepared,

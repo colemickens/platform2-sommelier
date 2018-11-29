@@ -632,7 +632,7 @@ TEST_F(CryptoTest, EncryptAndDecryptWithTpm) {
   SecureBlob output_blob;
 
   SecureBlob aes_key(32, 'A');
-  brillo::Blob sealed_key(32, 'S');
+  brillo::SecureBlob sealed_key(32, 'S');
   SecureBlob iv(16, 'I');
 
   // Setup the data from the above blobs.
@@ -675,7 +675,7 @@ TEST_F(CryptoTest, EncryptAndDecryptWithTpmWithRandomlyFailingTpm) {
   SecureBlob output_blob;
 
   SecureBlob aes_key(32, 'A');
-  brillo::Blob sealed_key(32, 'S');
+  brillo::SecureBlob sealed_key(32, 'S');
   SecureBlob iv(16, 'I');
 
   // Setup the data from the above blobs and fail to seal the key with the tpm.

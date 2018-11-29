@@ -267,8 +267,8 @@ bool TpmImpl::ConnectContextAsUser(TSS_HCONTEXT* context, TSS_HTPM* tpm) {
   return true;
 }
 
-bool TpmImpl::ConnectContextAsDelegate(const SecureBlob& delegate_blob,
-                                       const SecureBlob& delegate_secret,
+bool TpmImpl::ConnectContextAsDelegate(const Blob& delegate_blob,
+                                       const Blob& delegate_secret,
                                        TSS_HCONTEXT* context,
                                        TSS_HTPM* tpm_handle) {
   *context = 0;
@@ -448,8 +448,8 @@ bool TpmImpl::GetDictionaryAttackInfo(int* counter,
 }
 
 bool TpmImpl::ResetDictionaryAttackMitigation(
-    const brillo::SecureBlob& delegate_blob,
-    const brillo::SecureBlob& delegate_secret) {
+    const brillo::Blob& delegate_blob,
+    const brillo::Blob& delegate_secret) {
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
   if (!ConnectContextAsDelegate(delegate_blob, delegate_secret,
@@ -1181,8 +1181,8 @@ bool TpmImpl::GetTpmWithAuth(TSS_HCONTEXT context_handle,
 }
 
 bool TpmImpl::GetTpmWithDelegation(TSS_HCONTEXT context_handle,
-                                   const SecureBlob& delegate_blob,
-                                   const SecureBlob& delegate_secret,
+                                   const brillo::Blob& delegate_blob,
+                                   const brillo::Blob& delegate_secret,
                                    TSS_HTPM* tpm_handle) {
   TSS_HTPM local_tpm_handle;
   if (!GetTpm(context_handle, &local_tpm_handle)) {
@@ -1239,7 +1239,7 @@ bool TpmImpl::TestTpmAuth(const brillo::SecureBlob& owner_password) {
   return true;
 }
 
-bool TpmImpl::GetOwnerPassword(brillo::Blob* owner_password) {
+bool TpmImpl::GetOwnerPassword(brillo::SecureBlob* owner_password) {
   bool result = false;
   if (password_sync_lock_.Try()) {
     if (owner_password_.size() != 0) {
@@ -1712,8 +1712,8 @@ bool TpmImpl::PerformEnabledOwnedCheck(bool* enabled, bool* owned) {
 
 Tpm::TpmRetryAction TpmImpl::GetEndorsementPublicKeyWithDelegate(
     brillo::SecureBlob* ek_public_key,
-    const brillo::SecureBlob& delegate_blob,
-    const brillo::SecureBlob& delegate_secret) {
+    const brillo::Blob& delegate_blob,
+    const brillo::Blob& delegate_secret) {
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
   // Connect to the TPM as the owner delegate.
@@ -2180,8 +2180,8 @@ bool TpmImpl::QuotePCR(uint32_t pcr_index,
   return true;
 }
 
-bool TpmImpl::SealToPCR0(const brillo::Blob& value,
-                         brillo::Blob* sealed_value) {
+bool TpmImpl::SealToPCR0(const brillo::SecureBlob& value,
+                         brillo::SecureBlob* sealed_value) {
   CHECK(sealed_value);
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
@@ -2260,8 +2260,8 @@ bool TpmImpl::SealToPCR0(const brillo::Blob& value,
   return true;
 }
 
-bool TpmImpl::Unseal(const brillo::Blob& sealed_value,
-                     brillo::Blob* value) {
+bool TpmImpl::Unseal(const brillo::SecureBlob& sealed_value,
+                     brillo::SecureBlob* value) {
   CHECK(value);
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
@@ -2431,8 +2431,8 @@ bool TpmImpl::CreateCertifiedKey(const SecureBlob& identity_key_blob,
 bool TpmImpl::CreateDelegate(const std::set<uint32_t>& bound_pcrs,
                              uint8_t delegate_family_label,
                              uint8_t delegate_label,
-                             SecureBlob* delegate_blob,
-                             SecureBlob* delegate_secret) {
+                             Blob* delegate_blob,
+                             Blob* delegate_secret) {
   CHECK(delegate_blob && delegate_secret);
 
   // Connect to the TPM as the owner.
@@ -2444,7 +2444,7 @@ bool TpmImpl::CreateDelegate(const std::set<uint32_t>& bound_pcrs,
   }
 
   // Generate a delegate secret.
-  if (!GetRandomDataSecureBlob(kDelegateSecretSize, delegate_secret)) {
+  if (!GetRandomDataBlob(kDelegateSecretSize, delegate_secret)) {
     return false;
   }
 
@@ -2554,19 +2554,22 @@ bool TpmImpl::CreateDelegate(const std::set<uint32_t>& bound_pcrs,
   }
 
   // Save the delegation blob for later.
+  SecureBlob delegate;
   if (GetDataAttribute(context_handle,
                        policy,
                        TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
                        TSS_TSPATTRIB_POLDEL_OWNERBLOB,
-                       delegate_blob) != Tpm::kTpmRetryNone) {
+                       &delegate) != Tpm::kTpmRetryNone) {
     LOG(ERROR) << "CreateDelegate: Failed to get delegate blob.";
     return false;
   }
+  delegate_blob->assign(delegate.begin(), delegate.end());
+
   return true;
 }
 
-bool TpmImpl::ActivateIdentity(const SecureBlob& delegate_blob,
-                               const SecureBlob& delegate_secret,
+bool TpmImpl::ActivateIdentity(const brillo::Blob& delegate_blob,
+                               const brillo::Blob& delegate_secret,
                                const SecureBlob& identity_key_blob,
                                const SecureBlob& encrypted_asym_ca,
                                const SecureBlob& encrypted_sym_ca,
@@ -2884,9 +2887,12 @@ bool TpmImpl::VerifyPCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
   Trspi_LoadBlob_UINT32(&trspi_offset,
                         pcr_value_length,
                         pcr_value_length_blob.data());
-  const Blob pcr_hash =
-      CryptoLib::Sha1(CombineBlobs({pcr_selection_blob, pcr_value_length_blob,
-                                    BlobFromString(concatenated_pcr_values)}));
+  const SecureBlob pcr_hash =
+      CryptoLib::Sha1ToSecureBlob(
+          CombineBlobs({Blob(pcr_selection_blob.begin(),
+                             pcr_selection_blob.end()),
+                       pcr_value_length_blob,
+                       BlobFromString(concatenated_pcr_values)}));
 
   // Check that the PCR value matches the key creation PCR value.
   SecureBlob pcr_at_creation;

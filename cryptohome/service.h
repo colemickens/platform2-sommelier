@@ -388,8 +388,8 @@ class Service : public brillo::dbus::AbstractDbusService,
   // Provides the owner delegate credentials normally used for AIK activation.
   // Returns true on success.
   virtual bool AttestationGetDelegateCredentials(
-      brillo::SecureBlob* blob,
-      brillo::SecureBlob* secret,
+      brillo::Blob* blob,
+      brillo::Blob* secret,
       bool* has_reset_lock_permissions) = 0;
 
   // Attestation-related DBus calls.

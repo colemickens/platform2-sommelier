@@ -350,8 +350,8 @@ void ServiceDistributed::AttestationGetTpmStatus(GetTpmStatusReply* reply_out) {
 }
 
 bool ServiceDistributed::AttestationGetDelegateCredentials(
-    brillo::SecureBlob* blob,
-    brillo::SecureBlob* secret,
+    brillo::Blob* blob,
+    brillo::Blob* secret,
     bool* has_reset_lock_permissions) {
   // tpm_managerd handles resetting DA counter and doesn't require any
   // secrets to be provided by cryptohomed.

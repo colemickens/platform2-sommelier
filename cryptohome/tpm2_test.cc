@@ -342,7 +342,7 @@ TEST_F(Tpm2Test, ResetDictionaryAttackMitigation) {
           ResetDictionaryAttackLock(ProtobufEquals(expected_request), _))
       .Times(1);
 
-  const SecureBlob unused;
+  const brillo::Blob unused;
   EXPECT_TRUE(tpm_->ResetDictionaryAttackMitigation(unused, unused));
 }
 

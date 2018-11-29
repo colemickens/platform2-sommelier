@@ -273,7 +273,7 @@ class Tpm {
   //
   // Parameters
   //   owner_password (OUT) - The random owner password used
-  virtual bool GetOwnerPassword(brillo::Blob* owner_password) = 0;
+  virtual bool GetOwnerPassword(brillo::SecureBlob* owner_password) = 0;
 
 
   // Returns whether or not the TPM is enabled.  This method call returns a
@@ -420,8 +420,8 @@ class Tpm {
   //   ek_public_key - The EK public key in DER encoded form.
   virtual TpmRetryAction GetEndorsementPublicKeyWithDelegate(
       brillo::SecureBlob* ek_public_key,
-      const brillo::SecureBlob& delegate_blob,
-      const brillo::SecureBlob& delegate_secret) = 0;
+      const brillo::Blob& delegate_blob,
+      const brillo::Blob& delegate_secret) = 0;
 
   // Get the endorsement credential. This method requires TPM owner privilege.
   //
@@ -488,8 +488,8 @@ class Tpm {
   //   sealed_value - The sealed value.
   //
   // Returns true on success.
-  virtual bool SealToPCR0(const brillo::Blob& value,
-                          brillo::Blob* sealed_value) = 0;
+  virtual bool SealToPCR0(const brillo::SecureBlob& value,
+                          brillo::SecureBlob* sealed_value) = 0;
 
   // Unseals a secret previously sealed with the SRK.
   //
@@ -498,8 +498,8 @@ class Tpm {
   //   value - The original value.
   //
   // Returns true on success.
-  virtual bool Unseal(const brillo::Blob& sealed_value,
-                      brillo::Blob* value) = 0;
+  virtual bool Unseal(const brillo::SecureBlob& sealed_value,
+                      brillo::SecureBlob* value) = 0;
 
   // Creates a certified non-migratable signing key.
   //
@@ -538,8 +538,8 @@ class Tpm {
   virtual bool CreateDelegate(const std::set<uint32_t>& bound_pcrs,
                               uint8_t delegate_family_label,
                               uint8_t delegate_label,
-                              brillo::SecureBlob* delegate_blob,
-                              brillo::SecureBlob* delegate_secret) = 0;
+                              brillo::Blob* delegate_blob,
+                              brillo::Blob* delegate_secret) = 0;
 
   // Activates an AIK by using the EK to decrypt the AIK credential.
   //
@@ -551,8 +551,8 @@ class Tpm {
   //   encrypted_asym_ca - Encrypted TPM_ASYM_CA_CONTENTS from the CA.
   //   encrypted_sym_ca - Encrypted TPM_SYM_CA_CONTENTS from the CA.
   //   identity_credential - The AIK credential created by the CA.
-  virtual bool ActivateIdentity(const brillo::SecureBlob& delegate_blob,
-                                const brillo::SecureBlob& delegate_secret,
+  virtual bool ActivateIdentity(const brillo::Blob& delegate_blob,
+                                const brillo::Blob& delegate_secret,
                                 const brillo::SecureBlob& identity_key_blob,
                                 const brillo::SecureBlob& encrypted_asym_ca,
                                 const brillo::SecureBlob& encrypted_sym_ca,
@@ -703,8 +703,8 @@ class Tpm {
   // provided. For TPM 2.0, everything is handled in tpm_managerd and those 2
   // args are unused.
   virtual bool ResetDictionaryAttackMitigation(
-      const brillo::SecureBlob& delegate_blob,
-      const brillo::SecureBlob& delegate_secret) = 0;
+      const brillo::Blob& delegate_blob,
+      const brillo::Blob& delegate_secret) = 0;
 
   // For TPMs with updateable firmware: Declate the current firmware
   // version stable and invalidate previous versions, if any.

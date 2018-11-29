@@ -127,8 +127,8 @@ void ServiceMonolithic::AttestationGetTpmStatus(GetTpmStatusReply* reply) {
 }
 
 bool ServiceMonolithic::AttestationGetDelegateCredentials(
-      brillo::SecureBlob* blob,
-      brillo::SecureBlob* secret,
+      brillo::Blob* blob,
+      brillo::Blob* secret,
       bool* has_reset_lock_permissions) {
   return attestation_->GetDelegateCredentials(blob, secret,
                                               has_reset_lock_permissions);

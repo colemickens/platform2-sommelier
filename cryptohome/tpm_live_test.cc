@@ -691,7 +691,7 @@ class SignatureSealedSecretTestCase final {
 
   static bool GenerateRsaKey(int key_size_bits,
                              crypto::ScopedEVP_PKEY* pkey,
-                             SecureBlob* key_spki_der) {
+                             Blob* key_spki_der) {
     crypto::ScopedEVP_PKEY_CTX pkey_context(
         EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, nullptr));
     if (!pkey_context)
@@ -977,7 +977,7 @@ class SignatureSealedSecretTestCase final {
   bool CheckUnsealingFailsWithWrongKey(
       const SignatureSealedData& sealed_secret_data) {
     crypto::ScopedEVP_PKEY other_pkey;
-    SecureBlob other_key_spki_der;
+    Blob other_key_spki_der;
     if (!GenerateRsaKey(param_.key_size_bits, &other_pkey,
                         &other_key_spki_der)) {
       LOG(ERROR) << "Error generating the other RSA key";
@@ -1056,10 +1056,10 @@ class SignatureSealedSecretTestCase final {
 
   const SignatureSealedSecretTestCaseParam param_;
   const SecureBlob owner_password_;
-  SecureBlob delegate_blob_;
-  SecureBlob delegate_secret_;
+  Blob delegate_blob_;
+  Blob delegate_secret_;
   crypto::ScopedEVP_PKEY pkey_;
-  SecureBlob key_spki_der_;
+  Blob key_spki_der_;
 
   DISALLOW_COPY_AND_ASSIGN(SignatureSealedSecretTestCase);
 };

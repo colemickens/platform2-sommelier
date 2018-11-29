@@ -96,7 +96,7 @@ class TpmInit {
   //
   // Parameters
   //   password (OUT) - The owner password used for the TPM
-  virtual bool GetTpmPassword(brillo::Blob* password);
+  virtual bool GetTpmPassword(brillo::SecureBlob* password);
 
   // Clears the TPM password from memory and disk.
   virtual void ClearStoredTpmPassword();

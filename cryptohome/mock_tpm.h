@@ -48,7 +48,7 @@ class MockTpm : public Tpm {
                      brillo::SecureBlob*));
   MOCK_METHOD2(GetPublicKeyHash, TpmRetryAction(TpmKeyHandle,
                                                 brillo::SecureBlob*));
-  MOCK_METHOD1(GetOwnerPassword, bool(brillo::Blob*));
+  MOCK_METHOD1(GetOwnerPassword, bool(brillo::SecureBlob*));
   MOCK_METHOD0(IsEnabled, bool());
   MOCK_METHOD1(SetIsEnabled, void(bool));
   MOCK_METHOD0(IsOwned, bool());
@@ -72,8 +72,8 @@ class MockTpm : public Tpm {
   MOCK_METHOD1(GetEndorsementPublicKey, TpmRetryAction(brillo::SecureBlob*));
   MOCK_METHOD3(GetEndorsementPublicKeyWithDelegate,
       TpmRetryAction(brillo::SecureBlob*,
-                     const brillo::SecureBlob&,
-                     const brillo::SecureBlob&));
+                     const brillo::Blob&,
+                     const brillo::Blob&));
   MOCK_METHOD1(GetEndorsementCredential, bool(brillo::SecureBlob*));
   MOCK_METHOD9(MakeIdentity, bool(brillo::SecureBlob*,
                                   brillo::SecureBlob*,
@@ -91,8 +91,9 @@ class MockTpm : public Tpm {
                     brillo::Blob*,
                     brillo::SecureBlob*,
                     brillo::SecureBlob*));
-  MOCK_METHOD2(SealToPCR0, bool(const brillo::Blob&, brillo::Blob*));
-  MOCK_METHOD2(Unseal, bool(const brillo::Blob&, brillo::Blob*));
+  MOCK_METHOD2(SealToPCR0, bool(const brillo::SecureBlob&,
+                                brillo::SecureBlob*));
+  MOCK_METHOD2(Unseal, bool(const brillo::SecureBlob&, brillo::SecureBlob*));
   MOCK_METHOD7(CreateCertifiedKey, bool(const brillo::SecureBlob&,
                                         const brillo::SecureBlob&,
                                         brillo::SecureBlob*,
@@ -104,10 +105,10 @@ class MockTpm : public Tpm {
                bool(const std::set<uint32_t>&,
                     uint8_t,
                     uint8_t,
-                    brillo::SecureBlob*,
-                    brillo::SecureBlob*));
-  MOCK_METHOD6(ActivateIdentity, bool(const brillo::SecureBlob&,
-                                      const brillo::SecureBlob&,
+                    brillo::Blob*,
+                    brillo::Blob*));
+  MOCK_METHOD6(ActivateIdentity, bool(const brillo::Blob&,
+                                      const brillo::Blob&,
                                       const brillo::SecureBlob&,
                                       const brillo::SecureBlob&,
                                       const brillo::SecureBlob&,
@@ -146,7 +147,7 @@ class MockTpm : public Tpm {
   MOCK_METHOD2(GetStatus, void(TpmKeyHandle, TpmStatusInfo*));
   MOCK_METHOD4(GetDictionaryAttackInfo, bool(int*, int*, bool*, int*));
   MOCK_METHOD2(ResetDictionaryAttackMitigation,
-               bool(const brillo::SecureBlob&, const brillo::SecureBlob&));
+               bool(const brillo::Blob&, const brillo::Blob&));
   MOCK_METHOD0(DeclareTpmFirmwareStable, void());
   MOCK_METHOD1(RemoveOwnerDependency,
                bool(TpmPersistentState::TpmOwnerDependency));

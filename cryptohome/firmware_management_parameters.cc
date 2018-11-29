@@ -78,7 +78,7 @@ bool FirmwareManagementParameters::HasAuthorization() const {
     return false;
   }
   // Need owner password to create or destroy NVRAM spaces
-  brillo::Blob owner_password;
+  brillo::SecureBlob owner_password;
   if (tpm_->GetOwnerPassword(&owner_password) && owner_password.size() != 0) {
     return true;
   }

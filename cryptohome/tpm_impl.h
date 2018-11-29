@@ -55,7 +55,7 @@ class TpmImpl : public Tpm {
       brillo::SecureBlob* plaintext) override;
   TpmRetryAction GetPublicKeyHash(TpmKeyHandle key_handle,
                                   brillo::SecureBlob* hash) override;
-  bool GetOwnerPassword(brillo::Blob* owner_password) override;
+  bool GetOwnerPassword(brillo::SecureBlob* owner_password) override;
   bool IsEnabled() override { return !is_disabled_; }
   void SetIsEnabled(bool enabled) override { is_disabled_ = !enabled; }
   bool IsOwned() override { return is_owned_; }
@@ -81,8 +81,8 @@ class TpmImpl : public Tpm {
       brillo::SecureBlob* ek_public_key) override;
   TpmRetryAction GetEndorsementPublicKeyWithDelegate(
       brillo::SecureBlob* ek_public_key,
-      const brillo::SecureBlob& delegate_blob,
-      const brillo::SecureBlob& delegate_secret) override;
+      const brillo::Blob& delegate_blob,
+      const brillo::Blob& delegate_secret) override;
   bool GetEndorsementCredential(brillo::SecureBlob* credential) override;
   bool MakeIdentity(brillo::SecureBlob* identity_public_key_der,
                     brillo::SecureBlob* identity_public_key,
@@ -99,10 +99,10 @@ class TpmImpl : public Tpm {
                 brillo::Blob* pcr_value,
                 brillo::SecureBlob* quoted_data,
                 brillo::SecureBlob* quote) override;
-  bool SealToPCR0(const brillo::Blob& value,
-                  brillo::Blob* sealed_value) override;
-  bool Unseal(const brillo::Blob& sealed_value,
-              brillo::Blob* value) override;
+  bool SealToPCR0(const brillo::SecureBlob& value,
+                  brillo::SecureBlob* sealed_value) override;
+  bool Unseal(const brillo::SecureBlob& sealed_value,
+              brillo::SecureBlob* value) override;
   bool CreateCertifiedKey(
       const brillo::SecureBlob& identity_key_blob,
       const brillo::SecureBlob& external_data,
@@ -114,10 +114,10 @@ class TpmImpl : public Tpm {
   bool CreateDelegate(const std::set<uint32_t>& bound_pcrs,
                       uint8_t delegate_family_label,
                       uint8_t delegate_label,
-                      brillo::SecureBlob* delegate_blob,
-                      brillo::SecureBlob* delegate_secret) override;
-  bool ActivateIdentity(const brillo::SecureBlob& delegate_blob,
-                        const brillo::SecureBlob& delegate_secret,
+                      brillo::Blob* delegate_blob,
+                      brillo::Blob* delegate_secret) override;
+  bool ActivateIdentity(const brillo::Blob& delegate_blob,
+                        const brillo::Blob& delegate_secret,
                         const brillo::SecureBlob& identity_key_blob,
                         const brillo::SecureBlob& encrypted_asym_ca,
                         const brillo::SecureBlob& encrypted_sym_ca,
@@ -159,8 +159,8 @@ class TpmImpl : public Tpm {
                                bool* lockout,
                                int* seconds_remaining) override;
   bool ResetDictionaryAttackMitigation(
-      const brillo::SecureBlob& delegate_blob,
-      const brillo::SecureBlob& delegate_secret) override;
+      const brillo::Blob& delegate_blob,
+      const brillo::Blob& delegate_secret) override;
   void DeclareTpmFirmwareStable() override {}
   bool RemoveOwnerDependency(
       TpmPersistentState::TpmOwnerDependency dependency) override;
@@ -190,8 +190,8 @@ class TpmImpl : public Tpm {
 
   // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with
   // its matching TPM object authorized by the given delegation.
-  bool ConnectContextAsDelegate(const brillo::SecureBlob& delegate_blob,
-                                const brillo::SecureBlob& delegate_secret,
+  bool ConnectContextAsDelegate(const brillo::Blob& delegate_blob,
+                                const brillo::Blob& delegate_secret,
                                 TSS_HCONTEXT* context,
                                 TSS_HTPM* tpm_handle);
 
@@ -311,8 +311,8 @@ class TpmImpl : public Tpm {
   //   delegate_secret - The delegate secret to use when getting the handle
   //   tpm_handle (OUT) - The handle for the TPM on success
   bool GetTpmWithDelegation(TSS_HCONTEXT context_handle,
-                            const brillo::SecureBlob& delegate_blob,
-                            const brillo::SecureBlob& delegate_secret,
+                            const brillo::Blob& delegate_blob,
+                            const brillo::Blob& delegate_secret,
                             TSS_HTPM* tpm_handle);
 
   // Decrypts and parses an identity request.

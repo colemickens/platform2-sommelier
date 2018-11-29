@@ -248,7 +248,7 @@ Tpm2Impl::Tpm2Impl(TrunksFactory* factory,
   external_trunks_context_.tpm_utility = factory->GetTpmUtility();
 }
 
-bool Tpm2Impl::GetOwnerPassword(brillo::Blob* owner_password) {
+bool Tpm2Impl::GetOwnerPassword(brillo::SecureBlob* owner_password) {
   if (!UpdateTpmStatus(RefreshType::REFRESH_IF_NEEDED)) {
     return false;
   }
@@ -563,8 +563,8 @@ Tpm::TpmRetryAction Tpm2Impl::GetEndorsementPublicKey(
 
 Tpm::TpmRetryAction Tpm2Impl::GetEndorsementPublicKeyWithDelegate(
     brillo::SecureBlob* ek_public_key,
-    const brillo::SecureBlob& delegate_blob,
-    const brillo::SecureBlob& delegate_secret) {
+    const brillo::Blob& delegate_blob,
+    const brillo::Blob& delegate_secret) {
   LOG(ERROR) << __func__ << ": Not implemented.";
   return Tpm::kTpmRetryFailNoRetry;
 }
@@ -597,8 +597,8 @@ bool Tpm2Impl::QuotePCR(uint32_t pcr_index,
   return false;
 }
 
-bool Tpm2Impl::SealToPCR0(const brillo::Blob& value,
-                          brillo::Blob* sealed_value) {
+bool Tpm2Impl::SealToPCR0(const brillo::SecureBlob& value,
+                          brillo::SecureBlob* sealed_value) {
   TrunksClientContext* trunks;
   if (!GetTrunksContext(&trunks)) {
     return false;
@@ -630,7 +630,8 @@ bool Tpm2Impl::SealToPCR0(const brillo::Blob& value,
   return true;
 }
 
-bool Tpm2Impl::Unseal(const brillo::Blob& sealed_value, brillo::Blob* value) {
+bool Tpm2Impl::Unseal(const brillo::SecureBlob& sealed_value,
+                      brillo::SecureBlob* value) {
   TrunksClientContext* trunks;
   if (!GetTrunksContext(&trunks)) {
     return false;
@@ -675,14 +676,14 @@ bool Tpm2Impl::CreateCertifiedKey(const SecureBlob& identity_key_blob,
 bool Tpm2Impl::CreateDelegate(const std::set<uint32_t>& bound_pcrs,
                               uint8_t delegate_family_label,
                               uint8_t delegate_label,
-                              SecureBlob* delegate_blob,
-                              SecureBlob* delegate_secret) {
+                              Blob* delegate_blob,
+                              Blob* delegate_secret) {
   LOG(ERROR) << __func__ << ": Not implemented.";
   return false;
 }
 
-bool Tpm2Impl::ActivateIdentity(const SecureBlob& delegate_blob,
-                                const SecureBlob& delegate_secret,
+bool Tpm2Impl::ActivateIdentity(const brillo::Blob& delegate_blob,
+                                const brillo::Blob& delegate_secret,
                                 const SecureBlob& identity_key_blob,
                                 const SecureBlob& encrypted_asym_ca,
                                 const SecureBlob& encrypted_sym_ca,
@@ -1309,8 +1310,8 @@ bool Tpm2Impl::GetDictionaryAttackInfo(int* counter,
 }
 
 bool Tpm2Impl::ResetDictionaryAttackMitigation(
-    const SecureBlob& /* delegate_blob */,
-    const SecureBlob& /* delegate_secret */) {
+    const Blob& /* delegate_blob */,
+    const Blob& /* delegate_secret */) {
   if (!InitializeTpmManagerClients()) {
     return false;
   }

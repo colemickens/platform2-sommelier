@@ -63,7 +63,7 @@ class StubTpm : public Tpm {
   bool IsNvramDefined(uint32_t index) override { return false; }
   bool IsNvramLocked(uint32_t index) override { return false; }
   unsigned int GetNvramSize(uint32_t index) override { return 0; }
-  bool GetOwnerPassword(brillo::Blob* owner_password) override
+  bool GetOwnerPassword(brillo::SecureBlob* owner_password) override
     { return false; }
   bool PerformEnabledOwnedCheck(bool* enabled, bool* owned) override
     { return false; }
@@ -90,8 +90,8 @@ class StubTpm : public Tpm {
     { return Tpm::kTpmRetryFailNoRetry; }
   Tpm::TpmRetryAction GetEndorsementPublicKeyWithDelegate(
       brillo::SecureBlob* ek_public_key,
-      const brillo::SecureBlob& delegate_blob,
-      const brillo::SecureBlob& delegate_secret) override
+      const brillo::Blob& delegate_blob,
+      const brillo::Blob& delegate_secret) override
     { return Tpm::kTpmRetryFailNoRetry; }
   bool GetEndorsementCredential(SecureBlob* credential) override
     { return false; }
@@ -113,10 +113,10 @@ class StubTpm : public Tpm {
                 SecureBlob* quote) override {
     return false;
   }
-  bool SealToPCR0(const brillo::Blob& value,
-                  brillo::Blob* sealed_value) override { return false; }
-  bool Unseal(const brillo::Blob& sealed_value,
-              brillo::Blob* value) override { return false; }
+  bool SealToPCR0(const brillo::SecureBlob& value,
+                  brillo::SecureBlob* sealed_value) override { return false; }
+  bool Unseal(const brillo::SecureBlob& sealed_value,
+              brillo::SecureBlob* value) override { return false; }
   bool CreateCertifiedKey(const SecureBlob& identity_key_blob,
                           const SecureBlob& external_data,
                           SecureBlob* certified_public_key,
@@ -128,12 +128,12 @@ class StubTpm : public Tpm {
   bool CreateDelegate(const std::set<uint32_t>& bound_pcrs,
                       uint8_t delegate_family_label,
                       uint8_t delegate_label,
-                      SecureBlob* delegate_blob,
-                      SecureBlob* delegate_secret) override {
+                      brillo::Blob* delegate_blob,
+                      brillo::Blob* delegate_secret) override {
     return false;
   }
-  bool ActivateIdentity(const SecureBlob& delegate_blob,
-                        const SecureBlob& delegate_secret,
+  bool ActivateIdentity(const brillo::Blob& delegate_blob,
+                        const brillo::Blob& delegate_secret,
                         const SecureBlob& identity_key_blob,
                         const SecureBlob& encrypted_asym_ca,
                         const SecureBlob& encrypted_sym_ca,
@@ -189,8 +189,8 @@ class StubTpm : public Tpm {
                                int* seconds_remaining) override
     { return false; }
   bool ResetDictionaryAttackMitigation(
-      const SecureBlob& delegate_blob,
-      const SecureBlob& delegate_secret) override { return false; }
+      const brillo::Blob& delegate_blob,
+      const brillo::Blob& delegate_secret) override { return false; }
   void DeclareTpmFirmwareStable() override {}
   bool RemoveOwnerDependency(
       TpmPersistentState::TpmOwnerDependency dependency) override

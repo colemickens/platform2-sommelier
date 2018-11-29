@@ -2927,7 +2927,7 @@ void Service::ResetDictionaryAttackMitigation() {
     ReportDictionaryAttackResetStatus(kResetNotNecessary);
     return;
   }
-  brillo::SecureBlob delegate_blob, delegate_secret;
+  brillo::Blob delegate_blob, delegate_secret;
   bool has_reset_lock_permissions = false;
   if (!AttestationGetDelegateCredentials(&delegate_blob,
                                          &delegate_secret,

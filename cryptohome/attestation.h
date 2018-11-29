@@ -443,8 +443,8 @@ class Attestation : public base::PlatformThread::Delegate,
 
   // Provides the owner delegate credentials normally used for AIK activation.
   // Returns true on success.
-  virtual bool GetDelegateCredentials(brillo::SecureBlob* blob,
-                                      brillo::SecureBlob* secret,
+  virtual bool GetDelegateCredentials(brillo::Blob* blob,
+                                      brillo::Blob* secret,
                                       bool* has_reset_lock_permissions);
 
   // Provides cached |ek_public_key| and |ek_certificate| if they exist. If only
@@ -710,8 +710,8 @@ class Attestation : public base::PlatformThread::Delegate,
   void ClearString(std::string* s);
 
   // Performs AIK activation with a fake credential.
-  bool VerifyActivateIdentity(const brillo::SecureBlob& delegate_blob,
-                              const brillo::SecureBlob& delegate_secret,
+  bool VerifyActivateIdentity(const brillo::Blob& delegate_blob,
+                              const brillo::Blob& delegate_secret,
                               const brillo::SecureBlob& identity_key_blob,
                               const brillo::SecureBlob& identity_public_key,
                               const brillo::SecureBlob& ek_public_key);

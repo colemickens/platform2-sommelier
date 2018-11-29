@@ -111,8 +111,8 @@ class MockAttestation : public Attestation {
                                              RSA*));  // NOLINT "unnamed" param.
   MOCK_METHOD0(ThreadMain, void());
   MOCK_METHOD0(OnFinalized, void());
-  MOCK_METHOD3(GetDelegateCredentials, bool(brillo::SecureBlob*,
-                                            brillo::SecureBlob*,
+  MOCK_METHOD3(GetDelegateCredentials, bool(brillo::Blob*,
+                                            brillo::Blob*,
                                             bool*));
 };
 

@@ -72,7 +72,7 @@ class TpmPersistentStateTest : public ::testing::Test {
   bool FileWriteAtomic(const base::FilePath& path,
                        const brillo::SecureBlob& blob,
                        mode_t /* mode */) {
-    return FileWrite(path, blob);
+    return FileWriteSecureBlob(path, blob);
   }
 
   void SetUp() override {

@@ -24,7 +24,7 @@ class MockTpmInit : public TpmInit {
   MOCK_METHOD0(IsTpmReady, bool());
   MOCK_METHOD0(IsTpmEnabled, bool());
   MOCK_METHOD0(IsTpmOwned, bool());
-  MOCK_METHOD1(GetTpmPassword, bool(brillo::Blob*));
+  MOCK_METHOD1(GetTpmPassword, bool(brillo::SecureBlob*));
   MOCK_METHOD0(ShallInitialize, bool());
 };
 

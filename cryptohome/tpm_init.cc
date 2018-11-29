@@ -139,7 +139,7 @@ bool TpmInit::OwnershipRequested() {
   return take_ownership_called_;
 }
 
-bool TpmInit::GetTpmPassword(brillo::Blob* password) {
+bool TpmInit::GetTpmPassword(brillo::SecureBlob* password) {
   return tpm_init_task_->get_tpm()->GetOwnerPassword(password);
 }
 
@@ -321,9 +321,9 @@ void TpmInit::CreateOwnerPassword(SecureBlob* password) {
   SecureBlob random(kOwnerPasswordLength / 2);
   CryptoLib::GetSecureRandom(random.data(), random.size());
   SecureBlob tpm_password(kOwnerPasswordLength);
-  CryptoLib::BlobToHexToBuffer(random,
-                               tpm_password.data(),
-                               tpm_password.size());
+  CryptoLib::SecureBlobToHexToBuffer(random,
+                                     tpm_password.data(),
+                                     tpm_password.size());
   password->swap(tpm_password);
 }
 

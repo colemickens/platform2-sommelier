@@ -837,8 +837,9 @@ bool ExtractCmkPrivateKeyFromMigratedBlob(const Blob& migrated_cmk_key12_blob,
   // XOR-mask.
   DCHECK_EQ(decrypted_tpm_migrate_asymkey_blob.size(),
             migration_random_blob.size());
-  SecureBlob xored_decrypted_tpm_migrate_asymkey_blob =
-      decrypted_tpm_migrate_asymkey_blob;
+  Blob xored_decrypted_tpm_migrate_asymkey_blob(
+      decrypted_tpm_migrate_asymkey_blob.begin(),
+      decrypted_tpm_migrate_asymkey_blob.end());
   XorBytes(xored_decrypted_tpm_migrate_asymkey_blob.data(),
            migration_random_blob.data(),
            xored_decrypted_tpm_migrate_asymkey_blob.size());
@@ -1027,8 +1028,8 @@ bool UnsealingSessionTpm1Impl::Unseal(const Blob& signed_challenge_value,
   // Obtain the TPM context and handle with the required authorization.
   ScopedTssContext tpm_context;
   TSS_HTPM tpm_handle = 0;
-  if (!tpm_->ConnectContextAsDelegate(SecureBlob(delegate_blob_),
-                                      SecureBlob(delegate_secret_),
+  if (!tpm_->ConnectContextAsDelegate(delegate_blob_,
+                                      delegate_secret_,
                                       tpm_context.ptr(), &tpm_handle)) {
     LOG(ERROR) << "Failed to connect to the TPM";
     return false;
@@ -1127,8 +1128,8 @@ bool SignatureSealingBackendTpm1Impl::CreateSealedSecret(
   // Obtain the TPM context and handle with the required authorization.
   ScopedTssContext tpm_context;
   TSS_HTPM tpm_handle = 0;
-  if (!tpm_->ConnectContextAsDelegate(SecureBlob(delegate_blob),
-                                      SecureBlob(delegate_secret),
+  if (!tpm_->ConnectContextAsDelegate(delegate_blob,
+                                      delegate_secret,
                                       tpm_context.ptr(), &tpm_handle)) {
     LOG(ERROR) << "Failed to connect to the TPM";
     return false;
@@ -1153,7 +1154,8 @@ bool SignatureSealingBackendTpm1Impl::CreateSealedSecret(
     return false;
   }
   const Blob protection_key_pubkey_digest =
-      CryptoLib::Sha1(protection_key_pubkey);
+      CryptoLib::Sha1(Blob(protection_key_pubkey.begin(),
+                           protection_key_pubkey.end()));
   const Blob msa_composite_digest =
       BuildMsaCompositeDigest(protection_key_pubkey_digest);
   // Obtain the migration authority approval ticket for the TPM_MSA_COMPOSITE
@@ -1224,8 +1226,8 @@ SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
   // Obtain the TPM context and handle with the required authorization.
   ScopedTssContext tpm_context;
   TSS_HTPM tpm_handle = 0;
-  if (!tpm_->ConnectContextAsDelegate(SecureBlob(delegate_blob),
-                                      SecureBlob(delegate_secret),
+  if (!tpm_->ConnectContextAsDelegate(delegate_blob,
+                                      delegate_secret,
                                       tpm_context.ptr(), &tpm_handle)) {
     LOG(ERROR) << "Failed to connect to the TPM";
     return nullptr;
@@ -1278,8 +1280,12 @@ SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
   return std::make_unique<UnsealingSessionTpm1Impl>(
       tpm_, BlobFromString(sealed_data_contents.srk_wrapped_cmk()),
       public_key_spki_der, delegate_blob, delegate_secret,
-      BlobFromString(sealed_data_contents.cmk_pubkey()), protection_key_pubkey,
-      std::move(migration_destination_rsa), migration_destination_key_pubkey);
+      BlobFromString(sealed_data_contents.cmk_pubkey()),
+      Blob(protection_key_pubkey.begin(),
+           protection_key_pubkey.end()),
+      std::move(migration_destination_rsa),
+      Blob(migration_destination_key_pubkey.begin(),
+           migration_destination_key_pubkey.end()));
 }
 
 }  // namespace cryptohome

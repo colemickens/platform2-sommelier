@@ -570,8 +570,8 @@ void Attestation::PrepareForEnrollment() {
   // Create a delegate so we can activate the AIKs later.
   const std::set<uint32_t> bound_pcrs(std::begin(kDelegateBoundPcrs),
                                       std::end(kDelegateBoundPcrs));
-  SecureBlob delegate_blob;
-  SecureBlob delegate_secret;
+  Blob delegate_blob;
+  Blob delegate_secret;
   if (!tpm_->CreateDelegate(bound_pcrs, Tpm::kDefaultDelegateFamilyLabel,
                             Tpm::kDefaultDelegateLabel, &delegate_blob,
                             &delegate_secret)) {
@@ -799,8 +799,10 @@ bool Attestation::Verify(bool is_cros_core) {
     LOG(ERROR) << "Attestation: Bad certified key.";
     return false;
   }
-  SecureBlob delegate_blob(database_pb_.delegate().blob());
-  SecureBlob delegate_secret(database_pb_.delegate().secret());
+  brillo::Blob delegate_blob =
+      brillo::BlobFromString(database_pb_.delegate().blob());
+  brillo::Blob delegate_secret =
+      brillo::BlobFromString(database_pb_.delegate().secret());
   SecureBlob aik_public_key_tpm(
       identity_data.identity_binding().identity_public_key());
   if (!VerifyActivateIdentity(delegate_blob, delegate_secret, identity_key_blob,
@@ -933,8 +935,10 @@ bool Attestation::Enroll(PCAType pca_type,
     return false;
   }
   base::AutoLock lock(lock_);
-  SecureBlob delegate_blob(database_pb_.delegate().blob());
-  SecureBlob delegate_secret(database_pb_.delegate().secret());
+  brillo::Blob delegate_blob =
+      brillo::BlobFromString(database_pb_.delegate().blob());
+  brillo::Blob delegate_secret =
+      brillo::BlobFromString(database_pb_.delegate().secret());
   SecureBlob aik_blob(database_pb_.identities()
                           .Get(identity)
                           .identity_key()
@@ -1961,8 +1965,8 @@ void Attestation::ClearString(std::string* s) {
   s->clear();
 }
 
-bool Attestation::VerifyActivateIdentity(const SecureBlob& delegate_blob,
-                                         const SecureBlob& delegate_secret,
+bool Attestation::VerifyActivateIdentity(const brillo::Blob& delegate_blob,
+                                         const brillo::Blob& delegate_secret,
                                          const SecureBlob& identity_key_blob,
                                          const SecureBlob& identity_public_key,
                                          const SecureBlob& ek_public_key) {
@@ -2601,15 +2605,17 @@ void Attestation::FinalizeEndorsementData() {
   }
 }
 
-bool Attestation::GetDelegateCredentials(brillo::SecureBlob* blob,
-                                         brillo::SecureBlob* secret,
+bool Attestation::GetDelegateCredentials(brillo::Blob* blob,
+                                         brillo::Blob* secret,
                                          bool* has_reset_lock_permissions) {
   if (!database_pb_.has_delegate()) {
     return false;
   }
-  SecureBlob tmp_blob(database_pb_.delegate().blob());
+  brillo::Blob tmp_blob =
+      brillo::BlobFromString(database_pb_.delegate().blob());
   blob->swap(tmp_blob);
-  SecureBlob tmp_secret(database_pb_.delegate().secret());
+  brillo::Blob tmp_secret =
+      brillo::BlobFromString(database_pb_.delegate().secret());
   secret->swap(tmp_secret);
   *has_reset_lock_permissions =
       database_pb_.delegate().has_reset_lock_permissions();
@@ -2791,8 +2797,10 @@ Tpm::TpmRetryAction Attestation::GetTpmEndorsementPublicKey(
     // proper permissions.
     if (!database_pb_.delegate().has_can_read_internal_pub()
         || database_pb_.delegate().can_read_internal_pub())  {
-      SecureBlob delegate_blob(database_pb_.delegate().blob());
-      SecureBlob delegate_secret(database_pb_.delegate().secret());
+      brillo::Blob delegate_blob =
+          brillo::BlobFromString(database_pb_.delegate().blob());
+      brillo::Blob delegate_secret =
+          brillo::BlobFromString(database_pb_.delegate().secret());
       action = tpm_->GetEndorsementPublicKeyWithDelegate(
           ek_public_key, delegate_blob, delegate_secret);
       // Warn if we know we will not be able to compute the EID. We can't
