@@ -49,18 +49,18 @@ void SignatureSealedCreationMocker::SetUpSuccessfulMock() {
       MakeFakeSignatureSealedData(public_key_spki_der_);
   EXPECT_CALL(
       *mock_backend_,
-      CreateSealedSecret(SecureBlob(public_key_spki_der_), key_algorithms_,
-                         pcr_restrictions_, SecureBlob(delegate_blob_),
-                         SecureBlob(delegate_secret_), _))
+      CreateSealedSecret(public_key_spki_der_, key_algorithms_,
+                         pcr_restrictions_, delegate_blob_,
+                         delegate_secret_, _))
       .WillOnce(DoAll(SetArgPointee<5>(sealed_data_to_return), Return(true)));
 }
 
 void SignatureSealedCreationMocker::SetUpFailingMock() {
   EXPECT_CALL(
       *mock_backend_,
-      CreateSealedSecret(SecureBlob(public_key_spki_der_), key_algorithms_,
-                         pcr_restrictions_, SecureBlob(delegate_blob_),
-                         SecureBlob(delegate_secret_), _))
+      CreateSealedSecret(public_key_spki_der_, key_algorithms_,
+                         pcr_restrictions_, delegate_blob_,
+                         delegate_secret_, _))
       .WillOnce(Return(false));
 }
 
@@ -84,9 +84,9 @@ void SignatureSealedUnsealingMocker::SetUpCreationFailingMock(
   auto& expected_call = EXPECT_CALL(
       *mock_backend_,
       CreateUnsealingSessionImpl(ProtobufEquals(expected_sealed_data),
-                                 SecureBlob(public_key_spki_der_),
-                                 key_algorithms_, SecureBlob(delegate_blob_),
-                                 SecureBlob(delegate_secret_)));
+                                 public_key_spki_der_,
+                                 key_algorithms_,
+                                 delegate_blob_, delegate_secret_));
   if (mock_repeatedly)
     expected_call.WillRepeatedly(Return(nullptr));
   else
@@ -114,8 +114,8 @@ MockUnsealingSession* SignatureSealedUnsealingMocker::AddSessionCreationMock() {
   EXPECT_CALL(*mock_backend_,
               CreateUnsealingSessionImpl(
                   ProtobufEquals(expected_sealed_data),
-                  SecureBlob(public_key_spki_der_), key_algorithms_,
-                  SecureBlob(delegate_blob_), SecureBlob(delegate_secret_)))
+                  public_key_spki_der_, key_algorithms_,
+                  delegate_blob_, delegate_secret_))
       .WillOnce(Return(mock_unsealing_session));
   EXPECT_CALL(*mock_unsealing_session, GetChallengeAlgorithm())
       .WillRepeatedly(Return(chosen_algorithm_));
