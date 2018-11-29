@@ -847,7 +847,8 @@ class AttestationEnrollmentIdTest : public AttestationBaseTest {
  public:
   void Initialize() override {
     SecureBlob abe_data;
-    EXPECT_TRUE(base::HexStringToBytes(kABEData, &abe_data));
+    EXPECT_TRUE(brillo::SecureBlob::HexStringToSecureBlob(kABEData,
+                                                          &abe_data));
     attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
                             &install_attributes_, abe_data,
                             false /* retain_endorsement_data */);
@@ -1162,7 +1163,7 @@ class AttestationWithAbeDataTest
     SecureBlob abe_data;
     const char* data = GetParam().abe_data.data;
     if (data != NULL) {
-      if (!base::HexStringToBytes(data, &abe_data)) {
+      if (!brillo::SecureBlob::HexStringToSecureBlob(data, &abe_data)) {
         abe_data.clear();
       }
     }
@@ -1181,8 +1182,8 @@ class AttestationWithAbeDataTest
       return;
     }
     SecureBlob expected;
-    EXPECT_TRUE(
-        base::HexStringToBytes(param.enterprise_enrollment_nonce, &expected));
+    EXPECT_TRUE(brillo::SecureBlob::HexStringToSecureBlob(
+                    param.enterprise_enrollment_nonce, &expected));
     std::string nonce = request_pb.enterprise_enrollment_nonce();
     EXPECT_EQ(expected, SecureBlob(nonce.begin(), nonce.end()));
   }
