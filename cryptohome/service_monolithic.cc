@@ -67,7 +67,8 @@ bool ServiceMonolithic::GetAttestationBasedEnterpriseEnrollmentData(
     return true;   // Empty is ok.
   }
   // The data must be a valid 32 bytes (256 bits) hexadecimal string.
-  if (!base::HexStringToBytes(trimmed, abe_data) || abe_data->size() != 32) {
+  if (!brillo::SecureBlob::HexStringToSecureBlob(trimmed, abe_data) ||
+      abe_data->size() != 32) {
     abe_data->clear();
     return false;
   }
