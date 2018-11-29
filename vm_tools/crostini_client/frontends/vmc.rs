@@ -298,3 +298,123 @@ impl Frontend for Vmc {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use backends::DummyDefaultBackend;
+
+    #[test]
+    fn dummy_default_backend() {
+        const DUMMY_SUCCESS_ARGS: &[&[&str]] = &[
+            &["vmc", "start", "termina"],
+            &["vmc", "stop", "termina"],
+            &["vmc", "destroy", "termina"],
+            &["vmc", "export", "termina", "file name"],
+            &["vmc", "export", "termina", "file name", "removable media"],
+            &["vmc", "list"],
+            &["vmc", "share", "termina", "my-folder"],
+        ];
+
+        const DUMMY_FAILURE_ARGS: &[&[&str]] = &[
+            &["vmc", "start"],
+            &["vmc", "start", "termina", "extra args"],
+            &["vmc", "stop"],
+            &["vmc", "stop", "termina", "extra args"],
+            &["vmc", "destroy"],
+            &["vmc", "destroy", "termina", "extra args"],
+            &["vmc", "export", "termina"],
+            &["vmc", "export", "termina", "too", "many", "args"],
+            &["vmc", "list", "extra args"],
+            &["vmc", "share"],
+            &["vmc", "share", "too", "many", "args"],
+        ];
+
+        let environ = vec![("CROS_USER_ID_HASH", "fake_hash")]
+            .into_iter()
+            .collect();
+        for args in DUMMY_SUCCESS_ARGS {
+            if let Err(e) = Vmc.run(&mut DummyDefaultBackend, args, &environ) {
+                panic!("test args failed: {:?}: {}", args, e)
+            }
+        }
+        for args in DUMMY_FAILURE_ARGS {
+            if let Ok(()) = Vmc.run(&mut DummyDefaultBackend, args, &environ) {
+                panic!("test args should have failed: {:?}", args)
+            }
+        }
+    }
+
+    #[test]
+    fn container() {
+        const CONTAINER_ARGS: &[&[&str]] = &[
+            &["vmc", "container", "termina", "penguin"],
+            &[
+                "vmc",
+                "container",
+                "termina",
+                "penguin",
+                "https://my-image-server.com/",
+                "custom/os",
+            ],
+        ];
+
+        struct SessionsListBackend;
+
+        impl Backend for SessionsListBackend {
+            fn name(&self) -> &'static str {
+                "Sessions List"
+            }
+            fn sessions_list(&mut self) -> Result<Vec<(String, String)>, Box<Error>> {
+                Ok(vec![(
+                    "testuser@example.com".to_owned(),
+                    "fake_hash".to_owned(),
+                )])
+            }
+            fn vsh_exec_container(
+                &mut self,
+                _vm_name: &str,
+                _user_id_hash: &str,
+                _container_name: &str,
+            ) -> Result<(), Box<Error>> {
+                Ok(())
+            }
+            fn container_create(
+                &mut self,
+                _vm_name: &str,
+                _user_id_hash: &str,
+                _container_name: &str,
+                _image_server: &str,
+                _image_alias: &str,
+            ) -> Result<(), Box<Error>> {
+                Ok(())
+            }
+            fn container_start(
+                &mut self,
+                _vm_name: &str,
+                _user_id_hash: &str,
+                _container_name: &str,
+            ) -> Result<(), Box<Error>> {
+                Ok(())
+            }
+            fn container_setup_user(
+                &mut self,
+                _vm_name: &str,
+                _user_id_hash: &str,
+                _container_name: &str,
+                _username: &str,
+            ) -> Result<(), Box<Error>> {
+                Ok(())
+            }
+        }
+
+        let environ = vec![("CROS_USER_ID_HASH", "fake_hash")]
+            .into_iter()
+            .collect();
+        for args in CONTAINER_ARGS {
+            if let Err(e) = Vmc.run(&mut SessionsListBackend, args, &environ) {
+                panic!("test args failed: {:?}: {}", args, e)
+            }
+        }
+    }
+}
