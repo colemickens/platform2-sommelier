@@ -39,11 +39,11 @@ const char kDBusThreadName[] = "chaps_dbus_client_thread";
 // MessageWriter methods need to be called to marshal and unmarshal
 // data into D-Bus messages, and SecureBlob has no specializations
 // there.
-inline const std::vector<uint8_t>& AsVector(const SecureBlob& blob) {
+inline const brillo::SecureVector AsVector(const SecureBlob& blob) {
   return blob;
 }
 
-inline std::vector<uint8_t>* AsVector(SecureBlob* blob) {
+inline brillo::SecureVector* AsVector(SecureBlob* blob) {
   return blob;
 }
 
@@ -118,12 +118,13 @@ void ChapsProxyImpl::CloseIsolate(const SecureBlob& isolate_credential) {
 
 bool ChapsProxyImpl::LoadToken(const SecureBlob& isolate_credential,
                                const string& path,
-                               const vector<uint8_t>& auth_data,
+                               const SecureBlob& auth_data,
                                const string& label,
                                uint64_t* slot_id) {
   bool result = false;
-  std::unique_ptr<dbus::Response> resp = proxy_->CallMethod(
-      kLoadTokenMethod, AsVector(isolate_credential), path, auth_data, label);
+  std::unique_ptr<dbus::Response> resp =
+      proxy_->CallMethod(kLoadTokenMethod, AsVector(isolate_credential),
+                         path, AsVector(auth_data), label);
   return resp &&
          ExtractMethodCallResults(resp.get(), nullptr, slot_id, &result) &&
          result;
@@ -134,11 +135,12 @@ void ChapsProxyImpl::UnloadToken(const SecureBlob& isolate_credential,
   proxy_->CallMethod(kUnloadTokenMethod, AsVector(isolate_credential), path);
 }
 
-void ChapsProxyImpl::ChangeTokenAuthData(const string& path,
-                                         const vector<uint8_t>& old_auth_data,
-                                         const vector<uint8_t>& new_auth_data) {
-  proxy_->CallMethod(kChangeTokenAuthDataMethod, path, old_auth_data,
-                     new_auth_data);
+void ChapsProxyImpl::ChangeTokenAuthData(
+    const string& path,
+    const brillo::SecureBlob& old_auth_data,
+    const brillo::SecureBlob& new_auth_data) {
+  proxy_->CallMethod(kChangeTokenAuthDataMethod, path, AsVector(old_auth_data),
+                     AsVector(new_auth_data));
 }
 
 bool ChapsProxyImpl::GetTokenPath(const SecureBlob& isolate_credential,

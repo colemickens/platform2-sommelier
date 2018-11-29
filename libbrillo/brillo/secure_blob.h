@@ -14,7 +14,10 @@
 
 namespace brillo {
 
+// TODO(sarthakkukreti): remove temp. SecureVector once we break SecureBlob's
+// dependence on std::vector<uint8_t>
 using Blob = std::vector<uint8_t>;
+using SecureVector = std::vector<uint8_t>;
 
 // Conversion of Blob to/from std::string, where the string holds raw byte
 // contents.

@@ -92,7 +92,7 @@ void TokenManagerClient::UnloadToken(const SecureBlob& isolate_credential,
 }
 
 void TokenManagerClient::ChangeTokenAuthData(const FilePath& path,
-                                             const SecureBlob&  old_auth_data,
+                                             const SecureBlob& old_auth_data,
                                              const SecureBlob& new_auth_data) {
   if (!Connect()) {
     LOG(ERROR) << __func__ << ": Failed to connect to the Chaps daemon.";

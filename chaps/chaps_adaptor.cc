@@ -264,34 +264,34 @@ void ChapsAdaptor::RegisterAsync(
 }
 
 void ChapsAdaptor::OpenIsolate(
-      const std::vector<uint8_t>& isolate_credential_in,
-      std::vector<uint8_t>* isolate_credential_out,
+      const brillo::SecureVector& isolate_credential_in,
+      brillo::SecureVector* isolate_credential_out,
       bool* new_isolate_created,
       bool* result) {
   VLOG(1) << "CALL: " << __func__;
   *result = false;
   SecureBlob isolate_credential(isolate_credential_in.begin(),
                                 isolate_credential_in.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential_in));
   if (token_manager_)
     *result = token_manager_->OpenIsolate(&isolate_credential,
                                           new_isolate_created);
   isolate_credential_out->swap(isolate_credential);
 }
 
-void ChapsAdaptor::CloseIsolate(const vector<uint8_t>& isolate_credential) {
+void ChapsAdaptor::CloseIsolate(
+    const brillo::SecureVector& isolate_credential) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   if (token_manager_)
     token_manager_->CloseIsolate(isolate_credential_blob);
 }
 
-void ChapsAdaptor::LoadToken(const vector<uint8_t>& isolate_credential,
+void ChapsAdaptor::LoadToken(const brillo::SecureVector& isolate_credential,
                              const string& path,
-                             const vector<uint8_t>& auth_data,
+                             const brillo::SecureVector& auth_data,
                              const string& label,
                              uint64_t* slot_id,
                              bool* result) {
@@ -306,24 +306,23 @@ void ChapsAdaptor::LoadToken(const vector<uint8_t>& isolate_credential,
                                         auth_data_blob,
                                         label,
                                         PreservedValue<uint64_t, int>(slot_id));
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
-  ClearVector(const_cast<vector<uint8_t>*>(&auth_data));
 }
 
-void ChapsAdaptor::UnloadToken(const vector<uint8_t>& isolate_credential,
+void ChapsAdaptor::UnloadToken(const brillo::SecureVector& isolate_credential,
                                const string& path) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   if (token_manager_)
     token_manager_->UnloadToken(isolate_credential_blob, FilePath(path));
 }
 
-void ChapsAdaptor::ChangeTokenAuthData(const string& path,
-                                       const vector<uint8_t>& old_auth_data,
-                                       const vector<uint8_t>& new_auth_data) {
+void ChapsAdaptor::ChangeTokenAuthData(
+    const string& path,
+    const brillo::SecureVector& old_auth_data,
+    const brillo::SecureVector& new_auth_data) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   if (token_manager_)
@@ -331,11 +330,9 @@ void ChapsAdaptor::ChangeTokenAuthData(const string& path,
         FilePath(path),
         SecureBlob(old_auth_data.begin(), old_auth_data.end()),
         SecureBlob(new_auth_data.begin(), new_auth_data.end()));
-  ClearVector(const_cast<vector<uint8_t>*>(&old_auth_data));
-  ClearVector(const_cast<vector<uint8_t>*>(&new_auth_data));
 }
 
-void ChapsAdaptor::GetTokenPath(const std::vector<uint8_t>& isolate_credential,
+void ChapsAdaptor::GetTokenPath(const brillo::SecureVector& isolate_credential,
                                 uint64_t slot_id,
                                 std::string* path,
                                 bool* result) {
@@ -343,7 +340,6 @@ void ChapsAdaptor::GetTokenPath(const std::vector<uint8_t>& isolate_credential,
   VLOG(1) << "CALL: " << __func__;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
   if (token_manager_) {
     FilePath tmp;
     *result = token_manager_->GetTokenPath(isolate_credential_blob,
@@ -362,7 +358,7 @@ void ChapsAdaptor::SetLogLevel(const int32_t& level) {
   VLOG_IF(2, writeResult < 0) << "Failed to save loglevel to file.";
 }
 
-void ChapsAdaptor::GetSlotList(const vector<uint8_t>& isolate_credential,
+void ChapsAdaptor::GetSlotList(const brillo::SecureVector& isolate_credential,
                                bool token_present,
                                vector<uint64_t>* slot_list,
                                uint32_t* result) {
@@ -371,14 +367,14 @@ void ChapsAdaptor::GetSlotList(const vector<uint8_t>& isolate_credential,
   VLOG(2) << "IN: " << "token_present=" << token_present;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->GetSlotList(isolate_credential_blob, token_present,
                                   slot_list);
   VLOG_IF(2, *result == CKR_OK) << "OUT: " << "slot_list="
                                 << PrintIntVector(*slot_list);
 }
 
-void ChapsAdaptor::GetSlotInfo(const vector<uint8_t>& isolate_credential,
+void ChapsAdaptor::GetSlotInfo(const brillo::SecureVector& isolate_credential,
                                uint64_t slot_id,
                                SlotInfo* slot_info,
                                uint32_t* result) {
@@ -387,7 +383,7 @@ void ChapsAdaptor::GetSlotInfo(const vector<uint8_t>& isolate_credential,
   VLOG(2) << "IN: " << "slot_id=" << slot_id;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->GetSlotInfo(isolate_credential_blob,
                                   slot_id,
                                   slot_info);
@@ -395,7 +391,7 @@ void ChapsAdaptor::GetSlotInfo(const vector<uint8_t>& isolate_credential,
                                 << slot_info->slot_description();
 }
 
-void ChapsAdaptor::GetTokenInfo(const vector<uint8_t>& isolate_credential,
+void ChapsAdaptor::GetTokenInfo(const brillo::SecureVector& isolate_credential,
                                 uint64_t slot_id,
                                 TokenInfo* token_info,
                                 uint32_t* result) {
@@ -404,23 +400,24 @@ void ChapsAdaptor::GetTokenInfo(const vector<uint8_t>& isolate_credential,
   VLOG(2) << "IN: " << "slot_id=" << slot_id;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->GetTokenInfo(isolate_credential_blob,
                                    slot_id,
                                    token_info);
   VLOG_IF(2, *result == CKR_OK) << "OUT: " << "label=" << token_info->label();
 }
 
-void ChapsAdaptor::GetMechanismList(const vector<uint8_t>& isolate_credential,
-                                    uint64_t slot_id,
-                                    vector<uint64_t>* mechanism_list,
-                                    uint32_t* result) {
+void ChapsAdaptor::GetMechanismList(
+    const brillo::SecureVector& isolate_credential,
+    uint64_t slot_id,
+    vector<uint64_t>* mechanism_list,
+    uint32_t* result) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "slot_id=" << slot_id;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->GetMechanismList(isolate_credential_blob,
                                        slot_id,
                                        mechanism_list);
@@ -428,18 +425,19 @@ void ChapsAdaptor::GetMechanismList(const vector<uint8_t>& isolate_credential,
                                 << PrintIntVector(*mechanism_list);
 }
 
-void ChapsAdaptor::GetMechanismInfo(const vector<uint8_t>& isolate_credential,
-                                    uint64_t slot_id,
-                                    uint64_t mechanism_type,
-                                    MechanismInfo* mechanism_info,
-                                    uint32_t* result) {
+void ChapsAdaptor::GetMechanismInfo(
+    const brillo::SecureVector& isolate_credential,
+    uint64_t slot_id,
+    uint64_t mechanism_type,
+    MechanismInfo* mechanism_info,
+    uint32_t* result) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "slot_id=" << slot_id;
   VLOG(2) << "IN: " << "mechanism_type=" << mechanism_type;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->GetMechanismInfo(isolate_credential_blob,
                                        slot_id,
                                        mechanism_type,
@@ -452,11 +450,12 @@ void ChapsAdaptor::GetMechanismInfo(const vector<uint8_t>& isolate_credential,
                                 << mechanism_info->flags();
 }
 
-uint32_t ChapsAdaptor::InitToken(const vector<uint8_t>& isolate_credential,
-                                 uint64_t slot_id,
-                                 bool use_null_pin,
-                                 const string& optional_so_pin,
-                                 const vector<uint8_t>& new_token_label) {
+uint32_t ChapsAdaptor::InitToken(
+    const brillo::SecureVector& isolate_credential,
+    uint64_t slot_id,
+    bool use_null_pin,
+    const string& optional_so_pin,
+    const vector<uint8_t>& new_token_label) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "slot_id=" << slot_id;
@@ -465,14 +464,14 @@ uint32_t ChapsAdaptor::InitToken(const vector<uint8_t>& isolate_credential,
   const string* tmp_pin = use_null_pin ? NULL : &optional_so_pin;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   return service_->InitToken(isolate_credential_blob,
                              slot_id,
                              tmp_pin,
                              new_token_label);
 }
 
-uint32_t ChapsAdaptor::InitPIN(const vector<uint8_t>& isolate_credential,
+uint32_t ChapsAdaptor::InitPIN(const brillo::SecureVector& isolate_credential,
                                uint64_t session_id,
                                bool use_null_pin,
                                const string& optional_user_pin) {
@@ -483,13 +482,13 @@ uint32_t ChapsAdaptor::InitPIN(const vector<uint8_t>& isolate_credential,
   const string* tmp_pin = use_null_pin ? NULL : &optional_user_pin;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   return service_->InitPIN(isolate_credential_blob,
                            session_id,
                            tmp_pin);
 }
 
-uint32_t ChapsAdaptor::SetPIN(const vector<uint8_t>& isolate_credential,
+uint32_t ChapsAdaptor::SetPIN(const brillo::SecureVector& isolate_credential,
                               uint64_t session_id,
                               bool use_null_old_pin,
                               const string& optional_old_pin,
@@ -503,14 +502,14 @@ uint32_t ChapsAdaptor::SetPIN(const vector<uint8_t>& isolate_credential,
   const string* tmp_new_pin = use_null_new_pin ? NULL : &optional_new_pin;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   return service_->SetPIN(isolate_credential_blob,
                           session_id,
                           tmp_old_pin,
                           tmp_new_pin);
 }
 
-void ChapsAdaptor::OpenSession(const vector<uint8_t>& isolate_credential,
+void ChapsAdaptor::OpenSession(const brillo::SecureVector& isolate_credential,
                                uint64_t slot_id,
                                uint64_t flags,
                                uint64_t* session_id,
@@ -521,7 +520,7 @@ void ChapsAdaptor::OpenSession(const vector<uint8_t>& isolate_credential,
   VLOG(2) << "IN: " << "flags=" << flags;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->OpenSession(isolate_credential_blob,
                                   slot_id,
                                   flags,
@@ -529,40 +528,42 @@ void ChapsAdaptor::OpenSession(const vector<uint8_t>& isolate_credential,
   VLOG_IF(2, *result == CKR_OK) << "OUT: " << "session_id=" << session_id;
 }
 
-uint32_t ChapsAdaptor::CloseSession(const vector<uint8_t>& isolate_credential,
-                                    uint64_t session_id) {
+uint32_t ChapsAdaptor::CloseSession(
+    const brillo::SecureVector& isolate_credential,
+    uint64_t session_id) {
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   return service_->CloseSession(isolate_credential_blob,
                                 session_id);
 }
 
 uint32_t ChapsAdaptor::CloseAllSessions(
-    const vector<uint8_t>& isolate_credential,
+    const brillo::SecureVector& isolate_credential,
     uint64_t slot_id) {
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "slot_id=" << slot_id;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   return service_->CloseAllSessions(
       isolate_credential_blob,
       slot_id);
 }
 
-void ChapsAdaptor::GetSessionInfo(const vector<uint8_t>& isolate_credential,
-                                  uint64_t session_id,
-                                  SessionInfo* session_info,
-                                  uint32_t* result) {
+void ChapsAdaptor::GetSessionInfo(
+    const brillo::SecureVector& isolate_credential,
+    uint64_t session_id,
+    SessionInfo* session_info,
+    uint32_t* result) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->GetSessionInfo(isolate_credential_blob,
                                      session_id,
                                      session_info);
@@ -574,22 +575,23 @@ void ChapsAdaptor::GetSessionInfo(const vector<uint8_t>& isolate_credential,
                                 << session_info->device_error();
 }
 
-void ChapsAdaptor::GetOperationState(const vector<uint8_t>& isolate_credential,
-                                     uint64_t session_id,
-                                     vector<uint8_t>* operation_state,
-                                     uint32_t* result) {
+void ChapsAdaptor::GetOperationState(
+    const brillo::SecureVector& isolate_credential,
+    uint64_t session_id,
+    vector<uint8_t>* operation_state,
+    uint32_t* result) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->GetOperationState(isolate_credential_blob,
                                         session_id,
                                         operation_state);
 }
 
 uint32_t ChapsAdaptor::SetOperationState(
-      const vector<uint8_t>& isolate_credential,
+      const brillo::SecureVector& isolate_credential,
       uint64_t session_id,
       const vector<uint8_t>& operation_state,
       uint64_t encryption_key_handle,
@@ -598,7 +600,7 @@ uint32_t ChapsAdaptor::SetOperationState(
   VLOG(1) << "CALL: " << __func__;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   return service_->SetOperationState(isolate_credential_blob,
                                      session_id,
                                      operation_state,
@@ -606,7 +608,7 @@ uint32_t ChapsAdaptor::SetOperationState(
                                      authentication_key_handle);
 }
 
-uint32_t ChapsAdaptor::Login(const vector<uint8_t>& isolate_credential,
+uint32_t ChapsAdaptor::Login(const brillo::SecureVector& isolate_credential,
                              uint64_t session_id,
                              uint64_t user_type,
                              bool use_null_pin,
@@ -619,27 +621,27 @@ uint32_t ChapsAdaptor::Login(const vector<uint8_t>& isolate_credential,
   const string* pin = use_null_pin ? NULL : &optional_pin;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   return service_->Login(isolate_credential_blob,
                          session_id,
                          user_type,
                          pin);
 }
 
-uint32_t ChapsAdaptor::Logout(const vector<uint8_t>& isolate_credential,
+uint32_t ChapsAdaptor::Logout(const brillo::SecureVector& isolate_credential,
                               uint64_t session_id) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   return service_->Logout(isolate_credential_blob,
                           session_id);
 }
 
 void ChapsAdaptor::CreateObject(
-      const vector<uint8_t>& isolate_credential,
+      const brillo::SecureVector& isolate_credential,
       uint64_t session_id,
       const vector<uint8_t>& attributes,
       uint64_t* new_object_handle,
@@ -650,7 +652,7 @@ void ChapsAdaptor::CreateObject(
   VLOG(2) << "IN: " << "attributes=" << PrintAttributes(attributes, true);
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->CreateObject(isolate_credential_blob,
                                    session_id,
                                    attributes,
@@ -660,7 +662,7 @@ void ChapsAdaptor::CreateObject(
 }
 
 void ChapsAdaptor::CopyObject(
-      const vector<uint8_t>& isolate_credential,
+      const brillo::SecureVector& isolate_credential,
       uint64_t session_id,
       uint64_t object_handle,
       const vector<uint8_t>& attributes,
@@ -673,7 +675,7 @@ void ChapsAdaptor::CopyObject(
   VLOG(2) << "IN: " << "attributes=" << PrintAttributes(attributes, true);
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->CopyObject(isolate_credential_blob,
                                  session_id,
                                  object_handle,
@@ -683,22 +685,23 @@ void ChapsAdaptor::CopyObject(
                                 << new_object_handle;
 }
 
-uint32_t ChapsAdaptor::DestroyObject(const vector<uint8_t>& isolate_credential,
-                                     uint64_t session_id,
-                                     uint64_t object_handle) {
+uint32_t ChapsAdaptor::DestroyObject(
+    const brillo::SecureVector& isolate_credential,
+    uint64_t session_id,
+    uint64_t object_handle) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
   VLOG(2) << "IN: " << "object_handle=" << object_handle;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   return service_->DestroyObject(isolate_credential_blob,
                                  session_id,
                                  object_handle);
 }
 
-void ChapsAdaptor::GetObjectSize(const vector<uint8_t>& isolate_credential,
+void ChapsAdaptor::GetObjectSize(const brillo::SecureVector& isolate_credential,
                                  uint64_t session_id,
                                  uint64_t object_handle,
                                  uint64_t* object_size,
@@ -709,7 +712,7 @@ void ChapsAdaptor::GetObjectSize(const vector<uint8_t>& isolate_credential,
   VLOG(2) << "IN: " << "object_handle=" << object_handle;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->GetObjectSize(isolate_credential_blob,
                                     session_id,
                                     object_handle,
@@ -717,12 +720,13 @@ void ChapsAdaptor::GetObjectSize(const vector<uint8_t>& isolate_credential,
   VLOG_IF(2, *result == CKR_OK) << "OUT: " << "object_size=" << object_size;
 }
 
-void ChapsAdaptor::GetAttributeValue(const vector<uint8_t>& isolate_credential,
-                                     uint64_t session_id,
-                                     uint64_t object_handle,
-                                     const vector<uint8_t>& attributes_in,
-                                     vector<uint8_t>* attributes_out,
-                                     uint32_t* result) {
+void ChapsAdaptor::GetAttributeValue(
+    const brillo::SecureVector& isolate_credential,
+    uint64_t session_id,
+    uint64_t object_handle,
+    const vector<uint8_t>& attributes_in,
+    vector<uint8_t>* attributes_out,
+    uint32_t* result) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -731,7 +735,7 @@ void ChapsAdaptor::GetAttributeValue(const vector<uint8_t>& isolate_credential,
                     << PrintAttributes(attributes_in, false);
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->GetAttributeValue(isolate_credential_blob,
                                         session_id,
                                         object_handle,
@@ -742,7 +746,7 @@ void ChapsAdaptor::GetAttributeValue(const vector<uint8_t>& isolate_credential,
 }
 
 uint32_t ChapsAdaptor::SetAttributeValue(
-    const vector<uint8_t>& isolate_credential,
+    const brillo::SecureVector& isolate_credential,
     uint64_t session_id,
     uint64_t object_handle,
     const vector<uint8_t>& attributes) {
@@ -753,7 +757,7 @@ uint32_t ChapsAdaptor::SetAttributeValue(
   VLOG(2) << "IN: " << "attributes=" << PrintAttributes(attributes, true);
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   return service_->SetAttributeValue(isolate_credential_blob,
                                      session_id,
                                      object_handle,
@@ -761,7 +765,7 @@ uint32_t ChapsAdaptor::SetAttributeValue(
 }
 
 uint32_t ChapsAdaptor::FindObjectsInit(
-    const vector<uint8_t>& isolate_credential,
+    const brillo::SecureVector& isolate_credential,
     uint64_t session_id,
     const vector<uint8_t>& attributes) {
   AutoLock lock(*lock_);
@@ -770,13 +774,13 @@ uint32_t ChapsAdaptor::FindObjectsInit(
   VLOG(2) << "IN: " << "attributes=" << PrintAttributes(attributes, true);
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   return service_->FindObjectsInit(isolate_credential_blob,
                                    session_id,
                                    attributes);
 }
 
-void ChapsAdaptor::FindObjects(const vector<uint8_t>& isolate_credential,
+void ChapsAdaptor::FindObjects(const brillo::SecureVector& isolate_credential,
                                uint64_t session_id,
                                uint64_t max_object_count,
                                vector<uint64_t>* object_list,
@@ -787,7 +791,7 @@ void ChapsAdaptor::FindObjects(const vector<uint8_t>& isolate_credential,
   VLOG(2) << "IN: " << "max_object_count=" << max_object_count;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->FindObjects(isolate_credential_blob,
                                   session_id,
                                   max_object_count,
@@ -797,19 +801,19 @@ void ChapsAdaptor::FindObjects(const vector<uint8_t>& isolate_credential,
 }
 
 uint32_t ChapsAdaptor::FindObjectsFinal(
-    const vector<uint8_t>& isolate_credential,
+    const brillo::SecureVector& isolate_credential,
     uint64_t session_id) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   return service_->FindObjectsFinal(isolate_credential_blob, session_id);
 }
 
 uint32_t ChapsAdaptor::EncryptInit(
-    const vector<uint8_t>& isolate_credential,
+    const brillo::SecureVector& isolate_credential,
     uint64_t session_id,
     uint64_t mechanism_type,
     const vector<uint8_t>& mechanism_parameter,
@@ -823,7 +827,7 @@ uint32_t ChapsAdaptor::EncryptInit(
   VLOG(2) << "IN: " << "key_handle=" << key_handle;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   return service_->EncryptInit(isolate_credential_blob,
                                session_id,
                                mechanism_type,
@@ -831,7 +835,7 @@ uint32_t ChapsAdaptor::EncryptInit(
                                key_handle);
 }
 
-void ChapsAdaptor::Encrypt(const vector<uint8_t>& isolate_credential,
+void ChapsAdaptor::Encrypt(const brillo::SecureVector& isolate_credential,
                            uint64_t session_id,
                            const vector<uint8_t>& data_in,
                            uint64_t max_out_length,
@@ -844,7 +848,7 @@ void ChapsAdaptor::Encrypt(const vector<uint8_t>& isolate_credential,
   VLOG(2) << "IN: " << "max_out_length=" << max_out_length;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->Encrypt(isolate_credential_blob,
                               session_id,
                               data_in,
@@ -855,7 +859,7 @@ void ChapsAdaptor::Encrypt(const vector<uint8_t>& isolate_credential,
                                 << actual_out_length;
 }
 
-void ChapsAdaptor::EncryptUpdate(const vector<uint8_t>& isolate_credential,
+void ChapsAdaptor::EncryptUpdate(const brillo::SecureVector& isolate_credential,
                                  uint64_t session_id,
                                  const vector<uint8_t>& data_in,
                                  uint64_t max_out_length,
@@ -868,7 +872,7 @@ void ChapsAdaptor::EncryptUpdate(const vector<uint8_t>& isolate_credential,
   VLOG(2) << "IN: " << "max_out_length=" << max_out_length;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->EncryptUpdate(isolate_credential_blob,
                                     session_id,
                                     data_in,
@@ -879,7 +883,7 @@ void ChapsAdaptor::EncryptUpdate(const vector<uint8_t>& isolate_credential,
                                 << actual_out_length;
 }
 
-void ChapsAdaptor::EncryptFinal(const vector<uint8_t>& isolate_credential,
+void ChapsAdaptor::EncryptFinal(const brillo::SecureVector& isolate_credential,
                                 uint64_t session_id,
                                 uint64_t max_out_length,
                                 uint64_t* actual_out_length,
@@ -891,7 +895,7 @@ void ChapsAdaptor::EncryptFinal(const vector<uint8_t>& isolate_credential,
   VLOG(2) << "IN: " << "max_out_length=" << max_out_length;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->EncryptFinal(isolate_credential_blob,
                                    session_id,
                                    max_out_length,
@@ -901,18 +905,18 @@ void ChapsAdaptor::EncryptFinal(const vector<uint8_t>& isolate_credential,
                                 << actual_out_length;
 }
 
-void ChapsAdaptor::EncryptCancel(const vector<uint8_t>& isolate_credential,
+void ChapsAdaptor::EncryptCancel(const brillo::SecureVector& isolate_credential,
                                  uint64_t session_id) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   service_->EncryptCancel(isolate_credential_blob, session_id);
 }
 
 uint32_t ChapsAdaptor::DecryptInit(
-    const vector<uint8_t>& isolate_credential,
+    const brillo::SecureVector& isolate_credential,
     uint64_t session_id,
     uint64_t mechanism_type,
     const vector<uint8_t>& mechanism_parameter,
@@ -926,7 +930,7 @@ uint32_t ChapsAdaptor::DecryptInit(
   VLOG(2) << "IN: " << "key_handle=" << key_handle;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   return service_->DecryptInit(isolate_credential_blob,
                                session_id,
                                mechanism_type,
@@ -934,7 +938,7 @@ uint32_t ChapsAdaptor::DecryptInit(
                                key_handle);
 }
 
-void ChapsAdaptor::Decrypt(const vector<uint8_t>& isolate_credential,
+void ChapsAdaptor::Decrypt(const brillo::SecureVector& isolate_credential,
                            uint64_t session_id,
                            const vector<uint8_t>& data_in,
                            uint64_t max_out_length,
@@ -947,7 +951,7 @@ void ChapsAdaptor::Decrypt(const vector<uint8_t>& isolate_credential,
   VLOG(2) << "IN: " << "max_out_length=" << max_out_length;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->Decrypt(isolate_credential_blob,
                               session_id,
                               data_in,
@@ -958,7 +962,7 @@ void ChapsAdaptor::Decrypt(const vector<uint8_t>& isolate_credential,
                                 << actual_out_length;
 }
 
-void ChapsAdaptor::DecryptUpdate(const vector<uint8_t>& isolate_credential,
+void ChapsAdaptor::DecryptUpdate(const brillo::SecureVector& isolate_credential,
                                  uint64_t session_id,
                                  const vector<uint8_t>& data_in,
                                  uint64_t max_out_length,
@@ -971,7 +975,7 @@ void ChapsAdaptor::DecryptUpdate(const vector<uint8_t>& isolate_credential,
   VLOG(2) << "IN: " << "max_out_length=" << max_out_length;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->DecryptUpdate(isolate_credential_blob,
                                     session_id,
                                     data_in,
@@ -982,7 +986,7 @@ void ChapsAdaptor::DecryptUpdate(const vector<uint8_t>& isolate_credential,
                                 << actual_out_length;
 }
 
-void ChapsAdaptor::DecryptFinal(const vector<uint8_t>& isolate_credential,
+void ChapsAdaptor::DecryptFinal(const brillo::SecureVector& isolate_credential,
                                 uint64_t session_id,
                                 uint64_t max_out_length,
                                 uint64_t* actual_out_length,
@@ -994,7 +998,7 @@ void ChapsAdaptor::DecryptFinal(const vector<uint8_t>& isolate_credential,
   VLOG(2) << "IN: " << "max_out_length=" << max_out_length;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->DecryptFinal(isolate_credential_blob,
                                    session_id,
                                    max_out_length,
@@ -1004,18 +1008,18 @@ void ChapsAdaptor::DecryptFinal(const vector<uint8_t>& isolate_credential,
                                 << actual_out_length;
 }
 
-void ChapsAdaptor::DecryptCancel(const vector<uint8_t>& isolate_credential,
+void ChapsAdaptor::DecryptCancel(const brillo::SecureVector& isolate_credential,
                                  uint64_t session_id) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   service_->DecryptCancel(isolate_credential_blob, session_id);
 }
 
 uint32_t ChapsAdaptor::DigestInit(
-    const vector<uint8_t>& isolate_credential,
+    const brillo::SecureVector& isolate_credential,
     uint64_t session_id,
     uint64_t mechanism_type,
     const vector<uint8_t>& mechanism_parameter) {
@@ -1027,14 +1031,14 @@ uint32_t ChapsAdaptor::DigestInit(
           << PrintIntVector(mechanism_parameter);
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   return service_->DigestInit(isolate_credential_blob,
                               session_id,
                               mechanism_type,
                               mechanism_parameter);
 }
 
-void ChapsAdaptor::Digest(const vector<uint8_t>& isolate_credential,
+void ChapsAdaptor::Digest(const brillo::SecureVector& isolate_credential,
                           uint64_t session_id,
                           const vector<uint8_t>& data_in,
                           uint64_t max_out_length,
@@ -1047,7 +1051,7 @@ void ChapsAdaptor::Digest(const vector<uint8_t>& isolate_credential,
   VLOG(2) << "IN: " << "max_out_length=" << max_out_length;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->Digest(isolate_credential_blob,
                              session_id,
                              data_in,
@@ -1058,36 +1062,38 @@ void ChapsAdaptor::Digest(const vector<uint8_t>& isolate_credential,
                                 << actual_out_length;
 }
 
-uint32_t ChapsAdaptor::DigestUpdate(const vector<uint8_t>& isolate_credential,
-                                    uint64_t session_id,
-                                    const vector<uint8_t>& data_in) {
+uint32_t ChapsAdaptor::DigestUpdate(
+    const brillo::SecureVector& isolate_credential,
+    uint64_t session_id,
+    const vector<uint8_t>& data_in) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   return service_->DigestUpdate(isolate_credential_blob,
                                 session_id,
                                 data_in);
 }
 
-uint32_t ChapsAdaptor::DigestKey(const vector<uint8_t>& isolate_credential,
-                                 uint64_t session_id,
-                                 uint64_t key_handle) {
+uint32_t ChapsAdaptor::DigestKey(
+    const brillo::SecureVector& isolate_credential,
+    uint64_t session_id,
+    uint64_t key_handle) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
   VLOG(2) << "IN: " << "key_handle=" << key_handle;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   return service_->DigestKey(isolate_credential_blob,
                              session_id,
                              key_handle);
 }
 
-void ChapsAdaptor::DigestFinal(const vector<uint8_t>& isolate_credential,
+void ChapsAdaptor::DigestFinal(const brillo::SecureVector& isolate_credential,
                                uint64_t session_id,
                                uint64_t max_out_length,
                                uint64_t* actual_out_length,
@@ -1099,7 +1105,7 @@ void ChapsAdaptor::DigestFinal(const vector<uint8_t>& isolate_credential,
   VLOG(2) << "IN: " << "max_out_length=" << max_out_length;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->DigestFinal(isolate_credential_blob,
                                   session_id,
                                   max_out_length,
@@ -1109,17 +1115,17 @@ void ChapsAdaptor::DigestFinal(const vector<uint8_t>& isolate_credential,
                                 << actual_out_length;
 }
 
-void ChapsAdaptor::DigestCancel(const vector<uint8_t>& isolate_credential,
+void ChapsAdaptor::DigestCancel(const brillo::SecureVector& isolate_credential,
                                 uint64_t session_id) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   service_->DigestCancel(isolate_credential_blob, session_id);
 }
 
-uint32_t ChapsAdaptor::SignInit(const vector<uint8_t>& isolate_credential,
+uint32_t ChapsAdaptor::SignInit(const brillo::SecureVector& isolate_credential,
                                 uint64_t session_id,
                                 uint64_t mechanism_type,
                                 const vector<uint8_t>& mechanism_parameter,
@@ -1133,7 +1139,7 @@ uint32_t ChapsAdaptor::SignInit(const vector<uint8_t>& isolate_credential,
   VLOG(2) << "IN: " << "key_handle=" << key_handle;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   return service_->SignInit(isolate_credential_blob,
                             session_id,
                             mechanism_type,
@@ -1141,7 +1147,7 @@ uint32_t ChapsAdaptor::SignInit(const vector<uint8_t>& isolate_credential,
                             key_handle);
 }
 
-void ChapsAdaptor::Sign(const vector<uint8_t>& isolate_credential,
+void ChapsAdaptor::Sign(const brillo::SecureVector& isolate_credential,
                         uint64_t session_id,
                         const vector<uint8_t>& data,
                         uint64_t max_out_length,
@@ -1154,7 +1160,7 @@ void ChapsAdaptor::Sign(const vector<uint8_t>& isolate_credential,
   VLOG(2) << "IN: " << "max_out_length=" << max_out_length;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->Sign(isolate_credential_blob,
                            session_id,
                            data,
@@ -1165,33 +1171,35 @@ void ChapsAdaptor::Sign(const vector<uint8_t>& isolate_credential,
                                << actual_out_length;
 }
 
-uint32_t ChapsAdaptor::SignUpdate(const vector<uint8_t>& isolate_credential,
-                                  uint64_t session_id,
-                                  const vector<uint8_t>& data_part) {
+uint32_t ChapsAdaptor::SignUpdate(
+    const brillo::SecureVector& isolate_credential,
+    uint64_t session_id,
+    const vector<uint8_t>& data_part) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   return service_->SignUpdate(isolate_credential_blob,
                               session_id,
                               data_part);
 }
 
-void ChapsAdaptor::SignFinal(const vector<uint8_t>& isolate_credential,
-                             uint64_t session_id,
-                             uint64_t max_out_length,
-                             uint64_t* actual_out_length,
-                             vector<uint8_t>* signature,
-                             uint32_t* result) {
+void ChapsAdaptor::SignFinal(
+    const brillo::SecureVector& isolate_credential,
+    uint64_t session_id,
+    uint64_t max_out_length,
+    uint64_t* actual_out_length,
+    vector<uint8_t>* signature,
+    uint32_t* result) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
   VLOG(2) << "IN: " << "max_out_length=" << max_out_length;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->SignFinal(isolate_credential_blob,
                                 session_id,
                                 max_out_length,
@@ -1201,18 +1209,19 @@ void ChapsAdaptor::SignFinal(const vector<uint8_t>& isolate_credential,
                                 << actual_out_length;
 }
 
-void ChapsAdaptor::SignCancel(const vector<uint8_t>& isolate_credential,
-                              uint64_t session_id) {
+void ChapsAdaptor::SignCancel(
+    const brillo::SecureVector& isolate_credential,
+    uint64_t session_id) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   service_->SignCancel(isolate_credential_blob, session_id);
 }
 
 uint32_t ChapsAdaptor::SignRecoverInit(
-      const vector<uint8_t>& isolate_credential,
+      const brillo::SecureVector& isolate_credential,
       uint64_t session_id,
       uint64_t mechanism_type,
       const vector<uint8_t>& mechanism_parameter,
@@ -1226,7 +1235,7 @@ uint32_t ChapsAdaptor::SignRecoverInit(
   VLOG(2) << "IN: " << "key_handle=" << key_handle;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   return service_->SignRecoverInit(isolate_credential_blob,
                                    session_id,
                                    mechanism_type,
@@ -1234,7 +1243,7 @@ uint32_t ChapsAdaptor::SignRecoverInit(
                                    key_handle);
 }
 
-void ChapsAdaptor::SignRecover(const vector<uint8_t>& isolate_credential,
+void ChapsAdaptor::SignRecover(const brillo::SecureVector& isolate_credential,
                                uint64_t session_id,
                                const vector<uint8_t>& data,
                                uint64_t max_out_length,
@@ -1247,7 +1256,7 @@ void ChapsAdaptor::SignRecover(const vector<uint8_t>& isolate_credential,
   VLOG(2) << "IN: " << "max_out_length=" << max_out_length;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->SignRecover(isolate_credential_blob,
                                   session_id,
                                   data,
@@ -1258,11 +1267,12 @@ void ChapsAdaptor::SignRecover(const vector<uint8_t>& isolate_credential,
                                 << actual_out_length;
 }
 
-uint32_t ChapsAdaptor::VerifyInit(const vector<uint8_t>& isolate_credential,
-                                  uint64_t session_id,
-                                  uint64_t mechanism_type,
-                                  const vector<uint8_t>& mechanism_parameter,
-                                  uint64_t key_handle) {
+uint32_t ChapsAdaptor::VerifyInit(
+    const brillo::SecureVector& isolate_credential,
+    uint64_t session_id,
+    uint64_t mechanism_type,
+    const vector<uint8_t>& mechanism_parameter,
+    uint64_t key_handle) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -1272,7 +1282,7 @@ uint32_t ChapsAdaptor::VerifyInit(const vector<uint8_t>& isolate_credential,
   VLOG(2) << "IN: " << "key_handle=" << key_handle;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   return service_->VerifyInit(isolate_credential_blob,
                               session_id,
                               mechanism_type,
@@ -1280,7 +1290,7 @@ uint32_t ChapsAdaptor::VerifyInit(const vector<uint8_t>& isolate_credential,
                               key_handle);
 }
 
-uint32_t ChapsAdaptor::Verify(const vector<uint8_t>& isolate_credential,
+uint32_t ChapsAdaptor::Verify(const brillo::SecureVector& isolate_credential,
                               uint64_t session_id,
                               const vector<uint8_t>& data,
                               const vector<uint8_t>& signature) {
@@ -1289,53 +1299,55 @@ uint32_t ChapsAdaptor::Verify(const vector<uint8_t>& isolate_credential,
   VLOG(2) << "IN: " << "session_id=" << session_id;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   return service_->Verify(isolate_credential_blob,
                           session_id,
                           data,
                           signature);
 }
 
-uint32_t ChapsAdaptor::VerifyUpdate(const vector<uint8_t>& isolate_credential,
-                                    uint64_t session_id,
-                                    const vector<uint8_t>& data_part) {
+uint32_t ChapsAdaptor::VerifyUpdate(
+    const brillo::SecureVector& isolate_credential,
+    uint64_t session_id,
+    const vector<uint8_t>& data_part) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   return service_->VerifyUpdate(isolate_credential_blob,
                                 session_id,
                                 data_part);
 }
 
-uint32_t ChapsAdaptor::VerifyFinal(const vector<uint8_t>& isolate_credential,
-                                   uint64_t session_id,
-                                   const vector<uint8_t>& signature) {
+uint32_t ChapsAdaptor::VerifyFinal(
+    const brillo::SecureVector& isolate_credential,
+    uint64_t session_id,
+    const vector<uint8_t>& signature) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   return service_->VerifyFinal(isolate_credential_blob,
                                session_id,
                                signature);
 }
 
-void ChapsAdaptor::VerifyCancel(const vector<uint8_t>& isolate_credential,
+void ChapsAdaptor::VerifyCancel(const brillo::SecureVector& isolate_credential,
                                 uint64_t session_id) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   service_->VerifyCancel(isolate_credential_blob, session_id);
 }
 
 uint32_t ChapsAdaptor::VerifyRecoverInit(
-      const vector<uint8_t>& isolate_credential,
+      const brillo::SecureVector& isolate_credential,
       uint64_t session_id,
       uint64_t mechanism_type,
       const vector<uint8_t>& mechanism_parameter,
@@ -1349,7 +1361,7 @@ uint32_t ChapsAdaptor::VerifyRecoverInit(
   VLOG(2) << "IN: " << "key_handle=" << key_handle;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   return service_->VerifyRecoverInit(isolate_credential_blob,
                                      session_id,
                                      mechanism_type,
@@ -1357,20 +1369,21 @@ uint32_t ChapsAdaptor::VerifyRecoverInit(
                                      key_handle);
 }
 
-void ChapsAdaptor::VerifyRecover(const vector<uint8_t>& isolate_credential,
-                                 uint64_t session_id,
-                                 const vector<uint8_t>& signature,
-                                 uint64_t max_out_length,
-                                 uint64_t* actual_out_length,
-                                 vector<uint8_t>* data,
-                                 uint32_t* result) {
+void ChapsAdaptor::VerifyRecover(
+    const brillo::SecureVector& isolate_credential,
+    uint64_t session_id,
+    const vector<uint8_t>& signature,
+    uint64_t max_out_length,
+    uint64_t* actual_out_length,
+    vector<uint8_t>* data,
+    uint32_t* result) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
   VLOG(2) << "IN: " << "max_out_length=" << max_out_length;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->VerifyRecover(isolate_credential_blob,
                                     session_id,
                                     signature,
@@ -1383,7 +1396,7 @@ void ChapsAdaptor::VerifyRecover(const vector<uint8_t>& isolate_credential,
 
 
 void ChapsAdaptor::DigestEncryptUpdate(
-    const vector<uint8_t>& isolate_credential,
+    const brillo::SecureVector& isolate_credential,
     uint64_t session_id,
     const vector<uint8_t>& data_in,
     uint64_t max_out_length,
@@ -1396,7 +1409,7 @@ void ChapsAdaptor::DigestEncryptUpdate(
   VLOG(2) << "IN: " << "max_out_length=" << max_out_length;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->DigestEncryptUpdate(isolate_credential_blob,
                                           session_id,
                                           data_in,
@@ -1408,7 +1421,7 @@ void ChapsAdaptor::DigestEncryptUpdate(
 }
 
 void ChapsAdaptor::DecryptDigestUpdate(
-    const vector<uint8_t>& isolate_credential,
+    const brillo::SecureVector& isolate_credential,
     uint64_t session_id,
     const vector<uint8_t>& data_in,
     uint64_t max_out_length,
@@ -1421,7 +1434,7 @@ void ChapsAdaptor::DecryptDigestUpdate(
   VLOG(2) << "IN: " << "max_out_length=" << max_out_length;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->DecryptDigestUpdate(isolate_credential_blob,
                                           session_id,
                                           data_in,
@@ -1432,20 +1445,21 @@ void ChapsAdaptor::DecryptDigestUpdate(
                                 << actual_out_length;
 }
 
-void ChapsAdaptor::SignEncryptUpdate(const vector<uint8_t>& isolate_credential,
-                                     uint64_t session_id,
-                                     const vector<uint8_t>& data_in,
-                                     uint64_t max_out_length,
-                                     uint64_t* actual_out_length,
-                                     vector<uint8_t>* data_out,
-                                     uint32_t* result) {
+void ChapsAdaptor::SignEncryptUpdate(
+    const brillo::SecureVector& isolate_credential,
+    uint64_t session_id,
+    const vector<uint8_t>& data_in,
+    uint64_t max_out_length,
+    uint64_t* actual_out_length,
+    vector<uint8_t>* data_out,
+    uint32_t* result) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
   VLOG(2) << "IN: " << "max_out_length=" << max_out_length;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->SignEncryptUpdate(isolate_credential_blob,
                                         session_id,
                                         data_in,
@@ -1457,7 +1471,7 @@ void ChapsAdaptor::SignEncryptUpdate(const vector<uint8_t>& isolate_credential,
 }
 
 void ChapsAdaptor::DecryptVerifyUpdate(
-    const vector<uint8_t>& isolate_credential,
+    const brillo::SecureVector& isolate_credential,
     uint64_t session_id,
     const vector<uint8_t>& data_in,
     uint64_t max_out_length,
@@ -1470,7 +1484,7 @@ void ChapsAdaptor::DecryptVerifyUpdate(
   VLOG(2) << "IN: " << "max_out_length=" << max_out_length;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->DecryptVerifyUpdate(isolate_credential_blob,
                                           session_id,
                                           data_in,
@@ -1482,7 +1496,7 @@ void ChapsAdaptor::DecryptVerifyUpdate(
 }
 
 void ChapsAdaptor::GenerateKey(
-    const vector<uint8_t>& isolate_credential,
+    const brillo::SecureVector& isolate_credential,
     uint64_t session_id,
     uint64_t mechanism_type,
     const vector<uint8_t>& mechanism_parameter,
@@ -1498,7 +1512,7 @@ void ChapsAdaptor::GenerateKey(
   VLOG(2) << "IN: " << "attributes=" << PrintAttributes(attributes, true);
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->GenerateKey(isolate_credential_blob,
                                   session_id,
                                   mechanism_type,
@@ -1509,7 +1523,7 @@ void ChapsAdaptor::GenerateKey(
 }
 
 void ChapsAdaptor::GenerateKeyPair(
-    const vector<uint8_t>& isolate_credential,
+    const brillo::SecureVector& isolate_credential,
     uint64_t session_id,
     uint64_t mechanism_type,
     const vector<uint8_t>& mechanism_parameter,
@@ -1530,7 +1544,7 @@ void ChapsAdaptor::GenerateKeyPair(
           << PrintAttributes(private_attributes, true);
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->GenerateKeyPair(isolate_credential_blob,
                                       session_id,
                                       mechanism_type,
@@ -1545,7 +1559,7 @@ void ChapsAdaptor::GenerateKeyPair(
                                 << private_key_handle;
 }
 
-void ChapsAdaptor::WrapKey(const vector<uint8_t>& isolate_credential,
+void ChapsAdaptor::WrapKey(const brillo::SecureVector& isolate_credential,
                            uint64_t session_id,
                            uint64_t mechanism_type,
                            const vector<uint8_t>& mechanism_parameter,
@@ -1566,7 +1580,7 @@ void ChapsAdaptor::WrapKey(const vector<uint8_t>& isolate_credential,
   VLOG(2) << "IN: " << "max_out_length=" << max_out_length;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->WrapKey(isolate_credential_blob,
                               session_id,
                               mechanism_type,
@@ -1580,7 +1594,7 @@ void ChapsAdaptor::WrapKey(const vector<uint8_t>& isolate_credential,
                                 << actual_out_length;
 }
 
-void ChapsAdaptor::UnwrapKey(const vector<uint8_t>& isolate_credential,
+void ChapsAdaptor::UnwrapKey(const brillo::SecureVector& isolate_credential,
                              uint64_t session_id,
                              uint64_t mechanism_type,
                              const vector<uint8_t>& mechanism_parameter,
@@ -1599,7 +1613,7 @@ void ChapsAdaptor::UnwrapKey(const vector<uint8_t>& isolate_credential,
   VLOG(2) << "IN: " << "attributes=" << PrintAttributes(attributes, true);
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->UnwrapKey(isolate_credential_blob,
                                 session_id,
                                 mechanism_type,
@@ -1611,7 +1625,7 @@ void ChapsAdaptor::UnwrapKey(const vector<uint8_t>& isolate_credential,
   VLOG_IF(2, *result == CKR_OK) << "OUT: " << "key_handle=" << key_handle;
 }
 
-void ChapsAdaptor::DeriveKey(const vector<uint8_t>& isolate_credential,
+void ChapsAdaptor::DeriveKey(const brillo::SecureVector& isolate_credential,
                              uint64_t session_id,
                              uint64_t mechanism_type,
                              const vector<uint8_t>& mechanism_parameter,
@@ -1629,7 +1643,7 @@ void ChapsAdaptor::DeriveKey(const vector<uint8_t>& isolate_credential,
   VLOG(2) << "IN: " << "attributes=" << PrintAttributes(attributes, true);
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->DeriveKey(isolate_credential_blob,
                                 session_id,
                                 mechanism_type,
@@ -1640,33 +1654,35 @@ void ChapsAdaptor::DeriveKey(const vector<uint8_t>& isolate_credential,
   VLOG_IF(2, *result == CKR_OK) << "OUT: " << "key_handle=" << key_handle;
 }
 
-uint32_t ChapsAdaptor::SeedRandom(const vector<uint8_t>& isolate_credential,
-                                  uint64_t session_id,
-                                  const vector<uint8_t>& seed) {
+uint32_t ChapsAdaptor::SeedRandom(
+    const brillo::SecureVector& isolate_credential,
+    uint64_t session_id,
+    const vector<uint8_t>& seed) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
   VLOG(2) << "IN: " << "num_bytes=" << seed.size();
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   return service_->SeedRandom(isolate_credential_blob,
                               session_id,
                               seed);
 }
 
-void ChapsAdaptor::GenerateRandom(const vector<uint8_t>& isolate_credential,
-                                  uint64_t session_id,
-                                  uint64_t num_bytes,
-                                  vector<uint8_t>* random_data,
-                                  uint32_t* result) {
+void ChapsAdaptor::GenerateRandom(
+    const brillo::SecureVector& isolate_credential,
+    uint64_t session_id,
+    uint64_t num_bytes,
+    vector<uint8_t>* random_data,
+    uint32_t* result) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
   VLOG(2) << "IN: " << "num_bytes=" << num_bytes;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
-  ClearVector(const_cast<vector<uint8_t>*>(&isolate_credential));
+
   *result = service_->GenerateRandom(isolate_credential_blob,
                                      session_id,
                                      num_bytes,

@@ -25,8 +25,12 @@ void OnServiceAvailable(chaps::OnObjectProxyConstructedCallback callback,
   // Call GetSlotList to perform stage 2 initialization of chapsd if it
   // hasn't already done so.
   brillo::ErrorPtr error;
-  std::vector<uint8_t> default_isolate_credential =
+  brillo::SecureBlob default_isolate_credential_blob =
       chaps::IsolateCredentialManager::GetDefaultIsolateCredential();
+
+  std::vector<uint8_t> default_isolate_credential(
+      default_isolate_credential_blob.begin(),
+      default_isolate_credential_blob.end());
 
   if (!brillo::dbus_utils::CallMethodAndBlockWithTimeout(
           chaps::DBusProxyWrapper::kDBusTimeoutMs, proxy,

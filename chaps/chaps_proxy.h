@@ -42,13 +42,13 @@ class ChapsProxyImpl : public ChapsInterface {
                    bool* new_isolate_created);
   void CloseIsolate(const brillo::SecureBlob& isolate_credential);
   bool LoadToken(const brillo::SecureBlob& isolate_credential,
-                 const std::string& path, const std::vector<uint8_t>& auth_data,
+                 const std::string& path, const brillo::SecureBlob& auth_data,
                  const std::string& label, uint64_t* slot_id);
   void UnloadToken(const brillo::SecureBlob& isolate_credential,
                    const std::string& path);
   void ChangeTokenAuthData(const std::string& path,
-                           const std::vector<uint8_t>& old_auth_data,
-                           const std::vector<uint8_t>& new_auth_data);
+                           const brillo::SecureBlob& old_auth_data,
+                           const brillo::SecureBlob& new_auth_data);
   bool GetTokenPath(const brillo::SecureBlob& isolate_credential,
                     uint64_t slot_id, std::string* path);
 
