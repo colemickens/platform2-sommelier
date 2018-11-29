@@ -19,6 +19,7 @@
 #include "cryptohome/mock_pkcs11_init.h"
 
 using chaps::Attributes;
+using brillo::Blob;
 using brillo::SecureBlob;
 using std::map;
 using std::vector;
@@ -431,7 +432,8 @@ TEST_F(KeyStoreTest, RegisterKeyWithoutCertificate) {
                                   SecureBlob()));
   // Try with a well-formed public key.
   SecureBlob public_key_der;
-  base::HexStringToBytes(kValidPublicKeyHex, &public_key_der);
+  brillo::SecureBlob::HexStringToSecureBlob(kValidPublicKeyHex,
+                                            &public_key_der);
   EXPECT_CALL(pkcs11_, CreateObject(_, _, _, _))
       .Times(2)  // Public, private (no certificate).
       .WillRepeatedly(Return(CKR_OK));
@@ -447,9 +449,11 @@ TEST_F(KeyStoreTest, RegisterKeyWithCertificate) {
       .WillRepeatedly(Return(CKR_OK));
   Pkcs11KeyStore key_store(&pkcs11_init_);
   SecureBlob public_key_der;
-  base::HexStringToBytes(kValidPublicKeyHex, &public_key_der);
+  brillo::SecureBlob::HexStringToSecureBlob(kValidPublicKeyHex,
+                                            &public_key_der);
   SecureBlob certificate_der;
-  base::HexStringToBytes(kValidCertificateHex, &certificate_der);
+  brillo::SecureBlob::HexStringToSecureBlob(kValidCertificateHex,
+                                            &certificate_der);
   EXPECT_TRUE(key_store.Register(true, kDefaultUser, "test_label",
                                  SecureBlob("private_key_blob"),
                                  public_key_der,
@@ -470,7 +474,8 @@ TEST_F(KeyStoreTest, RegisterKeyWithBadCertificate) {
       .WillRepeatedly(Return(CKR_OK));
   Pkcs11KeyStore key_store(&pkcs11_init_);
   SecureBlob public_key_der;
-  base::HexStringToBytes(kValidPublicKeyHex, &public_key_der);
+  brillo::SecureBlob::HexStringToSecureBlob(kValidPublicKeyHex,
+                                            &public_key_der);
   EXPECT_TRUE(key_store.Register(true, kDefaultUser, "test_label",
                                  SecureBlob("private_key_blob"),
                                  public_key_der,
@@ -480,7 +485,8 @@ TEST_F(KeyStoreTest, RegisterKeyWithBadCertificate) {
 TEST_F(KeyStoreTest, RegisterCertificate) {
   Pkcs11KeyStore key_store(&pkcs11_init_);
   SecureBlob certificate_der;
-  base::HexStringToBytes(kValidCertificateHex, &certificate_der);
+  brillo::SecureBlob::HexStringToSecureBlob(kValidCertificateHex,
+                                            &certificate_der);
   EXPECT_CALL(pkcs11_, CreateObject(_, _, _, _))
       .Times(2);  // Once for valid, once for invalid.
   // Try with a valid certificate (hit multiple times to check dup logic).
@@ -498,7 +504,8 @@ TEST_F(KeyStoreTest, RegisterCertificate) {
 TEST_F(KeyStoreTest, RegisterCertificateError) {
   Pkcs11KeyStore key_store(&pkcs11_init_);
   SecureBlob certificate_der;
-  base::HexStringToBytes(kValidCertificateHex, &certificate_der);
+  brillo::SecureBlob::HexStringToSecureBlob(kValidCertificateHex,
+                                            &certificate_der);
   // Handle an error from PKCS #11.
   EXPECT_CALL(pkcs11_, CreateObject(_, _, _, _))
       .WillOnce(Return(CKR_GENERAL_ERROR));
@@ -509,7 +516,8 @@ TEST_F(KeyStoreTest, RegisterCertificateError) {
 TEST_F(KeyStoreTest, RegisterCertificateSystemToken) {
   Pkcs11KeyStore key_store(&pkcs11_init_);
   SecureBlob certificate_der;
-  base::HexStringToBytes(kValidCertificateHex, &certificate_der);
+  brillo::SecureBlob::HexStringToSecureBlob(kValidCertificateHex,
+                                            &certificate_der);
   // Try with the system token.
   EXPECT_CALL(pkcs11_, CreateObject(_, _, _, _))
       .WillOnce(Return(CKR_OK));
