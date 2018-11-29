@@ -28,6 +28,7 @@ static_library("libhermes") {
   sources = [
     "apdu.cc",
     "card_qrtr.cc",
+    "executor.cc",
     "qmi_uim.cc",
     "sgp_22.cc",
     "smdp.cc",
