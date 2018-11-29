@@ -240,8 +240,8 @@ TEST_F(CryptoTest, SaltCreateTest) {
 
   // Case 1: No salt exists
   SecureBlob salt;
-  Blob salt_written;
-  Blob *salt_ptr = &salt_written;
+  SecureBlob salt_written;
+  SecureBlob *salt_ptr = &salt_written;
   FilePath salt_path(FilePath(kImageDir).Append("crypto_test_salt"));
   EXPECT_CALL(platform, FileExists(salt_path))
       .WillOnce(Return(false));
@@ -286,7 +286,7 @@ TEST_F(CryptoTest, BlobToHexTest) {
     blob_out[i * 2 + 1] = 0;
   }
 
-  CryptoLib::BlobToHexToBuffer(blob_in, blob_out.data(), blob_out.size());
+  CryptoLib::SecureBlobToHexToBuffer(blob_in, blob_out.data(), blob_out.size());
   for (int i = 0; i < 256; i++) {
     std::string digits = base::StringPrintf("%02x", i);
     ASSERT_EQ(digits[0], blob_out[i * 2]);
