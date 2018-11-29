@@ -432,7 +432,9 @@ TEST_F(AsyncGrpcClientServerTest, ExcessivelyBigRpcRequest) {
 
 // Test than an excessively big response gets rejected and results in the
 // request being resolved with an error.
-TEST_F(AsyncGrpcClientServerTest, ExcessivelyBigRpcResponse) {
+//
+// TODO(crbug.com/910079): Disabled due to flakiness.
+TEST_F(AsyncGrpcClientServerTest, DISABLED_ExcessivelyBigRpcResponse) {
   const int kDataSize = 5 * 1024 * 1024;
   const std::string kData(kDataSize, '\1');
 
