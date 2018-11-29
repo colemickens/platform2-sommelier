@@ -62,12 +62,13 @@ bool OobeConfig::FileExists(const base::FilePath& file_path) const {
 bool OobeConfig::WriteFileWithoutPrefix(const base::FilePath& file_path,
                                         const std::string& data) const {
   if (!base::CreateDirectory(file_path.DirName())) {
-    LOG(ERROR) << "Couldn't create directory for " << file_path.value();
+    PLOG(ERROR) << "Couldn't create directory for " << file_path.value();
     return false;
   }
   int bytes_written = base::WriteFile(file_path, data.c_str(), data.size());
   if (bytes_written != data.size()) {
-    LOG(ERROR) << "Couldn't write " << file_path.value();
+    PLOG(ERROR) << "Couldn't write " << file_path.value()
+                << " bytes=" << bytes_written;
     return false;
   }
   LOG(INFO) << "Wrote " << file_path.value();

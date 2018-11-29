@@ -28,10 +28,12 @@ bool SerializeProtoToBlob(const Proto& proto, ProtoBlob* proto_blob) {
 
 OobeConfigRestoreService::OobeConfigRestoreService(
     std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
-    bool allow_unencrypted)
+    bool allow_unencrypted,
+    bool skip_reboot_for_testing)
     : org::chromium::OobeConfigRestoreAdaptor(this),
       dbus_object_(std::move(dbus_object)),
-      allow_unencrypted_(allow_unencrypted) {}
+      allow_unencrypted_(allow_unencrypted),
+      skip_reboot_for_testing_(skip_reboot_for_testing) {}
 
 OobeConfigRestoreService::~OobeConfigRestoreService() = default;
 
@@ -52,12 +54,14 @@ void OobeConfigRestoreService::ProcessAndGetOobeAutoConfig(
 
   OobeConfig oobe_config;
   LoadOobeConfigRollback load_oobe_config_rollback(
-      &oobe_config, allow_unencrypted_, power_manager_proxy_.get());
+      &oobe_config, allow_unencrypted_, skip_reboot_for_testing_,
+      power_manager_proxy_.get());
   std::string chrome_config_json, unused_enrollment_domain;
   if (load_oobe_config_rollback.GetOobeConfigJson(&chrome_config_json,
                                                   &unused_enrollment_domain)) {
     LOG(WARNING) << "Rollback oobe config sent: " << chrome_config_json;
   } else {
+    // TODO(zentaro): This shouldn't be warning in stage 1.
     LOG(WARNING) << "Rollback oobe config not found.";
   }
   // TODO(ahassani): Add USB restore too.

@@ -34,9 +34,11 @@ void InitLog() {
 
 class OobeConfigRestoreDaemon : public brillo::DBusServiceDaemon {
  public:
-  explicit OobeConfigRestoreDaemon(bool allow_unencrypted)
+  explicit OobeConfigRestoreDaemon(bool allow_unencrypted,
+                                   bool skip_reboot_for_testing)
       : DBusServiceDaemon(kOobeConfigRestoreServiceName),
-        allow_unencrypted_(allow_unencrypted) {}
+        allow_unencrypted_(allow_unencrypted),
+        skip_reboot_for_testing_(skip_reboot_for_testing) {}
 
  protected:
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
@@ -45,7 +47,7 @@ class OobeConfigRestoreDaemon : public brillo::DBusServiceDaemon {
         org::chromium::OobeConfigRestoreAdaptor::GetObjectPath());
 
     service_ = std::make_unique<OobeConfigRestoreService>(
-        std::move(dbus_object), allow_unencrypted_);
+        std::move(dbus_object), allow_unencrypted_, skip_reboot_for_testing_);
     service_->RegisterAsync(sequencer->GetHandler(
         "OobeConfigRestoreService.RegisterAsync() failed.", true));
   }
@@ -58,11 +60,14 @@ class OobeConfigRestoreDaemon : public brillo::DBusServiceDaemon {
  private:
   std::unique_ptr<OobeConfigRestoreService> service_;
   bool allow_unencrypted_;
+  bool skip_reboot_for_testing_;
   DISALLOW_COPY_AND_ASSIGN(OobeConfigRestoreDaemon);
 };
 
 // Runs OobeConfigRestoreDaemon.
-int RunDaemon(bool allow_unencrypted, bool force_start) {
+int RunDaemon(bool allow_unencrypted,
+              bool force_start,
+              bool skip_reboot_for_testing) {
   if (!force_start && base::PathExists(base::FilePath(kOobeCompletedFile))) {
     LOG(INFO) << "OOBE is already complete.";
     return 0;
@@ -72,8 +77,12 @@ int RunDaemon(bool allow_unencrypted, bool force_start) {
     LOG(WARNING) << "OOBE config is starting in unencrypted mode";
   }
 
+  if (skip_reboot_for_testing) {
+    LOG(WARNING) << "OOBE config is starting with reboot disabled";
+  }
+
   LOG(INFO) << "Starting oobe_config_restore daemon";
-  OobeConfigRestoreDaemon daemon(allow_unencrypted);
+  OobeConfigRestoreDaemon daemon(allow_unencrypted, skip_reboot_for_testing);
   int res = daemon.Run();
 
   LOG(INFO) << "oobe_config_restore stopping with exit code " << res;
@@ -90,6 +99,9 @@ constexpr char kTestEncrypted[] = "test-encrypted";
 // Starts the service using unencrypted rollback data. Use only for testing.
 constexpr char kAllowUnencrypted[] = "allow-unencrypted";
 
+// Don't reboot after stage 1. Use only for testing.
+constexpr char kSkipReboot[] = "skip-reboot";
+
 // Starts the service even if OOBE is already complete. Use only for testing.
 constexpr char kForceStart[] = "force-start";
 
@@ -104,6 +116,7 @@ int main(int argc, char* argv[]) {
     return oobe_config::OobeConfig().EncryptedRollbackRestore();
   } else {
     return oobe_config::RunDaemon(cl->HasSwitch(kAllowUnencrypted),
-                                  cl->HasSwitch(kForceStart));
+                                  cl->HasSwitch(kForceStart),
+                                  cl->HasSwitch(kSkipReboot));
   }
 }

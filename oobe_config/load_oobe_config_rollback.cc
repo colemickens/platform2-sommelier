@@ -23,9 +23,11 @@ namespace oobe_config {
 LoadOobeConfigRollback::LoadOobeConfigRollback(
     OobeConfig* oobe_config,
     bool allow_unencrypted,
+    bool skip_reboot_for_testing,
     org::chromium::PowerManagerProxy* power_manager_proxy)
     : oobe_config_(oobe_config),
       allow_unencrypted_(allow_unencrypted),
+      skip_reboot_for_testing_(skip_reboot_for_testing),
       power_manager_proxy_(power_manager_proxy) {}
 
 bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
@@ -56,13 +58,18 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
     oobe_config_->WriteFile(kFirstStageCompletedFile, "");
     // If all succeeded, we reboot.
     if (base::PathExists(kFirstStageCompletedFile) && power_manager_proxy_) {
-      LOG(INFO) << "Rebooting device.";
-      brillo::ErrorPtr error;
-      if (!power_manager_proxy_->RequestRestart(
-              ::power_manager::REQUEST_RESTART_OTHER,
-              "oobe_config: reboot after rollback restore first stage",
-              &error)) {
-        LOG(ERROR) << "Failed to reboot device, error: " << error->GetMessage();
+      if (!skip_reboot_for_testing_) {
+        LOG(INFO) << "Rebooting device.";
+        brillo::ErrorPtr error;
+        if (!power_manager_proxy_->RequestRestart(
+                ::power_manager::REQUEST_RESTART_OTHER,
+                "oobe_config: reboot after rollback restore first stage",
+                &error)) {
+          LOG(ERROR) << "Failed to reboot device, error: "
+                     << error->GetMessage();
+        }
+      } else {
+        LOG(INFO) << "Skipping reboot for testing";
       }
     }
     return false;

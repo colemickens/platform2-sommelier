@@ -25,6 +25,7 @@ class LoadOobeConfigRollback : public LoadOobeConfigInterface {
  public:
   LoadOobeConfigRollback(OobeConfig* oobe_config,
                          bool allow_unencrypted,
+                         bool skip_reboot_for_testing,
                          org::chromium::PowerManagerProxy* power_manager_proxy);
   ~LoadOobeConfigRollback() = default;
 
@@ -37,6 +38,7 @@ class LoadOobeConfigRollback : public LoadOobeConfigInterface {
 
   OobeConfig* oobe_config_;
   bool allow_unencrypted_ = false;
+  bool skip_reboot_for_testing_ = false;
   org::chromium::PowerManagerProxy* power_manager_proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(LoadOobeConfigRollback);
