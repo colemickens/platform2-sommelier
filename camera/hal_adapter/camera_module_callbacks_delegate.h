@@ -7,6 +7,7 @@
 #ifndef HAL_ADAPTER_CAMERA_MODULE_CALLBACKS_DELEGATE_H_
 #define HAL_ADAPTER_CAMERA_MODULE_CALLBACKS_DELEGATE_H_
 
+#include "cros-camera/future.h"
 #include "hal_adapter/cros_camera_mojo_utils.h"
 #include "mojo/camera_common.mojom.h"
 
@@ -25,9 +26,15 @@ class CameraModuleCallbacksDelegate
   void TorchModeStatusChange(int camera_id, int new_status);
 
  private:
-  void CameraDeviceStatusChangeOnThread(int camera_id, int new_status);
+  void CameraDeviceStatusChangeOnThread(int camera_id,
+                                        int new_status,
+                                        base::Closure callback);
 
-  void TorchModeStatusChangeOnThread(int camera_id, int new_status);
+  void TorchModeStatusChangeOnThread(int camera_id,
+                                     int new_status,
+                                     base::Closure callback);
+
+  cros::CancellationRelay relay_;
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(CameraModuleCallbacksDelegate);
 };

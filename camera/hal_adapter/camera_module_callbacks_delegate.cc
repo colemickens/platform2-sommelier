@@ -12,6 +12,7 @@
 #include <base/bind_helpers.h>
 
 #include "cros-camera/common.h"
+#include "cros-camera/future.h"
 
 namespace cros {
 
@@ -22,37 +23,44 @@ CameraModuleCallbacksDelegate::CameraModuleCallbacksDelegate(
 void CameraModuleCallbacksDelegate::CameraDeviceStatusChange(int camera_id,
                                                              int new_status) {
   VLOGF_ENTER();
+  auto future = cros::Future<void>::Create(&relay_);
   task_runner_->PostTask(
       FROM_HERE,
       base::Bind(
           &CameraModuleCallbacksDelegate::CameraDeviceStatusChangeOnThread,
-          base::AsWeakPtr(this), camera_id, new_status));
+          base::AsWeakPtr(this), camera_id, new_status,
+          cros::GetFutureCallback(future)));
+  future->Wait();
 }
 
 void CameraModuleCallbacksDelegate::TorchModeStatusChange(int camera_id,
                                                           int new_status) {
   VLOGF_ENTER();
+  auto future = cros::Future<void>::Create(&relay_);
   task_runner_->PostTask(
       FROM_HERE,
       base::Bind(&CameraModuleCallbacksDelegate::TorchModeStatusChangeOnThread,
-                 base::AsWeakPtr(this), camera_id, new_status));
+                 base::AsWeakPtr(this), camera_id, new_status,
+                 cros::GetFutureCallback(future)));
+  future->Wait();
 }
 
 void CameraModuleCallbacksDelegate::CameraDeviceStatusChangeOnThread(
-    int camera_id,
-    int new_status) {
+    int camera_id, int new_status, base::Closure callback) {
   VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
   interface_ptr_->CameraDeviceStatusChange(
       camera_id, static_cast<mojom::CameraDeviceStatus>(new_status));
+  callback.Run();
 }
 
 void CameraModuleCallbacksDelegate::TorchModeStatusChangeOnThread(
-    int camera_id, int new_status) {
+    int camera_id, int new_status, base::Closure callback) {
   VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
   interface_ptr_->TorchModeStatusChange(
       camera_id, static_cast<mojom::TorchModeStatus>(new_status));
+  callback.Run();
 }
 
 }  // namespace cros
