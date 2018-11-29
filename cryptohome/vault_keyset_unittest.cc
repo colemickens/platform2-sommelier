@@ -146,8 +146,7 @@ TEST_F(VaultKeysetTest, LoadSaveTest) {
   keyset.CreateRandom();
   SecureBlob bytes;
 
-  EXPECT_CALL(platform,
-              WriteSecureBlobToFileAtomicDurable(FilePath("foo"), _, _))
+  EXPECT_CALL(platform, WriteFileAtomicDurable(FilePath("foo"), _, _))
       .WillOnce(WithArg<1>(CopyToSecureBlob(&bytes)));
   EXPECT_CALL(platform, ReadFile(FilePath("foo"), _))
       .WillOnce(WithArg<1>(CopyFromSecureBlob(&bytes)));
@@ -172,8 +171,7 @@ TEST_F(VaultKeysetTest, WriteError) {
   keyset.CreateRandom();
   SecureBlob bytes;
 
-  EXPECT_CALL(platform,
-              WriteSecureBlobToFileAtomicDurable(FilePath("foo"), _, _))
+  EXPECT_CALL(platform, WriteFileAtomicDurable(FilePath("foo"), _, _))
       .WillOnce(Return(false));
 
   SecureBlob key("key");

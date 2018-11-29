@@ -214,7 +214,6 @@ bool VaultKeyset::Load(const FilePath& filename) {
   brillo::Blob contents;
   if (!platform_->ReadFile(filename, &contents))
     return false;
-
   serialized_.Clear();  // Ensure a fresh start.
   loaded_ = serialized_.ParseFromArray(contents.data(), contents.size());
   // If it was parsed from file, consider it save-able too.
@@ -292,13 +291,13 @@ bool VaultKeyset::Save(const FilePath& filename) {
   CHECK(platform_);
   if (!encrypted_)
     return false;
-  SecureBlob contents(serialized_.ByteSize());
+  brillo::Blob contents(serialized_.ByteSize());
   google::protobuf::uint8* buf =
       static_cast<google::protobuf::uint8*>(contents.data());
   serialized_.SerializeWithCachedSizesToArray(buf);
 
-  bool ok = platform_->WriteSecureBlobToFileAtomicDurable(
-      filename, contents, kVaultFilePermissions);
+  bool ok = platform_->WriteFileAtomicDurable(filename, contents,
+                                              kVaultFilePermissions);
   return ok;
 }
 
