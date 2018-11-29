@@ -193,7 +193,7 @@ LECredError LECredentialManager::CheckSecret(const uint64_t& label,
 
   ReportLEResult(uma_log_op, kLEActionLoadFromDisk, LE_CRED_SUCCESS);
 
-  brillo::Blob new_cred, new_mac;
+  std::vector<uint8_t> new_cred, new_mac;
   LECredBackendError err;
   if (is_le_secret) {
     he_secret->clear();
@@ -417,7 +417,7 @@ bool LECredentialManager::ReplayCheck(uint64_t label,
   ReportLEResult(kLEOpSync, kLEActionLoadFromDisk,
                  LE_CRED_SUCCESS);
 
-  brillo::SecureBlob new_cred, new_mac;
+  std::vector<uint8_t> new_cred, new_mac;
   if (!le_tpm_backend_->ReplayLogOperation(log_root, h_aux, orig_cred,
                                            &new_cred, &new_mac)) {
     ReportLEResult(kLEOpSync, kLEActionBackendReplayLog,

@@ -271,7 +271,7 @@ bool FakeLECredentialBackend::RemoveCredential(
   }
 
   // Create a new MAC which is all zeros.
-  brillo::SecureBlob new_mac(SHA256_DIGEST_LENGTH, 0);
+  brillo::Blob new_mac(SHA256_DIGEST_LENGTH, 0);
 
   struct FakeLELogEntry fake_entry;
   fake_entry.entry.type = LE_LOG_REMOVE;
