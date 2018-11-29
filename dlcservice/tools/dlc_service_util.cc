@@ -3,10 +3,12 @@
 // found in the LICENSE file.
 
 #include <sysexits.h>
+#include <iostream>
 #include <string>
 #include <vector>
 
 #include <base/logging.h>
+#include <base/strings/string_split.h>
 #include <brillo/flag_helper.h>
 #include <dbus/bus.h>
 #include <dlcservice/dbus-proxies.h>
@@ -16,42 +18,34 @@ using org::chromium::DlcServiceInterfaceProxy;
 
 class DlcServiceUtil {
  public:
-  DlcServiceUtil(const scoped_refptr<dbus::Bus>& bus,
-                 const std::string& install_dlc_ids,
-                 const std::string& uninstall_dlc_ids,
-                 bool list_dlcs)
-      : dlc_service_proxy_(std::make_unique<DlcServiceInterfaceProxy>(bus)),
-        install_dlc_ids_(install_dlc_ids),
-        uninstall_dlc_ids_(uninstall_dlc_ids),
-        list_dlcs_(list_dlcs) {}
+  DlcServiceUtil() {}
 
   ~DlcServiceUtil() {}
 
-  bool Run(int* error_ptr) {
-    if (!install_dlc_ids_.empty()) {
-      return Install(error_ptr);
-    } else if (!uninstall_dlc_ids_.empty()) {
-      return Uninstall(error_ptr);
-    } else if (list_dlcs_) {
-      return GetInstalled(error_ptr);
+  // Initialize the dlcservice proxy. Returns true on success, false otherwise.
+  // Sets the given error pointer on failure.
+  bool Init(int* error_ptr) {
+    dbus::Bus::Options options;
+    options.bus_type = dbus::Bus::SYSTEM;
+    scoped_refptr<dbus::Bus> bus{new dbus::Bus{options}};
+    if (!bus->Connect()) {
+      LOG(ERROR) << "Failed to connect to DBus.";
+      *error_ptr = EX_UNAVAILABLE;
+      return false;
     }
+    dlc_service_proxy_ = std::make_unique<DlcServiceInterfaceProxy>(bus);
 
     return true;
   }
 
-  bool Install(int* error_ptr) {
+  // Install a list of DLC modules. Returns true if all modules install
+  // successfully, false otherwise.
+  bool Install(const std::vector<std::string>& dlc_ids, int* error_ptr) {
     brillo::ErrorPtr error;
     std::string mount_point;
 
-    std::vector<std::string> dlc_ids;
-    if (!ParseDlcIds(install_dlc_ids_, &dlc_ids)) {
-      LOG(ERROR) << "Please specify a list of DLC modules to install";
-      *error_ptr = EX_USAGE;
-      return false;
-    }
-
     for (auto& dlc_id : dlc_ids) {
-      LOG(INFO) << "Attempting to install DLC module '" << dlc_id << "'";
+      LOG(INFO) << "Attempting to install DLC module '" << dlc_id << "'.";
       if (!dlc_service_proxy_->Install(dlc_id, &mount_point, &error)) {
         LOG(ERROR) << "Failed to install '" << dlc_id << "', "
                    << error->GetMessage();
@@ -59,37 +53,37 @@ class DlcServiceUtil {
         return false;
       }
       LOG(INFO) << "'" << dlc_id << "' successfully installed and mounted at '"
-                << mount_point << "'";
+                << mount_point << "'.";
     }
 
     return true;
   }
 
-  bool Uninstall(int* error_ptr) {
+  // Uninstall a list of DLC modules. Returns true of all uninstall operations
+  // complete successfully, false otherwise. Sets the given error pointer on
+  // failure.
+  bool Uninstall(const std::vector<std::string>& dlc_ids, int* error_ptr) {
     brillo::ErrorPtr error;
 
-    std::vector<std::string> dlc_ids;
-    if (!ParseDlcIds(uninstall_dlc_ids_, &dlc_ids)) {
-      LOG(ERROR) << "Please specify a list of DLC modules to uninstall";
-      *error_ptr = EX_USAGE;
-      return false;
-    }
-
     for (auto& dlc_id : dlc_ids) {
-      LOG(INFO) << "Attempting to uninstall DLC module '" << dlc_id << "'";
+      LOG(INFO) << "Attempting to uninstall DLC module '" << dlc_id << "'.";
       if (!dlc_service_proxy_->Uninstall(dlc_id, &error)) {
         LOG(ERROR) << "Failed to uninstall '" << dlc_id << "', "
                    << error->GetMessage();
         *error_ptr = EX_SOFTWARE;
         return false;
       }
-      LOG(INFO) << "'" << dlc_id << "' successfully uninstalled";
+      LOG(INFO) << "'" << dlc_id << "' successfully uninstalled.";
     }
 
     return true;
   }
 
-  bool GetInstalled(int* error_ptr) {
+  // Retrieves and prints a list of all installed DLC modules. Returns true if
+  // the list is retrieved successfully, false otherwise. Sets the given error
+  // pointer on failure.
+  bool GetInstalled(dlcservice::DlcModuleList* dlc_module_list,
+                    int* error_ptr) {
     std::string dlc_module_list_string;
     brillo::ErrorPtr error;
 
@@ -100,67 +94,73 @@ class DlcServiceUtil {
       return false;
     }
 
-    dlcservice::DlcModuleList dlc_module_list;
-    if (!dlc_module_list.ParseFromString(dlc_module_list_string)) {
-      LOG(ERROR) << "Failed to parse DlcModuleList protobuf";
+    if (!dlc_module_list->ParseFromString(dlc_module_list_string)) {
+      LOG(ERROR) << "Failed to parse DlcModuleList protobuf.";
       *error_ptr = EX_SOFTWARE;
       return false;
-    }
-
-    LOG(INFO) << "Installed DLC modules:";
-    for (const auto& dlc_module_info : dlc_module_list.dlc_module_infos()) {
-      LOG(INFO) << dlc_module_info.dlc_id();
     }
 
     return true;
   }
 
-  bool ParseDlcIds(const std::string& dlc_ids,
-                   std::vector<std::string>* dlc_ids_ptr) {
-    std::vector<std::string>& dlc_ids_out = *dlc_ids_ptr;
-
-    size_t start = 0;
-    size_t end = 0;
-    while (end < dlc_ids.length()) {
-      end = dlc_ids.find(':', start);
-      end = (end == std::string::npos) ? dlc_ids.length() : end;
-      if (start < end)
-        dlc_ids_out.emplace_back(dlc_ids.substr(start, end - start));
-      start = end + 1;
-    }
-
-    return dlc_ids_out.size() > 0;
-  }
-
+ private:
   std::unique_ptr<DlcServiceInterfaceProxy> dlc_service_proxy_;
-  const std::string install_dlc_ids_;
-  const std::string uninstall_dlc_ids_;
-  const bool list_dlcs_;
 
   DISALLOW_COPY_AND_ASSIGN(DlcServiceUtil);
 };
 
 int main(int argc, const char** argv) {
-  DEFINE_string(install, "", "Install a colon separated list of DLC modules");
-  DEFINE_string(uninstall, "",
-                "Uninstall a colon separated list of DLC modules");
-  DEFINE_bool(list, false, "List all installed DLC modules");
+  DEFINE_bool(install, false, "Install a given list of DLC modules.");
+  DEFINE_bool(uninstall, false, "Uninstall a given list of DLC modules.");
+  DEFINE_bool(list, false, "List all installed DLC modules.");
+  DEFINE_string(dlc_ids, "", "Colon separated list of DLC module ids.");
   brillo::FlagHelper::Init(argc, argv, "dlcservice_util");
 
-  if ((!FLAGS_install.empty() && !FLAGS_uninstall.empty()) ||
-      (FLAGS_list && (!FLAGS_install.empty() || !FLAGS_uninstall.empty()))) {
-    LOG(ERROR) << "Only one of --install, --uninstall, --list can be specified";
-    return EX_USAGE;
+  // Enforce mutually exclusive flags. Additional exclusive flags can be added
+  // to this list.
+  auto exclusive_flags = {FLAGS_install, FLAGS_uninstall, FLAGS_list};
+  CHECK_EQ(std::count(exclusive_flags.begin(), exclusive_flags.end(), true), 1)
+      << "Exactly one of --install, --uninstall, --list must be set.";
+
+  int error;
+  DlcServiceUtil client;
+  if (!client.Init(&error)) {
+    LOG(ERROR) << "Failed to initialize client.";
+    return error;
   }
 
-  dbus::Bus::Options options;
-  options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus{new dbus::Bus{options}};
-  if (!bus->Connect())
-    return EX_UNAVAILABLE;
+  if (FLAGS_install) {
+    std::vector<std::string> dlc_id_list = SplitString(
+        FLAGS_dlc_ids, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+    CHECK(!dlc_id_list.empty())
+        << "Please specify a list of DLC modules to install.";
+    if (!client.Install(dlc_id_list, &error)) {
+      LOG(ERROR) << "Failed to install DLC modules.";
+      return error;
+    }
+  } else if (FLAGS_uninstall) {
+    std::vector<std::string> dlc_id_list = SplitString(
+        FLAGS_dlc_ids, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+    CHECK(!dlc_id_list.empty())
+        << "Please specify a list of DLC modules to install.";
+    if (!client.Uninstall(dlc_id_list, &error)) {
+      LOG(ERROR) << "Failed to uninstall DLC modules.";
+      return error;
+    }
+  } else if (FLAGS_list) {
+    dlcservice::DlcModuleList dlc_module_list;
+    if (!client.GetInstalled(&dlc_module_list, &error)) {
+      LOG(ERROR) << "Failed to get DLC module list.";
+      return error;
+    }
+    LOG(INFO) << "Installed DLC modules:";
+    for (const auto& dlc_module_info : dlc_module_list.dlc_module_infos()) {
+      std::cout << dlc_module_info.dlc_id() << " ";
+    }
+    std::cout << std::endl;
+  } else {
+    LOG(ERROR) << "No commands given, see dlcservice_util --help.";
+  }
 
-  DlcServiceUtil client{bus, FLAGS_install, FLAGS_uninstall, FLAGS_list};
-
-  int error_code;
-  return client.Run(&error_code) ? EX_OK : error_code;
+  return EX_OK;
 }
