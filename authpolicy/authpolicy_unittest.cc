@@ -17,6 +17,7 @@
 #include <base/message_loop/message_loop.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/asan.h>
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/file_utils.h>
 #include <dbus/bus.h>
@@ -2326,6 +2327,11 @@ TEST_F(AuthPolicyTest, AnonymizerCalledWithLogging) {
   EXPECT_TRUE(samba().GetAnonymizerForTesting()->process_called_for_testing());
 }
 
+// Disable SeccompFiltersEnabled under ASAN. Minijail does not enable seccomp
+// filtering when running under ASAN, so the test fails.
+// https://crbug.com/908140
+#ifndef BRILLO_ASAN_BUILD
+
 // Re-enable seccomp filters and check that they are actually in effect.
 TEST_F(AuthPolicyTest, SeccompFiltersEnabled) {
   // Re-enable seccomp filtering and trigger it in net ads join.
@@ -2354,5 +2360,7 @@ TEST_F(AuthPolicyTest, SeccompFiltersEnabled) {
   samba().DisableSeccompForTesting(true);
   FetchAndValidateDevicePolicy(ERROR_NONE);
 }
+
+#endif  // #ifndef BRILLO_ASAN_BUILD
 
 }  // namespace authpolicy
