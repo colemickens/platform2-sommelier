@@ -53,5 +53,6 @@ const char kPolicyDotOneFileNameForTesting[] = "policy.1";
 
 const char kOobeConfigSaveUsername[] = "oobe_config_save";
 const char kRootUsername[] = "root";
+const char kPreserveGroupName[] = "preserve";
 
 }  // namespace oobe_config

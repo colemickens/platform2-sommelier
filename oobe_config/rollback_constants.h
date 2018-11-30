@@ -52,6 +52,7 @@ extern const char kPolicyDotOneFileNameForTesting[];
 
 extern const char kOobeConfigSaveUsername[];
 extern const char kRootUsername[];
+extern const char kPreserveGroupName[];
 
 }  // namespace oobe_config
 

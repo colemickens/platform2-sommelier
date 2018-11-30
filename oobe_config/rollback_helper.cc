@@ -6,6 +6,7 @@
 
 #include <vector>
 
+#include <grp.h>
 #include <pwd.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -45,6 +46,7 @@ bool PrepareSave(const base::FilePath& root_path,
     gid_t oobe_config_save_gid;
     uid_t root_uid;
     gid_t root_gid;
+    gid_t preserve_gid;
 
     LOG(INFO) << "Setting and verifying permissions for save path";
     if (!GetUidGid(kOobeConfigSaveUsername, &oobe_config_save_uid,
@@ -55,6 +57,14 @@ bool PrepareSave(const base::FilePath& root_path,
     if (!GetUidGid(kRootUsername, &root_uid, &root_gid)) {
       PLOG(ERROR) << "Couldn't get uid and gid of root.";
       return false;
+    }
+    if (!GetGid(kPreserveGroupName, &preserve_gid)) {
+      // It's OK for this to fail. This group only exists on TPM2
+      // devices.
+      LOG(INFO) << "preserve group does not exist on this device";
+      preserve_gid = -1;
+    } else {
+      LOG(INFO) << "preserve group is " << preserve_gid;
     }
     // chown oobe_config_save:oobe_config_save
     if (lchown(save_path.value().c_str(), oobe_config_save_uid,
@@ -77,11 +87,16 @@ bool PrepareSave(const base::FilePath& root_path,
 
     // Preparing rollback_data file.
 
-    // The directory should be root-writeable only.
-    LOG(INFO) << "Verifying only root can write to stateful";
+    // The directory should be root-writeable only on TPM1 devices
+    // and root+preserve-writeable on TPM2 devices.
+    LOG(INFO) << "Verifying only root and/or preserve can write to stateful";
+    std::set<gid_t> allowed_groups = {root_gid};
+    if (preserve_gid != -1) {
+      allowed_groups.insert(preserve_gid);
+    }
     if (!base::VerifyPathControlledByUser(
             PrefixAbsolutePath(root_path, kStatefulPartition),
-            rollback_data_path.DirName(), root_uid, {root_gid})) {
+            rollback_data_path.DirName(), root_uid, allowed_groups)) {
       LOG(ERROR) << "VerifyPathControlledByUser failed for "
                  << rollback_data_path.DirName().value();
       return false;
@@ -298,12 +313,41 @@ bool GetUidGid(const std::string& user, uid_t* uid, gid_t* gid) {
   }
   passwd user_info{}, *user_infop;
   std::vector<char> user_name_buf(static_cast<size_t>(user_name_length));
-  if (getpwnam_r(user.c_str(), &user_info, user_name_buf.data(),
-                 static_cast<size_t>(user_name_length), &user_infop)) {
+  getpwnam_r(user.c_str(), &user_info, user_name_buf.data(),
+             static_cast<size_t>(user_name_length), &user_infop);
+
+  // NOTE: the return value can be ambiguous in the case that the user does
+  // not exist. See "man getpwnam_r" for details.
+  if (user_infop == nullptr) {
     return false;
   }
+
   *uid = user_info.pw_uid;
   *gid = user_info.pw_gid;
+  return true;
+}
+
+bool GetGid(const std::string& group, gid_t* gid) {
+  int group_name_length = sysconf(_SC_GETGR_R_SIZE_MAX);
+  if (group_name_length == -1) {
+    group_name_length = kDefaultPwnameLength;
+  }
+  if (group_name_length < 0) {
+    return false;
+  }
+  struct group group_info {
+  }, *group_infop;
+  std::vector<char> group_name_buf(static_cast<size_t>(group_name_length));
+  getgrnam_r(group.c_str(), &group_info, group_name_buf.data(),
+             static_cast<size_t>(group_name_length), &group_infop);
+
+  // NOTE: the return value can be ambiguous in the case that the user does
+  // not exist. See "man getgrnam_r" for details.
+  if (group_infop == nullptr) {
+    return false;
+  }
+
+  *gid = group_info.gr_gid;
   return true;
 }
 

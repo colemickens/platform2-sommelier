@@ -45,6 +45,7 @@ bool CopyFileAndSetPermissions(const base::FilePath& source,
                                bool ignore_permissions_for_testing);
 
 bool GetUidGid(const std::string& user, uid_t* uid, gid_t* gid);
+bool GetGid(const std::string& group, gid_t* gid);
 
 // Deletes all files under /var/lib/oobe_config_restore except those in
 // |excluded_files|.
