@@ -626,20 +626,6 @@ TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
                             bool generate_hash,
                             AuthorizationDelegate* delegate,
                             std::string* signature) {
-  TPMT_SIG_SCHEME in_scheme;
-  if (scheme == TPM_ALG_RSAPSS) {
-    in_scheme.scheme = TPM_ALG_RSAPSS;
-    if (hash_alg == TPM_ALG_NULL) {
-      hash_alg = TPM_ALG_SHA256;
-    }
-    in_scheme.details.rsapss.hash_alg = hash_alg;
-  } else if (scheme == TPM_ALG_RSASSA || scheme == TPM_ALG_NULL) {
-    in_scheme.scheme = TPM_ALG_RSASSA;
-    in_scheme.details.rsassa.hash_alg = hash_alg;
-  } else {
-    LOG(ERROR) << __func__ << ": Invalid signing scheme used.";
-    return SAPI_RC_BAD_PARAMETER;
-  }
   TPM_RC result;
   if (delegate == nullptr) {
     result = SAPI_RC_INVALID_SESSIONS;
@@ -648,6 +634,8 @@ TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
                << GetErrorString(result);
     return result;
   }
+
+  // Get public information of the key handle
   TPMT_PUBLIC public_area;
   result = GetKeyPublicArea(key_handle, &public_area);
   if (result) {
@@ -664,14 +652,43 @@ TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
     return SAPI_RC_BAD_PARAMETER;
   }
 
+  // Default scheme is TPM_ALG_RSASSA
+  if (scheme == TPM_ALG_NULL) {
+    scheme = TPM_ALG_RSASSA;
+  }
+
+  // Default hash algorithm is SHA256, except TPM_ALG_RSASSA
+  // For RSASSA, we allow TPM_ALG_NULL since TPMs can support padding-only
+  // scheme for RSASSA which is indicated by passing TPM_ALG_NULL as a hashing
+  // algorithm to TPM2_Sign.
+  if (scheme != TPM_ALG_RSASSA && hash_alg == TPM_ALG_NULL) {
+    hash_alg = TPM_ALG_SHA256;
+  }
+
+  // Simply check key type and scheme
+  if (public_area.type == TPM_ALG_RSA) {
+    if (scheme != TPM_ALG_RSAPSS && scheme != TPM_ALG_RSASSA) {
+      LOG(ERROR) << __func__ << ": Invalid signing scheme used for RSA key.";
+      return SAPI_RC_BAD_PARAMETER;
+    }
+  }
+
+  // Fill the checked parameters
+  TPMT_SIG_SCHEME in_scheme;
+  in_scheme.scheme = scheme;
+  in_scheme.details.any.hash_alg = hash_alg;
+
+  // Compute key name
   std::string key_name;
   result = ComputeKeyName(public_area, &key_name);
   if (result) {
     LOG(ERROR) << __func__ << ": Error computing key name for: " << key_handle;
     return result;
   }
+
+  // Call TPM
   std::string digest =
-    generate_hash ? HashString(plaintext, hash_alg) : plaintext;
+      generate_hash ? HashString(plaintext, hash_alg) : plaintext;
   TPM2B_DIGEST tpm_digest = Make_TPM2B_DIGEST(digest);
   TPMT_SIGNATURE signature_out;
   TPMT_TK_HASHCHECK validation;
@@ -686,14 +703,14 @@ TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
                << ": Error signing digest: " << GetErrorString(result);
     return result;
   }
+
+  // Pack the signature structure to a string, |scheme| has already been checked
   if (scheme == TPM_ALG_RSAPSS) {
-    signature->resize(signature_out.signature.rsapss.sig.size);
-    signature->assign(
-        StringFrom_TPM2B_PUBLIC_KEY_RSA(signature_out.signature.rsapss.sig));
-  } else {
-    signature->resize(signature_out.signature.rsassa.sig.size);
-    signature->assign(
-        StringFrom_TPM2B_PUBLIC_KEY_RSA(signature_out.signature.rsassa.sig));
+    *signature =
+        StringFrom_TPM2B_PUBLIC_KEY_RSA(signature_out.signature.rsapss.sig);
+  } else {  // scheme == TPM_ALG_RSASSA
+    *signature =
+        StringFrom_TPM2B_PUBLIC_KEY_RSA(signature_out.signature.rsassa.sig);
   }
   return TPM_RC_SUCCESS;
 }
@@ -721,27 +738,44 @@ TPM_RC TpmUtilityImpl::Verify(TPM_HANDLE key_handle,
                << ": Cannot use RSAPSS for signing with a restricted key";
     return SAPI_RC_BAD_PARAMETER;
   }
+
+  // By default, use TPM_ALG_RSASSA as scheme
+  if (scheme == TPM_ALG_NULL) {
+    scheme = TPM_ALG_RSASSA;
+  }
+
+  // By default, use TPM_ALG_SHA256 as scheme.
+  // Notice that it is not align with Sign() since the unit test assume hash_alg
+  // should be TPM_ALG_SHA256 if hash_alg == TPM_ALG_NULL
   if (hash_alg == TPM_ALG_NULL) {
     hash_alg = TPM_ALG_SHA256;
   }
 
-  TPMT_SIGNATURE signature_in;
-  if (scheme == TPM_ALG_RSAPSS) {
-    signature_in.sig_alg = TPM_ALG_RSAPSS;
-    signature_in.signature.rsapss.hash = hash_alg;
-    signature_in.signature.rsapss.sig = Make_TPM2B_PUBLIC_KEY_RSA(signature);
-  } else if (scheme == TPM_ALG_NULL || scheme == TPM_ALG_RSASSA) {
-    signature_in.sig_alg = TPM_ALG_RSASSA;
-    signature_in.signature.rsassa.hash = hash_alg;
-    signature_in.signature.rsassa.sig = Make_TPM2B_PUBLIC_KEY_RSA(signature);
-  } else {
-    LOG(ERROR) << __func__ << ": Invalid scheme used to verify signature.";
-    return SAPI_RC_BAD_PARAMETER;
+  // Simply check key type and scheme
+  if (public_area.type == TPM_ALG_RSA) {
+    if (scheme != TPM_ALG_RSAPSS && scheme != TPM_ALG_RSASSA) {
+      LOG(ERROR) << __func__
+                 << ": Invalid scheme used to verify signature for RSA key.";
+      return SAPI_RC_BAD_PARAMETER;
+    }
   }
+
+  // Fill the checked |scheme| and |hash_alg|
+  TPMT_SIGNATURE signature_in;
+  signature_in.sig_alg = scheme;
+  signature_in.signature.any.hash_alg = hash_alg;
+
+  // Parse the |signature| from bytes to TPM structure
+  if (scheme == TPM_ALG_RSAPSS) {
+    signature_in.signature.rsapss.sig = Make_TPM2B_PUBLIC_KEY_RSA(signature);
+  } else if (scheme == TPM_ALG_RSASSA) {
+    signature_in.signature.rsassa.sig = Make_TPM2B_PUBLIC_KEY_RSA(signature);
+  }
+
   std::string key_name;
   TPMT_TK_VERIFIED verified;
   std::string digest =
-    generate_hash ? HashString(plaintext, hash_alg) : plaintext;
+      generate_hash ? HashString(plaintext, hash_alg) : plaintext;
   TPM2B_DIGEST tpm_digest = Make_TPM2B_DIGEST(digest);
   return_code = factory_.GetTpm()->VerifySignatureSync(
       key_handle, key_name, tpm_digest, signature_in, &verified, delegate);
