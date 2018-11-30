@@ -1,4 +1,8 @@
 set noparent
+
+# Main owners (prefer)
 ljusten@chromium.org
 rsorokin@chromium.org
+
+# Co-owners (ask if main owners are not available)
 zentaro@chromium.org
