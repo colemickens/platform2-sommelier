@@ -31,6 +31,7 @@ namespace switches {
 static const char *kNoCloseOnDaemonize = "noclose";
 static const char *kNoLegacyMount = "nolegacymount";
 static const char *kDirEncryption = "direncryption";
+static const char *kNoDaemonize = "nodaemonize";
 }  // namespace switches
 
 static std::string ReadAbeDataFileContents(cryptohome::Platform* platform) {
@@ -63,7 +64,10 @@ int main(int argc, char **argv) {
   int noclose = cl->HasSwitch(switches::kNoCloseOnDaemonize);
   bool nolegacymount = cl->HasSwitch(switches::kNoLegacyMount);
   bool direncryption = cl->HasSwitch(switches::kDirEncryption);
-  PLOG_IF(FATAL, daemon(0, noclose) == -1) << "Failed to daemonize";
+  bool daemonize = !cl->HasSwitch(switches::kNoDaemonize);
+  if (daemonize) {
+    PLOG_IF(FATAL, daemon(0, noclose) == -1) << "Failed to daemonize";
+  }
 
   // Setup threading. This needs to be called before other calls into glib and
   // before multiple threads are created that access dbus.
