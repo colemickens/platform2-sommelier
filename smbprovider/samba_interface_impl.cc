@@ -385,7 +385,29 @@ SMBCFILE* SambaInterfaceImpl::MustGetFile(int32_t fd) {
   return file;
 }
 
+void SambaInterfaceImpl::CloseOutstandingFileDescriptors() {
+  if (fds_.Empty())
+    return;
+
+  LOG(WARNING)
+      << "Closing " << fds_.Count()
+      << " file descriptors that were left open at unmount or shutdown.";
+
+  for (auto it = fds_.Begin(); it != fds_.End(); ++it) {
+    const int32_t fd = it->first;
+    const int32_t result = CloseFile(fd);
+
+    if (result != 0) {
+      LOG(WARNING) << "Closing file descriptor " << fd
+                   << " during shutdown failed: " << GetErrorFromErrno(result);
+    }
+  }
+
+  fds_.Reset();
+}
+
 SambaInterfaceImpl::~SambaInterfaceImpl() {
+  CloseOutstandingFileDescriptors();
   smbc_free_context(context_, 0);
 }
 

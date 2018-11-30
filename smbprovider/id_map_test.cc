@@ -188,4 +188,52 @@ TEST_F(IdMapTest, TestInitialMapValue) {
   EXPECT_EQ(2, id2);
 }
 
+TEST_F(IdMapTest, TestEmpty) {
+  EXPECT_TRUE(map_.Empty());
+
+  const std::string expected = "Foo";
+  const int32_t id = map_.Insert(expected);
+
+  EXPECT_GE(id, 0);
+  EXPECT_EQ(1, map_.Count());
+  EXPECT_FALSE(map_.Empty());
+
+  map_.Reset();
+  EXPECT_TRUE(map_.Empty());
+}
+
+TEST_F(IdMapTest, TestResetOnEmptyMap) {
+  EXPECT_EQ(map_.Begin(), map_.End());
+  EXPECT_TRUE(map_.Empty());
+
+  map_.Reset();
+  EXPECT_EQ(map_.Begin(), map_.End());
+  EXPECT_TRUE(map_.Empty());
+
+  const std::string expected = "Foo";
+  const int32_t id = map_.Insert(expected);
+  EXPECT_EQ(0, id);
+  EXPECT_EQ(1, map_.Count());
+  EXPECT_FALSE(map_.Empty());
+}
+
+TEST_F(IdMapTest, TestReset) {
+  const std::string expected = "Foo";
+  const int32_t id = map_.Insert(expected);
+  EXPECT_EQ(0, id);
+  EXPECT_EQ(1, map_.Count());
+  EXPECT_FALSE(map_.Empty());
+
+  map_.Reset();
+  EXPECT_TRUE(map_.Empty());
+  ExpectNotFound(id);
+
+  const std::string expected2 = "bar";
+  const int32_t id2 = map_.Insert(expected2);
+  EXPECT_EQ(0, id2);
+  EXPECT_EQ(1, map_.Count());
+  EXPECT_FALSE(map_.Empty());
+  ExpectFound(id2, expected2);
+}
+
 }  // namespace smbprovider

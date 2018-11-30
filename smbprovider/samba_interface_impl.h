@@ -120,6 +120,9 @@ class SambaInterfaceImpl : public SambaInterface {
   // Returns the SMBCFILE pointer for |fd| and DCHECKS if it doesn't exist.
   SMBCFILE* MustGetFile(int32_t fd);
 
+  // Close all file descriptors in |fds_|.
+  void CloseOutstandingFileDescriptors();
+
   explicit SambaInterfaceImpl(SMBCCTX* context);
   SMBCCTX* context_ = nullptr;
   smbc_close_fn smbc_close_ctx_ = nullptr;

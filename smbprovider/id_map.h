@@ -23,7 +23,8 @@ class IdMap {
  public:
   using MapType = std::unordered_map<int32_t, T>;
 
-  explicit IdMap(int initial_value) : next_unused_id_(initial_value) {}
+  explicit IdMap(int initial_value)
+      : initial_id_(initial_value), next_unused_id_(initial_value) {}
 
   ~IdMap() = default;
 
@@ -60,7 +61,18 @@ class IdMap {
     return false;
   }
 
+  void Reset() {
+    ids_.clear();
+
+    // Empty out |free_ids_|.
+    free_ids_ = {};
+
+    next_unused_id_ = initial_id_;
+  }
+
   size_t Count() const { return ids_.size(); }
+
+  bool Empty() const { return ids_.empty(); }
 
   typename MapType::const_iterator Begin() const { return ids_.begin(); }
 
@@ -81,6 +93,7 @@ class IdMap {
 
   MapType ids_;
   std::stack<int32_t> free_ids_;
+  const int32_t initial_id_;
   int32_t next_unused_id_;
   DISALLOW_COPY_AND_ASSIGN(IdMap);
 };
