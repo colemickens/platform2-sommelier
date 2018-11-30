@@ -2120,6 +2120,7 @@ TPMT_PUBLIC TpmUtilityImpl::CreateDefaultPublicArea(TPM_ALG_ID key_alg) {
     public_area.unique.rsa = Make_TPM2B_PUBLIC_KEY_RSA("");
   } else if (key_alg == TPM_ALG_ECC) {
     public_area.parameters.ecc_detail.scheme.scheme = TPM_ALG_NULL;
+    public_area.parameters.ecc_detail.symmetric.algorithm = TPM_ALG_NULL;
     public_area.parameters.ecc_detail.curve_id = TPM_ECC_NIST_P256;
     public_area.parameters.ecc_detail.kdf.scheme = TPM_ALG_NULL;
     public_area.unique.ecc.x = Make_TPM2B_ECC_PARAMETER("");
