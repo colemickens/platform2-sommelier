@@ -20,7 +20,6 @@
 #include "diagnostics/dpsl/public/dpsl_rpc_server.h"
 #include "diagnostics/dpsl/public/dpsl_thread_context.h"
 
-#include "common.pb.h"                 // NOLINT(build/include)
 #include "diagnostics_processor.pb.h"  // NOLINT(build/include)
 
 namespace {

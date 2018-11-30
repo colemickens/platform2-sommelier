@@ -8,7 +8,6 @@
 #include <functional>
 #include <memory>
 
-#include "common.pb.h"                 // NOLINT(build/include)
 #include "diagnostics_processor.pb.h"  // NOLINT(build/include)
 
 namespace diagnostics {

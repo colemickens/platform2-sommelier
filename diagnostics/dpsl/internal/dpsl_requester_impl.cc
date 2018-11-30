@@ -16,7 +16,6 @@
 #include "diagnostics/dpsl/internal/callback_utils.h"
 #include "diagnostics/dpsl/public/dpsl_thread_context.h"
 
-#include "common.pb.h"        // NOLINT(build/include)
 #include "diagnosticsd.pb.h"  // NOLINT(build/include)
 
 namespace diagnostics {

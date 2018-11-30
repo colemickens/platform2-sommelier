@@ -15,7 +15,6 @@
 #include "diagnostics/grpc_async_adapter/async_grpc_client.h"
 #include "diagnostics/grpc_async_adapter/async_grpc_server.h"
 
-#include "common.pb.h"                      // NOLINT(build/include)
 #include "diagnostics_processor.grpc.pb.h"  // NOLINT(build/include)
 #include "diagnosticsd.grpc.pb.h"           // NOLINT(build/include)
 

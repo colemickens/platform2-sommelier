@@ -9,8 +9,6 @@ syntax = "proto3";
 
 package diagnostics.grpc_api;
 
-import "common.proto";
-
 service DiagnosticsProcessor {
   // Called when a message is sent by the diagnostics UI extension (hosted by
   // the browser).

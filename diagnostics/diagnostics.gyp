@@ -22,7 +22,6 @@
         },
       },
       'sources': [
-        '<(proto_in_dir)/common.proto',
         '<(proto_in_dir)/diagnostics_processor.proto',
         '<(proto_in_dir)/diagnosticsd.proto',
       ],

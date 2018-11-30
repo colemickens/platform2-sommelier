@@ -13,7 +13,6 @@
 #include <base/macros.h>
 #include <google/protobuf/repeated_field.h>
 
-#include "common.pb.h"        // NOLINT(build/include)
 #include "diagnosticsd.pb.h"  // NOLINT(build/include)
 
 namespace diagnostics {
