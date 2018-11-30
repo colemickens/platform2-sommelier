@@ -268,6 +268,21 @@ class TpmUtilityForwarder : public TpmUtility {
         creation_blob);
   }
 
+  TPM_RC CreateECCKeyPair(AsymmetricKeyUsage key_type,
+                          TPMI_ECC_CURVE curve_id,
+                          const std::string& password,
+                          const std::string& policy_digest,
+                          bool use_only_policy_authorization,
+                          const std::vector<uint32_t>& creation_pcr_indexes,
+                          AuthorizationDelegate* delegate,
+                          std::string* key_blob,
+                          std::string* creation_blob) override {
+    return target_->CreateECCKeyPair(
+        key_type, curve_id, password, policy_digest,
+        use_only_policy_authorization, creation_pcr_indexes, delegate, key_blob,
+        creation_blob);
+  }
+
   TPM_RC LoadKey(const std::string& key_blob,
                  AuthorizationDelegate* delegate,
                  TPM_HANDLE* key_handle) override {

@@ -888,7 +888,45 @@ TPM_RC TpmUtilityImpl::CreateRSAKeyPair(
     AuthorizationDelegate* delegate,
     std::string* key_blob,
     std::string* creation_blob) {
+  TPMT_PUBLIC public_area = CreateDefaultPublicArea(TPM_ALG_RSA);
+  public_area.parameters.rsa_detail.key_bits = modulus_bits;
+  public_area.parameters.rsa_detail.exponent = public_exponent;
+
+  return CreateKeyPairInner(key_type, public_area, password, policy_digest,
+                            use_only_policy_authorization, creation_pcr_indexes,
+                            delegate, key_blob, creation_blob);
+}
+
+TPM_RC TpmUtilityImpl::CreateECCKeyPair(
+    AsymmetricKeyUsage key_type,
+    TPMI_ECC_CURVE curve_id,
+    const std::string& password,
+    const std::string& policy_digest,
+    bool use_only_policy_authorization,
+    const std::vector<uint32_t>& creation_pcr_indexes,
+    AuthorizationDelegate* delegate,
+    std::string* key_blob,
+    std::string* creation_blob) {
+  TPMT_PUBLIC public_area = CreateDefaultPublicArea(TPM_ALG_ECC);
+  public_area.parameters.ecc_detail.curve_id = curve_id;
+
+  return CreateKeyPairInner(key_type, public_area, password, policy_digest,
+                            use_only_policy_authorization, creation_pcr_indexes,
+                            delegate, key_blob, creation_blob);
+}
+
+TPM_RC TpmUtilityImpl::CreateKeyPairInner(
+    AsymmetricKeyUsage key_type,
+    TPMT_PUBLIC public_area,
+    const std::string& password,
+    const std::string& policy_digest,
+    bool use_only_policy_authorization,
+    const std::vector<uint32_t>& creation_pcr_indexes,
+    AuthorizationDelegate* delegate,
+    std::string* key_blob,
+    std::string* creation_blob) {
   CHECK(key_blob);
+
   TPM_RC result;
   if (delegate == nullptr) {
     result = SAPI_RC_INVALID_SESSIONS;
@@ -897,15 +935,18 @@ TPM_RC TpmUtilityImpl::CreateRSAKeyPair(
                << GetErrorString(result);
     return result;
   }
+
   std::string parent_name;
   result = GetKeyName(kStorageRootKey, &parent_name);
   if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << __func__ << ": Error getting Key name for RSA-SRK: "
+    LOG(ERROR) << __func__ << ": Error getting Key name for SRK: "
                << GetErrorString(result);
     return result;
   }
-  TPMT_PUBLIC public_area = CreateDefaultPublicArea(TPM_ALG_RSA);
-  public_area.auth_policy = Make_TPM2B_DIGEST(policy_digest);
+
+  // Fill the rest part of public area of the key
+  // Notice that the |object_attributes| field may be prefilled, so just add
+  // new setting by OR, but don't overwrite it
   public_area.object_attributes |=
       (kSensitiveDataOrigin | kUserWithAuth | kNoDA);
   switch (key_type) {
@@ -914,7 +955,8 @@ TPM_RC TpmUtilityImpl::CreateRSAKeyPair(
       break;
     case AsymmetricKeyUsage::kSignKey:
       public_area.object_attributes |= kSign;
-      if (!SupportsPaddingOnlySigningScheme()) {
+      if (public_area.type == TPM_ALG_RSA &&
+          !SupportsPaddingOnlySigningScheme()) {
         public_area.object_attributes |= kDecrypt;
       }
       break;
@@ -922,12 +964,12 @@ TPM_RC TpmUtilityImpl::CreateRSAKeyPair(
       public_area.object_attributes |= (kSign | kDecrypt);
       break;
   }
+  public_area.auth_policy = Make_TPM2B_DIGEST(policy_digest);
   if (use_only_policy_authorization && !policy_digest.empty()) {
     public_area.object_attributes |= kAdminWithPolicy;
     public_area.object_attributes &= (~kUserWithAuth);
   }
-  public_area.parameters.rsa_detail.key_bits = modulus_bits;
-  public_area.parameters.rsa_detail.exponent = public_exponent;
+
   TPML_PCR_SELECTION creation_pcrs = {};
   if (creation_pcr_indexes.empty()) {
     creation_pcrs.count = 0;
@@ -945,12 +987,18 @@ TPM_RC TpmUtilityImpl::CreateRSAKeyPair(
           1 << (creation_pcr_index % 8);
     }
   }
+
+  // allow to use this key with `password`
   TPMS_SENSITIVE_CREATE sensitive;
   sensitive.user_auth = Make_TPM2B_DIGEST(password);
   sensitive.data = Make_TPM2B_SENSITIVE_DATA("");
   TPM2B_SENSITIVE_CREATE sensitive_create =
       Make_TPM2B_SENSITIVE_CREATE(sensitive);
+
+  // use empty outside_info
   TPM2B_DATA outside_info = Make_TPM2B_DATA("");
+
+  // returned data
   TPM2B_PUBLIC out_public;
   out_public.size = 0;
   TPM2B_PRIVATE out_private;
@@ -958,15 +1006,18 @@ TPM_RC TpmUtilityImpl::CreateRSAKeyPair(
   TPM2B_CREATION_DATA creation_data;
   TPM2B_DIGEST creation_hash;
   TPMT_TK_CREATION creation_ticket;
+
   result = factory_.GetTpm()->CreateSync(
       kStorageRootKey, parent_name, sensitive_create,
       Make_TPM2B_PUBLIC(public_area), outside_info, creation_pcrs, &out_private,
       &out_public, &creation_data, &creation_hash, &creation_ticket, delegate);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__
-               << ": Error creating RSA key: " << GetErrorString(result);
+               << ": Error creating key: " << GetErrorString(result);
     return result;
   }
+
+  // serialize the output
   if (!factory_.GetBlobParser()->SerializeKeyBlob(out_public, out_private,
                                                   key_blob)) {
     return SAPI_RC_BAD_TCTI_STRUCTURE;

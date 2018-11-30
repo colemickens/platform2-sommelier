@@ -1430,6 +1430,180 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairCreationParserFail) {
                 &mock_authorization_delegate_, &key_blob, &creation_blob));
 }
 
+TEST_F(TpmUtilityTest, CreateECCKeyPairSuccess) {
+  TPM2B_PUBLIC public_area;
+  TPM2B_SENSITIVE_CREATE sensitive_create;
+  EXPECT_CALL(mock_tpm_, CreateSyncShort(kStorageRootKey, _, _, _, _, _, _, _,
+                                         _, &mock_authorization_delegate_))
+      .WillOnce(DoAll(SaveArg<1>(&sensitive_create), SaveArg<2>(&public_area),
+                      Return(TPM_RC_SUCCESS)));
+  std::string key_blob;
+  std::string creation_blob;
+  std::string key_auth("password");
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility_.CreateECCKeyPair(
+                TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey,
+                TPM_ECC_NIST_P256, key_auth, "", false, std::vector<uint32_t>(),
+                &mock_authorization_delegate_, &key_blob, &creation_blob));
+  EXPECT_EQ(public_area.public_area.object_attributes & kDecrypt, kDecrypt);
+  EXPECT_EQ(public_area.public_area.object_attributes & kSign, kSign);
+  EXPECT_EQ(public_area.public_area.object_attributes & kUserWithAuth,
+            kUserWithAuth);
+  EXPECT_EQ(public_area.public_area.object_attributes & kAdminWithPolicy, 0u);
+  EXPECT_EQ(public_area.public_area.parameters.ecc_detail.curve_id,
+            TPM_ECC_NIST_P256);
+  EXPECT_EQ(public_area.public_area.parameters.ecc_detail.kdf.scheme,
+            TPM_ALG_NULL);
+  EXPECT_EQ(public_area.public_area.parameters.ecc_detail.scheme.scheme,
+            TPM_ALG_NULL);
+  EXPECT_EQ(sensitive_create.sensitive.user_auth.size, key_auth.size());
+  EXPECT_EQ(0, memcmp(sensitive_create.sensitive.user_auth.buffer,
+                      key_auth.data(), key_auth.size()));
+}
+
+TEST_F(TpmUtilityTest, CreateECCKeyPairMultiplePCRSuccess) {
+  TPML_PCR_SELECTION creation_pcrs;
+  EXPECT_CALL(mock_tpm_, CreateSyncShort(kStorageRootKey, _, _, _, _, _, _, _,
+                                         _, &mock_authorization_delegate_))
+      .WillOnce(DoAll(SaveArg<3>(&creation_pcrs), Return(TPM_RC_SUCCESS)));
+  std::string key_blob;
+  std::string creation_blob;
+  std::vector<uint32_t> creation_pcr_indexes({0, 2});
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility_.CreateECCKeyPair(
+                TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey,
+                TPM_ECC_NIST_P256, "password", "", false, creation_pcr_indexes,
+                &mock_authorization_delegate_, &key_blob, &creation_blob));
+  EXPECT_EQ(1u, creation_pcrs.count);
+  TPMS_PCR_SELECTION pcr_selection = creation_pcrs.pcr_selections[0];
+  EXPECT_EQ(TPM_ALG_SHA256, pcr_selection.hash);
+  EXPECT_EQ(PCR_SELECT_MIN, pcr_selection.sizeof_select);
+  EXPECT_EQ(creation_pcr_indexes.size(),
+            CountSetBits(pcr_selection.pcr_select, PCR_SELECT_MIN));
+  for (uint32_t pcr_index : creation_pcr_indexes) {
+    uint8_t creation_pcr_index = pcr_index / 8;
+    uint8_t creation_pcr_mask = 1u << (pcr_index % 8);
+    EXPECT_EQ(creation_pcr_mask,
+              creation_pcr_mask & pcr_selection.pcr_select[creation_pcr_index]);
+  }
+}
+
+TEST_F(TpmUtilityTest, CreateECCKeyPairDecryptKeySuccess) {
+  TPM2B_PUBLIC public_area;
+  EXPECT_CALL(mock_tpm_, CreateSyncShort(kStorageRootKey, _, _, _, _, _, _, _,
+                                         _, &mock_authorization_delegate_))
+      .WillOnce(DoAll(SaveArg<2>(&public_area), Return(TPM_RC_SUCCESS)));
+  std::string key_blob;
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility_.CreateECCKeyPair(
+                TpmUtility::AsymmetricKeyUsage::kDecryptKey, TPM_ECC_NIST_P256,
+                "password", "", false, std::vector<uint32_t>(),
+                &mock_authorization_delegate_, &key_blob, nullptr));
+  EXPECT_EQ(public_area.public_area.object_attributes & kDecrypt, kDecrypt);
+  EXPECT_EQ(public_area.public_area.object_attributes & kSign, 0u);
+  EXPECT_EQ(public_area.public_area.object_attributes & kUserWithAuth,
+            kUserWithAuth);
+  EXPECT_EQ(public_area.public_area.object_attributes & kAdminWithPolicy, 0u);
+  EXPECT_EQ(public_area.public_area.parameters.ecc_detail.curve_id,
+            TPM_ECC_NIST_P256);
+  EXPECT_EQ(public_area.public_area.parameters.ecc_detail.kdf.scheme,
+            TPM_ALG_NULL);
+  EXPECT_EQ(public_area.public_area.parameters.ecc_detail.scheme.scheme,
+            TPM_ALG_NULL);
+}
+
+TEST_F(TpmUtilityTest, CreateECCKeyPairSignKeySuccess) {
+  TPM2B_PUBLIC public_area;
+  EXPECT_CALL(mock_tpm_, CreateSyncShort(kStorageRootKey, _, _, _, _, _, _, _,
+                                         _, &mock_authorization_delegate_))
+      .WillOnce(DoAll(SaveArg<2>(&public_area), Return(TPM_RC_SUCCESS)));
+  std::string key_blob;
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility_.CreateECCKeyPair(
+                TpmUtility::AsymmetricKeyUsage::kSignKey, TPM_ECC_NIST_P256,
+                "password", "", false, std::vector<uint32_t>(),
+                &mock_authorization_delegate_, &key_blob, nullptr));
+  EXPECT_EQ(public_area.public_area.object_attributes & kDecrypt, 0);
+  EXPECT_EQ(public_area.public_area.object_attributes & kSign, kSign);
+  EXPECT_EQ(public_area.public_area.object_attributes & kUserWithAuth,
+            kUserWithAuth);
+  EXPECT_EQ(public_area.public_area.object_attributes & kAdminWithPolicy, 0u);
+  EXPECT_EQ(public_area.public_area.parameters.ecc_detail.curve_id,
+            TPM_ECC_NIST_P256);
+  EXPECT_EQ(public_area.public_area.parameters.ecc_detail.kdf.scheme,
+            TPM_ALG_NULL);
+  EXPECT_EQ(public_area.public_area.parameters.ecc_detail.scheme.scheme,
+            TPM_ALG_NULL);
+}
+
+TEST_F(TpmUtilityTest, CreateECCKeyPairWithPolicyAuthSuccess) {
+  TPM2B_PUBLIC public_area;
+  EXPECT_CALL(mock_tpm_, CreateSyncShort(kStorageRootKey, _, _, _, _, _, _, _,
+                                         _, &mock_authorization_delegate_))
+      .WillOnce(DoAll(SaveArg<2>(&public_area), Return(TPM_RC_SUCCESS)));
+  std::string key_blob;
+  std::string policy_digest(32, 'a');
+  EXPECT_EQ(
+      TPM_RC_SUCCESS,
+      utility_.CreateECCKeyPair(
+          TpmUtility::AsymmetricKeyUsage::kSignKey, TPM_ECC_NIST_P256,
+          "password", policy_digest, true /* use_only_policy_authorization */,
+          std::vector<uint32_t>(), &mock_authorization_delegate_, &key_blob,
+          nullptr));
+  EXPECT_EQ(public_area.public_area.object_attributes & kDecrypt, 0u);
+  EXPECT_EQ(public_area.public_area.object_attributes & kSign, kSign);
+  EXPECT_EQ(public_area.public_area.object_attributes & kUserWithAuth, 0u);
+  EXPECT_EQ(public_area.public_area.object_attributes & kAdminWithPolicy,
+            kAdminWithPolicy);
+  EXPECT_EQ(public_area.public_area.auth_policy.size, policy_digest.size());
+  EXPECT_EQ(0, memcmp(public_area.public_area.auth_policy.buffer,
+                      policy_digest.data(), policy_digest.size()));
+}
+
+TEST_F(TpmUtilityTest, CreateECCKeyPairBadDelegate) {
+  std::string key_blob;
+  EXPECT_EQ(SAPI_RC_INVALID_SESSIONS,
+            utility_.CreateECCKeyPair(
+                TpmUtility::AsymmetricKeyUsage::kDecryptKey, TPM_ECC_NIST_P256,
+                "password", "", false, std::vector<uint32_t>(), nullptr,
+                &key_blob, nullptr));
+}
+
+TEST_F(TpmUtilityTest, CreateECCKeyPairFailure) {
+  EXPECT_CALL(mock_tpm_, CreateSyncShort(kStorageRootKey, _, _, _, _, _, _, _,
+                                         _, &mock_authorization_delegate_))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  std::string key_blob;
+  EXPECT_EQ(TPM_RC_FAILURE,
+            utility_.CreateECCKeyPair(
+                TpmUtility::AsymmetricKeyUsage::kSignKey, TPM_ECC_NIST_P256,
+                "password", "", false, std::vector<uint32_t>(),
+                &mock_authorization_delegate_, &key_blob, nullptr));
+}
+
+TEST_F(TpmUtilityTest, CreateECCKeyPairKeyParserFail) {
+  std::string key_blob;
+  EXPECT_CALL(mock_blob_parser_, SerializeKeyBlob(_, _, &key_blob))
+      .WillOnce(Return(false));
+  EXPECT_EQ(SAPI_RC_BAD_TCTI_STRUCTURE,
+            utility_.CreateECCKeyPair(
+                TpmUtility::AsymmetricKeyUsage::kSignKey, TPM_ECC_NIST_P256,
+                "password", "", false, std::vector<uint32_t>(),
+                &mock_authorization_delegate_, &key_blob, nullptr));
+}
+
+TEST_F(TpmUtilityTest, CreateECCKeyPairCreationParserFail) {
+  std::string creation_blob;
+  std::string key_blob;
+  EXPECT_CALL(mock_blob_parser_, SerializeCreationBlob(_, _, _, &creation_blob))
+      .WillOnce(Return(false));
+  EXPECT_EQ(SAPI_RC_BAD_TCTI_STRUCTURE,
+            utility_.CreateECCKeyPair(
+                TpmUtility::AsymmetricKeyUsage::kSignKey, TPM_ECC_NIST_P256,
+                "password", "", false, std::vector<uint32_t>(),
+                &mock_authorization_delegate_, &key_blob, &creation_blob));
+}
+
 TEST_F(TpmUtilityTest, LoadKeySuccess) {
   TPM_HANDLE key_handle = TPM_RH_FIRST;
   TPM_HANDLE loaded_handle;
