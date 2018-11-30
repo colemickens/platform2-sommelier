@@ -26,6 +26,10 @@ constexpr uint8_t kQmiUimService = 0xB;
 constexpr uint8_t kEsimSlot = 0x01;
 constexpr uint8_t kInvalidChannel = -1;
 
+bool DecodeSuccessful(const uim_qmi_result& qmi_result) {
+  return (qmi_result.result == 0);
+}
+
 }  // namespace
 
 namespace hermes {
@@ -39,26 +43,39 @@ struct ApduTxInfo : public CardQrtr::TxInfo {
 };
 
 std::unique_ptr<CardQrtr> CardQrtr::Create(
-    std::unique_ptr<SocketInterface> socket) {
+    std::unique_ptr<SocketInterface> socket,
+    Logger* logger,
+    Executor* executor) {
   // Open the socket prior to passing to CardQrtr, such that it always has a
   // valid socket to write to.
   if (!socket || !socket->Open()) {
     return nullptr;
   }
-  return std::unique_ptr<CardQrtr>(new CardQrtr(std::move(socket)));
+  return std::unique_ptr<CardQrtr>(
+      new CardQrtr(std::move(socket), logger, executor));
 }
 
-CardQrtr::CardQrtr(std::unique_ptr<SocketInterface> socket)
+CardQrtr::CardQrtr(std::unique_ptr<SocketInterface> socket,
+                   Logger* logger,
+                   Executor* executor)
     : extended_apdu_supported_(false),
       current_transaction_id_(static_cast<uint16_t>(-1)),
       channel_(kInvalidChannel),
       slot_(kEsimSlot),
       socket_(std::move(socket)),
-      buffer_(4096) {
+      buffer_(4096),
+      logger_(logger),
+      executor_(executor) {
   CHECK(socket_);
   CHECK(socket_->IsValid());
   socket_->SetDataAvailableCallback(
       base::Bind(&CardQrtr::OnDataAvailable, base::Unretained(this)));
+
+  // Set SGP.22 specification version supported by this implementation (this is
+  // not currently constrained by the eUICC we use).
+  spec_version_.set_major(2);
+  spec_version_.set_minor(2);
+  spec_version_.set_revision(0);
 }
 
 CardQrtr::~CardQrtr() {
@@ -368,7 +385,7 @@ void CardQrtr::ReceiveQmiOpenLogicalChannel(const qrtr_packet& packet) {
                << "kOpenLogicalChannel in state " << current_state_;
     return;
   }
-  if (!ResponseSuccessful(resp.result)) {
+  if (!DecodeSuccessful(resp.result)) {
     LOG(ERROR) << "kOpenLogicalChannel response indicating error";
     return;
   }
@@ -396,8 +413,11 @@ void CardQrtr::ReceiveQmiSendApdu(const qrtr_packet& packet) {
   qmi_decode_message(&resp, &id, &packet, QMI_RESPONSE,
                      static_cast<uint16_t>(QmiUimCommand::kSendApdu),
                      uim_send_apdu_resp_ei);
-  if (!ResponseSuccessful(resp.result)) {
+  if (!DecodeSuccessful(resp.result)) {
     LOG(ERROR) << "Failed to decode received QMI UIM response: kSendApdu";
+    return;
+  } else if (resp.result.error) {
+    LOG(ERROR) << "kSendApdu response contained error: " << resp.result.error;
     return;
   }
 
@@ -409,7 +429,7 @@ void CardQrtr::ReceiveQmiSendApdu(const qrtr_packet& packet) {
     // Make the next transmit operation be a request for more APDU data
     info->apdu_ = payload.CreateGetMoreCommand(false);
     return;
-  } else if (payload.WaitingForNextFragment()) {
+  } else if (info->apdu_.HasMoreFragments()) {
     // Send next fragment of APDU
     VLOG(1) << "Sending next APDU fragment...";
     TransmitFromQueue();
@@ -455,8 +475,8 @@ void CardQrtr::OnDataAvailable(SocketInterface* socket) {
   ProcessQrtrPacket(data.node, data.port, bytes_received);
 }
 
-bool CardQrtr::ResponseSuccessful(const uim_qmi_result& qmi_result) {
-  return (qmi_result.result == 0);
+const lpa::proto::EuiccSpecVersion& CardQrtr::GetCardVersion() {
+  return spec_version_;
 }
 
 bool CardQrtr::State::Transition(CardQrtr::State::Value value) {

@@ -50,7 +50,7 @@ class CommandApdu {
   CommandApdu(ApduClass cls,
               ApduInstruction instruction,
               bool is_extended_length = false,
-              uint16_t le = 256);
+              uint16_t le = 0);
 
   CommandApdu(CommandApdu&&) = default;
   CommandApdu& operator=(CommandApdu&&) = default;
@@ -68,12 +68,15 @@ class CommandApdu {
   // |GetNextFragment|.
   size_t GetNextFragment(uint8_t** fragment);
 
+  bool HasMoreFragments() const { return has_more_fragments_; }
+
  private:
   // Create an Lc field if it doesn't already exist.
   void EnsureLcExists();
 
  private:
   bool is_extended_length_;
+  bool has_more_fragments_;
   uint8_t current_fragment_;
   uint16_t le_;
   size_t current_index_;

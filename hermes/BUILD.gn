@@ -17,8 +17,11 @@ group("all") {
 pkg_config("target_defaults") {
   pkg_deps = [
     "google-lpa",
+    "jsoncpp",
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
+    "openssl",
+    "re2",
   ]
   libs = [ "qrtr" ]
 }
@@ -32,6 +35,7 @@ static_library("libhermes") {
     "qmi_uim.cc",
     "sgp_22.cc",
     "smdp.cc",
+    "smds.cc",
     "socket_qrtr.cc",
   ]
 }

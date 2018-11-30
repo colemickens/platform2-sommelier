@@ -13,6 +13,8 @@
 #include <google-lpa/lpa/card/euicc_card.h>
 #include <libqrtr.h>
 
+#include "hermes/executor.h"
+#include "hermes/logger.h"
 #include "hermes/qmi_uim.h"
 #include "hermes/socket_qrtr.h"
 
@@ -34,12 +36,15 @@ class CardQrtr : public lpa::card::EuiccCard {
       std::vector<std::vector<uint8_t>>& responses, int err)>;
 
   static std::unique_ptr<CardQrtr> Create(
-      std::unique_ptr<SocketInterface> socket);
+      std::unique_ptr<SocketInterface> socket,
+      Logger* logger,
+      Executor* executor);
   virtual ~CardQrtr();
 
-  // Override of lpa::card::EuiccCard::SendApdus.
+  // lpa::card::EuiccCard overrides.
   void SendApdus(std::vector<lpa::card::Apdu> apdus,
                  ResponseCallback cb) override;
+  lpa::util::EuiccLog* logger() override { return logger_; }
 
  private:
   struct TxElement {
@@ -48,7 +53,9 @@ class CardQrtr : public lpa::card::EuiccCard {
     QmiUimCommand uim_type_;
   };
 
-  explicit CardQrtr(std::unique_ptr<SocketInterface> socket);
+  CardQrtr(std::unique_ptr<SocketInterface> socket,
+           Logger* logger,
+           Executor* executor);
   void Initialize();
   void FinalizeInitialization();
   void Shutdown();
@@ -84,12 +91,9 @@ class CardQrtr : public lpa::card::EuiccCard {
 
   void OnDataAvailable(SocketInterface* socket);
 
-  static bool ResponseSuccessful(const uim_qmi_result& qmi_result);
-
-  // TODO(akhouderchah) add implementations when completing lpa integration.
-  // Just putting these here so that the project will compile.
+  // lpa::card::EuiccCard overrides.
   const lpa::proto::EuiccSpecVersion& GetCardVersion() override;
-  lpa::util::Executor* executor() override;
+  lpa::util::Executor* executor() override { return executor_; }
 
  private:
   ///////////////////
@@ -189,6 +193,10 @@ class CardQrtr : public lpa::card::EuiccCard {
   std::vector<std::vector<uint8_t>> responses_;
   // Queue of packets to send to the modem
   std::deque<TxElement> tx_queue_;
+
+  Logger* logger_;
+  Executor* executor_;
+  lpa::proto::EuiccSpecVersion spec_version_;
 };
 
 }  // namespace hermes

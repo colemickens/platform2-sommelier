@@ -34,6 +34,7 @@ CommandApdu::CommandApdu(ApduClass cls,
                          bool is_extended_length,
                          uint16_t le)
     : is_extended_length_(is_extended_length),
+      has_more_fragments_(true),
       current_fragment_(0),
       le_(le),
       current_index_(0) {
@@ -73,7 +74,7 @@ void CommandApdu::AddData(const std::vector<uint8_t>& data) {
 
 size_t CommandApdu::GetNextFragment(uint8_t** fragment) {
   DCHECK(fragment);
-  if (current_index_ == data_.size()) {
+  if (!HasMoreFragments()) {
     return 0;
   }
 
@@ -93,6 +94,7 @@ size_t CommandApdu::GetNextFragment(uint8_t** fragment) {
   size_t bytes_left = data_.size() - current_index_;
   size_t current_size = std::min(bytes_left, max_data_size_);
   bool is_last_fragment = (bytes_left == current_size);
+  has_more_fragments_ = !is_last_fragment;
 
   // Set up APDU header in-place.
   // If Lc is 0, the generated APDU should be either case 1 or 2.
