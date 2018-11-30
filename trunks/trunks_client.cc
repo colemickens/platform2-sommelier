@@ -30,6 +30,7 @@
 #include <base/timer/elapsed_timer.h>
 #include <brillo/file_utils.h>
 #include <brillo/syslog_logging.h>
+#include <crypto/scoped_openssl_types.h>
 
 #include "trunks/error_codes.h"
 #include "trunks/hmac_session.h"
@@ -67,13 +68,13 @@ void PrintUsage() {
   puts("  --extend_pcr --index=<N> --value=<value> - Extends a PCR.");
   puts("  --tpm_version - Prints TPM versions and IDs similar to tpm_version.");
   puts("  --endorsement_public_key - Prints the public endorsement key.");
-  puts("  --key_create --rsa=<bits> --usage=sign|decrypt|all");
+  puts("  --key_create (--rsa=<bits>|--ecc) --usage=sign|decrypt|all");
   puts("               --key_blob=<file> [--print_time] [--sess_*]");
   puts("                    - Creates a key and saves the blob to file.");
   puts("  --key_load --key_blob=<file> [--print_time] [--sess_*]");
   puts("                    - Loads key from blob, returns handle.");
   puts("  --key_sign --handle=<H> --data=<in_file> --signature=<out_file>");
-  puts("             [--print_time] [--sess_*]");
+  puts("             [--ecc] [--print_time] [--sess_*]");
   puts("                    - Signs the hash of data using the loaded key.");
   puts("  --key_info --handle=<H> - Prints information about the loaded key.");
   puts("  --sess_* - group of options providing parameters for auth session:");
@@ -85,8 +86,14 @@ std::string HexEncode(const std::string& bytes) {
   return base::HexEncode(bytes.data(), bytes.size());
 }
 
-std::string HexEncode(const trunks::TPM2B_DIGEST* tpm2b) {
-  return base::HexEncode(tpm2b->buffer, tpm2b->size);
+std::string HexEncode(const trunks::TPM2B_DIGEST& tpm2b) {
+  return base::HexEncode(tpm2b.buffer, tpm2b.size);
+}
+std::string HexEncode(const trunks::TPM2B_ECC_PARAMETER& tpm2b) {
+  return base::HexEncode(tpm2b.buffer, tpm2b.size);
+}
+std::string HexEncode(const trunks::TPM2B_PUBLIC_KEY_RSA& tpm2b) {
+  return base::HexEncode(tpm2b.buffer, tpm2b.size);
 }
 
 int OutputToFile(const std::string& file_name, const std::string& data) {
@@ -325,7 +332,13 @@ int KeyInfo(bool print_time, const TrunksFactory& factory, uint32_t handle) {
   printf("  type: %#x\n", public_area.type);
   printf("  name_alg: %#x\n", public_area.name_alg);
   printf("  attributes: %#x\n", public_area.object_attributes);
-  printf("  auth_policy: %s\n", HexEncode(&public_area.auth_policy).c_str());
+  printf("  auth_policy: %s\n", HexEncode(public_area.auth_policy).c_str());
+  if (public_area.type == trunks::TPM_ALG_RSA) {
+    printf("  RSA modulus: %s\n", HexEncode(public_area.unique.rsa).c_str());
+  } else if (public_area.type == trunks::TPM_ALG_ECC) {
+    printf("  ECC X: %s\n", HexEncode(public_area.unique.ecc.x).c_str());
+    printf("  ECC Y: %s\n", HexEncode(public_area.unique.ecc.y).c_str());
+  }
 
   std::string key_name;
   if (CallTpmUtility(print_time, factory, "GetKeyName",
@@ -481,9 +494,9 @@ int main(int argc, char** argv) {
     return EndorsementPublicKey(factory);
   }
 
-  if (cl->HasSwitch("key_create") && cl->HasSwitch("rsa") &&
+  if (cl->HasSwitch("key_create") &&
+      (cl->HasSwitch("rsa") || cl->HasSwitch("ecc")) &&
       cl->HasSwitch("usage") && cl->HasSwitch("key_blob")) {
-    int modulus_bits = std::stoi(cl->GetSwitchValueASCII("rsa"), nullptr, 0);
     trunks::TpmUtility::AsymmetricKeyUsage key_usage;
     if (GetKeyUsage(cl->GetSwitchValueASCII("usage"), &key_usage)) {
       return -1;
@@ -495,14 +508,28 @@ int main(int argc, char** argv) {
       return -1;
     }
     std::string key_blob;
-    if (CallTpmUtility(print_time, factory, "CreateRSAKeyPair",
-                       &trunks::TpmUtility::CreateRSAKeyPair, key_usage,
-                       modulus_bits, 0x10001 /* exponent */, "" /* password */,
-                       "" /* policy_digest */,
-                       false /* use_only_policy_digest */,
-                       std::vector<uint32_t>() /* pcrs */, &delegate, &key_blob,
-                       nullptr /* creation_blob */)) {
-      return -1;
+
+    if (cl->HasSwitch("rsa")) {
+      int modulus_bits = std::stoi(cl->GetSwitchValueASCII("rsa"), nullptr, 0);
+      if (CallTpmUtility(print_time, factory, "CreateRSAKeyPair",
+                         &trunks::TpmUtility::CreateRSAKeyPair, key_usage,
+                         modulus_bits, 0x10001 /* exponent */,
+                         "" /* password */, "" /* policy_digest */,
+                         false /* use_only_policy_digest */,
+                         std::vector<uint32_t>() /* pcrs */, &delegate,
+                         &key_blob, nullptr /* creation_blob */)) {
+        return -1;
+      }
+    } else {
+      if (CallTpmUtility(print_time, factory, "CreateECCKeyPair",
+                         &trunks::TpmUtility::CreateECCKeyPair, key_usage,
+                         trunks::TPM_ECC_NIST_P256 /* curve_id */,
+                         "" /* password */, "" /* policy_digest */,
+                         false /* use_only_policy_digest */,
+                         std::vector<uint32_t>() /* pcrs */, &delegate,
+                         &key_blob, nullptr /* creation_blob */)) {
+        return -1;
+      }
     }
     return OutputToFile(cl->GetSwitchValueASCII("key_blob"), key_blob);
   }
@@ -539,12 +566,41 @@ int main(int argc, char** argv) {
     if (KeyStartSession(session_manager.get(), cl, &delegate)) {
       return -1;
     }
+    trunks::TPM_ALG_ID signature_algorithm =
+        cl->HasSwitch("ecc") ? trunks::TPM_ALG_ECDSA : trunks::TPM_ALG_RSASSA;
     std::string signature;
     if (CallTpmUtility(print_time, factory, "Sign", &trunks::TpmUtility::Sign,
-                       handle, trunks::TPM_ALG_RSASSA, trunks::TPM_ALG_SHA256,
+                       handle, signature_algorithm, trunks::TPM_ALG_SHA256,
                        data, true /* generate_hash */, &delegate, &signature)) {
       return -1;
     }
+
+    if (signature_algorithm == trunks::TPM_ALG_ECDSA) {
+      trunks::TPMT_SIGNATURE tpm_signature;
+      trunks::TPM_RC result =
+          trunks::Parse_TPMT_SIGNATURE(&signature, &tpm_signature, nullptr);
+      if (result != trunks::TPM_RC_SUCCESS) {
+        LOG(ERROR) << "Error when parse TPM signing result.";
+        return -1;
+      }
+
+      // Pack TPM structure to OpenSSL ECDSA_SIG structure.
+      crypto::ScopedECDSA_SIG openssl_ecdsa(ECDSA_SIG_new());
+      openssl_ecdsa.get()->r =
+          BN_bin2bn(tpm_signature.signature.ecdsa.signature_r.buffer,
+                    tpm_signature.signature.ecdsa.signature_r.size, nullptr);
+      openssl_ecdsa.get()->s =
+          BN_bin2bn(tpm_signature.signature.ecdsa.signature_s.buffer,
+                    tpm_signature.signature.ecdsa.signature_s.size, nullptr);
+
+      // Dump ECDSA_SIG to DER format
+      unsigned char* openssl_buffer = nullptr;
+      int length = i2d_ECDSA_SIG(openssl_ecdsa.get(), &openssl_buffer);
+      crypto::ScopedOpenSSLBytes scoped_buffer(openssl_buffer);
+
+      signature = std::string(reinterpret_cast<char*>(openssl_buffer), length);
+    }
+
     return OutputToFile(cl->GetSwitchValueASCII("signature"), signature);
   }
   if (cl->HasSwitch("key_info") && cl->HasSwitch("handle")) {
