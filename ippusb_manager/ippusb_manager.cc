@@ -85,8 +85,6 @@ void SpawnXD(const std::string& socket_path, UsbPrinterInfo* printer_info) {
   minijail_namespace_pids(jail.get());
   minijail_namespace_vfs(jail.get());
 
-  minijail_change_user(jail.get(), "ippusb");
-  minijail_change_group(jail.get(), "ippusb");
   minijail_log_seccomp_filter_failures(jail.get());
   minijail_parse_seccomp_filters(jail.get(),
                                  "/usr/share/policy/ippusbxd-seccomp.policy");
