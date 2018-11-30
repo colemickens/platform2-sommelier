@@ -62,6 +62,10 @@ class BRILLO_EXPORT Transport : public http::Transport {
 
   void SetLocalIpAddress(const std::string& ip_address) override;
 
+  void ResolveHostToIp(const std::string& host,
+                       uint16_t port,
+                       const std::string& ip_address) override;
+
   // Helper methods to convert CURL error codes (CURLcode and CURLMcode)
   // into brillo::Error object.
   static void AddEasyCurlError(brillo::ErrorPtr* error,
@@ -73,6 +77,9 @@ class BRILLO_EXPORT Transport : public http::Transport {
                                 const tracked_objects::Location& location,
                                 CURLMcode code,
                                 CurlInterface* curl_interface);
+
+ protected:
+  void ClearHost() override;
 
  private:
   // Forward-declaration of internal implementation structures.
@@ -131,6 +138,7 @@ class BRILLO_EXPORT Transport : public http::Transport {
   // The connection timeout for the requests made.
   base::TimeDelta connection_timeout_;
   std::string ip_address_;
+  curl_slist* host_list_{nullptr};
 
   base::WeakPtrFactory<Transport> weak_ptr_factory_for_timer_{this};
   base::WeakPtrFactory<Transport> weak_ptr_factory_{this};

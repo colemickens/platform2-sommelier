@@ -106,6 +106,13 @@ class Transport : public http::Transport {
 
   void SetLocalIpAddress(const std::string& ip_address) override {}
 
+  void ResolveHostToIp(const std::string& host,
+                       uint16_t port,
+                       const std::string& ip_address) override {}
+
+ protected:
+  void ClearHost() override {}
+
  private:
   // A list of user-supplied request handlers.
   std::map<std::string, HandlerCallback> handlers_;

@@ -333,6 +333,23 @@ TEST_F(HttpCurlTransportTest, RequestGetTimeout) {
   connection.reset();
 }
 
+TEST_F(HttpCurlTransportTest, RequestGetResolveHost) {
+  transport_->ResolveHostToIp("foo.bar", 80, "127.0.0.1");
+  EXPECT_CALL(*curl_api_,
+              EasySetOptStr(handle_, CURLOPT_URL, "http://foo.bar/get"))
+      .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_, EasySetOptPtr(handle_, CURLOPT_RESOLVE, _))
+      .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_HTTPGET, 1))
+      .WillOnce(Return(CURLE_OK));
+  auto connection = transport_->CreateConnection(
+      "http://foo.bar/get", request_type::kGet, {}, "", "", nullptr);
+  EXPECT_NE(nullptr, connection.get());
+
+  EXPECT_CALL(*curl_api_, EasyCleanup(handle_)).Times(1);
+  connection.reset();
+}
+
 }  // namespace curl
 }  // namespace http
 }  // namespace brillo

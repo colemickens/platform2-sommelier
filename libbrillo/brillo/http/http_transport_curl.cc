@@ -9,6 +9,7 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
+#include <base/strings/stringprintf.h>
 #include <brillo/http/http_connection_curl.h>
 #include <brillo/http/http_request.h>
 #include <brillo/strings/string_utils.h>
@@ -110,6 +111,7 @@ Transport::Transport(const std::shared_ptr<CurlInterface>& curl_interface,
 }
 
 Transport::~Transport() {
+  ClearHost();
   ShutDownAsyncCurl();
   VLOG(2) << "curl::Transport destroyed";
 }
@@ -168,6 +170,10 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
   if (code == CURLE_OK && !ip_address_.empty()) {
     code = curl_interface_->EasySetOptStr(
         curl_handle, CURLOPT_INTERFACE, ip_address_.c_str());
+  }
+  if (code == CURLE_OK && host_list_) {
+    code = curl_interface_->EasySetOptPtr(curl_handle, CURLOPT_RESOLVE,
+                                          host_list_);
   }
 
   // Setup HTTP request method and optional request body.
@@ -272,6 +278,20 @@ void Transport::SetDefaultTimeout(base::TimeDelta timeout) {
 
 void Transport::SetLocalIpAddress(const std::string& ip_address) {
   ip_address_ = "host!" + ip_address;
+}
+
+void Transport::ResolveHostToIp(const std::string& host,
+                                uint16_t port,
+                                const std::string& ip_address) {
+  host_list_ = curl_slist_append(
+      host_list_,
+      base::StringPrintf("%s:%d:%s", host.c_str(), port, ip_address.c_str())
+          .c_str());
+}
+
+void Transport::ClearHost() {
+  curl_slist_free_all(host_list_);
+  host_list_ = nullptr;
 }
 
 void Transport::AddEasyCurlError(brillo::ErrorPtr* error,

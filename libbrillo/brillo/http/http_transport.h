@@ -87,6 +87,14 @@ class BRILLO_EXPORT Transport : public std::enable_shared_from_this<Transport> {
   // Set the local IP address of requests
   virtual void SetLocalIpAddress(const std::string& ip_address) = 0;
 
+  // Appends host entry to DNS cache. curl can only do HTTPS request to a custom
+  // IP if it resolves an HTTPS hostname to that IP. This is useful in
+  // forcing a particular mapping for an HTTPS host. See CURLOPT_RESOLVE for
+  // more details.
+  virtual void ResolveHostToIp(const std::string& host,
+                               uint16_t port,
+                               const std::string& ip_address) {}
+
   // Creates a default http::Transport (currently, using http::curl::Transport).
   static std::shared_ptr<Transport> CreateDefault();
 
@@ -96,6 +104,10 @@ class BRILLO_EXPORT Transport : public std::enable_shared_from_this<Transport> {
   // string kDirectProxy (i.e. direct://) to indicate no proxy.
   static std::shared_ptr<Transport> CreateDefaultWithProxy(
       const std::string& proxy);
+
+ protected:
+  // Clears the forced DNS mappings created by ResolveHostToIp.
+  virtual void ClearHost() {}
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Transport);
