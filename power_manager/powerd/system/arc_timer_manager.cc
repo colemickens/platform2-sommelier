@@ -77,8 +77,8 @@ ArcTimerManager::ArcTimerManager()
 ArcTimerManager::~ArcTimerManager() = default;
 
 struct ArcTimerManager::ArcTimerInfo {
-  ArcTimerInfo() = default;
-  ArcTimerInfo(ArcTimerInfo&&) = default;
+  ArcTimerInfo() = delete;
+  ArcTimerInfo(ArcTimerInfo&&) = delete;
   ArcTimerInfo(clockid_t clock_id,
                base::ScopedFD expiration_fd,
                std::unique_ptr<timers::SimpleAlarmTimer> timer)
