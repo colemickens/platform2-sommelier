@@ -446,9 +446,13 @@ void Newblue::UpdateEir(Device* device, const std::vector<uint8_t>& eir) {
   }
 
   // This is different from BlueZ where it memorizes all service UUIDs and
-  // service data ever received for the same device.
-  device->service_uuids.SetValue(std::move(service_uuids));
-  device->service_data.SetValue(std::move(service_data));
+  // service data ever received for the same device. If there is no service
+  // UUIDs/service data being presented, service UUIDs/servicedata will not
+  // be updated.
+  if (!service_uuids.empty())
+    device->service_uuids.SetValue(std::move(service_uuids));
+  if (!service_data.empty())
+    device->service_data.SetValue(std::move(service_data));
 }
 
 UniqueId Newblue::RegisterAsPairObserver(PairStateChangedCallback callback) {

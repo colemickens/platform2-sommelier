@@ -33,7 +33,7 @@ enum class UuidFormat {
 };
 
 // A wrapper around a Bluetooth universally unique identifier (UUID). UUIDs are
-// adopted to identify pre-defined profiles, pre-definded attributes and
+// adopted to identify pre-defined profiles, pre-defined attributes and
 // user-specified services.
 class Uuid {
  public:
