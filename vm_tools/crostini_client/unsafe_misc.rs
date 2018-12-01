@@ -27,7 +27,10 @@ pub fn get_free_disk_space<P: AsRef<Path>>(path: P) -> Result<u64, i32> {
         // pointer for returned data. The return value is also checked for errors.
         unsafe {
             if statvfs64(path_cstr.as_ptr(), &mut stats) == 0 {
-                return Ok(stats.f_bavail.saturating_mul(stats.f_frsize));
+                // This clippy override is needed because the type of `stats.f_frsize` is sometimes
+                // `u64` depending on the target architecture.
+                #[cfg_attr(feature = "cargo-clippy", allow(identity_conversion))]
+                return Ok(stats.f_bavail.saturating_mul(u64::from(stats.f_frsize)));
             }
             errno = *__errno_location();
         }
