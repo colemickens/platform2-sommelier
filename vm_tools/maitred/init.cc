@@ -1142,7 +1142,22 @@ void Init::Worker::Shutdown(int notify_fd) {
   watcher_.StopWatchingFileDescriptor();
   signal_fd_.reset();
 
-  // First send SIGTERM to all processes.
+  // First send SIGPWR to lxd, if it is running.  This will cause lxd to shut
+  // down all running containers in parallel.
+  pid_t lxd_pid = 0;
+  for (const auto& pair : children_) {
+    const ChildInfo& info = pair.second;
+    if (info.argv[0] == "lxd") {
+      lxd_pid = pair.first;
+      break;
+    }
+  }
+
+  if (lxd_pid != 0 && kill(lxd_pid, SIGPWR) == 0) {
+    WaitForChildren({lxd_pid}, base::Time::Now() + kShutdownTimeout);
+  }
+
+  // Now send SIGTERM to all remaining processes.
   std::set<pid_t> pids;
   BroadcastSignal(SIGTERM, &pids);
 
