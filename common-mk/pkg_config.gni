@@ -39,3 +39,82 @@ template("pkg_config") {
     }
   }
 }
+
+# Generates a .pc file with given parameters.
+# All parameters are optional. If missing, empty value is used unless there is
+# explicit documentation.
+#
+# Parameters:
+#   deps: Dependency of the generated action.
+#   name: The name of library set in .pc file. If missing
+#       |target_name| is used.
+#   output_name: The stem (file name excluding the .pc extension)
+#       of the generated .pc file. If missing, |name| is used.
+#   descritption: Description to be embedded.
+#   version: Version to be embedded.
+#   requires: Package name list to be embedded into "Requires:".
+#   requires_private: Similar to requires, but into "Requires.private:".
+#   libs: Library name list to be embedded into "Libs:".
+#       This shouldn't be prefixed "lib" nor suffixed ".a"/".so".
+#       E.g. [ "pthread" ] to link against libpthread.so.
+#   libs_private: Similar to libs, butinto "Libs.private:".
+#   cflags: Compile flag list to be embedded into "Cflags:".
+template("generate_pkg_config") {
+  action(target_name) {
+    forward_variables_from(invoker,
+                           [
+                             "deps",
+                             "testonly",
+                             "name",
+                             "output_name",
+                             "description",
+                             "version",
+                             "requires",
+                             "requires_private",
+                             "libs",
+                             "libs_private",
+                             "cflags",
+                           ])
+    if (!defined(name)) {
+      name = target_name
+    }
+    if (!defined(output_name)) {
+      output_name = name
+    }
+    outputs = [ "${target_out_dir}/${output_name}.pc" ]
+
+    script = "//common-mk/generate-pc.py"
+    args = [ "--output" ] + outputs + [ "--name=" + name ]
+    if (defined(description)) {
+      args += [ "--description=" + description ]
+    }
+    if (defined(version)) {
+      args += [ "--version=" + version ]
+    }
+    if (defined(requires)) {
+      foreach(pkg, requires) {
+        args += [ "--requires=" + pkg ]
+      }
+    }
+    if (defined(requires_private)) {
+      foreach(pkg, requires_private) {
+        args += [ "--requires-private=" + pkg ]
+      }
+    }
+    if (defined(libs)) {
+      foreach(lib, libs) {
+        args += [ "--libs=" + lib ]
+      }
+    }
+    if (defined(libs_private)) {
+      foreach(lib, libs_private) {
+        args += [ "--libs-private=" + lib ]
+      }
+    }
+    if (defined(cflags)) {
+      foreach(cflag, cflags) {
+        args += [ "--cflags=" + cflag ]
+      }
+    }
+  }
+}
