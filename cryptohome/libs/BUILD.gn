@@ -89,7 +89,7 @@ pkg_config("cryptohome-dbus-client_dependent_config") {
   ]
 }
 
-# D-Bus glib bindings.
+# D-Bus bindings.
 generate_dbus_glib("cryptohome-dbus-client") {
   dbus_glib_out_dir = "include/bindings"
   dbus_glib_prefix = "cryptohome"
@@ -119,23 +119,11 @@ generate_dbus_glib("cryptohome-dbus-server") {
   all_dependent_configs = [ ":cryptohome-dbus-server_dependent_config" ]
 }
 
-pkg_config("cryptohome-key-delegate-dbus-client_dependent_config") {
-  pkg_deps = [
-    "dbus-glib-1",
-    "glib-2.0",
-  ]
-}
-
-generate_dbus_glib("cryptohome-key-delegate-dbus-client") {
-  dbus_glib_out_dir = "include/bindings"
-  dbus_glib_prefix = "cryptohome"
-  dbus_glib_header_stem = "cryptohome_key_delegate"
-  dbus_glib_type = "client"
+generate_dbus_proxies("cryptohome-key-delegate-proxies") {
+  proxy_output_file = "include/cryptohome_key_delegate/dbus-proxies.h"
   sources = [
     "../dbus_bindings/org.chromium.CryptohomeKeyDelegateInterface.xml",
   ]
-  all_dependent_configs =
-      [ ":cryptohome-key-delegate-dbus-client_dependent_config" ]
 }
 
 pkg_config("libcrosplatform_dependent_config") {
@@ -270,6 +258,7 @@ static_library("libcryptohome") {
     "../dircrypto_data_migrator/migration_helper.cc",
     "../homedirs.cc",
     "../interface.cc",
+    "../key_challenge_service_impl.cc",
     "../le_credential_manager.cc",
     "../lockbox-cache.cc",
     "../mount.cc",
@@ -299,6 +288,7 @@ static_library("libcryptohome") {
 
   deps = [
     ":cryptohome-dbus-server",
+    ":cryptohome-key-delegate-proxies",
     ":cryptohome-proto",
     ":libcrosplatform",
     ":libcrostpm",
