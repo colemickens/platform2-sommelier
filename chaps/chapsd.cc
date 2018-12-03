@@ -118,7 +118,19 @@ class Daemon : public brillo::DBusServiceDaemon {
     // threads can be certain that all the other members of this class will
     // be available when the thread is still running.
     async_init_thread_.Stop();
+
+    // adaptor_ contains a pointer to service_
+    adaptor_.reset();
+
+    // service_ contains a pointer to slot_manager_
+    service_.reset();
+
+    // Destructor of slot_manager_ will use tpm_
+    slot_manager_.reset();
+
 #if USE_TPM2
+    // tpm_ will need tpm_background_thread_ to function
+    tpm_.reset();
     tpm_background_thread_.Stop();
 #endif
   }
