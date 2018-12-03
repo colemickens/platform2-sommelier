@@ -4,48 +4,26 @@
 
 #include "diagnostics/diagnosticsd/mojo_utils.h"
 
-#include <unistd.h>
 #include <cstring>
 #include <utility>
 
+#include <base/files/platform_file.h>
 #include <base/memory/shared_memory_handle.h>
-#include <base/posix/eintr_wrapper.h>
-#include <mojo/edk/embedder/embedder.h>
-#include <mojo/edk/embedder/scoped_platform_handle.h>
 #include <mojo/public/c/system/types.h>
+#include <mojo/public/cpp/system/platform_handle.h>
 
 namespace diagnostics {
 
-namespace {
-
-mojo::ScopedHandle WrapPlatformHandle(const base::SharedMemoryHandle& handle) {
-  MojoHandle wrapped_handle;
-  mojo::edk::PlatformHandle platform_handle(HANDLE_EINTR(dup(handle.fd)));
-  MojoResult wrap_result = mojo::edk::CreatePlatformHandleWrapper(
-      mojo::edk::ScopedPlatformHandle(platform_handle), &wrapped_handle);
-  if (wrap_result != MOJO_RESULT_OK) {
-    return mojo::ScopedHandle();
-  }
-  return mojo::ScopedHandle(mojo::Handle(wrapped_handle));
-}
-
-}  // namespace
-
 std::unique_ptr<base::SharedMemory> GetReadOnlySharedMemoryFromMojoHandle(
     mojo::ScopedHandle handle, int64_t size) {
-  mojo::edk::ScopedPlatformHandle platform_handle;
-  auto result = mojo::edk::PassWrappedPlatformHandle(handle.release().value(),
-                                                     &platform_handle);
+  base::PlatformFile platform_file;
+  auto result = mojo::UnwrapPlatformFile(std::move(handle), &platform_file);
   if (result != MOJO_RESULT_OK) {
     return nullptr;
   }
-
-  base::SharedMemoryHandle shared_memory_handle(
-      platform_handle.release().handle, true /* iauto_close */);
-
-  std::unique_ptr<base::SharedMemory> shared_memory =
-      std::make_unique<base::SharedMemory>(std::move(shared_memory_handle),
-                                           true /* read_only */);
+  auto shared_memory = std::make_unique<base::SharedMemory>(
+      base::SharedMemoryHandle(platform_file, true /* iauto_close */),
+      true /* read_only */);
   if (!shared_memory->Map(size)) {
     return nullptr;
   }
@@ -63,7 +41,7 @@ mojo::ScopedHandle CreateReadOnlySharedMemoryMojoHandle(
     return mojo::ScopedHandle();
   }
   memcpy(shared_memory.memory(), content.data(), content.length());
-  return WrapPlatformHandle(shared_memory.handle());
+  return mojo::WrapPlatformFile(shared_memory.TakeHandle().fd);
 }
 
 }  // namespace diagnostics
