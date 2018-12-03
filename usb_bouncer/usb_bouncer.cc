@@ -34,6 +34,9 @@ void DropPrivileges() {
   minijail_change_group(j.get(), usb_bouncer::kUsbBouncerGroup);
   minijail_inherit_usergroups(j.get());
   minijail_no_new_privs(j.get());
+  minijail_use_seccomp_filter(j.get());
+  minijail_parse_seccomp_filters(
+      j.get(), "/usr/share/policy/usb_bouncer-seccomp.policy");
 
   minijail_namespace_ipc(j.get());
   minijail_namespace_net(j.get());
