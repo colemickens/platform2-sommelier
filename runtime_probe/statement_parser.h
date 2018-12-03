@@ -10,6 +10,7 @@
 #include <base/values.h>
 
 namespace runtime_probe {
+
 // Parse |config_file_path|, the path of file containing probe statement in JSON
 std::unique_ptr<base::DictionaryValue> ParseProbeConfig(
     const std::string& config_file_path);

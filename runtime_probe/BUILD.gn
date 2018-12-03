@@ -9,6 +9,11 @@ group("all") {
     ":runtime_probe",
     ":libruntime_probe",
   ]
+  if (use.test) {
+    deps += [
+      ":unittest_runner"
+    ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -41,4 +46,24 @@ executable("runtime_probe") {
   deps = [
     ":libruntime_probe",
   ]
+}
+
+if (use.test) {
+  executable("unittest_runner") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    sources = [
+      "statement_parser_test.cc",
+    ]
+    deps = [
+      ":libruntime_probe",
+      "//common-mk/testrunner",
+    ]
+    data = [
+      "testdata/probe_statement.json",
+      "testdata/test.txt",
+    ]
+  }
 }
