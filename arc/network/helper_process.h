@@ -13,8 +13,6 @@
 #include <base/macros.h>
 #include <google/protobuf/message_lite.h>
 
-#include "arc/network/options.h"
-
 namespace arc_networkd {
 
 // Tracks a helper subprocess.  Handles forking, cleaning up on termination,
@@ -31,7 +29,7 @@ class HelperProcess {
   void Start(int argc, char* argv[], const std::string& fd_arg);
 
   // Serializes a protobuf and sends it to the helper process.
-  void SendMessage(const google::protobuf::MessageLite& proto);
+  void SendMessage(const google::protobuf::MessageLite& proto) const;
 
   const pid_t pid() { return pid_; }
 

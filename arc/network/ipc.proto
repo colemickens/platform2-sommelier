@@ -11,6 +11,14 @@ package arc_networkd;
 // are always in sync, these messages use required fields to save on
 // validation.
 
+message DeviceConfig {
+  required string br_ifname = 1;
+  required string br_ipv4 = 2;
+  required string arc_ifname = 3;
+  required string arc_ipv4 = 4;
+  required string mac_addr = 5;
+}
+
 message SetArcIp {
   required bytes prefix = 1;
   required int32 prefix_len = 2;
@@ -19,10 +27,13 @@ message SetArcIp {
 }
 
 message IpHelperMessage {
+  required string dev_ifname = 1;
   oneof message_type {
-    SetArcIp set_arc_ip = 1;    // argument: IPv6 parameters
-    bool clear_arc_ip = 2;      // argument is ignored
-    string enable_inbound = 3;  // argument: lan_ifname
-    bool disable_inbound = 4;   // argument is ignored
+    DeviceConfig dev_config = 2;
+    SetArcIp set_arc_ip = 3;           // IPv6 parameters
+    bool clear_arc_ip = 4;             // value is ignored
+    string enable_inbound_ifname = 5;  // value is LAN ifname
+    bool disable_inbound = 6;          // value is ignored
+    bool teardown = 7;                 // value is ignored
   }
 }

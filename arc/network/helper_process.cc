@@ -46,7 +46,8 @@ void HelperProcess::Start(int argc, char* argv[], const std::string& fd_arg) {
   pid_ = p.Pid();
 }
 
-void HelperProcess::SendMessage(const google::protobuf::MessageLite& proto) {
+void HelperProcess::SendMessage(
+    const google::protobuf::MessageLite& proto) const {
   std::string str;
   if (!proto.SerializeToString(&str)) {
     LOG(FATAL) << "error serializing protobuf";
