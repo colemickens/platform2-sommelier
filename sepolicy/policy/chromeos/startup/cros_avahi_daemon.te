@@ -2,7 +2,9 @@ type cros_avahi_daemon, chromeos_domain, domain, mlstrustedobject;
 
 permissive cros_avahi_daemon;
 
-domain_auto_trans(cros_init_scripts, cros_avahi_daemon_exec, cros_avahi_daemon);
+# TODO(fqj,vapier)
+# keep both cros_init_scripts and minijail as scontext until minijail changes are stable.
+domain_auto_trans({ cros_init_scripts minijail }, cros_avahi_daemon_exec, cros_avahi_daemon);
 
 log_writer(cros_avahi_daemon);
 
