@@ -54,6 +54,6 @@ interface DiagnosticsdClient {
   // The response will contain the JSON message returned by the
   // diagnostics_processor daemon. The response handle will be unset if the
   // request wasn't delivered to the extension or the extension made no reply.
-  SendDiagnosticsProcessorMessageToUi@0(handle<shared_buffer> json_message)
-      => (handle<shared_buffer>? response_json_message);
+  SendDiagnosticsProcessorMessageToUi@0(handle json_message)
+      => (handle? response_json_message);
 };

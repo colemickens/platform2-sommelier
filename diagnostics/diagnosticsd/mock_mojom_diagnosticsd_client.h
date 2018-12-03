@@ -16,7 +16,7 @@ class MockMojomDiagnosticsdClient
     : public chromeos::diagnosticsd::mojom::DiagnosticsdClient {
  public:
   void SendDiagnosticsProcessorMessageToUi(
-      mojo::ScopedSharedBufferHandle json_message,
+      mojo::ScopedHandle json_message,
       const SendDiagnosticsProcessorMessageToUiCallback& callback) override {
     // Redirect to a separate mockable method to workaround GMock's issues with
     // move-only parameters.
@@ -25,7 +25,7 @@ class MockMojomDiagnosticsdClient
 
   MOCK_METHOD2(
       SendDiagnosticsProcessorMessageToUiImpl,
-      void(mojo::ScopedSharedBufferHandle* json_message,
+      void(mojo::ScopedHandle* json_message,
            const SendDiagnosticsProcessorMessageToUiCallback& callback));
 };
 
