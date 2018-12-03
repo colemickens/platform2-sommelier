@@ -6,6 +6,7 @@
 #define ARC_NETWORK_SHILL_CLIENT_H_
 
 #include <memory>
+#include <set>
 #include <string>
 
 #include <base/macros.h>
@@ -23,6 +24,14 @@ class ShillClient {
 
   void RegisterDefaultInterfaceChangedHandler(
       const base::Callback<void(const std::string&)>& callback);
+  void UnregisterDefaultInterfaceChangedHandler();
+
+  void RegisterDevicesChangedHandler(
+      const base::Callback<void(const std::set<std::string>&)>& callback);
+  void UnregisterDevicesChangedHandler();
+
+  void ScanDevices(
+      const base::Callback<void(const std::set<std::string>&)>& callback);
 
  protected:
   void OnManagerPropertyChangeRegistration(const std::string& interface,
@@ -35,6 +44,7 @@ class ShillClient {
 
   std::string default_interface_;
   base::Callback<void(const std::string&)> default_interface_callback_;
+  base::Callback<void(const std::set<std::string>&)> devices_callback_;
 
   scoped_refptr<dbus::Bus> bus_;
   std::unique_ptr<org::chromium::flimflam::ManagerProxy> manager_proxy_;

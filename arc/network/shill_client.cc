@@ -4,11 +4,28 @@
 
 #include "arc/network/shill_client.h"
 
+#include <vector>
+
 #include <base/bind.h>
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
 
 namespace arc_networkd {
+
+namespace {
+
+std::set<std::string> GetDevices(const brillo::Any& property_value) {
+  std::set<std::string> devices;
+  for (const auto& path :
+       property_value.TryGet<std::vector<dbus::ObjectPath>>()) {
+    std::string device = path.value();
+    // Strip "/device/" prefix.
+    devices.emplace(device.substr(device.find_last_of('/') + 1));
+  }
+  return devices;
+}
+
+}  // namespace
 
 ShillClient::ShillClient(scoped_refptr<dbus::Bus> bus) : bus_(bus) {
   manager_proxy_.reset(new org::chromium::flimflam::ManagerProxy(bus_));
@@ -17,6 +34,21 @@ ShillClient::ShillClient(scoped_refptr<dbus::Bus> bus) : bus_(bus) {
                  weak_factory_.GetWeakPtr()),
       base::Bind(&ShillClient::OnManagerPropertyChangeRegistration,
                  weak_factory_.GetWeakPtr()));
+}
+
+void ShillClient::ScanDevices(
+    const base::Callback<void(const std::set<std::string>&)>& callback) {
+  brillo::VariantDictionary props;
+  if (!manager_proxy_->GetProperties(&props, nullptr)) {
+    LOG(ERROR) << "Unable to get manager properties";
+    return;
+  }
+  const auto it = props.find(shill::kDevicesProperty);
+  if (it == props.end()) {
+    LOG(WARNING) << "Manager properties is missing devices";
+    return;
+  }
+  callback.Run(GetDevices(it->second));
 }
 
 bool ShillClient::GetDefaultInterface(std::string* name) {
@@ -104,6 +136,12 @@ void ShillClient::OnManagerPropertyChangeRegistration(
 
 void ShillClient::OnManagerPropertyChange(const std::string& property_name,
                                           const brillo::Any& property_value) {
+  if (property_name == shill::kDevicesProperty &&
+      !devices_callback_.is_null()) {
+    devices_callback_.Run(GetDevices(property_value));
+    return;
+  }
+
   if (property_name != shill::kDefaultServiceProperty &&
       property_name != shill::kConnectionStateProperty)
     return;
@@ -125,6 +163,19 @@ void ShillClient::RegisterDefaultInterfaceChangedHandler(
   if (!GetDefaultInterface(&default_interface_))
     default_interface_.clear();
   default_interface_callback_.Run(default_interface_);
+}
+
+void ShillClient::UnregisterDefaultInterfaceChangedHandler() {
+  default_interface_callback_.Reset();
+}
+
+void ShillClient::RegisterDevicesChangedHandler(
+    const base::Callback<void(const std::set<std::string>&)>& callback) {
+  devices_callback_ = callback;
+}
+
+void ShillClient::UnregisterDevicesChangedHandler() {
+  devices_callback_.Reset();
 }
 
 }  // namespace arc_networkd
