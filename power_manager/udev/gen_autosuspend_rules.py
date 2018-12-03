@@ -89,6 +89,8 @@ USB_IDS += [
   "0489:e056",
   # Hon-hai (Kahlee)
   "0489:e09f",
+  # QCA6174A (delan)
+  "0489:e0a2",
   # LiteOn (parrot)
   "04ca:3006",
   # LiteOn (aleena)
