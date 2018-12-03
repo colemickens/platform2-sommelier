@@ -232,6 +232,7 @@ struct sl_host_buffer {
   uint32_t height;
   struct sl_mmap* shm_mmap;
   uint32_t shm_format;
+  struct sl_sync_point* sync_point;
 };
 
 struct sl_subcompositor {
@@ -382,6 +383,14 @@ struct sl_mmap {
   struct wl_resource* buffer_resource;
 };
 
+typedef void (*sl_sync_func_t)(struct sl_context *ctx,
+                               struct sl_sync_point* sync_point);
+
+struct sl_sync_point {
+  int fd;
+  sl_sync_func_t sync;
+};
+
 struct sl_config {
   uint32_t serial;
   uint32_t mask;
@@ -485,6 +494,9 @@ struct sl_mmap* sl_mmap_create(int fd,
                                size_t y_ss1);
 struct sl_mmap* sl_mmap_ref(struct sl_mmap* map);
 void sl_mmap_unref(struct sl_mmap* map);
+
+struct sl_sync_point* sl_sync_point_create(int fd);
+void sl_sync_point_destroy(struct sl_sync_point* sync_point);
 
 void sl_host_seat_added(struct sl_host_seat* host);
 void sl_host_seat_removed(struct sl_host_seat* host);

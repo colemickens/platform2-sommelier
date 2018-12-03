@@ -226,6 +226,22 @@ void sl_mmap_unref(struct sl_mmap* map) {
   }
 }
 
+struct sl_sync_point* sl_sync_point_create(int fd) {
+  struct sl_sync_point* sync_point;
+
+  sync_point = malloc(sizeof(*sync_point));
+  sync_point->fd = fd;
+  sync_point->sync = NULL;
+
+  return sync_point;
+}
+
+void sl_sync_point_destroy(struct sl_sync_point* sync_point)
+{
+  close(sync_point->fd);
+  free(sync_point);
+}
+
 static void sl_internal_xdg_shell_ping(void* data,
                                        struct zxdg_shell_v6* xdg_shell,
                                        uint32_t serial) {
@@ -789,6 +805,9 @@ static void sl_destroy_host_buffer(struct wl_resource* resource) {
     host->shm_mmap->buffer_resource = NULL;
     sl_mmap_unref(host->shm_mmap);
   }
+  if (host->sync_point) {
+    sl_sync_point_destroy(host->sync_point);
+  }
   wl_resource_set_user_data(resource, NULL);
   free(host);
 }
@@ -818,6 +837,7 @@ struct sl_host_buffer* sl_create_host_buffer(struct wl_client* client,
     wl_buffer_add_listener(host_buffer->proxy, &sl_buffer_listener,
                            host_buffer);
   }
+  host_buffer->sync_point = NULL;
 
   return host_buffer;
 }

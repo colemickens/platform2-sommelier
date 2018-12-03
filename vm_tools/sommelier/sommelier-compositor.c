@@ -337,6 +337,11 @@ static void sl_host_surface_attach(struct wl_client* client,
   x /= scale;
   y /= scale;
 
+  // TODO(davidriley): This should be done in the commit.
+  if (host_buffer->sync_point) {
+    host_buffer->sync_point->sync(host->ctx, host_buffer->sync_point);
+  }
+
   if (host->current_buffer) {
     assert(host->current_buffer->internal);
     wl_surface_attach(host->proxy, host->current_buffer->internal, x, y);

@@ -55,6 +55,37 @@ static void sl_drm_create_planar_buffer(struct wl_client* client,
   assert(0);
 }
 
+static void sl_drm_sync(struct sl_context *ctx,
+                        struct sl_sync_point* sync_point)
+{
+  int drm_fd = gbm_device_get_fd(ctx->gbm);
+  struct drm_prime_handle prime_handle;
+  int ret;
+
+  // First imports the prime fd to a gem handle. This will fail if this
+  // function was not passed a prime handle that can be imported by the drm
+  // device given to sommelier.
+  memset(&prime_handle, 0, sizeof(prime_handle));
+  prime_handle.fd = sync_point->fd;
+  ret = drmIoctl(drm_fd, DRM_IOCTL_PRIME_FD_TO_HANDLE, &prime_handle);
+  if (!ret) {
+    struct drm_virtgpu_3d_wait wait_arg;
+    struct drm_gem_close gem_close;
+
+    // Then attempts to wait for GPU operations to complete. This will fail
+    // silently if the drm device passed to sommelier is not a virtio-gpu
+    // device.
+    memset(&wait_arg, 0, sizeof(wait_arg));
+    wait_arg.handle = prime_handle.handle;
+    drmIoctl(drm_fd, DRM_IOCTL_VIRTGPU_WAIT, &wait_arg);
+
+    // Always close the handle we imported.
+    memset(&gem_close, 0, sizeof(gem_close));
+    gem_close.handle = prime_handle.handle;
+    drmIoctl(drm_fd, DRM_IOCTL_GEM_CLOSE, &gem_close);
+  }
+}
+
 static void sl_drm_create_prime_buffer(struct wl_client* client,
                                        struct wl_resource* resource,
                                        uint32_t id,
@@ -80,6 +111,7 @@ static void sl_drm_create_prime_buffer(struct wl_client* client,
   // Attempts to correct stride0 with virtio-gpu specific resource information,
   // if available.  Ideally mesa/gbm should have the correct stride. Remove
   // after crbug.com/892242 is resolved in mesa.
+  int is_gpu_buffer = 0;
   if (host->ctx->gbm) {
     int drm_fd = gbm_device_get_fd(host->ctx->gbm);
     struct drm_prime_handle prime_handle;
@@ -101,8 +133,10 @@ static void sl_drm_create_prime_buffer(struct wl_client* client,
       info_arg.bo_handle = prime_handle.handle;
       ret = drmIoctl(drm_fd, DRM_IOCTL_VIRTGPU_RESOURCE_INFO, &info_arg);
       // Correct stride0 if we are able to get proper resource info.
-      if (!ret)
+      if (!ret) {
         stride0 = info_arg.stride;
+        is_gpu_buffer = 1;
+      }
 
       // Always close the handle we imported.
       memset(&gem_close, 0, sizeof(gem_close));
@@ -115,12 +149,20 @@ static void sl_drm_create_prime_buffer(struct wl_client* client,
       zwp_linux_dmabuf_v1_create_params(host->ctx->linux_dmabuf->internal);
   zwp_linux_buffer_params_v1_add(buffer_params, name, 0, offset0, stride0, 0,
                                  0);
-  sl_create_host_buffer(client, id,
-                        zwp_linux_buffer_params_v1_create_immed(
-                            buffer_params, width, height, format, 0),
-                        width, height);
+
+  struct sl_host_buffer* host_buffer =
+    sl_create_host_buffer(client, id,
+                          zwp_linux_buffer_params_v1_create_immed(
+                              buffer_params, width, height, format, 0),
+                          width, height);
+  if (is_gpu_buffer) {
+    host_buffer->sync_point = sl_sync_point_create(name);
+    host_buffer->sync_point->sync = sl_drm_sync;
+  } else {
+    close(name);
+  }
+
   zwp_linux_buffer_params_v1_destroy(buffer_params);
-  close(name);
 }
 
 static const struct wl_drm_interface sl_drm_implementation = {
