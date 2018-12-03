@@ -86,25 +86,55 @@ DlcServiceDBusAdaptor::DlcServiceDBusAdaptor(
         update_engine_proxy,
     std::unique_ptr<BootSlot> boot_slot,
     const base::FilePath& manifest_dir,
-    const base::FilePath& content_dir)
+    const base::FilePath& content_dir,
+    ShutdownDelegate* shutdown_delegate)
     : org::chromium::DlcServiceInterfaceAdaptor(this),
       image_loader_proxy_(std::move(image_loader_proxy)),
       update_engine_proxy_(std::move(update_engine_proxy)),
       boot_slot_(std::move(boot_slot)),
       manifest_dir_(manifest_dir),
-      content_dir_(content_dir) {
-  // TODO(xiaochu): Allows dlcservice being activated on-demand.
-  // https://crbug.com/898255
-  LoadDlcModuleImages();
-}
+      content_dir_(content_dir),
+      shutdown_delegate_(shutdown_delegate) {}
 
 DlcServiceDBusAdaptor::~DlcServiceDBusAdaptor() {}
+
+void DlcServiceDBusAdaptor::LoadDlcModuleImages() {
+  // Initialize supported DLC module id list.
+  std::vector<std::string> dlc_module_ids = ScanDlcModules();
+
+  std::string boot_disk_name;
+  int num_slots = -1;
+  int current_slot = -1;
+  if (!boot_slot_->GetCurrentSlot(&boot_disk_name, &num_slots, &current_slot)) {
+    LOG(ERROR) << "Can not get current boot slot.";
+    return;
+  }
+  // Load all installed DLC modules.
+  for (const auto& dlc_module_id : dlc_module_ids) {
+    auto dlc_module_content_path =
+        utils::GetDlcModulePath(content_dir_, dlc_module_id);
+    if (!base::PathExists(dlc_module_content_path))
+      continue;
+    // Mount the installed DLC image.
+    std::string path;
+    image_loader_proxy_->LoadDlcImage(
+        dlc_module_id,
+        current_slot == 0 ? imageloader::kSlotNameA : imageloader::kSlotNameB,
+        &path, nullptr);
+    if (path.empty()) {
+      LOG(ERROR) << "DLC image " << dlc_module_id << " is corrupted.";
+    } else {
+      LOG(INFO) << "DLC image " << dlc_module_id << " is mounted at " << path;
+    }
+  }
+}
 
 bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
                                     const std::string& id_in,
                                     std::string* dlc_root_out) {
   // TODO(xiaochu): change API to accept a list of DLC module ids.
   // https://crbug.com/905075
+  ScopedShutdown scoped_shutdown(shutdown_delegate_);
 
   // Initialize supported DLC module id list.
   std::vector<std::string> dlc_module_ids = ScanDlcModules();
@@ -213,6 +243,8 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
 
 bool DlcServiceDBusAdaptor::Uninstall(brillo::ErrorPtr* err,
                                       const std::string& id_in) {
+  ScopedShutdown scoped_shutdown(shutdown_delegate_);
+
   // Initialize supported DLC module id list.
   std::vector<std::string> dlc_module_ids = ScanDlcModules();
 
@@ -258,6 +290,8 @@ bool DlcServiceDBusAdaptor::Uninstall(brillo::ErrorPtr* err,
 
 bool DlcServiceDBusAdaptor::GetInstalled(brillo::ErrorPtr* err,
                                          std::string* dlc_module_list_out) {
+  ScopedShutdown scoped_shutdown(shutdown_delegate_);
+
   // Initialize supported DLC module id list.
   std::vector<std::string> dlc_module_ids = ScanDlcModules();
 
@@ -276,37 +310,6 @@ bool DlcServiceDBusAdaptor::GetInstalled(brillo::ErrorPtr* err,
     return false;
   }
   return true;
-}
-
-void DlcServiceDBusAdaptor::LoadDlcModuleImages() {
-  // Initialize supported DLC module id list.
-  std::vector<std::string> dlc_module_ids = ScanDlcModules();
-
-  std::string boot_disk_name;
-  int num_slots = -1;
-  int current_slot = -1;
-  if (!boot_slot_->GetCurrentSlot(&boot_disk_name, &num_slots, &current_slot)) {
-    LOG(ERROR) << "Can not get current boot slot.";
-    return;
-  }
-  // Load all installed DLC modules.
-  for (const auto& dlc_module_id : dlc_module_ids) {
-    auto dlc_module_content_path =
-        utils::GetDlcModulePath(content_dir_, dlc_module_id);
-    if (!base::PathExists(dlc_module_content_path))
-      continue;
-    // Mount the installed DLC image.
-    std::string path;
-    image_loader_proxy_->LoadDlcImage(
-        dlc_module_id,
-        current_slot == 0 ? imageloader::kSlotNameA : imageloader::kSlotNameB,
-        &path, nullptr);
-    if (path.empty()) {
-      LOG(ERROR) << "DLC image " << dlc_module_id << " is corrupted.";
-    } else {
-      LOG(INFO) << "DLC image " << dlc_module_id << " is mounted at " << path;
-    }
-  }
 }
 
 std::vector<std::string> DlcServiceDBusAdaptor::ScanDlcModules() {

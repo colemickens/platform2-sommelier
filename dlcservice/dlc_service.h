@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 
+#include <base/cancelable_callback.h>
 #include <brillo/daemons/dbus_daemon.h>
 
 #include "dlcservice/dlc_service_dbus_adaptor.h"
@@ -15,18 +16,27 @@
 namespace dlcservice {
 
 // DlcService is a D-Bus service daemon.
-class DlcService : public brillo::DBusServiceDaemon {
+class DlcService : public brillo::DBusServiceDaemon,
+                   public dlcservice::DlcServiceDBusAdaptor::ShutdownDelegate {
  public:
-  DlcService();
+  explicit DlcService(bool load_installed);
   ~DlcService() override = default;
+
+  // dlcservice::DlcServiceDBusAdaptor::ShutdownDelegate overrides:
+  void CancelShutdown() override;
+  void ScheduleShutdown() override;
 
  private:
   // brillo::Daemon overrides:
+  int OnInit() override;
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   std::unique_ptr<dlcservice::DlcServiceDBusAdaptor> dbus_adaptor_;
+  base::CancelableClosure shutdown_callback_;
+  // Whether to load installed DLC modules.
+  const bool load_installed_;
 
   DISALLOW_COPY_AND_ASSIGN(DlcService);
 };

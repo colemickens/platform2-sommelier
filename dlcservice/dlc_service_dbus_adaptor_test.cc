@@ -60,30 +60,18 @@ class DlcServiceDBusAdaptorTest : public testing::Test {
   base::FilePath content_path_;
 };
 
-TEST_F(DlcServiceDBusAdaptorTest, InitTest) {
-  auto mock_image_loader_proxy =
-      std::make_unique<org::chromium::ImageLoaderInterfaceProxyMock>();
-  auto mock_boot_device = std::make_unique<MockBootDevice>();
-  ON_CALL(*(mock_boot_device.get()), GetBootDevice())
-      .WillByDefault(testing::Return("/dev/sdb5"));
-  ON_CALL(*(mock_boot_device.get()), IsRemovableDevice(testing::_))
-      .WillByDefault(testing::Return(false));
+class FakeShutdownDelegate : public DlcServiceDBusAdaptor::ShutdownDelegate {
+ public:
+  FakeShutdownDelegate() : shutdown_scheduled_(false) {}
+  bool is_shutdown_scheduled() const { return shutdown_scheduled_; }
+  void CancelShutdown() override { shutdown_scheduled_ = false; }
+  void ScheduleShutdown() override { shutdown_scheduled_ = true; }
 
-  EXPECT_CALL(
-      *(mock_image_loader_proxy.get()),
-      LoadDlcImage(kFirstDlc, "Dlc-B", testing::_, testing::_, testing::_))
-      .Times(1);
-  EXPECT_CALL(
-      *(mock_image_loader_proxy.get()),
-      LoadDlcImage(kSecondDlc, testing::_, testing::_, testing::_, testing::_))
-      .Times(0);
+ private:
+  bool shutdown_scheduled_;
 
-  DlcServiceDBusAdaptor dlc_service_dbus_adaptor(
-      std::move(mock_image_loader_proxy),
-      std::make_unique<org::chromium::UpdateEngineInterfaceProxyMock>(),
-      std::make_unique<BootSlot>(std::move(mock_boot_device)), manifest_path_,
-      content_path_);
-}
+  DISALLOW_COPY_AND_ASSIGN(FakeShutdownDelegate);
+};
 
 TEST_F(DlcServiceDBusAdaptorTest, GetInstalledTest) {
   auto mock_boot_device = std::make_unique<MockBootDevice>();
@@ -91,12 +79,13 @@ TEST_F(DlcServiceDBusAdaptorTest, GetInstalledTest) {
       .WillByDefault(testing::Return("/dev/sdb5"));
   ON_CALL(*(mock_boot_device.get()), IsRemovableDevice(testing::_))
       .WillByDefault(testing::Return(false));
+  FakeShutdownDelegate fake_shutdown_delegate;
 
   DlcServiceDBusAdaptor dlc_service_dbus_adaptor(
       std::make_unique<org::chromium::ImageLoaderInterfaceProxyMock>(),
       std::make_unique<org::chromium::UpdateEngineInterfaceProxyMock>(),
       std::make_unique<BootSlot>(std::move(mock_boot_device)), manifest_path_,
-      content_path_);
+      content_path_, &fake_shutdown_delegate);
 
   std::string dlc_module_list_str;
   EXPECT_TRUE(
@@ -105,6 +94,7 @@ TEST_F(DlcServiceDBusAdaptorTest, GetInstalledTest) {
   EXPECT_TRUE(dlc_module_list.ParseFromString(dlc_module_list_str));
   EXPECT_EQ(dlc_module_list.dlc_module_infos_size(), 1);
   EXPECT_EQ(dlc_module_list.dlc_module_infos(0).dlc_id(), kFirstDlc);
+  EXPECT_TRUE(fake_shutdown_delegate.is_shutdown_scheduled());
 }
 
 TEST_F(DlcServiceDBusAdaptorTest, UninstallTest) {
@@ -122,23 +112,28 @@ TEST_F(DlcServiceDBusAdaptorTest, UninstallTest) {
                     testing::_, testing::_))
       .WillByDefault(DoAll(testing::SetArgPointee<2>(update_status_idle),
                            testing::Return(true)));
+  FakeShutdownDelegate fake_shutdown_delegate;
 
   DlcServiceDBusAdaptor dlc_service_dbus_adaptor(
       std::move(mock_image_loader_proxy), std::move(mock_update_engine_proxy),
       std::make_unique<BootSlot>(std::make_unique<MockBootDevice>()),
-      manifest_path_, content_path_);
+      manifest_path_, content_path_, &fake_shutdown_delegate);
   EXPECT_TRUE(dlc_service_dbus_adaptor.Uninstall(nullptr, kFirstDlc));
   EXPECT_FALSE(base::PathExists(content_path_.Append(kFirstDlc)));
+  EXPECT_TRUE(fake_shutdown_delegate.is_shutdown_scheduled());
 }
 
 TEST_F(DlcServiceDBusAdaptorTest, UninstallFailureTest) {
+  FakeShutdownDelegate fake_shutdown_delegate;
+
   DlcServiceDBusAdaptor dlc_service_dbus_adaptor(
       std::make_unique<org::chromium::ImageLoaderInterfaceProxyMock>(),
       std::make_unique<org::chromium::UpdateEngineInterfaceProxyMock>(),
       std::make_unique<BootSlot>(std::make_unique<MockBootDevice>()),
-      manifest_path_, content_path_);
+      manifest_path_, content_path_, &fake_shutdown_delegate);
 
   EXPECT_FALSE(dlc_service_dbus_adaptor.Uninstall(nullptr, kSecondDlc));
+  EXPECT_TRUE(fake_shutdown_delegate.is_shutdown_scheduled());
 }
 
 TEST_F(DlcServiceDBusAdaptorTest, UninstallUnmountFailureTest) {
@@ -148,14 +143,16 @@ TEST_F(DlcServiceDBusAdaptorTest, UninstallUnmountFailureTest) {
           UnloadDlcImage(testing::_, testing::_, testing::_, testing::_))
       .WillByDefault(
           DoAll(testing::SetArgPointee<1>(false), testing::Return(true)));
+  FakeShutdownDelegate fake_shutdown_delegate;
 
   DlcServiceDBusAdaptor dlc_service_dbus_adaptor(
       std::move(mock_image_loader_proxy),
       std::make_unique<org::chromium::UpdateEngineInterfaceProxyMock>(),
       std::make_unique<BootSlot>(std::make_unique<MockBootDevice>()),
-      manifest_path_, content_path_);
+      manifest_path_, content_path_, &fake_shutdown_delegate);
   EXPECT_FALSE(dlc_service_dbus_adaptor.Uninstall(nullptr, kFirstDlc));
   EXPECT_TRUE(base::PathExists(content_path_.Append(kFirstDlc)));
+  EXPECT_TRUE(fake_shutdown_delegate.is_shutdown_scheduled());
 }
 
 TEST_F(DlcServiceDBusAdaptorTest, InstallTest) {
@@ -183,11 +180,12 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallTest) {
                     testing::_, testing::_))
       .WillByDefault(DoAll(testing::SetArgPointee<2>(update_status_idle),
                            testing::Return(true)));
+  FakeShutdownDelegate fake_shutdown_delegate;
 
   DlcServiceDBusAdaptor dlc_service_dbus_adaptor(
       std::move(mock_image_loader_proxy), std::move(mock_update_engine_proxy),
       std::make_unique<BootSlot>(std::move(mock_boot_device)), manifest_path_,
-      content_path_);
+      content_path_, &fake_shutdown_delegate);
   std::string dlc_root_path;
   EXPECT_TRUE(
       dlc_service_dbus_adaptor.Install(nullptr, kSecondDlc, &dlc_root_path));
@@ -209,6 +207,7 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallTest) {
       utils::GetDlcModuleImagePath(content_path_, kSecondDlc, 1);
   base::GetPosixFilePermissions(image_b_path.DirName(), &permissions);
   EXPECT_EQ(permissions, expected_permissions);
+  EXPECT_TRUE(fake_shutdown_delegate.is_shutdown_scheduled());
 }
 
 }  // namespace dlcservice
