@@ -13,18 +13,10 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
+#include <base/strings/stringprintf.h>
 #include <brillo/minijail/minijail.h>
 
-#include "arc/network/ipc.pb.h"
-
 namespace {
-
-const char kMdnsMcastAddress[] = "224.0.0.251";
-const uint16_t kMdnsPort = 5353;
-const char kSsdpMcastAddress[] = "239.255.255.250";
-const uint16_t kSsdpPort = 1900;
-
-const int kMaxRandomAddressTries = 3;
 
 const char kUnprivilegedUser[] = "arc-networkd";
 const uint64_t kManagerCapMask = CAP_TO_MASK(CAP_NET_RAW);
@@ -33,16 +25,11 @@ const uint64_t kManagerCapMask = CAP_TO_MASK(CAP_NET_RAW);
 
 namespace arc_networkd {
 
-Manager::Manager(const Options& opt, std::unique_ptr<HelperProcess> ip_helper)
-    : int_ifname_(opt.int_ifname),
-      mdns_ipaddr_(opt.mdns_ipaddr),
-      con_ifname_(opt.con_ifname) {
+Manager::Manager(std::unique_ptr<HelperProcess> ip_helper) {
   ip_helper_ = std::move(ip_helper);
 }
 
 int Manager::OnInit() {
-  VLOG(1) << "OnInit for " << *this;
-
   // Run with minimal privileges.
   brillo::Minijail* m = brillo::Minijail::GetInstance();
   struct minijail* jail = m->New();
@@ -65,7 +52,13 @@ int Manager::OnInit() {
                  ip_helper_->pid())))
       << "Failed to watch child IpHelper process";
 
-  // This needs to execute after DBusDaemon::OnInit() creates bus_.
+  // Handle container lifecycle.
+  RegisterHandler(
+      SIGUSR1, base::Bind(&Manager::OnContainerStart, base::Unretained(this)));
+  RegisterHandler(
+      SIGUSR2, base::Bind(&Manager::OnContainerStop, base::Unretained(this)));
+
+  // Run after Daemon::OnInit().
   base::MessageLoopForIO::current()->task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&Manager::InitialSetup, weak_factory_.GetWeakPtr()));
@@ -74,124 +67,77 @@ int Manager::OnInit() {
 }
 
 void Manager::InitialSetup() {
-  shill_client_.reset(new ShillClient(std::move(bus_)));
-  shill_client_->RegisterDefaultInterfaceChangedHandler(base::Bind(
-      &Manager::OnDefaultInterfaceChanged, weak_factory_.GetWeakPtr()));
+  shill_client_.reset(new ShillClient(bus_));
+  shill_client_->RegisterDevicesChangedHandler(
+      base::Bind(&Manager::OnDevicesChanged, weak_factory_.GetWeakPtr()));
+
+  // Legacy device.
+  AddDevice(kAndroidDevice);
+  shill_client_->ScanDevices(
+      base::Bind(&Manager::OnDevicesChanged, weak_factory_.GetWeakPtr()));
+}
+
+void Manager::AddDevice(const std::string& name) {
+  auto device = Device::ForInterface(name);
+  if (!device)
+    return;
+  LOG(INFO) << "Adding device " << name;
+  device->RegisterMessageSink(
+      base::Bind(&Manager::SendMessage, weak_factory_.GetWeakPtr()));
+  device->Announce();
+  devices_.emplace(name, std::move(device));
+}
+
+bool Manager::OnContainerStart(const struct signalfd_siginfo& info) {
+  if (info.ssi_code == SI_USER) {
+    shill_client_->RegisterDefaultInterfaceChangedHandler(base::Bind(
+        &Manager::OnDefaultInterfaceChanged, weak_factory_.GetWeakPtr()));
+  }
+
+  // Stay registered.
+  return false;
+}
+
+bool Manager::OnContainerStop(const struct signalfd_siginfo& info) {
+  if (info.ssi_code == SI_USER) {
+    shill_client_->UnregisterDefaultInterfaceChangedHandler();
+  }
+
+  // Stay registered.
+  return false;
 }
 
 void Manager::OnDefaultInterfaceChanged(const std::string& ifname) {
-  ClearArcIp();
-  neighbor_finder_.reset();
-
-  if (ifname.empty()) {
-    LOG(INFO) << "Unbinding services from interface " << lan_ifname_;
-    lan_ifname_.clear();
-    mdns_forwarder_.reset();
-    ssdp_forwarder_.reset();
-    router_finder_.reset();
-    DisableInbound();
-  } else {
-    LOG(INFO) << "Binding services to new default interface " << ifname;
-    lan_ifname_ = ifname;
-    mdns_forwarder_.reset(new MulticastForwarder());
-    ssdp_forwarder_.reset(new MulticastForwarder());
-    router_finder_.reset(new RouterFinder());
-
-    mdns_forwarder_->Start(int_ifname_, ifname, mdns_ipaddr_, kMdnsMcastAddress,
-                           kMdnsPort,
-                           /* allow_stateless */ true);
-    ssdp_forwarder_->Start(int_ifname_, ifname,
-                           /* mdns_ipaddr */ "", kSsdpMcastAddress, kSsdpPort,
-                           /* allow_stateless */ false);
-
-    router_finder_->Start(
-        ifname, base::Bind(&Manager::OnRouteFound, weak_factory_.GetWeakPtr()));
-    EnableInbound(ifname);
+  LOG(INFO) << "Default interface changed to " << ifname;
+  // This is only applicable to the legacy 'android' interface.
+  const auto it = devices_.find(kAndroidDevice);
+  if (it != devices_.end()) {
+    it->second->Disable();
+    if (!ifname.empty())
+      it->second->Enable(ifname);
   }
 }
 
-void Manager::OnRouteFound(const struct in6_addr& prefix,
-                           int prefix_len,
-                           const struct in6_addr& router) {
-  if (prefix_len == 64) {
-    LOG(INFO) << "Found IPv6 network on iface " << lan_ifname_
-              << " route=" << prefix << "/" << prefix_len
-              << ", gateway=" << router;
-
-    memcpy(&random_address_, &prefix, sizeof(random_address_));
-    random_address_prefix_len_ = prefix_len;
-    random_address_tries_ = 0;
-
-    ArcIpConfig::GenerateRandom(&random_address_, random_address_prefix_len_);
-
-    neighbor_finder_.reset(new NeighborFinder());
-    neighbor_finder_->Check(lan_ifname_, random_address_,
-                            base::Bind(&Manager::OnNeighborCheckResult,
-                                       weak_factory_.GetWeakPtr()));
-  } else {
-    LOG(INFO) << "No IPv6 connectivity available";
-  }
-}
-
-void Manager::OnNeighborCheckResult(bool found) {
-  if (found) {
-    if (++random_address_tries_ >= kMaxRandomAddressTries) {
-      LOG(WARNING) << "Too many IP collisions, giving up.";
-      return;
+void Manager::OnDevicesChanged(const std::set<std::string>& devices) {
+  for (auto it = devices_.begin(); it != devices_.end();) {
+    const std::string& name = it->first;
+    if (name != kAndroidDevice && devices.find(name) == devices.end()) {
+      LOG(INFO) << "Removing device " << name;
+      it = devices_.erase(it);
+    } else {
+      ++it;
     }
-
-    struct in6_addr previous_address = random_address_;
-    ArcIpConfig::GenerateRandom(&random_address_, random_address_prefix_len_);
-
-    LOG(INFO) << "Detected IP collision for " << previous_address
-              << ", retrying with new address " << random_address_;
-
-    neighbor_finder_->Check(lan_ifname_, random_address_,
-                            base::Bind(&Manager::OnNeighborCheckResult,
-                                       weak_factory_.GetWeakPtr()));
-  } else {
-    struct in6_addr router;
-
-    if (!ArcIpConfig::GetV6Address(int_ifname_, &router)) {
-      LOG(ERROR) << "Error reading link local address for " << int_ifname_;
-      return;
-    }
-
-    LOG(INFO) << "Setting IPv6 address " << random_address_
-              << "/128, gateway=" << router;
-
-    // Set up new ARC IPv6 address, NDP, and forwarding rules.
-    IpHelperMessage outer_msg;
-    SetArcIp* inner_msg = outer_msg.mutable_set_arc_ip();
-    inner_msg->set_prefix(&random_address_, sizeof(struct in6_addr));
-    inner_msg->set_prefix_len(128);
-    inner_msg->set_router(&router, sizeof(struct in6_addr));
-    inner_msg->set_lan_ifname(lan_ifname_);
-    ip_helper_->SendMessage(outer_msg);
   }
-}
-
-void Manager::ClearArcIp() {
-  IpHelperMessage msg;
-  msg.set_clear_arc_ip(true);
-  ip_helper_->SendMessage(msg);
-}
-
-void Manager::EnableInbound(const std::string& lan_ifname) {
-  IpHelperMessage msg;
-  msg.set_enable_inbound(lan_ifname);
-  ip_helper_->SendMessage(msg);
-}
-
-void Manager::DisableInbound() {
-  IpHelperMessage msg;
-  msg.set_disable_inbound(true);
-  ip_helper_->SendMessage(msg);
+  for (const std::string& name : devices) {
+    if (devices_.find(name) == devices_.end())
+      AddDevice(name);
+  }
 }
 
 void Manager::OnShutdown(int* exit_code) {
-  ClearArcIp();
-  DisableInbound();
+  for (auto& dev : devices_) {
+    dev.second->Disable();
+  }
 }
 
 void Manager::OnSubprocessExited(pid_t pid, const siginfo_t& info) {
@@ -199,17 +145,8 @@ void Manager::OnSubprocessExited(pid_t pid, const siginfo_t& info) {
   Quit();
 }
 
-std::ostream& operator<<(std::ostream& stream, const Manager& manager) {
-  stream << "Manager "
-         << "{ inbound ifname=" << manager.lan_ifname_
-         << ", host ifname=" << manager.int_ifname_
-         << ", guest ifname=" << manager.con_ifname_
-         << ", mdns ip=" << manager.mdns_ipaddr_
-         << ", ipv6 random address=" << manager.random_address_
-         << "/" << manager.random_address_prefix_len_
-         << ", random address tries=" << manager.random_address_tries_
-         << " }";
-  return stream;
+void Manager::SendMessage(const IpHelperMessage& msg) {
+  ip_helper_->SendMessage(msg);
 }
 
 }  // namespace arc_networkd
