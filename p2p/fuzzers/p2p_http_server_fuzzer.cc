@@ -7,6 +7,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "base/logging.h"
 #include "base/test/fuzzed_data_provider.h"
@@ -35,19 +36,17 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   base::FuzzedDataProvider data_provider(data, size);
 
+  int64_t value;
+  std::string value_bytes = data_provider.ConsumeBytes(sizeof(value));
+  memcpy(&value, value_bytes.data(), value_bytes.size());
+
   // The values of magic and message_type are constrained to ensure
   // OnMessageReceived does not exit().
   P2PServerMessage msg = (P2PServerMessage){
       .magic = kP2PServerMagic,
       .message_type =
           data_provider.ConsumeUint32InRange(0, kNumP2PServerMessageTypes - 1),
-      .value = (static_cast<int64_t>(data_provider.ConsumeInt32InRange(
-                    std::numeric_limits<int32_t>::min(),
-                    std::numeric_limits<int32_t>::max()))
-                << 32) |
-               (static_cast<int64_t>(data_provider.ConsumeInt32InRange(
-                   std::numeric_limits<int32_t>::min(),
-                   std::numeric_limits<int32_t>::max())))};
+      .value = value};
 
   // Create HTTP server external process.
   MetricsLibrary metrics_lib;
