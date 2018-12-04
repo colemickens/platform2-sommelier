@@ -7,7 +7,7 @@
 #include <cstring>
 #include <utility>
 
-#include <base/files/platform_file.h>
+#include <base/files/file.h>
 #include <base/memory/shared_memory_handle.h>
 #include <mojo/public/c/system/types.h>
 #include <mojo/public/cpp/system/platform_handle.h>
