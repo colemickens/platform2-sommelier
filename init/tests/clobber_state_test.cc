@@ -23,7 +23,7 @@ namespace {
 
 // Size of a disk sector in bytes.
 constexpr int kSectorSize = 512;
-constexpr int kSectorCount = 100 * 1024;
+constexpr int kSectorCount = 14 * 1024;
 // How many sectors the start of a partition needs to be aligned to.
 constexpr int kSectorAlign = 2048;
 constexpr int kNumPartitions = 5;
@@ -34,6 +34,7 @@ constexpr int kMaxPartitionSize =
 // Largest partition size possible that is a multiple of |kSectorAlign|.
 constexpr int kAlignedPartitionSize =
     kMaxPartitionSize - (kMaxPartitionSize % kSectorAlign);
+static_assert(kAlignedPartitionSize > 0, "Partition size must be positive");
 
 constexpr char kTestImageFileName[] = "test.img";
 constexpr char kLoopbackDeviceFormat[] = "/dev/loop%d";
@@ -117,8 +118,11 @@ class ClobberStateTest : public testing::Test {
     base::File test_image(test_image_path_,
                           base::File::FLAG_CREATE | base::File::FLAG_WRITE);
     ASSERT_TRUE(test_image.IsValid());
-    ASSERT_GE(test_image.SetLength(kSectorSize * kSectorCount), 0);
-    ASSERT_TRUE(test_image.Flush());
+    // Resize file to desired image size, and ensure that all underlying blocks
+    // are actually allocated.
+    ASSERT_GE(posix_fallocate(test_image.GetPlatformFile(), 0,
+                              kSectorSize * kSectorCount),
+              0);
     test_image.Close();
 
     // Setup sfdisk partitioning commands.
