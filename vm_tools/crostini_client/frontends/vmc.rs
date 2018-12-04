@@ -86,6 +86,17 @@ struct Command<'a, 'b, 'c> {
 }
 
 impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
+    // Metrics are on a best-effort basis. We print errors related to sending metrics, but stop
+    // propagation of the error, which is why this function never returns an error.
+    fn metrics_send_sample(&mut self, name: &str) {
+        if let Err(e) = self.backend.metrics_send_sample(name) {
+            eprintln!(
+                "warning: failed attempt to send metrics sample `{}`: {}",
+                name, e
+            );
+        }
+    }
+
     fn start(&mut self) -> VmcResult {
         if self.args.len() != 1 {
             return Err(ExpectedName.into());
@@ -97,9 +108,9 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             .get("CROS_USER_ID_HASH")
             .ok_or(ExpectedCrosUserIdHash)?;
 
-        try_command!(self.backend.metrics_send_sample("Vm.VmcStart"));
+        self.metrics_send_sample("Vm.VmcStart");
         try_command!(self.backend.vm_start(vm_name, user_id_hash));
-        try_command!(self.backend.metrics_send_sample("Vm.VmcStartSuccess"));
+        self.metrics_send_sample("Vm.VmcStartSuccess");
         try_command!(self.backend.vsh_exec(vm_name, user_id_hash));
 
         Ok(())
@@ -135,7 +146,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         match self.backend.disk_destroy(vm_name, user_id_hash) {
             Ok(()) => Ok(()),
             Err(e) => {
-                try_command!(self.backend.metrics_send_sample("Vm.DiskEraseFailed"));
+                self.metrics_send_sample("Vm.DiskEraseFailed");
                 Err(Command("disk_destroy", line!(), e).into())
             }
         }

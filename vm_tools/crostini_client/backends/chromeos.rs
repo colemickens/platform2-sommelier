@@ -104,6 +104,7 @@ enum ChromeOSError {
     FailedGetFreeDiskSpace(i32),
     FailedGetVmInfo,
     FailedListDiskImages(String),
+    FailedMetricsSend { exit_code: Option<i32> },
     FailedSetupContainerUser(SetUpLxdContainerUserResponse_Status, String),
     FailedSharePath(String),
     FailedStartContainerStatus(StartLxdContainerResponse_Status, String),
@@ -142,6 +143,13 @@ impl fmt::Display for ChromeOSError {
                 write!(f, "failed to start container: `{:?}`: {}", s, reason)
             }
             FailedListDiskImages(reason) => write!(f, "failed to list disk images: {}", reason),
+            FailedMetricsSend { exit_code } => {
+                write!(f, "failed to send metrics")?;
+                if let Some(code) = exit_code {
+                    write!(f, ": exited with non-zero code {}", code)?;
+                }
+                Ok(())
+            }
             FailedStopVm { vm_name, reason } => {
                 write!(f, "failed to stop vm `{}`: {}", vm_name, reason)
             }
@@ -648,8 +656,16 @@ impl Backend for ChromeOS {
         "ChromeOS"
     }
 
-    fn metrics_send_sample(&mut self, _name: &str) -> Result<(), Box<Error>> {
-        // TODO(zachr): who needs metrics
+    fn metrics_send_sample(&mut self, name: &str) -> Result<(), Box<Error>> {
+        let status = Command::new("metrics_client")
+            .arg("-v")
+            .arg(name)
+            .status()?;
+        if !status.success() {
+            return Err(FailedMetricsSend {
+                exit_code: status.code(),
+            }.into());
+        }
         Ok(())
     }
 
