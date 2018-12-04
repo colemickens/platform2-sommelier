@@ -55,21 +55,8 @@ class Tpm2StatusTest : public testing::Test {
   int ownership_call_count_ = 0;
 };
 
-TEST_F(Tpm2StatusTest, IsEnabledSuccess) {
-  EXPECT_CALL(mock_tpm_state_, Initialize())
-      .WillRepeatedly(Return(TPM_RC_SUCCESS));
-  EXPECT_CALL(mock_tpm_state_, IsEnabled()).WillRepeatedly(Return(true));
-  EXPECT_TRUE(tpm_status_->IsTpmEnabled());
-}
-
-TEST_F(Tpm2StatusTest, IsEnabledFailure) {
-  EXPECT_CALL(mock_tpm_state_, IsEnabled()).WillRepeatedly(Return(false));
-  EXPECT_FALSE(tpm_status_->IsTpmEnabled());
-}
-
-TEST_F(Tpm2StatusTest, IsEnabledNoRepeatedInitialization) {
-  EXPECT_CALL(mock_tpm_state_, Initialize()).WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_TRUE(tpm_status_->IsTpmEnabled());
+TEST_F(Tpm2StatusTest, IsEnabledAlwaysSuccess) {
+  EXPECT_CALL(mock_tpm_state_, Initialize()).Times(0);
   EXPECT_TRUE(tpm_status_->IsTpmEnabled());
 }
 

@@ -50,6 +50,7 @@ constexpr char kLockSpaceCommand[] = "lock_space";
 constexpr char kListSpacesCommand[] = "list_spaces";
 constexpr char kGetSpaceInfoCommand[] = "get_space_info";
 
+constexpr char kReadinessOnlySwitch[] = "readiness_only";
 constexpr char kDependencySwitch[] = "dependency";
 constexpr char kIndexSwitch[] = "index";
 constexpr char kSizeSwitch[] = "size";
@@ -64,8 +65,9 @@ constexpr char kLockWrite[] = "lock_write";
 constexpr char kUsage[] = R"(
 Usage: tpm_manager_client <command> [<arguments>]
 Commands:
-  status
-      Prints TPM status information.
+  status [--readiness_only]
+      Prints TPM status information. If the option --readiness_only is given,
+      only prints TPM readiness-related information, i.e., enabled and owned.
   take_ownership
       Takes ownership of the Tpm with a random password.
   remove_dependency --dependency=<owner_dependency>
@@ -209,8 +211,10 @@ class ClientLoop : public ClientLoopBase {
     }
     std::string command = command_line->GetArgs()[0];
     if (command == kGetTpmStatusCommand) {
+      bool readiness_info_only = command_line->HasSwitch(kReadinessOnlySwitch);
       task = base::Bind(&ClientLoop::HandleGetTpmStatus,
-                        weak_factory_.GetWeakPtr());
+                        weak_factory_.GetWeakPtr(),
+                        readiness_info_only);
     } else if (command == kTakeOwnershipCommand) {
       task = base::Bind(&ClientLoop::HandleTakeOwnership,
                         weak_factory_.GetWeakPtr());
@@ -301,8 +305,9 @@ class ClientLoop : public ClientLoopBase {
     Quit();
   }
 
-  void HandleGetTpmStatus() {
+  void HandleGetTpmStatus(bool readiness_info_only) {
     GetTpmStatusRequest request;
+    request.set_readiness_info_only(readiness_info_only);
     tpm_ownership_->GetTpmStatus(
         request, base::Bind(&ClientLoop::PrintReplyAndQuit<GetTpmStatusReply>,
                             weak_factory_.GetWeakPtr()));

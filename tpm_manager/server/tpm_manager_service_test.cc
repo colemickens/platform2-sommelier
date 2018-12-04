@@ -304,6 +304,35 @@ TEST_F(TpmManagerServiceTest, GetTpmStatusNoTpm) {
   Run();
 }
 
+TEST_F(TpmManagerServiceTest, GetTpmStatusReadinessInfoOnly) {
+  EXPECT_CALL(mock_tpm_status_, IsTpmEnabled()).WillRepeatedly(Return(true));
+  EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned())
+      .WillRepeatedly(Return(TpmStatus::kTpmOwned));
+
+  EXPECT_CALL(mock_local_data_store_, Read(_)).Times(0);
+  EXPECT_CALL(mock_tpm_status_, GetDictionaryAttackInfo(_, _, _, _)).Times(0);
+  EXPECT_CALL(mock_tpm_status_, GetVersionInfo(_, _, _, _, _, _)).Times(0);
+
+  auto callback = [](TpmManagerServiceTest* self,
+                     const GetTpmStatusReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_TRUE(reply.enabled());
+    EXPECT_TRUE(reply.owned());
+    EXPECT_FALSE(reply.has_local_data());
+    EXPECT_FALSE(reply.has_dictionary_attack_counter());
+    EXPECT_FALSE(reply.has_dictionary_attack_threshold());
+    EXPECT_FALSE(reply.has_dictionary_attack_lockout_in_effect());
+    EXPECT_FALSE(reply.has_dictionary_attack_lockout_seconds_remaining());
+    EXPECT_FALSE(reply.has_version_info());
+    self->Quit();
+  };
+
+  GetTpmStatusRequest request;
+  request.set_readiness_info_only(true);
+  service_->GetTpmStatus(request, base::Bind(callback, this));
+  Run();
+}
+
 TEST_F(TpmManagerServiceTest, TakeOwnershipSuccess) {
   // Make sure InitializeTpm doesn't get multiple calls.
   EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(1);

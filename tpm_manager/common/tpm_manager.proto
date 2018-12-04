@@ -212,6 +212,10 @@ message GetSpaceInfoReply {
 // A series of request and reply messages for the ownership interface methods.
 ////////////////////////////////////////////////////////////////////////////////
 message GetTpmStatusRequest {
+  // Whether to request for TPM readiness-related info, i.e., enabled and owned,
+  // only. If set, the reply will only include status, enabled, and owned;
+  // otherwise, it will be a full reply.
+  optional bool readiness_info_only = 1;
 }
 
 message GetTpmStatusReply {

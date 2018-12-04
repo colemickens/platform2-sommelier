@@ -36,10 +36,8 @@ Tpm2StatusImpl::Tpm2StatusImpl(
       ownership_taken_callback_(ownership_taken_callback) {}
 
 bool Tpm2StatusImpl::IsTpmEnabled() {
-  if (!initialized_) {
-    Refresh();
-  }
-  return trunks_tpm_state_->IsEnabled();
+  // For 2.0, TPM is always enabled.
+  return true;
 }
 
 TpmStatus::TpmOwnershipStatus Tpm2StatusImpl::CheckAndNotifyIfTpmOwned() {

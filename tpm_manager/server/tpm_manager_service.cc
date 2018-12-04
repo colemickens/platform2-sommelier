@@ -149,9 +149,22 @@ void TpmManagerService::GetTpmStatusTask(
     const GetTpmStatusRequest& request,
     const std::shared_ptr<GetTpmStatusReply>& reply) {
   VLOG(1) << __func__;
+
+  if (!tpm_status_) {
+    LOG(ERROR) << __func__ << ": tpm status is uninitialized.";
+    reply->set_status(STATUS_NOT_AVAILABLE);
+    return;
+  }
+
   reply->set_enabled(tpm_status_->IsTpmEnabled());
   reply->set_owned(
       TpmStatus::kTpmOwned == tpm_status_->CheckAndNotifyIfTpmOwned());
+
+  if (request.readiness_info_only()) {
+    reply->set_status(STATUS_SUCCESS);
+    return;
+  }
+
   LocalData local_data;
   if (local_data_store_ && local_data_store_->Read(&local_data)) {
     *reply->mutable_local_data() = local_data;

@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2017 The Android Open Source Project
+// Copyright (C) 2018 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -678,6 +678,12 @@ std::string GetProtoDebugStringWithIndent(const GetTpmStatusRequest& value,
   std::string output =
       base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
 
+  if (value.has_readiness_info_only()) {
+    output += indent + "  readiness_info_only: ";
+    base::StringAppendF(&output, "%s",
+                        value.readiness_info_only() ? "true" : "false");
+    output += "\n";
+  }
   output += indent + "}\n";
   return output;
 }

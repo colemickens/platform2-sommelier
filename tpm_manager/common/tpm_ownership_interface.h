@@ -32,6 +32,8 @@ class TPM_MANAGER_EXPORT TpmOwnershipInterface {
   virtual ~TpmOwnershipInterface() = default;
 
   // Processes a GetTpmStatusRequest and responds with a GetTpmStatusReply.
+  // If readiness_info_only is set in the request, the reply will contain
+  // enabled and owned only.
   using GetTpmStatusCallback = base::Callback<void(const GetTpmStatusReply&)>;
   virtual void GetTpmStatus(const GetTpmStatusRequest& request,
                             const GetTpmStatusCallback& callback) = 0;
