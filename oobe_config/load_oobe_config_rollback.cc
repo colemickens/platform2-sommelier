@@ -48,10 +48,16 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
 
     // In the first stage we decrypt the proto from kUnencryptedRollbackDataPath
     // and save it unencrypted to kEncryptedStatefulRollbackDataPath.
+    bool restore_result;
     if (allow_unencrypted_) {
-      oobe_config_->UnencryptedRollbackRestore();
+      restore_result = oobe_config_->UnencryptedRollbackRestore();
     } else {
-      oobe_config_->EncryptedRollbackRestore();
+      restore_result = oobe_config_->EncryptedRollbackRestore();
+    }
+
+    if (!restore_result) {
+      LOG(ERROR) << "Failed to restore rollback data";
+      return false;
     }
 
     // We create kFirstStageCompletedFile after this.
