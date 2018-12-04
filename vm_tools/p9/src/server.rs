@@ -543,7 +543,7 @@ impl Server {
         let file = fs::OpenOptions::new()
             .read(false)
             .write(true)
-            .truncate(true)
+            .truncate((lcreate.flags & P9_TRUNC) != 0)
             .create(true)
             .append((lcreate.flags & P9_APPEND) != 0)
             .create_new((lcreate.flags & P9_EXCL) != 0)
