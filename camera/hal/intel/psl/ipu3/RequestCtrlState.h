@@ -20,7 +20,6 @@
 #include "Camera3Request.h"
 #include "CaptureUnitSettings.h"
 #include "Intel3aPlus.h"
-#include "GraphConfig.h"
 #include "ProcUnitSettings.h"
 #include "CaptureUnit.h"
 

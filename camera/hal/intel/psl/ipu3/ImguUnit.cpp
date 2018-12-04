@@ -191,19 +191,6 @@ void ImguUnit::freePublicStatBuffers()
     }
 }
 
-bool ImguUnit::isRepeatedStream(camera3_stream_t* curStream,
-                                   const std::vector<camera3_stream_t*> &streams)
-{
-   //The streams are already sorted by dimensions in IPU3CameraHw.
-   if (!streams.empty() &&
-       curStream->width == streams.back()->width &&
-       curStream->height == streams.back()->height &&
-       curStream->format == streams.back()->format &&
-       curStream->usage == streams.back()->usage)
-       return true;
-    return false;
-}
-
 status_t ImguUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
@@ -217,47 +204,10 @@ status_t ImguUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams)
         mImguPipe[i] = nullptr;
     }
 
-    bool hasIMPL = false;
     int repeatedStreamIndex = -1;
-    for (size_t i = 0; i < activeStreams.size(); ++i) {
-        if (activeStreams[i]->stream_type == CAMERA3_STREAM_OUTPUT &&
-            activeStreams[i]->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) {
-            hasIMPL = true;
-            break;
-        }
-    }
-
-    for (size_t i = 0; i < activeStreams.size(); ++i) {
-        if (activeStreams.at(i)->stream_type == CAMERA3_STREAM_INPUT) {
-            mActiveStreams.inputStream = activeStreams.at(i);
-            continue;
-        }
-
-        switch (activeStreams.at(i)->format) {
-        case HAL_PIXEL_FORMAT_BLOB:
-            mActiveStreams.blobStreams.push_back(activeStreams.at(i));
-            break;
-        case HAL_PIXEL_FORMAT_YCbCr_420_888:
-            if (hasIMPL &&
-                activeStreams.at(i)->width > RESOLUTION_1080P_WIDTH &&
-                activeStreams.at(i)->height > RESOLUTION_1080P_HEIGHT) {
-                mActiveStreams.blobStreams.push_back(activeStreams.at(i));
-            } else {
-                if (isRepeatedStream(activeStreams.at(i), mActiveStreams.yuvStreams)) {
-                    repeatedStreamIndex = i;
-                } else {
-                    mActiveStreams.yuvStreams.push_back(activeStreams.at(i));
-                }
-            }
-            break;
-        case HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED:
-            mActiveStreams.yuvStreams.push_back(activeStreams.at(i));
-            break;
-        default:
-            LOGW("Unsupported stream format %x", activeStreams.at(i)->format);
-            break;
-        }
-    }
+    status_t status = mGCM.sortStreamsByPipe(activeStreams, &mActiveStreams.yuvStreams,
+                                             &mActiveStreams.blobStreams, &repeatedStreamIndex);
+    CheckError(status != OK, status, "Sort streams failed %d", status);
 
     //The last stream of yuvStreams is directly placed into the mStreamListenerMapping
     //for mapStreamWithDeviceNode function.
@@ -271,7 +221,6 @@ status_t ImguUnit::configStreams(std::vector<camera3_stream_t*> &activeStreams)
     CheckError(blobNum > 2, BAD_VALUE, "Don't support blobNum %d", blobNum);
     CheckError(yuvNum > 3, BAD_VALUE, "Don't support yuvNum %d", yuvNum);
 
-    status_t status = OK;
     if (yuvNum > 0) {
         mImguPipe[GraphConfig::PIPE_VIDEO] =
             std::unique_ptr<ImguPipe>(new ImguPipe(mCameraId, GraphConfig::PIPE_VIDEO, mMediaCtl, mListeners, mErrCb));

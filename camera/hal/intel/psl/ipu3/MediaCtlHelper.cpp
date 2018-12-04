@@ -31,8 +31,7 @@ MediaCtlHelper::MediaCtlHelper(std::shared_ptr<MediaController> mediaCtl,
         mOpenVideoNodeCallBack(openCallBack),
         mMediaCtl(mediaCtl),
         mMediaCtlConfig(nullptr),
-        mPipeType(IStreamConfigProvider::MEDIA_TYPE_MAX_COUNT),
-        mGCM(nullptr)
+        mPipeType(IStreamConfigProvider::MEDIA_TYPE_MAX_COUNT)
 {
 }
 
@@ -49,7 +48,6 @@ status_t MediaCtlHelper::configure(IStreamConfigProvider &graphConfigMgr,
     LOG1("@%s, media type: %d", __FUNCTION__, type);
 
     mPipeType = type;
-    mGCM = &graphConfigMgr;
 
     media_device_info deviceInfo;
     CLEAR(deviceInfo);

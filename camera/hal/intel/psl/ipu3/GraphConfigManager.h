@@ -145,6 +145,11 @@ public:
     status_t configStreams(const std::vector<camera3_stream_t*> &activeStreams,
                            uint32_t operationMode,
                            int32_t testPatternMode);
+
+    status_t sortStreamsByPipe(const std::vector<camera3_stream_t*> &streams,
+                               std::vector<camera3_stream_t*>* yuvStreams,
+                               std::vector<camera3_stream_t*>* blobStreams,
+                               int* repeatedStreamIndex);
     /*
      * Implementation of IStreamConfigProvider
      */
@@ -183,7 +188,7 @@ private:
     void handleStillMap(camera3_stream_t* stream, ResolutionItem& res, PlatformGraphConfigKey& streamKey);
     bool isRepeatedStream(camera3_stream_t* curStream, const std::vector<camera3_stream_t*> &streams);
     status_t mapStreamToKey(const std::vector<camera3_stream_t*> &streams,
-                            int *hasVideoStream, int *hasStillStream);
+                            bool *hasVideoStream, bool *hasStillStream);
     status_t queryVideoGraphSettings();
     status_t queryStillGraphSettings();
 

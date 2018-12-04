@@ -19,7 +19,6 @@
 #include "Camera3Request.h"
 #include "Intel3aControls.h"
 #include "CaptureUnitSettings.h"
-#include "GraphConfig.h"
 
 namespace android {
 namespace camera2 {
@@ -31,8 +30,6 @@ namespace camera2 {
  * particular capture request.
  *
  * This is mainly the results from AIQ (3A + AIC) algorithms.
- * The GraphConfig object associated with this request
- *
  */
 struct ProcUnitSettings {
 

@@ -304,62 +304,79 @@ bool GraphConfigManager::isRepeatedStream(camera3_stream_t* curStream,
     return false;
 }
 
-status_t GraphConfigManager::mapStreamToKey(const std::vector<camera3_stream_t*> &streams,
-                                            int *hasVideoStream, int *hasStillStream)
+status_t GraphConfigManager::sortStreamsByPipe(const std::vector<camera3_stream_t*> &streams,
+                                               std::vector<camera3_stream_t*>* yuvStreams,
+                                               std::vector<camera3_stream_t*>* blobStreams,
+                                               int* repeatedStreamIndex)
 {
-    std::vector<camera3_stream_t *> videoStreams, stillStream;
-    ItemUID streamCount = {GCSS_KEY_ACTIVE_OUTPUTS};
-    int yuvNum = 0;
-    int blobNum = 0;
+    CheckError(yuvStreams == nullptr, BAD_VALUE, "yuvStreams is nullptr");
+    CheckError(blobStreams == nullptr, BAD_VALUE, "blobStreams is nullptr");
+    CheckError(repeatedStreamIndex == nullptr, BAD_VALUE, "repeatedStreamIndex is nullptr");
 
-    bool hasIMPL = false;
+    *repeatedStreamIndex = -1;
+    bool hasImpl = false;
     for (size_t i = 0; i < streams.size(); ++i) {
         if (streams[i]->stream_type == CAMERA3_STREAM_OUTPUT &&
             streams[i]->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) {
-            hasIMPL = true;
+            hasImpl = true;
             break;
         }
     }
 
     for (size_t i = 0; i < streams.size(); i++) {
         if ( streams[i]->stream_type != CAMERA3_STREAM_OUTPUT) {
-            LOGE("@%s, stream[%lu] is not output, %d", __FUNCTION__, i, streams[i]->stream_type);
-            return UNKNOWN_ERROR;
+            LOGW("@%s, stream[%lu] is not output, %d", __FUNCTION__, i, streams[i]->stream_type);
+            continue;
         }
 
-        if (streams[i]->format == HAL_PIXEL_FORMAT_BLOB) {
-            stillStream.push_back(streams[i]);
-            *hasStillStream = true;
-            blobNum++;
-        } else if (streams[i]->format == HAL_PIXEL_FORMAT_YCbCr_420_888) {
-            if (hasIMPL &&
+        switch (streams[i]->format) {
+        case HAL_PIXEL_FORMAT_BLOB:
+            blobStreams->push_back(streams[i]);
+            break;
+        case HAL_PIXEL_FORMAT_YCbCr_420_888:
+            if (hasImpl &&
                 streams[i]->width > RESOLUTION_1080P_WIDTH &&
                 streams[i]->height > RESOLUTION_1080P_HEIGHT) {
-                stillStream.push_back(streams[i]);
-                *hasStillStream = true;
-                blobNum++;
-            } else if (!isRepeatedStream(streams[i], videoStreams)) {
-                videoStreams.push_back(streams[i]);
-                *hasVideoStream = true;
-                yuvNum++;
+                blobStreams->push_back(streams[i]);
+            } else {
+                if (isRepeatedStream(streams[i], *yuvStreams)) {
+                    *repeatedStreamIndex = i;
+                } else {
+                    yuvStreams->push_back(streams[i]);
+                }
             }
-        } else if (streams[i]->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) {
-            videoStreams.push_back(streams[i]);
-            *hasVideoStream = true;
-            yuvNum++;
-        } else {
-            LOGE("Unsupported stream format %d", streams.at(i)->format);
+            break;
+        case HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED:
+            yuvStreams->push_back(streams[i]);
+            break;
+        default:
+            LOGE("Unsupported stream format %d", streams[i]->format);
             return BAD_VALUE;
         }
     }
 
+    return OK;
+}
+
+status_t GraphConfigManager::mapStreamToKey(const std::vector<camera3_stream_t*> &streams,
+                                            bool *hasVideoStream, bool *hasStillStream)
+{
+    std::vector<camera3_stream_t *> videoStreams, stillStream;
+    ItemUID streamCount = {GCSS_KEY_ACTIVE_OUTPUTS};
+
+    int repeatedStreamIndex = -1;
+    status_t status = sortStreamsByPipe(streams, &videoStreams, &stillStream, &repeatedStreamIndex);
+    CheckError(status != OK, status, "Sort streams failed %d", status);
+
+    int yuvNum = videoStreams.size();
+    int blobNum = stillStream.size();
     LOG2("@%s, blobNum:%d, yuvNum:%d", __FUNCTION__, blobNum, yuvNum);
 
     PlatformGraphConfigKey streamKey;
     ResolutionItem res;
 
     // map video stream settings
-    if (*hasVideoStream) {
+    if (yuvNum > 0) {
         // store active output number for video pipe
         CheckError(yuvNum > MAX_GRAPH_SETTING_STREAM,
             UNKNOWN_ERROR, "yuv stream number out of range: %d", yuvNum);
@@ -379,10 +396,11 @@ status_t GraphConfigManager::mapStreamToKey(const std::vector<camera3_stream_t*>
         }
         LOG2("@%s, video pipe: mainOutput %p, secondaryOutput %p", __func__,
             videoStreams[mainOutputIndex], videoStreams[secondaryOutputIndex]);
+        *hasVideoStream = true;
     }
 
     // map still stream settings
-    if (*hasStillStream) {
+    if (blobNum > 0) {
         // store active output number for still pipe
         mQueryStill[streamCount] = std::to_string(MIN_GRAPH_SETTING_STREAM);
 
@@ -391,6 +409,7 @@ status_t GraphConfigManager::mapStreamToKey(const std::vector<camera3_stream_t*>
         handleStillStream(res, streamKey);
         handleStillMap(stillStream[0], res, streamKey);
         LOG2("@%s, still pipe: %p", __func__, stillStream[0]);
+        *hasStillStream = true;
     }
 
     return OK;
@@ -538,7 +557,7 @@ status_t GraphConfigManager::configStreams(const vector<camera3_stream_t*> &stre
     HAL_KPI_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, 1000000); /* 1 ms*/
     UNUSED(operationMode);
     ResolutionItem res;
-    int hasVideoStream = false, hasStillStream = false;
+    bool hasVideoStream = false, hasStillStream = false;
     status_t ret = OK;
 
     if (streams.size() > MAX_NUM_STREAMS) {

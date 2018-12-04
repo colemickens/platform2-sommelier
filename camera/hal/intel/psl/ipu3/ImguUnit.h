@@ -58,7 +58,6 @@ public:
 private:
     status_t allocatePublicStatBuffers(int numBufs);
     void freePublicStatBuffers();
-    bool isRepeatedStream(camera3_stream_t* curStream, const std::vector<camera3_stream_t*> &streams);
 
     class ImguPipe : public IPollEventListener {
     public:

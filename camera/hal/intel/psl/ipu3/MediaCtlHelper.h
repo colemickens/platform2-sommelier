@@ -84,7 +84,6 @@ private:
     const MediaCtlConfig *mMediaCtlConfig;
     std::vector<MediaCtlLinkParams> mPrevMediaCtlLinks;
     IStreamConfigProvider::MediaType mPipeType;
-    IStreamConfigProvider *mGCM;
 
     std::vector<std::shared_ptr<cros::V4L2VideoNode>> mConfiguredNodes;
     std::map<IPU3NodeNames, std::shared_ptr<cros::V4L2VideoNode>> mConfiguredNodesPerName;
