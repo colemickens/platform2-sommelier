@@ -9,6 +9,8 @@
 #include <stdint.h>
 #include <string.h>
 
+#include <memory>
+
 #include "base/logging.h"
 #include "base/test/fuzzed_data_provider.h"
 
@@ -51,14 +53,12 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // Create HTTP server external process.
   MetricsLibrary metrics_lib;
   metrics_lib.Init();
-  HttpServerExternalProcess* process = new HttpServerExternalProcess(
+  auto process = std::make_unique<HttpServerExternalProcess>(
       &metrics_lib, FilePath("/tmp/p2p-fuzzing.XXXXXX"), FilePath("."), 0);
 
   // There's no need to Start() the process since OnMessageReceived only updates
   // member variables or sends metrics using the provided metrics library.
-  HttpServerExternalProcess::OnMessageReceived(msg, process);
-
-  delete process;
+  HttpServerExternalProcess::OnMessageReceived(msg, process.get());
 
   return 0;
 }
