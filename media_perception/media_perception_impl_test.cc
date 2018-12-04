@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include <base/bind.h>
@@ -40,7 +41,7 @@ class MediaPerceptionImplTest : public testing::Test {
   std::unique_ptr<MediaPerceptionImpl> media_perception_impl_;
 };
 
-TEST_F(MediaPerceptionImplTest, TestGetDevices) {
+TEST_F(MediaPerceptionImplTest, TestGetVideoDevices) {
   bool get_devices_callback_done = false;
   media_perception_ptr_->GetVideoDevices(
       base::Bind([](bool* get_devices_callback_done,
@@ -91,6 +92,43 @@ TEST_F(MediaPerceptionImplTest, TestSetupConfiguration) {
       }, &setup_configuration_callback_done));
   base::RunLoop().RunUntilIdle();
   ASSERT_TRUE(setup_configuration_callback_done);
+}
+
+TEST_F(MediaPerceptionImplTest, TestGetPipelineState) {
+  bool get_pipeline_callback_done = false;
+
+  media_perception_ptr_->GetPipelineState(
+      "test_configuration",
+      base::Bind([](
+          bool* get_pipeline_callback_done,
+          chromeos::media_perception::mojom::PipelineStatePtr pipeline_state) {
+        EXPECT_EQ(pipeline_state->status,
+                  chromeos::media_perception::mojom::PipelineStatus::SUSPENDED);
+        *get_pipeline_callback_done = true;
+      }, &get_pipeline_callback_done));
+  base::RunLoop().RunUntilIdle();
+  ASSERT_TRUE(get_pipeline_callback_done);
+}
+
+TEST_F(MediaPerceptionImplTest, TestSetPipelineState) {
+  bool set_pipeline_callback_done = false;
+
+  chromeos::media_perception::mojom::PipelineStatePtr desired_pipeline_state =
+      chromeos::media_perception::mojom::PipelineState::New();
+  desired_pipeline_state->status =
+      chromeos::media_perception::mojom::PipelineStatus::RUNNING;
+  media_perception_ptr_->SetPipelineState(
+      "test_configuration",
+      std::move(desired_pipeline_state),
+      base::Bind([](
+          bool* set_pipeline_callback_done,
+          chromeos::media_perception::mojom::PipelineStatePtr pipeline_state) {
+        EXPECT_EQ(pipeline_state->status,
+                  chromeos::media_perception::mojom::PipelineStatus::RUNNING);
+        *set_pipeline_callback_done = true;
+      }, &set_pipeline_callback_done));
+  base::RunLoop().RunUntilIdle();
+  ASSERT_TRUE(set_pipeline_callback_done);
 }
 
 }  // namespace

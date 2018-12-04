@@ -277,6 +277,15 @@ std::vector<uint8_t> SerializeSuccessStatusProto(const SuccessStatus& status) {
   return bytes;
 }
 
+std::vector<uint8_t> SerializePipelineStateProto(const PipelineState& state) {
+  const int size = state.ByteSizeLong();
+  std::vector<uint8_t> bytes(size, 0);
+
+  CHECK(state.SerializeToArray(bytes.data(), size))
+      << "Failed to serialize pipeline state proto.";
+  return bytes;
+}
+
 SuccessStatus ToProto(
     const chromeos::media_perception::mojom::SuccessStatusPtr& status_ptr) {
   SuccessStatus status;

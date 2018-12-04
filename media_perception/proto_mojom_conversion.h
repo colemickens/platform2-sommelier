@@ -60,6 +60,7 @@ std::vector<uint8_t> SerializeVideoStreamParamsProto(
     const VideoStreamParams& params);
 std::vector<uint8_t> SerializeVideoDeviceProto(const VideoDevice& device);
 std::vector<uint8_t> SerializeSuccessStatusProto(const SuccessStatus& status);
+std::vector<uint8_t> SerializePipelineStateProto(const PipelineState& state);
 
 SuccessStatus ToProto(
     const chromeos::media_perception::mojom::SuccessStatusPtr& status_ptr);

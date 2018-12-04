@@ -28,6 +28,12 @@ class MediaPerceptionImpl :
   void SetupConfiguration(const std::string& configuration_name,
                           const SetupConfigurationCallback& callback) override;
   void GetVideoDevices(const GetVideoDevicesCallback& callback) override;
+  void GetPipelineState(const std::string& configuration_name,
+                        const GetPipelineStateCallback& callback) override;
+  void SetPipelineState(
+      const std::string& configuration_name,
+      chromeos::media_perception::mojom::PipelineStatePtr desired_state,
+      const SetPipelineStateCallback& callback) override;
 
   void set_connection_error_handler(base::Closure connection_error_handler);
 

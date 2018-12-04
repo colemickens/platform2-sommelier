@@ -24,4 +24,20 @@ std::vector<PerceptionInterfaceType> FakeRtanalytics::SetupConfiguration(
   return interface_types;
 }
 
+SerializedPipelineState FakeRtanalytics::GetPipelineState(
+      const std::string& configuration_name) const {
+  PipelineState pipeline_state;
+  pipeline_state.set_status(PipelineStatus::SUSPENDED);
+  return SerializePipelineStateProto(pipeline_state);
+}
+
+SerializedPipelineState FakeRtanalytics::SetPipelineState(
+      const std::string& configuration_name,
+      const SerializedPipelineState* desired_state) {
+  PipelineState pipeline_state;
+  pipeline_state.ParseFromArray(desired_state->data(),
+                                desired_state->size());
+  return SerializePipelineStateProto(pipeline_state);
+}
+
 }  // namespace mri

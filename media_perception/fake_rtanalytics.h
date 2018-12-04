@@ -22,6 +22,11 @@ class FakeRtanalytics : public Rtanalytics {
   std::vector<PerceptionInterfaceType> SetupConfiguration(
       const std::string& configuration_name,
       SerializedSuccessStatus* success_status) override;
+  SerializedPipelineState GetPipelineState(
+      const std::string& configuration_name) const override;
+  SerializedPipelineState SetPipelineState(
+      const std::string& configuration_name,
+      const SerializedPipelineState* desired_state) override;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(FakeRtanalytics);

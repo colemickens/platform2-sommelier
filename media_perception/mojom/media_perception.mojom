@@ -7,6 +7,7 @@
 module chromeos.media_perception.mojom;
 
 import "mojom/device_management.mojom";
+import "mojom/pipeline.mojom";
 
 struct SuccessStatus {
   // Whether or not the action succeeded.
@@ -33,4 +34,15 @@ interface MediaPerception {
   GetVideoDevices@1() => (array<VideoDevice> devices);
 
   // ------------------- End of device management definitions. ---------------
+
+  // ------------------- Start of pipeline state definitions. ----------------
+
+  // Get the status of the media perception processing pipeline.
+  GetPipelineState@7(string configuration_name) => (PipelineState state);
+
+  // Set the desired state of the media perception pipeline.
+  SetPipelineState@8(string configuration_name, PipelineState desired_state)
+      => (PipelineState state);
+
+  // ------------------- End of pipeline state definitions. ------------------
 };

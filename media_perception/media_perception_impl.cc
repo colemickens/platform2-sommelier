@@ -65,4 +65,32 @@ void MediaPerceptionImpl::GetVideoDevices(
   });
 }
 
+void MediaPerceptionImpl::GetPipelineState(
+    const std::string& configuration_name,
+    const GetPipelineStateCallback& callback) {
+  SerializedPipelineState serialized_pipeline_state =
+      rtanalytics_->GetPipelineState(configuration_name);
+
+  PipelineState pipeline_state;
+  pipeline_state.ParseFromArray(serialized_pipeline_state.data(),
+                                serialized_pipeline_state.size());
+  callback.Run(chromeos::media_perception::mojom::ToMojom(pipeline_state));
+}
+
+void MediaPerceptionImpl::SetPipelineState(
+    const std::string& configuration_name,
+    chromeos::media_perception::mojom::PipelineStatePtr desired_state,
+    const SetPipelineStateCallback& callback) {
+  SerializedPipelineState serialized_desired_state =
+      SerializePipelineStateProto(ToProto(desired_state));
+  SerializedPipelineState serialized_pipeline_state =
+      rtanalytics_->SetPipelineState(
+          configuration_name, &serialized_desired_state);
+
+  PipelineState pipeline_state;
+  pipeline_state.ParseFromArray(serialized_pipeline_state.data(),
+                                serialized_pipeline_state.size());
+  callback.Run(chromeos::media_perception::mojom::ToMojom(pipeline_state));
+}
+
 }  // namespace mri

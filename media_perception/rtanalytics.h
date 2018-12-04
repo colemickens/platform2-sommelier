@@ -17,6 +17,7 @@ namespace mri {
 // the boundary between platform2 code and librtanalytics.so.
 // Note that this alias is guaranteed to always have this type.
 using SerializedSuccessStatus = std::vector<uint8_t>;
+using SerializedPipelineState = std::vector<uint8_t>;
 
 enum PerceptionInterfaceType {
   INTERFACE_TYPE_UNKNOWN,
@@ -34,6 +35,15 @@ class Rtanalytics {
   virtual std::vector<PerceptionInterfaceType> SetupConfiguration(
       const std::string& configuration_name,
       SerializedSuccessStatus* success_status) = 0;
+
+  // Returns the pipeline state of the given configuation.
+  virtual SerializedPipelineState GetPipelineState(
+      const std::string& configuration_name) const = 0;
+
+  // Sets the pipeline to the desired state and returns the new state.
+  virtual SerializedPipelineState SetPipelineState(
+      const std::string& configuration_name,
+      const SerializedPipelineState* desired_state) = 0;
 };
 
 }  // namespace mri
