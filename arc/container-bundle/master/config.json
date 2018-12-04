@@ -13,12 +13,12 @@
 		},
 		"umask": 0,
 		"args": [
-			"/system/bin/init"
+			"/system/bin/init",
+			"second_stage"
 		],
 		"env": [
 			"INIT_SELINUX_TOOK=1500",
 			"INIT_STARTED_AT=1000",
-			"SELINUX_INITIALIZED=y",
 			"PATH=/sbin:/system/sbin:/system/bin:/system/xbin:/odm/bin:/vendor/bin:/vendor/xbin"
 		],
 		"rlimits": [
