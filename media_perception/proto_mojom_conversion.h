@@ -7,8 +7,10 @@
 
 #include <vector>
 
+#include "media_perception/common.pb.h"
 #include "media_perception/device_management.pb.h"
 #include "media_perception/pipeline.pb.h"
+#include "mojom/common.mojom.h"
 #include "mojom/device_management.mojom.h"
 #include "mojom/media_perception.mojom.h"
 #include "mojom/pipeline.mojom.h"
@@ -25,6 +27,11 @@ AudioStreamParamsPtr ToMojom(const mri::AudioStreamParams& params);
 AudioDevicePtr ToMojom(const mri::AudioDevice& device);
 DeviceType ToMojom(mri::DeviceType type);
 DeviceTemplatePtr ToMojom(const mri::DeviceTemplate& device_template);
+
+// Common conversions.
+DistanceUnits ToMojom(mri::DistanceUnits units);
+NormalizedBoundingBoxPtr ToMojom(const mri::NormalizedBoundingBox& bbox);
+DistancePtr ToMojom(const mri::Distance& distance);
 
 // Pipeline conversions.
 PipelineStatus ToMojom(mri::PipelineStatus status);
@@ -57,6 +64,14 @@ DeviceType ToProto(
     chromeos::media_perception::mojom::DeviceType type);
 DeviceTemplate ToProto(
     const chromeos::media_perception::mojom::DeviceTemplatePtr& template_ptr);
+
+// Common conversions.
+DistanceUnits ToProto(chromeos::media_perception::mojom::DistanceUnits units);
+NormalizedBoundingBox ToProto(
+    const chromeos::media_perception::mojom::NormalizedBoundingBoxPtr&
+    bbox_ptr);
+Distance ToProto(
+    const chromeos::media_perception::mojom::DistancePtr& distance_ptr);
 
 // Pipeline conversions.
 PipelineStatus ToProto(

@@ -16,6 +16,7 @@
         'proto_out_dir': 'include/media_perception',
       },
       'sources': [
+        '<(proto_in_dir)/common.proto',
         '<(proto_in_dir)/device_management.proto',
         '<(proto_in_dir)/pipeline.proto',
       ],
@@ -26,6 +27,7 @@
       'type': 'static_library',
       'sources': [
         'mojom/color_space.mojom',
+        'mojom/common.mojom',
         'mojom/constants.mojom',
         'mojom/device.mojom',
         'mojom/device_factory.mojom',

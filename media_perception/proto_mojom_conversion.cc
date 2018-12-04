@@ -102,6 +102,36 @@ DeviceTemplatePtr ToMojom(const mri::DeviceTemplate& device_template) {
   return template_ptr;
 }
 
+DistanceUnits ToMojom(mri::DistanceUnits units) {
+  switch (units) {
+    case mri::DistanceUnits::METERS:
+      return DistanceUnits::METERS;
+    case mri::DistanceUnits::PIXELS:
+      return DistanceUnits::PIXELS;
+    case mri::DistanceUnits::UNITS_UNKNOWN:
+      return DistanceUnits::UNITS_UNKNOWN;
+  }
+  return DistanceUnits::UNITS_UNKNOWN;
+}
+
+NormalizedBoundingBoxPtr ToMojom(const mri::NormalizedBoundingBox& bbox) {
+  NormalizedBoundingBoxPtr bbox_ptr = NormalizedBoundingBox::New();
+  bbox_ptr->x_min = bbox.x_min();
+  bbox_ptr->y_min = bbox.y_min();
+  bbox_ptr->x_max = bbox.x_max();
+  bbox_ptr->y_max = bbox.y_max();
+  bbox_ptr->normalization_width = bbox.normalization_width();
+  bbox_ptr->normalization_height = bbox.normalization_height();
+  return bbox_ptr;
+}
+
+DistancePtr ToMojom(const mri::Distance& distance) {
+  DistancePtr distance_ptr = Distance::New();
+  distance_ptr->units = ToMojom(distance.units());
+  distance_ptr->magnitude = distance.magnitude();
+  return distance_ptr;
+}
+
 PipelineStatus ToMojom(mri::PipelineStatus status) {
   switch (status) {
     case mri::PipelineStatus::STARTED:
@@ -278,6 +308,45 @@ DeviceTemplate ToProto(
   device_template.set_template_name(template_ptr->template_name);
   device_template.set_device_type(ToProto(template_ptr->device_type));
   return device_template;
+}
+
+DistanceUnits ToProto(chromeos::media_perception::mojom::DistanceUnits units) {
+  switch (units) {
+    case chromeos::media_perception::mojom::DistanceUnits::METERS:
+      return DistanceUnits::METERS;
+    case chromeos::media_perception::mojom::DistanceUnits::PIXELS:
+      return DistanceUnits::PIXELS;
+    case chromeos::media_perception::mojom::DistanceUnits::UNITS_UNKNOWN:
+      return DistanceUnits::UNITS_UNKNOWN;
+  }
+  return DistanceUnits::UNITS_UNKNOWN;
+}
+
+NormalizedBoundingBox ToProto(
+    const chromeos::media_perception::mojom::NormalizedBoundingBoxPtr&
+        bbox_ptr) {
+  NormalizedBoundingBox bbox;
+  if (bbox_ptr.is_null())
+    return bbox;
+
+  bbox.set_x_min(bbox_ptr->x_min);
+  bbox.set_y_min(bbox_ptr->y_min);
+  bbox.set_x_max(bbox_ptr->x_max);
+  bbox.set_y_max(bbox_ptr->y_max);
+  bbox.set_normalization_width(bbox_ptr->normalization_width);
+  bbox.set_normalization_height(bbox_ptr->normalization_height);
+  return bbox;
+}
+
+Distance ToProto(
+    const chromeos::media_perception::mojom::DistancePtr& distance_ptr) {
+  Distance distance;
+  if (distance_ptr.is_null())
+    return distance;
+
+  distance.set_units(ToProto(distance_ptr->units));
+  distance.set_magnitude(distance_ptr->magnitude);
+  return distance;
 }
 
 PipelineStatus ToProto(

@@ -153,6 +153,34 @@ TEST(ProtoMojomConversionTest, DeviceTemplateToMojom) {
   EXPECT_EQ(template_ptr->device_type, DeviceType::VIRTUAL_VIDEO);
 }
 
+TEST(ProtoMojomConversionTest, NormalizedBoundingBoxToMojom) {
+  mri::NormalizedBoundingBox bbox;
+  bbox.set_x_min(0.1);
+  bbox.set_y_min(0.2);
+  bbox.set_x_max(0.7);
+  bbox.set_y_max(0.8);
+  bbox.set_normalization_width(10);
+  bbox.set_normalization_height(20);
+
+  NormalizedBoundingBoxPtr bbox_ptr = ToMojom(bbox);
+  EXPECT_FLOAT_EQ(bbox_ptr->x_min, 0.1);
+  EXPECT_FLOAT_EQ(bbox_ptr->y_min, 0.2);
+  EXPECT_FLOAT_EQ(bbox_ptr->x_max, 0.7);
+  EXPECT_FLOAT_EQ(bbox_ptr->y_max, 0.8);
+  EXPECT_EQ(bbox_ptr->normalization_width, 10);
+  EXPECT_EQ(bbox_ptr->normalization_height, 20);
+}
+
+TEST(ProtoMojomConversionTest, DistanceToMojom) {
+  mri::Distance distance;
+  distance.set_units(mri::DistanceUnits::METERS);
+  distance.set_magnitude(1.5);
+
+  DistancePtr distance_ptr = ToMojom(distance);
+  EXPECT_EQ(distance_ptr->units, DistanceUnits::METERS);
+  EXPECT_FLOAT_EQ(distance_ptr->magnitude, 1.5);
+}
+
 TEST(ProtoMojomConversionTest, PipelineErrorToMojom) {
   mri::PipelineError error;
   error.set_error_type(mri::PipelineErrorType::CONFIGURATION);
@@ -330,6 +358,37 @@ TEST(ProtoMojomConversionTest, DeviceTemplateToProto) {
   DeviceTemplate device_template = ToProto(template_ptr);
   EXPECT_EQ(device_template.template_name(), "template_name");
   EXPECT_EQ(device_template.device_type(), DeviceType::VIRTUAL_VIDEO);
+}
+
+TEST(ProtoMojomConversionTest, NormalizedBoundingBoxToProto) {
+  chromeos::media_perception::mojom::NormalizedBoundingBoxPtr bbox_ptr =
+      chromeos::media_perception::mojom::NormalizedBoundingBox::New();
+  bbox_ptr->x_min = 0.1;
+  bbox_ptr->y_min = 0.2;
+  bbox_ptr->x_max = 0.7;
+  bbox_ptr->y_max = 0.8;
+  bbox_ptr->normalization_width = 10;
+  bbox_ptr->normalization_height = 20;
+
+  NormalizedBoundingBox bbox = ToProto(bbox_ptr);
+  EXPECT_FLOAT_EQ(bbox.x_min(), 0.1);
+  EXPECT_FLOAT_EQ(bbox.y_min(), 0.2);
+  EXPECT_FLOAT_EQ(bbox.x_max(), 0.7);
+  EXPECT_FLOAT_EQ(bbox.y_max(), 0.8);
+  EXPECT_FLOAT_EQ(bbox.normalization_width(), 10);
+  EXPECT_FLOAT_EQ(bbox.normalization_height(), 20);
+}
+
+TEST(ProtoMojomConversionTest, DistanceToProto) {
+  chromeos::media_perception::mojom::DistancePtr distance_ptr =
+      chromeos::media_perception::mojom::Distance::New();
+  distance_ptr->units =
+      chromeos::media_perception::mojom::DistanceUnits::METERS;
+  distance_ptr->magnitude = 1.5;
+
+  Distance distance = ToProto(distance_ptr);
+  EXPECT_EQ(distance.units(), DistanceUnits::METERS);
+  EXPECT_FLOAT_EQ(distance.magnitude(), 1.5);
 }
 
 TEST(ProtoMojomConversionTest, PipelineErrorToProto) {
