@@ -30,6 +30,8 @@ std::string MatchResultToString(int result) {
       return "No match";
     case EC_MKBP_FP_ERR_MATCH_NO_INTERNAL:
       return "Internal error";
+    case EC_MKBP_FP_ERR_MATCH_NO_TEMPLATES:
+      return "No templates";
     case EC_MKBP_FP_ERR_MATCH_NO_LOW_QUALITY:
       return "Low quality";
     case EC_MKBP_FP_ERR_MATCH_NO_LOW_COVERAGE:
@@ -535,10 +537,15 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
   LOG(INFO) << __func__ << " result: '" << MatchResultToString(match_result)
             << "' (finger: " << match_idx << ")";
   switch (match_result) {
+    case EC_MKBP_FP_ERR_MATCH_NO_TEMPLATES:
+      LOG(ERROR) << "No templates to match: " << std::hex << event;
+      result = ScanResult::SCAN_RESULT_SUCCESS;
+      break;
     case EC_MKBP_FP_ERR_MATCH_NO_INTERNAL:
       LOG(ERROR) << "Internal error when matching templates: " << std::hex
                  << event;
-    // Fall-through.
+      result = ScanResult::SCAN_RESULT_SUCCESS;
+      break;
     case EC_MKBP_FP_ERR_MATCH_NO:
       // This is the API: empty matches but still SCAN_RESULT_SUCCESS.
       result = ScanResult::SCAN_RESULT_SUCCESS;
