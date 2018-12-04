@@ -29,11 +29,6 @@
 
 #include "PSLConfParser.h"
 
-/**
- * Platform specific implementation
- */
-#include "ChromeCameraProfiles.h"
-
 #define STATIC_ENTRY_CAP 256
 #define STATIC_DATA_CAP 6688 // TODO: we may need to increase it again if more metadata is added
 #define MAX_METADATA_NAME_LENTGTH 128
@@ -41,6 +36,9 @@
 #define MAX_METADATA_ATTRIBUTE_VALUE_LENTGTH 6144
 
 NAMESPACE_DECLARATION {
+
+static const char *sDefaultXmlFileName = "/etc/camera/camera3_profiles.xml";
+
 CameraProfiles::CameraProfiles(CameraHWInfo *cameraHWInfo) :
     mCurrentDataField(FIELD_INVALID),
     mMetadataCache(nullptr),
@@ -56,13 +54,14 @@ CameraProfiles::CameraProfiles(CameraHWInfo *cameraHWInfo) :
 status_t CameraProfiles::init()
 {
     LOG1("@%s", __FUNCTION__);
+    CheckError(!mCameraCommon, BAD_VALUE, "CameraHWInfo is nullptr");
 
-    if (!mCameraCommon) {
-        LOGE("CameraHWInfo is nullptr");
-        return BAD_VALUE;
-    }
+    struct stat st;
+    int pathExists = stat(sDefaultXmlFileName, &st);
+    CheckError(pathExists != 0, UNKNOWN_ERROR, "Error, could not find camera3_profiles.xml!");
 
-    mCameraCommon->init(PSLConfParser::getSensorMediaDevicePath());
+    status_t status = mCameraCommon->init(PSLConfParser::getSensorMediaDevicePath());
+    CheckError(status != OK, UNKNOWN_ERROR, "Failed to init camera HW");
 
     // Assumption: Driver enumeration order will match the CameraId
     // CameraId in camera_profiles.xml. Main camera is always at
@@ -78,7 +77,10 @@ status_t CameraProfiles::init()
     for (int i = 0;i < MAX_CAMERAS; i++)
          mCharacteristicsKeys[i].clear();
 
-    return OK;
+    getDataFromXmlFile();
+    createConfParser();
+
+    return status;
 }
 
 void CameraProfiles::createConfParser()
@@ -87,7 +89,8 @@ void CameraProfiles::createConfParser()
     for (const auto &cameraIdToCameraInfo : mCameraIdToCameraInfo) {
         // get psl parser
         CameraInfo *info = cameraIdToCameraInfo.second;
-        info->parser = PSLConfParser::getInstance(mXmlConfigName, mSensorNames);
+        std::string defaultXmlPath(sDefaultXmlFileName);
+        info->parser = PSLConfParser::getInstance(defaultXmlPath, mSensorNames);
     }
 }
 
@@ -125,6 +128,7 @@ CameraProfiles::~CameraProfiles()
     mCameraIdToCameraInfo.clear();
 
     mSensorNames.clear();
+    destroyConfParser();
 }
 
 const CameraCapInfo *CameraProfiles::getCameraCapInfo(int cameraId)
@@ -1058,6 +1062,83 @@ void CameraProfiles::handleCommon(const char *name, const char **atts)
     }
 }
 
+/**
+ * This function will handle all the android static metadata related elements of sensor.
+ *
+ * It will be called in the function startElement
+ * This method parses the input from the XML file, that can be manipulated.
+ * So extra care is applied in the validation of strings
+ *
+ * \param name: the element's name.
+ * \param atts: the element's attribute.
+ */
+void CameraProfiles::handleAndroidStaticMetadata(const char *name, const char **atts)
+{
+    if (!validateStaticMetadata(name, atts))
+        return;
+
+    CheckError(mStaticMeta.empty(), VOID_VALUE, "Camera isn't added, unable to get the static metadata");
+    camera_metadata_t *currentMeta = nullptr;
+    currentMeta = mStaticMeta.at(mSensorIndex);
+
+    // Find tag
+    const metadata_tag_t *tagInfo = findTagInfo(name, android_static_tags_table, STATIC_TAGS_TABLE_SIZE);
+    if (tagInfo == nullptr)
+        return;
+
+    int count = 0;
+    MetaValueRefTable mvrt;
+    std::vector<MetaValueRefTable> refTables;
+    LOG1("@%s: Parsing static tag %s: value %s", __FUNCTION__, tagInfo->name,  atts[1]);
+
+    /**
+     * Complex parsing types done manually (exceptions)
+     * scene overrides uses different tables for each entry one from ae/awb/af
+     * mode
+     */
+    if (tagInfo->value == ANDROID_SCALER_AVAILABLE_INPUT_OUTPUT_FORMATS_MAP) {
+        mvrt.table = android_scaler_availableFormats_values;
+        mvrt.tableSize = ELEMENT(android_scaler_availableFormats_values);
+        refTables.push_back(mvrt);
+        count = parseAvailableInputOutputFormatsMap(atts[1], tagInfo, refTables,
+                METADATASIZE, mMetadataCache);
+    } else if ((tagInfo->value == ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS) ||
+               (tagInfo->value == ANDROID_REQUEST_AVAILABLE_RESULT_KEYS)) {
+        count = parseAvailableKeys(atts[1], tagInfo, METADATASIZE, mMetadataCache);
+    } else if (tagInfo->value == ANDROID_SYNC_MAX_LATENCY) {
+        count = parseEnumAndNumbers(atts[1], tagInfo, METADATASIZE, mMetadataCache);
+    } else { /* Parsing of generic types */
+        if (tagInfo->arrayTypedef == STREAM_CONFIGURATION) {
+            mvrt.table = android_scaler_availableFormats_values;
+            mvrt.tableSize = ELEMENT(android_scaler_availableFormats_values);
+            refTables.push_back(mvrt);
+            mvrt.table = android_scaler_availableStreamConfigurations_values;
+            mvrt.tableSize = ELEMENT(android_scaler_availableStreamConfigurations_values);
+            refTables.push_back(mvrt);
+            count = parseStreamConfig(atts[1], tagInfo, refTables, METADATASIZE, mMetadataCache);
+        } else if (tagInfo->arrayTypedef == STREAM_CONFIGURATION_DURATION) {
+            mvrt.table = android_scaler_availableFormats_values;
+            mvrt.tableSize = ELEMENT(android_scaler_availableFormats_values);
+            refTables.push_back(mvrt);
+            count = parseStreamConfigDuration(atts[1], tagInfo, refTables, METADATASIZE,
+                    mMetadataCache);
+        } else {
+            count = parseGenericTypes(atts[1], tagInfo, METADATASIZE, mMetadataCache);
+        }
+    }
+    CheckError(count == 0, VOID_VALUE, "Error parsing static tag %s. ignoring", tagInfo->name);
+
+    LOG1("@%s: writing static tag %s: count %d", __FUNCTION__, tagInfo->name, count);
+
+    status_t res = add_camera_metadata_entry(currentMeta, tagInfo->value, mMetadataCache, count);
+    CheckError(res != OK, VOID_VALUE, "call add_camera_metadata_entry fail for tag:%s",
+        get_camera_metadata_tag_name(tagInfo->value));
+
+    // save the key to mCharacteristicsKeys used to update the
+    // REQUEST_AVAILABLE_CHARACTERISTICS_KEYS
+    mCharacteristicsKeys[mSensorIndex].push_back(tagInfo->value);
+}
+
 bool CameraProfiles::validateStaticMetadata(const char *name, const char **atts)
 {
     /**
@@ -1229,7 +1310,7 @@ void CameraProfiles::getDataFromXmlFile(void)
     status_t res;
     int tag = ANDROID_REQUEST_AVAILABLE_CHARACTERISTICS_KEYS;
 
-    fp = ::fopen(mXmlConfigName.c_str(), "r");
+    fp = ::fopen(sDefaultXmlFileName, "r");
     if (nullptr == fp) {
         LOGE("line:%d, fp is nullptr", __LINE__);
         return;

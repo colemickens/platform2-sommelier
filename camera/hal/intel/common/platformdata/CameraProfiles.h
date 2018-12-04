@@ -36,23 +36,23 @@ class CameraCapInfo;
  */
 class CameraProfiles {
 public:
-    virtual ~CameraProfiles();
+    CameraProfiles(CameraHWInfo *cameraHWInfo);
+    ~CameraProfiles();
 
-    virtual status_t init();
-
+    status_t init();
     camera_metadata_t *constructDefaultMetadata(int cameraId, int requestTemplate);
     CameraHwType getCameraHwforId(int cameraId);
     const CameraCapInfo *getCameraCapInfo(int cameraId);
     const CameraCapInfo *getCameraCapInfoForXmlCameraId(int xmlCameraId);
     int getXmlCameraId(int cameraId) const;
 
-public: /* types */
+public:
     std::vector<camera_metadata_t *> mStaticMeta;
 
     // one example: key: 0, value:"ov13858"
     std::map<int, std::string> mCameraIdToSensorName;
 
-protected: /* private types */
+private:
     enum DataField {
         FIELD_INVALID = 0,
         FIELD_SUPPORTED_HARDWARE,
@@ -71,22 +71,9 @@ protected: /* private types */
         int tableSize;
     };
 
-protected: /* Constants*/
-    static const int BUFFERSIZE = 4*1024;  // For xml file
-    static const int METADATASIZE= 4096;
-    static const int mMaxConfigNameLength = 64;
-
-protected: /* Methods */
-    CameraProfiles(CameraHWInfo *cameraHWInfo);
-
+private:
     static void startElement(void *userData, const char *name, const char **atts);
     static void endElement(void *userData, const char *name);
-
-    // virtual
-    virtual void handleAndroidStaticMetadata(const char *name, const char **atts)
-    { UNUSED2(name, atts); }
-    virtual void handleLinuxStaticMetadata(const char *name, const char **atts)
-    { UNUSED2(name, atts); }
 
     void createConfParser();
     void destroyConfParser();
@@ -100,6 +87,7 @@ protected: /* Methods */
     const metadata_tag_t* findTagInfo(const char *name, const metadata_tag_t *tagsTable, unsigned int size);
     void handleSupportedHardware(const char *name, const char **atts);
     void handleCommon(const char *name, const char **atts);
+    void handleAndroidStaticMetadata(const char *name, const char **atts);
 
     void dumpSupportedHWSection(int cameraId);
     void dumpStaticMetadataSection(int cameraId);
@@ -164,14 +152,17 @@ protected: /* Methods */
 
     const char *skipWhiteSpace(const char *src);
 
-protected:  /* Members */
-    std::string mXmlConfigName;
+private:
+    static const int BUFFERSIZE = 4*1024;  // For xml file
+    static const int METADATASIZE= 4096;
+    static const int mMaxConfigNameLength = 64;
+
     int64_t * mMetadataCache;  // for metadata construct
     unsigned mSensorIndex;
     unsigned mXmlSensorIndex;
     unsigned mItemsCount;
     bool mProfileEnd[MAX_CAMERAS];
-    CameraHWInfo * mCameraCommon; /* ChromeCameraProfiles has the ownership */
+    CameraHWInfo * mCameraCommon;
     ItemPool<CameraInfo> mCameraInfoPool;
     // To store the supported HW type for each camera id
     std::map<int, CameraInfo*> mCameraIdToCameraInfo; /* mCameraIdToCameraInfo doesn't has

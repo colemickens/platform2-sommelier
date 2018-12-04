@@ -93,7 +93,6 @@
         'common/platformdata/CameraConf.cpp',
         'common/platformdata/CameraMetadataHelper.cpp',
         'common/platformdata/CameraProfiles.cpp',
-        'common/platformdata/ChromeCameraProfiles.cpp',
         'common/platformdata/IPSLConfParser.cpp',
         'common/platformdata/Metadata.cpp',
         'common/platformdata/PlatformData.cpp',

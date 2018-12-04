@@ -22,7 +22,6 @@
 #include "CameraMetadataHelper.h"
 #include "cros-camera/v4l2_device.h"
 #include "UtilityMacros.h"
-#include "ChromeCameraProfiles.h"
 
 #include <linux/media.h>   // media controller
 #include <linux/kdev_t.h>  // MAJOR(), MINOR()
@@ -154,7 +153,7 @@ void PlatformData::init()
         delete mInstance;
         mInstance = nullptr;
     }
-    mInstance = new ChromeCameraProfiles(mCameraHWInfo);
+    mInstance = new CameraProfiles(mCameraHWInfo);
 
     int ret = mInstance->init();
     if (ret != OK) {
