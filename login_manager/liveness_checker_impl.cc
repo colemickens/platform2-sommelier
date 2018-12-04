@@ -79,6 +79,26 @@ void LivenessCheckerImpl::CheckAndSendLivenessPing(base::TimeDelta interval) {
     LOG(WARNING) << "Top output (trimmed):";
     LOG(WARNING) << top_output;
 
+    // Figure out parent process command line of "flashrom".
+    // TODO(https://crbug.com/910411): Remove.
+    const std::string kFlashRom = "flashrom";
+    for (const auto& line : top_output_lines) {
+      if (line.find(kFlashRom) == std::string::npos)
+        continue;
+
+      std::vector<std::string> parts = base::SplitString(
+          line, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+      const std::string pid = parts[0];
+
+      std::string pstree_output;
+      std::vector<std::string> pstree_argv = {"pstree", "-sal", "-p"};
+      pstree_argv.push_back(pid);
+      base::GetAppOutput(pstree_argv, &pstree_output);
+      LOG(WARNING) << "pstree for " << kFlashRom << ":";
+      LOG(WARNING) << pstree_output.substr(0, 2048);
+      break;
+    }
+
     if (enable_aborting_) {
       // Note: If this log message is changed, the desktopui_HangDetector
       // autotest must be updated.
