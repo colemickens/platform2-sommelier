@@ -20,7 +20,6 @@
 #include <vector>
 #include <string>
 #include "PlatformData.h"
-#include "IPSLConfParser.h"
 #include "IPU3CameraCapInfo.h"
 #include "MediaCtlPipeConfig.h"
 
@@ -31,15 +30,15 @@
 namespace android {
 namespace camera2 {
 
-class PSLConfParser : public IPSLConfParser {
+class PSLConfParser {
 public:
-    static IPSLConfParser *getInstance(std::string &xmlConfigName, const std::vector<SensorDriverDescriptor>& sensorNames);
+    static PSLConfParser *getInstance(std::string &xmlConfigName, const std::vector<SensorDriverDescriptor>& sensorNames);
     static void deleteInstance();
     static std::string getSensorMediaDevice();
     static std::string getImguMediaDevice();
 
-    virtual CameraCapInfo *getCameraCapInfo(int cameraId);
-    virtual camera_metadata_t *constructDefaultMetadata(int cameraId, int reqTemplate);
+    CameraCapInfo *getCameraCapInfo(int cameraId);
+    camera_metadata_t *constructDefaultMetadata(int cameraId, int reqTemplate);
 
     static const char *getSensorMediaDeviceName() { return "ipu3-cio2"; }
     static const char *getImguEntityMediaDevice() { return "ipu3-imgu"; }
@@ -53,15 +52,20 @@ private:
     PSLConfParser& operator=(PSLConfParser const&);
 
 private:
-    static IPSLConfParser *sInstance; // the singleton instance
+    static PSLConfParser *sInstance; // the singleton instance
 
     PSLConfParser(std::string& xmlName, const std::vector<SensorDriverDescriptor>& sensorNames);
-    virtual ~PSLConfParser();
+    ~PSLConfParser();
 
     static const int mBufSize = 1*1024;  // For xml file
 
     static std::string mImguMediaDevice;
     static std::string mSensorMediaDevice;
+
+    std::string mXmlFileName;
+    std::vector<SensorDriverDescriptor> mDetectedSensors;
+    std::vector<CameraCapInfo *> mCaps;
+    std::vector<camera_metadata_t *> mDefaultRequests;
 
     enum DataField {
         FIELD_INVALID = 0,

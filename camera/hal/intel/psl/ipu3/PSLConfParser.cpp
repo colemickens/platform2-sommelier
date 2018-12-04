@@ -34,7 +34,7 @@ using std::string;
 namespace android {
 namespace camera2 {
 
-IPSLConfParser *PSLConfParser::sInstance = nullptr; // the singleton instance
+PSLConfParser *PSLConfParser::sInstance = nullptr; // the singleton instance
 
 std::string PSLConfParser::mImguMediaDevice;
 std::string PSLConfParser::mSensorMediaDevice;
@@ -43,7 +43,7 @@ static const char *NVM_DATA_PATH = "/sys/bus/i2c/devices/";
 
 static const char *GRAPH_SETTINGS_FILE_PATH = "/etc/camera/";
 
-IPSLConfParser *PSLConfParser::getInstance(std::string &xmlConfigName, const std::vector<SensorDriverDescriptor>& sensorNames)
+PSLConfParser *PSLConfParser::getInstance(std::string &xmlConfigName, const std::vector<SensorDriverDescriptor>& sensorNames)
 {
     if (sInstance == nullptr) {
         sInstance = new PSLConfParser(xmlConfigName, sensorNames);
@@ -60,10 +60,11 @@ void PSLConfParser::deleteInstance()
 }
 
 PSLConfParser::PSLConfParser(std::string& xmlName, const std::vector<SensorDriverDescriptor>& sensorNames):
-                IPSLConfParser(xmlName, sensorNames)
+                mXmlFileName(xmlName),
+                mDetectedSensors(sensorNames),
+                mCurrentDataField(FIELD_INVALID),
+                mSensorIndex(-1)
 {
-    mCurrentDataField = FIELD_INVALID;
-    mSensorIndex  = -1;
     getPSLDataFromXmlFile();
     getGraphConfigFromXmlFile();
 }

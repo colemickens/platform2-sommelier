@@ -22,7 +22,7 @@
 #include <map>
 
 #include "PlatformData.h"
-#include "IPSLConfParser.h"
+#include "PSLConfParser.h"
 #include "ItemPool.h"
 
 NAMESPACE_DECLARATION {
@@ -61,7 +61,7 @@ private:
     } mCurrentDataField;
 
     struct CameraInfo {
-        IPSLConfParser* parser;
+        PSLConfParser* parser;
         std::string hwType;
         int xmlCameraId;
     };

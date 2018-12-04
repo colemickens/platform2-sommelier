@@ -265,7 +265,7 @@ public:
     const GraphConfigNodes* getGraphConfigNodes() const { return mGCMNodes; }
 
 protected:
-    friend class IPSLConfParser;
+    friend class PSLConfParser;
     /* Common fields for all PSL's stored in the XML section HAL_tuning */
     SensorType mSensorType;    /*!> Whether is RAW or SOC */
     /**

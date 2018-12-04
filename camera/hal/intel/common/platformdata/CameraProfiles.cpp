@@ -24,7 +24,6 @@
 #include "CameraProfiles.h"
 #include "Metadata.h"
 #include "CameraMetadataHelper.h"
-#include "IPSLConfParser.h"
 #include "Utils.h"
 
 #include "PSLConfParser.h"
@@ -134,7 +133,7 @@ CameraProfiles::~CameraProfiles()
 const CameraCapInfo *CameraProfiles::getCameraCapInfo(int cameraId)
 {
     // get the psl parser instance for cameraid
-    IPSLConfParser *parserInstance;
+    PSLConfParser *parserInstance;
     std::map<int, CameraInfo*>::iterator it =
                             mCameraIdToCameraInfo.find(cameraId);
     if (it == mCameraIdToCameraInfo.end()) {
@@ -155,7 +154,7 @@ const CameraCapInfo *CameraProfiles::getCameraCapInfo(int cameraId)
 const CameraCapInfo *CameraProfiles::getCameraCapInfoForXmlCameraId(int xmlCameraId)
 {
     // get the psl parser instance for cameraid
-    IPSLConfParser *parserInstance;
+    PSLConfParser *parserInstance;
 
     int cameraId = -1;
     for (const auto &cameraIdToCameraInfo : mCameraIdToCameraInfo) {
@@ -181,7 +180,7 @@ const CameraCapInfo *CameraProfiles::getCameraCapInfoForXmlCameraId(int xmlCamer
 camera_metadata_t *CameraProfiles::constructDefaultMetadata(int cameraId, int requestTemplate)
 {
     // get the psl parser instance for cameraid
-    IPSLConfParser *parserInstance;
+    PSLConfParser *parserInstance;
     std::map<int, CameraInfo*>::iterator it =
                             mCameraIdToCameraInfo.find(cameraId);
     if (it == mCameraIdToCameraInfo.end()) {
