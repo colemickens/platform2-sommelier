@@ -34,6 +34,9 @@ static_library("libruntime_probe") {
   ]
   sources = [
     "daemon.cc",
+    "functions/all_functions.cc",
+    "probe_function.cc",
+    "probe_function_argument.cc",
     "statement_parser.cc",
   ]
 }
