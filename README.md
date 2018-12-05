@@ -95,6 +95,7 @@ copies.
 | [salsa](./salsa/) | Touchpad experimentation framework |
 | [screenshot](./screenshot/) | Tiny command to take a screenshot |
 | [secure_erase_file](./secure_erase_file/) | Helper tools for securely erasing files from storage (e.g. keys and PII data) |
+| [security_tests](./security_tests/) | Compiled executables used by Tast security tests |
 | [sepolicy](./sepolicy/) | SELinux policy for Chrome OS |
 | [shill](./shill/) | Chrome OS Connection Manager |
 | [smbprovider](./smbprovider/) | Daemon for connecting Samba / Windows networking shares to the Files.app |
