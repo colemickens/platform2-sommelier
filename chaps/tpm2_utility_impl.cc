@@ -31,7 +31,7 @@ using base::AutoLock;
 using brillo::SecureBlob;
 using std::map;
 using std::set;
-using trunks::kRSAStorageRootKey;
+using trunks::kStorageRootKey;
 using trunks::TPM_RC;
 using trunks::TPM_RC_SUCCESS;
 using trunks::TrunksFactory;
@@ -293,7 +293,7 @@ bool TPM2UtilityImpl::Authenticate(int slot_id,
   AutoLock lock(lock_);
   int key_handle = 0;
   if (!LoadKeyWithParentInternal(slot_id, auth_key_blob, auth_data,
-                                 kRSAStorageRootKey, &key_handle)) {
+                                 kStorageRootKey, &key_handle)) {
     return false;
   }
   std::string master_key_str;
@@ -317,7 +317,7 @@ bool TPM2UtilityImpl::ChangeAuthData(int slot_id,
     return false;
   }
   if (!LoadKeyWithParentInternal(slot_id, old_auth_key_blob, old_auth_data,
-                                 kRSAStorageRootKey, &key_handle)) {
+                                 kStorageRootKey, &key_handle)) {
     LOG(ERROR) << "Error loading key under old authorization data.";
     return false;
   }
@@ -411,7 +411,7 @@ bool TPM2UtilityImpl::GenerateKey(int slot,
     return false;
   }
   if (!LoadKeyWithParentInternal(slot, *key_blob, auth_data,
-                                 kRSAStorageRootKey, key_handle)) {
+                                 kStorageRootKey, key_handle)) {
     return false;
   }
   return true;
@@ -478,7 +478,7 @@ bool TPM2UtilityImpl::WrapKey(int slot,
     return false;
   }
   if (!LoadKeyWithParentInternal(slot, *key_blob, auth_data,
-                                 kRSAStorageRootKey, key_handle)) {
+                                 kStorageRootKey, key_handle)) {
     return false;
   }
   return true;
@@ -492,7 +492,7 @@ bool TPM2UtilityImpl::LoadKey(int slot,
   return LoadKeyWithParentInternal(slot,
                                    key_blob,
                                    auth_data,
-                                   kRSAStorageRootKey,
+                                   kStorageRootKey,
                                    key_handle);
 }
 
@@ -660,7 +660,7 @@ bool TPM2UtilityImpl::LoadKeyWithParentInternal(int slot,
                                                 const SecureBlob& auth_data,
                                                 int parent_key_handle,
                                                 int* key_handle) {
-  CHECK_EQ(parent_key_handle, static_cast<int>(kRSAStorageRootKey))
+  CHECK_EQ(parent_key_handle, static_cast<int>(kStorageRootKey))
       << "Chaps with TPM2.0 only loads keys under the RSA SRK.";
   if (auth_data.size() > SHA256_DIGEST_SIZE) {
     LOG(ERROR) << "Authorization cannot be larger than SHA256 Digest size.";

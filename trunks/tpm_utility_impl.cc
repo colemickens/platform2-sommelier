@@ -806,7 +806,7 @@ TPM_RC TpmUtilityImpl::ChangeKeyAuthorizationData(
                << GetErrorString(result);
     return result;
   }
-  result = GetKeyName(kRSAStorageRootKey, &parent_name);
+  result = GetKeyName(kStorageRootKey, &parent_name);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Error getting Key name for RSA-SRK: "
                << GetErrorString(result);
@@ -816,7 +816,7 @@ TPM_RC TpmUtilityImpl::ChangeKeyAuthorizationData(
   TPM2B_PRIVATE new_private_data;
   new_private_data.size = 0;
   result = factory_.GetTpm()->ObjectChangeAuthSync(
-      key_handle, key_name, kRSAStorageRootKey, parent_name, new_auth,
+      key_handle, key_name, kStorageRootKey, parent_name, new_auth,
       &new_private_data, delegate);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Error changing object authorization data: "
@@ -853,7 +853,7 @@ TPM_RC TpmUtilityImpl::ImportRSAKey(AsymmetricKeyUsage key_type,
     return result;
   }
   std::string parent_name;
-  result = GetKeyName(kRSAStorageRootKey, &parent_name);
+  result = GetKeyName(kStorageRootKey, &parent_name);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Error getting Key name for RSA-SRK: "
                << GetErrorString(result);
@@ -901,7 +901,7 @@ TPM_RC TpmUtilityImpl::ImportRSAKey(AsymmetricKeyUsage key_type,
   TPM2B_PRIVATE tpm_private_data;
   tpm_private_data.size = 0;
   result = factory_.GetTpm()->ImportSync(
-      kRSAStorageRootKey, parent_name, encryption_key, public_data,
+      kStorageRootKey, parent_name, encryption_key, public_data,
       private_data, in_sym_seed, symmetric_alg, &tpm_private_data, delegate);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__
@@ -938,7 +938,7 @@ TPM_RC TpmUtilityImpl::CreateRSAKeyPair(
     return result;
   }
   std::string parent_name;
-  result = GetKeyName(kRSAStorageRootKey, &parent_name);
+  result = GetKeyName(kStorageRootKey, &parent_name);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Error getting Key name for RSA-SRK: "
                << GetErrorString(result);
@@ -999,7 +999,7 @@ TPM_RC TpmUtilityImpl::CreateRSAKeyPair(
   TPM2B_DIGEST creation_hash;
   TPMT_TK_CREATION creation_ticket;
   result = factory_.GetTpm()->CreateSync(
-      kRSAStorageRootKey, parent_name, sensitive_create,
+      kStorageRootKey, parent_name, sensitive_create,
       Make_TPM2B_PUBLIC(public_area), outside_info, creation_pcrs, &out_private,
       &out_public, &creation_data, &creation_hash, &creation_ticket, delegate);
   if (result != TPM_RC_SUCCESS) {
@@ -1033,7 +1033,7 @@ TPM_RC TpmUtilityImpl::LoadKey(const std::string& key_blob,
     return result;
   }
   std::string parent_name;
-  result = GetKeyName(kRSAStorageRootKey, &parent_name);
+  result = GetKeyName(kStorageRootKey, &parent_name);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__
                << ": Error getting parent key name: " << GetErrorString(result);
@@ -1048,7 +1048,7 @@ TPM_RC TpmUtilityImpl::LoadKey(const std::string& key_blob,
   TPM2B_NAME key_name;
   key_name.size = 0;
   result =
-      factory_.GetTpm()->LoadSync(kRSAStorageRootKey, parent_name, in_private,
+      factory_.GetTpm()->LoadSync(kStorageRootKey, parent_name, in_private,
                                   in_public, key_handle, &key_name, delegate);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Error loading key: " << GetErrorString(result);
@@ -1185,7 +1185,7 @@ TPM_RC TpmUtilityImpl::SealData(const std::string& data_to_seal,
     return result;
   }
   std::string parent_name;
-  result = GetKeyName(kRSAStorageRootKey, &parent_name);
+  result = GetKeyName(kStorageRootKey, &parent_name);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Error getting Key name for RSA-SRK: "
                << GetErrorString(result);
@@ -1212,7 +1212,7 @@ TPM_RC TpmUtilityImpl::SealData(const std::string& data_to_seal,
   TPM2B_DIGEST creation_hash;
   TPMT_TK_CREATION creation_ticket;
   result = factory_.GetTpm()->CreateSync(
-      kRSAStorageRootKey, parent_name, sensitive_create,
+      kStorageRootKey, parent_name, sensitive_create,
       Make_TPM2B_PUBLIC(public_area), outside_info, creation_pcrs, &out_private,
       &out_public, &creation_data, &creation_hash, &creation_ticket, delegate);
   if (result != TPM_RC_SUCCESS) {
@@ -1757,10 +1757,8 @@ TPM_RC TpmUtilityImpl::CreateIdentityKey(TPM_ALG_ID key_type,
   if (key_type != TPM_ALG_RSA && key_type != TPM_ALG_ECC) {
     return SAPI_RC_BAD_PARAMETER;
   }
-  TPM_HANDLE parent_handle =
-      (key_type == TPM_ALG_RSA) ? kRSAStorageRootKey : kECCStorageRootKey;
   std::string parent_name;
-  TPM_RC result = GetKeyName(parent_handle, &parent_name);
+  TPM_RC result = GetKeyName(kStorageRootKey, &parent_name);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Error getting key name for SRK: "
                << GetErrorString(result);
@@ -1794,7 +1792,7 @@ TPM_RC TpmUtilityImpl::CreateIdentityKey(TPM_ALG_ID key_type,
   TPM2B_DIGEST creation_hash;
   TPMT_TK_CREATION creation_ticket;
   result = factory_.GetTpm()->CreateSync(
-      parent_handle, parent_name, sensitive_create,
+      kStorageRootKey, parent_name, sensitive_create,
       Make_TPM2B_PUBLIC(public_area), outside_info, creation_pcrs, &out_private,
       &out_public, &creation_data, &creation_hash, &creation_ticket, delegate);
   if (result != TPM_RC_SUCCESS) {
@@ -1944,7 +1942,7 @@ TPM_RC TpmUtilityImpl::CreateStorageRootKeys(
       factory_.GetPasswordAuthorization(owner_password);
   if (tpm_state->IsRSASupported()) {
     bool exists = false;
-    result = DoesPersistentKeyExist(kRSAStorageRootKey, &exists);
+    result = DoesPersistentKeyExist(kStorageRootKey, &exists);
     if (result) {
       return result;
     }
@@ -1971,7 +1969,7 @@ TPM_RC TpmUtilityImpl::CreateStorageRootKeys(
       result = tpm->EvictControlSync(TPM_RH_OWNER, NameFromHandle(TPM_RH_OWNER),
                                      object_handle,
                                      StringFrom_TPM2B_NAME(object_name),
-                                     kRSAStorageRootKey, delegate.get());
+                                     kStorageRootKey, delegate.get());
       if (result != TPM_RC_SUCCESS) {
         LOG(ERROR) << __func__ << ": " << GetErrorString(result);
         return result;
@@ -1987,7 +1985,7 @@ TPM_RC TpmUtilityImpl::CreateStorageRootKeys(
   // Do it again for ECC.
   if (tpm_state->IsECCSupported()) {
     bool exists = false;
-    result = DoesPersistentKeyExist(kECCStorageRootKey, &exists);
+    result = DoesPersistentKeyExist(kStorageRootKey, &exists);
     if (result) {
       return result;
     }
@@ -2014,7 +2012,7 @@ TPM_RC TpmUtilityImpl::CreateStorageRootKeys(
       result = tpm->EvictControlSync(TPM_RH_OWNER, NameFromHandle(TPM_RH_OWNER),
                                      object_handle,
                                      StringFrom_TPM2B_NAME(object_name),
-                                     kECCStorageRootKey, delegate.get());
+                                     kStorageRootKey, delegate.get());
       if (result != TPM_RC_SUCCESS) {
         LOG(ERROR) << __func__ << ": " << GetErrorString(result);
         return result;
@@ -2040,7 +2038,7 @@ TPM_RC TpmUtilityImpl::CreateSaltingKey(const std::string& owner_password) {
     return TPM_RC_SUCCESS;
   }
   std::string parent_name;
-  result = GetKeyName(kRSAStorageRootKey, &parent_name);
+  result = GetKeyName(kStorageRootKey, &parent_name);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Error getting Key name for RSA-SRK: "
                << GetErrorString(result);
@@ -2072,7 +2070,7 @@ TPM_RC TpmUtilityImpl::CreateSaltingKey(const std::string& owner_password) {
   std::unique_ptr<AuthorizationDelegate> delegate =
       factory_.GetPasswordAuthorization("");
   result = factory_.GetTpm()->CreateSync(
-      kRSAStorageRootKey, parent_name, sensitive_create,
+      kStorageRootKey, parent_name, sensitive_create,
       Make_TPM2B_PUBLIC(public_area), outside_info, creation_pcrs, &out_private,
       &out_public, &creation_data, &creation_hash, &creation_ticket,
       delegate.get());
@@ -2084,7 +2082,7 @@ TPM_RC TpmUtilityImpl::CreateSaltingKey(const std::string& owner_password) {
   TPM2B_NAME key_name;
   key_name.size = 0;
   TPM_HANDLE key_handle;
-  result = factory_.GetTpm()->LoadSync(kRSAStorageRootKey, parent_name,
+  result = factory_.GetTpm()->LoadSync(kStorageRootKey, parent_name,
                                        out_private, out_public, &key_handle,
                                        &key_name, delegate.get());
   if (result != TPM_RC_SUCCESS) {

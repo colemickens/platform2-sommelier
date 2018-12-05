@@ -1380,7 +1380,7 @@ TEST_F(TpmUtilityTest, ImportRSAKeyParserFail) {
 TEST_F(TpmUtilityTest, CreateRSAKeyPairSuccess) {
   TPM2B_PUBLIC public_area;
   TPML_PCR_SELECTION creation_pcrs;
-  EXPECT_CALL(mock_tpm_, CreateSyncShort(kRSAStorageRootKey, _, _, _, _, _, _,
+  EXPECT_CALL(mock_tpm_, CreateSyncShort(kStorageRootKey, _, _, _, _, _, _,
                                          _, _, &mock_authorization_delegate_))
       .WillOnce(DoAll(SaveArg<2>(&public_area), SaveArg<3>(&creation_pcrs),
                       Return(TPM_RC_SUCCESS)));
@@ -1410,7 +1410,7 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairSuccess) {
 TEST_F(TpmUtilityTest, CreateRSAKeyPairMultiplePCRSuccess) {
   TPM2B_PUBLIC public_area;
   TPML_PCR_SELECTION creation_pcrs;
-  EXPECT_CALL(mock_tpm_, CreateSyncShort(kRSAStorageRootKey, _, _, _, _, _, _,
+  EXPECT_CALL(mock_tpm_, CreateSyncShort(kStorageRootKey, _, _, _, _, _, _,
                                          _, _, &mock_authorization_delegate_))
       .WillOnce(DoAll(SaveArg<2>(&public_area), SaveArg<3>(&creation_pcrs),
                       Return(TPM_RC_SUCCESS)));
@@ -1445,7 +1445,7 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairMultiplePCRSuccess) {
 
 TEST_F(TpmUtilityTest, CreateRSAKeyPairDecryptKeySuccess) {
   TPM2B_PUBLIC public_area;
-  EXPECT_CALL(mock_tpm_, CreateSyncShort(kRSAStorageRootKey, _, _, _, _, _, _,
+  EXPECT_CALL(mock_tpm_, CreateSyncShort(kStorageRootKey, _, _, _, _, _, _,
                                          _, _, &mock_authorization_delegate_))
       .WillOnce(DoAll(SaveArg<2>(&public_area), Return(TPM_RC_SUCCESS)));
   std::string key_blob;
@@ -1467,7 +1467,7 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairSignKeySuccess) {
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_tpm_state_, GetTpmProperty(TPM_PT_MANUFACTURER, _))
       .WillOnce(DoAll(SetArgPointee<1>(kVendorIdCr50), Return(true)));
-  EXPECT_CALL(mock_tpm_, CreateSyncShort(kRSAStorageRootKey, _, _, _, _, _, _,
+  EXPECT_CALL(mock_tpm_, CreateSyncShort(kStorageRootKey, _, _, _, _, _, _,
                                          _, _, &mock_authorization_delegate_))
       .WillOnce(DoAll(SaveArg<1>(&sensitive_create), SaveArg<2>(&public_area),
                       Return(TPM_RC_SUCCESS)));
@@ -1537,7 +1537,7 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairFailure) {
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_tpm_state_, GetTpmProperty(TPM_PT_MANUFACTURER, _))
       .WillOnce(DoAll(SetArgPointee<1>(kVendorIdCr50), Return(true)));
-  EXPECT_CALL(mock_tpm_, CreateSyncShort(kRSAStorageRootKey, _, _, _, _, _, _,
+  EXPECT_CALL(mock_tpm_, CreateSyncShort(kStorageRootKey, _, _, _, _, _, _,
                                          _, _, &mock_authorization_delegate_))
       .WillOnce(Return(TPM_RC_FAILURE));
   std::string key_blob;
@@ -1582,7 +1582,7 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairCreationParserFail) {
 TEST_F(TpmUtilityTest, LoadKeySuccess) {
   TPM_HANDLE key_handle = TPM_RH_FIRST;
   TPM_HANDLE loaded_handle;
-  EXPECT_CALL(mock_tpm_, LoadSync(kRSAStorageRootKey, _, _, _, _, _,
+  EXPECT_CALL(mock_tpm_, LoadSync(kStorageRootKey, _, _, _, _, _,
                                   &mock_authorization_delegate_))
       .WillOnce(DoAll(SetArgPointee<4>(key_handle), Return(TPM_RC_SUCCESS)));
   std::string key_blob;
@@ -1771,7 +1771,7 @@ TEST_F(TpmUtilityTest, SealedDataSuccess) {
   TPM2B_SENSITIVE_CREATE sensitive_create;
   TPM2B_PUBLIC in_public;
   EXPECT_CALL(mock_tpm_,
-              CreateSyncShort(kRSAStorageRootKey, _, _, _, _, _, _, _, _, _))
+              CreateSyncShort(kStorageRootKey, _, _, _, _, _, _, _, _, _))
       .WillOnce(DoAll(SaveArg<1>(&sensitive_create), SaveArg<2>(&in_public),
                       Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TPM_RC_SUCCESS,
@@ -1795,7 +1795,7 @@ TEST_F(TpmUtilityTest, SealDataFailure) {
   std::string data_to_seal("seal_data");
   std::string sealed_data;
   EXPECT_CALL(mock_tpm_,
-              CreateSyncShort(kRSAStorageRootKey, _, _, _, _, _, _, _, _, _))
+              CreateSyncShort(kStorageRootKey, _, _, _, _, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE,
             utility_.SealData(data_to_seal, "", &mock_authorization_delegate_,
@@ -2468,8 +2468,7 @@ TEST_F(TpmUtilityTest, RootKeysPersistFailure) {
 }
 
 TEST_F(TpmUtilityTest, RootKeysAlreadyExist) {
-  SetExistingKeyHandleExpectation(kRSAStorageRootKey);
-  SetExistingKeyHandleExpectation(kECCStorageRootKey);
+  SetExistingKeyHandleExpectation(kStorageRootKey);
   EXPECT_EQ(TPM_RC_SUCCESS, CreateStorageRootKeys("password"));
 }
 

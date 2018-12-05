@@ -1142,7 +1142,7 @@ void Tpm2Impl::GetStatus(TpmKeyHandle key, TpmStatusInfo* status) {
   status->can_connect = true;
   trunks::TPMT_PUBLIC public_srk;
   status->last_tpm_error = trunks->tpm_utility->GetKeyPublicArea(
-      trunks::kRSAStorageRootKey, &public_srk);
+      trunks::kStorageRootKey, &public_srk);
   if (status->last_tpm_error != TPM_RC_SUCCESS) {
     return;
   }

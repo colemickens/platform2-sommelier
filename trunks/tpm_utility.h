@@ -32,9 +32,14 @@
 
 namespace trunks {
 
-// These handles will be used by TpmUtility to create storage root keys.
-const TPMI_DH_PERSISTENT kRSAStorageRootKey = PERSISTENT_FIRST;
-const TPMI_DH_PERSISTENT kECCStorageRootKey = PERSISTENT_FIRST + 1;
+// These handles will be used by TpmUtility.
+//   * kStorageRootKey: Storage Root Key (Primary Key in Storage Hierarchy in
+// TPM2.0) It is ECC key by default, if the RSA key is already generated, we
+// will keep use it.
+//   * kSaltingKey: a RSA key under kStorageRootKey for
+// asymmetric encrypting the salt when creating a HMAC session.
+const TPMI_DH_PERSISTENT kStorageRootKey = PERSISTENT_FIRST;
+// Deprecated: kECCStorageRootKey = PERSISTENT_FIRST + 1;
 const TPMI_DH_PERSISTENT kSaltingKey = PERSISTENT_FIRST + 2;
 const TPMI_DH_PERSISTENT kRSAEndorsementKey = PERSISTENT_FIRST + 3;
 

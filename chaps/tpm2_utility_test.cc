@@ -24,7 +24,7 @@ using testing::DoAll;
 using testing::SetArgPointee;
 using testing::NiceMock;
 using testing::Return;
-using trunks::kRSAStorageRootKey;
+using trunks::kStorageRootKey;
 using trunks::TPM_RC_FAILURE;
 using trunks::TPM_RC_SUCCESS;
 
@@ -502,7 +502,7 @@ TEST_F(TPM2UtilityTest, LoadKeyParentSuccess) {
   std::string key_blob;
   SecureBlob auth_data;
   int key_handle;
-  int parent_handle = kRSAStorageRootKey;
+  int parent_handle = kStorageRootKey;
   EXPECT_CALL(mock_tpm_utility_, LoadKey(key_blob, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_TRUE(utility.LoadKeyWithParent(1, key_blob, auth_data,
@@ -514,7 +514,7 @@ TEST_F(TPM2UtilityTest, LoadKeyParentLoadFail) {
   std::string key_blob;
   SecureBlob auth_data;
   int key_handle;
-  int parent_handle = kRSAStorageRootKey;
+  int parent_handle = kStorageRootKey;
   EXPECT_CALL(mock_tpm_utility_, LoadKey(key_blob, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_FALSE(utility.LoadKeyWithParent(1, key_blob, auth_data,
@@ -526,7 +526,7 @@ TEST_F(TPM2UtilityTest, LoadKeyParentNameFail) {
   std::string key_blob;
   SecureBlob auth_data;
   int key_handle = 32;
-  int parent_handle = kRSAStorageRootKey;
+  int parent_handle = kStorageRootKey;
   EXPECT_CALL(mock_tpm_utility_, LoadKey(key_blob, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_tpm_utility_, GetKeyName(key_handle, _))
