@@ -39,10 +39,6 @@ int TakeOwnership(bool finalize) {
     return -1;
   }
   cryptohome::InstallAttributes install_attributes(tpm);
-  if (took_ownership && !install_attributes.PrepareSystem()) {
-    LOG(ERROR) << "Failed to prepare install attributes NVRAM.";
-    return -1;
-  }
   if (!install_attributes.Init(&tpm_init)) {
     LOG(ERROR) << "Failed to initialize install attributes.";
     return -1;

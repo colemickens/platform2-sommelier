@@ -536,7 +536,7 @@ bool Service::Initialize() {
   // If the TPM is unowned or doesn't exist, it's safe for
   // this function to be called again. However, it shouldn't
   // be called across multiple threads in parallel.
-  InitializeInstallAttributes(false);
+  InitializeInstallAttributes();
 
   // Clean up any unreferenced mountpoints at startup.
   CleanUpStaleMounts(false);
@@ -685,22 +685,10 @@ bool Service::IsOwner(const std::string &userid) {
   return false;
 }
 
-void Service::InitializeInstallAttributes(bool first_time) {
-  // Wait for ownership if there is a working TPM.
-  if (tpm_ && tpm_->IsEnabled() && !tpm_->IsOwned())
-    return;
-
+void Service::InitializeInstallAttributes() {
   // The TPM owning instance may have changed since initialization.
   // InstallAttributes can handle a NULL or !IsEnabled Tpm object.
   install_attrs_->SetTpm(tpm_);
-
-  if (first_time && !install_attrs_->PrepareSystem()) {
-    // TODO(wad) persist this failure to allow recovery or force
-    //           powerwash/reset.
-    LOG(ERROR) << "Unable to prepare system for install attributes.";
-  }
-
-  // Init can fail without making the interface inconsistent so we're okay here.
   install_attrs_->Init(tpm_init_);
 
   // Check if the machine is enterprise owned and report to mount_ then.
@@ -922,7 +910,7 @@ void Service::ConfigureOwnedTpm(bool status, bool took_ownership) {
     }
     // Initialize the install-time locked attributes since we
     // can't do it prior to ownership.
-    InitializeInstallAttributes(true);
+    InitializeInstallAttributes();
   }
   event_source_.AddEvent(
       std::make_unique<TpmInitStatus>(took_ownership, status));

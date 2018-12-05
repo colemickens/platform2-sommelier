@@ -93,7 +93,7 @@ class Service : public brillo::dbus::AbstractDbusService,
   // Setup the wrapped GObject and the GMainLoop
   virtual bool Initialize();
   virtual bool SeedUrandom();
-  virtual void InitializeInstallAttributes(bool first_time);
+  virtual void InitializeInstallAttributes();
   virtual void InitializePkcs11(cryptohome::Mount* mount);
   virtual bool Reset();
 

@@ -1191,8 +1191,7 @@ class AttestationWithAbeDataTest
 
 TEST_P(AttestationWithAbeDataTest,
        PrepareForEnrollmentInstallAttributesNotReady) {
-  EXPECT_CALL(install_attributes_, is_first_install())
-      .WillRepeatedly(Return(true));
+  install_attributes_.set_is_first_install(true);
   attestation_.PrepareForEnrollment();
   EXPECT_TRUE(attestation_.IsPreparedForEnrollment());
   AttestationDatabase db = GetPersistentDatabase();

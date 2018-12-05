@@ -47,11 +47,6 @@ class InstallAttributes {
   explicit InstallAttributes(Tpm* tpm);
   virtual ~InstallAttributes();
 
-  // Prepares the underlying system for use on first-install only.
-  // It will only pre-configure the TPM if authorization is possible.
-  // If needed, this should be called before Init.
-  virtual bool PrepareSystem();
-
   // Updates the TPM used by Lockbox or disables the use of the TPM.
   // This does NOT take ownership of the pointer.
   virtual void SetTpm(Tpm* tpm);
@@ -188,23 +183,25 @@ class InstallAttributes {
   // Convert the current attributes to a byte stream and write it
   // to |out_bytes|.
   virtual bool SerializeAttributes(brillo::Blob* out_bytes);
+  // Remove the data file on disk if it exists.
+  bool ClearData();
 
  private:
-  bool is_first_install_;  // PrepareSystem sets this.
-  bool is_secure_;  // Indicates if there is hardware protection (TPM).
-  bool is_invalid_;  // Indicates tampered/corrupted data.
-  bool is_initialized_;  // Indicates a successful, valid instance.
-  base::FilePath data_file_;  // Location data is persisted to.
-  base::FilePath cache_file_;  // World-readable data cache file.
-  uint64_t version_;  // Default implementation version.
+  bool is_first_install_ = false;  // Init sets this.
+  bool is_secure_ = false;   // Indicates if there is hardware protection (TPM).
+  bool is_invalid_ = false;  // Indicates tampered/corrupted data.
+  bool is_initialized_ = false;  // Indicates a successful, valid instance.
+  base::FilePath data_file_;     // Location data is persisted to.
+  base::FilePath cache_file_;    // World-readable data cache file.
+  uint64_t version_ = 0;         // Default implementation version.
   // Default implementations of dependencies
   std::unique_ptr<SerializedInstallAttributes> default_attributes_;
   std::unique_ptr<Lockbox> default_lockbox_;
   std::unique_ptr<Platform> default_platform_;
   // Overridable dependency pointer which allow for easy injection.
-  SerializedInstallAttributes* attributes_;
-  Lockbox* lockbox_;
-  Platform* platform_;
+  SerializedInstallAttributes* attributes_ = nullptr;
+  Lockbox* lockbox_ = nullptr;
+  Platform* platform_ = nullptr;
   base::ObserverList<Observer> observer_list_;
 
   DISALLOW_COPY_AND_ASSIGN(InstallAttributes);

@@ -22,15 +22,21 @@
 #include "cryptohome/mock_tpm.h"
 #include "cryptohome/mock_tpm_init.h"
 
-namespace cryptohome {
+using base::FilePath;
+using ::testing::_;
 using ::testing::DoAll;
 using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SaveArg;
 using ::testing::SetArgPointee;
-using ::testing::_;
-using base::FilePath;
+
+namespace cryptohome {
+
+namespace {
+static constexpr char kTestName[] = "Shuffle";
+static constexpr char kTestData[] = "Duffle";
+}  // namespace
 
 // Provides a test fixture for ensuring Lockbox-flows work as expected.
 //
@@ -39,105 +45,57 @@ using base::FilePath;
 // boots.
 class InstallAttributesTest : public ::testing::Test {
  public:
-  InstallAttributesTest() : install_attrs_(NULL) {}
+  InstallAttributesTest() : install_attrs_(nullptr) {}
   ~InstallAttributesTest() override = default;
 
   void SetUp() override {
+    ON_CALL(tpm_init_, IsTpmReady()).WillByDefault(Return(true));
+    ON_CALL(tpm_init_, IsTpmEnabled()).WillByDefault(Return(true));
+    ON_CALL(tpm_init_, IsTpmOwned()).WillByDefault(Return(true));
+
     install_attrs_.set_lockbox(&lockbox_);
     install_attrs_.set_platform(&platform_);
     // No pre-existing data and no TPM auth.
-    EXPECT_CALL(lockbox_, set_tpm(&tpm_))
-      .Times(1);
-    EXPECT_CALL(tpm_, IsEnabled())
-      .WillOnce(Return(true));
+    EXPECT_CALL(lockbox_, set_tpm(&tpm_)).Times(1);
+    EXPECT_CALL(tpm_, IsEnabled()).WillOnce(Return(true));
     install_attrs_.SetTpm(&tpm_);
     Mock::VerifyAndClearExpectations(&lockbox_);
     Mock::VerifyAndClearExpectations(&tpm_);
   }
 
-  void GetAndCheck(InstallAttributes *install_attrs) {
-    if (!install_attrs)
-      install_attrs = &install_attrs_;
+  void GetAndCheck() {
+    EXPECT_EQ(1, install_attrs_.Count());
     brillo::Blob data;
-    EXPECT_TRUE(install_attrs->Get(kTestName, &data));
+    EXPECT_TRUE(install_attrs_.Get(kTestName, &data));
     std::string data_str(reinterpret_cast<const char*>(data.data()),
                          data.size());
     EXPECT_STREQ(data_str.c_str(), kTestData);
   }
 
-  // Tests a normal OOBE and stashes the data in the ptr.
-  void DoOobe(InstallAttributes *install_attrs,
-              brillo::Blob *serialized_data) {
-    if (install_attrs->is_secure()) {
-      EXPECT_CALL(lockbox_, Destroy(_))
-        .WillOnce(Return(true));
-    }
-    EXPECT_TRUE(install_attrs->PrepareSystem());
-
-    // Assume authorization and working tpm.
-    EXPECT_CALL(lockbox_, tpm())
-      .WillRepeatedly(Return(&tpm_));
-    if (install_attrs->is_secure()) {
-      EXPECT_CALL(lockbox_, Create(_))
-        .WillOnce(Return(true));
-      ExpectRemovingOwnerDependency();
-    }
-    EXPECT_TRUE(install_attrs->Init(&tpm_init_));
-
-    brillo::Blob data;
-    data.assign(kTestData, kTestData + strlen(kTestData));
-    EXPECT_TRUE(install_attrs->Set(kTestName, data));
-
-    if (install_attrs->is_secure()) {
-      EXPECT_CALL(lockbox_, Store(_, _))
-        .Times(1)
-        .WillOnce(Return(true));
-    }
-    EXPECT_CALL(platform_,
-        WriteFileAtomicDurable(
-          FilePath(InstallAttributes::kDefaultDataFile),
-          _, _))
-      .Times(1)
-      .WillOnce(DoAll(SaveArg<1>(serialized_data), Return(true)));
-    brillo::Blob cached_data;
-    EXPECT_CALL(platform_,
-        WriteFileAtomic(
-          FilePath(InstallAttributes::kDefaultCacheFile), _, _))
-      .Times(1)
-      .WillOnce(DoAll(SaveArg<1>(&cached_data), Return(true)));
-
-    EXPECT_TRUE(install_attrs->Finalize());
-    EXPECT_NE(0, serialized_data->size());
-    ASSERT_EQ(serialized_data->size(), cached_data.size());
-    EXPECT_TRUE(std::equal(cached_data.begin(), cached_data.end(),
-                           serialized_data->begin()));
-    Mock::VerifyAndClearExpectations(&lockbox_);
-    Mock::VerifyAndClearExpectations(&platform_);
-  }
-
   // Generate the data we'll need to load from.
-  void PopulateOobeData(brillo::Blob *data) {
-    InstallAttributes some_attrs(NULL);
-    some_attrs.set_lockbox(&lockbox_);
-    some_attrs.set_platform(&platform_);
-    DoOobe(&some_attrs, data);
-    Mock::VerifyAndClearExpectations(&lockbox_);
-    Mock::VerifyAndClearExpectations(&platform_);
+  brillo::Blob GenerateTestDataFileContents() {
+    brillo::Blob data;
+    SerializedInstallAttributes proto;
+    proto.set_version(proto.version());
+    SerializedInstallAttributes::Attribute* attr = proto.add_attributes();
+    attr->set_name(kTestName);
+    attr->set_value(std::string(reinterpret_cast<const char*>(kTestData),
+                                strlen(kTestData)));
+    data.resize(proto.ByteSize());
+    CHECK(proto.SerializeWithCachedSizesToArray(data.data()));
+    return data;
   }
 
   void ExpectRemovingOwnerDependency() {
-    EXPECT_CALL(tpm_init_, RemoveTpmOwnerDependency(
-        TpmPersistentState::TpmOwnerDependency::kInstallAttributes))
-      .Times(1);
+    EXPECT_CALL(tpm_init_,
+                RemoveTpmOwnerDependency(
+                    TpmPersistentState::TpmOwnerDependency::kInstallAttributes))
+        .Times(1);
   }
 
   void ExpectNotRemovingOwnerDependency() {
-    EXPECT_CALL(tpm_init_, RemoveTpmOwnerDependency(_))
-      .Times(0);
+    EXPECT_CALL(tpm_init_, RemoveTpmOwnerDependency(_)).Times(0);
   }
-
-  static const char* kTestName;
-  static const char* kTestData;
 
   NiceMock<MockLockbox> lockbox_;
   brillo::Blob lockbox_data_;
@@ -149,198 +107,174 @@ class InstallAttributesTest : public ::testing::Test {
  private:
   DISALLOW_COPY_AND_ASSIGN(InstallAttributesTest);
 };
-const char* InstallAttributesTest::kTestName = "Shuffle";
-const char* InstallAttributesTest::kTestData = "Duffle";
 
-//
-// The actual tests!
-//
-
-// Normal bootup
 TEST_F(InstallAttributesTest, OobeWithTpm) {
+  // The first Init() call finds no data file and an unowned TPM.
+  EXPECT_CALL(platform_,
+              ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(tpm_init_, IsTpmReady()).WillRepeatedly(Return(false));
+  EXPECT_CALL(tpm_init_, IsTpmOwned()).WillRepeatedly(Return(false));
+  EXPECT_FALSE(install_attrs_.Init(&tpm_init_));
+  Mock::VerifyAndClearExpectations(&tpm_init_);
+  Mock::VerifyAndClearExpectations(&platform_);
+
+  EXPECT_FALSE(install_attrs_.IsReady());
+
+  // After taking ownership, TPM is ready and Init creates the lockbox.
+  EXPECT_CALL(platform_,
+              ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(lockbox_, Create(_)).WillOnce(Return(true));
+  ExpectRemovingOwnerDependency();
+  EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
+  Mock::VerifyAndClearExpectations(&lockbox_);
+  Mock::VerifyAndClearExpectations(&platform_);
+
+  EXPECT_TRUE(install_attrs_.is_initialized());
+  EXPECT_TRUE(install_attrs_.is_first_install());
+  EXPECT_FALSE(install_attrs_.is_invalid());
+
+  // Set the test attribute.
+  brillo::Blob data(kTestData, kTestData + sizeof(kTestData));
+  data.assign(kTestData, kTestData + strlen(kTestData));
+  EXPECT_TRUE(install_attrs_.Set(kTestName, data));
+
+  // Finalize.
+  EXPECT_CALL(lockbox_, Store(_, _)).WillOnce(Return(true));
   brillo::Blob serialized_data;
-  DoOobe(&install_attrs_, &serialized_data);
+  EXPECT_CALL(platform_,
+              WriteFileAtomicDurable(
+                  FilePath(InstallAttributes::kDefaultDataFile), _, _))
+      .WillOnce(DoAll(SaveArg<1>(&serialized_data), Return(true)));
+  brillo::Blob cached_data;
+  EXPECT_CALL(
+      platform_,
+      WriteFileAtomic(FilePath(InstallAttributes::kDefaultCacheFile), _, _))
+      .WillOnce(DoAll(SaveArg<1>(&cached_data), Return(true)));
+
+  EXPECT_TRUE(install_attrs_.Finalize());
+  Mock::VerifyAndClearExpectations(&lockbox_);
+  Mock::VerifyAndClearExpectations(&platform_);
+
+  EXPECT_TRUE(install_attrs_.is_initialized());
+  EXPECT_FALSE(install_attrs_.is_first_install());
+  EXPECT_FALSE(install_attrs_.is_invalid());
+
+  brillo::Blob expected_data = GenerateTestDataFileContents();
+  EXPECT_EQ(expected_data, serialized_data);
+  EXPECT_EQ(expected_data, cached_data);
 }
 
 TEST_F(InstallAttributesTest, OobeWithoutTpm) {
-  EXPECT_CALL(lockbox_, set_tpm(NULL))
-    .Times(1);
-  install_attrs_.SetTpm(NULL);
+  EXPECT_CALL(lockbox_, set_tpm(nullptr)).Times(1);
+  install_attrs_.SetTpm(nullptr);
+  Mock::VerifyAndClearExpectations(&lockbox_);
 
-  EXPECT_CALL(platform_, ReadFile(_, _))
-    .Times(1)
-    .WillOnce(Return(false));
+  EXPECT_CALL(platform_,
+              ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
+      .WillOnce(Return(false));
   ExpectNotRemovingOwnerDependency();
+
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
+
   EXPECT_TRUE(install_attrs_.is_first_install());
 }
 
 TEST_F(InstallAttributesTest, OobeWithTpmBadWrite) {
-  EXPECT_CALL(lockbox_, Destroy(_))
-    .WillOnce(Return(true));
-  EXPECT_TRUE(install_attrs_.PrepareSystem());
-
   // Assume authorization and working tpm.
-  EXPECT_CALL(lockbox_, tpm())
-    .WillRepeatedly(Return(&tpm_));
-  EXPECT_CALL(lockbox_, Create(_))
-    .WillOnce(Return(true));
+  EXPECT_CALL(lockbox_, tpm()).WillRepeatedly(Return(&tpm_));
+  EXPECT_CALL(lockbox_, Create(_)).WillOnce(Return(true));
   ExpectRemovingOwnerDependency();
+
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
+  Mock::VerifyAndClearExpectations(&lockbox_);
 
   brillo::Blob data;
   data.assign(kTestData, kTestData + strlen(kTestData));
   EXPECT_TRUE(install_attrs_.Set(kTestName, data));
 
-  brillo::Blob serialized_data;
-  EXPECT_CALL(lockbox_, Store(_, _))
-    .Times(1)
-    .WillOnce(DoAll(SaveArg<0>(&serialized_data), Return(true)));
+  EXPECT_CALL(lockbox_, Store(_, _)).WillOnce(Return(true));
   EXPECT_CALL(platform_, WriteFileAtomicDurable(_, _, _))
-    .Times(1)
-    .WillOnce(Return(false));
+      .WillOnce(Return(false));
+
   EXPECT_FALSE(install_attrs_.Finalize());
+
   EXPECT_TRUE(install_attrs_.IsReady());
   EXPECT_TRUE(install_attrs_.is_invalid());
   EXPECT_TRUE(install_attrs_.is_initialized());
 }
 
 TEST_F(InstallAttributesTest, NormalBootWithTpm) {
-  brillo::Blob serialized_data;
-  PopulateOobeData(&serialized_data);
-
   // Check the baseline.
   EXPECT_FALSE(install_attrs_.is_first_install());
   EXPECT_FALSE(install_attrs_.is_initialized());
   EXPECT_FALSE(install_attrs_.is_invalid());
 
-  EXPECT_CALL(platform_, ReadFile(_, _))
-    .Times(1)
-    .WillOnce(DoAll(SetArgPointee<1>(serialized_data), Return(true)));
-  EXPECT_CALL(lockbox_, Load(_))
-    .Times(1)
-    .WillOnce(Return(true));
-  EXPECT_CALL(lockbox_, Verify(_, _))
-    .Times(1)
-    .WillOnce(Return(true));
+  brillo::Blob serialized_data = GenerateTestDataFileContents();
+  EXPECT_CALL(platform_,
+              ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
+      .WillOnce(DoAll(SetArgPointee<1>(serialized_data), Return(true)));
   ExpectRemovingOwnerDependency();
+
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
+
   EXPECT_FALSE(install_attrs_.is_first_install());
   EXPECT_FALSE(install_attrs_.is_invalid());
   EXPECT_TRUE(install_attrs_.is_initialized());
 
   // Make sure the data was parsed correctly.
-  EXPECT_EQ(1, install_attrs_.Count());
-  GetAndCheck(NULL);
+  GetAndCheck();
 }
 
 TEST_F(InstallAttributesTest, NormalBootWithoutTpm) {
-  brillo::Blob serialized_data;
-  PopulateOobeData(&serialized_data);
+  brillo::Blob serialized_data = GenerateTestDataFileContents();
 
-  EXPECT_CALL(lockbox_, set_tpm(NULL))
-    .Times(1);
-  install_attrs_.SetTpm(NULL);
+  EXPECT_CALL(lockbox_, set_tpm(nullptr)).Times(1);
+  install_attrs_.SetTpm(nullptr);
 
   // Check the baseline.
   EXPECT_FALSE(install_attrs_.is_first_install());
   EXPECT_FALSE(install_attrs_.is_initialized());
   EXPECT_FALSE(install_attrs_.is_invalid());
 
-  EXPECT_CALL(platform_, ReadFile(_, _))
-    .Times(1)
-    .WillOnce(DoAll(SetArgPointee<1>(serialized_data), Return(true)));
-
+  EXPECT_CALL(platform_,
+              ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
+      .WillOnce(DoAll(SetArgPointee<1>(serialized_data), Return(true)));
   ExpectRemovingOwnerDependency();
+
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
+
   EXPECT_FALSE(install_attrs_.is_first_install());
   EXPECT_FALSE(install_attrs_.is_invalid());
   EXPECT_TRUE(install_attrs_.is_initialized());
 
   // Make sure the data was parsed correctly.
-  EXPECT_EQ(1, install_attrs_.Count());
-  GetAndCheck(NULL);
+  GetAndCheck();
 }
 
-// Represents that the OOBE process was interrupted by
-// a reboot or crash prior to Finalize() being called, but
-// after the Lockbox was Created.
-// Since InstallAttributes Set/Finalize is not atomic, there
-// is always the risk of data loss due to failure of the device.
-// It will fail-safe however (by failing empty).
+// Represents that the OOBE process was interrupted by a reboot or crash prior
+// to Finalize() being called.
 TEST_F(InstallAttributesTest, NormalBootUnlocked) {
-  // Normally, it should be impossible to populate the filesystem
-  // with any data.  We put this here to show anything that may be
-  // read in is ignored.
-  brillo::Blob serialized_data;
-  PopulateOobeData(&serialized_data);
   // Check the baseline.
   EXPECT_FALSE(install_attrs_.is_first_install());
   EXPECT_FALSE(install_attrs_.is_initialized());
   EXPECT_FALSE(install_attrs_.is_invalid());
   EXPECT_TRUE(install_attrs_.is_secure());
 
-  LockboxError error = LockboxError::kNoNvramData;
-  EXPECT_CALL(lockbox_, Load(_))
-    .Times(1)
-    .WillOnce(DoAll(SetArgPointee<0>(error), Return(false)));
-  ExpectRemovingOwnerDependency();
-  EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
-  EXPECT_TRUE(install_attrs_.is_first_install());
-  EXPECT_FALSE(install_attrs_.is_invalid());
-  EXPECT_TRUE(install_attrs_.is_initialized());
-
-  // Should be empty.
-  EXPECT_EQ(0, install_attrs_.Count());
-}
-
-// Represents that the OOBE process was interrupted by
-// a reboot or crash prior to Finalize() being called, and
-// before the Lockbox was Created.
-TEST_F(InstallAttributesTest, NormalBootNoSpace) {
-  // Normally, it should be impossible to populate the filesystem
-  // with any data.  We put this here to show anything that may be
-  // read in is ignored.
-  brillo::Blob serialized_data;
-  PopulateOobeData(&serialized_data);
-  // Check the baseline.
-  EXPECT_FALSE(install_attrs_.is_first_install());
-  EXPECT_FALSE(install_attrs_.is_initialized());
-  EXPECT_FALSE(install_attrs_.is_invalid());
-  EXPECT_TRUE(install_attrs_.is_secure());
-
-  LockboxError error = LockboxError::kNoNvramSpace;
-  EXPECT_CALL(lockbox_, Load(_))
-    .Times(1)
-    .WillOnce(DoAll(SetArgPointee<0>(error), Return(false)));
+  EXPECT_CALL(platform_,
+              ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
+      .WillOnce(Return(false));
   EXPECT_CALL(lockbox_, Create(_))
-    .Times(1)
-    .WillOnce(Return(true));
+      .WillOnce(
+          DoAll(SetArgPointee<0>(LockboxError::kNoNvramData), Return(true)));
   ExpectRemovingOwnerDependency();
+
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
+
   EXPECT_TRUE(install_attrs_.is_first_install());
   EXPECT_FALSE(install_attrs_.is_invalid());
   EXPECT_TRUE(install_attrs_.is_initialized());
-
-  // Should be empty.
-  EXPECT_EQ(0, install_attrs_.Count());
-}
-
-TEST_F(InstallAttributesTest, NormalBootLoadError) {
-  // Check the baseline.
-  EXPECT_FALSE(install_attrs_.is_first_install());
-  EXPECT_FALSE(install_attrs_.is_initialized());
-  EXPECT_FALSE(install_attrs_.is_invalid());
-
-  LockboxError error = LockboxError::kTpmError;
-  EXPECT_CALL(lockbox_, Load(_))
-    .Times(1)
-    .WillOnce(DoAll(SetArgPointee<0>(error), Return(false)));
-  ExpectNotRemovingOwnerDependency();
-  EXPECT_FALSE(install_attrs_.Init(&tpm_init_));
-  EXPECT_FALSE(install_attrs_.is_first_install());
-  EXPECT_TRUE(install_attrs_.is_invalid());
-  EXPECT_FALSE(install_attrs_.is_initialized());
 
   // Should be empty.
   EXPECT_EQ(0, install_attrs_.Count());
@@ -352,43 +286,19 @@ TEST_F(InstallAttributesTest, NormalBootReadFileError) {
   EXPECT_FALSE(install_attrs_.is_initialized());
   EXPECT_FALSE(install_attrs_.is_invalid());
 
-  EXPECT_CALL(lockbox_, Load(_))
-    .Times(1)
-    .WillOnce(Return(true));
-  EXPECT_CALL(platform_, ReadFile(_, _))
-    .Times(1)
-    .WillOnce(Return(false));
+  EXPECT_CALL(platform_,
+              ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
+      .WillOnce(Return(false));
+  EXPECT_CALL(lockbox_, Create(_))
+      .WillOnce(
+          DoAll(SetArgPointee<0>(LockboxError::kInsufficientAuthorization),
+                Return(false)));
+  EXPECT_CALL(lockbox_, Load(_)).WillOnce(Return(true));
   ExpectNotRemovingOwnerDependency();
+  EXPECT_CALL(platform_, DeleteFile(_, _)).Times(0);
+
   EXPECT_FALSE(install_attrs_.Init(&tpm_init_));
-  EXPECT_FALSE(install_attrs_.is_first_install());
-  EXPECT_TRUE(install_attrs_.is_invalid());
-  EXPECT_FALSE(install_attrs_.is_initialized());
 
-  // Should be empty.
-  EXPECT_EQ(0, install_attrs_.Count());
-}
-
-TEST_F(InstallAttributesTest, NormalBootVerifyError) {
-  // Check the baseline.
-  EXPECT_FALSE(install_attrs_.is_first_install());
-  EXPECT_FALSE(install_attrs_.is_initialized());
-  EXPECT_FALSE(install_attrs_.is_invalid());
-
-  LockboxError error = LockboxError::kHashMismatch;
-  EXPECT_CALL(lockbox_, Load(_))
-    .Times(1)
-    .WillOnce(Return(true));
-
-  EXPECT_CALL(platform_, ReadFile(_, _))
-    .Times(1)
-    .WillOnce(Return(true));
-
-  EXPECT_CALL(lockbox_, Verify(_, _))
-    .Times(1)
-    .WillOnce(DoAll(SetArgPointee<1>(error), Return(false)));
-
-  ExpectNotRemovingOwnerDependency();
-  EXPECT_FALSE(install_attrs_.Init(&tpm_init_));
   EXPECT_FALSE(install_attrs_.is_first_install());
   EXPECT_TRUE(install_attrs_.is_invalid());
   EXPECT_FALSE(install_attrs_.is_initialized());
@@ -403,16 +313,20 @@ TEST_F(InstallAttributesTest, LegacyBoot) {
   EXPECT_FALSE(install_attrs_.is_initialized());
   EXPECT_FALSE(install_attrs_.is_invalid());
 
-  LockboxError error = LockboxError::kNoNvramSpace;
-  EXPECT_CALL(lockbox_, Load(_))
-    .Times(1)
-    .WillOnce(DoAll(SetArgPointee<0>(error), Return(false)));
-  LockboxError create_error = LockboxError::kInsufficientAuthorization;
+  EXPECT_CALL(platform_,
+              ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
+      .WillOnce(Return(false));
   EXPECT_CALL(lockbox_, Create(_))
-    .Times(1)
-    .WillOnce(DoAll(SetArgPointee<0>(create_error), Return(false)));
+      .WillOnce(
+          DoAll(SetArgPointee<0>(LockboxError::kInsufficientAuthorization),
+                Return(false)));
+  EXPECT_CALL(lockbox_, Load(_))
+      .WillOnce(
+          DoAll(SetArgPointee<0>(LockboxError::kNoNvramSpace), Return(false)));
   ExpectRemovingOwnerDependency();
+
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
+
   EXPECT_FALSE(install_attrs_.is_first_install());
   EXPECT_FALSE(install_attrs_.is_invalid());
   EXPECT_TRUE(install_attrs_.is_initialized());
@@ -421,27 +335,96 @@ TEST_F(InstallAttributesTest, LegacyBoot) {
   EXPECT_EQ(0, install_attrs_.Count());
 }
 
-// If the Lockbox Create fails for reasons other than bad password, it
-// should still be treated as a LegacyBoot.
+// If the Lockbox Reset fails for reasons other than bad password, it should
+// still be treated as if locked without any attributes set.
 TEST_F(InstallAttributesTest, LegacyBootUnexpected) {
   // Check the baseline.
   EXPECT_FALSE(install_attrs_.is_first_install());
   EXPECT_FALSE(install_attrs_.is_initialized());
   EXPECT_FALSE(install_attrs_.is_invalid());
 
-  LockboxError error = LockboxError::kNoNvramSpace;
-  EXPECT_CALL(lockbox_, Load(_))
-    .Times(1)
-    .WillOnce(DoAll(SetArgPointee<0>(error), Return(false)));
-  LockboxError create_error = LockboxError::kTpmError;
+  EXPECT_CALL(platform_,
+              ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
+      .WillOnce(Return(false));
   EXPECT_CALL(lockbox_, Create(_))
-    .Times(1)
-    .WillOnce(DoAll(SetArgPointee<0>(create_error), Return(false)));
+      .WillOnce(
+          DoAll(SetArgPointee<0>(LockboxError::kTpmError), Return(false)));
   ExpectRemovingOwnerDependency();
+
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
+
   EXPECT_FALSE(install_attrs_.is_first_install());
   EXPECT_FALSE(install_attrs_.is_invalid());
   EXPECT_TRUE(install_attrs_.is_initialized());
+
+  // Should be empty.
+  EXPECT_EQ(0, install_attrs_.Count());
+}
+
+// If initializing with an unowned TPM, the old data file should be deleted to
+// make sure that we don't accidentally pick it up as valid after taking
+// ownership.
+TEST_F(InstallAttributesTest, ClearPreviousDataFile) {
+  // Check the baseline.
+  EXPECT_FALSE(install_attrs_.is_first_install());
+  EXPECT_FALSE(install_attrs_.is_initialized());
+  EXPECT_FALSE(install_attrs_.is_invalid());
+
+  EXPECT_CALL(tpm_init_, IsTpmReady()).WillRepeatedly(Return(false));
+  EXPECT_CALL(tpm_init_, IsTpmOwned()).WillRepeatedly(Return(false));
+
+  // The cache file isn't present because lockbox-cache won't receive a dump of
+  // the lockbox space if the TPM isn't owned.
+  EXPECT_CALL(platform_,
+              ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_,
+              FileExists(FilePath(InstallAttributes::kDefaultDataFile)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+              DeleteFile(FilePath(InstallAttributes::kDefaultDataFile), _))
+      .WillOnce(Return(true));
+
+  EXPECT_FALSE(install_attrs_.Init(&tpm_init_));
+
+  EXPECT_FALSE(install_attrs_.is_first_install());
+  EXPECT_FALSE(install_attrs_.is_invalid());
+  EXPECT_FALSE(install_attrs_.is_initialized());
+
+  // Should be empty.
+  EXPECT_EQ(0, install_attrs_.Count());
+}
+
+// Check that if the TPM is out for lunch and inoperable in this boot cycle, we
+// do keep around the data file as to not irrevocably invalidate install
+// attributes should the TPM start functioning again after reboot.
+TEST_F(InstallAttributesTest, KeepDataFileOnTpmFailure) {
+  // Check the baseline.
+  EXPECT_FALSE(install_attrs_.is_first_install());
+  EXPECT_FALSE(install_attrs_.is_initialized());
+  EXPECT_FALSE(install_attrs_.is_invalid());
+
+  EXPECT_CALL(tpm_init_, IsTpmReady()).WillRepeatedly(Return(false));
+  EXPECT_CALL(tpm_init_, IsTpmEnabled()).WillRepeatedly(Return(false));
+  EXPECT_CALL(tpm_init_, IsTpmOwned()).WillRepeatedly(Return(false));
+
+  // The cache file isn't present because lockbox-cache won't receive a dump of
+  // the lockbox space if the TPM isn't owned.
+  EXPECT_CALL(platform_,
+              ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_,
+              FileExists(FilePath(InstallAttributes::kDefaultDataFile)))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_,
+              DeleteFile(FilePath(InstallAttributes::kDefaultDataFile), _))
+      .Times(0);
+
+  EXPECT_FALSE(install_attrs_.Init(&tpm_init_));
+
+  EXPECT_FALSE(install_attrs_.is_first_install());
+  EXPECT_TRUE(install_attrs_.is_invalid());
+  EXPECT_FALSE(install_attrs_.is_initialized());
 
   // Should be empty.
   EXPECT_EQ(0, install_attrs_.Count());

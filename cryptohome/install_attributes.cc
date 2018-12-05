@@ -33,46 +33,19 @@ const char InstallAttributes::kDefaultCacheFile[] =
 const mode_t InstallAttributes::kCacheFilePermissions = 0644;
 
 InstallAttributes::InstallAttributes(Tpm* tpm)
-  : is_first_install_(false),
-    is_invalid_(false),
-    is_initialized_(false),
-    data_file_(kDefaultDataFile),
-    cache_file_(kDefaultCacheFile),
-    default_attributes_(new SerializedInstallAttributes()),
-    default_lockbox_(new Lockbox(tpm, Tpm::kLockboxIndex)),
-    default_platform_(new Platform()),
-    attributes_(default_attributes_.get()),
-    lockbox_(default_lockbox_.get()),
-    platform_(default_platform_.get()) {
+    : data_file_(kDefaultDataFile),
+      cache_file_(kDefaultCacheFile),
+      default_attributes_(new SerializedInstallAttributes()),
+      default_lockbox_(new Lockbox(tpm, Tpm::kLockboxIndex)),
+      default_platform_(new Platform()),
+      attributes_(default_attributes_.get()),
+      lockbox_(default_lockbox_.get()),
+      platform_(default_platform_.get()) {
   SetTpm(tpm);  // make sure to check TPM status if needed.
   version_ = attributes_->version();  // versioning controlled by pb default.
 }
 
-InstallAttributes::~InstallAttributes() {
-}
-
-bool InstallAttributes::PrepareSystem() {
-  // If install attributes are already locked, there's nothing to do. This can
-  // happen when we reset the TPM but preserve system state, such as for TPM
-  // firmware updates.
-  brillo::Blob blob;
-  if (platform_->ReadFile(cache_file_, &blob)) {
-    return true;
-  }
-
-  set_is_first_install(true);
-  LockboxError error_id;
-  // Delete the attributes file if it exists.
-  if (platform_->FileExists(data_file_) &&
-      !platform_->DeleteFile(data_file_, false)) {
-    LOG(ERROR) << "PrepareSystem() unable to delete old data!";
-    return false;
-  }
-  // If a TPM is in use, let's clean up the lockbox.
-  if (is_secure())
-    return lockbox()->Destroy(&error_id);
-  return true;
-}
+InstallAttributes::~InstallAttributes() {}
 
 void InstallAttributes::SetIsInvalid(bool is_invalid) {
   // If a store is invalid, make sure it is forced to be empty.
@@ -96,109 +69,112 @@ void InstallAttributes::SetTpm(Tpm* tpm) {
 }
 
 bool InstallAttributes::Init(TpmInit* tpm_init) {
-  LockboxError error_id;
-
-  // Insure that if Init() was called and it failed, we can retry cleanly.
+  // Ensure that if Init() was called and it failed, we can retry cleanly.
   attributes_->Clear();
   SetIsInvalid(false);
   set_is_initialized(false);
+  set_is_first_install(false);
 
-  if (is_first_install()) {
-    if (!is_secure()) {
-      LOG(WARNING) << "InstallAttributes are insecure without a TPM.";
-      set_is_initialized(true);
-      return true;
-    }
-    if (!lockbox()->Create(&error_id)) {
-      if (error_id == LockboxError::kInsufficientAuthorization)
-        LOG(ERROR) << "First install, but no TPM credentials provided.";
+  // Read the cache file. If it exists, lockbox-cache has successfully
+  // verified install attributes during early boot, so use them.
+  brillo::Blob blob;
+  if (platform_->ReadFile(cache_file_, &blob)) {
+    if (!attributes_->ParseFromArray(
+           static_cast<google::protobuf::uint8*>(blob.data()),
+           blob.size())) {
+      LOG(ERROR) << "Failed to parse data file (" << blob.size() << " bytes)";
       SetIsInvalid(true);
       return false;
     }
 
     set_is_initialized(true);
+    // Install attributes are valid, no need to hold owner dependency. So,
+    // repeat removing owner dependency in case it didn't succeed during the
+    // first boot.
     tpm_init->RemoveTpmOwnerDependency(
         TpmPersistentState::TpmOwnerDependency::kInstallAttributes);
     return true;
   }
 
-  if (is_secure() && !lockbox()->Load(&error_id)) {
-    // There are two non-terminal error cases:
-    // 1. No NVRAM space is defined.  This will occur on systems that
-    //    are autoupdated with this code but never went through the OOBE,
-    //    or if creation was interrupted after TPM Ownership happened.
-    // 2. NVRAM space exists and is unlocked. It means the system was powered
-    //    off before any data was stored.
-    switch (error_id) {
-    case LockboxError::kNoNvramSpace:
-      LOG(INFO) << "Resuming interrupted InstallAttributes. (Create needed.)";
-      if (!lockbox()->Create(&error_id)) {
-        if (error_id == LockboxError::kInsufficientAuthorization)
-          DLOG(INFO) << "Legacy install. (Can never create NVRAM space.)";
-        else
-          LOG(ERROR) << "Create failed, Lockbox error: " << error_id;
-      } else {
-        // Create worked, so act like the LockboxError::kNoNvramData path now.
-        set_is_first_install(true);
-      }
-      set_is_initialized(true);
-      tpm_init->RemoveTpmOwnerDependency(
-          TpmPersistentState::TpmOwnerDependency::kInstallAttributes);
-      // No data.
-      return true;
-      break;
-    case LockboxError::kNoNvramData:
-      LOG(INFO) << "Resuming interrupted InstallAttributes. (Store needed.)";
-      set_is_first_install(true);
-      set_is_initialized(true);
-      tpm_init->RemoveTpmOwnerDependency(
-          TpmPersistentState::TpmOwnerDependency::kInstallAttributes);
-      // Since we write when we finalize, we don't try to reparse.
-      return true;
-      break;
-    default:
-      LOG(ERROR) << "InstallAttributes failed to initialize.";
-      SetIsInvalid(true);
-      return false;
-    }
-  }
-
-  // Load the file from disk.
-  brillo::Blob blob;
-  if (!platform_->ReadFile(data_file_, &blob)) {
-    LOG(WARNING) << "Init() failed to read attributes file.";
-    // If this is an insecure install, then we can just start the
-    // file fresh, otherwise it signifies tampering.
-    if (is_secure()) {
-      SetIsInvalid(true);
-      return false;
-    }
+  // No cache file, so TPM lockbox is either not yet set up or data is invalid.
+  if (!is_secure()) {
     LOG(INFO) << "Init() assuming first-time install for TPM-less system.";
     set_is_first_install(true);
     set_is_initialized(true);
     return true;
   }
 
-  // Prior to attempting to deserialize the data, ensure it has not
-  // been tampered with.
-  if (is_secure() && !lockbox()->Verify(blob, &error_id)) {
-    LOG(ERROR) << "Init() could not verify attribute data!";
+  // TPM not ready yet, i.e. setup after ownership not completed. Init() is
+  // supposed to get invoked again once the TPM is owned and configured.
+  if (!tpm_init->IsTpmReady()) {
+    // To ensure that we get a fresh start after taking ownership, remove the
+    // data file when we boot up after a TPM clear. If we didn't do so, the
+    // previous data file might validate against a left-around NVRAM space,
+    // incorrectly indicating that install attributes are already initialized
+    // and locked.
+    //
+    // Note that we theoretically could delete the file unconditionally here,
+    // since IsTpmReady() should always return true after the TPM has been set
+    // up correctly. However, previous experience tells us that there might be
+    // hardware glitches or driver/firmware bugs that could make the TPM look
+    // disabled. If we accidentally delete the data file in such a situation,
+    // we'd make install attributes inconsistent until next TPM clear, which has
+    // far-reaching consequences (enterprise enrollment would be lost for
+    // example). Thus, be careful and only clear data if the TPM looks
+    // positively unowned.
+    if (tpm_init->IsTpmEnabled() && !tpm_init->IsTpmOwned()) {
+      ClearData();
+      // Don't flag invalid here - Chrome verifies that install attributes
+      // aren't invalid before locking them as part of enterprise enrollment.
+      return false;
+    }
+
+    // Cases that don't look like a cleared TPM get flagged invalid.
     SetIsInvalid(true);
     return false;
   }
 
-  if (!attributes_->ParseFromArray(
-         static_cast<google::protobuf::uint8*>(blob.data()),
-         blob.size())) {
-    LOG(ERROR) << "Failed to parse data file (" << blob.size() << " bytes)";
-    SetIsInvalid(true);
+  // The TPM is ready and we haven't found valid install attributes. This
+  // usually means that we haven't written and locked the lockbox yet, so
+  // attempt a reset. The reset may fail in various other edge cases and the
+  // error code lets us identify and handle these edge cases correctly.
+  LockboxError error_id;
+  if (!lockbox()->Create(&error_id)) {
+    if (error_id != LockboxError::kInsufficientAuthorization) {
+      LOG(ERROR) << "Create failed, Lockbox error: " << error_id;
+      set_is_initialized(true);
+      tpm_init->RemoveTpmOwnerDependency(
+          TpmPersistentState::TpmOwnerDependency::kInstallAttributes);
+      return true;
+    }
+
+    // Check whether the lockbox is already set up correctly.
+    if (lockbox()->Load(&error_id)) {
+      // Lockbox space is locked already, but failed to load validated data.
+      LOG(ERROR) << "InstallAttributes failed to initialize.";
+      SetIsInvalid(true);
+      return false;
+    } else if (error_id == LockboxError::kNoNvramSpace) {
+      // Legacy install with no NVRAM space.
+      set_is_initialized(true);
+      tpm_init->RemoveTpmOwnerDependency(
+          TpmPersistentState::TpmOwnerDependency::kInstallAttributes);
+      return true;
+    } else if (error_id != LockboxError::kNoNvramData) {
+      LOG(ERROR) << "InstallAttributes failed to initialize.";
+      SetIsInvalid(true);
+      return false;
+    }
+  }
+
+  // Reset succeeded, so we have a writable lockbox now.
+  // Delete data file potentially left around from previous installation.
+  if (!ClearData()) {
     return false;
   }
 
+  set_is_first_install(true);
   set_is_initialized(true);
-  // If everything went well, we know that NVRAM space was created OK, and
-  // don't need to hold owner dependency. So, repeat removing owner dependency
-  // in case it didn't succeed during the first boot.
   tpm_init->RemoveTpmOwnerDependency(
       TpmPersistentState::TpmOwnerDependency::kInstallAttributes);
   return true;
@@ -329,6 +305,15 @@ bool InstallAttributes::SerializeAttributes(brillo::Blob* out_bytes) {
   out_bytes->resize(attributes_->ByteSize());
   attributes_->SerializeWithCachedSizesToArray(
     static_cast<google::protobuf::uint8*>(out_bytes->data()));
+  return true;
+}
+
+bool InstallAttributes::ClearData() {
+  if (platform_->FileExists(data_file_) &&
+      !platform_->DeleteFile(data_file_, false)) {
+    LOG(ERROR) << "Failed to delete install attributes data file!";
+    return false;
+  }
   return true;
 }
 
