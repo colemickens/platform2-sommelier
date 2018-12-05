@@ -139,6 +139,12 @@ class Sender {
   const base::FilePath& temp_dir() const { return scoped_temp_dir_.GetPath(); }
 
  private:
+  // Requests the shell script to send a crash report associated with the given
+  // meta file. The shell script may decide not to send, because there is still
+  // some logic in the script for skipping crash files.
+  // TODO(satorux): Move that logic from the shell script to C++.
+  bool RequestToSendCrash(const base::FilePath& meta_file);
+
   std::unique_ptr<MetricsLibraryInterface> metrics_lib_;
   const base::FilePath shell_script_;
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface> proxy_;

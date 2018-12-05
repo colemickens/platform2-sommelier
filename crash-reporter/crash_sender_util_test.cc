@@ -549,14 +549,25 @@ TEST_F(CrashSenderUtilTest, Sender) {
   setenv("FAKE_CRASH_SENDER_OUTPUT", output_file.value().c_str(),
          1 /* overwrite */);
 
-  // Create crash directories.
+  // Create the system crash directory, and crash files in it.
+  const base::FilePath system_dir = paths::Get(paths::kSystemCrashDirectory);
+  ASSERT_TRUE(base::CreateDirectory(system_dir));
+  const base::FilePath system_meta = system_dir.Append("0.0.0.0.meta");
+  const base::FilePath system_log = system_dir.Append("0.0.0.0.log");
+  ASSERT_TRUE(test_util::CreateFile(system_meta, "payload=0.0.0.0.log\n"));
+  ASSERT_TRUE(test_util::CreateFile(system_log, ""));
+
+  // Create a user crash directory, and crash files in it.
   // The crash directory for "user1" is not present, thus should be skipped.
-  const base::FilePath system_crash_directory =
-      paths::Get(paths::kSystemCrashDirectory);
-  ASSERT_TRUE(base::CreateDirectory(system_crash_directory));
-  const base::FilePath user2_crash_directory =
-      paths::Get("/home/user/hash2/crash");
-  ASSERT_TRUE(base::CreateDirectory(user2_crash_directory));
+  const base::FilePath user2_dir = paths::Get("/home/user/hash2/crash");
+  ASSERT_TRUE(base::CreateDirectory(user2_dir));
+  const base::FilePath user2_meta = user2_dir.Append("0.0.0.0.meta");
+  const base::FilePath user2_log = user2_dir.Append("0.0.0.0.log");
+  ASSERT_TRUE(test_util::CreateFile(user2_meta, "payload=0.0.0.0.log\n"));
+  ASSERT_TRUE(test_util::CreateFile(user2_log, ""));
+
+  // Set up the conditions so the crash reports can be sent.
+  ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsEnabled));
 
   // Set up the sender.
   Sender::Options options;
@@ -566,7 +577,7 @@ TEST_F(CrashSenderUtilTest, Sender) {
   ASSERT_TRUE(sender.Init());
 
   // Send crashes.
-  EXPECT_TRUE(sender.SendCrashes(system_crash_directory));
+  EXPECT_TRUE(sender.SendCrashes(system_dir));
   EXPECT_TRUE(sender.SendUserCrashes());
 
   // Check the output file from fake_crash_sender.sh.
@@ -576,17 +587,17 @@ TEST_F(CrashSenderUtilTest, Sender) {
       ParseFakeCrashSenderOutput(contents);
   ASSERT_EQ(2, rows.size());
 
-  // The first run should be for the system crash directory.
+  // The first run should be for the meta file in the system directory.
   std::vector<std::string> row = rows[0];
   ASSERT_EQ(2, row.size());
   EXPECT_EQ(sender.temp_dir().value(), row[0]);
-  EXPECT_EQ(system_crash_directory.value(), row[1]);
+  EXPECT_EQ(system_meta.value(), row[1]);
 
-  // The second run should be for "user2".
+  // The second run should be for the meta file in the "user2" directory.
   row = rows[1];
   ASSERT_EQ(2, row.size());
   EXPECT_EQ(sender.temp_dir().value(), row[0]);
-  EXPECT_EQ(user2_crash_directory.value(), row[1]);
+  EXPECT_EQ(user2_meta.value(), row[1]);
 }
 
 }  // namespace util

@@ -372,35 +372,13 @@ bool Sender::SendCrashes(const base::FilePath& crash_dir) {
   RemoveOrphanedCrashFiles(crash_dir);
   RemoveInvalidCrashFiles(crash_dir, metrics_lib_.get());
 
-  const int child_pid = fork();
-  if (child_pid == 0) {
-    char* shell_script_path = const_cast<char*>(shell_script_.value().c_str());
-    char* temp_dir_path =
-        const_cast<char*>(scoped_temp_dir_.GetPath().value().c_str());
-    char* crash_dir_path = const_cast<char*>(crash_dir.value().c_str());
-    char* shell_argv[] = {shell_script_path, temp_dir_path, crash_dir_path,
-                          nullptr};
-    execve(shell_script_path, shell_argv, environ);
-    // execve() failed.
-    exit(EXIT_FAILURE);
-  } else {
-    int status = 0;
-    if (waitpid(child_pid, &status, 0) < 0) {
-      PLOG(ERROR) << "Failed to wait for the child process: " << child_pid;
-      return false;
-    }
-    if (!WIFEXITED(status)) {
-      LOG(ERROR) << "Terminated abnormally: " << status;
-      return false;
-    }
-    int exit_code = WEXITSTATUS(status);
-    if (exit_code != 0) {
-      LOG(ERROR) << "Terminated with non-zero exit code: " << exit_code;
-      return false;
-    }
+  std::vector<base::FilePath> meta_files = GetMetaFiles(crash_dir);
+  bool success = true;
+  for (const auto& meta_file : meta_files) {
+    if (!RequestToSendCrash(meta_file))
+      success = false;
   }
-
-  return true;
+  return success;
 }
 
 bool Sender::SendUserCrashes() {
@@ -430,6 +408,38 @@ bool Sender::SendUserCrashes() {
     bus->ShutdownAndBlock();
 
   return fully_successful;
+}
+
+bool Sender::RequestToSendCrash(const base::FilePath& meta_file) {
+  const int child_pid = fork();
+  if (child_pid == 0) {
+    char* shell_script_path = const_cast<char*>(shell_script_.value().c_str());
+    char* temp_dir_path =
+        const_cast<char*>(scoped_temp_dir_.GetPath().value().c_str());
+    char* meta_file_path = const_cast<char*>(meta_file.value().c_str());
+    char* shell_argv[] = {shell_script_path, temp_dir_path, meta_file_path,
+                          nullptr};
+    execve(shell_script_path, shell_argv, environ);
+    // execve() failed.
+    exit(EXIT_FAILURE);
+  } else {
+    int status = 0;
+    if (waitpid(child_pid, &status, 0) < 0) {
+      PLOG(ERROR) << "Failed to wait for the child process: " << child_pid;
+      return false;
+    }
+    if (!WIFEXITED(status)) {
+      LOG(ERROR) << "Terminated abnormally: " << status;
+      return false;
+    }
+    int exit_code = WEXITSTATUS(status);
+    if (exit_code != 0) {
+      LOG(ERROR) << "Terminated with non-zero exit code: " << exit_code;
+      return false;
+    }
+  }
+
+  return true;
 }
 
 }  // namespace util

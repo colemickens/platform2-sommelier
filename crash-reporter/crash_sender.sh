@@ -529,92 +529,89 @@ remove_report() {
   rm -f -- "${base}".*
 }
 
-# Send all crashes from the given directory.  This applies even when we're on a
-# 3G connection (see crosbug.com/3304 for discussion).
-send_crashes() {
-  local dir="$1"
+# Send or skip the crash report assosiated with the given meta file.
+# This applies even when we're on a 3G connection (see crosbug.com/3304 for
+# discussion).
+send_or_skip_crash() {
+  meta_path="$1"
+  dir="$(dirname "$meta_path")"
 
-  # Look through all metadata (*.meta) files, oldest first.  That way, the rate
-  # limit does not stall old crashes if there's a high amount of new crashes
-  # coming in.
   # For each crash report, first evaluate conditions that might lead to its
   # removal to honor user choice and to free disk space as soon as possible,
   # then decide whether it should be sent right now or kept for later sending.
-  for meta_path in $(ls -1tr "${dir}"/*.meta 2>/dev/null); do
-    lecho "Considering metadata ${meta_path}."
+  lecho "Considering metadata ${meta_path}."
 
-    if [ ! -r "${meta_path}" ]; then
-      lecho "Ignoring inaccessible metadata."
-      continue
-    fi
+  if [ ! -r "${meta_path}" ]; then
+    lecho "Ignoring inaccessible metadata."
+    return 0
+  fi
 
-    if ! is_complete_metadata "${meta_path}"; then
-      # This report is incomplete, so if it's old, just remove it.
-      local old_meta=$(${FIND} "${dir}" -mindepth 1 -name \
-        $(basename "${meta_path}") -mmin +$((24 * 60)) -type f)
-      if [ -n "${old_meta}" ]; then
-        lecho "Removing old incomplete metadata."
-        remove_report "${meta_path}"
-      else
-        lecho "Ignoring recent incomplete metadata."
-      fi
-      continue
-    fi
-
-    # Ignore device coredump if device coredump uploading is not allowed.
-    if [ "${kind}" = "devcore" ] && ! is_device_coredump_upload_allowed; then
-      lecho "Ignoring device coredump. Device coredump upload not allowed."
-      continue
-    fi
-
-    # Don't send crash reports from previous sessions while we're in guest mode
-    # to avoid the impression that crash reporting was enabled, which it isn't.
-    # (Don't exit right now because subsequent reports may be candidates for
-    # deletion.)
-    if ${METRICS_CLIENT} -g; then
-      lecho "Guest mode has been entered.  Delaying crash sending until exited."
-      continue
-    fi
-
-    # Skip report if the upload rate is exceeded.  (Don't exit right now because
-    # subsequent reports may be candidates for deletion.)
-    if ! check_rate; then
-      lecho "Sending ${meta_path} would exceed rate.  Leaving for later."
-      continue
-    fi
-
-    # The .meta file should be written *after* all to-be-uploaded files that it
-    # references.  Nevertheless, as a safeguard, a hold-off time of thirty
-    # seconds after writing the .meta file is ensured.  Also, sending of crash
-    # reports is spread out randomly by up to SECONDS_SEND_SPREAD.  Thus, for
-    # the sleep call the greater of the two delays is used.
-    local now=$(date +%s)
-    local holdoff_time=$(($(stat --format=%Y "${meta_path}") + 30 - ${now}))
-    local spread_time=$(generate_uniform_random "${SECONDS_SEND_SPREAD}")
-    local sleep_time
-    if [ ${spread_time} -gt ${holdoff_time} ]; then
-      sleep_time="${spread_time}"
+  if ! is_complete_metadata "${meta_path}"; then
+    # This report is incomplete, so if it's old, just remove it.
+    local old_meta=$(${FIND} "${dir}" -mindepth 1 -name \
+      $(basename "${meta_path}") -mmin +$((24 * 60)) -type f)
+    if [ -n "${old_meta}" ]; then
+      lecho "Removing old incomplete metadata."
+      remove_report "${meta_path}"
     else
-      sleep_time="${holdoff_time}"
+      lecho "Ignoring recent incomplete metadata."
     fi
-    lecho "Scheduled to send in ${sleep_time}s."
-    if ! is_mock; then
-      if ! sleep "${sleep_time}"; then
-          lecho "Sleep failed"
-          return 1
-      fi
-    fi
+    return 0
+  fi
 
-    # Try to upload.
-    if ! send_crash "${meta_path}"; then
-      lecho "Problem sending ${meta_path}, not removing."
-      continue
-    fi
+  # Ignore device coredump if device coredump uploading is not allowed.
+  if [ "${kind}" = "devcore" ] && ! is_device_coredump_upload_allowed; then
+    lecho "Ignoring device coredump. Device coredump upload not allowed."
+    return 0
+  fi
 
-    # Send was successful, now remove.
-    lecho "Successfully sent crash ${meta_path} and removing."
-    remove_report "${meta_path}"
-  done
+  # Don't send crash reports from previous sessions while we're in guest mode
+  # to avoid the impression that crash reporting was enabled, which it isn't.
+  # (Don't exit right now because subsequent reports may be candidates for
+  # deletion.)
+  if ${METRICS_CLIENT} -g; then
+    lecho "Guest mode has been entered.  Delaying crash sending until exited."
+    return 0
+  fi
+
+  # Skip report if the upload rate is exceeded.  (Don't exit right now because
+  # subsequent reports may be candidates for deletion.)
+  if ! check_rate; then
+    lecho "Sending ${meta_path} would exceed rate.  Leaving for later."
+    return 0
+  fi
+
+  # The .meta file should be written *after* all to-be-uploaded files that it
+  # references.  Nevertheless, as a safeguard, a hold-off time of thirty
+  # seconds after writing the .meta file is ensured.  Also, sending of crash
+  # reports is spread out randomly by up to SECONDS_SEND_SPREAD.  Thus, for
+  # the sleep call the greater of the two delays is used.
+  local now=$(date +%s)
+  local holdoff_time=$(($(stat --format=%Y "${meta_path}") + 30 - ${now}))
+  local spread_time=$(generate_uniform_random "${SECONDS_SEND_SPREAD}")
+  local sleep_time
+  if [ ${spread_time} -gt ${holdoff_time} ]; then
+    sleep_time="${spread_time}"
+  else
+    sleep_time="${holdoff_time}"
+  fi
+  lecho "Scheduled to send in ${sleep_time}s."
+  if ! is_mock; then
+    if ! sleep "${sleep_time}"; then
+        lecho "Sleep failed"
+        return 1
+    fi
+  fi
+
+  # Try to upload.
+  if ! send_crash "${meta_path}"; then
+    lecho "Problem sending ${meta_path}, not removing."
+    return 0
+  fi
+
+  # Send was successful, now remove.
+  lecho "Successfully sent crash ${meta_path} and removing."
+  remove_report "${meta_path}"
 }
 
 main () {
@@ -624,7 +621,7 @@ main () {
   fi
   TMP_DIR="$1"
 
-  send_crashes $2
+  send_or_skip_crash $2
 }
 
 main "$@"
