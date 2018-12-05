@@ -41,8 +41,8 @@ bool CacheLockbox(cryptohome::Platform* platform,
     LOG(INFO) << "Failed to read lockbox data from " << lockbox_path.value();
     return false;
   }
-  LockboxError error;
-  if (!lockbox->Verify(lockbox_data, &error)) {
+  if (lockbox->Verify(lockbox_data) !=
+      LockboxContents::VerificationResult::kValid) {
     LOG(ERROR) << "Lockbox did not verify!";
     return false;
   }

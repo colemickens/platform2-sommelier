@@ -312,15 +312,12 @@ class LockboxContentsTest : public testing::Test {
 
   void LoadAndVerify(const brillo::SecureBlob& nvram_data,
                      const brillo::Blob& data,
-                     LockboxError expected_error) {
+                     LockboxContents::VerificationResult expected_result) {
     std::unique_ptr<LockboxContents> contents =
         LockboxContents::New(nvram_data.size());
     ASSERT_TRUE(contents);
     ASSERT_TRUE(contents->Decode(nvram_data));
-    LockboxError error = LockboxError::kNone;
-    EXPECT_EQ(expected_error == LockboxError::kNone,
-              contents->Verify(data, &error));
-    EXPECT_EQ(expected_error, error);
+    EXPECT_EQ(expected_result, contents->Verify(data));
   }
 };
 
@@ -328,21 +325,21 @@ TEST_F(LockboxContentsTest, LoadAndVerifyOkTpmDefault) {
   brillo::SecureBlob nvram_data;
   ASSERT_NO_FATAL_FAILURE(
       GenerateNvramData(NvramVersion::kDefault, &nvram_data));
-  LoadAndVerify(nvram_data, {42}, LockboxError::kNone);
+  LoadAndVerify(nvram_data, {42}, LockboxContents::VerificationResult::kValid);
 }
 
 TEST_F(LockboxContentsTest, LoadAndVerifyOkTpmV1) {
   brillo::SecureBlob nvram_data;
   ASSERT_NO_FATAL_FAILURE(
       GenerateNvramData(NvramVersion::kVersion1, &nvram_data));
-  LoadAndVerify(nvram_data, {42}, LockboxError::kNone);
+  LoadAndVerify(nvram_data, {42}, LockboxContents::VerificationResult::kValid);
 }
 
 TEST_F(LockboxContentsTest, LoadAndVerifyOkTpmV2) {
   brillo::SecureBlob nvram_data;
   ASSERT_NO_FATAL_FAILURE(
       GenerateNvramData(NvramVersion::kVersion2, &nvram_data));
-  LoadAndVerify(nvram_data, {42}, LockboxError::kNone);
+  LoadAndVerify(nvram_data, {42}, LockboxContents::VerificationResult::kValid);
 }
 
 TEST_F(LockboxContentsTest, LoadAndVerifyBadSize) {
@@ -356,7 +353,8 @@ TEST_F(LockboxContentsTest, LoadAndVerifyBadSize) {
   nvram_data[2] = 0;
   nvram_data[3] = 0;
 
-  LoadAndVerify(nvram_data, {42}, LockboxError::kSizeMismatch);
+  LoadAndVerify(nvram_data, {42},
+                LockboxContents::VerificationResult::kSizeMismatch);
 }
 
 TEST_F(LockboxContentsTest, LoadAndVerifyBadHash) {
@@ -367,13 +365,16 @@ TEST_F(LockboxContentsTest, LoadAndVerifyBadHash) {
   // Invalidate the hash.
   nvram_data.back() ^= 0xff;
 
-  LoadAndVerify(nvram_data, {42}, LockboxError::kHashMismatch);
+  LoadAndVerify(nvram_data, {42},
+                LockboxContents::VerificationResult::kHashMismatch);
 }
 
 TEST_F(LockboxContentsTest, LoadAndVerifyBadData) {
   SecureBlob nvram_data;
   ASSERT_NO_FATAL_FAILURE(
       GenerateNvramData(NvramVersion::kVersion2, &nvram_data));
-  LoadAndVerify(nvram_data, {17}, LockboxError::kHashMismatch);
+  LoadAndVerify(nvram_data, {17},
+                LockboxContents::VerificationResult::kHashMismatch);
 }
+
 }  // namespace cryptohome

@@ -33,8 +33,6 @@ enum class NvramVersion : size_t {
 
 enum class LockboxError {
   kNone = 0,
-  kHashMismatch,               // Tampering or disk corruption.
-  kSizeMismatch,               // Tampering or disk corruption.
   kInsufficientAuthorization,  // Bad call order or TPM state.
   kNoNvramSpace,               // No space is defined. (legacy install)
   kNoNvramData,                // Empty (unlocked) lockbox
@@ -70,11 +68,7 @@ int GetNvramVersionNumber(NvramVersion version);
 //   lockbox->Create(&error);
 //   lockbox->Store(mah_locked_data, &error);
 //
-// Verifying data can be done along these lines:
-//   Lockbox lockbox(tpm, kNvramSpace);
-//   lockbox->Load(&error);
-//   lockbox->Verify(mah_maybe_tampered_with_dat, &error);
-// ...
+// Verifying data is performed via class |LockboxContents|.
 class Lockbox {
  public:
   // Populates the basic internal state of the Lockbox.
@@ -121,16 +115,6 @@ class Lockbox {
   // - true if TPM NVRAM data is properly retrieved.
   // - false if the NVRAM data does not exist, is incorrect, or is unlocked.
   virtual bool Load(LockboxError* error);
-
-  // Verifies the given blob against Load()d data.
-  //
-  // Parameters
-  // - blob: data blob to verify.
-  // - error: LockboxError populated only on failure
-  // Returns
-  // - true if verified
-  // - false if the data could not be validated.
-  virtual bool Verify(const brillo::Blob& blob, LockboxError* error);
 
   // Hashes, salts, sizes, and stores metadata required for verifying |data|
   // in TPM NVRAM for later verification.
@@ -214,6 +198,12 @@ class LockboxContents {
       sizeof(uint32_t) + sizeof(uint8_t) + SHA256_DIGEST_LENGTH;
 
  public:
+  enum class VerificationResult {
+    kValid,
+    kSizeMismatch,
+    kHashMismatch,
+  };
+
   // Creates a LockboxContents instance that'll handle encoded lockbox contents
   // corresponding to an NVRAM space of size |nvram_size|. Returns nullptr in
   // case the passed |nvram_size| isn't supported.
@@ -238,7 +228,7 @@ class LockboxContents {
   bool Protect(const brillo::Blob& blob);
 
   // Verify |blob| against the lockbox contents.
-  bool Verify(const brillo::Blob& blob, LockboxError* error);
+  VerificationResult Verify(const brillo::Blob& blob);
 
   static size_t GetNvramSize(NvramVersion version) {
     return static_cast<size_t>(version) + kFixedPartSize;

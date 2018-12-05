@@ -176,17 +176,6 @@ bool Lockbox::Load(LockboxError* error) {
   return true;
 }
 
-bool Lockbox::Verify(const brillo::Blob& blob, LockboxError* error) {
-  CHECK(error);
-  // It's not possible to verify without a locked space.
-  if (!contents_) {
-    *error = LockboxError::kNoNvramData;
-    return false;
-  }
-
-  return contents_->Verify(blob, error);
-}
-
 bool Lockbox::Store(const brillo::Blob& blob, LockboxError* error) {
   if (!TpmIsReady()) {
     LOG(ERROR) << "Store() called when TPM was not ready!";
@@ -406,14 +395,13 @@ bool LockboxContents::Protect(const brillo::Blob& blob) {
   return true;
 }
 
-bool LockboxContents::Verify(const brillo::Blob& blob,
-                             LockboxError* error) {
+LockboxContents::VerificationResult LockboxContents::Verify(
+    const brillo::Blob& blob) {
   // Make sure that the file size matches what was stored in nvram.
   if (blob.size() != size_) {
     LOG(ERROR) << "Verify() expected " << size_ << " , but received "
                << blob.size() << " bytes.";
-    *error = LockboxError::kSizeMismatch;
-    return false;
+    return VerificationResult::kSizeMismatch;
   }
 
   // Compute the hash of the blob to verify.
@@ -426,11 +414,10 @@ bool LockboxContents::Verify(const brillo::Blob& blob,
   if (sizeof(hash_) != salty_blob_hash.size() ||
       brillo::SecureMemcmp(hash_, salty_blob_hash.data(), sizeof(hash_))) {
     LOG(ERROR) << "Verify() hash mismatch!";
-    *error = LockboxError::kHashMismatch;
-    return false;
+    return VerificationResult::kHashMismatch;
   }
 
-  return true;
+  return VerificationResult::kValid;
 }
 
 }  // namespace cryptohome
