@@ -26,6 +26,9 @@
 #       If true, generates C++ GRPC.
 #   use_pic (optional)
 #       If true, generates a position independent code instead of position independent executable.
+#   standalone
+#       If true, generates a library that can be referred from other packages.
+#       Otherwise it generates a thin archive assuming it's used inside the same package only.
 template("proto_library") {
   action_name = "${target_name}_gen"
   action_foreach(action_name) {
@@ -130,6 +133,10 @@ template("proto_library") {
     if (defined(invoker.use_pic) && invoker.use_pic) {
       configs -= [ "//common-mk:pie" ]
       configs += [ "//common-mk:pic" ]
+    }
+    if (defined(invoker.standalone) && invoker.standalone) {
+      configs -= [ "//common-mk:use_thin_archive" ]
+      configs += [ "//common-mk:nouse_thin_archive" ]
     }
     sources = get_target_outputs(":${action_name}")
     deps = [
