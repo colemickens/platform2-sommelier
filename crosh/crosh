@@ -479,7 +479,7 @@ cmd_vmc() (
     local path="$1"; shift
     seneschal_client --share_path --vm_name="${name}" \
       --owner_id="${CROS_USER_ID_HASH}" --path="${path}" \
-      --storage_location=downloads 2>/dev/null
+      --storage_location=myfiles 2>/dev/null
     ;;
   destroy)
     if [ $# -ne 1 ]; then
