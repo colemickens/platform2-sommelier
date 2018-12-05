@@ -1940,89 +1940,65 @@ TPM_RC TpmUtilityImpl::CreateStorageRootKeys(
   object_name.size = 0;
   std::unique_ptr<AuthorizationDelegate> delegate =
       factory_.GetPasswordAuthorization(owner_password);
-  if (tpm_state->IsRSASupported()) {
-    bool exists = false;
-    result = DoesPersistentKeyExist(kStorageRootKey, &exists);
-    if (result) {
-      return result;
-    }
-    if (!exists) {
-      TPMT_PUBLIC public_area = CreateDefaultPublicArea(TPM_ALG_RSA);
-      public_area.object_attributes |= (kSensitiveDataOrigin | kUserWithAuth |
-                                        kNoDA | kRestricted | kDecrypt);
-      public_area.parameters.rsa_detail.symmetric.algorithm = TPM_ALG_AES;
-      public_area.parameters.rsa_detail.symmetric.key_bits.aes = 128;
-      public_area.parameters.rsa_detail.symmetric.mode.aes = TPM_ALG_CFB;
-      TPM2B_PUBLIC rsa_public_area = Make_TPM2B_PUBLIC(public_area);
-      result = tpm->CreatePrimarySync(
-          TPM_RH_OWNER, NameFromHandle(TPM_RH_OWNER),
-          Make_TPM2B_SENSITIVE_CREATE(sensitive), rsa_public_area,
-          Make_TPM2B_DATA(""), creation_pcrs, &object_handle, &rsa_public_area,
-          &creation_data, &creation_digest, &creation_ticket, &object_name,
-          delegate.get());
-      if (result) {
-        LOG(ERROR) << __func__ << ": " << GetErrorString(result);
-        return result;
-      }
-      ScopedKeyHandle rsa_key(factory_, object_handle);
-      // This will make the key persistent.
-      result = tpm->EvictControlSync(TPM_RH_OWNER, NameFromHandle(TPM_RH_OWNER),
-                                     object_handle,
-                                     StringFrom_TPM2B_NAME(object_name),
-                                     kStorageRootKey, delegate.get());
-      if (result != TPM_RC_SUCCESS) {
-        LOG(ERROR) << __func__ << ": " << GetErrorString(result);
-        return result;
-      }
-      LOG(INFO) << __func__ << ": Created RSA SRK.";
-    } else {
-      LOG(INFO) << __func__ << ": Skip RSA SRK because it already exists.";
-    }
-  } else {
-    LOG(INFO) << __func__ << ": Skip RSA SRK because RSA is not supported.";
+
+  bool exists = false;
+  result = DoesPersistentKeyExist(kStorageRootKey, &exists);
+  if (result) {
+    return result;
+  }
+  if (exists) {
+    LOG(INFO) << __func__ << ": Skip SRK generation because it already exists.";
+    return TPM_RC_SUCCESS;
   }
 
-  // Do it again for ECC.
-  if (tpm_state->IsECCSupported()) {
-    bool exists = false;
-    result = DoesPersistentKeyExist(kStorageRootKey, &exists);
-    if (result) {
-      return result;
-    }
-    if (!exists) {
-      TPMT_PUBLIC public_area = CreateDefaultPublicArea(TPM_ALG_ECC);
-      public_area.object_attributes |= (kSensitiveDataOrigin | kUserWithAuth |
-                                        kNoDA | kRestricted | kDecrypt);
-      public_area.parameters.ecc_detail.symmetric.algorithm = TPM_ALG_AES;
-      public_area.parameters.ecc_detail.symmetric.key_bits.aes = 128;
-      public_area.parameters.ecc_detail.symmetric.mode.aes = TPM_ALG_CFB;
-      TPM2B_PUBLIC ecc_public_area = Make_TPM2B_PUBLIC(public_area);
-      result = tpm->CreatePrimarySync(
-          TPM_RH_OWNER, NameFromHandle(TPM_RH_OWNER),
-          Make_TPM2B_SENSITIVE_CREATE(sensitive), ecc_public_area,
-          Make_TPM2B_DATA(""), creation_pcrs, &object_handle, &ecc_public_area,
-          &creation_data, &creation_digest, &creation_ticket, &object_name,
-          delegate.get());
-      if (result) {
-        LOG(ERROR) << __func__ << ": " << GetErrorString(result);
-        return result;
-      }
-      ScopedKeyHandle ecc_key(factory_, object_handle);
-      // This will make the key persistent.
-      result = tpm->EvictControlSync(TPM_RH_OWNER, NameFromHandle(TPM_RH_OWNER),
-                                     object_handle,
-                                     StringFrom_TPM2B_NAME(object_name),
-                                     kStorageRootKey, delegate.get());
-      if (result != TPM_RC_SUCCESS) {
-        LOG(ERROR) << __func__ << ": " << GetErrorString(result);
-        return result;
-      }
-      LOG(INFO) << __func__ << ": Created ECC SRK.";
-    } else {
-      LOG(INFO) << __func__ << ": Skip ECC SRK because it already exists.";
-    }
+  // Decide the SRK key type, the priority is
+  // 1. RSA
+  // 2. ECC
+  TPM_ALG_ID key_type;
+  std::string key_type_str;
+  if (tpm_state->IsRSASupported()) {
+    key_type = TPM_ALG_RSA;
+    key_type_str = "RSA";
+  } else if (tpm_state->IsECCSupported()) {
+    key_type = TPM_ALG_ECC;
+    key_type_str = "ECC";
   } else {
-    LOG(INFO) << __func__ << ": Skip ECC SRK because ECC is not supported.";
+    LOG(INFO) << __func__
+              << ": Skip SRK generation because RSA and ECC are not supported.";
+    return TPM_RC_SUCCESS;
+  }
+
+  TPMT_PUBLIC public_area = CreateDefaultPublicArea(key_type);
+
+  // SRK specific settings
+  public_area.object_attributes |=
+      (kSensitiveDataOrigin | kUserWithAuth | kNoDA | kRestricted | kDecrypt);
+  public_area.parameters.asym_detail.symmetric.algorithm = TPM_ALG_AES;
+  public_area.parameters.asym_detail.symmetric.key_bits.aes = 128;
+  public_area.parameters.asym_detail.symmetric.mode.aes = TPM_ALG_CFB;
+
+  TPM2B_PUBLIC tpm2b_public_area = Make_TPM2B_PUBLIC(public_area);
+  result = tpm->CreatePrimarySync(
+      TPM_RH_OWNER, NameFromHandle(TPM_RH_OWNER),
+      Make_TPM2B_SENSITIVE_CREATE(sensitive), tpm2b_public_area,
+      Make_TPM2B_DATA(""), creation_pcrs, &object_handle, &tpm2b_public_area,
+      &creation_data, &creation_digest, &creation_ticket, &object_name,
+      delegate.get());
+  if (result) {
+    LOG(ERROR) << __func__ << ": " << GetErrorString(result);
+    return result;
+  }
+  ScopedKeyHandle tpm_key(factory_, object_handle);
+
+  LOG(INFO) << __func__ << ": Created " << key_type_str << " SRK.";
+
+  // This will make the key persistent.
+  result = tpm->EvictControlSync(
+      TPM_RH_OWNER, NameFromHandle(TPM_RH_OWNER), object_handle,
+      StringFrom_TPM2B_NAME(object_name), kStorageRootKey, delegate.get());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": " << GetErrorString(result);
+    return result;
   }
   return TPM_RC_SUCCESS;
 }
