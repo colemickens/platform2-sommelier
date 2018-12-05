@@ -1952,16 +1952,16 @@ TPM_RC TpmUtilityImpl::CreateStorageRootKeys(
   }
 
   // Decide the SRK key type, the priority is
-  // 1. RSA
-  // 2. ECC
+  // 1. ECC
+  // 2. RSA
   TPM_ALG_ID key_type;
   std::string key_type_str;
-  if (tpm_state->IsRSASupported()) {
-    key_type = TPM_ALG_RSA;
-    key_type_str = "RSA";
-  } else if (tpm_state->IsECCSupported()) {
+  if (tpm_state->IsECCSupported()) {
     key_type = TPM_ALG_ECC;
     key_type_str = "ECC";
+  } else if (tpm_state->IsRSASupported()) {
+    key_type = TPM_ALG_RSA;
+    key_type_str = "RSA";
   } else {
     LOG(INFO) << __func__
               << ": Skip SRK generation because RSA and ECC are not supported.";
