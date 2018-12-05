@@ -485,4 +485,31 @@ TEST_F(BootstrappedDiagnosticsdCoreTest, GetEcPropertyGrpcCall) {
       << "Actual: {" << response->ShortDebugString() << "}";
 }
 
+// Test that PerformWebRequest() method exposed by the daemon's gRPC returns a
+// Web request response from the browser.
+TEST_F(BootstrappedDiagnosticsdCoreTest, PerformWebRequestToBrowser) {
+  constexpr char kHttpsUrl[] = "https://www.google.com";
+  constexpr int kHttpStatusOk = 200;
+
+  grpc_api::PerformWebRequestParameter request;
+  request.set_http_method(
+      grpc_api::PerformWebRequestParameter::HTTP_METHOD_GET);
+  request.set_url(kHttpsUrl);
+
+  std::unique_ptr<grpc_api::PerformWebRequestResponse> response;
+  {
+    base::RunLoop run_loop;
+    fake_diagnostics_processor()->PerformWebRequest(
+        request, MakeAsyncResponseWriter(&response, &run_loop));
+    run_loop.Run();
+  }
+
+  ASSERT_TRUE(response);
+  grpc_api::PerformWebRequestResponse expected_response;
+  expected_response.set_status(grpc_api::PerformWebRequestResponse::STATUS_OK);
+  expected_response.set_http_status(kHttpStatusOk);
+  EXPECT_THAT(*response, ProtobufEquals(expected_response))
+      << "Actual: {" << response->ShortDebugString() << "}";
+}
+
 }  // namespace diagnostics

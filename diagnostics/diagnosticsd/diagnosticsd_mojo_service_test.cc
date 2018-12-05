@@ -3,9 +3,13 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <string>
 #include <utility>
+#include <vector>
 
+#include <base/bind.h>
 #include <base/message_loop/message_loop.h>
+#include <base/run_loop.h>
 #include <base/strings/string_piece.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -29,10 +33,17 @@ using MojomDiagnosticsdClientPtr =
     chromeos::diagnosticsd::mojom::DiagnosticsdClientPtr;
 using MojomDiagnosticsdServiceRequest =
     chromeos::diagnosticsd::mojom::DiagnosticsdServiceRequest;
+using MojomDiagnosticsdWebRequestStatus =
+    chromeos::diagnosticsd::mojom::DiagnosticsdWebRequestStatus;
+using MojomDiagnosticsdWebRequestHttpMethod =
+    chromeos::diagnosticsd::mojom::DiagnosticsdWebRequestHttpMethod;
 
 namespace diagnostics {
 
 namespace {
+
+constexpr char kHttpsUrl[] = "https://www.google.com";
+constexpr int kHttpStatusOk = 200;
 
 void EmptySendUiMessageToDiagnosticsProcessorCallback(
     mojo::ScopedHandle response_json_message) {}
@@ -65,6 +76,7 @@ class DiagnosticsdMojoServiceTest : public testing::Test {
   }
 
   MockDiagnosticsdMojoServiceDelegate* delegate() { return &delegate_; }
+  MockMojomDiagnosticsdClient* mojo_client() { return &mojo_client_; }
 
   // TODO(lamzin@google.com): Extract the response JSON message and verify its
   // value.
@@ -75,6 +87,26 @@ class DiagnosticsdMojoServiceTest : public testing::Test {
     service_->SendUiMessageToDiagnosticsProcessor(
         std::move(handle),
         base::Bind(&EmptySendUiMessageToDiagnosticsProcessorCallback));
+  }
+
+  void PerformWebRequest(MojomDiagnosticsdWebRequestHttpMethod http_method,
+                         const std::string& url,
+                         const std::vector<std::string>& headers,
+                         const std::string& request_body,
+                         MojomDiagnosticsdWebRequestStatus expected_status,
+                         base::Optional<int> expected_http_status) {
+    service_->PerformWebRequest(
+        http_method, url, headers, request_body,
+        base::Bind(
+            [](MojomDiagnosticsdWebRequestStatus expected_status,
+               base::Optional<int> expected_http_status,
+               MojomDiagnosticsdWebRequestStatus status, int http_status) {
+              EXPECT_EQ(expected_status, status);
+              if (expected_http_status.has_value())
+                EXPECT_EQ(expected_http_status, http_status);
+            },
+            expected_status, expected_http_status));
+    base::RunLoop().RunUntilIdle();
   }
 
  private:
@@ -100,6 +132,17 @@ TEST_F(DiagnosticsdMojoServiceTest,
   EXPECT_CALL(*delegate(), SendGrpcUiMessageToDiagnosticsProcessor(_, _))
       .Times(0);
   ASSERT_NO_FATAL_FAILURE(SendJsonMessage(json_message));
+}
+
+TEST_F(DiagnosticsdMojoServiceTest, PerformWebRequest) {
+  EXPECT_CALL(
+      *mojo_client(),
+      PerformWebRequestImpl(MojomDiagnosticsdWebRequestHttpMethod::kGet,
+                            kHttpsUrl, std::vector<std::string>(), "", _));
+  ASSERT_NO_FATAL_FAILURE(
+      PerformWebRequest(MojomDiagnosticsdWebRequestHttpMethod::kGet, kHttpsUrl,
+                        std::vector<std::string>(), "",
+                        MojomDiagnosticsdWebRequestStatus::kOk, kHttpStatusOk));
 }
 
 }  // namespace diagnostics

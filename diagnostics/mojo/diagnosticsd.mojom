@@ -10,6 +10,21 @@
 
 module chromeos.diagnosticsd.mojom;
 
+[Extensible]
+enum DiagnosticsdWebRequestHttpMethod {
+  kGet,
+  kHead,
+  kPost,
+  kPut,
+};
+
+[Extensible]
+enum DiagnosticsdWebRequestStatus {
+  kOk,
+  kNetworkError,
+  kHttpError,
+};
+
 // Factory interface exposed by the diagnosticsd daemon, which allows both
 // endpoints (the diagnosticsd and the browser) to exchange with their
 // interfaces (DiagnosticsdService and DiagnosticsdClient correspondingly).
@@ -47,4 +62,14 @@ interface DiagnosticsdClient {
   // request wasn't delivered to the extension or the extension made no reply.
   SendDiagnosticsProcessorMessageToUi@0(handle json_message)
       => (handle? response_json_message);
+
+  // Performs a web request, originating from the diagnostics_processor daemon,
+  // by the browser's network stack.
+  //
+  // The response to that web request contains the status of the web request
+  // and the HTTP status code if the status is |kOk| or |kHttpError|, otherwise
+  // the HTTP status code is 0.
+  PerformWebRequest@1(DiagnosticsdWebRequestHttpMethod http_method, string url,
+                      array<string> headers, string request_body)
+      => (DiagnosticsdWebRequestStatus status, int32 http_status);
 };

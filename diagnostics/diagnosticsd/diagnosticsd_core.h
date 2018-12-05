@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/callback.h>
 #include <base/files/scoped_file.h>
@@ -102,6 +103,14 @@ class DiagnosticsdCore final
 
   // Shuts down the self instance after a Mojo fatal error happens.
   void ShutDownDueToMojoError(const std::string& debug_reason);
+
+  // DiagnosticsGrpcService::Delegate overrides:
+  void PerformWebRequestToBrowser(
+      WebRequestHttpMethod http_method,
+      const std::string& url,
+      const std::vector<std::string>& headers,
+      const std::string& request_body,
+      const PerformWebRequestToBrowserCallback& callback) override;
 
   // DiagnosticsdMojoService::Delegate overrides:
   void SendGrpcUiMessageToDiagnosticsProcessor(

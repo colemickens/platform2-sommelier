@@ -19,6 +19,43 @@
 
 namespace diagnostics {
 
+namespace {
+
+using MojomDiagnosticsdWebRequestStatus =
+    chromeos::diagnosticsd::mojom::DiagnosticsdWebRequestStatus;
+using MojomDiagnosticsdWebRequestHttpMethod =
+    chromeos::diagnosticsd::mojom::DiagnosticsdWebRequestHttpMethod;
+
+// Converts HTTP method into an appropriate mojom one.
+MojomDiagnosticsdWebRequestHttpMethod ConvertWebRequestHttpMethodToMojom(
+    DiagnosticsdCore::WebRequestHttpMethod http_method) {
+  switch (http_method) {
+    case DiagnosticsdCore::WebRequestHttpMethod::kGet:
+      return MojomDiagnosticsdWebRequestHttpMethod::kGet;
+    case DiagnosticsdCore::WebRequestHttpMethod::kHead:
+      return MojomDiagnosticsdWebRequestHttpMethod::kHead;
+    case DiagnosticsdCore::WebRequestHttpMethod::kPost:
+      return MojomDiagnosticsdWebRequestHttpMethod::kPost;
+    case DiagnosticsdCore::WebRequestHttpMethod::kPut:
+      return MojomDiagnosticsdWebRequestHttpMethod::kPut;
+  }
+}
+
+// Convert the result back from mojom status.
+DiagnosticsdCore::WebRequestStatus ConvertStatusFromMojom(
+    MojomDiagnosticsdWebRequestStatus status) {
+  switch (status) {
+    case MojomDiagnosticsdWebRequestStatus::kOk:
+      return DiagnosticsdCore::WebRequestStatus::kOk;
+    case MojomDiagnosticsdWebRequestStatus::kNetworkError:
+      return DiagnosticsdCore::WebRequestStatus::kNetworkError;
+    case MojomDiagnosticsdWebRequestStatus::kHttpError:
+      return DiagnosticsdCore::WebRequestStatus::kHttpError;
+  }
+}
+
+}  // namespace
+
 DiagnosticsdCore::DiagnosticsdCore(
     const std::string& grpc_service_uri,
     const std::string& diagnostics_processor_grpc_uri,
@@ -50,6 +87,10 @@ bool DiagnosticsdCore::StartGrpcCommunication() {
   grpc_server_.RegisterHandler(
       &grpc_api::Diagnosticsd::AsyncService::RequestGetEcProperty,
       base::Bind(&DiagnosticsdGrpcService::GetEcProperty,
+                 base::Unretained(&grpc_service_)));
+  grpc_server_.RegisterHandler(
+      &grpc_api::Diagnosticsd::AsyncService::RequestPerformWebRequest,
+      base::Bind(&DiagnosticsdGrpcService::PerformWebRequest,
                  base::Unretained(&grpc_service_)));
 
   // Start the gRPC server that listens for incoming gRPC requests.
@@ -175,6 +216,32 @@ void DiagnosticsdCore::ShutDownDueToMojoError(const std::string& debug_reason) {
   mojo_service_.reset();
   mojo_service_factory_binding_.reset();
   delegate_->BeginDaemonShutdown();
+}
+
+void DiagnosticsdCore::PerformWebRequestToBrowser(
+    WebRequestHttpMethod http_method,
+    const std::string& url,
+    const std::vector<std::string>& headers,
+    const std::string& request_body,
+    const PerformWebRequestToBrowserCallback& callback) {
+  VLOG(1) << "DiagnosticsCore::PerformWebRequestToBrowser";
+
+  if (!mojo_service_) {
+    LOG(WARNING) << "PerformWebRequestToBrowser happens before Mojo connection "
+                 << "is established.";
+    callback.Run(WebRequestStatus::kInternalError, 0 /* http_status */);
+    return;
+  }
+
+  mojo_service_->PerformWebRequest(
+      ConvertWebRequestHttpMethodToMojom(http_method), url, headers,
+      request_body,
+      base::Bind(
+          [](const PerformWebRequestToBrowserCallback& callback,
+             MojomDiagnosticsdWebRequestStatus status, int http_status) {
+            callback.Run(ConvertStatusFromMojom(status), http_status);
+          },
+          callback));
 }
 
 void DiagnosticsdCore::SendGrpcUiMessageToDiagnosticsProcessor(

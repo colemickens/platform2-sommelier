@@ -36,6 +36,8 @@ class FakeDiagnosticsProcessor final {
       base::Callback<void(std::unique_ptr<grpc_api::GetEcPropertyResponse>)>;
   using HandleMessageFromUiCallback = base::Callback<void(
       std::unique_ptr<grpc_api::HandleMessageFromUiResponse>)>;
+  using PerformWebRequestResponseCallback = base::Callback<void(
+      std::unique_ptr<grpc_api::PerformWebRequestResponse>)>;
 
   FakeDiagnosticsProcessor(const std::string& grpc_server_uri,
                            const std::string& diagnosticsd_grpc_uri);
@@ -50,6 +52,8 @@ class FakeDiagnosticsProcessor final {
                     RunEcCommandCallback callback);
   void GetEcProperty(const grpc_api::GetEcPropertyRequest& request,
                      GetEcPropertyCallback callback);
+  void PerformWebRequest(const grpc_api::PerformWebRequestParameter& parameter,
+                         const PerformWebRequestResponseCallback& callback);
 
   // Setups callback for the next |HandleMessageFromUi| gRPC call.
   void set_handle_message_from_ui_callback(

@@ -77,4 +77,15 @@ void DiagnosticsdMojoService::SendUiMessageToDiagnosticsProcessor(
   }
 }
 
+void DiagnosticsdMojoService::PerformWebRequest(
+    MojomDiagnosticsdWebRequestHttpMethod http_method,
+    const std::string& url,
+    const std::vector<std::string>& headers,
+    const std::string& request_body,
+    const MojomPerformWebRequestCallback& callback) {
+  DCHECK(client_ptr_);
+  client_ptr_->PerformWebRequest(http_method, url, headers, request_body,
+                                 callback);
+}
+
 }  // namespace diagnostics

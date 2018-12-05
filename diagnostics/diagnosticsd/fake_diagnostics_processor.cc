@@ -56,6 +56,14 @@ void FakeDiagnosticsProcessor::GetEcProperty(
       &grpc_api::Diagnosticsd::Stub::AsyncGetEcProperty, request, callback);
 }
 
+void FakeDiagnosticsProcessor::PerformWebRequest(
+    const grpc_api::PerformWebRequestParameter& parameter,
+    const PerformWebRequestResponseCallback& callback) {
+  diagnosticsd_grpc_client_.CallRpc(
+      &grpc_api::Diagnosticsd::Stub::AsyncPerformWebRequest, parameter,
+      callback);
+}
+
 void FakeDiagnosticsProcessor::set_handle_message_from_ui_callback(
     base::Closure handle_message_from_ui_callback) {
   handle_message_from_ui_callback_.emplace(

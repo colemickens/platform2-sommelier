@@ -6,8 +6,10 @@
 
 #include <utility>
 
+#include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_util.h>
 
 namespace diagnostics {
 
@@ -32,7 +34,24 @@ const int64_t kRunEcCommandPayloadMaxSize = 32;
 // TODO(lamzin): replace by real file path when EC driver will be ready.
 const char kEcRunCommandFilePath[] = "raw";
 
+// The total size of "string" and "bytes" fields in one
+// PerformWebRequestParameter must not exceed 1MB.
+const int kMaxPerformWebRequestParameterSizeInBytes = 1024 * 1024;
+
+// The maximum number of header in PerformWebRequestParameter.
+const int kMaxNumberOfHeadersInPerformWebRequestParameter = 1024 * 1024;
+
 namespace {
+
+using PerformWebRequestResponseCallback =
+    DiagnosticsdGrpcService::PerformWebRequestResponseCallback;
+using DelegateWebRequestStatus =
+    DiagnosticsdGrpcService::Delegate::WebRequestStatus;
+using DelegateWebRequestHttpMethod =
+    DiagnosticsdGrpcService::Delegate::WebRequestHttpMethod;
+
+// Https prefix expected to be a prefix of URL in PerformWebRequestParameter.
+constexpr char kHttpsPrefix[] = "https://";
 
 // Makes a dump of the specified file. Returns whether the dumping succeeded.
 bool MakeFileDump(const base::FilePath& file_path,
@@ -55,6 +74,68 @@ bool MakeFileDump(const base::FilePath& file_path,
   file_dump->set_canonical_path(canonical_file_path.value());
   file_dump->set_contents(std::move(file_contents));
   return true;
+}
+
+// Calculates the size of all "string" and "bytes" fields in the request.
+// Must be updated if grpc_api::PerformWebRequestParameter proto is updated.
+int64_t CalculateWebRequestParameterSize(
+    const std::unique_ptr<grpc_api::PerformWebRequestParameter>& parameter) {
+  int64_t size = parameter->url().length() + parameter->request_body().size();
+  for (const std::string& header : parameter->headers()) {
+    size += header.length();
+  }
+  return size;
+}
+
+// Forwards and wraps status & HTTP status into gRPC PerformWebRequestResponse.
+void ForwardWebGrpcResponse(const PerformWebRequestResponseCallback& callback,
+                            DelegateWebRequestStatus status,
+                            int http_status) {
+  auto reply = std::make_unique<grpc_api::PerformWebRequestResponse>();
+  switch (status) {
+    case DelegateWebRequestStatus::kOk:
+      reply->set_status(grpc_api::PerformWebRequestResponse::STATUS_OK);
+      reply->set_http_status(http_status);
+      break;
+    case DelegateWebRequestStatus::kNetworkError:
+      reply->set_status(
+          grpc_api::PerformWebRequestResponse::STATUS_NETWORK_ERROR);
+      break;
+    case DelegateWebRequestStatus::kHttpError:
+      reply->set_status(grpc_api::PerformWebRequestResponse::STATUS_HTTP_ERROR);
+      reply->set_http_status(http_status);
+      break;
+    case DelegateWebRequestStatus::kInternalError:
+      reply->set_status(
+          grpc_api::PerformWebRequestResponse::STATUS_INTERNAL_ERROR);
+      break;
+  }
+  callback.Run(std::move(reply));
+}
+
+// Converts gRPC HTTP method into DiagnosticsdGrpcService::Delegate's HTTP
+// method, returns false if HTTP method is invalid.
+bool GetDelegateWebRequestHttpMethod(
+    grpc_api::PerformWebRequestParameter::HttpMethod http_method,
+    DelegateWebRequestHttpMethod* delegate_http_method) {
+  switch (http_method) {
+    case grpc_api::PerformWebRequestParameter::HTTP_METHOD_GET:
+      *delegate_http_method = DelegateWebRequestHttpMethod::kGet;
+      return true;
+    case grpc_api::PerformWebRequestParameter::HTTP_METHOD_HEAD:
+      *delegate_http_method = DelegateWebRequestHttpMethod::kHead;
+      return true;
+    case grpc_api::PerformWebRequestParameter::HTTP_METHOD_POST:
+      *delegate_http_method = DelegateWebRequestHttpMethod::kPost;
+      return true;
+    case grpc_api::PerformWebRequestParameter::HTTP_METHOD_PUT:
+      *delegate_http_method = DelegateWebRequestHttpMethod::kPut;
+      return true;
+    default:
+      LOG(ERROR) << "The HTTP method is unset or invalid: "
+                 << static_cast<int>(http_method);
+      return false;
+  }
 }
 
 }  // namespace
@@ -194,6 +275,59 @@ void DiagnosticsdGrpcService::GetEcProperty(
         grpc_api::GetEcPropertyResponse::STATUS_ERROR_ACCESSING_DRIVER);
   }
   callback.Run(std::move(reply));
+}
+
+void DiagnosticsdGrpcService::PerformWebRequest(
+    std::unique_ptr<grpc_api::PerformWebRequestParameter> parameter,
+    const PerformWebRequestResponseCallback& callback) {
+  DCHECK(parameter);
+  auto reply = std::make_unique<grpc_api::PerformWebRequestResponse>();
+
+  if (parameter->url().empty()) {
+    LOG(ERROR) << "PerformWebRequest URL is empty.";
+    reply->set_status(
+        grpc_api::PerformWebRequestResponse::STATUS_ERROR_INVALID_URL);
+    callback.Run(std::move(reply));
+    return;
+  }
+  if (!base::StartsWith(parameter->url(), kHttpsPrefix,
+                        base::CompareCase::INSENSITIVE_ASCII)) {
+    LOG(ERROR) << "PerformWebRequest URL must be an HTTPS URL.";
+    reply->set_status(
+        grpc_api::PerformWebRequestResponse::STATUS_ERROR_INVALID_URL);
+    callback.Run(std::move(reply));
+    return;
+  }
+  if (parameter->headers().size() >
+      kMaxNumberOfHeadersInPerformWebRequestParameter) {
+    LOG(ERROR) << "PerformWebRequest number of headers is too large.";
+    reply->set_status(
+        grpc_api::PerformWebRequestResponse::STATUS_ERROR_MAX_SIZE_EXCEEDED);
+    callback.Run(std::move(reply));
+    return;
+  }
+  if (CalculateWebRequestParameterSize(parameter) >
+      kMaxPerformWebRequestParameterSizeInBytes) {
+    LOG(ERROR) << "PerformWebRequest request is too large.";
+    reply->set_status(
+        grpc_api::PerformWebRequestResponse::STATUS_ERROR_MAX_SIZE_EXCEEDED);
+    callback.Run(std::move(reply));
+    return;
+  }
+
+  DelegateWebRequestHttpMethod delegate_http_method;
+  if (!GetDelegateWebRequestHttpMethod(parameter->http_method(),
+                                       &delegate_http_method)) {
+    reply->set_status(grpc_api::PerformWebRequestResponse ::
+                          STATUS_ERROR_REQUIRED_FIELD_MISSING);
+    callback.Run(std::move(reply));
+    return;
+  }
+  delegate_->PerformWebRequestToBrowser(
+      delegate_http_method, parameter->url(),
+      std::vector<std::string>(parameter->headers().begin(),
+                               parameter->headers().end()),
+      parameter->request_body(), base::Bind(&ForwardWebGrpcResponse, callback));
 }
 
 void DiagnosticsdGrpcService::AddFileDump(

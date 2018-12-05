@@ -6,6 +6,7 @@
 #define DIAGNOSTICS_DIAGNOSTICSD_DIAGNOSTICSD_MOJO_SERVICE_H_
 
 #include <string>
+#include <vector>
 
 #include <base/callback.h>
 #include <base/macros.h>
@@ -28,6 +29,12 @@ class DiagnosticsdMojoService final
       chromeos::diagnosticsd::mojom::DiagnosticsdService;
   using MojomDiagnosticsdServiceRequest =
       chromeos::diagnosticsd::mojom::DiagnosticsdServiceRequest;
+  using MojomDiagnosticsdWebRequestHttpMethod =
+      chromeos::diagnosticsd::mojom::DiagnosticsdWebRequestHttpMethod;
+  using MojomDiagnosticsdWebRequestStatus =
+      chromeos::diagnosticsd::mojom::DiagnosticsdWebRequestStatus;
+  using MojomPerformWebRequestCallback =
+      base::Callback<void(MojomDiagnosticsdWebRequestStatus, int)>;
 
   class Delegate {
    public:
@@ -65,6 +72,13 @@ class DiagnosticsdMojoService final
   void SendUiMessageToDiagnosticsProcessor(
       mojo::ScopedHandle json_message,
       const SendUiMessageToDiagnosticsProcessorCallback& callback) override;
+
+  // Calls to DiagnosticsdClient.
+  void PerformWebRequest(MojomDiagnosticsdWebRequestHttpMethod http_method,
+                         const std::string& url,
+                         const std::vector<std::string>& headers,
+                         const std::string& request_body,
+                         const MojomPerformWebRequestCallback& callback);
 
  private:
   // Unowned. The delegate should outlive this instance.

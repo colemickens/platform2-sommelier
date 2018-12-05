@@ -183,8 +183,8 @@ message PerformWebRequestResponse {
     STATUS_OK = 1;
     // The request was rejected due to some required field being missing.
     STATUS_ERROR_REQUIRED_FIELD_MISSING = 2;
-    // The request was rejected due to the |url| having a non-HTTPS scheme.
-    STATUS_ERROR_NON_HTTPS_URL = 3;
+    // The request was rejected due to the |url| being invalid.
+    STATUS_ERROR_INVALID_URL = 3;
     // The request was rejected due to the request being too large.
     STATUS_ERROR_MAX_SIZE_EXCEEDED = 4;
     // Failed to make the web request. This covers such cases when the network
@@ -193,6 +193,11 @@ message PerformWebRequestResponse {
     STATUS_NETWORK_ERROR = 5;
     // HTTP request finished with a non-2xx status.
     STATUS_HTTP_ERROR = 6;
+    // Other errors that prevented a request with valid parameters from being
+    // sent over the network.
+    // E.g. the diagnosticsd daemon is unable to talk to the OS component that
+    // hosts the network stack.
+    STATUS_INTERNAL_ERROR = 7;
   }
 
   // Is guaranteed to be distinct from |STATUS_UNSET|.
