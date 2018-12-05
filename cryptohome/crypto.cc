@@ -816,6 +816,18 @@ bool Crypto::DecryptLECredential(const SerializedVaultKeyset& serialized,
   return true;
 }
 
+bool Crypto::DecryptChallengeCredential(const SerializedVaultKeyset& serialized,
+                                        const SecureBlob& key,
+                                        CryptoError* error,
+                                        VaultKeyset* vault_keyset) const {
+  if (!(serialized.flags() & SerializedVaultKeyset::SCRYPT_WRAPPED)) {
+    LOG(ERROR) << "Invalid flags for challenge-protected keyset";
+    *error = CE_OTHER_FATAL;
+    return false;
+  }
+  return DecryptScrypt(serialized, key, error, vault_keyset);
+}
+
 bool Crypto::NeedsPcrBinding(const uint64_t& label) const {
     return le_manager_->NeedsPcrBinding(label);
 }
@@ -832,6 +844,10 @@ bool Crypto::DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
   unsigned int flags = serialized.flags();
   if (flags & SerializedVaultKeyset::LE_CREDENTIAL) {
     return DecryptLECredential(serialized, vault_key, error, vault_keyset);
+  }
+  if (flags & SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED) {
+    return DecryptChallengeCredential(serialized, vault_key, error,
+                                      vault_keyset);
   }
   // For non-LE credentials: Check if the vault keyset was Scrypt-wrapped
   // (start with Scrypt to avoid reaching to TPM if both flags are set)
@@ -1158,6 +1174,22 @@ bool Crypto::EncryptLECredential(const VaultKeyset& vault_keyset,
   return false;
 }
 
+bool Crypto::EncryptChallengeCredential(
+    const VaultKeyset& vault_keyset,
+    const SecureBlob& key,
+    const std::string& obfuscated_username,
+    SerializedVaultKeyset* serialized) const {
+  DCHECK(serialized->flags() &
+         SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED);
+  if (!EncryptScrypt(vault_keyset, key, serialized))
+    return false;
+  DCHECK(serialized->flags() &
+         SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED);
+  DCHECK(!(serialized->flags() & SerializedVaultKeyset::TPM_WRAPPED));
+  DCHECK(serialized->flags() & SerializedVaultKeyset::SCRYPT_WRAPPED);
+  return true;
+}
+
 bool Crypto::EncryptAuthorizationData(SerializedVaultKeyset* serialized,
                                       const SecureBlob& vkk_key,
                                       const SecureBlob& vkk_iv) const {
@@ -1235,6 +1267,12 @@ bool Crypto::EncryptVaultKeyset(const VaultKeyset& vault_keyset,
     if (!EncryptLECredential(vault_keyset, vault_key, vault_key_salt,
                              obfuscated_username, serialized)) {
       // TODO(crbug.com/794010): add ReportCryptohomeError
+      return false;
+    }
+  } else if (vault_keyset.IsSignatureChallengeProtected()) {
+    if (!EncryptChallengeCredential(vault_keyset, vault_key,
+                                    obfuscated_username, serialized)) {
+      // TODO(crbug.com/842791): add ReportCryptohomeError
       return false;
     }
   } else {

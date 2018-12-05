@@ -50,8 +50,10 @@ struct Cryptohome;
 
 class BootAttributes;
 class BootLockbox;
+class ChallengeCredentialsHelper;
 // Wrapper for all timers used by the cryptohome daemon.
 class TimerCollection;
+class UsernamePasskey;
 
 extern const int64_t kNotifyDiskSpaceThreshold;
 
@@ -877,6 +879,25 @@ virtual gboolean InstallAttributesIsFirstInstall(gboolean* OUT_first_install,
   // exactly once (i.e. records one sample) with the status of the operation.
   void ResetDictionaryAttackMitigation();
 
+  // Called on Mount thread. This triggers the credentials generation steps that
+  // are specific to challenge-response keys, before scheduling
+  // ContinueMountExWithCredentials().
+  void DoChallengeResponseMountEx(
+      std::unique_ptr<AccountIdentifier> identifier,
+      std::unique_ptr<AuthorizationRequest> authorization,
+      std::unique_ptr<MountRequest> request,
+      const Mount::MountArgs& mount_args,
+      DBusGMethodInvocation* context);
+  // Called on Mount thread when the challenge-response credentials are
+  // obtained.
+  void OnChallengeResponseMountCredentialsObtained(
+      std::unique_ptr<AccountIdentifier> identifier,
+      std::unique_ptr<AuthorizationRequest> authorization,
+      std::unique_ptr<MountRequest> request,
+      const Mount::MountArgs& mount_args,
+      DBusGMethodInvocation* context,
+      std::unique_ptr<UsernamePasskey> username_passkey);
+
   // Called on Mount thread. This method completes the MountEx request, given
   // the built Credentials object. It assumes that the input parameters went
   // through format sanity checks.
@@ -927,6 +948,7 @@ virtual gboolean InstallAttributesIsFirstInstall(gboolean* OUT_first_install,
   FirmwareManagementParameters* firmware_management_parameters_;
   int low_disk_notification_period_ms_;
   int upload_alerts_period_ms_;
+  std::unique_ptr<ChallengeCredentialsHelper> challenge_credentials_helper_;
 
   // An atomic incrementing sequence for setting asynchronous call ids.
   base::AtomicSequenceNumber sequence_holder_;

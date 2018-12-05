@@ -41,6 +41,7 @@
 
 #include "cryptohome/bootlockbox/boot_attributes.h"
 #include "cryptohome/bootlockbox/boot_lockbox.h"
+#include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_event_source.h"
 #include "cryptohome/cryptohome_metrics.h"
@@ -50,6 +51,7 @@
 #include "cryptohome/glib_transition.h"
 #include "cryptohome/install_attributes.h"
 #include "cryptohome/interface.h"
+#include "cryptohome/key_challenge_service.h"
 #include "cryptohome/mount.h"
 #include "cryptohome/obfuscated_username.h"
 #include "cryptohome/platform.h"
@@ -62,6 +64,8 @@
 #include "vault_keyset.pb.h"  // NOLINT(build/include)
 
 using base::FilePath;
+using brillo::Blob;
+using brillo::BlobFromString;
 using brillo::SecureBlob;
 
 // Forcibly namespace the dbus-bindings generated server bindings instead of
@@ -1968,12 +1972,6 @@ void Service::DoMountEx(std::unique_ptr<AccountIdentifier> identifier,
     }
   }
 
-  auto username_passkey = std::make_unique<UsernamePasskey>(
-      account_id.c_str(), SecureBlob(authorization->key().secret().begin(),
-                                     authorization->key().secret().end()));
-  // Everything else can be the default.
-  username_passkey->set_key_data(authorization->key().data());
-
   // Determine whether the mount should be ephemeral.
   bool is_ephemeral = false;
   MountError mount_error = MOUNT_ERROR_NONE;
@@ -1997,10 +1995,131 @@ void Service::DoMountEx(std::unique_ptr<AccountIdentifier> identifier,
       !force_ecryptfs_ && request->force_dircrypto_if_available();
   mount_args.shadow_only = request->hidden_mount();
 
+  // Process challenge-response credentials asynchronously.
+  if (authorization->key().data().type() ==
+      KeyData::KEY_TYPE_CHALLENGE_RESPONSE) {
+    DoChallengeResponseMountEx(std::move(identifier), std::move(authorization),
+                               std::move(request), mount_args, context);
+    return;
+  }
+
+  auto username_passkey = std::make_unique<UsernamePasskey>(
+      account_id.c_str(), SecureBlob(authorization->key().secret().begin(),
+                                     authorization->key().secret().end()));
+  // Everything else can be the default.
+  username_passkey->set_key_data(authorization->key().data());
+
   ContinueMountExWithCredentials(
       std::move(identifier), std::move(authorization), std::move(request),
-      std::unique_ptr<Credentials>(std::move(username_passkey)), mount_args,
-      context);
+      std::move(username_passkey), mount_args, context);
+}
+
+void Service::DoChallengeResponseMountEx(
+    std::unique_ptr<AccountIdentifier> identifier,
+    std::unique_ptr<AuthorizationRequest> authorization,
+    std::unique_ptr<MountRequest> request,
+    const Mount::MountArgs& mount_args,
+    DBusGMethodInvocation* context) {
+  DCHECK_EQ(authorization->key().data().type(),
+            KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
+
+  // Setup a reply for use during error handling.
+  BaseReply reply;
+  reply.MutableExtension(MountReply::reply)->set_recreated(false);
+
+  if (!tpm_) {
+    LOG(ERROR) << "Cannot do challenge-response mount without TPM";
+    reply.set_error(CRYPTOHOME_ERROR_MOUNT_FATAL);
+    SendReply(context, reply);
+    return;
+  }
+  if (!tpm_init_->IsTpmReady()) {
+    LOG(ERROR)
+        << "TPM must be initialized in order to do challenge-response mount";
+    reply.set_error(CRYPTOHOME_ERROR_MOUNT_FATAL);
+    SendReply(context, reply);
+    return;
+  }
+
+  if (!challenge_credentials_helper_) {
+    // Lazily create the helper object that manages generation/decryption of
+    // credentials for challenge-protected vaults.
+    Blob delegate_blob, delegate_secret;
+    bool has_reset_lock_permissions = false;
+    if (!AttestationGetDelegateCredentials(&delegate_blob, &delegate_secret,
+                                           &has_reset_lock_permissions)) {
+      LOG(ERROR) << "Cannot do challenge-response mount without TPM delegate";
+      reply.set_error(CRYPTOHOME_ERROR_MOUNT_FATAL);
+      SendReply(context, reply);
+      return;
+    }
+    challenge_credentials_helper_ =
+        std::make_unique<ChallengeCredentialsHelper>(tpm_, delegate_blob,
+                                                     delegate_secret);
+  }
+
+  const std::string& account_id = GetAccountId(*identifier);
+  const std::string obfuscated_username =
+      BuildObfuscatedUsername(account_id, system_salt_);
+  const KeyData key_data = authorization->key().data();
+
+  // TODO(crbug.com/842791): Create and pass KeyChallengeService.
+  std::unique_ptr<KeyChallengeService> key_challenge_service;
+
+  std::unique_ptr<VaultKeyset> vault_keyset(homedirs_->GetVaultKeyset(
+      obfuscated_username, authorization->key().data().label()));
+  const bool use_existing_credentials =
+      vault_keyset && !mount_args.is_ephemeral;
+  if (use_existing_credentials) {
+    challenge_credentials_helper_->Decrypt(
+        account_id, key_data,
+        vault_keyset->serialized().signature_challenge_info(),
+        std::move(key_challenge_service),
+        base::Bind(&Service::OnChallengeResponseMountCredentialsObtained,
+                   base::Unretained(this), base::Passed(std::move(identifier)),
+                   base::Passed(std::move(authorization)),
+                   base::Passed(std::move(request)), mount_args,
+                   base::Unretained(context)));
+  } else {
+    if (!mount_args.create_if_missing) {
+      LOG(ERROR) << "No existing challenge-response vault keyset found";
+      reply.set_error(CRYPTOHOME_ERROR_MOUNT_FATAL);
+      SendReply(context, reply);
+      return;
+    }
+    challenge_credentials_helper_->GenerateNew(
+        account_id, key_data, std::move(key_challenge_service),
+        base::Bind(&Service::OnChallengeResponseMountCredentialsObtained,
+                   base::Unretained(this), base::Passed(std::move(identifier)),
+                   base::Passed(std::move(authorization)),
+                   base::Passed(std::move(request)), mount_args,
+                   base::Unretained(context)));
+  }
+}
+
+void Service::OnChallengeResponseMountCredentialsObtained(
+    std::unique_ptr<AccountIdentifier> identifier,
+    std::unique_ptr<AuthorizationRequest> authorization,
+    std::unique_ptr<MountRequest> request,
+    const Mount::MountArgs& mount_args,
+    DBusGMethodInvocation* context,
+    std::unique_ptr<UsernamePasskey> username_passkey) {
+  DCHECK_EQ(authorization->key().data().type(),
+            KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
+  if (!username_passkey) {
+    LOG(ERROR) << "Could not mount due to failure to obtain challenge-response "
+                  "credentials";
+    BaseReply reply;
+    reply.MutableExtension(MountReply::reply)->set_recreated(false);
+    reply.set_error(CRYPTOHOME_ERROR_MOUNT_FATAL);
+    SendReply(context, reply);
+    return;
+  }
+  DCHECK_EQ(username_passkey->key_data().type(),
+            KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
+  ContinueMountExWithCredentials(
+      std::move(identifier), std::move(authorization), std::move(request),
+      std::move(username_passkey), mount_args, context);
 }
 
 void Service::ContinueMountExWithCredentials(

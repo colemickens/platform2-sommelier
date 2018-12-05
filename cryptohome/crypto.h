@@ -288,6 +288,11 @@ class Crypto {
                            const std::string& obfuscated_username,
                            SerializedVaultKeyset* serialized) const;
 
+  bool EncryptChallengeCredential(const VaultKeyset& vault_keyset,
+                                  const brillo::SecureBlob& key,
+                                  const std::string& obfuscated_username,
+                                  SerializedVaultKeyset* serialized) const;
+
   bool DecryptTPM(const SerializedVaultKeyset& serialized,
                   const brillo::SecureBlob& key,
                   bool is_pcr_extended,
@@ -314,6 +319,11 @@ class Crypto {
                            const brillo::SecureBlob& key,
                            CryptoError* error,
                            VaultKeyset* vault_keyset) const;
+
+  bool DecryptChallengeCredential(const SerializedVaultKeyset& serialized,
+                                  const brillo::SecureBlob& key,
+                                  CryptoError* error,
+                                  VaultKeyset* vault_keyset) const;
 
   bool EncryptAuthorizationData(SerializedVaultKeyset* serialized,
                                 const brillo::SecureBlob& vkk_key,

@@ -50,13 +50,14 @@
 
 using base::FilePath;
 using base::StringPrintf;
-using chaps::IsolateCredentialManager;
-using brillo::cryptohome::home::kGuestUserName;
+using brillo::BlobToString;
+using brillo::SecureBlob;
 using brillo::cryptohome::home::GetRootPath;
 using brillo::cryptohome::home::GetUserPath;
 using brillo::cryptohome::home::IsSanitizedUserName;
+using brillo::cryptohome::home::kGuestUserName;
 using brillo::cryptohome::home::SanitizeUserName;
-using brillo::SecureBlob;
+using chaps::IsolateCredentialManager;
 
 namespace cryptohome {
 
@@ -980,6 +981,10 @@ bool Mount::CreateCryptohome(const Credentials& credentials) const {
   if (!credentials.key_data().label().empty()) {
     *serialized.mutable_key_data() = credentials.key_data();
   }
+  if (credentials.key_data().type() == KeyData::KEY_TYPE_CHALLENGE_RESPONSE) {
+    *serialized.mutable_signature_challenge_info() =
+        credentials.challenge_credentials_keyset_info();
+  }
 
   // TODO(wad) move to storage by label-derivative and not number.
   if (!StoreVaultKeysetForUser(
@@ -1348,6 +1353,11 @@ bool Mount::AddVaultKeyset(const Credentials& credentials,
 
   std::string obfuscated_username =
       credentials.GetObfuscatedUsername(system_salt_);
+
+  if (credentials.key_data().type() == KeyData::KEY_TYPE_CHALLENGE_RESPONSE) {
+    serialized->set_flags(serialized->flags() |
+                          SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED);
+  }
 
   // Encrypt the vault keyset
   SecureBlob salt(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);

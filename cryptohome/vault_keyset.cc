@@ -305,4 +305,9 @@ bool VaultKeyset::IsLECredential() const {
   return serialized_.key_data().policy().low_entropy_credential();
 }
 
+bool VaultKeyset::IsSignatureChallengeProtected() const {
+  return serialized_.flags() &
+         SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED;
+}
+
 }  // namespace cryptohome
