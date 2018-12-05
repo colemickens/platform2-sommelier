@@ -1182,18 +1182,18 @@ TEST_F(DevicePolicyServiceTest, TestClearCheckEnrollmentVpd) {
   MockNssUtil nss;
   InitService(&nss, true);
   const std::vector<std::pair<std::string, std::string>> kExpectedUpdate = {
-      {Crossystem::kCheckEnrollment, "0"}};
+      {Crossystem::kBlockDevmode, "0"}, {Crossystem::kCheckEnrollment, "0"}};
 
   EXPECT_CALL(vpd_process_, RunInBackground(kExpectedUpdate, false, _))
       .Times(1)
       .WillOnce(Return(true));
-  service_->ClearCheckEnrollmentVpd(MockPolicyService::CreateDoNothing());
+  service_->ClearForcedReEnrollmentVpd(MockPolicyService::CreateDoNothing());
   Mock::VerifyAndClearExpectations(&vpd_process_);
 
   EXPECT_CALL(vpd_process_, RunInBackground(kExpectedUpdate, false, _))
       .Times(1)
       .WillOnce(Return(false));
-  service_->ClearCheckEnrollmentVpd(
+  service_->ClearForcedReEnrollmentVpd(
       MockPolicyService::CreateExpectFailureCallback());
 }
 

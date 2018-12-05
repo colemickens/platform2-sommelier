@@ -2163,10 +2163,10 @@ TEST_F(SessionManagerImplTest, InitiateDeviceWipe_TooLongReason) {
       contents);
 }
 
-TEST_F(SessionManagerImplTest, ClearCheckEnrollmentVpd) {
+TEST_F(SessionManagerImplTest, ClearForcedReEnrollmentVpd) {
   ResponseCapturer capturer;
-  EXPECT_CALL(*device_policy_service_, ClearCheckEnrollmentVpd(_)).Times(1);
-  impl_->ClearCheckEnrollmentVpd(capturer.CreateMethodResponse<>());
+  EXPECT_CALL(*device_policy_service_, ClearForcedReEnrollmentVpd(_)).Times(1);
+  impl_->ClearForcedReEnrollmentVpd(capturer.CreateMethodResponse<>());
 }
 
 TEST_F(SessionManagerImplTest, ImportValidateAndStoreGeneratedKey) {

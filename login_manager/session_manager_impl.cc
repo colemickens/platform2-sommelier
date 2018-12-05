@@ -1012,9 +1012,9 @@ bool SessionManagerImpl::StartDeviceWipe(brillo::ErrorPtr* error) {
   return true;
 }
 
-void SessionManagerImpl::ClearCheckEnrollmentVpd(
+void SessionManagerImpl::ClearForcedReEnrollmentVpd(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
-  device_policy_->ClearCheckEnrollmentVpd(
+  device_policy_->ClearForcedReEnrollmentVpd(
       dbus_service_->CreatePolicyServiceCompletionCallback(
           std::move(response)));
 }

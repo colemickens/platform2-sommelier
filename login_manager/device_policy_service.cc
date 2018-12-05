@@ -626,11 +626,12 @@ bool DevicePolicyService::UpdateSystemSettings(const Completion& completion) {
       base::Bind(&HandleVpdUpdateCompletion, !is_enrolled, completion));
 }
 
-void DevicePolicyService::ClearCheckEnrollmentVpd(
+void DevicePolicyService::ClearForcedReEnrollmentVpd(
     const Completion& completion) {
   if (!vpd_process_->RunInBackground(
-          {{Crossystem::kCheckEnrollment, "0"}}, false,
-          base::Bind(&HandleVpdUpdateCompletion, false, completion))) {
+          {{Crossystem::kBlockDevmode, "0"},
+           {Crossystem::kCheckEnrollment, "0"}},
+          false, base::Bind(&HandleVpdUpdateCompletion, false, completion))) {
     completion.Run(CreateError(dbus_error::kVpdUpdateFailed,
                                "Failed to run VPD update in the background."));
   }

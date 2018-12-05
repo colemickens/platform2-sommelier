@@ -279,7 +279,7 @@ class SessionManagerImpl
                   const std::vector<std::string>& in_argv) override;
 
   bool StartDeviceWipe(brillo::ErrorPtr* error) override;
-  void ClearCheckEnrollmentVpd(
+  void ClearForcedReEnrollmentVpd(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response)
       override;
   bool StartTPMFirmwareUpdate(brillo::ErrorPtr* error,
