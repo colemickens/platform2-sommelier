@@ -4,29 +4,28 @@
 #
 
 $ModLoad immark.so # provides --MARK-- message capability
-$ModLoad imuxsock.so # provides support for local system logging (e.g. via logger command)
-$ModLoad imklog.so # kernel logging (formerly provided by rklogd)
+module(load="imuxsock"
+       SysSock.Use="on"
+       SysSock.Name="/run/systemd/journal/syslog"
+       SysSock.UsePIDFromSystem="on")
+# Allow messages from upstart, which logs through /dev/klog.
+module(load="imklog"
+       PermitNonKernelFacility="on")
 
 $PrivDropToUser syslog
 $PrivDropToGroup syslog
 
-# Include PID in log messages
-$SystemLogUsePIDFromSystem on
-
 # Don't include hostname in log messages.
-$template LogWithoutHostname,"%TIMESTAMP:::date-rfc3339% %syslogseverity-text:::uppercase% %syslogtag%%msg:::sp-if-no-1st-sp%%msg::drop-last-lf%\n"
-$ActionFileDefaultTemplate LogWithoutHostname
+template(name="LogWithoutHostname" type="string"
+         string="%TIMESTAMP:::date-rfc3339% %syslogseverity-text:::uppercase% %syslogtag%%msg:::sp-if-no-1st-sp%%msg::drop-last-lf%\n")
+module(load="builtin:omfile" Template="LogWithoutHostname")
 
-$SystemLogRateLimitInterval 0
 $RepeatedMsgReduction on
 
 # Merge and include all *.conf files.
 # This should come after any settings that are meant to be inherited by the
 # *.conf files that are to be included.
 $IncludeConfig /etc/rsyslog.d/*.conf
-
-# Allow messages from upstart, which logs through /dev/klog.
-$KLogPermitNonKernelFacility on
 
 # Keep network stuff in /var/log/net.log
 if (($programname == 'shill') or \
