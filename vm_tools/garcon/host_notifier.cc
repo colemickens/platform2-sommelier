@@ -451,6 +451,18 @@ void HostNotifier::SendAppListToHost() {
         locale_string->set_locale(comment_entry.first);
         locale_string->set_value(comment_entry.second);
       }
+      const std::map<std::string, std::vector<std::string>>& keywords_map =
+          desktop_file->locale_keywords_map();
+      vm_tools::container::Application::LocaleStrings* keyword =
+          app->mutable_keywords();
+      for (const auto& keywords_entry : keywords_map) {
+        vm_tools::container::Application::LocaleStrings::StringsWithLocale*
+            locale_string = keyword->add_values();
+        locale_string->set_locale(keywords_entry.first);
+        for (const auto& curr_keyword : keywords_entry.second) {
+          locale_string->add_value(curr_keyword);
+        }
+      }
       for (const auto& mime_type : desktop_file->mime_types()) {
         app->add_mime_types(mime_type);
       }

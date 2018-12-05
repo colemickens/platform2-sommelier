@@ -41,6 +41,8 @@ constexpr char kDesktopEntryExec[] = "Exec";
 constexpr char kDesktopEntryPath[] = "Path";
 constexpr char kDesktopEntryTerminal[] = "Terminal";
 constexpr char kDesktopEntryMimeType[] = "MimeType";
+constexpr char kDesktopEntryKeywords[] = "Keywords";
+constexpr char kDesktopEntryKeywordsWithLocale[] = "Keywords[";
 constexpr char kDesktopEntryCategories[] = "Categories";
 constexpr char kDesktopEntryStartupWmClass[] = "StartupWMClass";
 constexpr char kDesktopEntryStartupNotify[] = "StartupNotify";
@@ -188,6 +190,8 @@ bool DesktopFile::LoadFromFile(const base::FilePath& file_path) {
         terminal_ = ParseBool(key_value.second);
       } else if (key == kDesktopEntryMimeType) {
         ParseMultiString(key_value.second, &mime_types_);
+      } else if (key == kDesktopEntryKeywords) {
+        ParseMultiString(key_value.second, &locale_keywords_map_[""]);
       } else if (key == kDesktopEntryCategories) {
         ParseMultiString(key_value.second, &categories_);
       } else if (key == kDesktopEntryStartupWmClass) {
@@ -208,6 +212,13 @@ bool DesktopFile::LoadFromFile(const base::FilePath& file_path) {
           continue;
         }
         locale_comment_map_[locale] = UnescapeString(key_value.second);
+      } else if (base::StartsWith(key, kDesktopEntryKeywordsWithLocale,
+                                  base::CompareCase::SENSITIVE)) {
+        std::string locale = ExtractKeyLocale(key);
+        if (locale.empty()) {
+          continue;
+        }
+        ParseMultiString(key_value.second, &locale_keywords_map_[locale]);
       }
     }
   }

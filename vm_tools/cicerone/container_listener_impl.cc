@@ -114,8 +114,8 @@ grpc::Status ContainerListenerImpl::UpdateApplicationList(
                         "Failed parsing cid for ContainerListener");
   }
   vm_tools::apps::ApplicationList app_list;
-  // vm_name and container_name are set in the UpdateApplicationList call but we
-  // need to copy everything else out of the incoming protobuf here.
+  // vm_name and container_name are set in the UpdateApplicationList call but
+  // we need to copy everything else out of the incoming protobuf here.
   for (const auto& app_in : request->application()) {
     auto app_out = app_list.add_apps();
     // Set the non-repeating fields first.
@@ -128,7 +128,7 @@ grpc::Status ContainerListenerImpl::UpdateApplicationList(
     for (const auto& mime_type : app_in.mime_types()) {
       app_out->add_mime_types(mime_type);
     }
-    // Set the names & comments.
+    // Set the names, comments & keywords.
     if (app_in.has_name()) {
       auto name_out = app_out->mutable_name();
       for (const auto& names : app_in.name().values()) {
@@ -143,6 +143,16 @@ grpc::Status ContainerListenerImpl::UpdateApplicationList(
         auto curr_comment = comment_out->add_values();
         curr_comment->set_locale(comments.locale());
         curr_comment->set_value(comments.value());
+      }
+    }
+    if (app_in.has_keywords()) {
+      auto keywords_out = app_out->mutable_keywords();
+      for (const auto& keyword : app_in.keywords().values()) {
+        auto curr_keywords = keywords_out->add_values();
+        curr_keywords->set_locale(keyword.locale());
+        for (const auto& curr_value : keyword.value()) {
+          curr_keywords->add_value(curr_value);
+        }
       }
     }
   }

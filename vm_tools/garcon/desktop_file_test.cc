@@ -25,6 +25,7 @@ struct DesktopFileTestData {
   std::string entry_type;
   std::map<std::string, std::string> locale_name_map;
   std::map<std::string, std::string> locale_comment_map;
+  std::map<std::string, std::vector<std::string>> locale_keywords_map;
   bool no_display;
   std::string icon;
   bool hidden;
@@ -91,6 +92,7 @@ class DesktopFileTest : public ::testing::Test {
     EXPECT_EQ(result->entry_type(), results.entry_type);
     EXPECT_EQ(result->locale_name_map(), results.locale_name_map);
     EXPECT_EQ(result->locale_comment_map(), results.locale_comment_map);
+    EXPECT_EQ(result->locale_keywords_map(), results.locale_keywords_map);
     EXPECT_EQ(result->no_display(), results.no_display);
     EXPECT_EQ(result->icon(), results.icon);
     EXPECT_EQ(result->hidden(), results.hidden);
@@ -140,6 +142,8 @@ TEST_F(DesktopFileTest, AllKeys) {
       "Comment[es]=Hola for the comment\n"
       "#Comment2\n"
       "#Comment3\n"
+      "Keywords=english;key;word\n"
+      "Keywords[fr]=french;ki;ward\n"
       "NoDisplay=true\n"
       "Icon=prettyicon\n"
       "Hidden=true\n"
@@ -162,6 +166,12 @@ TEST_F(DesktopFileTest, AllKeys) {
           {std::make_pair("", "Test"), std::make_pair("fr", "Test French")},
           {std::make_pair("", "Test me out!"),
            std::make_pair("es", "Hola for the comment")},
+          {
+              std::pair<std::string, std::vector<std::string>>(
+                  "", {"english", "key", "word"}),
+              std::pair<std::string, std::vector<std::string>>(
+                  "fr", {"french", "ki", "ward"}),
+          },
           true,
           "prettyicon",
           true,
@@ -226,6 +236,7 @@ TEST_F(DesktopFileTest, Escaping) {
                              "Test \"Quoted\" \t tab   space \r CR \n newline "
                              "\\ backslash"),
           },
+          {},
           {},
           false,
           "",
@@ -369,6 +380,7 @@ TEST_F(DesktopFileTest, GenerateArgvNoArgs) {
                                     "Application",
                                     {std::make_pair("", "Vim")},
                                     {},
+                                    {},
                                     false,
                                     "",
                                     false,
@@ -394,6 +406,7 @@ TEST_F(DesktopFileTest, GenerateArgvComplexArgs) {
           "foobar",
           "Application",
           {std::make_pair("", "Foobar")},
+          {},
           {},
           false,
           "fooicon",
@@ -444,6 +457,7 @@ TEST_F(DesktopFileTest, GenerateArgvWithQuotingAndEscaping) {
                     "quoter",
                     "Application",
                     {std::make_pair("", "QuoteMaster")},
+                    {},
                     {},
                     false,
                     "",
@@ -626,6 +640,35 @@ TEST_F(DesktopFileTest, PassCheckTryExecDesktopFiles) {
                                     "TryExec=fakebinary.sh\n"
                                     "Name=TestApplication\n",
                                     "FilterTest.desktop"));
+}
+
+TEST_F(DesktopFileTest, Keywords) {
+  ValidateDesktopFile(
+      "[Desktop Entry]\n"
+      "Type=Application\n"
+      "Name=Keywords\n"
+      "Keywords[ab]=nice;test\n"
+      "Keywords[bc]=okay;trial\n"
+      "Keywords[de]=poor;mock\n"
+      "Keywords[fg]=moderate;copy\n",
+      "keywords.desktop",
+      {
+          "keywords",
+          "Application",
+          {std::make_pair("", "Keywords")},
+          {},
+          {
+              std::pair<std::string, std::vector<std::string>>(
+                  "ab", {"nice", "test"}),
+              std::pair<std::string, std::vector<std::string>>(
+                  "bc", {"okay", "trial"}),
+              std::pair<std::string, std::vector<std::string>>(
+                  "de", {"poor", "mock"}),
+              std::pair<std::string, std::vector<std::string>>(
+                  "fg", {"moderate", "copy"}),
+          },
+      },
+      true);
 }
 
 }  // namespace garcon

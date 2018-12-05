@@ -58,6 +58,10 @@ class DesktopFile {
   const std::map<std::string, std::string>& locale_comment_map() const {
     return locale_comment_map_;
   }
+  const std::map<std::string, std::vector<std::string>>& locale_keywords_map()
+      const {
+    return locale_keywords_map_;
+  }
   bool no_display() const { return no_display_; }
   const std::string& icon() { return icon_; }
   bool hidden() const { return hidden_; }
@@ -85,6 +89,7 @@ class DesktopFile {
   std::string entry_type_;
   std::map<std::string, std::string> locale_name_map_;
   std::map<std::string, std::string> locale_comment_map_;
+  std::map<std::string, std::vector<std::string>> locale_keywords_map_;
   bool no_display_ = false;
   std::string icon_;
   bool hidden_ = false;
