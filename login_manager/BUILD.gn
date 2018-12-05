@@ -97,9 +97,9 @@ static_library("libsession_manager") {
     "vpd_process_impl.cc",
   ]
   libs = [
-    "-lbootstat",
-    "-linstallattributes-${libbase_ver}",
-    "-lpolicy-${libbase_ver}",
+    "bootstat",
+    "installattributes-${libbase_ver}",
+    "policy-${libbase_ver}",
   ]
   deps = [
     ":session_manager-adaptors",
@@ -127,8 +127,8 @@ executable("session_manager") {
     "session_manager_main.cc",
   ]
   libs = [
-    "-lrootdev",
-    "-lcontainer",
+    "rootdev",
+    "container",
   ]
   deps = [
     ":libsession_manager",
@@ -183,7 +183,7 @@ if (use.test) {
       "validator_utils_test.cc",
     ]
     defines = [ "UNIT_TEST" ]
-    libs = [ "-lkeyutils" ]
+    libs = [ "keyutils" ]
     deps = [
       ":libsession_manager",
       "//common-mk/testrunner",

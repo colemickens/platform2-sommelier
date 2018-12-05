@@ -7,40 +7,35 @@
 # inside the template invocation.
 template("pkg_config") {
   config(target_name) {
-    forward_variables_from(invoker,
-                           "*",
-                           [
-                             "ldflags",
-                             "libs",
-                             "cflags",
-                           ])
+    forward_variables_from(invoker, "*")
     assert(defined(pkg_deps), "pkg_deps must be set")
 
-    ldflags = []
-    libs = []
-    cflags = []
-    if (pkg_deps != []) {
-      ldflags += exec_script("//common-mk/args_generator_wrapper.py",
-                             [ pkg_config ] + pkg_deps + [
-                                   "--libs-only-L",
-                                   "--libs-only-other",
-                                 ],
-                             "list lines")
-      libs += exec_script("//common-mk/args_generator_wrapper.py",
-                          [ pkg_config ] + pkg_deps + [ "--libs-only-l" ],
-                          "list lines")
-      cflags += exec_script("//common-mk/args_generator_wrapper.py",
-                            [ pkg_config ] + pkg_deps + [ "--cflags" ],
-                            "list lines")
+    _pkg_config_result = exec_script(
+        "//common-mk/pkg-config_wrapper.py", [ pkg_config ] + pkg_deps, "json")
+
+    if (_pkg_config_result.cflags != []) {
+      if (!defined(cflags)) {
+        cflags = []
+      }
+      cflags += _pkg_config_result.cflags
     }
-    if (defined(invoker.ldflags)) {
-      ldflags += invoker.ldflags
+    if (_pkg_config_result.libs != []) {
+      if (!defined(libs)) {
+        libs = []
+      }
+      libs += _pkg_config_result.libs
     }
-    if (defined(invoker.libs)) {
-      libs += invoker.libs
+    if (_pkg_config_result.lib_dirs != []) {
+      if (!defined(lib_dirs)) {
+        lib_dirs = []
+      }
+      lib_dirs += _pkg_config_result.lib_dirs
     }
-    if (defined(invoker.cflags)) {
-      cflags += invoker.cflags
+    if (_pkg_config_result.ldflags != []) {
+      if (!defined(ldflags)) {
+        ldflags = []
+      }
+      ldflags += _pkg_config_result.ldflags
     }
   }
 }

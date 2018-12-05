@@ -25,7 +25,7 @@ shared_library("libpasswordprovider") {
     "password_provider.cc",
     "password_provider.h",
   ]
-  libs = [ "-lkeyutils" ]
+  libs = [ "keyutils" ]
 }
 
 if (use.test) {
@@ -42,7 +42,7 @@ if (use.test) {
       "password_provider_test.cc",
       "password_test.cc",
     ]
-    libs = [ "-lkeyutils" ]
+    libs = [ "keyutils" ]
     deps = [
       ":libpasswordprovider",
       "//common-mk/testrunner",

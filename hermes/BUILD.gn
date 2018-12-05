@@ -19,7 +19,7 @@ pkg_config("target_defaults") {
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
   ]
-  libs = [ "-lqrtr" ]
+  libs = [ "qrtr" ]
 }
 
 static_library("libhermes") {

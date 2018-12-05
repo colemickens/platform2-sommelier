@@ -157,7 +157,7 @@ executable("capture_packets") {
   sources = [
     "src/helpers/capture_packets.cc",
   ]
-  libs = [ "-lpcap" ]
+  libs = [ "pcap" ]
 }
 
 executable("dev_features_chrome_remote_debugging") {
@@ -186,7 +186,7 @@ executable("dev_features_rootfs_verification") {
   sources = [
     "src/helpers/dev_features_rootfs_verification.cc",
   ]
-  libs = [ "-lrootdev" ]
+  libs = [ "rootdev" ]
   deps = [
     ":libdebugd",
   ]
@@ -303,7 +303,7 @@ if (use.test) {
       "src/subprocess_tool_test.cc",
       "src/verify_ro_utils_test.cc",
     ]
-    libs = [ "-lm" ]
+    libs = [ "m" ]
     deps = [
       ":debugd_dbus_utils",
       ":libdebugd",

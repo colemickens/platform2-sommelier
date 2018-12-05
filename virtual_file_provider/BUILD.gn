@@ -61,7 +61,10 @@ static_library("libvirtual-file-provider") {
 
 if (use.test) {
   executable("virtual-file-provider_testrunner") {
-    configs += [ ":target_defaults" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
     sources = [
       "operation_throttle_test.cc",
     ]

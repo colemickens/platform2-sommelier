@@ -14,5 +14,5 @@ executable("fitpicker") {
   sources = [
     "fitpicker.c",
   ]
-  libs = [ "-lfdt" ]
+  libs = [ "fdt" ]
 }

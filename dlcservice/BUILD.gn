@@ -43,7 +43,7 @@ generate_dbus_adaptors("dlcservice_adaptors") {
 
 static_library("libdlcservice") {
   configs += [ ":target_defaults" ]
-  libs = ["-lrootdev",]
+  libs = ["rootdev",]
   sources = [
     "boot_device.cc",
     "boot_device.h",

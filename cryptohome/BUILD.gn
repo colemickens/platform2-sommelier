@@ -67,11 +67,11 @@ executable("cryptohome") {
     "cryptohome.cc",
   ]
   libs = [
-    "-lchaps",
-    "-lkeyutils",
-    "-lpolicy-${libbase_ver}",
-    "-lpthread",
-    "-lscrypt",
+    "chaps",
+    "keyutils",
+    "policy-${libbase_ver}",
+    "pthread",
+    "scrypt",
   ]
   deps = [
     "libs:cryptohome-dbus-client",
@@ -130,11 +130,11 @@ executable("cryptohomed") {
     "cryptohomed.cc",
   ]
   libs = [
-    "-lchaps",
-    "-lkeyutils",
-    "-lpolicy-${libbase_ver}",
-    "-lpthread",
-    "-lscrypt",
+    "chaps",
+    "keyutils",
+    "policy-${libbase_ver}",
+    "pthread",
+    "scrypt",
   ]
   deps = [
     "libs:libcrostpm",
@@ -167,8 +167,8 @@ executable("lockbox-cache") {
     "platform.cc",
   ]
   libs = [
-    "-lkeyutils",
-    "-lsecure_erase_file",
+    "keyutils",
+    "secure_erase_file",
   ]
   deps = [
     "libs:cryptohome-proto",
@@ -257,17 +257,17 @@ executable("tpm-manager") {
   if (use.tpm2) {
     sources += [ "tpm_manager_v2.cc" ]
     libs = [
-      "-ltrunks",
-      "-ltpm_manager",
-      "-lattestation",
+      "trunks",
+      "tpm_manager",
+      "attestation",
     ]
   }
 
   if (!use.tpm2) {
     sources += [ "tpm_manager_v1.cc" ]
     libs = [
-      "-lchaps",
-      "-lscrypt",
+      "chaps",
+      "scrypt",
     ]
   }
 }
@@ -321,8 +321,8 @@ if (use.cert_provision) {
     configs -= [ "//common-mk:pie" ]
     configs += [ "//common-mk:pic" ]
     libs = [
-      "-lchaps",
-      "-lpthread",
+      "chaps",
+      "pthread",
     ]
     public_configs = [ ":cert_provision-static_direct_config" ]
 
@@ -425,11 +425,11 @@ if (use.test) {
       "vault_keyset_unittest.cc",
     ]
     libs = [
-      "-lchaps",
-      "-lkeyutils",
-      "-lpolicy-${libbase_ver}",
-      "-lpthread",
-      "-lscrypt",
+      "chaps",
+      "keyutils",
+      "policy-${libbase_ver}",
+      "pthread",
+      "scrypt",
     ]
     deps = [
       "libs:libcrostpm",
@@ -441,8 +441,8 @@ if (use.test) {
     if (use.tpm2) {
       sources += [ "tpm2_test.cc" ]
       libs += [
-        "-ltrunks_test",
-        "-ltpm_manager_test",
+        "trunks_test",
+        "tpm_manager_test",
       ]
     }
 
@@ -518,10 +518,10 @@ if (use.test) {
       ]
       defines = [ "TPM2_MODE=1" ]
       libs = [
-        "-ltpm_manager",
-        "-ltpm_manager_test",
-        "-ltrunks",
-        "-ltrunks_test",
+        "tpm_manager",
+        "tpm_manager_test",
+        "trunks",
+        "trunks_test",
       ]
       deps += [
         ":tpm-manager",
@@ -578,11 +578,11 @@ if (use.tpm2) {
     ]
     defines = [ "USE_TPM2=${use.tpm2}" ]
     libs = [
-      "-lscrypt",
-      "-lchaps",
-      "-lkeyutils",
-      "-ltpm_manager",
-      "-ltrunks",
+      "scrypt",
+      "chaps",
+      "keyutils",
+      "tpm_manager",
+      "trunks",
     ]
     sources = [
       "bootlockbox/boot_lockbox_dbus_adaptor.cc",

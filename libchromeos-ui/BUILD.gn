@@ -30,7 +30,7 @@ shared_library("libchromeos-ui-${libbase_ver}") {
     "chromeos/ui/chromium_command_builder.cc",
     "chromeos/ui/util.cc",
   ]
-  libs = [ "-lbootstat" ]
+  libs = [ "bootstat" ]
 }
 
 if (use.test) {

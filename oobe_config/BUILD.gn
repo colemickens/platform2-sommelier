@@ -64,8 +64,8 @@ static_library("liboobeconfig") {
     "rollback_constants.cc",
   ]
   libs = [
-    "-lpolicy-${libbase_ver}",
-    "-ltpmcrypto",
+    "policy-${libbase_ver}",
+    "tpmcrypto",
   ]
   deps = [
     ":oobe_config_proto",

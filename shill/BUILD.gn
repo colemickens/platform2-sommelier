@@ -381,10 +381,10 @@ static_library("libshill") {
   ]
   sources += net_sources
   libs = [
-    "-lbootstat",
-    "-lpolicy-${libbase_ver}",
-    "-lrootdev",
-    "-lrt",
+    "bootstat",
+    "policy-${libbase_ver}",
+    "rootdev",
+    "rt",
   ]
 
   deps = [

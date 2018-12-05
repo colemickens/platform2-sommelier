@@ -111,7 +111,7 @@ static_library("libsystem") {
     "powerd/system/udev.cc",
     "powerd/system/wakeup_device.cc",
   ]
-  libs = [ "-lrt" ]
+  libs = [ "rt" ]
 }
 
 pkg_config("libsystem_stub_dependent_config") {
@@ -159,7 +159,7 @@ static_library("libpolicy") {
     "powerd/policy/user_proximity_voting.cc",
     "powerd/policy/wifi_controller.cc",
   ]
-  libs = [ "-lm" ]
+  libs = [ "m" ]
 }
 
 static_library("libpolicy_stub") {

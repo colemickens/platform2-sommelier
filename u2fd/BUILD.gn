@@ -34,7 +34,7 @@ executable("u2fd") {
     "u2fhid.cc",
     "uhid_device.cc",
   ]
-  libs = [ "-lpolicy-${libbase_ver}" ]
+  libs = [ "policy-${libbase_ver}" ]
   deps = [
     "//common-mk/external_dependencies:policy-protos",
   ]
@@ -55,7 +55,7 @@ static_library("libg2fclient") {
   sources = [
     "g2f_tools/g2f_client.cc",
   ]
-  libs = [ "-lhidapi-hidraw" ]
+  libs = [ "hidapi-hidraw" ]
 }
 
 if (use.test) {

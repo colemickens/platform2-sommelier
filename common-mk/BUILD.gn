@@ -101,7 +101,7 @@ config("compiler_defaults") {
     ]
   }
   if (use.tcmalloc) {
-    libs += [ "-ltcmalloc" ]
+    libs += [ "tcmalloc" ]
   }
 }
 
@@ -140,21 +140,22 @@ if (use.test) {
   # error from happening when ASAN is enabled.
   # TODO(crbug.com/887845): Remove this note after library order issue is resolved.
   config("test") {
-    libs = []
+    ldflags = []
 
     # Don't worry about overlinking, ld.gold's --as-needed will
     # deal with that.
-    libs += exec_script("//common-mk/args_generator_wrapper.py",
-                        [
-                          "gtest-config",
-                          "--libs",
-                        ],
-                        "list lines")
-    libs += exec_script("//common-mk/args_generator_wrapper.py",
-                        [
-                          "gmock-config",
-                          "--libs",
-                        ],
-                        "list lines")
+    # TODO(crbug.com/912432): Consider use {gtest,gmock}-config --ldflags.
+    # '--ldflags' is not used here. It adds, e.g., -L/usr/lib64,
+    # so the test executable will be linked against host libraries if exists.
+    # Specifically, libchrome for host is linked. For host, it is built with
+    # -DNDEBUG, but the target built without, which causes a link error.
+    # cf) BaseInitLoggingImpl definition in
+    #     aosp/external/libchrome/base/logging.h
+    ldflags += exec_script("//common-mk/args_generator_wrapper.py",
+                           [ "gtest-config", "--libs" ],
+                           "list lines")
+    ldflags += exec_script("//common-mk/args_generator_wrapper.py",
+                           [ "gmock-config", "--libs" ],
+                           "list lines")
   }
 }

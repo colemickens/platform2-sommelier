@@ -127,8 +127,8 @@ static_library("libauthpolicy") {
     "tgt_manager.cc",
   ]
   libs = [
-    "-linstallattributes-${libbase_ver}",
-    "-lpolicy-${libbase_ver}",
+    "installattributes-${libbase_ver}",
+    "policy-${libbase_ver}",
   ]
   deps = [
     ":container-protos",

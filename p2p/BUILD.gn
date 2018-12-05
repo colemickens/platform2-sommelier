@@ -64,7 +64,7 @@ static_library("libp2p-util") {
     "common/server_message.cc",
     "common/util.cc",
   ]
-  libs = [ "-lrt" ]
+  libs = [ "rt" ]
 }
 
 pkg_config("libp2p-client_dependent_config") {
@@ -150,7 +150,7 @@ static_library("libp2p-http-server") {
     "http_server/connection_delegate.cc",
     "http_server/server.cc",
   ]
-  libs = [ "-lattr" ]
+  libs = [ "attr" ]
 }
 
 executable("p2p-http-server") {
@@ -187,7 +187,12 @@ if (use.test) {
 
   # common tests
   executable("p2p-common-unittests") {
-    configs += [ ":target_defaults" ]
+    configs += [
+      # This config should be at the top.
+      # TODO(crbug.com/887845): Remove this after library order issue is resolved.
+      "//common-mk:test",
+      ":target_defaults",
+    ]
     sources = [
       "common/server_message_test.cc",
       "common/struct_serializer_test.cc",

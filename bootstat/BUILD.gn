@@ -18,7 +18,7 @@ shared_library("libbootstat") {
   sources = [
     "bootstat_log.c",
   ]
-  libs = [ "-lrootdev" ]
+  libs = [ "rootdev" ]
 }
 
 executable("bootstat") {

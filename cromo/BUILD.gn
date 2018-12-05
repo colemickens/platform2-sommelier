@@ -40,7 +40,7 @@ pkg_config("default_config") {
     "libmetrics-${libbase_ver}",
     "libminijail",
   ]
-  ldflags = [ "-ldl" ]
+  libs = [ "dl" ]
 }
 
 static_library("libcromo") {
@@ -90,7 +90,7 @@ executable("cromo") {
   ]
   defines = [ "PLUGINDIR=\"$libdir/cromo/plugins\"" ]
   ldflags = [ "-Wl,--dynamic-list-cpp-typeinfo,--dynamic-list=${platform2_root}/cromo/cromo.ver" ]
-  libs = [ "-lpthread" ]
+  libs = [ "pthread" ]
   sources = [
     "carrier.cc",
     "cromo_server.cc",

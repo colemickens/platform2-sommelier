@@ -137,9 +137,9 @@ executable("chapsd") {
     "system_shutdown_blocker.cc",
   ]
   libs = [
-    "-ldl",
-    "-lleveldb",
-    "-lmemenv",
+    "dl",
+    "leveldb",
+    "memenv",
   ]
   deps = [
     ":chaps-protos",
@@ -148,12 +148,12 @@ executable("chapsd") {
 
   if (use.tpm2) {
     sources += [ "tpm2_utility_impl.cc" ]
-    libs += [ "-ltrunks" ]
+    libs += [ "trunks" ]
   }
 
   if (!use.tpm2) {
     sources += [ "tpm_utility_impl.cc" ]
-    libs += [ "-ltspi" ]
+    libs += [ "tspi" ]
   }
 }
 
@@ -343,8 +343,8 @@ if (use.test) {
       "object_store_test.cc",
     ]
     libs = [
-      "-lleveldb",
-      "-lmemenv",
+      "leveldb",
+      "memenv",
     ]
     deps = [
       ":libchaps_static",
@@ -398,7 +398,7 @@ if (use.test) {
       "chapsd_test.cc",
       "platform_globals_chromeos.cc",
     ]
-    libs = [ "-ldl" ]
+    libs = [ "dl" ]
     deps = [
       ":libchaps_static",
     ]
@@ -419,12 +419,12 @@ if (use.test) {
 
     if (use.tpm2) {
       sources += [ "tpm2_utility_impl.cc" ]
-      libs = [ "-ltrunks" ]
+      libs = [ "trunks" ]
     }
 
     if (!use.tpm2) {
       sources += [ "tpm_utility_impl.cc" ]
-      libs = [ "-ltspi" ]
+      libs = [ "tspi" ]
     }
   }
 
@@ -442,8 +442,8 @@ if (use.test) {
         "tpm2_utility_test.cc",
       ]
       libs = [
-        "-ltrunks",
-        "-ltrunks_test",
+        "trunks",
+        "trunks_test",
       ]
       deps = [
         ":libchaps_static",

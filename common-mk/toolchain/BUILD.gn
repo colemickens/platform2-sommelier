@@ -18,6 +18,9 @@ assert(cc != "", "cc must be set")
 assert(ar != "", "ar must be set")
 
 toolchain("toolchain") {
+  lib_switch = "-l"
+  lib_dir_switch = "-L"
+
   tool("cc") {
     depfile = "{{output}}.d"
     command = "$cc -MMD -MF $depfile {{defines}} {{include_dirs}} {{cflags}} {{cflags_c}} -c {{source}} -o {{output}}"

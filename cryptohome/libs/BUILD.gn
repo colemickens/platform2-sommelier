@@ -158,8 +158,8 @@ static_library("libcrosplatform") {
     "../platform.cc",
   ]
   libs = [
-    "-lkeyutils",
-    "-lsecure_erase_file",
+    "keyutils",
+    "secure_erase_file",
   ]
   all_dependent_configs = [ ":libcrosplatform_dependent_config" ]
 
@@ -198,8 +198,8 @@ static_library("libcrostpm") {
     "../tpm_persistent_state.cc",
   ]
   libs = [
-    "-lchaps",
-    "-lscrypt",
+    "chaps",
+    "scrypt",
   ]
   all_dependent_configs = [ ":libcrostpm_dependent_config" ]
 
@@ -218,8 +218,8 @@ static_library("libcrostpm") {
       "../tpm2_metrics.cc",
     ]
     libs += [
-      "-ltrunks",
-      "-ltpm_manager",
+      "trunks",
+      "tpm_manager",
     ]
     deps += [ ":pinweaver-proto-external" ]
   }
@@ -230,7 +230,7 @@ static_library("libcrostpm") {
       "../tpm_impl.cc",
       "../tpm_metrics.cc",
     ]
-    libs += [ "-ltspi" ]
+    libs += [ "tspi" ]
   }
 }
 
@@ -286,8 +286,8 @@ static_library("libcryptohome") {
   # The generated dbus headers use "register".
   cflags = [ "-Wno-deprecated-register" ]
   libs = [
-    "-lchaps",
-    "-lpolicy-${libbase_ver}",
+    "chaps",
+    "policy-${libbase_ver}",
   ]
   all_dependent_configs = [ ":libcryptohome_dependent_config" ]
 
@@ -300,7 +300,7 @@ static_library("libcryptohome") {
 
   if (use.tpm2) {
     sources += [ "../service_distributed.cc" ]
-    libs += [ "-lattestation" ]
+    libs += [ "attestation" ]
     deps += [ ":libnvram-boot-lockbox-client" ]
   }
 }

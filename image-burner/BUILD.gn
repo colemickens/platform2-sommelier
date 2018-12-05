@@ -17,7 +17,7 @@ group("all") {
 }
 
 pkg_config("target_defaults") {
-  libs = [ "-lrootdev" ]
+  libs = [ "rootdev" ]
 
   pkg_deps = [
     "dbus-1",

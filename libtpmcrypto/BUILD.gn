@@ -46,11 +46,11 @@ shared_library("libtpmcrypto") {
   ]
   if (use.tpm2) {
     sources += [ "tpm2_impl.cc" ]
-    libs = [ "-ltrunks" ]
+    libs = [ "trunks" ]
   }
   if (!use.tpm2) {
     sources += [ "tpm1_impl.cc"]
-    libs = [ "-ltspi" ]
+    libs = [ "tspi" ]
   }
 
 }

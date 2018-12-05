@@ -31,7 +31,7 @@ pkg_config("target_defaults") {
     "libsession_manager-client",
     "libudev",
   ]
-  libs = [ "-lrootdev" ]
+  libs = [ "rootdev" ]
 }
 
 generate_dbus_adaptors("libdisks-adaptors") {

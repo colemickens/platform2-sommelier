@@ -73,7 +73,7 @@ static_library("libcrash_reporter") {
   }
 
   if (use.direncryption) {
-    libs = [ "-lkeyutils" ]
+    libs = [ "keyutils" ]
   }
 }
 
@@ -165,8 +165,8 @@ executable("anomaly_collector") {
     "anomaly_collector.cc",
   ]
   libs = [
-    "-lfl",
-    "-lsystem_api-metrics_event-protos",
+    "fl",
+    "system_api-metrics_event-protos",
   ]
 }
 
