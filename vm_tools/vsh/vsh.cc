@@ -16,7 +16,6 @@
 
 #include <base/at_exit.h>
 #include <base/files/scoped_file.h>
-#include <base/message_loop/message_loop.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_split.h>
 #include <brillo/flag_helper.h>
