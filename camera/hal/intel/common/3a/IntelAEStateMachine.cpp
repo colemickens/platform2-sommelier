@@ -111,8 +111,7 @@ IntelAEModeBase::IntelAEModeBase():
     mLastAeConvergedFlag(false),
     mAeRunCount(0),
     mAeConvergedCount(0),
-    mCurrentAeState(ANDROID_CONTROL_AE_STATE_INACTIVE),
-    mAePreCaptureCount(0)
+    mCurrentAeState(ANDROID_CONTROL_AE_STATE_INACTIVE)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     CLEAR(mLastAeControls);
@@ -333,20 +332,6 @@ IntelAEModeAuto::processResult(const ia_aiq_ae_results &aeResults,
         }
     }
     mLastAeConvergedFlag = aeResults.exposures[0].converged;
-
-    // If AE can't converge in long time, force returning CONVERGED for capture.
-    if (mCurrentAeState == ANDROID_CONTROL_AE_STATE_PRECAPTURE) {
-        mAePreCaptureCount++;
-        if (mAePreCaptureCount > PRECAPTURE_STATE_MAX_COUNT) {
-            // Set AE state to AE_STATE_CONVERGED just for one frame to unblock
-            // the capture, and state will transit to AE_STATE_SEARCHING upon
-            // next call to this method.
-            mCurrentAeState = ANDROID_CONTROL_AE_STATE_CONVERGED;
-            mAePreCaptureCount = 0;
-        }
-    } else {
-        mAePreCaptureCount = 0;
-    }
 
     updateResult(result);
 
