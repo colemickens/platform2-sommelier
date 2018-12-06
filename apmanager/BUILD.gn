@@ -1,0 +1,149 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/generate-dbus-proxies.gni")
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":apmanager-adaptors",
+    ":apmanager",
+    ":libapmanager-client-headers",
+  ]
+  if (use.test) {
+    deps += [ ":apmanager_testrunner" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+  ]
+  cflags = [
+    "-Wextra",
+    # base/lazy_instance.h, etc.
+    "-Wno-unused-parameter",
+  ]
+  cflags_cc = [
+    # for LAZY_INSTANCE_INITIALIZER.
+    "-Wno-missing-field-initializers",
+  ]
+}
+
+generate_dbus_adaptors("apmanager-adaptors") {
+  dbus_adaptors_out_dir = "include/dbus_bindings"
+  sources = [
+    "dbus_bindings/org.chromium.apmanager.Config.dbus-xml",
+    "dbus_bindings/org.chromium.apmanager.Device.dbus-xml",
+    "dbus_bindings/org.chromium.apmanager.Manager.dbus-xml",
+    "dbus_bindings/org.chromium.apmanager.Service.dbus-xml",
+  ]
+}
+
+pkg_config("libapmanager_configs") {
+  pkg_deps = [
+    "libpermission_broker-client",
+    "libshill-client",
+    "libshill-net-${libbase_ver}",
+  ]
+}
+
+static_library("libapmanager") {
+  deps = [
+    ":apmanager-adaptors",
+  ]
+  configs += [ ":target_defaults" ]
+  all_dependent_configs = [ ":libapmanager_configs" ]
+  sources = [
+    "config.cc",
+    "daemon.cc",
+    "dbus/config_dbus_adaptor.cc",
+    "dbus/dbus_control.cc",
+    "dbus/device_dbus_adaptor.cc",
+    "dbus/manager_dbus_adaptor.cc",
+    "dbus/permission_broker_dbus_proxy.cc",
+    "dbus/service_dbus_adaptor.cc",
+    "dbus/shill_dbus_proxy.cc",
+    "device.cc",
+    "device_info.cc",
+    "dhcp_server.cc",
+    "dhcp_server_factory.cc",
+    "error.cc",
+    "event_dispatcher.cc",
+    "file_writer.cc",
+    "firewall_manager.cc",
+    "hostapd_monitor.cc",
+    "manager.cc",
+    "process_factory.cc",
+    "service.cc",
+    "shill_manager.cc",
+  ]
+}
+
+pkg_config("apmanager_config") {
+  pkg_deps = [ "libminijail" ]
+}
+
+executable("apmanager") {
+  configs += [
+    ":target_defaults",
+    ":apmanager_config",
+  ]
+  deps = [":libapmanager"]
+  sources = [ "main.cc" ]
+}
+
+# apmanager client library generated headers. Used by other daemons to
+# interact with apmanager.
+generate_dbus_proxies("libapmanager-client-headers") {
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+  proxy_output_file = "include/apmanager/dbus-proxies.h"
+  mock_output_file = "include/apmanager/dbus-proxy-mocks.h"
+  proxy_path_in_mocks = "apmanager/dbus-proxies.h"
+  sources = [
+    "dbus_bindings/org.chromium.apmanager.Config.dbus-xml",
+    "dbus_bindings/org.chromium.apmanager.Device.dbus-xml",
+    "dbus_bindings/org.chromium.apmanager.Manager.dbus-xml",
+    "dbus_bindings/org.chromium.apmanager.Service.dbus-xml",
+  ]
+}
+
+if (use.test) {
+  executable("apmanager_testrunner") {
+    deps = [
+      ":libapmanager",
+      "//common-mk/testrunner:testrunner",
+    ]
+    configs += [
+      ":target_defaults",
+      "//common-mk:test"
+    ]
+    sources = [
+      "config_test.cc",
+      "device_info_test.cc",
+      "device_test.cc",
+      "dhcp_server_test.cc",
+      "error_test.cc",
+      "fake_config_adaptor.cc",
+      "fake_device_adaptor.cc",
+      "hostapd_monitor_test.cc",
+      "manager_test.cc",
+      "mock_config.cc",
+      "mock_control.cc",
+      "mock_device.cc",
+      "mock_dhcp_server.cc",
+      "mock_dhcp_server_factory.cc",
+      "mock_event_dispatcher.cc",
+      "mock_file_writer.cc",
+      "mock_hostapd_monitor.cc",
+      "mock_manager.cc",
+      "mock_process_factory.cc",
+      "mock_service.cc",
+      "mock_service_adaptor.cc",
+      "service_test.cc",
+    ]
+  }
+}
