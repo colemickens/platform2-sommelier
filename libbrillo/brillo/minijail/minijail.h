@@ -55,6 +55,9 @@ class Minijail {
   // minijail_reset_signal_mask
   virtual void ResetSignalMask(struct minijail* jail);
 
+  // minijail_close_open_fds
+  virtual void CloseOpenFds(struct minijail* jail);
+
   // minijail_enter
   virtual void Enter(struct minijail* jail);
 

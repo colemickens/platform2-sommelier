@@ -67,6 +67,10 @@ void Minijail::ResetSignalMask(struct minijail* jail) {
   minijail_reset_signal_mask(jail);
 }
 
+void Minijail::CloseOpenFds(struct minijail* jail) {
+  minijail_close_open_fds(jail);
+}
+
 void Minijail::Enter(struct minijail* jail) {
   minijail_enter(jail);
 }
