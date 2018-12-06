@@ -151,6 +151,8 @@ TEST_F(ProcessManagerTest,
   EXPECT_CALL(minijail_, DropRoot(_, StrEq(kUser), StrEq(kGroup)))
       .WillOnce(Return(true));
   EXPECT_CALL(minijail_, UseCapabilities(_, kCapMask)).Times(1);
+  EXPECT_CALL(minijail_, ResetSignalMask(_)).Times(1);
+  EXPECT_CALL(minijail_, CloseOpenFds(_)).Times(1);
   EXPECT_CALL(minijail_,
               RunPipesAndDestroy(_,  // minijail*
                                  IsProcessArgs(kProgram, kArgs),

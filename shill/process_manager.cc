@@ -91,6 +91,7 @@ pid_t ProcessManager::StartProcess(
   for (const auto& option : arguments) {
     process->AddArg(option);
   }
+  // Important to close unused fds. See crbug.com/531655 and crbug.com/911234.
   process->SetCloseUnusedFileDescriptors(true);
   process->SetPreExecCallback(
       base::Bind(&SetupChild, environment, terminate_with_parent));
@@ -148,6 +149,8 @@ pid_t ProcessManager::StartProcessInMinijailWithPipes(
 
   minijail_->UseCapabilities(jail, capmask);
   minijail_->ResetSignalMask(jail);
+  // Important to close open fds. See crbug.com/531655 and crbug.com/911234.
+  minijail_->CloseOpenFds(jail);
 
   pid_t pid;
   if (!minijail_->RunPipesAndDestroy(
