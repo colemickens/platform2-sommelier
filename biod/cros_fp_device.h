@@ -6,6 +6,7 @@
 
 #include <sys/ioctl.h>
 
+#include <bitset>
 #include <memory>
 #include <string>
 #include <vector>
