@@ -329,7 +329,7 @@ std::vector<std::string> DevicePolicyService::GetStartUpFlags() {
   // respective site isolation feature.
   // To ensure this is the case, a flag will be added to also disable site
   // isolation trials.
-  bool disable_site_isolation_trials = false;
+  bool disable_site_isolation = false;
 
   // Respect DeviceLoginScreenSitePerProcess policy for the sign-in screen.
   if (policy.has_device_login_screen_site_per_process()) {
@@ -339,7 +339,7 @@ std::vector<std::string> DevicePolicyService::GetStartUpFlags() {
       if (proto.site_per_process())
         policy_args.push_back("--site-per-process");
       else
-        disable_site_isolation_trials = true;
+        disable_site_isolation = true;
     }
   }
 
@@ -351,12 +351,12 @@ std::vector<std::string> DevicePolicyService::GetStartUpFlags() {
       if (!proto.isolate_origins().empty())
         policy_args.push_back("--isolate-origins=" + proto.isolate_origins());
       else
-        disable_site_isolation_trials = true;
+        disable_site_isolation = true;
     }
   }
 
-  if (disable_site_isolation_trials)
-    policy_args.push_back("--disable-site-isolation-trials");
+  if (disable_site_isolation)
+    policy_args.push_back("--disable-site-isolation-for-policy");
 
   // Add sentinel values to mark which flags were filled from policy and should
   // not apply to user sessions.
