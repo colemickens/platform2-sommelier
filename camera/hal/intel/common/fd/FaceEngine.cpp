@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Intel Corporation
+ * Copyright (C) 2018-2019 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 
 #include "PlatformData.h"
 #include "LogHelper.h"
-#include "ia_coordinate.h"
+#include "Intel3aCoordinate.h"
 #include "FaceEngine.h"
 
 namespace cros {
@@ -153,36 +153,45 @@ int FaceEngine::getResult(CVFaceEngineAbstractResult* result)
     CheckError(result == nullptr, UNKNOWN_ERROR, "@%s, result is nullptr", __FUNCTION__);
     CheckError(mInitialized == false, UNKNOWN_ERROR, "@%s, mInitialized is false", __FUNCTION__);
 
+    const ia_coordinate_system iaCoord = {IA_COORDINATE_TOP, IA_COORDINATE_LEFT,
+                                          IA_COORDINATE_BOTTOM, IA_COORDINATE_RIGHT};
+
+    //construct android coordinate based on active pixel array
+    CameraWindow activePixelArray = PlatformData::getActivePixelArray(mCameraId);
+    const ia_coordinate_system androidCoord = {0, 0, activePixelArray.height(), activePixelArray.width()};
+
+    ia_coordinate destCoord = {0, 0};
+    Intel3aCoordinate coordinate;
+
     std::lock_guard<std::mutex> l(mLock);
     for (int i = 0; i < mResult.faceNum; i++) {
-        int left = 0, right = 0, top = 0, bottom = 0;
-        if (PlatformData::facing(mCameraId) == CAMERA_FACING_BACK) {
-             left = mResult.faceResults[i].rect.left;
-             right = mResult.faceResults[i].rect.right;
-             top = mResult.faceResults[i].rect.top;
-             bottom = mResult.faceResults[i].rect.bottom;
-        } else {
-             left = mWidth - mResult.faceResults[i].rect.right;
-             right = mWidth -  mResult.faceResults[i].rect.left;
-             top = mHeight - mResult.faceResults[i].rect.top;
-             bottom = mHeight - mResult.faceResults[i].rect.bottom;
-        }
-
-        result->faceRect[i * 4] = left;
-        result->faceRect[i * 4 + 1] = top;
-        result->faceRect[i * 4 + 2] = right;
-        result->faceRect[i * 4 + 3] = bottom;
+        if (i == MAX_FACES_DETECTABLE)
+            break;
 
         result->faceScores[i] = mResult.faceResults[i].confidence;
         result->faceIds[i] = mResult.faceResults[i].tracking_id;
-        result->faceLandmarks[i * 6] = mResult.eyeResults[i].left_eye.x;
-        result->faceLandmarks[i * 6 + 1] = mResult.eyeResults[i].left_eye.y;
-        result->faceLandmarks[i * 6 + 2] = mResult.eyeResults[i].right_eye.x;
-        result->faceLandmarks[i * 6 + 3] = mResult.eyeResults[i].right_eye.y;
-        result->faceLandmarks[i * 6 + 4] = mResult.mouthResults[i].mouth.x;
-        result->faceLandmarks[i * 6 + 5] = mResult.mouthResults[i].mouth.y;
+
+        destCoord = coordinate.convert(iaCoord, androidCoord, {mResult.faceResults[i].rect.left, mResult.faceResults[i].rect.top});
+        result->faceRect[i * 4] = destCoord.x; //rect.left
+        result->faceRect[i * 4 + 1] = destCoord.y; //rect.top
+
+        destCoord = coordinate.convert(iaCoord, androidCoord, {mResult.faceResults[i].rect.right, mResult.faceResults[i].rect.bottom});
+        result->faceRect[i * 4 + 2] = destCoord.x; //rect.right
+        result->faceRect[i * 4 + 3] = destCoord.y; //rect.bottom
+
+        destCoord = coordinate.convert(iaCoord, androidCoord, {mResult.eyeResults[i].left_eye.x, mResult.eyeResults[i].left_eye.y});
+        result->faceLandmarks[i * 6] = destCoord.x; //left_eye.x;
+        result->faceLandmarks[i * 6 + 1] = destCoord.y; //left_eye.y;
+
+        destCoord = coordinate.convert(iaCoord, androidCoord, {mResult.eyeResults[i].right_eye.x, mResult.eyeResults[i].right_eye.y});
+        result->faceLandmarks[i * 6 + 2] = destCoord.x; //right_eye.x;
+        result->faceLandmarks[i * 6 + 3] = destCoord.y; //right_eye.y;
+
+        destCoord = coordinate.convert(iaCoord, androidCoord, {mResult.mouthResults[i].mouth.x, mResult.mouthResults[i].mouth.y});
+        result->faceLandmarks[i * 6 + 4] = destCoord.x; //mouth.x;
+        result->faceLandmarks[i * 6 + 5] = destCoord.y; //mouth.y;
     }
-    result->faceNum = mResult.faceNum;
+    result->faceNum = (mResult.faceNum < MAX_FACES_DETECTABLE ? mResult.faceNum : MAX_FACES_DETECTABLE);
 
     return OK;
 }

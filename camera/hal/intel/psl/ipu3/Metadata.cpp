@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2018 Intel Corporation.
+ * Copyright (C) 2016-2019 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -106,6 +106,59 @@ void Metadata::writePAMetadata(RequestCtrlState &reqState)
     }
 }
 
+void Metadata::writeFDMetadata(RequestCtrlState &reqState, CVFaceEngineAbstractResult &fdResult)
+{
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
+    CheckError(reqState.request == nullptr, VOID_VALUE, "@%s, request is nullptr", __FUNCTION__);
+    CheckError(reqState.ctrlUnitResult == nullptr, VOID_VALUE,
+               "@%s, ctrlUnitResult is nullptr", __FUNCTION__);
+
+    const android::CameraMetadata* settings = reqState.request->getSettings();
+    CheckError(settings == nullptr, VOID_VALUE, "@%s, settings is nullptr", __FUNCTION__);
+
+    camera_metadata_ro_entry entry = settings->find(ANDROID_STATISTICS_FACE_DETECT_MODE);
+    CheckError(entry.count == 0, VOID_VALUE, "@%s: NO FD mode setting", __FUNCTION__);
+
+    const uint8_t mode = entry.data.u8[0];
+    reqState.ctrlUnitResult->update(ANDROID_STATISTICS_FACE_DETECT_MODE, &mode, entry.count);
+
+    if (mode == ANDROID_STATISTICS_FACE_DETECT_MODE_OFF) {
+        LOG2("%s: Face mode is off", __FUNCTION__);
+        int faceIds[1] = {0};
+        reqState.ctrlUnitResult->update(ANDROID_STATISTICS_FACE_IDS, faceIds, 1);
+        return;
+    } else if (mode == ANDROID_STATISTICS_FACE_DETECT_MODE_SIMPLE) {
+        LOG2("%s: Face mode is simple", __FUNCTION__);
+        // Face id is expected to be -1 for SIMPLE mode
+        if (fdResult.faceNum > 0) {
+            for (int i = 0; i < fdResult.faceNum; i++) {
+                fdResult.faceIds[i] = -1;
+            }
+            reqState.ctrlUnitResult->update(ANDROID_STATISTICS_FACE_IDS,
+                                            fdResult.faceIds, fdResult.faceNum);
+        } else {
+            int faceIds[1] = {-1};
+            reqState.ctrlUnitResult->update(ANDROID_STATISTICS_FACE_IDS, faceIds, 1);
+        }
+    } else if (mode == ANDROID_STATISTICS_FACE_DETECT_MODE_FULL) {
+        LOG2("%s: Face mode is full", __FUNCTION__);
+        /*
+         * from the spec:
+         * SIMPLE mode must fill in android.statistics.faceRectangles and android.statistics.faceScores.
+         * FULL mode must also fill in android.statistics.faceIds, and android.statistics.faceLandmarks.
+         */
+        reqState.ctrlUnitResult->update(ANDROID_STATISTICS_FACE_IDS,
+                                        fdResult.faceIds, fdResult.faceNum);
+        reqState.ctrlUnitResult->update(ANDROID_STATISTICS_FACE_LANDMARKS,
+                                        fdResult.faceLandmarks, LM_SIZE * fdResult.faceNum);
+    }
+
+    reqState.ctrlUnitResult->update(ANDROID_STATISTICS_FACE_RECTANGLES,
+                                    fdResult.faceRect, RECT_SIZE * fdResult.faceNum);
+    reqState.ctrlUnitResult->update(ANDROID_STATISTICS_FACE_SCORES,
+                                    fdResult.faceScores, fdResult.faceNum);
+}
+
 /**
  * Update the Jpeg metadata
  * Only copying from control to dynamic
@@ -164,9 +217,6 @@ void Metadata::writeJpegMetadata(RequestCtrlState &reqState) const
 
 void Metadata::writeMiscMetadata(RequestCtrlState &reqState) const
 {
-    uint8_t sceneMode = ANDROID_CONTROL_SCENE_MODE_DISABLED;
-    reqState.ctrlUnitResult->update(ANDROID_CONTROL_SCENE_MODE, &sceneMode, 1);
-
     uint8_t flashModeValue = ANDROID_FLASH_MODE_OFF;
     reqState.ctrlUnitResult->update(ANDROID_FLASH_MODE, &flashModeValue, 1);
 
@@ -179,13 +229,33 @@ void Metadata::writeMiscMetadata(RequestCtrlState &reqState) const
     reqState.ctrlUnitResult->update(ANDROID_STATISTICS_HOT_PIXEL_MAP_MODE,
                                     &reqState.captureSettings->hotPixelMapMode, 1);
 
-    uint8_t fdValue = ANDROID_STATISTICS_FACE_DETECT_MODE_OFF;
-    reqState.ctrlUnitResult->update(ANDROID_STATISTICS_FACE_DETECT_MODE,
-        &fdValue, 1);
+    uint8_t sceneModeValue = ANDROID_CONTROL_SCENE_MODE_DISABLED;
+    reqState.ctrlUnitResult->update(ANDROID_CONTROL_SCENE_MODE, &sceneModeValue, 1);
 
-    int faceIds[1] = {0};
-    reqState.ctrlUnitResult->update(ANDROID_STATISTICS_FACE_IDS,
-                                    faceIds, 1);
+    const android::CameraMetadata* settings = reqState.request->getSettings();
+    CheckError(settings == nullptr, VOID_VALUE, "@%s, settings is nullptr", __FUNCTION__);
+
+    camera_metadata_ro_entry entry = settings->find(ANDROID_STATISTICS_FACE_DETECT_MODE);
+    CheckError(entry.count == 0, VOID_VALUE, "@%s: NO FD mode setting", __FUNCTION__);
+
+    const uint8_t mode = entry.data.u8[0];
+    reqState.ctrlUnitResult->update(ANDROID_STATISTICS_FACE_DETECT_MODE, &mode, entry.count);
+
+    if (mode == ANDROID_STATISTICS_FACE_DETECT_MODE_OFF) {
+        int faceIds[1] = {0};
+        reqState.ctrlUnitResult->update(ANDROID_STATISTICS_FACE_IDS, faceIds, 1);
+    }
+
+    if (!PlatformData::isFaceAeEnabled(mCameraId)) {
+        uint8_t fdValue = ANDROID_STATISTICS_FACE_DETECT_MODE_OFF;
+        reqState.ctrlUnitResult->update(ANDROID_STATISTICS_FACE_DETECT_MODE, &fdValue, 1);
+
+        int faceIds[1] = {0};
+        reqState.ctrlUnitResult->update(ANDROID_STATISTICS_FACE_IDS, faceIds, 1);
+    } else {
+        sceneModeValue = ANDROID_CONTROL_SCENE_MODE_FACE_PRIORITY;
+        reqState.ctrlUnitResult->update(ANDROID_CONTROL_SCENE_MODE, &sceneModeValue, 1);
+    }
 }
 
 void Metadata::writeLSCMetadata(std::shared_ptr<RequestCtrlState> &reqState) const

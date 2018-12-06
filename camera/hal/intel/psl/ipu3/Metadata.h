@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 - 2018 Intel Corporation.
+ * Copyright (C) 2016 - 2019 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,6 +34,7 @@ public:
     void writeSensorMetadata(RequestCtrlState &reqState);
     void writeAwbMetadata(RequestCtrlState &reqState);
     void writePAMetadata(RequestCtrlState &reqState);
+    void writeFDMetadata(RequestCtrlState &reqState, CVFaceEngineAbstractResult &fdResult);
     void writeMiscMetadata(RequestCtrlState &reqState) const; //[> generic. split to logical parts, if needed <]
     void writeJpegMetadata(RequestCtrlState &reqState) const;
     void writeLensMetadata(RequestCtrlState &reqState) const;

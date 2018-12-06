@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2018 Intel Corporation.
+ * Copyright (C) 2017-2019 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1026,6 +1026,12 @@ void ControlUnit::prepareStats(RequestCtrlState &reqState,
         if (ret == OK && facesState.num_faces > 0) {
             LOG2("@%s, face number:%d", __FUNCTION__, facesState.num_faces);
             params->faces = &facesState;
+        }
+
+        CVFaceEngineAbstractResult fdResult;
+        ret = mFaceEngine->getResult(&fdResult);
+        if (ret == OK) {
+            mMetadata->writeFDMetadata(reqState, fdResult);
         }
     }
 
