@@ -47,6 +47,9 @@
             "system-path": "/etc/bluetooth/some/main.conf"
           }
         },
+        "camera": {
+          "count": 1
+        },
         "firmware": {
           "bcs-overlay": "overlay-some-private",
           "build-targets": {
@@ -172,6 +175,9 @@
             "build-path": "some/main.conf",
             "system-path": "/etc/bluetooth/some/main.conf"
           }
+        },
+        "camera": {
+          "count": 1
         },
         "firmware": {
           "bcs-overlay": "overlay-some-private",
@@ -374,6 +380,9 @@
           }
         },
         "brand-code": "WLBA",
+        "camera": {
+          "count": 1
+        },
         "firmware": {
           "bcs-overlay": "overlay-some-private",
           "build-targets": {
@@ -460,6 +469,9 @@
           }
         },
         "brand-code": "WLBA",
+        "camera": {
+          "count": 1
+        },
         "firmware": {
           "bcs-overlay": "overlay-some-private",
           "build-targets": {
@@ -545,6 +557,9 @@
           }
         },
         "brand-code": "WLBB",
+        "camera": {
+          "count": 1
+        },
         "firmware": {
           "bcs-overlay": "overlay-some-private",
           "build-targets": {
@@ -631,6 +646,9 @@
           }
         },
         "brand-code": "WLBB",
+        "camera": {
+          "count": 1
+        },
         "firmware": {
           "bcs-overlay": "overlay-some-private",
           "build-targets": {

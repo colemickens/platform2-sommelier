@@ -103,6 +103,13 @@ TEST_F(CrosConfigTest, CheckUiPowerPosition) {
   ASSERT_EQ("0.3", val);
 }
 
+TEST_F(CrosConfigTest, CheckCameraCount) {
+  InitConfig("Some", 0);
+  std::string val;
+  ASSERT_TRUE(cros_config_.GetString("/camera", "count", &val));
+  ASSERT_EQ("1", val);
+}
+
 int main(int argc, char** argv) {
   int status = system("exec ./chromeos-config-test-setup.sh");
   if (status != 0)

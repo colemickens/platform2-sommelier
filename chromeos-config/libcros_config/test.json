@@ -18,6 +18,9 @@
             "system-path": "/etc/bluetooth/some/main.conf"
           }
         },
+        "camera": {
+          "count": 1
+        },
         "hardware-properties": {
           "has-base-accelerometer": true,
           "has-base-gyroscope": true,
@@ -74,6 +77,9 @@
           "config": {
             "system-path": "/etc/bluetooth/some/main.conf"
           }
+        },
+        "camera": {
+          "count": 1
         },
         "hardware-properties": {
           "is-lid-convertible": false
@@ -151,6 +157,9 @@
           }
         },
         "brand-code": "WLBA",
+        "camera": {
+          "count": 1
+        },
         "hardware-properties": {
           "is-lid-convertible": false
         },
@@ -195,6 +204,9 @@
           }
         },
         "brand-code": "WLBA",
+        "camera": {
+          "count": 1
+        },
         "hardware-properties": {
           "is-lid-convertible": false
         },
@@ -238,6 +250,9 @@
           }
         },
         "brand-code": "WLBB",
+        "camera": {
+          "count": 1
+        },
         "hardware-properties": {
           "is-lid-convertible": false
         },
@@ -282,6 +297,9 @@
           }
         },
         "brand-code": "WLBB",
+        "camera": {
+          "count": 1
+        },
         "hardware-properties": {
           "is-lid-convertible": false
         },

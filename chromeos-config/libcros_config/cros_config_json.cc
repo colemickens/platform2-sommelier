@@ -158,21 +158,28 @@ bool CrosConfigJson::GetString(const std::string& path,
     }
   }
 
-  std::string value;
-  if (valid_path && attr_dict->GetString(prop, &value)) {
-    val_out->assign(value);
-    return true;
-  }
-
-
-  bool bool_value;
-  if (valid_path && attr_dict->GetBoolean(prop, &bool_value)) {
-    if (bool_value) {
-      val_out->assign("true");
-    } else {
-      val_out->assign("false");
+  if (valid_path) {
+    std::string value;
+    if (attr_dict->GetString(prop, &value)) {
+      val_out->assign(value);
+      return true;
     }
-    return true;
+
+    int int_value;
+    if (attr_dict->GetInteger(prop, &int_value)) {
+      val_out->assign(std::to_string(int_value));
+      return true;
+    }
+
+    bool bool_value;
+    if (attr_dict->GetBoolean(prop, &bool_value)) {
+      if (bool_value) {
+        val_out->assign("true");
+      } else {
+        val_out->assign("false");
+      }
+      return true;
+    }
   }
   return false;
 }
