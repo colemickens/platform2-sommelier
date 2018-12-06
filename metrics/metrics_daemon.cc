@@ -24,6 +24,9 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/dbus.h>
 #include <dbus/message.h>
+#include <dbus/object_proxy.h>
+
+#include "power_manager/proto_bindings/suspend.pb.h"
 #include "uploader/upload_service.h"
 
 using base::FilePath;
@@ -99,6 +102,13 @@ constexpr char kKernelCrashesSinceUpdateName[] =
 constexpr char kUncleanShutdownsDailyName[] = "Platform.UncleanShutdownsDaily";
 constexpr char kUncleanShutdownsWeeklyName[] =
     "Platform.UncleanShutdownsWeekly";
+
+// Handles the result of an attempt to connect to a D-Bus signal.
+void DBusSignalConnected(const std::string& interface,
+                         const std::string& signal,
+                         bool success) {
+  CHECK(success) << "Unable to connect to " << interface << "." << signal;
+}
 
 }  // namespace
 
@@ -180,6 +190,14 @@ constexpr char MetricsDaemon::kMetricTemperatureOneName[];
 constexpr char MetricsDaemon::kMetricTemperatureTwoName[];
 
 constexpr int MetricsDaemon::kMetricTemperatureMax;
+
+constexpr base::TimeDelta
+    MetricsDaemon::kMinSuspendDurationForAmbientTemperature;
+
+constexpr char MetricsDaemon::kMetricSuspendedTemperatureCpuName[];
+constexpr char MetricsDaemon::kMetricSuspendedTemperatureZeroName[];
+constexpr char MetricsDaemon::kMetricSuspendedTemperatureOneName[];
+constexpr char MetricsDaemon::kMetricSuspendedTemperatureTwoName[];
 
 // Detachable base autosuspend metrics.
 
@@ -384,6 +402,13 @@ int MetricsDaemon::OnInit() {
         base::StringPrintf(kCrashReporterMatchRule, kCrashReporterInterface,
                            kCrashReporterUserCrashSignal);
 
+    // A filter function is used here because there is no permanent object
+    // proxy exported by crash_reporter as it is a short-lived program.
+    //
+    // It might be theoretically possible to convert it to use
+    // ObjectProxy::ConnectToSignal, but it's probably not worth the effort,
+    // especially since ConnectToSignal uses FilterFunctions under the hood
+    // anyways.
     bus_->AddFilterFunction(&MetricsDaemon::MessageFilter, this);
 
     DBusError error;
@@ -395,6 +420,17 @@ int MetricsDaemon::OnInit() {
                  << error.name << ": " << error.message;
       return EX_SOFTWARE;
     }
+
+    dbus::ObjectProxy* powerd_proxy = bus_->GetObjectProxy(
+        power_manager::kPowerManagerServiceName,
+        dbus::ObjectPath(power_manager::kPowerManagerServicePath));
+
+    powerd_proxy->ConnectToSignal(
+        power_manager::kPowerManagerInterface,
+        power_manager::kSuspendDoneSignal,
+        base::Bind(&MetricsDaemon::HandleSuspendDone, base::Unretained(this)),
+        base::Bind(&DBusSignalConnected));
+
   } else {
     LOG(ERROR) << "DBus isn't connected.";
     return EX_UNAVAILABLE;
@@ -700,9 +736,39 @@ void MetricsDaemon::SendTemperatureSamples() {
       continue;
     }
     // Readings are millidegrees Celsius, convert to degrees.
-    int sample = static_cast<int>(entry.second / 1000);
+    int sample = static_cast<int>(round(entry.second / 1000.0));
     SendLinearSample(metric_name, sample, kMetricTemperatureMax,
                      kMetricTemperatureMax + 1);
+  }
+}
+
+void MetricsDaemon::HandleSuspendDone(dbus::Signal* signal) {
+  power_manager::SuspendDone info;
+  dbus::MessageReader reader(signal);
+  CHECK(reader.PopArrayOfBytesAsProto(&info));
+  const base::TimeDelta duration =
+      base::TimeDelta::FromInternalValue(info.suspend_duration());
+  if (duration >= kMinSuspendDurationForAmbientTemperature) {
+    for (const auto& entry : ReadSensorTemperatures()) {
+      std::string metric_name;
+      // Name for CPU sensor is platform dependent.
+      if (entry.first == "TCPU" || entry.first == "B0D4" ||
+          entry.first == "acpitz") {
+        metric_name = kMetricSuspendedTemperatureCpuName;
+      } else if (entry.first == "TSR0") {
+        metric_name = kMetricSuspendedTemperatureZeroName;
+      } else if (entry.first == "TSR1") {
+        metric_name = kMetricSuspendedTemperatureOneName;
+      } else if (entry.first == "TSR2") {
+        metric_name = kMetricSuspendedTemperatureTwoName;
+      } else {
+        continue;
+      }
+      // Readings are millidegrees Celsius, convert to degrees.
+      int sample = static_cast<int>(round(entry.second / 1000.0));
+      SendLinearSample(metric_name, sample, kMetricTemperatureMax,
+                       kMetricTemperatureMax + 1);
+    }
   }
 }
 

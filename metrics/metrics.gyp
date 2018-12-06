@@ -24,6 +24,7 @@
       'link_settings': {
         'libraries': [
           '-lrootdev',
+          '-lsystem_api-power_manager-protos',
         ],
       },
       'sources': [

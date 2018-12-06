@@ -77,6 +77,23 @@ class MetricsDaemon : public brillo::DBusDaemon {
   // Maximum temperature value to be reported to UMA.
   static constexpr int kMetricTemperatureMax = 100;  // degrees Celsius
 
+  // Minimum time spent suspended in order to consider the sensor temperatures
+  // measured at resume "ambient" (i.e. not influenced by the device) and
+  // report them to UMA.
+  static constexpr base::TimeDelta kMinSuspendDurationForAmbientTemperature =
+      base::TimeDelta::FromMinutes(30);
+
+  // UMA Metrics used to report temperature data when resuming from a suspend
+  // that exceeds the minimum duration.
+  static constexpr char kMetricSuspendedTemperatureCpuName[] =
+      "Platform.Thermal.Temperature.Cpu.0.WhileSuspended";
+  static constexpr char kMetricSuspendedTemperatureZeroName[] =
+      "Platform.Temperature.Sensor00.WhileSuspended";
+  static constexpr char kMetricSuspendedTemperatureOneName[] =
+      "Platform.Temperature.Sensor01.WhileSuspended";
+  static constexpr char kMetricSuspendedTemperatureTwoName[] =
+      "Platform.Temperature.Sensor02.WhileSuspended";
+
  protected:
   // Used also by the unit tests.
   static const char kComprDataSizeName[];
@@ -108,6 +125,8 @@ class MetricsDaemon : public brillo::DBusDaemon {
   FRIEND_TEST(MetricsDaemonTest, SendTemperatureSamplesAlternative);
   FRIEND_TEST(MetricsDaemonTest, SendTemperatureSamplesBasic);
   FRIEND_TEST(MetricsDaemonTest, SendTemperatureSamplesReadError);
+  FRIEND_TEST(MetricsDaemonTest, SendTemperatureAtResume);
+  FRIEND_TEST(MetricsDaemonTest, DoNotSendTemperatureShortResume);
   FRIEND_TEST(MetricsDaemonTest, SendZramMetrics);
   FRIEND_TEST(MetricsDaemonTest, SendZramMetricsOld);
   FRIEND_TEST(MetricsDaemonTest, GetDetachableBaseTimes);
@@ -272,6 +291,10 @@ class MetricsDaemon : public brillo::DBusDaemon {
 
   // Fetches current temperatures from sysfs and sends to UMA.
   void SendTemperatureSamples();
+
+  // Method called when kSuspendDoneSignal is received from powerd.
+  // Handles reporting of temperature during suspend.
+  void HandleSuspendDone(dbus::Signal* signal);
 
   // Reports disk and vm statistics.
   void StatsCallback();

@@ -15,6 +15,7 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
+#include <power_manager/proto_bindings/suspend.pb.h>
 
 #include "metrics/metrics_daemon.h"
 #include "metrics/metrics_library_mock.h"
@@ -295,10 +296,10 @@ TEST_F(MetricsDaemonTest, SendTemperatureSamplesBasic) {
               SendEnumToUMA(MetricsDaemon::kMetricTemperatureCpuName, 27,
                             MetricsDaemon::kMetricTemperatureMax));
   EXPECT_CALL(metrics_lib_,
-              SendEnumToUMA(MetricsDaemon::kMetricTemperatureOneName, 18,
+              SendEnumToUMA(MetricsDaemon::kMetricTemperatureOneName, 19,
                             MetricsDaemon::kMetricTemperatureMax));
   EXPECT_CALL(metrics_lib_,
-              SendEnumToUMA(MetricsDaemon::kMetricTemperatureZeroName, 30,
+              SendEnumToUMA(MetricsDaemon::kMetricTemperatureZeroName, 31,
                             MetricsDaemon::kMetricTemperatureMax));
   daemon_.SendTemperatureSamples();
 }
@@ -322,13 +323,13 @@ TEST_F(MetricsDaemonTest, SendTemperatureSamplesAlternative) {
 
 TEST_F(MetricsDaemonTest, SendTemperatureSamplesReadError) {
   CreateFakeTemperatureSamplesFiles(0, "TSR1", 42390);
-  CreateFakeTemperatureSamplesFiles(1, "acpitz", 10298);
-  CreateFakeTemperatureSamplesFiles(2, "TSR0", 31337);
+  CreateFakeTemperatureSamplesFiles(1, "acpitz", 10598);
+  CreateFakeTemperatureSamplesFiles(2, "TSR0", 31499);
   EXPECT_CALL(metrics_lib_,
               SendEnumToUMA(MetricsDaemon::kMetricTemperatureOneName, 42,
                             MetricsDaemon::kMetricTemperatureMax));
   EXPECT_CALL(metrics_lib_,
-              SendEnumToUMA(MetricsDaemon::kMetricTemperatureCpuName, 10,
+              SendEnumToUMA(MetricsDaemon::kMetricTemperatureCpuName, 11,
                             MetricsDaemon::kMetricTemperatureMax));
   EXPECT_CALL(metrics_lib_,
               SendEnumToUMA(MetricsDaemon::kMetricTemperatureZeroName, 31,
@@ -356,6 +357,54 @@ TEST_F(MetricsDaemonTest, SendTemperatureSamplesReadError) {
               SendEnumToUMA(MetricsDaemon::kMetricTemperatureZeroName, 31,
                             MetricsDaemon::kMetricTemperatureMax));
   daemon_.SendTemperatureSamples();
+}
+
+TEST_F(MetricsDaemonTest, SendTemperatureAtResume) {
+  CreateFakeTemperatureSamplesFiles(0, "x86_pkg_temp", 32894);
+  CreateFakeTemperatureSamplesFiles(1, "TCPU", 59703);
+  CreateFakeTemperatureSamplesFiles(2, "TSR1", 10129);
+  CreateFakeTemperatureSamplesFiles(3, "TSR0", 44292);
+
+  EXPECT_CALL(metrics_lib_,
+              SendEnumToUMA(MetricsDaemon::kMetricSuspendedTemperatureCpuName,
+                            60, MetricsDaemon::kMetricTemperatureMax));
+  EXPECT_CALL(metrics_lib_,
+              SendEnumToUMA(MetricsDaemon::kMetricSuspendedTemperatureOneName,
+                            10, MetricsDaemon::kMetricTemperatureMax));
+  EXPECT_CALL(metrics_lib_,
+              SendEnumToUMA(MetricsDaemon::kMetricSuspendedTemperatureZeroName,
+                            44, MetricsDaemon::kMetricTemperatureMax));
+
+  dbus::Signal suspend_done(power_manager::kPowerManagerInterface,
+                            power_manager::kSuspendDoneSignal);
+  dbus::MessageWriter writer(&suspend_done);
+  power_manager::SuspendDone info;
+  info.set_suspend_id(24712939);
+  info.set_suspend_duration(
+      (MetricsDaemon::kMinSuspendDurationForAmbientTemperature +
+       base::TimeDelta::FromMinutes(1))
+          .ToInternalValue());
+  writer.AppendProtoAsArrayOfBytes(info);
+  daemon_.HandleSuspendDone(&suspend_done);
+}
+
+TEST_F(MetricsDaemonTest, DoNotSendTemperatureShortResume) {
+  CreateFakeTemperatureSamplesFiles(0, "x86_pkg_temp", 32894);
+  CreateFakeTemperatureSamplesFiles(1, "TCPU", 59703);
+  CreateFakeTemperatureSamplesFiles(2, "TSR1", 10129);
+  CreateFakeTemperatureSamplesFiles(3, "TSR0", 44292);
+
+  dbus::Signal suspend_done(power_manager::kPowerManagerInterface,
+                            power_manager::kSuspendDoneSignal);
+  dbus::MessageWriter writer(&suspend_done);
+  power_manager::SuspendDone info;
+  info.set_suspend_id(39218752);
+  info.set_suspend_duration(
+      (MetricsDaemon::kMinSuspendDurationForAmbientTemperature -
+       base::TimeDelta::FromMinutes(23))
+          .ToInternalValue());
+  writer.AppendProtoAsArrayOfBytes(info);
+  daemon_.HandleSuspendDone(&suspend_done);
 }
 
 TEST_F(MetricsDaemonTest, ProcessMeminfo) {
