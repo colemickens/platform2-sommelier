@@ -146,8 +146,10 @@ BiometricsManager::EnrollSession CrosFpBiometricsManager::StartEnrollSession(
     std::string user_id, std::string label) {
   LOG(INFO) << __func__;
   // Another session is on-going, fail early ...
-  if (!next_session_action_.is_null())
+  if (!next_session_action_.is_null()) {
+    LOG(ERROR) << "Another EnrollSession already exists";
     return BiometricsManager::EnrollSession();
+  }
 
   if (records_.size() >= cros_dev_->MaxTemplateCount()) {
     LOG(ERROR) << "No space for an additional template.";
@@ -164,8 +166,10 @@ BiometricsManager::EnrollSession CrosFpBiometricsManager::StartEnrollSession(
 BiometricsManager::AuthSession CrosFpBiometricsManager::StartAuthSession() {
   LOG(INFO) << __func__;
   // Another session is on-going, fail early ...
-  if (!next_session_action_.is_null())
+  if (!next_session_action_.is_null()) {
+    LOG(ERROR) << "Another AuthSession already exists";
     return BiometricsManager::AuthSession();
+  }
 
   if (!RequestMatch())
     return BiometricsManager::AuthSession();
@@ -330,6 +334,8 @@ void CrosFpBiometricsManager::OnAuthScanDone(
 }
 
 void CrosFpBiometricsManager::OnSessionFailed() {
+  LOG(INFO) << __func__;
+
   if (!on_session_failed_.is_null())
     on_session_failed_.Run();
 }

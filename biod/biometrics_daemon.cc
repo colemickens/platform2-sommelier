@@ -259,12 +259,19 @@ void BiometricsManagerWrapper::OnSessionFailed() {
     dbus_object_.SendSignal(&session_failed_signal);
     FinalizeEnrollSessionObject();
   }
+
+  if (enroll_session_)
+    enroll_session_.End();
+
   if (auth_session_dbus_object_) {
     dbus::Signal session_failed_signal(kBiometricsManagerInterface,
                                        kBiometricsManagerSessionFailedSignal);
     dbus_object_.SendSignal(&session_failed_signal);
     FinalizeAuthSessionObject();
   }
+
+  if (auth_session_)
+    auth_session_.End();
 }
 
 bool BiometricsManagerWrapper::StartEnrollSession(
