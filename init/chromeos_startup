@@ -502,6 +502,13 @@ if [ -f /sys/fs/selinux/enforce ]; then
   chattr -i /var/empty || :
   restorecon -R -D /var
   restorecon -R /sys
+  # We cannot do recursive for .shadow since userdata is encrypted (including
+  # file names) before user logs-in. Restoring context for it may mislabel files
+  # if encrypted filename happens to match something.
+  restorecon /home /home/.shadow /home/.shadow/* /home/.shadow/.* /home/.shadow/*/*
+  # It's safe to recursvely restorecon /home/{user,root,chronos} since userdir
+  # is not bind-mounted here before logging in.
+  restorecon -R -D /home/user /home/root /home/chronos
 fi
 
 # Make sure the empty dir stays empty (only works on ext4).
