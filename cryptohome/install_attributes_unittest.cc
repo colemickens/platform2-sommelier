@@ -125,7 +125,7 @@ TEST_F(InstallAttributesTest, OobeWithTpm) {
   EXPECT_CALL(platform_,
               ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
       .WillRepeatedly(Return(false));
-  EXPECT_CALL(lockbox_, Create(_)).WillOnce(Return(true));
+  EXPECT_CALL(lockbox_, Reset(_)).WillOnce(Return(true));
   ExpectRemovingOwnerDependency();
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
   Mock::VerifyAndClearExpectations(&lockbox_);
@@ -169,7 +169,6 @@ TEST_F(InstallAttributesTest, OobeWithTpm) {
 TEST_F(InstallAttributesTest, OobeWithoutTpm) {
   EXPECT_CALL(lockbox_, set_tpm(nullptr)).Times(1);
   install_attrs_.SetTpm(nullptr);
-  Mock::VerifyAndClearExpectations(&lockbox_);
 
   EXPECT_CALL(platform_,
               ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
@@ -184,7 +183,7 @@ TEST_F(InstallAttributesTest, OobeWithoutTpm) {
 TEST_F(InstallAttributesTest, OobeWithTpmBadWrite) {
   // Assume authorization and working tpm.
   EXPECT_CALL(lockbox_, tpm()).WillRepeatedly(Return(&tpm_));
-  EXPECT_CALL(lockbox_, Create(_)).WillOnce(Return(true));
+  EXPECT_CALL(lockbox_, Reset(_)).WillOnce(Return(true));
   ExpectRemovingOwnerDependency();
 
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
@@ -254,7 +253,10 @@ TEST_F(InstallAttributesTest, NormalBootWithoutTpm) {
 }
 
 // Represents that the OOBE process was interrupted by a reboot or crash prior
-// to Finalize() being called.
+// to Finalize() being called, but after the Lockbox was reset.
+// Since InstallAttributes Set/Finalize is not atomic, there is always the risk
+// of data loss due to failure of the device. It will fail-safe however (by
+// failing empty).
 TEST_F(InstallAttributesTest, NormalBootUnlocked) {
   // Check the baseline.
   EXPECT_FALSE(install_attrs_.is_first_install());
@@ -265,9 +267,29 @@ TEST_F(InstallAttributesTest, NormalBootUnlocked) {
   EXPECT_CALL(platform_,
               ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
       .WillOnce(Return(false));
-  EXPECT_CALL(lockbox_, Create(_))
-      .WillOnce(
-          DoAll(SetArgPointee<0>(LockboxError::kNoNvramData), Return(true)));
+  EXPECT_CALL(lockbox_, Reset(_)).WillOnce(Return(true));
+  ExpectRemovingOwnerDependency();
+
+  EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
+
+  EXPECT_TRUE(install_attrs_.is_first_install());
+  EXPECT_FALSE(install_attrs_.is_invalid());
+  EXPECT_TRUE(install_attrs_.is_initialized());
+
+  // Should be empty.
+  EXPECT_EQ(0, install_attrs_.Count());
+}
+
+// Represents that the OOBE process was interrupted by a reboot or crash prior
+// to Finalize() being called, and before the Lockbox was Created.
+TEST_F(InstallAttributesTest, NormalBootNoSpace) {
+  // Check the baseline.
+  EXPECT_FALSE(install_attrs_.is_first_install());
+  EXPECT_FALSE(install_attrs_.is_initialized());
+  EXPECT_FALSE(install_attrs_.is_invalid());
+  EXPECT_TRUE(install_attrs_.is_secure());
+
+  EXPECT_CALL(lockbox_, Reset(_)).WillOnce(Return(true));
   ExpectRemovingOwnerDependency();
 
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
@@ -289,11 +311,9 @@ TEST_F(InstallAttributesTest, NormalBootReadFileError) {
   EXPECT_CALL(platform_,
               ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
       .WillOnce(Return(false));
-  EXPECT_CALL(lockbox_, Create(_))
+  EXPECT_CALL(lockbox_, Reset(_))
       .WillOnce(
-          DoAll(SetArgPointee<0>(LockboxError::kInsufficientAuthorization),
-                Return(false)));
-  EXPECT_CALL(lockbox_, Load(_)).WillOnce(Return(true));
+          DoAll(SetArgPointee<0>(LockboxError::kNvramInvalid), Return(false)));
   ExpectNotRemovingOwnerDependency();
   EXPECT_CALL(platform_, DeleteFile(_, _)).Times(0);
 
@@ -316,13 +336,9 @@ TEST_F(InstallAttributesTest, LegacyBoot) {
   EXPECT_CALL(platform_,
               ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
       .WillOnce(Return(false));
-  EXPECT_CALL(lockbox_, Create(_))
-      .WillOnce(
-          DoAll(SetArgPointee<0>(LockboxError::kInsufficientAuthorization),
-                Return(false)));
-  EXPECT_CALL(lockbox_, Load(_))
-      .WillOnce(
-          DoAll(SetArgPointee<0>(LockboxError::kNoNvramSpace), Return(false)));
+  EXPECT_CALL(lockbox_, Reset(_))
+      .WillOnce(DoAll(SetArgPointee<0>(LockboxError::kNvramSpaceAbsent),
+                      Return(false)));
   ExpectRemovingOwnerDependency();
 
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
@@ -346,16 +362,15 @@ TEST_F(InstallAttributesTest, LegacyBootUnexpected) {
   EXPECT_CALL(platform_,
               ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
       .WillOnce(Return(false));
-  EXPECT_CALL(lockbox_, Create(_))
+  EXPECT_CALL(lockbox_, Reset(_))
       .WillOnce(
           DoAll(SetArgPointee<0>(LockboxError::kTpmError), Return(false)));
-  ExpectRemovingOwnerDependency();
 
-  EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
+  EXPECT_FALSE(install_attrs_.Init(&tpm_init_));
 
   EXPECT_FALSE(install_attrs_.is_first_install());
-  EXPECT_FALSE(install_attrs_.is_invalid());
-  EXPECT_TRUE(install_attrs_.is_initialized());
+  EXPECT_TRUE(install_attrs_.is_invalid());
+  EXPECT_FALSE(install_attrs_.is_initialized());
 
   // Should be empty.
   EXPECT_EQ(0, install_attrs_.Count());

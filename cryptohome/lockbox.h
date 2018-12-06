@@ -32,15 +32,9 @@ enum class NvramVersion : size_t {
 };
 
 enum class LockboxError {
-  kNone = 0,
-  kInsufficientAuthorization,  // Bad call order or TPM state.
-  kNoNvramSpace,               // No space is defined. (legacy install)
-  kNoNvramData,                // Empty (unlocked) lockbox
-  // All errors below indicate any number of system errors.
+  kNvramSpaceAbsent,
   kNvramInvalid,
-  kNvramFailedToLock,
-  kTpmNotReady,
-  kTooLarge,
+  kTpmUnavailable,
   kTpmError,  // Transient or unknown TPM error.
 };
 
@@ -64,7 +58,6 @@ int GetNvramVersionNumber(NvramVersion version);
 // Initializing new data against a lockbox (except with error checking :)
 //   Lockbox lockbox(tpm, kNvramSpace);
 //   LockboxError error;
-//   lockbox->Destroy(&error);
 //   lockbox->Create(&error);
 //   lockbox->Store(mah_locked_data, &error);
 //
@@ -83,7 +76,7 @@ class Lockbox {
   Lockbox(Tpm* tpm, uint32_t nvram_index);
   virtual ~Lockbox();
 
-  // Creates the backend state needed for this lockbox.
+  // Sets up the backend state needed for this lockbox.
   //
   // Instantiates a new TPM NVRAM index lockable bWriteDefine to store
   // the hash and blob size of the data to lock away.
@@ -93,28 +86,7 @@ class Lockbox {
   // Returns
   // - true if a new space was instantiated or an old one could be used.
   // - false if the space cannot be created or claimed.
-  virtual bool Create(LockboxError* error);
-
-  // Destroys all backend state for this Lockbox.
-  //
-  // This call deletes the NVRAM space if defined.
-  //
-  // Parameters
-  // - error: will contain the LockboxError if false.
-  // Returns
-  // - false if TPM Owner authorization is missing or the space cannot be
-  //   destroyed.
-  // - true if the space is already undefined or has been destroyed.
-  virtual bool Destroy(LockboxError* error);
-
-  // Loads the TPM NVRAM state date into memory
-  //
-  // Parameters
-  // - error: LockboxError populated only on failure
-  // Returns
-  // - true if TPM NVRAM data is properly retrieved.
-  // - false if the NVRAM data does not exist, is incorrect, or is unlocked.
-  virtual bool Load(LockboxError* error);
+  virtual bool Reset(LockboxError* error);
 
   // Hashes, salts, sizes, and stores metadata required for verifying |data|
   // in TPM NVRAM for later verification.
@@ -150,9 +122,6 @@ class Lockbox {
 
   virtual Tpm* tpm() { return tpm_; }
 
-  // Provide a simple means to access the expected NVRAM contents.
-//  virtual const LockboxContents* contents() const { return contents_.get(); }
-
   // Tells if on this platform we store disk encryption key material in lockbox.
   // If true, it also requires additional protection for lockbox.
   // If false, the key material field is just filled with zeroes and not used.
@@ -161,18 +130,7 @@ class Lockbox {
     return tpm_->GetVersion() != Tpm::TpmVersion::TPM_2_0;
   }
 
-  // Literals for running mount-encrypted helper.
-  static const char * const kMountEncrypted;
-  static const char * const kMountEncryptedFinalize;
-
  protected:
-  // Returns true if we have the authorization needed to create/destroy
-  // NVRAM spaces.
-  virtual bool HasAuthorization() const;
-
-  // Returns true if the tpm is owned and connected.
-  virtual bool TpmIsReady() const;
-
   // Call out to the mount-encrypted helper to encrypt the key.
   virtual void FinalizeMountEncrypted(const brillo::Blob &entropy) const;
 
@@ -182,7 +140,6 @@ class Lockbox {
   NvramVersion nvram_version_ = NvramVersion::kDefault;
   std::unique_ptr<brillo::Process> default_process_;
   brillo::Process* process_;
-  std::unique_ptr<LockboxContents> contents_;
   std::unique_ptr<Platform> default_platform_;
   Platform* platform_;
 

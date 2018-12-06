@@ -139,31 +139,26 @@ bool InstallAttributes::Init(TpmInit* tpm_init) {
   // attempt a reset. The reset may fail in various other edge cases and the
   // error code lets us identify and handle these edge cases correctly.
   LockboxError error_id;
-  if (!lockbox()->Create(&error_id)) {
-    if (error_id != LockboxError::kInsufficientAuthorization) {
-      LOG(ERROR) << "Create failed, Lockbox error: " << error_id;
-      set_is_initialized(true);
-      tpm_init->RemoveTpmOwnerDependency(
-          TpmPersistentState::TpmOwnerDependency::kInstallAttributes);
-      return true;
-    }
-
-    // Check whether the lockbox is already set up correctly.
-    if (lockbox()->Load(&error_id)) {
-      // Lockbox space is locked already, but failed to load validated data.
-      LOG(ERROR) << "InstallAttributes failed to initialize.";
-      SetIsInvalid(true);
-      return false;
-    } else if (error_id == LockboxError::kNoNvramSpace) {
-      // Legacy install with no NVRAM space.
-      set_is_initialized(true);
-      tpm_init->RemoveTpmOwnerDependency(
-          TpmPersistentState::TpmOwnerDependency::kInstallAttributes);
-      return true;
-    } else if (error_id != LockboxError::kNoNvramData) {
-      LOG(ERROR) << "InstallAttributes failed to initialize.";
-      SetIsInvalid(true);
-      return false;
+  if (!lockbox()->Reset(&error_id)) {
+    switch (error_id) {
+      case LockboxError::kNvramSpaceAbsent:
+        // Legacy install that didn't create space at OOBE.
+        set_is_initialized(true);
+        tpm_init->RemoveTpmOwnerDependency(
+            TpmPersistentState::TpmOwnerDependency::kInstallAttributes);
+        return true;
+      case LockboxError::kNvramInvalid:
+        LOG(ERROR) << "Inconsistent install attributes state.";
+        SetIsInvalid(true);
+        return false;
+      case LockboxError::kTpmUnavailable:
+        NOTREACHED() << "Should never call lockbox when TPM is unavailable.";
+        SetIsInvalid(true);
+        return false;
+      case LockboxError::kTpmError:
+        LOG(ERROR) << "TPM error on install attributes initialization.";
+        SetIsInvalid(true);
+        return false;
     }
   }
 

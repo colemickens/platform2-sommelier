@@ -29,13 +29,17 @@ using base::FilePath;
 using brillo::SecureBlob;
 
 namespace cryptohome {
+namespace {
+
+// Literals for running mount-encrypted helper.
+constexpr char kMountEncrypted[] = "/usr/sbin/mount-encrypted";
+constexpr char kMountEncryptedFinalize[] = "finalize";
+
+}  // namespace
 
 std::ostream& operator<<(std::ostream& out, LockboxError error) {
   return out << static_cast<int>(error);
 }
-
-const char * const Lockbox::kMountEncrypted = "/usr/sbin/mount-encrypted";
-const char * const Lockbox::kMountEncryptedFinalize = "finalize";
 
 int GetNvramVersionNumber(NvramVersion version) {
   switch (version) {
@@ -49,164 +53,86 @@ int GetNvramVersionNumber(NvramVersion version) {
 }
 
 Lockbox::Lockbox(Tpm* tpm, uint32_t nvram_index)
-  : tpm_(tpm),
-    nvram_index_(nvram_index),
-    default_process_(new brillo::ProcessImpl()),
-    process_(default_process_.get()),
-    default_platform_(new Platform()),
-    platform_(default_platform_.get()) {
-}
+    : tpm_(tpm),
+      nvram_index_(nvram_index),
+      default_process_(new brillo::ProcessImpl()),
+      process_(default_process_.get()),
+      default_platform_(new Platform()),
+      platform_(default_platform_.get()) {}
 
-Lockbox::~Lockbox() {
-}
+Lockbox::~Lockbox() {}
 
-bool Lockbox::TpmIsReady() const {
-  if (!tpm_) {
-    LOG(ERROR) << "TpmIsReady: no tpm_ instance.";
+bool Lockbox::Reset(LockboxError* error) {
+  if (!tpm_ || !tpm_->IsEnabled() || !tpm_->IsOwned()) {
+    *error = LockboxError::kTpmUnavailable;
+    LOG(ERROR) << "TPM unavailable";
     return false;
   }
-  if (!tpm_->IsEnabled()) {
-    LOG(ERROR) << "TpmIsReady: is not enabled.";
-    return false;
-  }
-  if (!tpm_->IsOwned()) {
-    LOG(ERROR) << "TpmIsReady: is not owned.";
-    return false;
-  }
-  return true;
-}
 
-bool Lockbox::HasAuthorization() const {
-  if (!TpmIsReady()) {
-    LOG(ERROR) << "HasAuthorization: TPM not ready.";
-    return false;
-  }
-  // If we have a TPM owner password, we can reset.
+  // If we have authorization, recreate the lockbox space.
   brillo::Blob owner_password;
-  if (tpm_->GetOwnerPassword(&owner_password) && owner_password.size() != 0)
+  if (tpm_->GetOwnerPassword(&owner_password) && owner_password.size() != 0) {
+    if (tpm_->IsNvramDefined(nvram_index_) &&
+        !tpm_->DestroyNvram(nvram_index_)) {
+      LOG(ERROR) << "Failed to destroy lockbox data before creation.";
+      *error = LockboxError::kTpmError;
+      return false;
+    }
+
+    // If we store the encryption salt in lockbox, protect it from reading
+    // in non-verified boot mode.
+    uint32_t nvram_perm =
+        Tpm::kTpmNvramWriteDefine |
+        (IsKeyMaterialInLockbox() ? Tpm::kTpmNvramBindToPCR0 : 0);
+    uint32_t nvram_bytes = LockboxContents::GetNvramSize(nvram_version_);
+    if (!tpm_->DefineNvram(nvram_index_, nvram_bytes, nvram_perm)) {
+      *error = LockboxError::kTpmError;
+      LOG(ERROR) << "Failed to define NVRAM space.";
+      return false;
+    }
+    LOG(INFO) << "Lockbox created.";
     return true;
-  LOG(INFO) << "HasAuthorization: TPM Owner password not available.";
-  return false;
-}
-
-bool Lockbox::Destroy(LockboxError* error) {
-  CHECK(error);
-  *error = LockboxError::kNone;
-  if (!HasAuthorization())
-    return false;
-  // This is only an error if authorization is supplied.
-  if (tpm_->IsNvramDefined(nvram_index_) &&
-      !tpm_->DestroyNvram(nvram_index_)) {
-    *error = LockboxError::kTpmError;
-    return false;
-  }
-  return true;
-}
-
-bool Lockbox::Create(LockboxError* error) {
-  CHECK(error);
-  *error = LockboxError::kNone;
-  // Make sure we have what we need now.
-  if (!HasAuthorization()) {
-    *error = LockboxError::kInsufficientAuthorization;
-    LOG(ERROR) << "Create() called with insufficient authorization.";
-    return false;
-  }
-  if (!Destroy(error)) {
-    LOG(ERROR) << "Failed to destroy lockbox data before creation.";
-    return false;
   }
 
-  // If we store the encryption salt in lockbox, protect it from reading
-  // in non-verified boot mode.
-  uint32_t nvram_perm = Tpm::kTpmNvramWriteDefine |
-    (IsKeyMaterialInLockbox() ? Tpm::kTpmNvramBindToPCR0 : 0);
-  uint32_t nvram_bytes = LockboxContents::GetNvramSize(nvram_version_);
-  if (!tpm_->DefineNvram(nvram_index_, nvram_bytes, nvram_perm)) {
-    *error = LockboxError::kTpmError;
-    LOG(ERROR) << "Create() failed to defined NVRAM space.";
-    return false;
-  }
-  LOG(INFO) << "Lockbox created.";
-  return true;
-}
-
-bool Lockbox::Load(LockboxError* error) {
-  CHECK(error);
-
-  // TODO(wad) Determine if we want to allow reloading later.
-  if (contents_)
-    return true;
-
-  if (!TpmIsReady()) {
-    LOG(ERROR) << "Load() TPM is not ready.";
-    *error = LockboxError::kTpmNotReady;
-    return false;
-  }
-
+  // Check if the space is already set up correctly.
   if (!tpm_->IsNvramDefined(nvram_index_)) {
-    LOG(INFO) << "Load() called with no NVRAM space defined.";
-    *error = LockboxError::kNoNvramSpace;
+    *error = LockboxError::kNvramSpaceAbsent;
     return false;
   }
 
-  if (!tpm_->IsNvramLocked(nvram_index_)) {
-    LOG(INFO) << "Load() called prior to a successful Store()";
-    *error = LockboxError::kNoNvramData;
-    return false;
-  }
-
-  SecureBlob nvram_data(0);
-  if (!tpm_->ReadNvram(nvram_index_, &nvram_data)) {
-    LOG(ERROR) << "Load() could not read from NVRAM space.";
-    *error = LockboxError::kTpmError;
-    return false;
-  }
-
-  std::unique_ptr<LockboxContents> decoded_contents =
-      LockboxContents::New(nvram_data.size());
-  if (!decoded_contents || !decoded_contents->Decode(nvram_data)) {
+  if (tpm_->IsNvramLocked(nvram_index_)) {
     *error = LockboxError::kNvramInvalid;
     return false;
   }
 
-  contents_ = std::move(decoded_contents);
-  nvram_version_ = contents_->version();
-  DLOG(INFO) << "Load() successfully loaded NVRAM data.";
+  // Space looks writable.
   return true;
 }
 
 bool Lockbox::Store(const brillo::Blob& blob, LockboxError* error) {
-  if (!TpmIsReady()) {
-    LOG(ERROR) << "Store() called when TPM was not ready!";
-    *error = LockboxError::kTpmError;
+  if (!tpm_ || !tpm_->IsEnabled()) {
+    *error = LockboxError::kTpmUnavailable;
+    LOG(ERROR) << "TPM unavailable";
     return false;
   }
 
-  // Ensure we have the space ready.
-  if (!tpm_->IsNvramDefined(nvram_index_)) {
-    LOG(ERROR) << "Store() called with no NVRAM space.";
-    *error = LockboxError::kNoNvramSpace;
-    return false;
-  }
-  if (tpm_->IsNvramLocked(nvram_index_)) {
-    LOG(ERROR) << "Store() called with a locked NVRAM space.";
+  if (!tpm_->IsNvramDefined(nvram_index_) ||
+      tpm_->IsNvramLocked(nvram_index_)) {
     *error = LockboxError::kNvramInvalid;
     return false;
   }
 
   // Check defined NVRAM size and construct a suitable LockboxContents instance.
   unsigned int nvram_size = tpm_->GetNvramSize(nvram_index_);
-  std::unique_ptr<LockboxContents> new_contents =
-      LockboxContents::New(nvram_size);
-  if (!new_contents) {
+  std::unique_ptr<LockboxContents> contents = LockboxContents::New(nvram_size);
+  if (!contents) {
     LOG(ERROR) << "Unsupported NVRAM space size " << nvram_size << ".";
     *error = LockboxError::kNvramInvalid;
     return false;
   }
 
   // Grab key material from the TPM.
-  brillo::SecureBlob key_material(new_contents->key_material_size());
+  brillo::SecureBlob key_material(contents->key_material_size());
   if (IsKeyMaterialInLockbox()) {
     if (!tpm_->GetRandomDataBlob(key_material.size(), &key_material)) {
       LOG(ERROR) << "Failed to get key material from the TPM.";
@@ -219,16 +145,16 @@ bool Lockbox::Store(const brillo::Blob& blob, LockboxError* error) {
   }
 
   brillo::SecureBlob nvram_blob;
-  if (!new_contents->SetKeyMaterial(key_material) ||
-      !new_contents->Protect(blob) || !new_contents->Encode(&nvram_blob)) {
+  if (!contents->SetKeyMaterial(key_material) || !contents->Protect(blob) ||
+      !contents->Encode(&nvram_blob)) {
     LOG(ERROR) << "Failed to set up lockbox contents.";
     *error = LockboxError::kNvramInvalid;
     return false;
   }
 
   // Write the hash to nvram
-  if (!tpm_->WriteNvram(nvram_index_, SecureBlob(nvram_blob.begin(),
-                        nvram_blob.end()))) {
+  if (!tpm_->WriteNvram(nvram_index_,
+                        SecureBlob(nvram_blob.begin(), nvram_blob.end()))) {
     LOG(ERROR) << "Store() failed to write the attribute hash to NVRAM";
     *error = LockboxError::kTpmError;
     return false;
@@ -242,14 +168,12 @@ bool Lockbox::Store(const brillo::Blob& blob, LockboxError* error) {
   // Ensure the space is now locked.
   if (!tpm_->IsNvramLocked(nvram_index_)) {
     LOG(ERROR) << "NVRAM space did not lock as expected.";
-    *error = LockboxError::kNvramFailedToLock;
+    *error = LockboxError::kTpmError;
     return false;
   }
 
-  contents_ = std::move(new_contents);
-
   // Call out to mount-encrypted now that salt has been written.
-  FinalizeMountEncrypted(contents_->version() == NvramVersion::kVersion1
+  FinalizeMountEncrypted(contents->version() == NvramVersion::kVersion1
                              ? nvram_blob
                              : key_material);
 
@@ -257,10 +181,10 @@ bool Lockbox::Store(const brillo::Blob& blob, LockboxError* error) {
 }
 
 // TODO(keescook) Write unittests for this.
-void Lockbox::FinalizeMountEncrypted(const brillo::Blob &entropy) const {
+void Lockbox::FinalizeMountEncrypted(const brillo::Blob& entropy) const {
   std::string hex;
   FilePath outfile_path;
-  FILE *outfile;
+  FILE* outfile;
   int rc;
 
   // Take hash of entropy and convert to hex string for cmdline.
@@ -283,8 +207,7 @@ void Lockbox::FinalizeMountEncrypted(const brillo::Blob &entropy) const {
 
   if (rc) {
     LOG(ERROR) << "Request to finalize encrypted mount failed ('"
-               << kMountEncrypted << " "
-               << kMountEncryptedFinalize << " "
+               << kMountEncrypted << " " << kMountEncryptedFinalize << " "
                << hex << "', rc:" << rc << ")";
     if (outfile) {
       std::vector<std::string> output;
