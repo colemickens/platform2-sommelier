@@ -132,6 +132,63 @@ DistancePtr ToMojom(const mri::Distance& distance) {
   return distance_ptr;
 }
 
+EntityType ToMojom(mri::EntityType type) {
+  switch (type) {
+    case mri::EntityType::FACE:
+      return EntityType::FACE;
+    case mri::EntityType::PERSON:
+      return EntityType::PERSON;
+    case mri::EntityType::MOTION_REGION:
+      return EntityType::MOTION_REGION;
+    case mri::EntityType::LABELED_REGION:
+      return EntityType::LABELED_REGION;
+    case mri::EntityType::ENTITY_TYPE_UNKNOWN:
+      return EntityType::ENTITY_TYPE_UNKNOWN;
+  }
+  return EntityType::ENTITY_TYPE_UNKNOWN;
+}
+
+FramePerceptionType ToMojom(mri::FramePerceptionType type) {
+  switch (type) {
+    case mri::FramePerceptionType::FACE_DETECTION:
+      return FramePerceptionType::FACE_DETECTION;
+    case mri::FramePerceptionType::PERSON_DETECTION:
+      return FramePerceptionType::PERSON_DETECTION;
+    case mri::FramePerceptionType::MOTION_DETECTION:
+      return FramePerceptionType::MOTION_DETECTION;
+    case mri::FramePerceptionType::FRAME_PERCEPTION_TYPE_UNKNOWN:
+      return FramePerceptionType::FRAME_PERCEPTION_TYPE_UNKNOWN;
+  }
+  return FramePerceptionType::FRAME_PERCEPTION_TYPE_UNKNOWN;
+}
+
+EntityPtr ToMojom(const mri::Entity& entity) {
+  EntityPtr entity_ptr = Entity::New();
+  entity_ptr->type = ToMojom(entity.type());
+  entity_ptr->label = entity.label();
+  entity_ptr->bounding_box = ToMojom(entity.bounding_box());
+  entity_ptr->confidence = entity.confidence();
+  entity_ptr->depth = ToMojom(entity.depth());
+  return entity_ptr;
+}
+
+FramePerceptionPtr ToMojom(const mri::FramePerception& perception) {
+  FramePerceptionPtr perception_ptr = FramePerception::New();
+  perception_ptr->frame_id = perception.frame_id();
+  perception_ptr->timestamp_us = perception.timestamp_us();
+
+  for (int i = 0; i < perception.entities_size(); ++i) {
+    perception_ptr->entities.push_back(ToMojom(perception.entities(i)));
+  }
+
+  for (int i = 0; i < perception.perception_types_size(); ++i) {
+    perception_ptr->perception_types.push_back(
+        ToMojom(perception.perception_types(i)));
+  }
+
+  return perception_ptr;
+}
+
 PipelineStatus ToMojom(mri::PipelineStatus status) {
   switch (status) {
     case mri::PipelineStatus::STARTED:
@@ -347,6 +404,72 @@ Distance ToProto(
   distance.set_units(ToProto(distance_ptr->units));
   distance.set_magnitude(distance_ptr->magnitude);
   return distance;
+}
+
+EntityType ToProto(chromeos::media_perception::mojom::EntityType type) {
+  switch (type) {
+    case chromeos::media_perception::mojom::EntityType::FACE:
+      return EntityType::FACE;
+    case chromeos::media_perception::mojom::EntityType::PERSON:
+      return EntityType::PERSON;
+    case chromeos::media_perception::mojom::EntityType::MOTION_REGION:
+      return EntityType::MOTION_REGION;
+    case chromeos::media_perception::mojom::EntityType::LABELED_REGION:
+      return EntityType::LABELED_REGION;
+    case chromeos::media_perception::mojom::EntityType::ENTITY_TYPE_UNKNOWN:
+      return EntityType::ENTITY_TYPE_UNKNOWN;
+  }
+  return EntityType::ENTITY_TYPE_UNKNOWN;
+}
+
+FramePerceptionType ToProto(
+    chromeos::media_perception::mojom::FramePerceptionType type) {
+  switch (type) {
+    case chromeos::media_perception::mojom::FramePerceptionType::FACE_DETECTION:
+      return FramePerceptionType::FACE_DETECTION;
+    case chromeos::media_perception::mojom::FramePerceptionType
+        ::PERSON_DETECTION:
+      return FramePerceptionType::PERSON_DETECTION;
+    case chromeos::media_perception::mojom::FramePerceptionType
+        ::MOTION_DETECTION:
+      return FramePerceptionType::MOTION_DETECTION;
+    case chromeos::media_perception::mojom::FramePerceptionType
+        ::FRAME_PERCEPTION_TYPE_UNKNOWN:
+      return FramePerceptionType::FRAME_PERCEPTION_TYPE_UNKNOWN;
+  }
+  return FramePerceptionType::FRAME_PERCEPTION_TYPE_UNKNOWN;
+}
+
+Entity ToProto(const chromeos::media_perception::mojom::EntityPtr& entity_ptr) {
+  Entity entity;
+  if (entity_ptr.is_null())
+    return entity;
+
+  entity.set_type(ToProto(entity_ptr->type));
+  entity.set_label(*entity_ptr->label);
+  *entity.mutable_bounding_box() = ToProto(entity_ptr->bounding_box);
+  entity.set_confidence(entity_ptr->confidence);
+  *entity.mutable_depth() = ToProto(entity_ptr->depth);
+  return entity;
+}
+
+FramePerception ToProto(
+    const chromeos::media_perception::mojom::FramePerceptionPtr&
+        perception_ptr) {
+  FramePerception perception;
+  if (perception_ptr.is_null())
+    return perception;
+
+  perception.set_frame_id(perception_ptr->frame_id);
+  perception.set_timestamp_us(perception_ptr->timestamp_us);
+
+  for (const auto& entity : perception_ptr->entities)
+    *perception.add_entities() = ToProto(entity);
+
+  for (const auto& perception_type : perception_ptr->perception_types)
+    perception.add_perception_types(ToProto(perception_type));
+
+  return perception;
 }
 
 PipelineStatus ToProto(

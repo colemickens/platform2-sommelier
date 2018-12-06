@@ -181,6 +181,51 @@ TEST(ProtoMojomConversionTest, DistanceToMojom) {
   EXPECT_FLOAT_EQ(distance_ptr->magnitude, 1.5);
 }
 
+TEST(ProtoMojomConversionTest, EntityToMojom) {
+  mri::Entity entity;
+  entity.set_type(mri::EntityType::FACE);
+  entity.set_label("face 0");
+  entity.set_confidence(0.1);
+  entity.mutable_depth()->set_units(mri::DistanceUnits::METERS);
+  entity.mutable_bounding_box()->set_x_min(0.2);
+
+  EntityPtr entity_ptr = ToMojom(entity);
+  EXPECT_EQ(entity_ptr->type, EntityType::FACE);
+  EXPECT_EQ(*entity_ptr->label, "face 0");
+  EXPECT_FLOAT_EQ(entity_ptr->confidence, 0.1);
+  EXPECT_EQ(entity_ptr->depth->units, DistanceUnits::METERS);
+  EXPECT_FLOAT_EQ(entity_ptr->bounding_box->x_min, 0.2);
+}
+
+TEST(ProtoMojomConversionTest, FramePerceptionToMojom) {
+  mri::FramePerception perception;
+  perception.set_frame_id(1);
+  perception.set_timestamp_us(157);
+  perception.add_perception_types(mri::FramePerceptionType::FACE_DETECTION);
+  perception.add_perception_types(mri::FramePerceptionType::PERSON_DETECTION);
+  perception.add_perception_types(mri::FramePerceptionType::MOTION_DETECTION);
+  perception.add_entities()->set_type(mri::EntityType::FACE);
+  perception.add_entities()->set_type(mri::EntityType::PERSON);
+  perception.add_entities()->set_type(mri::EntityType::MOTION_REGION);
+  perception.add_entities()->set_type(mri::EntityType::LABELED_REGION);
+
+  FramePerceptionPtr perception_ptr = ToMojom(perception);
+  EXPECT_EQ(perception_ptr->frame_id, 1);
+  EXPECT_EQ(perception_ptr->timestamp_us, 157);
+  EXPECT_EQ(perception_ptr->perception_types.size(), 3);
+  EXPECT_EQ(perception_ptr->perception_types[0],
+            FramePerceptionType::FACE_DETECTION);
+  EXPECT_EQ(perception_ptr->perception_types[1],
+            FramePerceptionType::PERSON_DETECTION);
+  EXPECT_EQ(perception_ptr->perception_types[2],
+            FramePerceptionType::MOTION_DETECTION);
+  EXPECT_EQ(perception_ptr->entities.size(), 4);
+  EXPECT_EQ(perception_ptr->entities[0]->type, EntityType::FACE);
+  EXPECT_EQ(perception_ptr->entities[1]->type, EntityType::PERSON);
+  EXPECT_EQ(perception_ptr->entities[2]->type, EntityType::MOTION_REGION);
+  EXPECT_EQ(perception_ptr->entities[3]->type, EntityType::LABELED_REGION);
+}
+
 TEST(ProtoMojomConversionTest, PipelineErrorToMojom) {
   mri::PipelineError error;
   error.set_error_type(mri::PipelineErrorType::CONFIGURATION);
@@ -389,6 +434,61 @@ TEST(ProtoMojomConversionTest, DistanceToProto) {
   Distance distance = ToProto(distance_ptr);
   EXPECT_EQ(distance.units(), DistanceUnits::METERS);
   EXPECT_FLOAT_EQ(distance.magnitude(), 1.5);
+}
+
+TEST(ProtoMojomConversionTest, EntityToProto) {
+  chromeos::media_perception::mojom::EntityPtr entity_ptr =
+      chromeos::media_perception::mojom::Entity::New();
+  entity_ptr->type = chromeos::media_perception::mojom::EntityType::FACE;
+  *entity_ptr->label = "face 0";
+  entity_ptr->confidence = 0.1;
+  entity_ptr->depth->magnitude = 2.5;
+  entity_ptr->bounding_box->x_min = 0.6;
+
+  Entity entity = ToProto(entity_ptr);
+  EXPECT_EQ(entity.type(), EntityType::FACE);
+  EXPECT_EQ(entity.label(), "face 0");
+  EXPECT_FLOAT_EQ(entity.confidence(), 0.1);
+  EXPECT_FLOAT_EQ(entity.depth().magnitude(), 2.5);
+  EXPECT_FLOAT_EQ(entity.bounding_box().x_min(), 0.6);
+}
+
+TEST(ProtoMojomConversionTest, FramePerceptionToProto) {
+  chromeos::media_perception::mojom::FramePerceptionPtr perception_ptr =
+      chromeos::media_perception::mojom::FramePerception::New();
+  perception_ptr->frame_id = 1;
+  perception_ptr->timestamp_us = 157;
+  perception_ptr->perception_types.push_back(
+      chromeos::media_perception::mojom::FramePerceptionType::FACE_DETECTION);
+  perception_ptr->perception_types.push_back(
+      chromeos::media_perception::mojom::FramePerceptionType::PERSON_DETECTION);
+  perception_ptr->perception_types.push_back(
+      chromeos::media_perception::mojom::FramePerceptionType::MOTION_DETECTION);
+  perception_ptr->entities.resize(4);
+  perception_ptr->entities[0]->type =
+      chromeos::media_perception::mojom::EntityType::FACE;
+  perception_ptr->entities[1]->type =
+      chromeos::media_perception::mojom::EntityType::PERSON;
+  perception_ptr->entities[2]->type =
+      chromeos::media_perception::mojom::EntityType::MOTION_REGION;
+  perception_ptr->entities[3]->type =
+      chromeos::media_perception::mojom::EntityType::LABELED_REGION;
+
+  FramePerception perception = ToProto(perception_ptr);
+  EXPECT_EQ(perception.frame_id(), 1);
+  EXPECT_EQ(perception.timestamp_us(), 157);
+  EXPECT_EQ(perception.perception_types_size(), 3);
+  EXPECT_EQ(perception.perception_types(0),
+            FramePerceptionType::FACE_DETECTION);
+  EXPECT_EQ(perception.perception_types(1),
+            FramePerceptionType::PERSON_DETECTION);
+  EXPECT_EQ(perception.perception_types(2),
+            FramePerceptionType::MOTION_DETECTION);
+  EXPECT_EQ(perception.entities_size(), 4);
+  EXPECT_EQ(perception.entities(0).type(), EntityType::FACE);
+  EXPECT_EQ(perception.entities(1).type(), EntityType::PERSON);
+  EXPECT_EQ(perception.entities(2).type(), EntityType::MOTION_REGION);
+  EXPECT_EQ(perception.entities(3).type(), EntityType::LABELED_REGION);
 }
 
 TEST(ProtoMojomConversionTest, PipelineErrorToProto) {

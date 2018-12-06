@@ -9,9 +9,11 @@
 
 #include "media_perception/common.pb.h"
 #include "media_perception/device_management.pb.h"
+#include "media_perception/frame_perception.pb.h"
 #include "media_perception/pipeline.pb.h"
 #include "mojom/common.mojom.h"
 #include "mojom/device_management.mojom.h"
+#include "mojom/frame_perception.mojom.h"
 #include "mojom/media_perception.mojom.h"
 #include "mojom/pipeline.mojom.h"
 
@@ -32,6 +34,12 @@ DeviceTemplatePtr ToMojom(const mri::DeviceTemplate& device_template);
 DistanceUnits ToMojom(mri::DistanceUnits units);
 NormalizedBoundingBoxPtr ToMojom(const mri::NormalizedBoundingBox& bbox);
 DistancePtr ToMojom(const mri::Distance& distance);
+
+// Frame perception conversions.
+EntityType ToMojom(mri::EntityType type);
+FramePerceptionType ToMojom(mri::FramePerceptionType type);
+EntityPtr ToMojom(const mri::Entity& entity);
+FramePerceptionPtr ToMojom(const mri::FramePerception& perception);
 
 // Pipeline conversions.
 PipelineStatus ToMojom(mri::PipelineStatus status);
@@ -72,6 +80,15 @@ NormalizedBoundingBox ToProto(
     bbox_ptr);
 Distance ToProto(
     const chromeos::media_perception::mojom::DistancePtr& distance_ptr);
+
+// Frame perception conversions.
+EntityType ToProto(chromeos::media_perception::mojom::EntityType type);
+FramePerceptionType ToProto(
+    chromeos::media_perception::mojom::FramePerceptionType type);
+Entity ToProto(const chromeos::media_perception::mojom::EntityPtr& entity_ptr);
+FramePerception ToProto(
+    const chromeos::media_perception::mojom::FramePerceptionPtr&
+        perception_ptr);
 
 // Pipeline conversions.
 PipelineStatus ToProto(

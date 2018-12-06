@@ -18,6 +18,7 @@
       'sources': [
         '<(proto_in_dir)/common.proto',
         '<(proto_in_dir)/device_management.proto',
+        '<(proto_in_dir)/frame_perception.proto',
         '<(proto_in_dir)/pipeline.proto',
       ],
       'includes': ['../common-mk/protoc.gypi'],
@@ -32,6 +33,7 @@
         'mojom/device.mojom',
         'mojom/device_factory.mojom',
         'mojom/device_management.mojom',
+        'mojom/frame_perception.mojom',
         'mojom/geometry.mojom',
         'mojom/image_capture.mojom',
         'mojom/mailbox.mojom',
