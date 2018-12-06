@@ -18,6 +18,7 @@
 #include <openssl/sha.h>
 #include <unistd.h>
 #include <utility>
+#include <malloc.h>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
@@ -170,6 +171,9 @@ bool Crypto::DeriveSecretsSCrypt(
     LOG(ERROR) << "Failed to derive scrypt keys from passkey.";
     return false;
   }
+  // Release unused heap space after crypto_scrypt.
+  // See crbug.com/899065 for details.
+  malloc_trim(0);
 
   uint8_t* data = generated.data();
   for (auto& value : gen_secrets) {
@@ -212,6 +216,10 @@ bool Crypto::PasskeyToTokenAuthData(const brillo::Blob& passkey,
     LOG(ERROR) << "Scrypt key derivation failed.";
     return false;
   }
+  // Release unused heap space after crypto_scrypt.
+  // See crbug.com/899065 for details.
+  malloc_trim(0);
+
   auth_data->swap(local_auth_data);
   return true;
 }
