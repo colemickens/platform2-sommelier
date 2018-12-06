@@ -513,32 +513,59 @@ TEST_F(PortalDetectorTest, RequestSuccess) {
   StartAttempt();
 
   // HTTPS probe does not trigger anything (for now)
-  EXPECT_CALL(callback_target(),
-              ResultCallback(IsResult(PortalDetector::Result(
-                  PortalDetector::Phase::kContent,
-                  PortalDetector::Status::kSuccess, kNumAttempts, true))))
+  PortalDetector::Result success_result = PortalDetector::Result(
+      PortalDetector::Phase::kContent, PortalDetector::Status::kSuccess,
+      kNumAttempts, true);
+  EXPECT_CALL(callback_target(), ResultCallback(IsResult(success_result)))
       .Times(0);
   EXPECT_CALL(*http_request(), Stop()).Times(0);
   EXPECT_CALL(*https_request(), Stop()).Times(0);
   ExpectRequestSuccessWithStatus(204, false);
 
-  EXPECT_CALL(callback_target(),
-              ResultCallback(IsResult(PortalDetector::Result(
-                  PortalDetector::Phase::kContent,
-                  PortalDetector::Status::kSuccess, kNumAttempts, true))));
+  EXPECT_CALL(callback_target(), ResultCallback(IsResult(success_result)));
   EXPECT_CALL(*http_request(), Stop()).Times(2);
   EXPECT_CALL(*https_request(), Stop()).Times(2);
   ExpectRequestSuccessWithStatus(204, true);
+}
+
+TEST_F(PortalDetectorTest, RequestHTTPFailureHTTPSSuccess) {
+  StartAttempt();
+
+  // HTTPS probe does not trigger anything (for now)
+  PortalDetector::Result failure_result = PortalDetector::Result(
+      PortalDetector::Phase::kContent, PortalDetector::Status::kFailure,
+      kNumAttempts, false);
+  PortalDetector::Result success_result = PortalDetector::Result(
+      PortalDetector::Phase::kContent, PortalDetector::Status::kFailure,
+      kNumAttempts, false);
+  EXPECT_CALL(callback_target(), ResultCallback(IsResult(failure_result)))
+      .Times(0);
+  EXPECT_CALL(*http_request(), Stop()).Times(0);
+  EXPECT_CALL(*https_request(), Stop()).Times(0);
+  EXPECT_CALL(dispatcher(),
+              PostDelayedTask(
+                  _, _, PortalDetector::kMinTimeBetweenAttemptsSeconds * 1000))
+      .Times(0);
+  ExpectRequestSuccessWithStatus(123, true);
+
+  EXPECT_CALL(callback_target(), ResultCallback(IsResult(success_result)));
+  EXPECT_CALL(*http_request(), Stop()).Times(2);
+  EXPECT_CALL(*https_request(), Stop()).Times(2);
+  EXPECT_CALL(dispatcher(),
+              PostDelayedTask(
+                  _, _, PortalDetector::kMinTimeBetweenAttemptsSeconds * 1000))
+      .Times(1);
+  ExpectRequestSuccessWithStatus(204, false);
 }
 
 TEST_F(PortalDetectorTest, RequestFail) {
   StartAttempt();
 
   // HTTPS probe does not trigger anything (for now)
-  EXPECT_CALL(callback_target(),
-              ResultCallback(IsResult(PortalDetector::Result(
-                  PortalDetector::Phase::kContent,
-                  PortalDetector::Status::kFailure, kNumAttempts, false))))
+  PortalDetector::Result failure_result = PortalDetector::Result(
+      PortalDetector::Phase::kContent, PortalDetector::Status::kFailure,
+      kNumAttempts, false);
+  EXPECT_CALL(callback_target(), ResultCallback(IsResult(failure_result)))
       .Times(0);
   EXPECT_CALL(*http_request(), Stop()).Times(0);
   EXPECT_CALL(*https_request(), Stop()).Times(0);
@@ -548,10 +575,7 @@ TEST_F(PortalDetectorTest, RequestFail) {
       .Times(0);
   ExpectRequestSuccessWithStatus(123, false);
 
-  EXPECT_CALL(callback_target(),
-              ResultCallback(IsResult(PortalDetector::Result(
-                  PortalDetector::Phase::kContent,
-                  PortalDetector::Status::kFailure, kNumAttempts, false))));
+  EXPECT_CALL(callback_target(), ResultCallback(IsResult(failure_result)));
   EXPECT_CALL(*http_request(), Stop()).Times(2);
   EXPECT_CALL(*https_request(), Stop()).Times(2);
   EXPECT_CALL(dispatcher(),

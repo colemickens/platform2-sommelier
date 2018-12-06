@@ -202,6 +202,8 @@ void PortalDetector::CompleteTrial(Result result) {
 void PortalDetector::CleanupTrial() {
   trial_timeout_.Cancel();
 
+  http_result_.reset();
+  https_result_.reset();
   if (http_request_)
     http_request_->Stop();
   if (https_request_)
@@ -239,14 +241,21 @@ void PortalDetector::Stop() {
   https_request_.reset();
 }
 
+void PortalDetector::CompleteRequest() {
+  if (https_result_ && http_result_) {
+    CompleteTrial(*http_result_.get());
+  }
+}
+
 void PortalDetector::HttpRequestSuccessCallback(
     std::shared_ptr<brillo::http::Response> response) {
   // TODO(matthewmwang): check for 0 length data as well
   if (response->GetStatusCode() == brillo::http::status_code::NoContent) {
-    CompleteTrial(Result(Phase::kContent, Status::kSuccess));
+    http_result_ = std::make_unique<Result>(Phase::kContent, Status::kSuccess);
   } else {
-    CompleteTrial(Result(Phase::kContent, Status::kFailure));
+    http_result_ = std::make_unique<Result>(Phase::kContent, Status::kFailure);
   }
+  CompleteRequest();
 }
 
 void PortalDetector::HttpsRequestSuccessCallback(
@@ -254,23 +263,31 @@ void PortalDetector::HttpsRequestSuccessCallback(
   int status_code = response->GetStatusCode();
   if (status_code == brillo::http::status_code::NoContent) {
     // HTTPS probe success, probably no portal
+    https_result_ = std::make_unique<Result>(Phase::kContent, Status::kSuccess);
     LOG(INFO) << "HTTPS probe succeeded, probably no portal.";
   } else {
     // HTTPS probe didn't get 204, inconclusive
+    https_result_ = std::make_unique<Result>(Phase::kContent, Status::kFailure);
     LOG(ERROR) << "HTTPS probe returned with status code " << status_code
               << ". Portal detection inconclusive.";
   }
+  CompleteRequest();
 }
 
 void PortalDetector::HttpRequestErrorCallback(HttpRequest::Result result) {
-  CompleteTrial(GetPortalResultForRequestResult(result));
+  http_result_ =
+      std::make_unique<Result>(GetPortalResultForRequestResult(result));
+  CompleteRequest();
 }
 
 void PortalDetector::HttpsRequestErrorCallback(HttpRequest::Result result) {
-  Result trial_result = GetPortalResultForRequestResult(result);
+  https_result_ =
+      std::make_unique<Result>(GetPortalResultForRequestResult(result));
   LOG(INFO) << "HTTPS probe failed with phase=="
-            << PortalDetector::PhaseToString(trial_result.phase) << ", status=="
-            << PortalDetector::StatusToString(trial_result.status);
+            << PortalDetector::PhaseToString(https_result_.get()->phase)
+            << ", status=="
+            << PortalDetector::StatusToString(https_result_.get()->status);
+  CompleteRequest();
 }
 
 // IsInProgress returns true if a trial is actively testing the

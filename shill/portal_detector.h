@@ -165,6 +165,7 @@ class PortalDetector {
   FRIEND_TEST(PortalDetectorTest, ReadPartialHeaderTimeout);
   FRIEND_TEST(PortalDetectorTest, ReadCompleteHeader);
   FRIEND_TEST(PortalDetectorTest, RequestSuccess);
+  FRIEND_TEST(PortalDetectorTest, RequestHTTPFailureHTTPSSuccess);
   FRIEND_TEST(PortalDetectorTest, RequestFail);
   FRIEND_TEST(PortalDetectorTest, StartSingleTrial);
   FRIEND_TEST(PortalDetectorTest, TrialRetry);
@@ -209,6 +210,10 @@ class PortalDetector {
   // Internal method used to start the actual connectivity trial, called after
   // the start delay completes.
   void StartTrialTask();
+
+  // Called after a request finishes. Will call CompleteTrial once all probes
+  // are done.
+  void CompleteRequest();
 
   // Callback used to return data read from the HTTP HttpRequest.
   void HttpRequestSuccessCallback(
@@ -259,6 +264,8 @@ class PortalDetector {
   int trial_timeout_seconds_;
   std::unique_ptr<HttpRequest> http_request_;
   std::unique_ptr<HttpRequest> https_request_;
+  std::unique_ptr<Result> http_result_;
+  std::unique_ptr<Result> https_result_;
 
   std::string http_url_string_;
   std::string https_url_string_;
