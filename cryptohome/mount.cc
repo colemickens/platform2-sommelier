@@ -1242,10 +1242,10 @@ bool Mount::StoreVaultKeysetForUser(
     LOG(ERROR) << "Attempted to store an invalid key index: " << index;
     return false;
   }
-  SecureBlob final_blob(serialized.ByteSize());
+  brillo::Blob final_blob(serialized.ByteSize());
   serialized.SerializeWithCachedSizesToArray(
       static_cast<google::protobuf::uint8*>(final_blob.data()));
-  return platform_->WriteSecureBlobToFileAtomicDurable(
+  return platform_->WriteFileAtomicDurable(
       GetUserLegacyKeyFileForUser(obfuscated_username, index),
       final_blob,
       kKeyFilePermissions);

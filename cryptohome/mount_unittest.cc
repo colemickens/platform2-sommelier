@@ -718,7 +718,7 @@ TEST_P(MountTest, MountCryptohomeHasPrivileges) {
   EXPECT_CALL(platform_, GetCurrentTime())
       .WillOnce(Return(base::Time::Now()));
   EXPECT_CALL(platform_,
-              WriteSecureBlobToFileAtomicDurable(user->keyset_path, _, _))
+              WriteFileAtomicDurable(user->keyset_path, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(platform_, ClearUserKeyring())
     .WillOnce(Return(true));
@@ -1063,7 +1063,7 @@ TEST_P(MountTest, CreateCryptohomeTest) {
     .WillOnce(Return(true));
   brillo::Blob creds;
   EXPECT_CALL(platform_,
-              WriteSecureBlobToFileAtomicDurable(user->keyset_path, _, _))
+              WriteFileAtomicDurable(user->keyset_path, _, _))
     .WillOnce(DoAll(SaveArg<1>(&creds), Return(true)));
 
   bool created;
@@ -1160,7 +1160,7 @@ TEST_P(MountTest, GoodReDecryptTest) {
 
   brillo::Blob migrated_keyset;
   EXPECT_CALL(platform_,
-              WriteSecureBlobToFileAtomicDurable(user->keyset_path, _, _))
+              WriteFileAtomicDurable(user->keyset_path, _, _))
     .WillOnce(DoAll(SaveArg<1>(&migrated_keyset), Return(true)));
   int key_index = 0;
 
@@ -1314,7 +1314,7 @@ TEST_P(MountTest, MountCryptohomeNoChapsKey) {
   EXPECT_CALL(platform_, Move(_, _))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_,
-              WriteSecureBlobToFileAtomicDurable(user->keyset_path, _, _))
+              WriteFileAtomicDurable(user->keyset_path, _, _))
     .WillRepeatedly(DoAll(SaveArg<1>(&(user->credentials)), Return(true)));
   ASSERT_TRUE(mount_->ReEncryptVaultKeyset(up, vault_keyset, key_index,
                                            &serialized));
@@ -1373,8 +1373,7 @@ TEST_P(MountTest, MountCryptohomeLECredentialsMigrate) {
   brillo::Blob creds;
   EXPECT_CALL(platform_, FileExists(_))
     .WillRepeatedly(Return(false));
-  EXPECT_CALL(platform_,
-              WriteSecureBlobToFileAtomicDurable(pin_user_->keyset_path, _, _))
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(pin_user_->keyset_path, _, _))
     .WillOnce(DoAll(SaveArg<1>(&creds), Return(true)));
 
   // Make sure the same reset_secret is inserted.
@@ -1525,7 +1524,7 @@ TEST_P(MountTest, MountCryptohomeNoCreate) {
     .WillRepeatedly(Return(true));
   brillo::Blob creds;
   EXPECT_CALL(platform_,
-              WriteSecureBlobToFileAtomicDurable(user->keyset_path, _, _))
+              WriteFileAtomicDurable(user->keyset_path, _, _))
     .WillOnce(DoAll(SaveArg<1>(&creds), Return(true)))
     .WillRepeatedly(Return(true));
 
@@ -1579,8 +1578,7 @@ TEST_P(MountTest, UserActivityTimestampUpdated) {
   // background but here in the test we must call it manually.
   static const int kMagicTimestamp = 123;
   brillo::Blob updated_keyset;
-  EXPECT_CALL(platform_,
-              WriteSecureBlobToFileAtomicDurable(user->keyset_path, _, _))
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(user->keyset_path, _, _))
     .WillRepeatedly(DoAll(SaveArg<1>(&updated_keyset), Return(true)));
   EXPECT_CALL(platform_, GetCurrentTime())
       .WillOnce(Return(base::Time::FromInternalValue(kMagicTimestamp)));
@@ -1723,8 +1721,7 @@ TEST_P(MountTest, TwoWayKeysetMigrationTest) {
 
   // Capture the migrated keysets when written to file
   brillo::Blob migrated_keyset;
-  EXPECT_CALL(platform_,
-              WriteSecureBlobToFileAtomicDurable(user->keyset_path, _, _))
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(user->keyset_path, _, _))
     .WillRepeatedly(DoAll(SaveArg<1>(&migrated_keyset), Return(true)));
 
   EXPECT_CALL(platform_, FileExists(user->salt_path))
@@ -1859,8 +1856,7 @@ TEST_P(MountTest, BothFlagsMigrationTest) {
 
   // Capture the migrated keysets when written to file
   brillo::Blob migrated_keyset;
-  EXPECT_CALL(platform_,
-              WriteSecureBlobToFileAtomicDurable(user->keyset_path, _, _))
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(user->keyset_path, _, _))
     .WillRepeatedly(DoAll(SaveArg<1>(&migrated_keyset), Return(true)));
 
   EXPECT_CALL(platform_, FileExists(user->salt_path))
@@ -2428,8 +2424,7 @@ TEST_P(EphemeralNoUserSystemTest, OwnerUnknownMountCreateTest) {
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SetOwnership(_, _, _, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SetPermissions(_, _)).WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_,
-              WriteSecureBlobToFileAtomicDurable(user->keyset_path, _, _))
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(user->keyset_path, _, _))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
     .WillRepeatedly(DoAll(SetArgPointee<1>(user->credentials),
@@ -2512,8 +2507,7 @@ TEST_P(EphemeralNoUserSystemTest, MountSetUserTypeFailTest) {
 
   EXPECT_CALL(platform_, CreateDirectory(_))
     .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform_,
-              WriteSecureBlobToFileAtomicDurable(user->keyset_path, _, _))
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(user->keyset_path, _, _))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
     .WillRepeatedly(DoAll(SetArgPointee<1>(user->credentials),
