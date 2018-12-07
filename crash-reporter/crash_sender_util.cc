@@ -254,6 +254,26 @@ Action ChooseAction(const base::FilePath& meta_file,
     return kRemove;
   }
 
+  if (!IsCompleteMetadata(metadata)) {
+    base::File::Info info;
+    if (!GetFileInfo(meta_file, &info)) {
+      // Should not happen since it succeeded to read the file.
+      *reason = "Failed to get file info";
+      return kIgnore;
+    }
+
+    const base::TimeDelta delta = base::Time::Now() - info.last_modified;
+    if (delta.InHours() >= 24) {
+      // TODO(satorux): logging_CrashSender.py expects the following string as
+      // error message. Revise the autotest once the rewrite to C++ is complete.
+      *reason = "Removing old incomplete metadata";
+      return kRemove;
+    } else {
+      *reason = "Recent incomplete metadata";
+      return kIgnore;
+    }
+  }
+
   return kSend;
 }
 
@@ -358,6 +378,14 @@ bool ParseMetadata(const std::string& raw_metadata,
   }
 
   return true;
+}
+
+bool IsCompleteMetadata(const brillo::KeyValueStore& metadata) {
+  // *.meta files always end with done=1 so we can tell if they are complete.
+  std::string value;
+  if (!metadata.GetString("done", &value))
+    return false;
+  return value == "1";
 }
 
 Sender::Sender(std::unique_ptr<MetricsLibraryInterface> metrics_lib,

@@ -118,6 +118,9 @@ std::string GetKindFromPayloadPath(const base::FilePath& payload_path);
 bool ParseMetadata(const std::string& raw_metadata,
                    brillo::KeyValueStore* metadata);
 
+// Returns true if the metadata is complete.
+bool IsCompleteMetadata(const brillo::KeyValueStore& metadata);
+
 // A helper class for sending crashes. The behaviors can be customized with
 // Options class for unit testing.
 class Sender {

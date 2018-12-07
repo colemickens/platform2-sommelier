@@ -112,7 +112,7 @@ class CrashSenderUtilTest : public testing::Test {
     // These should be kept, since the payload is a known kind and exists.
     good_meta_ = crash_directory.Append("good.meta");
     good_log_ = crash_directory.Append("good.log");
-    if (!test_util::CreateFile(good_meta_, "payload=good.log\n"))
+    if (!test_util::CreateFile(good_meta_, "payload=good.log\ndone=1\n"))
       return false;
     if (!test_util::CreateFile(good_log_, ""))
       return false;
@@ -121,39 +121,57 @@ class CrashSenderUtilTest : public testing::Test {
     // properly.
     absolute_meta_ = crash_directory.Append("absolute.meta");
     absolute_log_ = crash_directory.Append("absolute.log");
-    if (!test_util::CreateFile(absolute_meta_,
-                               "payload=" + absolute_log_.value() + "\n"))
+    if (!test_util::CreateFile(
+            absolute_meta_,
+            "payload=" + absolute_log_.value() + "\n" + "done=1\n"))
       return false;
     if (!test_util::CreateFile(absolute_log_, ""))
       return false;
 
     // This should be removed, since metadata is corrupted.
     corrupted_meta_ = crash_directory.Append("corrupted.meta");
-    if (!test_util::CreateFile(corrupted_meta_, "!@#$%^&*\n"))
+    if (!test_util::CreateFile(corrupted_meta_, "!@#$%^&*\ndone=1\n"))
       return false;
 
     // This should be removed, since no payload info is recorded.
     empty_meta_ = crash_directory.Append("empty.meta");
-    if (!test_util::CreateFile(empty_meta_, ""))
+    if (!test_util::CreateFile(empty_meta_, "done=1\n"))
       return false;
 
     // This should be removed, since the payload file does not exist.
     nonexistent_meta_ = crash_directory.Append("nonexistent.meta");
-    if (!test_util::CreateFile(nonexistent_meta_, "payload=nonexistent.log\n"))
+    if (!test_util::CreateFile(nonexistent_meta_,
+                               "payload=nonexistent.log\n"
+                               "done=1\n"))
       return false;
 
     // These should be removed, since the payload is an unknown kind.
     unknown_meta_ = crash_directory.Append("unknown.meta");
     unknown_xxx_ = crash_directory.Append("unknown.xxx");
-    if (!test_util::CreateFile(unknown_meta_, "payload=unknown.xxx\n"))
+    if (!test_util::CreateFile(unknown_meta_,
+                               "payload=unknown.xxx\n"
+                               "done=1\n"))
       return false;
     if (!test_util::CreateFile(unknown_xxx_, ""))
       return false;
 
-    // Update timestamps, so that the return value of GetMetaFiles() is sorted
-    // per timestamps correctly.
     const base::Time now = base::Time::Now();
     const base::TimeDelta hour = base::TimeDelta::FromHours(1);
+
+    // This should be removed, since the meta file is old.
+    old_incomplete_meta_ = crash_directory.Append("old_incomplete.meta");
+    if (!test_util::CreateFile(old_incomplete_meta_, "payload=good.log\n"))
+      return false;
+    if (!TouchFileHelper(old_incomplete_meta_, now - hour * 24))
+      return false;
+
+    // This should be removed, since the meta file is new.
+    new_incomplete_meta_ = crash_directory.Append("new_incomplete.meta");
+    if (!test_util::CreateFile(new_incomplete_meta_, "payload=good.log\n"))
+      return false;
+
+    // Update timestamps, so that the return value of GetMetaFiles() is sorted
+    // per timestamps correctly.
     if (!TouchFileHelper(good_meta_, now - hour))
       return false;
     if (!TouchFileHelper(absolute_log_, now))
@@ -189,6 +207,8 @@ class CrashSenderUtilTest : public testing::Test {
   base::FilePath nonexistent_meta_;
   base::FilePath unknown_meta_;
   base::FilePath unknown_xxx_;
+  base::FilePath old_incomplete_meta_;
+  base::FilePath new_incomplete_meta_;
 };
 
 }  // namespace
@@ -363,9 +383,14 @@ TEST_F(CrashSenderUtilTest, ChooseAction) {
 
   std::string reason;
 
-  // The following files should not be removed.
+  // The following files should be sent.
   EXPECT_EQ(kSend, ChooseAction(good_meta_, metrics_lib_.get(), &reason));
   EXPECT_EQ(kSend, ChooseAction(absolute_meta_, metrics_lib_.get(), &reason));
+
+  // The following files should be ignored.
+  EXPECT_EQ(kIgnore,
+            ChooseAction(new_incomplete_meta_, metrics_lib_.get(), &reason));
+  EXPECT_THAT(reason, HasSubstr("Recent incomplete metadata"));
 
   // The following files should be removed.
   EXPECT_EQ(kRemove, ChooseAction(empty_meta_, metrics_lib_.get(), &reason));
@@ -381,6 +406,10 @@ TEST_F(CrashSenderUtilTest, ChooseAction) {
 
   EXPECT_EQ(kRemove, ChooseAction(unknown_meta_, metrics_lib_.get(), &reason));
   EXPECT_THAT(reason, HasSubstr("Unknown kind"));
+
+  EXPECT_EQ(kRemove,
+            ChooseAction(old_incomplete_meta_, metrics_lib_.get(), &reason));
+  EXPECT_THAT(reason, HasSubstr("Removing old incomplete metadata"));
 
   ASSERT_TRUE(SetConditions(kUnofficialBuild, kSignInMode, kMetricsEnabled));
   EXPECT_EQ(kRemove, ChooseAction(good_meta_, metrics_lib_.get(), &reason));
@@ -410,11 +439,13 @@ TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
   EXPECT_TRUE(base::PathExists(good_log_));
   EXPECT_TRUE(base::PathExists(absolute_meta_));
   EXPECT_TRUE(base::PathExists(absolute_log_));
+  EXPECT_TRUE(base::PathExists(new_incomplete_meta_));
   EXPECT_FALSE(base::PathExists(empty_meta_));
   EXPECT_FALSE(base::PathExists(corrupted_meta_));
   EXPECT_FALSE(base::PathExists(nonexistent_meta_));
   EXPECT_FALSE(base::PathExists(unknown_meta_));
   EXPECT_FALSE(base::PathExists(unknown_xxx_));
+  EXPECT_FALSE(base::PathExists(old_incomplete_meta_));
   // Check what files were picked for sending.
   ASSERT_EQ(2, to_send.size());
   EXPECT_EQ(good_meta_.value(), to_send[0].value());
@@ -563,6 +594,21 @@ TEST_F(CrashSenderUtilTest, ParseMetadata) {
   EXPECT_FALSE(ParseMetadata("log\n", &metadata));
 }
 
+TEST_F(CrashSenderUtilTest, IsCompleteMetadata) {
+  brillo::KeyValueStore metadata;
+  metadata.LoadFromString("");
+  EXPECT_FALSE(IsCompleteMetadata(metadata));
+
+  metadata.LoadFromString("log=test.log\n");
+  EXPECT_FALSE(IsCompleteMetadata(metadata));
+
+  metadata.LoadFromString("log=test.log\ndone=1\n");
+  EXPECT_TRUE(IsCompleteMetadata(metadata));
+
+  metadata.LoadFromString("done=1\n");
+  EXPECT_TRUE(IsCompleteMetadata(metadata));
+}
+
 TEST_F(CrashSenderUtilTest, Sender) {
   // Set up the mock sesssion manager client.
   auto mock =
@@ -580,7 +626,9 @@ TEST_F(CrashSenderUtilTest, Sender) {
   ASSERT_TRUE(base::CreateDirectory(system_dir));
   const base::FilePath system_meta = system_dir.Append("0.0.0.0.meta");
   const base::FilePath system_log = system_dir.Append("0.0.0.0.log");
-  ASSERT_TRUE(test_util::CreateFile(system_meta, "payload=0.0.0.0.log\n"));
+  ASSERT_TRUE(test_util::CreateFile(system_meta,
+                                    "payload=0.0.0.0.log\n"
+                                    "done=1\n"));
   ASSERT_TRUE(test_util::CreateFile(system_log, ""));
 
   // Create a user crash directory, and crash files in it.
@@ -589,7 +637,9 @@ TEST_F(CrashSenderUtilTest, Sender) {
   ASSERT_TRUE(base::CreateDirectory(user2_dir));
   const base::FilePath user2_meta = user2_dir.Append("0.0.0.0.meta");
   const base::FilePath user2_log = user2_dir.Append("0.0.0.0.log");
-  ASSERT_TRUE(test_util::CreateFile(user2_meta, "payload=0.0.0.0.log\n"));
+  ASSERT_TRUE(test_util::CreateFile(user2_meta,
+                                    "payload=0.0.0.0.log\n"
+                                    "done=1\n"));
   ASSERT_TRUE(test_util::CreateFile(user2_log, ""));
 
   // Set up the conditions so the crash reports can be sent.

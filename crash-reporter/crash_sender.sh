@@ -517,11 +517,6 @@ send_crash() {
   return ${curl_result}
 }
 
-# *.meta files always end with done=1 so we can tell if they are complete.
-is_complete_metadata() {
-  grep -q "done=1" "$1"
-}
-
 # Remove the given report path.
 # NOTE: Mirrors crash_sender_util.cc:RemoveReportFiles().
 remove_report() {
@@ -540,19 +535,6 @@ send_or_skip_crash() {
   # removal to honor user choice and to free disk space as soon as possible,
   # then decide whether it should be sent right now or kept for later sending.
   lecho "Considering metadata ${meta_path}."
-
-  if ! is_complete_metadata "${meta_path}"; then
-    # This report is incomplete, so if it's old, just remove it.
-    local old_meta=$(${FIND} "${dir}" -mindepth 1 -name \
-      $(basename "${meta_path}") -mmin +$((24 * 60)) -type f)
-    if [ -n "${old_meta}" ]; then
-      lecho "Removing old incomplete metadata."
-      remove_report "${meta_path}"
-    else
-      lecho "Ignoring recent incomplete metadata."
-    fi
-    return 0
-  fi
 
   # Ignore device coredump if device coredump uploading is not allowed.
   local kind=$(get_kind "${meta_path}")
