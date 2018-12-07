@@ -84,13 +84,6 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
               bool generate_hash,
               AuthorizationDelegate* delegate,
               std::string* signature) override;
-  TPM_RC Verify(TPM_HANDLE key_handle,
-                TPM_ALG_ID scheme,
-                TPM_ALG_ID hash_alg,
-                const std::string& plaintext,
-                bool generate_hash,
-                const std::string& signature,
-                AuthorizationDelegate* delegate) override;
   TPM_RC CertifyCreation(TPM_HANDLE key_handle,
                          const std::string& creation_blob) override;
   TPM_RC ChangeKeyAuthorizationData(TPM_HANDLE key_handle,

@@ -160,6 +160,10 @@ class TRUNKS_EXPORT TpmUtility {
                       AuthorizationDelegate* delegate,
                       std::string* signature) = 0;
 
+  // Dead code removed at CL:1366670 (https://crrev.com/c/1366670)
+  // It's because we doesn't use Verify() in the reality.
+  // We sign-with-TPM -> verify-in-software at this moment.
+  //
   // This method verifies that the signature produced on the plaintext was
   // performed by |key_handle|. |scheme| and |hash| refer to the signature
   // scheme used to produce the signature: if |generate_hash| is true, the
@@ -169,13 +173,13 @@ class TRUNKS_EXPORT TpmUtility {
   // algorithms supported by the tpm. Returns TPM_RC_SUCCESS when the signature
   // is correct. |delegate| specifies an optional authorization delegate to be
   // used.
-  virtual TPM_RC Verify(TPM_HANDLE key_handle,
-                        TPM_ALG_ID scheme,
-                        TPM_ALG_ID hash_alg,
-                        const std::string& plaintext,
-                        bool generate_hash,
-                        const std::string& signature,
-                        AuthorizationDelegate* delegate) = 0;
+  // virtual TPM_RC Verify(TPM_HANDLE key_handle,
+  //                       TPM_ALG_ID scheme,
+  //                       TPM_ALG_ID hash_alg,
+  //                       const std::string& plaintext,
+  //                       bool generate_hash,
+  //                       const std::string& signature,
+  //                       AuthorizationDelegate* delegate) = 0;
 
   // This method is used to check if a key was created in the TPM. |key_handle|
   // refers to a loaded Tpm2.0 object, and |creation_blob| is the blob

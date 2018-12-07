@@ -228,17 +228,6 @@ class TpmUtilityForwarder : public TpmUtility {
                          generate_hash, delegate, signature);
   }
 
-  TPM_RC Verify(TPM_HANDLE key_handle,
-                TPM_ALG_ID scheme,
-                TPM_ALG_ID hash_alg,
-                const std::string& plaintext,
-                bool generate_hash,
-                const std::string& signature,
-                AuthorizationDelegate* delegate) override {
-    return target_->Verify(key_handle, scheme, hash_alg, plaintext,
-                           generate_hash, signature, delegate);
-  }
-
   TPM_RC CertifyCreation(TPM_HANDLE key_handle,
                          const std::string& creation_blob) override {
     return target_->CertifyCreation(key_handle, creation_blob);
