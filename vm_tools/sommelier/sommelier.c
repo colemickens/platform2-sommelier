@@ -603,7 +603,15 @@ void sl_window_update(struct sl_window* window) {
         }
       }
     }
-  } else {
+  }
+
+  // If we have a transient parent, but could not find it in the list of
+  // realized windows, then pick the window that had the last event for the
+  // parent.  We update this again when we gain focus, so if we picked the wrong
+  // one it can get corrected at that point (but it's also possible the parent
+  // will never be realized, which is why selecting one here is important).
+  if (!window->managed ||
+      (!parent && window->transient_for != XCB_WINDOW_NONE)) {
     struct sl_window* sibling;
     uint32_t parent_last_event_serial = 0;
 
@@ -1084,7 +1092,7 @@ static void sl_registry_handler(void* data,
       assert(aura_shell);
       aura_shell->ctx = ctx;
       aura_shell->id = id;
-      aura_shell->version = MIN(6, version);
+      aura_shell->version = MIN(MIN_AURA_SHELL_VERSION, version);
       aura_shell->host_gtk_shell_global = NULL;
       aura_shell->internal = wl_registry_bind(
           registry, id, &zaura_shell_interface, aura_shell->version);
@@ -1977,7 +1985,16 @@ static void sl_handle_client_message(struct sl_context* ctx,
 }
 
 static void sl_handle_focus_in(struct sl_context* ctx,
-                               xcb_focus_in_event_t* event) {}
+                               xcb_focus_in_event_t* event) {
+  struct sl_window* window = sl_lookup_window(ctx, event->event);
+  if (window && window->transient_for != XCB_WINDOW_NONE) {
+    // Set our parent now as it might not have been set properly when the
+    // window was realized.
+    struct sl_window* parent = sl_lookup_window(ctx, window->transient_for);
+    if (parent && parent->xdg_toplevel && window->xdg_toplevel)
+      zxdg_toplevel_v6_set_parent(window->xdg_toplevel, parent->xdg_toplevel);
+  }
+}
 
 static void sl_handle_focus_out(struct sl_context* ctx,
                                 xcb_focus_out_event_t* event) {}
