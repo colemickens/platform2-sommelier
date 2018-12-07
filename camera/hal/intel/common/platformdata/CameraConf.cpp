@@ -471,7 +471,7 @@ CpfStore::CpfStore(const int xmlCameraId, CameraHWInfo * cameraHWInfo)
      * There is no CPF file for SoC sensors.
      * avoid getting any error messages when looking for it
      */
-    const CameraCapInfo *capInfo = PlatformData::getCameraCapInfoForXmlCameraId(mCameraId);
+    const CameraCapInfo *capInfo = PlatformData::getCameraCapInfo(mCameraId);
     if (capInfo == nullptr) {
         LOGE("Cannot find xml camera id: %d", mCameraId);
         return;

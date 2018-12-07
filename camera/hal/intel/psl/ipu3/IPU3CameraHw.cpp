@@ -26,7 +26,7 @@
 #include "ImguUnit.h"
 #include "ControlUnit.h"
 #include "CaptureUnit.h"
-#include "PSLConfParser.h"
+#include "CameraProfiles.h"
 
 namespace android {
 namespace camera2 {
@@ -62,7 +62,7 @@ IPU3CameraHw::init()
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     status_t status = NO_ERROR;
 
-    std::string sensorMediaDevice = PSLConfParser::getSensorMediaDevice();
+    std::string sensorMediaDevice = CameraProfiles::getSensorMediaDevice();
     mMediaCtl = std::make_shared<MediaController>(sensorMediaDevice.c_str());
     status = mMediaCtl->init();
     if (status != NO_ERROR) {
@@ -70,7 +70,7 @@ IPU3CameraHw::init()
         return status;
     }
 
-    std::string imguMediaDevice = PSLConfParser::getImguMediaDevice();
+    std::string imguMediaDevice = CameraProfiles::getImguMediaDevice();
     mImguMediaCtl = std::make_shared<MediaController>(imguMediaDevice.c_str());
     status = mImguMediaCtl->init();
     if (status != NO_ERROR) {

@@ -18,15 +18,17 @@
 
 #include <expat.h>
 #include <limits.h>
+#include <dirent.h>
 #include <system/camera_metadata.h>
 
 #include "LogHelper.h"
 #include "CameraProfiles.h"
 #include "Metadata.h"
 #include "CameraMetadataHelper.h"
+#include "GraphConfigManager.h"
 #include "Utils.h"
-
-#include "PSLConfParser.h"
+#include "NodeTypes.h"
+#include "IPU3Types.h"
 
 #define STATIC_ENTRY_CAP 256
 #define STATIC_DATA_CAP 6688 // TODO: we may need to increase it again if more metadata is added
@@ -35,17 +37,23 @@
 #define MAX_METADATA_ATTRIBUTE_VALUE_LENTGTH 6144
 
 NAMESPACE_DECLARATION {
+static std::string CIO2_MEDIA_DEVICE="ipu3-cio2";
+
+static std::string IMGU_MEDIA_DEVICE="ipu3-imgu";
+
+static const char *NVM_DATA_PATH = "/sys/bus/i2c/devices/";
+
+static const char *GRAPH_SETTINGS_FILE_PATH = "/etc/camera/";
 
 static const char *sDefaultXmlFileName = "/etc/camera/camera3_profiles.xml";
 
 CameraProfiles::CameraProfiles(CameraHWInfo *cameraHWInfo) :
     mCurrentDataField(FIELD_INVALID),
     mMetadataCache(nullptr),
-    mSensorIndex(-1),
     mXmlSensorIndex(-1),
     mItemsCount(-1),
-    mCameraCommon(cameraHWInfo),
-    mUseEntry(true)
+    mUseEntry(true),
+    mCameraCommon(cameraHWInfo)
 {
     CLEAR(mProfileEnd);
 }
@@ -59,7 +67,7 @@ status_t CameraProfiles::init()
     int pathExists = stat(sDefaultXmlFileName, &st);
     CheckError(pathExists != 0, UNKNOWN_ERROR, "Error, could not find camera3_profiles.xml!");
 
-    status_t status = mCameraCommon->init(PSLConfParser::getSensorMediaDevicePath());
+    status_t status = mCameraCommon->init(getMediaDeviceByName(CIO2_MEDIA_DEVICE));
     CheckError(status != OK, UNKNOWN_ERROR, "Failed to init camera HW");
 
     // Assumption: Driver enumeration order will match the CameraId
@@ -72,41 +80,25 @@ status_t CameraProfiles::init()
 
     mSensorNames = mCameraCommon->mSensorInfo;
 
-    mCameraInfoPool.init(MAX_CAMERAS);
     for (int i = 0;i < MAX_CAMERAS; i++)
          mCharacteristicsKeys[i].clear();
 
     getDataFromXmlFile();
-    createConfParser();
+    getGraphConfigFromXmlFile();
 
     return status;
-}
-
-void CameraProfiles::createConfParser()
-{
-    // Now parse PSL sections for found cameras
-    for (const auto &cameraIdToCameraInfo : mCameraIdToCameraInfo) {
-        // get psl parser
-        CameraInfo *info = cameraIdToCameraInfo.second;
-        std::string defaultXmlPath(sDefaultXmlFileName);
-        info->parser = PSLConfParser::getInstance(defaultXmlPath, mSensorNames);
-    }
-}
-
-void CameraProfiles::destroyConfParser()
-{
-    PSLConfParser::deleteInstance();
 }
 
 int CameraProfiles::getXmlCameraId(int cameraId) const
 {
     LOG2("@%s", __FUNCTION__);
-    std::map<int, CameraInfo*>::const_iterator it =
-                            mCameraIdToCameraInfo.find(cameraId);
-    if (it == mCameraIdToCameraInfo.end()) {
-        return NAME_NOT_FOUND;
-    }
-    return it->second->xmlCameraId;
+    bool findMatchCameraId = false;
+
+    auto it = std::find(mCameraIdPool.begin(), mCameraIdPool.end(), cameraId);
+    if (it != mCameraIdPool.end())
+        findMatchCameraId = true;
+
+    return findMatchCameraId ? cameraId : NAME_NOT_FOUND;
 }
 
 CameraProfiles::~CameraProfiles()
@@ -118,99 +110,455 @@ CameraProfiles::~CameraProfiles()
     }
 
     mStaticMeta.clear();
+    mCameraIdPool.clear();
+    mSensorNames.clear();
 
-    for (const auto &cameraIdToCameraInfo : mCameraIdToCameraInfo) {
-        CameraInfo *info = cameraIdToCameraInfo.second;
-        mCameraInfoPool.releaseItem(info);
+    while (!mCaps.empty()) {
+        IPU3CameraCapInfo* info = static_cast<IPU3CameraCapInfo*>(mCaps.front());
+        mCaps.erase(mCaps.begin());
+        ::operator delete(info->mNvmData.data);
+        info->mNvmData.data = nullptr;
+        delete info;
     }
 
-    mCameraIdToCameraInfo.clear();
+    for (unsigned int i = 0; i < mDefaultRequests.size(); i++) {
+       if (mDefaultRequests[i])
+            free_camera_metadata(mDefaultRequests[i]);
+    }
 
-    mSensorNames.clear();
-    destroyConfParser();
+    mDefaultRequests.clear();
 }
 
 const CameraCapInfo *CameraProfiles::getCameraCapInfo(int cameraId)
 {
-    // get the psl parser instance for cameraid
-    PSLConfParser *parserInstance;
-    std::map<int, CameraInfo*>::iterator it =
-                            mCameraIdToCameraInfo.find(cameraId);
-    if (it == mCameraIdToCameraInfo.end()) {
-        LOGE("Camera id: %d not found. Sensor might not be live", cameraId);
-        return nullptr;
-    }
-    CameraInfo *info = it->second;
-    parserInstance = info->parser;
+    auto it = std::find(mCameraIdPool.begin(), mCameraIdPool.end(), cameraId);
+    CheckError(it == mCameraIdPool.end(), nullptr, "Failed to find match camera id.");
 
-    if (parserInstance == nullptr) {
-        LOGE("Failed to get PSL parser instance");
-        return nullptr;
-    }
-
-    return parserInstance->getCameraCapInfo(cameraId);
+    return mCaps[cameraId];
 }
 
-const CameraCapInfo *CameraProfiles::getCameraCapInfoForXmlCameraId(int xmlCameraId)
+uint8_t CameraProfiles::selectAfMode(const camera_metadata_t *staticMeta,
+                                    int reqTemplate)
 {
-    // get the psl parser instance for cameraid
-    PSLConfParser *parserInstance;
+    // For initial value, use AF_MODE_OFF. That is the minimum,
+    // for fixed-focus sensors. For request templates the desired
+    // values will be defined below.
+    uint8_t afMode = ANDROID_CONTROL_AF_MODE_OFF;
 
-    int cameraId = -1;
-    for (const auto &cameraIdToCameraInfo : mCameraIdToCameraInfo) {
-        if (cameraIdToCameraInfo.second->xmlCameraId == xmlCameraId) {
-            cameraId = cameraIdToCameraInfo.first;
-            break;
+    const int MAX_AF_MODES = 6;
+    // check this is the maximum number of enums defined by:
+    // camera_metadata_enum_android_control_af_mode_t defined in
+    // camera_metadata_tags.h
+    camera_metadata_ro_entry ro_entry;
+    bool modesAvailable[MAX_AF_MODES];
+    CLEAR(modesAvailable);
+    find_camera_metadata_ro_entry(staticMeta, ANDROID_CONTROL_AF_AVAILABLE_MODES,
+                                  &ro_entry);
+    if (ro_entry.count > 0) {
+        for (size_t i = 0; i < ro_entry.count; i++) {
+            if (ro_entry.data.u8[i] < MAX_AF_MODES)
+                modesAvailable[ro_entry.data.u8[i]] = true;
         }
-    }
-    if (cameraId == -1)
-        return nullptr;
-
-    CameraInfo *info = mCameraIdToCameraInfo[cameraId];
-    parserInstance = info->parser;
-
-    if (parserInstance == nullptr) {
-        LOGE("Failed to get PSL parser instance");
-        return nullptr;
+    } else {
+        LOGE("@%s: Incomplete camera3_profiles.xml: available AF modes missing!!", __FUNCTION__);
+        // we only support AUTO
+        modesAvailable[ANDROID_CONTROL_AF_MODE_AUTO] = true;
     }
 
-    return parserInstance->getCameraCapInfo(cameraId);
+    switch (reqTemplate) {
+       case ANDROID_CONTROL_CAPTURE_INTENT_STILL_CAPTURE:
+       case ANDROID_CONTROL_CAPTURE_INTENT_ZERO_SHUTTER_LAG:
+       case ANDROID_CONTROL_CAPTURE_INTENT_PREVIEW:
+           if (modesAvailable[ANDROID_CONTROL_AF_MODE_CONTINUOUS_PICTURE])
+               afMode = ANDROID_CONTROL_AF_MODE_CONTINUOUS_PICTURE;
+           break;
+       case ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_RECORD:
+       case ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_SNAPSHOT:
+           if (modesAvailable[ANDROID_CONTROL_AF_MODE_CONTINUOUS_VIDEO])
+               afMode = ANDROID_CONTROL_AF_MODE_CONTINUOUS_VIDEO;
+           break;
+       case ANDROID_CONTROL_CAPTURE_INTENT_MANUAL:
+           if (modesAvailable[ANDROID_CONTROL_AF_MODE_OFF])
+               afMode = ANDROID_CONTROL_AF_MODE_OFF;
+           break;
+       case ANDROID_CONTROL_CAPTURE_INTENT_START:
+       default:
+           afMode = ANDROID_CONTROL_AF_MODE_AUTO;
+           break;
+       }
+    return afMode;
 }
 
 camera_metadata_t *CameraProfiles::constructDefaultMetadata(int cameraId, int requestTemplate)
 {
-    // get the psl parser instance for cameraid
-    PSLConfParser *parserInstance;
-    std::map<int, CameraInfo*>::iterator it =
-                            mCameraIdToCameraInfo.find(cameraId);
-    if (it == mCameraIdToCameraInfo.end()) {
-        LOGE("Failed to get camera info for camera:%d", cameraId);
+    LOG2("@%s: camera id: %d, request template: %d", __FUNCTION__, cameraId, requestTemplate);
+    if (requestTemplate >= CAMERA_TEMPLATE_COUNT) {
+        LOGE("ERROR @%s: bad template %d", __FUNCTION__, requestTemplate);
         return nullptr;
     }
 
-    CameraInfo *info = it->second;
-    parserInstance = info->parser;
+    int index = cameraId *CAMERA_TEMPLATE_COUNT + requestTemplate;
+    camera_metadata_t *req = mDefaultRequests[index];
 
-    if (parserInstance == nullptr) {
-        LOGE("Failed to get PSL parser instance");
+    if (req)
+        return req;
+
+    camera_metadata_t *meta = nullptr;
+    meta = allocate_camera_metadata(DEFAULT_ENTRY_CAP, DEFAULT_DATA_CAP);
+    if (meta == nullptr) {
+        LOGE("ERROR @%s: Allocate memory failed", __FUNCTION__);
         return nullptr;
     }
 
-    return parserInstance->constructDefaultMetadata(cameraId, requestTemplate);
+    const camera_metadata_t *staticMeta = nullptr;
+    staticMeta = PlatformData::getStaticMetadata(cameraId);
+    if (staticMeta == nullptr) {
+        LOGE("ERROR @%s: Could not get static metadata", __FUNCTION__);
+        free_camera_metadata(meta);
+        return nullptr;
+    }
 
+    CameraMetadata metadata; // no constructor from const camera_metadata_t*
+    metadata = staticMeta; // but assignment operator exists for const
+
+    int64_t bogusValue = 0;  // 8 bytes of bogus
+    int64_t bogusValueArray[] = {0, 0, 0, 0, 0}; // 40 bytes of bogus
+
+    uint8_t requestType = ANDROID_REQUEST_TYPE_CAPTURE;
+    uint8_t intent = 0;
+
+    uint8_t controlMode = ANDROID_CONTROL_MODE_AUTO;
+    uint8_t afMode = selectAfMode(staticMeta, requestTemplate);
+    uint8_t aeMode = ANDROID_CONTROL_AE_MODE_ON;
+    uint8_t awbMode = ANDROID_CONTROL_AWB_MODE_AUTO;
+    uint8_t nrMode = ANDROID_NOISE_REDUCTION_MODE_OFF;
+    uint8_t eeMode = ANDROID_EDGE_MODE_OFF;
+    camera_metadata_entry entry;
+
+    switch (requestTemplate) {
+    case ANDROID_CONTROL_CAPTURE_INTENT_PREVIEW:
+        intent = ANDROID_CONTROL_CAPTURE_INTENT_PREVIEW;
+        entry = metadata.find(ANDROID_NOISE_REDUCTION_AVAILABLE_NOISE_REDUCTION_MODES);
+        if (entry.count > 0) {
+            nrMode = entry.data.u8[0];
+            for (size_t i = 0; i < entry.count; i++) {
+                if (entry.data.u8[i]
+                        == ANDROID_NOISE_REDUCTION_MODE_FAST) {
+                    nrMode = ANDROID_NOISE_REDUCTION_MODE_FAST;
+                    break;
+                }
+            }
+        }
+        entry = metadata.find(ANDROID_EDGE_AVAILABLE_EDGE_MODES);
+        if (entry.count > 0) {
+            eeMode = entry.data.u8[0];
+            for (size_t i = 0; i < entry.count; i++) {
+                if (entry.data.u8[i]
+                        == ANDROID_EDGE_MODE_FAST) {
+                    eeMode = ANDROID_EDGE_MODE_FAST;
+                    break;
+                }
+            }
+        }
+        break;
+    case ANDROID_CONTROL_CAPTURE_INTENT_STILL_CAPTURE:
+        intent = ANDROID_CONTROL_CAPTURE_INTENT_STILL_CAPTURE;
+        entry = metadata.find(ANDROID_NOISE_REDUCTION_AVAILABLE_NOISE_REDUCTION_MODES);
+        if (entry.count > 0) {
+            nrMode = entry.data.u8[0];
+            for (size_t i = 0; i < entry.count; i++) {
+                if (entry.data.u8[i]
+                        == ANDROID_NOISE_REDUCTION_MODE_HIGH_QUALITY) {
+                    nrMode = ANDROID_NOISE_REDUCTION_MODE_HIGH_QUALITY;
+                    break;
+                }
+            }
+        }
+        entry = metadata.find(ANDROID_EDGE_AVAILABLE_EDGE_MODES);
+        if (entry.count > 0) {
+            eeMode = entry.data.u8[0];
+            for (size_t i = 0; i < entry.count; i++) {
+                if (entry.data.u8[i]
+                        == ANDROID_EDGE_MODE_HIGH_QUALITY) {
+                    eeMode = ANDROID_EDGE_MODE_HIGH_QUALITY;
+                    break;
+                }
+            }
+        }
+        break;
+    case ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_RECORD:
+        intent = ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_RECORD;
+        entry = metadata.find(ANDROID_NOISE_REDUCTION_AVAILABLE_NOISE_REDUCTION_MODES);
+        if (entry.count > 0) {
+            nrMode = entry.data.u8[0];
+            for (size_t i = 0; i < entry.count; i++) {
+                if (entry.data.u8[i]
+                        == ANDROID_NOISE_REDUCTION_MODE_FAST) {
+                    nrMode = ANDROID_NOISE_REDUCTION_MODE_FAST;
+                    break;
+                }
+            }
+        }
+        entry = metadata.find(ANDROID_EDGE_AVAILABLE_EDGE_MODES);
+        if (entry.count > 0) {
+            eeMode = entry.data.u8[0];
+            for (size_t i = 0; i < entry.count; i++) {
+                if (entry.data.u8[i]
+                        == ANDROID_EDGE_MODE_FAST) {
+                    eeMode = ANDROID_EDGE_MODE_FAST;
+                    break;
+                }
+            }
+        }
+        break;
+    case ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_SNAPSHOT:
+        intent = ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_SNAPSHOT;
+        break;
+    case ANDROID_CONTROL_CAPTURE_INTENT_ZERO_SHUTTER_LAG:
+        intent = ANDROID_CONTROL_CAPTURE_INTENT_ZERO_SHUTTER_LAG;
+        entry = metadata.find(ANDROID_NOISE_REDUCTION_AVAILABLE_NOISE_REDUCTION_MODES);
+        if (entry.count > 0) {
+            nrMode = entry.data.u8[0];
+            for (size_t i = 0; i < entry.count; i++) {
+                if (entry.data.u8[i]
+                        == ANDROID_NOISE_REDUCTION_MODE_ZERO_SHUTTER_LAG) {
+                    nrMode = ANDROID_NOISE_REDUCTION_MODE_ZERO_SHUTTER_LAG;
+                    break;
+                }
+            }
+        }
+        entry = metadata.find(ANDROID_EDGE_AVAILABLE_EDGE_MODES);
+        if (entry.count > 0) {
+            eeMode = entry.data.u8[0];
+            for (size_t i = 0; i < entry.count; i++) {
+                if (entry.data.u8[i]
+                        == ANDROID_EDGE_MODE_ZERO_SHUTTER_LAG) {
+                    eeMode = ANDROID_EDGE_MODE_ZERO_SHUTTER_LAG;
+                    break;
+                }
+            }
+        }
+        break;
+    case ANDROID_CONTROL_CAPTURE_INTENT_MANUAL:
+        controlMode = ANDROID_CONTROL_MODE_OFF;
+        aeMode = ANDROID_CONTROL_AE_MODE_OFF;
+        awbMode = ANDROID_CONTROL_AWB_MODE_OFF;
+        intent = ANDROID_CONTROL_CAPTURE_INTENT_MANUAL;
+        break;
+    default:
+        intent = ANDROID_CONTROL_CAPTURE_INTENT_CUSTOM;
+        break;
+    }
+
+    camera_metadata_ro_entry ro_entry;
+    find_camera_metadata_ro_entry(staticMeta, ANDROID_CONTROL_MAX_REGIONS,
+                                  &ro_entry);
+    // AE, AWB, AF
+    if (ro_entry.count == 3) {
+        int meteringRegion[METERING_RECT_SIZE] = {0,0,0,0,0};
+        if (ro_entry.data.i32[0] == 1) {
+            add_camera_metadata_entry(meta, ANDROID_CONTROL_AE_REGIONS,
+                                      meteringRegion, METERING_RECT_SIZE);
+        }
+        if (ro_entry.data.i32[2] == 1) {
+            add_camera_metadata_entry(meta, ANDROID_CONTROL_AF_REGIONS,
+                                      meteringRegion, METERING_RECT_SIZE);
+        }
+        // we do not support AWB region
+    }
+#define TAGINFO(tag, data) \
+    add_camera_metadata_entry(meta, tag, &data, 1)
+#define TAGINFO_ARRAY(tag, data, count) \
+    add_camera_metadata_entry(meta, tag, data, count)
+
+    TAGINFO(ANDROID_CONTROL_CAPTURE_INTENT, intent);
+
+    TAGINFO(ANDROID_CONTROL_MODE, controlMode);
+    TAGINFO(ANDROID_CONTROL_EFFECT_MODE, bogusValue);
+    TAGINFO(ANDROID_CONTROL_SCENE_MODE, bogusValue);
+    TAGINFO(ANDROID_CONTROL_VIDEO_STABILIZATION_MODE, bogusValue);
+    TAGINFO(ANDROID_CONTROL_AE_MODE, aeMode);
+    TAGINFO(ANDROID_CONTROL_AE_LOCK, bogusValue);
+    uint8_t value = ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER_IDLE;
+    TAGINFO(ANDROID_CONTROL_AE_PRECAPTURE_TRIGGER, value);
+    value = ANDROID_CONTROL_AF_TRIGGER_IDLE;
+    TAGINFO(ANDROID_CONTROL_AF_TRIGGER, value);
+    value = ANDROID_LENS_OPTICAL_STABILIZATION_MODE_OFF;
+    TAGINFO(ANDROID_LENS_OPTICAL_STABILIZATION_MODE, value);
+    int32_t mode = ANDROID_SENSOR_TEST_PATTERN_MODE_OFF;
+    TAGINFO(ANDROID_SENSOR_TEST_PATTERN_MODE, mode);
+    TAGINFO(ANDROID_SENSOR_ROLLING_SHUTTER_SKEW, bogusValue);
+    entry = metadata.find(ANDROID_HOT_PIXEL_AVAILABLE_HOT_PIXEL_MODES);
+    if (entry.count > 0) {
+      TAGINFO(ANDROID_HOT_PIXEL_MODE, entry.data.u8[0]);
+    }
+    value = ANDROID_STATISTICS_HOT_PIXEL_MAP_MODE_OFF;
+    TAGINFO(ANDROID_STATISTICS_HOT_PIXEL_MAP_MODE, value);
+    value = ANDROID_STATISTICS_SCENE_FLICKER_NONE;
+    TAGINFO(ANDROID_STATISTICS_SCENE_FLICKER, value);
+    value = ANDROID_STATISTICS_LENS_SHADING_MAP_MODE_OFF;
+    TAGINFO(ANDROID_STATISTICS_LENS_SHADING_MAP_MODE, value);
+    TAGINFO(ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION, bogusValue);
+
+    TAGINFO(ANDROID_SYNC_FRAME_NUMBER, bogusValue);
+
+    // Default fps target range
+    int32_t fpsRange[] = {15, 30};
+    camera_metadata_ro_entry fpsRangesEntry;
+
+    fpsRangesEntry.count = 0;
+    find_camera_metadata_ro_entry(
+        staticMeta, ANDROID_CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES,
+        &fpsRangesEntry);
+    if ((fpsRangesEntry.count >= 2) && (fpsRangesEntry.count % 2 == 0)) {
+      //choose closest (15,30) range
+      size_t fpsNums = fpsRangesEntry.count / 2;
+      int32_t delta = INT32_MAX;
+
+      for (size_t i = 0; i < fpsNums; i += 2) {
+          int32_t diff = abs(fpsRangesEntry.data.i32[i] - 15) +
+            abs(fpsRangesEntry.data.i32[i+1] - 30);
+
+          if (delta > diff) {
+              fpsRange[0] = fpsRangesEntry.data.i32[i];
+              fpsRange[1] = fpsRangesEntry.data.i32[i+1];
+
+              delta = diff;
+          }
+      }
+    } else {
+      LOGW("No AE FPS range found in profile, use default [15, 30]");
+    }
+    if (requestTemplate == ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_RECORD) {
+      // Stable range requried for video recording
+      fpsRange[0] = fpsRange[1];
+    }
+    TAGINFO_ARRAY(ANDROID_CONTROL_AE_TARGET_FPS_RANGE, fpsRange, 2);
+
+    value = ANDROID_CONTROL_AE_ANTIBANDING_MODE_AUTO;
+    TAGINFO(ANDROID_CONTROL_AE_ANTIBANDING_MODE, value);
+    TAGINFO(ANDROID_CONTROL_AWB_MODE, awbMode);
+    TAGINFO(ANDROID_CONTROL_AWB_LOCK, bogusValue);
+    TAGINFO(ANDROID_BLACK_LEVEL_LOCK, bogusValue);
+    TAGINFO(ANDROID_CONTROL_AWB_STATE, bogusValue);
+    TAGINFO(ANDROID_CONTROL_AF_MODE, afMode);
+
+    value = ANDROID_COLOR_CORRECTION_ABERRATION_MODE_OFF;
+    TAGINFO(ANDROID_COLOR_CORRECTION_ABERRATION_MODE, value);
+
+    TAGINFO(ANDROID_FLASH_MODE, bogusValue);
+
+    TAGINFO(ANDROID_LENS_FOCUS_DISTANCE, bogusValue);
+
+    TAGINFO(ANDROID_REQUEST_TYPE, requestType);
+    TAGINFO(ANDROID_REQUEST_METADATA_MODE, bogusValue);
+    TAGINFO(ANDROID_REQUEST_FRAME_COUNT, bogusValue);
+
+    TAGINFO_ARRAY(ANDROID_SCALER_CROP_REGION, bogusValueArray, 4);
+
+    TAGINFO(ANDROID_STATISTICS_FACE_DETECT_MODE, bogusValue);
+
+    entry = metadata.find(ANDROID_LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
+    if (entry.count > 0) {
+        TAGINFO(ANDROID_LENS_FOCAL_LENGTH, entry.data.f[0]);
+    }
+    // todo enable when region support is implemented
+    // TAGINFO_ARRAY(ANDROID_CONTROL_AE_REGIONS, bogusValueArray, 5);
+    TAGINFO(ANDROID_SENSOR_EXPOSURE_TIME, bogusValue);
+    TAGINFO(ANDROID_SENSOR_SENSITIVITY, bogusValue);
+    int64_t frameDuration = 33333333;
+    TAGINFO(ANDROID_SENSOR_FRAME_DURATION, frameDuration);
+
+    TAGINFO(ANDROID_JPEG_QUALITY, JPEG_QUALITY_DEFAULT);
+    TAGINFO(ANDROID_JPEG_THUMBNAIL_QUALITY, THUMBNAIL_QUALITY_DEFAULT);
+
+    entry = metadata.find(ANDROID_JPEG_AVAILABLE_THUMBNAIL_SIZES);
+    int32_t thumbSize[] = { 0, 0 };
+    if (entry.count >= 4) {
+        thumbSize[0] = entry.data.i32[2];
+        thumbSize[1] = entry.data.i32[3];
+    } else {
+        LOGE("Thumbnail size should have more than two resolutions: 0x0 and non zero size. Fix your camera profile");
+        thumbSize[0] = 0;
+        thumbSize[1] = 0;
+    }
+
+    TAGINFO_ARRAY(ANDROID_JPEG_THUMBNAIL_SIZE, thumbSize, 2);
+
+    entry = metadata.find(ANDROID_TONEMAP_AVAILABLE_TONE_MAP_MODES);
+    if (entry.count > 0) {
+        value = entry.data.u8[0];
+        for (uint32_t i = 0; i < entry.count; i++) {
+            if (entry.data.u8[i] == ANDROID_TONEMAP_MODE_HIGH_QUALITY) {
+                value = ANDROID_TONEMAP_MODE_HIGH_QUALITY;
+                break;
+            }
+        }
+        TAGINFO(ANDROID_TONEMAP_MODE, value);
+    }
+
+    TAGINFO(ANDROID_NOISE_REDUCTION_MODE, nrMode);
+    TAGINFO(ANDROID_EDGE_MODE, eeMode);
+
+    float colorTransform[9] = {1.0, 0.0, 0.0,
+                               0.0, 1.0, 0.0,
+                               0.0, 0.0, 1.0};
+
+    camera_metadata_rational_t transformMatrix[9];
+    for (int i = 0; i < 9; i++) {
+        transformMatrix[i].numerator = colorTransform[i];
+        transformMatrix[i].denominator = 1.0;
+    }
+    TAGINFO_ARRAY(ANDROID_COLOR_CORRECTION_TRANSFORM, transformMatrix, 9);
+
+    float colorGains[4] = {1.0, 1.0, 1.0, 1.0};
+    TAGINFO_ARRAY(ANDROID_COLOR_CORRECTION_GAINS, colorGains, 4);
+    TAGINFO(ANDROID_COLOR_CORRECTION_MODE, bogusValue);
+
+#undef TAGINFO
+#undef TAGINFO_ARRAY
+
+    int entryCount = get_camera_metadata_entry_count(meta);
+    int dataCount = get_camera_metadata_data_count(meta);
+    LOG2("%s: Real metadata entry count %d, data count %d", __FUNCTION__,
+        entryCount, dataCount);
+    if ((entryCount > DEFAULT_ENTRY_CAP - ENTRY_RESERVED)
+        || (dataCount > DEFAULT_DATA_CAP - DATA_RESERVED))
+        LOGW("%s: Need more memory, now entry %d (%d), data %d (%d)", __FUNCTION__,
+        entryCount, DEFAULT_ENTRY_CAP, dataCount, DEFAULT_DATA_CAP);
+
+    // sort the metadata before storing
+    sort_camera_metadata(meta);
+    if (mDefaultRequests.at(index)) {
+        free_camera_metadata(mDefaultRequests.at(index));
+    }
+    mDefaultRequests.at(index) = meta;
+    return meta;
 }
 
-status_t CameraProfiles::addCamera(int cameraId)
+status_t CameraProfiles::addCamera(int cameraId, const std::string &sensorName)
 {
-    LOG1("%s: for camera %d", __FUNCTION__, cameraId);
+    LOG1("%s: for camera %d, name: %s", __FUNCTION__, cameraId, sensorName.c_str());
 
-    camera_metadata_t * meta = allocate_camera_metadata(STATIC_ENTRY_CAP, STATIC_DATA_CAP);
+    camera_metadata_t *emptyReq = nullptr;
+    CLEAR(emptyReq);
+
+    camera_metadata_t *meta = allocate_camera_metadata(STATIC_ENTRY_CAP, STATIC_DATA_CAP);
     if (!meta) {
         LOGE("No memory for camera metadata!");
         return NO_MEMORY;
     }
     LOG2("Add cameraId: %d to mStaticMeta", cameraId);
     mStaticMeta.push_back(meta);
+
+    SensorType type = SENSOR_TYPE_RAW;
+
+    IPU3CameraCapInfo *info = new IPU3CameraCapInfo(type);
+    info->mSensorName = sensorName;
+    mCaps.push_back(info);
+
+    for (int i = 0; i < CAMERA_TEMPLATE_COUNT; i++)
+        mDefaultRequests.push_back(emptyReq);
 
     return NO_ERROR;
 }
@@ -232,9 +580,9 @@ int CameraProfiles::convertEnum(void *dest, const char *src, int type,
 {
     int ret = 0;
     union {
-        uint8_t * u8;
-        int32_t * i32;
-        int64_t * i64;
+        uint8_t *u8;
+        int32_t *i32;
+        int64_t *i64;
     } data;
 
     *newDest = dest;
@@ -267,7 +615,6 @@ int CameraProfiles::convertEnum(void *dest, const char *src, int type,
 
     return ret;
 }
-
 
 /**
  * parseEnum
@@ -331,7 +678,7 @@ int CameraProfiles::parseEnumAndNumbers(const char *src,
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     int count = 0;
     int maxCount = metadataCacheSize / camera_metadata_type_size[tagInfo->type];
-    char * endPtr = nullptr;
+    char *endPtr = nullptr;
 
     /**
      * pointer to the metadata cache buffer
@@ -384,13 +731,13 @@ int CameraProfiles::parseData(const char *src,
     int index = 0;
     int maxIndex = metadataCacheSize/sizeof(double); // worst case
 
-    char * endPtr = nullptr;
+    char *endPtr = nullptr;
     union {
-        uint8_t * u8;
-        int32_t * i32;
-        int64_t * i64;
-        float * f;
-        double * d;
+        uint8_t *u8;
+        int32_t *i32;
+        int64_t *i64;
+        float *f;
+        double *d;
     } data;
     data.u8 = (uint8_t *)metadataCache;
 
@@ -431,8 +778,8 @@ int CameraProfiles::parseData(const char *src,
 
     if (tagInfo->type == TYPE_RATIONAL) {
         if (index % 2) {
-            LOGW("Invalid number of entries to define rational (%d) in tag %s."
-                            " It should be even", index, tagInfo->name);
+            LOGW("Invalid number of entries to define rational (%d) in tag %s. It should be even",
+                index, tagInfo->name);
             // lets make it even
             index -= 1;
         }
@@ -442,7 +789,6 @@ int CameraProfiles::parseData(const char *src,
 
     return index;
 }
-
 
 const char *CameraProfiles::skipWhiteSpace(const char *src)
 {
@@ -478,14 +824,14 @@ int CameraProfiles::parseStreamConfig(const char *src,
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
-    int count = 0;  // entry count
+    int count = 0; // entry count
     int maxCount = metadataCacheSize/sizeof(int32_t);
     int ret;
-    char * endPtr = nullptr;
+    char *endPtr = nullptr;
     int parseStep = 1;
     int32_t *i32;
 
-    const metadata_value_t * activeTable;
+    const metadata_value_t *activeTable;
     int activeTableLen = 0;
 
     void *storeBuf = metadataCache;
@@ -559,8 +905,7 @@ int CameraProfiles::parseStreamConfig(const char *src,
      * The total entry count should be multiple of 4
      */
     if (count % 4) {
-        LOGE("Malformed string for stream configuration."
-             " ignoring last %d entries", count % 4);
+        LOGE("Malformed string for stream configuration. ignoring last %d entries", count % 4);
         count -= count % 4;
     }
     return count;
@@ -569,6 +914,7 @@ parseError:
     LOGE("Error parsing stream configuration ");
     return 0;
 }
+
 /**
  * parseAvailableKeys
  * This method is used to parse the following two static metadata tags:
@@ -584,7 +930,7 @@ int CameraProfiles::parseAvailableKeys(const char *src,
                                        int64_t* metadataCache)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
-    int count = 0;  // entry count
+    int count = 0; // entry count
     int maxCount = metadataCacheSize/camera_metadata_type_size[tagInfo->type];
     size_t tableSize = ELEMENT(metadataNames);
     size_t blanks, tokenSize;
@@ -614,9 +960,7 @@ int CameraProfiles::parseAvailableKeys(const char *src,
         }
         if (count >= maxCount) {
             LOGW("Too many keys found (%d)- ignoring the rest", count);
-            /* if this happens then we should increase the size of the
-             * mMetadataCache
-             */
+            /* if this happens then we should increase the size of the mMetadataCache */
             break;
         }
     }
@@ -649,15 +993,15 @@ int CameraProfiles::parseAvailableInputOutputFormatsMap(const char *src,
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
-    int count = 0;  // entry count
+    int count = 0; // entry count
     int maxCount = metadataCacheSize/camera_metadata_type_size[tagInfo->type];
     int ret;
-    char * endPtr = nullptr;
+    char *endPtr = nullptr;
     int parseStep = 1;
     int32_t *i32;
     int numOutputFormats = 0;
 
-    const metadata_value_t * activeTable;
+    const metadata_value_t *activeTable;
     int activeTableLen = 0;
 
     void *storeBuf = metadataCache;
@@ -673,7 +1017,7 @@ int CameraProfiles::parseAvailableInputOutputFormatsMap(const char *src,
         if (endPtr)
             *endPtr = 0;
 
-        if (parseStep == 1) {  // Step 1 parse the input format
+        if (parseStep == 1) { // Step 1 parse the input format
             if (STRLEN_S(src) == 0) break;
             // detect empty string. It means we are done, so get out of the loop
             activeTable = refTables[0].table;
@@ -687,7 +1031,7 @@ int CameraProfiles::parseAvailableInputOutputFormatsMap(const char *src,
                 LOGE("Malformed enum in format map %s", src);
                 break;
             }
-        } else if (parseStep == 2) {  // Step 2: Parse the num of output formats
+        } else if (parseStep == 2) { // Step 2: Parse the num of output formats
             i32 = reinterpret_cast<int32_t*>(storeBuf);
             i32[0] = strtol(src, &endPtr, 10);
             numOutputFormats = i32[0];
@@ -695,7 +1039,7 @@ int CameraProfiles::parseAvailableInputOutputFormatsMap(const char *src,
             storeBuf = reinterpret_cast<void*>(&i32[1]);
             LOGD("Num of output formats = %d", i32[0]);
 
-        } else {  // Step3 parse the output formats
+        } else { // Step3 parse the output formats
             activeTable = refTables[0].table;
             activeTableLen =  refTables[0].tableSize;
             for (int i = 0; i < numOutputFormats; i++) {
@@ -736,7 +1080,6 @@ int CameraProfiles::parseAvailableInputOutputFormatsMap(const char *src,
     return count;
 }
 
-
 int CameraProfiles::parseSizes(const char *src,
                                const metadata_tag_t *tagInfo,
                                int metadataCacheSize,
@@ -748,8 +1091,8 @@ int CameraProfiles::parseSizes(const char *src,
     entriesFound = parseData(src, tagInfo, metadataCacheSize, metadataCache);
 
     if (entriesFound % 2) {
-        LOGE("Odd number of entries (%d), resolutions should have an even "
-              "number of entries", entriesFound);
+        LOGE("Odd number of entries (%d), resolutions should have an even number of entries",
+            entriesFound);
         entriesFound -= 1; //make it even Ignore the last one
     }
     return entriesFound;
@@ -788,6 +1131,7 @@ int CameraProfiles::parseRectangle(const char *src,
 
     return entriesFound;
 }
+
 int CameraProfiles::parseBlackLevelPattern(const char *src,
                                            const metadata_tag_t *tagInfo,
                                            int metadataCacheSize,
@@ -811,14 +1155,14 @@ int CameraProfiles::parseStreamConfigDuration(const char *src,
         int64_t *metadataCache)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
-    int count = 0;  // entry count
+    int count = 0; // entry count
     int maxCount = metadataCacheSize/camera_metadata_type_size[tagInfo->type];
     int ret;
-    char * endPtr = nullptr;
+    char *endPtr = nullptr;
     int parseStep = 1;
     int64_t *i64;
 
-    const metadata_value_t * activeTable;
+    const metadata_value_t *activeTable;
     int activeTableLen = 0;
 
     void *storeBuf = metadataCache;
@@ -834,7 +1178,7 @@ int CameraProfiles::parseStreamConfigDuration(const char *src,
         if (endPtr)
             *endPtr = 0;
 
-        if (parseStep == 1) {  // Step 1 parse the format
+        if (parseStep == 1) { // Step 1 parse the format
             if (STRLEN_S(src) == 0) break;
             // detect empty string. It means we are done, so get out of the loop
             activeTable = refTables[0].table;
@@ -849,7 +1193,7 @@ int CameraProfiles::parseStreamConfigDuration(const char *src,
                 break;
             }
 
-        } else if (parseStep == 2) {  // Step 2: Parse the resolution
+        } else if (parseStep == 2) { // Step 2: Parse the resolution
             i64 = reinterpret_cast<int64_t*>(storeBuf);
             i64[0] = strtol(src, &endPtr, 10);
             if (endPtr == nullptr || *endPtr != 'x') {
@@ -862,7 +1206,7 @@ int CameraProfiles::parseStreamConfigDuration(const char *src,
             count += 2;
             LOG1("  - %" PRId64 "x%" PRId64 " -", i64[0], i64[1]);
 
-        } else {  // Step3 parse the duration
+        } else { // Step3 parse the duration
 
             i64 = reinterpret_cast<int64_t*>(storeBuf);
             if (endPtr)
@@ -897,12 +1241,12 @@ int CameraProfiles::parseStreamConfigDuration(const char *src,
      * The total entry count should be multiple of 4
      */
     if (count % 4) {
-        LOGE("Malformed string for stream config duration."
-                " ignoring last %d entries", count % 4);
+        LOGE("Malformed string for stream config duration. ignoring last %d entries", count % 4);
         count -= count % 4;
     }
     return count;
 }
+
 /**
  *
  * Checks whether the sensor named in a profile is present in the list of
@@ -928,7 +1272,7 @@ bool CameraProfiles::isSensorPresent(std::vector<SensorDriverDescriptor> &detect
             (detectedSensors[i].mIspPort == SECONDARY && cameraId == 1) ||
             (detectedSensors[i].mIspPort == UNKNOWN_PORT)) {
             if (detectedSensors[i].mSensorName == profileName) {
-                LOG1("@%s: mUseEntry is true, mSensorIndex = %d, name = %s",
+                LOG1("@%s: mUseEntry is true, mXmlSensorIndex = %d, name = %s",
                         __FUNCTION__, cameraId, profileName);
                 return true;
             }
@@ -945,7 +1289,7 @@ bool CameraProfiles::isSensorPresent(std::vector<SensorDriverDescriptor> &detect
          */
         if (detectedSensors[i].mSensorDevType == SENSOR_DEVICE_MC) {
            if (detectedSensors[i].mSensorName == profileName) {
-               LOG1("@%s: mUseEntry is true, mSensorIndex = %d, name = %s",
+               LOG1("@%s: mUseEntry is true, mXmlSensorIndex = %d, name = %s",
                        __FUNCTION__, cameraId, profileName);
                return true;
            }
@@ -954,11 +1298,9 @@ bool CameraProfiles::isSensorPresent(std::vector<SensorDriverDescriptor> &detect
 
     return false;
 }
+
 /**
  * This function will check which field that the parser parses to.
- *
- * The field is set to 5 types.
- * FIELD_INVALID FIELD_SENSOR_COMMON FIELD_SENSOR_ANDROID_METADATA FIELD_SENSOR_VENDOR_METADATA and FIELD_COMMON
  *
  * \param name: the element's name.
  * \param atts: the element's attribute.
@@ -969,96 +1311,55 @@ void CameraProfiles::checkField(CameraProfiles *profiles,
 {
     if (!strcmp(name, "Profiles")) {
         mXmlSensorIndex = atoi(atts[1]);
-        if (mXmlSensorIndex > MAX_CAMERAS) {
-            LOGE("ERROR: bad camera id %d!", mSensorIndex);
+        if (mXmlSensorIndex > (MAX_CAMERAS - 1)) {
+            LOGE("ERROR: bad camera id %d!", mXmlSensorIndex);
             return;
         }
+        mCameraIdPool.push_back(mXmlSensorIndex);
 
         profiles->mUseEntry = false;
         int attIndex = 2;
+        std::string sensorName;
         if (atts[attIndex]) {
             if (strcmp(atts[attIndex], "name") == 0) {
-                mSensorIndex++;
-                LOG1("@%s: mSensorIndex = %d, name = %s, mSensorNames.size():%zu",
-                        __FUNCTION__, mSensorIndex,
-                        atts[attIndex + 1], profiles->mSensorNames.size());
+                sensorName = atts[attIndex + 1];
+                LOG1("@%s: mXmlSensorIndex = %d, name = %s, mSensorNames.size():%zu",
+                        __FUNCTION__, mXmlSensorIndex,
+                        sensorName.c_str(), profiles->mSensorNames.size());
 
                 profiles->mUseEntry = isSensorPresent(profiles->mSensorNames,
-                                                      atts[attIndex + 1],
-                                                      mSensorIndex);
+                                                      sensorName.c_str(),
+                                                      mXmlSensorIndex);
 
                 if (profiles->mUseEntry) {
-                    mCameraIdToSensorName.insert(make_pair(mSensorIndex, std::string(atts[attIndex + 1])));
+                    mCameraIdToSensorName.insert(make_pair(mXmlSensorIndex, std::string(sensorName)));
                 }
             } else {
                 LOGE("unknown attribute atts[%d] = %s", attIndex, atts[attIndex]);
             }
-        } else {
-            // for platforms that don't have the name field in the camera profiles.
-            profiles->mUseEntry = true;
-            mSensorIndex++;
         }
 
         if (profiles->mUseEntry
-                && mSensorIndex >= mStaticMeta.size()
+                && !sensorName.empty()
+                && mXmlSensorIndex >= mStaticMeta.size()
                 && mStaticMeta.size() < profiles->mSensorNames.size())
-            addCamera(mSensorIndex);
-    } else if (strcmp(name, "Supported_hardware") == 0) {
-        mCurrentDataField = FIELD_SUPPORTED_HARDWARE;
-        mItemsCount = -1;
+            addCamera(mXmlSensorIndex, sensorName);
     } else if (strcmp(name, "Android_metadata") == 0) {
         mCurrentDataField = FIELD_ANDROID_STATIC_METADATA;
         mItemsCount = -1;
-    } else if (strcmp(name, "Common") == 0) {
-        mCurrentDataField = FIELD_COMMON;
+    } else if (strcmp(name, "Hal_tuning_IPU3") == 0) {
+        mCurrentDataField = FIELD_HAL_TUNING_IPU3;
+        mItemsCount = -1;
+    } else if (strcmp(name, "Sensor_info_IPU3") == 0) {
+        mCurrentDataField = FIELD_SENSOR_INFO_IPU3;
+        mItemsCount = -1;
+    } else if (strcmp(name, "MediaCtl_elements_IPU3") == 0) {
+        mCurrentDataField = FIELD_MEDIACTL_ELEMENTS_IPU3;
         mItemsCount = -1;
     }
 
     LOG1("@%s: name:%s, field %d", __FUNCTION__, name, mCurrentDataField);
     return;
-}
-
-void CameraProfiles::handleSupportedHardware(const char *name, const char **atts)
-{
-    LOG1("@%s, type:%s", __FUNCTION__, name);
-    if (strcmp(atts[0], "value") != 0) {
-        LOGE("name:%s, atts[0]:%s, xml format wrong", name, atts[0]);
-        return;
-    }
-
-    if (strcmp(name, "hwType") == 0) {
-        CameraInfo *info = nullptr;
-        mCameraInfoPool.acquireItem(&info);
-        if (info != nullptr) {
-            info->parser = nullptr;
-            info->hwType = atts[1];
-            info->xmlCameraId = mXmlSensorIndex;
-            mCameraIdToCameraInfo.insert(std::make_pair(mSensorIndex, info));
-            LOG2("Add sensor: %s to mCameraIdToCameraInfo with key: %d", name, mSensorIndex);
-        } else {
-            LOGE("Failed to get camera info for sensor index %d", mSensorIndex);
-        }
-    } else {
-        LOGE("Unhandled xml attribute in Supported_hardware");
-    }
-}
-
-/**
- * This function will handle all the common related elements.
- *
- * It will be called in the function startElement
- *
- * \param name: the element's name.
- * \param atts: the element's attribute.
- */
-void CameraProfiles::handleCommon(const char *name, const char **atts)
-{
-    LOG1("@%s, name:%s, atts[0]:%s", __FUNCTION__, name, atts[0]);
-
-    if (strcmp(atts[0], "value") != 0) {
-        LOGE("name:%s, atts[0]:%s, xml format wrong", name, atts[0]);
-        return;
-    }
 }
 
 /**
@@ -1078,7 +1379,7 @@ void CameraProfiles::handleAndroidStaticMetadata(const char *name, const char **
 
     CheckError(mStaticMeta.empty(), VOID_VALUE, "Camera isn't added, unable to get the static metadata");
     camera_metadata_t *currentMeta = nullptr;
-    currentMeta = mStaticMeta.at(mSensorIndex);
+    currentMeta = mStaticMeta.at(mXmlSensorIndex);
 
     // Find tag
     const metadata_tag_t *tagInfo = findTagInfo(name, android_static_tags_table, STATIC_TAGS_TABLE_SIZE);
@@ -1135,7 +1436,362 @@ void CameraProfiles::handleAndroidStaticMetadata(const char *name, const char **
 
     // save the key to mCharacteristicsKeys used to update the
     // REQUEST_AVAILABLE_CHARACTERISTICS_KEYS
-    mCharacteristicsKeys[mSensorIndex].push_back(tagInfo->value);
+    mCharacteristicsKeys[mXmlSensorIndex].push_back(tagInfo->value);
+}
+
+/**
+ * This function will handle all the HAL parameters that are different
+ * depending on the camera
+ *
+ * It will be called in the function startElement
+ *
+ * \param name: the element's name.
+ * \param atts: the element's attribute.
+ */
+void CameraProfiles::handleHALTuning(const char *name, const char **atts)
+{
+    LOG2("@%s", __FUNCTION__);
+
+    if (strcmp(atts[0], "value") != 0) {
+        LOGE("@%s, name:%s, atts[0]:%s, xml format wrong", __func__, name, atts[0]);
+        return;
+    }
+
+    IPU3CameraCapInfo *info = static_cast<IPU3CameraCapInfo*>(mCaps[mXmlSensorIndex]);
+    if (strcmp(name, "flipping") == 0) {
+        info->mSensorFlipping = SENSOR_FLIP_OFF;
+        if (strcmp(atts[0], "value") == 0 && strcmp(atts[1], "SENSOR_FLIP_H") == 0)
+            info->mSensorFlipping |= SENSOR_FLIP_H;
+        if (strcmp(atts[2], "value_v") == 0 && strcmp(atts[3], "SENSOR_FLIP_V") == 0)
+            info->mSensorFlipping |= SENSOR_FLIP_V;
+    } else if (strcmp(name, "supportIsoMap") == 0) {
+        info->mSupportIsoMap = ((strcmp(atts[1], "true") == 0) ? true : false);
+    } else if (strcmp(name, "graphSettingsFile") == 0) {
+        info->mGraphSettingsFile = atts[1];
+    }
+}
+
+/**
+ * This function will handle all the parameters describing characteristic of
+ * the sensor itself
+ *
+ * It will be called in the function startElement
+ *
+ * \param name: the element's name.
+ * \param atts: the element's attribute.
+ */
+void CameraProfiles::handleSensorInfo(const char *name, const char **atts)
+{
+    LOG2("@%s", __FUNCTION__);
+    if (strcmp(atts[0], "value") != 0) {
+        LOGE("@%s, name:%s, atts[0]:%s, xml format wrong", __func__, name, atts[0]);
+        return;
+    }
+    IPU3CameraCapInfo *info = static_cast<IPU3CameraCapInfo*>(mCaps[mXmlSensorIndex]);
+
+    if (strcmp(name, "sensorType") == 0) {
+        info->mSensorType = ((strcmp(atts[1], "SENSOR_TYPE_RAW") == 0) ? SENSOR_TYPE_RAW : SENSOR_TYPE_SOC);
+    }  else if (strcmp(name, "exposure.sync") == 0) {
+        info->mExposureSync = ((strcmp(atts[1], "true") == 0) ? true : false);
+    }  else if (strcmp(name, "sensor.digitalGain") == 0) {
+        info->mDigiGainOnSensor = ((strcmp(atts[1], "true") == 0) ? true : false);
+    } else if (strcmp(name, "gain.lag") == 0) {
+        info->mGainLag = atoi(atts[1]);
+    } else if (strcmp(name, "exposure.lag") == 0) {
+        info->mExposureLag = atoi(atts[1]);
+    } else if (strcmp(name, "gainExposure.compensation") == 0) {
+        info->mGainExposureComp = ((strcmp(atts[1], "true") == 0) ? true : false);
+    } else if (strcmp(name, "fov") == 0) {
+        info->mFov[0] = atof(atts[1]);
+        info->mFov[1] = atof(atts[3]);
+    } else if (strcmp(name, "statistics.initialSkip") == 0) {
+        info->mStatisticsInitialSkip = atoi(atts[1]);
+    } else if (strcmp(name, "frame.initialSkip") == 0) {
+        info->mFrameInitialSkip = atoi(atts[1]);
+    } else if (strcmp(name, "cITMaxMargin") == 0) {
+        info->mCITMaxMargin = atoi(atts[1]);
+    } else if (strcmp(name, "maxNvmDataSize") == 0) {
+        info->mMaxNvmDataSize = atoi(atts[1]);
+    } else if (strcmp(name, "nvmDirectory") == 0) {
+        info->mNvmDirectory = atts[1];
+        readNvmData();
+    } else if (strcmp(name, "testPattern.bayerFormat") == 0) {
+        info->mTestPatternBayerFormat = atts[1];
+    } else if (strcmp(name, "sensor.testPatternMap") == 0) {
+        int size = strlen(atts[1]);
+        char src[size + 1];
+        memset(src, 0, sizeof(src));
+        MEMCPY_S(src, size, atts[1], size);
+        char *savePtr, *tablePtr;
+        int mode = ANDROID_SENSOR_TEST_PATTERN_MODE_OFF;
+
+        tablePtr = strtok_r(src, ",", &savePtr);
+        while (tablePtr) {
+            if (strcmp(tablePtr, "Off") == 0) {
+                mode = ANDROID_SENSOR_TEST_PATTERN_MODE_OFF;
+            } else if (strcmp(tablePtr, "ColorBars") == 0) {
+                mode = ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS;
+            } else if (strcmp(tablePtr, "SolidColor") == 0) {
+                mode = ANDROID_SENSOR_TEST_PATTERN_MODE_SOLID_COLOR;
+            } else if (strcmp(tablePtr, "ColorBarsFadeToGray") == 0) {
+                mode = ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS_FADE_TO_GRAY;
+            } else if (strcmp(tablePtr, "PN9") == 0) {
+                mode = ANDROID_SENSOR_TEST_PATTERN_MODE_PN9;
+            } else if (strcmp(tablePtr, "Custom1") == 0) {
+                mode = ANDROID_SENSOR_TEST_PATTERN_MODE_CUSTOM1;
+            } else {
+                LOGE("Test pattern string %s is unknown, please check", tablePtr);
+                return;
+            }
+
+            tablePtr = strtok_r(nullptr, ",", &savePtr);
+            CheckError(tablePtr == nullptr, VOID_VALUE, "Driver test pattern is nullptr");
+
+            info->mTestPatternMap[mode] = atoi(tablePtr);
+
+            tablePtr = strtok_r(nullptr, ",", &savePtr);
+        }
+    } else if (strcmp(name, "ag.multiplier") == 0) {
+        info->mAgMultiplier = atoi(atts[1]);
+    } else if (strcmp(name, "ag.maxRatio") == 0) {
+        info->mAgMaxRatio = atoi(atts[1]);
+    } else if (strcmp(name, "ag.smiaParameters") == 0) {
+        int size = strlen(atts[1]);
+        char src[size + 1];
+        memset(src, 0, sizeof(src));
+        MEMCPY_S(src, size, atts[1], size);
+        char *savePtr, *tablePtr;
+        bool smiaError = false;
+
+        tablePtr = strtok_r(src, ",", &savePtr);
+        if (tablePtr)
+            info->mSMIAm0 = atoi(tablePtr);
+        else
+            smiaError = true;
+        tablePtr = strtok_r(nullptr, ",", &savePtr);
+        if (tablePtr)
+            info->mSMIAm1 = atoi(tablePtr);
+        else
+            smiaError = true;
+        tablePtr = strtok_r(nullptr, ",", &savePtr);
+        if (tablePtr)
+            info->mSMIAc0 = atoi(tablePtr);
+        else
+            smiaError = true;
+        tablePtr = strtok_r(nullptr, ",", &savePtr);
+        if (tablePtr)
+            info->mSMIAc1 = atoi(tablePtr);
+        else
+            smiaError = true;
+
+        if (smiaError) {
+            LOGE("@%s,SMIA parameters fails", __func__);
+            info->mSMIAm0 = info->mSMIAm1 = info->mSMIAc0 = info->mSMIAc1 = 0;
+            return;
+        }
+    }
+}
+
+/**
+ * This function will handle all the camera pipe elements existing.
+ * The goal is to enumerate all available camera media-ctl elements
+ * from the camera profile file for later usage.
+ *
+ * It will be called in the function startElement
+ *
+ * \param name: the element's name.
+ * \param atts: the element's attribute.
+ */
+void CameraProfiles::handleMediaCtlElements(const char *name, const char **atts)
+{
+    LOG1("@%s, type:%s", __FUNCTION__, name);
+
+    IPU3CameraCapInfo *info = static_cast<IPU3CameraCapInfo*>(mCaps[mXmlSensorIndex]);
+
+    if (strcmp(name, "element") == 0) {
+        MediaCtlElement currentElement;
+        currentElement.isysNodeName = IMGU_NODE_NULL;
+        while (*atts) {
+            const XML_Char* attr_name = *atts++;
+            const XML_Char* attr_value = *atts++;
+            if (strcmp(attr_name, "name") == 0) {
+                currentElement.name =
+                    PlatformData::getCameraHWInfo()->getFullMediaCtlElementName(mElementNames, attr_value);
+            } else if (strcmp(attr_name, "type") == 0) {
+                currentElement.type = attr_value;
+            } else if (strcmp(attr_name, "isysNodeName") == 0) {
+                currentElement.isysNodeName = getIsysNodeNameAsValue(attr_value);
+            } else {
+                LOGW("Unhandled xml attribute in MediaCtl element (%s)", attr_name);
+            }
+        }
+        if ((currentElement.type == "video_node")) {
+            LOGE("ISYS node name is not set for \"%s\"", currentElement.name.c_str());
+            return;
+        }
+        info->mMediaCtlElements.push_back(currentElement);
+    }
+}
+
+/**
+ * The function reads a binary file containing NVM data from sysfs. NVM data is
+ * camera module calibration data which is written into the camera module in
+ * production line, and at runtime read by the driver and written into sysfs.
+ * The data is in the format in which the module manufacturer has provided it in.
+ */
+int CameraProfiles::readNvmData()
+{
+    LOG1("@%s", __FUNCTION__);
+    int nvmDataSize = 0;
+    std::string sensorName;
+    std::string nvmDirectory;
+    ia_binary_data nvmData;
+    FILE *nvmFile;
+    std::string nvmDataPath(NVM_DATA_PATH);
+
+    IPU3CameraCapInfo *info = static_cast<IPU3CameraCapInfo*>(mCaps[mXmlSensorIndex]);
+    if (info == nullptr) {
+        LOGE("Could not get Camera capability info");
+        return UNKNOWN_ERROR;
+    }
+
+    sensorName = info->getSensorName();
+    nvmDirectory = info->getNvmDirectory();
+    nvmDataSize = info->getMaxNvmDataSize();
+
+    if (nvmDirectory.length() == 0) {
+        LOGW("NVM dirctory from config is null");
+        return UNKNOWN_ERROR;
+    }
+
+    nvmData.size = 0;
+    nvmData.data = nullptr;
+    // check separator of path name
+    if (nvmDataPath.back() != '/')
+        nvmDataPath.append("/");
+
+    nvmDataPath.append(nvmDirectory);
+    // check separator of path name
+    if (nvmDataPath.back() != '/')
+        nvmDataPath.append("/");
+
+    nvmDataPath.append("eeprom");
+    LOG1("NVM data for %s is located in %s", sensorName.c_str(), nvmDataPath.c_str());
+
+    nvmFile = fopen(nvmDataPath.c_str(), "rb");
+    if (!nvmFile) {
+        LOGE("Failed to open NVM file: %s", nvmDataPath.c_str());
+        return UNKNOWN_ERROR;
+    }
+
+    fseek(nvmFile, 0, SEEK_END);
+    nvmData.size = ftell(nvmFile);
+    fseek(nvmFile, 0, SEEK_SET);
+
+    if (nvmDataSize > 0)
+        nvmData.size = MIN(nvmDataSize, nvmData.size);
+
+    nvmData.data = ::operator new(nvmData.size);
+
+    LOG1("NVM data size: %d bytes", nvmData.size);
+    int ret = fread(nvmData.data, nvmData.size, 1, nvmFile);
+    if (ret == 0) {
+        LOGE("Cannot read nvm data");
+        ::operator delete(nvmData.data);
+        fclose(nvmFile);
+        return UNKNOWN_ERROR;
+    }
+    fclose(nvmFile);
+    info->mNvmData = nvmData;
+    return OK;
+}
+
+std::string CameraProfiles::getSensorMediaDevice()
+{
+  HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
+
+  return getMediaDeviceByName(CIO2_MEDIA_DEVICE);
+}
+
+std::string CameraProfiles::getImguMediaDevice()
+{
+  HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
+
+  return getMediaDeviceByName(IMGU_MEDIA_DEVICE);
+}
+
+std::string CameraProfiles::getMediaDeviceByName(std::string driverName)
+{
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
+    LOG1("@%s, Target name: %s", __FUNCTION__, driverName.c_str());
+    const char *MEDIADEVICES = "media";
+    const char *DEVICE_PATH = "/dev/";
+
+    std::string mediaDevicePath;
+    DIR *dir;
+    dirent *dirEnt;
+
+    std::vector<std::string> candidates;
+
+    candidates.clear();
+    if ((dir = opendir(DEVICE_PATH)) != nullptr) {
+        while ((dirEnt = readdir(dir)) != nullptr) {
+            std::string candidatePath = dirEnt->d_name;
+            std::size_t pos = candidatePath.find(MEDIADEVICES);
+            if (pos != std::string::npos) {
+                LOGD("Found media device candidate: %s", candidatePath.c_str());
+                std::string found_one = DEVICE_PATH;
+                found_one += candidatePath;
+                candidates.push_back(found_one);
+            }
+        }
+        closedir(dir);
+    } else {
+        LOGW("Failed to open directory: %s", DEVICE_PATH);
+    }
+
+    status_t retVal = NO_ERROR;
+    for (const auto &candidate : candidates) {
+        MediaController controller(candidate.c_str());
+        retVal = controller.init();
+
+        // We may run into devices that this HAL won't use -> skip to next
+        if (retVal == PERMISSION_DENIED) {
+            LOGD("Not enough permissions to access %s.", candidate.c_str());
+            continue;
+        }
+
+        media_device_info info;
+        int ret = controller.getMediaDevInfo(info);
+        if (ret != OK) {
+            LOGE("Cannot get media device information.");
+            return mediaDevicePath;
+        }
+
+        if (strncmp(info.driver, driverName.c_str(),
+                    MIN(sizeof(info.driver),
+                    driverName.size())) == 0) {
+            LOGD("Found device that matches: %s", driverName.c_str());
+            mediaDevicePath += candidate;
+            break;
+        }
+    }
+
+    return mediaDevicePath;
+}
+
+/*
+ * Helper function for converting string to int for the
+ * ISYS node name.
+ */
+int CameraProfiles::getIsysNodeNameAsValue(const char* isysNodeName)
+{
+    if (!strcmp(isysNodeName, "ISYS_NODE_RAW")) {
+        return ISYS_NODE_RAW;
+    } else {
+        LOGE("Unknown ISYS node name (%s)", isysNodeName);
+        return IMGU_NODE_NULL;
+    }
 }
 
 bool CameraProfiles::validateStaticMetadata(const char *name, const char **atts)
@@ -1242,24 +1898,26 @@ void CameraProfiles::startElement(void *userData, const char *name, const char *
         profiles->checkField(profiles, name, atts);
         return;
     }
-    LOG2("@%s: name:%s, for sensor %d", __FUNCTION__, name, profiles->mSensorIndex);
+    LOG2("@%s: name:%s, for sensor %d", __FUNCTION__, name, profiles->mXmlSensorIndex);
 
     profiles->mItemsCount++;
 
     switch (profiles->mCurrentDataField) {
-        case FIELD_SUPPORTED_HARDWARE:
-            if (profiles->mUseEntry)
-                profiles->handleSupportedHardware(name, atts);
-            break;
         case FIELD_ANDROID_STATIC_METADATA:
             if (profiles->mUseEntry)
                 profiles->handleAndroidStaticMetadata(name, atts);
-
             break;
-        case FIELD_COMMON:
-            if (profiles->mStaticMeta.size() > 0)
-                profiles->handleCommon(name, atts);
-
+        case FIELD_HAL_TUNING_IPU3:
+            if (profiles->mUseEntry)
+                profiles->handleHALTuning(name, atts);
+            break;
+        case FIELD_SENSOR_INFO_IPU3:
+            if (profiles->mUseEntry)
+                profiles->handleSensorInfo(name, atts);
+            break;
+        case FIELD_MEDIACTL_ELEMENTS_IPU3:
+            if (profiles->mUseEntry)
+                profiles->handleMediaCtlElements(name, atts);
             break;
         default:
             LOGE("line:%d, go to default handling", __LINE__);
@@ -1281,10 +1939,11 @@ void CameraProfiles::endElement(void *userData, const char *name)
     if (!strcmp(name, "Profiles")) {
         profiles->mCurrentDataField = FIELD_INVALID;
         if (profiles->mUseEntry)
-            profiles->mProfileEnd[profiles->mSensorIndex] = true;
-    } else if (!strcmp(name, "Supported_hardware")
-             || !strcmp(name, "Android_metadata")
-             || !strcmp(name, "Common")) {
+            profiles->mProfileEnd[profiles->mXmlSensorIndex] = true;
+    } else if (!strcmp(name, "Android_metadata")
+             ||!strcmp(name, "Hal_tuning_IPU3")
+             || !strcmp(name, "Sensor_info_IPU3")
+             || !strcmp(name, "MediaCtl_elements_IPU3")) {
         profiles->mCurrentDataField = FIELD_INVALID;
         profiles->mItemsCount = -1;
     }
@@ -1297,9 +1956,8 @@ void CameraProfiles::endElement(void *userData, const char *name)
  * The function will read the xml configuration file firstly.
  * Then it will parse out the camera settings.
  * The camera setting is stored inside this CameraProfiles class.
- *
  */
-void CameraProfiles::getDataFromXmlFile(void)
+void CameraProfiles::getDataFromXmlFile()
 {
     int done;
     void *pBuf = nullptr;
@@ -1320,6 +1978,8 @@ void CameraProfiles::getDataFromXmlFile(void)
         LOGE("line:%d, parser is nullptr", __LINE__);
         goto exit;
     }
+
+    PlatformData::getCameraHWInfo()->getMediaCtlElementNames(mElementNames);
     ::XML_SetUserData(parser, this);
     ::XML_SetElementHandler(parser, startElement, endElement);
 
@@ -1369,38 +2029,42 @@ exit:
         ::fclose(fp);
 }
 
-CameraHwType CameraProfiles::getCameraHwforId(int cameraId)
+/**
+ * Read graph descriptor and settings from configuration files.
+ *
+ * The resulting graphs represend all possible graphs for given sensor, and
+ * they are stored in capinfo structure.
+ */
+void CameraProfiles::getGraphConfigFromXmlFile()
 {
-    LOG2("@%s cameraId: %d", __FUNCTION__, cameraId);
+    // Assuming that PSL section from profiles is already parsed, and number
+    // of cameras is known.
+    GraphConfigManager::addAndroidMap();
+    for (size_t i = 0; i < mCaps.size(); ++i) {
+        IPU3CameraCapInfo *info = static_cast<IPU3CameraCapInfo*>(mCaps[i]);
+        if (info->mGCMNodes) {
+            LOGE("Camera %zu Graph Config already initialized - BUG", i);
+            continue;
+        }
 
-    std::map<int, CameraInfo*>::iterator it =
-                            mCameraIdToCameraInfo.find(cameraId);
-    if (it == mCameraIdToCameraInfo.end()) {
-        LOGE("Camera id not found, BUG, this should not happen!!mSensorIndex = %d", cameraId);
-        return SUPPORTED_HW_UNKNOWN;
+        std::string settingsPath = GRAPH_SETTINGS_FILE_PATH;
+        const std::string &fileName = info->getGraphSettingsFile();
+
+        if (fileName.empty()) {
+            settingsPath += GraphConfigManager::DEFAULT_SETTINGS_FILE;
+        } else {
+            settingsPath += fileName;
+        }
+        LOGI("Using settings file %s for camera %zu", settingsPath.c_str(), i);
+
+        info->mGCMNodes = GraphConfigManager::parse(
+            GraphConfigManager::DEFAULT_DESCRIPTOR_FILE, settingsPath.c_str());
+
+        if (!info->mGCMNodes) {
+            LOGE("Could not read graph descriptor from file for camera %zu", i);
+            continue;
+        }
     }
-
-    CameraInfo *info = it->second;
-    std::string hwType = info->hwType;
-
-    if (hwType == "SUPPORTED_HW_IPU3") {
-        return SUPPORTED_HW_IPU3;
-    } else
-        LOGE("ERROR: Camera HW type wrong in xml");
-        return SUPPORTED_HW_UNKNOWN;
-}
-
-void CameraProfiles::dumpSupportedHWSection(int cameraId) {
-    LOGD("@%s", __FUNCTION__);
-    std::map<int, CameraInfo*>::iterator it =
-                            mCameraIdToCameraInfo.find(cameraId);
-    if (it == mCameraIdToCameraInfo.end()) {
-        LOGE("Camera id not found, BUG, this should not happen!!mSensorIndex = %d", cameraId);
-        return;
-    }
-
-    CameraInfo *info = it->second;
-    LOGD("element name hwType element value = %s", info->hwType.c_str());
 }
 
 void CameraProfiles::dumpStaticMetadataSection(int cameraId)
@@ -1410,6 +2074,46 @@ void CameraProfiles::dumpStaticMetadataSection(int cameraId)
         MetadataHelper::dumpMetadata(mStaticMeta[cameraId]);
     else {
         LOGE("Camera isn't added, unable to get the static metadata");
+    }
+}
+
+void CameraProfiles::dumpHalTuningSection(int cameraId)
+{
+    LOGD("@%s", __FUNCTION__);
+
+    IPU3CameraCapInfo * info = static_cast<IPU3CameraCapInfo*>(mCaps[cameraId]);
+
+    LOGD("element name: flipping, element value = %d", info->mSensorFlipping);
+}
+
+void CameraProfiles::dumpSensorInfoSection(int cameraId)
+{
+    LOGD("@%s", __FUNCTION__);
+
+    IPU3CameraCapInfo * info = static_cast<IPU3CameraCapInfo*>(mCaps[cameraId]);
+
+    LOGD("element name: sensorType, element value = %d", info->mSensorType);
+    LOGD("element name: gain.lag, element value = %d", info->mGainLag);
+    LOGD("element name: exposure.lag, element value = %d", info->mExposureLag);
+    LOGD("element name: fov, element value = %f, %f", info->mFov[0], info->mFov[1]);
+    LOGD("element name: statistics.initialSkip, element value = %d", info->mStatisticsInitialSkip);
+    LOGD("element name: testPattern.bayerFormat, element value = %s", info->mTestPatternBayerFormat.c_str());
+}
+
+void CameraProfiles::dumpMediaCtlElementsSection(int cameraId)
+{
+    LOGD("@%s", __FUNCTION__);
+
+    unsigned int numidx;
+
+    IPU3CameraCapInfo * info = static_cast<IPU3CameraCapInfo*>(mCaps[cameraId]);
+    const MediaCtlElement *currentElement;
+    for (numidx = 0; numidx < info->mMediaCtlElements.size(); numidx++) {
+        currentElement = &info->mMediaCtlElements[numidx];
+        LOGD("MediaCtl element name=%s ,type=%s, isysNodeName=%d"
+             ,currentElement->name.c_str(),
+             currentElement->type.c_str(),
+             currentElement->isysNodeName);
     }
 }
 
@@ -1428,12 +2132,17 @@ void CameraProfiles::dumpCommonSection()
 void CameraProfiles::dump()
 {
     LOGD("===========================@%s======================", __FUNCTION__);
-    for (unsigned int i = 0; i <= mSensorIndex; i++) {
-        dumpSupportedHWSection(i);
+    for (unsigned int i = 0; i <= mXmlSensorIndex; i++) {
         dumpStaticMetadataSection(i);
     }
+
+    for (unsigned int j = 0; j <= mCaps.size(); j++) {
+        dumpHalTuningSection(j);
+        dumpSensorInfoSection(j);
+        dumpMediaCtlElementsSection(j);
+    }
+
     dumpCommonSection();
     LOGD("===========================end======================");
 }
-
 } NAMESPACE_DECLARATION_END

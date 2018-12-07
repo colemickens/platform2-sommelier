@@ -265,7 +265,6 @@ public:
     const GraphConfigNodes* getGraphConfigNodes() const { return mGCMNodes; }
 
 protected:
-    friend class PSLConfParser;
     /* Common fields for all PSL's stored in the XML section HAL_tuning */
     SensorType mSensorType;    /*!> Whether is RAW or SOC */
     /**
@@ -328,14 +327,12 @@ public:
     static void getCameraInfo(int cameraId, struct camera_info* info);
     static const camera_metadata_t* getStaticMetadata(int cameraId);
     static camera_metadata_t* getDefaultMetadata(int cameraId, int requestType);
-    static CameraHwType getCameraHwType(int cameraId);
     static bool isCpfModeAvailable(int cameraId, std::string mode);
     static const AiqConf *getAiqConfiguration(int cameraId,
                                               std::string mode = std::string(CPF_MODE_DEFAULT));
     static const CameraCapInfo* getCameraCapInfo(int cameraId);
     static const CameraHWInfo* getCameraHWInfo() { return mCameraHWInfo; }
     static int getXmlCameraId(int cameraId);
-    static const CameraCapInfo* getCameraCapInfoForXmlCameraId(int xmlCameraId);
     static status_t getDeviceIds(std::vector<std::string>& names);
 
     static const char* boardName(void);

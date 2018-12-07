@@ -22,7 +22,6 @@
 #include "BufferPools.h"
 #include "SettingsProcessor.h"
 #include "MediaController.h"
-#include "PSLConfParser.h"
 #include "MediaEntity.h"
 #include "PerformanceTraces.h"
 

@@ -192,6 +192,12 @@ void PlatformData::init()
             continue;
 
         int xmlIndex = PlatformData::getXmlCameraId(i);
+        if (xmlIndex < 0) {
+            LOGE("@%s, Invalid xml camera index.", __func__);
+            deinit();
+            return VOID_VALUE;
+        }
+
         // Cpf is using id from XML because aiqb files are named using that id.
         cpf = new CpfStore(xmlIndex, mCameraHWInfo);
         /*
@@ -293,17 +299,6 @@ int PlatformData::getXmlCameraId(int cameraId)
 
     return (int)i->getXmlCameraId(cameraId);
 }
-
-const CameraCapInfo *PlatformData::getCameraCapInfoForXmlCameraId(int xmlCameraId)
-{
-    CameraProfiles * i = getInstance();
-
-    if (!i)
-        return nullptr;
-
-    return i->getCameraCapInfoForXmlCameraId(xmlCameraId);
-}
-
 
 void PlatformData::getCameraInfo(int cameraId, struct camera_info * info)
 {
@@ -465,16 +460,6 @@ status_t PlatformData::getDeviceIds(std::vector<string> &names)
     }
 
     return OK;
-}
-
-CameraHwType PlatformData::getCameraHwType(int cameraId)
-{
-    CameraProfiles * i = getInstance();
-
-    if (!i)
-        return SUPPORTED_HW_UNKNOWN;
-
-    return i->getCameraHwforId(cameraId);
 }
 
 const char* PlatformData::boardName(void)

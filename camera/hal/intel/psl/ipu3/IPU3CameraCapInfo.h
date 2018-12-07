@@ -90,7 +90,7 @@ public:
                   * HAL should know SMIA parameters to transfer AG to AG code.
                   */
 private:
-    friend class PSLConfParser;
+    friend class CameraProfiles;
     std::vector<MediaCtlElement> mMediaCtlElements;
 };
 

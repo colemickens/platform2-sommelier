@@ -22,8 +22,10 @@
 #include <map>
 
 #include "PlatformData.h"
-#include "PSLConfParser.h"
-#include "ItemPool.h"
+#include "IPU3CameraCapInfo.h"
+
+#define ANDROID_CONTROL_CAPTURE_INTENT_START 0x40000000
+#define CAMERA_TEMPLATE_COUNT (ANDROID_CONTROL_CAPTURE_INTENT_MANUAL + 1)
 
 NAMESPACE_DECLARATION {
 class CameraCapInfo;
@@ -41,30 +43,25 @@ public:
 
     status_t init();
     camera_metadata_t *constructDefaultMetadata(int cameraId, int requestTemplate);
-    CameraHwType getCameraHwforId(int cameraId);
     const CameraCapInfo *getCameraCapInfo(int cameraId);
-    const CameraCapInfo *getCameraCapInfoForXmlCameraId(int xmlCameraId);
     int getXmlCameraId(int cameraId) const;
+    static std::string getSensorMediaDevice();
+    static std::string getImguMediaDevice();
 
 public:
-    std::vector<camera_metadata_t *> mStaticMeta;
+    std::vector<camera_metadata_t*> mStaticMeta;
 
-    // one example: key: 0, value:"ov13858"
+    // one example: key: 0, value:"sensor_name"
     std::map<int, std::string> mCameraIdToSensorName;
 
 private:
     enum DataField {
         FIELD_INVALID = 0,
-        FIELD_SUPPORTED_HARDWARE,
         FIELD_ANDROID_STATIC_METADATA,
-        FIELD_COMMON
+        FIELD_HAL_TUNING_IPU3,
+        FIELD_SENSOR_INFO_IPU3,
+        FIELD_MEDIACTL_ELEMENTS_IPU3
     } mCurrentDataField;
-
-    struct CameraInfo {
-        PSLConfParser* parser;
-        std::string hwType;
-        int xmlCameraId;
-    };
 
     struct MetaValueRefTable {
         const metadata_value_t* table;
@@ -75,22 +72,25 @@ private:
     static void startElement(void *userData, const char *name, const char **atts);
     static void endElement(void *userData, const char *name);
 
-    void createConfParser();
-    void destroyConfParser();
+    static std::string getMediaDeviceByName(std::string deviceName);
 
-    status_t addCamera(int cameraId);
+    status_t addCamera(int cameraId, const std::string &sensorName);
     void getDataFromXmlFile(void);
+    void getGraphConfigFromXmlFile();
     void checkField(CameraProfiles *profiles, const char *name, const char **atts);
     bool isSensorPresent(std::vector<SensorDriverDescriptor> &detectedSensors,
                          const char* profileName, int cameraId) const;
     bool validateStaticMetadata(const char *name, const char **atts);
     const metadata_tag_t* findTagInfo(const char *name, const metadata_tag_t *tagsTable, unsigned int size);
-    void handleSupportedHardware(const char *name, const char **atts);
-    void handleCommon(const char *name, const char **atts);
     void handleAndroidStaticMetadata(const char *name, const char **atts);
+    void handleHALTuning(const char *name, const char **atts);
+    void handleSensorInfo(const char *name, const char **atts);
+    void handleMediaCtlElements(const char *name, const char **atts);
 
-    void dumpSupportedHWSection(int cameraId);
     void dumpStaticMetadataSection(int cameraId);
+    void dumpHalTuningSection(int cameraId);
+    void dumpSensorInfoSection(int cameraId);
+    void dumpMediaCtlElementsSection(int cameraId);
     void dumpCommonSection();
     void dump(void);
 
@@ -98,79 +98,80 @@ private:
     int convertEnum(void *dest, const char *src, int type,
                     const metadata_value_t *table, int tableLen,
                     void **newDest);
-    int parseGenericTypes(const char * src,
-                          const metadata_tag_t* tagInfo,
+    int parseGenericTypes(const char *src,
+                          const metadata_tag_t *tagInfo,
                           int metadataCacheSize,
-                          int64_t* metadataCache);
-    int parseEnum(const char * src,
-                  const metadata_tag_t* tagInfo,
+                          int64_t *metadataCache);
+    int parseEnum(const char *src,
+                  const metadata_tag_t *tagInfo,
                   int metadataCacheSize,
-                  int64_t* metadataCache);
-    int parseEnumAndNumbers(const char * src,
-                            const metadata_tag_t* tagInfo,
+                  int64_t *metadataCache);
+    int parseEnumAndNumbers(const char *src,
+                            const metadata_tag_t *tagInfo,
                             int metadataCacheSize,
-                            int64_t* metadataCache);
-    int parseStreamConfig(const char * src,
-            const metadata_tag_t* tagInfo,
+                            int64_t *metadataCache);
+    int parseStreamConfig(const char *src,
+            const metadata_tag_t *tagInfo,
             std::vector<MetaValueRefTable> refTables,
             int metadataCacheSize,
-            int64_t* metadataCache);
-    int parseStreamConfigDuration(const char * src,
-            const metadata_tag_t* tagInfo,
+            int64_t *metadataCache);
+    int parseStreamConfigDuration(const char *src,
+            const metadata_tag_t *tagInfo,
             std::vector<MetaValueRefTable> refTables,
             int metadataCacheSize,
-            int64_t* metadataCache);
-    int parseData(const char * src,
-                  const metadata_tag_t* tagInfo,
+            int64_t *metadataCache);
+    int parseData(const char *src,
+                  const metadata_tag_t *tagInfo,
                   int metadataCacheSize,
-                  int64_t* metadataCache);
-    int parseAvailableInputOutputFormatsMap(const char * src,
-            const metadata_tag_t* tagInfo,
+                  int64_t *metadataCache);
+    int parseAvailableInputOutputFormatsMap(const char *src,
+            const metadata_tag_t *tagInfo,
             std::vector<MetaValueRefTable> refTables,
             int metadataCacheSize,
-            int64_t* metadataCache);
-    int parseSizes(const char * src,
-                   const metadata_tag_t* tagInfo,
+            int64_t *metadataCache);
+    int parseSizes(const char *src,
+                   const metadata_tag_t *tagInfo,
                    int metadataCacheSize,
-                   int64_t* metadataCache);
-    int parseRectangle(const char * src,
-                       const metadata_tag_t* tagInfo,
+                   int64_t *metadataCache);
+    int parseRectangle(const char *src,
+                       const metadata_tag_t *tagInfo,
                        int metadataCacheSize,
-                       int64_t* metadataCache);
-    int parseBlackLevelPattern(const char * src,
-                               const metadata_tag_t* tagInfo,
+                       int64_t *metadataCache);
+    int parseBlackLevelPattern(const char *src,
+                               const metadata_tag_t *tagInfo,
                                int metadataCacheSize,
-                               int64_t* metadataCache);
-    int parseImageFormats(const char * src,
-                          const metadata_tag_t* tagInfo,
+                               int64_t *metadataCache);
+    int parseImageFormats(const char* src,
+                          const metadata_tag_t *tagInfo,
                           int metadataCacheSize,
                           int64_t* metadataCache);
-    int parseAvailableKeys(const char * src,
-                           const metadata_tag_t* tagInfo,
+    int parseAvailableKeys(const char  *src,
+                           const metadata_tag_t *tagInfo,
                            int metadataCacheSize,
-                           int64_t* metadataCache);
+                           int64_t *metadataCache);
 
     const char *skipWhiteSpace(const char *src);
+    int readNvmData();
+    int getIsysNodeNameAsValue(const char* isysNodeName);
+    uint8_t selectAfMode(const camera_metadata_t *staticMeta, int reqTemplate);
 
 private:
     static const int BUFFERSIZE = 4*1024;  // For xml file
     static const int METADATASIZE= 4096;
     static const int mMaxConfigNameLength = 64;
 
-    int64_t * mMetadataCache;  // for metadata construct
-    unsigned mSensorIndex;
+    int64_t *mMetadataCache;  // for metadata construct
     unsigned mXmlSensorIndex;
     unsigned mItemsCount;
-    bool mProfileEnd[MAX_CAMERAS];
-    CameraHWInfo * mCameraCommon;
-    ItemPool<CameraInfo> mCameraInfoPool;
-    // To store the supported HW type for each camera id
-    std::map<int, CameraInfo*> mCameraIdToCameraInfo; /* mCameraIdToCameraInfo doesn't has
-                                                * the ownership of CameraInfo */
-    std::vector<int> mCharacteristicsKeys[MAX_CAMERAS];
-
-    std::vector<SensorDriverDescriptor> mSensorNames;
     bool mUseEntry;
+    bool mProfileEnd[MAX_CAMERAS];
+    CameraHWInfo *mCameraCommon;
+    std::vector<int> mCameraIdPool;
+    std::vector<int> mCharacteristicsKeys[MAX_CAMERAS];
+    std::vector<SensorDriverDescriptor> mSensorNames;
+    std::vector<CameraCapInfo *> mCaps;
+    std::vector<std::string> mElementNames;
+    std::vector<camera_metadata_t *> mDefaultRequests;
 };
 
 } NAMESPACE_DECLARATION_END

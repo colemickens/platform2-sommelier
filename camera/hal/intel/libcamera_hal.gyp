@@ -114,7 +114,6 @@
         'psl/ipu3/MediaCtlHelper.cpp',
         'psl/ipu3/Metadata.cpp',
         'psl/ipu3/NodeTypes.cpp',
-        'psl/ipu3/PSLConfParser.cpp',
         'psl/ipu3/RuntimeParamsHelper.cpp',
         'psl/ipu3/SensorHwOp.cpp',
         'psl/ipu3/SettingsProcessor.cpp',
