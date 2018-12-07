@@ -47,3 +47,12 @@ sendmsg: 1
 recvmsg: 1
 epoll_wait: 1
 getpid: 1
+getdents64: 1
+statfs64: 1
+mkdir: 1
+ftruncate64: 1
+nanosleep: 1
+chmod: 1
+lstat64: 1
+unlink: 1
+rmdir: 1
