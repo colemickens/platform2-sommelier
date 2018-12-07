@@ -196,12 +196,12 @@ void RemoveOrphanedCrashFiles(const base::FilePath& crash_dir) {
   }
 }
 
-bool ShouldRemove(const base::FilePath& meta_file,
-                  MetricsLibraryInterface* metrics_lib,
-                  std::string* reason) {
+Action ChooseAction(const base::FilePath& meta_file,
+                    MetricsLibraryInterface* metrics_lib,
+                    std::string* reason) {
   if (!IsMock() && !IsOfficialImage()) {
     *reason = "Not an official OS version";
-    return true;
+    return kRemove;
   }
 
   // AreMetricsEnabled() returns false in guest mode, thus IsGuestMode() should
@@ -217,25 +217,25 @@ bool ShouldRemove(const base::FilePath& meta_file,
   // - Reports are deleted
   if (!metrics_lib->IsGuestMode() && !metrics_lib->AreMetricsEnabled()) {
     *reason = "Crash reporting is disabled";
-    return true;
+    return kRemove;
   }
 
   std::string raw_metadata;
   if (!base::ReadFileToString(meta_file, &raw_metadata)) {
     PLOG(WARNING) << "Igonoring: metadata file is inaccessible";
-    return false;
+    return kIgnore;
   }
 
   brillo::KeyValueStore metadata;
   if (!ParseMetadata(raw_metadata, &metadata)) {
     *reason = "Corrupted metadata: " + raw_metadata;
-    return true;
+    return kRemove;
   }
 
   base::FilePath payload_path = GetBaseNameFromMetadata(metadata, "payload");
   if (payload_path.empty()) {
     *reason = "Payload is not found in the meta data: " + raw_metadata;
-    return true;
+    return kRemove;
   }
 
   // Make it an absolute path.
@@ -245,29 +245,40 @@ bool ShouldRemove(const base::FilePath& meta_file,
     // TODO(satorux): logging_CrashSender.py expects "Missing payload" in the
     // error message. Revise the autotest once the rewrite to C++ is complete.
     *reason = "Missing payload: " + payload_path.value();
-    return true;
+    return kRemove;
   }
 
   const std::string kind = GetKindFromPayloadPath(payload_path);
   if (!IsKnownKind(kind)) {
     *reason = "Unknown kind: " + kind;
-    return true;
+    return kRemove;
   }
 
-  return false;
+  return kSend;
 }
 
-void RemoveInvalidCrashFiles(const base::FilePath& crash_dir,
-                             MetricsLibraryInterface* metrics_lib) {
+void RemoveAndPickCrashFiles(const base::FilePath& crash_dir,
+                             MetricsLibraryInterface* metrics_lib,
+                             std::vector<base::FilePath>* to_send) {
   std::vector<base::FilePath> meta_files = GetMetaFiles(crash_dir);
 
   for (const auto& meta_file : meta_files) {
     LOG(INFO) << "Checking metadata: " << meta_file.value();
 
     std::string reason;
-    if (ShouldRemove(meta_file, metrics_lib, &reason)) {
-      LOG(ERROR) << "Removing: " << reason;
-      RemoveReportFiles(meta_file);
+    switch (ChooseAction(meta_file, metrics_lib, &reason)) {
+      case kRemove:
+        LOG(ERROR) << "Removing: " << reason;
+        RemoveReportFiles(meta_file);
+        break;
+      case kIgnore:
+        LOG(ERROR) << "Igonoring: " << reason;
+        break;
+      case kSend:
+        to_send->push_back(meta_file);
+        break;
+      default:
+        NOTREACHED();
     }
   }
 }
@@ -370,11 +381,12 @@ bool Sender::SendCrashes(const base::FilePath& crash_dir) {
   }
 
   RemoveOrphanedCrashFiles(crash_dir);
-  RemoveInvalidCrashFiles(crash_dir, metrics_lib_.get());
 
-  std::vector<base::FilePath> meta_files = GetMetaFiles(crash_dir);
+  std::vector<base::FilePath> to_send;
+  RemoveAndPickCrashFiles(crash_dir, metrics_lib_.get(), &to_send);
+
   bool success = true;
-  for (const auto& meta_file : meta_files) {
+  for (const auto& meta_file : to_send) {
     if (!RequestToSendCrash(meta_file))
       success = false;
   }

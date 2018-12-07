@@ -150,10 +150,19 @@ class CrashSenderUtilTest : public testing::Test {
     if (!test_util::CreateFile(unknown_xxx_, ""))
       return false;
 
+    // Update timestamps, so that the return value of GetMetaFiles() is sorted
+    // per timestamps correctly.
+    const base::Time now = base::Time::Now();
+    const base::TimeDelta hour = base::TimeDelta::FromHours(1);
+    if (!TouchFileHelper(good_meta_, now - hour))
+      return false;
+    if (!TouchFileHelper(absolute_log_, now))
+      return false;
+
     return true;
   }
 
-  // Sets the runtime condtions that affect behaviors of ShouldRemove().
+  // Sets the runtime condtions that affect behaviors of ChooseAction().
   // Returns true on success.
   bool SetConditions(BuildType build_type,
                      SessionType session_type,
@@ -344,7 +353,7 @@ TEST_F(CrashSenderUtilTest, RemoveOrphanedCrashFiles) {
   EXPECT_FALSE(base::PathExists(old4_log));
 }
 
-TEST_F(CrashSenderUtilTest, ShouldRemove) {
+TEST_F(CrashSenderUtilTest, ChooseAction) {
   ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsEnabled));
 
   const base::FilePath crash_directory =
@@ -355,36 +364,38 @@ TEST_F(CrashSenderUtilTest, ShouldRemove) {
   std::string reason;
 
   // The following files should not be removed.
-  EXPECT_FALSE(ShouldRemove(good_meta_, metrics_lib_.get(), &reason));
-  EXPECT_FALSE(ShouldRemove(absolute_meta_, metrics_lib_.get(), &reason));
+  EXPECT_EQ(kSend, ChooseAction(good_meta_, metrics_lib_.get(), &reason));
+  EXPECT_EQ(kSend, ChooseAction(absolute_meta_, metrics_lib_.get(), &reason));
 
   // The following files should be removed.
-  EXPECT_TRUE(ShouldRemove(empty_meta_, metrics_lib_.get(), &reason));
+  EXPECT_EQ(kRemove, ChooseAction(empty_meta_, metrics_lib_.get(), &reason));
   EXPECT_THAT(reason, HasSubstr("Payload is not found"));
 
-  EXPECT_TRUE(ShouldRemove(corrupted_meta_, metrics_lib_.get(), &reason));
+  EXPECT_EQ(kRemove,
+            ChooseAction(corrupted_meta_, metrics_lib_.get(), &reason));
   EXPECT_THAT(reason, HasSubstr("Corrupted metadata"));
 
-  EXPECT_TRUE(ShouldRemove(nonexistent_meta_, metrics_lib_.get(), &reason));
+  EXPECT_EQ(kRemove,
+            ChooseAction(nonexistent_meta_, metrics_lib_.get(), &reason));
   EXPECT_THAT(reason, HasSubstr("Missing payload"));
 
-  EXPECT_TRUE(ShouldRemove(unknown_meta_, metrics_lib_.get(), &reason));
+  EXPECT_EQ(kRemove, ChooseAction(unknown_meta_, metrics_lib_.get(), &reason));
   EXPECT_THAT(reason, HasSubstr("Unknown kind"));
 
   ASSERT_TRUE(SetConditions(kUnofficialBuild, kSignInMode, kMetricsEnabled));
-  EXPECT_TRUE(ShouldRemove(good_meta_, metrics_lib_.get(), &reason));
+  EXPECT_EQ(kRemove, ChooseAction(good_meta_, metrics_lib_.get(), &reason));
   EXPECT_THAT(reason, HasSubstr("Not an official OS version"));
 
   ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsDisabled));
-  EXPECT_TRUE(ShouldRemove(good_meta_, metrics_lib_.get(), &reason));
+  EXPECT_EQ(kRemove, ChooseAction(good_meta_, metrics_lib_.get(), &reason));
   EXPECT_THAT(reason, HasSubstr("Crash reporting is disabled"));
 
   // Valid crash files should be kept in the guest mode.
   ASSERT_TRUE(SetConditions(kOfficialBuild, kGuestMode, kMetricsDisabled));
-  EXPECT_FALSE(ShouldRemove(good_meta_, metrics_lib_.get(), &reason));
+  EXPECT_EQ(kSend, ChooseAction(good_meta_, metrics_lib_.get(), &reason));
 }
 
-TEST_F(CrashSenderUtilTest, RemoveInvalidCrashFiles) {
+TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
   ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsEnabled));
 
   const base::FilePath crash_directory =
@@ -392,7 +403,8 @@ TEST_F(CrashSenderUtilTest, RemoveInvalidCrashFiles) {
   ASSERT_TRUE(CreateDirectory(crash_directory));
   ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
 
-  RemoveInvalidCrashFiles(crash_directory, metrics_lib_.get());
+  std::vector<base::FilePath> to_send;
+  RemoveAndPickCrashFiles(crash_directory, metrics_lib_.get(), &to_send);
   // Check what files were removed.
   EXPECT_TRUE(base::PathExists(good_meta_));
   EXPECT_TRUE(base::PathExists(good_log_));
@@ -403,25 +415,39 @@ TEST_F(CrashSenderUtilTest, RemoveInvalidCrashFiles) {
   EXPECT_FALSE(base::PathExists(nonexistent_meta_));
   EXPECT_FALSE(base::PathExists(unknown_meta_));
   EXPECT_FALSE(base::PathExists(unknown_xxx_));
+  // Check what files were picked for sending.
+  ASSERT_EQ(2, to_send.size());
+  EXPECT_EQ(good_meta_.value(), to_send[0].value());
+  EXPECT_EQ(absolute_meta_.value(), to_send[1].value());
 
   // All crash files should be removed for an unofficial build.
   ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
   ASSERT_TRUE(SetConditions(kUnofficialBuild, kSignInMode, kMetricsEnabled));
-  RemoveInvalidCrashFiles(crash_directory, metrics_lib_.get());
+  to_send.clear();
+  RemoveAndPickCrashFiles(crash_directory, metrics_lib_.get(), &to_send);
   EXPECT_TRUE(base::IsDirectoryEmpty(crash_directory));
+  EXPECT_TRUE(to_send.empty());
 
   // All crash files should be removed if metrics are disabled.
   ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
   ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsDisabled));
-  RemoveInvalidCrashFiles(crash_directory, metrics_lib_.get());
+  to_send.clear();
+  RemoveAndPickCrashFiles(crash_directory, metrics_lib_.get(), &to_send);
   EXPECT_TRUE(base::IsDirectoryEmpty(crash_directory));
+  EXPECT_TRUE(to_send.empty());
 
   // Valid crash files should be kept in the guest mode, thus the directory
   // won't be empty.
   ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
   ASSERT_TRUE(SetConditions(kOfficialBuild, kGuestMode, kMetricsDisabled));
-  RemoveInvalidCrashFiles(crash_directory, metrics_lib_.get());
+  to_send.clear();
+  RemoveAndPickCrashFiles(crash_directory, metrics_lib_.get(), &to_send);
   EXPECT_FALSE(base::IsDirectoryEmpty(crash_directory));
+  // TODO(satorux): This will become zero, once we move the "skip in guest mode"
+  // logic to C++.
+  ASSERT_EQ(2, to_send.size());
+  EXPECT_EQ(good_meta_.value(), to_send[0].value());
+  EXPECT_EQ(absolute_meta_.value(), to_send[1].value());
 }
 
 TEST_F(CrashSenderUtilTest, RemoveReportFiles) {

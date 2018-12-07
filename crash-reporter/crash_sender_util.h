@@ -23,6 +23,13 @@ struct EnvPair {
   const char* value;
 };
 
+// Actions returned by ChooseAction().
+enum Action {
+  kRemove,  // Should remove the crash report.
+  kIgnore,  // Should ignore (keep) the crash report.
+  kSend,    // Should send the crash report.
+};
+
 // Predefined environment variables for controlling the behaviors of
 // crash_sender.
 //
@@ -74,17 +81,20 @@ base::FilePath GetBasePartOfCrashFile(const base::FilePath& file_name);
 // without corresponding meta file.
 void RemoveOrphanedCrashFiles(const base::FilePath& crash_dir);
 
-// Returns true and reports the reason, if report files associated with the
-// given meta file should be removed. |metrics_lib| is used to check if metrics
-// are enabled, etc.
-bool ShouldRemove(const base::FilePath& meta_file,
-                  MetricsLibraryInterface* metrics_lib,
-                  std::string* reason);
+// Chooses an action to take for the crash report associated with the given meta
+// file, and reports the reason. |metrics_lib| is used to check if metrics are
+// enabled, etc.
+Action ChooseAction(const base::FilePath& meta_file,
+                    MetricsLibraryInterface* metrics_lib,
+                    std::string* reason);
 
 // Removes invalid files in |crash_dir|, that are unknown, corrupted, or invalid
-// in other ways. See ShouldRemove() for |metrics_lib|.
-void RemoveInvalidCrashFiles(const base::FilePath& crash_dir,
-                             MetricsLibraryInterface* metrics_lib);
+// in other ways, and picks crash reports that should be sent to the server. The
+// meta files of the latter will be stored in |to_send|. See ChooseAction() for
+// |metrics_lib|.
+void RemoveAndPickCrashFiles(const base::FilePath& crash_dir,
+                             MetricsLibraryInterface* metrics_lib,
+                             std::vector<base::FilePath>* to_send);
 
 // Removes report files associated with the given meta file.
 // More specifically, if "foo.meta" is given, "foo.*" will be removed.
