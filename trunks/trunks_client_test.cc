@@ -129,13 +129,14 @@ bool TrunksClientTest::SignTest() {
     LOG(ERROR) << "Error using key to sign: " << GetErrorString(result);
     return false;
   }
-  result = utility->Verify(signing_key, TPM_ALG_RSASSA, TPM_ALG_SHA256,
-                           std::string(32, 'a'), true, signature, nullptr);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error using key to verify: " << GetErrorString(result);
+  std::string public_key;
+  if (!GetRSAPublicKeyFromHandle(scoped_key, &public_key,
+                                     session->GetDelegate())) {
+    LOG(ERROR) << "Error fetching the public key to verify: "
+               << GetErrorString(result);
     return false;
   }
-  return true;
+  return VerifyRSASignature(public_key, std::string(32, 'a'), signature);
 }
 
 bool TrunksClientTest::DecryptTest() {
@@ -548,10 +549,14 @@ bool TrunksClientTest::PolicyAuthValueTest() {
     LOG(ERROR) << "Error signing using RSA key: " << GetErrorString(result);
     return false;
   }
-  result = utility->Verify(scoped_key.get(), TPM_ALG_RSASSA, TPM_ALG_SHA256,
-                           std::string(32, 0), true /* generate_hash */,
-                           signature, nullptr);
-  if (result != TPM_RC_SUCCESS) {
+  std::string public_key;
+  if (!GetRSAPublicKeyFromHandle(scoped_key, &public_key,
+                                     policy_session->GetDelegate())) {
+    LOG(ERROR) << "Error fetching the public key to verify: "
+               << GetErrorString(result);
+    return false;
+  }
+  if (!VerifyRSASignature(public_key, std::string(32, 0), signature)) {
     LOG(ERROR) << "Error verifying using RSA key: " << GetErrorString(result);
     return false;
   }
@@ -715,10 +720,14 @@ bool TrunksClientTest::PolicyAndTest() {
     LOG(ERROR) << "Error using key to sign: " << GetErrorString(result);
     return false;
   }
-  result = utility->Verify(scoped_key.get(), TPM_ALG_RSASSA, TPM_ALG_SHA256,
-                           std::string(32, 'a'), true /* generate_hash */,
-                           signature, nullptr);
-  if (result != TPM_RC_SUCCESS) {
+  std::string public_key;
+  if (!GetRSAPublicKeyFromHandle(scoped_key, &public_key,
+                                     policy_session->GetDelegate())) {
+    LOG(ERROR) << "Error fetching the public key to verify: "
+               << GetErrorString(result);
+    return false;
+  }
+  if (!VerifyRSASignature(public_key, std::string(32, 'a'), signature)) {
     LOG(ERROR) << "Error using key to verify: " << GetErrorString(result);
     return false;
   }
@@ -1240,6 +1249,41 @@ bool TrunksClientTest::SignAndVerify(const ScopedKeyHandle& key_handle,
   }
   if (!VerifyRSASignature(public_key, data_to_sign, signature)) {
     LOG(ERROR) << "Signature verification failed: " << GetOpenSSLError();
+    return false;
+  }
+  return true;
+}
+
+bool TrunksClientTest::GetRSAPublicKeyFromHandle(
+    const ScopedKeyHandle& key_handle,
+    std::string* public_key,
+    AuthorizationDelegate* delegate) {
+  std::unique_ptr<TpmUtility> utility = factory_.GetTpmUtility();
+  TPMT_PUBLIC public_area;
+  TPM_RC result = utility->GetKeyPublicArea(key_handle.get(), &public_area);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << GetErrorString(result);
+    return false;
+  }
+  // Copied from cryptohome::PublicAreaToPublicKeyDER
+  crypto::ScopedRSA rsa(RSA_new());
+  rsa.get()->e = BN_new();
+  CHECK(rsa.get()->e) << "Error setting exponent for RSA.";
+  BN_set_word(rsa.get()->e, 0x10001);
+  rsa.get()->n = BN_bin2bn(public_area.unique.rsa.buffer,
+                           public_area.unique.rsa.size, nullptr);
+  CHECK(rsa.get()->n) << "Error setting modulus for RSA.";
+  int der_length = i2d_RSAPublicKey(rsa.get(), nullptr);
+  if (der_length < 0) {
+    LOG(ERROR) << "Failed to get DER-encoded public key length.";
+    return false;
+  }
+  public_key->resize(der_length);
+  unsigned char* der_buffer =
+      reinterpret_cast<unsigned char*>(base::string_as_array(public_key));
+  der_length = i2d_RSAPublicKey(rsa.get(), &der_buffer);
+  if (der_length < 0) {
+    LOG(ERROR) << "Failed to DER-encode public key.";
     return false;
   }
   return true;
