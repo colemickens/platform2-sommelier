@@ -94,6 +94,9 @@ class MockMetrics : public Metrics {
                void(bool is_connected, bool in_dark_resume));
   MOCK_METHOD1(NotifyConnectionDiagnosticsIssue,
                void(const std::string& issue));
+  MOCK_METHOD2(NotifyPortalDetectionMultiProbeResult,
+               void(const PortalDetector::Result&,
+                    const PortalDetector::Result&));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockMetrics);

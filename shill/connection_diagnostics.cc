@@ -139,8 +139,11 @@ const int ConnectionDiagnostics::kArpReplyTimeoutSeconds = 1;
 const int ConnectionDiagnostics::kNeighborTableRequestTimeoutSeconds = 1;
 
 ConnectionDiagnostics::ConnectionDiagnostics(
-    ConnectionRefPtr connection, EventDispatcher* dispatcher, Metrics* metrics,
-    const DeviceInfo* device_info, const ResultCallback& result_callback)
+    ConnectionRefPtr connection,
+    EventDispatcher* dispatcher,
+    Metrics* metrics,
+    const DeviceInfo* device_info,
+    const ResultCallback& result_callback)
     : weak_ptr_factory_(this),
       dispatcher_(dispatcher),
       metrics_(metrics),
@@ -150,7 +153,9 @@ ConnectionDiagnostics::ConnectionDiagnostics(
       device_info_(device_info),
       dns_client_factory_(DnsClientFactory::GetInstance()),
       portal_detector_(new PortalDetector(
-          connection_, dispatcher_,
+          connection_,
+          dispatcher_,
+          metrics_,
           Bind(&ConnectionDiagnostics::StartAfterPortalDetectionInternal,
                weak_ptr_factory_.GetWeakPtr()))),
       arp_client_(new ArpClient(connection_->interface_index())),

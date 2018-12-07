@@ -500,6 +500,10 @@ const char Metrics::kMetricConnectionDiagnosticsIssue[] =
     "Network.Shill.ConnectionDiagnosticsIssue";
 
 // static
+const char Metrics::kMetricPortalDetectionMultiProbeResult[] =
+    "Network.Shill.PortalDetectionMultiProbeResult";
+
+// static
 const char Metrics::kMetricUnreliableLinkSignalStrengthSuffix[] =
     "UnreliableLinkSignalStrength";
 const int Metrics::kMetricServiceSignalStrengthMin = 1;
@@ -1964,6 +1968,36 @@ void Metrics::NotifyConnectionDiagnosticsIssue(const string& issue) {
 
   SendEnumToUMA(kMetricConnectionDiagnosticsIssue, issue_enum,
                 kConnectionDiagnosticsIssueMax);
+}
+
+void Metrics::NotifyPortalDetectionMultiProbeResult(
+    const PortalDetector::Result& http_result,
+    const PortalDetector::Result& https_result) {
+  // kTimeout is implicitly treated as a failure
+  // kRedirect on HTTPS is unexpected and ignored
+  PortalDetectionMultiProbeResult result_enum;
+  if (https_result.status == PortalDetector::Status::kRedirect) {
+    result_enum = kPortalDetectionMultiProbeResultUndefined;
+  } else if (https_result.status != PortalDetector::Status::kSuccess &&
+             http_result.status == PortalDetector::Status::kSuccess) {
+    result_enum = kPortalDetectionMultiProbeResultHTTPSBlockedHTTPUnblocked;
+  } else if (https_result.status != PortalDetector::Status::kSuccess &&
+             http_result.status == PortalDetector::Status::kRedirect) {
+    result_enum = kPortalDetectionMultiProbeResultHTTPSBlockedHTTPRedirected;
+  } else if (https_result.status != PortalDetector::Status::kSuccess) {
+    result_enum = kPortalDetectionMultiProbeResultHTTPSBlockedHTTPBlocked;
+  } else if (https_result.status == PortalDetector::Status::kSuccess &&
+             http_result.status == PortalDetector::Status::kSuccess) {
+    result_enum = kPortalDetectionMultiProbeResultHTTPSUnblockedHTTPUnblocked;
+  } else if (https_result.status == PortalDetector::Status::kSuccess &&
+             http_result.status == PortalDetector::Status::kRedirect) {
+    result_enum = kPortalDetectionMultiProbeResultHTTPSUnblockedHTTPRedirected;
+  } else {
+    result_enum = kPortalDetectionMultiProbeResultHTTPSUnblockedHTTPBlocked;
+  }
+
+  SendEnumToUMA(kMetricPortalDetectionMultiProbeResult, result_enum,
+                kPortalDetectionMultiProbeResultMax);
 }
 
 void Metrics::InitializeCommonServiceMetrics(const Service& service) {

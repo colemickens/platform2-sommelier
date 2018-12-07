@@ -18,6 +18,7 @@
 #include "shill/dns_client.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
+#include "shill/metrics.h"
 #include "shill/net/ip_address.h"
 
 using base::Bind;
@@ -71,12 +72,14 @@ const char PortalDetector::kDefaultHttpsUrl[] =
 PortalDetector::PortalDetector(
     ConnectionRefPtr connection,
     EventDispatcher* dispatcher,
+    Metrics* metrics,
     const Callback<void(const PortalDetector::Result&)>& callback)
     : attempt_count_(0),
       attempt_start_time_((struct timeval){0}),
       single_trial_(false),
       connection_(connection),
       dispatcher_(dispatcher),
+      metrics_(metrics),
       weak_ptr_factory_(this),
       portal_result_callback_(callback),
       time_(Time::GetInstance()),
@@ -243,6 +246,8 @@ void PortalDetector::Stop() {
 
 void PortalDetector::CompleteRequest() {
   if (https_result_ && http_result_) {
+    metrics_->NotifyPortalDetectionMultiProbeResult(*http_result_,
+                                                    *https_result_);
     CompleteTrial(*http_result_.get());
   }
 }
@@ -250,8 +255,11 @@ void PortalDetector::CompleteRequest() {
 void PortalDetector::HttpRequestSuccessCallback(
     std::shared_ptr<brillo::http::Response> response) {
   // TODO(matthewmwang): check for 0 length data as well
-  if (response->GetStatusCode() == brillo::http::status_code::NoContent) {
+  int status_code = response->GetStatusCode();
+  if (status_code == brillo::http::status_code::NoContent) {
     http_result_ = std::make_unique<Result>(Phase::kContent, Status::kSuccess);
+  } else if (status_code == brillo::http::status_code::Redirect) {
+    http_result_ = std::make_unique<Result>(Phase::kContent, Status::kRedirect);
   } else {
     http_result_ = std::make_unique<Result>(Phase::kContent, Status::kFailure);
   }

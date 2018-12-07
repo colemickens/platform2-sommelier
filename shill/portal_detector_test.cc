@@ -20,6 +20,7 @@
 #include "shill/mock_device_info.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_http_request.h"
+#include "shill/mock_metrics.h"
 #include "shill/net/mock_time.h"
 
 using base::Bind;
@@ -61,11 +62,13 @@ class PortalDetectorTest : public Test {
             new NiceMock<MockDeviceInfo>(&control_, nullptr, nullptr, nullptr)),
         connection_(new StrictMock<MockConnection>(device_info_.get())),
         transport_(std::make_shared<brillo::http::MockTransport>()),
+        metrics_(&dispatcher_),
         brillo_connection_(
             std::make_shared<brillo::http::MockConnection>(transport_)),
         portal_detector_(
             new PortalDetector(connection_.get(),
                                &dispatcher_,
+                               &metrics_,
                                callback_target_.result_callback())),
         interface_name_(kInterfaceName),
         dns_servers_(kDNSServers, kDNSServers + 2),
@@ -152,6 +155,7 @@ class PortalDetectorTest : public Test {
   PortalDetector* portal_detector() { return portal_detector_.get(); }
   MockEventDispatcher& dispatcher() { return dispatcher_; }
   CallbackTarget& callback_target() { return callback_target_; }
+  MockMetrics& metrics() { return metrics_; }
 
   void ExpectReset() {
     EXPECT_FALSE(portal_detector_->attempt_count_);
@@ -217,6 +221,7 @@ class PortalDetectorTest : public Test {
   std::unique_ptr<MockDeviceInfo> device_info_;
   scoped_refptr<MockConnection> connection_;
   std::shared_ptr<brillo::http::MockTransport> transport_;
+  NiceMock<MockMetrics> metrics_;
   std::shared_ptr<brillo::http::MockConnection> brillo_connection_;
   CallbackTarget callback_target_;
   std::unique_ptr<PortalDetector> portal_detector_;
@@ -525,6 +530,7 @@ TEST_F(PortalDetectorTest, RequestSuccess) {
   EXPECT_CALL(callback_target(), ResultCallback(IsResult(success_result)));
   EXPECT_CALL(*http_request(), Stop()).Times(2);
   EXPECT_CALL(*https_request(), Stop()).Times(2);
+  EXPECT_CALL(metrics(), NotifyPortalDetectionMultiProbeResult(_, _));
   ExpectRequestSuccessWithStatus(204, true);
 }
 
@@ -551,6 +557,7 @@ TEST_F(PortalDetectorTest, RequestHTTPFailureHTTPSSuccess) {
   EXPECT_CALL(callback_target(), ResultCallback(IsResult(success_result)));
   EXPECT_CALL(*http_request(), Stop()).Times(2);
   EXPECT_CALL(*https_request(), Stop()).Times(2);
+  EXPECT_CALL(metrics(), NotifyPortalDetectionMultiProbeResult(_, _));
   EXPECT_CALL(dispatcher(),
               PostDelayedTask(
                   _, _, PortalDetector::kMinTimeBetweenAttemptsSeconds * 1000))
@@ -581,6 +588,7 @@ TEST_F(PortalDetectorTest, RequestFail) {
   EXPECT_CALL(dispatcher(),
               PostDelayedTask(
                   _, _, PortalDetector::kMinTimeBetweenAttemptsSeconds * 1000));
+  EXPECT_CALL(metrics(), NotifyPortalDetectionMultiProbeResult(_, _));
   ExpectRequestSuccessWithStatus(123, true);
 }
 

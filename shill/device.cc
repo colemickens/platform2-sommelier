@@ -1367,8 +1367,7 @@ bool Device::StartPortalDetection() {
   }
 
   portal_detector_.reset(new PortalDetector(
-      connection_,
-      dispatcher_,
+      connection_, dispatcher_, metrics(),
       Bind(&Device::PortalDetectorCallback, weak_ptr_factory_.GetWeakPtr())));
   PortalDetector::Properties props = PortalDetector::Properties(
       manager_->GetPortalCheckHttpUrl(), manager_->GetPortalCheckHttpsUrl());
@@ -1424,7 +1423,7 @@ bool Device::StartConnectivityTest() {
   LOG(INFO) << "Device " << link_name() << " starting connectivity test.";
 
   connection_tester_.reset(new PortalDetector(
-      connection_, dispatcher_,
+      connection_, dispatcher_, metrics(),
       Bind(&Device::ConnectionTesterCallback, weak_ptr_factory_.GetWeakPtr())));
   connection_tester_->StartSingleTrial(PortalDetector::Properties());
   return true;

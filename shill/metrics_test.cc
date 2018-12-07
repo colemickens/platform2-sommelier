@@ -1123,6 +1123,78 @@ TEST_F(MetricsTest, NotifyConnectionDiagnosticsIssue_Failure) {
   metrics_.NotifyConnectionDiagnosticsIssue(invalid_issue);
 }
 
+TEST_F(MetricsTest, NotifyPortalDetectionMultiProbeResult) {
+  PortalDetector::Result http_result(PortalDetector::Phase::kContent,
+                                     PortalDetector::Status::kSuccess);
+  PortalDetector::Result https_result(PortalDetector::Phase::kContent,
+                                      PortalDetector::Status::kSuccess);
+  EXPECT_CALL(
+      library_,
+      SendEnumToUMA(
+          Metrics::kMetricPortalDetectionMultiProbeResult,
+          Metrics::kPortalDetectionMultiProbeResultHTTPSUnblockedHTTPUnblocked,
+          Metrics::kPortalDetectionMultiProbeResultMax));
+  metrics_.NotifyPortalDetectionMultiProbeResult(http_result, https_result);
+
+  http_result = PortalDetector::Result(PortalDetector::Phase::kContent,
+                                       PortalDetector::Status::kRedirect);
+  EXPECT_CALL(
+      library_,
+      SendEnumToUMA(
+          Metrics::kMetricPortalDetectionMultiProbeResult,
+          Metrics::kPortalDetectionMultiProbeResultHTTPSUnblockedHTTPRedirected,
+          Metrics::kPortalDetectionMultiProbeResultMax));
+  metrics_.NotifyPortalDetectionMultiProbeResult(http_result, https_result);
+
+  http_result = PortalDetector::Result(PortalDetector::Phase::kContent,
+                                       PortalDetector::Status::kFailure);
+  EXPECT_CALL(
+      library_,
+      SendEnumToUMA(
+          Metrics::kMetricPortalDetectionMultiProbeResult,
+          Metrics::kPortalDetectionMultiProbeResultHTTPSUnblockedHTTPBlocked,
+          Metrics::kPortalDetectionMultiProbeResultMax));
+  metrics_.NotifyPortalDetectionMultiProbeResult(http_result, https_result);
+
+  https_result = PortalDetector::Result(PortalDetector::Phase::kContent,
+                                        PortalDetector::Status::kFailure);
+  EXPECT_CALL(
+      library_,
+      SendEnumToUMA(
+          Metrics::kMetricPortalDetectionMultiProbeResult,
+          Metrics::kPortalDetectionMultiProbeResultHTTPSBlockedHTTPBlocked,
+          Metrics::kPortalDetectionMultiProbeResultMax));
+  metrics_.NotifyPortalDetectionMultiProbeResult(http_result, https_result);
+
+  http_result = PortalDetector::Result(PortalDetector::Phase::kContent,
+                                       PortalDetector::Status::kRedirect);
+  EXPECT_CALL(
+      library_,
+      SendEnumToUMA(
+          Metrics::kMetricPortalDetectionMultiProbeResult,
+          Metrics::kPortalDetectionMultiProbeResultHTTPSBlockedHTTPRedirected,
+          Metrics::kPortalDetectionMultiProbeResultMax));
+  metrics_.NotifyPortalDetectionMultiProbeResult(http_result, https_result);
+
+  http_result = PortalDetector::Result(PortalDetector::Phase::kContent,
+                                       PortalDetector::Status::kSuccess);
+  EXPECT_CALL(
+      library_,
+      SendEnumToUMA(
+          Metrics::kMetricPortalDetectionMultiProbeResult,
+          Metrics::kPortalDetectionMultiProbeResultHTTPSBlockedHTTPUnblocked,
+          Metrics::kPortalDetectionMultiProbeResultMax));
+  metrics_.NotifyPortalDetectionMultiProbeResult(http_result, https_result);
+
+  https_result = PortalDetector::Result(PortalDetector::Phase::kContent,
+                                        PortalDetector::Status::kRedirect);
+  EXPECT_CALL(library_,
+              SendEnumToUMA(Metrics::kMetricPortalDetectionMultiProbeResult,
+                            Metrics::kPortalDetectionMultiProbeResultUndefined,
+                            Metrics::kPortalDetectionMultiProbeResultMax));
+  metrics_.NotifyPortalDetectionMultiProbeResult(http_result, https_result);
+}
+
 TEST_F(MetricsTest, NotifyAp80211kSupport) {
   bool neighbor_list_supported = false;
   EXPECT_CALL(library_,

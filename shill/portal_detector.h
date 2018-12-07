@@ -24,6 +24,7 @@
 namespace shill {
 
 class EventDispatcher;
+class Metrics;
 class Time;
 
 // The PortalDetector class implements the portal detection
@@ -52,7 +53,7 @@ class PortalDetector {
     kContent      // Content mismatch in response
   };
 
-  enum class Status { kFailure, kSuccess, kTimeout };
+  enum class Status { kFailure, kSuccess, kTimeout, kRedirect };
 
   struct Properties {
     Properties()
@@ -102,10 +103,11 @@ class PortalDetector {
   // Maximum number of times the PortalDetector will attempt a connection.
   static const int kMaxRequestAttempts;
 
-  PortalDetector(ConnectionRefPtr connection,
-                 EventDispatcher* dispatcher,
-                 const base::Callback<void(const PortalDetector::Result&)>
-                     &callback);
+  PortalDetector(
+      ConnectionRefPtr connection,
+      EventDispatcher* dispatcher,
+      Metrics* metrics,
+      const base::Callback<void(const PortalDetector::Result&)>& callback);
   virtual ~PortalDetector();
 
   // Static method used to map a portal detection phase to a string.  This
@@ -257,6 +259,7 @@ class PortalDetector {
   bool single_trial_;
   ConnectionRefPtr connection_;
   EventDispatcher* dispatcher_;
+  Metrics* metrics_;
   base::WeakPtrFactory<PortalDetector> weak_ptr_factory_;
   base::Callback<void(const Result&)> portal_result_callback_;
   Time* time_;

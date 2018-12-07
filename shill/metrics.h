@@ -359,6 +359,17 @@ class Metrics {
     kConnectionDiagnosticsIssueMax
   };
 
+  enum PortalDetectionMultiProbeResult {
+    kPortalDetectionMultiProbeResultUndefined = 0,
+    kPortalDetectionMultiProbeResultHTTPSBlockedHTTPBlocked = 1,
+    kPortalDetectionMultiProbeResultHTTPSBlockedHTTPRedirected = 2,
+    kPortalDetectionMultiProbeResultHTTPSBlockedHTTPUnblocked = 3,
+    kPortalDetectionMultiProbeResultHTTPSUnblockedHTTPBlocked = 4,
+    kPortalDetectionMultiProbeResultHTTPSUnblockedHTTPRedirected = 5,
+    kPortalDetectionMultiProbeResultHTTPSUnblockedHTTPUnblocked = 6,
+    kPortalDetectionMultiProbeResultMax
+  };
+
   enum VpnDriver {
     kVpnDriverOpenVpn = 0,
     kVpnDriverL2tpIpsec = 1,
@@ -907,6 +918,9 @@ class Metrics {
   // Connection diagnostics issue.
   static const char kMetricConnectionDiagnosticsIssue[];
 
+  // Portal detection results.
+  static const char kMetricPortalDetectionMultiProbeResult[];
+
   explicit Metrics(EventDispatcher* dispatcher);
   virtual ~Metrics();
 
@@ -1267,6 +1281,12 @@ class Metrics {
   // the connection issue that was diagnosed is |issue|.
   virtual void NotifyConnectionDiagnosticsIssue(
       const std::string& issue);
+
+  // Notifies this object that a portal detection trial has finished with probe
+  // results from both the HTTP probe and the HTTPS probe.
+  virtual void NotifyPortalDetectionMultiProbeResult(
+      const PortalDetector::Result& http_result,
+      const PortalDetector::Result& https_result);
 
  private:
   friend class MetricsTest;
