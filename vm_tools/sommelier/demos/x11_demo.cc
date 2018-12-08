@@ -68,6 +68,7 @@ int main(int argc, char* argv[]) {
   XSetClassHint(dpy, win, wmclass_hint);
   XSelectInput(dpy, win, KeyPressMask);
   XMapWindow(dpy, win);
+  XStoreName(dpy, win, class_name);
 
   LOG(INFO) << "x11_demo application displaying, waiting for keypress";
   XEvent evt;
