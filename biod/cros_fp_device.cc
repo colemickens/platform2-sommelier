@@ -106,7 +106,29 @@ void CrosFpDevice::OnFileCanReadWithoutBlocking(int fd) {
 bool CrosFpDevice::FpMode(uint32_t mode) {
   EcCommand<struct ec_params_fp_mode, struct ec_response_fp_mode> cmd(
       EC_CMD_FP_MODE, 0, {.mode = mode});
-  return cmd.Run(cros_fd_.get());
+  bool ret = cmd.Run(cros_fd_.get());
+  if (ret) {
+    return true;
+  }
+
+  // In some cases the EC Command might go through, but the AP suspends
+  // before the EC can ACK it. When the AP wakes up, it considers the
+  // EC command to have timed out. Since this seems to happen during mode
+  // setting, check the mode in case of a failure.
+  uint32_t cur_mode;
+  if (!GetFpMode(&cur_mode)) {
+    LOG(ERROR) << "Failed to get FP mode to verify mode was set in the MCU.";
+    return false;
+  }
+  if (cur_mode == mode) {
+    LOG(WARNING)
+        << "EC Command to set mode failed, but mode was set successfully.";
+    return true;
+  } else {
+    LOG(ERROR) << "EC command to set FP mode: " << mode
+               << " failed; current FP mode: " << cur_mode;
+  }
+  return false;
 }
 
 bool CrosFpDevice::GetFpMode(uint32_t* mode) {
