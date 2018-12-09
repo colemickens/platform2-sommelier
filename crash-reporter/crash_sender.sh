@@ -560,6 +560,7 @@ send_or_skip_crash() {
   fi
 
   # Ignore device coredump if device coredump uploading is not allowed.
+  local kind=$(get_kind "${meta_path}")
   if [ "${kind}" = "devcore" ] && ! is_device_coredump_upload_allowed; then
     lecho "Ignoring device coredump. Device coredump upload not allowed."
     return 0
