@@ -7,38 +7,30 @@
 #include <memory>
 
 #include <brillo/dbus/dbus_object.h>
+#include <cryptohome/dbus-proxies.h>
 #include <dbus/cryptohome/dbus-constants.h>
-#include <dbus/object_proxy.h>
 
 namespace authpolicy {
 
 CryptohomeClient::CryptohomeClient(
     brillo::dbus_utils::DBusObject* dbus_object) {
-  cryptohome_proxy_ = dbus_object->GetBus()->GetObjectProxy(
-      cryptohome::kCryptohomeServiceName,
-      dbus::ObjectPath(cryptohome::kCryptohomeServicePath));
+  proxy_ = std::make_unique<org::chromium::CryptohomeInterfaceProxy>(
+      dbus_object->GetBus());
 }
 
 CryptohomeClient::~CryptohomeClient() = default;
 
 std::string CryptohomeClient::GetSanitizedUsername(
     const std::string& account_id_key) {
-  dbus::MethodCall method_call(cryptohome::kCryptohomeInterface,
-                               cryptohome::kCryptohomeGetSanitizedUsername);
-  dbus::MessageWriter writer(&method_call);
-  writer.AppendString(account_id_key);
-  std::unique_ptr<dbus::Response> response =
-      cryptohome_proxy_->CallMethodAndBlock(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!response)
+  std::string sanitized;
+  brillo::ErrorPtr error;
+  if (!proxy_->GetSanitizedUsername(account_id_key, &sanitized, &error)) {
+    LOG(ERROR) << "Call to " << cryptohome::kCryptohomeGetSanitizedUsername
+               << " failed. "
+               << (error ? error->GetMessage().c_str() : "Unknown error.");
     return std::string();
-
-  dbus::MessageReader reader(response.get());
-  std::string sanitized_username;
-  if (!reader.PopString(&sanitized_username))
-    return std::string();
-
-  return sanitized_username;
+  }
+  return sanitized;
 }
 
 }  // namespace authpolicy

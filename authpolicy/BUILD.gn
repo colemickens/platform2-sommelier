@@ -90,6 +90,8 @@ pkg_config("libauthpolicy_config") {
     "dbus-1",
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
+    "libcryptohome-client",
+    "libsession_manager-client",
     "libpcrecpp",
   ]
 }

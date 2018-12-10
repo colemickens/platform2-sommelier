@@ -5,6 +5,7 @@
 #ifndef AUTHPOLICY_SESSION_MANAGER_CLIENT_H_
 #define AUTHPOLICY_SESSION_MANAGER_CLIENT_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -12,16 +13,17 @@
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 
-namespace dbus {
-class ObjectProxy;
-class Response;
-class Signal;
-}  // namespace dbus
+namespace org {
+namespace chromium {
+class SessionManagerInterfaceProxy;
+}
+}  // namespace org
 
 namespace brillo {
 namespace dbus_utils {
 class DBusObject;
-}  // namespace dbus_utils
+}
+class Error;
 }  // namespace brillo
 
 namespace authpolicy {
@@ -37,12 +39,12 @@ class SessionManagerClient {
 
   // Asynchronous to achieve higher IO queue depth when writing many policies.
   void StoreUnsignedPolicyEx(
-      const std::string& descriptor_blob,
-      const std::string& policy_blob,
+      const std::vector<uint8_t>& descriptor_blob,
+      const std::vector<uint8_t>& policy_blob,
       const base::Callback<void(bool success)>& callback);
 
   // Blocking for convenience / code simplicity.
-  bool ListStoredComponentPolicies(const std::string& descriptor_blob,
+  bool ListStoredComponentPolicies(const std::vector<uint8_t>& descriptor_blob,
                                    std::vector<std::string>* component_ids);
 
   // Connect to the signal invoked when the session state changes. See
@@ -54,18 +56,22 @@ class SessionManagerClient {
   std::string RetrieveSessionState();
 
  private:
-  // Callback called when StoreUnsignedPolicyEx() finishes. Prints errors and
+  // Callback called when StoreUnsignedPolicyEx() succeeds. Prints errors and
   // calls |callback|.
-  void OnPolicyStored(const base::Callback<void(bool success)>& callback,
-                      dbus::Response* response);
+  void OnStorePolicySuccess(const base::Callback<void(bool success)>& callback);
+
+  // Callback called when StoreUnsignedPolicyEx() fails. Prints errors and calls
+  // |callback|.
+  void OnStorePolicyError(const base::Callback<void(bool success)>& callback,
+                          brillo::Error* error);
 
   // Callback called on SessionStateChanged signal. Calls callback with the new
   // session state.
   void OnSessionStateChanged(
       const base::Callback<void(const std::string& state)>& callback,
-      dbus::Signal* signal);
+      const std::string& state);
 
-  dbus::ObjectProxy* session_manager_proxy_ = nullptr;  // Not owned.
+  std::unique_ptr<org::chromium::SessionManagerInterfaceProxy> proxy_;
   base::WeakPtrFactory<SessionManagerClient> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(SessionManagerClient);

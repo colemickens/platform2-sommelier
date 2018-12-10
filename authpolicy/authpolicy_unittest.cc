@@ -29,6 +29,7 @@
 #include <dbus/mock_exported_object.h>
 #include <dbus/mock_object_proxy.h>
 #include <dbus/object_path.h>
+#include <dbus/scoped_dbus_error.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <login_manager/proto_bindings/policy_descriptor.pb.h>
@@ -409,22 +410,20 @@ class AuthPolicyTest : public testing::Test {
         mock_bus_.get(), login_manager::kSessionManagerServiceName,
         dbus::ObjectPath(login_manager::kSessionManagerServicePath));
     EXPECT_CALL(*mock_bus_,
-                GetObjectProxy(login_manager::kSessionManagerServiceName,
-                               dbus::ObjectPath(
-                                   login_manager::kSessionManagerServicePath)))
+                GetObjectProxy(login_manager::kSessionManagerServiceName, _))
         .WillOnce(Return(mock_session_manager_proxy_.get()));
     EXPECT_CALL(
         *mock_session_manager_proxy_,
-        CallMethod(
-            IsMethod(login_manager::kSessionManagerStoreUnsignedPolicyEx), _,
+        CallMethodWithErrorCallback(
+            IsMethod(login_manager::kSessionManagerStoreUnsignedPolicyEx), _, _,
             _))
         .WillRepeatedly(
             Invoke(this, &AuthPolicyTest::StubCallStorePolicyMethod));
     EXPECT_CALL(
         *mock_session_manager_proxy_,
-        MockCallMethodAndBlock(
+        MockCallMethodAndBlockWithErrorDetails(
             IsMethod(login_manager::kSessionManagerListStoredComponentPolicies),
-            _))
+            _, _))
         .WillRepeatedly(
             Invoke(this, &AuthPolicyTest::StubListComponentIdsMethod));
     EXPECT_CALL(
@@ -434,9 +433,10 @@ class AuthPolicyTest : public testing::Test {
         .WillOnce((SaveArg<2>(&session_state_changed_callback_)));
     EXPECT_CALL(
         *mock_session_manager_proxy_.get(),
-        MockCallMethodAndBlock(
-            IsMethod(login_manager::kSessionManagerRetrieveSessionState), _))
-        .WillOnce(Invoke([](dbus::MethodCall* method_call, int timeout) {
+        MockCallMethodAndBlockWithErrorDetails(
+            IsMethod(login_manager::kSessionManagerRetrieveSessionState), _, _))
+        .WillOnce(Invoke([](dbus::MethodCall* method_call, int timeout,
+                            dbus::ScopedDBusError* error) {
           return RespondWithString(method_call, kSessionStopped);
         }));
 
@@ -444,15 +444,15 @@ class AuthPolicyTest : public testing::Test {
     mock_cryptohome_proxy_ = new NiceMock<MockObjectProxy>(
         mock_bus_.get(), cryptohome::kCryptohomeServiceName,
         dbus::ObjectPath(cryptohome::kCryptohomeServicePath));
-    EXPECT_CALL(
-        *mock_bus_,
-        GetObjectProxy(cryptohome::kCryptohomeServiceName,
-                       dbus::ObjectPath(cryptohome::kCryptohomeServicePath)))
+    EXPECT_CALL(*mock_bus_,
+                GetObjectProxy(cryptohome::kCryptohomeServiceName, _))
         .WillOnce(Return(mock_cryptohome_proxy_.get()));
 
     // Make Cryptohome's GetSanitizedUsername call return kSanitizedUsername.
-    ON_CALL(*mock_cryptohome_proxy_, MockCallMethodAndBlock(_, _))
-        .WillByDefault(Invoke([](dbus::MethodCall* method_call, int timeout) {
+    ON_CALL(*mock_cryptohome_proxy_,
+            MockCallMethodAndBlockWithErrorDetails(_, _, _))
+        .WillByDefault(Invoke([](dbus::MethodCall* method_call, int timeout,
+                                 dbus::ScopedDBusError* error) {
           return RespondWithString(method_call, kSanitizedUsername);
         }));
 
@@ -474,9 +474,11 @@ class AuthPolicyTest : public testing::Test {
   // the type of policy (user/device) contained in the |method_call|. If set by
   // the individual unit tests, calls |validate_user_policy_| or
   // |validate_device_policy_|  to validate the contents of the policy proto.
-  void StubCallStorePolicyMethod(dbus::MethodCall* method_call,
-                                 int /* timeout_ms */,
-                                 ObjectProxy::ResponseCallback callback) {
+  void StubCallStorePolicyMethod(
+      dbus::MethodCall* method_call,
+      int /* timeout_ms */,
+      ObjectProxy::ResponseCallback callback,
+      dbus::ObjectProxy::ErrorCallback error_callback) {
     // Safety check to make sure that old values are not carried along.
     if (!store_policy_called_) {
       EXPECT_FALSE(user_policy_validated_);
@@ -532,7 +534,8 @@ class AuthPolicyTest : public testing::Test {
   // Stub method called by the Session Manager mock to list stored component
   // policy ids.
   dbus::Response* StubListComponentIdsMethod(dbus::MethodCall* method_call,
-                                             int /* timeout_ms */) {
+                                             int /* timeout_ms */,
+                                             dbus::ScopedDBusError* error) {
     method_call->SetSerial(kDBusSerial);
     auto response = dbus::Response::FromMethodCall(method_call);
     dbus::MessageWriter writer(response.get());

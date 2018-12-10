@@ -66,17 +66,13 @@ ErrorMetricType GetPolicyErrorMetricType(bool is_refresh_user_policy) {
                                 : ERROR_OF_REFRESH_DEVICE_POLICY;
 }
 
-// Serializes |proto| to the byte array |proto_blob|. Returns ERROR_NONE on
-// success and ERROR_PARSE_FAILED otherwise.
-WARN_UNUSED_RESULT ErrorType
-SerializeProto(const google::protobuf::MessageLite& proto,
-               std::vector<uint8_t>* proto_blob) {
-  proto_blob->resize(proto.ByteSizeLong());
-  if (!proto.SerializeToArray(proto_blob->data(), proto_blob->size())) {
-    LOG(ERROR) << "Failed to serialize proto";
-    return ERROR_PARSE_FAILED;
-  }
-  return ERROR_NONE;
+// Serializes |proto| to a vector of bytes. CHECKs for success (should
+// never fail if there are no required proto fields).
+std::vector<uint8_t> SerializeProto(
+    const google::protobuf::MessageLite& proto) {
+  std::vector<uint8_t> proto_blob(proto.ByteSizeLong());
+  CHECK(proto.SerializeToArray(proto_blob.data(), proto_blob.size()));
+  return proto_blob;
 }
 
 WARN_UNUSED_RESULT ErrorType
@@ -224,7 +220,7 @@ void AuthPolicy::AuthenticateUser(
                                     &account_info);
   }
   if (error == ERROR_NONE)
-    error = SerializeProto(account_info, account_info_blob);
+    *account_info_blob = SerializeProto(account_info);
 
   PrintResult("AuthenticateUser", error);
   metrics_->ReportError(ERROR_OF_AUTHENTICATE_USER, error);
@@ -247,7 +243,7 @@ void AuthPolicy::GetUserStatus(
                                  request.account_id(), &user_status);
   }
   if (error == ERROR_NONE)
-    error = SerializeProto(user_status, user_status_blob);
+    *user_status_blob = SerializeProto(user_status);
 
   PrintResult("GetUserStatus", error);
   metrics_->ReportError(ERROR_OF_GET_USER_STATUS, error);
@@ -265,7 +261,7 @@ void AuthPolicy::GetUserKerberosFiles(
   KerberosFiles kerberos_files;
   ErrorType error = samba_.GetUserKerberosFiles(account_id, &kerberos_files);
   if (error == ERROR_NONE)
-    error = SerializeProto(kerberos_files, kerberos_files_blob);
+    *kerberos_files_blob = SerializeProto(kerberos_files);
   PrintResult("GetUserKerberosFiles", error);
   metrics_->ReportError(ERROR_OF_GET_USER_KERBEROS_FILES, error);
   *int_error = static_cast<int>(error);
@@ -407,7 +403,7 @@ void AuthPolicy::StorePolicy(
   descriptor.set_domain(login_manager::POLICY_DOMAIN_EXTENSIONS);
   std::vector<std::string> existing_extension_ids;
   if (!session_manager_client_->ListStoredComponentPolicies(
-          descriptor.SerializeAsString(), &existing_extension_ids)) {
+          SerializeProto(descriptor), &existing_extension_ids)) {
     // If this call fails, worst thing that can happen is stale extension
     // policy. Still seems better than not pushing policy at all, so keep going.
     existing_extension_ids.clear();
@@ -484,7 +480,7 @@ void AuthPolicy::StoreSinglePolicy(
   // Sending an empty response_blob deletes the policy.
   if (!policy_blob) {
     session_manager_client_->StoreUnsignedPolicyEx(
-        descriptor.SerializeAsString(), std::string() /* response_blob */,
+        SerializeProto(descriptor), std::vector<uint8_t>() /* response_blob */,
         base::Bind(&ResponseTracker::OnResponseFinished, response_tracker));
     return;
   }
@@ -517,16 +513,14 @@ void AuthPolicy::StoreSinglePolicy(
   // Note: No signature required here, Active Directory policy is unsigned!
 
   em::PolicyFetchResponse policy_response;
-  std::string response_blob;
-  if (!policy_data.SerializeToString(policy_response.mutable_policy_data()) ||
-      !policy_response.SerializeToString(&response_blob)) {
+  if (!policy_data.SerializeToString(policy_response.mutable_policy_data())) {
     LOG(ERROR) << "Failed to serialize policy data";
     response_tracker->OnResponseFinished(false);
     return;
   }
 
   session_manager_client_->StoreUnsignedPolicyEx(
-      descriptor.SerializeAsString(), response_blob,
+      SerializeProto(descriptor), SerializeProto(policy_response),
       base::Bind(&ResponseTracker::OnResponseFinished, response_tracker));
 }
 

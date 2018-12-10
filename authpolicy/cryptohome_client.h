@@ -5,13 +5,16 @@
 #ifndef AUTHPOLICY_CRYPTOHOME_CLIENT_H_
 #define AUTHPOLICY_CRYPTOHOME_CLIENT_H_
 
+#include <memory>
 #include <string>
 
 #include <base/macros.h>
 
-namespace dbus {
-class ObjectProxy;
+namespace org {
+namespace chromium {
+class CryptohomeInterfaceProxy;
 }
+}  // namespace org
 
 namespace brillo {
 namespace dbus_utils {
@@ -28,11 +31,12 @@ class CryptohomeClient {
   virtual ~CryptohomeClient();
 
   // Exposes Cryptohome's GetSanitizedUsername(). This is a 32-byte lowercase
-  // hex string that is also used as user directory.
+  // hex string that is also used as user directory. Returns an empty string on
+  // error.
   std::string GetSanitizedUsername(const std::string& account_id_key);
 
  private:
-  dbus::ObjectProxy* cryptohome_proxy_ = nullptr;  // Not owned.
+  std::unique_ptr<org::chromium::CryptohomeInterfaceProxy> proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(CryptohomeClient);
 };
