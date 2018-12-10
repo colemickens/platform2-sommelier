@@ -62,3 +62,4 @@ rmdir: 1
 fchown: arg1 == 0xffffffff && arg2 == 0xffffffff
 mremap: 1
 fstatat64: 1
+send: 1
