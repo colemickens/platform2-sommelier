@@ -274,6 +274,11 @@ Action ChooseAction(const base::FilePath& meta_file,
     }
   }
 
+  if (kind == "devcore" && !IsDeviceCoredumpUploadAllowed()) {
+    *reason = "Device coredump upload not allowed";
+    return kIgnore;
+  }
+
   return kSend;
 }
 

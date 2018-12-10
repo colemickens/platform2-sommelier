@@ -16,6 +16,9 @@ namespace util {
 // Returns true if integration tests are currently running.
 bool IsCrashTestInProgress();
 
+// Returns true if uploading of device coredumps is allowed.
+bool IsDeviceCoredumpUploadAllowed();
+
 // Returns true if running on a developer image.
 bool IsDeveloperImage();
 

@@ -43,6 +43,11 @@ constexpr char kLeaveCoreFile[] = "/root/.leave_core";
 // running.
 constexpr char kCrashTestInProgress[] = "crash-test-in-progress";
 
+// Base name of file whose existence indicates uploading of device coredumps is
+// allowed.
+constexpr char kDeviceCoredumpUploadAllowed[] =
+    "device_coredump_upload_allowed";
+
 // Base name of file that contains Chrome OS version info.
 constexpr char kLsbRelease[] = "lsb-release";
 

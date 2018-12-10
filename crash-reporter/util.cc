@@ -22,6 +22,11 @@ bool IsCrashTestInProgress() {
                                        paths::kCrashTestInProgress));
 }
 
+bool IsDeviceCoredumpUploadAllowed() {
+  return base::PathExists(paths::GetAt(paths::kCrashReporterStateDirectory,
+                                       paths::kDeviceCoredumpUploadAllowed));
+}
+
 bool IsDeveloperImage() {
   // If we're testing crash reporter itself, we don't want to special-case
   // for developer images.

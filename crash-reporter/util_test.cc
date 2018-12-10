@@ -49,6 +49,15 @@ TEST_F(CrashCommonUtilTest, IsCrashTestInProgress) {
   EXPECT_TRUE(IsCrashTestInProgress());
 }
 
+TEST_F(CrashCommonUtilTest, IsDeviceCoredumpUploadAllowed) {
+  EXPECT_FALSE(IsDeviceCoredumpUploadAllowed());
+  ASSERT_TRUE(
+      test_util::CreateFile(paths::GetAt(paths::kCrashReporterStateDirectory,
+                                         paths::kDeviceCoredumpUploadAllowed),
+                            ""));
+  EXPECT_TRUE(IsDeviceCoredumpUploadAllowed());
+}
+
 TEST_F(CrashCommonUtilTest, IsDeveloperImage) {
   EXPECT_FALSE(IsDeveloperImage());
 

@@ -44,10 +44,6 @@ REPORT_UPLOAD_PROD_URL="https://clients2.google.com/cr/report"
 # a certificate for ${REPORT_UPLOAD_PROD_URL}.
 RESTRICTED_CERTIFICATES_PATH="/usr/share/chromeos-ca-certificates"
 
-# Set this to 1 to allow uploading of device coredumps.
-DEVCOREDUMP_UPLOAD_FLAG_FILE=\
-"${CRASH_LIB_STATE_DIR}/device_coredump_upload_allowed"
-
 # The syslog tag for all logging we emit.
 TAG="$(basename $0)[$$]"
 
@@ -123,12 +119,6 @@ is_developer_mode() {
   # for developer mode.
   is_crash_test_in_progress && return 1
   crossystem "devsw_boot?1"  # exit status will be accurate
-}
-
-# Return 0 if the uploading of device coredumps is allowed.
-is_device_coredump_upload_allowed() {
-  [ -f "${DEVCOREDUMP_UPLOAD_FLAG_FILE}" ] && return 0
-  return 1
 }
 
 # Generate a uniform random number in 0..max-1.
@@ -535,13 +525,6 @@ send_or_skip_crash() {
   # removal to honor user choice and to free disk space as soon as possible,
   # then decide whether it should be sent right now or kept for later sending.
   lecho "Considering metadata ${meta_path}."
-
-  # Ignore device coredump if device coredump uploading is not allowed.
-  local kind=$(get_kind "${meta_path}")
-  if [ "${kind}" = "devcore" ] && ! is_device_coredump_upload_allowed; then
-    lecho "Ignoring device coredump. Device coredump upload not allowed."
-    return 0
-  fi
 
   # Don't send crash reports from previous sessions while we're in guest mode
   # to avoid the impression that crash reporting was enabled, which it isn't.

@@ -82,6 +82,14 @@ bool CreateLsbReleaseFile(BuildType type) {
                                "CHROMEOS_RELEASE_DESCRIPTION=" + label + "\n");
 }
 
+// Creates a file that indicates uploading of device coredumps is allowed.
+bool CreateDeviceCoredumpUploadAllowedFile() {
+  return test_util::CreateFile(
+      paths::GetAt(paths::kCrashReporterStateDirectory,
+                   paths::kDeviceCoredumpUploadAllowed),
+      "");
+}
+
 class CrashSenderUtilTest : public testing::Test {
  private:
   void SetUp() override {
@@ -128,6 +136,16 @@ class CrashSenderUtilTest : public testing::Test {
     if (!test_util::CreateFile(absolute_log_, ""))
       return false;
 
+    // These should be ignored, if uploading of device coredumps is not allowed.
+    devcore_meta_ = crash_directory.Append("devcore.meta");
+    devcore_devcore_ = crash_directory.Append("devcore.devcore");
+    if (!test_util::CreateFile(devcore_meta_,
+                               "payload=devcore.devcore\n"
+                               "done=1\n"))
+      return false;
+    if (!test_util::CreateFile(devcore_devcore_, ""))
+      return false;
+
     // This should be removed, since metadata is corrupted.
     corrupted_meta_ = crash_directory.Append("corrupted.meta");
     if (!test_util::CreateFile(corrupted_meta_, "!@#$%^&*\ndone=1\n"))
@@ -172,9 +190,11 @@ class CrashSenderUtilTest : public testing::Test {
 
     // Update timestamps, so that the return value of GetMetaFiles() is sorted
     // per timestamps correctly.
-    if (!TouchFileHelper(good_meta_, now - hour))
+    if (!TouchFileHelper(good_meta_, now - hour * 2))
       return false;
-    if (!TouchFileHelper(absolute_log_, now))
+    if (!TouchFileHelper(absolute_meta_, now - hour))
+      return false;
+    if (!TouchFileHelper(devcore_meta_, now))
       return false;
 
     return true;
@@ -202,6 +222,8 @@ class CrashSenderUtilTest : public testing::Test {
   base::FilePath good_log_;
   base::FilePath absolute_meta_;
   base::FilePath absolute_log_;
+  base::FilePath devcore_meta_;
+  base::FilePath devcore_devcore_;
   base::FilePath empty_meta_;
   base::FilePath corrupted_meta_;
   base::FilePath nonexistent_meta_;
@@ -392,6 +414,14 @@ TEST_F(CrashSenderUtilTest, ChooseAction) {
             ChooseAction(new_incomplete_meta_, metrics_lib_.get(), &reason));
   EXPECT_THAT(reason, HasSubstr("Recent incomplete metadata"));
 
+  // Device coredump should be ignored by default.
+  EXPECT_EQ(kIgnore, ChooseAction(devcore_meta_, metrics_lib_.get(), &reason));
+  EXPECT_THAT(reason, HasSubstr("Device coredump upload not allowed"));
+
+  // Device coredump should be sent, if uploading is allowed.
+  CreateDeviceCoredumpUploadAllowedFile();
+  EXPECT_EQ(kSend, ChooseAction(devcore_meta_, metrics_lib_.get(), &reason));
+
   // The following files should be removed.
   EXPECT_EQ(kRemove, ChooseAction(empty_meta_, metrics_lib_.get(), &reason));
   EXPECT_THAT(reason, HasSubstr("Payload is not found"));
@@ -479,6 +509,16 @@ TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
   ASSERT_EQ(2, to_send.size());
   EXPECT_EQ(good_meta_.value(), to_send[0].value());
   EXPECT_EQ(absolute_meta_.value(), to_send[1].value());
+
+  // devcore_meta_ should be included in to_send, if uploading of device
+  // coredumps is allowed.
+  ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
+  ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsEnabled));
+  CreateDeviceCoredumpUploadAllowedFile();
+  to_send.clear();
+  RemoveAndPickCrashFiles(crash_directory, metrics_lib_.get(), &to_send);
+  ASSERT_EQ(3, to_send.size());
+  EXPECT_EQ(devcore_meta_.value(), to_send[2].value());
 }
 
 TEST_F(CrashSenderUtilTest, RemoveReportFiles) {
