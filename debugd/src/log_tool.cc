@@ -4,6 +4,7 @@
 
 #include "debugd/src/log_tool.h"
 
+#include <lzma.h>
 #include <memory>
 #include <string>
 #include <vector>
@@ -22,6 +23,7 @@
 #include <shill/dbus-proxies.h>
 
 #include "debugd/src/constants.h"
+#include "debugd/src/perf_tool.h"
 #include "debugd/src/process_with_output.h"
 
 #include "brillo/key_value_store.h"
@@ -44,6 +46,9 @@ const int kConnectionTesterTimeoutSeconds = 5;
 
 // Default maximum size of a log entry.
 constexpr const char kDefaultSizeCap[] = "512K";
+
+// Default running perf for 2 seconds.
+constexpr const int kPerfDurationSecs = 2;
 
 struct Log {
   const char* name;
@@ -479,6 +484,53 @@ void PopulateDictionaryValue(const LogTool::LogMap& map,
   }
 }
 
+bool CompressXzBuffer(const std::vector<uint8_t>& in_buffer,
+                      std::vector<uint8_t>* out_buffer) {
+  size_t out_size = lzma_stream_buffer_bound(in_buffer.size());
+  out_buffer->resize(out_size);
+  size_t out_pos = 0;
+
+  lzma_ret ret = lzma_easy_buffer_encode(
+      LZMA_PRESET_DEFAULT, LZMA_CHECK_CRC64, nullptr, in_buffer.data(),
+      in_buffer.size(), out_buffer->data(), &out_pos, out_size);
+
+  if (ret != LZMA_OK) {
+    out_buffer->clear();
+    return false;
+  }
+
+  out_buffer->resize(out_pos);
+  return true;
+}
+
+void GetPerfData(LogTool::LogMap* map) {
+  // Run perf to collect system-wide performance profile when user triggers
+  // feedback report. Perf runs at sampling frequency of ~500 hz (499 is used
+  // to avoid sampling periodic system activities), with callstack in each
+  // sample (-g).
+  std::vector<std::string> perf_args = {
+    "perf", "record", "-a", "-g", "-F", "499"
+  };
+  std::vector<uint8_t> perf_data;
+  int32_t status;
+
+  debugd::PerfTool perf_tool;
+  if (!perf_tool.GetPerfOutput(kPerfDurationSecs, perf_args, &perf_data,
+                               nullptr, &status, nullptr))
+    return;
+
+  // XZ compress the profile data.
+  std::vector<uint8_t> perf_data_xz;
+  if (!CompressXzBuffer(perf_data, &perf_data_xz))
+    return;
+
+  // Base64 encode the compressed data.
+  std::string perf_data_str(reinterpret_cast<const char*>(perf_data_xz.data()),
+                            perf_data_xz.size());
+  (*map)["perf-data"] =
+      LogTool::EnsureUTF8String(perf_data_str, LogTool::Encoding::kBinary);
+}
+
 }  // namespace
 
 void LogTool::CreateConnectivityReport() {
@@ -537,6 +589,8 @@ LogTool::LogMap LogTool::GetFeedbackLogs() {
 
 void LogTool::GetBigFeedbackLogs(const base::ScopedFD& fd) {
   CreateConnectivityReport();
+  LogMap map;
+  GetPerfData(&map);
   base::DictionaryValue dictionary;
   GetLogsInDictionary(kCommandLogs, &anonymizer_, &dictionary);
   for (const auto& key : kCommandLogsExclude) {
@@ -544,7 +598,6 @@ void LogTool::GetBigFeedbackLogs(const base::ScopedFD& fd) {
   }
   GetLogsInDictionary(kFeedbackLogs, &anonymizer_, &dictionary);
   GetLogsInDictionary(kBigFeedbackLogs, &anonymizer_, &dictionary);
-  LogMap map;
   GetLsbReleaseInfo(&map);
   GetOsReleaseInfo(&map);
   PopulateDictionaryValue(map, &dictionary);
