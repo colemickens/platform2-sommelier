@@ -44,60 +44,75 @@ namespace {
 // they should not appear on any UI.
 constexpr base::TimeDelta kTokenInitBlockSystemShutdownFallbackTimeout =
     base::TimeDelta::FromSeconds(10);
-const CK_VERSION kDefaultVersion = {1, 0};
-const char kManufacturerID[] = "Chromium OS";
-const CK_ULONG kMaxPinLen = 127;
-const CK_ULONG kMinPinLen = 6;
-const char kSlotDescription[] = "TPM Slot";
-const char kSystemTokenPath[] = "/var/lib/chaps";
-const char kSystemTokenAuthData[] = "000000";
-const char kSystemTokenLabel[] = "System TPM Token";
-const char kTokenLabel[] = "User-Specific TPM Token";
-const char kTokenModel[] = "";
-const char kTokenSerialNumber[] = "Not Available";
-const int kUserKeySize = 32;
-const int kAuthDataHashVersion = 1;
-const char kKeyPurposeEncrypt[] = "encrypt";
-const char kKeyPurposeMac[] = "mac";
-const char kAuthKeyMacInput[] = "arbitrary";
-const char kTokenReinitializedFlagFilePath[] =
+constexpr CK_VERSION kDefaultVersion = {1, 0};
+constexpr char kManufacturerID[] = "Chromium OS";
+constexpr CK_ULONG kMaxPinLen = 127;
+constexpr CK_ULONG kMinPinLen = 6;
+constexpr char kSlotDescription[] = "TPM Slot";
+constexpr char kSystemTokenPath[] = "/var/lib/chaps";
+constexpr char kSystemTokenAuthData[] = "000000";
+constexpr char kSystemTokenLabel[] = "System TPM Token";
+constexpr char kTokenLabel[] = "User-Specific TPM Token";
+constexpr char kTokenModel[] = "";
+constexpr char kTokenSerialNumber[] = "Not Available";
+constexpr int kUserKeySize = 32;
+constexpr int kAuthDataHashVersion = 1;
+constexpr char kKeyPurposeEncrypt[] = "encrypt";
+constexpr char kKeyPurposeMac[] = "mac";
+constexpr char kAuthKeyMacInput[] = "arbitrary";
+constexpr char kTokenReinitializedFlagFilePath[] =
     "/var/lib/chaps/debug_token_reinitialized";
 
-const struct MechanismInfo {
+constexpr CK_FLAGS kCommonECParameters = CKF_EC_F_P | CKF_EC_F_2M |
+                                     CKF_EC_NAMEDCURVE | CKF_EC_ECPARAMETERS |
+                                     CKF_EC_UNCOMPRESS;
+
+constexpr struct MechanismInfo {
   CK_MECHANISM_TYPE type;
   CK_MECHANISM_INFO info;
 } kDefaultMechanismInfo[] = {
-  {CKM_RSA_PKCS_KEY_PAIR_GEN, {512, 2048, CKF_GENERATE_KEY_PAIR | CKF_HW}},
-  {CKM_RSA_PKCS, {512, 2048, CKF_HW | CKF_ENCRYPT | CKF_DECRYPT | CKF_SIGN |
-      CKF_VERIFY}},
-  {CKM_MD5_RSA_PKCS, {512, 2048, CKF_HW | CKF_SIGN | CKF_VERIFY}},
-  {CKM_SHA1_RSA_PKCS, {512, 2048, CKF_HW | CKF_SIGN | CKF_VERIFY}},
-  {CKM_SHA256_RSA_PKCS, {512, 2048, CKF_HW | CKF_SIGN | CKF_VERIFY}},
-  {CKM_SHA384_RSA_PKCS, {512, 2048, CKF_HW | CKF_SIGN | CKF_VERIFY}},
-  {CKM_SHA512_RSA_PKCS, {512, 2048, CKF_HW | CKF_SIGN | CKF_VERIFY}},
-  {CKM_MD5, {0, 0, CKF_DIGEST}},
-  {CKM_SHA_1, {0, 0, CKF_DIGEST}},
-  {CKM_SHA256, {0, 0, CKF_DIGEST}},
-  {CKM_SHA384, {0, 0, CKF_DIGEST}},
-  {CKM_SHA512, {0, 0, CKF_DIGEST}},
-  {CKM_GENERIC_SECRET_KEY_GEN, {8, 1024, CKF_GENERATE}},
-  {CKM_MD5_HMAC, {0, 0, CKF_SIGN | CKF_VERIFY}},
-  {CKM_SHA_1_HMAC, {0, 0, CKF_SIGN | CKF_VERIFY}},
-  {CKM_SHA256_HMAC, {0, 0, CKF_SIGN | CKF_VERIFY}},
-  {CKM_SHA512_HMAC, {0, 0, CKF_SIGN | CKF_VERIFY}},
-  {CKM_SHA384_HMAC, {0, 0, CKF_SIGN | CKF_VERIFY}},
-  {CKM_DES_KEY_GEN, {0, 0, CKF_GENERATE}},
-  {CKM_DES_ECB, {0, 0, CKF_ENCRYPT | CKF_DECRYPT}},
-  {CKM_DES_CBC, {0, 0, CKF_ENCRYPT | CKF_DECRYPT}},
-  {CKM_DES_CBC_PAD, {0, 0, CKF_ENCRYPT | CKF_DECRYPT}},
-  {CKM_DES3_KEY_GEN, {0, 0, CKF_GENERATE}},
-  {CKM_DES3_ECB, {0, 0, CKF_ENCRYPT | CKF_DECRYPT}},
-  {CKM_DES3_CBC, {0, 0, CKF_ENCRYPT | CKF_DECRYPT}},
-  {CKM_DES3_CBC_PAD, {0, 0, CKF_ENCRYPT | CKF_DECRYPT}},
-  {CKM_AES_KEY_GEN, {16, 32, CKF_GENERATE}},
-  {CKM_AES_ECB, {16, 32, CKF_ENCRYPT | CKF_DECRYPT}},
-  {CKM_AES_CBC, {16, 32, CKF_ENCRYPT | CKF_DECRYPT}},
-  {CKM_AES_CBC_PAD, {16, 32, CKF_ENCRYPT | CKF_DECRYPT}}
+    {CKM_RSA_PKCS_KEY_PAIR_GEN, {512, 2048, CKF_GENERATE_KEY_PAIR | CKF_HW}},
+    {CKM_RSA_PKCS,
+     {512, 2048, CKF_HW | CKF_ENCRYPT | CKF_DECRYPT | CKF_SIGN | CKF_VERIFY}},
+    {CKM_MD5_RSA_PKCS, {512, 2048, CKF_HW | CKF_SIGN | CKF_VERIFY}},
+    {CKM_SHA1_RSA_PKCS, {512, 2048, CKF_HW | CKF_SIGN | CKF_VERIFY}},
+    {CKM_SHA256_RSA_PKCS, {512, 2048, CKF_HW | CKF_SIGN | CKF_VERIFY}},
+    {CKM_SHA384_RSA_PKCS, {512, 2048, CKF_HW | CKF_SIGN | CKF_VERIFY}},
+    {CKM_SHA512_RSA_PKCS, {512, 2048, CKF_HW | CKF_SIGN | CKF_VERIFY}},
+
+    {CKM_MD5, {0, 0, CKF_DIGEST}},
+    {CKM_SHA_1, {0, 0, CKF_DIGEST}},
+    {CKM_SHA256, {0, 0, CKF_DIGEST}},
+    {CKM_SHA384, {0, 0, CKF_DIGEST}},
+    {CKM_SHA512, {0, 0, CKF_DIGEST}},
+
+    {CKM_GENERIC_SECRET_KEY_GEN, {8, 1024, CKF_GENERATE}},
+
+    {CKM_MD5_HMAC, {0, 0, CKF_SIGN | CKF_VERIFY}},
+    {CKM_SHA_1_HMAC, {0, 0, CKF_SIGN | CKF_VERIFY}},
+    {CKM_SHA256_HMAC, {0, 0, CKF_SIGN | CKF_VERIFY}},
+    {CKM_SHA512_HMAC, {0, 0, CKF_SIGN | CKF_VERIFY}},
+    {CKM_SHA384_HMAC, {0, 0, CKF_SIGN | CKF_VERIFY}},
+
+    {CKM_DES_KEY_GEN, {0, 0, CKF_GENERATE}},
+    {CKM_DES_ECB, {0, 0, CKF_ENCRYPT | CKF_DECRYPT}},
+    {CKM_DES_CBC, {0, 0, CKF_ENCRYPT | CKF_DECRYPT}},
+    {CKM_DES_CBC_PAD, {0, 0, CKF_ENCRYPT | CKF_DECRYPT}},
+
+    {CKM_DES3_KEY_GEN, {0, 0, CKF_GENERATE}},
+    {CKM_DES3_ECB, {0, 0, CKF_ENCRYPT | CKF_DECRYPT}},
+    {CKM_DES3_CBC, {0, 0, CKF_ENCRYPT | CKF_DECRYPT}},
+    {CKM_DES3_CBC_PAD, {0, 0, CKF_ENCRYPT | CKF_DECRYPT}},
+
+    {CKM_AES_KEY_GEN, {16, 32, CKF_GENERATE}},
+    {CKM_AES_ECB, {16, 32, CKF_ENCRYPT | CKF_DECRYPT}},
+    {CKM_AES_CBC, {16, 32, CKF_ENCRYPT | CKF_DECRYPT}},
+    {CKM_AES_CBC_PAD, {16, 32, CKF_ENCRYPT | CKF_DECRYPT}},
+
+    {CKM_EC_KEY_PAIR_GEN,
+     {256, 256, CKF_GENERATE_KEY_PAIR | CKF_HW | kCommonECParameters}},
+    {CKM_ECDSA_SHA1,
+     {256, 256, CKF_HW | CKF_SIGN | CKF_VERIFY | kCommonECParameters}},
 };
 
 // Computes an authorization data hash as it is stored in the database.
