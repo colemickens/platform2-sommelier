@@ -200,6 +200,10 @@ ec_power_modem() {
   fi
 }
 
+to_hex() {
+  echo "obase=16; $(($1))" | bc
+}
+
 # Bluetooth HCI Mode Change event to "enable" or "disable".
 #
 # Enables or disables Bluetooth HCI mode change events based on an
@@ -229,6 +233,20 @@ bt_hci_mode_change_event_ctrl() {
     elif [ "$1" = "enable" ]; then
       log_msg "Enabling Bluetooth HCI mode change event after resume"
       timeout -k 2 2 hcitool -i "${hcidev}" cmd 03 01 ff ff ff ff ff ff ff ff
+
+      # Exit Sniff mode for all ACL connections.
+      # The command of "hcitool con" shows something like
+      #   Connections:
+      #       > ACL 04:52:C7:83:95:10 handle 256 state 1 lm MASTER AUTH ENCRYPT
+      #       > ACL 04:52:C7:C3:65:B5 handle 512 state 1 lm MASTER AUTH ENCRYPT
+      handles="$(echo "$(hcitool con)" | awk '/ACL/ {print $5}')"
+      for handle in $handles; do
+        lo_byte="$(to_hex $((handle % 256)))"
+        hi_byte="$(to_hex $((handle / 256)))"
+        log_msg "Exiting Sniff mode for connection handle ${lo_byte} ${hi_byte}"
+        timeout -k 2 2 hcitool -i "${hcidev}" cmd 02 04 "${lo_byte}" \
+            "${hi_byte}"
+      done
     fi
     retval=$?
     # retval = 124/137 indicates timedout, please refer to timeout man page
