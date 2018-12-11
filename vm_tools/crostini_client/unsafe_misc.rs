@@ -46,6 +46,7 @@ mod tests {
     use unsafe_misc::libc::ENOENT;
 
     #[test]
+    #[ignore]
     fn same_as_df() {
         let free_bytes = get_free_disk_space(".").expect("failed to get free disk space");
         let df_free_bytes = String::from_utf8(
