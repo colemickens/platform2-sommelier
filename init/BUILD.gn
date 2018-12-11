@@ -6,15 +6,27 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
+    ":clobber-state",
     ":net_poll_tool",
     ":static_node_tool",
   ]
+  if (use.test) {
+    deps += [ ":clobber_state_unittest" ]
+  }
 }
 
 pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
+  ]
+}
+
+executable("clobber-state") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "clobber_state.cc",
+    "clobber_state_main.cc",
   ]
 }
 
@@ -30,4 +42,24 @@ executable("static_node_tool") {
   sources = [
     "static_node_tool.cc",
   ]
+}
+if (use.test) {
+  pkg_config("test_config") {
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+  }
+
+  executable("clobber_state_unittest") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
+    ]
+    sources = [
+      "clobber_state.cc",
+      "clobber_state_unittest.cc",
+    ]
+    deps = [
+      "//common-mk/testrunner",
+    ]
+  }
 }

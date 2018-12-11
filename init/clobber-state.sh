@@ -17,19 +17,8 @@ SCRIPT="$0"
 set -x
 
 # Log file to store the output of this run.
-CLOBBER_STATE_LOG="/tmp/clobber-state.log"
+CLOBBER_STATE_LOG="/tmp/clobber-state-shell.log"
 : [ -x /sbin/frecon ] && ${TTY=/run/frecon/vt0} || ${TTY=/dev/tty1}
-
-# Command line parameters for clobber-state:
-# factory:  run in the context of a factory flow, do not reboot when done
-# fast:     less thorough data destruction
-# keepimg:  don't delete the non-active set of kernel/root partitions
-# safe:     preserve some files and VPD keys
-FACTORY_WIPE=$(echo "$@" | grep -sqw factory && echo "factory")
-FAST_WIPE=$(echo "$@" | grep -sqw fast && echo "fast")
-KEEPIMG=$(echo "$@" | grep -sqw keepimg && echo "keepimg")
-SAFE_WIPE=$(echo "$@" | grep -sqw safe && echo "safe")
-ROLLBACK_WIPE=$(echo "$@" | grep -sqw rollback && echo "rollback")
 
 PRESERVED_TAR="/tmp/preserve.tar"
 LABMACHINE=".labmachine"
@@ -39,13 +28,6 @@ POWERWASH_COUNT="${STATE_PATH}/unencrypted/preserve/powerwash_count"
 # List of files to preserve relative to /mnt/stateful_partition/
 PRESERVED_FILES=""
 PRESERVED_LIST=""
-
-ensure_root_account() {
-  if [ $(id -u) -ne 0 ]; then
-    echo 'You must run this as root'
-    exit 1
-  fi
-}
 
 redirect_log_start() {
   # Redirect stdout to our log.
@@ -532,7 +514,6 @@ reset_bio_entropy() {
 }
 
 main() {
-  ensure_root_account
   redirect_log_start
 
   # Most effective means of destroying user data is run at the start: Throwing
@@ -593,14 +574,6 @@ main() {
   sync
 
   redirect_log_stop
-
-  # Factory wipe should stop here and return to the caller script.
-  if [ "${FACTORY_WIPE}" = "factory" ]; then
-    exit
-  fi
-
-  /sbin/shutdown -r now
-  sleep 1d  # Wait for shutdown
 }
 
 main "$@"
