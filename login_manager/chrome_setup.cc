@@ -423,8 +423,6 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
 
   if (builder->UseFlagIsSet("native_assistant"))
     builder->AddFeatureEnableOverride("ChromeOSAssistant");
-  if (builder->UseFlagIsSet("voice_interaction"))
-    builder->AddArg("--enable-voice-interaction");
 
   if (builder->UseFlagIsSet("background_blur"))
     builder->AddFeatureEnableOverride("EnableBackgroundBlur");
