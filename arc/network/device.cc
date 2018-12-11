@@ -55,10 +55,23 @@ bool AssignAddr(const std::string& ifname, DeviceConfig* config) {
 
 }  // namespace
 
-Device::Device(const std::string& ifname, const DeviceConfig& config)
-    : ifname_(ifname), config_(config) {}
+Device::Device(const std::string& ifname,
+               const DeviceConfig& config,
+               const MessageSink& msg_sink)
+    : ifname_(ifname), config_(config), msg_sink_(msg_sink) {
+  if (msg_sink_.is_null())
+    return;
+
+  IpHelperMessage msg;
+  msg.set_dev_ifname(ifname_);
+  *msg.mutable_dev_config() = config_;
+  msg_sink_.Run(msg);
+}
 
 Device::~Device() {
+  if (msg_sink_.is_null())
+    return;
+
   IpHelperMessage msg;
   msg.set_dev_ifname(ifname_);
   msg.set_teardown(true);
@@ -66,7 +79,8 @@ Device::~Device() {
 }
 
 // static
-std::unique_ptr<Device> Device::ForInterface(const std::string& ifname) {
+std::unique_ptr<Device> Device::ForInterface(const std::string& ifname,
+                                             const MessageSink& msg_sink) {
   DeviceConfig config;
   if (!AssignAddr(ifname, &config))
     return nullptr;
@@ -74,23 +88,15 @@ std::unique_ptr<Device> Device::ForInterface(const std::string& ifname) {
   if (ifname == kAndroidDevice) {
     config.set_br_ifname("arcbr0");
     config.set_arc_ifname("arc0");
+    config.set_find_ipv6_routes(true);
   } else {
     config.set_br_ifname(base::StringPrintf("arc_%s", ifname.c_str()));
     config.set_arc_ifname(ifname);
+    config.set_find_ipv6_routes(false);
   }
-  return std::make_unique<Device>(ifname, config);
-}
-
-void Device::RegisterMessageSink(
-    const base::Callback<void(const IpHelperMessage&)>& callback) {
-  msg_sink_ = callback;
-}
-
-void Device::Announce() {
-  IpHelperMessage msg;
-  msg.set_dev_ifname(ifname_);
-  *msg.mutable_dev_config() = config_;
-  msg_sink_.Run(msg);
+  // TODO(garrick): Enable only for Ethernet and Wifi.
+  config.set_fwd_multicast(true);
+  return std::make_unique<Device>(ifname, config, msg_sink);
 }
 
 void Device::Enable(const std::string& ifname) {
@@ -105,34 +111,48 @@ void Device::Enable(const std::string& ifname) {
 
   LOG(INFO) << "Enabling services for " << ifname_;
   // Enable inbound traffic.
-  IpHelperMessage msg;
-  msg.set_dev_ifname(ifname_);
-  msg.set_enable_inbound_ifname(legacy_lan_ifname_);
-  msg_sink_.Run(msg);
+  if (!msg_sink_.is_null()) {
+    IpHelperMessage msg;
+    msg.set_dev_ifname(ifname_);
+    msg.set_enable_inbound_ifname(legacy_lan_ifname_);
+    msg_sink_.Run(msg);
+  }
 
   // TODO(garrick): Revisit multicast forwarding when NAT rules are enabled
   // for other devices.
-  mdns_forwarder_.reset(new MulticastForwarder());
-  ssdp_forwarder_.reset(new MulticastForwarder());
-  router_finder_.reset(new RouterFinder());
+  if (config_.fwd_multicast()) {
+    mdns_forwarder_.reset(new MulticastForwarder());
+    ssdp_forwarder_.reset(new MulticastForwarder());
+    mdns_forwarder_->Start(config_.br_ifname(), legacy_lan_ifname_,
+                           config_.arc_ipv4(), kMdnsMcastAddress, kMdnsPort,
+                           /* allow_stateless */ true);
+    ssdp_forwarder_->Start(config_.br_ifname(), legacy_lan_ifname_,
+                           /* arc_ipaddr */ "", kSsdpMcastAddress, kSsdpPort,
+                           /* allow_stateless */ false);
+  }
 
-  mdns_forwarder_->Start(config_.br_ifname(), legacy_lan_ifname_,
-                         config_.arc_ipv4(), kMdnsMcastAddress, kMdnsPort,
-                         /* allow_stateless */ true);
-  ssdp_forwarder_->Start(config_.br_ifname(), legacy_lan_ifname_,
-                         /* arc_ipaddr */ "", kSsdpMcastAddress, kSsdpPort,
-                         /* allow_stateless */ false);
-
-  router_finder_->Start(
-      legacy_lan_ifname_,
-      base::Bind(&Device::OnRouteFound, weak_factory_.GetWeakPtr()));
+  if (config_.find_ipv6_routes()) {
+    router_finder_.reset(new RouterFinder());
+    router_finder_->Start(
+        legacy_lan_ifname_,
+        base::Bind(&Device::OnRouteFound, weak_factory_.GetWeakPtr()));
+  }
 }
 
 void Device::Disable() {
   LOG(INFO) << "Disabling services for " << ifname_;
 
-  // Clear IPv6 info.
-  {
+  neighbor_finder_.reset();
+  router_finder_.reset();
+  ssdp_forwarder_.reset();
+  mdns_forwarder_.reset();
+  legacy_lan_ifname_.clear();
+
+  if (msg_sink_.is_null())
+    return;
+
+  // Clear IPv6 info, if necessary.
+  if (config_.find_ipv6_routes()) {
     IpHelperMessage msg;
     msg.set_dev_ifname(ifname_);
     msg.set_clear_arc_ip(true);
@@ -146,12 +166,6 @@ void Device::Disable() {
     msg.set_disable_inbound(true);
     msg_sink_.Run(msg);
   }
-
-  neighbor_finder_.reset();
-  router_finder_.reset();
-  ssdp_forwarder_.reset();
-  mdns_forwarder_.reset();
-  legacy_lan_ifname_.clear();
 }
 
 void Device::OnRouteFound(const struct in6_addr& prefix,
@@ -206,14 +220,16 @@ void Device::OnNeighborCheckResult(bool found) {
               << "/128, gateway=" << router << " on " << legacy_lan_ifname_;
 
     // Set up new ARC IPv6 address, NDP, and forwarding rules.
-    IpHelperMessage msg;
-    msg.set_dev_ifname(ifname_);
-    SetArcIp* setup_msg = msg.mutable_set_arc_ip();
-    setup_msg->set_prefix(&random_address_, sizeof(struct in6_addr));
-    setup_msg->set_prefix_len(128);
-    setup_msg->set_router(&router, sizeof(struct in6_addr));
-    setup_msg->set_lan_ifname(legacy_lan_ifname_);
-    msg_sink_.Run(msg);
+    if (!msg_sink_.is_null()) {
+      IpHelperMessage msg;
+      msg.set_dev_ifname(ifname_);
+      SetArcIp* setup_msg = msg.mutable_set_arc_ip();
+      setup_msg->set_prefix(&random_address_, sizeof(struct in6_addr));
+      setup_msg->set_prefix_len(128);
+      setup_msg->set_router(&router, sizeof(struct in6_addr));
+      setup_msg->set_lan_ifname(legacy_lan_ifname_);
+      msg_sink_.Run(msg);
+    }
   }
 }
 
