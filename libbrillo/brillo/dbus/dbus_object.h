@@ -485,6 +485,12 @@ class BRILLO_EXPORT DBusInterface final {
       dbus::Bus* bus,
       dbus::ExportedObject* exported_object,
       const dbus::ObjectPath& object_path);
+  // Releases the D-Bus interface and unexports all the methods asynchronously.
+  BRILLO_PRIVATE void UnexportAsync(
+      ExportedObjectManager* object_manager,
+      dbus::ExportedObject* exported_object,
+      const dbus::ObjectPath& object_path,
+      const AsyncEventSequencer::CompletionAction& completion_callback);
 
   BRILLO_PRIVATE void ClaimInterface(
       base::WeakPtr<ExportedObjectManager> object_manager,
@@ -550,6 +556,14 @@ class BRILLO_EXPORT DBusObject {
   // Exports a proxy handler for the interface |interface_name|. If the
   // interface proxy does not exist yet, it will be automatically created.
   void ExportInterfaceAsync(
+      const std::string& interface_name,
+      const AsyncEventSequencer::CompletionAction& completion_callback);
+
+  // Unexports the interface |interface_name| and unexports all method handlers.
+  // In some cases, one may want to export an interface even after it's removed.
+  // In that case, they should call this method before removing the interface
+  // to make sure it will start with a clean state of method handlers.
+  void UnexportInterfaceAsync(
       const std::string& interface_name,
       const AsyncEventSequencer::CompletionAction& completion_callback);
 

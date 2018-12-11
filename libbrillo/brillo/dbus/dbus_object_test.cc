@@ -333,6 +333,22 @@ TEST_F(DBusObjectTest, TestRemovedInterface) {
   EXPECT_EQ(DBUS_ERROR_UNKNOWN_INTERFACE, response->GetErrorName());
 }
 
+TEST_F(DBusObjectTest, TestUnexportInterfaceAsync) {
+  // Unexport the interface to be tested. It should unexport the methods on that
+  // interface.
+  EXPECT_CALL(*mock_exported_object_,
+              UnexportMethod(kTestInterface3, kTestMethod_NoOp, _))
+      .Times(1);
+  EXPECT_CALL(*mock_exported_object_,
+              UnexportMethod(kTestInterface3, kTestMethod_WithMessage, _))
+      .Times(1);
+  EXPECT_CALL(*mock_exported_object_,
+              UnexportMethod(kTestInterface3, kTestMethod_WithMessageAsync, _))
+      .Times(1);
+  dbus_object_->UnexportInterfaceAsync(kTestInterface3,
+                                       base::Bind(&OnInterfaceExported));
+}
+
 TEST_F(DBusObjectTest, TestInterfaceExportedLate) {
   // Registers a new interface late.
   dbus_object_->ExportInterfaceAsync(kTestInterface4,
