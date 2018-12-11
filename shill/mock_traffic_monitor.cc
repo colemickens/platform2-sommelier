@@ -8,7 +8,15 @@
 
 namespace shill {
 
-MockTrafficMonitor::MockTrafficMonitor() : TrafficMonitor(nullptr, nullptr) {}
+namespace {
+
+void NoOpNetworkProblemDetectedCallback(int) {}
+
+}  // namespacee
+
+MockTrafficMonitor::MockTrafficMonitor()
+    : TrafficMonitor(
+          nullptr, nullptr, base::Bind(&NoOpNetworkProblemDetectedCallback)) {}
 
 MockTrafficMonitor::~MockTrafficMonitor() {}
 

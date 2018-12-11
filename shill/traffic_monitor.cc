@@ -4,6 +4,8 @@
 
 #include "shill/traffic_monitor.h"
 
+#include <utility>
+
 #include <base/bind.h>
 #include <base/strings/stringprintf.h>
 #include <netinet/in.h>
@@ -31,15 +33,18 @@ const int64_t TrafficMonitor::kDnsTimedOutThresholdSeconds = 15;
 const int TrafficMonitor::kMinimumFailedSamplesToTrigger = 2;
 const int64_t TrafficMonitor::kSamplingIntervalMilliseconds = 5000;
 
-TrafficMonitor::TrafficMonitor(const DeviceRefPtr& device,
-                               EventDispatcher* dispatcher)
+TrafficMonitor::TrafficMonitor(
+    const DeviceRefPtr& device,
+    EventDispatcher* dispatcher,
+    NetworkProblemDetectedCallback network_problem_detected_callback)
     : device_(device),
       dispatcher_(dispatcher),
+      network_problem_detected_callback_(
+          std::move(network_problem_detected_callback)),
       socket_info_reader_(new SocketInfoReader),
       accummulated_congested_tx_queues_samples_(0),
       connection_info_reader_(new ConnectionInfoReader),
-      accummulated_dns_failures_samples_(0) {
-}
+      accummulated_dns_failures_samples_(0) {}
 
 TrafficMonitor::~TrafficMonitor() {
   Stop();

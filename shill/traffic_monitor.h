@@ -37,7 +37,10 @@ class TrafficMonitor {
 
   using NetworkProblemDetectedCallback = base::Callback<void(int)>;
 
-  TrafficMonitor(const DeviceRefPtr& device, EventDispatcher* dispatcher);
+  TrafficMonitor(
+      const DeviceRefPtr& device,
+      EventDispatcher* dispatcher,
+      NetworkProblemDetectedCallback network_problem_detected_callback);
   virtual ~TrafficMonitor();
 
   // Starts traffic monitoring on the selected device.
@@ -45,14 +48,6 @@ class TrafficMonitor {
 
   // Stops traffic monitoring on the selected device.
   virtual void Stop();
-
-  // Sets the callback to invoke, if the traffic monitor detects a network
-  // problem, either too many packets are failing to get transmitted over a
-  // TCP connection or DNS is failing.
-  void set_network_problem_detected_callback(
-      const NetworkProblemDetectedCallback& callback) {
-    network_problem_detected_callback_ = callback;
-  }
 
  private:
   friend class TrafficMonitorTest;

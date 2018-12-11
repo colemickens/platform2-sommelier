@@ -1612,8 +1612,8 @@ void Device::StartTrafficMonitor() {
   SLOG(this, 2) << "Device " << link_name()
                 << ": Traffic Monitor starting.";
   if (!traffic_monitor_) {
-    traffic_monitor_.reset(new TrafficMonitor(this, dispatcher_));
-    traffic_monitor_->set_network_problem_detected_callback(
+    traffic_monitor_ = std::make_unique<TrafficMonitor>(
+        this, dispatcher_,
         Bind(&Device::OnEncounterNetworkProblem,
              weak_ptr_factory_.GetWeakPtr()));
   }
