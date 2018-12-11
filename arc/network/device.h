@@ -12,6 +12,7 @@
 #include <memory>
 #include <string>
 
+#include <base/bind.h>
 #include <base/memory/weak_ptr.h>
 
 #include "arc/network/ipc.pb.h"
@@ -30,16 +31,17 @@ extern const char kAndroidDevice[];
 // source for configuration events.
 class Device {
  public:
-  Device(const std::string& ifname, const DeviceConfig& config);
+  using MessageSink = base::Callback<void(const IpHelperMessage&)>;
+
+  Device(const std::string& ifname,
+         const DeviceConfig& config,
+         const MessageSink& msg_sink);
   virtual ~Device();
 
   // Returns |nullptr| if the device configuration could not be generated
   // for the interface.
-  static std::unique_ptr<Device> ForInterface(const std::string& ifname);
-
-  // Callback used to deliver device configuration events.
-  void RegisterMessageSink(
-      const base::Callback<void(const IpHelperMessage&)>& callback);
+  static std::unique_ptr<Device> ForInterface(const std::string& ifname,
+                                              const MessageSink& msg_sink);
 
   // |ifname| should always be empty for devices that represent physical host
   // interfaces. For others, like the ARC device 'android' that represents the
@@ -48,9 +50,7 @@ class Device {
   void Enable(const std::string& ifname);
   void Disable();
 
-  // Sends a message to the helper process announcing the discovery of a new
-  // device.
-  void Announce();
+  const DeviceConfig& config() const { return config_; }
 
  private:
   // Callback from RouterFinder.  May be triggered multiple times, e.g.
@@ -65,6 +65,8 @@ class Device {
 
   const std::string ifname_;
   const DeviceConfig config_;
+  const MessageSink msg_sink_;
+
   // Only used for "android" device; points to the interface currently
   // used by the container.
   std::string legacy_lan_ifname_;
@@ -78,7 +80,6 @@ class Device {
   std::unique_ptr<RouterFinder> router_finder_;
   std::unique_ptr<NeighborFinder> neighbor_finder_;
 
-  base::Callback<void(const IpHelperMessage&)> msg_sink_;
   base::WeakPtrFactory<Device> weak_factory_{this};
 
   DISALLOW_COPY_AND_ASSIGN(Device);

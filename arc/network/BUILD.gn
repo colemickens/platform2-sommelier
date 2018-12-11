@@ -8,7 +8,13 @@ import("//common-mk/proto_library.gni")
 group("all") {
   deps = [
     ":arc-networkd",
+    ":libarcnetwork",
   ]
+  if (use.test) {
+    deps += [
+      ":arc_network_testrunner",
+    ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -30,17 +36,17 @@ proto_library("protos") {
   ]
 }
 
-executable("arc-networkd") {
+static_library("libarcnetwork") {
   configs += [ ":target_defaults" ]
   sources = [
     "arc_ip_config.cc",
     "device.cc",
+    "device_manager.cc",
     "dns/big_endian.cc",
     "dns/dns_response.cc",
     "dns/io_buffer.cc",
     "helper_process.cc",
     "ip_helper.cc",
-    "main.cc",
     "manager.cc",
     "multicast_forwarder.cc",
     "multicast_socket.cc",
@@ -52,4 +58,39 @@ executable("arc-networkd") {
   deps = [
     ":protos",
   ]
+}
+
+executable("arc-networkd") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "main.cc",
+  ]
+  deps = [
+    ":libarcnetwork",
+  ]
+}
+
+if (use.test) {
+  pkg_config("test_config") {
+    pkg_deps = [
+      "libchrome-test-${libbase_ver}",
+    ]
+  }
+
+  executable("arc_network_testrunner") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
+    ]
+    sources = [
+      "device_test.cc",
+      "device_manager_test.cc",
+    ]
+    defines = [ "UNIT_TEST" ]
+    deps = [
+      "//common-mk/testrunner",
+      ":libarcnetwork",
+    ]
+  }
 }
