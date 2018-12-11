@@ -276,6 +276,27 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
                                std::numeric_limits<int>::max());
 
   for (const auto& supported_format : supported_formats) {
+    int64_t min_frame_duration = std::numeric_limits<int64_t>::max();
+    int32_t per_format_max_fps = std::numeric_limits<int32_t>::min();
+    for (const auto& frame_rate : supported_format.frame_rates) {
+      // To prevent floating point precision problem we cast the floating point
+      // to double here.
+      int64_t frame_duration =
+          kOneSecOfNanoUnit / static_cast<double>(frame_rate);
+      if (frame_duration < min_frame_duration) {
+        min_frame_duration = frame_duration;
+      }
+      if (frame_duration > max_frame_duration) {
+        max_frame_duration = frame_duration;
+      }
+      if (per_format_max_fps < static_cast<int32_t>(frame_rate)) {
+        per_format_max_fps = static_cast<int32_t>(frame_rate);
+      }
+    }
+    if (per_format_max_fps > max_fps) {
+      max_fps = per_format_max_fps;
+    }
+
     for (const auto& format : hal_formats) {
       if (supported_format.width > max_hal_width_by_format[format]) {
         LOGF(INFO) << "Filter Format: 0x" << std::hex << format << std::dec
@@ -289,38 +310,21 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
                    << max_hal_height_by_format[format];
         continue;
       }
-      stream_configurations.push_back(format);
-      stream_configurations.push_back(supported_format.width);
-      stream_configurations.push_back(supported_format.height);
-      stream_configurations.push_back(
-          ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT);
-    }
+      // If 1920x1080 resolution doesn't support 30 fps, we filter it out
+      // because testBasicRecording CTS will require 30 fps for 1080p.
+      if (format == HAL_PIXEL_FORMAT_BLOB || per_format_max_fps == 30 ||
+          (supported_format.width > 1920 && supported_format.height > 1080)) {
+        stream_configurations.push_back(format);
+        stream_configurations.push_back(supported_format.width);
+        stream_configurations.push_back(supported_format.height);
+        stream_configurations.push_back(
+            ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT);
 
-    int64_t min_frame_duration = std::numeric_limits<int64_t>::max();
-    for (const auto& frame_rate : supported_format.frame_rates) {
-      // To prevent floating point precision problem we cast the floating point
-      // to double here.
-      int64_t frame_duration =
-          kOneSecOfNanoUnit / static_cast<double>(frame_rate);
-      if (frame_duration < min_frame_duration) {
-        min_frame_duration = frame_duration;
+        min_frame_durations.push_back(format);
+        min_frame_durations.push_back(supported_format.width);
+        min_frame_durations.push_back(supported_format.height);
+        min_frame_durations.push_back(min_frame_duration);
       }
-      if (frame_duration > max_frame_duration) {
-        max_frame_duration = frame_duration;
-      }
-      if (min_fps > static_cast<int32_t>(frame_rate)) {
-        min_fps = static_cast<int32_t>(frame_rate);
-      }
-      if (max_fps < static_cast<int32_t>(frame_rate)) {
-        max_fps = static_cast<int32_t>(frame_rate);
-      }
-    }
-
-    for (const auto& format : hal_formats) {
-      min_frame_durations.push_back(format);
-      min_frame_durations.push_back(supported_format.width);
-      min_frame_durations.push_back(supported_format.height);
-      min_frame_durations.push_back(min_frame_duration);
     }
 
     // The stall duration is 0 for non-jpeg formats. For JPEG format, stall
@@ -339,11 +343,15 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
     }
   }
 
+  int32_t fps_for_max_yuv = GetMaximumFrameRate(supported_formats[0]);
+
   // The document in aeAvailableTargetFpsRanges section says the min_fps should
   // not be larger than 15.
   // We cannot support fixed 30fps but Android requires (min, max) and
   // (max, max) ranges.
-  int32_t fps_ranges[] = {min_fps, max_fps, max_fps, max_fps};
+  int32_t fps_ranges[] = {min_fps, max_fps,         max_fps,
+                          max_fps, fps_for_max_yuv, fps_for_max_yuv,
+                          min_fps, fps_for_max_yuv};
   UPDATE(ANDROID_CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES, fps_ranges,
          ARRAY_SIZE(fps_ranges));
 
