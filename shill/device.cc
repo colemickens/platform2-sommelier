@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/bind.h>
@@ -1579,8 +1580,9 @@ void Device::SwitchDNSServers(const vector<string>& dns_servers) {
   RestartPortalDetection();
 }
 
-void Device::set_traffic_monitor(TrafficMonitor* traffic_monitor) {
-  traffic_monitor_.reset(traffic_monitor);
+void Device::set_traffic_monitor_for_test(
+    std::unique_ptr<TrafficMonitor> traffic_monitor) {
+  traffic_monitor_ = std::move(traffic_monitor);
 }
 
 bool Device::TimeToNextDHCPLeaseRenewal(uint32_t* result) {

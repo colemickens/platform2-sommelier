@@ -223,8 +223,11 @@ class DeviceTest : public PropertyStoreTest {
     return device_->GetLinkMonitorResponseTime(error);
   }
 
-  void SetTrafficMonitor(TrafficMonitor* traffic_monitor) {
-    device_->set_traffic_monitor(traffic_monitor);  // Passes ownership.
+  MockTrafficMonitor* SetTrafficMonitor(
+      std::unique_ptr<MockTrafficMonitor> traffic_monitor) {
+    MockTrafficMonitor* underlying_traffic_monitor = traffic_monitor.get();
+    device_->set_traffic_monitor_for_test(std::move(traffic_monitor));
+    return underlying_traffic_monitor;
   }
 
   void StartTrafficMonitor() {
@@ -1262,8 +1265,8 @@ TEST_F(DeviceTest, TrafficMonitor) {
                                   &manager));
   SelectService(service);
   SetConnection(connection.get());
-  MockTrafficMonitor* traffic_monitor = new StrictMock<MockTrafficMonitor>();
-  SetTrafficMonitor(traffic_monitor);  // Passes ownership.
+  MockTrafficMonitor* traffic_monitor =
+      SetTrafficMonitor(std::make_unique<StrictMock<MockTrafficMonitor>>());
   SetManager(&manager);
 
   EXPECT_CALL(*device_, IsTrafficMonitorEnabled()).WillRepeatedly(Return(true));
@@ -1278,8 +1281,8 @@ TEST_F(DeviceTest, TrafficMonitor) {
   NetworkProblemDetected(TrafficMonitor::kNetworkProblemDNSFailure);
 
   // Verify traffic monitor not running when it is disabled.
-  traffic_monitor = new StrictMock<MockTrafficMonitor>();
-  SetTrafficMonitor(traffic_monitor);
+  traffic_monitor =
+      SetTrafficMonitor(std::make_unique<StrictMock<MockTrafficMonitor>>());
   EXPECT_CALL(*device_, IsTrafficMonitorEnabled())
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*traffic_monitor, Start()).Times(0);
@@ -1301,8 +1304,8 @@ TEST_F(DeviceTest, TrafficMonitorCancelledOnSelectService) {
                                   &manager));
   SelectService(service);
   SetConnection(connection.get());
-  MockTrafficMonitor* traffic_monitor = new StrictMock<MockTrafficMonitor>();
-  SetTrafficMonitor(traffic_monitor);  // Passes ownership.
+  MockTrafficMonitor* traffic_monitor =
+      SetTrafficMonitor(std::make_unique<StrictMock<MockTrafficMonitor>>());
   EXPECT_CALL(*device_, IsTrafficMonitorEnabled()).WillRepeatedly(Return(true));
   SetManager(&manager);
   EXPECT_CALL(*service, state())

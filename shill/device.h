@@ -656,7 +656,8 @@ class Device : public base::RefCounted<Device> {
   bool fixed_ip_params() const { return fixed_ip_params_; }
 
   // Use for unit test.
-  void set_traffic_monitor(TrafficMonitor* traffic_monitor);
+  void set_traffic_monitor_for_test(
+      std::unique_ptr<TrafficMonitor> traffic_monitor);
 
   // Calculates the time (in seconds) till a DHCP lease is due for renewal,
   // and stores this value in |result|. Returns false is there is no upcoming
