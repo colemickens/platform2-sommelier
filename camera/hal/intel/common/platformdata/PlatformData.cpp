@@ -307,6 +307,9 @@ void PlatformData::getCameraInfo(int cameraId, struct camera_info * info)
     info->orientation = orientation(cameraId);
     info->device_version = getCameraDeviceAPIVersion();
     info->static_camera_characteristics = getStaticMetadata(cameraId);
+    info->resource_cost = 0;
+    info->conflicting_devices = nullptr;
+    info->conflicting_devices_length = 0;
 }
 
 bool PlatformData::isCpfModeAvailable(int cameraId, string mode)

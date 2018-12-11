@@ -6,6 +6,8 @@
 
 #include "hal_adapter/camera_hal_test_adapter.h"
 
+#include <string>
+
 #include "cros-camera/future.h"
 
 namespace cros {
@@ -56,7 +58,21 @@ int32_t CameraHalTestAdapter::GetCameraInfo(int32_t camera_id,
   }
   LOGF(INFO) << "From remap camera id " << camera_id << " to "
              << *unremapped_id;
-  return CameraHalAdapter::GetCameraInfo(*unremapped_id, camera_info);
+  int32_t ret = CameraHalAdapter::GetCameraInfo(*unremapped_id, camera_info);
+  if (ret != 0) {
+    return ret;
+  }
+  if ((*camera_info)->conflicting_devices) {
+    std::vector<std::string> conflicting_devices;
+    for (const std::string& id_str : *(*camera_info)->conflicting_devices) {
+      base::Optional<int> remapped_id = GetRemappedCameraId(std::stoi(id_str));
+      if (remapped_id) {
+        conflicting_devices.push_back(std::to_string(*remapped_id));
+      }
+    }
+    (*camera_info)->conflicting_devices = std::move(conflicting_devices);
+  }
+  return 0;
 }
 
 int32_t CameraHalTestAdapter::SetTorchMode(int32_t camera_id, bool enabled) {

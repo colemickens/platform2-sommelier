@@ -267,6 +267,17 @@ int32_t CameraHalAdapter::GetCameraInfo(int32_t camera_id,
   info_ptr->device_version = info.device_version;
   info_ptr->static_camera_characteristics =
       internal::SerializeCameraMetadata(metadata.getAndLock());
+  info_ptr->resource_cost = mojom::CameraResourceCost::New();
+  info_ptr->resource_cost->resource_cost = info.resource_cost;
+
+  std::vector<std::string> conflicting_devices;
+  int module_id = camera_id_map_[camera_id].first;
+  for (size_t i = 0; i < info.conflicting_devices_length; i++) {
+    int conflicting_id =
+        GetExternalId(module_id, atoi(info.conflicting_devices[i]));
+    conflicting_devices.push_back(std::to_string(conflicting_id));
+  }
+  info_ptr->conflicting_devices = std::move(conflicting_devices);
 
   *camera_info = std::move(info_ptr);
   return 0;
