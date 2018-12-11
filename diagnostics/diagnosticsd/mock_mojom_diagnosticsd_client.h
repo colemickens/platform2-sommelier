@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/optional.h>
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/system/buffer.h>
 
@@ -23,7 +24,9 @@ class MockMojomDiagnosticsdClient
   using MojoDiagnosticsdWebRequestStatus =
       chromeos::diagnosticsd::mojom::DiagnosticsdWebRequestStatus;
   using MojoPerformWebRequestCallback =
-      base::Callback<void(MojoDiagnosticsdWebRequestStatus, int)>;
+      base::Callback<void(MojoDiagnosticsdWebRequestStatus,
+                          int,
+                          const base::Optional<std::string>&)>;
 
   void SendDiagnosticsProcessorMessageToUi(
       mojo::ScopedHandle json_message,
@@ -42,7 +45,8 @@ class MockMojomDiagnosticsdClient
       const MojoPerformWebRequestCallback& callback) override {
     PerformWebRequestImpl(http_method, url, headers, request_body, callback);
     // The callback must be called.
-    callback.Run(MojoDiagnosticsdWebRequestStatus::kOk, 200 /* HTTP status */);
+    callback.Run(MojoDiagnosticsdWebRequestStatus::kOk, 200 /* HTTP status */,
+                 std::string("") /* Response body */);
   }
 
   MOCK_METHOD2(
