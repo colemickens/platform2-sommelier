@@ -10,6 +10,7 @@
 
 #include <base/callback.h>
 #include <base/macros.h>
+#include <base/optional.h>
 #include <base/strings/string_piece.h>
 #include <mojo/public/cpp/bindings/binding.h>
 #include <mojo/public/cpp/system/buffer.h>
@@ -34,7 +35,9 @@ class DiagnosticsdMojoService final
   using MojomDiagnosticsdWebRequestStatus =
       chromeos::diagnosticsd::mojom::DiagnosticsdWebRequestStatus;
   using MojomPerformWebRequestCallback =
-      base::Callback<void(MojomDiagnosticsdWebRequestStatus, int)>;
+      base::Callback<void(MojomDiagnosticsdWebRequestStatus,
+                          int,
+                          const base::Optional<std::string>&)>;
 
   class Delegate {
    public:

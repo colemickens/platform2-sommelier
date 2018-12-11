@@ -9,6 +9,7 @@
 #include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/optional.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <brillo/bind_lambda.h>
 #include <dbus/diagnosticsd/dbus-constants.h>
@@ -229,7 +230,8 @@ void DiagnosticsdCore::PerformWebRequestToBrowser(
   if (!mojo_service_) {
     LOG(WARNING) << "PerformWebRequestToBrowser happens before Mojo connection "
                  << "is established.";
-    callback.Run(WebRequestStatus::kInternalError, 0 /* http_status */);
+    callback.Run(WebRequestStatus::kInternalError, 0 /* http_status */,
+                 nullptr /* response_body */);
     return;
   }
 
@@ -238,8 +240,13 @@ void DiagnosticsdCore::PerformWebRequestToBrowser(
       request_body,
       base::Bind(
           [](const PerformWebRequestToBrowserCallback& callback,
-             MojomDiagnosticsdWebRequestStatus status, int http_status) {
-            callback.Run(ConvertStatusFromMojom(status), http_status);
+             MojomDiagnosticsdWebRequestStatus status, int http_status,
+             const base::Optional<std::string>& response_body) {
+            std::unique_ptr<std::string> response_body_ptr;
+            if (response_body.has_value())
+              response_body_ptr = std::make_unique<std::string>(*response_body);
+            callback.Run(ConvertStatusFromMojom(status), http_status,
+                         std::move(response_body_ptr));
           },
           callback));
 }
