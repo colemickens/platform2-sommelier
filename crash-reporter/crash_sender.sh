@@ -541,11 +541,6 @@ send_or_skip_crash() {
   # then decide whether it should be sent right now or kept for later sending.
   lecho "Considering metadata ${meta_path}."
 
-  if [ ! -r "${meta_path}" ]; then
-    lecho "Ignoring inaccessible metadata."
-    return 0
-  fi
-
   if ! is_complete_metadata "${meta_path}"; then
     # This report is incomplete, so if it's old, just remove it.
     local old_meta=$(${FIND} "${dir}" -mindepth 1 -name \
