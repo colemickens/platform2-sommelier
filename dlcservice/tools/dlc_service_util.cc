@@ -11,8 +11,11 @@
 #include <base/strings/string_split.h>
 #include <brillo/flag_helper.h>
 #include <dbus/bus.h>
-#include <dlcservice/dbus-proxies.h>
-#include <dlcservice/proto_bindings/dlcservice.pb.h>
+#include <libimageloader/manifest.h>
+
+#include "dlcservice/dbus-proxies.h"
+#include "dlcservice/proto_bindings/dlcservice.pb.h"
+#include "dlcservice/utils.h"
 
 using org::chromium::DlcServiceInterfaceProxy;
 
@@ -79,9 +82,9 @@ class DlcServiceUtil {
     return true;
   }
 
-  // Retrieves and prints a list of all installed DLC modules. Returns true if
-  // the list is retrieved successfully, false otherwise. Sets the given error
-  // pointer on failure.
+  // Retrieves a list of all installed DLC modules. Returns true if the list is
+  // retrieved successfully, false otherwise. Sets the given error pointer on
+  // failure.
   bool GetInstalled(dlcservice::DlcModuleList* dlc_module_list,
                     int* error_ptr) {
     std::string dlc_module_list_string;
@@ -103,6 +106,36 @@ class DlcServiceUtil {
     return true;
   }
 
+  // Prints the information contained in the manifest of a DLC.
+  static bool PrintDlcDetails(const std::string& dlc_id) {
+    imageloader::Manifest manifest;
+    if (!dlcservice::utils::GetDlcManifest(dlc_id, &manifest)) {
+      LOG(ERROR) << "Failed to get DLC module manifest.";
+      return false;
+    }
+    std::cout << "\tname: " << manifest.name() << std::endl;
+    std::cout << "\tid: " << manifest.id() << std::endl;
+    std::cout << "\tversion: " << manifest.version() << std::endl;
+    std::cout << "\tmanifest version: " << manifest.manifest_version()
+              << std::endl;
+    std::cout << "\tpreallocated size: " << manifest.preallocated_size()
+              << std::endl;
+    std::cout << "\tsize: " << manifest.size() << std::endl;
+    std::cout << "\timage type: " << manifest.image_type() << std::endl;
+    std::cout << "\tremovable: " << (manifest.is_removable() ? "true" : "false")
+              << std::endl;
+    std::cout << "\tfs-type: ";
+    switch (manifest.fs_type()) {
+      case imageloader::FileSystem::kExt4:
+        std::cout << "ext4" << std::endl;
+        break;
+      case imageloader::FileSystem::kSquashFS:
+        std::cout << "squashfs" << std::endl;
+        break;
+    }
+    return true;
+  }
+
  private:
   std::unique_ptr<DlcServiceInterfaceProxy> dlc_service_proxy_;
 
@@ -113,14 +146,17 @@ int main(int argc, const char** argv) {
   DEFINE_bool(install, false, "Install a given list of DLC modules.");
   DEFINE_bool(uninstall, false, "Uninstall a given list of DLC modules.");
   DEFINE_bool(list, false, "List all installed DLC modules.");
+  DEFINE_bool(oneline, false, "Print short module DLC module information.");
   DEFINE_string(dlc_ids, "", "Colon separated list of DLC module ids.");
   brillo::FlagHelper::Init(argc, argv, "dlcservice_util");
 
   // Enforce mutually exclusive flags. Additional exclusive flags can be added
   // to this list.
   auto exclusive_flags = {FLAGS_install, FLAGS_uninstall, FLAGS_list};
-  CHECK_EQ(std::count(exclusive_flags.begin(), exclusive_flags.end(), true), 1)
-      << "Exactly one of --install, --uninstall, --list must be set.";
+  if (std::count(exclusive_flags.begin(), exclusive_flags.end(), true) != 1) {
+    LOG(ERROR) << "Exactly one of --install, --uninstall, --list must be set.";
+    return EX_SOFTWARE;
+  }
 
   int error;
   DlcServiceUtil client;
@@ -132,8 +168,10 @@ int main(int argc, const char** argv) {
   if (FLAGS_install) {
     std::vector<std::string> dlc_id_list = SplitString(
         FLAGS_dlc_ids, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-    CHECK(!dlc_id_list.empty())
-        << "Please specify a list of DLC modules to install.";
+    if (dlc_id_list.empty()) {
+      LOG(ERROR) << "Please specify a list of DLC modules to install.";
+      return EX_SOFTWARE;
+    }
     if (!client.Install(dlc_id_list, &error)) {
       LOG(ERROR) << "Failed to install DLC modules.";
       return error;
@@ -141,8 +179,10 @@ int main(int argc, const char** argv) {
   } else if (FLAGS_uninstall) {
     std::vector<std::string> dlc_id_list = SplitString(
         FLAGS_dlc_ids, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-    CHECK(!dlc_id_list.empty())
-        << "Please specify a list of DLC modules to install.";
+    if (dlc_id_list.empty()) {
+      LOG(ERROR) << "Please specify a list of DLC modules to uninstall.";
+      return EX_SOFTWARE;
+    }
     if (!client.Uninstall(dlc_id_list, &error)) {
       LOG(ERROR) << "Failed to uninstall DLC modules.";
       return error;
@@ -153,13 +193,15 @@ int main(int argc, const char** argv) {
       LOG(ERROR) << "Failed to get DLC module list.";
       return error;
     }
-    LOG(INFO) << "Installed DLC modules:";
+    std::cout << "Installed DLC modules:\n";
     for (const auto& dlc_module_info : dlc_module_list.dlc_module_infos()) {
-      std::cout << dlc_module_info.dlc_id() << " ";
+      std::cout << dlc_module_info.dlc_id() << std::endl;
+      if (!FLAGS_oneline) {
+        if (!DlcServiceUtil::PrintDlcDetails(dlc_module_info.dlc_id()))
+          LOG(ERROR) << "Failed to print details of DLC '"
+                     << dlc_module_info.dlc_id() << "'.";
+      }
     }
-    std::cout << std::endl;
-  } else {
-    LOG(ERROR) << "No commands given, see dlcservice_util --help.";
   }
 
   return EX_OK;

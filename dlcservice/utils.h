@@ -8,8 +8,13 @@
 #include <string>
 
 #include <base/files/file_path.h>
+#include <libimageloader/manifest.h>
 
 namespace dlcservice {
+
+// The root dir that stores all available DLC manifests.
+extern const char kManifestDir[];
+
 namespace utils {
 
 // Returns the path to a DLC module.
@@ -20,6 +25,9 @@ base::FilePath GetDlcModulePath(const base::FilePath& dlc_module_root_path,
 base::FilePath GetDlcModuleImagePath(const base::FilePath& dlc_module_root_path,
                                      const std::string& dlc_module_id,
                                      int current_slot);
+
+bool GetDlcManifest(const std::string& dlc_module_id,
+                    imageloader::Manifest* manifest_out);
 
 }  // namespace utils
 }  // namespace dlcservice

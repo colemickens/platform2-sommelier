@@ -10,12 +10,10 @@
 
 #include "dlcservice/boot_device.h"
 #include "dlcservice/boot_slot.h"
+#include "dlcservice/utils.h"
 
 namespace dlcservice {
-
 namespace {
-// The root dir that stores all available DLC manifests.
-constexpr char kManifestDir[] = "/opt/google/dlc";
 // The root dir that stores all installed DLC content.
 constexpr char kContentDir[] = "/home/chronos/dlc";
 }  // namespace
