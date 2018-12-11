@@ -2565,7 +2565,8 @@ void Attestation::FinalizeEndorsementData() {
     return;
   }
   // Only finalize endorsement data after install attributes are finalized.
-  if (install_attributes_->is_first_install()) {
+  if (install_attributes_->status() ==
+      InstallAttributes::Status::kFirstInstall) {
     return;
   }
   if (!database_pb_.has_credentials()) {

@@ -36,6 +36,14 @@ namespace cryptohome {
 // InstallAttributes is not thread-safe and should not be accessed in parallel.
 class InstallAttributes {
  public:
+  enum class Status {
+    kUnknown,       // Not initialized yet.
+    kTpmNotOwned,   // TPM not owned yet.
+    kFirstInstall,  // Allows writing.
+    kValid,         // Validated successfully.
+    kInvalid,       // Not valid, e.g. clobbered, absent.
+  };
+
   class Observer {
    public:
     virtual void OnFinalized() = 0;
@@ -47,6 +55,11 @@ class InstallAttributes {
   explicit InstallAttributes(Tpm* tpm);
   virtual ~InstallAttributes();
 
+  Status status() const { return status_; }
+
+  // Sets status (for testing).
+  void set_status_for_testing(Status status) { status_ = status; }
+
   // Updates the TPM used by Lockbox or disables the use of the TPM.
   // This does NOT take ownership of the pointer.
   virtual void SetTpm(Tpm* tpm);
@@ -55,10 +68,6 @@ class InstallAttributes {
   // if needed. If initialization completes, |tpm_init| will be used to remove
   // this instance's dependency on the TPM ownership.
   virtual bool Init(TpmInit* tpm_init);
-
-  // Determines if the instance can provide consistent responses to Get*(),
-  // Set(), Finalize(), and Count().  Repeated calls to Init() may change this.
-  virtual bool IsReady() const { return (is_initialized() || is_invalid()); }
 
   // Populates |value| based on the content referenced by |name|.
   //
@@ -96,12 +105,6 @@ class InstallAttributes {
   // Returns the number of entries in the Lockbox.
   virtual int Count() const;
 
-  // Sets the instance to invalid and clears any active data.
-  //
-  // Parameters
-  // - is_invalid: whether the instance should be invalidated until next Init()
-  virtual void SetIsInvalid(bool is_invalid);
-
   // Return InstallAttributes version.
   // This is populated from the default value in install_attributes.proto and
   // should be incremented there when behavior vesioning is needed.
@@ -109,18 +112,6 @@ class InstallAttributes {
 
   // Allows overriding the version, often for testing.
   virtual void set_version(uint64_t version) { version_ = version; }
-
-  // Returns true if Init() was called successfully.
-  virtual bool is_initialized() const { return is_initialized_; }
-
-  // Allows overriding the is_initialized state.
-  virtual void set_is_initialized(bool is_initialized) {
-    is_initialized_ = is_initialized;
-  }
-
-  // Returns true if the attributes could not be restored.
-  // This variable is valid after a successful or unsuccessful call to Init().
-  virtual bool is_invalid() const { return is_invalid_; }
 
   // Returns true if the attribute storage is securely stored.  It does not
   // indicate if the store has been finalized, just if the system TPM/Lockbox
@@ -140,12 +131,6 @@ class InstallAttributes {
   virtual void set_platform(Platform* platform) { platform_ = platform; }
 
   virtual Platform* platform() { return platform_; }
-
-  // Returns whether this is still a first install. Upon finalization,
-  // this becomes false.
-  virtual bool is_first_install() const { return is_first_install_; }
-
-  virtual void set_is_first_install(bool first) { is_first_install_ = first; }
 
   // Returns a description of the system's install attributes as a Value.
   //
@@ -187,10 +172,8 @@ class InstallAttributes {
   bool ClearData();
 
  private:
-  bool is_first_install_ = false;  // Init sets this.
+  Status status_ = Status::kUnknown;
   bool is_secure_ = false;   // Indicates if there is hardware protection (TPM).
-  bool is_invalid_ = false;  // Indicates tampered/corrupted data.
-  bool is_initialized_ = false;  // Indicates a successful, valid instance.
   base::FilePath data_file_;     // Location data is persisted to.
   base::FilePath cache_file_;    // World-readable data cache file.
   uint64_t version_ = 0;         // Default implementation version.

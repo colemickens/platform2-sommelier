@@ -124,11 +124,9 @@ int DumpStatus() {
 
   cryptohome::InstallAttributes install_attributes(tpm);
   install_attributes.Init(&tpm_init);
-  status.set_install_lockbox_finalized(
-      status.owned() &&
-      !install_attributes.is_first_install() &&
-      !install_attributes.is_invalid() &&
-      install_attributes.is_initialized());
+  status.set_install_lockbox_finalized(status.owned() &&
+                                       install_attributes.status() ==
+                                           InstallAttributes::Status::kValid);
 
   cryptohome::Crypto crypto(&platform);
   crypto.set_use_tpm(true);

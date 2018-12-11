@@ -923,7 +923,8 @@ void Service::ConfigureOwnedTpm(bool status, bool took_ownership) {
   // full re-login cycle to finalize.
   gboolean mounted = FALSE;
   bool is_mounted = (IsMounted(&mounted, NULL) && mounted);
-  if (is_mounted && took_ownership && install_attrs_->is_first_install()) {
+  if (is_mounted && took_ownership &&
+      install_attrs_->status() == InstallAttributes::Status::kFirstInstall) {
     scoped_refptr<cryptohome::Mount> guest_mount = GetMountForUser(guest_user_);
     bool guest_mounted = guest_mount.get() && guest_mount->IsMounted();
     if (!guest_mounted)
@@ -1762,7 +1763,7 @@ gboolean Service::Mount(const gchar *userid,
   // Any non-guest mount attempt triggers InstallAttributes finalization.
   // The return value is ignored as it is possible we're pre-ownership.
   // The next login will assure finalization if possible.
-  if (install_attrs_->is_first_install())
+  if (install_attrs_->status() == InstallAttributes::Status::kFirstInstall)
     install_attrs_->Finalize();
 
   ReportTimerStart(kSyncMountTimer);
@@ -2041,7 +2042,7 @@ void Service::ContinueMountExWithCredentials(
   }
 
   // See Mount for a relevant comment.
-  if (install_attrs_->is_first_install()) {
+  if (install_attrs_->status() == InstallAttributes::Status::kFirstInstall) {
     install_attrs_->Finalize();
   }
 
@@ -2364,7 +2365,8 @@ gboolean Service::InstallAttributesCount(gint* OUT_count, GError** error) {
 
 gboolean Service::InstallAttributesIsReady(gboolean* OUT_ready,
                                            GError** error) {
-  *OUT_ready = (install_attrs_->IsReady() == true);
+  *OUT_ready =
+      (install_attrs_->status() != InstallAttributes::Status::kUnknown);
   return TRUE;
 }
 
@@ -2377,14 +2379,16 @@ gboolean Service::InstallAttributesIsSecure(gboolean* OUT_is_secure,
 gboolean Service::InstallAttributesIsInvalid(gboolean* OUT_is_invalid,
                                              GError** error) {
   // Is true after a failed init or prior to Init().
-  *OUT_is_invalid = (install_attrs_->is_invalid() == true);
+  *OUT_is_invalid =
+      (install_attrs_->status() == InstallAttributes::Status::kInvalid);
   return TRUE;
 }
 
 gboolean Service::InstallAttributesIsFirstInstall(
     gboolean* OUT_is_first_install,
     GError** error) {
-  *OUT_is_first_install = (install_attrs_->is_first_install() == true);
+  *OUT_is_first_install =
+      (install_attrs_->status() == InstallAttributes::Status::kFirstInstall);
   return TRUE;
 }
 
@@ -2605,9 +2609,7 @@ void Service::DoGetTpmStatus(const brillo::SecureBlob& request,
   }
   extension->set_install_lockbox_finalized(
       extension->owned() &&
-      !install_attrs_->is_first_install() &&
-      !install_attrs_->is_invalid() &&
-      install_attrs_->is_initialized());
+      install_attrs_->status() == InstallAttributes::Status::kValid);
   extension->set_boot_lockbox_finalized(boot_lockbox_->IsFinalized());
   AttestationGetTpmStatus(extension);
   SendReply(context, reply);

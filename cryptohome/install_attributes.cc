@@ -47,19 +47,11 @@ InstallAttributes::InstallAttributes(Tpm* tpm)
 
 InstallAttributes::~InstallAttributes() {}
 
-void InstallAttributes::SetIsInvalid(bool is_invalid) {
-  // If a store is invalid, make sure it is forced to be empty.
-  is_invalid_ = is_invalid;
-  if (is_invalid) {
-    set_is_first_install(false);
-    attributes_->Clear();
-  }
-}
-
 void InstallAttributes::SetTpm(Tpm* tpm) {
   // Technically, it is safe to call SetTpm, then Init() again, but it could
   // also cause weirdness and report that data is TPM-backed when it isn't.
-  DCHECK(!is_initialized()) << "SetTpm used after a successful Init().";
+  DCHECK(status_ != Status::kValid && status_ != Status::kFirstInstall)
+      << "SetTpm used after a successful Init().";
   if (tpm && !tpm->IsEnabled()) {
     LOG(WARNING) << "set_tpm() missing or disabled TPM provided.";
     tpm = NULL;  // Don't give it to Lockbox.
@@ -71,9 +63,7 @@ void InstallAttributes::SetTpm(Tpm* tpm) {
 bool InstallAttributes::Init(TpmInit* tpm_init) {
   // Ensure that if Init() was called and it failed, we can retry cleanly.
   attributes_->Clear();
-  SetIsInvalid(false);
-  set_is_initialized(false);
-  set_is_first_install(false);
+  status_ = Status::kUnknown;
 
   // Read the cache file. If it exists, lockbox-cache has successfully
   // verified install attributes during early boot, so use them.
@@ -83,11 +73,12 @@ bool InstallAttributes::Init(TpmInit* tpm_init) {
            static_cast<google::protobuf::uint8*>(blob.data()),
            blob.size())) {
       LOG(ERROR) << "Failed to parse data file (" << blob.size() << " bytes)";
-      SetIsInvalid(true);
+      attributes_->Clear();
+      status_ = Status::kInvalid;
       return false;
     }
 
-    set_is_initialized(true);
+    status_ = Status::kValid;
     // Install attributes are valid, no need to hold owner dependency. So,
     // repeat removing owner dependency in case it didn't succeed during the
     // first boot.
@@ -99,8 +90,7 @@ bool InstallAttributes::Init(TpmInit* tpm_init) {
   // No cache file, so TPM lockbox is either not yet set up or data is invalid.
   if (!is_secure()) {
     LOG(INFO) << "Init() assuming first-time install for TPM-less system.";
-    set_is_first_install(true);
-    set_is_initialized(true);
+    status_ = Status::kFirstInstall;
     return true;
   }
 
@@ -126,11 +116,12 @@ bool InstallAttributes::Init(TpmInit* tpm_init) {
       ClearData();
       // Don't flag invalid here - Chrome verifies that install attributes
       // aren't invalid before locking them as part of enterprise enrollment.
+      status_ = Status::kTpmNotOwned;
       return false;
     }
 
     // Cases that don't look like a cleared TPM get flagged invalid.
-    SetIsInvalid(true);
+    status_ = Status::kInvalid;
     return false;
   }
 
@@ -143,21 +134,21 @@ bool InstallAttributes::Init(TpmInit* tpm_init) {
     switch (error_id) {
       case LockboxError::kNvramSpaceAbsent:
         // Legacy install that didn't create space at OOBE.
-        set_is_initialized(true);
+        status_ = Status::kValid;
         tpm_init->RemoveTpmOwnerDependency(
             TpmPersistentState::TpmOwnerDependency::kInstallAttributes);
         return true;
       case LockboxError::kNvramInvalid:
         LOG(ERROR) << "Inconsistent install attributes state.";
-        SetIsInvalid(true);
+        status_ = Status::kInvalid;
         return false;
       case LockboxError::kTpmUnavailable:
         NOTREACHED() << "Should never call lockbox when TPM is unavailable.";
-        SetIsInvalid(true);
+        status_ = Status::kInvalid;
         return false;
       case LockboxError::kTpmError:
         LOG(ERROR) << "TPM error on install attributes initialization.";
-        SetIsInvalid(true);
+        status_ = Status::kInvalid;
         return false;
     }
   }
@@ -168,8 +159,7 @@ bool InstallAttributes::Init(TpmInit* tpm_init) {
     return false;
   }
 
-  set_is_first_install(true);
-  set_is_initialized(true);
+  status_ = Status::kFirstInstall;
   tpm_init->RemoveTpmOwnerDependency(
       TpmPersistentState::TpmOwnerDependency::kInstallAttributes);
   return true;
@@ -213,7 +203,7 @@ bool InstallAttributes::GetByIndex(int index,
 
 bool InstallAttributes::Set(const std::string& name,
                             const brillo::Blob& value) {
-  if (!is_first_install()) {
+  if (status_ != Status::kFirstInstall) {
     LOG(ERROR) << "Set() called on immutable attributes.";
     return false;
   }
@@ -245,13 +235,18 @@ bool InstallAttributes::Set(const std::string& name,
 }
 
 bool InstallAttributes::Finalize() {
-  if (!IsReady()) {
-    LOG(ERROR) << "Finalize() called with invalid/uninitialized data.";
-    return false;
+  switch (status_) {
+    case Status::kUnknown:
+    case Status::kTpmNotOwned:
+    case Status::kInvalid:
+      LOG(ERROR) << "Finalize() called with invalid/uninitialized data.";
+      return false;
+    case Status::kValid:
+      // Repeated calls to Finalize() are idempotent.
+      return true;
+    case Status::kFirstInstall:
+      break;
   }
-  // Repeated calls to Finalize() are idempotent.
-  if (!is_first_install())
-    return true;
 
   // Restamp the version.
   attributes_->set_version(version_);
@@ -275,7 +270,8 @@ bool InstallAttributes::Finalize() {
   if (!platform_->WriteFileAtomicDurable(data_file_, attr_bytes,
                                          kDataFilePermissions)) {
     LOG(ERROR) << "Finalize() write failed after locking the Lockbox.";
-    SetIsInvalid(true);
+    attributes_->Clear();
+    status_ = Status::kInvalid;
     return false;
   }
 
@@ -287,7 +283,7 @@ bool InstallAttributes::Finalize() {
   }
 
   LOG(INFO) << "InstallAttributes have been finalized.";
-  set_is_first_install(false);
+  status_ = Status::kValid;
   NotifyFinalized();
   return true;
 }
@@ -314,14 +310,15 @@ bool InstallAttributes::ClearData() {
 
 std::unique_ptr<base::Value> InstallAttributes::GetStatus() {
   auto dv = std::make_unique<base::DictionaryValue>();
-  dv->SetBoolean("initialized", is_initialized());
+  dv->SetBoolean("initialized",
+                 status_ == Status::kFirstInstall || status_ == Status::kValid);
   dv->SetInteger("version", version());
   dv->SetInteger("lockbox_index", lockbox()->nvram_index());
   dv->SetInteger("lockbox_nvram_version",
                  GetNvramVersionNumber(lockbox()->nvram_version()));
   dv->SetBoolean("secure", is_secure());
-  dv->SetBoolean("invalid", is_invalid());
-  dv->SetBoolean("first_install", is_first_install());
+  dv->SetBoolean("invalid", status_ == Status::kInvalid);
+  dv->SetBoolean("first_install", status_ == Status::kFirstInstall);
   dv->SetInteger("size", Count());
   if (Count()) {
     auto attrs = std::make_unique<base::DictionaryValue>();

@@ -109,6 +109,9 @@ class InstallAttributesTest : public ::testing::Test {
 };
 
 TEST_F(InstallAttributesTest, OobeWithTpm) {
+  EXPECT_EQ(InstallAttributes::Status::kUnknown, install_attrs_.status());
+  EXPECT_TRUE(install_attrs_.is_secure());
+
   // The first Init() call finds no data file and an unowned TPM.
   EXPECT_CALL(platform_,
               ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
@@ -118,8 +121,7 @@ TEST_F(InstallAttributesTest, OobeWithTpm) {
   EXPECT_FALSE(install_attrs_.Init(&tpm_init_));
   Mock::VerifyAndClearExpectations(&tpm_init_);
   Mock::VerifyAndClearExpectations(&platform_);
-
-  EXPECT_FALSE(install_attrs_.IsReady());
+  EXPECT_EQ(InstallAttributes::Status::kTpmNotOwned, install_attrs_.status());
 
   // After taking ownership, TPM is ready and Init creates the lockbox.
   EXPECT_CALL(platform_,
@@ -130,10 +132,7 @@ TEST_F(InstallAttributesTest, OobeWithTpm) {
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
   Mock::VerifyAndClearExpectations(&lockbox_);
   Mock::VerifyAndClearExpectations(&platform_);
-
-  EXPECT_TRUE(install_attrs_.is_initialized());
-  EXPECT_TRUE(install_attrs_.is_first_install());
-  EXPECT_FALSE(install_attrs_.is_invalid());
+  EXPECT_EQ(InstallAttributes::Status::kFirstInstall, install_attrs_.status());
 
   // Set the test attribute.
   brillo::Blob data(kTestData, kTestData + sizeof(kTestData));
@@ -156,10 +155,7 @@ TEST_F(InstallAttributesTest, OobeWithTpm) {
   EXPECT_TRUE(install_attrs_.Finalize());
   Mock::VerifyAndClearExpectations(&lockbox_);
   Mock::VerifyAndClearExpectations(&platform_);
-
-  EXPECT_TRUE(install_attrs_.is_initialized());
-  EXPECT_FALSE(install_attrs_.is_first_install());
-  EXPECT_FALSE(install_attrs_.is_invalid());
+  EXPECT_EQ(InstallAttributes::Status::kValid, install_attrs_.status());
 
   brillo::Blob expected_data = GenerateTestDataFileContents();
   EXPECT_EQ(expected_data, serialized_data);
@@ -170,6 +166,9 @@ TEST_F(InstallAttributesTest, OobeWithoutTpm) {
   EXPECT_CALL(lockbox_, set_tpm(nullptr)).Times(1);
   install_attrs_.SetTpm(nullptr);
 
+  EXPECT_EQ(InstallAttributes::Status::kUnknown, install_attrs_.status());
+  EXPECT_FALSE(install_attrs_.is_secure());
+
   EXPECT_CALL(platform_,
               ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
       .WillOnce(Return(false));
@@ -177,10 +176,13 @@ TEST_F(InstallAttributesTest, OobeWithoutTpm) {
 
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
 
-  EXPECT_TRUE(install_attrs_.is_first_install());
+  EXPECT_EQ(InstallAttributes::Status::kFirstInstall, install_attrs_.status());
 }
 
 TEST_F(InstallAttributesTest, OobeWithTpmBadWrite) {
+  EXPECT_EQ(InstallAttributes::Status::kUnknown, install_attrs_.status());
+  EXPECT_TRUE(install_attrs_.is_secure());
+
   // Assume authorization and working tpm.
   EXPECT_CALL(lockbox_, tpm()).WillRepeatedly(Return(&tpm_));
   EXPECT_CALL(lockbox_, Reset(_)).WillOnce(Return(true));
@@ -199,16 +201,12 @@ TEST_F(InstallAttributesTest, OobeWithTpmBadWrite) {
 
   EXPECT_FALSE(install_attrs_.Finalize());
 
-  EXPECT_TRUE(install_attrs_.IsReady());
-  EXPECT_TRUE(install_attrs_.is_invalid());
-  EXPECT_TRUE(install_attrs_.is_initialized());
+  EXPECT_EQ(InstallAttributes::Status::kInvalid, install_attrs_.status());
 }
 
 TEST_F(InstallAttributesTest, NormalBootWithTpm) {
-  // Check the baseline.
-  EXPECT_FALSE(install_attrs_.is_first_install());
-  EXPECT_FALSE(install_attrs_.is_initialized());
-  EXPECT_FALSE(install_attrs_.is_invalid());
+  EXPECT_EQ(InstallAttributes::Status::kUnknown, install_attrs_.status());
+  EXPECT_TRUE(install_attrs_.is_secure());
 
   brillo::Blob serialized_data = GenerateTestDataFileContents();
   EXPECT_CALL(platform_,
@@ -218,25 +216,20 @@ TEST_F(InstallAttributesTest, NormalBootWithTpm) {
 
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
 
-  EXPECT_FALSE(install_attrs_.is_first_install());
-  EXPECT_FALSE(install_attrs_.is_invalid());
-  EXPECT_TRUE(install_attrs_.is_initialized());
+  EXPECT_EQ(InstallAttributes::Status::kValid, install_attrs_.status());
 
   // Make sure the data was parsed correctly.
   GetAndCheck();
 }
 
 TEST_F(InstallAttributesTest, NormalBootWithoutTpm) {
-  brillo::Blob serialized_data = GenerateTestDataFileContents();
-
   EXPECT_CALL(lockbox_, set_tpm(nullptr)).Times(1);
   install_attrs_.SetTpm(nullptr);
 
-  // Check the baseline.
-  EXPECT_FALSE(install_attrs_.is_first_install());
-  EXPECT_FALSE(install_attrs_.is_initialized());
-  EXPECT_FALSE(install_attrs_.is_invalid());
+  EXPECT_EQ(InstallAttributes::Status::kUnknown, install_attrs_.status());
+  EXPECT_FALSE(install_attrs_.is_secure());
 
+  brillo::Blob serialized_data = GenerateTestDataFileContents();
   EXPECT_CALL(platform_,
               ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
       .WillOnce(DoAll(SetArgPointee<1>(serialized_data), Return(true)));
@@ -244,9 +237,7 @@ TEST_F(InstallAttributesTest, NormalBootWithoutTpm) {
 
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
 
-  EXPECT_FALSE(install_attrs_.is_first_install());
-  EXPECT_FALSE(install_attrs_.is_invalid());
-  EXPECT_TRUE(install_attrs_.is_initialized());
+  EXPECT_EQ(InstallAttributes::Status::kValid, install_attrs_.status());
 
   // Make sure the data was parsed correctly.
   GetAndCheck();
@@ -258,10 +249,7 @@ TEST_F(InstallAttributesTest, NormalBootWithoutTpm) {
 // of data loss due to failure of the device. It will fail-safe however (by
 // failing empty).
 TEST_F(InstallAttributesTest, NormalBootUnlocked) {
-  // Check the baseline.
-  EXPECT_FALSE(install_attrs_.is_first_install());
-  EXPECT_FALSE(install_attrs_.is_initialized());
-  EXPECT_FALSE(install_attrs_.is_invalid());
+  EXPECT_EQ(InstallAttributes::Status::kUnknown, install_attrs_.status());
   EXPECT_TRUE(install_attrs_.is_secure());
 
   EXPECT_CALL(platform_,
@@ -272,21 +260,14 @@ TEST_F(InstallAttributesTest, NormalBootUnlocked) {
 
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
 
-  EXPECT_TRUE(install_attrs_.is_first_install());
-  EXPECT_FALSE(install_attrs_.is_invalid());
-  EXPECT_TRUE(install_attrs_.is_initialized());
-
-  // Should be empty.
+  EXPECT_EQ(InstallAttributes::Status::kFirstInstall, install_attrs_.status());
   EXPECT_EQ(0, install_attrs_.Count());
 }
 
 // Represents that the OOBE process was interrupted by a reboot or crash prior
 // to Finalize() being called, and before the Lockbox was Created.
 TEST_F(InstallAttributesTest, NormalBootNoSpace) {
-  // Check the baseline.
-  EXPECT_FALSE(install_attrs_.is_first_install());
-  EXPECT_FALSE(install_attrs_.is_initialized());
-  EXPECT_FALSE(install_attrs_.is_invalid());
+  EXPECT_EQ(InstallAttributes::Status::kUnknown, install_attrs_.status());
   EXPECT_TRUE(install_attrs_.is_secure());
 
   EXPECT_CALL(lockbox_, Reset(_)).WillOnce(Return(true));
@@ -294,19 +275,13 @@ TEST_F(InstallAttributesTest, NormalBootNoSpace) {
 
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
 
-  EXPECT_TRUE(install_attrs_.is_first_install());
-  EXPECT_FALSE(install_attrs_.is_invalid());
-  EXPECT_TRUE(install_attrs_.is_initialized());
-
-  // Should be empty.
+  EXPECT_EQ(InstallAttributes::Status::kFirstInstall, install_attrs_.status());
   EXPECT_EQ(0, install_attrs_.Count());
 }
 
 TEST_F(InstallAttributesTest, NormalBootReadFileError) {
-  // Check the baseline.
-  EXPECT_FALSE(install_attrs_.is_first_install());
-  EXPECT_FALSE(install_attrs_.is_initialized());
-  EXPECT_FALSE(install_attrs_.is_invalid());
+  EXPECT_EQ(InstallAttributes::Status::kUnknown, install_attrs_.status());
+  EXPECT_TRUE(install_attrs_.is_secure());
 
   EXPECT_CALL(platform_,
               ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
@@ -319,19 +294,13 @@ TEST_F(InstallAttributesTest, NormalBootReadFileError) {
 
   EXPECT_FALSE(install_attrs_.Init(&tpm_init_));
 
-  EXPECT_FALSE(install_attrs_.is_first_install());
-  EXPECT_TRUE(install_attrs_.is_invalid());
-  EXPECT_FALSE(install_attrs_.is_initialized());
-
-  // Should be empty.
+  EXPECT_EQ(InstallAttributes::Status::kInvalid, install_attrs_.status());
   EXPECT_EQ(0, install_attrs_.Count());
 }
 
 TEST_F(InstallAttributesTest, LegacyBoot) {
-  // Check the baseline.
-  EXPECT_FALSE(install_attrs_.is_first_install());
-  EXPECT_FALSE(install_attrs_.is_initialized());
-  EXPECT_FALSE(install_attrs_.is_invalid());
+  EXPECT_EQ(InstallAttributes::Status::kUnknown, install_attrs_.status());
+  EXPECT_TRUE(install_attrs_.is_secure());
 
   EXPECT_CALL(platform_,
               ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
@@ -343,21 +312,15 @@ TEST_F(InstallAttributesTest, LegacyBoot) {
 
   EXPECT_TRUE(install_attrs_.Init(&tpm_init_));
 
-  EXPECT_FALSE(install_attrs_.is_first_install());
-  EXPECT_FALSE(install_attrs_.is_invalid());
-  EXPECT_TRUE(install_attrs_.is_initialized());
-
-  // Should be empty.
+  EXPECT_EQ(InstallAttributes::Status::kValid, install_attrs_.status());
   EXPECT_EQ(0, install_attrs_.Count());
 }
 
 // If the Lockbox Reset fails for reasons other than bad password, it should
 // still be treated as if locked without any attributes set.
 TEST_F(InstallAttributesTest, LegacyBootUnexpected) {
-  // Check the baseline.
-  EXPECT_FALSE(install_attrs_.is_first_install());
-  EXPECT_FALSE(install_attrs_.is_initialized());
-  EXPECT_FALSE(install_attrs_.is_invalid());
+  EXPECT_EQ(InstallAttributes::Status::kUnknown, install_attrs_.status());
+  EXPECT_TRUE(install_attrs_.is_secure());
 
   EXPECT_CALL(platform_,
               ReadFile(FilePath(InstallAttributes::kDefaultCacheFile), _))
@@ -368,11 +331,7 @@ TEST_F(InstallAttributesTest, LegacyBootUnexpected) {
 
   EXPECT_FALSE(install_attrs_.Init(&tpm_init_));
 
-  EXPECT_FALSE(install_attrs_.is_first_install());
-  EXPECT_TRUE(install_attrs_.is_invalid());
-  EXPECT_FALSE(install_attrs_.is_initialized());
-
-  // Should be empty.
+  EXPECT_EQ(InstallAttributes::Status::kInvalid, install_attrs_.status());
   EXPECT_EQ(0, install_attrs_.Count());
 }
 
@@ -380,10 +339,8 @@ TEST_F(InstallAttributesTest, LegacyBootUnexpected) {
 // make sure that we don't accidentally pick it up as valid after taking
 // ownership.
 TEST_F(InstallAttributesTest, ClearPreviousDataFile) {
-  // Check the baseline.
-  EXPECT_FALSE(install_attrs_.is_first_install());
-  EXPECT_FALSE(install_attrs_.is_initialized());
-  EXPECT_FALSE(install_attrs_.is_invalid());
+  EXPECT_EQ(InstallAttributes::Status::kUnknown, install_attrs_.status());
+  EXPECT_TRUE(install_attrs_.is_secure());
 
   EXPECT_CALL(tpm_init_, IsTpmReady()).WillRepeatedly(Return(false));
   EXPECT_CALL(tpm_init_, IsTpmOwned()).WillRepeatedly(Return(false));
@@ -402,11 +359,7 @@ TEST_F(InstallAttributesTest, ClearPreviousDataFile) {
 
   EXPECT_FALSE(install_attrs_.Init(&tpm_init_));
 
-  EXPECT_FALSE(install_attrs_.is_first_install());
-  EXPECT_FALSE(install_attrs_.is_invalid());
-  EXPECT_FALSE(install_attrs_.is_initialized());
-
-  // Should be empty.
+  EXPECT_EQ(InstallAttributes::Status::kTpmNotOwned, install_attrs_.status());
   EXPECT_EQ(0, install_attrs_.Count());
 }
 
@@ -414,10 +367,8 @@ TEST_F(InstallAttributesTest, ClearPreviousDataFile) {
 // do keep around the data file as to not irrevocably invalidate install
 // attributes should the TPM start functioning again after reboot.
 TEST_F(InstallAttributesTest, KeepDataFileOnTpmFailure) {
-  // Check the baseline.
-  EXPECT_FALSE(install_attrs_.is_first_install());
-  EXPECT_FALSE(install_attrs_.is_initialized());
-  EXPECT_FALSE(install_attrs_.is_invalid());
+  EXPECT_EQ(InstallAttributes::Status::kUnknown, install_attrs_.status());
+  EXPECT_TRUE(install_attrs_.is_secure());
 
   EXPECT_CALL(tpm_init_, IsTpmReady()).WillRepeatedly(Return(false));
   EXPECT_CALL(tpm_init_, IsTpmEnabled()).WillRepeatedly(Return(false));
@@ -437,11 +388,7 @@ TEST_F(InstallAttributesTest, KeepDataFileOnTpmFailure) {
 
   EXPECT_FALSE(install_attrs_.Init(&tpm_init_));
 
-  EXPECT_FALSE(install_attrs_.is_first_install());
-  EXPECT_TRUE(install_attrs_.is_invalid());
-  EXPECT_FALSE(install_attrs_.is_initialized());
-
-  // Should be empty.
+  EXPECT_EQ(InstallAttributes::Status::kInvalid, install_attrs_.status());
   EXPECT_EQ(0, install_attrs_.Count());
 }
 
