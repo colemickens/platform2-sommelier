@@ -122,26 +122,26 @@ int main(int argc, char* argv[]) {
                        false);  // tickcount
   logging::InitLogging(logging_settings);
 
-  // The first thing we do is read the buffer, and delete the file.
-  brillo::SecureBlob tpm_seed(kTpmSeedSize);
-  int bytes_read = base::ReadFile(base::FilePath(kBioTpmSeedTmpFile),
-                                  tpm_seed.char_data(), tpm_seed.size());
-  NukeFile(base::FilePath(kBioTpmSeedTmpFile));
-
-  if (bytes_read != kTpmSeedSize) {
-    LOG(ERROR) << "Failed to read TPM seed from tmpfile: " << bytes_read;
-    return -1;
-  }
-
   // We fork the process so that can we program the seed in the child, and
   // terminate it if it hangs.
   pid_t pid = fork();
   if (pid == -1) {
     PLOG(ERROR) << "Failed to fork child process for bio_wash.";
+    NukeFile(base::FilePath(kBioTpmSeedTmpFile));
     return -1;
   }
 
   if (pid == 0) {
+    // The first thing we do is read the buffer, and delete the file.
+    brillo::SecureBlob tpm_seed(kTpmSeedSize);
+    int bytes_read = base::ReadFile(base::FilePath(kBioTpmSeedTmpFile),
+                                    tpm_seed.char_data(), tpm_seed.size());
+    NukeFile(base::FilePath(kBioTpmSeedTmpFile));
+
+    if (bytes_read != kTpmSeedSize) {
+      LOG(ERROR) << "Failed to read TPM seed from tmpfile: " << bytes_read;
+      return -1;
+    }
     return DoProgramSeed(tpm_seed) ? 0 : -1;
   }
 
