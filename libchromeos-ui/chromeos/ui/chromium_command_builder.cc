@@ -224,6 +224,13 @@ bool ChromiumCommandBuilder::SetUpChromium() {
   if (setrlimit(RLIMIT_NOFILE, &limit) < 0)
     PLOG(ERROR) << "Setting max FDs with setrlimit() failed";
 
+  // Increase the limits of mlockable memory so that Chrome may mlock text
+  // pages that have been copied into memory that can be backed by huge pages.
+  limit.rlim_cur = 64 * 1024 * 1024;
+  limit.rlim_max = 64 * 1024 * 1024;
+  if (setrlimit(RLIMIT_MEMLOCK, &limit) < 0)
+    PLOG(ERROR) << "Setting memlock limit failed";
+
   // Disable sandboxing as it causes crashes in ASAN: crbug.com/127536
   bool disable_sandbox = false;
   disable_sandbox |= SetUpASAN();
