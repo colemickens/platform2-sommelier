@@ -36,6 +36,9 @@ extern const char kCommandParam[];
 extern const char kUserParam[];
 extern const char kMachinepassStdinParam[];
 extern const char kCreatecomputerParam[];
+extern const char kOsNameParam[];
+extern const char kOsVersionParam[];
+extern const char kOsServicePackParam[];
 
 // Params for kinit.
 extern const char kUseKeytabParam[];
@@ -139,6 +142,12 @@ std::string GenerateRandomMachinePassword();
 
 using RandomBytesGenerator = void(void* bytes, size_t length);
 void SetRandomNumberGeneratorForTesting(RandomBytesGenerator* rand_bytes);
+
+// Returns the OS name from the lsb-release file or an empty string on error.
+std::string GetOsName();
+
+// Returns the OS version from the lsb-release file or an empty string on error.
+std::string GetOsVersion();
 
 }  // namespace authpolicy
 

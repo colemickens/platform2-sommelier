@@ -9,9 +9,11 @@
 
 #include <base/guid.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/utf_string_conversion_utils.h>
+#include <base/sys_info.h>
 #include <crypto/random.h>
 
 #include "authpolicy/anonymizer.h"
@@ -44,6 +46,12 @@ const size_t kOctetSize = 48;  // 16 bytes, \XX each byte.
 const size_t kRandCodePointsCount = 48;
 
 constexpr char kAttributeValueEscapedCharacters[] = ",+\"\\<>;\r\n=/";
+
+constexpr char kLsbReleaseName[] = "CHROMEOS_RELEASE_NAME";
+constexpr char kLsbReleaseMilestone[] = "CHROMEOS_RELEASE_CHROME_MILESTONE";
+constexpr char kLsbReleaseBuild[] = "CHROMEOS_RELEASE_BUILD_NUMBER";
+constexpr char kLsbReleaseBranch[] = "CHROMEOS_RELEASE_BRANCH_NUMBER";
+constexpr char kLsbReleasePatch[] = "CHROMEOS_RELEASE_PATCH_NUMBER";
 
 // Escapes a relative distinguished name attribute value according to
 // https://msdn.microsoft.com/en-us/library/aa366101(v=vs.85).aspx.
@@ -88,6 +96,9 @@ constexpr char kCommandParam[] = "--command";
 constexpr char kUserParam[] = "-U";
 constexpr char kMachinepassStdinParam[] = "machinepassStdin";
 constexpr char kCreatecomputerParam[] = "createcomputer=";
+constexpr char kOsNameParam[] = "osName=";
+constexpr char kOsVersionParam[] = "osVer=";
+constexpr char kOsServicePackParam[] = "osServicePack=None";
 
 constexpr char kUseKeytabParam[] = "-k";
 constexpr char kValidityLifetimeParam[] = "-l";
@@ -295,6 +306,31 @@ std::string GenerateRandomMachinePassword() {
 
 void SetRandomNumberGeneratorForTesting(RandomBytesGenerator* rand_bytes) {
   g_rand_bytes = rand_bytes;
+}
+
+std::string GetOsName() {
+  std::string os_name;
+  if (!base::SysInfo::GetLsbReleaseValue(kLsbReleaseName, &os_name)) {
+    LOG(ERROR) << "Cannot determine OS name: Field '" << kLsbReleaseName
+               << "' missing from /etc/lsb-release";
+    return std::string();
+  }
+  return os_name;
+}
+
+std::string GetOsVersion() {
+  std::string milestone, build, branch, patch;
+  if (!base::SysInfo::GetLsbReleaseValue(kLsbReleaseMilestone, &milestone) ||
+      !base::SysInfo::GetLsbReleaseValue(kLsbReleaseBuild, &build) ||
+      !base::SysInfo::GetLsbReleaseValue(kLsbReleaseBranch, &branch) ||
+      !base::SysInfo::GetLsbReleaseValue(kLsbReleasePatch, &patch)) {
+    LOG(ERROR)
+        << "Cannot determine OS version: Field missing from /etc/lsb-release";
+    return std::string();
+  }
+
+  const std::vector<std::string> parts = {milestone, build, branch, patch};
+  return base::JoinString(parts, ".");
 }
 
 }  // namespace authpolicy

@@ -823,6 +823,15 @@ ErrorType SambaInterface::JoinMachine(
     net_cmd.PushArg(kCreatecomputerParam +
                     BuildDistinguishedName(machine_ou, join_realm));
   }
+  const std::string os_name = GetOsName();
+  const std::string os_version = GetOsVersion();
+  if (!os_name.empty() && !os_version.empty()) {
+    // Both must be specified for the params to take effect.
+    net_cmd.PushArg(kOsNameParam + os_name);
+    net_cmd.PushArg(kOsVersionParam + os_version);
+    // Prevent Samba from setting "Samba x.x.x" here.
+    net_cmd.PushArg(kOsServicePackParam);
+  }
 
   // The machine password and the user password are read from stdin.
   const std::string machine_pass = GenerateRandomMachinePassword();
