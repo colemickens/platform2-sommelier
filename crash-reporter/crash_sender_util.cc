@@ -182,8 +182,8 @@ void RemoveOrphanedCrashFiles(const base::FilePath& crash_dir) {
 
     // Check how old the file is.
     base::File::Info info;
-    if (!GetFileInfo(file, &info)) {
-      LOG(ERROR) << "Failed to get file info: " << file.value();
+    if (!base::GetFileInfo(file, &info)) {
+      LOG(WARNING) << "Failed to get file info: " << file.value();
       continue;
     }
     base::TimeDelta delta = base::Time::Now() - info.last_modified;
@@ -191,7 +191,7 @@ void RemoveOrphanedCrashFiles(const base::FilePath& crash_dir) {
     if (!base::PathExists(meta_file) && delta.InHours() >= 24) {
       LOG(INFO) << "Removing old orphaned file: " << file.value();
       if (!base::DeleteFile(file, false /* recursive */))
-        PLOG(ERROR) << "Failed to remove " << file.value();
+        PLOG(WARNING) << "Failed to remove " << file.value();
     }
   }
 }
@@ -256,7 +256,7 @@ Action ChooseAction(const base::FilePath& meta_file,
 
   if (!IsCompleteMetadata(metadata)) {
     base::File::Info info;
-    if (!GetFileInfo(meta_file, &info)) {
+    if (!base::GetFileInfo(meta_file, &info)) {
       // Should not happen since it succeeded to read the file.
       *reason = "Failed to get file info";
       return kIgnore;
@@ -293,11 +293,11 @@ void RemoveAndPickCrashFiles(const base::FilePath& crash_dir,
     std::string reason;
     switch (ChooseAction(meta_file, metrics_lib, &reason)) {
       case kRemove:
-        LOG(ERROR) << "Removing: " << reason;
+        LOG(INFO) << "Removing: " << reason;
         RemoveReportFiles(meta_file);
         break;
       case kIgnore:
-        LOG(ERROR) << "Igonoring: " << reason;
+        LOG(INFO) << "Igonoring: " << reason;
         break;
       case kSend:
         to_send->push_back(meta_file);
@@ -321,7 +321,7 @@ void RemoveReportFiles(const base::FilePath& meta_file) {
                             base::FileEnumerator::FILES, pattern);
   for (base::FilePath file = iter.Next(); !file.empty(); file = iter.Next()) {
     if (!base::DeleteFile(file, false /* recursive */))
-      PLOG(ERROR) << "Failed to remove " << file.value();
+      PLOG(WARNING) << "Failed to remove " << file.value();
   }
 }
 
@@ -331,8 +331,8 @@ std::vector<base::FilePath> GetMetaFiles(const base::FilePath& crash_dir) {
   std::vector<std::pair<base::Time, base::FilePath>> time_meta_pairs;
   for (base::FilePath file = iter.Next(); !file.empty(); file = iter.Next()) {
     base::File::Info info;
-    if (!GetFileInfo(file, &info)) {
-      LOG(ERROR) << "Failed to get file info: " << file.value();
+    if (!base::GetFileInfo(file, &info)) {
+      PLOG(WARNING) << "Failed to get file info: " << file.value();
       continue;
     }
     time_meta_pairs.push_back(std::make_pair(info.last_modified, file));
@@ -393,15 +393,67 @@ bool IsCompleteMetadata(const brillo::KeyValueStore& metadata) {
   return value == "1";
 }
 
+bool IsTimestampNewEnough(const base::FilePath& timestamp_file) {
+  const base::Time threshold =
+      base::Time::Now() - base::TimeDelta::FromHours(24);
+
+  base::File::Info info;
+  if (!base::GetFileInfo(timestamp_file, &info)) {
+    PLOG(ERROR) << "Failed to get file info: " << timestamp_file.value();
+    return false;
+  }
+
+  return threshold < info.last_modified;
+}
+
+bool IsBelowRate(const base::FilePath& timestamps_dir,
+                 int max_crash_rate,
+                 int* current_rate) {
+  if (!base::CreateDirectory(timestamps_dir)) {
+    PLOG(ERROR) << "Failed to create a timestamps directory: "
+                << timestamps_dir.value();
+    return false;
+  }
+
+  // Count the number of timestamp files, that were written in the past 24
+  // hours. Remove files that are older.
+  *current_rate = 0;
+  base::FileEnumerator iter(timestamps_dir, false /* recursive */,
+                            base::FileEnumerator::FILES, "*");
+  for (base::FilePath file = iter.Next(); !file.empty(); file = iter.Next()) {
+    if (IsTimestampNewEnough(file)) {
+      ++(*current_rate);
+    } else {
+      if (!base::DeleteFile(file, false /* recursive */))
+        PLOG(WARNING) << "Failed to remove " << file.value();
+    }
+  }
+  LOG(INFO) << "Current send rate: " << *current_rate << "sends/24hrs";
+
+  if (*current_rate < max_crash_rate) {
+    // It's OK to send a new crash report now. Create a new timestamp to record
+    // that a new attempt is made to send a crash report.
+    base::FilePath temp_file;
+    if (!base::CreateTemporaryFileInDir(timestamps_dir, &temp_file)) {
+      PLOG(ERROR) << "Failed to create a file in " << timestamps_dir.value();
+      return false;
+    }
+    return true;
+  }
+
+  return false;
+}
+
 Sender::Sender(std::unique_ptr<MetricsLibraryInterface> metrics_lib,
                const Sender::Options& options)
     : metrics_lib_(std::move(metrics_lib)),
       shell_script_(options.shell_script),
-      proxy_(options.proxy) {}
+      proxy_(options.proxy),
+      max_crash_rate_(options.max_crash_rate) {}
 
 bool Sender::Init() {
   if (!scoped_temp_dir_.CreateUniqueTempDir()) {
-    PLOG(ERROR) << "Failed to create a temporary directory.";
+    PLOG(ERROR) << "Failed to create a temporary directory";
     return false;
   }
   return true;
@@ -425,6 +477,15 @@ bool Sender::SendCrashes(const base::FilePath& crash_dir) {
     // SECONDS_SEND_SPREAD between sends.
     if (metrics_lib_->IsGuestMode()) {
       LOG(INFO) << "Guest mode has been entered. Delaying crash sending";
+      return success;
+    }
+
+    int rate = 0;
+    const base::FilePath timestamps_dir =
+        paths::Get(paths::kTimestampsDirectory);
+    if (!IsBelowRate(timestamps_dir, max_crash_rate_, &rate)) {
+      LOG(INFO) << "Cannot send more crashes. Sending " << meta_file.value()
+                << " would exceed the max rate: " << max_crash_rate_;
       return success;
     }
 

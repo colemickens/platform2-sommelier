@@ -17,6 +17,9 @@
 
 namespace util {
 
+// Maximum crashes to send per 24 hours.
+constexpr int kMaxCrashRate = 32;
+
 // Represents a name-value pair for an environment variable.
 struct EnvPair {
   const char* name;
@@ -40,8 +43,6 @@ constexpr EnvPair kEnvironmentVariables[] = {
     // Set this to 1 in the environment to allow uploading crash reports
     // for unofficial versions.
     {"FORCE_OFFICIAL", "0"},
-    // Maximum crashes to send per day.
-    {"MAX_CRASH_RATE", "32"},
     // Set this to 1 in the environment to pretend to have booted in developer
     // mode.  This is used by autotests.
     {"MOCK_DEVELOPER_MODE", "0"},
@@ -121,6 +122,21 @@ bool ParseMetadata(const std::string& raw_metadata,
 // Returns true if the metadata is complete.
 bool IsCompleteMetadata(const brillo::KeyValueStore& metadata);
 
+// Returns true if the given timestamp file is new enough, indicating that there
+// was a recent attempt to send a crash report.
+bool IsTimestampNewEnough(const base::FilePath& timestamp_file);
+
+// Returns true if sending a crash report now does not exceed |max_crash_rate|
+// per 24 hours.. Reports the current rate (# of reports sent in the past 24
+// hours) in |current_rate| regardless of the return value.
+//
+// This function checks/creates/removes timestamp files in |timestamps_dir| to
+// track how many attempts were made to send crash reports in that past 24
+// hours. Even if sending failed, it's counted as an attempt.
+bool IsBelowRate(const base::FilePath& timestamps_dir,
+                 int max_crash_rate,
+                 int* current_rate);
+
 // A helper class for sending crashes. The behaviors can be customized with
 // Options class for unit testing.
 class Sender {
@@ -131,6 +147,9 @@ class Sender {
 
     // Session manager client for locating the user-specific crash directories.
     org::chromium::SessionManagerInterfaceProxyInterface* proxy = nullptr;
+
+    // Maximum crashes to send per 24 hours.
+    int max_crash_rate = kMaxCrashRate;
   };
 
   Sender(std::unique_ptr<MetricsLibraryInterface> metrics_lib,
@@ -173,6 +192,7 @@ class Sender {
   const base::FilePath shell_script_;
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface> proxy_;
   base::ScopedTempDir scoped_temp_dir_;
+  int max_crash_rate_;
 
   DISALLOW_COPY_AND_ASSIGN(Sender);
 };

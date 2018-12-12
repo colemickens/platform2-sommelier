@@ -16,6 +16,10 @@ constexpr char kSystemRunStateDirectory[] = "/run/crash_reporter";
 // Directory where crash_reporter stores files (ex. saved version info).
 constexpr char kCrashReporterStateDirectory[] = "/var/lib/crash_reporter";
 
+// Directory where crash_sender stores timestamp files, that indicate the
+// upload attempts in the past 24 hours.
+constexpr char kTimestampsDirectory[] = "/var/lib/crash_sender";
+
 // Directory where system crashes are saved.
 constexpr char kSystemCrashDirectory[] = "/var/spool/crash";
 

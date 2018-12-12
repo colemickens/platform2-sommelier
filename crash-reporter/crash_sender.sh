@@ -47,10 +47,6 @@ RESTRICTED_CERTIFICATES_PATH="/usr/share/chromeos-ca-certificates"
 # The syslog tag for all logging we emit.
 TAG="$(basename $0)[$$]"
 
-# Directory to store timestamp files indicating the uploads in the past 24
-# hours.
-TIMESTAMPS_DIR="/var/lib/crash_sender"
-
 # Temp directory for this process.
 TMP_DIR=""
 
@@ -128,25 +124,6 @@ generate_uniform_random() {
   # use signed 32-bit integers in arithmetic expressions.
   local random="$(od -An -N3 -tu /dev/urandom)"
   echo $((random % max))
-}
-
-# Check if sending a crash now does not exceed the maximum 24hr rate and
-# commit to doing so, if not.
-check_rate() {
-  mkdir -p ${TIMESTAMPS_DIR}
-  # Only consider minidumps written in the past 24 hours by removing all older.
-  ${FIND} "${TIMESTAMPS_DIR}" -mindepth 1 -mmin +$((24 * 60)) \
-      -exec rm -- '{}' ';'
-  local sends_in_24hrs=$(echo "${TIMESTAMPS_DIR}"/* | wc -w)
-  lecho "Current send rate: ${sends_in_24hrs}sends/24hrs"
-  if [ ${sends_in_24hrs} -ge ${MAX_CRASH_RATE} ]; then
-    lecho "Cannot send more crashes:"
-    lecho "  current ${sends_in_24hrs}send/24hrs >= " \
-          "max ${MAX_CRASH_RATE}send/24hrs"
-    return 1
-  fi
-  mktemp "${TIMESTAMPS_DIR}"/XXXX > /dev/null
-  return 0
 }
 
 get_extension() {
@@ -525,13 +502,6 @@ send_or_skip_crash() {
   # removal to honor user choice and to free disk space as soon as possible,
   # then decide whether it should be sent right now or kept for later sending.
   lecho "Considering metadata ${meta_path}."
-
-  # Skip report if the upload rate is exceeded.  (Don't exit right now because
-  # subsequent reports may be candidates for deletion.)
-  if ! check_rate; then
-    lecho "Sending ${meta_path} would exceed rate.  Leaving for later."
-    return 0
-  fi
 
   # The .meta file should be written *after* all to-be-uploaded files that it
   # references.  Nevertheless, as a safeguard, a hold-off time of thirty

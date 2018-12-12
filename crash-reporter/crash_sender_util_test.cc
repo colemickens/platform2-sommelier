@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/command_line.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/macros.h>
@@ -88,6 +89,16 @@ bool CreateDeviceCoredumpUploadAllowedFile() {
       paths::GetAt(paths::kCrashReporterStateDirectory,
                    paths::kDeviceCoredumpUploadAllowed),
       "");
+}
+
+// Returns file names found in |directory|.
+std::vector<base::FilePath> GetFileNamesIn(const base::FilePath& directory) {
+  std::vector<base::FilePath> files;
+  base::FileEnumerator iter(directory, false /* recursive */,
+                            base::FileEnumerator::FILES, "*");
+  for (base::FilePath file = iter.Next(); !file.empty(); file = iter.Next())
+    files.push_back(file);
+  return files;
 }
 
 class CrashSenderUtilTest : public testing::Test {
@@ -649,6 +660,61 @@ TEST_F(CrashSenderUtilTest, IsCompleteMetadata) {
   EXPECT_TRUE(IsCompleteMetadata(metadata));
 }
 
+TEST_F(CrashSenderUtilTest, IsTimestampNewEnough) {
+  base::FilePath file;
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(test_dir_, &file));
+
+  // Should be new enough as it's just created.
+  ASSERT_TRUE(IsTimestampNewEnough(file));
+
+  // Make it older than 24 hours.
+  const base::Time now = base::Time::Now();
+  ASSERT_TRUE(TouchFileHelper(file, now - base::TimeDelta::FromHours(25)));
+
+  // Should be no longer new enough.
+  ASSERT_FALSE(IsTimestampNewEnough(file));
+}
+
+TEST_F(CrashSenderUtilTest, IsBelowRate) {
+  const int kMaxRate = 3;
+  int rate = 0;
+
+  EXPECT_TRUE(IsBelowRate(test_dir_, kMaxRate, &rate));
+  EXPECT_EQ(0, rate);
+
+  EXPECT_TRUE(IsBelowRate(test_dir_, kMaxRate, &rate));
+  EXPECT_EQ(1, rate);
+
+  EXPECT_TRUE(IsBelowRate(test_dir_, kMaxRate, &rate));
+  EXPECT_EQ(2, rate);
+
+  // Should not pass the rate limit.
+  EXPECT_FALSE(IsBelowRate(test_dir_, kMaxRate, &rate));
+  EXPECT_EQ(3, rate);
+
+  // Three files should be created for tracking timestamps.
+  std::vector<base::FilePath> files = GetFileNamesIn(test_dir_);
+  ASSERT_EQ(3, files.size());
+
+  const base::Time now = base::Time::Now();
+
+  // Make one of them older than 24 hours.
+  ASSERT_TRUE(TouchFileHelper(files[0], now - base::TimeDelta::FromHours(25)));
+
+  // It should now pass the rate limit.
+  EXPECT_TRUE(IsBelowRate(test_dir_, kMaxRate, &rate));
+  EXPECT_EQ(2, rate);
+  // The old file should now be gone. However, it's possible that the file
+  // that's just deleted with its random name is randomly picked again to create
+  // the new timestamp file.
+  EXPECT_TRUE(!base::PathExists(files[0]) ||
+              (base::PathExists(files[0]) && IsTimestampNewEnough(files[0])));
+
+  // There should be three files now since the last call to IsBelowRate() should
+  // create a new timestamp file.
+  ASSERT_EQ(3, GetFileNamesIn(test_dir_).size());
+}
+
 TEST_F(CrashSenderUtilTest, Sender) {
   // Set up the mock sesssion manager client.
   auto mock =
@@ -682,6 +748,15 @@ TEST_F(CrashSenderUtilTest, Sender) {
                                     "done=1\n"));
   ASSERT_TRUE(test_util::CreateFile(user2_log, ""));
 
+  // Create another user crash in "user2". This will be skipped since the max
+  // crash rate will be set to 2.
+  const base::FilePath user2_meta1 = user2_dir.Append("1.1.1.1.meta");
+  const base::FilePath user2_log1 = user2_dir.Append("1.1.1.1.log");
+  ASSERT_TRUE(test_util::CreateFile(user2_meta1,
+                                    "payload=1.1.1.1.log\n"
+                                    "done=1\n"));
+  ASSERT_TRUE(test_util::CreateFile(user2_log1, ""));
+
   // Set up the conditions to emulate a device in guest mode.
   ASSERT_TRUE(SetConditions(kOfficialBuild, kGuestMode, kMetricsEnabled));
   // Keep the raw pointer, that's needed to exit from guest mode later.
@@ -691,6 +766,7 @@ TEST_F(CrashSenderUtilTest, Sender) {
   Sender::Options options;
   options.shell_script = base::FilePath("fake_crash_sender.sh");
   options.proxy = mock.release();
+  options.max_crash_rate = 2;
   Sender sender(std::move(metrics_lib_), options);
   ASSERT_TRUE(sender.Init());
 
@@ -712,6 +788,7 @@ TEST_F(CrashSenderUtilTest, Sender) {
   ASSERT_TRUE(base::ReadFileToString(output_file, &contents));
   std::vector<std::vector<std::string>> rows =
       ParseFakeCrashSenderOutput(contents);
+  // Should only contain two results, since max_crash_rate is set to 2.
   ASSERT_EQ(2, rows.size());
 
   // The first run should be for the meta file in the system directory.
