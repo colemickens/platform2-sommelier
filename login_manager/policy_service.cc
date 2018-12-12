@@ -145,7 +145,9 @@ std::vector<std::string> PolicyService::ListComponentIds(PolicyDomain domain) {
   for (const auto& kv : policy_stores_) {
     const PolicyNamespace& ns = kv.first;
     const std::string& component_id = ns.second;
-    if (ns.first == domain)
+    const PolicyStore* store = kv.second.get();
+    // Only count stores that actually have policy!
+    if (ns.first == domain && store->Get().has_policy_data())
       component_ids.insert(component_id);
   }
 

@@ -607,6 +607,15 @@ TEST_F(PolicyServiceNamespaceTest, ListComponentIdsHasNoDuplicates) {
             std::vector<std::string>({ns2_.second}));
 }
 
+// ListComponentIds does not return stores with empty policy.
+TEST_F(PolicyServiceNamespaceTest, ListComponentIdsDoesNotReturnEmptyStores) {
+  // Note that RetrievePolicy actually creates a PolicyStore instance.
+  EXPECT_EQ(ns2_.first, POLICY_DOMAIN_EXTENSIONS);
+  EXPECT_TRUE(RetrievePolicy(ns2_).empty());
+  EXPECT_FALSE(base::PathExists(policy_path2_));
+  EXPECT_TRUE(service_->ListComponentIds(POLICY_DOMAIN_EXTENSIONS).empty());
+}
+
 // Policy files with bad component ids are ignored.
 TEST_F(PolicyServiceNamespaceTest, ListComponentIdsIgnoresBadIds) {
   // Invalidate component id.
