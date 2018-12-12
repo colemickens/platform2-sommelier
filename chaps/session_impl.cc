@@ -13,6 +13,7 @@
 
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
+#include <crypto/scoped_openssl_types.h>
 #include <openssl/bio.h>
 #include <openssl/des.h>
 #include <openssl/err.h>
@@ -571,15 +572,15 @@ CK_RV SessionImpl::GenerateKeyPair(CK_MECHANISM_TYPE mechanism,
                                    int* new_private_key_handle) {
   CHECK(new_public_key_handle);
   CHECK(new_private_key_handle);
-  if (mechanism != CKM_RSA_PKCS_KEY_PAIR_GEN) {
-    LOG(ERROR) << "GenerateKeyPair: Mechanism not supported: " << hex
-               << mechanism;
-    return CKR_MECHANISM_INVALID;
-  }
+
+  // Create public/private key objects
   std::unique_ptr<Object> public_object(factory_->CreateObject());
   CHECK(public_object.get());
   std::unique_ptr<Object> private_object(factory_->CreateObject());
   CHECK(private_object.get());
+
+  // copy attributes
+  // TODO(menghuan): don't copy the attribute that doesn't support
   CK_RV result = public_object->SetAttributes(public_attributes,
                                               num_public_attributes);
   if (result != CKR_OK)
@@ -588,70 +589,61 @@ CK_RV SessionImpl::GenerateKeyPair(CK_MECHANISM_TYPE mechanism,
                                          num_private_attributes);
   if (result != CKR_OK)
     return result;
-  // CKA_PUBLIC_EXPONENT is optional. The default is 65537 (0x10001).
-  string public_exponent("\x01\x00\x01", 3);
-  if (public_object->IsAttributePresent(CKA_PUBLIC_EXPONENT))
-    public_exponent = public_object->GetAttributeString(CKA_PUBLIC_EXPONENT);
-  public_object->SetAttributeString(CKA_PUBLIC_EXPONENT, public_exponent);
-  private_object->SetAttributeString(CKA_PUBLIC_EXPONENT, public_exponent);
-  if (!public_object->IsAttributePresent(CKA_MODULUS_BITS))
-    return CKR_TEMPLATE_INCOMPLETE;
-  CK_ULONG modulus_bits = public_object->GetAttributeInt(CKA_MODULUS_BITS, 0);
-  if (modulus_bits < kMinRSAKeyBits || modulus_bits > kMaxRSAKeyBits)
-    return CKR_KEY_SIZE_RANGE;
+
+  // Get the object pool
   ObjectPool* public_pool = (public_object->IsTokenObject() ?
                              token_object_pool_ : session_object_pool_.get());
   ObjectPool* private_pool = (private_object->IsTokenObject() ?
                               token_object_pool_ : session_object_pool_.get());
-  // Check if we are able to back this key with the TPM.
-  if (tpm_utility_->IsTPMAvailable() &&
-      private_object->IsTokenObject() &&
-      modulus_bits >= tpm_utility_->MinRSAKeyBits() &&
-      modulus_bits <= tpm_utility_->MaxRSAKeyBits()) {
-    string auth_data = GenerateRandomSoftware(kDefaultAuthDataBytes);
-    string key_blob;
-    int tpm_key_handle;
-    if (!tpm_utility_->GenerateKey(slot_id_,
-                                   modulus_bits,
-                                   public_exponent,
-                                   SecureBlob(auth_data.begin(),
-                                              auth_data.end()),
-                                   &key_blob,
-                                   &tpm_key_handle))
-      return CKR_FUNCTION_FAILED;
-    string modulus;
-    if (!tpm_utility_->GetPublicKey(tpm_key_handle, &public_exponent, &modulus))
-      return CKR_FUNCTION_FAILED;
-    public_object->SetAttributeString(CKA_MODULUS, modulus);
-    private_object->SetAttributeString(CKA_MODULUS, modulus);
-    private_object->SetAttributeString(kAuthDataAttribute, auth_data);
-    private_object->SetAttributeString(kKeyBlobAttribute, key_blob);
-  } else {
-    if (!GenerateKeyPairSoftware(modulus_bits,
-                                 public_exponent,
-                                 public_object.get(),
-                                 private_object.get()))
-      return CKR_FUNCTION_FAILED;
+
+  switch (mechanism) {
+    case CKM_RSA_PKCS_KEY_PAIR_GEN:
+      result = GenerateRSAKeyPair(public_object.get(), private_object.get());
+      break;
+    default:
+      LOG(ERROR) << __func__ << ": Mechanism not supported: " << hex
+                 << mechanism;
+      return CKR_MECHANISM_INVALID;
   }
+  if (result != CKR_OK) {
+    return result;
+  }
+
+  // Set the general attributes for public / private key
   public_object->SetAttributeInt(CKA_CLASS, CKO_PUBLIC_KEY);
-  public_object->SetAttributeInt(CKA_KEY_TYPE, CKK_RSA);
   private_object->SetAttributeInt(CKA_CLASS, CKO_PRIVATE_KEY);
-  private_object->SetAttributeInt(CKA_KEY_TYPE, CKK_RSA);
+
+  // The CKA_KEY_GEN_MECHANISM attribute identifies the key generation mechanism
+  // used to generate the key material. It contains a valid value only if the
+  // CKA_LOCAL attribute has the value CK_TRUE. If CKA_LOCAL has the value
+  // CK_FALSE, the value of the attribute is CK_UNAVAILABLE_INFORMATION.
   public_object->SetAttributeBool(CKA_LOCAL, true);
   private_object->SetAttributeBool(CKA_LOCAL, true);
   public_object->SetAttributeInt(CKA_KEY_GEN_MECHANISM, mechanism);
   private_object->SetAttributeInt(CKA_KEY_GEN_MECHANISM, mechanism);
+
+  // Finalize the objects
   result = public_object->FinalizeNewObject();
-  if (result != CKR_OK)
+  if (result != CKR_OK) {
+    LOG(ERROR) << __func__ << ": Fail to finalize public object.";
     return result;
+  }
   result = private_object->FinalizeNewObject();
-  if (result != CKR_OK)
+  if (result != CKR_OK) {
+    LOG(ERROR) << __func__ << ": Fail to finalize private object.";
     return result;
+  }
   auto pool_res = public_pool->Insert(public_object.get());
-  if (!IsSuccess(pool_res))
+  if (!IsSuccess(pool_res)) {
+    LOG(ERROR) << __func__ << ": Fail to insert public object to public pool.";
     return ResultToRV(pool_res, CKR_FUNCTION_FAILED);
+  }
   pool_res = private_pool->Insert(private_object.get());
   if (!IsSuccess(pool_res)) {
+    LOG(ERROR) << __func__
+               << ": Fail to insert private object to private pool.";
+    // Remove inserted public object.
+    // The object will be destroy in Delete(), we should release uniptr.
     public_pool->Delete(public_object.release());
     return ResultToRV(pool_res, CKR_FUNCTION_FAILED);
   }
@@ -910,16 +902,56 @@ bool SessionImpl::GenerateDESKey(string* key_material) {
   return true;
 }
 
-bool SessionImpl::GenerateKeyPairSoftware(int modulus_bits,
-                                          const string& public_exponent,
-                                          Object* public_object,
-                                          Object* private_object) {
-  if (public_exponent.length() > sizeof(uint32_t) ||
-      public_exponent.empty())
+CK_RV SessionImpl::GenerateRSAKeyPair(Object* public_object,
+                                      Object* private_object) {
+  // CKA_PUBLIC_EXPONENT is optional. The default is 65537 (0x10001).
+  string public_exponent("\x01\x00\x01", 3);
+  if (public_object->IsAttributePresent(CKA_PUBLIC_EXPONENT))
+    public_exponent = public_object->GetAttributeString(CKA_PUBLIC_EXPONENT);
+  public_object->SetAttributeString(CKA_PUBLIC_EXPONENT, public_exponent);
+  private_object->SetAttributeString(CKA_PUBLIC_EXPONENT, public_exponent);
+
+  // CKA_MODULUS_BITS is requried
+  if (!public_object->IsAttributePresent(CKA_MODULUS_BITS))
+    return CKR_TEMPLATE_INCOMPLETE;
+  CK_ULONG modulus_bits = public_object->GetAttributeInt(CKA_MODULUS_BITS, 0);
+  if (modulus_bits < kMinRSAKeyBits || modulus_bits > kMaxRSAKeyBits)
+    return CKR_KEY_SIZE_RANGE;
+
+  // Set CKA_KEY_TYPE
+  public_object->SetAttributeInt(CKA_KEY_TYPE, CKK_RSA);
+  private_object->SetAttributeInt(CKA_KEY_TYPE, CKK_RSA);
+
+  // Check if we are able to back this key with the TPM.
+  if (tpm_utility_->IsTPMAvailable() && private_object->IsTokenObject() &&
+      modulus_bits >= tpm_utility_->MinRSAKeyBits() &&
+      modulus_bits <= tpm_utility_->MaxRSAKeyBits()) {
+    // Use TPM to generate RSA key
+    if (!GenerateRSAKeyPairTPM(modulus_bits, public_exponent, public_object,
+                               private_object))
+      return CKR_FUNCTION_FAILED;
+  } else {
+    // Use software to generate RSA key
+    if (!GenerateRSAKeyPairSoftware(modulus_bits, public_exponent,
+                                    public_object, private_object))
+      return CKR_FUNCTION_FAILED;
+  }
+  return CKR_OK;
+}
+
+bool SessionImpl::GenerateRSAKeyPairSoftware(int modulus_bits,
+                                             const std::string& public_exponent,
+                                             Object* public_object,
+                                             Object* private_object) {
+  if (public_exponent.length() > sizeof(uint32_t) || public_exponent.empty())
     return false;
-  BIGNUM* e = ConvertToBIGNUM(public_exponent);
-  RSA* key = RSA_generate_key(modulus_bits, BN_get_word(e), NULL, NULL);
-  CHECK(key);
+  crypto::ScopedBIGNUM e(ConvertToBIGNUM(public_exponent));
+  if (e == nullptr)
+    return false;
+  crypto::ScopedRSA key(
+      RSA_generate_key(modulus_bits, BN_get_word(e.get()), NULL, NULL));
+  if (key == nullptr)
+    return false;
   string n = ConvertFromBIGNUM(key->n);
   string d = ConvertFromBIGNUM(key->d);
   string p = ConvertFromBIGNUM(key->p);
@@ -935,8 +967,31 @@ bool SessionImpl::GenerateKeyPairSoftware(int modulus_bits,
   private_object->SetAttributeString(CKA_EXPONENT_1, dmp1);
   private_object->SetAttributeString(CKA_EXPONENT_2, dmq1);
   private_object->SetAttributeString(CKA_COEFFICIENT, iqmp);
-  RSA_free(key);
-  BN_free(e);
+  return true;
+}
+
+bool SessionImpl::GenerateRSAKeyPairTPM(int modulus_bits,
+                                        const std::string& public_exponent,
+                                        Object* public_object,
+                                        Object* private_object) {
+  string auth_data = GenerateRandomSoftware(kDefaultAuthDataBytes);
+  string key_blob;
+  int tpm_key_handle;
+  if (!tpm_utility_->GenerateKey(slot_id_, modulus_bits, public_exponent,
+                                 SecureBlob(auth_data.begin(), auth_data.end()),
+                                 &key_blob, &tpm_key_handle))
+    return false;
+
+  // Get public key information from TPM
+  string modulus;
+  string exponent;
+  if (!tpm_utility_->GetPublicKey(tpm_key_handle, &exponent, &modulus))
+    return false;
+
+  public_object->SetAttributeString(CKA_MODULUS, modulus);
+  private_object->SetAttributeString(CKA_MODULUS, modulus);
+  private_object->SetAttributeString(kAuthDataAttribute, auth_data);
+  private_object->SetAttributeString(kKeyBlobAttribute, key_blob);
   return true;
 }
 

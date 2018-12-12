@@ -155,10 +155,17 @@ class SessionImpl : public Session {
                              const Object* copy_from_object,
                              int* new_object_handle);
   bool GenerateDESKey(std::string* key_material);
-  bool GenerateKeyPairSoftware(int modulus_bits,
-                               const std::string& public_exponent,
-                               Object* public_object,
-                               Object* private_object);
+
+  CK_RV GenerateRSAKeyPair(Object* public_object, Object* private_object);
+  bool GenerateRSAKeyPairSoftware(int modulus_bits,
+                                  const std::string& public_exponent,
+                                  Object* public_object,
+                                  Object* private_object);
+  bool GenerateRSAKeyPairTPM(int modulus_bits,
+                             const std::string& public_exponent,
+                             Object* public_object,
+                             Object* private_object);
+
   std::string GenerateRandomSoftware(int num_bytes);
   std::string GetDERDigestInfo(CK_MECHANISM_TYPE mechanism);
   // Provides operation output and handles the buffer-too-small case.
@@ -189,6 +196,7 @@ class SessionImpl : public Session {
   // the private key can only be accessed by the TPM.
   CK_RV WrapPrivateKey(Object* object);
 
+  // TODO(crbug/916023): Isolate the crypto related helper function.
   // Helpers to map PKCS #11 <--> OpenSSL.
   std::string ConvertFromBIGNUM(const BIGNUM* bignum);
   // Returns NULL if big_integer is empty.
