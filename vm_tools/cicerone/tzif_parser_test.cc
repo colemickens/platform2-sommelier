@@ -12,29 +12,30 @@
 class TzifParserTest : public ::testing::Test {
  public:
   TzifParserTest() {
-    base::FilePath source_dir(getenv("SRC"));
-    tp_.SetZoneinfoDirectoryForTest(source_dir.Append("cicerone"));
+    source_dir_ = base::FilePath(getenv("SRC")).Append("cicerone");
   }
 
  protected:
-  TzifParser tp_;
+  base::FilePath source_dir_;
 };
 
 TEST_F(TzifParserTest, EST) {
   std::string posix_string;
-  EXPECT_TRUE(tp_.GetPosixTimezone("EST_test.tzif", &posix_string));
+  EXPECT_TRUE(TzifParser::GetPosixTimezone(source_dir_.Append("EST_test.tzif"),
+                                           &posix_string));
   EXPECT_EQ(posix_string, "EST5");
 }
 
 TEST_F(TzifParserTest, TzifVersionTwo) {
   std::string posix_string;
-  EXPECT_TRUE(
-      tp_.GetPosixTimezone("Indian_Christmas_test.tzif", &posix_string));
+  EXPECT_TRUE(TzifParser::GetPosixTimezone(
+      source_dir_.Append("Indian_Christmas_test.tzif"), &posix_string));
   EXPECT_EQ(posix_string, "<+07>-7");
 }
 
 TEST_F(TzifParserTest, TzifVersionThree) {
   std::string posix_string;
-  EXPECT_TRUE(tp_.GetPosixTimezone("Pacific_Fiji_test.tzif", &posix_string));
+  EXPECT_TRUE(TzifParser::GetPosixTimezone(
+      source_dir_.Append("Pacific_Fiji_test.tzif"), &posix_string));
   EXPECT_EQ(posix_string, "<+12>-12<+13>,M11.1.0,M1.2.2/123");
 }

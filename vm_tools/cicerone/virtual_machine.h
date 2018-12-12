@@ -117,8 +117,8 @@ class VirtualMachine {
   // Connect to the tremplin instance in the VM.
   bool ConnectTremplin();
 
-  // Tries to set the default timezone for all containers in this VM to
-  // |timezone_name|. If that fails, falls back to setting the TZ environment
+  // Tries to set the default timezone for all containers in |container_names|
+  // to |timezone_name|. If that fails, falls back to setting the TZ environment
   // variable to |posix_tz_string|.
   //
   // If setting the timezone fails entirely due to high-level issues
@@ -129,6 +129,7 @@ class VirtualMachine {
   // |out_results|.
   bool SetTimezone(const std::string& timezone_name,
                    const std::string& posix_tz_string,
+                   const std::vector<std::string>& container_names,
                    SetTimezoneResults* out_results,
                    std::string* out_error);
 

@@ -94,13 +94,18 @@ bool ParseTzifHeader(base::File* tzfile, struct tzif_header* header) {
 
 }  // namespace
 
-TzifParser::TzifParser() : zoneinfo_directory_("/usr/share/zoneinfo") {}
-
-bool TzifParser::GetPosixTimezone(const std::string& timezone_name,
-                                  std::string* result) {
-  DCHECK(result);
-  base::File tzfile(zoneinfo_directory_.Append(timezone_name),
-                    base::File::FLAG_OPEN | base::File::FLAG_READ);
+// static
+bool TzifParser::GetPosixTimezone(const base::FilePath& tzif_path,
+                                  std::string* timezone_string_out) {
+  if (!timezone_string_out)
+    return false;
+  base::FilePath to_parse;
+  if (tzif_path.IsAbsolute()) {
+    to_parse = tzif_path;
+  } else {
+    to_parse = base::FilePath("/usr/share/zoneinfo").Append(tzif_path);
+  }
+  base::File tzfile(to_parse, base::File::FLAG_OPEN | base::File::FLAG_READ);
   struct tzif_header first_header;
   if (!tzfile.IsValid() || !ParseTzifHeader(&tzfile, &first_header)) {
     return false;
@@ -151,10 +156,6 @@ bool TzifParser::GetPosixTimezone(const std::string& timezone_name,
   std::string time_string(&posix_string[0], posix_string.size());
   // According to the spec, the embedded string is enclosed by '\n' characters.
   base::TrimWhitespaceASCII(time_string, base::TRIM_ALL, &time_string);
-  *result = std::move(time_string);
+  *timezone_string_out = std::move(time_string);
   return true;
-}
-
-void TzifParser::SetZoneinfoDirectoryForTest(base::FilePath dir) {
-  zoneinfo_directory_ = dir;
 }

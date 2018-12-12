@@ -13,12 +13,8 @@
 // format.
 class TzifParser {
  public:
-  TzifParser();
-  bool GetPosixTimezone(const std::string& timezone_name, std::string* result);
-  void SetZoneinfoDirectoryForTest(base::FilePath dir);
-
- private:
-  base::FilePath zoneinfo_directory_;
+  static bool GetPosixTimezone(const base::FilePath& tzif_path,
+                               std::string* timezone_string_out);
 };
 
 #endif  // VM_TOOLS_CICERONE_TZIF_PARSER_H_

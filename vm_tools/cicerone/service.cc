@@ -19,6 +19,7 @@
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/callback.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
@@ -273,6 +274,46 @@ std::string TranslateUrlForHost(const std::string& url,
   }
 
   return url;
+}
+
+void SetTimezoneForContainer(VirtualMachine* vm,
+                             const std::string& container_name) {
+  base::FilePath localtime("/etc/localtime");
+  base::FilePath system_timezone;
+  if (!base::NormalizeFilePath(localtime, &system_timezone))
+    LOG(ERROR) << "Getting system timezone failed";
+
+  std::string posix_tz_string;
+  if (!TzifParser::GetPosixTimezone(system_timezone, &posix_tz_string)) {
+    LOG(WARNING) << "Reading POSIX TZ string failed for timezone file "
+                 << system_timezone.value();
+    posix_tz_string = "";
+  }
+
+  base::FilePath zoneinfo("/usr/share/zoneinfo");
+  base::FilePath system_timezone_name;
+  if (!zoneinfo.AppendRelativePath(system_timezone, &system_timezone_name)) {
+    LOG(ERROR) << "Could not get name of timezone " << system_timezone.value();
+    return;
+  }
+
+  std::string error;
+  VirtualMachine::SetTimezoneResults results;
+  if (!vm->SetTimezone(system_timezone_name.value(), posix_tz_string,
+                       std::vector<std::string>({container_name}), &results,
+                       &error)) {
+    LOG(ERROR) << "Setting timezone failed for container " << container_name
+               << " with error " << error;
+    return;
+  }
+
+  int failure_count = results.failure_reasons.size();
+  if (failure_count > 0) {
+    LOG(ERROR) << "Setting timezone failed for container " << container_name;
+    for (const std::string& error : results.failure_reasons) {
+      LOG(ERROR) << "SetTimezone error: " << error;
+    }
+  }
 }
 
 }  // namespace
@@ -624,6 +665,8 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
     }
   }
   container->set_homedir(homedir);
+
+  SetTimezoneForContainer(vm, container_name);
 
   // Send the D-Bus signal out to indicate the container is ready.
   dbus::Signal signal(kVmCiceroneInterface, kContainerStartedSignal);
@@ -1952,9 +1995,10 @@ std::unique_ptr<dbus::Response> Service::SetTimezone(
 
   LOG(INFO) << "Received request to SetTimezone to " << request.timezone_name();
 
-  TzifParser tp;
   std::string posix_tz_string;
-  if (!tp.GetPosixTimezone(request.timezone_name(), &posix_tz_string)) {
+  if (!TzifParser::GetPosixTimezone(
+          base::FilePath("/usr/share/zoneinfo").Append(request.timezone_name()),
+          &posix_tz_string)) {
     LOG(WARNING) << "Reading POSIX TZ string failed for timezone "
                  << request.timezone_name();
     posix_tz_string = "";
@@ -1964,9 +2008,11 @@ std::unique_ptr<dbus::Response> Service::SetTimezone(
   for (const auto& elem : vms_) {
     const std::string& vm_name = elem.first.second;
     std::string error_msg;
+    std::vector<std::string> container_names = elem.second->GetContainerNames();
     VirtualMachine::SetTimezoneResults results;
-    bool success = elem.second->SetTimezone(
-        request.timezone_name(), posix_tz_string, &results, &error_msg);
+    bool success =
+        elem.second->SetTimezone(request.timezone_name(), posix_tz_string,
+                                 container_names, &results, &error_msg);
     if (success) {
       response.set_successes(response.successes() + results.successes);
       for (int i = 0; i < results.failure_reasons.size(); i++) {

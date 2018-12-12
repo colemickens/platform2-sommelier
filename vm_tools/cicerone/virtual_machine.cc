@@ -77,6 +77,7 @@ void VirtualMachine::OverrideTremplinAddressForTesting(
 bool VirtualMachine::SetTimezone(
     const std::string& timezone_name,
     const std::string& posix_tz_string,
+    const std::vector<std::string>& container_names,
     VirtualMachine::SetTimezoneResults* out_results,
     std::string* out_error) {
   DCHECK(out_results);
@@ -92,6 +93,8 @@ bool VirtualMachine::SetTimezone(
 
   request.set_timezone_name(timezone_name);
   request.set_posix_tz_string(posix_tz_string);
+  for (const std::string& name : container_names)
+    request.add_container_names(name);
 
   grpc::ClientContext ctx;
   ctx.set_deadline(gpr_time_add(

@@ -87,3 +87,6 @@ ARM_set_tls: 1
 getpid: 1
 prlimit64: arg2 == 0 && arg3 != 0
 unlink: 1
+readlink: 1
+readlinkat: 1
+lstat64: 1
