@@ -17,6 +17,7 @@
 #include <base/macros.h>
 
 #include "arc/network/device.h"
+#include "arc/network/minijailed_process_runner.h"
 
 namespace arc_networkd {
 
@@ -29,6 +30,9 @@ std::ostream& operator<<(std::ostream& stream, const struct in6_addr& addr);
 class ArcIpConfig {
  public:
   ArcIpConfig(const std::string& ifname, const DeviceConfig& config);
+  ArcIpConfig(const std::string& ifname,
+              const DeviceConfig& config,
+              std::unique_ptr<MinijailedProcessRunner> process_runner);
   virtual ~ArcIpConfig();
 
   // Open up the file descriptors needed to access the host and guest
@@ -84,6 +88,8 @@ class ArcIpConfig {
   std::string ipv6_address_;
   std::string ipv6_address_full_;
   std::string ipv6_router_;
+
+  std::unique_ptr<MinijailedProcessRunner> process_runner_;
 };
 
 }  // namespace arc_networkd

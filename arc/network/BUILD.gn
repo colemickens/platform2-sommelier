@@ -48,6 +48,7 @@ static_library("libarcnetwork") {
     "helper_process.cc",
     "ip_helper.cc",
     "manager.cc",
+    "minijailed_process_runner.cc",
     "multicast_forwarder.cc",
     "multicast_socket.cc",
     "ndp_handler.cc",
@@ -84,8 +85,10 @@ if (use.test) {
       ":test_config",
     ]
     sources = [
+      "arc_ip_config_test.cc",
       "device_test.cc",
       "device_manager_test.cc",
+      "minijailed_process_runner_test.cc",
     ]
     defines = [ "UNIT_TEST" ]
     deps = [
