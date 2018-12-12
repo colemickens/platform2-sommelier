@@ -3402,6 +3402,23 @@ TEST_F(SmbProviderTest, StartReadDirectoryCacheEnabledPurgesBeforeRead) {
   EXPECT_TRUE(cache->IsEmpty());
 }
 
+TEST_F(SmbProviderTest, TestETIMEDOUTGetsMappedToERRORNOTFOUND) {
+  const int32_t mount_id = PrepareMount();
+  const int32_t get_directory_error = ETIMEDOUT;
+  fake_samba_->SetGetDirectoryError(get_directory_error);
+
+  ProtoBlob read_dir_blob =
+      CreateReadDirectoryOptionsBlob(mount_id, "/non_existent.txt");
+
+  int32_t error_code;
+  ProtoBlob results;
+  int32_t read_dir_token;
+  smbprovider_->StartReadDirectory(read_dir_blob, &error_code, &results,
+                                   &read_dir_token);
+
+  EXPECT_EQ(ERROR_NOT_FOUND, error_code);
+}
+
 TEST_F(SmbProviderTest, TestMountConfigEnableNTLM) {
   EXPECT_FALSE(enable_ntlm_);
 

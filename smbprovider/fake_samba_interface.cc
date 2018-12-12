@@ -725,6 +725,11 @@ FakeSambaInterface::FakeDirectory* FakeSambaInterface::GetDirectory(
 
 FakeSambaInterface::FakeDirectory* FakeSambaInterface::GetDirectory(
     const std::string& full_path, int32_t* error) const {
+  if (get_directory_error_ != 0) {
+    *error = get_directory_error_;
+    return nullptr;
+  }
+
   PathParts split_path = SplitPath(full_path);
 
   FakeDirectory* current = root.get();
@@ -866,6 +871,10 @@ void FakeSambaInterface::SetCloseFileError(int32_t error) {
 
 void FakeSambaInterface::SetTruncateError(int32_t error) {
   truncate_error_ = error;
+}
+
+void FakeSambaInterface::SetGetDirectoryError(int32_t error) {
+  get_directory_error_ = error;
 }
 
 void FakeSambaInterface::SetCurrentEntry(int32_t dir_id, size_t index) {

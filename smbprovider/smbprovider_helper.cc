@@ -55,6 +55,7 @@ ErrorType GetErrorFromErrno(int32_t error_code) {
     case EBADF:
     case ENODEV:
     case ENOENT:
+    case ETIMEDOUT:
       error = ERROR_NOT_FOUND;
       break;
     case EMFILE:

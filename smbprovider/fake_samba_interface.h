@@ -150,6 +150,9 @@ class FakeSambaInterface : public SambaInterface {
   // corresponding to |dir_id|.
   void SetCurrentEntry(int32_t dir_id, size_t index);
 
+  // Helper method to set the errno GetDirectory() should return.
+  void SetGetDirectoryError(int32_t error);
+
   // Helper method to get the path for the OpenInfo corresponding to |dir_id|.
   std::string GetCurrentEntry(int32_t dir_id);
 
@@ -390,6 +393,10 @@ class FakeSambaInterface : public SambaInterface {
   // Errno for Truncate() to return. If this is set to anything other than
   // 0, Truncate() will return the error this is set to.
   int32_t truncate_error_ = 0;
+
+  // Errno for GetDirectory() to return. If this is set to anything other than
+  // 0, GetDirectory() will return the error this is set to.
+  int32_t get_directory_error_ = 0;
 
   // Keeps track of open files and directories.
   // Key: fd of the file/directory.
