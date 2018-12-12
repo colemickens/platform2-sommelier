@@ -125,5 +125,12 @@ grpc::Status TremplinListenerImpl::UpdateCreateStatus(
   return grpc::Status::OK;
 }
 
+grpc::Status TremplinListenerImpl::UpdateStartStatus(
+    grpc::ServerContext* ctx,
+    const vm_tools::tremplin::ContainerStartProgress* request,
+    vm_tools::tremplin::EmptyMessage* response) {
+  return grpc::Status(grpc::UNIMPLEMENTED, "UpdateStartStatus not implemented");
+}
+
 }  // namespace cicerone
 }  // namespace vm_tools

@@ -39,6 +39,11 @@ class TremplinListenerImpl final
       const vm_tools::tremplin::ContainerCreationProgress* request,
       vm_tools::tremplin::EmptyMessage* response) override;
 
+  grpc::Status UpdateStartStatus(
+      grpc::ServerContext* ctx,
+      const vm_tools::tremplin::ContainerStartProgress* request,
+      vm_tools::tremplin::EmptyMessage* response) override;
+
  private:
   base::WeakPtr<vm_tools::cicerone::Service> service_;  // not owned
   scoped_refptr<base::SequencedTaskRunner> task_runner_;

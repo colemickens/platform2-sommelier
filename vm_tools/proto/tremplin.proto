@@ -60,6 +60,12 @@ message StartContainerRequest {
 
   // Container token.
   string token = 4;
+
+  // If true, StartContainer will return immediately and provide updates to the
+  // host via UpdateStartStatus. If false, StartContainer will block until the
+  // container has started. This field will be required to be true once all
+  // clients are migrated to use async.
+  bool async = 5;
 }
 
 message StartContainerResponse {
@@ -75,6 +81,15 @@ message StartContainerResponse {
 
     // The container could not be started.
     FAILED = 3;
+
+    // The container is starting. Further updates will be delievered via
+    // UpdateStartStatus.
+    STARTING = 4;
+
+    // The container is remapping its rootfs uids/gids and will take longer than
+    // usual to start up. Further updates will be delievered via
+    // UpdateStartStatus.
+    REMAPPING = 5;
   }
 
   // Container startup status.
@@ -187,6 +202,32 @@ message ContainerCreationProgress {
   string failure_reason = 4;
 }
 
+// Sent by tremplin to update the host on the start progress of a container.
+message ContainerStartProgress {
+  enum Status {
+    // Start status is unknown.
+    UNKNOWN = 0;
+
+    // The container has started.
+    STARTED = 1;
+
+    // The container start was cancelled.
+    CANCELLED = 2;
+
+    // One or more steps failed and the container could not be started.
+    FAILED = 3;
+  }
+
+  // The current status of the container.
+  Status status = 1;
+
+  // Name of the container to start.
+  string container_name = 2;
+
+  // The failure_reason if the container could not be started.
+  string failure_reason = 3;
+}
+
 message GetContainerInfoRequest {
   // Name of the container to get information for.
   string container_name = 1;
@@ -258,4 +299,5 @@ service Tremplin {
 service TremplinListener {
   rpc TremplinReady(TremplinStartupInfo) returns (EmptyMessage);
   rpc UpdateCreateStatus(ContainerCreationProgress) returns (EmptyMessage);
+  rpc UpdateStartStatus(ContainerStartProgress) returns (EmptyMessage);
 }
