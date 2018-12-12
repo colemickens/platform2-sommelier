@@ -249,6 +249,7 @@ VirtualMachine::StartLxdContainerStatus VirtualMachine::StartLxdContainer(
     const std::string& container_private_key,
     const std::string& host_public_key,
     const std::string& token,
+    bool async,
     std::string* out_error) {
   DCHECK(out_error);
   if (!tremplin_stub_) {
@@ -263,6 +264,7 @@ VirtualMachine::StartLxdContainerStatus VirtualMachine::StartLxdContainer(
   request.set_container_private_key(container_private_key);
   request.set_host_public_key(host_public_key);
   request.set_token(token);
+  request.set_async(async);
 
   grpc::ClientContext ctx;
   ctx.set_deadline(gpr_time_add(
@@ -277,19 +279,23 @@ VirtualMachine::StartLxdContainerStatus VirtualMachine::StartLxdContainer(
     return VirtualMachine::StartLxdContainerStatus::FAILED;
   }
 
-  if (response.status() != tremplin::StartContainerResponse::STARTED &&
-      response.status() != tremplin::StartContainerResponse::RUNNING) {
-    LOG(ERROR) << "Failed to start LXD container: "
-               << response.failure_reason();
-    out_error->assign(response.failure_reason());
-    return VirtualMachine::StartLxdContainerStatus::FAILED;
+  switch (response.status()) {
+    case tremplin::StartContainerResponse::STARTING:
+      return VirtualMachine::StartLxdContainerStatus::STARTING;
+    case tremplin::StartContainerResponse::STARTED:
+      return VirtualMachine::StartLxdContainerStatus::STARTED;
+    case tremplin::StartContainerResponse::REMAPPING:
+      return VirtualMachine::StartLxdContainerStatus::REMAPPING;
+    case tremplin::StartContainerResponse::RUNNING:
+      return VirtualMachine::StartLxdContainerStatus::RUNNING;
+    case tremplin::StartContainerResponse::FAILED:
+      LOG(ERROR) << "Failed to start LXD container: "
+                 << response.failure_reason();
+      out_error->assign(response.failure_reason());
+      return VirtualMachine::StartLxdContainerStatus::FAILED;
+    default:
+      return VirtualMachine::StartLxdContainerStatus::UNKNOWN;
   }
-
-  if (response.status() == tremplin::StartContainerResponse::RUNNING) {
-    return VirtualMachine::StartLxdContainerStatus::RUNNING;
-  }
-
-  return VirtualMachine::StartLxdContainerStatus::STARTED;
 }
 
 VirtualMachine::GetLxdContainerUsernameStatus

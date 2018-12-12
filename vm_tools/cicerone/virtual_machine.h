@@ -34,7 +34,9 @@ class VirtualMachine {
 
   enum class StartLxdContainerStatus {
     UNKNOWN,
+    STARTING,
     STARTED,
+    REMAPPING,
     RUNNING,
     FAILED,
   };
@@ -170,6 +172,7 @@ class VirtualMachine {
       const std::string& container_private_key,
       const std::string& host_public_key,
       const std::string& token,
+      bool async,
       std::string* out_error);
 
   // Gets the primary user of an LXD container.

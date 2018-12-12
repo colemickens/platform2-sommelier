@@ -401,6 +401,51 @@ void Service::LxdContainerDownloading(const uint32_t cid,
   event->Signal();
 }
 
+void Service::LxdContainerStarting(const uint32_t cid,
+                                   std::string container_name,
+                                   Service::StartStatus status,
+                                   std::string failure_reason,
+                                   bool* result,
+                                   base::WaitableEvent* event) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  CHECK(!container_name.empty());
+  CHECK(result);
+  CHECK(event);
+  *result = false;
+  VirtualMachine* vm;
+  std::string vm_name;
+  std::string owner_id;
+  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name)) {
+    event->Signal();
+    return;
+  }
+
+  dbus::Signal signal(kVmCiceroneInterface, kLxdContainerStartingSignal);
+  vm_tools::cicerone::LxdContainerStartingSignal proto;
+  proto.mutable_vm_name()->swap(vm_name);
+  proto.set_container_name(container_name);
+  proto.mutable_owner_id()->swap(owner_id);
+  proto.set_failure_reason(failure_reason);
+  switch (status) {
+    case Service::StartStatus::STARTED:
+      proto.set_status(LxdContainerStartingSignal::STARTED);
+      break;
+    case Service::StartStatus::CANCELLED:
+      proto.set_status(LxdContainerStartingSignal::CANCELLED);
+      break;
+    case Service::StartStatus::FAILED:
+      proto.set_status(LxdContainerStartingSignal::FAILED);
+      break;
+    default:
+      proto.set_status(LxdContainerStartingSignal::UNKNOWN);
+      break;
+  }
+  dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
+  exported_object_->SendSignal(&signal);
+  *result = true;
+  event->Signal();
+}
+
 void Service::ContainerStartupCompleted(const std::string& container_token,
                                         const uint32_t cid,
                                         const uint32_t garcon_vsock_port,
@@ -1611,16 +1656,22 @@ std::unique_ptr<dbus::Response> Service::StartLxdContainer(
   }
   std::string container_token = vm->GenerateContainerToken(container_name);
 
-  VirtualMachine::StartLxdContainerStatus status =
-      vm->StartLxdContainer(container_name, container_private_key,
-                            host_public_key, container_token, &error_msg);
+  VirtualMachine::StartLxdContainerStatus status = vm->StartLxdContainer(
+      container_name, container_private_key, host_public_key, container_token,
+      request.async(), &error_msg);
 
   switch (status) {
     case VirtualMachine::StartLxdContainerStatus::UNKNOWN:
       response.set_status(StartLxdContainerResponse::UNKNOWN);
       break;
+    case VirtualMachine::StartLxdContainerStatus::STARTING:
+      response.set_status(StartLxdContainerResponse::STARTING);
+      break;
     case VirtualMachine::StartLxdContainerStatus::STARTED:
       response.set_status(StartLxdContainerResponse::STARTED);
+      break;
+    case VirtualMachine::StartLxdContainerStatus::REMAPPING:
+      response.set_status(StartLxdContainerResponse::REMAPPING);
       break;
     case VirtualMachine::StartLxdContainerStatus::RUNNING:
       response.set_status(StartLxdContainerResponse::RUNNING);

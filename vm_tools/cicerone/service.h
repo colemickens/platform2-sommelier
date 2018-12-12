@@ -68,10 +68,18 @@ class Service final : public base::MessageLoopForIO::Watcher {
     FAILED,
   };
 
+  // The status of an ongoing LXD container start operation.
+  enum class StartStatus {
+    UNKNOWN,
+    STARTED,
+    CANCELLED,
+    FAILED,
+  };
+
   // Notifies the service that a VM with |cid| has finished its create
   // operation of |container_name| with |status|. |failure_reason| will describe
-  // the failure reason if status != CREATED. Sets |result| to true if the VM IP
-  // is known. Signals |event| when done.
+  // the failure reason if status != CREATED. Sets |result| to true if the VM
+  // cid is known. Signals |event| when done.
   void LxdContainerCreated(const uint32_t cid,
                            std::string container_name,
                            CreateStatus status,
@@ -81,12 +89,23 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   // Notifies the service that a VM with |cid| is downloading a container
   // |container_name| with |download_progress| percentage complete. Sets
-  // |result| to true if the VM IP is known. Signals |event| when done.
+  // |result| to true if the VM cid is known. Signals |event| when done.
   void LxdContainerDownloading(const uint32_t cid,
                                std::string container_name,
                                int download_progress,
                                bool* result,
                                base::WaitableEvent* event);
+
+  // Notifies the service that a VM with |cid| is starting a container
+  // |container_name| with status |status|. |failure_reason| will describe the
+  // failure reason if status == FAILED. Sets |result| to true if the VM cid
+  // is known. Signals |event| when done.
+  void LxdContainerStarting(const uint32_t cid,
+                            std::string container_name,
+                            StartStatus status,
+                            std::string failure_reason,
+                            bool* result,
+                            base::WaitableEvent* event);
 
   // Notifies the service that a container with |container_token| and running
   // in a VM |cid| has completed startup. Sets |result| to true if this maps to

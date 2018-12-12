@@ -129,7 +129,46 @@ grpc::Status TremplinListenerImpl::UpdateStartStatus(
     grpc::ServerContext* ctx,
     const vm_tools::tremplin::ContainerStartProgress* request,
     vm_tools::tremplin::EmptyMessage* response) {
-  return grpc::Status(grpc::UNIMPLEMENTED, "UpdateStartStatus not implemented");
+  std::string peer_address = ctx->peer();
+  uint32_t cid = ExtractCidFromPeerAddress(peer_address);
+  if (cid == 0) {
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Failed parsing vsock cid for TremplinListener");
+  }
+
+  bool result = false;
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
+  vm_tools::cicerone::Service::StartStatus status;
+  switch (request->status()) {
+    case tremplin::ContainerStartProgress::STARTED:
+      status = vm_tools::cicerone::Service::StartStatus::STARTED;
+      break;
+    case tremplin::ContainerStartProgress::CANCELLED:
+      status = vm_tools::cicerone::Service::StartStatus::CANCELLED;
+      break;
+    case tremplin::ContainerStartProgress::FAILED:
+      status = vm_tools::cicerone::Service::StartStatus::FAILED;
+      break;
+    default:
+      status = vm_tools::cicerone::Service::StartStatus::UNKNOWN;
+      break;
+  }
+  task_runner_->PostTask(
+      FROM_HERE, base::Bind(&vm_tools::cicerone::Service::LxdContainerStarting,
+                            service_, cid, request->container_name(), status,
+                            request->failure_reason(), &result, &event));
+
+  event.Wait();
+  if (!result) {
+    LOG(ERROR)
+        << "Received UpdateStartStatus RPC but could not find matching VM: "
+        << peer_address;
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Cannot find VM for TremplinListener");
+  }
+
+  return grpc::Status::OK;
 }
 
 }  // namespace cicerone

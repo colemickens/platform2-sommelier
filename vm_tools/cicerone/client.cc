@@ -66,6 +66,31 @@ void OnContainerCreatedCallback(
   run_loop->Quit();
 }
 
+void OnContainerStartingCallback(
+    base::RunLoop* run_loop,
+    vm_tools::cicerone::LxdContainerStartingSignal::Status* final_status,
+    std::string* failure_reason,
+    dbus::Signal* signal) {
+  dbus::MessageReader reader(signal);
+  vm_tools::cicerone::LxdContainerStartingSignal lcss;
+  if (!reader.PopArrayOfBytesAsProto(&lcss)) {
+    LOG(ERROR) << "Failed parsing LxdContainerStartingSignal proto";
+    return;
+  }
+
+  switch (lcss.status()) {
+    case vm_tools::cicerone::LxdContainerStartingSignal::STARTED:
+    case vm_tools::cicerone::LxdContainerStartingSignal::CANCELLED:
+    case vm_tools::cicerone::LxdContainerStartingSignal::FAILED:
+      *final_status = lcss.status();
+      *failure_reason = lcss.failure_reason();
+      run_loop->Quit();
+      break;
+    default:
+      break;
+  }
+}
+
 int CreateLxdContainer(dbus::ObjectProxy* proxy,
                        const string& vm_name,
                        const string& container_name,
@@ -161,11 +186,25 @@ int StartLxdContainer(dbus::ObjectProxy* proxy,
   request.set_vm_name(vm_name);
   request.set_container_name(container_name);
   request.set_owner_id(owner_id);
+  request.set_async(true);
 
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
     LOG(ERROR) << "Failed to encode StartLxdContainer protobuf";
     return -1;
   }
+
+  // RunLoop so we can monitor the D-Bus signals coming back to determine when
+  // starting the container has actually finished.
+  base::RunLoop run_loop;
+  vm_tools::cicerone::LxdContainerStartingSignal::Status final_status =
+      vm_tools::cicerone::LxdContainerStartingSignal::UNKNOWN;
+  std::string failure_reason = "Timed out waiting for reply";
+  proxy->ConnectToSignal(
+      vm_tools::cicerone::kVmCiceroneInterface,
+      vm_tools::cicerone::kLxdContainerStartingSignal,
+      base::Bind(&OnContainerStartingCallback, base::Unretained(&run_loop),
+                 &final_status, &failure_reason),
+      base::Bind(&OnSignalConnected));
 
   std::unique_ptr<dbus::Response> dbus_response =
       proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
@@ -182,8 +221,8 @@ int StartLxdContainer(dbus::ObjectProxy* proxy,
   }
   vm_tools::cicerone::StartLxdContainerResponse::Status status =
       response.status();
-  if (status != vm_tools::cicerone::StartLxdContainerResponse::STARTED &&
-      status != vm_tools::cicerone::StartLxdContainerResponse::RUNNING) {
+  if (status == vm_tools::cicerone::StartLxdContainerResponse::FAILED ||
+      status == vm_tools::cicerone::StartLxdContainerResponse::UNKNOWN) {
     LOG(ERROR) << "Failed to start LXD container: "
                << response.failure_reason();
     return -1;
@@ -193,6 +232,28 @@ int StartLxdContainer(dbus::ObjectProxy* proxy,
     LOG(INFO) << "Container " << container_name << " already running";
     return 0;
   } else {
+    if (status == vm_tools::cicerone::StartLxdContainerResponse::REMAPPING) {
+      LOG(INFO) << "Container is remapping filesystem; this can take a while";
+    } else {
+      DCHECK_EQ(status,
+                vm_tools::cicerone::StartLxdContainerResponse::STARTING);
+    }
+    // Start the RunLoop which'll get the D-Bus signal callbacks and set the
+    // final result for us.
+    LOG(INFO) << "Waiting for D-Bus signal for container start status";
+    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+        FROM_HERE, run_loop.QuitClosure(), base::TimeDelta::FromMinutes(10));
+    run_loop.Run();
+
+    if (final_status ==
+        vm_tools::cicerone::LxdContainerStartingSignal::STARTED) {
+      LOG(INFO) << "Started container " << container_name << " successfully";
+      return 0;
+    } else {
+      LOG(ERROR) << "Failed to start LXD container: " << failure_reason;
+      return -1;
+    }
+
     LOG(INFO) << "Started container: " << container_name;
     return 0;
   }
