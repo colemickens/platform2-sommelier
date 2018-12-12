@@ -1,0 +1,244 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# TODO: Fix the visibility on these shared libs.
+# gnlint: disable=GnLintVisibilityFlags
+
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+group("all") {
+  deps = [
+    ":attestation_client",
+    ":attestationd",
+    ":libattestation",
+  ]
+  if (use.test) {
+    deps += [ ":attestation_testrunner" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    # This is a list of pkg-config dependencies
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "protobuf-lite",
+  ]
+  if (use.tpm2) {
+    defines = [ "USE_TPM2" ]
+  }
+}
+
+# A library for just the protobufs.
+proto_library("proto_library_proto") {
+  # Use -fPIC so this code can be linked into a shared library.
+  use_pic = true
+  proto_in_dir = "common"
+  proto_out_dir = "include/attestation/common"
+  sources = [
+    "${proto_in_dir}/attestation_ca.proto",
+    "${proto_in_dir}/database.proto",
+    "${proto_in_dir}/interface.proto",
+    "${proto_in_dir}/keystore.proto",
+  ]
+  standalone = true
+}
+
+static_library("proto_library") {
+  configs -= [
+    "//common-mk:pie",
+    "//common-mk:use_thin_archive",
+  ]
+  configs += [
+    "//common-mk:nouse_thin_archive",
+    "//common-mk:pic",
+
+    # TODO: Use brillo/brillo_export.h instead to export symbols.
+    "//common-mk:visibility_default",
+    ":target_defaults",
+  ]
+  deps = [
+    ":proto_library_proto",
+  ]
+  sources = [
+    "common/print_attestation_ca_proto.cc",
+    "common/print_interface_proto.cc",
+    "common/print_keystore_proto.cc",
+  ]
+}
+
+# A library for common code.
+pkg_config("common_library_config") {
+  pkg_deps = [
+    "openssl",
+    "vboot_host",
+  ]
+}
+
+config("common_library_with_tpm2_config") {
+  libs = [
+    "trunks",
+    "tpm_manager",
+  ]
+}
+
+config("common_library_without_tpm2_config") {
+  libs = [ "tspi" ]
+}
+
+static_library("common_library") {
+  sources = [
+    "common/crypto_utility_impl.cc",
+    "common/tpm_utility_factory.cc",
+  ]
+  all_dependent_configs = [ ":common_library_config" ]
+  configs -= [ "//common-mk:use_thin_archive" ]
+  configs += [
+    "//common-mk:nouse_thin_archive",
+    ":target_defaults",
+  ]
+  deps = [
+    ":proto_library",
+  ]
+  if (use.tpm2) {
+    sources += [ "common/tpm_utility_v2.cc" ]
+    all_dependent_configs += [ ":common_library_with_tpm2_config" ]
+  } else {
+    sources += [ "common/tpm_utility_v1.cc" ]
+    all_dependent_configs += [ ":common_library_without_tpm2_config" ]
+  }
+}
+
+# A library for client code.
+static_library("client_library") {
+  # Use -fPIC so this code can be linked into a shared library.
+  configs -= [
+    "//common-mk:pie",
+    "//common-mk:use_thin_archive",
+  ]
+  configs += [
+    "//common-mk:pic",
+    ":target_defaults",
+    "//common-mk:nouse_thin_archive",
+
+    # TODO: Use brillo/brillo_export.h instead to export symbols.
+    "//common-mk:visibility_default",
+  ]
+  sources = [
+    "client/dbus_proxy.cc",
+  ]
+  deps = [
+    ":proto_library",
+  ]
+}
+
+# A shared library for clients.
+shared_library("libattestation") {
+  configs += [
+    "//common-mk:nouse_thin_archive",
+
+    # TODO: Use brillo/brillo_export.h instead to export symbols.
+    "//common-mk:visibility_default",
+    ":target_defaults",
+  ]
+  deps = [
+    ":client_library",
+    ":proto_library",
+  ]
+}
+
+# A client command line utility.
+executable("attestation_client") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "client/main.cc",
+  ]
+  deps = [
+    ":client_library",
+    ":common_library",
+    ":proto_library",
+  ]
+}
+
+# A library for server code.
+config("server_library_config") {
+  libs = [ "chaps" ]
+}
+
+static_library("server_library") {
+  sources = [
+    "server/attestation_service.cc",
+    "server/database_impl.cc",
+    "server/dbus_service.cc",
+    "server/pkcs11_key_store.cc",
+  ]
+  all_dependent_configs = [ ":server_library_config" ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":proto_library",
+  ]
+}
+
+# The attestation daemon.
+pkg_config("attestationd_config") {
+  pkg_deps = [ "libminijail" ]
+}
+
+executable("attestationd") {
+  sources = [
+    "server/main.cc",
+  ]
+  configs += [
+    ":attestationd_config",
+    ":target_defaults",
+  ]
+  deps = [
+    ":common_library",
+    ":proto_library",
+    ":server_library",
+  ]
+}
+
+if (use.test) {
+  pkg_config("attestation_testrunner_config") {
+    pkg_deps = [
+      "libbrillo-test-${libbase_ver}",
+      "libchrome-test-${libbase_ver}",
+    ]
+  }
+  executable("attestation_testrunner") {
+    configs += [
+      "//common-mk:test",
+      ":attestation_testrunner_config",
+      ":target_defaults",
+    ]
+    sources = [
+      "attestation_testrunner.cc",
+      "client/dbus_proxy_test.cc",
+      "common/crypto_utility_impl_test.cc",
+      "common/mock_crypto_utility.cc",
+      "common/mock_tpm_utility.cc",
+      "server/attestation_service_test.cc",
+      "server/database_impl_test.cc",
+      "server/dbus_service_test.cc",
+      "server/mock_database.cc",
+      "server/mock_key_store.cc",
+      "server/pkcs11_key_store_test.cc",
+    ]
+    if (use.tpm2) {
+      sources += [ "common/tpm_utility_v2_test.cc" ]
+      libs = [
+        "tpm_manager_test",
+        "trunks_test",
+      ]
+    }
+    deps = [
+      ":client_library",
+      ":common_library",
+      ":proto_library",
+      ":server_library",
+    ]
+  }
+}
