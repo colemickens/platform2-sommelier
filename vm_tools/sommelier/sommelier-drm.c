@@ -26,7 +26,9 @@ struct sl_host_drm {
 
 static void sl_drm_authenticate(struct wl_client* client,
                                 struct wl_resource* resource,
-                                uint32_t id) {}
+                                uint32_t id) {
+  wl_drm_send_authenticated(resource);
+}
 
 static void sl_drm_create_buffer(struct wl_client* client,
                                  struct wl_resource* resource,
