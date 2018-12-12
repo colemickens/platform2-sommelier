@@ -1,0 +1,68 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":apk-cache-cleaner",
+  ]
+  if (use.test) {
+    deps += [
+      ":apk-cache-cleaner_testrunner"
+    ]
+  }
+}
+
+pkg_config("libapk-cache-cleaner_config") {
+  pkg_deps = [
+    "libchrome-${libbase_ver}",
+  ]
+}
+
+static_library("libapk-cache-cleaner") {
+  configs += [ ":libapk-cache-cleaner_config" ]
+  sources = [
+    "cache_cleaner.cc",
+  ]
+}
+
+pkg_config("apk-cache-cleaner_config") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+  ]
+}
+
+executable("apk-cache-cleaner") {
+  configs += [ ":apk-cache-cleaner_config" ]
+  sources = [
+    "cache_cleaner_main.cc",
+  ]
+  deps = [
+    ":libapk-cache-cleaner",
+  ]
+}
+
+if (use.test) {
+  pkg_config("apk-cache-cleaner_testrunner_config") {
+    pkg_deps = [
+      "libchrome-${libbase_ver}",
+      "libchrome-test-${libbase_ver}",
+    ]
+  }
+  executable("apk-cache-cleaner_testrunner") {
+    configs += [
+      "//common-mk:test",
+      ":apk-cache-cleaner_testrunner_config",
+    ]
+    deps = [
+      "//common-mk/testrunner:testrunner",
+      ":libapk-cache-cleaner",
+    ]
+    sources = [
+      "cache_cleaner_test.cc",
+    ]
+  }
+}
