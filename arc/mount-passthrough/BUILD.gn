@@ -1,0 +1,25 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":mount-passthrough",
+  ]
+}
+
+pkg_config("mount-passthrough_config") {
+  pkg_deps = [
+    "fuse",
+    "libcap",
+  ]
+}
+
+executable("mount-passthrough") {
+  configs += [ ":mount-passthrough_config" ]
+  sources = [
+    "mount-passthrough.cc",
+  ]
+}
