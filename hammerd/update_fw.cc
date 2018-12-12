@@ -454,7 +454,7 @@ bool FirmwareUpdater::SendSubcommandReceiveResponse(
   if (subcommand == UpdateExtraCommand::kImmediateReset) {
     // When sending reset command, we won't get the response. Therefore just
     // check the Send action is successful.
-    int sent = endpoint_->Send(ufh.get(), usb_msg_size, false);
+    int sent = endpoint_->Send(ufh.get(), usb_msg_size, 0);
     return (sent == usb_msg_size);
   }
   int received =
