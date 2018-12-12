@@ -81,6 +81,8 @@
         },
       },
       'sources': [
+        'audio_receiver.cc',
+        'chrome_audio_service_client_impl.cc',
         'cras_client_impl.cc',
         'cros_dbus_service.cc',
         'media_perception_controller_impl.cc',

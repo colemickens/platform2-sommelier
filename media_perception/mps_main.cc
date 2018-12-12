@@ -6,8 +6,8 @@
 #include <memory>
 
 #include "base/logging.h"
-#include "media_perception/cras_client_impl.h"
-#include "media_perception/cras_client_wrapper.h"
+#include "media_perception/chrome_audio_service_client.h"
+#include "media_perception/chrome_audio_service_client_impl.h"
 #include "media_perception/cros_dbus_service.h"
 #include "media_perception/dbus_service.h"
 #include "media_perception/rtanalytics.h"
@@ -17,7 +17,7 @@
 // Rtanalytics implementation to be fulfilled by the library side.
 extern "C" void init_mps(
     int argc, char** argv,
-    std::shared_ptr<mri::CrasClientWrapper> cras,
+    std::shared_ptr<mri::ChromeAudioServiceClient> cras,
     std::shared_ptr<mri::VideoCaptureServiceClient> vidcap,
     std::shared_ptr<mri::Rtanalytics>* rtanalytics);
 
@@ -35,7 +35,8 @@ int main(int argc, char** argv) {
 
   auto dbus = std::unique_ptr<mri::DbusService>(cros_dbus_service);
   auto cras =
-      std::shared_ptr<mri::CrasClientWrapper>(new mri::CrasClientImpl());
+      std::shared_ptr<mri::ChromeAudioServiceClient>(
+          new mri::ChromeAudioServiceClientImpl());
   auto vidcap = std::shared_ptr<mri::VideoCaptureServiceClient>(vidcap_client);
   mojo_connector.SetVideoCaptureServiceClient(vidcap);
 

@@ -307,6 +307,16 @@ std::vector<uint8_t> SerializeVideoStreamParamsProto(
   return bytes;
 }
 
+std::vector<uint8_t> SerializeAudioStreamParamsProto(
+    const AudioStreamParams& params) {
+  const int size = params.ByteSizeLong();
+  std::vector<uint8_t> bytes(size, 0);
+
+  CHECK(params.SerializeToArray(bytes.data(), size))
+      << "Failed to serialize params proto.";
+  return bytes;
+}
+
 std::vector<uint8_t> SerializeDeviceTemplateProto(
     const DeviceTemplate& device) {
   const int size = device.ByteSizeLong();
