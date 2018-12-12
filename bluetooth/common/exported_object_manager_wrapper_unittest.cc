@@ -32,6 +32,7 @@ constexpr char kTestObjectPath[] = "/org/example/Object";
 constexpr char kTestObjectManagerPath[] = "/";
 constexpr char kTestPropertyName[] = "SomeProperty";
 constexpr char kTestServiceName[] = "org.example.Default";
+constexpr char kTestMethodName1[] = "org.example.Method1";
 
 // Matcher to compare a D-Bus signal for properties changed.
 MATCHER_P3(PropertySignalEq,
@@ -83,6 +84,15 @@ class ExportedObjectManagerWrapperTest : public ::testing::Test {
       brillo::dbus_utils::DBusInterface* prop_interface,
       brillo::dbus_utils::ExportedPropertySet* property_set) {}
 
+  // The mocked dbus::ExportedObject::ExportMethod needs to call its callback.
+  void StubExportMethod(
+      const std::string& interface_name,
+      const std::string& method_name,
+      dbus::ExportedObject::MethodCallCallback method_call_callback,
+      dbus::ExportedObject::OnExportedCallback on_exported_callback) {
+    on_exported_callback.Run(interface_name, method_name, true /* success */);
+  }
+
  protected:
   scoped_refptr<dbus::MockBus> bus_;
   scoped_refptr<dbus::MockObjectProxy> object_proxy_;
@@ -114,11 +124,21 @@ TEST_F(ExportedObjectManagerWrapperTest, ExportedInterface) {
   // underlying DBusObject.
   EXPECT_TRUE(dbus_object->FindInterface(kTestInterfaceName1) != nullptr);
 
+  interface->AddRawMethodHandler(
+      kTestMethodName1,
+      base::Bind(
+          [](dbus::MethodCall*, dbus::ExportedObject::ResponseSender) {}));
+
   // ExportedInterface::ExportAsync should trigger the underlying
-  // ExportedObjectManager to claim the interface of the specified object.
+  // ExportedObjectManager to claim the interface of the specified object
+  // and export the method handlers of that interface.
   EXPECT_CALL(*exported_object_manager_,
               ClaimInterface(object_path, kTestInterfaceName1, _))
       .Times(1);
+  EXPECT_CALL(*exported_object,
+              ExportMethod(kTestInterfaceName1, kTestMethodName1, _, _))
+      .WillOnce(
+          Invoke(this, &ExportedObjectManagerWrapperTest::StubExportMethod));
   interface->ExportAsync(base::Bind([](bool success) {}));
 
   // Register a property to the interface.
@@ -149,10 +169,9 @@ TEST_F(ExportedObjectManagerWrapperTest, ExportedInterface) {
   interface->Unexport();
   EXPECT_TRUE(dbus_object->FindInterface(kTestInterfaceName1) == nullptr);
 
-  // Check that signal is no longer emitted when property changes value.
-  // This makes sure that the property is unregistered after Unexport() above.
-  EXPECT_CALL(*exported_object, SendSignal(_)).Times(0);
-  exported_property->SetValue(set_value + 1);
+  // Check that the property is unregistered.
+  EXPECT_EQ(nullptr,
+            interface->GetRegisteredExportedProperty(kTestPropertyName));
 }
 
 TEST_F(ExportedObjectManagerWrapperTest, SyncProperty) {

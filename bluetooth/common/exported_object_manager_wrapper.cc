@@ -5,6 +5,7 @@
 #include "bluetooth/common/exported_object_manager_wrapper.h"
 
 #include <memory>
+#include <set>
 #include <utility>
 
 #include <base/stl_util.h>
@@ -46,11 +47,14 @@ void ExportedInterface::ExportAsync(
 }
 
 void ExportedInterface::Unexport() {
-  brillo::dbus_utils::DBusInterface* interface =
-      dbus_object_->FindInterface(interface_name_);
+  std::set<std::string> exported_property_names;
+  for (const auto& kv : exported_properties_) {
+    exported_property_names.insert(kv.first);
+  }
 
-  for (const auto& kv : exported_properties_)
-    interface->RemoveProperty(kv.first);
+  for (const std::string& property_name : exported_property_names) {
+    EnsureExportedPropertyUnregistered(property_name);
+  }
 
   dbus_object_->RemoveInterface(interface_name_);
   is_exported_ = false;
