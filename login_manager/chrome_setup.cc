@@ -144,6 +144,12 @@ void AddCrostiniFlags(ChromiumCommandBuilder* builder) {
   }
 }
 
+void AddPluginVmFlags(ChromiumCommandBuilder* builder) {
+  if (builder->UseFlagIsSet("pita")) {
+    builder->AddFeatureEnableOverride("PluginVm");
+  }
+}
+
 // Blatantly copied from //components/crx_file/id_util.cc.
 // TODO(rkc): Remove when crbug.com/706523 is fixed.
 std::string HashedIdInHex(const std::string& id) {
@@ -592,6 +598,7 @@ void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,
   AddUiFlags(&builder, cros_config);
   AddArcFlags(&builder, &disallowed_prefixes);
   AddCrostiniFlags(&builder);
+  AddPluginVmFlags(&builder);
   AddEnterpriseFlags(&builder);
   AddVmodulePatterns(&builder);
 
