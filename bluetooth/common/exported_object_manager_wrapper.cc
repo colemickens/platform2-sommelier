@@ -26,6 +26,14 @@ void OnObjectExported(std::string object_path, bool success) {
           << ", success = " << success;
 }
 
+// Called when a D-Bus interface is unexported.
+void OnInterfaceUnexported(std::string interface_name, bool success) {
+  VLOG(1) << "Completed unexporting interface " << interface_name
+          << ", success = " << success;
+  if (!success)
+    LOG(ERROR) << "Failed unexporting interface " << interface_name;
+}
+
 }  // namespace
 
 namespace bluetooth {
@@ -56,6 +64,10 @@ void ExportedInterface::Unexport() {
     EnsureExportedPropertyUnregistered(property_name);
   }
 
+  // Unexport before removing the interface to make sure the method handlers are
+  // unregistered.
+  dbus_object_->UnexportInterfaceAsync(
+      interface_name_, base::Bind(&OnInterfaceUnexported, interface_name_));
   dbus_object_->RemoveInterface(interface_name_);
   is_exported_ = false;
 }
