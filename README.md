@@ -88,6 +88,7 @@ copies.
 | [policy_proto](./policy_proto/) | Build file to compile policy proto file |
 | [portier](./portier/) | Multi-Network Neighbor Discovery Proxy service for Chrome OS |
 | [power_manager](./power_manager/) | Userspace power management daemon and associated tools |
+| [qmi2cpp](./qmi2cpp/) | Chrome OS QMI IDL Compiler |
 | [regions](./regions/) ||
 | [run_oci](./run_oci/) | Minimalistic container runtime |
 | [runtime_probe](./runtime_probe/) | Runtime Probe tool for ChromeOS (part of HWID evolution) |
