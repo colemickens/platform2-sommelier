@@ -333,7 +333,7 @@ bool OpenVPNDriver::SpawnOpenVPN() {
                        CAP_TO_MASK(CAP_SETUID) | CAP_TO_MASK(CAP_SETGID);
     openvpn_pid = process_manager_->StartProcessInMinijail(
         FROM_HERE, base::FilePath(kOpenVPNPath), args, "shill", "shill",
-        capmask, true,
+        capmask, true, true,
         base::Bind(&OpenVPNDriver::OnOpenVPNDied, base::Unretained(this)));
     if (openvpn_pid == -1) {
       LOG(ERROR) << "Minijail couldn't run our child process";

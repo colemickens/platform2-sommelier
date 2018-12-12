@@ -79,7 +79,9 @@ class ExternalTask : public RPCTaskDelegate {
   // not support the setting of custom environment variables for a spawned
   // program. |inherit_supplementary_groups| indicates whether the child
   // child program should be spawned with the programatic equivalent of the
-  // minijail -G flag.
+  // minijail -G flag. |close_nonstd_fds| indicates that non-standard file
+  // descriptors should be closed so they cannot be inherited by the child
+  // process.
   //
   // On success, returns true, and leaves |error| unmodified.
   // On failure, returns false, and sets |error|.
@@ -89,6 +91,7 @@ class ExternalTask : public RPCTaskDelegate {
                                const std::string group,
                                uint64_t mask,
                                bool inherit_supplementary_groups,
+                               bool close_nonstd_fds,
                                Error* error);
 
   virtual void Stop();

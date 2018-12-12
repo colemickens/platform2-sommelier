@@ -82,6 +82,7 @@ bool ExternalTask::StartInMinijail(const FilePath& program,
                                    const string group,
                                    uint64_t mask,
                                    bool inherit_supplementary_groups,
+                                   bool close_nonstd_fds,
                                    Error* error) {
   // Checks will fail if Start or StartInMinijailWithRPCIdentifiers has already
   // been called on this object.
@@ -108,16 +109,10 @@ bool ExternalTask::StartInMinijail(const FilePath& program,
   arguments->push_back(base::StringPrintf("--shill_task_path=%s",
                       task_path_variable->second.c_str()));
 
-  pid_t pid =
-      process_manager_->StartProcessInMinijail(FROM_HERE,
-                                     program,
-                                     *arguments,
-                                     user,
-                                     group,
-                                     mask,
-                                     inherit_supplementary_groups,
-                                     base::Bind(&ExternalTask::OnTaskDied,
-                                                base::Unretained(this)));
+  pid_t pid = process_manager_->StartProcessInMinijail(
+      FROM_HERE, program, *arguments, user, group, mask,
+      inherit_supplementary_groups, close_nonstd_fds,
+      base::Bind(&ExternalTask::OnTaskDied, base::Unretained(this)));
 
   if (pid < 0) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,

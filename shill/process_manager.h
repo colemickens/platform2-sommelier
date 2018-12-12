@@ -79,10 +79,11 @@ class ProcessManager {
       const std::string& group,
       uint64_t capmask,
       bool inherit_supplementary_groups,
+      bool close_nonstd_fds,
       const base::Callback<void(int)>& exit_callback) {
     return StartProcessInMinijailWithPipes(
         spawn_source, program, arguments, user, group, capmask,
-        inherit_supplementary_groups, exit_callback,
+        inherit_supplementary_groups, close_nonstd_fds, exit_callback,
         (struct std_file_descriptors){nullptr, nullptr, nullptr});
   }
 
@@ -99,6 +100,7 @@ class ProcessManager {
       const std::string& group,
       uint64_t capmask,
       bool inherit_supplementary_groups,
+      bool close_nonstd_fds,
       const base::Callback<void(int)>& exit_callback,
       struct std_file_descriptors std_fds);
 

@@ -235,7 +235,7 @@ bool L2TPIPSecDriver::SpawnL2TPIPSecVPN(Error* error) {
                        CAP_TO_MASK(CAP_KILL);
     if (external_task_local->StartInMinijail(FilePath(kL2TPIPSecVPNPath),
                                              &options, "shill", "shill",
-                                             capmask, true, error)) {
+                                             capmask, true, true, error)) {
       external_task_ = std::move(external_task_local);
       return true;
     }

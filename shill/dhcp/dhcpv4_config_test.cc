@@ -179,7 +179,8 @@ DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateRunningConfig(
                                              dhcp_props,
                                              &metrics_));
   config->process_manager_ = &process_manager_;
-  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _, _, _))
+  EXPECT_CALL(process_manager_,
+              StartProcessInMinijail(_, _, _, _, _, _, _, _, _))
       .WillOnce(Return(kPID));
   EXPECT_CALL(provider_, BindPID(kPID, IsRefPtrTo(config)));
   EXPECT_TRUE(config->Start());
@@ -404,13 +405,11 @@ MATCHER_P4(IsDHCPCDArgs,
 
 TEST_F(DHCPv4ConfigTest, StartWithHostname) {
   config_->hostname_ = kHostName;
-  EXPECT_CALL(process_manager_,
-              StartProcessInMinijail(_, _,
-                                     IsDHCPCDArgs(kHasHostname,
-                                                  !kHasVendorClass,
-                                                  kArpGateway,
-                                                  kHasLeaseSuffix),
-                                                  _, _, _, _, _))
+  EXPECT_CALL(process_manager_, StartProcessInMinijail(
+                                    _, _,
+                                    IsDHCPCDArgs(kHasHostname, !kHasVendorClass,
+                                                 kArpGateway, kHasLeaseSuffix),
+                                    _, _, _, _, _, _))
       .WillOnce(Return(-1));
   EXPECT_FALSE(StartInstance(config_));
 }
@@ -420,13 +419,12 @@ TEST_F(DHCPv4ConfigTest, StartWithoutHostname) {
                                                        "",
                                                        kLeaseFileSuffix,
                                                        kArpGateway);
-  EXPECT_CALL(process_manager_,
-              StartProcessInMinijail(_, _,
-                                     IsDHCPCDArgs(!kHasHostname,
-                                                  !kHasVendorClass,
-                                                  kArpGateway,
-                                                  kHasLeaseSuffix),
-                                                  _, _, _, _, _))
+  EXPECT_CALL(
+      process_manager_,
+      StartProcessInMinijail(_, _,
+                             IsDHCPCDArgs(!kHasHostname, !kHasVendorClass,
+                                          kArpGateway, kHasLeaseSuffix),
+                             _, _, _, _, _, _))
       .WillOnce(Return(-1));
   EXPECT_FALSE(StartInstance(config));
 }
@@ -436,13 +434,12 @@ TEST_F(DHCPv4ConfigTest, StartWithEmptyHostname) {
                                                        "",
                                                        kLeaseFileSuffix,
                                                        kArpGateway);
-  EXPECT_CALL(process_manager_,
-              StartProcessInMinijail(_, _,
-                                     IsDHCPCDArgs(!kHasHostname,
-                                                  !kHasVendorClass,
-                                                  kArpGateway,
-                                                  kHasLeaseSuffix),
-                                                  _, _, _, _, _))
+  EXPECT_CALL(
+      process_manager_,
+      StartProcessInMinijail(_, _,
+                             IsDHCPCDArgs(!kHasHostname, !kHasVendorClass,
+                                          kArpGateway, kHasLeaseSuffix),
+                             _, _, _, _, _, _))
       .WillOnce(Return(-1));
   EXPECT_FALSE(StartInstance(config));
 }
@@ -452,11 +449,9 @@ TEST_F(DHCPv4ConfigTest, StartWithVendorClass) {
   config_->vendor_class_ = kVendorClass;
   EXPECT_CALL(process_manager_,
               StartProcessInMinijail(_, _,
-                                     IsDHCPCDArgs(kHasHostname,
-                                                  kHasVendorClass,
-                                                  kArpGateway,
-                                                  kHasLeaseSuffix),
-                                                  _, _, _, _, _))
+                                     IsDHCPCDArgs(kHasHostname, kHasVendorClass,
+                                                  kArpGateway, kHasLeaseSuffix),
+                                     _, _, _, _, _, _))
       .WillOnce(Return(-1));
   EXPECT_FALSE(StartInstance(config_));
 }
@@ -466,13 +461,11 @@ TEST_F(DHCPv4ConfigTest, StartWithoutVendorClass) {
                                                        "",
                                                        kLeaseFileSuffix,
                                                        kArpGateway);
-  EXPECT_CALL(process_manager_,
-              StartProcessInMinijail(_, _,
-                                     IsDHCPCDArgs(kHasHostname,
-                                                  !kHasVendorClass,
-                                                  kArpGateway,
-                                                  kHasLeaseSuffix),
-                                                  _, _, _, _, _))
+  EXPECT_CALL(process_manager_, StartProcessInMinijail(
+                                    _, _,
+                                    IsDHCPCDArgs(kHasHostname, !kHasVendorClass,
+                                                 kArpGateway, kHasLeaseSuffix),
+                                    _, _, _, _, _, _))
       .WillOnce(Return(-1));
   EXPECT_FALSE(StartInstance(config));
 }
@@ -483,13 +476,11 @@ TEST_F(DHCPv4ConfigTest, StartWithoutArpGateway) {
                                                        "",
                                                        kLeaseFileSuffix,
                                                        !kArpGateway);
-  EXPECT_CALL(process_manager_,
-              StartProcessInMinijail(_, _,
-                                     IsDHCPCDArgs(kHasHostname,
-                                                  !kHasVendorClass,
-                                                  !kArpGateway,
-                                                  kHasLeaseSuffix),
-                                                  _, _, _, _, _))
+  EXPECT_CALL(process_manager_, StartProcessInMinijail(
+                                    _, _,
+                                    IsDHCPCDArgs(kHasHostname, !kHasVendorClass,
+                                                 !kArpGateway, kHasLeaseSuffix),
+                                    _, _, _, _, _, _))
       .WillOnce(Return(-1));
   EXPECT_FALSE(StartInstance(config));
 }
@@ -601,7 +592,8 @@ TEST_F(DHCPv4ConfigCallbackTest, ProcessEventSignalGatewayArp) {
   conf.SetUint(DHCPv4Config::kConfigurationKeyIPAddress, 0x01020304);
   EXPECT_CALL(*this, SuccessCallback(ConfigRef(), false));
   EXPECT_CALL(*this, FailureCallback(_)).Times(0);
-  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _, _, _))
+  EXPECT_CALL(process_manager_,
+              StartProcessInMinijail(_, _, _, _, _, _, _, _, _))
       .WillOnce(Return(0));
   StartInstance(config_);
   config_->ProcessEventSignal(DHCPv4Config::kReasonGatewayArp, conf);
@@ -624,7 +616,8 @@ TEST_F(DHCPv4ConfigCallbackTest, ProcessEventSignalGatewayArp) {
 TEST_F(DHCPv4ConfigCallbackTest, ProcessEventSignalGatewayArpNak) {
   KeyValueStore conf;
   conf.SetUint(DHCPv4Config::kConfigurationKeyIPAddress, 0x01020304);
-  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _, _, _))
+  EXPECT_CALL(process_manager_,
+              StartProcessInMinijail(_, _, _, _, _, _, _, _, _))
       .WillOnce(Return(0));
   StartInstance(config_);
   config_->ProcessEventSignal(DHCPv4Config::kReasonGatewayArp, conf);

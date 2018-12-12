@@ -30,7 +30,7 @@ class MockProcessManager : public ProcessManager {
                      const std::map<std::string, std::string>& env,
                      bool terminate_with_parent,
                      const base::Callback<void(int)>& exit_callback));
-  MOCK_METHOD8(StartProcessInMinijail,
+  MOCK_METHOD9(StartProcessInMinijail,
                pid_t(const tracked_objects::Location& spawn_source,
                      const base::FilePath& program,
                      const std::vector<std::string>& arguments,
@@ -38,8 +38,9 @@ class MockProcessManager : public ProcessManager {
                      const std::string& group,
                      uint64_t capmask,
                      bool inherit_supplementary_groups,
+                     bool close_nonstd_fds,
                      const base::Callback<void(int)>& exit_callback));
-  MOCK_METHOD9(StartProcessInMinijailWithPipes,
+  MOCK_METHOD10(StartProcessInMinijailWithPipes,
                 pid_t(const tracked_objects::Location& spawn_source,
                       const base::FilePath& program,
                       const std::vector<std::string>& arguments,
@@ -47,6 +48,7 @@ class MockProcessManager : public ProcessManager {
                       const std::string& group,
                       uint64_t capmask,
                       bool inherit_supplementary_groups,
+                      bool close_nonstd_fds,
                       const base::Callback<void(int)>& exit_callback,
                       struct std_file_descriptors std_fds));
   MOCK_METHOD1(StopProcess, bool(pid_t pid));

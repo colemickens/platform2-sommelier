@@ -232,7 +232,8 @@ bool Throttler::StartTCForCommands(const std::vector<std::string>& commands) {
   struct std_file_descriptors std_fds { &tc_stdin_, nullptr, nullptr };
   tc_pid_ = process_manager_->StartProcessInMinijailWithPipes(
       FROM_HERE, base::FilePath(kTCPath), args, kTCUser, kTCGroup, capmask,
-      false, base::Bind(&Throttler::OnProcessExited, AsWeakPtr()), std_fds);
+      false, false, base::Bind(&Throttler::OnProcessExited, AsWeakPtr()),
+      std_fds);
 
   SLOG(this, 1) << "Spawned tc with pid: " << tc_pid_;
 

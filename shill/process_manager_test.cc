@@ -153,6 +153,7 @@ TEST_F(ProcessManagerTest,
   EXPECT_CALL(minijail_, UseCapabilities(_, kCapMask)).Times(1);
   EXPECT_CALL(minijail_, ResetSignalMask(_)).Times(1);
   EXPECT_CALL(minijail_, CloseOpenFds(_)).Times(1);
+  EXPECT_CALL(minijail_, PreserveFd(_, _, _)).Times(3);
   EXPECT_CALL(minijail_,
               RunPipesAndDestroy(_,  // minijail*
                                  IsProcessArgs(kProgram, kArgs),
@@ -162,17 +163,9 @@ TEST_F(ProcessManagerTest,
                                  &stderr_fd))
       .WillOnce(DoAll(SetArgPointee<2>(kPid), Return(true)));
   struct std_file_descriptors std_fds { &stdin_fd, &stdout_fd, &stderr_fd };
-  pid_t actual_pid =
-      process_manager_->StartProcessInMinijailWithPipes(
-          FROM_HERE,
-          base::FilePath(kProgram),
-          kArgs,
-          kUser,
-          kGroup,
-          kCapMask,
-          false,
-          Callback<void(int)>(),
-          std_fds);
+  pid_t actual_pid = process_manager_->StartProcessInMinijailWithPipes(
+      FROM_HERE, base::FilePath(kProgram), kArgs, kUser, kGroup, kCapMask,
+      false, true, Callback<void(int)>(), std_fds);
   EXPECT_EQ(kPid, actual_pid);
   AssertNonEmptyWatchedProcesses();
 }
@@ -191,17 +184,9 @@ TEST_F(ProcessManagerTest,
               RunPipesAndDestroy(_, IsProcessArgs(kProgram, kArgs), _, _, _, _))
       .Times(0);
   struct std_file_descriptors std_fds = { nullptr, nullptr, nullptr };
-  pid_t actual_pid =
-      process_manager_->StartProcessInMinijailWithPipes(
-          FROM_HERE,
-          base::FilePath(kProgram),
-          kArgs,
-          kUser,
-          kGroup,
-          kCapMask,
-          false,
-          Callback<void(int)>(),
-          std_fds);
+  pid_t actual_pid = process_manager_->StartProcessInMinijailWithPipes(
+      FROM_HERE, base::FilePath(kProgram), kArgs, kUser, kGroup, kCapMask,
+      false, false, Callback<void(int)>(), std_fds);
   EXPECT_EQ(-1, actual_pid);
   AssertEmptyWatchedProcesses();
 }
@@ -221,17 +206,9 @@ TEST_F(ProcessManagerTest,
               RunPipesAndDestroy(_, IsProcessArgs(kProgram, kArgs), _, _, _, _))
       .WillOnce(Return(false));
   struct std_file_descriptors std_fds = { nullptr, nullptr, nullptr };
-  pid_t actual_pid =
-      process_manager_->StartProcessInMinijailWithPipes(
-          FROM_HERE,
-          base::FilePath(kProgram),
-          kArgs,
-          kUser,
-          kGroup,
-          kCapMask,
-          false,
-          Callback<void(int)>(),
-          std_fds);
+  pid_t actual_pid = process_manager_->StartProcessInMinijailWithPipes(
+      FROM_HERE, base::FilePath(kProgram), kArgs, kUser, kGroup, kCapMask,
+      false, false, Callback<void(int)>(), std_fds);
   EXPECT_EQ(-1, actual_pid);
   AssertEmptyWatchedProcesses();
 }

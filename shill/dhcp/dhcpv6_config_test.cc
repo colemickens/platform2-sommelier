@@ -114,7 +114,8 @@ DHCPv6ConfigRefPtr DHCPv6ConfigTest::CreateRunningConfig(
                                              kDeviceName,
                                              lease_suffix));
   config->process_manager_ = &process_manager_;
-  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _, _, _))
+  EXPECT_CALL(process_manager_,
+              StartProcessInMinijail(_, _, _, _, _, _, _, _, _))
       .WillOnce(Return(kPID));
   EXPECT_CALL(provider_, BindPID(kPID, IsRefPtrTo(config)));
   EXPECT_TRUE(config->Start());
@@ -236,7 +237,7 @@ MATCHER_P(IsDHCPCDv6Args, has_lease_suffix, "") {
 
 TEST_F(DHCPv6ConfigTest, StartDhcpcd) {
   EXPECT_CALL(process_manager_,
-              StartProcessInMinijail(_, _, IsDHCPCDv6Args(kHasLeaseSuffix),
+              StartProcessInMinijail(_, _, IsDHCPCDv6Args(kHasLeaseSuffix), _,
                                      _, _, _, _, _))
       .WillOnce(Return(-1));
   EXPECT_FALSE(StartInstance(config_));
