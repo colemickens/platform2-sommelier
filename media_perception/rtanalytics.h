@@ -15,9 +15,13 @@ namespace mri {
 
 // Typdefs for readability. Serialized protos are passed back and forth across
 // the boundary between platform2 code and librtanalytics.so.
-// Note that this alias is guaranteed to always have this type.
+// Note that these aliases are guaranteed to always have this type.
 using SerializedSuccessStatus = std::vector<uint8_t>;
 using SerializedPipelineState = std::vector<uint8_t>;
+using SerializedDeviceTemplate = std::vector<uint8_t>;
+using SerializedVideoDevice = std::vector<uint8_t>;
+using SerializedAudioDevice = std::vector<uint8_t>;
+using SerializedVirtualVideoDevice = std::vector<uint8_t>;
 
 enum PerceptionInterfaceType {
   INTERFACE_TYPE_UNKNOWN,
@@ -36,6 +40,30 @@ class Rtanalytics {
       const std::string& configuration_name,
       SerializedSuccessStatus* success_status) = 0;
 
+  // Returns the list of template names for devices that can be filled in for a
+  // particular configuration that has been setup. If the configuration has not
+  // been setup via |SetupConfiguration| the returned list will always be empty.
+  virtual std::vector<SerializedDeviceTemplate> GetTemplateDevices(
+      const std::string& configuration_name) const = 0;
+
+  // Enables a client of rtanalytics to set the parameters for a video device
+  // for a specified device template.
+  virtual SerializedSuccessStatus SetVideoDeviceForTemplateName(
+      const std::string& configuration_name, const std::string& template_name,
+      const SerializedVideoDevice& video_device) = 0;
+
+  // Enables a client of rtanalytics to set the parameters for an audio device
+  // for a specified device template.
+  virtual SerializedSuccessStatus SetAudioDeviceForTemplateName(
+      const std::string& configuration_name, const std::string& template_name,
+      const SerializedAudioDevice& audio_device) = 0;
+
+  // Enables a client of rtanalytics to set the parameters for a virtual video
+  // device for a specified device template.
+  virtual SerializedSuccessStatus SetVirtualVideoDeviceForTemplateName(
+      const std::string& configuration_name, const std::string& template_name,
+      const SerializedVirtualVideoDevice& virtual_device) = 0;
+
   // Returns the pipeline state of the given configuation.
   virtual SerializedPipelineState GetPipelineState(
       const std::string& configuration_name) const = 0;
@@ -43,7 +71,7 @@ class Rtanalytics {
   // Sets the pipeline to the desired state and returns the new state.
   virtual SerializedPipelineState SetPipelineState(
       const std::string& configuration_name,
-      const SerializedPipelineState* desired_state) = 0;
+      const SerializedPipelineState& desired_state) = 0;
 };
 
 }  // namespace mri

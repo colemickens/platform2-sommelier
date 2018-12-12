@@ -286,7 +286,36 @@ std::vector<uint8_t> SerializeVideoStreamParamsProto(
   return bytes;
 }
 
+std::vector<uint8_t> SerializeDeviceTemplateProto(
+    const DeviceTemplate& device) {
+  const int size = device.ByteSizeLong();
+  std::vector<uint8_t> bytes(size, 0);
+
+  CHECK(device.SerializeToArray(bytes.data(), size))
+      << "Failed to serialize device template proto.";
+  return bytes;
+}
+
 std::vector<uint8_t> SerializeVideoDeviceProto(const VideoDevice& device) {
+  const int size = device.ByteSizeLong();
+  std::vector<uint8_t> bytes(size, 0);
+
+  CHECK(device.SerializeToArray(bytes.data(), size))
+      << "Failed to serialize device proto.";
+  return bytes;
+}
+
+std::vector<uint8_t> SerializeAudioDeviceProto(const AudioDevice& device) {
+  const int size = device.ByteSizeLong();
+  std::vector<uint8_t> bytes(size, 0);
+
+  CHECK(device.SerializeToArray(bytes.data(), size))
+      << "Failed to serialize device proto.";
+  return bytes;
+}
+
+std::vector<uint8_t> SerializeVirtualVideoDeviceProto(
+    const VirtualVideoDevice& device) {
   const int size = device.ByteSizeLong();
   std::vector<uint8_t> bytes(size, 0);
 

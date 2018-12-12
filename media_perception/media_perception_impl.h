@@ -28,6 +28,23 @@ class MediaPerceptionImpl :
   void SetupConfiguration(const std::string& configuration_name,
                           const SetupConfigurationCallback& callback) override;
   void GetVideoDevices(const GetVideoDevicesCallback& callback) override;
+  void GetTemplateDevices(const std::string& configuration_name,
+                          const GetTemplateDevicesCallback& callback) override;
+  void SetVideoDeviceForTemplateName(
+      const std::string& configuration_name,
+      const std::string& template_name,
+      chromeos::media_perception::mojom::VideoDevicePtr device,
+      const SetVideoDeviceForTemplateNameCallback& callback) override;
+  void SetAudioDeviceForTemplateName(
+      const std::string& configuration_name,
+      const std::string& template_name,
+      chromeos::media_perception::mojom::AudioDevicePtr device,
+      const SetAudioDeviceForTemplateNameCallback& callback) override;
+  void SetVirtualVideoDeviceForTemplateName(
+      const std::string& configuration_name,
+      const std::string& template_name,
+      chromeos::media_perception::mojom::VirtualVideoDevicePtr device,
+      const SetVirtualVideoDeviceForTemplateNameCallback& callback) override;
   void GetPipelineState(const std::string& configuration_name,
                         const GetPipelineStateCallback& callback) override;
   void SetPipelineState(

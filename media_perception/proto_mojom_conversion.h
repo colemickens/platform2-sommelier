@@ -64,7 +64,12 @@ namespace mri {
 
 std::vector<uint8_t> SerializeVideoStreamParamsProto(
     const VideoStreamParams& params);
+std::vector<uint8_t> SerializeDeviceTemplateProto(
+    const DeviceTemplate& device);
 std::vector<uint8_t> SerializeVideoDeviceProto(const VideoDevice& device);
+std::vector<uint8_t> SerializeAudioDeviceProto(const AudioDevice& device);
+std::vector<uint8_t> SerializeVirtualVideoDeviceProto(
+    const VirtualVideoDevice& device);
 std::vector<uint8_t> SerializeSuccessStatusProto(const SuccessStatus& status);
 std::vector<uint8_t> SerializePipelineStateProto(const PipelineState& state);
 

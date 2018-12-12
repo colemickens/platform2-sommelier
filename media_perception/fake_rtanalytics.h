@@ -18,17 +18,34 @@ class FakeRtanalytics : public Rtanalytics {
  public:
   FakeRtanalytics() = default;
 
+  void SetSerializedDeviceTemplates(
+      std::vector<SerializedDeviceTemplate> serialized_device_templates);
+
   // Rtanalytics:
   std::vector<PerceptionInterfaceType> SetupConfiguration(
       const std::string& configuration_name,
       SerializedSuccessStatus* success_status) override;
+  std::vector<SerializedDeviceTemplate> GetTemplateDevices(
+      const std::string& configuration_name) const override;
+  SerializedSuccessStatus SetVideoDeviceForTemplateName(
+      const std::string& configuration_name, const std::string& template_name,
+      const SerializedVideoDevice& video_device) override;
+  SerializedSuccessStatus SetAudioDeviceForTemplateName(
+      const std::string& configuration_name, const std::string& template_name,
+      const SerializedAudioDevice& audio_device) override;
+  SerializedSuccessStatus SetVirtualVideoDeviceForTemplateName(
+      const std::string& configuration_name, const std::string& template_name,
+      const SerializedVirtualVideoDevice& virtual_device) override;
   SerializedPipelineState GetPipelineState(
       const std::string& configuration_name) const override;
   SerializedPipelineState SetPipelineState(
       const std::string& configuration_name,
-      const SerializedPipelineState* desired_state) override;
+      const SerializedPipelineState& desired_state) override;
 
  private:
+  // A list of device templates to be returned by GetTemplateDevices.
+  std::vector<SerializedDeviceTemplate> serialized_device_templates_;
+
   DISALLOW_COPY_AND_ASSIGN(FakeRtanalytics);
 };
 

@@ -33,6 +33,23 @@ interface MediaPerception {
 
   GetVideoDevices@1() => (array<VideoDevice> devices);
 
+  // Returns a list of template names for devices that can be filled in for
+  // a particular configuration.
+  GetTemplateDevices@3(string configuration_name) =>
+      (array<DeviceTemplate> device_templates);
+
+  SetVideoDeviceForTemplateName@4(
+      string configuration_name, string template_name,
+      VideoDevice device) => (SuccessStatus status);
+
+  SetAudioDeviceForTemplateName@5(
+      string configuration_name, string template_name,
+      AudioDevice device) => (SuccessStatus status);
+
+  SetVirtualVideoDeviceForTemplateName@6(
+      string configuration_name, string template_name,
+      VirtualVideoDevice device) => (SuccessStatus status);
+
   // ------------------- End of device management definitions. ---------------
 
   // ------------------- Start of pipeline state definitions. ----------------
