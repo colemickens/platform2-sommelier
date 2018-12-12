@@ -388,6 +388,7 @@ bool TPM2UtilityImpl::GenerateKey(int slot,
   }
   if (modulus_bits < static_cast<int>(kMinModulusSize)) {
     LOG(ERROR) << "Minimum modulus size is: " << kMinModulusSize;
+    return false;
   }
   ScopedSession session_scope(factory_, &session_);
   if (!session_) {

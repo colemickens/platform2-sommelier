@@ -337,6 +337,21 @@ TEST_F(TPM2UtilityTest, GenerateKeyWrongExponent) {
                                    &key_handle));
 }
 
+TEST_F(TPM2UtilityTest, GenerateKeyModulusTooSmall) {
+  TPM2UtilityImpl utility(factory_.get());
+  int modulus_bits = 1;
+  std::string exponent("\x01\x00\x01", 3);
+  SecureBlob auth_data;
+  std::string key_blob;
+  int key_handle;
+  EXPECT_FALSE(utility.GenerateKey(1,
+                                   modulus_bits,
+                                   exponent,
+                                   auth_data,
+                                   &key_blob,
+                                   &key_handle));
+}
+
 TEST_F(TPM2UtilityTest, GenerateKeyCreateFail) {
   TPM2UtilityImpl utility(factory_.get());
   int modulus_bits = 2048;
