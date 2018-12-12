@@ -1,0 +1,123 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":arc-obb-mounter",
+    ":mount-obb",
+    ":generate_squashfs",
+  ]
+  if (use.test) {
+    deps += [
+      ":arc-obb-mounter_testrunner",
+    ]
+  }
+}
+
+pkg_config("target_defaults_pkg_config") {
+  pkg_deps = [
+    "fuse",
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "libcap",
+  ]
+}
+
+config("target_defaults") {
+  configs = [
+    ":target_defaults_pkg_config",
+  ]
+  defines = [
+    "FUSE_USE_VERSION=26",
+  ]
+}
+
+static_library("libmount_obb") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "util.cc",
+    "volume.cc",
+  ]
+}
+
+executable("arc-obb-mounter") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "arc_obb_mounter.cc",
+    "mount.cc",
+    "service.cc",
+  ]
+}
+
+executable("mount-obb") {
+  configs += [ ":target_defaults" ]
+  sources = [ "mount_obb.cc" ]
+  deps = [ ":libmount_obb" ]
+}
+
+action("mkdir_squashfs_source_dir") {
+  inputs = []
+  output_dir = "${root_gen_dir}/squashfs_source_dir"
+  outputs = [
+    "${output_dir}",
+  ]
+  script = "//common-mk/file_generator_wrapper.py"
+  args = [
+    "mkdir", "-p", "${output_dir}",
+  ]
+}
+
+action("generate_squashfs") {
+  inputs = [
+    "${root_gen_dir}/squashfs_source_dir",
+  ]
+  outputs = [
+    "${root_out_dir}/rootfs.squashfs",
+  ]
+  script = "//common-mk/file_generator_wrapper.py"
+  args = [
+    "mksquashfs",
+    "${root_gen_dir}/squashfs_source_dir",
+    "${root_out_dir}/rootfs.squashfs",
+    "-no-progress",
+    "-info",
+    "-all-root",
+    "-noappend",
+    "-comp", "lzo",
+    "-b", "4K",
+    "-p", "/data d 700 0 0",
+    "-p", "/dev d 700 0 0",
+    "-p", "/dev/fuse c 666 root root 10 229",
+    "-p", "/lib d 700 0 0",
+    "-p", "/lib64 d 700 0 0",
+    "-p", "/proc d 700 0 0",
+    "-p", "/run d 700 0 0",
+    "-p", "/run/dbus d 700 0 0",
+    "-p", "/usr d 700 0 0",
+    "-p", "/var d 700 0 0",
+    "-p", "/var/run d 700 0 0",
+    "-p", "/var/run/arc d 700 0 0",
+    "-p", "/var/run/arc/obb d 700 0 0",
+  ]
+  deps = [
+    ":mkdir_squashfs_source_dir",
+  ]
+}
+
+if (use.test) {
+  executable("arc-obb-mounter_testrunner") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    defines = ["UNIT_TEST"]
+    deps = [
+      "//common-mk/testrunner:testrunner",
+      ":libmount_obb",
+    ]
+    sources = ["util_test.cc"]
+  }
+}
