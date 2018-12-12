@@ -29,6 +29,7 @@ PixelFormat ToMojom(mri::PixelFormat format);
 VideoStreamParamsPtr ToMojom(const mri::VideoStreamParams& params);
 VideoDevicePtr ToMojom(const mri::VideoDevice& device);
 VirtualVideoDevicePtr ToMojom(const mri::VirtualVideoDevice& device);
+SampleFormat ToMojom(mri::SampleFormat format);
 AudioStreamParamsPtr ToMojom(const mri::AudioStreamParams& params);
 AudioDevicePtr ToMojom(const mri::AudioDevice& device);
 DeviceType ToMojom(mri::DeviceType type);
@@ -83,6 +84,8 @@ VideoDevice ToProto(
     const chromeos::media_perception::mojom::VideoDevicePtr& device_ptr);
 VirtualVideoDevice ToProto(
     const chromeos::media_perception::mojom::VirtualVideoDevicePtr& device_ptr);
+SampleFormat ToProto(
+    chromeos::media_perception::mojom::SampleFormat format);
 AudioStreamParams ToProto(
     const chromeos::media_perception::mojom::AudioStreamParamsPtr& params_ptr);
 AudioDevice ToProto(

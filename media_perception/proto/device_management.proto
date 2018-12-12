@@ -35,9 +35,17 @@ message VirtualVideoDevice {
   optional VideoDevice video_device = 1;
 }
 
+enum SampleFormat {
+  SND_PCM_UNKNOWN_FORMAT = 0;
+  SND_PCM_FORMAT_S32_LE = 1;
+  SND_PCM_FORMAT_S16_LE = 2;
+}
+
 message AudioStreamParams {
   optional float frequency_in_hz = 1;
   optional int32 num_channels =  2;
+  optional int32 frame_size = 3;
+  optional SampleFormat sample_format = 4;
 }
 
 message AudioDevice {

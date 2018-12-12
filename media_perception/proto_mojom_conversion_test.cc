@@ -58,10 +58,13 @@ mri::VideoDevice CreateVideoDeviceProto(
 }
 
 mri::AudioStreamParams CreateAudioStreamParamsProto(
-    float frequency_in_hz, int num_channels) {
+    float frequency_in_hz, int num_channels, int frame_size,
+    mri::SampleFormat sample_format) {
   mri::AudioStreamParams params;
   params.set_frequency_in_hz(frequency_in_hz);
   params.set_num_channels(num_channels);
+  params.set_frame_size(frame_size);
+  params.set_sample_format(sample_format);
   return params;
 }
 
@@ -73,10 +76,12 @@ mri::AudioDevice CreateAudioDeviceProto(
   for (int i = 0; i < kNumSupportedConfigurations; i++) {
     int j = i * kNumSupportedConfigurations;
     mri::AudioStreamParams* params = device.add_supported_configurations();
-    *params = CreateAudioStreamParamsProto(j, j + 1);
+    *params = CreateAudioStreamParamsProto(
+        j, j + 1, j + 2, mri::SampleFormat::SND_PCM_FORMAT_S32_LE);
   }
   mri::AudioStreamParams* params = device.mutable_configuration();
-  *params = CreateAudioStreamParamsProto(1, 2);
+  *params = CreateAudioStreamParamsProto(
+      1, 2, 3, mri::SampleFormat::SND_PCM_FORMAT_S16_LE);
   return device;
 }
 
@@ -132,10 +137,17 @@ TEST(ProtoMojomConversionTest, VirtualVideoDeviceToMojom) {
 
 TEST(ProtoMojomConversionTest, AudioStreamParamsToMojom) {
   mri::AudioStreamParams params = CreateAudioStreamParamsProto(
-      1, 2);
+      1, 2, 3, mri::SampleFormat::SND_PCM_FORMAT_S32_LE);
   AudioStreamParamsPtr params_ptr = ToMojom(params);
   EXPECT_EQ(params_ptr->frequency_in_hz, 1);
   EXPECT_EQ(params_ptr->num_channels, 2);
+  EXPECT_EQ(params_ptr->frame_size, 3);
+  EXPECT_EQ(params_ptr->sample_format, SampleFormat::SND_PCM_FORMAT_S32_LE);
+
+  params = CreateAudioStreamParamsProto(
+      1, 2, 3, mri::SampleFormat::SND_PCM_FORMAT_S16_LE);
+  params_ptr = ToMojom(params);
+  EXPECT_EQ(params_ptr->sample_format, SampleFormat::SND_PCM_FORMAT_S16_LE);
 }
 
 TEST(ProtoMojomConversionTest, AudioDeviceToMojom) {
@@ -336,11 +348,14 @@ chromeos::media_perception::mojom::VideoDevicePtr CreateVideoDevicePtr(
 
 chromeos::media_perception::mojom::AudioStreamParamsPtr
 CreateAudioStreamParamsPtr(
-    float frequency_in_hz, int num_channels) {
+    float frequency_in_hz, int num_channels, int frame_size) {
   chromeos::media_perception::mojom::AudioStreamParamsPtr params_ptr =
       chromeos::media_perception::mojom::AudioStreamParams::New();
   params_ptr->frequency_in_hz = frequency_in_hz;
   params_ptr->num_channels = num_channels;
+  params_ptr->frame_size = frame_size;
+  params_ptr->sample_format =
+      chromeos::media_perception::mojom::SampleFormat::SND_PCM_FORMAT_S16_LE;
   return params_ptr;
 }
 
@@ -353,9 +368,9 @@ chromeos::media_perception::mojom::AudioDevicePtr CreateAudioDevicePtr(
   for (int i = 0; i < kNumSupportedConfigurations; i++) {
     int j = i * kNumSupportedConfigurations;
     device_ptr->supported_configurations.push_back(
-        CreateAudioStreamParamsPtr(j, j + 1));
+        CreateAudioStreamParamsPtr(j, j + 1, j + 2));
   }
-  device_ptr->configuration = CreateAudioStreamParamsPtr(1, 2);
+  device_ptr->configuration = CreateAudioStreamParamsPtr(1, 2, 3);
   return device_ptr;
 }
 
@@ -418,9 +433,11 @@ TEST(ProtoMojomConversionTest, AudioStreamParamsToProto) {
   AudioStreamParams params = ToProto(params_ptr);
   EXPECT_EQ(params.frequency_in_hz(), 0);
 
-  params = ToProto(CreateAudioStreamParamsPtr(1, 2));
+  params = ToProto(CreateAudioStreamParamsPtr(1, 2, 3));
   EXPECT_EQ(params.frequency_in_hz(), 1);
   EXPECT_EQ(params.num_channels(), 2);
+  EXPECT_EQ(params.frame_size(), 3);
+  EXPECT_EQ(params.sample_format(), SampleFormat::SND_PCM_FORMAT_S16_LE);
 }
 
 TEST(ProtoMojomConversionTest, AudioDeviceToProto) {

@@ -65,10 +65,24 @@ VirtualVideoDevicePtr ToMojom(const mri::VirtualVideoDevice& device) {
   return device_ptr;
 }
 
+SampleFormat ToMojom(mri::SampleFormat format) {
+  switch (format) {
+    case mri::SampleFormat::SND_PCM_FORMAT_S32_LE:
+      return SampleFormat::SND_PCM_FORMAT_S32_LE;
+    case mri::SampleFormat::SND_PCM_FORMAT_S16_LE:
+      return SampleFormat::SND_PCM_FORMAT_S16_LE;
+    case mri::SampleFormat::SND_PCM_UNKNOWN_FORMAT:
+      return SampleFormat::SND_PCM_UNKNOWN_FORMAT;
+  }
+  return SampleFormat::SND_PCM_UNKNOWN_FORMAT;
+}
+
 AudioStreamParamsPtr ToMojom(const mri::AudioStreamParams& params) {
   AudioStreamParamsPtr params_ptr = AudioStreamParams::New();
   params_ptr->frequency_in_hz = params.frequency_in_hz();
   params_ptr->num_channels = params.num_channels();
+  params_ptr->frame_size = params.frame_size();
+  params_ptr->sample_format = ToMojom(params.sample_format());
   return params_ptr;
 }
 
@@ -411,6 +425,20 @@ VirtualVideoDevice ToProto(
   return device;
 }
 
+SampleFormat ToProto(
+    chromeos::media_perception::mojom::SampleFormat format) {
+  switch (format) {
+    case chromeos::media_perception::mojom::SampleFormat::SND_PCM_FORMAT_S32_LE:
+      return SampleFormat::SND_PCM_FORMAT_S32_LE;
+    case chromeos::media_perception::mojom::SampleFormat::SND_PCM_FORMAT_S16_LE:
+      return SampleFormat::SND_PCM_FORMAT_S16_LE;
+    case chromeos::media_perception::mojom::SampleFormat
+        ::SND_PCM_UNKNOWN_FORMAT:
+      return SampleFormat::SND_PCM_UNKNOWN_FORMAT;
+  }
+  return SampleFormat::SND_PCM_UNKNOWN_FORMAT;
+}
+
 AudioStreamParams ToProto(
     const chromeos::media_perception::mojom::AudioStreamParamsPtr&
     params_ptr) {
@@ -420,6 +448,8 @@ AudioStreamParams ToProto(
 
   params.set_frequency_in_hz(params_ptr->frequency_in_hz);
   params.set_num_channels(params_ptr->num_channels);
+  params.set_frame_size(params_ptr->frame_size);
+  params.set_sample_format(ToProto(params_ptr->sample_format));
   return params;
 }
 
