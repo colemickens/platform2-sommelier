@@ -68,8 +68,8 @@ class IcmpTest : public Test {
   int GetSocket() { return icmp_.socket_; }
   bool StartIcmp() { return StartIcmpWithFD(kSocketFD); }
   bool StartIcmpWithFD(int fd) {
-    EXPECT_CALL(*sockets_, Socket(AF_INET, SOCK_RAW, IPPROTO_ICMP))
-        .WillOnce(Return(fd));
+    EXPECT_CALL(*sockets_, Socket(AF_INET, SOCK_RAW | SOCK_CLOEXEC,
+          IPPROTO_ICMP)) .WillOnce(Return(fd));
     EXPECT_CALL(*sockets_, SetNonBlocking(fd)).WillOnce(Return(0));
 
     IPAddress ipv4_destination(IPAddress::kFamilyIPv4);
@@ -107,7 +107,7 @@ TEST_F(IcmpTest, SocketOpenFail) {
       Log(logging::LOG_ERROR, _,
           HasSubstr("Could not create ICMP socket"))).Times(1);
 
-  EXPECT_CALL(*sockets_, Socket(AF_INET, SOCK_RAW, IPPROTO_ICMP))
+  EXPECT_CALL(*sockets_, Socket(AF_INET, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMP))
       .WillOnce(Return(-1));
 
   IPAddress ipv4_destination(IPAddress::kFamilyIPv4);

@@ -795,7 +795,7 @@ ByteString DeviceInfo::GetMACAddressFromKernel(int interface_index) const {
     return ByteString();
   }
 
-  const int fd = sockets_->Socket(PF_INET, SOCK_DGRAM, 0);
+  const int fd = sockets_->Socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
   if (fd < 0) {
     PLOG(ERROR) << __func__ << ": Unable to open socket";
     return ByteString();
@@ -828,7 +828,7 @@ bool DeviceInfo::GetMACAddressOfPeer(int interface_index,
     return false;
   }
 
-  const int fd = sockets_->Socket(PF_INET, SOCK_DGRAM, 0);
+  const int fd = sockets_->Socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
   if (fd < 0) {
     PLOG(ERROR) << __func__ << ": Unable to open socket";
     return false;
@@ -1031,7 +1031,7 @@ bool DeviceInfo::GetByteCounts(int interface_index,
 }
 
 bool DeviceInfo::CreateTunnelInterface(string* interface_name) const {
-  int fd = HANDLE_EINTR(open(kTunDeviceName, O_RDWR));
+  int fd = HANDLE_EINTR(open(kTunDeviceName, O_RDWR | O_CLOEXEC));
   if (fd < 0) {
     PLOG(ERROR) << "failed to open " << kTunDeviceName;
     return false;
@@ -1057,7 +1057,7 @@ bool DeviceInfo::CreateTunnelInterface(string* interface_name) const {
 }
 
 int DeviceInfo::OpenTunnelInterface(const std::string& interface_name) const {
-  int fd = HANDLE_EINTR(open(kTunDeviceName, O_RDWR));
+  int fd = HANDLE_EINTR(open(kTunDeviceName, O_RDWR | O_CLOEXEC));
   if (fd < 0) {
     PLOG(ERROR) << "failed to open " << kTunDeviceName;
     return -1;

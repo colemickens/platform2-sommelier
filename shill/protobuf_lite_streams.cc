@@ -18,7 +18,7 @@ namespace shill {
 
 CopyingInputStreamAdaptor* protobuf_lite_file_input_stream(
     const string& file_path) {
-  int fd = HANDLE_EINTR(open(file_path.c_str(), O_RDONLY));
+  int fd = HANDLE_EINTR(open(file_path.c_str(), O_RDONLY | O_CLOEXEC));
   if (fd == -1) {
     PLOG(ERROR) << __func__ << ": "
                 << "Could not load protobuf file [" << file_path << "] ";

@@ -41,8 +41,8 @@ class NetlinkSocketTest : public Test {
   }
 
   virtual void InitializeSocket(int fd) {
-    EXPECT_CALL(*mock_sockets_, Socket(PF_NETLINK, SOCK_DGRAM, NETLINK_GENERIC))
-        .WillOnce(Return(fd));
+    EXPECT_CALL(*mock_sockets_, Socket(PF_NETLINK, SOCK_DGRAM | SOCK_CLOEXEC,
+          NETLINK_GENERIC)).WillOnce(Return(fd));
     EXPECT_CALL(*mock_sockets_, SetReceiveBuffer(
         fd, kNetlinkReceiveBufferSize)).WillOnce(Return(0));
     EXPECT_CALL(*mock_sockets_, Bind(fd, _, sizeof(struct sockaddr_nl)))
@@ -87,7 +87,7 @@ TEST_F(NetlinkSocketTest, InitBrokenSocketTest) {
   SetUp();
 
   const int kBadFd = -1;
-  EXPECT_CALL(*mock_sockets_, Socket(PF_NETLINK, SOCK_DGRAM, NETLINK_GENERIC))
+  EXPECT_CALL(*mock_sockets_, Socket(PF_NETLINK, _, NETLINK_GENERIC))
       .WillOnce(Return(kBadFd));
   EXPECT_CALL(*mock_sockets_, SetReceiveBuffer(_, _)).Times(0);
   EXPECT_CALL(*mock_sockets_, Bind(_, _, _)).Times(0);
@@ -97,7 +97,7 @@ TEST_F(NetlinkSocketTest, InitBrokenSocketTest) {
 TEST_F(NetlinkSocketTest, InitBrokenBufferTest) {
   SetUp();
 
-  EXPECT_CALL(*mock_sockets_, Socket(PF_NETLINK, SOCK_DGRAM, NETLINK_GENERIC))
+  EXPECT_CALL(*mock_sockets_, Socket(PF_NETLINK, _, NETLINK_GENERIC))
       .WillOnce(Return(kFakeFd));
   EXPECT_CALL(*mock_sockets_, SetReceiveBuffer(
       kFakeFd, kNetlinkReceiveBufferSize)).WillOnce(Return(-1));
@@ -112,7 +112,7 @@ TEST_F(NetlinkSocketTest, InitBrokenBufferTest) {
 TEST_F(NetlinkSocketTest, InitBrokenBindTest) {
   SetUp();
 
-  EXPECT_CALL(*mock_sockets_, Socket(PF_NETLINK, SOCK_DGRAM, NETLINK_GENERIC))
+  EXPECT_CALL(*mock_sockets_, Socket(PF_NETLINK, _, NETLINK_GENERIC))
       .WillOnce(Return(kFakeFd));
   EXPECT_CALL(*mock_sockets_, SetReceiveBuffer(
       kFakeFd, kNetlinkReceiveBufferSize)).WillOnce(Return(0));

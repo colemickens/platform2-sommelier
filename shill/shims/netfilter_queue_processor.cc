@@ -282,7 +282,7 @@ uint32_t NetfilterQueueProcessor::GetNetmaskForDevice(int device_index) {
     return INADDR_NONE;
   }
 
-  int socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
+  int socket_fd = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
   if (socket_fd < 0) {
     return INADDR_NONE;
   }

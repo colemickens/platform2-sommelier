@@ -124,8 +124,8 @@ const int RTNLHandlerTest::kTestDeviceIndex = 123456;
 const char RTNLHandlerTest::kTestDeviceName[] = "test-device";
 
 void RTNLHandlerTest::StartRTNLHandler() {
-  EXPECT_CALL(*sockets_, Socket(PF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE))
-      .WillOnce(Return(kTestSocket));
+  EXPECT_CALL(*sockets_, Socket(PF_NETLINK, SOCK_DGRAM | SOCK_CLOEXEC,
+        NETLINK_ROUTE)).WillOnce(Return(kTestSocket));
   EXPECT_CALL(*sockets_, Bind(kTestSocket, _, sizeof(sockaddr_nl)))
       .WillOnce(Return(0));
   EXPECT_CALL(*sockets_, SetReceiveBuffer(kTestSocket, _)).WillOnce(Return(0));
@@ -210,7 +210,7 @@ TEST_F(RTNLHandlerTest, GetInterfaceName) {
   }
 
   const int kTestSocket = 123;
-  EXPECT_CALL(*sockets_, Socket(PF_INET, SOCK_DGRAM, 0))
+  EXPECT_CALL(*sockets_, Socket(PF_INET, _, 0))
       .Times(3)
       .WillOnce(Return(-1))
       .WillRepeatedly(Return(kTestSocket));

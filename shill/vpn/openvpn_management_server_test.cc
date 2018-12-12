@@ -162,15 +162,15 @@ TEST_F(OpenVPNManagementServerTest, StartStarted) {
 }
 
 TEST_F(OpenVPNManagementServerTest, StartSocketFail) {
-  EXPECT_CALL(sockets_, Socket(AF_INET, SOCK_STREAM, IPPROTO_TCP))
-      .WillOnce(Return(-1));
+  EXPECT_CALL(sockets_, Socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC,
+        IPPROTO_TCP)).WillOnce(Return(-1));
   EXPECT_FALSE(server_.Start(nullptr, &sockets_, nullptr));
   ExpectNotStarted();
 }
 
 TEST_F(OpenVPNManagementServerTest, StartGetSockNameFail) {
   const int kSocket = 123;
-  EXPECT_CALL(sockets_, Socket(AF_INET, SOCK_STREAM, IPPROTO_TCP))
+  EXPECT_CALL(sockets_, Socket(AF_INET, _, IPPROTO_TCP))
       .WillOnce(Return(kSocket));
   EXPECT_CALL(sockets_, Bind(kSocket, _, _)).WillOnce(Return(0));
   EXPECT_CALL(sockets_, Listen(kSocket, 1)).WillOnce(Return(0));
@@ -184,7 +184,7 @@ TEST_F(OpenVPNManagementServerTest, Start) {
   const string kStaticChallenge = "static-challenge";
   driver_.args()->SetString(kOpenVPNStaticChallengeProperty, kStaticChallenge);
   const int kSocket = 123;
-  EXPECT_CALL(sockets_, Socket(AF_INET, SOCK_STREAM, IPPROTO_TCP))
+  EXPECT_CALL(sockets_, Socket(AF_INET, _, IPPROTO_TCP))
       .WillOnce(Return(kSocket));
   EXPECT_CALL(sockets_, Bind(kSocket, _, _)).WillOnce(Return(0));
   EXPECT_CALL(sockets_, Listen(kSocket, 1)).WillOnce(Return(0));

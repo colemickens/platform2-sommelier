@@ -432,7 +432,7 @@ void Ethernet::SetupWakeOnLan() {
     return;
   }
 
-  sock = sockets_->Socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
+  sock = sockets_->Socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_IP);
   if (sock < 0) {
     LOG(WARNING) << "Failed to allocate socket: "
                  << sockets_->ErrorString() << ".";

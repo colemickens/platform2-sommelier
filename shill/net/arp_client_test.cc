@@ -124,8 +124,8 @@ ssize_t ArpClientTest::SimulateRecvFrom(int sockfd, void* buf, size_t len,
 }
 
 void ArpClientTest::StartClientWithFD(int fd) {
-  EXPECT_CALL(*sockets_, Socket(PF_PACKET, SOCK_DGRAM, htons(ETHERTYPE_ARP)))
-      .WillOnce(Return(fd));
+  EXPECT_CALL(*sockets_, Socket(PF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC,
+        htons(ETHERTYPE_ARP))).WillOnce(Return(fd));
   EXPECT_CALL(*sockets_, AttachFilter(fd, _)).WillOnce(Return(0));
   EXPECT_CALL(*sockets_, SetNonBlocking(fd)).WillOnce(Return(0));
   EXPECT_CALL(*sockets_, Bind(fd,
@@ -146,7 +146,7 @@ TEST_F(ArpClientTest, SocketOpenFail) {
       Log(logging::LOG_ERROR, _,
           HasSubstr("Could not create ARP socket"))).Times(1);
 
-  EXPECT_CALL(*sockets_, Socket(PF_PACKET, SOCK_DGRAM, htons(ETHERTYPE_ARP)))
+  EXPECT_CALL(*sockets_, Socket(PF_PACKET, _, htons(ETHERTYPE_ARP)))
       .WillOnce(Return(-1));
   EXPECT_FALSE(CreateSocket());
 }

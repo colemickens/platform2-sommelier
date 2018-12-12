@@ -30,9 +30,10 @@ bool Icmp::Start(const IPAddress& destination, int interface_index) {
 
   int socket = -1;
   if (destination.family() == IPAddress::kFamilyIPv4) {
-    socket = sockets_->Socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+    socket = sockets_->Socket(AF_INET, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMP);
   } else if (destination.family() == IPAddress::kFamilyIPv6) {
-    socket = sockets_->Socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
+    socket = sockets_->Socket(AF_INET6, SOCK_RAW | SOCK_CLOEXEC,
+        IPPROTO_ICMPV6);
   } else {
     NOTREACHED();
   }

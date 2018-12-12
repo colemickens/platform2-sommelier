@@ -54,7 +54,8 @@ void ArpClient::Stop() {
 
 
 bool ArpClient::CreateSocket(uint16_t arp_opcode) {
-  int socket = sockets_->Socket(PF_PACKET, SOCK_DGRAM, htons(ETHERTYPE_ARP));
+  int socket = sockets_->Socket(PF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC,
+      htons(ETHERTYPE_ARP));
   if (socket == -1) {
     PLOG(ERROR) << "Could not create ARP socket";
     return false;

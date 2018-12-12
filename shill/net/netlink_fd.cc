@@ -16,7 +16,8 @@ namespace shill {
 int OpenNetlinkSocketFD(Sockets* sockets,
                         int netlink_family,
                         int netlink_groups_mask) {
-  int sockfd = sockets->Socket(PF_NETLINK, SOCK_DGRAM, netlink_family);
+  int sockfd = sockets->Socket(PF_NETLINK, SOCK_DGRAM | SOCK_CLOEXEC,
+      netlink_family);
   if (sockfd < 0) {
     LOG(ERROR) << "Failed to open netlink socket";
     return Sockets::kInvalidFileDescriptor;

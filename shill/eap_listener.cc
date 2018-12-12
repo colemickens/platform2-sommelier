@@ -54,7 +54,8 @@ void EapListener::Stop() {
 
 
 bool EapListener::CreateSocket() {
-  int socket = sockets_->Socket(PF_PACKET, SOCK_DGRAM, htons(ETH_P_PAE));
+  int socket = sockets_->Socket(PF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC,
+      htons(ETH_P_PAE));
   if (socket == -1) {
     PLOG(ERROR) << "Could not create EAP listener socket";
     return false;

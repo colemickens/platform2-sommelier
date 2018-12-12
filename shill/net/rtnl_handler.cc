@@ -422,7 +422,7 @@ int RTNLHandler::GetInterfaceIndex(const string& interface_name) {
                << sizeof(ifr.ifr_name);
     return -1;
   }
-  int socket = sockets_->Socket(PF_INET, SOCK_DGRAM, 0);
+  int socket = sockets_->Socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
   if (socket < 0) {
     PLOG(ERROR) << "Unable to open INET socket";
     return -1;

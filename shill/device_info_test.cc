@@ -1018,7 +1018,7 @@ TEST_F(DeviceInfoTest, HasSubdir) {
 
 TEST_F(DeviceInfoTest, GetMACAddressFromKernelUnknownDevice) {
   SetSockets();
-  EXPECT_CALL(*mock_sockets_, Socket(PF_INET, SOCK_DGRAM, 0)).Times(0);
+  EXPECT_CALL(*mock_sockets_, Socket(_, _, _)).Times(0);
   ByteString mac_address =
       device_info_.GetMACAddressFromKernel(kTestDeviceIndex);
   EXPECT_TRUE(mac_address.IsEmpty());
@@ -1026,8 +1026,7 @@ TEST_F(DeviceInfoTest, GetMACAddressFromKernelUnknownDevice) {
 
 TEST_F(DeviceInfoTest, GetMACAddressFromKernelUnableToOpenSocket) {
   SetSockets();
-  EXPECT_CALL(*mock_sockets_, Socket(PF_INET, SOCK_DGRAM, 0))
-      .WillOnce(Return(-1));
+  EXPECT_CALL(*mock_sockets_, Socket(PF_INET, _, 0)).WillOnce(Return(-1));
   unique_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   SendMessageToDeviceInfo(*message);
@@ -1040,8 +1039,7 @@ TEST_F(DeviceInfoTest, GetMACAddressFromKernelUnableToOpenSocket) {
 TEST_F(DeviceInfoTest, GetMACAddressFromKernelIoctlFails) {
   SetSockets();
   const int kFd = 99;
-  EXPECT_CALL(*mock_sockets_, Socket(PF_INET, SOCK_DGRAM, 0))
-      .WillOnce(Return(kFd));
+  EXPECT_CALL(*mock_sockets_, Socket(PF_INET, _, 0)).WillOnce(Return(kFd));
   EXPECT_CALL(*mock_sockets_, Ioctl(kFd, SIOCGIFHWADDR, NotNull()))
       .WillOnce(Return(-1));
   EXPECT_CALL(*mock_sockets_, Close(kFd));
@@ -1074,8 +1072,7 @@ TEST_F(DeviceInfoTest, GetMACAddressFromKernel) {
   struct ifreq ifr;
   static uint8_t kMacAddress[] = {0x00, 0x01, 0x02, 0xaa, 0xbb, 0xcc};
   memcpy(ifr.ifr_hwaddr.sa_data, kMacAddress, sizeof(kMacAddress));
-  EXPECT_CALL(*mock_sockets_, Socket(PF_INET, SOCK_DGRAM, 0))
-      .WillOnce(Return(kFd));
+  EXPECT_CALL(*mock_sockets_, Socket(PF_INET, _, 0)).WillOnce(Return(kFd));
   EXPECT_CALL(*mock_sockets_,
               Ioctl(kFd, SIOCGIFHWADDR,
                     IfreqEquals(kTestDeviceIndex, kTestDeviceName)))
@@ -1095,7 +1092,7 @@ TEST_F(DeviceInfoTest, GetMACAddressFromKernel) {
 
 TEST_F(DeviceInfoTest, GetMACAddressOfPeerUnknownDevice) {
   SetSockets();
-  EXPECT_CALL(*mock_sockets_, Socket(PF_INET, SOCK_DGRAM, 0)).Times(0);
+  EXPECT_CALL(*mock_sockets_, Socket(_, _, _)).Times(0);
   IPAddress address(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(address.SetAddressFromString(kTestIPAddress0));
   ByteString mac_address;
@@ -1111,7 +1108,7 @@ TEST_F(DeviceInfoTest, GetMACAddressOfPeerBadAddress) {
   SendMessageToDeviceInfo(*message);
   EXPECT_TRUE(device_info_.GetDevice(kTestDeviceIndex).get());
 
-  EXPECT_CALL(*mock_sockets_, Socket(PF_INET, SOCK_DGRAM, 0)).Times(0);
+  EXPECT_CALL(*mock_sockets_, Socket(PF_INET, _, 0)).Times(0);
 
   // An improperly formatted IPv4 address should fail.
   IPAddress empty_ipv4_address(IPAddress::kFamilyIPv4);
@@ -1128,8 +1125,7 @@ TEST_F(DeviceInfoTest, GetMACAddressOfPeerBadAddress) {
 
 TEST_F(DeviceInfoTest, GetMACAddressOfPeerUnableToOpenSocket) {
   SetSockets();
-  EXPECT_CALL(*mock_sockets_, Socket(PF_INET, SOCK_DGRAM, 0))
-      .WillOnce(Return(-1));
+  EXPECT_CALL(*mock_sockets_, Socket(PF_INET, _, 0)).WillOnce(Return(-1));
   unique_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   SendMessageToDeviceInfo(*message);
@@ -1143,8 +1139,7 @@ TEST_F(DeviceInfoTest, GetMACAddressOfPeerUnableToOpenSocket) {
 TEST_F(DeviceInfoTest, GetMACAddressOfPeerIoctlFails) {
   SetSockets();
   const int kFd = 99;
-  EXPECT_CALL(*mock_sockets_, Socket(PF_INET, SOCK_DGRAM, 0))
-      .WillOnce(Return(kFd));
+  EXPECT_CALL(*mock_sockets_, Socket(PF_INET, _, 0)).WillOnce(Return(kFd));
   EXPECT_CALL(*mock_sockets_, Ioctl(kFd, SIOCGARP, NotNull()))
       .WillOnce(Return(-1));
   unique_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
@@ -1190,7 +1185,7 @@ TEST_F(DeviceInfoTest, GetMACAddressOfPeer) {
   SetSockets();
 
   const int kFd = 99;
-  EXPECT_CALL(*mock_sockets_, Socket(PF_INET, SOCK_DGRAM, 0))
+  EXPECT_CALL(*mock_sockets_, Socket(PF_INET, _, 0))
       .WillRepeatedly(Return(kFd));
 
   IPAddress ip_address(IPAddress::kFamilyIPv4);

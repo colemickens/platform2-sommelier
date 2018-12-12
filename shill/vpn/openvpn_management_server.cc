@@ -67,7 +67,8 @@ bool OpenVPNManagementServer::Start(EventDispatcher* dispatcher,
     return true;
   }
 
-  int socket = sockets->Socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+  int socket = sockets->Socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC,
+      IPPROTO_TCP);
   if (socket < 0) {
     PLOG(ERROR) << "Unable to create management server socket.";
     return false;

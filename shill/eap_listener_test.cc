@@ -108,8 +108,8 @@ MATCHER_P(IsEapLinkAddress, interface_index, "") {
 }
 
 void EapListenerTest::StartListenerWithFD(int fd) {
-  EXPECT_CALL(*sockets_, Socket(PF_PACKET, SOCK_DGRAM, htons(ETH_P_PAE)))
-      .WillOnce(Return(fd));
+  EXPECT_CALL(*sockets_, Socket(PF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC,
+      htons(ETH_P_PAE))).WillOnce(Return(fd));
   EXPECT_CALL(*sockets_, SetNonBlocking(fd)).WillOnce(Return(0));
   EXPECT_CALL(*sockets_,
               Bind(fd, IsEapLinkAddress(kInterfaceIndex), sizeof(sockaddr_ll)))
@@ -131,7 +131,7 @@ TEST_F(EapListenerTest, SocketOpenFail) {
       Log(logging::LOG_ERROR, _,
           HasSubstr("Could not create EAP listener socket"))).Times(1);
 
-  EXPECT_CALL(*sockets_, Socket(PF_PACKET, SOCK_DGRAM, htons(ETH_P_PAE)))
+  EXPECT_CALL(*sockets_, Socket(PF_PACKET, _, htons(ETH_P_PAE)))
       .WillOnce(Return(-1));
   EXPECT_FALSE(CreateSocket());
 }
