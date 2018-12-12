@@ -27,8 +27,13 @@ constexpr char kIsRemovableField[] = "is-removable";
 constexpr char kMetadataField[] = "metadata";
 // The name of the field containing the table hash.
 constexpr char kTableHashField[] = "table-sha256-hash";
-// The name of the optional field containing the file system type.
+// Optional manifest fields.
 constexpr char kFSType[] = "fs-type";
+constexpr char kId[] = "id";
+constexpr char kName[] = "name";
+constexpr char kImageType[] = "image-type";
+constexpr char kPreallocatedSize[] = "pre-allocated-size";
+constexpr char kSize[] = "size";
 
 bool GetSHA256FromString(const std::string& hash_str,
                          std::vector<uint8_t>* bytes) {
@@ -139,49 +144,32 @@ bool Manifest::ParseManifest(const std::string& manifest_raw) {
     }
   }
 
-  if (!manifest_dict->GetBoolean(kIsRemovableField, &(is_removable_))) {
+  if (!manifest_dict->GetBoolean(kIsRemovableField, &is_removable_)) {
     // If is_removable field does not exist, by default it is false.
     is_removable_ = false;
   }
 
+  // All of these fields are optional.
+  manifest_dict->GetString(kId, &id_);
+  manifest_dict->GetString(kName, &name_);
+  manifest_dict->GetString(kImageType, &image_type_);
+  // TODO(http://crbug.com/904539 comment #11): This can overflow, should get
+  // binary blob and convert to size_t.
+  manifest_dict->GetInteger(kPreallocatedSize, &preallocated_size_);
+  // TODO(http://crbug.com/904539 comment #11): This can overflow, should get
+  // binary blob and convert to size_t.
+  manifest_dict->GetInteger(kSize, &size_);
+
   // Copy out the metadata, if it's there.
   const base::Value* metadata = nullptr;
   if (manifest_dict->Get(kMetadataField, &metadata)) {
-    if (!ParseMetadata(metadata, &(metadata_))) {
+    if (!ParseMetadata(metadata, &metadata_)) {
       LOG(ERROR) << "Manifest metadata was malformed";
       return false;
     }
   }
 
   return true;
-}
-
-int Manifest::manifest_version() const {
-  return manifest_version_;
-}
-
-const std::vector<uint8_t>& Manifest::image_sha256() const {
-  return image_sha256_;
-}
-
-const std::vector<uint8_t>& Manifest::table_sha256() const {
-  return table_sha256_;
-}
-
-const std::string& Manifest::version() const {
-  return version_;
-}
-
-FileSystem Manifest::fs_type() const {
-  return fs_type_;
-}
-
-bool Manifest::is_removable() const {
-  return is_removable_;
-}
-
-const std::map<std::string, std::string> Manifest::metadata() const {
-  return metadata_;
 }
 
 }  // namespace imageloader

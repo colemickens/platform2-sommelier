@@ -49,10 +49,19 @@ generate_dbus_adaptors("imageloader-adaptors") {
   ]
 }
 
+shared_library("libimageloader-manifest") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "manifest.cc",
+    "manifest.h",
+  ]
+}
+
 static_library("libimageloader_static") {
   configs += [ ":target_defaults" ]
   deps = [
     ":imageloader-adaptors",
+    ":libimageloader-manifest",
     ":protos",
   ]
   sources = [
@@ -67,8 +76,6 @@ static_library("libimageloader_static") {
     "imageloader.cc",
     "imageloader.h",
     "imageloader_impl.cc",
-    "manifest.cc",
-    "manifest.h",
     "verity_mounter.cc",
     "verity_mounter.h",
     "verity_mounter_impl.cc",
