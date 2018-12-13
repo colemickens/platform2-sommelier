@@ -504,6 +504,7 @@ CameraClient::RequestHandler::RequestHandler(
       task_runner_(task_runner),
       metadata_handler_(metadata_handler),
       stream_on_resolution_(0, 0),
+      default_resolution_(0, 0),
       current_v4l2_buffer_id_(-1),
       flush_started_(false) {
   SupportedFormats supported_formats =
@@ -528,6 +529,12 @@ void CameraClient::RequestHandler::StreamOn(
   if (ret) {
     callback.Run(0, ret);
   }
+  default_resolution_ = stream_on_resolution;
+  // Some camera modules need a lot of time to output the first frame.
+  // It causes some CTS tests failed. Wait the first frame to be ready in
+  // ConfigureStream can make sure there is no delay to output frames.
+  // NOTE: ConfigureStream should be returned in 1000 ms.
+  SkipFramesAfterStreamOn(1);
   callback.Run(input_buffers_.size(), 0);
 }
 
@@ -573,22 +580,29 @@ void CameraClient::RequestHandler::HandleRequest(
                          << constant_frame_rate;
 
   bool stream_resolution_reconfigure = false;
-  Size old_resolution = stream_on_resolution_;
   Size new_resolution = stream_on_resolution_;
   if (!use_native_sensor_ratio_) {
-    // Fallback to stream on/off operation case.
-    // Check if it requires different configuration for blob format.
+    // Decide the stream resolution for this request. If resolution change is
+    // needed, we don't switch the resolution back in the end of request.
+    // We keep the resolution until next request and see whether we need to
+    // change current resolution.
     // (Note: We only support one blob format stream.)
+    bool have_blob_buffer = false;
     for (size_t i = 0; i < capture_result.num_output_buffers; i++) {
       const camera3_stream_buffer_t* buffer = &capture_result.output_buffers[i];
-      if (buffer->stream->format == HAL_PIXEL_FORMAT_BLOB &&
-          (new_resolution.width != buffer->stream->width ||
-           new_resolution.height != buffer->stream->height)) {
-        stream_resolution_reconfigure = true;
+      if (buffer->stream->format == HAL_PIXEL_FORMAT_BLOB) {
+        have_blob_buffer = true;
         new_resolution.width = buffer->stream->width;
         new_resolution.height = buffer->stream->height;
         break;
       }
+    }
+    if (!have_blob_buffer) {
+      new_resolution = default_resolution_;
+    }
+    if (new_resolution.width != stream_on_resolution_.width ||
+        new_resolution.height != stream_on_resolution_.height) {
+      stream_resolution_reconfigure = true;
     }
   }
 
@@ -668,21 +682,6 @@ void CameraClient::RequestHandler::HandleRequest(
   // After process_capture_result, HAL cannot access the output buffer in
   // camera3_stream_buffer anymore unless the release fence is not -1.
   callback_ops_->process_capture_result(callback_ops_, &capture_result);
-
-  // Switch back to old resolution for non-blob format.
-  if (stream_resolution_reconfigure) {
-    VLOGFID(1, device_id_) << "Switch back stream";
-    ret = StreamOffImpl();
-    if (ret) {
-      return;
-    }
-
-    ret = StreamOnImpl(old_resolution, constant_frame_rate_,
-                       use_native_sensor_ratio_);
-    if (ret) {
-      return;
-    }
-  }
 }
 
 void CameraClient::RequestHandler::HandleFlush(

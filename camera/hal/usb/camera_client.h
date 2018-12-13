@@ -253,8 +253,11 @@ class CameraClient {
     // ownership.
     MetadataHandler* metadata_handler_;
 
-    // The resolution for stream on.
+    // The current resolution for stream on.
     Size stream_on_resolution_;
+
+    // The default resolution decided from ConfigureStreams for preview.
+    Size default_resolution_;
 
     // The constant_frame_rate setting for stream on.
     bool constant_frame_rate_;
