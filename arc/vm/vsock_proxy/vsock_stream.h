@@ -1,0 +1,41 @@
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#ifndef ARC_VM_VSOCK_PROXY_VSOCK_STREAM_H_
+#define ARC_VM_VSOCK_PROXY_VSOCK_STREAM_H_
+
+#include <base/files/scoped_file.h>
+#include <base/macros.h>
+#include <base/optional.h>
+
+#include "arc/vm/vsock_proxy/message.pb.h"
+
+namespace arc {
+
+// Wrapper of VSOCK socket. Supports reading and writing protocol buffer.
+class VSockStream {
+ public:
+  explicit VSockStream(base::ScopedFD vsock_fd);
+  ~VSockStream();
+
+  // Returns the raw file descriptor.
+  int Get() const { return vsock_fd_.get(); }
+
+  // Reads the message from the socket. Returns Message on success,
+  // otherwise nullopt.
+  base::Optional<arc_proxy::Message> Read();
+
+  // Writes the serialized |message| to the socket.
+  // Returns true iff the whole message is written.
+  bool Write(arc_proxy::Message message);
+
+ private:
+  base::ScopedFD vsock_fd_;
+
+  DISALLOW_COPY_AND_ASSIGN(VSockStream);
+};
+
+}  // namespace arc
+
+#endif  // ARC_VM_VSOCK_PROXY_VSOCK_STREAM_H_
