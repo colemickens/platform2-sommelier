@@ -9,7 +9,6 @@
 
 #include <base/bind.h>
 #include <base/message_loop/message_loop.h>
-#include <base/optional.h>
 #include <base/run_loop.h>
 #include <base/strings/string_piece.h>
 #include <gmock/gmock.h>
@@ -95,21 +94,18 @@ class DiagnosticsdMojoServiceTest : public testing::Test {
                          const std::vector<std::string>& headers,
                          const std::string& request_body,
                          MojomDiagnosticsdWebRequestStatus expected_status,
-                         int expected_http_status,
-                         std::string expected_response_body) {
+                         base::Optional<int> expected_http_status) {
     service_->PerformWebRequest(
         http_method, url, headers, request_body,
         base::Bind(
             [](MojomDiagnosticsdWebRequestStatus expected_status,
-               int expected_http_status, std::string expected_response_body,
-               MojomDiagnosticsdWebRequestStatus status, int http_status,
-               const base::Optional<std::string>& response_body) {
+               base::Optional<int> expected_http_status,
+               MojomDiagnosticsdWebRequestStatus status, int http_status) {
               EXPECT_EQ(expected_status, status);
-              EXPECT_EQ(expected_http_status, http_status);
-              EXPECT_TRUE(response_body.has_value());
-              EXPECT_EQ(expected_response_body, *response_body);
+              if (expected_http_status.has_value())
+                EXPECT_EQ(expected_http_status, http_status);
             },
-            expected_status, expected_http_status, expected_response_body));
+            expected_status, expected_http_status));
     base::RunLoop().RunUntilIdle();
   }
 
@@ -143,10 +139,10 @@ TEST_F(DiagnosticsdMojoServiceTest, PerformWebRequest) {
       *mojo_client(),
       PerformWebRequestImpl(MojomDiagnosticsdWebRequestHttpMethod::kGet,
                             kHttpsUrl, std::vector<std::string>(), "", _));
-  ASSERT_NO_FATAL_FAILURE(PerformWebRequest(
-      MojomDiagnosticsdWebRequestHttpMethod::kGet, kHttpsUrl,
-      std::vector<std::string>(), "", MojomDiagnosticsdWebRequestStatus::kOk,
-      kHttpStatusOk, ""));
+  ASSERT_NO_FATAL_FAILURE(
+      PerformWebRequest(MojomDiagnosticsdWebRequestHttpMethod::kGet, kHttpsUrl,
+                        std::vector<std::string>(), "",
+                        MojomDiagnosticsdWebRequestStatus::kOk, kHttpStatusOk));
 }
 
 }  // namespace diagnostics

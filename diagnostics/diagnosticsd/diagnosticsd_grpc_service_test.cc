@@ -12,6 +12,7 @@
 #include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/optional.h>
 #include <brillo/bind_lambda.h>
 #include <gmock/gmock.h>
 #include <google/protobuf/repeated_field.h>
@@ -55,15 +56,6 @@ constexpr char kFakeFileContentsChars[] = "\0fake row 1\nfake row 2\n\0\377";
 constexpr int kHttpStatusOk = 200;
 constexpr char kBadNonHttpsUrl[] = "Http://www.google.com";
 constexpr char kCorrectUrl[] = "hTTps://www.google.com";
-constexpr char kFakeWebResponseBody[] = "\0Fake WEB\n response body\n\0";
-const DelegateWebRequestHttpMethod kDelegateWebRequestHttpMethodGet =
-    DelegateWebRequestHttpMethod::kGet;
-const DelegateWebRequestHttpMethod kDelegateWebRequestHttpMethodHead =
-    DelegateWebRequestHttpMethod::kHead;
-const DelegateWebRequestHttpMethod kDelegateWebRequestHttpMethodPost =
-    DelegateWebRequestHttpMethod::kPost;
-const DelegateWebRequestHttpMethod kDelegateWebRequestHttpMethodPut =
-    DelegateWebRequestHttpMethod::kPut;
 
 std::string FakeFileContents() {
   return std::string(std::begin(kFakeFileContentsChars),
@@ -101,14 +93,11 @@ std::unique_ptr<grpc_api::GetEcPropertyResponse> MakeEcPropertyResponse(
 std::unique_ptr<grpc_api::PerformWebRequestResponse>
 MakePerformWebRequestResponse(
     grpc_api::PerformWebRequestResponse::Status status,
-    const int* http_status,
-    const char* response_body) {
+    const base::Optional<int>& http_status) {
   auto response = std::make_unique<grpc_api::PerformWebRequestResponse>();
   response->set_status(status);
-  if (http_status)
+  if (http_status.has_value())
     response->set_http_status(*http_status);
-  if (response_body)
-    response->set_response_body(response_body);
   return response;
 }
 
@@ -177,7 +166,7 @@ class DiagnosticsdGrpcServiceTest : public testing::Test {
       const std::string& url,
       const std::vector<std::string>& string_headers,
       const std::string& request_body,
-      const DelegateWebRequestHttpMethod* delegate_http_method,
+      base::Optional<DelegateWebRequestHttpMethod> delegate_http_method,
       std::unique_ptr<grpc_api::PerformWebRequestResponse>* response) {
     auto request = std::make_unique<grpc_api::PerformWebRequestParameter>();
     request->set_http_method(http_method);
@@ -190,17 +179,14 @@ class DiagnosticsdGrpcServiceTest : public testing::Test {
     request->set_request_body(request_body);
 
     base::Callback<void(DelegateWebRequestStatus, int)> callback;
-    if (delegate_http_method) {
+    if (delegate_http_method.has_value()) {
       EXPECT_CALL(delegate_,
-                  PerformWebRequestToBrowser(Eq(*delegate_http_method), url,
+                  PerformWebRequestToBrowser(Eq(delegate_http_method), url,
                                              string_headers, request_body, _))
           .WillOnce(WithArgs<4>(Invoke(
-              [](const base::Callback<void(DelegateWebRequestStatus, int,
-                                           std::unique_ptr<std::string>)>&
+              [](const base::Callback<void(DelegateWebRequestStatus, int)>&
                      callback) {
-                callback.Run(
-                    DelegateWebRequestStatus::kOk, kHttpStatusOk,
-                    std::make_unique<std::string>(kFakeWebResponseBody));
+                callback.Run(DelegateWebRequestStatus::kOk, kHttpStatusOk);
               })));
     }
     service()->PerformWebRequest(std::move(request),
@@ -479,7 +465,7 @@ namespace {
 // * |request_body| - gRPC PerformWebRequest request body.
 //
 // The intermediate parameters to verify by the test:
-// * |delegate_http_method| - this is an optional value, a nullptr if the
+// * |delegate_http_method| - this is an optional value, not set if the
 //                            intermediate verification is not needed.
 //                            DiagnosticsdGrpcService's Delegate's HTTP method
 //                            to verify the mapping between gRPC and Delegate's
@@ -489,9 +475,7 @@ namespace {
 // * |status| - gRPC PerformWebRequestResponse status.
 // * |http_status| - this is an optional value. gRPC PerformWebRequestResponse
 //                   HTTP status. If there is no HTTP status needed for
-//                   the passed |status|, pass a nullptr.
-// * |response_body| - this is an optional value. gRPC PerformWebRequestResponse
-//                     body. If not set, pass a nullptr.
+//                   the passed |status|.
 class PerformWebRequestDiagnosticsdGrpcServiceTest
     : public DiagnosticsdGrpcServiceTest,
       public testing::WithParamInterface<
@@ -499,10 +483,9 @@ class PerformWebRequestDiagnosticsdGrpcServiceTest
                      std::string /* URL */,
                      std::vector<std::string> /* headers */,
                      std::string /* request body */,
-                     const DelegateWebRequestHttpMethod*,
+                     base::Optional<DelegateWebRequestHttpMethod>,
                      grpc_api::PerformWebRequestResponse::Status /* status */,
-                     const int* /* HTTP status */,
-                     const char* /* response body */>> {
+                     base::Optional<int> /* HTTP status */>> {
  protected:
   grpc_api::PerformWebRequestParameter::HttpMethod http_method() {
     return std::get<0>(GetParam());
@@ -510,14 +493,13 @@ class PerformWebRequestDiagnosticsdGrpcServiceTest
   std::string url() const { return std::get<1>(GetParam()); }
   std::vector<std::string> headers() const { return std::get<2>(GetParam()); }
   std::string request_body() const { return std::get<3>(GetParam()); }
-  const DelegateWebRequestHttpMethod* delegate_http_method() const {
+  base::Optional<DelegateWebRequestHttpMethod> delegate_http_method() const {
     return std::get<4>(GetParam());
   }
   grpc_api::PerformWebRequestResponse::Status status() const {
     return std::get<5>(GetParam());
   }
-  const int* http_status() const { return std::get<6>(GetParam()); }
-  const char* response_body() const { return std::get<7>(GetParam()); }
+  base::Optional<int> http_status() const { return std::get<6>(GetParam()); }
 };
 
 }  // namespace
@@ -531,7 +513,7 @@ TEST_P(PerformWebRequestDiagnosticsdGrpcServiceTest, PerformWebRequest) {
   ASSERT_TRUE(response);
 
   auto expected_response =
-      MakePerformWebRequestResponse(status(), http_status(), response_body());
+      MakePerformWebRequestResponse(status(), http_status());
   EXPECT_THAT(*response, ProtobufEquals(*expected_response))
       << "Actual response: {" << response->ShortDebugString() << "}";
 }
@@ -546,97 +528,88 @@ INSTANTIATE_TEST_CASE_P(
         // Tests an incorrect HTTP method.
         std::make_tuple(grpc_api::PerformWebRequestParameter::HTTP_METHOD_UNSET,
                         kCorrectUrl,
-                        std::vector<std::string>() /* headers */,
-                        "" /* request_body */,
-                        nullptr /* delegate_http_method */,
+                        std::vector<std::string>(),
+                        "",
+                        base::nullopt,
                         grpc_api::PerformWebRequestResponse ::
                             STATUS_ERROR_REQUIRED_FIELD_MISSING,
-                        nullptr /* http_status */,
-                        nullptr /* response_body */),
+                        base::nullopt),
         // Tests an empty URL.
         std::make_tuple(
             grpc_api::PerformWebRequestParameter::HTTP_METHOD_GET,
-            "" /* url */,
-            std::vector<std::string>() /* headers */,
-            "" /* request_body */,
-            nullptr /* delegate_http_method */,
+            "",
+            std::vector<std::string>(),
+            "",
+            base::nullopt,
             grpc_api::PerformWebRequestResponse ::STATUS_ERROR_INVALID_URL,
-            nullptr /* http_status */,
-            nullptr /* response_body */),
+            base::nullopt),
         // Tests a non-HTTPS URL.
         std::make_tuple(
             grpc_api::PerformWebRequestParameter::HTTP_METHOD_PUT,
             kBadNonHttpsUrl,
-            std::vector<std::string>() /* headers */,
-            "" /* request_body */,
-            nullptr /* delegate_http_method */,
+            std::vector<std::string>(),
+            "",
+            base::nullopt,
             grpc_api::PerformWebRequestResponse::STATUS_ERROR_INVALID_URL,
-            nullptr /* http_status */,
-            nullptr /* response_body */),
+            base::nullopt),
         // Tests the maximum allowed number of headers with HTTP method GET.
         std::make_tuple(grpc_api::PerformWebRequestParameter::HTTP_METHOD_GET,
                         kCorrectUrl,
                         std::vector<std::string>(
                             kMaxNumberOfHeadersInPerformWebRequestParameter,
                             ""),
-                        "" /* request_body */,
-                        &kDelegateWebRequestHttpMethodGet,
+                        "",
+                        DelegateWebRequestHttpMethod::kGet,
                         grpc_api::PerformWebRequestResponse::STATUS_OK,
-                        &kHttpStatusOk,
-                        kFakeWebResponseBody),
+                        kHttpStatusOk),
         // The HTTP method is HEAD.
         std::make_tuple(grpc_api::PerformWebRequestParameter::HTTP_METHOD_HEAD,
                         kCorrectUrl,
                         std::vector<std::string>(
                             kMaxNumberOfHeadersInPerformWebRequestParameter,
                             ""),
-                        "" /* request_body */,
-                        &kDelegateWebRequestHttpMethodHead,
+                        "",
+                        DelegateWebRequestHttpMethod::kHead,
                         grpc_api::PerformWebRequestResponse::STATUS_OK,
-                        &kHttpStatusOk,
-                        kFakeWebResponseBody),
+                        kHttpStatusOk),
         // The HTTP method is POST.
         std::make_tuple(grpc_api::PerformWebRequestParameter::HTTP_METHOD_POST,
                         kCorrectUrl,
-                        std::vector<std::string>() /* headers */,
-                        "" /* request_body */,
-                        &kDelegateWebRequestHttpMethodPost,
+                        std::vector<std::string>(),
+                        "",
+                        DelegateWebRequestHttpMethod::kPost,
                         grpc_api::PerformWebRequestResponse::STATUS_OK,
-                        &kHttpStatusOk,
-                        kFakeWebResponseBody),
+                        kHttpStatusOk),
         // Tests the minimum not allowed number of headers.
         std::make_tuple(
             grpc_api::PerformWebRequestParameter::HTTP_METHOD_GET,
             kCorrectUrl,
             std::vector<std::string>(
                 kMaxNumberOfHeadersInPerformWebRequestParameter + 1, ""),
-            "" /* request_body */,
-            nullptr /* delegate_http_method */,
+            "",
+            base::nullopt,
             grpc_api::PerformWebRequestResponse::STATUS_ERROR_MAX_SIZE_EXCEEDED,
-            nullptr /* http_status */,
-            nullptr /* response_body */),
+            base::nullopt),
         // Tests the total size of "string" and "byte" fields of
         // PerformWebRequestParameter = 1Mb, the HTTP method is PUT.
         std::make_tuple(grpc_api::PerformWebRequestParameter::HTTP_METHOD_PUT,
                         kCorrectUrl,
-                        std::vector<std::string>() /* headers */,
+                        std::vector<std::string>(),
                         std::string(kMaxPerformWebRequestParameterSizeInBytes -
                                         strlen(kCorrectUrl),
                                     'A'),
-                        &kDelegateWebRequestHttpMethodPut,
+                        DelegateWebRequestHttpMethod::kPut,
                         grpc_api::PerformWebRequestResponse::STATUS_OK,
-                        &kHttpStatusOk,
-                        kFakeWebResponseBody),
+                        kHttpStatusOk),
         // Tests the total size of "string" and "byte" fields of
         // PerformWebRequestParameter > 1Mb.
         std::make_tuple(
             grpc_api::PerformWebRequestParameter::HTTP_METHOD_GET,
             kCorrectUrl,
-            std::vector<std::string>() /* headers */,
+            std::vector<std::string>(),
             std::string(kMaxPerformWebRequestParameterSizeInBytes, 'A'),
-            nullptr /* delegate_http_method */,
+            base::nullopt,
             grpc_api::PerformWebRequestResponse::STATUS_ERROR_MAX_SIZE_EXCEEDED,
-            nullptr /* http_status */,
-            nullptr /* response_body */)));
+            base::nullopt)));
 
 }  // namespace diagnostics

@@ -205,9 +205,6 @@ message PerformWebRequestResponse {
   // HTTP status code. This field is set when |status| is |STATUS_OK| or
   // |STATUS_HTTP_ERROR|.
   int32 http_status = 2;
-  // Body of the HTTP response. The length does not exceed 1MB. This field is
-  // set when |status| is |STATUS_OK| or |STATUS_HTTP_ERROR|.
-  bytes response_body = 3;
 }
 
 // Parameters for the RunEcCommand RPC.

@@ -90,15 +90,12 @@ int64_t CalculateWebRequestParameterSize(
 // Forwards and wraps status & HTTP status into gRPC PerformWebRequestResponse.
 void ForwardWebGrpcResponse(const PerformWebRequestResponseCallback& callback,
                             DelegateWebRequestStatus status,
-                            int http_status,
-                            std::unique_ptr<std::string> response_body) {
+                            int http_status) {
   auto reply = std::make_unique<grpc_api::PerformWebRequestResponse>();
   switch (status) {
     case DelegateWebRequestStatus::kOk:
       reply->set_status(grpc_api::PerformWebRequestResponse::STATUS_OK);
       reply->set_http_status(http_status);
-      if (response_body)
-        reply->set_allocated_response_body(response_body.release());
       break;
     case DelegateWebRequestStatus::kNetworkError:
       reply->set_status(
@@ -107,8 +104,6 @@ void ForwardWebGrpcResponse(const PerformWebRequestResponseCallback& callback,
     case DelegateWebRequestStatus::kHttpError:
       reply->set_status(grpc_api::PerformWebRequestResponse::STATUS_HTTP_ERROR);
       reply->set_http_status(http_status);
-      if (response_body)
-        reply->set_allocated_response_body(response_body.release());
       break;
     case DelegateWebRequestStatus::kInternalError:
       reply->set_status(
