@@ -117,6 +117,7 @@ void RunListenerService(grpc::Service* listener,
   builder.RegisterService(listener);
 
   std::shared_ptr<grpc::Server> server(builder.BuildAndStart().release());
+  LOG(INFO) << "Server listening on " << listener_address;
 
   *server_copy = server;
   event->Signal();
@@ -234,12 +235,14 @@ std::string ReplaceLocalhostInUrl(const std::string& url,
 
 }  // namespace
 
-std::unique_ptr<Service> Service::Create(base::Closure quit_closure,
-                                         scoped_refptr<dbus::Bus> bus) {
+std::unique_ptr<Service> Service::Create(
+    base::Closure quit_closure,
+    const base::Optional<base::FilePath>& unix_socket_path,
+    scoped_refptr<dbus::Bus> bus) {
   auto service =
       base::WrapUnique(new Service(std::move(quit_closure), std::move(bus)));
 
-  if (!service->Init()) {
+  if (!service->Init(unix_socket_path)) {
     service.reset();
   }
 
@@ -598,11 +601,13 @@ void Service::UpdateApplicationList(const std::string& container_token,
   std::string vm_name;
   VirtualMachine* vm;
   if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name)) {
+    LOG(ERROR) << "Could not get virtual machine for cid " << cid;
     event->Signal();
     return;
   }
   std::string container_name = vm->GetContainerNameForToken(container_token);
   if (container_name.empty()) {
+    LOG(ERROR) << "Could not get container";
     event->Signal();
     return;
   }
@@ -831,7 +836,7 @@ void Service::UpdateMimeTypes(const std::string& container_token,
   event->Signal();
 }
 
-bool Service::Init() {
+bool Service::Init(const base::Optional<base::FilePath>& unix_socket_path) {
   if (!bus_->Connect()) {
     LOG(ERROR) << "Failed to connect to system bus";
     return false;
@@ -862,7 +867,7 @@ bool Service::Init() {
       {kSetTimezoneMethod, &Service::SetTimezone},
       {kGetLxdContainerUsernameMethod, &Service::GetLxdContainerUsername},
       {kSetUpLxdContainerUserMethod, &Service::SetUpLxdContainerUser},
-      {kGetDebugInformation, &Service::GetDebugInformation},
+      {kGetDebugInformationMethod, &Service::GetDebugInformation},
   };
 
   for (const auto& iter : kServiceMethods) {
@@ -920,19 +925,33 @@ bool Service::Init() {
     return false;
   }
 
+  std::string container_listener_address =
+      base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY, vm_tools::kGarconPort);
+  std::string tremplin_listener_address = base::StringPrintf(
+      "vsock:%u:%u", VMADDR_CID_ANY, vm_tools::kTremplinListenerPort);
+
+  if (unix_socket_path.has_value()) {
+    container_listener_address =
+        "unix:" + unix_socket_path.value()
+                      .Append(base::IntToString(vm_tools::kGarconPort))
+                      .value();
+    tremplin_listener_address =
+        "unix:" +
+        unix_socket_path.value()
+            .Append(base::IntToString(vm_tools::kTremplinListenerPort))
+            .value();
+  }
+
   // Setup & start the gRPC listener services.
-  if (!SetupListenerService(
-          &grpc_thread_container_, container_listener_.get(),
-          base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY,
-                             vm_tools::kGarconPort),
-          &grpc_server_container_)) {
+  if (!SetupListenerService(&grpc_thread_container_, container_listener_.get(),
+                            container_listener_address,
+                            &grpc_server_container_)) {
     LOG(ERROR) << "Failed to setup/startup the container grpc server";
     return false;
   }
 
   if (!SetupListenerService(&grpc_thread_tremplin_, tremplin_listener_.get(),
-                            base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY,
-                                               vm_tools::kTremplinListenerPort),
+                            tremplin_listener_address,
                             &grpc_server_tremplin_)) {
     LOG(ERROR) << "Failed to setup/startup the tremplin grpc server";
     return false;
@@ -1069,6 +1088,37 @@ std::unique_ptr<dbus::Response> Service::NotifyVmStopped(
 
   vms_.erase(iter);
   return dbus_response;
+}
+
+bool Service::OverrideTremplinAddressOfVmForTesting(
+    const std::string& owner_id,
+    const std::string& vm_name,
+    const std::string& tremplin_address) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  VirtualMachine* vm = FindVm(owner_id, vm_name);
+  if (!vm) {
+    LOG(ERROR) << "Requested VM does not exist:" << owner_id << ", " << vm_name;
+    return false;
+  }
+
+  vm->OverrideTremplinAddressForTesting(tremplin_address);
+  return true;
+}
+
+bool Service::CreateContainerWithTokenForTesting(
+    const std::string& owner_id,
+    const std::string& vm_name,
+    const std::string& container_name,
+    const std::string& container_token) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  VirtualMachine* vm = FindVm(owner_id, vm_name);
+  if (!vm) {
+    LOG(ERROR) << "Requested VM does not exist:" << owner_id << ", " << vm_name;
+    return false;
+  }
+
+  vm->CreateContainerWithTokenForTesting(container_name, container_token);
+  return true;
 }
 
 std::unique_ptr<dbus::Response> Service::GetContainerToken(

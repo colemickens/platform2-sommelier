@@ -21,31 +21,21 @@
 namespace vm_tools {
 namespace cicerone {
 
-namespace {
-
-// Returns 0 on failure, otherwise returns the 32-bit vsock cid.
-uint32_t ExtractCidFromPeerAddress(const std::string& peer_address) {
-  uint32_t cid = 0;
-  if (sscanf(peer_address.c_str(), "vsock:%" SCNu32, &cid) != 1) {
-    LOG(WARNING) << "Failed to parse peer address " << peer_address;
-    return 0;
-  }
-
-  return cid;
-}
-
-}  // namespace
-
 TremplinListenerImpl::TremplinListenerImpl(
     base::WeakPtr<vm_tools::cicerone::Service> service)
     : service_(service), task_runner_(base::ThreadTaskRunnerHandle::Get()) {}
+
+void TremplinListenerImpl::OverridePeerAddressForTesting(
+    const std::string& testing_peer_address) {
+  base::AutoLock lock_scope(testing_peer_address_lock_);
+  testing_peer_address_ = testing_peer_address;
+}
 
 grpc::Status TremplinListenerImpl::TremplinReady(
     grpc::ServerContext* ctx,
     const vm_tools::tremplin::TremplinStartupInfo* request,
     vm_tools::tremplin::EmptyMessage* response) {
-  std::string peer_address = ctx->peer();
-  uint32_t cid = ExtractCidFromPeerAddress(peer_address);
+  uint32_t cid = ExtractCidFromPeerAddress(ctx);
   if (cid == 0) {
     return grpc::Status(grpc::FAILED_PRECONDITION,
                         "Failed parsing vsock cid for TremplinListener");
@@ -60,7 +50,7 @@ grpc::Status TremplinListenerImpl::TremplinReady(
   event.Wait();
   if (!result) {
     LOG(ERROR) << "Received TremplinReady but could not find matching VM: "
-               << peer_address;
+               << ctx->peer();
     return grpc::Status(grpc::FAILED_PRECONDITION,
                         "Cannot find VM for TremplinListener");
   }
@@ -72,8 +62,7 @@ grpc::Status TremplinListenerImpl::UpdateCreateStatus(
     grpc::ServerContext* ctx,
     const vm_tools::tremplin::ContainerCreationProgress* request,
     vm_tools::tremplin::EmptyMessage* response) {
-  std::string peer_address = ctx->peer();
-  uint32_t cid = ExtractCidFromPeerAddress(peer_address);
+  uint32_t cid = ExtractCidFromPeerAddress(ctx);
   if (cid == 0) {
     return grpc::Status(grpc::FAILED_PRECONDITION,
                         "Failed parsing vsock cid for TremplinListener");
@@ -117,7 +106,7 @@ grpc::Status TremplinListenerImpl::UpdateCreateStatus(
   if (!result) {
     LOG(ERROR)
         << "Received UpdateCreateStatus RPC but could not find matching VM: "
-        << peer_address;
+        << ctx->peer();
     return grpc::Status(grpc::FAILED_PRECONDITION,
                         "Cannot find VM for TremplinListener");
   }
@@ -129,8 +118,7 @@ grpc::Status TremplinListenerImpl::UpdateStartStatus(
     grpc::ServerContext* ctx,
     const vm_tools::tremplin::ContainerStartProgress* request,
     vm_tools::tremplin::EmptyMessage* response) {
-  std::string peer_address = ctx->peer();
-  uint32_t cid = ExtractCidFromPeerAddress(peer_address);
+  uint32_t cid = ExtractCidFromPeerAddress(ctx);
   if (cid == 0) {
     return grpc::Status(grpc::FAILED_PRECONDITION,
                         "Failed parsing vsock cid for TremplinListener");
@@ -163,12 +151,30 @@ grpc::Status TremplinListenerImpl::UpdateStartStatus(
   if (!result) {
     LOG(ERROR)
         << "Received UpdateStartStatus RPC but could not find matching VM: "
-        << peer_address;
+        << ctx->peer();
     return grpc::Status(grpc::FAILED_PRECONDITION,
                         "Cannot find VM for TremplinListener");
   }
 
   return grpc::Status::OK;
+}
+
+// Returns 0 on failure, otherwise returns the 32-bit vsock cid.
+uint32_t TremplinListenerImpl::ExtractCidFromPeerAddress(
+    grpc::ServerContext* ctx) {
+  uint32_t cid = 0;
+  std::string peer_address = ctx->peer();
+  {
+    base::AutoLock lock_scope(testing_peer_address_lock_);
+    if (!testing_peer_address_.empty()) {
+      peer_address = testing_peer_address_;
+    }
+  }
+  if (sscanf(peer_address.c_str(), "vsock:%" SCNu32, &cid) != 1) {
+    LOG(WARNING) << "Failed to parse peer address " << peer_address;
+    return 0;
+  }
+  return cid;
 }
 
 }  // namespace cicerone

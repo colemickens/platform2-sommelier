@@ -235,14 +235,42 @@
           ],
         },
         {
+          'target_name': 'service_testing_helper_lib',
+          'type': 'static_library',
+          'variables': {
+            'exported_deps': [
+              'libchrome-test-<(libbase_ver)',
+            ],
+            'deps': ['<@(exported_deps)'],
+          },
+          'all_dependent_settings': {
+            'variables': {
+              'deps': ['<@(exported_deps)'],
+            },
+          },
+          'dependencies': [
+            'libcicerone',
+          ],
+          'sources': [
+            'cicerone/dbus_message_testing_helper.cc',
+            'cicerone/dbus_message_testing_helper.h',
+            'cicerone/service_testing_helper.cc',
+            'cicerone/service_testing_helper.h',
+            'cicerone/tremplin_test_stub.cc',
+            'cicerone/tremplin_test_stub.h',
+          ],
+        },
+        {
           'target_name': 'cicerone_test',
           'type': 'executable',
           'dependencies': [
             'libcicerone',
+            'service_testing_helper_lib',
             '../common-mk/testrunner.gyp:testrunner',
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
+            'cicerone/container_listener_impl_test.cc',
             'cicerone/tzif_parser_test.cc',
             'cicerone/virtual_machine_test.cc',
           ],

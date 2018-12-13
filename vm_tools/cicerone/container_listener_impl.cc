@@ -26,15 +26,6 @@ namespace {
 // be made more than 10 times in a 15 second interval approximately.
 constexpr base::TimeDelta kOpenRateWindow = base::TimeDelta::FromSeconds(15);
 constexpr uint32_t kOpenRateLimit = 10;
-
-// Returns 0 on failure, otherwise the parsed vsock cid from a
-// vsock:cid:port string.
-uint32_t ExtractCidFromPeerAddress(const std::string& peer_address) {
-  uint32_t cid = 0;
-  sscanf(peer_address.c_str(), "vsock:%" SCNu32, &cid);
-  return cid;
-}
-
 }  // namespace
 
 namespace vm_tools {
@@ -47,12 +38,17 @@ ContainerListenerImpl::ContainerListenerImpl(
       open_count_(0),
       open_rate_window_start_(base::TimeTicks::Now()) {}
 
+void ContainerListenerImpl::OverridePeerAddressForTesting(
+    const std::string& testing_peer_address) {
+  base::AutoLock lock_scope(testing_peer_address_lock_);
+  testing_peer_address_ = testing_peer_address;
+}
+
 grpc::Status ContainerListenerImpl::ContainerReady(
     grpc::ServerContext* ctx,
     const vm_tools::container::ContainerStartupInfo* request,
     vm_tools::EmptyMessage* response) {
-  std::string peer_address = ctx->peer();
-  uint32_t cid = ExtractCidFromPeerAddress(peer_address);
+  uint32_t cid = ExtractCidFromPeerAddress(ctx);
   if (cid == 0) {
     return grpc::Status(grpc::FAILED_PRECONDITION,
                         "Failed parsing cid for ContainerListener");
@@ -68,7 +64,7 @@ grpc::Status ContainerListenerImpl::ContainerReady(
   event.Wait();
   if (!result) {
     LOG(ERROR) << "Received ContainerReady but could not find matching VM: "
-               << peer_address;
+               << ctx->peer();
     return grpc::Status(grpc::FAILED_PRECONDITION,
                         "Cannot find VM for ContainerListener");
   }
@@ -80,8 +76,7 @@ grpc::Status ContainerListenerImpl::ContainerShutdown(
     grpc::ServerContext* ctx,
     const vm_tools::container::ContainerShutdownInfo* request,
     vm_tools::EmptyMessage* response) {
-  std::string peer_address = ctx->peer();
-  uint32_t cid = ExtractCidFromPeerAddress(peer_address);
+  uint32_t cid = ExtractCidFromPeerAddress(ctx);
   if (cid == 0) {
     return grpc::Status(grpc::FAILED_PRECONDITION,
                         "Failed parsing cid for ContainerListener");
@@ -95,7 +90,7 @@ grpc::Status ContainerListenerImpl::ContainerShutdown(
   event.Wait();
   if (!result) {
     LOG(ERROR) << "Received ContainerShutdown but could not find matching VM: "
-               << peer_address;
+               << ctx->peer();
     return grpc::Status(grpc::FAILED_PRECONDITION,
                         "Cannot find VM for ContainerListener");
   }
@@ -107,8 +102,7 @@ grpc::Status ContainerListenerImpl::UpdateApplicationList(
     grpc::ServerContext* ctx,
     const vm_tools::container::UpdateApplicationListRequest* request,
     vm_tools::EmptyMessage* response) {
-  std::string peer_address = ctx->peer();
-  uint32_t cid = ExtractCidFromPeerAddress(peer_address);
+  uint32_t cid = ExtractCidFromPeerAddress(ctx);
   if (cid == 0) {
     return grpc::Status(grpc::FAILED_PRECONDITION,
                         "Failed parsing cid for ContainerListener");
@@ -183,8 +177,7 @@ grpc::Status ContainerListenerImpl::OpenUrl(
     return grpc::Status(grpc::RESOURCE_EXHAUSTED,
                         "OpenUrl rate limit exceeded, blocking request");
   }
-  std::string peer_address = ctx->peer();
-  uint32_t cid = ExtractCidFromPeerAddress(peer_address);
+  uint32_t cid = ExtractCidFromPeerAddress(ctx);
   if (cid == 0) {
     return grpc::Status(grpc::FAILED_PRECONDITION,
                         "Failed parsing cid for ContainerListener");
@@ -208,8 +201,7 @@ grpc::Status ContainerListenerImpl::InstallLinuxPackageProgress(
     grpc::ServerContext* ctx,
     const vm_tools::container::InstallLinuxPackageProgressInfo* request,
     vm_tools::EmptyMessage* response) {
-  std::string peer_address = ctx->peer();
-  uint32_t cid = ExtractCidFromPeerAddress(peer_address);
+  uint32_t cid = ExtractCidFromPeerAddress(ctx);
   if (cid == 0) {
     return grpc::Status(grpc::FAILED_PRECONDITION,
                         "Failed parsing cid for ContainerListener");
@@ -248,8 +240,7 @@ grpc::Status ContainerListenerImpl::UninstallPackageProgress(
     grpc::ServerContext* ctx,
     const vm_tools::container::UninstallPackageProgressInfo* request,
     vm_tools::EmptyMessage* response) {
-  std::string peer_address = ctx->peer();
-  uint32_t cid = ExtractCidFromPeerAddress(peer_address);
+  uint32_t cid = ExtractCidFromPeerAddress(ctx);
   if (cid == 0) {
     return grpc::Status(grpc::FAILED_PRECONDITION,
                         "Failed parsing cid for ContainerListener");
@@ -299,8 +290,7 @@ grpc::Status ContainerListenerImpl::OpenTerminal(
     return grpc::Status(grpc::RESOURCE_EXHAUSTED,
                         "OpenTerminal rate limit exceeded, blocking request");
   }
-  std::string peer_address = ctx->peer();
-  uint32_t cid = ExtractCidFromPeerAddress(peer_address);
+  uint32_t cid = ExtractCidFromPeerAddress(ctx);
   if (cid == 0) {
     return grpc::Status(grpc::FAILED_PRECONDITION,
                         "Failed parsing cid for ContainerListener");
@@ -326,8 +316,7 @@ grpc::Status ContainerListenerImpl::UpdateMimeTypes(
     grpc::ServerContext* ctx,
     const vm_tools::container::UpdateMimeTypesRequest* request,
     vm_tools::EmptyMessage* response) {
-  std::string peer_address = ctx->peer();
-  uint32_t cid = ExtractCidFromPeerAddress(peer_address);
+  uint32_t cid = ExtractCidFromPeerAddress(ctx);
   if (cid == 0) {
     return grpc::Status(grpc::FAILED_PRECONDITION,
                         "Failed parsing cid for ContainerListener");
@@ -350,6 +339,23 @@ grpc::Status ContainerListenerImpl::UpdateMimeTypes(
                         "Failure in UpdateMimeTypes");
   }
   return grpc::Status::OK;
+}
+
+uint32_t ContainerListenerImpl::ExtractCidFromPeerAddress(
+    grpc::ServerContext* ctx) {
+  uint32_t cid = 0;
+  std::string peer_address = ctx->peer();
+  {
+    base::AutoLock lock_scope(testing_peer_address_lock_);
+    if (!testing_peer_address_.empty()) {
+      peer_address = testing_peer_address_;
+    }
+  }
+  if (sscanf(peer_address.c_str(), "vsock:%" SCNu32, &cid) != 1) {
+    LOG(WARNING) << "Failed to parse peer address " << peer_address;
+    return 0;
+  }
+  return cid;
 }
 
 bool ContainerListenerImpl::CheckOpenRateLimit() {

@@ -11,10 +11,12 @@
 #include <utility>
 
 #include <base/callback.h>
+#include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <base/message_loop/message_loop.h>
+#include <base/optional.h>
 #include <base/sequence_checker.h>
 #include <base/threading/thread.h>
 #include <brillo/process.h>
@@ -40,9 +42,14 @@ class Service final : public base::MessageLoopForIO::Watcher {
  public:
   // Creates a new Service instance.  |quit_closure| is posted to the TaskRunner
   // for the current thread when this process receives a SIGTERM. |bus| is a
-  // connection to the SYSTEM dbus
-  static std::unique_ptr<Service> Create(base::Closure quit_closure,
-                                         scoped_refptr<dbus::Bus> bus);
+  // connection to the SYSTEM dbus.
+  // Normally, services are bound to a AF_VSOCK socket. For unit tests, the
+  // services can listen on an AF_UNIX socket by giving |unix_socket_path| a
+  // value.
+  static std::unique_ptr<Service> Create(
+      base::Closure quit_closure,
+      const base::Optional<base::FilePath>& unix_socket_path,
+      scoped_refptr<dbus::Bus> bus);
 
   ~Service() override;
 
@@ -53,6 +60,28 @@ class Service final : public base::MessageLoopForIO::Watcher {
   ContainerListenerImpl* GetContainerListenerImpl() const {
     return container_listener_.get();
   }
+
+  TremplinListenerImpl* GetTremplinListenerImpl() const {
+    return tremplin_listener_.get();
+  }
+
+  // For testing only. Pretend that the Tremplin server for the given VM is
+  // actually at |tremplin_address| instead of the normal vsock address. Must
+  // be called after the VM is created but before the corresponding
+  // ConnectTremplin is called.
+  bool OverrideTremplinAddressOfVmForTesting(
+      const std::string& owner_id,
+      const std::string& vm_name,
+      const std::string& tremplin_address);
+
+  // For testing only. Force the given VM to add a container with the indicated
+  // security token. A VM with |owner_id|, |vm_name| must already exist. This is
+  // the only way to get a consistent security token for unit tests & fuzz
+  // tests. Returns true on success.
+  bool CreateContainerWithTokenForTesting(const std::string& owner_id,
+                                          const std::string& vm_name,
+                                          const std::string& container_name,
+                                          const std::string& container_token);
 
   // Connect to the Tremplin instance on the VM with the given |cid|.
   void ConnectTremplin(const uint32_t cid,
@@ -200,8 +229,10 @@ class Service final : public base::MessageLoopForIO::Watcher {
   explicit Service(base::Closure quit_closure, scoped_refptr<dbus::Bus> bus);
 
   // Initializes the service by exporting our DBus methods, taking ownership of
-  // its name, and starting our gRPC servers
-  bool Init();
+  // its name, and starting our gRPC servers. If |unix_socket_path| has a value,
+  // the services are bound to an AF_UNIX socket in that directory instead of
+  // the normal VSOCK socket.
+  bool Init(const base::Optional<base::FilePath>& unix_socket_path);
 
   // Handles the termination of a child process.
   void HandleChildExit();

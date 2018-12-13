@@ -7,6 +7,8 @@
 
 #include <stdint.h>
 
+#include <string>
+
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <base/sequenced_task_runner.h>
@@ -27,6 +29,10 @@ class ContainerListenerImpl final
   explicit ContainerListenerImpl(
       base::WeakPtr<vm_tools::cicerone::Service> service);
   ~ContainerListenerImpl() override = default;
+
+  // Pretend that every service call comes from |testing_peer_address| instead
+  // of ctx->peer().
+  void OverridePeerAddressForTesting(const std::string& testing_peer_address);
 
   // ContainerListener overrides.
   grpc::Status ContainerReady(
@@ -62,13 +68,25 @@ class ContainerListenerImpl final
       vm_tools::EmptyMessage* response) override;
 
  private:
+  // Returns 0 on failure, otherwise the parsed vsock cid from a
+  // vsock:cid:port string from ctx->peer()
+  uint32_t ExtractCidFromPeerAddress(grpc::ServerContext* ctx);
+
   // Returns true if the performing an open window/tab operation will be within
   // the rules for rate limiting, false if it should be blocked. This will also
   // increment the rate limit counter as a side effect.
   bool CheckOpenRateLimit();
 
   base::WeakPtr<vm_tools::cicerone::Service> service_;  // not owned
+  // Task runner for the D-Bus thread; requests to perform D-Bus operations
+  // on |service_| generally need to be posted to this thread.
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
+
+  // Protects testing_peer_address_ so that OverridePeerAddressForTesting can
+  // be called on any thread.
+  base::Lock testing_peer_address_lock_;
+  // Overrides ServerContext::peer if set.
+  std::string testing_peer_address_;
 
   // We rate limit the requests to open a window/tab in Chrome to prevent an
   // accidental DOS of Chrome from a bad script in Linux. We use a fixed window

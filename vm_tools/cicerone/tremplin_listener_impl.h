@@ -1,4 +1,4 @@
-// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Copyright 2019 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,6 +6,8 @@
 #define VM_TOOLS_CICERONE_TREMPLIN_LISTENER_IMPL_H_
 
 #include <stdint.h>
+
+#include <string>
 
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
@@ -29,6 +31,10 @@ class TremplinListenerImpl final
       base::WeakPtr<vm_tools::cicerone::Service> service);
   ~TremplinListenerImpl() override = default;
 
+  // Pretend that every service call comes from |testing_peer_address| instead
+  // of ctx->peer().
+  void OverridePeerAddressForTesting(const std::string& testing_peer_address);
+
   grpc::Status TremplinReady(
       grpc::ServerContext* ctx,
       const vm_tools::tremplin::TremplinStartupInfo* request,
@@ -45,7 +51,17 @@ class TremplinListenerImpl final
       vm_tools::tremplin::EmptyMessage* response) override;
 
  private:
+  uint32_t ExtractCidFromPeerAddress(grpc::ServerContext* ctx);
+
+  // Protects testing_peer_address_ so that OverridePeerAddressForTesting can
+  // be called on any thread.
+  base::Lock testing_peer_address_lock_;
+  // Overrides ServerContext::peer if set.
+  std::string testing_peer_address_;
+
   base::WeakPtr<vm_tools::cicerone::Service> service_;  // not owned
+  // Task runner for the DBus thread; requests to perform DBus operations
+  // on |service_| generally need to be posted to this thread.
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
 
   DISALLOW_COPY_AND_ASSIGN(TremplinListenerImpl);

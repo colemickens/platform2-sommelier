@@ -5,6 +5,7 @@
 #include <base/at_exit.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
+#include <base/optional.h>
 #include <base/run_loop.h>
 #include <brillo/syslog_logging.h>
 
@@ -27,7 +28,7 @@ int main(int argc, char** argv) {
   opts.bus_type = dbus::Bus::SYSTEM;
 
   auto service = vm_tools::cicerone::Service::Create(
-      run_loop.QuitClosure(), new dbus::Bus(std::move(opts)));
+      run_loop.QuitClosure(), base::nullopt, new dbus::Bus(std::move(opts)));
   CHECK(service);
 
   run_loop.Run();

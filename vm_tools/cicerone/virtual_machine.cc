@@ -50,11 +50,22 @@ VirtualMachine::VirtualMachine(uint32_t container_subnet,
 VirtualMachine::~VirtualMachine() = default;
 
 bool VirtualMachine::ConnectTremplin() {
+  std::string tremplin_address =
+      base::StringPrintf("vsock:%u:%u", vsock_cid_, kTremplinPort);
+  if (!tremplin_testing_address_.empty()) {
+    tremplin_address = tremplin_testing_address_;
+  }
   tremplin_stub_ =
       std::make_unique<vm_tools::tremplin::Tremplin::Stub>(grpc::CreateChannel(
-          base::StringPrintf("vsock:%u:%u", vsock_cid_, kTremplinPort),
-          grpc::InsecureChannelCredentials()));
+          tremplin_address, grpc::InsecureChannelCredentials()));
   return tremplin_stub_ != nullptr;
+}
+
+void VirtualMachine::OverrideTremplinAddressForTesting(
+    const std::string& tremplin_address) {
+  CHECK(!tremplin_stub_)
+      << "Calling OverrideTremplinAddressForTesting too late";
+  tremplin_testing_address_ = tremplin_address;
 }
 
 bool VirtualMachine::SetTimezone(
@@ -149,6 +160,12 @@ std::string VirtualMachine::GenerateContainerToken(
   pending_containers_[token] = std::make_unique<Container>(
       container_name, token, weak_ptr_factory_.GetWeakPtr());
   return token;
+}
+
+void VirtualMachine::CreateContainerWithTokenForTesting(
+    const std::string& container_name, const std::string& container_token) {
+  pending_containers_[container_token] = std::make_unique<Container>(
+      container_name, container_token, weak_ptr_factory_.GetWeakPtr());
 }
 
 std::string VirtualMachine::GetContainerNameForToken(

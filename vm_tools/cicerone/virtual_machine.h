@@ -96,6 +96,11 @@ class VirtualMachine {
   // The VM's cid.
   uint32_t cid() const { return vsock_cid_; }
 
+  // Call during unit tests to force this class to connect to the Tremplin
+  // server at |tremplin_address| instead of the normal address. Must be called
+  // before ConnectTremplin().
+  void OverrideTremplinAddressForTesting(const std::string& tremplin_address);
+
   // Connect to the tremplin instance in the VM.
   bool ConnectTremplin();
 
@@ -129,6 +134,12 @@ class VirtualMachine {
   // which can then be used by the container to identify itself when it
   // communicates back with us.
   std::string GenerateContainerToken(const std::string& container_name);
+
+  // For testing only. Add a container with the indicated security token. This
+  // is the only way to get a consistent security token for unit tests & fuzz
+  // tests.
+  void CreateContainerWithTokenForTesting(const std::string& container_name,
+                                          const std::string& container_token);
 
   // Returns the name of the container associated with the passed in
   // |container_token|. Returns the empty string if no such mapping exists. This
@@ -205,6 +216,10 @@ class VirtualMachine {
 
   // Virtual socket context id to be used when communicating with this VM.
   uint32_t vsock_cid_;
+
+  // If set, our |tremplin_stub_| will always attempt to connect to this address
+  // instead of the normal vsock address. For testing only.
+  std::string tremplin_testing_address_;
 
   // Mapping of tokens to containers. The tokens are used to securely
   // identify a container when it connects back to concierge to identify itself.

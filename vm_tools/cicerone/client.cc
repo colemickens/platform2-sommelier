@@ -532,7 +532,7 @@ int GetInfo(dbus::ObjectProxy* proxy) {
   LOG(INFO) << "Getting information";
 
   dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
-                               vm_tools::cicerone::kGetDebugInformation);
+                               vm_tools::cicerone::kGetDebugInformationMethod);
   dbus::MessageWriter writer(&method_call);
 
   vm_tools::cicerone::GetDebugInformationRequest request;
