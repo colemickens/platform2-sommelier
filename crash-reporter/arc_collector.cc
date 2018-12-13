@@ -272,7 +272,7 @@ bool ArcCollector::ArcContext::GetPidNamespace(pid_t pid,
   // The /proc/[pid]/ns/pid file is a special symlink that resolves to a string
   // containing the inode number of the PID namespace, e.g. "pid:[4026531838]".
   FilePath target;
-  if (!collector_->GetSymlinkTarget(path, &target))
+  if (!base::ReadSymbolicLink(path, &target))
     return false;
 
   *ns = target.value();

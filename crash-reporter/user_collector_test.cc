@@ -296,37 +296,11 @@ TEST_F(UserCollectorTest, GetProcessPath) {
   ASSERT_EQ("/proc/100", path.value());
 }
 
-TEST_F(UserCollectorTest, GetSymlinkTarget) {
-  FilePath result;
-  ASSERT_FALSE(
-      collector_.GetSymlinkTarget(FilePath("/does_not_exist"), &result));
-  ASSERT_TRUE(FindLog("Readlink failed on /does_not_exist with 2"));
-
-  // Create a really long link.  The path doesn't matter as long as it's more
-  // than 500 bytes.
-  std::string long_link;
-  for (int i = 0; i < 50; ++i)
-    long_link += "0123456789";
-  long_link += "/gold";
-
-  // Create symlinks where the target gets longer and longer.  Make sure each
-  // one is created correctly.
-  const FilePath this_link = test_dir_.Append("this_link");
-  for (size_t len = 1; len <= long_link.size(); ++len) {
-    const FilePath link_target = FilePath(long_link.substr(0, len));
-    ASSERT_TRUE(base::DeleteFile(this_link, false));
-    ASSERT_TRUE(base::CreateSymbolicLink(link_target, this_link));
-    ASSERT_TRUE(collector_.GetSymlinkTarget(this_link, &result));
-    ASSERT_EQ(link_target.value(), result.value());
-  }
-}
-
 TEST_F(UserCollectorTest, GetExecutableBaseNameFromPid) {
   std::string base_name;
   EXPECT_FALSE(collector_.GetExecutableBaseNameFromPid(0, &base_name));
-  EXPECT_TRUE(FindLog("Readlink failed on /proc/0/exe with 2"));
   EXPECT_TRUE(
-      FindLog("GetSymlinkTarget failed - Path /proc/0 DirectoryExists: 0"));
+      FindLog("ReadSymbolicLink failed - Path /proc/0 DirectoryExists: 0"));
   EXPECT_TRUE(FindLog("stat /proc/0/exe failed: -1 2"));
 
   brillo::ClearLog();

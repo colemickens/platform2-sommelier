@@ -525,43 +525,13 @@ bool CrashCollector::GetUptimeAtProcessStart(pid_t pid,
   return true;
 }
 
-bool CrashCollector::GetSymlinkTarget(const FilePath& symlink,
-                                      FilePath* target) {
-  ssize_t max_size = 64;
-  std::vector<char> buffer;
-
-  while (true) {
-    buffer.resize(max_size + 1);
-    ssize_t size = readlink(symlink.value().c_str(), buffer.data(), max_size);
-    if (size < 0) {
-      int saved_errno = errno;
-      LOG(ERROR) << "Readlink failed on " << symlink.value() << " with "
-                 << saved_errno;
-      return false;
-    }
-
-    buffer[size] = 0;
-    if (size == max_size) {
-      max_size *= 2;
-      if (max_size > PATH_MAX) {
-        return false;
-      }
-      continue;
-    }
-    break;
-  }
-
-  *target = FilePath(buffer.data());
-  return true;
-}
-
 bool CrashCollector::GetExecutableBaseNameFromPid(pid_t pid,
                                                   std::string* base_name) {
   FilePath target;
   FilePath process_path = GetProcessPath(pid);
   FilePath exe_path = process_path.Append("exe");
-  if (!GetSymlinkTarget(exe_path, &target)) {
-    LOG(INFO) << "GetSymlinkTarget failed - Path " << process_path.value()
+  if (!base::ReadSymbolicLink(exe_path, &target)) {
+    LOG(INFO) << "ReadSymbolicLink failed - Path " << process_path.value()
               << " DirectoryExists: " << base::DirectoryExists(process_path);
     // Try to further diagnose exe readlink failure cause.
     struct stat buf;

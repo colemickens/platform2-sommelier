@@ -68,7 +68,6 @@ class UserCollector : public UserCollectorBase {
   FRIEND_TEST(UserCollectorTest, GetIdFromStatus);
   FRIEND_TEST(UserCollectorTest, GetStateFromStatus);
   FRIEND_TEST(UserCollectorTest, GetProcessPath);
-  FRIEND_TEST(UserCollectorTest, GetSymlinkTarget);
   FRIEND_TEST(UserCollectorTest, ParseCrashAttributes);
   FRIEND_TEST(UserCollectorTest, ShouldDumpFiltering);
   FRIEND_TEST(UserCollectorTest, ShouldDumpChromeOverridesDeveloperImage);

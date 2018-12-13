@@ -168,7 +168,6 @@ class CrashCollector {
   static bool GetUptime(base::TimeDelta* uptime);
   static bool GetUptimeAtProcessStart(pid_t pid, base::TimeDelta* uptime);
 
-  bool GetSymlinkTarget(const base::FilePath& symlink, base::FilePath* target);
   virtual bool GetExecutableBaseNameFromPid(pid_t pid, std::string* base_name);
 
   // Check given crash directory still has remaining capacity for another
