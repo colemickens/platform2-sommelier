@@ -83,6 +83,7 @@ const INSTALL_LINUX_PACKAGE_PROGRESS_SIGNAL: &str = "InstallLinuxPackageProgress
 const UNINSTALL_PACKAGE_PROGRESS_SIGNAL: &str = "UninstallPackageProgress";
 const LXD_CONTAINER_CREATED_SIGNAL: &str = "LxdContainerCreated";
 const LXD_CONTAINER_DOWNLOADING_SIGNAL: &str = "LxdContainerDownloading";
+const LXD_CONTAINER_STARTING_SIGNAL: &str = "LxdContainerStarting";
 const TREMPLIN_STARTED_SIGNAL: &str = "TremplinStarted";
 
 // seneschal dbus-constants.h
@@ -105,6 +106,7 @@ enum ChromeOSError {
     FailedGetVmInfo,
     FailedListDiskImages(String),
     FailedMetricsSend { exit_code: Option<i32> },
+    FailedStartContainerSignal(LxdContainerStartingSignal_Status, String),
     FailedSetupContainerUser(SetUpLxdContainerUserResponse_Status, String),
     FailedSharePath(String),
     FailedStartContainerStatus(StartLxdContainerResponse_Status, String),
@@ -132,6 +134,9 @@ impl fmt::Display for ChromeOSError {
             }
             FailedCreateContainerSignal(s, reason) => {
                 write!(f, "failed to create container: `{:?}`: {}", s, reason)
+            }
+            FailedStartContainerSignal(s, reason) => {
+                write!(f, "failed to start container: `{:?}`: {}", s, reason)
             }
             FailedGetFreeDiskSpace(e) => write!(f, "failed to get free disk space: {}", e),
             FailedGetVmInfo => write!(f, "failed to get vm info"),
@@ -596,6 +601,7 @@ impl ChromeOS {
         request.vm_name = vm_name.to_owned();
         request.container_name = container_name.to_owned();
         request.owner_id = user_id_hash.to_owned();
+        request.async = true;
 
         let response: StartLxdContainerResponse = self.sync_protobus(
             Message::new_method_call(
@@ -609,14 +615,19 @@ impl ChromeOS {
 
         use self::StartLxdContainerResponse_Status::*;
         match response.status {
-            STARTED => {
-                let _signal: cicerone_service::ContainerStartedSignal = self
+            STARTING => {
+                let signal: cicerone_service::LxdContainerStartingSignal = self
                     .protobus_wait_for_signal_timeout(
                         VM_CICERONE_INTERFACE,
-                        CONTAINER_STARTED_SIGNAL,
+                        LXD_CONTAINER_STARTING_SIGNAL,
                         DEFAULT_TIMEOUT_MS,
                     )?;
-                Ok(())
+                match signal.status {
+                    LxdContainerStartingSignal_Status::STARTED => Ok(()),
+                    _ => {
+                        Err(FailedStartContainerSignal(signal.status, signal.failure_reason).into())
+                    }
+                }
             }
             RUNNING => Ok(()),
             _ => Err(FailedStartContainerStatus(response.status, response.failure_reason).into()),
@@ -648,7 +659,16 @@ impl ChromeOS {
 
         use self::SetUpLxdContainerUserResponse_Status::*;
         match response.status {
-            SUCCESS | EXISTS => Ok(()),
+            SUCCESS | EXISTS => {
+                // TODO: listen for signal before calling the D-Bus method.
+                let _signal: cicerone_service::ContainerStartedSignal = self
+                    .protobus_wait_for_signal_timeout(
+                        VM_CICERONE_INTERFACE,
+                        CONTAINER_STARTED_SIGNAL,
+                        DEFAULT_TIMEOUT_MS,
+                    )?;
+                Ok(())
+            }
             _ => Err(FailedSetupContainerUser(response.status, response.failure_reason).into()),
         }
     }
