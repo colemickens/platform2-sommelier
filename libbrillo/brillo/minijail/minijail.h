@@ -58,6 +58,9 @@ class Minijail {
   // minijail_close_open_fds
   virtual void CloseOpenFds(struct minijail* jail);
 
+  // minijail_preserve_fd
+  virtual void PreserveFd(struct minijail* jail, int parent_fd, int child_fd);
+
   // minijail_enter
   virtual void Enter(struct minijail* jail);
 

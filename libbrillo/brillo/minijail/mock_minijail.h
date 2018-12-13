@@ -30,6 +30,8 @@ class MockMinijail : public brillo::Minijail {
   MOCK_METHOD2(UseCapabilities, void(struct minijail* jail, uint64_t capmask));
   MOCK_METHOD1(ResetSignalMask, void(struct minijail* jail));
   MOCK_METHOD1(CloseOpenFds, void(struct minijail* jail));
+  MOCK_METHOD3(PreserveFd,
+               void(struct minijail* jail, int parent_fd, int child_fd));
   MOCK_METHOD1(Enter, void(struct minijail* jail));
   MOCK_METHOD3(Run,
                bool(struct minijail* jail,

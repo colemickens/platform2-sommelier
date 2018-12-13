@@ -71,6 +71,10 @@ void Minijail::CloseOpenFds(struct minijail* jail) {
   minijail_close_open_fds(jail);
 }
 
+void Minijail::PreserveFd(struct minijail* jail, int parent_fd, int child_fd) {
+  minijail_preserve_fd(jail, parent_fd, child_fd);
+}
+
 void Minijail::Enter(struct minijail* jail) {
   minijail_enter(jail);
 }
