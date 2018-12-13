@@ -23,6 +23,8 @@ namespace dlcservice {
 namespace {
 constexpr char kFirstDlc[] = "First-Dlc";
 constexpr char kSecondDlc[] = "Second-Dlc";
+
+constexpr char kManifestName[] = "imageloader.json";
 }  // namespace
 
 class DlcServiceDBusAdaptorTest : public testing::Test {
@@ -38,6 +40,12 @@ class DlcServiceDBusAdaptorTest : public testing::Test {
     // Create DLC manifest sub-directories.
     base::CreateDirectory(manifest_path_.Append(kFirstDlc));
     base::CreateDirectory(manifest_path_.Append(kSecondDlc));
+    base::FilePath testdata_dir =
+        base::FilePath(getenv("SRC")).Append("testdata");
+    base::CopyFile(testdata_dir.Append(kFirstDlc).Append(kManifestName),
+                   manifest_path_.Append(kFirstDlc).Append(kManifestName));
+    base::CopyFile(testdata_dir.Append(kSecondDlc).Append(kManifestName),
+                   manifest_path_.Append(kSecondDlc).Append(kManifestName));
 
     // Create DLC content sub-directories.
     base::FilePath image_a_path =

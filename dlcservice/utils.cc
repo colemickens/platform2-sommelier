@@ -41,10 +41,10 @@ base::FilePath GetDlcModuleImagePath(const base::FilePath& dlc_module_root_path,
 }
 
 // Extract details about a DLC module from its manifest file.
-bool GetDlcManifest(const std::string& dlc_module_id,
+bool GetDlcManifest(const base::FilePath& dlc_manifest_path,
+                    const std::string& dlc_module_id,
                     imageloader::Manifest* manifest_out) {
   std::string dlc_json_str;
-  base::FilePath dlc_manifest_path(kManifestDir);
   base::FilePath dlc_manifest_file =
       dlc_manifest_path.Append(dlc_module_id).Append(kManifestName);
 

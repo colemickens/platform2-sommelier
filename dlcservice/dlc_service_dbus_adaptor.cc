@@ -159,11 +159,19 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
   }
 
   // Creates DLC module storage.
-  // TODO(xiaochu): parse DLC manifest file to set image size.
+  // TODO(xiaochu): Manifest currently returns a signed integer, which means
+  // this will likely fail for modules >= 2 GiB in size.
   // https://crbug.com/904539
-  // Currently we set the image file to be 1000K for all DLC modules.
-  // This is a reasonable size for test DLC modules for demo purpose.
-  int64_t image_size = 1024 * 1000;
+  imageloader::Manifest manifest;
+  if (!dlcservice::utils::GetDlcManifest(manifest_dir_, id_in, &manifest)) {
+    LogAndSetError(err, "Failed to get DLC module manifest.");
+    return false;
+  }
+  int64_t image_size = manifest.preallocated_size();
+  if (image_size <= 0) {
+    LogAndSetError(err, "Preallocated size  in manifest is illegal.");
+    return false;
+  }
 
   // Creates image A.
   base::FilePath image_a_path =

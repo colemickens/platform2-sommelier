@@ -109,7 +109,8 @@ class DlcServiceUtil {
   // Prints the information contained in the manifest of a DLC.
   static bool PrintDlcDetails(const std::string& dlc_id) {
     imageloader::Manifest manifest;
-    if (!dlcservice::utils::GetDlcManifest(dlc_id, &manifest)) {
+    if (!dlcservice::utils::GetDlcManifest(
+            base::FilePath(dlcservice::kManifestDir), dlc_id, &manifest)) {
       LOG(ERROR) << "Failed to get DLC module manifest.";
       return false;
     }
