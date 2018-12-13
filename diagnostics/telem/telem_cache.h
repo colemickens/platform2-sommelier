@@ -9,6 +9,7 @@
 #include <memory>
 
 #include <base/macros.h>
+#include <base/optional.h>
 #include <base/time/default_tick_clock.h>
 #include <base/time/time.h>
 #include <base/time/tick_clock.h>
@@ -35,13 +36,14 @@ class TelemCache final {
 
   // Gets telemetry data for |item| in an appropriate representation.
   // Does not check that the data is valid, so IsValid(|item|, acceptable_age)
-  // should be checked first before calling this function. The returned
-  // pointer is owned by TelemCache, and should not be cached by the caller.
-  const base::Value* GetParsedData(TelemetryItemEnum item);
+  // should be checked first before calling this function. The returned value
+  // should be checked before it is used - the function will return
+  // base::nullopt if the requested item does not exist in the cache.
+  const base::Optional<base::Value> GetParsedData(TelemetryItemEnum item);
 
   // Sets telemetry data for |item|, which can be retrieved later
   // via GetParsedData(|item|).
-  void SetParsedData(TelemetryItemEnum item, std::unique_ptr<base::Value> data);
+  void SetParsedData(TelemetryItemEnum item, base::Optional<base::Value> data);
 
   // Invalidates every item in the cache.
   void Invalidate();
@@ -50,9 +52,9 @@ class TelemCache final {
   // Internal representation of the data corresponding to
   // a single telemetry item.
   struct TelemItem {
-    explicit TelemItem(std::unique_ptr<base::Value> data_in,
-                       base::TimeTicks last_fetched_time_ticks_in);
-    std::unique_ptr<base::Value> data;
+    TelemItem(base::Optional<base::Value> data_in,
+              base::TimeTicks last_fetched_time_ticks_in);
+    base::Optional<base::Value> data;
     base::TimeTicks last_fetched_time_ticks;
   };
 

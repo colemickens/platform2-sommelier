@@ -7,14 +7,18 @@
 
 #include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <base/macros.h>
+#include <base/optional.h>
 #include <base/time/time.h>
 #include <base/values.h>
 
 #include "diagnostics/telem/async_grpc_client_adapter.h"
 #include "diagnostics/telem/async_grpc_client_adapter_impl.h"
 #include "diagnostics/telem/telem_cache.h"
+#include "diagnostics/telem/telemetry_group_enum.h"
 #include "diagnostics/telem/telemetry_item_enum.h"
 #include "diagnosticsd.grpc.pb.h"  // NOLINT(build/include)
 
@@ -46,9 +50,18 @@ class TelemConnection final {
 
   // Returns telemetry data corresponding to |item|, which was updated at least
   // |acceptable_age| ago. Connect() must be called before any calls to this
+  // method. The returned value should be checked before it is used - the
+  // function will return base::nullopt if the requested item could not be
+  // retrieved.
+  const base::Optional<base::Value> GetItem(TelemetryItemEnum item,
+                                            base::TimeDelta acceptable_age);
+
+  // Returns telemetry data for each item in |group|, which was updated at least
+  // |acceptable_age| ago. Connect() must be called before any calls to this
   // method.
-  const base::Value* GetItem(TelemetryItemEnum item,
-                             base::TimeDelta acceptable_age);
+  const std::vector<
+      std::pair<TelemetryItemEnum, const base::Optional<base::Value>>>
+  GetGroup(TelemetryGroupEnum group, base::TimeDelta acceptable_age);
 
  private:
   // Updates the internal cache with new telemetry data from /proc/.

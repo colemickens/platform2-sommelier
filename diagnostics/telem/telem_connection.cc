@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <utility>
-#include <vector>
+#include <map>
 
 #include <base/bind.h>
 #include <base/callback.h>
@@ -18,8 +17,10 @@
 #include <base/time/time.h>
 
 #include "diagnostics/telem/telem_connection.h"
-#include "diagnostics/telem/telemetry_item_enum.h"
+#include "diagnostics/telem/telemetry_group_enum.h"
 #include "diagnosticsd.pb.h"  // NOLINT(build/include)
+
+namespace diagnostics {
 
 namespace {
 // Generic callback which moves the response to its destination. All
@@ -33,9 +34,14 @@ void OnRpcResponseReceived(std::unique_ptr<ResponseType>* response_destination,
   run_loop_quit_closure.Run();
 }
 
-}  // namespace
+// Mapping between groups and items. Each item belongs to exactly one
+// group.
+const std::map<TelemetryGroupEnum, std::vector<TelemetryItemEnum>> group_map = {
+    {TelemetryGroupEnum::kDisk,
+     {TelemetryItemEnum::kMemTotalMebibytes,
+      TelemetryItemEnum::kMemFreeMebibytes}}};
 
-namespace diagnostics {
+}  // namespace
 
 TelemConnection::TelemConnection() {
   owned_client_impl_ = std::make_unique<AsyncGrpcClientAdapterImpl>();
@@ -55,8 +61,8 @@ void TelemConnection::Connect(const std::string& target_uri) {
   client_impl_->Connect(target_uri);
 }
 
-const base::Value* TelemConnection::GetItem(TelemetryItemEnum item,
-                                            base::TimeDelta acceptable_age) {
+const base::Optional<base::Value> TelemConnection::GetItem(
+    TelemetryItemEnum item, base::TimeDelta acceptable_age) {
   // First, check to see if the desired telemetry information is
   // present and valid in the cache. If so, just return it.
   if (!cache_.IsValid(item, acceptable_age)) {
@@ -90,6 +96,19 @@ const base::Value* TelemConnection::GetItem(TelemetryItemEnum item,
   }
 
   return cache_.GetParsedData(item);
+}
+
+const std::vector<
+    std::pair<TelemetryItemEnum, const base::Optional<base::Value>>>
+TelemConnection::GetGroup(TelemetryGroupEnum group,
+                          base::TimeDelta acceptable_age) {
+  std::vector<std::pair<TelemetryItemEnum, const base::Optional<base::Value>>>
+      telem_items;
+
+  for (TelemetryItemEnum item : group_map.at(group))
+    telem_items.emplace_back(item, GetItem(item, acceptable_age));
+
+  return telem_items;
 }
 
 // Sends a GetProcDataRequest, then parses and caches the response.
@@ -171,8 +190,9 @@ void TelemConnection::ExtractDataFromProcMeminfo(
       if (t.GetNext() && base::StringToInt(t.token(), &memtotal_mb) &&
           t.GetNext() && t.token() == "kB") {
         memtotal_mb /= 1024;
-        cache_.SetParsedData(TelemetryItemEnum::kMemTotalMebibytes,
-                             std::make_unique<base::Value>(memtotal_mb));
+        cache_.SetParsedData(
+            TelemetryItemEnum::kMemTotalMebibytes,
+            base::Optional<base::Value>(base::Value(memtotal_mb)));
       } else {
         LOG(ERROR) << "Incorrectly formatted MemTotal.";
       }
@@ -183,8 +203,9 @@ void TelemConnection::ExtractDataFromProcMeminfo(
       if (t.GetNext() && base::StringToInt(t.token(), &memfree_mb) &&
           t.GetNext() && t.token() == "kB") {
         memfree_mb /= 1024;
-        cache_.SetParsedData(TelemetryItemEnum::kMemFreeMebibytes,
-                             std::make_unique<base::Value>(memfree_mb));
+        cache_.SetParsedData(
+            TelemetryItemEnum::kMemFreeMebibytes,
+            base::Optional<base::Value>(base::Value(memfree_mb)));
       } else {
         LOG(ERROR) << "Incorrectly formatted MemFree.";
       }

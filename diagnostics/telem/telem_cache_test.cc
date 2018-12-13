@@ -64,25 +64,26 @@ TEST_F(TelemCacheTest, EmptyCacheInvalidEntry) {
 // entry which does not exist.
 TEST_F(TelemCacheTest, AccessMissingEntry) {
   EXPECT_EQ(cache()->GetParsedData(TelemetryItemEnum::kMemTotalMebibytes),
-            nullptr);
+            base::nullopt);
 }
 
 // Test that we can insert and retrieve an item with the cache.
 TEST_F(TelemCacheTest, InsertNewEntry) {
   cache()->SetParsedData(TelemetryItemEnum::kMemTotalMebibytes,
-                         std::make_unique<base::Value>(kFirstStrValue));
+                         base::Value(kFirstStrValue));
   std::string string_val;
-  const base::Value* returned_data =
+  const base::Optional<base::Value> returned_data =
       cache()->GetParsedData(TelemetryItemEnum::kMemTotalMebibytes);
-  ASSERT_TRUE(returned_data != nullptr);
-  EXPECT_TRUE(returned_data->GetAsString(&string_val));
+
+  ASSERT_TRUE(returned_data);
+  EXPECT_TRUE(returned_data.value().GetAsString(&string_val));
   EXPECT_EQ(string_val, kFirstStrValue);
 }
 
 // Test that an old cached value is not valid.
 TEST_F(TelemCacheTest, InvalidOldEntry) {
   cache()->SetParsedData(TelemetryItemEnum::kMemTotalMebibytes,
-                         std::make_unique<base::Value>(kFirstStrValue));
+                         base::Value(kFirstStrValue));
   clock()->Advance(kInsertionDelta);
   EXPECT_FALSE(cache()->IsValid(TelemetryItemEnum::kMemTotalMebibytes,
                                 kBeforeInsertionDelta));
@@ -91,7 +92,7 @@ TEST_F(TelemCacheTest, InvalidOldEntry) {
 // Test that a recent cached value is valid.
 TEST_F(TelemCacheTest, ValidRecentEntry) {
   cache()->SetParsedData(TelemetryItemEnum::kMemTotalMebibytes,
-                         std::make_unique<base::Value>(kFirstStrValue));
+                         base::Value(kFirstStrValue));
   clock()->Advance(kInsertionDelta);
   EXPECT_TRUE(cache()->IsValid(TelemetryItemEnum::kMemTotalMebibytes,
                                kAfterInsertionDelta));
@@ -100,27 +101,28 @@ TEST_F(TelemCacheTest, ValidRecentEntry) {
 // Test that we can update a cached item's value.
 TEST_F(TelemCacheTest, UpdateExistingEntry) {
   cache()->SetParsedData(TelemetryItemEnum::kMemTotalMebibytes,
-                         std::make_unique<base::Value>(kFirstStrValue));
+                         base::Value(kFirstStrValue));
   std::string string_val;
-  const base::Value* returned_data =
+  const base::Optional<base::Value> first_returned_data =
       cache()->GetParsedData(TelemetryItemEnum::kMemTotalMebibytes);
-  ASSERT_TRUE(returned_data != nullptr);
-  EXPECT_TRUE(returned_data->GetAsString(&string_val));
+  ASSERT_TRUE(first_returned_data);
+  EXPECT_TRUE(first_returned_data.value().GetAsString(&string_val));
   EXPECT_EQ(string_val, kFirstStrValue);
   cache()->SetParsedData(TelemetryItemEnum::kMemTotalMebibytes,
-                         std::make_unique<base::Value>(kSecondStrValue));
-  returned_data = cache()->GetParsedData(TelemetryItemEnum::kMemTotalMebibytes);
-  ASSERT_TRUE(returned_data != nullptr);
-  EXPECT_TRUE(returned_data->GetAsString(&string_val));
+                         base::Value(kSecondStrValue));
+  const base::Optional<base::Value> second_returned_data =
+      cache()->GetParsedData(TelemetryItemEnum::kMemTotalMebibytes);
+  ASSERT_TRUE(second_returned_data);
+  EXPECT_TRUE(second_returned_data.value().GetAsString(&string_val));
   EXPECT_EQ(string_val, kSecondStrValue);
 }
 
 // Test that we can invalidate the cache.
 TEST_F(TelemCacheTest, InvalidateExistingEntries) {
   cache()->SetParsedData(TelemetryItemEnum::kMemTotalMebibytes,
-                         std::make_unique<base::Value>(kFirstStrValue));
+                         base::Value(kFirstStrValue));
   cache()->SetParsedData(TelemetryItemEnum::kStat,
-                         std::make_unique<base::Value>(kSecondStrValue));
+                         base::Value(kSecondStrValue));
   clock()->Advance(kInsertionDelta);
   EXPECT_TRUE(cache()->IsValid(TelemetryItemEnum::kMemTotalMebibytes,
                                kAfterInsertionDelta));

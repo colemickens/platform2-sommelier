@@ -24,31 +24,30 @@ bool TelemCache::IsValid(TelemetryItemEnum item,
              acceptable_age;
 }
 
-const base::Value* TelemCache::GetParsedData(TelemetryItemEnum item) {
-  if (!cache_.count(item)) {
-    // Item does not yet exist in the cache.
-    return nullptr;
-  }
-  return cache_.at(item).data.get();
+const base::Optional<base::Value> TelemCache::GetParsedData(
+    TelemetryItemEnum item) {
+  if (!cache_.count(item))
+    return base::nullopt;
+
+  return cache_.at(item).data;
 }
 
 void TelemCache::SetParsedData(TelemetryItemEnum item,
-                               std::unique_ptr<base::Value> data) {
-  TelemItem new_telem_item(std::move(data), tick_clock_->NowTicks());
+                               base::Optional<base::Value> data) {
+  TelemItem new_telem_item(data, tick_clock_->NowTicks());
 
   if (!cache_.count(item))
-    cache_.emplace(item, std::move(new_telem_item));
+    cache_.emplace(item, new_telem_item);
   else
-    cache_.at(item) = std::move(new_telem_item);
+    cache_.at(item) = new_telem_item;
 }
 
 void TelemCache::Invalidate() {
   cache_.clear();
 }
 
-TelemCache::TelemItem::TelemItem(std::unique_ptr<base::Value> data_in,
+TelemCache::TelemItem::TelemItem(base::Optional<base::Value> data_in,
                                  base::TimeTicks last_fetched_time_ticks_in)
-    : data(std::move(data_in)),
-      last_fetched_time_ticks(last_fetched_time_ticks_in) {}
+    : data(data_in), last_fetched_time_ticks(last_fetched_time_ticks_in) {}
 
 }  // namespace diagnostics
