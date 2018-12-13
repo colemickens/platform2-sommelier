@@ -32,6 +32,33 @@ _DEFINE_PARSE_ARGUMENT(double, GetDouble);
 _DEFINE_PARSE_ARGUMENT(int, GetInt);
 
 template <>
+bool ParseArgument<std::vector<std::string>>(const char* function_name,
+                                             const char* member_name,
+                                             std::vector<std::string>* member,
+                                             const base::Value& value) {
+  if (!value.is_list()) {
+    LOG(ERROR) << "failed to parse " << value << " as a list of string.";
+    return false;
+  }
+
+  std::vector<std::string> tmp{};
+  const base::ListValue* list_value;
+  value.GetAsList(&list_value);
+
+  for (auto it = list_value->begin(); it != list_value->end(); it++) {
+    if (!(*it)->is_string()) {
+      LOG(ERROR) << "failed to parse " << value << " as a list of string.";
+      return false;
+    }
+
+    tmp.emplace_back();
+    (*it)->GetAsString(&tmp.back());
+  }
+  member->swap(tmp);
+  return true;
+}
+
+template <>
 bool ParseArgument<std::vector<std::unique_ptr<ProbeFunction>>>(
     const char* function_name,
     const char* member_name,

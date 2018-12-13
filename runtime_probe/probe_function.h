@@ -33,10 +33,10 @@ class ProbeFunction {
    * where the top layer dictionary should have one and only one key.  For
    * example::
    *   {
-   *     "shell": {
-   *       "command": "mosys platform sku",
-   *       "key": "device_sku",
-   *       "split_line": false
+   *     "sysfs": {
+   *       "dir_path": "/sys/class/cool/device/dev*",
+   *       "keys": ["key_1", "key_2"],
+   *       "optional_keys": ["opt_key_1"]
    *     }
    *   }
    *
@@ -86,7 +86,7 @@ class ProbeFunction {
   virtual DataType Eval() const = 0;
 
   /* Function prototype of |FromDictionaryValue| that should be implemented by
-   * each derived class.  See `functions/shell.h` about how to implement this
+   * each derived class.  See `functions/sysfs.h` about how to implement this
    * function.
    */
   typedef std::function<std::unique_ptr<ProbeFunction>(

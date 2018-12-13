@@ -22,8 +22,11 @@ namespace runtime_probe {
  *   - int
  *   - bool
  *   - double
- *   - std::unique_ptr<ProbeFunction>  // this is defined in probe_function.h
- * Arguments can have default value, except for std::unique_ptr<ProbeFunction>.
+ *   - std::vector<std::string>
+ *   - std::vector<std::unique_ptr<ProbeFunction>>
+ *
+ * Arguments can have default value, except for
+ * std::vector<std::unique_ptr<ProbeFunction>>.
  */
 
 class ProbeFunction;
@@ -40,9 +43,7 @@ bool ParseArgument(const char* function_name,
                    T* member,
                    const base::DictionaryValue& dict_value) {
   const base::Value* value;
-  dict_value.Get(member_name, &value);
-
-  if (value == nullptr) {
+  if (!dict_value.Get(member_name, &value)) {
     LOG(ERROR) << function_name << ": `" << member_name << "`not found";
     return false;
   }
