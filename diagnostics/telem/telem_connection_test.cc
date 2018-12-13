@@ -29,6 +29,10 @@ constexpr char kFakeMeminfoFileContents[] =
     "MemTotal:      3906320 kB\nMemFree:      873180 kB\n";
 constexpr int kFakeMemTotalMebibytes = 3814;
 constexpr int kFakeMemFreeMebibytes = 852;
+constexpr char kFakeLoadavgFileContents[] = "0.82 0.61 0.52 2/370 30707\n";
+constexpr char kFakeBadLoadavgFileContents[] = "0.82 0.61 0.52 2 370 30707\n";
+constexpr int kFakeNumRunnableEntities = 2;
+constexpr int kFakeNumExistingEntities = 370;
 
 class MockAsyncGrpcClientAdapter : public AsyncGrpcClientAdapter {
  public:
@@ -64,32 +68,52 @@ class TelemConnectionTest : public ::testing::Test {
   }
 
   // Sets the MockAsyncGrpcClientAdapter to run the next callback with a
-  // fake /proc/meminfo file dump as its response.
-  void SetMeminfoProcDataResponse() {
+  // fake file dump as its ProcDataResponse.
+  void SetProcDataResponse(const std::string& file_contents) {
     std::unique_ptr<grpc_api::GetProcDataResponse> response =
         std::make_unique<grpc_api::GetProcDataResponse>();
     // response->mutable_file_dump()->Add()
     EXPECT_CALL(mock_adapter_, GetProcData(_, _))
         .WillRepeatedly(
-            Invoke([](::testing::Unused, ProcDataCallback callback) mutable {
+            Invoke([file_contents](::testing::Unused,
+                                   ProcDataCallback callback) mutable {
               std::unique_ptr<grpc_api::GetProcDataResponse> reply =
                   std::make_unique<grpc_api::GetProcDataResponse>();
               grpc_api::FileDump fake_file_dump;
-              fake_file_dump.set_contents(kFakeMeminfoFileContents);
+              fake_file_dump.set_contents(file_contents);
               reply->mutable_file_dump()->Add()->Swap(&fake_file_dump);
               callback.Run(std::move(reply));
             }));
   }
 
   // Checks whether the response matches the expected response from a
-  // GetItem(TelemetryItemEnum::kMemTotalMebibytes) command.
-  void CheckMemTotalItemResponse(
-      const base::Optional<base::Value>& actual_response) {
+  // GetItem(item) command. |item| must be expected as an integer.
+  void CheckIntegerItemResponse(
+      const base::Optional<base::Value>& actual_response,
+      TelemetryItemEnum item) {
     int val;
 
+    // Make sure that a value was returned, and that value has an integer
+    // representation.
     ASSERT_TRUE(actual_response);
     ASSERT_TRUE(actual_response.value().GetAsInteger(&val));
-    EXPECT_EQ(val, kFakeMemTotalMebibytes);
+    switch (item) {
+      case TelemetryItemEnum::kMemTotalMebibytes:
+        EXPECT_EQ(val, kFakeMemTotalMebibytes);
+        break;
+      case TelemetryItemEnum::kNumRunnableEntities:
+        EXPECT_EQ(val, kFakeNumRunnableEntities);
+        break;
+      case TelemetryItemEnum::kNumExistingEntities:
+        EXPECT_EQ(val, kFakeNumExistingEntities);
+        break;
+      default:
+        // We should never get here, because all items currently tested
+        // which have integer representations are enumerated above. However,
+        // we need this default case, because some TelemetryItemEnums
+        // cannot be represented as integers and are not checked here.
+        break;
+    }
   }
 
   // Checks whether the response matches the expected response
@@ -137,25 +161,57 @@ TEST_F(TelemConnectionTest, NullptrResponse) {
   SetNullptrProcDataResponse();
 
   EXPECT_EQ(connection()->GetItem(TelemetryItemEnum::kMemTotalMebibytes,
-                                  base::TimeDelta::FromSeconds(0)),
+                                  base::TimeDelta()),
             base::nullopt);
 }
 
-// Test that we can retrieve a telemetry item.
+// Test that we can retrieve kMemTotalMebibytes.
 TEST_F(TelemConnectionTest, GetMemTotal) {
-  SetMeminfoProcDataResponse();
+  SetProcDataResponse(kFakeMeminfoFileContents);
 
   auto mem_total = connection()->GetItem(TelemetryItemEnum::kMemTotalMebibytes,
-                                         base::TimeDelta::FromSeconds(0));
-  CheckMemTotalItemResponse(mem_total);
+                                         base::TimeDelta());
+  CheckIntegerItemResponse(mem_total, TelemetryItemEnum::kMemTotalMebibytes);
+}
+
+// Test that we can retrieve kNumRunnableEntities.
+TEST_F(TelemConnectionTest, GetRunnableEntities) {
+  SetProcDataResponse(kFakeLoadavgFileContents);
+
+  auto runnable_entities = connection()->GetItem(
+      TelemetryItemEnum::kNumRunnableEntities, base::TimeDelta());
+  CheckIntegerItemResponse(runnable_entities,
+                           TelemetryItemEnum::kNumRunnableEntities);
+}
+
+// Test that we can retrieve kNumExistingEntities.
+TEST_F(TelemConnectionTest, GetExistingEntities) {
+  SetProcDataResponse(kFakeLoadavgFileContents);
+
+  auto existing_entities = connection()->GetItem(
+      TelemetryItemEnum::kNumExistingEntities, base::TimeDelta());
+  CheckIntegerItemResponse(existing_entities,
+                           TelemetryItemEnum::kNumExistingEntities);
+}
+
+// Test that an incorrectly formatted /proc/loadavg will fail to parse.
+TEST_F(TelemConnectionTest, GetBadLoadAvg) {
+  SetProcDataResponse(kFakeBadLoadavgFileContents);
+
+  auto runnable_entities = connection()->GetItem(
+      TelemetryItemEnum::kNumRunnableEntities, base::TimeDelta());
+  EXPECT_EQ(runnable_entities, base::nullopt);
+  auto existing_entities = connection()->GetItem(
+      TelemetryItemEnum::kNumExistingEntities, base::TimeDelta());
+  EXPECT_EQ(existing_entities, base::nullopt);
 }
 
 // Test that we can retrieve a group of telemetry items.
 TEST_F(TelemConnectionTest, GetDiskGroup) {
-  SetMeminfoProcDataResponse();
+  SetProcDataResponse(kFakeMeminfoFileContents);
 
-  auto disk_group = connection()->GetGroup(TelemetryGroupEnum::kDisk,
-                                           base::TimeDelta::FromSeconds(0));
+  auto disk_group =
+      connection()->GetGroup(TelemetryGroupEnum::kDisk, base::TimeDelta());
   CheckDiskGroupResponse(disk_group);
 }
 

@@ -159,6 +159,7 @@
         'exported_deps': [
           'libbrillo-<(libbase_ver)',
           'libchrome-<(libbase_ver)',
+          're2',
         ],
         'deps': [
           '<@(exported_deps)',

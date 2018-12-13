@@ -15,6 +15,7 @@
 #include <base/strings/string_util.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
+#include <re2/re2.h>
 
 #include "diagnostics/telem/telem_connection.h"
 #include "diagnostics/telem/telemetry_group_enum.h"
@@ -77,7 +78,8 @@ const base::Optional<base::Value> TelemConnection::GetItem(
       case TelemetryItemEnum::kMemFreeMebibytes:
         UpdateProcData(grpc_api::GetProcDataRequest::FILE_MEMINFO);
         break;
-      case TelemetryItemEnum::kLoadAvg:
+      case TelemetryItemEnum::kNumRunnableEntities:  // FALLTHROUGH
+      case TelemetryItemEnum::kNumExistingEntities:
         UpdateProcData(grpc_api::GetProcDataRequest::FILE_LOADAVG);
         break;
       case TelemetryItemEnum::kStat:
@@ -220,7 +222,32 @@ void TelemConnection::ExtractDataFromProcUptime(
 
 void TelemConnection::ExtractDataFromProcLoadavg(
     const grpc_api::GetProcDataResponse& response) {
-  NOTIMPLEMENTED();
+  // Make sure we received exactly one file in the response.
+  if (response.file_dump_size() != 1) {
+    LOG(ERROR) << "Bad GetProcDataResponse from request of type FILE_LOADAVG.";
+    return;
+  }
+
+  // We expect the loadavg response to have the following format:
+  // %f %f %f %d/%d %d. At the moment, we're only interested in
+  // the %d/%d: it will parse into kNumRunnableEntities/kNumExistingEntities.
+  // We'll first make sure the entire response matches the expected format,
+  // then we'll extract the %d/%d.
+  int running_entities;
+  int existing_entities;
+  if (!RE2::FullMatch(response.file_dump(0).contents(),
+                      "\\d+\\.\\d+\\s\\d+\\.\\d+\\s\\d+"
+                      "\\.\\d+\\s(\\d+)/(\\d+)\\s\\d+\\n",
+                      &running_entities, &existing_entities)) {
+    LOG(ERROR) << "Incorrectly formatted loadavg.";
+    return;
+  }
+  cache_.SetParsedData(
+      TelemetryItemEnum::kNumRunnableEntities,
+      base::Optional<base::Value>(base::Value(running_entities)));
+  cache_.SetParsedData(
+      TelemetryItemEnum::kNumExistingEntities,
+      base::Optional<base::Value>(base::Value(existing_entities)));
 }
 
 void TelemConnection::ExtractDataFromProcStat(
