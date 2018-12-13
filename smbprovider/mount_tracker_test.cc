@@ -127,6 +127,11 @@ class MountTrackerTest : public testing::Test {
   }
 
  protected:
+  std::unique_ptr<password_provider::Password> CreatePassword(
+      const std::string& password) {
+    return GetPassword(WritePasswordToFile(password));
+  }
+
   std::unique_ptr<MountTracker> mount_tracker_;
   TempFileManager temp_files_;
   SambaInterfaceFactory samba_interface_factory_;
@@ -142,11 +147,6 @@ class MountTrackerTest : public testing::Test {
 
   std::unique_ptr<password_provider::Password> GetEmptyPassword() {
     return GetPassword(WriteEmptyPasswordToFile());
-  }
-
-  std::unique_ptr<password_provider::Password> CreatePassword(
-      const std::string& password) {
-    return GetPassword(WritePasswordToFile(password));
   }
 
   DISALLOW_COPY_AND_ASSIGN(MountTrackerTest);
@@ -693,6 +693,44 @@ TEST_F(MountTrackerTest, TestGetCacheForInvalidMount) {
   // mount_id + 1 does not exist.
   MetadataCache* cache = nullptr;
   EXPECT_FALSE(mount_tracker_->GetMetadataCache(mount_id + 1, &cache));
+}
+
+TEST_F(MountTrackerTest, TestUpdateMountCredentials) {
+  int32_t mount_id;
+
+  EXPECT_TRUE(
+      AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id));
+
+  EXPECT_EQ(1, mount_tracker_->MountCount());
+  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(mount_id));
+
+  ExpectCredentialsEqual(mount_id, kWorkgroup, kUsername, kPassword);
+
+  const std::string workgroup2 = "updated_workgroup";
+  const std::string username2 = "updated_username";
+  const std::string password2 = "updated_password";
+
+  SmbCredential credential(workgroup2, username2, CreatePassword(password2));
+  EXPECT_TRUE(
+      mount_tracker_->UpdateCredential(mount_id, std::move(credential)));
+
+  ExpectCredentialsEqual(mount_id, workgroup2, username2, password2);
+}
+
+TEST_F(MountTrackerTest, TestUpdateMountCredentialsOnNontExistantMountId) {
+  int32_t mount_id = 999;
+
+  const std::string workgroup2 = "updated_workgroup";
+  const std::string username2 = "updated_username";
+  const std::string password2 = "updated_password";
+
+  SmbCredential credential(workgroup2, username2, CreatePassword(password2));
+
+  EXPECT_EQ(0, mount_tracker_->MountCount());
+  EXPECT_FALSE(
+      mount_tracker_->UpdateCredential(mount_id, std::move(credential)));
+
+  EXPECT_EQ(0, mount_tracker_->MountCount());
 }
 
 }  // namespace smbprovider

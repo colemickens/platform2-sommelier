@@ -254,7 +254,7 @@ ProtoBlob CreateMountOptionsBlob(const std::string& path,
 ProtoBlob CreateMountOptionsBlob(const std::string& path,
                                  const std::string& workgroup,
                                  const std::string& username,
-                                 const MountConfig mount_config) {
+                                 const MountConfig& mount_config) {
   return SerializeProtoToBlobAndCheck(
       CreateMountOptionsProto(path, workgroup, username, mount_config));
 }
@@ -413,6 +413,35 @@ void ExpectFileNotEqual(const std::string& path,
   EXPECT_TRUE(ReadFileToString(file_path, &actual_contents));
 
   EXPECT_NE(expected_contents, actual_contents);
+}
+
+void ExpectCredentialsEqual(MountManager* mount_manager,
+                            int32_t mount_id,
+                            const std::string& root_path,
+                            const std::string& workgroup,
+                            const std::string& username,
+                            const std::string& password) {
+  DCHECK(mount_manager);
+
+  constexpr size_t kComparisonBufferSize = 256;
+  char workgroup_buffer[kComparisonBufferSize];
+  char username_buffer[kComparisonBufferSize];
+  char password_buffer[kComparisonBufferSize];
+
+  SambaInterface* samba_interface;
+  EXPECT_TRUE(mount_manager->GetSambaInterface(mount_id, &samba_interface));
+
+  const SambaInterface::SambaInterfaceId samba_interface_id =
+      samba_interface->GetSambaInterfaceId();
+
+  EXPECT_TRUE(mount_manager->GetAuthentication(
+      samba_interface_id, root_path, workgroup_buffer, kComparisonBufferSize,
+      username_buffer, kComparisonBufferSize, password_buffer,
+      kComparisonBufferSize));
+
+  EXPECT_EQ(std::string(workgroup_buffer), workgroup);
+  EXPECT_EQ(std::string(username_buffer), username);
+  EXPECT_EQ(std::string(password_buffer), password);
 }
 
 std::vector<uint8_t> CreateNetBiosResponsePacket(

@@ -116,6 +116,11 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
                          char* password,
                          int32_t password_length) const;
 
+  // Updates the SmbCredential for the given mount. Returns true if updating the
+  // mount's credential was successful. Returns false if credentials were not
+  // updated.
+  bool UpdateMountCredential(int32_t mount_id, SmbCredential credential);
+
  private:
   // Runs |samba_interface_factory_|.
   std::unique_ptr<SambaInterface> CreateSambaInterface(

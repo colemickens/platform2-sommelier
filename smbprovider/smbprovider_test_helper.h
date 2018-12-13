@@ -12,6 +12,7 @@
 #include <authpolicy/proto_bindings/active_directory_info.pb.h>
 #include <base/files/file_util.h>
 
+#include "smbprovider/mount_manager.h"
 #include "smbprovider/proto.h"
 #include "smbprovider/proto_bindings/directory_entry.pb.h"
 
@@ -220,6 +221,15 @@ void ExpectFileEqual(const std::string& path,
 // Expects that the file at |path| does not contain |expected_contents|.
 void ExpectFileNotEqual(const std::string& path,
                         const std::string expected_contents);
+
+// Expects that the credentials of the mount with |mount_id| are equal to the
+// inputted credentials.
+void ExpectCredentialsEqual(MountManager* mount_manager,
+                            int32_t mount_id,
+                            const std::string& root_path,
+                            const std::string& workgroup,
+                            const std::string& username,
+                            const std::string& password);
 
 // Creates a NetBios Name Query response packet. |hostnames| may contain well
 // formed (18 byte) or malformed hostnames. For a well-formed packet,

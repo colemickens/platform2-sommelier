@@ -138,6 +138,9 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
                              int32_t* error_code,
                              ProtoBlob* out_entries) override;
 
+  int32_t UpdateMountCredentials(const ProtoBlob& options_blob,
+                                 const base::ScopedFD& password_fd) override;
+
   // Register DBus object and interfaces.
   void RegisterAsync(
       const AsyncEventSequencer::CompletionAction& completion_callback);

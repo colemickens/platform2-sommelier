@@ -622,6 +622,25 @@ void SmbProvider::ContinueReadDirectory(int32_t mount_id,
   *error_code = static_cast<int32_t>(error);
 }
 
+int32_t SmbProvider::UpdateMountCredentials(const ProtoBlob& options_blob,
+                                            const base::ScopedFD& password_fd) {
+  int32_t error_code;
+  UpdateMountCredentialsOptionsProto options;
+
+  const bool success =
+      ParseOptionsProto(options_blob, &options, &error_code) &&
+      mount_manager_->UpdateMountCredential(
+          options.mount_id(),
+          SmbCredential(options.workgroup(), options.username(),
+                        GetPassword(password_fd)));
+  if (!success) {
+    LOG(ERROR) << "Failed to update credentials of mount id: "
+               << options.mount_id();
+    return static_cast<int32_t>(ERROR_NOT_FOUND);
+  }
+  return static_cast<int32_t>(ERROR_OK);
+}
+
 HostnamesProto SmbProvider::BuildHostnamesProto(
     const std::vector<std::string>& hostnames) const {
   HostnamesProto hostnames_proto;

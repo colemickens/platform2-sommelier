@@ -261,4 +261,9 @@ SambaInterface::SambaInterfaceId MountManager::GetSystemSambaInterfaceId() {
   return system_samba_interface_->GetSambaInterfaceId();
 }
 
+bool MountManager::UpdateMountCredential(int32_t mount_id,
+                                         SmbCredential credential) {
+  return mount_tracker_->UpdateCredential(mount_id, std::move(credential));
+}
+
 }  // namespace smbprovider

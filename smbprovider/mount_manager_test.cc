@@ -98,25 +98,8 @@ class MountManagerTest : public testing::Test {
                               const std::string& workgroup,
                               const std::string& username,
                               const std::string& password) {
-    constexpr size_t kComparisonBufferSize = 256;
-    char workgroup_buffer[kComparisonBufferSize];
-    char username_buffer[kComparisonBufferSize];
-    char password_buffer[kComparisonBufferSize];
-
-    SambaInterface* samba_interface;
-    EXPECT_TRUE(mounts_->GetSambaInterface(mount_id, &samba_interface));
-
-    const SambaInterface::SambaInterfaceId samba_interface_id =
-        samba_interface->GetSambaInterfaceId();
-
-    EXPECT_TRUE(mounts_->GetAuthentication(
-        samba_interface_id, root_path, workgroup_buffer, kComparisonBufferSize,
-        username_buffer, kComparisonBufferSize, password_buffer,
-        kComparisonBufferSize));
-
-    EXPECT_EQ(std::string(workgroup_buffer), workgroup);
-    EXPECT_EQ(std::string(username_buffer), username);
-    EXPECT_EQ(std::string(password_buffer), password);
+    smbprovider::ExpectCredentialsEqual(mounts_.get(), mount_id, root_path,
+                                        workgroup, username, password);
   }
 
   SmbCredential CreateCredential(const std::string& workgroup,
@@ -740,6 +723,64 @@ TEST_F(MountManagerTest, TestRemountDisableNTLM) {
   EXPECT_TRUE(RemountWithMountConfig(kMountRoot, std::move(credential),
                                      mount_config, mount_id));
   EXPECT_FALSE(enable_ntlm_);
+}
+
+TEST_F(MountManagerTest, TestUpdateMountCredentials) {
+  int mount_id = 1;
+  SmbCredential credential = CreateCredential(kWorkgroup, kUsername, kPassword);
+
+  EXPECT_TRUE(AddMount(kMountRoot, std::move(credential), &mount_id));
+  EXPECT_EQ(1, mounts_->MountCount());
+
+  ExpectCredentialsEqual(mount_id, kMountRoot, kWorkgroup, kUsername,
+                         kPassword);
+
+  const std::string workgroup2 = "updated_workgroup";
+  const std::string username2 = "updated_user";
+  const std::string password2 = "updated_password";
+
+  SmbCredential credential2 =
+      CreateCredential(workgroup2, username2, password2);
+
+  EXPECT_TRUE(mounts_->UpdateMountCredential(mount_id, std::move(credential2)));
+
+  ExpectCredentialsEqual(mount_id, kMountRoot, workgroup2, username2,
+                         password2);
+}
+
+TEST_F(MountManagerTest, TestUpdateMountCredentialsOnNonExistantMount) {
+  int mount_id = 999;
+  const std::string workgroup2 = "updated_workgroup";
+  const std::string username2 = "updated_user";
+  const std::string password2 = "updated_password";
+  SmbCredential credential2 =
+      CreateCredential(workgroup2, username2, password2);
+
+  EXPECT_EQ(0, mounts_->MountCount());
+  EXPECT_FALSE(
+      mounts_->UpdateMountCredential(mount_id, std::move(credential2)));
+}
+
+TEST_F(MountManagerTest, TestUpdateMountCredentialsOnUnmountedMount) {
+  int mount_id = 1;
+  SmbCredential credential = CreateCredential(kWorkgroup, kUsername, kPassword);
+
+  EXPECT_TRUE(AddMount(kMountRoot, std::move(credential), &mount_id));
+  EXPECT_EQ(1, mounts_->MountCount());
+
+  mounts_->RemoveMount(mount_id);
+
+  EXPECT_EQ(0, mounts_->MountCount());
+
+  const std::string workgroup2 = "updated_workgroup";
+  const std::string username2 = "updated_user";
+  const std::string password2 = "updated_password";
+
+  SmbCredential credential2 =
+      CreateCredential(workgroup2, username2, password2);
+
+  EXPECT_FALSE(
+      mounts_->UpdateMountCredential(mount_id, std::move(credential2)));
 }
 
 }  // namespace smbprovider

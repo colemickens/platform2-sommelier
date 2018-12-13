@@ -99,6 +99,9 @@ class MountTracker {
   // Gets a pointer to the metadata cache for |mount_id|.
   bool GetMetadataCache(int32_t mount_id, MetadataCache** cache) const;
 
+  // Updates the SmbCredential within MountInfo.
+  bool UpdateCredential(int32_t mount_id, SmbCredential credential);
+
  private:
   // Maintains the state of a single mount. Contains the mount root path and
   // the metadata cache.

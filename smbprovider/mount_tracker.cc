@@ -195,6 +195,17 @@ bool MountTracker::GetMetadataCache(int32_t mount_id,
   return true;
 }
 
+bool MountTracker::UpdateCredential(int32_t mount_id,
+                                    SmbCredential credential) {
+  const auto mount_iter = mounts_.Find(mount_id);
+  if (mount_iter == mounts_.End()) {
+    return false;
+  }
+
+  mount_iter->second.credential = std::move(credential);
+  return true;
+}
+
 MountTracker::MountInfo MountTracker::CreateMountInfo(
     const std::string& mount_root,
     SmbCredential credential,

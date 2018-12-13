@@ -133,6 +133,27 @@ class SmbProviderTest : public testing::Test {
     return mount_id;
   }
 
+  // Helper method that behaves just like PrepareMountWithMountConfig but with
+  // mount credentials included.
+  int32_t PrepareMountWithMountConfig(bool enable_ntlm,
+                                      const std::string& workgroup,
+                                      const std::string& username,
+                                      const std::string& password) {
+    fake_samba_->AddDirectory(GetDefaultServer());
+    fake_samba_->AddDirectory(GetDefaultMountRoot());
+    int32_t mount_id;
+    int32_t err;
+    MountConfig mount_config(enable_ntlm);
+    ProtoBlob proto_blob = CreateMountOptionsBlob(
+        GetDefaultMountRoot(), workgroup, username, mount_config);
+    smbprovider_->Mount(proto_blob,
+                        WritePasswordToFile(&temp_file_manager_, password),
+                        &err, &mount_id);
+    EXPECT_EQ(ERROR_OK, CastError(err));
+    ExpectNoOpenEntries();
+    return mount_id;
+  }
+
   // Helper method that calls PrepareMount() and adds a single directory with a
   // single file in the mount.
   int32_t PrepareSingleFileMount() {
@@ -3467,6 +3488,46 @@ TEST_F(SmbProviderTest, TestRemountConfigDisableNTLM) {
   EXPECT_EQ(1, mount_manager_->MountCount());
   EXPECT_TRUE(mount_manager_->IsAlreadyMounted(mount_id));
   EXPECT_FALSE(enable_ntlm_);
+}
+
+TEST_F(SmbProviderTest, UpdateMountCredentialsSucceedsOnValidMount) {
+  const std::string workgroup = "google";
+  const std::string username = "user";
+  const std::string password = "password";
+
+  int32_t mount_id = PrepareMountWithMountConfig(true /* enable_ntlm */,
+                                                 workgroup, username, password);
+
+  EXPECT_EQ(1, mount_manager_->MountCount());
+  ExpectCredentialsEqual(mount_manager_, mount_id, GetDefaultMountRoot(),
+                         workgroup, username, password);
+
+  const std::string updated_workgroup = "chrome";
+  const std::string updated_username = "player1";
+  const std::string updated_password = "password2";
+
+  ProtoBlob blob = CreateUpdateMountCredentialsOptionsBlob(
+      mount_id, updated_workgroup, updated_username);
+
+  EXPECT_EQ(ERROR_OK, smbprovider_->UpdateMountCredentials(
+                          blob, WritePasswordToFile(&temp_file_manager_,
+                                                    updated_password)));
+  ExpectCredentialsEqual(mount_manager_, mount_id, GetDefaultMountRoot(),
+                         updated_workgroup, updated_username, updated_password);
+}
+
+TEST_F(SmbProviderTest, UpdateMountCredentialsFailsOnNonExistantMount) {
+  const std::string updated_workgroup = "chrome";
+  const std::string updated_username = "player1";
+  const std::string updated_password = "password2";
+
+  ProtoBlob blob = CreateUpdateMountCredentialsOptionsBlob(
+      999 /* mount_id */, updated_workgroup, updated_username);
+
+  EXPECT_EQ(0, mount_manager_->MountCount());
+  EXPECT_NE(ERROR_OK, smbprovider_->UpdateMountCredentials(
+                          blob, WritePasswordToFile(&temp_file_manager_,
+                                                    updated_password)));
 }
 
 }  // namespace smbprovider
