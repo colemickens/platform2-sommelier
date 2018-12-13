@@ -682,8 +682,10 @@ TEST_F(CrashSenderUtilTest, Sender) {
                                     "done=1\n"));
   ASSERT_TRUE(test_util::CreateFile(user2_log, ""));
 
-  // Set up the conditions so the crash reports can be sent.
-  ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsEnabled));
+  // Set up the conditions to emulate a device in guest mode.
+  ASSERT_TRUE(SetConditions(kOfficialBuild, kGuestMode, kMetricsEnabled));
+  // Keep the raw pointer, that's needed to exit from guest mode later.
+  MetricsLibraryMock* raw_metrics_lib = metrics_lib_.get();
 
   // Set up the sender.
   Sender::Options options;
@@ -693,6 +695,15 @@ TEST_F(CrashSenderUtilTest, Sender) {
   ASSERT_TRUE(sender.Init());
 
   // Send crashes.
+  EXPECT_TRUE(sender.SendCrashes(system_dir));
+  EXPECT_TRUE(sender.SendUserCrashes());
+
+  // The output file from fake_crash_sender.sh should not exist, since no crash
+  // reports should be uploaded in guest mode.
+  EXPECT_FALSE(base::PathExists(output_file));
+
+  // Exit from guest mode, and send crashes again.
+  raw_metrics_lib->set_guest_mode(false);
   EXPECT_TRUE(sender.SendCrashes(system_dir));
   EXPECT_TRUE(sender.SendUserCrashes());
 

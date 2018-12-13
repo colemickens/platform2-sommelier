@@ -420,6 +420,14 @@ bool Sender::SendCrashes(const base::FilePath& crash_dir) {
 
   bool success = true;
   for (const auto& meta_file : to_send) {
+    // This should be checked inside of the loop, since the device can enter
+    // guest mode while sending crash reports with an interval up to
+    // SECONDS_SEND_SPREAD between sends.
+    if (metrics_lib_->IsGuestMode()) {
+      LOG(INFO) << "Guest mode has been entered. Delaying crash sending";
+      return success;
+    }
+
     if (!RequestToSendCrash(meta_file))
       success = false;
   }

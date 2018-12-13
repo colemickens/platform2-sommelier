@@ -139,12 +139,23 @@ class Sender {
   // Initializes the sender object. Returns true on success.
   bool Init();
 
-  // Sends crashes in |crash_dir|. Returns true on if sending is successful, or
-  // |crash_dir| does not exist.
+  // Sends crashes in |crash_dir|, in multiple steps:
+  //
+  // Before sending:
+  // - Removes crash files that are orphaned or invalid.
+  // - Removes all crash files if crash reporting is not enabled.
+  //
+  // While sending:
+  // - Checks if the device enters guest mode, and stops if entered.
+  // - TODO(satorux): The followings are done in the shell script.
+  // - Enforces the rate limit per 24 hours.
+  // - Removes crash files that are successfully uploaded.
+  //
+  // Returns true if no error occurred, or |crash_dir| does not exist.
   bool SendCrashes(const base::FilePath& crash_dir);
 
-  // Sends the user-specific crashes. Returns true on if all the user-specific
-  // crash directories are handled successfully.
+  // Sends the user-specific crashes. This function calls SendCrashes() for each
+  // user specific crash directory. Returns true if no error occurred.
   bool SendUserCrashes();
 
   // Returns the temporary directory used in the object. Valid after Init() is

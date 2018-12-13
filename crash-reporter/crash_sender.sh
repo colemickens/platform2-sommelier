@@ -526,15 +526,6 @@ send_or_skip_crash() {
   # then decide whether it should be sent right now or kept for later sending.
   lecho "Considering metadata ${meta_path}."
 
-  # Don't send crash reports from previous sessions while we're in guest mode
-  # to avoid the impression that crash reporting was enabled, which it isn't.
-  # (Don't exit right now because subsequent reports may be candidates for
-  # deletion.)
-  if ${METRICS_CLIENT} -g; then
-    lecho "Guest mode has been entered.  Delaying crash sending until exited."
-    return 0
-  fi
-
   # Skip report if the upload rate is exceeded.  (Don't exit right now because
   # subsequent reports may be candidates for deletion.)
   if ! check_rate; then
