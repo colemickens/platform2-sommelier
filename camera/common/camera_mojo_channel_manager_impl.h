@@ -7,6 +7,7 @@
 #ifndef COMMON_CAMERA_MOJO_CHANNEL_MANAGER_IMPL_H_
 #define COMMON_CAMERA_MOJO_CHANNEL_MANAGER_IMPL_H_
 
+#include <base/no_destructor.h>
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
 
@@ -64,7 +65,7 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
   // Thread for IPC chores.
   static base::Thread* ipc_thread_;
   // A mutex to guard static variable.
-  static base::Lock static_lock_;
+  static base::NoDestructor<base::Lock> static_lock_;
   static bool mojo_initialized_;
 
   DISALLOW_COPY_AND_ASSIGN(CameraMojoChannelManagerImpl);

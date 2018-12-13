@@ -11,6 +11,7 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
+#include <base/no_destructor.h>
 
 #include "cros-camera/common.h"
 #include "cros-camera/constants.h"
@@ -21,7 +22,7 @@ namespace cros {
 // static
 mojom::CameraHalDispatcherPtr CameraMojoChannelManagerImpl::dispatcher_;
 base::Thread* CameraMojoChannelManagerImpl::ipc_thread_ = nullptr;
-base::Lock CameraMojoChannelManagerImpl::static_lock_;
+base::NoDestructor<base::Lock> CameraMojoChannelManagerImpl::static_lock_;
 bool CameraMojoChannelManagerImpl::mojo_initialized_ = false;
 
 // static
@@ -106,7 +107,7 @@ void CameraMojoChannelManagerImpl::CreateJpegEncodeAcceleratorOnIpcThread(
 bool CameraMojoChannelManagerImpl::InitializeMojoEnv() {
   VLOGF_ENTER();
 
-  base::AutoLock l(static_lock_);
+  base::AutoLock l(*static_lock_);
 
   if (mojo_initialized_) {
     return true;
@@ -160,7 +161,7 @@ __attribute__((destructor(101))) void
 CameraMojoChannelManagerImpl::TearDownMojoEnv() {
   VLOGF_ENTER();
 
-  base::AutoLock l(static_lock_);
+  base::AutoLock l(*static_lock_);
 
   if (!mojo_initialized_) {
     return;
