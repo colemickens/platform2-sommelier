@@ -24,8 +24,8 @@ from chromite.lib import cros_test_lib
 BASIC_CONFIG = """
 reef-9042-fw: &reef-9042-fw
   bcs-overlay: 'overlay-reef-private'
-  ec-image: 'Reef_EC.9042.87.1.tbz2'
-  main-image: 'Reef.9042.87.1.tbz2'
+  ec-ro-image: 'Reef_EC.9042.87.1.tbz2'
+  main-ro-image: 'Reef.9042.87.1.tbz2'
   main-rw-image: 'Reef.9042.110.0.tbz2'
   build-targets:
     coreboot: 'reef'
@@ -123,8 +123,8 @@ class TransformConfigTests(cros_test_lib.TestCase):
     scoped_config = """
 reef-9042-fw: &reef-9042-fw
   bcs-overlay: 'overlay-reef-private'
-  ec-image: 'Reef_EC.9042.87.1.tbz2'
-  main-image: 'Reef.9042.87.1.tbz2'
+  ec-ro-image: 'Reef_EC.9042.87.1.tbz2'
+  main-ro-image: 'Reef.9042.87.1.tbz2'
   main-rw-image: 'Reef.9042.110.0.tbz2'
   build-targets:
     coreboot: 'reef'
@@ -251,8 +251,8 @@ class ValidateConfigTests(cros_test_lib.TestCase):
     config = """
 reef-9042-fw: &reef-9042-fw
   bcs-overlay: 'overlay-reef-private'
-  ec-image: 'Reef_EC.9042.87.1.tbz2'
-  main-image: 'Reef.9042.87.1.tbz2'
+  ec-ro-image: 'Reef_EC.9042.87.1.tbz2'
+  main-ro-image: 'Reef.9042.87.1.tbz2'
   main-rw-image: 'Reef.9042.110.0.tbz2'
   build-targets:
     coreboot: 'reef'

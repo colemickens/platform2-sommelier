@@ -59,8 +59,8 @@ some_base_config: &some_base_config
       libpayload: "some"
       u-boot: "some"
 
-    ec-image: "bcs://Some_EC.1111.11.1.tbz2"
-    main-image: "bcs://Some.1111.11.1.tbz2"
+    ec-ro-image: "bcs://Some_EC.1111.11.1.tbz2"
+    main-ro-image: "bcs://Some.1111.11.1.tbz2"
     main-rw-image: "bcs://Some_RW.1111.11.1.tbz2"
   power:
     charging-ports: |
@@ -182,8 +182,8 @@ chromeos:
             firmware:
               bcs-overlay: "overlay-another-private"
 
-              ec-image: "bcs://Another_EC.1111.11.1.tbz2"
-              main-image: "bcs://Another.1111.11.1.tbz2"
+              ec-ro-image: "bcs://Another_EC.1111.11.1.tbz2"
+              main-ro-image: "bcs://Another.1111.11.1.tbz2"
               main-rw-image: "bcs://Another_RW.1111.11.1.tbz2"
               build-targets:
                 base: "another_base"

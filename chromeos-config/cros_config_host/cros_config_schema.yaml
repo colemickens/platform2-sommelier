@@ -6,6 +6,9 @@ typeDefs:
   bcs-file-name: &bcs_file_name
     type: string
     description: Name of the file located in BCS under the respective bcs-overlay.
+  deprecated_string: &deprecated_string
+    type: string
+    description: A deprecated string property to be removed after migration.
   firmware-build-target: &firmware_build_target
     type: string
     description: Build target that will be considered dirty when building/testing
@@ -184,13 +187,16 @@ properties:
                     libpayload: *firmware_build_target
                     u-boot: *firmware_build_target
                   additionalProperties: false
-                ec-image: *bcs_file_name
-                pd-image: *bcs_file_name
+                ec-image: *deprecated_string
+                ec-ro-image: *bcs_file_name
+                pd-image: *deprecated_string
+                pd-ro-image: *bcs_file_name
                 key-id:
                   description: Key ID from the signer key set that is used to sign the
                     given firmware image.
                   type: string
-                main-image: *bcs_file_name
+                main-image: *deprecated_string
+                main-ro-image: *bcs_file_name
                 main-rw-image: *bcs_file_name
                 name:
                   description: This is a human-recognizable name used to refer to the firmware.

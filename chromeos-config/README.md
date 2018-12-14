@@ -346,13 +346,16 @@ The schema definition is below:
 | --------- | ------ | --------- | -------- | ----------- |  ----------- |
 | bcs-overlay | string |  | False |  | BCS overlay path used to determine BCS file path for binary firmware downloads. |
 | build-targets | [build-targets](#build-targets) |  | False |  |  |
-| ec-image | string |  | False |  | Name of the file located in BCS under the respective bcs-overlay. |
+| ec-image | string |  | False |  | A deprecated string property to be removed after migration. |
+| ec-ro-image | string |  | False |  | Name of the file located in BCS under the respective bcs-overlay. |
 | key-id | string |  | False |  | Key ID from the signer key set that is used to sign the given firmware image. |
-| main-image | string |  | False |  | Name of the file located in BCS under the respective bcs-overlay. |
+| main-image | string |  | False |  | A deprecated string property to be removed after migration. |
+| main-ro-image | string |  | False |  | Name of the file located in BCS under the respective bcs-overlay. |
 | main-rw-image | string |  | False |  | Name of the file located in BCS under the respective bcs-overlay. |
 | name | string |  | False |  | This is a human-recognizable name used to refer to the firmware. It will be used when generating the shellball via firmware packer. Mainly, this is only for compatibility testing with device tree (since DT allowed firmwares to be named). |
 | no-firmware | boolean |  | False |  | If present this indicates that this model has no firmware at present. This means that it will be omitted from the firmware updater (chromeos-firmware- ebuild) and it will not be included in the signer instructions file sent to the signer. This option is often useful when a model is first added, since it may not have firmware at that point. |
-| pd-image | string |  | False |  | Name of the file located in BCS under the respective bcs-overlay. |
+| pd-image | string |  | False |  | A deprecated string property to be removed after migration. |
+| pd-ro-image | string |  | False |  | Name of the file located in BCS under the respective bcs-overlay. |
 
 ### build-targets
 | Attribute | Type   | RegEx     | Required | Oneof Group |  Description |
