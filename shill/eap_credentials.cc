@@ -81,7 +81,7 @@ void EapCredentials::PopulateSupplicantProperties(
   }
 
   using KeyVal = std::pair<const char*, const char*>;
-  KeyVal init_propertyvals[] = {
+  vector<KeyVal> propertyvals = {
       // Authentication properties.
       KeyVal(WPASupplicant::kNetworkPropertyEapAnonymousIdentity,
              anonymous_identity_.c_str()),
@@ -93,10 +93,8 @@ void EapCredentials::PopulateSupplicantProperties(
       KeyVal(WPASupplicant::kNetworkPropertyEapEap, eap_.c_str()),
       KeyVal(WPASupplicant::kNetworkPropertyEapInnerEap, inner_eap_.c_str()),
       KeyVal(WPASupplicant::kNetworkPropertyEapSubjectMatch,
-             subject_match_.c_str())};
-
-  vector<KeyVal> propertyvals(init_propertyvals,
-                              init_propertyvals + arraysize(init_propertyvals));
+             subject_match_.c_str()),
+  };
   if (use_system_cas_) {
     propertyvals.push_back(KeyVal(
         WPASupplicant::kNetworkPropertyCaPath, WPASupplicant::kCaPath));
