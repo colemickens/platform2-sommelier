@@ -162,7 +162,6 @@ class CrosConfigJson(CrosConfigBaseImpl):
           ec_build_target = config.GetValue(build_config, 'ec')
         else:
           bios_build_target, ec_build_target = None, None
-        create_bios_rw_image = False
 
         main_image_uri = (config.GetValue(fw, 'main-ro-image') or
                           config.GetValue(fw, 'main-image') or '')
@@ -190,8 +189,7 @@ class CrosConfigJson(CrosConfigBaseImpl):
         info = FirmwareInfo(name, shared_model, key_id, have_image,
                             bios_build_target, ec_build_target, main_image_uri,
                             main_rw_image_uri, ec_image_uri, pd_image_uri,
-                            create_bios_rw_image, sig_id,
-                            brand_code)
+                            sig_id, brand_code)
         config.firmware_info[name] = info
 
         if sig_in_customization_id:
