@@ -19,24 +19,22 @@ extern crate chrono;
 extern crate dbus;
 extern crate env_logger;
 extern crate libc;
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 extern crate syslog;
 extern crate tempdir;
 
-extern crate protobuf;  // needed by proto_include.rs
+extern crate protobuf; // needed by proto_include.rs
 include!(concat!(env!("OUT_DIR"), "/proto_include.rs"));
 
 use chrono::prelude::*;
 use {libc::__errno_location, libc::c_void};
 
 #[cfg(not(test))]
-use dbus::{Connection, BusType, WatchEvent};
+use dbus::{BusType, Connection, WatchEvent};
 #[cfg(not(test))]
 use protobuf::Message;
 
-use std::{io,mem,str};
-#[cfg(not(test))]
-use std::thread;
 use std::cmp::max;
 use std::fmt;
 use std::fs::{create_dir, File, OpenOptions};
@@ -44,6 +42,9 @@ use std::io::prelude::*;
 use std::os::unix::fs::OpenOptionsExt;
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::path::{Path, PathBuf};
+#[cfg(not(test))]
+use std::thread;
+use std::{io, mem, str};
 // Not to be confused with chrono::Duration or the deprecated time::Duration.
 use std::time::Duration;
 use tempdir::TempDir;
@@ -51,17 +52,17 @@ use tempdir::TempDir;
 #[cfg(test)]
 mod test;
 
-const PAGE_SIZE: usize =            4096;   // old friend
+const PAGE_SIZE: usize = 4096; // old friend
 
-const LOG_DIRECTORY: &str =         "/var/log/memd";
+const LOG_DIRECTORY: &str = "/var/log/memd";
 const STATIC_PARAMETERS_LOG: &str = "memd.parameters";
-const LOW_MEM_SYSFS: &str =         "/sys/kernel/mm/chromeos-low_mem";
-const LOW_MEM_DEVICE: &str =        "/dev/chromeos-low-mem";
-const MAX_CLIP_COUNT: usize =       20;
+const LOW_MEM_SYSFS: &str = "/sys/kernel/mm/chromeos-low_mem";
+const LOW_MEM_DEVICE: &str = "/dev/chromeos-low-mem";
+const MAX_CLIP_COUNT: usize = 20;
 
-const COLLECTION_DELAY_MS: i64 = 5_000;       // Wait after event of interest.
-const CLIP_COLLECTION_SPAN_MS: i64 = 10_000;  // ms worth of samples in a clip.
-const SAMPLES_PER_SECOND: i64 = 10;           // Rate of fast sample collection.
+const COLLECTION_DELAY_MS: i64 = 5_000; // Wait after event of interest.
+const CLIP_COLLECTION_SPAN_MS: i64 = 10_000; // ms worth of samples in a clip.
+const SAMPLES_PER_SECOND: i64 = 10; // Rate of fast sample collection.
 const SAMPLING_PERIOD_MS: i64 = 1000 / SAMPLES_PER_SECOND;
 // Danger threshold.  When the distance between "available" and "margin" is
 // greater than LOW_MEM_DANGER_THRESHOLD_MB, we assume that there's no danger
@@ -69,10 +70,9 @@ const SAMPLING_PERIOD_MS: i64 = 1000 / SAMPLES_PER_SECOND;
 // SLOW_POLL_PERIOD_DURATION.  In other words, we expect that an allocation of
 // more than LOW_MEM_DANGER_THRESHOLD_MB in a SLOW_POLL_PERIOD_DURATION will be
 // rare.
-const LOW_MEM_DANGER_THRESHOLD_MB: u32 = 600;  // Poll fast when closer to margin than this.
+const LOW_MEM_DANGER_THRESHOLD_MB: u32 = 600; // Poll fast when closer to margin than this.
 const SLOW_POLL_PERIOD_DURATION: Duration = Duration::from_secs(2); // Sleep in slow-poll mode.
-const FAST_POLL_PERIOD_DURATION: Duration =
-    Duration::from_millis(SAMPLING_PERIOD_MS as u64); // Sleep duration in fast-poll mode.
+const FAST_POLL_PERIOD_DURATION: Duration = Duration::from_millis(SAMPLING_PERIOD_MS as u64); // Sleep duration in fast-poll mode.
 
 // Print a warning if the fast-poll select lasts a lot longer than expected
 // (which might happen because of huge load average and swap activity).
@@ -94,7 +94,8 @@ const SAMPLE_QUEUE_LENGTH: usize =
 //
 // For fields with |accumulate| = true, use the name as a prefix, and add up
 // all values with that prefix in consecutive lines.
-const VMSTAT_VALUES_COUNT: usize = 5;           // Number of vmstat values we're tracking.
+const VMSTAT_VALUES_COUNT: usize = 5; // Number of vmstat values we're tracking.
+#[rustfmt::skip]
 const VMSTATS: [(&str, bool, bool); VMSTAT_VALUES_COUNT] = [
     // name                 mandatory   accumulate
     ("pswpin",              true, 	false),
@@ -119,7 +120,6 @@ pub enum Error {
     LowMemWatcherError(Box<std::error::Error>),
 }
 
-
 impl std::error::Error for Error {
     // This function is "soft-deprecated" so
     // we use the fmt() function from Display below.
@@ -131,26 +131,20 @@ impl std::error::Error for Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            &Error::LowMemFileError(ref e) =>
-                write!(f, "cannot opening low-mem file: {}", e),
-            &Error::VmstatFileError(ref e) =>
-                write!(f, "cannot open vmstat: {}", e),
-            &Error::RunnablesFileError(ref e) =>
-                write!(f, "cannot open loadavg: {}", e),
-            &Error::AvailableFileError(ref e) =>
-                write!(f, "cannot open available file: {}", e),
-            &Error::CreateLogDirError(ref e) =>
-                write!(f, "cannot create log directory: {}", e),
-            &Error::StartingClipCounterMissingError(ref e) =>
-                write!(f, "cannot find starting clip counter: {}", e),
-            &Error::LogStaticParametersError(ref e) =>
-                write!(f, "cannot log static parameters: {}", e),
-            &Error::DbusWatchError(ref e) =>
-                write!(f, "cannot watch dbus fd: {}", e),
-            &Error::LowMemFDWatchError(ref e) =>
-                write!(f, "cannot watch low-mem fd: {}", e),
-            &Error::LowMemWatcherError(ref e) =>
-                write!(f, "cannot set low-mem watcher: {}", e),
+            &Error::LowMemFileError(ref e) => write!(f, "cannot opening low-mem file: {}", e),
+            &Error::VmstatFileError(ref e) => write!(f, "cannot open vmstat: {}", e),
+            &Error::RunnablesFileError(ref e) => write!(f, "cannot open loadavg: {}", e),
+            &Error::AvailableFileError(ref e) => write!(f, "cannot open available file: {}", e),
+            &Error::CreateLogDirError(ref e) => write!(f, "cannot create log directory: {}", e),
+            &Error::StartingClipCounterMissingError(ref e) => {
+                write!(f, "cannot find starting clip counter: {}", e)
+            }
+            &Error::LogStaticParametersError(ref e) => {
+                write!(f, "cannot log static parameters: {}", e)
+            }
+            &Error::DbusWatchError(ref e) => write!(f, "cannot watch dbus fd: {}", e),
+            &Error::LowMemFDWatchError(ref e) => write!(f, "cannot watch low-mem fd: {}", e),
+            &Error::LowMemWatcherError(ref e) => write!(f, "cannot set low-mem watcher: {}", e),
         }
     }
 }
@@ -171,7 +165,11 @@ fn strerror(err: i32) -> String {
     // |err| is valid because it is the libc errno at all call sites.  |buffer|
     // is converted to a valid address, and |buffer.len()| is a valid length.
     let n = unsafe {
-        libc::strerror_r(err, &mut buffer[0] as *mut u8 as *mut libc::c_char, buffer.len())
+        libc::strerror_r(
+            err,
+            &mut buffer[0] as *mut u8 as *mut libc::c_char,
+            buffer.len(),
+        )
     } as usize;
     match str::from_utf8(&buffer[..n]) {
         Ok(s) => s.to_string(),
@@ -193,15 +191,13 @@ fn open_maybe(path: &Path) -> Result<Option<File>> {
 }
 
 // Opens a file with mode flags.  If the file does not exist, returns None.
-fn open_with_flags_maybe(path: &Path, options: &OpenOptions) ->
-    Result<Option<File>> {
+fn open_with_flags_maybe(path: &Path, options: &OpenOptions) -> Result<Option<File>> {
     if !path.exists() {
         Ok(None)
     } else {
         Ok(Some(options.open(&path)?))
     }
 }
-
 
 // Converts the result of an integer expression |e| to modulo |n|. |e| may be
 // negative. This differs from plain "%" in that the result of this function
@@ -224,10 +220,12 @@ fn read_int(path: &Path) -> Result<u32> {
 // The Timer trait allows us to mock time for testing.
 trait Timer {
     // A wrapper for libc::select() with only ready-to-read fds.
-    fn select(&mut self, nfds:
-              libc::c_int,
-              fds: &mut libc::fd_set,
-              timeout: &Duration) -> libc::c_int;
+    fn select(
+        &mut self,
+        nfds: libc::c_int,
+        fds: &mut libc::fd_set,
+        timeout: &Duration,
+    ) -> libc::c_int;
     fn sleep(&mut self, sleep_time: &Duration);
     fn now(&self) -> i64;
     fn quit_request(&self) -> bool;
@@ -259,10 +257,12 @@ impl Timer for GenuineTimer {
         thread::sleep(*sleep_time);
     }
 
-    fn select(&mut self,
-              high_fd: i32,
-              inout_read_fds: &mut libc::fd_set,
-              timeout: &Duration) -> i32 {
+    fn select(
+        &mut self,
+        high_fd: i32,
+        inout_read_fds: &mut libc::fd_set,
+        timeout: &Duration,
+    ) -> i32 {
         let mut libc_timeout = libc::timeval {
             tv_sec: timeout.as_secs() as libc::time_t,
             tv_usec: (timeout.subsec_nanos() / 1000) as libc::suseconds_t,
@@ -270,11 +270,13 @@ impl Timer for GenuineTimer {
         let null = std::ptr::null_mut();
         // Safe because we're passing valid values and addresses.
         unsafe {
-            libc::select(high_fd,
-                         inout_read_fds,
-                         null,
-                         null,
-                         &mut libc_timeout as *mut libc::timeval)
+            libc::select(
+                high_fd,
+                inout_read_fds,
+                null,
+                null,
+                &mut libc_timeout as *mut libc::timeval,
+            )
         }
     }
 }
@@ -293,9 +295,17 @@ impl FileWatcher {
         // because we're passing libc::fd_sets to them.
         let mut read_fds = unsafe { mem::uninitialized::<libc::fd_set>() };
         let mut inout_read_fds = unsafe { mem::uninitialized::<libc::fd_set>() };
-        unsafe { libc::FD_ZERO(&mut read_fds); };
-        unsafe { libc::FD_ZERO(&mut inout_read_fds); };
-        FileWatcher { read_fds, inout_read_fds, max_fd: -1 }
+        unsafe {
+            libc::FD_ZERO(&mut read_fds);
+        };
+        unsafe {
+            libc::FD_ZERO(&mut inout_read_fds);
+        };
+        FileWatcher {
+            read_fds,
+            inout_read_fds,
+            max_fd: -1,
+        }
     }
 
     fn set(&mut self, f: &File) -> Result<()> {
@@ -309,7 +319,9 @@ impl FileWatcher {
             return Err("set_fd: fd too large".into());
         }
         // see comment for |set()|
-        unsafe { libc::FD_SET(fd, &mut self.read_fds); }
+        unsafe {
+            libc::FD_SET(fd, &mut self.read_fds);
+        }
         self.max_fd = max(self.max_fd, fd);
         Ok(())
     }
@@ -319,7 +331,9 @@ impl FileWatcher {
             return Err("clear_fd: fd is too large".into());
         }
         // see comment for |set()|
-        unsafe { libc::FD_CLR(fd, &mut self.read_fds); }
+        unsafe {
+            libc::FD_CLR(fd, &mut self.read_fds);
+        }
         Ok(())
     }
 
@@ -355,32 +369,34 @@ impl FileWatcher {
 
 #[derive(Clone, Copy, Default)]
 struct Sample {
-    uptime: i64,                // system uptime in ms
+    uptime: i64, // system uptime in ms
     sample_type: SampleType,
     info: Sysinfo,
-    runnables: u32,             // number of runnable processes
-    available: u32,             // available RAM from low-mem notifier
+    runnables: u32, // number of runnable processes
+    available: u32, // available RAM from low-mem notifier
     vmstat_values: [u64; VMSTAT_VALUES_COUNT],
 }
 
 impl Sample {
     // Outputs a sample.
     fn output(&self, out: &mut File) -> Result<()> {
-        writeln!(out, "{}.{:02} {:6} {} {} {} {} {} {} {} {} {} {} {}",
-               self.uptime / 1000,
-               self.uptime % 1000 / 10,
-               self.sample_type,
-               self.info.0.loads[0],
-               self.info.0.freeram,
-               self.info.0.freeswap,
-               self.info.0.procs,
-               self.runnables,
-               self.available,
-               self.vmstat_values[0],
-               self.vmstat_values[1],
-               self.vmstat_values[2],
-               self.vmstat_values[3],
-               self.vmstat_values[4],
+        writeln!(
+            out,
+            "{}.{:02} {:6} {} {} {} {} {} {} {} {} {} {} {}",
+            self.uptime / 1000,
+            self.uptime % 1000 / 10,
+            self.sample_type,
+            self.info.0.loads[0],
+            self.info.0.freeram,
+            self.info.0.freeswap,
+            self.info.0.procs,
+            self.runnables,
+            self.available,
+            self.vmstat_values[0],
+            self.vmstat_values[1],
+            self.vmstat_values[2],
+            self.vmstat_values[3],
+            self.vmstat_values[4],
         )?;
         Ok(())
     }
@@ -396,7 +412,7 @@ impl Sysinfo {
         // sysinfo() is always safe when passed a valid pointer
         match unsafe { libc::sysinfo(&mut info.0 as *mut libc::sysinfo) } {
             0 => Ok(info),
-            _ => Err(format!("sysinfo: {}", strerror(errno())).into())
+            _ => Err(format!("sysinfo: {}", strerror(errno())).into()),
         }
     }
 
@@ -413,7 +429,7 @@ impl Sysinfo {
 }
 
 impl Default for Sysinfo {
-    fn default() -> Sysinfo{
+    fn default() -> Sysinfo {
         // safe because sysinfo contains only numbers
         unsafe { mem::zeroed() }
     }
@@ -421,16 +437,17 @@ impl Default for Sysinfo {
 
 struct SampleQueue {
     samples: [Sample; SAMPLE_QUEUE_LENGTH],
-    head: usize,   // points to latest entry
-    count: usize,  // count of valid entries (min=0, max=SAMPLE_QUEUE_LENGTH)
+    head: usize,  // points to latest entry
+    count: usize, // count of valid entries (min=0, max=SAMPLE_QUEUE_LENGTH)
 }
 
 impl SampleQueue {
     fn new() -> SampleQueue {
         let s: Sample = Default::default();
-        SampleQueue { samples: [s; SAMPLE_QUEUE_LENGTH],
-                      head: 0,
-                      count: 0,
+        SampleQueue {
+            samples: [s; SAMPLE_QUEUE_LENGTH],
+            head: 0,
+            count: 0,
         }
     }
 
@@ -459,8 +476,13 @@ impl SampleQueue {
     fn sample(&self, i: isize) -> &Sample {
         assert!(i >= 0);
         // Subtract 1 because head points to the next free slot.
-        assert!(modulo(self.ihead() - 1 - i, SAMPLE_QUEUE_LENGTH) <= self.count,
-                "bad queue index: i {}, head {}, count {}", i, self.head, self.count);
+        assert!(
+            modulo(self.ihead() - 1 - i, SAMPLE_QUEUE_LENGTH) <= self.count,
+            "bad queue index: i {}, head {}, count {}",
+            i,
+            self.head,
+            self.count
+        );
         &self.samples[i as usize]
     }
 
@@ -470,14 +492,20 @@ impl SampleQueue {
     fn output_from_time(&self, mut f: &mut File, start_time: i64) -> Result<()> {
         // For now just do a linear search. ;)
         let mut start_index = modulo(self.ihead() - 1, SAMPLE_QUEUE_LENGTH);
-        debug!("output_from_time: start_time {}, head {}", start_time, start_index);
+        debug!(
+            "output_from_time: start_time {}, head {}",
+            start_time, start_index
+        );
         loop {
             let sample = self.samples[start_index];
             // Ignore samples from external sources because their time stamp may be off.
             if sample.uptime <= start_time && sample.sample_type.has_internal_timestamp() {
                 break;
             }
-            debug!("output_from_time: seeking uptime {}, index {}", sample.uptime, start_index);
+            debug!(
+                "output_from_time: seeking uptime {}, index {}",
+                sample.uptime, start_index
+            );
             start_index = modulo(start_index as isize - 1, SAMPLE_QUEUE_LENGTH);
             if start_index == self.head {
                 warn!("too many events in requested interval");
@@ -504,7 +532,9 @@ pub fn get_runnables(runnables_file: &File) -> Result<u32> {
     let content = pread(runnables_file, &mut buffer[..])?;
     // Example: "0.81 0.66 0.86 22/3873 7043" (22 runnables here).
     let slash_pos = content.find('/').ok_or_else(|| "cannot find '/'")?;
-    let space_pos = &content[..slash_pos].rfind(' ').ok_or_else(|| "cannot find ' '")?;
+    let space_pos = &content[..slash_pos]
+        .rfind(' ')
+        .ok_or_else(|| "cannot find ' '")?;
     let (value, _) = parse_int_prefix(&content[space_pos + 1..])?;
     Ok(value)
 }
@@ -518,11 +548,13 @@ fn parse_int_prefix(s: &str) -> Result<(u32, usize)> {
     for c in s.trim_left().chars() {
         let x = c.to_digit(10);
         match x {
-            Some (d) => {
+            Some(d) => {
                 result = result * 10 + d;
                 count += 1;
-            },
-            None => { break; }
+            }
+            None => {
+                break;
+            }
         }
     }
     if count == 0 {
@@ -600,7 +632,7 @@ fn get_vmstats(file: &File, vmstat_values: &mut [u64]) -> Result<()> {
                     advance_target = true;
                     continue;
                 }
-            },
+            }
             None => {
                 if mandatory {
                     return Err(format!("vmstat: missing value: {}", wanted_name).into());
@@ -617,10 +649,12 @@ fn pread_u32(f: &File) -> Result<u32> {
     let mut buffer: [u8; 20] = [0; 20];
     // pread is safe to call with valid addresses and buffer length.
     let length = unsafe {
-        libc::pread(f.as_raw_fd(),
-                    &mut buffer[0] as *mut u8 as *mut c_void,
-                    buffer.len(),
-                    0)
+        libc::pread(
+            f.as_raw_fd(),
+            &mut buffer[0] as *mut u8 as *mut c_void,
+            buffer.len(),
+            0,
+        )
     };
     if length < 0 {
         return Err("bad pread_u32".into());
@@ -628,7 +662,9 @@ fn pread_u32(f: &File) -> Result<u32> {
     if length == 0 {
         return Err("empty pread_u32".into());
     }
-    Ok(String::from_utf8_lossy(&buffer[..length as usize]).trim().parse::<u32>()?)
+    Ok(String::from_utf8_lossy(&buffer[..length as usize])
+        .trim()
+        .parse::<u32>()?)
 }
 
 // Reads the content of file |f| starting at offset 0, up to |PAGE_SIZE|,
@@ -636,7 +672,12 @@ fn pread_u32(f: &File) -> Result<u32> {
 fn pread<'a>(f: &File, buffer: &'a mut [u8]) -> Result<&'a str> {
     // pread is safe to call with valid addresses and buffer length.
     let length = unsafe {
-        libc::pread(f.as_raw_fd(), &mut buffer[0] as *mut u8 as *mut c_void, buffer.len(), 0)
+        libc::pread(
+            f.as_raw_fd(),
+            &mut buffer[0] as *mut u8 as *mut c_void,
+            buffer.len(),
+            0,
+        )
     };
     if length == 0 {
         return Err("unexpected null pread".into());
@@ -650,7 +691,11 @@ fn pread<'a>(f: &File, buffer: &'a mut [u8]) -> Result<&'a str> {
     Ok(str::from_utf8(&buffer[..length as usize])?)
 }
 
-struct Watermarks { min: u32, low: u32, high: u32 }
+struct Watermarks {
+    min: u32,
+    low: u32,
+    high: u32,
+}
 
 struct ZoneinfoFile(File);
 
@@ -682,8 +727,7 @@ trait Dbus {
     // Processes incoming dbus events as indicated by |watcher|.  Returns
     // vectors of tab discards reported by chrome, and OOM kills reported by
     // the anomaly detector.
-    fn process_dbus_events(&mut self, watcher: &mut FileWatcher) ->
-        Result<Vec<(Event_Type, i64)>>;
+    fn process_dbus_events(&mut self, watcher: &mut FileWatcher) -> Result<Vec<(Event_Type, i64)>>;
 }
 
 #[cfg(not(test))]
@@ -709,14 +753,18 @@ impl Dbus for GenuineDbus {
     // PAYLOAD=array:byte:0x10,0xa8,0xa2,0xc5,0x51
     // dbus-send --system --type=signal / $INTERFACE.ChromeEvent $PAYLOAD
     //
-    fn process_dbus_events(&mut self, watcher: &mut FileWatcher) ->
-        Result<(Vec<(Event_Type, i64)>)> {
+    fn process_dbus_events(
+        &mut self,
+        watcher: &mut FileWatcher,
+    ) -> Result<(Vec<(Event_Type, i64)>)> {
         let mut events: Vec<(Event_Type, i64)> = Vec::new();
         for &fd in self.fds.iter() {
             if !watcher.has_fired_fd(fd)? {
                 continue;
             }
-            let handle = self.connection.watch_handle(fd, WatchEvent::Readable as libc::c_uint);
+            let handle = self
+                .connection
+                .watch_handle(fd, WatchEvent::Readable as libc::c_uint);
             for connection_item in handle {
                 // Only consider signals.
                 if let dbus::ConnectionItem::Signal(ref message) = connection_item {
@@ -753,14 +801,16 @@ impl GenuineDbus {
     // information from Chrome about events of interest (e.g. tab discards).
     fn new() -> Result<GenuineDbus> {
         let connection = Connection::get_private(BusType::System)?;
-        let _m = connection.add_match(
-            concat!("type='signal',",
-                    "interface='org.chromium.AnomalyEventServiceInterface',",
-                    "member='AnomalyEvent'"));
-        let _m = connection.add_match(
-            concat!("type='signal',",
-                    "interface='org.chromium.MetricsEventServiceInterface',",
-                    "member='ChromeEvent'"));
+        let _m = connection.add_match(concat!(
+            "type='signal',",
+            "interface='org.chromium.AnomalyEventServiceInterface',",
+            "member='AnomalyEvent'"
+        ));
+        let _m = connection.add_match(concat!(
+            "type='signal',",
+            "interface='org.chromium.MetricsEventServiceInterface',",
+            "member='ChromeEvent'"
+        ));
         let fds = connection.watch_fds().iter().map(|w| w.fd()).collect();
         Ok(GenuineDbus { connection, fds })
     }
@@ -768,36 +818,34 @@ impl GenuineDbus {
 
 // The main object.
 struct Sampler<'a> {
-    always_poll_fast: bool,        // When true, program stays in fast poll mode.
-    paths: &'a Paths,              // Paths of files used by the program.
-    dbus: Box<Dbus>,               // Used to receive Chrome event notifications.
-    low_mem_margin: u32,           // Low-memory notification margin, assumed to remain constant in
-                                   // a boot session.
-    sample_header: String,         // The text at the beginning of each clip file.
-    files: Files,                  // Files kept open by the program.
-    watcher: FileWatcher,          // Maintains a set of files being watched for select().
-    low_mem_watcher: FileWatcher,  // A watcher for the low-mem device.
-    clip_counter: usize,           // Index of next clip file (also part of file name).
-    sample_queue: SampleQueue,     // A running queue of samples of vm quantities.
-    current_available: u32,        // Amount of "available" memory (in MB) at last reading.
-    current_time: i64,             // Wall clock in ms at last reading.
-    collecting: bool,              // True if we're in the middle of collecting a clip.
-    timer: Box<Timer>,             // Real or mock timer.
-    quit_request: bool,            // Signals a quit-and-restart request when testing.
+    always_poll_fast: bool,       // When true, program stays in fast poll mode.
+    paths: &'a Paths,             // Paths of files used by the program.
+    dbus: Box<Dbus>,              // Used to receive Chrome event notifications.
+    low_mem_margin: u32, // Low-memory notification margin, assumed to remain constant in a boot session.
+    sample_header: String, // The text at the beginning of each clip file.
+    files: Files,        // Files kept open by the program.
+    watcher: FileWatcher, // Maintains a set of files being watched for select().
+    low_mem_watcher: FileWatcher, // A watcher for the low-mem device.
+    clip_counter: usize, // Index of next clip file (also part of file name).
+    sample_queue: SampleQueue, // A running queue of samples of vm quantities.
+    current_available: u32, // Amount of "available" memory (in MB) at last reading.
+    current_time: i64,   // Wall clock in ms at last reading.
+    collecting: bool,    // True if we're in the middle of collecting a clip.
+    timer: Box<Timer>,   // Real or mock timer.
+    quit_request: bool,  // Signals a quit-and-restart request when testing.
 }
 
 impl<'a> Sampler<'a> {
-
-    fn new(always_poll_fast: bool,
-           paths: &'a Paths,
-           timer: Box<Timer>,
-           dbus: Box<Dbus>) -> Result<Sampler> {
-
+    fn new(
+        always_poll_fast: bool,
+        paths: &'a Paths,
+        timer: Box<Timer>,
+        dbus: Box<Dbus>,
+    ) -> Result<Sampler> {
         let mut low_mem_file_flags = OpenOptions::new();
         low_mem_file_flags.custom_flags(libc::O_NONBLOCK);
         low_mem_file_flags.read(true);
-        let low_mem_file_option = open_with_flags_maybe(&paths.low_mem_device,
-                                                        &low_mem_file_flags)
+        let low_mem_file_option = open_with_flags_maybe(&paths.low_mem_device, &low_mem_file_flags)
             .map_err(|e| Error::LowMemFileError(e))?;
         if low_mem_file_option.is_none() {
             warn!("low-mem device: cannot open and will not use");
@@ -807,14 +855,15 @@ impl<'a> Sampler<'a> {
         let mut low_mem_watcher = FileWatcher::new();
 
         if let Some(ref low_mem_file) = low_mem_file_option.as_ref() {
-            watcher.set(&low_mem_file)
+            watcher
+                .set(&low_mem_file)
                 .map_err(|e| Error::LowMemFDWatchError(e))?;
-            low_mem_watcher.set(&low_mem_file)
+            low_mem_watcher
+                .set(&low_mem_file)
                 .map_err(|e| Error::LowMemWatcherError(e))?;
         }
         for fd in dbus.get_fds().iter().by_ref() {
-            watcher.set_fd(*fd)
-                .map_err(|e| Error::DbusWatchError(e))?;
+            watcher.set_fd(*fd).map_err(|e| Error::DbusWatchError(e))?;
         }
 
         let files = Files {
@@ -846,9 +895,11 @@ impl<'a> Sampler<'a> {
             timer,
             quit_request: false,
         };
-        sampler.find_starting_clip_counter()
+        sampler
+            .find_starting_clip_counter()
             .map_err(|e| Error::StartingClipCounterMissingError(e))?;
-        sampler.log_static_parameters()
+        sampler
+            .log_static_parameters()
             .map_err(|e| Error::LogStaticParametersError(e))?;
         Ok(sampler)
     }
@@ -861,7 +912,7 @@ impl<'a> Sampler<'a> {
 
     // Collect a sample using the latest time snapshot.
     fn enqueue_sample(&mut self, sample_type: SampleType) -> Result<()> {
-        let time = self.current_time;  // to pacify the borrow checker
+        let time = self.current_time; // to pacify the borrow checker
         self.enqueue_sample_at_time(sample_type, time)
     }
 
@@ -882,7 +933,11 @@ impl<'a> Sampler<'a> {
             sample.sample_type = sample_type;
             sample.available = self.current_available;
             sample.runnables = get_runnables(&self.files.runnables_file)?;
-            sample.info = if cfg!(test) { Sysinfo::fake_sysinfo()? } else { Sysinfo::sysinfo()? };
+            sample.info = if cfg!(test) {
+                Sysinfo::fake_sysinfo()?
+            } else {
+                Sysinfo::sysinfo()?
+            };
             get_vmstats(&self.files.vmstat_file, &mut sample.vmstat_values)?;
         }
         self.refresh_time();
@@ -906,7 +961,9 @@ impl<'a> Sampler<'a> {
         log_from_procfs(&mut out, psv, "min_free_kbytes")?;
         log_from_procfs(&mut out, psv, "extra_free_kbytes")?;
 
-        let mut zoneinfo = ZoneinfoFile { 0: File::open(&self.paths.zoneinfo)? };
+        let mut zoneinfo = ZoneinfoFile {
+            0: File::open(&self.paths.zoneinfo)?,
+        };
         let watermarks = zoneinfo.read_watermarks()?;
         writeln!(out, "min_water_mark_kbytes {}", watermarks.min * 4)?;
         writeln!(out, "low_water_mark_kbytes {}", watermarks.low * 4)?;
@@ -922,10 +979,10 @@ impl<'a> Sampler<'a> {
     // medium pressure, but it's not critical since all cros devices have a
     // low-mem device.)
     fn should_poll_slowly(&self) -> bool {
-        !self.collecting &&
-            !self.always_poll_fast &&
-            self.low_mem_margin > 0 &&
-            self.current_available > self.low_mem_margin + LOW_MEM_DANGER_THRESHOLD_MB
+        !self.collecting
+            && !self.always_poll_fast
+            && self.low_mem_margin > 0
+            && self.current_available > self.low_mem_margin + LOW_MEM_DANGER_THRESHOLD_MB
     }
 
     // Sits mostly idle and checks available RAM at low frequency.  Returns
@@ -1001,8 +1058,11 @@ impl<'a> Sampler<'a> {
             // wish to make it easier to detect such (rare, we hope)
             // occurrences.
             if watch_start_time > self.current_time + UNREASONABLY_LONG_SLEEP {
-                warn!("woke up at {} after unreasonable {} sleep",
-                      self.current_time, self.current_time - watch_start_time);
+                warn!(
+                    "woke up at {} after unreasonable {} sleep",
+                    self.current_time,
+                    self.current_time - watch_start_time
+                );
                 self.enqueue_sample(SampleType::Sleeper)?;
             }
 
@@ -1013,7 +1073,12 @@ impl<'a> Sampler<'a> {
             // Unfortunately this requires an extra select() call: however we
             // don't expect to spend too much time in this state (and when we
             // do, this is the least of our worries).
-            if in_low_mem && self.low_mem_watcher.watch(&null_duration, &mut *self.timer)? == 0 {
+            if in_low_mem
+                && self
+                    .low_mem_watcher
+                    .watch(&null_duration, &mut *self.timer)?
+                    == 0
+            {
                 // Refresh time since we may have blocked.  (That should
                 // not happen often because currently the run times between
                 // sleeps are well below the minimum timeslice.)
@@ -1021,7 +1086,8 @@ impl<'a> Sampler<'a> {
                 debug!("leaving low mem at {}", self.current_time);
                 in_low_mem = false;
                 self.enqueue_sample(SampleType::LeaveLowMem)?;
-                self.watcher.set(&self.files.low_mem_file_option.as_ref().unwrap())?;
+                self.watcher
+                    .set(&self.files.low_mem_file_option.as_ref().unwrap())?;
             }
 
             if fired_count == 0 {
@@ -1029,10 +1095,11 @@ impl<'a> Sampler<'a> {
                 self.enqueue_sample(SampleType::Timer)?;
             } else {
                 // See comment above about watching low_mem.
-                let low_mem_has_fired = !in_low_mem && match self.files.low_mem_file_option {
-                    Some(ref low_mem_file) => self.watcher.has_fired(low_mem_file)?,
-                    _ => false,
-                };
+                let low_mem_has_fired = !in_low_mem
+                    && match self.files.low_mem_file_option {
+                        Some(ref low_mem_file) => self.watcher.has_fired(low_mem_file)?,
+                        _ => false,
+                    };
                 if low_mem_has_fired {
                     debug!("entering low mem at {}", self.current_time);
                     in_low_mem = true;
@@ -1075,25 +1142,30 @@ impl<'a> Sampler<'a> {
                 if self.collecting {
                     // Check if the current clip can be extended.
                     if clip_end_time < clip_start_time + CLIP_COLLECTION_SPAN_MS {
-                        clip_end_time = final_collection_time.min(
-                            clip_start_time + CLIP_COLLECTION_SPAN_MS);
+                        clip_end_time =
+                            final_collection_time.min(clip_start_time + CLIP_COLLECTION_SPAN_MS);
                         debug!("extending clip to {}", clip_end_time);
                     }
                 } else {
                     // Start the clip collection.
                     self.collecting = true;
-                    clip_start_time = earliest_start_time
-                        .max(self.current_time - COLLECTION_DELAY_MS);
+                    clip_start_time =
+                        earliest_start_time.max(self.current_time - COLLECTION_DELAY_MS);
                     clip_end_time = self.current_time + COLLECTION_DELAY_MS;
-                    debug!("starting new clip from {} to {}", clip_start_time, clip_end_time);
+                    debug!(
+                        "starting new clip from {} to {}",
+                        clip_start_time, clip_end_time
+                    );
                 }
             }
 
             // Check if it is time to save the samples into a file.
             if self.collecting && self.current_time > clip_end_time - SAMPLING_PERIOD_MS {
                 // Save the clip to disk.
-                debug!("[{}] saving clip: ({} ... {}), final {}",
-                       self.current_time, clip_start_time, clip_end_time, final_collection_time);
+                debug!(
+                    "[{}] saving clip: ({} ... {}), final {}",
+                    self.current_time, clip_start_time, clip_end_time, final_collection_time
+                );
                 self.save_clip(clip_start_time)?;
                 self.collecting = false;
                 earliest_start_time = clip_end_time;
@@ -1107,15 +1179,19 @@ impl<'a> Sampler<'a> {
                     clip_start_time = clip_end_time;
                     clip_end_time = final_collection_time;
                     self.collecting = true;
-                    debug!("continue collecting with new clip ({} {})",
-                           clip_start_time, clip_end_time);
+                    debug!(
+                        "continue collecting with new clip ({} {})",
+                        clip_start_time, clip_end_time
+                    );
                     // If we got stuck in the select() for a very long time
                     // because of system slowdown, it may be time to collect
                     // this second clip as well.  But we don't bother, since
                     // this is unlikely, and we can collect next time around.
                     if self.current_time > clip_end_time {
-                        debug!("heavy slowdown: postponing collection of ({}, {})",
-                               clip_start_time, clip_end_time);
+                        debug!(
+                            "heavy slowdown: postponing collection of ({}, {})",
+                            clip_start_time, clip_end_time
+                        );
                     }
                 }
             }
@@ -1163,7 +1239,11 @@ impl<'a> Sampler<'a> {
     // from the queue.
     fn save_clip(&mut self, start_time: i64) -> Result<()> {
         let path = self.next_clip_path();
-        let mut out = &mut OpenOptions::new().write(true).create(true).truncate(true).open(path)?;
+        let mut out = &mut OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(path)?;
 
         // Print courtesy header.  The first line is the current time.  The
         // second line lists the names of the variables in the following lines,
@@ -1196,14 +1276,14 @@ fn fprint_datetime(out: &mut File) -> Result<()> {
 
 #[derive(Copy, Clone, Debug)]
 enum SampleType {
-    EnterLowMem,        // Entering low-memory state, from the kernel low-mem notifier.
-    LeaveLowMem,        // Leaving low-memory state, from the kernel low-mem notifier.
-    OomKillBrowser,     // Chrome browser letting us know it detected OOM kill.
-    OomKillKernel,      // Anomaly collector letting us know it detected OOM kill.
-    Sleeper,            // Memd was not running for a long time.
-    TabDiscard,         // Chrome browser letting us know about a tab discard.
-    Timer,              // Event was produced after FAST_POLL_PERIOD_DURATION with no other events.
-    Uninitialized,      // Internal use.
+    EnterLowMem,    // Entering low-memory state, from the kernel low-mem notifier.
+    LeaveLowMem,    // Leaving low-memory state, from the kernel low-mem notifier.
+    OomKillBrowser, // Chrome browser letting us know it detected OOM kill.
+    OomKillKernel,  // Anomaly collector letting us know it detected OOM kill.
+    Sleeper,        // Memd was not running for a long time.
+    TabDiscard,     // Chrome browser letting us know about a tab discard.
+    Timer,          // Event was produced after FAST_POLL_PERIOD_DURATION with no other events.
+    Uninitialized,  // Internal use.
 }
 
 impl Default for SampleType {
@@ -1224,10 +1304,10 @@ impl SampleType {
     // because the timestamps of samples generated externally may be skewed.
     fn has_internal_timestamp(&self) -> bool {
         match self {
-            &SampleType::TabDiscard |
-            &SampleType::OomKillBrowser |
-            &SampleType::OomKillKernel => false,
-            _ => true
+            &SampleType::TabDiscard | &SampleType::OomKillBrowser | &SampleType::OomKillKernel => {
+                false
+            }
+            _ => true,
         }
     }
 }
@@ -1238,8 +1318,8 @@ impl SampleType {
         match *self {
             SampleType::EnterLowMem => "lowmem",
             SampleType::LeaveLowMem => "lealow",
-            SampleType::OomKillBrowser => "oomkll",  // OOM from chrome
-            SampleType::OomKillKernel => "keroom",   // OOM from kernel
+            SampleType::OomKillBrowser => "oomkll", // OOM from chrome
+            SampleType::OomKillKernel => "keroom",  // OOM from kernel
             SampleType::Sleeper => "sleepr",
             SampleType::TabDiscard => "discrd",
             SampleType::Timer => "timer",
@@ -1314,14 +1394,17 @@ fn main() {
         match arg.as_ref() {
             "always-poll-fast" => always_poll_fast = true,
             "debug-log" => debug_log = true,
-            _ => panic!("usage: memd [always-poll-fast|debug-log]*")
+            _ => panic!("usage: memd [always-poll-fast|debug-log]*"),
         }
     }
 
-    let log_level = if debug_log { log::LevelFilter::Debug } else { log::LevelFilter::Warn };
-    syslog::init(syslog::Facility::LOG_USER,
-                 log_level,
-                 Some("memd")).expect("cannot initialize syslog");
+    let log_level = if debug_log {
+        log::LevelFilter::Debug
+    } else {
+        log::LevelFilter::Warn
+    };
+    syslog::init(syslog::Facility::LOG_USER, log_level, Some("memd"))
+        .expect("cannot initialize syslog");
 
     // Unlike log!(), warn!() etc., panic!() is not redirected by the syslog
     // facility, instead always goes to stderr, which can get lost.  Here we
@@ -1394,15 +1477,13 @@ fn run_memory_daemon(always_poll_fast: bool) -> Result<()> {
     {
         test::setup_test_environment(&paths);
         let var_log = &paths.log_directory.parent().unwrap();
-        std::fs::create_dir_all(var_log)
-            .map_err(|e| Error::CreateLogDirError(Box::new(e)))?;
+        std::fs::create_dir_all(var_log).map_err(|e| Error::CreateLogDirError(Box::new(e)))?;
     }
 
     // Make sure /var/log/memd exists.  Create it if not.  Assume /var/log
     // exists.  Panic on errors.
     if !paths.log_directory.exists() {
-        create_dir(&paths.log_directory)
-            .map_err(|e| Error::CreateLogDirError(Box::new(e)))?
+        create_dir(&paths.log_directory).map_err(|e| Error::CreateLogDirError(Box::new(e)))?
     }
 
     #[cfg(test)]

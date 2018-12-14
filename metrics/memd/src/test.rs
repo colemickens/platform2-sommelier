@@ -8,26 +8,26 @@ include!(concat!(env!("OUT_DIR"), "/proto_include.rs"));
 
 use libc;
 use std;
-use std::fs::{File,OpenOptions};
+use std::fs::{File, OpenOptions};
 use std::io::prelude::*;
 use std::os::unix::fs::OpenOptionsExt;
-use std::os::unix::io::{AsRawFd,RawFd};
+use std::os::unix::io::{AsRawFd, RawFd};
 use std::path::{Path, PathBuf};
 use std::str;
 use std::time::Duration;
 
 // Imported from main program
-use Dbus;
 use errno;
-use FileWatcher;
 use get_runnables;
-use PAGE_SIZE;
+use get_vmstats;
+use strerror;
+use Dbus;
+use FileWatcher;
 use Paths;
 use Result;
 use Sampler;
-use strerror;
 use Timer;
-use get_vmstats;
+use PAGE_SIZE;
 use VMSTAT_VALUES_COUNT;
 
 // Different levels of emulated available RAM in MB.
@@ -80,11 +80,13 @@ fn non_blocking_select(high_fd: i32, inout_read_fds: &mut libc::fd_set) -> i32 {
     let null = std::ptr::null_mut();
     // Safe because we're passing valid values and addresses.
     let n = unsafe {
-        libc::select(high_fd,
-                     inout_read_fds,
-                     null,
-                     null,
-                     &mut null_timeout as *mut libc::timeval)
+        libc::select(
+            high_fd,
+            inout_read_fds,
+            null,
+            null,
+            &mut null_timeout as *mut libc::timeval,
+        )
     };
     if n < 0 {
         panic!("select: {}", strerror(errno()));
@@ -107,13 +109,13 @@ fn mkfifo(path: &PathBuf) -> Result<()> {
 // The types of events which are generated internally for testing.  They
 // simulate state changes (for instance, change in the memory pressure level),
 // chrome events, and kernel events.
-#[derive(Clone,Copy,Debug,PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum TestEventType {
-    EnterHighPressure,    // enter low available RAM (below margin) state
-    EnterLowPressure,     // enter high available RAM state
-    EnterMediumPressure,  // set enough memory pressure to trigger fast sampling
-    OomKillBrowser,       // fake browser report of OOM kill
-    TabDiscard,           // fake browser report of tab discard
+    EnterHighPressure,   // enter low available RAM (below margin) state
+    EnterLowPressure,    // enter high available RAM state
+    EnterMediumPressure, // set enough memory pressure to trigger fast sampling
+    OomKillBrowser,      // fake browser report of OOM kill
+    TabDiscard,          // fake browser report of tab discard
 }
 
 // Internally generated event for testing.
@@ -127,20 +129,23 @@ impl TestEvent {
     fn deliver(&self, paths: &Paths, dbus_fifo: &mut File, low_mem_device: &mut File, time: i64) {
         debug!("delivering {:?}", self);
         match self.event_type {
-            TestEventType::EnterLowPressure =>
-                self.low_mem_notify(LOW_MEM_HIGH_AVAILABLE, &paths, low_mem_device),
-            TestEventType::EnterMediumPressure =>
-                self.low_mem_notify(LOW_MEM_MEDIUM_AVAILABLE, &paths, low_mem_device),
-            TestEventType::EnterHighPressure =>
-                self.low_mem_notify(LOW_MEM_LOW_AVAILABLE, &paths, low_mem_device),
+            TestEventType::EnterLowPressure => {
+                self.low_mem_notify(LOW_MEM_HIGH_AVAILABLE, &paths, low_mem_device)
+            }
+            TestEventType::EnterMediumPressure => {
+                self.low_mem_notify(LOW_MEM_MEDIUM_AVAILABLE, &paths, low_mem_device)
+            }
+            TestEventType::EnterHighPressure => {
+                self.low_mem_notify(LOW_MEM_LOW_AVAILABLE, &paths, low_mem_device)
+            }
             TestEventType::OomKillBrowser => self.send_signal("oom-kill", time, dbus_fifo),
             TestEventType::TabDiscard => self.send_signal("tab-discard", time, dbus_fifo),
         }
     }
 
     fn low_mem_notify(&self, amount: usize, paths: &Paths, mut low_mem_device: &mut File) {
-        write_string(&amount.to_string(), &paths.available, false).
-            expect("available file: write failed");
+        write_string(&amount.to_string(), &paths.available, false)
+            .expect("available file: write failed");
         if amount == LOW_MEM_LOW_AVAILABLE {
             debug!("making low-mem device ready to read");
             // Make low-mem device ready-to-read.
@@ -167,13 +172,13 @@ impl TestEvent {
 // either sleep() or select() with a timeout.
 
 struct MockTimer {
-    current_time: i64,         // the current time
-    test_events: Vec<TestEvent>,  // list events to be delivered
-    event_index: usize,        // index of next event to be delivered
-    paths: Paths,              // for event delivery
-    dbus_fifo_out: File,       // for mock dbus event delivery
-    low_mem_device: File,      // for delivery of low-mem notifications
-    quit_request: bool,        // for termination
+    current_time: i64,           // the current time
+    test_events: Vec<TestEvent>, // list events to be delivered
+    event_index: usize,          // index of next event to be delivered
+    paths: Paths,                // for event delivery
+    dbus_fifo_out: File,         // for mock dbus event delivery
+    low_mem_device: File,        // for delivery of low-mem notifications
+    quit_request: bool,          // for termination
 }
 
 impl MockTimer {
@@ -182,7 +187,8 @@ impl MockTimer {
             .custom_flags(libc::O_NONBLOCK)
             .read(true)
             .write(true)
-            .open(&paths.low_mem_device).expect("low-mem-device: cannot setup");
+            .open(&paths.low_mem_device)
+            .expect("low-mem-device: cannot setup");
         MockTimer {
             current_time: 0,
             test_events,
@@ -207,10 +213,12 @@ impl Timer for MockTimer {
     // Mock select first checks if any events are pending, then produces events
     // that would happen during its sleeping time, and checks if those events
     // are delivered.
-    fn select(&mut self,
-              high_fd: i32,
-              inout_read_fds: &mut libc::fd_set,
-              timeout: &Duration) -> i32 {
+    fn select(
+        &mut self,
+        high_fd: i32,
+        inout_read_fds: &mut libc::fd_set,
+        timeout: &Duration,
+    ) -> i32 {
         // First check for existing active fds (for instance, the low-mem
         // device).  We must save the original fd_set because when
         // non_blocking_select returns 0, the fd_set is cleared.
@@ -235,26 +243,28 @@ impl Timer for MockTimer {
             // |first_event_time| is equal to |end_time|, we time out.
             if first_event_time >= end_time {
                 // No event to deliver before the timeout.
-	        debug!("returning because fev = {}", first_event_time);
+                debug!("returning because fev = {}", first_event_time);
                 return 0;
             }
             // Deliver all events with the time stamp of the first event.  (There
             // is at least one.)
             while {
-                self.test_events[self.event_index].deliver(&self.paths,
-                                                           &mut self.dbus_fifo_out,
-                                                           &mut self.low_mem_device,
-                                                           first_event_time);
+                self.test_events[self.event_index].deliver(
+                    &self.paths,
+                    &mut self.dbus_fifo_out,
+                    &mut self.low_mem_device,
+                    first_event_time,
+                );
                 self.event_index += 1;
-                self.event_index < self.test_events.len() &&
-                    self.test_events[self.event_index].time == first_event_time
+                self.event_index < self.test_events.len()
+                    && self.test_events[self.event_index].time == first_event_time
             } {}
             // One or more events were delivered, and some of them may fire a
             // select.  First restore the original fd_set.
             *inout_read_fds = saved_inout_read_fds.clone();
             let n = non_blocking_select(high_fd, inout_read_fds);
             if n > 0 {
-	        debug!("returning at {} with {} events", first_event_time, n);
+                debug!("returning at {} with {} events", first_event_time, n);
                 self.current_time = first_event_time;
                 return n;
             }
@@ -266,14 +276,17 @@ impl Timer for MockTimer {
     fn sleep(&mut self, sleep_time: &Duration) {
         let start_time = self.current_time;
         let end_time = start_time + duration_to_millis(&sleep_time);
-        while self.event_index < self.test_events.len() &&
-            self.test_events[self.event_index].time <= end_time {
-                self.test_events[self.event_index].deliver(&self.paths,
-                                                           &mut self.dbus_fifo_out,
-                                                           &mut self.low_mem_device,
-                                                           self.current_time);
-                self.event_index += 1;
-            }
+        while self.event_index < self.test_events.len()
+            && self.test_events[self.event_index].time <= end_time
+        {
+            self.test_events[self.event_index].deliver(
+                &self.paths,
+                &mut self.dbus_fifo_out,
+                &mut self.low_mem_device,
+                self.current_time,
+            );
+            self.event_index += 1;
+        }
         if self.event_index == self.test_events.len() {
             self.quit_request = true;
         }
@@ -284,7 +297,7 @@ impl Timer for MockTimer {
 struct MockDbus {
     fds: Vec<RawFd>,
     fifo_in: File,
-    fifo_out: Option<File>,  // using Option merely to use take()
+    fifo_out: Option<File>, // using Option merely to use take()
 }
 
 impl Dbus for MockDbus {
@@ -295,25 +308,27 @@ impl Dbus for MockDbus {
     // Processes any mock chrome events.  Events are strings separated by
     // newlines sent to the event pipe.  We could check if the pipe fired in
     // the watcher, but it's less code to just do a non-blocking read.
-    fn process_dbus_events(&mut self, _watcher: &mut FileWatcher) ->
-        Result<Vec<(Event_Type, i64)>> {
-            let mut events: Vec<(Event_Type, i64)> = Vec::new();
-            let mut buf = [0u8; 4096];
-            let read_bytes = read_nonblocking_pipe(&mut self.fifo_in, &mut buf)?;
-            let mock_events = str::from_utf8(&buf[..read_bytes])?.lines();
-            for mock_event in mock_events {
-                let mut split_iterator = mock_event.split_whitespace();
-                let event_type = split_iterator.next().unwrap();
-                let event_time_string = split_iterator.next().unwrap();
-                let event_time = event_time_string.parse::<i64>()?;
-                match event_type {
-                    "tab-discard" => events.push((Event_Type::TAB_DISCARD, event_time)),
-                    "oom-kill" => events.push((Event_Type::OOM_KILL, event_time)),
-                    other => return Err(format!("unexpected mock event {:?}", other).into()),
-                };
-            }
-            Ok(events)
+    fn process_dbus_events(
+        &mut self,
+        _watcher: &mut FileWatcher,
+    ) -> Result<Vec<(Event_Type, i64)>> {
+        let mut events: Vec<(Event_Type, i64)> = Vec::new();
+        let mut buf = [0u8; 4096];
+        let read_bytes = read_nonblocking_pipe(&mut self.fifo_in, &mut buf)?;
+        let mock_events = str::from_utf8(&buf[..read_bytes])?.lines();
+        for mock_event in mock_events {
+            let mut split_iterator = mock_event.split_whitespace();
+            let event_type = split_iterator.next().unwrap();
+            let event_time_string = split_iterator.next().unwrap();
+            let event_time = event_time_string.parse::<i64>()?;
+            match event_type {
+                "tab-discard" => events.push((Event_Type::TAB_DISCARD, event_time)),
+                "oom-kill" => events.push((Event_Type::OOM_KILL, event_time)),
+                other => return Err(format!("unexpected mock event {:?}", other).into()),
+            };
         }
+        Ok(events)
+    }
 }
 
 impl MockDbus {
@@ -327,7 +342,11 @@ impl MockDbus {
             .custom_flags(libc::O_NONBLOCK)
             .write(true)
             .open(&fifo_path)?;
-        Ok(MockDbus { fds, fifo_in, fifo_out: Some(fifo_out) })
+        Ok(MockDbus {
+            fds,
+            fifo_in,
+            fifo_out: Some(fifo_out),
+        })
     }
 }
 
@@ -340,12 +359,16 @@ pub fn test_loop(_always_poll_fast: bool, paths: &Paths) {
         std::fs::create_dir_all(&paths.log_directory).expect("cannot create /var/log/memd");
 
         let events = events_from_test_descriptor(test_desc);
-        let mut dbus = Box::new(MockDbus::new(&paths.testing_root.join(MOCK_DBUS_FIFO_NAME))
-                                .expect("cannot create mock dbus"));
-        let timer = Box::new(MockTimer::new(events, paths.clone(),
-                                            dbus.fifo_out.take().unwrap()));
-        let mut sampler = Sampler::new(false, &paths, timer, dbus)
-            .expect("sampler creation error");
+        let mut dbus = Box::new(
+            MockDbus::new(&paths.testing_root.join(MOCK_DBUS_FIFO_NAME))
+                .expect("cannot create mock dbus"),
+        );
+        let timer = Box::new(MockTimer::new(
+            events,
+            paths.clone(),
+            dbus.fifo_out.take().unwrap(),
+        ));
+        let mut sampler = Sampler::new(false, &paths, timer, dbus).expect("sampler creation error");
         loop {
             // Alternate between slow and fast poll.
             sampler.slow_poll().expect("slow poll error");
@@ -409,6 +432,7 @@ pub fn test_loop(_always_poll_fast: bool, paths: &Paths) {
 // For readability, the descriptor must start and end with newlines, which are
 // removed.  Also, indentation (common all-space prefixes) is removed.
 
+#[rustfmt::skip]
 const TEST_DESCRIPTORS: &[&str] = &[
 
     // Very simple test: go from slow poll to fast poll and back.  No clips
@@ -474,12 +498,18 @@ fn trim_descriptor(descriptor: &str) -> Vec<Vec<u8>> {
     // one line of events, and exactly one line to describe the clip files.
     assert!(all_lines.len() >= 4, "invalid test descriptor format");
     // Remove first and last line.
-    let valid_lines = all_lines[1 .. all_lines.len()-1].to_vec();
+    let valid_lines = all_lines[1..all_lines.len() - 1].to_vec();
     // Find indentation amount.  Unwrap() cannot fail because of previous assert.
-    let indent = valid_lines.iter().map(|s| s.len() - s.trim_left().len()).min().unwrap();
+    let indent = valid_lines
+        .iter()
+        .map(|s| s.len() - s.trim_left().len())
+        .min()
+        .unwrap();
     // Remove indentation.
-    let trimmed_lines: Vec<Vec<u8>> =
-        valid_lines.iter().map(|s| s[indent..].to_string().into_bytes()).collect();
+    let trimmed_lines: Vec<Vec<u8>> = valid_lines
+        .iter()
+        .map(|s| s[indent..].to_string().into_bytes())
+        .collect();
     trimmed_lines
 }
 
@@ -488,25 +518,28 @@ fn events_from_test_descriptor(descriptor: &str) -> Vec<TestEvent> {
     let event_sequences = &all_descriptors[..all_descriptors.len() - 1];
     let max_length = event_sequences.iter().map(|d| d.len()).max().unwrap();
     let mut events = vec![];
-    for i in 0 .. max_length {
+    for i in 0..max_length {
         for seq in event_sequences {
             // Each character represents one second.  Time unit is milliseconds.
             let mut opt_type = None;
             if i < seq.len() {
                 match seq[i] {
-                    b'0' | b'1' | b'2' | b'3' | b'4' |
-                    b'5' | b'6' | b'7' | b'8' | b'9'
-                        => opt_type = Some(TestEventType::TabDiscard),
+                    b'0' | b'1' | b'2' | b'3' | b'4' | b'5' | b'6' | b'7' | b'8' | b'9' => {
+                        opt_type = Some(TestEventType::TabDiscard)
+                    }
                     b'H' => opt_type = Some(TestEventType::EnterHighPressure),
                     b'M' => opt_type = Some(TestEventType::EnterMediumPressure),
                     b'L' => opt_type = Some(TestEventType::EnterLowPressure),
                     b'k' => opt_type = Some(TestEventType::OomKillBrowser),
-                    b'.' | b' ' | b'|' => {},
+                    b'.' | b' ' | b'|' => {}
                     x => panic!("unexpected character {} in descriptor '{}'", &x, descriptor),
                 }
             }
             if let Some(t) = opt_type {
-                events.push(TestEvent { time: i as i64 * 1000, event_type: t });
+                events.push(TestEvent {
+                    time: i as i64 * 1000,
+                    event_type: t,
+                });
             }
         }
     }
@@ -547,14 +580,16 @@ fn time_from_sample_string(line: &str) -> Result<i64> {
     let mut tokens = line.split(|c: char| !c.is_digit(10));
     let seconds = match tokens.next() {
         Some(digits) => digits.parse::<i64>().unwrap(),
-        None => return Err("no digits in string".into())
+        None => return Err("no digits in string".into()),
     };
     let centiseconds = match tokens.next() {
-        Some(digits) => if digits.len() == 2 {
-            digits.parse::<i64>().unwrap()
-        } else {
-            return Err("expecting 2 decimals".into());
-        },
+        Some(digits) => {
+            if digits.len() == 2 {
+                digits.parse::<i64>().unwrap()
+            } else {
+                return Err("expecting 2 decimals".into());
+            }
+        }
         None => return Err("expecting at least two groups of digits".into()),
     };
     Ok(seconds * 1000 + centiseconds * 10)
@@ -572,8 +607,7 @@ macro_rules! assert_approx_eq {
     }}
 }
 
-fn check_clip(clip_times: (i64, i64), clip_path: PathBuf, events: &Vec<TestEvent>)
-              -> Result<()> {
+fn check_clip(clip_times: (i64, i64), clip_path: PathBuf, events: &Vec<TestEvent>) -> Result<()> {
     let clip_name = clip_path.to_string_lossy();
     let mut clip_file = File::open(&clip_path)?;
     let mut file_content = String::new();
@@ -589,8 +623,8 @@ fn check_clip(clip_times: (i64, i64), clip_path: PathBuf, events: &Vec<TestEvent
 
     // Check first and last time stamps.
     let start_time = time_from_sample_string(&lines[2]).expect("cannot parse first timestamp");
-    let end_time = time_from_sample_string(&lines[lines.len() - 1])
-        .expect("cannot parse last timestamp");
+    let end_time =
+        time_from_sample_string(&lines[lines.len() - 1]).expect("cannot parse last timestamp");
     let expected_start_time = clip_times.0;
     let expected_end_time = clip_times.1;
     // Milliseconds of slack allowed on start/stop times.  We allow one full
@@ -598,32 +632,51 @@ fn check_clip(clip_times: (i64, i64), clip_path: PathBuf, events: &Vec<TestEvent
     // tight here because it doesn't matter if we collect one fewer sample (or
     // an extra one) at each end.
     let slack_ms = 101i64;
-    assert_approx_eq!(start_time, expected_start_time, slack_ms,
-                      "unexpected start time for {}", clip_name);
-    assert_approx_eq!(end_time, expected_end_time, slack_ms,
-                      "unexpected end time for {}", clip_name);
+    assert_approx_eq!(
+        start_time,
+        expected_start_time,
+        slack_ms,
+        "unexpected start time for {}",
+        clip_name
+    );
+    assert_approx_eq!(
+        end_time,
+        expected_end_time,
+        slack_ms,
+        "unexpected end time for {}",
+        clip_name
+    );
 
     // Check sample count.  Must keep track of low_mem -> not low_mem transitions.
     let mut in_low_mem = false;
-    let expected_sample_count_from_events: usize = events.iter().map(|e| {
-        let sample_count_for_event = if e.time <= start_time || e.time > end_time {
-            0
-        } else {
+    let expected_sample_count_from_events: usize = events
+        .iter()
+        .map(|e| {
+            let sample_count_for_event = if e.time <= start_time || e.time > end_time {
+                0
+            } else {
+                match e.event_type {
+                    // These generate 1 sample only when moving out of high pressure.
+                    TestEventType::EnterLowPressure | TestEventType::EnterMediumPressure => {
+                        if in_low_mem {
+                            1
+                        } else {
+                            0
+                        }
+                    }
+                    _ => 1,
+                }
+            };
             match e.event_type {
-                // These generate 1 sample only when moving out of high pressure.
-                TestEventType::EnterLowPressure |
-                TestEventType::EnterMediumPressure => if in_low_mem { 1 } else { 0 },
-                _ => 1,
+                TestEventType::EnterHighPressure => in_low_mem = true,
+                TestEventType::EnterLowPressure | TestEventType::EnterMediumPressure => {
+                    in_low_mem = false
+                }
+                _ => {}
             }
-        };
-        match e.event_type {
-            TestEventType::EnterHighPressure => in_low_mem = true,
-            TestEventType::EnterLowPressure |
-            TestEventType::EnterMediumPressure => in_low_mem = false,
-            _ => {},
-        }
-        sample_count_for_event
-    }).sum();
+            sample_count_for_event
+        })
+        .sum();
 
     // We include samples both at the beginning and end of the range, so we
     // need to add 1.  Note that here we use the actual sample times, not the
@@ -632,7 +685,11 @@ fn check_clip(clip_times: (i64, i64), clip_path: PathBuf, events: &Vec<TestEvent
     let expected_sample_count =
         expected_sample_count_from_events + expected_sample_count_from_timer;
     let sample_count = lines.len() - 2;
-    assert_eq!(sample_count, expected_sample_count, "unexpected sample count for {}", clip_name);
+    assert_eq!(
+        sample_count, expected_sample_count,
+        "unexpected sample count for {}",
+        clip_name
+    );
     Ok(())
 }
 
@@ -660,24 +717,25 @@ fn create_dir_all(path: &Path) -> Result<()> {
     let result = std::fs::create_dir_all(path);
     match result {
         Ok(_) => Ok(()),
-        Err(e) => Err(format!("create_dir_all: {}: {:?}", path.to_string_lossy(), e).into())
+        Err(e) => Err(format!("create_dir_all: {}: {:?}", path.to_string_lossy(), e).into()),
     }
 }
 
-pub fn teardown_test_environment (paths: &Paths) {
-    std::fs::remove_dir_all(&paths.testing_root).expect(
-        &format!("teardown: could not remove {}", paths.testing_root.to_str().unwrap()));
+pub fn teardown_test_environment(paths: &Paths) {
+    std::fs::remove_dir_all(&paths.testing_root).expect(&format!(
+        "teardown: could not remove {}",
+        paths.testing_root.to_str().unwrap()
+    ));
 }
 
 pub fn setup_test_environment(paths: &Paths) {
-    std::fs::create_dir(&paths.testing_root).
-        expect(&format!("cannot create {}", paths.testing_root.to_str().unwrap()));
-    mkfifo(&paths.testing_root.join(MOCK_DBUS_FIFO_NAME))
-        .expect("failed to make mock dbus fifo");
-    create_dir_all(paths.vmstat.parent().unwrap())
-        .expect("cannot create /proc");
-    create_dir_all(paths.available.parent().unwrap())
-        .expect("cannot create ../chromeos-low-mem");
+    std::fs::create_dir(&paths.testing_root).expect(&format!(
+        "cannot create {}",
+        paths.testing_root.to_str().unwrap()
+    ));
+    mkfifo(&paths.testing_root.join(MOCK_DBUS_FIFO_NAME)).expect("failed to make mock dbus fifo");
+    create_dir_all(paths.vmstat.parent().unwrap()).expect("cannot create /proc");
+    create_dir_all(paths.available.parent().unwrap()).expect("cannot create ../chromeos-low-mem");
     let sys_vm = paths.testing_root.join("proc/sys/vm");
     create_dir_all(&sys_vm).expect("cannot create /proc/sys/vm");
     create_dir_all(paths.low_mem_device.parent().unwrap()).expect("cannot create /dev");
@@ -710,24 +768,38 @@ pub fn read_loadavg() {
         .read(true)
         .write(true)
         .create(true)
-        .open(&temp_file_name).expect("cannot create");
+        .open(&temp_file_name)
+        .expect("cannot create");
     // Unlink file immediately for more reliable cleanup.
     std::fs::remove_file(&temp_file_name).expect(&format!("cannot remove"));
 
-    temp_file.write_all("0.42 0.31 1.50 44/1234 56789".as_bytes()).expect("cannot write");
-    temp_file.seek(std::io::SeekFrom::Start(0)).expect("cannot seek");
+    temp_file
+        .write_all("0.42 0.31 1.50 44/1234 56789".as_bytes())
+        .expect("cannot write");
+    temp_file
+        .seek(std::io::SeekFrom::Start(0))
+        .expect("cannot seek");
     assert_eq!(get_runnables(&temp_file).unwrap(), 44);
-    temp_file.seek(std::io::SeekFrom::Start(0)).expect("cannot seek");
-    temp_file.write_all("1122.12 25.87 19.51 33/1234 56789".as_bytes()).expect("cannot write");
-    temp_file.seek(std::io::SeekFrom::Start(0)).expect("cannot seek");
+    temp_file
+        .seek(std::io::SeekFrom::Start(0))
+        .expect("cannot seek");
+    temp_file
+        .write_all("1122.12 25.87 19.51 33/1234 56789".as_bytes())
+        .expect("cannot write");
+    temp_file
+        .seek(std::io::SeekFrom::Start(0))
+        .expect("cannot seek");
     assert_eq!(get_runnables(&temp_file).unwrap(), 33);
 }
 
 pub fn read_vmstat(paths: &Paths) {
     setup_test_environment(&paths);
     let mut vmstat_values: [u64; VMSTAT_VALUES_COUNT] = [0, 0, 0, 0, 0];
-    get_vmstats(&File::open(&paths.vmstat).expect("cannot open vmstat"),
-                &mut vmstat_values).expect("get_vmstats failure");
+    get_vmstats(
+        &File::open(&paths.vmstat).expect("cannot open vmstat"),
+        &mut vmstat_values,
+    )
+    .expect("get_vmstats failure");
     // Check one simple and one accumulated value.
     assert_eq!(vmstat_values[1], 678);
     assert_eq!(vmstat_values[2], 66);

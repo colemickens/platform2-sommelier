@@ -22,12 +22,15 @@ fn main() {
     protoc_rust::run(protoc_rust::Args {
         out_dir: out_dir.as_os_str().to_str().unwrap(),
         input: &[&proto_file.as_os_str().to_str().unwrap()],
-        includes: &[&proto_dir.as_os_str().to_str().unwrap()]},
-    ).expect("protoc");
+        includes: &[&proto_dir.as_os_str().to_str().unwrap()],
+    })
+    .expect("protoc");
 
     let mut mod_out = fs::File::create(out_dir.join("proto_include.rs")).unwrap();
-    writeln!(mod_out,
-             "#[path = \"{}\"] pub mod plugin_proto;\npub use plugin_proto::*;",
-             out_dir.join("metrics_event.rs").display())
-        .unwrap();
+    writeln!(
+        mod_out,
+        "#[path = \"{}\"] pub mod plugin_proto;\npub use plugin_proto::*;",
+        out_dir.join("metrics_event.rs").display()
+    )
+    .unwrap();
 }
