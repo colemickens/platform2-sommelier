@@ -17,7 +17,7 @@ MountTracker::MountTracker(std::unique_ptr<base::TickClock> tick_clock,
 MountTracker::~MountTracker() = default;
 
 bool MountTracker::IsAlreadyMounted(int32_t mount_id) const {
-  auto mount_iter = mounts_.Find(mount_id);
+  const auto mount_iter = mounts_.Find(mount_id);
   if (mount_iter == mounts_.End()) {
     return false;
   }
@@ -114,7 +114,7 @@ bool MountTracker::AddMountWithId(
 }
 
 bool MountTracker::RemoveMount(int32_t mount_id) {
-  auto mount_iter = mounts_.Find(mount_id);
+  const auto mount_iter = mounts_.Find(mount_id);
   if (mount_iter == mounts_.End()) {
     DCHECK(!ExistsInSambaInterfaceMap(mount_id));
     return false;
@@ -134,7 +134,7 @@ bool MountTracker::GetFullPath(int32_t mount_id,
                                std::string* full_path) const {
   DCHECK(full_path);
 
-  auto mount_iter = mounts_.Find(mount_id);
+  const auto mount_iter = mounts_.Find(mount_id);
   if (mount_iter == mounts_.End()) {
     return false;
   }
@@ -145,7 +145,7 @@ bool MountTracker::GetFullPath(int32_t mount_id,
 
 std::string MountTracker::GetRelativePath(int32_t mount_id,
                                           const std::string& full_path) const {
-  auto mount_iter = mounts_.Find(mount_id);
+  const auto mount_iter = mounts_.Find(mount_id);
   DCHECK(mount_iter != mounts_.End());
 
   DCHECK(StartsWith(full_path, mount_iter->second.mount_root,
@@ -170,7 +170,7 @@ bool MountTracker::GetSambaInterface(int32_t mount_id,
                                      SambaInterface** samba_interface) const {
   DCHECK(samba_interface);
 
-  auto mount_iter = mounts_.Find(mount_id);
+  const auto mount_iter = mounts_.Find(mount_id);
   if (mount_iter == mounts_.End()) {
     return false;
   }
@@ -185,7 +185,7 @@ bool MountTracker::GetMetadataCache(int32_t mount_id,
                                     MetadataCache** cache) const {
   DCHECK(cache);
 
-  auto mount_iter = mounts_.Find(mount_id);
+  const auto mount_iter = mounts_.Find(mount_id);
   if (mount_iter == mounts_.End()) {
     return false;
   }

@@ -47,6 +47,8 @@ class IdMap {
     return ids_.find(id);
   }
 
+  typename MapType::iterator Find(int32_t id) { return ids_.find(id); }
+
   const T& At(int32_t id) const { return ids_.at(id); }
 
   bool Contains(int32_t id) const { return ids_.count(id) > 0; }
@@ -75,8 +77,10 @@ class IdMap {
   bool Empty() const { return ids_.empty(); }
 
   typename MapType::const_iterator Begin() const { return ids_.begin(); }
+  typename MapType::iterator Begin() { return ids_.begin(); }
 
   typename MapType::const_iterator End() const { return ids_.end(); }
+  typename MapType::iterator End() { return ids_.end(); }
 
  private:
   // Returns the next ID and updates the internal state to ensure that

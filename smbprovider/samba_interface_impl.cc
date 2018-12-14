@@ -371,7 +371,7 @@ void SambaInterfaceImpl::ReleaseFd(int32_t fd) {
 }
 
 SMBCFILE* SambaInterfaceImpl::GetFile(int32_t fd) {
-  auto iter = fds_.Find(fd);
+  const auto iter = fds_.Find(fd);
   if (iter == fds_.End()) {
     return nullptr;
   }

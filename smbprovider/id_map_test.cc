@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <string>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -16,15 +17,15 @@ class IdMapTest : public testing::Test {
   ~IdMapTest() override = default;
 
  protected:
-  void ExpectFound(int32_t id, std::string expected) {
-    auto iter = map_.Find(id);
+  void ExpectFound(int32_t id, std::string expected) const {
+    const auto iter = map_.Find(id);
     EXPECT_NE(map_.End(), iter);
     EXPECT_TRUE(map_.Contains(id));
     EXPECT_EQ(expected, iter->second);
   }
 
-  void ExpectNotFound(int32_t id) {
-    auto iter = map_.Find(id);
+  void ExpectNotFound(int32_t id) const {
+    const auto iter = map_.Find(id);
     EXPECT_EQ(map_.End(), iter);
     EXPECT_FALSE(map_.Contains(id));
   }
@@ -236,4 +237,36 @@ TEST_F(IdMapTest, TestReset) {
   ExpectFound(id2, expected2);
 }
 
+TEST_F(IdMapTest, TestNonConstFind) {
+  IdMap<std::string> map(0 /* initial_value */);
+  int32_t id = map.Insert("Foo");
+  EXPECT_GE(id, 0);
+
+  std::string expected = "Bar";
+  auto map_iter = map.Find(id);
+  map_iter->second = expected;
+  EXPECT_EQ(expected, map.Find(id)->second);
+}
+
+TEST_F(IdMapTest, TestNonConstBeginAndEnd) {
+  IdMap<std::string> map(0 /* initial_value */);
+  map.Insert("Foo1");
+  map.Insert("Foo2");
+  map.Insert("Foo3");
+
+  std::vector<std::string> expected{"Bar1", "Bar2", "Bar3"};
+
+  EXPECT_EQ(expected.size(), map.Count());
+
+  int counter = 0;
+  // Iterate through the map and update each entry to the value in expected.
+  for (auto it = map.Begin(); it != map.End(); ++it) {
+    it->second = expected[counter++];
+  }
+
+  counter = 0;
+  for (auto it = map.Begin(); it != map.End(); ++it) {
+    EXPECT_EQ(expected[counter++], it->second);
+  }
+}
 }  // namespace smbprovider
