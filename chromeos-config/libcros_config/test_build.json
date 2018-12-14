@@ -298,15 +298,8 @@
             "libpayload": "another"
           },
           "ec-image": "bcs://Another_EC.1111.11.1.tbz2",
-          "extra": [
-            "${FILESDIR}/extra"
-          ],
           "main-image": "bcs://Another.1111.11.1.tbz2",
-          "main-rw-image": "bcs://Another_RW.1111.11.1.tbz2",
-          "tools": [
-            "${FILESDIR}/tools1",
-            "${FILESDIR}/tools2"
-          ]
+          "main-rw-image": "bcs://Another_RW.1111.11.1.tbz2"
         },
         "firmware-signing": {
           "key-id": "ANOTHER",

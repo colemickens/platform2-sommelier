@@ -61,9 +61,7 @@ BaseFile = namedtuple('BaseFile', ['source', 'dest'])
 #       image
 #   pd_image_uri: URI to use to obtain the PD (Power Delivery controller)
 #       firmware image
-#   extra: List of extra files to include in the firmware update, each a string
 #   create_bios_rw_image: True to create a RW BIOS image
-#   tools: List of tools to include in the firmware update
 #   sig_id: Signature ID to put in the setvars.sh file. This is normally the
 #       same as the model, since that is what we use for signature ID. But for
 #       zero-touch whitelabel this is 'sig-id-in-customization-id' since we do
@@ -72,8 +70,7 @@ BaseFile = namedtuple('BaseFile', ['source', 'dest'])
 FirmwareInfo = namedtuple('FirmwareInfo', [
     'model', 'shared_model', 'key_id', 'have_image', 'bios_build_target',
     'ec_build_target', 'main_image_uri', 'main_rw_image_uri', 'ec_image_uri',
-    'pd_image_uri', 'extra', 'create_bios_rw_image', 'tools', 'sig_id',
-    'brand_code'
+    'pd_image_uri', 'create_bios_rw_image', 'sig_id', 'brand_code'
 ])
 
 class PathComponent(object):

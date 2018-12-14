@@ -347,14 +347,12 @@ The schema definition is below:
 | bcs-overlay | string |  | False |  | BCS overlay path used to determine BCS file path for binary firmware downloads. |
 | build-targets | [build-targets](#build-targets) |  | False |  |  |
 | ec-image | string |  | False |  | Name of the file located in BCS under the respective bcs-overlay. |
-| extra | array - string |  | False |  | A list of extra files or directories needed to update firmware, each being a string filename. Any filename is supported. If it starts with `bcs://` then it is read from BCS as with main-image above. But normally it is a path. A typical example is `${FILESDIR}/extra` which means that the `extra` diectory is copied from the firmware ebuild's `files/extra` directory. Full paths can be provided, e.g. `${SYSROOT}/usr/bin/ectool`. If a directory is provided, its contents are copied (subdirectories are not supported). This mirrors the functionality of `CROS_FIRMWARE_EXTRA_LIST`. |
 | key-id | string |  | False |  | Key ID from the signer key set that is used to sign the given firmware image. |
 | main-image | string |  | False |  | Name of the file located in BCS under the respective bcs-overlay. |
 | main-rw-image | string |  | False |  | Name of the file located in BCS under the respective bcs-overlay. |
 | name | string |  | False |  | This is a human-recognizable name used to refer to the firmware. It will be used when generating the shellball via firmware packer. Mainly, this is only for compatibility testing with device tree (since DT allowed firmwares to be named). |
 | no-firmware | boolean |  | False |  | If present this indicates that this model has no firmware at present. This means that it will be omitted from the firmware updater (chromeos-firmware- ebuild) and it will not be included in the signer instructions file sent to the signer. This option is often useful when a model is first added, since it may not have firmware at that point. |
 | pd-image | string |  | False |  | Name of the file located in BCS under the respective bcs-overlay. |
-| tools | array - string |  | False |  | A list of additional tools which should be packed into the firmware update shellball. This is only needed if this model needs to run a special tool to do the firmware update. |
 
 ### build-targets
 | Attribute | Type   | RegEx     | Required | Oneof Group |  Description |

@@ -185,11 +185,6 @@ chromeos:
               ec-image: "bcs://Another_EC.1111.11.1.tbz2"
               main-image: "bcs://Another.1111.11.1.tbz2"
               main-rw-image: "bcs://Another_RW.1111.11.1.tbz2"
-              extra:
-                - "${FILESDIR}/extra"
-              tools:
-                - "${FILESDIR}/tools1"
-                - "${FILESDIR}/tools2"
               build-targets:
                 base: "another_base"
                 ec_extras:

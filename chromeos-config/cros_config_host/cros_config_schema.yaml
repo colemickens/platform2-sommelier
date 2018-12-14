@@ -206,28 +206,6 @@ properties:
                     This option is often useful when a model is first added,
                     since it may not have firmware at that point.
                   type: boolean
-                extra:
-                  type: array
-                  items:
-                    type: string
-                    description: A list of extra files or directories needed
-                      to update firmware, each being a string filename. Any filename
-                      is supported. If it starts with `bcs://` then it is read from
-                      BCS as with main-image above. But normally it is a path. A
-                      typical example is `${FILESDIR}/extra` which means that the
-                      `extra` diectory is copied from the firmware ebuild's
-                      `files/extra` directory. Full paths can be provided, e.g.
-                      `${SYSROOT}/usr/bin/ectool`. If a directory is provided, its
-                      contents are copied (subdirectories are not supported). This
-                      mirrors the functionality of `CROS_FIRMWARE_EXTRA_LIST`.
-                tools:
-                  type: array
-                  items:
-                    type: string
-                    description: A list of additional tools which should be
-                      packed into the firmware update shellball. This is only needed
-                      if this model needs to run a special tool to do the firmware
-                      update.
               additionalProperties: false
             firmware-signing:
               type: object
