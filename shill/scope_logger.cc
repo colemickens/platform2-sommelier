@@ -4,6 +4,7 @@
 
 #include "shill/scope_logger.h"
 
+#include <iterator>
 #include <vector>
 
 #include <base/strings/string_tokenizer.h>
@@ -88,7 +89,7 @@ bool ScopeLogger::IsScopeEnabled(Scope scope) const {
 }
 
 string ScopeLogger::GetAllScopeNames() const {
-  vector<string> names(kScopeNames, kScopeNames + arraysize(kScopeNames));
+  vector<string> names(std::begin(kScopeNames), std::end(kScopeNames));
   return base::JoinString(names, "+");
 }
 
