@@ -246,7 +246,8 @@ impl ChromeOS {
             "/org/chromium/ComponentUpdaterService",
             "org.chromium.ComponentUpdaterService",
             "LoadComponent",
-        )?.append1(name);
+        )?
+        .append1(name);
         let message = self
             .connection
             .send_with_reply_and_block(method, COMPONENT_UPDATER_TIMEOUT_MS)?;
@@ -382,7 +383,8 @@ impl ChromeOS {
             VM_CONCIERGE_SERVICE_PATH,
             VM_CONCIERGE_INTERFACE,
             EXPORT_DISK_IMAGE_METHOD,
-        )?.append1(request.write_to_bytes()?)
+        )?
+        .append1(request.write_to_bytes()?)
         .append1(export_fd);
 
         let message = self
@@ -479,7 +481,8 @@ impl ChromeOS {
             Err(FailedStopVm {
                 vm_name: vm_name.to_owned(),
                 reason: response.failure_reason,
-            }.into())
+            }
+            .into())
         }
     }
 
@@ -664,7 +667,8 @@ impl Backend for ChromeOS {
         if !status.success() {
             return Err(FailedMetricsSend {
                 exit_code: status.code(),
-            }.into());
+            }
+            .into());
         }
         Ok(())
     }
@@ -734,7 +738,8 @@ impl Backend for ChromeOS {
                 "--",
                 "LXD_DIR=/mnt/stateful/lxd",
                 "LXD_CONF=/mnt/stateful/lxd_conf",
-            ]).status()?;
+            ])
+            .status()?;
 
         Ok(())
     }
@@ -753,7 +758,8 @@ impl Backend for ChromeOS {
                 "--",
                 "LXD_DIR=/mnt/stateful/lxd",
                 "LXD_CONF=/mnt/stateful/lxd_conf",
-            ]).status()?;
+            ])
+            .status()?;
 
         Ok(())
     }

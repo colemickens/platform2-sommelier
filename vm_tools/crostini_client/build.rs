@@ -39,7 +39,8 @@ fn main() {
         input: &paths_to_strs(&input_files),
         includes: &paths_to_strs(&include_dirs),
         customize: Default::default(),
-    }).expect("protoc");
+    })
+    .expect("protoc");
 
     let mut path_include_mods = String::new();
     for input_file in input_files.iter() {
@@ -49,7 +50,8 @@ fn main() {
             &mut path_include_mods,
             "#[path = \"{}\"]",
             mod_path.display()
-        ).unwrap();
+        )
+        .unwrap();
         writeln!(&mut path_include_mods, "pub mod {};", stem).unwrap();
     }
 

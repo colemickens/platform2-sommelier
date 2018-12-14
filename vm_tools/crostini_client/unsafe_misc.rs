@@ -55,7 +55,8 @@ mod tests {
                 .output()
                 .unwrap()
                 .stdout,
-        ).unwrap();
+        )
+        .unwrap();
         println!("get_free_disk_space reports {}", free_bytes);
         println!("df reports {}", df_free_bytes);
         assert!(df_free_bytes.trim().ends_with(&format!("{}", free_bytes)));
