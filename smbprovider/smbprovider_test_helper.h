@@ -98,6 +98,11 @@ RemountOptionsProto CreateRemountOptionsProto(const std::string& path,
 authpolicy::KerberosFiles CreateKerberosFilesProto(const std::string& krb5cc,
                                                    const std::string& krb5conf);
 
+UpdateMountCredentialsOptionsProto CreateUpdateMountCredentialsOptionsProto(
+    int32_t mount_id,
+    const std::string& workgroup,
+    const std::string& username);
+
 ProtoBlob CreateMountOptionsBlob(const std::string& path);
 
 ProtoBlob CreateMountOptionsBlob(const std::string& path,
@@ -165,6 +170,10 @@ ProtoBlob CreateRemountOptionsBlob(const std::string& path, int32_t mount_id);
 ProtoBlob CreateRemountOptionsBlob(const std::string& path,
                                    int32_t mount_id,
                                    MountConfig mount_config);
+
+ProtoBlob CreateUpdateMountCredentialsOptionsBlob(int32_t mount_id,
+                                                  const std::string& workgroup,
+                                                  const std::string& username);
 
 // FakeSamba URL helper methods
 inline std::string GetDefaultServer() {

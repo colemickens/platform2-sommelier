@@ -227,6 +227,18 @@ authpolicy::KerberosFiles CreateKerberosFilesProto(
   return kerberos_files;
 }
 
+UpdateMountCredentialsOptionsProto CreateUpdateMountCredentialsOptionsProto(
+    int32_t mount_id,
+    const std::string& workgroup,
+    const std::string& username) {
+  UpdateMountCredentialsOptionsProto update_options;
+  update_options.set_mount_id(mount_id);
+  update_options.set_workgroup(workgroup);
+  update_options.set_username(username);
+
+  return update_options;
+}
+
 ProtoBlob CreateMountOptionsBlob(const std::string& path) {
   return SerializeProtoToBlobAndCheck(
       CreateMountOptionsProto(path, "" /* workgroup */, "" /* username */,
@@ -353,6 +365,13 @@ ProtoBlob CreateRemountOptionsBlob(const std::string& path,
                                    MountConfig mount_config) {
   return SerializeProtoToBlobAndCheck(
       CreateRemountOptionsProto(path, mount_id, mount_config));
+}
+
+ProtoBlob CreateUpdateMountCredentialsOptionsBlob(int32_t mount_id,
+                                                  const std::string& workgroup,
+                                                  const std::string& username) {
+  return SerializeProtoToBlobAndCheck(
+      CreateUpdateMountCredentialsOptionsProto(mount_id, workgroup, username));
 }
 
 base::ScopedFD WritePasswordToFile(TempFileManager* temp_manager,
