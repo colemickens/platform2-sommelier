@@ -86,6 +86,7 @@ copies.
 | [peerd](./peerd/) | Daemon for communicating with local peers |
 | [permission_broker](./permission_broker/) ||
 | [policy_proto](./policy_proto/) | Build file to compile policy proto file |
+| [policy_utils](./policy_utils/) | Tools and related library to set or override device policies |
 | [portier](./portier/) | Multi-Network Neighbor Discovery Proxy service for Chrome OS |
 | [power_manager](./power_manager/) | Userspace power management daemon and associated tools |
 | [qmi2cpp](./qmi2cpp/) | Chrome OS QMI IDL Compiler |
