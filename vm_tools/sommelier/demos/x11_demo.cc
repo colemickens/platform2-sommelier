@@ -16,6 +16,7 @@
 constexpr char kBgColorFlag[] = "bgcolor";
 constexpr char kWidthFlag[] = "width";
 constexpr char kHeightFlag[] = "height";
+constexpr char kTitleFlag[] = "title";
 
 // Creates an X window the same size as the display and fills its background
 // with a solid color that can be specified as the only parameter (in hex or
@@ -30,6 +31,10 @@ int main(int argc, char* argv[]) {
   if (cl->HasSwitch(kBgColorFlag)) {
     bgcolor =
         strtoul(cl->GetSwitchValueASCII(kBgColorFlag).c_str(), nullptr, 0);
+  }
+  const char* title = "x11_demo";
+  if (cl->HasSwitch(kTitleFlag)) {
+    title = cl->GetSwitchValueASCII(kTitleFlag).c_str();
   }
 
   Display* dpy = XOpenDisplay(nullptr);
@@ -68,7 +73,7 @@ int main(int argc, char* argv[]) {
   XSetClassHint(dpy, win, wmclass_hint);
   XSelectInput(dpy, win, KeyPressMask);
   XMapWindow(dpy, win);
-  XStoreName(dpy, win, class_name);
+  XStoreName(dpy, win, title);
 
   LOG(INFO) << "x11_demo application displaying, waiting for keypress";
   XEvent evt;
