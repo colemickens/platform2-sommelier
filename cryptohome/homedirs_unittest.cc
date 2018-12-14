@@ -2043,10 +2043,11 @@ TEST_P(KeysetManagementTest, RemoveKeysetSuccess) {
 
   Key remove_key;
   remove_key.mutable_data()->set_label("remove me");
+
   // Expect the 0 slot since it'll match all the fake keys.
-  EXPECT_CALL(*active_vks_[1], set_legacy_index(0));
+  EXPECT_CALL(*active_vks_[0], set_legacy_index(0));
   // Return a different slot to make sure the code is using the right object.
-  EXPECT_CALL(*active_vks_[1], legacy_index())
+  EXPECT_CALL(*active_vks_[0], legacy_index())
     .WillOnce(Return(1));
   // The VaultKeyset which will be removed will get index 2.
   EXPECT_CALL(*active_vks_[2],

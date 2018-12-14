@@ -852,6 +852,14 @@ CryptohomeErrorCode HomeDirs::RemoveKeyset(
 
   const std::string obfuscated =
       credentials.GetObfuscatedUsername(system_salt_);
+
+  std::unique_ptr<VaultKeyset> remove_vk(
+      GetVaultKeyset(obfuscated, key_data.label()));
+  if (!remove_vk.get()) {
+    LOG(WARNING) << "RemoveKeyset: key to remove not found";
+    return CRYPTOHOME_ERROR_KEY_NOT_FOUND;
+  }
+
   std::unique_ptr<VaultKeyset> vk(vault_keyset_factory()->New(
               platform_, crypto_));
   if (!GetValidKeyset(credentials, vk.get(), nullptr /* key_index */,
@@ -874,13 +882,6 @@ CryptohomeErrorCode HomeDirs::RemoveKeyset(
       !vk->serialized().key_data().privileges().remove()) {
     LOG(WARNING) << "RemoveKeyset: no remove() privilege";
     return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED;
-  }
-
-  std::unique_ptr<VaultKeyset> remove_vk(
-      GetVaultKeyset(obfuscated, key_data.label()));
-  if (!remove_vk.get()) {
-    LOG(WARNING) << "RemoveKeyset: key to remove not found";
-    return CRYPTOHOME_ERROR_KEY_NOT_FOUND;
   }
 
   if (!ForceRemoveKeyset(obfuscated, remove_vk->legacy_index())) {
