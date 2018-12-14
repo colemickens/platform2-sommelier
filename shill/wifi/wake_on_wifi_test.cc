@@ -3887,6 +3887,12 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   EXPECT_EQ(0, GetWakeOnWiFiMaxSSIDs());
 }
 
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       WakeOnWiFi_RemoveNetlinkHandler) {
+  // WakeOnWifi is deleted when we go out of scope.
+  EXPECT_CALL(netlink_manager_, RemoveBroadcastHandler(_)).Times(1);
+}
+
 #endif  // DISABLE_WAKE_ON_WIFI
 
 }  // namespace shill

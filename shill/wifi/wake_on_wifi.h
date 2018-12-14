@@ -661,6 +661,9 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   // powerd.
   RecordWakeReasonCallback record_wake_reason_callback_;
 
+  // Netlink broadcast handler, for wakeup reasons.
+  NetlinkManager::NetlinkMessageHandler netlink_handler_;
+
   base::WeakPtrFactory<WakeOnWiFi> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(WakeOnWiFi);

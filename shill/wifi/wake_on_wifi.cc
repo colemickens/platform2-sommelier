@@ -111,11 +111,14 @@ WakeOnWiFi::WakeOnWiFi(
       min_pattern_len_(0),
       record_wake_reason_callback_(record_wake_reason_callback),
       weak_ptr_factory_(this) {
-  netlink_manager_->AddBroadcastHandler(Bind(
-      &WakeOnWiFi::OnWakeupReasonReceived, weak_ptr_factory_.GetWeakPtr()));
+  netlink_handler_ = Bind(&WakeOnWiFi::OnWakeupReasonReceived,
+      weak_ptr_factory_.GetWeakPtr());
+  netlink_manager_->AddBroadcastHandler(netlink_handler_);
 }
 
-WakeOnWiFi::~WakeOnWiFi() {}
+WakeOnWiFi::~WakeOnWiFi() {
+  netlink_manager_->RemoveBroadcastHandler(netlink_handler_);
+}
 
 void WakeOnWiFi::InitPropertyStore(PropertyStore* store) {
   store->RegisterDerivedString(

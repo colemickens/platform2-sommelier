@@ -216,12 +216,14 @@ WiFi::WiFi(ControlInterface* control_interface,
       ScopeLogger::kWiFi,
       Bind(&WiFi::OnWiFiDebugScopeChanged, weak_ptr_factory_.GetWeakPtr()));
   CHECK(netlink_manager_);
-  netlink_manager_->AddBroadcastHandler(Bind(
-      &WiFi::OnScanStarted, weak_ptr_factory_.GetWeakPtr()));
+  netlink_handler_ = Bind(&WiFi::OnScanStarted, weak_ptr_factory_.GetWeakPtr());
+  netlink_manager_->AddBroadcastHandler(netlink_handler_);
   SLOG(this, 2) << "WiFi device " << link_name() << " initialized.";
 }
 
-WiFi::~WiFi() {}
+WiFi::~WiFi() {
+  netlink_manager_->RemoveBroadcastHandler(netlink_handler_);
+}
 
 void WiFi::Start(Error* error,
                  const EnabledStateChangedCallback& /*callback*/) {

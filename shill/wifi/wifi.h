@@ -719,6 +719,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   std::unique_ptr<TDLSManager> tdls_manager_;
 
+  // Netlink broadcast handler, for scan results.
+  NetlinkManager::NetlinkMessageHandler netlink_handler_;
+
   base::WeakPtrFactory<WiFi> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(WiFi);

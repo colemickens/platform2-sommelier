@@ -4325,4 +4325,11 @@ TEST_F(WiFiMainTest, OnScanStarted_PassiveScan) {
   OnScanStarted(msg);
 }
 
+TEST_F(WiFiMainTest, RemoveNetlinkHandler) {
+  StartWiFi();
+  StopWiFi();
+  // WiFi is deleted when we go out of scope.
+  EXPECT_CALL(netlink_manager_, RemoveBroadcastHandler(_)).Times(1);
+}
+
 }  // namespace shill
