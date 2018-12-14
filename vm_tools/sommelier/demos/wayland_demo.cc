@@ -18,11 +18,13 @@
 constexpr char kBgColorFlag[] = "bgcolor";
 constexpr char kWidthFlag[] = "width";
 constexpr char kHeightFlag[] = "height";
+constexpr char kTitleFlag[] = "title";
 
 struct demo_data {
   uint32_t bgcolor;
   uint32_t width;
   uint32_t height;
+  const char* title;
   int scale;
   struct wl_compositor* compositor;
   struct wl_shell* shell;
@@ -218,6 +220,10 @@ int main(int argc, char* argv[]) {
       return -1;
     }
   }
+  data.title = "wayland_demo";
+  if (cl->HasSwitch(kTitleFlag)) {
+    data.title = cl->GetSwitchValueASCII(kTitleFlag).c_str();
+  }
 
   struct wl_display* display = wl_display_connect(nullptr);
   if (!display) {
@@ -276,6 +282,7 @@ int main(int argc, char* argv[]) {
 
   wl_shell_surface_set_toplevel(data.shell_surface);
   wl_shell_surface_set_class(data.shell_surface, "wayland_demo");
+  wl_shell_surface_set_title(data.shell_surface, data.title);
   data.callback = wl_surface_frame(data.surface);
   struct wl_callback_listener callback_listener = {demo_draw};
   data.callback_listener = &callback_listener;
