@@ -182,6 +182,7 @@ bool KeyFileStore::DeleteKey(const string& group, const string& key) {
                << ConvertErrorToMessage(error);
     return false;
   }
+  g_error_free(error);
   return true;
 }
 
@@ -194,6 +195,7 @@ bool KeyFileStore::DeleteGroup(const string& group) {
                << ConvertErrorToMessage(error);
     return false;
   }
+  g_error_free(error);
   return true;
 }
 
