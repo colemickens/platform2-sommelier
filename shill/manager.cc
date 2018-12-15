@@ -167,6 +167,7 @@ Manager::Manager(ControlInterface* control_interface,
       running_(false),
       connect_profiles_to_rpc_(true),
       last_default_physical_service_(nullptr),
+      last_default_physical_service_connected_(false),
       ephemeral_profile_(
           new EphemeralProfile(control_interface, metrics, this)),
       control_interface_(control_interface),

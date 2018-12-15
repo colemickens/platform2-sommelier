@@ -2668,7 +2668,7 @@ TEST_F(ManagerTest, UpdateDefaultServices) {
       new NiceMock<MockService>(
           control_interface(), dispatcher(), metrics(), manager()));
   ServiceRefPtr service = mock_service;
-  ServiceRefPtr null_service;
+  ServiceRefPtr null_service = nullptr;
 
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(nullptr));
   manager()->UpdateDefaultServices(null_service, null_service);
@@ -2722,7 +2722,7 @@ TEST_F(ManagerTest, UpdateDefaultServicesWithDefaultServiceCallbacksRemoved) {
   scoped_refptr<MockService> mock_service(new NiceMock<MockService>(
       control_interface(), dispatcher(), metrics(), manager()));
   ServiceRefPtr service = mock_service;
-  ServiceRefPtr null_service;
+  ServiceRefPtr null_service = nullptr;
 
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(nullptr));
   manager()->UpdateDefaultServices(null_service, null_service);

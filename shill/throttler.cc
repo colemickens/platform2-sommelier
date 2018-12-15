@@ -53,6 +53,7 @@ const char Throttler::kTCGroup[] = "nobody";
 
 Throttler::Throttler(EventDispatcher* dispatcher, Manager* manager)
     : file_io_(FileIO::GetInstance()),
+      tc_stdin_(-1),
       tc_pid_(0),
       dispatcher_(dispatcher),
       manager_(manager),

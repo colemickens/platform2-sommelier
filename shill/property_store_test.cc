@@ -124,7 +124,7 @@ TYPED_TEST(PropertyStoreTypedTest, RegisterProperty) {
   PropertyStore store(Bind(&PropertyStoreTest::TestCallback,
                            Unretained(this)));
   Error error;
-  TypeParam property;
+  TypeParam property{};  // value-initialize primitives
   PropertyStoreTest::RegisterProperty(&store, "some property", &property);
   EXPECT_TRUE(store.Contains("some property"));
 }
@@ -147,7 +147,7 @@ TYPED_TEST(PropertyStoreTypedTest, ClearProperty) {
   PropertyStore store(Bind(&PropertyStoreTest::TestCallback,
                            Unretained(this)));
   Error error;
-  TypeParam property;
+  TypeParam property{};  // value-initialize primitives
   PropertyStoreTest::RegisterProperty(&store, "some property", &property);
   EXPECT_CALL(*this, TestCallback(_));
   EXPECT_TRUE(store.ClearProperty("some property", &error));

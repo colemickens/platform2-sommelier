@@ -79,7 +79,9 @@ ThirdPartyVpnDriver::ThirdPartyVpnDriver(ControlInterface* control,
       metrics_(metrics),
       device_info_(device_info),
       tun_fd_(-1),
+      ip_properties_set_(false),
       parameters_expected_(false),
+      default_service_callback_tag_(0),
       reconnect_supported_(false),
       link_down_(false) {
   file_io_ = FileIO::GetInstance();
