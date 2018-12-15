@@ -129,7 +129,6 @@ WiFi::WiFi(ControlInterface* control_interface,
              interface_index,
              Technology::kWifi),
       provider_(manager->wifi_provider()),
-      weak_ptr_factory_(this),
       time_(Time::GetInstance()),
       supplicant_present_(false),
       supplicant_process_proxy_(control_interface->CreateSupplicantProcessProxy(
@@ -148,13 +147,6 @@ WiFi::WiFi(ControlInterface* control_interface,
       is_roaming_in_progress_(false),
       is_debugging_connection_(false),
       eap_state_handler_(new SupplicantEAPStateHandler()),
-      mac80211_monitor_(
-          new Mac80211Monitor(dispatcher,
-                              link,
-                              kStuckQueueLengthThreshold,
-                              base::Bind(&WiFi::RestartFastScanAttempts,
-                                         weak_ptr_factory_.GetWeakPtr()),
-                              metrics)),
       bgscan_short_interval_seconds_(kDefaultBgscanShortIntervalSeconds),
       bgscan_signal_threshold_dbm_(kDefaultBgscanSignalThresholdDbm),
       roam_threshold_db_(kDefaultRoamThresholdDb),
@@ -167,7 +159,13 @@ WiFi::WiFi(ControlInterface* control_interface,
       scan_method_(kScanMethodNone),
       receive_byte_count_at_connect_(0),
       wiphy_index_(kDefaultWiphyIndex),
-      wake_on_wifi_(std::move(wake_on_wifi)) {
+      wake_on_wifi_(std::move(wake_on_wifi)),
+      weak_ptr_factory_(this) {
+  mac80211_monitor_.reset(
+      new Mac80211Monitor(dispatcher, link, kStuckQueueLengthThreshold,
+        base::Bind(&WiFi::RestartFastScanAttempts,
+          weak_ptr_factory_.GetWeakPtr()), metrics));
+
   PropertyStore* store = this->mutable_store();
   store->RegisterDerivedString(kBgscanMethodProperty,
                                StringAccessor(new CustomAccessor<WiFi, string>(

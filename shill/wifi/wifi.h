@@ -618,8 +618,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Pointer to the provider object that maintains WiFiService objects.
   WiFiProvider* provider_;
 
-  base::WeakPtrFactory<WiFi> weak_ptr_factory_;
-
   // Store cached copies of singletons for speed/ease of testing.
   Time* time_;
 
@@ -720,6 +718,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   std::unique_ptr<WakeOnWiFiInterface> wake_on_wifi_;
 
   std::unique_ptr<TDLSManager> tdls_manager_;
+
+  base::WeakPtrFactory<WiFi> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(WiFi);
 };
