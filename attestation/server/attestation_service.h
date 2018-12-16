@@ -29,7 +29,6 @@
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <base/threading/thread.h>
-#include <brillo/bind_lambda.h>
 #include <brillo/http/http_transport.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest_prod.h>

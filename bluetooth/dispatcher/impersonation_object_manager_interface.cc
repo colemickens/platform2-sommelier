@@ -6,8 +6,8 @@
 
 #include <utility>
 
+#include <base/bind.h>
 #include <base/stl_util.h>
-#include <brillo/bind_lambda.h>
 #include <brillo/dbus/exported_object_manager.h>
 #include <dbus/dbus.h>
 #include <dbus/object_manager.h>

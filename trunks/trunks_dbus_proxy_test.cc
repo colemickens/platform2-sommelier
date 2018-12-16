@@ -21,7 +21,6 @@
 
 #include <base/bind.h>
 #include <base/threading/thread.h>
-#include <brillo/bind_lambda.h>
 #include <dbus/object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

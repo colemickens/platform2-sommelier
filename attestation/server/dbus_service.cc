@@ -20,7 +20,7 @@
 #include <string>
 #include <utility>
 
-#include <brillo/bind_lambda.h>
+#include <base/bind.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
 

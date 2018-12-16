@@ -12,7 +12,6 @@
 #include <base/macros.h>
 #include <base/run_loop.h>
 #include <base/callback_helpers.h>
-#include <brillo/bind_lambda.h>
 #include <brillo/test_helpers.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

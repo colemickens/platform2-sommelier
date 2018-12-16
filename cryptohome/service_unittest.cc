@@ -13,13 +13,13 @@
 #include <vector>
 
 #include <base/at_exit.h>
+#include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/strings/sys_string_conversions.h>
 #include <base/synchronization/lock.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
-#include <brillo/bind_lambda.h>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 #include <chaps/token_manager_client_mock.h>

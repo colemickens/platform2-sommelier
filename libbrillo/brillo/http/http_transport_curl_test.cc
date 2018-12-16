@@ -5,9 +5,9 @@
 #include <brillo/http/http_transport_curl.h>
 
 #include <base/at_exit.h>
+#include <base/bind.h>
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
-#include <brillo/bind_lambda.h>
 #include <brillo/http/http_connection_curl.h>
 #include <brillo/http/http_request.h>
 #include <brillo/http/mock_curl_api.h>

@@ -20,7 +20,7 @@
 #include <string>
 #include <utility>
 
-#include <brillo/bind_lambda.h>
+#include <base/bind.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <dbus/bus.h>

@@ -19,8 +19,8 @@
 #include <memory>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/logging.h>
-#include <brillo/bind_lambda.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
 #include <openssl/rsa.h>

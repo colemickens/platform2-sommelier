@@ -4,8 +4,8 @@
 
 #include <utility>
 
+#include <base/bind.h>
 #include <base/logging.h>
-#include <brillo/bind_lambda.h>
 #include <tpm_manager/common/tpm_manager.pb.h>
 #include <trunks/error_codes.h>
 #include <trunks/password_authorization_delegate.h>

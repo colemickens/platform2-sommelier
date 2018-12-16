@@ -8,9 +8,9 @@
 
 #include <avahi-client/publish.h>
 #include <avahi-common/address.h>
+#include <base/bind.h>
 #include <base/message_loop/message_loop.h>
 #include <base/callback.h>
-#include <brillo/bind_lambda.h>
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/dbus/dbus_signal_handler.h>
 #include <brillo/strings/string_utils.h>

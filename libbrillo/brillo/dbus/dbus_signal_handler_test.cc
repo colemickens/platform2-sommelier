@@ -6,7 +6,7 @@
 
 #include <string>
 
-#include <brillo/bind_lambda.h>
+#include <base/bind.h>
 #include <brillo/dbus/dbus_param_writer.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>

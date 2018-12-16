@@ -7,7 +7,6 @@
 
 #include <base/bind.h>
 #include <base/run_loop.h>
-#include <brillo/bind_lambda.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

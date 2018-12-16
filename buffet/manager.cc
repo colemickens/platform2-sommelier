@@ -17,7 +17,6 @@
 #include <base/json/json_writer.h>
 #include <base/message_loop/message_loop.h>
 #include <base/time/time.h>
-#include <brillo/bind_lambda.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/exported_object_manager.h>
 #include <brillo/errors/error.h>

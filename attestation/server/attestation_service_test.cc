@@ -21,7 +21,6 @@
 #include <base/run_loop.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
-#include <brillo/bind_lambda.h>
 #include <brillo/data_encoding.h>
 #include <brillo/http/http_transport_fake.h>
 #include <brillo/mime_utils.h>
@@ -2401,4 +2400,3 @@ INSTANTIATE_TEST_CASE_P(
     ::testing::Values(DEFAULT_ACA, TEST_ACA));
 
 }  // namespace attestation
-

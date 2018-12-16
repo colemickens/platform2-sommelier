@@ -10,9 +10,9 @@
 
 #include <utility>
 
+#include <base/bind.h>
 #include <base/message_loop/message_loop.h>
 #include <base/time/time.h>
-#include <brillo/bind_lambda.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/dbus/dbus_signal_handler.h>

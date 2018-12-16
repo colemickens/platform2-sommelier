@@ -6,11 +6,11 @@
 
 #include <limits>
 
+#include <base/bind.h>
 #include <base/callback.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include <brillo/bind_lambda.h>
 #include <brillo/message_loops/fake_message_loop.h>
 #include <brillo/streams/stream_errors.h>
 

@@ -16,7 +16,6 @@
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
 #include <base/strings/stringprintf.h>
-#include <brillo/bind_lambda.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <dbus/diagnosticsd/dbus-constants.h>
 #include <dbus/message.h>

@@ -5,7 +5,7 @@
 #include <memory>
 #include <utility>
 
-#include <brillo/bind_lambda.h>
+#include <base/bind.h>
 #include <brillo/dbus/exported_property_set.h>
 #include <brillo/dbus/mock_dbus_object.h>
 #include <brillo/dbus/mock_exported_object_manager.h>

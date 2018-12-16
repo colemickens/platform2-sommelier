@@ -12,7 +12,6 @@
 #include <base/location.h>
 #include <base/message_loop/message_loop.h>
 #include <brillo/asynchronous_signal_handler.h>
-#include <brillo/bind_lambda.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <gtest/gtest.h>
 

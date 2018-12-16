@@ -17,7 +17,6 @@
 #include <base/posix/eintr_wrapper.h>
 #include <gtest/gtest.h>
 
-#include <brillo/bind_lambda.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <brillo/message_loops/message_loop_utils.h>
 #include <brillo/unittest_utils.h>

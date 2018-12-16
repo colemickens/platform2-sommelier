@@ -16,8 +16,8 @@
 
 #include "trunks/tpm_state_impl.h"
 
+#include <base/bind.h>
 #include <base/logging.h>
-#include <brillo/bind_lambda.h>
 
 #include "trunks/error_codes.h"
 #include "trunks/tpm_generated.h"

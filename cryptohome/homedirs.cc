@@ -16,7 +16,6 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/timer/elapsed_timer.h>
-#include <brillo/bind_lambda.h>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 #include <chromeos/constants/cryptohome.h>

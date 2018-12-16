@@ -4,9 +4,9 @@
 
 #include <memory>
 
+#include <base/bind.h>
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
-#include <brillo/bind_lambda.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_manager.h>
 #include <dbus/mock_object_proxy.h>

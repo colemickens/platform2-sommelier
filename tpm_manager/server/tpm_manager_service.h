@@ -25,7 +25,6 @@
 #include <base/memory/ptr_util.h>
 #include <base/memory/weak_ptr.h>
 #include <base/threading/thread.h>
-#include <brillo/bind_lambda.h>
 
 #include "tpm_manager/common/tpm_nvram_interface.h"
 #include "tpm_manager/common/tpm_ownership_interface.h"

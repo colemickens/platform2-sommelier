@@ -8,7 +8,6 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
-#include <brillo/bind_lambda.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

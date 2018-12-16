@@ -12,9 +12,9 @@
 #include <utility>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/logging.h>
 #include <base/numerics/safe_conversions.h>
-#include <brillo/bind_lambda.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/bn.h>
 #include <openssl/evp.h>

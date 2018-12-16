@@ -4,7 +4,7 @@
 
 #include "cryptohome/service_distributed.h"
 
-#include <brillo/bind_lambda.h>
+#include <base/bind.h>
 
 #include "attestation/client/dbus_proxy.h"
 #include "cryptohome/attestation.h"

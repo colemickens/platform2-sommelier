@@ -9,7 +9,6 @@
 
 #include <base/bind.h>
 #include <base/strings/string_piece.h>
-#include <brillo/bind_lambda.h>
 #include <dbus/message.h>
 #include <dbus/diagnosticsd/dbus-constants.h>
 #include <mojo/public/cpp/bindings/interface_request.h>

@@ -16,7 +16,7 @@
 
 #include "tpm_manager/client/tpm_ownership_dbus_proxy.h"
 
-#include <brillo/bind_lambda.h>
+#include <base/bind.h>
 #include <brillo/dbus/dbus_method_invoker.h>
 
 #include "tpm_manager/common/tpm_manager_constants.h"

@@ -11,7 +11,6 @@
 #include <base/logging.h>
 #include <base/run_loop.h>
 #include <base/threading/thread_task_runner_handle.h>
-#include <brillo/bind_lambda.h>
 
 #include "diagnostics/dpsl/internal/callback_utils.h"
 #include "diagnostics/dpsl/public/dpsl_thread_context.h"

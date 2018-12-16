@@ -12,7 +12,6 @@
 #include <base/test/simple_test_clock.h>
 #include <gtest/gtest.h>
 
-#include <brillo/bind_lambda.h>
 #include <brillo/message_loops/message_loop.h>
 
 using base::Bind;

@@ -17,7 +17,7 @@
 #include <memory>
 #include <string>
 
-#include <brillo/bind_lambda.h>
+#include <base/bind.h>
 #include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

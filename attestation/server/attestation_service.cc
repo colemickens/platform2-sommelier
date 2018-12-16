@@ -20,11 +20,11 @@
 #include <climits>
 #include <string>
 
+#include <base/bind.h>
 #include <base/callback.h>
 #include <base/sha1.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
-#include <brillo/bind_lambda.h>
 #include <brillo/cryptohome.h>
 #include <brillo/data_encoding.h>
 #include <brillo/http/http_utils.h>

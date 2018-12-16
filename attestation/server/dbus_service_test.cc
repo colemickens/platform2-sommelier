@@ -16,7 +16,7 @@
 
 #include <string>
 
-#include <brillo/bind_lambda.h>
+#include <base/bind.h>
 #include <brillo/dbus/dbus_object_test_helpers.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>

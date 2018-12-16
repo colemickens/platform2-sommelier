@@ -8,7 +8,7 @@
 #include <functional>
 #include <string>
 
-#include <brillo/bind_lambda.h>
+#include <base/bind.h>
 #include <brillo/dbus/dbus_param_reader.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>

@@ -8,7 +8,6 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/logging.h>
-#include <brillo/bind_lambda.h>
 
 namespace diagnostics {
 

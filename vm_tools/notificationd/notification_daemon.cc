@@ -14,7 +14,6 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
-#include <brillo/bind_lambda.h>
 
 #include "vm_tools/notificationd/notification_shell_client.h"
 

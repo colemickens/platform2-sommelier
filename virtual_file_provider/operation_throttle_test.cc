@@ -6,7 +6,6 @@
 #include <base/location.h>
 #include <base/threading/platform_thread.h>
 #include <base/threading/thread.h>
-#include <brillo/bind_lambda.h>
 #include <gtest/gtest.h>
 
 #include "virtual_file_provider/operation_throttle.h"

@@ -17,7 +17,6 @@
 #include <base/files/file_util.h>
 #include <base/message_loop/message_loop.h>
 #include <base/strings/stringprintf.h>
-#include <brillo/bind_lambda.h>
 #include <brillo/streams/file_stream.h>
 #include <brillo/streams/tls_stream.h>
 

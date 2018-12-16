@@ -22,11 +22,11 @@
 #include <string>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/callback.h>
 #include <base/callback_helpers.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
-#include <brillo/bind_lambda.h>
 #include <crypto/openssl_util.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>

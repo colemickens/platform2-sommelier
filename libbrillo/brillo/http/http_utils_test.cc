@@ -6,8 +6,8 @@
 #include <string>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/values.h>
-#include <brillo/bind_lambda.h>
 #include <brillo/http/http_transport_fake.h>
 #include <brillo/http/http_utils.h>
 #include <brillo/mime_utils.h>

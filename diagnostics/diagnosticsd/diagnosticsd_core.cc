@@ -11,7 +11,6 @@
 #include <base/logging.h>
 #include <base/optional.h>
 #include <base/threading/thread_task_runner_handle.h>
-#include <brillo/bind_lambda.h>
 #include <dbus/diagnosticsd/dbus-constants.h>
 #include <dbus/object_path.h>
 #include <mojo/public/cpp/system/message_pipe.h>

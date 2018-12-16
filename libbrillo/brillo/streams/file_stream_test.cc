@@ -12,12 +12,12 @@
 #include <utility>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/message_loop/message_loop.h>
 #include <base/rand_util.h>
 #include <base/run_loop.h>
-#include <brillo/bind_lambda.h>
 #include <brillo/errors/error_codes.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <brillo/message_loops/message_loop_utils.h>
