@@ -78,6 +78,16 @@ Simply add your models in the `system_models` variable: they are installed in th
 The install location in the ChromeOS system is `/opt/google/chrome/ml_models`.
 See [CL/1125701] (and relative fix in [CL/1140020]) as an example.
 
+### Step 3. Update ML Service daemon to serve the new model
+
+There are three places to update here:
+
+1. Add the model to the Mojo interface in [model.mojom].
+2. Add a metadata entry to [model_metadata.cc].
+3. Add a basic [loading & inference test] for the model.
+
+See [this CL](https://crrev.com/c/1342736) for an example of all the above.
+
 ## Method #2: Use DLC to install a model inside the stateful partition
 
 > WARNING: This section is pending the implementation of DLC Service.
@@ -116,5 +126,8 @@ chrome-knowledge-eng@ to get your case approved.
 [CL/1125701]: http://crrev.com/c/1125701
 [CL/1140020]: http://crrev.com/c/1140020
 [go/cros-ml-service-models]: http://go/cros-ml-service-models
-[go/toco]: http://go/toco
 [go/dlc-service-proposal]: http://go/dlc-service-proposal
+[go/toco]: http://go/toco
+[loading & inference test]: https://cs.corp.google.com/chromeos_public/src/platform2/ml/machine_learning_service_impl_test.cc
+[model.mojom]: https://cs.corp.google.com/chromeos_public/src/platform2/ml/mojom/model.mojom
+[model_metadata.cc]: https://cs.corp.google.com/chromeos_public/src/platform2/ml/model_metadata.cc
