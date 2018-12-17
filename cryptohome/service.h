@@ -536,9 +536,6 @@ class Service : public brillo::dbus::AbstractDbusService,
 
   // Returns in |OUT_ready| whether the TPM token is ready for use.
   virtual gboolean Pkcs11IsTpmTokenReady(gboolean* OUT_ready, GError** error);
-  virtual gboolean Pkcs11IsTpmTokenReadyForUser(gchar *username,
-                                                gboolean* OUT_ready,
-                                                GError** error);
   virtual gboolean Pkcs11Terminate(gchar* username, GError** error);
   virtual gboolean GetStatusString(gchar** OUT_status, GError** error);
 

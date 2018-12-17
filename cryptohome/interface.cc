@@ -541,12 +541,6 @@ gboolean cryptohome_pkcs11_is_tpm_token_ready(Cryptohome* self,
                                     GError** error) {
   CRYPTOHOME_WRAP_METHOD(Pkcs11IsTpmTokenReady, OUT_ready);
 }
-gboolean cryptohome_pkcs11_is_tpm_token_ready_for_user(Cryptohome* self,
-                                    gchar* username,
-                                    gboolean* OUT_ready,
-                                    GError** error) {
-  CRYPTOHOME_WRAP_METHOD(Pkcs11IsTpmTokenReadyForUser, username, OUT_ready);
-}
 gboolean cryptohome_pkcs11_terminate(Cryptohome* self,
                                      gchar* username,
                                      GError** error) {

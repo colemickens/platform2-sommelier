@@ -306,10 +306,6 @@
     <method name="Pkcs11IsTpmTokenReady">
       <arg type="b" name="ready" direction="out" />
     </method>
-    <method name="Pkcs11IsTpmTokenReadyForUser">
-      <arg type="s" name="username" direction="in" />
-      <arg type="b" name="ready" direction="out" />
-    </method>
     <method name="Pkcs11GetTpmTokenInfo">
       <arg type="s" name="label" direction="out" />
       <arg type="s" name="user_pin" direction="out" />
