@@ -106,6 +106,7 @@ static_library("libauthpolicy") {
   sources = [
     "${gen_src_in_dir}/policy_constants.cc",
     "anonymizer.cc",
+    "auth_data_cache.cc",
     "authpolicy.cc",
     "authpolicy_flags.cc",
     "authpolicy_metrics.cc",
@@ -214,6 +215,7 @@ if (use.test) {
     ]
     sources = [
       "anonymizer_unittest.cc",
+      "auth_data_cache_unittest.cc",
       "authpolicy_flags_unittest.cc",
       "authpolicy_unittest.cc",
       "gpo_version_cache_unittest.cc",

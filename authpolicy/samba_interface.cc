@@ -1264,7 +1264,7 @@ ErrorType SambaInterface::WriteSmbConf(const AccountData& account) const {
 
   const base::FilePath smbconf_path(paths_->Get(account.smb_conf_path));
   const int data_size = static_cast<int>(data.size());
-  if (base::WriteFile(smbconf_path, data.c_str(), data_size) != data_size) {
+  if (base::WriteFile(smbconf_path, data.data(), data_size) != data_size) {
     LOG(ERROR) << "Failed to write Samba conf file '" << smbconf_path.value()
                << "'";
     return ERROR_LOCAL_IO;
@@ -1471,7 +1471,7 @@ ErrorType SambaInterface::WriteConfiguration() const {
 
   const base::FilePath config_path(paths_->Get(Path::CONFIG_DAT));
   const int config_size = static_cast<int>(config_blob.size());
-  if (base::WriteFile(config_path, config_blob.c_str(), config_size) !=
+  if (base::WriteFile(config_path, config_blob.data(), config_size) !=
       config_size) {
     LOG(ERROR) << "Failed to write configuration file '" << config_path.value()
                << "'";

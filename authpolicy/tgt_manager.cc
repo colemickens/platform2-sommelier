@@ -634,7 +634,7 @@ ErrorType TgtManager::WriteKrb5Conf() const {
                                          kKrb5FileSizeLimit) ||
       data != prev_data) {
     const int data_size = static_cast<int>(data.size());
-    if (base::WriteFile(krbconf_path, data.c_str(), data_size) != data_size) {
+    if (base::WriteFile(krbconf_path, data.data(), data_size) != data_size) {
       LOG(ERROR) << "Failed to write krb5 conf file '" << krbconf_path.value()
                  << "'";
       return ERROR_LOCAL_IO;

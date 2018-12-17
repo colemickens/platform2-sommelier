@@ -133,3 +133,21 @@ message UserBackupData {
   // Realm part of user login "user@realm".
   optional string user_realm = 5;
 }
+
+message CachedRealmData {
+  // Timestamp when this data item was created (base::Time internal value).
+  optional int64 cache_time = 1;
+  // Active Directory workgroup.
+  optional string workgroup = 2;
+  // Key distribution center (KDC) IP address.
+  optional string kdc_ip = 3;
+  // Domain controller (DC) name.
+  optional string dc_name = 4;
+  // Whether this realm is affiliated with the device's realm.
+  optional bool is_affiliated = 5;
+}
+
+message CachedAuthData {
+  // Maps usually capitalized realm (CORP.EXAMPLE.COM) to cached realm data.
+  map<string, CachedRealmData> realm_data = 1;
+}

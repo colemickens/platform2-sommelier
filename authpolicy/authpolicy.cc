@@ -165,7 +165,7 @@ AuthPolicy::AuthPolicy(AuthPolicyMetrics* metrics,
              base::Bind(&AuthPolicy::OnUserKerberosFilesChanged,
                         base::Unretained(this))) {}
 
-AuthPolicy::~AuthPolicy() {}
+AuthPolicy::~AuthPolicy() = default;
 
 ErrorType AuthPolicy::Initialize(bool device_is_locked) {
   device_is_locked_ = device_is_locked;
