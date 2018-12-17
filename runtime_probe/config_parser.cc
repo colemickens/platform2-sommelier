@@ -6,25 +6,24 @@
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
 
-#include "runtime_probe/statement_parser.h"
+#include "runtime_probe/config_parser.h"
 
 using base::DictionaryValue;
 
 namespace runtime_probe {
 std::unique_ptr<DictionaryValue> ParseProbeConfig(
     const std::string& config_file_path) {
-  std::string statement_json;
-  if (!base::ReadFileToString(base::FilePath(config_file_path),
-                              &statement_json)) {
+  std::string config_json;
+  if (!base::ReadFileToString(base::FilePath(config_file_path), &config_json)) {
     LOG(ERROR) << "Config file doesn't exist. "
                << "Input config file path is: " << config_file_path;
     return nullptr;
   }
   std::unique_ptr<DictionaryValue> dict_val =
-      DictionaryValue::From(base::JSONReader::Read(statement_json));
+      DictionaryValue::From(base::JSONReader::Read(config_json));
   if (dict_val == nullptr) {
     LOG(ERROR) << "Failed to parse JSON statement. "
-               << "Input JSON string is: " << statement_json;
+               << "Input JSON string is: " << config_json;
   }
   return dict_val;
 }

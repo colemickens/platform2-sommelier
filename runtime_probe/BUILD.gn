@@ -33,11 +33,11 @@ static_library("libruntime_probe") {
     ":target_defaults",
   ]
   sources = [
+    "config_parser.cc",
     "daemon.cc",
     "functions/all_functions.cc",
     "probe_function.cc",
     "probe_function_argument.cc",
-    "statement_parser.cc",
   ]
 }
 
@@ -58,14 +58,14 @@ if (use.test) {
       ":target_defaults",
     ]
     sources = [
-      "statement_parser_test.cc",
+      "config_parser_test.cc",
     ]
     deps = [
       ":libruntime_probe",
       "//common-mk/testrunner",
     ]
     data = [
-      "testdata/probe_statement.json",
+      "testdata/probe_config.json",
       "testdata/test.txt",
     ]
   }

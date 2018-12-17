@@ -7,8 +7,8 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
+#include "runtime_probe/config_parser.h"
 #include "runtime_probe/daemon.h"
-#include "runtime_probe/statement_parser.h"
 
 namespace {
 enum ExitStatus {
@@ -23,7 +23,7 @@ using base::DictionaryValue;
 
 int main(int argc, char* argv[]) {
   // Flags are subject to change
-  DEFINE_string(config_file_path, "", "File path to probe statement");
+  DEFINE_string(config_file_path, "", "File path to probe config");
   DEFINE_bool(dbus, false, "Run in the mode to respond DBus call");
   DEFINE_bool(debug, false, "Output debug message");
   brillo::FlagHelper::Init(argc, argv, "ChromeOS runtime probe tool");
@@ -48,10 +48,10 @@ int main(int argc, char* argv[]) {
     LOG(ERROR) << "Please specify config_file path";
     return ExitStatus::kNeedConfigFilePath;
   }
-  std::unique_ptr<base::DictionaryValue> statement_dv =
+  std::unique_ptr<base::DictionaryValue> config_dv =
       runtime_probe::ParseProbeConfig(FLAGS_config_file_path);
-  if (statement_dv == nullptr) {
-    LOG(ERROR) << "Failed to parse probestatement from config file";
+  if (config_dv == nullptr) {
+    LOG(ERROR) << "Failed to parse ProbeConfig from config file";
     return ExitStatus::kFailToParseConfigFile;
   }
   // TODO(hmchu): probe logic starts here
