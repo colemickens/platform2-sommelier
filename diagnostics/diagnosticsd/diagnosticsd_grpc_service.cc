@@ -4,6 +4,7 @@
 
 #include "diagnostics/diagnosticsd/diagnosticsd_grpc_service.h"
 
+#include <cstdint>
 #include <utility>
 
 #include <base/bind.h>
@@ -11,28 +12,9 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 
+#include "diagnostics/diagnosticsd/ec_constants.h"
+
 namespace diagnostics {
-
-// Folder path exposed by sysfs EC driver.
-const char kEcDriverSysfsPath[] = "sys/bus/platform/devices/GOOG000C:00/";
-
-// Folder path to EC properties exposed by sysfs EC driver. Relative path to
-// |kEcDriverSysfsPath|.
-const char kEcDriverSysfsPropertiesPath[] = "properties/";
-
-// EC property |global_mic_mute_led|.
-const char kEcPropertyGlobalMicMuteLed[] = "global_mic_mute_led";
-
-// Max RunEcCommand request payload size.
-//
-// TODO(lamzin): replace by real payload max size when EC driver will be ready.
-const int64_t kRunEcCommandPayloadMaxSize = 32;
-
-// File for running EC command exposed by sysfs EC driver. Relative path to
-// |kEcDriverSysfsPath|.
-//
-// TODO(lamzin): replace by real file path when EC driver will be ready.
-const char kEcRunCommandFilePath[] = "raw";
 
 // The total size of "string" and "bytes" fields in one
 // PerformWebRequestParameter must not exceed 1MB.
@@ -143,6 +125,34 @@ bool GetDelegateWebRequestHttpMethod(
   }
 }
 
+// Converts gRPC GetEcPropertyRequest::Property to property path.
+//
+// Returns |nullptr| if |property| is invlid or unset.
+const char* GetEcPropertyPath(
+    grpc_api::GetEcPropertyRequest::Property property) {
+  switch (property) {
+    case grpc_api::GetEcPropertyRequest::PROPERTY_GLOBAL_MIC_MUTE_LED:
+      return kEcPropertyGlobalMicMuteLed;
+    case grpc_api::GetEcPropertyRequest::PROPERTY_FN_LOCK:
+      return kEcPropertyFnLock;
+    case grpc_api::GetEcPropertyRequest::PROPERTY_NIC:
+      return kEcPropertyNic;
+    case grpc_api::GetEcPropertyRequest::PROPERTY_EXT_USB_PORT_EN:
+      return kEcPropertyExtUsbPortEn;
+    case grpc_api::GetEcPropertyRequest::PROPERTY_WIRELESS_SW_WLAN:
+      return kEcPropertyWirelessSwWlan;
+    case grpc_api::GetEcPropertyRequest::
+        PROPERTY_AUTO_BOOT_ON_TRINITY_DOCK_ATTACH:
+      return kEcPropertyAutoBootOnTrinityDockAttach;
+    case grpc_api::GetEcPropertyRequest::PROPERTY_ICH_AZALIA_EN:
+      return kEcPropertyIchAzaliaEn;
+    case grpc_api::GetEcPropertyRequest::PROPERTY_SIGN_OF_LIFE_KBBL:
+      return kEcPropertySignOfLifeKbbl;
+    default:
+      return nullptr;
+  }
+}
+
 }  // namespace
 
 DiagnosticsdGrpcService::DiagnosticsdGrpcService(Delegate* delegate)
@@ -207,10 +217,10 @@ void DiagnosticsdGrpcService::RunEcCommand(
     callback.Run(std::move(reply));
     return;
   }
-  if (request->payload().length() > kRunEcCommandPayloadMaxSize) {
+  if (request->payload().length() > kEcRunCommandPayloadMaxSize) {
     LOG(ERROR) << "RunEcCommand gRPC request payload size is exceeded: "
                << request->payload().length() << " vs "
-               << kRunEcCommandPayloadMaxSize << " allowed";
+               << kEcRunCommandPayloadMaxSize << " allowed";
     reply->set_status(grpc_api::RunEcCommandResponse::
                           STATUS_ERROR_INPUT_PAYLOAD_MAX_SIZE_EXCEEDED);
     callback.Run(std::move(reply));
@@ -248,27 +258,25 @@ void DiagnosticsdGrpcService::RunEcCommand(
 void DiagnosticsdGrpcService::GetEcProperty(
     std::unique_ptr<grpc_api::GetEcPropertyRequest> request,
     const GetEcPropertyCallback& callback) {
-  auto reply = std::make_unique<grpc_api::GetEcPropertyResponse>();
-  base::FilePath property_file_path;
-
   DCHECK(request);
-  switch (request->property()) {
-    case grpc_api::GetEcPropertyRequest::PROPERTY_GLOBAL_MIC_MUTE_LED:
-      property_file_path = base::FilePath(kEcPropertyGlobalMicMuteLed);
-      break;
-    default:
-      LOG(ERROR) << "GetEcProperty gRPC request property is invalid or unset: "
-                 << request->property();
-      reply->set_status(
-          grpc_api::GetEcPropertyResponse::STATUS_ERROR_REQUIRED_FIELD_MISSING);
-      callback.Run(std::move(reply));
-      return;
+
+  auto reply = std::make_unique<grpc_api::GetEcPropertyResponse>();
+
+  const char* property_file_path = GetEcPropertyPath(request->property());
+  if (!property_file_path) {
+    LOG(ERROR) << "GetEcProperty gRPC request property is invalid or unset: "
+               << request->property();
+    reply->set_status(
+        grpc_api::GetEcPropertyResponse::STATUS_ERROR_REQUIRED_FIELD_MISSING);
+    callback.Run(std::move(reply));
+    return;
   }
 
-  DCHECK(!property_file_path.empty());
-  base::FilePath sysfs_file_path = root_dir_.Append(kEcDriverSysfsPath)
-                                       .Append(kEcDriverSysfsPropertiesPath)
-                                       .Append(property_file_path);
+  DCHECK(!base::FilePath(property_file_path).empty());
+  base::FilePath sysfs_file_path =
+      root_dir_.Append(kEcDriverSysfsPath)
+          .Append(kEcDriverSysfsPropertiesPath)
+          .Append(base::FilePath(property_file_path));
   // Reply payload must be empty in case of any failure.
   std::string file_content;
   if (base::ReadFileToString(sysfs_file_path, &file_content)) {

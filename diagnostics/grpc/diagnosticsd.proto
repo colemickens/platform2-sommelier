@@ -251,6 +251,20 @@ message GetEcPropertyRequest {
     PROPERTY_UNSET = 0;
     // Relative file path is "properties/global_mic_mute_led".
     PROPERTY_GLOBAL_MIC_MUTE_LED = 1;
+    // Relative file path is "properties/fn_lock".
+    PROPERTY_FN_LOCK = 2;
+    // Relative file path is "properties/nic".
+    PROPERTY_NIC = 3;
+    // Relative file path is "properties/ext_usb_port_en".
+    PROPERTY_EXT_USB_PORT_EN = 4;
+    // Relative file path is "properties/wireless_sw_wlan".
+    PROPERTY_WIRELESS_SW_WLAN = 5;
+    // Relative file path is "properties/auto_boot_on_trinity_dock_attach".
+    PROPERTY_AUTO_BOOT_ON_TRINITY_DOCK_ATTACH = 6;
+    // Relative file path is "properties/ich_azalia_en".
+    PROPERTY_ICH_AZALIA_EN = 7;
+    // Relative file path is "properties/sign_of_life_kbbl".
+    PROPERTY_SIGN_OF_LIFE_KBBL = 8;
   }
 
   // Must be distinct from |PROPERTY_UNSET|.

@@ -18,27 +18,6 @@
 
 namespace diagnostics {
 
-// Folder path exposed by sysfs EC driver.
-extern const char kEcDriverSysfsPath[];
-
-// Folder path to EC properties exposed by sysfs EC driver. Relative path to
-// |kEcDriverSysfsPath|.
-extern const char kEcDriverSysfsPropertiesPath[];
-
-// EC property |global_mic_mute_led|.
-extern const char kEcPropertyGlobalMicMuteLed[];
-
-// Max RunEcCommand request payload size.
-//
-// TODO(lamzin): replace by real payload max size when EC driver will be ready.
-extern const int64_t kRunEcCommandPayloadMaxSize;
-
-// File for running EC command exposed by sysfs EC driver. Relative path to
-// |kEcDriverSysfsPath|.
-//
-// TODO(lamzin): replace by real file path when EC driver will be ready.
-extern const char kEcRunCommandFilePath[];
-
 // The total size of all "string" and "byte" fileds in a single
 // PerformWebRequestParameter message must not exceed this size.
 extern const int kMaxPerformWebRequestParameterSizeInBytes;

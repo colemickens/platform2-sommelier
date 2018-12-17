@@ -17,6 +17,7 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/diagnosticsd/diagnosticsd_grpc_service.h"
+#include "diagnostics/diagnosticsd/ec_constants.h"
 #include "diagnostics/diagnosticsd/file_test_utils.h"
 #include "diagnostics/diagnosticsd/protobuf_test_utils.h"
 
@@ -30,17 +31,6 @@ using testing::UnorderedElementsAre;
 using testing::WithArgs;
 
 namespace diagnostics {
-
-TEST(DiagnosticsdGrpcServiceConstantsTest, PropertiesPath) {
-  EXPECT_EQ(
-      base::FilePath(kEcDriverSysfsPath).Append(kEcDriverSysfsPropertiesPath),
-      base::FilePath("sys/bus/platform/devices/GOOG000C:00/properties/"));
-}
-
-TEST(DiagnosticsdGrpcServiceConstantsTest, RawFilePath) {
-  EXPECT_EQ(base::FilePath(kEcDriverSysfsPath).Append(kEcRunCommandFilePath),
-            base::FilePath("sys/bus/platform/devices/GOOG000C:00/raw"));
-}
 
 namespace {
 
@@ -387,14 +377,14 @@ INSTANTIATE_TEST_CASE_P(
         std::make_tuple(FakeFileContents(),
                         grpc_api::RunEcCommandResponse::STATUS_OK,
                         FakeFileContents()),
-        std::make_tuple(std::string("A", kRunEcCommandPayloadMaxSize),
+        std::make_tuple(std::string("A", kEcRunCommandPayloadMaxSize),
                         grpc_api::RunEcCommandResponse::STATUS_OK,
-                        std::string("A", kRunEcCommandPayloadMaxSize)),
+                        std::string("A", kEcRunCommandPayloadMaxSize)),
         std::make_tuple(
             "",
             grpc_api::RunEcCommandResponse::STATUS_ERROR_INPUT_PAYLOAD_EMPTY,
             ""),
-        std::make_tuple(std::string("A", kRunEcCommandPayloadMaxSize + 1),
+        std::make_tuple(std::string("A", kEcRunCommandPayloadMaxSize + 1),
                         grpc_api::RunEcCommandResponse::
                             STATUS_ERROR_INPUT_PAYLOAD_MAX_SIZE_EXCEEDED,
                         "")));
@@ -463,7 +453,21 @@ INSTANTIATE_TEST_CASE_P(
     GetEcPropertyDiagnosticsdGrpcServiceTest,
     testing::Values(
         std::tie(grpc_api::GetEcPropertyRequest::PROPERTY_GLOBAL_MIC_MUTE_LED,
-                 kEcPropertyGlobalMicMuteLed)));
+                 kEcPropertyGlobalMicMuteLed),
+        std::tie(grpc_api::GetEcPropertyRequest::PROPERTY_FN_LOCK,
+                 kEcPropertyFnLock),
+        std::tie(grpc_api::GetEcPropertyRequest::PROPERTY_NIC, kEcPropertyNic),
+        std::tie(grpc_api::GetEcPropertyRequest::PROPERTY_EXT_USB_PORT_EN,
+                 kEcPropertyExtUsbPortEn),
+        std::tie(grpc_api::GetEcPropertyRequest::PROPERTY_WIRELESS_SW_WLAN,
+                 kEcPropertyWirelessSwWlan),
+        std::tie(grpc_api::GetEcPropertyRequest::
+                     PROPERTY_AUTO_BOOT_ON_TRINITY_DOCK_ATTACH,
+                 kEcPropertyAutoBootOnTrinityDockAttach),
+        std::tie(grpc_api::GetEcPropertyRequest::PROPERTY_ICH_AZALIA_EN,
+                 kEcPropertyIchAzaliaEn),
+        std::tie(grpc_api::GetEcPropertyRequest::PROPERTY_SIGN_OF_LIFE_KBBL,
+                 kEcPropertySignOfLifeKbbl)));
 
 namespace {
 

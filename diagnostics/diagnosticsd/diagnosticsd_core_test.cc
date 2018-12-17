@@ -31,6 +31,7 @@
 #include <mojo/public/cpp/bindings/interface_ptr.h>
 
 #include "diagnostics/diagnosticsd/diagnosticsd_core.h"
+#include "diagnostics/diagnosticsd/ec_constants.h"
 #include "diagnostics/diagnosticsd/fake_browser.h"
 #include "diagnostics/diagnosticsd/fake_diagnostics_processor.h"
 #include "diagnostics/diagnosticsd/file_test_utils.h"
