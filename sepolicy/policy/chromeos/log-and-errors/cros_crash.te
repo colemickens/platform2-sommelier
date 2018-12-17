@@ -1,0 +1,74 @@
+# SELinux policy for crash reporting.
+
+type cros_crash, cros_miscdomain, chromeos_domain, domain, mlstrustedobject;
+
+permissive cros_crash;
+
+allow cros_crash chromeos:fd use;
+
+allow cros_crash devpts:chr_file rw_file_perms;
+allow cros_crash cros_labeled_dev_type:chr_file rw_file_perms;
+
+allow cros_crash cros_syslog:file r_file_perms;
+
+allow cros_crash unlabeled:dir search;
+
+domain_auto_trans({chromeos_domain -cros_crash}, cros_crash_reporter_exec, cros_crash);
+allow cros_crash cros_anomaly_collector:fd use;
+# Kernel and cros_anomaly_collector are expected to run crash_reporter.
+# This audit allow is used to catch more unexpected usage.
+# -chromeos since we're pulling more processes out of chromeos, also it creates noises that crash_test.py
+# tries to run crash_reporter during the test.
+auditallow {
+chromeos_domain
+-kernel
+-cros_init
+-chromeos
+-cros_anomaly_collector
+-cros_crash
+-cros_udevd # Udevd is also expected to execute crash reporter.
+-cros_ssh_session
+} cros_crash_reporter_exec:file execute;
+
+minijail_netns_new(cros_crash)
+log_writer(cros_crash);
+
+filetrans_pattern(cros_crash, cros_var_spool, cros_crash_spool, dir, "crash");
+allow cros_crash cros_crash_spool:file create_file_perms;
+filetrans_pattern(cros_crash, cros_var_lib, cros_var_lib_crash_reporter, dir, "crash_reporter");
+allow cros_crash cros_var_lib_crash_reporter:file create_file_perms;
+filetrans_pattern(cros_crash, cros_run, cros_run_crash_reporter, dir, "crash_reporter");
+
+type cros_crash_tmp_file, file_type;
+# anomaly_collector minijail made it potentially cros_minijail_minijail_tmp_file.
+# cros_crash libminijail wants to create on top of it.
+filetrans_pattern(cros_crash, {cros_minijail_minijail_tmp_file tmpfs}, cros_crash_tmp_file, dir);
+
+r_dir_file(cros_crash, cros_var_lib_whitelist);
+r_dir_file(cros_crash, cros_passwd_file);
+r_dir_file(cros_crash, cros_network_conf_file);
+
+r_dir_file(cros_crash, cros_anomaly_collector_tmp_file);
+
+r_dir_file(cros_crash, cros_run_containers);
+
+allow cros_crash cros_var_log_eventlog:file r_file_perms;
+
+allow cros_crash self:capability { sys_admin };
+allow cros_crash usermodehelper:file w_file_perms;
+allow cros_crash pstorefs:dir r_dir_perms;
+allow cros_crash sysfs_class_devcoredump:file w_file_perms;
+allow cros_crash sysfs_class_devcoredump:dir search;
+
+# the following are likely to be minijail related.
+# DO NOT PUT non-minijail related policies below.
+# tmpfs for /dev is labeled as cros_crash_tmp_file from above.
+minijail_mountdev(cros_crash, cros_crash_tmp_file);
+minijail_mounts(
+ cros_crash,
+ ,
+ {
+  cros_minijail_minijail_tmp_file # created by anomaly_collector minijail
+  cros_crash_tmp_file
+ }
+)

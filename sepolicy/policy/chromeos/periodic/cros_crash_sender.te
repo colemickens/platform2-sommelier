@@ -5,3 +5,9 @@ permissive cros_crash_sender;
 domain_auto_trans(cros_periodic_scheduler, cros_crash_sender_exec, cros_crash_sender);
 
 log_writer(cros_crash_sender);
+
+r_dir_file(cros_crash_sender, cros_var_lib_crash_reporter);
+
+type cros_crash_sender_lock, file_type;
+filetrans_pattern(cros_crash_sender, cros_run_lock, cros_crash_sender_lock, file);
+allow cros_crash_sender cros_crash_sender_lock:file lock;

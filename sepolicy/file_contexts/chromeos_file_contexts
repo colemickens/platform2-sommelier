@@ -64,6 +64,7 @@ include(sepolicy/file_contexts/coreutils)
 /usr/libexec/bluetooth/bluetoothd u:object_r:cros_bluetoothd_exec:s0
 
 /usr/share/policy(/.*)?         u:object_r:cros_seccomp_policy_file:s0
+/usr/share/userfeedback(/.*)?   u:object_r:cros_userfeedback_file:s0
 
 /usr/bin/start_bluetoothd.sh    u:object_r:cros_init_start_bluetoothd_shell_script:s0
 /usr/bin/start_bluetoothlog.sh  u:object_r:cros_init_start_bluetoothlog_shell_script:s0
@@ -79,14 +80,16 @@ include(sepolicy/file_contexts/coreutils)
 /var                            u:object_r:cros_var:s0
 /var/empty                      u:object_r:cros_var_empty:s0
 /var/lib                        u:object_r:cros_var_lib:s0
-/var/lib/chaps                  u:object_r:cros_var_lib_chaps:s0
+/var/lib/chaps(/.*)?            u:object_r:cros_var_lib_chaps:s0
+/var/lib/crash_reporter(/.*)?   u:object_r:cros_var_lib_crash_reporter:s0
 /var/lib/dbus(/.*)?             u:object_r:cros_var_lib_dbus:s0
 /var/lib/metrics(/.*)?          u:object_r:cros_metrics_file:s0
 /var/lib/metrics/uma-events     u:object_r:cros_metrics_uma_events_file:s0
-/var/lib/whitelist              u:object_r:cros_var_lib_whitelist:s0
-/var/lib/power_manager          u:object_r:cros_var_lib_power_manager:s0
-/var/lib/update_engine          u:object_r:cros_var_lib_update_engine:s0
+/var/lib/power_manager(/.*)?    u:object_r:cros_var_lib_power_manager:s0
+/var/lib/update_engine(/.*)?    u:object_r:cros_var_lib_update_engine:s0
+/var/lib/whitelist(/.*)?        u:object_r:cros_var_lib_whitelist:s0
 /var/log                        u:object_r:cros_var_log:s0
+/var/log/eventlog.txt           u:object_r:cros_var_log_eventlog:s0
 /var/log/arc.log                u:object_r:cros_arc_log:s0
 /var/log/authpolicy.log         u:object_r:cros_authpolicy_log:s0
 /var/log/boot.log               u:object_r:cros_boot_log:s0
@@ -100,12 +103,17 @@ include(sepolicy/file_contexts/coreutils)
 /var/log/mount_options.log      u:object_r:chromeos_startup_mount_options_log_file:s0
 /var/spool                      u:object_r:cros_var_spool:s0
 /var/spool/cron-lite(/.*)?      u:object_r:cros_periodic_scheduler_cache_t:s0
+/var/spool/crash_reporter(/.*)? u:object_r:cros_crash_spool:s0
 
 # /opt/google
 /opt/google/chrome/chrome       u:object_r:chrome_browser_exec:s0
 
 # /etc
 /etc                            u:object_r:cros_etc:s0
+# Safe to be readable by anyone.
+/etc/lsb-release                u:object_r:cros_etc:s0
+
+# Intential blank lines to put all cros_etc labelled files above.
 /etc/conntrackd(/.*)?           u:object_r:cros_conntrackd_conf_file:s0
 /etc/group                      u:object_r:cros_passwd_file:s0
 /etc/hosts                      u:object_r:cros_network_conf_file:s0

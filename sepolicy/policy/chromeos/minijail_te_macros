@@ -23,7 +23,7 @@ filetrans_pattern_no_target_perm($1, { tmpfs $2 }, null_device, chr_file, "null"
 filetrans_pattern_no_target_perm($1, { tmpfs $2 }, zero_device, chr_file, "zero");
 filetrans_pattern_no_target_perm($1, { tmpfs $2 }, urandom_device, chr_file, "urandom");
 filetrans_pattern($1, { tmpfs $2 }, devpts, lnk_file, "ptmx");
-allow $1 tmpfs:lnk_file create;
+allow $1 { tmpfs $2 }:lnk_file create;
 )
 
 # minijail_mounts(domain, extra_mount, extra_mounton, extra_getattr)

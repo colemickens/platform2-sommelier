@@ -53,6 +53,7 @@ type cros_tlsdated_exec, exec_type, file_type;
 type cros_udevd_exec, exec_type, file_type;
 type cros_update_engine_exec, exec_type, file_type;
 type cros_wpa_supplicant_exec, exec_type, file_type;
+type cros_userfeedback_file, exec_type, file_type;
 
 type cros_home, file_type;
 type cros_home_user, file_type;
@@ -99,12 +100,12 @@ type cros_var_lib, file_type;
 type cros_var_spool, file_type;
 type cros_var_empty, file_type;
 
-type cros_var_lib_dbus, file_type;
-type cros_var_lib_whitelist, file_type;
-type cros_var_lib_power_manager, file_type;
 type cros_var_lib_chaps, file_type;
+type cros_var_lib_crash_reporter, file_type;
+type cros_var_lib_dbus, file_type;
+type cros_var_lib_power_manager, file_type;
 type cros_var_lib_update_engine, file_type;
-
+type cros_var_lib_whitelist, file_type;
 
 type cros_arc_log, file_type, cros_log_type;
 type cros_authpolicy_log, file_type, cros_log_type;
@@ -117,14 +118,19 @@ type cros_secure_log, file_type, cros_log_type;
 type cros_syslog, file_type, cros_log_type;
 type cros_tlsdate_log, file_type, cros_log_type;
 type cros_var_log_chrome, file_type, cros_log_type;
+type cros_var_log_eventlog, file_type, cros_log_type;
 
-type cros_run, file_type;
-type cros_run_lock, file_type;
+type cros_crash_spool, file_type;
+
 type camera_socket, file_type; # compatible to existing Android names.
 type cras_socket, file_type; # compatible to existing Android names.
+type cros_run, file_type;
 type cros_run_avahi_daemon, file_type;
+type cros_run_containers, file_type;
+type cros_run_crash_reporter, file_type;
 type cros_run_dbus, file_type;
 type cros_run_frecon, file_type;
+type cros_run_lock, file_type;
 type cros_run_power_manager, file_type;
 type cros_run_session_manager, file_type;
 type cros_run_udev, file_type;
@@ -169,6 +175,7 @@ allow debugfs_trace_marker debugfs_tracing:filesystem associate;
 allow sysfs_type sysfs:filesystem associate;
 allow devpts tmpfs:filesystem associate; # minijail --mountdev creates symlink in /dev(tmpfs)/ptmx in new root.
 neverallow fs_type file_type:filesystem associate;
+type sysfs_class_devcoredump, file_type, sysfs_type;
 
 type wayland_socket, file_type;
 type cros_system_bus_socket, file_type;

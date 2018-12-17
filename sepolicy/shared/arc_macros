@@ -33,5 +33,6 @@ divert
 # Wraps policies that fails CTS.
 # arc_cts_fails_release(policies, affected_scontexts)
 define(`arc_cts_fails_release', `
-break_cts((`n', `p'), $1, $2)
+ifelse(use_selinux_develop, `y', $1,
+break_cts((`n', `p'), $1, $2))
 ')
