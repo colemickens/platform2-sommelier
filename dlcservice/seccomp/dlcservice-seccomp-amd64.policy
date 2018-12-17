@@ -56,3 +56,6 @@ chmod: 1
 lstat: 1
 unlink: 1
 rmdir: 1
+connect: 1
+sendto: 1
+socket: arg0 == AF_UNIX
