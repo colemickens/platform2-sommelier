@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include <base/callback.h>
 #include <base/macros.h>
 #include <dbus/mock_exported_object.h>
 #include <mojo/public/cpp/bindings/binding.h>
@@ -68,7 +69,9 @@ class FakeBrowser final {
   //
   // Must be called only after a successful invocation of
   // BootstrapMojoConnection().
-  bool SendUiMessageToDiagnosticsProcessor(const std::string& json_message);
+  bool SendUiMessageToDiagnosticsProcessor(
+      const std::string& json_message,
+      const base::Callback<void(mojo::ScopedHandle)>& callback);
 
  private:
   // Calls |bootstrap_mojo_connection_dbus_method_| with a fake file descriptor.

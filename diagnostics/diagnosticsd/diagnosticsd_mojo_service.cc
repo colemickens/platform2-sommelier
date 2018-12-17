@@ -7,11 +7,10 @@
 #include <memory>
 #include <utility>
 
-#include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/memory/shared_memory.h>
-#include <base/values.h>
 
+#include "diagnostics/diagnosticsd/json_utils.h"
 #include "diagnostics/diagnosticsd/mojo_utils.h"
 
 namespace diagnostics {
@@ -24,8 +23,15 @@ namespace {
 void ForwardMojoJsonResponse(
     const SendUiMessageToDiagnosticsProcessorCallback& mojo_response_callback,
     std::string response_json_message) {
-  // TODO(lamzin@google.com): Forward the response message contents.
-  mojo_response_callback.Run(mojo::ScopedHandle() /* response_json_message */);
+  if (response_json_message.empty()) {
+    mojo_response_callback.Run(
+        mojo::ScopedHandle() /* response_json_message */);
+    return;
+  }
+  mojo::ScopedHandle response_json_message_handle =
+      CreateReadOnlySharedMemoryMojoHandle(
+          base::StringPiece(response_json_message));
+  mojo_response_callback.Run(std::move(response_json_message_handle));
 }
 
 }  // namespace
@@ -58,23 +64,15 @@ void DiagnosticsdMojoService::SendUiMessageToDiagnosticsProcessor(
       static_cast<const char*>(shared_memory->memory()),
       shared_memory->mapped_size());
 
-  int json_error_code = base::JSONReader::JSON_NO_ERROR;
-  int json_error_line, json_error_column;
   std::string json_error_message;
-  base::JSONReader::ReadAndReturnError(
-      json_message_content, base::JSONParserOptions::JSON_ALLOW_TRAILING_COMMAS,
-      &json_error_code, &json_error_message, &json_error_line,
-      &json_error_column);
-  if (json_error_code == base::JSONReader::JSON_NO_ERROR) {
-    delegate_->SendGrpcUiMessageToDiagnosticsProcessor(
-        json_message_content, base::Bind(&ForwardMojoJsonResponse, callback));
-  } else {
-    LOG(ERROR) << "Invalid JSON at line " << json_error_line << " and column "
-               << json_error_column
-               << ". JSON parsing message: " << json_error_message
-               << ". Error code: " << json_error_code;
+  if (!IsJsonValid(json_message_content, &json_error_message)) {
+    LOG(ERROR) << "Invalid JSON error: " << json_error_message;
     callback.Run(mojo::ScopedHandle() /* response_json_message */);
+    return;
   }
+
+  delegate_->SendGrpcUiMessageToDiagnosticsProcessor(
+      json_message_content, base::Bind(&ForwardMojoJsonResponse, callback));
 }
 
 void DiagnosticsdMojoService::PerformWebRequest(

@@ -70,6 +70,11 @@ void FakeDiagnosticsProcessor::set_handle_message_from_ui_callback(
       std::move(handle_message_from_ui_callback));
 }
 
+void FakeDiagnosticsProcessor::set_handle_message_from_ui_json_message_response(
+    const std::string& json_message_response) {
+  handle_message_from_ui_json_message_response_.emplace(json_message_response);
+}
+
 const base::Optional<std::string>&
 FakeDiagnosticsProcessor::handle_message_from_ui_actual_json_message() const {
   return handle_message_from_ui_actual_json_message_;
@@ -79,8 +84,15 @@ void FakeDiagnosticsProcessor::HandleMessageFromUi(
     std::unique_ptr<grpc_api::HandleMessageFromUiRequest> request,
     const HandleMessageFromUiCallback& callback) {
   DCHECK(handle_message_from_ui_callback_);
+  DCHECK(handle_message_from_ui_json_message_response_.has_value());
+
   handle_message_from_ui_actual_json_message_.emplace(request->json_message());
-  callback.Run(std::make_unique<grpc_api::HandleMessageFromUiResponse>());
+
+  auto response = std::make_unique<grpc_api::HandleMessageFromUiResponse>();
+  response->set_response_json_message(
+      handle_message_from_ui_json_message_response_.value());
+  callback.Run(std::move(response));
+
   handle_message_from_ui_callback_->Run();
 }
 

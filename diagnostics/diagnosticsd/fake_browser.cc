@@ -21,15 +21,6 @@ namespace diagnostics {
 using MojomDiagnosticsdService =
     chromeos::diagnosticsd::mojom::DiagnosticsdService;
 
-namespace {
-
-// TODO(lamzin@google.com): Replace this with piping this data through
-// FakeBrowser into the tests.
-void EmptySendUiMessageToDiagnosticsProcessorCallback(
-    mojo::ScopedHandle response_json_message) {}
-
-}  // namespace
-
 FakeBrowser::FakeBrowser(
     MojomDiagnosticsdServiceFactoryPtr* diagnosticsd_service_factory_ptr,
     DBusMethodCallCallback bootstrap_mojo_connection_dbus_method)
@@ -52,15 +43,15 @@ bool FakeBrowser::BootstrapMojoConnection(
 }
 
 bool FakeBrowser::SendUiMessageToDiagnosticsProcessor(
-    const std::string& json_message) {
+    const std::string& json_message,
+    const base::Callback<void(mojo::ScopedHandle)>& callback) {
   mojo::ScopedHandle handle =
       CreateReadOnlySharedMemoryMojoHandle(base::StringPiece(json_message));
   if (!handle.is_valid()) {
     return false;
   }
   diagnosticsd_service_ptr_->SendUiMessageToDiagnosticsProcessor(
-      std::move(handle),
-      base::Bind(&EmptySendUiMessageToDiagnosticsProcessorCallback));
+      std::move(handle), callback);
   return true;
 }
 

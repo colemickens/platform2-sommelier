@@ -13,6 +13,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
+#include <base/memory/shared_memory.h>
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
 #include <base/strings/stringprintf.h>
@@ -36,6 +37,7 @@
 #include "diagnostics/diagnosticsd/fake_diagnostics_processor.h"
 #include "diagnostics/diagnosticsd/file_test_utils.h"
 #include "diagnostics/diagnosticsd/mojo_test_utils.h"
+#include "diagnostics/diagnosticsd/mojo_utils.h"
 #include "diagnostics/diagnosticsd/protobuf_test_utils.h"
 #include "diagnosticsd.pb.h"  // NOLINT(build/include)
 #include "mojo/diagnosticsd.mojom.h"
@@ -364,6 +366,37 @@ class BootstrappedDiagnosticsdCoreTest : public DiagnosticsdCoreTest {
     return fake_diagnostics_processor_.get();
   }
 
+  base::Callback<void(mojo::ScopedHandle)> fake_browser_valid_handle_callback(
+      const base::Closure& callback,
+      const std::string& expected_response_json_message) {
+    return base::Bind(
+        [](const base::Closure& callback,
+           const std::string& expected_response_json_message,
+           mojo::ScopedHandle response_json_message_handle) {
+          std::unique_ptr<base::SharedMemory> shared_memory =
+              GetReadOnlySharedMemoryFromMojoHandle(
+                  std::move(response_json_message_handle));
+          ASSERT_TRUE(shared_memory);
+          ASSERT_EQ(
+              expected_response_json_message,
+              std::string(static_cast<const char*>(shared_memory->memory()),
+                          shared_memory->mapped_size()));
+          callback.Run();
+        },
+        callback, expected_response_json_message);
+  }
+
+  base::Callback<void(mojo::ScopedHandle)> fake_browser_invalid_handle_callback(
+      const base::Closure& callback) {
+    return base::Bind(
+        [](const base::Closure& callback,
+           mojo::ScopedHandle response_json_message_handle) {
+          ASSERT_FALSE(response_json_message_handle.is_valid());
+          callback.Run();
+        },
+        callback);
+  }
+
  private:
   std::unique_ptr<FakeDiagnosticsProcessor> fake_diagnostics_processor_;
 };
@@ -374,15 +407,23 @@ class BootstrappedDiagnosticsdCoreTest : public DiagnosticsdCoreTest {
 TEST_F(BootstrappedDiagnosticsdCoreTest,
        SendGrpcUiMessageToDiagnosticsProcessor) {
   const std::string json_message = "{\"some_key\": \"some_value\"}";
+  const std::string response_json_message = "{\"key\": \"value\"}";
 
-  base::RunLoop run_loop_handle_message;
+  base::RunLoop run_loop_diagnostics_processor;
+  base::RunLoop run_loop_fake_browser;
+
   fake_diagnostics_processor()->set_handle_message_from_ui_callback(
-      run_loop_handle_message.QuitClosure());
+      run_loop_diagnostics_processor.QuitClosure());
+  fake_diagnostics_processor()
+      ->set_handle_message_from_ui_json_message_response(response_json_message);
 
-  EXPECT_TRUE(
-      fake_browser()->SendUiMessageToDiagnosticsProcessor(json_message));
+  auto callback = fake_browser_valid_handle_callback(
+      run_loop_fake_browser.QuitClosure(), response_json_message);
+  EXPECT_TRUE(fake_browser()->SendUiMessageToDiagnosticsProcessor(json_message,
+                                                                  callback));
 
-  run_loop_handle_message.Run();
+  run_loop_diagnostics_processor.Run();
+  run_loop_fake_browser.Run();
   EXPECT_EQ(json_message, fake_diagnostics_processor()
                               ->handle_message_from_ui_actual_json_message());
 }
@@ -393,8 +434,14 @@ TEST_F(BootstrappedDiagnosticsdCoreTest,
        SendGrpcUiMessageToDiagnosticsProcessorInvalidJSON) {
   const std::string json_message = "{'some_key': 'some_value'}";
 
-  EXPECT_TRUE(
-      fake_browser()->SendUiMessageToDiagnosticsProcessor(json_message));
+  base::RunLoop run_loop_fake_browser;
+
+  auto callback =
+      fake_browser_invalid_handle_callback(run_loop_fake_browser.QuitClosure());
+  EXPECT_TRUE(fake_browser()->SendUiMessageToDiagnosticsProcessor(json_message,
+                                                                  callback));
+
+  run_loop_fake_browser.Run();
   // There's no reliable way to wait till the wrong HandleMessageFromUi(), if
   // the tested code is buggy and calls it, gets executed. The RunUntilIdle() is
   // used to make the test failing at least with some probability in case of
@@ -404,6 +451,31 @@ TEST_F(BootstrappedDiagnosticsdCoreTest,
   EXPECT_FALSE(fake_diagnostics_processor()
                    ->handle_message_from_ui_actual_json_message()
                    .has_value());
+}
+
+// Test that diagnostics processor will receive message from browser.
+TEST_F(BootstrappedDiagnosticsdCoreTest,
+       SendGrpcUiMessageToDiagnosticsProcessorInvalidResponseJSON) {
+  const std::string json_message = "{\"some_key\": \"some_value\"}";
+  const std::string response_json_message = "{'key': 'value'}";
+
+  base::RunLoop run_loop_diagnostics_processor;
+  base::RunLoop run_loop_fake_browser;
+
+  fake_diagnostics_processor()->set_handle_message_from_ui_callback(
+      run_loop_diagnostics_processor.QuitClosure());
+  fake_diagnostics_processor()
+      ->set_handle_message_from_ui_json_message_response(response_json_message);
+
+  auto callback =
+      fake_browser_invalid_handle_callback(run_loop_fake_browser.QuitClosure());
+  EXPECT_TRUE(fake_browser()->SendUiMessageToDiagnosticsProcessor(json_message,
+                                                                  callback));
+
+  run_loop_diagnostics_processor.Run();
+  run_loop_fake_browser.Run();
+  EXPECT_EQ(json_message, fake_diagnostics_processor()
+                              ->handle_message_from_ui_actual_json_message());
 }
 
 // Test that the GetProcData() method exposed by the daemon's gRPC server

@@ -59,6 +59,10 @@ class FakeDiagnosticsProcessor final {
   void set_handle_message_from_ui_callback(
       base::Closure handle_message_from_ui_callback);
 
+  // Setups json message response for the next |HandleMessageFromUi| gRPC call.
+  void set_handle_message_from_ui_json_message_response(
+      const std::string& json_message_response);
+
   const base::Optional<std::string>&
   handle_message_from_ui_actual_json_message() const;
 
@@ -79,6 +83,7 @@ class FakeDiagnosticsProcessor final {
 
   base::Optional<base::Closure> handle_message_from_ui_callback_;
   base::Optional<std::string> handle_message_from_ui_actual_json_message_;
+  base::Optional<std::string> handle_message_from_ui_json_message_response_;
 
   DISALLOW_COPY_AND_ASSIGN(FakeDiagnosticsProcessor);
 };

@@ -16,6 +16,7 @@
 #include <mojo/public/cpp/system/message_pipe.h>
 
 #include "diagnostics/diagnosticsd/bind_utils.h"
+#include "diagnostics/diagnosticsd/json_utils.h"
 
 namespace diagnostics {
 
@@ -268,14 +269,23 @@ void DiagnosticsdCore::SendGrpcUiMessageToDiagnosticsProcessor(
               LOG(ERROR)
                   << "Failed to call HandleMessageFromUiRequest gRPC method on "
                      "diagnostics_processor: response message is nullptr";
-            } else {
-              VLOG(1) << "gRPC method HandleMessageFromUiRequest was "
-                         "successfully called on diagnostics_processor";
+              callback.Run(std::string() /* response_json_message */);
+              return;
             }
-            // TODO(lamzin@google.com): Forward the message from the gRPC field.
-            // TODO(lamzin@google.com): Decide whether we should validate the
-            // JSON.
-            callback.Run(std::string() /* response_json_message */);
+
+            VLOG(1) << "gRPC method HandleMessageFromUiRequest was "
+                       "successfully called on diagnostics_processor";
+
+            std::string json_error_message;
+            if (!IsJsonValid(
+                    base::StringPiece(response->response_json_message()),
+                    &json_error_message)) {
+              LOG(ERROR) << "Invalid JSON error: " << json_error_message;
+              callback.Run(std::string() /* response_json_message */);
+              return;
+            }
+
+            callback.Run(response->response_json_message());
           },
           callback));
 }

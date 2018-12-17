@@ -112,6 +112,7 @@
         'diagnosticsd/diagnosticsd_grpc_service.cc',
         'diagnosticsd/diagnosticsd_mojo_service.cc',
         'diagnosticsd/ec_constants.cc',
+        'diagnosticsd/json_utils.cc',
         'diagnosticsd/mojo_utils.cc',
       ],
     },
