@@ -35,6 +35,9 @@ static const AttributePolicy kPrivateKeyPolicies[] = {
   {CKA_COEFFICIENT, true, {false, false, true}, false},
   {kKeyBlobAttribute, true, {false, true, true}, false},
   {kAuthDataAttribute, true, {false, true, true}, false},
+  // ECC-specific attributes.
+  {CKA_EC_PARAMS, false, {false, false, true}, false},
+  {CKA_VALUE, false, {false, false, true}, false},
 };
 
 ObjectPolicyPrivateKey::ObjectPolicyPrivateKey() {
@@ -58,6 +61,12 @@ bool ObjectPolicyPrivateKey::IsObjectComplete() {
     if (!object_->IsAttributePresent(CKA_PRIVATE_EXPONENT) &&
         !object_->IsAttributePresent(kKeyBlobAttribute)) {
       LOG(ERROR) << "RSA Private key attributes are required.";
+      return false;
+    }
+  } else if (key_type == CKK_EC) {
+    if (!object_->IsAttributePresent(CKA_EC_PARAMS) ||
+        !object_->IsAttributePresent(CKA_VALUE)) {
+      LOG(ERROR) << "ECC Private key attributes are required.";
       return false;
     }
   } else {

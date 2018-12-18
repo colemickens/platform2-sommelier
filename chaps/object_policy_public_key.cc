@@ -22,6 +22,9 @@ static const AttributePolicy kPublicKeyPolicies[] = {
   // RSA-specific attributes.
   {CKA_MODULUS, false, {false, false, true}, false},
   {CKA_PUBLIC_EXPONENT, false, {false, false, true}, false},
+  // ECC-specific attributes.
+  {CKA_EC_PARAMS, false, {false, false, true}, false},
+  {CKA_EC_POINT, false, {false, false, true}, false},
 };
 
 ObjectPolicyPublicKey::ObjectPolicyPublicKey() {
@@ -41,6 +44,12 @@ bool ObjectPolicyPublicKey::IsObjectComplete() {
     if (!object_->IsAttributePresent(CKA_MODULUS) ||
         !object_->IsAttributePresent(CKA_PUBLIC_EXPONENT)) {
       LOG(ERROR) << "RSA Public key attributes are required.";
+      return false;
+    }
+  } else if (key_type == CKK_EC) {
+    if (!object_->IsAttributePresent(CKA_EC_PARAMS) ||
+        !object_->IsAttributePresent(CKA_EC_POINT)) {
+      LOG(ERROR) << "ECC Public key attributes are required.";
       return false;
     }
   } else {
