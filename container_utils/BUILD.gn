@@ -1,0 +1,113 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":device_jail_fs",
+    ":device_jail_utility",
+    ":mount_extension_image",
+  ]
+}
+
+pkg_config("target_default_deps") {
+  pkg_deps = [
+    "libchrome-${libbase_ver}",
+    "libsession_manager-client",
+  ]
+}
+
+config("target_defaults") {
+  configs = [
+    ":target_default_deps"
+  ]
+}
+
+pkg_config("mount_extension_image_config") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libimageloader-client",
+  ]
+}
+
+executable("mount_extension_image") {
+  configs += [
+    ":target_defaults",
+    ":mount_extension_image_config",
+  ]
+  if (!enable_exceptions) {
+    configs -= [ "//common-mk:no_exceptions" ]
+  }
+  sources = [
+    "mount_extension_image.cc",
+  ]
+}
+
+pkg_config("device_jail_fs_config") {
+  pkg_deps = [
+    "fuse",
+    "libbrillo-${libbase_ver}",
+    "libminijail",
+  ]
+}
+
+executable("device_jail_fs") {
+  configs += [
+    ":target_defaults",
+    ":device_jail_fs_config",
+  ]
+  if (!enable_exceptions) {
+    configs -= [ "//common-mk:no_exceptions" ]
+  }
+  deps = [
+    ":libdevice_jail",
+  ]
+  sources = [
+    "device_jail_fs.cc",
+    "fs_data.cc",
+    "fs_data.h",
+  ]
+}
+
+pkg_config("device_jail_utility_config") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+  ]
+}
+
+executable("device_jail_utility") {
+  configs += [
+    ":target_defaults",
+    ":device_jail_utility_config",
+  ]
+  if (!enable_exceptions) {
+    configs -= [ "//common-mk:no_exceptions" ]
+  }
+  deps = [
+    ":libdevice_jail",
+  ]
+  sources = [
+    "device_jail_utility.cc",
+  ]
+}
+
+pkg_config("libdevice_jail_exported_deps") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libudev",
+  ]
+}
+
+static_library("libdevice_jail") {
+  public_configs = [
+    ":libdevice_jail_exported_deps",
+  ]
+  sources = [
+    "device_jail_control.cc",
+    "device_jail_control.h",
+    "device_jail_server.cc",
+    "device_jail_server.h",
+  ]
+}

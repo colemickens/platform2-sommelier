@@ -2,6 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# Caution!: GYP to GN migration is happening. If you update this file, please
+# update the corresponding GN portion in common-mk/BUILD.gn or
+# container_utils/BUILD.gn .
+
 {
   'target_defaults': {
     'variables': {
