@@ -1,0 +1,126 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+group("all") {
+  deps = [
+    ":feedback_daemon",
+    ":feedback_client",
+    ":feedback_proto",
+  ]
+  if (use.test) {
+    deps += [
+      ":feedback_daemon_test",
+    ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+  ]
+}
+
+pkg_config("libfeedback_daemon_config") {
+  pkg_deps = [
+    "protobuf-lite",
+  ]
+}
+
+static_library("libfeedback_daemon") {
+  all_dependent_configs = [
+    ":libfeedback_daemon_config"
+  ]
+  configs += [
+    ":target_defaults",
+  ]
+  deps = [":feedback_proto"]
+  sources = [
+    "components/feedback/feedback_report.cc",
+    "components/feedback/feedback_uploader.cc",
+    "feedback_service.cc",
+    "feedback_uploader_http.cc",
+    "feedback_util.cc",
+  ]
+  include_dirs = ["."]
+}
+
+executable("feedback_daemon") {
+  configs += [
+    ":target_defaults",
+  ]
+  deps = [":libfeedback_daemon"]
+  sources = [
+    "feedback_daemon.cc",
+  ]
+}
+
+pkg_config("libfeedback_client_config") {
+  pkg_deps = [
+    "protobuf-lite"
+  ]
+}
+
+static_library("libfeedback_client") {
+  all_dependent_configs = [
+    ":libfeedback_client_config"
+  ]
+  configs += [
+    ":target_defaults",
+  ]
+  deps = [":feedback_proto"]
+  sources = [
+    "components/feedback/feedback_common.cc",
+    "feedback_service_interface.cc",
+    "feedback_util.cc",
+  ]
+  include_dirs = ["."]
+}
+
+executable("feedback_client") {
+  configs += [
+    ":target_defaults",
+  ]
+  deps = [
+    ":libfeedback_client",
+    ":libfeedback_daemon",
+  ]
+  sources = [
+    "feedback_client.cc",
+  ]
+}
+
+proto_library("feedback_proto") {
+  proto_in_dir = "components/feedback/proto"
+  proto_out_dir = "include/components/feedback/proto"
+  sources = [
+    "${proto_in_dir}/annotations.proto",
+    "${proto_in_dir}/chrome.proto",
+    "${proto_in_dir}/common.proto",
+    "${proto_in_dir}/config.proto",
+    "${proto_in_dir}/dom.proto",
+    "${proto_in_dir}/extension.proto",
+    "${proto_in_dir}/math.proto",
+    "${proto_in_dir}/web.proto",
+  ]
+}
+
+if (use.test) {
+  executable("feedback_daemon_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libfeedback_client",
+      ":libfeedback_daemon",
+    ]
+    sources = [
+      "feedback_service_test.cc",
+    ]
+  }
+}
