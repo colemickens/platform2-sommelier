@@ -449,10 +449,8 @@ class AuthPolicyTest : public testing::Test {
         .WillOnce(Return(mock_cryptohome_proxy_.get()));
 
     // Make Cryptohome's GetSanitizedUsername call return kSanitizedUsername.
-    ON_CALL(*mock_cryptohome_proxy_,
-            MockCallMethodAndBlockWithErrorDetails(_, _, _))
-        .WillByDefault(Invoke([](dbus::MethodCall* method_call, int timeout,
-                                 dbus::ScopedDBusError* error) {
+    ON_CALL(*mock_cryptohome_proxy_, MockCallMethodAndBlock(_, _))
+        .WillByDefault(Invoke([](dbus::MethodCall* method_call, int timeout) {
           return RespondWithString(method_call, kSanitizedUsername);
         }));
 
