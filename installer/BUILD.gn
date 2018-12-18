@@ -1,0 +1,127 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":cros_installer",
+    ":evwaitkey",
+    ":cros_oobe_crypto",
+  ]
+  if (use.mtd) {
+    deps += [ ":nand_partition" ]
+  }
+  if (use.test) {
+    deps += [ ":cros_installer_test" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "vboot_host",
+  ]
+  include_dirs = [
+    "${sysroot}/usr/include/verity",
+  ]
+  libs = [
+    "dm-bht",
+  ]
+}
+
+static_library("libcros_installer") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "cgpt_manager.cc",
+    "chromeos_install_config.cc",
+    "chromeos_legacy.cc",
+    "chromeos_postinst.cc",
+    "chromeos_setimage.cc",
+    "chromeos_verity.cc",
+    "inst_util.cc",
+  ]
+}
+
+pkg_config("cros_installer_config") {
+  pkg_deps = [
+    "libchrome-${libbase_ver}",
+  ]
+}
+
+executable("cros_installer") {
+  configs += [
+    ":cros_installer_config",
+    ":target_defaults",
+  ]
+  deps = [":libcros_installer"]
+  sources = [
+    "cros_installer_main.cc",
+  ]
+}
+
+executable("evwaitkey") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "util/evwaitkey.c",
+  ]
+}
+
+pkg_config("cros_oobe_crypto_config") {
+  pkg_deps = [
+    "libcrypto",
+  ]
+}
+
+executable("cros_oobe_crypto") {
+  configs += [
+    ":cros_oobe_crypto_config",
+    ":target_defaults",
+  ]
+  sources = [
+    "util/cros_oobe_crypto.c",
+  ]
+}
+
+if (use.mtd) {
+  pkg_config("nand_partition_config") {
+    pkg_deps = [ "libchrome-${libbase_ver}" ]
+  }
+  executable("nand_partition") {
+    configs += [
+      ":nand_partition_config",
+      ":target_defaults",
+    ]
+    deps = [":libcros_installer"]
+    sources = [
+      "nand_partition.cc",
+      "nand_partition_main.cc",
+    ]
+  }
+}
+
+if (use.test) {
+  pkg_config("cros_installer_test_config") {
+    pkg_deps = [
+      "libchrome-${libbase_ver}",
+      "libchrome-test-${libbase_ver}",
+    ]
+  }
+  executable("cros_installer_test") {
+    configs += [
+      "//common-mk:test",
+      ":cros_installer_test_config",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libcros_installer",
+      "//common-mk/testrunner:testrunner",
+    ]
+    sources = [
+      "chromeos_install_config_test.cc",
+      "chromeos_legacy_test.cc",
+      "inst_util_test.cc",
+    ]
+  }
+}
