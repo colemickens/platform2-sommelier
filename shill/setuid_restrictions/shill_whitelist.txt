@@ -8,8 +8,6 @@
 20104:202
 # shill spawns tc as 'nobody' user
 20104:65534
-# pppd calls setuid to root user
-20104:0
 # openvpn starts as 'shill' and drops to 'openvpn' without dropping
 # CAP_SETUID, so ensure 'openvpn' user's CAP_SETUID privs are locked down
 217:217
