@@ -40,6 +40,9 @@ class ArcTimerManager {
   // Initializes the D-Bus API handlers.
   void Init(DBusWrapperInterface* dbus_wrapper);
 
+  // Returns the timer ids associated with |tag|.
+  std::vector<TimerId> GetTimerIdsForTesting(const std::string& tag);
+
  private:
   // Metadata associated with a timer set for the instance.
   struct ArcTimerInfo;
@@ -49,15 +52,15 @@ class ArcTimerManager {
   // their timer. Always >= 1.
   TimerId next_timer_id_ = 1;
 
-  // Receives a |string tag, array of
-  // |int32_t clock_id, base::ScopedFD expiration_fd|. Creates an |ArcTimerInfo|
-  // entry for each |clock_id|. Returns a D-Bus response with an |array of
-  // int32_t timer_ids| iff timers corresponding to all clocks in the arguments
-  // are created. Only one timer per clock is allowed, returns B-Bus error if
-  // the same clock is present more than once in the arguments.Also, returns
-  // D-Bus error if timers corresponding to the client's tag already exist. In
-  // such a scenario the client must delete timers associated with it's tag and
-  // then create them again.
+  // Creates new timers in |timers_| as requested by |method_call|,
+  // which should contain a "tag" string argument followed by an array of
+  // (int32, FD) values that will be passed to CreateArcTimers.
+  // The response contains an array of int32 timer IDs corresponding to
+  // the created timers.
+  //
+  // Any existing timers associated with the tag will be deleted first.
+  // If an error occurs while creating timers, no timer IDs will be returned.
+  // At most one timer is allowed per clock.
   void HandleCreateArcTimers(
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);
@@ -104,6 +107,9 @@ class ArcTimerManager {
   void HandleDeleteArcTimers(
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);
+
+  // Deletes all timers, if any, created with the tag |tag|.
+  void DeleteArcTimers(const std::string& tag);
 
   // Finds |ArcTimerInfo| entry in |timers_| corresponding to |timer_id|.
   // Returns non-null pointer iff entry is present.

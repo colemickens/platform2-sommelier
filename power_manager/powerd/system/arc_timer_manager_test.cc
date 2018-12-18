@@ -98,6 +98,21 @@ bool IsResponseValid(dbus::Response* response) {
                          dbus::Message::MessageType::MESSAGE_METHOD_RETURN;
 }
 
+// Returns true iff |a| and |b| are of the same size and all entries in |a| are
+// different from |b|.
+bool AreTimerIdsIdenticalSizeButDistinct(
+    const std::vector<ArcTimerManager::TimerId>& a,
+    const std::vector<ArcTimerManager::TimerId>& b) {
+  if (a.size() != b.size())
+    return false;
+
+  for (auto id : a) {
+    if (std::find(b.begin(), b.end(), id) != b.end())
+      return false;
+  }
+  return true;
+}
+
 }  // namespace
 
 class ArcTimerManagerTest : public ::testing::Test,
@@ -262,6 +277,9 @@ class ArcTimerManagerTest : public ::testing::Test,
     return true;
   }
 
+ protected:
+  ArcTimerManager arc_timer_manager_;
+
  private:
   // Stores clock ids and their corresponding file descriptors. These file
   // descriptors indicate when a timer corresponding to the clock has expired on
@@ -313,8 +331,6 @@ class ArcTimerManagerTest : public ::testing::Test,
 
     DISALLOW_COPY_AND_ASSIGN(ArcTimerStore);
   };
-
-  ArcTimerManager arc_timer_manager_;
 
   // Mapping of a client's tag and the |ArcTimerStore| to use with it.
   std::map<std::string, std::unique_ptr<ArcTimerStore>> arc_timer_stores_;
@@ -372,11 +388,22 @@ TEST_F(ArcTimerManagerTest, CheckMultipleCreateTimers) {
   std::vector<clockid_t> clocks = {CLOCK_REALTIME_ALARM};
   const std::string kTag = "Test1";
   ASSERT_TRUE(CreateTimers(kTag, clocks));
-  // Create timers should fail if old timers aren't deleted.
-  ASSERT_FALSE(CreateTimers(kTag, clocks));
+  std::vector<ArcTimerManager::TimerId> first_create_ids =
+      arc_timer_manager_.GetTimerIdsForTesting(kTag);
+
+  // Creating timers with a registered tag should delete the old timers
+  // associated with the tag and succeed. Check that the delete succeeded by
+  // checking that the new timer ids are different from the old timer ids.
+  ASSERT_TRUE(CreateTimers(kTag, clocks));
+  std::vector<ArcTimerManager::TimerId> second_create_ids =
+      arc_timer_manager_.GetTimerIdsForTesting(kTag);
+  ASSERT_TRUE(
+      AreTimerIdsIdenticalSizeButDistinct(first_create_ids, second_create_ids));
+
   // Creating timers after deleting old timers should succeed.
   ASSERT_TRUE(DeleteTimers(kTag));
   ASSERT_TRUE(CreateTimers(kTag, clocks));
+
   // Create timers with a different tag should also succeed.
   ASSERT_TRUE(CreateTimers("Test2", clocks));
 }

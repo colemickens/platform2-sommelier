@@ -114,6 +114,15 @@ void ArcTimerManager::Init(DBusWrapperInterface* dbus_wrapper) {
                                         weak_ptr_factory_.GetWeakPtr()));
 }
 
+std::vector<ArcTimerManager::TimerId> ArcTimerManager::GetTimerIdsForTesting(
+    const std::string& tag) {
+  auto it = client_timer_ids_.find(tag);
+  if (it == client_timer_ids_.end())
+    return std::vector<TimerId>();
+
+  return it->second;
+}
+
 void ArcTimerManager::HandleCreateArcTimers(
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
@@ -139,13 +148,7 @@ void ArcTimerManager::HandleCreateArcTimers(
     return;
   }
 
-  // Return error if timers are already created for the client.
-  if (client_timer_ids_.find(tag) != client_timer_ids_.end()) {
-    LOG(WARNING) << "Timers already created for tag=" << tag;
-    response_sender.Run(
-        CreateInvalidArgsError(method_call, "Timers already created"));
-    return;
-  }
+  DeleteArcTimers(tag);
 
   // Iterate over the array of |clock_id, expiration_fd| and create an
   // |ArcTimerInfo| entry for each clock.
@@ -323,21 +326,24 @@ void ArcTimerManager::HandleDeleteArcTimers(
     return;
   }
 
+  DeleteArcTimers(tag);
+  response_sender.Run(dbus::Response::FromMethodCall(method_call));
+}
+
+void ArcTimerManager::DeleteArcTimers(const std::string& tag) {
+  // Iterate over timer ids associated with |tag| and delete the timers
+  // associated with each timer id.
   auto it = client_timer_ids_.find(tag);
   if (it == client_timer_ids_.end()) {
     DVLOG(1) << "Tag=" << tag << " not found";
-    response_sender.Run(dbus::Response::FromMethodCall(method_call));
     return;
   }
 
-  // Iterate over timer ids associated with |tag| and delete the timers
-  // associated with each timer id.
   DVLOG(1) << "Deleting timers for tag=" << tag;
   const auto& timer_ids = it->second;
   for (auto timer_id : timer_ids)
     timers_.erase(timer_id);
   client_timer_ids_.erase(it);
-  response_sender.Run(dbus::Response::FromMethodCall(method_call));
 }
 
 ArcTimerManager::ArcTimerInfo* ArcTimerManager::FindArcTimerInfo(
