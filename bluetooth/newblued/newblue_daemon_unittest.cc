@@ -61,7 +61,8 @@ class NewblueDaemonTest : public ::testing::Test {
     libnewblue_ = libnewblue.get();
     auto newblue = std::make_unique<MockNewblue>(std::move(libnewblue));
     newblue_ = newblue.get();
-    newblue_daemon_ = std::make_unique<NewblueDaemon>(std::move(newblue));
+    newblue_daemon_ = std::make_unique<NewblueDaemon>(std::move(newblue),
+                                                      false /* is_idle_mode */);
     SetupBluezObjectProxy();
     SetupBluezObjectManager();
     // Force MessageLoop to run all pending tasks as an effect of instantiating
@@ -394,6 +395,31 @@ TEST_F(NewblueDaemonTest, DiscoveryAPI) {
 
   EXPECT_CALL(*exported_adapter_object, Unregister()).Times(1);
   EXPECT_CALL(*exported_root_object, Unregister()).Times(1);
+  // Shutdown now to make sure ExportedObjectManagerWrapper is destructed first
+  // before the mocked objects.
+  newblue_daemon_->Shutdown();
+}
+
+TEST_F(NewblueDaemonTest, IdleMode) {
+  scoped_refptr<dbus::MockExportedObject> exported_root_object =
+      SetupExportedRootObject();
+  scoped_refptr<dbus::MockExportedObject> exported_agent_manager_object =
+      SetupExportedAgentManagerObject();
+
+  auto libnewblue = std::make_unique<MockLibNewblue>();
+  libnewblue_ = libnewblue.get();
+  auto newblue = std::make_unique<MockNewblue>(std::move(libnewblue));
+  newblue_ = newblue.get();
+  newblue_daemon_ = std::make_unique<NewblueDaemon>(std::move(newblue),
+                                                    true /* is_idle_mode */);
+
+  ExpectTestInit(exported_root_object);
+  EXPECT_CALL(*newblue_, Init()).WillOnce(Return(true));
+  // In idle mode, the daemon shouldn't try to bring up the LE stack.
+  EXPECT_CALL(*newblue_, ListenReadyForUp(_)).Times(0);
+  EXPECT_TRUE(newblue_daemon_->Init(
+      bus_, nullptr /* no need to access the delegator */));
+
   // Shutdown now to make sure ExportedObjectManagerWrapper is destructed first
   // before the mocked objects.
   newblue_daemon_->Shutdown();

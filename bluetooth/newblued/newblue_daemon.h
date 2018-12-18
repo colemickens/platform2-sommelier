@@ -34,7 +34,7 @@ class NewblueDaemon : public BluetoothDaemon {
   };
 
  public:
-  explicit NewblueDaemon(std::unique_ptr<Newblue> newblue);
+  NewblueDaemon(std::unique_ptr<Newblue> newblue, bool is_idle_mode);
   ~NewblueDaemon() override = default;
 
   // BluetoothDaemon override:
@@ -117,6 +117,12 @@ class NewblueDaemon : public BluetoothDaemon {
                               bool is_new_device);
 
   void OnBluezDown();
+
+  // True means that newblued does not do anything but only keeps itself alive.
+  // This mode is needed as LE kernel splitter is not (yet) enabled for all
+  // boards, so newblued should be in idle mode for those boards without LE
+  // kernel splitter.
+  bool is_idle_mode_;
 
   scoped_refptr<dbus::Bus> bus_;
 

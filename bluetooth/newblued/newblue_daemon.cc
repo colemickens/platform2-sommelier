@@ -70,8 +70,11 @@ std::string ConvertPairStateToString(PairState state) {
 
 }  // namespace
 
-NewblueDaemon::NewblueDaemon(std::unique_ptr<Newblue> newblue)
-    : newblue_(std::move(newblue)), weak_ptr_factory_(this) {}
+NewblueDaemon::NewblueDaemon(std::unique_ptr<Newblue> newblue,
+                             bool is_idle_mode)
+    : is_idle_mode_(is_idle_mode),
+      newblue_(std::move(newblue)),
+      weak_ptr_factory_(this) {}
 
 bool NewblueDaemon::Init(scoped_refptr<dbus::Bus> bus,
                          DBusDaemon* dbus_daemon) {
@@ -111,6 +114,11 @@ bool NewblueDaemon::Init(scoped_refptr<dbus::Bus> bus,
           bus_, exported_object_manager_wrapper_.get());
   agent_manager_interface_handler_->Init();
   newblue_->RegisterPairingAgent(agent_manager_interface_handler_.get());
+
+  if (is_idle_mode_) {
+    LOG(INFO) << "LE splitter not enabled, newblued running in idle mode.";
+    return true;
+  }
 
   if (!newblue_->ListenReadyForUp(base::Bind(&NewblueDaemon::OnHciReadyForUp,
                                              base::Unretained(this)))) {
