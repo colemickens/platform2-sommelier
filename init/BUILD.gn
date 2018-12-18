@@ -10,11 +10,13 @@ group("all") {
     ":file_attrs_cleaner_tool",
     ":net_poll_tool",
     ":static_node_tool",
+    ":usermode-helper",
   ]
   if (use.test) {
     deps += [
       ":clobber_state_unittest",
       ":file_attrs_cleaner_test",
+      ":usermode-helper_test",
     ]
   }
 }
@@ -78,6 +80,23 @@ executable("static_node_tool") {
   ]
 }
 
+static_library("usermode-helper_lib") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "usermode-helper_lib.cc",
+  ]
+}
+
+executable("usermode-helper") {
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":usermode-helper_lib",
+  ]
+  sources = [
+    "usermode-helper.cc",
+  ]
+}
+
 if (use.test) {
   pkg_config("test_config") {
     pkg_deps = [ "libchrome-test-${libbase_ver}" ]
@@ -111,6 +130,21 @@ if (use.test) {
     deps = [
       "//common-mk/testrunner",
       ":file_attrs_cleaner_lib",
+    ]
+  }
+
+  executable("usermode-helper_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
+    ]
+    sources = [
+      "usermode-helper_test.cc",
+    ]
+    deps = [
+      "//common-mk/testrunner",
+      ":usermode-helper_lib",
     ]
   }
 }
