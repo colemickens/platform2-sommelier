@@ -7,11 +7,15 @@ import("//common-mk/pkg_config.gni")
 group("all") {
   deps = [
     ":clobber-state",
+    ":file_attrs_cleaner_tool",
     ":net_poll_tool",
     ":static_node_tool",
   ]
   if (use.test) {
-    deps += [ ":clobber_state_unittest" ]
+    deps += [
+      ":clobber_state_unittest",
+      ":file_attrs_cleaner_test",
+    ]
   }
 }
 
@@ -40,6 +44,23 @@ executable("clobber-state") {
   ]
 }
 
+static_library("file_attrs_cleaner_lib") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "file_attrs_cleaner_lib.cc",
+  ]
+}
+
+executable("file_attrs_cleaner_tool") {
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":file_attrs_cleaner_lib",
+  ]
+  sources = [
+    "file_attrs_cleaner_tool.cc",
+  ]
+}
+
 executable("net_poll_tool") {
   configs += [ ":target_defaults" ]
   sources = [
@@ -53,6 +74,7 @@ executable("static_node_tool") {
     "static_node_tool.cc",
   ]
 }
+
 if (use.test) {
   pkg_config("test_config") {
     pkg_deps = [ "libchrome-test-${libbase_ver}" ]
@@ -70,6 +92,21 @@ if (use.test) {
     ]
     deps = [
       "//common-mk/testrunner",
+    ]
+  }
+
+  executable("file_attrs_cleaner_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
+    ]
+    sources = [
+      "file_attrs_cleaner_test.cc",
+    ]
+    deps = [
+      "//common-mk/testrunner",
+      ":file_attrs_cleaner_lib",
     ]
   }
 }
