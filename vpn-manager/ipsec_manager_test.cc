@@ -38,8 +38,16 @@ class IpsecManagerTest : public ::testing::Test {
   IpsecManagerTest() : starter_daemon_(nullptr), charon_daemon_(nullptr) {}
   ~IpsecManagerTest() override = default;
 
+  static FilePath GetSourceDirectory() {
+    FilePath src_dir;
+    const char* src_env = getenv("SRC");
+    if (src_env) {
+      src_dir = FilePath(src_env);
+    }
+    return src_dir;
+  }
+
   void SetUp() override {
-    FilePath cwd;
     CHECK(temp_dir_.CreateUniqueTempDir());
     test_path_ = temp_dir_.GetPath().Append("ipsec_manager_testdir");
     base::DeleteFile(test_path_, true);
@@ -66,9 +74,7 @@ class IpsecManagerTest : public ::testing::Test {
     WriteFile(
         xauth_credentials_file_,
         base::StringPrintf("%s\n%s\n", kXauthUser, kXauthPassword).c_str());
-    const char* srcvar = getenv("SRC");
-    FilePath srcdir = srcvar ? FilePath(srcvar) : cwd;
-    base::CopyFile(srcdir.Append("testdata/cacert.der"),
+    base::CopyFile(GetSourceDirectory().Append("testdata/cacert.der"),
                    FilePath(server_ca_file_));
     brillo::ClearLog();
     starter_daemon_ = new DaemonMock;
@@ -474,6 +480,54 @@ TEST_F(IpsecManagerTestIkeV1Certs, WriteConfigFiles) {
   EXPECT_EQ(GetExpectedStarter(false), conf_contents);
   ASSERT_TRUE(base::PathExists(persistent_path_.Append("ipsec.secrets")));
   ASSERT_TRUE(base::PathExists(persistent_path_.Append("cacert.der")));
+}
+
+class IpsecManagerTestBogusCerts : public IpsecManagerTest {
+ public:
+  void SetUp() override {
+    IpsecManagerTest::SetUp();
+    // testdata/bogus_cacert.der is generated as follows:
+    //
+    //   openssl genrsa -des3 -out ca.key 512
+    //   openssl req -new -x509 -days 365 -key ca.key -out bogus_cacert.pem \
+    //       -subj "/CN=$(printf 'a \r b \n c \t d \f e \b f " g \\\\')"
+    //   openssl x509 -in bogus_cacert.pem -out bogus_cacert.der -outform DER
+    //
+    //  The subject field contains a CN attribute with special characters that
+    //  require escaping.
+    FilePath bogus_server_ca_file = test_path_.Append("bogus_server.ca");
+    base::CopyFile(GetSourceDirectory().Append("testdata/bogus_cacert.der"),
+                   bogus_server_ca_file);
+    ASSERT_TRUE(ipsec_->Initialize(
+        1, remote_address_, "", "", bogus_server_ca_file.value(), server_id_,
+        client_cert_tpm_slot_, client_cert_tpm_id_, tpm_user_pin_));
+  }
+};
+
+TEST_F(IpsecManagerTestBogusCerts, FormatStarterConfigFile) {
+  std::string expected =
+      "config setup\n"
+      "\tcharondebug=\"ike 2, cfg 2, knl 2, net 1, enc 1\"\n"
+      "\tuniqueids=\"no\"\n"
+      "conn managed\n"
+      "\tike=\"3des-sha1-modp1024\"\n"
+      "\tesp=\"aes128-sha1,3des-sha1,aes128-md5,3des-md5\"\n"
+      "\tkeyexchange=\"ikev1\"\n"
+      "\trekey=yes\n"
+      "\tleft=\"%defaultroute\"\n"
+      "\tleftcert=\"%smartcard0@crypto_module:0a\"\n"
+      "\tleftprotoport=\"17/1701\"\n"
+      "\tleftupdown=\"/usr/libexec/l2tpipsec_vpn/pluto_updown\"\n"
+      "\tright=\"1.2.3.4\"\n"
+      // The value of the rightca option should contain an escaped version of
+      // the subject field in the testdata/bogus_cacert.der file.
+      "\trightca=\"CN=a \\r b \\n c \\t d \\f e \\b f \\\" g \\\\\"\n"
+      "\trightid=\"CN=vpnserver\"\n"
+      "\trightprotoport=\"17/1701\"\n"
+      "\ttype=\"transport\"\n"
+      "\tauto=\"start\"\n";
+  logging::SetMinLogLevel(0);
+  EXPECT_EQ(expected, ipsec_->FormatStarterConfigFile());
 }
 
 }  // namespace vpn_manager

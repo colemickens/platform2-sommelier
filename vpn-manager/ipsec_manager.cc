@@ -50,6 +50,40 @@ const char kIpsecAuthenticationFailurePattern[] =
     "*discarding duplicate packet*STATE_MAIN_I3*";
 const char kSmartcardModuleName[] = "crypto_module";
 
+std::string EscapeString(const std::string& input) {
+  std::string output;
+  output.reserve(input.size());
+  for (char c : input) {
+    switch (c) {
+      case '\b':
+        output.append("\\b");
+        break;
+      case '\f':
+        output.append("\\f");
+        break;
+      case '\n':
+        output.append("\\n");
+        break;
+      case '\r':
+        output.append("\\r");
+        break;
+      case '\t':
+        output.append("\\t");
+        break;
+      case '"':
+        output.append("\\\"");
+        break;
+      case '\\':
+        output.append("\\\\");
+        break;
+      default:
+        output.push_back(c);
+        break;
+    }
+  }
+  return output;
+}
+
 }  // namespace
 
 IpsecManager::IpsecManager(const std::string& esp,
@@ -323,7 +357,8 @@ inline void AppendBoolSetting(std::string* config,
 inline void AppendStringSetting(std::string* config,
                                 const char* key,
                                 const std::string& value) {
-  config->append(StringPrintf("\t%s=\"%s\"\n", key, value.c_str()));
+  std::string escaped_value = EscapeString(value);
+  config->append(StringPrintf("\t%s=\"%s\"\n", key, escaped_value.c_str()));
 }
 
 inline void AppendIntSetting(std::string* config, const char* key, int value) {

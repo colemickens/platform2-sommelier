@@ -83,6 +83,7 @@ class IpsecManager : public ServiceManager {
   FRIEND_TEST(IpsecManagerTestIkeV1Certs, FormatSecrets);
   FRIEND_TEST(IpsecManagerTestIkeV1Certs, FormatStarterConfigFile);
   FRIEND_TEST(IpsecManagerTestIkeV1Certs, WriteConfigFiles);
+  FRIEND_TEST(IpsecManagerTestBogusCerts, FormatStarterConfigFile);
 
   bool ReadCertificateSubject(const base::FilePath& filepath,
                               std::string* output);
