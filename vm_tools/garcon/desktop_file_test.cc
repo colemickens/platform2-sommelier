@@ -108,6 +108,18 @@ class DesktopFileTest : public ::testing::Test {
     return result;
   }
 
+  void ValidateExecutableFileName(
+      const std::string& file_contents,
+      const std::string& relative_path,
+      const std::string& expect_executable_file_name) {
+    base::FilePath desktop_file_path =
+        WriteContentsToPath(file_contents, relative_path);
+    std::unique_ptr<DesktopFile> result =
+        DesktopFile::ParseDesktopFile(desktop_file_path);
+    EXPECT_EQ(result->GenerateExecutableFileName(),
+              expect_executable_file_name);
+  }
+
   bool ShouldPassDesktopFileContents(const std::string& file_contents,
                                      const std::string& relative_path) {
     base::FilePath test_path =
@@ -669,6 +681,50 @@ TEST_F(DesktopFileTest, Keywords) {
           },
       },
       true);
+}
+
+TEST_F(DesktopFileTest, ExecName) {
+  ValidateExecutableFileName(
+      "[Desktop Entry]\n"
+      "Type=Application\n"
+      "Exec=myExe\n"
+      "Name=TestApplication\n",
+      "FilterTest.desktop", "myExe");
+  ValidateExecutableFileName(
+      "[Desktop Entry]\n"
+      "Type=Application\n"
+      "Exec=my/excellent/path/myExe\n"
+      "Name=TestApplication\n",
+      "FilterTest.desktop", "myExe");
+  ValidateExecutableFileName(
+      "[Desktop Entry]\n"
+      "Type=Application\n"
+      "Exec=my/excellent/path/myExe -arg1 arg\n"
+      "Name=TestApplication\n",
+      "FilterTest.desktop", "myExe");
+  ValidateExecutableFileName(
+      "[Desktop Entry]\n"
+      "Type=Application\n"
+      "Exec=my/excellent/path/e\n"
+      "Name=TestApplication\n",
+      "FilterTest.desktop", "e");
+  ValidateExecutableFileName(
+      "[Desktop Entry]\n"
+      "Type=Application\n"
+      "Exec=my/excellent/path/\n"
+      "Name=TestApplication\n",
+      "FilterTest.desktop", "path");
+  ValidateExecutableFileName(
+      "[Desktop Entry]\n"
+      "Type=Application\n"
+      "Exec=\n"
+      "Name=TestApplication\n",
+      "FilterTest.desktop", "");
+  ValidateExecutableFileName(
+      "[Desktop Entry]\n"
+      "Type=Application\n"
+      "Name=TestApplication\n",
+      "FilterTest.desktop", "");
 }
 
 }  // namespace garcon

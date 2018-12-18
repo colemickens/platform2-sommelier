@@ -45,6 +45,10 @@ class DesktopFile {
   std::vector<std::string> GenerateArgvWithFiles(
       const std::vector<std::string>& app_args) const;
 
+  // Uses GenerateArgvWithFiles to parse and return the exec name of a desktop
+  // file
+  std::string GenerateExecutableFileName() const;
+
   // Returns true if this .desktop file is one that should be sent to the host.
   // There are various rules contained in here that determine what files should
   // actually be passed along.

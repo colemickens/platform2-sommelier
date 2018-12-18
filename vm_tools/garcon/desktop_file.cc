@@ -382,6 +382,13 @@ std::vector<std::string> DesktopFile::GenerateArgvWithFiles(
   return retval;
 }
 
+std::string DesktopFile::GenerateExecutableFileName() const {
+  std::vector<std::string> ArgvWithFiles = GenerateArgvWithFiles({});
+  if (ArgvWithFiles.empty())
+    return "";
+  return base::FilePath(ArgvWithFiles.at(0)).BaseName().MaybeAsASCII();
+}
+
 bool DesktopFile::ShouldPassToHost() const {
   // Rules to follow:
   // -Only allow Applications.
