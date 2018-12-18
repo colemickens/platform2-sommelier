@@ -22,6 +22,9 @@ class CrosSystem {
   // Name of property that signals a request to clear TPM owner on next reboot.
   static constexpr char kClearTpmOwnerRequest[] = "clear_tpm_owner_request";
 
+  // Name of property that indicates if the current build is a debug build.
+  static constexpr char kDebugBuild[] = "debug_build";
+
   // Reads a system property integer into |value_out|.
   //
   // Returns true on sucess

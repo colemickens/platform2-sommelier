@@ -7,3 +7,4 @@
 constexpr char CrosSystem::kDevSwitchBoot[];
 constexpr char CrosSystem::kMainFirmwareActive[];
 constexpr char CrosSystem::kClearTpmOwnerRequest[];
+constexpr char CrosSystem::kDebugBuild[];

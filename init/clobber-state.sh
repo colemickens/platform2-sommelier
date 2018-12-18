@@ -19,103 +19,7 @@ set -x
 : [ -x /sbin/frecon ] && ${TTY=/run/frecon/vt0} || ${TTY=/dev/tty1}
 
 PRESERVED_TAR="/tmp/preserve.tar"
-LABMACHINE=".labmachine"
 STATE_PATH="/mnt/stateful_partition"
-POWERWASH_COUNT="${STATE_PATH}/unencrypted/preserve/powerwash_count"
-
-# List of files to preserve relative to /mnt/stateful_partition/
-PRESERVED_FILES=""
-PRESERVED_LIST=""
-
-preserve_files() {
-  # Preserve these files in safe mode. (Please request a privacy review before
-  # adding files.)
-  #
-  # - unencrypted/preserve/update_engine/prefs/rollback-happened: Contains a
-  #   boolean value indicating whether a rollback has happened since the last
-  #   update check where device policy was available. Needed to avoid forced
-  #   updates after rollbacks (device policy is not yet loaded at this time).
-  if [ "$SAFE_WIPE" = "safe" ]; then
-    PRESERVED_FILES="
-      unencrypted/preserve/powerwash_count
-      unencrypted/preserve/tpm_firmware_update_request
-      unencrypted/preserve/update_engine/prefs/rollback-happened
-      unencrypted/preserve/update_engine/prefs/rollback-version
-    "
-
-    # Preserve pre-installed demo mode resources for offline Demo Mode.
-    PRESERVED_FILES="
-      ${PRESERVED_FILES}
-      unencrypted/cros-components/demo_mode_resources/image.squash
-      unencrypted/cros-components/demo_mode_resources/imageloader.json
-      unencrypted/cros-components/demo_mode_resources/imageloader.sig.2
-      unencrypted/cros-components/demo_mode_resources/table
-    "
-
-    # For rollback wipes, we also preserve rollback data. This is an encrypted
-    # proto which contains install attributes, device policy and owner.key (used
-    # to keep the enrollment), also other device-level configurations e.g. shill
-    # configuration to restore network connection after rollback.
-    # We also preserve the attestation DB (needed because we don't do TPM clear
-    # in this case).
-    if [ "${ROLLBACK_WIPE}" = "rollback" ]; then
-      ROLLBACK_FILES="
-        unencrypted/preserve/attestation.epb
-        unencrypted/preserve/rollback_data
-      "
-      PRESERVED_FILES="${PRESERVED_FILES} ${ROLLBACK_FILES}"
-    fi
-
-    # Powerwash count is only preserved for "safe" powerwashes.
-    COUNT=1
-    if [ -f $POWERWASH_COUNT ]; then
-      COUNT_UNSANITIZED=$(head -1 $POWERWASH_COUNT | cut -c1-4)
-      if [ $(expr "$COUNT_UNSANITIZED" : "^[0-9][0-9]*$") -ne 0 ]; then
-        COUNT=$(( COUNT_UNSANITIZED + 1 ))
-      fi
-    fi
-    echo $COUNT > $POWERWASH_COUNT
-  fi
-
-  # For a factory wipe (and only factory) preserve seed for CRX cache.
-  if [ "$FACTORY_WIPE" = "factory" ]; then
-    IMPORT_FILES="$(cd ${STATE_PATH};
-                    echo unencrypted/import_extensions/extensions/*.crx)"
-    if [ "$IMPORT_FILES" != \
-         "unencrypted/import_extensions/extensions/*.crx" ]; then
-      PRESERVED_FILES="${PRESERVED_FILES} ${IMPORT_FILES}"
-    fi
-  fi
-
-  # Test images in the lab enable certain extra behaviors if the
-  # .labmachine flag file is present.  Those behaviors include some
-  # important recovery behaviors (cf. the recover_duts upstart job).
-  # We need those behaviors to survive across power wash, otherwise,
-  # the current boot could wind up as a black hole.
-  if [ -f "${STATE_PATH}/${LABMACHINE}" ] &&
-      crossystem 'debug_build?1'; then
-    PRESERVED_FILES="${PRESERVED_FILES} ${LABMACHINE}"
-  fi
-
-  if [ -n "$PRESERVED_FILES" ]; then
-    # We want to preserve permissions and recreate the directory structure
-    # for all of the files in the PRESERVED_FILES variable. In order to do
-    # so we run tar --no-recursion and specify the names of each of the
-    # parent directories. For example for home/.shadow/install_attributes.pb
-    # we pass to tar home home/.shadow home/.shadow/install_attributes.pb
-    for file in $PRESERVED_FILES; do
-      if [ ! -e "$STATE_PATH/$file" ]; then
-        continue
-      fi
-      path=$file
-      while [ "$path" != '.' ]; do
-        PRESERVED_LIST="$path $PRESERVED_LIST"
-        path=$(dirname $path)
-      done
-    done
-    tar cf $PRESERVED_TAR -C $STATE_PATH --no-recursion -- $PRESERVED_LIST
-  fi
-}
 
 wait_for_tty() {
   local device="$1"
@@ -457,7 +361,7 @@ create_stateful_file_system() {
 
 restore_preserved_files() {
   # If there were preserved files, restore them.
-  if [ -n "${PRESERVED_LIST}" ]; then
+  if [ -e $PRESERVED_TAR ]; then
     tar xfp ${PRESERVED_TAR} -C ${STATE_PATH}
     touch /mnt/stateful_partition/unencrypted/.powerwash_completed
   fi
@@ -481,7 +385,6 @@ remove_vpd_keys() {
 }
 
 main() {
-  preserve_files
   detect_system_config
 
   # Preserve the log file

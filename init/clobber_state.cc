@@ -4,13 +4,19 @@
 
 #include "init/clobber_state.h"
 
+#include <errno.h>
+#include <limits.h>
+#include <stdint.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 #include <string>
 #include <vector>
 
+#include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/time/time.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <brillo/process.h>
@@ -19,14 +25,30 @@
 
 namespace {
 
+constexpr char kStatefulPath[] = "/mnt/stateful_partition";
+constexpr char kPowerWashCountPath[] = "unencrypted/preserve/powerwash_count";
 constexpr char kClobberLogPath[] = "/tmp/clobber-state.log";
 constexpr char kClobberStateShellLogPath[] = "/tmp/clobber-state-shell.log";
-constexpr char kStatefulPath[] = "/mnt/stateful_partition";
 constexpr char kBioWashPath[] = "/usr/bin/bio_wash";
+constexpr char kPreservedFilesTarPath[] = "/tmp/preserve.tar";
+
+// Attempts to parse |str| as an int in base 10 and store its value in |value|.
+// Returns true if and only if str consists of exclusively digits and fits
+// within the precision of an int (negative values not permitted).
+bool NumericStringToInt(const std::string& str, int* value) {
+  if (str.find_first_not_of("0123456789") != std::string::npos)
+    return false;
+
+  errno = 0;
+  int64_t result = strtol(str.c_str(), nullptr, 10);
+  if (errno != 0 || result > INT_MAX || result < INT_MIN)
+    return false;
+  *value = static_cast<int>(result);
+  return true;
+}
 
 }  // namespace
 
-// Process the command line arguments.
 // static
 ClobberState::Arguments ClobberState::ParseArgv(int argc,
                                                 char const* const argv[]) {
@@ -58,8 +80,152 @@ ClobberState::Arguments ClobberState::ParseArgv(int argc,
   return args;
 }
 
+// static
+bool ClobberState::IncrementFileCounter(const base::FilePath& path) {
+  std::string contents;
+  if (!base::ReadFileToString(path, &contents)) {
+    return 1 == base::WriteFile(path, "1", 1);
+  }
+
+  int value;
+  if (NumericStringToInt(contents, &value)) {
+    std::string new_value = std::to_string(value + 1);
+    return new_value.size() ==
+           base::WriteFile(path, new_value.c_str(), new_value.size());
+  } else {
+    return 1 == base::WriteFile(path, "1", 1);
+  }
+}
+
+// static
+int ClobberState::PreserveFiles(
+    const base::FilePath& preserved_files_root,
+    const std::vector<base::FilePath>& preserved_files,
+    const base::FilePath& tar_file_path) {
+  // Remove any stale tar files from previous clobber-state runs.
+  base::DeleteFile(tar_file_path, /*recursive=*/false);
+
+  // We don't want to create an empty tar file.
+  if (preserved_files.size() == 0)
+    return 0;
+
+  // We want to preserve permissions and recreate the directory structure
+  // for all of the files in |preserved_files|. In order to do so we run tar
+  // --no-recursion and specify the names of each of the parent directories.
+  // For example for home/.shadow/install_attributes.pb
+  // we pass to tar home, home/.shadow, home/.shadow/install_attributes.pb.
+  std::vector<std::string> paths_to_tar;
+  for (const base::FilePath& path : preserved_files) {
+    // All paths should be relative to |preserved_files_root|.
+    if (path.IsAbsolute()) {
+      LOG(WARNING) << "Non-relative path " << path.value()
+                   << " passed to PreserveFiles, ignoring.";
+      continue;
+    }
+    if (!base::PathExists(preserved_files_root.Append(path)))
+      continue;
+    base::FilePath current = path;
+    while (current != base::FilePath(base::FilePath::kCurrentDirectory)) {
+      // List of paths is built in an order that is reversed from what we want
+      // (parent directories first), but will then be passed to tar in reverse
+      // order.
+      //
+      // e.g. for home/.shadow/install_attributes.pb, |paths_to_tar| will have
+      // home/.shadow/install_attributes.pb, then home/.shadow, then home.
+      paths_to_tar.push_back(current.value());
+      current = current.DirName();
+    }
+  }
+
+  brillo::ProcessImpl tar;
+  tar.AddArg("/bin/tar");
+  tar.AddArg("-cf");
+  tar.AddArg(tar_file_path.value());
+  tar.AddArg("-C");
+  tar.AddArg(preserved_files_root.value());
+  tar.AddArg("--no-recursion");
+  tar.AddArg("--");
+
+  // Add paths in reverse order because we built up the list of paths backwards.
+  for (auto it = paths_to_tar.rbegin(); it != paths_to_tar.rend(); ++it) {
+    tar.AddArg(*it);
+  }
+  return tar.Run();
+}
+
 ClobberState::ClobberState(const Arguments& args, CrosSystem* cros_system)
     : args_(args), cros_system_(cros_system), stateful_(kStatefulPath) {}
+
+std::vector<base::FilePath> ClobberState::GetPreservedFilesList() {
+  std::vector<std::string> stateful_paths;
+  // Preserve these files in safe mode. (Please request a privacy review before
+  // adding files.)
+  //
+  // - unencrypted/preserve/update_engine/prefs/rollback-happened: Contains a
+  //   boolean value indicating whether a rollback has happened since the last
+  //   update check where device policy was available. Needed to avoid forced
+  //   updates after rollbacks (device policy is not yet loaded at this time).
+  if (args_.safe_wipe) {
+    stateful_paths.push_back(kPowerWashCountPath);
+    stateful_paths.push_back(
+        "unencrypted/preserve/tpm_firmware_update_request");
+    stateful_paths.push_back(
+        "unencrypted/preserve/update_engine/prefs/rollback-happened");
+    stateful_paths.push_back(
+        "unencrypted/preserve/update_engine/prefs/rollback-version");
+
+    // Preserve pre-installed demo mode resources for offline Demo Mode.
+    stateful_paths.push_back(
+        "unencrypted/cros-components/demo_mode_resources/image.squash");
+    stateful_paths.push_back(
+        "unencrypted/cros-components/demo_mode_resources/imageloader.json");
+    stateful_paths.push_back(
+        "unencrypted/cros-components/demo_mode_resources/imageloader.sig.2");
+    stateful_paths.push_back(
+        "unencrypted/cros-components/demo_mode_resources/table");
+
+    // For rollback wipes, we also preserve rollback data. This is an encrypted
+    // proto which contains install attributes, device policy and owner.key
+    // (used to keep the enrollment), also other device-level configurations
+    // e.g. shill configuration to restore network connection after rollback.
+    // We also preserve the attestation DB (needed because we don't do TPM clear
+    // in this case).
+    if (args_.rollback_wipe) {
+      stateful_paths.push_back("unencrypted/preserve/attestation.epb");
+      stateful_paths.push_back("unencrypted/preserve/rollback_data");
+    }
+  }
+
+  // Test images in the lab enable certain extra behaviors if the
+  // .labmachine flag file is present.  Those behaviors include some
+  // important recovery behaviors (cf. the recover_duts upstart job).
+  // We need those behaviors to survive across power wash, otherwise,
+  // the current boot could wind up as a black hole.
+  int debug_build;
+  if (cros_system_->GetInt(CrosSystem::kDebugBuild, &debug_build) &&
+      debug_build == 1) {
+    stateful_paths.push_back(".labmachine");
+  }
+
+  std::vector<base::FilePath> preserved_files;
+  for (const std::string& path : stateful_paths) {
+    preserved_files.push_back(base::FilePath(path));
+  }
+
+  if (args_.factory_wipe) {
+    base::FileEnumerator enumerator(
+        stateful_.Append("unencrypted/import_extensions/extensions"), false,
+        base::FileEnumerator::FileType::FILES, "*.crx");
+    for (base::FilePath name = enumerator.Next(); !name.empty();
+         name = enumerator.Next()) {
+      preserved_files.push_back(
+          base::FilePath("unencrypted/import_extensions/extensions")
+              .Append(name.BaseName()));
+    }
+  }
+
+  return preserved_files;
+}
 
 int ClobberState::Run() {
   DCHECK(cros_system_);
@@ -87,8 +253,23 @@ int ClobberState::Run() {
     LOG(ERROR) << "Clearing biometric sensor internal entropy failed";
   }
 
+  if (args_.safe_wipe) {
+    IncrementFileCounter(stateful_.Append(kPowerWashCountPath));
+  }
+
+  std::vector<base::FilePath> preserved_files = GetPreservedFilesList();
+  for (const base::FilePath& fp : preserved_files) {
+    LOG(INFO) << "Preserving file: " << fp.value();
+  }
+
+  int ret = PreserveFiles(stateful_, preserved_files,
+                          base::FilePath(kPreservedFilesTarPath));
+  if (ret) {
+    LOG(ERROR) << "Preserving files failed with code " << ret;
+  }
+
   LOG(INFO) << "Starting clobber-state.sh";
-  int ret = RunClobberStateShell();
+  ret = RunClobberStateShell();
   if (ret)
     LOG(ERROR) << "clobber-state.sh returned with code " << ret;
 
@@ -143,6 +324,10 @@ bool ClobberState::MarkDeveloperMode() {
   return true;
 }
 
+void ClobberState::SetArgsForTest(const ClobberState::Arguments& args) {
+  args_ = args;
+}
+
 void ClobberState::SetStatefulForTest(base::FilePath stateful_path) {
   stateful_ = stateful_path;
 }
@@ -163,24 +348,18 @@ int ClobberState::RunClobberStateShell() {
   proc.AddArg("/sbin/clobber-state.sh");
   // Arguments are passed via command line as well so that they can be logged
   // in clobber-state.sh.
-  if (args_.factory_wipe)
-    proc.AddArg("factory");
   if (args_.fast_wipe)
     proc.AddArg("fast");
   if (args_.keepimg)
     proc.AddArg("keepimg");
   if (args_.safe_wipe)
     proc.AddArg("safe");
-  if (args_.rollback_wipe)
-    proc.AddArg("rollback");
 
   // The last argument is 1 to indicate that if the variable already exists in
   // the environment, it will be overwritten.
-  setenv("FACTORY_WIPE", args_.factory_wipe ? "factory" : "", 1);
   setenv("FAST_WIPE", args_.fast_wipe ? "fast" : "", 1);
   setenv("KEEPIMG", args_.keepimg ? "keepimg" : "", 1);
   setenv("SAFE_WIPE", args_.safe_wipe ? "safe" : "", 1);
-  setenv("ROLLBACK_WIPE", args_.rollback_wipe ? "rollback" : "", 1);
 
   proc.RedirectOutput(kClobberStateShellLogPath);
   return proc.Run();

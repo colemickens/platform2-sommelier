@@ -5,6 +5,9 @@
 #ifndef INIT_CLOBBER_STATE_H_
 #define INIT_CLOBBER_STATE_H_
 
+#include <string>
+#include <vector>
+
 #include <base/files/file_path.h>
 
 #include "init/crossystem.h"
@@ -24,13 +27,30 @@ class ClobberState {
     bool rollback_wipe = false;
   };
 
+  // Extracts ClobberState's arguments from argv.
   static Arguments ParseArgv(int argc, char const* const argv[]);
+
+  // Attempts to increment the contents of |path| by 1. If the contents cannot
+  // be read, or if the contents are not an integer, writes '1' to the file.
+  static bool IncrementFileCounter(const base::FilePath& path);
+
+  // Given a list of files to preserve (relative to |preserved_files_root|),
+  // creates a tar file containing those files at |tar_file_path|.
+  // The directory structure of the preserved files is preserved.
+  static int PreserveFiles(const base::FilePath& preserved_files_root,
+                           const std::vector<base::FilePath>& preserved_files,
+                           const base::FilePath& tar_file_path);
 
   // Ownership of |cros_system| is retained by the caller.
   ClobberState(const Arguments& args, CrosSystem* cros_system);
   int Run();
   bool MarkDeveloperMode();
 
+  // Returns vector of files to be preserved. All FilePaths are relative to
+  // stateful_.
+  std::vector<base::FilePath> GetPreservedFilesList();
+
+  void SetArgsForTest(const Arguments& args);
   void SetStatefulForTest(base::FilePath stateful_path);
 
  private:
