@@ -15,8 +15,8 @@ published to chromium.org once the feature is complete and launched.
 
 See [CrosConfig](./libcros_config/cros_config.h) for the class to use to access
 configuration strings on a target. See
-[cros_config_host.py](./cros_config_host.py) for access to the config on a host
-or during a build.
+[cros_config_host.py](./cros_config_host/cros_config_host.py) for access to the
+config on a host or during a build.
 
 ## CLI Usage
 
