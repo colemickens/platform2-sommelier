@@ -940,13 +940,13 @@ std::unique_ptr<dbus::Response> Service::UnsharePath(
 
   // Validate path.
   base::FilePath path(request.path());
-  if (path.IsAbsolute() || path.ReferencesParent() ||
+  if (path.empty() || path.IsAbsolute() || path.ReferencesParent() ||
       path.BaseName().value() == ".") {
-    LOG(ERROR) << "Requested path references parent, is absolute, or ends "
-               << "with ./";
+    LOG(ERROR) << "Requested path is empty, references parent, is absolute, or "
+                  "ends with ./";
     response.set_failure_reason(
-        "Path must be relative and cannot reference parent components nor end "
-        "with \".\"");
+        "Path must be non-empty, relative, cannot reference parent components, "
+        "nor end with \".\"");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -961,6 +961,20 @@ std::unique_ptr<dbus::Response> Service::UnsharePath(
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
+
+  // After unmounting, clean up empty directories.  Assume at first that we can
+  // delete the topmost directory under server_root, but validate / modify this
+  // path to ensure it does not contain any other mount points.  E.g. if
+  // dst=<server_root>/MyFiles/a/b1/c/d, then assume we can delete
+  // <server_root>/MyFiles, but if another mount exists at or under
+  // <server_root>/MyFiles/a/b2, then we only delete from
+  // <server_root>/MyFiles/a/b1.
+  base::FilePath path_to_delete = server_root;
+  std::vector<std::string> server_root_components;
+  server_root.GetComponents(&server_root_components);
+  size_t path_to_delete_depth = server_root_components.size();
+  std::vector<std::string> dst_components;
+  dst.GetComponents(&dst_components);
 
   // Ensure path is listed in /proc/self/mounts and has no parents within
   // server_root.
@@ -980,14 +994,37 @@ std::unique_ptr<dbus::Response> Service::UnsharePath(
   while (getmntent_r(mountinfo.get(), &entry, buf, sizeof(buf)) != nullptr) {
     base::FilePath mount_point(entry.mnt_dir);
     if (mount_point == dst) {
+      // Mount is dst.  This is expected/required that one entry will match.
       path_is_mount = true;
       mount_points.emplace_back(mount_point);
     } else if (dst.IsParent(mount_point)) {
+      // Mount is a child of dst.  This is OK, we will unmount it before
+      // unmounting dst.
       mount_points.emplace_back(mount_point);
     } else if (server_root.IsParent(mount_point) && mount_point.IsParent(dst)) {
+      // Mount is a parent of dst.  This is an error condition and we will soon
+      // fail.
       path_has_parent_mount = true;
+    } else {
+      // Modify path_to_delete if required so it does not contain mount_point.
+      std::vector<std::string> mount_point_components;
+      mount_point.GetComponents(&mount_point_components);
+      for (size_t i = 0;
+           i < dst_components.size() - 1 && i < mount_point_components.size() &&
+           dst_components[i] == mount_point_components[i];
+           ++i) {
+        if (i == path_to_delete_depth) {
+          path_to_delete =
+              path_to_delete.Append(dst_components[path_to_delete_depth++]);
+        }
+      }
     }
   }
+  // Set path_to_delete to have 1 more component past server_root or any path
+  // common with another mount.
+  path_to_delete =
+      path_to_delete.Append(dst_components[path_to_delete_depth++]);
+
   if (!path_is_mount) {
     LOG(ERROR) << "Path is not a mount point";
     response.set_failure_reason("Path is not a mount point");
@@ -1011,10 +1048,12 @@ std::unique_ptr<dbus::Response> Service::UnsharePath(
       return dbus_response;
     }
   }
-  // Remove path.  Recursive is required to delete any children mount dirs that
-  // were created prior to this path being mounted.  Recursive delete is safe
-  // since all mounts at this path and with any children have been unmounted.
-  if (!base::DeleteFile(dst, true)) {
+
+  // Remove path_to_delete.  Recursive is required to delete any children mount
+  // dirs that were created prior to this path being mounted, and any empty
+  // directories that were created for this mount.  Recursive delete is safe
+  // since no mounts exist under this directory.
+  if (!base::DeleteFile(path_to_delete, true)) {
     LOG(ERROR) << "Delete path failed";
     response.set_failure_reason("Delete path failed");
     writer.AppendProtoAsArrayOfBytes(response);
