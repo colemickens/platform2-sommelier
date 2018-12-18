@@ -12,6 +12,8 @@
 
 #include <hardware/camera3.h>
 
+#include <base/optional.h>
+
 #include "hal_adapter/camera_hal_adapter.h"
 
 namespace cros {
@@ -25,23 +27,19 @@ class CameraHalTestAdapter : public CameraHalAdapter {
 
   ~CameraHalTestAdapter() override {}
 
-  void StartOnThread(base::Callback<void(bool)> callback) override;
+  int32_t OpenDevice(
+      int32_t camera_id,
+      mojom::Camera3DeviceOpsRequest device_ops_request) override;
 
   int32_t GetNumberOfCameras() override;
 
- private:
-  bool enable_front_, enable_back_, enable_external_;
+  int32_t GetCameraInfo(int32_t camera_id,
+                        mojom::CameraInfoPtr* camera_info) override;
 
-  // Id of enabled cameras assigned by SuperHAL. |CameraHalTestAdapter| will
-  // reassign new id exposed to framework based on its index in this vector.
-  std::vector<int> enable_camera_ids_;
+  int32_t SetTorchMode(int32_t camera_id, bool enabled) override;
 
-  int GetRemappedExternalCameraId(int external_camera_id);
-
-  int GetUnRemappedExternalCameraId(int external_camera_id);
-
-  std::pair<camera_module_t*, int> GetInternalModuleAndId(
-      int camera_id) override;
+ protected:
+  void StartOnThread(base::Callback<void(bool)> callback) override;
 
   void NotifyCameraDeviceStatusChange(CameraModuleCallbacksDelegate* delegate,
                                       int camera_id,
@@ -50,6 +48,17 @@ class CameraHalTestAdapter : public CameraHalAdapter {
   void NotifyTorchModeStatusChange(CameraModuleCallbacksDelegate* delegate,
                                    int camera_id,
                                    torch_mode_status_t status) override;
+
+ private:
+  bool enable_front_, enable_back_, enable_external_;
+
+  // Id of enabled cameras assigned by SuperHAL. |CameraHalTestAdapter| will
+  // reassign new id exposed to framework based on its index in this vector.
+  std::vector<int> enable_camera_ids_;
+
+  base::Optional<int32_t> GetRemappedCameraId(int camera_id);
+
+  base::Optional<int32_t> GetUnRemappedCameraId(int camera_id);
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(CameraHalTestAdapter);
 };

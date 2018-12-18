@@ -57,16 +57,17 @@ class CameraHalAdapter : public vendor_tag_ops_t {
   // Callback interface for CameraModuleDelegate.
   // These methods are callbacks for |module_delegate_| and are executed on
   // the mojo IPC handler thread in |module_delegate_|.
-  int32_t OpenDevice(int32_t camera_id,
-                     mojom::Camera3DeviceOpsRequest device_ops_request);
+  virtual int32_t OpenDevice(int32_t camera_id,
+                             mojom::Camera3DeviceOpsRequest device_ops_request);
 
   virtual int32_t GetNumberOfCameras();
 
-  int32_t GetCameraInfo(int32_t camera_id, mojom::CameraInfoPtr* camera_info);
+  virtual int32_t GetCameraInfo(int32_t camera_id,
+                                mojom::CameraInfoPtr* camera_info);
 
   int32_t SetCallbacks(mojom::CameraModuleCallbacksPtr callbacks);
 
-  int32_t SetTorchMode(int32_t camera_id, bool enabled);
+  virtual int32_t SetTorchMode(int32_t camera_id, bool enabled);
 
   int32_t Init();
 
@@ -79,14 +80,13 @@ class CameraHalAdapter : public vendor_tag_ops_t {
       int32_t camera_id);
 
  protected:
+  // Convert the unified external |camera_id| into the corresponding camera
+  // module and its internal id. Returns (nullptr, 0) if not found.
+  std::pair<camera_module_t*, int> GetInternalModuleAndId(int camera_id);
+
   // Initialize all underlying camera HALs on |camera_module_thread_| and
   // build the mapping table for camera id.
   virtual void StartOnThread(base::Callback<void(bool)> callback);
-
-  // Convert the unified external |camera_id| into the corresponding camera
-  // module and its internal id. Returns (nullptr, 0) if not found.
-  virtual std::pair<camera_module_t*, int> GetInternalModuleAndId(
-      int camera_id);
 
   virtual void NotifyCameraDeviceStatusChange(
       CameraModuleCallbacksDelegate* delegate,
