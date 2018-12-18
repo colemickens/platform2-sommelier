@@ -16,11 +16,11 @@
 
 #include "bluetooth/common/bluetooth_daemon.h"
 #include "bluetooth/common/exported_object_manager_wrapper.h"
+#include "bluetooth/common/util.h"
 #include "bluetooth/newblued/adapter_interface_handler.h"
 #include "bluetooth/newblued/agent_manager_interface_handler.h"
 #include "bluetooth/newblued/newblue.h"
 #include "bluetooth/newblued/stack_sync_monitor.h"
-#include "bluetooth/newblued/util.h"
 
 namespace bluetooth {
 

@@ -19,8 +19,8 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "bluetooth/common/dbus_daemon.h"
+#include "bluetooth/common/util.h"
 #include "bluetooth/newblued/libnewblue.h"
-#include "bluetooth/newblued/util.h"
 
 namespace bluetooth {
 

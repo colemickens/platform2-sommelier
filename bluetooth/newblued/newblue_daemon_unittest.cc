@@ -20,9 +20,9 @@
 #include <dbus/object_manager.h>
 #include <gtest/gtest.h>
 
+#include "bluetooth/common/util.h"
 #include "bluetooth/newblued/mock_libnewblue.h"
 #include "bluetooth/newblued/mock_newblue.h"
-#include "bluetooth/newblued/util.h"
 
 using ::testing::_;
 using ::testing::AnyNumber;

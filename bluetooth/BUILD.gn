@@ -39,6 +39,7 @@ static_library("libcommon") {
     "common/dbus_daemon.cc",
     "common/exported_object_manager_wrapper.cc",
     "common/property.cc",
+    "common/util.cc",
   ]
 }
 
@@ -68,7 +69,6 @@ static_library("libnewblued") {
     "newblued/newblue.cc",
     "newblued/newblue_daemon.cc",
     "newblued/stack_sync_monitor.cc",
-    "newblued/util.cc",
     "newblued/uuid.cc",
   ]
 }

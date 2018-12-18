@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BLUETOOTH_NEWBLUED_UTIL_H_
-#define BLUETOOTH_NEWBLUED_UTIL_H_
+#ifndef BLUETOOTH_COMMON_UTIL_H_
+#define BLUETOOTH_COMMON_UTIL_H_
 
 #include <stdint.h>
 
@@ -52,4 +52,4 @@ void OnInterfaceExported(std::string object_path,
 
 }  // namespace bluetooth
 
-#endif  // BLUETOOTH_NEWBLUED_UTIL_H_
+#endif  // BLUETOOTH_COMMON_UTIL_H_

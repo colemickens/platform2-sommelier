@@ -17,9 +17,9 @@
 #include <base/memory/weak_ptr.h>
 #include <base/single_thread_task_runner.h>
 
+#include "bluetooth/common/util.h"
 #include "bluetooth/newblued/libnewblue.h"
 #include "bluetooth/newblued/property.h"
-#include "bluetooth/newblued/util.h"
 #include "bluetooth/newblued/uuid.h"
 
 namespace bluetooth {
