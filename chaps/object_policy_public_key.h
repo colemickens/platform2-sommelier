@@ -14,6 +14,7 @@ class ObjectPolicyPublicKey : public ObjectPolicyKey {
  public:
   ObjectPolicyPublicKey();
   ~ObjectPolicyPublicKey() override;
+  bool IsObjectComplete() override;
   void SetDefaultAttributes() override;
 };
 

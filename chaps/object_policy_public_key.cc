@@ -4,6 +4,7 @@
 
 #include "chaps/object_policy_public_key.h"
 
+#include <base/logging.h>
 #include <base/macros.h>
 
 namespace chaps {
@@ -19,8 +20,8 @@ static const AttributePolicy kPublicKeyPolicies[] = {
   {CKA_TRUSTED, false, {true, true, true}, false},
   {CKA_WRAP_TEMPLATE, false, {false, false, true}, false},
   // RSA-specific attributes.
-  {CKA_MODULUS, false, {false, false, true}, true},
-  {CKA_PUBLIC_EXPONENT, false, {false, false, true}, true},
+  {CKA_MODULUS, false, {false, false, true}, false},
+  {CKA_PUBLIC_EXPONENT, false, {false, false, true}, false},
 };
 
 ObjectPolicyPublicKey::ObjectPolicyPublicKey() {
@@ -29,6 +30,25 @@ ObjectPolicyPublicKey::ObjectPolicyPublicKey() {
 
 ObjectPolicyPublicKey::~ObjectPolicyPublicKey() {}
 
+bool ObjectPolicyPublicKey::IsObjectComplete() {
+  if (!ObjectPolicyCommon::IsObjectComplete())
+    return false;
+
+  // TODO(crbug/916955): create classes that inherit this class instead of
+  // putting the key specific checking here.
+  auto key_type = object_->GetAttributeInt(CKA_KEY_TYPE, -1);
+  if (key_type == CKK_RSA) {
+    if (!object_->IsAttributePresent(CKA_MODULUS) ||
+        !object_->IsAttributePresent(CKA_PUBLIC_EXPONENT)) {
+      LOG(ERROR) << "RSA Public key attributes are required.";
+      return false;
+    }
+  } else {
+    LOG(ERROR) << "Unknown CKA_KEY_TYPE for public key";
+    return false;
+  }
+  return true;
+}
 void ObjectPolicyPublicKey::SetDefaultAttributes() {
   ObjectPolicyKey::SetDefaultAttributes();
   CK_ATTRIBUTE_TYPE false_values[] = {

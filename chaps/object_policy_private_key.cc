@@ -25,8 +25,8 @@ static const AttributePolicy kPrivateKeyPolicies[] = {
   {CKA_UNWRAP_TEMPLATE, false, {false, false, true}, false},
   {CKA_ALWAYS_AUTHENTICATE, false, {false, false, true}, false},
   // RSA-specific attributes.
-  {CKA_MODULUS, false, {false, false, true}, true},
-  {CKA_PUBLIC_EXPONENT, false, {false, false, true}, true},
+  {CKA_MODULUS, false, {false, false, true}, false},
+  {CKA_PUBLIC_EXPONENT, false, {false, false, true}, false},
   {CKA_PRIVATE_EXPONENT, true, {false, false, true}, false},
   {CKA_PRIME_1, true, {false, false, true}, false},
   {CKA_PRIME_2, true, {false, false, true}, false},
@@ -46,10 +46,22 @@ ObjectPolicyPrivateKey::~ObjectPolicyPrivateKey() {}
 bool ObjectPolicyPrivateKey::IsObjectComplete() {
   if (!ObjectPolicyCommon::IsObjectComplete())
     return false;
-  // Either a private exponent or a TPM key blob must exist.
-  if (!object_->IsAttributePresent(CKA_PRIVATE_EXPONENT) &&
-      !object_->IsAttributePresent(kKeyBlobAttribute)) {
-    LOG(ERROR) << "Private key attributes are required.";
+
+  auto key_type = object_->GetAttributeInt(CKA_KEY_TYPE, -1);
+  if (key_type == CKK_RSA) {
+    if (!object_->IsAttributePresent(CKA_MODULUS) ||
+        !object_->IsAttributePresent(CKA_PUBLIC_EXPONENT)) {
+      LOG(ERROR) << "RSA Private key attributes are required.";
+      return false;
+    }
+    // Either a private exponent or a TPM key blob must exist.
+    if (!object_->IsAttributePresent(CKA_PRIVATE_EXPONENT) &&
+        !object_->IsAttributePresent(kKeyBlobAttribute)) {
+      LOG(ERROR) << "RSA Private key attributes are required.";
+      return false;
+    }
+  } else {
+    LOG(ERROR) << "Unknown CKA_KEY_TYPE for private key";
     return false;
   }
   return true;
