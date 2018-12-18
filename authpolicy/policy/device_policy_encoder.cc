@@ -236,7 +236,8 @@ void DevicePolicyEncoder::EncodeNetworkPolicies(
   });
 
   EncodeBoolean(key::kDeviceWiFiFastTransitionEnabled, [policy](bool value) {
-    policy->mutable_device_wifi_fast_transition_enabled()->set_enabled(value);
+    policy->mutable_device_wifi_fast_transition_enabled()
+        ->set_device_wifi_fast_transition_enabled(value);
   });
 
   EncodeString(key::kDeviceOpenNetworkConfiguration,
@@ -391,10 +392,6 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
                  policy->mutable_login_screen_power_management()
                      ->set_login_screen_power_management(value);
                });
-
-  EncodeBoolean(key::kDeviceBlockDevmode, [policy](bool value) {
-    policy->mutable_system_settings()->set_block_devmode(value);
-  });
 
   EncodeInteger(key::kDisplayRotationDefault, [policy](int value) {
     policy->mutable_display_rotation_default()->set_display_rotation_default(
@@ -575,6 +572,15 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
     policy->mutable_device_machine_password_change_rate()->set_rate_days(value);
   });
 
+  EncodeInteger(key::kDeviceGpoCacheLifetime, [policy](int value) {
+    policy->mutable_device_gpo_cache_lifetime()->set_lifetime_hours(value);
+  });
+
+  EncodeInteger(key::kDeviceAuthDataCacheLifetime, [policy](int value) {
+    policy->mutable_device_auth_data_cache_lifetime()->set_lifetime_hours(
+        value);
+  });
+
   EncodeInteger(key::kDeviceSamlLoginAuthenticationType, [policy](int value) {
     policy->mutable_saml_login_authentication_type()
         ->set_saml_login_authentication_type(
@@ -584,6 +590,10 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
   EncodeBoolean(key::kDeviceUnaffiliatedCrostiniAllowed, [policy](bool value) {
     policy->mutable_device_unaffiliated_crostini_allowed()
         ->set_device_unaffiliated_crostini_allowed(value);
+  });
+
+  EncodeBoolean(key::kPluginVmAllowed, [policy](bool value) {
+    policy->mutable_plugin_vm_allowed()->set_plugin_vm_allowed(value);
   });
 }
 

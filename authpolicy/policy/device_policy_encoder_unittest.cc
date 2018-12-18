@@ -139,7 +139,8 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EXPECT_EQ(kBool, policy.data_roaming_enabled().data_roaming_enabled());
 
   EncodeBoolean(&policy, key::kDeviceWiFiFastTransitionEnabled, kBool);
-  EXPECT_EQ(kBool, policy.device_wifi_fast_transition_enabled().enabled());
+  EXPECT_EQ(kBool, policy.device_wifi_fast_transition_enabled()
+                       .device_wifi_fast_transition_enabled());
 
   EncodeString(&policy, key::kDeviceOpenNetworkConfiguration, kString);
   EXPECT_EQ(kString,
@@ -277,9 +278,6 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
       kString,
       policy.login_screen_power_management().login_screen_power_management());
 
-  EncodeBoolean(&policy, key::kDeviceBlockDevmode, kBool);
-  EXPECT_EQ(kBool, policy.system_settings().block_devmode());
-
   // The encoder of this policy converts ints to Rotation enums.
   EncodeInteger(&policy, key::kDisplayRotationDefault,
                 em::DisplayRotationDefaultProto::ROTATE_180);
@@ -390,6 +388,9 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EXPECT_EQ(kBool,
             policy.unaffiliated_arc_allowed().unaffiliated_arc_allowed());
 
+  EncodeBoolean(&policy, key::kPluginVmAllowed, kBool);
+  EXPECT_EQ(kBool, policy.plugin_vm_allowed().plugin_vm_allowed());
+
   // The encoder of this policy converts ints to
   // DeviceUserPolicyLoopbackProcessingModeProto::Mode enums.
   EncodeInteger(
@@ -413,6 +414,12 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
 
   EncodeInteger(&policy, key::kDeviceMachinePasswordChangeRate, kInt);
   EXPECT_EQ(kInt, policy.device_machine_password_change_rate().rate_days());
+
+  EncodeInteger(&policy, key::kDeviceGpoCacheLifetime, kInt);
+  EXPECT_EQ(kInt, policy.device_gpo_cache_lifetime().lifetime_hours());
+
+  EncodeInteger(&policy, key::kDeviceAuthDataCacheLifetime, kInt);
+  EXPECT_EQ(kInt, policy.device_auth_data_cache_lifetime().lifetime_hours());
 
   // The encoder of this policy converts ints to
   // SamlLoginAuthenticationTypeProto::Type enums.
