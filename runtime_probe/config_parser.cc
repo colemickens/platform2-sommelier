@@ -11,6 +11,7 @@
 using base::DictionaryValue;
 
 namespace runtime_probe {
+
 std::unique_ptr<DictionaryValue> ParseProbeConfig(
     const std::string& config_file_path) {
   std::string config_json;

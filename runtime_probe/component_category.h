@@ -1,0 +1,43 @@
+/* Copyright 2018 The Chromium OS Authors. All rights reserved.
+ * Use of this source code is governed by a BSD-style license that can be
+ * found in the LICENSE file.
+ */
+
+#ifndef RUNTIME_PROBE_COMPONENT_CATEGORY_H_
+#define RUNTIME_PROBE_COMPONENT_CATEGORY_H_
+
+#include <map>
+#include <memory>
+#include <string>
+
+#include <base/values.h>
+
+#include "runtime_probe/probe_statement.h"
+
+namespace runtime_probe {
+
+class ComponentCategory {
+  /* A component category is defined in following format:
+   *
+   * {
+   *   <component_name:string>: <statement:ProbeStatement>,
+   *   ...
+   * }
+   *
+   */
+ public:
+  static std::unique_ptr<ComponentCategory> FromDictionaryValue(
+      const std::string& category_name,
+      const base::DictionaryValue& dict_value);
+
+  /* Evaluates this category. */
+  std::unique_ptr<base::ListValue> Eval() const;
+
+ private:
+  std::string category_name_;
+  std::map<std::string, std::unique_ptr<ProbeStatement>> component_;
+};
+
+}  // namespace runtime_probe
+
+#endif  // RUNTIME_PROBE_COMPONENT_CATEGORY_H_

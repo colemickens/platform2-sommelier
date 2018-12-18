@@ -33,13 +33,16 @@ static_library("libruntime_probe") {
     ":target_defaults",
   ]
   sources = [
+    "component_category.cc",
     "config_parser.cc",
     "daemon.cc",
     "functions/all_functions.cc",
     "functions/sequence.cc",
     "functions/sysfs.cc",
+    "probe_config.cc",
     "probe_function.cc",
     "probe_function_argument.cc",
+    "probe_statement.cc",
   ]
 }
 

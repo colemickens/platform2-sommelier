@@ -2,6 +2,7 @@
  * Use of this source code is governed by a BSD-style license that can be
  * found in the LICENSE file.
  */
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/process/launch.h>
 #include <base/values.h>
@@ -10,6 +11,7 @@
 
 #include "runtime_probe/config_parser.h"
 #include "runtime_probe/daemon.h"
+#include "runtime_probe/probe_config.h"
 
 namespace {
 enum ExitStatus {
@@ -17,6 +19,7 @@ enum ExitStatus {
   kUnknownError = 1,
   kNeedConfigFilePath = 10,
   kFailToParseConfigFile = 11,
+  kFailToParseProbeArgFromConfig = 12,
 };
 }  // namespace
 
@@ -77,7 +80,7 @@ int main(int argc, char* argv[]) {
   LOG(INFO) << "Running in CLI mode";
 
   if (FLAGS_config_file_path.empty()) {
-    LOG(ERROR) << "Please specify config_file path";
+    LOG(ERROR) << "Please specify config_file_path";
     return ExitStatus::kNeedConfigFilePath;
   }
   std::unique_ptr<base::DictionaryValue> config_dv =
@@ -87,6 +90,15 @@ int main(int argc, char* argv[]) {
     return ExitStatus::kFailToParseConfigFile;
   }
   // TODO(hmchu): probe logic starts here
+
+  auto probe_config =
+      runtime_probe::ProbeConfig::FromDictionaryValue(*config_dv);
+
+  if (!probe_config) {
+    LOG(ERROR) << "Failed to parse from argument from ProbeConfig\n";
+    return ExitStatus::kFailToParseProbeArgFromConfig;
+  }
+  LOG(INFO) << *(probe_config->Eval());
 
   return ExitStatus::kSuccess;
 }
