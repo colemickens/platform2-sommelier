@@ -53,23 +53,23 @@ const char kTicketExpired[] =
 const char kEncTypeNotSupported[] =
     "KDC has no support for encryption type while getting initial credentials";
 
-// Returns upper-cased |machine_name|$@REALM.
+// Returns upper-cased |machine_name|$@|kUserRealm|.
 std::string MakeMachinePrincipal(const std::string& machine_name) {
   return base::ToUpperASCII(machine_name) + "$@" + kUserRealm;
 }
 
-// For a given |machine_name|, tests if the |command_line| starts with the
-// corresponding machine principal (using a testing realm)..
+// For a given |machine_name|, tests if the |command_line| starts with
+// corresponding machine principal part (upper-cased |machine_name| + "$@").
 bool TestMachinePrincipal(const std::string& command_line,
                           const std::string& machine_name) {
-  const std::string machine_principal = MakeMachinePrincipal(machine_name);
-  return StartsWithCaseSensitive(command_line, machine_principal.c_str());
+  std::string machine_principal_part = base::ToUpperASCII(machine_name) + "$@";
+  return StartsWithCaseSensitive(command_line, machine_principal_part.c_str());
 }
 
-// Returns true if |command_line| contains a machine principle and not a user
-// principle.
+// Returns true if |command_line| contains a machine principal and not a user
+// principal.
 bool HasMachinePrincipal(const std::string& command_line) {
-  return Contains(command_line, MakeMachinePrincipal(""));
+  return Contains(command_line, "$@");
 }
 
 // Returns false for the first |kNumPropagationRetries| times the method is
@@ -228,7 +228,7 @@ int HandleCommandLine(const std::string& command_line) {
     return kExitCodeError;
   }
 
-  // Handle machine principles.
+  // Handle machine principals.
   if (HasMachinePrincipal(command_line)) {
     // Stub account propagation error.
     if (TestMachinePrincipal(command_line, kExpectKeytabMachineName)) {
@@ -273,7 +273,7 @@ int HandleCommandLine(const std::string& command_line) {
       return kExitCodeError;
     }
 
-    // All other machine principles just pass.
+    // All other machine principals just pass.
     WriteKrb5CC(kValidKrb5CCData);
     return kExitCodeOk;
   }

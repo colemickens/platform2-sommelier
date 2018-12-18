@@ -106,13 +106,26 @@ constexpr char kSanitizedUsername[] = "user_hash";
 constexpr char kDaemonStoreDir[] = "daemon-store";
 
 // SessionStateChanged signal payload we care about.
-const char kSessionStarted[] = "started";
-const char kSessionStopped[] = "stopped";
+constexpr char kSessionStarted[] = "started";
+constexpr char kSessionStopped[] = "stopped";
+
+// Stub data for auth data cache testing.
+constexpr char kCacheTestUserWorkgroup[] = "cache_test_user_workgroup";
+constexpr char kCacheTestUserKdcIp[] = "cache_test_user_kdc_ip";
+constexpr char kCacheTestUserDcName[] = "cache_test_user_dc_name";
+constexpr char kCacheTestMachineWorkgroup[] = "cache_test_machine_workgroup";
+constexpr char kCacheTestMachineDcName[] = "cache_test_machine_dc_name";
+
+// See stub_net_main for the strings. Don't bother to make those constants.
+constexpr char kDefaultWorkgroup[] = "WOKGROUP";
+constexpr char kDefaultKdcIp[] = "111.222.33.2";
+constexpr char kDefaultDcName[] = "DCNAME.EXAMPLE.COM";
 
 struct SmbConf {
   std::string machine_name;
   std::string realm;
   std::string kerberos_encryption_types;
+  std::string workgroup;
 };
 
 struct Krb5Conf {
@@ -185,6 +198,7 @@ void ReadSmbConf(const std::string& smb_conf_path, SmbConf* conf) {
   EXPECT_TRUE(FindToken(smb_conf, '=', "realm", &conf->realm));
   EXPECT_TRUE(FindToken(smb_conf, '=', "kerberos encryption types",
                         &conf->kerberos_encryption_types));
+  EXPECT_TRUE(FindToken(smb_conf, '=', "workgroup", &conf->workgroup));
 }
 
 // Checks whether the file at smb_conf_path is an smb.conf file and has the
@@ -227,6 +241,11 @@ void CheckKrb5EncTypes(const std::string& krb5_conf_path,
   EXPECT_EQ("false", conf.allow_weak_crypto);
 }
 
+// Returns [|ip|].
+std::string EmbraceIp(const std::string& ip) {
+  return "[" + ip + "]";
+}
+
 // Helper class that points some paths to convenient locations we can write to.
 class TestPathService : public PathService {
  public:
@@ -236,17 +255,22 @@ class TestPathService : public PathService {
     base::FilePath stub_path(getenv("OUT"));
     CHECK(!stub_path.empty());
 
-    // Override paths.
+    // Need to create the run dir since it is usually created by the ebuild.
+    base::FilePath run_dir = base_path.Append("run");
+    CHECK(base::CreateDirectory(run_dir));
+
+    // Override base directories.
     Insert(Path::TEMP_DIR, base_path.Append("temp").value());
     Insert(Path::STATE_DIR, base_path.Append("state").value());
+    Insert(Path::RUN_DIR, run_dir.value());
+    Insert(Path::DAEMON_STORE_DIR, base_path.Append(kDaemonStoreDir).value());
+
+    // Override binaries.
     Insert(Path::KINIT, stub_path.Append("stub_kinit").value());
     Insert(Path::KLIST, stub_path.Append("stub_klist").value());
     Insert(Path::KPASSWD, stub_path.Append("stub_kpasswd").value());
     Insert(Path::NET, stub_path.Append("stub_net").value());
     Insert(Path::SMBCLIENT, stub_path.Append("stub_smbclient").value());
-    Insert(Path::DAEMON_STORE, base_path.Append(kDaemonStoreDir).value());
-    Insert(Path::FLAGS_DEFAULT_LEVEL,
-           base_path.Append("flags_default_level").value());
 
     // Fill in the rest of the paths and build dependend paths.
     Initialize();
@@ -570,8 +594,7 @@ class AuthPolicyTest : public testing::Test {
     JoinDomainRequest request;
     request.set_machine_name(machine_name);
     request.set_user_principal_name(user_principal);
-    std::string joined_domain_unused;
-    return JoinEx(request, std::move(password_fd), &joined_domain_unused);
+    return JoinEx(request, std::move(password_fd));
   }
 
   // Joins a (stub) Active Directory domain, locks the device and fetches empty
@@ -586,7 +609,7 @@ class AuthPolicyTest : public testing::Test {
   // Extended Join() that takes a full JoinDomainRequest proto.
   ErrorType JoinEx(const JoinDomainRequest& request,
                    base::ScopedFD password_fd,
-                   std::string* joined_domain) WARN_UNUSED_RESULT {
+                   std::string* joined_domain = nullptr) WARN_UNUSED_RESULT {
     expected_error_reports[ERROR_OF_JOIN_AD_DOMAIN]++;
     std::vector<uint8_t> blob(request.ByteSizeLong());
     request.SerializeToArray(blob.data(), blob.size());
@@ -1048,8 +1071,7 @@ TEST_F(AuthPolicyTest, JoinSucceedsWithOrganizationalUnit) {
   request.set_user_principal_name(kExpectOuUserPrincipal);
   for (size_t n = 0; n < kExpectedOuPartsSize; ++n)
     *request.add_machine_ou() = kExpectedOuParts[n];
-  std::string joined_realm;
-  EXPECT_EQ(ERROR_NONE, JoinEx(request, MakePasswordFd(), &joined_realm));
+  EXPECT_EQ(ERROR_NONE, JoinEx(request, MakePasswordFd()));
   // Note: We can't test directly whether the computer was put into the right OU
   // because there's no state for that in authpolicy. The only indicator is the
   // 'createcomputer' parameter to net ads join, but that can only be tested in
@@ -1068,9 +1090,7 @@ TEST_F(AuthPolicyTest, JoinSetsProperEncTypes) {
     request.set_machine_name(kMachineName);
     request.set_user_principal_name(kUserPrincipal);
     request.set_kerberos_encryption_types(enc_types.first);
-    std::string joined_realm_unused;
-    EXPECT_EQ(ERROR_NONE,
-              JoinEx(request, MakePasswordFd(), &joined_realm_unused));
+    EXPECT_EQ(ERROR_NONE, JoinEx(request, MakePasswordFd()));
     CheckSmbEncTypes(paths_->Get(Path::DEVICE_SMB_CONF), enc_types.second);
     EXPECT_TRUE(MakeConfigWriteable());
     samba().ResetForTesting();
@@ -1090,9 +1110,7 @@ TEST_F(AuthPolicyTest, EncTypesResetAfterDevicePolicyFetch) {
   request.set_machine_name(kOneGpoMachineName);
   request.set_user_principal_name(kUserPrincipal);
   request.set_kerberos_encryption_types(ENC_TYPES_ALL);
-  std::string joined_realm_unused;
-  EXPECT_EQ(ERROR_NONE,
-            JoinEx(request, MakePasswordFd(), &joined_realm_unused));
+  EXPECT_EQ(ERROR_NONE, JoinEx(request, MakePasswordFd()));
   MarkDeviceAsLocked();
 
   // After the first device policy fetch, the enc types should be 'strong'
@@ -1724,8 +1742,18 @@ TEST_F(AuthPolicyTest, AffiliationMarkerSetForAffiliatedUsers) {
 // For unaffiliated users, the affiliation marker should not be set during user
 // policy fetch.
 TEST_F(AuthPolicyTest, AffiliationMarkerNotSetForUnaffiliatedUsers) {
+  // Users in the same realm as the device are always affiliated, so pick a
+  // different realm.
+  JoinDomainRequest request;
+  request.set_machine_name(kUnaffiliatedMachineName);
+  request.set_machine_domain(kMachineRealm);
+  request.set_user_principal_name(kUserPrincipal);
+  EXPECT_EQ(ERROR_NONE, JoinEx(request, MakePasswordFd()));
+  MarkDeviceAsLocked();
+  validate_device_policy_ = &CheckDevicePolicyEmpty;
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+
   validate_user_policy_ = &CheckUserPolicyEmpty;
-  JoinAndFetchDevicePolicy(kUnaffiliatedMachineName);
   FetchAndValidateUserPolicy(DefaultAuth(), ERROR_NONE);
   EXPECT_FALSE(user_affiliation_marker_set_);
 }
@@ -2459,7 +2487,7 @@ TEST_F(AuthPolicyTest, PurgesGpoCacheOccasionally) {
   cache->SetClockForTesting(std::move(clock_ptr));
 
   // Pick delta so that one Advance() call won't purge the cache, but two will.
-  base::TimeDelta delta = SambaInterface::kGpoCacheTTL * 2 / 3;
+  const base::TimeDelta delta = SambaInterface::kGpoCacheTTL * 2 / 3;
 
   JoinAndFetchDevicePolicy(kOneGpoKeepVersionMachineName);
   EXPECT_EQ(1, cache->cache_misses_for_testing());
@@ -2476,6 +2504,226 @@ TEST_F(AuthPolicyTest, PurgesGpoCacheOccasionally) {
   FetchAndValidateDevicePolicy(ERROR_NONE);
   EXPECT_EQ(2, cache->cache_misses_for_testing());
   EXPECT_EQ(1, cache->cache_hits_for_testing());
+}
+
+// Authpolicyd writes an auth data cache file on domain join and after auth.
+TEST_F(AuthPolicyTest, AuthDataCacheWrittenOnJoinAndAuth) {
+  base::FilePath cache_path(paths_->Get(Path::AUTH_DATA_CACHE));
+
+  // Cache file should be written after domain join.
+  EXPECT_FALSE(base::PathExists(cache_path));
+  EXPECT_EQ(ERROR_NONE, Join(kMachineName, kUserPrincipal, MakePasswordFd()));
+  EXPECT_TRUE(base::PathExists(cache_path));
+
+  // Cache file should be written by user auth as well.
+  EXPECT_TRUE(base::DeleteFile(cache_path, false /* recursive */));
+  EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, "", MakePasswordFd()));
+  EXPECT_TRUE(base::PathExists(cache_path));
+
+  // The file should NOT be written on failed auth (because at the point of
+  // failure we don't know yet whether the realm is affiliated or not).
+  EXPECT_TRUE(base::DeleteFile(cache_path, false /* recursive */));
+  EXPECT_EQ(ERROR_PARSE_UPN_FAILED,
+            Auth(kInvalidUserPrincipal, "", MakePasswordFd()));
+  EXPECT_FALSE(base::PathExists(cache_path));
+}
+
+// Checks whether the auth data cache contains all the data that we'd expect.
+TEST_F(AuthPolicyTest, AuthDataCacheContainsExpectedData) {
+  // Join domain with machine domain != user domain.
+  JoinDomainRequest request;
+  request.set_machine_name(kMachineName);
+  request.set_machine_domain(kMachineRealm);
+  request.set_user_principal_name(kUserPrincipal);
+  EXPECT_EQ(ERROR_NONE, JoinEx(request, MakePasswordFd()));
+
+  // Load the cache and check values.
+  AuthDataCache* cache = samba().GetAuthDataCacheForTesting();
+
+  ASSERT_TRUE(cache->GetWorkgroup(kMachineRealm));
+  ASSERT_TRUE(cache->GetKdcIp(kMachineRealm));
+  ASSERT_TRUE(cache->GetDcName(kMachineRealm));
+  ASSERT_TRUE(cache->GetIsAffiliated(kMachineRealm));
+
+  EXPECT_EQ(kDefaultWorkgroup, *cache->GetWorkgroup(kMachineRealm));
+  EXPECT_EQ(kDefaultKdcIp, *cache->GetKdcIp(kMachineRealm));
+  EXPECT_EQ(kDefaultDcName, *cache->GetDcName(kMachineRealm));
+  // The machine realm is always affiliated with itself!
+  EXPECT_TRUE(*cache->GetIsAffiliated(kMachineRealm));
+
+  EXPECT_FALSE(cache->GetWorkgroup(kUserRealm));
+  EXPECT_FALSE(cache->GetKdcIp(kUserRealm));
+  EXPECT_FALSE(cache->GetDcName(kUserRealm));
+  EXPECT_FALSE(cache->GetIsAffiliated(kUserRealm));
+
+  // Auth should fill the user realm data.
+  EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, "", MakePasswordFd()));
+
+  ASSERT_TRUE(cache->GetWorkgroup(kUserRealm));
+  ASSERT_TRUE(cache->GetKdcIp(kUserRealm));
+  ASSERT_TRUE(cache->GetDcName(kUserRealm));
+  ASSERT_TRUE(cache->GetIsAffiliated(kUserRealm));
+
+  EXPECT_EQ(kDefaultWorkgroup, *cache->GetWorkgroup(kUserRealm));
+  EXPECT_EQ(kDefaultKdcIp, *cache->GetKdcIp(kUserRealm));
+  EXPECT_EQ(kDefaultDcName, *cache->GetDcName(kUserRealm));
+  EXPECT_TRUE(*cache->GetIsAffiliated(kUserRealm));
+}
+
+// Authpolicyd loads auth data cache on startup and uses the data for workgroup
+// and KDC IP.
+TEST_F(AuthPolicyTest, AuthDataCacheLoadsAndWorksForWorkgroupAndKdcIp) {
+  // Join domain, so that a config file is written. Authpolicyd only loads a
+  // auth data cache file if a config is expected.
+  JoinDomainRequest request;
+  request.set_machine_name(kMachineName);
+  request.set_machine_domain(kMachineRealm);
+  request.set_user_principal_name(kUserPrincipal);
+  EXPECT_EQ(ERROR_NONE, JoinEx(request, MakePasswordFd()));
+  MarkDeviceAsLocked();
+  validate_device_policy_ = &CheckDevicePolicyEmpty;
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+
+  // Create a cache file with stub workgroup and KDC IP data. Note that machine
+  // KDC IP is not checked. The cached KDC IP is overwritten during the machine
+  // password check, which happens immediately on startup. The check needs the
+  // server time and the KDC IP is fetched along with it, immediately
+  // overwriting the cached value.
+  AuthDataCache cache;
+  cache.SetWorkgroup(kUserRealm, kCacheTestUserWorkgroup);
+  cache.SetKdcIp(kUserRealm, kCacheTestUserKdcIp);
+  cache.SetWorkgroup(kMachineRealm, kCacheTestMachineWorkgroup);
+  base::FilePath cache_path(paths_->Get(Path::AUTH_DATA_CACHE));
+  EXPECT_TRUE(cache.Save(cache_path));
+
+  // Restart authpolicyd. That should load the cache file.
+  samba().ResetForTesting();
+  EXPECT_EQ(ERROR_NONE, samba().Initialize(true /* expect_config */));
+  EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, "", MakePasswordFd()));
+
+  // Check that the device smb.conf contains the workgroup from the cache.
+  SmbConf device_smb_conf;
+  ReadSmbConf(paths_->Get(Path::DEVICE_SMB_CONF), &device_smb_conf);
+  EXPECT_EQ(kCacheTestMachineWorkgroup, device_smb_conf.workgroup);
+
+  // Check that the user smb.conf contains the workgroup from the cache.
+  SmbConf user_smb_conf;
+  ReadSmbConf(paths_->Get(Path::USER_SMB_CONF), &user_smb_conf);
+  EXPECT_EQ(kCacheTestUserWorkgroup, user_smb_conf.workgroup);
+
+  // Check that the user krb5.conf contains the KDC IP from the cache.
+  Krb5Conf user_krb5_conf;
+  ReadKrb5Conf(paths_->Get(Path::USER_KRB5_CONF), &user_krb5_conf);
+  EXPECT_EQ(EmbraceIp(kCacheTestUserKdcIp), user_krb5_conf.kdc);
+}
+
+// Authpolicyd loads auth data cache on startup and uses the data for DC name.
+TEST_F(AuthPolicyTest, AuthDataCacheWorksForDcName) {
+  // Join domain, so that a config file is written. Authpolicyd only loads a
+  // auth data cache file if a config is expected.
+  // Note that |kOneGpoMachineName| is used here. This makes sure that
+  // stub_smbclient is called with the DC name in the URL of the GPO to
+  // download. Since stub_smbclient doesn't accept the DC name we set here
+  // (|kCacheTest*DcName|, see |kHostAndShare|), it should respond  with a
+  // failed connection error and we should see ERROR_SMBCLIENT_FAILED as a
+  // result. There's no other artifact of DC name that could be tested.
+  JoinDomainRequest request;
+  request.set_machine_name(kOneGpoMachineName);
+  request.set_machine_domain(kMachineRealm);
+  request.set_user_principal_name(kUserPrincipal);
+  EXPECT_EQ(ERROR_NONE, JoinEx(request, MakePasswordFd()));
+  MarkDeviceAsLocked();
+  validate_device_policy_ = &CheckDevicePolicyEmpty;
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+
+  // Create a cache file with stub DC name.
+  AuthDataCache cache;
+  cache.SetDcName(kUserRealm, kCacheTestUserDcName);
+  cache.SetDcName(kMachineRealm, kCacheTestMachineDcName);
+  base::FilePath cache_path(paths_->Get(Path::AUTH_DATA_CACHE));
+  EXPECT_TRUE(cache.Save(cache_path));
+
+  // Restart authpolicyd, so that the cache file gets loaded.
+  samba().ResetForTesting();
+  EXPECT_EQ(ERROR_NONE, samba().Initialize(true /* expect_config */));
+
+  // Since stub_smbclient doesn't accept the DC names from the cache, we should
+  // get an error here (best we can do to verify cached DC name was used).
+  FetchAndValidateDevicePolicy(ERROR_SMBCLIENT_FAILED);
+  FetchAndValidateUserPolicy(DefaultAuth(), ERROR_SMBCLIENT_FAILED);
+}
+
+// Authpolicyd loads auth data cache on startup and uses the data for DC name.
+TEST_F(AuthPolicyTest, AuthDataCacheDiesForUnaffiliatedUsers) {
+  JoinAndFetchDevicePolicy(kMachineName);
+
+  // Set affiliation flag to false for the user realm. Note that this shouldn't
+  // be possible, authpolicy shouldn't cache any data for unaffiliated realms.
+  // See AuthDataCacheTurnedOffForUnaffiliatedUsers.
+  samba().GetAuthDataCacheForTesting()->SetIsAffiliated(kUserRealm, false);
+
+  // SambaInterface::IsUserAffiliated() should bail on Auth() because data for
+  // an unaffiliated realm is cached.
+  EXPECT_DEATH((void)Auth(kUserPrincipal, "", MakePasswordFd()),
+               "Caching for unaffiliated realms not supported");
+}
+
+// Authpolicyd loads auth data cache on startup and uses the data for DC name.
+TEST_F(AuthPolicyTest, AuthDataCacheTurnedOffForUnaffiliatedUsers) {
+  // |kUnaffiliatedMachineName| causes the user realm to be unaffiliated.
+  JoinDomainRequest request;
+  request.set_machine_name(kUnaffiliatedMachineName);
+  request.set_machine_domain(kMachineRealm);
+  request.set_user_principal_name(kUserPrincipal);
+  EXPECT_EQ(ERROR_NONE, JoinEx(request, MakePasswordFd()));
+  MarkDeviceAsLocked();
+  validate_device_policy_ = &CheckDevicePolicyEmpty;
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+
+  EXPECT_EQ(ERROR_NONE, Auth(kUserPrincipal, "", MakePasswordFd()));
+
+  // The cache should still exist from domain join, but it shouldn't contain the
+  // user realm.
+  AuthDataCache* cache = samba().GetAuthDataCacheForTesting();
+  EXPECT_FALSE(cache->GetWorkgroup(kUserRealm));
+  EXPECT_FALSE(cache->GetKdcIp(kUserRealm));
+  EXPECT_FALSE(cache->GetDcName(kUserRealm));
+  EXPECT_FALSE(cache->GetIsAffiliated(kUserRealm));
+}
+
+// The auth data cache cache is purged occasionally.
+TEST_F(AuthPolicyTest, PurgesAuthDataCacheOccasionally) {
+  // Set a testing clock to stub out cache TTL.
+  auto clock_ptr = std::make_unique<base::SimpleTestClock>();
+  base::SimpleTestClock* clock = clock_ptr.get();
+  samba().GetAuthDataCacheForTesting()->SetClockForTesting(
+      std::move(clock_ptr));
+
+  JoinAndFetchDevicePolicy(kMachineName);
+
+  // Save a cache file that contains a different workgroup.
+  AuthDataCache cache;
+  cache.SetClockForTesting(std::make_unique<base::SimpleTestClock>());
+  cache.SetWorkgroup(kUserRealm, kCacheTestUserWorkgroup);
+  base::FilePath cache_path(paths_->Get(Path::AUTH_DATA_CACHE));
+  EXPECT_TRUE(cache.Save(cache_path));
+
+  // Restart authpolicy to make sure that the cached workgroup is used.
+  samba().ResetForTesting();
+  EXPECT_EQ(ERROR_NONE, samba().Initialize(true /* expect_config */));
+  DefaultAuth();
+  SmbConf user_smb_conf;
+  ReadSmbConf(paths_->Get(Path::USER_SMB_CONF), &user_smb_conf);
+  EXPECT_EQ(kCacheTestUserWorkgroup, user_smb_conf.workgroup);
+
+  // Restart authpolicy again and call auth, but this time advance the clock
+  // enough to clear the cache, so that the default workgroup is used.
+  samba().ResetForTesting();
+  EXPECT_EQ(ERROR_NONE, samba().Initialize(true /* expect_config */));
+  clock->Advance(SambaInterface::kAuthDataCacheTTL * 2);
+  DefaultAuth();
+  ReadSmbConf(paths_->Get(Path::USER_SMB_CONF), &user_smb_conf);
+  EXPECT_EQ(kDefaultWorkgroup, user_smb_conf.workgroup);
 }
 
 }  // namespace authpolicy

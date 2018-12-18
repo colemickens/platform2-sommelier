@@ -14,6 +14,8 @@ namespace {
 // Base directories.
 const char kAuthPolicyTempDir[] = "/tmp/authpolicyd";
 const char kAuthPolicyStateDir[] = "/var/lib/authpolicyd";
+const char kAuthPolicyRunDir[] = "/run/authpolicyd";
+const char kAuthPolicyDaemonStoreDir[] = "/run/daemon-store/authpolicyd";
 
 // Relative Samba directories.
 const char kSambaDir[] = "/samba";
@@ -40,6 +42,10 @@ const char kPrevMachinePass[] = "/prev_machine_pass";
 const char kNewMachinePass[] = "/new_machine_pass";
 const char kMachineKeyTab[] = "/krb5_machine.keytab";
 
+// Files that are wiped on reboot.
+const char kFlagsDefaultLevel[] = "/flags_default_level";
+const char kAuthDataCache[] = "/auth_data";
+
 // Executables.
 const char kKInitPath[] = "/usr/bin/kinit";
 const char kKListPath[] = "/usr/bin/klist";
@@ -62,12 +68,8 @@ const char kSmbClientSeccompFilterPath[] =
 
 // Debug flags.
 const char kDebugFlagsPath[] = "/etc/authpolicyd_flags";
-// Flags default level.
-const char kFlagsDefaultLevelPath[] = "/run/authpolicyd/flags_default_level";
 // Kerberos trace logs (kinit, kpasswd).
 const char kKrb5Trace[] = "/krb5_trace";
-// Per-user daemon store base path.
-const char kDaemonStorePath[] = "/run/daemon-store/authpolicyd";
 
 }  // namespace
 
@@ -85,15 +87,22 @@ void PathService::Initialize() {
   // derived version of this method.
   Insert(Path::TEMP_DIR, kAuthPolicyTempDir);
   Insert(Path::STATE_DIR, kAuthPolicyStateDir);
+  Insert(Path::RUN_DIR, kAuthPolicyRunDir);
+  Insert(Path::DAEMON_STORE_DIR, kAuthPolicyDaemonStoreDir);
 
   const std::string& temp_dir = Get(Path::TEMP_DIR);
   const std::string& state_dir = Get(Path::STATE_DIR);
+  const std::string& run_dir = Get(Path::RUN_DIR);
+
   Insert(Path::SAMBA_DIR, temp_dir + kSambaDir);
-  Insert(Path::SAMBA_LOCK_DIR, temp_dir + kSambaDir + kLockDir);
-  Insert(Path::SAMBA_CACHE_DIR, temp_dir + kSambaDir + kCacheDir);
-  Insert(Path::SAMBA_STATE_DIR, temp_dir + kSambaDir + kStateDir);
-  Insert(Path::SAMBA_PRIVATE_DIR, temp_dir + kSambaDir + kPrivateDir);
-  Insert(Path::GPO_LOCAL_DIR, temp_dir + kSambaDir + kCacheDir + kGpoCacheDir);
+
+  const std::string& samba_dir = Get(Path::SAMBA_DIR);
+
+  Insert(Path::SAMBA_LOCK_DIR, samba_dir + kLockDir);
+  Insert(Path::SAMBA_CACHE_DIR, samba_dir + kCacheDir);
+  Insert(Path::SAMBA_STATE_DIR, samba_dir + kStateDir);
+  Insert(Path::SAMBA_PRIVATE_DIR, samba_dir + kPrivateDir);
+  Insert(Path::GPO_LOCAL_DIR, samba_dir + kCacheDir + kGpoCacheDir);
 
   Insert(Path::CONFIG_DAT, state_dir + kConfig);
   Insert(Path::USER_SMB_CONF, temp_dir + kUserSmbConf);
@@ -102,7 +111,6 @@ void PathService::Initialize() {
   Insert(Path::DEVICE_KRB5_CONF, temp_dir + kDeviceKrb5Conf);
 
   // Credential caches have to be in a place writable for authpolicyd-exec!
-  const std::string& samba_dir = Get(Path::SAMBA_DIR);
   Insert(Path::USER_CREDENTIAL_CACHE, samba_dir + kUserCredentialCache);
   Insert(Path::DEVICE_CREDENTIAL_CACHE, samba_dir + kDeviceCredentialCache);
 
@@ -110,6 +118,9 @@ void PathService::Initialize() {
   Insert(Path::PREV_MACHINE_PASS, state_dir + kPrevMachinePass);
   Insert(Path::NEW_MACHINE_PASS, state_dir + kNewMachinePass);
   Insert(Path::MACHINE_KEYTAB, state_dir + kMachineKeyTab);
+
+  Insert(Path::FLAGS_DEFAULT_LEVEL, run_dir + kFlagsDefaultLevel);
+  Insert(Path::AUTH_DATA_CACHE, run_dir + kAuthDataCache);
 
   Insert(Path::KINIT, kKInitPath);
   Insert(Path::KLIST, kKListPath);
@@ -126,10 +137,8 @@ void PathService::Initialize() {
   Insert(Path::SMBCLIENT_SECCOMP, kSmbClientSeccompFilterPath);
 
   Insert(Path::DEBUG_FLAGS, kDebugFlagsPath);
-  Insert(Path::FLAGS_DEFAULT_LEVEL, kFlagsDefaultLevelPath);
   // Trace has to be in a place writable for authpolicyd-exec!
   Insert(Path::KRB5_TRACE, samba_dir + kKrb5Trace);
-  Insert(Path::DAEMON_STORE, kDaemonStorePath);
 }
 
 const std::string& PathService::Get(Path path_key) const {

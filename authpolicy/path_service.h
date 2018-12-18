@@ -17,8 +17,11 @@ enum class Path {
   INVALID,
 
   // Base directories.
-  TEMP_DIR,
-  STATE_DIR,
+  TEMP_DIR,          // Files here are wiped on authpolicyd restart.
+  STATE_DIR,         // Files here are persistent and globally accessible.
+  RUN_DIR,           // Files here are wiped on reboot.
+  DAEMON_STORE_DIR,  // Files here are persistent in the user's cryptohome and
+                     // hence accessible only for the logged-in user.
 
   // Samba directories.
   SAMBA_DIR,
@@ -46,6 +49,11 @@ enum class Path {
   NEW_MACHINE_PASS,   // New machine password.
   MACHINE_KEYTAB,     // Kerberos machine keytab file.
 
+  // Files that are wiped on reboot.
+  FLAGS_DEFAULT_LEVEL,  // File with flags default level (as integer), see
+                        // AuthPolicyFlags::DefaultLevel.
+  AUTH_DATA_CACHE,      // Cached authentication data.
+
   // Samba/Kerberos/parser executables.
   KINIT,
   KLIST,
@@ -63,11 +71,8 @@ enum class Path {
   SMBCLIENT_SECCOMP,
 
   // Misc.
-  DEBUG_FLAGS,          // File with debug flags, see AuthPolicyFlags.
-  FLAGS_DEFAULT_LEVEL,  // File with flags default level (as integer), see
-                        // AuthPolicyFlags::DefaultLevel.
-  KRB5_TRACE,           // kinit and kpasswd trace log.
-  DAEMON_STORE,         // Per-user daemon store base path.
+  DEBUG_FLAGS,  // File with debug flags, see AuthPolicyFlags.
+  KRB5_TRACE,   // kinit and kpasswd trace log.
 };
 
 // Simple path service.

@@ -16,6 +16,7 @@
 #include <base/timer/timer.h>
 #include <dbus/authpolicy/dbus-constants.h>
 
+#include "authpolicy/auth_data_cache.h"
 #include "authpolicy/authpolicy_flags.h"
 #include "authpolicy/authpolicy_metrics.h"
 #include "authpolicy/constants.h"
@@ -55,6 +56,12 @@ class SambaInterface : public TgtManager::Delegate {
   // struck by policy downloads every N-th morning at the same time.
   static constexpr base::TimeDelta kGpoCacheTTL =
       base::TimeDelta::FromHours(25);
+
+  // Clears the authentication data cache after |kAuthDataCacheTTL|. Time is
+  // tracked per realm. Don't use a multiple of 24 hours, so that people are not
+  // struck by auth data fetching every N-th morning at the same time.
+  static constexpr base::TimeDelta kAuthDataCacheTTL =
+      base::TimeDelta::FromHours(73);
 
   SambaInterface(AuthPolicyMetrics* metrics,
                  const PathService* path_service,
@@ -116,7 +123,7 @@ class SambaInterface : public TgtManager::Delegate {
   // leaf-to-root. If empty, the machine is placed in the default location (e.g.
   // Computers OU). |encryption_types| specifies the allowed encryption types
   // for Kerberos authentication. On success, |joined_domain| is set to the
-  // domain that was joined.
+  // domain that was joined (may be nullptr).
   ErrorType JoinMachine(const std::string& machine_name,
                         const std::string& machine_domain,
                         const std::vector<std::string>& machine_ou,
@@ -189,6 +196,9 @@ class SambaInterface : public TgtManager::Delegate {
     return &gpo_version_cache_;
   }
 
+  // Returns the cache for the GPO version.
+  AuthDataCache* GetAuthDataCacheForTesting() { return &auth_data_cache_; }
+
   // Renew the user ticket-granting-ticket.
   ErrorType RenewUserTgtForTesting() WARN_UNUSED_RESULT;
 
@@ -232,7 +242,11 @@ class SambaInterface : public TgtManager::Delegate {
     base::Time server_time;    // The server time at last query.
     Path smb_conf_path;        // Path of the Samba configuration file.
 
-    explicit AccountData(Path _smb_conf_path) : smb_conf_path(_smb_conf_path) {}
+    // Note: Initialize server_time to Now(). This prevents an unnecessary net
+    // ads info call in UpdateKdcIpAndServerTime() during user auth when the KDC
+    // IP is cached.
+    explicit AccountData(Path _smb_conf_path)
+        : server_time(base::Time::Now()), smb_conf_path(_smb_conf_path) {}
 
     // Returns user_name @ realm.
     std::string GetPrincipal() const { return user_name + "@" + realm; }
@@ -262,7 +276,7 @@ class SambaInterface : public TgtManager::Delegate {
 
   // Queries the name of the workgroup for the given |account| and stores it in
   // |account|->workgroup.
-  ErrorType UpdateWorkgroup(AccountData* account) WARN_UNUSED_RESULT;
+  ErrorType UpdateWorkgroup(AccountData* account) const WARN_UNUSED_RESULT;
 
   // Queries the IP of the key distribution center (KDC) and server time for the
   // given |account| and stores them in |account|->kdc_ip and
@@ -375,6 +389,10 @@ class SambaInterface : public TgtManager::Delegate {
   void UpdateDevicePolicyDependencies(
       const enterprise_management::ChromeDeviceSettingsProto& device_policy);
 
+  // Updates |auth_data_cache_| with data from |account| and |is_affiliated| and
+  // saves to disk.
+  void UpdateAuthDataCache(const AccountData& account, bool is_affiliated);
+
   // Sets the |rate| at which the machine password is changed. Turns off
   // automatic password change if |rate| is non-positive. Turned off by default.
   // Prints out a warning on devices that are still using the machine keytab.
@@ -401,10 +419,10 @@ class SambaInterface : public TgtManager::Delegate {
     return source == GpoSource::USER ? user_tgt_manager_ : device_tgt_manager_;
   }
 
-  // Sets and fixes the current user by account id key. Only one account id is
+  // Sets and fixes the current user by account id. Only one account id is
   // allowed per user. Calling this multiple times with different account ids
   // crashes the daemon.
-  void SetUserAccountId(const std::string& account_id_key);
+  void SetUserAccountId(const std::string& account_id);
 
   // Similar to SetUser, but sets user_account_.realm.
   void SetUserRealm(const std::string& user_realm);
@@ -500,6 +518,11 @@ class SambaInterface : public TgtManager::Delegate {
 
   // Cache for GPO version, used to prevent unnecessary downloads.
   GpoVersionCache gpo_version_cache_;
+
+  // File-based cache for authentication data. The cache persists across
+  // restarts of authpolicyd (but not reboots), so that it can speed up logins
+  // for different users and ephemeral mode.
+  AuthDataCache auth_data_cache_;
 
   // Encryption types to use for kinit and Samba commands. Don't set directly,
   // always set through SetKerberosEncryptionTypes(). Updated by

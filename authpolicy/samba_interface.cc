@@ -535,6 +535,14 @@ ErrorType SambaInterface::Initialize(bool expect_config) {
     if (error != ERROR_NONE)
       return error;
 
+    // Load cached auth data. It's OK if that fails, just start with an empty
+    // cache.
+    // NOTE: Load cache before UpdateDevicePolicyDependencies() as that may
+    // modify the cache!
+    base::FilePath cache_path(paths_->Get(Path::AUTH_DATA_CACHE));
+    if (base::PathExists(cache_path))
+      auth_data_cache_.Load(cache_path);
+
     // Load device policy and update stuff that depends on device policy. If
     // there's a config, it means the device is locked and there should also be
     // device policy at this point.
@@ -611,6 +619,9 @@ ErrorType SambaInterface::AuthenticateUserInternal(
   SetUserRealm(user_realm);
   user_tgt_manager_.SetPrincipal(normalized_upn);
 
+  // Clean up auth data cache.
+  auth_data_cache_.RemoveEntriesOlderThan(kAuthDataCacheTTL);
+
   // Acquire Kerberos ticket-granting-ticket for the user account.
   ErrorType error = AcquireUserTgt(password_fd);
   if (error != ERROR_NONE)
@@ -653,6 +664,10 @@ ErrorType SambaInterface::AuthenticateUserInternal(
   if (account_info->has_pwd_last_set())
     user_pwd_last_set_ = account_info->pwd_last_set();
   user_logged_in_ = true;
+
+  // Cache auth data, but ONLY if the user is affiliated (for privacy reasons).
+  if (is_user_affiliated_)
+    UpdateAuthDataCache(user_account_, is_user_affiliated_);
 
   // Backup state on user's Cryptohome.
   MaybeBackupUserAuthState();
@@ -859,12 +874,16 @@ ErrorType SambaInterface::JoinMachine(
     return error;
   }
 
+  // Cache auth data. Note that users in the device realm are always affiliated.
+  UpdateAuthDataCache(device_account_, true /* is_affiliated */);
+
   // Since we just created the account, set propagation retry to give the
   // password time to propagate through Active Directory.
   device_tgt_manager_.SetPropagationRetry(true);
 
   // Only if everything worked out, keep the config.
-  *joined_domain = join_realm;
+  if (joined_domain)
+    *joined_domain = join_realm;
   return ERROR_NONE;
 }
 
@@ -1041,6 +1060,17 @@ ErrorType SambaInterface::ChangeMachinePasswordForTesting() {
 }
 
 ErrorType SambaInterface::UpdateKdcIpAndServerTime(AccountData* account) const {
+  // Look up KDC IP from cache.
+  if (account->kdc_ip.empty()) {
+    base::Optional<std::string> kdc_ip =
+        auth_data_cache_.GetKdcIp(account->realm);
+    if (kdc_ip) {
+      account->kdc_ip = std::move(*kdc_ip);
+      anonymizer_->SetReplacementAllCases(account->kdc_ip,
+                                          kIpAddressPlaceholder);
+    }
+  }
+
   // Use cached KDC IP and server time. Caching server time seems weird since it
   // changes constantly, but most code doesn't need server time. If an
   // up-to-date server time is needed, just reset it to base::Time() before
@@ -1099,6 +1129,17 @@ ErrorType SambaInterface::UpdateKdcIpAndServerTime(AccountData* account) const {
 }
 
 ErrorType SambaInterface::UpdateDcName(AccountData* account) const {
+  // Look up DC name from cache.
+  if (account->dc_name.empty()) {
+    base::Optional<std::string> dc_name =
+        auth_data_cache_.GetDcName(account->realm);
+    if (dc_name) {
+      account->dc_name = std::move(*dc_name);
+      anonymizer_->SetReplacementAllCases(account->dc_name,
+                                          kServerNamePlaceholder);
+    }
+  }
+
   // Use cached DC name.
   if (!account->dc_name.empty())
     return ERROR_NONE;
@@ -1203,7 +1244,17 @@ ActiveDirectoryUserStatus::PasswordStatus SambaInterface::GetUserPasswordStatus(
   return ActiveDirectoryUserStatus::PASSWORD_VALID;
 }
 
-ErrorType SambaInterface::UpdateWorkgroup(AccountData* account) {
+ErrorType SambaInterface::UpdateWorkgroup(AccountData* account) const {
+  // Look up workgroup from cache.
+  if (account->workgroup.empty()) {
+    base::Optional<std::string> workgroup =
+        auth_data_cache_.GetWorkgroup(account->realm);
+    if (workgroup) {
+      account->workgroup = std::move(*workgroup);
+      anonymizer_->SetReplacement(account->workgroup, kWorkgroupPlaceholder);
+    }
+  }
+
   // Use cached workgroup.
   if (!account->workgroup.empty())
     return ERROR_NONE;
@@ -1312,17 +1363,32 @@ ErrorType SambaInterface::PingServer(AccountData* account) {
   if (error != ERROR_NONE)
     return error;
 
-  // Update |account|->workgroup. Make sure to invalidate the workgroup, so that
-  // the server is actually hit.
+  // Update |account|->workgroup. Make sure to invalidate the workgroup and
+  // disable the cache, so that the server is actually hit.
   std::string prev_workgroup;
   prev_workgroup.swap(account->workgroup);
+  bool prev_enabled = auth_data_cache_.IsEnabled();
+  auth_data_cache_.SetEnabled(false);
+
   error = UpdateWorkgroup(account);
-  if (error != ERROR_NONE)
-    prev_workgroup.swap(account->workgroup);
+
+  auth_data_cache_.SetEnabled(prev_enabled);
+  prev_workgroup.swap(account->workgroup);
   return error;
 }
 
 bool SambaInterface::IsUserAffiliated() {
+  // Check cache first.
+  base::Optional<bool> cached_is_affiliated =
+      auth_data_cache_.GetIsAffiliated(user_account_.realm);
+  if (cached_is_affiliated) {
+    // Right now, only affiliated realms should be cached (but we'll keep it
+    // generic, anyway, in case that changes in the future).
+    CHECK(*cached_is_affiliated)
+        << "Caching for unaffiliated realms not supported";
+    return *cached_is_affiliated;
+  }
+
   // Call net ads search using
   //   - the device smb.conf, but
   //   - the user's credentials!
@@ -1945,6 +2011,19 @@ void SambaInterface::UpdateDevicePolicyDependencies(
   UpdateMachinePasswordAutoChange(password_change_rate);
 }
 
+void SambaInterface::UpdateAuthDataCache(const AccountData& account,
+                                         bool is_affiliated) {
+  // Update cache.
+  auth_data_cache_.SetWorkgroup(account.realm, account.workgroup);
+  auth_data_cache_.SetKdcIp(account.realm, account.kdc_ip);
+  auth_data_cache_.SetDcName(account.realm, account.dc_name);
+  auth_data_cache_.SetIsAffiliated(account.realm, is_affiliated);
+
+  // Flush cache to file. Do a best effort, don't bother if it fails.
+  const base::FilePath cache_path(paths_->Get(Path::AUTH_DATA_CACHE));
+  auth_data_cache_.Save(cache_path);
+}
+
 void SambaInterface::UpdateMachinePasswordAutoChange(
     const base::TimeDelta& rate) {
   password_change_rate_ = rate;
@@ -2079,7 +2158,7 @@ void SambaInterface::SetUserAccountId(const std::string& account_id) {
                   "Auth state backups won't work.";
     return;
   }
-  user_daemon_store_path_ = base::FilePath(paths_->Get(Path::DAEMON_STORE))
+  user_daemon_store_path_ = base::FilePath(paths_->Get(Path::DAEMON_STORE_DIR))
                                 .Append(sanitized_username);
 }
 
@@ -2228,6 +2307,7 @@ void SambaInterface::Reset() {
   device_account_ = AccountData(Path::DEVICE_SMB_CONF);
   user_tgt_manager_.Reset();
   device_tgt_manager_.Reset();
+  auth_data_cache_.Reset();
   SetKerberosEncryptionTypes(ENC_TYPES_STRONG);
   user_policy_mode_ =
       em::DeviceUserPolicyLoopbackProcessingModeProto::USER_POLICY_MODE_DEFAULT;
