@@ -121,17 +121,18 @@ TEST_F(TelemCacheTest, UpdateExistingEntry) {
 TEST_F(TelemCacheTest, InvalidateExistingEntries) {
   cache()->SetParsedData(TelemetryItemEnum::kMemTotalMebibytes,
                          base::Value(kFirstStrValue));
-  cache()->SetParsedData(TelemetryItemEnum::kStat,
+  cache()->SetParsedData(TelemetryItemEnum::kMemFreeMebibytes,
                          base::Value(kSecondStrValue));
   clock()->Advance(kInsertionDelta);
   EXPECT_TRUE(cache()->IsValid(TelemetryItemEnum::kMemTotalMebibytes,
                                kAfterInsertionDelta));
-  EXPECT_TRUE(cache()->IsValid(TelemetryItemEnum::kStat, kAfterInsertionDelta));
+  EXPECT_TRUE(cache()->IsValid(TelemetryItemEnum::kMemFreeMebibytes,
+                               kAfterInsertionDelta));
   cache()->Invalidate();
   EXPECT_FALSE(cache()->IsValid(TelemetryItemEnum::kMemTotalMebibytes,
                                 kAfterInsertionDelta));
-  EXPECT_FALSE(
-      cache()->IsValid(TelemetryItemEnum::kStat, kAfterInsertionDelta));
+  EXPECT_FALSE(cache()->IsValid(TelemetryItemEnum::kMemFreeMebibytes,
+                                kAfterInsertionDelta));
 }
 
 }  // namespace diagnostics

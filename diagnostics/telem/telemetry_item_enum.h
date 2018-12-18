@@ -18,7 +18,8 @@ enum class TelemetryItemEnum {
   kMemFreeMebibytes,
   kNumRunnableEntities,
   kNumExistingEntities,
-  kStat,
+  kTotalIdleTimeUserHz,
+  kIdleTimePerCPUUserHz,
   kAcpiButton,
   kNetStat,
   kNetDev

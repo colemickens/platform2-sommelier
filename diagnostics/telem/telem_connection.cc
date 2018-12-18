@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <map>
+#include <sstream>
 
 #include <base/bind.h>
 #include <base/callback.h>
@@ -82,7 +83,8 @@ const base::Optional<base::Value> TelemConnection::GetItem(
       case TelemetryItemEnum::kNumExistingEntities:
         UpdateProcData(grpc_api::GetProcDataRequest::FILE_LOADAVG);
         break;
-      case TelemetryItemEnum::kStat:
+      case TelemetryItemEnum::kTotalIdleTimeUserHz:  // FALLTHROUGH
+      case TelemetryItemEnum::kIdleTimePerCPUUserHz:
         UpdateProcData(grpc_api::GetProcDataRequest::FILE_STAT);
         break;
       case TelemetryItemEnum::kAcpiButton:
@@ -252,7 +254,42 @@ void TelemConnection::ExtractDataFromProcLoadavg(
 
 void TelemConnection::ExtractDataFromProcStat(
     const grpc_api::GetProcDataResponse& response) {
-  NOTIMPLEMENTED();
+  // Make sure we received exactly one file in the response.
+  if (response.file_dump_size() != 1) {
+    LOG(ERROR) << "Bad GetProcDataResponse from request of type FILE_LOADAVG.";
+    return;
+  }
+
+  // Grab the idle time for all CPUs combined, as well as the idle time
+  // for each logical CPU. We'll store each of the times as a string in
+  // case the system has been on for long enough to overflow an int with
+  // its idle time.
+  std::string idle_time_combined;
+  std::stringstream response_sstream(response.file_dump(0).contents());
+  std::string current_line;
+  // The first line should be: cpu %d %d %d %d ..., where the last number
+  // is the idle time.
+  if (!std::getline(response_sstream, current_line) ||
+      !RE2::PartialMatch(current_line, "cpu\\s+\\d+ \\d+ \\d+ (\\d+)",
+                         &idle_time_combined)) {
+    LOG(ERROR) << "Incorrectly formatted stat.";
+    return;
+  }
+
+  // The next N lines should be: cpu%d %d %d %d %d ..., where N is the number
+  // of logical CPUs.
+  std::string idle_time_current_cpu;
+  base::ListValue logical_cpu_idle_time;
+  while (std::getline(response_sstream, current_line) &&
+         RE2::PartialMatch(current_line, "cpu\\d+ \\d+ \\d+ \\d+ (\\d+)",
+                           &idle_time_current_cpu))
+    logical_cpu_idle_time.AppendString(idle_time_current_cpu);
+
+  cache_.SetParsedData(
+      TelemetryItemEnum::kTotalIdleTimeUserHz,
+      base::Optional<base::Value>(base::Value(idle_time_combined)));
+  cache_.SetParsedData(TelemetryItemEnum::kIdleTimePerCPUUserHz,
+                       base::Optional<base::Value>(logical_cpu_idle_time));
 }
 
 void TelemConnection::ExtractDataFromProcAcpiButton(

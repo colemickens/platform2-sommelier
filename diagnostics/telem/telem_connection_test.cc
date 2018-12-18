@@ -33,6 +33,11 @@ constexpr char kFakeLoadavgFileContents[] = "0.82 0.61 0.52 2/370 30707\n";
 constexpr char kFakeBadLoadavgFileContents[] = "0.82 0.61 0.52 2 370 30707\n";
 constexpr int kFakeNumRunnableEntities = 2;
 constexpr int kFakeNumExistingEntities = 370;
+constexpr char kFakeStatFileContents[] =
+    "cpu  0 0 0 165432156432413546\ncpu0 0 0 0 653435243543\ncpu1 0 0 0 "
+    "235435413\nctxt 5345634354";
+constexpr char kFakeTotalCPUIdleTime[] = "165432156432413546";
+char const* kFakePerCPUIdleTimes[] = {"653435243543", "235435413"};
 
 class MockAsyncGrpcClientAdapter : public AsyncGrpcClientAdapter {
  public:
@@ -113,6 +118,59 @@ class TelemConnectionTest : public ::testing::Test {
         // we need this default case, because some TelemetryItemEnums
         // cannot be represented as integers and are not checked here.
         break;
+    }
+  }
+
+  // Checks whether the response matches the expected response from a
+  // GetItem(item) command. |item| must be expected as a string.
+  void CheckStringItemResponse(
+      const base::Optional<base::Value>& actual_response,
+      TelemetryItemEnum item) {
+    std::string val;
+
+    // Make sure that a value was returned, and that value has a string
+    // representation.
+    ASSERT_TRUE(actual_response);
+    ASSERT_TRUE(actual_response.value().GetAsString(&val));
+    switch (item) {
+      case TelemetryItemEnum::kTotalIdleTimeUserHz:
+        EXPECT_EQ(val, kFakeTotalCPUIdleTime);
+        break;
+      default:
+        // We should never get here, because all items currently tested
+        // which have string representations are enumerated above. However,
+        // we need this default case, because some TelemetryItemEnums
+        // cannot be represented as strings and are not checked here.
+        break;
+    }
+  }
+
+  // Checks whether the response matches the expected response from a
+  // GetItem(item) command. |item| must be expected as a list.
+  void CheckListItemResponse(const base::Optional<base::Value>& actual_response,
+                             TelemetryItemEnum item) {
+    const base::ListValue* list_val;
+    std::string val;
+
+    // Make sure that a value was returned, and that value has a list
+    // representation.
+    ASSERT_TRUE(actual_response);
+    ASSERT_TRUE(actual_response.value().GetAsList(&list_val));
+    switch (item) {
+      case TelemetryItemEnum::kIdleTimePerCPUUserHz: {
+        for (int i = 0; i < list_val->GetSize(); i++) {
+          ASSERT_TRUE(list_val->GetString(i, &val));
+          EXPECT_EQ(val, kFakePerCPUIdleTimes[i]);
+        }
+        break;
+      }
+      default: {
+        // We should never get here, because all items currently tested
+        // which have list representations are enumerated above. However,
+        // we need this default case, because some TelemetryItemEnums
+        // cannot be represented as lists and are not checked here.
+        break;
+      }
     }
   }
 
@@ -204,6 +262,24 @@ TEST_F(TelemConnectionTest, GetBadLoadAvg) {
   auto existing_entities = connection()->GetItem(
       TelemetryItemEnum::kNumExistingEntities, base::TimeDelta());
   EXPECT_EQ(existing_entities, base::nullopt);
+}
+
+// Test that we can retrieve kTotalIdleTime.
+TEST_F(TelemConnectionTest, GetTotalIdleTime) {
+  SetProcDataResponse(kFakeStatFileContents);
+
+  auto idle_time = connection()->GetItem(
+      TelemetryItemEnum::kTotalIdleTimeUserHz, base::TimeDelta());
+  CheckStringItemResponse(idle_time, TelemetryItemEnum::kTotalIdleTimeUserHz);
+}
+
+// Test that we can retrieve kIdleTimePerCPU.
+TEST_F(TelemConnectionTest, GetIdleTimePerCPU) {
+  SetProcDataResponse(kFakeStatFileContents);
+
+  auto idle_times = connection()->GetItem(
+      TelemetryItemEnum::kIdleTimePerCPUUserHz, base::TimeDelta());
+  CheckListItemResponse(idle_times, TelemetryItemEnum::kIdleTimePerCPUUserHz);
 }
 
 // Test that we can retrieve a group of telemetry items.

@@ -20,6 +20,15 @@
 #include "diagnostics/telem/telemetry_item_enum.h"
 
 namespace {
+
+void DisplayStringItem(const base::Value& string_item);
+void DisplayIntItem(const base::Value& int_item);
+void DisplayListItem(const base::Value& list_item);
+bool DisplayTelemetryItem(const base::Value& telem_item);
+bool DisplayOptionalTelemetryItem(
+    const std::string& item_name,
+    const base::Optional<base::Value>& telem_item);
+
 // URI on which the gRPC interface exposed by the diagnosticsd daemon is
 // listening. This is the same URI that the diagnosticsd daemon uses to
 // communicate with the diagnostics_processor, so this tool should not
@@ -27,28 +36,74 @@ namespace {
 constexpr char kDiagnosticsdGrpcUri[] =
     "unix:/run/diagnostics/grpc_sockets/diagnosticsd_socket";
 
-// Displays the telemetry item to the console. Returns
-// true iff the item was successfully displayed.
-bool DisplayTelemetryItem(const std::string& item_name,
-                          const base::Optional<base::Value>& telem_item) {
-  if (!telem_item) {
-    LOG(ERROR) << "No telemetry item received.";
-    return false;
+// Helper function to display a base::Value object which has a string
+// representation.
+void DisplayStringItem(const base::Value& string_item) {
+  DCHECK(string_item.is_string());
+
+  std::string val;
+  string_item.GetAsString(&val);
+  std::cout << val << std::endl;
+}
+
+// Helper function to display a base::Value object which has an integer
+// representation.
+void DisplayIntItem(const base::Value& int_item) {
+  DCHECK(int_item.is_int());
+
+  int val;
+  int_item.GetAsInteger(&val);
+  std::cout << val << std::endl;
+}
+
+// Helper function to display a base::Value object which has a list
+// representation.
+void DisplayListItem(const base::Value& list_item) {
+  DCHECK(list_item.is_list());
+
+  const base::ListValue* list;
+  list_item.GetAsList(&list);
+  const base::Value* item;
+
+  // Print a newline so that the first list value starts on a new line.
+  std::cout << std::endl;
+
+  // Print each of the list values.
+  for (int i = 0; i < list->GetSize(); i++) {
+    list->Get(i, &item);
+    DisplayTelemetryItem(*item);
   }
-  if (telem_item.value().is_int()) {
-    int val;
-    telem_item.value().GetAsInteger(&val);
-    std::cout << item_name << ": " << val << std::endl;
-  } else if (telem_item.value().is_string()) {
-    std::string val;
-    telem_item.value().GetAsString(&val);
-    std::cout << item_name << ": " << val << std::endl;
+}
+
+// Helper function to display a base::Value object which has an arbitrary
+// representation.
+bool DisplayTelemetryItem(const base::Value& telem_item) {
+  if (telem_item.is_int()) {
+    DisplayIntItem(telem_item);
+  } else if (telem_item.is_string()) {
+    DisplayStringItem(telem_item);
+  } else if (telem_item.is_list()) {
+    DisplayListItem(telem_item);
   } else {
     LOG(ERROR) << "Invalid format for telemetry item.";
     return false;
   }
 
   return true;
+}
+
+// Displays the telemetry item to the console. Returns
+// true iff the item was successfully displayed.
+bool DisplayOptionalTelemetryItem(
+    const std::string& item_name,
+    const base::Optional<base::Value>& telem_item) {
+  if (!telem_item) {
+    LOG(ERROR) << "No telemetry item received.";
+    return false;
+  }
+
+  std::cout << item_name << ": ";
+  return DisplayTelemetryItem(telem_item.value());
 }
 
 }  // namespace
@@ -71,7 +126,9 @@ int main(int argc, char** argv) {
        diagnostics::TelemetryItemEnum::kNumRunnableEntities},
       {"existing_entities",
        diagnostics::TelemetryItemEnum::kNumExistingEntities},
-      {"stat", diagnostics::TelemetryItemEnum::kStat},
+      {"idle_time_total", diagnostics::TelemetryItemEnum::kTotalIdleTimeUserHz},
+      {"idle_time_per_cpu",
+       diagnostics::TelemetryItemEnum::kIdleTimePerCPUUserHz},
       {"button", diagnostics::TelemetryItemEnum::kAcpiButton},
       {"netstat", diagnostics::TelemetryItemEnum::kNetStat},
       {"netdev", diagnostics::TelemetryItemEnum::kNetDev}};
@@ -85,7 +142,9 @@ int main(int argc, char** argv) {
        "runnable_entities"},
       {diagnostics::TelemetryItemEnum::kNumExistingEntities,
        "existing_entities"},
-      {diagnostics::TelemetryItemEnum::kStat, "stat"},
+      {diagnostics::TelemetryItemEnum::kTotalIdleTimeUserHz, "idle_time_total"},
+      {diagnostics::TelemetryItemEnum::kIdleTimePerCPUUserHz,
+       "idle_time_per_cpu"},
       {diagnostics::TelemetryItemEnum::kAcpiButton, "button"},
       {diagnostics::TelemetryItemEnum::kNetStat, "netstat"},
       {diagnostics::TelemetryItemEnum::kNetDev, "netdev"}};
@@ -117,7 +176,7 @@ int main(int argc, char** argv) {
     // Retrieve and display the telemetry item.
     const base::Optional<base::Value> telem_item = telem_connection.GetItem(
         kItemMap.at(FLAGS_item), base::TimeDelta::FromSeconds(0));
-    if (!DisplayTelemetryItem(FLAGS_item, telem_item))
+    if (!DisplayOptionalTelemetryItem(FLAGS_item, telem_item))
       return EXIT_FAILURE;
   }
   // Validate the group flag.
@@ -133,8 +192,8 @@ int main(int argc, char** argv) {
         telem_items = telem_connection.GetGroup(
             kGroupMap.at(FLAGS_group), base::TimeDelta::FromSeconds(0));
     for (auto item_pair : telem_items) {
-      if (!DisplayTelemetryItem(kNameLookup.at(item_pair.first),
-                                item_pair.second))
+      if (!DisplayOptionalTelemetryItem(kNameLookup.at(item_pair.first),
+                                        item_pair.second))
         return EXIT_FAILURE;
     }
   }
