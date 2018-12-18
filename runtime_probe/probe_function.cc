@@ -9,7 +9,6 @@
 
 #include "runtime_probe/probe_function.h"
 
-
 namespace runtime_probe {
 
 typedef typename ProbeFunction::DataType DataType;
@@ -23,7 +22,7 @@ std::unique_ptr<ProbeFunction> ProbeFunction::FromDictionaryValue(
 
   if (dict_value.size() > 1) {
     LOG(ERROR) << "More than 1 function names specified in a "
-        << "ProbeFunction dictionary: " << dict_value;
+               << "ProbeFunction dictionary: " << dict_value;
     return nullptr;
   }
 
@@ -33,8 +32,7 @@ std::unique_ptr<ProbeFunction> ProbeFunction::FromDictionaryValue(
   const auto& function_name = it.key();
   const auto& kwargs = it.value();
 
-  if (REGISTERED_FUNCTIONS.find(function_name) ==
-      REGISTERED_FUNCTIONS.end()) {
+  if (REGISTERED_FUNCTIONS.find(function_name) == REGISTERED_FUNCTIONS.end()) {
     // TODO(stimim): Should report an error.
     LOG(ERROR) << "function `" << function_name << "` not found";
     return nullptr;

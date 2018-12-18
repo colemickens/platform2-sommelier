@@ -11,7 +11,6 @@
 
 #include "base/values.h"
 
-
 namespace runtime_probe {
 
 /*
@@ -29,14 +28,13 @@ namespace runtime_probe {
 
 class ProbeFunction;
 
-template<typename T>
-bool ParseArgument(
-    const char* function_name,
-    const char* member_name,
-    T* member,
-    const base::Value& value);
+template <typename T>
+bool ParseArgument(const char* function_name,
+                   const char* member_name,
+                   T* member,
+                   const base::Value& value);
 
-template<typename T>
+template <typename T>
 bool ParseArgument(const char* function_name,
                    const char* member_name,
                    T* member,
@@ -52,8 +50,9 @@ bool ParseArgument(const char* function_name,
   return ParseArgument(function_name, member_name, member, *value);
 }
 
-template<typename T>
-bool ParseArgument(const char* function_name, const char* member_name,
+template <typename T>
+bool ParseArgument(const char* function_name,
+                   const char* member_name,
                    T* member,
                    const base::DictionaryValue& dict_value,
                    const T&& default_value) {
@@ -65,9 +64,10 @@ bool ParseArgument(const char* function_name, const char* member_name,
   return ParseArgument(function_name, member_name, member, dict_value);
 }
 
-template<>
+template <>
 bool ParseArgument<std::vector<std::unique_ptr<ProbeFunction>>>(
-    const char* function_name, const char* member_name,
+    const char* function_name,
+    const char* member_name,
     std::vector<std::unique_ptr<ProbeFunction>>* member,
     const base::DictionaryValue& dict_value,
     const std::vector<std::unique_ptr<ProbeFunction>>&& default_value) = delete;
@@ -76,11 +76,9 @@ bool ParseArgument<std::vector<std::unique_ptr<ProbeFunction>>>(
  * scope this macro is called.  See `functions/shell.h` about how this macro is
  * used.
  */
-#define PARSE_ARGUMENT(member_name, ...) \
-    ParseArgument(function_name, \
-                  #member_name, \
-                  &instance->member_name ## _, \
-                  dict_value, ## __VA_ARGS__)
+#define PARSE_ARGUMENT(member_name, ...)                                \
+  ParseArgument(function_name, #member_name, &instance->member_name##_, \
+                dict_value, ##__VA_ARGS__)
 
 }  // namespace runtime_probe
 

@@ -11,7 +11,6 @@
 
 #include "runtime_probe/probe_function.h"
 
-
 namespace runtime_probe {
 
 /* All probe functions should inherit runtime_probe::ProbeFunction */

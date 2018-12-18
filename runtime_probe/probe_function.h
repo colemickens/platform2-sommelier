@@ -21,7 +21,6 @@
 
 #include "runtime_probe/probe_function_argument.h"
 
-
 namespace runtime_probe {
 
 class ProbeFunction {
@@ -65,8 +64,7 @@ class ProbeFunction {
 
   /* Convert |value| to ProbeFunction.  Returns nullptr on failure.
    */
-  static std::unique_ptr<ProbeFunction> FromValue(
-      const base::Value& value) {
+  static std::unique_ptr<ProbeFunction> FromValue(const base::Value& value) {
     std::unique_ptr<ProbeFunction> retval;
 
     if (value.is_dict()) {
@@ -91,18 +89,17 @@ class ProbeFunction {
    * each derived class.  See `functions/shell.h` about how to implement this
    * function.
    */
-  typedef std::function<
-      std::unique_ptr<ProbeFunction>(
-          const base::DictionaryValue&)> FactoryFunctionType;
+  typedef std::function<std::unique_ptr<ProbeFunction>(
+      const base::DictionaryValue&)>
+      FactoryFunctionType;
 
   /* Mapping from |function_name| to |FromDictionaryValue| of each derived
    * classes.
    */
-  static std::unordered_map<
-      std::string_view,
-      FactoryFunctionType> REGISTERED_FUNCTIONS;
+  static std::unordered_map<std::string_view, FactoryFunctionType>
+      REGISTERED_FUNCTIONS;
 
-  template<class T>
+  template <class T>
   struct Register {
     Register() {
       static_assert(std::is_base_of<ProbeFunction, T>::value,
@@ -131,9 +128,7 @@ class ProbeFunction {
  * instance.
  */
 
-std::unordered_map<
-    std::string_view,
-    ProbeFunction::FactoryFunctionType>
+std::unordered_map<std::string_view, ProbeFunction::FactoryFunctionType>
     ProbeFunction::REGISTERED_FUNCTIONS{};
 #define REGISTER_PROBE_FUNCTION(T) ProbeFunction::Register<T> T::register_
 
@@ -142,7 +137,6 @@ std::unordered_map<
 #define REGISTER_PROBE_FUNCTION(T)
 
 #endif
-
 
 }  // namespace runtime_probe
 

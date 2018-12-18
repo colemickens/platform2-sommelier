@@ -12,20 +12,18 @@
 
 namespace runtime_probe {
 
-#define _DEFINE_PARSE_ARGUMENT(type, GetType) \
-template<> \
-bool ParseArgument<type>(const char* function_name, \
-                         const char* member_name, \
-                         type* member, \
-                         const base::Value& value) { \
-  if (!value.is_ ## type()) { \
-    LOG(ERROR) << function_name << ": `" << member_name \
-           << "` should be " #type; \
-    return false; \
-  } \
-  *member = value.GetType(); \
-  return true; \
-}
+#define _DEFINE_PARSE_ARGUMENT(type, GetType)                                  \
+  template <>                                                                  \
+  bool ParseArgument<type>(const char* function_name, const char* member_name, \
+                           type* member, const base::Value& value) {           \
+    if (!value.is_##type()) {                                                  \
+      LOG(ERROR) << function_name << ": `" << member_name                      \
+                 << "` should be " #type;                                      \
+      return false;                                                            \
+    }                                                                          \
+    *member = value.GetType();                                                 \
+    return true;                                                               \
+  }
 
 using std::string;
 _DEFINE_PARSE_ARGUMENT(string, GetString);
@@ -33,7 +31,7 @@ _DEFINE_PARSE_ARGUMENT(bool, GetBool);
 _DEFINE_PARSE_ARGUMENT(double, GetDouble);
 _DEFINE_PARSE_ARGUMENT(int, GetInt);
 
-template<>
+template <>
 bool ParseArgument<std::vector<std::unique_ptr<ProbeFunction>>>(
     const char* function_name,
     const char* member_name,
@@ -41,7 +39,7 @@ bool ParseArgument<std::vector<std::unique_ptr<ProbeFunction>>>(
     const base::Value& value) {
   if (!value.is_list()) {
     LOG(ERROR) << "failed to parse " << value
-        << " as a list of probe functions.";
+               << " as a list of probe functions.";
     return false;
   }
 
@@ -54,7 +52,7 @@ bool ParseArgument<std::vector<std::unique_ptr<ProbeFunction>>>(
     auto ptr = runtime_probe::ProbeFunction::FromValue(**it);
     if (!ptr) {
       LOG(ERROR) << "failed to parse " << value
-          << " as a list of probe functions.";
+                 << " as a list of probe functions.";
       return false;
     }
 

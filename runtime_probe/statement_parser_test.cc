@@ -24,12 +24,12 @@ std::string GetTestDataPath(const std::string& file_name) {
 
 TEST(StatementParserTest, ReadFromFile) {
   // Random file path. Should return nullptr
-  EXPECT_EQ(ParseProbeStatement("/random/file/path"), nullptr);
+  EXPECT_EQ(ParseProbeConfig("/random/file/path"), nullptr);
   // File is not in JSON format. Should return nullptr
-  EXPECT_EQ(ParseProbeStatement(GetTestDataPath("test.txt")), nullptr);
+  EXPECT_EQ(ParseProbeConfig(GetTestDataPath("test.txt")), nullptr);
   // testdata/probe_statement.json is a valid JSON file. Should read
   // successfully and return non-null std::unique_ptr<DictionaryValue>
-  EXPECT_NE(ParseProbeStatement(GetTestDataPath("probe_statement.json")),
+  EXPECT_NE(ParseProbeConfig(GetTestDataPath("probe_statement.json")),
             nullptr);
 }
 
