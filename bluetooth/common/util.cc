@@ -9,12 +9,16 @@
 #include <algorithm>
 #include <regex>  // NOLINT(build/c++11)
 
+#include <base/files/file_util.h>
 #include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <base/strings/string_number_conversions.h>
 
 namespace {
+
+constexpr char kNewblueConfigFile[] = "/var/lib/bluetooth/newblue";
 
 uint64_t GetNumFromLE(const uint8_t* buf, uint8_t bits) {
   uint64_t val = 0;
@@ -33,6 +37,20 @@ uint64_t GetNumFromLE(const uint8_t* buf, uint8_t bits) {
 }  // namespace
 
 namespace bluetooth {
+
+// True if the kernel is configured to split LE traffic.
+bool IsBleSplitterEnabled() {
+  std::string content;
+  // LE splitter is enabled iff /var/lib/bluetooth/newblue starts with "1".
+  if (base::ReadFileToString(base::FilePath(kNewblueConfigFile), &content)) {
+    base::TrimWhitespaceASCII(content, base::TRIM_TRAILING, &content);
+    if (content == "1")
+      return true;
+  }
+
+  // Current LE splitter default = disabled.
+  return false;
+}
 
 // Turns the content of |buf| into a uint16_t in host order. This should be used
 // when reading the little-endian data from Bluetooth packet.

@@ -20,6 +20,9 @@ constexpr char kAdapterObjectPath[] = "/org/bluez/hci0";
 
 constexpr UniqueId kInvalidUniqueId = 0;
 
+// Returns whether LE splitter is enabled based on config in /var/lib/bluetooth.
+bool IsBleSplitterEnabled();
+
 uint16_t GetNumFromLE16(const uint8_t* buf);
 uint32_t GetNumFromLE24(const uint8_t* buf);
 std::vector<uint8_t> GetBytesFromLE(const uint8_t* buf, size_t buf_len);
