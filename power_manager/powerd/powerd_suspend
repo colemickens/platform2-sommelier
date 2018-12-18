@@ -200,6 +200,23 @@ ec_power_modem() {
   fi
 }
 
+# Define the white list of the bt_vendor:bt_product that allow mode change
+# events where bt_vendor:* means all products of the vendor are allowed.
+# TODO: change the whitelist to blacklist after verifying all existing
+#       controllers. Only a small portion of controllers do not support
+#       setting the event mask, e.g., the Mode Change event.
+#       Refer to the following file for the list of bluetooth controllers.
+#       src/platform2/power_manager/udev/gen_autosuspend_rules.py
+BT_MODE_WHITELIST="8087:* 0cf3:e300 04ca:301a"
+
+# Check if bt_vendor:bt_product is in the white list.
+in_mode_change_whitelist() {
+  local vendor="$1"
+  local product="$2"
+  [ "${BT_MODE_WHITELIST#*${vendor}:\*}" != "${BT_MODE_WHITELIST}" -o \
+    "${BT_MODE_WHITELIST#*${vendor}:${product}}" != "${BT_MODE_WHITELIST}" ]
+}
+
 to_hex() {
   echo "obase=16; $(($1))" | bc
 }
@@ -219,12 +236,14 @@ bt_hci_mode_change_event_ctrl() {
     local retval=""
     local usb_path="$(readlink ${file})"
     usb_path="/sys/class/bluetooth/${usb_path%/bluetooth/*}/.."
-    bt_vendor="$(cat ${usb_path}/idVendor)"
+    bt_vendor="$(cat "${usb_path}"/idVendor)"
+    bt_product="$(cat "${usb_path}"/idProduct)"
 
-    # Don't do anything for non-Intel controllers. Some of them may
-    # not support it well (See http://crbug.com/803272)
-    if [ "${bt_vendor}" != "8087" ]; then
-      log_msg "Skipping $1 BT HCI mode change event on non-Intel BT"
+    # Don't do anything for controllers not in BT_MODE_WHITELIST.
+    # Some of them may not support it well (See http://crbug.com/803272)
+    if ! in_mode_change_whitelist "${bt_vendor}" "${bt_product}"; then
+      log_msg "Skipping $1 BT HCI mode change event on" \
+              "${bt_vendor}:${bt_product}"
       continue
     fi
     if [ "$1" = "disable" ]; then
