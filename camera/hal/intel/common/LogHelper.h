@@ -80,27 +80,12 @@ enum  {
     CAMERA_DEBUG_LOG_LEVEL2 = 1 << 1,
 
     /* Bitmask to enable a concrete set of traces */
-    CAMERA_DEBUG_LOG_REQ_STATE = 1 << 2,
-    CAMERA_DEBUG_LOG_AIQ = 1 << 3,
-    CAMERA_DEBUG_LOG_XML = 1 << 4,
-    CAMERA_DEBUG_LOG_KERNEL_TOGGLE = 1 << 8,
+    CAMERA_DEBUG_LOG_AIQ = 1 << 2,
+    CAMERA_DEBUG_LOG_XML = 1 << 3,
+    CAMERA_DEBUG_LOG_METADATA = 1 << 4,
+    CAMERA_DEBUG_LOG_MEDIA_CONTROL = 1 << 5
 
     /* space reserved for new log levels */
-
-    /* Make logs persistent, retrying if logcat is busy */
-    CAMERA_DEBUG_LOG_PERSISTENT = 1 << 12, /* 4096 */
-
-    /*
-     * Reserved for log types, to support different OS
-     * Don't change the orders of existing items
-     */
-    CAMERA_DEBUG_TYPE_START = 1 << 30,
-    CAMERA_DEBUG_TYPE_DEBUG = CAMERA_DEBUG_TYPE_START,
-    CAMERA_DEBUG_TYPE_ERROR,
-    CAMERA_DEBUG_TYPE_WARN,
-    CAMERA_DEBUG_TYPE_VERBOSE,
-    CAMERA_DEBUG_TYPE_INFO,
-    CAMERA_DEBUG_TYPE_END
 };
 
 // All dump related definition
@@ -238,16 +223,29 @@ private:
         ? (void)(0) : LOG(INFO)                                                 \
                           << base::StringPrintf(LOG_HEADER, "D/L2", CAMHAL_TAG) \
                           << base::StringPrintf(__VA_ARGS__)
-#define LOGR(...)                                                                \
-    !(gLogLevel & CAMERA_DEBUG_LOG_REQ_STATE)                                    \
-        ? (void)(0) : LOG(INFO)                                                  \
-                          << base::StringPrintf(LOG_HEADER, "D/REQ", CAMHAL_TAG) \
-                          << base::StringPrintf(__VA_ARGS__)
 #define LOGAIQ(...)                                                              \
     !(gLogLevel & CAMERA_DEBUG_LOG_AIQ)                                          \
         ? (void)(0) : LOG(INFO)                                                  \
                           << base::StringPrintf(LOG_HEADER, "D/AIQ", CAMHAL_TAG) \
                           << base::StringPrintf(__VA_ARGS__)
+
+#define LOGXML(...)                                                              \
+    !(gLogLevel & CAMERA_DEBUG_LOG_XML)                                          \
+        ? (void)(0) : LOG(INFO)                                                  \
+                          << base::StringPrint(LOG_HEADER, "D/XML", CAMHAL_TAG) \
+                          << base::StringPrint(__VA_ARGS__)
+
+#define LOGMETA(...)                                                             \
+    !(gLogLevel & CAMERA_DEBUG_LOG_METADATA)                                     \
+        ? (void)(0) : LOG(INFO)                                                  \
+                          << base::StringPrint(LOG_HEADER, "D/META", CAMHAL_TAG) \
+                          << base::StringPrint(__VA_ARGS__)
+
+#define LOGMC(...)                                                                 \
+        !(gLogLevel & CAMERA_DEBUG_LOG_MEDIA_CONTROL)                              \
+            ? (void)(0) : LOG(INFO)                                                \
+                              << base::StringPrint(LOG_HEADER, "D/MC", CAMHAL_TAG) \
+                              << base::StringPrint(__VA_ARGS__)
 
 #define LOGI(...)                                               \
     VLOG(1) << base::StringPrintf(LOG_HEADER, "I/", CAMHAL_TAG) \
@@ -263,7 +261,6 @@ private:
 #else
 #define LOG1(...)
 #define LOG2(...)
-#define LOGR(...)
 #define LOGAIQ(...)
 
 #define LOGD(...)
