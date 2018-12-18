@@ -1,0 +1,103 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":generate-chromeos-dbus-bindings",
+  ]
+  if (use.test) {
+    deps += [
+      ":chromeos_dbus_bindings_unittest",
+    ]
+  }
+}
+
+pkg_config("target_default_pkg_deps") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+  ]
+}
+
+config("target_defaults") {
+  cflags = [
+    "-Wextra",
+    "-Wno-unused-parameter",  # for scoped_ptr.h, included indirectly
+  ]
+  cflags_cc = [
+    "-fno-strict-aliasing",
+    "-Woverloaded-virtual",
+  ]
+  configs = [ ":target_default_pkg_deps" ]
+}
+
+pkg_config("libchromeos-dbus-bindings_config") {
+  pkg_deps = [
+    "dbus-1",
+  ]
+}
+
+pkg_config("libchromeos-dbus-bindings_config_export") {
+  pkg_deps = [
+    "expat",
+  ]
+}
+
+static_library("libchromeos-dbus-bindings") {
+  configs += [
+    ":target_defaults",
+    ":libchromeos-dbus-bindings_config",
+  ]
+  all_dependent_configs = [
+    ":libchromeos-dbus-bindings_config_export",
+  ]
+  sources = [
+    "adaptor_generator.cc",
+    "dbus_signature.cc",
+    "header_generator.cc",
+    "indented_text.cc",
+    "method_name_generator.cc",
+    "name_parser.cc",
+    "proxy_generator.cc",
+    "xml_interface_parser.cc",
+  ]
+}
+
+executable("generate-chromeos-dbus-bindings") {
+  configs += [
+    ":target_defaults",
+  ]
+  deps = [
+    ":libchromeos-dbus-bindings",
+  ]
+  sources = [
+    "generate_chromeos_dbus_bindings.cc",
+  ]
+}
+
+if (use.test) {
+  executable("chromeos_dbus_bindings_unittest") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libchromeos-dbus-bindings",
+      "//common-mk/testrunner:testrunner",
+    ]
+    sources = [
+      "adaptor_generator_test.cc",
+      "dbus_signature_test.cc",
+      "indented_text_test.cc",
+      "method_name_generator_test.cc",
+      "name_parser_test.cc",
+      "proxy_generator_mock_test.cc",
+      "proxy_generator_test.cc",
+      "test_utils.cc",
+      "xml_interface_parser_test.cc",
+    ]
+  }
+}
