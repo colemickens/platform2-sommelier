@@ -16,8 +16,6 @@ SCRIPT="$0"
 # stateful partition isn't around for logging, so dump to the screen:
 set -x
 
-# Log file to store the output of this run.
-CLOBBER_STATE_LOG="/tmp/clobber-state-shell.log"
 : [ -x /sbin/frecon ] && ${TTY=/run/frecon/vt0} || ${TTY=/dev/tty1}
 
 PRESERVED_TAR="/tmp/preserve.tar"
@@ -28,17 +26,6 @@ POWERWASH_COUNT="${STATE_PATH}/unencrypted/preserve/powerwash_count"
 # List of files to preserve relative to /mnt/stateful_partition/
 PRESERVED_FILES=""
 PRESERVED_LIST=""
-
-redirect_log_start() {
-  # Redirect stdout to our log.
-  exec >"${CLOBBER_STATE_LOG}" 2>&1
-}
-
-redirect_log_stop() {
-  # Stop appending to the log and preserve it.
-  exec >/dev/null 2>&1
-  mv -f "${CLOBBER_STATE_LOG}" "${STATE_PATH}/unencrypted/clobber-state.log"
-}
 
 preserve_files() {
   # Preserve these files in safe mode. (Please request a privacy review before
@@ -479,13 +466,6 @@ restore_preserved_files() {
   clobber-log --restore "${SCRIPT}" "$@"
 }
 
-tag_developer_mode_flags() {
-  # Tag that we're in developer mode otherwise we may get wiped again.
-  if crossystem "devsw_boot?1" && ! crossystem "mainfw_act?recovery"; then
-    touch /mnt/stateful_partition/.developer_mode
-  fi
-}
-
 # Removes the following keys from the VPD when transitioning between developer
 # and verified mode. Do not do this for a safe wipe.
 #   first_active_omaha_ping_sent
@@ -500,31 +480,7 @@ remove_vpd_keys() {
   fi
 }
 
-# In cases where biometric sensors are available, reset the internal entropy
-# used by those sensors for encryption, to render related data/templates etc.
-# undecipherable.
-reset_bio_entropy() {
-  if [ -e /usr/bin/bio_wash ]; then
-    if bio_wash; then
-      echo "Bio wash successful."
-    else
-      echo "Bio wash failed!"
-    fi
-  fi
-}
-
 main() {
-  redirect_log_start
-
-  # Most effective means of destroying user data is run at the start: Throwing
-  # away the key to encrypted stateful by requesting the TPM to be cleared at
-  # next boot. We shouldn't do this for rollback wipes.
-  if [ "${ROLLBACK_WIPE}" != "rollback" ]; then
-    crossystem clear_tpm_owner_request=1
-  fi
-
-  reset_bio_entropy
-
   preserve_files
   detect_system_config
 
@@ -566,14 +522,6 @@ main() {
   # Destroy less sensitive data.
   remove_vpd_keys
   potentially_wipe_non_active_kernel_and_root
-
-  # Mark deletion complete to prevent re-wipe after reboot.
-  tag_developer_mode_flags
-
-  # Flush linux caches.
-  sync
-
-  redirect_log_stop
 }
 
 main "$@"

@@ -5,6 +5,10 @@
 #ifndef INIT_CLOBBER_STATE_H_
 #define INIT_CLOBBER_STATE_H_
 
+#include <base/files/file_path.h>
+
+#include "init/crossystem.h"
+
 class ClobberState {
  public:
   struct Arguments {
@@ -22,13 +26,21 @@ class ClobberState {
 
   static Arguments ParseArgv(int argc, char const* const argv[]);
 
-  explicit ClobberState(const Arguments& args);
+  // Ownership of |cros_system| is retained by the caller.
+  ClobberState(const Arguments& args, CrosSystem* cros_system);
   int Run();
+  bool MarkDeveloperMode();
+
+  void SetStatefulForTest(base::FilePath stateful_path);
 
  private:
+  bool ClearBiometricSensorEntropy();
   int RunClobberStateShell();
   int Reboot();
+
   Arguments args_;
+  CrosSystem* cros_system_;
+  base::FilePath stateful_;
 };
 
 #endif  // INIT_CLOBBER_STATE_H_

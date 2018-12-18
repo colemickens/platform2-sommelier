@@ -42,6 +42,9 @@ executable("clobber-state") {
     "clobber_state.cc",
     "clobber_state_main.cc",
   ]
+  deps = [
+    ":libcrossystem",
+  ]
 }
 
 static_library("file_attrs_cleaner_lib") {
@@ -92,6 +95,7 @@ if (use.test) {
     ]
     deps = [
       "//common-mk/testrunner",
+      ":libcrossystem",
     ]
   }
 

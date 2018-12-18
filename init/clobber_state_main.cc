@@ -6,7 +6,11 @@
 
 #include <unistd.h>
 
+#include <memory>
+
 #include <base/logging.h>
+
+#include "init/crossystem_impl.h"
 
 int main(int argc, char* argv[]) {
   logging::LoggingSettings settings;
@@ -23,7 +27,9 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
+  std::unique_ptr<CrosSystemImpl> cros_system =
+      std::make_unique<CrosSystemImpl>();
   ClobberState::Arguments args = ClobberState::ParseArgv(argc, argv);
-  ClobberState clobber(args);
+  ClobberState clobber(args, cros_system.get());
   return clobber.Run();
 }
