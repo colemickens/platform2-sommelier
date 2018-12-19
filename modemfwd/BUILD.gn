@@ -1,0 +1,94 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+group("all") {
+  deps = [
+    ":modemfwd",
+  ]
+  if (use.test) {
+    deps += [ ":modemfw_test" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libchrome-${libbase_ver}",
+    "libbrillo-${libbase_ver}",
+    "libcros_config",
+    "libshill-client",
+    "liblzma",
+
+    # system_api depends on protobuf. It must appear before protobuf
+    # here or the linker flags won't be in the right order.
+    "system_api",
+    "protobuf",
+  ]
+}
+
+proto_library("modemfw-protos") {
+  proto_in_dir = "."
+  proto_out_dir = "include/modemfwd/proto_bindings"
+  sources = [
+    "${proto_in_dir}/firmware_manifest.proto",
+    "${proto_in_dir}/helper_manifest.proto",
+    "${proto_in_dir}/journal_entry.proto",
+  ]
+}
+
+static_library("libmodemfw") {
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":modemfw-protos",
+  ]
+  sources = [
+    "file_decompressor.cc",
+    "firmware_directory.cc",
+    "firmware_file.cc",
+    "journal.cc",
+    "modem.cc",
+    "modem_flasher.cc",
+    "modem_helper.cc",
+    "modem_helper_directory.cc",
+    "modem_tracker.cc",
+    "proto_file_io.cc",
+    "scoped_temp_file.cc",
+  ]
+}
+
+executable("modemfwd") {
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":libmodemfw",
+  ]
+  sources = [
+    "component.cc",
+    "daemon.cc",
+    "main.cc",
+  ]
+}
+
+if (use.test) {
+  executable("modemfw_test") {
+    configs += [
+      ":target_defaults",
+      "//common-mk:test",
+    ]
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+    deps = [
+      ":libmodemfw",
+      "//common-mk/testrunner:testrunner",
+    ]
+    sources = [
+      "file_decompressor_test.cc",
+      "firmware_directory_stub.cc",
+      "firmware_directory_test.cc",
+      "firmware_file_test.cc",
+      "journal_test.cc",
+      "modem_flasher_test.cc",
+    ]
+  }
+}
