@@ -27,6 +27,8 @@ using ProcDataCallback = base::Callback<void(
 
 constexpr char kFakeMeminfoFileContents[] =
     "MemTotal:      3906320 kB\nMemFree:      873180 kB\n";
+constexpr char kFakeBadMeminfoFileContents[] =
+    "MemTotal:      3906320\nMemfree:      873180 kB\n";
 constexpr int kFakeMemTotalMebibytes = 3814;
 constexpr int kFakeMemFreeMebibytes = 852;
 constexpr char kFakeLoadavgFileContents[] = "0.82 0.61 0.52 2/370 30707\n";
@@ -35,6 +37,9 @@ constexpr int kFakeNumRunnableEntities = 2;
 constexpr int kFakeNumExistingEntities = 370;
 constexpr char kFakeStatFileContents[] =
     "cpu  0 0 0 165432156432413546\ncpu0 0 0 0 653435243543\ncpu1 0 0 0 "
+    "235435413\nctxt 5345634354";
+constexpr char kFakeBadStatFileContents[] =
+    "cpu  0 0 165432156432413546\npu0 0 0 0 653435243543\ncpu1 0 0 0 "
     "235435413\nctxt 5345634354";
 constexpr char kFakeTotalCPUIdleTime[] = "165432156432413546";
 char const* kFakePerCPUIdleTimes[] = {"653435243543", "235435413"};
@@ -105,6 +110,9 @@ class TelemConnectionTest : public ::testing::Test {
     switch (item) {
       case TelemetryItemEnum::kMemTotalMebibytes:
         EXPECT_EQ(val, kFakeMemTotalMebibytes);
+        break;
+      case TelemetryItemEnum::kMemFreeMebibytes:
+        EXPECT_EQ(val, kFakeMemFreeMebibytes);
         break;
       case TelemetryItemEnum::kNumRunnableEntities:
         EXPECT_EQ(val, kFakeNumRunnableEntities);
@@ -232,6 +240,27 @@ TEST_F(TelemConnectionTest, GetMemTotal) {
   CheckIntegerItemResponse(mem_total, TelemetryItemEnum::kMemTotalMebibytes);
 }
 
+// Test that we can retrieve kMemFreeMebibytes.
+TEST_F(TelemConnectionTest, GetMemFree) {
+  SetProcDataResponse(kFakeMeminfoFileContents);
+
+  auto mem_free = connection()->GetItem(TelemetryItemEnum::kMemFreeMebibytes,
+                                        base::TimeDelta());
+  CheckIntegerItemResponse(mem_free, TelemetryItemEnum::kMemFreeMebibytes);
+}
+
+// Test that an incorrectly formatted /proc/meminfo will fail to parse.
+TEST_F(TelemConnectionTest, GetBadMeminfo) {
+  SetProcDataResponse(kFakeBadMeminfoFileContents);
+
+  auto mem_total = connection()->GetItem(TelemetryItemEnum::kMemTotalMebibytes,
+                                         base::TimeDelta());
+  EXPECT_EQ(mem_total, base::nullopt);
+  auto mem_free = connection()->GetItem(TelemetryItemEnum::kMemFreeMebibytes,
+                                        base::TimeDelta());
+  EXPECT_EQ(mem_free, base::nullopt);
+}
+
 // Test that we can retrieve kNumRunnableEntities.
 TEST_F(TelemConnectionTest, GetRunnableEntities) {
   SetProcDataResponse(kFakeLoadavgFileContents);
@@ -280,6 +309,18 @@ TEST_F(TelemConnectionTest, GetIdleTimePerCPU) {
   auto idle_times = connection()->GetItem(
       TelemetryItemEnum::kIdleTimePerCPUUserHz, base::TimeDelta());
   CheckListItemResponse(idle_times, TelemetryItemEnum::kIdleTimePerCPUUserHz);
+}
+
+// Test that an incorrectly formatted /proc/stat will fail to parse.
+TEST_F(TelemConnectionTest, GetBadStat) {
+  SetProcDataResponse(kFakeBadStatFileContents);
+
+  auto total_idle_time = connection()->GetItem(
+      TelemetryItemEnum::kTotalIdleTimeUserHz, base::TimeDelta());
+  EXPECT_EQ(total_idle_time, base::nullopt);
+  auto idle_times_per_cpu = connection()->GetItem(
+      TelemetryItemEnum::kIdleTimePerCPUUserHz, base::TimeDelta());
+  EXPECT_EQ(idle_times_per_cpu, base::nullopt);
 }
 
 // Test that we can retrieve a group of telemetry items.
