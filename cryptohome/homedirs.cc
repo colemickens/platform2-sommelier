@@ -1565,14 +1565,6 @@ bool HomeDirs::NeedsDircryptoMigration(
 void HomeDirs::ResetLECredentials(const Credentials& creds) {
   std::unique_ptr<VaultKeyset> vk(
       vault_keyset_factory()->New(platform_, crypto_));
-  // Make sure the credential can actually be used for sign-in.
-  // It is also the easiest way to get a valid keyset.
-  if (!GetValidKeyset(creds, vk.get(), nullptr /* key_index */,
-                      nullptr /* error */)) {
-    LOG(WARNING) << "The provided credentials are incorrect or invalid"
-      " for LE credential reset, reset skipped.";
-    return;
-  }
 
   std::string obfuscated = creds.GetObfuscatedUsername(system_salt_);
   std::vector<int> key_indices;
@@ -1581,6 +1573,7 @@ void HomeDirs::ResetLECredentials(const Credentials& creds) {
     return;
   }
 
+  bool credentials_checked = false;
   std::unique_ptr<VaultKeyset> vk_reset(
       vault_keyset_factory()->New(platform_, crypto_));
   for (int index : key_indices) {
@@ -1589,6 +1582,18 @@ void HomeDirs::ResetLECredentials(const Credentials& creds) {
     // Skip non-LE Credentials.
     if (!vk_reset->IsLECredential())
       continue;
+
+    if (!credentials_checked) {
+      // Make sure the credential can actually be used for sign-in.
+      // It is also the easiest way to get a valid keyset.
+      if (!GetValidKeyset(creds, vk.get(), nullptr /* key_index */,
+                          nullptr /* error */)) {
+        LOG(WARNING) << "The provided credentials are incorrect or invalid"
+          " for LE credential reset, reset skipped.";
+        return;
+      }
+      credentials_checked = true;
+    }
 
     Crypto::CryptoError err;
     if (!crypto_->ResetLECredential(vk_reset->serialized(), &err, *vk)) {
