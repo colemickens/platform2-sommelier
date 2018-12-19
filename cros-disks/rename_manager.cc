@@ -35,7 +35,7 @@ const char kRenameUser[] = "cros-disks";
 
 // Supported file systems and their parameters
 const RenameParameters kSupportedRenameParameters[] = {
-    {"vfat", "/usr/sbin/dosfslabel", 11, "disk"},
+    {"vfat", "/usr/sbin/fatlabel", 11, "disk"},
     {"exfat", "/usr/sbin/exfatlabel", 15, "fuse-exfat"}};
 
 const RenameParameters* FindRenameParameters(
