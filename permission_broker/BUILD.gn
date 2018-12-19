@@ -1,0 +1,152 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+import("//common-mk/generate-dbus-adaptors.gni")
+
+group("all") {
+  deps = [
+    ":permission_broker",
+  ]
+  if (use.test) {
+    deps += [
+      ":permission_broker_test",
+    ]
+  }
+  if (use.fuzzer) {
+    deps += [
+      ":firewall_fuzzer",
+    ]
+  }
+}
+
+pkg_config("target_defaults_deps") {
+  pkg_deps = [
+    "dbus-1",
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "libudev",
+    "libusb-1.0",
+  ]
+}
+
+config("target_defaults") {
+  defines = [
+    "USE_CONTAINERS=${use.containers}",
+    "USE_CFM_ENABLED_DEVICE=${use.cfm_enabled_device}",
+  ]
+  configs = [ ":target_defaults_deps" ]
+}
+
+generate_dbus_adaptors("permission_broker_adaptors") {
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+  dbus_adaptors_out_dir = "include/permission_broker/dbus_adaptors"
+  new_fd_bindings = true
+  sources = [
+    "dbus_bindings/org.chromium.PermissionBroker.xml",
+  ]
+}
+
+static_library("libpermission_broker") {
+  configs += [ ":target_defaults" ]
+  deps = [":permission_broker_adaptors"]
+  libs = [
+    "policy-${libbase_ver}",
+  ]
+  sources = [
+    "allow_group_tty_device_rule.cc",
+    "allow_hidraw_device_rule.cc",
+    "allow_tty_device_rule.cc",
+    "allow_usb_device_rule.cc",
+    "deny_claimed_hidraw_device_rule.cc",
+    "deny_claimed_usb_device_rule.cc",
+    "deny_group_tty_device_rule.cc",
+    "deny_uninitialized_device_rule.cc",
+    "deny_unsafe_hidraw_device_rule.cc",
+    "deny_usb_device_class_rule.cc",
+    "deny_usb_vendor_id_rule.cc",
+    "firewall.cc",
+    "hidraw_subsystem_udev_rule.cc",
+    "libusb_wrapper.cc",
+    "permission_broker.cc",
+    "port_tracker.cc",
+    "rule.cc",
+    "rule_engine.cc",
+    "tty_subsystem_udev_rule.cc",
+    "udev_scopers.cc",
+    "usb_control.cc",
+    "usb_driver_tracker.cc",
+    "usb_subsystem_udev_rule.cc",
+  ]
+  if (use.containers) {
+    deps += [
+      "../container_utils:libdevice_jail",
+    ]
+  }
+}
+
+executable("permission_broker") {
+  configs += [":target_defaults"]
+  deps = [":libpermission_broker"]
+  sources = ["permission_broker_main.cc"]
+}
+
+if (use.test) {
+  pkg_config("permission_broker_test_config") {
+    pkg_deps = [
+      "libbrillo-test-${libbase_ver}",
+      "libchrome-test-${libbase_ver}",
+    ]
+  }
+  executable("permission_broker_test") {
+    configs += [
+      "//common-mk:test",
+      ":permission_broker_test_config",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libpermission_broker",
+      "../common-mk/testrunner:testrunner",
+    ]
+    sources = [
+      "allow_tty_device_rule_test.cc",
+      "allow_usb_device_rule_test.cc",
+      "deny_claimed_hidraw_device_rule_test.cc",
+      "deny_claimed_usb_device_rule_test.cc",
+      "deny_unsafe_hidraw_device_rule_test.cc",
+      "deny_usb_device_class_rule_test.cc",
+      "deny_usb_vendor_id_rule_test.cc",
+      "fake_libusb_wrapper.cc",
+      "firewall_test.cc",
+      "group_tty_device_rule_test.cc",
+      "mock_firewall.cc",
+      "port_tracker_test.cc",
+      "rule_engine_test.cc",
+      "rule_test.cc",
+      "usb_control_test.cc",
+    ]
+  }
+}
+
+# Fuzzer target.
+if (use.fuzzer) {
+  pkg_config("firewall_fuzzer_config") {
+    pkg_deps = [
+      "libchrome-test-${libbase_ver}",
+    ]
+  }
+  executable("firewall_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer:common_fuzzer",
+      ":firewall_fuzzer_config",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libpermission_broker",
+    ]
+    sources = [
+      "firewall_fuzzer.cc",
+    ]
+  }
+}
