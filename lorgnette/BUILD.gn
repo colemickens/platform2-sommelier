@@ -1,0 +1,94 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":lorgnette",
+  ]
+  if (use.test) {
+    deps += [
+      ":lorgnette_unittest",
+    ]
+  }
+}
+
+pkg_config("target_defaults_deps") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "libmetrics-${libbase_ver}",
+    "libminijail",
+  ]
+}
+
+config("target_defaults") {
+  cflags_c = [
+    "-Wextra",
+  ]
+  cflags_cc = [
+    "-Woverloaded-virtual",
+  ]
+  configs = [":target_defaults_deps"]
+}
+
+generate_dbus_adaptors("lorgnette-adaptors") {
+  dbus_adaptors_out_dir = "include/lorgnette/dbus_adaptors"
+  new_fd_bindings = true
+  sources = [
+    "dbus_bindings/org.chromium.lorgnette.Manager.xml",
+  ]
+}
+
+pkg_config("liblorgnette_config") {
+  pkg_deps = [
+    "libpermission_broker-client",
+  ]
+}
+
+static_library("liblorgnette") {
+  all_dependent_configs = [
+    ":liblorgnette_config",
+  ]
+  configs += [
+    ":target_defaults",
+  ]
+  deps = [
+    ":lorgnette-adaptors",
+  ]
+  sources = [
+    "daemon.cc",
+    "epson_probe.cc",
+    "firewall_manager.cc",
+    "manager.cc",
+  ]
+}
+
+executable("lorgnette") {
+  configs +=  [
+    ":target_defaults",
+  ]
+  deps = [":liblorgnette"]
+  sources = [
+    "main.cc",
+  ]
+}
+
+if (use.test) {
+  executable("lorgnette_unittest") {
+    configs +=  [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [
+      ":liblorgnette",
+      "//common-mk/testrunner:testrunner",
+    ]
+    sources = [
+      "manager_test.cc",
+    ]
+  }
+}
