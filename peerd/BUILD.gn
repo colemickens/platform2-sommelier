@@ -1,0 +1,124 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/generate-dbus-proxies.gni")
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":peerd",
+  ]
+  if (use.test) {
+    deps += [":peerd_testrunner"]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "dbus-1",
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+  ]
+}
+
+generate_dbus_adaptors("peerd_common_dbus_adaptors") {
+  dbus_adaptors_out_dir = "include/peerd"
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+  sources = [
+    "dbus_bindings/org.chromium.peerd.Manager.xml",
+    "dbus_bindings/org.chromium.peerd.Peer.xml",
+    "dbus_bindings/org.chromium.peerd.Service.xml",
+  ]
+}
+
+static_library("peerd_common") {
+  configs += [ ":target_defaults" ]
+  deps = [":peerd_common_dbus_adaptors"]
+  sources = [
+    "avahi_client.cc",
+    "avahi_service_discoverer.cc",
+    "avahi_service_publisher.cc",
+    "constants.cc",
+    "dbus_constants.cc",
+    "discovered_peer.cc",
+    "manager.cc",
+    "peer.cc",
+    "peer_manager_impl.cc",
+    "published_peer.cc",
+    "service.cc",
+    "technologies.cc",
+    "typedefs.cc",
+  ]
+}
+
+# Import D-Bus bindings from Avahi.
+generate_dbus_proxies("generate-avahi-proxies") {
+  dbus_service_config = "dbus_bindings/avahi-service-config.json"
+  proxy_output_file = "include/avahi/dbus-proxies.h"
+  shared_interface_dir = "${sysroot}/usr/share/dbus-1/interfaces"
+  sources = [
+    "${shared_interface_dir}/org.freedesktop.Avahi.EntryGroup.xml",
+    "${shared_interface_dir}/org.freedesktop.Avahi.Server.xml",
+    "${shared_interface_dir}/org.freedesktop.Avahi.ServiceBrowser.xml",
+    "${shared_interface_dir}/org.freedesktop.Avahi.ServiceResolver.xml",
+  ]
+}
+
+# Generate D-Bus proxies for peerd.
+generate_dbus_proxies("generate-peerd-proxies") {
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+  proxy_output_file = "include/peerd/dbus-proxies.h"
+  mock_output_file = "include/peerd/dbus-proxy-mocks.h"
+  proxy_path_in_mocks = "peerd/dbus-proxies.h"
+  sources = [
+    "dbus_bindings/org.chromium.peerd.Manager.xml",
+    "dbus_bindings/org.chromium.peerd.Peer.xml",
+    "dbus_bindings/org.chromium.peerd.Service.xml",
+  ]
+}
+
+executable("peerd") {
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":peerd_common",
+    ":generate-avahi-proxies",
+    ":generate-peerd-proxies",
+  ]
+  sources = [
+    "main.cc",
+  ]
+}
+
+if (use.test) {
+  pkg_config("peerd_testrunner_config") {
+    pkg_deps = [
+      "libchrome-test-${libbase_ver}",
+    ]
+  }
+  executable("peerd_testrunner") {
+    configs += [
+      "//common-mk:test",
+      ":peerd_testrunner_config",
+      ":target_defaults",
+    ]
+    deps = [
+      ":peerd_common",
+      ":generate-avahi-proxies",
+      ":generate-peerd-proxies",
+      "//common-mk/testrunner:testrunner",
+    ]
+    sources = [
+      "avahi_client_test.cc",
+      "avahi_service_publisher_test.cc",
+      "discovered_peer_test.cc",
+      "manager_test.cc",
+      "peer_manager_impl_test.cc",
+      "peer_test.cc",
+      "published_peer_test.cc",
+      "service_test.cc",
+      "test_util.cc",
+    ]
+  }
+}
