@@ -81,6 +81,7 @@ bool ArchiveManager::StopSession() {
 bool ArchiveManager::CanMount(const string& source_path) const {
   // The following paths can be mounted:
   //     /home/chronos/u-<user-id>/Downloads/...<file>
+  //     /home/chronos/u-<user-id>/MyFiles/...<file>
   //     /home/chronos/u-<user-id>/GCache/...<file>
   //     /media/<dir>/<dir>/...<file>
   //
@@ -97,7 +98,8 @@ bool ArchiveManager::CanMount(const string& source_path) const {
                           base::CompareCase::INSENSITIVE_ASCII) &&
          brillo::cryptohome::home::IsSanitizedUserName(
              components[3].substr(2))) &&
-        (components[4] == "Downloads" || components[4] == "GCache")) {
+        (components[4] == "Downloads" || components[4] == "GCache" ||
+         components[4] == "MyFiles")) {
       return true;
     }
   }
