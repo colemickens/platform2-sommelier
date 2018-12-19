@@ -19,6 +19,16 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
+    "vboot_host"
+  ]
+}
+
+static_library("libcrossystem") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "crossystem.cc",
+    "crossystem_fake.cc",
+    "crossystem_impl.cc",
   ]
 }
 
