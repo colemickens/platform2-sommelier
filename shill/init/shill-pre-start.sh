@@ -17,7 +17,7 @@ chmod 0770 /run/ipsec
 # Create state directory for entire L2TP/IPsec subtree
 mkdir -p /run/l2tpipsec_vpn
 chown -R shill:shill /run/l2tpipsec_vpn
-chmod 0770 /run/l2tpipsec_vpn
+chmod 0750 /run/l2tpipsec_vpn
 
 # Create storage for the shill global profile.
 mkdir -p /var/cache/shill
