@@ -15,6 +15,7 @@
 #include <base/at_exit.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/format_macros.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop/message_loop.h>
@@ -226,7 +227,7 @@ int StartVm(dbus::ObjectProxy* proxy,
     }
 
     char flag_buf[20];
-    snprintf(flag_buf, sizeof(flag_buf), "0x%x", disk_image->flags());
+    snprintf(flag_buf, sizeof(flag_buf), "0x%" PRIx64, disk_image->flags());
 
     LOG(INFO) << "Disk " << disk_image->path();
     LOG(INFO) << "    mnt point: " << disk_image->mount_point();
