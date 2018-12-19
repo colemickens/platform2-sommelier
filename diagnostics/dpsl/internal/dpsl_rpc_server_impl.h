@@ -35,12 +35,17 @@ class DpslRpcServerImpl final : public DpslRpcServer {
  private:
   using HandleMessageFromUiCallback = base::Callback<void(
       std::unique_ptr<grpc_api::HandleMessageFromUiResponse>)>;
+  using HandleEcNotificationCallback = base::Callback<void(
+      std::unique_ptr<grpc_api::HandleEcNotificationResponse>)>;
 
   // Methods corresponding to the "DiagnosticsProcessor" gRPC interface (each of
   // these methods just calls the corresponding method of |rpc_handler_|):
   void HandleMessageFromUi(
       std::unique_ptr<grpc_api::HandleMessageFromUiRequest> request,
       const HandleMessageFromUiCallback& callback);
+  void HandleEcNotification(
+      std::unique_ptr<grpc_api::HandleEcNotificationRequest> request,
+      const HandleEcNotificationCallback& callback);
 
   // Unowned.
   DpslRpcHandler* const rpc_handler_;

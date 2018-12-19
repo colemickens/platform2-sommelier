@@ -76,6 +76,17 @@ void DpslRpcServerImpl::HandleMessageFromUi(
           MakeOriginTaskRunnerPostingCallback(FROM_HERE, callback)));
 }
 
+void DpslRpcServerImpl::HandleEcNotification(
+    std::unique_ptr<grpc_api::HandleEcNotificationRequest> request,
+    const HandleEcNotificationCallback& callback) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+
+  rpc_handler_->HandleEcNotification(
+      std::move(request),
+      MakeStdFunctionFromCallback(
+          MakeOriginTaskRunnerPostingCallback(FROM_HERE, callback)));
+}
+
 // static
 std::unique_ptr<DpslRpcServer> DpslRpcServer::Create(
     DpslThreadContext* thread_context,

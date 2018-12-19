@@ -34,6 +34,10 @@ class DemoRpcHandler final : public diagnostics::DpslRpcHandler {
       std::unique_ptr<diagnostics::grpc_api::HandleMessageFromUiRequest>
           request,
       HandleMessageFromUiCallback callback) override;
+  void HandleEcNotification(
+      std::unique_ptr<diagnostics::grpc_api::HandleEcNotificationRequest>
+          request,
+      HandleEcNotificationCallback callback) override;
 
  private:
   void FetchSystemUptime();
@@ -59,6 +63,17 @@ void DemoRpcHandler::HandleMessageFromUi(
   // Note: every incoming RPC must be answered.
   callback(
       std::make_unique<diagnostics::grpc_api::HandleMessageFromUiResponse>());
+  FetchSystemUptime();
+}
+
+void DemoRpcHandler::HandleEcNotification(
+    std::unique_ptr<diagnostics::grpc_api::HandleEcNotificationRequest> request,
+    HandleEcNotificationCallback callback) {
+  std::cerr << "Received HandleEcNotification request: " << request->payload()
+            << std::endl;
+  // Note: every incoming RPC must be answered.
+  callback(
+      std::make_unique<diagnostics::grpc_api::HandleEcNotificationResponse>());
   FetchSystemUptime();
 }
 

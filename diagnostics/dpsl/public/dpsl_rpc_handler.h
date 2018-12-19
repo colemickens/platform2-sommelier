@@ -56,6 +56,8 @@ class DpslRpcHandler {
   // request).
   using HandleMessageFromUiCallback = std::function<void(
       std::unique_ptr<grpc_api::HandleMessageFromUiResponse> response)>;
+  using HandleEcNotificationCallback = std::function<void(
+      std::unique_ptr<grpc_api::HandleEcNotificationResponse> response)>;
 
   virtual ~DpslRpcHandler() = default;
 
@@ -69,6 +71,9 @@ class DpslRpcHandler {
   virtual void HandleMessageFromUi(
       std::unique_ptr<grpc_api::HandleMessageFromUiRequest> request,
       HandleMessageFromUiCallback callback) = 0;
+  virtual void HandleEcNotification(
+      std::unique_ptr<grpc_api::HandleEcNotificationRequest> request,
+      HandleEcNotificationCallback callback) = 0;
 };
 
 }  // namespace diagnostics

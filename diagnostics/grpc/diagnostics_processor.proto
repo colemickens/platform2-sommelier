@@ -14,6 +14,10 @@ service DiagnosticsProcessor {
   // the browser).
   rpc HandleMessageFromUi(HandleMessageFromUiRequest)
       returns (HandleMessageFromUiResponse) {}
+
+  // Called when the diagnosticsd daemon received EC notification.
+  rpc HandleEcNotification(HandleEcNotificationRequest)
+      returns (HandleEcNotificationResponse) {}
 }
 
 // Parameters for the HandleMessageFromUi RPC.
@@ -29,3 +33,12 @@ message HandleMessageFromUiResponse {
   // When set, should be a valid JSON string.
   string response_json_message = 1;
 }
+
+// Parameters for the HandleEcNotification RPC.
+message HandleEcNotificationRequest {
+  // EC notification payload.
+  bytes payload = 1;
+}
+
+// Return value of the HandleEcNotification RPC.
+message HandleEcNotificationResponse {}
