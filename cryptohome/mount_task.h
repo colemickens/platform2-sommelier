@@ -287,19 +287,6 @@ class MountTask : public base::RefCountedThreadSafe<MountTask> {
   DISALLOW_COPY_AND_ASSIGN(MountTask);
 };
 
-// Implements a no-op task that merely posts results
-class MountTaskNop : public MountTask {
- public:
-  explicit MountTaskNop(MountTaskObserver* observer, int sequence_id)
-      : MountTask(observer, NULL, sequence_id) {}
-  virtual ~MountTaskNop() {}
-
-  virtual void Run() { Notify(); }
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(MountTaskNop);
-};
-
 // Implements asychronous reset of the TPM context
 class MountTaskResetTpmContext : public MountTask {
  public:

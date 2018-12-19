@@ -3031,19 +3031,6 @@ bool Service::GetPublicMountPassKey(const std::string& public_mount_id,
   return true;
 }
 
-int Service::PostAsyncCallResult(MountTaskObserver* bridge,
-                                 MountError return_code,
-                                 bool return_status) {
-  scoped_refptr<MountTaskNop> mount_task =
-      new MountTaskNop(bridge, NextSequence());
-  mount_task->result()->set_return_code(return_code);
-  mount_task->result()->set_return_status(return_status);
-  mount_thread_.task_runner()->PostTask(FROM_HERE,
-      base::Bind(&MountTaskNop::Run, mount_task.get()));
-
-  return mount_task->sequence_id();
-}
-
 void Service::DispatchEventsForTesting() {
   event_source_.HandleDispatch();
 }

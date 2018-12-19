@@ -808,13 +808,6 @@ class Service : public brillo::dbus::AbstractDbusService,
   bool GetPublicMountPassKey(const std::string& public_mount_id,
                              std::string* public_mount_passkey);
 
-  // Creates a MountTaskNop that uses |bridge| to return |return_code| and
-  // |return_status| for async calls. Returns the sequence id of the created
-  // MountTaskNop.
-  int PostAsyncCallResult(MountTaskObserver* bridge,
-                          MountError return_code,
-                          bool return_status);
-
   // Called on Mount thread. This method calls ReportDictionaryAttackResetStatus
   // exactly once (i.e. records one sample) with the status of the operation.
   void ResetDictionaryAttackMitigation();
