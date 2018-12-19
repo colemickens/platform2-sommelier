@@ -39,8 +39,8 @@ scoped_refptr<dbus::Bus> DispatcherClient::GetClientBus() {
     return nullptr;
   }
 
-  VLOG(1) << "D-Bus connection name for client " << client_address_ << " = "
-          << client_bus_->GetConnectionName();
+  LOG(INFO) << "D-Bus connection name for client " << client_address_ << " = "
+            << client_bus_->GetConnectionName();
 
   return client_bus_;
 }
