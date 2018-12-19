@@ -200,35 +200,37 @@ ec_power_modem() {
   fi
 }
 
-# Define the white list of the bt_vendor:bt_product that allow mode change
-# events where bt_vendor:* means all products of the vendor are allowed.
+# Define the white list of the bt_vendor:bt_product that allow to set event
+# mask where bt_vendor:* means all products of the vendor are allowed.
 # TODO: change the whitelist to blacklist after verifying all existing
 #       controllers. Only a small portion of controllers do not support
 #       setting the event mask, e.g., the Mode Change event.
 #       Refer to the following file for the list of bluetooth controllers.
 #       src/platform2/power_manager/udev/gen_autosuspend_rules.py
-BT_MODE_WHITELIST="8087:* 0cf3:e300 04ca:301a"
+BT_MASK_WHITELIST="8087:* 0cf3:e300 04ca:301a"
 
 # Check if bt_vendor:bt_product is in the white list.
-in_mode_change_whitelist() {
+in_bt_mask_whitelist() {
   local vendor="$1"
   local product="$2"
-  [ "${BT_MODE_WHITELIST#*${vendor}:\*}" != "${BT_MODE_WHITELIST}" -o \
-    "${BT_MODE_WHITELIST#*${vendor}:${product}}" != "${BT_MODE_WHITELIST}" ]
+  [ "${BT_MASK_WHITELIST#*${vendor}:\*}" != "${BT_MASK_WHITELIST}" -o \
+    "${BT_MASK_WHITELIST#*${vendor}:${product}}" != "${BT_MASK_WHITELIST}" ]
 }
 
 to_hex() {
   echo "obase=16; $(($1))" | bc
 }
 
-# Bluetooth HCI Mode Change event to "enable" or "disable".
-#
-# Enables or disables Bluetooth HCI mode change events based on an
-# "enable" or "disable" argument. Some Bluetooth devices enter Sniff
-# Mode to conserve power shortly after activity stops. This results
-# in a mode change event being sent. Disable these events before
-# suspending to prevent them from waking the system.
-bt_hci_mode_change_event_ctrl() {
+# Enable or disable some Bluetooth events based on the "enable" or
+# "disable" argument.
+# Different Bluetooth devices and the Bluetooth controllers of
+# different vendors may send different events to the host during
+# system suspension which would wake up the system spuriously.
+# Disabling the events on suspension would help prevent the system
+# from waking up spuriously.
+# Refer to Bluetooth Spec 4.2 Vol 2 Part E 7.3.1 Set Event Mask Command
+# about the event mask values.
+bt_hci_events_ctrl() {
   local file
   for file in /sys/class/bluetooth/hci[0-9]; do
     local hcidev="$(basename "${file}")"
@@ -239,18 +241,33 @@ bt_hci_mode_change_event_ctrl() {
     bt_vendor="$(cat "${usb_path}"/idVendor)"
     bt_product="$(cat "${usb_path}"/idProduct)"
 
-    # Don't do anything for controllers not in BT_MODE_WHITELIST.
+    # Don't do anything for controllers not in BT_MASK_WHITELIST.
     # Some of them may not support it well (See http://crbug.com/803272)
-    if ! in_mode_change_whitelist "${bt_vendor}" "${bt_product}"; then
-      log_msg "Skipping $1 BT HCI mode change event on" \
-              "${bt_vendor}:${bt_product}"
+    if ! in_bt_mask_whitelist "${bt_vendor}" "${bt_product}"; then
+      log_msg "Skipping $1 BT HCI events on" "${bt_vendor}:${bt_product}"
       continue
     fi
     if [ "$1" = "disable" ]; then
-      log_msg "Disabling Bluetooth HCI mode change event before suspend"
-      timeout -k 2 2 hcitool -i "${hcidev}" cmd 03 01 ff ff f7 ff ff ff ff ff
+      log_msg "Disabling some Bluetooth HCI events before suspend"
+      # Events turned off during system suspension:
+      #   Mode Change Event:        0x0000000000080000
+      #   Sniff Subrating Event:    0x0000200000000000
+      #   Max Slots Change Event:   0x0000000004000000
+      # Note:
+      #   a. We have to be careful when disabling mask values to avoid
+      #      the system from going out of sync with the controller on resume.
+      #      - Mode Change Event and Sniff Subrating Event: these states will be
+      #        synced again after the host sends Exit Sniff mode command below.
+      #      - Max Slots Change Event: kernel does not care this event at all.
+      #   b. The following mask values are coded in Little Endian order.
+      # TODO: fix the terrible scary hack using hcitool.
+      #       - Should recover the original mask values instead of all on
+      #         after resume.
+      #       - It should be implemented in Bluetooth stack and be called by
+      #         dbus.
+      timeout -k 2 2 hcitool -i "${hcidev}" cmd 03 01 ff ff f7 fb ff df ff ff
     elif [ "$1" = "enable" ]; then
-      log_msg "Enabling Bluetooth HCI mode change event after resume"
+      log_msg "Enabling Bluetooth HCI events after resume"
       timeout -k 2 2 hcitool -i "${hcidev}" cmd 03 01 ff ff ff ff ff ff ff ff
 
       # Exit Sniff mode for all ACL connections.
@@ -419,8 +436,8 @@ else
     ec_power_modem off
   fi
 
-  # Disable Bluetooth mode change events.
-  bt_hci_mode_change_event_ctrl "disable"
+  # Disable undesired events in the Bluetooth event mask.
+  bt_hci_events_ctrl "disable"
 
   # Compact memory if it is fragmented.
   try_compact_memory
@@ -505,8 +522,8 @@ else
     ec_power_modem on
   fi
 
-  # Enable Bluetooth mode change events.
-  bt_hci_mode_change_event_ctrl "enable"
+  # Enable all events in the Bluetooth event mask.
+  bt_hci_events_ctrl "enable"
 fi
 
 send_uma_result "${result}"
