@@ -4,6 +4,8 @@
 
 #include "diagnostics/diagnosticsd/ec_constants.h"
 
+#include <poll.h>
+
 namespace diagnostics {
 
 // Folder path exposed by sysfs EC driver.
@@ -25,6 +27,17 @@ const int64_t kEcRunCommandPayloadMaxSize = 32;
 // TODO(lamzin, crbug.com/904401): replace by real file path when EC driver
 // will be ready.
 const char kEcRunCommandFilePath[] = "raw";
+
+// EC event sysfs file path.
+//
+// Prefix is equal to kEcDriverSysfsPath, but this constant will be changed to
+// "/sys/class/chromeos/wilco_ec/event" in very near future.
+const char kEcEventSysfsPath[] = "sys/bus/platform/devices/GOOG000C:00/event";
+
+// The driver is expected to populate the |kEcEventSysfsPath| file with
+// high-priority data, therefore this constant holds the specific flag for use
+// with poll().
+const int16_t kEcEventPollEvents = POLLPRI;
 
 // Please keep in sync list of properties with
 // "//third_party/kernel/drivers/platform/chrome/wilco_ec_properties.h"

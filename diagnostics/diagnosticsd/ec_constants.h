@@ -29,6 +29,17 @@ extern const int64_t kEcRunCommandPayloadMaxSize;
 // will be ready.
 extern const char kEcRunCommandFilePath[];
 
+// EC event sysfs file path.
+//
+// Prefix is equal to kEcDriverSysfsPath, but this constant will be changed to
+// "/sys/class/chromeos/wilco_ec/event" in very near future.
+extern const char kEcEventSysfsPath[];
+
+// The driver is expected to populate the |kEcEventSysfsPath| file with
+// high-priority data, therefore this constant holds the specific flag for use
+// with poll().
+extern const int16_t kEcEventPollEvents;
+
 // Please keep in sync list of properties with
 // "//third_party/kernel/drivers/platform/chrome/wilco_ec_properties.h"
 

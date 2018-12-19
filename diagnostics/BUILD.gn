@@ -130,6 +130,7 @@ static_library("libdiagnosticsd") {
     "diagnosticsd/diagnosticsd_core_delegate_impl.cc",
     "diagnosticsd/diagnosticsd_daemon.cc",
     "diagnosticsd/diagnosticsd_dbus_service.cc",
+    "diagnosticsd/diagnosticsd_ec_event_service.cc",
     "diagnosticsd/diagnosticsd_grpc_service.cc",
     "diagnosticsd/diagnosticsd_mojo_service.cc",
     "diagnosticsd/ec_constants.cc",
@@ -345,6 +346,7 @@ if (use.test) {
     sources = [
       "diagnosticsd/diagnosticsd_core_test.cc",
       "diagnosticsd/diagnosticsd_dbus_service_test.cc",
+      "diagnosticsd/diagnosticsd_ec_event_service_test.cc",
       "diagnosticsd/diagnosticsd_grpc_service_test.cc",
       "diagnosticsd/diagnosticsd_mojo_service_test.cc",
       "diagnosticsd/ec_constants_test.cc",
