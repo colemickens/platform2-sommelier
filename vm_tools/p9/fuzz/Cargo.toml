@@ -10,7 +10,7 @@ p9 = { path = "../" }
 members = ["."]
 
 [[bin]]
-name = "p9_tframe_decode"
+name = "p9_tframe_decode_fuzzer"
 path = "tframe_decode.rs"
 
 [patch.crates-io]
