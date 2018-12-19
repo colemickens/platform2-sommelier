@@ -506,6 +506,11 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   // non-autolaunching public session.
   builder->AddVmodulePattern("existing_user_controller=2");
 
+  // TODO(afakhry): Remove after investigation of dropped feedback reports is
+  // complete: https://crbug.com/909096.
+  builder->AddVmodulePattern("*/feedback_private/*=1");
+  builder->AddVmodulePattern("*/feedback_uploader*=1");
+
   if (builder->UseFlagIsSet("cheets"))
     builder->AddVmodulePattern("*arc/*=1");
 }
