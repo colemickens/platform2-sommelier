@@ -1,0 +1,110 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+group("all") {
+  deps = [
+    ":mist",
+  ]
+  if (use.test) {
+    deps += [":mist_testrunner"]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "libmetrics-${libbase_ver}",
+    "libudev",
+    "libusb-1.0",
+    "protobuf",
+  ]
+}
+
+proto_library("mist-protos") {
+  proto_in_dir = "proto"
+  proto_out_dir = "include/mist/proto_bindings"
+  sources = [
+    "${proto_in_dir}/config.proto",
+    "${proto_in_dir}/usb_modem_info.proto",
+  ]
+}
+
+static_library("libmist") {
+  configs += [":target_defaults"]
+  deps = [":mist-protos"]
+  sources = [
+    "config_loader.cc",
+    "context.cc",
+    "event_dispatcher.cc",
+    "metrics.cc",
+    "mist.cc",
+    "udev.cc",
+    "udev_device.cc",
+    "udev_enumerate.cc",
+    "udev_list_entry.cc",
+    "udev_monitor.cc",
+    "usb_bulk_transfer.cc",
+    "usb_config_descriptor.cc",
+    "usb_constants.cc",
+    "usb_device.cc",
+    "usb_device_descriptor.cc",
+    "usb_device_event_notifier.cc",
+    "usb_endpoint_descriptor.cc",
+    "usb_error.cc",
+    "usb_interface.cc",
+    "usb_interface_descriptor.cc",
+    "usb_manager.cc",
+    "usb_modem_one_shot_switcher.cc",
+    "usb_modem_switch_context.cc",
+    "usb_modem_switch_operation.cc",
+    "usb_modem_switcher.cc",
+    "usb_transfer.cc",
+  ]
+}
+
+executable("mist") {
+  configs += [":target_defaults"]
+  deps = [":libmist"]
+  sources = [
+    "main.cc",
+  ]
+}
+
+if (use.test) {
+  pkg_config("mist_testrunner_config") {
+    pkg_deps = [
+      "libchrome-test-${libbase_ver}",
+    ]
+  }
+  executable("mist_testrunner") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [
+      "//common-mk/testrunner:testrunner",
+      ":libmist",
+    ]
+    sources = [
+      "config_loader_test.cc",
+      "event_dispatcher_test.cc",
+      "mist.cc",
+      "mock_context.cc",
+      "usb_config_descriptor_test.cc",
+      "usb_constants_test.cc",
+      "usb_device_descriptor_test.cc",
+      "usb_device_event_notifier_test.cc",
+      "usb_endpoint_descriptor_test.cc",
+      "usb_error_test.cc",
+      "usb_interface_descriptor_test.cc",
+      "usb_modem_switch_context_test.cc",
+      "usb_transfer_test.cc",
+    ]
+  }
+}
+
