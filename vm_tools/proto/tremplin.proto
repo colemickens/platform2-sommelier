@@ -163,6 +163,11 @@ message SetUpUserResponse {
 
   // The failure_reason if the user was not set up successfully.
   string failure_reason = 2;
+
+  // The primary username of the container, if successful or if user already
+  // exists.  This may be different from container_username in SetUpUserRequest
+  // if the container already exists, and uid 1000 user has changed username.
+  string username = 3;
 }
 
 message TremplinStartupInfo {}

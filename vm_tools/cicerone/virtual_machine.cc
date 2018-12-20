@@ -294,8 +294,9 @@ VirtualMachine::StartLxdContainerStatus VirtualMachine::StartLxdContainer(
 
 VirtualMachine::GetLxdContainerUsernameStatus
 VirtualMachine::GetLxdContainerUsername(const std::string& container_name,
-                                        std::string* username,
+                                        std::string* out_username,
                                         std::string* out_error) {
+  DCHECK(out_username);
   DCHECK(out_error);
   if (!tremplin_stub_) {
     *out_error = "tremplin is not connected";
@@ -321,7 +322,7 @@ VirtualMachine::GetLxdContainerUsername(const std::string& container_name,
   }
 
   out_error->assign(response.failure_reason());
-  username->assign(response.username());
+  out_username->assign(response.username());
 
   switch (response.status()) {
     case tremplin::GetContainerUsernameResponse::UNKNOWN:
@@ -345,7 +346,9 @@ VirtualMachine::GetLxdContainerUsername(const std::string& container_name,
 VirtualMachine::SetUpLxdContainerUserStatus
 VirtualMachine::SetUpLxdContainerUser(const std::string& container_name,
                                       const std::string& container_username,
+                                      std::string* out_username,
                                       std::string* out_error) {
+  DCHECK(out_username);
   DCHECK(out_error);
   if (!tremplin_stub_) {
     *out_error = "tremplin is not connected";
@@ -364,6 +367,7 @@ VirtualMachine::SetUpLxdContainerUser(const std::string& container_name,
       gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
 
   grpc::Status status = tremplin_stub_->SetUpUser(&ctx, request, &response);
+  out_username->assign(response.username());
   if (!status.ok()) {
     LOG(ERROR) << "SetUpUser RPC failed: " << status.error_message();
     out_error->assign(status.error_message());

@@ -456,6 +456,7 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
   LOG(INFO) << "Startup of container " << container_name << " at IP "
             << string_ip << " for VM " << vm_name << " completed.";
 
+  std::string username;
   if (owner_id == primary_owner_id_) {
     // Register this with the hostname resolver.
     RegisterHostname(
@@ -465,7 +466,7 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
     if (vm_name == kDefaultVmName && container_name == kDefaultContainerName) {
       RegisterHostname(kDefaultContainerHostname, string_ip);
 
-      std::string username, error_msg;
+      std::string error_msg;
       if (vm->GetLxdContainerUsername(container_name, &username, &error_msg) !=
           VirtualMachine::GetLxdContainerUsernameStatus::SUCCESS) {
         LOG(ERROR) << "Failed to get container " << container_name
@@ -482,6 +483,7 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
   proto.set_vm_name(vm_name);
   proto.set_container_name(container_name);
   proto.set_owner_id(owner_id);
+  proto.set_container_username(username);
   dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
   exported_object_->SendSignal(&signal);
   *result = true;
@@ -1776,12 +1778,13 @@ std::unique_ptr<dbus::Response> Service::SetUpLxdContainerUser(
     return dbus_response;
   }
 
+  std::string username;
   std::string error_msg;
   VirtualMachine::SetUpLxdContainerUserStatus status =
-      vm->SetUpLxdContainerUser(request.container_name().empty()
-                                    ? kDefaultContainerName
-                                    : request.container_name(),
-                                request.container_username(), &error_msg);
+      vm->SetUpLxdContainerUser(
+          request.container_name().empty() ? kDefaultContainerName
+                                           : request.container_name(),
+          request.container_username(), &username, &error_msg);
 
   switch (status) {
     case VirtualMachine::SetUpLxdContainerUserStatus::UNKNOWN:
@@ -1797,6 +1800,7 @@ std::unique_ptr<dbus::Response> Service::SetUpLxdContainerUser(
       response.set_status(SetUpLxdContainerUserResponse::FAILED);
       break;
   }
+  response.set_container_username(username);
   response.set_failure_reason(error_msg);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
