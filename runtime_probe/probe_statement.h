@@ -17,6 +17,7 @@
 #include <gtest/gtest.h>
 
 #include "runtime_probe/probe_function.h"
+#include "runtime_probe/probe_result_checker.h"
 
 namespace runtime_probe {
 
@@ -27,9 +28,7 @@ class ProbeStatement {
    *             <func:ProbeFunction> |
    *             [<func:ProbeFunction>],
    *     "keys": [<key:string>],
-   *     "expect": {
-   *         <key:string>: <value:string>
-   *     },
+   *     "expect": <see |ProbeResultChecker|>,
    *     "information": <info:DictValue>,
    *   }
    *
@@ -40,12 +39,26 @@ class ProbeStatement {
    *       "functions": [<func:ProbeFunction>]
    *     }
    *   }
+   *
+   * For "expect", the dictionary value should represent a |ProbeResultChecker|
+   * object.  See |ProbeResultChecker| for more details.
+   *
+   * When evaluating a |ProbeStatement|, the |ProbeFunction| defined by "eval"
+   * will be called.  The results will be filtered / processed by "keys" and
+   * "expect" rules.  See |ProbeStatement.Eval()| for more details.
    */
  public:
   static std::unique_ptr<ProbeStatement> FromDictionaryValue(
       std::string component_name, const base::DictionaryValue& dict_value);
 
-  /* Delegate of eval_->Eval() */
+  /* Evaluate the probe statement.
+   *
+   * The process can be break into following steps:
+   * - Call probe function |eval_|
+   * - Filter results by |key_|  (if |key_| is not empty)
+   * - Transform and check results by |expect_|  (if |expect_| is not empty)
+   * - Return final results that passed |expect_| check.
+   */
   ProbeFunction::DataType Eval() const;
 
   std::unique_ptr<base::DictionaryValue> GetInformation() const {
@@ -60,10 +73,11 @@ class ProbeStatement {
   std::string component_name_;
   std::unique_ptr<ProbeFunction> eval_;
   std::set<std::string> key_;
-  std::map<std::string, std::unique_ptr<base::ListValue>> expect_;
+  std::unique_ptr<ProbeResultChecker> expect_;
   const base::DictionaryValue* information_ = nullptr;
 
   FRIEND_TEST(ProbeConfigTest, LoadConfig);
+  FRIEND_TEST(ProbeStatementTest, TestEval);
 };
 
 }  // namespace runtime_probe

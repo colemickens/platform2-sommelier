@@ -27,6 +27,7 @@ void FilterDictionaryValueByKey(base::DictionaryValue* dv,
 }
 
 }  // namespace
+
 std::unique_ptr<ProbeStatement> ProbeStatement::FromDictionaryValue(
     std::string component_name, const base::DictionaryValue& dict_value) {
   std::unique_ptr<ProbeStatement> instance{new ProbeStatement};
@@ -69,18 +70,12 @@ std::unique_ptr<ProbeStatement> ProbeStatement::FromDictionaryValue(
   if (!dict_value.GetDictionary("expect", &expect_dict_value)) {
     VLOG(1) << "expect does not exist or is not a DictionaryValue";
   } else {
-    for (base::DictionaryValue::Iterator it{*expect_dict_value}; !it.IsAtEnd();
-         it.Advance()) {
-      // Currently, destroy all previously inserted valid elems
-      if (!it.value().is_list()) {
-        LOG(ERROR) << "expect should be a DictionaryValue of (string -> list)";
-        instance->expect_.clear();
-        break;
-      }
-      instance->expect_[it.key()] =
-          base::ListValue::From(std::make_unique<base::Value>(it.value()));
-    }
+    instance->expect_ =
+        ProbeResultChecker::FromDictionaryValue(*expect_dict_value);
+    if (!instance->expect_)
+      VLOG(1) << "Failed to parse attribute expect: " << *expect_dict_value;
   }
+
   // Parse optional field "information"
   if (!dict_value.GetDictionary("information", &instance->information_)) {
     VLOG(1) << "information does not exist or is not a DictionaryValue";
@@ -91,11 +86,25 @@ std::unique_ptr<ProbeStatement> ProbeStatement::FromDictionaryValue(
 
 ProbeFunction::DataType ProbeStatement::Eval() const {
   auto results = eval_->Eval();
+
   if (!key_.empty()) {
-    for (auto& res : results) {
-      FilterDictionaryValueByKey(&res, key_);
-    }
+    std::for_each(results.begin(), results.end(), [this](auto& result) {
+      FilterDictionaryValueByKey(&result, key_);
+    });
   }
+
+  if (expect_) {
+    // |expect_->Apply| will return false if the probe result is considered
+    // invalid.
+    // |std::partition| will move failed elements to end of list, |first_fail|
+    // will point the the first failed element.
+    auto first_failure = std::partition(
+        results.begin(), results.end(),
+        [this](auto& result) { return expect_->Apply(&result); });
+    // Remove failed elements.
+    results.erase(first_failure, results.end());
+  }
+
   return results;
 }
 }  // namespace runtime_probe
