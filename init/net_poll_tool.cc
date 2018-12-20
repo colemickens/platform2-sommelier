@@ -30,8 +30,8 @@ void SigalarmHandler(int sig) {
 // something else (hopefully whatever we're waiting for) before coming back.
 void Yield(const std::string& desc) {
   const struct timespec ts = {
-    .tv_sec = 0,
-    .tv_nsec = 1000 * 1000,  // 1 millisecond.
+      .tv_sec = 0,
+      .tv_nsec = 1000 * 1000,  // 1 millisecond.
   };
   nanosleep(&ts, nullptr);
   if (timedout) {
@@ -42,7 +42,8 @@ void Yield(const std::string& desc) {
 
 // Poll a UNIX socket until it's usable.
 bool PollUnixSocket(const base::FilePath& path) {
-  base::ScopedFD s(socket(AF_UNIX, SOCK_DGRAM|SOCK_CLOEXEC|SOCK_NONBLOCK, 0));
+  base::ScopedFD s(
+      socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC | SOCK_NONBLOCK, 0));
   if (!s.is_valid()) {
     PLOG(ERROR) << "Could not create a UNIX socket";
     return false;

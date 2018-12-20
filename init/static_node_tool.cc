@@ -21,7 +21,8 @@
 #include <brillo/flag_helper.h>
 
 int main(int argc, char* argv[]) {
-  brillo::FlagHelper::Init(argc, argv,
+  brillo::FlagHelper::Init(
+      argc, argv,
       "Chromium OS Static Node Tool\n\n"
       "  Parses through the kernel's modules.devname file and creates any\n"
       "  necessary static nodes.");
@@ -43,16 +44,14 @@ int main(int argc, char* argv[]) {
 
   umask(0);
 
-  std::vector<std::string> lines =
-      base::SplitString(modules, "\n", base::KEEP_WHITESPACE,
-                        base::SPLIT_WANT_ALL);
+  std::vector<std::string> lines = base::SplitString(
+      modules, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   for (const std::string& line : lines) {
     // If the line isn't empty, and isn't a comment, parse it as a static node.
     if (!line.empty() &&
         !base::StartsWith(line, "#", base::CompareCase::SENSITIVE)) {
-      std::vector<std::string> tokens =
-          base::SplitString(line, " ", base::KEEP_WHITESPACE,
-                            base::SPLIT_WANT_ALL);
+      std::vector<std::string> tokens = base::SplitString(
+          line, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
 
       // Static node descriptions in the file should be of the form:
       //   <name> <node> <type><major_id>:<minor_id>
@@ -83,8 +82,8 @@ int main(int argc, char* argv[]) {
         base::FilePath directory = path.DirName();
 
         if (base::CreateDirectoryAndGetError(directory, &error)) {
-          base::SetPosixFilePermissions(directory,
-              S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+          base::SetPosixFilePermissions(
+              directory, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
         } else if (error != base::File::FILE_ERROR_EXISTS) {
           LOG(ERROR) << "Failed creating directory.  Error code: " << error;
           continue;
