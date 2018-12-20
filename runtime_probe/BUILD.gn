@@ -25,6 +25,7 @@ pkg_config("target_defaults") {
     # order.
     "system_api",
     "protobuf",
+    "vboot_host",
   ]
 }
 

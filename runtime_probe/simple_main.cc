@@ -8,6 +8,7 @@
 #include <base/values.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
+#include <vboot/crossystem.h>
 
 #include "runtime_probe/config_parser.h"
 #include "runtime_probe/daemon.h"
@@ -17,9 +18,9 @@ namespace {
 enum ExitStatus {
   kSuccess = EXIT_SUCCESS,  // 0
   kUnknownError = 1,
-  kNeedConfigFilePath = 10,
-  kFailToParseConfigFile = 11,
+  kConfigFileSyntaxError = 11,
   kFailToParseProbeArgFromConfig = 12,
+  kNoPermissionForArbitraryProbeConfig = 13,
 };
 }  // namespace
 
@@ -49,9 +50,36 @@ void DryRunMMCBlockInfo() {
     VLOG(1) << "mmc extcsd output:\n" << mmc_cmd_output;
 }
 
+std::string GetPathOfRootfsProbeConfig() {
+  // TODO(itspeter): Find default statement in rootfs.
+  return "/etc/a_not_existed_rootfs_config";
+}
+
+// Determine if allowed to load probe config assigned from CLI.
+// Return 0 on success, non-zero for error.
+int GetProbeConfigPath(std::string* probe_config_path,
+                       const std::string& probe_config_path_from_cli) {
+  // Caller not assigned. Using default one in rootfs.
+  if (probe_config_path_from_cli.empty()) {
+    VLOG(1) << "No config_file_path specified, picking default config.";
+    *probe_config_path = GetPathOfRootfsProbeConfig();
+    return 0;
+  }
+
+  // Caller assigned, check permission.
+  if (VbGetSystemPropertyInt("cros_debug") != 1) {
+    LOG(ERROR) << "Arbitrary ProbeConfig is only allowed with cros_debug=1";
+    return ExitStatus::kNoPermissionForArbitraryProbeConfig;
+  }
+
+  *probe_config_path = probe_config_path_from_cli;
+  return 0;
+}
+
 int main(int argc, char* argv[]) {
   // Flags are subject to change
-  DEFINE_string(config_file_path, "", "File path to probe config");
+  DEFINE_string(config_file_path, "",
+                "File path to probe config, empty to use default one");
   DEFINE_bool(dbus, false, "Run in the mode to respond DBus call");
   DEFINE_bool(debug, false, "Output debug message");
   brillo::FlagHelper::Init(argc, argv, "ChromeOS runtime probe tool");
@@ -63,33 +91,34 @@ int main(int argc, char* argv[]) {
   logging::SetMinLogLevel(log_level);
   LOG(INFO) << "Starting Runtime Probe";
 
-  // TODO(itspeter): b/120265210, before a long-term alternative, call the
-  // ectool to get battery info.
+  // For testing purpose on minijail permission.
   if (FLAGS_debug) {
     DryRunGetBatteryInfo();
     DryRunMMCBlockInfo();
   }
 
   if (FLAGS_dbus) {
-    // For testing purpose
     LOG(INFO) << "Running in daemon mode";
     runtime_probe::Daemon daemon;
     return daemon.Run();
   }
 
   LOG(INFO) << "Running in CLI mode";
+  // Invoke as a command line tool. Device can load arbitrary probe config
+  // iff cros_debug == 1
+  std::string probe_config_path;
+  int status_code =
+      GetProbeConfigPath(&probe_config_path, FLAGS_config_file_path);
+  if (status_code)
+    return status_code;
 
-  if (FLAGS_config_file_path.empty()) {
-    LOG(ERROR) << "Please specify config_file_path";
-    return ExitStatus::kNeedConfigFilePath;
-  }
   std::unique_ptr<base::DictionaryValue> config_dv =
-      runtime_probe::ParseProbeConfig(FLAGS_config_file_path);
+      runtime_probe::ParseProbeConfig(probe_config_path);
   if (config_dv == nullptr) {
-    LOG(ERROR) << "Failed to parse ProbeConfig from config file";
-    return ExitStatus::kFailToParseConfigFile;
+    LOG(ERROR) << "Failed to parse ProbeConfig from : [" << probe_config_path
+               << "]";
+    return ExitStatus::kConfigFileSyntaxError;
   }
-  // TODO(hmchu): probe logic starts here
 
   auto probe_config =
       runtime_probe::ProbeConfig::FromDictionaryValue(*config_dv);
