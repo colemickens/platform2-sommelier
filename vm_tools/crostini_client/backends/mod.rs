@@ -149,7 +149,12 @@ impl_backend! {
         // Vm
 
         /// Starts a VM called `name` with the given `user_id_hash`.
-        fn vm_start(&mut self, name: &str, user_id_hash: &str) -> Result<(), Box<Error>>;
+        fn vm_start(
+            &mut self,
+            name: &str,
+            user_id_hash: &str,
+            enable_gpu: bool,
+        ) -> Result<(), Box<Error>>;
         /// Stop `name` VM with given `user_id_hash`.
         fn vm_stop(&mut self, name: &str, user_id_hash: &str) -> Result<(), Box<Error>>;
         /// Exports the stateful disk image of `name` VM owned by `user_id_hash` to `file_name`,

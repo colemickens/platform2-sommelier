@@ -17,6 +17,7 @@ use dbus::{BusType, Connection, ConnectionItem, Message, OwnedFd};
 use protobuf::Message as ProtoMessage;
 
 use backends::Backend;
+use lsb_release::{LsbRelease, ReleaseChannel};
 use proto::system_api::cicerone_service::{self, *};
 use proto::system_api::seneschal_service::*;
 use proto::system_api::service::*;
@@ -98,6 +99,7 @@ enum ChromeOSError {
     BadConciergeStatus,
     BadDiskImageStatus(DiskImageStatus, String),
     BadVmStatus(VmStatus, String),
+    EnableGpuOnStable,
     ExportPathExists,
     FailedComponentUpdater(String),
     FailedCreateContainer(CreateLxdContainerResponse_Status, String),
@@ -125,6 +127,7 @@ impl fmt::Display for ChromeOSError {
                 write!(f, "bad disk image status: `{:?}`: {}", s, reason)
             }
             BadVmStatus(s, reason) => write!(f, "bad VM status: `{:?}`: {}", s, reason),
+            EnableGpuOnStable => write!(f, "gpu support is disabled on the stable channel"),
             ExportPathExists => write!(f, "disk export path already exists"),
             FailedComponentUpdater(name) => {
                 write!(f, "component updater could not load component `{}`", name)
@@ -431,11 +434,13 @@ impl ChromeOS {
         &mut self,
         vm_name: &str,
         user_id_hash: &str,
+        enable_gpu: bool,
         disk_image_path: String,
     ) -> Result<(), Box<Error>> {
         let mut request = StartVmRequest::new();
         request.start_termina = true;
         request.owner_id = user_id_hash.to_owned();
+        request.enable_gpu = enable_gpu;
         request.name = vm_name.to_owned();
         {
             let disk_image = request.mut_disks().push_default();
@@ -709,12 +714,24 @@ impl Backend for ChromeOS {
         }
     }
 
-    fn vm_start(&mut self, name: &str, user_id_hash: &str) -> Result<(), Box<Error>> {
+    fn vm_start(
+        &mut self,
+        name: &str,
+        user_id_hash: &str,
+        enable_gpu: bool,
+    ) -> Result<(), Box<Error>> {
+        if enable_gpu {
+            if let Ok(lsb_release) = LsbRelease::gather() {
+                if lsb_release.release_channel() == Some(ReleaseChannel::Stable) {
+                    return Err(EnableGpuOnStable.into());
+                }
+            }
+        }
         self.start_concierge()?;
         let free_size = get_free_disk_space(CRYPTOHOME_ROOT).map_err(FailedGetFreeDiskSpace)?;
         let disk_size = (free_size.saturating_mul(9) / 10) & DISK_SIZE_MASK;
         let disk_image_path = self.create_disk_image(name, user_id_hash, disk_size)?;
-        self.start_vm_with_disk(name, user_id_hash, disk_image_path)
+        self.start_vm_with_disk(name, user_id_hash, enable_gpu, disk_image_path)
     }
 
     fn vm_stop(&mut self, name: &str, user_id_hash: &str) -> Result<(), Box<Error>> {

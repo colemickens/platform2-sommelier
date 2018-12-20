@@ -5,6 +5,8 @@
 use std::error::Error;
 use std::fmt;
 
+use getopts::Options;
+
 use backends::Backend;
 use frontends::Frontend;
 use EnvMap;
@@ -98,18 +100,26 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
     }
 
     fn start(&mut self) -> VmcResult {
-        if self.args.len() != 1 {
+        let mut opts = Options::new();
+        opts.optflag("", "enable-gpu", "when starting the vm, enable gpu support");
+        let matches = opts.parse(self.args)?;
+
+        if matches.free.len() != 1 {
             return Err(ExpectedName.into());
         }
 
-        let vm_name = self.args[0];
+        let vm_name = &matches.free[0];
         let user_id_hash = self
             .environ
             .get("CROS_USER_ID_HASH")
             .ok_or(ExpectedCrosUserIdHash)?;
 
         self.metrics_send_sample("Vm.VmcStart");
-        try_command!(self.backend.vm_start(vm_name, user_id_hash));
+        try_command!(self.backend.vm_start(
+            vm_name,
+            user_id_hash,
+            matches.opt_present("enable-gpu")
+        ));
         self.metrics_send_sample("Vm.VmcStartSuccess");
         try_command!(self.backend.vsh_exec(vm_name, user_id_hash));
 
@@ -259,7 +269,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
 }
 
 const USAGE: &str = r#"
-   [ start <name> |
+   [ start [--enable-gpu] <name> |
      stop <name> |
      destroy <name> |
      export <vm name> <file name> [removable storage name] |
@@ -316,6 +326,8 @@ mod tests {
     fn dummy_default_backend() {
         const DUMMY_SUCCESS_ARGS: &[&[&str]] = &[
             &["vmc", "start", "termina"],
+            &["vmc", "start", "--enable-gpu", "termina"],
+            &["vmc", "start", "termina", "--enable-gpu"],
             &["vmc", "stop", "termina"],
             &["vmc", "destroy", "termina"],
             &["vmc", "export", "termina", "file name"],
@@ -326,6 +338,7 @@ mod tests {
 
         const DUMMY_FAILURE_ARGS: &[&[&str]] = &[
             &["vmc", "start"],
+            &["vmc", "start", "--i-made-this-up", "termina"],
             &["vmc", "start", "termina", "extra args"],
             &["vmc", "stop"],
             &["vmc", "stop", "termina", "extra args"],

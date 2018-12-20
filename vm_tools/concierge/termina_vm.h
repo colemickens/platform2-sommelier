@@ -62,7 +62,8 @@ class TerminaVm final : public VmInterface {
       std::unique_ptr<Subnet> subnet,
       uint32_t vsock_cid,
       std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
-      base::FilePath runtime_dir);
+      base::FilePath runtime_dir,
+      bool enable_gpu);
   ~TerminaVm() override;
 
   // Configures the network interfaces inside the VM.  Returns true iff
@@ -102,6 +103,8 @@ class TerminaVm final : public VmInterface {
 
   // The VM's cid.
   uint32_t cid() const { return vsock_cid_; }
+
+  bool enable_gpu() const { return enable_gpu_; }
 
   // The 9p server managed by seneschal that provides access to shared files for
   // this VM.  Returns 0 if there is no seneschal server associated with this
@@ -169,7 +172,8 @@ class TerminaVm final : public VmInterface {
             std::unique_ptr<Subnet> subnet,
             uint32_t vsock_cid,
             std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
-            base::FilePath runtime_dir);
+            base::FilePath runtime_dir,
+            bool enable_gpu);
 
   // Starts the VM with the given kernel and root file system.
   bool Start(base::FilePath kernel,
@@ -195,6 +199,9 @@ class TerminaVm final : public VmInterface {
 
   // Runtime directory for this VM.
   base::ScopedTempDir runtime_dir_;
+
+  // Enable GPU in the started VM.
+  bool enable_gpu_;
 
   // Handle to the VM process.
   brillo::ProcessImpl process_;
