@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <base/values.h>
+#include <gtest/gtest.h>
 
 #include "runtime_probe/probe_function.h"
 
@@ -61,6 +62,8 @@ class ProbeStatement {
   std::set<std::string> key_;
   std::map<std::string, std::unique_ptr<base::ListValue>> expect_;
   const base::DictionaryValue* information_ = nullptr;
+
+  FRIEND_TEST(ProbeConfigTest, LoadConfig);
 };
 
 }  // namespace runtime_probe

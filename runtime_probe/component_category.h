@@ -11,6 +11,7 @@
 #include <string>
 
 #include <base/values.h>
+#include <gtest/gtest.h>
 
 #include "runtime_probe/probe_statement.h"
 
@@ -36,6 +37,8 @@ class ComponentCategory {
  private:
   std::string category_name_;
   std::map<std::string, std::unique_ptr<ProbeStatement>> component_;
+
+  FRIEND_TEST(ProbeConfigTest, LoadConfig);
 };
 
 }  // namespace runtime_probe

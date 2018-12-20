@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/values.h>
+#include <gtest/gtest.h>
 
 #include "runtime_probe/component_category.h"
 
@@ -61,6 +62,8 @@ class ProbeConfig {
   ProbeConfig() = default;
 
   std::map<std::string, std::unique_ptr<ComponentCategory>> category_;
+
+  FRIEND_TEST(ProbeConfigTest, LoadConfig);
 };
 
 } /* namespace runtime_probe */

@@ -66,6 +66,7 @@ if (use.test) {
       "config_parser_test.cc",
       "functions/sequence_test.cc",
       "functions/sysfs_test.cc",
+      "probe_config_test.cc",
     ]
     deps = [
       ":libruntime_probe",
