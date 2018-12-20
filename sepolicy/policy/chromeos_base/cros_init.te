@@ -63,3 +63,6 @@ filetrans_pattern_no_target_perm(cros_init_scripts, cros_var_lib, cros_var_lib_w
 
 # init/chaps.conf
 filetrans_pattern_no_target_perm(cros_init_scripts, cros_var_lib, cros_var_lib_chaps, dir, "chaps");
+
+# init/avahi.conf
+filetrans_pattern_no_target_perm(cros_init_scripts, cros_run, cros_run_avahi_daemon, dir, "avahi-daemon");
