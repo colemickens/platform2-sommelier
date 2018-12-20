@@ -36,6 +36,10 @@
 #include <sstream>
 #include <utility>
 
+#if USE_SELINUX
+#include <selinux/restorecon.h>
+#endif
+
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/files/file.h>
@@ -1221,6 +1225,23 @@ bool Platform::FormatExt4(const base::FilePath& file) {
     LOG(ERROR) << "Can't tune ext4: " << file.value() << ", error: " << rc;
     return false;
   }
+  return true;
+}
+
+bool Platform::RestoreSELinuxContexts(
+    const base::FilePath& path, bool recursive) {
+#if USE_SELINUX
+  LOG(INFO) << "Restoring selinux contexts for: " << path.value();
+  int restorecon_flag = 0;
+  if (recursive)
+    restorecon_flag |= SELINUX_RESTORECON_RECURSE;
+  if (selinux_restorecon(path.value().c_str(),
+                         restorecon_flag) != 0) {
+    PLOG(ERROR) << "An error occurred to restorecon "
+               << path.value();
+    return false;
+  }
+#endif
   return true;
 }
 

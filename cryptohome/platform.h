@@ -789,6 +789,15 @@ class Platform {
   //   file - Path to the file or device to be formatted.
   virtual bool FormatExt4(const base::FilePath& file);
 
+  // Restore SELinux file contexts. No-op if not compiled with -DUSE_SELINUX=1
+  // Returns true if restorecon succeeded.
+  //
+  // Parameters
+  //   path - Path to the file or directory to restore contexts.
+  //   recursive - Whether to restore SELinux file contexts recursively.
+  virtual bool RestoreSELinuxContexts(const base::FilePath& path,
+                                      bool recursive);
+
  private:
   // Returns the process and open file information for the specified process id
   // with files open on the given path

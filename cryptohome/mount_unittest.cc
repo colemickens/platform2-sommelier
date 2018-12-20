@@ -401,6 +401,11 @@ class MountTest
                                 user.root_mount_path))
         .WillOnce(Return(true));
     ExpectDownloadsBindMounts(user);
+    EXPECT_CALL(platform_,
+                RestoreSELinuxContexts(
+                    base::FilePath(user.vault_mount_path),
+                    true))
+        .WillOnce(Return(true));
   }
 
   void ExpectDownloadsBindMounts(const TestUser& user) {
@@ -668,6 +673,8 @@ TEST_P(MountTest, MountCryptohomeNoPrivileges) {
   EXPECT_CALL(platform_,
               CreateDirectory(mount_->GetNewUserPath(user->username)))
     .WillRepeatedly(Return(true));
+
+  EXPECT_CALL(platform_, RestoreSELinuxContexts(_, _)).Times(0);
 
   MountError error = MOUNT_ERROR_NONE;
   EXPECT_FALSE(mount_->MountCryptohome(up, GetDefaultMountArgs(), &error));

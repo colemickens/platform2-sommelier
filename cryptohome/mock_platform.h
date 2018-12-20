@@ -227,6 +227,7 @@ class MockPlatform : public Platform {
   MOCK_METHOD1(DetachLoop, bool(const base::FilePath&));
   MOCK_METHOD0(GetAttachedLoopDevices, std::vector<LoopDevice>());
   MOCK_METHOD1(FormatExt4, bool(const base::FilePath&));
+  MOCK_METHOD2(RestoreSELinuxContexts, bool(const base::FilePath&, bool));
 
   MockFileEnumerator* mock_enumerator() { return mock_enumerator_.get(); }
 

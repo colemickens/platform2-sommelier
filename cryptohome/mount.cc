@@ -677,6 +677,14 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   if (is_pkcs11_passkey_migration_required_) {
     credentials.GetPasskey(&legacy_pkcs11_passkey_);
   }
+
+  // TODO(fqj,b/116072767) Ignore errors since unlabeled files are currently
+  // still okay during current development progress.
+  LOG(INFO) << "Restoring selinux context for homedir.";
+  platform_->RestoreSELinuxContexts(
+      homedirs_->GetUserMountDirectory(obfuscated_username),
+      true);
+
   return true;
 }
 
