@@ -51,6 +51,7 @@ class MountTrackerTest : public testing::Test {
 
   ~MountTrackerTest() override = default;
 
+ protected:
   bool AddMountWithEmptyCredential(const std::string& root_path,
                                    int32_t* mount_id) {
     SmbCredential credential("" /* workgroup */, "" /* username */,
@@ -126,7 +127,6 @@ class MountTrackerTest : public testing::Test {
     return samba_interface->GetSambaInterfaceId();
   }
 
- protected:
   std::unique_ptr<password_provider::Password> CreatePassword(
       const std::string& password) {
     return GetPassword(WritePasswordToFile(password));
