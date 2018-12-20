@@ -59,6 +59,7 @@ _IUSE = [
     'power_management',
     'pppoe',
     'profiling',
+    'selinux',
     'systemd',
     'tcmalloc',
     'test',
