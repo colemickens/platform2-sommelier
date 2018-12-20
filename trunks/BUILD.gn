@@ -1,0 +1,319 @@
+# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+group("all") {
+  deps = [
+    ":trunks",
+    ":pinweaver_client",
+    ":trunks_client",
+    ":trunks_send",
+    ":trunksd",
+  ]
+  if (use.test) {
+    deps += [
+      ":trunks_testrunner",
+    ]
+  }
+  if (use.fuzzer) {
+    deps += [
+      ":trunks_key_blob_fuzzer",
+      ":trunks_creation_blob_fuzzer",
+      ":trunks_resource_manager_fuzzer",
+    ]
+  }
+}
+
+pkg_config("target_default_pkg_deps") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "openssl",
+    "protobuf-lite",
+  ]
+}
+
+config("target_defaults") {
+  configs = [ ":target_default_pkg_deps" ]
+  if (use.tpm2_simulator) {
+    defines = [
+      "USE_SIMULATOR=1",
+    ]
+  }
+}
+
+proto_library("interface_proto") {
+  proto_in_dir = "."
+  proto_out_dir = "include/trunks"
+  sources = [
+    "${proto_in_dir}/interface.proto",
+  ]
+  # Use -fPIC so this code can be linked into a shared library.
+  use_pic = true
+}
+
+proto_library("pinweaver_proto") {
+  proto_in_dir = "."
+  proto_out_dir = "include/trunks"
+  sources = [
+    "${proto_in_dir}/pinweaver.proto",
+  ]
+  # Use -fPIC so this code can be linked into a shared library.
+  use_pic = true
+}
+
+shared_library("trunks") {
+  configs += [
+    ":target_defaults"
+  ]
+  sources = [
+    "background_command_transceiver.cc",
+    "blob_parser.cc",
+    "error_codes.cc",
+    "hmac_authorization_delegate.cc",
+    "hmac_session_impl.cc",
+    "password_authorization_delegate.cc",
+    "policy_session_impl.cc",
+    "scoped_key_handle.cc",
+    "session_manager_impl.cc",
+    "tpm_generated.cc",
+    "tpm_pinweaver.cc",
+    "tpm_state_impl.cc",
+    "tpm_utility_impl.cc",
+    "trunks_dbus_proxy.cc",
+    "trunks_factory_impl.cc",
+  ]
+  deps = [
+    ":interface_proto",
+    ":pinweaver_proto",
+  ]
+  if (use.ftdi_tpm) {
+    sources += [
+      "ftdi/mpsse.c",
+      "ftdi/support.c",
+      "trunks_ftdi_spi.cc",
+    ]
+    libs = [
+      "ftdi1",
+    ]
+    defines = [
+      "SPI_OVER_FTDI=1",
+    ]
+  }
+}
+
+executable("pinweaver_client") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "pinweaver_client.cc",
+  ]
+  deps = [
+    ":trunks",
+    ":pinweaver_proto",
+  ]
+}
+
+executable("trunks_client") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "trunks_client.cc",
+    "trunks_client_test.cc",
+  ]
+  deps = [
+    ":trunks",
+  ]
+}
+
+executable("trunks_send") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "trunks_send.cc",
+  ]
+  deps = [
+    ":trunks",
+  ]
+}
+
+pkg_config("trunksd_lib_config") {
+  pkg_deps = [
+    "libpower_manager-client",
+  ]
+}
+
+config("trunksd_lib_all_dependent_configs") {
+  libs = [
+    "system_api-power_manager-protos",
+  ]
+}
+
+pkg_config("trunksd_lib_all_dependent_pkg_deps") {
+  pkg_deps = [
+    "libpower_manager-client",
+  ]
+}
+
+static_library("trunksd_lib") {
+  all_dependent_configs = [
+    ":trunksd_lib_all_dependent_configs",
+    ":trunksd_lib_all_dependent_pkg_deps",
+  ]
+  configs += [
+    ":target_defaults",
+    ":trunksd_lib_all_dependent_pkg_deps",
+    ":trunksd_lib_config",
+  ]
+  sources = [
+    "power_manager.cc",
+    "resource_manager.cc",
+    "tpm_handle.cc",
+    "tpm_simulator_handle.cc",
+    "trunks_dbus_service.cc",
+  ]
+  deps = [
+    ":interface_proto",
+  ]
+}
+
+pkg_config("trunksd_pkg_deps") {
+  pkg_deps = [
+    "libminijail",
+  ]
+}
+
+executable("trunksd") {
+  configs += [
+    ":target_defaults",
+    ":trunksd_pkg_deps",
+  ]
+  sources = [
+    "trunksd.cc",
+  ]
+  deps = [
+    ":interface_proto",
+    ":trunks",
+    ":trunksd_lib",
+  ]
+  if (use.ftdi_tpm) {
+    defines = [
+      "SPI_OVER_FTDI=1",
+    ]
+  }
+  if (use.tpm2_simulator) {
+    libs = [
+      "tpm2",
+    ]
+  }
+}
+
+static_library("trunks_test") {
+  configs -= [ "//common-mk:use_thin_archive" ]
+  configs += [
+    "//common-mk:nouse_thin_archive",
+    ":target_defaults",
+  ]
+  sources = [
+    "mock_authorization_delegate.cc",
+    "mock_blob_parser.cc",
+    "mock_command_transceiver.cc",
+    "mock_hmac_session.cc",
+    "mock_policy_session.cc",
+    "mock_session_manager.cc",
+    "mock_tpm.cc",
+    "mock_tpm_state.cc",
+    "mock_tpm_utility.cc",
+    "trunks_factory_for_test.cc",
+  ]
+}
+
+if (use.test) {
+  pkg_config("trunks_testrunner_pkg_deps") {
+    pkg_deps = [
+      "libpower_manager-client-test",
+    ]
+  }
+  executable("trunks_testrunner") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":trunks_testrunner_pkg_deps",
+    ]
+    sources = [
+      "background_command_transceiver_test.cc",
+      "hmac_authorization_delegate_test.cc",
+      "hmac_session_test.cc",
+      "password_authorization_delegate_test.cc",
+      "policy_session_test.cc",
+      "power_manager_test.cc",
+      "resource_manager_test.cc",
+      "scoped_global_session_test.cc",
+      "scoped_key_handle_test.cc",
+      "session_manager_test.cc",
+      "tpm_generated_test.cc",
+      "tpm_state_test.cc",
+      "tpm_utility_test.cc",
+      "trunks_dbus_proxy_test.cc",
+      "trunks_factory_test.cc",
+      "trunks_testrunner.cc",
+    ]
+    deps = [
+      ":trunks",
+      ":trunks_test",
+      ":trunksd_lib",
+    ]
+  }
+}
+
+if (use.fuzzer) {
+  executable("trunks_key_blob_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer:common_fuzzer",
+      ":target_defaults",
+    ]
+    sources = [
+      "key_blob_fuzzer.cc",
+    ]
+    deps = [
+      ":trunks",
+    ]
+  }
+
+  executable("trunks_creation_blob_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer:common_fuzzer",
+      ":target_defaults",
+    ]
+    sources = [
+      "creation_blob_fuzzer.cc",
+    ]
+    deps = [
+      ":trunks",
+    ]
+  }
+
+  pkg_config("trunks_resource_manager_fuzzer_pkg_deps") {
+    pkg_deps = [
+      "libchrome-test-${libbase_ver}",  # For FuzzedDataProvider
+    ]
+  }
+
+  executable("trunks_resource_manager_fuzzer") {
+    configs += [
+      "//common-mk/common_fuzzer:common_fuzzer",
+      "//common-mk:test",
+      ":target_defaults",
+      ":trunks_resource_manager_fuzzer_pkg_deps",
+    ]
+    sources = [
+      "fuzzed_command_transceiver.cc",
+      "resource_manager_fuzzer.cc",
+    ]
+    deps = [
+      ":trunks",
+      ":trunks_test",
+      ":trunksd_lib",
+    ]
+  }
+}
