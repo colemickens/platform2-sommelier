@@ -417,10 +417,18 @@ bool CameraClient::ShouldUseNativeSensorRatio(
 
   bool try_native_sensor_ratio = false;
 
-  // Check if we have more than 1 resolution.
+  // Check if we have different aspect ratio resolutions.
+  // If the aspect ratios of all resolutions are the same we can use the
+  // largest resolution and only do scale to others.
+  float stream0_aspect_ratio =
+      static_cast<float>(stream_config.streams[0]->width) /
+      stream_config.streams[0]->height;
   for (size_t i = 1; i < stream_config.num_streams; i++) {
-    if (stream_config.streams[0]->width != stream_config.streams[i]->width ||
-        stream_config.streams[0]->height != stream_config.streams[i]->height) {
+    float stream_aspect_ratio =
+        static_cast<float>(stream_config.streams[i]->width) /
+        stream_config.streams[i]->height;
+    if (std::fabs(stream0_aspect_ratio - stream_aspect_ratio) >
+        kAspectRatioMargin) {
       try_native_sensor_ratio = true;
       break;
     }
@@ -445,8 +453,8 @@ bool CameraClient::ShouldUseNativeSensorRatio(
       static_cast<float>(device_info_.sensor_info_pixel_array_size_width) /
       device_info_.sensor_info_pixel_array_size_height;
 
-  resolution->width = 0;
-  resolution->height = 0;
+  resolution->width = std::numeric_limits<int>::max();
+  resolution->height = std::numeric_limits<int>::max();
 
   CameraConfig camera_config(constants::kCrosCameraConfigPathString);
 
@@ -471,8 +479,9 @@ bool CameraClient::ShouldUseNativeSensorRatio(
         format.height < max_stream_resolution.height) {
       continue;
     }
-    if (format.width < resolution->width ||
-        format.height < resolution->height) {
+    // We choose the minimum resolution for the native aspect ratio.
+    if (format.width > resolution->width ||
+        format.height > resolution->height) {
       continue;
     }
     float aspect_ratio = static_cast<float>(format.width) / format.height;
