@@ -52,6 +52,7 @@ class SessionImpl : public Session {
   CK_STATE GetState() const override;
   bool IsReadOnly() const override;
   bool IsOperationActive(OperationType type) const override;
+
   // Object management.
   CK_RV CreateObject(const CK_ATTRIBUTE_PTR attributes,
                      int num_attributes,
@@ -69,6 +70,7 @@ class SessionImpl : public Session {
   CK_RV FindObjects(int max_object_count,
                     std::vector<int>* object_handles) override;
   CK_RV FindObjectsFinal() override;
+
   // Cryptographic operations (encrypt, decrypt, digest, sign, verify).
   CK_RV OperationInit(OperationType operation,
                       CK_MECHANISM_TYPE mechanism,
@@ -87,6 +89,7 @@ class SessionImpl : public Session {
                             const std::string& data_in,
                             int* required_out_length,
                             std::string* data_out) override;
+
   // Key generation.
   CK_RV GenerateKey(CK_MECHANISM_TYPE mechanism,
                     const std::string& mechanism_parameter,
@@ -101,6 +104,7 @@ class SessionImpl : public Session {
                         int num_private_attributes,
                         int* new_public_key_handle,
                         int* new_private_key_handle) override;
+
   // Random number generation.
   CK_RV SeedRandom(const std::string& seed) override;
   CK_RV GenerateRandom(int num_bytes, std::string* random_data) override;
@@ -177,6 +181,8 @@ class SessionImpl : public Session {
   CK_ATTRIBUTE_TYPE GetRequiredKeyUsage(OperationType operation);
   bool GetTPMKeyHandle(const Object* key, int* key_handle);
   bool LoadLegacyRootKeys();
+
+  // RSA operations
   bool RSAEncrypt(OperationContext* context);
   bool RSADecrypt(OperationContext* context);
   bool RSASign(OperationContext* context);

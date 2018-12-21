@@ -495,19 +495,24 @@ CK_RV SessionImpl::OperationInit(OperationType operation,
                                  const string& mechanism_parameter,
                                  const Object* key) {
   CHECK(operation < kNumOperationTypes);
+
   OperationContext* context = &operation_context_[operation];
   if (context->is_valid_) {
     LOG(ERROR) << "Operation is already active.";
     return CKR_OPERATION_ACTIVE;
   }
+
   context->Clear();
   context->mechanism_ = mechanism;
   context->parameter_ = mechanism_parameter;
+
   if (!IsMechanismValidForOperation(operation, mechanism)) {
     LOG(ERROR) << "Mechanism not supported: 0x" << hex << mechanism;
     return CKR_MECHANISM_INVALID;
   }
-  if (operation != kDigest) {
+
+  if (operation == kSign || operation == kVerify || operation == kEncrypt ||
+      operation == kDecrypt) {
     // Make sure the key is valid for the mechanism.
     CHECK(key);
     if (!IsValidKeyType(
@@ -521,6 +526,8 @@ CK_RV SessionImpl::OperationInit(OperationType operation,
       return CKR_KEY_FUNCTION_NOT_PERMITTED;
     }
     if (IsRSA(mechanism)) {
+      // Refuse to use RSA keys with unsupported sizes that may have been
+      // created in an earlier version of chaps.
       int key_size = key->GetAttributeString(CKA_MODULUS).length() * 8;
       if (key_size < kMinRSAKeyBits || key_size > kMaxRSAKeyBits) {
         LOG(ERROR) << "Key size not supported: " << key_size;
@@ -528,6 +535,7 @@ CK_RV SessionImpl::OperationInit(OperationType operation,
       }
     }
   }
+
   if (operation == kEncrypt || operation == kDecrypt) {
     if (mechanism == CKM_RSA_PKCS) {
       context->key_ = key;
@@ -538,7 +546,8 @@ CK_RV SessionImpl::OperationInit(OperationType operation,
                         mechanism_parameter,
                         key);
     }
-  } else {
+  } else if (operation == kSign || operation == kVerify ||
+             operation == kDigest) {
     // It is valid for GetOpenSSLDigest to return NULL (e.g. CKM_RSA_PKCS).
     const EVP_MD* digest = GetOpenSSLDigest(mechanism);
     if (IsHMAC(mechanism)) {
@@ -557,6 +566,9 @@ CK_RV SessionImpl::OperationInit(OperationType operation,
     if (IsRSA(mechanism))
       context->key_ = key;
     context->is_valid_ = true;
+  } else {
+    NOTREACHED();
+    return CKR_FUNCTION_FAILED;
   }
   return CKR_OK;
 }
@@ -646,8 +658,10 @@ CK_RV SessionImpl::OperationFinalInternal(OperationType operation,
                                           int* required_out_length,
                                           string* data_out) {
   CHECK(operation < kNumOperationTypes);
+
   OperationContext* context = &operation_context_[operation];
   context->is_valid_ = false;
+
   // Complete the operation if it has not already been done.
   if (!context->is_finished_) {
     if (context->is_cipher_) {
@@ -707,15 +721,17 @@ CK_RV SessionImpl::VerifyFinal(const string& signature) {
     // recomputed and literally compared.
     if (signature.length() != data_out.length())
       return CKR_SIGNATURE_LEN_RANGE;
+
     if (0 != brillo::SecureMemcmp(signature.data(),
                                     data_out.data(),
                                     signature.length()))
       return CKR_SIGNATURE_INVALID;
+
+    return CKR_OK;
   } else {
     // The data_out contents will be the computed digest.
     return RSAVerify(context, data_out, signature);
   }
-  return CKR_OK;
 }
 
 CK_RV SessionImpl::OperationSinglePart(OperationType operation,
@@ -1113,7 +1129,7 @@ CK_RV SessionImpl::GenerateRSAKeyPair(Object* public_object,
 }
 
 bool SessionImpl::GenerateRSAKeyPairSoftware(int modulus_bits,
-                                             const std::string& public_exponent,
+                                             const string& public_exponent,
                                              Object* public_object,
                                              Object* private_object) {
   if (public_exponent.length() > sizeof(uint32_t) || public_exponent.empty())
@@ -1144,7 +1160,7 @@ bool SessionImpl::GenerateRSAKeyPairSoftware(int modulus_bits,
 }
 
 bool SessionImpl::GenerateRSAKeyPairTPM(int modulus_bits,
-                                        const std::string& public_exponent,
+                                        const string& public_exponent,
                                         Object* public_object,
                                         Object* private_object) {
   string auth_data = GenerateRandomSoftware(kDefaultAuthDataBytes);
