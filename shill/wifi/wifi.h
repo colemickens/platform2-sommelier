@@ -725,6 +725,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // For weak pointers that will be invalidated in Stop().
   base::WeakPtrFactory<WiFi> weak_ptr_factory_while_started_;
 
+  // For weak pointers that will only be invalidated at destruction. Useful for
+  // callbacks that need to survive Restart().
+  base::WeakPtrFactory<WiFi> weak_ptr_factory_;
+
   DISALLOW_COPY_AND_ASSIGN(WiFi);
 };
 
