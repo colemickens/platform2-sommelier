@@ -69,8 +69,9 @@ class MountManager : public base::SupportsWeakPtr<MountManager> {
 
   // Adds |mount_root| to the |mounts_| map with a specific mount_id. Must not
   // be called after AddMount is called for the first time. |mount_config| holds
-  // the mount options set by the client. Returns false if |mount_root| is
-  // already mounted.
+  // the mount options set by the client.  Will always remount a share
+  // regardless if it can be reached on the network or not. Returns false if
+  // |mount_root| is already mounted.
   bool Remount(const std::string& mount_root,
                int32_t mount_id,
                SmbCredential credential,

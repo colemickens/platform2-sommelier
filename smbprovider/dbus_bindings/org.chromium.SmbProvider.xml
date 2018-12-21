@@ -35,7 +35,7 @@
 
     <method name="Remount">
       <tp:docstring>
-        'Remounts' a given share by attempting to call smbc_opendir on given share path. 'Remounts' is
+        'Remounts' a given share by attempting to call smbc_opendir on given share path. Shares will always be remounted regardless if they can be reached on the network or not. 'Remounts' is
         in quotes because similarly to Mount this does not do an actual mount since it is not needed on an SMB share.
         This will assign the mount the mount_id in the RemountOptions proto.
       </tp:docstring>

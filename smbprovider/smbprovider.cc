@@ -159,11 +159,9 @@ int32_t SmbProvider::Remount(const ProtoBlob& options_blob,
                                  options.username(), password_fd, &error_code);
 
   if (!remounted) {
-    return error_code;
-  }
-
-  if (!CanAccessMount(GetMountId(options), options.path(), &error_code)) {
-    RemoveMountIfMounted(GetMountId(options));
+    LOG(WARNING) << "Mount ID " << options.mount_id()
+                 << " was not available during remount."
+                 << " Leaving mount in dormant state.";
   }
 
   return error_code;

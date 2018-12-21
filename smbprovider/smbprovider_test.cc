@@ -2985,14 +2985,14 @@ TEST_F(SmbProviderTest, RemountFailsWithInvalidProto) {
   ExpectNoOpenEntries();
 }
 
-// Remount fails on a share that doesn't exist.
-TEST_F(SmbProviderTest, RemountFailsWithInvalidShare) {
+// Remount should succeed regardless if shares are valid or not. This is to
+// mimic the behavior of remounting a dormant share.
+TEST_F(SmbProviderTest, RemountSucceedsOnInvalidShare) {
   const int32_t mount_id = 1;
   ProtoBlob blob = CreateRemountOptionsBlob("smb://testshare/none", mount_id);
 
-  EXPECT_EQ(ERROR_NOT_FOUND,
-            CastError(smbprovider_->Remount(blob, base::ScopedFD())));
-  EXPECT_EQ(0, mount_manager_->MountCount());
+  EXPECT_EQ(ERROR_OK, CastError(smbprovider_->Remount(blob, base::ScopedFD())));
+  EXPECT_EQ(1, mount_manager_->MountCount());
   ExpectNoOpenEntries();
 }
 
