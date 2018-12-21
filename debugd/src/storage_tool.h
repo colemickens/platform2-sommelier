@@ -28,6 +28,7 @@ class StorageTool : public SubprocessTool {
   bool IsSupported(const base::FilePath typeFile,
                    const base::FilePath vendFile,
                    std::string* errorMsg);
+  std::string Mmc(const std::string& option);
 
  private:
   // Returns the partition of |dst| as a string. |dst| is expected

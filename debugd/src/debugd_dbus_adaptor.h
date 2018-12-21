@@ -120,6 +120,7 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
       const std::string& host,
       const std::map<std::string, std::string>& options) override;
   std::string Smartctl(const std::string& option) override;
+  std::string Mmc(const std::string& option) override;
   std::string MemtesterStart(const base::ScopedFD& outfd,
                              uint32_t memory) override;
   bool MemtesterStop(brillo::ErrorPtr* error,

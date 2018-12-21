@@ -28,6 +28,7 @@ const char kSmartctl[] = "/usr/sbin/smartctl";
 const char kBadblocks[] = "/sbin/badblocks";
 const char kMountFile[] = "/proc/1/mounts";
 const char kSource[] = "/mnt/stateful_partition";
+const char kMmc[] = "/usr/bin/mmc";
 
 }  // namespace
 
@@ -231,6 +232,33 @@ std::string StorageTool::Start(const base::ScopedFD& outfd) {
   LOG(INFO) << "badblocks: running process id: " << p->id();
   p->Start();
   return p->id();
+}
+
+std::string StorageTool::Mmc(const std::string& option) {
+  ProcessWithOutput process;
+  process.DisableSandbox();
+  if (!process.Init())
+    return "<process init failed>";
+
+  process.AddArg(kMmc);
+
+  if (option == "extcsd_read") {
+    process.AddArg("extcsd");
+    process.AddArg("read");
+  } else if (option == "extcsd_dump") {
+    process.AddArg("extcsd");
+    process.AddArg("dump");
+  } else {
+    return "<Option not supported>";
+  }
+
+  const base::FilePath rootdev = GetDevice(base::FilePath(kSource),
+                                           base::FilePath(kMountFile));
+  process.AddArg(rootdev.value());
+  process.Run();
+  std::string output;
+  process.GetOutput(&output);
+  return output;
 }
 
 }  // namespace debugd

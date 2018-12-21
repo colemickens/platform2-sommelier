@@ -429,6 +429,24 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="Mmc">
+      <tp:docstring>
+        Runs mmc utility.
+      </tp:docstring>
+      <arg name="option" type="s" direction="in">
+        <tp:docstring>
+          Option to pass to the mmc command:
+            extcsd_read: print extcsd data from root device.
+            extcsd_dump: print raw extcsd data from root device.
+        </tp:docstring>
+      </arg>
+      <arg name="result" type="s" direction="out">
+        <tp:docstring>
+          `mmc` command output.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
     <method name="MemtesterStart">
       <tp:docstring>
         Starts running memtester.

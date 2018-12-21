@@ -244,6 +244,10 @@ std::string DebugdDBusAdaptor::Smartctl(const std::string& option) {
   return storage_tool_->Smartctl(option);
 }
 
+std::string DebugdDBusAdaptor::Mmc(const std::string& option) {
+  return storage_tool_->Mmc(option);
+}
+
 std::string DebugdDBusAdaptor::MemtesterStart(const base::ScopedFD& outfd,
                                               uint32_t memory) {
   return memory_tool_->Start(outfd, memory);
