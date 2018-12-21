@@ -40,6 +40,9 @@ const char kCrosMaxYuvHeight[] = "max_yuv_height";
 // HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED
 const char kCrosMaxPrivateWidth[] = "max_private_width";
 const char kCrosMaxPrivateHeight[] = "max_private_height";
+// Restrict max resolutions for native ratio.
+const char kCrosMaxNativeWidth[] = "max_native_width";
+const char kCrosMaxNativeHeight[] = "max_native_height";
 // ------End configuration for |kCrosCameraConfigPathString|-------
 
 }  // namespace constants

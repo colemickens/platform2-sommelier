@@ -5,12 +5,14 @@
 
 #include "hal/usb/camera_client.h"
 
+#include <limits>
 #include <utility>
 #include <vector>
 
 #include <sync/sync.h>
 #include <system/camera_metadata.h>
 
+#include "common/utils/camera_config.h"
 #include "cros-camera/common.h"
 #include "hal/usb/cached_frame.h"
 #include "hal/usb/camera_hal.h"
@@ -446,12 +448,23 @@ bool CameraClient::ShouldUseNativeSensorRatio(
   resolution->width = 0;
   resolution->height = 0;
 
+  CameraConfig camera_config(constants::kCrosCameraConfigPathString);
+
+  int max_native_width = camera_config.GetInteger(
+      constants::kCrosMaxNativeWidth, std::numeric_limits<int>::max());
+  int max_native_height = camera_config.GetInteger(
+      constants::kCrosMaxNativeHeight, std::numeric_limits<int>::max());
+
   VLOGFID(1, id_) << "native aspect ratio:" << target_aspect_ratio << ",("
                   << device_info_.sensor_info_pixel_array_size_width << ", "
-                  << device_info_.sensor_info_pixel_array_size_height << ")";
+                  << device_info_.sensor_info_pixel_array_size_height << ")"
+                  << " Max " << max_native_width << "x" << max_native_height;
   for (const auto& format : qualified_formats_) {
     float max_fps = GetMaximumFrameRate(format);
     if (max_fps < 29.0) {
+      continue;
+    }
+    if (format.width > max_native_width || format.height > max_native_height) {
       continue;
     }
     if (format.width < max_stream_resolution.width ||
