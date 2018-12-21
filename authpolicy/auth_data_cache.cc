@@ -36,6 +36,8 @@ AuthDataCache::~AuthDataCache() = default;
 
 bool AuthDataCache::Load(const base::FilePath& path) {
   data_.Clear();
+  if (!enabled_)
+    return true;
 
   if (!base::PathExists(path)) {
     LOG_START(ERROR) << "File '" << path.value() << "' does not exist"
@@ -59,6 +61,9 @@ bool AuthDataCache::Load(const base::FilePath& path) {
 }
 
 bool AuthDataCache::Save(const base::FilePath& path) {
+  if (!enabled_)
+    return true;
+
   std::string data_blob;
   if (!data_.SerializeToString(&data_blob)) {
     LOG_START(ERROR) << "Failed to serialize data to string" << LOG_END;
@@ -84,9 +89,8 @@ bool AuthDataCache::Save(const base::FilePath& path) {
   return true;
 }
 
-void AuthDataCache::Reset() {
+void AuthDataCache::Clear() {
   data_.Clear();
-  enabled_ = true;
 }
 
 base::Optional<std::string> AuthDataCache::GetWorkgroup(

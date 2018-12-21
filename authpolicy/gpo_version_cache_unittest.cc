@@ -2,13 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "authpolicy/gpo_version_cache.h"
-
 #include <base/test/simple_test_clock.h>
 #include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "authpolicy/gpo_version_cache.h"
 #include "bindings/authpolicy_containers.pb.h"
 
 namespace {

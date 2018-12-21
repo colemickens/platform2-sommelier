@@ -51,18 +51,6 @@ class ProcessExecutor;
 
 class SambaInterface : public TgtManager::Delegate {
  public:
-  // Re-download GPOs at least once every |kGpoCacheTTL| even if the GPO version
-  // did not change. Don't use a multiple of 24 hours, so that people are not
-  // struck by policy downloads every N-th morning at the same time.
-  static constexpr base::TimeDelta kGpoCacheTTL =
-      base::TimeDelta::FromHours(25);
-
-  // Clears the authentication data cache after |kAuthDataCacheTTL|. Time is
-  // tracked per realm. Don't use a multiple of 24 hours, so that people are not
-  // struck by auth data fetching every N-th morning at the same time.
-  static constexpr base::TimeDelta kAuthDataCacheTTL =
-      base::TimeDelta::FromHours(73);
-
   SambaInterface(AuthPolicyMetrics* metrics,
                  const PathService* path_service,
                  const base::Closure& user_kerberos_files_changed);
@@ -196,8 +184,18 @@ class SambaInterface : public TgtManager::Delegate {
     return &gpo_version_cache_;
   }
 
+  // Returns the lifetime of cached GPos.
+  base::TimeDelta GetGpoVersionCacheTTLForTesting() const {
+    return gpo_version_cache_ttl_;
+  }
+
   // Returns the cache for the GPO version.
   AuthDataCache* GetAuthDataCacheForTesting() { return &auth_data_cache_; }
+
+  // Returns the lifetime of cached auth data.
+  base::TimeDelta GetAuthDataCacheTTLForTesting() const {
+    return auth_data_cache_ttl_;
+  }
 
   // Renew the user ticket-granting-ticket.
   ErrorType RenewUserTgtForTesting() WARN_UNUSED_RESULT;
@@ -518,11 +516,13 @@ class SambaInterface : public TgtManager::Delegate {
 
   // Cache for GPO version, used to prevent unnecessary downloads.
   GpoVersionCache gpo_version_cache_;
+  base::TimeDelta gpo_version_cache_ttl_;
 
   // File-based cache for authentication data. The cache persists across
   // restarts of authpolicyd (but not reboots), so that it can speed up logins
   // for different users and ephemeral mode.
   AuthDataCache auth_data_cache_;
+  base::TimeDelta auth_data_cache_ttl_;
 
   // Encryption types to use for kinit and Samba commands. Don't set directly,
   // always set through SetKerberosEncryptionTypes(). Updated by

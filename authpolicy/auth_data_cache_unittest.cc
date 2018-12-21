@@ -177,6 +177,31 @@ TEST_F(AuthDataCacheTest, GettersCanBeDisabled) {
   EXPECT_TRUE(cache_.GetIsAffiliated(kRealm1));
 }
 
+TEST_F(AuthDataCacheTest, LoadSaveCanBeDisabled) {
+  base::FilePath data_path1 = tmp_path_.Append("test1");
+  base::FilePath data_path2 = tmp_path_.Append("test2");
+
+  cache_.SetWorkgroup(kRealm1, kWorkgroup);
+  EXPECT_TRUE(cache_.Save(data_path1));
+  EXPECT_TRUE(base::PathExists(data_path1));
+
+  cache_.SetEnabled(false);
+
+  // Save() always returns true, but doesn't do anything.
+  EXPECT_TRUE(cache_.Save(data_path2));
+  EXPECT_FALSE(base::PathExists(data_path2));
+
+  cache_.Clear();
+
+  // Load() always returns true, but doesn't do anything.
+  EXPECT_TRUE(cache_.Load(data_path2));
+  EXPECT_TRUE(cache_.Load(data_path1));
+
+  // Make sure the cache didn't load data_path1.
+  cache_.SetEnabled(true);
+  EXPECT_FALSE(cache_.GetWorkgroup(kRealm1));
+}
+
 TEST_F(AuthDataCacheTest, PurgeExpiredEntries) {
   cache_.SetWorkgroup(kRealm1, kWorkgroup);
   EXPECT_TRUE(cache_.GetWorkgroup(kRealm1));

@@ -121,6 +121,10 @@ constexpr char kDefaultWorkgroup[] = "WOKGROUP";
 constexpr char kDefaultKdcIp[] = "111.222.33.2";
 constexpr char kDefaultDcName[] = "DCNAME.EXAMPLE.COM";
 
+// Policy values for cache testing.
+const int kZeroHours = 0;
+const int kNonZeroHours = 1;
+
 struct SmbConf {
   std::string machine_name;
   std::string realm;
@@ -1261,8 +1265,8 @@ TEST_F(AuthPolicyTest, MachinePasswordChangesWhenMaxAgeIsReached) {
   const base::Time current_password_time = GetLastModified(Path::MACHINE_PASS);
   EXPECT_NE(initial_password, current_password);
   EXPECT_NE(initial_password_time, current_password_time);
-  EXPECT_GE((current_password_time - initial_password_time).InDays(),
-            kDefaultMachinePasswordChangeRateDays);
+  EXPECT_GE(current_password_time - initial_password_time,
+            kDefaultMachinePasswordChangeRate);
 
   // Authpolicy should also keep the prev password around.
   const std::string previous_password = ReadFile(Path::PREV_MACHINE_PASS);
@@ -2487,7 +2491,8 @@ TEST_F(AuthPolicyTest, PurgesGpoCacheOccasionally) {
   cache->SetClockForTesting(std::move(clock_ptr));
 
   // Pick delta so that one Advance() call won't purge the cache, but two will.
-  const base::TimeDelta delta = SambaInterface::kGpoCacheTTL * 2 / 3;
+  const base::TimeDelta delta =
+      samba().GetGpoVersionCacheTTLForTesting() * 2 / 3;
 
   JoinAndFetchDevicePolicy(kOneGpoKeepVersionMachineName);
   EXPECT_EQ(1, cache->cache_misses_for_testing());
@@ -2504,6 +2509,49 @@ TEST_F(AuthPolicyTest, PurgesGpoCacheOccasionally) {
   FetchAndValidateDevicePolicy(ERROR_NONE);
   EXPECT_EQ(2, cache->cache_misses_for_testing());
   EXPECT_EQ(1, cache->cache_hits_for_testing());
+}
+
+// The lifetime of the GPO cache can be changed by the DeviceGpoCacheLifetime
+// policy. It can also be turned off by that policy.
+TEST_F(AuthPolicyTest, GpoCacheTTLCanBeSetByPolicy) {
+  // Join domain.
+  EXPECT_EQ(ERROR_NONE, Join(kOneGpoKeepVersionMachineName, kUserPrincipal,
+                             MakePasswordFd()));
+  MarkDeviceAsLocked();
+  validate_device_policy_ = &DontValidateDevicePolicy;
+  EXPECT_TRUE(samba().GetGpoVersionCacheForTesting()->IsEnabled());
+
+  // Setting the policy to 0 should turn the cache off and set the TTL to 0.
+  policy::PRegUserDevicePolicyWriter writer;
+  writer.AppendInteger(policy::key::kDeviceGpoCacheLifetime, kZeroHours);
+  writer.WriteToFile(stub_gpo1_path_);
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+  EXPECT_FALSE(samba().GetGpoVersionCacheForTesting()->IsEnabled());
+  EXPECT_EQ(base::TimeDelta::FromHours(kZeroHours),
+            samba().GetGpoVersionCacheTTLForTesting());
+
+  // Setting the policy to > 0 should turn the cache on again and set the TTL.
+  // Note that this part would fail (policy wouldn't reload) if the cache was
+  // still on, see below.
+  policy::PRegUserDevicePolicyWriter writer2;
+  writer2.AppendInteger(policy::key::kDeviceGpoCacheLifetime, kNonZeroHours);
+  writer2.WriteToFile(stub_gpo1_path_);
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+  EXPECT_TRUE(samba().GetGpoVersionCacheForTesting()->IsEnabled());
+  EXPECT_EQ(base::TimeDelta::FromHours(kNonZeroHours),
+            samba().GetGpoVersionCacheTTLForTesting());
+
+  // Fetch again to fill the cache.
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+
+  // Rewriting the policy should be ignored now since a cached version is used.
+  // (A rewrite in this test doesn't change the GPO version since we're using
+  // kOneGpoKeepVersionMachineName).
+  policy::PRegUserDevicePolicyWriter writer3;
+  writer3.AppendInteger(policy::key::kDeviceGpoCacheLifetime, kZeroHours);
+  writer3.WriteToFile(stub_gpo1_path_);
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+  EXPECT_TRUE(samba().GetGpoVersionCacheForTesting()->IsEnabled());
 }
 
 // Authpolicyd writes an auth data cache file on domain join and after auth.
@@ -2723,10 +2771,46 @@ TEST_F(AuthPolicyTest, PurgesAuthDataCacheOccasionally) {
   // enough to clear the cache, so that the default workgroup is used.
   samba().ResetForTesting();
   EXPECT_EQ(ERROR_NONE, samba().Initialize(true /* expect_config */));
-  clock->Advance(SambaInterface::kAuthDataCacheTTL * 2);
+  clock->Advance(samba().GetAuthDataCacheTTLForTesting() * 2);
   DefaultAuth();
   ReadSmbConf(paths_->Get(Path::USER_SMB_CONF), &user_smb_conf);
   EXPECT_EQ(kDefaultWorkgroup, user_smb_conf.workgroup);
+}
+
+// The lifetime of the auth data cache can be changed by the
+// DeviceAuthDataCacheLifetime policy. It can also be turned off by that policy.
+TEST_F(AuthPolicyTest, AuthDataCacheTTLCanBeSetByPolicy) {
+  base::FilePath cache_path(paths_->Get(Path::AUTH_DATA_CACHE));
+
+  // Join domain.
+  EXPECT_EQ(ERROR_NONE,
+            Join(kOneGpoMachineName, kUserPrincipal, MakePasswordFd()));
+  MarkDeviceAsLocked();
+  validate_device_policy_ = &DontValidateDevicePolicy;
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+  EXPECT_TRUE(base::PathExists(cache_path));
+
+  // Setting the policy to 0 should turn the cache off, clear the file and set
+  // the TTL to 0.
+  policy::PRegUserDevicePolicyWriter writer;
+  writer.AppendInteger(policy::key::kDeviceAuthDataCacheLifetime, kZeroHours);
+  writer.WriteToFile(stub_gpo1_path_);
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+  EXPECT_FALSE(samba().GetAuthDataCacheForTesting()->IsEnabled());
+  EXPECT_EQ(base::TimeDelta::FromHours(kZeroHours),
+            samba().GetAuthDataCacheTTLForTesting());
+  EXPECT_FALSE(base::PathExists(cache_path));
+
+  // Setting the policy to > 0 should turn the cache on again and set the TTL.
+  policy::PRegUserDevicePolicyWriter writer2;
+  writer2.AppendInteger(policy::key::kDeviceAuthDataCacheLifetime,
+                        kNonZeroHours);
+  writer2.WriteToFile(stub_gpo1_path_);
+  FetchAndValidateDevicePolicy(ERROR_NONE);
+  EXPECT_TRUE(samba().GetAuthDataCacheForTesting()->IsEnabled());
+  EXPECT_EQ(base::TimeDelta::FromHours(kNonZeroHours),
+            samba().GetAuthDataCacheTTLForTesting());
+  EXPECT_FALSE(base::PathExists(cache_path));
 }
 
 }  // namespace authpolicy

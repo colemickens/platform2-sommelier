@@ -101,6 +101,20 @@ constexpr base::TimeDelta kSmbClientRetryDelay =
 constexpr base::TimeDelta kPasswordChangeCheckRate =
     base::TimeDelta::FromMinutes(120);
 
+// Default GPO version cache TTL. Can be overridden with the
+// DeviceGpoCacheLifetime policy. Make sure the value matches the policy
+// description in policy_templates.json!
+constexpr base::TimeDelta kDefaultGpoVersionCacheTTL =
+    base::TimeDelta::FromHours(25);
+
+// Default auth data cache TTL. Can be overridden with the
+// DeviceAuthDataCacheLifetime policy. Make sure the value matches the policy
+// description in policy_templates.json!
+constexpr base::TimeDelta kDefaultAuthDataCacheTTL =
+    base::TimeDelta::FromHours(73);
+
+constexpr base::TimeDelta kZeroDelta = base::TimeDelta::FromHours(0);
+
 // Keys for interpreting net output.
 constexpr char kKeyJoinAccessDenied[] = "NT_STATUS_ACCESS_DENIED";
 constexpr char kKeyInvalidMachineName[] = "Improperly formed account name";
@@ -366,8 +380,8 @@ const char* GetEncryptionTypesString(KerberosEncryptionTypes encryption_types) {
   CHECK(false);
 }
 
-// Gets the Kerberos encryption types from the corresponding device policy.
-// Returns ENC_TYPES_STRONG if the policy is not set or invalid.
+// Returns the value of the DeviceKerberosEncryptionTypes policy or
+// ENC_TYPES_STRONG if the policy is not set or invalid.
 KerberosEncryptionTypes GetEncryptionTypes(
     const em::ChromeDeviceSettingsProto& device_policy) {
   if (!device_policy.has_device_kerberos_encryption_types() ||
@@ -390,8 +404,8 @@ KerberosEncryptionTypes GetEncryptionTypes(
   CHECK(false);
 }
 
-// Gets the user policy loopback processing mode the corresponding device
-// policy. Returns USER_POLICY_MODE_DEFAULT if the policy is not.
+// Returns the value of the DeviceUserPolicyLoopbackProcessingMode policy or
+// |USER_POLICY_MODE_DEFAULT| if the policy is not.
 em::DeviceUserPolicyLoopbackProcessingModeProto::Mode GetUserPolicyMode(
     const em::ChromeDeviceSettingsProto& device_policy) {
   if (!device_policy.has_device_user_policy_loopback_processing_mode() ||
@@ -402,17 +416,40 @@ em::DeviceUserPolicyLoopbackProcessingModeProto::Mode GetUserPolicyMode(
   return device_policy.device_user_policy_loopback_processing_mode().mode();
 }
 
-// Gets the user policy loopback processing mode the corresponding device
-// policy. Returns a time delta of |kDefaultMachinePasswordChangeRateDays| days
-// if the policy is not.
+// Returns the value of the DeviceMachinePasswordChangeRate policy or
+// |kDefaultMachinePasswordChange| if the policy is not set.
 base::TimeDelta GetMachinePasswordChangeRate(
     const em::ChromeDeviceSettingsProto& device_policy) {
   if (!device_policy.has_device_machine_password_change_rate() ||
       !device_policy.device_machine_password_change_rate().has_rate_days()) {
-    return base::TimeDelta::FromDays(kDefaultMachinePasswordChangeRateDays);
+    return kDefaultMachinePasswordChangeRate;
   }
   return base::TimeDelta::FromDays(
       device_policy.device_machine_password_change_rate().rate_days());
+}
+
+// Returns the value of the DeviceGpoCacheLifetime policy or
+// |kDefaultGpoVersionCacheTTL| if the policy is not set.
+base::TimeDelta GetGpoVersionCacheTTL(
+    const em::ChromeDeviceSettingsProto& device_policy) {
+  if (!device_policy.has_device_gpo_cache_lifetime() ||
+      !device_policy.device_gpo_cache_lifetime().has_lifetime_hours()) {
+    return kDefaultGpoVersionCacheTTL;
+  }
+  return base::TimeDelta::FromHours(
+      device_policy.device_gpo_cache_lifetime().lifetime_hours());
+}
+
+// Returns the value of the DeviceAuthDataCacheLifetime policy or
+// |kDefaultAuthDataCacheTTL| if the policy is not set.
+base::TimeDelta GetAuthDataCacheTTL(
+    const em::ChromeDeviceSettingsProto& device_policy) {
+  if (!device_policy.has_device_auth_data_cache_lifetime() ||
+      !device_policy.device_auth_data_cache_lifetime().has_lifetime_hours()) {
+    return kDefaultAuthDataCacheTTL;
+  }
+  return base::TimeDelta::FromHours(
+      device_policy.device_auth_data_cache_lifetime().lifetime_hours());
 }
 
 std::ostream& operator<<(std::ostream& os,
@@ -501,7 +538,9 @@ SambaInterface::SambaInterface(AuthPolicyMetrics* metrics,
                           Path::DEVICE_KRB5_CONF,
                           Path::DEVICE_CREDENTIAL_CACHE),
       gpo_version_cache_(&flags_),
-      auth_data_cache_(&flags_) {
+      gpo_version_cache_ttl_(kDefaultGpoVersionCacheTTL),
+      auth_data_cache_(&flags_),
+      auth_data_cache_ttl_(kDefaultAuthDataCacheTTL) {
   DCHECK(paths_);
   LoadFlagsDefaultLevel();
   user_tgt_manager_.SetKerberosFilesChangedCallback(
@@ -621,7 +660,7 @@ ErrorType SambaInterface::AuthenticateUserInternal(
   user_tgt_manager_.SetPrincipal(normalized_upn);
 
   // Clean up auth data cache.
-  auth_data_cache_.RemoveEntriesOlderThan(kAuthDataCacheTTL);
+  auth_data_cache_.RemoveEntriesOlderThan(auth_data_cache_ttl_);
 
   // Acquire Kerberos ticket-granting-ticket for the user account.
   ErrorType error = AcquireUserTgt(password_fd);
@@ -1390,6 +1429,10 @@ bool SambaInterface::IsUserAffiliated() {
     return *cached_is_affiliated;
   }
 
+  // Users on device realm are always affiliated.
+  if (user_account_.realm == device_account_.realm)
+    return true;
+
   // Call net ads search using
   //   - the device smb.conf, but
   //   - the user's credentials!
@@ -1800,7 +1843,7 @@ ErrorType SambaInterface::DownloadGpos(
   }
 
   // Clean up GPO cache.
-  gpo_version_cache_.RemoveEntriesOlderThan(kGpoCacheTTL);
+  gpo_version_cache_.RemoveEntriesOlderThan(gpo_version_cache_ttl_);
 
   // Generate all smb source and linux target directories and create targets.
   ErrorType error;
@@ -2010,6 +2053,24 @@ void SambaInterface::UpdateDevicePolicyDependencies(
   base::TimeDelta password_change_rate =
       GetMachinePasswordChangeRate(device_policy);
   UpdateMachinePasswordAutoChange(password_change_rate);
+
+  // Update GPO version cache. The cache is disabled if the TTL is 0.
+  gpo_version_cache_ttl_ = GetGpoVersionCacheTTL(device_policy);
+  gpo_version_cache_.SetEnabled(gpo_version_cache_ttl_ > kZeroDelta);
+  if (!gpo_version_cache_.IsEnabled())
+    gpo_version_cache_.Clear();
+
+  // Update auth data cache. The cache is disabled if the TTL is 0.
+  auth_data_cache_ttl_ = GetAuthDataCacheTTL(device_policy);
+  auth_data_cache_.SetEnabled(auth_data_cache_ttl_ > kZeroDelta);
+  if (!auth_data_cache_.IsEnabled()) {
+    auth_data_cache_.Clear();
+    const base::FilePath cache_path(paths_->Get(Path::AUTH_DATA_CACHE));
+    if (!base::DeleteFile(cache_path, false /* recursive */)) {
+      LOG(ERROR) << "Failed delete auth data cache file '" << cache_path.value()
+                 << "'";
+    }
+  }
 }
 
 void SambaInterface::UpdateAuthDataCache(const AccountData& account,
@@ -2308,7 +2369,12 @@ void SambaInterface::Reset() {
   device_account_ = AccountData(Path::DEVICE_SMB_CONF);
   user_tgt_manager_.Reset();
   device_tgt_manager_.Reset();
-  auth_data_cache_.Reset();
+  gpo_version_cache_.Clear();
+  gpo_version_cache_.SetEnabled(true);
+  gpo_version_cache_ttl_ = kDefaultGpoVersionCacheTTL;
+  auth_data_cache_.Clear();
+  auth_data_cache_.SetEnabled(true);
+  auth_data_cache_ttl_ = kDefaultAuthDataCacheTTL;
   SetKerberosEncryptionTypes(ENC_TYPES_STRONG);
   user_policy_mode_ =
       em::DeviceUserPolicyLoopbackProcessingModeProto::USER_POLICY_MODE_DEFAULT;

@@ -139,7 +139,7 @@ extern const char kLoopbackGpoMachineName[];
 // Triggers kinit to expect a keytab instead of a password.
 extern const char kExpectKeytabMachineName[];
 // Triggers net ads info to print a server time later than password write time +
-// kDefaultMachinePasswordChangeRateDays, which should cause a password change.
+// kDefaultMachinePasswordChangeRate, which should cause a password change.
 extern const char kChangePasswordMachineName[];
 // Triggers ADS server ping to fail, which causes GetUserStatus to return error.
 extern const char kPingServerFailMachineName[];

@@ -31,14 +31,15 @@ class AuthDataCache {
 
   // Loads |data_| from the file at |path|. Returns true if the file was
   // successfully loaded and parsed. Clears data and returns false on error.
+  // Clears data and returns true if not enabled.
   bool Load(const base::FilePath& path);
 
   // Saves |data_| to the file at |path|. Returns true if the file was
-  // successfully written.
+  // successfully written. Returns true if not enabled.
   bool Save(const base::FilePath& path);
 
   // Clears the cache.
-  void Reset();
+  void Clear();
 
   // Turns the cache on or off. While set to false, all Get*() operations return
   // nullopt and the Set() operation does nothing.

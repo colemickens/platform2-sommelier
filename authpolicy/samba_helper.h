@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include <base/time/time.h>
+
 namespace authpolicy {
 
 class Anonymizer;
@@ -16,7 +18,8 @@ class Anonymizer;
 constexpr size_t kMachinePasswordCodePoints = 32;
 
 // By default, change the machine password every 30 days.
-constexpr int kDefaultMachinePasswordChangeRateDays = 30;
+constexpr base::TimeDelta kDefaultMachinePasswordChangeRate =
+    base::TimeDelta::FromDays(30);
 
 // Group policy flags.
 const int kGpFlagAllEnabled = 0x00;

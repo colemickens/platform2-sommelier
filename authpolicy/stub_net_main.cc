@@ -540,9 +540,9 @@ int HandleInfo(const std::string& smb_conf_path) {
     base::File::Info file_info;
     if (GetFileInfo(password_path, &file_info)) {
       const base::Time password_time = file_info.last_modified;
-      const base::Time server_time =
-          password_time +
-          base::TimeDelta::FromDays(kDefaultMachinePasswordChangeRateDays + 1);
+      const base::Time server_time = password_time +
+                                     kDefaultMachinePasswordChangeRate +
+                                     base::TimeDelta::FromDays(1);
       const std::string server_time_str = FormatServerTime(server_time);
       WriteOutput(base::StringPrintf(kStubInfo, server_time_str.c_str()), "");
       return kExitCodeOk;
