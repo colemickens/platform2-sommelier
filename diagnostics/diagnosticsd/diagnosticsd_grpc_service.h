@@ -6,6 +6,7 @@
 #define DIAGNOSTICS_DIAGNOSTICSD_DIAGNOSTICSD_GRPC_SERVICE_H_
 
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -71,6 +72,8 @@ class DiagnosticsdGrpcService final {
       base::Callback<void(std::unique_ptr<grpc_api::SendMessageToUiResponse>)>;
   using GetProcDataCallback =
       base::Callback<void(std::unique_ptr<grpc_api::GetProcDataResponse>)>;
+  using GetSysfsDataCallback =
+      base::Callback<void(std::unique_ptr<grpc_api::GetSysfsDataResponse>)>;
   using RunEcCommandCallback =
       base::Callback<void(std::unique_ptr<grpc_api::RunEcCommandResponse>)>;
   using GetEcPropertyCallback =
@@ -92,6 +95,8 @@ class DiagnosticsdGrpcService final {
       const SendMessageToUiCallback& callback);
   void GetProcData(std::unique_ptr<grpc_api::GetProcDataRequest> request,
                    const GetProcDataCallback& callback);
+  void GetSysfsData(std::unique_ptr<grpc_api::GetSysfsDataRequest> request,
+                    const GetSysfsDataCallback& callback);
   void RunEcCommand(std::unique_ptr<grpc_api::RunEcCommandRequest> request,
                     const RunEcCommandCallback& callback);
   void GetEcProperty(std::unique_ptr<grpc_api::GetEcPropertyRequest> request,
@@ -107,6 +112,18 @@ class DiagnosticsdGrpcService final {
   void AddFileDump(
       const base::FilePath& relative_file_path,
       google::protobuf::RepeatedPtrField<grpc_api::FileDump>* file_dumps);
+  // Constructs and, if successful, appends the dump of every file in the
+  // specified directory (with the path given relative to |root_dir_|) to the
+  // given protobuf repeated field. This will follow allowable symlinks - see
+  // ShouldFollowSymlink() for details.
+  void AddDirectoryDump(
+      const base::FilePath& relative_file_path,
+      google::protobuf::RepeatedPtrField<grpc_api::FileDump>* file_dumps);
+  void SearchDirectory(
+      const base::FilePath& root_dir,
+      std::set<std::string>* visited_paths,
+      google::protobuf::RepeatedPtrField<diagnostics::grpc_api::FileDump>*
+          file_dumps);
 
   // Unowned. The delegate should outlive this instance.
   Delegate* const delegate_;

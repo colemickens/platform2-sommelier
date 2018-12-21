@@ -24,8 +24,10 @@
 #include "diagnosticsd.pb.h"  // NOLINT(build/include)
 
 using testing::_;
+using testing::AnyOf;
 using testing::Eq;
 using testing::Invoke;
+using testing::StrEq;
 using testing::StrictMock;
 using testing::UnorderedElementsAre;
 using testing::WithArgs;
@@ -40,6 +42,8 @@ using DelegateWebRequestStatus =
     DiagnosticsdGrpcService::Delegate::WebRequestStatus;
 
 constexpr char kFakeFileContentsChars[] = "\0fake row 1\nfake row 2\n\0\377";
+constexpr char kFakeSecondFileContentsChars[] =
+    "\0fake col 1\nfake col 2\n\0\377";
 
 constexpr int kHttpStatusOk = 200;
 constexpr char kBadNonHttpsUrl[] = "Http://www.google.com";
@@ -57,6 +61,11 @@ const DelegateWebRequestHttpMethod kDelegateWebRequestHttpMethodPut =
 std::string FakeFileContents() {
   return std::string(std::begin(kFakeFileContentsChars),
                      std::end(kFakeFileContentsChars));
+}
+
+std::string FakeSecondFileContents() {
+  return std::string(std::begin(kFakeSecondFileContentsChars),
+                     std::end(kFakeSecondFileContentsChars));
 }
 
 template <class T>
@@ -132,6 +141,20 @@ class DiagnosticsdGrpcServiceTest : public testing::Test {
     std::unique_ptr<grpc_api::GetProcDataResponse> response;
     service()->GetProcData(std::move(request),
                            GrpcCallbackResponseSaver(&response));
+
+    // Expect the method to return immediately.
+    ASSERT_TRUE(response);
+    file_dumps->assign(response->file_dump().begin(),
+                       response->file_dump().end());
+  }
+
+  void ExecuteGetSysfsData(grpc_api::GetSysfsDataRequest::Type request_type,
+                           std::vector<grpc_api::FileDump>* file_dumps) {
+    auto request = std::make_unique<grpc_api::GetSysfsDataRequest>();
+    request->set_type(request_type);
+    std::unique_ptr<grpc_api::GetSysfsDataResponse> response;
+    service()->GetSysfsData(std::move(request),
+                            GrpcCallbackResponseSaver(&response));
 
     // Expect the method to return immediately.
     ASSERT_TRUE(response);
@@ -221,6 +244,15 @@ class DiagnosticsdGrpcServiceTest : public testing::Test {
 TEST_F(DiagnosticsdGrpcServiceTest, GetProcDataUnsetType) {
   std::vector<grpc_api::FileDump> file_dumps;
   ExecuteGetProcData(grpc_api::GetProcDataRequest::TYPE_UNSET, &file_dumps);
+
+  EXPECT_TRUE(file_dumps.empty())
+      << "Obtained: "
+      << GetProtosRangeDebugString(file_dumps.begin(), file_dumps.end());
+}
+
+TEST_F(DiagnosticsdGrpcServiceTest, GetSysfsDataUnsetType) {
+  std::vector<grpc_api::FileDump> file_dumps;
+  ExecuteGetSysfsData(grpc_api::GetSysfsDataRequest::TYPE_UNSET, &file_dumps);
 
   EXPECT_TRUE(file_dumps.empty())
       << "Obtained: "
@@ -322,6 +354,197 @@ INSTANTIATE_TEST_CASE_P(
         std::tie(grpc_api::GetProcDataRequest::FILE_NET_NETSTAT,
                  "proc/net/netstat"),
         std::tie(grpc_api::GetProcDataRequest::FILE_NET_DEV, "proc/net/dev")));
+
+namespace {
+
+// Tests for the GetSysfsData() method of DiagnosticsdGrpcServiceTest when a
+// directory is requested.
+//
+// This is a parameterized test with the following parameters:
+// * |sysfs_data_request_type| - type of the GetSysfsData() request to be
+//    executed (see GetSysfsDataRequest::Type);
+// * |relative_dir_path| - relative path to the directory which is expected to
+//    be read by the executed GetSysfsData() request.
+class SysfsDirectoryDiagnosticsdGrpcServiceTest
+    : public DiagnosticsdGrpcServiceTest,
+      public testing::WithParamInterface<std::tuple<
+          grpc_api::GetSysfsDataRequest::Type /* sysfs_data_request_type */,
+          std::string /* relative_dir_path */,
+          bool /* should_follow_symlink*/>> {
+ protected:
+  // Accessors to individual test parameters constructed from the test parameter
+  // tuple returned by gtest's GetParam():
+
+  grpc_api::GetSysfsDataRequest::Type sysfs_data_request_type() const {
+    return std::get<0>(GetParam());
+  }
+
+  bool ShouldFollowSymlink() const { return std::get<2>(GetParam()); }
+
+  base::FilePath relative_dir_path() const {
+    return base::FilePath(std::get<1>(GetParam()));
+  }
+
+  base::FilePath absolute_dir_path() const {
+    return temp_dir_path().Append(relative_dir_path());
+  }
+
+  base::FilePath relative_file_path() const {
+    return relative_dir_path().Append(kRelativeFilePath);
+  }
+
+  base::FilePath absolute_file_path() const {
+    return temp_dir_path().Append(relative_file_path());
+  }
+
+  base::FilePath relative_symlink_path() const {
+    return relative_dir_path().Append(kRelativeSymlinkPath);
+  }
+
+  base::FilePath absolute_symlink_path() const {
+    return temp_dir_path().Append(relative_symlink_path());
+  }
+
+  base::FilePath relative_nested_file_path() const {
+    return relative_dir_path().Append(kRelativeNestedFilePath);
+  }
+
+  base::FilePath absolute_nested_file_path() const {
+    return temp_dir_path().Append(relative_nested_file_path());
+  }
+
+ private:
+  const std::string kRelativeFilePath = "foo_file";
+  const std::string kRelativeSymlinkPath = "foo_symlink";
+  const std::string kRelativeNestedFilePath = "foo_dir/nested_file";
+};
+
+}  // namespace
+
+// Test that GetSysfsData() returns an empty result when the directory doesn't
+// exist.
+TEST_P(SysfsDirectoryDiagnosticsdGrpcServiceTest, NonExisting) {
+  std::vector<grpc_api::FileDump> file_dumps;
+  ExecuteGetSysfsData(sysfs_data_request_type(), &file_dumps);
+
+  EXPECT_TRUE(file_dumps.empty())
+      << "Obtained: "
+      << GetProtosRangeDebugString(file_dumps.begin(), file_dumps.end());
+}
+
+// Test that GetSysfsData() returns a single file when called on a directory
+// containing a single file.
+TEST_P(SysfsDirectoryDiagnosticsdGrpcServiceTest, SingleFileInDirectory) {
+  ASSERT_TRUE(
+      WriteFileAndCreateParentDirs(absolute_file_path(), FakeFileContents()));
+
+  std::vector<grpc_api::FileDump> file_dumps;
+  ExecuteGetSysfsData(sysfs_data_request_type(), &file_dumps);
+
+  const auto kExpectedFileDump = MakeFileDump(
+      relative_file_path(), relative_file_path(), FakeFileContents());
+  EXPECT_THAT(file_dumps,
+              UnorderedElementsAre(ProtobufEquals(kExpectedFileDump)))
+      << GetProtosRangeDebugString(file_dumps.begin(), file_dumps.end());
+}
+
+// Test that GetSysfsData() returns an empty result when given a directory with
+// only a cyclic symlink.
+TEST_P(SysfsDirectoryDiagnosticsdGrpcServiceTest, CyclicSymLink) {
+  ASSERT_TRUE(CreateCyclicSymbolicLink(absolute_dir_path()));
+
+  std::vector<grpc_api::FileDump> file_dumps;
+  ExecuteGetSysfsData(sysfs_data_request_type(), &file_dumps);
+
+  EXPECT_TRUE(file_dumps.empty())
+      << "Obtained: "
+      << GetProtosRangeDebugString(file_dumps.begin(), file_dumps.end());
+}
+
+// Test that GetSysfsData() returns a single result when given a directory
+// containing a file and a symlink to that same file.
+TEST_P(SysfsDirectoryDiagnosticsdGrpcServiceTest, DuplicateSymLink) {
+  ASSERT_EQ(absolute_file_path().DirName(), absolute_symlink_path().DirName());
+  ASSERT_TRUE(WriteFileAndCreateSymbolicLink(
+      absolute_file_path(), FakeFileContents(), absolute_symlink_path()));
+
+  std::vector<grpc_api::FileDump> file_dumps;
+  ExecuteGetSysfsData(sysfs_data_request_type(), &file_dumps);
+
+  const auto kExpectedFileDump = MakeFileDump(
+      relative_symlink_path(), relative_file_path(), FakeFileContents());
+  ASSERT_EQ(file_dumps.size(), 1);
+  // The non-canonical path could be either absolute_file_path() or
+  // absolute_symlink_path(). Dumping a directory uses base::FileIterator,
+  // whose order is not guaranteed.
+  EXPECT_THAT(file_dumps[0].path(),
+              AnyOf(StrEq(absolute_file_path().value()),
+                    StrEq(absolute_symlink_path().value())));
+  EXPECT_EQ(file_dumps[0].canonical_path(), absolute_file_path().value());
+  EXPECT_EQ(file_dumps[0].contents(), FakeFileContents());
+}
+
+// Test that GetSysfsData() follows allowable symlinks.
+TEST_P(SysfsDirectoryDiagnosticsdGrpcServiceTest, ShouldFollowSymlink) {
+  base::ScopedTempDir other_dir;
+  ASSERT_TRUE(other_dir.CreateUniqueTempDir());
+  base::FilePath file_path = other_dir.GetPath().Append("foo_file");
+  ASSERT_TRUE(WriteFileAndCreateSymbolicLink(file_path, FakeFileContents(),
+                                             absolute_symlink_path()));
+
+  std::vector<grpc_api::FileDump> file_dumps;
+  ExecuteGetSysfsData(sysfs_data_request_type(), &file_dumps);
+
+  if (ShouldFollowSymlink()) {
+    grpc_api::FileDump expected_file_dump;
+    expected_file_dump.set_path(absolute_symlink_path().value());
+    expected_file_dump.set_canonical_path(file_path.value());
+    expected_file_dump.set_contents(FakeFileContents());
+    EXPECT_THAT(file_dumps,
+                UnorderedElementsAre(ProtobufEquals(expected_file_dump)))
+        << GetProtosRangeDebugString(file_dumps.begin(), file_dumps.end());
+  } else {
+    EXPECT_TRUE(file_dumps.empty())
+        << "Obtained: "
+        << GetProtosRangeDebugString(file_dumps.begin(), file_dumps.end());
+  }
+}
+
+// Test that GetSysfsData returns correct file dumps for files in nested
+// directories.
+TEST_P(SysfsDirectoryDiagnosticsdGrpcServiceTest, GetFileInNestedDirectory) {
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(absolute_nested_file_path(),
+                                           FakeFileContents()));
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(absolute_file_path(),
+                                           FakeSecondFileContents()));
+
+  std::vector<grpc_api::FileDump> file_dumps;
+  ExecuteGetSysfsData(sysfs_data_request_type(), &file_dumps);
+
+  const auto kFirstExpectedFileDump =
+      MakeFileDump(relative_nested_file_path(), relative_nested_file_path(),
+                   FakeFileContents());
+  const auto kSecondExpectedFileDump = MakeFileDump(
+      relative_file_path(), relative_file_path(), FakeSecondFileContents());
+  EXPECT_THAT(file_dumps,
+              UnorderedElementsAre(ProtobufEquals(kFirstExpectedFileDump),
+                                   ProtobufEquals(kSecondExpectedFileDump)))
+      << GetProtosRangeDebugString(file_dumps.begin(), file_dumps.end());
+}
+
+INSTANTIATE_TEST_CASE_P(
+    ,
+    SysfsDirectoryDiagnosticsdGrpcServiceTest,
+    testing::Values(
+        std::make_tuple(grpc_api::GetSysfsDataRequest::CLASS_HWMON,
+                        "sys/class/hwmon/",
+                        true),
+        std::make_tuple(grpc_api::GetSysfsDataRequest::CLASS_THERMAL,
+                        "sys/class/thermal/",
+                        true),
+        std::make_tuple(grpc_api::GetSysfsDataRequest::FIRMWARE_DMI_TABLES,
+                        "sys/firmware/dmi/tables/",
+                        false)));
 
 namespace {
 

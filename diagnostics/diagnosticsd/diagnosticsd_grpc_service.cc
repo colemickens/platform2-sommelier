@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
@@ -153,6 +154,17 @@ const char* GetEcPropertyPath(
   }
 }
 
+// While dumping files in a directory, determines if we should follow a symlink
+// or not. Currently, we only follow symlinks one level down from /sys/class/*/.
+// For example, we would follow a symlink from /sys/class/hwmon/hwmon0, but we
+// would not follow a symlink from /sys/class/hwmon/hwmon0/device.
+bool ShouldFollowSymlink(const base::FilePath& link, base::FilePath root_dir) {
+  // Path relative to the root directory where we will follow symlinks.
+  constexpr char kAllowableSymlinkParentDir[] = "sys/class";
+  return base::FilePath(root_dir.Append(kAllowableSymlinkParentDir)) ==
+         link.DirName().DirName();
+}
+
 }  // namespace
 
 DiagnosticsdGrpcService::DiagnosticsdGrpcService(Delegate* delegate)
@@ -201,6 +213,36 @@ void DiagnosticsdGrpcService::GetProcData(
       return;
   }
   VLOG(1) << "Completing GetProcData gRPC request of type " << request->type()
+          << ", returning " << reply->file_dump_size() << " items";
+  callback.Run(std::move(reply));
+}
+
+void DiagnosticsdGrpcService::GetSysfsData(
+    std::unique_ptr<grpc_api::GetSysfsDataRequest> request,
+    const GetSysfsDataCallback& callback) {
+  DCHECK(request);
+  auto reply = std::make_unique<grpc_api::GetSysfsDataResponse>();
+  switch (request->type()) {
+    case grpc_api::GetSysfsDataRequest::CLASS_HWMON:
+      AddDirectoryDump(base::FilePath("sys/class/hwmon/"),
+                       reply->mutable_file_dump());
+      break;
+    case grpc_api::GetSysfsDataRequest::CLASS_THERMAL:
+      AddDirectoryDump(base::FilePath("sys/class/thermal/"),
+                       reply->mutable_file_dump());
+      break;
+    case grpc_api::GetSysfsDataRequest::FIRMWARE_DMI_TABLES:
+      AddDirectoryDump(base::FilePath("sys/firmware/dmi/tables/"),
+                       reply->mutable_file_dump());
+      break;
+    default:
+      LOG(ERROR) << "GetSysfsData gRPC request type unset or invalid: "
+                 << request->type();
+      // Error is designated by a reply with the empty list of entries.
+      callback.Run(std::move(reply));
+      return;
+  }
+  VLOG(1) << "Completing GetSysfsData gRPC request of type " << request->type()
           << ", returning " << reply->file_dump_size() << " items";
   callback.Run(std::move(reply));
 }
@@ -354,6 +396,60 @@ void DiagnosticsdGrpcService::AddFileDump(
     return;
   }
   file_dumps->Add()->Swap(&file_dump);
+}
+
+void DiagnosticsdGrpcService::AddDirectoryDump(
+    const base::FilePath& relative_file_path,
+    google::protobuf::RepeatedPtrField<grpc_api::FileDump>* file_dumps) {
+  DCHECK(!relative_file_path.IsAbsolute());
+  std::set<std::string> visited_paths;
+  SearchDirectory(root_dir_.Append(relative_file_path), &visited_paths,
+                  file_dumps);
+}
+
+void DiagnosticsdGrpcService::SearchDirectory(
+    const base::FilePath& root_dir,
+    std::set<std::string>* visited_paths,
+    google::protobuf::RepeatedPtrField<diagnostics::grpc_api::FileDump>*
+        file_dumps) {
+  visited_paths->insert(base::MakeAbsoluteFilePath(root_dir).value());
+  base::FileEnumerator file_enum(
+      base::FilePath(root_dir), false,
+      base::FileEnumerator::FileType::FILES |
+          base::FileEnumerator::FileType::DIRECTORIES |
+          base::FileEnumerator::FileType::SHOW_SYM_LINKS);
+  for (base::FilePath path = file_enum.Next(); !path.empty();
+       path = file_enum.Next()) {
+    // Only certain symlinks are followed - see the comments for
+    // ShouldFollowSymlink for a full description of the behavior.
+    if (base::IsLink(path) && !ShouldFollowSymlink(path, root_dir_))
+      continue;
+
+    base::FilePath canonical_path = base::MakeAbsoluteFilePath(path);
+    if (canonical_path.empty()) {
+      VPLOG(2) << "Failed to resolve path.";
+      continue;
+    }
+
+    // Prevent visiting duplicate paths, which could happen due to following
+    // symlinks.
+    if (visited_paths->find(canonical_path.value()) != visited_paths->end())
+      continue;
+
+    visited_paths->insert(canonical_path.value());
+
+    if (base::DirectoryExists(path)) {
+      SearchDirectory(path, visited_paths, file_dumps);
+    } else {
+      grpc_api::FileDump file_dump;
+      if (!MakeFileDump(path, &file_dump)) {
+        // When a file is failed to be dumped, it's just omitted from the
+        // returned list of entries.
+        continue;
+      }
+      file_dumps->Add()->Swap(&file_dump);
+    }
+  }
 }
 
 }  // namespace diagnostics

@@ -82,6 +82,10 @@ bool DiagnosticsdCore::StartGrpcCommunication() {
       base::Bind(&DiagnosticsdGrpcService::GetProcData,
                  base::Unretained(&grpc_service_)));
   grpc_server_.RegisterHandler(
+      &grpc_api::Diagnosticsd::AsyncService::RequestGetSysfsData,
+      base::Bind(&DiagnosticsdGrpcService::GetSysfsData,
+                 base::Unretained(&grpc_service_)));
+  grpc_server_.RegisterHandler(
       &grpc_api::Diagnosticsd::AsyncService::RequestRunEcCommand,
       base::Bind(&DiagnosticsdGrpcService::RunEcCommand,
                  base::Unretained(&grpc_service_)));
