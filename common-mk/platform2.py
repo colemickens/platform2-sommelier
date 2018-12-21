@@ -319,27 +319,29 @@ class Platform2(object):
     def to_gn_list(strs):
       return '[%s]' % ','.join([to_gn_string(s) for s in strs])
 
-    gn_args_args = [
-        'platform_subdir="%s"' % self.platform_subdir,
-    ]
-    common_args = self.gen_common_args(True)
-    for k, v in common_args.iteritems():
-      if isinstance(v, bool):
-        v = str(v).lower()
-      elif isinstance(v, list):
-        v = to_gn_list(v)
-      elif isinstance(v, str):
-        v = to_gn_string(v)
-      else:
-        raise AssertionError('Unexpected value type %s' % str(type(v)))
-      gn_args_args.append('%s=%s' % (k.replace('-', '_'), v))
+    def to_gn_args_args(gn_args):
+      for k, v in gn_args.items():
+        if isinstance(v, bool):
+          v = str(v).lower()
+        elif isinstance(v, list):
+          v = to_gn_list(v)
+        elif isinstance(v, str):
+          v = to_gn_string(v)
+        else:
+          raise AssertionError('Unexpected value type %s' % str(type(v)))
+        yield '%s=%s' % (k.replace('-', '_'), v)
 
     buildenv = self.get_build_environment()
-    gn_args_args += [
-        'cc="%s"' % buildenv.get('CC_target', buildenv.get('CC', '')),
-        'cxx="%s"' % buildenv.get('CXX_target', buildenv.get('CXX', '')),
-        'ar="%s"' % buildenv.get('AR_target', buildenv.get('AR', '')),
-    ]
+    gn_args = {
+        'platform_subdir': self.platform_subdir,
+        'cc': buildenv.get('CC_target', buildenv.get('CC', '')),
+        'cxx': buildenv.get('CXX_target', buildenv.get('CXX', '')),
+        'ar': buildenv.get('AR_target', buildenv.get('AR', '')),
+    }
+    gn_args['clang_cc'] = 'clang' in gn_args['cc']
+    gn_args['clang_cxx'] = 'clang' in gn_args['cxx']
+    gn_args.update(self.gen_common_args(True))
+    gn_args_args = list(to_gn_args_args(gn_args))
 
     # Set use flags as a scope.
     uses = {}

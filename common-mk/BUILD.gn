@@ -21,6 +21,17 @@ config("no_exceptions") {
   cflags_c = _cflags_no_exceptions
 }
 
+_gcc_cflags = [
+  "-Wno-psabi",
+]
+
+config("gcc_cflags_c") {
+  cflags_c = _gcc_cflags
+}
+config("gcc_cflags_cc") {
+  cflags_cc = _gcc_cflags
+}
+
 # Note: DO NOT USE THIS.  Use brillo/brillo_export.h instead to export symbols.
 #
 # Symbol visibility is set to be internal by default. Add this to your target's
@@ -42,7 +53,6 @@ config("compiler_defaults") {
   ]
   cflags = [
     "-Wall",
-    "-Wno-psabi",
     "-Wunused",
     "-Wno-unused-parameter",
     "-Wunreachable-code",

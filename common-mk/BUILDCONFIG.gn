@@ -28,6 +28,12 @@ declare_args() {
   # Set true to allow C++ code to use exceptions.
   enable_exceptions = false
 
+  # Set true if clang is used for C compiler.
+  clang_cc = false
+
+  # Set true if clang is used for C++ compiler.
+  clang_cxx = false
+
   # Additional flags for C compiler.
   external_cflags = []
 
@@ -73,6 +79,13 @@ _binary_target_configs = [ "//common-mk:compiler_defaults" ]
 
 if (!enable_exceptions) {
   _binary_target_configs += [ "//common-mk:no_exceptions" ]
+}
+
+if (!clang_cc) {
+  _binary_target_configs += [ "//common-mk:gcc_cflags_c" ]
+}
+if (!clang_cxx) {
+  _binary_target_configs += [ "//common-mk:gcc_cflags_cc" ]
 }
 
 set_defaults("executable") {
