@@ -5,6 +5,7 @@
 #include "arc/network/ip_helper.h"
 
 #include <ctype.h>
+#include <linux/rtnetlink.h>
 #include <net/if.h>
 #include <unistd.h>
 
@@ -14,16 +15,19 @@
 #include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/posix/unix_domain_socket_linux.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
+#include <shill/net/rtnl_handler.h>
+#include <shill/net/rtnl_message.h>
+
+#include "arc/network/scoped_ns.h"
 
 namespace {
 
-const int kContainerRetryDelaySeconds = 5;
-const int kMaxContainerRetries = 60;
 const char kContainerPIDPath[] =
     "/run/containers/android-run_oci/container.pid";
 
@@ -43,6 +47,19 @@ int GetContainerPID() {
   LOG(INFO) << "Read container pid as " << pid;
   return pid;
 }
+
+// This wrapper is required since the base class is a singleton that hides its
+// constructor. It is necessary here because the message loop thread has to be
+// reassociated to the container's network namespace; and since the container
+// can be repeatedly created and destroyed, the handler must be as well.
+class RTNetlinkHandler : public shill::RTNLHandler {
+ public:
+  RTNetlinkHandler() = default;
+  ~RTNetlinkHandler() = default;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(RTNetlinkHandler);
+};
 
 }  // namespace
 
@@ -95,6 +112,25 @@ bool IpHelper::OnContainerStart(const struct signalfd_siginfo& info) {
     con_pid_ = GetContainerPID();
     CHECK_NE(con_pid_, 0);
 
+    // Start listening for RTNetlink messages in the container's net namespace
+    // to be notified whenever it brings up an interface.
+    {
+      ScopedNS ns(con_pid_);
+      if (!ns.IsValid()) {
+        // This is kind of bad - it means we won't ever be able to tell when
+        // the container brings up an interface.
+        LOG(ERROR) << "Cannot start netlink listener";
+        return false;
+      }
+
+      rtnl_handler_ = std::make_unique<RTNetlinkHandler>();
+      rtnl_handler_->Start(RTMGRP_LINK);
+      link_listener_ = std::make_unique<shill::RTNLListener>(
+          shill::RTNLHandler::kRequestLink,
+          Bind(&IpHelper::LinkMsgHandler, weak_factory_.GetWeakPtr()),
+          rtnl_handler_.get());
+    }
+
     // Initialize the container interfaces.
     for (auto& config : arc_ip_configs_) {
       config.second->Init(con_pid_);
@@ -110,6 +146,8 @@ bool IpHelper::OnContainerStop(const struct signalfd_siginfo& info) {
     LOG(INFO) << "Container stopping";
     con_pid_ = 0;
     con_init_tries_ = 0;
+    link_listener_.reset();
+    rtnl_handler_.reset();
 
     // Reset the container interfaces.
     for (auto& config : arc_ip_configs_) {
@@ -129,7 +167,14 @@ void IpHelper::AddDevice(const std::string& ifname,
   if (con_pid_ != 0)
     device->Init(con_pid_);
 
+  configs_by_arc_ifname_.emplace(config.arc_ifname(), device.get());
   arc_ip_configs_.emplace(ifname, std::move(device));
+}
+
+void IpHelper::RemoveDevice(const std::string& ifname) {
+  LOG(INFO) << "Removing device " << ifname;
+  configs_by_arc_ifname_.erase(ifname);
+  arc_ip_configs_.erase(ifname);
 }
 
 void IpHelper::OnFileCanReadWithoutBlocking(int fd) {
@@ -199,51 +244,27 @@ void IpHelper::HandleCommand() {
     config->Set(ExtractAddr6(ip.prefix()), static_cast<int>(ip.prefix_len()),
                 ExtractAddr6(ip.router()), ip.lan_ifname());
   } else if (pending_command_.has_enable_inbound_ifname()) {
-    EnableInbound(dev_ifname, pending_command_.enable_inbound_ifname(),
-                  con_pid_);
+    config->EnableInbound(pending_command_.enable_inbound_ifname());
   } else if (pending_command_.has_disable_inbound()) {
     config->DisableInbound();
   } else if (pending_command_.has_teardown()) {
-    arc_ip_configs_.erase(dev_ifname);
+    RemoveDevice(dev_ifname);
   }
   pending_command_.Clear();
 }
 
-void IpHelper::EnableInbound(const std::string& dev,
-                             const std::string& ifname,
-                             pid_t pid) {
-  const auto it = arc_ip_configs_.find(dev);
-  if (it == arc_ip_configs_.end()) {
-    LOG(WARNING) << "Cannot enable " << dev << " missing";
+void IpHelper::LinkMsgHandler(const shill::RTNLMessage& msg) {
+  if (!msg.HasAttribute(IFLA_IFNAME)) {
+    LOG(ERROR) << "Link event message does not have IFLA_IFNAME";
     return;
   }
-
-  if (!con_pid_ || !pid) {
-    LOG(WARNING) << "Ignoring request to enable " << dev << " on " << ifname
-                 << " - container down.";
-    return;
-  }
-  if (con_pid_ != pid) {
-    LOG(WARNING) << "Ignoring request to enable " << dev << " on " << ifname
-                 << " - container restarted.";
-    return;
-  }
-  if (++con_init_tries_ >= kMaxContainerRetries) {
-    LOG(ERROR) << "Ignoring request to enable " << dev << " on " << ifname
-               << " - container never came up.";
-    return;
-  }
-
-  // The container must be fully initialized and its side of the virtual
-  // interface must be up before continuing.
-  if (it->second->ContainerInit()) {
-    it->second->EnableInbound(ifname);
-  } else {
-    base::MessageLoopForIO::current()->task_runner()->PostDelayedTask(
-        FROM_HERE,
-        base::Bind(&IpHelper::EnableInbound, weak_factory_.GetWeakPtr(), dev,
-                   ifname, con_pid_),
-        base::TimeDelta::FromSeconds(kContainerRetryDelaySeconds));
+  bool link_up = msg.link_status().flags & IFF_UP;
+  shill::ByteString b(msg.GetAttribute(IFLA_IFNAME));
+  std::string ifname(reinterpret_cast<const char*>(
+      b.GetSubstring(0, IFNAMSIZ).GetConstData()));
+  auto it = configs_by_arc_ifname_.find(ifname);
+  if (it != configs_by_arc_ifname_.end()) {
+    it->second->ContainerReady(link_up);
   }
 }
 

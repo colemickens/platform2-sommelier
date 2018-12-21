@@ -5,7 +5,6 @@
 #include "arc/network/arc_ip_config.h"
 
 #include <arpa/inet.h>
-#include <fcntl.h>
 #include <ifaddrs.h>
 #include <net/if.h>
 #include <netinet/in.h>
@@ -25,16 +24,16 @@
 #include <utility>
 
 #include <base/files/file_util.h>
-#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
+#include "arc/network/scoped_ns.h"
+
 namespace {
 
 const int kInvalidNs = 0;
-const int kTestNs = -1;
 const int kInvalidTableId = -1;
 const char kDefaultNetmask[] = "255.255.255.252";
 
@@ -54,6 +53,9 @@ ArcIpConfig::ArcIpConfig(
       config_(config),
       con_netns_(kInvalidNs),
       routing_table_id_(kInvalidTableId),
+      if_up_(false),
+      ipv6_configured_(false),
+      inbound_configured_(false),
       ipv6_dev_ifname_(ifname),
       process_runner_(std::move(process_runner)) {
   Setup();
@@ -66,11 +68,6 @@ ArcIpConfig::~ArcIpConfig() {
 void ArcIpConfig::Setup() {
   LOG(INFO) << "Setting up " << ifname_ << " " << config_.br_ifname() << " "
             << config_.arc_ifname();
-
-  self_netns_fd_.reset(open("/proc/self/ns/net", O_RDONLY));
-  if (!self_netns_fd_.is_valid()) {
-    PLOG(FATAL) << "Could not open host netns";
-  }
 
   // Configure the persistent Chrome OS bridge interface with static IP.
   process_runner_->Run({kBrctlPath, "addbr", config_.br_ifname()});
@@ -94,7 +91,8 @@ void ArcIpConfig::Setup() {
                           "DNAT", "--to-destination", config_.arc_ipv4(),
                           "-w"});
 
-    // This chain is dynamically updated whenever the default interface changes.
+    // This chain is dynamically updated whenever the default interface
+    // changes.
     process_runner_->Run({kIpTablesPath, "-t", "nat", "-N", "try_arc", "-w"});
     process_runner_->Run({kIpTablesPath, "-t", "nat", "-A", "PREROUTING", "-m",
                           "socket", "--nowildcard", "-j", "ACCEPT", "-w"});
@@ -153,22 +151,11 @@ bool ArcIpConfig::Init(pid_t con_netns) {
   if (!con_netns_) {
     LOG(INFO) << "Uninitializing " << con_netns_ << " " << ifname_ << " "
               << config_.br_ifname() << " " << config_.arc_ifname();
-    con_netns_fd_.reset();
     return true;
   }
 
   LOG(INFO) << "Initializing " << con_netns_ << " " << ifname_ << " "
             << config_.br_ifname() << " " << config_.arc_ifname();
-
-  if (con_netns_ != kTestNs) {
-    const std::string filename =
-        base::StringPrintf("/proc/%d/ns/net", static_cast<int>(con_netns_));
-    con_netns_fd_.reset(open(filename.c_str(), O_RDONLY));
-    if (!con_netns_fd_.is_valid()) {
-      PLOG(ERROR) << "Could not open " << filename;
-      return false;
-    }
-  }
 
   process_runner_->Run({kIpPath, "link", "delete", veth},
                        false /* log_failures */);
@@ -179,8 +166,8 @@ bool ArcIpConfig::Init(pid_t con_netns) {
                         config_.mac_addr(), "down"});
   process_runner_->Run({kBrctlPath, "addif", config_.br_ifname(), veth});
 
-  // Container ns needs to be ready here. For now this is gated by the wait loop
-  // the conf file.
+  // Container ns needs to be ready here. For now this is gated by the wait
+  // loop the conf file.
   // TODO(garrick): Run this in response to the RTNETLINK (NEWNSID) event:
   // https://elixir.bootlin.com/linux/v4.14/source/net/core/net_namespace.c#L234
 
@@ -195,40 +182,14 @@ bool ArcIpConfig::Init(pid_t con_netns) {
   return true;
 }
 
-bool ArcIpConfig::ContainerInit() {
-  if (!con_netns_) {
-    LOG(WARNING) << "No netns";
-    return false;
+void ArcIpConfig::ContainerReady(bool ready) {
+  if (!if_up_ && ready)
+    LOG(INFO) << config_.arc_ifname() << " is now up.";
+  if_up_ = ready;
+  if (if_up_ && !pending_inbound_ifname_.empty()) {
+    std::string ifname = std::move(pending_inbound_ifname_);
+    EnableInbound(ifname);
   }
-
-  if (!con_netns_fd_.is_valid() ||
-      setns(con_netns_fd_.get(), CLONE_NEWNET) != 0) {
-    PLOG(ERROR) << "Cannot enter netns " << con_netns_;
-    return false;
-  }
-
-  base::ScopedFD fd(socket(AF_INET, SOCK_DGRAM, IPPROTO_IP));
-  PCHECK(setns(self_netns_fd_.get(), CLONE_NEWNET) == 0);
-
-  if (!fd.is_valid()) {
-    LOG(ERROR) << "socket() failed";
-    return false;
-  }
-
-  struct ifreq ifr;
-  memset(&ifr, 0, sizeof(ifr));
-  strncpy(ifr.ifr_name, config_.arc_ifname().c_str(), IFNAMSIZ);
-
-  if (ioctl(fd.get(), SIOCGIFFLAGS, &ifr) < 0) {
-    PLOG(ERROR) << "SIOCGIFFLAGS(" << config_.arc_ifname() << ") failed";
-    return false;
-  }
-
-  if (!(ifr.ifr_flags & IFF_UP)) {
-    return false;
-  }
-
-  return true;
 }
 
 int ArcIpConfig::GetTableIdForInterface(const std::string& ifname) {
@@ -308,8 +269,9 @@ bool ArcIpConfig::Set(const struct in6_addr& address,
                       const std::string& lan_ifname) {
   Clear();
 
-  if (!con_netns_fd_.is_valid() || !self_netns_fd_.is_valid()) {
-    LOG(ERROR) << "Cannot set IPv6 address: no netns configured";
+  if (!if_up_) {
+    LOG(ERROR) << "Cannot set IPv6 address: container interface "
+               << config_.arc_ifname() << " not ready.";
     return false;
   }
 
@@ -339,29 +301,27 @@ bool ArcIpConfig::Set(const struct in6_addr& address,
   CHECK(ifname_ == kAndroidDevice || ifname_ == lan_ifname);
   ipv6_dev_ifname_ = lan_ifname;
 
-  if (setns(con_netns_fd_.get(), CLONE_NEWNET) != 0) {
-    PLOG(ERROR) << "Cannot set IPv6 address: cannot enter netns " << con_netns_;
-    return false;
+  {
+    ScopedNS ns(con_netns_);
+    if (ns.IsValid()) {
+      VLOG(1) << "Setting " << *this;
+
+      // These can fail if the interface disappears (e.g. hot-unplug).
+      // If that happens, the error will be logged, because sometimes it
+      // might help in debugging a real issue.
+
+      process_runner_->Run({kIpPath, "-6", "addr", "add", ipv6_address_full_,
+                            "dev", config_.arc_ifname()});
+
+      process_runner_->Run({kIpPath, "-6", "route", "add", ipv6_router_, "dev",
+                            config_.arc_ifname(), "table",
+                            std::to_string(routing_table_id_)});
+
+      process_runner_->Run({kIpPath, "-6", "route", "add", "default", "via",
+                            ipv6_router_, "dev", config_.arc_ifname(), "table",
+                            std::to_string(routing_table_id_)});
+    }
   }
-
-  VLOG(1) << "Setting " << *this;
-
-  // These can fail if the interface disappears (e.g. hot-unplug).
-  // If that happens, the error will be logged, because sometimes it
-  // might help in debugging a real issue.
-
-  process_runner_->Run({kIpPath, "-6", "addr", "add", ipv6_address_full_, "dev",
-                        config_.arc_ifname()});
-
-  process_runner_->Run({kIpPath, "-6", "route", "add", ipv6_router_, "dev",
-                        config_.arc_ifname(), "table",
-                        std::to_string(routing_table_id_)});
-
-  process_runner_->Run({kIpPath, "-6", "route", "add", "default", "via",
-                        ipv6_router_, "dev", config_.arc_ifname(), "table",
-                        std::to_string(routing_table_id_)});
-
-  PCHECK(setns(self_netns_fd_.get(), CLONE_NEWNET) == 0);
 
   process_runner_->Run({kIpPath, "-6", "route", "add", ipv6_address_full_,
                         "dev", config_.br_ifname()});
@@ -402,7 +362,8 @@ bool ArcIpConfig::Clear() {
                                  "-j", "ACCEPT", "-w"}),
            0);
 
-  // This often fails because the kernel removes the proxy entry automatically.
+  // This often fails because the kernel removes the proxy entry
+  // automatically.
 
   process_runner_->Run({kIpPath, "-6", "neigh", "del", "proxy", ipv6_address_,
                         "dev", ipv6_dev_ifname_},
@@ -413,26 +374,24 @@ bool ArcIpConfig::Clear() {
   process_runner_->Run({kIpPath, "-6", "route", "del", ipv6_address_full_,
                         "dev", config_.br_ifname()});
 
-  if (con_netns_fd_.is_valid() &&
-      setns(con_netns_fd_.get(), CLONE_NEWNET) == 0) {
-    process_runner_->Run({kIpPath, "-6", "route", "del", "default", "via",
-                          ipv6_router_, "dev", config_.arc_ifname(), "table",
-                          std::to_string(routing_table_id_)});
+  {
+    ScopedNS ns(con_netns_);
+    if (ns.IsValid()) {
+      process_runner_->Run({kIpPath, "-6", "route", "del", "default", "via",
+                            ipv6_router_, "dev", config_.arc_ifname(), "table",
+                            std::to_string(routing_table_id_)});
 
-    process_runner_->Run({kIpPath, "-6", "route", "del", ipv6_router_, "dev",
-                          config_.arc_ifname(), "table",
-                          std::to_string(routing_table_id_)});
+      process_runner_->Run({kIpPath, "-6", "route", "del", ipv6_router_, "dev",
+                            config_.arc_ifname(), "table",
+                            std::to_string(routing_table_id_)});
 
-    // This often fails because ARC tries to delete the address on its own
-    // when it is notified that the LAN is down.
+      // This often fails because ARC tries to delete the address on its own
+      // when it is notified that the LAN is down.
 
-    process_runner_->Run({kIpPath, "-6", "addr", "del", ipv6_address_full_,
-                          "dev", config_.arc_ifname()},
-                         false);
-
-    PCHECK(setns(self_netns_fd_.get(), CLONE_NEWNET) == 0);
-  } else {
-    PLOG(ERROR) << "IPv6 cleanup incomplete: cannot enter netns " << con_netns_;
+      process_runner_->Run({kIpPath, "-6", "addr", "del", ipv6_address_full_,
+                            "dev", config_.arc_ifname()},
+                           false);
+    }
   }
 
   ipv6_dev_ifname_.clear();
@@ -441,26 +400,51 @@ bool ArcIpConfig::Clear() {
 }
 
 void ArcIpConfig::EnableInbound(const std::string& lan_ifname) {
-  LOG(INFO) << "Enabling inbound for " << ifname_ << " on " << lan_ifname;
+  if (!if_up_) {
+    LOG(INFO) << "Enable inbound for " << ifname_ << " ["
+              << config_.arc_ifname() << "]"
+              << " on " << lan_ifname << " pending on container interface up.";
+    pending_inbound_ifname_ = lan_ifname;
+    return;
+  }
+
   DisableInbound();
 
-  VLOG(1) << "Enabling inbound for " << *this;
+  // TODO(garrick): This only applies for arc0 for now. Clean this up.
+  if (ifname_ == kAndroidDevice) {
+    LOG(INFO) << "Enabling inbound for " << ifname_ << " ["
+              << config_.arc_ifname() << "]"
+              << " on " << lan_ifname;
 
-  CHECK_EQ(process_runner_->Run({kIpTablesPath, "-t", "nat", "-A", "try_arc",
-                                 "-i", lan_ifname, "-j", "dnat_arc", "-w"}),
-           0);
+    CHECK_EQ(process_runner_->Run({kIpTablesPath, "-t", "nat", "-A", "try_arc",
+                                   "-i", lan_ifname, "-j", "dnat_arc", "-w"}),
+             0);
+  }
+
   inbound_configured_ = true;
+  DCHECK(pending_inbound_ifname_.empty());
 }
 
 void ArcIpConfig::DisableInbound() {
+  if (!pending_inbound_ifname_.empty()) {
+    LOG(INFO) << "Clearing pending inbound request for " << ifname_ << " ["
+              << config_.arc_ifname() << "] ";
+    pending_inbound_ifname_.clear();
+  }
+
   if (!inbound_configured_)
     return;
 
-  VLOG(1) << "Disabling inbound for " << *this;
+  // TODO(garrick): This only applies for arc0 for now. Clean this up.
+  if (ifname_ == kAndroidDevice) {
+    LOG(INFO) << "Disabling inbound for " << ifname_ << " ["
+              << config_.arc_ifname() << "] ";
 
-  CHECK_EQ(
-      process_runner_->Run({kIpTablesPath, "-t", "nat", "-F", "try_arc", "-w"}),
-      0);
+    CHECK_EQ(process_runner_->Run(
+                 {kIpTablesPath, "-t", "nat", "-F", "try_arc", "-w"}),
+             0);
+  }
+
   inbound_configured_ = false;
 }
 

@@ -192,32 +192,32 @@ TEST_F(ArcIpConfigTest, VerifyTeardownCmdsForAndroidDevice) {
 TEST_F(ArcIpConfigTest, VerifyInitCmds) {
   auto cfg = Config();
   runner_->Capture(true);
-  cfg->Init(-1);  // -1 used only for testing.
+  cfg->Init(12345);
   runner_->VerifyRuns({
       "/bin/ip link delete veth_foo",
       "/bin/ip link add veth_foo type veth peer name peer_foo",
       "/bin/ifconfig veth_foo up",
       "/bin/ip link set dev peer_foo addr 00:11:22:33:44:55 down",
       "/sbin/brctl addif br veth_foo",
-      "/bin/ip link set peer_foo netns -1",
+      "/bin/ip link set peer_foo netns 12345",
   });
-  runner_->VerifyAddInterface("peer_foo", "arc", "-1");
+  runner_->VerifyAddInterface("peer_foo", "arc", "12345");
 }
 
 TEST_F(ArcIpConfigTest, VerifyInitCmdsForAndroidDevice) {
   auto cfg = AndroidConfig();
   runner_->Capture(true);
-  cfg->Init(-1);  // -1 used only for testing.
+  cfg->Init(12345);
   runner_->VerifyRuns({
       "/bin/ip link delete veth_android",
       "/bin/ip link add veth_android type veth peer name peer_android",
       "/bin/ifconfig veth_android up",
       "/bin/ip link set dev peer_android addr 00:FF:AA:00:00:56 down",
       "/sbin/brctl addif arcbr0 veth_android",
-      "/bin/ip link set peer_android netns -1",
+      "/bin/ip link set peer_android netns 12345",
   });
-  runner_->VerifyAddInterface("peer_android", "arc0", "-1");
-  runner_->VerifyWriteSentinel("-1");
+  runner_->VerifyAddInterface("peer_android", "arc0", "12345");
+  runner_->VerifyWriteSentinel("12345");
 }
 
 TEST_F(ArcIpConfigTest, VerifyUninitDoesNotDownLink) {
@@ -227,17 +227,64 @@ TEST_F(ArcIpConfigTest, VerifyUninitDoesNotDownLink) {
   runner_->VerifyRuns({});
 }
 
-TEST_F(ArcIpConfigTest, VerifyEnableInboundCmds) {
-  auto cfg = Config();
+TEST_F(ArcIpConfigTest, VerifyContainerReadySendsEnableIfPending) {
+  auto cfg = AndroidConfig();
   runner_->Capture(true);
   cfg->EnableInbound("eth0");
+  cfg->ContainerReady(true);
   runner_->VerifyRuns({
       "/sbin/iptables -t nat -A try_arc -i eth0 -j dnat_arc -w",
   });
 }
 
-TEST_F(ArcIpConfigTest, VerifyEnableInboundDisablesFirst) {
+TEST_F(ArcIpConfigTest, VerifyContainerReadyOnlyEnablesAndroidDevice) {
   auto cfg = Config();
+  runner_->Capture(true);
+  cfg->EnableInbound("eth0");
+  cfg->ContainerReady(true);
+  runner_->VerifyRuns({});
+}
+
+TEST_F(ArcIpConfigTest, VerifyContainerReadySendsEnableOnlyOnce) {
+  auto cfg = AndroidConfig();
+  runner_->Capture(true);
+  cfg->EnableInbound("eth0");
+  cfg->ContainerReady(true);
+  cfg->ContainerReady(true);
+  cfg->ContainerReady(true);
+  runner_->VerifyRuns({
+      "/sbin/iptables -t nat -A try_arc -i eth0 -j dnat_arc -w",
+  });
+}
+
+TEST_F(ArcIpConfigTest, VerifyContainerReadySendsNothingByDefault) {
+  auto cfg = AndroidConfig();
+  runner_->Capture(true);
+  cfg->ContainerReady(true);
+  runner_->VerifyRuns({});
+}
+
+TEST_F(ArcIpConfigTest, VerifyEnableInboundOnlySendsIfContainerReady) {
+  auto cfg = AndroidConfig();
+  runner_->Capture(true);
+  cfg->EnableInbound("eth0");
+  runner_->VerifyRuns({});
+}
+
+TEST_F(ArcIpConfigTest, VerifyMultipleEnableInboundOnlySendsLast) {
+  auto cfg = AndroidConfig();
+  runner_->Capture(true);
+  cfg->EnableInbound("eth0");
+  cfg->EnableInbound("wlan0");
+  cfg->ContainerReady(true);
+  runner_->VerifyRuns({
+      "/sbin/iptables -t nat -A try_arc -i wlan0 -j dnat_arc -w",
+  });
+}
+
+TEST_F(ArcIpConfigTest, VerifyEnableInboundDisablesFirst) {
+  auto cfg = AndroidConfig();
+  cfg->ContainerReady(true);
   cfg->EnableInbound("eth0");
   runner_->Capture(true);
   cfg->EnableInbound("wlan0");
@@ -248,8 +295,9 @@ TEST_F(ArcIpConfigTest, VerifyEnableInboundDisablesFirst) {
 }
 
 TEST_F(ArcIpConfigTest, VerifyDisableInboundCmds) {
-  auto cfg = Config();
+  auto cfg = AndroidConfig();
   // Must be enabled first.
+  cfg->ContainerReady(true);
   cfg->EnableInbound("eth0");
   runner_->Capture(true);
   cfg->DisableInbound();
@@ -259,9 +307,18 @@ TEST_F(ArcIpConfigTest, VerifyDisableInboundCmds) {
 }
 
 TEST_F(ArcIpConfigTest, DisableDisabledDoesNothing) {
-  auto cfg = Config();
+  auto cfg = AndroidConfig();
   runner_->Capture(true);
   cfg->DisableInbound();
+  runner_->VerifyRuns({});
+}
+
+TEST_F(ArcIpConfigTest, VerifyEnableDisableClearsPendingInbound) {
+  auto cfg = AndroidConfig();
+  runner_->Capture(true);
+  cfg->EnableInbound("eth0");
+  cfg->DisableInbound();
+  cfg->ContainerReady(true);
   runner_->VerifyRuns({});
 }
 

@@ -41,10 +41,9 @@ class ArcIpConfig {
   // if 0, this configuration will be reset and uninitialized.
   bool Init(pid_t con_netns);
 
-  // Determine whether |con_ifname_| is up.  If so, read the rt_tables
-  // file written to the Android filesystem by netd.  If not, return
-  // false.
-  bool ContainerInit();
+  // Used to indicate that the container is ready and has brought up this
+  // interface.
+  void ContainerReady(bool ready);
 
   // Set or Clear the IPv6 configuration/routes/rules for the containerized OS.
   bool Set(const struct in6_addr& address,
@@ -78,11 +77,10 @@ class ArcIpConfig {
   pid_t con_netns_;
   int routing_table_id_;
 
-  base::ScopedFD con_netns_fd_;
-  base::ScopedFD self_netns_fd_;
-
-  bool ipv6_configured_{false};
-  bool inbound_configured_{false};
+  bool if_up_;
+  bool ipv6_configured_;
+  bool inbound_configured_;
+  std::string pending_inbound_ifname_;
   // These track the current ipv6 configuration, if any.
   std::string ipv6_dev_ifname_;
   std::string ipv6_address_;

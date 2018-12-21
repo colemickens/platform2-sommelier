@@ -23,6 +23,7 @@ pkg_config("target_defaults") {
     "libchrome-${libbase_ver}",
     "libndp",
     "libshill-client",
+    "libshill-net-${libbase_ver}",
     "protobuf-lite",
   ]
 }
@@ -55,6 +56,7 @@ static_library("libarcnetwork") {
     "neighbor_finder.cc",
     "router_finder.cc",
     "shill_client.cc",
+    "scoped_ns.cc",
   ]
   deps = [
     ":protos",
