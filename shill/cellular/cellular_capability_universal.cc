@@ -4,6 +4,7 @@
 
 #include "shill/cellular/cellular_capability_universal.h"
 
+#include <algorithm>
 #include <memory>
 #include <utility>
 
@@ -1664,7 +1665,21 @@ void CellularCapabilityUniversal::OnModemStateChangedSignal(
 }
 
 void CellularCapabilityUniversal::OnSignalQualityChanged(uint32_t quality) {
-  cellular()->HandleNewSignalQuality(quality);
+  // Chrome OS UI uses signal quality values set by this method to draw network
+  // icons. UI code maps |quality| to to number of bars: [1-25] 1 bar,
+  // [26-50] 2 bars, [51-75] 3 bars and [76-100] 4 bars.
+  // Modem manager measures signal strength in RSSI and maps it to a value in
+  // the range of [0-100].
+  // We don't want linear mappings in celluar signal strength icons.
+  // The mappings we desire are: [1-12] 1 bar, [13-24] 2 bars, [25-37] 3 bars
+  // and [38-100] 4 bars.
+  // A simple way to accomplish the desired mappings is to scale signal strength
+  // measurements by 2*x+1.
+  // For example: modem manager reports a signal strength of 25. After
+  // applying our scaling function chrome OS UI will receive a reading of 51.
+  // 51 maps to an icon with 3 bars on Chrome OS UI.
+  uint32_t scaled_quality = std::min(100u, 2 * quality + 1);
+  cellular()->HandleNewSignalQuality(scaled_quality);
 }
 
 void CellularCapabilityUniversal::OnFacilityLocksChanged(uint32_t locks) {
