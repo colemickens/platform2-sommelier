@@ -1,0 +1,162 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-proxies.gni")
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+import("//common-mk/xml2cpp.gni")
+
+group("all") {
+  deps = [
+    ":libwimax_manager-client-headers",
+  ]
+  if (use.gdmwimax) {
+    deps += [
+      ":wimax-manager",
+    ]
+    if (use.test) {
+      deps += [
+        ":wimax_manager_testrunner",
+      ]
+    }
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "dbus-c++-1",
+    "glib-2.0",
+    "gthread-2.0",
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # before protobuf here or the linker flags won"t be in the right
+    # order.
+    "system_api",
+    "protobuf",
+  ]
+}
+
+# Generated proxy headers used by wimax_manager.
+genxml2cpp("wimax_manager-proxies") {
+  xml2cpp_type = "proxy"
+  xml2cpp_in_dir = "dbus_bindings"
+  xml2cpp_out_dir = "include/wimax_manager/dbus_proxies"
+  sources = [
+    # TODO(zqiu): use libpower_manger-client instead of using
+    # PowerManager xml file directly.
+    "../power_manager/dbus_bindings/org.chromium.PowerManager.xml",
+    "${xml2cpp_in_dir}/org.freedesktop.DBus.xml",
+  ]
+}
+
+# wimax_manager client library generated headers. Used by other daemons to
+# interact with wimax_manager.
+generate_dbus_proxies("libwimax_manager-client-headers") {
+  proxy_output_file = "include/wimax_manager/dbus-proxies.h"
+  mock_output_file = "include/wimax_manager/dbus-proxy-mocks.h"
+  proxy_path_in_mocks = "wimax_manager/dbus-proxies.h"
+  sources = [
+    "dbus_bindings/org.chromium.WiMaxManager.Device.xml",
+    "dbus_bindings/org.chromium.WiMaxManager.Network.xml",
+    "dbus_bindings/org.chromium.WiMaxManager.xml",
+  ]
+}
+
+if (use.gdmwimax) {
+  genxml2cpp("wimax_manager-adaptors") {
+    xml2cpp_type = "adaptor"
+    xml2cpp_in_dir = "dbus_bindings"
+    xml2cpp_out_dir = "include/wimax_manager/dbus_adaptors"
+    sources = [
+      "${xml2cpp_in_dir}/org.chromium.WiMaxManager.Device.xml",
+      "${xml2cpp_in_dir}/org.chromium.WiMaxManager.Network.xml",
+      "${xml2cpp_in_dir}/org.chromium.WiMaxManager.xml",
+    ]
+  }
+
+  proto_library("wimax_manager-protos") {
+    proto_in_dir = "proto"
+    proto_out_dir = "include/wimax_manager/proto_bindings"
+    sources = [
+      "${proto_in_dir}/config.proto",
+      "${proto_in_dir}/eap_parameters.proto",
+      "${proto_in_dir}/network_operator.proto",
+    ]
+  }
+
+  static_library("libwimax_manager") {
+    configs += [ ":target_defaults" ]
+    # wimax_manager uses try/catch to interact with dbus-c++.
+    if (!enable_exceptions) {
+      configs -= [ "//common-mk:no_exceptions" ]
+    }
+    deps = [
+      ":wimax_manager-adaptors",
+      ":wimax_manager-proxies",
+      ":wimax_manager-protos",
+    ]
+    libs = [
+      "gdmwimax",
+      "z",
+    ]
+    sources = [
+      "byte_identifier.cc",
+      "dbus_adaptor.cc",
+      "dbus_control.cc",
+      "dbus_proxy.cc",
+      "dbus_service.cc",
+      "dbus_service_dbus_proxy.cc",
+      "device.cc",
+      "device_dbus_adaptor.cc",
+      "driver.cc",
+      "event_dispatcher.cc",
+      "gdm_device.cc",
+      "gdm_driver.cc",
+      "main.cc",
+      "manager.cc",
+      "manager_dbus_adaptor.cc",
+      "network.cc",
+      "network_dbus_adaptor.cc",
+      "power_manager.cc",
+      "power_manager_dbus_proxy.cc",
+    ]
+  }
+
+  executable("wimax-manager") {
+    configs += [ ":target_defaults" ]
+    # wimax_manager uses try/catch to interact with dbus-c++.
+    if (!enable_exceptions) {
+      configs -= [ "//common-mk:no_exceptions" ]
+    }
+    deps = [":libwimax_manager"]
+    sources = [
+      "main.cc",
+    ]
+  }
+
+  if (use.test) {
+    executable("wimax_manager_testrunner") {
+      configs += [
+        "//common-mk:test",
+        ":target_defaults",
+      ]
+      # wimax_manager uses try/catch to interact with dbus-c++.
+      if (!enable_exceptions) {
+        configs -= [ "//common-mk:no_exceptions" ]
+      }
+      deps = [
+        ":libwimax_manager",
+        "//common-mk/testrunner:testrunner",
+      ]
+      sources = [
+        "byte_identifier_test.cc",
+        "gdm_device_test.cc",
+        "manager_test.cc",
+        "network_test.cc",
+        "utility_test.cc",
+      ]
+    }
+  }
+}
