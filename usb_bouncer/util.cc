@@ -61,6 +61,11 @@ class UsbguardDeviceManagerHooksImpl : public usbguard::DeviceManagerHooks {
                          std::shared_ptr<usbguard::Device> device) override {
     lastRule_ = *device->getDeviceRule(false /*include_port*/,
                                        false /*with_parent_hash*/);
+
+    // If usbguard-daemon is running when a device is connected, it might have
+    // blocked the particular device in which case this will be a block rule.
+    // For the purpose of whitelisting, this needs to be an Allow rule.
+    lastRule_.setTarget(usbguard::Rule::Target::Allow);
   }
 
   uint32_t dmHookAssignID() override {
