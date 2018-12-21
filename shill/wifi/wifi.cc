@@ -165,7 +165,7 @@ WiFi::WiFi(ControlInterface* control_interface,
   mac80211_monitor_.reset(
       new Mac80211Monitor(dispatcher, link, kStuckQueueLengthThreshold,
         base::Bind(&WiFi::RestartFastScanAttempts,
-          weak_ptr_factory_while_started_.GetWeakPtr()), metrics));
+          weak_ptr_factory_.GetWeakPtr()), metrics));
 
   PropertyStore* store = this->mutable_store();
   store->RegisterDerivedString(kBgscanMethodProperty,
@@ -215,11 +215,9 @@ WiFi::WiFi(ControlInterface* control_interface,
   wake_on_wifi_->InitPropertyStore(store);
   ScopeLogger::GetInstance()->RegisterScopeEnableChangedCallback(
       ScopeLogger::kWiFi,
-      Bind(&WiFi::OnWiFiDebugScopeChanged,
-          weak_ptr_factory_while_started_.GetWeakPtr()));
+      Bind(&WiFi::OnWiFiDebugScopeChanged, weak_ptr_factory_.GetWeakPtr()));
   CHECK(netlink_manager_);
-  netlink_handler_ = Bind(&WiFi::OnScanStarted,
-      weak_ptr_factory_while_started_.GetWeakPtr());
+  netlink_handler_ = Bind(&WiFi::OnScanStarted, weak_ptr_factory_.GetWeakPtr());
   netlink_manager_->AddBroadcastHandler(netlink_handler_);
   SLOG(this, 2) << "WiFi device " << link_name() << " initialized.";
 }
@@ -2192,6 +2190,10 @@ void WiFi::RemoveAllWakeOnPacketConnections(Error* error) {
 }
 
 void WiFi::RestartFastScanAttempts() {
+  if (!enabled()) {
+    SLOG(this, 2) << "Skpping fast scan attempts while not enabled.";
+    return;
+  }
   fast_scans_remaining_ = kNumFastScanAttempts;
   StartScanTimer();
 }

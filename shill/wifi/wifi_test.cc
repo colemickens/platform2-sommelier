@@ -2405,14 +2405,12 @@ TEST_F(WiFiMainTest, StateChangeBackwardsWithService) {
 }
 
 TEST_F(WiFiMainTest, ConnectToServiceWithoutRecentIssues) {
-  MockSupplicantProcessProxy* process_proxy = supplicant_process_proxy_;
   StartWiFi();
   event_dispatcher_->DispatchPendingEvents();
   MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
-  EXPECT_CALL(*process_proxy, GetDebugLevel(_)).Times(0);
-  EXPECT_CALL(*process_proxy, SetDebugLevel(_)).Times(0);
   EXPECT_CALL(*service, HasRecentConnectionIssues()).WillOnce(Return(false));
   InitiateConnect(service);
+  EXPECT_EQ(wifi()->is_debugging_connection_, false);
 }
 
 TEST_F(WiFiMainTest, ConnectToServiceWithRecentIssues) {

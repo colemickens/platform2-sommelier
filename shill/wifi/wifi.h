@@ -286,6 +286,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiMainTest, AppendBgscan);
   FRIEND_TEST(WiFiMainTest, BackgroundScan);  // ScanMethod, ScanState
   FRIEND_TEST(WiFiMainTest, ConnectToServiceNotPending);  // ScanState
+  FRIEND_TEST(WiFiMainTest, ConnectToServiceWithoutRecentIssues);
+  // is_debugging_connection_
   FRIEND_TEST(WiFiMainTest, ConnectToWithError);  // ScanState
   FRIEND_TEST(WiFiMainTest, ConnectWhileNotScanning);  // ScanState
   FRIEND_TEST(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint);
