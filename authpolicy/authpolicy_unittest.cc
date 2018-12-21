@@ -2589,7 +2589,8 @@ TEST_F(AuthPolicyTest, AuthDataCacheLoadsAndWorksForWorkgroupAndKdcIp) {
   // password check, which happens immediately on startup. The check needs the
   // server time and the KDC IP is fetched along with it, immediately
   // overwriting the cached value.
-  AuthDataCache cache;
+  protos::DebugFlags flags;
+  AuthDataCache cache(&flags);
   cache.SetWorkgroup(kUserRealm, kCacheTestUserWorkgroup);
   cache.SetKdcIp(kUserRealm, kCacheTestUserKdcIp);
   cache.SetWorkgroup(kMachineRealm, kCacheTestMachineWorkgroup);
@@ -2637,7 +2638,8 @@ TEST_F(AuthPolicyTest, AuthDataCacheWorksForDcName) {
   FetchAndValidateDevicePolicy(ERROR_NONE);
 
   // Create a cache file with stub DC name.
-  AuthDataCache cache;
+  protos::DebugFlags flags;
+  AuthDataCache cache(&flags);
   cache.SetDcName(kUserRealm, kCacheTestUserDcName);
   cache.SetDcName(kMachineRealm, kCacheTestMachineDcName);
   base::FilePath cache_path(paths_->Get(Path::AUTH_DATA_CACHE));
@@ -2702,7 +2704,8 @@ TEST_F(AuthPolicyTest, PurgesAuthDataCacheOccasionally) {
   JoinAndFetchDevicePolicy(kMachineName);
 
   // Save a cache file that contains a different workgroup.
-  AuthDataCache cache;
+  protos::DebugFlags flags;
+  AuthDataCache cache(&flags);
   cache.SetClockForTesting(std::make_unique<base::SimpleTestClock>());
   cache.SetWorkgroup(kUserRealm, kCacheTestUserWorkgroup);
   base::FilePath cache_path(paths_->Get(Path::AUTH_DATA_CACHE));

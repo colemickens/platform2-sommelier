@@ -12,6 +12,8 @@
 #include <base/test/simple_test_clock.h>
 #include <gtest/gtest.h>
 
+#include "bindings/authpolicy_containers.pb.h"
+
 namespace {
 
 constexpr char kRealm1[] = "realm_1";
@@ -52,7 +54,8 @@ class AuthDataCacheTest : public ::testing::Test {
     return static_cast<base::SimpleTestClock*>(cache_.clock());
   }
 
-  AuthDataCache cache_;
+  protos::DebugFlags flags_;
+  AuthDataCache cache_{&flags_};
   base::FilePath tmp_path_;
 
  private:
@@ -111,7 +114,7 @@ TEST_F(AuthDataCacheTest, FailedLoadClearsData) {
 
 TEST_F(AuthDataCacheTest, SaveLoadSucceeds) {
   // Create a separate cache and set some data.
-  AuthDataCache other_cache;
+  AuthDataCache other_cache(&flags_);
   other_cache.SetWorkgroup(kRealm1, kWorkgroup);
   other_cache.SetKdcIp(kRealm1, kKdcIp);
   other_cache.SetDcName(kRealm1, kDcName);

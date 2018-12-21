@@ -30,6 +30,9 @@ class GpoVersionCache {
   explicit GpoVersionCache(const protos::DebugFlags* flags);
   ~GpoVersionCache();
 
+  // Clears the cache.
+  void Clear();
+
   // Caches the |version| of the GPO with given |key| and keeps track of the
   // time for RemoveEntriesOlderThan(). Any |key| can be used, but in practice
   // it's going to be something like "GUID-U" or "GUID-M", depending on whether
@@ -52,6 +55,11 @@ class GpoVersionCache {
 
   base::Clock* clock() { return clock_.get(); }
 
+  // Turns the cache on or off. While set to false, MayUseCachedGpo() always
+  // returns false and Add() and Remove() do nothing.
+  void SetEnabled(bool enabled) { enabled_ = enabled; }
+  bool IsEnabled() const { return enabled_; }
+
   int cache_hits_for_testing() const { return cache_hits_for_testing_; }
   int cache_misses_for_testing() const { return cache_misses_for_testing_; }
 
@@ -69,6 +77,10 @@ class GpoVersionCache {
 
   // Clock to get cache time, can be overridden for tests.
   std::unique_ptr<base::Clock> clock_;
+
+  // While set to false, MayUseCachedGpo() always returns false and Add and
+  // Remove do nothing.
+  bool enabled_ = true;
 
   // Counters for the number of times MayUseCachedGpo() returns true (hits) and
   // false (misses) for testing.

@@ -17,6 +17,7 @@ constexpr char kColorPolicy[] = "\033[34m";               // Blue
 constexpr char kColorGpo[] = "\033[32m";                  // Green
 constexpr char kColorFlags[] = "\033[90m";                // Dark gray
 constexpr char kColorStatus[] = "\033[94m";               // Bright blue
+constexpr char kColorCaches[] = "\033[93m";               // Light yellow
 constexpr char kColorRequest[] = "\033[107;1;30m";        // Bold black on white
 constexpr char kColorRequestSuccess[] = "\033[42;1;97m";  // Bold white on green
 constexpr char kColorRequestFail[] = "\033[41;1;97m";     // Bold white on red

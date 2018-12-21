@@ -500,7 +500,8 @@ SambaInterface::SambaInterface(AuthPolicyMetrics* metrics,
                           this /* TgtManager::Delegate */,
                           Path::DEVICE_KRB5_CONF,
                           Path::DEVICE_CREDENTIAL_CACHE),
-      gpo_version_cache_(&flags_) {
+      gpo_version_cache_(&flags_),
+      auth_data_cache_(&flags_) {
   DCHECK(paths_);
   LoadFlagsDefaultLevel();
   user_tgt_manager_.SetKerberosFilesChangedCallback(

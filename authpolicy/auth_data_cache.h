@@ -26,7 +26,7 @@ namespace authpolicy {
 // file and access fields conveniently. Cache keys are the device or user realm.
 class AuthDataCache {
  public:
-  AuthDataCache();
+  explicit AuthDataCache(const protos::DebugFlags* flags);
   ~AuthDataCache();
 
   // Loads |data_| from the file at |path|. Returns true if the file was
@@ -78,6 +78,9 @@ class AuthDataCache {
 
   // Maps realms to protos::CachedRealmData.
   protos::CachedAuthData data_;
+
+  // Pointer to debug flags, not owned.
+  const protos::DebugFlags* flags_;
 
   // Clock to get cache time, can be overridden for tests.
   std::unique_ptr<base::Clock> clock_;

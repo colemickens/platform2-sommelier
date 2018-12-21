@@ -121,6 +121,7 @@ constexpr BoolFlag kBoolFlags[] = {
     DEFINE_FLAG(log_gpo),
     DEFINE_FLAG(disable_anonymizer),
     DEFINE_FLAG(log_status),
+    DEFINE_FLAG(log_caches),
 };
 
 // String flags.
@@ -161,6 +162,7 @@ void AuthPolicyFlags::SetDefaults(DefaultLevel default_level) {
       flags_.set_log_commands(true);
       flags_.set_log_gpo(true);
       flags_.set_log_status(true);
+      flags_.set_log_caches(true);
       break;
     case kChatty:
       flags_.set_log_policy_values(true);
@@ -168,6 +170,7 @@ void AuthPolicyFlags::SetDefaults(DefaultLevel default_level) {
       flags_.set_log_command_output_on_error(true);
       flags_.set_log_gpo(true);
       flags_.set_log_status(true);
+      flags_.set_log_caches(true);
       flags_.set_net_log_level("3");
       break;
     case kVerbose:
@@ -176,6 +179,7 @@ void AuthPolicyFlags::SetDefaults(DefaultLevel default_level) {
       flags_.set_log_command_output_on_error(true);
       flags_.set_log_gpo(true);
       flags_.set_log_status(true);
+      flags_.set_log_caches(true);
       flags_.set_net_log_level("10");
       // TODO(ljusten): Consider removing this once stabilized. Note that
       // uprev'ing a dependency of Samba might introduce seccomp failures,

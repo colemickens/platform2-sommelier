@@ -86,6 +86,8 @@ message DebugFlags {
   optional bool disable_anonymizer = 11;
   // Log results of GetUserStatus.
   optional bool log_status = 12;
+  // Log state of GPO version cache and auth data cache.
+  optional bool log_caches = 13;
 }
 
 // Container for policy for extensions.

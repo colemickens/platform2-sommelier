@@ -86,4 +86,30 @@ TEST_F(GpoVersionCacheTest, PurgeEntriesWhenTimeGoesBackwards) {
   EXPECT_FALSE(cache_.MayUseCachedGpo(kKey, kVersion1));
 }
 
+TEST_F(GpoVersionCacheTest, ClearCache) {
+  cache_.Add(kKey, kVersion1);
+  EXPECT_TRUE(cache_.MayUseCachedGpo(kKey, kVersion1));
+  cache_.Clear();
+  EXPECT_FALSE(cache_.MayUseCachedGpo(kKey, kVersion1));
+}
+
+TEST_F(GpoVersionCacheTest, DisableCache) {
+  cache_.Add(kKey, kVersion1);
+  EXPECT_TRUE(cache_.MayUseCachedGpo(kKey, kVersion1));
+
+  cache_.SetEnabled(false);
+
+  // MayUseCachedGpo() always returns false.
+  EXPECT_FALSE(cache_.MayUseCachedGpo(kKey, kVersion1));
+
+  // Add() and Remove() are ignored.
+  cache_.Add(kKey, kVersion2);
+  cache_.Remove(kKey);
+  EXPECT_FALSE(cache_.MayUseCachedGpo(kKey, kVersion1));
+  EXPECT_FALSE(cache_.MayUseCachedGpo(kKey, kVersion2));
+
+  cache_.SetEnabled(true);
+  EXPECT_TRUE(cache_.MayUseCachedGpo(kKey, kVersion1));
+}
+
 }  // namespace authpolicy
