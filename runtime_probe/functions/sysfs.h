@@ -130,8 +130,6 @@ class SysfsFunction : public ProbeFunction {
    */
   void MockSysfsPathForTesting(base::FilePath mock_path);
 
-  base::DictionaryValue ReadSysfs(base::FilePath sysfs_path) const;
-
   FRIEND_TEST(SysfsFunctionTest, TestRead);
 };
 

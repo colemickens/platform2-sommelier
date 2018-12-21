@@ -13,51 +13,9 @@
 #include <base/values.h>
 
 #include "runtime_probe/functions/sysfs.h"
-
-namespace {
-
-static constexpr int kReadFileMaxSize = 1024;
-
-}  // namespace
+#include "runtime_probe/utils/file_utils.h"
 
 namespace runtime_probe {
-
-base::DictionaryValue SysfsFunction::ReadSysfs(
-    base::FilePath sysfs_path) const {
-  base::DictionaryValue dict_value;
-
-  for (const auto key : keys_) {
-    const auto file_path = sysfs_path.Append(key);
-    std::string content;
-
-    /* missing key */
-    if (!base::PathExists(file_path))
-      return {};
-
-    /* key exists, but somehow we can't read it */
-    if (!base::ReadFileToStringWithMaxSize(file_path, &content,
-                                           kReadFileMaxSize)) {
-      LOG(ERROR) << file_path.value() << " exists, but we can't read it";
-      return {};
-    }
-
-    dict_value.SetString(key, content);
-  }
-
-  for (const auto key : optional_keys_) {
-    const auto file_path = sysfs_path.Append(key);
-    std::string content;
-
-    if (!base::PathExists(file_path))
-      continue;
-
-    if (base::ReadFileToStringWithMaxSize(file_path, &content,
-                                          kReadFileMaxSize))
-      dict_value.SetString(key, content);
-  }
-
-  return dict_value;
-}
 
 SysfsFunction::DataType SysfsFunction::Eval() const {
   DataType result{};
@@ -94,7 +52,7 @@ SysfsFunction::DataType SysfsFunction::Eval() const {
     if (sysfs_path.empty())
       break;
 
-    auto dict_value = ReadSysfs(sysfs_path);
+    auto dict_value = MapFilesToDict(sysfs_path, keys_, optional_keys_);
     if (!dict_value.empty())
       result.push_back(std::move(dict_value));
   }

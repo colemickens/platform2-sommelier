@@ -38,12 +38,14 @@ static_library("libruntime_probe") {
     "config_parser.cc",
     "daemon.cc",
     "functions/all_functions.cc",
+    "functions/generic_battery.cc",
     "functions/sequence.cc",
     "functions/sysfs.cc",
     "probe_config.cc",
     "probe_function.cc",
     "probe_function_argument.cc",
     "probe_statement.cc",
+    "utils/file_utils.cc",
   ]
 }
 

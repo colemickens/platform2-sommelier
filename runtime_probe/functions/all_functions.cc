@@ -9,6 +9,7 @@
 
 #include "runtime_probe/probe_function.h"
 
+#include "runtime_probe/functions/generic_battery.h"
 #include "runtime_probe/functions/sequence.h"
 #include "runtime_probe/functions/shell.h"
 #include "runtime_probe/functions/sysfs.h"
