@@ -2010,8 +2010,14 @@ void WiFi::OnDarkResume(const ResultCallback& callback) {
 
 void WiFi::OnAfterResume() {
   LOG(INFO) << __func__ << ": "
-            << (IsConnectedToCurrentService() ? "connected" : "not connected");
+            << (IsConnectedToCurrentService() ? "connected" : "not connected")
+            << ", " << (enabled() ? "enabled" : "disabled");
   Device::OnAfterResume();  // May refresh ipconfig_
+  // We let the Device class do its thing, but we did nothing in
+  // OnBeforeSuspend(), so why undo anything now?
+  if (!enabled()) {
+    return;
+  }
   dispatcher()->PostDelayedTask(FROM_HERE,
       Bind(&WiFi::ReportConnectedToServiceAfterWake,
           weak_ptr_factory_while_started_.GetWeakPtr()),

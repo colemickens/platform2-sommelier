@@ -1075,7 +1075,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     StartWiFi(true);
   }
   void OnAfterResume() {
-    EXPECT_CALL(*wake_on_wifi_, OnAfterResume());
+    if (wifi_->enabled_)
+      EXPECT_CALL(*wake_on_wifi_, OnAfterResume());
     wifi_->OnAfterResume();
   }
   void OnBeforeSuspend() {
@@ -1790,6 +1791,19 @@ TEST_F(WiFiMainTest, ResumeDoesNotStartScanWhenNotIdle) {
   event_dispatcher_->DispatchPendingEvents();
 }
 
+TEST_F(WiFiMainTest, ResumeDoesNotStartScanWhenDisabled) {
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_));
+  StartWiFi();
+  event_dispatcher_->DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
+  SetWiFiEnabled(false);
+  OnBeforeSuspend();
+  OnAfterResume();
+  event_dispatcher_->DispatchPendingEvents();
+}
+
 TEST_F(WiFiMainTest, ResumeWithCurrentService) {
   StartWiFi();
   SetupConnectedService("", nullptr, nullptr);
@@ -2331,14 +2345,9 @@ TEST_F(WiFiMainTest, ScanNoHidden) {
 }
 
 TEST_F(WiFiMainTest, ScanWiFiDisabledAfterResume) {
-  ScopedMockLog log;
-  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
-  EXPECT_CALL(log, Log(_, _, EndsWith(
-      "Ignoring scan request while device is not enabled."))).Times(1);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
   StartWiFi();
   StopWiFi();
-  // A scan is queued when WiFi resumes.
   OnAfterResume();
   event_dispatcher_->DispatchPendingEvents();
 }
