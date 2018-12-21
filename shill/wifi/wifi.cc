@@ -131,6 +131,9 @@ WiFi::WiFi(ControlInterface* control_interface,
       provider_(manager->wifi_provider()),
       time_(Time::GetInstance()),
       supplicant_present_(false),
+      supplicant_process_proxy_(control_interface->CreateSupplicantProcessProxy(
+          Bind(&WiFi::OnSupplicantAppear, Unretained(this)),
+          Bind(&WiFi::OnSupplicantVanish, Unretained(this)))),
       supplicant_state_(kInterfaceStateUnknown),
       supplicant_bss_("(unknown)"),
       supplicant_assoc_status_(IEEE_80211::kStatusCodeSuccessful),
@@ -158,9 +161,6 @@ WiFi::WiFi(ControlInterface* control_interface,
       wiphy_index_(kDefaultWiphyIndex),
       wake_on_wifi_(std::move(wake_on_wifi)),
       weak_ptr_factory_(this) {
-  supplicant_process_proxy_ = control_interface->CreateSupplicantProcessProxy(
-      Bind(&WiFi::OnSupplicantAppear, weak_ptr_factory_.GetWeakPtr()),
-      Bind(&WiFi::OnSupplicantVanish, weak_ptr_factory_.GetWeakPtr()));
   mac80211_monitor_.reset(
       new Mac80211Monitor(dispatcher, link, kStuckQueueLengthThreshold,
         base::Bind(&WiFi::RestartFastScanAttempts,
