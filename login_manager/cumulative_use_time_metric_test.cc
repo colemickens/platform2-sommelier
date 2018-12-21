@@ -94,17 +94,17 @@ class FakeSingleThreadTaskRunner : public base::SingleThreadTaskRunner {
   ~FakeSingleThreadTaskRunner() override = default;
 
   bool PostDelayedTask(const tracked_objects::Location& from_here,
-                       const base::Closure& task,
+                       base::OnceClosure task,
                        base::TimeDelta delay) final {
-    pending_tasks_.push_back(
-        std::make_pair(tick_clock_->NowTicks() + delay, task));
+    pending_tasks_.emplace_back(tick_clock_->NowTicks() + delay,
+                                std::move(task));
     return true;
   }
 
   bool RunsTasksOnCurrentThread() const final { return true; }
 
   bool PostNonNestableDelayedTask(const tracked_objects::Location& from_here,
-                                  const base::Closure& task,
+                                  base::OnceClosure task,
                                   base::TimeDelta delay) final {
     return false;
   }
@@ -128,7 +128,7 @@ class FakeSingleThreadTaskRunner : public base::SingleThreadTaskRunner {
       clock_->Advance(time_to_task);
       remaining_delta -= time_to_task;
 
-      pending_tasks_.front().second.Run();
+      std::move(pending_tasks_.front().second).Run();
       pending_tasks_.pop_front();
     }
 
@@ -143,7 +143,7 @@ class FakeSingleThreadTaskRunner : public base::SingleThreadTaskRunner {
   // Backing storage for pending tasks. List is good enough since it is assumed
   // that tasks will be posted in order they expected to get run. If that
   // assumption becomes invalid, the data strucute should be changed.
-  using PendingTask = std::pair<base::TimeTicks, base::Closure>;
+  using PendingTask = std::pair<base::TimeTicks, base::OnceClosure>;
   std::list<PendingTask> pending_tasks_;
 
   DISALLOW_COPY_AND_ASSIGN(FakeSingleThreadTaskRunner);
