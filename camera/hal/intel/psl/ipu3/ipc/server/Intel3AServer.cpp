@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Intel Corporation.
+ * Copyright (C) 2017-2019 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,8 +35,9 @@ void Intel3AServer::init()
 {
     LOG1("@%s", __FUNCTION__);
 
-    if (mInstance == nullptr)
+    if (mInstance == nullptr) {
         mInstance = new Intel3AServer;
+    }
 }
 
 void Intel3AServer::deInit()
@@ -48,13 +49,17 @@ void Intel3AServer::deInit()
 }
 
 Intel3AServer::Intel3AServer():
-    mThread("Intel3AServer Thread"),
     mCallback(nullptr),
     mIaLogInitialized(false)
 {
     LOG1("@%s", __FUNCTION__);
 
-    mThread.Start();
+    for (int i = 0; i < IPC_GROUP_NUM; i++) {
+        std::string name = std::string("Intel3AServer") + std::to_string(i) + std::string(" Thread");
+        mThreads[i] = std::unique_ptr<base::Thread>(new base::Thread(name));
+        mThreads[i]->Start();
+    }
+
     mHandleSeed = 1;
 }
 
@@ -62,8 +67,9 @@ Intel3AServer::~Intel3AServer()
 {
     LOG1("@%s", __FUNCTION__);
 
-    if (mIaLogInitialized)
+    if (mIaLogInitialized) {
         ia_log_deinit();
+    }
 }
 
 int32_t Intel3AServer::initialize(const camera_algorithm_callback_ops_t* callback_ops)
@@ -112,7 +118,7 @@ int32_t Intel3AServer::registerBuffer(int buffer_fd)
     return handle;
 }
 
-int Intel3AServer::parseReqHeader(const uint8_t req_header[], uint32_t size, uint8_t* cmd)
+int Intel3AServer::parseReqHeader(const uint8_t req_header[], uint32_t size)
 {
     LOG1("@%s, size:%d", __FUNCTION__, size);
     if (size < IPC_REQUEST_HEADER_USED_NUM || req_header[0] != IPC_MATCHING_KEY) {
@@ -120,25 +126,48 @@ int Intel3AServer::parseReqHeader(const uint8_t req_header[], uint32_t size, uin
         return -1;
     }
 
-    *cmd = req_header[1];
-
-    LOG2("@%s, size:%d, cmd:%d:%s",
-        __FUNCTION__, size, *cmd, Intel3AIpcCmdToString((IPC_CMD)(*cmd)));
-
     return 0;
 }
 
-uint32_t Intel3AServer::handleRequest(uint8_t cmd, int reqeustSize, void* addr)
+void Intel3AServer::returnCallback(uint32_t req_id, status_t status, int32_t buffer_handle)
 {
-    LOG1("@%s, cmd:%d:%s, reqeustSize:%d, addr:%p",
-        __FUNCTION__, cmd, Intel3AIpcCmdToString((IPC_CMD)cmd), reqeustSize, addr);
+    LOG2("@%s, req_id:%d:%s, status:%d", __FUNCTION__,
+         req_id, Intel3AIpcCmdToString(static_cast<IPC_CMD>(req_id)), status);
+    (*mCallback->return_callback)(mCallback, req_id, (status == OK ? 0 : 1), buffer_handle);
+}
 
-    if (cmd != IPC_3A_AIC_RESET && cmd != IPC_3A_CMC_DEINIT) {
-        CheckError((addr == nullptr), 1, "@%s, addr is nullptr", __FUNCTION__);
+void Intel3AServer::handleRequest(MsgReq msg)
+{
+    uint32_t req_id = msg.req_id;
+    int32_t buffer_handle = msg.buffer_handle;
+    int reqeustSize = 0;
+    void* addr = nullptr;
+
+    if (buffer_handle != -1) {
+        if (mShmInfoMap.find(buffer_handle) == mShmInfoMap.end()) {
+            LOGE("@%s, Invalid buffer handle", __FUNCTION__);
+            returnCallback(req_id, UNKNOWN_ERROR, buffer_handle);
+            return;
+        }
+        ShmInfo info = mShmInfoMap[buffer_handle];
+        LOG2("@%s, info.fd:%d, info.size:%zu", __FUNCTION__, info.fd, info.size);
+
+        reqeustSize = info.size;
+        addr = info.addr;
+    }
+
+    LOG1("@%s, req_id:%d:%s, reqeustSize:%d, addr:%p, buffer_handle:%d",
+         __FUNCTION__, req_id, Intel3AIpcCmdToString(static_cast<IPC_CMD>(req_id)),
+         reqeustSize, addr, buffer_handle);
+
+    if (req_id != IPC_3A_AIC_RESET && req_id != IPC_3A_CMC_DEINIT && addr == nullptr) {
+        LOGE("@%s, addr is nullptr", __FUNCTION__);
+        returnCallback(req_id, UNKNOWN_ERROR, buffer_handle);
+        return;
     }
 
     status_t status = OK;
-    switch (cmd) {
+    switch (req_id) {
         case IPC_3A_AIC_INIT:
             status = mAic.init(addr, reqeustSize);
             break;
@@ -215,37 +244,34 @@ uint32_t Intel3AServer::handleRequest(uint8_t cmd, int reqeustSize, void* addr)
             status = mCoordinate.convert(addr, reqeustSize);
             break;
         default:
-            LOGE("@%s, cmd:%d is not defined", __FUNCTION__, cmd);
+            LOGE("@%s, req_id:%d is not defined", __FUNCTION__, req_id);
+            status = UNKNOWN_ERROR;
             break;
     }
 
-    LOG2("@%s, cmd:%d:%s, status:%d", __FUNCTION__, cmd, Intel3AIpcCmdToString((IPC_CMD)cmd), status);
-    return status == OK ? 0 : 1;
+    returnCallback(req_id, status, buffer_handle);
 }
 
-void Intel3AServer::request(const uint8_t req_header[], uint32_t size, int32_t buffer_handle)
+void Intel3AServer::request(uint32_t req_id,
+                            const uint8_t req_header[],
+                            uint32_t size,
+                            int32_t buffer_handle)
 {
     LOG1("@%s, size:%d, buffer_handle:%d", __FUNCTION__, size, buffer_handle);
-    uint32_t status = 0;
+    LOG2("@%s, req_id:%d:%s", __FUNCTION__,
+         req_id, Intel3AIpcCmdToString(static_cast<IPC_CMD>(req_id)));
 
-    uint8_t cmd = -1;
-    int ret = parseReqHeader(req_header, size, &cmd);
-    CheckError((ret != 0), VOID_VALUE, "@%s, call parseReqHeader fail", __FUNCTION__);
+    IPC_GROUP group = Intel3AIpcCmdToGroup(static_cast<IPC_CMD>(req_id));
 
-    LOG2("@%s, buffer_handle:%d", __FUNCTION__, buffer_handle);
-    if (buffer_handle == -1) {
-        status = handleRequest(cmd, 0, nullptr);
-    } else {
-        CheckError((mShmInfoMap.find(buffer_handle) == mShmInfoMap.end()),
-                    VOID_VALUE, "@%s, Invalid buffer handle", __FUNCTION__);
-        ShmInfo info = mShmInfoMap[buffer_handle];
-
-        LOG2("@%s, info.fd:%d, info.size:%zu", __FUNCTION__, info.fd, info.size);
-        status = handleRequest(cmd, info.size, info.addr);
+    int ret = parseReqHeader(req_header, size);
+    if (ret != 0) {
+        returnCallback(req_id, UNKNOWN_ERROR, buffer_handle);
+        return;
     }
 
-    mThread.task_runner()->PostTask(FROM_HERE,
-        base::Bind(&Intel3AServer::returnCallback, base::Unretained(this), status, buffer_handle));
+    MsgReq msg = {req_id, buffer_handle};
+    mThreads[group]->task_runner()->PostTask(FROM_HERE,
+        base::Bind(&Intel3AServer::handleRequest, base::Unretained(this), msg));
 }
 
 void Intel3AServer::deregisterBuffers(const int32_t buffer_handles[], uint32_t size)
@@ -265,12 +291,6 @@ void Intel3AServer::deregisterBuffers(const int32_t buffer_handles[], uint32_t s
     }
 }
 
-void Intel3AServer::returnCallback(uint32_t status, int32_t buffer_handle)
-{
-    LOG1("@%s, buffer_handle:%d", __FUNCTION__, buffer_handle);
-    (*mCallback->return_callback)(mCallback, status, buffer_handle);
-}
-
 
 static int32_t initialize(const camera_algorithm_callback_ops_t* callback_ops)
 {
@@ -284,12 +304,13 @@ static int32_t registerBuffer(int32_t buffer_fd)
     return Intel3AServer::getInstance()->registerBuffer(buffer_fd);
 }
 
-static void request(const uint8_t req_header[],
-                       uint32_t size,
-                       int32_t buffer_handle)
+static void request(uint32_t req_id,
+                    const uint8_t req_header[],
+                    uint32_t size,
+                    int32_t buffer_handle)
 {
     LOG1("@%s, size:%d, buffer_handle:%d", __FUNCTION__, size, buffer_handle);
-    Intel3AServer::getInstance()->request(req_header, size, buffer_handle);
+    Intel3AServer::getInstance()->request(req_id, req_header, size, buffer_handle);
 }
 
 static void deregisterBuffers(const int32_t buffer_handles[], uint32_t size)

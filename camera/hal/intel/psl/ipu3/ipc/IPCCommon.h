@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Intel Corporation
+ * Copyright (C) 2017-2019 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 #include <IPU3AICCommon.h>
 
 #define IPC_MATCHING_KEY 0x56 // the value is randomly chosen
-#define IPC_REQUEST_HEADER_USED_NUM 2
+#define IPC_REQUEST_HEADER_USED_NUM 1
 
 enum IPC_CMD {
     IPC_3A_AIC_INIT = 1,
@@ -63,4 +63,12 @@ struct ia_binary_data_mod
 
 const char* Intel3AIpcCmdToString(IPC_CMD cmd);
 
+enum IPC_GROUP {
+    IPC_GROUP_AIQ,
+    IPC_GROUP_AIC,
+    IPC_GROUP_OTHER
+};
+#define IPC_GROUP_NUM (IPC_GROUP_OTHER + 1)
+
+IPC_GROUP Intel3AIpcCmdToGroup(IPC_CMD cmd);
 #endif // PSL_IPU3_IPC_IPCCOMMON_H_

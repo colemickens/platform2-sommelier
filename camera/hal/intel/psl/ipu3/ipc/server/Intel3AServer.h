@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Intel Corporation.
+ * Copyright (C) 2018-2019 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,21 +46,29 @@ public:
 
     int32_t initialize(const camera_algorithm_callback_ops_t* callback_ops);
     int32_t registerBuffer(int buffer_fd);
-    void request(const uint8_t req_header[], uint32_t size, int32_t buffer_handle);
+    void request(uint32_t req_id,
+                 const uint8_t req_header[],
+                 uint32_t size,
+                 int32_t buffer_handle);
     void deregisterBuffers(const int32_t buffer_handles[], uint32_t size);
 
 private:
     Intel3AServer();
     ~Intel3AServer();
 
-    void returnCallback(uint32_t status, int32_t buffer_handle);
-    int parseReqHeader(const uint8_t req_header[], uint32_t size, uint8_t* cmd);
-    uint32_t handleRequest(uint8_t cmd, int reqeustSize, void* addr);
+    int parseReqHeader(const uint8_t req_header[], uint32_t size);
+
+    struct MsgReq {
+        uint32_t req_id;
+        int32_t buffer_handle;
+    };
+    void returnCallback(uint32_t req_id, status_t status, int32_t buffer_handle);
+    void handleRequest(MsgReq msg);
 
 private:
     static Intel3AServer* mInstance;
 
-    base::Thread mThread;
+    std::unique_ptr<base::Thread> mThreads[IPC_GROUP_NUM];
     const camera_algorithm_callback_ops_t* mCallback;
 
     bool mIaLogInitialized;

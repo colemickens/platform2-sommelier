@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Intel Corporation.
+ * Copyright (C) 2018-2019 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,39 +28,10 @@ namespace android {
 namespace camera2 {
 Intel3AClient::Intel3AClient():
     mErrCb(nullptr),
-    mIsCallbacked(false),
-    mCbResult(true),
     mIPCStatus(true),
     mInitialized(false)
 {
     LOG1("@%s", __FUNCTION__);
-
-    pthread_condattr_t attr;
-    int ret = pthread_condattr_init(&attr);
-    if (ret != 0) {
-        LOGE("@%s, call pthread_condattr_init fails, ret:%d", __FUNCTION__, ret);
-        pthread_condattr_destroy(&attr);
-        return;
-    }
-
-    ret = pthread_condattr_setclock(&attr, CLOCK_MONOTONIC);
-    if (ret != 0) {
-        LOGE("@%s, call pthread_condattr_setclock fails, ret:%d", __FUNCTION__, ret);
-        pthread_condattr_destroy(&attr);
-        return;
-    }
-
-    ret = pthread_cond_init(&mCbCond, &attr);
-    if (ret != 0) {
-        LOGE("@%s, call pthread_cond_init fails, ret:%d", __FUNCTION__, ret);
-        pthread_condattr_destroy(&attr);
-        return;
-    }
-
-    pthread_condattr_destroy(&attr);
-
-    ret = pthread_mutex_init(&mCbLock, NULL);
-    CheckError(ret != 0, VOID_VALUE, "@%s, call pthread_mutex_init fails, ret:%d", __FUNCTION__, ret);
 
     mCallback = base::Bind(&Intel3AClient::callbackHandler, base::Unretained(this));
     Intel3AClient::return_callback = returnCallback;
@@ -72,22 +43,16 @@ Intel3AClient::Intel3AClient():
     CheckError(!mBridge, VOID_VALUE, "@%s, mBridge is nullptr", __FUNCTION__);
     CheckError((mBridge->Initialize(this) != 0), VOID_VALUE, "@%s, call mBridge->Initialize fail", __FUNCTION__);
 
+    for (int i = 0; i < IPC_GROUP_NUM; i++) {
+        mRunner[i] = std::unique_ptr<Runner>(new Runner(static_cast<IPC_GROUP>(i), mBridge.get()));
+    }
+
     mInitialized = true;
 }
 
 Intel3AClient::~Intel3AClient()
 {
     LOG1("@%s", __FUNCTION__);
-
-    int ret = pthread_cond_destroy(&mCbCond);
-    if (ret != 0) {
-        LOGE("@%s, call pthread_cond_destroy fails, ret:%d", __FUNCTION__, ret);
-    }
-
-    ret = pthread_mutex_destroy(&mCbLock);
-    if (ret != 0) {
-        LOGE("@%s, call pthread_mutex_destroy fails, ret:%d", __FUNCTION__, ret);
-    }
 }
 
 bool Intel3AClient::isInitialized()
@@ -161,33 +126,17 @@ void Intel3AClient::releaseShmMem(std::string& name, int size, int fd, void* add
 int Intel3AClient::requestSync(IPC_CMD cmd, int32_t bufferHandle)
 {
     LOG1("@%s, cmd:%d:%s, bufferHandle:%d, mInitialized:%d",
-        __FUNCTION__, cmd, Intel3AIpcCmdToString(cmd), bufferHandle, mInitialized);
+         __FUNCTION__, cmd, Intel3AIpcCmdToString(cmd), bufferHandle, mInitialized);
     CheckError(!mInitialized, UNKNOWN_ERROR, "@%s, mInitialized is false", __FUNCTION__);
     CheckError(!isIPCFine(), UNKNOWN_ERROR, "@%s, IPC error happens", __FUNCTION__);
 
-    std::lock_guard<std::mutex> lck(mMutex);
+    IPC_GROUP group = Intel3AIpcCmdToGroup(cmd);
 
-    std::vector<uint8_t> reqHeader(IPC_REQUEST_HEADER_USED_NUM);
-    reqHeader[0] = IPC_MATCHING_KEY;
-    reqHeader[1] = cmd & 0xff;
-
-    mBridge->Request(reqHeader, bufferHandle);
-    int ret = waitCallback();
-    CheckError((ret != OK), UNKNOWN_ERROR, "@%s, call waitCallback fail", __FUNCTION__);
-
-    LOG2("@%s, cmd:%d:%s, mCbResult:%d, done!",
-        __FUNCTION__, cmd, Intel3AIpcCmdToString(cmd), mCbResult);
-
-    // check callback result
-    CheckError((mCbResult != true), UNKNOWN_ERROR, "@%s, callback fail", __FUNCTION__);
-
-    return OK;
+    return mRunner[group]->requestSync(cmd, bufferHandle);
 }
 
 int Intel3AClient::requestSync(IPC_CMD cmd)
 {
-    LOG1("@%s, cmd:%d:%s", __FUNCTION__, cmd, Intel3AIpcCmdToString(cmd));
-
     return requestSync(cmd, -1);
 }
 
@@ -210,50 +159,13 @@ void Intel3AClient::deregisterBuffer(int32_t bufferHandle)
     mBridge->DeregisterBuffers(handles);
 }
 
-int Intel3AClient::waitCallback()
+void Intel3AClient::callbackHandler(uint32_t req_id, uint32_t status, int32_t buffer_handle)
 {
-    LOG2("@%s", __FUNCTION__);
-    nsecs_t startTime = systemTime();
+    LOG2("@%s, req_id:%d, status:%d, buffer_handle:%d",
+         __FUNCTION__, req_id, status, buffer_handle);
 
-    pthread_mutex_lock(&mCbLock);
-    if (!mIsCallbacked) {
-        int ret = 0;
-        struct timespec ts = {0, 0};
-        clock_gettime(CLOCK_MONOTONIC, &ts);
-        ts.tv_sec += 5; // 5s timeout
-
-        while (!mIsCallbacked && !ret) {
-            ret = pthread_cond_timedwait(&mCbCond, &mCbLock, &ts);
-        }
-        if (ret != 0) {
-            LOGE("@%s, call pthread_cond_timedwait fail, ret:%d, it takes %" PRId64 "ms",
-                 __FUNCTION__, ret, (systemTime() - startTime) / 1000000);
-            pthread_mutex_unlock(&mCbLock);
-            return UNKNOWN_ERROR;
-        }
-    }
-    mIsCallbacked = false;
-    pthread_mutex_unlock(&mCbLock);
-
-    LOG2("@%s: it takes %" PRId64 "ms", __FUNCTION__, (systemTime() - startTime) / 1000000);
-
-    return OK;
-}
-
-void Intel3AClient::callbackHandler(uint32_t status, int32_t buffer_handle)
-{
-    LOG2("@%s, status:%d, buffer_handle:%d", __FUNCTION__, status, buffer_handle);
-    if (status != 0) {
-        LOGE("@%s, status:%d, buffer_handle:%d", __FUNCTION__, status, buffer_handle);
-    }
-    mCbResult = status != 0 ? false : true;
-
-    pthread_mutex_lock(&mCbLock);
-    mIsCallbacked = true;
-    int ret = pthread_cond_signal(&mCbCond);
-    pthread_mutex_unlock(&mCbLock);
-
-    CheckError(ret != 0, VOID_VALUE, "@%s, call pthread_cond_signal fails, ret:%d", __FUNCTION__, ret);
+    IPC_GROUP group = Intel3AIpcCmdToGroup(static_cast<IPC_CMD>(req_id));
+    mRunner[group]->callbackHandler(status, buffer_handle);
 }
 
 void Intel3AClient::notifyHandler(uint32_t msg)
@@ -276,13 +188,15 @@ void Intel3AClient::notifyHandler(uint32_t msg)
 }
 
 void Intel3AClient::returnCallback(const camera_algorithm_callback_ops_t* callback_ops,
-                            uint32_t status, int32_t buffer_handle)
+                                   uint32_t req_id,
+                                   uint32_t status,
+                                   int32_t buffer_handle)
 {
     LOG2("@%s", __FUNCTION__);
     CheckError(!callback_ops, VOID_VALUE, "@%s, callback_ops is nullptr", __FUNCTION__);
 
     auto s = const_cast<Intel3AClient*>(static_cast<const Intel3AClient*>(callback_ops));
-    s->mCallback.Run(status, buffer_handle);
+    s->mCallback.Run(req_id, status, buffer_handle);
 }
 
 void Intel3AClient::notifyCallback(const struct camera_algorithm_callback_ops* callback_ops,
@@ -293,6 +207,131 @@ void Intel3AClient::notifyCallback(const struct camera_algorithm_callback_ops* c
 
     auto s = const_cast<Intel3AClient*>(static_cast<const Intel3AClient*>(callback_ops));
     s->mNotifyCallback.Run((uint32_t)msg);
+}
+
+Intel3AClient::Runner::Runner(IPC_GROUP group, cros::CameraAlgorithmBridge* bridge):
+    mGroup(group),
+    mBridge(bridge),
+    mIsCallbacked(false),
+    mCbResult(true),
+    mInitialized(false)
+{
+    LOG1("@%s, group:%d", __FUNCTION__, mGroup);
+
+    pthread_condattr_t attr;
+    int ret = pthread_condattr_init(&attr);
+    if (ret != 0) {
+        LOGE("@%s, call pthread_condattr_init fails, ret:%d", __FUNCTION__, ret);
+        pthread_condattr_destroy(&attr);
+        return;
+    }
+
+    ret = pthread_condattr_setclock(&attr, CLOCK_MONOTONIC);
+    if (ret != 0) {
+        LOGE("@%s, call pthread_condattr_setclock fails, ret:%d", __FUNCTION__, ret);
+        pthread_condattr_destroy(&attr);
+        return;
+    }
+
+    ret = pthread_cond_init(&mCbCond, &attr);
+    if (ret != 0) {
+        LOGE("@%s, call pthread_cond_init fails, ret:%d", __FUNCTION__, ret);
+        pthread_condattr_destroy(&attr);
+        return;
+    }
+
+    pthread_condattr_destroy(&attr);
+
+    ret = pthread_mutex_init(&mCbLock, nullptr);
+    CheckError(ret != 0, VOID_VALUE, "@%s, call pthread_mutex_init fails, ret:%d", __FUNCTION__, ret);
+
+    mInitialized = true;
+}
+
+Intel3AClient::Runner::~Runner()
+{
+    LOG1("@%s, group:%d", __FUNCTION__, mGroup);
+
+    int ret = pthread_cond_destroy(&mCbCond);
+    if (ret != 0) {
+        LOGE("@%s, call pthread_cond_destroy fails, ret:%d", __FUNCTION__, ret);
+    }
+
+    ret = pthread_mutex_destroy(&mCbLock);
+    if (ret != 0) {
+        LOGE("@%s, call pthread_mutex_destroy fails, ret:%d", __FUNCTION__, ret);
+    }
+}
+
+int Intel3AClient::Runner::requestSync(IPC_CMD cmd, int32_t bufferHandle)
+{
+    LOG1("@%s, cmd:%d:%s, group:%d, bufferHandle:%d, mInitialized:%d",
+          __FUNCTION__, cmd, Intel3AIpcCmdToString(cmd), mGroup, bufferHandle, mInitialized);
+    CheckError(!mInitialized, UNKNOWN_ERROR, "@%s, mInitialized is false", __FUNCTION__);
+
+    std::lock_guard<std::mutex> lck(mMutex);
+
+    std::vector<uint8_t> reqHeader(IPC_REQUEST_HEADER_USED_NUM);
+    reqHeader[0] = IPC_MATCHING_KEY;
+
+    // cmd is for request id, no duplicate command will be issued at any given time.
+    mBridge->Request(cmd, reqHeader, bufferHandle);
+    int ret = waitCallback();
+    CheckError((ret != OK), UNKNOWN_ERROR, "@%s, call waitCallback fail", __FUNCTION__);
+
+    LOG2("@%s, cmd:%d:%s, group:%d, mCbResult:%d, done!",
+          __FUNCTION__, cmd, Intel3AIpcCmdToString(cmd), mGroup, mCbResult);
+
+    // check callback result
+    CheckError((mCbResult != true), UNKNOWN_ERROR, "@%s, callback fail", __FUNCTION__);
+
+    return OK;
+}
+
+void Intel3AClient::Runner::callbackHandler(uint32_t status, int32_t buffer_handle)
+{
+    LOG2("@%s, group:%d, status:%d, buffer_handle:%d", __FUNCTION__, mGroup, status, buffer_handle);
+    if (status != 0) {
+        LOGE("@%s, group:%d, status:%d, buffer_handle:%d", __FUNCTION__, mGroup, status, buffer_handle);
+    }
+    mCbResult = status != 0 ? false : true;
+
+    pthread_mutex_lock(&mCbLock);
+    mIsCallbacked = true;
+    int ret = pthread_cond_signal(&mCbCond);
+    pthread_mutex_unlock(&mCbLock);
+
+    CheckError(ret != 0, VOID_VALUE, "@%s, group:%d, call pthread_cond_signal fails, ret:%d", __FUNCTION__, mGroup, ret);
+}
+
+int Intel3AClient::Runner::waitCallback()
+{
+    LOG2("@%s, group:%d", __FUNCTION__, mGroup);
+    nsecs_t startTime = systemTime();
+
+    pthread_mutex_lock(&mCbLock);
+    if (!mIsCallbacked) {
+        int ret = 0;
+        struct timespec ts = {0, 0};
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        ts.tv_sec += 5; // 5s timeout
+
+        while (!mIsCallbacked && !ret) {
+            ret = pthread_cond_timedwait(&mCbCond, &mCbLock, &ts);
+        }
+        if (ret != 0) {
+            LOGE("@%s, group:%d, call pthread_cond_timedwait fail, ret:%d, it takes %" PRId64 "ms",
+                  __FUNCTION__, mGroup, ret, (systemTime() - startTime) / 1000000);
+            pthread_mutex_unlock(&mCbLock);
+            return UNKNOWN_ERROR;
+        }
+    }
+    mIsCallbacked = false;
+    pthread_mutex_unlock(&mCbLock);
+
+    LOG2("@%s: group:%d, it takes %" PRId64 "ms", __FUNCTION__, mGroup, (systemTime() - startTime) / 1000000);
+
+    return OK;
 }
 
 } /* namespace camera2 */

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Intel Corporation
+ * Copyright (C) 2017-2019 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,8 @@
 #include <iostream>
 #include <string>
 
-const char* Intel3AIpcCmdToString(IPC_CMD cmd) {
+const char* Intel3AIpcCmdToString(IPC_CMD cmd)
+{
     static const char* gIpcCmdMapping[] = {
         "unknown",
         "IPC_3A_AIC_INIT",
@@ -51,4 +52,16 @@ const char* Intel3AIpcCmdToString(IPC_CMD cmd) {
 
     unsigned int num = sizeof(gIpcCmdMapping) / sizeof(gIpcCmdMapping[0]);
     return cmd < num ? gIpcCmdMapping[cmd] : gIpcCmdMapping[0];
+}
+
+IPC_GROUP Intel3AIpcCmdToGroup(IPC_CMD cmd)
+{
+    IPC_GROUP group = IPC_GROUP_OTHER;
+    if (cmd >= IPC_3A_AIC_INIT && cmd <= IPC_3A_AIC_GETAICCONFIG) {
+        group = IPC_GROUP_AIC;
+    } else if (cmd >= IPC_3A_AIQ_INIT && cmd <= IPC_3A_AIQ_GET_VERSION) {
+        group = IPC_GROUP_AIQ;
+    }
+
+    return group;
 }
