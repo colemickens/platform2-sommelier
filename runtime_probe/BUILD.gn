@@ -21,6 +21,7 @@ pkg_config("target_defaults") {
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
     "libcros_config",
+    "libpcrecpp",
     # system_api depends on protobuf (or protobuf-lite). It must appear
     # before protobuf here or the linker flags won't be in the right
     # order.
@@ -40,6 +41,7 @@ static_library("libruntime_probe") {
     "probe_result_checker.cc",
     "functions/all_functions.cc",
     "functions/generic_battery.cc",
+    "functions/generic_storage.cc",
     "functions/sequence.cc",
     "functions/sysfs.cc",
     "probe_config.cc",
