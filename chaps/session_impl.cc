@@ -1174,7 +1174,7 @@ BIGNUM* SessionImpl::ConvertToBIGNUM(const string& big_integer) {
   return b;
 }
 
-RSA* SessionImpl::CreateKeyFromObject(const Object* key_object) {
+RSA* SessionImpl::CreateRSAKeyFromObject(const Object* key_object) {
   RSA* rsa = RSA_new();
   CHECK(rsa);
   if (key_object->GetObjectClass() == CKO_PUBLIC_KEY) {
@@ -1276,7 +1276,7 @@ bool SessionImpl::RSADecrypt(OperationContext* context) {
     if (!tpm_utility_->Unbind(tpm_key_handle, encrypted_data, &context->data_))
       return false;
   } else {
-    RSA* rsa = CreateKeyFromObject(context->key_);
+    RSA* rsa = CreateRSAKeyFromObject(context->key_);
     uint8_t buffer[kMaxRSAOutputBytes];
     CHECK(RSA_size(rsa) <= kMaxRSAOutputBytes);
     int length = RSA_private_decrypt(
@@ -1296,7 +1296,7 @@ bool SessionImpl::RSADecrypt(OperationContext* context) {
 }
 
 bool SessionImpl::RSAEncrypt(OperationContext* context) {
-  RSA* rsa = CreateKeyFromObject(context->key_);
+  RSA* rsa = CreateRSAKeyFromObject(context->key_);
   uint8_t buffer[kMaxRSAOutputBytes];
   CHECK(RSA_size(rsa) <= kMaxRSAOutputBytes);
   int length = RSA_public_encrypt(
@@ -1325,7 +1325,7 @@ bool SessionImpl::RSASign(OperationContext* context) {
     if (!tpm_utility_->Sign(tpm_key_handle, data_to_sign, &signature))
       return false;
   } else {
-    RSA* rsa = CreateKeyFromObject(context->key_);
+    RSA* rsa = CreateRSAKeyFromObject(context->key_);
     CHECK(RSA_size(rsa) <= kMaxRSAOutputBytes);
     uint8_t buffer[kMaxRSAOutputBytes];
     int length = RSA_private_encrypt(
@@ -1351,7 +1351,7 @@ CK_RV SessionImpl::RSAVerify(OperationContext* context,
   if (context->key_->GetAttributeString(CKA_MODULUS).length() !=
       signature.length())
     return CKR_SIGNATURE_LEN_RANGE;
-  RSA* rsa = CreateKeyFromObject(context->key_);
+  RSA* rsa = CreateRSAKeyFromObject(context->key_);
   CHECK(RSA_size(rsa) <= kMaxRSAOutputBytes);
   uint8_t buffer[kMaxRSAOutputBytes];
   int length = RSA_public_decrypt(

@@ -202,7 +202,7 @@ class SessionImpl : public Session {
   // Returns NULL if big_integer is empty.
   BIGNUM* ConvertToBIGNUM(const std::string& big_integer);
   // Always returns a non-NULL value.
-  RSA* CreateKeyFromObject(const Object* key_object);
+  RSA* CreateRSAKeyFromObject(const Object* key_object);
   const EVP_CIPHER* GetOpenSSLCipher(CK_MECHANISM_TYPE mechanism,
                                      size_t key_size);
   const EVP_MD* GetOpenSSLDigest(CK_MECHANISM_TYPE mechanism);
