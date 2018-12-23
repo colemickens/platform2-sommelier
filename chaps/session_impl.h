@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+#include <crypto/scoped_openssl_types.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 
@@ -202,7 +203,7 @@ class SessionImpl : public Session {
   // Returns NULL if big_integer is empty.
   BIGNUM* ConvertToBIGNUM(const std::string& big_integer);
   // Always returns a non-NULL value.
-  RSA* CreateRSAKeyFromObject(const Object* key_object);
+  crypto::ScopedRSA CreateRSAKeyFromObject(const Object* key_object);
   const EVP_CIPHER* GetOpenSSLCipher(CK_MECHANISM_TYPE mechanism,
                                      size_t key_size);
   const EVP_MD* GetOpenSSLDigest(CK_MECHANISM_TYPE mechanism);

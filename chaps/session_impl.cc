@@ -1174,15 +1174,16 @@ BIGNUM* SessionImpl::ConvertToBIGNUM(const string& big_integer) {
   return b;
 }
 
-RSA* SessionImpl::CreateRSAKeyFromObject(const Object* key_object) {
-  RSA* rsa = RSA_new();
-  CHECK(rsa);
+crypto::ScopedRSA SessionImpl::CreateRSAKeyFromObject(
+    const Object* key_object) {
+  crypto::ScopedRSA rsa(RSA_new());
+  CHECK_NE(rsa, nullptr);
   if (key_object->GetObjectClass() == CKO_PUBLIC_KEY) {
     string e = key_object->GetAttributeString(CKA_PUBLIC_EXPONENT);
     rsa->e = ConvertToBIGNUM(e);
     string n = key_object->GetAttributeString(CKA_MODULUS);
     rsa->n = ConvertToBIGNUM(n);
-  } else {
+  } else {  // key_object->GetObjectClass() == CKO_PRIVATE_KEY
     string n = key_object->GetAttributeString(CKA_MODULUS);
     rsa->n = ConvertToBIGNUM(n);
     string d = key_object->GetAttributeString(CKA_PRIVATE_EXPONENT);
@@ -1276,16 +1277,15 @@ bool SessionImpl::RSADecrypt(OperationContext* context) {
     if (!tpm_utility_->Unbind(tpm_key_handle, encrypted_data, &context->data_))
       return false;
   } else {
-    RSA* rsa = CreateRSAKeyFromObject(context->key_);
+    crypto::ScopedRSA rsa = CreateRSAKeyFromObject(context->key_);
     uint8_t buffer[kMaxRSAOutputBytes];
-    CHECK(RSA_size(rsa) <= kMaxRSAOutputBytes);
+    CHECK(RSA_size(rsa.get()) <= kMaxRSAOutputBytes);
     int length = RSA_private_decrypt(
         context->data_.length(),
         ConvertStringToByteBuffer(context->data_.data()),
         buffer,
-        rsa,
+        rsa.get(),
         RSA_PKCS1_PADDING);  // Strips PKCS #1 type 2 padding.
-    RSA_free(rsa);
     if (length == -1) {
       LOG(ERROR) << "RSA_private_decrypt failed: " << GetOpenSSLError();
       return false;
@@ -1296,16 +1296,15 @@ bool SessionImpl::RSADecrypt(OperationContext* context) {
 }
 
 bool SessionImpl::RSAEncrypt(OperationContext* context) {
-  RSA* rsa = CreateRSAKeyFromObject(context->key_);
+  crypto::ScopedRSA rsa = CreateRSAKeyFromObject(context->key_);
   uint8_t buffer[kMaxRSAOutputBytes];
-  CHECK(RSA_size(rsa) <= kMaxRSAOutputBytes);
+  CHECK(RSA_size(rsa.get()) <= kMaxRSAOutputBytes);
   int length = RSA_public_encrypt(
       context->data_.length(),
       ConvertStringToByteBuffer(context->data_.data()),
       buffer,
-      rsa,
+      rsa.get(),
       RSA_PKCS1_PADDING);  // Adds PKCS #1 type 2 padding.
-  RSA_free(rsa);
   if (length == -1) {
     LOG(ERROR) << "RSA_public_encrypt failed: " << GetOpenSSLError();
     return false;
@@ -1325,16 +1324,15 @@ bool SessionImpl::RSASign(OperationContext* context) {
     if (!tpm_utility_->Sign(tpm_key_handle, data_to_sign, &signature))
       return false;
   } else {
-    RSA* rsa = CreateRSAKeyFromObject(context->key_);
-    CHECK(RSA_size(rsa) <= kMaxRSAOutputBytes);
+    crypto::ScopedRSA rsa = CreateRSAKeyFromObject(context->key_);
+    CHECK(RSA_size(rsa.get()) <= kMaxRSAOutputBytes);
     uint8_t buffer[kMaxRSAOutputBytes];
     int length = RSA_private_encrypt(
         data_to_sign.length(),
         ConvertStringToByteBuffer(data_to_sign.data()),
         buffer,
-        rsa,
+        rsa.get(),
         RSA_PKCS1_PADDING);  // Adds PKCS #1 type 1 padding.
-    RSA_free(rsa);
     if (length == -1) {
       LOG(ERROR) << "RSA_private_encrypt failed: " << GetOpenSSLError();
       return false;
@@ -1351,16 +1349,15 @@ CK_RV SessionImpl::RSAVerify(OperationContext* context,
   if (context->key_->GetAttributeString(CKA_MODULUS).length() !=
       signature.length())
     return CKR_SIGNATURE_LEN_RANGE;
-  RSA* rsa = CreateRSAKeyFromObject(context->key_);
-  CHECK(RSA_size(rsa) <= kMaxRSAOutputBytes);
+  crypto::ScopedRSA rsa = CreateRSAKeyFromObject(context->key_);
+  CHECK(RSA_size(rsa.get()) <= kMaxRSAOutputBytes);
   uint8_t buffer[kMaxRSAOutputBytes];
   int length = RSA_public_decrypt(
       signature.length(),
       ConvertStringToByteBuffer(signature.data()),
       buffer,
-      rsa,
+      rsa.get(),
       RSA_PKCS1_PADDING);  // Strips PKCS #1 type 1 padding.
-  RSA_free(rsa);
   if (length == -1) {
     LOG(ERROR) << "RSA_public_decrypt failed: " << GetOpenSSLError();
     return CKR_SIGNATURE_INVALID;
