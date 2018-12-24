@@ -42,12 +42,10 @@ BufferPools::~BufferPools()
  * Creates the capture buffer pools needed by InputSystem
  *
  * \param[in] numBufs Number of capture buffers to allocate
- * \param[in] numSkips Number of skip buffers to allocate
  * \param[in,out] isys The InputSystem object to which the allocated
  *  buffer pools will be assigned to
  */
-status_t BufferPools::createBufferPools(int numBufs, int numSkips,
-        std::shared_ptr<InputSystem> isys)
+status_t BufferPools::createBufferPools(int numBufs, std::shared_ptr<InputSystem> isys)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     std::shared_ptr<cros::V4L2VideoNode> node = isys->findOutputNode(ISYS_NODE_RAW);
@@ -55,7 +53,7 @@ status_t BufferPools::createBufferPools(int numBufs, int numSkips,
 
     CheckError((node.get() == nullptr), UNKNOWN_ERROR,
         "@%s: create buffer pool failed", __FUNCTION__);
-    mBufferPoolSize = numBufs + numSkips;
+    mBufferPoolSize = numBufs;
 
     /**
      * Init the pool of capture buffer structs. This pool contains the
@@ -91,11 +89,8 @@ status_t BufferPools::createBufferPools(int numBufs, int numSkips,
     frameInfo.stride = bytesToPixels(frameInfo.format, aFormat.BytesPerLine(0));
     frameInfo.size =
         frameSize(frameInfo.format, frameInfo.stride, frameInfo.height);
-    status = allocateCaptureBuffers(node, frameInfo, numSkips, v4l2Buffers);
-    if (status != NO_ERROR) {
-        LOGE("Failed to allocate capture buffer in ISYS status: 0x%X", status);
-        return status;
-    }
+    status = allocateCaptureBuffers(node, frameInfo, v4l2Buffers);
+    CheckError(status != NO_ERROR, status, "Failed to allocate capture buffer: 0x%X", status);
 
     return status;
 }
@@ -106,23 +101,19 @@ status_t BufferPools::createBufferPools(int numBufs, int numSkips,
  *
  * A given number of skip buffers is also allocated, but they will share
  * the same buffer memory. These buffers are taken out of the
- * mCaptureItemsPool, and inserted to a mCaptureSkipBuffers vector where they
- * are fetched from when skipping is done, and returned manually, when skips
- * come out of the driver. Effectively this will mean the buffer pool has a
- * proper v4l2 id for each buffer, including the skip buffers, and the skip
- * buffers will share memory between each other.
+ * mCaptureItemsPool. Effectively this will mean the buffer pool has a
+ * proper v4l2 id for each buffer.
  *
  * \param[in] node the video node that owns the v4l2 buffers
  * \param[in] frameInfo Width, height, stride and format info for the buffers
  *  being allocated
- * \param[in] numSkips Number of skip buffers to allocate
  * \param[out] v4l2Buffers The allocated V4L2 buffers
  * \return status of execution
  */
 status_t BufferPools::allocateCaptureBuffers(
         std::shared_ptr<cros::V4L2VideoNode> node,
         const FrameInfo &frameInfo,
-        int numSkips, std::vector<cros::V4L2Buffer> &v4l2Buffers)
+        std::vector<cros::V4L2Buffer> &v4l2Buffers)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     status_t status = NO_ERROR;
@@ -140,8 +131,7 @@ status_t BufferPools::allocateCaptureBuffers(
         return BAD_VALUE;
     }
 
-    unsigned int numBufs = mBufferPoolSize - numSkips;
-    LOG2("numBufs: %d numSkips: %d", numBufs, numSkips);
+    LOG2("mBufferPoolSize: %d", mBufferPoolSize);
     for (unsigned int i = 0; i < mBufferPoolSize; i++) {
         mCaptureItemsPool.acquireItem(v4l2Buf);
         if (v4l2Buf.get() == nullptr) {
@@ -170,9 +160,6 @@ status_t BufferPools::allocateCaptureBuffers(
         mBufferHandles.push_back(handle);
         v4l2Buf->SetFd(handle->data[0], 0);
         LOG2("v4l2Buf->index: %d", v4l2Buf->Index());
-
-        if (i >= numBufs)
-            mCaptureSkipBuffers.push_back(v4l2Buf);
     }
 
     return status;
@@ -182,7 +169,6 @@ void BufferPools::freeBuffers()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
-    mCaptureSkipBuffers.clear();
     for (auto& it : mBufferHandles) {
         mBufferManager->Free(it);
     }
@@ -193,25 +179,6 @@ status_t BufferPools::acquireItem(std::shared_ptr<cros::V4L2Buffer> &v4l2Buffer)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     return mCaptureItemsPool.acquireItem(v4l2Buffer);
-}
-
-void BufferPools::returnCaptureSkipBuffer(std::shared_ptr<cros::V4L2Buffer> &v4l2Buffer)
-{
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
-    mCaptureSkipBuffers.push_back(v4l2Buffer);
-}
-
-status_t BufferPools::acquireCaptureSkipBuffer(std::shared_ptr<cros::V4L2Buffer> &v4l2Buffer)
-{
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
-    if (mCaptureSkipBuffers.empty() == false) {
-        v4l2Buffer = mCaptureSkipBuffers.at(0);
-        mCaptureSkipBuffers.erase(mCaptureSkipBuffers.begin());
-        LOG2("@%s captureBuf->v4l2Buf.m.userptr: 0x%lx", __func__, v4l2Buffer->Userptr(0));
-        LOG2("@%s captureBuf->v4l2Buf.index: %d", __func__, v4l2Buffer->Index());
-        return OK;
-    }
-    return UNKNOWN_ERROR;
 }
 
 void BufferPools::returnBuffer(cros::V4L2Buffer * /* buffer */)

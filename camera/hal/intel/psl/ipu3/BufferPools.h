@@ -39,25 +39,19 @@ public:
     /* IBufferOwner */
     void returnBuffer(cros::V4L2Buffer* buffer);
 
-    status_t createBufferPools(int numBufs, int numSkips,
-            std::shared_ptr<InputSystem> isys);
+    status_t createBufferPools(int numBufs, std::shared_ptr<InputSystem> isys);
 
     status_t acquireItem(std::shared_ptr<cros::V4L2Buffer> &v4l2Buffer);
-    status_t acquireCaptureSkipBuffer(std::shared_ptr<cros::V4L2Buffer> &v4l2Buffer); /* Skip buffers are used to track aiq settings */
-    void returnCaptureSkipBuffer(std::shared_ptr<cros::V4L2Buffer> &v4l2Buffer);
 
     void freeBuffers();
 
 private:
     status_t allocateCaptureBuffers(std::shared_ptr<cros::V4L2VideoNode> node,
                                     const FrameInfo &frameInfo,
-                                    int numSkips,
                                     std::vector<cros::V4L2Buffer> &v4l2Buffers);
 
 private:
     SharedItemPool<cros::V4L2Buffer>   mCaptureItemsPool;         /**< Pool of buffers for Isys capture node. */
-
-    std::vector<std::shared_ptr<cros::V4L2Buffer>> mCaptureSkipBuffers;
 
     unsigned int mBufferPoolSize;
 

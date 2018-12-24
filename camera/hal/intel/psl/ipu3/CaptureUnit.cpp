@@ -310,10 +310,9 @@ status_t CaptureUnit::handleConfigStreams(MessageConfig msg)
         return status;
     }
 
-    int skipCount = mSensorSettingsDelay;//mSyncManager->getFrameSyncDelay();
     int poolSize = mPipelineDepth + EXTRA_CIO2_BUFFER_NUMBER;
 
-    status = mBufferPools->createBufferPools(poolSize, skipCount, mIsys);
+    status = mBufferPools->createBufferPools(poolSize, mIsys);
     if (status != NO_ERROR) {
         LOGE("Failed to create buffer pools (status= 0x%X)", status);
         return status;
@@ -522,7 +521,7 @@ status_t CaptureUnit::handleCapture(MessageRequest msg)
     /*
      * Enqueue the data buffers first
      */
-    status = enqueueBuffers(inflightRequest, false);
+    status = enqueueBuffers(inflightRequest);
     CheckAndCallbackError(status != NO_ERROR, mErrCb, status,
                           "@%s: Failed to enqueue buffers!", __FUNCTION__);
 
@@ -582,14 +581,13 @@ status_t CaptureUnit::applyAeParams(std::shared_ptr<CaptureUnitSettings> &aiqCap
  * acquire a buffer from the capture buffer pool and do a v4l2 putframe
  * of the capture buffer
  * \param [IN] request Capture request
- * \param [IN] skip Skip frame
  */
-status_t CaptureUnit::enqueueBuffers(std::shared_ptr<InflightRequestState> &reqState, bool skip)
+status_t CaptureUnit::enqueueBuffers(std::shared_ptr<InflightRequestState> &reqState)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     status_t status = NO_ERROR;
 
-    status = enqueueIsysBuffer(reqState, skip);
+    status = enqueueIsysBuffer(reqState);
     if (status != NO_ERROR) {
         LOGE("Failed to enqueue a ISYS capture buffer!");
         return status;
@@ -598,23 +596,16 @@ status_t CaptureUnit::enqueueBuffers(std::shared_ptr<InflightRequestState> &reqS
     return status;
 }
 
-status_t CaptureUnit::enqueueIsysBuffer(std::shared_ptr<InflightRequestState> &reqState,
-                                        bool skip)
+status_t CaptureUnit::enqueueIsysBuffer(std::shared_ptr<InflightRequestState> &reqState)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     status_t status = NO_ERROR;
     std::shared_ptr<cros::V4L2Buffer> v4l2BufPtr = nullptr;
     int32_t reqId = reqState->aiqCaptureSettings->aiqResults.requestId;
 
-    if (!skip) {
-        // get a capture buffer from the pool
-        status = mBufferPools->acquireItem(v4l2BufPtr);
-    } else {
-        status = mBufferPools->acquireCaptureSkipBuffer(v4l2BufPtr);
-    }
-
+    status = mBufferPools->acquireItem(v4l2BufPtr);
     if (status != NO_ERROR || v4l2BufPtr.get() == nullptr) {
-        LOGE("Failed to get a capture %s buffer!", skip ? "skip" : "");
+        LOGE("Failed to get a capture buffer!");
         return UNKNOWN_ERROR;
     }
 
@@ -708,7 +699,7 @@ status_t CaptureUnit::issueSkips(int count, bool buffers, bool settings, bool is
             skipRequestId--;
             mSkipRequestIdQueue.push_back(skipRequestId);
             mLastInflightRequest->aiqCaptureSettings->aiqResults.requestId = skipRequestId;
-            status = enqueueBuffers(mLastInflightRequest, true);
+            status = enqueueBuffers(mLastInflightRequest);
             CheckAndCallbackError(status != NO_ERROR, mErrCb, status,
                                   "@%s: Failed to enqueue SKIP buffers!", __FUNCTION__);
         }
@@ -814,7 +805,6 @@ status_t CaptureUnit::processIsysBuffer(MessageBuffer &msg)
     if (requestId < 0) {
         LOG2("@%s: skip frame %d received, isysNode:%d",
                 __FUNCTION__, requestId, isysNode);
-        mBufferPools->returnCaptureSkipBuffer(buf);
         return NO_ERROR;
     }
 

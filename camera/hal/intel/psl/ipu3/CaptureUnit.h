@@ -232,8 +232,8 @@ private:
 
     status_t setSensorFrameTimings();
 
-    status_t enqueueBuffers(std::shared_ptr<InflightRequestState> &reqState, bool skip);
-    status_t enqueueIsysBuffer(std::shared_ptr<InflightRequestState> &reqState, bool skip);
+    status_t enqueueBuffers(std::shared_ptr<InflightRequestState> &reqState);
+    status_t enqueueIsysBuffer(std::shared_ptr<InflightRequestState> &reqState);
     int getActiveIsysNodes(std::shared_ptr<GraphConfig> graphConfig);
     status_t issueSkips(int count, bool buffers, bool settings, bool isys);
     status_t applyAeParams(std::shared_ptr<CaptureUnitSettings> &aiqCaptureSettings);
