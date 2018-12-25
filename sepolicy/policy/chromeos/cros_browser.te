@@ -9,3 +9,27 @@ allow cros_browser domain:file { getattr open read };
 
 filetrans_pattern({cros_session_manager cros_browser}, cros_run, arc_dir, dir, "chrome");
 filetrans_pattern(cros_browser, arc_dir, wayland_socket, sock_file, "wayland-0");
+filetrans_pattern(cros_browser, cros_var_log, cros_var_log_chrome, dir, "chrome");
+
+type cros_browser_tmp_file, file_type;
+filetrans_pattern(cros_browser, tmpfs, cros_browser_tmp_file, dir);
+
+is_arc_nyc(
+`
+permissive cros_browser;
+',
+`
+allow cros_browser proc_type:file getattr;
+'
+)
+allow cros_browser { proc_cmdline proc_meminfo proc_stat }:file r_file_perms;
+
+uma_writer(cros_browser);
+r_dir_file(cros_browser, cros_network_conf_file);
+
+rw_dir_file(cros_browser, cros_home_chronos);
+
+allow cros_browser self:capability { sys_admin sys_chroot };
+arc_cts_fails_release(
+`allow cros_browser self:capability sys_ptrace;'
+, (cros_browser))

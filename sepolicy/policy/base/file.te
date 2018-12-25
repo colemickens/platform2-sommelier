@@ -39,6 +39,7 @@ type proc_page_cluster, fs_type, proc_type;
 type proc_panic, fs_type, proc_type;
 type proc_sched, fs_type, proc_type;
 type proc_security, fs_type, proc_type;
+type proc_stat, fs_type, proc_type;
 type proc_swaps, fs_type, proc_type;
 type proc_sysrq, fs_type, proc_type;
 type proc_uid_cputime_removeuid, fs_type, proc_type;

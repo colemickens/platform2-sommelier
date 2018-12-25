@@ -90,6 +90,7 @@ include(sepolicy/file_contexts/coreutils)
 /var/log/arc.log                u:object_r:cros_arc_log:s0
 /var/log/authpolicy.log         u:object_r:cros_authpolicy_log:s0
 /var/log/boot.log               u:object_r:cros_boot_log:s0
+/var/log/chrome(/.*)?           u:object_r:cros_var_log_chrome:s0
 /var/log/messages               u:object_r:cros_syslog:s0
 /var/log/net.log                u:object_r:cros_net_log:s0
 /var/log/secure                 u:object_r:cros_secure_log:s0
