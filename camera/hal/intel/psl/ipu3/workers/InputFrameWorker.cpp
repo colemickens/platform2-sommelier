@@ -87,6 +87,13 @@ status_t InputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
     CheckError(fd < 0, BAD_VALUE, "@%s invalid fd(%d) passed from isys.\n", __func__, fd);
 
     status_t status = mNode->PutFrame(&mBuffers[index]);
+
+    int dumpReqId = request->getId();
+    /* For STILL pipe, the raw buffer may be queued twice in ImguUnit::ImguPipe::processNextRequest.
+     * The lastRawNonScaledBuffer buffer is used for current request,
+     * and rawNonScaledBuffer buffer is used for next request. */
+    if (dumpReqId == mLastRequestId) dumpReqId = dumpReqId + 1;
+
     mLastRequestId = request->getId();
 
     request->setSeqenceId(rawV4L2Buf->Sequence());
@@ -95,14 +102,14 @@ status_t InputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
     if (LogHelper::isDumpTypeEnable(CAMERA_DUMP_RAW) &&
         LogHelper::isDumpTypeEnable(CAMERA_DUMP_JPEG)) {
         int jpegBufCnt = request->getBufferCountOfFormat(HAL_PIXEL_FORMAT_BLOB);
-        if (jpegBufCnt > 0) {
+        if (jpegBufCnt > 0 && mPipeType == GraphConfig::PIPE_STILL) {
             cros::V4L2Buffer* v4l2Buf = &mBuffers[index];
             if (v4l2Buf->Memory() == V4L2_MEMORY_DMABUF) {
                 uint32_t size = v4l2Buf->Length(0);
                 int fd = v4l2Buf->Fd(0);
                 void* addr = mmap(nullptr, size, PROT_READ, MAP_SHARED, fd, 0);
                 CheckError((addr == MAP_FAILED), BAD_VALUE, "@%s mmap fails", __func__);
-                dumpToFile(addr, size, mFormat.Width(), mFormat.Height(), request->getId(), "vector_raw_for_jpeg");
+                dumpToFile(addr, size, mFormat.Width(), mFormat.Height(), dumpReqId, "vector_raw_for_jpeg");
                 munmap(addr, size);
             } else {
                 LOGE("@%s, just support V4L2_MEMORY_DMABUF dump", __FUNCTION__);
