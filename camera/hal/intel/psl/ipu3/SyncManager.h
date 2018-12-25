@@ -22,7 +22,6 @@
 #include <linux/media.h>
 #include <linux/videodev2.h>
 #include <string>
-#include "ICameraIPU3HwControls.h"
 #include "PlatformData.h"
 #include "IPU3CameraCapInfo.h"
 #include "Camera3Request.h"

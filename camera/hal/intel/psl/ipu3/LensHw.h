@@ -17,7 +17,6 @@
 #ifndef IPU3_LENSHW_H_
 #define IPU3_LENSHW_H_
 
-#include "ICameraIPU3HwControls.h"
 #include "PlatformData.h"
 #include "cros-camera/v4l2_device.h"
 
@@ -33,7 +32,7 @@ class MediaEntity;
  * to drive the camera lens using v4l2 commands and custom ioctl.
  *
  */
-class LensHw : public IIPU3HWLensControl {
+class LensHw {
 public:
     LensHw(int cameraId, std::shared_ptr<MediaController> mediaCtl);
     ~LensHw();
@@ -41,26 +40,26 @@ public:
     status_t init();
     status_t setLens(std::shared_ptr<MediaEntity> entity);
 
-    virtual const char* getLensName(void);
-    virtual int getCurrentCameraId(void);
+    const char* getLensName(void);
+    int getCurrentCameraId(void);
 
     // FOCUS
-    virtual int moveFocusToPosition(int position);
-    virtual int moveFocusToBySteps(int steps);
-    virtual int getFocusPosition(int &position);
-    virtual int getFocusStatus(int &status);
-    virtual int startAutoFocus(void);
-    virtual int stopAutoFocus(void);
-    virtual int getAutoFocusStatus(int &status);
-    virtual int setAutoFocusRange(int value);
-    virtual int getAutoFocusRange(int &value);
-    virtual int enableOis(bool enable);
+    int moveFocusToPosition(int position);
+    int moveFocusToBySteps(int steps);
+    int getFocusPosition(int &position);
+    int getFocusStatus(int &status);
+    int startAutoFocus(void);
+    int stopAutoFocus(void);
+    int getAutoFocusStatus(int &status);
+    int setAutoFocusRange(int value);
+    int getAutoFocusRange(int &value);
+    int enableOis(bool enable);
 
     // ZOOM
-    virtual int moveZoomToPosition(int position);
-    virtual int moveZoomToBySteps(int steps);
-    virtual int getZoomPosition(int &position);
-    virtual int moveZoomContinuous(int position);
+    int moveZoomToPosition(int position);
+    int moveZoomToBySteps(int steps);
+    int getZoomPosition(int &position);
+    int moveZoomContinuous(int position);
     /* [END] IHWLensControl overloads, */
 
     status_t getLatestPosition(int *position, long long unsigned int *time);

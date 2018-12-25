@@ -22,7 +22,6 @@
 #include "GraphConfigManager.h"
 #include "CaptureUnit.h"
 #include "IPU3CameraHw.h"
-#include "tasks/ITaskEventSource.h"
 #include "tasks/ICaptureEventSource.h"
 #include "tasks/ExecuteTaskBase.h"
 #include "workers/IDeviceWorker.h"

@@ -32,8 +32,8 @@ namespace camera2 {
 typedef ia_binary_data MakernoteData;
 
 // consts
-extern const int JPEG_QUALITY_DEFAULT;
-extern const int THUMBNAIL_QUALITY_DEFAULT;
+const int JPEG_QUALITY_DEFAULT = 95;
+const int THUMBNAIL_QUALITY_DEFAULT = 90;
 
 } // namespace camera2
 } // namespace android

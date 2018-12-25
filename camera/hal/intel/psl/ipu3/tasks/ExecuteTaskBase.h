@@ -23,7 +23,6 @@
 #include "Camera3Request.h"
 #include "CameraStream.h"
 #include "CameraWindow.h"
-#include "IExecuteTask.h"
 #include "ITaskEventListener.h"
 #include "Intel3aControls.h"
 #include "GraphConfig.h"
