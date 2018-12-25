@@ -89,6 +89,7 @@ if (use.test) {
       "device_test.cc",
       "device_manager_test.cc",
       "minijailed_process_runner_test.cc",
+      "shill_client_test.cc",
     ]
     defines = [ "UNIT_TEST" ]
     deps = [

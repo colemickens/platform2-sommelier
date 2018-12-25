@@ -40,7 +40,7 @@ class ShillClient {
   void OnManagerPropertyChange(const std::string& property_name,
                                const brillo::Any& property_value);
 
-  bool GetDefaultInterface(std::string* name);
+  virtual bool GetDefaultInterface(std::string* name);
 
   std::string default_interface_;
   base::Callback<void(const std::string&)> default_interface_callback_;
