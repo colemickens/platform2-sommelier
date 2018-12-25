@@ -38,6 +38,8 @@ openat: 1
 clone: 1
 set_robust_list: 1
 getegid: 1
+# base::FileEnumerator::Next()
+getdents: 1
 # TODO(b/120826467) Disallow execve when direct access
 # to /dev/cros_ec and /dev/mmcblk0 is possible
 execve: 1
