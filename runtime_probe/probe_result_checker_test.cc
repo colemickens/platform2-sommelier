@@ -1,7 +1,6 @@
-/* Copyright 2018 The Chromium OS Authors. All rights reserved.
- * Use of this source code is governed by a BSD-style license that can be
- * found in the LICENSE file.
- */
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
 
 #include <string>
 
@@ -22,14 +21,22 @@ TEST(StringFieldConverterTest, TestIntToString) {
 
   dict_value.SetInteger("key", 123);
 
-  StringFieldConverter converter{};
+  auto converter = StringFieldConverter::Build("");
 
-  ASSERT_EQ(converter.Convert("key", &dict_value), ReturnCode::OK)
+  ASSERT_EQ(converter->Convert("key", &dict_value), ReturnCode::OK)
       << "failed to convert 123 to string";
 
   std::string string_value;
   ASSERT_TRUE(dict_value.GetString("key", &string_value));
   ASSERT_EQ(string_value, "123");
+}
+
+TEST(StringFieldConverterTest, TestInvalidRegexPattern) {
+  auto invalid = StringFieldConverter::Build("!re hello[");
+  ASSERT_EQ(invalid, nullptr);
+
+  auto valid = StringFieldConverter::Build("!eq hello[");
+  ASSERT_TRUE(valid);
 }
 
 TEST(IntegerFieldConverterTest, TestStringToInt) {
@@ -38,9 +45,9 @@ TEST(IntegerFieldConverterTest, TestStringToInt) {
 
     dict_value.SetString("key", s);
 
-    IntegerFieldConverter converter{};
+    auto converter = IntegerFieldConverter::Build("");
 
-    ASSERT_EQ(converter.Convert("key", &dict_value), ReturnCode::OK)
+    ASSERT_EQ(converter->Convert("key", &dict_value), ReturnCode::OK)
         << "failed to convert string: " << s;
 
     int int_value;
@@ -55,9 +62,9 @@ TEST(HexFieldConverterTest, TestStringToInt) {
 
     dict_value.SetString("key", s);
 
-    HexFieldConverter converter{};
+    auto converter = HexFieldConverter::Build("");
 
-    ASSERT_EQ(converter.Convert("key", &dict_value), ReturnCode::OK)
+    ASSERT_EQ(converter->Convert("key", &dict_value), ReturnCode::OK)
         << "failed to convert string: " << s;
 
     int int_value;
@@ -72,9 +79,9 @@ TEST(IntegerFieldConverterTest, TestDoubleToInt) {
 
   dict_value.SetDouble("key", v);
 
-  IntegerFieldConverter converter{};
+  auto converter = IntegerFieldConverter::Build("");
 
-  ASSERT_EQ(converter.Convert("key", &dict_value), ReturnCode::OK)
+  ASSERT_EQ(converter->Convert("key", &dict_value), ReturnCode::OK)
       << "failed to convert double";
 
   int int_value;
@@ -88,9 +95,9 @@ TEST(DoubleFieldConverterTest, TestStringToDouble) {
 
     dict_value.SetString("key", s);
 
-    DoubleFieldConverter converter{};
+    auto converter = DoubleFieldConverter::Build("");
 
-    ASSERT_EQ(converter.Convert("key", &dict_value), ReturnCode::OK)
+    ASSERT_EQ(converter->Convert("key", &dict_value), ReturnCode::OK)
         << "failed to convert string: " << s;
 
     double double_value;
@@ -99,10 +106,25 @@ TEST(DoubleFieldConverterTest, TestStringToDouble) {
   }
 }
 
+TEST(DoubleFieldConverterTest, TestInvalidStringToDouble) {
+  for (const auto s : {"this is not double", "", "   "}) {
+    base::DictionaryValue dict_value;
+
+    dict_value.SetString("key", s);
+
+    auto converter = DoubleFieldConverter::Build("");
+
+    ASSERT_EQ(converter->Convert("key", &dict_value),
+              ReturnCode::INCOMPATIBLE_VALUE)
+        << "Converting " << s << " to double should fail";
+  }
+}
+
 TEST(ProbeResultCheckerTest, TestFromDictionaryValue) {
   const auto json_string = R"({
     "string_field": [true, "str"],
-    "string_field_with_validate_rule": [true, "str", "re! hello_.*"],
+    "string_field_exact_match": [true, "str", "!eq xx[yy"],
+    "string_field_with_validate_rule": [true, "str", "!re hello_.*"],
     "int_field": [true, "int"],
     "double_field": [true, "double"],
     "hex_field": [false, "hex"]
@@ -117,10 +139,15 @@ TEST(ProbeResultCheckerTest, TestFromDictionaryValue) {
   const auto& required = expect_fields->required_fields_;
   ASSERT_THAT(brillo::GetMapKeys(required),
               ::testing::UnorderedElementsAre("string_field",
+                                              "string_field_exact_match",
                                               "string_field_with_validate_rule",
                                               "int_field", "double_field"));
   ASSERT_TRUE(
       dynamic_cast<StringFieldConverter*>(required.at("string_field").get()));
+  ASSERT_TRUE(dynamic_cast<StringFieldConverter*>(
+      required.at("string_field_exact_match").get()));
+  ASSERT_TRUE(dynamic_cast<StringFieldConverter*>(
+      required.at("string_field_exact_match").get()));
   ASSERT_TRUE(dynamic_cast<StringFieldConverter*>(
       required.at("string_field_with_validate_rule").get()));
   ASSERT_TRUE(

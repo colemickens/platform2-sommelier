@@ -49,6 +49,7 @@ static_library("libruntime_probe") {
     "probe_statement.cc",
     "utils/config_utils.cc",
     "utils/file_utils.cc",
+    "utils/type_utils.cc",
   ]
 }
 
