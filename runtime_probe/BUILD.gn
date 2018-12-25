@@ -20,6 +20,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
+    "libcros_config",
     # system_api depends on protobuf (or protobuf-lite). It must appear
     # before protobuf here or the linker flags won't be in the right
     # order.
@@ -35,7 +36,6 @@ static_library("libruntime_probe") {
   ]
   sources = [
     "component_category.cc",
-    "config_parser.cc",
     "daemon.cc",
     "probe_result_checker.cc",
     "functions/all_functions.cc",
@@ -46,6 +46,7 @@ static_library("libruntime_probe") {
     "probe_function.cc",
     "probe_function_argument.cc",
     "probe_statement.cc",
+    "utils/config_utils.cc",
     "utils/file_utils.cc",
   ]
 }
@@ -67,12 +68,12 @@ if (use.test) {
       ":target_defaults",
     ]
     sources = [
-      "config_parser_test.cc",
-      "probe_result_checker_test.cc",
       "functions/sequence_test.cc",
       "functions/sysfs_test.cc",
       "probe_config_test.cc",
+      "probe_result_checker_test.cc",
       "probe_statement_test.cc",
+      "utils/config_utils_test.cc",
     ]
     deps = [
       ":libruntime_probe",

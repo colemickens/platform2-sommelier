@@ -16,6 +16,8 @@
 #include <google/protobuf/util/json_util.h>
 
 #include "runtime_probe/daemon.h"
+#include "runtime_probe/probe_config.h"
+#include "runtime_probe/utils/config_utils.h"
 
 namespace runtime_probe {
 
@@ -53,11 +55,6 @@ void DumpProtocolBuffer(const google::protobuf::Message& protobuf,
   MessageToJsonString(protobuf, &json_string, options);
   VLOG(1) << "       JSON output:\n\n" << json_string << "\n";
   VLOG(1) << "<--- Finished Protobuf dump\n";
-}
-
-// Min log level < 0 => --debug flag is passed
-bool IsUnderDebug() {
-  return logging::GetMinLogLevel() < 0;
 }
 
 }  // namespace
@@ -108,8 +105,7 @@ void Daemon::SendProbeResult(
     const ProbeResult& reply,
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender* response_sender) {
-  if (IsUnderDebug())
-    DumpProtocolBuffer(reply, "ProbeResult");
+  DumpProtocolBuffer(reply, "ProbeResult");
 
   std::unique_ptr<dbus::Response> message(
       dbus::Response::FromMethodCall(method_call));
@@ -140,8 +136,15 @@ void Daemon::ProbeCategories(
     return SendProbeResult(reply, method_call, &response_sender);
   }
 
-  if (IsUnderDebug())
-    DumpProtocolBuffer(request, "ProbeRequest");
+  DumpProtocolBuffer(request, "ProbeRequest");
+
+  std::string probe_config_path;
+  CHECK(!runtime_probe::GetProbeConfigPath(&probe_config_path, ""));
+
+  std::unique_ptr<base::DictionaryValue> config_dv =
+      runtime_probe::ParseProbeConfig(probe_config_path);
+  CHECK(config_dv);
+  // TODO(itspeter): Return D-Bus error.
 
   // TODO(itspeter): Compose real response base on probe result.
   AddFakeResponse(&reply);

@@ -7,7 +7,7 @@
 #include <base/files/file_path.h>
 #include <gtest/gtest.h>
 
-#include "runtime_probe/config_parser.h"
+#include "runtime_probe/utils/config_utils.h"
 
 namespace runtime_probe {
 
