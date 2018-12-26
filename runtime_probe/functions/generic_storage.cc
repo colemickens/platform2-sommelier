@@ -6,8 +6,14 @@
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <brillo/strings/string_utils.h>
+#include <chromeos/dbus/service_constants.h>
+#include <dbus/bus.h>
+#include <dbus/message.h>
+#include <dbus/object_proxy.h>
+#include <pcrecpp.h>
 
 #include "runtime_probe/functions/generic_storage.h"
 #include "runtime_probe/utils/file_utils.h"
@@ -16,6 +22,11 @@ namespace runtime_probe {
 namespace {
 constexpr auto kStorageDirPath("/sys/class/block/");
 constexpr auto kReadFileMaxSize = 1024;
+
+// DBus related constant to issue dbus call to debugd
+constexpr auto kDebugdMmcMethodName = "Mmc";
+constexpr auto kDebugdMmcOption = "extcsd_read";
+constexpr auto kDebugdMmcDefaultTimeout = 10 * 1000;  // in ms
 
 const std::vector<std::string> kAtaFields{"vendor", "model"};
 const std::vector<std::string> kEmmcFields{"type", "name", "oemid", "manfid",
@@ -26,7 +37,57 @@ const std::vector<std::string> kEmmcFields{"type", "name", "oemid", "manfid",
 const std::vector<std::string> kEmmcOptionalFields{"prv", "hwrev"};
 const std::vector<std::string> kNvmeFields{"vendor", "device", "class"};
 
+// Check if the string represented by |input_string| is printable
+bool IsPrintable(const std::string& input_string) {
+  for (const auto& cha : input_string) {
+    if (!isprint(cha))
+      return false;
+  }
+  return true;
+}
+
+// Return the formatted string "%s (%s)" % |v|, |v_decode|
+std::string VersionFormattedString(const std::string& v,
+                                   const std::string& v_decode) {
+  return v + " (" + v_decode + ")";
+}
+
 }  // namespace
+
+bool GenericStorageFunction::GetOutputOfMmcExtcsd(
+    const base::FilePath& node_path, std::string* output) const {
+  VLOG(1) << "Issuing D-Bus call to debugd to retrieve eMMC 5.0 firmware info.";
+
+  dbus::Bus::Options ops;
+  ops.bus_type = dbus::Bus::SYSTEM;
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(std::move(ops)));
+
+  if (!bus->Connect()) {
+    LOG(ERROR) << "Failed to connect to system D-Bus service.";
+    return false;
+  }
+
+  dbus::ObjectProxy* object_proxy = bus->GetObjectProxy(
+      debugd::kDebugdServiceName, dbus::ObjectPath(debugd::kDebugdServicePath));
+
+  dbus::MethodCall method_call(debugd::kDebugdInterface, kDebugdMmcMethodName);
+  dbus::MessageWriter writer(&method_call);
+
+  writer.AppendString(kDebugdMmcOption);
+  std::unique_ptr<dbus::Response> response =
+      object_proxy->CallMethodAndBlock(&method_call, kDebugdMmcDefaultTimeout);
+  if (!response) {
+    LOG(ERROR) << "Failed to issue D-Bus mmc call to debugd.";
+    return false;
+  }
+
+  dbus::MessageReader reader(response.get());
+  if (!reader.PopString(output)) {
+    LOG(ERROR) << "Failed to read reply from debugd.";
+    return false;
+  }
+  return true;
+}
 
 std::vector<base::FilePath> GenericStorageFunction::GetFixedDevices() const {
   std::vector<base::FilePath> res{};
@@ -68,10 +129,95 @@ std::vector<base::FilePath> GenericStorageFunction::GetFixedDevices() const {
   return res;
 }
 
-// TODO(hmchu): Retrieve real eMMC firmware version
 std::string GenericStorageFunction::GetEMMC5FirmwareVersion(
     const base::FilePath& node_path) const {
-  return std::string{""};
+  VLOG(1) << "Checking eMMC firmware version of "
+          << node_path.BaseName().value();
+
+  std::string ext_csd_res;
+
+  if (!GetOutputOfMmcExtcsd(node_path, &ext_csd_res)) {
+    LOG(WARNING) << "Fail to retrieve information from mmc extcsd for /dev/"
+                 << node_path.BaseName().value();
+    return std::string{""};
+  }
+
+  /* The output of firmware version looks like hexdump of ASCII strings or
+   * hexadecimal values, which depends on vendors.
+
+   * Example of version "ABCDEFGH" (ASCII hexdump)
+   * [FIRMWARE_VERSION[261]]: 0x48
+   * [FIRMWARE_VERSION[260]]: 0x47
+   * [FIRMWARE_VERSION[259]]: 0x46
+   * [FIRMWARE_VERSION[258]]: 0x45
+   * [FIRMWARE_VERSION[257]]: 0x44
+   * [FIRMWARE_VERSION[256]]: 0x43
+   * [FIRMWARE_VERSION[255]]: 0x42
+   * [FIRMWARE_VERSION[254]]: 0x41
+
+   * Example of version 3 (hexadecimal values hexdump)
+   * [FIRMWARE_VERSION[261]]: 0x00
+   * [FIRMWARE_VERSION[260]]: 0x00
+   * [FIRMWARE_VERSION[259]]: 0x00
+   * [FIRMWARE_VERSION[258]]: 0x00
+   * [FIRMWARE_VERSION[257]]: 0x00
+   * [FIRMWARE_VERSION[256]]: 0x00
+   * [FIRMWARE_VERSION[255]]: 0x00
+   * [FIRMWARE_VERSION[254]]: 0x03
+   */
+  pcrecpp::RE re(R"(^\[FIRMWARE_VERSION\[\d+\]\]: (.*)$)",
+                 pcrecpp::RE_Options());
+  /* version list stores each byte as the format "ff" (two hex digits)
+   * raw version list stores each byte as an int
+   */
+
+  const auto ext_csd_lines = base::SplitString(
+      ext_csd_res, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+
+  std::vector<std::string> hex_version_components;
+  std::string char_version{""};
+
+  // The memory snapshots of version output from mmc are in reverse order
+  for (auto it = ext_csd_lines.rbegin(); it != ext_csd_lines.rend(); it++) {
+    std::string cur_version_str;
+    if (!re.PartialMatch(*it, &cur_version_str))
+      continue;
+
+    // 0xff => ff
+    const auto cur_version_component =
+        cur_version_str.substr(2, std::string::npos);
+
+    hex_version_components.push_back(cur_version_component);
+
+    int cur_version_char;
+    if (!base::HexStringToInt(cur_version_str, &cur_version_char)) {
+      LOG(ERROR) << "Failed to convert one byte hex representation "
+                 << cur_version_str << " to char.";
+      return std::string{""};
+    }
+    char_version += static_cast<char>(cur_version_char);
+  }
+
+  const auto hex_version = brillo::string_utils::JoinRange(
+      "", hex_version_components.begin(), hex_version_components.end());
+  VLOG(1) << "eMMC 5.0 firmware version is " << hex_version;
+  // Convert each int in raw_version_list to char and concat them
+  if (IsPrintable(char_version)) {
+    return VersionFormattedString(hex_version, char_version);
+
+  } else {
+    // Represent the version in the little endian format
+    const std::string hex_version_le = brillo::string_utils::JoinRange(
+        "", hex_version_components.rbegin(), hex_version_components.rend());
+    uint64_t version_decode_le;
+    if (!base::HexStringToUInt64(hex_version_le, &version_decode_le)) {
+      LOG(ERROR) << "Failed to convert " << hex_version_le
+                 << " to 64-bit unsigned integer";
+      return std::string{""};
+    }
+    return VersionFormattedString(hex_version,
+                                  std::to_string(version_decode_le));
+  }
 }
 
 GenericStorageFunction::DataType GenericStorageFunction::Eval() const {
@@ -79,7 +225,7 @@ GenericStorageFunction::DataType GenericStorageFunction::Eval() const {
   DataType result{};
 
   for (const auto& node_path : storage_nodes_path_list) {
-    VLOG(1) << "Processnig the node: " << node_path.value();
+    VLOG(1) << "Processnig the node " << node_path.value();
     const auto dev_path = node_path.Append("device");
     // For NVMe device, "/<node_path>/device/device/.." is expected.
     const auto nvme_dev_path = dev_path.Append("device");
@@ -118,8 +264,8 @@ GenericStorageFunction::DataType GenericStorageFunction::Eval() const {
     }
 
     if (node_res.empty()) {
-      VLOG(1) << "Cannot probe ATA, NVMe or eMMC fields under  "
-              << dev_path.value() << " or " << nvme_dev_path.value();
+      VLOG(1) << "Cannot probe ATA, NVMe or eMMC fields on storage device "
+              << node_path.value();
       continue;
     }
 
