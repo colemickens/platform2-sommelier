@@ -16,13 +16,20 @@ namespace mri {
 MediaPerceptionImpl::MediaPerceptionImpl(
     chromeos::media_perception::mojom::MediaPerceptionRequest request,
     std::shared_ptr<VideoCaptureServiceClient> vidcap_client,
+    std::shared_ptr<ChromeAudioServiceClient> cras_client,
     std::shared_ptr<Rtanalytics> rtanalytics)
     : binding_(this, std::move(request)),
       vidcap_client_(vidcap_client),
+      cras_client_(cras_client),
       rtanalytics_(rtanalytics) {
   if (!vidcap_client_->IsConnected()) {
     vidcap_client_->Connect();
   }
+
+  if (!cras_client_->IsConnected()) {
+    cras_client_->Connect();
+  }
+
   CHECK(rtanalytics_.get()) << "Rtanalytics is a nullptr: "
                             << rtanalytics_.get();
 }
@@ -50,8 +57,8 @@ void MediaPerceptionImpl::SetupConfiguration(
 
 void MediaPerceptionImpl::GetVideoDevices(
     const GetVideoDevicesCallback& callback) {
-  // Get the list of video devices from the Video Capture Service client and
-  // convert them to mojom object.
+  // Get the list of video devices from the VideoCaptureServiceClient and
+  // convert them to mojom objects.
   vidcap_client_->GetDevices([=](std::vector<SerializedVideoDevice> devices) {
     std::vector<chromeos::media_perception::mojom::VideoDevicePtr>
         mojom_devices;
@@ -63,6 +70,21 @@ void MediaPerceptionImpl::GetVideoDevices(
     }
     callback.Run(std::move(mojom_devices));
   });
+}
+
+void MediaPerceptionImpl::GetAudioDevices(
+    const GetAudioDevicesCallback& callback) {
+  // Get the list of audio devices from the ChromeAudioServiceClient and convert
+  // them to mojom objects.
+  std::vector<SerializedAudioDevice> devices = cras_client_->GetInputDevices();
+  std::vector<chromeos::media_perception::mojom::AudioDevicePtr> mojom_devices;
+  for (const SerializedAudioDevice& device : devices) {
+    AudioDevice audio_device;
+    audio_device.ParseFromArray(device.data(), device.size());
+    mojom_devices.push_back(
+        chromeos::media_perception::mojom::ToMojom(audio_device));
+  }
+  callback.Run(std::move(mojom_devices));
 }
 
 void MediaPerceptionImpl::GetTemplateDevices(

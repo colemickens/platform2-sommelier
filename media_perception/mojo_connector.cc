@@ -72,6 +72,11 @@ void MojoConnector::SetVideoCaptureServiceClient(
   video_capture_service_client_ = video_capture_service_client;
 }
 
+void MojoConnector::SetChromeAudioServiceClient(
+    std::shared_ptr<ChromeAudioServiceClient> chrome_audio_service_client) {
+  chrome_audio_service_client_ = chrome_audio_service_client;
+}
+
 void MojoConnector::SetRtanalytics(
     std::shared_ptr<Rtanalytics> rtanalytics) {
   rtanalytics_ = rtanalytics;
@@ -111,6 +116,7 @@ void MojoConnector::AcceptConnectionOnIpcThread(base::ScopedFD fd) {
       base::Bind(&MojoConnector::OnConnectionErrorOrClosed,
                  base::Unretained(this)),
       video_capture_service_client_,
+      chrome_audio_service_client_,
       rtanalytics_);
 }
 

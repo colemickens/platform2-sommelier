@@ -33,6 +33,8 @@ interface MediaPerception {
 
   GetVideoDevices@1() => (array<VideoDevice> devices);
 
+  GetAudioDevices@2() => (array<AudioDevice> devices);
+
   // Returns a list of template names for devices that can be filled in for
   // a particular configuration.
   GetTemplateDevices@3(string configuration_name) =>

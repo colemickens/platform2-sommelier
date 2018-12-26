@@ -25,9 +25,11 @@ MediaPerceptionServiceImpl::MediaPerceptionServiceImpl(
     mojo::ScopedMessagePipeHandle pipe,
     base::Closure connection_error_handler,
     std::shared_ptr<VideoCaptureServiceClient> video_capture_service_client,
+    std::shared_ptr<ChromeAudioServiceClient> chrome_audio_service_client,
     std::shared_ptr<Rtanalytics> rtanalytics)
     : binding_(this, std::move(pipe)),
       video_capture_service_client_(video_capture_service_client),
+      chrome_audio_service_client_(chrome_audio_service_client),
       rtanalytics_(rtanalytics) {
   binding_.set_connection_error_handler(std::move(connection_error_handler));
 }
@@ -42,6 +44,7 @@ void MediaPerceptionServiceImpl::GetController(
   MediaPerceptionControllerImpl* const controller =
       new MediaPerceptionControllerImpl(std::move(request),
                                         video_capture_service_client_,
+                                        chrome_audio_service_client_,
                                         rtanalytics_);
   controller->set_connection_error_handler(
       base::Bind(&OnConnectionClosedOrError, base::Unretained(controller)));

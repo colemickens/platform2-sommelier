@@ -12,6 +12,7 @@
 #include <gtest/gtest.h>
 
 #include "media_perception/device_management.pb.h"
+#include "media_perception/fake_chrome_audio_service_client.h"
 #include "media_perception/fake_rtanalytics.h"
 #include "media_perception/fake_video_capture_service_client.h"
 #include "media_perception/media_perception_impl.h"
@@ -26,16 +27,21 @@ class MediaPerceptionImplTest : public testing::Test {
     fake_vidcap_client_ = new FakeVideoCaptureServiceClient();
     vidcap_client_ = std::shared_ptr<VideoCaptureServiceClient>(
         fake_vidcap_client_);
+    fake_cras_client_ = new FakeChromeAudioServiceClient();
+    cras_client_ = std::shared_ptr<ChromeAudioServiceClient>(
+        fake_cras_client_);
     fake_rtanalytics_ = new FakeRtanalytics();
     rtanalytics_ = std::shared_ptr<Rtanalytics>(fake_rtanalytics_);
     media_perception_impl_ = std::make_unique<MediaPerceptionImpl>(
         mojo::MakeRequest(&media_perception_ptr_),
-        vidcap_client_, rtanalytics_);
+        vidcap_client_, cras_client_, rtanalytics_);
   }
 
   chromeos::media_perception::mojom::MediaPerceptionPtr media_perception_ptr_;
   FakeVideoCaptureServiceClient* fake_vidcap_client_;
   std::shared_ptr<VideoCaptureServiceClient> vidcap_client_;
+  FakeChromeAudioServiceClient* fake_cras_client_;
+  std::shared_ptr<ChromeAudioServiceClient> cras_client_;
   FakeRtanalytics* fake_rtanalytics_;
   std::shared_ptr<Rtanalytics> rtanalytics_;
   std::unique_ptr<MediaPerceptionImpl> media_perception_impl_;
@@ -66,6 +72,41 @@ TEST_F(MediaPerceptionImplTest, TestGetVideoDevices) {
   media_perception_ptr_->GetVideoDevices(
         base::Bind([](bool *get_devices_callback_done,
           std::vector<chromeos::media_perception::mojom::VideoDevicePtr>
+          devices) {
+        EXPECT_EQ(devices.size(), 2);
+        EXPECT_EQ(devices[0]->id, "1");
+        EXPECT_EQ(devices[1]->id, "2");
+        *get_devices_callback_done = true;
+      }, &get_devices_callback_done));
+  base::RunLoop().RunUntilIdle();
+  ASSERT_TRUE(get_devices_callback_done);
+}
+
+TEST_F(MediaPerceptionImplTest, TestGetAudioDevices) {
+  bool get_devices_callback_done = false;
+  media_perception_ptr_->GetAudioDevices(
+      base::Bind([](bool* get_devices_callback_done,
+          std::vector<chromeos::media_perception::mojom::AudioDevicePtr>
+          devices) {
+        EXPECT_EQ(devices.size(), 0);
+        *get_devices_callback_done = true;
+      }, &get_devices_callback_done));
+  base::RunLoop().RunUntilIdle();
+  ASSERT_TRUE(get_devices_callback_done);
+
+  // Set up a couple of fake devices.
+  std::vector<SerializedAudioDevice> serialized_devices;
+  AudioDevice device;
+  device.set_id("1");
+  serialized_devices.push_back(SerializeAudioDeviceProto(device));
+  device.set_id("2");
+  serialized_devices.push_back(SerializeAudioDeviceProto(device));
+  fake_cras_client_->SetDevicesForGetInputDevices(serialized_devices);
+
+  get_devices_callback_done = false;
+  media_perception_ptr_->GetAudioDevices(
+        base::Bind([](bool *get_devices_callback_done,
+          std::vector<chromeos::media_perception::mojom::AudioDevicePtr>
           devices) {
         EXPECT_EQ(devices.size(), 2);
         EXPECT_EQ(devices[0]->id, "1");

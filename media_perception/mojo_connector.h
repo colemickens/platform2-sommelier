@@ -16,6 +16,7 @@
 #include <mojo/edk/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/binding.h>
 
+#include "media_perception/chrome_audio_service_client.h"
 #include "media_perception/device_management.pb.h"
 #include "media_perception/media_perception_service_impl.h"
 #include "media_perception/producer_impl.h"
@@ -37,6 +38,11 @@ class MojoConnector {
   // object.
   void SetVideoCaptureServiceClient(
       std::shared_ptr<VideoCaptureServiceClient> video_capture_service_client);
+
+  // Set a shared pointer member variable of the chrome audio service client
+  // object.
+  void SetChromeAudioServiceClient(
+      std::shared_ptr<ChromeAudioServiceClient> chrome_audio_service_client);
 
   // Set a shared pointer member variable of the rtanalytics object.
   void SetRtanalytics(
@@ -136,6 +142,9 @@ class MojoConnector {
 
   // Stores pointer to the video capture service client object.
   std::shared_ptr<VideoCaptureServiceClient> video_capture_service_client_;
+
+  // Stores pointer to the chrome audio service client object.
+  std::shared_ptr<ChromeAudioServiceClient> chrome_audio_service_client_;
 
   // Stores pointer to the rtanalytics object.
   std::shared_ptr<Rtanalytics> rtanalytics_;

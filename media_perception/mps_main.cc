@@ -39,6 +39,7 @@ int main(int argc, char** argv) {
           new mri::ChromeAudioServiceClientImpl());
   auto vidcap = std::shared_ptr<mri::VideoCaptureServiceClient>(vidcap_client);
   mojo_connector.SetVideoCaptureServiceClient(vidcap);
+  mojo_connector.SetChromeAudioServiceClient(cras);
 
   auto rtanalytics = std::shared_ptr<mri::Rtanalytics>();
   init_mps(argc, argv, cras, vidcap, &rtanalytics);

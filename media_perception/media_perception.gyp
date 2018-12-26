@@ -154,6 +154,7 @@
           'includes': ['../common-mk/common_test.gypi'],
           'dependencies': ['media_perception_service_lib'],
           'sources': [
+            'fake_chrome_audio_service_client.cc',
             'fake_rtanalytics.cc',
             'fake_video_capture_service_client.cc',
             'media_perception_impl_test.cc',

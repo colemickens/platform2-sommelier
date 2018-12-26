@@ -10,6 +10,7 @@
 
 #include <mojo/public/cpp/bindings/binding.h>
 
+#include "media_perception/chrome_audio_service_client.h"
 #include "media_perception/rtanalytics.h"
 #include "media_perception/video_capture_service_client.h"
 #include "mojom/media_perception.mojom.h"
@@ -22,12 +23,14 @@ class MediaPerceptionImpl :
   MediaPerceptionImpl(
       chromeos::media_perception::mojom::MediaPerceptionRequest request,
       std::shared_ptr<VideoCaptureServiceClient> vidcap_client,
+      std::shared_ptr<ChromeAudioServiceClient> cras_client,
       std::shared_ptr<Rtanalytics> rtanalytics);
 
   // chromeos::media_perception::mojom::MediaPerception:
   void SetupConfiguration(const std::string& configuration_name,
                           const SetupConfigurationCallback& callback) override;
   void GetVideoDevices(const GetVideoDevicesCallback& callback) override;
+  void GetAudioDevices(const GetAudioDevicesCallback& callback) override;
   void GetTemplateDevices(const std::string& configuration_name,
                           const GetTemplateDevicesCallback& callback) override;
   void SetVideoDeviceForTemplateName(
@@ -59,6 +62,8 @@ class MediaPerceptionImpl :
       binding_;
 
   std::shared_ptr<VideoCaptureServiceClient> vidcap_client_;
+
+  std::shared_ptr<ChromeAudioServiceClient> cras_client_;
 
   std::shared_ptr<Rtanalytics> rtanalytics_;
 
