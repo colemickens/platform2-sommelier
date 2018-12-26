@@ -206,13 +206,8 @@ bool EntryManager::ValidateDevPath(const std::string& devpath) {
     return false;
   }
 
-  base::FilePath to_normalize =
+  base::FilePath normalized_devpath =
       root_dir_.Append("sys").Append(StripLeadingPathSeparators(devpath));
-  base::FilePath normalized_devpath = base::MakeAbsoluteFilePath(to_normalize);
-  if (normalized_devpath.empty()) {
-    LOG(ERROR) << "Failed to normalize \"" << to_normalize.value() << "\"";
-    return false;
-  }
 
   if (normalized_devpath.ReferencesParent()) {
     LOG(ERROR) << "The path \"" << normalized_devpath.value()
