@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 Intel Corporation
+ * Copyright (C) 2015-2019 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -253,8 +253,7 @@ private:
                          const SourceNodeInfo &sensorInfo,
                          MediaCtlConfig* config);
 
-    void addVideoNodes(const Node* csiBESocOutput,
-                       MediaCtlConfig* config);
+    void addVideoNodes(MediaCtlConfig *config);
     void addImguVideoNode(int ipuNodeName, const string& nodeName, MediaCtlConfig* config);
     status_t getBinningFactor(const Node *node,
                               int32_t &hBin, int32_t &vBin) const;

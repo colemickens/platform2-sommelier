@@ -1061,103 +1061,20 @@ status_t GraphConfig::getCio2MediaCtlData(int *cio2Format, MediaCtlConfig *media
     mediaCtlConfig->mFTCSize.Width = sourceInfo.output.w;
     mediaCtlConfig->mFTCSize.Height = sourceInfo.output.h;
 
-    Node *csiBEOutput = nullptr, *csiBESocOutput = nullptr;
-    int pfInW = 0, pfInH = 0, pfOutW = 0, pfOutH = 0, pfLeft = 0, pfTop = 0;
-
     // Get csi_be node. If not found, try csi_be_soc. If not found return error.
+    int csiBEOutW = 0, csiBEOutH = 0;
+    Node *csiBEOutput = nullptr;
     ret = mSettings->getDescendantByString("csi_be:output", &csiBEOutput);
-    if (ret != css_err_none) {
+    CheckError(ret != css_err_none, UNKNOWN_ERROR, "Failed to get csi_be nodes from the graph");
 
-        ret = mSettings->getDescendantByString("csi_be_soc:output", &csiBESocOutput);
-        if (ret != css_err_none) {
-            LOGE("Error: Couldn't get csi_be or csi_be_soc nodes from the graph");
-            return UNKNOWN_ERROR;
-        }
-        // get format from _soc
-        ret = csiBESocOutput->getValue(GCSS_KEY_FORMAT, formatStr);
-        if (ret != css_err_none) {
-            LOGE("Error: Couldn't get format from the graph");
-            return UNKNOWN_ERROR;
-        }
-    } else {
-        ret = csiBEOutput->getValue(GCSS_KEY_FORMAT, formatStr);
-        if (ret != css_err_none) {
-            LOGE("Error: Couldn't get format from the graph");
-            return UNKNOWN_ERROR;
-        }
-    }
+    ret = csiBEOutput->getValue(GCSS_KEY_FORMAT, formatStr);
+    CheckError(ret != css_err_none, UNKNOWN_ERROR, "Failed to get format from the graph");
+
+    retErr = getDimensions(csiBEOutput, csiBEOutW, csiBEOutH);
+    CheckError(retErr != OK, UNKNOWN_ERROR, "Failed to get values from csi be output");
 
     /* sanity check, we have at least one CSI-BE */
-    if (CC_UNLIKELY(csiBESocOutput == nullptr && csiBEOutput == nullptr)) {
-        LOGE("Error: CSI BE Output nullptr");
-        return UNKNOWN_ERROR;
-    }
-
-    int csiBEOutW = 0, csiBEOutH = 0;
-    int csiBESocOutW = 0, csiBESocOutH = 0;
-    if (csiBEOutput != nullptr) {
-        retErr = getDimensions(csiBEOutput, csiBEOutW,csiBEOutH);
-        if (retErr != OK) {
-            LOGE("Error: Couldn't values from csi be output");
-            return UNKNOWN_ERROR;
-        }
-    } else {
-        retErr = getDimensions(csiBESocOutput, csiBESocOutW, csiBESocOutH);
-        if (retErr != OK) {
-            LOGE("Error: Couldn't get values from csi be soc out");
-            return UNKNOWN_ERROR;
-        }
-        LOG1("pfInW:%d, pfLeft:%d, pfTop:%d,pfOutW:%d,pfOutH:%d,csiBESocOutW:%d,csiBESocOutH:%d",
-              pfInW, pfLeft, pfTop, pfOutW, pfOutH, csiBESocOutW,csiBESocOutH);
-    }
-
-    /* Boolean to tell whether there is pixel formatter cropping.
-     * This affects which selections are made */
-    bool pixelFormatter = false;
-    if (pfInW != pfOutW || pfInH != pfOutH || pfLeft != 0 || pfTop != 0)
-        pixelFormatter = true;
-
-    /*
-     * If CSI BE SOC is not used, we must have ISA. Get video crop, scaled and
-     * non scaled output from ISA and apply the formats. Otherwise add formats
-     * for CSI BE SOC.
-     */
-    Node *isaNode = nullptr;
-    Node *cropVideoIn = nullptr, *cropVideoOut = nullptr;
-    int videoCropW = 0, videoCropH = 0, videoCropT = 0, videoCropL = 0;
-    int videoCropOutW = 0, videoCropOutH = 0;
-
-    /*
-     * First get and set values when CSI BE SOC is not used
-     */
-    if (csiBESocOutput == nullptr) {
-        ret = mSettings->getDescendant(GCSS_KEY_CSI_BE, &isaNode);
-        if (ret != css_err_none) {
-            LOGE("Error: Couldn't get isa node");
-            return UNKNOWN_ERROR;
-        }
-
-        // Check if there is video cropping available. It is zero as default.
-        ret = isaNode->getDescendantByString("csi_be:output",
-                                             &cropVideoOut);
-        if (ret == css_err_none) {
-            ret = isaNode->getDescendantByString("csi_be:input",
-                                                 &cropVideoIn);
-        }
-        if (ret == css_err_none) {
-            retErr = getDimensions(cropVideoIn, videoCropW, videoCropH,
-                    videoCropL, videoCropT);
-            if (retErr != OK) {
-                LOGE("Error: Couldn't get values from crop video input");
-                return UNKNOWN_ERROR;
-            }
-            retErr = getDimensions(cropVideoOut, videoCropOutW, videoCropOutH);
-            if (retErr != OK) {
-                LOGE("Error: Couldn't get values from crop video output");
-                return UNKNOWN_ERROR;
-            }
-        }
-    }
+    CheckError(csiBEOutput == nullptr, UNKNOWN_ERROR, "CSI BE Output nullptr");
 
     /* Set sensor pixel array parameter to the attributes in 'sensor_mode' node,
      * ignore the attributes in pixel_array and binner node due to upstream driver
@@ -1165,12 +1082,14 @@ status_t GraphConfig::getCio2MediaCtlData(int *cio2Format, MediaCtlConfig *media
      */
     addFormatParams(sourceInfo.pa.name, sourceInfo.output.w, sourceInfo.output.h, 0, sourceInfo.output.mbusFormat, 0, mediaCtlConfig);
 
-    // ipu3-csi2 0 or 1
+    // Add cio2 format into mediaCtlConfig
     addFormatParams(csi2, csiBEOutW, csiBEOutH, 0, sourceInfo.output.mbusFormat, 0, mediaCtlConfig);
     addFormatParams(csi2, csiBEOutW, csiBEOutH, 1, sourceInfo.output.mbusFormat, 0, mediaCtlConfig);
-
-    // Imgu cio2 format
     addFormatParams(mCSIBE, csiBEOutW, csiBEOutH, 0, sourceInfo.pa.out.mbusFormat, 0, mediaCtlConfig);
+    addFormatParams(mCSIBE, csiBEOutW, csiBEOutH, 1, sourceInfo.pa.out.mbusFormat, 0, mediaCtlConfig);
+
+    // Add video nodes into mediaCtlConfig
+    addVideoNodes(mediaCtlConfig);
 
     /* Start populating selections into mediaCtlConfig
      * entity name, width, height, left crop, top crop, target, pad, config */
@@ -1181,10 +1100,6 @@ status_t GraphConfig::getCio2MediaCtlData(int *cio2Format, MediaCtlConfig *media
                        sourceInfo.pa.out.t,
                        V4L2_SEL_TGT_CROP, 0 /* sink pad */, mediaCtlConfig);
 
-    /*
-     * Add video nodes into mediaCtlConfig
-     */
-    addVideoNodes(csiBESocOutput, mediaCtlConfig);
 
     LOG1("Adding Isys link %s:[0] -> %s:[0]", sourceInfo.pa.name.c_str(), csi2.c_str());
     addLinkParams(sourceInfo.pa.name, 0, csi2, 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
@@ -1541,11 +1456,9 @@ status_t GraphConfig::addControls(const Node *sensorNode,
 /**
  * Add video nodes into mediaCtlConfig
  *
- * \param csiBESocOutput[in]  use to determine whether csi be soc is enabled
  * \param mediaCtlConfig[out] populate this struct with given values
  */
-void GraphConfig::addVideoNodes(const Node* csiBESocOutput,
-                                MediaCtlConfig* config)
+void GraphConfig::addVideoNodes(MediaCtlConfig *config)
 {
     CheckError((!config), VOID_VALUE, "@%s null ptr\n", __FUNCTION__);
 
