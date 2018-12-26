@@ -22,7 +22,8 @@
 #include "Camera3Request.h"
 #include "PlatformData.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 
 /**
  * \def RESULT_ENTRY_CAP
@@ -555,4 +556,5 @@ Camera3Request::freePartialResultBuffers(void)
     mResultBufferAllocated = false;
 }
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */

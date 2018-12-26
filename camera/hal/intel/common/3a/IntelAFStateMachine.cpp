@@ -22,7 +22,8 @@
 #include "UtilityMacros.h"
 #include "PlatformData.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 /**
  * AF timeouts. Together these will make:
  * timeout if: [MIN_AF_TIMEOUT - MAX_AF_FRAME_COUNT_TIMEOUT - MAX_AF_TIMEOUT]
@@ -613,5 +614,6 @@ IntelAFModeContinuousPicture::processResult(ia_aiq_af_results& afResult,
     updateResult(result);
     return OK;
 }
-} NAMESPACE_DECLARATION_END
 
+} /* namespace camera2 */
+} /* namespace android */

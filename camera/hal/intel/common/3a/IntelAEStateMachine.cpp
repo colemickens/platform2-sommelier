@@ -20,7 +20,8 @@
 #include "UtilityMacros.h"
 #include "PlatformData.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 IntelAEStateMachine::IntelAEStateMachine(int aCameraId):
         mCameraId(aCameraId),
         mLastControlMode(0),
@@ -337,4 +338,6 @@ IntelAEModeAuto::processResult(const ia_aiq_ae_results &aeResults,
 
     return OK;
 }
-} NAMESPACE_DECLARATION_END
+
+} /* namespace camera2 */
+} /* namespace android */

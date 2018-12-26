@@ -31,7 +31,8 @@
 #include "PerformanceTraces.h"
 #include "Utils.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 void AiqInputParams::init()
 {
     CLEAR(aeInputParams);
@@ -1156,4 +1157,6 @@ bool Intel3aCore::saveAiqdData()
 
     return true;
 }
-} NAMESPACE_DECLARATION_END
+
+} /* namespace camera2 */
+} /* namespace android */

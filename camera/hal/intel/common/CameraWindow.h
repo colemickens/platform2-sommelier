@@ -22,7 +22,8 @@
 #include "ia_coordinate.h"
 #include "FrameInfo.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 class CameraWindow;
 
 /**
@@ -91,6 +92,6 @@ private:
     ia_coordinate mCenter;
     int mMeteringRectangle[5];
 };
-} NAMESPACE_DECLARATION_END
-
+} /* namespace camera2 */
+} /* namespace android */
 #endif // _CAMERA3_HAL_CAMERA_WINDOW_H_

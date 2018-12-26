@@ -22,7 +22,8 @@
 #include "IPU3ISPPipe.h"
 #include "IPCAiq.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 typedef struct {
     IPU3AICRuntimeParams base;
 
@@ -99,5 +100,6 @@ private:
     bool flattenIPU3AICRuntimeParams(const IPU3AICRuntimeParams& params, IPU3AICRuntimeParams_data* input);
     bool unflattenIPU3AICRuntimeParams(IPU3AICRuntimeParams_data* input);
 };
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #endif // PSL_IPU3_IPC_IPCAIC_H_

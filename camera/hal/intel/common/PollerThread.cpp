@@ -22,7 +22,8 @@
 #include "LogHelper.h"
 #include "PerformanceTraces.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 
 PollerThread::PollerThread(std::string name):
     mName(name),
@@ -292,5 +293,5 @@ status_t PollerThread::notifyListener(IPollEventListener::PollEventMessage *msg)
     return status;
 }
 
-} NAMESPACE_DECLARATION_END
-
+} /* namespace camera2 */
+} /* namespace android */

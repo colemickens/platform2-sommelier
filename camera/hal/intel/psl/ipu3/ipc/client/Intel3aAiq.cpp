@@ -24,7 +24,8 @@
 #include "common/UtilityMacros.h"
 #include "LogHelper.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 Intel3aAiq::Intel3aAiq():
         mInitialized(false)
 {
@@ -331,4 +332,5 @@ bool Intel3aAiq::isInitialized() const
 
     return mAiq ? true : false;
 }
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */

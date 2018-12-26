@@ -19,7 +19,8 @@
 #include "LogHelper.h"
 #include "JpegMaker.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 
 JpegMaker::JpegMaker(int cameraid) :
     JpegMakerCore(cameraid)
@@ -65,5 +66,5 @@ status_t JpegMaker::makeJpeg(ImgEncoder::EncodePackage & package, std::shared_pt
     return JpegMakerCore::makeJpeg(corePackage);
 }
 
-} NAMESPACE_DECLARATION_END
-
+} /* namespace camera2 */
+} /* namespace android */

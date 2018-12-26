@@ -25,7 +25,8 @@
 #include "UtilityMacros.h"
 #include "Intel3aCore.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 /**
  * \class Intel3aPlus
  *
@@ -132,6 +133,6 @@ private:
     double mPseudoIsoRatio;
     bool mSupportIsoMap;
 }; //  class Intel3aPlus
-} NAMESPACE_DECLARATION_END
-
+} /* namespace camera2 */
+} /* namespace android */
 #endif  //  AAA_INTEL3APLUS_H_

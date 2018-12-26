@@ -26,7 +26,8 @@
 #define GAMMA_LUT_LOWER_BOUND  0
 #define GAMMA_LUT_UPPER_BOUND  255
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 
 enum AeMode
 {
@@ -182,6 +183,8 @@ struct AAAWindowInfo {
     unsigned height;
 };
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
+
 
 #endif // _HAL_3A_TYPES_H_

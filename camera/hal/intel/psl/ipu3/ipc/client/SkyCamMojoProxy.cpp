@@ -19,7 +19,8 @@
 #include "UtilityMacros.h"
 #include "SkyCamMojoProxy.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 SkyCamMojoProxy::SkyCamMojoProxy(AicMode aicMode):
         mInitialized(false),
         mAicMode(aicMode)
@@ -136,4 +137,6 @@ aic_config* SkyCamMojoProxy::GetAicConfig()
 
     return &config->aicConfig;
 }
-} NAMESPACE_DECLARATION_END
+
+} /* namespace camera2 */
+} /* namespace android */

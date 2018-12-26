@@ -20,7 +20,8 @@
 
 #define DEFAULT_ISO_SPEED 100
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 ExifMetaData::ExifMetaData():
     mAeConfig(nullptr)
     , mIspMkNote(nullptr)
@@ -127,4 +128,5 @@ ExifMetaData::~ExifMetaData()
     }
 
 }
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */

@@ -22,7 +22,8 @@
 #include "PlatformData.h"
 #include "PerformanceTraces.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 CameraStream::CameraStream(int seqNo, camera3_stream_t * stream,
                            IRequestCallback * callback) : mActive(false),
                                                           mSeqNo(seqNo),
@@ -175,5 +176,5 @@ void CameraStream::dump(int fd) const
         mProducer->dump(fd);
 }
 
-} NAMESPACE_DECLARATION_END
-
+} /* namespace camera2 */
+} /* namespace android */

@@ -22,7 +22,8 @@
 #include "Intel3aCommon.h"
 #include "IPCExc.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 class Intel3aExc {
 public:
     Intel3aExc();
@@ -49,5 +50,6 @@ private:
 
     std::vector<ShmMem> mMems;
 };
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #endif //PSL_IPU3_IPC_CLIENT_INTEL3AEXC_H_

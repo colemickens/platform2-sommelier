@@ -69,7 +69,8 @@
 #define IMG_THUMB_START     (IMG_MAIN_START + JPG_FRAME_BUF_SIZE)
 /*******************************************************************************/
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 const char MAKERNOTE_ID[] = { 0x49, 0x6e, 0x74, 0x65, 0x6c, 0x4d,
                               0x6b, 0x6e, 0x6f, 0x74, 0x65, 0x0 /* "IntelMknote\0" */ };
 
@@ -144,5 +145,6 @@ private:
     unsigned char * m_thumbBuf; // MAP: Added to set thumbnail from external data
     unsigned int m_thumbSize; // MAP: Added to set thumbnail from external data
 };
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #endif /* __EXIFCREATER_H__ */

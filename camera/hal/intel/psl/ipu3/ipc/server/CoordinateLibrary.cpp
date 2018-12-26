@@ -21,6 +21,8 @@
 #include "CoordinateLibrary.h"
 #include "IPCCoordinate.h"
 
+using namespace android::camera2;
+
 namespace intel {
 namespace camera {
 

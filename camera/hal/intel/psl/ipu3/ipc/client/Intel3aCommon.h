@@ -19,7 +19,8 @@
 
 #include "Intel3AClient.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 typedef struct ShmMemInfo {
     std::string mName;
     int mSize;
@@ -57,5 +58,7 @@ public:
 private:
     Intel3AClient* mClient;
 };
-} NAMESPACE_DECLARATION_END
+
+} /* namespace camera2 */
+} /* namespace android */
 #endif // PSL_IPU3_IPC_CLIENT_INTEL3ACOMMON_H_

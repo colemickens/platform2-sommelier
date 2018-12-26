@@ -28,7 +28,8 @@
 #include <utils/Errors.h>
 #include "CommonUtilMacros.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 /**
  * global log level
  * This global variable is set from system properties
@@ -270,5 +271,6 @@ private:
 #define HAL_TRACE_CALL(level, tag)
 #endif
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #endif // _LOGHELPER_H_

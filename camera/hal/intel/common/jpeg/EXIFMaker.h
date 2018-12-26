@@ -24,7 +24,8 @@
 #ifndef _EXIFMAKER_H_
 #define _EXIFMAKER_H_
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 /**
  * \class EXIFMaker
  *
@@ -73,5 +74,6 @@ private: // Methods
                        size_t srcLength);
     void clear();
 };
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #endif // _EXIFMAKER_H_

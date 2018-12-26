@@ -24,7 +24,8 @@
 #include "Intel3AClient.h"
 #include "Utils.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 Intel3AClient::Intel3AClient():
     mErrCb(nullptr),
     mIsCallbacked(false),
@@ -294,4 +295,5 @@ void Intel3AClient::notifyCallback(const struct camera_algorithm_callback_ops* c
     s->mNotifyCallback.Run((uint32_t)msg);
 }
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */

@@ -16,7 +16,8 @@
 
 #include "SharedItemPool.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 
 template <class ItemType>
 SharedItemPool<ItemType>::SharedItemPool(const char*name):
@@ -122,4 +123,5 @@ status_t SharedItemPool<ItemType>::_releaseItem(ItemType *item)
     return OK;
 }
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */

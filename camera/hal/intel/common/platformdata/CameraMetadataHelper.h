@@ -24,7 +24,8 @@
  * Camera metadata auxiliary API
  */
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 namespace MetadataHelper {
 
 void dumpMetadata(const camera_metadata_t * meta);
@@ -95,5 +96,6 @@ status_t updateMetadata(camera_metadata_t * metadata, uint32_t tag, const void* 
 
 };
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #endif // _CAMERA3_HAL_METADATAHELPER_H_

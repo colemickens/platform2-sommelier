@@ -22,13 +22,12 @@
 
 namespace intel {
 namespace camera {
-using namespace android::camera2;
 class CoordinateLibrary {
 public:
     CoordinateLibrary();
     virtual ~CoordinateLibrary();
 
-    status_t convert(void* pData, int dataSize);
+    android::camera2::status_t convert(void* pData, int dataSize);
 };
 
 } /* namespace camera */

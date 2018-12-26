@@ -36,7 +36,8 @@
 #include "Intel3aPlus.h"
 #include "Intel3aExc.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 using std::string;
 
 static const int TRANSFORM_MATRIX_SIZE = 9;
@@ -872,5 +873,6 @@ status_t CpfStore::loadConf(const string &cpfFileName)
 
     return ret;
 }
-} NAMESPACE_DECLARATION_END
 
+} /* namespace camera2 */
+} /* namespace android */

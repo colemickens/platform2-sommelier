@@ -25,7 +25,8 @@
 
 #define MAX_NUM_GPS_PROCESSING_METHOD 64
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 /**
  * \class ExifMetaData
  *
@@ -91,6 +92,7 @@ typedef makernote_info MakernoteType;
 private:
     DISALLOW_COPY_AND_ASSIGN(ExifMetaData);
 };
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #endif   // _EXIFMETADATA_H_
 

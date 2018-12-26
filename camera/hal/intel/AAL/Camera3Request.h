@@ -26,7 +26,8 @@
 #include "CameraStreamNode.h"
 #include "CameraBuffer.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 
 /**
  * This define is only used for the purpose of the allocation of output buffer
@@ -198,5 +199,6 @@ private:  /* types and members */
     std::vector<MemoryManagedMetadata> mPartialResultBuffers;
 };
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #endif /* _CAMERA3_HAL_CAMERA3REQUEST_H_ */

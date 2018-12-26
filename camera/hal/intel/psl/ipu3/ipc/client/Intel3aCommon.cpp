@@ -20,7 +20,8 @@
 #include "Intel3aCommon.h"
 #include "PlatformData.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 Intel3aCommon::Intel3aCommon()
 {
     LOG1("@%s", __FUNCTION__);
@@ -110,4 +111,6 @@ void Intel3aCommon::releaseAllShmMems(std::vector<ShmMem>& mems)
         }
     }
 }
-} NAMESPACE_DECLARATION_END
+
+} /* namespace camera2 */
+} /* namespace android */

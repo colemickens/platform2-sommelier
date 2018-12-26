@@ -29,7 +29,8 @@
 
 #include "IaAtrace.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 
 volatile int32_t ia_trace_is_ready  = 0;
 uint64_t ia_trace_enabled_tags = IA_TRACE_TAG_NOT_READY;
@@ -59,4 +60,5 @@ void ia_trace_setup(void)
     pthread_once(&ia_trace_once_control, ia_trace_init_once);
 }
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */

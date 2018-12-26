@@ -28,7 +28,8 @@
 #include "LogHelper.h"
 #include "Utils.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 const float EPSILON = 0.00001f;
 
 
@@ -1273,5 +1274,6 @@ status_t Intel3aPlus::storeLensShadingMap(const LSCGrid &inputLscGrid,
                                             resizeLscGrid,
                                             dstLscGridRGGB);
 }
-} NAMESPACE_DECLARATION_END
 
+} /* namespace camera2 */
+} /* namespace android */

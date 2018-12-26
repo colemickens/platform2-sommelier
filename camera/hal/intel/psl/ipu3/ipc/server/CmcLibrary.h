@@ -23,17 +23,16 @@
 
 namespace intel {
 namespace camera {
-using namespace android::camera2;
 class CmcLibrary {
 public:
     CmcLibrary();
     virtual ~CmcLibrary();
 
-    status_t ia_cmc_init(void* pData, int dataSize);
-    status_t ia_cmc_deinit(void* pData, int dataSize);
+    android::camera2::status_t ia_cmc_init(void* pData, int dataSize);
+    android::camera2::status_t ia_cmc_deinit(void* pData, int dataSize);
 
 private:
-    IPCCmc mIpc;
+    android::camera2::IPCCmc mIpc;
 };
 
 } /* namespace camera */

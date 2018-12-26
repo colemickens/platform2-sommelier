@@ -47,8 +47,6 @@
         'DUMP_IMAGE',
         'HAL_PIXEL_FORMAT_NV12_LINEAR_CAMERA_INTEL=0x10F',
         'MACRO_KBL_AIC',
-        'NAMESPACE_DECLARATION=namespace android {namespace camera2',
-        'NAMESPACE_DECLARATION_END=}',
         'USING_DECLARED_NAMESPACE=using namespace android::camera2',
       ],
       'sources': [
@@ -170,8 +168,6 @@
         'CAMERA_HAL_DEBUG',
         'HAL_PIXEL_FORMAT_NV12_LINEAR_CAMERA_INTEL=0x10F',
         'MACRO_KBL_AIC',
-        'NAMESPACE_DECLARATION=namespace android {namespace camera2',
-        'NAMESPACE_DECLARATION_END=}',
         'USING_DECLARED_NAMESPACE=using namespace android::camera2',
       ],
       'libraries': [

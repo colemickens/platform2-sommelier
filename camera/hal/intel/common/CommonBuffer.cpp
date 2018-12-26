@@ -23,7 +23,8 @@
 #include "UtilityMacros.h"
 #include "Camera3V4l2Format.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 /**
  * CommonBuffer
  *
@@ -202,5 +203,5 @@ status_t CommonBuffer::allocMemory()
     return NO_ERROR;
 }
 
-} NAMESPACE_DECLARATION_END
-
+} /* namespace camera2 */
+} /* namespace android */

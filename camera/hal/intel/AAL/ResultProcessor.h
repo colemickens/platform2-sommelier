@@ -30,7 +30,8 @@
 
 #include <cros-camera/camera_thread.h>
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 
 /**
  * Forward declarations to avoid circular references of  header files
@@ -177,6 +178,7 @@ private:  /* members */
     std::list<int> mRequestsPendingMetaReturn;
 };
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 
 #endif //  _CAMERA3_HAL_RESULT_PROCESSOR_H_

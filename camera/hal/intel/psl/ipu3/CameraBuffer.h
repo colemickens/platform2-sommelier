@@ -23,7 +23,8 @@
 #include "base/macros.h"
 #include <cros-camera/camera_buffer_manager.h>
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 class CameraStream;
 
 /**
@@ -138,6 +139,7 @@ std::shared_ptr<CameraBuffer>
 allocateHandleBuffer(int w, int h, int gfxFmt, int usage, int cameraId);
 };
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 
 #endif // _CAMERA3_HAL_CAMERA_BUFFER_H_

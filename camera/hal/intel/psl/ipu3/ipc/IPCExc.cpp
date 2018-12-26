@@ -20,7 +20,8 @@
 #include "LogHelper.h"
 #include "IPCExc.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 IPCExc::IPCExc()
 {
     LOG1("@%s", __FUNCTION__);
@@ -134,4 +135,5 @@ bool IPCExc::serverUnflattenSensorToGain(ia_exc_analog_gain_to_sensor_units_para
     return true;
 }
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */

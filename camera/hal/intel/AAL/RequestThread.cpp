@@ -22,7 +22,8 @@
 #include "PlatformData.h"
 #include "PerformanceTraces.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 /**
  * Stream type value conversion. Android headers are missing this.
  */
@@ -518,4 +519,5 @@ void RequestThread::dump(int fd)
     LOG2("@%s", __FUNCTION__);
 }
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */

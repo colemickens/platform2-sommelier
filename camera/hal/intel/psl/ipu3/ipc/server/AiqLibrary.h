@@ -28,21 +28,21 @@ public:
     AiqLibrary();
     virtual ~AiqLibrary();
 
-    status_t aiq_init(void* pData, int dataSize);
-    status_t aiq_deinit(void* pData, int dataSize);
-    status_t aiq_af_run(void* pData, int dataSize);
-    status_t aiq_gbce_run(void* pData, int dataSize);
-    status_t statistics_set(void* pData, int dataSize);
-    status_t aiq_ae_run(void* pData, int dataSize);
-    status_t aiq_awb_run(void* pData, int dataSize);
-    status_t aiq_pa_run(void* pData, int dataSize);
-    status_t aiq_sa_run(void* pData, int dataSize);
-    status_t aiq_dsd_run(void* pData, int dataSize);
-    status_t aiq_get_aiqd_data(void* pData, int dataSize);
-    status_t aiq_get_version(void* pData, int dataSize);
+    android::camera2::status_t aiq_init(void* pData, int dataSize);
+    android::camera2::status_t aiq_deinit(void* pData, int dataSize);
+    android::camera2::status_t aiq_af_run(void* pData, int dataSize);
+    android::camera2::status_t aiq_gbce_run(void* pData, int dataSize);
+    android::camera2::status_t statistics_set(void* pData, int dataSize);
+    android::camera2::status_t aiq_ae_run(void* pData, int dataSize);
+    android::camera2::status_t aiq_awb_run(void* pData, int dataSize);
+    android::camera2::status_t aiq_pa_run(void* pData, int dataSize);
+    android::camera2::status_t aiq_sa_run(void* pData, int dataSize);
+    android::camera2::status_t aiq_dsd_run(void* pData, int dataSize);
+    android::camera2::status_t aiq_get_aiqd_data(void* pData, int dataSize);
+    android::camera2::status_t aiq_get_version(void* pData, int dataSize);
 
 private:
-    IPCAiq mIpc;
+    android::camera2::IPCAiq mIpc;
 };
 
 } /* namespace camera */

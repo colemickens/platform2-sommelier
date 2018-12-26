@@ -22,17 +22,16 @@
 
 namespace intel {
 namespace camera {
-using namespace android::camera2;
 class ExcLibrary {
 public:
     ExcLibrary();
     virtual ~ExcLibrary();
 
-    status_t analog_gain_to_sensor_units(void* pData, int dataSize);
-    status_t sensor_units_to_analog_gain(void* pData, int dataSize);
+    android::camera2::status_t analog_gain_to_sensor_units(void* pData, int dataSize);
+    android::camera2::status_t sensor_units_to_analog_gain(void* pData, int dataSize);
 
 private:
-    IPCExc mIpc;
+    android::camera2::IPCExc mIpc;
 };
 
 } // namespace camera

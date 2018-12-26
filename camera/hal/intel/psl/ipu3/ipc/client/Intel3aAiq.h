@@ -22,7 +22,8 @@
 #include "Intel3aCommon.h"
 #include "IPCAiq.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 class Intel3aAiq {
 public:
     Intel3aAiq();
@@ -76,5 +77,6 @@ private:
 
     std::vector<ShmMem> mMems;
 };
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #endif // PSL_IPU3_IPC_CLIENT_INTEL3AAIQ_H_

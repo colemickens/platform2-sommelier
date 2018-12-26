@@ -22,7 +22,8 @@
 #include "UtilityMacros.h"
 #include "PlatformData.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 Intel3aCmc::Intel3aCmc(int cameraId):
     mInitialized(false)
 {
@@ -111,4 +112,6 @@ uintptr_t Intel3aCmc::getCmcHandle() const
 
     return mCmcRemoteHandle;
 }
-} NAMESPACE_DECLARATION_END
+
+} /* namespace camera2 */
+} /* namespace android */

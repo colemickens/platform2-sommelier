@@ -24,7 +24,8 @@
 #include <base/synchronization/waitable_event.h>
 #include <cros-camera/camera_thread.h>
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 
 /**
  * \class RequestThread
@@ -118,5 +119,6 @@ private:  /* members */
     base::WaitableEvent mWaitRequest; /* Guide blocking capture request */
 };
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #endif /* _CAMERA3_REQUESTTHREAD_H_ */

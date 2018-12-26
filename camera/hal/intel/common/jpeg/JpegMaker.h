@@ -20,7 +20,8 @@
 #include "ImgEncoder.h"
 #include "JpegMakerCore.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 
 /**
  * \class JpegMaker
@@ -36,6 +37,6 @@ public: /* Methods */
         const Camera3Request& request);
     status_t makeJpeg(ImgEncoder::EncodePackage & package, std::shared_ptr<CameraBuffer> dest = nullptr);
 };
-} NAMESPACE_DECLARATION_END
-
+} /* namespace camera2 */
+} /* namespace android */
 #endif  // _CAMERA3_HAL_JPEG_MAKER_H_

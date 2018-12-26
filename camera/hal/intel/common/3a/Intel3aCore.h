@@ -33,7 +33,8 @@
 #include "Intel3aExc.h"
 #include "Intel3aMkn.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 static const unsigned int NUM_EXPOSURES = 1;   /*!> Number of frames AIQ algorithm
                                                     provides output for */
 static const unsigned int NUM_FLASH_LEDS = 1;   /*!> Number of leds AEC algorithm
@@ -369,5 +370,6 @@ private:
     Intel3aCoordinate mCoordinate;
 }; //  class Intel3aCore
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #endif  //  AAA_INTEL3ACORE_H_

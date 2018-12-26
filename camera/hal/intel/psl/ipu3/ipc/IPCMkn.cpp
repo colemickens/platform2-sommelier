@@ -22,7 +22,8 @@
 #include "LogHelper.h"
 #include "IPCMkn.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 IPCMkn::IPCMkn()
 {
     LOG1("@%s", __FUNCTION__);
@@ -88,4 +89,5 @@ bool IPCMkn::serverFlattenPrepare(const ia_binary_data& inData,
     return true;
 }
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */

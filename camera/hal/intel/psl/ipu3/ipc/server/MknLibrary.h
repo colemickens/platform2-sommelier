@@ -30,13 +30,13 @@ public:
     MknLibrary();
     virtual ~MknLibrary();
 
-    status_t init(void* pData, int dataSize);
-    status_t uninit(void* pData, int dataSize);
-    status_t prepare(void* pData, int dataSize);
-    status_t enable(void* pData, int dataSize);
+    android::camera2::status_t init(void* pData, int dataSize);
+    android::camera2::status_t uninit(void* pData, int dataSize);
+    android::camera2::status_t prepare(void* pData, int dataSize);
+    android::camera2::status_t enable(void* pData, int dataSize);
 
 private:
-    IPCMkn mIpc;
+    android::camera2::IPCMkn mIpc;
 };
 
 } /* namespace camera */

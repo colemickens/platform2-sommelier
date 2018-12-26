@@ -25,7 +25,8 @@
 #include "base/macros.h"
 #include "cros-camera/jpeg_compressor.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 /**
  * \class ImgEncoderCore
  * This class does JPEG encoding of the main and the thumb buffers provided in
@@ -186,5 +187,6 @@ private:  /* Members */
     std::unique_ptr<cros::JpegCompressor> mJpegCompressor;
 };
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #endif  // _CAMERA3_HAL_IMG_ENCODER_CORE_H_

@@ -20,7 +20,8 @@
 #include "Intel3aCoordinate.h"
 #include "IPCCoordinate.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 Intel3aCoordinate::Intel3aCoordinate():
     mInitialized(false)
 {
@@ -66,4 +67,5 @@ Intel3aCoordinate::convert(
     return params->results;
 }
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */

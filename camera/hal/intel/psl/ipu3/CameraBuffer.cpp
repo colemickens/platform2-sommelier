@@ -22,7 +22,8 @@
 #include "Camera3GFXFormat.h"
 #include "CameraBuffer.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 /**
  * CameraBuffer
  *
@@ -408,4 +409,5 @@ allocateHandleBuffer(int w, int h, int gfxFmt, int usage, int cameraId)
 
 } // namespace MemoryUtils
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */

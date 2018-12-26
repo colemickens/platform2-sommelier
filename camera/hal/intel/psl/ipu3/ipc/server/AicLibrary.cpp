@@ -25,6 +25,8 @@
 
 #include "client/SkyCamMojoProxy.h"
 
+using namespace android::camera2;
+
 namespace intel {
 namespace camera {
 AicLibrary::AicLibrary()

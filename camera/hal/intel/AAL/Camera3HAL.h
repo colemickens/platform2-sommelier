@@ -23,7 +23,8 @@
 #include "PlatformData.h"
 #include "RequestThread.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 
 /**
  * \class Camera3HAL
@@ -71,5 +72,6 @@ private:
     camera3_device_t   mDevice;
 };
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #endif // _CAMERA3_HAL_H_

@@ -19,7 +19,8 @@
 #include "Metadata.h"
 #include "LogHelper.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 const char *metaId2String(const metadata_value_t array[], int size, int value)
 {
     for (int i = 0; i < size; i++) {
@@ -31,5 +32,6 @@ const char *metaId2String(const metadata_value_t array[], int size, int value)
     out = out + std::to_string(value);
     return out.c_str();
 }
-} NAMESPACE_DECLARATION_END
 
+} /* namespace camera2 */
+} /* namespace android */

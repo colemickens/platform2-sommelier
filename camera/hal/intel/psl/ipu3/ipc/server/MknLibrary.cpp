@@ -24,6 +24,8 @@
 #include "LogHelper.h"
 #include "common/UtilityMacros.h"
 
+using namespace android::camera2;
+
 namespace intel {
 namespace camera {
 MknLibrary::MknLibrary()

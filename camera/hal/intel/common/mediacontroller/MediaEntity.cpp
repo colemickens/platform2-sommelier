@@ -22,7 +22,8 @@
 #include "LogHelper.h"
 #include <fcntl.h>
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 MediaEntity::MediaEntity(struct media_entity_desc &entity, struct media_link_desc *links,
                          struct media_pad_desc *pads) :
     mInfo(entity),
@@ -167,5 +168,6 @@ V4L2DeviceType MediaEntity::getType()
         return UNKNOWN_TYPE;
     }
 }
-} NAMESPACE_DECLARATION_END
 
+} /* namespace camera2 */
+} /* namespace android */

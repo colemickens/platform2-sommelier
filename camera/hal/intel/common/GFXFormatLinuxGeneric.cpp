@@ -19,7 +19,8 @@
 #include "PlatformData.h"
 #include "LogHelper.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 
 /* Native handle int indices, as offsets on top of numFds.
  * Keep this in synch with gralloc_priv.h, which is in cameralibs!
@@ -137,4 +138,5 @@ int widthToStride(int fourcc, int width)
     return stride;
 }
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */

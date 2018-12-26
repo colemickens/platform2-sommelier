@@ -19,7 +19,8 @@
 #include "ImgEncoder.h"
 #include "LogHelper.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 
 ImgEncoder::ImgEncoder(int cameraid) :
     mCameraId(cameraid),
@@ -199,4 +200,5 @@ status_t ImgEncoder::jpegDone(ImgEncoderCore::EncodePackage& package,
     return OK;
 }
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */

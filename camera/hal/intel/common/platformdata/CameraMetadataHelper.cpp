@@ -20,7 +20,8 @@
 #include <string>
 #include <sstream>
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 namespace MetadataHelper {
 
 #define CHECK_AND_GET(TYPE, UNION_FIELD) \
@@ -275,4 +276,5 @@ void dumpMetadata(const camera_metadata_t * meta)
 }
 
 }
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */

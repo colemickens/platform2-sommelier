@@ -22,7 +22,8 @@
 #include "Intel3aCommon.h"
 #include "IPCMkn.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 class Intel3aMkn {
 public:
     Intel3aMkn();
@@ -55,5 +56,6 @@ private:
 
     uintptr_t mMknHandle;
 };
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #endif //PSL_IPU3_IPC_CLIENT_INTEL3AMKN_H_

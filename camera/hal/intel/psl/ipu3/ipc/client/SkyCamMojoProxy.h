@@ -23,7 +23,8 @@
 #include "Intel3aCommon.h"
 #include "IPCAic.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 class SkyCamMojoProxy: public SkyCamProxy {
 public:
     SkyCamMojoProxy(AicMode aicMode);
@@ -52,5 +53,6 @@ private:
 
     std::vector<ShmMem> mMems;
 };
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #endif // PSL_IPU3_IPC_CLIENT_SKYCAMMOJOPROXY_H_

@@ -19,7 +19,8 @@
 #include <memory>
 #include <libyuv.h>
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 class ImageScalerCore {
 public:
     template<typename T>
@@ -141,5 +142,6 @@ public:
     }
 };
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #endif // _IMAGESCALER_CORE_H_

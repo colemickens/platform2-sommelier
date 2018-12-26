@@ -21,7 +21,8 @@
 #include <sys/types.h>
 #include <errno.h>
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 
 typedef int         status_t;
 
@@ -55,8 +56,6 @@ enum {
     FDS_NOT_ALLOWED     = (UNKNOWN_ERROR + 7),
 };
 
-} NAMESPACE_DECLARATION_END
-
-// ---------------------------------------------------------------------------
-
+} /* namespace camera2 */
+} /* namespace android */
 #endif // ANDROID_ERRORS_H

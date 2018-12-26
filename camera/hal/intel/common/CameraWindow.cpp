@@ -21,7 +21,8 @@
 #include "UtilityMacros.h"
 #include "LogHelper.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 
 /******************************************************************************
  * CAMERA WINDOW OPERATIONS
@@ -260,4 +261,5 @@ void CameraWindow::dump()
             mXleft, mYtop, mXright, mYbottom, mWidth, mHeight,
             mCenter.x, mCenter.y, mWeight);
 }
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */

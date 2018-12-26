@@ -17,7 +17,8 @@
 #ifndef AAA_INTEL3ACONTROLS_H_
 #define AAA_INTEL3ACONTROLS_H_
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 /**
  * \struct AeControls
  *
@@ -64,5 +65,6 @@ struct AAAControls {
     AwbControls awb;
 };
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #endif //AAA_INTEL3ACONTROLS_H_

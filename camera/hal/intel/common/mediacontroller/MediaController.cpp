@@ -26,7 +26,8 @@
 #include <string.h>
 #include "Camera3V4l2Format.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 
 MediaController::MediaController(const char *path) :
     mPath(path),
@@ -569,4 +570,5 @@ status_t MediaController::getMediaEntity(std::shared_ptr<MediaEntity> &entity, c
     return status;
 }
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */

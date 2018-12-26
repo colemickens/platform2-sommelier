@@ -28,7 +28,8 @@
 #include <base/memory/ptr_util.h>
 #include <base/memory/shared_memory.h>
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 ImgEncoderCore::ImgEncoderCore() :
     mThumbOutBuf(nullptr),
     mJpegDataBuf(nullptr),
@@ -500,4 +501,5 @@ status_t ImgEncoderCore::encodeSync(EncodePackage & package, ExifMetaData& metaD
     return status;
 }
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */

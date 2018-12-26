@@ -22,7 +22,8 @@
 #include "PlatformData.h"
 #include "PerformanceTraces.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 
 ResultProcessor::ResultProcessor(RequestThread * aReqThread,
                                  const camera3_callback_ops_t * cbOps) :
@@ -620,4 +621,5 @@ void ResultProcessor::handleDeviceError(void)
     LOG2("@%s done", __func__);
 }
 //----------------------------------------------------------------------------
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */

@@ -23,7 +23,8 @@
 #include <sstream>
 #include "PerformanceTraces.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 namespace PerformanceTraces {
 
 int HalAtrace::mTraceLevel = 0;
@@ -114,4 +115,5 @@ public:
 void reset(void) {}
 
 } // namespace PerformanceTraces
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */

@@ -18,7 +18,8 @@
 
 #include <string>
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 
 namespace graphconfig {
 namespace utils {
@@ -37,6 +38,7 @@ int32_t getBppFromCommon(int32_t format);
 }  // namespace utils
 }  // namespace graphconfig
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 
 #endif /* COMMON_PLATFORMDATA_GC_FORMATUTILS_H_ */

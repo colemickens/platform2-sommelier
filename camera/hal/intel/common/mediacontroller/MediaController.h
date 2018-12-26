@@ -25,7 +25,8 @@
 #include <utils/Errors.h>
 #include "MediaCtlPipeConfig.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 class MediaEntity;
 
 /**
@@ -83,5 +84,6 @@ private:
 
 }; // class MediaController
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #endif

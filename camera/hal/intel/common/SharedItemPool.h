@@ -49,7 +49,8 @@
  *
  */
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 template <class ItemType>
 class SharedItemPool {
 public:
@@ -133,7 +134,8 @@ private: /* members */
     void (*mResetter)(ItemType*);
 };
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #include "SharedItemPool.cpp"
 
 #endif /* CAMERA3_HAL_SHAREDITEMPOOL_H_ */

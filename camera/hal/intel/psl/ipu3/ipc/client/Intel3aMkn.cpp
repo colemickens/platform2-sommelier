@@ -21,7 +21,8 @@
 #include <utils/Errors.h>
 #include "UtilityMacros.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 Intel3aMkn::Intel3aMkn():
     mInitialized(false)
 {
@@ -134,4 +135,6 @@ uintptr_t Intel3aMkn::getMknHandle() const
 
     return mMknHandle;
 }
-} NAMESPACE_DECLARATION_END
+
+} /* namespace camera2 */
+} /* namespace android */

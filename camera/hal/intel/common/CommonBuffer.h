@@ -42,7 +42,8 @@
  * by itself (allocMemory is called)
  */
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 enum BufferMemoryType {
     BMT_HEAP, /* normal heap memory buffer */
     BMT_GFX,  /* graphic memory buffer */
@@ -102,6 +103,7 @@ protected:
     bool            mInit;    /*!< Boolean to check the integrity */
     bool            mIsOwner; /*!< Boolean to check if self-owned buffer memory */
 };
-} NAMESPACE_DECLARATION_END
 
+} /* namespace camera2 */
+} /* namespace android */
 #endif // _CAMERA3_HAL_COMMON_BUFFER_H_

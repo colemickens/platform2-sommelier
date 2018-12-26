@@ -19,7 +19,8 @@
 
 #include <utils/Errors.h>
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 void convertYV12ToNV21(int width, int height, int srcStride, int dstStride, void *src, void *dst);
 void copyYV12ToYV12(int width, int height, int srcStride, int dstStride, void *src, void *dst);
 
@@ -49,5 +50,6 @@ void convertBuftoNV21(int format, int width, int height, int srcStride, int
 
 void repadYUV420(int width, int height, int srcStride, int dstStride, void *src, void *dst);
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #endif // _CAMERA3_HAL_COLOR_CONVERTER_H_

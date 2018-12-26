@@ -21,7 +21,8 @@
 #include "LogHelper.h"
 #include "Intel3aPlus.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 /**
  * \class IntelAWBModeBase
  *
@@ -117,6 +118,6 @@ private: /* members*/
     IntelAWBModeOff mOffMode;
     IntelAWBModeAuto mAutoMode;
 };
-} NAMESPACE_DECLARATION_END
-
+} /* namespace camera2 */
+} /* namespace android */
 #endif // AAA_INTELAWBSTATEMACHINE_H_

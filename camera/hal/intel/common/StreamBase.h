@@ -19,7 +19,8 @@
 
 #include <stdint.h>
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 // Define the stream intent
 enum StreamUsage {
     STREAM_USAGE_COMMON = 0,
@@ -62,6 +63,6 @@ private:
     StreamUsage mUsage;
     void    *mPrivate;
 };
-} NAMESPACE_DECLARATION_END
-
+} /* namespace camera2 */
+} /* namespace android */
 #endif /* _CAMERA_COMMON_STREAM_BASE_ */

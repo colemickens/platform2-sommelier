@@ -31,7 +31,8 @@
  *
  */
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 template <class ItemType>
 class ItemPool {
 public:
@@ -166,5 +167,7 @@ ItemPool<ItemType>::releaseItem(ItemType *item)
     LOG2("%s size is %zu", __FUNCTION__, mItemsInPool.size());
     return status;
 }
-} NAMESPACE_DECLARATION_END
+
+} /* namespace camera2 */
+} /* namespace android */
 #endif /* CAMERA3_HAL_ITEMPOOL_H_ */

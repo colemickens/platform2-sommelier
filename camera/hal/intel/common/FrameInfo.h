@@ -25,8 +25,8 @@
  *  \struct FrameInfo
  *  Structure to pass resolution, size and and stride info between objects.
  */
-NAMESPACE_DECLARATION {
-
+namespace android {
+namespace camera2 {
 struct FrameInfo {
     FrameInfo(): format(0), width(0), height(0), stride(0),
     size(0), field(0), maxWidth(0), maxHeight(0), bufsNum(0) {}
@@ -44,6 +44,6 @@ struct FrameInfo {
 
     int bufsNum;
 };
-} NAMESPACE_DECLARATION_END
-
+} /* namespace camera2 */
+} /* namespace android */
 #endif // _FRAMEINFO_H_

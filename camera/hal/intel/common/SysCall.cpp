@@ -18,7 +18,8 @@
 
 #include "SysCall.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 
 SysCall::SysCall()
 {
@@ -48,4 +49,5 @@ int SysCall::poll(struct pollfd *pfd, nfds_t nfds, int timeout)
     return ::poll(pfd, nfds, timeout);
 }
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */

@@ -41,7 +41,8 @@ struct mkn_enable_params {
     bool enable_data_collection;
 };
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 class IPCMkn {
 public:
     IPCMkn();
@@ -61,5 +62,6 @@ public:
     bool serverFlattenPrepare(const ia_binary_data& inData,
                            mkn_prepare_params* results);
 };
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #endif // PSL_IPU3_IPC_IPCMKN_H_

@@ -25,7 +25,8 @@
 #include <unistd.h>
 #include "LogHelper.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 
 #define IA_TRACE_MESSAGE_LENGTH       256
 #define IA_TRACE_TAG_ALWAYS           (1 << 0)
@@ -80,5 +81,6 @@ IA_TRACE_DECLSPEC void ia_trace_end(uint64_t tag)
     }
 }
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #endif //_IA_TRACE_H

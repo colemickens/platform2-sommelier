@@ -23,7 +23,10 @@
 #include "LogHelper.h"
 #include "IPCAiq.h"
 
-NAMESPACE_DECLARATION {
+using namespace android::camera2;
+
+namespace android {
+namespace camera2 {
 IPCAiq::IPCAiq()
 {
     LOG1("@%s", __FUNCTION__);
@@ -1085,4 +1088,5 @@ bool IPCAiq::unflattenSaResults(sa_run_params_results* res)
     return true;
 }
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */

@@ -27,7 +27,8 @@
 #include "UtilityMacros.h"
 #include "Camera3V4l2Format.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 using std::string;
 
 /**
@@ -274,4 +275,5 @@ int32_t getV4L2Format(const std::string& formatName)
 
 } // namespace utils
 } // namespace graphconfig
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */

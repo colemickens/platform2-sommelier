@@ -18,8 +18,8 @@
 #define PSL_IPU3_IPC_IPCAIQ_H_
 #include <ia_aiq.h>
 
-using namespace android::camera2;
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 struct aiq_init_params {
     unsigned int aiqb_size;
     unsigned int nvm_size;
@@ -318,5 +318,6 @@ private:
     bool unflattenAeResults(ae_run_params_results* res);
 
 };
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #endif // PSL_IPU3_IPC_IPCAIQ_H_

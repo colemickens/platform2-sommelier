@@ -22,7 +22,8 @@
 #include <ia_cmc_types.h>
 #include "IPCCmc.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 struct ia_exc_analog_gain_to_sensor_units_params {
     cmc_parsed_analog_gain_conversion_t base;
     cmc_parsed_analog_gain_conversion_data gain_conversion;
@@ -54,5 +55,6 @@ public:
     bool serverUnflattenSensorToGain(ia_exc_analog_gain_to_sensor_units_params& params,
                              cmc_parsed_analog_gain_conversion_t** libInput);
 };
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #endif //PSL_IPU3_IPC_IPCEXC_H_

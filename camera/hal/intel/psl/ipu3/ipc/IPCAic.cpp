@@ -24,7 +24,8 @@
 #include "IPCAic.h"
 #include "RuntimeParamsHelper.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 IPCAic::IPCAic()
 {
     LOG1("@%s", __FUNCTION__);
@@ -295,4 +296,6 @@ bool IPCAic::serverUnflattenReset(const Transport& transport, IPU3AICRuntimePara
     LOG1("@%s, params:%p", __FUNCTION__, params);
     return serverUnflattenRun(transport, params);
 }
-} NAMESPACE_DECLARATION_END
+
+} /* namespace camera2 */
+} /* namespace android */

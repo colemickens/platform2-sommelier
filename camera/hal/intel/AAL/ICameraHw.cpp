@@ -17,7 +17,8 @@
 
 #include "ICameraHw.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 
 /* Supported platforms */
 ICameraHw *CreatePSLCamera(int cameraId);
@@ -27,4 +28,5 @@ ICameraHw *ICameraHw::createCameraHW(int cameraId)
     return CreatePSLCamera(cameraId);
 }
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */

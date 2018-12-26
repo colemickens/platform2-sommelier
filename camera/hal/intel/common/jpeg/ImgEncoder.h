@@ -21,7 +21,8 @@
 #include "CameraBuffer.h"
 #include "ImgEncoderCore.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 
 /**
  * \class ImgEncoder
@@ -107,6 +108,7 @@ private:  /* Members */
     std::shared_ptr<CameraBuffer> mJpegDataBuf;
     std::list<AsyncEventData> mEventFifo;
 };
-} NAMESPACE_DECLARATION_END
 
+} /* namespace camera2 */
+} /* namespace android */
 #endif  // _CAMERA3_HAL_IMG_ENCODER_H_

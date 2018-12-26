@@ -24,7 +24,8 @@
 #include <cros-camera/v4l2_device.h>
 #include <utils/Errors.h>
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 
 #define EVENT_POLL_TIMEOUT 100 //100 milliseconds timeout
 
@@ -117,6 +118,6 @@ private:
 
 };
 
-} NAMESPACE_DECLARATION_END
-
+} /* namespace camera2 */
+} /* namespace android */
 #endif /* CAMERA3_HAL_POLLERTHREAD_H_ */

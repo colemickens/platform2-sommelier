@@ -23,7 +23,8 @@
 #include "LogHelper.h"
 #include "PerformanceTraces.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 typedef nsecs_t usecs_t;
 
 /**
@@ -159,6 +160,7 @@ private: /* members*/
     IntelAFModeContinuousPicture mContinuousPictureMode;
     const Intel3aPlus &m3A;
 };
-} NAMESPACE_DECLARATION_END
 
+} /* namespace camera2 */
+} /* namespace android */
 #endif // AAA_INTELAFSTATEMACHINE_H_

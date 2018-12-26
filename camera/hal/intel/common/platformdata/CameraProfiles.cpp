@@ -36,7 +36,8 @@
 #define MAX_METADATA_ATTRIBUTE_NAME_LENTGTH 128
 #define MAX_METADATA_ATTRIBUTE_VALUE_LENTGTH 6144
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 static std::string CIO2_MEDIA_DEVICE="ipu3-cio2";
 
 static std::string IMGU_MEDIA_DEVICE="ipu3-imgu";
@@ -2145,4 +2146,5 @@ void CameraProfiles::dump()
     dumpCommonSection();
     LOGD("===========================end======================");
 }
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */

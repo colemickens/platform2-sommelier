@@ -21,7 +21,8 @@
 #include "LogHelper.h"
 #include "Intel3aPlus.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 /**
  * \class IntelAEModeBase
  *
@@ -128,5 +129,6 @@ private: /* members*/
     IntelAEModeAuto mAutoMode;
 };
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #endif // AAA_INTELAESTATEMACHINE_H_

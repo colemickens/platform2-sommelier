@@ -20,7 +20,8 @@
 #include "Intel3aCommon.h"
 #include "IPCCmc.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 class Intel3aCmc {
 public:
     Intel3aCmc(int cameraId);
@@ -51,5 +52,6 @@ private:
     // at the same time, it will be used when deinit the cmc.
     uintptr_t mCmcRemoteHandle;
 };
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #endif //PSL_IPU3_IPC_CLIENT_INTEL3ACMC_H_

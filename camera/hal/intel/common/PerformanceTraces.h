@@ -37,7 +37,8 @@
  *
  * This code should be disabled in product builds.
  */
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 namespace PerformanceTraces {
 
 /**
@@ -138,5 +139,6 @@ private:
 #define HAL_PER_TRACE_NAME(level, name)
 #define HAL_PER_TRACE_CALL(level)
 #endif
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #endif // ANDROID_LIBCAMERA_PERFORMANCE_TRACES

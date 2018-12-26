@@ -38,7 +38,8 @@
 #include "MediaController.h"
 #include "MediaEntity.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 using std::string;
 
 bool PlatformData::mInitialized = false;
@@ -1271,4 +1272,6 @@ status_t CameraHWInfo::initDriverListHelper(unsigned major, unsigned minor, Sens
 
     return OK;
 }
-} NAMESPACE_DECLARATION_END
+
+} /* namespace camera2 */
+} /* namespace android */

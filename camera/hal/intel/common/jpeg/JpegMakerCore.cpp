@@ -21,7 +21,8 @@
 #include "PlatformData.h"
 #include "CameraMetadataHelper.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 static const unsigned char JPEG_MARKER_SOI[2] = {0xFF, 0xD8};  // JPEG StartOfImage marker
 
 JpegMakerCore::JpegMakerCore(int cameraid) :
@@ -358,4 +359,5 @@ status_t JpegMakerCore::processEvCompensationSettings(const CameraMetadata &sett
     return status;
 }
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */

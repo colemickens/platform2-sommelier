@@ -22,7 +22,8 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 class SysCall
 {
 public:
@@ -34,6 +35,7 @@ public:
     static int ioctl(int fd, int request, void *arg);
     static int poll(struct pollfd *pfd, nfds_t nfds, int timeout);
 };
-} NAMESPACE_DECLARATION_END
 
+} /* namespace camera2 */
+} /* namespace android */
 #endif // _COMMON_SYSCALL_H_

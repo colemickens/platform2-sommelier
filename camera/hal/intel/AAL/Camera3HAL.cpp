@@ -21,7 +21,8 @@
 #include "ICameraHw.h"
 #include "PerformanceTraces.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 /******************************************************************************
  *  C DEVICE INTERFACE IMPLEMENTATION WRAPPER
  *****************************************************************************/
@@ -312,4 +313,5 @@ int Camera3HAL::flush()
 }
 
 //----------------------------------------------------------------------------
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */

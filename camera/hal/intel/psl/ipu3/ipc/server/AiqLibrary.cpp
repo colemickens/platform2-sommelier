@@ -27,6 +27,8 @@
 #include "common/UtilityMacros.h"
 #include "LogHelper.h"
 
+using namespace android::camera2;
+
 namespace intel {
 namespace camera {
 AiqLibrary::AiqLibrary()

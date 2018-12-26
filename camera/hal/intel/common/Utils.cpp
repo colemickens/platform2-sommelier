@@ -28,7 +28,8 @@
 #include <dirent.h>
 #include <algorithm>
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 void getTokens(const char *s, const char delim, std::vector<std::string> &tokens)
 {
     std::stringstream ss(s);
@@ -197,4 +198,5 @@ void dumpToFile(const void* data, int size, int width, int height, int reqId, co
 #endif
 }
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */

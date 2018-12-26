@@ -26,7 +26,8 @@
 
 #include "AAL/IErrorCallback.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 class Intel3AClient : public camera_algorithm_callback_ops_t {
 public:
     Intel3AClient();
@@ -82,5 +83,6 @@ private:
     std::mutex mMutex; // the mutex for the public method
 };
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #endif // PSL_IPU3_IPC_CLIENT_INTEL3ACLIENT_H_

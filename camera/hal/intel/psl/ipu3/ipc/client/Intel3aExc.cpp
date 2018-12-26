@@ -19,7 +19,8 @@
 #include "LogHelper.h"
 #include "UtilityMacros.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 Intel3aExc::Intel3aExc():
     mInitialized(false)
 {
@@ -96,4 +97,5 @@ ia_err Intel3aExc::SensorUnitsToAnalogGain(
     return ia_err_none;
 }
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */

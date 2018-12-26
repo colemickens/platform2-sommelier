@@ -30,7 +30,8 @@
 #include "Intel3aCmc.h"
 #include "base/macros.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 class CameraHWInfo;
 
 #define CPF_MODE_DEFAULT "default"
@@ -92,5 +93,6 @@ private:
     void operator=(const CpfStore&);
 };
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #endif // _CAMERA3_HAL_CAMERA_CONFIGURATION_H_

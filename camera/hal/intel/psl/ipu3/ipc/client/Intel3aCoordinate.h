@@ -20,7 +20,8 @@
 #include <ia_coordinate.h>
 #include "Intel3aCommon.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 class Intel3aCoordinate {
 public:
     Intel3aCoordinate();
@@ -39,5 +40,6 @@ private:
 
     ShmMemInfo mMem;
 };
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #endif // PSL_IPU3_IPC_CLIENT_INTEL3ACOORDINATE_H_

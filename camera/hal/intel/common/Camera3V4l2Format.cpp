@@ -20,7 +20,8 @@
 #include "LogHelper.h"
 #include "Camera3V4l2Format.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 const struct CameraFormatBridge sV4L2PixelFormatBridge[] = {
     {
         .pixelformat = V4L2_PIX_FMT_NV12,
@@ -283,5 +284,5 @@ const char* v4l2Fmt2Str(int format)
     return fourccBuf;
 }
 
-} NAMESPACE_DECLARATION_END
-
+} /* namespace camera2 */
+} /* namespace android */

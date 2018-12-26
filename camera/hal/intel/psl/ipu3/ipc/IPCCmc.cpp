@@ -22,7 +22,8 @@
 #include "LogHelper.h"
 #include "IPCCmc.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 IPCCmc::IPCCmc()
 {
     LOG1("@%s", __FUNCTION__);
@@ -231,4 +232,6 @@ bool IPCCmc::serverFlattenInit(const ia_cmc_t& cmc, cmc_init_params* params)
 
     return true;
 }
-} NAMESPACE_DECLARATION_END
+
+} /* namespace camera2 */
+} /* namespace android */

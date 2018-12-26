@@ -21,7 +21,9 @@
 #include "CameraBuffer.h"
 #include "FrameInfo.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
+
 /* Forward declaration */
 class Camera3Request;
 
@@ -64,5 +66,6 @@ class CameraStreamNode {
    virtual status_t configure(void) = 0;
 };
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #endif /* _CAMERA3_HAL_CAMERASTREAMNODE_H_ */

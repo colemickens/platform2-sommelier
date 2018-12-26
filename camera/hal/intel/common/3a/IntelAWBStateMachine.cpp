@@ -20,7 +20,8 @@
 #include "UtilityMacros.h"
 #include "PlatformData.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 IntelAWBStateMachine::IntelAWBStateMachine(int aCameraId):
         mCameraId(aCameraId),
         mLastControlMode(0),
@@ -238,5 +239,6 @@ IntelAWBModeAuto::processResult(const ia_aiq_awb_results &awbResults,
 
     return OK;
 }
-} NAMESPACE_DECLARATION_END
 
+} /* namespace camera2 */
+} /* namespace android */

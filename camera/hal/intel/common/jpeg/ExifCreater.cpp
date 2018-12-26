@@ -29,7 +29,8 @@
 #include "PlatformData.h"
 #include "ExifCreater.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 static const int APP2_HEADER_SIZE = 4;
 static const char ExifAsciiPrefix[] = { 0x41, 0x53, 0x43, 0x49, 0x49, 0x0, 0x0, 0x0 };
 static const unsigned char JPEG_MARKER_SOI[2] = {0xFF, 0xD8};  // JPEG StartOfImage marker
@@ -689,5 +690,6 @@ void ExifCreater::writeExifIfd(unsigned char **pCur,
     STDCOPY(start + *offset, (int8_t *) pValue, 8 * count);
     *offset += 8 * count;
 }
-} NAMESPACE_DECLARATION_END
 
+} /* namespace camera2 */
+} /* namespace android */

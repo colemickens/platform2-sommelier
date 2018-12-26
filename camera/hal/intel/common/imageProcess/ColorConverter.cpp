@@ -23,7 +23,8 @@
 #include "ColorConverter.h"
 #include "LogHelper.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 // covert YV12 (Y plane, V plane, U plane) to NV21 (Y plane, interlaced VU bytes)
 void convertYV12ToNV21(int width, int height, int srcStride, int dstStride, void *src, void *dst)
 {
@@ -614,4 +615,5 @@ void convertBuftoNV21(int format, int width, int height, int srcStride, int
         break;
     }
 }
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */

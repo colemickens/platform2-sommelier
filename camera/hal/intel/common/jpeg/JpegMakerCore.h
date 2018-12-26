@@ -22,7 +22,8 @@
 #include "ImgEncoderCore.h"
 #include "Camera3Request.h"
 
-NAMESPACE_DECLARATION {
+namespace android {
+namespace camera2 {
 // Android requires that camera HAL to include the final size of the compressed
 // image inside the output stream buffer for the BLOB format. And The JPEG blob
 // ID field must be set to CAMERA3_JPEG_BLOB_ID (0x00FF).
@@ -71,5 +72,6 @@ private:  /* Members */
     int        mCameraId;
 };
 
-} NAMESPACE_DECLARATION_END
+} /* namespace camera2 */
+} /* namespace android */
 #endif  // _CAMERA3_HAL_JPEG_MAKER_CORE_H_
