@@ -17,6 +17,7 @@
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mount_encrypted/tpm.h"
 
+namespace mount_encrypted {
 namespace {
 
 #if !USE_TPM2
@@ -472,3 +473,5 @@ uint32_t TlclReadDelegationFamilyTable(TPM_FAMILY_TABLE_ENTRY *table,
 #endif  // !USE_TPM2
 
 }  // extern "C"
+
+}  // namespace mount_encrypted

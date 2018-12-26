@@ -23,7 +23,7 @@ using ::testing::DoAll;
 using ::testing::Return;
 using ::testing::SetArgPointee;
 
-namespace cryptohome {
+namespace mount_encrypted {
 
 class EncryptedFsTest : public ::testing::Test {
  public:
@@ -55,7 +55,7 @@ class EncryptedFsTest : public ::testing::Test {
     brillo::SecureBlob::HexStringToSecureBlob("0123456789ABCDEF", &secret_);
   }
 
-  MockPlatform platform_;
+  cryptohome::MockPlatform platform_;
   base::ScopedTempDir tmpdir_;
   std::string dmcrypt_name_;
   base::FilePath dmcrypt_device_;
@@ -142,4 +142,4 @@ TEST_F(EncryptedFsTest, DevmapperTeardown) {
             empty_table.ToSecureBlob());
 }
 
-}  // namespace cryptohome
+}  // namespace mount_encrypted

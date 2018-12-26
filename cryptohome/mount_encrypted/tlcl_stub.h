@@ -14,6 +14,8 @@
 
 #include <vboot/tlcl.h>
 
+namespace mount_encrypted {
+
 class TlclStub {
  public:
   struct NvramSpaceData {
@@ -117,5 +119,7 @@ class TlclStub {
 
   DISALLOW_COPY_AND_ASSIGN(TlclStub);
 };
+
+}  // namespace mount_encrypted
 
 #endif  // CRYPTOHOME_MOUNT_ENCRYPTED_TLCL_STUB_H_

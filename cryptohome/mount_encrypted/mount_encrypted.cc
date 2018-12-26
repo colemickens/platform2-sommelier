@@ -88,7 +88,7 @@ static int has_chromefw(void) {
 // being set up. If the system key is passed as an argument, use it, otherwise
 // attempt to query the TPM again.
 static result_code finalize_from_cmdline(
-    const cryptohome::EncryptedFs& encrypted_fs,
+    const mount_encrypted::EncryptedFs& encrypted_fs,
     const base::FilePath& rootdir,
     char* key) {
   // Load the system key.
@@ -99,8 +99,8 @@ static result_code finalize_from_cmdline(
     return RESULT_FAIL_FATAL;
   }
 
-  FixedSystemKeyLoader loader(system_key);
-  EncryptionKey key_manager(&loader, rootdir);
+  mount_encrypted::FixedSystemKeyLoader loader(system_key);
+  mount_encrypted::EncryptionKey key_manager(&loader, rootdir);
   result_code rc = key_manager.SetTpmSystemKey();
   if (rc != RESULT_SUCCESS) {
     return rc;
@@ -130,9 +130,9 @@ static result_code finalize_from_cmdline(
   return RESULT_SUCCESS;
 }
 
-static result_code report_info(const cryptohome::EncryptedFs& encrypted_fs,
+static result_code report_info(const mount_encrypted::EncryptedFs& encrypted_fs,
                                const base::FilePath& rootdir) {
-  Tpm tpm;
+  mount_encrypted::Tpm tpm;
 
   printf("TPM: %s\n", tpm.available() ? "yes" : "no");
   if (tpm.available()) {
@@ -145,7 +145,7 @@ static result_code report_info(const cryptohome::EncryptedFs& encrypted_fs,
   printf("TPM2: %s\n", tpm.is_tpm2() ? "yes" : "no");
   if (has_chromefw()) {
     brillo::SecureBlob system_key;
-    auto loader = SystemKeyLoader::Create(&tpm, rootdir);
+    auto loader = mount_encrypted::SystemKeyLoader::Create(&tpm, rootdir);
     result_code rc = loader->Load(&system_key);
     if (rc != RESULT_SUCCESS) {
       printf("NVRAM: missing.\n");
@@ -187,7 +187,7 @@ void RecordEnumeratedHistogram(MetricsLibrary* metrics,
 
 // Send a secret derived from the system key to the biometric managers, if
 // available, via a tmpfs file which will be read by bio_crypto_init.
-bool SendSecretToBiodTmpFile(const EncryptionKey& key) {
+bool SendSecretToBiodTmpFile(const mount_encrypted::EncryptionKey& key) {
   // If there isn't a bio-sensor, don't bother.
   if (!base::PathExists(base::FilePath(kBioCryptoInitPath))) {
     LOG(INFO) << "There is no biod, so skip sending TPM seed.";
@@ -234,10 +234,10 @@ int main(int argc, char* argv[]) {
   cryptohome::Platform platform;
   brillo::LoopDeviceManager loopdev_manager;
   brillo::DeviceMapper device_mapper;
-  cryptohome::EncryptedFs encrypted_fs(rootdir,
-                                       &platform,
-                                       &loopdev_manager,
-                                       &device_mapper);
+  mount_encrypted::EncryptedFs encrypted_fs(rootdir,
+                                            &platform,
+                                            &loopdev_manager,
+                                            &device_mapper);
 
   MetricsLibrary metrics;
   metrics.SetOutputFile(kMountEncryptedMetricsPath);
@@ -267,9 +267,9 @@ int main(int argc, char* argv[]) {
   if (rc != RESULT_SUCCESS)
     return rc;
 
-  Tpm tpm;
-  auto loader = SystemKeyLoader::Create(&tpm, rootdir);
-  EncryptionKey key(loader.get(), rootdir);
+  mount_encrypted::Tpm tpm;
+  auto loader = mount_encrypted::SystemKeyLoader::Create(&tpm, rootdir);
+  mount_encrypted::EncryptionKey key(loader.get(), rootdir);
   if (has_chromefw()) {
     rc = key.LoadChromeOSSystemKey();
   } else {
@@ -301,7 +301,7 @@ int main(int argc, char* argv[]) {
   if (rc == RESULT_SUCCESS) {
     bool lockbox_valid = false;
     if (loader->CheckLockbox(&lockbox_valid) == RESULT_SUCCESS) {
-      NvramSpace* lockbox_space = tpm.GetLockboxSpace();
+      mount_encrypted::NvramSpace* lockbox_space = tpm.GetLockboxSpace();
       if (lockbox_valid && lockbox_space->is_valid()) {
         LOG(INFO) << "Lockbox is valid, exporting.";
         nvram_export(lockbox_space->contents());

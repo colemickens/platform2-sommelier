@@ -23,7 +23,7 @@
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mount_encrypted/mount_encrypted.h"
 
-namespace cryptohome {
+namespace mount_encrypted {
 
 namespace {
 
@@ -44,7 +44,7 @@ constexpr uint64_t kExt4InodeRatioMinimum = 2048;
 constexpr char kExt4ExtendedOptions[] = "discard,lazy_itable_init";
 constexpr char kDmCryptDefaultCipher[] = "aes-cbc-essiv:sha256";
 
-bool CheckBind(Platform* platform, const BindMount& bind) {
+bool CheckBind(cryptohome::Platform* platform, const BindMount& bind) {
   uid_t user;
   gid_t group;
 
@@ -84,7 +84,7 @@ bool CheckBind(Platform* platform, const BindMount& bind) {
 // stateful setups and would slow down boot once for legacy devices on update,
 // as long as we do not iteratively resize.
 // Spawns a filesystem resizing process and waits for it to finish.
-void SpawnResizer(Platform* platform,
+void SpawnResizer(cryptohome::Platform* platform,
                   const base::FilePath& device,
                   uint64_t blocks,
                   uint64_t blocks_max) {
@@ -231,7 +231,7 @@ bool UdevAdmSettle(const base::FilePath& device_path, bool wait_for_device) {
 }  // namespace
 
 EncryptedFs::EncryptedFs(const base::FilePath& rootdir,
-                         Platform* platform,
+                         cryptohome::Platform* platform,
                          brillo::LoopDeviceManager* loop_device_manager,
                          brillo::DeviceMapper* device_mapper)
     : platform_(platform),
@@ -567,4 +567,4 @@ brillo::SecureBlob EncryptedFs::GetKey() const {
   return dm_table.CryptGetKey();
 }
 
-}  // namespace cryptohome
+}  // namespace mount_encrypted

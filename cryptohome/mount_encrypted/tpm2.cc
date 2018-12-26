@@ -19,6 +19,7 @@
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mount_encrypted/mount_encrypted.h"
 
+namespace mount_encrypted {
 namespace {
 
 // TPM2 NVRAM area and related constants.
@@ -220,3 +221,5 @@ std::unique_ptr<SystemKeyLoader> SystemKeyLoader::Create(
     Tpm* tpm, const base::FilePath& rootdir) {
   return std::make_unique<Tpm2SystemKeyLoader>(tpm);
 }
+
+}  // namespace mount_encrypted

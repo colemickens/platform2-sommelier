@@ -23,6 +23,7 @@
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mount_encrypted/mount_encrypted.h"
 
+namespace mount_encrypted {
 namespace {
 
 const uint32_t kLockboxSaltOffset = 0x5;
@@ -691,3 +692,5 @@ std::unique_ptr<SystemKeyLoader> SystemKeyLoader::Create(
     Tpm* tpm, const base::FilePath& rootdir) {
   return std::make_unique<Tpm1SystemKeyLoader>(tpm, rootdir);
 }
+
+}  // namespace mount_encrypted

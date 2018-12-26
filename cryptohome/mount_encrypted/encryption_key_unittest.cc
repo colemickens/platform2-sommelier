@@ -22,6 +22,7 @@
 #include "cryptohome/mount_encrypted/tlcl_stub.h"
 #include "cryptohome/mount_encrypted/tpm.h"
 
+namespace mount_encrypted {
 namespace {
 
 // Size of the encryption key (256 bit AES) in bytes.
@@ -780,3 +781,5 @@ TEST_F(EncryptionKeyTest, StatefulPreservationRetryTpmOwnership) {
 }
 
 #endif  // !USE_TPM2
+
+}  // namespace mount_encrypted

@@ -22,6 +22,7 @@
 
 #include "cryptohome/mount_encrypted/mount_encrypted.h"
 
+namespace mount_encrypted {
 const uint32_t kLockboxSizeV1 = 0x2c;
 const uint32_t kLockboxSizeV2 = 0x45;
 
@@ -278,4 +279,5 @@ class FixedSystemKeyLoader : public SystemKeyLoader {
   brillo::SecureBlob key_;
 };
 
+}  // namespace mount_encrypted
 #endif  // CRYPTOHOME_MOUNT_ENCRYPTED_TPM_H_

@@ -22,7 +22,7 @@
 #define STATEFUL_MNT "mnt/stateful_partition"
 #define ENCRYPTED_MNT STATEFUL_MNT "/encrypted"
 
-namespace cryptohome {
+namespace mount_encrypted {
 
 // Teardown stage: for granular teardowns
 enum class TeardownStage {
@@ -57,7 +57,7 @@ class EncryptedFs {
 
   // Setup EncryptedFs with the root dir, platform and loopdev manager.
   EncryptedFs(const base::FilePath& rootdir,
-              Platform* platform,
+              cryptohome::Platform* platform,
               brillo::LoopDeviceManager* loop_device_manager,
               brillo::DeviceMapper* device_mapper);
   ~EncryptedFs() = default;
@@ -97,7 +97,7 @@ class EncryptedFs {
  private:
   // Use a raw Platform pointer to avoid convoluted EXPECT_CALL semantics
   // for mock Platform objects.
-  Platform* platform_;
+  cryptohome::Platform* platform_;
   // Loop Device Manager.
   brillo::LoopDeviceManager* loopdev_manager_;
   // Device Mapper.
@@ -126,6 +126,6 @@ class EncryptedFs {
   std::vector<BindMount> bind_mounts_;
 };
 
-}  // namespace cryptohome
+}  // namespace mount_encrypted
 
 #endif  // CRYPTOHOME_MOUNT_ENCRYPTED_ENCRYPTED_FS_H_

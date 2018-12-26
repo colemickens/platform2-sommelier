@@ -22,6 +22,7 @@
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/mount_encrypted/mount_encrypted.h"
 
+namespace mount_encrypted {
 namespace {
 
 #if !USE_TPM2
@@ -595,3 +596,4 @@ result_code Tpm::HasSystemKeyInitializedFlag(bool* flag_value) {
 }
 
 #endif
+}  // namespace mount_encrypted

@@ -18,6 +18,7 @@
 #include "cryptohome/mount_encrypted/mount_encrypted.h"
 #include "cryptohome/mount_encrypted/tpm.h"
 
+namespace mount_encrypted {
 namespace paths {
 const char kStatefulMount[] = "mnt/stateful_partition";
 const char kEncryptedKey[] = "encrypted.key";
@@ -438,3 +439,5 @@ bool EncryptionKey::RewrapPreviousEncryptionKey() {
 
   return true;
 }
+
+}  // namespace mount_encrypted

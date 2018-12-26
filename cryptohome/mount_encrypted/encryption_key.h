@@ -16,6 +16,8 @@
 
 #include "cryptohome/mount_encrypted/mount_encrypted.h"
 
+namespace mount_encrypted {
+
 class SystemKeyLoader;
 
 // EncryptionKey takes care of the lifecycle of the encryption key protecting
@@ -134,5 +136,7 @@ class EncryptionKey {
   // Encryption key status. Only valid after calling LoadEncryptionKey().
   EncryptionKeyStatus encryption_key_status_ = EncryptionKeyStatus::kUnknown;
 };
+
+}  // namespace mount_encrypted
 
 #endif  // CRYPTOHOME_MOUNT_ENCRYPTED_ENCRYPTION_KEY_H_
