@@ -463,7 +463,10 @@ TEST(ProtoMojomConversionTest, EntityToProto) {
   entity_ptr->type = chromeos::media_perception::mojom::EntityType::FACE;
   *entity_ptr->label = "face 0";
   entity_ptr->confidence = 0.1;
+  entity_ptr->depth = chromeos::media_perception::mojom::Distance::New();
   entity_ptr->depth->magnitude = 2.5;
+  entity_ptr->bounding_box =
+      chromeos::media_perception::mojom::NormalizedBoundingBox::New();
   entity_ptr->bounding_box->x_min = 0.6;
 
   Entity entity = ToProto(entity_ptr);
@@ -486,6 +489,14 @@ TEST(ProtoMojomConversionTest, FramePerceptionToProto) {
   perception_ptr->perception_types.push_back(
       chromeos::media_perception::mojom::FramePerceptionType::MOTION_DETECTION);
   perception_ptr->entities.resize(4);
+  perception_ptr->entities[0] =
+      chromeos::media_perception::mojom::Entity::New();
+  perception_ptr->entities[1] =
+      chromeos::media_perception::mojom::Entity::New();
+  perception_ptr->entities[2] =
+      chromeos::media_perception::mojom::Entity::New();
+  perception_ptr->entities[3] =
+      chromeos::media_perception::mojom::Entity::New();
   perception_ptr->entities[0]->type =
       chromeos::media_perception::mojom::EntityType::FACE;
   perception_ptr->entities[1]->type =
