@@ -17,8 +17,6 @@ message DeviceConfig {
   required string arc_ifname = 3;
   required string arc_ipv4 = 4;
   required string mac_addr = 5;
-  required bool fwd_multicast = 6;
-  required bool find_ipv6_routes = 7;
 }
 
 message SetArcIp {

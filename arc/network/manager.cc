@@ -16,8 +16,6 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/minijail/minijail.h>
 
-#include "arc/network/ipc.pb.h"
-
 namespace {
 
 const char kUnprivilegedUser[] = "arc-networkd";
@@ -69,14 +67,25 @@ int Manager::OnInit() {
 }
 
 void Manager::InitialSetup() {
-  shill_client_ = std::make_unique<ShillClient>(std::move(bus_));
+  shill_client_.reset(new ShillClient(bus_));
   shill_client_->RegisterDevicesChangedHandler(
       base::Bind(&Manager::OnDevicesChanged, weak_factory_.GetWeakPtr()));
 
-  device_mgr_ = std::make_unique<DeviceManager>(
-      base::Bind(&Manager::SendMessage, weak_factory_.GetWeakPtr()));
+  // Legacy device.
+  AddDevice(kAndroidDevice);
   shill_client_->ScanDevices(
       base::Bind(&Manager::OnDevicesChanged, weak_factory_.GetWeakPtr()));
+}
+
+void Manager::AddDevice(const std::string& name) {
+  auto device = Device::ForInterface(name);
+  if (!device)
+    return;
+  LOG(INFO) << "Adding device " << name;
+  device->RegisterMessageSink(
+      base::Bind(&Manager::SendMessage, weak_factory_.GetWeakPtr()));
+  device->Announce();
+  devices_.emplace(name, std::move(device));
 }
 
 bool Manager::OnContainerStart(const struct signalfd_siginfo& info) {
@@ -100,17 +109,35 @@ bool Manager::OnContainerStop(const struct signalfd_siginfo& info) {
 
 void Manager::OnDefaultInterfaceChanged(const std::string& ifname) {
   LOG(INFO) << "Default interface changed to " << ifname;
-  if (device_mgr_)
-    device_mgr_->Enable(kAndroidDevice, ifname);
+  // This is only applicable to the legacy 'android' interface.
+  const auto it = devices_.find(kAndroidDevice);
+  if (it != devices_.end()) {
+    it->second->Disable();
+    if (!ifname.empty())
+      it->second->Enable(ifname);
+  }
 }
 
 void Manager::OnDevicesChanged(const std::set<std::string>& devices) {
-  if (device_mgr_)
-    device_mgr_->Reset(devices);
+  for (auto it = devices_.begin(); it != devices_.end();) {
+    const std::string& name = it->first;
+    if (name != kAndroidDevice && devices.find(name) == devices.end()) {
+      LOG(INFO) << "Removing device " << name;
+      it = devices_.erase(it);
+    } else {
+      ++it;
+    }
+  }
+  for (const std::string& name : devices) {
+    if (devices_.find(name) == devices_.end())
+      AddDevice(name);
+  }
 }
 
 void Manager::OnShutdown(int* exit_code) {
-  device_mgr_.reset();
+  for (auto& dev : devices_) {
+    dev.second->Disable();
+  }
 }
 
 void Manager::OnSubprocessExited(pid_t pid, const siginfo_t& info) {
