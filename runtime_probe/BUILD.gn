@@ -40,6 +40,7 @@ static_library("libruntime_probe") {
     "daemon.cc",
     "probe_result_checker.cc",
     "functions/all_functions.cc",
+    "functions/ectool_i2cread.cc",
     "functions/generic_battery.cc",
     "functions/generic_storage.cc",
     "functions/sequence.cc",
