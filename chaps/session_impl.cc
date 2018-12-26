@@ -352,14 +352,12 @@ SessionImpl::SessionImpl(int slot_id,
   CHECK(token_object_pool_);
   CHECK(tpm_utility_);
   CHECK(factory_);
-  session_object_pool_.reset(factory_->CreateObjectPool(handle_generator,
-                                                        NULL,
-                                                        NULL));
+  session_object_pool_.reset(
+      factory_->CreateObjectPool(handle_generator, NULL, NULL));
   CHECK(session_object_pool_.get());
 }
 
-SessionImpl::~SessionImpl() {
-}
+SessionImpl::~SessionImpl() {}
 
 int SessionImpl::GetSlot() const {
   return slot_id_;
@@ -381,9 +379,7 @@ bool SessionImpl::IsOperationActive(OperationType type) const {
 CK_RV SessionImpl::CreateObject(const CK_ATTRIBUTE_PTR attributes,
                                 int num_attributes,
                                 int* new_object_handle) {
-  return CreateObjectInternal(attributes,
-                              num_attributes,
-                              NULL,
+  return CreateObjectInternal(attributes, num_attributes, NULL,
                               new_object_handle);
 }
 
@@ -395,9 +391,7 @@ CK_RV SessionImpl::CopyObject(const CK_ATTRIBUTE_PTR attributes,
   if (!GetObject(object_handle, &orig_object))
     return CKR_OBJECT_HANDLE_INVALID;
   CHECK(orig_object);
-  return CreateObjectInternal(attributes,
-                              num_attributes,
-                              orig_object,
+  return CreateObjectInternal(attributes, num_attributes, orig_object,
                               new_object_handle);
 }
 
@@ -406,8 +400,8 @@ CK_RV SessionImpl::DestroyObject(int object_handle) {
   if (!GetObject(object_handle, &object))
     return CKR_OBJECT_HANDLE_INVALID;
   CHECK(object);
-  ObjectPool* pool = object->IsTokenObject() ? token_object_pool_
-      : session_object_pool_.get();
+  ObjectPool* pool =
+      object->IsTokenObject() ? token_object_pool_ : session_object_pool_.get();
   return ResultToRV(pool->Delete(object), CKR_GENERAL_ERROR);
 }
 
@@ -426,15 +420,15 @@ bool SessionImpl::GetModifiableObject(int object_handle, Object** object) {
   if (!GetObject(object_handle, &const_object))
     return false;
   ObjectPool* pool = const_object->IsTokenObject() ? token_object_pool_
-      : session_object_pool_.get();
+                                                   : session_object_pool_.get();
   *object = pool->GetModifiableObject(const_object);
   return true;
 }
 
 CK_RV SessionImpl::FlushModifiableObject(Object* object) {
   CHECK(object);
-  ObjectPool* pool = object->IsTokenObject() ? token_object_pool_
-      : session_object_pool_.get();
+  ObjectPool* pool =
+      object->IsTokenObject() ? token_object_pool_ : session_object_pool_.get();
   return ResultToRV(pool->Flush(object), CKR_FUNCTION_FAILED);
 }
 
@@ -472,8 +466,8 @@ CK_RV SessionImpl::FindObjects(int max_object_count,
   CHECK(object_handles);
   if (!find_results_valid_)
     return CKR_OPERATION_NOT_INITIALIZED;
-  size_t end_offset = find_results_offset_ +
-      static_cast<size_t>(max_object_count);
+  size_t end_offset =
+      find_results_offset_ + static_cast<size_t>(max_object_count);
   if (end_offset > find_results_.size())
     end_offset = find_results_.size();
   for (size_t i = find_results_offset_; i < end_offset; ++i) {
@@ -541,9 +535,7 @@ CK_RV SessionImpl::OperationInit(OperationType operation,
       context->key_ = key;
       context->is_valid_ = true;
     } else {
-      return CipherInit((operation == kEncrypt),
-                        mechanism,
-                        mechanism_parameter,
+      return CipherInit((operation == kEncrypt), mechanism, mechanism_parameter,
                         key);
     }
   } else if (operation == kSign || operation == kVerify ||
@@ -553,11 +545,8 @@ CK_RV SessionImpl::OperationInit(OperationType operation,
     if (IsHMAC(mechanism)) {
       string key_material = key->GetAttributeString(CKA_VALUE);
       HMAC_CTX_init(&context->hmac_context_);
-      HMAC_Init_ex(&context->hmac_context_,
-                   key_material.data(),
-                   key_material.length(),
-                   digest,
-                   NULL);
+      HMAC_Init_ex(&context->hmac_context_, key_material.data(),
+                   key_material.length(), digest, NULL);
       context->is_hmac_ = true;
     } else if (digest) {
       EVP_DigestInit(&context->digest_context_, digest);
@@ -589,9 +578,7 @@ CK_RV SessionImpl::OperationUpdate(OperationType operation,
     return CKR_OPERATION_ACTIVE;
   }
   context->is_incremental_ = true;
-  return OperationUpdateInternal(operation,
-                                 data_in,
-                                 required_out_length,
+  return OperationUpdateInternal(operation, data_in, required_out_length,
                                  data_out);
 }
 
@@ -607,13 +594,11 @@ CK_RV SessionImpl::OperationUpdateInternal(OperationType operation,
       OperationCancel(operation);
     return rv;
   } else if (context->is_digest_) {
-    EVP_DigestUpdate(&context->digest_context_,
-                     data_in.data(),
+    EVP_DigestUpdate(&context->digest_context_, data_in.data(),
                      data_in.length());
   } else if (context->is_hmac_) {
     HMAC_Update(&context->hmac_context_,
-                ConvertStringToByteBuffer(data_in.c_str()),
-                data_in.length());
+                ConvertStringToByteBuffer(data_in.c_str()), data_in.length());
   } else {
     // We don't need to process now; just queue the data.
     context->data_ += data_in;
@@ -696,9 +681,7 @@ CK_RV SessionImpl::OperationFinalInternal(OperationType operation,
     }
     context->is_finished_ = true;
   }
-  CK_RV result = GetOperationOutput(context,
-                                    required_out_length,
-                                    data_out);
+  CK_RV result = GetOperationOutput(context, required_out_length, data_out);
   if (result == CKR_BUFFER_TOO_SMALL) {
     // We'll keep the context valid so a subsequent call can pick up the data.
     context->is_valid_ = true;
@@ -722,9 +705,8 @@ CK_RV SessionImpl::VerifyFinal(const string& signature) {
     if (signature.length() != data_out.length())
       return CKR_SIGNATURE_LEN_RANGE;
 
-    if (0 != brillo::SecureMemcmp(signature.data(),
-                                    data_out.data(),
-                                    signature.length()))
+    if (0 != brillo::SecureMemcmp(signature.data(), data_out.data(),
+                                  signature.length()))
       return CKR_SIGNATURE_INVALID;
 
     return CKR_OK;
@@ -764,9 +746,7 @@ CK_RV SessionImpl::OperationSinglePart(OperationType operation,
     context->is_finished_ = true;
   }
   context->is_valid_ = false;
-  result = GetOperationOutput(context,
-                              required_out_length,
-                              data_out);
+  result = GetOperationOutput(context, required_out_length, data_out);
   if (result == CKR_BUFFER_TOO_SMALL) {
     // We'll keep the context valid so a subsequent call can pick up the data.
     context->is_valid_ = true;
@@ -838,8 +818,8 @@ CK_RV SessionImpl::GenerateKey(CK_MECHANISM_TYPE mechanism,
   result = object->FinalizeNewObject();
   if (result != CKR_OK)
     return result;
-  ObjectPool* pool = object->IsTokenObject() ? token_object_pool_
-      : session_object_pool_.get();
+  ObjectPool* pool =
+      object->IsTokenObject() ? token_object_pool_ : session_object_pool_.get();
   auto pool_res = pool->Insert(object.get());
   if (!IsSuccess(pool_res))
     return ResultToRV(pool_res, CKR_FUNCTION_FAILED);
@@ -866,20 +846,22 @@ CK_RV SessionImpl::GenerateKeyPair(CK_MECHANISM_TYPE mechanism,
 
   // copy attributes
   // TODO(menghuan): don't copy the attribute that doesn't support
-  CK_RV result = public_object->SetAttributes(public_attributes,
-                                              num_public_attributes);
+  CK_RV result =
+      public_object->SetAttributes(public_attributes, num_public_attributes);
   if (result != CKR_OK)
     return result;
-  result = private_object->SetAttributes(private_attributes,
-                                         num_private_attributes);
+  result =
+      private_object->SetAttributes(private_attributes, num_private_attributes);
   if (result != CKR_OK)
     return result;
 
   // Get the object pool
-  ObjectPool* public_pool = (public_object->IsTokenObject() ?
-                             token_object_pool_ : session_object_pool_.get());
-  ObjectPool* private_pool = (private_object->IsTokenObject() ?
-                              token_object_pool_ : session_object_pool_.get());
+  ObjectPool* public_pool =
+      (public_object->IsTokenObject() ? token_object_pool_
+                                      : session_object_pool_.get());
+  ObjectPool* private_pool =
+      (private_object->IsTokenObject() ? token_object_pool_
+                                       : session_object_pool_.get());
 
   switch (mechanism) {
     case CKM_RSA_PKCS_KEY_PAIR_GEN:
@@ -956,11 +938,10 @@ CK_RV SessionImpl::CipherInit(bool is_encrypt,
                               const string& mechanism_parameter,
                               const Object* key) {
   OperationType operation = is_encrypt ? kEncrypt : kDecrypt;
-  EVP_CIPHER_CTX* context =
-      &operation_context_[operation].cipher_context_;
+  EVP_CIPHER_CTX* context = &operation_context_[operation].cipher_context_;
   string key_material = key->GetAttributeString(CKA_VALUE);
-  const EVP_CIPHER* cipher_type = GetOpenSSLCipher(mechanism,
-                                                   key_material.size());
+  const EVP_CIPHER* cipher_type =
+      GetOpenSSLCipher(mechanism, key_material.size());
   if (!cipher_type) {
     LOG(ERROR) << "Mechanism not supported: 0x" << hex << mechanism;
     return CKR_MECHANISM_INVALID;
@@ -977,11 +958,9 @@ CK_RV SessionImpl::CipherInit(bool is_encrypt,
     LOG(ERROR) << "Key size not supported: " << key_material.size();
     return CKR_KEY_SIZE_RANGE;
   }
-  if (!EVP_CipherInit(context,
-                      cipher_type,
-                      ConvertStringToByteBuffer(key_material.c_str()),
-                      ConvertStringToByteBuffer(mechanism_parameter.c_str()),
-                      is_encrypt)) {
+  if (!EVP_CipherInit(
+          context, cipher_type, ConvertStringToByteBuffer(key_material.c_str()),
+          ConvertStringToByteBuffer(mechanism_parameter.c_str()), is_encrypt)) {
     LOG(ERROR) << "EVP_CipherInit failed: " << GetOpenSSLError();
     return CKR_FUNCTION_FAILED;
   }
@@ -1003,11 +982,9 @@ CK_RV SessionImpl::CipherUpdate(OperationContext* context,
     int out_length = in_length + kMaxCipherBlockBytes;
     context->data_.resize(out_length);
     if (!EVP_CipherUpdate(
-        &context->cipher_context_,
-        ConvertStringToByteBuffer(context->data_.c_str()),
-        &out_length,
-        ConvertStringToByteBuffer(data_in.c_str()),
-        in_length)) {
+            &context->cipher_context_,
+            ConvertStringToByteBuffer(context->data_.c_str()), &out_length,
+            ConvertStringToByteBuffer(data_in.c_str()), in_length)) {
       EVP_CIPHER_CTX_cleanup(&context->cipher_context_);
       context->is_valid_ = false;
       LOG(ERROR) << "EVP_CipherUpdate failed: " << GetOpenSSLError();
@@ -1015,19 +992,16 @@ CK_RV SessionImpl::CipherUpdate(OperationContext* context,
     }
     context->data_.resize(out_length);
   }
-  return GetOperationOutput(context,
-                            required_out_length,
-                            data_out);
+  return GetOperationOutput(context, required_out_length, data_out);
 }
 
 CK_RV SessionImpl::CipherFinal(OperationContext* context) {
   if (context->data_.empty()) {
     int out_length = kMaxCipherBlockBytes * 2;
     context->data_.resize(out_length);
-    if (!EVP_CipherFinal(
-        &context->cipher_context_,
-        ConvertStringToByteBuffer(context->data_.c_str()),
-        &out_length)) {
+    if (!EVP_CipherFinal(&context->cipher_context_,
+                         ConvertStringToByteBuffer(context->data_.c_str()),
+                         &out_length)) {
       LOG(ERROR) << "EVP_CipherFinal failed: " << GetOpenSSLError();
       EVP_CIPHER_CTX_cleanup(&context->cipher_context_);
       return CKR_FUNCTION_FAILED;
@@ -1251,18 +1225,14 @@ bool SessionImpl::GetTPMKeyHandle(const Object* key, int* key_handle) {
         bool is_private = key->GetAttributeBool(CKA_PRIVATE, true);
         int root_key_handle = is_private ? private_root_key_ : public_root_key_;
         if (!tpm_utility_->LoadKeyWithParent(
-            slot_id_,
-            key->GetAttributeString(kKeyBlobAttribute),
-            SecureBlob(auth_data.begin(), auth_data.end()),
-            root_key_handle,
-            key_handle))
+                slot_id_, key->GetAttributeString(kKeyBlobAttribute),
+                SecureBlob(auth_data.begin(), auth_data.end()), root_key_handle,
+                key_handle))
           return false;
       } else {
         if (!tpm_utility_->LoadKey(
-            slot_id_,
-            key->GetAttributeString(kKeyBlobAttribute),
-            SecureBlob(auth_data.begin(), auth_data.end()),
-            key_handle))
+                slot_id_, key->GetAttributeString(kKeyBlobAttribute),
+                SecureBlob(auth_data.begin(), auth_data.end()), key_handle))
           return false;
       }
     } else {
@@ -1288,9 +1258,7 @@ bool SessionImpl::LoadLegacyRootKeys() {
     LOG(ERROR) << "Failed to read legacy private root key blob.";
     return false;
   }
-  if (!tpm_utility_->LoadKey(slot_id_,
-                             private_blob,
-                             SecureBlob(),
+  if (!tpm_utility_->LoadKey(slot_id_, private_blob, SecureBlob(),
                              &private_root_key_)) {
     LOG(ERROR) << "Failed to load legacy private root key.";
     return false;
@@ -1326,9 +1294,7 @@ bool SessionImpl::RSADecrypt(OperationContext* context) {
     CHECK(RSA_size(rsa.get()) <= kMaxRSAOutputBytes);
     int length = RSA_private_decrypt(
         context->data_.length(),
-        ConvertStringToByteBuffer(context->data_.data()),
-        buffer,
-        rsa.get(),
+        ConvertStringToByteBuffer(context->data_.data()), buffer, rsa.get(),
         RSA_PKCS1_PADDING);  // Strips PKCS #1 type 2 padding.
     if (length == -1) {
       LOG(ERROR) << "RSA_private_decrypt failed: " << GetOpenSSLError();
@@ -1344,10 +1310,8 @@ bool SessionImpl::RSAEncrypt(OperationContext* context) {
   uint8_t buffer[kMaxRSAOutputBytes];
   CHECK(RSA_size(rsa.get()) <= kMaxRSAOutputBytes);
   int length = RSA_public_encrypt(
-      context->data_.length(),
-      ConvertStringToByteBuffer(context->data_.data()),
-      buffer,
-      rsa.get(),
+      context->data_.length(), ConvertStringToByteBuffer(context->data_.data()),
+      buffer, rsa.get(),
       RSA_PKCS1_PADDING);  // Adds PKCS #1 type 2 padding.
   if (length == -1) {
     LOG(ERROR) << "RSA_public_encrypt failed: " << GetOpenSSLError();
@@ -1372,10 +1336,8 @@ bool SessionImpl::RSASign(OperationContext* context) {
     CHECK(RSA_size(rsa.get()) <= kMaxRSAOutputBytes);
     uint8_t buffer[kMaxRSAOutputBytes];
     int length = RSA_private_encrypt(
-        data_to_sign.length(),
-        ConvertStringToByteBuffer(data_to_sign.data()),
-        buffer,
-        rsa.get(),
+        data_to_sign.length(), ConvertStringToByteBuffer(data_to_sign.data()),
+        buffer, rsa.get(),
         RSA_PKCS1_PADDING);  // Adds PKCS #1 type 1 padding.
     if (length == -1) {
       LOG(ERROR) << "RSA_private_encrypt failed: " << GetOpenSSLError();
@@ -1397,9 +1359,7 @@ CK_RV SessionImpl::RSAVerify(OperationContext* context,
   CHECK(RSA_size(rsa.get()) <= kMaxRSAOutputBytes);
   uint8_t buffer[kMaxRSAOutputBytes];
   int length = RSA_public_decrypt(
-      signature.length(),
-      ConvertStringToByteBuffer(signature.data()),
-      buffer,
+      signature.length(), ConvertStringToByteBuffer(signature.data()), buffer,
       rsa.get(),
       RSA_PKCS1_PADDING);  // Strips PKCS #1 type 1 padding.
   if (length == -1) {
@@ -1444,11 +1404,9 @@ CK_RV SessionImpl::WrapPrivateKey(Object* object) {
   int tpm_key_handle = 0;
   if (!tpm_utility_->WrapKey(slot_id_,
                              object->GetAttributeString(CKA_PUBLIC_EXPONENT),
-                             object->GetAttributeString(CKA_MODULUS),
-                             prime,
+                             object->GetAttributeString(CKA_MODULUS), prime,
                              SecureBlob(auth_data.begin(), auth_data.end()),
-                             &key_blob,
-                             &tpm_key_handle))
+                             &key_blob, &tpm_key_handle))
     return CKR_FUNCTION_FAILED;
   object->SetAttributeString(kAuthDataAttribute, auth_data);
   object->SetAttributeString(kKeyBlobAttribute, key_blob);
@@ -1461,12 +1419,13 @@ CK_RV SessionImpl::WrapPrivateKey(Object* object) {
   return CKR_OK;
 }
 
-SessionImpl::OperationContext::OperationContext() : is_valid_(false),
-                                                    is_cipher_(false),
-                                                    is_digest_(false),
-                                                    is_hmac_(false),
-                                                    is_finished_(false),
-                                                    key_(NULL) {}
+SessionImpl::OperationContext::OperationContext()
+    : is_valid_(false),
+      is_cipher_(false),
+      is_digest_(false),
+      is_hmac_(false),
+      is_finished_(false),
+      key_(NULL) {}
 
 SessionImpl::OperationContext::~OperationContext() {
   Clear();

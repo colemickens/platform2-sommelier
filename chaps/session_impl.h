@@ -112,12 +112,12 @@ class SessionImpl : public Session {
 
  private:
   struct OperationContext {
-    bool is_valid_;  // Whether the contents of this structure are valid.
-    bool is_cipher_;  // Set to true when cipher_context_ is valid.
-    bool is_digest_;  // Set to true when digest_context_ is valid.
-    bool is_hmac_;  // Set to true when hmac_context_ is valid.
+    bool is_valid_;        // Whether the contents of this structure are valid.
+    bool is_cipher_;       // Set to true when cipher_context_ is valid.
+    bool is_digest_;       // Set to true when digest_context_ is valid.
+    bool is_hmac_;         // Set to true when hmac_context_ is valid.
     bool is_incremental_;  // Set when an incremental operation is performed.
-    bool is_finished_;  // Set to true when the operation completes.
+    bool is_finished_;     // Set to true when the operation completes.
     union {
       EVP_CIPHER_CTX cipher_context_;
       EVP_MD_CTX digest_context_;
@@ -206,8 +206,8 @@ class SessionImpl : public Session {
   ObjectPool* token_object_pool_;
   TPMUtility* tpm_utility_;
   bool is_legacy_loaded_;  // Tracks whether the legacy root keys are loaded.
-  int private_root_key_;  // The legacy private root key.
-  int public_root_key_;  // The legacy public root key.
+  int private_root_key_;   // The legacy private root key.
+  int public_root_key_;    // The legacy public root key.
 
   DISALLOW_COPY_AND_ASSIGN(SessionImpl);
 };
