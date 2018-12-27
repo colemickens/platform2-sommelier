@@ -1,3 +1,6 @@
+# Caution!: GYP to GN migration is happening. If you update this file, please
+# update common-mk/mojom_bindings_generator.gni too accordingly.
+
 # GYP template to generate static library for the given mojom files.
 # How to use:
 # {
