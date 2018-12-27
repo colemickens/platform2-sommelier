@@ -52,6 +52,9 @@ void DropPrivileges() {
   if (minijail_bind(j.get(), "/proc", "/proc", 0 /*writable*/)) {
     PLOG(FATAL) << "minijail_bind(\"/\") failed.";
   }
+  if (minijail_bind(j.get(), "/dev/log", "/dev/log", 0 /*writable*/)) {
+    PLOG(FATAL) << "minijail_bind(\"/dev/log\") failed.";
+  }
 
   // "usb_bouncer genrules" writes to stdout.
   minijail_preserve_fd(j.get(), STDOUT_FILENO, STDOUT_FILENO);
@@ -184,7 +187,7 @@ int HandleUserLogin(const std::vector<std::string>& argv) {
 
 int main(int argc, char** argv) {
   base::CommandLine::Init(argc, argv);
-  brillo::InitLog(brillo::kLogToStderr);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   const auto& args = cl->argv();
 
