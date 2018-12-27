@@ -179,14 +179,6 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   bool SetRlzPingSent(brillo::ErrorPtr* error) override;
   std::string CampfireEnableAltOS(int size_gb) override;
   std::string CampfireDisableAltOS() override;
-  std::string GetGscOnUsbRWFirmwareVer() override;
-  std::string GetGscOnUsbBoardID() override;
-  std::string GetGscImageRWFirmwareVer(const std::string& image_file) override;
-  std::string GetGscImageBoardID(const std::string& image_file) override;
-  bool FlashImageToGscOnUsb(
-      brillo::ErrorPtr* error, const std::string& image_file) override;
-  bool VerifyDeviceOnUsbROIntegrity(
-      brillo::ErrorPtr* error, const std::string& ro_desc_file) override;
   bool UpdateAndVerifyFWOnUsbStart(brillo::ErrorPtr* error,
                                    const base::ScopedFD& outfd,
                                    const std::string& image_file,

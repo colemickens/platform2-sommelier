@@ -510,34 +510,6 @@ std::string DebugdDBusAdaptor::CampfireDisableAltOS() {
   return campfire_tool_->DisableAltOS();
 }
 
-std::string DebugdDBusAdaptor::GetGscOnUsbRWFirmwareVer() {
-  return verify_ro_tool_->GetGscOnUsbRWFirmwareVer();
-}
-
-std::string DebugdDBusAdaptor::GetGscOnUsbBoardID() {
-  return verify_ro_tool_->GetGscOnUsbBoardID();
-}
-
-std::string DebugdDBusAdaptor::GetGscImageRWFirmwareVer(
-    const std::string& image_file) {
-  return verify_ro_tool_->GetGscImageRWFirmwareVer(image_file);
-}
-
-std::string DebugdDBusAdaptor::GetGscImageBoardID(
-    const std::string& image_file) {
-  return verify_ro_tool_->GetGscImageBoardID(image_file);
-}
-
-bool DebugdDBusAdaptor::FlashImageToGscOnUsb(
-    brillo::ErrorPtr* error, const std::string& image_file) {
-  return verify_ro_tool_->FlashImageToGscOnUsb(error, image_file);
-}
-
-bool DebugdDBusAdaptor::VerifyDeviceOnUsbROIntegrity(
-    brillo::ErrorPtr* error, const std::string& ro_desc_file) {
-  return verify_ro_tool_->VerifyDeviceOnUsbROIntegrity(error, ro_desc_file);
-}
-
 bool DebugdDBusAdaptor::UpdateAndVerifyFWOnUsbStart(
     brillo::ErrorPtr* error,
     const base::ScopedFD& outfd,

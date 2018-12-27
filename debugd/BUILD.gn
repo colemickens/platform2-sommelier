@@ -117,7 +117,6 @@ static_library("libdebugd") {
     "src/u2f_tool.cc",
     "src/variant_utils.cc",
     "src/verify_ro_tool.cc",
-    "src/verify_ro_utils.cc",
     "src/wifi_power_tool.cc",
     "src/wimax_status_tool.cc",
   ]
@@ -301,7 +300,6 @@ if (use.test) {
       "src/sandboxed_process_test.cc",
       "src/storage_tool_test.cc",
       "src/subprocess_tool_test.cc",
-      "src/verify_ro_utils_test.cc",
     ]
     libs = [ "m" ]
     deps = [
