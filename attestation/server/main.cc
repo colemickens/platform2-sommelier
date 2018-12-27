@@ -51,7 +51,7 @@ static const char kAttestationBasedEnrollmentDataFile[] = "ABE_DATA_FILE";
 }  // namespace env
 
 // Returns the contents of the attestation-based enrollment data file.
-static std::string ReadAbeDataFileContents() {
+std::string ReadAbeDataFileContents() {
   std::string data;
 
   const char* abe_data_file =
@@ -70,7 +70,7 @@ static std::string ReadAbeDataFileContents() {
   return data;
 }
 
-static bool GetAttestationEnrollmentData(const std::string& abe_data_hex,
+bool GetAttestationEnrollmentData(const std::string& abe_data_hex,
                                          brillo::SecureBlob* abe_data) {
   abe_data->clear();
   if (abe_data_hex.empty()) return true;  // no data is ok.
