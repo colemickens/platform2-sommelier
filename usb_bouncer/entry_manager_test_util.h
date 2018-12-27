@@ -35,6 +35,8 @@ class EntryManagerTestUtil {
 
   void ReplaceDB(const RuleDB& replacement);
 
+  void SetUserDBReadOnly(bool user_db_read_only);
+
   void ExpireEntry(bool expect_user,
                    const std::string& devpath,
                    const std::string& rule);

@@ -46,12 +46,16 @@ bool EntryManager::CreateDefaultGlobalDB() {
 }
 
 EntryManager::EntryManager()
-    : EntryManager("/", GetUserDBDir(), GetRuleFromDevPath) {}
+    : EntryManager(
+          "/", GetUserDBDir(), IsLockscreenShown(), GetRuleFromDevPath) {}
 
 EntryManager::EntryManager(const std::string& root_dir,
                            const base::FilePath& user_db_dir,
+                           bool user_db_read_only,
                            DevpathToRuleCallback rule_from_devpath)
-    : root_dir_(root_dir), rule_from_devpath_(rule_from_devpath) {
+    : user_db_read_only_(user_db_read_only),
+      root_dir_(root_dir),
+      rule_from_devpath_(rule_from_devpath) {
   global_entries_ =
       GetDBFromPath(root_dir_.Append(kDefaultGlobalDir), &global_db_path_);
 
@@ -150,7 +154,7 @@ bool EntryManager::HandleUdev(UdevAction action, const std::string& devpath) {
       }
 
       *entry.mutable_rules()->Add() = rule;
-      if (user_entries_) {
+      if (user_entries_ && !user_db_read_only_) {
         (*user_entries_->mutable_entries())[Hash(entry.rules())] = entry;
       }
       return PersistChanges();

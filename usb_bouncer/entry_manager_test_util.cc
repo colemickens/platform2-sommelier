@@ -90,6 +90,10 @@ void EntryManagerTestUtil::ReplaceDB(const RuleDB& replacement) {
   *entry_manager_->global_entries_ = replacement;
 }
 
+void EntryManagerTestUtil::SetUserDBReadOnly(bool user_db_read_only) {
+  entry_manager_->user_db_read_only_ = user_db_read_only;
+}
+
 void EntryManagerTestUtil::ExpireEntry(bool expect_user,
                                        const std::string& devpath,
                                        const std::string& rule) {
@@ -144,14 +148,14 @@ base::FilePath EntryManagerTestUtil::CreateTestDir(const std::string& dir,
 void EntryManagerTestUtil::RecreateEntryManager(
     const base::FilePath& userdb_dir) {
   // std::make_unique was not used because a private constructor was needed.
-  entry_manager_ = std::unique_ptr<EntryManager>(
-      new EntryManager(temp_dir_.value(), userdb_dir,
-                       [](const std::string& devpath) -> std::string {
-                         if (devpath.empty()) {
-                           return "";
-                         }
-                         return kDefaultRule;
-                       }));
+  entry_manager_ = std::unique_ptr<EntryManager>(new EntryManager(
+      temp_dir_.value(), userdb_dir, false /*user_db_read_only*/,
+      [](const std::string& devpath) -> std::string {
+        if (devpath.empty()) {
+          return "";
+        }
+        return kDefaultRule;
+      }));
   CHECK(!entry_manager_->global_db_path_.empty());
   CHECK(entry_manager_->global_entries_);
 }

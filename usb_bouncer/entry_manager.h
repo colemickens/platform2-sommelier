@@ -69,7 +69,9 @@ class EntryManager {
   friend class EntryManagerTestUtil;
 
   EntryManager();
-  EntryManager(const std::string& root_dir, const base::FilePath& user_db_dir,
+  EntryManager(const std::string& root_dir,
+               const base::FilePath& user_db_dir,
+               bool user_db_read_only,
                DevpathToRuleCallback rule_from_devpath);
 
   // Removes expired entries from the trash of the global DB. If |global_only|
@@ -82,6 +84,9 @@ class EntryManager {
   bool ValidateDevPath(const std::string& devpath);
 
   bool PersistChanges();
+
+  // Represents whether the lock screen is being shown.
+  bool user_db_read_only_;
 
   // Prepended to all the paths to enable testing.
   base::FilePath root_dir_;

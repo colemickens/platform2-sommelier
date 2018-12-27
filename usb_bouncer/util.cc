@@ -204,16 +204,6 @@ base::FilePath GetUserDBDir() {
     return base::FilePath("");
   }
 
-  bool locked;
-  if (!session_manager_proxy->IsScreenLocked(&locked, &error)) {
-    LOG(ERROR) << "Failed to get lockscreen state.";
-    return base::FilePath("");
-  }
-  if (locked) {
-    LOG(INFO) << "Device is locked.";
-    return base::FilePath("");
-  }
-
   base::FilePath UserDir =
       base::FilePath(kUserDbParentDir).Append(hashed_username);
   if (!base::DirectoryExists(UserDir)) {
@@ -222,6 +212,19 @@ base::FilePath GetUserDBDir() {
   }
 
   return UserDir;
+}
+
+bool IsLockscreenShown() {
+  scoped_refptr<dbus::Bus> bus;
+  auto session_manager_proxy = SetUpDBus(bus);
+
+  brillo::ErrorPtr error;
+  bool locked;
+  if (!session_manager_proxy->IsScreenLocked(&locked, &error)) {
+    LOG(ERROR) << "Failed to get lockscreen state.";
+    locked = true;
+  }
+  return locked;
 }
 
 std::string StripLeadingPathSeparators(const std::string& path) {

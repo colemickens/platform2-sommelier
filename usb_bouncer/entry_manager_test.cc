@@ -13,15 +13,37 @@
 
 namespace usb_bouncer {
 
+namespace {
+enum class SessionState {
+  kNoUser,
+  kLockscreenShown,
+  kUserPresent,
+};
+
+bool IsUserPresent(SessionState session_state) {
+  switch (session_state) {
+    case SessionState::kNoUser:
+      return false;
+    case SessionState::kLockscreenShown:
+    case SessionState::kUserPresent:
+      return true;
+  }
+}
+}  // namespace
+
 class EntryManagerTest : public testing::Test {
  public:
-  void GarbageCollectTest(bool user_present) {
+  void GarbageCollectTest(SessionState session_state) {
+    bool user_present = IsUserPresent(session_state);
     util_.RefreshDB(user_present /*include_user_db*/, true /*new_db*/);
 
     EXPECT_TRUE(util_.Get()->HandleUdev(EntryManager::UdevAction::kAdd,
                                         kDefaultDevpath));
     EXPECT_TRUE(util_.Get()->HandleUdev(EntryManager::UdevAction::kRemove,
                                         kDefaultDevpath));
+
+    bool lockscreen_is_shown = session_state == SessionState::kLockscreenShown;
+    util_.SetUserDBReadOnly(lockscreen_is_shown);
 
     EXPECT_EQ(util_.GarbageCollectInternal(true /*global_only*/), 0);
     EXPECT_TRUE(util_.GlobalTrashContainsEntry(kDefaultDevpath, kDefaultRule));
@@ -43,11 +65,15 @@ class EntryManagerTest : public testing::Test {
       EXPECT_TRUE(util_.UserDBContainsEntry(kDefaultRule));
     }
 
+    util_.SetUserDBReadOnly(false);
+
     EXPECT_TRUE(util_.Get()->HandleUdev(EntryManager::UdevAction::kAdd,
                                         kDefaultDevpath));
     EXPECT_TRUE(util_.Get()->HandleUdev(EntryManager::UdevAction::kRemove,
                                         kDefaultDevpath));
     util_.ExpireEntry(user_present, kDefaultDevpath, kDefaultRule);
+
+    util_.SetUserDBReadOnly(lockscreen_is_shown);
 
     EXPECT_TRUE(util_.Get()->GarbageCollect());
     EXPECT_FALSE(util_.GlobalTrashContainsEntry(kDefaultDevpath, kDefaultRule));
@@ -56,7 +82,8 @@ class EntryManagerTest : public testing::Test {
     }
   }
 
-  void GenerateRulesTest(bool user_present) {
+  void GenerateRulesTest(SessionState session_state) {
+    bool user_present = IsUserPresent(session_state);
     util_.RefreshDB(user_present /*include_user_db*/, true /*new_db*/);
 
     EXPECT_FALSE(util_.Get()->GenerateRules().empty());
@@ -64,13 +91,20 @@ class EntryManagerTest : public testing::Test {
     EXPECT_TRUE(util_.Get()->HandleUdev(EntryManager::UdevAction::kAdd,
                                         kDefaultDevpath));
 
+    bool lockscreen_is_shown = session_state == SessionState::kLockscreenShown;
+    util_.SetUserDBReadOnly(lockscreen_is_shown);
+
     std::string rules = util_.Get()->GenerateRules();
     EXPECT_FALSE(rules.empty());
     EXPECT_NE(rules.find(kDefaultRule, 0), std::string::npos);
   }
 
-  void HandleUdevTest(bool user_present) {
+  void HandleUdevTest(SessionState session_state) {
+    bool user_present = IsUserPresent(session_state);
     util_.RefreshDB(user_present /*include_user_db*/, true /*new_db*/);
+
+    bool lockscreen_is_shown = session_state == SessionState::kLockscreenShown;
+    util_.SetUserDBReadOnly(lockscreen_is_shown);
 
     EXPECT_FALSE(util_.GlobalDBContainsEntry(kDefaultDevpath, kDefaultRule));
     EXPECT_FALSE(util_.GlobalTrashContainsEntry(kDefaultDevpath, kDefaultRule));
@@ -82,7 +116,7 @@ class EntryManagerTest : public testing::Test {
     EXPECT_TRUE(util_.GlobalDBContainsEntry(kDefaultDevpath, kDefaultRule));
     EXPECT_FALSE(util_.GlobalTrashContainsEntry(kDefaultDevpath, kDefaultRule));
     if (user_present) {
-      EXPECT_TRUE(util_.UserDBContainsEntry(kDefaultRule));
+      EXPECT_NE(util_.UserDBContainsEntry(kDefaultRule), lockscreen_is_shown);
     }
 
     EXPECT_FALSE(util_.Get()->HandleUdev(EntryManager::UdevAction::kAdd, ""));
@@ -94,7 +128,7 @@ class EntryManagerTest : public testing::Test {
     EXPECT_FALSE(util_.GlobalDBContainsEntry(kDefaultDevpath, kDefaultRule));
     EXPECT_TRUE(util_.GlobalTrashContainsEntry(kDefaultDevpath, kDefaultRule));
     if (user_present) {
-      EXPECT_TRUE(util_.UserDBContainsEntry(kDefaultRule));
+      EXPECT_NE(util_.UserDBContainsEntry(kDefaultRule), lockscreen_is_shown);
     }
 
     EXPECT_FALSE(
@@ -106,27 +140,39 @@ class EntryManagerTest : public testing::Test {
 };
 
 TEST_F(EntryManagerTest, GarbageCollect_NoUser) {
-  GarbageCollectTest(false /*user_present*/);
+  GarbageCollectTest(SessionState::kNoUser /*session_state*/);
 }
 
-TEST_F(EntryManagerTest, GarbageCollect_WithUser) {
-  GarbageCollectTest(true /*user_present*/);
+TEST_F(EntryManagerTest, GarbageCollect_LockscreenShown) {
+  GarbageCollectTest(SessionState::kLockscreenShown /*session_state*/);
+}
+
+TEST_F(EntryManagerTest, GarbageCollect_UserPresent) {
+  GarbageCollectTest(SessionState::kUserPresent /*session_state*/);
 }
 
 TEST_F(EntryManagerTest, GenerateRules_NoUser) {
-  GenerateRulesTest(false /*user_present*/);
+  GenerateRulesTest(SessionState::kNoUser /*session_state*/);
 }
 
-TEST_F(EntryManagerTest, GenerateRules_WithUser) {
-  GenerateRulesTest(true /*user_present*/);
+TEST_F(EntryManagerTest, GenerateRules_LockscreenShown) {
+  GenerateRulesTest(SessionState::kLockscreenShown /*session_state*/);
+}
+
+TEST_F(EntryManagerTest, GenerateRules_UserPresent) {
+  GenerateRulesTest(SessionState::kUserPresent /*session_state*/);
 }
 
 TEST_F(EntryManagerTest, HandleUdev_NoUser) {
-  HandleUdevTest(false /*user_present*/);
+  HandleUdevTest(SessionState::kNoUser /*session_state*/);
 }
 
-TEST_F(EntryManagerTest, HandleUdev_WithUser) {
-  HandleUdevTest(true /*user_present*/);
+TEST_F(EntryManagerTest, HandleUdev_LockscreenShown) {
+  HandleUdevTest(SessionState::kLockscreenShown /*session_state*/);
+}
+
+TEST_F(EntryManagerTest, HandleUdev_UserPresent) {
+  HandleUdevTest(SessionState::kUserPresent /*session_state*/);
 }
 
 TEST_F(EntryManagerTest, HandleUserLogin_NoUser) {
@@ -135,7 +181,7 @@ TEST_F(EntryManagerTest, HandleUserLogin_NoUser) {
   EXPECT_FALSE(util_.Get()->HandleUserLogin());
 }
 
-TEST_F(EntryManagerTest, HandleUserLogin_WithUser) {
+TEST_F(EntryManagerTest, HandleUserLogin_UserPresent) {
   util_.RefreshDB(false /*include_user_db*/, true /*new_db*/);
 
   EXPECT_TRUE(

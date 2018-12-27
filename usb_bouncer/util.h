@@ -55,6 +55,12 @@ bool ValidateRule(const std::string& rule);
 // multi-login case, the primary user's daemon-store is used.
 base::FilePath GetUserDBDir();
 
+// Returns true if the lock screen is being shown. On a D-Bus failure true is
+// returned because that is the safer failure state. This may result in some
+// devices not being added to a user's white-list, but that is safer than a
+// malicious device being added to the white-list while at the lock-screen.
+bool IsLockscreenShown();
+
 std::string StripLeadingPathSeparators(const std::string& path);
 
 // Returns a set of all the rules present in |entries|. This serves as a
