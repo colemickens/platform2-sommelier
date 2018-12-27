@@ -132,6 +132,11 @@ bool EntryManager::HandleUdev(UdevAction action, const std::string& devpath) {
       RuleEntry& entry = (*global_map)[global_key];
       UpdateTimestamp(entry.mutable_last_used());
 
+      // Handle the case an already connected device has an add event.
+      if (!entry.rules().empty()) {
+        return PersistChanges();
+      }
+
       // Prepend any mode changes for the same device.
       GarbageCollectInternal(true /*global_only*/);
       const EntryMap& trash = global_entries_->trash();
