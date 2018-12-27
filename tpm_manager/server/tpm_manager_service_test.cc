@@ -214,15 +214,6 @@ TEST_F(TpmManagerServiceTest_NoPreinit, NoPreInitialize) {
 }
 
 TEST_F(TpmManagerServiceTest, GetTpmStatusSuccess) {
-  EXPECT_CALL(mock_tpm_status_, GetDictionaryAttackInfo(_, _, _, _))
-      .WillRepeatedly(Invoke([](int* counter, int* threshold, bool* lockout,
-                                int* seconds_remaining) {
-        *counter = 5;
-        *threshold = 6;
-        *lockout = true;
-        *seconds_remaining = 7;
-        return true;
-      }));
   EXPECT_CALL(mock_tpm_status_, GetVersionInfo(_, _, _, _, _, _))
       .WillRepeatedly(Invoke([](uint32_t* family, uint64_t* spec_level,
                                 uint32_t* manufacturer, uint32_t* tpm_model,
@@ -247,16 +238,35 @@ TEST_F(TpmManagerServiceTest, GetTpmStatusSuccess) {
     EXPECT_TRUE(reply.enabled());
     EXPECT_TRUE(reply.owned());
     EXPECT_EQ(kOwnerPassword, reply.local_data().owner_password());
-    EXPECT_EQ(5, reply.dictionary_attack_counter());
-    EXPECT_EQ(6, reply.dictionary_attack_threshold());
-    EXPECT_TRUE(reply.dictionary_attack_lockout_in_effect());
-    EXPECT_EQ(7, reply.dictionary_attack_lockout_seconds_remaining());
     EXPECT_EQ(8, reply.version_info().family());
     EXPECT_EQ(9, reply.version_info().spec_level());
     EXPECT_EQ(10, reply.version_info().manufacturer());
     EXPECT_EQ(11, reply.version_info().tpm_model());
     EXPECT_EQ(12, reply.version_info().firmware_version());
     EXPECT_EQ("\xda\x7a", reply.version_info().vendor_specific());
+    self->Quit();
+  };
+  GetTpmStatusRequest request;
+  request.set_include_version_info(true);
+  service_->GetTpmStatus(request, base::Bind(callback, this));
+  Run();
+}
+
+TEST_F(TpmManagerServiceTest, GetTpmStatusNoVersionInfoSuccess) {
+  EXPECT_CALL(mock_tpm_status_, GetVersionInfo(_, _, _, _, _, _)).Times(0);
+
+  LocalData local_data;
+  local_data.set_owner_password(kOwnerPassword);
+  EXPECT_CALL(mock_local_data_store_, Read(_))
+      .WillRepeatedly(DoAll(SetArgPointee<0>(local_data), Return(true)));
+
+  auto callback = [](TpmManagerServiceTest* self,
+                     const GetTpmStatusReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_TRUE(reply.enabled());
+    EXPECT_TRUE(reply.owned());
+    EXPECT_EQ(kOwnerPassword, reply.local_data().owner_password());
+    EXPECT_FALSE(reply.has_version_info());
     self->Quit();
   };
   GetTpmStatusRequest request;
@@ -272,10 +282,6 @@ TEST_F(TpmManagerServiceTest, GetTpmStatusLocalDataFailure) {
     EXPECT_TRUE(reply.enabled());
     EXPECT_TRUE(reply.owned());
     EXPECT_FALSE(reply.has_local_data());
-    EXPECT_TRUE(reply.has_dictionary_attack_counter());
-    EXPECT_TRUE(reply.has_dictionary_attack_threshold());
-    EXPECT_TRUE(reply.has_dictionary_attack_lockout_in_effect());
-    EXPECT_TRUE(reply.has_dictionary_attack_lockout_seconds_remaining());
     self->Quit();
   };
   GetTpmStatusRequest request;
@@ -293,10 +299,6 @@ TEST_F(TpmManagerServiceTest, GetTpmStatusNoTpm) {
     EXPECT_FALSE(reply.enabled());
     EXPECT_TRUE(reply.owned());
     EXPECT_TRUE(reply.has_local_data());
-    EXPECT_FALSE(reply.has_dictionary_attack_counter());
-    EXPECT_FALSE(reply.has_dictionary_attack_threshold());
-    EXPECT_FALSE(reply.has_dictionary_attack_lockout_in_effect());
-    EXPECT_FALSE(reply.has_dictionary_attack_lockout_seconds_remaining());
     self->Quit();
   };
   GetTpmStatusRequest request;
@@ -304,32 +306,44 @@ TEST_F(TpmManagerServiceTest, GetTpmStatusNoTpm) {
   Run();
 }
 
-TEST_F(TpmManagerServiceTest, GetTpmStatusReadinessInfoOnly) {
-  EXPECT_CALL(mock_tpm_status_, IsTpmEnabled()).WillRepeatedly(Return(true));
-  EXPECT_CALL(mock_tpm_status_, CheckAndNotifyIfTpmOwned())
-      .WillRepeatedly(Return(TpmStatus::kTpmOwned));
-
-  EXPECT_CALL(mock_local_data_store_, Read(_)).Times(0);
-  EXPECT_CALL(mock_tpm_status_, GetDictionaryAttackInfo(_, _, _, _)).Times(0);
-  EXPECT_CALL(mock_tpm_status_, GetVersionInfo(_, _, _, _, _, _)).Times(0);
+TEST_F(TpmManagerServiceTest, GetDictionaryAttackInfo) {
+  EXPECT_CALL(mock_tpm_status_, GetDictionaryAttackInfo(_, _, _, _))
+      .WillOnce(Invoke([](int* counter, int* threshold, bool* lockout,
+                          int* seconds_remaining) {
+        *counter = 5;
+        *threshold = 6;
+        *lockout = true;
+        *seconds_remaining = 7;
+        return true;
+      }));
 
   auto callback = [](TpmManagerServiceTest* self,
-                     const GetTpmStatusReply& reply) {
+                     const GetDictionaryAttackInfoReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
-    EXPECT_TRUE(reply.enabled());
-    EXPECT_TRUE(reply.owned());
-    EXPECT_FALSE(reply.has_local_data());
-    EXPECT_FALSE(reply.has_dictionary_attack_counter());
-    EXPECT_FALSE(reply.has_dictionary_attack_threshold());
-    EXPECT_FALSE(reply.has_dictionary_attack_lockout_in_effect());
-    EXPECT_FALSE(reply.has_dictionary_attack_lockout_seconds_remaining());
-    EXPECT_FALSE(reply.has_version_info());
+    EXPECT_EQ(5, reply.dictionary_attack_counter());
+    EXPECT_EQ(6, reply.dictionary_attack_threshold());
+    EXPECT_TRUE(reply.dictionary_attack_lockout_in_effect());
+    EXPECT_EQ(7, reply.dictionary_attack_lockout_seconds_remaining());
     self->Quit();
   };
 
-  GetTpmStatusRequest request;
-  request.set_readiness_info_only(true);
-  service_->GetTpmStatus(request, base::Bind(callback, this));
+  GetDictionaryAttackInfoRequest request;
+  service_->GetDictionaryAttackInfo(request, base::Bind(callback, this));
+  Run();
+}
+
+TEST_F(TpmManagerServiceTest, GetDictionaryAttackInfoError) {
+  EXPECT_CALL(mock_tpm_status_, GetDictionaryAttackInfo(_, _, _, _))
+      .WillOnce(Return(false));
+
+  auto callback = [](TpmManagerServiceTest* self,
+                     const GetDictionaryAttackInfoReply& reply) {
+    EXPECT_EQ(STATUS_DEVICE_ERROR, reply.status());
+    self->Quit();
+  };
+
+  GetDictionaryAttackInfoRequest request;
+  service_->GetDictionaryAttackInfo(request, base::Bind(callback, this));
   Run();
 }
 

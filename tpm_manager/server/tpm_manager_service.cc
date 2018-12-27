@@ -160,27 +160,16 @@ void TpmManagerService::GetTpmStatusTask(
   reply->set_owned(
       TpmStatus::kTpmOwned == tpm_status_->CheckAndNotifyIfTpmOwned());
 
-  if (request.readiness_info_only()) {
-    reply->set_status(STATUS_SUCCESS);
-    return;
-  }
-
   LocalData local_data;
   if (local_data_store_ && local_data_store_->Read(&local_data)) {
     *reply->mutable_local_data() = local_data;
   }
-  int counter;
-  int threshold;
-  bool lockout;
-  int lockout_time_remaining;
-  if (tpm_status_->GetDictionaryAttackInfo(&counter, &threshold, &lockout,
-                                           &lockout_time_remaining)) {
-    reply->set_dictionary_attack_counter(counter);
-    reply->set_dictionary_attack_threshold(threshold);
-    reply->set_dictionary_attack_lockout_in_effect(lockout);
-    reply->set_dictionary_attack_lockout_seconds_remaining(
-        lockout_time_remaining);
+
+  if (!request.include_version_info()) {
+    reply->set_status(STATUS_SUCCESS);
+    return;
   }
+
   uint32_t family;
   uint64_t spec_level;
   uint32_t manufacturer;
@@ -201,6 +190,44 @@ void TpmManagerService::GetTpmStatusTask(
         reinterpret_cast<char*>(vendor_specific.data()),
         vendor_specific.size());
   }
+
+  reply->set_status(STATUS_SUCCESS);
+}
+
+void TpmManagerService::GetDictionaryAttackInfo(
+    const GetDictionaryAttackInfoRequest& request,
+    const GetDictionaryAttackInfoCallback& callback) {
+  PostTaskToWorkerThread<GetDictionaryAttackInfoReply>(
+      request, callback, &TpmManagerService::GetDictionaryAttackInfoTask);
+}
+
+void TpmManagerService::GetDictionaryAttackInfoTask(
+    const GetDictionaryAttackInfoRequest& request,
+    const std::shared_ptr<GetDictionaryAttackInfoReply>& reply) {
+  VLOG(1) << __func__;
+
+  if (!tpm_status_) {
+    LOG(ERROR) << __func__ << ": tpm status is uninitialized.";
+    reply->set_status(STATUS_NOT_AVAILABLE);
+    return;
+  }
+
+  int counter;
+  int threshold;
+  bool lockout;
+  int lockout_time_remaining;
+  if (!tpm_status_->GetDictionaryAttackInfo(&counter, &threshold, &lockout,
+                                            &lockout_time_remaining)) {
+    LOG(ERROR) << __func__ << ": failed to get DA info";
+    reply->set_status(STATUS_DEVICE_ERROR);
+    return;
+  }
+
+  reply->set_dictionary_attack_counter(counter);
+  reply->set_dictionary_attack_threshold(threshold);
+  reply->set_dictionary_attack_lockout_in_effect(lockout);
+  reply->set_dictionary_attack_lockout_seconds_remaining(
+      lockout_time_remaining);
   reply->set_status(STATUS_SUCCESS);
 }
 

@@ -52,6 +52,13 @@ void TpmOwnershipDBusProxy::GetTpmStatus(const GetTpmStatusRequest& request,
   CallMethod<GetTpmStatusReply>(tpm_manager::kGetTpmStatus, request, callback);
 }
 
+void TpmOwnershipDBusProxy::GetDictionaryAttackInfo(
+    const GetDictionaryAttackInfoRequest& request,
+    const GetDictionaryAttackInfoCallback& callback) {
+  CallMethod<GetDictionaryAttackInfoReply>(
+      tpm_manager::kGetDictionaryAttackInfo, request, callback);
+}
+
 void TpmOwnershipDBusProxy::TakeOwnership(
     const TakeOwnershipRequest& request,
     const TakeOwnershipCallback& callback) {

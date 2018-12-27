@@ -37,6 +37,7 @@
 #include <trunks/trunks_factory_for_test.h>
 
 #include "cryptohome/cryptolib.h"
+#include "cryptohome/protobuf_test_utils.h"
 
 using brillo::Blob;
 using brillo::BlobFromString;
@@ -61,7 +62,6 @@ using trunks::TrunksFactory;
 namespace {
 
 const char kDefaultPassword[] = "password";
-const int kDefaultCounter = 3;
 
 // Reset the |pcr_select| and set the bit corresponding to |index|.
 void SetPcrSelectData(uint8_t* pcr_select, uint32_t index) {
@@ -92,9 +92,11 @@ class Tpm2Test : public testing::Test {
     tpm_status_.set_enabled(true);
     tpm_status_.set_owned(true);
     tpm_status_.mutable_local_data()->set_owner_password(kDefaultPassword);
-    tpm_status_.set_dictionary_attack_counter(kDefaultCounter);
     ON_CALL(mock_tpm_owner_, GetTpmStatus(_, _))
         .WillByDefault(WithArg<1>(Invoke(this, &Tpm2Test::FakeGetTpmStatus)));
+    ON_CALL(mock_tpm_owner_, GetDictionaryAttackInfo(_, _))
+        .WillByDefault(
+            WithArg<1>(Invoke(this, &Tpm2Test::FakeGetDictionaryAttackInfo)));
     ON_CALL(mock_tpm_owner_, RemoveOwnerDependency(_, _))
         .WillByDefault(Invoke(this, &Tpm2Test::FakeRemoveOwnerDependency));
     ON_CALL(mock_tpm_owner_, ClearStoredOwnerPassword(_, _))
@@ -104,6 +106,7 @@ class Tpm2Test : public testing::Test {
 
  protected:
   tpm_manager::GetTpmStatusReply tpm_status_;
+  tpm_manager::GetDictionaryAttackInfoReply da_info_;
   tpm_manager::DefineSpaceRequest last_define_space_request;
   tpm_manager::DestroySpaceRequest last_destroy_space_request;
   tpm_manager::WriteSpaceRequest last_write_space_request;
@@ -157,6 +160,12 @@ class Tpm2Test : public testing::Test {
       const tpm_manager::TpmOwnershipInterface::GetTpmStatusCallback&
           callback) {
     callback.Run(tpm_status_);
+  }
+
+  void FakeGetDictionaryAttackInfo(
+      const tpm_manager::TpmOwnershipInterface::GetDictionaryAttackInfoCallback&
+          callback) {
+    callback.Run(da_info_);
   }
 
   void FakeRemoveOwnerDependency(
@@ -247,6 +256,72 @@ TEST_F(Tpm2Test, EnabledOwnedCheckStateError) {
   EXPECT_FALSE(tpm_->PerformEnabledOwnedCheck(&enabled, &owned));
   EXPECT_FALSE(enabled);
   EXPECT_FALSE(owned);
+}
+
+TEST_F(Tpm2Test, GetVersionInfo) {
+  tpm_manager::GetTpmStatusRequest expected_request;
+  expected_request.set_include_version_info(true);
+  EXPECT_CALL(mock_tpm_owner_,
+              GetTpmStatus(ProtobufEquals(expected_request), _))
+      .Times(1);
+
+  tpm_manager::GetTpmStatusReply::TpmVersionInfo* expected_info =
+      tpm_status_.mutable_version_info();
+  expected_info->set_family(11);
+  expected_info->set_spec_level(22);
+  expected_info->set_manufacturer(33);
+  expected_info->set_tpm_model(44);
+  expected_info->set_firmware_version(55);
+  expected_info->set_vendor_specific("abc");
+
+  Tpm::TpmVersionInfo actual_info;
+  EXPECT_TRUE(tpm_->GetVersionInfo(&actual_info));
+  EXPECT_EQ(11, actual_info.family);
+  EXPECT_EQ(22, actual_info.spec_level);
+  EXPECT_EQ(33, actual_info.manufacturer);
+  EXPECT_EQ(44, actual_info.tpm_model);
+  EXPECT_EQ(55, actual_info.firmware_version);
+  EXPECT_EQ("abc", actual_info.vendor_specific);
+}
+
+TEST_F(Tpm2Test, GetVersionInfoError) {
+  Tpm::TpmVersionInfo info;
+  EXPECT_FALSE(tpm_->GetVersionInfo(&info));
+}
+
+TEST_F(Tpm2Test, GetDictionaryAttackInfo) {
+  da_info_.set_status(tpm_manager::STATUS_SUCCESS);
+  da_info_.set_dictionary_attack_counter(3);
+  da_info_.set_dictionary_attack_threshold(4);
+  da_info_.set_dictionary_attack_lockout_in_effect(true);
+  da_info_.set_dictionary_attack_lockout_seconds_remaining(5);
+
+  int counter;
+  int threshold;
+  bool lockout;
+  int seconds_remaining;
+
+  EXPECT_TRUE(tpm_->GetDictionaryAttackInfo(&counter,
+                                            &threshold,
+                                            &lockout,
+                                            &seconds_remaining));
+  EXPECT_EQ(3, counter);
+  EXPECT_EQ(4, threshold);
+  EXPECT_TRUE(lockout);
+  EXPECT_EQ(5, seconds_remaining);
+}
+
+TEST_F(Tpm2Test, GetDictionaryAttackInfoError) {
+  da_info_.set_status(tpm_manager::STATUS_DEVICE_ERROR);
+
+  int counter;
+  int threshold;
+  bool lockout;
+  int seconds_remaining;
+  EXPECT_FALSE(tpm_->GetDictionaryAttackInfo(&counter,
+                                             &threshold,
+                                             &lockout,
+                                             &seconds_remaining));
 }
 
 TEST_F(Tpm2Test, GetRandomDataSuccess) {

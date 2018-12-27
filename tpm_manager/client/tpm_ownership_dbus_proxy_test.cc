@@ -59,10 +59,6 @@ TEST_F(TpmOwnershipDBusProxyTest, GetTpmStatus) {
     reply.set_status(STATUS_SUCCESS);
     reply.set_enabled(true);
     reply.set_owned(true);
-    reply.set_dictionary_attack_counter(3);
-    reply.set_dictionary_attack_threshold(4);
-    reply.set_dictionary_attack_lockout_in_effect(true);
-    reply.set_dictionary_attack_lockout_seconds_remaining(5);
     writer.AppendProtoAsArrayOfBytes(reply);
     response_callback.Run(response.get());
   };
@@ -76,13 +72,49 @@ TEST_F(TpmOwnershipDBusProxyTest, GetTpmStatus) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_TRUE(reply.enabled());
     EXPECT_TRUE(reply.owned());
+  };
+  GetTpmStatusRequest request;
+  proxy_.GetTpmStatus(request, base::Bind(callback, &callback_count));
+  EXPECT_EQ(1, callback_count);
+}
+
+TEST_F(TpmOwnershipDBusProxyTest, GetDictionaryAttackInfo) {
+  auto fake_dbus_call = [](
+      dbus::MethodCall* method_call,
+      const dbus::MockObjectProxy::ResponseCallback& response_callback) {
+    // Verify request protobuf.
+    dbus::MessageReader reader(method_call);
+    GetDictionaryAttackInfoRequest request;
+    EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&request));
+    // Create reply protobuf.
+    auto response = dbus::Response::CreateEmpty();
+    dbus::MessageWriter writer(response.get());
+    GetDictionaryAttackInfoReply reply;
+    reply.set_status(STATUS_SUCCESS);
+    reply.set_dictionary_attack_counter(3);
+    reply.set_dictionary_attack_threshold(4);
+    reply.set_dictionary_attack_lockout_in_effect(true);
+    reply.set_dictionary_attack_lockout_seconds_remaining(5);
+    writer.AppendProtoAsArrayOfBytes(reply);
+    response_callback.Run(response.get());
+  };
+  EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
+      .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
+
+  // Set expectations on the outputs.
+  int callback_count = 0;
+  auto callback =
+      [](int* callback_count, const GetDictionaryAttackInfoReply& reply) {
+    (*callback_count)++;
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_EQ(3, reply.dictionary_attack_counter());
     EXPECT_EQ(4, reply.dictionary_attack_threshold());
     EXPECT_TRUE(reply.dictionary_attack_lockout_in_effect());
     EXPECT_EQ(5, reply.dictionary_attack_lockout_seconds_remaining());
   };
-  GetTpmStatusRequest request;
-  proxy_.GetTpmStatus(request, base::Bind(callback, &callback_count));
+  GetDictionaryAttackInfoRequest request;
+  proxy_.GetDictionaryAttackInfo(
+      request, base::Bind(callback, &callback_count));
   EXPECT_EQ(1, callback_count);
 }
 

@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2018 The Android Open Source Project
+// Copyright (C) 2019 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -678,10 +678,10 @@ std::string GetProtoDebugStringWithIndent(const GetTpmStatusRequest& value,
   std::string output =
       base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
 
-  if (value.has_readiness_info_only()) {
-    output += indent + "  readiness_info_only: ";
+  if (value.has_include_version_info()) {
+    output += indent + "  include_version_info: ";
     base::StringAppendF(&output, "%s",
-                        value.readiness_info_only() ? "true" : "false");
+                        value.include_version_info() ? "true" : "false");
     output += "\n";
   }
   output += indent + "}\n";
@@ -777,6 +777,51 @@ std::string GetProtoDebugStringWithIndent(const GetTpmStatusReply& value,
             .c_str());
     output += "\n";
   }
+  if (value.has_version_info()) {
+    output += indent + "  version_info: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.version_info(), indent_size + 2)
+            .c_str());
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const GetDictionaryAttackInfoRequest& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(
+    const GetDictionaryAttackInfoRequest& value,
+    int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const GetDictionaryAttackInfoReply& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(
+    const GetDictionaryAttackInfoReply& value,
+    int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_status()) {
+    output += indent + "  status: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.status(), indent_size + 2).c_str());
+    output += "\n";
+  }
   if (value.has_dictionary_attack_counter()) {
     output += indent + "  dictionary_attack_counter: ";
     base::StringAppendF(&output, "%" PRIu32 " (0x%08" PRIX32 ")",
@@ -803,14 +848,6 @@ std::string GetProtoDebugStringWithIndent(const GetTpmStatusReply& value,
     base::StringAppendF(&output, "%" PRIu32 " (0x%08" PRIX32 ")",
                         value.dictionary_attack_lockout_seconds_remaining(),
                         value.dictionary_attack_lockout_seconds_remaining());
-    output += "\n";
-  }
-  if (value.has_version_info()) {
-    output += indent + "  version_info: ";
-    base::StringAppendF(
-        &output, "%s",
-        GetProtoDebugStringWithIndent(value.version_info(), indent_size + 2)
-            .c_str());
     output += "\n";
   }
   output += indent + "}\n";

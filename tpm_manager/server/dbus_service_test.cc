@@ -120,10 +120,6 @@ TEST_F(DBusServiceTest, GetTpmStatus) {
             reply.set_status(STATUS_SUCCESS);
             reply.set_enabled(true);
             reply.set_owned(true);
-            reply.set_dictionary_attack_counter(3);
-            reply.set_dictionary_attack_threshold(4);
-            reply.set_dictionary_attack_lockout_in_effect(true);
-            reply.set_dictionary_attack_lockout_seconds_remaining(5);
             callback.Run(reply);
           }));
   GetTpmStatusReply reply;
@@ -131,6 +127,29 @@ TEST_F(DBusServiceTest, GetTpmStatus) {
   EXPECT_EQ(STATUS_SUCCESS, reply.status());
   EXPECT_TRUE(reply.enabled());
   EXPECT_TRUE(reply.owned());
+}
+
+TEST_F(DBusServiceTest, GetDictionaryAttackInfo) {
+  RegisterDBusObjectsAsync();
+
+  GetDictionaryAttackInfoRequest request;
+  EXPECT_CALL(mock_ownership_service_, GetDictionaryAttackInfo(_, _))
+      .WillOnce(Invoke(
+          [](const GetDictionaryAttackInfoRequest& request,
+             const TpmOwnershipInterface::GetDictionaryAttackInfoCallback&
+                 callback) {
+            GetDictionaryAttackInfoReply reply;
+            reply.set_status(STATUS_SUCCESS);
+            reply.set_dictionary_attack_counter(3);
+            reply.set_dictionary_attack_threshold(4);
+            reply.set_dictionary_attack_lockout_in_effect(true);
+            reply.set_dictionary_attack_lockout_seconds_remaining(5);
+            callback.Run(reply);
+          }));
+  GetDictionaryAttackInfoReply reply;
+  ExecuteMethod(
+      kGetDictionaryAttackInfo, request, &reply, kTpmOwnershipInterface);
+  EXPECT_EQ(STATUS_SUCCESS, reply.status());
   EXPECT_EQ(3, reply.dictionary_attack_counter());
   EXPECT_EQ(4, reply.dictionary_attack_threshold());
   EXPECT_TRUE(reply.dictionary_attack_lockout_in_effect());

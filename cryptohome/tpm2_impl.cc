@@ -1185,14 +1185,28 @@ bool Tpm2Impl::GetDictionaryAttackInfo(int* counter,
                                        int* threshold,
                                        bool* lockout,
                                        int* seconds_remaining) {
-  if (!UpdateTpmStatus(RefreshType::FORCE_REFRESH)) {
+  if (!InitializeTpmManagerClients()) {
     return false;
   }
-  *counter = tpm_status_.dictionary_attack_counter();
-  *threshold = tpm_status_.dictionary_attack_threshold();
-  *lockout = tpm_status_.dictionary_attack_lockout_in_effect();
+
+  tpm_manager::GetDictionaryAttackInfoReply da_info;
+  auto method = base::Bind(
+      &tpm_manager::TpmOwnershipInterface::GetDictionaryAttackInfo,
+      base::Unretained(tpm_owner_),
+      tpm_manager::GetDictionaryAttackInfoRequest());
+  SendTpmManagerRequestAndWait(method, &da_info);
+
+  if (da_info.status() != tpm_manager::STATUS_SUCCESS) {
+    LOG(ERROR) << __func__ << ": failed to get DA info from tpm_managerd.";
+    return false;
+  }
+
+  *counter = da_info.dictionary_attack_counter();
+  *threshold = da_info.dictionary_attack_threshold();
+  *lockout = da_info.dictionary_attack_lockout_in_effect();
   *seconds_remaining =
-      tpm_status_.dictionary_attack_lockout_seconds_remaining();
+      da_info.dictionary_attack_lockout_seconds_remaining();
+
   return true;
 }
 
@@ -1389,9 +1403,12 @@ bool Tpm2Impl::UpdateTpmStatus(RefreshType refresh_type) {
     // need to refresh our cached status.
     return true;
   }
+
+  tpm_manager::GetTpmStatusRequest request;
+  request.set_include_version_info(true);
   auto method = base::Bind(&tpm_manager::TpmOwnershipInterface::GetTpmStatus,
                            base::Unretained(tpm_owner_),
-                           tpm_manager::GetTpmStatusRequest());
+                           request);
   SendTpmManagerRequestAndWait(method, &tpm_status_);
   return (tpm_status_.status() == tpm_manager::STATUS_SUCCESS);
 }

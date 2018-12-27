@@ -39,6 +39,7 @@
 namespace tpm_manager {
 
 constexpr char kGetTpmStatusCommand[] = "status";
+constexpr char kGetDictionaryAttackInfoCommand[] = "get_da_info";
 constexpr char kTakeOwnershipCommand[] = "take_ownership";
 constexpr char kRemoveOwnerDependencyCommand[] = "remove_dependency";
 constexpr char kClearStoredOwnerPasswordCommand[] = "clear_owner_password";
@@ -50,7 +51,7 @@ constexpr char kLockSpaceCommand[] = "lock_space";
 constexpr char kListSpacesCommand[] = "list_spaces";
 constexpr char kGetSpaceInfoCommand[] = "get_space_info";
 
-constexpr char kReadinessOnlySwitch[] = "readiness_only";
+constexpr char kIncludeVersionInfoSwitch[] = "include_version_info";
 constexpr char kDependencySwitch[] = "dependency";
 constexpr char kIndexSwitch[] = "index";
 constexpr char kSizeSwitch[] = "size";
@@ -65,9 +66,11 @@ constexpr char kLockWrite[] = "lock_write";
 constexpr char kUsage[] = R"(
 Usage: tpm_manager_client <command> [<arguments>]
 Commands:
-  status [--readiness_only]
-      Prints TPM status information. If the option --readiness_only is given,
-      only prints TPM readiness-related information, i.e., enabled and owned.
+  status [--include_version_info]
+      Prints TPM status information. Includes TPM version info in the output if
+      the option --include_version_info is provided.
+  get_da_info
+      Prints TPM dictionary attack information.
   take_ownership
       Takes ownership of the Tpm with a random password.
   remove_dependency --dependency=<owner_dependency>
@@ -211,10 +214,14 @@ class ClientLoop : public ClientLoopBase {
     }
     std::string command = command_line->GetArgs()[0];
     if (command == kGetTpmStatusCommand) {
-      bool readiness_info_only = command_line->HasSwitch(kReadinessOnlySwitch);
+      bool include_version_info =
+          command_line->HasSwitch(kIncludeVersionInfoSwitch);
       task = base::Bind(&ClientLoop::HandleGetTpmStatus,
                         weak_factory_.GetWeakPtr(),
-                        readiness_info_only);
+                        include_version_info);
+    } else if (command == kGetDictionaryAttackInfoCommand) {
+      task = base::Bind(&ClientLoop::HandleGetDictionaryAttackInfo,
+                        weak_factory_.GetWeakPtr());
     } else if (command == kTakeOwnershipCommand) {
       task = base::Bind(&ClientLoop::HandleTakeOwnership,
                         weak_factory_.GetWeakPtr());
@@ -305,12 +312,20 @@ class ClientLoop : public ClientLoopBase {
     Quit();
   }
 
-  void HandleGetTpmStatus(bool readiness_info_only) {
+  void HandleGetTpmStatus(bool include_version_info) {
     GetTpmStatusRequest request;
-    request.set_readiness_info_only(readiness_info_only);
+    request.set_include_version_info(include_version_info);
     tpm_ownership_->GetTpmStatus(
         request, base::Bind(&ClientLoop::PrintReplyAndQuit<GetTpmStatusReply>,
                             weak_factory_.GetWeakPtr()));
+  }
+
+  void HandleGetDictionaryAttackInfo() {
+    GetDictionaryAttackInfoRequest request;
+    tpm_ownership_->GetDictionaryAttackInfo(
+        request,
+        base::Bind(&ClientLoop::PrintReplyAndQuit<GetDictionaryAttackInfoReply>,
+                   weak_factory_.GetWeakPtr()));
   }
 
   void HandleTakeOwnership() {

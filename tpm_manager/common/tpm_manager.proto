@@ -18,6 +18,7 @@
 // build system cannot handle import statements without using Android-specific
 // paths.
 
+syntax = "proto2";
 option optimize_for = LITE_RUNTIME;
 package tpm_manager;
 
@@ -212,10 +213,8 @@ message GetSpaceInfoReply {
 // A series of request and reply messages for the ownership interface methods.
 ////////////////////////////////////////////////////////////////////////////////
 message GetTpmStatusRequest {
-  // Whether to request for TPM readiness-related info, i.e., enabled and owned,
-  // only. If set, the reply will only include status, enabled, and owned;
-  // otherwise, it will be a full reply.
-  optional bool readiness_info_only = 1;
+  // Whether to include TPM version info in the reply.
+  optional bool include_version_info = 1;
 }
 
 message GetTpmStatusReply {
@@ -226,14 +225,9 @@ message GetTpmStatusReply {
   optional bool owned = 3;
   // Local TPM management data (including the owner password if available).
   optional LocalData local_data = 4;
-  // The current dictionary attack counter value.
-  optional uint32 dictionary_attack_counter = 5;
-  // The current dictionary attack counter threshold.
-  optional uint32 dictionary_attack_threshold = 6;
-  // Whether the TPM is in some form of dictionary attack lockout.
-  optional bool dictionary_attack_lockout_in_effect = 7;
-  // The number of seconds remaining in the lockout.
-  optional uint32 dictionary_attack_lockout_seconds_remaining = 8;
+
+  reserved 5 to 8;
+
   // TPM version information.
   message TpmVersionInfo {
     // TPM family. We use the TPM 2.0 style encoding, e.g.:
@@ -252,6 +246,23 @@ message GetTpmStatusReply {
     optional bytes vendor_specific = 6;
   }
   optional TpmVersionInfo version_info = 9;
+}
+
+message GetDictionaryAttackInfoRequest {
+}
+
+message GetDictionaryAttackInfoReply {
+  // The success or error code of the call GetDictionaryAttackInfo.
+  optional TpmManagerStatus status = 1;
+
+  // The current dictionary attack counter value.
+  optional uint32 dictionary_attack_counter = 2;
+  // The current dictionary attack counter threshold.
+  optional uint32 dictionary_attack_threshold = 3;
+  // Whether the TPM is in some form of dictionary attack lockout.
+  optional bool dictionary_attack_lockout_in_effect = 4;
+  // The number of seconds remaining in the lockout.
+  optional uint32 dictionary_attack_lockout_seconds_remaining = 5;
 }
 
 message TakeOwnershipRequest {

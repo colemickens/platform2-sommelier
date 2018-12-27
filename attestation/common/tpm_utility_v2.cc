@@ -907,8 +907,7 @@ bool TpmUtilityV2::CacheTpmState() {
     LOG(ERROR) << __func__ << ": Failed to read TPM state from tpm_managerd.";
     return false;
   }
-  is_ready_ = (tpm_status.enabled() && tpm_status.owned() &&
-               !tpm_status.dictionary_attack_lockout_in_effect());
+  is_ready_ = tpm_status.enabled() && tpm_status.owned();
   endorsement_password_ = tpm_status.local_data().endorsement_password();
   owner_password_ = tpm_status.local_data().owner_password();
   return true;

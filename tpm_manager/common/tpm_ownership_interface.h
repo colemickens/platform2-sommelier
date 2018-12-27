@@ -31,12 +31,21 @@ class TPM_MANAGER_EXPORT TpmOwnershipInterface {
  public:
   virtual ~TpmOwnershipInterface() = default;
 
-  // Processes a GetTpmStatusRequest and responds with a GetTpmStatusReply.
-  // If readiness_info_only is set in the request, the reply will contain
-  // enabled and owned only.
+  // Gets TPM status, which includes enabled, owned, passwords, etc. Processes
+  // |request| and calls |callback| with a reply when the process is done. If
+  // include_version_info is set in the request, TPM version info will be
+  // included in the reply.
   using GetTpmStatusCallback = base::Callback<void(const GetTpmStatusReply&)>;
   virtual void GetTpmStatus(const GetTpmStatusRequest& request,
                             const GetTpmStatusCallback& callback) = 0;
+
+  // Gets dictionary attack (DA) info. Processes |request| and calls |callback|
+  // with a reply when the process is done.
+  using GetDictionaryAttackInfoCallback =
+      base::Callback<void(const GetDictionaryAttackInfoReply&)>;
+  virtual void GetDictionaryAttackInfo(
+      const GetDictionaryAttackInfoRequest& request,
+      const GetDictionaryAttackInfoCallback& callback) = 0;
 
   // Processes a TakeOwnershipRequest and responds with a TakeOwnershipReply.
   using TakeOwnershipCallback = base::Callback<void(const TakeOwnershipReply&)>;

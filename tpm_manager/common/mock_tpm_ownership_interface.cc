@@ -35,6 +35,9 @@ namespace tpm_manager {
 MockTpmOwnershipInterface::MockTpmOwnershipInterface() {
   ON_CALL(*this, GetTpmStatus(_, _))
       .WillByDefault(WithArgs<1>(Invoke(RunCallback<GetTpmStatusReply>)));
+  ON_CALL(*this, GetDictionaryAttackInfo(_, _))
+      .WillByDefault(
+          WithArgs<1>(Invoke(RunCallback<GetDictionaryAttackInfoReply>)));
   ON_CALL(*this, TakeOwnership(_, _))
       .WillByDefault(WithArgs<1>(Invoke(RunCallback<TakeOwnershipReply>)));
   ON_CALL(*this, RemoveOwnerDependency(_, _))

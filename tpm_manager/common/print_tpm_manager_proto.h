@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2017 The Android Open Source Project
+// Copyright (C) 2019 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -94,6 +94,14 @@ std::string GetProtoDebugString(const GetTpmStatusReply::TpmVersionInfo& value);
 std::string GetProtoDebugStringWithIndent(const GetTpmStatusReply& value,
                                           int indent_size);
 std::string GetProtoDebugString(const GetTpmStatusReply& value);
+std::string GetProtoDebugStringWithIndent(
+    const GetDictionaryAttackInfoRequest& value,
+    int indent_size);
+std::string GetProtoDebugString(const GetDictionaryAttackInfoRequest& value);
+std::string GetProtoDebugStringWithIndent(
+    const GetDictionaryAttackInfoReply& value,
+    int indent_size);
+std::string GetProtoDebugString(const GetDictionaryAttackInfoReply& value);
 std::string GetProtoDebugStringWithIndent(const TakeOwnershipRequest& value,
                                           int indent_size);
 std::string GetProtoDebugString(const TakeOwnershipRequest& value);

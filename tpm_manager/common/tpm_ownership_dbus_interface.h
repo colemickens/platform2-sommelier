@@ -23,6 +23,7 @@ constexpr char kTpmOwnershipInterface[] = "org.chromium.TpmOwnership";
 
 // Methods exported by tpm_manager ownership D-Bus interface.
 constexpr char kGetTpmStatus[] = "GetTpmStatus";
+constexpr char kGetDictionaryAttackInfo[] = "GetDictionaryAttackInfo";
 constexpr char kTakeOwnership[] = "TakeOwnership";
 constexpr char kRemoveOwnerDependency[] = "RemoveOwnerDependency";
 constexpr char kClearStoredOwnerPassword[] = "ClearStoredOwnerPassword";
