@@ -34,7 +34,6 @@ executable("arc-networkd") {
   configs += [ ":target_defaults" ]
   sources = [
     "arc_ip_config.cc",
-    "device.cc",
     "dns/big_endian.cc",
     "dns/dns_response.cc",
     "dns/io_buffer.cc",

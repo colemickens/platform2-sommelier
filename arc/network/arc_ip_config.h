@@ -16,26 +16,25 @@
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
 
-#include "arc/network/device.h"
-
 namespace arc_networkd {
 
 std::ostream& operator<<(std::ostream& stream, const struct in_addr& addr);
 std::ostream& operator<<(std::ostream& stream, const struct in6_addr& addr);
 
-// Responsible for all configuration of a network device including the setup for
-// the bridge and virtual interfaces, IPVv6 addresses, routing and NDP proxying
-// and the iptables rules for enabling/disabling traffic into the container.
+// Sets up IPv6 addresses, routing, and NDP proxying between the guest's
+// interface |con_ifname| in network namespace |con_netns|, the internal
+// host<->guest interface |int_ifname|, and the external LAN interface
+// |current_lan_ifname_|.
 class ArcIpConfig {
  public:
-  ArcIpConfig(const std::string& ifname, const DeviceConfig& config);
+  ArcIpConfig(const std::string& int_ifname,
+              const std::string& con_ifname,
+              pid_t con_netns);
   virtual ~ArcIpConfig();
 
   // Open up the file descriptors needed to access the host and guest
-  // namespaces, sets up the virtual interfaces and pushes one side into
-  // the container. |con_netns| is the container's network namespace;
-  // if 0, this configuration will be reset and uninitialized.
-  bool Init(pid_t con_netns);
+  // namespaces.
+  bool Init();
 
   // Determine whether |con_ifname_| is up.  If so, read the rt_tables
   // file written to the Android filesystem by netd.  If not, return
@@ -61,29 +60,25 @@ class ArcIpConfig {
   static bool GetV6Address(const std::string& ifname, struct in6_addr* address);
   static void GenerateRandom(struct in6_addr* prefix, int prefix_len);
 
- private:
-  // Initial host bridge and iptables configuration.
-  void Setup();
-  void Teardown();
-
+ protected:
   int GetTableIdForInterface(const std::string& ifname);
+  int StartProcessInMinijail(const std::vector<std::string>& argv,
+                             bool log_failures);
 
-  const std::string ifname_;
-  const DeviceConfig config_;
-
+  std::string int_ifname_;
+  std::string con_ifname_;
   pid_t con_netns_;
-  int routing_table_id_;
 
   base::ScopedFD con_netns_fd_;
   base::ScopedFD self_netns_fd_;
+  int routing_table_id_;
 
   bool ipv6_configured_{false};
   bool inbound_configured_{false};
-  // These track the current ipv6 configuration, if any.
-  std::string ipv6_dev_ifname_;
-  std::string ipv6_address_;
-  std::string ipv6_address_full_;
-  std::string ipv6_router_;
+  std::string current_address_;
+  std::string current_address_full_;
+  std::string current_router_;
+  std::string current_lan_ifname_;
 };
 
 }  // namespace arc_networkd
