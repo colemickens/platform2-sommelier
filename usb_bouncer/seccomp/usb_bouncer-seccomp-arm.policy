@@ -6,6 +6,7 @@ clock_gettime: 1
 close: 1
 connect: 1
 exit_group: 1
+fchmod: arg1 == 0600
 fcntl64: 1
 fstat64: 1
 getdents64: 1
