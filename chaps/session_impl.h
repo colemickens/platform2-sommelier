@@ -166,6 +166,8 @@ class SessionImpl : public Session {
                              Object* public_object,
                              Object* private_object);
 
+  CK_RV GenerateECCKeyPair(Object* public_object, Object* private_object);
+
   std::string GenerateRandomSoftware(int num_bytes);
   std::string GetDERDigestInfo(CK_MECHANISM_TYPE mechanism);
   // Provides operation output and handles the buffer-too-small case.

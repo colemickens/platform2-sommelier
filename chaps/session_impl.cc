@@ -21,6 +21,7 @@
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
+#include <openssl/ec.h>
 
 #include "chaps/chaps.h"
 #include "chaps/chaps_factory.h"
@@ -33,6 +34,8 @@
 #define CKK_INVALID_KEY_TYPE (CKK_VENDOR_DEFINED + 0)
 
 using brillo::SecureBlob;
+using ScopedASN1_OCTET_STRING =
+    crypto::ScopedOpenSSL<ASN1_OCTET_STRING, ASN1_OCTET_STRING_free>;
 using std::hex;
 using std::map;
 using std::set;
@@ -217,6 +220,25 @@ bool IsValidKeyType(chaps::OperationType operation,
 // libarary.
 //
 // Helpers to map PKCS #11 <--> OpenSSL.
+template <typename OpenSSLType,
+          int (*openssl_func)(OpenSSLType*, unsigned char**)>
+string ConvertOpenSSLObjectToString(OpenSSLType* type) {
+  string output;
+
+  int expected_size = openssl_func(type, nullptr);
+  if (expected_size < 0) {
+    return string();
+  }
+
+  output.resize(expected_size, '\0');
+
+  unsigned char* buf = chaps::ConvertStringToByteBuffer(output.data());
+  int real_size = openssl_func(type, &buf);
+  CHECK_EQ(expected_size, real_size);
+
+  return output;
+}
+
 // Both PKCS #11 and OpenSSL use big-endian binary representations of big
 // integers.  To convert we can just use the OpenSSL converters.
 string ConvertFromBIGNUM(const BIGNUM* bignum) {
@@ -299,6 +321,58 @@ const EVP_MD* GetOpenSSLDigest(CK_MECHANISM_TYPE mechanism) {
       return EVP_sha512();
   }
   return nullptr;
+}
+
+// In short, we can use d2i_ECParameters to parse CKA_EC_PARAMS and return
+// EC_KEY*
+//
+// CKA_EC_PARAMS is DER-encoding of an ANSI X9.62 Parameters value.
+// Parameters ::= CHOICE {
+//    ecParameters   ECParameters,
+//    namedCurve     CURVES.&id({CurveNames}),
+//    implicitlyCA   NULL
+// }
+// which is as known as EcPKParameters in OpenSSL and RFC 3279.
+// EcPKParameters ::= CHOICE {
+//    ecParameters  ECParameters,
+//    namedCurve    OBJECT IDENTIFIER,
+//    implicitlyCA  NULL
+// }
+crypto::ScopedEC_KEY CreateECCKeyFromEC_PARAMS(const string& input) {
+  const unsigned char* buf = chaps::ConvertStringToByteBuffer(input.data());
+  crypto::ScopedEC_KEY key(d2i_ECParameters(nullptr, &buf, input.size()));
+  return key;
+}
+
+string GetECParametersAsString(const crypto::ScopedEC_KEY& key) {
+  return ConvertOpenSSLObjectToString<EC_KEY, i2d_ECParameters>(key.get());
+}
+
+// CKA_EC_POINT is DER-encoding of ANSI X9.62 ECPoint value
+// The format should be 04 LEN 04 X Y, where the first 04 is the octet string
+// tag, LEN is the the content length, the second 04 identifies the uncompressed
+// form, and X and Y are the point coordinates.
+//
+// i2o_ECPublicKey() returns only the content (04 X Y).
+string GetECPointAsString(const crypto::ScopedEC_KEY& key) {
+  // Convert EC_KEY* to OCT_STRING
+  const string oct_string =
+      ConvertOpenSSLObjectToString<EC_KEY, i2o_ECPublicKey>(key.get());
+  if (oct_string.empty())
+    return string();
+
+  // Put OCT_STRING to ASN1_OCTET_STRING
+  ScopedASN1_OCTET_STRING os(ASN1_OCTET_STRING_new());
+  ASN1_OCTET_STRING_set(os.get(),
+                        chaps::ConvertStringToByteBuffer(oct_string.data()),
+                        oct_string.size());
+
+  // DER encode ASN1_OCTET_STRING
+  const string der_encoded =
+      ConvertOpenSSLObjectToString<ASN1_OCTET_STRING, i2d_ASN1_OCTET_STRING>(
+          os.get());
+
+  return der_encoded;
 }
 
 // TODO(menghuan): Move Create*KeyFromObject to the member function of object.
@@ -867,6 +941,9 @@ CK_RV SessionImpl::GenerateKeyPair(CK_MECHANISM_TYPE mechanism,
     case CKM_RSA_PKCS_KEY_PAIR_GEN:
       result = GenerateRSAKeyPair(public_object.get(), private_object.get());
       break;
+    case CKM_EC_KEY_PAIR_GEN:
+      result = GenerateECCKeyPair(public_object.get(), private_object.get());
+      break;
     default:
       LOG(ERROR) << __func__ << ": Mechanism not supported: " << hex
                  << mechanism;
@@ -1156,6 +1233,55 @@ bool SessionImpl::GenerateRSAKeyPairTPM(int modulus_bits,
   private_object->SetAttributeString(kAuthDataAttribute, auth_data);
   private_object->SetAttributeString(kKeyBlobAttribute, key_blob);
   return true;
+}
+
+CK_RV SessionImpl::GenerateECCKeyPair(Object* public_object,
+                                      Object* private_object) {
+  // CKA_EC_PARAMS is requried
+  if (!public_object->IsAttributePresent(CKA_EC_PARAMS))
+    return CKR_TEMPLATE_INCOMPLETE;
+
+  crypto::ScopedEC_KEY key = CreateECCKeyFromEC_PARAMS(
+      public_object->GetAttributeString(CKA_EC_PARAMS));
+  if (key == nullptr) {
+    LOG(ERROR) << __func__ << ": CKA_EC_PARAMS parse fail.";
+    return CKR_DOMAIN_PARAMS_INVALID;
+  }
+
+  // Set CKA_KEY_TYPE
+  public_object->SetAttributeInt(CKA_KEY_TYPE, CKK_EC);
+  private_object->SetAttributeInt(CKA_KEY_TYPE, CKK_EC);
+
+  // reset CKA_EC_PARAMS for both key
+  const string ec_params = GetECParametersAsString(key);
+  if (ec_params.empty()) {
+    LOG(ERROR) << __func__ << ": Fail to dump CKA_EC_PARAMS";
+    return CKR_FUNCTION_FAILED;
+  }
+  public_object->SetAttributeString(CKA_EC_PARAMS, ec_params);
+  private_object->SetAttributeString(CKA_EC_PARAMS, ec_params);
+
+  // Software generate key
+  if (!EC_KEY_generate_key(key.get())) {
+    LOG(ERROR) << __func__
+               << ": Software generate key fail. Perhaps it is not supported "
+                  "by OpenSSL.";
+    return CKR_DOMAIN_PARAMS_INVALID;
+  }
+
+  // Set CKA_EC_POINT for public key
+  const string ec_point = GetECPointAsString(key);
+  if (ec_point.empty()) {
+    LOG(ERROR) << __func__ << ": Fail to dump EC_POINT.";
+    return CKR_FUNCTION_FAILED;
+  }
+  public_object->SetAttributeString(CKA_EC_POINT, ec_point);
+
+  // Set CKA_VALUE for private key
+  const BIGNUM* privkey = EC_KEY_get0_private_key(key.get());
+  private_object->SetAttributeString(CKA_VALUE, ConvertFromBIGNUM(privkey));
+
+  return CKR_OK;
 }
 
 string SessionImpl::GenerateRandomSoftware(int num_bytes) {
