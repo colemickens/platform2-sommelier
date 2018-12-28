@@ -48,6 +48,13 @@ using chaps::OperationType::kEncrypt;
 using chaps::OperationType::kSign;
 using chaps::OperationType::kVerify;
 
+const int kDefaultAuthDataBytes = 20;
+const int kMaxCipherBlockBytes = 16;
+const int kMaxRSAOutputBytes = 2048;
+const int kMaxDigestOutputBytes = EVP_MAX_MD_SIZE;
+const int kMinRSAKeyBits = 512;
+const int kMaxRSAKeyBits = kMaxRSAOutputBytes * 8;
+
 CK_RV ResultToRV(chaps::ObjectPool::Result result, CK_RV fail_rv) {
   switch (result) {
     case chaps::ObjectPool::Result::Success:
@@ -206,16 +213,126 @@ bool IsValidKeyType(chaps::OperationType operation,
          object_class == GetExpectedObjectClass(operation, key_type);
 }
 
+// TODO(crbug/916023): Move OpenSSL conversion function to a standalone
+// libarary.
+//
+// Helpers to map PKCS #11 <--> OpenSSL.
+// Both PKCS #11 and OpenSSL use big-endian binary representations of big
+// integers.  To convert we can just use the OpenSSL converters.
+string ConvertFromBIGNUM(const BIGNUM* bignum) {
+  string big_integer(BN_num_bytes(bignum), 0);
+  BN_bn2bin(bignum, chaps::ConvertStringToByteBuffer(big_integer.data()));
+  return big_integer;
+}
+
+// Caller take the ownership.
+// Returns nullptr if big_integer is empty.
+BIGNUM* ConvertToBIGNUM(const string& big_integer) {
+  if (big_integer.empty())
+    return nullptr;
+  BIGNUM* b = BN_bin2bn(chaps::ConvertStringToByteBuffer(big_integer.data()),
+                        big_integer.length(), nullptr);
+  CHECK(b);
+  return b;
+}
+
+const EVP_CIPHER* GetOpenSSLCipher(CK_MECHANISM_TYPE mechanism,
+                                   size_t key_size) {
+  switch (mechanism) {
+    case CKM_DES_ECB:
+      return EVP_des_ecb();
+    case CKM_DES_CBC:
+    case CKM_DES_CBC_PAD:
+      return EVP_des_cbc();
+    case CKM_DES3_ECB:
+      return EVP_des_ede3();
+    case CKM_DES3_CBC:
+    case CKM_DES3_CBC_PAD:
+      return EVP_des_ede3_cbc();
+    case CKM_AES_ECB:
+      switch (key_size) {
+        case 16:
+          return EVP_aes_128_ecb();
+        case 24:
+          return EVP_aes_192_ecb();
+        default:
+          return EVP_aes_256_ecb();
+      }
+      break;
+    case CKM_AES_CBC:
+    case CKM_AES_CBC_PAD:
+      switch (key_size) {
+        case 16:
+          return EVP_aes_128_cbc();
+        case 24:
+          return EVP_aes_192_cbc();
+        default:
+          return EVP_aes_256_cbc();
+      }
+      break;
+  }
+  return nullptr;
+}
+
+const EVP_MD* GetOpenSSLDigest(CK_MECHANISM_TYPE mechanism) {
+  switch (mechanism) {
+    case CKM_MD5:
+    case CKM_MD5_HMAC:
+    case CKM_MD5_RSA_PKCS:
+      return EVP_md5();
+    case CKM_SHA_1:
+    case CKM_SHA_1_HMAC:
+    case CKM_SHA1_RSA_PKCS:
+    case CKM_ECDSA_SHA1:
+      return EVP_sha1();
+    case CKM_SHA256:
+    case CKM_SHA256_HMAC:
+    case CKM_SHA256_RSA_PKCS:
+      return EVP_sha256();
+    case CKM_SHA384:
+    case CKM_SHA384_HMAC:
+    case CKM_SHA384_RSA_PKCS:
+      return EVP_sha384();
+    case CKM_SHA512:
+    case CKM_SHA512_HMAC:
+    case CKM_SHA512_RSA_PKCS:
+      return EVP_sha512();
+  }
+  return nullptr;
+}
+
+// TODO(menghuan): Move Create*KeyFromObject to the member function of object.
+// Always returns a non-NULL value.
+crypto::ScopedRSA CreateRSAKeyFromObject(const chaps::Object* key_object) {
+  crypto::ScopedRSA rsa(RSA_new());
+  CHECK_NE(rsa, nullptr);
+  if (key_object->GetObjectClass() == CKO_PUBLIC_KEY) {
+    string e = key_object->GetAttributeString(CKA_PUBLIC_EXPONENT);
+    rsa->e = ConvertToBIGNUM(e);
+    string n = key_object->GetAttributeString(CKA_MODULUS);
+    rsa->n = ConvertToBIGNUM(n);
+  } else {  // key_object->GetObjectClass() == CKO_PRIVATE_KEY
+    string n = key_object->GetAttributeString(CKA_MODULUS);
+    rsa->n = ConvertToBIGNUM(n);
+    string d = key_object->GetAttributeString(CKA_PRIVATE_EXPONENT);
+    rsa->d = ConvertToBIGNUM(d);
+    string p = key_object->GetAttributeString(CKA_PRIME_1);
+    rsa->p = ConvertToBIGNUM(p);
+    string q = key_object->GetAttributeString(CKA_PRIME_2);
+    rsa->q = ConvertToBIGNUM(q);
+    string dmp1 = key_object->GetAttributeString(CKA_EXPONENT_1);
+    rsa->dmp1 = ConvertToBIGNUM(dmp1);
+    string dmq1 = key_object->GetAttributeString(CKA_EXPONENT_2);
+    rsa->dmq1 = ConvertToBIGNUM(dmq1);
+    string iqmp = key_object->GetAttributeString(CKA_COEFFICIENT);
+    rsa->iqmp = ConvertToBIGNUM(iqmp);
+  }
+  return rsa;
+}
+
 }  // namespace
 
 namespace chaps {
-
-static const int kDefaultAuthDataBytes = 20;
-static const int kMaxCipherBlockBytes = 16;
-static const int kMaxRSAOutputBytes = 2048;
-static const int kMaxDigestOutputBytes = EVP_MAX_MD_SIZE;
-static const int kMinRSAKeyBits = 512;
-static const int kMaxRSAKeyBits = kMaxRSAOutputBytes * 8;
 
 SessionImpl::SessionImpl(int slot_id,
                          ObjectPool* token_object_pool,
@@ -1175,116 +1292,6 @@ bool SessionImpl::LoadLegacyRootKeys() {
   }
   is_legacy_loaded_ = true;
   return true;
-}
-
-// Both PKCS #11 and OpenSSL use big-endian binary representations of big
-// integers.  To convert we can just use the OpenSSL converters.
-string SessionImpl::ConvertFromBIGNUM(const BIGNUM* bignum) {
-  string big_integer(BN_num_bytes(bignum), 0);
-  BN_bn2bin(bignum, ConvertStringToByteBuffer(big_integer.data()));
-  return big_integer;
-}
-
-BIGNUM* SessionImpl::ConvertToBIGNUM(const string& big_integer) {
-  if (big_integer.empty())
-    return NULL;
-  BIGNUM* b = BN_bin2bn(ConvertStringToByteBuffer(big_integer.data()),
-                        big_integer.length(),
-                        NULL);
-  CHECK(b);
-  return b;
-}
-
-crypto::ScopedRSA SessionImpl::CreateRSAKeyFromObject(
-    const Object* key_object) {
-  crypto::ScopedRSA rsa(RSA_new());
-  CHECK_NE(rsa, nullptr);
-  if (key_object->GetObjectClass() == CKO_PUBLIC_KEY) {
-    string e = key_object->GetAttributeString(CKA_PUBLIC_EXPONENT);
-    rsa->e = ConvertToBIGNUM(e);
-    string n = key_object->GetAttributeString(CKA_MODULUS);
-    rsa->n = ConvertToBIGNUM(n);
-  } else {  // key_object->GetObjectClass() == CKO_PRIVATE_KEY
-    string n = key_object->GetAttributeString(CKA_MODULUS);
-    rsa->n = ConvertToBIGNUM(n);
-    string d = key_object->GetAttributeString(CKA_PRIVATE_EXPONENT);
-    rsa->d = ConvertToBIGNUM(d);
-    string p = key_object->GetAttributeString(CKA_PRIME_1);
-    rsa->p = ConvertToBIGNUM(p);
-    string q = key_object->GetAttributeString(CKA_PRIME_2);
-    rsa->q = ConvertToBIGNUM(q);
-    string dmp1 = key_object->GetAttributeString(CKA_EXPONENT_1);
-    rsa->dmp1 = ConvertToBIGNUM(dmp1);
-    string dmq1 = key_object->GetAttributeString(CKA_EXPONENT_2);
-    rsa->dmq1 = ConvertToBIGNUM(dmq1);
-    string iqmp = key_object->GetAttributeString(CKA_COEFFICIENT);
-    rsa->iqmp = ConvertToBIGNUM(iqmp);
-  }
-  return rsa;
-}
-
-const EVP_CIPHER* SessionImpl::GetOpenSSLCipher(CK_MECHANISM_TYPE mechanism,
-                                                size_t key_size) {
-  switch (mechanism) {
-    case CKM_DES_ECB:
-      return EVP_des_ecb();
-    case CKM_DES_CBC:
-    case CKM_DES_CBC_PAD:
-      return EVP_des_cbc();
-    case CKM_DES3_ECB:
-      return EVP_des_ede3();
-    case CKM_DES3_CBC:
-    case CKM_DES3_CBC_PAD:
-      return EVP_des_ede3_cbc();
-    case CKM_AES_ECB:
-      switch (key_size) {
-        case 16:
-          return EVP_aes_128_ecb();
-        case 24:
-          return EVP_aes_192_ecb();
-        default:
-          return EVP_aes_256_ecb();
-      }
-      break;
-    case CKM_AES_CBC:
-    case CKM_AES_CBC_PAD:
-      switch (key_size) {
-        case 16:
-          return EVP_aes_128_cbc();
-        case 24:
-          return EVP_aes_192_cbc();
-        default:
-          return EVP_aes_256_cbc();
-      }
-      break;
-  }
-  return NULL;
-}
-
-const EVP_MD* SessionImpl::GetOpenSSLDigest(CK_MECHANISM_TYPE mechanism) {
-  switch (mechanism) {
-    case CKM_MD5:
-    case CKM_MD5_HMAC:
-    case CKM_MD5_RSA_PKCS:
-      return EVP_md5();
-    case CKM_SHA_1:
-    case CKM_SHA_1_HMAC:
-    case CKM_SHA1_RSA_PKCS:
-      return EVP_sha1();
-    case CKM_SHA256:
-    case CKM_SHA256_HMAC:
-    case CKM_SHA256_RSA_PKCS:
-      return EVP_sha256();
-    case CKM_SHA384:
-    case CKM_SHA384_HMAC:
-    case CKM_SHA384_RSA_PKCS:
-      return EVP_sha384();
-    case CKM_SHA512:
-    case CKM_SHA512_HMAC:
-    case CKM_SHA512_RSA_PKCS:
-      return EVP_sha512();
-  }
-  return NULL;
 }
 
 bool SessionImpl::RSADecrypt(OperationContext* context) {

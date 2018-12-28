@@ -188,17 +188,6 @@ class SessionImpl : public Session {
   // the private key can only be accessed by the TPM.
   CK_RV WrapPrivateKey(Object* object);
 
-  // TODO(crbug/916023): Isolate the crypto related helper function.
-  // Helpers to map PKCS #11 <--> OpenSSL.
-  std::string ConvertFromBIGNUM(const BIGNUM* bignum);
-  // Returns NULL if big_integer is empty.
-  BIGNUM* ConvertToBIGNUM(const std::string& big_integer);
-  // Always returns a non-NULL value.
-  crypto::ScopedRSA CreateRSAKeyFromObject(const Object* key_object);
-  const EVP_CIPHER* GetOpenSSLCipher(CK_MECHANISM_TYPE mechanism,
-                                     size_t key_size);
-  const EVP_MD* GetOpenSSLDigest(CK_MECHANISM_TYPE mechanism);
-
   ChapsFactory* factory_;
   std::vector<int> find_results_;
   size_t find_results_offset_;
