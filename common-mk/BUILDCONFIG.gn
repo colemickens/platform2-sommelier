@@ -45,6 +45,9 @@ declare_args() {
 
   # Additional flags for C and C++ linker.
   external_ldflags = []
+
+  # Set this to true if you want to activate the debug mode.
+  is_debug = false
 }
 import("//common-mk/use.gni")
 

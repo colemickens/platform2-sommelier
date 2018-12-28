@@ -14,6 +14,7 @@ template("write_deps") {
                          [
                            "pkg_deps",
                            "target",
+                           "public_deps",
                          ])
   action(target_name) {
     script = "//common-mk/write_args.py"
