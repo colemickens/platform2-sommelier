@@ -367,9 +367,10 @@ TPM_RC TpmUtilityImpl::TakeOwnership(const std::string& owner_password,
   }
   std::unique_ptr<TpmState> tpm_state(factory_.GetTpmState());
   result = tpm_state->Initialize();
+
   session->SetEntityAuthorizationValue("");
-  session->SetFutureAuthorizationValue(endorsement_password);
   if (!tpm_state->IsEndorsementPasswordSet()) {
+    session->SetFutureAuthorizationValue(endorsement_password);
     result = SetHierarchyAuthorization(TPM_RH_ENDORSEMENT, endorsement_password,
                                        session->GetDelegate());
     if (result) {
@@ -377,8 +378,8 @@ TPM_RC TpmUtilityImpl::TakeOwnership(const std::string& owner_password,
       return result;
     }
   }
-  session->SetFutureAuthorizationValue(lockout_password);
   if (!tpm_state->IsLockoutPasswordSet()) {
+    session->SetFutureAuthorizationValue(lockout_password);
     result = SetHierarchyAuthorization(TPM_RH_LOCKOUT, lockout_password,
                                        session->GetDelegate());
     if (result) {
@@ -1251,10 +1252,11 @@ TPM_RC TpmUtilityImpl::GetPolicyDigestForPcrValues(
     return result;
   }
 
+  // the construction of `pcr_map_with_values` can be in O(n)
   std::map<uint32_t, std::string> pcr_map_with_values = pcr_map;
   for (const auto& map_pair : pcr_map) {
     uint32_t pcr_index = map_pair.first;
-    const std::string pcr_value = map_pair.second;
+    const std::string& pcr_value = map_pair.second;
     if (!pcr_value.empty()) {
       continue;
     }

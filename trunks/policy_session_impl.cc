@@ -127,7 +127,7 @@ TPM_RC PolicySessionImpl::PolicyPCR(
   bool map_contains_empty_value = false;
   for (const auto& map_pair : pcr_map) {
     uint32_t pcr_index = map_pair.first;
-    const std::string pcr_value = map_pair.second;
+    const std::string& pcr_value = map_pair.second;
     if (pcr_value.empty()) {
       map_contains_empty_value = true;
     }
