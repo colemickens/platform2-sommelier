@@ -202,6 +202,7 @@ class SessionImpl : public Session {
   // attributes. This is called when a private key is imported. On success,
   // the private key can only be accessed by the TPM.
   CK_RV WrapPrivateKey(Object* object);
+  CK_RV WrapRSAPrivateKey(Object* object);
 
   ChapsFactory* factory_;
   std::vector<int> find_results_;

@@ -1177,14 +1177,16 @@ CK_RV SessionImpl::CreateObjectInternal(const CK_ATTRIBUTE_PTR attributes,
     if (result != CKR_OK)
       return result;
   }
-  ObjectPool* pool = token_object_pool_;
-  if (object->IsTokenObject()) {
+
+  bool is_token_object = object->IsTokenObject();
+  if (is_token_object) {
     result = WrapPrivateKey(object.get());
     if (result != CKR_OK)
       return result;
-  } else {
-    pool = session_object_pool_.get();
   }
+
+  ObjectPool* pool =
+      is_token_object ? token_object_pool_ : session_object_pool_.get();
   auto pool_res = pool->Insert(object.get());
   if (!IsSuccess(pool_res))
     return ResultToRV(pool_res, CKR_GENERAL_ERROR);
@@ -1630,35 +1632,32 @@ CK_RV SessionImpl::ECCVerify(OperationContext* context,
   return result ? CKR_OK : CKR_SIGNATURE_INVALID;
 }
 
-CK_RV SessionImpl::WrapPrivateKey(Object* object) {
-  if (!tpm_utility_->IsTPMAvailable() ||
-      object->GetObjectClass() != CKO_PRIVATE_KEY ||
-      object->IsAttributePresent(kKeyBlobAttribute)) {
-    // This object does not need to be wrapped.
-    return CKR_OK;
-  }
+CK_RV SessionImpl::WrapRSAPrivateKey(Object* object) {
   if (!object->IsAttributePresent(CKA_PUBLIC_EXPONENT) ||
       !object->IsAttributePresent(CKA_MODULUS) ||
       !(object->IsAttributePresent(CKA_PRIME_1) ||
         object->IsAttributePresent(CKA_PRIME_2)))
     return CKR_TEMPLATE_INCOMPLETE;
-  string prime;
-  if (object->IsAttributePresent(CKA_PRIME_1)) {
-    prime = object->GetAttributeString(CKA_PRIME_1);
-  } else {
-    prime = object->GetAttributeString(CKA_PRIME_2);
-  }
+
+  // If TPM doesn't support, fall back to software.
   int key_size_bits = object->GetAttributeString(CKA_MODULUS).length() * 8;
   if (key_size_bits > tpm_utility_->MaxRSAKeyBits() ||
       key_size_bits < tpm_utility_->MinRSAKeyBits()) {
     LOG(WARNING) << "WARNING: " << key_size_bits
                  << "-bit private key cannot be wrapped by the TPM.";
-    // Fall back to software.
     return CKR_OK;
   }
+
+  // Get prime p or q
+  string prime = object->IsAttributePresent(CKA_PRIME_1)
+                     ? object->GetAttributeString(CKA_PRIME_1)
+                     : object->GetAttributeString(CKA_PRIME_2);
+
   string auth_data = GenerateRandomSoftware(kDefaultAuthDataBytes);
   string key_blob;
   int tpm_key_handle = 0;
+  // TODO(menghuan): Use Software key but report and have an auto-rewrapping
+  // when WrapKey() fail
   if (!tpm_utility_->WrapKey(slot_id_,
                              object->GetAttributeString(CKA_PUBLIC_EXPONENT),
                              object->GetAttributeString(CKA_MODULUS), prime,
@@ -1674,6 +1673,24 @@ CK_RV SessionImpl::WrapPrivateKey(Object* object) {
   object->RemoveAttribute(CKA_EXPONENT_2);
   object->RemoveAttribute(CKA_COEFFICIENT);
   return CKR_OK;
+}
+
+CK_RV SessionImpl::WrapPrivateKey(Object* object) {
+  if (!tpm_utility_->IsTPMAvailable() ||
+      object->GetObjectClass() != CKO_PRIVATE_KEY ||
+      object->IsAttributePresent(kKeyBlobAttribute)) {
+    // This object does not need to be wrapped.
+    return CKR_OK;
+  }
+  int key_type = object->GetAttributeInt(CKA_KEY_TYPE, 0);
+  if (key_type == CKK_RSA) {
+    return WrapRSAPrivateKey(object);
+  } else {
+    // If TPM doesn't support, fall back to software.
+    LOG(WARNING) << __func__ << ": Key type " << key_type
+                 << " private key cannot be wrapped by the TPM.";
+    return CKR_OK;
+  }
 }
 
 SessionImpl::OperationContext::OperationContext()
