@@ -1,0 +1,150 @@
+// Copyright 2018 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "policy_utils/policy_tool.h"
+
+#include <base/strings/string_util.h>
+#include <base/values.h>
+
+namespace {
+using base::CommandLine;
+using base::CompareCaseInsensitiveASCII;
+using base::Value;
+using policy_utils::PolicyWriter;
+
+// The command that is being executed.
+enum class Command { CMD_CLEAR, CMD_SET, CMD_UNKNOWN };
+
+// The directory path where JSON files should be stored to automatically
+// override policies in Chrome.
+constexpr char kPolicyDirPath[] = "/etc/opt/chrome/policies/recommended/";
+
+// Individual policies that this tool can handle.
+constexpr char kPolicyDeviceAllowBluetooth[] = "DeviceAllowBlueTooth";
+
+// The same policies, bundled up in a list.
+const policy_utils::PolicyTool::PolicyList known_policies = {
+    kPolicyDeviceAllowBluetooth};
+
+// Compare two strings for equality ignoring case.
+bool IsEqualNoCase(const std::string& a, const std::string& b) {
+  return CompareCaseInsensitiveASCII(a, b) == 0;
+}
+
+// Returns whether the policy, identified by its name, is supported.
+bool VerifyPolicyName(const std::string& policy_name) {
+  for (const std::string& policy : known_policies) {
+    if (IsEqualNoCase(policy, policy_name))
+      return true;
+  }
+  return false;
+}
+
+// Parse and return the command from the cmd-line arguments. Returns
+// Command::CMD_UNKNOWN if the command string is missing or not recognized.
+Command GetCommandFromArgs(const CommandLine::StringVector& args) {
+  if (args.size() < 1)
+    return Command::CMD_UNKNOWN;
+
+  const std::string& cmd = args[0];
+  if (IsEqualNoCase(cmd, "set"))
+    return Command::CMD_SET;
+  else if (IsEqualNoCase(cmd, "clear"))
+    return Command::CMD_CLEAR;
+
+  LOG(ERROR) << "Not a valid command: " << cmd;
+  return Command::CMD_UNKNOWN;
+}
+
+// Parse and return a boolean value from the cmd-line arguments. Returns a null
+// Value if the cmd-line value argument is missing or not a boolean.
+Value GetBoolValueFromArgs(const CommandLine::StringVector& args) {
+  if (args.size() >= 3) {
+    const std::string& value = args[2];
+    if (IsEqualNoCase(value, "true"))
+      return Value(true);
+    else if (IsEqualNoCase(value, "false"))
+      return Value(false);
+
+    LOG(ERROR) << "Not a valid boolean value: " << value;
+    return Value();
+  }
+
+  return Value();
+}
+
+// Parse and return the value that is being set for the given policy. Returns
+// a null Value if the set-value is missing or is not not the right type for
+// the given policy.
+Value GetValueForSetCommand(const std::string& policy,
+                            const CommandLine::StringVector& args) {
+  if (IsEqualNoCase(policy, kPolicyDeviceAllowBluetooth)) {
+    return GetBoolValueFromArgs(args);
+  }
+
+  return Value();
+}
+
+// Handle command |cmd| for the given policy, taking any required value from
+// the args list. Returns 0 in case of success or an error code otherwise.
+bool HandleCommandForPolicy(Command cmd,
+                            const std::string& policy,
+                            const CommandLine::StringVector& args,
+                            const PolicyWriter& writer) {
+  DCHECK_NE(cmd, Command::CMD_UNKNOWN);
+
+  if (!VerifyPolicyName(policy)) {
+    LOG(ERROR) << "Not a valid policy name: " << policy;
+    return false;
+  }
+
+  // If this is a 'set' command, parse the value to set from the args.
+  Value set_value;
+  if (cmd == Command::CMD_SET) {
+    set_value = GetValueForSetCommand(policy, args);
+    if (set_value.IsType(Value::Type::NONE)) {
+      LOG(ERROR) << "No value or invalid value specified";
+      return false;
+    }
+  }
+
+  if (IsEqualNoCase(policy, kPolicyDeviceAllowBluetooth)) {
+    if (cmd == Command::CMD_SET)
+      return writer.SetDeviceAllowBluetooth(set_value.GetBool());
+    else
+      return writer.ClearDeviceAllowBluetooth();
+  }
+
+  return false;
+}
+
+}  // namespace
+
+namespace policy_utils {
+
+using base::CommandLine;
+
+PolicyTool::PolicyTool() : writer_(kPolicyDirPath) {}
+
+PolicyTool::PolicyTool(const std::string& policy_dir_path)
+    : writer_(policy_dir_path) {}
+
+bool PolicyTool::DoCommand(const CommandLine::StringVector& args) const {
+  // Args must have at least one command and one policy name.
+  if (args.size() < 2)
+    return false;
+
+  Command cmd = GetCommandFromArgs(args);
+  if (cmd == Command::CMD_UNKNOWN)
+    return false;
+
+  const std::string& policy = args[1];
+  return HandleCommandForPolicy(cmd, policy, args, writer_);
+}
+
+const PolicyTool::PolicyList& PolicyTool::get_policies() {
+  return known_policies;
+}
+
+}  // namespace policy_utils

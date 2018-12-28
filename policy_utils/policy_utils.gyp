@@ -1,19 +1,27 @@
 {
+  'target_defaults': {
+    'variables': {
+      'deps': [
+        'libbrillo-<(libbase_ver)',
+        'libchrome-<(libbase_ver)',
+      ],
+    },
+  },
   'targets': [
     {
       'target_name': 'libmgmt',
       'type': 'static_library',
-      'variables': {
-        'exported_deps': [
-          'libbrillo-<(libbase_ver)',
-          'libchrome-<(libbase_ver)',
-        ],
-        'deps': [
-          '<@(exported_deps)',
-        ],
-      },
       'sources': [
         'policy_writer.cc',
+      ],
+    },
+    {
+      'target_name': 'policy',
+      'type': 'executable',
+      'dependencies': ['libmgmt'],
+      'sources': [
+        'main.cc',
+        'policy_tool.cc',
       ],
     },
   ],
@@ -29,11 +37,12 @@
             'libmgmt',
           ],
           'sources': [
+            'policy_tool.cc',
+            'policy_tool_test.cc',
             'policy_writer_test.cc',
           ],
           'variables': {
             'deps': [
-              'libchrome-<(libbase_ver)',
               'libchrome-test-<(libbase_ver)',
             ],
           },
