@@ -181,6 +181,10 @@ bool IsRSA(CK_MECHANISM_TYPE mechanism) {
   return MechanismInfo(mechanism).IsForKeyType(CKK_RSA);
 }
 
+bool IsECC(CK_MECHANISM_TYPE mechanism) {
+  return MechanismInfo(mechanism).IsForKeyType(CKK_EC);
+}
+
 bool IsMechanismValidForOperation(chaps::OperationType operation,
                                   CK_MECHANISM_TYPE mechanism) {
   return MechanismInfo(mechanism).IsOperationValid(operation);
@@ -346,6 +350,50 @@ crypto::ScopedEC_KEY CreateECCKeyFromEC_PARAMS(const string& input) {
 
 string GetECParametersAsString(const crypto::ScopedEC_KEY& key) {
   return ConvertOpenSSLObjectToString<EC_KEY, i2d_ECParameters>(key.get());
+}
+
+crypto::ScopedEC_KEY CreateECCPublicKeyFromObject(const Object* key_object) {
+  // Start parsing EC_PARAMS
+  string ec_params = key_object->GetAttributeString(CKA_EC_PARAMS);
+  crypto::ScopedEC_KEY key = CreateECCKeyFromEC_PARAMS(ec_params);
+  if (key == nullptr)
+    return nullptr;
+
+  // Start parsing EC_POINT
+  // DER decode EC_POINT to OCT_STRING
+  string pub_data = key_object->GetAttributeString(CKA_EC_POINT);
+  const unsigned char* buf = chaps::ConvertStringToByteBuffer(pub_data.data());
+  ScopedASN1_OCTET_STRING os(
+      d2i_ASN1_OCTET_STRING(nullptr, &buf, pub_data.size()));
+  if (os == nullptr)
+    return nullptr;
+
+  // Convert OCT_STRING to *EC_KEY
+  buf = os->data;
+  EC_KEY* key_ptr = key.get();
+  key_ptr = o2i_ECPublicKey(&key_ptr, &buf, os->length);
+  if (key_ptr == nullptr)
+    return nullptr;
+  CHECK_EQ(key_ptr, key.get());
+  return key;
+}
+
+crypto::ScopedEC_KEY CreateECCPrivateKeyFromObject(const Object* key_object) {
+  // Parse EC_PARAMS
+  string ec_params = key_object->GetAttributeString(CKA_EC_PARAMS);
+  crypto::ScopedEC_KEY key = CreateECCKeyFromEC_PARAMS(ec_params);
+  if (key == nullptr)
+    return nullptr;
+
+  crypto::ScopedBIGNUM d(
+      ConvertToBIGNUM(key_object->GetAttributeString(CKA_VALUE)));
+  if (d == nullptr)
+    return nullptr;
+
+  if (!EC_KEY_set_private_key(key.get(), d.get()))
+    return nullptr;
+
+  return key;
 }
 
 // CKA_EC_POINT is DER-encoding of ANSI X9.62 ECPoint value
@@ -626,7 +674,7 @@ CK_RV SessionImpl::OperationInit(OperationType operation,
       EVP_DigestInit(&context->digest_context_, digest);
       context->is_digest_ = true;
     }
-    if (IsRSA(mechanism))
+    if (IsRSA(mechanism) || IsECC(mechanism))
       context->key_ = key;
     context->is_valid_ = true;
   } else {
@@ -739,8 +787,9 @@ CK_RV SessionImpl::OperationFinalInternal(OperationType operation,
       HMAC_CTX_cleanup(&context->hmac_context_);
       context->data_ = string(reinterpret_cast<char*>(buffer), out_length);
     }
-    // Some RSA mechanisms use a digest so it's important to finish the digest
-    // before finishing the RSA computation.
+
+    // Some RSA/ECC mechanisms use a digest so it's important to finish the
+    // digest before finishing the RSA/ECC computation.
     if (IsRSA(context->mechanism_)) {
       if (operation == kEncrypt) {
         if (!RSAEncrypt(context))
@@ -750,6 +799,11 @@ CK_RV SessionImpl::OperationFinalInternal(OperationType operation,
           return CKR_FUNCTION_FAILED;
       } else if (operation == kSign) {
         if (!RSASign(context))
+          return CKR_FUNCTION_FAILED;
+      }
+    } else if (IsECC(context->mechanism_)) {
+      if (operation == kSign) {
+        if (!ECCSign(context))
           return CKR_FUNCTION_FAILED;
       }
     }
@@ -772,7 +826,8 @@ CK_RV SessionImpl::VerifyFinal(const string& signature) {
   CK_RV result = OperationFinal(kVerify, &max_out_length, &data_out);
   if (result != CKR_OK)
     return result;
-  // We only support two Verify mechanisms, HMAC and RSA.
+
+  // We only support 3 Verify mechanisms, HMAC, RSA and ECC.
   if (context->is_hmac_) {
     // The data_out contents will be the computed HMAC. To verify an HMAC, it is
     // recomputed and literally compared.
@@ -784,9 +839,15 @@ CK_RV SessionImpl::VerifyFinal(const string& signature) {
       return CKR_SIGNATURE_INVALID;
 
     return CKR_OK;
-  } else {
+  } else if (IsRSA(context->mechanism_)) {
     // The data_out contents will be the computed digest.
     return RSAVerify(context, data_out, signature);
+  } else if (IsECC(context->mechanism_)) {
+    // The data_out contents will be the computed digest.
+    return ECCVerify(context, data_out, signature);
+  } else {
+    NOTREACHED();
+    return false;
   }
 }
 
@@ -1497,6 +1558,71 @@ CK_RV SessionImpl::RSAVerify(OperationContext* context,
       0 != brillo::SecureMemcmp(buffer, signed_data.data(), length))
     return CKR_SIGNATURE_INVALID;
   return CKR_OK;
+}
+
+bool SessionImpl::ECCSign(OperationContext* context) {
+  const string& data_to_sign = context->data_;
+
+  // Software Sign with ECC key
+  crypto::ScopedEC_KEY key = CreateECCPrivateKeyFromObject(context->key_);
+  if (key == nullptr) {
+    LOG(ERROR) << __func__ << ": Load key failed.";
+    return false;
+  }
+
+  // We don't use ECDSA_sign here since the output format of PKCS#11 is
+  // different from OpenSSL's.
+  crypto::ScopedECDSA_SIG sig(
+      ECDSA_do_sign(ConvertStringToByteBuffer(data_to_sign.data()),
+                    data_to_sign.size(), key.get()));
+  if (sig == nullptr) {
+    LOG(ERROR) << __func__ << ": ECDSA failed: " << GetOpenSSLError();
+    return false;
+  }
+
+  // The resulting signature is always of length 2 * nLen.
+  // The first half of the signature is r and the second half is s
+  const string& signature =
+      ConvertFromBIGNUM(sig->r) + ConvertFromBIGNUM(sig->s);
+
+  context->data_ = signature;
+  return true;
+}
+
+CK_RV SessionImpl::ECCVerify(OperationContext* context,
+                             const string& signed_data,
+                             const string& signature) {
+  // Software verify with ECC key
+  crypto::ScopedEC_KEY key = CreateECCPublicKeyFromObject(context->key_);
+  if (key == nullptr) {
+    LOG(ERROR) << __func__ << ": Load key failed.";
+    return CKR_FUNCTION_FAILED;
+  }
+
+  // Parse signature back to ECDSA_SIG
+  int sign_size = signature.size();
+  if (sign_size % 2 != 0) {
+    return CKR_SIGNATURE_LEN_RANGE;
+  }
+  crypto::ScopedECDSA_SIG sig(ECDSA_SIG_new());
+
+  // ECDSA_SIG_new populates ECDSA_SIG with two newly allocated BIGNUMs. We need
+  // to free them before replacing them with new ones created by
+  // ConvertToBIGNUM.
+  // TODO(menghuan): use ECDSA_SIG_set0() after upgrading to OpenSSL 1.1.0
+  BN_free(sig->r);
+  BN_free(sig->s);
+  sig->r = ConvertToBIGNUM(signature.substr(0, sign_size / 2));
+  sig->s = ConvertToBIGNUM(signature.substr(sign_size / 2));
+
+  // 1 for a valid signature, 0 for an invalid signature and -1 on error.
+  int result = ECDSA_do_verify(ConvertStringToByteBuffer(signed_data.data()),
+                               signed_data.size(), sig.get(), key.get());
+  if (result < 0) {
+    LOG(ERROR) << __func__ << ": ECDSA verify failed: " << GetOpenSSLError();
+    return CKR_FUNCTION_FAILED;
+  }
+  return result ? CKR_OK : CKR_SIGNATURE_INVALID;
 }
 
 CK_RV SessionImpl::WrapPrivateKey(Object* object) {

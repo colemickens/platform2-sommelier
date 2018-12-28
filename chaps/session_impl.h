@@ -191,6 +191,13 @@ class SessionImpl : public Session {
   CK_RV RSAVerify(OperationContext* context,
                   const std::string& digest,
                   const std::string& signature);
+
+  // ECC operations
+  bool ECCSign(OperationContext* context);
+  CK_RV ECCVerify(OperationContext* context,
+                  const std::string& signed_data,
+                  const std::string& signature);
+
   // Wraps the given private key using the TPM and deletes all sensitive
   // attributes. This is called when a private key is imported. On success,
   // the private key can only be accessed by the TPM.
