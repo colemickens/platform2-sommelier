@@ -30,6 +30,8 @@
 #include "chaps/tpm_utility.h"
 #include "pkcs11/cryptoki.h"
 
+#define CKK_INVALID_KEY_TYPE (CKK_VENDOR_DEFINED + 0)
+
 using brillo::SecureBlob;
 using std::hex;
 using std::map;
@@ -38,6 +40,13 @@ using std::string;
 using std::vector;
 
 namespace {
+
+using chaps::Object;
+using chaps::OperationType::kDecrypt;
+using chaps::OperationType::kDigest;
+using chaps::OperationType::kEncrypt;
+using chaps::OperationType::kSign;
+using chaps::OperationType::kVerify;
 
 CK_RV ResultToRV(chaps::ObjectPool::Result result, CK_RV fail_rv) {
   switch (result) {
@@ -52,6 +61,149 @@ CK_RV ResultToRV(chaps::ObjectPool::Result result, CK_RV fail_rv) {
 
 bool IsSuccess(chaps::ObjectPool::Result result) {
   return result == chaps::ObjectPool::Result::Success;
+}
+
+class MechanismInfo {
+ public:
+  explicit MechanismInfo(CK_MECHANISM_TYPE mechanism);
+  bool IsSupported() const;
+  bool IsOperationValid(chaps::OperationType op) const;
+  bool IsForKeyType(CK_KEY_TYPE keytype) const;
+
+ private:
+  struct MechanismInfoData {
+    bool is_supported;
+    set<chaps::OperationType> operation;
+    CK_KEY_TYPE key_type;
+  };
+
+  static MechanismInfoData GetSupportedMechanismInfo(
+      CK_MECHANISM_TYPE mechanism);
+
+  MechanismInfoData data_;
+};
+
+MechanismInfo::MechanismInfo(CK_MECHANISM_TYPE mechanism)
+    : data_(GetSupportedMechanismInfo(mechanism)) {}
+
+bool MechanismInfo::IsSupported() const {
+  return data_.is_supported;
+}
+
+bool MechanismInfo::IsOperationValid(chaps::OperationType op) const {
+  return IsSupported() && data_.operation.count(op) > 0;
+}
+
+bool MechanismInfo::IsForKeyType(CK_KEY_TYPE keytype) const {
+  return IsSupported() && data_.key_type == keytype;
+}
+
+MechanismInfo::MechanismInfoData MechanismInfo::GetSupportedMechanismInfo(
+    CK_MECHANISM_TYPE mechanism) {
+  switch (mechanism) {
+    // DES
+    case CKM_DES_ECB:
+    case CKM_DES_CBC:
+    case CKM_DES_CBC_PAD:
+      return {true, {kEncrypt, kDecrypt}, CKK_DES};
+
+    // DES3
+    case CKM_DES3_ECB:
+    case CKM_DES3_CBC:
+    case CKM_DES3_CBC_PAD:
+      return {true, {kEncrypt, kDecrypt}, CKK_DES3};
+
+    // AES
+    case CKM_AES_ECB:
+    case CKM_AES_CBC:
+    case CKM_AES_CBC_PAD:
+      return {true, {kEncrypt, kDecrypt}, CKK_AES};
+
+    // RSA
+    case CKM_RSA_PKCS:
+      return {true, {kEncrypt, kDecrypt, kSign, kVerify}, CKK_RSA};
+    case CKM_MD5_RSA_PKCS:
+    case CKM_SHA1_RSA_PKCS:
+    case CKM_SHA256_RSA_PKCS:
+    case CKM_SHA384_RSA_PKCS:
+    case CKM_SHA512_RSA_PKCS:
+      return {true, {kSign, kVerify}, CKK_RSA};
+
+    // HMAC
+    case CKM_MD5_HMAC:
+    case CKM_SHA_1_HMAC:
+    case CKM_SHA256_HMAC:
+    case CKM_SHA384_HMAC:
+    case CKM_SHA512_HMAC:
+      return {true, {kSign, kVerify}, CKK_GENERIC_SECRET};
+
+    // Digest
+    case CKM_MD5:
+    case CKM_SHA_1:
+    case CKM_SHA256:
+    case CKM_SHA384:
+    case CKM_SHA512:
+      return {true, {kDigest}, CKK_INVALID_KEY_TYPE};
+
+    default:
+      return {false, {}, CKK_INVALID_KEY_TYPE};
+  }
+}
+
+bool IsHMAC(CK_MECHANISM_TYPE mechanism) {
+  return MechanismInfo(mechanism).IsForKeyType(CKK_GENERIC_SECRET);
+}
+
+// Returns true if the given block cipher (AES/DES) mechanism uses padding.
+bool IsPaddingEnabled(CK_MECHANISM_TYPE mechanism) {
+  switch (mechanism) {
+    case CKM_DES_CBC_PAD:
+    case CKM_DES3_CBC_PAD:
+    case CKM_AES_CBC_PAD:
+      return true;
+
+    default:
+      return false;
+  }
+}
+
+bool IsRSA(CK_MECHANISM_TYPE mechanism) {
+  return MechanismInfo(mechanism).IsForKeyType(CKK_RSA);
+}
+
+bool IsMechanismValidForOperation(chaps::OperationType operation,
+                                  CK_MECHANISM_TYPE mechanism) {
+  return MechanismInfo(mechanism).IsOperationValid(operation);
+}
+
+CK_OBJECT_CLASS GetExpectedObjectClass(chaps::OperationType operation,
+                                       CK_KEY_TYPE key_type) {
+  bool use_private_key = operation == kSign || operation == kDecrypt;
+  switch (key_type) {
+    case CKK_DES:
+    case CKK_DES3:
+    case CKK_AES:
+      return CKO_SECRET_KEY;
+    case CKK_RSA:
+    case CKK_EC:
+      return use_private_key ? CKO_PRIVATE_KEY : CKO_PUBLIC_KEY;
+    case CKK_GENERIC_SECRET:
+      return CKO_SECRET_KEY;
+
+    default:
+      // Never used
+      NOTREACHED();
+      return -1;
+  }
+}
+
+// Check |object_class| and |key_type| is valid for |mechanism| and |operation|
+bool IsValidKeyType(chaps::OperationType operation,
+                    CK_MECHANISM_TYPE mechanism,
+                    CK_OBJECT_CLASS object_class,
+                    CK_KEY_TYPE key_type) {
+  return MechanismInfo(mechanism).IsForKeyType(key_type) &&
+         object_class == GetExpectedObjectClass(operation, key_type);
 }
 
 }  // namespace
@@ -234,7 +386,7 @@ CK_RV SessionImpl::OperationInit(OperationType operation,
   context->Clear();
   context->mechanism_ = mechanism;
   context->parameter_ = mechanism_parameter;
-  if (!IsValidMechanism(operation, mechanism)) {
+  if (!IsMechanismValidForOperation(operation, mechanism)) {
     LOG(ERROR) << "Mechanism not supported: 0x" << hex << mechanism;
     return CKR_MECHANISM_INVALID;
   }
@@ -666,102 +818,6 @@ bool SessionImpl::IsPrivateLoaded() {
   return token_object_pool_->IsPrivateLoaded();
 }
 
-bool SessionImpl::IsValidKeyType(OperationType operation,
-                                 CK_MECHANISM_TYPE mechanism,
-                                 CK_OBJECT_CLASS object_class,
-                                 CK_KEY_TYPE key_type) {
-  CK_KEY_TYPE expected_key_type = 0;
-  CK_OBJECT_CLASS expected_class = 0;
-  CK_OBJECT_CLASS asymmetric_class = CKO_PUBLIC_KEY;
-  if (operation == kSign || operation == kDecrypt)
-    asymmetric_class = CKO_PRIVATE_KEY;
-  switch (mechanism) {
-    case CKM_DES_ECB:
-    case CKM_DES_CBC:
-    case CKM_DES_CBC_PAD:
-      expected_key_type = CKK_DES;
-      expected_class = CKO_SECRET_KEY;
-      break;
-    case CKM_DES3_ECB:
-    case CKM_DES3_CBC:
-    case CKM_DES3_CBC_PAD:
-      expected_key_type = CKK_DES3;
-      expected_class = CKO_SECRET_KEY;
-      break;
-    case CKM_AES_ECB:
-    case CKM_AES_CBC:
-    case CKM_AES_CBC_PAD:
-      expected_key_type = CKK_AES;
-      expected_class = CKO_SECRET_KEY;
-      break;
-    case CKM_RSA_PKCS:
-    case CKM_MD5_RSA_PKCS:
-    case CKM_SHA1_RSA_PKCS:
-    case CKM_SHA256_RSA_PKCS:
-    case CKM_SHA384_RSA_PKCS:
-    case CKM_SHA512_RSA_PKCS:
-      expected_key_type = CKK_RSA;
-      expected_class = asymmetric_class;
-      break;
-    case CKM_MD5_HMAC:
-    case CKM_SHA_1_HMAC:
-    case CKM_SHA256_HMAC:
-    case CKM_SHA384_HMAC:
-    case CKM_SHA512_HMAC:
-      expected_key_type = CKK_GENERIC_SECRET;
-      expected_class = CKO_SECRET_KEY;
-      break;
-    default:
-      return false;
-  }
-  return (key_type == expected_key_type &&
-          object_class == expected_class);
-}
-
-bool SessionImpl::IsValidMechanism(OperationType operation,
-                                   CK_MECHANISM_TYPE mechanism) {
-  if (operation == kEncrypt || operation == kDecrypt) {
-    switch (mechanism) {
-      case CKM_DES_ECB:
-      case CKM_DES_CBC:
-      case CKM_DES_CBC_PAD:
-      case CKM_DES3_ECB:
-      case CKM_DES3_CBC:
-      case CKM_DES3_CBC_PAD:
-      case CKM_AES_ECB:
-      case CKM_AES_CBC:
-      case CKM_AES_CBC_PAD:
-      case CKM_RSA_PKCS:
-        return true;
-    }
-  } else if (operation == kSign || operation == kVerify) {
-    switch (mechanism) {
-      case CKM_RSA_PKCS:
-      case CKM_MD5_RSA_PKCS:
-      case CKM_SHA1_RSA_PKCS:
-      case CKM_SHA256_RSA_PKCS:
-      case CKM_SHA384_RSA_PKCS:
-      case CKM_SHA512_RSA_PKCS:
-      case CKM_MD5_HMAC:
-      case CKM_SHA_1_HMAC:
-      case CKM_SHA256_HMAC:
-      case CKM_SHA384_HMAC:
-      case CKM_SHA512_HMAC:
-        return true;
-    }
-  } else {
-    switch (mechanism) {
-      case CKM_MD5:
-      case CKM_SHA_1:
-      case CKM_SHA256:
-      case CKM_SHA384:
-      case CKM_SHA512:
-        return true;
-    }
-  }
-  return false;
-}
-
 CK_RV SessionImpl::CipherInit(bool is_encrypt,
                               CK_MECHANISM_TYPE mechanism,
                               const string& mechanism_parameter,
@@ -1119,41 +1175,6 @@ bool SessionImpl::LoadLegacyRootKeys() {
   }
   is_legacy_loaded_ = true;
   return true;
-}
-
-bool SessionImpl::IsHMAC(CK_MECHANISM_TYPE mechanism) {
-  switch (mechanism) {
-    case CKM_MD5_HMAC:
-    case CKM_SHA_1_HMAC:
-    case CKM_SHA256_HMAC:
-    case CKM_SHA384_HMAC:
-    case CKM_SHA512_HMAC:
-      return true;
-  }
-  return false;
-}
-
-bool SessionImpl::IsPaddingEnabled(CK_MECHANISM_TYPE mechanism) {
-  switch (mechanism) {
-    case CKM_DES_CBC_PAD:
-    case CKM_DES3_CBC_PAD:
-    case CKM_AES_CBC_PAD:
-      return true;
-  }
-  return false;
-}
-
-bool SessionImpl::IsRSA(CK_MECHANISM_TYPE mechanism) {
-  switch (mechanism) {
-    case CKM_RSA_PKCS:
-    case CKM_MD5_RSA_PKCS:
-    case CKM_SHA1_RSA_PKCS:
-    case CKM_SHA256_RSA_PKCS:
-    case CKM_SHA384_RSA_PKCS:
-    case CKM_SHA512_RSA_PKCS:
-      return true;
-  }
-  return false;
 }
 
 // Both PKCS #11 and OpenSSL use big-endian binary representations of big

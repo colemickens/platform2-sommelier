@@ -130,11 +130,6 @@ class SessionImpl : public Session {
     void Clear();
   };
 
-  bool IsValidKeyType(OperationType operation,
-                      CK_MECHANISM_TYPE mechanism,
-                      CK_OBJECT_CLASS object_class,
-                      CK_KEY_TYPE key_type);
-  bool IsValidMechanism(OperationType operation, CK_MECHANISM_TYPE mechanism);
   CK_RV OperationUpdateInternal(OperationType operation,
                                 const std::string& data_in,
                                 int* required_out_length,
@@ -182,10 +177,6 @@ class SessionImpl : public Session {
   CK_ATTRIBUTE_TYPE GetRequiredKeyUsage(OperationType operation);
   bool GetTPMKeyHandle(const Object* key, int* key_handle);
   bool LoadLegacyRootKeys();
-  bool IsHMAC(CK_MECHANISM_TYPE mechanism);
-  // Returns true if the given cipher mechanism uses padding.
-  bool IsPaddingEnabled(CK_MECHANISM_TYPE mechanism);
-  bool IsRSA(CK_MECHANISM_TYPE mechanism);
   bool RSAEncrypt(OperationContext* context);
   bool RSADecrypt(OperationContext* context);
   bool RSASign(OperationContext* context);
