@@ -139,6 +139,11 @@ MechanismInfo::MechanismInfoData MechanismInfo::GetSupportedMechanismInfo(
     case CKM_SHA512_RSA_PKCS:
       return {true, {kSign, kVerify}, CKK_RSA};
 
+    // ECC
+    case CKM_ECDSA:
+    case CKM_ECDSA_SHA1:
+      return {true, {kSign, kVerify}, CKK_EC};
+
     // HMAC
     case CKM_MD5_HMAC:
     case CKM_SHA_1_HMAC:
