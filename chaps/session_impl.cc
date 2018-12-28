@@ -353,7 +353,7 @@ SessionImpl::SessionImpl(int slot_id,
   CHECK(tpm_utility_);
   CHECK(factory_);
   session_object_pool_.reset(
-      factory_->CreateObjectPool(handle_generator, NULL, NULL));
+      factory_->CreateObjectPool(handle_generator, nullptr, nullptr));
   CHECK(session_object_pool_.get());
 }
 
@@ -379,7 +379,7 @@ bool SessionImpl::IsOperationActive(OperationType type) const {
 CK_RV SessionImpl::CreateObject(const CK_ATTRIBUTE_PTR attributes,
                                 int num_attributes,
                                 int* new_object_handle) {
-  return CreateObjectInternal(attributes, num_attributes, NULL,
+  return CreateObjectInternal(attributes, num_attributes, nullptr,
                               new_object_handle);
 }
 
@@ -387,7 +387,7 @@ CK_RV SessionImpl::CopyObject(const CK_ATTRIBUTE_PTR attributes,
                               int num_attributes,
                               int object_handle,
                               int* new_object_handle) {
-  const Object* orig_object = NULL;
+  const Object* orig_object = nullptr;
   if (!GetObject(object_handle, &orig_object))
     return CKR_OBJECT_HANDLE_INVALID;
   CHECK(orig_object);
@@ -396,7 +396,7 @@ CK_RV SessionImpl::CopyObject(const CK_ATTRIBUTE_PTR attributes,
 }
 
 CK_RV SessionImpl::DestroyObject(int object_handle) {
-  const Object* object = NULL;
+  const Object* object = nullptr;
   if (!GetObject(object_handle, &object))
     return CKR_OBJECT_HANDLE_INVALID;
   CHECK(object);
@@ -546,7 +546,7 @@ CK_RV SessionImpl::OperationInit(OperationType operation,
       string key_material = key->GetAttributeString(CKA_VALUE);
       HMAC_CTX_init(&context->hmac_context_);
       HMAC_Init_ex(&context->hmac_context_, key_material.data(),
-                   key_material.length(), digest, NULL);
+                   key_material.length(), digest, nullptr);
       context->is_hmac_ = true;
     } else if (digest) {
       EVP_DigestInit(&context->digest_context_, digest);
@@ -1112,7 +1112,7 @@ bool SessionImpl::GenerateRSAKeyPairSoftware(int modulus_bits,
   if (e == nullptr)
     return false;
   crypto::ScopedRSA key(
-      RSA_generate_key(modulus_bits, BN_get_word(e.get()), NULL, NULL));
+      RSA_generate_key(modulus_bits, BN_get_word(e.get()), nullptr, nullptr));
   if (key == nullptr)
     return false;
   string n = ConvertFromBIGNUM(key->n);
@@ -1425,7 +1425,7 @@ SessionImpl::OperationContext::OperationContext()
       is_digest_(false),
       is_hmac_(false),
       is_finished_(false),
-      key_(NULL) {}
+      key_(nullptr) {}
 
 SessionImpl::OperationContext::~OperationContext() {
   Clear();
@@ -1447,7 +1447,7 @@ void SessionImpl::OperationContext::Clear() {
   is_hmac_ = false;
   is_incremental_ = false;
   is_finished_ = false;
-  key_ = NULL;
+  key_ = nullptr;
   data_.clear();
   parameter_.clear();
 }
