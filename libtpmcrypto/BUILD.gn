@@ -30,6 +30,10 @@ proto_library("tpm_encrypted_data_proto") {
   sources = [
     "tpm_encrypted_data.proto",
   ]
+
+  # tpm_encrypted_data_proto.a is used by a shared_libary
+  # object, so we need to build it with '-fPIC' instead of '-fPIE'.
+  use_pic = true
 }
 
 shared_library("libtpmcrypto") {
