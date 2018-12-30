@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/json/json_writer.h>
 #include <base/memory/ptr_util.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -25,29 +26,8 @@ const char kErrorMsgFailedToPackProtobuf[] = "Failed to serailize the protobuf";
 
 namespace {
 
-// TODO(itspeter): Remove this function.
-void AddFakeResponse(ProbeResult* reply) {
-  Battery* battery_top_level = reply->add_battery();
-  battery_top_level->set_name("generic");
-  Battery::Fields* battery_fields = battery_top_level->mutable_values();
-  battery_fields->set_index(1);
-
-  std::vector<std::string> virtual_codec_name{
-      "ehdaudioXYZ", "dmic-codec", "i2c-MX98373:01", "i2c-MX98373:00"};
-
-  for (auto const& codec_name : virtual_codec_name) {
-    AudioCodec* audio_codec_top_level = reply->add_audio_codec();
-    audio_codec_top_level->set_name("generic");
-    AudioCodec::Fields* audio_codec_fields =
-        audio_codec_top_level->mutable_values();
-    audio_codec_fields->set_name(codec_name);
-  }
-}
-
 void DumpProtocolBuffer(const google::protobuf::Message& protobuf,
                         std::string message_name) {
-  // TODO(hmchu): b/119938934, Enable those dump only with --debug flag.
-  // Using ERROR to show on the /var/log/messages
   VLOG(1) << "---> Protobuf dump of " << message_name;
   VLOG(1) << "       DebugString():\n\n" << protobuf.DebugString();
   std::string json_string;
@@ -139,15 +119,47 @@ void Daemon::ProbeCategories(
   DumpProtocolBuffer(request, "ProbeRequest");
 
   std::string probe_config_path;
-  CHECK(!runtime_probe::GetProbeConfigPath(&probe_config_path, ""));
+  if (!runtime_probe::GetProbeConfigPath(&probe_config_path, "")) {
+    reply.set_error(RUNTIME_PROBE_ERROR_DEFAULT_PROBE_CONFIG_NOT_FOUND);
+    return SendProbeResult(reply, method_call, &response_sender);
+  }
 
   std::unique_ptr<base::DictionaryValue> config_dv =
       runtime_probe::ParseProbeConfig(probe_config_path);
-  CHECK(config_dv);
-  // TODO(itspeter): Return D-Bus error.
+  if (!config_dv) {
+    reply.set_error(RUNTIME_PROBE_ERROR_PROBE_CONFIG_SYNTAX_ERROR);
+    return SendProbeResult(reply, method_call, &response_sender);
+  }
 
-  // TODO(itspeter): Compose real response base on probe result.
-  AddFakeResponse(&reply);
+  auto probe_config =
+      runtime_probe::ProbeConfig::FromDictionaryValue(*config_dv);
+  if (!probe_config) {
+    reply.set_error(RUNTIME_PROBE_ERROR_PROBE_CONFIG_INCOMPLETE_PROBE_FUNCTION);
+    return SendProbeResult(reply, method_call, &response_sender);
+  }
+
+  // Convert the ProbeReuslt from enum into array of string.
+  std::vector<std::string> categories_to_probe;
+  const google::protobuf::EnumDescriptor* descriptor =
+      ProbeRequest_SupportCategory_descriptor();
+
+  for (int j = 0; j < request.categories_size(); j++)
+    categories_to_probe.push_back(
+        descriptor->FindValueByNumber(request.categories(j))->name());
+
+  auto probe_result = probe_config->Eval(categories_to_probe);
+  // TODO(itspeter): Report assigned but not in the probe config's category.
+  std::string output_js;
+  base::JSONWriter::Write(*probe_result, &output_js);
+  VLOG(1) << "Raw JSON probe result\n" << output_js;
+
+  // Convert JSON to Protocol Buffer.
+  auto options = google::protobuf::util::JsonParseOptions();
+  options.ignore_unknown_fields = true;
+  auto json_parse_status =
+      google::protobuf::util::JsonStringToMessage(output_js, &reply, options);
+  VLOG(1) << "serialize JSON to Protobuf status: " << json_parse_status;
+
   return SendProbeResult(reply, method_call, &response_sender);
 }
 
