@@ -28,6 +28,7 @@ static_library("libhermes") {
     "apdu.cc",
     "qmi_uim.c",
     "sgp_22.cc",
+    "socket_qrtr.cc",
     "smdp.cc",
   ]
 }
