@@ -457,6 +457,7 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
             << string_ip << " for VM " << vm_name << " completed.";
 
   std::string username;
+  std::string homedir;
   if (owner_id == primary_owner_id_) {
     // Register this with the hostname resolver.
     RegisterHostname(
@@ -467,7 +468,8 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
       RegisterHostname(kDefaultContainerHostname, string_ip);
 
       std::string error_msg;
-      if (vm->GetLxdContainerUsername(container_name, &username, &error_msg) !=
+      if (vm->GetLxdContainerUsername(container_name, &username, &homedir,
+                                      &error_msg) !=
           VirtualMachine::GetLxdContainerUsernameStatus::SUCCESS) {
         LOG(ERROR) << "Failed to get container " << container_name
                    << " username for SSH forwarding: " << error_msg;
@@ -484,6 +486,7 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
   proto.set_container_name(container_name);
   proto.set_owner_id(owner_id);
   proto.set_container_username(username);
+  proto.set_container_homedir(homedir);
   dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
   exported_object_->SendSignal(&signal);
   *result = true;
@@ -1714,12 +1717,12 @@ std::unique_ptr<dbus::Response> Service::GetLxdContainerUsername(
     return dbus_response;
   }
 
-  std::string error_msg, username;
+  std::string error_msg, username, homedir;
   VirtualMachine::GetLxdContainerUsernameStatus status =
       vm->GetLxdContainerUsername(request.container_name().empty()
                                       ? kDefaultContainerName
                                       : request.container_name(),
-                                  &username, &error_msg);
+                                  &username, &homedir, &error_msg);
 
   switch (status) {
     case VirtualMachine::GetLxdContainerUsernameStatus::UNKNOWN:
@@ -1744,6 +1747,7 @@ std::unique_ptr<dbus::Response> Service::GetLxdContainerUsername(
   }
 
   response.set_username(username);
+  response.set_homedir(homedir);
   response.set_failure_reason(error_msg);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;

@@ -176,6 +176,7 @@ class VirtualMachine {
   GetLxdContainerUsernameStatus GetLxdContainerUsername(
       const std::string& container_name,
       std::string* username,
+      std::string* homedir,
       std::string* out_error);
 
   // Sets up an LXD container.

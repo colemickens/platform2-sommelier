@@ -295,8 +295,10 @@ VirtualMachine::StartLxdContainerStatus VirtualMachine::StartLxdContainer(
 VirtualMachine::GetLxdContainerUsernameStatus
 VirtualMachine::GetLxdContainerUsername(const std::string& container_name,
                                         std::string* out_username,
+                                        std::string* out_homedir,
                                         std::string* out_error) {
   DCHECK(out_username);
+  DCHECK(out_homedir);
   DCHECK(out_error);
   if (!tremplin_stub_) {
     *out_error = "tremplin is not connected";
@@ -323,6 +325,7 @@ VirtualMachine::GetLxdContainerUsername(const std::string& container_name,
 
   out_error->assign(response.failure_reason());
   out_username->assign(response.username());
+  out_homedir->assign(response.homedir());
 
   switch (response.status()) {
     case tremplin::GetContainerUsernameResponse::UNKNOWN:
