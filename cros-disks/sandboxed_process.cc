@@ -36,6 +36,34 @@ void SandboxedProcess::NewMountNamespace() {
   minijail_namespace_vfs(jail_);
 }
 
+bool SandboxedProcess::SetUpMinimalMounts() {
+  if (minijail_bind(jail_, "/", "/", 0))
+    return false;
+  if (minijail_bind(jail_, "/proc", "/proc", 0))
+    return false;
+  minijail_remount_proc_readonly(jail_);
+  minijail_mount_tmp(jail_);
+  return true;
+}
+
+bool SandboxedProcess::BindMount(const std::string& from,
+                                 const std::string& to,
+                                 bool writeable) {
+  return minijail_bind(jail_, from.c_str(), to.c_str(), writeable) == 0;
+}
+
+bool SandboxedProcess::Mount(const std::string& src,
+                             const std::string& to,
+                             const std::string& type,
+                             const char* data) {
+  return minijail_mount_with_data(jail_, src.c_str(), to.c_str(), type.c_str(),
+                                  0, data) == 0;
+}
+
+bool SandboxedProcess::EnterPivotRoot() {
+  return minijail_enter_pivot_root(jail_, "/var/empty") == 0;
+}
+
 void SandboxedProcess::NewNetworkNamespace() {
   minijail_namespace_net(jail_);
 }

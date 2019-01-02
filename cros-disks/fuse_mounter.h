@@ -6,6 +6,7 @@
 #define CROS_DISKS_FUSE_MOUNTER_H_
 
 #include <string>
+#include <vector>
 
 #include "cros-disks/mounter.h"
 
@@ -24,6 +25,7 @@ class FUSEMounter : public Mounter {
               const std::string& mount_program_path,
               const std::string& mount_user,
               const std::string& seccomp_policy,
+              const std::vector<std::string>& accessible_paths,
               bool permit_network_access);
 
  protected:
@@ -41,6 +43,10 @@ class FUSEMounter : public Mounter {
 
   // If not empty the path to BPF seccomp filter policy.
   const std::string seccomp_policy_;
+
+  // Directories the FUSE module should be able to access (beyond basic
+  // /proc, /dev, etc).
+  const std::vector<std::string> accessible_paths_;
 
   // Whether to leave network access to the mount program.
   const bool permit_network_access_;

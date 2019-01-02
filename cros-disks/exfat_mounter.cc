@@ -34,6 +34,7 @@ ExFATMounter::ExFATMounter(const string& source_path,
                   kMountProgramPath,
                   kMountUser,
                   "",
+                  {},
                   false) {}
 
 }  // namespace cros_disks

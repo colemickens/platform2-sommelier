@@ -36,6 +36,24 @@ class SandboxedProcess : public Process {
   // Puts the process to be sandboxed in a new network namespace.
   void NewNetworkNamespace();
 
+  // Assuming the process is sandboxed in a new mount namespace, some essential
+  // mountpoints like / and /proc are being set up.
+  bool SetUpMinimalMounts();
+
+  // Maps a file or a folder into process' mount namespace.
+  bool BindMount(const std::string& from,
+                 const std::string& to,
+                 bool writeable);
+
+  // Mounts source to the specified folder in the new mount namespace.
+  bool Mount(const std::string& src,
+             const std::string& to,
+             const std::string& type,
+             const char* data);
+
+  // Makes the process to call pivot_root for an empty /.
+  bool EnterPivotRoot();
+
   // Skips re-marking existing mounts as private.
   void SkipRemountPrivate();
 

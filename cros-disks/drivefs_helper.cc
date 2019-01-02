@@ -26,6 +26,7 @@ const char kHelperTool[] = "/opt/google/drive-file-stream/drivefs";
 const char kSeccompPolicyFile[] =
     "/opt/google/drive-file-stream/drivefs-seccomp.policy";
 const char kType[] = "drivefs";
+const char kDbusSocketPath[] = "/run/dbus";
 
 }  // namespace
 
@@ -70,9 +71,11 @@ std::unique_ptr<FUSEMounter> DrivefsHelper::CreateMounter(
   std::string seccomp =
       platform()->PathExists(kSeccompPolicyFile) ? kSeccompPolicyFile : "";
 
+  // Bind working dir and DBus communication socket into the sandbox.
+  std::vector<std::string> paths = {working_dir.value(), kDbusSocketPath};
   return std::make_unique<FUSEMounter>(
       "", target_path.value(), type(), mount_options, platform(),
-      program_path().value(), user(), seccomp, true);
+      program_path().value(), user(), seccomp, paths, true);
 }
 
 base::FilePath DrivefsHelper::GetValidatedDataDir(

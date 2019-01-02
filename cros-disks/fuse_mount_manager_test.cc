@@ -93,6 +93,7 @@ class MockMounter : public FUSEMounter {
                     "/bin/sh",
                     "root",
                     "",
+                    {},
                     false) {}
   MOCK_METHOD0(MountImpl, MountErrorType());
 };

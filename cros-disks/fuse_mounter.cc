@@ -32,12 +32,14 @@ FUSEMounter::FUSEMounter(const string& source_path,
                          const string& mount_program_path,
                          const string& mount_user,
                          const std::string& seccomp_policy,
+                         const std::vector<std::string>& accessible_paths,
                          bool permit_network_access)
     : Mounter(source_path, target_path, filesystem_type, mount_options),
       platform_(platform),
       mount_program_path_(mount_program_path),
       mount_user_(mount_user),
       seccomp_policy_(seccomp_policy),
+      accessible_paths_(accessible_paths),
       permit_network_access_(permit_network_access) {}
 
 MountErrorType FUSEMounter::MountImpl() {
@@ -76,7 +78,10 @@ MountErrorType FUSEMounter::MountImpl() {
   mount_process.SetGroupId(mount_group_id);
   mount_process.SetNoNewPrivileges();
   // TODO(crbug.com/866377): Run FUSE fully deprivileged.
-  mount_process.SetCapabilities(CAP_TO_MASK(CAP_SYS_ADMIN));
+  // Currently SYS_ADMIN is needed to perform mount()/umount() calls from
+  // libfuse and SYS_CHROOT is needed to call pivot_root() from minijail.
+  mount_process.SetCapabilities(CAP_TO_MASK(CAP_SYS_ADMIN) |
+                                CAP_TO_MASK(CAP_SYS_CHROOT));
 
   // The FUSE mount program is put under a new mount namespace, so mounts
   // inside that namespace don't normally propagate out except when a mount is
@@ -88,11 +93,53 @@ MountErrorType FUSEMounter::MountImpl() {
   // shared mount. cros-disks should verify that and make /media a shared mount
   // when necessary.
   mount_process.NewMountNamespace();
+  if (!mount_process.SetUpMinimalMounts()) {
+    LOG(ERROR) << "Can't set up minijail mounts";
+    return MOUNT_ERROR_INTERNAL;
+  }
+
+  // FUSE modules need access to /dev/fuse and some need access to
+  // actual block devices.
+  // TODO(crbug.com/920092): Expose only devices that are needed.
+  if (!mount_process.BindMount("/dev", "/dev", true)) {
+    LOG(ERROR) << "Can't bind /dev";
+    return MOUNT_ERROR_INTERNAL;
+  }
+
+  // Mounts are exposed to the rest of the system through this shared mount.
+  if (!mount_process.BindMount("/media", "/media", true)) {
+    LOG(ERROR) << "Can't bind /media";
+    return MOUNT_ERROR_INTERNAL;
+  }
+
+  // Data dirs if any are mounted inside /run/fuse.
+  if (!mount_process.Mount("tmpfs", "/run", "tmpfs", "mode=0755,size=10M")) {
+    LOG(ERROR) << "Can't mount /run";
+    return MOUNT_ERROR_INTERNAL;
+  }
+  if (!mount_process.BindMount("/run/fuse", "/run/fuse", false)) {
+    LOG(ERROR) << "Can't bind /run/fuse";
+    return MOUNT_ERROR_INTERNAL;
+  }
+
+  // This is for additional data dirs.
+  for (const auto& path : accessible_paths_) {
+    if (!mount_process.BindMount(path, path, true)) {
+      LOG(ERROR) << "Can't bind " << path;
+      return MOUNT_ERROR_INVALID_ARGUMENT;
+    }
+  }
+
   // Prevent minjail from turning /media private again.
   //
   // TODO(benchan): Revisit this once minijail provides a finer control over
   // what should be remounted private and what can remain shared (b:62056108).
   mount_process.SkipRemountPrivate();
+
+  if (!mount_process.EnterPivotRoot()) {
+    LOG(ERROR) << "Can't pivot root";
+    return MOUNT_ERROR_INTERNAL;
+  }
 
   // TODO(benchan): Re-enable cgroup namespace when either Chrome OS
   // kernel 3.8 supports it or no more supported devices use kernel
@@ -102,6 +149,12 @@ MountErrorType FUSEMounter::MountImpl() {
   mount_process.NewIpcNamespace();
   if (!permit_network_access_) {
     mount_process.NewNetworkNamespace();
+  } else {
+    //  Network DNS configs are in /run/shill.
+    if (!mount_process.BindMount("/run/shill", "/run/shill", false)) {
+      LOG(ERROR) << "Can't bind /run/shill";
+      return MOUNT_ERROR_INTERNAL;
+    }
   }
 
   mount_process.AddArgument(mount_program_path_);
