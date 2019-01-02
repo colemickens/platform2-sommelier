@@ -356,16 +356,7 @@ status_t ParameterWorker::getPipeConfig(PipeConfig &pipeCfg, std::shared_ptr<Gra
 
     string baseNode = string("imgu:");
 
-    string node = baseNode + pin;
-
-    int temp = 0;
-    ret |= config->getValue(node, GCSS_KEY_CPFF_MODE_HINT, temp);
-    pipeCfg.cpff_mode_hint = temp;
-
-    ret |= config->getValue(node, GCSS_KEY_IMGU_PIPE_OUTPUT_ID, temp);
-    pipeCfg.valid = temp;
-
-    node = baseNode + pin + ":if";
+    string node = baseNode + pin + ":if";
     ret |= config->graphGetDimensionsByName(node, pipeCfg.input_feeder_out_width,
             pipeCfg.input_feeder_out_height);
 
