@@ -10,78 +10,43 @@ getuid: 1
 geteuid: 1
 getgid: 1
 getegid: 1
-lseek: 1
-rt_sigaction: 1
 epoll_create1: 1
-getresuid: 1
-brk: 1
-connect: 1
-getsockname: 1
-close: 1
-getgid: 1
-poll: 1
-clock_getres: 1
-write: 1
-getresgid: 1
+pipe2: 1
+epoll_ctl: 1
+gettid: 1
 rt_sigprocmask: 1
-arch_prctl: 1
-access: 1
-recvmsg: 1
-getpid: 1
 signalfd4: 1
-set_tid_address: 1
 fstat: 1
+clock_getres: 1
+getresuid: 1
+getresgid: 1
 fcntl: 1
-stat: 1
+getsockname: 1
+poll: 1
 read: 1
 openat: 1
 clone: 1
 set_robust_list: 1
-getegid: 1
 # base::FileEnumerator::Next()
 getdents: 1
-# TODO(b/120826467) Disallow execve when direct access
-# to /dev/cros_ec and /dev/mmcblk0 is possible
-execve: 1
 wait4: 1
-gettid: 1
-getuid: 1
 munmap: 1
-pipe2: 1
-epoll_ctl: 1
-epoll_wait: 1
-pipe: 1
-prlimit64: 1
 sendto: 1
-geteuid: 1
 sendmsg: 1
-
-# The following are syscalls required for running "mmc extcsd read /dev/mmcblk0"
-exit_group: 1
-dup2: 1
-getdents64: 1
-openat: 1
-stat: 1
-set_robust_list: 1
-fstat: 1
-prlimit64: 1
-brk: 1
+recvmsg: 1
+epoll_wait: 1
 close: 1
-arch_prctl: 1
-getdents64: 1
-read: 1
-write: 1
-arch_prctl: 1
-access: 1
 
 # The following are syscalls required for running "ectool battery"
 lseek: 1
 rt_sigaction: 1
+mprotect: arg2 == PROT_READ || arg2 == PROT_NONE
 uname: 1
 brk: 1
 connect: 1
 flock: 1
 exit_group: 1
+mmap: arg2 == PROT_READ || arg2 == PROT_READ|PROT_WRITE || arg2 == PROT_READ|PROT_EXEC
 dup2: 1
 arch_prctl: 1
 access: 1
@@ -91,12 +56,26 @@ getdents64: 1
 stat: 1
 lstat: 1
 openat: 1
-clone: 1
 set_robust_list: 1
+# ioctl:
+# arg1 == _IOC(_IOC_READ|_IOC_WRITE, 0xec, 0x1, 0x108) (0xc108ec01) ||
+# arg1 == _IOC(_IOC_READ|_IOC_WRITE, 0xec, 0, 0x14) (0xc014ec00) ||
+# arg1 == _IOC(_IOC_READ|_IOC_WRITE, 0x3a, 0, 0x28) (0xc0283a00)
+#
+# Driver type 0x3a (":") = CROS_EC_DEV_IOC
+# (Old iotcl format, used by ChromeOS 3.18 and older)
+#
+# Driver type 0xec = CROS_EC_DEV_IOC_V2
+# (New ioctl format,  used by ChromeOS 4.4 or later as well as upstream 4.0+)
+# Please refer to src/platform/ec/util/cros_ec_dev.h for more info
+ioctl: arg1 == 0xc108ec01 || arg1 == 0xc0283a00 || arg1 == 0xc014ec00
+# TODO(b/120826467) Disallow execve when accessing /dev/cros_ec
+# without ectool is possible
 execve: 1
 wait4: 1
 gettid: 1
 getuid: 1
+socket: arg0 == AF_UNIX && arg1 == SOCK_STREAM|SOCK_CLOEXEC && arg2 == 0
 getresuid: 1
 munmap: 1
 pipe2: 1
@@ -108,28 +87,3 @@ sendto: 1
 ftruncate: 1
 geteuid: 1
 sendmsg: 1
-
-# mprotect, mmap
-# Used by ectool and mmc
-mprotect: arg2 == PROT_READ || arg2 == PROT_NONE
-mmap: arg2 == PROT_READ || arg2 == PROT_READ|PROT_WRITE || arg2 == PROT_READ|PROT_EXEC
-
-# socket
-# Used by runtime_probe binary and ectool
-socket: arg0 == AF_UNIX && arg1 == SOCK_STREAM|SOCK_CLOEXEC && arg2 == 0
-
-# ioctl (for ectool):
-# arg1 == _IOC(_IOC_READ|_IOC_WRITE, 0xec, 0x1, 0x108) (0xc108ec01) ||
-# arg1 == _IOC(_IOC_READ|_IOC_WRITE, 0xec, 0, 0x14) (0xc014ec00) ||
-# arg1 == _IOC(_IOC_READ|_IOC_WRITE, 0x3a, 0, 0x28) (0xc0283a00)
-#
-# Driver type 0x3a (":") = CROS_EC_DEV_IOC
-# (Old iotcl format, used by ChromeOS 3.18 and older)
-#
-# Driver type 0xec = CROS_EC_DEV_IOC_V2
-# (New ioctl format,  used by ChromeOS 4.4 or later as well as upstream 4.0+)
-# Please refer to src/platform/ec/util/cros_ec_dev.h for more info
-#
-# ioctl (for mmc)
-# arg1 == MMC_IOC_CMD (0xc048b300), to read from mmc block file /dev/mmcblk0
-ioctl: arg1 == 0xc108ec01 || arg1 == 0xc0283a00 || arg1 == 0xc014ec00 || arg1 == 0xc048b300

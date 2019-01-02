@@ -23,30 +23,16 @@ enum ExitStatus {
 };
 }  // namespace
 
-// TODO(hmchu): Remove the following two functions once we can trigger this by
-// probe statement.
+using base::DictionaryValue;
+
+// TODO(itspeter): Remove once we can trigger this by probe statement.
 // Test if we can get battery info by ectool.
 void DryRunGetBatteryInfo() {
   const std::vector<std::string>& ectool_cmd_arg{"/usr/sbin/ectool", "battery"};
   std::string ectool_output;
-
-  VLOG(1) << "Start ectool battery check\n";
   if (!base::GetAppOutput(ectool_cmd_arg, &ectool_output))
     VLOG(1) << "Failed to execute command \"ectool battery\"";
-  else
-    VLOG(1) << "ectool battery output:\n" << ectool_output;
-}
-
-// Test if we can get storage info of /dev/mmcblk0 from mmc.
-void DryRunMMCBlockInfo() {
-  const std::vector<std::string>& mmc_cmd_arg{"/usr/bin/mmc", "extcsd", "read",
-                                              "/dev/mmcblk0"};
-  std::string mmc_cmd_output;
-  VLOG(1) << "Start mmc check\n";
-  if (!base::GetAppOutput(mmc_cmd_arg, &mmc_cmd_output))
-    VLOG(1) << "Failed to execute command \"mmc extcsd read /dev/mmcblk0\"";
-  else
-    VLOG(1) << "mmc extcsd output:\n" << mmc_cmd_output;
+  VLOG(1) << "ectool battery output:\n" << ectool_output;
 }
 
 int main(int argc, char* argv[]) {
@@ -66,7 +52,9 @@ int main(int argc, char* argv[]) {
 
   // For testing purpose on minijail permission.
   if (FLAGS_debug) {
-    // TODO(b/121181557): test under minijail DryRunMMCBlockInfo();
+    // TODO(itspeter): b/120265210, before a long-term alternative, call the
+    // ectool to get battery info.
+    DryRunGetBatteryInfo();
   }
 
   if (FLAGS_dbus) {
