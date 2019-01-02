@@ -21,6 +21,8 @@ config("no_exceptions") {
   cflags_c = _cflags_no_exceptions
 }
 
+# Note: DO NOT USE THIS.  Use brillo/brillo_export.h instead to export symbols.
+#
 # Symbol visibility is set to be internal by default. Add this to your target's
 # configs to make its symbols visible.
 # Setting "-fvisibility=default" directly in your target's cflags doesn't work
