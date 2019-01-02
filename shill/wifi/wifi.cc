@@ -160,11 +160,11 @@ WiFi::WiFi(ControlInterface* control_interface,
       receive_byte_count_at_connect_(0),
       wiphy_index_(kDefaultWiphyIndex),
       wake_on_wifi_(std::move(wake_on_wifi)),
-      weak_ptr_factory_(this) {
+      weak_ptr_factory_while_started_(this) {
   mac80211_monitor_.reset(
       new Mac80211Monitor(dispatcher, link, kStuckQueueLengthThreshold,
         base::Bind(&WiFi::RestartFastScanAttempts,
-          weak_ptr_factory_.GetWeakPtr()), metrics));
+          weak_ptr_factory_while_started_.GetWeakPtr()), metrics));
 
   PropertyStore* store = this->mutable_store();
   store->RegisterDerivedString(kBgscanMethodProperty,
@@ -214,9 +214,11 @@ WiFi::WiFi(ControlInterface* control_interface,
   wake_on_wifi_->InitPropertyStore(store);
   ScopeLogger::GetInstance()->RegisterScopeEnableChangedCallback(
       ScopeLogger::kWiFi,
-      Bind(&WiFi::OnWiFiDebugScopeChanged, weak_ptr_factory_.GetWeakPtr()));
+      Bind(&WiFi::OnWiFiDebugScopeChanged,
+          weak_ptr_factory_while_started_.GetWeakPtr()));
   CHECK(netlink_manager_);
-  netlink_handler_ = Bind(&WiFi::OnScanStarted, weak_ptr_factory_.GetWeakPtr());
+  netlink_handler_ = Bind(&WiFi::OnScanStarted,
+      weak_ptr_factory_while_started_.GetWeakPtr());
   netlink_manager_->AddBroadcastHandler(netlink_handler_);
   SLOG(this, 2) << "WiFi device " << link_name() << " initialized.";
 }
@@ -287,7 +289,7 @@ void WiFi::Stop(Error* error, const EnabledStateChangedCallback& /*callback*/) {
   OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
   if (error)
     error->Reset();       // indicate immediate completion
-  weak_ptr_factory_.InvalidateWeakPtrs();
+  weak_ptr_factory_while_started_.InvalidateWeakPtrs();
 
   SLOG(this, 3) << "WiFi " << link_name() << " supplicant_process_proxy_ "
                 << (supplicant_process_proxy_.get() ?
@@ -313,7 +315,7 @@ void WiFi::Scan(Error* /*error*/, const string& reason) {
   // to event loop.
   dispatcher()->PostTask(
       FROM_HERE,
-      Bind(&WiFi::ScanTask, weak_ptr_factory_.GetWeakPtr()));
+      Bind(&WiFi::ScanTask, weak_ptr_factory_while_started_.GetWeakPtr()));
 }
 
 void WiFi::SetSchedScan(bool enable, Error* /*error*/) {
@@ -322,7 +324,8 @@ void WiFi::SetSchedScan(bool enable, Error* /*error*/) {
   // to event loop.
   dispatcher()->PostTask(
       FROM_HERE,
-      Bind(&WiFi::SetSchedScanTask, weak_ptr_factory_.GetWeakPtr(), enable));
+      Bind(&WiFi::SetSchedScanTask,
+          weak_ptr_factory_while_started_.GetWeakPtr(), enable));
 }
 
 void WiFi::AddPendingScanResult(const string& path,
@@ -331,7 +334,7 @@ void WiFi::AddPendingScanResult(const string& path,
   if (!pending_scan_results_) {
     pending_scan_results_.reset(new PendingScanResults(
         Bind(&WiFi::PendingScanResultsHandler,
-             weak_ptr_factory_.GetWeakPtr())));
+             weak_ptr_factory_while_started_.GetWeakPtr())));
     dispatcher()->PostTask(FROM_HERE,
                            pending_scan_results_->callback.callback());
   }
@@ -353,13 +356,14 @@ void WiFi::BSSRemoved(const string& path) {
 void WiFi::Certification(const KeyValueStore& properties) {
   dispatcher()->PostTask(FROM_HERE,
                          Bind(&WiFi::CertificationTask,
-                              weak_ptr_factory_.GetWeakPtr(), properties));
+                              weak_ptr_factory_while_started_.GetWeakPtr(),
+                              properties));
 }
 
 void WiFi::EAPEvent(const string& status, const string& parameter) {
   dispatcher()->PostTask(FROM_HERE,
                          Bind(&WiFi::EAPEventTask,
-                              weak_ptr_factory_.GetWeakPtr(),
+                              weak_ptr_factory_while_started_.GetWeakPtr(),
                               status,
                               parameter));
 }
@@ -370,7 +374,8 @@ void WiFi::PropertiesChanged(const KeyValueStore& properties) {
   // message. So defer work to event loop.
   dispatcher()->PostTask(FROM_HERE,
                          Bind(&WiFi::PropertiesChangedTask,
-                              weak_ptr_factory_.GetWeakPtr(), properties));
+                              weak_ptr_factory_while_started_.GetWeakPtr(),
+                              properties));
 }
 
 void WiFi::ScanDone(const bool& success) {
@@ -388,10 +393,12 @@ void WiFi::ScanDone(const bool& success) {
     scan_failed_callback_.Cancel();
     dispatcher()->PostTask(
         FROM_HERE,
-        Bind(&WiFi::ScanDoneTask, weak_ptr_factory_.GetWeakPtr()));
+        Bind(&WiFi::ScanDoneTask,
+            weak_ptr_factory_while_started_.GetWeakPtr()));
   } else {
     scan_failed_callback_.Reset(
-        Bind(&WiFi::ScanFailedTask, weak_ptr_factory_.GetWeakPtr()));
+        Bind(&WiFi::ScanFailedTask,
+            weak_ptr_factory_while_started_.GetWeakPtr()));
     dispatcher()->PostDelayedTask(FROM_HERE,
                                   scan_failed_callback_.callback(),
                                   kPostScanFailedDelayMilliseconds);
@@ -1532,7 +1539,7 @@ void WiFi::ScanDoneTask() {
   // started before we decide whether the scan was fruitful.
   dispatcher()->PostTask(FROM_HERE,
                          Bind(&WiFi::UpdateScanStateAfterScanDone,
-                              weak_ptr_factory_.GetWeakPtr()));
+                              weak_ptr_factory_while_started_.GetWeakPtr()));
   if ((provider_->NumAutoConnectableServices() < 1) && IsIdle()) {
     // Ensure we are also idle in case we are in the midst of connecting to
     // the only service that was available for auto-connect on the previous
@@ -1540,8 +1547,10 @@ void WiFi::ScanDoneTask() {
     // when we query the WiFiProvider this time).
     wake_on_wifi_->OnNoAutoConnectableServicesAfterScan(
         provider_->GetSsidsConfiguredForAutoConnect(),
-        Bind(&WiFi::RemoveSupplicantNetworks, weak_ptr_factory_.GetWeakPtr()),
-        Bind(&WiFi::TriggerPassiveScan, weak_ptr_factory_.GetWeakPtr()));
+        Bind(&WiFi::RemoveSupplicantNetworks,
+            weak_ptr_factory_while_started_.GetWeakPtr()),
+        Bind(&WiFi::TriggerPassiveScan,
+            weak_ptr_factory_while_started_.GetWeakPtr()));
   }
   if (need_bss_flush_) {
     CHECK(supplicant_interface_proxy_);
@@ -1972,8 +1981,10 @@ void WiFi::OnBeforeSuspend(const ResultCallback& callback) {
       IsConnectedToCurrentService(),
       provider_->GetSsidsConfiguredForAutoConnect(),
       callback,
-      Bind(&Device::RenewDHCPLease, weak_ptr_factory_.GetWeakPtr()),
-      Bind(&WiFi::RemoveSupplicantNetworks, weak_ptr_factory_.GetWeakPtr()),
+      Bind(&Device::RenewDHCPLease,
+          weak_ptr_factory_while_started_.GetWeakPtr()),
+      Bind(&WiFi::RemoveSupplicantNetworks,
+          weak_ptr_factory_while_started_.GetWeakPtr()),
       have_dhcp_lease,
       time_to_next_lease_renewal);
 }
@@ -1990,9 +2001,12 @@ void WiFi::OnDarkResume(const ResultCallback& callback) {
       IsConnectedToCurrentService(),
       provider_->GetSsidsConfiguredForAutoConnect(),
       callback,
-      Bind(&Device::RenewDHCPLease, weak_ptr_factory_.GetWeakPtr()),
-      Bind(&WiFi::InitiateScanInDarkResume, weak_ptr_factory_.GetWeakPtr()),
-      Bind(&WiFi::RemoveSupplicantNetworks, weak_ptr_factory_.GetWeakPtr()));
+      Bind(&Device::RenewDHCPLease,
+          weak_ptr_factory_while_started_.GetWeakPtr()),
+      Bind(&WiFi::InitiateScanInDarkResume,
+          weak_ptr_factory_while_started_.GetWeakPtr()),
+      Bind(&WiFi::RemoveSupplicantNetworks,
+          weak_ptr_factory_while_started_.GetWeakPtr()));
 }
 
 void WiFi::OnAfterResume() {
@@ -2000,9 +2014,9 @@ void WiFi::OnAfterResume() {
             << (IsConnectedToCurrentService() ? "connected" : "not connected");
   Device::OnAfterResume();  // May refresh ipconfig_
   dispatcher()->PostDelayedTask(FROM_HERE,
-                                Bind(&WiFi::ReportConnectedToServiceAfterWake,
-                                     weak_ptr_factory_.GetWeakPtr()),
-                                kPostWakeConnectivityReportDelayMilliseconds);
+      Bind(&WiFi::ReportConnectedToServiceAfterWake,
+          weak_ptr_factory_while_started_.GetWeakPtr()),
+      kPostWakeConnectivityReportDelayMilliseconds);
   wake_on_wifi_->OnAfterResume();
 
   // We want to flush the BSS cache, but we don't want to conflict
@@ -2111,7 +2125,8 @@ void WiFi::TriggerPassiveScan(const FreqSet& freqs) {
 
   netlink_manager_->SendNl80211Message(
       &trigger_scan,
-      Bind(&WiFi::OnTriggerPassiveScanResponse, weak_ptr_factory_.GetWeakPtr()),
+      Bind(&WiFi::OnTriggerPassiveScanResponse,
+          weak_ptr_factory_while_started_.GetWeakPtr()),
       Bind(&NetlinkManager::OnAckDoNothing),
       Bind(&NetlinkManager::OnNetlinkMessageError));
 }
@@ -2187,7 +2202,8 @@ void WiFi::StartScanTimer() {
     return;
   }
   scan_timer_callback_.Reset(
-      Bind(&WiFi::ScanTimerHandler, weak_ptr_factory_.GetWeakPtr()));
+      Bind(&WiFi::ScanTimerHandler,
+          weak_ptr_factory_while_started_.GetWeakPtr()));
   // Repeat the first few scans after disconnect relatively quickly so we
   // have reasonable trust that no APs we are looking for are present.
   size_t wait_time_milliseconds = fast_scans_remaining_ > 0 ?
@@ -2232,7 +2248,8 @@ void WiFi::ScanTimerHandler() {
 
 void WiFi::StartPendingTimer() {
   pending_timeout_callback_.Reset(
-      Bind(&WiFi::PendingTimeoutHandler, weak_ptr_factory_.GetWeakPtr()));
+      Bind(&WiFi::PendingTimeoutHandler,
+          weak_ptr_factory_while_started_.GetWeakPtr()));
   dispatcher()->PostDelayedTask(FROM_HERE,
                                 pending_timeout_callback_.callback(),
                                 kPendingTimeoutSeconds * 1000);
@@ -2309,7 +2326,8 @@ void WiFi::StartReconnectTimer() {
   }
   LOG(INFO) << "WiFi Device " << link_name() << ": " << __func__;
   reconnect_timeout_callback_.Reset(
-      Bind(&WiFi::ReconnectTimeoutHandler, weak_ptr_factory_.GetWeakPtr()));
+      Bind(&WiFi::ReconnectTimeoutHandler,
+          weak_ptr_factory_while_started_.GetWeakPtr()));
   dispatcher()->PostDelayedTask(FROM_HERE,
                                 reconnect_timeout_callback_.callback(),
                                 kReconnectTimeoutSeconds * 1000);
@@ -2515,7 +2533,7 @@ void WiFi::GetPhyInfo() {
                                                interface_index());
   netlink_manager_->SendNl80211Message(
       &get_wiphy,
-      Bind(&WiFi::OnNewWiphy, weak_ptr_factory_.GetWeakPtr()),
+      Bind(&WiFi::OnNewWiphy, weak_ptr_factory_while_started_.GetWeakPtr()),
       Bind(&NetlinkManager::OnAckDoNothing),
       Bind(&NetlinkManager::OnNetlinkMessageError));
 }
@@ -2814,12 +2832,14 @@ void WiFi::RequestStationInfo() {
 
   netlink_manager_->SendNl80211Message(
       &get_station,
-      Bind(&WiFi::OnReceivedStationInfo, weak_ptr_factory_.GetWeakPtr()),
+      Bind(&WiFi::OnReceivedStationInfo,
+          weak_ptr_factory_while_started_.GetWeakPtr()),
       Bind(&NetlinkManager::OnAckDoNothing),
       Bind(&NetlinkManager::OnNetlinkMessageError));
 
   request_station_info_callback_.Reset(
-      Bind(&WiFi::RequestStationInfo, weak_ptr_factory_.GetWeakPtr()));
+      Bind(&WiFi::RequestStationInfo,
+          weak_ptr_factory_while_started_.GetWeakPtr()));
   dispatcher()->PostDelayedTask(FROM_HERE,
                                 request_station_info_callback_.callback(),
                                 kRequestStationInfoPeriodSeconds * 1000);

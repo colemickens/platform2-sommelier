@@ -305,7 +305,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiMainTest, ScanStateHandleDisconnect);  // ScanState
   FRIEND_TEST(WiFiMainTest, ScanStateNotScanningNoUma);  // ScanState
   FRIEND_TEST(WiFiMainTest, ScanStateUma);  // ScanState, ScanMethod
-  FRIEND_TEST(WiFiMainTest, Stop);  // weak_ptr_factory_
+  FRIEND_TEST(WiFiMainTest, Stop);  // weak_ptr_factory_while_started_
   FRIEND_TEST(WiFiMainTest, TimeoutPendingServiceWithEndpoints);
   FRIEND_TEST(WiFiPropertyTest, BgscanMethodProperty);  // bgscan_method_
   FRIEND_TEST(WiFiTimerTest, FastRescan);  // kFastScanIntervalSeconds
@@ -722,7 +722,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Netlink broadcast handler, for scan results.
   NetlinkManager::NetlinkMessageHandler netlink_handler_;
 
-  base::WeakPtrFactory<WiFi> weak_ptr_factory_;
+  // For weak pointers that will be invalidated in Stop().
+  base::WeakPtrFactory<WiFi> weak_ptr_factory_while_started_;
 
   DISALLOW_COPY_AND_ASSIGN(WiFi);
 };

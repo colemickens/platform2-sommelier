@@ -2251,7 +2251,7 @@ TEST_F(WiFiMainTest, Stop) {
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveNetwork(kPath)).Times(1);
   StopWiFi();
   EXPECT_TRUE(GetScanTimer().IsCancelled());
-  EXPECT_FALSE(wifi()->weak_ptr_factory_.HasWeakPtrs());
+  EXPECT_FALSE(wifi()->weak_ptr_factory_while_started_.HasWeakPtrs());
 }
 
 TEST_F(WiFiMainTest, StopWhileConnected) {
