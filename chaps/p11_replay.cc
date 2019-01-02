@@ -37,6 +37,8 @@ using std::string;
 using std::vector;
 using ScopedPKCS8_PRIV_KEY_INFO =
     crypto::ScopedOpenSSL<PKCS8_PRIV_KEY_INFO, PKCS8_PRIV_KEY_INFO_free>;
+using ScopedASN1_OCTET_STRING =
+    crypto::ScopedOpenSSL<ASN1_OCTET_STRING, ASN1_OCTET_STRING_free>;
 using ScopedX509 = crypto::ScopedOpenSSL<X509, X509_free>;
 
 namespace {
@@ -229,6 +231,8 @@ void GenerateKeyPair(CK_SESSION_HANDLE session,
   }
 }
 
+// TODO(crbug/916023): use shared helper after isolate the OpenSSL functions
+// from session_impl.c
 string bn2bin(const BIGNUM* bn) {
   string bin;
   bin.resize(BN_num_bytes(bn));
@@ -250,6 +254,51 @@ string asn1integer2bin(ASN1_INTEGER* serial_number) {
   uint8_t* data_start = ConvertStringToByteBuffer(bin.data());
   i2d_ASN1_INTEGER(serial_number, &data_start);
   return bin;
+}
+
+template <typename OpenSSLType,
+          int (*openssl_func)(OpenSSLType*, unsigned char**)>
+string ConvertOpenSSLObjectToString(OpenSSLType* object) {
+  string output;
+
+  int expected_size = openssl_func(object, nullptr);
+  if (expected_size < 0)
+    return string();
+
+  output.resize(expected_size, '\0');
+
+  unsigned char* buf = ConvertStringToByteBuffer(output.data());
+  int real_size = openssl_func(object, &buf);
+  CHECK_EQ(expected_size, real_size);
+
+  return output;
+}
+
+string ecparameters2bin(EC_KEY* key) {
+  string bin;
+  bin.resize(i2d_ECParameters(key, nullptr));
+  uint8_t* data_start = ConvertStringToByteBuffer(bin.data());
+  i2d_ECParameters(key, &data_start);
+  return bin;
+}
+
+string ecpoint2bin(EC_KEY* key) {
+  // Convert EC_KEY* to OCT_STRING
+  const string oct_string =
+      ConvertOpenSSLObjectToString<EC_KEY, i2o_ECPublicKey>(key);
+
+  // Put OCT_STRING to ASN1_OCTET_STRING
+  ScopedASN1_OCTET_STRING os(ASN1_OCTET_STRING_new());
+  ASN1_OCTET_STRING_set(os.get(),
+                        ConvertStringToByteBuffer(oct_string.data()),
+                        oct_string.size());
+
+  // DER encode ASN1_OCTET_STRING
+  const string der_encoded =
+      ConvertOpenSSLObjectToString<ASN1_OCTET_STRING, i2d_ASN1_OCTET_STRING>(
+          os.get());
+
+  return der_encoded;
 }
 
 void CreateRSAPrivateKey(CK_SESSION_HANDLE session,
@@ -336,6 +385,78 @@ void CreateRSAPublicKey(CK_SESSION_HANDLE session,
     exit(-1);
 }
 
+void CreateECCPublicKey(CK_SESSION_HANDLE session,
+                        const vector<uint8_t>& object_id,
+                        string label,
+                        EC_KEY* ecc) {
+  CK_OBJECT_CLASS priv_class = CKO_PUBLIC_KEY;
+  CK_KEY_TYPE key_type = CKK_EC;
+  CK_BBOOL false_value = CK_FALSE;
+  CK_BBOOL true_value = CK_TRUE;
+
+  string params = ecparameters2bin(ecc);
+  string point = ecpoint2bin(ecc);
+
+  CK_ATTRIBUTE private_attributes[] = {
+      {CKA_CLASS, &priv_class, sizeof(priv_class)},
+      {CKA_KEY_TYPE, &key_type, sizeof(key_type)},
+      {CKA_DECRYPT, &true_value, sizeof(true_value)},
+      {CKA_SIGN, &true_value, sizeof(true_value)},
+      {CKA_UNWRAP, &false_value, sizeof(false_value)},
+      {CKA_SENSITIVE, &true_value, sizeof(true_value)},
+      {CKA_TOKEN, &true_value, sizeof(true_value)},
+      {CKA_PRIVATE, &true_value, sizeof(true_value)},
+      {CKA_ID, const_cast<uint8_t*>(object_id.data()), object_id.size()},
+      {CKA_LABEL, const_cast<char*>(label.c_str()), label.length()},
+      {CKA_EC_PARAMS, const_cast<char*>(params.c_str()), params.length()},
+      {CKA_EC_POINT, const_cast<char*>(point.c_str()), point.length()},
+  };
+  CK_OBJECT_HANDLE private_key_handle = 0;
+  CK_RV result =
+      C_CreateObject(session, private_attributes, arraysize(private_attributes),
+                     &private_key_handle);
+  LOG(INFO) << "C_CreateObject: " << chaps::CK_RVToString(result);
+  if (result != CKR_OK) {
+    exit(-1);
+  }
+}
+
+void CreateECCPrivateKey(CK_SESSION_HANDLE session,
+                         const vector<uint8_t>& object_id,
+                         string label,
+                         EC_KEY* ecc) {
+  CK_OBJECT_CLASS priv_class = CKO_PRIVATE_KEY;
+  CK_KEY_TYPE key_type = CKK_EC;
+  CK_BBOOL false_value = CK_FALSE;
+  CK_BBOOL true_value = CK_TRUE;
+
+  string d = bn2bin(EC_KEY_get0_private_key(ecc));
+  string params = ecparameters2bin(ecc);
+
+  CK_ATTRIBUTE private_attributes[] = {
+      {CKA_CLASS, &priv_class, sizeof(priv_class)},
+      {CKA_KEY_TYPE, &key_type, sizeof(key_type)},
+      {CKA_DECRYPT, &true_value, sizeof(true_value)},
+      {CKA_SIGN, &true_value, sizeof(true_value)},
+      {CKA_UNWRAP, &false_value, sizeof(false_value)},
+      {CKA_SENSITIVE, &true_value, sizeof(true_value)},
+      {CKA_TOKEN, &true_value, sizeof(true_value)},
+      {CKA_PRIVATE, &true_value, sizeof(true_value)},
+      {CKA_ID, const_cast<uint8_t*>(object_id.data()), object_id.size()},
+      {CKA_LABEL, const_cast<char*>(label.c_str()), label.length()},
+      {CKA_EC_PARAMS, const_cast<char*>(params.c_str()), params.length()},
+      {CKA_VALUE, const_cast<char*>(d.c_str()), d.length()},
+  };
+  CK_OBJECT_HANDLE private_key_handle = 0;
+  CK_RV result =
+      C_CreateObject(session, private_attributes, arraysize(private_attributes),
+                     &private_key_handle);
+  LOG(INFO) << "C_CreateObject: " << chaps::CK_RVToString(result);
+  if (result != CKR_OK) {
+    exit(-1);
+  }
+}
+
 void CreateCertificate(CK_SESSION_HANDLE session,
                        const string& value,
                        const vector<uint8_t>& object_id,
@@ -419,6 +540,36 @@ crypto::ScopedRSA ParseRSAPrivateKey(const std::string& object_data) {
   return nullptr;
 }
 
+crypto::ScopedEC_KEY ParseECCPublicKey(const std::string& object_data) {
+  crypto::ScopedEC_KEY ecc;
+
+  // Try decoding a X.509 SubjectPublicKeyInfo structure.
+  const unsigned char* data_start =
+      reinterpret_cast<const unsigned char*>(object_data.c_str());
+  ecc.reset(d2i_EC_PUBKEY(NULL, &data_start, object_data.size()));
+  if (ecc != nullptr) {
+    LOG(INFO) << "Recognized as X.509 SubjectPublicKeyInfo EC PUBKEY";
+    return ecc;
+  }
+
+  return nullptr;
+}
+
+crypto::ScopedEC_KEY ParseECCPrivateKey(const std::string& object_data) {
+  crypto::ScopedEC_KEY ecc;
+
+  // Try decoding a RFC 5915 ECPrivateKey structure.
+  const unsigned char* data_start =
+      reinterpret_cast<const unsigned char*>(object_data.c_str());
+  ecc.reset(d2i_ECPrivateKey(NULL, &data_start, object_data.size()));
+  if (ecc != nullptr) {
+    LOG(INFO) << "Recognized as RFC 5915 ECPrivateKey";
+    return ecc;
+  }
+
+  return nullptr;
+}
+
 bool ParseAndCreatePublicKey(CK_SESSION_HANDLE session,
                              const vector<uint8_t>& object_id,
                              const string& object_data) {
@@ -434,7 +585,12 @@ bool ParseAndCreatePublicKey(CK_SESSION_HANDLE session,
     return true;
   }
 
-  // TODO(menghuan): try ECC
+  // Try ECC
+  crypto::ScopedEC_KEY ecc = ParseECCPublicKey(object_data);
+  if (ecc != nullptr) {
+    CreateECCPublicKey(session, object_id, "testing_key", ecc.get());
+    return true;
+  }
 
   return false;
 }
@@ -449,7 +605,12 @@ bool ParseAndCreatePrivateKey(CK_SESSION_HANDLE session,
     return true;
   }
 
-  // TODO(menghuan): try ECC
+  // Try ECC
+  crypto::ScopedEC_KEY ecc = ParseECCPrivateKey(object_data);
+  if (ecc != nullptr) {
+    CreateECCPrivateKey(session, object_id, "testing_key", ecc.get());
+    return true;
+  }
 
   return false;
 }
