@@ -133,6 +133,9 @@ message GetContainerUsernameResponse {
 
   // The failure_reason if the username could not be retrieved.
   string failure_reason = 3;
+
+  // The primary homedir of the container, if successful.
+  string homedir = 4;
 }
 
 message SetUpUserRequest {
