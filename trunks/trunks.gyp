@@ -46,6 +46,9 @@
         '<(proto_in_dir)/interface.proto',
       ],
       'includes': ['../common-mk/protoc.gypi'],
+      # Use -fPIC so this code can be linked into a shared library.
+      'cflags!': ['-fPIE'],
+      'cflags': ['-fPIC'],
     },
     {
       'target_name': 'pinweaver_proto',
@@ -58,6 +61,9 @@
         '<(proto_in_dir)/pinweaver.proto',
       ],
       'includes': ['../common-mk/protoc.gypi'],
+      # Use -fPIC so this code can be linked into a shared library.
+      'cflags!': ['-fPIE'],
+      'cflags': ['-fPIC'],
     },
     {
       'target_name': 'trunks',
