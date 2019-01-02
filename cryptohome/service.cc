@@ -839,10 +839,6 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
                 << " finished; doing PKCS11 init...";
       // We only report and init PKCS#11 for successful mounts.
       if (result->return_status()) {
-        if (!result->return_code()) {
-          ReportTimerStop(kAsyncMountTimer);
-        }
-        // A return code of MOUNT_RECREATED will still need PKCS#11 init.
         InitializePkcs11(result->mount().get());
       }
     } else if (result->guest()) {
