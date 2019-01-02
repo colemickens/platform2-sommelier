@@ -11,5 +11,5 @@ SUBSYSTEM=="input", ATTRS{name}=="cros_fp_input",                            ENV
 # it must be such stylus.
 SUBSYSTEM=="input", ENV{ID_INPUT_TABLET}=="1",      SUBSYSTEMS=="i2c",       ENV{POWERD_ROLE}="internal_stylus"
 
-SUBSYSTEM=="input", SUBSYSTEMS=="usb", DRIVERS=="usbhid", ENV{POWERD_ROLE}="external_input"
+SUBSYSTEM=="input", SUBSYSTEMS=="usb", DRIVERS=="usbhid", ENV{ID_MODEL}!="*[aA]udio*", ENV{POWERD_ROLE}="external_input"
 SUBSYSTEM=="input", SUBSYSTEMS=="usb", DRIVERS=="btusb",  ENV{POWERD_ROLE}="external_input"
