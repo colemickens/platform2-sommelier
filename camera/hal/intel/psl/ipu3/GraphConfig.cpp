@@ -1236,7 +1236,7 @@ status_t GraphConfig::getImguMediaCtlData(int32_t cameraId,
             int nodeWidth = 0, nodeHeight = 0;
 
             // Get GDC info
-            ret = getNodeInfo(GCSS_KEY_IMGU_GDC, *pipe, &nodeWidth, &nodeHeight);
+            ret = getNodeInfo(GCSS_KEY_IMGU_GDC, *imgu, &nodeWidth, &nodeHeight);
             if (ret != OK) {
                 LOGE("pipe log name: %s can't get info!", mLut[i].nodeName.c_str());
                 return UNKNOWN_ERROR;
@@ -1246,7 +1246,7 @@ status_t GraphConfig::getImguMediaCtlData(int32_t cameraId,
                                      V4L2_MBUS_FMT_UYVY8_2X8, 0, mediaCtlConfig);
 
             // Get IF info
-            ret = getNodeInfo(GCSS_KEY_IMGU_IF, *pipe, &nodeWidth, &nodeHeight);
+            ret = getNodeInfo(GCSS_KEY_IMGU_IF, *imgu, &nodeWidth, &nodeHeight);
             if (ret != OK) {
                 LOGE("pipe log name: %s can't get info!", mLut[i].nodeName.c_str());
                 return UNKNOWN_ERROR;
@@ -1264,7 +1264,7 @@ status_t GraphConfig::getImguMediaCtlData(int32_t cameraId,
             LOG2("pipe log name: %s  if size %dx%d", mLut[i].nodeName.c_str(), nodeWidth, nodeHeight);
 
             // Get BDS info
-            ret = getNodeInfo(GCSS_KEY_IMGU_BDS, *pipe, &nodeWidth, &nodeHeight);
+            ret = getNodeInfo(GCSS_KEY_IMGU_BDS, *imgu, &nodeWidth, &nodeHeight);
             if (ret != OK) {
                 LOGE("pipe log name: %s can't get info!", mLut[i].nodeName.c_str());
                 return UNKNOWN_ERROR;

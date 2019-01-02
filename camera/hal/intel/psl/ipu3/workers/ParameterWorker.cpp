@@ -356,27 +356,27 @@ status_t ParameterWorker::getPipeConfig(PipeConfig &pipeCfg, std::shared_ptr<Gra
 
     string baseNode = string("imgu:");
 
-    string node = baseNode + pin + ":if";
+    string node = baseNode + "if";
     ret |= config->graphGetDimensionsByName(node, pipeCfg.input_feeder_out_width,
             pipeCfg.input_feeder_out_height);
 
-    node = baseNode + pin + ":bds";
+    node = baseNode + "bds";
     ret |= config->graphGetDimensionsByName(node, pipeCfg.bds_out_width,
             pipeCfg.bds_out_height);
 
-    node = baseNode + pin + ":gdc";
+    node = baseNode + "gdc";
     ret |= config->graphGetDimensionsByName(node, pipeCfg.gdc_out_width,
             pipeCfg.gdc_out_height);
 
-    node = baseNode + pin + ":yuv";
+    node = baseNode + (config->doesNodeExist("imgu:yuv") ? "yuv" : pin);
     ret |= config->graphGetDimensionsByName(node, pipeCfg.main_out_width,
             pipeCfg.main_out_height);
 
-    node = baseNode + pin + ":filter";
+    node = baseNode + "filter";
     ret |= config->graphGetDimensionsByName(node, pipeCfg.filter_width,
             pipeCfg.filter_height);
 
-    node = baseNode + pin + ":env";
+    node = baseNode + "env";
     ret |= config->graphGetDimensionsByName(node, pipeCfg.envelope_width,
             pipeCfg.envelope_height);
 
