@@ -27,15 +27,6 @@ DEVICES = 'devices'
 PRODUCTS = 'products'
 SKUS = 'skus'
 CONFIG = 'config'
-BUILD_ONLY_ELEMENTS = [
-  '/arc/files',
-  '/audio/main/files',
-  '/bluetooth/config/build-path',
-  '/firmware',
-  '/firmware-signing',
-  '/thermal/files',
-  '/touch/files',
-]
 BRAND_ELEMENTS = ['brand-code', 'firmware-signing', 'wallpaper']
 TEMPLATE_PATTERN = re.compile('{{([^}]*)}}')
 
@@ -363,7 +354,7 @@ def GenerateMosysCBindings(config):
       # we have to keep to special backwards compatibility.
       if whitelabel_tag:
         customization = ('%s-%s' % (name, customization))
-      customization =  customization.upper()
+      customization = customization.upper()
 
     if device_tree_compatible_match:
       structs.append(
@@ -471,35 +462,37 @@ def GenerateEcCBindings(config):
   return (h_output, c_output)
 
 
-def FilterBuildElements(config):
+def FilterBuildElements(config, build_only_elements):
   """Removes build only elements from the schema.
 
   Removes build only elements from the schema in preparation for the platform.
 
   Args:
     config: Config (transformed) that will be filtered
+    build_only_elements: List of strings of paths of fields to be filtered
   """
   json_config = json.loads(config)
   for config in json_config[CHROMEOS][CONFIGS]:
-    _FilterBuildElements(config, '')
+    _FilterBuildElements(config, '', build_only_elements)
 
   return libcros_schema.FormatJson(json_config)
 
 
-def _FilterBuildElements(config, path):
+def _FilterBuildElements(config, path, build_only_elements):
   """Recursively checks and removes build only elements.
 
   Args:
     config: Dict that will be checked.
     path: Path of elements to filter.
+    build_only_elements: List of strings of paths of fields to be filtered
   """
   to_delete = []
   for key in config:
     full_path = '%s/%s' % (path, key)
-    if full_path in BUILD_ONLY_ELEMENTS:
+    if full_path in build_only_elements:
       to_delete.append(key)
     elif isinstance(config[key], dict):
-      _FilterBuildElements(config[key], full_path)
+      _FilterBuildElements(config[key], full_path, build_only_elements)
   for key in to_delete:
     config.pop(key)
 
@@ -738,10 +731,14 @@ def Main(schema,
   json_transform = full_json_transform
 
   with open(schema, 'r') as schema_stream:
-    libcros_schema.ValidateConfigSchema(schema_stream.read(), json_transform)
+    schema_contents = schema_stream.read()
+    libcros_schema.ValidateConfigSchema(schema_contents, json_transform)
     ValidateConfig(json_transform)
     if filter_build_details:
-      json_transform = FilterBuildElements(json_transform)
+      build_only_elements = [s.replace('/chromeos/configs', '') for s in
+                             libcros_schema.ExtractPathsForBuildOnlyFields(
+                                 yaml.load(schema_contents))]
+      json_transform = FilterBuildElements(json_transform, build_only_elements)
   if output:
     with open(output, 'w') as output_stream:
       # Using print function adds proper trailing newline.

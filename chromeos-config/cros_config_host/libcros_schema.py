@@ -140,3 +140,39 @@ def ApplyImports(config_file):
       all_yaml_files.append(yaml_stream.read())
 
   return '\n'.join(all_yaml_files)
+
+
+def ExtractPathsForBuildOnlyFields(yaml_dict):
+  """Finds paths in the cros_config schema that are marked as being build-only.
+
+  This returns a list of strings that represent the locations in output
+  platform JSON.
+
+  Args:
+    yaml_dict: dict that results from calling yaml.load(..) on a YAML schema.
+
+  Returns:
+    List of strings representing paths to fields in platform JSON.
+  """
+  if 'build-only-element' in yaml_dict:
+    if yaml_dict['build-only-element'] is True:
+      return ['']
+  if 'type' in yaml_dict and yaml_dict['type'] == 'array':
+    return ExtractPathsForBuildOnlyFields(yaml_dict['items'])
+  if 'type' in yaml_dict and yaml_dict['type'] == 'object':
+    if 'oneOf' in yaml_dict:
+      result = []
+      for element in yaml_dict['oneOf']:
+        result.extend(ExtractPathsForBuildOnlyFields(element))
+      return result
+    elif 'properties' in yaml_dict:
+      return ExtractPathsForBuildOnlyFields(yaml_dict['properties'])
+
+  found = []
+  for key in yaml_dict:
+    if isinstance(yaml_dict[key], dict):
+      nodes_with_key = ExtractPathsForBuildOnlyFields(yaml_dict[key])
+      for node in nodes_with_key:
+        found.append('/%s%s' % (key, node))
+  found.sort()
+  return found

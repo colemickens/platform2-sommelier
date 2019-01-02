@@ -1,4 +1,5 @@
 #!/usr/bin/env python2
+# -*- coding: utf-8 -*-
 # Copyright 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -38,7 +39,12 @@ def ParseArgs(argv):
   return parser.parse_args(argv)
 
 
-def PopulateTypeDef(name, type_def, ref_types, output):
+def PopulateTypeDef(
+    name,
+    type_def,
+    ref_types,
+    output,
+    inherited_build_only=False):
   """Populates type definitions in the output (recursive)
 
   Args:
@@ -46,13 +52,15 @@ def PopulateTypeDef(name, type_def, ref_types, output):
     type_def: Dict containing all of the type def attributes
     ref_types: Shared type definitions using the #ref attribute
     output: Running array of markdown string output lines
+    inherited_build_only: Boolean, whether this element is the child of a
+        build-only element.
   """
   child_types = collections.OrderedDict()
   output.append('### %s' % name)
-  # pylint: disable=line-too-long
-  output.append('| Attribute | Type   | RegEx     | Required | Oneof Group |  Description |')
-  output.append('| --------- | ------ | --------- | -------- | ----------- |  ----------- |')
-  # pylint: enable=line-too-long
+  output.append('| Attribute | Type   | RegEx     | Required | Oneof Group '
+                '| Build-only | Description |')
+  output.append('| --------- | ------ | --------- | -------- | ----------- '
+                '| ---------- | ----------- |')
 
   attrs_by_group = {'': collections.OrderedDict(
       sorted(type_def.get('properties', {}).items()))}
@@ -71,7 +79,7 @@ def PopulateTypeDef(name, type_def, ref_types, output):
   additional_props = type_def.get('additionalProperties', False)
   if additional_props:
     output.append(
-        '| [ANY] | N/A | N/A | N/A| N/A | '
+        '| [ANY] | N/A | N/A | N/A | N/A | N/A | '
         'This type allows additional properties not governed by the schema. '
         'See the type description for details on these additional properties.|')
 
@@ -92,27 +100,39 @@ def PopulateTypeDef(name, type_def, ref_types, output):
       description = description.replace('\n', ' ')
       required_list = type_def.get('required', [])
       required = attr in required_list
+      build_only = (inherited_build_only
+                    or type_attrs.get('build-only-element', False))
       if type_attrs['type'] == 'object':
         child_types[attr_name] = type_attrs
+        if build_only:
+          child_types[attr_name]['build-only-element'] = True
         attr_type = '[%s](#%s)' % (attr_name, attr_name)
       elif type_attrs['type'] == 'array':
         description = type_attrs['items'].get('description', '')
         if type_attrs['items']['type'] == 'object':
           child_types[attr_name] = type_attrs['items']
+          if build_only:
+            child_types[attr_name]['build-only-element'] = True
           attr_type = 'array - [%s](#%s)' % (attr_name, attr_name)
         else:
           attr_type = 'array - %s' % type_attrs['items']['type']
 
       output_tuple = (attr_name,
                       attr_type,
-                      regex, required,
+                      regex,
+                      required,
                       attr_group_name,
+                      build_only,
                       description)
-      output.append('| %s | %s | %s | %s | %s | %s |' % output_tuple)
+      output.append('| %s | %s | %s | %s | %s | %s | %s |' % output_tuple)
 
   output.append('')
   for child_type in child_types:
-    PopulateTypeDef(child_type, child_types[child_type], ref_types, output)
+    child_is_build_only = (inherited_build_only
+                           or child_types[child_type].get('build-only-element',
+                                                          False))
+    PopulateTypeDef(child_type, child_types[child_type], ref_types, output,
+                    inherited_build_only=child_is_build_only)
 
 
 def Main(schema, output):
@@ -131,7 +151,6 @@ def Main(schema, output):
     type_def_outputs = []
     type_def_outputs.append('[](begin_definitions)')
     type_def_outputs.append('')
-    type_def_outputs.append('## CrOS Config Type Definitions (v2)')
     PopulateTypeDef(
         'model',
         schema_yaml['properties']['chromeos']['properties']['configs']['items'],

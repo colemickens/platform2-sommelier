@@ -382,7 +382,7 @@ class FilterBuildElements(cros_test_lib.TestCase):
   def testBasicFilterBuildElements(self):
     json_dict = json.loads(
         cros_config_schema.FilterBuildElements(
-            cros_config_schema.TransformConfig(BASIC_CONFIG)))
+            cros_config_schema.TransformConfig(BASIC_CONFIG), ['/firmware']))
     self.assertNotIn('firmware', json_dict['chromeos']['configs'][0])
 
 
