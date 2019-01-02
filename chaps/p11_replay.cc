@@ -23,6 +23,7 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <brillo/syslog_logging.h>
+#include <crypto/scoped_openssl_types.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
@@ -34,6 +35,9 @@ using base::TimeTicks;
 using chaps::ConvertStringToByteBuffer;
 using std::string;
 using std::vector;
+using ScopedPKCS8_PRIV_KEY_INFO =
+    crypto::ScopedOpenSSL<PKCS8_PRIV_KEY_INFO, PKCS8_PRIV_KEY_INFO_free>;
+using ScopedX509 = crypto::ScopedOpenSSL<X509, X509_free>;
 
 namespace {
 const char* kKeyID = "test";
@@ -225,7 +229,7 @@ void GenerateKeyPair(CK_SESSION_HANDLE session,
   }
 }
 
-string bn2bin(BIGNUM* bn) {
+string bn2bin(const BIGNUM* bn) {
   string bin;
   bin.resize(BN_num_bytes(bn));
   bin.resize(BN_bn2bin(bn, ConvertStringToByteBuffer(bin.data())));
@@ -248,10 +252,10 @@ string asn1integer2bin(ASN1_INTEGER* serial_number) {
   return bin;
 }
 
-void CreatePrivateKey(CK_SESSION_HANDLE session,
-                      const vector<uint8_t>& object_id,
-                      string label,
-                      RSA* rsa) {
+void CreateRSAPrivateKey(CK_SESSION_HANDLE session,
+                         const vector<uint8_t>& object_id,
+                         string label,
+                         RSA* rsa) {
   CK_OBJECT_CLASS priv_class = CKO_PRIVATE_KEY;
   CK_KEY_TYPE key_type = CKK_RSA;
   CK_BBOOL false_value = CK_FALSE;
@@ -296,11 +300,11 @@ void CreatePrivateKey(CK_SESSION_HANDLE session,
   }
 }
 
-void CreatePublicKey(CK_SESSION_HANDLE session,
-                     const vector<uint8_t>& object_id,
-                     const string label,
-                     int key_size_bits,
-                     RSA* rsa) {
+void CreateRSAPublicKey(CK_SESSION_HANDLE session,
+                        const vector<uint8_t>& object_id,
+                        const string label,
+                        int key_size_bits,
+                        RSA* rsa) {
   CK_BBOOL false_value = CK_FALSE;
   CK_BBOOL true_value = CK_TRUE;
   CK_OBJECT_CLASS pub_class = CKO_PUBLIC_KEY;
@@ -364,6 +368,103 @@ void CreateCertificate(CK_SESSION_HANDLE session,
     exit(-1);
 }
 
+crypto::ScopedRSA ParseRSAPublicKey(const std::string& object_data) {
+  // Try decoding a PKCS#1 RSAPublicKey structure.
+  const unsigned char* buf = ConvertStringToByteBuffer(object_data.data());
+  crypto::ScopedRSA rsa(d2i_RSAPublicKey(NULL, &buf, object_data.length()));
+  if (rsa != nullptr) {
+    LOG(INFO) << "Recognized as PKCS#1 RSA RSAPublicKey.";
+    return rsa;
+  }
+
+  // Try decoding a X.509 SubjectPublicKeyInfo structure.
+  // Rewind the ptr just in case it was modified.
+  buf = ConvertStringToByteBuffer(object_data.data());
+  rsa.reset(d2i_RSA_PUBKEY(NULL, &buf, object_data.length()));
+  if (rsa != nullptr) {
+    LOG(INFO) << "Recognized as X.509 SubjectPublicKeyInfo RSA PUBKEY.";
+    return rsa;
+  }
+
+  return nullptr;
+}
+
+crypto::ScopedRSA ParseRSAPrivateKey(const std::string& object_data) {
+  // Try decoding a PKCS#1 RSAPrivateKey structure.
+  const unsigned char* buf = ConvertStringToByteBuffer(object_data.data());
+  crypto::ScopedRSA rsa(d2i_RSAPrivateKey(nullptr, &buf, object_data.length()));
+  if (rsa != nullptr) {
+    LOG(INFO) << "Recognized as PKCS#1 RSA private key";
+    return rsa;
+  }
+
+  // Try decoding a PKCS#8 structure.
+  // Rewind the ptr just in case it was modified.
+  buf = ConvertStringToByteBuffer(object_data.data());
+  ScopedPKCS8_PRIV_KEY_INFO p8(
+      d2i_PKCS8_PRIV_KEY_INFO(nullptr, &buf, object_data.length()));
+
+  if (p8 != nullptr && ASN1_TYPE_get(p8->pkey) == V_ASN1_OCTET_STRING) {
+    // See if we have a RSAPrivateKey in the PKCS#8 structure.
+    buf = p8->pkey->value.octet_string->data;
+    rsa.reset(
+        d2i_RSAPrivateKey(nullptr, &buf, p8->pkey->value.octet_string->length));
+  }
+
+  if (rsa != nullptr) {
+    LOG(INFO) << "Recognized as PKCS#8 RSA private key";
+    return rsa;
+  }
+
+  return nullptr;
+}
+
+bool ParseAndCreatePublicKey(CK_SESSION_HANDLE session,
+                             const vector<uint8_t>& object_id,
+                             const string& object_data) {
+  // Try RSA
+  crypto::ScopedRSA rsa = ParseRSAPublicKey(object_data);
+  if (rsa != nullptr) {
+    int key_size_bits = RSA_size(rsa.get()) * 8;
+    // Round the key up to the nearest 256 bit boundary.
+    key_size_bits = (key_size_bits / 256 + 1) * 256;
+
+    CreateRSAPublicKey(session, object_id, "testing_key", key_size_bits,
+                       rsa.get());
+    return true;
+  }
+
+  // TODO(menghuan): try ECC
+
+  return false;
+}
+
+bool ParseAndCreatePrivateKey(CK_SESSION_HANDLE session,
+                              const vector<uint8_t>& object_id,
+                              const string& object_data) {
+  // Try RSA
+  crypto::ScopedRSA rsa = ParseRSAPrivateKey(object_data);
+  if (rsa != nullptr) {
+    CreateRSAPrivateKey(session, object_id, "testing_key", rsa.get());
+    return true;
+  }
+
+  // TODO(menghuan): try ECC
+
+  return false;
+}
+
+bool ParseAndCreateCertificate(CK_SESSION_HANDLE session,
+                               const vector<uint8_t>& object_id,
+                               const string& object_data) {
+  const unsigned char* buf = ConvertStringToByteBuffer(object_data.data());
+  ScopedX509 certificate(d2i_X509(NULL, &buf, object_data.length()));
+  if (certificate == nullptr)
+    return false;
+  CreateCertificate(session, object_data, object_id, certificate.get());
+  return true;
+}
+
 void ReadInObject(CK_SESSION_HANDLE session,
                   const string& input_path,
                   const vector<uint8_t>& object_id,
@@ -374,80 +475,42 @@ void ReadInObject(CK_SESSION_HANDLE session,
     LOG(ERROR) << "Failed to read object from file.";
     exit(-1);
   }
-  const unsigned char* data_start =
-      reinterpret_cast<const unsigned char*>(object_data.c_str());
 
-  if (type == kCertificate) {
-    X509* certificate = d2i_X509(NULL, &data_start, object_data.length());
-    if (!certificate) {
-      LOG(ERROR) << "OpenSSL error in X509 certificate parsing.";
-      exit(-1);
-    }
-    CreateCertificate(session, object_data, object_id, certificate);
-    X509_free(certificate);
-  } else if (type == kPrivateKey) {
-    // Try decoding a PKCS#1 RSAPrivateKey structure.
-    RSA* rsa = d2i_RSAPrivateKey(NULL, &data_start, object_data.length());
-    if (!rsa) {
-      // Rewind the ptr just in case it was modified.
-      data_start = reinterpret_cast<const unsigned char*>(object_data.c_str());
-      // Try decoding a PKCS#8 structure.
-      PKCS8_PRIV_KEY_INFO *p8 = d2i_PKCS8_PRIV_KEY_INFO(NULL,
-                                                        &data_start,
-                                                        object_data.length());
-      if (!p8 || ASN1_TYPE_get(p8->pkey) != V_ASN1_OCTET_STRING) {
-        LOG(ERROR) << "OpenSSL error in PKCS #8 private key parsing.";
-        exit(-1);
-      }
-      // See if we have a RSAPrivateKey in the PKCS#8 structure.
-      data_start = p8->pkey->value.octet_string->data;
-      rsa = d2i_RSAPrivateKey(NULL, &data_start,
-                              p8->pkey->value.octet_string->length);
-      PKCS8_PRIV_KEY_INFO_free(p8);
-      if (!rsa) {
-        LOG(ERROR) << "OpenSSL error in RSA private key parsing.";
-        exit(-1);
-      }
-    }
-    CreatePrivateKey(session, object_id, "testing_key", rsa);
-    RSA_free(rsa);
-  } else if (type == kPublicKey) {
-    // Try decoding a PKCS#1 RSAPublicKey structure.
-    RSA* rsa = d2i_RSAPublicKey(NULL, &data_start, object_data.length());
-    if (!rsa) {
-      // Rewind the ptr just in case it was modified.
-      data_start = reinterpret_cast<const unsigned char*>(object_data.c_str());
-      // Try decoding a X.509 SubjectPublicKeyInfo structure.
-      rsa = d2i_RSA_PUBKEY(NULL, &data_start, object_data.length());
-      if (!rsa) {
-        LOG(ERROR) << "OpenSSL error in RSA public key parsing.";
-        exit(-1);
-      }
-    }
-    int key_size_bits = RSA_size(rsa) * 8;
-    // Round the key up to the nearest 256 bit boundary.
-    key_size_bits = (key_size_bits / 256 + 1) * 256;
-    CreatePublicKey(session, object_id, "testing_key", key_size_bits, rsa);
-    RSA_free(rsa);
-  } else {
-    LOG(ERROR) << "Unknown cryptographic object type.  Aborting.";
+  string type_str;
+  bool result = false;
+  switch (type) {
+    case kCertificate:
+      result = ParseAndCreateCertificate(session, object_id, object_data);
+      type_str = "Certificate";
+      break;
+    case kPublicKey:
+      result = ParseAndCreatePublicKey(session, object_id, object_data);
+      type_str = "Public key";
+      break;
+    case kPrivateKey:
+      result = ParseAndCreatePrivateKey(session, object_id, object_data);
+      type_str = "Private key";
+      break;
+  }
+
+  if (!result) {
+    LOG(ERROR) << __func__ << ": " << type_str << " parsing fail.";
     exit(-1);
   }
 }
 
 // Generates a test key pair locally and injects it.
-void InjectKeyPair(CK_SESSION_HANDLE session,
-                   int key_size_bits,
-                   const string& label) {
-  RSA* rsa = RSA_generate_key(key_size_bits, 0x10001, NULL, NULL);
+void InjectRSAKeyPair(CK_SESSION_HANDLE session,
+                      int key_size_bits,
+                      const string& label) {
+  crypto::ScopedRSA rsa(RSA_generate_key(key_size_bits, 0x10001, NULL, NULL));
   if (!rsa) {
     LOG(ERROR) << "Failed to locally generate key pair.";
     exit(-1);
   }
   vector<uint8_t> id(kKeyID, kKeyID + strlen(kKeyID));
-  CreatePublicKey(session, id, label, key_size_bits, rsa);
-  CreatePrivateKey(session, id, label, rsa);
-  RSA_free(rsa);
+  CreateRSAPublicKey(session, id, label, key_size_bits, rsa.get());
+  CreateRSAPrivateKey(session, id, label, rsa.get());
 }
 
 // Deletes all test keys previously created.
@@ -631,7 +694,7 @@ int main(int argc, char** argv) {
     GenerateKeyPair(session, key_size_bits, label, generate_delete);
     PrintTicks(&start_ticks);
   } else if (inject) {
-    InjectKeyPair(session, key_size_bits, label);
+    InjectRSAKeyPair(session, key_size_bits, label);
     PrintTicks(&start_ticks);
   } else if (import) {
     vector<uint8_t> object_id;
