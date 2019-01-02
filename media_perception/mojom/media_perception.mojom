@@ -7,7 +7,10 @@
 module chromeos.media_perception.mojom;
 
 import "mojom/device_management.mojom";
+import "mojom/frame_perception.mojom";
+import "mojom/hotword_detection.mojom";
 import "mojom/pipeline.mojom";
+import "mojom/presence_perception.mojom";
 
 struct SuccessStatus {
   // Whether or not the action succeeded.
@@ -16,7 +19,10 @@ struct SuccessStatus {
 };
 
 // Feature or configuration specific functionality belongs in these interfaces.
-struct PerceptionInterfaceRequests {
+struct PerceptionInterfaces {
+  FramePerceptionHandler&? frame_perception_handler_request@0;
+  HotwordDetectionHandler&? hotword_detection_handler_request@1;
+  PresencePerceptionHandler&? presence_perception_handler_request@2;
 };
 
 interface MediaPerception {
@@ -27,7 +33,7 @@ interface MediaPerception {
   // interface for the requests that are returned.
   SetupConfiguration@0(string configuration_name) =>
 	  (SuccessStatus status,
-	   PerceptionInterfaceRequests requests);
+	   PerceptionInterfaces interfaces);
 
   // ------------------- Start of device management definitions. -------------
 

@@ -20,9 +20,12 @@ class FakeRtanalytics : public Rtanalytics {
 
   void SetSerializedDeviceTemplates(
       std::vector<SerializedDeviceTemplate> serialized_device_templates);
+  std::string GetMostRecentOutputStreamName() const {
+    return most_recent_output_stream_name_;
+  }
 
   // Rtanalytics:
-  std::vector<PerceptionInterfaceType> SetupConfiguration(
+  SerializedPerceptionInterfaces SetupConfiguration(
       const std::string& configuration_name,
       SerializedSuccessStatus* success_status) override;
   std::vector<SerializedDeviceTemplate> GetTemplateDevices(
@@ -41,10 +44,15 @@ class FakeRtanalytics : public Rtanalytics {
   SerializedPipelineState SetPipelineState(
       const std::string& configuration_name,
       const SerializedPipelineState& desired_state) override;
+  SerializedSuccessStatus SetPipelineOutputHandler(
+      const std::string& configuration_name, const std::string& output_stream,
+      PipelineOutputHandler output_handler) override;
 
  private:
   // A list of device templates to be returned by GetTemplateDevices.
   std::vector<SerializedDeviceTemplate> serialized_device_templates_;
+
+  std::string most_recent_output_stream_name_;
 
   DISALLOW_COPY_AND_ASSIGN(FakeRtanalytics);
 };

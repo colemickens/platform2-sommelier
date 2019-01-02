@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "media_perception/media_perception_mojom.pb.h"
+#include "media_perception/perception_interface.pb.h"
 #include "media_perception/proto_mojom_conversion.h"
 #include "media_perception/serialized_proto.h"
 
@@ -18,16 +19,16 @@ void FakeRtanalytics::SetSerializedDeviceTemplates(
   serialized_device_templates_ = serialized_device_templates;
 }
 
-std::vector<PerceptionInterfaceType> FakeRtanalytics::SetupConfiguration(
+SerializedPerceptionInterfaces FakeRtanalytics::SetupConfiguration(
     const std::string& configuration_name,
     SerializedSuccessStatus* success_status) {
   SuccessStatus status;
   status.set_success(true);
   status.set_failure_reason(configuration_name);
   *success_status = Serialized<SuccessStatus>(status).GetBytes();
-  std::vector<PerceptionInterfaceType> interface_types;
-  interface_types.push_back(PerceptionInterfaceType::INTERFACE_TYPE_UNKNOWN);
-  return interface_types;
+  PerceptionInterfaces perception_interfaces;
+  return Serialized<PerceptionInterfaces>(
+      perception_interfaces).GetBytes();
 }
 
 std::vector<SerializedDeviceTemplate> FakeRtanalytics::GetTemplateDevices(
@@ -75,6 +76,16 @@ SerializedPipelineState FakeRtanalytics::SetPipelineState(
   PipelineState pipeline_state = Serialized<PipelineState>(
       desired_state).Deserialize();
   return Serialized<PipelineState>(pipeline_state).GetBytes();
+}
+
+SerializedSuccessStatus FakeRtanalytics::SetPipelineOutputHandler(
+    const std::string& configuration_name, const std::string& output_stream,
+    PipelineOutputHandler output_handler) {
+  SuccessStatus status;
+  status.set_success(true);
+  status.set_failure_reason(output_stream);
+  most_recent_output_stream_name_ = output_stream;
+  return Serialized<SuccessStatus>(status).GetBytes();
 }
 
 }  // namespace mri

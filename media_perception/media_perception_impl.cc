@@ -9,6 +9,7 @@
 
 #include "base/logging.h"
 #include "media_perception/media_perception_mojom.pb.h"
+#include "media_perception/perception_interface.pb.h"
 #include "media_perception/proto_mojom_conversion.h"
 #include "media_perception/serialized_proto.h"
 
@@ -44,16 +45,25 @@ void MediaPerceptionImpl::SetupConfiguration(
     const std::string& configuration_name,
     const SetupConfigurationCallback& callback) {
   SerializedSuccessStatus serialized_status;
-  std::vector<PerceptionInterfaceType> interface_types =
+  SerializedPerceptionInterfaces serialized_perception_interfaces =
       rtanalytics_->SetupConfiguration(
           configuration_name, &serialized_status);
+  PerceptionInterfaces perception_interfaces =
+      Serialized<PerceptionInterfaces>(
+          serialized_perception_interfaces).Deserialize();
+
   SuccessStatus status = Serialized<SuccessStatus>(
       serialized_status).Deserialize();
-  chromeos::media_perception::mojom::PerceptionInterfaceRequestsPtr
-      requests_ptr =
-      chromeos::media_perception::mojom::PerceptionInterfaceRequests::New();
+  chromeos::media_perception::mojom::PerceptionInterfacesPtr interfaces_ptr =
+      chromeos::media_perception::mojom::PerceptionInterfaces::New();
+
+  // Sets up perception interfaces and assigns output handlers.
+  configuration_name_to_output_manager_map_[configuration_name] =
+      std::make_unique<OutputManager>(
+          configuration_name, rtanalytics_, perception_interfaces,
+          &interfaces_ptr);
   callback.Run(chromeos::media_perception::mojom::ToMojom(status),
-               std::move(requests_ptr));
+               std::move(interfaces_ptr));
 }
 
 void MediaPerceptionImpl::GetVideoDevices(

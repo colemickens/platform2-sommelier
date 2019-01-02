@@ -126,7 +126,7 @@ TEST_F(MediaPerceptionImplTest, TestSetupConfiguration) {
       base::Bind([](
           bool* setup_configuration_callback_done,
           chromeos::media_perception::mojom::SuccessStatusPtr status,
-          chromeos::media_perception::mojom::PerceptionInterfaceRequestsPtr
+          chromeos::media_perception::mojom::PerceptionInterfacesPtr
           requests) {
         EXPECT_EQ(status->success, true);
         EXPECT_EQ(*status->failure_reason, "test_configuration");

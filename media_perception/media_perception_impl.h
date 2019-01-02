@@ -5,12 +5,14 @@
 #ifndef MEDIA_PERCEPTION_MEDIA_PERCEPTION_IMPL_H_
 #define MEDIA_PERCEPTION_MEDIA_PERCEPTION_IMPL_H_
 
+#include <map>
 #include <memory>
 #include <string>
 
 #include <mojo/public/cpp/bindings/binding.h>
 
 #include "media_perception/chrome_audio_service_client.h"
+#include "media_perception/output_manager.h"
 #include "media_perception/rtanalytics.h"
 #include "media_perception/video_capture_service_client.h"
 #include "mojom/media_perception.mojom.h"
@@ -60,6 +62,10 @@ class MediaPerceptionImpl :
  private:
   mojo::Binding<chromeos::media_perception::mojom::MediaPerception>
       binding_;
+
+  std::map<std::string /* configuration_name */,
+           std::unique_ptr<OutputManager>>
+               configuration_name_to_output_manager_map_;
 
   std::shared_ptr<VideoCaptureServiceClient> vidcap_client_;
 

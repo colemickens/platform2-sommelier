@@ -53,3 +53,9 @@ struct FramePerception {
   // Indicates what types of frame perception were run.
   array<FramePerceptionType> perception_types@3;
 };
+
+interface FramePerceptionHandler {
+  // Callback for data that comes out of the analytics process.
+  OnFramePerception@0(FramePerception frame_perception);
+};
+

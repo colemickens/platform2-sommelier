@@ -26,3 +26,8 @@ struct HotwordDetection {
   array<Hotword> hotwords@0;
 };
 
+interface HotwordDetectionHandler {
+  // Callback for hotword detection data that comes out of the analytics graph.
+  OnHotwordDetection@0(HotwordDetection hotword_detection);
+};
+

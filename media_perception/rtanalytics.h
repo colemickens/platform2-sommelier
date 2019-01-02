@@ -8,6 +8,7 @@
 // This header needs to be buildable from both Google3 and outside, so it cannot
 // rely on Google3 dependencies.
 
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -16,27 +17,29 @@ namespace mri {
 // Typdefs for readability. Serialized protos are passed back and forth across
 // the boundary between platform2 code and librtanalytics.so.
 // Note that these aliases are guaranteed to always have this type.
+using SerializedPerceptionInterfaces = std::vector<uint8_t>;
 using SerializedSuccessStatus = std::vector<uint8_t>;
 using SerializedPipelineState = std::vector<uint8_t>;
 using SerializedDeviceTemplate = std::vector<uint8_t>;
 using SerializedVideoDevice = std::vector<uint8_t>;
 using SerializedAudioDevice = std::vector<uint8_t>;
 using SerializedVirtualVideoDevice = std::vector<uint8_t>;
-
-enum PerceptionInterfaceType {
-  INTERFACE_TYPE_UNKNOWN,
-};
+using PipelineOutputHandler = std::function<void(const std::vector<uint8_t>&)>;
 
 class Rtanalytics {
  public:
   virtual ~Rtanalytics() = default;
 
+  // ------------------ Start of Media Perception Mojo API ---------------------
+
   // Asks the library to setup a particular configuration. Success status is
-  // filled in by the library side. The return value is the current list of
-  // perception interface types that are fulfilled by the current configuration
-  // set. This function can be called multiple times to setup multiple
-  // configurations. |success_status| cannot be null.
-  virtual std::vector<PerceptionInterfaceType> SetupConfiguration(
+  // filled in by the library side. The return value is the list of perception
+  // interfaces that are fulfilled by the current configuration. This function
+  // can be called multiple times to setup multiple configurations.
+  // |success_status| cannot be null. Each PerceptionInterface contains output
+  // stream types so that the CrOS side can register appropriate output
+  // handlers.
+  virtual SerializedPerceptionInterfaces SetupConfiguration(
       const std::string& configuration_name,
       SerializedSuccessStatus* success_status) = 0;
 
@@ -72,6 +75,13 @@ class Rtanalytics {
   virtual SerializedPipelineState SetPipelineState(
       const std::string& configuration_name,
       const SerializedPipelineState& desired_state) = 0;
+
+  // ------------------- End of Media Perception Mojo API ----------------------
+
+  // Sets a callback for an output stream of the given configuration.
+  virtual SerializedSuccessStatus SetPipelineOutputHandler(
+      const std::string& configuration_name, const std::string& output_stream,
+      PipelineOutputHandler output_handler) = 0;
 };
 
 }  // namespace mri

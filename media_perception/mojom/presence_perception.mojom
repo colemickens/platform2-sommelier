@@ -13,3 +13,9 @@ struct PresencePerception {
   // Overall probability [0, 1] that a human is present.
   float presence_confidence@1;
 };
+
+interface PresencePerceptionHandler {
+  // Callback for presence perception data that comes out of the pipeline.
+  OnPresencePerception(PresencePerception presence_perception);
+};
+
