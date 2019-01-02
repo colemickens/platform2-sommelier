@@ -17,6 +17,7 @@
 #include "media_perception/fake_video_capture_service_client.h"
 #include "media_perception/media_perception_impl.h"
 #include "media_perception/proto_mojom_conversion.h"
+#include "media_perception/serialized_proto.h"
 
 namespace mri {
 namespace {
@@ -63,9 +64,9 @@ TEST_F(MediaPerceptionImplTest, TestGetVideoDevices) {
   std::vector<SerializedVideoDevice> serialized_devices;
   VideoDevice device;
   device.set_id("1");
-  serialized_devices.push_back(SerializeVideoDeviceProto(device));
+  serialized_devices.push_back(Serialized<VideoDevice>(device).GetBytes());
   device.set_id("2");
-  serialized_devices.push_back(SerializeVideoDeviceProto(device));
+  serialized_devices.push_back(Serialized<VideoDevice>(device).GetBytes());
   fake_vidcap_client_->SetDevicesForGetDevices(serialized_devices);
 
   get_devices_callback_done = false;
@@ -98,9 +99,9 @@ TEST_F(MediaPerceptionImplTest, TestGetAudioDevices) {
   std::vector<SerializedAudioDevice> serialized_devices;
   AudioDevice device;
   device.set_id("1");
-  serialized_devices.push_back(SerializeAudioDeviceProto(device));
+  serialized_devices.push_back(Serialized<AudioDevice>(device).GetBytes());
   device.set_id("2");
-  serialized_devices.push_back(SerializeAudioDeviceProto(device));
+  serialized_devices.push_back(Serialized<AudioDevice>(device).GetBytes());
   fake_cras_client_->SetDevicesForGetInputDevices(serialized_devices);
 
   get_devices_callback_done = false;
@@ -141,8 +142,10 @@ TEST_F(MediaPerceptionImplTest, TestGetTemplateDevices) {
   DeviceTemplate template_two;
   template_two.set_template_name("two");
   std::vector<SerializedDeviceTemplate> device_templates;
-  device_templates.push_back(SerializeDeviceTemplateProto(template_one));
-  device_templates.push_back(SerializeDeviceTemplateProto(template_two));
+  device_templates.push_back(
+      Serialized<DeviceTemplate>(template_one).GetBytes());
+  device_templates.push_back(
+      Serialized<DeviceTemplate>(template_two).GetBytes());
   fake_rtanalytics_->SetSerializedDeviceTemplates(device_templates);
 
   bool get_template_devices_callback_done = false;

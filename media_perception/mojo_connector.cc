@@ -8,6 +8,8 @@
 #include <utility>
 #include <vector>
 
+#include "media_perception/serialized_proto.h"
+
 namespace mri {
 
 namespace {
@@ -205,11 +207,7 @@ void MojoConnector::OnDeviceInfosReceived(
           capture_format->pixel_format));
       *device.add_supported_configurations() = supported_format;
     }
-    const int size = device.ByteSize();
-    std::vector<uint8_t> bytes(size, 0);
-    CHECK(device.SerializeToArray(bytes.data(), size))
-        << "Failed to serialize mri::VideoDevice proto.";
-    devices.push_back(bytes);
+    devices.push_back(Serialized<VideoDevice>(device).GetBytes());
   }
   callback(devices);
 }
@@ -345,11 +343,7 @@ void MojoConnector::CreateVirtualDeviceOnIpcThread(
   producer_impl->RegisterVirtualDeviceAtFactory(&device_factory_,
                                                 std::move(info));
 
-  const int size = video_device.ByteSize();
-  std::vector<uint8_t> bytes(size /*count*/, 0 /*value*/);
-  CHECK(video_device.SerializeToArray(bytes.data(), size))
-      << "Failed to serialize mri::VideoDevice proto.";
-  callback(bytes);
+  callback(Serialized<VideoDevice>(video_device).GetBytes());
 }
 
 void MojoConnector::PushFrameToVirtualDevice(

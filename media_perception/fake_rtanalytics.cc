@@ -9,6 +9,7 @@
 
 #include "media_perception/media_perception_mojom.pb.h"
 #include "media_perception/proto_mojom_conversion.h"
+#include "media_perception/serialized_proto.h"
 
 namespace mri {
 
@@ -23,7 +24,7 @@ std::vector<PerceptionInterfaceType> FakeRtanalytics::SetupConfiguration(
   SuccessStatus status;
   status.set_success(true);
   status.set_failure_reason(configuration_name);
-  *success_status = SerializeSuccessStatusProto(status);
+  *success_status = Serialized<SuccessStatus>(status).GetBytes();
   std::vector<PerceptionInterfaceType> interface_types;
   interface_types.push_back(PerceptionInterfaceType::INTERFACE_TYPE_UNKNOWN);
   return interface_types;
@@ -40,7 +41,7 @@ SerializedSuccessStatus FakeRtanalytics::SetVideoDeviceForTemplateName(
   SuccessStatus status;
   status.set_success(true);
   status.set_failure_reason(template_name);
-  return SerializeSuccessStatusProto(status);
+  return Serialized<SuccessStatus>(status).GetBytes();
 }
 
 SerializedSuccessStatus FakeRtanalytics::SetAudioDeviceForTemplateName(
@@ -49,7 +50,7 @@ SerializedSuccessStatus FakeRtanalytics::SetAudioDeviceForTemplateName(
   SuccessStatus status;
   status.set_success(true);
   status.set_failure_reason(template_name);
-  return SerializeSuccessStatusProto(status);
+  return Serialized<SuccessStatus>(status).GetBytes();
 }
 
 SerializedSuccessStatus FakeRtanalytics::SetVirtualVideoDeviceForTemplateName(
@@ -58,23 +59,22 @@ SerializedSuccessStatus FakeRtanalytics::SetVirtualVideoDeviceForTemplateName(
   SuccessStatus status;
   status.set_success(true);
   status.set_failure_reason(template_name);
-  return SerializeSuccessStatusProto(status);
+  return Serialized<SuccessStatus>(status).GetBytes();
 }
 
 SerializedPipelineState FakeRtanalytics::GetPipelineState(
     const std::string& configuration_name) const {
   PipelineState pipeline_state;
   pipeline_state.set_status(PipelineStatus::SUSPENDED);
-  return SerializePipelineStateProto(pipeline_state);
+  return Serialized<PipelineState>(pipeline_state).GetBytes();
 }
 
 SerializedPipelineState FakeRtanalytics::SetPipelineState(
       const std::string& configuration_name,
       const SerializedPipelineState& desired_state) {
-  PipelineState pipeline_state;
-  pipeline_state.ParseFromArray(desired_state.data(),
-                                desired_state.size());
-  return SerializePipelineStateProto(pipeline_state);
+  PipelineState pipeline_state = Serialized<PipelineState>(
+      desired_state).Deserialize();
+  return Serialized<PipelineState>(pipeline_state).GetBytes();
 }
 
 }  // namespace mri

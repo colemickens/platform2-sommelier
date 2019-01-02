@@ -9,6 +9,7 @@
 #include "base/logging.h"
 #include "media_perception/device_management.pb.h"
 #include "media_perception/proto_mojom_conversion.h"
+#include "media_perception/serialized_proto.h"
 
 namespace mri {
 
@@ -92,7 +93,7 @@ ChromeAudioServiceClientImpl::GetInputDevices() {
     audio_device.set_id(std::to_string(devs[i].stable_id));
     audio_device.set_display_name(std::string(devs[i].name));
     serialized_audio_devices.push_back(
-        SerializeAudioDeviceProto(audio_device));
+        Serialized<AudioDevice>(audio_device).GetBytes());
 
     // Add the stable device id to the audio receivers map if it does not exist.
     if (device_id_to_audio_receiver_map_.find(audio_device.id()) ==
@@ -119,8 +120,8 @@ bool ChromeAudioServiceClientImpl::IsAudioCaptureStartedForDevice(
     return false;
   }
 
-  *capture_format = SerializeAudioStreamParamsProto(
-      it->second.GetAudioStreamParams());
+  *capture_format = Serialized<AudioStreamParams>(
+      it->second.GetAudioStreamParams()).GetBytes();
   return true;
 }
 
@@ -128,9 +129,8 @@ int ChromeAudioServiceClientImpl::AddFrameHandler(
       const std::string& device_id,
       const SerializedAudioStreamParams& capture_format,
       AudioFrameHandler handler) {
-  AudioStreamParams params;
-  CHECK(params.ParseFromArray(capture_format.data(), capture_format.size()))
-      << "Failed to serialize mri::AudioStreamParams proto.";
+  AudioStreamParams params = Serialized<AudioStreamParams>(
+      capture_format).Deserialize();
 
   base::AutoLock auto_lock(client_lock_);
   std::map<std::string, AudioReceiver>::iterator

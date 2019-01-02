@@ -9,6 +9,7 @@
 
 #include "media_perception/device_management.pb.h"
 #include "media_perception/proto_mojom_conversion.h"
+#include "media_perception/serialized_proto.h"
 
 namespace mri {
 
@@ -52,8 +53,8 @@ bool VideoCaptureServiceClientImpl::IsVideoCaptureStartedForDevice(
   bool capture_started = it != device_id_to_receiver_map_.end() &&
       it->second->HasValidCaptureFormat();
   if (capture_started) {
-    *capture_format = SerializeVideoStreamParamsProto(
-        it->second->GetCaptureFormat());
+    *capture_format = Serialized<VideoStreamParams>(
+        it->second->GetCaptureFormat()).GetBytes();
   }
   return capture_started;
 }
@@ -63,9 +64,8 @@ int VideoCaptureServiceClientImpl::AddFrameHandler(
     const SerializedVideoStreamParams& capture_format,
     FrameHandler handler) {
   std::lock_guard<std::mutex> lock(device_id_to_receiver_map_lock_);
-  VideoStreamParams format;
-  CHECK(format.ParseFromArray(capture_format.data(), capture_format.size()))
-      << "Failed to deserialize mri::VideoStreamParams proto.";
+  VideoStreamParams format = Serialized<VideoStreamParams>(
+      capture_format).Deserialize();
 
   std::map<std::string, std::shared_ptr<ReceiverImpl>>::iterator it =
       device_id_to_receiver_map_.find(device_id);
@@ -121,9 +121,7 @@ void VideoCaptureServiceClientImpl::CreateVirtualDevice(
     const SerializedVideoDevice& video_device,
     const VirtualDeviceCallback& callback) {
   std::lock_guard<std::mutex> lock(device_id_to_producer_map_lock_);
-  VideoDevice device;
-  CHECK(device.ParseFromArray(video_device.data(), video_device.size()))
-      << "Failed to deserialze mri::VideoDevice proto.";
+  VideoDevice device = Serialized<VideoDevice>(video_device).Deserialize();
 
   auto producer_impl = std::make_shared<ProducerImpl>();
   mojo_connector_->CreateVirtualDevice(device, producer_impl, callback);
