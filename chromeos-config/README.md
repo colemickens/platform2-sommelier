@@ -354,15 +354,12 @@ In the tables below,
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | bcs-overlay | string |  | False |  | True | BCS overlay path used to determine BCS file path for binary firmware downloads. |
 | build-targets | [build-targets](#build-targets) |  | False |  | True |  |
-| ec-image | string |  | False |  | True | A deprecated string property to be removed after migration. |
 | ec-ro-image | string |  | False |  | True | Name of the file located in BCS under the respective bcs-overlay. |
 | key-id | string |  | False |  | True | Key ID from the signer key set that is used to sign the given firmware image. |
-| main-image | string |  | False |  | True | A deprecated string property to be removed after migration. |
 | main-ro-image | string |  | False |  | True | Name of the file located in BCS under the respective bcs-overlay. |
 | main-rw-image | string |  | False |  | True | Name of the file located in BCS under the respective bcs-overlay. |
 | name | string |  | False |  | True | This is a human-recognizable name used to refer to the firmware. It will be used when generating the shellball via firmware packer. Mainly, this is only for compatibility testing with device tree (since DT allowed firmwares to be named). |
 | no-firmware | boolean |  | False |  | True | If present this indicates that this model has no firmware at present. This means that it will be omitted from the firmware updater (chromeos-firmware- ebuild) and it will not be included in the signer instructions file sent to the signer. This option is often useful when a model is first added, since it may not have firmware at that point. |
-| pd-image | string |  | False |  | True | A deprecated string property to be removed after migration. |
 | pd-ro-image | string |  | False |  | True | Name of the file located in BCS under the respective bcs-overlay. |
 
 ### build-targets

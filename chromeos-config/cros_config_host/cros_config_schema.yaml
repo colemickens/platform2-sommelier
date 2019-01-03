@@ -191,15 +191,12 @@ properties:
                     libpayload: *firmware_build_target
                     u-boot: *firmware_build_target
                   additionalProperties: false
-                ec-image: *deprecated_string
                 ec-ro-image: *bcs_file_name
-                pd-image: *deprecated_string
                 pd-ro-image: *bcs_file_name
                 key-id:
                   description: Key ID from the signer key set that is used to sign the
                     given firmware image.
                   type: string
-                main-image: *deprecated_string
                 main-ro-image: *bcs_file_name
                 main-rw-image: *bcs_file_name
                 name:

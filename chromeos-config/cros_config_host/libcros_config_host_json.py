@@ -163,13 +163,10 @@ class CrosConfigJson(CrosConfigBaseImpl):
         else:
           bios_build_target, ec_build_target = None, None
 
-        main_image_uri = (config.GetValue(fw, 'main-ro-image') or
-                          config.GetValue(fw, 'main-image') or '')
+        main_image_uri = config.GetValue(fw, 'main-ro-image') or ''
         main_rw_image_uri = config.GetValue(fw, 'main-rw-image') or ''
-        ec_image_uri = (config.GetValue(fw, 'ec-ro-image') or
-                        config.GetValue(fw, 'ec-image') or '')
-        pd_image_uri = (config.GetValue(fw, 'pd-ro-image') or
-                        config.GetValue(fw, 'pd-image') or '')
+        ec_image_uri = config.GetValue(fw, 'ec-ro-image') or ''
+        pd_image_uri = config.GetValue(fw, 'pd-ro-image') or ''
 
         fw_signer_config = config.GetProperties('/firmware-signing')
         key_id = config.GetValue(fw_signer_config, 'key-id')
