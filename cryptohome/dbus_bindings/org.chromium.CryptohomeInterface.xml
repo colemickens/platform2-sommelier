@@ -120,10 +120,6 @@
     <method name="Unmount">
       <arg type="b" name="done" direction="out" />
     </method>
-    <method name="UnmountForUser">
-      <arg type="s" name="username" direction="in" />
-      <arg type="b" name="done" direction="out" />
-    </method>
     <method name="UpdateCurrentUserActivityTimestamp">
       <arg type="i" name="time_shift_sec" direction="in" />
     </method>

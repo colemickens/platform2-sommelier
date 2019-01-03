@@ -337,8 +337,6 @@ class Service : public brillo::dbus::AbstractDbusService,
   virtual gboolean MountGuestEx(GArray* request,
                                 DBusGMethodInvocation* context);
   virtual gboolean Unmount(gboolean *OUT_result, GError **error);
-  virtual gboolean UnmountForUser(const gchar* userid, gboolean *OUT_result,
-                                  GError **error);
   virtual gboolean UpdateCurrentUserActivityTimestamp(gint time_shift_sec,
                                                       GError **error);
 

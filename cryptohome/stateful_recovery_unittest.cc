@@ -104,8 +104,8 @@ TEST(StatefulRecovery, ValidRequestV2) {
   EXPECT_CALL(platform,
       Copy(mount_path, FilePath(StatefulRecovery::kRecoverDestination)))
     .WillOnce(Return(true));
-  EXPECT_CALL(service, UnmountForUser(StrEq(user), _, _))
-    .WillOnce(DoAll(SetArgPointee<1>(result), Return(true)));
+  EXPECT_CALL(service, Unmount(_, _))
+    .WillOnce(DoAll(SetArgPointee<0>(result), Return(true)));
 
   EXPECT_CALL(service, IsOwner(_))
     .WillOnce(Return(true));
@@ -162,8 +162,8 @@ TEST(StatefulRecovery, ValidRequestV2NotOwner) {
         mount_path,
         FilePath(StatefulRecovery::kRecoverDestination)))
     .WillOnce(Return(true));
-  EXPECT_CALL(service, UnmountForUser(StrEq(user), _, _))
-    .WillOnce(DoAll(SetArgPointee<1>(result), Return(true)));
+  EXPECT_CALL(service, Unmount(_, _))
+    .WillOnce(DoAll(SetArgPointee<0>(result), Return(true)));
 
   EXPECT_CALL(service, IsOwner(_))
     .WillOnce(Return(false));
@@ -280,8 +280,8 @@ TEST(StatefulRecovery, ValidRequestV2NotOwnerNotWriteProtected) {
   EXPECT_CALL(platform,
       Copy(mount_path, FilePath(StatefulRecovery::kRecoverDestination)))
     .WillOnce(Return(true));
-  EXPECT_CALL(service, UnmountForUser(StrEq(user), _, _))
-    .WillOnce(DoAll(SetArgPointee<1>(result), Return(true)));
+  EXPECT_CALL(service, Unmount(_, _))
+    .WillOnce(DoAll(SetArgPointee<0>(result), Return(true)));
 
   EXPECT_CALL(service, IsOwner(_))
     .WillOnce(Return(false));

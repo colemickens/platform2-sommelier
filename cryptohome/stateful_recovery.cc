@@ -96,7 +96,7 @@ bool StatefulRecovery::CopyUserContents() {
 
   rc = platform_->Copy(path, FilePath(kRecoverDestination));
 
-  service_->UnmountForUser(user_.c_str(), &result, &error);
+  service_->Unmount(&result, &error);
 
   if (rc)
     return true;

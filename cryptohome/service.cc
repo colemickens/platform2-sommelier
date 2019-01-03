@@ -2186,12 +2186,6 @@ gboolean Service::Unmount(gboolean *OUT_result, GError **error) {
   return TRUE;
 }
 
-gboolean Service::UnmountForUser(const gchar *userid, gboolean *OUT_result,
-                                 GError **error) {
-  // NOTE: it's not clear we ever want to allow a per-user unmount.
-  return Unmount(OUT_result, error);
-}
-
 gboolean Service::UpdateCurrentUserActivityTimestamp(gint time_shift_sec,
                                                      GError **error) {
   base::AutoLock _lock(mounts_lock_);

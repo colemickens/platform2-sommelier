@@ -29,8 +29,7 @@ class MockService : public ServiceMonolithic {
                                gint *,
                                gboolean *,
                                GError **));
-  MOCK_METHOD3(UnmountForUser, gboolean(const gchar*, gboolean *,
-                                        GError **));
+  MOCK_METHOD2(Unmount, gboolean(gboolean *, GError **));
   MOCK_METHOD2(GetMountPointForUser, bool(const std::string&, base::FilePath*));
   MOCK_METHOD1(IsOwner, bool(const std::string&));
 };
