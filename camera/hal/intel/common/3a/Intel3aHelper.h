@@ -20,8 +20,8 @@
 #include <ia_aiq.h>
 #include <ia_coordinate.h>
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 #define MAX_COLOR_CONVERSION_MATRIX 3
 class Intel3aHelper {
@@ -38,6 +38,6 @@ public:
     static void dumpSaResult(const ia_aiq_sa_results* saResult);
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif  // AAA_INTEL3AHELPER_H_

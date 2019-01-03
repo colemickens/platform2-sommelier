@@ -23,8 +23,8 @@
 #include "MediaCtlHelper.h"
 #include "MediaEntity.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 MediaCtlHelper::MediaCtlHelper(std::shared_ptr<MediaController> mediaCtl,
         IOpenCallBack *openCallBack) :
@@ -280,5 +280,5 @@ status_t MediaCtlHelper::resetLinks()
     return status;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

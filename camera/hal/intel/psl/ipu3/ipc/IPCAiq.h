@@ -19,8 +19,8 @@
 #include <ia_aiq.h>
 #include "IPCFaceEngine.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 struct aiq_init_params {
     unsigned int aiqb_size;
     unsigned int nvm_size;
@@ -326,6 +326,6 @@ private:
     bool unflattenAeResults(ae_run_params_results* res);
 
 };
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif // PSL_IPU3_IPC_IPCAIQ_H_

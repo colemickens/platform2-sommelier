@@ -37,8 +37,8 @@
  *
  * This code should be disabled in product builds.
  */
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 namespace PerformanceTraces {
 
 /**
@@ -139,6 +139,6 @@ private:
 #define HAL_PER_TRACE_NAME(level, name)
 #define HAL_PER_TRACE_CALL(level)
 #endif
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif // ANDROID_LIBCAMERA_PERFORMANCE_TRACES

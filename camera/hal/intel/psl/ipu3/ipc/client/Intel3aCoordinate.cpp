@@ -20,8 +20,8 @@
 #include "Intel3aCoordinate.h"
 #include "IPCCoordinate.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 Intel3aCoordinate::Intel3aCoordinate():
     mInitialized(false)
 {
@@ -67,5 +67,5 @@ Intel3aCoordinate::convert(
     return params->results;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

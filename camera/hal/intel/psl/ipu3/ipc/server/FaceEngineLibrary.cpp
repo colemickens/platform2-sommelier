@@ -24,9 +24,9 @@
 #include "common/UtilityMacros.h"
 #include <ia_coordinate.h>
 
+namespace cros {
 namespace intel {
-namespace camera {
-using namespace android::camera2;
+
 FaceEngineLibrary::FaceEngineLibrary()
 {
     LOG1("@%s", __FUNCTION__);
@@ -179,5 +179,5 @@ status_t FaceEngineLibrary::run(void* pData, int dataSize)
     return OK;
 }
 
-} /* namespace camera */
 } /* namespace intel */
+} /* namespace cros */

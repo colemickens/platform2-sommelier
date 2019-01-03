@@ -22,8 +22,8 @@
 #include "Intel3aCommon.h"
 #include "IPCExc.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 class Intel3aExc {
 public:
     Intel3aExc();
@@ -50,6 +50,6 @@ private:
 
     std::vector<ShmMem> mMems;
 };
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif //PSL_IPU3_IPC_CLIENT_INTEL3AEXC_H_

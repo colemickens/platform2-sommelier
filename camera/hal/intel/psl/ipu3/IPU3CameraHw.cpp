@@ -29,8 +29,8 @@
 #include "CameraProfiles.h"
 #include "FaceEngine.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 // Camera factory
 ICameraHw *CreatePSLCamera(int cameraId) {
@@ -358,7 +358,7 @@ IPU3CameraHw::processRequest(Camera3Request* request, int inFlightCount)
 
 status_t IPU3CameraHw::getTestPatternMode(Camera3Request* request, int32_t* testPatternMode)
 {
-    const CameraMetadata *reqSetting = request->getSettings();
+    const android::CameraMetadata *reqSetting = request->getSettings();
     CheckError(reqSetting == nullptr, UNKNOWN_ERROR, "no settings in request - BUG");
 
     const camera_metadata_t *meta = PlatformData::getStaticMetadata(mCameraId);
@@ -414,8 +414,8 @@ IPU3CameraHw::dump(int fd)
 /**
  * initStaticMetadata
  *
- * Create CameraMetadata object to retrieve the static tags used in this class
- * we cache them as members so that we do not need to query CameraMetadata class
+ * Create android::CameraMetadata object to retrieve the static tags used in this class
+ * we cache them as members so that we do not need to query android::CameraMetadata class
  * every time we need them. This is more efficient since find() is not cheap
  */
 status_t
@@ -424,10 +424,10 @@ IPU3CameraHw::initStaticMetadata(void)
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
 
     /**
-    * Initialize the CameraMetadata object with the static metadata tags
+    * Initialize the android::CameraMetadata object with the static metadata tags
     */
     camera_metadata_t* staticMeta = const_cast<camera_metadata_t*>(PlatformData::getStaticMetadata(mCameraId));
-    mStaticMeta = new CameraMetadata(staticMeta);
+    mStaticMeta = new android::CameraMetadata(staticMeta);
 
     camera_metadata_entry entry;
     entry = mStaticMeta->find(ANDROID_REQUEST_PIPELINE_MAX_DEPTH);
@@ -452,5 +452,5 @@ IPU3CameraHw::initStaticMetadata(void)
     return NO_ERROR;
 }
 
-}  // namespace camera2
-}  // namespace android
+}  // namespace intel
+}  // namespace cros

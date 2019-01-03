@@ -20,8 +20,8 @@
 #include <memory>
 #include "Intel3aPlus.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 /**
  * \struct IPU3CapturedStatistics
@@ -51,7 +51,7 @@ struct IPU3CapturedStatistics {
     uint32_t frameSequence;
 };
 
-} //namespace android
-} //namespace camera2
+} //namespace cros
+} //namespace intel
 
 #endif /* CAMERA3_HAL_IPU3CAPTUREDSTATISTICS_H_ */

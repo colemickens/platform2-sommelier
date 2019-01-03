@@ -42,8 +42,8 @@
  * by itself (allocMemory is called)
  */
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 enum BufferMemoryType {
     BMT_HEAP, /* normal heap memory buffer */
     BMT_GFX,  /* graphic memory buffer */
@@ -104,6 +104,6 @@ protected:
     bool            mIsOwner; /*!< Boolean to check if self-owned buffer memory */
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif // _CAMERA3_HAL_COMMON_BUFFER_H_

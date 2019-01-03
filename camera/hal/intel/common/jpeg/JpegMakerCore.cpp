@@ -21,8 +21,8 @@
 #include "PlatformData.h"
 #include "CameraMetadataHelper.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 static const unsigned char JPEG_MARKER_SOI[2] = {0xFF, 0xD8};  // JPEG StartOfImage marker
 
 JpegMakerCore::JpegMakerCore(int cameraid) :
@@ -153,7 +153,7 @@ status_t JpegMakerCore::makeJpeg(ImgEncoderCore::EncodePackage & package)
     return NO_ERROR;
 }
 
-status_t JpegMakerCore::processExifSettings(const CameraMetadata  *settings,
+status_t JpegMakerCore::processExifSettings(const android::CameraMetadata  *settings,
                                             ExifMetaData& metaData)
 {
     LOG2("@%s:", __FUNCTION__);
@@ -182,7 +182,7 @@ status_t JpegMakerCore::processJpegSettings(ImgEncoderCore::EncodePackage & pack
     LOG2("@%s:", __FUNCTION__);
     status_t status = NO_ERROR;
 
-    const CameraMetadata *settings = package.settings;
+    const android::CameraMetadata *settings = package.settings;
 
     //# METADATA_Control jpeg.quality done
     unsigned int tag = ANDROID_JPEG_QUALITY;
@@ -236,7 +236,7 @@ status_t JpegMakerCore::processJpegSettings(ImgEncoderCore::EncodePackage & pack
  * \param[in] settings The Anroid metadata to process GPS settings from
  * \param[out] metadata The EXIF data where the GPS setting are written to
  */
-status_t JpegMakerCore::processGpsSettings(const CameraMetadata &settings,
+status_t JpegMakerCore::processGpsSettings(const android::CameraMetadata &settings,
                                            ExifMetaData& metadata)
 {
     LOG2("@%s:", __FUNCTION__);
@@ -275,7 +275,7 @@ status_t JpegMakerCore::processGpsSettings(const CameraMetadata &settings,
     return status;
 }
 
-status_t JpegMakerCore::processAwbSettings(const CameraMetadata &settings,
+status_t JpegMakerCore::processAwbSettings(const android::CameraMetadata &settings,
                                            ExifMetaData& metaData)
 {
     LOG2("@%s:", __FUNCTION__);
@@ -309,12 +309,12 @@ status_t JpegMakerCore::processAwbSettings(const CameraMetadata &settings,
     return status;
 }
 
-status_t JpegMakerCore::processScalerCropSettings(const CameraMetadata &settings,
+status_t JpegMakerCore::processScalerCropSettings(const android::CameraMetadata &settings,
                                                   ExifMetaData& metaData)
 {
     LOG2("@%s:", __FUNCTION__);
     status_t status = NO_ERROR;
-    CameraMetadata staticMeta;
+    android::CameraMetadata staticMeta;
     const int32_t sensorActiveArrayCount = 4;
     const uint32_t scalerCropCount = 4;
     int count = 0;
@@ -337,7 +337,7 @@ status_t JpegMakerCore::processScalerCropSettings(const CameraMetadata &settings
     return status;
 }
 
-status_t JpegMakerCore::processEvCompensationSettings(const CameraMetadata &settings,
+status_t JpegMakerCore::processEvCompensationSettings(const android::CameraMetadata &settings,
                                                       ExifMetaData& metaData)
 {
     LOG2("@%s:", __FUNCTION__);
@@ -359,5 +359,5 @@ status_t JpegMakerCore::processEvCompensationSettings(const CameraMetadata &sett
     return status;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

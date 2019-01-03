@@ -21,8 +21,8 @@
 
 #include <utils/Errors.h>
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 HwStreamBase::HwStreamBase(CameraStreamNode &stream)
 {
@@ -84,5 +84,5 @@ status_t HwStreamBase::configure(void)
     return NO_ERROR;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

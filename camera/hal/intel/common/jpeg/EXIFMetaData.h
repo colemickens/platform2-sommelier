@@ -25,8 +25,8 @@
 
 #define MAX_NUM_GPS_PROCESSING_METHOD 64
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 /**
  * \class ExifMetaData
  *
@@ -92,7 +92,7 @@ typedef makernote_info MakernoteType;
 private:
     DISALLOW_COPY_AND_ASSIGN(ExifMetaData);
 };
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif   // _EXIFMETADATA_H_
 

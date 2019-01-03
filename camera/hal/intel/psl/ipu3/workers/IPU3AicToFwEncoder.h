@@ -22,14 +22,14 @@
 struct aic_config;
 struct ipu3_uapi_params;
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 namespace IPU3AicToFwEncoder {
     status_t encodeParameters(aic_config *config, ipu3_uapi_params *params);
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 
 #endif /* PSL_IPU3_WORKERS_IPU3AICTOFWENCODER_H_ */

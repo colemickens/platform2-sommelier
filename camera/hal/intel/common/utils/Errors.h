@@ -21,8 +21,8 @@
 #include <sys/types.h>
 #include <errno.h>
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 typedef int         status_t;
 
@@ -56,6 +56,6 @@ enum {
     FDS_NOT_ALLOWED     = (UNKNOWN_ERROR + 7),
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif // ANDROID_ERRORS_H

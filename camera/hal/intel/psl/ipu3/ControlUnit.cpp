@@ -33,8 +33,8 @@
 #include "Metadata.h"
 #include "AAARunner.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 ControlUnit::ControlUnit(ImguUnit *thePU,
                          CaptureUnit *theCU,
@@ -286,7 +286,7 @@ void RequestCtrlState::init(Camera3Request *req)
     /**
      * Apparently we need to have this tags in the results
      */
-    const CameraMetadata* settings = request->getSettings();
+    const android::CameraMetadata* settings = request->getSettings();
 
     if (CC_UNLIKELY(settings == nullptr)) {
         LOGE("no settings in request - BUG");
@@ -461,7 +461,7 @@ status_t ControlUnit::handleNewRequest(std::shared_ptr<RequestCtrlState> state)
      *  - Capture Unit settings
      *  - Processing Unit settings
      */
-    const CameraMetadata *reqSettings = reqState->request->getSettings();
+    const android::CameraMetadata *reqSettings = reqState->request->getSettings();
 
     CheckAndCallbackError(reqSettings == nullptr, mErrCb, UNKNOWN_ERROR,
                           "@%s: no settings in request", __FUNCTION__);
@@ -799,7 +799,7 @@ status_t ControlUnit::handleNewShutter(MessageShutter msg)
     }
 
     /* flash state - hack, should know from frame whether it fired */
-    const CameraMetadata* metaData = reqState->request->getSettings();
+    const android::CameraMetadata* metaData = reqState->request->getSettings();
     if (metaData == nullptr) {
         LOGE("Metadata should not be nullptr. Fix the bug!");
         return UNKNOWN_ERROR;
@@ -1084,6 +1084,6 @@ std::shared_ptr<CaptureUnitSettings> ControlUnit::findSettingsInEffect(uint64_t 
     return settingsInEffect;
 }
 
-} // namespace camera2
-} // namespace android
+} // namespace intel
+} // namespace cros
 

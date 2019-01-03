@@ -22,23 +22,22 @@
 #include <ia_mkn_types.h>
 #include "IPCMkn.h"
 
+namespace cros {
 namespace intel {
-namespace camera {
-using namespace android::camera2;
 class MknLibrary {
 public:
     MknLibrary();
     virtual ~MknLibrary();
 
-    android::camera2::status_t init(void* pData, int dataSize);
-    android::camera2::status_t uninit(void* pData, int dataSize);
-    android::camera2::status_t prepare(void* pData, int dataSize);
-    android::camera2::status_t enable(void* pData, int dataSize);
+    status_t init(void* pData, int dataSize);
+    status_t uninit(void* pData, int dataSize);
+    status_t prepare(void* pData, int dataSize);
+    status_t enable(void* pData, int dataSize);
 
 private:
-    android::camera2::IPCMkn mIpc;
+    IPCMkn mIpc;
 };
 
-} /* namespace camera */
 } /* namespace intel */
+} /* namespace cros */
 #endif // PSL_IPU3_IPC_SERVER_MKNLIBRARY_H_

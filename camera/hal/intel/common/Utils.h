@@ -20,8 +20,8 @@
 #include <string>
 #include <vector>
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 // Parse string like "640x480" or "10000,20000"
 // copy from android CameraParameters.cpp
 int parsePair(const char *str, int *first, int *second, char delim, char **endptr = nullptr);
@@ -44,6 +44,6 @@ nsecs_t systemTime();
 
 void dumpToFile(const void* data, int size, int width, int height, int reqId, const std::string& name);
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif // CAMERA3_HAL_UTILS_H

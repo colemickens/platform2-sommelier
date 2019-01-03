@@ -29,7 +29,7 @@ extern "C" {
 }
 
 using namespace std;
-using namespace android::camera2;
+using namespace cros::intel;
 
 namespace GCSS {
 

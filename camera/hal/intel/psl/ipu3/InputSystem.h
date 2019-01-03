@@ -41,8 +41,8 @@
 class MediaController;
 class MediaEntity;
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 class IStreamConfigProvider;
 
@@ -213,7 +213,7 @@ private: /* members */
     IErrorCallback* mErrCb;
 }; // class InputSystem
 
-} // namespace camera2
-} // namespace android
+} // namespace intel
+} // namespace cros
 
 #endif

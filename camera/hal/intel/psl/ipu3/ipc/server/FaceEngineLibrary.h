@@ -27,32 +27,32 @@
 #include "IPCFaceEngine.h"
 #include "Utils.h"
 
+namespace cros {
 namespace intel {
-namespace camera {
 
 class FaceEngineLibrary {
 public:
     FaceEngineLibrary();
     virtual ~FaceEngineLibrary();
 
-    android::camera2::status_t init(void* pData, int dataSize);
-    android::camera2::status_t uninit();
-    android::camera2::status_t run(void* pData, int dataSize);
+    status_t init(void* pData, int dataSize);
+    status_t uninit();
+    status_t run(void* pData, int dataSize);
 
 private:
-    android::camera2::IPCFaceEngine mIpc;
+    IPCFaceEngine mIpc;
 
     pvl_face_detection* mFDHandle;
     pvl_eye_detection* mEDHandle;
     pvl_mouth_detection* mMDHandle;
 
-    android::camera2::face_detection_mode mMode;
+    face_detection_mode mMode;
     unsigned int mMaxFacesNum;
 
     void convertCoordinate(int faceId, int width, int height, pvl_rect& src, pvl_rect* dst);
 
     DISALLOW_COPY_AND_ASSIGN(FaceEngineLibrary);
 };
-} /* namespace camera */
 } /* namespace intel */
+} /* namespace cros */
 #endif // FACE_ENGINE_LIBRARY_H_

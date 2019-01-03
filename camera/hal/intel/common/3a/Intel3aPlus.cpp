@@ -28,8 +28,8 @@
 #include "LogHelper.h"
 #include "Utils.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 const float EPSILON = 0.00001f;
 
 
@@ -278,7 +278,7 @@ char Intel3aPlus::mapUiImageEnhancement2Aiq(int uiValue)
 }
 
 
-status_t Intel3aPlus::fillPAInputParams(const CameraMetadata &settings,
+status_t Intel3aPlus::fillPAInputParams(const android::CameraMetadata &settings,
                                         PAInputParams &paInputParams) const
 {
     LOG2("@%s", __FUNCTION__);
@@ -302,7 +302,7 @@ status_t Intel3aPlus::fillPAInputParams(const CameraMetadata &settings,
     return OK;
 }
 
-status_t Intel3aPlus::fillSAInputParams(const CameraMetadata &settings,
+status_t Intel3aPlus::fillSAInputParams(const android::CameraMetadata &settings,
                                         SAInputParams &saInputParams) const
 {
     LOG2("@%s", __FUNCTION__);
@@ -341,7 +341,7 @@ status_t Intel3aPlus::fillSAInputParams(const CameraMetadata &settings,
  *
  * \return success or error.
  */
-status_t Intel3aPlus::fillAeInputParams(const CameraMetadata *settings,
+status_t Intel3aPlus::fillAeInputParams(const android::CameraMetadata *settings,
                                         AeInputParams &aeInputParams)
 {
     LOG2("@%s", __FUNCTION__);
@@ -724,7 +724,7 @@ void Intel3aPlus::updateMinAEWindowSize(CameraWindow &dst)
  *
  * \return OK
  */
-status_t Intel3aPlus::fillAfInputParams(const CameraMetadata *settings,
+status_t Intel3aPlus::fillAfInputParams(const android::CameraMetadata *settings,
                                         AfInputParams &afInputParams)
 {
     status_t status = OK;
@@ -806,7 +806,7 @@ status_t Intel3aPlus::fillAfInputParams(const CameraMetadata *settings,
  * \return BAD_VALUE if settings was nullptr.
  * \return NO_ERROR in normal situation.
  */
-status_t Intel3aPlus::fillAwbInputParams(const CameraMetadata *settings,
+status_t Intel3aPlus::fillAwbInputParams(const android::CameraMetadata *settings,
                                          AwbInputParams &awbInputParams)
 {
     ia_aiq_awb_input_params *awbCfg;
@@ -915,7 +915,7 @@ status_t Intel3aPlus::fillAwbInputParams(const CameraMetadata *settings,
  * \param[out] meteringWindow initialized region.
  *
  */
-void Intel3aPlus::parseMeteringRegion(const CameraMetadata *settings,
+void Intel3aPlus::parseMeteringRegion(const android::CameraMetadata *settings,
                                       int tagId, CameraWindow &meteringWindow)
 {
     camera_metadata_ro_entry_t entry;
@@ -944,7 +944,7 @@ void Intel3aPlus::parseMeteringRegion(const CameraMetadata *settings,
 }
 
 ia_aiq_frame_use
-Intel3aPlus::getFrameUseFromIntent(const CameraMetadata * settings)
+Intel3aPlus::getFrameUseFromIntent(const android::CameraMetadata * settings)
 {
     camera_metadata_ro_entry entry;
     ia_aiq_frame_use frameUse = ia_aiq_frame_use_preview;
@@ -983,7 +983,7 @@ Intel3aPlus::getFrameUseFromIntent(const CameraMetadata * settings)
 }
 
 void
-Intel3aPlus::parseAfTrigger(const CameraMetadata &settings,
+Intel3aPlus::parseAfTrigger(const android::CameraMetadata &settings,
                             ia_aiq_af_input_params &afInputParams,
                             uint8_t &trigger) const
 {
@@ -1020,7 +1020,7 @@ Intel3aPlus::parseAfTrigger(const CameraMetadata &settings,
  * \return OK: even if no correct settings are found, defaults are used.
  */
 status_t
-Intel3aPlus::parseAFMode(const CameraMetadata *settings,
+Intel3aPlus::parseAFMode(const android::CameraMetadata *settings,
                          ia_aiq_af_input_params &afInputParams,
                          uint8_t &afMode) const
 
@@ -1126,7 +1126,7 @@ void Intel3aPlus::setAfMode(ia_aiq_af_input_params &afInputParams,
  * 0.0f (=infinity) focus distance value is set by the application
  */
 status_t
-Intel3aPlus::parseFocusDistance(const CameraMetadata &settings,
+Intel3aPlus::parseFocusDistance(const android::CameraMetadata &settings,
                                 ia_aiq_af_input_params &afCfg) const
 {
     status_t status = NO_ERROR;
@@ -1273,5 +1273,5 @@ status_t Intel3aPlus::storeLensShadingMap(const LSCGrid &inputLscGrid,
                                             dstLscGridRGGB);
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

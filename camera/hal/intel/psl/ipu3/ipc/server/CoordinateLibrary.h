@@ -20,17 +20,17 @@
 #include <utils/Errors.h>
 #include "IPCCommon.h"
 
+namespace cros {
 namespace intel {
-namespace camera {
 class CoordinateLibrary {
 public:
     CoordinateLibrary();
     virtual ~CoordinateLibrary();
 
-    android::camera2::status_t convert(void* pData, int dataSize);
+    status_t convert(void* pData, int dataSize);
 };
 
-} /* namespace camera */
 } /* namespace intel */
+} /* namespace cros */
 
 #endif // PSL_IPU3_IPC_SERVER_COORDINATELIBRARY_H_

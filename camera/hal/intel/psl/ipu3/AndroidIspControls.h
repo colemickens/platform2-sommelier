@@ -17,8 +17,8 @@
 #ifndef AAA_ANDROIDISPCONTROLS_H_
 #define AAA_ANDROIDISPCONTROLS_H_
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 const uint8_t ANDROID_MAX_STRENGTH = 10;
 
@@ -61,6 +61,6 @@ struct AndroidIspControls {
         effect(0) {}
 };
 
-} // namespace camera2
-} // namespace android
+} // namespace intel
+} // namespace cros
 #endif //AAA_ANDROIDISPCONTROLS_H_

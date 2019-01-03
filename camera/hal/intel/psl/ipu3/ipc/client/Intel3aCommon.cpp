@@ -20,8 +20,8 @@
 #include "Intel3aCommon.h"
 #include "PlatformData.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 Intel3aCommon::Intel3aCommon()
 {
     LOG1("@%s", __FUNCTION__);
@@ -112,5 +112,5 @@ void Intel3aCommon::releaseAllShmMems(std::vector<ShmMem>& mems)
     }
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

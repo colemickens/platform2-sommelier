@@ -26,8 +26,8 @@
 #include "CameraStreamNode.h"
 #include "CameraBuffer.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 /**
  * This define is only used for the purpose of the allocation of output buffer
@@ -108,7 +108,7 @@ public:
     Camera3Request();
     virtual ~Camera3Request();
     status_t init(camera3_capture_request* req,
-                  IRequestCallback* cb, CameraMetadata &settings, int cameraId);
+                  IRequestCallback* cb, android::CameraMetadata &settings, int cameraId);
     void deInit();
 
     /* access methods */
@@ -118,8 +118,8 @@ public:
     int getId();
     int getpartialResultCount() { return mPartialResultBuffers.size(); }
     int getCameraId() {return mCameraId;}
-    CameraMetadata* getPartialResultBuffer(unsigned int index);
-    const CameraMetadata* getSettings() const;
+    android::CameraMetadata* getPartialResultBuffer(unsigned int index);
+    const android::CameraMetadata* getSettings() const;
 
     const std::vector<camera3_stream_buffer>* getOutputBuffers();
     const camera3_stream_buffer* getInputBuffer();
@@ -134,7 +134,7 @@ public:
 
     class Members {
     public:
-        CameraMetadata mSettings;
+        android::CameraMetadata mSettings;
     };
 
     IRequestCallback * mCallback;
@@ -156,7 +156,7 @@ private:  /* types and members */
     friend class SharedObject<const Camera3Request, const Camera3Request::Members>;
 
     bool  mInitialized;
-    CameraMetadata mSettings; /* request settings metadata. Always contains a
+    android::CameraMetadata mSettings; /* request settings metadata. Always contains a
                                     valid metadata buffer even if the request
                                     had nullptr */
      std::mutex mAccessLock;  /* protects mInBuffers, mOutBufs and mRequestId,
@@ -190,7 +190,7 @@ private:  /* types and members */
     * clear the contents of a metadata buffer completely.
     */
     typedef struct {
-         CameraMetadata *metaBuf;
+         android::CameraMetadata *metaBuf;
          void   *baseBuf; /* ownership mPartialResultBuffers */
          size_t size;
          int dataCap;
@@ -199,6 +199,6 @@ private:  /* types and members */
     std::vector<MemoryManagedMetadata> mPartialResultBuffers;
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif /* _CAMERA3_HAL_CAMERA3REQUEST_H_ */

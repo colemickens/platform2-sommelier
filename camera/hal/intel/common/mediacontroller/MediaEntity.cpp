@@ -22,8 +22,8 @@
 #include "LogHelper.h"
 #include <fcntl.h>
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 MediaEntity::MediaEntity(struct media_entity_desc &entity, struct media_link_desc *links,
                          struct media_pad_desc *pads) :
     mInfo(entity),
@@ -169,5 +169,5 @@ V4L2DeviceType MediaEntity::getType()
     }
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

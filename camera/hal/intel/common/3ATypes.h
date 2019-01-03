@@ -26,8 +26,8 @@
 #define GAMMA_LUT_LOWER_BOUND  0
 #define GAMMA_LUT_UPPER_BOUND  255
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 enum AeMode
 {
@@ -183,8 +183,8 @@ struct AAAWindowInfo {
     unsigned height;
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 
 
 #endif // _HAL_3A_TYPES_H_

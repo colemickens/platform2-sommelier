@@ -18,8 +18,8 @@
 #define NODETYPES_H_
 
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 /**
  * This enumeration lists the V4L2 nodes exposed by the InputSystem
@@ -38,7 +38,7 @@ enum IPU3NodeNames {
 
 enum v4l2_memory getDefaultMemoryType(IPU3NodeNames node);
 
-}  // namespace camera2
-}  // namespace android
+}  // namespace intel
+}  // namespace cros
 
 #endif /* NODETYPES_H_ */

@@ -20,8 +20,8 @@
 #include "Intel3aControls.h"
 #include "CaptureUnitSettings.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 /**
  * \struct ProcUnitSettings
@@ -69,7 +69,7 @@ struct ProcUnitSettings {
     }
 };
 
-} // namespace camera2
-} // namespace android
+} // namespace intel
+} // namespace cros
 
 #endif /* CAMERA3_HAL_IPU3_PROCUNITSETTINGS_H_ */

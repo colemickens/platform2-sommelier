@@ -26,8 +26,8 @@
 #include <ia_mkn_encoder.h>
 #include "LogHelper.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 /****************************************************************************
  *  DEBUGGING TOOLS FOR DUMPING AIQ STRUCTURES
@@ -253,5 +253,5 @@ Intel3aHelper::dumpRGBSGrids(const ia_aiq_rgbs_grid **rgbs_grids, int gridCount)
     }
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

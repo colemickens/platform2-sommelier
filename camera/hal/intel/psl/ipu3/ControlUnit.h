@@ -30,8 +30,8 @@
 #include <linux/intel-ipu3.h>
 #include <cros-camera/camera_thread.h>
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 class SettingsProcessor;
 class Metadata;
@@ -175,7 +175,7 @@ private:  /* Members */
     FaceEngine* mFaceEngine;
 };  // class ControlUnit
 
-}  // namespace camera2
-}  // namespace android
+}  // namespace intel
+}  // namespace cros
 
 #endif  // CAMERA3_HAL_CONTROLUNIT_H_

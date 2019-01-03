@@ -23,8 +23,8 @@
 #include <ia_aiq_types.h>
 #include "NodeTypes.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 class MediaCtlHelper
 {
@@ -89,7 +89,7 @@ private:
     std::map<IPU3NodeNames, std::shared_ptr<cros::V4L2VideoNode>> mConfiguredNodesPerName;
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 
 #endif /* PSL_IPU3_MEDIACTLHELPER_H_ */

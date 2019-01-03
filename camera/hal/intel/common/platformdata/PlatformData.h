@@ -104,8 +104,8 @@
 #define IPU3_EVENT_POLL_TIMEOUT 1000 //msecs
 #define POLL_REQUEST_TRY_TIMES 2
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 typedef enum {
     SUPPORTED_HW_IPU3,
     SUPPORTED_HW_UNKNOWN
@@ -372,6 +372,6 @@ private:
     static bool saveAiqdDataToFile();
     static status_t readSpId(std::string& spIdName, unsigned int& spIdValue);
 };
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif // _CAMERA3_HAL_PLATFORMDATA_H_

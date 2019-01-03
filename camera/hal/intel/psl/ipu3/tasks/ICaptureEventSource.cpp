@@ -19,8 +19,8 @@
 #include "ICaptureEventSource.h"
 #include "LogHelper.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 /**
  * Attach a Listening client to a particular event
@@ -67,5 +67,5 @@ ICaptureEventSource::notifyListeners(ICaptureEventListener::CaptureMessage *msg)
     return ret;
 }
 
-} // namespace camera2
-} // namespace android
+} // namespace intel
+} // namespace cros

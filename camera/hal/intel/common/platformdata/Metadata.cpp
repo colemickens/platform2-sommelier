@@ -19,8 +19,8 @@
 #include "Metadata.h"
 #include "LogHelper.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 const char *metaId2String(const metadata_value_t array[], int size, int value)
 {
     for (int i = 0; i < size; i++) {
@@ -33,5 +33,5 @@ const char *metaId2String(const metadata_value_t array[], int size, int value)
     return out.c_str();
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

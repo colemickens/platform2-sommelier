@@ -26,8 +26,8 @@
 
 #include "AAL/IErrorCallback.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 class Intel3AClient : public camera_algorithm_callback_ops_t {
 public:
     Intel3AClient();
@@ -104,6 +104,6 @@ private:
     std::unique_ptr<Runner> mRunner[IPC_GROUP_NUM];
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif // PSL_IPU3_IPC_CLIENT_INTEL3ACLIENT_H_

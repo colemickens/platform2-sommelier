@@ -25,8 +25,8 @@
 #include <utils/Errors.h>
 #include "MediaCtlPipeConfig.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 class MediaEntity;
 
 /**
@@ -83,6 +83,6 @@ private:
 
 }; // class MediaController
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif

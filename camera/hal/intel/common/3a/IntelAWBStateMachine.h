@@ -21,8 +21,8 @@
 #include "LogHelper.h"
 #include "Intel3aPlus.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 /**
  * \class IntelAWBModeBase
  *
@@ -42,12 +42,12 @@ public:
 
 
     virtual status_t processResult(const ia_aiq_awb_results &awbResults,
-                                   CameraMetadata &results) = 0;
+                                   android::CameraMetadata &results) = 0;
 
     void resetState(void);
     uint8_t getState() const { return mCurrentAwbState; }
 protected:
-    void updateResult(CameraMetadata& results);
+    void updateResult(android::CameraMetadata& results);
 protected:
     AwbControls  mLastAwbControls;
     uint8_t     mLastControlMode;
@@ -65,7 +65,7 @@ public:
     virtual status_t processState(const uint8_t &controlMode,
                                   const AwbControls &awbControls);
     virtual status_t processResult(const ia_aiq_awb_results &awbResults,
-                                  CameraMetadata& result);
+                                  android::CameraMetadata& result);
 };
 
 /**
@@ -79,7 +79,7 @@ public:
     virtual status_t processState(const uint8_t &controlMode,
                                   const AwbControls &awbControls);
     virtual status_t processResult(const ia_aiq_awb_results &awbResults,
-                                  CameraMetadata& result);
+                                  android::CameraMetadata& result);
 };
 
 /**
@@ -100,7 +100,7 @@ public:
                                   const AwbControls &awbControls);
 
     virtual status_t processResult(const ia_aiq_awb_results &awbResults,
-                                   CameraMetadata &results);
+                                   android::CameraMetadata &results);
 
     uint8_t getState() const { return mCurrentAwbMode->getState(); }
 private:
@@ -118,6 +118,6 @@ private: /* members*/
     IntelAWBModeOff mOffMode;
     IntelAWBModeAuto mAutoMode;
 };
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif // AAA_INTELAWBSTATEMACHINE_H_

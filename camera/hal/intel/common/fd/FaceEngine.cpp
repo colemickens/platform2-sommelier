@@ -21,8 +21,8 @@
 #include "ia_coordinate.h"
 #include "FaceEngine.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 FaceEngine::FaceEngine(int cameraId, unsigned int maxFaceNum,
                            int maxWidth, int maxHeight, face_detection_mode fdMode) :
@@ -187,5 +187,5 @@ int FaceEngine::getResult(CVFaceEngineAbstractResult* result)
     return OK;
 }
 
-}  // namespace android
-}
+}  // namespace intel
+}  // namespace cros

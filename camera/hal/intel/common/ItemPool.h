@@ -31,8 +31,8 @@
  *
  */
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 template <class ItemType>
 class ItemPool {
 public:
@@ -168,6 +168,6 @@ ItemPool<ItemType>::releaseItem(ItemType *item)
     return status;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif /* CAMERA3_HAL_ITEMPOOL_H_ */

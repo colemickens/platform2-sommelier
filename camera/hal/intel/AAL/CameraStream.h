@@ -26,8 +26,8 @@
 #include "ICameraHw.h"
 #include <memory>
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 enum STREAM_TYPE {
     STREAM_PREVIEW = 1,
@@ -100,6 +100,6 @@ private: /* Members */
     std::mutex mPendingLock; /* Protects mPendingRequests */
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif // _CAMERA3_HAL_CAMERA_STREAM_H_

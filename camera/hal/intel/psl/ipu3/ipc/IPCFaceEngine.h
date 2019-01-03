@@ -26,8 +26,8 @@
 #include "pvl_eye_detection.h"
 #include "pvl_mouth_detection.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 #define MAX_FACES_DETECTABLE 10
 
 #define RECT_SIZE 4
@@ -77,6 +77,6 @@ public:
     bool clientFlattenRun(const pvl_image& frame, face_engine_run_params* params);
     bool serverUnflattenRun(const face_engine_run_params& inParams, pvl_image* image);
 };
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif // IPC_FACE_ENGINE_H_

@@ -19,8 +19,8 @@
 
 #include "Intel3AClient.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 typedef struct ShmMemInfo {
     std::string mName;
     int mSize;
@@ -59,6 +59,6 @@ private:
     Intel3AClient* mClient;
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif // PSL_IPU3_IPC_CLIENT_INTEL3ACOMMON_H_

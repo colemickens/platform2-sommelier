@@ -24,8 +24,8 @@
 
 #include "utils/Errors.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 enum V4L2DeviceType {
         DEVICE_VIDEO,   /*!< MEDIA_ENT_T_DEVNODE_V4L */
         SUBDEV_GENERIC, /*!< MEDIA_ENT_T_V4L2_SUBDEV */
@@ -74,6 +74,6 @@ private:
 
 }; // class MediaEntity
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif

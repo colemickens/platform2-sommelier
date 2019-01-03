@@ -19,8 +19,8 @@
 #include <memory>
 #include <libyuv.h>
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 class ImageScalerCore {
 public:
     template<typename T>
@@ -142,6 +142,6 @@ public:
     }
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif // _IMAGESCALER_CORE_H_

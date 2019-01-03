@@ -20,8 +20,8 @@
 #include "ImgEncoder.h"
 #include "JpegMakerCore.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 /**
  * \class JpegMaker
@@ -37,6 +37,6 @@ public: /* Methods */
         const Camera3Request& request);
     status_t makeJpeg(ImgEncoder::EncodePackage & package, std::shared_ptr<CameraBuffer> dest = nullptr);
 };
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif  // _CAMERA3_HAL_JPEG_MAKER_H_

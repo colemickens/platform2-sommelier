@@ -24,8 +24,8 @@
 #include <sys/types.h>
 #include <system/camera.h>
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 CameraOrientationDetector::CameraOrientationDetector(int facing) :
     mFacing(facing),
     mPrepared(false),

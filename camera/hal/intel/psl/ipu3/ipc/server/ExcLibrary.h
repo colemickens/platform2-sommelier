@@ -20,21 +20,21 @@
 #include "IPCCommon.h"
 #include "IPCExc.h"
 
+namespace cros {
 namespace intel {
-namespace camera {
 class ExcLibrary {
 public:
     ExcLibrary();
     virtual ~ExcLibrary();
 
-    android::camera2::status_t analog_gain_to_sensor_units(void* pData, int dataSize);
-    android::camera2::status_t sensor_units_to_analog_gain(void* pData, int dataSize);
+    status_t analog_gain_to_sensor_units(void* pData, int dataSize);
+    status_t sensor_units_to_analog_gain(void* pData, int dataSize);
 
 private:
-    android::camera2::IPCExc mIpc;
+    IPCExc mIpc;
 };
 
-} // namespace camera
 } // namespace intel
+} // namespace cros
 
 #endif // PSL_IPU3_IPC_SERVER_EXCLIBRARY_H_

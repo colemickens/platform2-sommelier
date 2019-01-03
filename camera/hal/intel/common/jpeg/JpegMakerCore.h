@@ -22,8 +22,8 @@
 #include "ImgEncoderCore.h"
 #include "Camera3Request.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 // Android requires that camera HAL to include the final size of the compressed
 // image inside the output stream buffer for the BLOB format. And The JPEG blob
 // ID field must be set to CAMERA3_JPEG_BLOB_ID (0x00FF).
@@ -57,14 +57,14 @@ private:  /* Methods */
     JpegMakerCore(const JpegMakerCore& other);
     JpegMakerCore& operator=(const JpegMakerCore& other);
 
-    status_t processExifSettings(const CameraMetadata  *settings, ExifMetaData& metaData);
+    status_t processExifSettings(const android::CameraMetadata  *settings, ExifMetaData& metaData);
     status_t processJpegSettings(ImgEncoderCore::EncodePackage & package,
                                  ExifMetaData& metaData,
                                  const Camera3Request& request);
-    status_t processGpsSettings(const CameraMetadata &settings, ExifMetaData& metaData);
-    status_t processAwbSettings(const CameraMetadata &settings, ExifMetaData& metaData);
-    status_t processScalerCropSettings(const CameraMetadata &settings, ExifMetaData& metaData);
-    status_t processEvCompensationSettings(const CameraMetadata &settings, ExifMetaData& metaData);
+    status_t processGpsSettings(const android::CameraMetadata &settings, ExifMetaData& metaData);
+    status_t processAwbSettings(const android::CameraMetadata &settings, ExifMetaData& metaData);
+    status_t processScalerCropSettings(const android::CameraMetadata &settings, ExifMetaData& metaData);
+    status_t processEvCompensationSettings(const android::CameraMetadata &settings, ExifMetaData& metaData);
     int32_t  getJpegBufferSize(void);
 
 private:  /* Members */
@@ -72,6 +72,6 @@ private:  /* Members */
     int        mCameraId;
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif  // _CAMERA3_HAL_JPEG_MAKER_CORE_H_

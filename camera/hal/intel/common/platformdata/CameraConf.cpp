@@ -36,8 +36,8 @@
 #include "Intel3aPlus.h"
 #include "Intel3aExc.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 using std::string;
 
 static const int TRANSFORM_MATRIX_SIZE = 9;
@@ -874,5 +874,5 @@ status_t CpfStore::loadConf(const string &cpfFileName)
     return ret;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

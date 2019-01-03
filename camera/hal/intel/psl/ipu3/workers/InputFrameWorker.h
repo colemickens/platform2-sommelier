@@ -19,8 +19,8 @@
 
 #include "FrameWorker.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 class InputFrameWorker : public FrameWorker
 {
@@ -38,7 +38,7 @@ private:
     int mLastRequestId;
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 
 #endif /* PSL_IPU3_WORKERS_INPUTFRAMEWORKER_H_ */

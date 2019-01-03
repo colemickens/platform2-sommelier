@@ -24,8 +24,8 @@
 #include <base/synchronization/waitable_event.h>
 #include <cros-camera/camera_thread.h>
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 /**
  * \class RequestThread
@@ -102,7 +102,7 @@ private:  /* members */
                                            captures to be finished.
                                            It is one item from mRequestsPool */
     int mBlockAction;   /*!< the action if request is blocked */
-    CameraMetadata mLastSettings;
+    android::CameraMetadata mLastSettings;
 
     bool mInitialized;  /*!< tracking the status of the RequestThread */
     /* *********************************************************************
@@ -119,6 +119,6 @@ private:  /* members */
     base::WaitableEvent mWaitRequest; /* Guide blocking capture request */
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif /* _CAMERA3_REQUESTTHREAD_H_ */

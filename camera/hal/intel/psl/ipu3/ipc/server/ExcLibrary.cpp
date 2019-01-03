@@ -19,10 +19,8 @@
 
 #include "LogHelper.h"
 
-using namespace android::camera2;
-
+namespace cros {
 namespace intel {
-namespace camera {
 
 ExcLibrary::ExcLibrary()
 {
@@ -76,5 +74,5 @@ status_t ExcLibrary::sensor_units_to_analog_gain(void* pData, int dataSize)
     return err == ia_err_none ? NO_ERROR : UNKNOWN_ERROR;
 }
 
-} // namespace camera
 } // namespace intel
+} // namespace cros

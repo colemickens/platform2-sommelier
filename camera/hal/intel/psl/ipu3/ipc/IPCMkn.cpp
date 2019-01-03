@@ -22,8 +22,8 @@
 #include "LogHelper.h"
 #include "IPCMkn.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 IPCMkn::IPCMkn()
 {
     LOG1("@%s", __FUNCTION__);
@@ -89,5 +89,5 @@ bool IPCMkn::serverFlattenPrepare(const ia_binary_data& inData,
     return true;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

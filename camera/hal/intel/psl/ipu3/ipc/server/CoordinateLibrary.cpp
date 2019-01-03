@@ -21,10 +21,8 @@
 #include "CoordinateLibrary.h"
 #include "IPCCoordinate.h"
 
-using namespace android::camera2;
-
+namespace cros {
 namespace intel {
-namespace camera {
 
 CoordinateLibrary::CoordinateLibrary()
 {
@@ -47,5 +45,5 @@ status_t CoordinateLibrary::convert(void* pData, int dataSize)
 
     return OK;
 }
-} /* namespace camera */
 } /* namespace intel */
+} /* namespace cros */

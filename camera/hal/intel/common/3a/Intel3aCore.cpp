@@ -31,8 +31,8 @@
 #include "PerformanceTraces.h"
 #include "Utils.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 void AiqInputParams::init()
 {
     CLEAR(aeInputParams);
@@ -1158,5 +1158,5 @@ bool Intel3aCore::saveAiqdData()
     return true;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

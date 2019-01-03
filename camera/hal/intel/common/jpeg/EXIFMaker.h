@@ -24,8 +24,8 @@
 #ifndef _EXIFMAKER_H_
 #define _EXIFMAKER_H_
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 /**
  * \class EXIFMaker
  *
@@ -74,6 +74,6 @@ private: // Methods
                        size_t srcLength);
     void clear();
 };
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif // _EXIFMAKER_H_

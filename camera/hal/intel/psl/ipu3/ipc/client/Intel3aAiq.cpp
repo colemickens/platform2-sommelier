@@ -24,8 +24,8 @@
 #include "common/UtilityMacros.h"
 #include "LogHelper.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 Intel3aAiq::Intel3aAiq():
         mInitialized(false)
 {
@@ -332,5 +332,5 @@ bool Intel3aAiq::isInitialized() const
 
     return mAiq ? true : false;
 }
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

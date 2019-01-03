@@ -25,7 +25,7 @@
 
 using namespace GCSS;
 using namespace std;
-using namespace android::camera2;
+using namespace cros::intel;
 
 IGraphConfig*
 GraphCameraUtil::nodeGetPortById(const IGraphConfig *node, uint32_t id)

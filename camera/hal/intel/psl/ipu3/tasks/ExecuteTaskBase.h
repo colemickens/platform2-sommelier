@@ -29,8 +29,8 @@
 #include "ProcUnitSettings.h"
 #include <cros-camera/v4l2_device.h>
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 struct CaptureUnitSettings;
 struct ProcUnitSettings;
@@ -58,7 +58,7 @@ struct ProcTaskMsg {
     ProcTaskMsg() : immediate(false), reqId(0), statsCapture(nullptr) {}
 };
 
-}  // namespace camera2
-}  // namespace android
+}  // namespace intel
+}  // namespace cros
 
 #endif  // CAMERA3_HAL_EXECUTETASKBASE_H_

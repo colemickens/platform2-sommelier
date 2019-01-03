@@ -24,8 +24,8 @@
 #include "Camera3GFXFormat.h"
 #include "CaptureUnit.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 #define MAX_SETTINGS_QUEUE_SIZE (SETTINGS_POOL_SIZE / 2)
 
@@ -984,5 +984,5 @@ status_t SyncManager::deInitSynchronization()
 
     return OK;
 }
-}   // namespace camera2
-}   // namespace android
+}   // namespace intel
+}   // namespace cros

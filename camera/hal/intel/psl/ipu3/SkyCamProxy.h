@@ -28,8 +28,8 @@
 class ISPPipe;
 struct IPU3AICRuntimeParams;
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 class SkyCamProxy
 {
@@ -56,7 +56,7 @@ public:
 
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 
 #endif /* PSL_IPU3_SKYCAMPROXY_H_ */

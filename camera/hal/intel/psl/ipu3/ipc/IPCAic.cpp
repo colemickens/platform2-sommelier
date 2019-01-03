@@ -24,8 +24,8 @@
 #include "IPCAic.h"
 #include "RuntimeParamsHelper.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 IPCAic::IPCAic()
 {
     LOG1("@%s", __FUNCTION__);
@@ -297,5 +297,5 @@ bool IPCAic::serverUnflattenReset(const Transport& transport, IPU3AICRuntimePara
     return serverUnflattenRun(transport, params);
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

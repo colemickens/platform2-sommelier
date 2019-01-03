@@ -29,8 +29,8 @@
 #define DEFAULT_ISO_SPEED 100
 #define EPSILON 0.00001
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 EXIFMaker::EXIFMaker() :
     exifSize(-1)
     ,initialized(false)
@@ -742,5 +742,5 @@ void EXIFMaker::setSoftware(const char *data)
     MEMCPY_S(exifAttributes.software, dstSize, data, srcSize);
     exifAttributes.software[dstSize - 1] = '\0';
 }
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

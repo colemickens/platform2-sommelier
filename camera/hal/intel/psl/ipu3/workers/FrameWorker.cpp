@@ -20,8 +20,8 @@
 #include "Camera3GFXFormat.h"
 #include <sys/mman.h>
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 FrameWorker::FrameWorker(std::shared_ptr<cros::V4L2VideoNode> node,
                          int cameraId, size_t pipelineDepth, std::string name) :
@@ -161,6 +161,6 @@ status_t FrameWorker::allocateWorkerBuffers(uint32_t usage, int pixelFormat)
     return OK;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 

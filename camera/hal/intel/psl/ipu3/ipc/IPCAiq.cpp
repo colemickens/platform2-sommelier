@@ -23,10 +23,8 @@
 #include "LogHelper.h"
 #include "IPCAiq.h"
 
-using namespace android::camera2;
-
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 IPCAiq::IPCAiq()
 {
     LOG1("@%s", __FUNCTION__);
@@ -1100,5 +1098,5 @@ bool IPCAiq::unflattenSaResults(sa_run_params_results* res)
     return true;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

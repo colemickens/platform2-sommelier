@@ -23,8 +23,8 @@
 #include "PlatformData.h"
 #include "IPU3CameraHw.h" // PartialResultEnum
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 JpegEncodeTask::JpegEncodeTask(int cameraId):
     mImgEncoder(nullptr),
@@ -91,7 +91,7 @@ status_t JpegEncodeTask::handleMessageSettings(ProcUnitSettings &procSettings)
 
     // TODO: Search metadata from correct partial!
     // Currently only one, CONTROL_UNIT_PARTIAL_RESULT
-    CameraMetadata *partRes = req->getPartialResultBuffer(CONTROL_UNIT_PARTIAL_RESULT);
+    android::CameraMetadata *partRes = req->getPartialResultBuffer(CONTROL_UNIT_PARTIAL_RESULT);
     if (partRes == nullptr) {
         LOGE("No partial result for EXIF in request.");
         return BAD_VALUE;
@@ -146,7 +146,7 @@ status_t JpegEncodeTask::handleMessageSettings(ProcUnitSettings &procSettings)
  * \param[in] result The Android result metadata to extract information from
  * \param[out] exifCache The EXIF 'cache' object containing the EXIF info
  */
-void JpegEncodeTask::readExifInfoFromAndroidResult(const CameraMetadata &result,
+void JpegEncodeTask::readExifInfoFromAndroidResult(const android::CameraMetadata &result,
                                                    ExifDataCache &exifCache) const
 {
     //# ANDROID_METADATA_Dynamic android.jpeg.orientation read_for_EXIF
@@ -348,7 +348,7 @@ JpegEncodeTask::handleISPData(ExifMetaData& exifData) const
 
     ispData->focal_length = EXIF_DEF_FOCAL_LEN_DEN * EXIF_DEF_FOCAL_LEN_NUM;
 
-    CameraMetadata staticMeta;
+    android::CameraMetadata staticMeta;
     staticMeta = PlatformData::getStaticMetadata(mCameraId);
     camera_metadata_entry focalLengths = staticMeta.find(ANDROID_LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
     if (focalLengths.count >= 1) {
@@ -444,5 +444,5 @@ status_t JpegEncodeTask::handleJpegSettings(ExifMetaData& exifData,
     return NO_ERROR;
 }
 
-} //  namespace camera2
-} //  namespace android
+} //  namespace intel
+} //  namespace cros

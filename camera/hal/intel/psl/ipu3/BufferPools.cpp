@@ -21,8 +21,8 @@
 #include <linux/videodev2.h>
 #include <sys/mman.h>
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 BufferPools::BufferPools() :
         mCaptureItemsPool("CaptureItemsPool"),
@@ -188,5 +188,5 @@ void BufferPools::returnBuffer(cros::V4L2Buffer * /* buffer */)
 }
 
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

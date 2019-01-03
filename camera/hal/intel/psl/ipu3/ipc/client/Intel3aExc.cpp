@@ -19,8 +19,8 @@
 #include "LogHelper.h"
 #include "UtilityMacros.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 Intel3aExc::Intel3aExc():
     mInitialized(false)
 {
@@ -97,5 +97,5 @@ ia_err Intel3aExc::SensorUnitsToAnalogGain(
     return ia_err_none;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

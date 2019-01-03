@@ -30,8 +30,8 @@
 
 #include <cros-camera/camera_thread.h>
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 /**
  * Forward declarations to avoid circular references of  header files
@@ -97,7 +97,7 @@ private:  /* types  and constants */
          * Metadata result control variables
          */
         unsigned int partialResultReturned;  /*!> from AAL to client */
-        std::vector<const CameraMetadata*> pendingPartialResults;
+        std::vector<const android::CameraMetadata*> pendingPartialResults;
         /**
          * Output buffers control variables
          */
@@ -178,7 +178,7 @@ private:  /* members */
     std::list<int> mRequestsPendingMetaReturn;
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 
 #endif //  _CAMERA3_HAL_RESULT_PROCESSOR_H_

@@ -38,8 +38,8 @@
 #include "MediaController.h"
 #include "MediaEntity.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 using std::string;
 
 bool PlatformData::mInitialized = false;
@@ -339,7 +339,7 @@ const AiqConf* PlatformData::getAiqConfiguration(int cameraId, string mode)
 int PlatformData::facing(int cameraId)
 {
     uint8_t facing;
-    CameraMetadata staticMeta;
+    android::CameraMetadata staticMeta;
     staticMeta = getStaticMetadata(cameraId);
     MetadataHelper::getMetadataValue(staticMeta, ANDROID_LENS_FACING, facing);
     facing = (facing == FRONT_CAMERA_ID) ? CAMERA_FACING_BACK : CAMERA_FACING_FRONT;
@@ -350,7 +350,7 @@ int PlatformData::facing(int cameraId)
 int PlatformData::orientation(int cameraId)
 {
     int orientation;
-    CameraMetadata staticMeta;
+    android::CameraMetadata staticMeta;
     staticMeta = getStaticMetadata(cameraId);
     MetadataHelper::getMetadataValue(staticMeta, ANDROID_SENSOR_ORIENTATION, orientation);
 
@@ -368,7 +368,7 @@ int PlatformData::orientation(int cameraId)
 int PlatformData::getPartialMetadataCount(int cameraId)
 {
     int partialMetadataCount = 0;
-    CameraMetadata staticMeta;
+    android::CameraMetadata staticMeta;
     staticMeta = getStaticMetadata(cameraId);
     MetadataHelper::getMetadataValue(staticMeta,
             ANDROID_REQUEST_PARTIAL_RESULT_COUNT, partialMetadataCount);
@@ -767,7 +767,7 @@ CameraWindow PlatformData::getActivePixelArray(int cameraId)
 float PlatformData::getStepEv(int cameraId)
 {
     // Get the ev step
-    CameraMetadata staticMeta;
+    android::CameraMetadata staticMeta;
     float stepEV = 1 / 3.0f;
     int count = 0;
     staticMeta = getStaticMetadata(cameraId);
@@ -1282,5 +1282,5 @@ status_t CameraHWInfo::initDriverListHelper(unsigned major, unsigned minor, Sens
     return OK;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

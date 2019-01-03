@@ -22,8 +22,8 @@
 #include "JpegMaker.h"
 #include "IPU3Types.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 /**
  * \class JpegEncodeTask
  * Does the jpeg encoding of YUV input buffers.
@@ -50,7 +50,7 @@ private:
 
     AwbMode convertAwbMode(const uint8_t googleAwb) const;
 
-    void readExifInfoFromAndroidResult(const CameraMetadata &result,
+    void readExifInfoFromAndroidResult(const android::CameraMetadata &result,
                                        ExifDataCache &exifCache) const;
     status_t handleISPData(ExifMetaData& exifData) const;
     status_t handleExposureData(ExifMetaData& exifData, const ExifDataCache &exifCache) const;
@@ -90,7 +90,7 @@ private:
     std::map<int, ExifDataCache> mExifCacheStorage; // key: Req ID
 };
 
-}  // namespace camera2
-}  // namespace android
+}  // namespace intel
+}  // namespace cros
 
 #endif  // CAMERA3_HAL_JPEGENCODETASK_H_

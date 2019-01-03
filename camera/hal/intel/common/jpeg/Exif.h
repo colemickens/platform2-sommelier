@@ -130,8 +130,8 @@
 #define EXIF_TAG_JPEG_INTERCHANGE_FORMAT        0x0201
 #define EXIF_TAG_JPEG_INTERCHANGE_FORMAT_LEN    0x0202
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 typedef enum {
     EXIF_ORIENTATION_UNDEFINED      = 0,
@@ -344,6 +344,6 @@ typedef struct {
     unsigned char *makerNoteData;
 } exif_attribute_t;
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif /* _EXIF_H_ */

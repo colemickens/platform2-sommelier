@@ -23,8 +23,8 @@
 #include "ColorConverter.h"
 #include "LogHelper.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 // covert YV12 (Y plane, V plane, U plane) to NV21 (Y plane, interlaced VU bytes)
 void convertYV12ToNV21(int width, int height, int srcStride, int dstStride, void *src, void *dst)
 {
@@ -615,5 +615,5 @@ void convertBuftoNV21(int format, int width, int height, int srcStride, int
         break;
     }
 }
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

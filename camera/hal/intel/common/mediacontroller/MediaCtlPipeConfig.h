@@ -32,8 +32,8 @@ extern "C" {
 
 using std::string;
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 typedef struct {
     string name;
     string type;
@@ -114,6 +114,6 @@ typedef struct {
     std::vector<MediaCtlElement> mVideoNodes;
 } MediaCtlConfig;
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif  // _CAMERA3_HAL_MEDIACTLPIPECONFIG_H_

@@ -25,8 +25,8 @@
 #include "MediaEntity.h"
 #include "PerformanceTraces.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 CaptureUnit::CaptureUnit(int camId, IStreamConfigProvider &aStreamCfgProv, std::shared_ptr<MediaController> mc) :
         mCameraId(camId),
@@ -80,13 +80,13 @@ CaptureUnit::~CaptureUnit()
 /**
  * initStaticMetadata
  *
- * Create CameraMetadata object to retrieve the static tags used in this class
- * we cache them as members so that we do not need to query CameraMetadata class
+ * Create android::CameraMetadata object to retrieve the static tags used in this class
+ * we cache them as members so that we do not need to query android::CameraMetadata class
  * everytime we need them. This is more efficient since find() is not cheap
  */
 status_t CaptureUnit::initStaticMetadata()
 {
-    //Initialize the CameraMetadata object with the static metadata tags
+    //Initialize the android::CameraMetadata object with the static metadata tags
     camera_metadata_t* plainStaticMeta;
     plainStaticMeta = (camera_metadata_t*)PlatformData::getStaticMetadata(mCameraId);
     if (plainStaticMeta == nullptr) {
@@ -94,7 +94,7 @@ status_t CaptureUnit::initStaticMetadata()
         return UNKNOWN_ERROR;
     }
 
-    CameraMetadata staticMeta(plainStaticMeta);
+    android::CameraMetadata staticMeta(plainStaticMeta);
     camera_metadata_entry entry;
     entry = staticMeta.find(ANDROID_LENS_INFO_MINIMUM_FOCUS_DISTANCE);
     if (entry.count == 1) {
@@ -867,5 +867,5 @@ bool CaptureUnit::notifySofEvent(uint32_t sequence, struct timespec &time)
     return notifyListeners(&outMsg);
 }
 
-} // namespace camera2
-} // namespace android
+} // namespace intel
+} // namespace cros

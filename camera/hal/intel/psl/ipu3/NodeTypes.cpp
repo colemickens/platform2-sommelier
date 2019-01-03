@@ -17,8 +17,8 @@
 #include <linux/videodev2.h>
 #include "NodeTypes.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 enum v4l2_memory getDefaultMemoryType(IPU3NodeNames node)
 {

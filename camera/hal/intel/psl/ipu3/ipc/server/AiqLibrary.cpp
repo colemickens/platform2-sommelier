@@ -27,10 +27,8 @@
 #include "common/UtilityMacros.h"
 #include "LogHelper.h"
 
-using namespace android::camera2;
-
+namespace cros {
 namespace intel {
-namespace camera {
 AiqLibrary::AiqLibrary()
 {
     LOG1("@%s", __FUNCTION__);
@@ -272,5 +270,5 @@ status_t AiqLibrary::aiq_get_version(void* pData, int dataSize)
 
     return OK;
 }
-} /* namespace camera */
 } /* namespace intel */
+} /* namespace cros */

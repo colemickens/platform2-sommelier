@@ -19,8 +19,8 @@
 
 #include "RequestCtrlState.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 class IntelAEStateMachine;
 class IntelAFStateMachine;
@@ -105,7 +105,7 @@ private:
     int              mPrecaptureResultRequestId;
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 
 #endif /* PSL_IPU3_AAARUNNER_H_ */

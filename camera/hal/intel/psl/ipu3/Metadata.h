@@ -21,8 +21,8 @@
 #include "PlatformData.h"
 #include <math.h>
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 class Metadata
 {
@@ -58,7 +58,7 @@ private:
     Intel3aPlus *m3aWrapper; /* Metadata doesn't own m3aWrapper */
     static const int32_t DELTA_ISO = 1;
 };
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 
 #endif /* PSL_IPU3_SETTINGSPROCESSOR_H_ */

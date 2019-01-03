@@ -23,8 +23,8 @@
 #include "ProcUnitSettings.h"
 #include "CaptureUnit.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 /**
  * \enum AlgorithmState
@@ -48,7 +48,7 @@ enum AlgorithmState {
 struct RequestCtrlState {
     void init(Camera3Request *req);
     static void reset(RequestCtrlState* me);
-    CameraMetadata *ctrlUnitResult; /**< metadata results written in the
+    android::CameraMetadata *ctrlUnitResult; /**< metadata results written in the
                                          context of the ControlUnit */
     Camera3Request *request;        /**< user request associated to this AIQ
                                          configuration */
@@ -86,7 +86,7 @@ struct RequestCtrlState {
                                       - HDR preferred exposures */
 };
 
-} // namespace camera2
-} // namespace android
+} // namespace intel
+} // namespace cros
 
 #endif /* PSL_IPU3_REQUESTCTRLSTATE_H_ */

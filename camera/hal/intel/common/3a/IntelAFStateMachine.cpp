@@ -22,8 +22,8 @@
 #include "UtilityMacros.h"
 #include "PlatformData.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 /**
  * AF timeouts. Together these will make:
  * timeout if: [MIN_AF_TIMEOUT - MAX_AF_FRAME_COUNT_TIMEOUT - MAX_AF_TIMEOUT]
@@ -131,7 +131,7 @@ IntelAFStateMachine::processTriggers(const uint8_t &afTrigger,
 status_t
 IntelAFStateMachine::processResult(ia_aiq_af_results &afResults,
                                    ia_aiq_af_input_params &afInputParams,
-                                   CameraMetadata &result)
+                                   android::CameraMetadata &result)
 {
     if (CC_UNLIKELY(mCurrentAfMode == nullptr)) {
         LOGE("Invalid AF mode - this could not happen - BUG!");
@@ -152,7 +152,7 @@ IntelAFStateMachine::processResult(ia_aiq_af_results &afResults,
 status_t
 IntelAFStateMachine::updateDefaults(const ia_aiq_af_results& afResults,
                                     const ia_aiq_af_input_params &afInputParams,
-                                    CameraMetadata& result,
+                                    android::CameraMetadata& result,
                                     bool fixedFocus) const
 {
 
@@ -171,7 +171,7 @@ IntelAFStateMachine::updateDefaults(const ia_aiq_af_results& afResults,
 void
 IntelAFStateMachine::focusDistanceResult(const ia_aiq_af_results &afResults,
                                          const ia_aiq_af_input_params &afInputParams,
-                                         CameraMetadata &result) const
+                                         android::CameraMetadata &result) const
 {
     // "APPROXIMATE and CALIBRATED devices report the focus metadata
     // in units of diopters (1/meter)", so 0.0f represents focusing at infinity."
@@ -254,7 +254,7 @@ IntelAfModeBase::processTriggers(const uint8_t &afTrigger,
 }
 
 void
-IntelAfModeBase::updateResult(CameraMetadata& results)
+IntelAfModeBase::updateResult(android::CameraMetadata& results)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
@@ -335,7 +335,7 @@ IntelAFModeOff::processTriggers(const uint8_t &afTrigger,
 
 status_t
 IntelAFModeOff::processResult(ia_aiq_af_results& afResults,
-                              CameraMetadata& result)
+                              android::CameraMetadata& result)
 {
     /**
      * IN MANUAL and EDOF AF state never changes
@@ -428,7 +428,7 @@ IntelAFModeAuto::processTriggers(const uint8_t &afTrigger,
 
 status_t
 IntelAFModeAuto::processResult(ia_aiq_af_results& afResult,
-                               CameraMetadata& result)
+                               android::CameraMetadata& result)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     mLensState = ANDROID_LENS_STATE_STATIONARY;
@@ -556,7 +556,7 @@ IntelAFModeContinuousPicture::processTriggers(const uint8_t &afTrigger,
 
 status_t
 IntelAFModeContinuousPicture::processResult(ia_aiq_af_results& afResult,
-                                           CameraMetadata& result)
+                                           android::CameraMetadata& result)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
     mLensState = ANDROID_LENS_STATE_STATIONARY;
@@ -615,5 +615,5 @@ IntelAFModeContinuousPicture::processResult(ia_aiq_af_results& afResult,
     return OK;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

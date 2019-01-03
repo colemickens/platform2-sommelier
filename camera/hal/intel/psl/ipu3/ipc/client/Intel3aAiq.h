@@ -22,8 +22,8 @@
 #include "Intel3aCommon.h"
 #include "IPCAiq.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 class Intel3aAiq {
 public:
     Intel3aAiq();
@@ -77,6 +77,6 @@ private:
 
     std::vector<ShmMem> mMems;
 };
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif // PSL_IPU3_IPC_CLIENT_INTEL3AAIQ_H_

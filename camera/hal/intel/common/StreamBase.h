@@ -19,8 +19,8 @@
 
 #include <stdint.h>
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 // Define the stream intent
 enum StreamUsage {
     STREAM_USAGE_COMMON = 0,
@@ -63,6 +63,6 @@ private:
     StreamUsage mUsage;
     void    *mPrivate;
 };
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif /* _CAMERA_COMMON_STREAM_BASE_ */

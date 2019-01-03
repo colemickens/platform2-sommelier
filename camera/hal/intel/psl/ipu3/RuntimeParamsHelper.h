@@ -20,8 +20,8 @@
 #include <IPU3AICCommon.h>
 #include "utils/Errors.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 class RuntimeParamsHelper {
 public:
@@ -36,7 +36,7 @@ private:
     virtual ~RuntimeParamsHelper();
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 
 #endif /* PSL_IPU3_RUNTIMEPARAMSHELPER_H_ */

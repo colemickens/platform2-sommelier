@@ -19,8 +19,8 @@
 #include "UtilityMacros.h"
 #include "SkyCamMojoProxy.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 SkyCamMojoProxy::SkyCamMojoProxy(AicMode aicMode):
         mInitialized(false),
         mAicMode(aicMode)
@@ -138,5 +138,5 @@ aic_config* SkyCamMojoProxy::GetAicConfig()
     return &config->aicConfig;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

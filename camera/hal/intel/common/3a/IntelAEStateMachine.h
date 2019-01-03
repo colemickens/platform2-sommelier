@@ -21,8 +21,8 @@
 #include "LogHelper.h"
 #include "Intel3aPlus.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 /**
  * \class IntelAEModeBase
  *
@@ -42,13 +42,13 @@ public:
 
 
     virtual status_t processResult(const ia_aiq_ae_results &aeResults,
-                                   CameraMetadata &results,
+                                   android::CameraMetadata &results,
                                    uint32_t reqId) = 0;
 
     void resetState(void);
     uint8_t getState() const { return mCurrentAeState; }
 protected:
-    void updateResult(CameraMetadata &results);
+    void updateResult(android::CameraMetadata &results);
 protected:
     AeControls  mLastAeControls;
     uint8_t     mLastControlMode;
@@ -72,7 +72,7 @@ public:
     virtual status_t processState(const uint8_t &controlMode,
                                   const AeControls &aeControls);
     virtual status_t processResult(const ia_aiq_ae_results & aeResults,
-                                  CameraMetadata& result,
+                                  android::CameraMetadata& result,
                                   uint32_t reqId);
 };
 
@@ -87,7 +87,7 @@ public:
     virtual status_t processState(const uint8_t &controlMode,
                                   const AeControls &aeControls);
     virtual status_t processResult(const ia_aiq_ae_results & aeResults,
-                                  CameraMetadata& result,
+                                  android::CameraMetadata& result,
                                   uint32_t reqId);
 };
 
@@ -109,7 +109,7 @@ public:
                                   const AeControls &aeControls);
 
     virtual status_t processResult(const ia_aiq_ae_results &aeResults,
-                                   CameraMetadata &results,
+                                   android::CameraMetadata &results,
                                    uint32_t reqId);
 
     uint8_t getState() const { return mCurrentAeMode->getState(); }
@@ -129,6 +129,6 @@ private: /* members*/
     IntelAEModeAuto mAutoMode;
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif // AAA_INTELAESTATEMACHINE_H_

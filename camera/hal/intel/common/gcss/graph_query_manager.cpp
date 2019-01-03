@@ -23,7 +23,7 @@
 using namespace GCSS;
 using namespace GCSS::RelayControl;
 using namespace std;
-using namespace android::camera2;
+using namespace cros::intel;
 
 void GraphQueryManager::setGraphSettings(const IGraphConfig *graphSettings)
 {

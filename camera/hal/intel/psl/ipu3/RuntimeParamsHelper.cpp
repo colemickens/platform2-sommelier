@@ -24,8 +24,8 @@
 
 #define AIC_GRID_SIZE (128*128)
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 RuntimeParamsHelper::RuntimeParamsHelper() {
 }
@@ -235,5 +235,5 @@ RuntimeParamsHelper::deleteAiStructs(IPU3AICRuntimeParams &runtimeParams)
 
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

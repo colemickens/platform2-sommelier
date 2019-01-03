@@ -20,8 +20,8 @@
 #include <system/window.h>
 #include "Camera3V4l2Format.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 /* ********************************************************************
  * Common GFX data structures and methods
@@ -41,7 +41,7 @@ int widthToStride(int fourcc, int width);
 
 int v4L2Fmt2GFXFmt(int v4l2Fmt);
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 
 #endif // _CAMERA3_GFX_FORMAT_H_

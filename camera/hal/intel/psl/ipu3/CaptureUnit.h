@@ -33,8 +33,8 @@
 #ifndef __CAPTURE_UNIT_H__
 #define __CAPTURE_UNIT_H__
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 class Camera3Request;
 class IStreamConfigProvider;
@@ -305,7 +305,7 @@ private:
     IErrorCallback* mErrCb;
 };
 
-} // namespace camera2
-} // namespace android
+} // namespace intel
+} // namespace cros
 
 #endif // __CAPTURE_UNIT_H__

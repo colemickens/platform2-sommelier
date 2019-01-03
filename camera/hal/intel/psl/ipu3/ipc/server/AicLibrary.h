@@ -24,27 +24,27 @@
 
 #include <memory>
 
+namespace cros {
 namespace intel {
-namespace camera {
 
 class AicLibrary {
 public:
     AicLibrary();
     virtual ~AicLibrary();
 
-    android::camera2::status_t init(void* pData, int dataSize);
+    status_t init(void* pData, int dataSize);
     void run(void* pData, int dataSize);
     void reset(void* pData, int dataSize);
-    android::camera2::status_t getAicVersion(void* pData, int dataSize);
-    android::camera2::status_t getAicConfig(void* pData, int dataSize);
+    status_t getAicVersion(void* pData, int dataSize);
+    status_t getAicConfig(void* pData, int dataSize);
 
 private:
-    std::unique_ptr<android::camera2::IPU3ISPPipe> mIspPipes[android::camera2::AIC_MODE_MAX][NUM_ISP_PIPES];
-    std::unique_ptr<KBL_AIC> mSkyCam[android::camera2::AIC_MODE_MAX];
+    std::unique_ptr<IPU3ISPPipe> mIspPipes[AIC_MODE_MAX][NUM_ISP_PIPES];
+    std::unique_ptr<KBL_AIC> mSkyCam[AIC_MODE_MAX];
 
-    android::camera2::IPCAic mIpc;
+    IPCAic mIpc;
 };
 
-} /* namespace camera */
 } /* namespace intel */
+} /* namespace cros */
 #endif // PSL_IPU3_IPC_SERVER_AICLIBRARY_H_

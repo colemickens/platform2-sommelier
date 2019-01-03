@@ -28,8 +28,8 @@
 #include <base/memory/ptr_util.h>
 #include <base/memory/shared_memory.h>
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 ImgEncoderCore::ImgEncoderCore() :
     mThumbOutBuf(nullptr),
     mJpegDataBuf(nullptr),
@@ -501,5 +501,5 @@ status_t ImgEncoderCore::encodeSync(EncodePackage & package, ExifMetaData& metaD
     return status;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

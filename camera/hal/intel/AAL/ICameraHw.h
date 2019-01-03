@@ -21,8 +21,8 @@
 #include "Camera3Request.h"
 #include "IErrorCallback.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 class ICameraHw {
 public:
@@ -75,6 +75,6 @@ public:
     virtual void dump(int fd) = 0;
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif /* _CAMERA3_HAL_ICAMERAHW_H_ */

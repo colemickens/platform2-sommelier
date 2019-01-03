@@ -21,8 +21,8 @@
 #include <utils/Errors.h>
 #include "UtilityMacros.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 Intel3aMkn::Intel3aMkn():
     mInitialized(false)
 {
@@ -136,5 +136,5 @@ uintptr_t Intel3aMkn::getMknHandle() const
     return mMknHandle;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

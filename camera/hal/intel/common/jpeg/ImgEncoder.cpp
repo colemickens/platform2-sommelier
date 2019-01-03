@@ -19,8 +19,8 @@
 #include "ImgEncoder.h"
 #include "LogHelper.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 ImgEncoder::ImgEncoder(int cameraid) :
     mCameraId(cameraid),
@@ -200,5 +200,5 @@ status_t ImgEncoder::jpegDone(ImgEncoderCore::EncodePackage& package,
     return OK;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

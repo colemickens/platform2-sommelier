@@ -22,8 +22,8 @@
 #include "SettingsProcessor.h"
 #include "CameraMetadataHelper.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 Metadata::Metadata(int cameraId, Intel3aPlus *a3aWrapper):
         mMaxCurvePoints(0),
@@ -117,7 +117,7 @@ void Metadata::writeJpegMetadata(RequestCtrlState &reqState) const
         return;
     }
 
-    const CameraMetadata *settings = reqState.request->getSettings();
+    const android::CameraMetadata *settings = reqState.request->getSettings();
 
     if (settings == nullptr) {
         LOGE("No settings for JPEG in request - BUG.");
@@ -232,7 +232,7 @@ void Metadata::writeLensMetadata(RequestCtrlState &reqState) const
 void Metadata::writeSensorMetadata(RequestCtrlState &reqState)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
-    const CameraMetadata *settings = reqState.request->getSettings();
+    const android::CameraMetadata *settings = reqState.request->getSettings();
     camera_metadata_ro_entry entry;
     int64_t exposureTime = 0;
     int32_t sensitivity = 0;
@@ -434,5 +434,5 @@ status_t Metadata::fillTonemapCurve(RequestCtrlState &reqState)
     return NO_ERROR;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

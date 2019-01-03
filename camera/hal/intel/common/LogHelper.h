@@ -28,8 +28,8 @@
 #include <utils/Errors.h>
 #include "CommonUtilMacros.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 /**
  * global log level
  * This global variable is set from system properties
@@ -271,6 +271,6 @@ private:
 #define HAL_TRACE_CALL(level, tag)
 #endif
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif // _LOGHELPER_H_

@@ -27,8 +27,8 @@
 #include "UtilityMacros.h"
 #include "Camera3V4l2Format.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 using std::string;
 
 /**
@@ -275,5 +275,5 @@ int32_t getV4L2Format(const std::string& formatName)
 
 } // namespace utils
 } // namespace graphconfig
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

@@ -23,8 +23,8 @@
 #include "NodeTypes.h"
 #include "Utils.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 InputFrameWorker::InputFrameWorker(std::shared_ptr<cros::V4L2VideoNode> node,
         int cameraId, size_t pipelineDepth) :
@@ -135,6 +135,5 @@ status_t InputFrameWorker::postRun()
     return (status < 0) ? status : OK;
 }
 
-
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

@@ -20,8 +20,8 @@
 #include "UtilityMacros.h"
 #include "PlatformData.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 IntelAWBStateMachine::IntelAWBStateMachine(int aCameraId):
         mCameraId(aCameraId),
         mLastControlMode(0),
@@ -79,7 +79,7 @@ IntelAWBStateMachine::processState(const uint8_t &controlMode,
 
 status_t
 IntelAWBStateMachine::processResult(const ia_aiq_awb_results &awbResults,
-                                    CameraMetadata &result)
+                                    android::CameraMetadata &result)
 {
     status_t status;
 
@@ -104,7 +104,7 @@ IntelAWBModeBase::IntelAWBModeBase():
 }
 
 void
-IntelAWBModeBase::updateResult(CameraMetadata& results)
+IntelAWBModeBase::updateResult(android::CameraMetadata& results)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
@@ -159,7 +159,7 @@ IntelAWBModeOff::processState(const uint8_t &controlMode,
 
 status_t
 IntelAWBModeOff::processResult(const ia_aiq_awb_results& awbResults,
-                               CameraMetadata& result)
+                               android::CameraMetadata& result)
 {
     UNUSED(awbResults);
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
@@ -216,7 +216,7 @@ IntelAWBModeAuto::processState(const uint8_t &controlMode,
 
 status_t
 IntelAWBModeAuto::processResult(const ia_aiq_awb_results &awbResults,
-                                CameraMetadata& result)
+                                android::CameraMetadata& result)
 {
     switch (mCurrentAwbState) {
         case ANDROID_CONTROL_AWB_STATE_LOCKED:
@@ -240,5 +240,5 @@ IntelAWBModeAuto::processResult(const ia_aiq_awb_results &awbResults,
     return OK;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

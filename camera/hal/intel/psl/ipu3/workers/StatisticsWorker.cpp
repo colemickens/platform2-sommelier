@@ -21,8 +21,8 @@
 #include "LogHelper.h"
 #include "NodeTypes.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 const unsigned int STAT_WORK_BUFFERS = 1;
 
@@ -415,5 +415,5 @@ status_t StatisticsWorker::gridToBmp(
     return OK;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

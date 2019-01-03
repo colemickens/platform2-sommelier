@@ -21,8 +21,8 @@
 #include <utils/Errors.h>
 #include "UtilityMacros.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 IntelFaceEngine::IntelFaceEngine():
     mInitialized(false)
 {
@@ -106,5 +106,5 @@ bool IntelFaceEngine::run(FaceEngineResult* results)
     return true;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

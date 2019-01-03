@@ -19,8 +19,8 @@
 #include "LogHelper.h"
 #include "JpegMaker.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 JpegMaker::JpegMaker(int cameraid) :
     JpegMakerCore(cameraid)
@@ -66,5 +66,5 @@ status_t JpegMaker::makeJpeg(ImgEncoder::EncodePackage & package, std::shared_pt
     return JpegMakerCore::makeJpeg(corePackage);
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

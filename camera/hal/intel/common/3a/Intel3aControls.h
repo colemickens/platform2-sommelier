@@ -17,8 +17,8 @@
 #ifndef AAA_INTEL3ACONTROLS_H_
 #define AAA_INTEL3ACONTROLS_H_
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 /**
  * \struct AeControls
  *
@@ -65,6 +65,6 @@ struct AAAControls {
     AwbControls awb;
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif //AAA_INTEL3ACONTROLS_H_

@@ -22,8 +22,8 @@
 #include "LogHelper.h"
 #include "IPCFaceEngine.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 IPCFaceEngine::IPCFaceEngine()
 {
     LOG1("@%s", __FUNCTION__);
@@ -85,5 +85,5 @@ bool IPCFaceEngine::serverUnflattenRun(const face_engine_run_params& inParams, p
     return true;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

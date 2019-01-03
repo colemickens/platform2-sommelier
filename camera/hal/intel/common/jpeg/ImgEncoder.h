@@ -21,8 +21,8 @@
 #include "CameraBuffer.h"
 #include "ImgEncoderCore.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 /**
  * \class ImgEncoder
@@ -55,7 +55,7 @@ public:  /* types */
         int              encodedDataSize;// main image encoded data size
         std::shared_ptr<CameraBuffer> thumbOut;    // for thumbnail output
         int              thumbSize;   // Thumb ouptut size
-        const CameraMetadata    *settings;    // settings from request
+        const android::CameraMetadata    *settings;    // settings from request
         unsigned char    *jpegDQTAddr; // pointer to DQT marker inside jpeg, for in-place exif creation
         bool             padExif;     // Boolean to control if padding is preferred over copying during in-place exif creation
         bool             encodeAll;   // Boolean to control if both thumbnail and main image shall be encoded. False means just thumbnail.
@@ -109,6 +109,6 @@ private:  /* Members */
     std::list<AsyncEventData> mEventFifo;
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif  // _CAMERA3_HAL_IMG_ENCODER_H_

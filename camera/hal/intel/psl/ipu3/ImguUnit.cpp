@@ -26,8 +26,8 @@
 #include "workers/StatisticsWorker.h"
 #include "CameraMetadataHelper.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 ImguUnit::ImguUnit(int cameraId,
                    GraphConfigManager &gcm,
@@ -836,7 +836,7 @@ ImguUnit::ImguPipe::updateProcUnitResults(Camera3Request &request,
     LOG2("%s, pipe type %d", __FUNCTION__, mPipeType);
     status_t status = NO_ERROR;
 
-    CameraMetadata *ctrlUnitResult = request.getPartialResultBuffer(CONTROL_UNIT_PARTIAL_RESULT);
+    android::CameraMetadata *ctrlUnitResult = request.getPartialResultBuffer(CONTROL_UNIT_PARTIAL_RESULT);
     CheckError(ctrlUnitResult == nullptr, UNKNOWN_ERROR,
                "Failed to retrieve Metadata buffer for reqId = %d", request.getId());
 
@@ -967,7 +967,7 @@ status_t ImguUnit::ImguPipe::notifyPollEvent(PollEventMessage *pollMsg)
  *
  */
 void
-ImguUnit::ImguPipe::updateMiscMetadata(CameraMetadata &procUnitResults,
+ImguUnit::ImguPipe::updateMiscMetadata(android::CameraMetadata &procUnitResults,
                                        std::shared_ptr<const ProcUnitSettings> settings) const
 {
     LOG2("%s, pipe type %d", __FUNCTION__, mPipeType);
@@ -1001,7 +1001,7 @@ ImguUnit::ImguPipe::updateMiscMetadata(CameraMetadata &procUnitResults,
  *
  */
 void
-ImguUnit::ImguPipe::updateDVSMetadata(CameraMetadata &procUnitResults,
+ImguUnit::ImguPipe::updateDVSMetadata(android::CameraMetadata &procUnitResults,
                                       std::shared_ptr<const ProcUnitSettings> settings) const
 {
     LOG2("%s, pipe type %d", __FUNCTION__, mPipeType);
@@ -1054,5 +1054,5 @@ status_t ImguUnit::ImguPipe::handleFlush(void)
     return NO_ERROR;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

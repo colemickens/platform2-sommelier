@@ -23,8 +23,8 @@
 #include "UtilityMacros.h"
 #include "utils/Errors.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 // Base class for operation which might be different based on kernel driver
 class SensorHwOp {
@@ -81,6 +81,6 @@ protected:
 
 }; //class SensorHwOpBase
 
-} // namespace camera2
-} // namespace android
+} // namespace intel
+} // namespace cros
 #endif

@@ -41,8 +41,8 @@
 #define GRAPH_SETTINGS_FILE_PATH "/etc/camera/"
 #define DEFAULT_XML_FILE_NAME "/etc/camera/camera3_profiles.xml"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 CameraProfiles::CameraProfiles(CameraHWInfo *cameraHWInfo) :
     mCurrentDataField(FIELD_INVALID),
     mMetadataCache(nullptr),
@@ -221,7 +221,7 @@ camera_metadata_t *CameraProfiles::constructDefaultMetadata(int cameraId, int re
         return nullptr;
     }
 
-    CameraMetadata metadata; // no constructor from const camera_metadata_t*
+    android::CameraMetadata metadata; // no constructor from const camera_metadata_t*
     metadata = staticMeta; // but assignment operator exists for const
 
     int64_t bogusValue = 0;  // 8 bytes of bogus
@@ -2178,5 +2178,5 @@ void CameraProfiles::dump()
     dumpCommonSection();
     LOGD("===========================end======================");
 }
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

@@ -22,8 +22,8 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 class SysCall
 {
 public:
@@ -36,6 +36,6 @@ public:
     static int poll(struct pollfd *pfd, nfds_t nfds, int timeout);
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif // _COMMON_SYSCALL_H_

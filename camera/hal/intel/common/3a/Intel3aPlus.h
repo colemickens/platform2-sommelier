@@ -25,8 +25,8 @@
 #include "UtilityMacros.h"
 #include "Intel3aCore.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 /**
  * \class Intel3aPlus
  *
@@ -45,21 +45,21 @@ public:
                      ia_binary_data nvmData = {nullptr,0},
                      const char* sensorName = nullptr);
 
-    ia_aiq_frame_use getFrameUseFromIntent(const CameraMetadata * settings);
+    ia_aiq_frame_use getFrameUseFromIntent(const android::CameraMetadata * settings);
 
-    status_t fillAeInputParams(const CameraMetadata *settings,
+    status_t fillAeInputParams(const android::CameraMetadata *settings,
                                AeInputParams &aeInputParams);
 
-    status_t fillAwbInputParams(const CameraMetadata *settings,
+    status_t fillAwbInputParams(const android::CameraMetadata *settings,
                                AwbInputParams &awbInputParams);
 
-    status_t fillAfInputParams(const CameraMetadata *settings,
+    status_t fillAfInputParams(const android::CameraMetadata *settings,
                                AfInputParams &afInputParams);
 
-    status_t fillPAInputParams(const CameraMetadata &settings,
+    status_t fillPAInputParams(const android::CameraMetadata &settings,
                                PAInputParams &paInputParams) const;
 
-    status_t fillSAInputParams(const CameraMetadata &settings,
+    status_t fillSAInputParams(const android::CameraMetadata &settings,
                                SAInputParams &saInputParams) const;
 
     /*
@@ -95,20 +95,20 @@ private:
     Intel3aPlus& operator=(const Intel3aPlus& other);
 
     void updateMinAEWindowSize(CameraWindow &dst);
-    void parseMeteringRegion(const CameraMetadata *settings,
+    void parseMeteringRegion(const android::CameraMetadata *settings,
                              int tagId, CameraWindow &meteringWindow);
 
-    void parseAfTrigger(const CameraMetadata &settings,
+    void parseAfTrigger(const android::CameraMetadata &settings,
                             ia_aiq_af_input_params &afInputParams,
                             uint8_t &trigger) const;
-    status_t parseAFMode(const CameraMetadata *settings,
+    status_t parseAFMode(const android::CameraMetadata *settings,
                             ia_aiq_af_input_params &afInputParams,
                             uint8_t &afMode) const;
     void setAfMode(ia_aiq_af_input_params &afInputParams,
                    uint8_t afMode) const;
     bool afModeIsAvailable(uint8_t afMode ) const;
 
-    status_t parseFocusDistance(const CameraMetadata &settings,
+    status_t parseFocusDistance(const android::CameraMetadata &settings,
                                 ia_aiq_af_input_params &afCfg) const;
 
 // private members
@@ -133,6 +133,6 @@ private:
     double mPseudoIsoRatio;
     bool mSupportIsoMap;
 }; //  class Intel3aPlus
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif  //  AAA_INTEL3APLUS_H_

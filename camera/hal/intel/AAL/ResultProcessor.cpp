@@ -22,8 +22,8 @@
 #include "PlatformData.h"
 #include "PerformanceTraces.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 ResultProcessor::ResultProcessor(RequestThread * aReqThread,
                                  const camera3_callback_ops_t * cbOps) :
@@ -495,7 +495,7 @@ void ResultProcessor::returnPendingPartials(RequestState_t* reqState)
         }
     }
 
-    const CameraMetadata * settings = reqState->pendingPartialResults[0];
+    const android::CameraMetadata * settings = reqState->pendingPartialResults[0];
 
     result.result = settings->getAndLock();
     result.num_output_buffers = 0;
@@ -523,7 +523,7 @@ status_t ResultProcessor::returnResult(RequestState_t* reqState, int returnIndex
 {
     status_t status = NO_ERROR;
     camera3_capture_result result;
-    CameraMetadata *resultMetadata;
+    android::CameraMetadata *resultMetadata;
     CLEAR(result);
     resultMetadata = reqState->request->getPartialResultBuffer(returnIndex);
     if (resultMetadata == nullptr) {
@@ -621,5 +621,5 @@ void ResultProcessor::handleDeviceError(void)
     LOG2("@%s done", __func__);
 }
 //----------------------------------------------------------------------------
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

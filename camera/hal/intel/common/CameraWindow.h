@@ -22,8 +22,8 @@
 #include "ia_coordinate.h"
 #include "FrameInfo.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 class CameraWindow;
 
 /**
@@ -92,6 +92,6 @@ private:
     ia_coordinate mCenter;
     int mMeteringRectangle[5];
 };
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif // _CAMERA3_HAL_CAMERA_WINDOW_H_

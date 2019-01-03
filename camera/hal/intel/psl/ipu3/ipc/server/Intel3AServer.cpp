@@ -26,8 +26,8 @@
 
 #include <ia_log.h>
 
+namespace cros {
 namespace intel {
-namespace camera {
 
 Intel3AServer* Intel3AServer::mInstance = nullptr;
 
@@ -347,5 +347,5 @@ __attribute__((destructor)) void deinitIntel3AServer() {
     Intel3AServer::deInit();
 }
 
-} /* namespace camera */
 } /* namespace intel */
+} /* namespace cros */

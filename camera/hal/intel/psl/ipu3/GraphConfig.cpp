@@ -38,8 +38,8 @@ using std::map;
 using std::set;
 
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 extern int32_t gDumpType;
 
@@ -2080,5 +2080,5 @@ GraphConfig::Rectangle::Rectangle(): w(0),h(0),t(0),l(0) {}
 GraphConfig::SubdevPad::SubdevPad(): Rectangle(), mbusFormat(0){}
 GraphConfig::SourceNodeInfo::SourceNodeInfo() : metadataEnabled(false),
                                                 interlaced(0) {}
-} // namespace camera2
-} // namespace android
+} // namespace intel
+} // namespace cros

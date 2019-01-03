@@ -33,8 +33,8 @@
 
 #include <cros-camera/camera_thread.h>
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 class OutputFrameWorker;
 class ImguUnit {
@@ -99,9 +99,9 @@ private:
 
         status_t updateProcUnitResults(Camera3Request &request,
                                        std::shared_ptr<ProcUnitSettings> settings);
-        void updateMiscMetadata(CameraMetadata &result,
+        void updateMiscMetadata(android::CameraMetadata &result,
                                 std::shared_ptr<const ProcUnitSettings> settings) const;
-        void updateDVSMetadata(CameraMetadata &result,
+        void updateDVSMetadata(android::CameraMetadata &result,
                                std::shared_ptr<const ProcUnitSettings> settings) const;
 
         status_t handleFlush(void);
@@ -170,6 +170,6 @@ private:
     FaceEngine* mFaceEngine;
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif /* PSL_IPU3_IMGUUNIT_H_ */

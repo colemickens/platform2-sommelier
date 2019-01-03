@@ -24,8 +24,8 @@
 #include <cros-camera/v4l2_device.h>
 #include <utils/Errors.h>
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 #define EVENT_POLL_TIMEOUT 100 //100 milliseconds timeout
 
@@ -118,6 +118,6 @@ private:
 
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif /* CAMERA3_HAL_POLLERTHREAD_H_ */

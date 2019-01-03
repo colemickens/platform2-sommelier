@@ -23,8 +23,8 @@
 #include "AndroidIspControls.h"
 #include "IPU3Types.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 
 /**
@@ -135,8 +135,8 @@ struct CaptureUnitSettings {
     }
 };
 
-} // namespace camera2
-} // namespace android
+} // namespace intel
+} // namespace cros
 
 
 #endif /* CAMERA3_HAL_CAPTUREUNITSETTINGS_H_ */

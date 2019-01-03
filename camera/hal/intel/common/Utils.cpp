@@ -28,8 +28,8 @@
 #include <dirent.h>
 #include <algorithm>
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 void getTokens(const char *s, const char delim, std::vector<std::string> &tokens)
 {
     std::stringstream ss(s);
@@ -198,5 +198,5 @@ void dumpToFile(const void* data, int size, int width, int height, int reqId, co
 #endif
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

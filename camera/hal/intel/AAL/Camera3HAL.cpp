@@ -21,8 +21,8 @@
 #include "ICameraHw.h"
 #include "PerformanceTraces.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 /******************************************************************************
  *  C DEVICE INTERFACE IMPLEMENTATION WRAPPER
  *****************************************************************************/
@@ -313,5 +313,5 @@ int Camera3HAL::flush()
 }
 
 //----------------------------------------------------------------------------
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

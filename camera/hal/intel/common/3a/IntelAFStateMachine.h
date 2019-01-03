@@ -23,8 +23,8 @@
 #include "LogHelper.h"
 #include "PerformanceTraces.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 typedef nsecs_t usecs_t;
 
 /**
@@ -46,11 +46,11 @@ public:
                                      int preCaptureId,
                                      ia_aiq_af_input_params& afInputParams);
     virtual status_t processResult(ia_aiq_af_results& afResults,
-                                   CameraMetadata& result) = 0;
+                                   android::CameraMetadata& result) = 0;
     void resetState(void);
     void resetTrigger(usecs_t triggerTime);
     int getState() { return mCurrentAfState; }
-    void updateResult(CameraMetadata& results);
+    void updateResult(android::CameraMetadata& results);
 protected:
     void checkIfFocusTimeout();
 protected:
@@ -74,7 +74,7 @@ public:
                                      int preCaptureId,
                                      ia_aiq_af_input_params& afInputParams);
     virtual status_t processResult(ia_aiq_af_results& afResults,
-                                  CameraMetadata& result);
+                                  android::CameraMetadata& result);
 };
 
 /**
@@ -90,7 +90,7 @@ public:
                                      int preCaptureId,
                                      ia_aiq_af_input_params& afInputParams);
     virtual status_t processResult(ia_aiq_af_results& afResults,
-                                  CameraMetadata& result);
+                                  android::CameraMetadata& result);
 };
 
 /**
@@ -106,7 +106,7 @@ public:
                                      int preCaptureId,
                                      ia_aiq_af_input_params& afInputParams);
     virtual status_t processResult(ia_aiq_af_results& afResults,
-                                  CameraMetadata& result);
+                                  android::CameraMetadata& result);
 };
 
 /**
@@ -130,11 +130,11 @@ public:
 
     virtual status_t processResult(ia_aiq_af_results &afResults,
                                    ia_aiq_af_input_params &afInputParams,
-                                   CameraMetadata& result);
+                                   android::CameraMetadata& result);
 
     virtual status_t updateDefaults(const ia_aiq_af_results &afResults,
                                     const ia_aiq_af_input_params &afInputParams,
-                                    CameraMetadata &result,
+                                    android::CameraMetadata &result,
                                     bool fixedFocus = false) const;
 
 private:
@@ -144,7 +144,7 @@ private:
 
     void focusDistanceResult(const ia_aiq_af_results &afResults,
                              const ia_aiq_af_input_params &afInputParams,
-                             CameraMetadata &result) const;
+                             android::CameraMetadata &result) const;
 
 private: /* members*/
     int mCameraId;
@@ -161,6 +161,6 @@ private: /* members*/
     const Intel3aPlus &m3A;
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif // AAA_INTELAFSTATEMACHINE_H_

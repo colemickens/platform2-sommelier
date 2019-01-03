@@ -22,8 +22,8 @@
 #include "PlatformData.h"
 #include "PerformanceTraces.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 /**
  * Stream type value conversion. Android headers are missing this.
  */
@@ -519,5 +519,5 @@ void RequestThread::dump(int fd)
     LOG2("@%s", __FUNCTION__);
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

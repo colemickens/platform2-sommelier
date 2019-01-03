@@ -32,8 +32,8 @@ class GraphQueryManager;
 class ItemUID;
 }
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 /**
  * \enum PlatformGraphConfigKey
@@ -230,6 +230,6 @@ private:
     std::shared_ptr<MediaController> mMediaCtl;
 };
 
-} // namespace camera2
-} // namespace android
+} // namespace intel
+} // namespace cros
 #endif

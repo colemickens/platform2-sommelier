@@ -26,8 +26,8 @@
 #include "IPU3CameraCapInfo.h"
 #include "Utils.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 LensHw::LensHw(int cameraId, std::shared_ptr<MediaController> mediaCtl):
     mCameraId(cameraId),
@@ -234,5 +234,5 @@ LensHw::getLatestPosition(int *lensPosition, long long unsigned int *time)
     return OK;
 }
 
-}   // namespace camera2
-}   // namespace android
+}   // namespace intel
+}   // namespace cros

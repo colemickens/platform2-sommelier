@@ -26,8 +26,8 @@
 #include <string.h>
 #include "Camera3V4l2Format.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 MediaController::MediaController(const char *path) :
     mPath(path),
@@ -564,5 +564,5 @@ status_t MediaController::getMediaEntity(std::shared_ptr<MediaEntity> &entity, c
     return status;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

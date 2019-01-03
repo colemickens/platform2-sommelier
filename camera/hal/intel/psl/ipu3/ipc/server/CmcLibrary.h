@@ -21,20 +21,20 @@
 #include "IPCCommon.h"
 #include "IPCCmc.h"
 
+namespace cros {
 namespace intel {
-namespace camera {
 class CmcLibrary {
 public:
     CmcLibrary();
     virtual ~CmcLibrary();
 
-    android::camera2::status_t ia_cmc_init(void* pData, int dataSize);
-    android::camera2::status_t ia_cmc_deinit(void* pData, int dataSize);
+    status_t ia_cmc_init(void* pData, int dataSize);
+    status_t ia_cmc_deinit(void* pData, int dataSize);
 
 private:
-    android::camera2::IPCCmc mIpc;
+    IPCCmc mIpc;
 };
 
-} /* namespace camera */
 } /* namespace intel */
+} /* namespace cros */
 #endif // PSL_IPU3_IPC_SERVER_CMCLIBRARY_H_

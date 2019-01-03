@@ -34,8 +34,8 @@
 
 #include <cros-camera/camera_thread.h>
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 class MediaController;
 class MediaEntity;
@@ -189,6 +189,6 @@ private:
     status_t setSubdev(std::shared_ptr<MediaEntity> entity, sensorEntityType type);
 }; //class SyncManager
 
-} // namespace camera2
-} // namespace android
+} // namespace intel
+} // namespace cros
 #endif

@@ -19,8 +19,8 @@
 #include <linux/videodev2.h>
 #include "UtilityMacros.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 /**
  *  \struct CameraFormatBridge
  *  Structure to hold static array of formats with their depths, description
@@ -56,7 +56,7 @@ int frameSize(int fourcc, int width, int height);
 const char* v4l2Fmt2Str(int format);
 bool isBayerFormat(int fourcc);
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 
 #endif// _CAMERA3_V4L2_FORMAT_H_

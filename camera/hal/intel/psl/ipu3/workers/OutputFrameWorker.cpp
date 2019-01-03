@@ -25,8 +25,8 @@
 #include "ImageScalerCore.h"
 #include <sys/mman.h>
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 OutputFrameWorker::OutputFrameWorker(std::shared_ptr<cros::V4L2VideoNode> node, int cameraId,
                 camera3_stream_t* stream, IPU3NodeNames nodeName, size_t pipelineDepth, FaceEngine* faceEngine) :
@@ -854,5 +854,5 @@ status_t OutputFrameWorker::SWPostProcessor::convertJpeg(
 
     return status;
 }
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

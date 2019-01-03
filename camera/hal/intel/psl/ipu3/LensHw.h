@@ -20,8 +20,8 @@
 #include "PlatformData.h"
 #include "cros-camera/v4l2_device.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 class MediaController;
 class MediaEntity;
@@ -83,7 +83,7 @@ private:
     long long unsigned int mLensMovementStartTime; /*!< In useconds */
 };  // class LensHW
 
-} // namespace camera2
-} // namespace android
+} // namespace intel
+} // namespace cros
 
 #endif  // IPU3_LENSHW_H__

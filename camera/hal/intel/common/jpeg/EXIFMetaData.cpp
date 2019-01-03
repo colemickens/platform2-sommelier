@@ -20,8 +20,8 @@
 
 #define DEFAULT_ISO_SPEED 100
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 ExifMetaData::ExifMetaData():
     mAeConfig(nullptr)
     , mIspMkNote(nullptr)
@@ -128,5 +128,5 @@ ExifMetaData::~ExifMetaData()
     }
 
 }
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

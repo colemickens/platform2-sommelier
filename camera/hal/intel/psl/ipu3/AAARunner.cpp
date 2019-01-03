@@ -32,8 +32,8 @@
 #include "IntelAWBStateMachine.h"
 
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 #define MIN3(a,b,c) MIN((a),MIN((b),(c)))
 
@@ -532,7 +532,7 @@ status_t AAARunner::processAfResults(RequestCtrlState &reqState)
      * tweak the outgoing (=dynamic) distance.
      */
     if (tempAfInputParams && tempAfInputParams->manual_focus_parameters != nullptr) {
-        const CameraMetadata *settings = reqState.request->getSettings();
+        const android::CameraMetadata *settings = reqState.request->getSettings();
         if (CC_UNLIKELY(settings == nullptr)) {
             LOGE("Failed reading metadata settings - BUG");
             return UNKNOWN_ERROR;
@@ -954,5 +954,5 @@ void AAARunner::initLsc(AiqResults &results, uint32_t lscSize) const
 }
 
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

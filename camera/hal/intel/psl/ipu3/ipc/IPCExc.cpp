@@ -20,8 +20,8 @@
 #include "LogHelper.h"
 #include "IPCExc.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 IPCExc::IPCExc()
 {
     LOG1("@%s", __FUNCTION__);
@@ -135,5 +135,5 @@ bool IPCExc::serverUnflattenSensorToGain(ia_exc_analog_gain_to_sensor_units_para
     return true;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

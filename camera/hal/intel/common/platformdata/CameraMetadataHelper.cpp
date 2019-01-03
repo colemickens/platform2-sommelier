@@ -20,8 +20,8 @@
 #include <string>
 #include <sstream>
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 namespace MetadataHelper {
 
 #define CHECK_AND_GET(TYPE, UNION_FIELD) \
@@ -49,28 +49,28 @@ namespace MetadataHelper {
     value = *entry.data.UNION_FIELD; \
     return true;
 
-bool getMetadataValue(const CameraMetadata &metadata, uint32_t tag, uint8_t & value, int count)
+bool getMetadataValue(const android::CameraMetadata &metadata, uint32_t tag, uint8_t & value, int count)
 {
     CHECK_AND_GET(TYPE_BYTE, u8);
 }
-bool getMetadataValue(const CameraMetadata &metadata, uint32_t tag, int32_t & value, int count)
+bool getMetadataValue(const android::CameraMetadata &metadata, uint32_t tag, int32_t & value, int count)
 {
     CHECK_AND_GET(TYPE_INT32, i32);
 }
-bool getMetadataValue(const CameraMetadata &metadata, uint32_t tag, int64_t & value, int count)
+bool getMetadataValue(const android::CameraMetadata &metadata, uint32_t tag, int64_t & value, int count)
 {
     CHECK_AND_GET(TYPE_INT64, i64);
 }
-bool getMetadataValue(const CameraMetadata &metadata, uint32_t tag, float & value, int count)
+bool getMetadataValue(const android::CameraMetadata &metadata, uint32_t tag, float & value, int count)
 {
     CHECK_AND_GET(TYPE_FLOAT, f);
 }
-bool getMetadataValue(const CameraMetadata &metadata, uint32_t tag, double & value, int count)
+bool getMetadataValue(const android::CameraMetadata &metadata, uint32_t tag, double & value, int count)
 {
     CHECK_AND_GET(TYPE_DOUBLE, d);
 }
 
-const void * getMetadataValues(const CameraMetadata &metadata, uint32_t tag, int type, int * count)
+const void * getMetadataValues(const android::CameraMetadata &metadata, uint32_t tag, int type, int * count)
 {
     camera_metadata_ro_entry entry = metadata.find(tag);
 
@@ -276,5 +276,5 @@ void dumpMetadata(const camera_metadata_t * meta)
 }
 
 }
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

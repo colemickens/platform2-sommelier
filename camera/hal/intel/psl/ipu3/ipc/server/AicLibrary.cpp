@@ -25,10 +25,8 @@
 
 #include "client/SkyCamMojoProxy.h"
 
-using namespace android::camera2;
-
+namespace cros {
 namespace intel {
-namespace camera {
 AicLibrary::AicLibrary()
 {
     LOG1("@%s", __FUNCTION__);
@@ -143,5 +141,5 @@ status_t AicLibrary::getAicConfig(void* pData, int dataSize)
 
     return OK;
 }
-} /* namespace camera */
 } /* namespace intel */
+} /* namespace cros */

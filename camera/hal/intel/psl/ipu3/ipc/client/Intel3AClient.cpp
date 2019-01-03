@@ -24,8 +24,8 @@
 #include "Intel3AClient.h"
 #include "Utils.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 Intel3AClient::Intel3AClient():
     mErrCb(nullptr),
     mIPCStatus(true),
@@ -334,5 +334,5 @@ int Intel3AClient::Runner::waitCallback()
     return OK;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

@@ -19,8 +19,8 @@
 #include "SensorHwOp.h"
 #include "LogHelper.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 /**
  * SENSOR TYPE OPERATIONS
@@ -571,5 +571,5 @@ void SensorHwOp::getDiscreteDg(unsigned short *digital_gain, unsigned short *dig
  * -- end SensorHwOp
  */
 
-}// namespace camera2
-}// namespace android
+}// namespace intel
+}// namespace cros

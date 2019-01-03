@@ -20,8 +20,8 @@
 
 #include "Camera3Request.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 // Forward-declarations
 struct ProcTaskMsg;
@@ -88,7 +88,7 @@ public:
     virtual void cleanListeners();
 };
 
-} // namespace camera2
-} // namespace android
+} // namespace intel
+} // namespace cros
 
 #endif  // CAMERA3_HAL_TASKEVENTLISTENER_H_

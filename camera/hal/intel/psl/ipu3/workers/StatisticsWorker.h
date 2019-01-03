@@ -24,8 +24,8 @@
 
 #define GRID_FILTER_NUM 2
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 class StatisticsWorker: public FrameWorker, public ICaptureEventSource
 {
@@ -103,7 +103,7 @@ private:
     std::shared_ptr<SharedItemPool<ia_aiq_rgbs_grid>> mRgbsGridBuffPool;
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 
 #endif /* PSL_IPU3_WORKERS_STATISTICSWORKER_H_ */

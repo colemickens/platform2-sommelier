@@ -49,7 +49,6 @@
         'DUMP_IMAGE',
         'HAL_PIXEL_FORMAT_NV12_LINEAR_CAMERA_INTEL=0x10F',
         'MACRO_KBL_AIC',
-        'USING_DECLARED_NAMESPACE=using namespace android::camera2',
       ],
       'sources': [
         'AAL/Camera3HAL.cpp',
@@ -173,7 +172,6 @@
         'CAMERA_HAL_DEBUG',
         'HAL_PIXEL_FORMAT_NV12_LINEAR_CAMERA_INTEL=0x10F',
         'MACRO_KBL_AIC',
-        'USING_DECLARED_NAMESPACE=using namespace android::camera2',
       ],
       'libraries': [
         '-lSkyCamAICKBL',

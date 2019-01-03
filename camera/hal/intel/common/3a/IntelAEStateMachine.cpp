@@ -20,8 +20,8 @@
 #include "UtilityMacros.h"
 #include "PlatformData.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 IntelAEStateMachine::IntelAEStateMachine(int aCameraId):
         mCameraId(aCameraId),
         mLastControlMode(0),
@@ -89,7 +89,7 @@ IntelAEStateMachine::processState(const uint8_t &controlMode,
  */
 status_t
 IntelAEStateMachine::processResult(const ia_aiq_ae_results &aeResults,
-                                   CameraMetadata &result,
+                                   android::CameraMetadata &result,
                                    uint32_t reqId)
 {
     status_t status;
@@ -119,7 +119,7 @@ IntelAEModeBase::IntelAEModeBase():
 }
 
 void
-IntelAEModeBase::updateResult(CameraMetadata &results)
+IntelAEModeBase::updateResult(android::CameraMetadata &results)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
 
@@ -185,7 +185,7 @@ IntelAEModeOff::processState(const uint8_t &controlMode,
 
 status_t
 IntelAEModeOff::processResult(const ia_aiq_ae_results &aeResults,
-                              CameraMetadata &result,
+                              android::CameraMetadata &result,
                               uint32_t reqId)
 {
     UNUSED(aeResults);
@@ -261,7 +261,7 @@ IntelAEModeAuto::processState(const uint8_t &controlMode,
 
 status_t
 IntelAEModeAuto::processResult(const ia_aiq_ae_results &aeResults,
-                               CameraMetadata &result,
+                               android::CameraMetadata &result,
                                uint32_t reqId)
 {
     switch (mCurrentAeState) {
@@ -339,5 +339,5 @@ IntelAEModeAuto::processResult(const ia_aiq_ae_results &aeResults,
     return OK;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

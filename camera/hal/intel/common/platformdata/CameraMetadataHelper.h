@@ -24,19 +24,19 @@
  * Camera metadata auxiliary API
  */
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 namespace MetadataHelper {
 
 void dumpMetadata(const camera_metadata_t * meta);
 
-bool getMetadataValue(const CameraMetadata &metadata, uint32_t tag, uint8_t & value, int count = -1);
-bool getMetadataValue(const CameraMetadata &metadata, uint32_t tag, int32_t & value, int count = -1);
-bool getMetadataValue(const CameraMetadata &metadata, uint32_t tag, int64_t & value, int count = -1);
-bool getMetadataValue(const CameraMetadata &metadata, uint32_t tag, float & value, int count = -1);
-bool getMetadataValue(const CameraMetadata &metadata, uint32_t tag, double & value, int count = -1);
+bool getMetadataValue(const android::CameraMetadata &metadata, uint32_t tag, uint8_t & value, int count = -1);
+bool getMetadataValue(const android::CameraMetadata &metadata, uint32_t tag, int32_t & value, int count = -1);
+bool getMetadataValue(const android::CameraMetadata &metadata, uint32_t tag, int64_t & value, int count = -1);
+bool getMetadataValue(const android::CameraMetadata &metadata, uint32_t tag, float & value, int count = -1);
+bool getMetadataValue(const android::CameraMetadata &metadata, uint32_t tag, double & value, int count = -1);
 
-const void * getMetadataValues(const CameraMetadata &metadata, uint32_t tag, int type, int * count = nullptr);
+const void * getMetadataValues(const android::CameraMetadata &metadata, uint32_t tag, int type, int * count = nullptr);
 const void * getMetadataValues(const camera_metadata_t * metadata, uint32_t tag, int type, int * count = nullptr);
 
 camera_metadata_ro_entry getMetadataEntry(const camera_metadata_t *metadata, uint32_t tag, bool printError = true);
@@ -96,6 +96,6 @@ status_t updateMetadata(camera_metadata_t * metadata, uint32_t tag, const void* 
 
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif // _CAMERA3_HAL_METADATAHELPER_H_

@@ -30,8 +30,8 @@
 #include "Intel3aCmc.h"
 #include "base/macros.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 class CameraHWInfo;
 
 #define CPF_MODE_DEFAULT "default"
@@ -93,6 +93,6 @@ private:
     void operator=(const CpfStore&);
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif // _CAMERA3_HAL_CAMERA_CONFIGURATION_H_

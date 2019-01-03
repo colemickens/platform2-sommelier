@@ -33,8 +33,8 @@
 #include <base/threading/thread.h>
 #include "cros-camera/camera_algorithm.h"
 
+namespace cros {
 namespace intel {
-namespace camera {
 
 class Intel3AServer {
 public:
@@ -97,6 +97,6 @@ private:
     int32_t mHandleSeed;
 };
 
-} /* namespace camera */
 } /* namespace intel */
+} /* namespace cros */
 #endif // PSL_IPU3_IPC_SERVER_INTEL3ASERVER_H_

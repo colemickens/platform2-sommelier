@@ -25,8 +25,8 @@
 
 #include "LogHelperChrome.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 int32_t gLogLevel = 0;
 int32_t gLogCcaLevel = CAMERA_DEBUG_CCA_LOG_ERROR;
 int32_t gPerfLevel = 0;
@@ -221,5 +221,5 @@ bool __getEnviromentValue(const char* variable, char *value, size_t buf_size)
 }
 
 } // namespace LogHelper
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

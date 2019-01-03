@@ -27,8 +27,8 @@
 #define ANDROID_CONTROL_CAPTURE_INTENT_START 0x40000000
 #define CAMERA_TEMPLATE_COUNT (ANDROID_CONTROL_CAPTURE_INTENT_MANUAL + 1)
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 class CameraCapInfo;
 /**
  * \class CameraProfiles
@@ -181,6 +181,6 @@ private:
     std::vector<camera_metadata_t *> mDefaultRequests;
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif // _CAMERA3_HAL_PROFILE_H_

@@ -22,8 +22,8 @@
 #include "UtilityMacros.h"
 #include "PlatformData.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 Intel3aCmc::Intel3aCmc(int cameraId):
     mInitialized(false)
 {
@@ -113,5 +113,5 @@ uintptr_t Intel3aCmc::getCmcHandle() const
     return mCmcRemoteHandle;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

@@ -17,8 +17,8 @@
 
 #include "ICameraHw.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 /* Supported platforms */
 ICameraHw *CreatePSLCamera(int cameraId);
@@ -28,5 +28,5 @@ ICameraHw *ICameraHw::createCameraHW(int cameraId)
     return CreatePSLCamera(cameraId);
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

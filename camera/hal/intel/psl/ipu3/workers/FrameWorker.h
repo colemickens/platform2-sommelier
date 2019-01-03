@@ -21,8 +21,8 @@
 #include <cros-camera/camera_buffer_manager.h>
 #include <cros-camera/v4l2_device.h>
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 class FrameWorker : public IDeviceWorker
 {
@@ -62,7 +62,7 @@ protected:
     std::vector<void*> mBufferAddr;
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 
 #endif /* PSL_IPU3_WORKERS_FRAMEWORKER_H_ */

@@ -28,8 +28,8 @@
 #include "GraphConfig.h"
 #include "CameraStream.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 InputSystem::InputSystem(IISysObserver *observer, std::shared_ptr<MediaController> mediaCtl):
     mObserver(observer),

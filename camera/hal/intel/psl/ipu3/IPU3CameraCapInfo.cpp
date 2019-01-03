@@ -18,8 +18,8 @@
 
  #include "IPU3CameraCapInfo.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 IPU3CameraCapInfo::IPU3CameraCapInfo(SensorType type):
     mSensorType(type),
@@ -117,5 +117,5 @@ const std::string IPU3CameraCapInfo::getMediaCtlEntityType(std::string name) con
     return type;
 }
 
-} // namespace camera2
-} // namespace android
+} // namespace intel
+} // namespace cros

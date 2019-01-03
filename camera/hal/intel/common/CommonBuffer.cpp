@@ -23,8 +23,8 @@
 #include "UtilityMacros.h"
 #include "Camera3V4l2Format.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 /**
  * CommonBuffer
  *
@@ -203,5 +203,5 @@ status_t CommonBuffer::allocMemory()
     return NO_ERROR;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

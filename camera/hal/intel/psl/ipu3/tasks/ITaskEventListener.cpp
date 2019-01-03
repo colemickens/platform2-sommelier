@@ -19,8 +19,8 @@
 #include "ITaskEventListener.h"
 #include "ExecuteTaskBase.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 status_t ITaskEventListener::settings(ProcTaskMsg &/*msg*/)
 {
@@ -33,5 +33,5 @@ void ITaskEventListener::cleanListeners()
     // no-op base implementation
     return;
 }
-} // namespace camera2
-} // namespace android
+} // namespace intel
+} // namespace cros

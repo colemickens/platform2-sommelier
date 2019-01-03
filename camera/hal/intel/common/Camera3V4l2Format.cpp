@@ -20,8 +20,8 @@
 #include "LogHelper.h"
 #include "Camera3V4l2Format.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 const struct CameraFormatBridge sV4L2PixelFormatBridge[] = {
     {
         .pixelformat = V4L2_PIX_FMT_NV12,
@@ -284,5 +284,5 @@ const char* v4l2Fmt2Str(int format)
     return fourccBuf;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

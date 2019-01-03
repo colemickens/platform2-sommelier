@@ -24,10 +24,8 @@
 #include "LogHelper.h"
 #include "common/UtilityMacros.h"
 
-using namespace android::camera2;
-
+namespace cros {
 namespace intel {
-namespace camera {
 MknLibrary::MknLibrary()
 {
     LOG1("@%s", __FUNCTION__);
@@ -108,5 +106,5 @@ status_t MknLibrary::enable(void* pData, int dataSize)
     return err == ia_err_none ? NO_ERROR : UNKNOWN_ERROR;
 }
 
-} /* namespace camera */
 } /* namespace intel */
+} /* namespace cros */

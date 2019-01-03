@@ -43,8 +43,8 @@ struct metadata_tag_t {
                             model. It is declared in MetadataInfoAutoGen.h */
 };
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 #define ELEMENT(array) (sizeof(array)/sizeof((array)[0]))
 #define METAID2STR(array,value) metaId2String((array),ELEMENT(array),(value))
@@ -52,8 +52,8 @@ namespace camera2 {
 
 const char *metaId2String(const metadata_value_t array[], int size, int value);
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 
 /* ******************************************************
  * ******************************************************

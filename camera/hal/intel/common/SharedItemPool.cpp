@@ -16,8 +16,8 @@
 
 #include "SharedItemPool.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 template <class ItemType>
 SharedItemPool<ItemType>::SharedItemPool(const char*name):
@@ -123,5 +123,5 @@ status_t SharedItemPool<ItemType>::_releaseItem(ItemType *item)
     return OK;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

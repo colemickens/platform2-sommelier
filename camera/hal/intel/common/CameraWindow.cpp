@@ -21,8 +21,8 @@
 #include "UtilityMacros.h"
 #include "LogHelper.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 /******************************************************************************
  * CAMERA WINDOW OPERATIONS
@@ -261,5 +261,5 @@ void CameraWindow::dump()
             mXleft, mYtop, mXright, mYbottom, mWidth, mHeight,
             mCenter.x, mCenter.y, mWeight);
 }
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

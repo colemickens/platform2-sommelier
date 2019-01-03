@@ -21,10 +21,8 @@
 #include <ia_cmc_parser.h>
 #include "CmcLibrary.h"
 
-using namespace android::camera2;
-
+namespace cros {
 namespace intel {
-namespace camera {
 
 CmcLibrary::CmcLibrary()
 {
@@ -74,5 +72,5 @@ status_t CmcLibrary::ia_cmc_deinit(void* pData, int dataSize)
 
     return OK;
 }
-} /* namespace camera */
 } /* namespace intel */
+} /* namespace cros */

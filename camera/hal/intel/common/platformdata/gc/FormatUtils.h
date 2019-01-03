@@ -18,8 +18,8 @@
 
 #include <string>
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 namespace graphconfig {
 namespace utils {
@@ -38,7 +38,7 @@ int32_t getBppFromCommon(int32_t format);
 }  // namespace utils
 }  // namespace graphconfig
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 
 #endif /* COMMON_PLATFORMDATA_GC_FORMATUTILS_H_ */

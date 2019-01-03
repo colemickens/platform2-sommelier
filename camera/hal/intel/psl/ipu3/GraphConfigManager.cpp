@@ -28,8 +28,8 @@ using namespace GCSS;
 using std::vector;
 using std::map;
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 #define MIN_GRAPH_SETTING_STREAM 1
 #define MAX_GRAPH_SETTING_STREAM 2
@@ -780,5 +780,5 @@ void GraphConfigManager::dumpQuery(const map<GCSS::ItemUID, std::string> &query)
     }
     LOGW("Query Dump ------- End");
 }
-}  // namespace camera2
-}  // namespace android
+}  // namespace intel
+}  // namespace cros

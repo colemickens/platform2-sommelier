@@ -23,8 +23,8 @@
 #include "PlatformData.h"
 #include "MediaCtlPipeConfig.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 class GraphConfigNodes;
 
@@ -92,6 +92,6 @@ private:
 
 const IPU3CameraCapInfo * getIPU3CameraCapInfo(int cameraId);
 
-} // namespace camera2
-} // namespace android
+} // namespace intel
+} // namespace cros
 #endif // _CAMERA3_HAL_IPU3CAMERACAPINFO_H_

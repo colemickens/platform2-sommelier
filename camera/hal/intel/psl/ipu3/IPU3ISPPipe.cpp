@@ -20,8 +20,8 @@
 #include "LogHelper.h"
 #include <string.h>
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 IPU3ISPPipe::IPU3ISPPipe()
 {
@@ -161,5 +161,5 @@ aic_config* IPU3ISPPipe::GetAicConfig()
 
 
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

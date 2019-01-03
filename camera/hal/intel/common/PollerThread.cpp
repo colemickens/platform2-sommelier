@@ -22,8 +22,8 @@
 #include "LogHelper.h"
 #include "PerformanceTraces.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 PollerThread::PollerThread(std::string name):
     mName(name),
@@ -293,5 +293,5 @@ status_t PollerThread::notifyListener(IPollEventListener::PollEventMessage *msg)
     return status;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

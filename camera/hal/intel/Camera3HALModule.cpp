@@ -26,8 +26,8 @@
 
 #include "Camera3HAL.h"
 
-using namespace android;
-USING_DECLARED_NAMESPACE;
+using namespace cros;
+using namespace cros::intel;
 
 /**
  * \macro VISIBILITY_PUBLIC

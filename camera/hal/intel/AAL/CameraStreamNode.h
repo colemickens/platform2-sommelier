@@ -21,8 +21,8 @@
 #include "CameraBuffer.h"
 #include "FrameInfo.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 /* Forward declaration */
 class Camera3Request;
@@ -66,6 +66,6 @@ class CameraStreamNode {
    virtual status_t configure(void) = 0;
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif /* _CAMERA3_HAL_CAMERASTREAMNODE_H_ */

@@ -24,8 +24,8 @@
 
 class IntelAFStateMachine;
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 class SettingsProcessor
 {
@@ -37,7 +37,7 @@ public:
     status_t init();
 
     /* Parameter processing methods */
-    status_t processRequestSettings(const CameraMetadata &settings,
+    status_t processRequestSettings(const android::CameraMetadata &settings,
                                     RequestCtrlState &aiqCfg);
 
     status_t handleNewSensorDescriptor(ControlUnit::MessageSensorMode &msg);
@@ -113,26 +113,26 @@ public:
 private:
     void cacheStaticMetadata();
 
-    status_t processAwbSettings(const CameraMetadata &settings,
+    status_t processAwbSettings(const android::CameraMetadata &settings,
                                 RequestCtrlState &reqAiqCfg);
-    status_t processAfSettings(const CameraMetadata &settings,
+    status_t processAfSettings(const android::CameraMetadata &settings,
                                RequestCtrlState &reqAiqCfg);
-    status_t processAeSettings(const CameraMetadata &settings,
+    status_t processAeSettings(const android::CameraMetadata &settings,
                                RequestCtrlState &reqAiqCfg);
-    status_t processIspSettings(const CameraMetadata &settings,
+    status_t processIspSettings(const android::CameraMetadata &settings,
                                 RequestCtrlState &reqAiqCfg);
-    status_t processImageEnhancementSettings(const CameraMetadata &settings,
+    status_t processImageEnhancementSettings(const android::CameraMetadata &settings,
                                              RequestCtrlState &reqAiqCfg);
-    status_t processStabilizationSettings(const CameraMetadata &settings,
+    status_t processStabilizationSettings(const android::CameraMetadata &settings,
                                           RequestCtrlState &reqAiqCfg);
-    status_t processHotPixelSettings(const CameraMetadata &settings,
+    status_t processHotPixelSettings(const android::CameraMetadata &settings,
                                      RequestCtrlState &reqAiqCfg);
-    void processCroppingRegion(const CameraMetadata &settings,
+    void processCroppingRegion(const android::CameraMetadata &settings,
                                    RequestCtrlState &reqAiqCfg);
 
-    status_t processTestPatternMode(const CameraMetadata &settings,
+    status_t processTestPatternMode(const android::CameraMetadata &settings,
                                     RequestCtrlState &reqAiqCfg);
-    char mapImageEnhancementSettings(const CameraMetadata &settings,
+    char mapImageEnhancementSettings(const android::CameraMetadata &settings,
             const int enhancementName,
             RequestCtrlState &reqAiqCfg);
 
@@ -170,7 +170,7 @@ private:
     bool mFixedFocus;
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 
 #endif /* PSL_IPU3_SETTINGSPROCESSOR_H_ */

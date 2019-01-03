@@ -16,8 +16,8 @@
 #ifndef _CAMERA3_HAL_ISYS_TYPES_H_
 #define _CAMERA3_HAL_ISYS_TYPES_H_
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 /**
  * This enumeration lists the V4L2 nodes exposed by the InputSystem
  */
@@ -38,6 +38,6 @@ enum IsysNodeNames {
     ISYS_NODE_METADATA =            1 << 12,
     ISYS_NODE_TPG_OUT =             1 << 13
 };
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif  //  _CAMERA3_HAL_ISYS_TYPES_H_

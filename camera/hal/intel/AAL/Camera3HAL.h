@@ -23,8 +23,8 @@
 #include "PlatformData.h"
 #include "RequestThread.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 /**
  * \class Camera3HAL
@@ -72,6 +72,6 @@ private:
     camera3_device_t   mDevice;
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif // _CAMERA3_HAL_H_

@@ -22,8 +22,8 @@
 #include "Camera3GFXFormat.h"
 #include "CameraBuffer.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 /**
  * CameraBuffer
  *
@@ -409,5 +409,5 @@ allocateHandleBuffer(int w, int h, int gfxFmt, int usage, int cameraId)
 
 } // namespace MemoryUtils
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

@@ -20,8 +20,8 @@
 #include "Camera3Request.h"
 #include "FrameInfo.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 /**
  * \class HwStreamBase
  * Dummy producer class needed for the AAL
@@ -46,6 +46,6 @@ private:
     FrameInfo mInfo;
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif /* CAMERA3_HAL_HW_STREAM_BASE_H_ */

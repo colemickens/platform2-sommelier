@@ -22,8 +22,8 @@
 #include "Camera3Request.h"
 #include "PlatformData.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 /**
  * \def RESULT_ENTRY_CAP
@@ -91,7 +91,7 @@ Camera3Request::deInit()
 status_t
 Camera3Request::init(camera3_capture_request* req,
                      IRequestCallback* cb,
-                     CameraMetadata &settings, int cameraId)
+                     android::CameraMetadata &settings, int cameraId)
 {
     status_t status = NO_ERROR;
     PERFORMANCE_HAL_ATRACE_PARAM1("reqId", req->frame_number);
@@ -284,7 +284,7 @@ Camera3Request::getInputBuffer()
  * call this method to acquire its own metadata buffer. Coordination on
  * the usage of those buffers is responsibility of the PSL
  */
-CameraMetadata*
+android::CameraMetadata*
 Camera3Request::getPartialResultBuffer(unsigned int index)
 {
     if (CC_UNLIKELY(mPartialResultBuffers.empty() ||
@@ -302,7 +302,7 @@ Camera3Request::getPartialResultBuffer(unsigned int index)
  * returns the pointer to the read-only metadata buffer with the settings
  * for this request.
  */
-const CameraMetadata*
+const android::CameraMetadata*
 Camera3Request::getSettings() const
 {
     return mInitialized? &mSettings : nullptr;
@@ -528,7 +528,7 @@ Camera3Request::allocatePartialResultBuffers(int partialResultCount)
             LOGE("Failed to allocate memory for result metadata buffer");
             goto bailout;
         }
-        mmdata.metaBuf = new CameraMetadata(m);
+        mmdata.metaBuf = new android::CameraMetadata(m);
         mmdata.size = bufferSize;
         mmdata.entryCap = RESULT_ENTRY_CAP;
         mmdata.dataCap = RESULT_DATA_CAP;
@@ -556,5 +556,5 @@ Camera3Request::freePartialResultBuffers(void)
     mResultBufferAllocated = false;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

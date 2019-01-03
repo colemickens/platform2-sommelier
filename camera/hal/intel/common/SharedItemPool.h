@@ -49,8 +49,8 @@
  *
  */
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 template <class ItemType>
 class SharedItemPool {
 public:
@@ -134,8 +134,8 @@ private: /* members */
     void (*mResetter)(ItemType*);
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #include "SharedItemPool.cpp"
 
 #endif /* CAMERA3_HAL_SHAREDITEMPOOL_H_ */

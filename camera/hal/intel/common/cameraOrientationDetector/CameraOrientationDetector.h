@@ -20,8 +20,8 @@
 #include <string>
 #include <unordered_map>
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 enum CameraOrientationDetectorAngle
 {

@@ -23,8 +23,8 @@
 #include "Intel3aCommon.h"
 #include "IPCFaceEngine.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 class IntelFaceEngine {
 public:
     IntelFaceEngine();
@@ -48,6 +48,6 @@ private:
 
     DISALLOW_COPY_AND_ASSIGN(IntelFaceEngine);
 };
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif // INTEL_FACE_ENGINE_H_

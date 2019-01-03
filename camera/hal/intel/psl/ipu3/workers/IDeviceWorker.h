@@ -23,8 +23,8 @@
 #include "Camera3Request.h"
 #include <linux/intel-ipu3.h>
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 enum DeviceMessageId {
     MESSAGE_ID_EXIT = 0,
@@ -96,7 +96,7 @@ private:
     IDeviceWorker();
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 
 #endif /* PSL_IPU3_WORKERS_IDEVICEWORKER_H_ */

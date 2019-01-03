@@ -20,8 +20,8 @@
 #include <ia_cmc_types.h>
 #include "IPCCommon.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 typedef struct
 {
     cmc_black_level_t cmc_black_level;
@@ -94,6 +94,6 @@ public:
     bool serverFlattenInit(const ia_cmc_t& cmc, cmc_init_params* params);
     bool serverUnflattenInit(const cmc_init_params& pData, ia_binary_data* aiqb);
 };
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif // PSL_IPU3_IPC_IPCCMC_H_

@@ -21,8 +21,8 @@
 #include <utils/Errors.h> // status_t
 #include "CaptureUnit.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 /**
  * \class ICaptureEventSource
@@ -44,7 +44,7 @@ private:
 
 };
 
-} // namespace camera2
-} // namespace android
+} // namespace intel
+} // namespace cros
 
 #endif

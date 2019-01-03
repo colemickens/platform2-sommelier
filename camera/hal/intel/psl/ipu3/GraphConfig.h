@@ -37,8 +37,8 @@ class GraphConfigNode;
 
 #define NODE_NAME(x) (getNodeName(x).c_str())
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 class GraphConfigManager;
 
@@ -358,6 +358,6 @@ private:
     std::vector<MediaCtlLut> mLut;
 };
 
-} // namespace camera2
-} // namespace android
+} // namespace intel
+} // namespace cros
 #endif

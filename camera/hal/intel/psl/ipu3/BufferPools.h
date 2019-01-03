@@ -27,8 +27,8 @@
 #ifndef PSL_IPU3_BUFFERPOOLS_H_
 #define PSL_IPU3_BUFFERPOOLS_H_
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 class BufferPools
 {
@@ -62,7 +62,7 @@ private:
     std::vector<buffer_handle_t> mBufferHandles;
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 
 #endif /* PSL_IPU3_BUFFERPOOLS_H_ */

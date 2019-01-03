@@ -25,8 +25,8 @@
 #include "base/macros.h"
 #include "cros-camera/jpeg_compressor.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 /**
  * \class ImgEncoderCore
  * This class does JPEG encoding of the main and the thumb buffers provided in
@@ -60,7 +60,7 @@ public:  /* types */
         int                           encodedDataSize;// main image encoded data size
         std::shared_ptr<CommonBuffer> thumbOut;    // for thumbnail output
         int                           thumbSize;   // Thumb ouptut size
-        const CameraMetadata         *settings;    // settings from request
+        const android::CameraMetadata         *settings;    // settings from request
         unsigned char                *jpegDQTAddr; // pointer to DQT marker inside jpeg, for in-place exif creation
         bool                          padExif;     // Boolean to control if padding is preferred over copying during in-place exif creation
         bool                          encodeAll;   // Boolean to control if both thumbnail and main image shall be encoded. False means just thumbnail.
@@ -187,6 +187,6 @@ private:  /* Members */
     std::unique_ptr<cros::JpegCompressor> mJpegCompressor;
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif  // _CAMERA3_HAL_IMG_ENCODER_CORE_H_

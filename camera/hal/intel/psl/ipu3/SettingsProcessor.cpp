@@ -25,8 +25,8 @@
 
 #include "LogHelper.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 SettingsProcessor::SettingsProcessor(int cameraId,
         Intel3aPlus *a3aWrapper, IStreamConfigProvider &aStreamCfgProv) :
@@ -68,7 +68,7 @@ status_t SettingsProcessor::init()
  * \param reqAiqCfg [OUT] AIQ configuration
  */
 status_t
-SettingsProcessor::processRequestSettings(const CameraMetadata &settings,
+SettingsProcessor::processRequestSettings(const android::CameraMetadata &settings,
                                     RequestCtrlState &reqAiqCfg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
@@ -125,7 +125,7 @@ SettingsProcessor::processRequestSettings(const CameraMetadata &settings,
  *
  */
 void
-SettingsProcessor::processCroppingRegion(const CameraMetadata &settings,
+SettingsProcessor::processCroppingRegion(const android::CameraMetadata &settings,
                                    RequestCtrlState &reqCfg)
 {
     CameraWindow &cropRegion = reqCfg.captureSettings->cropRegion;
@@ -165,7 +165,7 @@ SettingsProcessor::processCroppingRegion(const CameraMetadata &settings,
     reqCfg.processingSettings->cropRegion = cropRegion;
 }
 
-status_t SettingsProcessor::processIspSettings(const CameraMetadata &settings,
+status_t SettingsProcessor::processIspSettings(const android::CameraMetadata &settings,
                                          RequestCtrlState &reqAiqCfg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
@@ -315,7 +315,7 @@ void SettingsProcessor::cacheStaticMetadata()
 }
 
 status_t
-SettingsProcessor::processAfSettings(const CameraMetadata  &settings,
+SettingsProcessor::processAfSettings(const android::CameraMetadata  &settings,
                                RequestCtrlState &reqAiqCfg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
@@ -381,7 +381,7 @@ SettingsProcessor::processAfSettings(const CameraMetadata  &settings,
  * \param settings [IN] settings from the request
  * \param reqAiqCfg [OUT] AIQ configuration
  */
-status_t SettingsProcessor::processImageEnhancementSettings(const CameraMetadata &settings,
+status_t SettingsProcessor::processImageEnhancementSettings(const android::CameraMetadata &settings,
                                                       RequestCtrlState &reqAiqCfg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
@@ -408,7 +408,7 @@ status_t SettingsProcessor::processImageEnhancementSettings(const CameraMetadata
  * \param[in,out] reqAiqCfg AIQ configuration
  * \return enhancement value in ia_aiq range
  */
-char SettingsProcessor::mapImageEnhancementSettings(const CameraMetadata &settings,
+char SettingsProcessor::mapImageEnhancementSettings(const android::CameraMetadata &settings,
                                               const int enhancementName,
                                               RequestCtrlState &reqAiqCfg)
 {
@@ -435,7 +435,7 @@ char SettingsProcessor::mapImageEnhancementSettings(const CameraMetadata &settin
 
 
 status_t
-SettingsProcessor::processAeSettings(const CameraMetadata&  settings,
+SettingsProcessor::processAeSettings(const android::CameraMetadata&  settings,
                                RequestCtrlState &reqAiqCfg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
@@ -547,7 +547,7 @@ SettingsProcessor::handleNewSensorDescriptor(ControlUnit::MessageSensorMode &msg
 }
 
 status_t
-SettingsProcessor::processAwbSettings(const CameraMetadata  &settings,
+SettingsProcessor::processAwbSettings(const android::CameraMetadata  &settings,
                                 RequestCtrlState &reqAiqCfg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
@@ -564,7 +564,7 @@ SettingsProcessor::processAwbSettings(const CameraMetadata  &settings,
 }
 
 status_t
-SettingsProcessor::processStabilizationSettings(const CameraMetadata &settings,
+SettingsProcessor::processStabilizationSettings(const android::CameraMetadata &settings,
                                           RequestCtrlState &reqAiqCfg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
@@ -581,7 +581,7 @@ SettingsProcessor::processStabilizationSettings(const CameraMetadata &settings,
     return OK;
 }
 
-status_t SettingsProcessor::processHotPixelSettings(const CameraMetadata &settings,
+status_t SettingsProcessor::processHotPixelSettings(const android::CameraMetadata &settings,
                                               RequestCtrlState &reqAiqCfg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
@@ -597,7 +597,7 @@ status_t SettingsProcessor::processHotPixelSettings(const CameraMetadata &settin
     return OK;
 }
 
-status_t SettingsProcessor::processTestPatternMode(const CameraMetadata &settings,
+status_t SettingsProcessor::processTestPatternMode(const android::CameraMetadata &settings,
                                              RequestCtrlState &reqAiqCfg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
@@ -610,5 +610,5 @@ status_t SettingsProcessor::processTestPatternMode(const CameraMetadata &setting
     return OK;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

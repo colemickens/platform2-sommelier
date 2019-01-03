@@ -23,8 +23,8 @@
 #include "IPCFaceEngine.h"
 #include "MediaController.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 class ControlUnit;
 class CaptureUnit;
@@ -73,7 +73,7 @@ class IPU3CameraHw: public ICameraHw {
 
  private:  //members
     int mCameraId;
-    CameraMetadata* mStaticMeta;
+    android::CameraMetadata* mStaticMeta;
     /**
      * locally cached static metadata tag values
      */
@@ -99,6 +99,6 @@ class IPU3CameraHw: public ICameraHw {
     int mMaxFaceNum;
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif /* _CAMERA3_HAL_IPU3CAMERAHW_H_ */

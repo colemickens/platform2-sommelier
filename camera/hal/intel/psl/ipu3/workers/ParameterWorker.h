@@ -22,8 +22,8 @@
 #include "FrameWorker.h"
 #include "IPU3ISPPipe.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 struct PipeConfig
 {
@@ -131,7 +131,7 @@ private:
     std::mutex mParamsMutex;
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 
 #endif /* PSL_IPU3_WORKERS_PARAMETERWORKER_H_ */

@@ -22,8 +22,8 @@
 #include "LogHelper.h"
 #include "IPCCmc.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 IPCCmc::IPCCmc()
 {
     LOG1("@%s", __FUNCTION__);
@@ -233,5 +233,5 @@ bool IPCCmc::serverFlattenInit(const ia_cmc_t& cmc, cmc_init_params* params)
     return true;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

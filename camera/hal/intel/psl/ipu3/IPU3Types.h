@@ -25,8 +25,8 @@
 
 #include <ia_types.h>
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 // typedefs
 typedef ia_binary_data MakernoteData;
@@ -35,8 +35,8 @@ typedef ia_binary_data MakernoteData;
 const int JPEG_QUALITY_DEFAULT = 95;
 const int THUMBNAIL_QUALITY_DEFAULT = 90;
 
-} // namespace camera2
-} // namespace android
+} // namespace intel
+} // namespace cros
 
 
 #endif // PSL_IPU3_IPU3TYPES_H

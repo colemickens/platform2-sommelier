@@ -22,7 +22,7 @@
 #include "graph_query_manager.h"
 using namespace GCSS;
 using namespace std;
-using namespace android::camera2;
+using namespace cros::intel;
 
 /**
  * function to copy GraphConfigNodes

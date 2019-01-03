@@ -23,8 +23,8 @@
 #include <sstream>
 #include "PerformanceTraces.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 namespace PerformanceTraces {
 
 int HalAtrace::mTraceLevel = 0;
@@ -115,5 +115,5 @@ public:
 void reset(void) {}
 
 } // namespace PerformanceTraces
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

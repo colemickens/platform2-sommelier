@@ -26,8 +26,8 @@
 #include "SkyCamProxy.h"
 #include "ipc/client/SkyCamMojoProxy.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 SkyCamProxy::SkyCamProxy()
 {
@@ -61,5 +61,5 @@ std::shared_ptr<SkyCamProxy> SkyCamProxy::createProxy(int cameraId, AicMode aicM
     return proxyObject;
 }
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */

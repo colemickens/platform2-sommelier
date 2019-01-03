@@ -16,8 +16,8 @@
 #ifndef _CAMERA3_HAL_IERRORCALLBACK_H_
 #define _CAMERA3_HAL_IERRORCALLBACK_H_
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 class IErrorCallback {
 public:
@@ -26,6 +26,6 @@ public:
     virtual status_t deviceError(void) = 0;
 };
 
-} /* namespace camera2 */
-} /* namespace android */
+} /* namespace intel */
+} /* namespace cros */
 #endif /* _CAMERA3_HAL_IERRORCALLBACK_H_ */

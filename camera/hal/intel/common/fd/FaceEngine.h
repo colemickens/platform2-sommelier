@@ -32,8 +32,8 @@
 #include <utils/Errors.h>
 #include "Utils.h"
 
-namespace android {
-namespace camera2 {
+namespace cros {
+namespace intel {
 
 typedef struct CVFaceEngineAbstractResult {
     uint32_t requestId;
@@ -88,6 +88,6 @@ private:
 
     DISALLOW_COPY_AND_ASSIGN(FaceEngine);
 };  // class FaceEngine
-}  // namespace camera2
-}  // namespace android
+}  // namespace intel
+}  // namespace cros
 #endif // FACE_ENGINE_H_
