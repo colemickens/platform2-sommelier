@@ -176,10 +176,10 @@ def CheckValidMetadata(metadata):
   Returns:
     bool: if metadata is valid.
   """
-  if not "files" in metadata or \
+  if not "package_name" in metadata or \
+      not "files" in metadata or \
       not "gsbucket" in metadata or \
       not "pkgpath" in metadata or \
-      not "name" in metadata or \
       not "manifest" in metadata:
     cros_build_lib.Die('attribute is missing.')
     return False
@@ -375,14 +375,14 @@ def BuildComponent(component_to_build, components, board, platform,
     upload: (bool) True if uploading to Omaha; False if not uploading to Omaha.
   """
   for component in components:
-    for pkg, metadata in component.iteritems():
-      if pkg == component_to_build:
+    for name, metadata in component.iteritems():
+      if name == component_to_build:
         if not CheckValidMetadata(metadata):
           continue
         if (metadata.get('valid_platforms') and
             not platform in metadata['valid_platforms']):
           cros_build_lib.Die('Invalid platform')
-        logger.info('build component:%s', pkg)
+        logger.info('build component:%s', name)
         # Check if component files are built successfully.
         files = [os.path.join(cros_build_lib.GetSysroot(), 'build', board, x) \
                  for x in metadata["files"]]
@@ -405,10 +405,10 @@ def BuildComponent(component_to_build, components, board, platform,
                                                            platform)
 
         # Check component (gentoo package) version.
-        name = metadata["name"]
+        package_name = metadata["package_name"]
         for f in os.listdir(os.path.join(cros_build_lib.GetSysroot(), 'build',
                                          board, metadata["pkgpath"])):
-          package_version = GetPackageVersion(f, name)
+          package_version = GetPackageVersion(f, package_name)
           if package_version is not None:
             logger.info('current package version: %s', package_version)
             logger.info('package version of current component: %s',
@@ -419,8 +419,8 @@ def BuildComponent(component_to_build, components, board, platform,
             manifest_path = os.path.join(cros_build_lib.GetSysroot(), 'build',
                                          board, metadata["manifest"])
 
-            CreateComponent(manifest_path, version, name, package_version,
-                            platform, files, upload, gsbucket)
+            CreateComponent(manifest_path, version, package_name,
+                            package_version, platform, files, upload, gsbucket)
             return
         cros_build_lib.Die('Package could not be found, component could not be'
                            'built.')

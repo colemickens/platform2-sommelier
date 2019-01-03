@@ -1,7 +1,7 @@
 [
   {
-    "net-print/epson-inkjet-printer-escpr" : {
-      "name": "epson-inkjet-printer-escpr",
+    "epson-inkjet-printer-escpr" : {
+      "package_name": "epson-inkjet-printer-escpr",
       "files":[
         "usr/libexec/cups/filter/epson-escpr-wrapper",
         "usr/libexec/cups/filter/epson-escpr"
@@ -12,8 +12,8 @@
       "valid_platforms": ["chromeos_arm32-archive", "chromeos_intel64-archive"]
     }
   }, {
-    "chromeos-base/demo_mode_resources" : {
-      "name": "demo_mode_resources",
+    "demo_mode_resources" : {
+      "package_name": "demo_mode_resources",
       "files":[
         "build/rootfs/demo_mode_resources/image/android_demo_apps.squash",
         "build/rootfs/demo_mode_resources/image/media/"
