@@ -360,7 +360,7 @@ struct Sample {
     info: Sysinfo,
     runnables: u32,             // number of runnable processes
     available: u32,             // available RAM from low-mem notifier
-    vmstat_values: [u32; VMSTAT_VALUES_COUNT],
+    vmstat_values: [u64; VMSTAT_VALUES_COUNT],
 }
 
 impl Sample {
@@ -535,7 +535,7 @@ fn parse_int_prefix(s: &str) -> Result<(u32, usize)> {
 // Reads selected values from |file| (which should be opened to /proc/vmstat)
 // as specified in |VMSTATS|, and stores them in |vmstat_values|.  The format of
 // the vmstat file is (<name> <integer-value>\n)+.
-fn get_vmstats(file: &File, vmstat_values: &mut [u32]) -> Result<()> {
+fn get_vmstats(file: &File, vmstat_values: &mut [u64]) -> Result<()> {
     // Safe because we read into the buffer, then borrow the part of it that
     // was filled.
     let mut buffer: [u8; PAGE_SIZE] = unsafe { mem::uninitialized() };
@@ -583,7 +583,7 @@ fn get_vmstats(file: &File, vmstat_values: &mut [u32]) -> Result<()> {
                 // First check accumulative targets.
                 if accumulate {
                     if found_name.starts_with(wanted_name) {
-                        vmstat_values[i] += found_value.parse::<u32>()?;
+                        vmstat_values[i] += found_value.parse::<u64>()?;
                         advance_line = true;
                         advance_target = false;
                     } else {
@@ -595,7 +595,7 @@ fn get_vmstats(file: &File, vmstat_values: &mut [u32]) -> Result<()> {
                 }
                 // Then check for single-shot (not accumulated) fields.
                 if found_name == wanted_name {
-                    vmstat_values[i] = found_value.parse::<u32>()?;
+                    vmstat_values[i] = found_value.parse::<u64>()?;
                     advance_line = true;
                     advance_target = true;
                     continue;

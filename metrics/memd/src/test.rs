@@ -725,7 +725,7 @@ pub fn read_loadavg() {
 
 pub fn read_vmstat(paths: &Paths) {
     setup_test_environment(&paths);
-    let mut vmstat_values: [u32; VMSTAT_VALUES_COUNT] = [0, 0, 0, 0, 0];
+    let mut vmstat_values: [u64; VMSTAT_VALUES_COUNT] = [0, 0, 0, 0, 0];
     get_vmstats(&File::open(&paths.vmstat).expect("cannot open vmstat"),
                 &mut vmstat_values).expect("get_vmstats failure");
     // Check one simple and one accumulated value.
