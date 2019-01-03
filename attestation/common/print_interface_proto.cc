@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2018 The Android Open Source Project
+// Copyright (C) 2019 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -768,6 +768,51 @@ std::string GetProtoDebugString(const RegisterKeyWithChapsTokenReply& value) {
 
 std::string GetProtoDebugStringWithIndent(
     const RegisterKeyWithChapsTokenReply& value,
+    int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_status()) {
+    output += indent + "  status: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.status(), indent_size + 2).c_str());
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const GetEnrollmentPreparationsRequest& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(
+    const GetEnrollmentPreparationsRequest& value,
+    int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_aca_type()) {
+    output += indent + "  aca_type: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.aca_type(), indent_size + 2)
+            .c_str());
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const GetEnrollmentPreparationsReply& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(
+    const GetEnrollmentPreparationsReply& value,
     int indent_size) {
   std::string indent(indent_size, ' ');
   std::string output =

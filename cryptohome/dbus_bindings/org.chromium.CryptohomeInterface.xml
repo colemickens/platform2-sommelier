@@ -150,6 +150,11 @@
     <method name="TpmIsAttestationPrepared">
       <arg type="b" name="prepared" direction="out" />
     </method>
+    <method name="TpmAttestationGetEnrollmentPreparationsEx">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+      <arg type="ay" name="request" direction="in" />
+      <arg type="ay" name="response" direction="out" />
+    </method>
     <method name="TpmVerifyAttestationData">
       <arg type="b" name="is_cros_core" />
       <arg type="b" name="verified" direction="out" />

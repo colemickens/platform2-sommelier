@@ -178,6 +178,21 @@ void DBusProxy::RegisterKeyWithChapsToken(
       base::Bind(on_error, callback), request);
 }
 
+void DBusProxy::GetEnrollmentPreparations(
+    const GetEnrollmentPreparationsRequest& request,
+    const GetEnrollmentPreparationsCallback& callback) {
+  auto on_error = [](const GetEnrollmentPreparationsCallback& callback,
+                     brillo::Error* error) {
+    GetEnrollmentPreparationsReply reply;
+    reply.set_status(STATUS_NOT_AVAILABLE);
+    callback.Run(reply);
+  };
+  brillo::dbus_utils::CallMethodWithTimeout(
+      kDBusTimeoutMS, object_proxy_, attestation::kAttestationInterface,
+      attestation::kGetEnrollmentPreparations, callback,
+      base::Bind(on_error, callback), request);
+}
+
 void DBusProxy::GetStatus(
     const GetStatusRequest& request,
     const GetStatusCallback& callback) {

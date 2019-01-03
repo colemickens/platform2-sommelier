@@ -117,6 +117,11 @@ void ServiceMonolithic::AttestationGetTpmStatus(GetTpmStatusReply* reply) {
         google::protobuf::Map<int, GetTpmStatusReply::IdentityCertificate>::
             value_type(it->first, identity_certificate));
   }
+  for (int pca_type = Attestation::kDefaultPCA;
+       pca_type < Attestation::kMaxPCAType; ++pca_type) {
+    (*reply->mutable_enrollment_preparations())[pca_type] =
+      attestation_->IsPreparedForEnrollmentWith(GetPCAType(pca_type));
+  }
   reply->set_verified_boot_measured(attestation_->IsPCR0VerifiedMode());
 }
 
@@ -133,6 +138,20 @@ gboolean ServiceMonolithic::TpmIsAttestationPrepared(
     GError** error) {
   *OUT_prepared = attestation_->IsPreparedForEnrollment();
   return TRUE;
+}
+
+bool ServiceMonolithic::AttestationGetEnrollmentPreparations(
+    const AttestationGetEnrollmentPreparationsRequest& request,
+    AttestationGetEnrollmentPreparationsReply* reply) {
+  for (int pca_type = Attestation::kDefaultPCA;
+       pca_type < Attestation::kMaxPCAType; ++pca_type) {
+    if (!request.has_pca_type() || request.pca_type() == pca_type) {
+      if (attestation_->IsPreparedForEnrollmentWith(GetPCAType(pca_type))) {
+        (*reply->mutable_enrollment_preparations())[pca_type] = true;
+      }
+    }
+  }
+  return true;
 }
 
 gboolean ServiceMonolithic::TpmVerifyAttestationData(

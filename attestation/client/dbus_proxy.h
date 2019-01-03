@@ -61,6 +61,9 @@ class DBusProxy : public AttestationInterface {
   void RegisterKeyWithChapsToken(
       const RegisterKeyWithChapsTokenRequest& request,
       const RegisterKeyWithChapsTokenCallback& callback) override;
+  void GetEnrollmentPreparations(
+      const GetEnrollmentPreparationsRequest& request,
+      const GetEnrollmentPreparationsCallback& callback) override;
   void GetStatus(
       const GetStatusRequest& request,
       const GetStatusCallback& callback) override;

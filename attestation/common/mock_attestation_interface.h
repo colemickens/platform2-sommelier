@@ -53,6 +53,9 @@ class MockAttestationInterface : public AttestationInterface {
   MOCK_METHOD2(RegisterKeyWithChapsToken,
                void(const RegisterKeyWithChapsTokenRequest&,
                     const RegisterKeyWithChapsTokenCallback&));
+  MOCK_METHOD2(GetEnrollmentPreparations,
+               void(const GetEnrollmentPreparationsRequest&,
+                    const GetEnrollmentPreparationsCallback&));
   MOCK_METHOD2(GetStatus,
                void(const GetStatusRequest&,
                     const GetStatusCallback&));

@@ -152,6 +152,12 @@ int DumpStatus() {
         google::protobuf::Map<int, GetTpmStatusReply::IdentityCertificate>::
             value_type(it->first, identity_certificate));
   }
+  for (int pca_type = cryptohome::Attestation::kDefaultPCA;
+       pca_type < cryptohome::Attestation::kMaxPCAType; ++pca_type) {
+    (*status.mutable_enrollment_preparations())[pca_type] =
+      attestation.IsPreparedForEnrollmentWith(
+          static_cast<cryptohome::Attestation::PCAType>(pca_type));
+  }
   status.set_verified_boot_measured(attestation.IsPCR0VerifiedMode());
 
   cryptohome::BootLockbox boot_lockbox(tpm, &platform, &crypto);

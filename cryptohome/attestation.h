@@ -36,12 +36,13 @@ class TpmInit;
 
 // This class performs tasks which enable attestation enrollment.  These tasks
 // include creating an AIK and recording all information about the AIK and EK
-// that an attestation server will need to issue credentials for this system. If
-// a platform does not have a TPM, this class does nothing.  This class is
+// that an attestation server will need to issue credentials for this system.
+// If a platform does not have a TPM, this class does nothing.  This class is
 // thread-safe.
 class Attestation : public base::PlatformThread::Delegate,
                     public InstallAttributes::Observer {
  public:
+  using BooleanMap = google::protobuf::Map<int, bool>;
   using IdentityCertificateMap = google::protobuf::
       Map<int, cryptohome::AttestationDatabase_IdentityCertificate>;
 

@@ -63,6 +63,9 @@ void DBusService::Register(const CompletionAction& callback) {
       kRegisterKeyWithChapsToken, base::Unretained(this),
       &DBusService::HandleRegisterKeyWithChapsToken);
   dbus_interface->AddMethodHandler(
+      kGetEnrollmentPreparations, base::Unretained(this),
+      &DBusService::HandleGetEnrollmentPreparations);
+  dbus_interface->AddMethodHandler(
       kGetStatus, base::Unretained(this),
       &DBusService::HandleGetStatus);
   dbus_interface->AddMethodHandler(
@@ -263,6 +266,25 @@ void DBusService::HandleRegisterKeyWithChapsToken(
     response->Return(reply);
   };
   service_->RegisterKeyWithChapsToken(
+      request,
+      base::Bind(callback, SharedResponsePointer(std::move(response))));
+}
+
+void DBusService::HandleGetEnrollmentPreparations(
+    std::unique_ptr<DBusMethodResponse<const GetEnrollmentPreparationsReply&>>
+        response,
+    const GetEnrollmentPreparationsRequest& request) {
+  VLOG(1) << __func__;
+  // Convert |response| to a shared_ptr so |service_| can safely copy the
+  // callback.
+  using SharedResponsePointer = std::shared_ptr<
+      DBusMethodResponse<const GetEnrollmentPreparationsReply&>>;
+  // A callback that fills the reply protobuf and sends it.
+  auto callback = [](const SharedResponsePointer& response,
+                     const GetEnrollmentPreparationsReply& reply) {
+    response->Return(reply);
+  };
+  service_->GetEnrollmentPreparations(
       request,
       base::Bind(callback, SharedResponsePointer(std::move(response))));
 }

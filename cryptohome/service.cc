@@ -2606,6 +2606,34 @@ gboolean Service::GetLoginStatus(const GArray* request,
   return TRUE;
 }
 
+void Service::DoTpmAttestationGetEnrollmentPreparationsEx(
+    const brillo::Blob& request,
+    DBusGMethodInvocation* context) {
+  AttestationGetEnrollmentPreparationsRequest request_pb;
+  if (!request_pb.ParseFromArray(request.data(), request.size())) {
+    SendInvalidArgsReply(context,
+                         "Bad AttestationGetEnrollmentPreparationsRequest");
+    return;
+  }
+  BaseReply reply;
+  AttestationGetEnrollmentPreparationsReply* extension =
+      reply.MutableExtension(AttestationGetEnrollmentPreparationsReply::reply);
+  if (!AttestationGetEnrollmentPreparations(request_pb, extension)) {
+    reply.set_error(CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
+  }
+  SendReply(context, reply);
+}
+
+gboolean Service::TpmAttestationGetEnrollmentPreparationsEx(
+    const GArray* request, DBusGMethodInvocation* context) {
+  mount_thread_.task_runner()->PostTask(FROM_HERE,
+      base::Bind(&Service::DoTpmAttestationGetEnrollmentPreparationsEx,
+                 base::Unretained(this),
+                 brillo::Blob(request->data, request->data + request->len),
+                 base::Unretained(context)));
+  return TRUE;
+}
+
 void Service::DoGetTpmStatus(const brillo::SecureBlob& request,
                              DBusGMethodInvocation* context) {
   GetTpmStatusRequest request_pb;

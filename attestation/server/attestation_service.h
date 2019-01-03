@@ -84,6 +84,9 @@ class AttestationService : public AttestationInterface {
 
   // AttestationInterface methods.
   bool Initialize() override;
+  void GetEnrollmentPreparations(
+      const GetEnrollmentPreparationsRequest& request,
+      const GetEnrollmentPreparationsCallback& callback) override;
   void CreateGoogleAttestedKey(
       const CreateGoogleAttestedKeyRequest& request,
       const CreateGoogleAttestedKeyCallback& callback) override;
@@ -229,6 +232,11 @@ class AttestationService : public AttestationInterface {
   // Shutdown to be run on the worker thread.
   void ShutdownTask();
 
+  // A blocking implementation of GetEnrollmentPreparations.
+  void GetEnrollmentPreparationsTask(
+      const GetEnrollmentPreparationsRequest& request,
+      const std::shared_ptr<GetEnrollmentPreparationsReply>& result);
+
   // A blocking implementation of CreateGoogleAttestedKey appropriate to run on
   // the worker thread.
   void CreateGoogleAttestedKeyTask(
@@ -333,11 +341,15 @@ class AttestationService : public AttestationInterface {
     const std::shared_ptr<GetEnrollmentIdReply>& result);
 
   // Returns true if PrepareForEnrollment() initialization step has been
-  // successfully done.
+  // successfully done for any Google Attestation CA.
   // Note that while in normal circumstance, this returning true means that all
   // info required for enrollment is available, but that's not always the case,
   // see the implementation for detail.
   bool IsPreparedForEnrollment();
+
+  // Returns true if PrepareForEnrollment() initialization step has been
+  // successfully done for the given Google Attestation CA.
+  bool IsPreparedForEnrollmentWithACA(ACAType aca_type);
 
   // Returns true iff enrollment with the default or test Google Attestation CA
   // has been completed.

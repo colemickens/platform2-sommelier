@@ -139,6 +139,10 @@ gboolean cryptohome_tpm_clear_stored_password(Cryptohome* self,
 gboolean cryptohome_tpm_is_attestation_prepared(Cryptohome* self,
                                                 gboolean* OUT_prepared,
                                                 GError** error);
+gboolean cryptohome_tpm_attestation_get_enrollment_preparations_ex(
+    Cryptohome* self,
+    GArray* request,
+    DBusGMethodInvocation* resp);
 gboolean cryptohome_tpm_verify_attestation_data(Cryptohome* self,
                                                 gboolean is_cros_core,
                                                 gboolean* OUT_verified,

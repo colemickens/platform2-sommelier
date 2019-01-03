@@ -34,6 +34,7 @@ constexpr char kCreateCertifiableKey[] = "CreateCertifiableKey";
 constexpr char kDecrypt[] = "Decrypt";
 constexpr char kSign[] = "Sign";
 constexpr char kRegisterKeyWithChapsToken[] = "RegisterKeyWithChapsToken";
+constexpr char kGetEnrollmentPreparations[] = "GetEnrollmentPreparations";
 constexpr char kGetStatus[] = "GetStatus";
 constexpr char kVerify[] = "Verify";
 constexpr char kCreateEnrollRequest[] = "CreateEnrollRequest";

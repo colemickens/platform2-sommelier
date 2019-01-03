@@ -30,8 +30,12 @@ class MockAttestation : public Attestation {
                                 const brillo::SecureBlob&,
                                 bool));
   MOCK_METHOD0(IsPreparedForEnrollment, bool());
+  MOCK_METHOD2(GetEnrollmentPreparations, bool(const brillo::SecureBlob&,
+                                               brillo::SecureBlob));
   MOCK_METHOD0(IsEnrolled, bool());
   MOCK_METHOD1(IsFirstIdentityEnrolledWith, bool(Attestation::PCAType));
+  MOCK_METHOD2(GetIdentityCertificates, bool(const brillo::SecureBlob&,
+                                                  brillo::SecureBlob));
   MOCK_METHOD0(PrepareForEnrollment, void());
   MOCK_METHOD0(CacheEndorsementData, void());
   MOCK_METHOD0(PrepareForEnrollmentAsync, void());

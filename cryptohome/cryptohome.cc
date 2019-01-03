@@ -113,6 +113,7 @@ namespace switches {
                                    "tpm_verify_attestation",
                                    "tpm_verify_ek",
                                    "tpm_attestation_status",
+                                   "tpm_attestation_more_status",
                                    "tpm_attestation_start_enroll",
                                    "tpm_attestation_finish_enroll",
                                    "tpm_attestation_start_cert_request",
@@ -172,6 +173,7 @@ namespace switches {
     ACTION_TPM_VERIFY_ATTESTATION,
     ACTION_TPM_VERIFY_EK,
     ACTION_TPM_ATTESTATION_STATUS,
+    ACTION_TPM_ATTESTATION_MORE_STATUS,
     ACTION_TPM_ATTESTATION_START_ENROLL,
     ACTION_TPM_ATTESTATION_FINISH_ENROLL,
     ACTION_TPM_ATTESTATION_START_CERTREQ,
@@ -420,14 +422,17 @@ bool BuildAuthorization(base::CommandLine* cl,
   return true;
 }
 
-void ParseBaseReply(GArray* reply_ary, cryptohome::BaseReply* reply) {
+void ParseBaseReply(GArray* reply_ary,
+                    cryptohome::BaseReply* reply,
+                    bool print_reply) {
   if (!reply)
     return;
   if (!reply->ParseFromArray(reply_ary->data, reply_ary->len)) {
     printf("Failed to parse reply.\n");
     exit(1);
   }
-  reply->PrintDebugString();
+  if (print_reply)
+    reply->PrintDebugString();
 }
 
 class ClientLoop {
@@ -529,7 +534,7 @@ class ClientLoop {
       printf("Call error: %s\n", error->message);
       exit(1);
     }
-    ParseBaseReply(reply_ary, &reply_);
+    ParseBaseReply(reply_ary, &reply_, true /* print_reply */);
     g_main_loop_quit(loop_);
   }
 
@@ -626,7 +631,8 @@ bool MakeProtoDBusCall(const std::string& name,
                        base::CommandLine* cl,
                        brillo::dbus::Proxy* proxy,
                        const google::protobuf::MessageLite& request,
-                       cryptohome::BaseReply* reply) {
+                       cryptohome::BaseReply* reply,
+                       bool print_reply) {
   brillo::glib::ScopedArray request_ary(GArrayFromProtoBuf(request));
   if (cl->HasSwitch(switches::kAsyncSwitch)) {
     ClientLoop loop;
@@ -651,7 +657,7 @@ bool MakeProtoDBusCall(const std::string& name,
       printf("Failed to call %s: %s\n", name.c_str(), error->message);
       return false;
     }
-    ParseBaseReply(reply_ary.get(), reply);
+    ParseBaseReply(reply_ary.get(), reply, print_reply);
   }
   if (reply->has_error()) {
     printf("%s error: %d\n", name.c_str(), reply->error());
@@ -659,6 +665,20 @@ bool MakeProtoDBusCall(const std::string& name,
   }
 
   return true;
+}
+
+std::string GetPCAName(int pca_type) {
+  switch (pca_type) {
+    case cryptohome::Attestation::kDefaultPCA:
+      return "the default PCA";
+    case cryptohome::Attestation::kTestPCA:
+      return "the test PCA";
+    default: {
+      std::ostringstream stream;
+      stream << "PCA " << pca_type;
+      return stream.str();
+    }
+  }
 }
 
 int main(int argc, char **argv) {
@@ -792,7 +812,7 @@ int main(int argc, char **argv) {
         printf("MountEx call failed: %s", error->message);
         return 1;
       }
-      ParseBaseReply(out_reply, &reply);
+      ParseBaseReply(out_reply, &reply, true /* print_reply */);
     }
     if (reply.has_error()) {
       printf("Mount failed.\n");
@@ -814,7 +834,7 @@ int main(int argc, char **argv) {
       return 1;
     }
 
-    ParseBaseReply(out_reply, &reply);
+    ParseBaseReply(out_reply, &reply, true /* print_reply */);
     if (reply.has_error()) {
       printf("Mount failed.\n");
       return reply.error();
@@ -867,7 +887,7 @@ int main(int argc, char **argv) {
         printf("RemoveKeyEx call failed: %s", error->message);
         return 1;
       }
-      ParseBaseReply(out_reply, &reply);
+      ParseBaseReply(out_reply, &reply, true /* print_reply */);
     }
     if (reply.has_error()) {
       printf("Key removal failed.\n");
@@ -926,7 +946,7 @@ int main(int argc, char **argv) {
         printf("GetKeyDataEx call failed: %s", error->message);
         return 1;
       }
-      ParseBaseReply(out_reply, &reply);
+      ParseBaseReply(out_reply, &reply, true /* print_reply */);
     }
     if (reply.has_error()) {
       printf("Key retrieval failed.\n");
@@ -976,7 +996,7 @@ int main(int argc, char **argv) {
         printf("ListKeysEx call failed: %s", error->message);
         return 1;
       }
-      ParseBaseReply(out_reply, &reply);
+      ParseBaseReply(out_reply, &reply, true /* print_reply */);
     }
     if (reply.has_error()) {
       printf("Failed to list keys.\n");
@@ -1037,7 +1057,7 @@ int main(int argc, char **argv) {
         printf("CheckKeyEx call failed: %s", error->message);
         return 1;
       }
-      ParseBaseReply(out_reply, &reply);
+      ParseBaseReply(out_reply, &reply, true /* print_reply */);
     }
     if (reply.has_error()) {
       printf("Key authentication failed.\n");
@@ -1088,7 +1108,7 @@ int main(int argc, char **argv) {
       printf("MigrateKeyEx call failed: %s", error->message);
       return 1;
     }
-    ParseBaseReply(out_reply, &reply);
+    ParseBaseReply(out_reply, &reply, true /* print_reply */);
     if (reply.has_error()) {
       printf("Key migration failed.\n");
       return reply.error();
@@ -1180,7 +1200,7 @@ int main(int argc, char **argv) {
         printf("AddKeyEx call failed: %s", error->message);
         return 1;
       }
-      ParseBaseReply(out_reply, &reply);
+      ParseBaseReply(out_reply, &reply, true /* print_reply */);
     }
     if (reply.has_error()) {
       printf("Key addition failed.\n");
@@ -1264,7 +1284,7 @@ int main(int argc, char **argv) {
         printf("Failed to call UpdateKeyEx!\n");
         return 1;
       }
-      ParseBaseReply(out_reply, &reply);
+      ParseBaseReply(out_reply, &reply, true /* print_reply */);
     }
     if (reply.has_error()) {
       printf("Key update failed.\n");
@@ -1300,7 +1320,7 @@ int main(int argc, char **argv) {
     }
 
     cryptohome::BaseReply reply;
-    ParseBaseReply(out_reply, &reply);
+    ParseBaseReply(out_reply, &reply, true /* print_reply */);
     if (reply.has_error()) {
       printf("Remove failed.\n");
       return 1;
@@ -1323,7 +1343,7 @@ int main(int argc, char **argv) {
     }
 
     cryptohome::BaseReply reply;
-    ParseBaseReply(out_reply, &reply);
+    ParseBaseReply(out_reply, &reply, true /* print_reply */);
     if (reply.has_error()) {
       printf("Unmount failed.\n");
       return 1;
@@ -1515,7 +1535,8 @@ int main(int argc, char **argv) {
     if (!MakeProtoDBusCall(cryptohome::kCryptohomeGetTpmStatus,
                            DBUS_METHOD(get_tpm_status),
                            DBUS_METHOD(get_tpm_status_async),
-                           cl, &proxy, request, &reply)) {
+                           cl, &proxy, request, &reply,
+                           true /* print_reply */)) {
       return 1;
     }
     if (!reply.HasExtension(cryptohome::GetTpmStatusReply::reply)) {
@@ -1769,6 +1790,41 @@ int main(int argc, char **argv) {
     } else {
       printf("Attestation Prepared: %s\n", (result ? "true" : "false"));
     }
+    if (!org_chromium_CryptohomeInterface_tpm_is_attestation_enrolled(
+        proxy.gproxy(), &result, &brillo::Resetter(&error).lvalue())) {
+      printf("TpmIsAttestationEnrolled call failed: %s.\n", error->message);
+    } else {
+      printf("Attestation Enrolled: %s\n", (result ? "true" : "false"));
+    }
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_TPM_ATTESTATION_MORE_STATUS],
+      action.c_str())) {
+    cryptohome::AttestationGetEnrollmentPreparationsRequest request;
+    cryptohome::BaseReply reply;
+    if (!MakeProtoDBusCall(
+        cryptohome::kCryptohomeTpmAttestationGetEnrollmentPreparationsEx,
+        DBUS_METHOD(tpm_attestation_get_enrollment_preparations_ex),
+        DBUS_METHOD(tpm_attestation_get_enrollment_preparations_ex_async),
+        cl, &proxy, request, &reply, false /* print_reply */)) {
+      printf("TpmAttestationGetEnrollmentPreparationsEx call failed.\n");
+    } else if (!reply.HasExtension(
+        cryptohome::AttestationGetEnrollmentPreparationsReply::reply)) {
+      printf("AttestationGetEnrollmentPreparationsReply missing.\n");
+    } else {
+      cryptohome::AttestationGetEnrollmentPreparationsReply* extension =
+        reply.MutableExtension(
+            cryptohome::AttestationGetEnrollmentPreparationsReply::reply);
+      printf("Attestation Prepared: %s\n",
+             (extension->enrollment_preparations().size() ? "true" : "false"));
+      auto map = extension->enrollment_preparations();
+      for (auto it = map.cbegin(), end = map.cend(); it != end; ++it) {
+        printf("    Prepared for %s: %s\n", GetPCAName(it->first).c_str(),
+               (it->second ? "true" : "false"));
+      }
+    }
+    // TODO(crbug.com/922062): Replace with a call listing all identity certs.
+    brillo::glib::ScopedError error;
+    gboolean result = FALSE;
     if (!org_chromium_CryptohomeInterface_tpm_is_attestation_enrolled(
         proxy.gproxy(), &result, &brillo::Resetter(&error).lvalue())) {
       printf("TpmIsAttestationEnrolled call failed: %s.\n", error->message);
@@ -2162,14 +2218,15 @@ int main(int argc, char **argv) {
       if (!MakeProtoDBusCall("GetEndorsementInfo",
                              DBUS_METHOD(get_endorsement_info),
                              DBUS_METHOD(get_endorsement_info_async),
-                             cl, &proxy, request, &reply)) {
+                             cl, &proxy, request, &reply,
+                             true /* print_reply */)) {
         return 1;
       }
       if (!reply.HasExtension(cryptohome::GetEndorsementInfoReply::reply)) {
         printf("GetEndorsementInfoReply missing.\n");
         return 1;
       }
-      printf("GetEndorsmentInfo (protobuf) success.\n");
+      printf("GetEndorsementInfo (protobuf) success.\n");
     } else {
       brillo::glib::ScopedError error;
       gboolean success = FALSE;
@@ -2262,7 +2319,8 @@ int main(int argc, char **argv) {
     if (!MakeProtoDBusCall("SignBootLockbox",
                            DBUS_METHOD(sign_boot_lockbox),
                            DBUS_METHOD(sign_boot_lockbox_async),
-                           cl, &proxy, request, &reply)) {
+                           cl, &proxy, request, &reply,
+                           true /* print_reply */)) {
       return 1;
     }
 
@@ -2297,7 +2355,8 @@ int main(int argc, char **argv) {
     if (!MakeProtoDBusCall("VerifyBootLockbox",
                            DBUS_METHOD(verify_boot_lockbox),
                            DBUS_METHOD(verify_boot_lockbox_async),
-                           cl, &proxy, request, &reply)) {
+                           cl, &proxy, request, &reply,
+                           true /* print_reply */)) {
       return 1;
     }
     printf("VerifyBootLockbox success.\n");
@@ -2308,7 +2367,8 @@ int main(int argc, char **argv) {
     if (!MakeProtoDBusCall("FinalizeBootLockbox",
                            DBUS_METHOD(finalize_boot_lockbox),
                            DBUS_METHOD(finalize_boot_lockbox_async),
-                           cl, &proxy, request, &reply)) {
+                           cl, &proxy, request, &reply,
+                           true /* print_reply */)) {
       return 1;
     }
     printf("FinalizeBootLockbox success.\n");
@@ -2326,7 +2386,8 @@ int main(int argc, char **argv) {
     if (!MakeProtoDBusCall("GetBootAttribute",
                            DBUS_METHOD(get_boot_attribute),
                            DBUS_METHOD(get_boot_attribute_async),
-                           cl, &proxy, request, &reply)) {
+                           cl, &proxy, request, &reply,
+                           true /* print_reply */)) {
       return 1;
     }
     if (!reply.HasExtension(cryptohome::GetBootAttributeReply::reply)) {
@@ -2356,7 +2417,8 @@ int main(int argc, char **argv) {
     if (!MakeProtoDBusCall("SetBootAttribute",
                            DBUS_METHOD(set_boot_attribute),
                            DBUS_METHOD(set_boot_attribute_async),
-                           cl, &proxy, request, &reply)) {
+                           cl, &proxy, request, &reply,
+                           true /* print_reply */)) {
       return 1;
     }
     printf("SetBootAttribute success.\n");
@@ -2367,7 +2429,8 @@ int main(int argc, char **argv) {
     if (!MakeProtoDBusCall("FlushAndSignBootAttributes",
                            DBUS_METHOD(flush_and_sign_boot_attributes),
                            DBUS_METHOD(flush_and_sign_boot_attributes_async),
-                           cl, &proxy, request, &reply)) {
+                           cl, &proxy, request, &reply,
+                           true /* print_reply */)) {
       return 1;
     }
     printf("FlushAndSignBootAttributes success.\n");
@@ -2379,7 +2442,8 @@ int main(int argc, char **argv) {
     if (!MakeProtoDBusCall("GetLoginStatus",
                            DBUS_METHOD(get_login_status),
                            DBUS_METHOD(get_login_status_async),
-                           cl, &proxy, request, &reply)) {
+                           cl, &proxy, request, &reply,
+                           true /* print_reply */)) {
       return 1;
     }
     if (!reply.HasExtension(cryptohome::GetLoginStatusReply::reply)) {
@@ -2395,7 +2459,8 @@ int main(int argc, char **argv) {
     if (!MakeProtoDBusCall("InitializeCastKey",
                            DBUS_METHOD(initialize_cast_key),
                            DBUS_METHOD(initialize_cast_key_async),
-                           cl, &proxy, request, &reply)) {
+                           cl, &proxy, request, &reply,
+                           true /* print_reply */)) {
       return 1;
     }
     printf("InitializeCastKey success.\n");
@@ -2408,7 +2473,8 @@ int main(int argc, char **argv) {
         cryptohome::kCryptohomeGetFirmwareManagementParameters,
         DBUS_METHOD(get_firmware_management_parameters),
         DBUS_METHOD(get_firmware_management_parameters_async),
-        cl, &proxy, request, &reply)) {
+        cl, &proxy, request, &reply,
+        true /* print_reply */)) {
       return 1;
     }
     if (!reply.HasExtension(
@@ -2463,7 +2529,7 @@ int main(int argc, char **argv) {
         cryptohome::kCryptohomeSetFirmwareManagementParameters,
         DBUS_METHOD(set_firmware_management_parameters),
         DBUS_METHOD(set_firmware_management_parameters_async),
-        cl, &proxy, request, &reply)) {
+        cl, &proxy, request, &reply, true /* print_reply */)) {
       return 1;
     }
     printf("SetFirmwareManagementParameters success.\n");
@@ -2478,7 +2544,7 @@ int main(int argc, char **argv) {
         cryptohome::kCryptohomeRemoveFirmwareManagementParameters,
         DBUS_METHOD(remove_firmware_management_parameters),
         DBUS_METHOD(remove_firmware_management_parameters_async),
-        cl, &proxy, request, &reply)) {
+        cl, &proxy, request, &reply, true /* print_reply */)) {
       return 1;
     }
     printf("RemoveFirmwareManagementParameters success.\n");
@@ -2564,7 +2630,7 @@ int main(int argc, char **argv) {
         cryptohome::kCryptohomeGetSupportedKeyPolicies,
         DBUS_METHOD(get_supported_key_policies),
         DBUS_METHOD(get_supported_key_policies_async),
-        cl, &proxy, request, &reply)) {
+        cl, &proxy, request, &reply, true /* print_reply */)) {
       return 1;
     }
     if (!reply.HasExtension(cryptohome::GetSupportedKeyPoliciesReply::reply)) {

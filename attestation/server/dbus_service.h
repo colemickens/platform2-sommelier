@@ -101,6 +101,12 @@ class DBusService {
           const RegisterKeyWithChapsTokenReply&>> response,
       const RegisterKeyWithChapsTokenRequest& request);
 
+  // Handles a GetEnrollmentPreparations D-Bus call.
+  void HandleGetEnrollmentPreparations(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          const GetEnrollmentPreparationsReply&>> response,
+      const GetEnrollmentPreparationsRequest& request);
+
   // Handles a GetStatus D-Bus call.
   void HandleGetStatus(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<

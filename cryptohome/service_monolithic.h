@@ -28,6 +28,9 @@ class ServiceMonolithic : public Service {
   void AttestationInitialize() override;
   void AttestationInitializeTpm() override;
   void AttestationInitializeTpmComplete() override;
+  bool AttestationGetEnrollmentPreparations(
+      const AttestationGetEnrollmentPreparationsRequest& request,
+      AttestationGetEnrollmentPreparationsReply* reply) override;
   void AttestationGetTpmStatus(GetTpmStatusReply* reply) override;
   bool AttestationGetDelegateCredentials(
       brillo::SecureBlob* blob,

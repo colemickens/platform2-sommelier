@@ -24,6 +24,9 @@ class ServiceDistributed : public Service {
   void AttestationInitialize() override;
   void AttestationInitializeTpm() override;
   void AttestationInitializeTpmComplete() override;
+  bool AttestationGetEnrollmentPreparations(
+      const AttestationGetEnrollmentPreparationsRequest& request,
+      AttestationGetEnrollmentPreparationsReply* reply) override;
   void AttestationGetTpmStatus(GetTpmStatusReply* reply) override;
   bool AttestationGetDelegateCredentials(
       brillo::SecureBlob* blob,
@@ -176,6 +179,16 @@ class ServiceDistributed : public Service {
   // Starts attestation_thread_ and initializes interface.
   bool PrepareInterface();
 
+  // Internal method to obtain enrollment preparations.
+  bool ObtainTpmAttestationEnrollmentPreparations(
+      const attestation::GetEnrollmentPreparationsRequest& request,
+      attestation::GetEnrollmentPreparationsReply* reply,
+      GError** error);
+
+  // Internal method to obtain the TPM status.
+  bool ObtainTpmStatus(attestation::GetStatusReply* reply,
+      GError** error);
+
   // Post a method on the attestation_thread_.
   template <typename MethodType>
   bool Post(const MethodType& method);
@@ -191,20 +204,19 @@ class ServiceDistributed : public Service {
                           ReplyProtoType* reply_proto);
 
   // A helper function which maps an integer to a valid ACAType.
-  static gboolean ConvertPCATypeToACAType(gint pca_type,
+  static gboolean ConvertIntegerToACAType(gint type,
                                           attestation::ACAType* aca_type,
                                           GError** error);
   // A helper function which maps an integer to a valid VAType.
-  static gboolean ConvertToVAType(gint type,
-                                  attestation::VAType* va_type,
-                                  GError** error);
-
+  static gboolean ConvertIntegerToVAType(gint type,
+                                         attestation::VAType* va_type,
+                                         GError** error);
   // Helper methods that fill GError where an error
   // is returned directly from the original handler.
   static void ReportErrorFromStatus(GError** error,
                                     attestation::AttestationStatus status);
   static void ReportSendFailure(GError** error);
-  static void ReportUnsupportedPCAType(GError** error, int pca_type);
+  static void ReportUnsupportedACAType(GError** error, int type);
   static void ReportUnsupportedVAType(GError** error, int type);
 
   // Callback called after receiving the ownership taken signal from tpm_manager

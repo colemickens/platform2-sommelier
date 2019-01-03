@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2018 The Android Open Source Project
+// Copyright (C) 2019 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -97,6 +97,14 @@ std::string GetProtoDebugStringWithIndent(
     const RegisterKeyWithChapsTokenReply& value,
     int indent_size);
 std::string GetProtoDebugString(const RegisterKeyWithChapsTokenReply& value);
+std::string GetProtoDebugStringWithIndent(
+    const GetEnrollmentPreparationsRequest& value,
+    int indent_size);
+std::string GetProtoDebugString(const GetEnrollmentPreparationsRequest& value);
+std::string GetProtoDebugStringWithIndent(
+    const GetEnrollmentPreparationsReply& value,
+    int indent_size);
+std::string GetProtoDebugString(const GetEnrollmentPreparationsReply& value);
 std::string GetProtoDebugStringWithIndent(const GetStatusRequest& value,
                                           int indent_size);
 std::string GetProtoDebugString(const GetStatusRequest& value);

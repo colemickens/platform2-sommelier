@@ -377,6 +377,11 @@ class Service : public brillo::dbus::AbstractDbusService,
   virtual void AttestationInitializeTpm() = 0;
   // Called from Service::OwnershipCallback().
   virtual void AttestationInitializeTpmComplete() = 0;
+  // Called to fill attestation preparations. Returns |true| in case of
+  // success, |false| otherwise.
+  virtual bool AttestationGetEnrollmentPreparations(
+      const AttestationGetEnrollmentPreparationsRequest& request,
+      AttestationGetEnrollmentPreparationsReply* reply) = 0;
   // Called from Service::DoGetTpmStatus to fill attestation-related fields.
   virtual void AttestationGetTpmStatus(GetTpmStatusReply* reply) = 0;
   // Called from Service::ResetDictionaryAttackMitigation()
@@ -560,9 +565,9 @@ class Service : public brillo::dbus::AbstractDbusService,
   virtual gboolean InstallAttributesIsSecure(gboolean* OUT_secure,
                                              GError** error);
   virtual gboolean InstallAttributesIsInvalid(gboolean* OUT_invalid,
-                                              GError** error);
-  virtual gboolean InstallAttributesIsFirstInstall(gboolean* OUT_first_install,
-                                                   GError** error);
+                                             GError** error);
+virtual gboolean InstallAttributesIsFirstInstall(gboolean* OUT_first_install,
+                                                 GError** error);
 
   // Runs on the mount thread.
   virtual void DoSignBootLockbox(const brillo::Blob& request,
@@ -600,6 +605,13 @@ class Service : public brillo::dbus::AbstractDbusService,
                                 DBusGMethodInvocation* context);
   virtual gboolean GetLoginStatus(const GArray* request,
                                   DBusGMethodInvocation* context);
+  // Runs on the mount thread.
+  virtual void DoTpmAttestationGetEnrollmentPreparationsEx(
+      const brillo::Blob& request,
+      DBusGMethodInvocation* context);
+  virtual gboolean TpmAttestationGetEnrollmentPreparationsEx(
+      const GArray* request,
+      DBusGMethodInvocation* context);
   // Runs on the mount thread.
   virtual void DoGetTpmStatus(const brillo::SecureBlob& request,
                               DBusGMethodInvocation* context);

@@ -100,6 +100,14 @@ class AttestationInterface {
       const RegisterKeyWithChapsTokenRequest& request,
       const RegisterKeyWithChapsTokenCallback& callback) = 0;
 
+  // Processes a GetEnrollmentPreparationsRequest and responds with a
+  // GetEnrollmentPreparationsReply.
+  using GetEnrollmentPreparationsCallback =
+     base::RepeatingCallback<void(const GetEnrollmentPreparationsReply&)>;
+  virtual void GetEnrollmentPreparations(
+      const GetEnrollmentPreparationsRequest& request,
+      const GetEnrollmentPreparationsCallback& callback) = 0;
+
   // Processes a GetStatusRequest and responds with a
   // GetStatusReply.
   using GetStatusCallback =

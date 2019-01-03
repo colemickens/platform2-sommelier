@@ -202,6 +202,17 @@ message RegisterKeyWithChapsTokenReply {
   optional AttestationStatus status = 1;
 }
 
+// Message to check whether attestation is prepared for enrollment or not.
+message GetEnrollmentPreparationsRequest {
+  optional ACAType aca_type = 1;
+}
+
+// Reply to a check of whether attestation is prepared for enrollment or not.
+message GetEnrollmentPreparationsReply {
+  optional AttestationStatus status = 1;
+  map<int32, bool> enrollment_preparations = 2;
+}
+
 message GetStatusRequest {
   // Get extended status (see GetStatusReply below).
   optional bool extended_status = 1;
@@ -221,9 +232,9 @@ message GetStatusReply {
   }
 
   optional AttestationStatus status = 1;
-  // Is prepared for enrollment?
+  // Is prepared for enrollment? True if prepared for *any* CA.
   optional bool prepared_for_enrollment = 2;
-  // Is enrolled (AIK certificate created)?
+  // Is enrolled (AIK certificate created)? True if enrolled with *any* CA.
   optional bool enrolled = 3;
   // Is in verified boot mode (according to PCR0 quote)?
   // [Only included in reply if extended_status is set]
@@ -232,6 +243,8 @@ message GetStatusReply {
   repeated Identity identities = 5;
   // List of identity certificates.
   map<int32, IdentityCertificate> identity_certificates = 6;
+  // Map of CA types to whether we are prepared for enrollment with that CA.
+  map<int32, bool> enrollment_preparations = 7;
 }
 
 // Verify attestation data.

@@ -1039,6 +1039,11 @@ bool AttestationService::IsPreparedForEnrollment() {
              TEST_ACA;
 }
 
+bool AttestationService::IsPreparedForEnrollmentWithACA(ACAType aca_type) {
+  const auto& database_pb = database_->GetProtobuf();
+  return database_pb.credentials().encrypted_endorsement_credentials().count(
+      aca_type);
+}
 bool AttestationService::IsEnrolled() {
   return IsEnrolledWithACA(DEFAULT_ACA) || IsEnrolledWithACA(TEST_ACA);
 }
@@ -1111,14 +1116,17 @@ bool AttestationService::HasIdentityCertificate(int identity,
 bool AttestationService::CreateEnrollRequestInternal(ACAType aca_type,
     std::string* enroll_request) {
   const int identity = kFirstIdentity;
-  if (!IsPreparedForEnrollment()) {
-    LOG(ERROR) << __func__ << ": Enrollment is not possible, attestation data "
-               << "does not exist.";
+  if (!IsPreparedForEnrollmentWithACA(aca_type)) {
+    LOG(ERROR) << __func__ << ": Enrollment with "
+               << GetACAName(aca_type)
+               << " is not possible, attestation data does not exist.";
     return false;
   }
   const auto& database_pb = database_->GetProtobuf();
   if (database_pb.identities().size() < identity) {
-    LOG(ERROR) << __func__ << ": Enrollment is not possible, identity "
+    LOG(ERROR) << __func__ << ": Enrollment with "
+               << GetACAName(aca_type)
+               << " is not possible, identity "
                << identity << " does not exist.";
     return false;
   }
@@ -1923,6 +1931,31 @@ bool AttestationService::ActivateAttestationKeyInternal(
   return true;
 }
 
+void AttestationService::GetEnrollmentPreparations(
+    const GetEnrollmentPreparationsRequest& request,
+    const GetEnrollmentPreparationsCallback& callback) {
+  auto result = std::make_shared<GetEnrollmentPreparationsReply>();
+  base::Closure task =
+      base::Bind(&AttestationService::GetEnrollmentPreparationsTask,
+                 base::Unretained(this), request, result);
+  base::Closure reply = base::Bind(
+      &AttestationService::TaskRelayCallback<GetEnrollmentPreparationsReply>,
+      GetWeakPtr(), callback, result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+}
+
+void AttestationService::GetEnrollmentPreparationsTask(
+    const GetEnrollmentPreparationsRequest& request,
+    const std::shared_ptr<GetEnrollmentPreparationsReply>& result) {
+  for (int aca = kDefaultACA; aca < kMaxACATypeInternal; ++aca) {
+    ACAType aca_type = GetACAType(static_cast<ACATypeInternal>(aca));
+    if (!request.has_aca_type() || aca_type == request.aca_type()) {
+      (*result->mutable_enrollment_preparations())[aca_type] =
+            IsPreparedForEnrollmentWithACA(aca_type);
+    }
+  }
+}
+
 void AttestationService::GetStatus(
     const GetStatusRequest& request,
     const GetStatusCallback& callback) {
@@ -1966,6 +1999,11 @@ void AttestationService::GetStatusTask(
     result->mutable_identity_certificates()->insert(
         google::protobuf::Map<int, GetStatusReply::IdentityCertificate>::
             value_type(it->first, identity_certificate));
+  }
+  for (int aca = kDefaultACA; aca < kMaxACATypeInternal; ++aca) {
+    ACAType aca_type = GetACAType(static_cast<ACATypeInternal>(aca));
+    (*result->mutable_enrollment_preparations())[aca_type] =
+        IsPreparedForEnrollmentWithACA(aca_type);
   }
   if (request.extended_status()) {
     result->set_verified_boot(IsVerifiedMode());
