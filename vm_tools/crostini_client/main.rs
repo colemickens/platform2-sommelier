@@ -8,6 +8,7 @@ extern crate protobuf;
 
 pub mod backends;
 pub mod frontends;
+pub mod lsb_release;
 pub mod proto;
 pub mod unsafe_misc;
 
