@@ -1,9 +1,32 @@
 # Trunks
 
-The Trunks TPM Library (TTL) is a set of types and functions used to interface
-with a Trusted Platform Module.  It is designed to be light, and does not
-comply with the TSS specification.  It is usable in firmware as well as in
-user-level code.
+Trunks is a daemon and library for interfacing with a Trusted Platform Module
+(TPM).
+
+Be aware that trunks does not comply with the Trusted Computing Group (TCG)
+Software Stack (TSS) specification.
+
+## Components
+
+### trunksd
+
+A daemon that centralizes access by other system daemons to a single shared TPM.
+Other daemons send D-Bus requests to trunksd with TPM commands, trunksd sends
+them through /dev/tpm0 (which can only be opened by a single process) and
+responds over D-Bus with the TPM response.
+
+Trunksd also performs resource management for the TPM, loading and unloading
+objects transparently for the calling daemons.
+
+### libtrunks
+
+The calling-daemon side shared library that provides a C++ API for serializing
+and deserializing various TPM commands and performing higher-level operations.
+
+It is possible to use libtrunks independent of trunksd by providing a custom
+CommandTransceiver to perform communication directly with a TPM, but the default
+scenario is when libtrunks and trunksd are used together and communicate over a
+D-Bus based transceiver.
 
 ## TPM Specification
 
