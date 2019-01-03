@@ -41,7 +41,9 @@ class CameraAlgorithmBridgeImpl : public CameraAlgorithmBridge {
 
   // Post a request for the camera algorithm library to process the
   // given buffer.
-  void Request(const std::vector<uint8_t>& req_header, int32_t buffer_handle);
+  void Request(uint32_t req_id,
+               const std::vector<uint8_t>& req_header,
+               int32_t buffer_handle);
 
   // Deregisters buffers to the camera algorithm library.
   void DeregisterBuffers(const std::vector<int32_t>& buffer_handles);
@@ -60,7 +62,8 @@ class CameraAlgorithmBridgeImpl : public CameraAlgorithmBridge {
   void RegisterBufferOnIpcThread(int buffer_fd,
                                  base::Callback<void(int32_t)> cb);
 
-  void RequestOnIpcThread(std::vector<uint8_t> req_header,
+  void RequestOnIpcThread(uint32_t req_id,
+                          std::vector<uint8_t> req_header,
                           int32_t buffer_handle);
 
   void DeregisterBuffersOnIpcThread(std::vector<int32_t> buffer_handles);

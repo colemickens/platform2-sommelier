@@ -60,7 +60,8 @@ class CameraAlgorithmImpl {
     return handle;
   }
 
-  void Request(const uint8_t req_header[],
+  void Request(uint32_t req_id,
+               const uint8_t req_header[],
                uint32_t size,
                int32_t buffer_handle) {
     uint32_t status = 0;
@@ -81,8 +82,9 @@ class CameraAlgorithmImpl {
         status = -EINVAL;
     }
     thread_.task_runner()->PostTask(
-        FROM_HERE, base::Bind(&CameraAlgorithmImpl::ReturnCallback,
-                              base::Unretained(this), status, buffer_handle));
+        FROM_HERE,
+        base::Bind(&CameraAlgorithmImpl::ReturnCallback, base::Unretained(this),
+                   req_id, status, buffer_handle));
   }
 
   void DeregisterBuffers(const int32_t buffer_handles[], uint32_t size) {
@@ -105,8 +107,9 @@ class CameraAlgorithmImpl {
     thread_.Start();
   }
 
-  void ReturnCallback(uint32_t status, int32_t buffer_handle) {
-    (*callback_ops_->return_callback)(callback_ops_, status, buffer_handle);
+  void ReturnCallback(uint32_t req_id, uint32_t status, int32_t buffer_handle) {
+    (*callback_ops_->return_callback)(callback_ops_, req_id, status,
+                                      buffer_handle);
   }
 
   base::Thread thread_;
@@ -134,10 +137,12 @@ static int32_t RegisterBuffer(int32_t buffer_fd) {
   return CameraAlgorithmImpl::GetInstance()->RegisterBuffer(buffer_fd);
 }
 
-static void Request(const uint8_t req_header[],
+static void Request(uint32_t req_id,
+                    const uint8_t req_header[],
                     uint32_t size,
                     int32_t buffer_handle) {
-  CameraAlgorithmImpl::GetInstance()->Request(req_header, size, buffer_handle);
+  CameraAlgorithmImpl::GetInstance()->Request(req_id, req_header, size,
+                                              buffer_handle);
 }
 
 static void DeregisterBuffers(const int32_t buffer_handles[], uint32_t size) {

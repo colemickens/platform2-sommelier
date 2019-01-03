@@ -26,6 +26,7 @@ typedef enum camera_algorithm_error_msg_code {
 
 typedef struct camera_algorithm_callback_ops {
   void (*return_callback)(const struct camera_algorithm_callback_ops* callback,
+                          uint32_t req_id,
                           uint32_t status,
                           int32_t buffer_handle);
   void (*notify)(const struct camera_algorithm_callback_ops* callback,
@@ -62,13 +63,16 @@ typedef struct {
   // buffer handle.
   //
   // Args:
+  //    |req_id|: The ID that uniquely identifies this request and needs to be
+  //      sent back in camera_algorithm_callback_ops_t.return_callback().
   //    |req_header|: The request header indicating request details. The
   //      interpretation depends on the HAL implementation. This is only valid
   //      during the function call and is invalidated after the function
   //      returns.
   //    |size|: Size of request header.
   //    |buffer_handle|: Handle of the buffer to process.
-  void (*request)(const uint8_t req_header[],
+  void (*request)(uint32_t req_id,
+                  const uint8_t req_header[],
                   uint32_t size,
                   int32_t buffer_handle);
 

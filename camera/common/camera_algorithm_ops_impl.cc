@@ -106,7 +106,8 @@ void CameraAlgorithmOpsImpl::RegisterBuffer(
   VLOGF_EXIT();
 }
 
-void CameraAlgorithmOpsImpl::Request(const std::vector<uint8_t>& req_header,
+void CameraAlgorithmOpsImpl::Request(uint32_t req_id,
+                                     const std::vector<uint8_t>& req_header,
                                      int32_t buffer_handle) {
   DCHECK(cam_algo_);
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
@@ -117,7 +118,7 @@ void CameraAlgorithmOpsImpl::Request(const std::vector<uint8_t>& req_header,
   }
   // TODO(b/37434548): This can be removed after libchrome uprev.
   const std::vector<uint8_t>& header = req_header;
-  cam_algo_->request(header.data(), header.size(), buffer_handle);
+  cam_algo_->request(req_id, header.data(), header.size(), buffer_handle);
   VLOGF_EXIT();
 }
 
@@ -135,6 +136,7 @@ void CameraAlgorithmOpsImpl::DeregisterBuffers(
 // static
 void CameraAlgorithmOpsImpl::ReturnCallbackForwarder(
     const camera_algorithm_callback_ops_t* callback_ops,
+    uint32_t req_id,
     uint32_t status,
     int32_t buffer_handle) {
   VLOGF_ENTER();
@@ -147,17 +149,18 @@ void CameraAlgorithmOpsImpl::ReturnCallbackForwarder(
   singleton_->ipc_task_runner_->PostTask(
       FROM_HERE,
       base::Bind(&CameraAlgorithmOpsImpl::ReturnCallbackOnIPCThread,
-                 base::Unretained(singleton_), status, buffer_handle));
+                 base::Unretained(singleton_), req_id, status, buffer_handle));
 }
 
-void CameraAlgorithmOpsImpl::ReturnCallbackOnIPCThread(uint32_t status,
+void CameraAlgorithmOpsImpl::ReturnCallbackOnIPCThread(uint32_t req_id,
+                                                       uint32_t status,
                                                        int32_t buffer_handle) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   VLOGF_ENTER();
   if (!cb_ptr_.is_bound()) {
     LOGF(WARNING) << "Callback is not bound. IPC broken?";
   } else {
-    cb_ptr_->Return(status, buffer_handle);
+    cb_ptr_->Return(req_id, status, buffer_handle);
   }
   VLOGF_EXIT();
 }

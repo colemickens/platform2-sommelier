@@ -108,12 +108,14 @@ int32_t CameraAlgorithmBridgeImpl::RegisterBuffer(int buffer_fd) {
   return future->Get();
 }
 
-void CameraAlgorithmBridgeImpl::Request(const std::vector<uint8_t>& req_header,
+void CameraAlgorithmBridgeImpl::Request(uint32_t req_id,
+                                        const std::vector<uint8_t>& req_header,
                                         int32_t buffer_handle) {
   VLOGF_ENTER();
   ipc_thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&CameraAlgorithmBridgeImpl::RequestOnIpcThread,
-                            base::Unretained(this), req_header, buffer_handle));
+      FROM_HERE,
+      base::Bind(&CameraAlgorithmBridgeImpl::RequestOnIpcThread,
+                 base::Unretained(this), req_id, req_header, buffer_handle));
   VLOGF_EXIT();
 }
 
@@ -208,14 +210,14 @@ void CameraAlgorithmBridgeImpl::RegisterBufferOnIpcThread(
 }
 
 void CameraAlgorithmBridgeImpl::RequestOnIpcThread(
-    std::vector<uint8_t> req_header, int32_t buffer_handle) {
+    uint32_t req_id, std::vector<uint8_t> req_header, int32_t buffer_handle) {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
   VLOGF_ENTER();
   if (!interface_ptr_.is_bound()) {
     LOGF(ERROR) << "Interface is not bound probably because IPC is broken";
     return;
   }
-  interface_ptr_->Request(std::move(req_header), buffer_handle);
+  interface_ptr_->Request(req_id, std::move(req_header), buffer_handle);
   VLOGF_EXIT();
 }
 

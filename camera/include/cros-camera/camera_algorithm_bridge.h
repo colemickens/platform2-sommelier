@@ -76,10 +76,13 @@ class CROS_CAMERA_EXPORT CameraAlgorithmBridge {
   // handle.
   //
   // Args:
+  //    |req_id|: The ID that uniquely identifies this request and needs to be
+  //      sent back in camera_algorithm_callback_ops_t.return_callback().
   //    |req_header|: The request header indicating request details. The
   //      interpretation depends on the HAL implementation.
   //    |buffer_handle|: Handle of the buffer to process.
-  virtual void Request(const std::vector<uint8_t>& req_header,
+  virtual void Request(uint32_t req_id,
+                       const std::vector<uint8_t>& req_header,
                        int32_t buffer_handle) = 0;
 
   // This method deregisters buffers to the camera algorithm library. The camera

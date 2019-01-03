@@ -29,7 +29,7 @@ class CameraAlgorithmCallbackOpsImpl
 
   // Implementation of mojom::CameraAlgorithmCallbackOps::Return interface. It
   // is expected to be called on |CameraAlgorithmBridgeImpl::ipc_thread_|.
-  void Return(uint32_t status, int32_t buffer_handle) override;
+  void Return(uint32_t req_id, uint32_t status, int32_t buffer_handle) override;
 
   // Create the local proxy of remote CameraAlgorithmCallbackOps interface
   // implementation. It is expected to be called on

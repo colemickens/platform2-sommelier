@@ -5,7 +5,7 @@
 #include <semaphore.h>
 
 #include <list>
-#include <unordered_set>
+#include <unordered_map>
 
 #include <base/at_exit.h>
 #include <base/bind.h>
@@ -27,7 +27,7 @@ class CameraAlgorithmBridgeFixture : public testing::Test,
  public:
   const size_t kShmBufferSize = 2048;
 
-  CameraAlgorithmBridgeFixture() {
+  CameraAlgorithmBridgeFixture() : req_id_(0) {
     CameraAlgorithmBridgeFixture::return_callback =
         CameraAlgorithmBridgeFixture::ReturnCallbackForwarder;
     bridge_ = cros::CameraAlgorithmBridge::CreateInstance();
@@ -40,40 +40,55 @@ class CameraAlgorithmBridgeFixture : public testing::Test,
 
   ~CameraAlgorithmBridgeFixture() { sem_destroy(&return_sem_); }
 
+  void Request(const std::vector<uint8_t>& req_header, int32_t buffer_handle) {
+    {
+      base::AutoLock l(request_map_lock_);
+      request_map_[req_id_] = buffer_handle;
+    }
+    bridge_->Request(req_id_++, req_header, buffer_handle);
+  }
+
  protected:
   static void ReturnCallbackForwarder(
       const camera_algorithm_callback_ops_t* callback_ops,
+      uint32_t req_id,
       uint32_t status,
       int32_t buffer_handle) {
     if (callback_ops) {
       auto s = const_cast<CameraAlgorithmBridgeFixture*>(
           static_cast<const CameraAlgorithmBridgeFixture*>(callback_ops));
-      s->ReturnCallback(status, buffer_handle);
+      s->ReturnCallback(req_id, status, buffer_handle);
     }
   }
 
-  virtual void ReturnCallback(uint32_t status, int32_t buffer_handle) {
-    base::AutoLock l(request_set_lock_);
-    if (request_set_.find(buffer_handle) == request_set_.end()) {
-      ADD_FAILURE() << "Invalid handle received from the return callback";
+  virtual void ReturnCallback(uint32_t req_id,
+                              uint32_t status,
+                              int32_t buffer_handle) {
+    base::AutoLock l(request_map_lock_);
+    if (request_map_.find(req_id) == request_map_.end() ||
+        request_map_[req_id] != buffer_handle) {
+      ADD_FAILURE()
+          << "Invalid request id or handle received from the return callback";
       return;
     }
     status_list_.push_back(status);
-    request_set_.erase(buffer_handle);
+    request_map_.erase(req_id);
     sem_post(&return_sem_);
   }
 
   std::unique_ptr<cros::CameraAlgorithmBridge> bridge_;
-
-  base::Lock request_set_lock_;
-
-  std::unordered_set<int32_t> request_set_;
 
   std::list<int32_t> status_list_;
 
   sem_t return_sem_;
 
  private:
+  uint32_t req_id_;
+
+  base::Lock request_map_lock_;
+
+  std::unordered_map<uint32_t, int32_t> request_map_;
+
   DISALLOW_COPY_AND_ASSIGN(CameraAlgorithmBridgeFixture);
 };
 
@@ -84,11 +99,7 @@ TEST_F(CameraAlgorithmBridgeFixture, BasicOperation) {
   int32_t handle = bridge_->RegisterBuffer(shm.handle().fd);
   ASSERT_LE(0, handle) << "Handle should be of positive value";
   std::vector<uint8_t> req_header(1, REQUEST_TEST_COMMAND_NORMAL);
-  {
-    base::AutoLock l(request_set_lock_);
-    request_set_.insert(handle);
-  }
-  bridge_->Request(req_header, handle);
+  Request(req_header, handle);
   struct timespec timeout = {};
   clock_gettime(CLOCK_REALTIME, &timeout);
   timeout.tv_sec += 1;
@@ -108,13 +119,8 @@ TEST_F(CameraAlgorithmBridgeFixture, InvalidFdOrHandle) {
   handle = bridge_->RegisterBuffer(shm.handle().fd);
   ASSERT_LE(0, handle) << "Handle should be of positive value";
   std::vector<uint8_t> req_header(1, REQUEST_TEST_COMMAND_NORMAL);
-  {
-    base::AutoLock l(request_set_lock_);
-    request_set_.insert(handle - 1);
-    request_set_.insert(handle + 1);
-  }
-  bridge_->Request(req_header, handle - 1);
-  bridge_->Request(req_header, handle + 1);
+  Request(req_header, handle - 1);
+  Request(req_header, handle + 1);
   struct timespec timeout = {};
   clock_gettime(CLOCK_REALTIME, &timeout);
   timeout.tv_sec += 1;
@@ -146,11 +152,7 @@ TEST_F(CameraAlgorithmBridgeFixture, MultiRequests) {
   }
   for (const auto handle : handles) {
     std::vector<uint8_t> req_header(1, REQUEST_TEST_COMMAND_NORMAL);
-    {
-      base::AutoLock l(request_set_lock_);
-      request_set_.insert(handle);
-    }
-    bridge_->Request(req_header, handle);
+    Request(req_header, handle);
   }
   struct timespec timeout = {};
   clock_gettime(CLOCK_REALTIME, &timeout);
@@ -167,7 +169,7 @@ TEST_F(CameraAlgorithmBridgeFixture, MultiRequests) {
 TEST_F(CameraAlgorithmBridgeFixture, DeadLockRecovery) {
   // Create a dead lock in the algorithm.
   std::vector<uint8_t> req_header(1, REQUEST_TEST_COMMAND_DEAD_LOCK);
-  bridge_->Request(req_header, -1);
+  Request(req_header, -1);
   struct timespec timeout = {};
   clock_gettime(CLOCK_REALTIME, &timeout);
   timeout.tv_sec += 1;
@@ -182,11 +184,7 @@ TEST_F(CameraAlgorithmBridgeFixture, DeadLockRecovery) {
   int32_t handle = bridge_->RegisterBuffer(shm.handle().fd);
   ASSERT_LE(0, handle) << "Handle should be of positive value";
   req_header = std::vector<uint8_t>(1, REQUEST_TEST_COMMAND_NORMAL);
-  {
-    base::AutoLock l(request_set_lock_);
-    request_set_.insert(handle);
-  }
-  bridge_->Request(req_header, handle);
+  Request(req_header, handle);
   clock_gettime(CLOCK_REALTIME, &timeout);
   timeout.tv_sec += 1;
   ASSERT_EQ(0, sem_timedwait(&return_sem_, &timeout));
@@ -202,7 +200,9 @@ class CameraAlgorithmBridgeStatusFixture : public CameraAlgorithmBridgeFixture {
   CameraAlgorithmBridgeStatusFixture() {}
 
  protected:
-  void ReturnCallback(uint32_t status, int32_t buffer_handle) override {
+  void ReturnCallback(uint32_t req_id,
+                      uint32_t status,
+                      int32_t buffer_handle) override {
     base::AutoLock l(hash_codes_lock_);
     if (buffer_handle < 0 ||
         static_cast<size_t>(buffer_handle) >= hash_codes_.size() ||
@@ -246,7 +246,7 @@ TEST_F(CameraAlgorithmBridgeStatusFixture, VerifyReturnStatus) {
       base::AutoLock l(hash_codes_lock_);
       hash_codes_.push_back(SimpleHash(req_header.data(), req_header.size()));
     }
-    bridge_->Request(req_header, i);
+    Request(req_header, i);
   }
   struct timespec timeout = {};
   clock_gettime(CLOCK_REALTIME, &timeout);

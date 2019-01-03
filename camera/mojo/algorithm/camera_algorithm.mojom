@@ -33,10 +33,12 @@ interface CameraAlgorithmOps {
   // bridge sends the IPC message out.
   //
   // Args:
+  //    |req_id|: The ID that uniquely identifies this request and needs to be
+  //      sent back in camera_algorithm_callback_ops_t.return_callback().
   //    |req_header|: The request header indicating request details. The
   //      interpretation depends on the HAL implementation.
   //    |buffer_handle|: Handle of the buffer to process.
-  Request(array<uint8> req_header, int32 buffer_handle);
+  Request(uint32 req_id, array<uint8> req_header, int32 buffer_handle);
 
   // This method deregisters buffers to the camera algorithm library. The camera
   // algorithm shall release all the registered buffers on return of this
@@ -57,8 +59,10 @@ interface CameraAlgorithmCallbackOps {
   // completed the corresponding request.
   //
   // Args:
+  //    |req_id|: The ID that uniquely identifies this request and needs to be
+  //      sent back in camera_algorithm_callback_ops_t.return_callback().
   //    |status|: Status of the corresponding request. The interpretation
   //      depends on the HAL implementation.
   //    |buffer_handle|: Handle of the buffer to return.
-  Return(uint32 status, int32 buffer_handle);
+  Return(uint32 req_id, uint32 status, int32 buffer_handle);
 };
