@@ -358,6 +358,19 @@ std::string GetIdentityFeaturesString(int identity_features) {
       + stream.str();
 }
 
+void LogErrorFromCA(const std::string& func, const std::string& details,
+                    const std::string& extra_details) {
+  std::ostringstream stream;
+  stream << func << ": Received error from Attestation CA";
+  if (!details.empty()) {
+    stream << ": " << details;
+    if (!extra_details.empty()) {
+      stream << ". Extra details: " << extra_details;
+    }
+  }
+  LOG(ERROR) << stream.str() << ".";
+}
+
 }  // namespace
 
 namespace attestation {
@@ -1144,6 +1157,8 @@ bool AttestationService::FinishEnrollInternal(
     std::string* server_error) {
   const int identity = kFirstIdentity;
   if (!tpm_utility_->IsTpmReady()) {
+    LOG(ERROR) << __func__
+               << ": Cannot finish enrollment as the TPM is not ready.";
     return false;
   }
   AttestationEnrollmentResponse response_pb;
@@ -1153,8 +1168,8 @@ bool AttestationService::FinishEnrollInternal(
   }
   if (response_pb.status() != OK) {
     *server_error = response_pb.detail();
-    LOG(ERROR) << __func__
-               << ": Error received from CA: " << response_pb.detail();
+    LogErrorFromCA(__func__, response_pb.detail(),
+                   response_pb.extra_details());
     return false;
   }
   if (response_pb.encrypted_identity_credential().tpm_version() !=
@@ -1251,8 +1266,8 @@ bool AttestationService::FinishCertificateRequestInternal(
   }
   if (response_pb.status() != OK) {
     *server_error = response_pb.detail();
-    LOG(ERROR) << __func__ << ": Error received from Attestation CA: "
-               << response_pb.detail();
+    LogErrorFromCA(__func__, response_pb.detail(),
+                   response_pb.extra_details());
     return false;
   }
   if (message_id != response_pb.message_id()) {
@@ -2318,10 +2333,8 @@ void AttestationService::FinishEnrollTask(
   if (!FinishEnrollInternal(request.aca_type(), request.pca_response(),
                             &server_error)) {
     if (server_error.empty()) {
-      LOG(ERROR) << __func__ << ": Server error";
       result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
     } else {
-      LOG(ERROR) << __func__ << ": Server error details: " << server_error;
       result->set_status(STATUS_REQUEST_DENIED_BY_CA);
     }
   }
@@ -2436,8 +2449,8 @@ void AttestationService::FinishCertificateRequestTask(
     return;
   }
   if (response_pb.status() != OK) {
-    LOG(ERROR) << __func__ << ": Error received from Attestation CA: "
-               << response_pb.detail();
+    LogErrorFromCA(__func__, response_pb.detail(),
+                   response_pb.extra_details());
     pending_cert_requests_.erase(iter);
     result->set_status(STATUS_REQUEST_DENIED_BY_CA);
     return;
