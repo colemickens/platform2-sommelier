@@ -1597,6 +1597,7 @@ bool Mount::InsertPkcs11Token() {
     ReportCryptohomeError(kLoadPkcs11TokenFailed);
   }
   pkcs11_token_auth_data_.clear();
+  ReportTimerStop(kPkcs11InitTimer);
   return true;
 }
 

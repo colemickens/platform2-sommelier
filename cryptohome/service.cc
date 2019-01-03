@@ -861,7 +861,6 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
     // Drop the reference since the work is done.
     pkcs11_tasks_.erase(result->sequence_id());
     if (result->return_status()) {
-      ReportTimerStop(kPkcs11InitTimer);
       LOG(INFO) << "PKCS#11 initialization succeeded.";
       result->mount()->set_pkcs11_state(cryptohome::Mount::kIsInitialized);
       return;
