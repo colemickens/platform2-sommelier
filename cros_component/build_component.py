@@ -396,8 +396,6 @@ def BuildComponent(component_to_build, components, board, platform,
           gsbucket = metadata['gsbucket']
         logger.info('Use %s gsbucket for component.', gsbucket)
         dirs = CheckGsBucket(gsbucket)
-        if len(dirs) == 0:
-          cros_build_lib.Die('gsbucket %s has no subfolders', gsbucket)
         logger.info('Dirs in gsbucket:%s', dirs)
         current_version, current_version_path = GetCurrentVersion(dirs,
                                                                   platform)
