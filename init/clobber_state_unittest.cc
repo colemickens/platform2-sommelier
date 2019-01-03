@@ -5,9 +5,13 @@
 #include "init/clobber_state.h"
 
 #include <limits.h>
+#include <stdlib.h>
+#include <sys/sysmacros.h>
 
 #include <memory>
 #include <set>
+#include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_util.h>
@@ -273,11 +277,65 @@ TEST(PreserveFiles, ManyFiles) {
   EXPECT_EQ(contents_b, "data");
 }
 
+TEST(GetDevicePathComponents, ErrorCases) {
+  std::string base_device;
+  int partition_number;
+  EXPECT_FALSE(ClobberState::GetDevicePathComponents(base::FilePath(""),
+                                                     nullptr, nullptr));
+  EXPECT_FALSE(ClobberState::GetDevicePathComponents(
+      base::FilePath(""), nullptr, &partition_number));
+  EXPECT_FALSE(ClobberState::GetDevicePathComponents(base::FilePath(""),
+                                                     &base_device, nullptr));
+  EXPECT_FALSE(ClobberState::GetDevicePathComponents(
+      base::FilePath(""), &base_device, &partition_number));
+  EXPECT_FALSE(ClobberState::GetDevicePathComponents(
+      base::FilePath("24728"), &base_device, &partition_number));
+  EXPECT_FALSE(ClobberState::GetDevicePathComponents(
+      base::FilePath("bad_dev"), &base_device, &partition_number));
+  EXPECT_FALSE(ClobberState::GetDevicePathComponents(
+      base::FilePath("/dev/"), &base_device, &partition_number));
+}
+
+TEST(GetDevicePathComponents, ValidCases) {
+  std::string base_device;
+  int partition_number;
+  EXPECT_TRUE(ClobberState::GetDevicePathComponents(
+      base::FilePath("/dev/sda273"), &base_device, &partition_number));
+  EXPECT_EQ(base_device, "/dev/sda");
+  EXPECT_EQ(partition_number, 273);
+
+  EXPECT_TRUE(ClobberState::GetDevicePathComponents(
+      base::FilePath("/dev/mmcblk5p193448"), &base_device, &partition_number));
+  EXPECT_EQ(base_device, "/dev/mmcblk5p");
+  EXPECT_EQ(partition_number, 193448);
+
+  EXPECT_TRUE(ClobberState::GetDevicePathComponents(
+      base::FilePath("/dev/nvme7n2p11"), &base_device, &partition_number));
+  EXPECT_EQ(base_device, "/dev/nvme7n2p");
+  EXPECT_EQ(partition_number, 11);
+
+  EXPECT_TRUE(ClobberState::GetDevicePathComponents(
+      base::FilePath("/dev/ubiblock17_0"), &base_device, &partition_number));
+  EXPECT_EQ(base_device, "/dev/ubiblock");
+  EXPECT_EQ(partition_number, 17);
+
+  EXPECT_TRUE(ClobberState::GetDevicePathComponents(
+      base::FilePath("/dev/ubi9_0"), &base_device, &partition_number));
+  EXPECT_EQ(base_device, "/dev/ubi");
+  EXPECT_EQ(partition_number, 9);
+
+  EXPECT_TRUE(ClobberState::GetDevicePathComponents(
+      base::FilePath("/dev/mtd0"), &base_device, &partition_number));
+  EXPECT_EQ(base_device, "/dev/mtd");
+  EXPECT_EQ(partition_number, 0);
+}
+
 class MarkDeveloperModeTest : public ::testing::Test {
  protected:
   MarkDeveloperModeTest()
-      : cros_system_(std::make_unique<CrosSystemFake>()),
-        clobber_(ClobberState::Arguments(), cros_system_.get()) {}
+      : cros_system_(new CrosSystemFake()),
+        clobber_(ClobberState::Arguments(),
+                 std::unique_ptr<CrosSystem>(cros_system_)) {}
 
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
@@ -285,7 +343,7 @@ class MarkDeveloperModeTest : public ::testing::Test {
     clobber_.SetStatefulForTest(fake_stateful_);
   }
 
-  std::unique_ptr<CrosSystemFake> cros_system_;
+  CrosSystemFake* cros_system_;
   ClobberState clobber_;
   base::ScopedTempDir temp_dir_;
   base::FilePath fake_stateful_;
@@ -320,8 +378,9 @@ TEST_F(MarkDeveloperModeTest, IsDeveloper) {
 class GetPreservedFilesListTest : public ::testing::Test {
  protected:
   GetPreservedFilesListTest()
-      : cros_system_(std::make_unique<CrosSystemFake>()),
-        clobber_(ClobberState::Arguments(), cros_system_.get()) {}
+      : cros_system_(new CrosSystemFake()),
+        clobber_(ClobberState::Arguments(),
+                 std::unique_ptr<CrosSystem>(cros_system_)) {}
 
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
@@ -349,7 +408,7 @@ class GetPreservedFilesListTest : public ::testing::Test {
     }
   }
 
-  std::unique_ptr<CrosSystemFake> cros_system_;
+  CrosSystemFake* cros_system_;
   ClobberState clobber_;
   base::ScopedTempDir temp_dir_;
   base::FilePath fake_stateful_;
@@ -478,4 +537,255 @@ TEST_F(GetPreservedFilesListTest, SafeRollbackFactoryWipe) {
       "unencrypted/import_extensions/extensions/fileA.crx",
       "unencrypted/import_extensions/extensions/fileB.crx"};
   SetCompare(expected_preserved_set, preserved_set);
+}
+
+// Version of ClobberState with system calls mocked for testing IsRotational.
+class ClobberStateMock : public ClobberState {
+ public:
+  using ClobberState::ClobberState;
+  void SetStatResultForPath(const base::FilePath& path, const struct stat& st) {
+    result_map_[path.value()] = st;
+  }
+
+ protected:
+  int Stat(const base::FilePath& path, struct stat* st) override {
+    if (st == nullptr || result_map_.count(path.value()) == 0) {
+      return -1;
+    }
+
+    *st = result_map_[path.value()];
+    return 0;
+  }
+
+ private:
+  std::unordered_map<std::string, struct stat> result_map_;
+};
+
+class IsRotationalTest : public ::testing::Test {
+ protected:
+  IsRotationalTest()
+      : clobber_(ClobberState::Arguments(),
+                 std::make_unique<CrosSystemFake>()) {}
+
+  void SetUp() override {
+    ASSERT_TRUE(fake_dev_.CreateUniqueTempDir());
+    ASSERT_TRUE(fake_sys_.CreateUniqueTempDir());
+    clobber_.SetDevForTest(fake_dev_.GetPath());
+    clobber_.SetSysForTest(fake_sys_.GetPath());
+  }
+
+  bool WriteFile(const base::FilePath& path, const std::string& contents) {
+    return base::CreateDirectory(path.DirName()) &&
+           base::WriteFile(path, contents.c_str(), contents.length()) ==
+               contents.length();
+  }
+
+  ClobberStateMock clobber_;
+  base::ScopedTempDir fake_dev_;
+  base::ScopedTempDir fake_sys_;
+};
+
+TEST_F(IsRotationalTest, NonExistentDevice) {
+  EXPECT_FALSE(clobber_.IsRotational(fake_dev_.GetPath().Append("nvme0n1p3")));
+}
+
+TEST_F(IsRotationalTest, DeviceNotUnderDev) {
+  EXPECT_FALSE(clobber_.IsRotational(fake_sys_.GetPath().Append("sdc6")));
+}
+
+TEST_F(IsRotationalTest, NoRotationalFile) {
+  std::string device_name = "sdq5";
+  std::string disk_name = "sdq";
+  base::FilePath device = fake_dev_.GetPath().Append(device_name);
+  base::FilePath disk = fake_dev_.GetPath().Append(disk_name);
+  ASSERT_TRUE(WriteFile(device, ""));
+  ASSERT_TRUE(WriteFile(disk, ""));
+
+  struct stat st;
+  st.st_rdev = makedev(14, 7);
+  st.st_mode = S_IFBLK;
+  clobber_.SetStatResultForPath(device, st);
+
+  st.st_rdev = makedev(14, 0);
+  clobber_.SetStatResultForPath(disk, st);
+
+  EXPECT_FALSE(clobber_.IsRotational(device));
+}
+
+TEST_F(IsRotationalTest, NoMatchingBaseDevice) {
+  std::string device_name = "mmcblk1p5";
+  std::string disk_name = "sda";
+  base::FilePath device = fake_dev_.GetPath().Append(device_name);
+  base::FilePath disk = fake_dev_.GetPath().Append(disk_name);
+  ASSERT_TRUE(WriteFile(device, ""));
+  ASSERT_TRUE(WriteFile(disk, ""));
+
+  struct stat st;
+  st.st_rdev = makedev(5, 3);
+  st.st_mode = S_IFBLK;
+  clobber_.SetStatResultForPath(device, st);
+
+  st.st_rdev = makedev(7, 0);
+  clobber_.SetStatResultForPath(disk, st);
+
+  base::FilePath rotational_file =
+      fake_sys_.GetPath().Append("block").Append(disk_name).Append(
+          "queue/rotational");
+  ASSERT_TRUE(WriteFile(rotational_file, "1\n"));
+  EXPECT_FALSE(clobber_.IsRotational(device));
+}
+
+TEST_F(IsRotationalTest, DifferentRotationalFileFormats) {
+  std::string device_name = "mmcblk1p5";
+  std::string disk_name = "mmcblk1";
+  base::FilePath device = fake_dev_.GetPath().Append(device_name);
+  base::FilePath disk = fake_dev_.GetPath().Append(disk_name);
+  ASSERT_TRUE(WriteFile(device, ""));
+  ASSERT_TRUE(WriteFile(disk, ""));
+
+  struct stat st;
+  st.st_rdev = makedev(5, 3);
+  st.st_mode = S_IFBLK;
+  clobber_.SetStatResultForPath(device, st);
+
+  st.st_rdev = makedev(5, 0);
+  clobber_.SetStatResultForPath(disk, st);
+
+  base::FilePath rotational_file =
+      fake_sys_.GetPath().Append("block").Append(disk_name).Append(
+          "queue/rotational");
+  ASSERT_TRUE(WriteFile(rotational_file, "0\n"));
+  EXPECT_FALSE(clobber_.IsRotational(device));
+
+  ASSERT_TRUE(WriteFile(rotational_file, "0"));
+  EXPECT_FALSE(clobber_.IsRotational(device));
+
+  ASSERT_TRUE(WriteFile(rotational_file, "aldf"));
+  EXPECT_FALSE(clobber_.IsRotational(device));
+
+  ASSERT_TRUE(WriteFile(rotational_file, "1"));
+  EXPECT_TRUE(clobber_.IsRotational(device));
+
+  ASSERT_TRUE(WriteFile(rotational_file, "1\n"));
+  EXPECT_TRUE(clobber_.IsRotational(device));
+}
+
+TEST_F(IsRotationalTest, MultipleDevices) {
+  std::string device_name_one = "mmcblk1p5";
+  std::string disk_name_one = "mmcblk1";
+  std::string device_name_two = "nvme2n1p1";
+  std::string disk_name_two = "nvme2n1";
+  base::FilePath device_one = fake_dev_.GetPath().Append(device_name_one);
+  base::FilePath disk_one = fake_dev_.GetPath().Append(disk_name_one);
+  base::FilePath device_two = fake_dev_.GetPath().Append(device_name_two);
+  base::FilePath disk_two = fake_dev_.GetPath().Append(disk_name_two);
+  ASSERT_TRUE(WriteFile(device_one, ""));
+  ASSERT_TRUE(WriteFile(disk_one, ""));
+  ASSERT_TRUE(WriteFile(device_two, ""));
+  ASSERT_TRUE(WriteFile(disk_two, ""));
+
+  struct stat st;
+  st.st_rdev = makedev(5, 5);
+  st.st_mode = S_IFBLK;
+  clobber_.SetStatResultForPath(device_one, st);
+
+  st.st_rdev = makedev(5, 0);
+  clobber_.SetStatResultForPath(disk_one, st);
+
+  st.st_rdev = makedev(2, 1);
+  st.st_mode = S_IFBLK;
+  clobber_.SetStatResultForPath(device_two, st);
+
+  st.st_rdev = makedev(2, 0);
+  clobber_.SetStatResultForPath(disk_two, st);
+
+  base::FilePath rotational_file_one = fake_sys_.GetPath()
+                                           .Append("block")
+                                           .Append(disk_name_one)
+                                           .Append("queue/rotational");
+  ASSERT_TRUE(WriteFile(rotational_file_one, "0\n"));
+
+  base::FilePath rotational_file_two = fake_sys_.GetPath()
+                                           .Append("block")
+                                           .Append(disk_name_two)
+                                           .Append("queue/rotational");
+  ASSERT_TRUE(WriteFile(rotational_file_two, "1"));
+
+  EXPECT_FALSE(clobber_.IsRotational(device_one));
+  EXPECT_TRUE(clobber_.IsRotational(device_two));
+}
+
+class GetDevicesToWipeTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    partitions_.stateful = 1;
+    partitions_.kernel_a = 2;
+    partitions_.root_a = 3;
+    partitions_.kernel_b = 4;
+    partitions_.root_b = 5;
+  }
+
+  ClobberState::PartitionNumbers partitions_;
+};
+
+TEST_F(GetDevicesToWipeTest, MMC) {
+  base::FilePath root_disk("/dev/mmcblk0");
+  base::FilePath root_device("/dev/mmcblk0p3");
+
+  ClobberState::DeviceWipeInfo wipe_info;
+  EXPECT_TRUE(ClobberState::GetDevicesToWipe(root_disk, root_device,
+                                             partitions_, &wipe_info));
+  EXPECT_EQ(wipe_info.stateful_device.value(), "/dev/mmcblk0p1");
+  EXPECT_EQ(wipe_info.inactive_root_device.value(), "/dev/mmcblk0p5");
+  EXPECT_EQ(wipe_info.inactive_kernel_device.value(), "/dev/mmcblk0p4");
+  EXPECT_FALSE(wipe_info.is_mtd_flash);
+  EXPECT_EQ(wipe_info.active_kernel_partition, partitions_.kernel_a);
+}
+
+TEST_F(GetDevicesToWipeTest, NVME_a_active) {
+  base::FilePath root_disk("/dev/nvme0n1");
+  base::FilePath root_device("/dev/nvme0n1p3");
+
+  ClobberState::DeviceWipeInfo wipe_info;
+  EXPECT_TRUE(ClobberState::GetDevicesToWipe(root_disk, root_device,
+                                             partitions_, &wipe_info));
+  EXPECT_EQ(wipe_info.stateful_device.value(), "/dev/nvme0n1p1");
+  EXPECT_EQ(wipe_info.inactive_root_device.value(), "/dev/nvme0n1p5");
+  EXPECT_EQ(wipe_info.inactive_kernel_device.value(), "/dev/nvme0n1p4");
+  EXPECT_FALSE(wipe_info.is_mtd_flash);
+  EXPECT_EQ(wipe_info.active_kernel_partition, partitions_.kernel_a);
+}
+
+TEST_F(GetDevicesToWipeTest, NVME_b_active) {
+  base::FilePath root_disk("/dev/nvme0n1");
+  base::FilePath root_device("/dev/nvme0n1p5");
+
+  ClobberState::DeviceWipeInfo wipe_info;
+  EXPECT_TRUE(ClobberState::GetDevicesToWipe(root_disk, root_device,
+                                             partitions_, &wipe_info));
+  EXPECT_EQ(wipe_info.stateful_device.value(), "/dev/nvme0n1p1");
+  EXPECT_EQ(wipe_info.inactive_root_device.value(), "/dev/nvme0n1p3");
+  EXPECT_EQ(wipe_info.inactive_kernel_device.value(), "/dev/nvme0n1p2");
+  EXPECT_FALSE(wipe_info.is_mtd_flash);
+  EXPECT_EQ(wipe_info.active_kernel_partition, partitions_.kernel_b);
+}
+
+TEST_F(GetDevicesToWipeTest, SDA) {
+  partitions_.stateful = 7;
+  partitions_.kernel_a = 1;
+  partitions_.root_a = 9;
+  partitions_.kernel_b = 2;
+  partitions_.root_b = 4;
+
+  base::FilePath root_disk("/dev/sda");
+  base::FilePath root_device("/dev/sda9");
+
+  ClobberState::DeviceWipeInfo wipe_info;
+  EXPECT_TRUE(ClobberState::GetDevicesToWipe(root_disk, root_device,
+                                             partitions_, &wipe_info));
+  EXPECT_EQ(wipe_info.stateful_device.value(), "/dev/sda7");
+  EXPECT_EQ(wipe_info.inactive_root_device.value(), "/dev/sda4");
+  EXPECT_EQ(wipe_info.inactive_kernel_device.value(), "/dev/sda2");
+  EXPECT_FALSE(wipe_info.is_mtd_flash);
+  EXPECT_EQ(wipe_info.active_kernel_partition, partitions_.kernel_a);
 }

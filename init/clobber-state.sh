@@ -8,8 +8,6 @@
 # and possibly reset the other root filesystem
 
 . /usr/share/misc/chromeos-common.sh
-. /usr/sbin/write_gpt.sh
-load_base_vars
 
 SCRIPT="$0"
 
@@ -199,84 +197,6 @@ ensure_bootable_kernel() {
   sync
 }
 
-detect_system_config() {
-  # Root devs are /dev/sda3, /dev/ubiblock5_0.
-  # Kernel devs to go along with these are /dev/sda2, /dev/mtd4 respectively.
-
-  # As we move factory wiping from release image to factory test image,
-  # clobber-state will be invoked directly under a tmpfs. 'rootdev' cannot
-  # report correct output under such a situation. Therefore, the output of
-  # 'rootdev' is preserved then assigned to environment variables
-  # ${ROOT_DEV}/${ROOT_DISK} for clobber-state. For other cases, the
-  # environment variables will be empty and it fallbacks to use 'rootdev'.
-  if [ -z "${ROOT_DEV}" ]; then
-    ROOT_DEV=$(rootdev -s)
-  fi
-  if [ -z "${ROOT_DISK}" ]; then
-    ROOT_DISK=$(rootdev -d -s)
-  fi
-  IS_MTD=0
-  case "${ROOT_DISK}" in
-    "/dev/ubi"*)
-      # Special casing for NAND devices.
-      IS_MTD=1
-      ROOT_DISK="/dev/mtd0"
-      STATE_DEV="/dev/ubi${PARTITION_NUM_STATE}_0"
-      # On NAND, kernel is stored on /dev/mtdX.
-      KERNEL_DEV=$(echo "${ROOT_DEV}" | tr \
-          "${PARTITION_NUM_ROOT_A}${PARTITION_NUM_ROOT_B}" \
-          "${PARTITION_NUM_KERN_A}${PARTITION_NUM_KERN_B}" | \
-          sed -e 's/ubiblock\([0-9]*\)_0/mtd\1/')
-      ;;
-    *)
-      STATE_DEV=${ROOT_DEV%[0-9]*}${PARTITION_NUM_STATE}
-      KERNEL_DEV=$(echo "${ROOT_DEV}" | tr \
-          "${PARTITION_NUM_ROOT_A}${PARTITION_NUM_ROOT_B}" \
-          "${PARTITION_NUM_KERN_A}${PARTITION_NUM_KERN_B}")
-      ;;
-  esac
-  OTHER_ROOT_DEV=$(echo "${ROOT_DEV}" | tr \
-      "${PARTITION_NUM_ROOT_A}${PARTITION_NUM_ROOT_B}" \
-      "${PARTITION_NUM_ROOT_B}${PARTITION_NUM_ROOT_A}")
-  OTHER_KERNEL_DEV=$(echo "${KERNEL_DEV}" | tr \
-      "${PARTITION_NUM_KERN_A}${PARTITION_NUM_KERN_B}" \
-      "${PARTITION_NUM_KERN_B}${PARTITION_NUM_KERN_A}")
-  KERNEL_PART_NUM=${KERNEL_DEV##[/a-z]*[/a-z]}
-  WIPE_PART_NUM=${OTHER_ROOT_DEV##[/a-z]*[/a-z]}
-  WIPE_PART_NUM=${WIPE_PART_NUM%_0}
-  # Save the option before wipe-out
-  WIPE_OPTION_FILE="${STATE_PATH}/factory_wipe_option"
-  if [ -O ${WIPE_OPTION_FILE} ]; then
-    WIPE_OPTION=$(cat ${WIPE_OPTION_FILE})
-  else
-    WIPE_OPTION=
-  fi
-
-  # Discover type of device holding the stateful partition; assume SSD.
-  # Since there doesn't seem to be a good way to get from a partition name
-  # to the base device name beyond simple heuristics, just find the device
-  # with the same major number but with minor 0.
-  ROTATIONAL=0
-  MAJOR=$(stat -c %t ${STATE_DEV})
-  for i in $(find /dev -type b); do
-    if [ "$(stat -c %t:%T $i)" = "${MAJOR}:0" ]; then
-      ROTATIONAL_PATH="/sys/block/$(basename ${i})/queue/rotational"
-      if [ -r "${ROTATIONAL_PATH}" ]; then
-        ROTATIONAL=$(cat "${ROTATIONAL_PATH}")
-        break
-      fi
-    fi
-  done
-
-  # Sanity check root device partition number.
-  if [ "$WIPE_PART_NUM" != "${PARTITION_NUM_ROOT_A}" ] && \
-     [ "$WIPE_PART_NUM" != "${PARTITION_NUM_ROOT_B}" ]
-  then
-    echo "Invalid partition to wipe, $WIPE_PART_NUM (${OTHER_ROOT_DEV})"
-    exit 1
-  fi
-}
-
 # Forces a 5 minute delay, writing progress to the specified TTY.
 # This is used to prevent developer mode transitions from happening too
 # quickly.
@@ -385,8 +305,6 @@ remove_vpd_keys() {
 }
 
 main() {
-  detect_system_config
-
   # Preserve the log file
   clobber-log --preserve "${SCRIPT}" "$@"
 

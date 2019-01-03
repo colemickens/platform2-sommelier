@@ -27,9 +27,7 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  std::unique_ptr<CrosSystemImpl> cros_system =
-      std::make_unique<CrosSystemImpl>();
   ClobberState::Arguments args = ClobberState::ParseArgv(argc, argv);
-  ClobberState clobber(args, cros_system.get());
+  ClobberState clobber(args, std::make_unique<CrosSystemImpl>());
   return clobber.Run();
 }

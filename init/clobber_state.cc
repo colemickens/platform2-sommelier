@@ -8,20 +8,28 @@
 #include <limits.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <sys/stat.h>
+#include <sys/sysmacros.h>
 #include <unistd.h>
 
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <brillo/process.h>
+#include <rootdev/rootdev.h>
+#include <vboot/cgpt_params.h>
+#include <vboot/vboot_host.h>
 
 #include "init/crossystem.h"
 
@@ -33,6 +41,42 @@ constexpr char kClobberLogPath[] = "/tmp/clobber-state.log";
 constexpr char kClobberStateShellLogPath[] = "/tmp/clobber-state-shell.log";
 constexpr char kBioWashPath[] = "/usr/bin/bio_wash";
 constexpr char kPreservedFilesTarPath[] = "/tmp/preserve.tar";
+
+constexpr char kUbiRootDisk[] = "/dev/mtd0";
+constexpr char kUbiDevicePrefix[] = "/dev/ubi";
+constexpr char kUbiDeviceStatefulFormat[] = "/dev/ubi%d_0";
+
+// |strip_partition| attempts to remove the partition number from the result.
+base::FilePath GetRootDevice(bool strip_partition) {
+  char buf[PATH_MAX];
+  int ret = rootdev(buf, PATH_MAX, /*use_slave=*/true, strip_partition);
+  if (ret == 0) {
+    return base::FilePath(buf);
+  } else {
+    return base::FilePath();
+  }
+}
+
+void CgptFindShowFunctionNoOp(struct CgptFindParams*, char*, int, GptEntry*) {}
+
+int GetPartitionNumber(const base::FilePath& drive_name,
+                       const std::string& partition_label) {
+  CgptFindParams params;
+  memset(&params, 0, sizeof(params));
+  params.set_label = 1;
+  std::unique_ptr<char> partition_label_copy(strdup(partition_label.c_str()));
+  params.label = partition_label_copy.get();
+  std::unique_ptr<char> drive_name_copy(strdup(drive_name.value().c_str()));
+  params.drive_name = drive_name_copy.get();
+  params.show_fn = &CgptFindShowFunctionNoOp;
+  CgptFind(&params);
+  if (params.hits != 1) {
+    LOG(ERROR) << "Could not find partition number for partition "
+               << partition_label;
+    return -1;
+  }
+  return params.match_partnum;
+}
 
 }  // namespace
 
@@ -142,8 +186,197 @@ int ClobberState::PreserveFiles(
   return tar.Run();
 }
 
-ClobberState::ClobberState(const Arguments& args, CrosSystem* cros_system)
-    : args_(args), cros_system_(cros_system), stateful_(kStatefulPath) {}
+// static
+bool ClobberState::GetDevicePathComponents(const base::FilePath& device,
+                                           std::string* base_device_out,
+                                           int* partition_out) {
+  if (!partition_out || !base_device_out)
+    return false;
+  const std::string& path = device.value();
+
+  // MTD devices sometimes have a trailing "_0" after the partition which
+  // we should ignore.
+  std::string mtd_suffix = "_0";
+  size_t suffix_index = path.length();
+  if (base::EndsWith(path, mtd_suffix, base::CompareCase::SENSITIVE)) {
+    suffix_index = path.length() - mtd_suffix.length();
+  }
+
+  size_t last_non_numeric =
+      path.find_last_not_of("0123456789", suffix_index - 1);
+
+  // If there are no non-numeric characters, this is a malformed device.
+  if (last_non_numeric == std::string::npos) {
+    return false;
+  }
+
+  std::string partition_number_string =
+      path.substr(last_non_numeric + 1, suffix_index - (last_non_numeric + 1));
+  int partition_number;
+  if (!base::StringToInt(partition_number_string, &partition_number)) {
+    return false;
+  }
+  *partition_out = partition_number;
+  *base_device_out = path.substr(0, last_non_numeric + 1);
+  return true;
+}
+
+bool ClobberState::IsRotational(const base::FilePath& device_path) {
+  if (!dev_.IsParent(device_path)) {
+    LOG(ERROR) << "Non-device given as argument to IsRotational: "
+               << device_path.value();
+    return false;
+  }
+
+  // Since there doesn't seem to be a good way to get from a partition name
+  // to the base device name beyond simple heuristics, just find the device
+  // with the same major number but with minor 0.
+  struct stat st;
+  if (Stat(device_path, &st) != 0) {
+    return false;
+  }
+  unsigned int major_device_number = major(st.st_rdev);
+
+  base::FileEnumerator enumerator(dev_, /*recursive=*/true,
+                                  base::FileEnumerator::FileType::FILES);
+  for (base::FilePath base_device_path = enumerator.Next();
+       !base_device_path.empty(); base_device_path = enumerator.Next()) {
+    if (Stat(base_device_path, &st) == 0 && S_ISBLK(st.st_mode) &&
+        major(st.st_rdev) == major_device_number && minor(st.st_rdev) == 0) {
+      // |base_device_path| must be the base device for |device_path|.
+      base::FilePath rotational_file = sys_.Append("block")
+                                           .Append(base_device_path.BaseName())
+                                           .Append("queue/rotational");
+      std::string value;
+      if (base::ReadFileToString(rotational_file, &value)) {
+        base::TrimWhitespaceASCII(value, base::TrimPositions::TRIM_ALL, &value);
+        return value == "1";
+      }
+    }
+  }
+  return false;
+}
+
+// static
+bool ClobberState::GetDevicesToWipe(
+    const base::FilePath& root_disk,
+    const base::FilePath& root_device,
+    const ClobberState::PartitionNumbers& partitions,
+    ClobberState::DeviceWipeInfo* wipe_info_out) {
+  if (!wipe_info_out) {
+    LOG(ERROR) << "wipe_info_out must be non-null";
+    return false;
+  }
+
+  if (partitions.root_a < 0 || partitions.root_b < 0 ||
+      partitions.kernel_a < 0 || partitions.kernel_b < 0 ||
+      partitions.stateful < 0) {
+    LOG(ERROR) << "Invalid partition numbers for GetDevicesToWipe";
+    return false;
+  }
+
+  if (root_disk.empty()) {
+    LOG(ERROR) << "Invalid root disk for GetDevicesToWipe";
+    return false;
+  }
+
+  if (root_device.empty()) {
+    LOG(ERROR) << "Invalid root device for GetDevicesToWipe";
+    return false;
+  }
+
+  std::string base_device;
+  int partition_number;
+  if (!GetDevicePathComponents(root_device, &base_device, &partition_number)) {
+    LOG(ERROR) << "Extracting partition number and base device from "
+                  "root_device failed: "
+               << root_device.value();
+    return false;
+  }
+
+  if (partition_number != partitions.root_a &&
+      partition_number != partitions.root_b) {
+    LOG(ERROR) << "Root device partition number (" << partition_number
+               << ") does not match either root partition number: "
+               << partitions.root_a << ", " << partitions.root_b;
+    return false;
+  }
+
+  ClobberState::DeviceWipeInfo wipe_info;
+  base::FilePath kernel_device;
+  if (root_disk == base::FilePath(kUbiRootDisk)) {
+    /*
+     * WARNING: This code has not been sufficiently tested and almost certainly
+     * does not work. If you are adding support for MTD flash, you would be
+     * well served to review it and add test coverage.
+     */
+
+    // Special casing for NAND devices.
+    wipe_info.is_mtd_flash = true;
+    wipe_info.stateful_device = base::FilePath(
+        base::StringPrintf(kUbiDeviceStatefulFormat, partitions.stateful));
+
+    // On NAND, kernel is stored on /dev/mtdX.
+    if (partition_number == partitions.root_a) {
+      kernel_device =
+          base::FilePath("/dev/mtd" + std::to_string(partitions.kernel_a));
+    } else if (partition_number == partitions.root_b) {
+      kernel_device =
+          base::FilePath("/dev/mtd" + std::to_string(partitions.kernel_b));
+    }
+
+    /*
+     * End of untested MTD code.
+     */
+  } else {
+    wipe_info.stateful_device =
+        base::FilePath(base_device + std::to_string(partitions.stateful));
+
+    if (partition_number == partitions.root_a) {
+      kernel_device =
+          base::FilePath(base_device + std::to_string(partitions.kernel_a));
+    } else if (partition_number == partitions.root_b) {
+      kernel_device =
+          base::FilePath(base_device + std::to_string(partitions.kernel_b));
+    }
+  }
+
+  int root_partition_to_wipe = 0;
+  if (partition_number == partitions.root_a) {
+    wipe_info.inactive_root_device =
+        base::FilePath(base_device + std::to_string(partitions.root_b));
+    wipe_info.inactive_kernel_device =
+        base::FilePath(base_device + std::to_string(partitions.kernel_b));
+    wipe_info.active_kernel_partition = partitions.kernel_a;
+    root_partition_to_wipe = partitions.root_b;
+  } else if (partition_number == partitions.root_b) {
+    wipe_info.inactive_root_device =
+        base::FilePath(base_device + std::to_string(partitions.root_a));
+    wipe_info.inactive_kernel_device =
+        base::FilePath(base_device + std::to_string(partitions.kernel_a));
+    wipe_info.active_kernel_partition = partitions.kernel_b;
+    root_partition_to_wipe = partitions.root_a;
+  }
+
+  if (root_partition_to_wipe != partitions.root_a &&
+      root_partition_to_wipe != partitions.root_b) {
+    LOG(ERROR) << "Partition number to wipe (" << root_partition_to_wipe
+               << ") does not match either root partition number: "
+               << partitions.root_a << ", " << partitions.root_b;
+    return false;
+  }
+
+  *wipe_info_out = wipe_info;
+  return true;
+}
+
+ClobberState::ClobberState(const Arguments& args,
+                           std::unique_ptr<CrosSystem> cros_system)
+    : args_(args),
+      cros_system_(std::move(cros_system)),
+      stateful_(kStatefulPath),
+      dev_("/dev"),
+      sys_("/sys") {}
 
 std::vector<base::FilePath> ClobberState::GetPreservedFilesList() {
   std::vector<std::string> stateful_paths;
@@ -258,8 +491,61 @@ int ClobberState::Run() {
     LOG(ERROR) << "Preserving files failed with code " << ret;
   }
 
+  // As we move factory wiping from release image to factory test image,
+  // clobber-state will be invoked directly under a tmpfs. GetRootDevice cannot
+  // report correct output under such a situation. Therefore, the output is
+  // preserved then assigned to environment variables ROOT_DEV/ROOT_DISK for
+  // clobber-state. For other cases, the environment variables will be empty and
+  // it falls back to using GetRootDevice.
+  const char* root_disk_cstr = getenv("ROOT_DISK");
+  if (root_disk_cstr != nullptr) {
+    root_disk_ = base::FilePath(root_disk_cstr);
+  } else {
+    root_disk_ = GetRootDevice(/*strip_partition=*/true);
+  }
+
+  // Special casing for NAND devices
+  if (base::StartsWith(root_disk_.value(), kUbiDevicePrefix,
+                       base::CompareCase::SENSITIVE)) {
+    root_disk_ = base::FilePath(kUbiRootDisk);
+  }
+
+  base::FilePath root_device;
+  const char* root_device_cstr = getenv("ROOT_DEV");
+  if (root_device_cstr != nullptr) {
+    root_device = base::FilePath(root_device_cstr);
+  } else {
+    root_device = GetRootDevice(/*strip_partition=*/false);
+  }
+
+  LOG(INFO) << "Root disk: " << root_disk_.value();
+  LOG(INFO) << "Root device: " << root_device.value();
+
+  partitions_.stateful = GetPartitionNumber(root_disk_, "STATE");
+  partitions_.root_a = GetPartitionNumber(root_disk_, "ROOT-A");
+  partitions_.root_b = GetPartitionNumber(root_disk_, "ROOT-B");
+  partitions_.kernel_a = GetPartitionNumber(root_disk_, "KERN-A");
+  partitions_.kernel_b = GetPartitionNumber(root_disk_, "KERN-B");
+
+  if (!GetDevicesToWipe(root_disk_, root_device, partitions_, &wipe_info_)) {
+    LOG(ERROR) << "Getting devices to wipe failed, aborting run";
+    return 1;
+  }
+
+  // Determine if stateful partition's device is backed by a rotational disk.
+  bool is_rotational = false;
+  if (!wipe_info_.is_mtd_flash) {
+    is_rotational = IsRotational(wipe_info_.stateful_device);
+  }
+
+  LOG(INFO) << "Stateful device: " << wipe_info_.stateful_device.value();
+  LOG(INFO) << "Inactive root device: "
+            << wipe_info_.inactive_root_device.value();
+  LOG(INFO) << "Inactive kernel device: "
+            << wipe_info_.inactive_kernel_device.value();
+
   LOG(INFO) << "Starting clobber-state.sh";
-  ret = RunClobberStateShell();
+  ret = RunClobberStateShell(is_rotational);
   if (ret)
     LOG(ERROR) << "clobber-state.sh returned with code " << ret;
 
@@ -286,6 +572,8 @@ int ClobberState::Run() {
 
   // Schedule flush of filesystem caches to disk.
   sync();
+
+  LOG(INFO) << "clobber-state has completed";
 
   // Relocate log file back to stateful partition so that it will be preserved
   // after a reboot.
@@ -322,6 +610,18 @@ void ClobberState::SetStatefulForTest(base::FilePath stateful_path) {
   stateful_ = stateful_path;
 }
 
+void ClobberState::SetDevForTest(base::FilePath dev_path) {
+  dev_ = dev_path;
+}
+
+void ClobberState::SetSysForTest(base::FilePath sys_path) {
+  sys_ = sys_path;
+}
+
+int ClobberState::Stat(const base::FilePath& path, struct stat* st) {
+  return stat(path.value().c_str(), st);
+}
+
 bool ClobberState::ClearBiometricSensorEntropy() {
   if (base::PathExists(base::FilePath(kBioWashPath))) {
     brillo::ProcessImpl bio_wash;
@@ -333,7 +633,7 @@ bool ClobberState::ClearBiometricSensorEntropy() {
   return true;
 }
 
-int ClobberState::RunClobberStateShell() {
+int ClobberState::RunClobberStateShell(bool is_rotational) {
   brillo::ProcessImpl proc;
   proc.AddArg("/sbin/clobber-state.sh");
   // Arguments are passed via command line as well so that they can be logged
@@ -345,18 +645,36 @@ int ClobberState::RunClobberStateShell() {
   if (args_.safe_wipe)
     proc.AddArg("safe");
 
-  // The last argument is 1 to indicate that if the variable already exists in
-  // the environment, it will be overwritten.
+  // The last argument to setenv is 1 to indicate that if the variable already
+  // exists in the environment, it will be overwritten.
+
+  // Command line arguments
   setenv("FAST_WIPE", args_.fast_wipe ? "fast" : "", 1);
   setenv("KEEPIMG", args_.keepimg ? "keepimg" : "", 1);
   setenv("SAFE_WIPE", args_.safe_wipe ? "safe" : "", 1);
+
+  // Information about what devices to wipe and how to wipe them.
+  setenv("ROTATIONAL", is_rotational ? "1" : "0", 1);
+  setenv("IS_MTD", wipe_info_.is_mtd_flash ? "1" : "0", 1);
+
+  setenv("ROOT_DISK", root_disk_.value().c_str(), 1);
+  setenv("STATE_DEV", wipe_info_.stateful_device.value().c_str(), 1);
+  setenv("OTHER_ROOT_DEV", wipe_info_.inactive_root_device.value().c_str(), 1);
+  setenv("OTHER_KERNEL_DEV", wipe_info_.inactive_kernel_device.value().c_str(),
+         1);
+
+  setenv("PARTITION_NUM_ROOT_A", std::to_string(partitions_.root_a).c_str(), 1);
+  setenv("PARTITION_NUM_ROOT_B", std::to_string(partitions_.root_b).c_str(), 1);
+  setenv("PARTITION_NUM_STATE", std::to_string(partitions_.stateful).c_str(),
+         1);
+  setenv("KERNEL_PART_NUM",
+         std::to_string(wipe_info_.active_kernel_partition).c_str(), 1);
 
   proc.RedirectOutput(kClobberStateShellLogPath);
   return proc.Run();
 }
 
 int ClobberState::Reboot() {
-  LOG(INFO) << "clobber-state completed, now rebooting";
   brillo::ProcessImpl proc;
   proc.AddArg("/sbin/shutdown");
   proc.AddArg("-r");
