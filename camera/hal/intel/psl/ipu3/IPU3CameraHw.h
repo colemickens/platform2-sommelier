@@ -17,7 +17,6 @@
 #define _CAMERA3_HAL_IPU3CAMERAHW_H_
 
 #include "GraphConfigManager.h"
-#include "HwStreamBase.h"
 #include "ICameraHw.h"
 #include "IErrorCallback.h"
 #include "IPCFaceEngine.h"
@@ -52,7 +51,6 @@ class IPU3CameraHw: public ICameraHw {
     virtual status_t init();
     void registerErrorCallback(IErrorCallback *errCb);
     virtual const camera_metadata_t * getDefaultRequestSettings(int type);
-    virtual status_t bindStreams(std::vector<CameraStreamNode *> activeStreams);
     virtual status_t configStreams(std::vector<camera3_stream_t*> &activeStreams,
                                    uint32_t operation_mode);
     virtual status_t processRequest(Camera3Request* request, int inFlightCount);
@@ -82,7 +80,6 @@ class IPU3CameraHw: public ICameraHw {
     ControlUnit *mControlUnit;
     CaptureUnit *mCaptureUnit;
     // Vector to store dummy Hw streams
-    std::vector<HwStreamBase *> mDummyHwStreamsVector;
     GraphConfigManager mGCM;
 
     std::shared_ptr<MediaController> mMediaCtl;

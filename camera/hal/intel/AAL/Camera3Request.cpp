@@ -251,13 +251,13 @@ Camera3Request::getId()
     return mInitialized ? mRequestId : -1;
 }
 
-const CameraStreamNode*
+const CameraStream*
 Camera3Request::getInputStream()
 {
     return mInitialized ? mInStream : nullptr;
 }
 
-const std::vector<CameraStreamNode*>*
+const std::vector<CameraStream*>*
 Camera3Request::getOutputStreams()
 {
     return mInitialized ? &mOutStreams : nullptr;
@@ -338,7 +338,7 @@ Camera3Request::checkInputStream(camera3_capture_request* request3)
         return BAD_VALUE;
     }
 
-    mInStream = static_cast<CameraStreamNode*>(stream->priv);
+    mInStream = static_cast<CameraStream*>(stream->priv);
 
     return NO_ERROR;
 }
@@ -352,7 +352,7 @@ Camera3Request::checkInputStream(camera3_capture_request* request3)
  * \return: sp to the CameraBuffer object
  */
 std::shared_ptr<CameraBuffer>
-Camera3Request::findBuffer(const CameraStreamNode* stream, bool warn)
+Camera3Request::findBuffer(const CameraStream* stream, bool warn)
 {
     for (size_t i = 0; i< mOutCamBufs.size(); i++) {
         if (mOutCamBufs[i]->getOwner() == stream) {

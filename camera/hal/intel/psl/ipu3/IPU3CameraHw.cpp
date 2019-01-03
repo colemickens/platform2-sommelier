@@ -21,7 +21,6 @@
 #include "LogHelper.h"
 #include "CameraMetadataHelper.h"
 #include "RequestThread.h"
-#include "HwStreamBase.h"
 #include "PlatformData.h"
 #include "ImguUnit.h"
 #include "ControlUnit.h"
@@ -305,25 +304,6 @@ IPU3CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
     std::sort(mActiveStreams.begin(), mActiveStreams.end(), compFun);
 
     return configStreamsPrivate();
-}
-
-status_t
-IPU3CameraHw::bindStreams(std::vector<CameraStreamNode *> activeStreams)
-{
-    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
-    status_t status = NO_ERROR;
-
-    mDummyHwStreamsVector.clear();
-    // Need to have a producer stream as it is required by common code
-    // bind all streams to dummy HW stream class.
-    for (unsigned int i = 0; i < activeStreams.size(); i++) {
-        CameraStreamNode *stream = activeStreams.at(i);
-        HwStreamBase *hwStream = new HwStreamBase(*stream);
-        CameraStream::bind(stream, hwStream);
-        mDummyHwStreamsVector.push_back(hwStream);
-    }
-
-    return status;
 }
 
 status_t

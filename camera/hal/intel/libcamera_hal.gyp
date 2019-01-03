@@ -104,7 +104,6 @@
         'psl/ipu3/ControlUnit.cpp',
         'psl/ipu3/GraphConfig.cpp',
         'psl/ipu3/GraphConfigManager.cpp',
-        'psl/ipu3/HwStreamBase.cpp',
         'psl/ipu3/IPU3CameraCapInfo.cpp',
         'psl/ipu3/IPU3CameraHw.cpp',
         'psl/ipu3/IPU3ISPPipe.cpp',

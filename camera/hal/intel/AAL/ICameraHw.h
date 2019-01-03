@@ -53,15 +53,6 @@ public:
     virtual status_t flush() = 0;
 
     /**
-     * bindStreams
-     *
-     * used at configure_streams time to match the logical streams with one of
-     * the physical streams. This binding will be evaluated on a per request
-     * basis later on.
-     */
-    virtual status_t bindStreams(std::vector<CameraStreamNode *> activeStreams) = 0;
-
-    /**
      *  Configure the streams that framework expects :
      *  - gralloc usage flags
      *  - max buffers per stream

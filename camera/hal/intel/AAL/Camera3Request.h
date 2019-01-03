@@ -23,7 +23,7 @@
 #include <map>
 #include <mutex>
 
-#include "CameraStreamNode.h"
+#include "CameraStream.h"
 #include "CameraBuffer.h"
 
 namespace cros {
@@ -123,9 +123,9 @@ public:
 
     const std::vector<camera3_stream_buffer>* getOutputBuffers();
     const camera3_stream_buffer* getInputBuffer();
-    const std::vector<CameraStreamNode*>* getOutputStreams();
-    const CameraStreamNode* getInputStream();
-    std::shared_ptr<CameraBuffer> findBuffer(const CameraStreamNode* stream, bool warn = true);
+    const std::vector<CameraStream*>* getOutputStreams();
+    const CameraStream* getInputStream();
+    std::shared_ptr<CameraBuffer> findBuffer(const CameraStream* stream, bool warn = true);
     bool  isInputBuffer(std::shared_ptr<CameraBuffer> buffer);
     bool shouldSwapWidthHeight() const;
 
@@ -170,8 +170,8 @@ private:  /* types and members */
     std::vector<camera3_stream_buffer> mOutBufs;
     bool mHasInBuf;
     camera3_stream_buffer mInBuf;
-    std::vector<CameraStreamNode*> mOutStreams;
-    CameraStreamNode* mInStream;
+    std::vector<CameraStream*> mOutStreams;
+    CameraStream* mInStream;
     std::shared_ptr<CameraBuffer> mOutCamBufPool[MAX_NUMBER_OUTPUT_STREAMS];
     std::vector<std::shared_ptr<CameraBuffer> > mOutCamBufs;
     std::shared_ptr<CameraBuffer> mInCamBuf;

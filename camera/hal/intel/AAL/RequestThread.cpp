@@ -215,11 +215,9 @@ status_t RequestThread::handleConfigureStreams(MessageConfigureStreams msg)
         return status;
     }
 
-    std::vector<CameraStreamNode *> activeStreams;
+    std::vector<CameraStream*> activeStreams;
     for (unsigned int i = 0; i < mStreams.size(); i++)
-        activeStreams.push_back((CameraStreamNode *)(mStreams.at(i)->priv));
-
-    status = mCameraHw->bindStreams(activeStreams);
+        activeStreams.push_back(static_cast<CameraStream*>(mStreams.at(i)->priv));
 
     return status;
 
@@ -460,21 +458,21 @@ RequestThread::captureRequest(Camera3Request* request)
 
     // handle output buffers
 
-    const std::vector<CameraStreamNode*>* outStreams = request->getOutputStreams();
+    const std::vector<CameraStream*>* outStreams = request->getOutputStreams();
     if (CC_UNLIKELY(outStreams == nullptr)) {
         LOGE("there is no output streams. this should not happen");
         return BAD_VALUE;
     }
-    CameraStreamNode* streamNode = nullptr;
+    CameraStream* streamNode = nullptr;
     for (unsigned int i = 0; i < outStreams->size(); i++) {
         streamNode = outStreams->at(i);
         stream = static_cast<CameraStream *>(streamNode);
         stream->processRequest(request);
     }
 
-    const CameraStreamNode* inStream = request->getInputStream();
+    const CameraStream* inStream = request->getInputStream();
     if (inStream) {
-        stream = static_cast<CameraStream*>(const_cast<CameraStreamNode*>(inStream));
+        stream = static_cast<CameraStream*>(const_cast<CameraStream*>(inStream));
         status = stream->processRequest(request);
         CheckError(status != NO_ERROR, status, "%s, processRequest fails", __FUNCTION__);
     }

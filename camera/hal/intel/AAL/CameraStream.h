@@ -20,7 +20,6 @@
 #include <mutex>
 #include <atomic>
 #include <hardware/camera3.h>
-#include "CameraStreamNode.h"
 #include "CameraBuffer.h"
 #include "PlatformData.h" // for macro MAX_REQUEST_IN_PROCESS_NUM
 #include "ICameraHw.h"
@@ -51,52 +50,40 @@ class Camera3Request;
  * This class can be used by request thread and callback thread
  *
  */
-class CameraStream : public CameraStreamNode {
+class CameraStream {
 public:
-    CameraStream(int seqNo, camera3_stream_t * stream, IRequestCallback * callback);
+    CameraStream(int seqNo, camera3_stream_t *stream, IRequestCallback *callback);
     ~CameraStream();
 
     void setActive(bool active);
     bool isActive() const {return mActive; }
 
-    void dump(bool dumpBuffers = false) const;
-
     int seqNo(void) const { return mSeqNo; };
     int width(void) const { return mStream3->width; }
     int height(void) const { return mStream3->height; }
     int format(void) const { return mStream3->format; }
-    int buffersNum(void) const { return mCamera3Buffers.size(); }
-    //override API
-    virtual int usage(void) const { return (mStream3 ? mStream3->usage : 0); }
-    virtual status_t query(FrameInfo *info);
-    virtual status_t capture(std::shared_ptr<CameraBuffer> aBuffer,
-                             Camera3Request* request);
-    virtual status_t captureDone(std::shared_ptr<CameraBuffer> aBuffer,
-                                 Camera3Request* request);
-    virtual status_t reprocess(std::shared_ptr<CameraBuffer> aBuffer,
-                             Camera3Request* request);
+    int usage(void) const { return (mStream3 ? mStream3->usage : 0); }
+    status_t captureDone(std::shared_ptr<CameraBuffer> aBuffer, Camera3Request *request);
 
-    status_t processRequest(Camera3Request* request);
-    camera3_stream_t * getStream() const { return mStream3;};
-    void dump(int fd) const;
+    status_t processRequest(Camera3Request *request);
+    camera3_stream_t *getStream() const { return mStream3;};
 
     void incOutBuffersInHal() { mOutputBuffersInHal++; }
     void decOutBuffersInHal() { mOutputBuffersInHal--; }
     int32_t outBuffersInHal() { return mOutputBuffersInHal; }
 
 private: /* Methods */
-    // CameraStreamNode override API
-    virtual status_t configure(void);
+    status_t capture(std::shared_ptr<CameraBuffer> aBuffer, Camera3Request *request);
 
 private: /* Members */
     bool mActive;   /* Tracks the status of the stream during config time*/
     int mSeqNo;     /* Index of the stream */
-    IRequestCallback * mCallback;
+    IRequestCallback *mCallback;
     std::atomic<int32_t> mOutputBuffersInHal;
 
-    std::vector<std::shared_ptr<CameraBuffer> > mCamera3Buffers;
-    camera3_stream_t * mStream3; /* one stream of config_streams from client which not owned here */
-    std::vector<Camera3Request*>      mPendingRequests;
+    std::vector<std::shared_ptr<CameraBuffer>> mCamera3Buffers;
+    camera3_stream_t *mStream3; /* one stream of config_streams from client which not owned here */
+    std::vector<Camera3Request*> mPendingRequests;
     std::mutex mPendingLock; /* Protects mPendingRequests */
 };
 

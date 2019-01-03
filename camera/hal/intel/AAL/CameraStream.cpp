@@ -35,7 +35,7 @@ CameraStream::CameraStream(int seqNo, camera3_stream_t * stream,
 
 CameraStream::~CameraStream()
 {
-    LOG2("%s, pending request size=%zu", __FUNCTION__, mPendingRequests.size());
+    LOG2("@%s, pending request size: %zu", __FUNCTION__, mPendingRequests.size());
 
     std::unique_lock<std::mutex> l(mPendingLock);
     mPendingRequests.clear();
@@ -46,39 +46,13 @@ CameraStream::~CameraStream()
 
 void CameraStream::setActive(bool active)
 {
-    LOG1("CameraStream [%d] set %s", mSeqNo, active? " Active":" Inactive");
+    LOG1("CameraStream: %d set to: %s", mSeqNo, active ? " Active":" Inactive");
     mActive = active;
-}
-
-void CameraStream::dump(bool dumpBuffers) const
-{
-    LOG1("Stream %d (IO type %d) dump: -----", mSeqNo, mStream3->stream_type);
-    LOG1("    %dx%d, fmt%d usage %x, buffers num %d (available %zu)",
-        mStream3->width, mStream3->height,
-        mStream3->format,
-        mStream3->usage,
-        mStream3->max_buffers, mCamera3Buffers.size());
-    if (dumpBuffers) {
-        for (unsigned int i = 0; i < mCamera3Buffers.size(); i++) {
-            LOG1("        %d: handle %p, dataPtr %p", i,
-                mCamera3Buffers[i]->getBufferHandle(), mCamera3Buffers[i]->data());
-        }
-    }
-}
-
-status_t CameraStream::query(FrameInfo * info)
-{
-    LOG1("%s", __FUNCTION__);
-    info->width= mStream3->width;
-    info->height= mStream3->height;
-    info->format =  mStream3->format;
-    return NO_ERROR;
 }
 
 status_t CameraStream::capture(std::shared_ptr<CameraBuffer> aBuffer,
                                Camera3Request* request)
 {
-    LOGE("ERROR @%s: this is consumer node is nullptr", __FUNCTION__);
     UNUSED(aBuffer);
     UNUSED(request);
     return NO_ERROR;
@@ -113,24 +87,11 @@ status_t CameraStream::captureDone(std::shared_ptr<CameraBuffer> aBuffer,
     return NO_ERROR;
 }
 
-status_t CameraStream::reprocess(std::shared_ptr<CameraBuffer> aBuffer,
-                                 Camera3Request* request)
-{
-    LOGW("@%s: not implemented", __FUNCTION__);
-    UNUSED(aBuffer);
-    UNUSED(request);
-    return NO_ERROR;
-}
-
 status_t CameraStream::processRequest(Camera3Request* request)
 {
-    LOG2("@%s %d, capture mProducer:%p, mConsumer:%p", __FUNCTION__, mSeqNo, mProducer, mConsumer);
+    LOG2("@%s %d", __FUNCTION__, mSeqNo);
     int status = NO_ERROR;
     std::shared_ptr<CameraBuffer> buffer;
-    if (mProducer == nullptr) {
-        LOGE("ERROR @%s: mProducer is nullptr", __FUNCTION__);
-        return BAD_VALUE;
-    }
 
     std::unique_lock<std::mutex> l(mPendingLock);
     mPendingRequests.push_back(request);
@@ -141,39 +102,9 @@ status_t CameraStream::processRequest(Camera3Request* request)
         LOGE("@%s No buffer associated with stream.", __FUNCTION__);
         return NO_MEMORY;
     }
-    status = mProducer->capture(buffer, request);
+    status = capture(buffer, request);
 
     return status;
-}
-
-status_t CameraStream::configure(void)
-{
-    LOG2("@%s, %d, mProducer:%p  (%p)", __FUNCTION__, mSeqNo, mProducer, this);
-    if (!mProducer) {
-        LOGE("mProducer = nullptr");
-        return BAD_VALUE;
-    }
-
-    FrameInfo info;
-    mProducer->query(&info);
-    if ((info.width == (int)mStream3->width) &&
-        (info.height == (int)mStream3->height) &&
-        (info.format == mStream3->format)) {
-        return NO_ERROR;
-    }
-
-    LOGE("@%s configure error : w %d x h %d F:%d vs w %d x h %d F:%d", __FUNCTION__,
-         mStream3->width, mStream3->height, mStream3->format,
-         info.width, info.height, info.format);
-    return UNKNOWN_ERROR;
-}
-
-void CameraStream::dump(int fd) const
-{
-    LOG2("@%s", __FUNCTION__);
-
-    if (mProducer != nullptr)
-        mProducer->dump(fd);
 }
 
 } /* namespace intel */

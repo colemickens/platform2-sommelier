@@ -362,7 +362,7 @@ status_t OutputFrameWorker::processData(ProcessingData processingData)
             CheckError((fmt != HAL_PIXEL_FORMAT_YCbCr_420_888), UNKNOWN_ERROR,
             "@%s, input stream is not YCbCr_420_888, format:%x", __FUNCTION__, fmt);
 
-            const CameraStreamNode* s = request->getInputStream();
+            const CameraStream* s = request->getInputStream();
             CheckError(!s, UNKNOWN_ERROR, "@%s, getInputStream fails", __FUNCTION__);
 
             std::shared_ptr<CameraBuffer> buf = request->findBuffer(s);
@@ -737,7 +737,7 @@ status_t OutputFrameWorker::SWPostProcessor::processFrame(
         CheckError((fmt != HAL_PIXEL_FORMAT_YCbCr_420_888), UNKNOWN_ERROR,
                 "@%s, input stream is not YCbCr_420_888, format:%x", __FUNCTION__, fmt);
 
-        const CameraStreamNode* s = request->getInputStream();
+        const CameraStream* s = request->getInputStream();
         CheckError(!s, UNKNOWN_ERROR, "@%s, getInputStream fails", __FUNCTION__);
 
         std::shared_ptr<CameraBuffer> buf = request->findBuffer(s);
