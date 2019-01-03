@@ -70,13 +70,12 @@ class ChallengeCredentialsHelper final {
   // the provided key is valid for decryption of the given vault keyset.
   using VerifyKeyCallback = base::Callback<void(bool /* is_key_valid */)>;
 
-  // |tpm| and |key_challenge_service| are non-owned pointers that must stay
-  // valid for the whole lifetime of the created object.
+  // |tpm| is a non-owned pointer that must stay valid for the whole lifetime of
+  // the created object.
   // |delegate_blob| and |delegate_secret| should correspond to a TPM delegate
   // that allows doing signature-sealing operations (currently used only on TPM
   // 1.2).
   ChallengeCredentialsHelper(Tpm* tpm,
-                             KeyChallengeService* key_challenge_service,
                              const brillo::Blob& delegate_blob,
                              const brillo::Blob& delegate_secret);
 
@@ -94,6 +93,7 @@ class ChallengeCredentialsHelper final {
   void GenerateNew(const std::string& account_id,
                    const ChallengePublicKeyInfo& public_key_info,
                    const brillo::Blob& salt,
+                   std::unique_ptr<KeyChallengeService> key_challenge_service,
                    const GenerateNewCallback& callback);
 
   // Builds credentials for the given user, based on the encrypted
@@ -113,6 +113,7 @@ class ChallengeCredentialsHelper final {
                const ChallengePublicKeyInfo& public_key_info,
                const brillo::Blob& salt,
                const KeysetSignatureChallengeInfo& keyset_challenge_info,
+               std::unique_ptr<KeyChallengeService> key_challenge_service,
                const DecryptCallback& callback);
 
   // Verifies whether the specified cryptographic key may be used to decrypt
@@ -128,6 +129,7 @@ class ChallengeCredentialsHelper final {
   void VerifyKey(const std::string& account_id,
                  const ChallengePublicKeyInfo& public_key_info,
                  const KeysetSignatureChallengeInfo& keyset_challenge_info,
+                 std::unique_ptr<KeyChallengeService> key_challenge_service,
                  const VerifyKeyCallback& callback);
 
  private:
@@ -143,11 +145,11 @@ class ChallengeCredentialsHelper final {
 
   // Non-owned.
   Tpm* const tpm_;
-  // Non-owned.
-  KeyChallengeService* const key_challenge_service_;
   // TPM delegate that was passed to the constructor.
   const brillo::Blob delegate_blob_;
   const brillo::Blob delegate_secret_;
+  // The key challenge service used for the currently running operation, if any.
+  std::unique_ptr<KeyChallengeService> key_challenge_service_;
   // The state of the currently running operation, if any.
   std::unique_ptr<ChallengeCredentialsOperation> operation_;
 

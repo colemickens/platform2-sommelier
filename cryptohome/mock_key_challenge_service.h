@@ -27,7 +27,6 @@ class MockKeyChallengeService : public KeyChallengeService {
                void(const AccountIdentifier&,
                     const KeyChallengeRequest&,
                     const ResponseCallback&));
-  MOCK_METHOD0(CancelRunningKeyChallenges, void());
 };
 
 // Helper class for simplifying the use of MockKeyChallengeService.

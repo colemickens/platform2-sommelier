@@ -10,6 +10,7 @@
 #include <base/logging.h>
 
 #include "cryptohome/challenge_credentials/challenge_credentials_operation.h"
+#include "cryptohome/key_challenge_service.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/username_passkey.h"
 
@@ -19,11 +20,9 @@ namespace cryptohome {
 
 ChallengeCredentialsHelper::ChallengeCredentialsHelper(
     Tpm* tpm,
-    KeyChallengeService* key_challenge_service,
     const Blob& delegate_blob,
     const Blob& delegate_secret)
     : tpm_(tpm),
-      key_challenge_service_(key_challenge_service),
       delegate_blob_(delegate_blob),
       delegate_secret_(delegate_secret) {
   DCHECK(tpm_);
@@ -37,9 +36,12 @@ void ChallengeCredentialsHelper::GenerateNew(
     const std::string& account_id,
     const ChallengePublicKeyInfo& public_key_info,
     const Blob& salt,
+    std::unique_ptr<KeyChallengeService> key_challenge_service,
     const GenerateNewCallback& callback) {
   DCHECK(thread_checker_.CalledOnValidThread());
   DCHECK(!callback.is_null());
+  CancelRunningOperation();
+  DCHECK(!key_challenge_service_);
   // TODO(emaxx, https://crbug.com/842791): This should request signature of
   // |salt|, create a sealed secret, start unsealing session for unsealing it,
   // request signature of its challenge, complete unsealing, generate
@@ -52,12 +54,15 @@ void ChallengeCredentialsHelper::Decrypt(
     const ChallengePublicKeyInfo& public_key_info,
     const Blob& salt,
     const KeysetSignatureChallengeInfo& keyset_challenge_info,
+    std::unique_ptr<KeyChallengeService> key_challenge_service,
     const DecryptCallback& callback) {
   DCHECK(thread_checker_.CalledOnValidThread());
   DCHECK(!callback.is_null());
   CancelRunningOperation();
+  DCHECK(!key_challenge_service_);
+  key_challenge_service_ = std::move(key_challenge_service);
   operation_ = std::make_unique<ChallengeCredentialsDecryptOperation>(
-      key_challenge_service_, tpm_, delegate_blob_, delegate_secret_,
+      key_challenge_service_.get(), tpm_, delegate_blob_, delegate_secret_,
       account_id, public_key_info, salt, keyset_challenge_info,
       nullptr /* salt_signature */,
       base::Bind(&ChallengeCredentialsHelper::OnDecryptCompleted,
@@ -69,9 +74,12 @@ void ChallengeCredentialsHelper::VerifyKey(
     const std::string& account_id,
     const ChallengePublicKeyInfo& public_key_info,
     const KeysetSignatureChallengeInfo& keyset_challenge_info,
+    std::unique_ptr<KeyChallengeService> key_challenge_service,
     const VerifyKeyCallback& callback) {
   DCHECK(thread_checker_.CalledOnValidThread());
   DCHECK(!callback.is_null());
+  CancelRunningOperation();
+  DCHECK(!key_challenge_service_);
   // TODO(emaxx, https://crbug.com/842791): This should generate a random
   // challenge, request its signature, and verify the signature
   // programmatically.
@@ -89,6 +97,8 @@ void ChallengeCredentialsHelper::CancelRunningOperation() {
     // It's illegal for the consumer code to request a new operation in
     // immediate response to completion of a previous one.
     DCHECK(!operation_);
+
+    key_challenge_service_.reset();
   }
 }
 

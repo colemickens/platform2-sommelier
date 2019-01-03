@@ -42,10 +42,6 @@ class KeyChallengeService {
   virtual void ChallengeKey(const AccountIdentifier& account_id,
                             const KeyChallengeRequest& key_challenge_request,
                             const ResponseCallback& response_callback) = 0;
-
-  // Cancels all currently running requests that were made via ChallengeKey().
-  // The requests' callbacks will be executed with a null result.
-  virtual void CancelRunningKeyChallenges() = 0;
 };
 
 }  // namespace cryptohome
