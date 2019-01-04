@@ -32,9 +32,9 @@ int main(int argc, char* argv[]) {
     bgcolor =
         strtoul(cl->GetSwitchValueASCII(kBgColorFlag).c_str(), nullptr, 0);
   }
-  const char* title = "x11_demo";
+  std::string title = "x11_demo";
   if (cl->HasSwitch(kTitleFlag)) {
-    title = cl->GetSwitchValueASCII(kTitleFlag).c_str();
+    title = cl->GetSwitchValueASCII(kTitleFlag);
   }
 
   Display* dpy = XOpenDisplay(nullptr);
@@ -73,7 +73,7 @@ int main(int argc, char* argv[]) {
   XSetClassHint(dpy, win, wmclass_hint);
   XSelectInput(dpy, win, KeyPressMask);
   XMapWindow(dpy, win);
-  XStoreName(dpy, win, title);
+  XStoreName(dpy, win, title.c_str());
 
   LOG(INFO) << "x11_demo application displaying, waiting for keypress";
   XEvent evt;

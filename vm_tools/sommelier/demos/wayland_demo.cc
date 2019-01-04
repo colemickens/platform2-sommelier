@@ -24,7 +24,7 @@ struct demo_data {
   uint32_t bgcolor;
   uint32_t width;
   uint32_t height;
-  const char* title;
+  std::string title;
   int scale;
   struct wl_compositor* compositor;
   struct wl_shell* shell;
@@ -222,7 +222,7 @@ int main(int argc, char* argv[]) {
   }
   data.title = "wayland_demo";
   if (cl->HasSwitch(kTitleFlag)) {
-    data.title = cl->GetSwitchValueASCII(kTitleFlag).c_str();
+    data.title = cl->GetSwitchValueASCII(kTitleFlag);
   }
 
   struct wl_display* display = wl_display_connect(nullptr);
@@ -282,7 +282,7 @@ int main(int argc, char* argv[]) {
 
   wl_shell_surface_set_toplevel(data.shell_surface);
   wl_shell_surface_set_class(data.shell_surface, "wayland_demo");
-  wl_shell_surface_set_title(data.shell_surface, data.title);
+  wl_shell_surface_set_title(data.shell_surface, data.title.c_str());
   data.callback = wl_surface_frame(data.surface);
   struct wl_callback_listener callback_listener = {demo_draw};
   data.callback_listener = &callback_listener;
