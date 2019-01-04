@@ -29,8 +29,6 @@ IPU3CameraCapInfo::IPU3CameraCapInfo(SensorType type):
     mGainExposureComp(false),
     mGainLag(0),
     mExposureLag(0),
-    mFrameInitialSkip(0),
-    mStatisticsInitialSkip(0),
     mCITMaxMargin(0),
     mSupportIsoMap(false),
     mMaxNvmDataSize(0),

@@ -1539,10 +1539,6 @@ void CameraProfiles::handleSensorInfo(const char *name, const char **atts)
     } else if (strcmp(name, "fov") == 0) {
         info->mFov[0] = atof(atts[1]);
         info->mFov[1] = atof(atts[3]);
-    } else if (strcmp(name, "statistics.initialSkip") == 0) {
-        info->mStatisticsInitialSkip = atoi(atts[1]);
-    } else if (strcmp(name, "frame.initialSkip") == 0) {
-        info->mFrameInitialSkip = atoi(atts[1]);
     } else if (strcmp(name, "cITMaxMargin") == 0) {
         info->mCITMaxMargin = atoi(atts[1]);
     } else if (strcmp(name, "maxNvmDataSize") == 0) {
@@ -2134,7 +2130,6 @@ void CameraProfiles::dumpSensorInfoSection(int cameraId)
     LOGD("element name: gain.lag, element value = %d", info->mGainLag);
     LOGD("element name: exposure.lag, element value = %d", info->mExposureLag);
     LOGD("element name: fov, element value = %f, %f", info->mFov[0], info->mFov[1]);
-    LOGD("element name: statistics.initialSkip, element value = %d", info->mStatisticsInitialSkip);
     LOGD("element name: testPattern.bayerFormat, element value = %s", info->mTestPatternBayerFormat.c_str());
 }
 

@@ -39,8 +39,6 @@ public:
     int gainLag(void) const { return mGainLag; };
     int exposureLag(void) const { return mExposureLag; };
     const float* fov(void) const { return mFov; };
-    int statisticsInitialSkip(void) const { return mStatisticsInitialSkip; };
-    int frameInitialSkip(void) const { return mFrameInitialSkip; };
     int getCITMaxMargin(void) const { return mCITMaxMargin; };
     bool getSupportIsoMap(void) const { return mSupportIsoMap; }
     const int getMaxNvmDataSize(void) const { return mMaxNvmDataSize; };
@@ -63,8 +61,6 @@ public:
     int mGainLag;
     int mExposureLag;
     float mFov[2]; /* mFov[0] is fov horizontal, mFov[1] is fov vertical */
-    int mFrameInitialSkip;
-    int mStatisticsInitialSkip;
     int mCITMaxMargin;
     bool mSupportIsoMap;
     int mMaxNvmDataSize;
