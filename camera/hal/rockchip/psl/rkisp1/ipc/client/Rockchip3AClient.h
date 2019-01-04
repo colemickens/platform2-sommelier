@@ -53,12 +53,18 @@ public:
 private:
     int waitCallback();
 
-    void callbackHandler(uint32_t status, int32_t buffer_handle);
+    void callbackHandler(uint32_t req_id,
+                         uint32_t status,
+                         int32_t buffer_handle);
     void notifyHandler(uint32_t msg);
 
     // when the request is done, the callback will be received.
-    static void returnCallback(const camera_algorithm_callback_ops_t* callback_ops,
-                                    uint32_t status, int32_t buffer_handle);
+    static void returnCallback(
+        const camera_algorithm_callback_ops_t* callback_ops,
+        uint32_t req_id,
+        uint32_t status,
+        int32_t buffer_handle);
+
     // when IPC error happens in the bridge, notifyCallback will be called.
     static void notifyCallback(const struct camera_algorithm_callback_ops* callback_ops,
                                 camera_algorithm_error_msg_code_t msg);
@@ -71,7 +77,7 @@ private:
     pthread_mutex_t mCbLock;
     pthread_cond_t mCbCond;
     bool mIsCallbacked;
-    base::Callback<void(uint32_t, int32_t)> mCallback;
+    base::Callback<void(uint32_t, uint32_t, int32_t)> mCallback;
     bool mCbResult; // true: success, false: fail
 
     base::Callback<void(uint32_t)> mNotifyCallback;

@@ -157,7 +157,10 @@ int Rockchip3AClient::requestSync(IPC_CMD cmd, int32_t bufferHandle)
     reqHeader[0] = IPC_MATCHING_KEY;
     reqHeader[1] = cmd & 0xff;
 
-    mBridge->Request(reqHeader, bufferHandle);
+    // Currently we are not using request id since all requests are handled
+    // one after the other.
+    const uint32_t kDummyRequestId = 0;
+    mBridge->Request(kDummyRequestId, reqHeader, bufferHandle);
     int ret = waitCallback();
     CheckError((ret != OK), UNKNOWN_ERROR, "@%s, call waitCallback fail", __FUNCTION__);
 
@@ -226,7 +229,8 @@ int Rockchip3AClient::waitCallback()
     return OK;
 }
 
-void Rockchip3AClient::callbackHandler(uint32_t status, int32_t buffer_handle)
+void Rockchip3AClient::callbackHandler(
+  uint32_t req_id, uint32_t status, int32_t buffer_handle)
 {
     LOG2("@%s, status:%d, buffer_handle:%d", __FUNCTION__, status, buffer_handle);
     if (status != 0) {
@@ -261,14 +265,17 @@ void Rockchip3AClient::notifyHandler(uint32_t msg)
     LOGE("@%s, receive CAMERA_ALGORITHM_MSG_IPC_ERROR", __FUNCTION__);
 }
 
-void Rockchip3AClient::returnCallback(const camera_algorithm_callback_ops_t* callback_ops,
-                            uint32_t status, int32_t buffer_handle)
+void Rockchip3AClient::returnCallback(
+    const camera_algorithm_callback_ops_t* callback_ops,
+    uint32_t req_id,
+    uint32_t status,
+    int32_t buffer_handle)
 {
     LOG2("@%s", __FUNCTION__);
     CheckError(!callback_ops, VOID_VALUE, "@%s, callback_ops is nullptr", __FUNCTION__);
 
     auto s = const_cast<Rockchip3AClient*>(static_cast<const Rockchip3AClient*>(callback_ops));
-    s->mCallback.Run(status, buffer_handle);
+    s->mCallback.Run(req_id, status, buffer_handle);
 }
 
 void Rockchip3AClient::notifyCallback(const struct camera_algorithm_callback_ops* callback_ops,

@@ -149,7 +149,11 @@ uint32_t Rockchip3AServer::handleRequest(uint8_t cmd, int reqeustSize, void* add
     return status == OK ? 0 : 1;
 }
 
-void Rockchip3AServer::request(const uint8_t req_header[], uint32_t size, int32_t buffer_handle)
+void Rockchip3AServer::request(
+    uint32_t req_id,
+    const uint8_t req_header[],
+    uint32_t size,
+    int32_t buffer_handle)
 {
     LOG1("@%s, size:%d, buffer_handle:%d", __FUNCTION__, size, buffer_handle);
     uint32_t status = 0;
@@ -171,7 +175,8 @@ void Rockchip3AServer::request(const uint8_t req_header[], uint32_t size, int32_
     }
 
     mThread.task_runner()->PostTask(FROM_HERE,
-        base::Bind(&Rockchip3AServer::returnCallback, base::Unretained(this), status, buffer_handle));
+        base::Bind(&Rockchip3AServer::returnCallback, base::Unretained(this),
+                   req_id, status, buffer_handle));
 }
 
 void Rockchip3AServer::deregisterBuffers(const int32_t buffer_handles[], uint32_t size)
@@ -191,10 +196,11 @@ void Rockchip3AServer::deregisterBuffers(const int32_t buffer_handles[], uint32_
     }
 }
 
-void Rockchip3AServer::returnCallback(uint32_t status, int32_t buffer_handle)
+void Rockchip3AServer::returnCallback(
+    uint32_t req_id, uint32_t status, int32_t buffer_handle)
 {
     LOG1("@%s, buffer_handle:%d", __FUNCTION__, buffer_handle);
-    (*mCallback->return_callback)(mCallback, status, buffer_handle);
+    (*mCallback->return_callback)(mCallback, req_id, status, buffer_handle);
 }
 
 
@@ -210,12 +216,14 @@ static int32_t registerBuffer(int32_t buffer_fd)
     return Rockchip3AServer::getInstance()->registerBuffer(buffer_fd);
 }
 
-static void request(const uint8_t req_header[],
-                       uint32_t size,
-                       int32_t buffer_handle)
+static void request(uint32_t req_id,
+                    const uint8_t req_header[],
+                    uint32_t size,
+                    int32_t buffer_handle)
 {
     LOG1("@%s, size:%d, buffer_handle:%d", __FUNCTION__, size, buffer_handle);
-    Rockchip3AServer::getInstance()->request(req_header, size, buffer_handle);
+    Rockchip3AServer::getInstance()->request(
+        req_id, req_header, size, buffer_handle);
 }
 
 static void deregisterBuffers(const int32_t buffer_handles[], uint32_t size)

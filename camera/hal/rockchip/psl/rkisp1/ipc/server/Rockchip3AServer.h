@@ -41,14 +41,18 @@ public:
 
     int32_t initialize(const camera_algorithm_callback_ops_t* callback_ops);
     int32_t registerBuffer(int buffer_fd);
-    void request(const uint8_t req_header[], uint32_t size, int32_t buffer_handle);
+    void request(uint32_t req_id,
+                 const uint8_t req_header[],
+                 uint32_t size,
+                 int32_t buffer_handle);
     void deregisterBuffers(const int32_t buffer_handles[], uint32_t size);
 
 private:
     Rockchip3AServer();
     ~Rockchip3AServer();
 
-    void returnCallback(uint32_t status, int32_t buffer_handle);
+    void returnCallback(
+        uint32_t req_id, uint32_t status, int32_t buffer_handle);
     int parseReqHeader(const uint8_t req_header[], uint32_t size, uint8_t* cmd);
     uint32_t handleRequest(uint8_t cmd, int reqeustSize, void* addr);
 
