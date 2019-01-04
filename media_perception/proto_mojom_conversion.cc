@@ -139,6 +139,33 @@ DistancePtr ToMojom(const mri::Distance& distance) {
   return distance_ptr;
 }
 
+HotwordType ToMojom(mri::HotwordType type) {
+  switch (type) {
+    case mri::HotwordType::OK_GOOGLE:
+      return HotwordType::OK_GOOGLE;
+    case mri::HotwordType::HOTWORD_TYPE_UNKNOWN:
+      return HotwordType::HOTWORD_TYPE_UNKNOWN;
+  }
+  return HotwordType::HOTWORD_TYPE_UNKNOWN;
+}
+
+HotwordPtr ToMojom(const mri::Hotword& hotword) {
+  HotwordPtr hotword_ptr = Hotword::New();
+  hotword_ptr->type = ToMojom(hotword.type());
+  hotword_ptr->start_timestamp_ms = hotword.start_timestamp_ms();
+  hotword_ptr->end_timestamp_ms = hotword.end_timestamp_ms();
+  return hotword_ptr;
+}
+
+HotwordDetectionPtr ToMojom(const mri::HotwordDetection& hotword_detection) {
+  HotwordDetectionPtr hotword_detection_ptr = HotwordDetection::New();
+  for (int i = 0; i < hotword_detection.hotwords_size(); ++i) {
+    hotword_detection_ptr->hotwords.push_back(
+        ToMojom(hotword_detection.hotwords(i)));
+  }
+  return hotword_detection_ptr;
+}
+
 EntityType ToMojom(mri::EntityType type) {
   switch (type) {
     case mri::EntityType::FACE:
@@ -449,6 +476,41 @@ Distance ToProto(
   distance.set_units(ToProto(distance_ptr->units));
   distance.set_magnitude(distance_ptr->magnitude);
   return distance;
+}
+
+HotwordType ToProto(chromeos::media_perception::mojom::HotwordType type) {
+  switch (type) {
+    case chromeos::media_perception::mojom::HotwordType::OK_GOOGLE:
+      return HotwordType::OK_GOOGLE;
+    case chromeos::media_perception::mojom::HotwordType::HOTWORD_TYPE_UNKNOWN:
+      return HotwordType::HOTWORD_TYPE_UNKNOWN;
+  }
+  return HotwordType::HOTWORD_TYPE_UNKNOWN;
+}
+
+Hotword ToProto(
+    const chromeos::media_perception::mojom::HotwordPtr& hotword_ptr) {
+  Hotword hotword;
+  if (hotword_ptr.is_null())
+    return hotword;
+
+  hotword.set_type(ToProto(hotword_ptr->type));
+  hotword.set_start_timestamp_ms(hotword_ptr->start_timestamp_ms);
+  hotword.set_end_timestamp_ms(hotword_ptr->end_timestamp_ms);
+  return hotword;
+}
+
+HotwordDetection ToProto(
+    const chromeos::media_perception::mojom::HotwordDetectionPtr&
+        hotword_detection_ptr) {
+  HotwordDetection hotword_detection;
+  if (hotword_detection_ptr.is_null())
+    return hotword_detection;
+
+  for (const auto& hotword : hotword_detection_ptr->hotwords)
+    *hotword_detection.add_hotwords() = ToProto(hotword);
+
+  return hotword_detection;
 }
 
 EntityType ToProto(chromeos::media_perception::mojom::EntityType type) {

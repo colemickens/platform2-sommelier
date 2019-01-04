@@ -11,10 +11,12 @@
 #include "media_perception/device_management.pb.h"
 #include "media_perception/frame_perception.pb.h"
 #include "media_perception/media_perception_mojom.pb.h"
+#include "media_perception/hotword_detection.pb.h"
 #include "media_perception/pipeline.pb.h"
 #include "mojom/common.mojom.h"
 #include "mojom/device_management.mojom.h"
 #include "mojom/frame_perception.mojom.h"
+#include "mojom/hotword_detection.mojom.h"
 #include "mojom/media_perception.mojom.h"
 #include "mojom/pipeline.mojom.h"
 
@@ -43,12 +45,16 @@ FramePerceptionType ToMojom(mri::FramePerceptionType type);
 EntityPtr ToMojom(const mri::Entity& entity);
 FramePerceptionPtr ToMojom(const mri::FramePerception& perception);
 
+// Hotword detection conversions.
+HotwordType ToMojom(mri::HotwordType type);
+HotwordPtr ToMojom(const mri::Hotword& hotword);
+HotwordDetectionPtr ToMojom(const mri::HotwordDetection& hotword_detection);
+
 // Pipeline conversions.
 PipelineStatus ToMojom(mri::PipelineStatus status);
 PipelineErrorType ToMojom(mri::PipelineErrorType error_type);
 PipelineErrorPtr ToMojom(const mri::PipelineError& error);
 PipelineStatePtr ToMojom(const mri::PipelineState& state);
-
 
 }  // namespace mojom
 }  // namespace media_perception
@@ -97,6 +103,15 @@ Entity ToProto(const chromeos::media_perception::mojom::EntityPtr& entity_ptr);
 FramePerception ToProto(
     const chromeos::media_perception::mojom::FramePerceptionPtr&
         perception_ptr);
+
+// Hotword detection conversions.
+HotwordType ToProto(
+    chromeos::media_perception::mojom::HotwordType type);
+Hotword ToProto(
+    const chromeos::media_perception::mojom::HotwordPtr& hotword_ptr);
+HotwordDetection ToProto(
+    const chromeos::media_perception::mojom::HotwordDetectionPtr&
+        hotword_deteciton_ptr);
 
 // Pipeline conversions.
 PipelineStatus ToProto(

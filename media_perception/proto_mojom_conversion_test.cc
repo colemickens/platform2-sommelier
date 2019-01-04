@@ -191,6 +191,31 @@ TEST(ProtoMojomConversionTest, DistanceToMojom) {
   EXPECT_FLOAT_EQ(distance_ptr->magnitude, 1.5);
 }
 
+TEST(ProtoMojomConversionTest, HotwordDetectionToMojom) {
+  mri::HotwordDetection hotword_detection;
+
+  mri::Hotword* hotword1 = hotword_detection.add_hotwords();
+  hotword1->set_type(mri::HotwordType::OK_GOOGLE);
+  hotword1->set_start_timestamp_ms(100);
+  hotword1->set_end_timestamp_ms(250);
+
+  mri::Hotword* hotword2 = hotword_detection.add_hotwords();
+  hotword2->set_start_timestamp_ms(560);
+  hotword2->set_end_timestamp_ms(700);
+
+  HotwordDetectionPtr hotword_detection_ptr = ToMojom(hotword_detection);
+  EXPECT_EQ(hotword_detection_ptr->hotwords.size(), 2);
+
+  EXPECT_EQ(hotword_detection_ptr->hotwords[0]->type, HotwordType::OK_GOOGLE);
+  EXPECT_EQ(hotword_detection_ptr->hotwords[0]->start_timestamp_ms, 100);
+  EXPECT_EQ(hotword_detection_ptr->hotwords[0]->end_timestamp_ms, 250);
+
+  EXPECT_EQ(hotword_detection_ptr->hotwords[1]->type,
+            HotwordType::HOTWORD_TYPE_UNKNOWN);
+  EXPECT_EQ(hotword_detection_ptr->hotwords[1]->start_timestamp_ms, 560);
+  EXPECT_EQ(hotword_detection_ptr->hotwords[1]->end_timestamp_ms, 700);
+}
+
 TEST(ProtoMojomConversionTest, EntityToMojom) {
   mri::Entity entity;
   entity.set_type(mri::EntityType::FACE);
@@ -455,6 +480,38 @@ TEST(ProtoMojomConversionTest, DistanceToProto) {
   Distance distance = ToProto(distance_ptr);
   EXPECT_EQ(distance.units(), DistanceUnits::METERS);
   EXPECT_FLOAT_EQ(distance.magnitude(), 1.5);
+}
+
+TEST(ProtoMojomConversionTest, HotwordDetectionToProto) {
+  chromeos::media_perception::mojom::HotwordDetectionPtr hotword_detection_ptr
+      = chromeos::media_perception::mojom::HotwordDetection::New();
+  hotword_detection_ptr->hotwords.resize(2);
+
+  hotword_detection_ptr->hotwords[0] =
+      chromeos::media_perception::mojom::Hotword::New();
+  hotword_detection_ptr->hotwords[0]->type =
+      chromeos::media_perception::mojom::HotwordType::HOTWORD_TYPE_UNKNOWN;
+  hotword_detection_ptr->hotwords[0]->start_timestamp_ms = 100;
+  hotword_detection_ptr->hotwords[0]->end_timestamp_ms = 250;
+
+  hotword_detection_ptr->hotwords[1] =
+      chromeos::media_perception::mojom::Hotword::New();
+  hotword_detection_ptr->hotwords[1]->type =
+      chromeos::media_perception::mojom::HotwordType::OK_GOOGLE;
+  hotword_detection_ptr->hotwords[1]->start_timestamp_ms = 560;
+  hotword_detection_ptr->hotwords[1]->end_timestamp_ms = 700;
+
+  HotwordDetection hotword_detection = ToProto(hotword_detection_ptr);
+  EXPECT_EQ(hotword_detection.hotwords_size(), 2);
+
+  EXPECT_EQ(hotword_detection.hotwords(0).type(),
+            HotwordType::HOTWORD_TYPE_UNKNOWN);
+  EXPECT_EQ(hotword_detection.hotwords(0).start_timestamp_ms(), 100);
+  EXPECT_EQ(hotword_detection.hotwords(0).end_timestamp_ms(), 250);
+
+  EXPECT_EQ(hotword_detection.hotwords(1).type(), HotwordType::OK_GOOGLE);
+  EXPECT_EQ(hotword_detection.hotwords(1).start_timestamp_ms(), 560);
+  EXPECT_EQ(hotword_detection.hotwords(1).end_timestamp_ms(), 700);
 }
 
 TEST(ProtoMojomConversionTest, EntityToProto) {
