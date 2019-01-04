@@ -639,6 +639,8 @@ TPM_RC ResourceManager::ParseResponse(const MessageInfo& command_info,
     return MakeError(result, FROM_HERE);
   }
   if (size != response.size()) {
+    LOG(ERROR) << "Invalid response: size field = " << size
+               << ", actual = " << response.size();
     return MakeError(TPM_RC_SIZE, FROM_HERE);
   }
 
