@@ -564,7 +564,7 @@ install_stateful() {
   # src/platform/init/chromeos_startup, and in src/platform/dev/stateful_update.
   #
   local dirlist="
-    unencrypted/demo_mode_resources
+    unencrypted/cros-components/offline-demo-mode-resources
     unencrypted/import_extensions
   "
 
