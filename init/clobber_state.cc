@@ -164,14 +164,15 @@ std::vector<base::FilePath> ClobberState::GetPreservedFilesList() {
         "unencrypted/preserve/update_engine/prefs/rollback-version");
 
     // Preserve pre-installed demo mode resources for offline Demo Mode.
-    stateful_paths.push_back(
-        "unencrypted/cros-components/demo_mode_resources/image.squash");
-    stateful_paths.push_back(
-        "unencrypted/cros-components/demo_mode_resources/imageloader.json");
-    stateful_paths.push_back(
-        "unencrypted/cros-components/demo_mode_resources/imageloader.sig.2");
-    stateful_paths.push_back(
-        "unencrypted/cros-components/demo_mode_resources/table");
+    std::string demo_mode_resources_dir =
+        "unencrypted/cros-components/offline-demo-mode-resources/";
+    stateful_paths.push_back(demo_mode_resources_dir + "image.squash");
+    stateful_paths.push_back(demo_mode_resources_dir + "imageloader.json");
+    stateful_paths.push_back(demo_mode_resources_dir + "imageloader.sig.1");
+    stateful_paths.push_back(demo_mode_resources_dir + "imageloader.sig.2");
+    stateful_paths.push_back(demo_mode_resources_dir + "manifest.fingerprint");
+    stateful_paths.push_back(demo_mode_resources_dir + "manifest.json");
+    stateful_paths.push_back(demo_mode_resources_dir + "table");
 
     // For rollback wipes, we also preserve rollback data. This is an encrypted
     // proto which contains install attributes, device policy and owner.key

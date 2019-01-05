@@ -383,10 +383,17 @@ TEST_F(GetPreservedFilesListTest, SafeWipe) {
       "unencrypted/preserve/tpm_firmware_update_request",
       "unencrypted/preserve/update_engine/prefs/rollback-happened",
       "unencrypted/preserve/update_engine/prefs/rollback-version",
-      "unencrypted/cros-components/demo_mode_resources/image.squash",
-      "unencrypted/cros-components/demo_mode_resources/imageloader.json",
-      "unencrypted/cros-components/demo_mode_resources/imageloader.sig.2",
-      "unencrypted/cros-components/demo_mode_resources/table"};
+      "unencrypted/cros-components/offline-demo-mode-resources/image.squash",
+      "unencrypted/cros-components/offline-demo-mode-resources/"
+      "imageloader.json",
+      "unencrypted/cros-components/offline-demo-mode-resources/"
+      "imageloader.sig.1",
+      "unencrypted/cros-components/offline-demo-mode-resources/"
+      "imageloader.sig.2",
+      "unencrypted/cros-components/offline-demo-mode-resources/"
+      "manifest.fingerprint",
+      "unencrypted/cros-components/offline-demo-mode-resources/manifest.json",
+      "unencrypted/cros-components/offline-demo-mode-resources/table"};
   SetCompare(expected_preserved_set, preserved_set);
 }
 
@@ -406,10 +413,17 @@ TEST_F(GetPreservedFilesListTest, SafeAndRollbackWipe) {
       "unencrypted/preserve/tpm_firmware_update_request",
       "unencrypted/preserve/update_engine/prefs/rollback-happened",
       "unencrypted/preserve/update_engine/prefs/rollback-version",
-      "unencrypted/cros-components/demo_mode_resources/image.squash",
-      "unencrypted/cros-components/demo_mode_resources/imageloader.json",
-      "unencrypted/cros-components/demo_mode_resources/imageloader.sig.2",
-      "unencrypted/cros-components/demo_mode_resources/table",
+      "unencrypted/cros-components/offline-demo-mode-resources/image.squash",
+      "unencrypted/cros-components/offline-demo-mode-resources/"
+      "imageloader.json",
+      "unencrypted/cros-components/offline-demo-mode-resources/"
+      "imageloader.sig.1",
+      "unencrypted/cros-components/offline-demo-mode-resources/"
+      "imageloader.sig.2",
+      "unencrypted/cros-components/offline-demo-mode-resources/"
+      "manifest.fingerprint",
+      "unencrypted/cros-components/offline-demo-mode-resources/manifest.json",
+      "unencrypted/cros-components/offline-demo-mode-resources/table",
       "unencrypted/preserve/attestation.epb",
       "unencrypted/preserve/rollback_data"};
   SetCompare(expected_preserved_set, preserved_set);
@@ -448,10 +462,17 @@ TEST_F(GetPreservedFilesListTest, SafeRollbackFactoryWipe) {
       "unencrypted/preserve/tpm_firmware_update_request",
       "unencrypted/preserve/update_engine/prefs/rollback-happened",
       "unencrypted/preserve/update_engine/prefs/rollback-version",
-      "unencrypted/cros-components/demo_mode_resources/image.squash",
-      "unencrypted/cros-components/demo_mode_resources/imageloader.json",
-      "unencrypted/cros-components/demo_mode_resources/imageloader.sig.2",
-      "unencrypted/cros-components/demo_mode_resources/table",
+      "unencrypted/cros-components/offline-demo-mode-resources/image.squash",
+      "unencrypted/cros-components/offline-demo-mode-resources/"
+      "imageloader.json",
+      "unencrypted/cros-components/offline-demo-mode-resources/"
+      "imageloader.sig.1",
+      "unencrypted/cros-components/offline-demo-mode-resources/"
+      "imageloader.sig.2",
+      "unencrypted/cros-components/offline-demo-mode-resources/"
+      "manifest.fingerprint",
+      "unencrypted/cros-components/offline-demo-mode-resources/manifest.json",
+      "unencrypted/cros-components/offline-demo-mode-resources/table",
       "unencrypted/preserve/attestation.epb",
       "unencrypted/preserve/rollback_data",
       "unencrypted/import_extensions/extensions/fileA.crx",
