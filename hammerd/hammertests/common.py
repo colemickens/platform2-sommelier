@@ -16,22 +16,37 @@ import hammerd_api
 ROOT_DIR = os.path.dirname(os.path.realpath(__file__))
 IMAGE_DIR = os.path.join(ROOT_DIR, 'images')
 
-# The board name.
-BOARD_NAME = 'staff'
+BASE_TABLE = {
+  'poppy': 'hammer',
+  'soraka': 'staff',
+  'nocturne': 'whiskers'
+}
+
+board_name_cmd = 'grep CHROMEOS_RELEASE_BOARD /etc/lsb-release | cut -d = -f 2'
+BOARD_NAME = subprocess.check_output(board_name_cmd, shell=True)
+BASE_NAME = BASE_TABLE[BOARD_NAME.rstrip()]
 
 # Device-dependent information.
-if BOARD_NAME == 'staff':
+if BASE_NAME == 'staff':
   BASE_VENDOR_ID = 0x18d1
   BASE_PRODUCT_ID = 0x502b
   BASE_BUS = 1
   BASE_PORT = 2
-elif BOARD_NAME == 'hammer':
+  BASE_CONN_GPIO = 'PP3300_DX_BASE'
+elif BASE_NAME == 'whiskers':
   BASE_VENDOR_ID = 0x18d1
   BASE_PRODUCT_ID = 0x5030
   BASE_BUS = 1
+  BASE_PORT = 7
+  BASE_CONN_GPIO = 'BASE_PWR_EN'
+elif BASE_NAME == 'hammer':
+  BASE_VENDOR_ID = 0x18d1
+  BASE_PRODUCT_ID = 0x5022
+  BASE_BUS = 1
   BASE_PORT = 3
+  BASE_CONN_GPIO = 'PP3300_DX_BASE'
 else:
-  print('Error: unknown board: %s' % BOARD_NAME)
+  print('Error: unknown board: %s' % BASE_NAME)
 
 # Status of flash protect.
 EC_FLASH_PROTECT_RO_AT_BOOT = (1 << 0)
@@ -47,22 +62,22 @@ EC_FLASH_PROTECT_ROLLBACK_AT_BOOT = (1 << 9)
 EC_FLASH_PROTECT_ROLLBACK_NOW = (1 << 10)
 
 # Path of testing image files.
-IMAGE = os.path.join(IMAGE_DIR, '%s.bin' % BOARD_NAME)
-TP = '/lib/firmware/%s-touchpad.fw' % BOARD_NAME
-RW_DEV = os.path.join(IMAGE_DIR, '%s.dev' % BOARD_NAME)
+IMAGE = os.path.join(IMAGE_DIR, '%s.bin' % BASE_NAME)
+TP = '/lib/firmware/%s-touchpad.fw' % BASE_NAME
+RW_DEV = os.path.join(IMAGE_DIR, '%s.dev' % BASE_NAME)
 RW_CORRUPT_FIRST_BYTE = os.path.join(
-    IMAGE_DIR, '%s_corrupt_first_byte.bin' % BOARD_NAME)
+    IMAGE_DIR, '%s_corrupt_first_byte.bin' % BASE_NAME)
 RW_CORRUPT_LAST_BYTE = os.path.join(
-    IMAGE_DIR, '%s_corrupt_last_byte.bin' % BOARD_NAME)
-RW_VALID = os.path.join(IMAGE_DIR, '%s.bin' % BOARD_NAME)
-OLDER_IMAGE = os.path.join(IMAGE_DIR, '%solder.bin' % BOARD_NAME)
-NEWER_IMAGE = os.path.join(IMAGE_DIR, '%snewer.bin' % BOARD_NAME)
+    IMAGE_DIR, '%s_corrupt_last_byte.bin' % BASE_NAME)
+RW_VALID = os.path.join(IMAGE_DIR, '%s.bin' % BASE_NAME)
+OLDER_IMAGE = os.path.join(IMAGE_DIR, '%solder.bin' % BASE_NAME)
+NEWER_IMAGE = os.path.join(IMAGE_DIR, '%snewer.bin' % BASE_NAME)
 # Image should not update RW
-RB_LOWER = os.path.join(IMAGE_DIR, '%s.dev.rb0' % BOARD_NAME)
+RB_LOWER = os.path.join(IMAGE_DIR, '%s.dev.rb0' % BASE_NAME)
 # Initial DUT image
-RB_INITIAL = os.path.join(IMAGE_DIR, '%s.dev.rb1' % BOARD_NAME)
+RB_INITIAL = os.path.join(IMAGE_DIR, '%s.dev.rb1' % BASE_NAME)
 # Image should update RW and RB regions region
-RB_HIGHER = os.path.join(IMAGE_DIR, '%s.dev.rb9' % BOARD_NAME)
+RB_HIGHER = os.path.join(IMAGE_DIR, '%s.dev.rb9' % BASE_NAME)
 
 
 # Common function.
@@ -74,8 +89,8 @@ def connect_usb(updater):
 
 def sim_disconnect_connect(updater):
   print('Simulate hammer disconnect/ reconnect to reset base')
-  subprocess.call('ectool gpioset PP3300_DX_BASE 0', shell=True)
-  subprocess.call('ectool gpioset PP3300_DX_BASE 1', shell=True)
+  subprocess.call('ectool gpioset ' + BASE_CONN_GPIO + ' 0', shell=True)
+  subprocess.call('ectool gpioset ' + BASE_CONN_GPIO + ' 1', shell=True)
   updater.CloseUsb()
   # Need to give base time to be visible to lid
   time.sleep(3)

@@ -54,8 +54,8 @@ def main(argv):
   print('Challenge status: %d' % challenge_status)
   #assert challenge_status == 9, 'Need to inject the entropy'
 
-  for iteration in range(INJECTION_RUNS):
-    print('Jumping back to RO to inject entropy. Iteration: %d' % iteration + 1)
+  for iteratn in range(INJECTION_RUNS):
+    print('Jumping back to RO to inject entropy. Iteratn: %d' % (iteratn + 1))
     updater.SendSubcommand(hammerd_api.UpdateExtraCommand.UnlockRollback)
     updater.SendSubcommand(hammerd_api.UpdateExtraCommand.ImmediateReset)
     updater.CloseUsb()

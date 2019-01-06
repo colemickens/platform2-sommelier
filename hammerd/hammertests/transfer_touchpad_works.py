@@ -32,10 +32,10 @@ WRONG_ADDR_LIST = [WRONG_ADDRR_RW_FWID,
 def main(argv):
   if len(argv) > 0:
     sys.exit('Test takes no args!')
-  updater = hammerd_api.FirmwareUpdate(common.BASE_VENDOR_ID,
-                                       common.BASE_PRODUCT_ID,
-                                       common.BASE_BUS,
-                                       common.BASE_PORT)
+  updater = hammerd_api.FirmwareUpdater(common.BASE_VENDOR_ID,
+                                        common.BASE_PRODUCT_ID,
+                                        common.BASE_BUS,
+                                        common.BASE_PORT)
   with open(common.IMAGE, 'rb') as f:
     ec_image = f.read()
   updater.LoadEcImage(ec_image)
