@@ -2174,6 +2174,38 @@ gboolean Service::Unmount(gboolean *OUT_result, GError **error) {
   return TRUE;
 }
 
+void Service::DoUnmountEx(std::unique_ptr<UnmountRequest> request_pb,
+                          DBusGMethodInvocation* context) {
+  if (!request_pb) {
+    SendInvalidArgsReply(context, "Bad UnmountRequest");
+    return;
+  }
+
+  BaseReply reply;
+  if (!RemoveAllMounts(true))
+    reply.set_error(CRYPTOHOME_ERROR_MOUNT_FATAL);
+  else
+    reply.clear_error();
+
+  // If there are any unexpected mounts lingering from a crash/restart,
+  // clean them up now.
+  CleanUpStaleMounts(true);
+
+  SendReply(context, reply);
+}
+
+gboolean Service::UnmountEx(GArray* request, DBusGMethodInvocation* context) {
+  auto request_pb = std::make_unique<UnmountRequest>();
+  if (!request_pb->ParseFromArray(request->data, request->len))
+    request_pb.reset(nullptr);
+
+  mount_thread_.task_runner()->PostTask(
+      FROM_HERE, base::Bind(&Service::DoUnmountEx, base::Unretained(this),
+                            base::Passed(std::move(request_pb)),
+                            base::Unretained(context)));
+  return TRUE;
+}
+
 gboolean Service::UpdateCurrentUserActivityTimestamp(gint time_shift_sec,
                                                      GError **error) {
   base::AutoLock _lock(mounts_lock_);

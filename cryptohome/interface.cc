@@ -169,6 +169,12 @@ gboolean cryptohome_unmount(Cryptohome* self,
                             GError** error) {
   CRYPTOHOME_WRAP_METHOD(Unmount, OUT_result);
 }
+gboolean cryptohome_unmount_ex(Cryptohome* self,
+                               GArray* request,
+                               DBusGMethodInvocation* error) {
+  // Leave the response called error to reuse WRAP.
+  CRYPTOHOME_WRAP_METHOD(UnmountEx, request);
+}
 gboolean cryptohome_update_current_user_activity_timestamp(
     Cryptohome* self,
     gint time_shift_sec,

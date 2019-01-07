@@ -104,6 +104,9 @@ gboolean cryptohome_mount_ex(Cryptohome* self,
 gboolean cryptohome_unmount(Cryptohome* self,
                             gboolean* OUT_result,
                             GError** error);
+gboolean cryptohome_unmount_ex(Cryptohome* self,
+                               GArray* request,
+                               DBusGMethodInvocation* resp);
 gboolean cryptohome_remove_tracked_subdirectories(Cryptohome* self,
                                                   gboolean* OUT_result,
                                                   GError** error);

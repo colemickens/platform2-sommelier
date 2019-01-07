@@ -1308,19 +1308,27 @@ int main(int argc, char **argv) {
     printf("Remove succeeded.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_UNMOUNT],
                      action.c_str())) {
+    cryptohome::UnmountRequest request;
+    brillo::glib::ScopedArray request_ary(GArrayFromProtoBuf(request));
+    if (!request_ary.get())
+      return 1;
+
+    GArray* out_reply = nullptr;
     brillo::glib::ScopedError error;
-    gboolean done = false;
-    if (!org_chromium_CryptohomeInterface_unmount(proxy.gproxy(),
-        &done,
-        &brillo::Resetter(&error).lvalue())) {
+    if (!org_chromium_CryptohomeInterface_unmount_ex(
+            proxy.gproxy(), request_ary.get(), &out_reply,
+            &brillo::Resetter(&error).lvalue())) {
       printf("Unmount call failed: %s.\n", error->message);
       return 1;
     }
-    if (!done) {
+
+    cryptohome::BaseReply reply;
+    ParseBaseReply(out_reply, &reply);
+    if (reply.has_error()) {
       printf("Unmount failed.\n");
-    } else {
-      printf("Unmount succeeded.\n");
+      return 1;
     }
+    printf("Unmount succeeded.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_MOUNTED],
                      action.c_str())) {
     brillo::glib::ScopedError error;

@@ -120,6 +120,11 @@
     <method name="Unmount">
       <arg type="b" name="done" direction="out" />
     </method>
+    <method name="UnmountEx">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+      <arg type="ay" name="request" direction="in" />
+      <arg type="ay" name="reply" direction="out" />
+    </method>
     <method name="UpdateCurrentUserActivityTimestamp">
       <arg type="i" name="time_shift_sec" direction="in" />
     </method>
