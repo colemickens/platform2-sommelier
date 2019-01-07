@@ -170,9 +170,11 @@ enum ResponseStatus {
 // The response from the attestation server for the enrollment request.
 message AttestationEnrollmentResponse {
   optional ResponseStatus status = 1;
-  // Detail response message. Included when the result is not OK.
+  // Short detail response message. Included when the result is not OK.
   optional string detail = 2;
   optional EncryptedIdentityCredential encrypted_identity_credential = 3;
+  // Extra details included when the result is not OK.
+  optional string extra_details = 4;
 }
 
 enum CertificateProfile {
@@ -241,7 +243,7 @@ message AttestationCertificateRequest {
 // The response from the attestation server for the certificate request.
 message AttestationCertificateResponse {
   optional ResponseStatus status = 1;
-  // Detail response message. Included when the result is not OK.
+  // Short detail response message. Included when the result is not OK.
   optional string detail = 2;
   // The credential of the certified key in X.509 format.
   optional bytes certified_key_credential = 3;
@@ -256,6 +258,8 @@ message AttestationCertificateResponse {
   // |additional_intermediate_ca_cert(0)|, which is signed by
   // |additional_intermediate_ca_cert(1)|, ... and so on.
   repeated bytes additional_intermediate_ca_cert = 7;
+  // Extra details included when the result is not OK.
+  optional string extra_details = 8;
 }
 
 // Features of an identity (bitwise enumeration).
@@ -359,8 +363,10 @@ message AttestationResetRequest {
 message AttestationResetResponse {
   // The response status.
   optional ResponseStatus status = 1;
-  // Detail response message. Included when the result is not OK.
+  // Short detail response message. Included when the result is not OK.
   optional string detail = 2;
+  // Extra details included when the result is not OK.
+  optional string extra_details = 3;
 }
 
 // The wrapper message of any data and its signature.

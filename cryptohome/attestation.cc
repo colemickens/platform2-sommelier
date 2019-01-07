@@ -99,6 +99,19 @@ std::string GetIdentityFeaturesString(int identity_features) {
       + stream.str();
 }
 
+void LogErrorFromCA(const std::string& func, const std::string& details,
+                    const std::string& extra_details) {
+  std::ostringstream stream;
+  stream << func << ": Received error from Attestation CA";
+  if (!details.empty()) {
+    stream << ": " << details;
+    if (!extra_details.empty()) {
+      stream << ". Extra details: " << extra_details;
+    }
+  }
+  LOG(ERROR) << stream.str() << ".";
+}
+
 }  // namespace
 
 namespace cryptohome {
@@ -915,8 +928,8 @@ bool Attestation::Enroll(PCAType pca_type,
     return false;
   }
   if (response_pb.status() != OK) {
-    LOG(ERROR) << __func__ << ": Error received from Privacy CA: "
-               << response_pb.detail();
+    LogErrorFromCA(__func__, response_pb.detail(),
+                   response_pb.extra_details());
     return false;
   }
   base::AutoLock lock(lock_);
@@ -1067,8 +1080,8 @@ bool Attestation::FinishCertRequest(const SecureBlob& pca_response,
     return false;
   }
   if (response_pb.status() != OK) {
-    LOG(ERROR) << __func__ << ": Error received from Privacy CA: "
-               << response_pb.detail();
+    LogErrorFromCA(__func__, response_pb.detail(),
+                   response_pb.extra_details());
     pending_cert_requests_.erase(iter);
     return false;
   }
