@@ -35,6 +35,7 @@ int main(int argc, char* argv[]) {
   DEFINE_string(challenge, "", "challenge parameter for --reg or --auth");
   DEFINE_string(application, "", "application parameter for --reg or --auth");
   DEFINE_string(key_handle, "", "key handle parameter for --auth");
+  DEFINE_bool(g2f, false, "use fixed G2F attestation key for --reg");
   DEFINE_int32(v, 0, "verbosity level (up to 3)");
 
   brillo::FlagHelper::Init(argc, argv, "g2ftool - G2F testing tool");
@@ -132,7 +133,7 @@ int main(int argc, char* argv[]) {
     brillo::Blob public_key;
     brillo::Blob key_handle;
     brillo::Blob certificate_and_signature;
-    if (!u2f.Register(challenge, application,
+    if (!u2f.Register(challenge, application, FLAGS_g2f,
                           &public_key, &key_handle,
                           &certificate_and_signature)) {
       return EX_SOFTWARE;

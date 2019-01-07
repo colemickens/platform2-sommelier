@@ -567,6 +567,7 @@ class U2FTest : public ::testing::Test {
     EXPECT_FALSE(
         u2f_.Register(challenge,
                       application,
+                      false,  // G2F
                       &public_key,
                       &key_handle,
                       &cert));
@@ -632,6 +633,7 @@ TEST_F(U2FTest, RegisterSuccess) {
   EXPECT_TRUE(
       u2f_.Register(challenge,
                     application,
+                    false,  // G2F
                     &public_key,
                     &key_handle,
                     &cert));

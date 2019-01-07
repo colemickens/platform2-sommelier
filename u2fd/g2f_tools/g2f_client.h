@@ -182,6 +182,7 @@ class U2F {
   // This sends a U2F_REGISTER message.
   bool Register(const brillo::Blob& challenge,
                 const brillo::Blob& application,
+                bool use_g2f_att_key,
                 brillo::Blob* public_key,
                 brillo::Blob* key_handle,
                 brillo::Blob* certificate_and_signature);

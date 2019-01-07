@@ -571,6 +571,7 @@ bool CheckBlobLength(const brillo::Blob& blob, int expected_length,
 
 bool U2F::Register(const brillo::Blob& challenge,
                    const brillo::Blob& application,
+                   bool use_g2f_att_key,
                    brillo::Blob* public_key,
                    brillo::Blob* key_handle,
                    brillo::Blob* certificate_and_signature) {
@@ -589,6 +590,10 @@ bool U2F::Register(const brillo::Blob& challenge,
     0x00,   // P2
     64,     // Request length
   };
+
+  if (use_g2f_att_key)
+    request[2 /* P1 */] |= G2F_ATTEST;
+
   AppendBlob(challenge, &request);
   AppendBlob(application, &request);
   // Final byte is maximum response length.
