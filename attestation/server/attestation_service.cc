@@ -571,6 +571,10 @@ bool AttestationService::MigrateIdentityData() {
 }
 
 void AttestationService::ShutdownTask() {
+  database_ = nullptr;
+  default_database_.reset(nullptr);
+  crypto_utility_ = nullptr;
+  default_crypto_utility_.reset(nullptr);
   tpm_utility_ = nullptr;
   default_tpm_utility_.reset(nullptr);
 }

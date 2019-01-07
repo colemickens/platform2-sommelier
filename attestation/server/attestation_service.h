@@ -639,6 +639,11 @@ class AttestationService : public AttestationInterface {
   // Default implementations for the above interfaces. These will be setup
   // during Initialize() if the corresponding interface has not been set with a
   // mutator.
+
+  // As |default_database_| has a reference of |default_crypto_utility_| and
+  // |default_crypto_utility_| has a reference of |default_tpm_utility|,
+  // the availabilities of these 2 variable follow the rule applied to
+  // |default_tpm_utility_|. See the comment for |default_tpm_utility_| below.
   std::unique_ptr<CryptoUtilityImpl> default_crypto_utility_;
   std::unique_ptr<DatabaseImpl> default_database_;
   std::unique_ptr<Pkcs11KeyStore> default_key_store_;
