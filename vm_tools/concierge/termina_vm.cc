@@ -190,6 +190,8 @@ bool TerminaVm::Start(base::FilePath kernel,
       "--cid",          std::to_string(vsock_cid_),
       "--socket",       runtime_dir_.GetPath().Append(kCrosvmSocket).value(),
       "--wayland-sock", kWaylandSocket,
+      "--cras-audio",
+      "--params",       "snd_intel8x0.inside_vm=1 snd_intel8x0.ac97_clock=48000",
   };
   // clang-format on
 
