@@ -77,29 +77,29 @@ TEST(IncrementFileCounter, Nonexistent) {
   EXPECT_TRUE(ClobberState::IncrementFileCounter(counter));
   std::string contents;
   ASSERT_TRUE(base::ReadFileToString(counter, &contents));
-  EXPECT_EQ(contents, "1");
+  EXPECT_EQ(contents, "1\n");
 }
 
 TEST(IncrementFileCounter, SmallNumber) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath counter = temp_dir.GetPath().Append("counter");
-  ASSERT_TRUE(base::WriteFile(counter, "42", 2));
+  ASSERT_TRUE(base::WriteFile(counter, "42\n", 3));
   EXPECT_TRUE(ClobberState::IncrementFileCounter(counter));
   std::string contents;
   ASSERT_TRUE(base::ReadFileToString(counter, &contents));
-  EXPECT_EQ(contents, "43");
+  EXPECT_EQ(contents, "43\n");
 }
 
 TEST(IncrementFileCounter, LargeNumber) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath counter = temp_dir.GetPath().Append("counter");
-  ASSERT_TRUE(base::WriteFile(counter, "1238761", 7));
+  ASSERT_TRUE(base::WriteFile(counter, "1238761\n", 8));
   EXPECT_TRUE(ClobberState::IncrementFileCounter(counter));
   std::string contents;
   ASSERT_TRUE(base::ReadFileToString(counter, &contents));
-  EXPECT_EQ(contents, "1238762");
+  EXPECT_EQ(contents, "1238762\n");
 }
 
 TEST(IncrementFileCounter, NonNumber) {
@@ -110,7 +110,7 @@ TEST(IncrementFileCounter, NonNumber) {
   EXPECT_TRUE(ClobberState::IncrementFileCounter(counter));
   std::string contents;
   ASSERT_TRUE(base::ReadFileToString(counter, &contents));
-  EXPECT_EQ(contents, "1");
+  EXPECT_EQ(contents, "1\n");
 }
 
 TEST(IncrementFileCounter, LongMax) {
@@ -122,7 +122,19 @@ TEST(IncrementFileCounter, LongMax) {
   EXPECT_TRUE(ClobberState::IncrementFileCounter(counter));
   std::string contents;
   ASSERT_TRUE(base::ReadFileToString(counter, &contents));
-  EXPECT_EQ(contents, "1");
+  EXPECT_EQ(contents, "1\n");
+}
+
+TEST(IncrementFileCounter, InputNoNewline) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  base::FilePath counter = temp_dir.GetPath().Append("counter");
+  std::string value = std::to_string(7);
+  ASSERT_TRUE(base::WriteFile(counter, value.c_str(), value.size()));
+  EXPECT_TRUE(ClobberState::IncrementFileCounter(counter));
+  std::string contents;
+  ASSERT_TRUE(base::ReadFileToString(counter, &contents));
+  EXPECT_EQ(contents, "8\n");
 }
 
 TEST(PreserveFiles, NoFiles) {

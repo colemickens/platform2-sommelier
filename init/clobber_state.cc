@@ -19,6 +19,8 @@
 #include <base/time/time.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <brillo/process.h>
 
 #include "init/crossystem.h"
@@ -31,21 +33,6 @@ constexpr char kClobberLogPath[] = "/tmp/clobber-state.log";
 constexpr char kClobberStateShellLogPath[] = "/tmp/clobber-state-shell.log";
 constexpr char kBioWashPath[] = "/usr/bin/bio_wash";
 constexpr char kPreservedFilesTarPath[] = "/tmp/preserve.tar";
-
-// Attempts to parse |str| as an int in base 10 and store its value in |value|.
-// Returns true if and only if str consists of exclusively digits and fits
-// within the precision of an int (negative values not permitted).
-bool NumericStringToInt(const std::string& str, int* value) {
-  if (str.find_first_not_of("0123456789") != std::string::npos)
-    return false;
-
-  errno = 0;
-  int64_t result = strtol(str.c_str(), nullptr, 10);
-  if (errno != 0 || result > INT_MAX || result < INT_MIN)
-    return false;
-  *value = static_cast<int>(result);
-  return true;
-}
 
 }  // namespace
 
@@ -84,16 +71,18 @@ ClobberState::Arguments ClobberState::ParseArgv(int argc,
 bool ClobberState::IncrementFileCounter(const base::FilePath& path) {
   std::string contents;
   if (!base::ReadFileToString(path, &contents)) {
-    return 1 == base::WriteFile(path, "1", 1);
+    return 2 == base::WriteFile(path, "1\n", 2);
   }
 
+  base::TrimWhitespaceASCII(contents, base::TrimPositions::TRIM_ALL, &contents);
   int value;
-  if (NumericStringToInt(contents, &value)) {
+  if (base::StringToInt(contents, &value)) {
     std::string new_value = std::to_string(value + 1);
+    new_value.append("\n");
     return new_value.size() ==
            base::WriteFile(path, new_value.c_str(), new_value.size());
   } else {
-    return 1 == base::WriteFile(path, "1", 1);
+    return 2 == base::WriteFile(path, "1\n", 2);
   }
 }
 
