@@ -22,7 +22,10 @@
           'libchrome-<(libbase_ver)',
           'libmojo-<(libbase_ver)',
         ],
-        'deps': ['<@(exported_deps)'],
+        'deps': [
+          '<@(exported_deps)',
+          'libcamera_timezone',
+        ],
         'mojo_root': '../../',
       },
     },

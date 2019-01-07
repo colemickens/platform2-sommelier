@@ -121,6 +121,7 @@ int V4L2CameraDevice::Connect(const std::string& device_path) {
                  << ", maybe camera is being used by another app.";
     return -errno;
   }
+  power_line_frequency_ = GetPowerLineFrequency(device_path);
   return 0;
 }
 
@@ -201,6 +202,12 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
   }
   *buffer_size = fmt.fmt.pix.sizeimage;
   VLOG(1) << "Buffer size: " << *buffer_size;
+
+  ret = SetPowerLineFrequency(power_line_frequency_);
+  if (ret < 0) {
+    LOG(ERROR) << __func__ << ": Set power frequency error";
+    return -EINVAL;
+  }
 
   v4l2_requestbuffers req_buffers;
   memset(&req_buffers, 0, sizeof(req_buffers));
@@ -637,6 +644,82 @@ std::pair<std::string, std::string> V4L2CameraDevice::FindExternalCamera() {
     return *device;
   }
   return std::make_pair("", "");
+}
+
+cros::PowerLineFrequency V4L2CameraDevice::GetPowerLineFrequency(
+    const std::string& device_path) {
+  base::ScopedFD fd(RetryDeviceOpen(device_path, O_RDONLY));
+  if (!fd.is_valid()) {
+    PLOG(ERROR) << __func__ << ": Failed to open " << device_path;
+    return cros::PowerLineFrequency::FREQ_ERROR;
+  }
+
+  struct v4l2_queryctrl query = {};
+  query.id = V4L2_CID_POWER_LINE_FREQUENCY;
+  if (TEMP_FAILURE_RETRY(ioctl(fd.get(), VIDIOC_QUERYCTRL, &query)) < 0) {
+    LOG(ERROR) << __func__ << ": Power line frequency should support auto or "
+               << "50/60Hz";
+    return cros::PowerLineFrequency::FREQ_ERROR;
+  }
+
+  cros::PowerLineFrequency frequency = cros::GetPowerLineFrequencyForLocation();
+  if (frequency == cros::PowerLineFrequency::FREQ_DEFAULT) {
+    switch (query.default_value) {
+      case V4L2_CID_POWER_LINE_FREQUENCY_50HZ:
+        frequency = cros::PowerLineFrequency::FREQ_50HZ;
+        break;
+      case V4L2_CID_POWER_LINE_FREQUENCY_60HZ:
+        frequency = cros::PowerLineFrequency::FREQ_60HZ;
+        break;
+      case V4L2_CID_POWER_LINE_FREQUENCY_AUTO:
+        frequency = cros::PowerLineFrequency::FREQ_AUTO;
+        break;
+      default:
+        break;
+    }
+  }
+
+  // Prefer auto setting if camera module supports auto mode.
+  if (query.maximum == V4L2_CID_POWER_LINE_FREQUENCY_AUTO) {
+    frequency = cros::PowerLineFrequency::FREQ_AUTO;
+  } else if (query.minimum >= V4L2_CID_POWER_LINE_FREQUENCY_60HZ) {
+    // TODO(shik): Handle this more gracefully for external camera
+    LOG(ERROR) << __func__ << ": Camera module should at least support 50/60Hz";
+    return cros::PowerLineFrequency::FREQ_ERROR;
+  }
+  return frequency;
+}
+
+int V4L2CameraDevice::SetPowerLineFrequency(cros::PowerLineFrequency setting) {
+  int v4l2_freq_setting = V4L2_CID_POWER_LINE_FREQUENCY_DISABLED;
+  switch (setting) {
+    case cros::PowerLineFrequency::FREQ_50HZ:
+      v4l2_freq_setting = V4L2_CID_POWER_LINE_FREQUENCY_50HZ;
+      break;
+    case cros::PowerLineFrequency::FREQ_60HZ:
+      v4l2_freq_setting = V4L2_CID_POWER_LINE_FREQUENCY_60HZ;
+      break;
+    case cros::PowerLineFrequency::FREQ_AUTO:
+      v4l2_freq_setting = V4L2_CID_POWER_LINE_FREQUENCY_AUTO;
+      break;
+    default:
+      LOG(ERROR) << __func__ << ": Invalid setting for power line frequency: "
+                 << static_cast<int>(setting);
+      return -EINVAL;
+  }
+
+  struct v4l2_control control = {};
+  control.id = V4L2_CID_POWER_LINE_FREQUENCY;
+  control.value = v4l2_freq_setting;
+  if (TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_S_CTRL, &control)) <
+      0) {
+    LOG(ERROR) << __func__ << ": Error setting power line frequency to "
+               << v4l2_freq_setting;
+    return -EINVAL;
+  }
+  VLOG(1) << __func__ << ": Set power line frequency("
+          << static_cast<int>(setting) << ") successfully";
+  return 0;
 }
 
 }  // namespace arc
