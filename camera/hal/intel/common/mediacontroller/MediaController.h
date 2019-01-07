@@ -57,7 +57,6 @@ public:
     status_t setControl(const char* entityName, int controlId, int value, const char *controlName);
     status_t getSinkNamesForEntity(std::shared_ptr<MediaEntity> mediaEntity, std::vector<std::string> &names);
     status_t getMediaDevInfo(media_device_info &info);
-    status_t enqueueMediaRequest(uint32_t mediaRequestId);
     status_t findMediaEntityById(int index, struct media_entity_desc &mediaEntityDesc);
 
 private:

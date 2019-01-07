@@ -103,15 +103,11 @@ public:
     status_t releaseBufferPools();
     status_t getOutputNodes(ConfiguredNodesPerName **nodes, int &nodeCount);
     std::shared_ptr<cros::V4L2VideoNode> findOutputNode(IPU3NodeNames isysNodeName);
-    status_t enqueueMediaRequest(int32_t requestId);
     status_t capture(int requestId);
     status_t flush();
     // IPollEvenListener
     virtual status_t notifyPollEvent(PollEventMessage *msg);
 
-    status_t setIsaConfig(int enabledBlocks);
-    status_t setIsaFormat(int pgSize, int payloadSize);
-    status_t setStatsFormat(int pgSize, int payloadSize);
     status_t requestExitAndWait();
 
 private: /* methods */
@@ -139,10 +135,6 @@ private: /* methods */
     struct MessageNodes {
         ConfiguredNodesPerName **nodes;
         int *nodeCount;
-    };
-
-    struct MessageEnqueueMediaRequest {
-        int32_t requestId;
     };
 
     struct MessageCapture {
@@ -173,7 +165,6 @@ private: /* methods */
     status_t handleSetBufferPool(MessageBufferPool msg);
     status_t handleReleaseBufferPools();
     status_t handleGetOutputNodes(MessageNodes msg);
-    status_t handleEnqueueMediaRequest(MessageEnqueueMediaRequest msg);
     status_t handleCapture(MessageCapture msg);
     status_t handlePollEvent(MessagePollEvent msg);
     status_t handleFlush();
@@ -193,7 +184,6 @@ private: /* members */
 
     struct IsysRequest {
         int32_t requestId;
-        uint32_t mediaRequestId;
         uint8_t numNodesForRequest;
         std::vector<std::shared_ptr<cros::V4L2VideoNode>> configuredNodesForRequest; /**< Configured video Node for request */
     };

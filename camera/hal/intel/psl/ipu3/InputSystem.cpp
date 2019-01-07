@@ -368,7 +368,6 @@ status_t InputSystem::handlePutFrame(MessageFrame msg)
     isysReq->configuredNodesForRequest.push_back(videoNode);
     isysReq->numNodesForRequest = isysReq->configuredNodesForRequest.size();
     if (newReq) {
-        isysReq->mediaRequestId = 44; // remove
         isysReq->requestId = msg.reqId;
         mPendingIsysRequests.emplace(isysReq->requestId, isysReq);
     }
@@ -483,37 +482,6 @@ status_t InputSystem::handleGetOutputNodes(MessageNodes msg)
         *nodeCount = mConfiguredNodes.size();
 
     return status;
-}
-
-status_t InputSystem::enqueueMediaRequest(int32_t reqId)
-{
-    LOG2("@%s, reqId = %d", __FUNCTION__, reqId);
-    MessageEnqueueMediaRequest msg;
-    msg.requestId = reqId;
-    base::Callback<status_t()> closure =
-            base::Bind(&InputSystem::handleEnqueueMediaRequest,
-                       base::Unretained(this), base::Passed(std::move(msg)));
-    mCameraThread.PostTaskAsync<status_t>(FROM_HERE, closure);
-    return NO_ERROR;
-}
-
-status_t InputSystem::handleEnqueueMediaRequest(
-        MessageEnqueueMediaRequest msg)
-{
-    LOG2("@%s", __FUNCTION__);
-    int32_t reqId = msg.requestId;
-    std::shared_ptr<IsysRequest> currentRequest = nullptr;
-    /* first checking if existing mediaRequest created */
-    auto itRequest = mPendingIsysRequests.find(reqId);
-    if (itRequest == mPendingIsysRequests.end()) {
-        LOGE("No request pending for reqId %d, BUG!", reqId);
-        return UNKNOWN_ERROR;
-    }
-
-    currentRequest = mPendingIsysRequests.at(reqId);
-    CheckError(currentRequest == nullptr, UNKNOWN_ERROR, "@%s: currentRequest is nullptr", __FUNCTION__);
-    mMediaCtl->enqueueMediaRequest(currentRequest->mediaRequestId);
-    return OK;
 }
 
 status_t InputSystem::capture(int requestId)

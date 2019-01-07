@@ -157,12 +157,6 @@ status_t MediaController::getDeviceInfo()
     return NO_ERROR;
 }
 
-status_t MediaController::enqueueMediaRequest(uint32_t mediaRequestId) {
-    UNUSED(mediaRequestId);
-    LOGE("Function not implemented in Kernel");
-    return BAD_VALUE;
-}
-
 status_t MediaController::findEntities()
 {
     LOG1("@%s", __FUNCTION__);

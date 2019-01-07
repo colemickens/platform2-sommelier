@@ -177,18 +177,15 @@ private:
     struct  InflightRequestState {
         Camera3Request *request;
         std::shared_ptr<CaptureUnitSettings> aiqCaptureSettings;
-        uint32_t mediaRequestId;
         bool shutterDone;
 
         static void reset(InflightRequestState *me) {
             me->aiqCaptureSettings.reset();
-            me->mediaRequestId = 0;
             me->request = nullptr;
         }
 
         InflightRequestState() :
             request(nullptr),
-            mediaRequestId(0),
             shutterDone(0) {}
 
         ~InflightRequestState() {
