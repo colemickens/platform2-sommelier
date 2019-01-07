@@ -1681,18 +1681,13 @@ int AttestationService::CreateIdentity(int identity_features,
   LOG(INFO) << "Attestation: Creating identity " << identity << " with "
             << GetIdentityFeaturesString(identity_features) << ".";
   // Create an identity key.
-  std::string rsa_identity_public_key;
-  std::string rsa_identity_key_blob;
-  if (!tpm_utility_->CreateRestrictedKey(KEY_TYPE_RSA, KEY_USAGE_SIGN,
-                                         &rsa_identity_public_key,
-                                         &rsa_identity_key_blob)) {
-    LOG(ERROR) << "Attestation: Failed to create RSA AIK.";
-    return -1;
-  }
+  std::string rsa_identity_public_key_tpm_format;
   std::string rsa_identity_public_key_der;
-  if (!tpm_utility_->GetRSAPublicKeyFromTpmPublicKey(
-          rsa_identity_public_key, &rsa_identity_public_key_der)) {
-    LOG(ERROR) << "Attestation: Failed to parse AIK public key.";
+  std::string rsa_identity_key_blob;
+  if (!tpm_utility_->CreateRestrictedKey(
+          KEY_TYPE_RSA, KEY_USAGE_SIGN, &rsa_identity_public_key_der,
+          &rsa_identity_public_key_tpm_format, &rsa_identity_key_blob)) {
+    LOG(ERROR) << "Attestation: Failed to create RSA AIK.";
     return -1;
   }
 
@@ -1708,7 +1703,7 @@ int AttestationService::CreateIdentity(int identity_features,
   }
   IdentityBinding* binding_pb = identity_data->mutable_identity_binding();
   binding_pb->set_identity_public_key_der(rsa_identity_public_key_der);
-  binding_pb->set_identity_public_key(rsa_identity_public_key);
+  binding_pb->set_identity_public_key(rsa_identity_public_key_tpm_format);
 
   // Quote PCRs and store them in the identity. These quotes are intended to
   // be valid for the lifetime of the identity key so they do not need
@@ -2183,13 +2178,8 @@ bool AttestationService::VerifyCertifiedKeyGeneration(
   }
   if (!tpm_utility_->CreateCertifiedKey(
           KEY_TYPE_RSA, KEY_USAGE_SIGN, aik_key_blob, nonce, &key_blob,
-          &public_key, &public_key_tpm_format, &key_info, &proof)) {
+          &public_key_der, &public_key_tpm_format, &key_info, &proof)) {
     LOG(ERROR) << __func__ << ": Failed to create certified key.";
-    return false;
-  }
-  if (!tpm_utility_->GetRSAPublicKeyFromTpmPublicKey(public_key_tpm_format,
-                                                     &public_key_der)) {
-    LOG(ERROR) << __func__ << ": Failed to convert key to DER format.";
     return false;
   }
   std::string public_key_info;
@@ -2414,7 +2404,7 @@ void AttestationService::CreateCertificateRequestTask(
     return;
   }
   std::string key_blob;
-  std::string public_key;
+  std::string public_key_der;
   std::string public_key_tpm_format;
   std::string key_info;
   std::string proof;
@@ -2423,13 +2413,13 @@ void AttestationService::CreateCertificateRequestTask(
   if (!tpm_utility_->CreateCertifiedKey(
           KEY_TYPE_RSA, KEY_USAGE_SIGN,
           identity_data.identity_key().identity_key_blob(), nonce, &key_blob,
-          &public_key, &public_key_tpm_format, &key_info, &proof)) {
+          &public_key_der, &public_key_tpm_format, &key_info, &proof)) {
     LOG(ERROR) << __func__ << ": Failed to create a key.";
     result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
     return;
   }
   key.set_key_blob(key_blob);
-  key.set_public_key(public_key);
+  key.set_public_key(public_key_der);
   key.set_key_name(key_label);
   key.set_public_key_tpm_format(public_key_tpm_format);
   key.set_certified_key_info(key_info);

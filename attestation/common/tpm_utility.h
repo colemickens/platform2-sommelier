@@ -77,14 +77,15 @@ class TpmUtility {
   // identity key represented by |identity_key_blob|. The |external_data| will
   // be included in the |key_info|. On success, returns true and populates
   // |public_key_tpm_format| with the public key of |key_blob| in TPM_PUBKEY
-  // format, |key_info| with the TPM_CERTIFY_INFO that was signed, and |proof|
-  // with the signature of |key_info| by the identity key.
+  // format, |public_key_der| with DER encoded format which converted from
+  // TPM_PUBKEY, |key_info| with the TPM_CERTIFY_INFO that was signed, and
+  // |proof| with the signature of |key_info| by the identity key.
   virtual bool CreateCertifiedKey(KeyType key_type,
                                   KeyUsage key_usage,
                                   const std::string& identity_key_blob,
                                   const std::string& external_data,
                                   std::string* key_blob,
-                                  std::string* public_key,
+                                  std::string* public_key_der,
                                   std::string* public_key_tpm_format,
                                   std::string* key_info,
                                   std::string* proof) = 0;
@@ -101,7 +102,7 @@ class TpmUtility {
   // Reads an endorsement public key from the TPM and provides it as a DER
   // encoded PKCS #1 RSAPublicKey.
   virtual bool GetEndorsementPublicKey(KeyType key_type,
-                                       std::string* public_key) = 0;
+                                       std::string* public_key_der) = 0;
 
   // Reads an endorsement certificate from the TPM.
   virtual bool GetEndorsementCertificate(KeyType key_type,
@@ -122,12 +123,14 @@ class TpmUtility {
                     const std::string& data_to_sign,
                     std::string* signature) = 0;
 
-  // Creates a restricted key of |key_type| for |key_usage|. The |public_key| is
-  // a serialized TPMT_PUBLIC and |private_key_blob| is an opaque blob which
-  // only the TPM is able to unwrap.
+  // Creates a restricted key of |key_type| for |key_usage|.
+  // |public_key_der| is DER encoded which converted from TPM public key object.
+  // |public_key_tpm_format| is a serialized TPMT_PUBLIC.
+  // |private_key_blob| is an opaque blob which only the TPM is able to unwrap.
   virtual bool CreateRestrictedKey(KeyType key_type,
                                    KeyUsage key_usage,
-                                   std::string* public_key,
+                                   std::string* public_key_der,
+                                   std::string* public_key_tpm_format,
                                    std::string* private_key_blob) = 0;
 
   // Quotes a PCR specified by |pcr_index|. The |key_blob| must be a restricted

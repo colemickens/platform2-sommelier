@@ -379,7 +379,7 @@ bool TpmUtilityV1::Unseal(const std::string& sealed_data, std::string* data) {
 }
 
 bool TpmUtilityV1::GetEndorsementPublicKey(KeyType key_type,
-                                           std::string* public_key) {
+                                           std::string* public_key_der) {
   if (key_type != KEY_TYPE_RSA) {
     return false;
   }
@@ -400,7 +400,7 @@ bool TpmUtilityV1::GetEndorsementPublicKey(KeyType key_type,
     return false;
   }
   // Get the public key in DER encoded form.
-  if (!GetRSAPublicKeyFromTpmPublicKey(ek_public_key_blob, public_key)) {
+  if (!GetRSAPublicKeyFromTpmPublicKey(ek_public_key_blob, public_key_der)) {
     return false;
   }
   return true;
@@ -495,7 +495,8 @@ bool TpmUtilityV1::Sign(const std::string& key_blob,
 
 bool TpmUtilityV1::CreateRestrictedKey(KeyType key_type,
                                        KeyUsage key_usage,
-                                       std::string* public_key,
+                                       std::string* public_key_der,
+                                       std::string* public_key_tpm_format,
                                        std::string* private_key_blob) {
   LOG(ERROR) << __func__ << ": Not implemented.";
   return false;

@@ -80,7 +80,8 @@ MockTpmUtility::MockTpmUtility() {
       .WillByDefault(WithArgs<1, 2>(Invoke(TransformString("Sign"))));
   ON_CALL(*this, GetEndorsementPublicKey(_, _)).WillByDefault(Return(true));
   ON_CALL(*this, GetEndorsementCertificate(_, _)).WillByDefault(Return(true));
-  ON_CALL(*this, CreateRestrictedKey(_, _, _, _)).WillByDefault(Return(true));
+  ON_CALL(*this, CreateRestrictedKey(_, _, _, _, _))
+      .WillByDefault(Return(true));
   ON_CALL(*this, QuotePCR(_, _, _, _, _)).WillByDefault(Return(true));
   ON_CALL(*this, CertifyNV(_, _, _, _, _)).WillByDefault(Return(true));
   ON_CALL(*this, ReadPCR(_, _)).WillByDefault(Return(true));

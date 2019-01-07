@@ -1925,7 +1925,7 @@ TEST_P(AttestationServiceTest, PrepareForEnrollmentNoCert) {
 TEST_P(AttestationServiceTest, PrepareForEnrollmentFailAIK) {
   // Start with an empty database.
   mock_database_.GetMutableProtobuf()->Clear();
-  EXPECT_CALL(mock_tpm_utility_, CreateRestrictedKey(_, _, _, _))
+  EXPECT_CALL(mock_tpm_utility_, CreateRestrictedKey(_, _, _, _, _))
       .WillRepeatedly(Return(false));
   // Schedule initialization again to make sure it runs after this point.
   CHECK(service_->Initialize());
@@ -1934,21 +1934,6 @@ TEST_P(AttestationServiceTest, PrepareForEnrollmentFailAIK) {
   EXPECT_EQ(0, mock_database_.GetProtobuf().identities().size());
   // And no credentials were stored.
   EXPECT_FALSE(mock_database_.GetProtobuf().has_credentials());
-}
-
-TEST_P(AttestationServiceTest, PrepareForEnrollmentBadAIK) {
-  // Start with an empty database.
-  mock_database_.GetMutableProtobuf()->Clear();
-  EXPECT_CALL(mock_tpm_utility_, GetRSAPublicKeyFromTpmPublicKey(_, _))
-      .WillRepeatedly(Return(false));
-  // Schedule initialization again to make sure it runs after this point.
-  CHECK(service_->Initialize());
-  WaitUntilIdleForTesting();
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_credentials());
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_key());
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_binding());
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr0_quote());
-  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr1_quote());
 }
 
 TEST_P(AttestationServiceTest, PrepareForEnrollmentFailQuote) {

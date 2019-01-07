@@ -227,14 +227,16 @@ TEST_F(TpmUtilityTest, CreateCertifiedKey) {
                       SetArgPointee<7>(fake_signature),
                       Return(TPM_RC_SUCCESS)));
   std::string key_blob;
-  std::string public_key;
+  std::string public_key_der;
   std::string public_key_tpm_format;
   std::string key_info;
   std::string proof;
   EXPECT_TRUE(tpm_utility_->CreateCertifiedKey(
       KEY_TYPE_RSA, KEY_USAGE_SIGN, "fake_identity_blob", "fake_external_data",
-      &key_blob, &public_key, &public_key_tpm_format, &key_info, &proof));
+      &key_blob, &public_key_der, &public_key_tpm_format, &key_info, &proof));
   EXPECT_EQ("fake_key_blob", key_blob);
+  EXPECT_NE("", public_key_der);
+  EXPECT_NE("", public_key_tpm_format);
   EXPECT_EQ("fake_attest", key_info);
   EXPECT_NE(std::string::npos, proof.find("fake_proof"));
   EXPECT_EQ("fake_external_data", trunks::StringFrom_TPM2B_DATA(external_data));
@@ -242,18 +244,20 @@ TEST_F(TpmUtilityTest, CreateCertifiedKey) {
   EXPECT_EQ(trunks::TPM_ALG_SHA256, scheme.details.rsassa.hash_alg);
 }
 
-TEST_F(TpmUtilityTest, CreateCertifiedKeyFailCreate) {
+TEST_F(TpmUtilityTest, hreateCertifiedKeyFailCreate) {
   EXPECT_CALL(mock_tpm_utility_, CreateRSAKeyPair(_, _, _, _, _, _, _, _, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   std::string key_blob;
-  std::string public_key;
+  std::string public_key_der;
   std::string public_key_tpm_format;
   std::string key_info;
   std::string proof;
   EXPECT_FALSE(tpm_utility_->CreateCertifiedKey(
       KEY_TYPE_RSA, KEY_USAGE_SIGN, "fake_identity_blob", "fake_external_data",
-      &key_blob, &public_key, &public_key_tpm_format, &key_info, &proof));
+      &key_blob, &public_key_der, &public_key_tpm_format, &key_info, &proof));
   EXPECT_EQ("", key_blob);
+  EXPECT_EQ("", public_key_der);
+  EXPECT_EQ("", public_key_tpm_format);
 }
 
 TEST_F(TpmUtilityTest, CreateCertifiedKeyFailCertify) {
@@ -263,13 +267,13 @@ TEST_F(TpmUtilityTest, CreateCertifiedKeyFailCertify) {
   EXPECT_CALL(mock_tpm_, CertifySync(_, _, _, _, _, _, _, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   std::string key_blob;
-  std::string public_key;
+  std::string public_key_der;
   std::string public_key_tpm_format;
   std::string key_info;
   std::string proof;
   EXPECT_FALSE(tpm_utility_->CreateCertifiedKey(
       KEY_TYPE_RSA, KEY_USAGE_SIGN, "fake_identity_blob", "fake_external_data",
-      &key_blob, &public_key, &public_key_tpm_format, &key_info, &proof));
+      &key_blob, &public_key_der, &public_key_tpm_format, &key_info, &proof));
 }
 
 TEST_F(TpmUtilityTest, SealToPCR0) {
@@ -402,22 +406,28 @@ TEST_F(TpmUtilityTest, CreateRestrictedKey) {
       .WillRepeatedly(
           DoAll(SetArgPointee<1>(trunks::Make_TPM2B_PUBLIC(public_area)),
                 Return(true)));
-  std::string public_key;
+  std::string public_key_der;
+  std::string public_key_tpm_format;
   std::string private_key;
-  EXPECT_TRUE(tpm_utility_->CreateRestrictedKey(KEY_TYPE_RSA, KEY_USAGE_SIGN,
-                                                &public_key, &private_key));
-  EXPECT_EQ(expected_public_key, public_key);
+  EXPECT_TRUE(tpm_utility_->CreateRestrictedKey(
+      KEY_TYPE_RSA, KEY_USAGE_SIGN, &public_key_der, &public_key_tpm_format,
+      &private_key));
+  EXPECT_NE("", public_key_der);
+  EXPECT_EQ(expected_public_key, public_key_tpm_format);
   EXPECT_EQ("fake_key_blob", private_key);
 }
 
 TEST_F(TpmUtilityTest, CreateRestrictedKeyFail) {
   EXPECT_CALL(mock_tpm_utility_, CreateIdentityKey(trunks::TPM_ALG_RSA, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
-  std::string public_key;
+  std::string public_key_der;
+  std::string public_key_tpm_format;
   std::string private_key;
-  EXPECT_FALSE(tpm_utility_->CreateRestrictedKey(KEY_TYPE_RSA, KEY_USAGE_SIGN,
-                                                 &public_key, &private_key));
-  EXPECT_EQ("", public_key);
+  EXPECT_FALSE(tpm_utility_->CreateRestrictedKey(
+      KEY_TYPE_RSA, KEY_USAGE_SIGN, &public_key_der, &public_key_tpm_format,
+      &private_key));
+  EXPECT_EQ("", public_key_der);
+  EXPECT_EQ("", public_key_tpm_format);
   EXPECT_EQ("", private_key);
 }
 
@@ -427,11 +437,14 @@ TEST_F(TpmUtilityTest, CreateRestrictedKeyParserFail) {
           DoAll(SetArgPointee<2>("fake_key_blob"), Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_blob_parser_, ParseKeyBlob("fake_key_blob", _, _))
       .WillRepeatedly(Return(false));
-  std::string public_key;
+  std::string public_key_der;
+  std::string public_key_tpm_format;
   std::string private_key;
-  EXPECT_FALSE(tpm_utility_->CreateRestrictedKey(KEY_TYPE_RSA, KEY_USAGE_SIGN,
-                                                 &public_key, &private_key));
-  EXPECT_EQ("", public_key);
+  EXPECT_FALSE(tpm_utility_->CreateRestrictedKey(
+      KEY_TYPE_RSA, KEY_USAGE_SIGN, &public_key_der, &public_key_tpm_format,
+      &private_key));
+  EXPECT_EQ("", public_key_der);
+  EXPECT_EQ("", public_key_tpm_format);
 }
 
 TEST_F(TpmUtilityTest, QuotePCR) {

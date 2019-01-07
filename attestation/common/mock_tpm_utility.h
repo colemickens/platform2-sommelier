@@ -75,11 +75,9 @@ class MockTpmUtility : public TpmUtility {
                bool(const std::string&, const std::string&, std::string*));
   MOCK_METHOD3(Sign,
                bool(const std::string&, const std::string&, std::string*));
-  MOCK_METHOD4(CreateRestrictedKey,
-               bool(KeyType,
-                    KeyUsage,
-                    std::string*,
-                    std::string*));
+  MOCK_METHOD5(
+      CreateRestrictedKey,
+      bool(KeyType, KeyUsage, std::string*, std::string*, std::string*));
   MOCK_METHOD5(QuotePCR,
                bool(uint32_t,
                     const std::string&,

@@ -64,14 +64,14 @@ class TpmUtilityV2 : public TpmUtility {
                           const std::string& identity_key_blob,
                           const std::string& external_data,
                           std::string* key_blob,
-                          std::string* public_key,
+                          std::string* public_key_der,
                           std::string* public_key_tpm_format,
                           std::string* key_info,
                           std::string* proof) override;
   bool SealToPCR0(const std::string& data, std::string* sealed_data) override;
   bool Unseal(const std::string& sealed_data, std::string* data) override;
   bool GetEndorsementPublicKey(KeyType key_type,
-                               std::string* public_key) override;
+                               std::string* public_key_der) override;
   bool GetEndorsementCertificate(KeyType key_type,
                                  std::string* certificate) override;
   bool Unbind(const std::string& key_blob,
@@ -82,7 +82,8 @@ class TpmUtilityV2 : public TpmUtility {
             std::string* signature) override;
   bool CreateRestrictedKey(KeyType key_type,
                            KeyUsage key_usage,
-                           std::string* public_key,
+                           std::string* public_key_der,
+                           std::string* public_key_tpm_format,
                            std::string* private_key_blob) override;
   bool QuotePCR(uint32_t pcr_index,
                 const std::string& key_blob,

@@ -349,7 +349,7 @@ bool TpmUtilityV2::CreateCertifiedKey(KeyType key_type,
                                       const std::string& identity_key_blob,
                                       const std::string& external_data,
                                       std::string* key_blob,
-                                      std::string* public_key,
+                                      std::string* public_key_der,
                                       std::string* public_key_tpm_format,
                                       std::string* key_info,
                                       std::string* proof) {
@@ -404,7 +404,8 @@ bool TpmUtilityV2::CreateCertifiedKey(KeyType key_type,
                << trunks::GetErrorString(result);
     return false;
   }
-  if (!GetRSAPublicKeyFromTpmPublicKey(*public_key_tpm_format, public_key)) {
+  if (!GetRSAPublicKeyFromTpmPublicKey(*public_key_tpm_format,
+                                       public_key_der)) {
     LOG(ERROR) << __func__ << ": Failed to convert public key.";
     return false;
   }
@@ -500,7 +501,7 @@ bool TpmUtilityV2::Unseal(const std::string& sealed_data, std::string* data) {
 }
 
 bool TpmUtilityV2::GetEndorsementPublicKey(KeyType key_type,
-                                           std::string* public_key) {
+                                           std::string* public_key_der) {
   TPM_HANDLE key_handle;
   if (!GetEndorsementKey(key_type, &key_handle)) {
     LOG(ERROR) << __func__ << ": EK not available.";
@@ -520,7 +521,7 @@ bool TpmUtilityV2::GetEndorsementPublicKey(KeyType key_type,
                << trunks::GetErrorString(result);
     return false;
   }
-  if (!GetRSAPublicKeyFromTpmPublicKey(public_key_tpm_format, public_key)) {
+  if (!GetRSAPublicKeyFromTpmPublicKey(public_key_tpm_format, public_key_der)) {
     LOG(ERROR) << __func__ << ": Failed to convert EK public key.";
     return false;
   }
@@ -604,7 +605,8 @@ bool TpmUtilityV2::Sign(const std::string& key_blob,
 
 bool TpmUtilityV2::CreateRestrictedKey(KeyType key_type,
                                        KeyUsage key_usage,
-                                       std::string* public_key,
+                                       std::string* public_key_der,
+                                       std::string* public_key_tpm_format,
                                        std::string* private_key_blob) {
   if (key_usage != KEY_USAGE_SIGN) {
     LOG(ERROR) << __func__ << ": Not implemented.";
@@ -628,10 +630,16 @@ bool TpmUtilityV2::CreateRestrictedKey(KeyType key_type,
     LOG(ERROR) << __func__ << ": Failed to parse key blob.";
     return false;
   }
-  result = trunks::Serialize_TPMT_PUBLIC(public_info.public_area, public_key);
+  result = trunks::Serialize_TPMT_PUBLIC(public_info.public_area,
+                                         public_key_tpm_format);
   if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << __func__ << ": Failed to serialize EK public key: "
+    LOG(ERROR) << __func__ << ": Failed to serialize public key: "
                << trunks::GetErrorString(result);
+    return false;
+  }
+  if (!GetRSAPublicKeyFromTpmPublicKey(*public_key_tpm_format,
+                                       public_key_der)) {
+    LOG(ERROR) << __func__ << ": Failed to convert public key to DER encoded";
     return false;
   }
   return true;
