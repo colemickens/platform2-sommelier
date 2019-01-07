@@ -1759,6 +1759,8 @@ TPM_RC TpmUtilityImpl::GetEndorsementKey(
     bool exists = false;
     TPM_RC result = DoesPersistentKeyExist(kRSAEndorsementKey, &exists);
     if (result != TPM_RC_SUCCESS) {
+      LOG(ERROR) << __func__ << ": Check Peristent RSA Key failed: "
+                 << GetErrorString(result);
       return result;
     }
     if (exists) {
@@ -1766,6 +1768,7 @@ TPM_RC TpmUtilityImpl::GetEndorsementKey(
       return TPM_RC_SUCCESS;
     }
   }
+
   Tpm* tpm = factory_.GetTpm();
   TPML_PCR_SELECTION creation_pcrs;
   creation_pcrs.count = 0;
@@ -1813,22 +1816,23 @@ TPM_RC TpmUtilityImpl::GetEndorsementKey(
                << ": CreatePrimarySync failed: " << GetErrorString(result);
     return result;
   }
-  if (key_type != TPM_ALG_RSA) {
-    *key_handle = object_handle;
+
+  // Only make RSA key persistent.
+  if (key_type == TPM_ALG_RSA) {
+    ScopedKeyHandle rsa_key(factory_, object_handle);
+    result = tpm->EvictControlSync(
+        TPM_RH_OWNER, NameFromHandle(TPM_RH_OWNER), object_handle,
+        StringFrom_TPM2B_NAME(object_name), kRSAEndorsementKey, owner_delegate);
+    if (result != TPM_RC_SUCCESS) {
+      LOG(ERROR) << __func__
+                 << ": EvictControlSync failed: " << GetErrorString(result);
+      return result;
+    }
+    *key_handle = kRSAEndorsementKey;
     return TPM_RC_SUCCESS;
   }
-  // This will make the key persistent.
-  ScopedKeyHandle rsa_key(factory_, object_handle);
-  result = tpm->EvictControlSync(
-      TPM_RH_OWNER, NameFromHandle(TPM_RH_OWNER), object_handle,
-      StringFrom_TPM2B_NAME(object_name), kRSAEndorsementKey,
-      owner_delegate);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << __func__
-               << ": EvictControlSync failed: " << GetErrorString(result);
-    return result;
-  }
-  *key_handle = kRSAEndorsementKey;
+
+  *key_handle = object_handle;
   return TPM_RC_SUCCESS;
 }
 
