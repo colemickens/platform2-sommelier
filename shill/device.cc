@@ -1369,8 +1369,7 @@ bool Device::StartPortalDetection() {
   portal_detector_.reset(new PortalDetector(
       connection_, dispatcher_, metrics(),
       Bind(&Device::PortalDetectorCallback, weak_ptr_factory_.GetWeakPtr())));
-  PortalDetector::Properties props = PortalDetector::Properties(
-      manager_->GetPortalCheckHttpUrl(), manager_->GetPortalCheckHttpsUrl());
+  PortalDetector::Properties props = manager_->GetPortalCheckProperties();
   if (!portal_detector_->StartAfterDelay(props, 0)) {
     LOG(ERROR) << "Device " << link_name()
                << ": Portal detection failed to start: likely bad URL: "
@@ -1688,8 +1687,7 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
   if (state == Service::kStatePortal && connection_->IsDefault() &&
       manager_->GetPortalCheckInterval() != 0) {
     CHECK(portal_detector_.get());
-    PortalDetector::Properties props = PortalDetector::Properties(
-        manager_->GetPortalCheckHttpUrl(), manager_->GetPortalCheckHttpsUrl());
+    PortalDetector::Properties props = manager_->GetPortalCheckProperties();
     if (!portal_detector_->StartAfterDelay(
             props, manager_->GetPortalCheckInterval())) {
       LOG(ERROR) << "Device " << link_name()

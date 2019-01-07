@@ -129,6 +129,8 @@ void DefaultProfile::LoadManagerProperties(Manager::Properties* manager_props,
   // This used to be loaded from the default profile, but now it is fixed.
   manager_props->portal_http_url = PortalDetector::kDefaultHttpUrl;
   manager_props->portal_https_url = PortalDetector::kDefaultHttpsUrl;
+  manager_props->portal_fallback_http_urls =
+      PortalDetector::kDefaultFallbackHttpUrls;
 
   std::string check_interval;
   if (!storage()->GetString(kStorageId, kStoragePortalCheckInterval,

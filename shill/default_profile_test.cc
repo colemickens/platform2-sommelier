@@ -216,6 +216,8 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
   EXPECT_EQ("", manager_props.no_auto_connect_technologies);
   EXPECT_EQ(PortalDetector::kDefaultHttpUrl, manager_props.portal_http_url);
   EXPECT_EQ(PortalDetector::kDefaultHttpsUrl, manager_props.portal_https_url);
+  EXPECT_EQ(PortalDetector::kDefaultFallbackHttpUrls,
+            manager_props.portal_fallback_http_urls);
   EXPECT_EQ(PortalDetector::kDefaultCheckIntervalSeconds,
             manager_props.portal_check_interval_seconds);
   EXPECT_EQ("", manager_props.prohibited_technologies);

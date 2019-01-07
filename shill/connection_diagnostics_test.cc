@@ -48,6 +48,10 @@ const char kDNSServer0[] = "8.8.8.8";
 const char kDNSServer1[] = "8.8.4.4";
 const char kHttpUrl[] = "http://www.gstatic.com/generate_204";
 const char kHttpsUrl[] = "https://www.google.com/generate_204";
+const vector<string> kFallbackHttpUrls{
+    "http://www.google.com/gen_204",
+    "http://play.googleapis.com/generate_204",
+};
 const char kLocalMacAddressASCIIString[] = "123456";
 const char kArpReplySenderMacAddressASCIIString[] = "345678";
 const char* const kDNSServers[] = {kDNSServer0, kDNSServer1};
@@ -888,7 +892,7 @@ TEST_F(ConnectionDiagnosticsTest, DoesPreviousEventMatch) {
 
 TEST_F(ConnectionDiagnosticsTest, StartWhileRunning) {
   PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);  // Start diagnostics;
   EXPECT_FALSE(Start(props));
 }
@@ -898,7 +902,7 @@ TEST_F(ConnectionDiagnosticsTest, StartWithBadURL) {
   // IcmpSession::Stop will be called once when the bad URL is rejected.
   ExpectIcmpSessionStop();
   PortalDetector::Properties props =
-      PortalDetector::Properties(kBadURL, kHttpsUrl);
+      PortalDetector::Properties(kBadURL, kHttpsUrl, kFallbackHttpUrls);
   EXPECT_FALSE(Start(props));
   // IcmpSession::Stop will be called a second time when
   // |connection_diagnostics_| is destructed.
@@ -910,7 +914,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_InternalError) {
   // attempt to ping the target web server but fail because of an internal
   // error.
   PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
@@ -923,7 +927,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_InternalError) {
 TEST_F(ConnectionDiagnosticsTest, EndWith_PortalDetectionContentPhase_Success) {
   // Portal detection ends successfully in content phase, so we end diagnostics.
   PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);
   ExpectPortalDetectionEndContentPhaseSuccess();
   VerifyStopped();
@@ -933,7 +937,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PortalDetectionContentPhase_Failure) {
   // Portal detection ends unsuccessfully in content phase, so we end
   // diagnostics.
   PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);
   ExpectPortalDetectionEndContentPhaseFailure();
   VerifyStopped();
@@ -943,7 +947,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_DNSFailure_1) {
   // Portal detection ends with a DNS failure (not timeout), so we end
   // diagnostics.
   PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);
   ExpectPortalDetectionEndDNSPhaseFailure();
   VerifyStopped();
@@ -953,7 +957,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_DNSFailure_2) {
   // Portal detection ends in HTTP phase, DNS resolution fails (not timeout), so
   // we end diagnostics.
   PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
@@ -965,7 +969,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingDNSServerStartFailure_1) {
   // Portal detection ends with a DNS timeout, and we attempt to pinging DNS
   // servers, but fail to start any IcmpSessions, so end diagnostics.
   PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);
   ExpectPortalDetectionEndDNSPhaseTimeout();
   ExpectPingDNSSeversStartFailureAllIcmpSessionsFailed();
@@ -977,7 +981,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingDNSServerStartFailure_2) {
   // servers, but all DNS servers configured for this connection have invalid IP
   // addresses, so we fail to start ping DNs servers, andend diagnostics.
   PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);
   ExpectPortalDetectionEndDNSPhaseTimeout();
   ExpectPingDNSSeversStartFailureAllAddressesInvalid();
@@ -990,7 +994,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingDNSServerEndSuccess_NoRetries_1) {
   // resolution times out again. End diagnostics because we have no more DNS
   // retries left.
   PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);
   ExpectPortalDetectionEndDNSPhaseTimeout();
   ExpectPingDNSServersStartSuccess();
@@ -1011,7 +1015,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingDNSServerEndSuccess_NoRetries_2) {
   // servers succeeds, DNS resolution times out again, pinging DNS servers
   // succeeds. End diagnostics because we have no more DNS retries left.
   PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
@@ -1029,7 +1033,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingTargetIPSuccess_1) {
   // Portal detection ends in HTTP phase, DNS resolution succeeds, and pinging
   // the resolved IP address succeeds, so we end diagnostics.
   PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
@@ -1046,7 +1050,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingTargetIPSuccess_2) {
   // resolution succeeds, and pinging the resolved IP address succeeds, so we
   // end diagnostics.
   PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);
   ExpectPortalDetectionEndDNSPhaseTimeout();
   ExpectPingDNSServersStartSuccess();
@@ -1065,7 +1069,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingTargetIPSuccess_3) {
   // servers succeeds, DNS resolution succeeds, and pinging the resolved IP
   // address succeeds, so we end diagnostics.
   PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
@@ -1086,7 +1090,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_FindRouteFailure_1) {
   // resolved IP address fails, and we fail to get a route for the IP address,
   // so we end diagnostics.
   PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
@@ -1105,7 +1109,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_FindRoute_Failure_2) {
   // resolution succeeds, pinging the resolved IP address fails, and we fail to
   // get a route for the IP address, so we end diagnostics.
   PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);
   ExpectPortalDetectionEndDNSPhaseTimeout();
   ExpectPingDNSServersStartSuccess();
@@ -1125,7 +1129,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_FindRouteFailure_3) {
   // fails, and we fail to get a route for the IP address, so we end
   // diagnostics.
   PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
@@ -1147,7 +1151,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_FindRouteFailure_4) {
   // Portal detection ends with a DNS timeout, pinging DNS servers fails, get a
   // route for the first DNS server, so we end diagnostics.
   PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);
   ExpectPortalDetectionEndDNSPhaseTimeout();
   ExpectPingDNSServersStartSuccess();
@@ -1163,7 +1167,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_1_IPv4) {
   // address. This address is remote, so ping the local gateway and succeed, so
   // we end diagnostics.
   PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
@@ -1187,7 +1191,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_1_IPv6) {
   UseIPv6Gateway();
 
   PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv6);
@@ -1211,7 +1215,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_2) {
   // successfully get route for the IP address. This address is remote, so ping
   // the local gateway and succeed, so we end diagnostics.
   PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);
   ExpectPortalDetectionEndDNSPhaseTimeout();
   ExpectPingDNSServersStartSuccess();
@@ -1236,7 +1240,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_PingGatewaySuccess_3) {
   // remote, so ping the local gateway. The ping succeeds, so we end
   // diagnostics.
   PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
@@ -1269,7 +1273,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_FindArpTableEntrySuccess_1) {
   // address. This address is remote, pinging the local gateway fails, and we
   // find an ARP table entry for the gateway address, so we end diagnostics.
   PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
@@ -1294,7 +1298,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_FindArpTableEntrySuccess_2) {
   // address. This address is local, and we find an ARP table entry for this
   // address, so we end diagnostics.
   PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
@@ -1316,7 +1320,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_IPCollisionSuccess_1) {
   // lookup fails, we check for IP collision and find one, so we end
   // diagnostics.
   PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
@@ -1343,7 +1347,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_IPCollisionSuccess_2) {
   // address. This address is local, ARP table lookup fails, we check for IP
   // collision and find one, so we end diagnostics.
   PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
@@ -1365,7 +1369,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_IPCollisionFailure_1) {
   // lookup fails, we check for IP collision and do not find one, so we end
   // diagnostics.
   PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
@@ -1392,7 +1396,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_IPCollisionFailure_2) {
   // address. This address is local, ARP table lookup fails, we check for IP
   // collision and do not find one, so we end diagnostics.
   PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv4);
@@ -1417,7 +1421,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_kTypeNeighborTableLookupSuccess_1) {
   UseIPv6Gateway();
 
   PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv6);
@@ -1445,7 +1449,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_kTypeNeighborTableLookupSuccess_2) {
   UseIPv6Gateway();
 
   PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv6);
@@ -1470,7 +1474,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_kTypeNeighborTableLookupFailure_1) {
   UseIPv6Gateway();
 
   PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv6);
@@ -1498,7 +1502,7 @@ TEST_F(ConnectionDiagnosticsTest, EndWith_kTypeNeighborTableLookupFailure_2) {
   UseIPv6Gateway();
 
   PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl);
+      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   ExpectPortalDetectionStartSuccess(props);
   ExpectPortalDetectionEndHTTPPhaseFailure();
   ExpectResolveTargetServerIPAddressStartSuccess(IPAddress::kFamilyIPv6);

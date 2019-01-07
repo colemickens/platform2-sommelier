@@ -230,6 +230,9 @@ Manager::Manager(ControlInterface* control_interface,
   store_.RegisterBool(kOfflineModeProperty, &props_.offline_mode);
   store_.RegisterConstString(kPortalHttpUrlProperty, &props_.portal_http_url);
   store_.RegisterConstString(kPortalHttpsUrlProperty, &props_.portal_https_url);
+  HelpRegisterDerivedString(kPortalFallbackUrlsStringProperty,
+                            &Manager::GetPortalFallbackUrlsString,
+                            &Manager::SetPortalFallbackUrlsString);
   store_.RegisterInt32(kPortalCheckIntervalProperty,
                        &props_.portal_check_interval_seconds);
   HelpRegisterConstDerivedRpcIdentifiers(kProfilesProperty,
@@ -2255,6 +2258,27 @@ bool Manager::SetIgnoredDNSSearchPaths(const string& ignored_paths,
   props_.ignored_dns_search_paths = ignored_paths;
   resolver_->set_ignored_search_list(ignored_path_list);
   return true;
+}
+
+string Manager::GetPortalFallbackUrlsString(Error* /*error*/) {
+  return base::JoinString(props_.portal_fallback_http_urls, ",");
+}
+
+bool Manager::SetPortalFallbackUrlsString(const string& urls,
+                                          Error* /*error*/) {
+  if (urls.empty()) {
+    return false;
+  }
+  vector<string> url_list =
+      base::SplitString(urls, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+  props_.portal_fallback_http_urls = url_list;
+  return true;
+}
+
+PortalDetector::Properties Manager::GetPortalCheckProperties() const {
+  return PortalDetector::Properties(GetPortalCheckHttpUrl(),
+                                    GetPortalCheckHttpsUrl(),
+                                    GetPortalCheckFallbackHttpUrls());
 }
 
 // called via RPC (e.g., from ManagerDBusAdaptor)

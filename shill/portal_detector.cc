@@ -68,6 +68,10 @@ const char PortalDetector::kDefaultHttpUrl[] =
     "http://www.gstatic.com/generate_204";
 const char PortalDetector::kDefaultHttpsUrl[] =
     "https://www.google.com/generate_204";
+const std::vector<string> PortalDetector::kDefaultFallbackHttpUrls{
+    "http://www.google.com/gen_204",
+    "http://play.googleapis.com/generate_204",
+};
 
 PortalDetector::PortalDetector(
     ConnectionRefPtr connection,

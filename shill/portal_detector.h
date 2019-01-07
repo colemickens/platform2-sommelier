@@ -6,7 +6,9 @@
 #define SHILL_PORTAL_DETECTOR_H_
 
 #include <memory>
+#include <set>
 #include <string>
+#include <vector>
 
 #include <base/callback.h>
 #include <base/cancelable_callback.h>
@@ -57,19 +59,27 @@ class PortalDetector {
 
   struct Properties {
     Properties()
-        : http_url_string(kDefaultHttpsUrl),
-          https_url_string(kDefaultHttpsUrl) {}
+        : http_url_string(kDefaultHttpUrl),
+          https_url_string(kDefaultHttpsUrl),
+          fallback_http_url_strings(kDefaultFallbackHttpUrls) {}
     Properties(const std::string& http_url_string,
-               const std::string& https_url_string)
+               const std::string& https_url_string,
+               const std::vector<std::string>& fallback_http_url_strings)
         : http_url_string(http_url_string),
-          https_url_string(https_url_string) {}
+          https_url_string(https_url_string),
+          fallback_http_url_strings(fallback_http_url_strings) {}
     bool operator==(const Properties& b) const {
       return http_url_string == b.http_url_string &&
-             https_url_string == b.https_url_string;
+             https_url_string == b.https_url_string &&
+             std::set<std::string>(fallback_http_url_strings.begin(),
+                                   fallback_http_url_strings.end()) ==
+                 std::set<std::string>(b.fallback_http_url_strings.begin(),
+                                       b.fallback_http_url_strings.end());
     }
 
     std::string http_url_string;
     std::string https_url_string;
+    std::vector<std::string> fallback_http_url_strings;
   };
 
   struct Result {
@@ -98,6 +108,7 @@ class PortalDetector {
 
   static const char kDefaultHttpUrl[];
   static const char kDefaultHttpsUrl[];
+  static const std::vector<std::string> kDefaultFallbackHttpUrls;
   static const int kDefaultCheckIntervalSeconds;
   static const char kDefaultCheckPortalList[];
   // Maximum number of times the PortalDetector will attempt a connection.

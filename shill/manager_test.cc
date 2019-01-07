@@ -311,8 +311,16 @@ class ManagerTest : public PropertyStoreTest {
     return manager()->SetCheckPortalList(check_portal_list, error);
   }
 
+  bool SetPortalFallbackUrlsString(const string& urls, Error* error) {
+    return manager()->SetPortalFallbackUrlsString(urls, error);
+  }
+
   const string& GetIgnoredDNSSearchPaths() {
     return manager()->props_.ignored_dns_search_paths;
+  }
+
+  const vector<string>& GetPortalFallbackUrlsString() {
+    return manager()->props_.portal_fallback_http_urls;
   }
 
 #if !defined(DISABLE_WIFI)
@@ -3779,6 +3787,22 @@ TEST_F(ManagerTest, IgnoredSearchList) {
   SetResolver(Resolver::GetInstance());
 }
 
+TEST_F(ManagerTest, PortalFallbackUrls) {
+  const string kFallback0 = "http://fallback";
+  const vector<string> kFallbackVec0 = {kFallback0};
+  SetPortalFallbackUrlsString(kFallback0, nullptr);
+  EXPECT_EQ(kFallbackVec0, GetPortalFallbackUrlsString());
+
+  const string kFallback1 = "http://other";
+  const string kFallbackSum = kFallback0 + "," + kFallback1;
+  const vector<string> kFallbackVec1 = {kFallback0, kFallback1};
+  SetPortalFallbackUrlsString(kFallbackSum, nullptr);
+  EXPECT_EQ(kFallbackVec1, GetPortalFallbackUrlsString());
+
+  SetPortalFallbackUrlsString("", nullptr);
+  EXPECT_EQ(kFallbackVec1, GetPortalFallbackUrlsString());
+}
+
 TEST_F(ManagerTest, ServiceStateChangeEmitsServices) {
   // Test to make sure that every service state-change causes the
   // Manager to emit a new service list.
@@ -4286,6 +4310,8 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
             manager->props_.link_monitor_technologies);
   EXPECT_EQ(PortalDetector::kDefaultHttpUrl, manager->props_.portal_http_url);
   EXPECT_EQ(PortalDetector::kDefaultHttpsUrl, manager->props_.portal_https_url);
+  EXPECT_EQ(PortalDetector::kDefaultFallbackHttpUrls,
+            manager->props_.portal_fallback_http_urls);
   EXPECT_EQ(PortalDetector::kDefaultCheckIntervalSeconds,
             manager->props_.portal_check_interval_seconds);
 

@@ -74,6 +74,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
     int32_t portal_check_interval_seconds;
     std::string portal_http_url;
     std::string portal_https_url;
+    std::vector<std::string> portal_fallback_http_urls;
     std::string host_name;
     // Whether to ARP for the default gateway in the DHCP client after
     // acquiring a lease.
@@ -350,6 +351,11 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual const std::string& GetPortalCheckHttpsUrl() const {
     return props_.portal_https_url;
   }
+  virtual const std::vector<std::string>& GetPortalCheckFallbackHttpUrls()
+      const {
+    return props_.portal_fallback_http_urls;
+  }
+  PortalDetector::Properties GetPortalCheckProperties() const;
 
   virtual DeviceInfo* device_info() { return &device_info_; }
 #if !defined(DISABLE_CELLULAR)
@@ -594,10 +600,12 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   std::string GetActiveProfileRpcIdentifier(Error* error);
   std::string GetCheckPortalList(Error* error);
   std::string GetIgnoredDNSSearchPaths(Error* error);
+  std::string GetPortalFallbackUrlsString(Error* error);
   ServiceRefPtr GetServiceInner(const KeyValueStore& args, Error* error);
   bool SetAlwaysOnVpnPackage(const std::string& package_name, Error* error);
   bool SetCheckPortalList(const std::string& portal_list, Error* error);
   bool SetIgnoredDNSSearchPaths(const std::string& ignored_paths, Error* error);
+  bool SetPortalFallbackUrlsString(const std::string& urls, Error* error);
   void EmitDefaultService();
   bool IsTechnologyInList(const std::string& technology_list,
                           Technology::Identifier tech) const;
