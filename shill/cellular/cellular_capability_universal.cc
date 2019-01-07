@@ -55,7 +55,6 @@ const char CellularCapabilityUniversal::kConnectApn[] = "apn";
 const char CellularCapabilityUniversal::kConnectUser[] = "user";
 const char CellularCapabilityUniversal::kConnectPassword[] = "password";
 const char CellularCapabilityUniversal::kConnectAllowedAuth[] = "allowed-auth";
-const char CellularCapabilityUniversal::kConnectNumber[] = "number";
 const char CellularCapabilityUniversal::kConnectAllowRoaming[] =
     "allow-roaming";
 const char CellularCapabilityUniversal::kConnectIpType[] = "ip-type";
@@ -80,8 +79,6 @@ const int CellularCapabilityUniversal::kSetPowerStateTimeoutMilliseconds =
     20000;
 
 namespace {
-
-const char kPhoneNumber[] = "*99#";
 
 // This identifier is specified in the serviceproviders.prototxt file.
 const char kVzwIdentifier[] = "c83d6597-dc91-4d48-a3a7-d86b80123751";
@@ -668,10 +665,6 @@ void CellularCapabilityUniversal::SetupConnectProperties(
 
 void CellularCapabilityUniversal::FillConnectPropertyMap(
     KeyValueStore* properties) {
-
-  // TODO(jglasgow): Is this really needed anymore?
-  properties->SetString(kConnectNumber, kPhoneNumber);
-
   properties->SetBool(kConnectAllowRoaming,
                       cellular()->IsRoamingAllowedOrRequired());
 

@@ -54,7 +54,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   static const char kConnectUser[];
   static const char kConnectPassword[];
   static const char kConnectAllowedAuth[];
-  static const char kConnectNumber[];
   static const char kConnectAllowRoaming[];
   static const char kConnectIpType[];
 

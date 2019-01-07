@@ -34,13 +34,6 @@ static string ObjectID(CellularCapabilityUniversalCdma* c) {
 }
 }
 
-namespace {
-
-const char kPhoneNumber[] = "#777";
-const char kPropertyConnectNumber[] = "number";
-
-}  // namespace
-
 CellularCapabilityUniversalCdma::CellularCapabilityUniversalCdma(
     Cellular* cellular, ModemInfo* modem_info)
     : CellularCapabilityUniversal(cellular, modem_info),
@@ -386,7 +379,9 @@ void CellularCapabilityUniversalCdma::SetUnregistered(bool /*searching*/) {
 
 void CellularCapabilityUniversalCdma::SetupConnectProperties(
     KeyValueStore* properties) {
-  properties->SetString(kPropertyConnectNumber, kPhoneNumber);
+  // Skip CellularCapabilityUniversal::SetupConnectProperties() as it isn't
+  // appropriate for CellularCapabilityUniversalCdma.
+  // TODO(armansito): Remove once 3GPP is implemented in its own class.
 }
 
 void CellularCapabilityUniversalCdma::RequirePIN(

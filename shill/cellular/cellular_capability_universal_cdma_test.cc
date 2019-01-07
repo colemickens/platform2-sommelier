@@ -527,8 +527,7 @@ TEST_F(CellularCapabilityUniversalCdmaMainTest, IsRegistered) {
 TEST_F(CellularCapabilityUniversalCdmaMainTest, SetupConnectProperties) {
   KeyValueStore map;
   capability_->SetupConnectProperties(&map);
-  EXPECT_EQ(1, map.properties().size());
-  EXPECT_EQ("#777", map.GetString("number"));
+  EXPECT_TRUE(map.properties().empty());
 }
 
 TEST_F(CellularCapabilityUniversalCdmaDispatcherTest,
