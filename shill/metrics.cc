@@ -463,7 +463,7 @@ const char Metrics::kMetricWifiSupplicantAttempts[] =
     "Network.Shill.WiFi.SupplicantAttempts";
 const int Metrics::kMetricWifiSupplicantAttemptsMax = 10;
 const int Metrics::kMetricWifiSupplicantAttemptsMin = 1;
-const int Metrics::kMetricWifiSupplicantAttemptsNumBuckets = 10;
+const int Metrics::kMetricWifiSupplicantAttemptsNumBuckets = 11;
 
 // static
 const char Metrics::kMetricFallbackDNSTestResultSuffix[] =
