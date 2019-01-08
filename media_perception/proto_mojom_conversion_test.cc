@@ -303,6 +303,16 @@ TEST(ProtoMojomConversionTest, PipelineStateToMojom) {
   EXPECT_EQ(*error_ptr->error_string, kMockErrorString);
 }
 
+TEST(ProtoMojomConversionTest, PresencePerceptionToMojom) {
+  mri::PresencePerception perception;
+  perception.set_timestamp_us(100);
+  perception.set_presence_confidence(0.5);
+
+  PresencePerceptionPtr perception_ptr = ToMojom(perception);
+  EXPECT_EQ(perception_ptr->timestamp_us, 100);
+  EXPECT_FLOAT_EQ(perception_ptr->presence_confidence, 0.5);
+}
+
 }  // namespace
 }  // namespace mojom
 }  // namespace media_perception
@@ -630,6 +640,17 @@ TEST(ProtoMojomConversionTest, PipelineStateToProto) {
   EXPECT_EQ(state.error().error_type(), PipelineErrorType::CONFIGURATION);
   EXPECT_EQ(state.error().error_source(), kMockErrorSource);
   EXPECT_EQ(state.error().error_string(), kMockErrorString);
+}
+
+TEST(ProtoMojomConversionTest, PresencePerceptionToProto) {
+  chromeos::media_perception::mojom::PresencePerceptionPtr perception_ptr =
+      chromeos::media_perception::mojom::PresencePerception::New();
+  perception_ptr->timestamp_us = 100;
+  perception_ptr->presence_confidence = 0.5;
+
+  PresencePerception perception = ToProto(perception_ptr);
+  EXPECT_EQ(perception.timestamp_us(), 100);
+  EXPECT_FLOAT_EQ(perception.presence_confidence(), 0.5);
 }
 
 }  // namespace

@@ -10,15 +10,17 @@
 #include "media_perception/common.pb.h"
 #include "media_perception/device_management.pb.h"
 #include "media_perception/frame_perception.pb.h"
-#include "media_perception/media_perception_mojom.pb.h"
 #include "media_perception/hotword_detection.pb.h"
+#include "media_perception/media_perception_mojom.pb.h"
 #include "media_perception/pipeline.pb.h"
+#include "media_perception/presence_perception.pb.h"
 #include "mojom/common.mojom.h"
 #include "mojom/device_management.mojom.h"
 #include "mojom/frame_perception.mojom.h"
 #include "mojom/hotword_detection.mojom.h"
 #include "mojom/media_perception.mojom.h"
 #include "mojom/pipeline.mojom.h"
+#include "mojom/presence_perception.mojom.h"
 
 namespace chromeos {
 namespace media_perception {
@@ -56,6 +58,9 @@ PipelineStatus ToMojom(mri::PipelineStatus status);
 PipelineErrorType ToMojom(mri::PipelineErrorType error_type);
 PipelineErrorPtr ToMojom(const mri::PipelineError& error);
 PipelineStatePtr ToMojom(const mri::PipelineState& state);
+
+// Presence perception conversions.
+PresencePerceptionPtr ToMojom(const mri::PresencePerception& perception);
 
 }  // namespace mojom
 }  // namespace media_perception
@@ -130,6 +135,11 @@ PipelineError ToProto(
     const chromeos::media_perception::mojom::PipelineErrorPtr& error_ptr);
 PipelineState ToProto(
     const chromeos::media_perception::mojom::PipelineStatePtr& state_ptr);
+
+// Presence perception conversions.
+PresencePerception ToProto(
+    const chromeos::media_perception::mojom::PresencePerceptionPtr&
+        perception_ptr);
 
 }  // namespace mri
 

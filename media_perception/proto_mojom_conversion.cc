@@ -284,6 +284,13 @@ PipelineStatePtr ToMojom(const mri::PipelineState& state) {
   return state_ptr;
 }
 
+PresencePerceptionPtr ToMojom(const mri::PresencePerception& perception) {
+  PresencePerceptionPtr perception_ptr = PresencePerception::New();
+  perception_ptr->timestamp_us = perception.timestamp_us();
+  perception_ptr->presence_confidence = perception.presence_confidence();
+  return perception_ptr;
+}
+
 }  // namespace mojom
 }  // namespace media_perception
 }  // namespace chromeos
@@ -692,6 +699,18 @@ PipelineState ToProto(
 
   *state.mutable_error() = ToProto(state_ptr->error);
   return state;
+}
+
+PresencePerception ToProto(
+    const chromeos::media_perception::mojom::PresencePerceptionPtr&
+        perception_ptr) {
+  PresencePerception perception;
+  if (perception_ptr.is_null())
+    return perception;
+
+  perception.set_timestamp_us(perception_ptr->timestamp_us);
+  perception.set_presence_confidence(perception_ptr->presence_confidence);
+  return perception;
 }
 
 }  // namespace mri
