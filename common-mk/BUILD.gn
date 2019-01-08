@@ -137,7 +137,7 @@ config("pic") {
   cflags = [ "-fPIC" ]
 }
 
-if (use.test) {
+if (use.test || use.fuzzer) {
   # This config should be at the top in the configs list, especially before
   # the config for libchrome-${libbase-ver} to avoid weird heap-buffer-overflow
   # error from happening when ASAN is enabled.
