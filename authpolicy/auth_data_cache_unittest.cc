@@ -45,6 +45,7 @@ class AuthDataCacheTest : public ::testing::Test {
     // Create path for testing serialization.
     CHECK(base::CreateNewTempDirectory("" /* prefix (ignored) */, &tmp_path_));
     cache_.SetClockForTesting(std::make_unique<base::SimpleTestClock>());
+    flags_.set_log_caches(true);
   }
 
   ~AuthDataCacheTest() override = default;

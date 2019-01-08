@@ -27,7 +27,7 @@ class GpoVersionCacheTest : public ::testing::Test {
  public:
   GpoVersionCacheTest() : cache_(&flags_) {
     cache_.SetClockForTesting(std::make_unique<base::SimpleTestClock>());
-    flags_.set_log_gpo(true);
+    flags_.set_log_caches(true);
   }
   ~GpoVersionCacheTest() override {}
 

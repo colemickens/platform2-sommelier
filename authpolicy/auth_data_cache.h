@@ -26,6 +26,8 @@ namespace authpolicy {
 // file and access fields conveniently. Cache keys are the device or user realm.
 class AuthDataCache {
  public:
+  // |flags| is a non-owned pointer to DebugFlags flags (the class listens to
+  // flags->log_caches() to toggle logging).
   explicit AuthDataCache(const protos::DebugFlags* flags);
   ~AuthDataCache();
 

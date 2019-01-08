@@ -26,7 +26,7 @@ class DebugFlags;
 class GpoVersionCache {
  public:
   // |flags| is a non-owned pointer to DebugFlags flags (the class listens to
-  // flags->log_gpo() to toggle logging).
+  // flags->log_caches() to toggle logging).
   explicit GpoVersionCache(const protos::DebugFlags* flags);
   ~GpoVersionCache();
 
