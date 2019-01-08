@@ -913,12 +913,6 @@ cmd_chaps_debug() (
   if [ "$1" = "start" ]; then
     level=-2
   fi
-  rm -f /home/chronos/.chaps_debug_1 /home/chronos/.chaps_debug_2
-  if [ "${level}" = "-1" ]; then
-    touch /home/chronos/.chaps_debug_1
-  elif [ "${level}" = "-2" ]; then
-    touch /home/chronos/.chaps_debug_2
-  fi
   /usr/bin/chaps_client --set_log_level=${level} 2> /dev/null
   if [ $? -eq 0 ]; then
     echo "Logging level set to ${level}."
