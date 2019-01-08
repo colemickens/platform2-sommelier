@@ -20,6 +20,8 @@ class Lock;
 
 namespace chaps {
 
+const char kPersistentLogLevelPath[] = "/var/lib/chaps/.loglevel";
+
 class ChapsInterface;
 class TokenManagerInterface;
 

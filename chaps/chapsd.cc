@@ -17,6 +17,7 @@
 #include <string>
 
 #include <base/command_line.h>
+#include <base/files/file_util.h>
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
@@ -46,10 +47,12 @@
 #endif
 
 using base::AutoLock;
+using base::FilePath;
 using base::Lock;
 using base::PlatformThread;
 using base::PlatformThreadHandle;
 using base::WaitableEvent;
+using chaps::kPersistentLogLevelPath;
 using std::string;
 
 namespace {
@@ -235,6 +238,22 @@ int main(int argc, char** argv) {
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
   chaps::ScopedOpenSSL openssl;
+
+  if (!cl->HasSwitch("v")) {
+    // Read persistent file for log level if no command line verbositity level
+    // is specified.
+    std::string log_level;
+    bool success = base::ReadFileToString(FilePath(kPersistentLogLevelPath),
+                                          &log_level);
+    if (success) {
+      int log_level_int;
+      if (base::StringToInt(log_level, &log_level_int))
+        logging::SetMinLogLevel(log_level_int);
+      int delete_success = base::DeleteFile(FilePath(kPersistentLogLevelPath),
+                                            false);
+      VLOG_IF(2, !delete_success) << "Failed to delete log level file.";
+    }
+  }
 
   LOG(INFO) << "Starting PKCS #11 services.";
   // Run as 'chaps'.

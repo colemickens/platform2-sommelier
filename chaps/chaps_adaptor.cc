@@ -5,7 +5,9 @@
 #include "chaps/chaps_adaptor.h"
 
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/synchronization/lock.h>
 #include <dbus/object_path.h>
 
@@ -353,6 +355,11 @@ void ChapsAdaptor::GetTokenPath(const std::vector<uint8_t>& isolate_credential,
 
 void ChapsAdaptor::SetLogLevel(const int32_t& level) {
   logging::SetMinLogLevel(level);
+  string level_str = base::IntToString(level);
+  int writeResult = base::WriteFile(FilePath(kPersistentLogLevelPath),
+                                    level_str.data(),
+                                    level_str.length());
+  VLOG_IF(2, writeResult < 0) << "Failed to save loglevel to file.";
 }
 
 void ChapsAdaptor::GetSlotList(const vector<uint8_t>& isolate_credential,
