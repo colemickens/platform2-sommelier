@@ -14,8 +14,6 @@ SCRIPT="$0"
 # stateful partition isn't around for logging, so dump to the screen:
 set -x
 
-: [ -x /sbin/frecon ] && ${TTY=/run/frecon/vt0} || ${TTY=/dev/tty1}
-
 PRESERVED_TAR="/tmp/preserve.tar"
 STATE_PATH="/mnt/stateful_partition"
 
@@ -197,69 +195,6 @@ ensure_bootable_kernel() {
   sync
 }
 
-# Forces a 5 minute delay, writing progress to the specified TTY.
-# This is used to prevent developer mode transitions from happening too
-# quickly.
-force_delay() {
-  local delay=300
-  ( stty -F "${TTY}" raw -echo -cread
-    while [ "${delay}" -ge 0 ]; do
-      printf "%2d:%02d\r" $(( delay / 60 )) $(( delay % 60 ))
-      sleep 1
-      : $(( delay -= 1 ))
-    done
-    echo
-  ) >"${TTY}"
-  wait
-}
-
-wipe_rotational_drive() {
-  # If the stateful filesystem is available, do some best-effort content
-  # shredding. Since the filesystem is not mounted with "data=journal", the
-  # writes really are overwriting the block contents (unlike on an SSD).
-  if grep -q " ${STATE_PATH} " /proc/mounts ; then
-    (
-      # Directly remove things that are already encrypted (which are also the
-      # large things), or are static from images.
-      rm -rf "${STATE_PATH}/encrypted.block" \
-             "${STATE_PATH}/var_overlay" \
-             "${STATE_PATH}/dev_image"
-      find "${STATE_PATH}/home/.shadow" -maxdepth 2 -type d \
-                                        -name vault -print0 |
-        xargs -r0 rm -rf
-      # Shred everything else. We care about contents not filenames, so do not
-      # use "-u" since metadata updates via fdatasync dominate the shred time.
-      # Note that if the count-down is interrupted, the reset file continues
-      # to exist, which correctly continues to indicate a needed wipe.
-      find "${STATE_PATH}"/. -type f -print0 | xargs -r0 shred -fz
-      sync
-    ) &
-  fi
-}
-
-# Wipe encryption key information from the stateful partition for supported
-# devices.
-# Sets KEYSET_WIPE_FAILED on failure.
-wipe_keysets() {
-  local file
-  unset KEYSET_WIPE_FAILED
-
-  for file in \
-      "${STATE_PATH}/encrypted.key" \
-      "${STATE_PATH}/encrypted.needs-finalization" \
-      "${STATE_PATH}/home/.shadow/cryptohome.key" \
-      "${STATE_PATH}/home/.shadow/salt" \
-      "${STATE_PATH}/home/.shadow/salt.sum" \
-      "${STATE_PATH}"/home/.shadow/*/master.*; do
-    if [ -f "${file}" ]; then
-      if ! secure_erase_file "${file}"; then
-        KEYSET_WIPE_FAILED="1"
-        break
-      fi
-    fi
-  done
-}
-
 # Wipe non-active kernel and root partitions unless |KEEPIMG| is set. This is
 # used in the factory to remove the test image before shipping the device.
 potentially_wipe_non_active_kernel_and_root() {
@@ -305,30 +240,6 @@ remove_vpd_keys() {
 }
 
 main() {
-  # Preserve the log file
-  clobber-log --preserve "${SCRIPT}" "$@"
-
-  # On a non-fast wipe, rotational drives take too long. Override to run them
-  # through "fast" mode, with a forced delay. Sensitive contents should already
-  # be encrypted.
-  if [ "${FAST_WIPE}" != "fast" ] && [ "${ROTATIONAL}" = "1" ]; then
-    wipe_rotational_drive
-    force_delay
-    FAST_WIPE="fast"
-  fi
-
-  # For drives that support secure erasure, wipe the keysets,
-  # and then run the drives through "fast" mode, with a forced delay.
-  #
-  # Note: currently only eMMC-based SSDs are supported.
-  if [ "${FAST_WIPE}" != "fast" ]; then
-    wipe_keysets
-    if [ -z "${KEYSET_WIPE_FAILED}" ]; then
-      force_delay
-      FAST_WIPE="fast"
-    fi
-  fi
-
   # Make sure the stateful partition has been unmounted.
   umount -n "${STATE_PATH}"
 

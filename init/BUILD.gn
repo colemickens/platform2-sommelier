@@ -29,6 +29,7 @@ pkg_config("target_defaults") {
   ]
   libs = [
     "rootdev",
+    "secure_erase_file",
   ]
 }
 

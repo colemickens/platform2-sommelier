@@ -47,7 +47,6 @@ class ClobberState {
 
     // Is the stateful device backed by an MTD flash device.
     bool is_mtd_flash = false;
-
     // The partition number for the currently booted kernel partition.
     int active_kernel_partition = -1;
   };
@@ -88,6 +87,20 @@ class ClobberState {
   int Run();
   bool MarkDeveloperMode();
 
+  // Attempt to switch rotational drives and drives that support
+  // secure_erase_file to a fast wipe by taking some (secure) shortcuts.
+  void AttemptSwitchToFastWipe(bool is_rotational);
+
+  // If the stateful filesystem is available and the disk is rotational, do some
+  // best-effort content shredding. Since on a rotational disk the filesystem is
+  // not mounted with "data=journal", writes really do overwrite the block
+  // contents (unlike on an SSD).
+  void ShredRotationalStatefulFiles();
+
+  // Wipe encryption key information from the stateful partition for supported
+  // devices.
+  bool WipeKeysets();
+
   // Returns vector of files to be preserved. All FilePaths are relative to
   // stateful_.
   std::vector<base::FilePath> GetPreservedFilesList();
@@ -99,17 +112,33 @@ class ClobberState {
   bool IsRotational(const base::FilePath& device_path);
 
   void SetArgsForTest(const Arguments& args);
+  Arguments GetArgsForTest();
   void SetStatefulForTest(base::FilePath stateful_path);
   void SetDevForTest(base::FilePath dev_path);
   void SetSysForTest(base::FilePath sys_path);
 
  protected:
-  // Wrapper around stat(2). Protected so that it can be overridden for tests.
+  // These functions are marked protected so they can be overridden for tests.
+
+  // Wrapper around stat(2).
   virtual int Stat(const base::FilePath& path, struct stat* st);
+
+  // Forces a 5 minute delay, writing progress to the TTY at |terminal_path_|.
+  // This is used to prevent developer mode transitions from happening too
+  // quickly.
+  virtual void ForceDelay();
+
+  // Wrapper around secure_erase_file::SecureErase(const base::FilePath&).
+  virtual bool SecureErase(const base::FilePath& path);
+
+  // Wrapper around secure_erase_file::DropCaches(). Must be called after
+  // a call to SecureEraseFile. Files are only securely deleted if DropCaches
+  // returns true.
+  virtual bool DropCaches();
 
  private:
   bool ClearBiometricSensorEntropy();
-  int RunClobberStateShell(bool is_rotational);
+  int RunClobberStateShell();
   int Reboot();
 
   Arguments args_;
@@ -120,6 +149,9 @@ class ClobberState {
   PartitionNumbers partitions_;
   base::FilePath root_disk_;
   DeviceWipeInfo wipe_info_;
+
+  // Path to use for writing to TTY.
+  base::FilePath terminal_path_;
 };
 
 #endif  // INIT_CLOBBER_STATE_H_

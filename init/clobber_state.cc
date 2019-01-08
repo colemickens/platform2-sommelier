@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/sysmacros.h>
+#include <termios.h>
 #include <unistd.h>
 
 #include <memory>
@@ -30,6 +31,7 @@
 #include <rootdev/rootdev.h>
 #include <vboot/cgpt_params.h>
 #include <vboot/vboot_host.h>
+#include <chromeos/secure_erase_file/secure_erase_file.h>
 
 #include "init/crossystem.h"
 
@@ -76,6 +78,36 @@ int GetPartitionNumber(const base::FilePath& drive_name,
     return -1;
   }
   return params.match_partnum;
+}
+
+bool MakeTTYRaw(const base::File& tty) {
+  struct termios terminal_properties;
+  if (tcgetattr(tty.GetPlatformFile(), &terminal_properties) != 0) {
+    LOG(WARNING) << "Getting properties of output TTY failed";
+    return false;
+  }
+
+  cfmakeraw(&terminal_properties);
+  if (tcsetattr(tty.GetPlatformFile(), TCSANOW, &terminal_properties) != 0) {
+    LOG(WARNING) << "Setting properties of output TTY failed";
+    return false;
+  }
+  return true;
+}
+
+void AppendFileToLog(const base::FilePath& file) {
+  std::string file_contents;
+  if (!base::ReadFileToString(file, &file_contents)) {
+    LOG(ERROR) << "Reading from temporary file failed: " << file.value();
+  }
+
+  // Even if reading file failed, some of its contents may have been read
+  // successfully, so we still attempt to append them to our log file.
+  if (!base::AppendToFile(base::FilePath(kClobberLogPath),
+                          file_contents.c_str(), file_contents.size())) {
+    LOG(ERROR) << "Appending " << file.value()
+               << " to clobber-state log failed";
+  }
 }
 
 }  // namespace
@@ -376,7 +408,13 @@ ClobberState::ClobberState(const Arguments& args,
       cros_system_(std::move(cros_system)),
       stateful_(kStatefulPath),
       dev_("/dev"),
-      sys_("/sys") {}
+      sys_("/sys") {
+  if (base::PathExists(base::FilePath("/sbin/frecon"))) {
+    terminal_path_ = base::FilePath("/run/frecon/vt0");
+  } else {
+    terminal_path_ = base::FilePath("/dev/tty1");
+  }
+}
 
 std::vector<base::FilePath> ClobberState::GetPreservedFilesList() {
   std::vector<std::string> stateful_paths;
@@ -544,8 +582,26 @@ int ClobberState::Run() {
   LOG(INFO) << "Inactive kernel device: "
             << wipe_info_.inactive_kernel_device.value();
 
+  brillo::ProcessImpl clobber_log;
+  clobber_log.AddArg("/sbin/clobber-log");
+  clobber_log.AddArg("--preserve");
+  clobber_log.AddArg("clobber-state");
+  if (args_.factory_wipe)
+    clobber_log.AddArg("factory");
+  if (args_.fast_wipe)
+    clobber_log.AddArg("fast");
+  if (args_.keepimg)
+    clobber_log.AddArg("keepimg");
+  if (args_.safe_wipe)
+    clobber_log.AddArg("safe");
+  if (args_.rollback_wipe)
+    clobber_log.AddArg("rollback");
+  clobber_log.Run();
+
+  AttemptSwitchToFastWipe(is_rotational);
+
   LOG(INFO) << "Starting clobber-state.sh";
-  ret = RunClobberStateShell(is_rotational);
+  ret = RunClobberStateShell();
   if (ret)
     LOG(ERROR) << "clobber-state.sh returned with code " << ret;
 
@@ -602,8 +658,147 @@ bool ClobberState::MarkDeveloperMode() {
   return true;
 }
 
+void ClobberState::AttemptSwitchToFastWipe(bool is_rotational) {
+  // On a non-fast wipe, rotational drives take too long. Override to run them
+  // through "fast" mode, with a forced delay. Sensitive contents should already
+  // be encrypted.
+  if (!args_.fast_wipe && is_rotational) {
+    LOG(INFO) << "Stateful device is on rotational disk, shredding files";
+    ShredRotationalStatefulFiles();
+    ForceDelay();
+    args_.fast_wipe = true;
+    LOG(INFO) << "Switching to fast wipe";
+  }
+
+  // For drives that support secure erasure, wipe the keysets,
+  // and then run the drives through "fast" mode, with a forced delay.
+  //
+  // Note: currently only eMMC-based SSDs are supported.
+  if (!args_.fast_wipe) {
+    LOG(INFO) << "Attempting to wipe encryption keysets";
+    if (WipeKeysets()) {
+      LOG(INFO) << "Wiping encryption keysets succeeded";
+      ForceDelay();
+      args_.fast_wipe = true;
+      LOG(INFO) << "Switching to fast wipe";
+    } else {
+      LOG(INFO) << "Wiping encryption keysets failed";
+    }
+  }
+}
+
+void ClobberState::ShredRotationalStatefulFiles() {
+  // Directly remove things that are already encrypted (which are also the
+  // large things), or are static from images.
+  base::DeleteFile(stateful_.Append("encrypted.block"), /*recursive=*/false);
+  base::DeleteFile(stateful_.Append("var_overlay"), /*recursive=*/true);
+  base::DeleteFile(stateful_.Append("dev_image"), /*recursive=*/true);
+
+  base::FileEnumerator shadow_files(
+      stateful_.Append("home/.shadow"),
+      /*recursive=*/true, base::FileEnumerator::FileType::DIRECTORIES);
+  for (base::FilePath path = shadow_files.Next(); !path.empty();
+       path = shadow_files.Next()) {
+    if (path.BaseName() == base::FilePath("vault")) {
+      base::DeleteFile(path, /*recursive=*/true);
+    }
+  }
+
+  base::FilePath temp_file;
+  base::CreateTemporaryFile(&temp_file);
+
+  // Shred everything else. We care about contents not filenames, so do not
+  // use "-u" since metadata updates via fdatasync dominate the shred time.
+  // Note that if the count-down is interrupted, the reset file continues
+  // to exist, which correctly continues to indicate a needed wipe.
+  brillo::ProcessImpl shred;
+  shred.AddArg("/usr/bin/shred");
+  shred.AddArg("--force");
+  shred.AddArg("--zero");
+  base::FileEnumerator stateful_files(stateful_, /*recursive=*/true,
+                                      base::FileEnumerator::FileType::FILES);
+  for (base::FilePath path = stateful_files.Next(); !path.empty();
+       path = stateful_files.Next()) {
+    shred.AddArg(path.value());
+  }
+  shred.RedirectOutput(temp_file.value());
+  shred.Run();
+  AppendFileToLog(temp_file);
+
+  sync();
+}
+
+bool ClobberState::WipeKeysets() {
+  std::vector<std::string> key_files{
+      "encrypted.key", "encrypted.needs-finalization",
+      "home/.shadow/cryptohome.key", "home/.shadow/salt",
+      "home/.shadow/salt.sum"};
+  for (const std::string& str : key_files) {
+    base::FilePath path = stateful_.Append(str);
+    if (base::PathExists(path)) {
+      if (!SecureErase(path)) {
+        LOG(ERROR) << "Securely erasing file failed: " << path.value();
+        return false;
+      }
+    }
+  }
+
+  // Delete files named 'master' in directories contained in '.shadow'.
+  base::FileEnumerator directories(stateful_.Append("home/.shadow"),
+                                   /*recursive=*/false,
+                                   base::FileEnumerator::FileType::DIRECTORIES);
+  for (base::FilePath dir = directories.Next(); !dir.empty();
+       dir = directories.Next()) {
+    base::FileEnumerator files(dir, /*recursive=*/false,
+                               base::FileEnumerator::FileType::FILES);
+    for (base::FilePath file = files.Next(); !file.empty();
+         file = files.Next()) {
+      if (file.RemoveExtension().BaseName() == base::FilePath("master")) {
+        if (!SecureErase(file)) {
+          LOG(ERROR) << "Securely erasing file failed: " << file.value();
+          return false;
+        }
+      }
+    }
+  }
+
+  return DropCaches();
+}
+
+void ClobberState::ForceDelay() {
+  base::File terminal(terminal_path_,
+                      base::File::FLAG_OPEN | base::File::FLAG_WRITE);
+  if (!terminal.IsValid()) {
+    LOG(ERROR) << "Opening terminal for delay countdown failed";
+  }
+
+  MakeTTYRaw(terminal);
+  for (int delay = 300; delay >= 0; delay--) {
+    std::string count =
+        base::StringPrintf("%2d:%02d\r", delay / 60, delay % 60);
+    terminal.WriteAtCurrentPos(count.c_str(), count.size());
+    sleep(1);
+  }
+}
+
+// Wrapper around secure_erase_file::SecureErase(const base::FilePath&).
+bool ClobberState::SecureErase(const base::FilePath& path) {
+  return secure_erase_file::SecureErase(path);
+}
+
+// Wrapper around secure_erase_file::DropCaches(). Must be called after
+// a call to SecureEraseFile. Files are only securely deleted if DropCaches
+// returns true.
+bool ClobberState::DropCaches() {
+  return secure_erase_file::DropCaches();
+}
+
 void ClobberState::SetArgsForTest(const ClobberState::Arguments& args) {
   args_ = args;
+}
+
+ClobberState::Arguments ClobberState::GetArgsForTest() {
+  return args_;
 }
 
 void ClobberState::SetStatefulForTest(base::FilePath stateful_path) {
@@ -633,18 +828,7 @@ bool ClobberState::ClearBiometricSensorEntropy() {
   return true;
 }
 
-int ClobberState::RunClobberStateShell(bool is_rotational) {
-  brillo::ProcessImpl proc;
-  proc.AddArg("/sbin/clobber-state.sh");
-  // Arguments are passed via command line as well so that they can be logged
-  // in clobber-state.sh.
-  if (args_.fast_wipe)
-    proc.AddArg("fast");
-  if (args_.keepimg)
-    proc.AddArg("keepimg");
-  if (args_.safe_wipe)
-    proc.AddArg("safe");
-
+int ClobberState::RunClobberStateShell() {
   // The last argument to setenv is 1 to indicate that if the variable already
   // exists in the environment, it will be overwritten.
 
@@ -654,7 +838,6 @@ int ClobberState::RunClobberStateShell(bool is_rotational) {
   setenv("SAFE_WIPE", args_.safe_wipe ? "safe" : "", 1);
 
   // Information about what devices to wipe and how to wipe them.
-  setenv("ROTATIONAL", is_rotational ? "1" : "0", 1);
   setenv("IS_MTD", wipe_info_.is_mtd_flash ? "1" : "0", 1);
 
   setenv("ROOT_DISK", root_disk_.value().c_str(), 1);
@@ -670,6 +853,10 @@ int ClobberState::RunClobberStateShell(bool is_rotational) {
   setenv("KERNEL_PART_NUM",
          std::to_string(wipe_info_.active_kernel_partition).c_str(), 1);
 
+  setenv("TTY", terminal_path_.value().c_str(), 1);
+
+  brillo::ProcessImpl proc;
+  proc.AddArg("/sbin/clobber-state.sh");
   proc.RedirectOutput(kClobberStateShellLogPath);
   return proc.Run();
 }

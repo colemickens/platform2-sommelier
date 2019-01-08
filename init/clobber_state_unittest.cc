@@ -22,6 +22,14 @@
 #include "init/crossystem.h"
 #include "init/crossystem_fake.h"
 
+namespace {
+bool WriteFile(const base::FilePath& path, const std::string& contents) {
+  return base::CreateDirectory(path.DirName()) &&
+         base::WriteFile(path, contents.c_str(), contents.length()) ==
+             contents.length();
+}
+}  // namespace
+
 TEST(ParseArgv, EmptyArgs) {
   std::vector<const char*> argv{"clobber-state"};
   ClobberState::Arguments args = ClobberState::ParseArgv(argv.size(), &argv[0]);
@@ -88,7 +96,7 @@ TEST(IncrementFileCounter, SmallNumber) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath counter = temp_dir.GetPath().Append("counter");
-  ASSERT_TRUE(base::WriteFile(counter, "42\n", 3));
+  ASSERT_TRUE(WriteFile(counter, "42\n"));
   EXPECT_TRUE(ClobberState::IncrementFileCounter(counter));
   std::string contents;
   ASSERT_TRUE(base::ReadFileToString(counter, &contents));
@@ -99,7 +107,7 @@ TEST(IncrementFileCounter, LargeNumber) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath counter = temp_dir.GetPath().Append("counter");
-  ASSERT_TRUE(base::WriteFile(counter, "1238761\n", 8));
+  ASSERT_TRUE(WriteFile(counter, "1238761\n"));
   EXPECT_TRUE(ClobberState::IncrementFileCounter(counter));
   std::string contents;
   ASSERT_TRUE(base::ReadFileToString(counter, &contents));
@@ -110,7 +118,7 @@ TEST(IncrementFileCounter, NonNumber) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath counter = temp_dir.GetPath().Append("counter");
-  ASSERT_TRUE(base::WriteFile(counter, "cruciverbalist", 14));
+  ASSERT_TRUE(WriteFile(counter, "cruciverbalist"));
   EXPECT_TRUE(ClobberState::IncrementFileCounter(counter));
   std::string contents;
   ASSERT_TRUE(base::ReadFileToString(counter, &contents));
@@ -121,8 +129,7 @@ TEST(IncrementFileCounter, LongMax) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath counter = temp_dir.GetPath().Append("counter");
-  std::string value = std::to_string(LONG_MAX);
-  ASSERT_TRUE(base::WriteFile(counter, value.c_str(), value.size()));
+  ASSERT_TRUE(WriteFile(counter, std::to_string(LONG_MAX)));
   EXPECT_TRUE(ClobberState::IncrementFileCounter(counter));
   std::string contents;
   ASSERT_TRUE(base::ReadFileToString(counter, &contents));
@@ -133,8 +140,7 @@ TEST(IncrementFileCounter, InputNoNewline) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath counter = temp_dir.GetPath().Append("counter");
-  std::string value = std::to_string(7);
-  ASSERT_TRUE(base::WriteFile(counter, value.c_str(), value.size()));
+  ASSERT_TRUE(WriteFile(counter, std::to_string(7)));
   EXPECT_TRUE(ClobberState::IncrementFileCounter(counter));
   std::string contents;
   ASSERT_TRUE(base::ReadFileToString(counter, &contents));
@@ -158,7 +164,7 @@ TEST(PreserveFiles, NoFiles) {
 
   EXPECT_FALSE(base::PathExists(tar_file));
 
-  ASSERT_EQ(base::WriteFile(tar_file, "", 0), 0);
+  ASSERT_TRUE(WriteFile(tar_file, ""));
   EXPECT_TRUE(base::PathExists(tar_file));
   EXPECT_EQ(ClobberState::PreserveFiles(
                 fake_stateful, std::vector<base::FilePath>(), tar_file),
@@ -180,10 +186,8 @@ TEST(PreserveFiles, OneFile) {
       fake_stateful.Append(not_preserved_file);
   base::FilePath stateful_preserved = fake_stateful.Append(preserved_file);
 
-  ASSERT_TRUE(base::CreateDirectory(stateful_not_preserved.DirName()));
-  ASSERT_EQ(base::WriteFile(stateful_not_preserved, "unneeded", 8), 8);
-  ASSERT_TRUE(base::CreateDirectory(stateful_preserved.DirName()));
-  ASSERT_EQ(base::WriteFile(stateful_preserved, "test_contents", 13), 13);
+  ASSERT_TRUE(WriteFile(stateful_not_preserved, "unneeded"));
+  ASSERT_TRUE(WriteFile(stateful_preserved, "test_contents"));
 
   base::ScopedTempDir fake_tmp_dir;
   ASSERT_TRUE(fake_tmp_dir.CreateUniqueTempDir());
@@ -230,12 +234,9 @@ TEST(PreserveFiles, ManyFiles) {
   base::FilePath stateful_preserved_a = fake_stateful.Append(preserved_file_a);
   base::FilePath stateful_preserved_b = fake_stateful.Append(preserved_file_b);
 
-  ASSERT_TRUE(base::CreateDirectory(stateful_not_preserved.DirName()));
-  ASSERT_EQ(base::WriteFile(stateful_not_preserved, "unneeded", 8), 8);
-  ASSERT_TRUE(base::CreateDirectory(stateful_preserved_a.DirName()));
-  ASSERT_EQ(base::WriteFile(stateful_preserved_a, "test_contents", 13), 13);
-  ASSERT_TRUE(base::CreateDirectory(stateful_preserved_b.DirName()));
-  ASSERT_EQ(base::WriteFile(stateful_preserved_b, "data", 4), 4);
+  ASSERT_TRUE(WriteFile(stateful_not_preserved, "unneeded"));
+  ASSERT_TRUE(WriteFile(stateful_preserved_a, "test_contents"));
+  ASSERT_TRUE(WriteFile(stateful_preserved_b, "data"));
 
   base::ScopedTempDir fake_tmp_dir;
   ASSERT_TRUE(fake_tmp_dir.CreateUniqueTempDir());
@@ -390,10 +391,10 @@ class GetPreservedFilesListTest : public ::testing::Test {
     base::FilePath extensions =
         fake_stateful_.Append("unencrypted/import_extensions/extensions");
     ASSERT_TRUE(base::CreateDirectory(extensions));
-    ASSERT_EQ(base::WriteFile(extensions.Append("fileA.crx"), "", 0), 0);
-    ASSERT_EQ(base::WriteFile(extensions.Append("fileB.crx"), "", 0), 0);
-    ASSERT_EQ(base::WriteFile(extensions.Append("fileC.tar"), "", 0), 0);
-    ASSERT_EQ(base::WriteFile(extensions.Append("fileD.bmp"), "", 0), 0);
+    ASSERT_TRUE(WriteFile(extensions.Append("fileA.crx"), ""));
+    ASSERT_TRUE(WriteFile(extensions.Append("fileB.crx"), ""));
+    ASSERT_TRUE(WriteFile(extensions.Append("fileC.tar"), ""));
+    ASSERT_TRUE(WriteFile(extensions.Append("fileD.bmp"), ""));
   }
 
   void SetCompare(std::set<std::string> expected,
@@ -539,13 +540,24 @@ TEST_F(GetPreservedFilesListTest, SafeRollbackFactoryWipe) {
   SetCompare(expected_preserved_set, preserved_set);
 }
 
-// Version of ClobberState with system calls mocked for testing IsRotational.
+// Version of ClobberState with some library calls mocked for testing.
 class ClobberStateMock : public ClobberState {
  public:
-  using ClobberState::ClobberState;
+  ClobberStateMock(const Arguments& args,
+                   std::unique_ptr<CrosSystem> cros_system)
+      : ClobberState(args, std::move(cros_system)),
+        delay_forced_(false),
+        secure_erase_supported_(false) {}
+
   void SetStatResultForPath(const base::FilePath& path, const struct stat& st) {
     result_map_[path.value()] = st;
   }
+
+  void SetSecureEraseSupported(bool supported) {
+    secure_erase_supported_ = supported;
+  }
+
+  bool DelayForced() { return delay_forced_; }
 
  protected:
   int Stat(const base::FilePath& path, struct stat* st) override {
@@ -557,8 +569,18 @@ class ClobberStateMock : public ClobberState {
     return 0;
   }
 
+  void ForceDelay() override { delay_forced_ = true; }
+
+  bool SecureErase(const base::FilePath& path) override {
+    return secure_erase_supported_ && base::DeleteFile(path, false);
+  }
+
+  bool DropCaches() override { return secure_erase_supported_; }
+
  private:
   std::unordered_map<std::string, struct stat> result_map_;
+  bool delay_forced_;
+  bool secure_erase_supported_;
 };
 
 class IsRotationalTest : public ::testing::Test {
@@ -572,12 +594,6 @@ class IsRotationalTest : public ::testing::Test {
     ASSERT_TRUE(fake_sys_.CreateUniqueTempDir());
     clobber_.SetDevForTest(fake_dev_.GetPath());
     clobber_.SetSysForTest(fake_sys_.GetPath());
-  }
-
-  bool WriteFile(const base::FilePath& path, const std::string& contents) {
-    return base::CreateDirectory(path.DirName()) &&
-           base::WriteFile(path, contents.c_str(), contents.length()) ==
-               contents.length();
   }
 
   ClobberStateMock clobber_;
@@ -713,6 +729,341 @@ TEST_F(IsRotationalTest, MultipleDevices) {
 
   EXPECT_FALSE(clobber_.IsRotational(device_one));
   EXPECT_TRUE(clobber_.IsRotational(device_two));
+}
+
+class AttemptSwitchToFastWipeTest : public ::testing::Test {
+ protected:
+  AttemptSwitchToFastWipeTest()
+      : clobber_(ClobberState::Arguments(),
+                 std::make_unique<CrosSystemFake>()) {}
+
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    temp_path_ = temp_dir_.GetPath();
+    fake_stateful_ = temp_path_.Append("stateful");
+    clobber_.SetStatefulForTest(fake_stateful_);
+
+    base::FilePath shadow = fake_stateful_.Append("home/.shadow");
+
+    encrypted_stateful_paths_ = std::vector<base::FilePath>({
+        fake_stateful_.Append("encrypted.block"),
+        fake_stateful_.Append("var_overlay/fileA"),
+        fake_stateful_.Append("var_overlay/fileB"),
+        fake_stateful_.Append("dev_image/fileA"),
+        fake_stateful_.Append("dev_image/fileB"),
+        shadow.Append("uninteresting/vault/fileA"),
+        shadow.Append("uninteresting/vault/fileB"),
+        shadow.Append("uninteresting/vault/fileC"),
+        shadow.Append("other/vault/fileA"),
+        shadow.Append("vault/fileA"),
+        shadow.Append("vault/fileB"),
+    });
+
+    keyset_paths_ = std::vector<base::FilePath>({
+        fake_stateful_.Append("encrypted.key"),
+        fake_stateful_.Append("encrypted.needs-finalization"),
+        fake_stateful_.Append("home/.shadow/cryptohome.key"),
+        fake_stateful_.Append("home/.shadow/salt"),
+        fake_stateful_.Append("home/.shadow/salt.sum"),
+        fake_stateful_.Append("home/.shadow/random_dir/master"),
+        fake_stateful_.Append("home/.shadow/other_dir/master"),
+        fake_stateful_.Append("home/.shadow/extra_dir/master"),
+    });
+
+    shredded_paths_ = std::vector<base::FilePath>(
+        {fake_stateful_.Append("really/deeply/buried/random/file/to/delete"),
+         fake_stateful_.Append("other/file/to/delete")});
+
+    for (const base::FilePath& path : encrypted_stateful_paths_) {
+      ASSERT_TRUE(WriteFile(path, kContents));
+    }
+
+    for (const base::FilePath& path : keyset_paths_) {
+      ASSERT_TRUE(WriteFile(path, kContents));
+    }
+
+    for (const base::FilePath& path : shredded_paths_) {
+      ASSERT_TRUE(WriteFile(path, kContents));
+    }
+  }
+
+  void CheckPathsUntouched(const std::vector<base::FilePath>& paths) {
+    for (const base::FilePath& path : paths) {
+      std::string contents;
+      EXPECT_TRUE(base::ReadFileToString(path, &contents))
+          << "Couldn't read " << path.value();
+      EXPECT_EQ(contents, kContents);
+    }
+  }
+
+  void CheckPathsShredded(const std::vector<base::FilePath>& paths) {
+    for (const base::FilePath& path : paths) {
+      std::string contents;
+      EXPECT_TRUE(base::ReadFileToString(path, &contents))
+          << "Couldn't read " << path.value();
+      EXPECT_NE(contents, kContents);
+    }
+  }
+
+  void CheckPathsDeleted(const std::vector<base::FilePath>& paths) {
+    for (const base::FilePath& path : paths) {
+      EXPECT_FALSE(base::PathExists(path))
+          << path.value() << " should not exist";
+    }
+  }
+
+  const std::string kContents = "TOP_SECRET_DATA";
+
+  ClobberStateMock clobber_;
+  base::ScopedTempDir temp_dir_;
+  base::FilePath temp_path_;
+  base::FilePath fake_stateful_;
+  // Files which are deleted by ShredRotationalStatefulPaths.
+  std::vector<base::FilePath> encrypted_stateful_paths_;
+  // Files which are deleted by WipeKeysets.
+  std::vector<base::FilePath> keyset_paths_;
+  // Files which will be shredded (overwritten) but not deleted by
+  // ShredRotationalStatefulPaths.
+  std::vector<base::FilePath> shredded_paths_;
+};
+
+TEST_F(AttemptSwitchToFastWipeTest, NotRotationalNoSecureErase) {
+  ClobberState::Arguments args;
+  args.fast_wipe = false;
+  clobber_.SetArgsForTest(args);
+
+  clobber_.SetSecureEraseSupported(false);
+  clobber_.AttemptSwitchToFastWipe(false);
+  EXPECT_FALSE(clobber_.DelayForced());
+  EXPECT_FALSE(clobber_.GetArgsForTest().fast_wipe);
+  CheckPathsUntouched(encrypted_stateful_paths_);
+  CheckPathsUntouched(keyset_paths_);
+  CheckPathsUntouched(shredded_paths_);
+}
+
+TEST_F(AttemptSwitchToFastWipeTest, AlreadyFast) {
+  ClobberState::Arguments args;
+  args.fast_wipe = true;
+  clobber_.SetArgsForTest(args);
+
+  clobber_.SetSecureEraseSupported(true);
+  clobber_.AttemptSwitchToFastWipe(true);
+  EXPECT_FALSE(clobber_.DelayForced());
+  EXPECT_TRUE(clobber_.GetArgsForTest().fast_wipe);
+  CheckPathsUntouched(encrypted_stateful_paths_);
+  CheckPathsUntouched(keyset_paths_);
+  CheckPathsUntouched(shredded_paths_);
+}
+
+TEST_F(AttemptSwitchToFastWipeTest, RotationalNoSecureErase) {
+  ClobberState::Arguments args;
+  args.fast_wipe = false;
+  clobber_.SetArgsForTest(args);
+
+  clobber_.SetSecureEraseSupported(false);
+  clobber_.AttemptSwitchToFastWipe(true);
+  EXPECT_TRUE(clobber_.DelayForced());
+  EXPECT_TRUE(clobber_.GetArgsForTest().fast_wipe);
+  CheckPathsDeleted(encrypted_stateful_paths_);
+  CheckPathsShredded(keyset_paths_);
+  CheckPathsShredded(shredded_paths_);
+}
+
+TEST_F(AttemptSwitchToFastWipeTest, SecureEraseNotRotational) {
+  ClobberState::Arguments args;
+  args.fast_wipe = false;
+  clobber_.SetArgsForTest(args);
+
+  clobber_.SetSecureEraseSupported(true);
+  clobber_.AttemptSwitchToFastWipe(false);
+  EXPECT_TRUE(clobber_.DelayForced());
+  EXPECT_TRUE(clobber_.GetArgsForTest().fast_wipe);
+  CheckPathsUntouched(encrypted_stateful_paths_);
+  CheckPathsDeleted(keyset_paths_);
+  CheckPathsUntouched(shredded_paths_);
+}
+
+TEST_F(AttemptSwitchToFastWipeTest, RotationalSecureErase) {
+  ClobberState::Arguments args;
+  args.fast_wipe = false;
+  clobber_.SetArgsForTest(args);
+
+  clobber_.SetSecureEraseSupported(true);
+  clobber_.AttemptSwitchToFastWipe(true);
+  EXPECT_TRUE(clobber_.DelayForced());
+  EXPECT_TRUE(clobber_.GetArgsForTest().fast_wipe);
+  CheckPathsDeleted(encrypted_stateful_paths_);
+  CheckPathsShredded(keyset_paths_);
+  CheckPathsShredded(shredded_paths_);
+}
+
+class ShredRotationalStatefulFilesTest : public ::testing::Test {
+ protected:
+  ShredRotationalStatefulFilesTest()
+      : clobber_(ClobberState::Arguments(),
+                 std::make_unique<CrosSystemFake>()) {}
+
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    temp_path_ = temp_dir_.GetPath();
+    fake_stateful_ = temp_path_.Append("stateful");
+    clobber_.SetStatefulForTest(fake_stateful_);
+
+    base::FilePath shadow = fake_stateful_.Append("home/.shadow");
+
+    deleted_paths_ = std::vector<base::FilePath>({
+        fake_stateful_.Append("encrypted.block"),
+        fake_stateful_.Append("var_overlay/fileA"),
+        fake_stateful_.Append("var_overlay/fileB"),
+        fake_stateful_.Append("dev_image/fileA"),
+        fake_stateful_.Append("dev_image/fileB"),
+        shadow.Append("uninteresting/vault/fileA"),
+        shadow.Append("uninteresting/vault/fileB"),
+        shadow.Append("uninteresting/vault/fileC"),
+        shadow.Append("other/vault/fileA"),
+        shadow.Append("vault/fileA"),
+        shadow.Append("vault/fileB"),
+    });
+
+    shredded_paths_ = std::vector<base::FilePath>(
+        {fake_stateful_.Append("really/deeply/buried/random/file/to/delete"),
+         fake_stateful_.Append("other/file/to/delete")});
+
+    for (const base::FilePath& path : deleted_paths_) {
+      ASSERT_TRUE(WriteFile(path, kContents));
+    }
+
+    for (const base::FilePath& path : shredded_paths_) {
+      ASSERT_TRUE(WriteFile(path, kContents));
+    }
+  }
+
+  void CheckPathsUntouched(const std::vector<base::FilePath>& paths) {
+    for (const base::FilePath& path : paths) {
+      std::string contents;
+      EXPECT_TRUE(base::ReadFileToString(path, &contents))
+          << "Couldn't read " << path.value();
+      EXPECT_EQ(contents, kContents);
+    }
+  }
+
+  void CheckPathsShredded(const std::vector<base::FilePath>& paths) {
+    for (const base::FilePath& path : paths) {
+      std::string contents;
+      EXPECT_TRUE(base::ReadFileToString(path, &contents))
+          << "Couldn't read " << path.value();
+      EXPECT_NE(contents, kContents);
+    }
+  }
+
+  void CheckPathsDeleted(const std::vector<base::FilePath>& paths) {
+    for (const base::FilePath& path : paths) {
+      EXPECT_FALSE(base::PathExists(path))
+          << path.value() << " should not exist";
+    }
+  }
+
+  const std::string kContents = "TOP_SECRET_DATA";
+
+  ClobberStateMock clobber_;
+  base::ScopedTempDir temp_dir_;
+  base::FilePath temp_path_;
+  base::FilePath fake_stateful_;
+  // Files which are deleted by ShredRotationalStatefulPaths.
+  std::vector<base::FilePath> deleted_paths_;
+  // Files which will be shredded (overwritten) but not deleted by
+  // ShredRotationalStatefulPaths.
+  std::vector<base::FilePath> shredded_paths_;
+};
+
+TEST_F(ShredRotationalStatefulFilesTest, Mounted) {
+  clobber_.ShredRotationalStatefulFiles();
+  CheckPathsDeleted(deleted_paths_);
+  CheckPathsShredded(shredded_paths_);
+}
+
+class WipeKeysetsTest : public ::testing::Test {
+ protected:
+  WipeKeysetsTest()
+      : clobber_(ClobberState::Arguments(),
+                 std::make_unique<CrosSystemFake>()) {}
+
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    fake_stateful_ = temp_dir_.GetPath();
+    clobber_.SetStatefulForTest(fake_stateful_);
+
+    deleted_paths_ = std::vector<base::FilePath>({
+        fake_stateful_.Append("encrypted.key"),
+        fake_stateful_.Append("encrypted.needs-finalization"),
+        fake_stateful_.Append("home/.shadow/cryptohome.key"),
+        fake_stateful_.Append("home/.shadow/salt"),
+        fake_stateful_.Append("home/.shadow/salt.sum"),
+        fake_stateful_.Append("home/.shadow/random_dir/master"),
+        fake_stateful_.Append("home/.shadow/other_dir/master"),
+        fake_stateful_.Append("home/.shadow/extra_dir/master"),
+    });
+
+    ignored_paths_ = std::vector<base::FilePath>({
+        fake_stateful_.Append("uninteresting/file/definitely/not/an/rsa/key"),
+        fake_stateful_.Append("hopefully/not/a/copy/of/etc/passwd"),
+        fake_stateful_.Append("home/.shadow/extra_dir/unimportant"),
+        fake_stateful_.Append("home/.shadow/other_dir/unimportant"),
+    });
+
+    for (const base::FilePath& path : deleted_paths_) {
+      ASSERT_TRUE(WriteFile(path, kContents));
+    }
+
+    for (const base::FilePath& path : ignored_paths_) {
+      ASSERT_TRUE(WriteFile(path, kContents));
+    }
+  }
+
+  void CheckPathsUntouched(const std::vector<base::FilePath>& paths) {
+    for (const base::FilePath& path : paths) {
+      std::string contents;
+      EXPECT_TRUE(base::ReadFileToString(path, &contents))
+          << "Couldn't read " << path.value();
+      EXPECT_EQ(contents, kContents);
+    }
+  }
+
+  void CheckPathsDeleted(const std::vector<base::FilePath>& paths) {
+    for (const base::FilePath& path : paths) {
+      EXPECT_FALSE(base::PathExists(path))
+          << path.value() << " should not exist";
+    }
+  }
+
+  const std::string kContents = "feebdabdeefedaceddad";
+
+  ClobberStateMock clobber_;
+  base::ScopedTempDir temp_dir_;
+  base::FilePath fake_stateful_;
+  std::vector<base::FilePath> deleted_paths_;
+  std::vector<base::FilePath> ignored_paths_;
+};
+
+TEST_F(WipeKeysetsTest, NotSupported) {
+  clobber_.SetSecureEraseSupported(false);
+  CheckPathsUntouched(deleted_paths_);
+  CheckPathsUntouched(ignored_paths_);
+
+  EXPECT_FALSE(clobber_.WipeKeysets());
+
+  CheckPathsUntouched(ignored_paths_);
+}
+
+TEST_F(WipeKeysetsTest, Supported) {
+  clobber_.SetSecureEraseSupported(true);
+  CheckPathsUntouched(deleted_paths_);
+  CheckPathsUntouched(ignored_paths_);
+
+  EXPECT_TRUE(clobber_.WipeKeysets());
+
+  CheckPathsDeleted(deleted_paths_);
+  CheckPathsUntouched(ignored_paths_);
 }
 
 class GetDevicesToWipeTest : public ::testing::Test {
