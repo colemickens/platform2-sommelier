@@ -141,6 +141,10 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
   int32_t UpdateMountCredentials(const ProtoBlob& options_blob,
                                  const base::ScopedFD& password_fd) override;
 
+  void Premount(const ProtoBlob& options_blob,
+                int32_t* error_code,
+                int32_t* mount_id) override;
+
   // Register DBus object and interfaces.
   void RegisterAsync(
       const AsyncEventSequencer::CompletionAction& completion_callback);
@@ -235,6 +239,12 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
                const std::string& username,
                const base::ScopedFD& password_fd,
                int32_t* error_code);
+
+  // Premounts |mount_root| on mount_manager_ and sets |error_code| on failure.
+  bool Premount(const std::string& mount_root,
+                const MountConfig& mount_config,
+                int32_t* error_code,
+                int32_t* mount_id);
 
   // Removes |mount_id| from mount_manager_ if |mount_id| is mounted.
   void RemoveMountIfMounted(int32_t mount_id);

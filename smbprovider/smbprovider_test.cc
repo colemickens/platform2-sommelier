@@ -3530,4 +3530,101 @@ TEST_F(SmbProviderTest, UpdateMountCredentialsFailsOnNonExistantMount) {
                                                     updated_password)));
 }
 
+TEST_F(SmbProviderTest, TestPremountSucceeds) {
+  fake_samba_->AddDirectory(GetDefaultServer());
+  fake_samba_->AddDirectory(GetDefaultMountRoot());
+
+  ProtoBlob blob = CreatePremountOptionsBlob(GetDefaultMountRoot());
+
+  EXPECT_EQ(0, mount_manager_->MountCount());
+
+  int32_t error_code;
+  int32_t mount_id;
+  smbprovider_->Premount(blob, &error_code, &mount_id);
+
+  EXPECT_EQ(ERROR_OK, CastError(error_code));
+  EXPECT_GE(mount_id, 0);
+  EXPECT_EQ(1, mount_manager_->MountCount());
+}
+
+TEST_F(SmbProviderTest, TestPremountSucceedsOnEPERM) {
+  fake_samba_->AddDirectory(GetDefaultServer());
+  fake_samba_->AddDirectory(GetDefaultMountRoot());
+
+  // EPERM is an acceptable authentication error.
+  const int32_t permission_error = EPERM;
+  fake_samba_->SetGetDirectoryError(permission_error);
+
+  ProtoBlob blob = CreatePremountOptionsBlob(GetDefaultMountRoot());
+
+  EXPECT_EQ(0, mount_manager_->MountCount());
+
+  int32_t error_code;
+  int32_t mount_id;
+  smbprovider_->Premount(blob, &error_code, &mount_id);
+
+  EXPECT_EQ(ERROR_OK, CastError(error_code));
+  EXPECT_GE(mount_id, 0);
+  EXPECT_EQ(1, mount_manager_->MountCount());
+}
+
+TEST_F(SmbProviderTest, TestPremountSucceedsOnEACCES) {
+  fake_samba_->AddDirectory(GetDefaultServer());
+  fake_samba_->AddDirectory(GetDefaultMountRoot());
+
+  // EACCES is an acceptable authentication error.
+  const int32_t access_error = EACCES;
+  fake_samba_->SetGetDirectoryError(access_error);
+
+  ProtoBlob blob = CreatePremountOptionsBlob(GetDefaultMountRoot());
+  EXPECT_EQ(0, mount_manager_->MountCount());
+
+  int32_t error_code;
+  int32_t mount_id;
+  smbprovider_->Premount(blob, &error_code, &mount_id);
+
+  EXPECT_EQ(ERROR_OK, CastError(error_code));
+  EXPECT_GE(mount_id, 0);
+  EXPECT_EQ(1, mount_manager_->MountCount());
+}
+
+// TODO(jimmyxgong): Change test to succeed on ERROR_NOT_FOUND when redoing
+// name resolution is implemented. Bug tracker: crbug.com/922273
+TEST_F(SmbProviderTest, TestPremountFailsOnERRORNOTFOUND) {
+  fake_samba_->AddDirectory(GetDefaultServer());
+  fake_samba_->AddDirectory(GetDefaultMountRoot());
+
+  // No connection to the host.
+  const int32_t access_error = ETIMEDOUT;
+  fake_samba_->SetGetDirectoryError(access_error);
+
+  ProtoBlob blob = CreatePremountOptionsBlob(GetDefaultMountRoot());
+  EXPECT_EQ(0, mount_manager_->MountCount());
+
+  int32_t error_code;
+  int32_t mount_id;
+  smbprovider_->Premount(blob, &error_code, &mount_id);
+
+  EXPECT_EQ(ERROR_NOT_FOUND, CastError(error_code));
+  EXPECT_EQ(0, mount_id);
+  EXPECT_EQ(0, mount_manager_->MountCount());
+}
+
+TEST_F(SmbProviderTest, TestPremountFailsOnExistingMount) {
+  PrepareMount();
+
+  EXPECT_EQ(1, mount_manager_->MountCount());
+  EXPECT_TRUE(mount_manager_->IsAlreadyMounted(GetDefaultMountRoot()));
+
+  ProtoBlob blob = CreatePremountOptionsBlob(GetDefaultMountRoot());
+
+  int32_t mount_id2 = -1;
+  int32_t error_code;
+  smbprovider_->Premount(blob, &error_code, &mount_id2);
+
+  EXPECT_EQ(ERROR_IN_USE, CastError(error_code));
+  // Check that a mount_id did not get assigned on a failed premount.
+  EXPECT_EQ(-1, mount_id2);
+}
+
 }  // namespace smbprovider

@@ -641,6 +641,33 @@ int32_t SmbProvider::UpdateMountCredentials(const ProtoBlob& options_blob,
   return static_cast<int32_t>(ERROR_OK);
 }
 
+void SmbProvider::Premount(const ProtoBlob& options_blob,
+                           int32_t* error_code,
+                           int32_t* mount_id) {
+  DCHECK(error_code);
+  DCHECK(mount_id);
+  *mount_id = -1;
+
+  // The functions below will set the error if they fail.
+  *error_code = static_cast<int32_t>(ERROR_OK);
+  PremountOptionsProto options;
+
+  if (!ParseOptionsProto(options_blob, &options, error_code)) {
+    return;  // Error parsing proto.
+  }
+
+  MountConfig mount_config = ConvertToMountConfig(options);
+
+  const bool success =
+      Premount(options.path(), mount_config, error_code, mount_id) &&
+      CanReachHost(*mount_id, options.path(), error_code);
+
+  if (!success) {
+    LOG(ERROR) << "Failed to premount preconfigured share.";
+    RemoveMountIfMounted(*mount_id);
+  }
+}
+
 HostnamesProto SmbProvider::BuildHostnamesProto(
     const std::vector<std::string>& hostnames) const {
   HostnamesProto hostnames_proto;
@@ -887,6 +914,20 @@ bool SmbProvider::Remount(const std::string& mount_root,
   }
 
   return remounted;
+}
+
+bool SmbProvider::Premount(const std::string& mount_root,
+                           const MountConfig& mount_config,
+                           int32_t* error_code,
+                           int32_t* mount_id) {
+  const bool premounted =
+      mount_manager_->Premount(mount_root, mount_config, mount_id);
+
+  if (!premounted) {
+    *error_code = static_cast<int32_t>(ERROR_IN_USE);
+  }
+
+  return premounted;
 }
 
 void SmbProvider::RemoveMountIfMounted(int32_t mount_id) {
