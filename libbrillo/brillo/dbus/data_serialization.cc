@@ -259,6 +259,9 @@ bool PopStructValueFromReader(dbus::MessageReader* reader,
   else if (signature == "(uu)")
     return PopTypedValueFromReader<std::tuple<uint32_t, uint32_t>>(reader,
                                                                    value);
+  else if (signature == "(ua{sv})")
+    return PopTypedValueFromReader<
+        std::tuple<uint32_t, brillo::VariantDictionary>>(reader, value);
 
   // When a use case for particular struct signature is found, feel free
   // to add handing for it here.

@@ -5,6 +5,7 @@
 #include <brillo/dbus/data_serialization.h>
 
 #include <limits>
+#include <tuple>
 
 #include <brillo/variant_dictionary.h>
 #include <gtest/gtest.h>
@@ -514,6 +515,33 @@ TEST(DBusUtils, ArraysAsVariant) {
             dict_sv_out.Get<VariantDictionary>().at("k2").Get<std::string>());
   EXPECT_EQ(complex_struct_array,
             complex_struct_array_out.Get<ComplexStructArray>());
+}
+
+TEST(DBusUtils, StructsAsVariant) {
+  std::unique_ptr<Response> message = Response::CreateEmpty();
+  MessageWriter writer(message.get());
+  VariantDictionary dict_sv{{"k1", 1}, {"k2", "v2"}};
+  std::tuple<uint32_t, VariantDictionary> u32_dict_sv_struct =
+      std::make_tuple(1, dict_sv);
+  AppendValueToWriterAsVariant(&writer, u32_dict_sv_struct);
+
+  EXPECT_EQ("v", message->GetSignature());
+
+  Any u32_dict_sv_struct_out_any;
+
+  MessageReader reader(message.get());
+  EXPECT_TRUE(PopValueFromReader(&reader, &u32_dict_sv_struct_out_any));
+  EXPECT_FALSE(reader.HasMoreData());
+
+  auto u32_dict_sv_struct_out =
+      u32_dict_sv_struct_out_any.Get<std::tuple<uint32_t, VariantDictionary>>();
+  EXPECT_EQ(std::get<0>(u32_dict_sv_struct),
+            std::get<0>(u32_dict_sv_struct_out));
+  VariantDictionary dict_sv_out = std::get<1>(u32_dict_sv_struct_out);
+  EXPECT_EQ(dict_sv.size(), dict_sv_out.size());
+  EXPECT_EQ(dict_sv["k1"].Get<int>(), dict_sv_out["k1"].Get<int>());
+  EXPECT_EQ(dict_sv["k2"].Get<const char*>(),
+            dict_sv_out["k2"].Get<std::string>());
 }
 
 TEST(DBusUtils, VariantDictionary) {
