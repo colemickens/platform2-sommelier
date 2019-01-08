@@ -104,6 +104,8 @@ UpdateMountCredentialsOptionsProto CreateUpdateMountCredentialsOptionsProto(
     const std::string& workgroup,
     const std::string& username);
 
+PremountOptionsProto CreatePremountOptionsProto(const std::string& path);
+
 ProtoBlob CreateMountOptionsBlob(const std::string& path);
 
 ProtoBlob CreateMountOptionsBlob(const std::string& path,
@@ -175,6 +177,8 @@ ProtoBlob CreateRemountOptionsBlob(const std::string& path,
 ProtoBlob CreateUpdateMountCredentialsOptionsBlob(int32_t mount_id,
                                                   const std::string& workgroup,
                                                   const std::string& username);
+
+ProtoBlob CreatePremountOptionsBlob(const std::string& path);
 
 // FakeSamba URL helper methods
 inline std::string GetDefaultServer() {

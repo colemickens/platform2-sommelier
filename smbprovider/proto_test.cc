@@ -129,6 +129,10 @@ TEST_F(SmbProviderProtoTest, IsValidOptionsForValidProtos) {
       CreateUpdateMountCredentialsOptionsProto(
           3 /* mount_id */, "" /* work_group */, "" /* user_name */);
   EXPECT_TRUE(IsValidOptions(update_proto));
+
+  PremountOptionsProto premount_proto =
+      CreatePremountOptionsProto("smb://testShare/dir1");
+  EXPECT_TRUE(IsValidOptions(premount_proto));
 }
 
 // IsValidOptions returns false when options are invalid for invalid protos.
@@ -183,6 +187,9 @@ TEST_F(SmbProviderProtoTest, IsValidOptionsForInValidProtos) {
 
   UpdateMountCredentialsOptionsProto update_proto_blank;
   EXPECT_FALSE(IsValidOptions(update_proto_blank));
+
+  PremountOptionsProto premount_proto_blank;
+  EXPECT_FALSE(IsValidOptions(premount_proto_blank));
 }
 
 // IsValidOptions checks offset and length ranges for ReadFileOptionsProto.
@@ -296,6 +303,7 @@ TEST_F(SmbProviderProtoTest, GetMethodName) {
   CheckMethodName(kRemountMethod, RemountOptionsProto());
   CheckMethodName(kUpdateMountCredentialsMethod,
                   UpdateMountCredentialsOptionsProto());
+  CheckMethodName(kPremountMethod, PremountOptionsProto());
 }
 
 // DirectoryEntryCtor initializes a DirectoryEntry correctly.

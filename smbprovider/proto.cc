@@ -93,6 +93,10 @@ bool IsValidOptions(const RemountOptionsProto& options) {
   return options.has_path() && options.has_mount_id();
 }
 
+bool IsValidOptions(const PremountOptionsProto& options) {
+  return options.has_path() && IsValidMountConfig(options.mount_config());
+}
+
 bool IsValidOptions(const UpdateMountCredentialsOptionsProto& options) {
   return options.has_mount_id() && options.has_workgroup() &&
          options.has_username();
@@ -224,6 +228,10 @@ const char* GetMethodName(const RemountOptionsProto& unused) {
 
 const char* GetMethodName(const UpdateMountCredentialsOptionsProto& unused) {
   return kUpdateMountCredentialsMethod;
+}
+
+const char* GetMethodName(const PremountOptionsProto& unused) {
+  return kPremountMethod;
 }
 
 template <>

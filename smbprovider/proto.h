@@ -48,6 +48,7 @@ bool IsValidOptions(const GetDeleteListOptionsProto& options);
 bool IsValidOptions(const GetSharesOptionsProto& options);
 bool IsValidOptions(const RemountOptionsProto& options);
 bool IsValidOptions(const UpdateMountCredentialsOptionsProto& options);
+bool IsValidOptions(const PremountOptionsProto& options);
 
 bool IsValidMountConfig(const MountConfigProto& options);
 
@@ -86,6 +87,7 @@ const char* GetMethodName(const GetDeleteListOptionsProto& unused);
 const char* GetMethodName(const GetSharesOptionsProto& unused);
 const char* GetMethodName(const RemountOptionsProto& unused);
 const char* GetMethodName(const UpdateMountCredentialsOptionsProto& unused);
+const char* GetMethodName(const PremountOptionsProto& unused);
 
 template <typename Proto>
 int32_t GetMountId(const Proto& options) {

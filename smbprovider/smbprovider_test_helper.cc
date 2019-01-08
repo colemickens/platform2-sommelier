@@ -239,6 +239,19 @@ UpdateMountCredentialsOptionsProto CreateUpdateMountCredentialsOptionsProto(
   return update_options;
 }
 
+PremountOptionsProto CreatePremountOptionsProto(const std::string& path) {
+  PremountOptionsProto premount_options;
+  premount_options.set_path(path);
+
+  // Default to enable NTLM authentication.
+  std::unique_ptr<MountConfigProto> config =
+      CreateMountConfigProto(true /* enable_ntlm */);
+
+  premount_options.set_allocated_mount_config(config.release());
+
+  return premount_options;
+}
+
 ProtoBlob CreateMountOptionsBlob(const std::string& path) {
   return SerializeProtoToBlobAndCheck(
       CreateMountOptionsProto(path, "" /* workgroup */, "" /* username */,
@@ -372,6 +385,10 @@ ProtoBlob CreateUpdateMountCredentialsOptionsBlob(int32_t mount_id,
                                                   const std::string& username) {
   return SerializeProtoToBlobAndCheck(
       CreateUpdateMountCredentialsOptionsProto(mount_id, workgroup, username));
+}
+
+ProtoBlob CreatePremountOptionsBlob(const std::string& path) {
+  return SerializeProtoToBlobAndCheck(CreatePremountOptionsProto(path));
 }
 
 base::ScopedFD WritePasswordToFile(TempFileManager* temp_manager,
