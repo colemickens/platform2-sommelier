@@ -183,7 +183,6 @@ private:
     void dumpQuery(const std::map<GCSS::ItemUID, std::string> &query);
     status_t prepareGraphConfig();
     status_t prepareMediaCtlConfig(int32_t testPatternMode);
-    bool needSwapVideoPreview(GCSS::GraphConfigNode* graphCfgNode, int32_t id);
 
     void handleVideoStream(ResolutionItem& res, PlatformGraphConfigKey& streamKey);
     void handleStillStream(ResolutionItem& res, PlatformGraphConfigKey& streamKey);
@@ -204,9 +203,6 @@ private:
     std::map<GCSS::ItemUID, std::string> mQueryStill;
     std::vector<GCSS::GraphConfigNode*> mVideoQueryResults;
     std::vector<GCSS::GraphConfigNode*> mStillQueryResults;
-
-    bool mNeedSwapVideoPreview;
-    bool mNeedSwapStillPreview;
 
     std::vector<PlatformGraphConfigKey> mVideoStreamKeys;
     std::vector<PlatformGraphConfigKey> mStillStreamKeys;

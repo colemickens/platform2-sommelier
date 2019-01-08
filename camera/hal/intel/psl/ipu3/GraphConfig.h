@@ -168,7 +168,6 @@ public:
 
 public:
     void setMediaCtlConfig(std::shared_ptr<MediaController> mediaCtl,
-                           bool swapVideoPreview,
                            bool enableStill);
 
 private:

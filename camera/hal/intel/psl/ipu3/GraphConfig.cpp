@@ -1331,7 +1331,6 @@ status_t GraphConfig::getImguMediaCtlData(int32_t cameraId,
 }
 
 void GraphConfig::setMediaCtlConfig(std::shared_ptr<MediaController> mediaCtl,
-                                    bool swapVideoPreview,
                                     bool enableStill)
 {
     mMediaCtl = mediaCtl;
@@ -1355,8 +1354,8 @@ void GraphConfig::setMediaCtlConfig(std::shared_ptr<MediaController> mediaCtl,
         LOG2("save graph setting nodes: %s, pad: %d, nodename: %s", lut.uidStr.c_str(), lut.pad, lut.nodeName.c_str());
         mLut.push_back(lut);
     } else {
-        const int mainPad = !swapVideoPreview ? MEDIACTL_PAD_OUTPUT_NUM : MEDIACTL_PAD_VF_NUM;
-        const int secondPad = swapVideoPreview ? MEDIACTL_PAD_OUTPUT_NUM : MEDIACTL_PAD_VF_NUM;
+        const int mainPad = MEDIACTL_PAD_OUTPUT_NUM;
+        const int secondPad = MEDIACTL_PAD_VF_NUM;
 
         lut.uid = GCSS_KEY_IMGU_VIDEO;
         lut.uidStr = GCSS::ItemUID::key2str(lut.uid);

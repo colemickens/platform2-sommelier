@@ -58,8 +58,6 @@ GraphConfigManager::GraphConfigManager(int32_t camId,
                                        GraphConfigNodes *testNodes) :
     mCameraId(camId),
     mGraphQueryManager(new GraphQueryManager()),
-    mNeedSwapVideoPreview(false),
-    mNeedSwapStillPreview(false),
     mForceUseOneNodeInVideoPipe(false)
 {
     const CameraCapInfo *info = PlatformData::getCameraCapInfo(mCameraId);
@@ -190,57 +188,6 @@ GraphConfigNodes* GraphConfigManager::parse(const char *descriptorXmlFile,
     }
 
     return nodes;
-}
-
-bool GraphConfigManager::needSwapVideoPreview(GCSS::GraphConfigNode* graphCfgNode, int32_t id)
-{
-    bool swapVideoPreview = false;
-    int previewWidth = 0;
-    int previewHeight = 0;
-    int videoWidth = 0;
-    int videoHeight = 0;
-    status_t ret1 = OK;
-    status_t ret2 = OK;
-
-    GraphConfigNode* node = nullptr;
-    std::string nodeName = GC_PREVIEW;
-    graphCfgNode->getDescendantByString(nodeName, &node);
-    if (node) {
-        ret1 = node->getValue(GCSS_KEY_WIDTH, previewWidth);
-        ret2 = node->getValue(GCSS_KEY_HEIGHT, previewHeight);
-        if (ret1 != OK || ret2 != OK) {
-            LOGE("@%s, fail to get width or height for node %s, ret1:%d, ret2:%d",
-                __FUNCTION__, nodeName.c_str(), ret1, ret2);
-            return swapVideoPreview;
-        }
-    }
-    LOG2("@%s, settings id:%d, for %s, width:%d, height:%d",
-        __FUNCTION__, id, nodeName.c_str(), previewWidth, previewHeight);
-
-    node = nullptr;
-    nodeName = GC_VIDEO;
-    graphCfgNode->getDescendantByString(nodeName, &node);
-    if (node) {
-        ret1 = node->getValue(GCSS_KEY_WIDTH, videoWidth);
-        ret2 = node->getValue(GCSS_KEY_HEIGHT, videoHeight);
-        if (ret1 != OK || ret2 != OK) {
-            LOGE("@%s, fail to get width or height for node %s, ret1:%d, ret2:%d",
-                __FUNCTION__, nodeName.c_str(), ret1, ret2);
-            return swapVideoPreview;
-        }
-    }
-    LOG2("@%s, settings id:%d, for %s, width:%d, height:%d",
-        __FUNCTION__, id, nodeName.c_str(), videoWidth, videoHeight);
-
-    if (previewWidth != 0 && previewHeight != 0
-        && videoWidth != 0 && videoHeight != 0) {
-        if (previewWidth > videoWidth
-            && previewHeight > videoHeight)
-            swapVideoPreview = true;
-    }
-    LOG2("@%s :%d", __FUNCTION__, swapVideoPreview);
-
-    return swapVideoPreview;
 }
 
 void GraphConfigManager::handleVideoStream(ResolutionItem& res, PlatformGraphConfigKey& streamKey)
@@ -551,7 +498,6 @@ status_t GraphConfigManager::matchQueryResultByCsiSetting(int *videoResultIdx,
     if (*videoResultIdx >= 0) {
         mVideoQueryResults[*videoResultIdx]->getValue(GCSS_KEY_KEY, id);
         LOG1("@%s, Video graph config settings id %d", __func__, id);
-        mNeedSwapVideoPreview = needSwapVideoPreview(mVideoQueryResults[*videoResultIdx], id);
     }
 
     if (*stillResultIdx >= 0) {
@@ -713,11 +659,10 @@ status_t GraphConfigManager::prepareMediaCtlConfig(int32_t testPatternMode)
     for (auto& it : mGraphConfigMap) {
         MediaType type = it.first;
         bool isVideoPipe = (type == IMGU_VIDEO) ? true : false;
-        bool swapOutput = isVideoPipe ? mNeedSwapVideoPreview : mNeedSwapStillPreview;
         LOG2("get media control config for %s pipe", isVideoPipe ? "video" : "still");
         std::shared_ptr<GraphConfig> gc = it.second;
 
-        gc->setMediaCtlConfig(mMediaCtl, swapOutput, !isVideoPipe);
+        gc->setMediaCtlConfig(mMediaCtl, !isVideoPipe);
 
         if (!isCIO2MediaCtlConfiged) {
             status = gc->getCio2MediaCtlData(&cio2Format, &mMediaCtlConfigs[CIO2]);
