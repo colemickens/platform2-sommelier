@@ -783,4 +783,35 @@ TEST_F(MountManagerTest, TestUpdateMountCredentialsOnUnmountedMount) {
       mounts_->UpdateMountCredential(mount_id, std::move(credential2)));
 }
 
+TEST_F(MountManagerTest, TestPremountSucceeds) {
+  int mount_id = -1;
+
+  EXPECT_EQ(0, mounts_->MountCount());
+  EXPECT_TRUE(mounts_->Premount(kMountRoot, MountConfig(true /* enable_ntlm */),
+                                &mount_id));
+
+  EXPECT_GE(mount_id, 0);
+  EXPECT_EQ(1, mounts_->MountCount());
+  EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
+  EXPECT_TRUE(mounts_->IsAlreadyMounted(kMountRoot));
+}
+
+TEST_F(MountManagerTest, TestPremountFailsOnExistingMount) {
+  int mount_id = -1;
+
+  EXPECT_EQ(0, mounts_->MountCount());
+  EXPECT_TRUE(AddMount(kMountRoot, &mount_id));
+
+  EXPECT_GE(mount_id, 0);
+  EXPECT_EQ(1, mounts_->MountCount());
+  EXPECT_TRUE(mounts_->IsAlreadyMounted(mount_id));
+  EXPECT_TRUE(mounts_->IsAlreadyMounted(kMountRoot));
+
+  int mount_id2 = -1;
+  EXPECT_FALSE(mounts_->Premount(
+      kMountRoot, MountConfig(true /* enable_ntlm */), &mount_id2));
+  // Check that mount_id2 did not get set on unsuccessful premount.
+  EXPECT_EQ(-1, mount_id2);
+}
+
 }  // namespace smbprovider
