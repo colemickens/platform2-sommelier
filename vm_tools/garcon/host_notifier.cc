@@ -49,6 +49,8 @@ constexpr char kUserMimeTypesFile[] = ".mime.types";
 // Duration over which we coalesce changes to the desktop file system.
 constexpr base::TimeDelta kFilesystemChangeCoalesceTime =
     base::TimeDelta::FromSeconds(5);
+// Delimiter for the end of a URL scheme.
+constexpr char kUrlSchemeDelimiter[] = "://";
 
 std::string GetHostIp() {
   char host_addr[INET_ADDRSTRLEN + 1];
@@ -128,6 +130,15 @@ bool HostNotifier::OpenUrlInHost(const std::string& url) {
   vm_tools::container::OpenUrlRequest url_request;
   url_request.set_token(token);
   url_request.set_url(url);
+  // If url has no scheme, but matches a local file, then convert to file://.
+  auto front = url.find(kUrlSchemeDelimiter);
+  if (front == std::string::npos) {
+    base::FilePath path(url);
+    base::FilePath abs = base::MakeAbsoluteFilePath(path);
+    if (!abs.empty()) {
+      url_request.set_url("file://" + abs.value());
+    }
+  }
   vm_tools::EmptyMessage empty;
   grpc::Status status = stub->OpenUrl(&ctx, url_request, &empty);
   if (!status.ok()) {
