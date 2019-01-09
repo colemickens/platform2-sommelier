@@ -160,6 +160,43 @@ class TestSession: public ::testing::Test {
     ASSERT_TRUE(session_->GetObject(pubh, pub));
     ASSERT_TRUE(session_->GetObject(privh, priv));
   }
+
+  string GetDERforNID(int openssl_nid) {
+    // OBJ_nid2obj returns a pointer to an internal table and does not allocate
+    // memory. No need to free.
+    ASN1_OBJECT* obj = OBJ_nid2obj(NID_X9_62_prime256v1);
+    int expected_size = i2d_ASN1_OBJECT(obj, nullptr);
+    string output(expected_size, '\0');
+    unsigned char* buf = ConvertStringToByteBuffer(output.data());
+    int output_size = i2d_ASN1_OBJECT(obj, &buf);
+    CHECK_EQ(output_size, expected_size);
+    return output;
+  }
+
+  void GenerateECCKeyPair(const Object** pub, const Object** priv) {
+    // Create DER encoded OID of P-256 for CKA_EC_PARAMS (prime256v1 or
+    // secp256r1)
+    string ec_params = GetDERforNID(NID_X9_62_prime256v1);
+
+    CK_BBOOL no = CK_FALSE;
+    CK_BBOOL yes = CK_TRUE;
+    CK_ATTRIBUTE pub_attr[] = {
+        {CKA_TOKEN, &no, sizeof(CK_BBOOL)},
+        {CKA_ENCRYPT, &no, sizeof(CK_BBOOL)},
+        {CKA_VERIFY, &yes, sizeof(CK_BBOOL)},
+        {CKA_EC_PARAMS, ConvertStringToByteBuffer(ec_params.data()),
+         ec_params.size()}};
+    CK_ATTRIBUTE priv_attr[] = {{CKA_TOKEN, &no, sizeof(CK_BBOOL)},
+                                {CKA_DECRYPT, &no, sizeof(CK_BBOOL)},
+                                {CKA_SIGN, &yes, sizeof(CK_BBOOL)}};
+    int pubh = 0, privh = 0;
+    ASSERT_EQ(CKR_OK,
+              session_->GenerateKeyPair(CKM_EC_KEY_PAIR_GEN, "", pub_attr, 4,
+                                        priv_attr, 3, &pubh, &privh));
+    ASSERT_TRUE(session_->GetObject(pubh, pub));
+    ASSERT_TRUE(session_->GetObject(privh, priv));
+  }
+
   int CreateObject() {
     CK_OBJECT_CLASS c = CKO_DATA;
     CK_BBOOL no = CK_FALSE;
@@ -569,6 +606,43 @@ TEST_F(TestSession, RSASign) {
                                               NULL));
   EXPECT_EQ(CKR_OK, session_->OperationUpdate(kVerify, in.substr(20, 80), NULL,
                                               NULL));
+  EXPECT_EQ(CKR_OK, session_->VerifyFinal(sig2));
+}
+
+// Test ECC ECDSA sign / verify.
+TEST_F(TestSession, ECDSA_Sign) {
+  const Object* pub = NULL;
+  const Object* priv = NULL;
+  GenerateECCKeyPair(&pub, &priv);
+
+  // Sign / verify without a built-in hash (raw ECDSA).
+  EXPECT_EQ(CKR_OK, session_->OperationInit(kSign, CKM_ECDSA, "", priv));
+  string in(100, 'A');
+  int len = 0;
+  string sig;
+  EXPECT_EQ(CKR_BUFFER_TOO_SMALL,
+            session_->OperationSinglePart(kSign, in, &len, &sig));
+  EXPECT_EQ(CKR_OK, session_->OperationSinglePart(kSign, in, &len, &sig));
+  EXPECT_EQ(CKR_OK, session_->OperationInit(kVerify, CKM_ECDSA, "", pub));
+  EXPECT_EQ(CKR_OK, session_->OperationUpdate(kVerify, in, NULL, NULL));
+  EXPECT_EQ(CKR_OK, session_->VerifyFinal(sig));
+
+  // Sign / verify with SHA1 hash (ECDSA_SHA1), also test interface of Update()
+  EXPECT_EQ(CKR_OK, session_->OperationInit(kSign, CKM_ECDSA_SHA1, "", priv));
+  EXPECT_EQ(CKR_OK,
+            session_->OperationUpdate(kSign, in.substr(0, 50), NULL, NULL));
+  EXPECT_EQ(CKR_OK,
+            session_->OperationUpdate(kSign, in.substr(50, 50), NULL, NULL));
+  string sig2;
+  len = 0;
+  EXPECT_EQ(CKR_BUFFER_TOO_SMALL, session_->OperationFinal(kSign, &len, &sig2));
+  EXPECT_EQ(CKR_OK, session_->OperationFinal(kSign, &len, &sig2));
+
+  EXPECT_EQ(CKR_OK, session_->OperationInit(kVerify, CKM_ECDSA_SHA1, "", pub));
+  EXPECT_EQ(CKR_OK,
+            session_->OperationUpdate(kVerify, in.substr(0, 20), NULL, NULL));
+  EXPECT_EQ(CKR_OK,
+            session_->OperationUpdate(kVerify, in.substr(20, 80), NULL, NULL));
   EXPECT_EQ(CKR_OK, session_->VerifyFinal(sig2));
 }
 
