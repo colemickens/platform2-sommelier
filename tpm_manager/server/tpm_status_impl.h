@@ -81,7 +81,7 @@ class TpmStatusImpl : public TpmStatus {
   bool is_owned_{false};
 
   // Whether the TPM is fully initialized.
-  bool is_fully_initialized_{false};
+  TpmOwnershipStatus ownership_status_{kTpmUnowned};
 
   bool is_enable_initialized_{false};
 

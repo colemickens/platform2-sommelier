@@ -29,6 +29,8 @@
 
 #include "tpm_manager/common/tpm_manager_constants.h"
 #include "tpm_manager/server/dbus_service.h"
+#include "tpm_manager/server/local_data_store.h"
+#include "tpm_manager/server/local_data_store_impl.h"
 #include "tpm_manager/server/tpm_manager_service.h"
 
 namespace {
@@ -48,12 +50,16 @@ int main(int argc, char* argv[]) {
   }
   brillo::InitLog(flags);
 
+  tpm_manager::LocalDataStoreImpl local_data_store;
   bool perform_preinit = !base::PathExists(base::FilePath(kNoPreinitFlagFile));
+
   tpm_manager::TpmManagerService tpm_manager_service(
       cl->HasSwitch(kWaitForOwnershipTriggerSwitch),
-      perform_preinit);
+      perform_preinit,
+      &local_data_store);
   tpm_manager::DBusService ipc_service(&tpm_manager_service,
-                                       &tpm_manager_service);
+                                       &tpm_manager_service,
+                                       &local_data_store);
 
   tpm_manager_service.SetOwnershipTakenCallback(
       base::Bind(&tpm_manager::DBusService::NotifyOwnershipIsTaken,

@@ -52,9 +52,13 @@ bool ClearOwnerPasswordIfPossible(tpm_manager::LocalData* local_data) {
 namespace tpm_manager {
 
 TpmManagerService::TpmManagerService(bool wait_for_ownership,
-                                     bool perform_preinit)
-    : wait_for_ownership_(wait_for_ownership),
-      perform_preinit_(perform_preinit) {}
+                                     bool perform_preinit,
+                                     LocalDataStore* local_data_store)
+    : local_data_store_(local_data_store),
+      wait_for_ownership_(wait_for_ownership),
+      perform_preinit_(perform_preinit) {
+  CHECK(local_data_store_);
+}
 
 TpmManagerService::TpmManagerService(bool wait_for_ownership,
                                      bool perform_preinit,
@@ -82,6 +86,7 @@ bool TpmManagerService::Initialize() {
 
 void TpmManagerService::InitializeTask() {
   VLOG(1) << "Initializing service...";
+
   if (!tpm_status_ || !tpm_initializer_ || !tpm_nvram_) {
     // Setup default objects.
 #if defined(USE_TPM2)
@@ -91,7 +96,6 @@ void TpmManagerService::InitializeTask() {
            base::TimeTicks::Now() < deadline) {
       base::PlatformThread::Sleep(kTrunksDaemonInitAttemptDelay);
     }
-    local_data_store_ = &default_local_data_store_;
     default_tpm_status_ = std::make_unique<Tpm2StatusImpl>(
         default_trunks_factory_, ownership_taken_callback_);
     tpm_status_ = default_tpm_status_.get();
@@ -495,7 +499,7 @@ void TpmManagerService::GetSpaceInfoTask(
 
 std::string TpmManagerService::GetOwnerPassword() {
   LocalData local_data;
-  if (local_data_store_ && local_data_store_->Read(&local_data)) {
+  if (local_data_store_->Read(&local_data)) {
     return local_data.owner_password();
   }
   LOG(ERROR) << "TPM owner password requested but not available.";

@@ -131,6 +131,12 @@ message LocalData {
   repeated NvramPolicyRecord nvram_policy = 6;
 }
 
+// The format of the ownership taken signal payload.
+message OwnershipTakenSignal {
+  optional bytes owner_password = 1;
+  optional bytes endorsement_password = 2;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // A series of request and reply messages for the NVRAM interface methods.
 ////////////////////////////////////////////////////////////////////////////////

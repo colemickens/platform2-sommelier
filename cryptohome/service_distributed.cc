@@ -5,15 +5,16 @@
 #include "cryptohome/service_distributed.h"
 
 #include <base/bind.h>
+#include <base/strings/string_number_conversions.h>
 
 #include "attestation/client/dbus_proxy.h"
 #include "cryptohome/attestation.h"
 #include "cryptohome/cryptolib.h"
+#include "tpm_manager/common/tpm_manager.pb.h"
 #include "tpm_manager/common/tpm_manager_constants.h"
 #include "tpm_manager/common/tpm_ownership_dbus_interface.h"
 
 #include <utility>
-
 using attestation::AttestationInterface;
 using attestation::AttestationStatus;
 
@@ -1121,7 +1122,7 @@ void ServiceDistributed::ConnectOwnershipTakenSignal() {
   dbus_g_proxy_add_signal(
       tpm_manager_gproxy,
       tpm_manager::kOwnershipTakenSignal,
-      G_TYPE_BOOLEAN,
+      DBUS_TYPE_G_UCHAR_ARRAY,
       G_TYPE_INVALID);
 
   dbus_g_proxy_connect_signal(
@@ -1133,8 +1134,18 @@ void ServiceDistributed::ConnectOwnershipTakenSignal() {
 }
 
 void ServiceDistributed::OwnershipTakenSignalCallback(
-    DBusGProxy* proxy, bool is_ownership_taken, gpointer data) {
-  LOG(INFO) << __func__ << ", ownership is taken: " << is_ownership_taken;
+    DBusGProxy* /* proxy */, GArray* raw_payload, gpointer data) {
+  LOG(INFO) << __PRETTY_FUNCTION__;
+
+  tpm_manager::OwnershipTakenSignal signal_payload;
+  if (!signal_payload.ParseFromArray(raw_payload->data, raw_payload->len)) {
+    LOG(ERROR) << "Failed to parse the ownership taken signal payload.";
+    return;
+  }
+
+  // TODO(garryxiao): extract owner password from signal_payload and pass it to
+  // the signal handler when later optimizing tpm status fetching/caching in
+  // Tpm2Impl.
   reinterpret_cast<Tpm*>(data)->HandleOwnershipTakenSignal();
 }
 

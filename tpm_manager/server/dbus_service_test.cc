@@ -29,6 +29,7 @@
 #include "tpm_manager/common/tpm_nvram_dbus_interface.h"
 #include "tpm_manager/common/tpm_ownership_dbus_interface.h"
 #include "tpm_manager/server/dbus_service.h"
+#include "tpm_manager/server/mock_local_data_store.h"
 
 using testing::_;
 using testing::Invoke;
@@ -51,7 +52,8 @@ class DBusServiceTest : public testing::Test {
     ON_CALL(*mock_bus_, GetExportedObject(path))
         .WillByDefault(Return(mock_exported_object_.get()));
     dbus_service_.reset(new DBusService(mock_bus_, &mock_nvram_service_,
-                                        &mock_ownership_service_));
+                                        &mock_ownership_service_,
+                                        &mock_data_store_));
   }
 
   void RegisterDBusObjectsAsync() {
@@ -87,6 +89,7 @@ class DBusServiceTest : public testing::Test {
 
   scoped_refptr<dbus::MockBus> mock_bus_;
   scoped_refptr<dbus::MockExportedObject> mock_exported_object_;
+  StrictMock<MockLocalDataStore> mock_data_store_;
   StrictMock<MockTpmNvramInterface> mock_nvram_service_;
   StrictMock<MockTpmOwnershipInterface> mock_ownership_service_;
   std::unique_ptr<DBusService> dbus_service_;

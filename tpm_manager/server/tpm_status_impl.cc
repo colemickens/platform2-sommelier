@@ -42,8 +42,8 @@ bool TpmStatusImpl::IsTpmEnabled() {
 }
 
 TpmStatus::TpmOwnershipStatus TpmStatusImpl::CheckAndNotifyIfTpmOwned() {
-  if (is_fully_initialized_) {
-    return kTpmOwned;
+  if (kTpmOwned == ownership_status_) {
+    return ownership_status_;
   }
 
   if (!is_owned_) {
@@ -53,19 +53,21 @@ TpmStatus::TpmOwnershipStatus TpmStatusImpl::CheckAndNotifyIfTpmOwned() {
 
   if (!is_owned_) {
     // We even haven't tried to take ownership yet.
-    return kTpmUnowned;
+    ownership_status_ = kTpmUnowned;
+    return ownership_status_;
   }
 
-  is_fully_initialized_ = !TestTpmWithDefaultOwnerPassword();
+  ownership_status_ =
+      TestTpmWithDefaultOwnerPassword() ? kTpmPreOwned : kTpmOwned;
 
-  if (is_fully_initialized_ && !ownership_taken_callback_.is_null()) {
+  if (kTpmOwned == ownership_status_ && !ownership_taken_callback_.is_null()) {
     // Sends out the ownership taken signal when the value of
     // is_fully_initialized_ changes from false to true.
     ownership_taken_callback_.Run();
     ownership_taken_callback_.Reset();
   }
 
-  return is_fully_initialized_ ? kTpmOwned : kTpmPreOwned;
+  return ownership_status_;
 }
 
 bool TpmStatusImpl::GetDictionaryAttackInfo(int* counter,

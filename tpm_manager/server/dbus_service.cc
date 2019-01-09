@@ -17,7 +17,6 @@
 #include "tpm_manager/server/dbus_service.h"
 
 #include <memory>
-#include <string>
 #include <utility>
 
 #include <base/bind.h>
@@ -35,20 +34,29 @@ namespace tpm_manager {
 using brillo::dbus_utils::DBusObject;
 
 DBusService::DBusService(TpmNvramInterface* nvram_service,
-                         TpmOwnershipInterface* ownership_service)
+                         TpmOwnershipInterface* ownership_service,
+                         LocalDataStore* local_data_store)
     : brillo::DBusServiceDaemon(tpm_manager::kTpmManagerServiceName),
       nvram_service_(nvram_service),
-      ownership_service_(ownership_service) {}
+      ownership_service_(ownership_service),
+      local_data_store_(local_data_store) {
+  CHECK(nvram_service_);
+  CHECK(ownership_service_);
+  CHECK(local_data_store_);
+}
 
 DBusService::DBusService(scoped_refptr<dbus::Bus> bus,
                          TpmNvramInterface* nvram_service,
-                         TpmOwnershipInterface* ownership_service)
+                         TpmOwnershipInterface* ownership_service,
+                         LocalDataStore* local_data_store)
     : brillo::DBusServiceDaemon(tpm_manager::kTpmManagerServiceName),
       dbus_object_(new DBusObject(nullptr,
                                   bus,
                                   dbus::ObjectPath(kTpmManagerServicePath))),
       nvram_service_(nvram_service),
-      ownership_service_(ownership_service) {}
+      ownership_service_(ownership_service),
+      local_data_store_(local_data_store)
+      {}
 
 void DBusService::RegisterDBusObjectsAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
@@ -98,7 +106,8 @@ void DBusService::RegisterDBusObjectsAsync(
           &TpmOwnershipInterface::ClearStoredOwnerPassword>);
 
   ownership_taken_signal_ =
-      ownership_dbus_interface->RegisterSignal<bool>(kOwnershipTakenSignal);
+      ownership_dbus_interface->RegisterSignal<OwnershipTakenSignal>(
+          kOwnershipTakenSignal);
 
   brillo::dbus_utils::DBusInterface* nvram_dbus_interface =
       dbus_object_->AddOrGetInterface(kTpmNvramInterface);
@@ -169,7 +178,18 @@ bool DBusService::MaybeSendOwnershipTakenSignal() {
     return false;
   }
 
-  if (!signal->Send(true)) {
+  LocalData local_data;
+  if (!local_data_store_->Read(&local_data)) {
+    LOG(ERROR) << "Failed to read local data.";
+    return false;
+  }
+
+  OwnershipTakenSignal payload;
+  payload.set_owner_password(local_data.owner_password());
+  payload.set_endorsement_password(local_data.endorsement_password());
+
+  // The proto message |payload| will be converted to array of bytes by Send().
+  if (!signal->Send(payload)) {
     LOG(ERROR) << "Failed to send ownership taken signal!";
     return false;
   }

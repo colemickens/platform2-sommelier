@@ -30,7 +30,6 @@
 #include "tpm_manager/common/tpm_ownership_interface.h"
 #include "tpm_manager/server/dbus_service.h"
 #include "tpm_manager/server/local_data_store.h"
-#include "tpm_manager/server/local_data_store_impl.h"
 #include "tpm_manager/server/tpm_initializer.h"
 #include "tpm_manager/server/tpm_nvram.h"
 #include "tpm_manager/server/tpm_status.h"
@@ -73,7 +72,12 @@ class TpmManagerService : public TpmNvramInterface,
   // an explicit TakeOwnership request is received. If |perform_preinit| is
   // additionally set, TPM pre-initialization will be performed in case TPM
   // initialization is postponed.
-  explicit TpmManagerService(bool wait_for_ownership, bool perform_preinit);
+  //
+  // This instance doesn't take the ownership of |local_data_store|, and it must
+  // be initialized and remain valid for the lifetime of this instance.
+  explicit TpmManagerService(bool wait_for_ownership,
+                             bool perform_preinit,
+                             LocalDataStore* local_data_store);
 
   // If |wait_for_ownership| is set, TPM initialization will be postponed until
   // an explicit TakeOwnership request is received. If |perform_preinit| is
@@ -237,13 +241,11 @@ class TpmManagerService : public TpmNvramInterface,
   // owner password is not available.
   std::string GetOwnerPassword();
 
-  LocalDataStore* local_data_store_ = nullptr;
+  LocalDataStore* local_data_store_;
   TpmStatus* tpm_status_ = nullptr;
   TpmInitializer* tpm_initializer_ = nullptr;
   TpmNvram* tpm_nvram_ = nullptr;
 
-  // Default objects to be used under normal operation (e.g. not unit tests).
-  LocalDataStoreImpl default_local_data_store_;
 #if defined(USE_TPM2)
   trunks::TrunksFactoryImpl default_trunks_factory_;
   std::unique_ptr<Tpm2StatusImpl> default_tpm_status_;
