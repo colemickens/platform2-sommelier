@@ -360,6 +360,32 @@ void CheckError(ErrorType expected_error,
   *was_called = true;
 }
 
+// Response callback for AuthenticateUser calls in Auth(). Sets |was_called| to
+// true and deserializes the |error| and |account_info_blob| parameters.
+void AuthResponseCallback(bool* was_called,
+                          int* error,
+                          std::vector<uint8_t>* account_info_blob,
+                          std::unique_ptr<Response> response) {
+  EXPECT_TRUE(response.get());
+  dbus::MessageReader reader(response.get());
+  EXPECT_TRUE(reader.PopInt32(error));
+  // Note: reader owns buf.
+  const uint8_t* buf = NULL;
+  size_t buf_size = 0;
+  EXPECT_TRUE(reader.PopArrayOfBytes(&buf, &buf_size));
+  if (*error == ERROR_NONE) {
+    EXPECT_TRUE(buf);
+    EXPECT_LT(0, buf_size);
+    EXPECT_TRUE(account_info_blob);
+    account_info_blob->assign(buf, buf + buf_size);
+  } else {
+    account_info_blob->clear();
+  }
+  EXPECT_TRUE(was_called);
+  EXPECT_FALSE(*was_called);
+  *was_called = true;
+}
+
 // Matcher for D-Bus method names to be used in CallMethod*().
 MATCHER_P(IsMethod, method_name, "") {
   return arg->GetMember() == method_name;
@@ -637,10 +663,20 @@ class AuthPolicyTest : public testing::Test {
     AuthenticateUserRequest request;
     request.set_user_principal_name(user_principal);
     request.set_account_id(account_id);
-    std::vector<uint8_t> blob(request.ByteSizeLong());
-    request.SerializeToArray(blob.data(), blob.size());
-    authpolicy_->AuthenticateUser(blob, password_fd, &error,
-                                  &account_info_blob);
+    std::vector<uint8_t> request_blob(request.ByteSizeLong());
+    request.SerializeToArray(request_blob.data(), request_blob.size());
+
+    bool callback_was_called = false;
+    dbus::MethodCall method_call(kAuthPolicyInterface, kAuthenticateUserMethod);
+    method_call.SetSerial(kDBusSerial);
+    auto callback = std::make_unique<
+        brillo::dbus_utils::DBusMethodResponse<int32_t, std::vector<uint8_t>>>(
+        &method_call, base::Bind(&AuthResponseCallback, &callback_was_called,
+                                 &error, &account_info_blob));
+    authpolicy_->AuthenticateUser(std::move(callback), request_blob,
+                                  password_fd);
+    EXPECT_TRUE(callback_was_called);
+
     MaybeParseProto(error, account_info_blob, account_info);
     // At most one UserKerberosFilesChanged signal should have been fired.
     EXPECT_LE(user_kerberos_files_changed_count_, prev_files_changed_count + 1);

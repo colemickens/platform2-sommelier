@@ -691,11 +691,6 @@ ErrorType SambaInterface::AuthenticateUserInternal(
   if (account_id.empty())
     SetUserAccountId(account_info->account_id());
 
-  // Figure out if the user is affiliated.
-  is_user_affiliated_ = IsUserAffiliated();
-  LOG(INFO) << "User is " << (is_user_affiliated_ ? "" : "not ")
-            << "affiliated";
-
   // Store sAMAccountName for policy fetch. Note that net ads gpo list always
   // wants the sAMAccountName. Also note that pwd_last_set is zero and stale
   // at this point if AcquireTgtWithPassword() set a new password, but that's
@@ -704,10 +699,6 @@ ErrorType SambaInterface::AuthenticateUserInternal(
   if (account_info->has_pwd_last_set())
     user_pwd_last_set_ = account_info->pwd_last_set();
   user_logged_in_ = true;
-
-  // Cache auth data, but ONLY if the user is affiliated (for privacy reasons).
-  if (is_user_affiliated_)
-    UpdateAuthDataCache(user_account_, is_user_affiliated_);
 
   // Backup state on user's Cryptohome.
   MaybeBackupUserAuthState();
@@ -2071,6 +2062,20 @@ void SambaInterface::UpdateDevicePolicyDependencies(
                  << "'";
     }
   }
+}
+
+void SambaInterface::UpdateUserAffiliation() {
+  // Must be called after successful login.
+  DCHECK(user_logged_in_);
+
+  // Figure out if the user is affiliated.
+  is_user_affiliated_ = IsUserAffiliated();
+  LOG(INFO) << "User is " << (is_user_affiliated_ ? "" : "not ")
+            << "affiliated";
+
+  // Cache auth data, but ONLY if the user is affiliated (for privacy reasons).
+  if (is_user_affiliated_)
+    UpdateAuthDataCache(user_account_, is_user_affiliated_);
 }
 
 void SambaInterface::UpdateAuthDataCache(const AccountData& account,

@@ -17,7 +17,7 @@
       <arg name="password_fd" type="h" direction="in"/>
       <arg name="error_code" type="i" direction="out"/>
       <arg name="account_info_blob" type="ay" direction="out" />
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
     </method>
 
     <!--

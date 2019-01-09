@@ -39,6 +39,10 @@ extern const char kChromeExtensionPolicyType[];
 class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
                    public org::chromium::AuthPolicyInterface {
  public:
+  // Args: ErrorType, serialized ActiveDirectoryAccountInfo protobuf.
+  using AuthenticateUserResponseCallback = std::unique_ptr<
+      brillo::dbus_utils::DBusMethodResponse<int32_t, std::vector<uint8_t>>>;
+  // Args: ErrorType.
   using PolicyResponseCallback =
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<int32_t>>;
 
@@ -67,11 +71,11 @@ class AuthPolicy : public org::chromium::AuthPolicyAdaptor,
   // org::chromium::AuthPolicyInterface: (see org.chromium.AuthPolicy.xml).
 
   // |auth_user_request_blob| is a serialized AuthenticateUserRequest protobuf.
-  // |account_info_blob| is a serialized ActiveDirectoryAccountInfo protobuf.
-  void AuthenticateUser(const std::vector<uint8_t>& auth_user_request_blob,
-                        const base::ScopedFD& password_fd,
-                        int32_t* error,
-                        std::vector<uint8_t>* account_info_blob) override;
+  // Calls |callback| with an ErrorType and a serialized
+  // ActiveDirectoryAccountInfo protobuf.
+  void AuthenticateUser(AuthenticateUserResponseCallback callback,
+                        const std::vector<uint8_t>& auth_user_request_blob,
+                        const base::ScopedFD& password_fd) override;
 
   // |get_status_request_blob| is a serialized GetUserStatusRequest protobuf.
   // |user_status_blob| is a serialized ActiveDirectoryUserStatus protobuf.

@@ -203,10 +203,9 @@ void AuthPolicy::RegisterAsync(
 }
 
 void AuthPolicy::AuthenticateUser(
+    AuthenticateUserResponseCallback callback,
     const std::vector<uint8_t>& auth_user_request_blob,
-    const base::ScopedFD& password_fd,
-    int32_t* int_error,
-    std::vector<uint8_t>* account_info_blob) {
+    const base::ScopedFD& password_fd) {
   LOG(INFO) << kColorRequest << "Received 'AuthenticateUser' request"
             << kColorReset;
   ScopedTimerReporter timer(TIMER_AUTHENTICATE_USER);
@@ -219,12 +218,20 @@ void AuthPolicy::AuthenticateUser(
                                     request.account_id(), password_fd.get(),
                                     &account_info);
   }
+
+  std::vector<uint8_t> account_info_blob;
   if (error == ERROR_NONE)
-    *account_info_blob = SerializeProto(account_info);
+    account_info_blob = SerializeProto(account_info);
 
   PrintResult("AuthenticateUser", error);
   metrics_->ReportError(ERROR_OF_AUTHENTICATE_USER, error);
-  *int_error = static_cast<int>(error);
+  callback->Return(static_cast<int>(error), std::move(account_info_blob));
+
+  // Kick off the user affiliation check after responding, so that it can be
+  // done in parallel to Chrome startup. The affiliation flag is not needed
+  // until user policy fetch.
+  if (error == ERROR_NONE)
+    samba_.UpdateUserAffiliation();
 }
 
 void AuthPolicy::GetUserStatus(

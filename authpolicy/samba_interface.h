@@ -87,6 +87,12 @@ class SambaInterface : public TgtManager::Delegate {
                              ActiveDirectoryAccountInfo* account_info)
       WARN_UNUSED_RESULT;
 
+  // Figures out whether the user is affiliated or not. If affiliated, caches
+  // auth data and saves the auth data cache to disk. Must be called after a
+  // successful AuthenticateUser() call. It is separate from that method in
+  // order to allow asynchronous execution.
+  void UpdateUserAffiliation();
+
   // Retrieves the status of the user account given by |account_id| (aka
   // objectGUID). |user_principal_name| is used to derive the user's realm.
   // The returned |user_status| contains general ActiveDirectoryAccountInfo as
