@@ -87,6 +87,11 @@ bool OobeConfig::GetRollbackData(RollbackData* rollback_data) const {
   ReadFile(kSaveTempPath.Append(kShillDefaultProfileFileName), &file_content);
   rollback_data->set_shill_default_profile(file_content);
 
+  if (base::PathExists(kOobeCompletedFile)) {
+    // If OOBE has been completed already, we know the EULA has been accepted.
+    rollback_data->set_eula_auto_accept(true);
+  }
+
   PolicyData* policy_data = rollback_data->mutable_device_policy();
   std::map<int, base::FilePath> policy_paths =
       policy::GetSortedResilientPolicyFilePaths(
