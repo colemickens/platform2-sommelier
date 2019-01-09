@@ -144,12 +144,16 @@ template("generate_mojom_bindings") {
   static_library(target_name) {
     forward_variables_from(invoker,
                            [
-                             "all_dependent_configs",
                              "defines",
-                             "public_configs",
                              "public_deps",
                              "visibility",
                            ])
+    if (defined(invoker.all_dependent_configs)) {
+      all_dependent_configs += invoker.all_dependent_configs
+    }
+    if (defined(invoker.public_configs)) {
+      public_configs += invoker.public_configs
+    }
     if (defined(invoker.configs)) {
       configs += invoker.configs
     }
