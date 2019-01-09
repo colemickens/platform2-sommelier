@@ -35,19 +35,14 @@
 #define MAX_METADATA_NAME_LENTGTH 128
 #define MAX_METADATA_ATTRIBUTE_NAME_LENTGTH 128
 #define MAX_METADATA_ATTRIBUTE_VALUE_LENTGTH 6144
+#define CIO2_MEDIA_DEVICE "ipu3-cio2"
+#define IMGU_MEDIA_DEVICE "ipu3-imgu"
+#define NVM_DATA_PATH "/sys/bus/i2c/devices/"
+#define GRAPH_SETTINGS_FILE_PATH "/etc/camera/"
+#define DEFAULT_XML_FILE_NAME "/etc/camera/camera3_profiles.xml"
 
 namespace android {
 namespace camera2 {
-static std::string CIO2_MEDIA_DEVICE="ipu3-cio2";
-
-static std::string IMGU_MEDIA_DEVICE="ipu3-imgu";
-
-static const char *NVM_DATA_PATH = "/sys/bus/i2c/devices/";
-
-static const char *GRAPH_SETTINGS_FILE_PATH = "/etc/camera/";
-
-static const char *sDefaultXmlFileName = "/etc/camera/camera3_profiles.xml";
-
 CameraProfiles::CameraProfiles(CameraHWInfo *cameraHWInfo) :
     mCurrentDataField(FIELD_INVALID),
     mMetadataCache(nullptr),
@@ -66,7 +61,7 @@ status_t CameraProfiles::init()
     CheckError(!mCameraCommon, BAD_VALUE, "CameraHWInfo is nullptr");
 
     struct stat st;
-    int pathExists = stat(sDefaultXmlFileName, &st);
+    int pathExists = stat(DEFAULT_XML_FILE_NAME, &st);
     CheckError(pathExists != 0, UNKNOWN_ERROR, "Error, could not find camera3_profiles.xml!");
 
     status_t status = mCameraCommon->init(getMediaDeviceByName(CIO2_MEDIA_DEVICE));
@@ -2010,7 +2005,7 @@ void CameraProfiles::getDataFromXmlFile()
     status_t res;
     int tag = ANDROID_REQUEST_AVAILABLE_CHARACTERISTICS_KEYS;
 
-    fp = ::fopen(sDefaultXmlFileName, "r");
+    fp = ::fopen(DEFAULT_XML_FILE_NAME, "r");
     if (nullptr == fp) {
         LOGE("line:%d, fp is nullptr", __LINE__);
         return;
