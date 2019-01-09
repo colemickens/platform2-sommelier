@@ -114,10 +114,11 @@ class DevicePolicyService : public PolicyService {
   virtual bool UpdateSystemSettings(const Completion& completion);
 
   // Sets the block_devmode and check_enrollment flags in the VPD to 0
-  // in the background. If the update VPD process could be started in the
-  // background, |vpd_process_| is responsible for running |completion|;
+  // in the background. Also set block_devmode=0 in system properties.
+  // If the update VPD process could be started in the background
+  // |vpd_process_| is responsible for running |completion|;
   // otherwise, the completion is run with an error.
-  virtual void ClearForcedReEnrollmentVpd(const Completion& completion);
+  virtual void ClearForcedReEnrollmentFlags(const Completion& completion);
 
   // PolicyService:
   bool Store(const PolicyNamespace& ns,

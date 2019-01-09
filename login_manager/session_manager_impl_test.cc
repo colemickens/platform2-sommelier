@@ -2121,7 +2121,8 @@ TEST_F(SessionManagerImplTest, InitiateDeviceWipe_TooLongReason) {
 
 TEST_F(SessionManagerImplTest, ClearForcedReEnrollmentVpd) {
   ResponseCapturer capturer;
-  EXPECT_CALL(*device_policy_service_, ClearForcedReEnrollmentVpd(_)).Times(1);
+  EXPECT_CALL(*device_policy_service_, ClearForcedReEnrollmentFlags(_))
+      .Times(1);
   impl_->ClearForcedReEnrollmentVpd(capturer.CreateMethodResponse<>());
 }
 

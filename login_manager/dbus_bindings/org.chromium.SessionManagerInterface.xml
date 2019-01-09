@@ -503,6 +503,10 @@
         ClearForcedReEnrollmentVpd:
 
         Sets block_devmode=0 and check_enrollment=0 in RW_VPD.
+
+        Currently, we also set block_devmode=0 in system properties
+        here. This should be removed again once the system property
+        check for dev mode blocking is removed.
     -->
     <method name="ClearForcedReEnrollmentVpd">
       <annotation name="org.chromium.DBus.Method.Kind" value="async" />

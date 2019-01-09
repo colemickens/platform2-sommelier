@@ -626,8 +626,17 @@ bool DevicePolicyService::UpdateSystemSettings(const Completion& completion) {
       base::Bind(&HandleVpdUpdateCompletion, !is_enrolled, completion));
 }
 
-void DevicePolicyService::ClearForcedReEnrollmentVpd(
+void DevicePolicyService::ClearForcedReEnrollmentFlags(
     const Completion& completion) {
+  // The block_devmode system property needs to be set to 0 as well to unblock
+  // dev mode. It is stored independently from VPD and firmware management
+  // parameters.
+  if (crossystem_->VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 0) != 0) {
+    completion.Run(
+        CreateError(dbus_error::kSystemPropertyUpdateFailed,
+                    "Failed to set block_devmode system property to 0."));
+    return;
+  }
   if (!vpd_process_->RunInBackground(
           {{Crossystem::kBlockDevmode, "0"},
            {Crossystem::kCheckEnrollment, "0"}},

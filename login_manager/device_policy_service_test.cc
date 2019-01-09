@@ -1178,23 +1178,31 @@ TEST_F(DevicePolicyServiceTest, PersistPolicyMultipleNamespaces) {
             settings.SerializeAsString());
 }
 
-TEST_F(DevicePolicyServiceTest, TestClearCheckEnrollmentVpd) {
+TEST_F(DevicePolicyServiceTest, TestClearCheckEnrollmentFlags) {
   MockNssUtil nss;
   InitService(&nss, true);
   const std::vector<std::pair<std::string, std::string>> kExpectedUpdate = {
       {Crossystem::kBlockDevmode, "0"}, {Crossystem::kCheckEnrollment, "0"}};
 
+  EXPECT_EQ(0,
+            crossystem_.VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 1));
   EXPECT_CALL(vpd_process_, RunInBackground(kExpectedUpdate, false, _))
       .Times(1)
       .WillOnce(Return(true));
-  service_->ClearForcedReEnrollmentVpd(MockPolicyService::CreateDoNothing());
+  service_->ClearForcedReEnrollmentFlags(MockPolicyService::CreateDoNothing());
   Mock::VerifyAndClearExpectations(&vpd_process_);
+  EXPECT_EQ(-1, crossystem_.VbGetSystemPropertyInt(Crossystem::kNvramCleared));
+  EXPECT_EQ(0, crossystem_.VbGetSystemPropertyInt(Crossystem::kBlockDevmode));
 
+  EXPECT_EQ(0,
+            crossystem_.VbSetSystemPropertyInt(Crossystem::kBlockDevmode, 1));
   EXPECT_CALL(vpd_process_, RunInBackground(kExpectedUpdate, false, _))
       .Times(1)
       .WillOnce(Return(false));
-  service_->ClearForcedReEnrollmentVpd(
+  service_->ClearForcedReEnrollmentFlags(
       MockPolicyService::CreateExpectFailureCallback());
+  EXPECT_EQ(-1, crossystem_.VbGetSystemPropertyInt(Crossystem::kNvramCleared));
+  EXPECT_EQ(0, crossystem_.VbGetSystemPropertyInt(Crossystem::kBlockDevmode));
 }
 
 TEST_F(DevicePolicyServiceTest, TestResilientStore) {
