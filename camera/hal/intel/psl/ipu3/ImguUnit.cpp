@@ -538,17 +538,38 @@ status_t ImguUnit::ImguPipe::createProcessingTasks(std::shared_ptr<GraphConfig> 
 
     camera3_stream_t* preStream = nullptr;
     if (mFace && GraphConfig::PIPE_VIDEO == mPipeType) {
+        camera3_stream_t* yuvStream = nullptr;
         int maxWidth = 0, maxHeight = 0;
         mFace->getMaxSupportedResolution(&maxWidth, &maxHeight);
+        // 1 or 2 streams
         for (const auto &it : mStreamNodeMapping) {
             camera3_stream_t* s = it.second;
             if (!s || s->stream_type != CAMERA3_STREAM_OUTPUT
                 || s->width > maxWidth || s->height > maxHeight) {
                 continue;
             }
+
+            // We assume HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED stream is the
+            // preview stream and it's requested in every capture request.
+            // If there are two HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED streams,
+            // We pick the smaller stream due to performance concern.
             if (s->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) {
+                if (preStream && preStream->width * preStream->height <= s->width * s->height) {
+                    continue;
+                }
                 preStream = s;
             }
+
+            if (s->format == HAL_PIXEL_FORMAT_YCbCr_420_888) {
+                if (yuvStream && yuvStream->width * yuvStream->height <= s->width * s->height) {
+                    continue;
+                }
+                yuvStream = s;
+            }
+        }
+
+        if (!preStream && yuvStream) {
+            preStream = yuvStream;
         }
     }
 

@@ -71,8 +71,11 @@ IPU3CameraHw::init()
     if (PlatformData::isFaceAeEnabled(mCameraId)) {
         mFDMode = FD_MODE_SIMPLE;
     }
-    mFaceEngine = std::unique_ptr<FaceEngine>(new FaceEngine(mCameraId, MAX_FACES_DETECTABLE,
-                                              RESOLUTION_1080P_WIDTH, RESOLUTION_1080P_HEIGHT, mFDMode));
+    mFaceEngine = std::unique_ptr<FaceEngine>(new FaceEngine(mCameraId,
+                                                             MAX_FACES_DETECTABLE,
+                                                             MAX_FACE_FRAME_WIDTH,
+                                                             MAX_FACE_FRAME_HEIGHT,
+                                                             mFDMode));
 
     std::string sensorMediaDevice = CameraProfiles::getSensorMediaDevice();
     mMediaCtl = std::make_shared<MediaController>(sensorMediaDevice.c_str());

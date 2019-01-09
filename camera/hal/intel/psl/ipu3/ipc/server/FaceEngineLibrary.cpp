@@ -126,7 +126,7 @@ status_t FaceEngineLibrary::run(void* pData, int dataSize)
     FaceEngineResult* results = &params->results;
     int32_t fdRet = pvl_face_detection_run_in_preview(mFDHandle, &image, results->faceResults, mMaxFacesNum);
     results->faceNum = (fdRet > 0) ? fdRet : 0;
-    LOG2("@%s, fdRet:%d, detected face number:%d, w:%d, h:@%d",
+    LOG2("@%s, fdRet:%d, detected face number:%d, w:%d, h:%d",
          __FUNCTION__, fdRet, results->faceNum, params->width, params->height);
 
     for (int i = 0; i < results->faceNum; i++) {

@@ -51,7 +51,9 @@ struct face_engine_init_params {
     face_detection_mode fd_mode;
 };
 
-#define MAX_FACE_FRAME_SIZE (1920 * 1080 * 3 / 2)
+#define MAX_FACE_FRAME_WIDTH 1920
+#define MAX_FACE_FRAME_HEIGHT 1280
+#define MAX_FACE_FRAME_SIZE (MAX_FACE_FRAME_WIDTH * MAX_FACE_FRAME_HEIGHT * 3 / 2)
 struct face_engine_run_params {
     uint8_t data[MAX_FACE_FRAME_SIZE]; // TODO: use dma buf to optimize.
     uint32_t size;
