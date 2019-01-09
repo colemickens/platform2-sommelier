@@ -41,6 +41,16 @@ namespace {
 
 using IOHandlerMap = std::map<ares_socket_t, std::unique_ptr<IOHandler>>;
 
+vector<string> FilterEmptyIPs(const vector<string>& dns_servers) {
+  vector<string> results;
+  for (const auto& ip : dns_servers) {
+    if (!ip.empty()) {
+      results.push_back(ip);
+    }
+  }
+  return results;
+}
+
 }  // namespace
 
 const char DnsClient::kErrorNoData[] = "The query response contains no answers";
@@ -72,7 +82,7 @@ DnsClient::DnsClient(IPAddress::Family family,
                      const ClientCallback& callback)
     : address_(IPAddress(family)),
       interface_name_(interface_name),
-      dns_servers_(dns_servers),
+      dns_servers_(FilterEmptyIPs(dns_servers)),
       dispatcher_(dispatcher),
       callback_(callback),
       timeout_ms_(timeout_ms),

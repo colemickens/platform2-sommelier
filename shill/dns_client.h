@@ -83,7 +83,7 @@ class DnsClient {
   Error error_;
   IPAddress address_;
   std::string interface_name_;
-  std::vector<std::string> dns_servers_;
+  const std::vector<std::string> dns_servers_;
   EventDispatcher* dispatcher_;
   ClientCallback callback_;
   int timeout_ms_;

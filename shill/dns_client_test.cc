@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/strings/stringprintf.h>
 
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
@@ -22,6 +23,7 @@
 #include "shill/testing.h"
 
 using base::Bind;
+using base::StringPrintf;
 using base::Unretained;
 using std::string;
 using std::vector;
@@ -31,10 +33,10 @@ using testing::Not;
 using testing::Return;
 using testing::ReturnArg;
 using testing::ReturnNew;
-using testing::Test;
 using testing::SetArgPointee;
 using testing::StrEq;
 using testing::StrictMock;
+using testing::Test;
 
 namespace shill {
 
@@ -144,7 +146,7 @@ class DnsClientTest : public Test {
     EXPECT_CALL(ares_, InitOptions(_, _, _))
         .WillOnce(DoAll(SetArgPointee<0>(kAresChannel),
                         Return(ARES_SUCCESS)));
-    EXPECT_CALL(ares_, SetServersCsv(_, _))
+    EXPECT_CALL(ares_, SetServersCsv(_, StrEq(server)))
         .WillOnce(Return(ARES_SUCCESS));
     EXPECT_CALL(ares_, SetLocalDev(kAresChannel, StrEq(kNetworkInterface)))
         .Times(1);
@@ -243,6 +245,29 @@ TEST_F(DnsClientTest, Constructor) {
   ExpectReset();
 }
 
+// Correctly handles empty server addresses.
+TEST_F(DnsClientTest, ServerJoin) {
+  vector<string> dns_servers = {"", kGoodServer, "", ""};
+  CreateClient(dns_servers, kAresTimeoutMS);
+  EXPECT_CALL(ares_, InitOptions(_, _, _))
+      .WillOnce(DoAll(SetArgPointee<0>(kAresChannel), Return(ARES_SUCCESS)));
+  EXPECT_CALL(ares_, SetServersCsv(_, StrEq(kGoodServer)))
+      .WillOnce(Return(ARES_SUCCESS));
+  EXPECT_CALL(ares_, SetLocalDev(kAresChannel, StrEq(kNetworkInterface)))
+      .Times(1);
+  EXPECT_CALL(ares_, GetHostByName(kAresChannel, StrEq(kGoodName), _, _, _));
+
+  EXPECT_CALL(dispatcher_,
+              CreateReadyHandler(kAresFd, IOHandler::kModeInput, _))
+      .WillOnce(ReturnNew<IOHandler>());
+  SetActive();
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kAresWaitMS));
+  Error error;
+  ASSERT_TRUE(dns_client_->Start(kGoodName, &error));
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_CALL(ares_, Destroy(kAresChannel));
+}
+
 // Receive error because no DNS servers were specified.
 TEST_F(DnsClientTest, NoServers) {
   CreateClient(vector<string>(), kAresTimeoutMS);
@@ -258,7 +283,7 @@ TEST_F(DnsClientTest, SetServersCsvInvalidServer) {
   CreateClient(dns_servers, kAresTimeoutMS);
   EXPECT_CALL(ares_, InitOptions(_, _, _))
       .WillOnce(Return(ARES_SUCCESS));
-  EXPECT_CALL(ares_, SetServersCsv(_, _))
+  EXPECT_CALL(ares_, SetServersCsv(_, StrEq(kBadServer)))
       .WillOnce(Return(ARES_EBADSTR));
   Error error;
   EXPECT_FALSE(dns_client_->Start(kGoodName, &error));
