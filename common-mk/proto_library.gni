@@ -89,7 +89,8 @@ template("proto_library") {
       ]
       outputs += [ "${python_dir}/{{source_name_part}}_pb.py" ]
     }
-    if (gen_grpc == 1) {
+    if (gen_grpc) {
+      grpc_cpp_plugin = "/usr/bin/grpc_cpp_plugin"
       args += [
         "--grpc_out=${cc_dir}",
         "--plugin=protoc-gen-grpc=${grpc_cpp_plugin}",
@@ -169,10 +170,13 @@ template("goproto_library") {
     # Build protoc command line to run.
     script = "//common-mk/file_generator_wrapper.py"
     args = [
-        "protoc",
-        "--proto_path", proto_in_dir,
-        "--proto_path", "${sysroot}/usr/share/proto",
-        "--go_out", "${root_gen_dir}/${proto_out_dir}"
+      "protoc",
+      "--proto_path",
+      proto_in_dir,
+      "--proto_path",
+      "${sysroot}/usr/share/proto",
+      "--go_out",
+      "${root_gen_dir}/${proto_out_dir}",
     ]
     foreach(source, invoker.sources) {
       args += [ rebase_path(source) ]
@@ -182,7 +186,7 @@ template("goproto_library") {
     outputs = []
     foreach(source, invoker.sources) {
       name = get_path_info(source, "name")
-      outputs += [ "${root_gen_dir}/${proto_out_dir}/${name}.pb.go"]
+      outputs += [ "${root_gen_dir}/${proto_out_dir}/${name}.pb.go" ]
     }
   }
 }
