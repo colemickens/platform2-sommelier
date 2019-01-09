@@ -128,9 +128,12 @@ bool LoadOobeConfigRollback::AssembleConfig(const RollbackData& rollback_data,
   dictionary.SetBoolean("networkUseConnected", true);
   // We don't want updates after rolling back.
   dictionary.SetBoolean("updateSkipNonCritical", true);
+  // Set whether metrics should be enabled if it exists in |rollback_data|.
+  dictionary.SetBoolean("eulaSendStatistics",
+                        rollback_data.eula_send_statistics());
   // TODO(zentaro): Set this through protobuf.
   dictionary.SetBoolean("eulaAutoAccept", true);
-  dictionary.SetBoolean("eulaSendStatistics", false);
+
   return base::JSONWriter::Write(dictionary, config);
 }
 

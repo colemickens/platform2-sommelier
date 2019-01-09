@@ -25,4 +25,6 @@ message RollbackData {
   PolicyData device_policy = 3;
   // Shill default profile (/var/cache/shill/default.profile)
   bytes shill_default_profile = 4;
+  // Whether metrics are enabled.
+  bool eula_send_statistics = 5;
 }
