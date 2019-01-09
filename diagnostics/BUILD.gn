@@ -1,0 +1,336 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/mojom_bindings_generator.gni")
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+group("all") {
+  deps = [
+    ":diagnosticsd",
+    ":diagnostics_processor",
+    ":diagnostics_dpsl_demo_single_thread",
+    ":telem",
+  ]
+  if (use.test) {
+    deps += [
+      ":libgrpc_async_adapter_test",
+      ":diagnosticsd_test",
+      ":libtelem_test",
+    ]
+  }
+}
+
+# Library with generated gRPC API definitions.
+pkg_config("diagnostics_grpc_protos_exported_pkg_deps") {
+  pkg_deps = [
+    "grpc++",
+    "protobuf",
+  ]
+}
+
+proto_library("diagnostics_grpc_protos") {
+  proto_in_dir = "grpc"
+  proto_out_dir = "include"
+  gen_grpc = true
+  all_dependent_configs = [
+    ":diagnostics_grpc_protos_exported_pkg_deps",
+  ]
+  sources = [
+    "${proto_in_dir}/diagnostics_processor.proto",
+    "${proto_in_dir}/diagnosticsd.proto",
+  ]
+}
+
+# Library that adopts gRPC core async interface to a libchrome-friendly one.
+pkg_config("libgrpc_async_adapter_exported_pkg_deps") {
+  pkg_deps = [
+    "grpc++",
+    "libchrome-${libbase_ver}",
+  ]
+}
+
+static_library("libgrpc_async_adapter") {
+  all_dependent_configs = [
+    ":libgrpc_async_adapter_exported_pkg_deps",
+  ]
+  libs = [
+    "gpr",
+  ]
+  sources = [
+    "grpc_async_adapter/async_grpc_client.cc",
+    "grpc_async_adapter/async_grpc_server.cc",
+    "grpc_async_adapter/grpc_completion_queue_dispatcher.cc",
+    "grpc_async_adapter/rpc_state.cc",
+  ]
+}
+
+# Library with generated Mojo API definitions.
+pkg_config("diagnostics_mojo_bindings_pkg_deps") {
+  pkg_deps = [
+    "libchrome-${libbase_ver}",
+    "libmojo-${libbase_ver}",
+  ]
+}
+
+generate_mojom_bindings("diagnostics_mojo_bindings") {
+  public_configs = [
+    ":diagnostics_mojo_bindings_pkg_deps",
+  ]
+  sources = ["mojo/diagnosticsd.mojom"]
+}
+
+# Library that provides core functionality for the diagnosticsd daemon.
+pkg_config("libdiagnosticsd_pkg_deps") {
+  pkg_deps = [
+    "dbus-1",
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "libmojo-${libbase_ver}",
+    "system_api",
+  ]
+}
+
+static_library("libdiagnosticsd") {
+  deps = [
+    ":diagnostics_grpc_protos",
+    ":diagnostics_mojo_bindings",
+    ":libgrpc_async_adapter",
+  ]
+  all_dependent_configs = [
+    ":libdiagnosticsd_pkg_deps",
+  ]
+  sources = [
+    "diagnosticsd/diagnosticsd_core.cc",
+    "diagnosticsd/diagnosticsd_core_delegate_impl.cc",
+    "diagnosticsd/diagnosticsd_daemon.cc",
+    "diagnosticsd/diagnosticsd_dbus_service.cc",
+    "diagnosticsd/diagnosticsd_grpc_service.cc",
+    "diagnosticsd/diagnosticsd_mojo_service.cc",
+    "diagnosticsd/ec_constants.cc",
+    "diagnosticsd/json_utils.cc",
+    "diagnosticsd/mojo_utils.cc",
+  ]
+}
+
+# Library that provides the DPSL (diagnostics processor support library)
+# interface.
+pkg_config("libdpsl_pkg_deps") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+  ]
+}
+
+static_library("libdpsl") {
+  deps = [
+    ":diagnostics_grpc_protos",
+    ":libgrpc_async_adapter",
+  ]
+  configs += [
+    ":libdpsl_pkg_deps",
+  ]
+  sources = [
+    "dpsl/internal/dpsl_global_context_impl.cc",
+    "dpsl/internal/dpsl_requester_impl.cc",
+    "dpsl/internal/dpsl_rpc_server_impl.cc",
+    "dpsl/internal/dpsl_thread_context_impl.cc",
+  ]
+}
+
+# Library that provides core functionality for the telemetry tool.
+pkg_config("libtelem_pkg_deps") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "re2",
+  ]
+}
+
+static_library("libtelem") {
+  deps = [
+    ":diagnostics_grpc_protos",
+    ":libgrpc_async_adapter",
+  ]
+  all_dependent_configs = [
+    ":libtelem_pkg_deps",
+  ]
+  sources = [
+    "telem/async_grpc_client_adapter_impl.cc",
+    "telem/telem_cache.cc",
+    "telem/telem_connection.cc",
+  ]
+}
+
+# The diagnosticsd daemon executable.
+pkg_config("diagnosticsd_pkg_deps") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+  ]
+}
+
+executable("diagnosticsd") {
+  deps = [
+    ":libdiagnosticsd",
+  ]
+  sources = [
+    "diagnosticsd/main.cc",
+  ]
+}
+
+# The diagnostics_processor daemon executable.
+pkg_config("diagnostics_processor_pkg_deps") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+  ]
+}
+
+executable("diagnostics_processor") {
+  configs += [
+    ":diagnostics_processor_pkg_deps",
+  ]
+  deps = [
+    ":libgrpc_async_adapter",
+  ]
+  sources = [
+    "diagnostics_processor/main.cc",
+  ]
+}
+
+# Executables for DPSL demos.
+executable("diagnostics_dpsl_demo_single_thread") {
+  deps = [
+    ":libdpsl",
+  ]
+  sources = [
+    "dpsl/demo_single_thread/main.cc",
+  ]
+}
+
+# The telemetry tool executable.
+pkg_config("telem_pkg_deps") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+  ]
+}
+
+executable("telem") {
+  deps = [
+    ":libtelem",
+  ]
+  configs += [
+    ":telem_pkg_deps",
+  ]
+  sources = [
+    "telem/main.cc",
+  ]
+}
+
+if (use.test) {
+  # Libraries for unit tests.
+  proto_library("libgrpc_async_adapter_test_rpcs_protolib") {
+    proto_in_dir = "grpc_async_adapter"
+    proto_out_dir = "include"
+    sources = [
+      "grpc_async_adapter/test_rpcs.proto",
+    ]
+    gen_grpc = true
+  }
+
+  pkg_config("libgrpc_async_adapter_test_rpcs_pkg_deps") {
+    pkg_deps = [
+      "grpc++",
+      "protobuf",
+    ]
+  }
+  static_library("libgrpc_async_adapter_test_rpcs") {
+    all_dependent_configs = [
+      ":libgrpc_async_adapter_test_rpcs_pkg_deps",
+    ]
+    deps = [
+      ":libgrpc_async_adapter_test_rpcs_protolib",
+    ]
+  }
+
+  # Unit tests.
+  pkg_config("libgrpc_async_adapter_test_pkg_deps") {
+    pkg_deps = [
+      "libchrome-${libbase_ver}",
+      "libchrome-test-${libbase_ver}",
+    ]
+  }
+
+  executable("libgrpc_async_adapter_test") {
+    configs += [
+      "//common-mk:test",
+      ":libgrpc_async_adapter_test_pkg_deps",
+    ]
+    deps = [
+      "../common-mk/testrunner:testrunner",
+      ":libgrpc_async_adapter",
+      ":libgrpc_async_adapter_test_rpcs",
+    ]
+    sources = [
+      "grpc_async_adapter/async_grpc_client_server_test.cc",
+      "grpc_async_adapter/async_grpc_server_test.cc",
+      "grpc_async_adapter/grpc_completion_queue_dispatcher_test.cc",
+    ]
+    libs = [
+      "gpr",
+    ]
+  }
+
+  pkg_config("diagnosticsd_test_pkg_deps") {
+    pkg_deps = [
+      "libchrome-${libbase_ver}",
+      "libchrome-test-${libbase_ver}",
+    ]
+  }
+
+  executable("diagnosticsd_test") {
+    configs += [
+      ":diagnosticsd_test_pkg_deps",
+      "//common-mk:test",
+    ]
+    deps = [
+      "../common-mk/testrunner:testrunner",
+      ":libdiagnosticsd",
+    ]
+    sources = [
+      "diagnosticsd/diagnosticsd_core_test.cc",
+      "diagnosticsd/diagnosticsd_dbus_service_test.cc",
+      "diagnosticsd/diagnosticsd_grpc_service_test.cc",
+      "diagnosticsd/diagnosticsd_mojo_service_test.cc",
+      "diagnosticsd/ec_constants_test.cc",
+      "diagnosticsd/fake_browser.cc",
+      "diagnosticsd/fake_diagnostics_processor.cc",
+      "diagnosticsd/file_test_utils.cc",
+      "diagnosticsd/mojo_test_utils.cc",
+      "diagnosticsd/mojo_utils_test.cc",
+    ]
+  }
+
+  pkg_config("libtelem_test_pkg_deps") {
+    pkg_deps = [
+      "libchrome-${libbase_ver}",
+      "libchrome-test-${libbase_ver}",
+    ]
+  }
+
+  executable("libtelem_test") {
+    configs += [
+      "//common-mk:test",
+      ":libtelem_test_pkg_deps",
+    ]
+    deps = [
+      "../common-mk/testrunner:testrunner",
+      ":libtelem",
+    ]
+    sources = [
+      "telem/telem_cache_test.cc",
+      "telem/telem_connection_test.cc",
+    ]
+  }
+}
