@@ -21,7 +21,7 @@ echo "THAWED" > "${CHROME_FREEZER_CGROUP_DIR}/to_be_frozen/freezer.state"
 # Terminate any processes with files open on the mount point
 # TODO(wad) parallelize with VFS/PID namespaces.
 kill_with_open_files_on_path_and_mountpoints \
-  '/home/[^.]|/data' /home/chronos/u-*
+  '/home/[^.]|/data|/home/.shadow/[a-fA-F0-9]{40}/mount' /home/chronos/u-*
 
 # Make sure everything is going down. No exceptions.
 # The loop is so that clever daemons can't evade the kill by
