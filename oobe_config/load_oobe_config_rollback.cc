@@ -131,8 +131,9 @@ bool LoadOobeConfigRollback::AssembleConfig(const RollbackData& rollback_data,
   // Set whether metrics should be enabled if it exists in |rollback_data|.
   dictionary.SetBoolean("eulaSendStatistics",
                         rollback_data.eula_send_statistics());
-  // TODO(zentaro): Set this through protobuf.
-  dictionary.SetBoolean("eulaAutoAccept", true);
+  // Set whether the EULA as already accepted and can be skipped if the field is
+  // present in |rollback_data|.
+  dictionary.SetBoolean("eulaAutoAccept", rollback_data.eula_auto_accept());
 
   return base::JSONWriter::Write(dictionary, config);
 }

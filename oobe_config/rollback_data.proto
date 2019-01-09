@@ -27,4 +27,6 @@ message RollbackData {
   bytes shill_default_profile = 4;
   // Whether metrics are enabled.
   bool eula_send_statistics = 5;
+  // Whether the EULA has already been accepted.
+  bool eula_auto_accept = 6;
 }
