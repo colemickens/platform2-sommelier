@@ -240,11 +240,6 @@ remove_vpd_keys() {
 }
 
 main() {
-  # Make sure the stateful partition has been unmounted.
-  umount -n "${STATE_PATH}"
-
-  # Destroy user data: wipe the stateful partition.
-  wipedev "${STATE_DEV}"
   create_stateful_file_system
 
   # Mount the fresh image for last minute additions.

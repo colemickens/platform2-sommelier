@@ -4,15 +4,18 @@
 
 #include "init/clobber_state.h"
 
-#include <errno.h>
+#include <fcntl.h>
 #include <limits.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/sysmacros.h>
+#include <sys/types.h>
 #include <termios.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
@@ -83,6 +86,82 @@ int GetPartitionNumber(const base::FilePath& drive_name,
   return params.match_partnum;
 }
 
+bool ReadFileToInt(const base::FilePath& path, int* value) {
+  std::string str;
+  if (!base::ReadFileToString(path, &str)) {
+    return false;
+  }
+  base::TrimWhitespaceASCII(str, base::TRIM_ALL, &str);
+  return base::StringToInt(str, value);
+}
+
+// Calculate the maximum number of bad blocks per 1024 blocks for UBI.
+int CalculateUBIMaxBadBlocksPer1024(int partition_number) {
+  // The max bad blocks per 1024 is based on total device size,
+  // not the partition size.
+  int mtd_size = 0;
+  ReadFileToInt(base::FilePath("/sys/class/mtd/mtd0/size"), &mtd_size);
+
+  int erase_size;
+  ReadFileToInt(base::FilePath("/sys/class/mtd/mtd0/erasesize"), &erase_size);
+
+  int block_count = mtd_size / erase_size;
+
+  int reserved_error_blocks = 0;
+  base::FilePath reserved_for_bad(base::StringPrintf(
+      "/sys/class/ubi/ubi%d/reserved_for_bad", partition_number));
+  ReadFileToInt(reserved_for_bad, &reserved_error_blocks);
+  return reserved_error_blocks * 1024 / block_count;
+}
+
+bool GetBlockCount(const base::FilePath& device_path,
+                   int64_t* block_count_out) {
+  if (!block_count_out)
+    return false;
+
+  brillo::ProcessImpl dumpe2fs;
+  dumpe2fs.AddArg("/sbin/dumpe2fs");
+  dumpe2fs.AddArg("-h");
+  dumpe2fs.AddArg(device_path.value());
+
+  base::FilePath temp_file;
+  base::CreateTemporaryFile(&temp_file);
+  dumpe2fs.RedirectOutput(temp_file.value());
+  if (dumpe2fs.Run() == 0) {
+    std::string output;
+    base::ReadFileToString(temp_file, &output);
+    size_t label = output.find("Block count");
+    size_t value_start = output.find_first_of("0123456789", label);
+    size_t value_end = output.find_first_not_of("0123456789", value_start);
+
+    if (value_start != std::string::npos && value_end != std::string::npos) {
+      int64_t block_count;
+      if (base::StringToInt64(
+              output.substr(value_start, value_end - value_start),
+              &block_count)) {
+        *block_count_out = block_count;
+        return true;
+      }
+    }
+  }
+
+  // Fallback if using dumpe2fs failed.
+  base::FilePath fp("/sys/class/block");
+  fp = fp.Append(device_path.BaseName());
+  fp = fp.Append("size");
+  std::string block_count_str;
+  if (base::ReadFileToString(fp, &block_count_str)) {
+    base::TrimWhitespaceASCII(block_count_str, base::TRIM_ALL,
+                              &block_count_str);
+    int64_t block_count;
+    if (base::StringToInt64(block_count_str, &block_count)) {
+      *block_count_out = block_count;
+      return true;
+    }
+  }
+  return false;
+}
+
 bool MakeTTYRaw(const base::File& tty) {
   struct termios terminal_properties;
   if (tcgetattr(tty.GetPlatformFile(), &terminal_properties) != 0) {
@@ -148,21 +227,15 @@ ClobberState::Arguments ClobberState::ParseArgv(int argc,
 
 // static
 bool ClobberState::IncrementFileCounter(const base::FilePath& path) {
-  std::string contents;
-  if (!base::ReadFileToString(path, &contents)) {
-    return 2 == base::WriteFile(path, "1\n", 2);
+  int value;
+  if (!ReadFileToInt(path, &value)) {
+    return base::WriteFile(path, "1\n", 2) == 2;
   }
 
-  base::TrimWhitespaceASCII(contents, base::TrimPositions::TRIM_ALL, &contents);
-  int value;
-  if (base::StringToInt(contents, &value)) {
-    std::string new_value = std::to_string(value + 1);
-    new_value.append("\n");
-    return new_value.size() ==
-           base::WriteFile(path, new_value.c_str(), new_value.size());
-  } else {
-    return 2 == base::WriteFile(path, "1\n", 2);
-  }
+  std::string new_value = std::to_string(value + 1);
+  new_value.append("\n");
+  return new_value.size() ==
+         base::WriteFile(path, new_value.c_str(), new_value.size());
 }
 
 // static
@@ -282,10 +355,10 @@ bool ClobberState::IsRotational(const base::FilePath& device_path) {
       base::FilePath rotational_file = sys_.Append("block")
                                            .Append(base_device_path.BaseName())
                                            .Append("queue/rotational");
-      std::string value;
-      if (base::ReadFileToString(rotational_file, &value)) {
-        base::TrimWhitespaceASCII(value, base::TrimPositions::TRIM_ALL, &value);
-        return value == "1";
+
+      int value;
+      if (ReadFileToInt(rotational_file, &value)) {
+        return value == 1;
       }
     }
   }
@@ -405,6 +478,226 @@ bool ClobberState::GetDevicesToWipe(
   return true;
 }
 
+// static
+bool ClobberState::WipeMTDDevice(
+    const base::FilePath& device_path,
+    const ClobberState::PartitionNumbers& partitions) {
+  /*
+   * WARNING: This code has not been sufficiently tested and almost certainly
+   * does not work. If you are adding support for MTD flash, you would be
+   * well served to review it and add test coverage.
+   */
+
+  if (!base::StartsWith(device_path.value(), kUbiDevicePrefix,
+                        base::CompareCase::SENSITIVE)) {
+    LOG(ERROR) << "Cannot wipe device " << device_path.value();
+    return false;
+  }
+
+  std::string base_device;
+  int partition_number;
+  if (!GetDevicePathComponents(device_path, &base_device, &partition_number)) {
+    LOG(ERROR) << "Getting partition number from device failed: "
+               << device_path.value();
+    return false;
+  }
+
+  std::string partition_name;
+  if (partition_number == partitions.stateful) {
+    partition_name = "STATE";
+  } else if (partition_number == partitions.root_a) {
+    partition_name = "ROOT-A";
+  } else if (partition_number == partitions.root_b) {
+    partition_name = "ROOT-B";
+  } else {
+    partition_name = base::StringPrintf("UNKNOWN_%d", partition_number);
+    LOG(ERROR) << "Do not know how to name UBI partition for "
+               << device_path.value();
+  }
+
+  base::FilePath temp_file;
+  base::CreateTemporaryFile(&temp_file);
+
+  std::string physical_device =
+      base::StringPrintf("/dev/ubi%d", partition_number);
+  struct stat st;
+  stat(physical_device.c_str(), &st);
+  if (!S_ISCHR(st.st_mode)) {
+    // Try to attach the volume to obtain info about it.
+    brillo::ProcessImpl ubiattach;
+    ubiattach.AddArg("/bin/ubiattach");
+    ubiattach.AddIntOption("-m", partition_number);
+    ubiattach.AddIntOption("-d", partition_number);
+    ubiattach.RedirectOutput(temp_file.value());
+    ubiattach.Run();
+    AppendFileToLog(temp_file);
+  }
+
+  int max_bad_blocks_per_1024 =
+      CalculateUBIMaxBadBlocksPer1024(partition_number);
+
+  int volume_size;
+  base::FilePath data_bytes(base::StringPrintf(
+      "/sys/class/ubi/ubi%d_0/data_bytes", partition_number));
+  ReadFileToInt(data_bytes, &volume_size);
+
+  brillo::ProcessImpl ubidetach;
+  ubidetach.AddArg("/bin/ubidetach");
+  ubidetach.AddIntOption("-d", partition_number);
+  ubidetach.RedirectOutput(temp_file.value());
+  int detach_ret = ubidetach.Run();
+  AppendFileToLog(temp_file);
+  if (detach_ret) {
+    LOG(ERROR) << "Detaching MTD volume failed with code " << detach_ret;
+  }
+
+  brillo::ProcessImpl ubiformat;
+  ubiformat.AddArg("/bin/ubiformat");
+  ubiformat.AddArg("-y");
+  ubiformat.AddIntOption("-e", 0);
+  ubiformat.AddArg(base::StringPrintf("/dev/mtd%d", partition_number));
+  ubiformat.RedirectOutput(temp_file.value());
+  int format_ret = ubiformat.Run();
+  AppendFileToLog(temp_file);
+  if (format_ret) {
+    LOG(ERROR) << "Formatting MTD volume failed with code " << format_ret;
+  }
+
+  // We need to attach so that we could set max beb/1024 and create a volume.
+  // After a volume is created, we don't need to specify max beb/1024 anymore.
+  brillo::ProcessImpl ubiattach;
+  ubiattach.AddArg("/bin/ubiattach");
+  ubiattach.AddIntOption("-d", partition_number);
+  ubiattach.AddIntOption("-m", partition_number);
+  ubiattach.AddIntOption("--max-beb-per1024", max_bad_blocks_per_1024);
+  ubiattach.RedirectOutput(temp_file.value());
+  int attach_ret = ubiattach.Run();
+  AppendFileToLog(temp_file);
+  if (attach_ret) {
+    LOG(ERROR) << "Reattaching MTD volume failed with code " << attach_ret;
+  }
+
+  brillo::ProcessImpl ubimkvol;
+  ubimkvol.AddArg("/bin/ubimkvol");
+  ubimkvol.AddIntOption("-s", volume_size);
+  ubimkvol.AddStringOption("-N", partition_name);
+  ubimkvol.AddArg(physical_device);
+  ubimkvol.RedirectOutput(temp_file.value());
+  int mkvol_ret = ubimkvol.Run();
+  AppendFileToLog(temp_file);
+  if (mkvol_ret) {
+    LOG(ERROR) << "Making MTD volume failed with code " << mkvol_ret;
+  }
+
+  return detach_ret == 0 && format_ret == 0 && attach_ret == 0 &&
+         mkvol_ret == 0;
+
+  /*
+   * End of untested MTD code.
+   */
+}
+
+// static
+bool ClobberState::WipeBlockDevice(const base::FilePath& device_path,
+                                   const base::FilePath& progress_tty_path,
+                                   bool fast) {
+  const int write_block_size = 4 * 1024 * 1024;
+  int64_t to_write = 0;
+  if (fast) {
+    to_write = write_block_size;
+  } else {
+    // Wipe the filesystem size if we can determine it. Full partition wipe
+    // takes a long time on 16G SSD or rotating media.
+    struct stat st;
+    if (stat(device_path.value().c_str(), &st) == -1) {
+      PLOG(ERROR) << "Unable to stat " << device_path.value();
+      return false;
+    }
+    int64_t block_size = st.st_blksize;
+    int64_t block_count;
+    if (!GetBlockCount(device_path, &block_count)) {
+      LOG(ERROR) << "Unable to get block count for " << device_path.value();
+      return false;
+    }
+    to_write = block_count * block_size;
+    LOG(INFO) << "Filesystem block size: " << block_size;
+    LOG(INFO) << "Filesystem block count: " << block_count;
+  }
+
+  LOG(INFO) << "Wiping block device " << device_path.value()
+            << (fast ? " (fast) " : "");
+  LOG(INFO) << "Number of bytes to write: " << to_write;
+
+  base::File device(open(device_path.value().c_str(), O_WRONLY | O_SYNC));
+  if (!device.IsValid()) {
+    PLOG(ERROR) << "Unable to open " << device_path.value();
+    return false;
+  }
+
+  // Don't display progress in fast mode since it runs so quickly.
+  bool display_progress =
+      !fast && base::PathExists(base::FilePath("/usr/bin/pv"));
+  base::File tty;
+  if (display_progress) {
+    tty = base::File(progress_tty_path,
+                     base::File::FLAG_OPEN | base::File::FLAG_WRITE);
+    if (tty.IsValid()) {
+      MakeTTYRaw(tty);
+    } else {
+      LOG(WARNING) << "Opening output TTY failed";
+      display_progress = false;
+    }
+  }
+
+  brillo::ProcessImpl pv;
+  if (display_progress) {
+    pv.AddArg("/usr/bin/pv");
+    pv.AddArg("--timer");
+    pv.AddArg("--progress");
+    pv.AddArg("--eta");
+    pv.AddStringOption("--size", base::Int64ToString(to_write));
+    // Track bytes written to the file descriptor for the device to wipe.
+    pv.AddStringOption(
+        "--watchfd",
+        base::StringPrintf("%d:%d", getpid(), device.GetPlatformFile()));
+    pv.BindFd(tty.GetPlatformFile(), STDERR_FILENO);
+
+    if (!pv.Start()) {
+      LOG(WARNING) << "Starting pv failed";
+      display_progress = false;
+    }
+  }
+
+  std::vector<char> buffer;
+  buffer.resize(write_block_size, '\0');
+  int64_t total_written = 0;
+  while (total_written < to_write) {
+    int write_size = std::min(static_cast<int64_t>(write_block_size),
+                              to_write - total_written);
+    int64_t bytes_written = device.WriteAtCurrentPos(&buffer[0], write_size);
+    if (bytes_written < 0) {
+      PLOG(ERROR) << "Failed to write to " << device_path.value();
+      LOG(ERROR) << "Wrote " << total_written << " bytes before failing";
+      return false;
+    }
+    total_written += bytes_written;
+  }
+  LOG(INFO) << "Successfully wrote " << total_written << " bytes to "
+            << device_path.value();
+
+  // Close the device so that pv will stop.
+  device.Close();
+
+  if (display_progress) {
+    int ret = pv.Wait();
+    if (ret != 0) {
+      LOG(WARNING) << "pv failed with code " << ret;
+    }
+  }
+
+  return true;
+}
+
 ClobberState::ClobberState(const Arguments& args,
                            std::unique_ptr<CrosSystem> cros_system)
     : args_(args),
@@ -416,6 +709,13 @@ ClobberState::ClobberState(const Arguments& args,
     terminal_path_ = base::FilePath("/run/frecon/vt0");
   } else {
     terminal_path_ = base::FilePath("/dev/tty1");
+  }
+  base::File terminal(terminal_path_,
+                      base::File::FLAG_OPEN | base::File::FLAG_WRITE);
+  if (!terminal.IsValid()) {
+    LOG(ERROR) << "Could not open terminal " << terminal_path_.value();
+  } else {
+    MakeTTYRaw(terminal);
   }
 }
 
@@ -602,6 +902,18 @@ int ClobberState::Run() {
   clobber_log.Run();
 
   AttemptSwitchToFastWipe(is_rotational);
+
+  // Make sure the stateful partition has been unmounted.
+  LOG(INFO) << "Unmounting stateful partition";
+  ret = umount(stateful_.value().c_str());
+  if (ret)
+    PLOG(ERROR) << "Unable to unmount " << stateful_.value();
+
+  // Destroy user data: wipe the stateful partition.
+  if (!WipeDevice(wipe_info_.stateful_device)) {
+    LOG(ERROR) << "Unable to wipe device "
+               << wipe_info_.stateful_device.value();
+  }
 
   LOG(INFO) << "Starting clobber-state.sh";
   ret = RunClobberStateShell();
@@ -794,6 +1106,14 @@ bool ClobberState::SecureErase(const base::FilePath& path) {
 // returns true.
 bool ClobberState::DropCaches() {
   return secure_erase_file::DropCaches();
+}
+
+bool ClobberState::WipeDevice(const base::FilePath& device_path) {
+  if (wipe_info_.is_mtd_flash) {
+    return WipeMTDDevice(device_path, partitions_);
+  } else {
+    return WipeBlockDevice(device_path, terminal_path_, args_.fast_wipe);
+  }
 }
 
 void ClobberState::SetArgsForTest(const ClobberState::Arguments& args) {

@@ -81,10 +81,24 @@ class ClobberState {
                                const PartitionNumbers& partitions,
                                DeviceWipeInfo* wipe_info_out);
 
+  static bool WipeMTDDevice(const base::FilePath& device_path,
+                            const PartitionNumbers& partitions);
+
+  // Wipe |device_path|, writing a progress indicator to |progress_tty_path|.
+  //
+  // If |fast| is true, wipe |device_path| using a less-thorough but much faster
+  // wipe. Not all blocks are guaranteed to be overwritten, so this should be
+  // reserved for situations when there is no concern of data leakage.
+  // A progress indicator will not be displayed if |fast| mode is enabled.
+  static bool WipeBlockDevice(const base::FilePath& device_path,
+                              const base::FilePath& progress_tty_path,
+                              bool fast);
+
   ClobberState(const Arguments& args, std::unique_ptr<CrosSystem> cros_system);
 
   // Run the clobber state routine.
   int Run();
+
   bool MarkDeveloperMode();
 
   // Attempt to switch rotational drives and drives that support
@@ -100,6 +114,11 @@ class ClobberState {
   // Wipe encryption key information from the stateful partition for supported
   // devices.
   bool WipeKeysets();
+
+  // Perform media-dependent wipe of the device based on if the device is
+  // an MTD device or not.
+  // |device_path| should be the path under /dev/, e.g. /dev/sda3, /dev/ubi5_0.
+  bool WipeDevice(const base::FilePath& device_name);
 
   // Returns vector of files to be preserved. All FilePaths are relative to
   // stateful_.

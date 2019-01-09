@@ -1140,3 +1140,106 @@ TEST_F(GetDevicesToWipeTest, SDA) {
   EXPECT_FALSE(wipe_info.is_mtd_flash);
   EXPECT_EQ(wipe_info.active_kernel_partition, partitions_.kernel_a);
 }
+
+TEST(WipeBlockDevice, Nonexistent) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  base::FilePath tty = temp_dir.GetPath().Append("tty");
+  WriteFile(tty, "");
+
+  base::FilePath file_system_path = temp_dir.GetPath().Append("fs");
+  EXPECT_FALSE(ClobberState::WipeBlockDevice(file_system_path, tty, false));
+  EXPECT_FALSE(ClobberState::WipeBlockDevice(file_system_path, tty, true));
+}
+
+TEST(WipeBlockDevice, Fast) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  base::FilePath tty = temp_dir.GetPath().Append("tty");
+  WriteFile(tty, "");
+
+  base::FilePath device_path = temp_dir.GetPath().Append("device");
+  base::File device(device_path,
+                    base::File::FLAG_CREATE | base::File::FLAG_WRITE);
+  ASSERT_TRUE(device.IsValid());
+  size_t buf_size = 1024 * 4;
+  size_t num_blocks = 3;
+  size_t block_size = 1024 * 1024 * 4;
+  size_t device_size = num_blocks * block_size;
+  ASSERT_TRUE(device.SetLength(device_size));
+  std::vector<char> write_buf;
+  write_buf.resize(buf_size, 'F');
+  std::vector<size_t> offsets{0, 52 * buf_size, 107 * buf_size,
+                              block_size + buf_size};
+  for (size_t offset : offsets) {
+    ASSERT_LE(offset, device_size - buf_size);
+    ASSERT_EQ(device.Write(offset, &write_buf[0], buf_size), buf_size);
+  }
+  device.Close();
+
+  EXPECT_TRUE(ClobberState::WipeBlockDevice(device_path, tty, true));
+
+  device =
+      base::File(device_path, base::File::FLAG_OPEN | base::File::FLAG_READ);
+  EXPECT_TRUE(device.IsValid());
+  EXPECT_EQ(device.GetLength(), device_size);
+  std::vector<char> zero_buf;
+  zero_buf.resize(buf_size, '\0');
+  std::vector<char> read_buf;
+  read_buf.resize(buf_size);
+
+  for (size_t offset : offsets) {
+    ASSERT_LE(offset, device_size - buf_size);
+    EXPECT_EQ(device.Read(offset, &read_buf[0], buf_size), buf_size)
+        << "Could not read at offset " << offset;
+    if (offset + buf_size <= block_size) {
+      EXPECT_EQ(read_buf, zero_buf);
+    } else if (offset >= block_size) {
+      EXPECT_EQ(read_buf, write_buf);
+    }
+  }
+}
+
+TEST(WipeBlockDevice, Slow) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  base::FilePath tty = temp_dir.GetPath().Append("tty");
+  WriteFile(tty, "");
+
+  base::FilePath file_system_path = temp_dir.GetPath().Append("fs");
+  base::File file_system(file_system_path,
+                         base::File::FLAG_CREATE | base::File::FLAG_WRITE);
+  size_t file_system_size = 9.5 * 1024 * 1024;
+  ASSERT_TRUE(file_system.IsValid());
+  ASSERT_TRUE(file_system.SetLength(file_system_size));
+
+  size_t buf_size = 1024 * 4;
+  std::vector<char> buf;
+  buf.resize(buf_size, 'F');
+  std::vector<size_t> offsets{0, 500 * buf_size, 783 * buf_size,
+                              file_system_size - buf_size};
+  for (size_t offset : offsets) {
+    ASSERT_LE(offset, file_system_size - buf_size);
+    ASSERT_EQ(file_system.Write(offset, &buf[0], buf_size), buf_size);
+  }
+
+  ASSERT_TRUE(file_system.Flush());
+  file_system.Close();
+
+  brillo::ProcessImpl mkfs;
+  mkfs.AddArg("/sbin/mkfs.ext4");
+  mkfs.AddArg(file_system_path.value());
+  EXPECT_EQ(mkfs.Run(), 0);
+
+  EXPECT_TRUE(ClobberState::WipeBlockDevice(file_system_path, tty, false));
+
+  file_system = base::File(file_system_path,
+                           base::File::FLAG_OPEN | base::File::FLAG_READ);
+  std::vector<char> zero_buf;
+  zero_buf.resize(buf_size, '\0');
+  for (size_t offset : offsets) {
+    ASSERT_LE(offset, file_system_size - buf_size);
+    EXPECT_EQ(file_system.Read(offset, &buf[0], buf_size), buf_size);
+    EXPECT_EQ(buf, zero_buf);
+  }
+}
