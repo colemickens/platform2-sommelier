@@ -21,7 +21,7 @@ fi
 
 echo "Encrypting and saving rollback files..."
 if ! sudo -u oobe_config_save oobe_config_save; then
-  echo "rollback_prepare_save failed"
+  echo "oobe_config_save failed"
   exit 1
 fi
 
