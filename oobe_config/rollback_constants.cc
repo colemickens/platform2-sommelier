@@ -26,6 +26,9 @@ const base::FilePath kSecondStageCompletedFile =
 const base::FilePath kOobeCompletedFile =
     base::FilePath("/home/chronos/.oobe_completed");
 
+const base::FilePath kMetricsReportingEnabledFile =
+    base::FilePath("/home/chronos/Consent To Send Stats");
+
 const base::FilePath kInstallAttributesPath =
     base::FilePath("/home/.shadow/install_attributes.pb");
 const char kInstallAttributesFileName[] = "install_attributes.pb";

@@ -30,6 +30,9 @@ extern const base::FilePath kSecondStageCompletedFile;
 // The path to the file that indicates if OOBE has completed.
 extern const base::FilePath kOobeCompletedFile;
 
+// The path to the file that indicates if metrics reporting is enabled.
+extern const base::FilePath kMetricsReportingEnabledFile;
+
 // Name of the files (without path) we want to preserve.
 extern const base::FilePath kInstallAttributesPath;
 extern const char kInstallAttributesFileName[];

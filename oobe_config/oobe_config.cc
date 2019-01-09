@@ -92,6 +92,11 @@ bool OobeConfig::GetRollbackData(RollbackData* rollback_data) const {
     rollback_data->set_eula_auto_accept(true);
   }
 
+  if (base::PathExists(kMetricsReportingEnabledFile)) {
+    // If |kMetricsReportingEnabledFile| exists, metrics are enabled.
+    rollback_data->set_eula_send_statistics(true);
+  }
+
   PolicyData* policy_data = rollback_data->mutable_device_policy();
   std::map<int, base::FilePath> policy_paths =
       policy::GetSortedResilientPolicyFilePaths(
