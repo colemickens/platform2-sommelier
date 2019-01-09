@@ -25,6 +25,7 @@ action("cryptohome-proto-external") {
   shared_proto_path = "${sysroot}/usr/include/chromeos/dbus/cryptohome"
   script = "external_proto_generator.py"
   inputs = [
+    "${shared_proto_path}/install_attributes.proto",
     "${shared_proto_path}/key.proto",
     "${shared_proto_path}/rpc.proto",
     "${shared_proto_path}/signed_secret.proto",
@@ -55,7 +56,6 @@ proto_library("cryptohome-proto") {
     "${proto_in_dir}/boot_lockbox_key.proto",
     "${proto_in_dir}/fake_le_credential_metadata.proto",
     "${proto_in_dir}/hash_tree_leaf_data.proto",
-    "${proto_in_dir}/install_attributes.proto",
     "${proto_in_dir}/signature_sealed_data.proto",
     "${proto_in_dir}/tpm_status.proto",
     "${proto_in_dir}/vault_keyset.proto",
