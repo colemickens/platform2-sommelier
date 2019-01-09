@@ -7,6 +7,8 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
+#include <sys/types.h>
+#include <sys/xattr.h>
 
 #include <linux/fs.h>
 
@@ -19,6 +21,7 @@
 
 using file_attrs_cleaner::CheckFileAttributes;
 using file_attrs_cleaner::ImmutableAllowed;
+using file_attrs_cleaner::RemoveURLExtendedAttributes;
 using file_attrs_cleaner::ScanDir;
 
 namespace {
@@ -152,6 +155,60 @@ TEST_F(CheckFileAttributesTest, ResetDir) {
   EXPECT_EQ(0, ioctl(fd.get(), FS_IOC_SETFLAGS, &flags));
 
   EXPECT_TRUE(CheckFileAttributes(dir, false, fd.get()));
+}
+
+namespace {
+
+class RemoveURLExtendedAttributesTest : public ::testing::Test {
+  void SetUp() {
+    ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
+    test_dir_ = scoped_temp_dir_.GetPath();
+  }
+
+ protected:
+  base::FilePath test_dir_;
+  base::ScopedTempDir scoped_temp_dir_;
+};
+
+}  // namespace
+
+// Don't fail when files don't have extended attributes.
+TEST_F(RemoveURLExtendedAttributesTest, NoAttributesSucceeds) {
+  const base::FilePath path = test_dir_.Append("xattr");
+  ASSERT_TRUE(CreateFile(path, ""));
+  EXPECT_TRUE(RemoveURLExtendedAttributes(path));
+}
+
+// Clear files with the "xdg" xattrs set, see crbug.com/919486.
+TEST_F(RemoveURLExtendedAttributesTest, Success) {
+  const base::FilePath path = test_dir_.Append("xattr");
+  ASSERT_TRUE(CreateFile(path, ""));
+  const char* path_cstr = path.value().c_str();
+
+  EXPECT_EQ(
+      0, setxattr(path_cstr, file_attrs_cleaner::xdg_origin_url, NULL, 0, 0));
+  EXPECT_EQ(
+      0, setxattr(path_cstr, file_attrs_cleaner::xdg_referrer_url, NULL, 0, 0));
+
+  EXPECT_TRUE(RemoveURLExtendedAttributes(path));
+
+  // getxattr(2) call should fail now.
+  EXPECT_GT(0,
+            getxattr(path_cstr, file_attrs_cleaner::xdg_origin_url, NULL, 0));
+  EXPECT_GT(0,
+            getxattr(path_cstr, file_attrs_cleaner::xdg_referrer_url, NULL, 0));
+}
+
+// Leave other attributes alone.
+TEST_F(RemoveURLExtendedAttributesTest, OtherAttributesUnchanged) {
+  const base::FilePath path = test_dir_.Append("xattr");
+  ASSERT_TRUE(CreateFile(path, ""));
+
+  EXPECT_EQ(0, setxattr(path.value().c_str(), "user.test", NULL, 0, 0));
+  EXPECT_TRUE(RemoveURLExtendedAttributes(path));
+
+  // fgetxattr(2) call should succeed.
+  EXPECT_EQ(0, getxattr(path.value().c_str(), "user.test", NULL, 0));
 }
 
 namespace {

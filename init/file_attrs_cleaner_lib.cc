@@ -9,17 +9,22 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/xattr.h>
 #include <unistd.h>
 
 #include <linux/fs.h>
 
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 
 namespace file_attrs_cleaner {
+
+const char xdg_origin_url[] = "user.xdg.origin.url";
+const char xdg_referrer_url[] = "user.xdg.referrer.url";
 
 namespace {
 
@@ -73,8 +78,24 @@ bool CheckFileAttributes(const base::FilePath& path, bool isdir, int fd) {
   }
 
   // The other file attribute flags look benign at this point.
-
   return true;
+}
+
+bool RemoveURLExtendedAttributes(const base::FilePath& path) {
+  bool xattr_success = true;
+  for (const auto& attr_name : {xdg_origin_url, xdg_referrer_url}) {
+    if (getxattr(path.value().c_str(), attr_name, nullptr, 0) >= 0) {
+      // Attribute exists, clear it.
+      bool res = removexattr(path.value().c_str(), attr_name) == 0;
+      if (!res) {
+        PLOG(ERROR) << "Unable to remove extended attribute '" << attr_name
+                    << "' from " << path.value();
+      }
+      xattr_success &= res;
+    }
+  }
+
+  return xattr_success;
 }
 
 bool ScanDir(const base::FilePath& dir) {
@@ -157,6 +178,13 @@ bool ScanDir(const base::FilePath& dir) {
       ret &= ScanDir(path);
     } else if (de->d_type == DT_REG) {
       // Check the settings on this file.
+
+      // Extended attributes can be read even on encrypted files, so remove them
+      // by path and not by file descriptor.
+      // Since the removal is best-effort anyway, TOCTOU issues should not be
+      // a problem.
+      ret &= RemoveURLExtendedAttributes(path);
+
       base::ScopedFD fd(openat(dfd, de->d_name,
                                O_RDONLY | O_NONBLOCK | O_NOFOLLOW | O_CLOEXEC));
 
