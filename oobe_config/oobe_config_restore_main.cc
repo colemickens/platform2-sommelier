@@ -12,6 +12,7 @@
 
 #include "oobe_config/oobe_config.h"
 #include "oobe_config/oobe_config_restore_service.h"
+#include "oobe_config/rollback_constants.h"
 
 using brillo::dbus_utils::AsyncEventSequencer;
 using brillo::dbus_utils::DBusObject;
@@ -19,9 +20,6 @@ using brillo::dbus_utils::DBusObject;
 namespace oobe_config {
 
 namespace {
-
-// The path to the file that indicates if OOBE has compled.
-constexpr char kOobeCompletedFile[] = "/home/chronos/.oobe_completed";
 
 void InitLog() {
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
@@ -68,7 +66,7 @@ class OobeConfigRestoreDaemon : public brillo::DBusServiceDaemon {
 int RunDaemon(bool allow_unencrypted,
               bool force_start,
               bool skip_reboot_for_testing) {
-  if (!force_start && base::PathExists(base::FilePath(kOobeCompletedFile))) {
+  if (!force_start && base::PathExists(kOobeCompletedFile)) {
     LOG(INFO) << "OOBE is already complete.";
     return 0;
   }
