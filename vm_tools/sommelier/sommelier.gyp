@@ -15,6 +15,9 @@
     # Set this to the Xwayland path.
     'xwayland_path%': '"/opt/google/cros-containers/bin/Xwayland"',
 
+    # Set this to the GL driver path to use for Xwayland.
+    'xwayland_gl_driver_path%': '"/opt/google/cros-containers/lib"',
+
     # Set this to the shm driver to use for Xwayland.
     'xwayland_shm_driver%': '"virtwl"',
 
@@ -95,6 +98,7 @@
         '_GNU_SOURCE',
         'WL_HIDE_DEPRECATED',
         'XWAYLAND_PATH=<@(xwayland_path)',
+        'XWAYLAND_GL_DRIVER_PATH=<@(xwayland_gl_driver_path)',
         'XWAYLAND_SHM_DRIVER=<@(xwayland_shm_driver)',
         'SHM_DRIVER=<@(shm_driver)',
         'VIRTWL_DEVICE=<@(virtwl_device)',

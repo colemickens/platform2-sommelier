@@ -38,6 +38,9 @@
 #ifndef XWAYLAND_PATH
 #error XWAYLAND_PATH must be defined
 #endif
+#ifndef XWAYLAND_GL_DRIVER_PATH
+#error XWAYLAND_GL_DRIVER_PATH must be defined
+#endif
 #ifndef XWAYLAND_SHM_DRIVER
 #error XWAYLAND_SHM_DRIVER must be defined
 #endif
@@ -3317,6 +3320,8 @@ int main(int argc, char **argv) {
   const char *xwayland_cmd_prefix = getenv("SOMMELIER_XWAYLAND_CMD_PREFIX");
   const char *accelerators = getenv("SOMMELIER_ACCELERATORS");
   const char *xwayland_path = getenv("SOMMELIER_XWAYLAND_PATH");
+  const char *xwayland_gl_driver_path =
+    getenv("SOMMELIER_XWAYLAND_GL_DRIVER_PATH");
   const char* xauth_path = getenv("SOMMELIER_XAUTH_PATH");
   const char* xfont_path = getenv("SOMMELIER_XFONT_PATH");
   const char *socket_name = "wayland-0";
@@ -3378,6 +3383,8 @@ int main(int argc, char **argv) {
       ctx.xwayland = 1;
     } else if (strstr(arg, "--xwayland-path") == arg) {
       xwayland_path = sl_arg_value(arg);
+    } else if (strstr(arg, "--xwayland-gl-driver-path") == arg) {
+      xwayland_gl_driver_path = sl_arg_value(arg);
     } else if (strstr(arg, "--no-exit-with-child") == arg) {
       ctx.exit_with_child = 0;
     } else if (strstr(arg, "--sd-notify") == arg) {
@@ -3928,6 +3935,17 @@ int main(int argc, char **argv) {
           args[i++] = sl_xasprintf("%s", xfont_path);
         }
         args[i++] = NULL;
+
+        // If a path is explicitly specified via command line or environment
+        // use that instead of the compiled in default.  In either case, only
+        // set the environment variable if the value specified is non-empty.
+        if (xwayland_gl_driver_path) {
+          if (*xwayland_gl_driver_path) {
+            setenv("LIBGL_DRIVERS_PATH", xwayland_gl_driver_path, 1);
+          }
+        } else if (XWAYLAND_GL_DRIVER_PATH && *XWAYLAND_GL_DRIVER_PATH) {
+          setenv("LIBGL_DRIVERS_PATH", XWAYLAND_GL_DRIVER_PATH, 1);
+        }
 
         sl_execvp(args[0], args, sv[1]);
         _exit(EXIT_FAILURE);
