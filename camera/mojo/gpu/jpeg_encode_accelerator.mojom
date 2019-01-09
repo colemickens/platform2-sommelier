@@ -4,6 +4,8 @@
 
 module cros.mojom;
 
+import "mojo/gpu/dmabuf.mojom";
+
 // Encode errors (see
 // https://cs.chromium.org/chromium/src/media/video/jpeg_encode_accelerator.h)
 enum EncodeStatus {
@@ -14,13 +16,6 @@ enum EncodeStatus {
   INACCESSIBLE_OUTPUT_BUFFER,
   PARSE_IMAGE_FAILED,
   PLATFORM_FAILURE,
-};
-
-struct DmaBufPlane {
-  handle fd_handle;
-  int32 stride;
-  uint32 offset;
-  uint32 size;
 };
 
 // GPU process interface exposed to the browser for encoding JPEG images.

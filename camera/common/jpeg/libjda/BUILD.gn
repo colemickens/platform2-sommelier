@@ -20,6 +20,7 @@ static_library("libjda") {
   ]
   configs -= [ "//common-mk:use_thin_archive" ]
   pkg_deps = [
+    "cros-camera-android-headers",
     "libcamera_common",
     "libmojo-${libbase_ver}",
     "libchrome-${libbase_ver}",

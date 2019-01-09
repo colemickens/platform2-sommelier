@@ -14,8 +14,8 @@
 
 #include "mojo/algorithm/camera_algorithm.mojom.h"
 #include "mojo/cros_camera_service.mojom.h"
-#include "mojo/jda/mjpeg_decode_accelerator.mojom.h"
-#include "mojo/jea/jpeg_encode_accelerator.mojom.h"
+#include "mojo/gpu/jpeg_encode_accelerator.mojom.h"
+#include "mojo/gpu/mjpeg_decode_accelerator.mojom.h"
 
 namespace base {
 class SingleThreadTaskRunner;

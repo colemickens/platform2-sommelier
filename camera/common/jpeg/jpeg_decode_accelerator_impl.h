@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 #include <memory>
+#include <set>
 #include <unordered_map>
 
 #include <base/memory/shared_memory.h>
@@ -26,8 +27,7 @@ namespace tests {
 class JpegDecodeAcceleratorTest;
 }  // namespace tests
 
-// Encapsulates a converter from JPEG to YU12 format. This class is not
-// thread-safe.
+// Encapsulates a JPEG decoder. This class is not thread-safe.
 // Before using this class, make sure mojo is initialized first.
 class JpegDecodeAcceleratorImpl final : public JpegDecodeAccelerator {
  public:
@@ -41,10 +41,21 @@ class JpegDecodeAcceleratorImpl final : public JpegDecodeAccelerator {
 
   JpegDecodeAccelerator::Error DecodeSync(int input_fd,
                                           uint32_t input_buffer_size,
+                                          uint32_t input_buffer_offset,
+                                          buffer_handle_t output_buffer) final;
+
+  JpegDecodeAccelerator::Error DecodeSync(int input_fd,
+                                          uint32_t input_buffer_size,
                                           int32_t coded_size_width,
                                           int32_t coded_size_height,
                                           int output_fd,
                                           uint32_t output_buffer_size) final;
+
+  int32_t Decode(int input_fd,
+                 uint32_t input_buffer_size,
+                 uint32_t input_buffer_offset,
+                 buffer_handle_t output_buffer,
+                 DecodeCallback callback) final;
 
   int32_t Decode(int input_fd,
                  uint32_t input_buffer_size,
@@ -73,20 +84,33 @@ class JpegDecodeAcceleratorImpl final : public JpegDecodeAccelerator {
   // Error handler for JDA mojo channel.
   void OnJpegDecodeAcceleratorError();
 
-  // Process decode request on IPC thread.
+  // Process decode request on IPC thread with output buffer_handle_t.
   void DecodeOnIpcThread(int32_t buffer_id,
                          int input_fd,
                          uint32_t input_buffer_size,
-                         int32_t coded_size_width,
-                         int32_t coded_size_height,
-                         int output_fd,
-                         uint32_t output_buffer_size,
+                         uint32_t input_buffer_offset,
+                         buffer_handle_t output_buffer,
                          DecodeCallback callback);
 
-  // Callback function for |jda_ptr_|->DecodeWithFD().
+  // Process decode request on IPC thread with output shm fd.
+  void DecodeOnIpcThreadLegacy(int32_t buffer_id,
+                               int input_fd,
+                               uint32_t input_buffer_size,
+                               int32_t coded_size_width,
+                               int32_t coded_size_height,
+                               int output_fd,
+                               uint32_t output_buffer_size,
+                               DecodeCallback callback);
+
+  // Callback function for |jda_ptr_|->DecodeWithDmaBuf().
   void OnDecodeAck(DecodeCallback callback,
                    int32_t buffer_id,
                    cros::mojom::DecodeError error);
+
+  // Callback function for |jda_ptr_|->DecodeWithFD().
+  void OnDecodeAckLegacy(DecodeCallback callback,
+                         int32_t buffer_id,
+                         cros::mojom::DecodeError error);
 
   // For synced Decode API.
   void DecodeSyncCallback(base::Callback<void(int)> callback,
@@ -114,6 +138,9 @@ class JpegDecodeAcceleratorImpl final : public JpegDecodeAccelerator {
 
   // The id for current buffer being decoded.
   int32_t buffer_id_;
+
+  // Tracking the buffer ids sent to decoder.
+  std::set<int32_t> inflight_buffer_ids_;
 
   // A map from buffer id to input shared memory.
   // |input_shm_map_| should only be accessed on ipc_thread_.

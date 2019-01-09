@@ -20,7 +20,7 @@
 #include "cros-camera/jpeg_compressor.h"
 #include "cros-camera/jpeg_encode_accelerator.h"
 #include "mojo/cros_camera_service.mojom.h"
-#include "mojo/jea/jpeg_encode_accelerator.mojom.h"
+#include "mojo/gpu/jpeg_encode_accelerator.mojom.h"
 
 namespace cros {
 
