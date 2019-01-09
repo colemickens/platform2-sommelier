@@ -18,6 +18,13 @@
 #include "cryptohome/tpm_init.h"
 #include "tpm_manager/common/tpm_manager_constants.h"
 
+namespace {
+// This is a exit status returned when nvspace cannot be created.
+// Nvspace can only be created first boot so this exit value is normal.
+// Must be in sync with bootlockboxd.conf on the normal exit status value.
+constexpr int EX_NVSPACE_NOT_AVAILABLE = 100;
+}
+
 namespace cryptohome {
 
 int BootLockboxService::OnInit() {
@@ -33,7 +40,7 @@ int BootLockboxService::OnInit() {
     LOG(INFO) << "NVSpace is not defined, define it now";
     if (!boot_lockbox_->DefineSpace()) {
       LOG(ERROR) << "Failed to create nvspace";
-      return EX_UNAVAILABLE;
+      return EX_NVSPACE_NOT_AVAILABLE;
     }
   }
   const int return_code = brillo::DBusServiceDaemon::OnInit();
