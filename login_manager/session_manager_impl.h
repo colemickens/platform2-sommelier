@@ -192,38 +192,6 @@ class SessionManagerImpl
                     const std::string& in_unique_identifier) override;
   void StopSession(const std::string& in_unique_identifier) override;
 
-  // Deprecated, use StorePolicyEx.
-  void StorePolicy(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
-      const std::vector<uint8_t>& in_policy_blob) override;
-  // Deprecated, use RetrievePolicyEx.
-  bool RetrievePolicy(brillo::ErrorPtr* error,
-                      std::vector<uint8_t>* out_policy_blob) override;
-  // Deprecated, use StorePolicyEx.
-  void StorePolicyForUser(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
-      const std::string& in_account_id,
-      const std::vector<uint8_t>& in_policy_blob) override;
-  // Deprecated, use RetrievePolicyEx.
-  bool RetrievePolicyForUser(brillo::ErrorPtr* error,
-                             const std::string& in_account_id,
-                             std::vector<uint8_t>* out_policy_blob) override;
-  // Deprecated, use RetrievePolicyEx.
-  bool RetrievePolicyForUserWithoutSession(
-      brillo::ErrorPtr* error,
-      const std::string& in_account_id,
-      std::vector<uint8_t>* out_policy_blob) override;
-  // Deprecated, use StorePolicyEx.
-  void StoreDeviceLocalAccountPolicy(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
-      const std::string& in_account_id,
-      const std::vector<uint8_t>& in_policy_blob) override;
-  // Deprecated, use RetrievePolicyEx.
-  bool RetrieveDeviceLocalAccountPolicy(
-      brillo::ErrorPtr* error,
-      const std::string& in_account_id,
-      std::vector<uint8_t>* out_policy_blob) override;
-
   // Interface for storing and retrieving policy.
   // TODO(crbug.com/765644): Remove 'Ex', see bug description.
   void StorePolicyEx(

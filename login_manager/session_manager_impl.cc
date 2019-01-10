@@ -66,8 +66,8 @@
 using base::FilePath;
 using brillo::cryptohome::home::GetHashedUserPath;
 using brillo::cryptohome::home::GetUserPath;
-using brillo::cryptohome::home::SanitizeUserName;
 using brillo::cryptohome::home::kGuestUserName;
+using brillo::cryptohome::home::SanitizeUserName;
 
 namespace login_manager {  // NOLINT
 
@@ -147,7 +147,6 @@ constexpr char kTPMFirmwareUpdateModePreserveStateful[] = "preserve_stateful";
 constexpr char kTPMFirmwareUpdateModeCleanup[] = "cleanup";
 
 // Policy storage constants.
-constexpr char kEmptyAccountId[] = "";
 constexpr char kSigEncodeFailMessage[] = "Failed to retrieve policy data.";
 
 // Default path of symlink to log file where stdout and stderr from
@@ -169,17 +168,6 @@ bool IsInsideVm(SystemUtils* system) {
   return system->GetVmState() == VmState::INSIDE_VM;
 }
 #endif
-
-// TODO(crbug.com/765644): This and all users of this method will be removed
-// when Chrome has been switched to the new 'Ex' interface.
-std::vector<uint8_t> MakePolicyDescriptor(PolicyAccountType account_type,
-                                          const std::string& account_id) {
-  PolicyDescriptor descriptor;
-  descriptor.set_account_type(account_type);
-  descriptor.set_account_id(account_id);
-  descriptor.set_domain(POLICY_DOMAIN_CHROME);
-  return StringToBlob(descriptor.SerializeAsString());
-}
 
 // Parses |descriptor_blob| into |descriptor| and validates it assuming the
 // given |usage|. Returns true and sets |descriptor| on success. Returns false
@@ -727,68 +715,6 @@ void SessionManagerImpl::StopSession(const std::string& in_unique_identifier) {
   // session_started_ = false;
 
   password_provider_->DiscardPassword();
-}
-
-void SessionManagerImpl::StorePolicy(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
-    const std::vector<uint8_t>& in_policy_blob) {
-  StorePolicyEx(std::move(response),
-                MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE, kEmptyAccountId),
-                in_policy_blob);
-}
-
-bool SessionManagerImpl::RetrievePolicy(brillo::ErrorPtr* error,
-                                        std::vector<uint8_t>* out_policy_blob) {
-  return RetrievePolicyEx(
-      error, MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE, kEmptyAccountId),
-      out_policy_blob);
-}
-
-void SessionManagerImpl::StorePolicyForUser(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
-    const std::string& in_account_id,
-    const std::vector<uint8_t>& in_policy_blob) {
-  StorePolicyEx(std::move(response),
-                MakePolicyDescriptor(ACCOUNT_TYPE_USER, in_account_id),
-                in_policy_blob);
-}
-
-bool SessionManagerImpl::RetrievePolicyForUser(
-    brillo::ErrorPtr* error,
-    const std::string& in_account_id,
-    std::vector<uint8_t>* out_policy_blob) {
-  return RetrievePolicyEx(
-      error, MakePolicyDescriptor(ACCOUNT_TYPE_USER, in_account_id),
-      out_policy_blob);
-}
-
-bool SessionManagerImpl::RetrievePolicyForUserWithoutSession(
-    brillo::ErrorPtr* error,
-    const std::string& in_account_id,
-    std::vector<uint8_t>* out_policy_blob) {
-  return RetrievePolicyEx(
-      error, MakePolicyDescriptor(ACCOUNT_TYPE_SESSIONLESS_USER, in_account_id),
-      out_policy_blob);
-}
-
-void SessionManagerImpl::StoreDeviceLocalAccountPolicy(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
-    const std::string& in_account_id,
-    const std::vector<uint8_t>& in_policy_blob) {
-  StorePolicyEx(
-      std::move(response),
-      MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE_LOCAL_ACCOUNT, in_account_id),
-      in_policy_blob);
-}
-
-bool SessionManagerImpl::RetrieveDeviceLocalAccountPolicy(
-    brillo::ErrorPtr* error,
-    const std::string& in_account_id,
-    std::vector<uint8_t>* out_policy_blob) {
-  return RetrievePolicyEx(
-      error,
-      MakePolicyDescriptor(ACCOUNT_TYPE_DEVICE_LOCAL_ACCOUNT, in_account_id),
-      out_policy_blob);
 }
 
 void SessionManagerImpl::StorePolicyEx(
@@ -1412,11 +1338,12 @@ void SessionManagerImpl::InitiateDeviceWipe(const std::string& reason) {
   // clamping size to 50 characters.
   std::string sanitized_reason(reason.substr(0, 50));
   std::locale locale("C");
-  std::replace_if(sanitized_reason.begin(), sanitized_reason.end(),
-                  [&locale](const std::string::value_type character) {
-                    return !std::isalnum(character, locale);
-                  },
-                  '_');
+  std::replace_if(
+      sanitized_reason.begin(), sanitized_reason.end(),
+      [&locale](const std::string::value_type character) {
+        return !std::isalnum(character, locale);
+      },
+      '_');
   const base::FilePath reset_path(kResetFile);
   system_->AtomicFileWrite(reset_path,
                            "fast safe keepimg reason=" + sanitized_reason);

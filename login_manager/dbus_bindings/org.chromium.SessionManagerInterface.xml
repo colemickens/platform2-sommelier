@@ -207,7 +207,7 @@
         @policy_blob: Serialized PolicyFetchResponse protobuf containing the
             requested user or device policy and a signature over that policy.
 
-        Retrieve policy stored by StorePolicy.
+        Retrieve policy stored by StorePolicyEx.
 
         Can retrieve user policy for users without a user session. This is
         useful if we need to access user policy before actually starting the
@@ -216,121 +216,6 @@
     -->
     <method name="RetrievePolicyEx">
       <arg type="ay" name="descriptor_blob" direction="in" />
-      <arg type="ay" name="policy_blob" direction="out" />
-    </method>
-
-    <!--
-        StorePolicy:
-        @policy_blob: Serialized protobuf containing a device policy and a
-                      signature over that policy.
-
-        Stores a device policy. This method will verify the sig in @policy_blob
-        and persist the blob to disk.
-        The signature is a SHA1 with RSA signature over the policy,
-        verifiable with the device-wide policy key.
-    -->
-    <method name="StorePolicy">
-      <arg type="ay" name="policy_blob" direction="in" />
-      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
-    </method>
-
-    <!--
-        RetrievePolicy:
-        @policy_blob: Serialized protobuf containing a device policy and a
-                      signature over that policy.
-
-        Retrieve device policy stored by StorePolicy.
-    -->
-    <method name="RetrievePolicy">
-      <arg type="ay" name="policy_blob" direction="out" />
-    </method>
-
-    <!--
-        StorePolicyForUser:
-        @account_id: Account ID of the user whose policy is to be stored.
-        @policy_blob: A serialized PolicyFetchResponse protobuf.
-
-        Similar to StorePolicy() above, but for user policy.
-        @policy_blob should contain a serialized PolicyFetchResponse protobuf
-        which wraps the actual policy data along with an SHA1-RSA signature
-        over the policy data. The policy data is opaque to session_manager,
-        the exact definition is only relevant to client code in Chrome.
-
-        Calling this function attempts to persist the policy blob for
-        a given user. Policy is stored in a root-owned location
-        within the user's cryptohome (for privacy reasons). The
-        first attempt to store policy also installs the signing
-        key for user policy. This key is used later to verify policy
-        updates pushed by Chrome.
-    -->
-    <method name="StorePolicyForUser">
-      <arg type="s" name="account_id" direction="in" />
-      <arg type="ay" name="policy_blob" direction="in" />
-      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
-    </method>
-
-    <!--
-        RetrievePolicyForUser:
-        @account_id: Account ID of the user whose policy the caller wants.
-        @policy_blob: Serialized protobuf containing a PolicyFetchResponse and a
-                      signature over that policy.
-
-        Retrieves user policy for a given user.
-    -->
-    <method name="RetrievePolicyForUser">
-      <arg type="s" name="account_id" direction="in" />
-      <arg type="ay" name="policy_blob" direction="out" />
-    </method>
-
-    <!--
-        RetrievePolicyForUserWithoutSession:
-        @account_id: Account ID of the user whose policy the caller wants.
-        @policy_blob: Serialized protobuf containing a PolicyFetchResponse and a
-                      signature over that policy.
-
-        Retrieves user policy for user without a user session. This is useful if
-        we need to access user policy before actually starting the session. The
-        user home must have been mounted as hidden user home with cryptohome.
-    -->
-    <method name="RetrievePolicyForUserWithoutSession">
-      <arg type="s" name="account_id" direction="in" />
-      <arg type="ay" name="policy_blob" direction="out" />
-    </method>
-
-    <!--
-        StoreDeviceLocalAccountPolicy:
-        @account_id: Account whose policy is to be stored.
-        @policy_blob: A serialized PolicyFetchResponse protobuf.
-
-        Similar to StorePolicyForUser() above, but for device-local
-        accounts. @policy_blob should contain a serialized
-        PolicyFetchResponse protobuf which wraps the actual policy
-        data along with an SHA1-RSA signature over the policy
-        data. The policy data is opaque to session manager, the exact
-        definition is only relevant to client code in Chrome.
-
-        Calling this function attempts to persist the policy blob for
-        the device-local account specified in the method call. Policy
-        is stored in the root-owned /var/lib/device_local_accounts
-        directory in the stateful partition. Signatures are checked
-        against the owner key, key rotation is not allowed.
-    -->
-    <method name="StoreDeviceLocalAccountPolicy">
-      <arg type="s" name="account_id" direction="in" />
-      <arg type="ay" name="policy_blob" direction="in" />
-      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
-    </method>
-
-    <!--
-        RetrieveDeviceLocalAccountPolicy:
-        @account_id: Account ID of the user whose policy is to be stored.
-        @policy_blob: Serialized protobuf containing a PolicyFetchResponse and a
-                      signature over that policy.
-
-        Retrieves device-local account policy for the specified @account_id.
-    -->
-    <method name="RetrieveDeviceLocalAccountPolicy">
-      <arg type="s" name="account_id" direction="in" />
       <arg type="ay" name="policy_blob" direction="out" />
     </method>
 
