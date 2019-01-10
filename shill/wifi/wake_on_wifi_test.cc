@@ -3717,7 +3717,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   ReportConnectedToServiceAfterWake(is_connected, kSuspendDurationSecs);
 }
 
-TEST_F(WakeOnWiFiTestWithMockDispatcher,
+TEST_F(WakeOnWiFiTestWithDispatcher,
        WakeOnWiFiDisabled_OnNoAutoConnectableServicesAfterScan) {
   vector<ByteString> whitelist;
   AddSSIDToWhitelist(kSSIDBytes1, sizeof(kSSIDBytes1), &whitelist);
@@ -3741,6 +3741,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   EXPECT_FALSE(WakeToScanTimerIsRunning());
   EXPECT_TRUE(DHCPLeaseRenewalTimerIsRunning());
   EXPECT_EQ(GetWakeOnWiFiTriggers()->size(), 0);
+
+  dispatcher_.DispatchPendingEvents();
 }
 
 TEST_F(WakeOnWiFiTestWithMockDispatcher,
