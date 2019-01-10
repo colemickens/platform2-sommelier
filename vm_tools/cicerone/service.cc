@@ -472,6 +472,7 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
     container = vm->GetContainerForToken(container_token);
     if (!container) {
       LOG(ERROR) << "Received ContainerStartupCompleted for unknown container";
+      event->Signal();
       return;
     }
   }
@@ -481,6 +482,7 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
       vm->GetLxdContainerInfo(container->name(), &info, &error);
   if (status != VirtualMachine::GetLxdContainerInfoStatus::RUNNING) {
     LOG(ERROR) << "Failed to retreive IPv4 address for container: " << error;
+    event->Signal();
     return;
   }
   container->set_ipv4_address(info.ipv4_address);
