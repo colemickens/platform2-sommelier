@@ -146,17 +146,6 @@ class SessionManagerImpl
                      dbus::ObjectProxy* system_clock_proxy);
   ~SessionManagerImpl() override;
 
-#if USE_CHEETS
-  // Returns the Android data directory for |normalized_account_id|.
-  static base::FilePath GetAndroidDataDirForUser(
-      const std::string& normalized_account_id);
-
-  // Returns the directory where old Android data directories are stored for
-  // |normalized_account_id|.
-  static base::FilePath GetAndroidDataOldDirForUser(
-      const std::string& normalized_account_id);
-#endif  // USE_CHEETS
-
   // Tests can call these before Initialize() to inject their own objects.
   void SetPolicyServicesForTesting(
       std::unique_ptr<DevicePolicyService> device_policy,
