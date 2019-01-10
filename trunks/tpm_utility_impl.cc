@@ -28,6 +28,7 @@
 #include <crypto/secure_hash.h>
 #include <crypto/sha2.h>
 #include <openssl/aes.h>
+#include <openssl/ecdsa.h>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 #include <openssl/x509.h>
@@ -642,8 +643,10 @@ TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
   if (result) {
     LOG(ERROR) << __func__ << ": Error finding public area for: " << key_handle;
     return result;
-  } else if (public_area.type != TPM_ALG_RSA) {
-    LOG(ERROR) << __func__ << ": Key handle given is not an RSA key";
+  } else if (public_area.type != TPM_ALG_RSA &&
+             public_area.type != TPM_ALG_ECC) {
+    LOG(ERROR) << __func__
+               << ": Key handle given is not a supported key (RSA, ECC)";
     return SAPI_RC_BAD_PARAMETER;
   } else if ((public_area.object_attributes & kSign) == 0) {
     LOG(ERROR) << __func__ << ": Key handle given is not a signging key";
@@ -666,10 +669,33 @@ TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
     hash_alg = TPM_ALG_SHA256;
   }
 
-  // Simply check key type and scheme
+  // Simply check key type and scheme and select the unpack helper for parsing
+  // the output from TPM.
+  std::function<std::string(const TPMT_SIGNATURE&)> unpack_helper;
   if (public_area.type == TPM_ALG_RSA) {
-    if (scheme != TPM_ALG_RSAPSS && scheme != TPM_ALG_RSASSA) {
+    if (scheme == TPM_ALG_RSAPSS) {
+      unpack_helper = [](const TPMT_SIGNATURE& signature_out) {
+        return StringFrom_TPM2B_PUBLIC_KEY_RSA(
+            signature_out.signature.rsapss.sig);
+      };
+    } else if (scheme == TPM_ALG_RSASSA) {
+      unpack_helper = [](const TPMT_SIGNATURE& signature_out) {
+        return StringFrom_TPM2B_PUBLIC_KEY_RSA(
+            signature_out.signature.rsassa.sig);
+      };
+    } else {
       LOG(ERROR) << __func__ << ": Invalid signing scheme used for RSA key.";
+      return SAPI_RC_BAD_PARAMETER;
+    }
+  } else if (public_area.type == TPM_ALG_ECC) {
+    if (scheme == TPM_ALG_ECDSA) {
+      unpack_helper = [](const TPMT_SIGNATURE& signature_out) {
+        std::string output;
+        Serialize_TPMT_SIGNATURE(signature_out, &output);
+        return output;
+      };
+    } else {
+      LOG(ERROR) << __func__ << ": Invalid signing scheme used for ECC key.";
       return SAPI_RC_BAD_PARAMETER;
     }
   }
@@ -705,14 +731,7 @@ TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
     return result;
   }
 
-  // Pack the signature structure to a string, |scheme| has already been checked
-  if (scheme == TPM_ALG_RSAPSS) {
-    *signature =
-        StringFrom_TPM2B_PUBLIC_KEY_RSA(signature_out.signature.rsapss.sig);
-  } else {  // scheme == TPM_ALG_RSASSA
-    *signature =
-        StringFrom_TPM2B_PUBLIC_KEY_RSA(signature_out.signature.rsassa.sig);
-  }
+  *signature = unpack_helper(signature_out);
   return TPM_RC_SUCCESS;
 }
 

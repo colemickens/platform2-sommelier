@@ -149,9 +149,12 @@ class TRUNKS_EXPORT TpmUtility {
   // of |plaintext| using |hash_alg|, otherwise |plaintext| is already the hash
   // to sign. The signature produced is returned using the |signature| argument.
   // |scheme| is used to specify the signature scheme used. By default it is
-  // TPM_ALG_RSASSA, but TPM_ALG_RSAPPS can be specified. |hash_alg| is the
-  // algorithm used in the signing operation. It is by default TPM_ALG_SHA256.
-  // |delegate| is an AuthorizationDelegate used to authorize this command.
+  // TPM_ALG_RSASSA, but TPM_ALG_RSAPPS and TPM_ALG_ECDSA can be specified.
+  // |hash_alg| is the algorithm used in the signing operation. It is by default
+  // TPM_ALG_SHA256. |delegate| is an AuthorizationDelegate used to authorize
+  // this command.
+  // TODO(menghuan): return TPMT_SIGNATURE instead of string* signature
+  //    ex. just like GetKeyPublicArea()
   virtual TPM_RC Sign(TPM_HANDLE key_handle,
                       TPM_ALG_ID scheme,
                       TPM_ALG_ID hash_alg,

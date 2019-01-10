@@ -812,7 +812,7 @@ TEST_F(TpmUtilityTest, AsymmetricDecryptSchemeForward) {
   EXPECT_EQ(scheme.scheme, TPM_ALG_RSAES);
 }
 
-TEST_F(TpmUtilityTest, SignSuccess) {
+TEST_F(TpmUtilityTest, SignRsaSuccess) {
   TPM_HANDLE key_handle;
   std::string password;
   std::string digest(32, 'a');
@@ -840,6 +840,39 @@ TEST_F(TpmUtilityTest, SignSuccess) {
                           true /* generate_hash */,
                           &mock_authorization_delegate_, &signature));
   EXPECT_EQ(signature, kSignatureOutput);
+}
+
+TEST_F(TpmUtilityTest, SignEcdsaSuccess) {
+  TPM_HANDLE key_handle;
+  std::string password;
+  std::string digest(32, 'a');
+
+  TPMT_SIGNATURE signature_out;
+  signature_out.signature.ecdsa.signature_r = Make_TPM2B_ECC_PARAMETER("ab");
+  signature_out.signature.ecdsa.signature_r = Make_TPM2B_ECC_PARAMETER("cd");
+  signature_out.signature.ecdsa.hash = TPM_ALG_SHA256;
+  EXPECT_CALL(mock_tpm_, SignSync(key_handle, _, _, _, _, _,
+                                  &mock_authorization_delegate_))
+      .WillOnce(DoAll(SetArgPointee<5>(signature_out), Return(TPM_RC_SUCCESS)));
+
+  TPM2B_PUBLIC public_area;
+  public_area.public_area.type = TPM_ALG_ECC;
+  public_area.public_area.object_attributes = kSign;
+  public_area.public_area.auth_policy.size = 0;
+  public_area.public_area.unique.rsa.size = 0;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+      .WillRepeatedly(
+          DoAll(SetArgPointee<2>(public_area), Return(TPM_RC_SUCCESS)));
+
+  std::string signature;
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility_.Sign(key_handle, TPM_ALG_ECDSA, TPM_ALG_SHA256, digest,
+                          true /* generate_hash */,
+                          &mock_authorization_delegate_, &signature));
+
+  std::string expected_signature;
+  Serialize_TPMT_SIGNATURE(signature_out, &expected_signature);
+  EXPECT_EQ(signature, expected_signature);
 }
 
 TEST_F(TpmUtilityTest, SignFail) {
@@ -913,13 +946,26 @@ TEST_F(TpmUtilityTest, SignBadSchemeTypeNotMatchedWithKeyType) {
   std::string digest(32, 'a');
   std::string signature;
   TPM2B_PUBLIC public_area;
-  public_area.public_area.type = TPM_ALG_ECC;
   public_area.public_area.object_attributes = kSign;
   EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
       .WillRepeatedly(
           DoAll(SetArgPointee<2>(public_area), Return(TPM_RC_SUCCESS)));
+
+  // Sign RSA scheme with ECC key
+  public_area.public_area.type = TPM_ALG_ECC;
   EXPECT_EQ(SAPI_RC_BAD_PARAMETER,
             utility_.Sign(key_handle, TPM_ALG_RSASSA, TPM_ALG_SHA256, digest,
+                          true /* generate_hash */,
+                          &mock_authorization_delegate_, &signature));
+  EXPECT_EQ(SAPI_RC_BAD_PARAMETER,
+            utility_.Sign(key_handle, TPM_ALG_RSAPSS, TPM_ALG_SHA256, digest,
+                          true /* generate_hash */,
+                          &mock_authorization_delegate_, &signature));
+
+  // Sign ECC scheme with RSA key
+  public_area.public_area.type = TPM_ALG_RSA;
+  EXPECT_EQ(SAPI_RC_BAD_PARAMETER,
+            utility_.Sign(key_handle, TPM_ALG_ECDSA, TPM_ALG_SHA256, digest,
                           true /* generate_hash */,
                           &mock_authorization_delegate_, &signature));
 }
