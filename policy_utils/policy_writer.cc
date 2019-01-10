@@ -4,6 +4,8 @@
 
 #include "policy_utils/policy_writer.h"
 
+#include <vector>
+
 #include <base/files/file_util.h>
 #include <base/json/json_writer.h>
 #include <base/values.h>
@@ -15,6 +17,30 @@ const char kPolicyDeviceAllowBluetooth[] = "DeviceAllowBluetooth";
 const char kPolicyDeviceAllowBluetoothFileName[] =
     "device_allow_bluetooth.json";
 
+// Create all non-existent directories in path |full_path. Each directory is
+// created with permission 0755. Return whether successful.
+bool CreateDirectories(const base::FilePath& full_path) {
+  std::vector<base::FilePath> subpaths;
+
+  // Collect a list of all parent directories.
+  base::FilePath last_path = full_path;
+  subpaths.push_back(full_path);
+  for (base::FilePath path = full_path.DirName();
+       path.value() != last_path.value(); path = path.DirName()) {
+    subpaths.push_back(path);
+    last_path = path;
+  }
+
+  // Iterate through the parents and create the missing ones.
+  for (std::vector<base::FilePath>::reverse_iterator i = subpaths.rbegin();
+       i != subpaths.rend(); ++i) {
+    if (!base::DirectoryExists(*i) && mkdir(i->value().c_str(), 0755) != 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
 // Converts the given policy to a JSON string and writes it to file
 // <dir_path>/<file_name>. Returns whether successul.
 bool WritePolicyToFile(const base::DictionaryValue& policy,
@@ -24,7 +50,7 @@ bool WritePolicyToFile(const base::DictionaryValue& policy,
     return false;
   }
 
-  if (!CreateDirectory(dir_path))
+  if (!CreateDirectories(dir_path))
     return false;
 
   std::string json_string;

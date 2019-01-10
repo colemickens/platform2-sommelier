@@ -18,14 +18,22 @@ namespace policy_utils {
 // list of cmd-line arguments and perform the desired action.
 class PolicyTool {
  public:
+  // The directory path where JSON files should be stored to automatically
+  // override policies in Chrome.
+  constexpr static char kChromePolicyDirPath[] =
+      "/etc/opt/chrome/policies/recommended/";
+
+  // The directory path where JSON files should be stored to automatically
+  // override policies in Chromium.
+  constexpr static char kChromiumPolicyDirPath[] =
+      "/etc/chromium/policies/recommended";
+
   // PolicyList is a list of policy names.
   typedef std::vector<const std::string> PolicyList;
 
-  // Create a PolicyTool instance that writes policy JSON files to the default
-  // directory. Use this to override policies in Chrome.
-  PolicyTool();
   // Create a PolicyTool instance that writes policy JSON files to the specified
-  // directory. Use this for testing.
+  // directory. Use one of the standard paths above for overriding policies in
+  // Chrome or Chromium.
   explicit PolicyTool(const std::string& policy_dir_path);
 
   ~PolicyTool() = default;

@@ -16,10 +16,6 @@ using policy_utils::PolicyWriter;
 // The command that is being executed.
 enum class Command { CMD_CLEAR, CMD_SET, CMD_UNKNOWN };
 
-// The directory path where JSON files should be stored to automatically
-// override policies in Chrome.
-constexpr char kPolicyDirPath[] = "/etc/opt/chrome/policies/recommended/";
-
 // Individual policies that this tool can handle.
 constexpr char kPolicyDeviceAllowBluetooth[] = "DeviceAllowBlueTooth";
 
@@ -109,14 +105,21 @@ bool HandleCommandForPolicy(Command cmd,
     }
   }
 
+  bool result = false;
   if (IsEqualNoCase(policy, kPolicyDeviceAllowBluetooth)) {
     if (cmd == Command::CMD_SET)
-      return writer.SetDeviceAllowBluetooth(set_value.GetBool());
+      result = writer.SetDeviceAllowBluetooth(set_value.GetBool());
     else
-      return writer.ClearDeviceAllowBluetooth();
+      result = writer.ClearDeviceAllowBluetooth();
   }
 
-  return false;
+  if (!result) {
+    LOG(ERROR) << "Could not write policy to file.\n"
+                  "You may need to run policy with sudo. "
+                  "You may also need to make your rootfs writeable.";
+  }
+
+  return result;
 }
 
 }  // namespace
@@ -125,7 +128,10 @@ namespace policy_utils {
 
 using base::CommandLine;
 
-PolicyTool::PolicyTool() : writer_(kPolicyDirPath) {}
+constexpr char PolicyTool::kChromePolicyDirPath[];
+constexpr char PolicyTool::kChromiumPolicyDirPath[];
+
+// PolicyTool::PolicyTool() : writer_(kChromePolicyDirPath) {}
 
 PolicyTool::PolicyTool(const std::string& policy_dir_path)
     : writer_(policy_dir_path) {}
