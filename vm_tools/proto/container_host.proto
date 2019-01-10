@@ -202,4 +202,7 @@ service ContainerListener {
   // Called by a container to update the MIME type associations for this
   // container.
   rpc UpdateMimeTypes(UpdateMimeTypesRequest) returns (EmptyMessage);
+
+  // If adding more rpc's, please update ContainerListenerFuzzerSingleAction as
+  // well.
 }

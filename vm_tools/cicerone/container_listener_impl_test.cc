@@ -71,7 +71,7 @@ void ProtoSignalHelper(dbus::Signal* signal,
 
 TEST(ContainerListenerImplTest,
      ValidContainerShutdownCallShouldProduceDBusMessage) {
-  ServiceTestingHelper test_framework;
+  ServiceTestingHelper test_framework(ServiceTestingHelper::NORMAL_MOCKS);
   test_framework.SetUpDefaultVmAndContainer();
   test_framework.ExpectNoDBusMessages();
 
@@ -114,7 +114,7 @@ TEST(ContainerListenerImplTest,
 
 void ValidUpdateApplicationListCallShouldProduceDBusMessageGeneric(
     bool plugin_vm, const char* container_name) {
-  ServiceTestingHelper test_framework;
+  ServiceTestingHelper test_framework(ServiceTestingHelper::NORMAL_MOCKS);
   if (plugin_vm)
     test_framework.SetUpPluginVm();
   else
@@ -377,7 +377,7 @@ void CompareUpdateApplicationListRequestToApplicationList(
 
 void LongerUpdateApplicationListCallShouldProduceDBusMessageGeneric(
     bool plugin_vm, const char* container_name) {
-  ServiceTestingHelper test_framework;
+  ServiceTestingHelper test_framework(ServiceTestingHelper::NORMAL_MOCKS);
   if (plugin_vm)
     test_framework.SetUpPluginVm();
   else
@@ -428,7 +428,7 @@ TEST(ContainerListenerImplTest,
 }
 
 void ValidOpenUrlCallShouldProduceDBusMessageGeneric(bool plugin_vm) {
-  ServiceTestingHelper test_framework;
+  ServiceTestingHelper test_framework(ServiceTestingHelper::NORMAL_MOCKS);
   if (plugin_vm)
     test_framework.SetUpPluginVm();
   else
@@ -474,7 +474,7 @@ TEST(ContainerListenerImplTest,
 
 TEST(ContainerListenerImplTest,
      ValidInstallLinuxPackageProgressCallShouldProduceDBusMessage) {
-  ServiceTestingHelper test_framework;
+  ServiceTestingHelper test_framework(ServiceTestingHelper::NORMAL_MOCKS);
   test_framework.SetUpDefaultVmAndContainer();
   test_framework.ExpectNoDBusMessages();
 
@@ -514,7 +514,7 @@ TEST(ContainerListenerImplTest,
 
 TEST(ContainerListenerImplTest,
      FailureInstallLinuxPackageProgressCallShouldProduceDBusMessage) {
-  ServiceTestingHelper test_framework;
+  ServiceTestingHelper test_framework(ServiceTestingHelper::NORMAL_MOCKS);
   test_framework.SetUpDefaultVmAndContainer();
   test_framework.ExpectNoDBusMessages();
 
@@ -554,7 +554,7 @@ TEST(ContainerListenerImplTest,
 
 TEST(ContainerListenerImplTest,
      ValidUninstallPackageProgressCallShouldProduceDBusMessage) {
-  ServiceTestingHelper test_framework;
+  ServiceTestingHelper test_framework(ServiceTestingHelper::NORMAL_MOCKS);
   test_framework.SetUpDefaultVmAndContainer();
   test_framework.ExpectNoDBusMessages();
 
@@ -592,7 +592,7 @@ TEST(ContainerListenerImplTest,
 
 TEST(ContainerListenerImplTest,
      FailedUninstallPackageProgressCallShouldProduceDBusMessage) {
-  ServiceTestingHelper test_framework;
+  ServiceTestingHelper test_framework(ServiceTestingHelper::NORMAL_MOCKS);
   test_framework.SetUpDefaultVmAndContainer();
   test_framework.ExpectNoDBusMessages();
 
@@ -629,7 +629,7 @@ TEST(ContainerListenerImplTest,
 }
 
 TEST(ContainerListenerImplTest, ValidOpenTerminalCallShouldProduceDBusMessage) {
-  ServiceTestingHelper test_framework;
+  ServiceTestingHelper test_framework(ServiceTestingHelper::NORMAL_MOCKS);
   test_framework.SetUpDefaultVmAndContainer();
   test_framework.ExpectNoDBusMessages();
 
@@ -672,7 +672,7 @@ TEST(ContainerListenerImplTest, ValidOpenTerminalCallShouldProduceDBusMessage) {
 
 TEST(ContainerListenerImplTest,
      ValidUpdateMimeTypesCallShouldProduceDBusMessage) {
-  ServiceTestingHelper test_framework;
+  ServiceTestingHelper test_framework(ServiceTestingHelper::NORMAL_MOCKS);
   test_framework.SetUpDefaultVmAndContainer();
   test_framework.ExpectNoDBusMessages();
 

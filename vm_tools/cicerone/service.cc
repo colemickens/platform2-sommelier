@@ -2375,7 +2375,11 @@ bool Service::GetVirtualMachineForCidOrToken(const uint32_t cid,
       *owner_id_out = vm.first.first;
       *name_out = vm.first.second;
       *vm_out = vm.second.get();
+      // This DCHECK is asserting the inputs are valid. Since fuzzers are
+      // intended to give us invalid inputs, skip the DCHECK when fuzzing.
+#ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
       DCHECK((*vm_out)->IsPluginVm());
+#endif  // FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
       return true;
     }
     return false;

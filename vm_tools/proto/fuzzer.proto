@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+option cc_enable_arenas = true;
+
+package vm_tools.container;
+
+import "container_host.proto";
+import "tremplin.proto";
+
+// A proto representation of a grpc::Status
+
+// A special message that contains all the possible inputs to the
+// ContainerListener service plus some controls over the call results.
+//
+// This is used for fuzz testing; we get some fuzzed examples of this message
+// and then call the correct rpc handler based on which of the oneof is set.
+message ContainerListenerFuzzerSingleAction {
+  oneof input {
+    ContainerStartupInfo container_startup_info = 1;
+    ContainerShutdownInfo container_shutdown_info = 2;
+    UpdateApplicationListRequest update_application_list_request = 3;
+    OpenUrlRequest open_url_request = 4;
+    InstallLinuxPackageProgressInfo install_linux_package_progress_info = 5;
+    UninstallPackageProgressInfo uninstall_package_progress_info = 6;
+    OpenTerminalRequest open_terminal_request = 7;
+    UpdateMimeTypesRequest update_mime_types_request = 8;
+  }
+
+  // Claim all gRPC messages come from this address (overrides
+  // grpc::ServerContext::peer()).
+  string peer_address = 9;
+
+  // If true, return a non-null response from dbus CallMethodAndBlock.
+  bool return_dbus_response = 10;
+
+  // Controls the TremplinTestStub. These represent the status code and response
+  // protos for all the various Tremplin server calls.
+  int32 tremplin_create_container_status = 11;
+  vm_tools.tremplin.CreateContainerResponse tremplin_create_container_response =
+      12;
+  int32 tremplin_start_container_status = 13;
+  vm_tools.tremplin.StartContainerResponse tremplin_start_container_response =
+      14;
+  int32 tremplin_get_container_username_status = 15;
+  vm_tools.tremplin.GetContainerUsernameResponse
+      tremplin_get_container_username_response = 16;
+  int32 tremplin_set_up_user_status = 17;
+  vm_tools.tremplin.SetUpUserResponse tremplin_set_up_user_response = 18;
+  int32 tremplin_get_container_info_status = 19;
+  vm_tools.tremplin.GetContainerInfoResponse
+      tremplin_get_container_info_response = 20;
+  int32 tremplin_set_timezone_status = 21;
+  vm_tools.tremplin.SetTimezoneResponse tremplin_set_timezone_response = 22;
+  int32 tremplin_export_container_status = 23;
+  vm_tools.tremplin.ExportContainerResponse tremplin_export_container_response =
+      24;
+  int32 tremplin_import_container_status = 25;
+  vm_tools.tremplin.ImportContainerResponse tremplin_import_container_response =
+      26;
+}
+
+// A list of fuzzer actions. This is the actual input to the fuzzer.
+message ContainerListenerFuzzerInput {
+  repeated ContainerListenerFuzzerSingleAction action = 1;
+}

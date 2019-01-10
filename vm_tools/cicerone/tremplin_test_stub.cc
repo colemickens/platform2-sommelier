@@ -65,6 +65,24 @@ void TremplinTestStub::SetSetTimezoneResponse(
   base::AutoLock lock_scope(lock_);
   set_timezone_response_ = response;
 }
+void TremplinTestStub::SetExportContainerReturn(const grpc::Status& status) {
+  base::AutoLock lock_scope(lock_);
+  export_container_return_ = status;
+}
+void TremplinTestStub::SetExportContainerResponse(
+    const vm_tools::tremplin::ExportContainerResponse& response) {
+  base::AutoLock lock_scope(lock_);
+  export_container_response_ = response;
+}
+void TremplinTestStub::SetImportContainerReturn(const grpc::Status& status) {
+  base::AutoLock lock_scope(lock_);
+  import_container_return_ = status;
+}
+void TremplinTestStub::SetImportContainerResponse(
+    const vm_tools::tremplin::ImportContainerResponse& response) {
+  base::AutoLock lock_scope(lock_);
+  import_container_response_ = response;
+}
 
 grpc::Status TremplinTestStub::CreateContainer(
     grpc::ServerContext* ctx,
@@ -129,6 +147,28 @@ grpc::Status TremplinTestStub::SetTimezone(
   *response = set_timezone_response_;
   grpc::Status return_status =
       set_timezone_return_;  // Copy while still holding |lock_|.
+  return return_status;
+}
+
+grpc::Status TremplinTestStub::ExportContainer(
+    grpc::ServerContext* ctx,
+    const vm_tools::tremplin::ExportContainerRequest* request,
+    vm_tools::tremplin::ExportContainerResponse* response) {
+  base::AutoLock lock_scope(lock_);
+  *response = export_container_response_;
+  grpc::Status return_status =
+      export_container_return_;  // Copy while still holding |lock_|.
+  return return_status;
+}
+
+grpc::Status TremplinTestStub::ImportContainer(
+    grpc::ServerContext* ctx,
+    const vm_tools::tremplin::ImportContainerRequest* request,
+    vm_tools::tremplin::ImportContainerResponse* response) {
+  base::AutoLock lock_scope(lock_);
+  *response = import_container_response_;
+  grpc::Status return_status =
+      import_container_return_;  // Copy while still holding |lock_|.
   return return_status;
 }
 

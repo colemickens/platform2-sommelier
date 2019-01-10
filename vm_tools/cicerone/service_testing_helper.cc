@@ -4,6 +4,8 @@
 
 #include "vm_tools/cicerone/service_testing_helper.h"
 
+#include <utility>
+
 #include <base/bind.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
@@ -35,6 +37,7 @@ namespace {
 using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::Invoke;
+using ::testing::NiceMock;
 using ::testing::Return;
 
 // Handles callbacks for CallDBus.
@@ -113,12 +116,12 @@ dbus::Response* CheckSetHostnameIpMappingMethod(dbus::MethodCall* method_call,
 ServiceTestingHelper::DbusCallback::DbusCallback() = default;
 ServiceTestingHelper::DbusCallback::~DbusCallback() = default;
 
-ServiceTestingHelper::ServiceTestingHelper() {
+ServiceTestingHelper::ServiceTestingHelper(MockType mock_type) {
   CHECK(socket_temp_dir_.CreateUniqueTempDir());
   StartTremplinStub();
   quit_closure_called_count_ = 0;
 
-  SetupDBus();
+  SetupDBus(mock_type);
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   CHECK(dbus_thread_.task_runner()->PostTask(
@@ -536,7 +539,13 @@ bool ServiceTestingHelper::StoreDBusCallback(
   return true;
 }
 
-void ServiceTestingHelper::SetupDBus() {
+void ServiceTestingHelper::CallServiceAvailableCallback(
+    dbus::ObjectProxy::WaitForServiceToBeAvailableCallback callback) {
+  CHECK(dbus_thread_.task_runner()->PostTask(
+      FROM_HERE, base::Bind(std::move(callback), true)));
+}
+
+void ServiceTestingHelper::SetupDBus(MockType mock_type) {
   dbus_serial_ = 1;  // DBus serial numbers must never be 0.
 
   SetDbusCallbackNames();
@@ -546,22 +555,42 @@ void ServiceTestingHelper::SetupDBus() {
   CHECK(dbus_thread_.StartWithOptions(dbus_thread_options));
 
   dbus::Bus::Options opts;
-  mock_bus_ = new dbus::MockBus(opts);
+  if (mock_type == NORMAL_MOCKS) {
+    mock_bus_ = new dbus::MockBus(opts);
 
-  mock_exported_object_ =
-      new dbus::MockExportedObject(mock_bus_.get(), dbus::ObjectPath());
+    mock_exported_object_ =
+        new dbus::MockExportedObject(mock_bus_.get(), dbus::ObjectPath());
 
-  mock_vm_applications_service_proxy_ =
-      new dbus::MockObjectProxy(mock_bus_.get(), "", dbus::ObjectPath());
+    mock_vm_applications_service_proxy_ =
+        new dbus::MockObjectProxy(mock_bus_.get(), "", dbus::ObjectPath());
 
-  mock_url_handler_service_proxy_ =
-      new dbus::MockObjectProxy(mock_bus_.get(), "", dbus::ObjectPath());
+    mock_url_handler_service_proxy_ =
+        new dbus::MockObjectProxy(mock_bus_.get(), "", dbus::ObjectPath());
 
-  mock_crosdns_service_proxy_ =
-      new dbus::MockObjectProxy(mock_bus_.get(), "", dbus::ObjectPath());
+    mock_crosdns_service_proxy_ =
+        new dbus::MockObjectProxy(mock_bus_.get(), "", dbus::ObjectPath());
 
-  mock_concierge_service_proxy_ =
-      new dbus::MockObjectProxy(mock_bus_.get(), "", dbus::ObjectPath());
+    mock_concierge_service_proxy_ =
+        new dbus::MockObjectProxy(mock_bus_.get(), "", dbus::ObjectPath());
+  } else {
+    DCHECK_EQ(mock_type, NICE_MOCKS);
+    mock_bus_ = new NiceMock<dbus::MockBus>(opts);
+
+    mock_exported_object_ = new NiceMock<dbus::MockExportedObject>(
+        mock_bus_.get(), dbus::ObjectPath());
+
+    mock_vm_applications_service_proxy_ = new NiceMock<dbus::MockObjectProxy>(
+        mock_bus_.get(), "", dbus::ObjectPath());
+
+    mock_url_handler_service_proxy_ = new NiceMock<dbus::MockObjectProxy>(
+        mock_bus_.get(), "", dbus::ObjectPath());
+
+    mock_crosdns_service_proxy_ = new NiceMock<dbus::MockObjectProxy>(
+        mock_bus_.get(), "", dbus::ObjectPath());
+
+    mock_concierge_service_proxy_ = new NiceMock<dbus::MockObjectProxy>(
+        mock_bus_.get(), "", dbus::ObjectPath());
+  }
 
   // Set up enough expectations so that Service::Init will succeed.
   EXPECT_CALL(*mock_bus_, GetExportedObject(_))
@@ -585,6 +614,10 @@ void ServiceTestingHelper::SetupDBus() {
   EXPECT_CALL(*mock_bus_,
               GetObjectProxy(vm_tools::concierge::kVmConciergeServiceName, _))
       .WillOnce(Return(mock_concierge_service_proxy_.get()));
+
+  EXPECT_CALL(*mock_crosdns_service_proxy_, WaitForServiceToBeAvailable(_))
+      .WillOnce(
+          Invoke(this, &ServiceTestingHelper::CallServiceAvailableCallback));
 
   // We need to store off the callback objects so that we can simulate DBus
   // calls later.

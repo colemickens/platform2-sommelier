@@ -68,9 +68,13 @@ class ServiceTestingHelper {
     kNumDbusCalls
   };
 
+  // Unit tests want the normal mock behavior, but fuzz tests want the NiceMock
+  // behavior, because they want to print as little as possible.
+  enum MockType { NORMAL_MOCKS, NICE_MOCKS };
+
   // Sets up mock objects so that Service can be created, and then creates
   // Service, binding it to the mocks. Also gathers the dbus callbacks.
-  ServiceTestingHelper();
+  explicit ServiceTestingHelper(MockType mock_type);
   ~ServiceTestingHelper();
 
   // The directory containing the AF_UNIX sockets needed to talk to the grpc
@@ -168,7 +172,7 @@ class ServiceTestingHelper {
 
   std::string GetTremplinStubAddress() const;
 
-  void SetupDBus();
+  void SetupDBus(MockType mock_type);
 
   void StartTremplinStub();
 
@@ -230,6 +234,10 @@ class ServiceTestingHelper {
       const std::string& interface_name,
       const std::string& method_name,
       dbus::ExportedObject::MethodCallCallback method_call_callback);
+
+  // Posts a task to call the given callback.
+  void CallServiceAvailableCallback(
+      dbus::ObjectProxy::WaitForServiceToBeAvailableCallback callback);
 
   // Number of times Service called its quit closure.
   int quit_closure_called_count_;

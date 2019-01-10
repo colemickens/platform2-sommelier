@@ -38,6 +38,12 @@ class TremplinTestStub final : public vm_tools::tremplin::Tremplin::Service {
   void SetSetTimezoneReturn(const grpc::Status& status);
   void SetSetTimezoneResponse(
       const vm_tools::tremplin::SetTimezoneResponse& response);
+  void SetExportContainerReturn(const grpc::Status& status);
+  void SetExportContainerResponse(
+      const vm_tools::tremplin::ExportContainerResponse& response);
+  void SetImportContainerReturn(const grpc::Status& status);
+  void SetImportContainerResponse(
+      const vm_tools::tremplin::ImportContainerResponse& response);
 
   // vm_tools::tremplin::Tremplin::Service overrides:
   grpc::Status CreateContainer(
@@ -70,6 +76,16 @@ class TremplinTestStub final : public vm_tools::tremplin::Tremplin::Service {
       const vm_tools::tremplin::SetTimezoneRequest* request,
       vm_tools::tremplin::SetTimezoneResponse* response) override;
 
+  grpc::Status ExportContainer(
+      grpc::ServerContext* ctx,
+      const vm_tools::tremplin::ExportContainerRequest* request,
+      vm_tools::tremplin::ExportContainerResponse* response) override;
+
+  grpc::Status ImportContainer(
+      grpc::ServerContext* ctx,
+      const vm_tools::tremplin::ImportContainerRequest* request,
+      vm_tools::tremplin::ImportContainerResponse* response) override;
+
  private:
   // |lock_| controls access to all other variables.
   base::Lock lock_;
@@ -87,6 +103,10 @@ class TremplinTestStub final : public vm_tools::tremplin::Tremplin::Service {
   vm_tools::tremplin::GetContainerInfoResponse get_container_info_response_;
   grpc::Status set_timezone_return_;
   vm_tools::tremplin::SetTimezoneResponse set_timezone_response_;
+  grpc::Status export_container_return_;
+  vm_tools::tremplin::ExportContainerResponse export_container_response_;
+  grpc::Status import_container_return_;
+  vm_tools::tremplin::ImportContainerResponse import_container_response_;
 };
 
 }  // namespace cicerone

@@ -218,21 +218,8 @@
     },
   ],
   'conditions': [
-    ['USE_test == 1', {
+    ['USE_test == 1 or USE_fuzzer == 1', {
       'targets': [
-        {
-          'target_name': 'syslog_forwarder_test',
-          'type': 'executable',
-          'dependencies': [
-            'libforwarder',
-            '../common-mk/testrunner.gyp:testrunner',
-          ],
-          'includes': ['../common-mk/common_test.gypi'],
-          'sources': [
-            'syslog/forwarder_test.cc',
-            'syslog/scrubber_test.cc',
-          ],
-        },
         {
           'target_name': 'service_testing_helper_lib',
           'type': 'static_library',
@@ -257,6 +244,23 @@
             'cicerone/service_testing_helper.h',
             'cicerone/tremplin_test_stub.cc',
             'cicerone/tremplin_test_stub.h',
+          ],
+        },
+      ],
+    }],
+    ['USE_test == 1', {
+      'targets': [
+        {
+          'target_name': 'syslog_forwarder_test',
+          'type': 'executable',
+          'dependencies': [
+            'libforwarder',
+            '../common-mk/testrunner.gyp:testrunner',
+          ],
+          'includes': ['../common-mk/common_test.gypi'],
+          'sources': [
+            'syslog/forwarder_test.cc',
+            'syslog/scrubber_test.cc',
           ],
         },
         {
