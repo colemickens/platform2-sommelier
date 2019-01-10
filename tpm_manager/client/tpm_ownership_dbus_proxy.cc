@@ -59,6 +59,13 @@ void TpmOwnershipDBusProxy::GetDictionaryAttackInfo(
       tpm_manager::kGetDictionaryAttackInfo, request, callback);
 }
 
+void TpmOwnershipDBusProxy::ResetDictionaryAttackLock(
+    const ResetDictionaryAttackLockRequest& request,
+    const ResetDictionaryAttackLockCallback& callback) {
+  CallMethod<ResetDictionaryAttackLockReply>(
+      tpm_manager::kResetDictionaryAttackLock, request, callback);
+}
+
 void TpmOwnershipDBusProxy::TakeOwnership(
     const TakeOwnershipRequest& request,
     const TakeOwnershipCallback& callback) {

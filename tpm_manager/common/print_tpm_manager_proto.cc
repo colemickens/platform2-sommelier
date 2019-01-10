@@ -854,6 +854,43 @@ std::string GetProtoDebugStringWithIndent(
   return output;
 }
 
+std::string GetProtoDebugString(const ResetDictionaryAttackLockRequest& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(
+    const ResetDictionaryAttackLockRequest& value,
+    int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  output += indent + "}\n";
+  return output;
+}
+
+std::string GetProtoDebugString(const ResetDictionaryAttackLockReply& value) {
+  return GetProtoDebugStringWithIndent(value, 0);
+}
+
+std::string GetProtoDebugStringWithIndent(
+    const ResetDictionaryAttackLockReply& value,
+    int indent_size) {
+  std::string indent(indent_size, ' ');
+  std::string output =
+      base::StringPrintf("[%s] {\n", value.GetTypeName().c_str());
+
+  if (value.has_status()) {
+    output += indent + "  status: ";
+    base::StringAppendF(
+        &output, "%s",
+        GetProtoDebugStringWithIndent(value.status(), indent_size + 2).c_str());
+    output += "\n";
+  }
+  output += indent + "}\n";
+  return output;
+}
+
 std::string GetProtoDebugString(const TakeOwnershipRequest& value) {
   return GetProtoDebugStringWithIndent(value, 0);
 }

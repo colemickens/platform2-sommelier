@@ -100,6 +100,9 @@ class TpmManagerService : public TpmNvramInterface,
   void GetDictionaryAttackInfo(
       const GetDictionaryAttackInfoRequest& request,
       const GetDictionaryAttackInfoCallback& callback) override;
+  void ResetDictionaryAttackLock(
+      const ResetDictionaryAttackLockRequest& request,
+      const ResetDictionaryAttackLockCallback& callback) override;
   void TakeOwnership(const TakeOwnershipRequest& request,
                      const TakeOwnershipCallback& callback) override;
   void RemoveOwnerDependency(
@@ -164,6 +167,12 @@ class TpmManagerService : public TpmNvramInterface,
   void GetDictionaryAttackInfoTask(
       const GetDictionaryAttackInfoRequest& request,
       const std::shared_ptr<GetDictionaryAttackInfoReply>& result);
+
+  // Blocking implementation of ResetDictionaryAttackLock that can be executed
+  // on the background worker thread.
+  void ResetDictionaryAttackLockTask(
+      const ResetDictionaryAttackLockRequest& request,
+      const std::shared_ptr<ResetDictionaryAttackLockReply>& result);
 
   // Blocking implementation of TakeOwnership that can be executed on the
   // background worker thread.

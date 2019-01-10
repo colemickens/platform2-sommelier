@@ -102,6 +102,14 @@ std::string GetProtoDebugStringWithIndent(
     const GetDictionaryAttackInfoReply& value,
     int indent_size);
 std::string GetProtoDebugString(const GetDictionaryAttackInfoReply& value);
+std::string GetProtoDebugStringWithIndent(
+    const ResetDictionaryAttackLockRequest& value,
+    int indent_size);
+std::string GetProtoDebugString(const ResetDictionaryAttackLockRequest& value);
+std::string GetProtoDebugStringWithIndent(
+    const ResetDictionaryAttackLockReply& value,
+    int indent_size);
+std::string GetProtoDebugString(const ResetDictionaryAttackLockReply& value);
 std::string GetProtoDebugStringWithIndent(const TakeOwnershipRequest& value,
                                           int indent_size);
 std::string GetProtoDebugString(const TakeOwnershipRequest& value);

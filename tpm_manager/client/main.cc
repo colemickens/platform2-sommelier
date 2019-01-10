@@ -40,6 +40,7 @@ namespace tpm_manager {
 
 constexpr char kGetTpmStatusCommand[] = "status";
 constexpr char kGetDictionaryAttackInfoCommand[] = "get_da_info";
+constexpr char kResetDictionaryAttackLockCommand[] = "reset_da_lock";
 constexpr char kTakeOwnershipCommand[] = "take_ownership";
 constexpr char kRemoveOwnerDependencyCommand[] = "remove_dependency";
 constexpr char kClearStoredOwnerPasswordCommand[] = "clear_owner_password";
@@ -71,6 +72,8 @@ Commands:
       the option --include_version_info is provided.
   get_da_info
       Prints TPM dictionary attack information.
+  reset_da_lock
+      Resets dictionary attack lock
   take_ownership
       Takes ownership of the Tpm with a random password.
   remove_dependency --dependency=<owner_dependency>
@@ -222,6 +225,9 @@ class ClientLoop : public ClientLoopBase {
     } else if (command == kGetDictionaryAttackInfoCommand) {
       task = base::Bind(&ClientLoop::HandleGetDictionaryAttackInfo,
                         weak_factory_.GetWeakPtr());
+    } else if (command == kResetDictionaryAttackLockCommand) {
+      task = base::Bind(&ClientLoop::HandleResetDictionaryAttackLock,
+                        weak_factory_.GetWeakPtr());
     } else if (command == kTakeOwnershipCommand) {
       task = base::Bind(&ClientLoop::HandleTakeOwnership,
                         weak_factory_.GetWeakPtr());
@@ -326,6 +332,15 @@ class ClientLoop : public ClientLoopBase {
         request,
         base::Bind(&ClientLoop::PrintReplyAndQuit<GetDictionaryAttackInfoReply>,
                    weak_factory_.GetWeakPtr()));
+  }
+
+  void HandleResetDictionaryAttackLock() {
+    ResetDictionaryAttackLockRequest request;
+    tpm_ownership_->ResetDictionaryAttackLock(
+        request,
+        base::Bind(
+            &ClientLoop::PrintReplyAndQuit<ResetDictionaryAttackLockReply>,
+            weak_factory_.GetWeakPtr()));
   }
 
   void HandleTakeOwnership() {

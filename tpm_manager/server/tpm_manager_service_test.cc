@@ -347,6 +347,36 @@ TEST_F(TpmManagerServiceTest, GetDictionaryAttackInfoError) {
   Run();
 }
 
+TEST_F(TpmManagerServiceTest, ResetDictionaryAttackLockSuccess) {
+  EXPECT_CALL(mock_tpm_initializer_, ResetDictionaryAttackLock())
+      .WillOnce(Return(true));
+
+  auto callback = [](TpmManagerServiceTest* self,
+                     const ResetDictionaryAttackLockReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    self->Quit();
+  };
+
+  service_->ResetDictionaryAttackLock(
+      ResetDictionaryAttackLockRequest(), base::Bind(callback, this));
+  Run();
+}
+
+TEST_F(TpmManagerServiceTest, ResetDictionaryAttackLockFailure) {
+  EXPECT_CALL(mock_tpm_initializer_, ResetDictionaryAttackLock())
+      .WillOnce(Return(false));
+
+  auto callback = [](TpmManagerServiceTest* self,
+                     const ResetDictionaryAttackLockReply& reply) {
+    EXPECT_EQ(STATUS_DEVICE_ERROR, reply.status());
+    self->Quit();
+  };
+
+  service_->ResetDictionaryAttackLock(
+      ResetDictionaryAttackLockRequest(), base::Bind(callback, this));
+  Run();
+}
+
 TEST_F(TpmManagerServiceTest, TakeOwnershipSuccess) {
   // Make sure InitializeTpm doesn't get multiple calls.
   EXPECT_CALL(mock_tpm_initializer_, InitializeTpm()).Times(1);

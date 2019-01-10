@@ -265,6 +265,13 @@ message GetDictionaryAttackInfoReply {
   optional uint32 dictionary_attack_lockout_seconds_remaining = 5;
 }
 
+message ResetDictionaryAttackLockRequest {
+}
+
+message ResetDictionaryAttackLockReply {
+  optional TpmManagerStatus status = 1;
+}
+
 message TakeOwnershipRequest {
 }
 

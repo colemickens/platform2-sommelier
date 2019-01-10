@@ -178,9 +178,10 @@ class Tpm2Impl : public Tpm {
                                int* threshold,
                                bool* lockout,
                                int* seconds_remaining) override;
+  // Asynchronously resets DA lock in tpm_managerd.
   bool ResetDictionaryAttackMitigation(
-      const brillo::SecureBlob& delegate_blob,
-      const brillo::SecureBlob& delegate_secret) override;
+      const brillo::SecureBlob& /* delegate_blob */,
+      const brillo::SecureBlob& /* delegate_secret */) override;
   void DeclareTpmFirmwareStable() override;
   bool RemoveOwnerDependency(
       TpmPersistentState::TpmOwnerDependency dependency) override;
@@ -219,6 +220,18 @@ class Tpm2Impl : public Tpm {
   // thread was started and both tpm_owner_ and tpm_nvram_ are valid.
   bool InitializeTpmManagerClients();
   void InitializeClientsOnTpmManagerThread(base::WaitableEvent* completion);
+
+  // Posts a task to |tpm_manager_thread_| to send a request to tpm_managerd.
+  // |method| will be called on |tpm_manager_thread_|. This function doesn't
+  // wait for the call to return but instead returns immediately after posting
+  // the task. |callback| will be called when an reply from tpm_managerd is
+  // received.
+  //
+  // Returns if the new task is successfully posted to |tpm_manager_thread_|.
+  template <typename ReplyProtoType, typename MethodType>
+  bool SendTpmManagerRequest(
+      const MethodType& method,
+      const base::Callback<void(const ReplyProtoType&)>& callback);
 
   // Sends a request to the TPM Manager daemon that expects a ReplyProtoType and
   // waits for a reply. The |method| will be called on the |tpm_manager_thread_|

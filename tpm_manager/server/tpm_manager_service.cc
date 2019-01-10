@@ -231,6 +231,34 @@ void TpmManagerService::GetDictionaryAttackInfoTask(
   reply->set_status(STATUS_SUCCESS);
 }
 
+void TpmManagerService::ResetDictionaryAttackLock(
+    const ResetDictionaryAttackLockRequest& request,
+    const ResetDictionaryAttackLockCallback& callback) {
+  PostTaskToWorkerThread<ResetDictionaryAttackLockReply>(
+      request, callback, &TpmManagerService::ResetDictionaryAttackLockTask);
+}
+
+void TpmManagerService::ResetDictionaryAttackLockTask(
+    const ResetDictionaryAttackLockRequest& request,
+    const std::shared_ptr<ResetDictionaryAttackLockReply>& reply) {
+  VLOG(1) << __func__;
+
+  if (!tpm_initializer_) {
+    LOG(ERROR) << __func__ << ": request received before tpm manager service "
+               << "is initialized.";
+    reply->set_status(STATUS_NOT_AVAILABLE);
+    return;
+  }
+
+  if (!tpm_initializer_->ResetDictionaryAttackLock()) {
+    LOG(ERROR) << __func__ << ": failed to reset DA lock.";
+    reply->set_status(STATUS_DEVICE_ERROR);
+    return;
+  }
+
+  reply->set_status(STATUS_SUCCESS);
+}
+
 void TpmManagerService::TakeOwnership(const TakeOwnershipRequest& request,
                                       const TakeOwnershipCallback& callback) {
   PostTaskToWorkerThread<TakeOwnershipReply>(

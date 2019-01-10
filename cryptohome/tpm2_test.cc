@@ -97,6 +97,9 @@ class Tpm2Test : public testing::Test {
     ON_CALL(mock_tpm_owner_, GetDictionaryAttackInfo(_, _))
         .WillByDefault(
             WithArg<1>(Invoke(this, &Tpm2Test::FakeGetDictionaryAttackInfo)));
+    ON_CALL(mock_tpm_owner_, ResetDictionaryAttackLock(_, _))
+        .WillByDefault(
+            WithArg<1>(Invoke(this, &Tpm2Test::FakeResetDictionaryAttackLock)));
     ON_CALL(mock_tpm_owner_, RemoveOwnerDependency(_, _))
         .WillByDefault(Invoke(this, &Tpm2Test::FakeRemoveOwnerDependency));
     ON_CALL(mock_tpm_owner_, ClearStoredOwnerPassword(_, _))
@@ -125,6 +128,7 @@ class Tpm2Test : public testing::Test {
   tpm_manager::GetSpaceInfoReply next_get_space_info_reply;
   tpm_manager::RemoveOwnerDependencyReply next_remove_owner_dependency_reply;
   tpm_manager::ClearStoredOwnerPasswordReply next_clear_stored_password_reply;
+  tpm_manager::ResetDictionaryAttackLockReply reset_da_lock_reply;
 
   std::unique_ptr<Tpm2Impl> tpm_;
   NiceMock<trunks::MockAuthorizationDelegate> mock_authorization_delegate_;
@@ -166,6 +170,12 @@ class Tpm2Test : public testing::Test {
       const tpm_manager::TpmOwnershipInterface::GetDictionaryAttackInfoCallback&
           callback) {
     callback.Run(da_info_);
+  }
+
+  void FakeResetDictionaryAttackLock(
+      const tpm_manager::TpmOwnershipInterface::
+          ResetDictionaryAttackLockCallback& callback) {
+    callback.Run(reset_da_lock_reply);
   }
 
   void FakeRemoveOwnerDependency(
@@ -322,6 +332,16 @@ TEST_F(Tpm2Test, GetDictionaryAttackInfoError) {
                                              &threshold,
                                              &lockout,
                                              &seconds_remaining));
+}
+
+TEST_F(Tpm2Test, ResetDictionaryAttackMitigation) {
+  const tpm_manager::ResetDictionaryAttackLockRequest expected_request;
+  EXPECT_CALL(mock_tpm_owner_,
+          ResetDictionaryAttackLock(ProtobufEquals(expected_request), _))
+      .Times(1);
+
+  const SecureBlob unused;
+  EXPECT_TRUE(tpm_->ResetDictionaryAttackMitigation(unused, unused));
 }
 
 TEST_F(Tpm2Test, GetRandomDataSuccess) {

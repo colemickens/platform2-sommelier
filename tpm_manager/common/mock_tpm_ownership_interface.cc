@@ -38,6 +38,9 @@ MockTpmOwnershipInterface::MockTpmOwnershipInterface() {
   ON_CALL(*this, GetDictionaryAttackInfo(_, _))
       .WillByDefault(
           WithArgs<1>(Invoke(RunCallback<GetDictionaryAttackInfoReply>)));
+  ON_CALL(*this, ResetDictionaryAttackLock(_, _))
+      .WillByDefault(
+          WithArgs<1>(Invoke(RunCallback<ResetDictionaryAttackLockReply>)));
   ON_CALL(*this, TakeOwnership(_, _))
       .WillByDefault(WithArgs<1>(Invoke(RunCallback<TakeOwnershipReply>)));
   ON_CALL(*this, RemoveOwnerDependency(_, _))

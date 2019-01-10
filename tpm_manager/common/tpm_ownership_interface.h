@@ -47,6 +47,14 @@ class TPM_MANAGER_EXPORT TpmOwnershipInterface {
       const GetDictionaryAttackInfoRequest& request,
       const GetDictionaryAttackInfoCallback& callback) = 0;
 
+  // Resets dictionary attack (DA) lock. Processes |request| and calls
+  // |callback| with a reply when the process is done.
+  using ResetDictionaryAttackLockCallback =
+      base::Callback<void(const ResetDictionaryAttackLockReply&)>;
+  virtual void ResetDictionaryAttackLock(
+      const ResetDictionaryAttackLockRequest& request,
+      const ResetDictionaryAttackLockCallback& callback) = 0;
+
   // Processes a TakeOwnershipRequest and responds with a TakeOwnershipReply.
   using TakeOwnershipCallback = base::Callback<void(const TakeOwnershipReply&)>;
   virtual void TakeOwnership(const TakeOwnershipRequest& request,

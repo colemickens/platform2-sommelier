@@ -156,6 +156,25 @@ TEST_F(DBusServiceTest, GetDictionaryAttackInfo) {
   EXPECT_EQ(5, reply.dictionary_attack_lockout_seconds_remaining());
 }
 
+TEST_F(DBusServiceTest, ResetDictionaryAttackLock) {
+  RegisterDBusObjectsAsync();
+
+  ResetDictionaryAttackLockRequest request;
+  EXPECT_CALL(mock_ownership_service_, ResetDictionaryAttackLock(_, _))
+      .WillOnce(Invoke(
+          [](const ResetDictionaryAttackLockRequest& request,
+             const TpmOwnershipInterface::ResetDictionaryAttackLockCallback&
+                 callback) {
+            ResetDictionaryAttackLockReply reply;
+            reply.set_status(STATUS_SUCCESS);
+            callback.Run(reply);
+          }));
+  ResetDictionaryAttackLockReply reply;
+  ExecuteMethod(
+      kResetDictionaryAttackLock, request, &reply, kTpmOwnershipInterface);
+  EXPECT_EQ(STATUS_SUCCESS, reply.status());
+}
+
 TEST_F(DBusServiceTest, TakeOwnership) {
   RegisterDBusObjectsAsync();
 

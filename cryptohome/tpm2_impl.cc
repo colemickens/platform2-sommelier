@@ -1211,22 +1211,31 @@ bool Tpm2Impl::GetDictionaryAttackInfo(int* counter,
 }
 
 bool Tpm2Impl::ResetDictionaryAttackMitigation(
-    const SecureBlob& delegate_blob, const SecureBlob& delegate_secret) {
-  if (!UpdateTpmStatus(RefreshType::REFRESH_IF_NEEDED)) {
+    const SecureBlob& /* delegate_blob */,
+    const SecureBlob& /* delegate_secret */) {
+  if (!InitializeTpmManagerClients()) {
     return false;
   }
-  if (!tpm_status_.local_data().has_lockout_password() ||
-      !tpm_status_.owned()) {
-    return false;
+
+  auto method = base::Bind(
+      &tpm_manager::TpmOwnershipInterface::ResetDictionaryAttackLock,
+      base::Unretained(tpm_owner_),
+      tpm_manager::ResetDictionaryAttackLockRequest());
+
+  auto callback = base::Bind(
+      [](const tpm_manager::ResetDictionaryAttackLockReply& reply) {
+        if (reply.status() == tpm_manager::STATUS_SUCCESS) {
+          LOG(INFO) << "Successfully reset DA lock.";
+        } else {
+          LOG(ERROR) << "Failed to reset DA lock from tpm_managerd.";
+        }
+      });
+
+  if (!SendTpmManagerRequest(method, callback)) {
+    LOG(ERROR) << __func__ << "Failed to post a new task to reset DA lock.";
   }
-  TrunksClientContext* trunks;
-  if (!GetTrunksContext(&trunks)) {
-    return false;
-  }
-  auto authorization = trunks->factory->GetPasswordAuthorization(
-      tpm_status_.local_data().lockout_password());
-  return (trunks->tpm_utility->ResetDictionaryAttackLock(authorization.get()) ==
-          TPM_RC_SUCCESS);
+
+  return true;
 }
 
 void Tpm2Impl::DeclareTpmFirmwareStable() {
@@ -1373,6 +1382,14 @@ bool Tpm2Impl::InitializeTpmManagerClients() {
     return false;
   }
   return true;
+}
+
+template <typename ReplyProtoType, typename MethodType>
+bool Tpm2Impl::SendTpmManagerRequest(
+    const MethodType& method,
+    const base::Callback<void(const ReplyProtoType&)>& callback) {
+  return tpm_manager_thread_.task_runner()->PostTask(
+      FROM_HERE, base::Bind(method, callback));
 }
 
 template <typename ReplyProtoType, typename MethodType>

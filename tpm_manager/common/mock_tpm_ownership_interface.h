@@ -34,6 +34,9 @@ class MockTpmOwnershipInterface : public TpmOwnershipInterface {
   MOCK_METHOD2(GetDictionaryAttackInfo,
                void(const GetDictionaryAttackInfoRequest& request,
                     const GetDictionaryAttackInfoCallback& callback));
+  MOCK_METHOD2(ResetDictionaryAttackLock,
+               void(const ResetDictionaryAttackLockRequest& request,
+                    const ResetDictionaryAttackLockCallback& callback));
   MOCK_METHOD2(TakeOwnership,
                void(const TakeOwnershipRequest& request,
                     const TakeOwnershipCallback& callback));

@@ -74,6 +74,12 @@ void DBusService::RegisterDBusObjectsAsync(
           &TpmOwnershipInterface::GetDictionaryAttackInfo>);
 
   ownership_dbus_interface->AddMethodHandler(
+      kResetDictionaryAttackLock, base::Unretained(this),
+      &DBusService::HandleOwnershipDBusMethod<
+          ResetDictionaryAttackLockRequest, ResetDictionaryAttackLockReply,
+          &TpmOwnershipInterface::ResetDictionaryAttackLock>);
+
+  ownership_dbus_interface->AddMethodHandler(
       kTakeOwnership, base::Unretained(this),
       &DBusService::HandleOwnershipDBusMethod<
           TakeOwnershipRequest, TakeOwnershipReply,

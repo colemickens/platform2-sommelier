@@ -50,6 +50,9 @@ class TPM_MANAGER_EXPORT TpmOwnershipDBusProxy : public TpmOwnershipInterface {
   void GetDictionaryAttackInfo(
       const GetDictionaryAttackInfoRequest& request,
       const GetDictionaryAttackInfoCallback& callback) override;
+  void ResetDictionaryAttackLock(
+      const ResetDictionaryAttackLockRequest& request,
+      const ResetDictionaryAttackLockCallback& callback) override;
   void TakeOwnership(const TakeOwnershipRequest& request,
                      const TakeOwnershipCallback& callback) override;
   void RemoveOwnerDependency(

@@ -22,8 +22,12 @@ namespace tpm_manager {
 constexpr char kTpmOwnershipInterface[] = "org.chromium.TpmOwnership";
 
 // Methods exported by tpm_manager ownership D-Bus interface.
+
+// TODO(garryxiao): GetTpmStatus and the DA methods are not directly related to
+// TPM ownership. Probably rename the interface later.
 constexpr char kGetTpmStatus[] = "GetTpmStatus";
 constexpr char kGetDictionaryAttackInfo[] = "GetDictionaryAttackInfo";
+constexpr char kResetDictionaryAttackLock[] = "ResetDictionaryAttackLock";
 constexpr char kTakeOwnership[] = "TakeOwnership";
 constexpr char kRemoveOwnerDependency[] = "RemoveOwnerDependency";
 constexpr char kClearStoredOwnerPassword[] = "ClearStoredOwnerPassword";
