@@ -71,6 +71,7 @@
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
+            'tests/client_test.cc',
             'tests/client_tracker_test.cc',
             'tests/device_tracker_test.cc',
             'tests/seq_handler_test.cc',
