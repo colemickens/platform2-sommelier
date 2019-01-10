@@ -116,6 +116,15 @@ bool VshClient::Init(const std::string& user, const std::string& container) {
     }
   }
 
+  struct winsize ws;
+  if (!GetCurrentWindowSize(&ws)) {
+    LOG(ERROR) << "Failed to get initial window size";
+    return false;
+  }
+
+  connection_request.set_window_rows(ws.ws_row);
+  connection_request.set_window_cols(ws.ws_col);
+
   if (!SendMessage(sock_fd_.get(), connection_request)) {
     LOG(ERROR) << "Failed to send connection request";
     return false;
@@ -133,8 +142,6 @@ bool VshClient::Init(const std::string& user, const std::string& container) {
                << connection_response.description();
     return false;
   }
-
-  SendCurrentWindowSize();
 
   brillo::MessageLoop* message_loop = brillo::MessageLoop::current();
   message_loop->WatchFileDescriptor(
@@ -256,23 +263,33 @@ bool VshClient::SendCurrentWindowSize() {
   GuestMessage guest_message;
   WindowResizeMessage* resize_message = guest_message.mutable_resize_message();
 
-  struct winsize winsize;
-
-  if (!isatty(STDIN_FILENO))
-    return true;
-
-  if (ioctl(STDIN_FILENO, TIOCGWINSZ, &winsize) < 0) {
-    PLOG(ERROR) << "Failed to get tty window size";
-    Shutdown();
+  struct winsize ws;
+  if (!GetCurrentWindowSize(&ws)) {
     return false;
   }
 
-  resize_message->set_rows(winsize.ws_row);
-  resize_message->set_cols(winsize.ws_col);
+  resize_message->set_rows(ws.ws_row);
+  resize_message->set_cols(ws.ws_col);
 
   if (!SendMessage(sock_fd_.get(), guest_message)) {
     LOG(ERROR) << "Failed to send tty window resize message";
     Shutdown();
+    return false;
+  }
+
+  return true;
+}
+
+bool VshClient::GetCurrentWindowSize(struct winsize* ws) {
+  DCHECK(ws);
+  if (!isatty(STDIN_FILENO)) {
+    ws->ws_row = 0;
+    ws->ws_col = 0;
+    return true;
+  }
+
+  if (ioctl(STDIN_FILENO, TIOCGWINSZ, ws) < 0) {
+    PLOG(ERROR) << "Failed to get tty window size";
     return false;
   }
 

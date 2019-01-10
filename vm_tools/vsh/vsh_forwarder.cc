@@ -200,6 +200,21 @@ bool VshForwarder::Init() {
     return false;
   }
 
+  // Set up the pseudoterminal dimensions.
+  if (connection_request.window_rows() > 0 &&
+      connection_request.window_cols() > 0 &&
+      connection_request.window_rows() <= USHRT_MAX &&
+      connection_request.window_cols() <= USHRT_MAX) {
+    struct winsize ws {
+      .ws_row = (unsigned short)connection_request.window_rows(),
+      .ws_col = (unsigned short)connection_request.window_cols(),
+    };
+    if (ioctl(ptm_fd_.get(), TIOCSWINSZ, &ws) < 0) {
+      PLOG(ERROR) << "Failed to set initial window size";
+      return false;
+    }
+  }
+
   // Block SIGCHLD until the parent is ready to handle it with the
   // RegisterHandler() call below. At that point any queued SIGCHLD
   // signals will be handled.
@@ -391,18 +406,8 @@ void VshForwarder::PrepareExec(
 // Handler for SIGCHLD received in the forwarder process, indicating that
 // the target process has exited and the forwarder should shut down.
 bool VshForwarder::HandleSigchld(const struct signalfd_siginfo& siginfo) {
-  HostMessage host_message;
-  ConnectionStatusMessage* status_message =
-      host_message.mutable_status_message();
-  status_message->set_status(EXITED);
-  status_message->set_description("target process has exited");
-  status_message->set_code(siginfo.ssi_status);
-
+  exit_code_ = siginfo.ssi_status;
   exit_pending_ = true;
-
-  if (!SendMessage(sock_fd_.get(), host_message)) {
-    LOG(ERROR) << "Failed to send host message";
-  }
 
   return true;
 }
@@ -410,18 +415,11 @@ bool VshForwarder::HandleSigchld(const struct signalfd_siginfo& siginfo) {
 // Receives a guest message from the host and takes action.
 void VshForwarder::HandleVsockReadable() {
   GuestMessage guest_message;
-
-  // If we're expecting the remote side to exit, check that the socket
-  // is actually still valid before using it.
-  if (exit_pending_) {
-    char dummy;
-    if (recv(sock_fd_.get(), &dummy, 1, MSG_PEEK) < 0) {
+  if (!RecvMessage(sock_fd_.get(), &guest_message)) {
+    if (exit_pending_) {
       Shutdown();
       return;
     }
-  }
-
-  if (!RecvMessage(sock_fd_.get(), &guest_message)) {
     PLOG(ERROR) << "Failed to receive message from client";
     Shutdown();
     return;
@@ -492,8 +490,22 @@ void VshForwarder::HandlePtmReadable() {
     // It's likely that we'll get an EIO from the ptm before getting a SIGCHLD,
     // so don't treat that as an error. We'll shut down normally with the
     // SIGCHLD that will be processed later.
-    if (errno == EAGAIN || errno == EIO)
+    if (errno == EAGAIN || errno == EIO) {
+      if (exit_pending_) {
+        HostMessage host_message;
+        ConnectionStatusMessage* status_message =
+            host_message.mutable_status_message();
+        status_message->set_status(EXITED);
+        status_message->set_description("target process has exited");
+        status_message->set_code(exit_code_);
+
+        if (!SendMessage(sock_fd_.get(), host_message)) {
+          LOG(ERROR) << "Failed to send EXITED message";
+        }
+        Shutdown();
+      }
       return;
+    }
     PLOG(ERROR) << "Failed to read from ptm";
     return;
   }

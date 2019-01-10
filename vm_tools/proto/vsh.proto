@@ -36,6 +36,10 @@ message SetupConnectionRequest {
   string command = 4;
   // Argv of the target program to run. Empty indicates a login shell.
   repeated string argv = 5;
+  // Initial window size (rows) of the pty.
+  int32 window_rows = 6;
+  // Initial window size (cols) of the pty.
+  int32 window_cols = 7;
 }
 
 // Response to a SetupConnectionRequest.

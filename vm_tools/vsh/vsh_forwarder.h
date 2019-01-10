@@ -52,6 +52,7 @@ class VshForwarder {
   brillo::AsynchronousSignalHandler signal_handler_;
 
   bool exit_pending_;
+  int exit_code_;
 
   DISALLOW_COPY_AND_ASSIGN(VshForwarder);
 };

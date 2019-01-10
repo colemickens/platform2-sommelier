@@ -5,6 +5,8 @@
 #ifndef VM_TOOLS_VSH_VSH_CLIENT_H_
 #define VM_TOOLS_VSH_VSH_CLIENT_H_
 
+#include <sys/ioctl.h>  // For struct winsize.
+
 #include <memory>
 #include <string>
 
@@ -39,6 +41,7 @@ class VshClient {
   void HandleVsockReadable();
   void HandleStdinReadable();
   bool SendCurrentWindowSize();
+  bool GetCurrentWindowSize(struct winsize* ws);
 
   base::ScopedFD sock_fd_;
   brillo::MessageLoop::TaskId stdin_task_;
