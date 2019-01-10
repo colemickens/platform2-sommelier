@@ -43,7 +43,7 @@ class TPM2UtilityTest : public testing::Test {
   }
 
   trunks::TPM2B_PUBLIC_KEY_RSA GetValidRSAPublicKey() {
-    const char kValidModulus[] =
+    constexpr char kValidModulus[] =
         "A1D50D088994000492B5F3ED8A9C5FC8772706219F4C063B2F6A8C6B74D3AD6B"
         "212A53D01DABB34A6261288540D420D3BA59ED279D859DE6227A7AB6BD88FADD"
         "FC3078D465F4DF97E03A52A587BD0165AE3B180FE7B255B7BEDC1BE81CB1383F"
@@ -59,6 +59,43 @@ class TPM2UtilityTest : public testing::Test {
     rsa.size = bytes.size();
     memcpy(rsa.buffer, bytes.data(), bytes.size());
     return rsa;
+  }
+
+  trunks::TPMT_PUBLIC GetValidECCPublicKey(
+      std::string* der_public_point = nullptr) {
+    constexpr char kValidECPointX[] =
+        "06845c8f3ac8b98d0e8163d0475ad4c8be1710c9f2d39965719e3684a7b3f40b";
+    constexpr char kValidECPointY[] =
+        "0400e219928d45093b3d7ff3cae43468e24684454f318b83b12304d1194a3286";
+    constexpr char kDerEncodedPublicPoint[] =
+        "04410406845C8F3AC8B98D0E8163D0475AD4C8BE1710C9F2D39965719E3684A7"
+        "B3F40B0400E219928D45093B3D7FF3CAE43468E24684454F318B83B12304D119"
+        "4A3286";
+
+    trunks::TPMT_PUBLIC public_area;
+    std::vector<uint8_t> bytes;
+
+    CHECK(base::HexStringToBytes(kValidECPointX, &bytes));
+    CHECK_EQ(bytes.size(), arraysize(kValidECPointX) / 2);
+    public_area.unique.ecc.x.size = bytes.size();
+    memcpy(public_area.unique.ecc.x.buffer, bytes.data(), bytes.size());
+
+    bytes.clear();
+    CHECK(base::HexStringToBytes(kValidECPointY, &bytes));
+    CHECK_EQ(bytes.size(), arraysize(kValidECPointY) / 2);
+    public_area.unique.ecc.y.size = bytes.size();
+    memcpy(public_area.unique.ecc.y.buffer, bytes.data(), bytes.size());
+
+    public_area.type = trunks::TPM_ALG_ECC;
+    public_area.parameters.ecc_detail.curve_id = trunks::TPM_ECC_NIST_P256;
+    public_area.parameters.ecc_detail.kdf.scheme = trunks::TPM_ALG_NULL;
+    public_area.parameters.ecc_detail.scheme.scheme = trunks::TPM_ALG_NULL;
+
+    if (der_public_point) {
+      *der_public_point = kDerEncodedPublicPoint;
+    }
+
+    return public_area;
   }
 
  protected:
@@ -386,7 +423,7 @@ TEST_F(TPM2UtilityTest, GenerateRSAKeyLoadFail) {
                                    &key_handle));
 }
 
-TEST_F(TPM2UtilityTest, GetPublicKeySuccess) {
+TEST_F(TPM2UtilityTest, GetRSAPublicKeySuccess) {
   TPM2UtilityImpl utility(factory_.get());
   int key_handle = trunks::TPM_RH_FIRST;
   std::string exponent;
@@ -402,7 +439,7 @@ TEST_F(TPM2UtilityTest, GetPublicKeySuccess) {
   EXPECT_EQ(modulus.compare(test_modulus), 0);
 }
 
-TEST_F(TPM2UtilityTest, GetPublicKeyFail) {
+TEST_F(TPM2UtilityTest, GetRSAPublicKeyFail) {
   TPM2UtilityImpl utility(factory_.get());
   int key_handle = trunks::TPM_RH_FIRST;
   std::string exponent;
@@ -726,6 +763,85 @@ TEST_F(TPM2UtilityTest, SignSuccessWithUnknownAlgorithm) {
                                       trunks::TPM_ALG_NULL, _, _, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_TRUE(utility.Sign(key_handle, input, &output));
+}
+
+TEST_F(TPM2UtilityTest, GenerateECCKeySuccess) {
+  TPM2UtilityImpl utility(factory_.get());
+  constexpr int kTrunksCurveId = trunks::TPM_ECC_NIST_P256;
+  EXPECT_CALL(mock_tpm_utility_,
+              CreateECCKeyPair(_, kTrunksCurveId, _, _, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+
+  constexpr int kSlot = 0;
+  constexpr int kNid = NID_X9_62_prime256v1;
+  SecureBlob auth_data;
+  std::string key_blob;
+  int key_handle;
+  EXPECT_TRUE(
+      utility.GenerateECCKey(kSlot, kNid, auth_data, &key_blob, &key_handle));
+}
+
+TEST_F(TPM2UtilityTest, UsedNotSupportedECCurve) {
+  TPM2UtilityImpl utility(factory_.get());
+  constexpr int kSlot = 0;
+  constexpr int kBadNid = 0;
+  EXPECT_FALSE(utility.IsECCurveSupported(kBadNid));
+  std::string key_blob;
+  int key_handle;
+  EXPECT_FALSE(utility.GenerateECCKey(kSlot, kBadNid, SecureBlob(), &key_blob,
+                                      &key_handle));
+}
+
+TEST_F(TPM2UtilityTest, GenerateECCKeyCreateFail) {
+  TPM2UtilityImpl utility(factory_.get());
+  EXPECT_CALL(mock_tpm_utility_, CreateECCKeyPair(_, _, _, _, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  constexpr int kSlot = 0;
+  constexpr int kNid = NID_X9_62_prime256v1;
+  SecureBlob auth_data;
+  std::string key_blob;
+  int key_handle;
+  EXPECT_FALSE(
+      utility.GenerateECCKey(kSlot, kNid, auth_data, &key_blob, &key_handle));
+}
+
+TEST_F(TPM2UtilityTest, GenerateECCKeyLoadFail) {
+  TPM2UtilityImpl utility(factory_.get());
+  std::string key_blob;
+  EXPECT_CALL(mock_tpm_utility_, LoadKey(key_blob, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  constexpr int kSlot = 0;
+  constexpr int kNid = NID_X9_62_prime256v1;
+  SecureBlob auth_data;
+  int key_handle;
+  EXPECT_FALSE(
+      utility.GenerateECCKey(kSlot, kNid, auth_data, &key_blob, &key_handle));
+}
+
+TEST_F(TPM2UtilityTest, GetECCPublicKeySuccess) {
+  TPM2UtilityImpl utility(factory_.get());
+  constexpr int kKeyHandle = trunks::TPM_RH_FIRST;
+
+  std::string der_encoded_public_point;
+  trunks::TPMT_PUBLIC public_data =
+      GetValidECCPublicKey(&der_encoded_public_point);
+
+  std::string public_point;
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(kKeyHandle, _))
+      .WillOnce(DoAll(SetArgPointee<1>(public_data), Return(TPM_RC_SUCCESS)));
+  EXPECT_TRUE(utility.GetECCPublicKey(kKeyHandle, &public_point));
+
+  EXPECT_EQ(base::HexEncode(public_point.data(), public_point.size()),
+            der_encoded_public_point);
+}
+
+TEST_F(TPM2UtilityTest, GetECCPublicKeyFail) {
+  TPM2UtilityImpl utility(factory_.get());
+  constexpr int kKeyHandle = trunks::TPM_RH_FIRST;
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(kKeyHandle, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  std::string public_point;
+  EXPECT_FALSE(utility.GetECCPublicKey(kKeyHandle, &public_point));
 }
 
 }  // namespace chaps

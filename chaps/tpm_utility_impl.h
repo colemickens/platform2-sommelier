@@ -51,6 +51,13 @@ class TPMUtilityImpl : public TPMUtility {
   bool GetRSAPublicKey(int key_handle,
                        std::string* public_exponent,
                        std::string* modulus) override;
+  bool IsECCurveSupported(int curve_nid) override;
+  bool GenerateECCKey(int slot,
+                      int nid,
+                      const brillo::SecureBlob& auth_data,
+                      std::string* key_blob,
+                      int* key_handle) override;
+  bool GetECCPublicKey(int key_handle, std::string* public_point) override;
   bool WrapKey(int slot,
                const std::string& public_exponent,
                const std::string& modulus,

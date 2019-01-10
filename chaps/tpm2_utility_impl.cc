@@ -38,7 +38,7 @@ using trunks::TrunksFactory;
 
 namespace {
 
-const struct {
+constexpr struct {
   trunks::TPM_ALG_ID id;
   chaps::DigestAlgorithm alg;
 } kSupportedDigestAlgorithms[] = {
@@ -46,6 +46,13 @@ const struct {
   { trunks::TPM_ALG_SHA256, chaps::DigestAlgorithm::SHA256 },
   { trunks::TPM_ALG_SHA384, chaps::DigestAlgorithm::SHA384 },
   { trunks::TPM_ALG_SHA512, chaps::DigestAlgorithm::SHA512 },
+};
+
+constexpr struct {
+  trunks::TPM_ALG_ID trunks_id;
+  int openssl_nid;
+} kSupportedECCurveAlgorithms[] = {
+    {trunks::TPM_ECC_NIST_P256, NID_X9_62_prime256v1},
 };
 
 // Extract the algorithm ID and the digest from PKCS1-v1_5 DigestInfo.
@@ -100,6 +107,51 @@ void InitTransceiver(trunks::CommandTransceiver* transceiver, bool* success) {
 
 void TermTransceiver(std::unique_ptr<trunks::CommandTransceiver> transceiver) {
   transceiver.reset();
+}
+
+trunks::TPMI_ECC_CURVE ConvertNIDToTrunksCurveID(int curve_nid) {
+  for (auto curve_info : kSupportedECCurveAlgorithms) {
+    if (curve_info.openssl_nid == curve_nid) {
+      return curve_info.trunks_id;
+    }
+  }
+  return trunks::TPM_ECC_NONE;
+}
+
+int ConvertTrunksCurveIDToNID(trunks::TPMI_ECC_CURVE trunks_id) {
+  for (auto curve_info : kSupportedECCurveAlgorithms) {
+    if (curve_info.trunks_id == trunks_id) {
+      return curve_info.openssl_nid;
+    }
+  }
+  return NID_undef;
+}
+
+// TPM format parse utils
+crypto::ScopedEC_KEY GetECCPublicKeyFromTpmPublicArea(
+    trunks::TPMT_PUBLIC public_area) {
+  CHECK_EQ(public_area.type, trunks::TPM_ALG_ECC);
+
+  int nid =
+      ConvertTrunksCurveIDToNID(public_area.parameters.ecc_detail.curve_id);
+  if (nid == NID_undef) {
+    LOG(ERROR) << __func__ << "The trunks curve_id is unknown.";
+    return nullptr;
+  }
+
+  crypto::ScopedEC_Key ecc(EC_KEY_new_by_curve_name(nid));
+
+  std::string xs = StringFrom_TPM2B_ECC_PARAMETER(public_area.unique.ecc.x);
+  std::string ys = StringFrom_TPM2B_ECC_PARAMETER(public_area.unique.ecc.y);
+
+  crypto::ScopedBIGNUM x(chaps::ConvertToBIGNUM(xs));
+  crypto::ScopedBIGNUM y(chaps::ConvertToBIGNUM(ys));
+
+  // EC_KEY_set_public_key_affine_coordinates will check the pointer is valid
+  if (!EC_KEY_set_public_key_affine_coordinates(ecc.get(), x.get(), y.get()))
+    return nullptr;
+
+  return ecc;
 }
 
 }  // namespace
@@ -437,6 +489,75 @@ bool TPM2UtilityImpl::GetRSAPublicKey(int key_handle,
     return false;
   }
   modulus->assign(StringFrom_TPM2B_PUBLIC_KEY_RSA(public_data.unique.rsa));
+  return true;
+}
+
+bool TPM2UtilityImpl::IsECCurveSupported(int curve_nid) {
+  return ConvertNIDToTrunksCurveID(curve_nid) != trunks::TPM_ECC_NONE;
+}
+
+bool TPM2UtilityImpl::GenerateECCKey(int slot,
+                                     int nid,
+                                     const SecureBlob& auth_data,
+                                     std::string* key_blob,
+                                     int* key_handle) {
+  AutoLock lock(lock_);
+  if (!IsECCurveSupported(nid)) {
+    LOG(ERROR) << "Not supported NID";
+    return false;
+  }
+  if (auth_data.size() > SHA256_DIGEST_SIZE) {
+    LOG(ERROR) << "Authorization cannot be larger than SHA256 Digest size.";
+    return false;
+  }
+
+  ScopedSession session_scope(factory_, &session_);
+  if (!session_) {
+    return false;
+  }
+  session_->SetEntityAuthorizationValue("");  // SRK Authorization Value.
+  TPM_RC result = trunks_tpm_utility_->CreateECCKeyPair(
+      trunks::TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey,
+      ConvertNIDToTrunksCurveID(nid), auth_data.to_string(),
+      "",                       // Policy Digest
+      false,                    // use_only_policy_authorization
+      std::vector<uint32_t>(),  // creation_pcr_indexes
+      session_->GetDelegate(), key_blob, nullptr);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error creating ECC key pair: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+  if (!LoadKeyWithParentInternal(slot, *key_blob, auth_data, kStorageRootKey,
+                                 key_handle)) {
+    return false;
+  }
+  return true;
+}
+
+bool TPM2UtilityImpl::GetECCPublicKey(int key_handle, std::string* ec_point) {
+  AutoLock lock(lock_);
+  trunks::TPMT_PUBLIC public_area;
+  TPM_RC result =
+      trunks_tpm_utility_->GetKeyPublicArea(key_handle, &public_area);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Error getting key public data: " << result;
+    return false;
+  }
+
+  if (public_area.type != trunks::TPM_ALG_ECC) {
+    LOG(ERROR) << __func__ << ": Keyhandle is not ECC key.";
+    return false;
+  }
+
+  crypto::ScopedEC_KEY key = GetECCPublicKeyFromTpmPublicArea(public_area);
+  if (key == nullptr) {
+    LOG(ERROR) << __func__ << ": Parse key fail.";
+    return false;
+  }
+
+  *ec_point = GetECPointAsString(key);
+
   return true;
 }
 

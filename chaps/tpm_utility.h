@@ -91,6 +91,32 @@ class TPMUtility {
                                std::string* public_exponent,
                                std::string* modulus) = 0;
 
+  // Return supports |curve_nid| or not. |curve_nid| is the NID of OpenSSL.
+  // TPM 1.2 doesn't support ECC.
+  // TPM 2.0 current only support P-256 curve (NID_X9_62_prime256v1).
+  virtual bool IsECCurveSupported(int curve_nid) = 0;
+
+  // Generates an ECC key pair in the TPM and wraps it with the SRK.
+  //   slot - The slot associated with this key.
+  //   nid - the OpenSSL NID for the curve.
+  //   auth_data - Authorization data which will be associated with the new key.
+  //   key_blob - Will be populated with the wrapped key blob as provided by the
+  //              TPM. This should be saved so the key can be loaded again
+  //              in the future.
+  //   key_handle - A handle to the new key. This will be valid until keys are
+  //                unloaded for the given slot.
+  // Returns true on success.
+  virtual bool GenerateECCKey(int slot,
+                              int nid,
+                              const brillo::SecureBlob& auth_data,
+                              std::string* key_blob,
+                              int* key_handle) = 0;
+
+  // Retrieves the public point of ECC key pair. Returns true on success.
+  //   key_handle - A TPM key handle
+  //   public_point - A DER-encoded string of EC_Point.
+  virtual bool GetECCPublicKey(int key_handle, std::string* public_point) = 0;
+
   // Wraps an RSA key pair with the SRK. The key type will be set to
   // TSS_KEY_TYPE_LEGACY.
   //   slot - The slot associated with this key.

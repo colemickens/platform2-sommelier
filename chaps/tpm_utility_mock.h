@@ -43,6 +43,10 @@ class TPMUtilityMock : public TPMUtility {
                     std::string*,
                     int*));
   MOCK_METHOD3(GetRSAPublicKey, bool(int, std::string*, std::string*));
+  MOCK_METHOD1(IsECCurveSupported, bool(int));
+  MOCK_METHOD5(GenerateECCKey,
+               bool(int, int, const brillo::SecureBlob&, std::string*, int*));
+  MOCK_METHOD2(GetECCPublicKey, bool(int, std::string*));
   MOCK_METHOD7(WrapKey, bool(int,
                              const std::string&,
                              const std::string&,

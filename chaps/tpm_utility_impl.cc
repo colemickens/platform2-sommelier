@@ -471,6 +471,25 @@ bool TPMUtilityImpl::GetRSAPublicKey(int key_handle,
   return true;
 }
 
+bool TPMUtilityImpl::IsECCurveSupported(int curve_nid) {
+  return false;
+}
+
+bool TPMUtilityImpl::GenerateECCKey(int slot,
+                                    int nid,
+                                    const brillo::SecureBlob& auth_data,
+                                    std::string* key_blob,
+                                    int* key_handle) {
+  LOG(ERROR) << __func__ << "TPM 1.2 doesn't support ECC.";
+  return false;
+}
+
+bool TPMUtilityImpl::GetECCPublicKey(int key_handle,
+                                     std::string* public_point) {
+  LOG(ERROR) << __func__ << "TPM 1.2 doesn't support ECC.";
+  return false;
+}
+
 bool TPMUtilityImpl::WrapKey(int slot,
                              const string& public_exponent,
                              const string& modulus,
