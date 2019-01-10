@@ -194,6 +194,7 @@ bool ScanDir(const base::FilePath& dir) {
           continue;
 
         PLOG(ERROR) << "Skipping path: " << path.value();
+        ret = false;
         continue;
       }
 
