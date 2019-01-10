@@ -7,6 +7,7 @@
 #include <ModemManager/ModemManager.h>
 
 #include <base/bind.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "shill/control_interface.h"
 #include "shill/dbus_properties_proxy_interface.h"
@@ -116,6 +117,13 @@ void CellularBearer::GetIPConfigMethodAndProperties(
   (*ipconfig_properties)->address_family = address_family;
   (*ipconfig_properties)->address = properties.GetString(kPropertyAddress);
   (*ipconfig_properties)->gateway = properties.GetString(kPropertyGateway);
+
+  // Set method string for kMethodStatic
+  if ((*ipconfig_properties)->address_family == IPAddress::kFamilyIPv4) {
+    (*ipconfig_properties)->method = kTypeIPv4;
+  } else if ((*ipconfig_properties)->address_family == IPAddress::kFamilyIPv6) {
+    (*ipconfig_properties)->method = kTypeIPv6;
+  }
 
   uint32_t prefix;
   if (!properties.ContainsUint(kPropertyPrefix)) {
