@@ -372,7 +372,6 @@ force_clean_file_attrs() {
   fi
 }
 
-force_clean_file_attrs /mnt/stateful_partition/home
 force_clean_file_attrs /mnt/stateful_partition/unencrypted
 
 # Checks and updates stateful partition.
