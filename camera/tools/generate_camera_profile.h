@@ -3,8 +3,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef TOOLS_GENERATE_CAMERA_PROFILE_H_
-#define TOOLS_GENERATE_CAMERA_PROFILE_H_
+#ifndef CAMERA_TOOLS_GENERATE_CAMERA_PROFILE_H_
+#define CAMERA_TOOLS_GENERATE_CAMERA_PROFILE_H_
 
 #include <string>
 
@@ -28,4 +28,4 @@ struct Camcorder {
 
 }  // namespace cros
 
-#endif  // TOOLS_GENERATE_CAMERA_PROFILE_H_
+#endif  // CAMERA_TOOLS_GENERATE_CAMERA_PROFILE_H_

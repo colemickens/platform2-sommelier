@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CAMERA3_TEST_CAMERA3_TEST_GRALLOC_H_
-#define CAMERA3_TEST_CAMERA3_TEST_GRALLOC_H_
+#ifndef CAMERA_CAMERA3_TEST_CAMERA3_TEST_GRALLOC_H_
+#define CAMERA_CAMERA3_TEST_CAMERA3_TEST_GRALLOC_H_
 
 #include <memory>
 #include <unordered_map>
@@ -120,4 +120,4 @@ class Camera3TestGralloc {
 
 }  // namespace camera3_test
 
-#endif  // CAMERA3_TEST_CAMERA3_TEST_GRALLOC_H_
+#endif  // CAMERA_CAMERA3_TEST_CAMERA3_TEST_GRALLOC_H_

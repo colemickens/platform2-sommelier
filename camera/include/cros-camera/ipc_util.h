@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef INCLUDE_CROS_CAMERA_IPC_UTIL_H_
-#define INCLUDE_CROS_CAMERA_IPC_UTIL_H_
+#ifndef CAMERA_INCLUDE_CROS_CAMERA_IPC_UTIL_H_
+#define CAMERA_INCLUDE_CROS_CAMERA_IPC_UTIL_H_
 
 #include <string>
 
@@ -38,4 +38,4 @@ int UnwrapPlatformHandle(mojo::ScopedHandle handle);
 
 }  // namespace cros
 
-#endif  // INCLUDE_CROS_CAMERA_IPC_UTIL_H_
+#endif  // CAMERA_INCLUDE_CROS_CAMERA_IPC_UTIL_H_

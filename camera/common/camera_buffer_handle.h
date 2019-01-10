@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef COMMON_CAMERA_BUFFER_HANDLE_H_
-#define COMMON_CAMERA_BUFFER_HANDLE_H_
+#ifndef CAMERA_COMMON_CAMERA_BUFFER_HANDLE_H_
+#define CAMERA_COMMON_CAMERA_BUFFER_HANDLE_H_
 
 #include <system/window.h>
 
@@ -97,4 +97,4 @@ const size_t kCameraBufferHandleNumInts =
      (sizeof(int32_t) * kMaxPlanes)) /
     sizeof(int);
 
-#endif  // COMMON_CAMERA_BUFFER_HANDLE_H_
+#endif  // CAMERA_COMMON_CAMERA_BUFFER_HANDLE_H_

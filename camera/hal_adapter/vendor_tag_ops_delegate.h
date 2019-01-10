@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef HAL_ADAPTER_VENDOR_TAG_OPS_DELEGATE_H_
-#define HAL_ADAPTER_VENDOR_TAG_OPS_DELEGATE_H_
+#ifndef CAMERA_HAL_ADAPTER_VENDOR_TAG_OPS_DELEGATE_H_
+#define CAMERA_HAL_ADAPTER_VENDOR_TAG_OPS_DELEGATE_H_
 
 #include <hardware/camera3.h>
 
@@ -40,4 +40,4 @@ class VendorTagOpsDelegate final
 
 }  // namespace cros
 
-#endif  // HAL_ADAPTER_VENDOR_TAG_OPS_DELEGATE_H_
+#endif  // CAMERA_HAL_ADAPTER_VENDOR_TAG_OPS_DELEGATE_H_

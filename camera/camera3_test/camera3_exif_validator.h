@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
-#ifndef CAMERA3_TEST_CAMERA3_EXIF_VALIDATOR_H_
-#define CAMERA3_TEST_CAMERA3_EXIF_VALIDATOR_H_
+#ifndef CAMERA_CAMERA3_TEST_CAMERA3_EXIF_VALIDATOR_H_
+#define CAMERA_CAMERA3_TEST_CAMERA3_EXIF_VALIDATOR_H_
 
 #include <base/logging.h>
 #include <exif-data.h>
@@ -53,4 +53,4 @@ class Camera3ExifValidator {
 
 }  // namespace camera3_test
 
-#endif  // CAMERA3_TEST_CAMERA3_EXIF_VALIDATOR_H_
+#endif  // CAMERA_CAMERA3_TEST_CAMERA3_EXIF_VALIDATOR_H_

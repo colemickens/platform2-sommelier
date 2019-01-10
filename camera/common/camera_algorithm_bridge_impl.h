@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef COMMON_CAMERA_ALGORITHM_BRIDGE_IMPL_H_
-#define COMMON_CAMERA_ALGORITHM_BRIDGE_IMPL_H_
+#ifndef CAMERA_COMMON_CAMERA_ALGORITHM_BRIDGE_IMPL_H_
+#define CAMERA_COMMON_CAMERA_ALGORITHM_BRIDGE_IMPL_H_
 
 #include <memory>
 #include <vector>
@@ -93,4 +93,4 @@ class CameraAlgorithmBridgeImpl : public CameraAlgorithmBridge {
 
 }  // namespace cros
 
-#endif  // COMMON_CAMERA_ALGORITHM_BRIDGE_IMPL_H_
+#endif  // CAMERA_COMMON_CAMERA_ALGORITHM_BRIDGE_IMPL_H_

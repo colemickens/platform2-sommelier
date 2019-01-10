@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef HAL_USB_V1_IPC_UTIL_H_
-#define HAL_USB_V1_IPC_UTIL_H_
+#ifndef CAMERA_HAL_USB_V1_IPC_UTIL_H_
+#define CAMERA_HAL_USB_V1_IPC_UTIL_H_
 
 namespace base {
 class FilePath;
@@ -19,4 +19,4 @@ bool ServerAcceptConnection(int server_listen_fd, int* server_socket);
 
 }  // namespace internal
 
-#endif  // HAL_USB_V1_IPC_UTIL_H_
+#endif  // CAMERA_HAL_USB_V1_IPC_UTIL_H_

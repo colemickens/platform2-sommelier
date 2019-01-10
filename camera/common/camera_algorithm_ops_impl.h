@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef COMMON_CAMERA_ALGORITHM_OPS_IMPL_H_
-#define COMMON_CAMERA_ALGORITHM_OPS_IMPL_H_
+#ifndef CAMERA_COMMON_CAMERA_ALGORITHM_OPS_IMPL_H_
+#define CAMERA_COMMON_CAMERA_ALGORITHM_OPS_IMPL_H_
 
 #include <vector>
 
@@ -88,4 +88,4 @@ class CameraAlgorithmOpsImpl : public mojom::CameraAlgorithmOps,
 
 }  // namespace cros
 
-#endif  // COMMON_CAMERA_ALGORITHM_OPS_IMPL_H_
+#endif  // CAMERA_COMMON_CAMERA_ALGORITHM_OPS_IMPL_H_

@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef INCLUDE_CROS_CAMERA_SCOPED_UDEV_H_
-#define INCLUDE_CROS_CAMERA_SCOPED_UDEV_H_
+#ifndef CAMERA_INCLUDE_CROS_CAMERA_SCOPED_UDEV_H_
+#define CAMERA_INCLUDE_CROS_CAMERA_SCOPED_UDEV_H_
 
 #include <memory>
 
@@ -39,4 +39,4 @@ typedef std::unique_ptr<udev_monitor, UdevMonitorDeleter> ScopedUdevMonitorPtr;
 
 }  // namespace cros
 
-#endif  // INCLUDE_CROS_CAMERA_SCOPED_UDEV_H_
+#endif  // CAMERA_INCLUDE_CROS_CAMERA_SCOPED_UDEV_H_

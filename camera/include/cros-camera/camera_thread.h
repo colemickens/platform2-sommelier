@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef INCLUDE_CROS_CAMERA_CAMERA_THREAD_H_
-#define INCLUDE_CROS_CAMERA_CAMERA_THREAD_H_
+#ifndef CAMERA_INCLUDE_CROS_CAMERA_CAMERA_THREAD_H_
+#define CAMERA_INCLUDE_CROS_CAMERA_CAMERA_THREAD_H_
 
 #include <string>
 #include <unordered_map>
@@ -140,4 +140,4 @@ class CROS_CAMERA_EXPORT CameraThread {
 
 }  // namespace cros
 
-#endif  // INCLUDE_CROS_CAMERA_CAMERA_THREAD_H_
+#endif  // CAMERA_INCLUDE_CROS_CAMERA_CAMERA_THREAD_H_

@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef HAL_ADAPTER_CAMERA_HAL_SERVER_IMPL_H_
-#define HAL_ADAPTER_CAMERA_HAL_SERVER_IMPL_H_
+#ifndef CAMERA_HAL_ADAPTER_CAMERA_HAL_SERVER_IMPL_H_
+#define CAMERA_HAL_ADAPTER_CAMERA_HAL_SERVER_IMPL_H_
 
 #include <memory>
 
@@ -87,4 +87,4 @@ class CameraHalServerImpl final : public mojom::CameraHalServer {
 
 }  // namespace cros
 
-#endif  // HAL_ADAPTER_CAMERA_HAL_SERVER_IMPL_H_
+#endif  // CAMERA_HAL_ADAPTER_CAMERA_HAL_SERVER_IMPL_H_

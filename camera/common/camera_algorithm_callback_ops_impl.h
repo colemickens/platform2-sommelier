@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef COMMON_CAMERA_ALGORITHM_CALLBACK_OPS_IMPL_H_
-#define COMMON_CAMERA_ALGORITHM_CALLBACK_OPS_IMPL_H_
+#ifndef CAMERA_COMMON_CAMERA_ALGORITHM_CALLBACK_OPS_IMPL_H_
+#define CAMERA_COMMON_CAMERA_ALGORITHM_CALLBACK_OPS_IMPL_H_
 
 #include <base/single_thread_task_runner.h>
 #include <mojo/public/cpp/bindings/binding.h>
@@ -51,4 +51,4 @@ class CameraAlgorithmCallbackOpsImpl
 
 }  // namespace cros
 
-#endif  // COMMON_CAMERA_ALGORITHM_CALLBACK_OPS_IMPL_H_
+#endif  // CAMERA_COMMON_CAMERA_ALGORITHM_CALLBACK_OPS_IMPL_H_

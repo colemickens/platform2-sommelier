@@ -3,8 +3,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef HAL_USB_STREAM_FORMAT_H_
-#define HAL_USB_STREAM_FORMAT_H_
+#ifndef CAMERA_HAL_USB_STREAM_FORMAT_H_
+#define CAMERA_HAL_USB_STREAM_FORMAT_H_
 
 #include <vector>
 
@@ -42,4 +42,4 @@ float GetMaximumFrameRate(const SupportedFormat& format);
 
 }  // namespace cros
 
-#endif  // HAL_USB_STREAM_FORMAT_H_
+#endif  // CAMERA_HAL_USB_STREAM_FORMAT_H_

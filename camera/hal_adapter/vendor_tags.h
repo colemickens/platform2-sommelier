@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef HAL_ADAPTER_VENDOR_TAGS_H_
-#define HAL_ADAPTER_VENDOR_TAGS_H_
+#ifndef CAMERA_HAL_ADAPTER_VENDOR_TAGS_H_
+#define CAMERA_HAL_ADAPTER_VENDOR_TAGS_H_
 
 namespace cros {
 
@@ -16,4 +16,4 @@ typedef enum vendor_section_start {
 
 }  // namespace cros
 
-#endif  // HAL_ADAPTER_VENDOR_TAGS_H_
+#endif  // CAMERA_HAL_ADAPTER_VENDOR_TAGS_H_

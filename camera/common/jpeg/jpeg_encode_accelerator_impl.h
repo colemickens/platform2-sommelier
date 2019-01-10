@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef COMMON_JPEG_JPEG_ENCODE_ACCELERATOR_IMPL_H_
-#define COMMON_JPEG_JPEG_ENCODE_ACCELERATOR_IMPL_H_
+#ifndef CAMERA_COMMON_JPEG_JPEG_ENCODE_ACCELERATOR_IMPL_H_
+#define CAMERA_COMMON_JPEG_JPEG_ENCODE_ACCELERATOR_IMPL_H_
 
 #include <stdint.h>
 #include <memory>
@@ -121,4 +121,4 @@ class JpegEncodeAcceleratorImpl : public JpegEncodeAccelerator {
 };
 
 }  // namespace cros
-#endif  // COMMON_JPEG_JPEG_ENCODE_ACCELERATOR_IMPL_H_
+#endif  // CAMERA_COMMON_JPEG_JPEG_ENCODE_ACCELERATOR_IMPL_H_

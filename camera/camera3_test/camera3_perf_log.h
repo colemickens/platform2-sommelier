@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CAMERA3_TEST_CAMERA3_PERF_LOG_H_
-#define CAMERA3_TEST_CAMERA3_PERF_LOG_H_
+#ifndef CAMERA_CAMERA3_TEST_CAMERA3_PERF_LOG_H_
+#define CAMERA_CAMERA3_TEST_CAMERA3_PERF_LOG_H_
 
 #include <map>
 #include <string>
@@ -56,4 +56,4 @@ class Camera3PerfLog final {
 
 }  // namespace camera3_test
 
-#endif  // CAMERA3_TEST_CAMERA3_PERF_LOG_H_
+#endif  // CAMERA_CAMERA3_TEST_CAMERA3_PERF_LOG_H_

@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef HAL_ADAPTER_CAMERA_HAL_ADAPTER_H_
-#define HAL_ADAPTER_CAMERA_HAL_ADAPTER_H_
+#ifndef CAMERA_HAL_ADAPTER_CAMERA_HAL_ADAPTER_H_
+#define CAMERA_HAL_ADAPTER_CAMERA_HAL_ADAPTER_H_
 
 #include <map>
 #include <memory>
@@ -215,4 +215,4 @@ class CameraHalAdapter : public vendor_tag_ops_t {
 
 }  // namespace cros
 
-#endif  // HAL_ADAPTER_CAMERA_HAL_ADAPTER_H_
+#endif  // CAMERA_HAL_ADAPTER_CAMERA_HAL_ADAPTER_H_

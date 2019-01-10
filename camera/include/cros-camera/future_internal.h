@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef INCLUDE_CROS_CAMERA_FUTURE_INTERNAL_H_
-#define INCLUDE_CROS_CAMERA_FUTURE_INTERNAL_H_
+#ifndef CAMERA_INCLUDE_CROS_CAMERA_FUTURE_INTERNAL_H_
+#define CAMERA_INCLUDE_CROS_CAMERA_FUTURE_INTERNAL_H_
 
 #include <base/synchronization/condition_variable.h>
 #include <base/synchronization/lock.h>
@@ -55,4 +55,4 @@ class CROS_CAMERA_EXPORT FutureLock {
 
 }  // namespace cros
 
-#endif  // INCLUDE_CROS_CAMERA_FUTURE_INTERNAL_H_
+#endif  // CAMERA_INCLUDE_CROS_CAMERA_FUTURE_INTERNAL_H_

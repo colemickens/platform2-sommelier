@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef INCLUDE_CROS_CAMERA_TIMEZONE_H_
-#define INCLUDE_CROS_CAMERA_TIMEZONE_H_
+#ifndef CAMERA_INCLUDE_CROS_CAMERA_TIMEZONE_H_
+#define CAMERA_INCLUDE_CROS_CAMERA_TIMEZONE_H_
 
 #include <string>
 
@@ -32,4 +32,4 @@ CROS_CAMERA_EXPORT PowerLineFrequency GetPowerLineFrequencyForLocation();
 
 }  // namespace cros
 
-#endif  // INCLUDE_CROS_CAMERA_TIMEZONE_H_
+#endif  // CAMERA_INCLUDE_CROS_CAMERA_TIMEZONE_H_

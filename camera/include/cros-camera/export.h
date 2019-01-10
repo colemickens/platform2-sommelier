@@ -3,9 +3,9 @@
  * found in the LICENSE file.
  */
 
-#ifndef INCLUDE_CROS_CAMERA_EXPORT_H_
-#define INCLUDE_CROS_CAMERA_EXPORT_H_
+#ifndef CAMERA_INCLUDE_CROS_CAMERA_EXPORT_H_
+#define CAMERA_INCLUDE_CROS_CAMERA_EXPORT_H_
 
 #define CROS_CAMERA_EXPORT __attribute__((visibility("default")))
 
-#endif  // INCLUDE_CROS_CAMERA_EXPORT_H_
+#endif  // CAMERA_INCLUDE_CROS_CAMERA_EXPORT_H_

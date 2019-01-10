@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef HAL_ADAPTER_SCOPED_YUV_BUFFER_HANDLE_H_
-#define HAL_ADAPTER_SCOPED_YUV_BUFFER_HANDLE_H_
+#ifndef CAMERA_HAL_ADAPTER_SCOPED_YUV_BUFFER_HANDLE_H_
+#define CAMERA_HAL_ADAPTER_SCOPED_YUV_BUFFER_HANDLE_H_
 
 #include <base/macros.h>
 
@@ -65,4 +65,4 @@ class ScopedYUVBufferHandle {
 
 }  // namespace cros
 
-#endif  // HAL_ADAPTER_SCOPED_YUV_BUFFER_HANDLE_H_
+#endif  // CAMERA_HAL_ADAPTER_SCOPED_YUV_BUFFER_HANDLE_H_

@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef HAL_USB_V1_COMMON_TYPES_H_
-#define HAL_USB_V1_COMMON_TYPES_H_
+#ifndef CAMERA_HAL_USB_V1_COMMON_TYPES_H_
+#define CAMERA_HAL_USB_V1_COMMON_TYPES_H_
 
 #include <string>
 #include <vector>
@@ -61,4 +61,4 @@ typedef std::vector<SupportedFormat> SupportedFormats;
 
 }  // namespace arc
 
-#endif  // HAL_USB_V1_COMMON_TYPES_H_
+#endif  // CAMERA_HAL_USB_V1_COMMON_TYPES_H_

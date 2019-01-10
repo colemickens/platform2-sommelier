@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef HAL_ADAPTER_CAMERA_MODULE_CALLBACKS_DELEGATE_H_
-#define HAL_ADAPTER_CAMERA_MODULE_CALLBACKS_DELEGATE_H_
+#ifndef CAMERA_HAL_ADAPTER_CAMERA_MODULE_CALLBACKS_DELEGATE_H_
+#define CAMERA_HAL_ADAPTER_CAMERA_MODULE_CALLBACKS_DELEGATE_H_
 
 #include "cros-camera/future.h"
 #include "hal_adapter/cros_camera_mojo_utils.h"
@@ -41,4 +41,4 @@ class CameraModuleCallbacksDelegate
 
 }  // namespace cros
 
-#endif  // HAL_ADAPTER_CAMERA_MODULE_CALLBACKS_DELEGATE_H_
+#endif  // CAMERA_HAL_ADAPTER_CAMERA_MODULE_CALLBACKS_DELEGATE_H_

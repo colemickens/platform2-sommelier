@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CAMERA3_TEST_CAMERA3_STILL_CAPTURE_FIXTURE_H_
-#define CAMERA3_TEST_CAMERA3_STILL_CAPTURE_FIXTURE_H_
+#ifndef CAMERA_CAMERA3_TEST_CAMERA3_STILL_CAPTURE_FIXTURE_H_
+#define CAMERA_CAMERA3_TEST_CAMERA3_STILL_CAPTURE_FIXTURE_H_
 
 #include <semaphore.h>
 #include <stdio.h>
@@ -65,4 +65,4 @@ class Camera3StillCaptureFixture : public Camera3PreviewFixture {
 
 }  // namespace camera3_test
 
-#endif  // CAMERA3_TEST_CAMERA3_STILL_CAPTURE_FIXTURE_H_
+#endif  // CAMERA_CAMERA3_TEST_CAMERA3_STILL_CAPTURE_FIXTURE_H_

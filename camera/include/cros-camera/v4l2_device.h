@@ -18,8 +18,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef INCLUDE_CROS_CAMERA_V4L2_DEVICE_H_
-#define INCLUDE_CROS_CAMERA_V4L2_DEVICE_H_
+#ifndef CAMERA_INCLUDE_CROS_CAMERA_V4L2_DEVICE_H_
+#define CAMERA_INCLUDE_CROS_CAMERA_V4L2_DEVICE_H_
 
 #include <linux/v4l2-subdev.h>
 #include <linux/videodev2.h>
@@ -529,4 +529,4 @@ class CROS_CAMERA_EXPORT V4L2Subdevice final : public V4L2Device {
 };
 
 }  // namespace cros
-#endif  // INCLUDE_CROS_CAMERA_V4L2_DEVICE_H_
+#endif  // CAMERA_INCLUDE_CROS_CAMERA_V4L2_DEVICE_H_

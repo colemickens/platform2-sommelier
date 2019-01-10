@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef INCLUDE_CROS_CAMERA_UDEV_WATCHER_H_
-#define INCLUDE_CROS_CAMERA_UDEV_WATCHER_H_
+#ifndef CAMERA_INCLUDE_CROS_CAMERA_UDEV_WATCHER_H_
+#define CAMERA_INCLUDE_CROS_CAMERA_UDEV_WATCHER_H_
 
 #include <string>
 
@@ -76,4 +76,4 @@ class CROS_CAMERA_EXPORT UdevWatcher : public base::MessageLoopForIO::Watcher {
 
 }  // namespace cros
 
-#endif  // INCLUDE_CROS_CAMERA_UDEV_WATCHER_H_
+#endif  // CAMERA_INCLUDE_CROS_CAMERA_UDEV_WATCHER_H_

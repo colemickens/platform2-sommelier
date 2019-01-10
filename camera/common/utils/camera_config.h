@@ -3,8 +3,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef COMMON_UTILS_CAMERA_CONFIG_H_
-#define COMMON_UTILS_CAMERA_CONFIG_H_
+#ifndef CAMERA_COMMON_UTILS_CAMERA_CONFIG_H_
+#define CAMERA_COMMON_UTILS_CAMERA_CONFIG_H_
 
 #include <memory>
 #include <string>
@@ -37,4 +37,4 @@ class CameraConfig {
 
 }  // namespace cros
 
-#endif  // COMMON_UTILS_CAMERA_CONFIG_H_
+#endif  // CAMERA_COMMON_UTILS_CAMERA_CONFIG_H_

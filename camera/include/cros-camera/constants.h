@@ -3,8 +3,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef INCLUDE_CROS_CAMERA_CONSTANTS_H_
-#define INCLUDE_CROS_CAMERA_CONSTANTS_H_
+#ifndef CAMERA_INCLUDE_CROS_CAMERA_CONSTANTS_H_
+#define CAMERA_INCLUDE_CROS_CAMERA_CONSTANTS_H_
 
 namespace cros {
 
@@ -47,4 +47,4 @@ const char kCrosMaxNativeHeight[] = "max_native_height";
 
 }  // namespace constants
 }  // namespace cros
-#endif  // INCLUDE_CROS_CAMERA_CONSTANTS_H_
+#endif  // CAMERA_INCLUDE_CROS_CAMERA_CONSTANTS_H_

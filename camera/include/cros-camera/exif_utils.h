@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef INCLUDE_CROS_CAMERA_EXIF_UTILS_H_
-#define INCLUDE_CROS_CAMERA_EXIF_UTILS_H_
+#ifndef CAMERA_INCLUDE_CROS_CAMERA_EXIF_UTILS_H_
+#define CAMERA_INCLUDE_CROS_CAMERA_EXIF_UTILS_H_
 
 #include <cstddef>
 #include <memory>
@@ -294,4 +294,4 @@ class CROS_CAMERA_EXPORT ExifUtils {
 
 }  // namespace cros
 
-#endif  // INCLUDE_CROS_CAMERA_EXIF_UTILS_H_
+#endif  // CAMERA_INCLUDE_CROS_CAMERA_EXIF_UTILS_H_

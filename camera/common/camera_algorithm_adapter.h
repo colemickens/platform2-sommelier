@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef COMMON_CAMERA_ALGORITHM_ADAPTER_H_
-#define COMMON_CAMERA_ALGORITHM_ADAPTER_H_
+#ifndef CAMERA_COMMON_CAMERA_ALGORITHM_ADAPTER_H_
+#define CAMERA_COMMON_CAMERA_ALGORITHM_ADAPTER_H_
 
 #include <string>
 
@@ -56,4 +56,4 @@ class CameraAlgorithmAdapter {
 
 }  // namespace cros
 
-#endif  // COMMON_CAMERA_ALGORITHM_ADAPTER_H_
+#endif  // CAMERA_COMMON_CAMERA_ALGORITHM_ADAPTER_H_

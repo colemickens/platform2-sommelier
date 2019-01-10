@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef HAL_USB_V1_V4L2_CAMERA_DEVICE_H_
-#define HAL_USB_V1_V4L2_CAMERA_DEVICE_H_
+#ifndef CAMERA_HAL_USB_V1_V4L2_CAMERA_DEVICE_H_
+#define CAMERA_HAL_USB_V1_V4L2_CAMERA_DEVICE_H_
 
 #include <string>
 #include <unordered_map>
@@ -84,4 +84,4 @@ class V4L2CameraDevice : public CameraDeviceDelegate {
 
 }  // namespace arc
 
-#endif  // HAL_USB_V1_V4L2_CAMERA_DEVICE_H_
+#endif  // CAMERA_HAL_USB_V1_V4L2_CAMERA_DEVICE_H_

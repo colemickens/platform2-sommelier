@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CAMERA3_TEST_CAMERA3_FRAME_FIXTURE_H_
-#define CAMERA3_TEST_CAMERA3_FRAME_FIXTURE_H_
+#ifndef CAMERA_CAMERA3_TEST_CAMERA3_FRAME_FIXTURE_H_
+#define CAMERA_CAMERA3_TEST_CAMERA3_FRAME_FIXTURE_H_
 
 #include <memory>
 #include <string>
@@ -158,4 +158,4 @@ void GetTimeOfTimeout(int32_t ms, struct timespec* ts);
 
 }  // namespace camera3_test
 
-#endif  // CAMERA3_TEST_CAMERA3_FRAME_FIXTURE_H_
+#endif  // CAMERA_CAMERA3_TEST_CAMERA3_FRAME_FIXTURE_H_

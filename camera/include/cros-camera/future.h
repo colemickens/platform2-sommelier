@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef INCLUDE_CROS_CAMERA_FUTURE_H_
-#define INCLUDE_CROS_CAMERA_FUTURE_H_
+#ifndef CAMERA_INCLUDE_CROS_CAMERA_FUTURE_H_
+#define CAMERA_INCLUDE_CROS_CAMERA_FUTURE_H_
 
 #include <set>
 #include <utility>
@@ -142,4 +142,4 @@ CROS_CAMERA_EXPORT base::Callback<void()> GetFutureCallback(
 
 }  // namespace cros
 
-#endif  // INCLUDE_CROS_CAMERA_FUTURE_H_
+#endif  // CAMERA_INCLUDE_CROS_CAMERA_FUTURE_H_

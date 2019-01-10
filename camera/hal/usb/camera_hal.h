@@ -3,8 +3,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef HAL_USB_CAMERA_HAL_H_
-#define HAL_USB_CAMERA_HAL_H_
+#ifndef CAMERA_HAL_USB_CAMERA_HAL_H_
+#define CAMERA_HAL_USB_CAMERA_HAL_H_
 
 #include <map>
 #include <memory>
@@ -102,4 +102,4 @@ int camera_device_close(struct hw_device_t* hw_device);
 
 extern camera_module_t HAL_MODULE_INFO_SYM;
 
-#endif  // HAL_USB_CAMERA_HAL_H_
+#endif  // CAMERA_HAL_USB_CAMERA_HAL_H_

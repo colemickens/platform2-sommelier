@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef HAL_ADAPTER_CAMERA_HAL_TEST_ADAPTER_H_
-#define HAL_ADAPTER_CAMERA_HAL_TEST_ADAPTER_H_
+#ifndef CAMERA_HAL_ADAPTER_CAMERA_HAL_TEST_ADAPTER_H_
+#define CAMERA_HAL_ADAPTER_CAMERA_HAL_TEST_ADAPTER_H_
 
 #include <utility>
 #include <vector>
@@ -65,4 +65,4 @@ class CameraHalTestAdapter : public CameraHalAdapter {
 
 }  // namespace cros
 
-#endif  // HAL_ADAPTER_CAMERA_HAL_TEST_ADAPTER_H_
+#endif  // CAMERA_HAL_ADAPTER_CAMERA_HAL_TEST_ADAPTER_H_

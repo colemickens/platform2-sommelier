@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef COMMON_UTILS_CAMERA_HAL_ENUMERATOR_H_
-#define COMMON_UTILS_CAMERA_HAL_ENUMERATOR_H_
+#ifndef CAMERA_COMMON_UTILS_CAMERA_HAL_ENUMERATOR_H_
+#define CAMERA_COMMON_UTILS_CAMERA_HAL_ENUMERATOR_H_
 
 #include <vector>
 
@@ -17,4 +17,4 @@ std::vector<base::FilePath> GetCameraHalPaths();
 
 }  // namespace cros
 
-#endif  // COMMON_UTILS_CAMERA_HAL_ENUMERATOR_H_
+#endif  // CAMERA_COMMON_UTILS_CAMERA_HAL_ENUMERATOR_H_

@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef COMMON_LIBCAB_TEST_INTERNAL_H_
-#define COMMON_LIBCAB_TEST_INTERNAL_H_
+#ifndef CAMERA_COMMON_LIBCAB_TEST_INTERNAL_H_
+#define CAMERA_COMMON_LIBCAB_TEST_INTERNAL_H_
 
 namespace libcab_test {
 
@@ -35,4 +35,4 @@ inline uint32_t SimpleHash(const uint8_t buf[], uint32_t size) {
 
 }  // namespace libcab_test
 
-#endif  // COMMON_LIBCAB_TEST_INTERNAL_H_
+#endif  // CAMERA_COMMON_LIBCAB_TEST_INTERNAL_H_

@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef HAL_ADAPTER_CAMERA_DEVICE_ADAPTER_H_
-#define HAL_ADAPTER_CAMERA_DEVICE_ADAPTER_H_
+#ifndef CAMERA_HAL_ADAPTER_CAMERA_DEVICE_ADAPTER_H_
+#define CAMERA_HAL_ADAPTER_CAMERA_DEVICE_ADAPTER_H_
 
 #include <deque>
 #include <memory>
@@ -228,4 +228,4 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
 
 }  // namespace cros
 
-#endif  // HAL_ADAPTER_CAMERA_DEVICE_ADAPTER_H_
+#endif  // CAMERA_HAL_ADAPTER_CAMERA_DEVICE_ADAPTER_H_

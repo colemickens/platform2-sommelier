@@ -3,8 +3,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef HAL_USB_CAPTURE_REQUEST_H_
-#define HAL_USB_CAPTURE_REQUEST_H_
+#ifndef CAMERA_HAL_USB_CAPTURE_REQUEST_H_
+#define CAMERA_HAL_USB_CAPTURE_REQUEST_H_
 
 #include <vector>
 
@@ -43,4 +43,4 @@ class CaptureRequest {
 
 }  // namespace cros
 
-#endif  // HAL_USB_CAPTURE_REQUEST_H_
+#endif  // CAMERA_HAL_USB_CAPTURE_REQUEST_H_

@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef HAL_USB_CAMERA_CHARACTERISTICS_H_
-#define HAL_USB_CAMERA_CHARACTERISTICS_H_
+#ifndef CAMERA_HAL_USB_CAMERA_CHARACTERISTICS_H_
+#define CAMERA_HAL_USB_CAMERA_CHARACTERISTICS_H_
 
 #include <map>
 #include <string>
@@ -70,4 +70,4 @@ class CameraCharacteristics {
 
 }  // namespace cros
 
-#endif  // HAL_USB_CAMERA_CHARACTERISTICS_H_
+#endif  // CAMERA_HAL_USB_CAMERA_CHARACTERISTICS_H_

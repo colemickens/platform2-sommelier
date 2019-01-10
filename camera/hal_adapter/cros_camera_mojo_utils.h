@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef HAL_ADAPTER_CROS_CAMERA_MOJO_UTILS_H_
-#define HAL_ADAPTER_CROS_CAMERA_MOJO_UTILS_H_
+#ifndef CAMERA_HAL_ADAPTER_CROS_CAMERA_MOJO_UTILS_H_
+#define CAMERA_HAL_ADAPTER_CROS_CAMERA_MOJO_UTILS_H_
 
 #include <map>
 #include <memory>
@@ -229,4 +229,4 @@ class MojoBinding : public T {
 }  // namespace internal
 }  // namespace cros
 
-#endif  // HAL_ADAPTER_CROS_CAMERA_MOJO_UTILS_H_
+#endif  // CAMERA_HAL_ADAPTER_CROS_CAMERA_MOJO_UTILS_H_

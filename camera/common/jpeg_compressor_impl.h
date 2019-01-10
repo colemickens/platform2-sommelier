@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef COMMON_JPEG_COMPRESSOR_IMPL_H_
-#define COMMON_JPEG_COMPRESSOR_IMPL_H_
+#ifndef CAMERA_COMMON_JPEG_COMPRESSOR_IMPL_H_
+#define CAMERA_COMMON_JPEG_COMPRESSOR_IMPL_H_
 
 #include "cros-camera/jpeg_compressor.h"
 
@@ -112,4 +112,4 @@ class JpegCompressorImpl : public JpegCompressor {
 
 }  // namespace cros
 
-#endif  // COMMON_JPEG_COMPRESSOR_IMPL_H_
+#endif  // CAMERA_COMMON_JPEG_COMPRESSOR_IMPL_H_

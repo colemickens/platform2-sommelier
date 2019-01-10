@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef HAL_USB_V1_CAMERA_CHARACTERISTICS_H_
-#define HAL_USB_V1_CAMERA_CHARACTERISTICS_H_
+#ifndef CAMERA_HAL_USB_V1_CAMERA_CHARACTERISTICS_H_
+#define CAMERA_HAL_USB_V1_CAMERA_CHARACTERISTICS_H_
 
 #include <string>
 #include <unordered_map>
@@ -71,4 +71,4 @@ class CameraCharacteristics {
 
 }  // namespace arc
 
-#endif  // HAL_USB_V1_CAMERA_CHARACTERISTICS_H_
+#endif  // CAMERA_HAL_USB_V1_CAMERA_CHARACTERISTICS_H_

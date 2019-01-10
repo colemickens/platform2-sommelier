@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CAMERA3_TEST_CAMERA3_DEVICE_FIXTURE_H_
-#define CAMERA3_TEST_CAMERA3_DEVICE_FIXTURE_H_
+#ifndef CAMERA_CAMERA3_TEST_CAMERA3_DEVICE_FIXTURE_H_
+#define CAMERA_CAMERA3_TEST_CAMERA3_DEVICE_FIXTURE_H_
 
 #include <memory>
 #include <set>
@@ -326,4 +326,4 @@ class Camera3DeviceFixture : public testing::Test {
 
 }  // namespace camera3_test
 
-#endif  // CAMERA3_TEST_CAMERA3_DEVICE_FIXTURE_H_
+#endif  // CAMERA_CAMERA3_TEST_CAMERA3_DEVICE_FIXTURE_H_

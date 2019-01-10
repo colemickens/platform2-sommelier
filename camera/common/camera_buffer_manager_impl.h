@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef COMMON_CAMERA_BUFFER_MANAGER_IMPL_H_
-#define COMMON_CAMERA_BUFFER_MANAGER_IMPL_H_
+#ifndef CAMERA_COMMON_CAMERA_BUFFER_MANAGER_IMPL_H_
+#define CAMERA_COMMON_CAMERA_BUFFER_MANAGER_IMPL_H_
 
 #include "cros-camera/camera_buffer_manager.h"
 
@@ -205,4 +205,4 @@ class CameraBufferManagerImpl final : public CameraBufferManager {
 
 }  // namespace cros
 
-#endif  // COMMON_CAMERA_BUFFER_MANAGER_IMPL_H_
+#endif  // CAMERA_COMMON_CAMERA_BUFFER_MANAGER_IMPL_H_

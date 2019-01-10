@@ -3,8 +3,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef HAL_USB_FRAME_BUFFER_H_
-#define HAL_USB_FRAME_BUFFER_H_
+#ifndef CAMERA_HAL_USB_FRAME_BUFFER_H_
+#define CAMERA_HAL_USB_FRAME_BUFFER_H_
 
 #include <stdint.h>
 
@@ -153,4 +153,4 @@ class GrallocFrameBuffer : public FrameBuffer {
 
 }  // namespace cros
 
-#endif  // HAL_USB_FRAME_BUFFER_H_
+#endif  // CAMERA_HAL_USB_FRAME_BUFFER_H_

@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef HAL_USB_V1_ARC_CAMERA_SERVICE_PROVIDER_H_
-#define HAL_USB_V1_ARC_CAMERA_SERVICE_PROVIDER_H_
+#ifndef CAMERA_HAL_USB_V1_ARC_CAMERA_SERVICE_PROVIDER_H_
+#define CAMERA_HAL_USB_V1_ARC_CAMERA_SERVICE_PROVIDER_H_
 
 #include <base/macros.h>
 
@@ -32,4 +32,4 @@ class ArcCameraServiceProvider {
 
 }  // namespace arc
 
-#endif  // HAL_USB_V1_ARC_CAMERA_SERVICE_PROVIDER_H_
+#endif  // CAMERA_HAL_USB_V1_ARC_CAMERA_SERVICE_PROVIDER_H_
