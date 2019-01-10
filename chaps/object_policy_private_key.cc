@@ -54,19 +54,28 @@ bool ObjectPolicyPrivateKey::IsObjectComplete() {
   if (key_type == CKK_RSA) {
     if (!object_->IsAttributePresent(CKA_MODULUS) ||
         !object_->IsAttributePresent(CKA_PUBLIC_EXPONENT)) {
-      LOG(ERROR) << "RSA Private key attributes are required.";
+      LOG(ERROR) << "RSA Private key attributes are required. (Missing public "
+                    "infomation)";
       return false;
     }
     // Either a private exponent or a TPM key blob must exist.
     if (!object_->IsAttributePresent(CKA_PRIVATE_EXPONENT) &&
         !object_->IsAttributePresent(kKeyBlobAttribute)) {
-      LOG(ERROR) << "RSA Private key attributes are required.";
+      LOG(ERROR) << "RSA Private key attributes are required. (Missing private "
+                    "information)";
       return false;
     }
   } else if (key_type == CKK_EC) {
-    if (!object_->IsAttributePresent(CKA_EC_PARAMS) ||
-        !object_->IsAttributePresent(CKA_VALUE)) {
-      LOG(ERROR) << "ECC Private key attributes are required.";
+    if (!object_->IsAttributePresent(CKA_EC_PARAMS)) {
+      LOG(ERROR) << "ECC Private key attributes are required. (Missing public "
+                    "information)";
+      return false;
+    }
+    // Either a private exponent or a TPM key blob must exist.
+    if (!object_->IsAttributePresent(CKA_VALUE) &&
+        !object_->IsAttributePresent(kKeyBlobAttribute)) {
+      LOG(ERROR) << "ECC Private key attributes are required. (Missing private "
+                    "information)";
       return false;
     }
   } else {
