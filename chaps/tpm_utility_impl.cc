@@ -397,13 +397,13 @@ bool TPMUtilityImpl::StirRandom(const string& entropy_data) {
   return true;
 }
 
-bool TPMUtilityImpl::GenerateKey(int slot,
-                                 int modulus_bits,
-                                 const string& public_exponent,
-                                 const SecureBlob& auth_data,
-                                 string* key_blob,
-                                 int* key_handle) {
-  VLOG(1) << "TPMUtilityImpl::GenerateKey enter";
+bool TPMUtilityImpl::GenerateRSAKey(int slot,
+                                    int modulus_bits,
+                                    const string& public_exponent,
+                                    const SecureBlob& auth_data,
+                                    string* key_blob,
+                                    int* key_handle) {
+  VLOG(1) << "TPMUtilityImpl::GenerateRSAKey enter";
   AutoLock lock(lock_);
   if (!InitSRK())
     return false;
@@ -446,14 +446,14 @@ bool TPMUtilityImpl::GenerateKey(int slot,
   if (!GetKeyBlob(key, key_blob))
     return false;
   *key_handle = CreateHandle(slot, key.release(), *key_blob, auth_data);
-  VLOG(1) << "TPMUtilityImpl::GenerateKey success";
+  VLOG(1) << "TPMUtilityImpl::GenerateRSAKey success";
   return true;
 }
 
-bool TPMUtilityImpl::GetPublicKey(int key_handle,
-                                  string* public_exponent,
-                                  string* modulus) {
-  VLOG(1) << "TPMUtilityImpl::GetPublicKey enter";
+bool TPMUtilityImpl::GetRSAPublicKey(int key_handle,
+                                     string* public_exponent,
+                                     string* modulus) {
+  VLOG(1) << "TPMUtilityImpl::GetRSAPublicKey enter";
   AutoLock lock(lock_);
   if (!InitSRK())
     return false;
@@ -467,7 +467,7 @@ bool TPMUtilityImpl::GetPublicKey(int key_handle,
                            TSS_TSPATTRIB_KEYINFO_RSA_MODULUS,
                            modulus))
     return false;
-  VLOG(1) << "TPMUtilityImpl::GetPublicKey success";
+  VLOG(1) << "TPMUtilityImpl::GetRSAPublicKey success";
   return true;
 }
 

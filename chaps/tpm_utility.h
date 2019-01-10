@@ -78,18 +78,18 @@ class TPMUtility {
   //   key_handle - A handle to the new key. This will be valid until keys are
   //                unloaded for the given slot.
   // Returns true on success.
-  virtual bool GenerateKey(int slot,
-                           int modulus_bits,
-                           const std::string& public_exponent,
-                           const brillo::SecureBlob& auth_data,
-                           std::string* key_blob,
-                           int* key_handle) = 0;
+  virtual bool GenerateRSAKey(int slot,
+                              int modulus_bits,
+                              const std::string& public_exponent,
+                              const brillo::SecureBlob& auth_data,
+                              std::string* key_blob,
+                              int* key_handle) = 0;
 
   // Retrieves the public components of an RSA key pair. Returns true on
   // success.
-  virtual bool GetPublicKey(int key_handle,
-                            std::string* public_exponent,
-                            std::string* modulus) = 0;
+  virtual bool GetRSAPublicKey(int key_handle,
+                               std::string* public_exponent,
+                               std::string* modulus) = 0;
 
   // Wraps an RSA key pair with the SRK. The key type will be set to
   // TSS_KEY_TYPE_LEGACY.

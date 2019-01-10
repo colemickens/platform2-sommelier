@@ -71,7 +71,7 @@ class TestTPMUtility: public ::testing::Test {
 
   void TestKey() {
     string e, n;
-    EXPECT_TRUE(tpm_->GetPublicKey(key_, &e, &n));
+    EXPECT_TRUE(tpm_->GetRSAPublicKey(key_, &e, &n));
     EXPECT_EQ(n.length() * 8, size_);
     string input("input"), encrypted;
     EXPECT_TRUE(tpm_->Bind(key_, input, &encrypted));
@@ -134,8 +134,8 @@ TEST_F(TestTPMUtility, Random) {
   EXPECT_EQ(128, r.length());
 }
 
-TEST_F(TestTPMUtility, GenerateKey) {
-  EXPECT_TRUE(tpm_->GenerateKey(0, size_, e_, auth_, &blob_, &key_));
+TEST_F(TestTPMUtility, GenerateRSAKey) {
+  EXPECT_TRUE(tpm_->GenerateRSAKey(0, size_, e_, auth_, &blob_, &key_));
   TestKey();
   tpm_->UnloadKeysForSlot(0);
   EXPECT_TRUE(tpm_->LoadKey(0, blob_, auth_, &key_));
@@ -163,7 +163,7 @@ TEST_F(TestTPMUtility, BadAuthSize) {
   EXPECT_TRUE(tpm_->Bind(key_, master, &encrypted));
   tpm_->UnloadKeysForSlot(0);
   EXPECT_FALSE(tpm_->Authenticate(0, bad, blob_, encrypted, &tmp));
-  EXPECT_FALSE(tpm_->GenerateKey(0, size_, e_, bad, &blob_, &key_));
+  EXPECT_FALSE(tpm_->GenerateRSAKey(0, size_, e_, bad, &blob_, &key_));
   tpm_->UnloadKeysForSlot(0);
   EXPECT_FALSE(tpm_->LoadKey(0, blob_, bad, &key_));
 }
@@ -171,7 +171,7 @@ TEST_F(TestTPMUtility, BadAuthSize) {
 TEST_F(TestTPMUtility, BadKeyHandle) {
   int key = 17;
   string e, n;
-  EXPECT_FALSE(tpm_->GetPublicKey(key, &e, &n));
+  EXPECT_FALSE(tpm_->GetRSAPublicKey(key, &e, &n));
   string in, out;
   EXPECT_FALSE(tpm_->Unbind(key, in, &out));
   EXPECT_FALSE(tpm_->Sign(key, in, &out));

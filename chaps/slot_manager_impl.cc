@@ -312,12 +312,9 @@ bool TokenInitThread::InitializeKeyHierarchy(SecureBlob* master_key) {
   int auth_key_handle;
   const int key_size = 2048;
   const string public_exponent("\x01\x00\x01", 3);
-  if (!tpm_utility_->GenerateKey(slot_id_,
-                                 key_size,
-                                 public_exponent,
-                                 Sha1(auth_data_),
-                                 &auth_key_blob,
-                                 &auth_key_handle)) {
+  if (!tpm_utility_->GenerateRSAKey(slot_id_, key_size, public_exponent,
+                                    Sha1(auth_data_), &auth_key_blob,
+                                    &auth_key_handle)) {
     LOG(ERROR) << "Failed to generate user authentication key.";
     return false;
   }

@@ -371,12 +371,12 @@ bool TPM2UtilityImpl::StirRandom(const std::string& entropy_data) {
   return true;
 }
 
-bool TPM2UtilityImpl::GenerateKey(int slot,
-                                  int modulus_bits,
-                                  const std::string& public_exponent,
-                                  const SecureBlob& auth_data,
-                                  std::string* key_blob,
-                                  int* key_handle) {
+bool TPM2UtilityImpl::GenerateRSAKey(int slot,
+                                     int modulus_bits,
+                                     const std::string& public_exponent,
+                                     const SecureBlob& auth_data,
+                                     std::string* key_blob,
+                                     int* key_handle) {
   AutoLock lock(lock_);
   if (public_exponent.size() > 4) {
     LOG(ERROR) << "Incorrectly formatted public_exponent.";
@@ -418,9 +418,9 @@ bool TPM2UtilityImpl::GenerateKey(int slot,
   return true;
 }
 
-bool TPM2UtilityImpl::GetPublicKey(int key_handle,
-                                   std::string* public_exponent,
-                                   std::string* modulus) {
+bool TPM2UtilityImpl::GetRSAPublicKey(int key_handle,
+                                      std::string* public_exponent,
+                                      std::string* modulus) {
   AutoLock lock(lock_);
   trunks::TPMT_PUBLIC public_data;
   TPM_RC result = trunks_tpm_utility_->GetKeyPublicArea(key_handle,
@@ -527,7 +527,7 @@ bool TPM2UtilityImpl::Bind(int key_handle,
   CHECK(output);
   std::string modulus;
   std::string exponent;
-  if (!GetPublicKey(key_handle, &exponent, &modulus)) {
+  if (!GetRSAPublicKey(key_handle, &exponent, &modulus)) {
     return false;
   }
   if (input.size() > modulus.size() - 11) {
@@ -629,7 +629,7 @@ bool TPM2UtilityImpl::Verify(int key_handle,
   crypto::ScopedRSA rsa(RSA_new());
   std::string modulus;
   std::string exponent;
-  if (!GetPublicKey(key_handle, &exponent, &modulus)) {
+  if (!GetRSAPublicKey(key_handle, &exponent, &modulus)) {
     return false;
   }
   rsa.get()->n = BN_bin2bn(

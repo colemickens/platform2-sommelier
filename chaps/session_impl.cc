@@ -1283,7 +1283,7 @@ bool SessionImpl::GenerateRSAKeyPairTPM(int modulus_bits,
   string auth_data = GenerateRandomSoftware(kDefaultAuthDataBytes);
   string key_blob;
   int tpm_key_handle;
-  if (!tpm_utility_->GenerateKey(slot_id_, modulus_bits, public_exponent,
+  if (!tpm_utility_->GenerateRSAKey(slot_id_, modulus_bits, public_exponent,
                                  SecureBlob(auth_data.begin(), auth_data.end()),
                                  &key_blob, &tpm_key_handle))
     return false;
@@ -1291,7 +1291,7 @@ bool SessionImpl::GenerateRSAKeyPairTPM(int modulus_bits,
   // Get public key information from TPM
   string modulus;
   string exponent;
-  if (!tpm_utility_->GetPublicKey(tpm_key_handle, &exponent, &modulus))
+  if (!tpm_utility_->GetRSAPublicKey(tpm_key_handle, &exponent, &modulus))
     return false;
 
   public_object->SetAttributeString(CKA_MODULUS, modulus);

@@ -105,10 +105,10 @@ void ConfigureTPMUtility(TPMUtilityMock* tpm) {
       .WillRepeatedly(DoAll(SetArgPointee<1>(string("master_key")),
                             Return(true)));
   string exponent(kDefaultPubExp, kDefaultPubExpSize);
-  EXPECT_CALL(*tpm, GenerateKey(1, 2048, exponent, MakeBlob(kAuthData), _, _))
+  EXPECT_CALL(*tpm,
+              GenerateRSAKey(1, 2048, exponent, MakeBlob(kAuthData), _, _))
       .WillRepeatedly(DoAll(SetArgPointee<4>(string("auth_key_blob")),
-                            SetArgPointee<5>(1),
-                            Return(true)));
+                            SetArgPointee<5>(1), Return(true)));
   EXPECT_CALL(*tpm, Bind(1,
                          string("master_key"),
                          _))

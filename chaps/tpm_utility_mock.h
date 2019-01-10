@@ -35,13 +35,14 @@ class TPMUtilityMock : public TPMUtility {
                                     std::string*));
   MOCK_METHOD2(GenerateRandom, bool(int, std::string*));
   MOCK_METHOD1(StirRandom, bool(const std::string&));
-  MOCK_METHOD6(GenerateKey, bool(int,
-                                 int,
-                                 const std::string&,
-                                 const brillo::SecureBlob&,
-                                 std::string*,
-                                 int*));
-  MOCK_METHOD3(GetPublicKey, bool(int, std::string*, std::string*));
+  MOCK_METHOD6(GenerateRSAKey,
+               bool(int,
+                    int,
+                    const std::string&,
+                    const brillo::SecureBlob&,
+                    std::string*,
+                    int*));
+  MOCK_METHOD3(GetRSAPublicKey, bool(int, std::string*, std::string*));
   MOCK_METHOD7(WrapKey, bool(int,
                              const std::string&,
                              const std::string&,

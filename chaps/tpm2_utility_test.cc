@@ -304,7 +304,7 @@ TEST_F(TPM2UtilityTest, StirRandomFail) {
   EXPECT_FALSE(utility.StirRandom(entropy_data));
 }
 
-TEST_F(TPM2UtilityTest, GenerateKeySuccess) {
+TEST_F(TPM2UtilityTest, GenerateRSAKeySuccess) {
   TPM2UtilityImpl utility(factory_.get());
   int modulus_bits = 2048;
   std::string exponent("\x01\x00\x01", 3);
@@ -314,7 +314,7 @@ TEST_F(TPM2UtilityTest, GenerateKeySuccess) {
   EXPECT_CALL(mock_tpm_utility_,
               CreateRSAKeyPair(_, modulus_bits, _, _, _, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_TRUE(utility.GenerateKey(1,
+  EXPECT_TRUE(utility.GenerateRSAKey(1,
                                   modulus_bits,
                                   exponent,
                                   auth_data,
@@ -322,14 +322,14 @@ TEST_F(TPM2UtilityTest, GenerateKeySuccess) {
                                   &key_handle));
 }
 
-TEST_F(TPM2UtilityTest, GenerateKeyWrongExponent) {
+TEST_F(TPM2UtilityTest, GenerateRSAKeyWrongExponent) {
   TPM2UtilityImpl utility(factory_.get());
   int modulus_bits = 2048;
   std::string exponent(10, 'a');
   SecureBlob auth_data;
   std::string key_blob;
   int key_handle;
-  EXPECT_FALSE(utility.GenerateKey(1,
+  EXPECT_FALSE(utility.GenerateRSAKey(1,
                                    modulus_bits,
                                    exponent,
                                    auth_data,
@@ -337,14 +337,14 @@ TEST_F(TPM2UtilityTest, GenerateKeyWrongExponent) {
                                    &key_handle));
 }
 
-TEST_F(TPM2UtilityTest, GenerateKeyModulusTooSmall) {
+TEST_F(TPM2UtilityTest, GenerateRSAKeyModulusTooSmall) {
   TPM2UtilityImpl utility(factory_.get());
   int modulus_bits = 1;
   std::string exponent("\x01\x00\x01", 3);
   SecureBlob auth_data;
   std::string key_blob;
   int key_handle;
-  EXPECT_FALSE(utility.GenerateKey(1,
+  EXPECT_FALSE(utility.GenerateRSAKey(1,
                                    modulus_bits,
                                    exponent,
                                    auth_data,
@@ -352,7 +352,7 @@ TEST_F(TPM2UtilityTest, GenerateKeyModulusTooSmall) {
                                    &key_handle));
 }
 
-TEST_F(TPM2UtilityTest, GenerateKeyCreateFail) {
+TEST_F(TPM2UtilityTest, GenerateRSAKeyCreateFail) {
   TPM2UtilityImpl utility(factory_.get());
   int modulus_bits = 2048;
   std::string exponent("\x01\x00\x01", 3);
@@ -361,7 +361,7 @@ TEST_F(TPM2UtilityTest, GenerateKeyCreateFail) {
   int key_handle;
   EXPECT_CALL(mock_tpm_utility_, CreateRSAKeyPair(_, _, _, _, _, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(utility.GenerateKey(1,
+  EXPECT_FALSE(utility.GenerateRSAKey(1,
                                    modulus_bits,
                                    exponent,
                                    auth_data,
@@ -369,7 +369,7 @@ TEST_F(TPM2UtilityTest, GenerateKeyCreateFail) {
                                    &key_handle));
 }
 
-TEST_F(TPM2UtilityTest, GenerateKeyLoadFail) {
+TEST_F(TPM2UtilityTest, GenerateRSAKeyLoadFail) {
   TPM2UtilityImpl utility(factory_.get());
   int modulus_bits = 2048;
   std::string exponent("\x01\x00\x01", 3);
@@ -378,7 +378,7 @@ TEST_F(TPM2UtilityTest, GenerateKeyLoadFail) {
   int key_handle;
   EXPECT_CALL(mock_tpm_utility_, LoadKey(key_blob, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(utility.GenerateKey(1,
+  EXPECT_FALSE(utility.GenerateRSAKey(1,
                                    modulus_bits,
                                    exponent,
                                    auth_data,
@@ -398,7 +398,7 @@ TEST_F(TPM2UtilityTest, GetPublicKeySuccess) {
   EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(key_handle, _))
       .WillOnce(DoAll(SetArgPointee<1>(public_data),
                       Return(TPM_RC_SUCCESS)));
-  EXPECT_TRUE(utility.GetPublicKey(key_handle, &exponent, &modulus));
+  EXPECT_TRUE(utility.GetRSAPublicKey(key_handle, &exponent, &modulus));
   EXPECT_EQ(modulus.compare(test_modulus), 0);
 }
 
@@ -409,7 +409,7 @@ TEST_F(TPM2UtilityTest, GetPublicKeyFail) {
   std::string modulus;
   EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(key_handle, _))
       .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(utility.GetPublicKey(key_handle, &exponent, &modulus));
+  EXPECT_FALSE(utility.GetRSAPublicKey(key_handle, &exponent, &modulus));
 }
 
 TEST_F(TPM2UtilityTest, WrapKeySuccess) {

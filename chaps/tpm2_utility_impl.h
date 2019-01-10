@@ -60,15 +60,15 @@ class TPM2UtilityImpl : public TPMUtility {
                       std::string* new_auth_key_blob) override;
   bool GenerateRandom(int num_bytes, std::string* random_data) override;
   bool StirRandom(const std::string& entropy_data) override;
-  bool GenerateKey(int slot,
-                   int modulus_bits,
-                   const std::string& public_exponent,
-                   const brillo::SecureBlob& auth_data,
-                   std::string* key_blob,
-                   int* key_handle) override;
-  bool GetPublicKey(int key_handle,
-                    std::string* public_exponent,
-                    std::string* modulus) override;
+  bool GenerateRSAKey(int slot,
+                      int modulus_bits,
+                      const std::string& public_exponent,
+                      const brillo::SecureBlob& auth_data,
+                      std::string* key_blob,
+                      int* key_handle) override;
+  bool GetRSAPublicKey(int key_handle,
+                       std::string* public_exponent,
+                       std::string* modulus) override;
   bool WrapKey(int slot,
                const std::string& public_exponent,
                const std::string& modulus,
