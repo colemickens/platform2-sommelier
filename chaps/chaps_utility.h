@@ -14,6 +14,7 @@
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <brillo/secure_blob.h>
+#include <crypto/scoped_openssl_types.h>
 
 #include "chaps/chaps.h"
 #include "pkcs11/cryptoki.h"
@@ -294,6 +295,36 @@ inline void ClearString(std::string* str) {
 inline void ClearVector(std::vector<uint8_t>* vector) {
   brillo::SecureMemset(vector->data(), 0, vector->size());
 }
+
+// TODO(crbug/916023): Move pure OpenSSL conversion wrappers to a cross daemon
+// library.
+//
+// OpenSSL type <--> raw data string
+//
+
+// Convert OpenSSL BIGNUM |bignum| to string.
+std::string ConvertFromBIGNUM(const BIGNUM* bignum);
+
+// Convert string |big_integer| back to a new OpenSSL BIGNUM.
+// Caller takes the ownership. Returns nullptr if big_integer is empty.
+BIGNUM* ConvertToBIGNUM(const std::string& big_integer);
+
+//
+// OpenSSL type <--> DER-encoded string
+//
+
+// Get the ECParamters from |key| and DER-encode to a string.
+std::string GetECParametersAsString(const crypto::ScopedEC_KEY& key);
+// Get the EC_Point from |key| and DER-encode to a string.
+std::string GetECPointAsString(const crypto::ScopedEC_KEY& key);
+
+//
+// OpenSSL type <--> PKCS #11 Attributes
+//
+
+// Create a OpenSSL EC_KEY from a CKA_EC_PARAMS string (which is compatible
+// with DER-encoded OpenSSL ECParameters)
+crypto::ScopedEC_KEY CreateECCKeyFromEC_PARAMS(const std::string& ec_params);
 
 }  // namespace chaps
 

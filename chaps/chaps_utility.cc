@@ -24,6 +24,31 @@ using brillo::SecureBlob;
 using std::string;
 using std::stringstream;
 using std::vector;
+using ScopedASN1_OCTET_STRING =
+    crypto::ScopedOpenSSL<ASN1_OCTET_STRING, ASN1_OCTET_STRING_free>;
+
+namespace {
+
+template <typename OpenSSLType,
+          int (*openssl_func)(OpenSSLType*, unsigned char**)>
+string ConvertOpenSSLObjectToString(OpenSSLType* type) {
+  string output;
+
+  int expected_size = openssl_func(type, nullptr);
+  if (expected_size < 0) {
+    return string();
+  }
+
+  output.resize(expected_size, '\0');
+
+  unsigned char* buf = chaps::ConvertStringToByteBuffer(output.data());
+  int real_size = openssl_func(type, &buf);
+  CHECK_EQ(expected_size, real_size);
+
+  return output;
+}
+
+}  // namespace
 
 namespace chaps {
 
@@ -697,6 +722,72 @@ bool IsIntegralAttribute(CK_ATTRIBUTE_TYPE type) {
       return true;
   }
   return false;
+}
+
+// Both PKCS #11 and OpenSSL use big-endian binary representations of big
+// integers.  To convert we can just use the OpenSSL converters.
+string ConvertFromBIGNUM(const BIGNUM* bignum) {
+  string big_integer(BN_num_bytes(bignum), 0);
+  BN_bn2bin(bignum, chaps::ConvertStringToByteBuffer(big_integer.data()));
+  return big_integer;
+}
+
+BIGNUM* ConvertToBIGNUM(const string& big_integer) {
+  if (big_integer.empty())
+    return nullptr;
+  BIGNUM* b = BN_bin2bn(chaps::ConvertStringToByteBuffer(big_integer.data()),
+                        big_integer.length(), nullptr);
+  CHECK(b);
+  return b;
+}
+
+string GetECParametersAsString(const crypto::ScopedEC_KEY& key) {
+  return ConvertOpenSSLObjectToString<EC_KEY, i2d_ECParameters>(key.get());
+}
+
+// CKA_EC_POINT is DER-encoding of ANSI X9.62 ECPoint value
+// The format should be 04 LEN 04 X Y, where the first 04 is the octet string
+// tag, LEN is the the content length, the second 04 identifies the uncompressed
+// form, and X and Y are the point coordinates.
+//
+// i2o_ECPublicKey() returns only the content (04 X Y).
+string GetECPointAsString(const crypto::ScopedEC_KEY& key) {
+  // Convert EC_KEY* to OCT_STRING
+  const string oct_string =
+      ConvertOpenSSLObjectToString<EC_KEY, i2o_ECPublicKey>(key.get());
+  if (oct_string.empty())
+    return string();
+
+  // Put OCT_STRING to ASN1_OCTET_STRING
+  ScopedASN1_OCTET_STRING os(ASN1_OCTET_STRING_new());
+  ASN1_OCTET_STRING_set(os.get(),
+                        chaps::ConvertStringToByteBuffer(oct_string.data()),
+                        oct_string.size());
+
+  // DER encode ASN1_OCTET_STRING
+  return ConvertOpenSSLObjectToString<ASN1_OCTET_STRING, i2d_ASN1_OCTET_STRING>(
+      os.get());
+}
+
+// In short, we can use d2i_ECParameters to parse CKA_EC_PARAMS and return
+// EC_KEY*
+//
+// CKA_EC_PARAMS is DER-encoding of an ANSI X9.62 Parameters value.
+// Parameters ::= CHOICE {
+//    ecParameters   ECParameters,
+//    namedCurve     CURVES.&id({CurveNames}),
+//    implicitlyCA   NULL
+// }
+// which is as known as EcPKParameters in OpenSSL and RFC 3279.
+// EcPKParameters ::= CHOICE {
+//    ecParameters  ECParameters,
+//    namedCurve    OBJECT IDENTIFIER,
+//    implicitlyCA  NULL
+// }
+crypto::ScopedEC_KEY CreateECCKeyFromEC_PARAMS(const string& input) {
+  const unsigned char* buf = chaps::ConvertStringToByteBuffer(input.data());
+  crypto::ScopedEC_KEY key(d2i_ECParameters(nullptr, &buf, input.size()));
+  return key;
 }
 
 }  // namespace chaps

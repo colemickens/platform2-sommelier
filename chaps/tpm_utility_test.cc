@@ -35,19 +35,6 @@ using ::testing::SetArgPointee;
 
 namespace chaps {
 
-static string ConvertFromBIGNUM(const BIGNUM* bignum) {
-  string big_integer(BN_num_bytes(bignum), 0);
-  BN_bn2bin(bignum, ConvertStringToByteBuffer(big_integer.data()));
-  return big_integer;
-}
-
-static BIGNUM* ConvertToBIGNUM(const string& big_integer) {
-  BIGNUM* b = BN_bin2bn(ConvertStringToByteBuffer(big_integer.data()),
-                        big_integer.length(),
-                        NULL);
-  return b;
-}
-
 class TestTPMUtility: public ::testing::Test {
  public:
   TestTPMUtility() {

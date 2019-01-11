@@ -225,48 +225,6 @@ bool IsValidKeyType(chaps::OperationType operation,
          object_class == GetExpectedObjectClass(operation, key_type);
 }
 
-// TODO(crbug/916023): Move OpenSSL conversion function to a standalone
-// libarary.
-//
-// Helpers to map PKCS #11 <--> OpenSSL.
-template <typename OpenSSLType,
-          int (*openssl_func)(OpenSSLType*, unsigned char**)>
-string ConvertOpenSSLObjectToString(OpenSSLType* type) {
-  string output;
-
-  int expected_size = openssl_func(type, nullptr);
-  if (expected_size < 0) {
-    return string();
-  }
-
-  output.resize(expected_size, '\0');
-
-  unsigned char* buf = chaps::ConvertStringToByteBuffer(output.data());
-  int real_size = openssl_func(type, &buf);
-  CHECK_EQ(expected_size, real_size);
-
-  return output;
-}
-
-// Both PKCS #11 and OpenSSL use big-endian binary representations of big
-// integers.  To convert we can just use the OpenSSL converters.
-string ConvertFromBIGNUM(const BIGNUM* bignum) {
-  string big_integer(BN_num_bytes(bignum), 0);
-  BN_bn2bin(bignum, chaps::ConvertStringToByteBuffer(big_integer.data()));
-  return big_integer;
-}
-
-// Caller take the ownership.
-// Returns nullptr if big_integer is empty.
-BIGNUM* ConvertToBIGNUM(const string& big_integer) {
-  if (big_integer.empty())
-    return nullptr;
-  BIGNUM* b = BN_bin2bn(chaps::ConvertStringToByteBuffer(big_integer.data()),
-                        big_integer.length(), nullptr);
-  CHECK(b);
-  return b;
-}
-
 const EVP_CIPHER* GetOpenSSLCipher(CK_MECHANISM_TYPE mechanism,
                                    size_t key_size) {
   switch (mechanism) {
@@ -332,35 +290,11 @@ const EVP_MD* GetOpenSSLDigest(CK_MECHANISM_TYPE mechanism) {
   return nullptr;
 }
 
-// In short, we can use d2i_ECParameters to parse CKA_EC_PARAMS and return
-// EC_KEY*
-//
-// CKA_EC_PARAMS is DER-encoding of an ANSI X9.62 Parameters value.
-// Parameters ::= CHOICE {
-//    ecParameters   ECParameters,
-//    namedCurve     CURVES.&id({CurveNames}),
-//    implicitlyCA   NULL
-// }
-// which is as known as EcPKParameters in OpenSSL and RFC 3279.
-// EcPKParameters ::= CHOICE {
-//    ecParameters  ECParameters,
-//    namedCurve    OBJECT IDENTIFIER,
-//    implicitlyCA  NULL
-// }
-crypto::ScopedEC_KEY CreateECCKeyFromEC_PARAMS(const string& input) {
-  const unsigned char* buf = chaps::ConvertStringToByteBuffer(input.data());
-  crypto::ScopedEC_KEY key(d2i_ECParameters(nullptr, &buf, input.size()));
-  return key;
-}
-
-string GetECParametersAsString(const crypto::ScopedEC_KEY& key) {
-  return ConvertOpenSSLObjectToString<EC_KEY, i2d_ECParameters>(key.get());
-}
-
+// TODO(menghuan): Move Create*KeyFromObject to the member function of object.
 crypto::ScopedEC_KEY CreateECCPublicKeyFromObject(const Object* key_object) {
   // Start parsing EC_PARAMS
   string ec_params = key_object->GetAttributeString(CKA_EC_PARAMS);
-  crypto::ScopedEC_KEY key = CreateECCKeyFromEC_PARAMS(ec_params);
+  crypto::ScopedEC_KEY key = chaps::CreateECCKeyFromEC_PARAMS(ec_params);
   if (key == nullptr)
     return nullptr;
 
@@ -386,12 +320,12 @@ crypto::ScopedEC_KEY CreateECCPublicKeyFromObject(const Object* key_object) {
 crypto::ScopedEC_KEY CreateECCPrivateKeyFromObject(const Object* key_object) {
   // Parse EC_PARAMS
   string ec_params = key_object->GetAttributeString(CKA_EC_PARAMS);
-  crypto::ScopedEC_KEY key = CreateECCKeyFromEC_PARAMS(ec_params);
+  crypto::ScopedEC_KEY key = chaps::CreateECCKeyFromEC_PARAMS(ec_params);
   if (key == nullptr)
     return nullptr;
 
   crypto::ScopedBIGNUM d(
-      ConvertToBIGNUM(key_object->GetAttributeString(CKA_VALUE)));
+      chaps::ConvertToBIGNUM(key_object->GetAttributeString(CKA_VALUE)));
   if (d == nullptr)
     return nullptr;
 
@@ -401,58 +335,30 @@ crypto::ScopedEC_KEY CreateECCPrivateKeyFromObject(const Object* key_object) {
   return key;
 }
 
-// CKA_EC_POINT is DER-encoding of ANSI X9.62 ECPoint value
-// The format should be 04 LEN 04 X Y, where the first 04 is the octet string
-// tag, LEN is the the content length, the second 04 identifies the uncompressed
-// form, and X and Y are the point coordinates.
-//
-// i2o_ECPublicKey() returns only the content (04 X Y).
-string GetECPointAsString(const crypto::ScopedEC_KEY& key) {
-  // Convert EC_KEY* to OCT_STRING
-  const string oct_string =
-      ConvertOpenSSLObjectToString<EC_KEY, i2o_ECPublicKey>(key.get());
-  if (oct_string.empty())
-    return string();
-
-  // Put OCT_STRING to ASN1_OCTET_STRING
-  ScopedASN1_OCTET_STRING os(ASN1_OCTET_STRING_new());
-  ASN1_OCTET_STRING_set(os.get(),
-                        chaps::ConvertStringToByteBuffer(oct_string.data()),
-                        oct_string.size());
-
-  // DER encode ASN1_OCTET_STRING
-  const string der_encoded =
-      ConvertOpenSSLObjectToString<ASN1_OCTET_STRING, i2d_ASN1_OCTET_STRING>(
-          os.get());
-
-  return der_encoded;
-}
-
-// TODO(menghuan): Move Create*KeyFromObject to the member function of object.
 // Always returns a non-NULL value.
 crypto::ScopedRSA CreateRSAKeyFromObject(const chaps::Object* key_object) {
   crypto::ScopedRSA rsa(RSA_new());
   CHECK_NE(rsa, nullptr);
   if (key_object->GetObjectClass() == CKO_PUBLIC_KEY) {
     string e = key_object->GetAttributeString(CKA_PUBLIC_EXPONENT);
-    rsa->e = ConvertToBIGNUM(e);
+    rsa->e = chaps::ConvertToBIGNUM(e);
     string n = key_object->GetAttributeString(CKA_MODULUS);
-    rsa->n = ConvertToBIGNUM(n);
+    rsa->n = chaps::ConvertToBIGNUM(n);
   } else {  // key_object->GetObjectClass() == CKO_PRIVATE_KEY
     string n = key_object->GetAttributeString(CKA_MODULUS);
-    rsa->n = ConvertToBIGNUM(n);
+    rsa->n = chaps::ConvertToBIGNUM(n);
     string d = key_object->GetAttributeString(CKA_PRIVATE_EXPONENT);
-    rsa->d = ConvertToBIGNUM(d);
+    rsa->d = chaps::ConvertToBIGNUM(d);
     string p = key_object->GetAttributeString(CKA_PRIME_1);
-    rsa->p = ConvertToBIGNUM(p);
+    rsa->p = chaps::ConvertToBIGNUM(p);
     string q = key_object->GetAttributeString(CKA_PRIME_2);
-    rsa->q = ConvertToBIGNUM(q);
+    rsa->q = chaps::ConvertToBIGNUM(q);
     string dmp1 = key_object->GetAttributeString(CKA_EXPONENT_1);
-    rsa->dmp1 = ConvertToBIGNUM(dmp1);
+    rsa->dmp1 = chaps::ConvertToBIGNUM(dmp1);
     string dmq1 = key_object->GetAttributeString(CKA_EXPONENT_2);
-    rsa->dmq1 = ConvertToBIGNUM(dmq1);
+    rsa->dmq1 = chaps::ConvertToBIGNUM(dmq1);
     string iqmp = key_object->GetAttributeString(CKA_COEFFICIENT);
-    rsa->iqmp = ConvertToBIGNUM(iqmp);
+    rsa->iqmp = chaps::ConvertToBIGNUM(iqmp);
   }
   return rsa;
 }
