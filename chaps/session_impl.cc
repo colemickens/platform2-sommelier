@@ -1253,27 +1253,78 @@ CK_RV SessionImpl::GenerateECCKeyPair(Object* public_object,
   public_object->SetAttributeString(CKA_EC_PARAMS, ec_params);
   private_object->SetAttributeString(CKA_EC_PARAMS, ec_params);
 
-  // Software generate key
+  // Get NID from key
+  const EC_GROUP* group = EC_KEY_get0_group(key.get());
+  if (group == nullptr)
+    return CKR_FUNCTION_FAILED;
+  int curve_nid = EC_GROUP_get_curve_name(group);
+
+  bool is_using_tpm = tpm_utility_->IsTPMAvailable() &&
+                      private_object->IsTokenObject() &&
+                      tpm_utility_->IsECCurveSupported(curve_nid);
+
+  bool result = false;
+  if (is_using_tpm) {
+    result =
+        GenerateECCKeyPairTPM(key, curve_nid, public_object, private_object);
+  } else {
+    result = GenerateECCKeyPairSoftware(key, public_object, private_object);
+  }
+  return result ? CKR_OK : CKR_FUNCTION_FAILED;
+}
+
+bool SessionImpl::GenerateECCKeyPairTPM(const crypto::ScopedEC_KEY& key,
+                                        int curve_nid,
+                                        Object* public_object,
+                                        Object* private_object) {
+  string auth_data = GenerateRandomSoftware(kDefaultAuthDataBytes);
+  string key_blob;
+  int tpm_key_handle;
+  if (!tpm_utility_->GenerateECCKey(slot_id_, curve_nid, SecureBlob(auth_data),
+                                    &key_blob, &tpm_key_handle)) {
+    LOG(ERROR) << __func__ << ": Fail to generate ECC key in TPM.";
+    return false;
+  }
+
+  // Get public key information from TPM
+  string ec_point;
+  if (!tpm_utility_->GetECCPublicKey(tpm_key_handle, &ec_point)) {
+    LOG(ERROR) << __func__ << ": Fail to get ECC public key from TPM.";
+    return false;
+  }
+
+  // Set CKA_EC_POINT for public key
+  public_object->SetAttributeString(CKA_EC_POINT, ec_point);
+
+  // Set TPM information for private key
+  private_object->SetAttributeString(kAuthDataAttribute, auth_data);
+  private_object->SetAttributeString(kKeyBlobAttribute, key_blob);
+
+  return true;
+}
+
+bool SessionImpl::GenerateECCKeyPairSoftware(const crypto::ScopedEC_KEY& key,
+                                             Object* public_object,
+                                             Object* private_object) {
   if (!EC_KEY_generate_key(key.get())) {
     LOG(ERROR) << __func__
                << ": Software generate key fail. Perhaps it is not supported "
                   "by OpenSSL.";
-    return CKR_DOMAIN_PARAMS_INVALID;
+    return false;
   }
 
   // Set CKA_EC_POINT for public key
   const string ec_point = GetECPointAsString(key);
   if (ec_point.empty()) {
     LOG(ERROR) << __func__ << ": Fail to dump EC_POINT.";
-    return CKR_FUNCTION_FAILED;
+    return false;
   }
   public_object->SetAttributeString(CKA_EC_POINT, ec_point);
 
   // Set CKA_VALUE for private key
   const BIGNUM* privkey = EC_KEY_get0_private_key(key.get());
   private_object->SetAttributeString(CKA_VALUE, ConvertFromBIGNUM(privkey));
-
-  return CKR_OK;
+  return true;
 }
 
 string SessionImpl::GenerateRandomSoftware(int num_bytes) {

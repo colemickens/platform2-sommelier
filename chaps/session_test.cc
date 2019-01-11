@@ -173,7 +173,10 @@ class TestSession: public ::testing::Test {
     return output;
   }
 
-  void GenerateECCKeyPair(const Object** pub, const Object** priv) {
+  void GenerateECCKeyPair(bool use_token_object_for_pub,
+                          bool use_token_object_for_priv,
+                          const Object** pub,
+                          const Object** priv) {
     // Create DER encoded OID of P-256 for CKA_EC_PARAMS (prime256v1 or
     // secp256r1)
     string ec_params = GetDERforNID(NID_X9_62_prime256v1);
@@ -181,14 +184,15 @@ class TestSession: public ::testing::Test {
     CK_BBOOL no = CK_FALSE;
     CK_BBOOL yes = CK_TRUE;
     CK_ATTRIBUTE pub_attr[] = {
-        {CKA_TOKEN, &no, sizeof(CK_BBOOL)},
+        {CKA_TOKEN, use_token_object_for_pub ? &yes : &no, sizeof(CK_BBOOL)},
         {CKA_ENCRYPT, &no, sizeof(CK_BBOOL)},
         {CKA_VERIFY, &yes, sizeof(CK_BBOOL)},
         {CKA_EC_PARAMS, ConvertStringToByteBuffer(ec_params.data()),
          ec_params.size()}};
-    CK_ATTRIBUTE priv_attr[] = {{CKA_TOKEN, &no, sizeof(CK_BBOOL)},
-                                {CKA_DECRYPT, &no, sizeof(CK_BBOOL)},
-                                {CKA_SIGN, &yes, sizeof(CK_BBOOL)}};
+    CK_ATTRIBUTE priv_attr[] = {
+        {CKA_TOKEN, use_token_object_for_priv ? &yes : &no, sizeof(CK_BBOOL)},
+        {CKA_DECRYPT, &no, sizeof(CK_BBOOL)},
+        {CKA_SIGN, &yes, sizeof(CK_BBOOL)}};
     int pubh = 0, privh = 0;
     ASSERT_EQ(CKR_OK,
               session_->GenerateKeyPair(CKM_EC_KEY_PAIR_GEN, "", pub_attr, 4,
@@ -613,7 +617,7 @@ TEST_F(TestSession, RSASign) {
 TEST_F(TestSession, ECDSA_Sign) {
   const Object* pub = NULL;
   const Object* priv = NULL;
-  GenerateECCKeyPair(&pub, &priv);
+  GenerateECCKeyPair(false, false, &pub, &priv);
 
   // Sign / verify without a built-in hash (raw ECDSA).
   EXPECT_EQ(CKR_OK, session_->OperationInit(kSign, CKM_ECDSA, "", priv));
@@ -968,6 +972,43 @@ TEST_F(TestSession, GenerateRSAWithNoTPM) {
   EXPECT_TRUE(object->IsAttributePresent(CKA_EXPONENT_1));
   EXPECT_TRUE(object->IsAttributePresent(CKA_EXPONENT_2));
   EXPECT_TRUE(object->IsAttributePresent(CKA_COEFFICIENT));
+}
+
+TEST_F(TestSession, GenerateECCWithTPM) {
+  EXPECT_CALL(tpm_, IsECCurveSupported(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(tpm_, GenerateECCKey(_, _, _, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(tpm_, GetECCPublicKey(_, _)).WillRepeatedly(Return(true));
+
+  const Object* pub = NULL;
+  const Object* priv = NULL;
+  GenerateECCKeyPair(true, true, &pub, &priv);
+
+  // TPM backed key object doesn't have CKA_VALUE which stored ECC private key.
+  EXPECT_FALSE(priv->IsAttributePresent(CKA_VALUE));
+}
+
+TEST_F(TestSession, GenerateECCWithTPMInconsistentToken) {
+  EXPECT_CALL(tpm_, IsECCurveSupported(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(tpm_, GenerateECCKey(_, _, _, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(tpm_, GetECCPublicKey(_, _)).WillRepeatedly(Return(true));
+
+  const Object* pub = NULL;
+  const Object* priv = NULL;
+  GenerateECCKeyPair(false, true, &pub, &priv);
+
+  EXPECT_FALSE(pub->IsTokenObject());
+  EXPECT_TRUE(priv->IsTokenObject());
+}
+
+TEST_F(TestSession, GenerateECCWithNoTPM) {
+  EXPECT_CALL(tpm_, IsTPMAvailable()).WillRepeatedly(Return(false));
+
+  const Object* pub = NULL;
+  const Object* priv = NULL;
+  GenerateECCKeyPair(true, true, &pub, &priv);
+
+  // For a software key, the sensitive attributes should exist.
+  EXPECT_TRUE(priv->IsAttributePresent(CKA_VALUE));
 }
 
 TEST_F(TestSession, ImportRSAWithTPM) {

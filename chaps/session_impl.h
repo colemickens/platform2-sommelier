@@ -167,6 +167,13 @@ class SessionImpl : public Session {
                              Object* private_object);
 
   CK_RV GenerateECCKeyPair(Object* public_object, Object* private_object);
+  bool GenerateECCKeyPairSoftware(const crypto::ScopedEC_KEY& key,
+                                  Object* public_object,
+                                  Object* private_object);
+  bool GenerateECCKeyPairTPM(const crypto::ScopedEC_KEY& key,
+                             int curve_nid,
+                             Object* public_object,
+                             Object* private_object);
 
   std::string GenerateRandomSoftware(int num_bytes);
   std::string GetDERDigestInfo(CK_MECHANISM_TYPE mechanism);
