@@ -29,6 +29,10 @@ base::FilePath GetDlcModuleImagePath(const base::FilePath& dlc_module_root_path,
 bool GetDlcManifest(const std::string& dlc_module_id,
                     imageloader::Manifest* manifest_out);
 
+// Returns the directory inside a DLC module which is mounted at
+// |dlc_mount_point|.
+base::FilePath GetDlcRootInModulePath(const base::FilePath& dlc_mount_point);
+
 }  // namespace utils
 }  // namespace dlcservice
 

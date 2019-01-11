@@ -16,9 +16,9 @@
         ID of the DLC module.
       </tp:docstring>
     </arg>
-    <arg name="mount_point" type="s" direction="out">
+    <arg name="dlc_root" type="s" direction="out">
       <tp:docstring>
-        The mount path of the DLC module image.
+        The path to the DLC content that user needs to access.
       </tp:docstring>
     </arg>
   </method>

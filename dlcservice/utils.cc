@@ -12,6 +12,9 @@ constexpr char kDlcDirAName[] = "dlc_a";
 constexpr char kDlcDirBName[] = "dlc_b";
 constexpr char kDlcImageFileName[] = "dlc.img";
 constexpr char kManifestName[] = "imageloader.json";
+
+// The directory inside a DLC module that contains all the DLC files.
+constexpr char kRootDirectoryInsideDlcModule[] = "root";
 }  // namespace
 
 namespace dlcservice {
@@ -57,6 +60,10 @@ bool GetDlcManifest(const std::string& dlc_module_id,
   }
 
   return true;
+}
+
+base::FilePath GetDlcRootInModulePath(const base::FilePath& dlc_mount_point) {
+  return dlc_mount_point.Append(kRootDirectoryInsideDlcModule);
 }
 
 }  // namespace utils

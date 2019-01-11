@@ -39,7 +39,7 @@ class DlcServiceDBusAdaptor
   // org::chromium::DlServiceInterfaceInterface overrides:
   bool Install(brillo::ErrorPtr* err,
                const std::string& id_in,
-               std::string* mount_point_out) override;
+               std::string* dlc_root_out) override;
   bool Uninstall(brillo::ErrorPtr* err, const std::string& id_in) override;
   bool GetInstalled(brillo::ErrorPtr* err,
                     std::string* dlc_module_list_out) override;

@@ -188,10 +188,12 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallTest) {
       std::move(mock_image_loader_proxy), std::move(mock_update_engine_proxy),
       std::make_unique<BootSlot>(std::move(mock_boot_device)), manifest_path_,
       content_path_);
-  std::string mount_path;
+  std::string dlc_root_path;
   EXPECT_TRUE(
-      dlc_service_dbus_adaptor.Install(nullptr, kSecondDlc, &mount_path));
-  EXPECT_EQ(mount_path, mount_path_expected);
+      dlc_service_dbus_adaptor.Install(nullptr, kSecondDlc, &dlc_root_path));
+  EXPECT_EQ(dlc_root_path,
+            utils::GetDlcRootInModulePath(base::FilePath(mount_path_expected))
+                .value());
 
   constexpr int expected_permissions = 0755;
   int permissions;

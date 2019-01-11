@@ -45,4 +45,10 @@ TEST(UtilsTest, GetDlcModuleImagePathB) {
       "/tmp/dlc/id/dlc_b/dlc.img");
 }
 
+TEST(UtilsTest, GetDlcRootInModulePath) {
+  base::FilePath path("foo-path");
+  base::FilePath expected_path("foo-path/root");
+  EXPECT_EQ(utils::GetDlcRootInModulePath(path), expected_path);
+}
+
 }  // namespace dlcservice

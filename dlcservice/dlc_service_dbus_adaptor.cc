@@ -102,7 +102,7 @@ DlcServiceDBusAdaptor::~DlcServiceDBusAdaptor() {}
 
 bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
                                     const std::string& id_in,
-                                    std::string* mount_point_out) {
+                                    std::string* dlc_root_out) {
   // TODO(xiaochu): change API to accept a list of DLC module ids.
   // https://crbug.com/905075
 
@@ -191,17 +191,23 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
     LogAndSetError(err, "Can not get current boot slot.");
     return false;
   }
+
+  std::string mount_point;
   if (!image_loader_proxy_->LoadDlcImage(
           id_in,
           current_slot == 0 ? imageloader::kSlotNameA : imageloader::kSlotNameB,
-          mount_point_out, nullptr)) {
+          &mount_point, nullptr)) {
     LogAndSetError(err, "Imageloader is not available.");
     return false;
   }
-  if (mount_point_out->empty()) {
+  if (mount_point.empty()) {
     LogAndSetError(err, "Imageloader LoadDlcImage failed.");
     return false;
   }
+
+  *dlc_root_out =
+      utils::GetDlcRootInModulePath(base::FilePath(mount_point)).value();
+
   return true;
 }
 
