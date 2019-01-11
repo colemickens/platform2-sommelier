@@ -9,8 +9,8 @@ import("//common-mk/proto_library.gni")
 group("all") {
   deps = [
     ":finish_oobe_auto_config",
-    ":liboobeconfig",
     ":libload_oobe_config_usb",
+    ":liboobeconfig",
     ":librollback_helper",
     ":libsave_oobe_config_usb",
     ":oobe_config_restore",
@@ -29,6 +29,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
+    "libmetrics-${libbase_ver}",
     "libtpmcrypto",
 
     # system_api depends on protobuf (or protobuf-lite). It must
@@ -49,17 +50,19 @@ generate_dbus_adaptors("oobe_config_restore_adaptors") {
 }
 
 pkg_config("liboobeconfig_config") {
-  pkg_deps = [ "dbus-1", "libpower_manager-client" ]
+  pkg_deps = [
+    "dbus-1",
+    "libpower_manager-client",
+  ]
 }
 
 # oobe_config library.
 static_library("liboobeconfig") {
-  configs += [
-    ":liboobeconfig_config",
-    ":target_defaults",
-  ]
+  configs += [ ":liboobeconfig_config" ]
+  all_dependent_configs = [ ":target_defaults" ]
   sources = [
     "load_oobe_config_rollback.cc",
+    "metrics.cc",
     "oobe_config.cc",
     "rollback_constants.cc",
   ]
@@ -73,7 +76,10 @@ static_library("liboobeconfig") {
 }
 
 pkg_config("crypto") {
-  pkg_deps = [" libcrypto", "libtpmcrypto" ]
+  pkg_deps = [
+    " libcrypto",
+    "libtpmcrypto",
+  ]
 }
 
 static_library("libload_oobe_config_usb") {
@@ -99,9 +105,7 @@ static_library("libsave_oobe_config_usb") {
 }
 
 executable("finish_oobe_auto_config") {
-  configs += [
-    ":target_defaults",
-  ]
+  configs += [ ":target_defaults" ]
   sources = [
     "save_oobe_config_usb_main.cc",
   ]
@@ -111,9 +115,7 @@ executable("finish_oobe_auto_config") {
 }
 
 executable("store_usb_oobe_config") {
-  configs += [
-    ":target_defaults",
-  ]
+  configs += [ ":target_defaults" ]
   sources = [
     "store_usb_oobe_config.cc",
   ]
@@ -142,8 +144,8 @@ executable("oobe_config_restore") {
     "oobe_config_restore_service.cc",
   ]
   deps = [
-    ":liboobeconfig",
     ":libload_oobe_config_usb",
+    ":liboobeconfig",
     ":oobe_config_restore_adaptors",
   ]
 }
@@ -151,12 +153,10 @@ executable("oobe_config_restore") {
 # rollback_helper library.
 # Used by rollback_prepare_save and rollback_finish_restore.
 static_library("librollback_helper") {
-  configs += [
-    ":target_defaults",
-  ]
+  configs += [ ":target_defaults" ]
   sources = [
-    "rollback_helper.cc",
     "rollback_constants.cc",
+    "rollback_helper.cc",
   ]
 }
 
@@ -207,14 +207,14 @@ if (use.test) {
     sources = [
       "load_oobe_config_rollback_test.cc",
       "load_oobe_config_usb_test.cc",
-      "rollback_helper_test.cc",
       "oobe_config_test.cc",
+      "rollback_helper_test.cc",
       "save_oobe_config_usb_test.cc",
       "usb_utils_test.cc",
     ]
     deps = [
-      ":liboobeconfig",
       ":libload_oobe_config_usb",
+      ":liboobeconfig",
       ":librollback_helper",
       ":libsave_oobe_config_usb",
       "//common-mk/testrunner",
