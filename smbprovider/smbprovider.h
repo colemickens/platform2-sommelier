@@ -184,11 +184,18 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
                             std::string* target_path,
                             int32_t* error_code);
 
-  // Tests whether |mount_root| is a valid path to be mounted by attemping
-  // to open the directory.
-  bool CanAccessMount(int32_t mount_id,
-                      const std::string& mount_root,
-                      int32_t* error_code);
+  // Tests whether |mount_root| can be read by attempting to open the root
+  // directory.
+  bool CanReadMountRoot(int32_t mount_id,
+                        const std::string& mount_root,
+                        int32_t* error_code);
+
+  // Tests whether |mount_root| can be reached by attempting to open the
+  // directory. Authentication errors are ignored. Returns true if the errno is
+  // either EPERM, EACCES, or 0 (OK).
+  bool CanReachHost(int32_t mount_id,
+                    const std::string& mount_root,
+                    int32_t* error_code);
 
   // Helper method to get the type of an entry. Returns boolean indicating
   // success. Sets is_directory to true for directory, and false for file.
