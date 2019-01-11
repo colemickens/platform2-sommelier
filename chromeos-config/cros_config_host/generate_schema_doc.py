@@ -145,7 +145,7 @@ def Main(schema, output):
   with open(schema, 'r') as schema_stream:
     schema_yaml = yaml.load(schema_stream.read())
     ref_types = {}
-    for type_def in schema_yaml['typeDefs']:
+    for type_def in schema_yaml.get('typeDefs', []):
       ref_types['#/typeDefs/%s' % type_def] = schema_yaml['typeDefs'][type_def]
 
     type_def_outputs = []
