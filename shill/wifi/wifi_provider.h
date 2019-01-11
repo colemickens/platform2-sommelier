@@ -38,7 +38,6 @@ class WiFiService;
 class WiFiProvider : public ProviderInterface {
  public:
   static const char kStorageFrequencies[];
-  static const int kMaxStorageFrequencies;
   using ConnectFrequencyMap = std::map<uint16_t, int64_t>;
   // The key to |ConnectFrequencyMapDated| is the number of days since the
   // Epoch.
@@ -146,19 +145,8 @@ class WiFiProvider : public ProviderInterface {
 
   using EndpointServiceMap = std::map<const WiFiEndpoint*, WiFiServiceRefPtr>;
 
-  static const char kManagerErrorSSIDTooLong[];
-  static const char kManagerErrorSSIDTooShort[];
-  static const char kManagerErrorSSIDRequired[];
-  static const char kManagerErrorUnsupportedSecurityClass[];
-  static const char kManagerErrorUnsupportedSecurityMode[];
-  static const char kManagerErrorUnsupportedServiceMode[];
-  static const char kManagerErrorArgumentConflict[];
-  static const char kFrequencyDelimiter;
-  static const char kStartWeekHeader[];
-  static const time_t kIllegalStartWeek;
   static const char kStorageId[];
   static const time_t kWeeksToKeepFrequencyCounts;
-  static const time_t kSecondsPerWeek;
 
   // Add a service to the service_ vector and register it with the Manager.
   WiFiServiceRefPtr AddService(const std::vector<uint8_t>& ssid,

@@ -47,30 +47,36 @@ static auto kModuleLogScope = ScopeLogger::kWiFi;
 static string ObjectID(WiFiProvider* w) { return "(wifi_provider)"; }
 }
 
+namespace {
+
 // Note that WiFiProvider generates some manager-level errors, because it
 // implements the WiFi portion of the Manager.GetService flimflam API. The
 // API is implemented here, rather than in manager, to keep WiFi-specific
 // logic in the right place.
-const char WiFiProvider::kManagerErrorSSIDRequired[] = "must specify SSID";
-const char WiFiProvider::kManagerErrorSSIDTooLong[]  = "SSID is too long";
-const char WiFiProvider::kManagerErrorSSIDTooShort[] = "SSID is too short";
-const char WiFiProvider::kManagerErrorUnsupportedSecurityClass[] =
+const char kManagerErrorSSIDRequired[] = "must specify SSID";
+const char kManagerErrorSSIDTooLong[] = "SSID is too long";
+const char kManagerErrorSSIDTooShort[] = "SSID is too short";
+const char kManagerErrorUnsupportedSecurityClass[] =
     "security class is unsupported";
-const char WiFiProvider::kManagerErrorUnsupportedSecurityMode[] =
+const char kManagerErrorUnsupportedSecurityMode[] =
     "security mode is unsupported";
-const char WiFiProvider::kManagerErrorUnsupportedServiceMode[] =
+const char kManagerErrorUnsupportedServiceMode[] =
     "service mode is unsupported";
-const char WiFiProvider::kManagerErrorArgumentConflict[] =
+const char kManagerErrorArgumentConflict[] =
     "provided arguments are inconsistent";
-const char WiFiProvider::kFrequencyDelimiter = ':';
-const char WiFiProvider::kStartWeekHeader[] = "@";
-const time_t WiFiProvider::kIllegalStartWeek =
-    std::numeric_limits<time_t>::max();
+
+const char kFrequencyDelimiter = ':';
+const char kStartWeekHeader[] = "@";
+const time_t kIllegalStartWeek = std::numeric_limits<time_t>::max();
+
+const int kMaxStorageFrequencies = 20;
+const time_t kSecondsPerWeek = 60 * 60 * 24 * 7;
+
+}  // namespace
+
 const char WiFiProvider::kStorageId[] = "provider_of_wifi";
 const char WiFiProvider::kStorageFrequencies[] = "Frequencies";
-const int WiFiProvider::kMaxStorageFrequencies = 20;
 const time_t WiFiProvider::kWeeksToKeepFrequencyCounts = 3;
-const time_t WiFiProvider::kSecondsPerWeek = 60 * 60 * 24 * 7;
 
 WiFiProvider::WiFiProvider(ControlInterface* control_interface,
                            EventDispatcher* dispatcher,
