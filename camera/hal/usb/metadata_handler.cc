@@ -310,10 +310,8 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
                    << max_hal_height_by_format[format];
         continue;
       }
-      // If 1920x1080 resolution doesn't support 30 fps, we filter it out
-      // because testBasicRecording CTS will require 30 fps for 1080p.
-      if (format == HAL_PIXEL_FORMAT_BLOB || per_format_max_fps == 30 ||
-          (supported_format.width > 1920 && supported_format.height > 1080)) {
+      // We filter the resolution which cannot support 30 fps out.
+      if (format == HAL_PIXEL_FORMAT_BLOB || per_format_max_fps == 30) {
         stream_configurations.push_back(format);
         stream_configurations.push_back(supported_format.width);
         stream_configurations.push_back(supported_format.height);
@@ -343,15 +341,11 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
     }
   }
 
-  int32_t fps_for_max_yuv = GetMaximumFrameRate(supported_formats[0]);
-
   // The document in aeAvailableTargetFpsRanges section says the min_fps should
   // not be larger than 15.
   // We cannot support fixed 30fps but Android requires (min, max) and
   // (max, max) ranges.
-  int32_t fps_ranges[] = {min_fps, max_fps,         max_fps,
-                          max_fps, fps_for_max_yuv, fps_for_max_yuv,
-                          min_fps, fps_for_max_yuv};
+  int32_t fps_ranges[] = {min_fps, max_fps, max_fps, max_fps};
   UPDATE(ANDROID_CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES, fps_ranges,
          ARRAY_SIZE(fps_ranges));
 
