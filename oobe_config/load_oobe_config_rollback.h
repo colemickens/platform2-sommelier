@@ -14,6 +14,8 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <power_manager-client/power_manager/dbus-proxies.h>
 
+#include "oobe_config/metrics.h"
+
 namespace oobe_config {
 
 class OobeConfig;
@@ -43,6 +45,7 @@ class LoadOobeConfigRollback : public LoadOobeConfigInterface {
   bool allow_unencrypted_ = false;
   bool skip_reboot_for_testing_ = false;
   org::chromium::PowerManagerProxy* power_manager_proxy_;
+  Metrics metrics_;  // For UMA metrics logging.
 
   DISALLOW_COPY_AND_ASSIGN(LoadOobeConfigRollback);
 };

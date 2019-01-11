@@ -51,6 +51,7 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
       // This shouldn't happen, the script failed to execute. We fail and return
       // false.
       LOG(ERROR) << "Rollback restore is in invalid state (stage 2).";
+      metrics_.RecordRestoreResult(Metrics::OobeRestoreResult::kStage2Failure);
     }
     return false;
   }
@@ -69,6 +70,7 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
 
     if (!restore_result) {
       LOG(ERROR) << "Failed to restore rollback data";
+      metrics_.RecordRestoreResult(Metrics::OobeRestoreResult::kStage1Failure);
       return false;
     }
 
@@ -85,6 +87,8 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
                 &error)) {
           LOG(ERROR) << "Failed to reboot device, error: "
                      << error->GetMessage();
+          metrics_.RecordRestoreResult(
+              Metrics::OobeRestoreResult::kStage1Failure);
         }
       } else {
         LOG(INFO) << "Skipping reboot for testing";
@@ -101,16 +105,19 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
     string rollback_data_str;
     if (!oobe_config_->ReadFile(kEncryptedStatefulRollbackDataPath,
                                 &rollback_data_str)) {
+      metrics_.RecordRestoreResult(Metrics::OobeRestoreResult::kStage3Failure);
       return false;
     }
     RollbackData rollback_data;
     if (!rollback_data.ParseFromString(rollback_data_str)) {
       LOG(ERROR) << "Couldn't parse proto.";
+      metrics_.RecordRestoreResult(Metrics::OobeRestoreResult::kStage3Failure);
       return false;
     }
     // We get the data for Chrome and assemble the config.
     if (!AssembleConfig(rollback_data, config)) {
       LOG(ERROR) << "Failed to assemble config.";
+      metrics_.RecordRestoreResult(Metrics::OobeRestoreResult::kStage3Failure);
       return false;
     }
 
@@ -120,6 +127,7 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
     oobe_config_->CleanupEncryptedStatefulDirectory();
 
     LOG(INFO) << "Rollback restore completed successfully.";
+    metrics_.RecordRestoreResult(Metrics::OobeRestoreResult::kSuccess);
     return true;
   }
 
