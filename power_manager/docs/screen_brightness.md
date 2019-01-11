@@ -89,10 +89,7 @@ connected or disconnected, etc.).
 Users may reduce the backlight brightness to 0% using the brightness-down (F6)
 key; this may be desirable to conserve battery power while streaming music. The
 backlight is automatically increased to a low-but-visible level when user input
-is observed after the brightness has been manually set to 0%. Brightness and
-volume key events do not trigger this auto-increasing behavior, so that users
-can adjust the volume while keeping the screen off and also e.g. not see the
-screen turn back on if brightness-down is pressed while the screen is off.
+is observed after the brightness has been manually set to 0%.
 
 As of M35, Chromeboxes' brightness keys (or F6 and F7 keys) attempt to use
 [DDC/CI] to increase or decrease external displays' brightness ([issue 315371]).
