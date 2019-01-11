@@ -43,6 +43,18 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
     return false;
   }
 
+  if (!(oobe_config_->CheckFirstStage() || oobe_config_->CheckThirdStage())) {
+    // We are not in a valid state to run either stage 1 or stage 3 of rollback
+    // this is either a real error or this is not a rollback.
+
+    if (oobe_config_->CheckSecondStage()) {
+      // This shouldn't happen, the script failed to execute. We fail and return
+      // false.
+      LOG(ERROR) << "Rollback restore is in invalid state (stage 2).";
+    }
+    return false;
+  }
+
   if (oobe_config_->CheckFirstStage()) {
     LOG(INFO) << "Starting rollback restore stage 1.";
 
@@ -78,13 +90,7 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
         LOG(INFO) << "Skipping reboot for testing";
       }
     }
-    return false;
-  }
-
-  if (oobe_config_->CheckSecondStage()) {
-    // This shouldn't happen, the script failed to execute. We fail and return
-    // false.
-    LOG(ERROR) << "Rollback restore is in invalid state (stage 2).";
+    exit(0);
     return false;
   }
 
@@ -117,8 +123,7 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
     return true;
   }
 
-  // We are not in any legitimate rollback stage.
-  LOG(ERROR) << "Rollback is in an invalid state.";
+  NOTREACHED();
   return false;
 }
 

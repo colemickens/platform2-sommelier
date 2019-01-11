@@ -58,17 +58,21 @@ void OobeConfigRestoreService::ProcessAndGetOobeAutoConfig(
       &oobe_config, allow_unencrypted_, skip_reboot_for_testing_,
       power_manager_proxy_.get());
   std::string chrome_config_json, unused_enrollment_domain;
-  if (load_oobe_config_rollback.GetOobeConfigJson(&chrome_config_json,
-                                                  &unused_enrollment_domain)) {
+
+  // There is rollback data so attempt to parse it.
+  const bool rollback_success = load_oobe_config_rollback.GetOobeConfigJson(
+      &chrome_config_json, &unused_enrollment_domain);
+  if (rollback_success) {
     LOG(WARNING) << "Rollback oobe config sent: " << chrome_config_json;
   } else {
-    // TODO(zentaro): This shouldn't be warning in stage 1.
-    LOG(WARNING) << "Rollback oobe config not found.";
+    LOG(INFO) << "Rollback oobe config not found.";
 
-    // Looking for the config from USB if there is any.
+    // There is no rollback data so attempt USB config.
     auto config_loader = LoadOobeConfigUsb::CreateInstance();
-    if (config_loader->GetOobeConfigJson(&chrome_config_json,
-                                         &unused_enrollment_domain)) {
+
+    const bool usb_config_success = config_loader->GetOobeConfigJson(
+        &chrome_config_json, &unused_enrollment_domain);
+    if (usb_config_success) {
       LOG(INFO) << "USB oobe config found :) ";
     } else {
       LOG(WARNING) << "USB oobe config not found :(";

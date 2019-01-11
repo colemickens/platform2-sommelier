@@ -33,7 +33,10 @@ class LoadOobeConfigRollback : public LoadOobeConfigInterface {
                          std::string* enrollment_domain) override;
 
  private:
-  // Assembles a JSON config for Chrome based on rollback_data.
+  // Assembles a JSON config for Chrome based on rollback_data. Returns true if
+  // |config| is successfully populated during stage 3 of rollback. Returns
+  // false to indicate that either rollback was not attempted or there was a
+  // failure. During stage 1 of rollback, the process exits before returning.
   bool AssembleConfig(const RollbackData& rollback_data, std::string* config);
 
   OobeConfig* oobe_config_;
