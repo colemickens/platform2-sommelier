@@ -15,8 +15,9 @@
 #include <brillo/process_reaper.h>
 
 #include "arc/network/arc_ip_config.h"
-#include "arc/network/device_manager.h"
+#include "arc/network/device.h"
 #include "arc/network/helper_process.h"
+#include "arc/network/ipc.pb.h"
 #include "arc/network/shill_client.h"
 
 namespace arc_networkd {
@@ -34,8 +35,11 @@ class Manager final : public brillo::DBusDaemon {
   // interface changes or goes away.
   void OnDefaultInterfaceChanged(const std::string& ifname);
 
-  // Establishes the ShillClient and scans for host devices.
+  // Establishes new ShillClient and scans for host devices.
   void InitialSetup();
+
+  // Callback for ScanDevices, invoked when a device is found.
+  void AddDevice(const std::string& name);
 
   // Callback from ShillClient, invoked whenever the device list changes.
   // |devices| will contain all devices currently connected to shill
@@ -55,7 +59,7 @@ class Manager final : public brillo::DBusDaemon {
   bool OnContainerStart(const struct signalfd_siginfo& info);
   bool OnContainerStop(const struct signalfd_siginfo& info);
 
-  // Relays messages to the helper process.
+  // Utility method for passing messages to the helper process.
   void SendMessage(const IpHelperMessage& msg);
 
   friend std::ostream& operator<<(std::ostream& stream, const Manager& manager);
@@ -64,7 +68,10 @@ class Manager final : public brillo::DBusDaemon {
   brillo::ProcessReaper process_reaper_;
   std::unique_ptr<ShillClient> shill_client_;
   std::unique_ptr<HelperProcess> ip_helper_;
-  std::unique_ptr<DeviceManager> device_mgr_;
+
+  // Connected devices keyed by the interface name.
+  // The legacy device is mapped to the "android" interface name.
+  std::map<std::string, std::unique_ptr<Device>> devices_;
 
   base::WeakPtrFactory<Manager> weak_factory_{this};
 };
