@@ -437,9 +437,6 @@ class FlimFlam(object):
         properties = self.manager.GetProperties(utf8_strings = True)
         return properties["PortalURL"]
 
-    def SetPortalURL(self, url):
-        self.manager.SetProperty("PortalURL", url)
-
     def GetArpGateway(self):
         properties = self.manager.GetProperties()
         return properties["ArpGateway"]
