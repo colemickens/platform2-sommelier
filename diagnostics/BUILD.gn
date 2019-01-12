@@ -8,6 +8,7 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
+    ":diag",
     ":diagnosticsd",
     ":diagnostics_processor",
     ":diagnostics_dpsl_demo_single_thread",
@@ -15,6 +16,7 @@ group("all") {
   ]
   if (use.test) {
     deps += [
+      ":libdiag_test",
       ":libgrpc_async_adapter_test",
       ":diagnosticsd_test",
       ":libtelem_test",
@@ -79,6 +81,28 @@ generate_mojom_bindings("diagnostics_mojo_bindings") {
     ":diagnostics_mojo_bindings_pkg_deps",
   ]
   sources = ["mojo/diagnosticsd.mojom"]
+}
+
+# Library that provides core functionality for the diag tool.
+pkg_config("libdiag_pkg_deps") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+  ]
+}
+
+static_library("libdiag") {
+  deps = [
+    ":diagnostics_grpc_protos",
+    ":libgrpc_async_adapter",
+  ]
+  all_dependent_configs = [
+    ":libdiag_pkg_deps",
+  ]
+  sources = [
+    "diag/diag_async_grpc_client_adapter_impl.cc",
+    "diag/diag_routine_requester.cc",
+  ]
 }
 
 # Library that provides core functionality for the diagnosticsd daemon.
@@ -160,6 +184,26 @@ static_library("libtelem") {
     "telem/async_grpc_client_adapter_impl.cc",
     "telem/telem_cache.cc",
     "telem/telem_connection.cc",
+  ]
+}
+
+# The diag tool executable.
+pkg_config("diag_pkg_deps") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+  ]
+}
+
+executable("diag") {
+  deps = [
+    ":libdiag",
+  ]
+  configs += [
+    ":diag_pkg_deps",
+  ]
+  sources = [
+    "diag/main.cc",
   ]
 }
 
@@ -309,6 +353,27 @@ if (use.test) {
       "diagnosticsd/file_test_utils.cc",
       "diagnosticsd/mojo_test_utils.cc",
       "diagnosticsd/mojo_utils_test.cc",
+    ]
+  }
+
+  pkg_config("libdiag_test_pkg_deps") {
+    pkg_deps = [
+      "libchrome-${libbase_ver}",
+      "libchrome-test-${libbase_ver}",
+    ]
+  }
+
+  executable("libdiag_test") {
+    configs += [
+      "//common-mk:test",
+      ":libdiag_test_pkg_deps",
+    ]
+    deps = [
+      "../common-mk/testrunner:testrunner",
+      ":libdiag",
+    ]
+    sources = [
+      "diag/diag_routine_requester_test.cc",
     ]
   }
 

@@ -80,6 +80,8 @@ class DiagnosticsdGrpcService final {
       base::Callback<void(std::unique_ptr<grpc_api::GetEcPropertyResponse>)>;
   using PerformWebRequestResponseCallback = base::Callback<void(
       std::unique_ptr<grpc_api::PerformWebRequestResponse>)>;
+  using GetAvailableRoutinesCallback = base::Callback<void(
+      std::unique_ptr<grpc_api::GetAvailableRoutinesResponse>)>;
 
   explicit DiagnosticsdGrpcService(Delegate* delegate);
   ~DiagnosticsdGrpcService();
@@ -104,6 +106,9 @@ class DiagnosticsdGrpcService final {
   void PerformWebRequest(
       std::unique_ptr<grpc_api::PerformWebRequestParameter> parameter,
       const PerformWebRequestResponseCallback& callback);
+  void GetAvailableRoutines(
+      std::unique_ptr<grpc_api::GetAvailableRoutinesRequest> request,
+      const GetAvailableRoutinesCallback& callback);
 
  private:
   // Constructs and, if successful, appends the dump of the specified file (with

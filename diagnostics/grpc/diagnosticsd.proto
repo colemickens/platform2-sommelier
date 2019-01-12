@@ -35,6 +35,10 @@ service Diagnosticsd {
 
   // Retrieves EC property.
   rpc GetEcProperty(GetEcPropertyRequest) returns (GetEcPropertyResponse) {}
+
+  // Retrieves a list of diagnostic routines which diagnosticsd can run.
+  rpc GetAvailableRoutines(GetAvailableRoutinesRequest)
+      returns (GetAvailableRoutinesResponse) {}
 }
 
 // Parameters for the SendMessageToUi RPC.
@@ -290,4 +294,21 @@ message GetEcPropertyResponse {
   // request field.
   // This field is set when |status| is |STATUS_OK|.
   bytes payload = 2;
+}
+
+// Parameters for the GetAvailableRoutines RPC. Although the message is
+// currently empty, we may decide to add parameters in the future.
+message GetAvailableRoutinesRequest {}
+
+// Return value of the GetAvailableRoutines RPC.
+message GetAvailableRoutinesResponse {
+  enum Routine {
+    ROUTINE_UNSET = 0;
+    BATTERY = 1;
+    BATTERY_SYSFS = 2;
+    BAD_BLOCKS = 3;
+    URANDOM = 4;
+  }
+
+  repeated Routine routines = 1;
 }

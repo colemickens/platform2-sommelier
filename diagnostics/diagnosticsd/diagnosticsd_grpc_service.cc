@@ -385,6 +385,17 @@ void DiagnosticsdGrpcService::PerformWebRequest(
       parameter->request_body(), base::Bind(&ForwardWebGrpcResponse, callback));
 }
 
+void DiagnosticsdGrpcService::GetAvailableRoutines(
+    std::unique_ptr<grpc_api::GetAvailableRoutinesRequest> request,
+    const GetAvailableRoutinesCallback& callback) {
+  DCHECK(request);
+  auto reply = std::make_unique<grpc_api::GetAvailableRoutinesResponse>();
+
+  reply->add_routines(grpc_api::GetAvailableRoutinesResponse::BATTERY);
+  reply->add_routines(grpc_api::GetAvailableRoutinesResponse::BATTERY_SYSFS);
+  callback.Run(std::move(reply));
+}
+
 void DiagnosticsdGrpcService::AddFileDump(
     const base::FilePath& relative_file_path,
     google::protobuf::RepeatedPtrField<grpc_api::FileDump>* file_dumps) {
