@@ -8,7 +8,6 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 
-#include <map>
 #include <memory>
 #include <string>
 
@@ -19,8 +18,8 @@
 #include <brillo/daemons/daemon.h>
 
 #include "arc/network/arc_ip_config.h"
-#include "arc/network/device.h"
 #include "arc/network/ipc.pb.h"
+#include "arc/network/options.h"
 
 using MessageLoopForIO = base::MessageLoopForIO;
 
@@ -30,7 +29,7 @@ namespace arc_networkd {
 // This object is used in the subprocess.
 class IpHelper : public brillo::Daemon, public base::MessageLoopForIO::Watcher {
  public:
-  explicit IpHelper(base::ScopedFD control_fd);
+  explicit IpHelper(const Options& opt, base::ScopedFD control_fd);
 
  protected:
   // Overrides Daemon init callback. Returns 0 on success and < 0 on error.
@@ -40,16 +39,12 @@ class IpHelper : public brillo::Daemon, public base::MessageLoopForIO::Watcher {
   void OnFileCanReadWithoutBlocking(int fd) override;
   void OnFileCanWriteWithoutBlocking(int fd) override {}
 
+  // Runs every |kContainerRetryDelaySeconds| until the ARC container comes
+  // up.
   void InitialSetup();
-
-  // Callbacks from Daemon to notify that a signal was received
-  // indicating the container is either booting up or going down.
-  bool OnContainerStart(const struct signalfd_siginfo& info);
-  bool OnContainerStop(const struct signalfd_siginfo& info);
 
   // Handle |pending_command_|.
   void HandleCommand();
-  void EnableInbound(const std::string& dev, const std::string& ifname);
 
   // Helper function to extract raw IPv6 address from a protobuf string.
   const struct in6_addr& ExtractAddr6(const std::string& in);
@@ -57,19 +52,14 @@ class IpHelper : public brillo::Daemon, public base::MessageLoopForIO::Watcher {
   // Validate interface name string.
   bool ValidateIfname(const std::string& in);
 
-  void AddDevice(const std::string& ifname, const DeviceConfig& config);
-
  private:
   base::ScopedFD control_fd_;
   MessageLoopForIO::FileDescriptorWatcher control_watcher_;
 
-  pid_t con_pid_;
   int con_init_tries_{0};
 
   IpHelperMessage pending_command_;
-
-  // Keyed by device interface.
-  std::map<std::string, std::unique_ptr<ArcIpConfig>> arc_ip_configs_;
+  std::unique_ptr<ArcIpConfig> arc_ip_config_;
 
   base::WeakPtrFactory<IpHelper> weak_factory_{this};
 
