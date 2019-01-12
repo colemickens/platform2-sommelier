@@ -3183,6 +3183,11 @@ void Service::PreMountCallback() {
   // Lock NVRamBootLockbox
   auto nvram_boot_lockbox_client =
       BootLockboxClient::CreateBootLockboxClient();
+  if (!nvram_boot_lockbox_client) {
+    LOG(WARNING) << "Failed to create nvram_boot_lockbox_client";
+    return;
+  }
+
   if (!nvram_boot_lockbox_client->Finalize()) {
     LOG(WARNING) << "Failed to finalize nvram lockbox.";
   }
