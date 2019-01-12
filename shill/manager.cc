@@ -36,6 +36,7 @@
 #include "shill/device_info.h"
 #include "shill/ephemeral_profile.h"
 #include "shill/error.h"
+#include "shill/ethernet/ethernet_provider.h"
 #include "shill/ethernet/ethernet_temporary_service.h"
 #include "shill/event_dispatcher.h"
 #include "shill/geolocation_info.h"
@@ -147,6 +148,8 @@ Manager::Manager(ControlInterface* control_interface,
 #if !defined(DISABLE_CELLULAR)
       modem_info_(control_interface, dispatcher, metrics, this),
 #endif  // DISABLE_CELLULAR
+      ethernet_provider_(
+          new EthernetProvider(control_interface, dispatcher, metrics, this)),
 #if !defined(DISABLE_WIRED_8021X)
       ethernet_eap_provider_(
           new EthernetEapProvider(
@@ -2684,6 +2687,7 @@ bool Manager::IsWifiIdle() {
 }
 
 void Manager::UpdateProviderMapping() {
+  providers_[Technology::kEthernet] = ethernet_provider_.get();
 #if !defined(DISABLE_WIRED_8021X)
   providers_[Technology::kEthernetEap] = ethernet_eap_provider_.get();
 #endif  // DISABLE_WIRED_8021X

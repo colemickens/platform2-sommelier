@@ -20,6 +20,7 @@
 #include "shill/adaptor_interfaces.h"
 #include "shill/ephemeral_profile.h"
 #include "shill/error.h"
+#include "shill/ethernet/mock_ethernet_provider.h"
 #include "shill/fake_store.h"
 #include "shill/geolocation_info.h"
 #include "shill/key_value_store.h"
@@ -97,6 +98,7 @@ class ManagerTest : public PropertyStoreTest {
                                                   nullptr,
                                                   nullptr)),
         manager_adaptor_(new NiceMock<ManagerMockAdaptor>()),
+        ethernet_provider_(new NiceMock<MockEthernetProvider>()),
 #if !defined(DISABLE_WIRED_8021X)
         ethernet_eap_provider_(new NiceMock<MockEthernetEapProvider>()),
 #endif  // DISABLE_WIRED_8021X
@@ -114,6 +116,8 @@ class ManagerTest : public PropertyStoreTest {
     // Replace the manager's adaptor with a quieter one, and one
     // we can do EXPECT*() against.  Passes ownership.
     manager()->adaptor_.reset(manager_adaptor_);
+
+    manager()->ethernet_provider_.reset(ethernet_provider_);
 
 #if !defined(DISABLE_WIRED_8021X)
     // Replace the manager's Ethernet EAP provider with our mock.
@@ -491,6 +495,7 @@ class ManagerTest : public PropertyStoreTest {
   // These pointers are owned by the manager, and only tracked here for
   // EXPECT*()
   ManagerMockAdaptor* manager_adaptor_;
+  MockEthernetProvider* ethernet_provider_;
 #if !defined(DISABLE_WIRED_8021X)
   MockEthernetEapProvider* ethernet_eap_provider_;
 #endif  // DISABLE_WIRED_8021X
@@ -1696,10 +1701,21 @@ TEST_F(ManagerTest, GetServiceNoType) {
 TEST_F(ManagerTest, GetServiceUnknownType) {
   KeyValueStore args;
   Error e;
-  args.SetString(kTypeProperty, kTypeEthernet);
+  args.SetString(kTypeProperty, kTypePPPoE);
   manager()->GetService(args, &e);
   EXPECT_EQ(Error::kNotSupported, e.type());
   EXPECT_EQ("service type is unsupported", e.message());
+}
+
+TEST_F(ManagerTest, GetServiceEthernet) {
+  KeyValueStore args;
+  Error e;
+  EthernetServiceRefPtr service;
+  args.SetString(kTypeProperty, kTypeEthernet);
+  EXPECT_CALL(*ethernet_provider_, GetService(_, _))
+      .WillRepeatedly(Return(service));
+  manager()->GetService(args, &e);
+  EXPECT_TRUE(e.IsSuccess());
 }
 
 #if !defined(DISABLE_WIRED_8021X)

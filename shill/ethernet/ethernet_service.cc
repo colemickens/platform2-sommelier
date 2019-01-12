@@ -19,9 +19,11 @@
 #include "shill/device_info.h"
 #include "shill/eap_credentials.h"
 #include "shill/ethernet/ethernet.h"
+#include "shill/ethernet/ethernet_provider.h"
 #include "shill/event_dispatcher.h"
 #include "shill/manager.h"
 #include "shill/profile.h"
+#include "shill/store_interface.h"
 
 using std::string;
 
@@ -146,6 +148,29 @@ bool EthernetService::IsAutoConnectable(const char** reason) const {
     return false;
   }
   return true;
+}
+
+bool EthernetService::Load(StoreInterface* storage) {
+  if (!Service::Load(storage)) {
+    return false;
+  }
+
+  StoreInterface* store = manager()->ActiveProfile()->GetStorage();
+  mutable_static_ip_parameters()->Load(store, kDefaultEthernetDeviceIdentifier);
+  return true;
+}
+
+bool EthernetService::Save(StoreInterface* storage) {
+  if (!Service::Save(storage)) {
+    return false;
+  }
+
+  StoreInterface* store = manager()->ActiveProfile()->GetStorage();
+  mutable_static_ip_parameters()->Save(store, kDefaultEthernetDeviceIdentifier);
+  store->Flush();
+  // Now that the IP parameters are saved to the ethernet_any profile, load it
+  // into the in-memory ethernet_any service.
+  return manager()->ethernet_provider()->LoadGenericEthernetService();
 }
 
 void EthernetService::OnVisibilityChanged() {

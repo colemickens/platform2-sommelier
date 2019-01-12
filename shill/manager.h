@@ -42,6 +42,7 @@ class ControlInterface;
 class DeviceClaimer;
 class DefaultProfile;
 class Error;
+class EthernetProvider;
 class EventDispatcher;
 class ManagerAdaptorInterface;
 class Resolver;
@@ -366,6 +367,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual ModemInfo* modem_info() { return &modem_info_; }
 #endif  // DISABLE_CELLULAR
   PowerManager* power_manager() const { return power_manager_.get(); }
+  virtual EthernetProvider* ethernet_provider() {
+    return ethernet_provider_.get();
+  }
 #if !defined(DISABLE_WIRED_8021X)
   virtual EthernetEapProvider* ethernet_eap_provider() const {
     return ethernet_eap_provider_.get();
@@ -536,6 +540,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(DefaultProfileTest, LoadManagerDefaultProperties);
   FRIEND_TEST(DefaultProfileTest, LoadManagerProperties);
   FRIEND_TEST(DefaultProfileTest, Save);
+  FRIEND_TEST(DeviceInfoTest, CreateDeviceEthernet);
   FRIEND_TEST(DeviceTest, AcquireIPConfigWithoutSelectedService);
   FRIEND_TEST(DeviceTest, AcquireIPConfigWithSelectedService);
   FRIEND_TEST(DeviceTest, StartProhibited);
@@ -749,6 +754,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 #if !defined(DISABLE_CELLULAR)
   ModemInfo modem_info_;
 #endif  // DISABLE_CELLULAR
+  std::unique_ptr<EthernetProvider> ethernet_provider_;
 #if !defined(DISABLE_WIRED_8021X)
   std::unique_ptr<EthernetEapProvider> ethernet_eap_provider_;
 #endif  // DISABLE_WIRED_8021X

@@ -5,6 +5,7 @@
 #ifndef SHILL_MOCK_MANAGER_H_
 #define SHILL_MOCK_MANAGER_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -15,6 +16,8 @@
 
 namespace shill {
 
+class MockEthernetProvider;
+
 class MockManager : public Manager {
  public:
   MockManager(ControlInterface* control_interface,
@@ -24,6 +27,7 @@ class MockManager : public Manager {
 
   MOCK_METHOD0(device_info, DeviceInfo*());
   MOCK_METHOD0(modem_info, ModemInfo*());
+  MOCK_METHOD0(ethernet_provider, EthernetProvider*());
 #if !defined(DISABLE_WIRED_8021X)
   MOCK_CONST_METHOD0(ethernet_eap_provider, EthernetEapProvider*());
 #endif  // DISABLE_WIRED_8021X
@@ -130,6 +134,7 @@ class MockManager : public Manager {
 
  private:
   DeviceInfo* mock_device_info_;
+  std::unique_ptr<MockEthernetProvider> mock_ethernet_provider_;
 
   DISALLOW_COPY_AND_ASSIGN(MockManager);
 };

@@ -21,6 +21,7 @@
 #include "shill/control_interface.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
+#include "shill/ethernet/ethernet_provider.h"
 #include "shill/ethernet/ethernet_service.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
@@ -202,6 +203,12 @@ void Ethernet::DisconnectFrom(EthernetService* service) {
   CHECK(service == service_.get()) << "Ethernet was asked to disconnect the "
                                    << "wrong service?";
   DropConnection();
+}
+
+EthernetProvider* Ethernet::GetProvider() {
+  EthernetProvider* provider = manager()->ethernet_provider();
+  CHECK(provider);
+  return provider;
 }
 
 #if !defined(DISABLE_WIRED_8021X)
@@ -500,11 +507,7 @@ void Ethernet::ClearPPPoEMode(Error* error) {
 }
 
 EthernetServiceRefPtr Ethernet::CreateEthernetService() {
-  return new EthernetService(control_interface_,
-                             dispatcher(),
-                             metrics(),
-                             manager(),
-                             weak_ptr_factory_.GetWeakPtr());
+  return GetProvider()->CreateService(weak_ptr_factory_.GetWeakPtr());
 }
 
 EthernetServiceRefPtr Ethernet::CreatePPPoEService() {

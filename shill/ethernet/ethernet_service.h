@@ -51,6 +51,11 @@ class EthernetService : public Service {
   bool IsVisible() const override;
   bool IsAutoConnectable(const char** reason) const override;
 
+  // Override Load and Save from parent Service class.  We will call
+  // the parent method.
+  bool Load(StoreInterface* storage) override;
+  bool Save(StoreInterface* storage) override;
+
   // Called by the Ethernet device when link state has caused the service
   // visibility to change.
   virtual void OnVisibilityChanged();

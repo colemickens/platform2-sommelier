@@ -24,6 +24,7 @@
 
 namespace shill {
 
+class EthernetProvider;
 class Sockets;
 class StoreInterface;
 
@@ -89,6 +90,9 @@ class Ethernet
   friend class EthernetTest;
   friend class EthernetServiceTest;  // For weak_ptr_factory_.
   friend class PPPoEServiceTest;     // For weak_ptr_factory_.
+
+  // Return a pointer to the EthernetProvider for Ethernet devices.
+  EthernetProvider* GetProvider();
 
 #if !defined(DISABLE_WIRED_8021X)
   // Return a pointer to the EAP provider for Ethernet devices.

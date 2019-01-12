@@ -8,6 +8,8 @@
 
 #include <gmock/gmock.h>
 
+#include "shill/ethernet/mock_ethernet_provider.h"
+
 using std::string;
 using std::vector;
 using testing::_;
@@ -20,10 +22,12 @@ MockManager::MockManager(ControlInterface* control_interface,
                          EventDispatcher* dispatcher,
                          Metrics* metrics)
     : Manager(control_interface, dispatcher, metrics, "", "", ""),
-      mock_device_info_(nullptr) {
-
+      mock_device_info_(nullptr),
+      mock_ethernet_provider_(new MockEthernetProvider()) {
   const int64_t kSuspendDurationUsecs = 1000000;
 
+  EXPECT_CALL(*this, ethernet_provider())
+      .WillRepeatedly(Return(mock_ethernet_provider_.get()));
   EXPECT_CALL(*this, device_info())
       .WillRepeatedly(Invoke(this, &MockManager::mock_device_info));
   ON_CALL(*this, FilterPrependDNSServersByFamily(_))

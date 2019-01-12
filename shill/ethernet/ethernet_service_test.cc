@@ -8,8 +8,10 @@
 #include <gtest/gtest.h>
 
 #include "shill/ethernet/mock_ethernet.h"
+#include "shill/ethernet/mock_ethernet_provider.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_manager.h"
+#include "shill/mock_profile.h"
 #include "shill/mock_store.h"
 #include "shill/property_store_test.h"
 #include "shill/refptr_types.h"
@@ -18,6 +20,7 @@
 using ::testing::_;
 using ::testing::NiceMock;
 using ::testing::Return;
+using ::testing::ReturnRef;
 
 namespace shill {
 
@@ -104,8 +107,13 @@ TEST_F(EthernetServiceTest, LoadAutoConnect) {
   // Make sure when we try to load an Ethernet service, it sets AutoConnect
   // to be true even if the property is not found.
   NiceMock<MockStore> mock_store;
+  scoped_refptr<MockProfile> mock_profile =
+      new MockProfile(control_interface(), metrics(), &mock_manager_, "");
+  ProfileRefPtr profile = mock_profile.get();
   EXPECT_CALL(mock_store, ContainsGroup(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(mock_store, GetBool(_, _, _)).WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_manager_, ActiveProfile()).WillOnce(ReturnRef(profile));
+  EXPECT_CALL(*mock_profile, GetStorage()).WillOnce(Return(&mock_store));
   EXPECT_TRUE(service_->Load(&mock_store));
   EXPECT_TRUE(GetAutoConnect());
 }

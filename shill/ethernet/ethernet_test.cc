@@ -16,6 +16,7 @@
 
 #include "shill/dhcp/mock_dhcp_config.h"
 #include "shill/dhcp/mock_dhcp_provider.h"
+#include "shill/ethernet/mock_ethernet_provider.h"
 #include "shill/ethernet/mock_ethernet_service.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_event_dispatcher.h"
@@ -87,6 +88,7 @@ class EthernetTest : public testing::Test {
   ~EthernetTest() override {}
 
   void SetUp() override {
+    SetService(mock_service_);
     ethernet_->rtnl_handler_ = &rtnl_handler_;
     ethernet_->sockets_.reset(mock_sockets_);  // Transfers ownership.
 
@@ -102,6 +104,9 @@ class EthernetTest : public testing::Test {
     // Transfers ownership.
     ethernet_->supplicant_process_proxy_.reset(supplicant_process_proxy_);
 #endif  // DISABLE_WIRED_8021X
+
+    EXPECT_CALL(manager_, ethernet_provider())
+        .WillRepeatedly(Return(&ethernet_provider_));
 
     ON_CALL(*mock_service_, technology())
         .WillByDefault(Return(Technology::kEthernet));
@@ -222,6 +227,7 @@ class EthernetTest : public testing::Test {
 
   MockRTNLHandler rtnl_handler_;
   scoped_refptr<MockEthernetService> mock_service_;
+  MockEthernetProvider ethernet_provider_;
 };
 
 // static
@@ -555,6 +561,8 @@ TEST_F(EthernetTest, TogglePPPoE) {
 
   EXPECT_CALL(*mock_service_, technology())
       .WillRepeatedly(Return(Technology::kEthernet));
+  EXPECT_CALL(ethernet_provider_, CreateService(_))
+      .WillRepeatedly(Return(mock_service_));
   EXPECT_CALL(*mock_service_, Disconnect(_, _));
 
   InSequence sequence;
