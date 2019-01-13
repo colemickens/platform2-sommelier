@@ -696,35 +696,67 @@ bool TPM2UtilityImpl::Sign(int key_handle,
     return false;
   }
 
-  // If decryption is allowed for the key, do padding in software.
-  //    We need to prepare the DigestInfo by prepending the algorithm and
-  //    perform raw RSA on TPM by sending Decrypt command with NULL scheme.
-  // Otherwise, send Sign command to the TPM with the original digest, and let
-  // TPM handle padding and encoding on its side.
-  //
-  // This is done to work with TPMs that don't support all required hashing
-  // algorithms, and for which the Decrypt attribute is set for signing keys.
-  if (public_area.object_attributes & trunks::kDecrypt) {
-    std::string data_to_sign =
-        GetDigestAlgorithmEncoding(digest_algorithm) + input;
-    std::string padded_data;
-    if (!AddPKCS1Padding(data_to_sign, public_area.unique.rsa.size,
-                         &padded_data)) {
+  trunks::TPM_ALG_ID digest_alg_id =
+      GetDigestAlgorithmToTrunksAlgId(digest_algorithm);
+  if (public_area.type == trunks::TPM_ALG_RSA) {
+    // If decryption is allowed for the key, do padding in software.
+    //    We need to prepare the DigestInfo by prepending the algorithm and
+    //    perform raw RSA on TPM by sending Decrypt command with NULL scheme.
+    // Otherwise, send Sign command to the TPM with the original digest, and let
+    // TPM handle padding and encoding on its side.
+    //
+    // This is done to work with TPMs that don't support all required hashing
+    // algorithms, and for which the Decrypt attribute is set for signing keys.
+    if (public_area.object_attributes & trunks::kDecrypt) {
+      std::string data_to_sign =
+          GetDigestAlgorithmEncoding(digest_algorithm) + input;
+      std::string padded_data;
+      if (!AddPKCS1Padding(data_to_sign, public_area.unique.rsa.size,
+                           &padded_data)) {
+        return false;
+      }
+      result = trunks_tpm_utility_->AsymmetricDecrypt(
+          key_handle, trunks::TPM_ALG_NULL, trunks::TPM_ALG_NULL, padded_data,
+          session_->GetDelegate(), signature);
+    } else {
+      result = trunks_tpm_utility_->Sign(
+          key_handle, trunks::TPM_ALG_RSASSA, digest_alg_id, input,
+          false /* don't generate hash */, session_->GetDelegate(), signature);
+    }
+    if (result != TPM_RC_SUCCESS) {
+      LOG(ERROR) << "Error performing sign operation: "
+                 << trunks::GetErrorString(result);
       return false;
     }
-    result = trunks_tpm_utility_->AsymmetricDecrypt(
-        key_handle, trunks::TPM_ALG_NULL, trunks::TPM_ALG_NULL, padded_data,
-        session_->GetDelegate(), signature);
-  } else {
-    trunks::TPM_ALG_ID digest_alg_id =
-        GetDigestAlgorithmToTrunksAlgId(digest_algorithm);
+  } else if (public_area.type == trunks::TPM_ALG_ECC) {
     result = trunks_tpm_utility_->Sign(
-        key_handle, trunks::TPM_ALG_RSASSA, digest_alg_id, input,
+        key_handle, trunks::TPM_ALG_ECDSA, digest_alg_id, input,
         false /* don't generate hash */, session_->GetDelegate(), signature);
-  }
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error performing sign operation: "
-               << trunks::GetErrorString(result);
+    if (result != TPM_RC_SUCCESS) {
+      LOG(ERROR) << "Error performing sign operation: "
+                 << trunks::GetErrorString(result);
+      return false;
+    }
+
+    // Transform TPM format to PKCS#11 format
+    trunks::TPMT_SIGNATURE tpm_signature;
+    result = trunks::Parse_TPMT_SIGNATURE(signature, &tpm_signature, nullptr);
+    if (result != TPM_RC_SUCCESS) {
+      LOG(ERROR) << "Error when parse TPM signing result.";
+      return false;
+    }
+
+    std::string rs = ConvertByteBufferToString(
+        tpm_signature.signature.ecdsa.signature_r.buffer,
+        tpm_signature.signature.ecdsa.signature_r.size);
+    std::string ss = ConvertByteBufferToString(
+        tpm_signature.signature.ecdsa.signature_s.buffer,
+        tpm_signature.signature.ecdsa.signature_s.size);
+
+    // PKCS#11 ECDSA format is the concation of r and s (r|s).
+    *signature = rs + ss;
+  } else {
+    LOG(ERROR) << __func__ << ": Unsupport TPM key type: " << public_area.type;
     return false;
   }
   return true;

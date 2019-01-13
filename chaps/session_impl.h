@@ -200,6 +200,13 @@ class SessionImpl : public Session {
 
   // ECC operations
   bool ECCSign(OperationContext* context);
+  bool ECCSignTPM(const std::string& input,
+                  DigestAlgorithm digest_algorithm,
+                  const Object* key_object,
+                  std::string* signature);
+  bool ECCSignSoftware(const std::string& input,
+                       const Object* key_object,
+                       std::string* signature);
   CK_RV ECCVerify(OperationContext* context,
                   const std::string& signed_data,
                   const std::string& signature);

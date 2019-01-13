@@ -1574,10 +1574,36 @@ CK_RV SessionImpl::RSAVerify(OperationContext* context,
 }
 
 bool SessionImpl::ECCSign(OperationContext* context) {
-  const string& data_to_sign = context->data_;
+  string signature;
+  if (context->key_->IsTokenObject() &&
+      context->key_->IsAttributePresent(kKeyBlobAttribute)) {
+    if (!ECCSignTPM(context->data_, GetDigestAlgorithm(context->mechanism_),
+                    context->key_, &signature))
+      return false;
+  } else {
+    if (!ECCSignSoftware(context->data_, context->key_, &signature))
+      return false;
+  }
+  context->data_ = signature;
+  return true;
+}
 
-  // Software Sign with ECC key
-  crypto::ScopedEC_KEY key = CreateECCPrivateKeyFromObject(context->key_);
+bool SessionImpl::ECCSignTPM(const std::string& input,
+                             DigestAlgorithm digest_algorithm,
+                             const Object* key_object,
+                             std::string* signature) {
+  int tpm_key_handle = 0;
+  if (!GetTPMKeyHandle(key_object, &tpm_key_handle))
+    return false;
+  if (!tpm_utility_->Sign(tpm_key_handle, digest_algorithm, input, signature))
+    return false;
+  return true;
+}
+
+bool SessionImpl::ECCSignSoftware(const std::string& input,
+                                  const Object* key_object,
+                                  std::string* signature) {
+  crypto::ScopedEC_KEY key = CreateECCPrivateKeyFromObject(key_object);
   if (key == nullptr) {
     LOG(ERROR) << __func__ << ": Load key failed.";
     return false;
@@ -1586,8 +1612,8 @@ bool SessionImpl::ECCSign(OperationContext* context) {
   // We don't use ECDSA_sign here since the output format of PKCS#11 is
   // different from OpenSSL's.
   crypto::ScopedECDSA_SIG sig(
-      ECDSA_do_sign(ConvertStringToByteBuffer(data_to_sign.data()),
-                    data_to_sign.size(), key.get()));
+      ECDSA_do_sign(ConvertStringToByteBuffer(input.data()),
+                    input.size(), key.get()));
   if (sig == nullptr) {
     LOG(ERROR) << __func__ << ": ECDSA failed: " << GetOpenSSLError();
     return false;
@@ -1601,10 +1627,9 @@ bool SessionImpl::ECCSign(OperationContext* context) {
     LOG(ERROR) << __func__ << ": Get the group order fail.";
     return false;
   }
-  const string& signature = ConvertFromBIGNUM(sig->r, max_length) +
-                            ConvertFromBIGNUM(sig->s, max_length);
+  *signature = ConvertFromBIGNUM(sig->r, max_length) +
+               ConvertFromBIGNUM(sig->s, max_length);
 
-  context->data_ = signature;
   return true;
 }
 

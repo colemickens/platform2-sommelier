@@ -614,24 +614,24 @@ TEST_F(TestSession, RsaSign) {
 }
 
 // Test ECC ECDSA sign / verify.
-TEST_F(TestSession, ECDSA_Sign) {
+TEST_F(TestSession, EcdsaSign) {
   const Object* pub = NULL;
   const Object* priv = NULL;
   GenerateECCKeyPair(false, false, &pub, &priv);
 
-  // Sign / verify without a built-in hash (raw ECDSA).
-  EXPECT_EQ(CKR_OK, session_->OperationInit(kSign, CKM_ECDSA, "", priv));
+  // Sign / verify with SHA1 hash (ECDSA_SHA1), also test SignlePart operation
+  EXPECT_EQ(CKR_OK, session_->OperationInit(kSign, CKM_ECDSA_SHA1, "", priv));
   string in(100, 'A');
   int len = 0;
   string sig;
   EXPECT_EQ(CKR_BUFFER_TOO_SMALL,
             session_->OperationSinglePart(kSign, in, &len, &sig));
   EXPECT_EQ(CKR_OK, session_->OperationSinglePart(kSign, in, &len, &sig));
-  EXPECT_EQ(CKR_OK, session_->OperationInit(kVerify, CKM_ECDSA, "", pub));
+  EXPECT_EQ(CKR_OK, session_->OperationInit(kVerify, CKM_ECDSA_SHA1, "", pub));
   EXPECT_EQ(CKR_OK, session_->OperationUpdate(kVerify, in, NULL, NULL));
   EXPECT_EQ(CKR_OK, session_->VerifyFinal(sig));
 
-  // Sign / verify with SHA1 hash (ECDSA_SHA1), also test interface of Update()
+  // test OperationUpdate()
   EXPECT_EQ(CKR_OK, session_->OperationInit(kSign, CKM_ECDSA_SHA1, "", priv));
   EXPECT_EQ(CKR_OK,
             session_->OperationUpdate(kSign, in.substr(0, 50), NULL, NULL));
@@ -1009,6 +1009,25 @@ TEST_F(TestSession, GenerateECCWithNoTPM) {
 
   // For a software key, the sensitive attributes should exist.
   EXPECT_TRUE(priv->IsAttributePresent(CKA_VALUE));
+}
+
+TEST_F(TestSession, EcdsaSignWithTPM) {
+  EXPECT_CALL(tpm_, IsECCurveSupported(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(tpm_, GenerateECCKey(_, _, _, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(tpm_, GetECCPublicKey(_, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(tpm_, LoadKey(_, _, _, _)).WillRepeatedly(Return(true));
+
+  EXPECT_CALL(tpm_, Sign(_, _, _, _)).WillOnce(Return(true));
+
+  const Object* pub = NULL;
+  const Object* priv = NULL;
+  GenerateECCKeyPair(true, true, &pub, &priv);
+
+  EXPECT_EQ(CKR_OK, session_->OperationInit(kSign, CKM_ECDSA_SHA1, "", priv));
+  string in(100, 'A');
+  int len = 0;
+  string sig;
+  EXPECT_EQ(CKR_OK, session_->OperationSinglePart(kSign, in, &len, &sig));
 }
 
 TEST_F(TestSession, ImportRSAWithTPM) {

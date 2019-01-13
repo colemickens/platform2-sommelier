@@ -431,6 +431,7 @@ TEST_F(TPM2UtilityTest, GetRSAPublicKeySuccess) {
   std::string modulus;
   std::string test_modulus("test");
   trunks::TPMT_PUBLIC public_data;
+  public_data.type = trunks::TPM_ALG_RSA;
   public_data.parameters.rsa_detail.exponent = 0x10001;
   public_data.unique.rsa = trunks::Make_TPM2B_PUBLIC_KEY_RSA(test_modulus);
   EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(key_handle, _))
@@ -599,6 +600,7 @@ TEST_F(TPM2UtilityTest, BindSuccess) {
   std::string output;
 
   trunks::TPMT_PUBLIC public_data;
+  public_data.type = trunks::TPM_ALG_RSA;
   public_data.parameters.rsa_detail.exponent = 0x10001;
   public_data.unique.rsa = GetValidRSAPublicKey();
   EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(key_handle, _))
@@ -629,12 +631,13 @@ TEST_F(TPM2UtilityTest, UnbindFailure) {
   EXPECT_FALSE(utility.Unbind(key_handle, input, &output));
 }
 
-TEST_F(TPM2UtilityTest, SignSuccess) {
+TEST_F(TPM2UtilityTest, SignRsaSuccess) {
   TPM2UtilityImpl utility(factory_.get());
   int key_handle = 43;
   std::string input = "abcd";
   std::string output;
   trunks::TPMT_PUBLIC public_data;
+  public_data.type = trunks::TPM_ALG_RSA;
   public_data.parameters.rsa_detail.exponent = 0x10001;
   public_data.object_attributes = trunks::kSign;
   public_data.unique.rsa = GetValidRSAPublicKey();
@@ -647,12 +650,41 @@ TEST_F(TPM2UtilityTest, SignSuccess) {
   EXPECT_TRUE(utility.Sign(key_handle, DigestAlgorithm::SHA1, input, &output));
 }
 
+TEST_F(TPM2UtilityTest, SignEccSuccess) {
+  TPM2UtilityImpl utility(factory_.get());
+  int key_handle = 43;
+  std::string input = "abcd";
+  std::string output;
+  trunks::TPMT_PUBLIC public_data = GetValidECCPublicKey();
+
+  trunks::TPMT_SIGNATURE tpm_signature = {};
+  tpm_signature.sig_alg = trunks::TPM_ALG_ECDSA;
+  tpm_signature.signature.ecdsa.signature_r =
+      trunks::Make_TPM2B_ECC_PARAMETER("12");
+  tpm_signature.signature.ecdsa.signature_s =
+      trunks::Make_TPM2B_ECC_PARAMETER("34");
+  std::string tpm_signature_str;
+  Serialize_TPMT_SIGNATURE(tpm_signature, &tpm_signature_str);
+
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(key_handle, _))
+      .WillOnce(DoAll(SetArgPointee<1>(public_data),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_utility_, Sign(key_handle, trunks::TPM_ALG_ECDSA,
+                                      trunks::TPM_ALG_SHA1, input, _, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<6>(tpm_signature_str), Return(TPM_RC_SUCCESS)));
+  EXPECT_TRUE(utility.Sign(key_handle, DigestAlgorithm::SHA1, input, &output));
+
+  EXPECT_EQ(output, "1234");
+}
+
 TEST_F(TPM2UtilityTest, SignSuccessWithDecrypt) {
   TPM2UtilityImpl utility(factory_.get());
   int key_handle = 43;
   std::string input = "abcd";
   std::string output;
   trunks::TPMT_PUBLIC public_data;
+  public_data.type = trunks::TPM_ALG_RSA;
   public_data.parameters.rsa_detail.exponent = 0x10001;
   public_data.object_attributes = trunks::kSign | trunks::kDecrypt;
   public_data.unique.rsa = GetValidRSAPublicKey();
@@ -680,6 +712,7 @@ TEST_F(TPM2UtilityTest, SignFailure) {
   std::string input;
   std::string output;
   trunks::TPMT_PUBLIC public_data;
+  public_data.type = trunks::TPM_ALG_RSA;
   public_data.parameters.rsa_detail.exponent = 0x10001;
   public_data.object_attributes = trunks::kSign;
   public_data.unique.rsa = GetValidRSAPublicKey();
@@ -697,6 +730,7 @@ TEST_F(TPM2UtilityTest, SignFailureWithDecrypt) {
   std::string input;
   std::string output;
   trunks::TPMT_PUBLIC public_data;
+  public_data.type = trunks::TPM_ALG_RSA;
   public_data.parameters.rsa_detail.exponent = 0x10001;
   public_data.object_attributes = trunks::kSign | trunks::kDecrypt;
   public_data.unique.rsa = GetValidRSAPublicKey();
@@ -714,6 +748,7 @@ TEST_F(TPM2UtilityTest, SignFailureBadKeySize) {
   std::string input;
   std::string output;
   trunks::TPMT_PUBLIC public_data = {};
+  public_data.type = trunks::TPM_ALG_RSA;
   public_data.object_attributes = trunks::kSign | trunks::kDecrypt;
   EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(key_handle, _))
       .WillOnce(DoAll(SetArgPointee<1>(public_data),
@@ -745,6 +780,7 @@ TEST_F(TPM2UtilityTest, SignSuccessWithUnknownAlgorithm) {
   std::string input = "test";
   std::string output;
   trunks::TPMT_PUBLIC public_data;
+  public_data.type = trunks::TPM_ALG_RSA;
   public_data.parameters.rsa_detail.exponent = 0x10001;
   public_data.object_attributes = trunks::kSign;
   public_data.unique.rsa = GetValidRSAPublicKey();
