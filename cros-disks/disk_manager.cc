@@ -10,7 +10,6 @@
 #include <sys/mount.h>
 #include <time.h>
 
-#include <algorithm>
 #include <memory>
 #include <utility>
 
@@ -432,17 +431,6 @@ unique_ptr<Mounter> DiskManager::CreateMounter(
     localtime_r(&now, &timestruct);
     // tm_gmtoff is a glibc extension.
     int64_t offset_minutes = static_cast<int64_t>(timestruct.tm_gmtoff) / 60;
-    // Clamp offset to +-12 hours.
-    // Kernel versions <4.5 (commit a513d86983164a1f74a226ab7006deffbf63907e)
-    // rejects any offset outside +-12 hours, resulting in an "Invalid Argument"
-    // failure when attempting to mount the file system. As a temporary
-    // workaround, clamp the offset. This will cause users in those time zones
-    // to see invalid file time stamps on FAT32 paritions.
-    // TODO(crbug.com/916643): Remove this when the kernel commit
-    // a513d86983164a1f74a226ab7006deffbf63907e is back ported to all currently
-    // used kernels.
-    offset_minutes =
-        std::max<int64_t>(-12 * 60, std::min<int64_t>(12 * 60, offset_minutes));
     extended_options.push_back(
         base::StringPrintf("time_offset=%" PRId64, offset_minutes));
   }

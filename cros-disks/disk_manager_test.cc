@@ -125,30 +125,6 @@ TEST_F(DiskManagerTest, CreateVFATSystemMounter) {
             mounter->mount_options().ToString());
 }
 
-TEST_F(DiskManagerTest, CreateVFATSystemMounter_ClampedTimeOffset) {
-  Disk disk;
-  disk.device_file = "/dev/sda1";
-
-  Filesystem filesystem("vfat");
-  filesystem.extra_mount_options = {"utf8", "shortname=mixed"};
-
-  string target_path = "/media/disk";
-  vector<string> options = {"rw", "nodev", "noexec", "nosuid"};
-
-  // Override the time zone to make this test deterministic.
-  // Set the zone offset for UTC+13 (i.e. Auckland).
-  setenv("TZ", "UTC-13", 1);
-
-  unique_ptr<Mounter> mounter(
-      manager_.CreateMounter(disk, filesystem, target_path, options));
-  EXPECT_NE(nullptr, mounter.get());
-  EXPECT_EQ(filesystem.mount_type, mounter->filesystem_type());
-  EXPECT_EQ(disk.device_file, mounter->source_path());
-  EXPECT_EQ(target_path, mounter->target_path());
-  EXPECT_EQ("utf8,shortname=mixed,time_offset=720,rw,nodev,noexec,nosuid",
-            mounter->mount_options().ToString());
-}
-
 TEST_F(DiskManagerTest, CreateExt4SystemMounter) {
   Disk disk;
   disk.device_file = "/dev/sda1";

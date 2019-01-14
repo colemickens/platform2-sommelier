@@ -189,7 +189,6 @@ class DiskManager : public MountManager, public DeviceEventSourceInterface {
   FRIEND_TEST(DiskManagerTest, CreateExFATMounter);
   FRIEND_TEST(DiskManagerTest, CreateNTFSMounter);
   FRIEND_TEST(DiskManagerTest, CreateVFATSystemMounter);
-  FRIEND_TEST(DiskManagerTest, CreateVFATSystemMounter_ClampedTimeOffset);
   FRIEND_TEST(DiskManagerTest, CreateExt4SystemMounter);
   FRIEND_TEST(DiskManagerTest, GetFilesystem);
   FRIEND_TEST(DiskManagerTest, RegisterFilesystem);
