@@ -59,8 +59,8 @@ def _generate(output, params):
         'version': params.version,
         'requires': ' '.join(params.requires),
         'requires_private': ' '.join(params.requires_private),
-        'libs': ' '.join('-l' + lib for lib in params.libs),
-        'libs_private': ' '.join('-l' + lib for lib in params.libs_private),
+        'libs': ' '.join(params.libs),
+        'libs_private': ' '.join(params.libs_private),
         'cflags': ' '.join(params.cflags)
     })
 

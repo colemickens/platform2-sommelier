@@ -54,9 +54,7 @@ template("pkg_config") {
 #   version: Version to be embedded.
 #   requires: Package name list to be embedded into "Requires:".
 #   requires_private: Similar to requires, but into "Requires.private:".
-#   libs: Library name list to be embedded into "Libs:".
-#       This shouldn't be prefixed "lib" nor suffixed ".a"/".so".
-#       E.g. [ "pthread" ] to link against libpthread.so.
+#   libs: Flags passed to ld to be embedded into "Libs:" E.g. [ "-lpthread" ].
 #   libs_private: Similar to libs, butinto "Libs.private:".
 #   cflags: Compile flag list to be embedded into "Cflags:".
 template("generate_pkg_config") {
