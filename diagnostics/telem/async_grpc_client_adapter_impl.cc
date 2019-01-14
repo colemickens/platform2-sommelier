@@ -41,4 +41,12 @@ void AsyncGrpcClientAdapterImpl::GetProcData(
                    callback);
 }
 
+void AsyncGrpcClientAdapterImpl::GetSysfsData(
+    const grpc_api::GetSysfsDataRequest& request,
+    base::Callback<void(
+        std::unique_ptr<grpc_api::GetSysfsDataResponse> response)> callback) {
+  client_->CallRpc(&grpc_api::Diagnosticsd::Stub::AsyncGetSysfsData, request,
+                   callback);
+}
+
 }  // namespace diagnostics

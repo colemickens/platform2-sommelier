@@ -39,6 +39,13 @@ class AsyncGrpcClientAdapter {
       const grpc_api::GetProcDataRequest& request,
       base::Callback<void(std::unique_ptr<grpc_api::GetProcDataResponse>
                               response)> callback) = 0;
+
+  // Get a raw dump of a file from /sys/. When the response
+  // is ready, |callback| will be run.
+  virtual void GetSysfsData(
+      const grpc_api::GetSysfsDataRequest& request,
+      base::Callback<void(std::unique_ptr<grpc_api::GetSysfsDataResponse>
+                              response)> callback) = 0;
 };
 
 }  // namespace diagnostics

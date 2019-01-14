@@ -28,6 +28,10 @@ class AsyncGrpcClientAdapterImpl final : public AsyncGrpcClientAdapter {
                    base::Callback<void(
                        std::unique_ptr<grpc_api::GetProcDataResponse> response)>
                        callback) override;
+  void GetSysfsData(
+      const grpc_api::GetSysfsDataRequest& request,
+      base::Callback<void(std::unique_ptr<grpc_api::GetSysfsDataResponse>
+                              response)> callback) override;
 
  private:
   std::unique_ptr<AsyncGrpcClient<grpc_api::Diagnosticsd>> client_;

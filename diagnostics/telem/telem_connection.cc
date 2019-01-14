@@ -96,6 +96,15 @@ const base::Optional<base::Value> TelemConnection::GetItem(
       case TelemetryItemEnum::kNetDev:
         UpdateProcData(grpc_api::GetProcDataRequest::FILE_NET_DEV);
         break;
+      case TelemetryItemEnum::kHwmon:
+        UpdateSysfsData(grpc_api::GetSysfsDataRequest::CLASS_HWMON);
+        break;
+      case TelemetryItemEnum::kThermal:
+        UpdateSysfsData(grpc_api::GetSysfsDataRequest::CLASS_THERMAL);
+        break;
+      case TelemetryItemEnum::kDmiTables:
+        UpdateSysfsData(grpc_api::GetSysfsDataRequest::FIRMWARE_DMI_TABLES);
+        break;
     }
   }
 
@@ -162,6 +171,47 @@ void TelemConnection::UpdateProcData(grpc_api::GetProcDataRequest::Type type) {
       break;
     default:
       LOG(ERROR) << "Bad ProcDataRequest type: " << type;
+      return;
+  }
+}
+
+// Sends a GetSysfsDataRequest, then parses and caches the response.
+// If the response format for a specific telemetry item is incorrectly
+// formatted, that item will be ignored and not cached, but other,
+// correctly formatted telemetry items from the same response will
+// still be parsed and cached.
+void TelemConnection::UpdateSysfsData(
+    grpc_api::GetSysfsDataRequest::Type type) {
+  grpc_api::GetSysfsDataRequest request;
+  request.set_type(type);
+  std::unique_ptr<grpc_api::GetSysfsDataResponse> response;
+  base::RunLoop run_loop;
+
+  client_impl_->GetSysfsData(
+      request,
+      base::Bind(&OnRpcResponseReceived<grpc_api::GetSysfsDataResponse>,
+                 base::Unretained(&response), run_loop.QuitClosure()));
+  VLOG(0) << "Sent GetSysfsDataRequest";
+  run_loop.Run();
+
+  if (!response) {
+    LOG(ERROR) << "No SysfsDataResponse received.";
+    return;
+  }
+
+  // Parse the response and cache the parsed data.
+  switch (type) {
+    case grpc_api::GetSysfsDataRequest::CLASS_HWMON:
+      ExtractDataFromSysfsHwmon(*response);
+      break;
+    case grpc_api::GetSysfsDataRequest::CLASS_THERMAL:
+      ExtractDataFromSysfsThermal(*response);
+      break;
+    case grpc_api::GetSysfsDataRequest::FIRMWARE_DMI_TABLES:
+      ExtractDataFromSysfsDmiTables(*response);
+      break;
+    default:
+      LOG(ERROR) << "Bad SysfsDataRequest type: " << type;
       return;
   }
 }
@@ -304,6 +354,21 @@ void TelemConnection::ExtractDataFromProcNetStat(
 
 void TelemConnection::ExtractDataFromProcNetDev(
     const grpc_api::GetProcDataResponse& response) {
+  NOTIMPLEMENTED();
+}
+
+void TelemConnection::ExtractDataFromSysfsHwmon(
+    const grpc_api::GetSysfsDataResponse& response) {
+  NOTIMPLEMENTED();
+}
+
+void TelemConnection::ExtractDataFromSysfsThermal(
+    const grpc_api::GetSysfsDataResponse& response) {
+  NOTIMPLEMENTED();
+}
+
+void TelemConnection::ExtractDataFromSysfsDmiTables(
+    const grpc_api::GetSysfsDataResponse& response) {
   NOTIMPLEMENTED();
 }
 

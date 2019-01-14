@@ -66,6 +66,8 @@ class TelemConnection final {
  private:
   // Updates the internal cache with new telemetry data from /proc/.
   void UpdateProcData(grpc_api::GetProcDataRequest::Type type);
+  // Updates the internal cache with new telemetry data from /sys/.
+  void UpdateSysfsData(grpc_api::GetSysfsDataRequest::Type type);
 
   // Gracefully shut down the AsyncGrpcClientAdapter.
   void ShutdownClient();
@@ -83,6 +85,15 @@ class TelemConnection final {
   void ExtractDataFromProcNetStat(
       const grpc_api::GetProcDataResponse& response);
   void ExtractDataFromProcNetDev(const grpc_api::GetProcDataResponse& response);
+
+  // The following methods parse raw files dumps of various files under /sys/
+  // for relevant telemetry information.
+  void ExtractDataFromSysfsHwmon(
+      const grpc_api::GetSysfsDataResponse& response);
+  void ExtractDataFromSysfsThermal(
+      const grpc_api::GetSysfsDataResponse& response);
+  void ExtractDataFromSysfsDmiTables(
+      const grpc_api::GetSysfsDataResponse& response);
 
   TelemCache cache_;
   // Owned default implementation, used when no AsyncGrpcClientAdapter

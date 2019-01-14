@@ -24,6 +24,8 @@ namespace {
 
 using ProcDataCallback = base::Callback<void(
     std::unique_ptr<grpc_api::GetProcDataResponse> response)>;
+using SysfsDataCallback = base::Callback<void(
+    std::unique_ptr<grpc_api::GetSysfsDataResponse> response)>;
 
 constexpr char kFakeMeminfoFileContents[] =
     "MemTotal:      3906320 kB\nMemFree:      873180 kB\n";
@@ -53,6 +55,9 @@ class MockAsyncGrpcClientAdapter : public AsyncGrpcClientAdapter {
   MOCK_METHOD2(GetProcData,
                void(const grpc_api::GetProcDataRequest& request,
                     ProcDataCallback callback));
+  MOCK_METHOD2(GetSysfsData,
+               void(const grpc_api::GetSysfsDataRequest& request,
+                    SysfsDataCallback callback));
 };
 
 }  // namespace
