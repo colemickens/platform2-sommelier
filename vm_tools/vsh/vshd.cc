@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
   base::AtExitManager exit_manager;
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
-  DEFINE_int32(forward_to_host_port, 0, "Port to forward to on the host");
+  DEFINE_uint64(forward_to_host_port, 0, "Port to forward to on the host");
   DEFINE_bool(inherit_env, false, "Inherit the current environment variables");
 
   brillo::FlagHelper::Init(argc, argv, "vsh daemon");
@@ -66,9 +66,8 @@ int main(int argc, char** argv) {
   }
 
   if (FLAGS_forward_to_host_port != 0) {
-    uint16_t port = static_cast<uint16_t>(FLAGS_forward_to_host_port);
-    if (FLAGS_forward_to_host_port < 0 ||
-        static_cast<int32_t>(port) != FLAGS_forward_to_host_port) {
+    uint32_t port = static_cast<uint32_t>(FLAGS_forward_to_host_port);
+    if (port != FLAGS_forward_to_host_port) {
       LOG(ERROR) << "Port " << FLAGS_forward_to_host_port
                  << " is not a valid port";
       return EXIT_FAILURE;
