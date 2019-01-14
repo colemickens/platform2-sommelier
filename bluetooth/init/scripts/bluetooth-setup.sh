@@ -23,6 +23,10 @@ else
   echo 0 >"${sysfs_config_file}"
 fi
 
+# Reinstall Marvell SDIO Bluetooth driver to trigger re-initialization of the
+# Bluetooth device.
+rmmod btmrvl_sdio
+modprobe btmrvl_sdio
 # Simulate that the USB Bluetooth adapter is re-plugged to trigger BlueZ to
 # re-initialize it.
 # For devices with UART Bluetooth adapter we don't need to trigger the
