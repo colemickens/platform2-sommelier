@@ -23,7 +23,7 @@ bool CrosSystemImpl::SetInt(const std::string& name, int value) {
 bool CrosSystemImpl::GetString(const std::string& name,
                                std::string* value_out) {
   char buf[VB_MAX_STRING_PROPERTY];
-  if (0 != ::VbGetSystemPropertyString(name.c_str(), buf, sizeof(buf)))
+  if (::VbGetSystemPropertyString(name.c_str(), buf, sizeof(buf)) == nullptr)
     return false;
   *value_out = std::string(buf);
   return true;
