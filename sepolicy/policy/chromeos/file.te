@@ -175,7 +175,7 @@ allow debugfs_trace_marker debugfs_tracing:filesystem associate;
 allow sysfs_type sysfs:filesystem associate;
 allow devpts tmpfs:filesystem associate; # minijail --mountdev creates symlink in /dev(tmpfs)/ptmx in new root.
 neverallow fs_type file_type:filesystem associate;
-type sysfs_class_devcoredump, file_type, sysfs_type;
+type sysfs_class_devcoredump, sysfs_type;
 
 type wayland_socket, file_type;
 type cros_system_bus_socket, file_type;
