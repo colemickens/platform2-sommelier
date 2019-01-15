@@ -49,6 +49,9 @@ constexpr char kDefaultContainerName[] = "penguin";
 // Hostname for the default VM/container.
 constexpr char kDefaultContainerHostname[] = "penguin.linux.test";
 
+// file scheme.
+constexpr char kUrlFileScheme[] = "file://";
+
 // Delimiter for the end of a URL scheme.
 constexpr char kUrlSchemeDelimiter[] = "://";
 
@@ -175,10 +178,16 @@ bool IPv4AddressToString(const uint32_t address, std::string* str) {
   return true;
 }
 
-// Replaces either localhost or 127.0.0.1 in the hostname part of a URL with the
-// IP address of the container itself.
-std::string ReplaceLocalhostInUrl(const std::string& url,
-                                  const std::string& alt_host) {
+// Translates the URL to be the equivalent value in the CrOS Host.
+// * Replaces either localhost or 127.0.0.1 in the hostname part of a URL with
+// the IP address of the container itself.
+// * Replaces known file:// URLs such as file://$HOME =>
+// file:///media/fuse/crostini_<owner_id>_<vm_name>_<container_name>.
+std::string TranslateUrlForHost(const std::string& url,
+                                const std::string& alt_host,
+                                const std::string& owner_id,
+                                const std::string& vm_name,
+                                const Container& container) {
   // We don't have any URL parsing libraries at our disposal here without
   // integrating something new, so just do some basic URL parsing ourselves.
   // First find where the scheme ends, which'll be after the first :// string.
@@ -230,6 +239,37 @@ std::string ReplaceLocalhostInUrl(const std::string& url,
       return url.substr(0, front) + alt_host + url.substr(back);
     }
   }
+
+  // Do replacements for file:// URLs.  Exit early if URL is not file scheme.
+  if (!base::StartsWith(url, kUrlFileScheme,
+                        base::CompareCase::INSENSITIVE_ASCII)) {
+    return url;
+  }
+  std::pair<std::string, std::string> replacements[] = {
+      {container.homedir(), "/media/fuse/crostini_" + owner_id + "_" + vm_name +
+                                "_" + container.name()},
+      {"/mnt/chromeos/MyFiles", "/home/chronos/u-" + owner_id + "/MyFiles"},
+      {"/mnt/chromeos/GoogleDrive/MyDrive",
+       container.drivefs_mount_path() + "/root"},
+      {"/mnt/chromeos/GoogleDrive/TeamDrives",
+       container.drivefs_mount_path() + "/team_drives"},
+      {"/mnt/chromeos/GoogleDrive/Computers",
+       container.drivefs_mount_path() + "/Computers"},
+      {"/mnt/chromeos/PlayFiles", "/run/arc/sdcard/write/emulated/0"},
+      {"/mnt/chromeos/removable", "/media/removable"}};
+
+  for (const auto& replacement : replacements) {
+    auto back = sizeof(kUrlFileScheme) + replacement.first.length() - 1;
+    // Match file://<replacement>, then url ends, or next char is '/'.
+    if (replacement.first.length() > 0 &&
+        base::StartsWith(url.substr(sizeof(kUrlFileScheme) - 1),
+                         replacement.first, base::CompareCase::SENSITIVE) &&
+        (url.length() == back || url[back] == '/')) {
+      return url.substr(0, sizeof(kUrlFileScheme) - 1) + replacement.second +
+             url.substr(back);
+    }
+  }
+
   return url;
 }
 
@@ -528,6 +568,7 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
       }
     }
   }
+  container->set_homedir(homedir);
 
   // Send the D-Bus signal out to indicate the container is ready.
   dbus::Signal signal(kVmCiceroneInterface, kContainerStartedSignal);
@@ -651,6 +692,14 @@ void Service::OpenUrl(const std::string& container_token,
                                chromeos::kUrlHandlerServiceOpenUrlMethod);
   dbus::MessageWriter writer(&method_call);
 
+  // Validate that file:// URLs do not reference parent dir (..).
+  if (base::StartsWith(url, kUrlFileScheme,
+                       base::CompareCase::INSENSITIVE_ASCII) &&
+      base::FilePath(url.substr(sizeof(kUrlFileScheme))).ReferencesParent()) {
+    LOG(ERROR) << "Invalid file:// URL references parent";
+    event->Signal();
+    return;
+  }
   std::string owner_id;
   std::string vm_name;
   VirtualMachine* vm;
@@ -674,7 +723,8 @@ void Service::OpenUrl(const std::string& container_token,
   if (container_ip_str == linuxhost_ip_) {
     container_ip_str = kDefaultContainerHostname;
   }
-  writer.AppendString(ReplaceLocalhostInUrl(url, container_ip_str));
+  writer.AppendString(TranslateUrlForHost(url, container_ip_str, owner_id,
+                                          vm_name, *container));
   std::unique_ptr<dbus::Response> dbus_response =
       url_handler_service_proxy_->CallMethodAndBlock(
           &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);

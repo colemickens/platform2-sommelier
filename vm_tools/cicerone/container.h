@@ -58,6 +58,12 @@ class Container {
   // Sets the container's DriveFS mount path.
   void set_drivefs_mount_path(std::string drivefs_mount_path);
 
+  // The container's homedir.
+  std::string homedir() const { return homedir_; }
+
+  // Sets the container's uid=1000 primary user's homedir.
+  void set_homedir(const std::string& homedir);
+
   Container(const std::string& name,
             const std::string& token,
             base::WeakPtr<VirtualMachine> vm);
@@ -99,6 +105,7 @@ class Container {
   std::string token_;
   uint32_t ipv4_address_;
   std::string drivefs_mount_path_;
+  std::string homedir_;
 
   // The VM that owns this container.
   base::WeakPtr<VirtualMachine> vm_;

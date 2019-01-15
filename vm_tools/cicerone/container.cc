@@ -46,6 +46,10 @@ void Container::set_drivefs_mount_path(std::string drivefs_mount_path) {
   drivefs_mount_path_ = drivefs_mount_path;
 }
 
+void Container::set_homedir(const std::string& homedir) {
+  homedir_ = homedir;
+}
+
 void Container::ConnectToGarcon(const std::string& addr) {
   garcon_channel_ =
       grpc::CreateChannel(addr, grpc::InsecureChannelCredentials());
