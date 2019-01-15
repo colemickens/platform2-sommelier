@@ -20,9 +20,18 @@ class Metrics {
     kCount,
   };
 
+  enum class RollbackSaveResult {
+    kSuccess = 0,
+    kStage1Failure = 1,
+    kStage2Failure = 2,
+    kCount,
+  };
+
   Metrics();
 
   void RecordRestoreResult(OobeRestoreResult result);
+
+  void RecordSaveResult(RollbackSaveResult result);
 
  private:
   MetricsLibrary metrics_library_;
