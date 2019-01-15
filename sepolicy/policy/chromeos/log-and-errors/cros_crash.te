@@ -55,7 +55,12 @@ r_dir_file(cros_crash, cros_run_containers);
 allow cros_crash cros_var_log_eventlog:file r_file_perms;
 
 allow cros_crash self:capability { sys_admin };
+
+# neverallow { domain -init } usermodehelper:file { append write };
+arc_cts_fails_release(`
 allow cros_crash usermodehelper:file w_file_perms;
+', (`cros_crash'))
+
 allow cros_crash pstorefs:dir r_dir_perms;
 allow cros_crash sysfs_class_devcoredump:file w_file_perms;
 allow cros_crash sysfs_class_devcoredump:dir search;
