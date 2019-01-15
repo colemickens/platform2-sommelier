@@ -1,6 +1,7 @@
 {
   'variables': {
-    'src_root_path': '<(platform2_root)/camera',
+    # platform/arc-camera
+    'src_root_path': '<(platform2_root)/../platform/arc-camera',
   },
   'target_defaults': {
     'include_dirs': [
