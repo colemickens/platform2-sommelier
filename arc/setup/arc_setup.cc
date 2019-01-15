@@ -132,6 +132,7 @@ constexpr char kSysfsTracing[] = "/sys/kernel/debug/tracing";
 constexpr char kSystemLibArmDirectoryRelative[] = "system/lib/arm";
 constexpr char kSystemImage[] = "/opt/google/containers/android/system.raw.img";
 constexpr char kUsbDevicesDirectory[] = "/dev/bus/usb";
+constexpr char kZygotePreloadDoneFile[] = ".preload_done";
 
 // Names for possible binfmt_misc entries.
 constexpr const char* kBinFmtMiscEntryNames[] = {"arm_dyn", "arm_exe",
@@ -2072,6 +2073,11 @@ void ArcSetup::OnSetup() {
   if (GetSdkVersion() <= AndroidSdkVersion::ANDROID_P) {
     base::ElapsedTimer timer;
     EXIT_IF(!GenerateHostSideCode(arc_paths_->art_dalvik_cache_directory));
+    EXIT_IF(!Chown(kRootUid, kRootGid, arc_paths_->art_dalvik_cache_directory));
+    // Remove the file zygote may have created.
+    IGNORE_ERRORS(base::DeleteFile(
+        arc_paths_->art_dalvik_cache_directory.Append(kZygotePreloadDoneFile),
+        false /* recursive */));
 
     // For now, integrity checking time is the time needed to relocate
     // boot*.art files because of b/67912719. Once TPM is enabled, this will
