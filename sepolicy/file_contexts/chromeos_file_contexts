@@ -11,6 +11,7 @@ include(sepolicy/file_contexts/coreutils)
 /sbin/crash_reporter            u:object_r:cros_crash_reporter_exec:s0
 /sbin/crash_sender              u:object_r:cros_crash_sender_exec:s0
 /sbin/debugd                    u:object_r:cros_debugd_exec:s0
+/sbin/dhcpcd                    u:object_r:cros_dhcpcd_exec:s0
 /sbin/frecon                    u:object_r:frecon_exec:s0
 /sbin/insmod                    u:object_r:cros_modprobe_exec:s0
 /sbin/minijail0                 u:object_r:cros_minijail_exec:s0
@@ -36,6 +37,7 @@ include(sepolicy/file_contexts/coreutils)
 /usr/bin/ionice                 u:object_r:cros_ionice_exec:s0
 /usr/bin/logger                 u:object_r:cros_logger_exec:s0
 /usr/bin/memd                   u:object_r:cros_memd_exec:s0
+/usr/bin/metrics_client         u:object_r:cros_metrics_client_exec:s0
 /usr/bin/metrics_daemon         u:object_r:cros_metrics_daemon_exec:s0
 /usr/bin/midis                  u:object_r:cros_midis_exec:s0
 /usr/bin/periodic_scheduler     u:object_r:cros_periodic_scheduler_exec:s0
@@ -48,6 +50,7 @@ include(sepolicy/file_contexts/coreutils)
 /usr/sbin/apk-cache-cleaner-jailed u:object_r:cros_apk_cache_cleaner_jailed_exec:s0
 /usr/sbin/avahi-daemon          u:object_r:cros_avahi_daemon_exec:s0
 /usr/sbin/arc-setup             u:object_r:cros_arc_setup_exec:s0
+/usr/sbin/bootstat              u:object_r:cros_bootstat_exec:s0
 /usr/sbin/chapsd                u:object_r:cros_chapsd_exec:s0
 /usr/sbin/sshd                  u:object_r:cros_sshd_exec:s0
 /usr/sbin/chromeos-cleanup-logs u:object_r:cros_chromeos_cleanup_logs_exec:s0
@@ -68,6 +71,7 @@ include(sepolicy/file_contexts/coreutils)
 
 /usr/bin/start_bluetoothd.sh    u:object_r:cros_init_start_bluetoothd_shell_script:s0
 /usr/bin/start_bluetoothlog.sh  u:object_r:cros_init_start_bluetoothlog_shell_script:s0
+/usr/share/cros(/.*)?           u:object_r:cros_usr_dirs:s0
 /usr/share/cros/init(/.*)?      u:object_r:cros_init_shell_scripts:s0
 /usr/share/cros/init/activate_date.sh u:object_r:cros_init_activate_date_script:s0
 /usr/share/cros/init/chapsd.sh u:object_r:cros_init_chapsd_shell_script:s0
@@ -76,16 +80,22 @@ include(sepolicy/file_contexts/coreutils)
 /usr/share/cros/init/powerd-pre-start.sh u:object_r:cros_init_powerd_pre_start_script:s0
 /usr/share/cros/init/ui-pre-start u:object_r:cros_init_ui_pre_start_shell_script:s0
 /usr/share/cros/init/ui-respawn u:object_r:cros_init_ui_respawn_shell_script:s0
+/usr/share/cros/init/shill.sh   u:object_r:cros_init_shill_shell_script:s0
+/usr/share/cros/init/shill-pre-start.sh u:object_r:cros_init_shill_shell_script:s0
 
 /var                            u:object_r:cros_var:s0
+/var/cache                      u:object_r:cros_var_cache:s0
+/var/cache/shill(/.*)?          u:object_r:cros_var_cache_shill:s0
 /var/empty                      u:object_r:cros_var_empty:s0
 /var/lib                        u:object_r:cros_var_lib:s0
 /var/lib/chaps(/.*)?            u:object_r:cros_var_lib_chaps:s0
 /var/lib/crash_reporter(/.*)?   u:object_r:cros_var_lib_crash_reporter:s0
 /var/lib/dbus(/.*)?             u:object_r:cros_var_lib_dbus:s0
+/var/lib/dhcpcd(/.*)?           u:object_r:cros_var_lib_shill:s0
 /var/lib/metrics(/.*)?          u:object_r:cros_metrics_file:s0
 /var/lib/metrics/uma-events     u:object_r:cros_metrics_uma_events_file:s0
 /var/lib/power_manager(/.*)?    u:object_r:cros_var_lib_power_manager:s0
+/var/lib/shill(/.*)?            u:object_r:cros_var_lib_shill:s0
 /var/lib/update_engine(/.*)?    u:object_r:cros_var_lib_update_engine:s0
 /var/lib/whitelist(/.*)?        u:object_r:cros_var_lib_whitelist:s0
 /var/log                        u:object_r:cros_var_log:s0
@@ -115,6 +125,7 @@ include(sepolicy/file_contexts/coreutils)
 
 # Intential blank lines to put all cros_etc labelled files above.
 /etc/conntrackd(/.*)?           u:object_r:cros_conntrackd_conf_file:s0
+/etc/dhcpcd.conf                u:object_r:cros_network_conf_file:s0
 /etc/group                      u:object_r:cros_passwd_file:s0
 /etc/hosts                      u:object_r:cros_network_conf_file:s0
 /etc/hosts.d(/.*)?              u:object_r:cros_network_conf_file:s0

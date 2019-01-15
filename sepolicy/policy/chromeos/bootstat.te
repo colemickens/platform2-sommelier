@@ -1,0 +1,8 @@
+type cros_bootstat, domain, chromeos_domain;
+type cros_bootstat_tmp_file, file_type, cros_tmpfile_type;
+
+domain_auto_trans(cros_bootstat_domain, cros_bootstat_exec, cros_bootstat);
+
+allow cros_bootstat sysfs:file { open read };
+allow cros_bootstat cros_bootstat_domain:fd use;
+filetrans_pattern(cros_bootstat, tmpfs, cros_bootstat_tmp_file, file);

@@ -66,3 +66,7 @@ filetrans_pattern_no_target_perm(cros_init_scripts, cros_var_lib, cros_var_lib_c
 
 # init/avahi.conf
 filetrans_pattern_no_target_perm(cros_init_scripts, cros_run, cros_run_avahi_daemon, dir, "avahi-daemon");
+
+# init/tlsdated.conf
+filetrans_pattern_no_target_perm(cros_init_scripts, cros_run, cros_run_shill, dir, "shill");
+auditallow domain cros_run:dir create;

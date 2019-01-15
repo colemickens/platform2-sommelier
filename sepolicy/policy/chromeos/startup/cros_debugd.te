@@ -9,3 +9,5 @@ domain_auto_trans(cros_debugd, cros_minijail_exec, cros_debugd_minijail);
 
 log_writer(cros_debugd);
 cros_dbus_client(cros_debugd);
+
+filetrans_pattern_no_target_perm(cros_debugd, cros_run, cros_run_shill, dir, "shill");

@@ -1,3 +1,5 @@
 attribute cros_dbus_uuidgen_domain;
 attribute cros_dbus_client_domain;
 attribute cros_uma_events_writer_domain;
+attribute cros_bootstat_domain;
+attribute cros_metrics_client_domain;

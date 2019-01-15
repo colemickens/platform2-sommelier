@@ -30,6 +30,7 @@ chromeos_domain
 -minijail_executor_domain
 -cros_init
 -cros_init_scripts
+-cros_init_shill
 -cros_debugd
 } cros_minijail_exec:file execute;
 

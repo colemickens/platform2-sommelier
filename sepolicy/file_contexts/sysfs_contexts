@@ -4,6 +4,7 @@
 /sys/kernel/debug/sync(/.*)?               u:object_r:debugfs_sync:s0
 /sys/kernel/debug/sync/sw_sync             u:object_r:debugfs_sw_sync:s0
 
+/sys/class/net(/.*)?                       u:object_r:sysfs_net:s0
 /sys/class/devcoredump(/.*)?               u:object_r:sysfs_class_devcoredump:s0
 
 /sys/devices/system/cpu(/.*)?                                   u:object_r:sysfs_devices_system_cpu:s0
