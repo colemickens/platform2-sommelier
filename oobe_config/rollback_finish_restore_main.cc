@@ -3,8 +3,10 @@
 // found in the LICENSE file.
 
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <brillo/syslog_logging.h>
 
+#include "oobe_config/rollback_constants.h"
 #include "oobe_config/rollback_helper.h"
 
 namespace {
@@ -20,7 +22,17 @@ void InitLog() {
 
 int main(int argc, char* argv[]) {
   InitLog();
-  if (oobe_config::FinishRestore(base::FilePath(),
+
+  if (base::PathExists(oobe_config::kOobeCompletedFile)) {
+    // OOBE has already been completed so cleanup all restore files.
+    LOG(INFO) << "OOBE is already complete. Cleaning up restore files.";
+    oobe_config::CleanupRestoreFiles(
+        base::FilePath() /* root_path */,
+        std::set<std::string>() /* excluded_files */);
+    return 0;
+  }
+
+  if (oobe_config::FinishRestore(base::FilePath() /* root_path */,
                                  false /* ignore_permissions_for_testing */))
     return 0;
   return 1;
