@@ -23,18 +23,6 @@ enum ExitStatus {
 };
 }  // namespace
 
-using base::DictionaryValue;
-
-// TODO(itspeter): Remove once we can trigger this by probe statement.
-// Test if we can get battery info by ectool.
-void DryRunGetBatteryInfo() {
-  const std::vector<std::string>& ectool_cmd_arg{"/usr/sbin/ectool", "battery"};
-  std::string ectool_output;
-  if (!base::GetAppOutput(ectool_cmd_arg, &ectool_output))
-    VLOG(1) << "Failed to execute command \"ectool battery\"";
-  VLOG(1) << "ectool battery output:\n" << ectool_output;
-}
-
 int main(int argc, char* argv[]) {
   // Flags are subject to change
   DEFINE_string(config_file_path, "",
@@ -49,13 +37,6 @@ int main(int argc, char* argv[]) {
   const int log_level = FLAGS_debug ? -1 : 0;
   logging::SetMinLogLevel(log_level);
   LOG(INFO) << "Starting Runtime Probe";
-
-  // For testing purpose on minijail permission.
-  if (FLAGS_debug) {
-    // TODO(itspeter): b/120265210, before a long-term alternative, call the
-    // ectool to get battery info.
-    DryRunGetBatteryInfo();
-  }
 
   if (FLAGS_dbus) {
     LOG(INFO) << "Running in daemon mode";
