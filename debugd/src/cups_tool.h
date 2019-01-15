@@ -33,6 +33,9 @@ class CupsTool {
   // Clear CUPS state.
   void ResetState();
 
+  // Test for a valid URI.
+  bool UriSeemsReasonable(const std::string& uri);
+
  private:
   DISALLOW_COPY_AND_ASSIGN(CupsTool);
 };

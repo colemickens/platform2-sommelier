@@ -44,7 +44,6 @@ const char kLpadminUser[] = "lpadmin";
 const char kLpadminGroup[] = "lpadmin";
 const char kLpGroup[] = "lp";
 
-
 int StopCups() {
   int result;
 
@@ -179,6 +178,42 @@ bool IppEverywhereURI(const std::string& uri) {
   return false;
 }
 
+// Evaluate true when a URI begins with a known scheme and has trailing
+// characters (i.e. is not an empty URI).
+bool UriHasKnownScheme(const std::string& uri) {
+  // Enumerate known printing URIs. Values are lifted from Chrome browser's
+  // Printer::GetProtocol().
+  const std::vector<std::string> known_schemes = {
+    "usb://",
+    "ipp://",
+    "ipps://",
+    "http://",
+    "https://",
+    "socket://",
+    "lpd://",
+    "ippusb://"
+  };
+
+  for (const std::string& scheme : known_schemes) {
+    if (base::StartsWith(uri, scheme, base::CompareCase::INSENSITIVE_ASCII) &&
+        (scheme.length() < uri.length())) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Determine whether a URI comprises mostly alphanumeric ASCII.
+// Logic mirrors Chrome browser's CupsURIEscape.
+bool UriIsGoodAscii(const std::string& uri) {
+  for (const char c : uri) {
+    if ((c == ' ') || (c == '%') || (c & 0x80)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 }  // namespace
 
 // Invokes lpadmin with arguments to configure a new printer using '-m
@@ -189,6 +224,11 @@ int32_t CupsTool::AddAutoConfiguredPrinter(const std::string& name,
   if (!IppEverywhereURI(uri)) {
     LOG(WARNING) << "IPP, IPPS or IPPUSB required for IPP Everywhere: " << uri;
     return CupsResult::CUPS_FATAL;
+  }
+
+  if (!CupsTool::UriSeemsReasonable(uri)) {
+    LOG(WARNING) << "Invalid URI: " << uri;
+    return CupsResult::CUPS_BAD_URI;
   }
 
   int32_t result;
@@ -219,6 +259,11 @@ int32_t CupsTool::AddManuallyConfiguredPrinter(
     return CupsResult::CUPS_INVALID_PPD;
   }
 
+  if (!CupsTool::UriSeemsReasonable(uri)) {
+    LOG(WARNING) << "Invalid URI: " << uri;
+    return CupsResult::CUPS_BAD_URI;
+  }
+
   // lpadmin only returns 0 for success and 1 for failure.
   result = Lpadmin({"-v", uri, "-p", name, "-P", "-", "-E"}, false,
                    &ppd_contents);
@@ -246,6 +291,12 @@ void CupsTool::ResetState() {
   // (b) clearing CUPS's state while it's running should at most confuse CUPS
   // (e.g., missing printers or jobs).
   ClearCupsState();
+}
+
+// Check if a URI starts with a known scheme and comprises only
+// non-whitespace ASCII.
+bool CupsTool::UriSeemsReasonable(const std::string& uri) {
+  return UriHasKnownScheme(uri) && UriIsGoodAscii(uri);
 }
 
 }  // namespace debugd

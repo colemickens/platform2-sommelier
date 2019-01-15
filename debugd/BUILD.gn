@@ -292,6 +292,7 @@ if (use.test) {
     ]
     sources = [
       "src/anonymizer_tool_test.cc",
+      "src/cups_tool_test.cc",
       "src/dev_mode_no_owner_restriction_test.cc",
       "src/helpers/dev_features_password_utils.cc",
       "src/helpers/dev_features_password_utils_test.cc",
