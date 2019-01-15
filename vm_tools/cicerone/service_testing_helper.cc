@@ -133,11 +133,15 @@ ServiceTestingHelper::~ServiceTestingHelper() {
   CHECK(dbus_thread_.task_runner()->PostTask(
       FROM_HERE, base::Bind(&ServiceTestingHelper::DestroyService,
                             base::Unretained(this), &event)));
-  event.Wait();
 
   if (grpc_server_tremplin_) {
     grpc_server_tremplin_->Shutdown();
   }
+
+  // Both ServiceTestingHelper::DestroyService and
+  // grpc_server_tremplin_->Shutdown() are slow operations, so let them happen
+  // simultaneously
+  event.Wait();
 }
 
 void ServiceTestingHelper::DestroyService(base::WaitableEvent* event) {
