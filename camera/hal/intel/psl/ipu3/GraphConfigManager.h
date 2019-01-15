@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Intel Corporation
+ * Copyright (C) 2017-2019 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -146,6 +146,8 @@ public:
                            uint32_t operationMode,
                            int32_t testPatternMode);
 
+    bool isForceUseOneNodeInVideoPipe() const { return mForceUseOneNodeInVideoPipe; }
+
     status_t sortStreamsByPipe(const std::vector<camera3_stream_t*> &streams,
                                std::vector<camera3_stream_t*>* yuvStreams,
                                std::vector<camera3_stream_t*>* blobStreams,
@@ -173,7 +175,8 @@ private:
     // Disable copy constructor and assignment operator
     GraphConfigManager(const GraphConfigManager &);
     GraphConfigManager& operator=(const GraphConfigManager &);
-    void initStreamConfigurations();
+    void initVideoStreamConfigurations();
+    void initStillStreamConfigurations();
 
     // Debuging helpers
     void dumpStreamConfig(const std::vector<camera3_stream_t*> &streams);
@@ -187,8 +190,8 @@ private:
     void handleVideoMap(camera3_stream_t* stream, ResolutionItem& res, PlatformGraphConfigKey& streamKey);
     void handleStillMap(camera3_stream_t* stream, ResolutionItem& res, PlatformGraphConfigKey& streamKey);
     bool isRepeatedStream(camera3_stream_t* curStream, const std::vector<camera3_stream_t*> &streams);
-    status_t mapStreamToKey(const std::vector<camera3_stream_t*> &streams,
-                            bool *hasVideoStream, bool *hasStillStream);
+    status_t mapVideoStreamToKey(const std::vector<camera3_stream_t*> &videoStreams, bool *hasVideoStream);
+    status_t mapStillStreamToKey(const std::vector<camera3_stream_t*> &stillStreams, bool *hasStillStream);
     status_t queryVideoGraphSettings();
     status_t queryStillGraphSettings();
 
@@ -228,6 +231,8 @@ private:
     MediaCtlConfig mMediaCtlConfigs[MEDIA_TYPE_MAX_COUNT];
 
     std::shared_ptr<MediaController> mMediaCtl;
+
+    bool mForceUseOneNodeInVideoPipe;
 };
 
 } // namespace intel

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 Intel Corporation
+ * Copyright (C) 2015-2019 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,7 +59,8 @@ GraphConfigManager::GraphConfigManager(int32_t camId,
     mCameraId(camId),
     mGraphQueryManager(new GraphQueryManager()),
     mNeedSwapVideoPreview(false),
-    mNeedSwapStillPreview(false)
+    mNeedSwapStillPreview(false),
+    mForceUseOneNodeInVideoPipe(false)
 {
     const CameraCapInfo *info = PlatformData::getCameraCapInfo(mCameraId);
     if (CC_UNLIKELY(!info || !info->getGraphConfigNodes())) {
@@ -81,37 +82,35 @@ GraphConfigManager::GraphConfigManager(int32_t camId,
     }
 }
 
-/**
- * This is a helper member to store the ItemUID's for the width and height of
- * each stream. It also clear all the vector/map that saves GraphConfig settings.
- * This function needs to be called when reconfiguration is needed.
- */
-void GraphConfigManager::initStreamConfigurations()
+void GraphConfigManager::initVideoStreamConfigurations()
 {
     mVideoStreamToSinkIdMap.clear();
-    mStillStreamToSinkIdMap.clear();
     mVideoStreamResolutions.clear();
-    mStillStreamResolutions.clear();
     mVideoQueryResults.clear();
-    mStillQueryResults.clear();
-    mVideoStreamKeys.clear();
-    mStillStreamKeys.clear();
     mQueryVideo.clear();
-    mQueryStill.clear();
-
-    mGraphConfigMap.clear();
 
     // Will map streams in this order
+    mVideoStreamKeys.clear();
     mVideoStreamKeys.push_back(GCSS_KEY_IMGU_VIDEO);
     mVideoStreamKeys.push_back(GCSS_KEY_IMGU_PREVIEW);
-    mStillStreamKeys.push_back(GCSS_KEY_IMGU_STILL);
-    mStillStreamKeys.push_back(GCSS_KEY_IMGU_PREVIEW);
-
     for (size_t i = 0; i < mVideoStreamKeys.size(); i++) {
         ItemUID w = {mVideoStreamKeys[i], GCSS_KEY_WIDTH};
         ItemUID h = {mVideoStreamKeys[i], GCSS_KEY_HEIGHT};
         mVideoStreamResolutions.push_back(std::make_pair(w,h));
     }
+}
+
+void GraphConfigManager::initStillStreamConfigurations()
+{
+    mStillStreamToSinkIdMap.clear();
+    mStillStreamResolutions.clear();
+    mStillQueryResults.clear();
+    mQueryStill.clear();
+
+    // Will map streams in this order
+    mStillStreamKeys.clear();
+    mStillStreamKeys.push_back(GCSS_KEY_IMGU_STILL);
+    mStillStreamKeys.push_back(GCSS_KEY_IMGU_PREVIEW);
     for (size_t i = 0; i < mStillStreamKeys.size(); i++) {
         ItemUID w = {mStillStreamKeys[i], GCSS_KEY_WIDTH};
         ItemUID h = {mStillStreamKeys[i], GCSS_KEY_HEIGHT};
@@ -358,59 +357,72 @@ status_t GraphConfigManager::sortStreamsByPipe(const std::vector<camera3_stream_
     return OK;
 }
 
-status_t GraphConfigManager::mapStreamToKey(const std::vector<camera3_stream_t*> &streams,
-                                            bool *hasVideoStream, bool *hasStillStream)
+status_t GraphConfigManager::
+mapVideoStreamToKey(const std::vector<camera3_stream_t*> &videoStreams, bool *hasVideoStream)
 {
-    std::vector<camera3_stream_t *> videoStreams, stillStream;
-    ItemUID streamCount = {GCSS_KEY_ACTIVE_OUTPUTS};
-
-    int repeatedStreamIndex = -1;
-    status_t status = sortStreamsByPipe(streams, &videoStreams, &stillStream, &repeatedStreamIndex);
-    CheckError(status != OK, status, "Sort streams failed %d", status);
+    CheckError(!hasVideoStream, UNKNOWN_ERROR, "hasVideoStream is nullptr");
 
     int yuvNum = videoStreams.size();
-    int blobNum = stillStream.size();
-    LOG2("@%s, blobNum:%d, yuvNum:%d", __FUNCTION__, blobNum, yuvNum);
+    LOG2("yuvNum:%d", yuvNum);
+    if (videoStreams.size() == 0) {
+        *hasVideoStream = false;
+        return OK;
+    }
+    if (mForceUseOneNodeInVideoPipe) {
+        yuvNum = 1;
+    }
+    CheckError(yuvNum > MAX_GRAPH_SETTING_STREAM, UNKNOWN_ERROR,
+               "yuvNum:%d > maxNum:%d", yuvNum, MAX_GRAPH_SETTING_STREAM);
 
-    PlatformGraphConfigKey streamKey;
-    ResolutionItem res;
+    // store active output number for video pipe
+    ItemUID streamCount = {GCSS_KEY_ACTIVE_OUTPUTS};
+    mQueryVideo[streamCount] = std::to_string(yuvNum);
+
+    // Main output produces full size frames
+    // Secondary output produces small size frames
+    int mainOutputIndex = 0;
+    int secondaryOutputIndex = (yuvNum == 2) ? 1 : -1;
 
     // map video stream settings
-    if (yuvNum > 0) {
-        // store active output number for video pipe
-        CheckError(yuvNum > MAX_GRAPH_SETTING_STREAM,
-            UNKNOWN_ERROR, "yuv stream number out of range: %d", yuvNum);
-        mQueryVideo[streamCount] = std::to_string(yuvNum);
-
-        // Main output produces full size frames
-        // Secondary output produces small size frames
-        int mainOutputIndex = 0;
-        int secondaryOutputIndex = (videoStreams.size() == 2) ? 1 : -1;
-
-        // map video stream settings
+    ResolutionItem res;
+    PlatformGraphConfigKey streamKey;
+    handleVideoStream(res, streamKey);
+    handleVideoMap(videoStreams[mainOutputIndex], res, streamKey);
+    if (secondaryOutputIndex >= 0) {
         handleVideoStream(res, streamKey);
-        handleVideoMap(videoStreams[mainOutputIndex], res, streamKey);
-        if (secondaryOutputIndex >= 0) {
-            handleVideoStream(res, streamKey);
-            handleVideoMap(videoStreams[secondaryOutputIndex], res, streamKey);
-        }
-        LOG2("@%s, video pipe: mainOutput %p, secondaryOutput %p", __func__,
-            videoStreams[mainOutputIndex], videoStreams[secondaryOutputIndex]);
-        *hasVideoStream = true;
+        handleVideoMap(videoStreams[secondaryOutputIndex], res, streamKey);
     }
+    LOG2("video pipe: mainOutput %p, secondaryOutput %p",
+         videoStreams[mainOutputIndex], videoStreams[secondaryOutputIndex]);
+
+    *hasVideoStream = true;
+
+    return OK;
+}
+
+status_t GraphConfigManager::
+mapStillStreamToKey(const std::vector<camera3_stream_t*> &stillStreams, bool *hasStillStream)
+{
+    CheckError(!hasStillStream, UNKNOWN_ERROR, "hasStillStream is nullptr");
+
+    int blobNum = stillStreams.size();
+    LOG2("blobNum:%d", blobNum);
+    if (blobNum == 0) {
+        return OK;
+    }
+
+    // store active output number for still pipe
+    ItemUID streamCount = {GCSS_KEY_ACTIVE_OUTPUTS};
+    mQueryStill[streamCount] = std::to_string(MIN_GRAPH_SETTING_STREAM);
 
     // map still stream settings
-    if (blobNum > 0) {
-        // store active output number for still pipe
-        mQueryStill[streamCount] = std::to_string(MIN_GRAPH_SETTING_STREAM);
+    ResolutionItem res;
+    PlatformGraphConfigKey streamKey;
+    handleStillStream(res, streamKey);
+    handleStillMap(stillStreams[0], res, streamKey);
+    LOG2("still pipe: %p", stillStreams[0]);
 
-        CLEAR(streamKey);
-        CLEAR(res);
-        handleStillStream(res, streamKey);
-        handleStillMap(stillStream[0], res, streamKey);
-        LOG2("@%s, still pipe: %p", __func__, stillStream[0]);
-        *hasStillStream = true;
-    }
+    *hasStillStream = true;
 
     return OK;
 }
@@ -556,33 +568,60 @@ status_t GraphConfigManager::configStreams(const vector<camera3_stream_t*> &stre
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     HAL_KPI_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, 1000000); /* 1 ms*/
     UNUSED(operationMode);
-    ResolutionItem res;
-    bool hasVideoStream = false, hasStillStream = false;
-    status_t ret = OK;
 
     if (streams.size() > MAX_NUM_STREAMS) {
-        LOGE("Maximum number of streams %u exceeded: %zu",
-            MAX_NUM_STREAMS, streams.size());
+        LOGE("Maximum number of streams %u exceeded: %zu", MAX_NUM_STREAMS, streams.size());
         return BAD_VALUE;
     }
 
-    initStreamConfigurations();
+    int repeatedStreamIndex = -1;
+    std::vector<camera3_stream_t *> videoStreams;
+    std::vector<camera3_stream_t *> stillStreams;
+    status_t ret = sortStreamsByPipe(streams, &videoStreams, &stillStreams, &repeatedStreamIndex);
+    CheckError(ret != OK, ret, "Sort streams failed %d", ret);
 
-    ret = mapStreamToKey(streams, &hasVideoStream, &hasStillStream);
-    CheckError(ret != OK, ret, "@%s, call mapStreamToKey fail, ret:%d", __func__, ret);
+    mGraphConfigMap.clear();
 
-    if (hasVideoStream) {
+    // for video pipe
+    // If the graph cfg fails, let's try to cfg the 2nd time with just using only one node.
+    mForceUseOneNodeInVideoPipe = false;
+    bool hasVideoStream = false;
+    do {
+        initVideoStreamConfigurations();
+        mapVideoStreamToKey(videoStreams, &hasVideoStream);
+        if (!hasVideoStream) {
+            break;
+        }
+
         ret = queryVideoGraphSettings();
-        CheckError(ret != OK, ret, "@%s, Failed to query graph settings for video pipe", __func__);
+        if (ret == OK) {
+            break;
+        }
+
+        // case 1: first time fails, and it just has one stream.
+        // case 2: second time fails.
+        CheckError(videoStreams.size() == 1 || mForceUseOneNodeInVideoPipe,
+                   ret, "ret:%d, queryVideoGraphSettings fails", ret);
+
+        LOGW("queryVideoGraphSettings fails, try again with one node enabled");
+        mForceUseOneNodeInVideoPipe = true;
+    } while (1);
+    if (hasVideoStream) {
         mGraphConfigMap[IMGU_VIDEO] = std::make_shared<GraphConfig>();
         mVideoGraphResult = std::unique_ptr<GraphConfigNode>(new GraphConfigNode);
     }
+
+    // for still pipe
+    initStillStreamConfigurations();
+    bool hasStillStream = false;
+    mapStillStreamToKey(stillStreams, &hasStillStream);
     if (hasStillStream) {
         ret = queryStillGraphSettings();
         CheckError(ret != OK, ret, "@%s, Failed to query graph settings for still pipe", __func__);
         mGraphConfigMap[IMGU_STILL] = std::make_shared<GraphConfig>();
         mStillGraphResult = std::unique_ptr<GraphConfigNode>(new GraphConfigNode);
     }
+
     dumpStreamConfig(streams); // TODO: remove this when GC integration is done
 
     ret = prepareGraphConfig();

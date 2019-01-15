@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2018 Intel Corporation.
+ * Copyright (C) 2017-2019 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -86,7 +86,8 @@ private:
 
     private:
         void clearWorkers();
-        status_t mapStreamWithDeviceNode(std::vector<camera3_stream_t*> &streams);
+        status_t mapStreamWithDeviceNode(const GraphConfigManager &gcm,
+                                         std::vector<camera3_stream_t*> &streams);
         status_t createProcessingTasks(std::shared_ptr<GraphConfig> graphConfig,
                                        std::shared_ptr<SharedItemPool<ia_aiq_af_grid>> afGridBuffPool,
                                        std::shared_ptr<SharedItemPool<ia_aiq_rgbs_grid>> rgbsGridBuffPool);
@@ -147,7 +148,7 @@ private:
         pthread_cond_t mFirstCond;
 
         std::map<IPU3NodeNames, camera3_stream_t *> mStreamNodeMapping; /* mStreamNodeMapping doesn't own camera3_stream_t objects */
-        std::map<camera3_stream_t*, IPU3NodeNames> mStreamListenerMapping;
+        std::map<IPU3NodeNames, std::vector<camera3_stream_t*>> mStreamListenerMapping;
 
         FaceEngine* mFace;
     };

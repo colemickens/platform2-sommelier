@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2018 Intel Corporation.
+ * Copyright (C) 2016-2019 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -444,7 +444,7 @@ status_t ImguUnit::ImguPipe::configStreams(std::vector<camera3_stream_t*> &strea
     mConfiguredNodesPerName = mMediaCtlHelper.getConfiguredNodesPerName(mediaType);
     CheckError(mConfiguredNodesPerName.size() == 0, UNKNOWN_ERROR, "No nodes present");
 
-    status = mapStreamWithDeviceNode(streams);
+    status = mapStreamWithDeviceNode(gcm, streams);
     CheckError(status != OK, status, "failed to map stream with Device node");
 
     status = createProcessingTasks(graphConfig, afGridBuffPool, rgbsGridBuffPool);
@@ -470,7 +470,8 @@ status_t ImguUnit::ImguPipe::startWorkers()
     return OK;
 }
 
-status_t ImguUnit::ImguPipe::mapStreamWithDeviceNode(std::vector<camera3_stream_t*> &streams)
+status_t ImguUnit::ImguPipe::mapStreamWithDeviceNode(const GraphConfigManager &gcm,
+                                                     std::vector<camera3_stream_t*> &streams)
 {
     int streamNum = streams.size();
     LOG1("%s pipe type %d, streamNum %d", __FUNCTION__, mPipeType, streamNum);
@@ -482,7 +483,13 @@ status_t ImguUnit::ImguPipe::mapStreamWithDeviceNode(std::vector<camera3_stream_
     if (GraphConfig::PIPE_VIDEO == mPipeType) {
         int videoIdx = (streamNum >= 2) ? 0 : -1;
         int previewIdx = (streamNum >= 2) ? 1 : 0;
+        if (gcm.isForceUseOneNodeInVideoPipe()) {
+            // when it needs to force to use one node in video pipe
+            videoIdx = -1;
+            previewIdx = 0;
+        }
 
+        IPU3NodeNames listenNode = IMGU_NODE_PREVIEW;
         mStreamNodeMapping[IMGU_NODE_PREVIEW] = streams[previewIdx];
         LOG1("@%s, %d stream %p size preview: %dx%d, format %s", __FUNCTION__,
              previewIdx, streams[previewIdx],
@@ -490,6 +497,7 @@ status_t ImguUnit::ImguPipe::mapStreamWithDeviceNode(std::vector<camera3_stream_
              METAID2STR(android_scaler_availableFormats_values,
                         streams[previewIdx]->format));
         if (videoIdx >= 0) {
+            listenNode = IMGU_NODE_VIDEO;
             mStreamNodeMapping[IMGU_NODE_VIDEO] = streams[videoIdx];
             LOG1("@%s, %d stream %p size video: %dx%d, format %s", __FUNCTION__,
                  videoIdx, streams[videoIdx],
@@ -497,8 +505,15 @@ status_t ImguUnit::ImguPipe::mapStreamWithDeviceNode(std::vector<camera3_stream_
                  METAID2STR(android_scaler_availableFormats_values,
                             streams[videoIdx]->format));
         }
-        if (streams.size() == 3) {
-            mStreamListenerMapping[streams.back()] = IMGU_NODE_VIDEO;
+
+        size_t listenNum = streams.size() - 1 - (videoIdx < 0 ? 0 : 1);
+        if (listenNum) {
+            std::vector<camera3_stream_t*> lStreams;
+            for (size_t i = streams.size() - listenNum; i < streams.size(); i++) {
+                lStreams.push_back(streams[i]);
+            }
+
+            mStreamListenerMapping[listenNode] = std::move(lStreams);
         }
     } else if (GraphConfig::PIPE_STILL == mPipeType) {
         mStreamNodeMapping[IMGU_NODE_STILL] = streams[0];
@@ -508,7 +523,7 @@ status_t ImguUnit::ImguPipe::mapStreamWithDeviceNode(std::vector<camera3_stream_
                         streams[0]->format));
 
         if (streams.size() == 2) {
-            mStreamListenerMapping[streams[1]] = IMGU_NODE_STILL;
+            mStreamListenerMapping.emplace(IMGU_NODE_STILL, std::vector<camera3_stream_t*>(1, streams[1]));
         }
     }
 
@@ -608,9 +623,12 @@ status_t ImguUnit::ImguPipe::createProcessingTasks(std::shared_ptr<GraphConfig> 
             mPipeConfig.nodes.push_back(outWorker->getNode());
 
             for (const auto& l : mStreamListenerMapping) {
-                if (l.second == it.first) {
-                    LOG1("@%s stream %p listen to nodeName 0x%x", __FUNCTION__, l.first, it.first);
-                    outWorker->addListener(l.first);
+                if (l.first == it.first) {
+                    LOG1("@%s %lu stream listen to nodeName 0x%x", __FUNCTION__,
+                         l.second.size(), it.first);
+                    for (size_t i = 0; i < l.second.size(); i++) {
+                        outWorker->addListener(l.second[i]);
+                    }
                 }
             }
         } else if (it.first == IMGU_NODE_RAW) {
