@@ -53,8 +53,8 @@ oom score -100
 # size).  We expect a typical VM size of about 40MB for the daemon.
 limit as 200000000 unlimited
 
-pre-start exec /bin/sh /usr/share/cros/init/shill-pre-start.sh
+pre-start exec /usr/share/cros/init/shill-pre-start.sh
 
 post-stop exec bootstat shill-stop
 
-exec /bin/sh /usr/share/cros/init/shill.sh
+exec /usr/share/cros/init/shill.sh
