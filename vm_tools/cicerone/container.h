@@ -52,6 +52,12 @@ class Container {
   // Sets the container's IPv4 address.
   void set_ipv4_address(uint32_t ipv4_address);
 
+  // The container's DriveFS mount path.
+  std::string drivefs_mount_path() const { return drivefs_mount_path_; }
+
+  // Sets the container's DriveFS mount path.
+  void set_drivefs_mount_path(std::string drivefs_mount_path);
+
   Container(const std::string& name,
             const std::string& token,
             base::WeakPtr<VirtualMachine> vm);
@@ -92,6 +98,7 @@ class Container {
   std::string name_;
   std::string token_;
   uint32_t ipv4_address_;
+  std::string drivefs_mount_path_;
 
   // The VM that owns this container.
   base::WeakPtr<VirtualMachine> vm_;

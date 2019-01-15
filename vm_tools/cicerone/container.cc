@@ -42,6 +42,10 @@ void Container::set_ipv4_address(uint32_t ipv4_address) {
   ipv4_address_ = ipv4_address;
 }
 
+void Container::set_drivefs_mount_path(std::string drivefs_mount_path) {
+  drivefs_mount_path_ = drivefs_mount_path;
+}
+
 void Container::ConnectToGarcon(const std::string& addr) {
   garcon_channel_ =
       grpc::CreateChannel(addr, grpc::InsecureChannelCredentials());

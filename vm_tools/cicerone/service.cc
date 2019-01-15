@@ -1707,6 +1707,9 @@ std::unique_ptr<dbus::Response> Service::StartLxdContainer(
     return dbus_response;
   }
   std::string container_token = vm->GenerateContainerToken(container_name);
+  Container* container = vm->GetPendingContainerForToken(container_token);
+  CHECK(container);
+  container->set_drivefs_mount_path(request.drivefs_mount_path());
 
   VirtualMachine::StartLxdContainerStatus status = vm->StartLxdContainer(
       container_name, container_private_key, host_public_key, container_token,
