@@ -141,7 +141,7 @@ bool FinishRestore(const base::FilePath& root_path,
   }
 
   if (!oobe_config.CheckSecondStage()) {
-    LOG(ERROR) << "Finish restore is not in stage 2.";
+    LOG(INFO) << "Finish restore is not in stage 2.";
     return false;
   }
 
@@ -153,7 +153,7 @@ bool FinishRestore(const base::FilePath& root_path,
           restore_path.Append(kInstallAttributesFileName),
           PrefixAbsolutePath(root_path, kInstallAttributesPath), kRootUsername,
           0644, ignore_permissions_for_testing)) {
-    LOG(ERROR) << "Couldn't restore install attributes.";
+    LOG(WARNING) << "Couldn't restore install attributes.";
   }
 
   // Restore owner.key. /var/lib/whitelist/ should already exist at OOBE
@@ -162,7 +162,7 @@ bool FinishRestore(const base::FilePath& root_path,
           restore_path.Append(kOwnerKeyFileName),
           PrefixAbsolutePath(root_path, kOwnerKeyFilePath), kRootUsername, 0604,
           ignore_permissions_for_testing)) {
-    LOG(ERROR) << "Couldn't restore owner.key.";
+    LOG(WARNING) << "Couldn't restore owner.key.";
   }
 
   // Restore shill default profile. /var/cache/shill/ should already exist at
@@ -172,7 +172,7 @@ bool FinishRestore(const base::FilePath& root_path,
           restore_path.Append(kShillDefaultProfileFileName),
           PrefixAbsolutePath(root_path, kShillDefaultProfilePath),
           kRootUsername, 0600, ignore_permissions_for_testing)) {
-    LOG(ERROR) << "Couldn't restore shill default profile.";
+    LOG(WARNING) << "Couldn't restore shill default profile.";
   }
 
   // Restore policy files. /var/lib/whitelist/ should already exist at OOBE
@@ -186,7 +186,7 @@ bool FinishRestore(const base::FilePath& root_path,
             PrefixAbsolutePath(root_path, kPolicyFileDirectory)
                 .Append(file.BaseName()),
             kRootUsername, 0604, ignore_permissions_for_testing)) {
-      LOG(ERROR) << "Couldn't restore policy.";
+      LOG(WARNING) << "Couldn't restore policy.";
     }
   }
 
