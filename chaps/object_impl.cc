@@ -91,8 +91,8 @@ CK_RV ObjectImpl::GetAttributes(CK_ATTRIBUTE_PTR attributes,
   for (int i = 0; i < num_attributes; ++i) {
     it = attributes_.find(attributes[i].type);
     if (it == attributes_.end()) {
-      LOG(ERROR) << "Attribute does not exist: "
-                 << AttributeToString(attributes[i].type);
+      VLOG(1) << "Attribute does not exist: "
+              << AttributeToString(attributes[i].type);
       result = CKR_ATTRIBUTE_TYPE_INVALID;
       attributes[i].ulValueLen = -1;
     } else if (policy_.get() && !policy_->IsReadAllowed(attributes[i].type)) {
