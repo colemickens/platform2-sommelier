@@ -150,9 +150,14 @@ MountErrorType FUSEMounter::MountImpl() {
   if (!permit_network_access_) {
     mount_process.NewNetworkNamespace();
   } else {
-    //  Network DNS configs are in /run/shill.
+    // Network DNS configs are in /run/shill.
     if (!mount_process.BindMount("/run/shill", "/run/shill", false)) {
       LOG(ERROR) << "Can't bind /run/shill";
+      return MOUNT_ERROR_INTERNAL;
+    }
+    // Hardcoded hosts are mounted into /etc/hosts.d.
+    if (!mount_process.BindMount("/etc/hosts.d", "/etc/hosts.d", false)) {
+      LOG(ERROR) << "Can't bind /etc/hosts.d";
       return MOUNT_ERROR_INTERNAL;
     }
   }
