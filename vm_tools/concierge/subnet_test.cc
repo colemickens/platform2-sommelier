@@ -18,7 +18,7 @@ namespace concierge {
 namespace {
 
 constexpr size_t kContainerBaseAddress = 0x64735cc0;  // 100.115.92.192
-constexpr size_t kVmBaseAddress = 0x64735c00;         // 100.115.92.0
+constexpr size_t kVmBaseAddress = 0x64735c18;         // 100.115.92.24
 constexpr size_t kPluginBaseAddress = 0x64735c80;     // 100.115.92.128
 
 constexpr size_t kContainerSubnetPrefix = 28;
@@ -70,7 +70,7 @@ TEST_P(VmSubnetTest, AddressAtOffset) {
 
 INSTANTIATE_TEST_CASE_P(AllValues,
                         VmSubnetTest,
-                        ::testing::Range(size_t{1}, size_t{32}));
+                        ::testing::Range(size_t{0}, size_t{26}));
 
 TEST_P(ContainerSubnetTest, AddressAtOffset) {
   size_t index = GetParam();

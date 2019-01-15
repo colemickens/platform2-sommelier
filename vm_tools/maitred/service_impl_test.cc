@@ -15,9 +15,9 @@ namespace vm_tools {
 namespace maitred {
 namespace {
 
-constexpr char kValidAddress[] = "100.115.92.6";
+constexpr char kValidAddress[] = "100.115.92.26";
 constexpr char kValidNetmask[] = "255.255.255.252";
-constexpr char kValidGateway[] = "100.115.92.5";
+constexpr char kValidGateway[] = "100.115.92.25";
 constexpr char kInvalidConfig[] = R"(ipv4_config {
 address: 0
 netmask: 0

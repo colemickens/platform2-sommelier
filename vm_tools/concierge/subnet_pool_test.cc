@@ -24,21 +24,17 @@ namespace vm_tools {
 namespace concierge {
 namespace {
 
-// The first subnet that will be allocated by the SubnetPool.  Subnet 0 is
-// reserved for ARC++.
-constexpr size_t kFirstSubnet = 1;
-
 // The maximum number of subnets that can be allocated at a given time.
-constexpr size_t kMaxSubnets = 32;
+constexpr size_t kMaxSubnets = 26;
 
 }  // namespace
 
-// Tests that the SubnetPool does not allocate more than 64 subnets at a time.
+// Tests that the SubnetPool does not allocate more than 26 subnets at a time.
 TEST(SubnetPool, AllocationRange) {
   SubnetPool pool;
 
   std::deque<std::unique_ptr<Subnet>> subnets;
-  for (size_t i = kFirstSubnet; i < kMaxSubnets; ++i) {
+  for (size_t i = 0; i < kMaxSubnets; ++i) {
     auto subnet = pool.AllocateVM();
     ASSERT_TRUE(subnet);
 
@@ -54,7 +50,7 @@ TEST(SubnetPool, Release) {
 
   // First allocate all the subnets.
   std::deque<std::unique_ptr<Subnet>> subnets;
-  for (size_t i = kFirstSubnet; i < kMaxSubnets; ++i) {
+  for (size_t i = 0; i < kMaxSubnets; ++i) {
     auto subnet = pool.AllocateVM();
     ASSERT_TRUE(subnet);
 

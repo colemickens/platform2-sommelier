@@ -23,7 +23,7 @@ namespace concierge {
 // These use non-publicly routable addresses in the range 100.115.92.0/24.
 class SubnetPool {
  public:
-  SubnetPool();
+  SubnetPool() = default;
   ~SubnetPool();
 
   // Allocates and returns a new VM Subnet in the range 100.115.92.0/24. Returns
@@ -41,8 +41,8 @@ class SubnetPool {
   // Called by Subnets on destruction to free a given subnet.
   void ReleaseContainer(size_t index);
 
-  // There are 31 /30 subnets.
-  std::bitset<32> vm_subnets_;
+  // There are 26 /30 subnets.
+  std::bitset<26> vm_subnets_;
 
   // There are 4 /28 subnets.
   std::bitset<4> container_subnets_;

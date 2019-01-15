@@ -22,7 +22,7 @@ namespace {
 // The 100.115.92.0/24 subnet is reserved and not publicly routable. This subnet
 // is then sliced into the following IP pools:
 // +-------+----------------+-----------+------------+----------------------+
-// |  0-3  |      4-127     |  128-143  |   144-191  |        192-255       |
+// |  0-23 |      24-127    |  128-143  |   144-191  |        192-255       |
 // +-------+----------------+-----------+------------+----------------------+
 // | ARC++ |  VM pool (/30) | Plugin VM | Future use | Container pool (/28) |
 // +-------+----------------+-----------+------------+----------------------+
@@ -35,22 +35,13 @@ namespace {
 constexpr size_t kContainerAddressesPerIndex = 16;
 constexpr size_t kContainerBaseAddress = 0x64735cc0;  // 100.115.92.192
 constexpr size_t kVmAddressesPerIndex = 4;
-constexpr size_t kVmBaseAddress = 0x64735c00;  // 100.115.92.0
+constexpr size_t kVmBaseAddress = 0x64735c18;  // 100.115.92.24
 constexpr size_t kContainerSubnetPrefix = 28;
 constexpr size_t kVmSubnetPrefix = 30;
 
 }  // namespace
 
-SubnetPool::SubnetPool() {
-  // The first address is always reserved for the ARC++ container.
-  vm_subnets_.set(0);
-}
-
 SubnetPool::~SubnetPool() {
-  // Clear the subnet reserved for ARC++ so that we can test if there are still
-  // allocated subnets out in the wild.
-  vm_subnets_.reset(0);
-
   if (vm_subnets_.any() || container_subnets_.any()) {
     LOG(ERROR) << "SubnetPool destroyed with unreleased subnets";
   }

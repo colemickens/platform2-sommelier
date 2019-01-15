@@ -431,11 +431,11 @@ TEST_F(TerminaVmTest, Mount) {
     const char* opts;
   } mounts[] = {
       {
-          .source = "100.115.92.5:/my/home/directory",
+          .source = "100.115.92.25:/my/home/directory",
           .target = "/mnt/shared",
           .fstype = "nfs",
           .flags = 0,
-          .opts = "nolock,vers=3,addr=100.115.92.5",
+          .opts = "nolock,vers=3,addr=100.115.92.25",
       },
       {
           .source = "/dev/vdb",
