@@ -5,6 +5,7 @@
 #ifndef OOBE_CONFIG_ROLLBACK_HELPER_H_
 #define OOBE_CONFIG_ROLLBACK_HELPER_H_
 
+#include <set>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -44,6 +45,13 @@ bool CopyFileAndSetPermissions(const base::FilePath& source,
                                bool ignore_permissions_for_testing);
 
 bool GetUidGid(const std::string& user, uid_t* uid, gid_t* gid);
+
+// Deletes all files under /var/lib/oobe_config_restore except those in
+// |excluded_files|.
+// Deletes the preserved data on the unencrypted stateful partition.
+// |root_path| is the path prefix used for testing.
+void CleanupRestoreFiles(const base::FilePath& root_path,
+                         const std::set<std::string>& excluded_files);
 
 }  // namespace oobe_config
 

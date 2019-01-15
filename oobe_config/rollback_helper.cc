@@ -4,7 +4,6 @@
 
 #include "oobe_config/rollback_helper.h"
 
-#include <set>
 #include <vector>
 
 #include <pwd.h>
@@ -201,6 +200,19 @@ bool FinishRestore(const base::FilePath& root_path,
       PrefixAbsolutePath(root_path, kEncryptedStatefulRollbackDataPath)
           .value());
 
+  CleanupRestoreFiles(root_path, excluded_files);
+
+  // Indicate that the second stage completed.
+  oobe_config.WriteFile(kSecondStageCompletedFile, "");
+  LOG(INFO) << "Rollback restore stage 2 completed.";
+
+  return true;
+}
+
+void CleanupRestoreFiles(const base::FilePath& root_path,
+                         const std::set<std::string>& excluded_files) {
+  // Delete everything except |excluded_files| in the restore directory.
+  base::FilePath restore_path = PrefixAbsolutePath(root_path, kRestoreTempPath);
   base::FileEnumerator folder_enumerator(
       restore_path, false,
       base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES);
@@ -225,12 +237,6 @@ bool FinishRestore(const base::FilePath& root_path,
   } else {
     LOG(INFO) << "Deleted encrypted rollback data.";
   }
-
-  // Indicate that the second stage completed.
-  oobe_config.WriteFile(kSecondStageCompletedFile, "");
-  LOG(INFO) << "Rollback restore stage 2 completed.";
-
-  return true;
 }
 
 base::FilePath PrefixAbsolutePath(const base::FilePath& prefix,
