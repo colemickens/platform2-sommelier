@@ -20,6 +20,9 @@ namespace util {
 // Maximum crashes to send per 24 hours.
 constexpr int kMaxCrashRate = 32;
 
+// Maximum time to wait for ensuring a meta file is complete.
+constexpr int kMaxHoldOffTimeInSeconds = 30;
+
 // Represents a name-value pair for an environment variable.
 struct EnvPair {
   const char* name;
@@ -137,6 +140,13 @@ bool IsBelowRate(const base::FilePath& timestamps_dir,
                  int max_crash_rate,
                  int* current_rate);
 
+// Computes a sleep time needed before attempting to send a new crash report.
+// On success, returns true and stores the result in |sleep_time|. On error,
+// returns false.
+bool GetSleepTime(const base::FilePath& meta_file,
+                  const base::TimeDelta& max_spread_time,
+                  base::TimeDelta* sleep_time);
+
 // A helper class for sending crashes. The behaviors can be customized with
 // Options class for unit testing.
 class Sender {
@@ -150,6 +160,12 @@ class Sender {
 
     // Maximum crashes to send per 24 hours.
     int max_crash_rate = kMaxCrashRate;
+
+    // Maximum time to sleep before attempting to send.
+    base::TimeDelta max_spread_time;
+
+    // Alternate sleep function for unit testing.
+    base::Callback<void(base::TimeDelta)> sleep_function;
   };
 
   Sender(std::unique_ptr<MetricsLibraryInterface> metrics_lib,
@@ -192,7 +208,9 @@ class Sender {
   const base::FilePath shell_script_;
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface> proxy_;
   base::ScopedTempDir scoped_temp_dir_;
-  int max_crash_rate_;
+  const int max_crash_rate_;
+  const base::TimeDelta max_spread_time_;
+  base::Callback<void(base::TimeDelta)> sleep_function_;
 
   DISALLOW_COPY_AND_ASSIGN(Sender);
 };

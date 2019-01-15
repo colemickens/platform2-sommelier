@@ -16,10 +16,12 @@
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
+#include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
 
@@ -444,18 +446,55 @@ bool IsBelowRate(const base::FilePath& timestamps_dir,
   return false;
 }
 
+bool GetSleepTime(const base::FilePath& meta_file,
+                  const base::TimeDelta& max_spread_time,
+                  base::TimeDelta* sleep_time) {
+  base::File::Info info;
+  if (!base::GetFileInfo(meta_file, &info)) {
+    PLOG(ERROR) << "Failed to get file info: " << meta_file.value();
+    return false;
+  }
+
+  // The meta file should be written *after* all to-be-uploaded files that it
+  // references.  Nevertheless, as a safeguard, a hold-off time of
+  // kMaxHoldOffTimeInSeconds after writing the meta file is ensured.  Also,
+  // sending of crash reports is spread out randomly by up to |max_spread_time|.
+  // Thus, for the sleep call the greater of the two delays is used.
+  const base::TimeDelta max_holdoff_time =
+      base::TimeDelta::FromSeconds(kMaxHoldOffTimeInSeconds);
+  // Use max() to ensure that holdoff_time is not negative.
+  const base::TimeDelta holdoff_time =
+      std::max(info.last_modified + max_holdoff_time - base::Time::Now(),
+               base::TimeDelta());
+
+  const int seconds = (max_spread_time.InSeconds() <= 0
+                           ? 0
+                           : base::RandInt(0, max_spread_time.InSeconds() - 1));
+  const base::TimeDelta spread_time = base::TimeDelta::FromSeconds(seconds);
+
+  *sleep_time = std::max(spread_time, holdoff_time);
+
+  return true;
+}
+
 Sender::Sender(std::unique_ptr<MetricsLibraryInterface> metrics_lib,
                const Sender::Options& options)
     : metrics_lib_(std::move(metrics_lib)),
       shell_script_(options.shell_script),
       proxy_(options.proxy),
-      max_crash_rate_(options.max_crash_rate) {}
+      max_crash_rate_(options.max_crash_rate),
+      max_spread_time_(options.max_spread_time),
+      sleep_function_(options.sleep_function) {}
 
 bool Sender::Init() {
   if (!scoped_temp_dir_.CreateUniqueTempDir()) {
     PLOG(ERROR) << "Failed to create a temporary directory";
     return false;
   }
+
+  if (sleep_function_.is_null())
+    sleep_function_ = base::Bind(&base::PlatformThread::Sleep);
+
   return true;
 }
 
@@ -488,6 +527,16 @@ bool Sender::SendCrashes(const base::FilePath& crash_dir) {
                 << " would exceed the max rate: " << max_crash_rate_;
       return success;
     }
+
+    base::TimeDelta sleep_time;
+    if (!GetSleepTime(meta_file, max_spread_time_, &sleep_time)) {
+      LOG(WARNING) << "Failed to compute sleep time for " << meta_file.value();
+      continue;
+    }
+
+    LOG(INFO) << "Scheduled to send in " << sleep_time.InSeconds() << "s";
+    if (!IsMock())
+      sleep_function_.Run(sleep_time);
 
     if (!RequestToSendCrash(meta_file))
       success = false;

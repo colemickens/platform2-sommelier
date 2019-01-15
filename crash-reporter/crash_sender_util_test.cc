@@ -101,6 +101,12 @@ std::vector<base::FilePath> GetFileNamesIn(const base::FilePath& directory) {
   return files;
 }
 
+// Fake sleep function that records the requested sleep time.
+void FakeSleep(std::vector<base::TimeDelta>* sleep_times,
+               base::TimeDelta duration) {
+  sleep_times->push_back(duration);
+}
+
 class CrashSenderUtilTest : public testing::Test {
  private:
   void SetUp() override {
@@ -715,6 +721,38 @@ TEST_F(CrashSenderUtilTest, IsBelowRate) {
   ASSERT_EQ(3, GetFileNamesIn(test_dir_).size());
 }
 
+TEST_F(CrashSenderUtilTest, GetSleepTime) {
+  const base::FilePath meta_file = test_dir_.Append("test.meta");
+  base::TimeDelta max_spread_time = base::TimeDelta::FromSeconds(1);
+
+  // This should fail since meta_file does not exist.
+  base::TimeDelta sleep_time;
+  EXPECT_FALSE(GetSleepTime(meta_file, max_spread_time, &sleep_time));
+
+  ASSERT_TRUE(test_util::CreateFile(meta_file, ""));
+
+  // sleep_time should be close enough to kMaxHoldOffTimeInSeconds since the
+  // meta file was just created, but 10% error is allowed just in case.
+  EXPECT_TRUE(GetSleepTime(meta_file, max_spread_time, &sleep_time));
+  EXPECT_NEAR(static_cast<double>(kMaxHoldOffTimeInSeconds),
+              sleep_time.InSecondsF(), kMaxHoldOffTimeInSeconds * 0.1);
+
+  // Make the meta file old enough so hold-off time is not necessary.
+  const base::Time now = base::Time::Now();
+  ASSERT_TRUE(TouchFileHelper(
+      meta_file, now - base::TimeDelta::FromSeconds(kMaxHoldOffTimeInSeconds)));
+
+  // sleep_time should always be 0, since max_spread_time is set to 1.
+  EXPECT_TRUE(GetSleepTime(meta_file, max_spread_time, &sleep_time));
+  EXPECT_EQ(0, sleep_time.InSeconds());
+
+  // sleep_time should be in range [0, 10).
+  max_spread_time = base::TimeDelta::FromSeconds(10);
+  EXPECT_TRUE(GetSleepTime(meta_file, max_spread_time, &sleep_time));
+  EXPECT_LE(0, sleep_time.InSeconds());
+  EXPECT_GT(10, sleep_time.InSeconds());
+}
+
 TEST_F(CrashSenderUtilTest, Sender) {
   // Set up the mock sesssion manager client.
   auto mock =
@@ -763,10 +801,12 @@ TEST_F(CrashSenderUtilTest, Sender) {
   MetricsLibraryMock* raw_metrics_lib = metrics_lib_.get();
 
   // Set up the sender.
+  std::vector<base::TimeDelta> sleep_times;
   Sender::Options options;
   options.shell_script = base::FilePath("fake_crash_sender.sh");
   options.proxy = mock.release();
   options.max_crash_rate = 2;
+  options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
   Sender sender(std::move(metrics_lib_), options);
   ASSERT_TRUE(sender.Init());
 
@@ -777,6 +817,7 @@ TEST_F(CrashSenderUtilTest, Sender) {
   // The output file from fake_crash_sender.sh should not exist, since no crash
   // reports should be uploaded in guest mode.
   EXPECT_FALSE(base::PathExists(output_file));
+  EXPECT_TRUE(sleep_times.empty());
 
   // Exit from guest mode, and send crashes again.
   raw_metrics_lib->set_guest_mode(false);
@@ -789,7 +830,9 @@ TEST_F(CrashSenderUtilTest, Sender) {
   std::vector<std::vector<std::string>> rows =
       ParseFakeCrashSenderOutput(contents);
   // Should only contain two results, since max_crash_rate is set to 2.
+  // FakeSleep should be called twice for the two crash reports.
   ASSERT_EQ(2, rows.size());
+  EXPECT_EQ(2, sleep_times.size());
 
   // The first run should be for the meta file in the system directory.
   std::vector<std::string> row = rows[0];

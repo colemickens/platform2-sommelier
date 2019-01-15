@@ -117,15 +117,6 @@ is_developer_mode() {
   crossystem "devsw_boot?1"  # exit status will be accurate
 }
 
-# Generate a uniform random number in 0..max-1.
-generate_uniform_random() {
-  local max=$1
-  # We limit ourselves to 3 bytes to avoid portability issues where shells
-  # use signed 32-bit integers in arithmetic expressions.
-  local random="$(od -An -N3 -tu /dev/urandom)"
-  echo $((random % max))
-}
-
 get_extension() {
   local extension="${1##*.}"
   local filename="${1%.*}"
@@ -502,28 +493,6 @@ send_or_skip_crash() {
   # removal to honor user choice and to free disk space as soon as possible,
   # then decide whether it should be sent right now or kept for later sending.
   lecho "Considering metadata ${meta_path}."
-
-  # The .meta file should be written *after* all to-be-uploaded files that it
-  # references.  Nevertheless, as a safeguard, a hold-off time of thirty
-  # seconds after writing the .meta file is ensured.  Also, sending of crash
-  # reports is spread out randomly by up to SECONDS_SEND_SPREAD.  Thus, for
-  # the sleep call the greater of the two delays is used.
-  local now=$(date +%s)
-  local holdoff_time=$(($(stat --format=%Y "${meta_path}") + 30 - ${now}))
-  local spread_time=$(generate_uniform_random "${SECONDS_SEND_SPREAD}")
-  local sleep_time
-  if [ ${spread_time} -gt ${holdoff_time} ]; then
-    sleep_time="${spread_time}"
-  else
-    sleep_time="${holdoff_time}"
-  fi
-  lecho "Scheduled to send in ${sleep_time}s."
-  if ! is_mock; then
-    if ! sleep "${sleep_time}"; then
-        lecho "Sleep failed"
-        return 1
-    fi
-  fi
 
   # Try to upload.
   if ! send_crash "${meta_path}"; then
