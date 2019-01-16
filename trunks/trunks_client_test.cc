@@ -311,8 +311,9 @@ bool TrunksClientTest::SealedDataTest() {
     return false;
   }
   std::string data_to_seal("seal_data");
+  std::string auth_value("auth_value");
   std::string sealed_data;
-  result = utility->SealData(data_to_seal, policy_digest,
+  result = utility->SealData(data_to_seal, policy_digest, auth_value,
                              session->GetDelegate(), &sealed_data);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating Sealed Object: " << GetErrorString(result);
@@ -331,6 +332,7 @@ bool TrunksClientTest::SealedDataTest() {
                << GetErrorString(result);
     return false;
   }
+  policy_session->SetEntityAuthorizationValue(auth_value);
   std::string unsealed_data;
   result = utility->UnsealData(sealed_data, policy_session->GetDelegate(),
                                &unsealed_data);
@@ -385,7 +387,7 @@ bool TrunksClientTest::SealedToMultiplePCRDataTest() {
   // Seal the data.
   std::string data_to_seal("seal_data");
   std::string sealed_data;
-  result = utility->SealData(data_to_seal, policy_digest,
+  result = utility->SealData(data_to_seal, policy_digest, "",
                              session->GetDelegate(), &sealed_data);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating Sealed Object: " << GetErrorString(result);

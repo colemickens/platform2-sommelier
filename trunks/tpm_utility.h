@@ -266,9 +266,12 @@ class TRUNKS_EXPORT TpmUtility {
                                   TPMT_PUBLIC* public_data) = 0;
 
   // This method seals |data_to_seal| to the TPM. The |sealed_data| can be
-  // retrieved by fulfilling the policy represented by |policy_digest|.
+  // retrieved by fulfilling the policy represented by |policy_digest|. The
+  // session used to unseal the data will need to have the
+  // EntityAuthorizationValue set to |auth_value| if non-empty.
   virtual TPM_RC SealData(const std::string& data_to_seal,
                           const std::string& policy_digest,
+                          const std::string& auth_value,
                           AuthorizationDelegate* delegate,
                           std::string* sealed_data) = 0;
 

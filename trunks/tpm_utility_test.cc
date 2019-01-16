@@ -1626,8 +1626,8 @@ TEST_F(TpmUtilityTest, SealedDataSuccess) {
       .WillOnce(DoAll(SaveArg<1>(&sensitive_create), SaveArg<2>(&in_public),
                       Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TPM_RC_SUCCESS,
-            utility_.SealData(data_to_seal, "", &mock_authorization_delegate_,
-                              &sealed_data));
+            utility_.SealData(data_to_seal, "", "",
+                              &mock_authorization_delegate_, &sealed_data));
   EXPECT_EQ(sensitive_create.sensitive.data.size, data_to_seal.size());
   EXPECT_EQ(0, memcmp(sensitive_create.sensitive.data.buffer,
                       data_to_seal.data(), data_to_seal.size()));
@@ -1639,7 +1639,7 @@ TEST_F(TpmUtilityTest, SealDataBadDelegate) {
   std::string data_to_seal("seal_data");
   std::string sealed_data;
   EXPECT_EQ(SAPI_RC_INVALID_SESSIONS,
-            utility_.SealData(data_to_seal, "", nullptr, &sealed_data));
+            utility_.SealData(data_to_seal, "", "", nullptr, &sealed_data));
 }
 
 TEST_F(TpmUtilityTest, SealDataFailure) {
@@ -1649,8 +1649,8 @@ TEST_F(TpmUtilityTest, SealDataFailure) {
               CreateSyncShort(kStorageRootKey, _, _, _, _, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE,
-            utility_.SealData(data_to_seal, "", &mock_authorization_delegate_,
-                              &sealed_data));
+            utility_.SealData(data_to_seal, "", "",
+                              &mock_authorization_delegate_, &sealed_data));
 }
 
 TEST_F(TpmUtilityTest, SealDataParserFail) {
@@ -1659,8 +1659,8 @@ TEST_F(TpmUtilityTest, SealDataParserFail) {
   EXPECT_CALL(mock_blob_parser_, SerializeKeyBlob(_, _, &sealed_data))
       .WillOnce(Return(false));
   EXPECT_EQ(SAPI_RC_BAD_TCTI_STRUCTURE,
-            utility_.SealData(data_to_seal, "", &mock_authorization_delegate_,
-                              &sealed_data));
+            utility_.SealData(data_to_seal, "", "",
+                              &mock_authorization_delegate_, &sealed_data));
 }
 
 TEST_F(TpmUtilityTest, UnsealDataSuccess) {

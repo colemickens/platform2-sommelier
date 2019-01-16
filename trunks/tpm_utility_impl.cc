@@ -1133,6 +1133,7 @@ TPM_RC TpmUtilityImpl::GetKeyPublicArea(TPM_HANDLE handle,
 
 TPM_RC TpmUtilityImpl::SealData(const std::string& data_to_seal,
                                 const std::string& policy_digest,
+                                const std::string& auth_value,
                                 AuthorizationDelegate* delegate,
                                 std::string* sealed_data) {
   CHECK(sealed_data);
@@ -1159,7 +1160,7 @@ TPM_RC TpmUtilityImpl::SealData(const std::string& data_to_seal,
   public_area.unique.keyed_hash.size = 0;
   TPML_PCR_SELECTION creation_pcrs = {};
   TPMS_SENSITIVE_CREATE sensitive;
-  sensitive.user_auth = Make_TPM2B_DIGEST("");
+  sensitive.user_auth = Make_TPM2B_DIGEST(auth_value);
   sensitive.data = Make_TPM2B_SENSITIVE_DATA(data_to_seal);
   TPM2B_SENSITIVE_CREATE sensitive_create =
       Make_TPM2B_SENSITIVE_CREATE(sensitive);

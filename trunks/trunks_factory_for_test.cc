@@ -296,9 +296,10 @@ class TpmUtilityForwarder : public TpmUtility {
 
   TPM_RC SealData(const std::string& data_to_seal,
                   const std::string& policy_digest,
+                  const std::string& auth_value,
                   AuthorizationDelegate* delegate,
                   std::string* sealed_data) override {
-    return target_->SealData(data_to_seal, policy_digest, delegate,
+    return target_->SealData(data_to_seal, policy_digest, auth_value, delegate,
                              sealed_data);
   }
 
