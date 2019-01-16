@@ -35,7 +35,7 @@ class FakeTpm : public Tpm {
 
   // The fake implementation just flips every bit in the input. The Unseal
   // method does the same so they are symmetric.
-  bool SealToPCR0(const SecureBlob& value, Blob* sealed_value) override {
+  bool SealToPCR0(const SecureBlob& value, SecureBlob* sealed_value) override {
     CHECK(sealed_value);
     // Make sure we are never sealing more than 128 bytes/1024 bits.
     CHECK_LE(value.size(), 128);
@@ -47,7 +47,7 @@ class FakeTpm : public Tpm {
 
   // The fake implementation just flips every bit in the input. The SealToPCR0
   // method does the same so they are symmetric.
-  bool Unseal(const Blob& sealed_value, SecureBlob* value) override {
+  bool Unseal(const SecureBlob& sealed_value, SecureBlob* value) override {
     CHECK(value);
     value->resize(sealed_value.size());
     std::transform(sealed_value.begin(), sealed_value.end(), value->begin(),

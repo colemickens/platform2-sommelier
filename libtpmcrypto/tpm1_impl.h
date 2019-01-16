@@ -23,9 +23,9 @@ class Tpm1Impl : public Tpm {
   ~Tpm1Impl() override;
 
   bool SealToPCR0(const brillo::SecureBlob& value,
-                  brillo::Blob* sealed_value) override;
+                  brillo::SecureBlob* sealed_value) override;
 
-  bool Unseal(const brillo::Blob& sealed_value,
+  bool Unseal(const brillo::SecureBlob& sealed_value,
               brillo::SecureBlob* value) override;
 
   bool GetNVAttributes(uint32_t index, uint32_t* attributes) override;

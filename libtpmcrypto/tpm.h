@@ -29,7 +29,8 @@ class BRILLO_EXPORT Tpm {
   //
   // Returns true on success.
   virtual bool SealToPCR0(const brillo::SecureBlob& value,
-                          brillo::Blob* sealed_value) WARN_UNUSED_RESULT = 0;
+                          brillo::SecureBlob* sealed_value)
+      WARN_UNUSED_RESULT = 0;
 
   // Unseals a secret previously sealed with the SRK.
   //
@@ -38,7 +39,7 @@ class BRILLO_EXPORT Tpm {
   //   value - The original value.
   //
   // Returns true on success.
-  virtual bool Unseal(const brillo::Blob& sealed_value,
+  virtual bool Unseal(const brillo::SecureBlob& sealed_value,
                       brillo::SecureBlob* value) WARN_UNUSED_RESULT = 0;
 
   // Gets the attributes of an index in the NVRAM.

@@ -31,7 +31,7 @@ std::unique_ptr<Tpm> CreateTpmInstance() {
   return std::make_unique<Tpm2Impl>();
 }
 
-bool Tpm2Impl::SealToPCR0(const SecureBlob& value, Blob* sealed_value) {
+bool Tpm2Impl::SealToPCR0(const SecureBlob& value, SecureBlob* sealed_value) {
   CHECK(sealed_value);
 
   std::string policy_digest;
@@ -41,7 +41,7 @@ bool Tpm2Impl::SealToPCR0(const SecureBlob& value, Blob* sealed_value) {
          SealData(session->GetDelegate(), policy_digest, value, sealed_value);
 }
 
-bool Tpm2Impl::Unseal(const Blob& sealed_value, SecureBlob* value) {
+bool Tpm2Impl::Unseal(const SecureBlob& sealed_value, SecureBlob* value) {
   CHECK(value);
 
   std::unique_ptr<PolicySession> policy_session;
@@ -118,7 +118,7 @@ bool Tpm2Impl::CreatePolicySessionForPCR0(
 bool Tpm2Impl::SealData(AuthorizationDelegate* session_delegate,
                         const std::string& policy_digest,
                         const SecureBlob& value,
-                        Blob* sealed_value) {
+                        SecureBlob* sealed_value) {
   const std::string data_to_seal(value.begin(), value.end());
   std::string sealed_data_str;
   TPM_RC result = tpm_utility_->SealData(data_to_seal, policy_digest, "",
@@ -133,7 +133,7 @@ bool Tpm2Impl::SealData(AuthorizationDelegate* session_delegate,
 }
 
 bool Tpm2Impl::UnsealData(AuthorizationDelegate* policy_delegate,
-                          const Blob& sealed_value,
+                          const SecureBlob& sealed_value,
                           SecureBlob* value) {
   const std::string sealed_data(sealed_value.begin(), sealed_value.end());
   std::string unsealed_data;

@@ -40,7 +40,7 @@ std::unique_ptr<Tpm> CreateTpmInstance() {
   return std::make_unique<Tpm1Impl>();
 }
 
-bool Tpm1Impl::SealToPCR0(const brillo::SecureBlob& value, Blob* sealed_value) {
+bool Tpm1Impl::SealToPCR0(const SecureBlob& value, SecureBlob* sealed_value) {
   CHECK(sealed_value);
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
@@ -113,7 +113,7 @@ bool Tpm1Impl::SealToPCR0(const brillo::SecureBlob& value, Blob* sealed_value) {
   return true;
 }
 
-bool Tpm1Impl::Unseal(const Blob& sealed_value, SecureBlob* value) {
+bool Tpm1Impl::Unseal(const SecureBlob& sealed_value, SecureBlob* value) {
   CHECK(value);
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;

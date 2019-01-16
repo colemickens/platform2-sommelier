@@ -29,9 +29,9 @@ class Tpm2Impl : public Tpm {
   ~Tpm2Impl() override;
 
   bool SealToPCR0(const brillo::SecureBlob& value,
-                  brillo::Blob* sealed_value) override;
+                  brillo::SecureBlob* sealed_value) override;
 
-  bool Unseal(const brillo::Blob& sealed_value,
+  bool Unseal(const brillo::SecureBlob& sealed_value,
               brillo::SecureBlob* value) override;
 
   bool GetNVAttributes(uint32_t index, uint32_t* attributes) override;
@@ -51,9 +51,9 @@ class Tpm2Impl : public Tpm {
   bool SealData(trunks::AuthorizationDelegate* session_delegate,
                 const std::string& policy_digest,
                 const brillo::SecureBlob& value,
-                brillo::Blob* sealed_value);
+                brillo::SecureBlob* sealed_value);
   bool UnsealData(trunks::AuthorizationDelegate* policy_delegate,
-                  const brillo::Blob& sealed_value,
+                  const brillo::SecureBlob& sealed_value,
                   brillo::SecureBlob* value);
 
   bool is_initialized_ = false;
