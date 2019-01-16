@@ -18,7 +18,7 @@
         'mojo_root': '../',
       },
       'includes': [
-        '../../../platform2/common-mk/mojom_bindings_generator.gypi',
+        '../../common-mk/mojom_bindings_generator.gypi',
       ],
       'libraries': [
         '-ldl',

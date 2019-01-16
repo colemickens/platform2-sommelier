@@ -28,7 +28,7 @@
           'target_name': 'cbm_unittest',
           'type': 'executable',
           'includes': [
-            '../../../platform2/common-mk/common_test.gypi',
+            '../../common-mk/common_test.gypi',
           ],
           'sources': [
             'camera_buffer_manager_impl.cc',

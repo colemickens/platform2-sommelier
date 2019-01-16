@@ -15,7 +15,7 @@
         'ipc_util.cc',
         'v4l2_camera_device.cc',
       ],
-      'includes': ['../../../../platform2/common-mk/mojom_bindings_generator.gypi'],
+      'includes': ['../../../common-mk/mojom_bindings_generator.gypi'],
       'variables': {
         'exported_deps': [
           'libbrillo-<(libbase_ver)',

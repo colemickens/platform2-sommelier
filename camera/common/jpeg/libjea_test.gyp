@@ -18,7 +18,7 @@
       'target_name': 'libjea_test',
       'type': 'executable',
       'includes': [
-        '../../../../platform2/common-mk/common_test.gypi',
+        '../../../common-mk/common_test.gypi',
       ],
       'dependencies': [
         '../libcamera_ipc.gyp:libcamera_ipc',

@@ -24,7 +24,7 @@
           'target_name': 'future_unittest',
           'type': 'executable',
           'includes': [
-            '../../../platform2/common-mk/common_test.gypi',
+            '../../common-mk/common_test.gypi',
           ],
           'sources': [
             'future.cc',

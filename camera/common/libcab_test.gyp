@@ -21,7 +21,7 @@
     {
       'target_name': 'libcab_test',
       'type': 'executable',
-      'includes': ['../../../platform2/common-mk/common_test.gypi'],
+      'includes': ['../../common-mk/common_test.gypi'],
       'variables': {
         'deps': [
           'libcab',

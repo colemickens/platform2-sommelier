@@ -23,7 +23,7 @@
       'target_name': 'cros_camera_test',
       'type': 'executable',
       'includes': [
-        '../../../platform2/common-mk/common_test.gypi',
+        '../../common-mk/common_test.gypi',
       ],
       'libraries': [
         '-ldl',
@@ -60,7 +60,7 @@
           'target_name': 'cros_camera_fuzzer',
           'type': 'executable',
           'includes': [
-            '../../../platform2/common-mk/common_test.gypi',
+            '../../common-mk/common_test.gypi',
           ],
           'defines': [
             '-DFUZZER',

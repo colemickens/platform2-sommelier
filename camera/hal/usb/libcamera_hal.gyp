@@ -48,7 +48,7 @@
           'target_name': 'image_processor_test',
           'type': 'executable',
           'includes': [
-            '../../../../platform2/common-mk/common_test.gypi',
+            '../../../common-mk/common_test.gypi',
           ],
           'sources': [
             'frame_buffer.cc',
