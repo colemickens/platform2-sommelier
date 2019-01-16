@@ -50,6 +50,8 @@ constexpr char kServerSwitch[] = "server";
 constexpr char kClientSwitch[] = "client";
 constexpr char kUrlSwitch[] = "url";
 constexpr char kTerminalSwitch[] = "terminal";
+constexpr uint32_t kVsockPortStart = 10000;
+constexpr uint32_t kVsockPortEnd = 20000;
 
 bool LogToSyslog(logging::LogSeverity severity,
                  const char* /* file */,
@@ -88,30 +90,41 @@ void RunGarconService(vm_tools::garcon::PackageKitProxy* pk_proxy,
   sigaddset(&mask, SIGTERM);
   sigprocmask(SIG_BLOCK, &mask, nullptr);
 
-  // Build the server.
-  grpc::ServerBuilder builder;
-  builder.AddListeningPort(
-      base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY, VMADDR_PORT_ANY),
-      grpc::InsecureServerCredentials(), vsock_listen_port);
+  // See crbug.com/922694 for more reference.
+  // There's a bug in our patched version of gRPC where it uses signed integers
+  // for ports. VSOCK uses unsigned integers for ports. So if we let the kernel
+  // choose the port for us, then it can end up choosing one that has the high
+  // bit set and cause gRPC to assert on the negative port number. This was a
+  // much easier solution than patching gRPC or updating the kernel to keep the
+  // VSOCK ports in the signed integer range.
+  // The end on this for loop only exists to prevent running forever in case
+  // something else goes wrong.
+  for (*vsock_listen_port = kVsockPortStart; *vsock_listen_port < kVsockPortEnd;
+       ++(*vsock_listen_port)) {
+    // Build the server.
+    grpc::ServerBuilder builder;
+    builder.AddListeningPort(
+        base::StringPrintf("vsock:%u:%d", VMADDR_CID_ANY, *vsock_listen_port),
+        grpc::InsecureServerCredentials(), nullptr);
 
-  vm_tools::garcon::ServiceImpl garcon_service(pk_proxy);
-  builder.RegisterService(&garcon_service);
+    vm_tools::garcon::ServiceImpl garcon_service(pk_proxy);
+    builder.RegisterService(&garcon_service);
 
-  std::shared_ptr<grpc::Server> server(builder.BuildAndStart().release());
+    std::shared_ptr<grpc::Server> server(builder.BuildAndStart().release());
+    if (!server) {
+      LOG(WARNING) << "garcon failed binding requested vsock port "
+                   << *vsock_listen_port << ", trying again with a new port";
+      continue;
+    }
 
-  // Now that the server is built, check the bound port for vsock.
-  if (*vsock_listen_port == 0) {
-    LOG(WARNING) << "garcon failed to bind port to listen on vsock";
-  }
+    *server_copy = server;
+    event->Signal();
 
-  *server_copy = server;
-  event->Signal();
-
-  if (server) {
     LOG(INFO) << "Server listening on vsock port " << *vsock_listen_port;
-    // The following call will return once we invoke Shutdown on the gRPC server
-    // when the main RunLoop exits.
+    // The following call will return once we invoke Shutdown on the gRPC
+    // server when the main RunLoop exits.
     server->Wait();
+    break;
   }
 }
 
