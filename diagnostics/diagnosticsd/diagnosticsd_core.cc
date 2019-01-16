@@ -4,6 +4,8 @@
 
 #include "diagnostics/diagnosticsd/diagnosticsd_core.h"
 
+#include <algorithm>
+#include <cstddef>
 #include <utility>
 
 #include <base/bind.h>
@@ -70,7 +72,7 @@ DiagnosticsdCore::DiagnosticsdCore(
 
 DiagnosticsdCore::~DiagnosticsdCore() = default;
 
-bool DiagnosticsdCore::StartGrpcCommunication() {
+bool DiagnosticsdCore::Start() {
   // Associate RPCs of the to-be-exposed gRPC interface with methods of
   // |grpc_service_|.
   grpc_server_.RegisterHandler(
@@ -119,15 +121,15 @@ bool DiagnosticsdCore::StartGrpcCommunication() {
   VLOG(0) << "Created gRPC diagnostics_processor client on "
           << diagnostics_processor_grpc_uri_;
 
-  return true;
+  // Start EC event service.
+  return ec_event_service_.Start();
 }
 
-void DiagnosticsdCore::TearDownGrpcCommunication(
-    const base::Closure& on_torn_down) {
-  // Begin the graceful teardown of the gRPC server and client.
-  VLOG(1) << "Tearing down gRPC server and gRPC diagnostics_processor client";
-  // |on_torn_down| will be called after both Shutdown()s signal completion.
-  const base::Closure barrier_closure = BarrierClosure(2, on_torn_down);
+void DiagnosticsdCore::ShutDown(const base::Closure& on_shutdown) {
+  VLOG(1) << "Tearing down gRPC server, gRPC diagnostics_processor client and "
+             "EC event service";
+  const base::Closure barrier_closure = BarrierClosure(3, on_shutdown);
+  ec_event_service_.Shutdown(barrier_closure);
   grpc_server_.Shutdown(barrier_closure);
   diagnostics_processor_grpc_client_->Shutdown(barrier_closure);
 }
@@ -257,6 +259,33 @@ void DiagnosticsdCore::PerformWebRequestToBrowser(
                          std::move(response_body_ptr));
           },
           callback));
+}
+
+void DiagnosticsdCore::SendGrpcEcEventToDiagnosticsProcessor(
+    const DiagnosticsdEcEventService::EcEvent& ec_event) {
+  VLOG(1) << "DiagnosticsdCore::SendGrpcEcEventToDiagnosticsProcessor";
+
+  grpc_api::HandleEcNotificationRequest request;
+  request.set_type(ec_event.type);
+
+  size_t data_size =
+      std::min(ec_event.size * sizeof(ec_event.data[0]), sizeof(ec_event.data));
+
+  request.set_payload(ec_event.data, data_size);
+
+  diagnostics_processor_grpc_client_->CallRpc(
+      &grpc_api::DiagnosticsProcessor::Stub::AsyncHandleEcNotification, request,
+      base::Bind([](std::unique_ptr<grpc_api::HandleEcNotificationResponse>
+                        response) {
+        if (!response) {
+          LOG(ERROR)
+              << "Failed to call HandleEcNotificationRequest gRPC method on "
+                 "diagnostics_processor: response message is nullptr";
+          return;
+        }
+        VLOG(1) << "gRPC method HandleEcNotificationRequest was successfully"
+                   "called on diagnostics_processor";
+      }));
 }
 
 void DiagnosticsdCore::SendGrpcUiMessageToDiagnosticsProcessor(

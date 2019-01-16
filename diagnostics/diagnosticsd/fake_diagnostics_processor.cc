@@ -23,6 +23,11 @@ FakeDiagnosticsProcessor::FakeDiagnosticsProcessor(
       &grpc_api::DiagnosticsProcessor::AsyncService::RequestHandleMessageFromUi,
       base::Bind(&FakeDiagnosticsProcessor::HandleMessageFromUi,
                  base::Unretained(this)));
+  grpc_server_.RegisterHandler(
+      &grpc_api::DiagnosticsProcessor::AsyncService::
+          RequestHandleEcNotification,
+      base::Bind(&FakeDiagnosticsProcessor::HandleEcNotification,
+                 base::Unretained(this)));
   grpc_server_.Start();
 }
 
@@ -94,6 +99,18 @@ void FakeDiagnosticsProcessor::HandleMessageFromUi(
   callback.Run(std::move(response));
 
   handle_message_from_ui_callback_->Run();
+}
+
+void FakeDiagnosticsProcessor::HandleEcNotification(
+    std::unique_ptr<grpc_api::HandleEcNotificationRequest> request,
+    const HandleEcNotificationCallback& callback) {
+  DCHECK(handle_ec_event_request_callback_);
+
+  auto response = std::make_unique<grpc_api::HandleEcNotificationResponse>();
+  callback.Run(std::move(response));
+
+  handle_ec_event_request_callback_->Run(request->type(), request->payload());
+  handle_ec_event_request_callback_.reset();
 }
 
 }  // namespace diagnostics

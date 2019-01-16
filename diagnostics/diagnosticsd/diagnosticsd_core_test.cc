@@ -2,6 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <fcntl.h>
+#include <poll.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
 #include <memory>
 #include <string>
 #include <utility>
@@ -121,7 +129,12 @@ class DiagnosticsdCoreTest : public testing::Test {
                                                diagnostics_processor_grpc_uri_,
                                                &core_delegate_);
     core_->set_root_dir_for_testing(temp_dir_.GetPath());
-    ASSERT_TRUE(core_->StartGrpcCommunication());
+
+    SetUpEcEventService();
+
+    ASSERT_TRUE(core_->Start());
+
+    SetUpEcEventServiceFifoWriteEnd();
 
     SetUpDBus();
 
@@ -132,7 +145,7 @@ class DiagnosticsdCoreTest : public testing::Test {
 
   void TearDown() override {
     base::RunLoop run_loop;
-    core_->TearDownGrpcCommunication(run_loop.QuitClosure());
+    core_->ShutDown(run_loop.QuitClosure());
     run_loop.Run();
   }
 
@@ -175,6 +188,12 @@ class DiagnosticsdCoreTest : public testing::Test {
           DCHECK(mojo_service_factory_interface_ptr_);
           return mojo_service_factory_binding.release();
         }));
+  }
+
+  void WriteEcEventToSysfsFile(
+      const DiagnosticsdEcEventService::EcEvent& ec_event) const {
+    ASSERT_EQ(write(ec_event_service_fd_.get(), &ec_event, sizeof(ec_event)),
+              sizeof(ec_event));
   }
 
   dbus::ExportedObject::MethodCallCallback
@@ -240,6 +259,26 @@ class DiagnosticsdCoreTest : public testing::Test {
     EXPECT_CALL(*diagnosticsd_dbus_object_, Unregister());
   }
 
+  // Creates FIFO to emulates the EC event service sysfs event file.
+  void SetUpEcEventService() {
+    core_->set_ec_event_service_fd_events_for_testing(POLLIN);
+    ASSERT_TRUE(base::CreateDirectory(ec_event_sysfs_file_path().DirName()));
+    ASSERT_EQ(mkfifo(ec_event_sysfs_file_path().value().c_str(), 0600), 0);
+  }
+
+  // Setups |ec_event_service_fd_| FIFO file descriptor. Must be called only
+  // after |DiagnosticsdCore::Start()| call. Otherwise, it will block thread.
+  void SetUpEcEventServiceFifoWriteEnd() {
+    ASSERT_FALSE(ec_event_service_fd_.is_valid());
+    ec_event_service_fd_.reset(
+        open(ec_event_sysfs_file_path().value().c_str(), O_WRONLY));
+    ASSERT_TRUE(ec_event_service_fd_.is_valid());
+  }
+
+  base::FilePath ec_event_sysfs_file_path() const {
+    return temp_dir_.GetPath().Append(kEcEventSysfsPath);
+  }
+
   base::MessageLoop message_loop_;
 
   base::ScopedTempDir temp_dir_;
@@ -260,6 +299,11 @@ class DiagnosticsdCoreTest : public testing::Test {
   // Mojo interface to the service factory exposed by the tested code.
   mojo::InterfacePtr<MojomDiagnosticsdServiceFactory>
       mojo_service_factory_interface_ptr_;
+
+  // Write end of FIFO that emulates EC sysfs event file. EC event service
+  // operates with read end of FIFO as with usual file.
+  // Must be initialized only after |DiagnosticsdCore::Start()| call.
+  base::ScopedFD ec_event_service_fd_;
 
   StrictMock<MockDiagnosticsdCoreDelegate> core_delegate_;
 
@@ -582,6 +626,91 @@ TEST_F(BootstrappedDiagnosticsdCoreTest, PerformWebRequestToBrowser) {
   expected_response.set_http_status(kHttpStatusOk);
   EXPECT_THAT(*response, ProtobufEquals(expected_response))
       << "Actual: {" << response->ShortDebugString() << "}";
+}
+
+namespace {
+
+// Tests for EC event service.
+class EcEventServiceBootstrappedDiagnosticsdCoreTest
+    : public BootstrappedDiagnosticsdCoreTest {
+ protected:
+  void EmulateEcEvent(uint16_t size, uint16_t type) const {
+    WriteEcEventToSysfsFile(GetEcEvent(size, type));
+  }
+
+  void ExpectFakeProcessorEcEventCalled(uint16_t expected_size, uint16_t type) {
+    const std::string payload = GetPayload(
+        expected_size * sizeof(DiagnosticsdEcEventService::EcEvent::data[0]));
+    base::RunLoop run_loop;
+    fake_diagnostics_processor()->set_handle_ec_event_request_callback(
+        base::BindRepeating(
+            [](const base::Closure& callback, int32_t expected_type,
+               const std::string& expected_payload, int32_t type,
+               const std::string& payload) {
+              ASSERT_EQ(type, expected_type);
+              ASSERT_EQ(payload, expected_payload);
+              callback.Run();
+            },
+            run_loop.QuitClosure(), type, payload));
+    run_loop.Run();
+  }
+
+ private:
+  const uint16_t kData[6]{0x0102, 0x1314, 0x2526, 0x3738, 0x494a, 0x5b5c};
+  // |kData| bytes little endian representation.
+  const uint8_t kPayload[12]{0x02, 0x01, 0x14, 0x13, 0x26, 0x25,
+                             0x38, 0x37, 0x4a, 0x49, 0x5c, 0x5b};
+
+  DiagnosticsdEcEventService::EcEvent GetEcEvent(uint16_t size,
+                                                 uint16_t type) const {
+    return DiagnosticsdEcEventService::EcEvent(size, type, kData);
+  }
+
+  std::string GetPayload(size_t expected_size_in_bytes) const {
+    return std::string(reinterpret_cast<const char*>(kPayload),
+                       expected_size_in_bytes);
+  }
+};
+
+}  // namespace
+
+// Test that the method |HandleEcNotification()| exposed by diagnostics
+// processor gRPC is called by diagnostics deamon.
+TEST_F(EcEventServiceBootstrappedDiagnosticsdCoreTest,
+       SendGrpcEcEventToDiagnosticsProcessorSize0) {
+  EmulateEcEvent(0, 0x0123);
+  ExpectFakeProcessorEcEventCalled(0, 0x0123);
+}
+
+TEST_F(EcEventServiceBootstrappedDiagnosticsdCoreTest,
+       SendGrpcEcEventToDiagnosticsProcessorSize5) {
+  EmulateEcEvent(5, 0x89ab);
+  ExpectFakeProcessorEcEventCalled(5, 0x89ab);
+}
+
+TEST_F(EcEventServiceBootstrappedDiagnosticsdCoreTest,
+       SendGrpcEcEventToDiagnosticsProcessorSize6) {
+  EmulateEcEvent(6, 0xcdef);
+  ExpectFakeProcessorEcEventCalled(6, 0xcdef);
+}
+
+// Test that the method |HandleEcNotification()| exposed by diagnostics
+// processor gRPC is called by diagnostics deamon multiple times.
+TEST_F(EcEventServiceBootstrappedDiagnosticsdCoreTest,
+       SendGrpcEcEventToDiagnosticsProcessorMultipleEvents) {
+  EmulateEcEvent(3, 0x1234);
+  EmulateEcEvent(4, 0xabcd);
+  ExpectFakeProcessorEcEventCalled(3, 0x1234);
+  ExpectFakeProcessorEcEventCalled(4, 0xabcd);
+}
+
+// Test that the method |HandleEcNotification()| exposed by diagnostics
+// processor gRPC is called by diagnostics deamon even when |ec_event.size|
+// exceeds allocated data array.
+TEST_F(EcEventServiceBootstrappedDiagnosticsdCoreTest,
+       SendGrpcEcEventToDiagnosticsProcessorInvalidSize) {
+  EmulateEcEvent(7, 0xabcd);
+  ExpectFakeProcessorEcEventCalled(6, 0xabcd);
 }
 
 }  // namespace diagnostics

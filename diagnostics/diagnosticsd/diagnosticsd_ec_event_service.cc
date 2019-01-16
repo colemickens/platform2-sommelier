@@ -59,7 +59,8 @@ class EcEventMonitoringThreadDelegate final
           // Non-critical error, we must retry.
           continue;
         }
-        PLOG(ERROR) << "EC event poll error. Shuting down EC monitoring thread";
+        PLOG(ERROR)
+            << "EC event poll error. Shutting down EC monitoring thread";
         break;
       }
       if (fds[1].events & fds[1].revents) {
@@ -68,7 +69,7 @@ class EcEventMonitoringThreadDelegate final
         break;
       }
       if ((fds[0].revents & POLLERR) || (fds[1].revents & POLLERR)) {
-        LOG(ERROR) << "EC event POLLERR poll error. Shuting down EC"
+        LOG(ERROR) << "EC event POLLERR poll error. Shutting down EC"
                       " monitoring thread";
         break;
       }
@@ -182,7 +183,7 @@ void DiagnosticsdEcEventService::ShutdownMonitoringThread() {
 
 void DiagnosticsdEcEventService::OnEventAvailable(const EcEvent& ec_event) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  delegate_->SendEcEventToDiagnosticsProcessor(ec_event);
+  delegate_->SendGrpcEcEventToDiagnosticsProcessor(ec_event);
 }
 
 void DiagnosticsdEcEventService::OnShutdown() {

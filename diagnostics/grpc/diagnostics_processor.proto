@@ -15,7 +15,7 @@ service DiagnosticsProcessor {
   rpc HandleMessageFromUi(HandleMessageFromUiRequest)
       returns (HandleMessageFromUiResponse) {}
 
-  // Called when the diagnosticsd daemon received EC notification.
+  // Called when the diagnosticsd daemon received EC event.
   rpc HandleEcNotification(HandleEcNotificationRequest)
       returns (HandleEcNotificationResponse) {}
 }
@@ -36,8 +36,20 @@ message HandleMessageFromUiResponse {
 
 // Parameters for the HandleEcNotification RPC.
 message HandleEcNotificationRequest {
+  // EC notification type.
+  //
+  // |type| value is located from 0x0000 to 0xFFFF, i.e. only 16 bits used.
+  uint32 type = 1;
+
   // EC notification payload.
-  bytes payload = 1;
+  //
+  // Originally, EC driver provides |uint16_t| data array which we encode to
+  // |payload| (i.e. |uint8_t| array) using little-endian format.
+  // For example, [0x0102, 0x1314, 0x2526] will be represented as
+  // [0x02, 0x01, 0x14, 0x13, 0x26, 0x25] payload.
+  //
+  // |payload| size does not exceed 12 bytes.
+  bytes payload = 2;
 }
 
 // Return value of the HandleEcNotification RPC.

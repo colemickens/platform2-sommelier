@@ -36,8 +36,13 @@ class FakeDiagnosticsProcessor final {
       base::Callback<void(std::unique_ptr<grpc_api::GetEcPropertyResponse>)>;
   using HandleMessageFromUiCallback = base::Callback<void(
       std::unique_ptr<grpc_api::HandleMessageFromUiResponse>)>;
+  using HandleEcNotificationCallback = base::Callback<void(
+      std::unique_ptr<grpc_api::HandleEcNotificationResponse>)>;
   using PerformWebRequestResponseCallback = base::Callback<void(
       std::unique_ptr<grpc_api::PerformWebRequestResponse>)>;
+
+  using HandleEcNotificationRequestCallback =
+      base::RepeatingCallback<void(int32_t, const std::string&)>;
 
   FakeDiagnosticsProcessor(const std::string& grpc_server_uri,
                            const std::string& diagnosticsd_grpc_uri);
@@ -63,6 +68,13 @@ class FakeDiagnosticsProcessor final {
   void set_handle_message_from_ui_json_message_response(
       const std::string& json_message_response);
 
+  // Setups callback for the next |HandleEcNotification| gRPC call.
+  // |handle_ec_event_request_callback_| will be called only once.
+  void set_handle_ec_event_request_callback(
+      HandleEcNotificationRequestCallback handle_ec_event_request_callback) {
+    handle_ec_event_request_callback_ = handle_ec_event_request_callback;
+  }
+
   const base::Optional<std::string>&
   handle_message_from_ui_actual_json_message() const;
 
@@ -78,12 +90,22 @@ class FakeDiagnosticsProcessor final {
       std::unique_ptr<grpc_api::HandleMessageFromUiRequest> request,
       const HandleMessageFromUiCallback& callback);
 
+  // Receives gRPC request and invokes the given |callback| with gRPC response.
+  // Calls the callback |handle_ec_event_request_callback_| after all with the
+  // request type and payload.
+  void HandleEcNotification(
+      std::unique_ptr<grpc_api::HandleEcNotificationRequest> request,
+      const HandleEcNotificationCallback& callback);
+
   AsyncGrpcDiagnosticsProcessorServer grpc_server_;
   AsyncGrpcDiagnosticsdClient diagnosticsd_grpc_client_;
 
   base::Optional<base::Closure> handle_message_from_ui_callback_;
   base::Optional<std::string> handle_message_from_ui_actual_json_message_;
   base::Optional<std::string> handle_message_from_ui_json_message_response_;
+
+  base::Optional<HandleEcNotificationRequestCallback>
+      handle_ec_event_request_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(FakeDiagnosticsProcessor);
 };

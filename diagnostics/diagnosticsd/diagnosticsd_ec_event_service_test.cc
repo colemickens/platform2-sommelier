@@ -32,7 +32,7 @@ namespace {
 class MockDiagnosticsdEcEventServiceDelegate
     : public DiagnosticsdEcEventService::Delegate {
  public:
-  MOCK_METHOD1(SendEcEventToDiagnosticsProcessor,
+  MOCK_METHOD1(SendGrpcEcEventToDiagnosticsProcessor,
                void(const DiagnosticsdEcEventService::EcEvent& ec_event));
 };
 
@@ -76,7 +76,7 @@ class DiagnosticsdEcEventServiceTest : public testing::Test {
     ASSERT_EQ(write(fifo_write_end_.get(), &ec_event, sizeof(ec_event)),
               sizeof(ec_event));
 
-    EXPECT_CALL(delegate_, SendEcEventToDiagnosticsProcessor(ec_event))
+    EXPECT_CALL(delegate_, SendGrpcEcEventToDiagnosticsProcessor(ec_event))
         .WillOnce(Invoke(
             [callback](const DiagnosticsdEcEventService::EcEvent& ec_event) {
               callback.Run();

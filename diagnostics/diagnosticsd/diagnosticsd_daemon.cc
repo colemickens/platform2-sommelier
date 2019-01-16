@@ -40,8 +40,11 @@ int DiagnosticsdDaemon::OnInit() {
   if (exit_code != EXIT_SUCCESS)
     return exit_code;
 
-  if (!diagnosticsd_core_.StartGrpcCommunication()) {
+  if (!diagnosticsd_core_.Start()) {
     LOG(ERROR) << "Shutting down due to fatal initialization failure";
+    base::RunLoop run_loop;
+    diagnosticsd_core_.ShutDown(run_loop.QuitClosure());
+    run_loop.Run();
     return EXIT_FAILURE;
   }
 
@@ -61,13 +64,14 @@ void DiagnosticsdDaemon::RegisterDBusObjectsAsync(
 }
 
 void DiagnosticsdDaemon::OnShutdown(int* error_code) {
-  // Gracefully tear down the Mojo Embedder API and the gRPC server and client.
-  VLOG(1) << "Tearing down Mojo and gRPC communication";
+  // Gracefully tear down pieces that require asynchronous shutdown.
+  VLOG(1) << "Shutting down";
+
   base::RunLoop run_loop;
   const base::Closure barrier_closure =
       BarrierClosure(2, run_loop.QuitClosure());
   mojo::edk::ShutdownIPCSupport(barrier_closure);
-  diagnosticsd_core_.TearDownGrpcCommunication(barrier_closure);
+  diagnosticsd_core_.ShutDown(barrier_closure);
   run_loop.Run();
 
   VLOG(0) << "Shutting down with code " << *error_code;

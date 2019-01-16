@@ -5,6 +5,7 @@
 #ifndef DIAGNOSTICS_DIAGNOSTICSD_DIAGNOSTICSD_EC_EVENT_SERVICE_H_
 #define DIAGNOSTICS_DIAGNOSTICSD_DIAGNOSTICSD_EC_EVENT_SERVICE_H_
 
+#include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <memory>
@@ -34,13 +35,16 @@ class DiagnosticsdEcEventService final {
 
     EcEvent(uint16_t size, uint16_t type, const uint16_t data[6])
         : size(size), type(type) {
-      memcpy(this->data, data, sizeof(this->data));
+      memset(this->data, 0, sizeof(this->data));
+      memcpy(this->data, data,
+             std::min(sizeof(this->data), size * sizeof(data[0])));
     }
 
     bool operator==(const EcEvent& other) const {
       return memcmp(this, &other, sizeof(*this)) == 0;
     }
 
+    // |size| is number of received event words from EC driver items in |data|.
     uint16_t size;
     uint16_t type;
     uint16_t data[6];
@@ -52,9 +56,10 @@ class DiagnosticsdEcEventService final {
 
     // Called when event from EC was received.
     //
-    // Calls diagnostics processor |HandleEcEvent| gRPC function with
+    // Calls diagnostics processor |HandleEcNotification| gRPC function with
     // |payload| in request.
-    virtual void SendEcEventToDiagnosticsProcessor(const EcEvent& ec_event) = 0;
+    virtual void SendGrpcEcEventToDiagnosticsProcessor(
+        const EcEvent& ec_event) = 0;
   };
 
   explicit DiagnosticsdEcEventService(Delegate* delegate);

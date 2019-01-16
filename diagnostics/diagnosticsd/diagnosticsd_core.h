@@ -5,6 +5,7 @@
 #ifndef DIAGNOSTICS_DIAGNOSTICSD_DIAGNOSTICSD_CORE_H_
 #define DIAGNOSTICS_DIAGNOSTICSD_DIAGNOSTICSD_CORE_H_
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -20,6 +21,7 @@
 #include <mojo/public/cpp/bindings/binding.h>
 
 #include "diagnostics/diagnosticsd/diagnosticsd_dbus_service.h"
+#include "diagnostics/diagnosticsd/diagnosticsd_ec_event_service.h"
 #include "diagnostics/diagnosticsd/diagnosticsd_grpc_service.h"
 #include "diagnostics/diagnosticsd/diagnosticsd_mojo_service.h"
 #include "diagnostics/grpc_async_adapter/async_grpc_client.h"
@@ -35,6 +37,7 @@ namespace diagnostics {
 // by the diagnosticsd daemon and IPC clients.
 class DiagnosticsdCore final
     : public DiagnosticsdDBusService::Delegate,
+      public DiagnosticsdEcEventService::Delegate,
       public DiagnosticsdGrpcService::Delegate,
       public DiagnosticsdMojoService::Delegate,
       public chromeos::diagnosticsd::mojom::DiagnosticsdServiceFactory {
@@ -73,17 +76,25 @@ class DiagnosticsdCore final
 
   // Overrides the file system root directory for file operations in tests.
   void set_root_dir_for_testing(const base::FilePath& root_dir) {
+    ec_event_service_.set_root_dir_for_testing(root_dir);
     grpc_service_.set_root_dir_for_testing(root_dir);
   }
 
-  // Starts gRPC servers and clients.
-  bool StartGrpcCommunication();
+  // Overrides EC event fd events for |poll()| function in |ec_event_service_|
+  // service in tests.
+  void set_ec_event_service_fd_events_for_testing(int16_t events) {
+    ec_event_service_.set_event_fd_events_for_testing(events);
+  }
 
-  // Performs asynchronous shutdown and cleanup of gRPC servers and clients.
-  // This must be used before deleting this instance in case
-  // StartGrpcCommunication() was called and returned success - in that case,
-  // the instance must be destroyed only after |on_torn_down| has been called.
-  void TearDownGrpcCommunication(const base::Closure& on_torn_down);
+  // Starts gRPC servers, gRPC clients and EC event service.
+  bool Start();
+
+  // Performs asynchronous shutdown and cleanup of gRPC servers, gRPC clients
+  // and EC event service.
+  // This must be used before deleting this instance in case Start() was
+  // called and returned success - in that case, the instance must be
+  // destroyed only after |on_shutdown| has been called.
+  void ShutDown(const base::Closure& on_shutdown);
 
   // Register the D-Bus object that the diagnosticsd daemon exposes and tie
   // methods exposed by this object with the actual implementation.
@@ -104,7 +115,11 @@ class DiagnosticsdCore final
   // Shuts down the self instance after a Mojo fatal error happens.
   void ShutDownDueToMojoError(const std::string& debug_reason);
 
-  // DiagnosticsGrpcService::Delegate overrides:
+  // DiagnosticsdEcEventService::Delegate overrides:
+  void SendGrpcEcEventToDiagnosticsProcessor(
+      const DiagnosticsdEcEventService::EcEvent& ec_event) override;
+
+  // DiagnosticsdGrpcService::Delegate overrides:
   void PerformWebRequestToBrowser(
       WebRequestHttpMethod http_method,
       const std::string& url,
@@ -170,6 +185,9 @@ class DiagnosticsdCore final
   // (alternative ways, like checking |mojo_service_factory_binding_|, are
   // unreliable during shutdown).
   bool mojo_service_bind_attempted_ = false;
+
+  // EcEvent-related members:
+  DiagnosticsdEcEventService ec_event_service_{this /* delegate */};
 
   DISALLOW_COPY_AND_ASSIGN(DiagnosticsdCore);
 };
