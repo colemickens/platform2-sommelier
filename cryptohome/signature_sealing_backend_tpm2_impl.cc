@@ -334,7 +334,7 @@ bool SignatureSealingBackendTpm2Impl::CreateSealedSecret(
   // Seal the secret value.
   std::string sealed_value;
   tpm_result =
-      trunks->tpm_utility->SealData(secret_value.to_string(), policy_digest,
+      trunks->tpm_utility->SealData(secret_value.to_string(), policy_digest, "",
                                     session->GetDelegate(), &sealed_value);
   if (tpm_result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error sealing secret data: " << GetErrorString(tpm_result);

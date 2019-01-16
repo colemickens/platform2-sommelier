@@ -533,7 +533,7 @@ TEST_F(Tpm2Test, SealToPCR0Success) {
   EXPECT_CALL(mock_tpm_utility_, GetPolicyDigestForPcrValues(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(policy_digest), Return(TPM_RC_SUCCESS)));
   std::string data_to_seal;
-  EXPECT_CALL(mock_tpm_utility_, SealData(_, policy_digest, _, _))
+  EXPECT_CALL(mock_tpm_utility_, SealData(_, policy_digest, "", _, _))
       .WillOnce(DoAll(SaveArg<0>(&data_to_seal), Return(TPM_RC_SUCCESS)));
   EXPECT_TRUE(tpm_->SealToPCR0(value, &sealed_value));
   EXPECT_EQ(data_to_seal, value.to_string());
@@ -550,7 +550,7 @@ TEST_F(Tpm2Test, SealToPCR0PolicyFailure) {
 TEST_F(Tpm2Test, SealToPCR0Failure) {
   SecureBlob value("value");
   SecureBlob sealed_value;
-  EXPECT_CALL(mock_tpm_utility_, SealData(_, _, _, _))
+  EXPECT_CALL(mock_tpm_utility_, SealData(_, _, "", _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_FALSE(tpm_->SealToPCR0(value, &sealed_value));
 }
@@ -1458,9 +1458,9 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Seal) {
   EXPECT_CALL(mock_tpm_utility_, GenerateRandom(kSecretValue.size(), _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kSecretValue), Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_utility_,
-              SealData(kSecretValue, kTrialPolicyDigest, _, _))
+              SealData(kSecretValue, kTrialPolicyDigest, "", _, _))
       .WillOnce(
-          DoAll(SetArgPointee<3>(kSealedSecretValue), Return(TPM_RC_SUCCESS)));
+          DoAll(SetArgPointee<4>(kSealedSecretValue), Return(TPM_RC_SUCCESS)));
 
   // Trigger the secret creation.
   SignatureSealedData sealed_data;

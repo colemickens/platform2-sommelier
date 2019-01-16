@@ -619,7 +619,7 @@ bool Tpm2Impl::SealToPCR0(const brillo::Blob& value,
   }
   std::string data_to_seal(value.begin(), value.end());
   std::string sealed_data;
-  result = trunks->tpm_utility->SealData(data_to_seal, policy_digest,
+  result = trunks->tpm_utility->SealData(data_to_seal, policy_digest, "",
                                          session->GetDelegate(), &sealed_data);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating sealed object: " << GetErrorString(result);
