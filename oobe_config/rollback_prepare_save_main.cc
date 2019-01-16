@@ -6,6 +6,7 @@
 #include <base/files/file_path.h>
 #include <brillo/syslog_logging.h>
 
+#include "oobe_config/metrics.h"
 #include "oobe_config/oobe_config.h"
 #include "oobe_config/rollback_helper.h"
 
@@ -26,6 +27,7 @@ int main(int argc, char* argv[]) {
   InitLog();
   base::CommandLine::Init(argc, argv);
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
+  oobe_config::Metrics metrics;
 
   const bool should_save = oobe_config::OobeConfig().ShouldSaveRollbackData();
   const bool force = cl->HasSwitch(kForce);
@@ -36,6 +38,8 @@ int main(int argc, char* argv[]) {
 
     if (!save_succeeded) {
       LOG(ERROR) << "Rollback prepare save failed.";
+      metrics.RecordSaveResult(
+          oobe_config::Metrics::RollbackSaveResult::kStage1Failure);
       return 1;
     }
     return 0;
