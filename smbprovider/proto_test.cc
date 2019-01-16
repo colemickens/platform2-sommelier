@@ -121,8 +121,9 @@ TEST_F(SmbProviderProtoTest, IsValidOptionsForValidProtos) {
       CreateGetSharesOptionsProto("smb://192.168.0.1");
   EXPECT_TRUE(IsValidOptions(get_shares_proto));
 
-  RemountOptionsProto remount_proto =
-      CreateRemountOptionsProto("smb://testShare/", 3 /* mount_id */);
+  RemountOptionsProto remount_proto = CreateRemountOptionsProto(
+      "smb://testShare/", "" /* workgroup */, "" /* username */,
+      3 /* mount_id */, MountConfig(true /* enable_ntlm */));
   EXPECT_TRUE(IsValidOptions(remount_proto));
 
   UpdateMountCredentialsOptionsProto update_proto =

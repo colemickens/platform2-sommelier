@@ -5,6 +5,7 @@
 #include "smbprovider/smbprovider_test_helper.h"
 
 #include <algorithm>
+#include <utility>
 
 #include <gtest/gtest.h>
 
@@ -195,28 +196,24 @@ GetSharesOptionsProto CreateGetSharesOptionsProto(
 }
 
 RemountOptionsProto CreateRemountOptionsProto(const std::string& path,
-                                              int32_t mount_id) {
+                                              const std::string& workgroup,
+                                              const std::string& username,
+                                              int32_t mount_id,
+                                              MountConfig mount_config) {
   RemountOptionsProto options;
   options.set_path(path);
   options.set_mount_id(mount_id);
-  return options;
-}
-
-RemountOptionsProto CreateRemountOptionsProto(const std::string& path,
-                                              int32_t mount_id,
-                                              const MountConfig& mount_config) {
-  RemountOptionsProto remount_options;
-  remount_options.set_path(path);
-  remount_options.set_mount_id(mount_id);
+  options.set_workgroup(workgroup);
+  options.set_username(username);
 
   // set_allocated_mount_config() transfers ownership of |mount_config| to
   // |mount_options| so |mount_config| needs to be created in the heap.
   auto config = std::make_unique<MountConfigProto>();
   config->set_enable_ntlm(mount_config.enable_ntlm);
 
-  remount_options.set_allocated_mount_config(config.release());
+  options.set_allocated_mount_config(config.release());
 
-  return remount_options;
+  return options;
 }
 
 authpolicy::KerberosFiles CreateKerberosFilesProto(
@@ -368,16 +365,13 @@ ProtoBlob CreateGetSharesOptionsBlob(const std::string& server_url) {
   return SerializeProtoToBlobAndCheck(CreateGetSharesOptionsProto(server_url));
 }
 
-ProtoBlob CreateRemountOptionsBlob(const std::string& path, int32_t mount_id) {
-  return CreateRemountOptionsBlob(path, mount_id,
-                                  MountConfig(true /* enable_ntlm */));
-}
-
 ProtoBlob CreateRemountOptionsBlob(const std::string& path,
+                                   const std::string& workgroup,
+                                   const std::string& username,
                                    int32_t mount_id,
                                    MountConfig mount_config) {
-  return SerializeProtoToBlobAndCheck(
-      CreateRemountOptionsProto(path, mount_id, mount_config));
+  return SerializeProtoToBlobAndCheck(CreateRemountOptionsProto(
+      path, workgroup, username, mount_id, std::move(mount_config)));
 }
 
 ProtoBlob CreateUpdateMountCredentialsOptionsBlob(int32_t mount_id,

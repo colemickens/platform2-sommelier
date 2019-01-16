@@ -3010,7 +3010,9 @@ TEST_F(SmbProviderTest, RemountFailsWithInvalidProto) {
 // mimic the behavior of remounting a dormant share.
 TEST_F(SmbProviderTest, RemountSucceedsOnInvalidShare) {
   const int32_t mount_id = 1;
-  ProtoBlob blob = CreateRemountOptionsBlob("smb://testshare/none", mount_id);
+  ProtoBlob blob = CreateRemountOptionsBlob(
+      "smb://testshare/none", "" /* workgroup */, "" /* username */, mount_id,
+      MountConfig(true /* enable_ntlm */));
 
   EXPECT_EQ(ERROR_OK, CastError(smbprovider_->Remount(blob, base::ScopedFD())));
   EXPECT_EQ(1, mount_manager_->MountCount());
@@ -3022,7 +3024,9 @@ TEST_F(SmbProviderTest, RemountSucceedsOnValidShare) {
   fake_samba_->AddDirectory("smb://testshare");
 
   const int32_t mount_id = 1;
-  ProtoBlob blob = CreateRemountOptionsBlob("smb://testshare", mount_id);
+  ProtoBlob blob = CreateRemountOptionsBlob(
+      "smb://testshare", "" /* workgroup */, "" /* username */, mount_id,
+      MountConfig(true /* enable_ntlm */));
 
   EXPECT_EQ(ERROR_OK, CastError(smbprovider_->Remount(blob, base::ScopedFD())));
   EXPECT_EQ(1, mount_manager_->MountCount());
@@ -3467,8 +3471,9 @@ TEST_F(SmbProviderTest, TestRemountConfigEnableNTLM) {
 
   const int32_t mount_id = 1;
   MountConfig mount_config(true /* enable_ntlm */);
-  ProtoBlob blob = CreateRemountOptionsBlob("smb://testshare", mount_id,
-                                            std::move(mount_config));
+  ProtoBlob blob = CreateRemountOptionsBlob(
+      "smb://testshare", "" /* workgroup */, "" /* username */, mount_id,
+      std::move(mount_config));
 
   EXPECT_EQ(ERROR_OK, CastError(smbprovider_->Remount(blob, base::ScopedFD())));
   EXPECT_EQ(1, mount_manager_->MountCount());
@@ -3481,8 +3486,9 @@ TEST_F(SmbProviderTest, TestRemountConfigDisableNTLM) {
 
   const int32_t mount_id = 1;
   MountConfig mount_config(false /* enable_ntlm */);
-  ProtoBlob blob = CreateRemountOptionsBlob("smb://testshare", mount_id,
-                                            std::move(mount_config));
+  ProtoBlob blob = CreateRemountOptionsBlob(
+      "smb://testshare", "" /* workgroup */, "" /* username */, mount_id,
+      std::move(mount_config));
 
   EXPECT_EQ(ERROR_OK, CastError(smbprovider_->Remount(blob, base::ScopedFD())));
   EXPECT_EQ(1, mount_manager_->MountCount());
