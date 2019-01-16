@@ -273,15 +273,15 @@ TEST_F(TpmUtilityTest, CreateCertifiedKeyFailCertify) {
 }
 
 TEST_F(TpmUtilityTest, SealToPCR0) {
-  EXPECT_CALL(mock_tpm_utility_, SealData("fake_data", _, _, _))
-      .WillOnce(DoAll(SetArgPointee<3>("fake_sealed"), Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_utility_, SealData("fake_data", _, "", _, _))
+      .WillOnce(DoAll(SetArgPointee<4>("fake_sealed"), Return(TPM_RC_SUCCESS)));
   std::string sealed_data;
   EXPECT_TRUE(tpm_utility_->SealToPCR0("fake_data", &sealed_data));
   EXPECT_EQ("fake_sealed", sealed_data);
 }
 
 TEST_F(TpmUtilityTest, SealToPCR0Fail) {
-  EXPECT_CALL(mock_tpm_utility_, SealData("fake_data", _, _, _))
+  EXPECT_CALL(mock_tpm_utility_, SealData("fake_data", _, "", _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   std::string sealed_data;
   EXPECT_FALSE(tpm_utility_->SealToPCR0("fake_data", &sealed_data));
