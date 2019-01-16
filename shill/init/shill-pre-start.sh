@@ -46,11 +46,16 @@ fi
 
 # Create private directory for data which needs to persists across sessions.
 mkdir -p /var/lib/shill
+
+# Create directory for backing files for metrics.
+# mkdir before `chown shill` to remove requirement of dac_override capability.
+mkdir -p /var/lib/shill/metrics
+
+# Set permissions for /var/lib/shill
 chown shill:shill /var/lib/shill
 chmod 0755 /var/lib/shill
 
-# Create directory for backing files for metrics.
-mkdir -p /var/lib/shill/metrics
+# Set permissions for /var/lib/shill/metrics
 chown -R shill:shill /var/lib/shill/metrics
 chmod 0755 /var/lib/shill/metrics
 
