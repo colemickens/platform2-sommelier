@@ -31,9 +31,17 @@ int main(int argc, char* argv[]) {
 
   base::CommandLine::Init(argc, argv);
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
+  bool save_result;
   if (cl->HasSwitch(kTestUnencrypted)) {
-    oobe_config::OobeConfig().UnencryptedRollbackSave();
+    save_result = oobe_config::OobeConfig().UnencryptedRollbackSave();
   } else {
-    oobe_config::OobeConfig().EncryptedRollbackSave();
+    save_result = oobe_config::OobeConfig().EncryptedRollbackSave();
   }
+
+  if (!save_result) {
+    LOG(ERROR) << "Failed to save rollback data";
+    return 0;
+  }
+
+  return 0;
 }
