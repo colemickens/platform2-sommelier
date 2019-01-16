@@ -15,6 +15,7 @@
 #include <gmock/gmock.h>
 
 #include "cryptohome/credentials.h"
+#include "cryptohome/mount.h"
 
 namespace cryptohome {
 class VaultKeyset;
@@ -32,7 +33,9 @@ class MockHomeDirs : public HomeDirs {
   MOCK_METHOD4(GetValidKeyset,
                bool(const Credentials&, VaultKeyset*, int*, MountError*));
   MOCK_METHOD1(Remove, bool(const std::string&));
-  MOCK_METHOD2(Migrate, bool(const Credentials&, const brillo::SecureBlob&));
+  MOCK_METHOD3(Migrate, bool(const Credentials&,
+                             const brillo::SecureBlob&,
+                             scoped_refptr<Mount>));
   MOCK_CONST_METHOD1(Exists, bool(const std::string&));
   MOCK_CONST_METHOD2(GetVaultKeyset,
                      VaultKeyset*(const std::string&, const std::string&));

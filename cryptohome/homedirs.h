@@ -216,9 +216,11 @@ class HomeDirs {
   virtual bool MoveKeyset(const std::string& obfuscated, int src, int dst);
 
   // Migrates the cryptohome for the supplied obfuscated username from the
-  // supplied old key to the supplied new key.
+  // supplied old key to the supplied new key. Reuses |user_mount| if it's not
+  // null.
   virtual bool Migrate(const Credentials& newcreds,
-                       const brillo::SecureBlob& oldkey);
+                       const brillo::SecureBlob& oldkey,
+                       scoped_refptr<Mount> user_mount);
 
   // Returns the path to the user's chaps token directory.
   virtual base::FilePath GetChapsTokenDir(const std::string& username) const;

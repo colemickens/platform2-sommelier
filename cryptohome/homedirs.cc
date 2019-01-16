@@ -1433,23 +1433,25 @@ int64_t HomeDirs::ComputeSize(const std::string& account_id) {
 }
 
 bool HomeDirs::Migrate(const Credentials& newcreds,
-                       const SecureBlob& oldkey) {
+                       const SecureBlob& oldkey,
+                       scoped_refptr<Mount> user_mount) {
   SecureBlob newkey;
   newcreds.GetPasskey(&newkey);
   UsernamePasskey oldcreds(newcreds.username().c_str(), oldkey);
-  scoped_refptr<Mount> mount = mount_factory_->New();
-  mount->Init(platform_, crypto_, timestamp_cache_,
-              base::BindRepeating(&base::DoNothing));
-
   std::string obfuscated = newcreds.GetObfuscatedUsername(system_salt_);
-  if (!mount->MountCryptohome(oldcreds, Mount::MountArgs(), NULL)) {
-    LOG(ERROR) << "Migrate: Mount failed";
-    // Fail as early as possible. Note that we don't have to worry about leaking
-    // this mount - Mount unmounts itself if it's still mounted in the
-    // destructor.
-    return false;
+  if (!user_mount) {
+    user_mount = mount_factory_->New();
+    user_mount->Init(platform_, crypto_, timestamp_cache_,
+                     base::BindRepeating(&base::DoNothing));
+    if (!user_mount->MountCryptohome(oldcreds, Mount::MountArgs(), NULL)) {
+      LOG(ERROR) << "Migrate: Mount failed";
+      // Fail as early as possible. Note that we don't have to worry about
+      // leaking this mount - Mount unmounts itself if it's still mounted in the
+      // destructor.
+      return false;
+    }
   }
-  int key_index = mount->CurrentKey();
+  int key_index = user_mount->CurrentKey();
   if (key_index == -1) {
     LOG(ERROR) << "Attempted migration of key-less mount.";
     return false;

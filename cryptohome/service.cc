@@ -1254,8 +1254,10 @@ void Service::DoMigrateKeyEx(AccountIdentifier* account,
   UsernamePasskey credentials(account->account_id().c_str(),
                               SecureBlob(migrate_request->secret()));
 
+  scoped_refptr<cryptohome::Mount> mount =
+      GetMountForUser(GetAccountId(*account));
   if (!homedirs_->Migrate(credentials,
-                          SecureBlob(auth_request->key().secret()))) {
+                          SecureBlob(auth_request->key().secret()), mount)) {
     reply.set_error(CRYPTOHOME_ERROR_MIGRATE_KEY_FAILED);
   } else {
     reply.clear_error();
