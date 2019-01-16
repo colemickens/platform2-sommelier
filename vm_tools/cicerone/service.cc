@@ -527,8 +527,8 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
   }
   container->set_ipv4_address(info.ipv4_address);
 
-  // Found the VM with a matching container subnet, register the IP address
-  // for the container with that VM object.
+  // Found the VM with a matching CID, register the IP address for the container
+  // with that VM object.
   std::string string_ip;
   if (!IPv4AddressToString(info.ipv4_address, &string_ip)) {
     LOG(ERROR) << "Failed converting IP address to string: "
@@ -1098,10 +1098,7 @@ std::unique_ptr<dbus::Response> Service::NotifyVmStarted(
   }
 
   vms_[std::make_pair(request.owner_id(), std::move(request.vm_name()))] =
-      std::make_unique<VirtualMachine>(request.container_ipv4_subnet(),
-                                       request.container_ipv4_netmask(),
-                                       request.ipv4_address(),
-                                       request.cid());
+      std::make_unique<VirtualMachine>(request.cid());
   if (primary_owner_id_.empty() || vms_.empty()) {
     primary_owner_id_ = request.owner_id();
   }

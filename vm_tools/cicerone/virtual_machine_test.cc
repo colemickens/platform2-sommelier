@@ -32,7 +32,7 @@ constexpr char kFakeContainerName2[] = "cube";
 // Test fixture for actually testing the VirtualMachine functionality.
 class VirtualMachineTest : public ::testing::Test {
  public:
-  VirtualMachineTest() : vm_(0, 0, 0, 0) {}
+  VirtualMachineTest() : vm_(0) {}
   ~VirtualMachineTest() override = default;
 
  protected:

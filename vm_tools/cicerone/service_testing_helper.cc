@@ -23,8 +23,6 @@ namespace cicerone {
 
 constexpr char ServiceTestingHelper::kDefaultVmName[];
 constexpr char ServiceTestingHelper::kDefaultOwnerId[];
-constexpr uint32_t ServiceTestingHelper::kDefaultSubnet;
-constexpr uint32_t ServiceTestingHelper::kDefaultNetmask;
 constexpr uint32_t ServiceTestingHelper::kDefaultAddress;
 constexpr uint32_t ServiceTestingHelper::kDefaultCid;
 constexpr char ServiceTestingHelper::kDefaultPeerAddress[];
@@ -248,9 +246,6 @@ void ServiceTestingHelper::PretendDefaultVmStarted() {
   NotifyVmStartedRequest request;
   request.set_vm_name(kDefaultVmName);
   request.set_owner_id(kDefaultOwnerId);
-  request.set_container_ipv4_subnet(kDefaultSubnet);
-  request.set_container_ipv4_netmask(kDefaultNetmask);
-  request.set_ipv4_address(kDefaultAddress);
   request.set_cid(kDefaultCid);
   EmptyMessage response;
 

@@ -130,9 +130,6 @@ class Service final : public base::MessageLoopForIO::Watcher {
   // container tokens and querying if a container is running.
   void NotifyCiceroneOfVmStarted(const std::string& owner_id,
                                  const std::string& vm_name,
-                                 uint32_t container_subnet,
-                                 uint32_t container_netmask,
-                                 uint32_t ipv4_address,
                                  uint32_t vsock_cid);
   void NotifyCiceroneOfVmStopped(const std::string& owner_id,
                                  const std::string& vm_name);

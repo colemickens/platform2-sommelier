@@ -37,15 +37,8 @@ constexpr int64_t kLongOperationTimeoutSeconds = 120;
 
 }  // namespace
 
-VirtualMachine::VirtualMachine(uint32_t container_subnet,
-                               uint32_t container_netmask,
-                               uint32_t ipv4_address,
-                               uint32_t cid)
-    : container_subnet_(container_subnet),
-      container_netmask_(container_netmask),
-      ipv4_address_(ipv4_address),
-      vsock_cid_(cid),
-      weak_ptr_factory_(this) {}
+VirtualMachine::VirtualMachine(uint32_t cid)
+    : vsock_cid_(cid), weak_ptr_factory_(this) {}
 
 VirtualMachine::~VirtualMachine() = default;
 

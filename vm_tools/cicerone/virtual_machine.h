@@ -78,20 +78,8 @@ class VirtualMachine {
     std::vector<std::string> failure_reasons;
   };
 
-  VirtualMachine(uint32_t container_subnet,
-                 uint32_t container_netmask,
-                 uint32_t ipv4_address,
-                 uint32_t cid);
+  explicit VirtualMachine(uint32_t cid);
   ~VirtualMachine();
-
-  // The VM's container subnet netmask in network byte order.
-  uint32_t container_netmask() const { return container_netmask_; }
-
-  // The first address in the VM's container subnet in network byte order.
-  uint32_t container_subnet() const { return container_subnet_; }
-
-  // The first address in the VM's container subnet in network byte order.
-  uint32_t ipv4_address() const { return ipv4_address_; }
 
   // The VM's cid.
   uint32_t cid() const { return vsock_cid_; }
@@ -210,10 +198,6 @@ class VirtualMachine {
   std::vector<std::string> GetContainerNames();
 
  private:
-  uint32_t container_subnet_;
-  uint32_t container_netmask_;
-  uint32_t ipv4_address_;
-
   // Virtual socket context id to be used when communicating with this VM.
   uint32_t vsock_cid_;
 

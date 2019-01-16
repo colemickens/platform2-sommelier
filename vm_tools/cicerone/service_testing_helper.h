@@ -34,8 +34,6 @@ class ServiceTestingHelper {
   // fuzzer corpus.
   static constexpr char kDefaultVmName[] = "default_vm";
   static constexpr char kDefaultOwnerId[] = "default_user";
-  static constexpr uint32_t kDefaultSubnet = 0xab13cd00;
-  static constexpr uint32_t kDefaultNetmask = 0xffffff00;
   static constexpr uint32_t kDefaultAddress = 0xab13cd01;
   static constexpr uint32_t kDefaultCid = 219;
   static constexpr char kDefaultPeerAddress[] = "vsock:219";

@@ -138,8 +138,8 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   // Notifies the service that a container with |container_token| and running
   // in a VM |cid| has completed startup. Sets |result| to true if this maps to
-  // a subnet inside a currently running VM and |container_token| matches a
-  // security token for that VM; false otherwise. Signals |event| when done.
+  // a currently running VM and |container_token| matches a security token for
+  // that VM; false otherwise. Signals |event| when done.
   void ContainerStartupCompleted(const std::string& container_token,
                                  const uint32_t cid,
                                  const uint32_t garcon_vsock_port,
@@ -148,8 +148,8 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   // Notifies the service that a container with |container_token| and running
   // in a VM with |cid| is shutting down. Sets |result| to true if this maps to
-  // a subnet inside a currently running VM and |container_token| matches a
-  // security token for that VM; false otherwise. Signals |event| when done.
+  // a currently running VM and |container_token| matches a security token for
+  // that VM; false otherwise. Signals |event| when done.
   void ContainerShutdown(const std::string& container_token,
                          const uint32_t cid,
                          bool* result,
