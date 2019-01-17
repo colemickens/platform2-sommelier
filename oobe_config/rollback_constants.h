@@ -27,6 +27,10 @@ extern const base::FilePath kEncryptedStatefulRollbackDataPath;
 extern const base::FilePath kFirstStageCompletedFile;
 extern const base::FilePath kSecondStageCompletedFile;
 
+// The name of the marker file used to trigger a save of rollback data
+// during the next shutdown.
+extern const base::FilePath kRollbackSaveMarkerFile;
+
 // The path to the file that indicates if OOBE has completed.
 extern const base::FilePath kOobeCompletedFile;
 

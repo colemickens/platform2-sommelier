@@ -332,4 +332,8 @@ bool OobeConfig::CheckThirdStage() const {
   return true;
 }
 
+bool OobeConfig::ShouldSaveRollbackData() const {
+  return FileExists(kRollbackSaveMarkerFile);
+}
+
 }  // namespace oobe_config

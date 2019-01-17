@@ -69,6 +69,8 @@ class OobeConfig {
   bool CheckSecondStage() const;
   bool CheckThirdStage() const;
 
+  bool ShouldSaveRollbackData() const;
+
  private:
   // Returns the file path of |file_path| which includes the prefix if set.
   // |file_path| must be an absolute path starting with "/".
