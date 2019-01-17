@@ -117,29 +117,6 @@ remove_old_files /var/log/power_manager "power*"
 # Remove old vmlog logs (written by metrics_daemon)
 remove_old_files /var/log/vmlog "vmlog.*"
 
-# Remove old Android logs
-# TODO(hidehiko): Remove these in M72.
-rm -f /var/log/android.kmsg
-rm -f /var/log/arc-adbd.log
-rm -f /var/log/arc-boot-continue.log
-rm -f /var/log/arc-camera.log
-rm -f /var/log/arc-lifetime.log
-rm -f /var/log/arc-network.log
-rm -f /var/log/arc-obb-mounter.log
-rm -f /var/log/arc-removable-media.log
-rm -f /var/log/arc-sdcard.log
-rm -f /var/log/arc-sensor.log
-rm -f /var/log/arc-setfattr.log
-rm -f /var/log/arc-stale-directory-remover.log
-rm -f /var/log/arc-start-sysctl.log
-rm -f /var/log/arc-stop-sysctl.log
-rm -f /var/log/arc-system-mount.log
-rm -f /var/log/arc-ureadahead-trace.log
-rm -f /var/log/arc-ureadahead.log
-
-# TODO(hidehiko): Remove these in M73.
-rm -rf /var/log/android
-
 # Remove iwlwifi logs older than one hour, since they are large.
 find /var/log -name "last_iwlwifi_dump*" -mmin +60 -delete
 
