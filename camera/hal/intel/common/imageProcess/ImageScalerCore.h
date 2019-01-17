@@ -16,8 +16,10 @@
 
 #ifndef _IMAGESCALER_CORE_H_
 #define _IMAGESCALER_CORE_H_
-#include <memory>
+#include "CommonUtilMacros.h"
 #include <libyuv.h>
+#include <memory>
+#include <vector>
 
 namespace cros {
 namespace intel {

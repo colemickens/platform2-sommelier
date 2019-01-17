@@ -18,6 +18,7 @@
 #define _COMMON_UTIL_MACROS_H_
 
 #include <algorithm>
+#include "LogHelper.h"
 #include <string>
 
 /**

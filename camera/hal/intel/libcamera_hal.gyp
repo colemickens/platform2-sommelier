@@ -117,6 +117,7 @@
         'psl/ipu3/SensorHwOp.cpp',
         'psl/ipu3/SettingsProcessor.cpp',
         'psl/ipu3/SkyCamProxy.cpp',
+        'psl/ipu3/SWPostProcessor.cpp',
         'psl/ipu3/SyncManager.cpp',
         'psl/ipu3/ipc/IPCAic.cpp',
         'psl/ipu3/ipc/IPCAiq.cpp',

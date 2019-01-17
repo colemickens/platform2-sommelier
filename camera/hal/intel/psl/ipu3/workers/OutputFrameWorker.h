@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2018 Intel Corporation.
+ * Copyright (C) 2017-2019 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,12 +17,11 @@
 #ifndef PSL_IPU3_WORKERS_OUTPUTFRAMEWORKER_H_
 #define PSL_IPU3_WORKERS_OUTPUTFRAMEWORKER_H_
 
-#include "cameraOrientationDetector/CameraOrientationDetector.h"
 #include <cros-camera/camera_thread.h>
 #include "FaceEngine.h"
 #include "FrameWorker.h"
 #include "tasks/ICaptureEventSource.h"
-#include "tasks/JpegEncodeTask.h"
+#include "SWPostProcessor.h"
 
 namespace cros {
 namespace intel {
@@ -42,53 +41,6 @@ public:
     status_t postRun();
 
 private:
-    class SWPostProcessor {
-    public:
-        enum PostProcessType {
-            // Processe frame in order
-            PROCESS_NONE = 0,
-            PROCESS_ROTATE = 1 << 0,
-            PROCESS_SCALING = 1 << 1,
-            PROCESS_CROP = 1 << 2,
-            PROCESS_JPEG_ENCODING = 1 << 3
-        };
-
-    public:
-        SWPostProcessor(int cameraId);
-        ~SWPostProcessor();
-
-        status_t configure(camera3_stream_t* outStream, int inputW, int inputH,
-                           int inputFmt = V4L2_PIX_FMT_NV12);
-        bool needPostProcess() const {
-            return (mProcessType != PROCESS_NONE);
-        };
-        status_t cropFrameToSameAspectRatio(std::shared_ptr<CameraBuffer>& srcBuf,
-                            std::shared_ptr<CameraBuffer>& dstBuf);
-        status_t scaleFrame(std::shared_ptr<CameraBuffer>& srcBuf,
-                            std::shared_ptr<CameraBuffer>& dstBuf);
-        status_t processFrame(std::shared_ptr<CameraBuffer>& input,
-                              std::shared_ptr<CameraBuffer>& output,
-                              std::shared_ptr<ProcUnitSettings>& settings,
-                              Camera3Request* request,
-                              bool needReprocess);
-
-    private:
-        int getRotationDegrees(camera3_stream_t* stream) const;
-        status_t convertJpeg(std::shared_ptr<CameraBuffer> buffer,
-                             std::shared_ptr<CameraBuffer> jpegBuffer,
-                             Camera3Request *request);
-
-    private:
-        int mCameraId;
-        int mProcessType;
-        camera3_stream_t* mStream;
-        /* Working buffers for post-processing*/
-        std::vector<uint8_t> mRotateBuffer;
-        std::vector<std::shared_ptr<CameraBuffer>> mPostProcessBufs;
-
-        std::unique_ptr<JpegEncodeTask> mJpegTask;
-    };
-
     struct ProcessingData {
         std::shared_ptr<CameraBuffer> mOutputBuffer;
         std::shared_ptr<CameraBuffer> mWorkingBuffer;
