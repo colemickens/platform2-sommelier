@@ -121,7 +121,7 @@ bool Tpm2Impl::SealData(AuthorizationDelegate* session_delegate,
                         Blob* sealed_value) {
   const std::string data_to_seal(value.begin(), value.end());
   std::string sealed_data_str;
-  TPM_RC result = tpm_utility_->SealData(data_to_seal, policy_digest,
+  TPM_RC result = tpm_utility_->SealData(data_to_seal, policy_digest, "",
                                          session_delegate, &sealed_data_str);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating sealed object: " << GetErrorString(result);
