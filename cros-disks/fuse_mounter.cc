@@ -155,8 +155,9 @@ MountErrorType FUSEMounter::MountImpl() {
       LOG(ERROR) << "Can't bind /run/shill";
       return MOUNT_ERROR_INTERNAL;
     }
-    // Hardcoded hosts are mounted into /etc/hosts.d.
-    if (!mount_process.BindMount("/etc/hosts.d", "/etc/hosts.d", false)) {
+    // Hardcoded hosts are mounted into /etc/hosts.d when Crostini is enabled.
+    if (platform_->PathExists("/etc/hosts.d") &&
+        !mount_process.BindMount("/etc/hosts.d", "/etc/hosts.d", false)) {
       LOG(ERROR) << "Can't bind /etc/hosts.d";
       return MOUNT_ERROR_INTERNAL;
     }
