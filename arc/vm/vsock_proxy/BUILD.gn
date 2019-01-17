@@ -8,7 +8,10 @@ import("//common-mk/proto_library.gni")
 group("all") {
   deps = [ ":server_proxy" ]
   if (use.test) {
-    deps += [ ":server_proxy_test" ]
+    deps += [
+      ":client_proxy_lib",
+      ":vsock_proxy_test",
+    ]
   }
 }
 
@@ -26,18 +29,22 @@ proto_library("message") {
   sources = [ "${proto_in_dir}/message.proto" ]
 }
 
-static_library("server_proxy_lib") {
+static_library("vsock_proxy_lib") {
   configs += [ ":target_defaults" ]
   deps = [ ":message" ]
-  # TODO(b/121188898): Consider sharing the code with client implementation.
   sources = [
     "file_descriptor_util.cc",
     "pipe_stream.cc",
-    "server_proxy.cc",
     "socket_stream.cc",
     "vsock_proxy.cc",
     "vsock_stream.cc",
   ]
+}
+
+static_library("server_proxy_lib") {
+  configs += [ ":target_defaults" ]
+  deps = [ ":vsock_proxy_lib" ]
+  sources = [ "server_proxy.cc" ]
 }
 
 executable("server_proxy") {
@@ -50,6 +57,18 @@ executable("server_proxy") {
 }
 
 if (use.test) {
+  # client_proxy is used only in VM guest, though build here for testing.
+  # TODO(b/121198129): Add actual unittest for those code.
+  # Currently, this exercises only that the library is successfully built.
+  static_library("client_proxy_lib") {
+    configs += [ ":target_defaults" ]
+    deps = [ ":vsock_proxy_lib" ]
+    sources = [
+      "client_proxy.cc",
+      "client_proxy_service.cc",
+    ]
+  }
+
   pkg_config("test_config") {
     pkg_deps = [
       "libbrillo-test-${libbase_ver}",
@@ -57,14 +76,14 @@ if (use.test) {
     ]
   }
 
-  executable("server_proxy_test") {
+  executable("vsock_proxy_test") {
     configs += [
       "//common-mk:test",
       ":target_defaults",
       ":test_config",
     ]
     deps = [
-      ":server_proxy_lib",
+      ":vsock_proxy_lib",
       "//common-mk/testrunner",
     ]
     # TODO(b/121198129): Add more testing coverage.
