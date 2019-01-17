@@ -96,6 +96,40 @@ class ClobberState {
                               const base::File& progress_tty,
                               bool fast);
 
+  // Removes the following keys from the VPD. Do not do this for a safe wipe.
+  //   first_active_omaha_ping_sent
+  //   recovery_count
+  static void RemoveVPDKeys();
+
+  // Partition metadata fields that can be read using ReadCgptProperty.
+  // |kSuccessfulProperty| is a 1 bit value indicating if a kernel partition
+  // has been successfully booted, while |kPriorityProperty| is a 4 bit value
+  // indicating what order the kernel partitions should be booted in, 15 being
+  // the highest, 1 the lowest, and 0 meaning not bootable.
+  // More information on partition metadata is available at.
+  // https://www.chromium.org/chromium-os/chromiumos-design-docs/disk-format
+  enum CgptProperty { kSuccessfulProperty, kPriorityProperty };
+
+  // Reads partition metadata from partition numbered |partition_number| on
+  // |disk|, storing the value in |value_out|. Returns true on success.
+  static bool ReadCgptProperty(const base::FilePath& disk,
+                               int partition_number,
+                               CgptProperty property,
+                               int* value_out);
+
+  // Searches |drive_name| for the partition labeled |partition_label| and
+  // returns its partition number if exactly one partition was found. Returns
+  // -1 on error.
+  static int GetPartitionNumber(const base::FilePath& drive_name,
+                                const std::string& partition_label);
+
+  // Make sure the kernel partition numbered |kernel_partition| is still
+  // bootable after being wiped. The system may be in AU state that active
+  // kernel does not have "successful" bit set to 1, but the kernel has been
+  // successfully booted.
+  static void EnsureKernelIsBootable(const base::FilePath root_disk,
+                                     int kernel_partition);
+
   ClobberState(const Arguments& args, std::unique_ptr<CrosSystem> cros_system);
 
   // Run the clobber state routine.
@@ -132,6 +166,9 @@ class ClobberState {
   // otherwise false.
   bool IsRotational(const base::FilePath& device_path);
 
+  // Makes a new filesystem on |wipe_info_.stateful_device|.
+  int CreateStatefulFileSystem();
+
   void SetArgsForTest(const Arguments& args);
   Arguments GetArgsForTest();
   void SetStatefulForTest(base::FilePath stateful_path);
@@ -159,7 +196,6 @@ class ClobberState {
 
  private:
   bool ClearBiometricSensorEntropy();
-  int RunClobberStateShell();
   int Reboot();
 
   Arguments args_;

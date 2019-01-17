@@ -21,6 +21,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/callback_helpers.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -43,7 +44,6 @@ namespace {
 constexpr char kStatefulPath[] = "/mnt/stateful_partition";
 constexpr char kPowerWashCountPath[] = "unencrypted/preserve/powerwash_count";
 constexpr char kClobberLogPath[] = "/tmp/clobber-state.log";
-constexpr char kClobberStateShellLogPath[] = "/tmp/clobber-state-shell.log";
 constexpr char kBioWashPath[] = "/usr/bin/bio_wash";
 constexpr char kPreservedFilesTarPath[] = "/tmp/preserve.tar";
 
@@ -66,25 +66,6 @@ void CgptFindShowFunctionNoOp(struct CgptFindParams*,
                               const char*,
                               int,
                               GptEntry*) {}
-
-int GetPartitionNumber(const base::FilePath& drive_name,
-                       const std::string& partition_label) {
-  CgptFindParams params;
-  memset(&params, 0, sizeof(params));
-  params.set_label = 1;
-  std::unique_ptr<char> partition_label_copy(strdup(partition_label.c_str()));
-  params.label = partition_label_copy.get();
-  std::unique_ptr<char> drive_name_copy(strdup(drive_name.value().c_str()));
-  params.drive_name = drive_name_copy.get();
-  params.show_fn = &CgptFindShowFunctionNoOp;
-  CgptFind(&params);
-  if (params.hits != 1) {
-    LOG(ERROR) << "Could not find partition number for partition "
-               << partition_label;
-    return -1;
-  }
-  return params.match_partnum;
-}
 
 bool ReadFileToInt(const base::FilePath& path, int* value) {
   std::string str;
@@ -165,13 +146,13 @@ bool GetBlockCount(const base::FilePath& device_path,
 bool MakeTTYRaw(const base::File& tty) {
   struct termios terminal_properties;
   if (tcgetattr(tty.GetPlatformFile(), &terminal_properties) != 0) {
-    LOG(WARNING) << "Getting properties of output TTY failed";
+    PLOG(WARNING) << "Getting properties of output TTY failed";
     return false;
   }
 
   cfmakeraw(&terminal_properties);
   if (tcsetattr(tty.GetPlatformFile(), TCSANOW, &terminal_properties) != 0) {
-    LOG(WARNING) << "Setting properties of output TTY failed";
+    PLOG(WARNING) << "Setting properties of output TTY failed";
     return false;
   }
   return true;
@@ -180,15 +161,15 @@ bool MakeTTYRaw(const base::File& tty) {
 void AppendFileToLog(const base::FilePath& file) {
   std::string file_contents;
   if (!base::ReadFileToString(file, &file_contents)) {
-    LOG(ERROR) << "Reading from temporary file failed: " << file.value();
+    // Even if reading file failed, some of its contents may have been read
+    // successfully, so we still attempt to append them to our log file.
+    PLOG(ERROR) << "Reading from temporary file failed: " << file.value();
   }
 
-  // Even if reading file failed, some of its contents may have been read
-  // successfully, so we still attempt to append them to our log file.
   if (!base::AppendToFile(base::FilePath(kClobberLogPath),
                           file_contents.c_str(), file_contents.size())) {
-    LOG(ERROR) << "Appending " << file.value()
-               << " to clobber-state log failed";
+    PLOG(ERROR) << "Appending " << file.value()
+                << " to clobber-state log failed";
   }
 }
 
@@ -686,6 +667,130 @@ bool ClobberState::WipeBlockDevice(const base::FilePath& device_path,
   return true;
 }
 
+// static
+void ClobberState::RemoveVPDKeys() {
+  std::vector<std::string> keys_to_remove{"recovery_count",
+                                          "first_active_omaha_ping_sent"};
+  base::FilePath temp_file;
+  base::CreateTemporaryFile(&temp_file);
+  for (const std::string& key : keys_to_remove) {
+    brillo::ProcessImpl vpd;
+    vpd.AddArg("/usr/sbin/vpd");
+    vpd.AddStringOption("-i", "RW_VPD");
+    vpd.AddStringOption("-d", key);
+    // Do not report failures as the key might not even exist in the VPD.
+    vpd.RedirectOutput(temp_file.value());
+    vpd.Run();
+    AppendFileToLog(temp_file);
+  }
+}
+
+// static
+int ClobberState::GetPartitionNumber(const base::FilePath& drive_name,
+                                     const std::string& partition_label) {
+  // TODO(C++20): Switch to aggregate initialization once we require C++20.
+  CgptFindParams params = {};
+  params.set_label = 1;
+  params.label = partition_label.c_str();
+  params.drive_name = drive_name.value().c_str();
+  params.show_fn = &CgptFindShowFunctionNoOp;
+  CgptFind(&params);
+  if (params.hits != 1) {
+    LOG(ERROR) << "Could not find partition number for partition "
+               << partition_label;
+    return -1;
+  }
+  return params.match_partnum;
+}
+
+// static
+bool ClobberState::ReadCgptProperty(const base::FilePath& disk,
+                                    int partition_number,
+                                    CgptProperty property,
+                                    int* value_out) {
+  // TODO(b/120644363) Convert this to use a proper cgpt API for reading
+  // partition metadata once one is created.
+  if (!value_out)
+    return false;
+  base::FilePath output;
+  base::CreateTemporaryFile(&output);
+  brillo::ProcessImpl cgpt;
+  cgpt.RedirectOutput(output.value());
+  cgpt.AddArg("/usr/bin/cgpt");
+  cgpt.AddArg("show");
+  if (property == kSuccessfulProperty) {
+    cgpt.AddArg("-S");
+  } else if (property == kPriorityProperty) {
+    cgpt.AddArg("-P");
+  } else {
+    return false;
+  }
+  cgpt.AddIntOption("-i", partition_number);
+  cgpt.AddArg(disk.value());
+  if (cgpt.Run() != CGPT_OK)
+    return false;
+
+  int value;
+  if (!ReadFileToInt(output, &value))
+    return false;
+  *value_out = value;
+  return true;
+}
+
+// static
+void ClobberState::EnsureKernelIsBootable(const base::FilePath root_disk,
+                                          int kernel_partition) {
+  int successful;
+  if (!ReadCgptProperty(root_disk, kernel_partition, kSuccessfulProperty,
+                        &successful)) {
+    LOG(ERROR) << "Failed to read successful value from partition "
+               << kernel_partition << " on disk " << root_disk.value();
+    // If we couldn't read, we'll err on the side of caution and try to set the
+    // successful bit anyways.
+    successful = 0;
+  }
+
+  if (successful < 1) {
+    // TODO(C++20): Switch to aggregate initialization once we require C++20.
+    CgptAddParams params = {};
+    params.partition = kernel_partition;
+    params.set_successful = 1;
+    params.drive_name = root_disk.value().c_str();
+    params.successful = 1;
+    if (CgptAdd(&params) != CGPT_OK) {
+      LOG(ERROR) << "Failed to set sucessful for active kernel partition: "
+                 << kernel_partition;
+    }
+  }
+
+  int priority;
+  if (!ReadCgptProperty(root_disk, kernel_partition, kPriorityProperty,
+                        &priority)) {
+    LOG(ERROR) << "Failed to read priority value from partition "
+               << kernel_partition << " on disk " << root_disk.value();
+    // If we couldn't read, we'll err on the side of caution and try to set the
+    // priority anyways.
+    priority = 0;
+  }
+
+  if (priority < 1) {
+    // TODO(C++20): Switch to aggregate initialization once we require C++20.
+    CgptPrioritizeParams params = {};
+    params.set_partition = kernel_partition;
+    params.drive_name = root_disk.value().c_str();
+    // When reordering kernel priorities to set the active kernel to highest,
+    // use 3 as the highest value. Since there are only 3 kernel partitions,
+    // this ensures that all priorities are unique.
+    params.max_priority = 3;
+    if (CgptPrioritize(&params) != CGPT_OK) {
+      LOG(ERROR) << "Failed to prioritize active kernel partition: "
+                 << kernel_partition;
+    }
+  }
+
+  sync();
+}
+
 ClobberState::ClobberState(const Arguments& args,
                            std::unique_ptr<CrosSystem> cros_system)
     : args_(args),
@@ -784,8 +889,40 @@ std::vector<base::FilePath> ClobberState::GetPreservedFilesList() {
   return preserved_files;
 }
 
+int ClobberState::CreateStatefulFileSystem() {
+  base::FilePath temp_file;
+  base::CreateTemporaryFile(&temp_file);
+
+  brillo::ProcessImpl mkfs;
+  if (wipe_info_.is_mtd_flash) {
+    mkfs.AddArg("/sbin/mkfs.ubifs");
+    mkfs.AddArg("-y");
+    mkfs.AddStringOption("-x", "none");
+    mkfs.AddIntOption("-R", 0);
+    mkfs.AddArg(wipe_info_.stateful_device.value());
+  } else {
+    mkfs.AddArg("/sbin/mkfs.ext4");
+    mkfs.AddArg(wipe_info_.stateful_device.value());
+    // TODO(wad) tune2fs.
+  }
+  mkfs.RedirectOutput(temp_file.value());
+  LOG(INFO) << "Creating stateful file system";
+  int ret = mkfs.Run();
+  AppendFileToLog(temp_file);
+  return ret;
+}
+
 int ClobberState::Run() {
   DCHECK(cros_system_);
+
+  // Defer callback to relocate log file back to stateful partition so that it
+  // will be preserved after a reboot.
+  base::ScopedClosureRunner relocate_clobber_state_log(base::BindRepeating(
+      [](base::FilePath stateful_path) {
+        base::Move(base::FilePath(kClobberLogPath),
+                   stateful_path.Append("unencrypted/clobber-state.log"));
+      },
+      stateful_));
 
   LOG(INFO) << "Beginning clobber-state run";
   LOG(INFO) << "Factory wipe: " << args_.factory_wipe;
@@ -819,8 +956,8 @@ int ClobberState::Run() {
     LOG(INFO) << "Preserving file: " << fp.value();
   }
 
-  int ret = PreserveFiles(stateful_, preserved_files,
-                          base::FilePath(kPreservedFilesTarPath));
+  base::FilePath preserved_tar_file(kPreservedFilesTarPath);
+  int ret = PreserveFiles(stateful_, preserved_files, preserved_tar_file);
   if (ret) {
     LOG(ERROR) << "Preserving files failed with code " << ret;
   }
@@ -878,21 +1015,26 @@ int ClobberState::Run() {
   LOG(INFO) << "Inactive kernel device: "
             << wipe_info_.inactive_kernel_device.value();
 
-  brillo::ProcessImpl clobber_log;
-  clobber_log.AddArg("/sbin/clobber-log");
-  clobber_log.AddArg("--preserve");
-  clobber_log.AddArg("clobber-state");
+  base::FilePath temp_file;
+  base::CreateTemporaryFile(&temp_file);
+
+  brillo::ProcessImpl log_preserve;
+  log_preserve.AddArg("/sbin/clobber-log");
+  log_preserve.AddArg("--preserve");
+  log_preserve.AddArg("clobber-state");
   if (args_.factory_wipe)
-    clobber_log.AddArg("factory");
+    log_preserve.AddArg("factory");
   if (args_.fast_wipe)
-    clobber_log.AddArg("fast");
+    log_preserve.AddArg("fast");
   if (args_.keepimg)
-    clobber_log.AddArg("keepimg");
+    log_preserve.AddArg("keepimg");
   if (args_.safe_wipe)
-    clobber_log.AddArg("safe");
+    log_preserve.AddArg("safe");
   if (args_.rollback_wipe)
-    clobber_log.AddArg("rollback");
-  clobber_log.Run();
+    log_preserve.AddArg("rollback");
+  log_preserve.RedirectOutput(temp_file.value());
+  log_preserve.Run();
+  AppendFileToLog(temp_file);
 
   AttemptSwitchToFastWipe(is_rotational);
 
@@ -908,24 +1050,56 @@ int ClobberState::Run() {
                << wipe_info_.stateful_device.value();
   }
 
-  LOG(INFO) << "Starting clobber-state.sh";
-  ret = RunClobberStateShell();
+  ret = CreateStatefulFileSystem();
   if (ret)
-    LOG(ERROR) << "clobber-state.sh returned with code " << ret;
+    LOG(ERROR) << "Unable to create stateful file system. Error code: " << ret;
 
-  // Append logs from clobber-state.sh to clobber-state log.
-  std::string clobber_state_shell_logs;
-  if (!base::ReadFileToString(base::FilePath(kClobberStateShellLogPath),
-                              &clobber_state_shell_logs)) {
-    LOG(ERROR) << "Reading clobber-state.sh logs failed";
+  // Mount the fresh image for last minute additions.
+  std::string file_system_type = wipe_info_.is_mtd_flash ? "ubifs" : "ext4";
+  if (mount(wipe_info_.stateful_device.value().c_str(),
+            stateful_.value().c_str(), file_system_type.c_str(), 0,
+            nullptr) != 0) {
+    PLOG(ERROR) << "Unable to mount stateful partition at "
+                << stateful_.value();
   }
 
-  // Even if reading clobber-state.sh logs failed, some of its contents may have
-  // been read successfully, so we still attempt to append them to our log file.
-  if (!base::AppendToFile(base::FilePath(kClobberLogPath),
-                          clobber_state_shell_logs.c_str(),
-                          clobber_state_shell_logs.size())) {
-    LOG(ERROR) << "Appending clobber-state.sh logs to clobber-state log failed";
+  if (base::PathExists(preserved_tar_file)) {
+    brillo::ProcessImpl tar;
+    tar.AddArg("/bin/tar");
+    tar.AddArg("-C");
+    tar.AddArg(stateful_.value());
+    tar.AddArg("-xf");
+    tar.AddArg(preserved_tar_file.value());
+    tar.RedirectOutput(temp_file.value());
+    ret = tar.Run();
+    AppendFileToLog(temp_file);
+    if (ret != 0) {
+      LOG(WARNING) << "Restoring preserved files failed with code " << ret;
+    }
+    base::WriteFile(stateful_.Append("unencrypted/.powerwash_completed"), "",
+                    0);
+  }
+
+  brillo::ProcessImpl log_restore;
+  log_restore.AddArg("/sbin/clobber-log");
+  log_restore.AddArg("--restore");
+  log_restore.AddArg("clobber-state");
+  log_restore.RedirectOutput(temp_file.value());
+  ret = log_restore.Run();
+  AppendFileToLog(temp_file);
+  if (ret != 0) {
+    LOG(WARNING) << "Restoring clobber.log failed with code " << ret;
+  }
+
+  // Destroy less sensitive data.
+  if (!args_.safe_wipe) {
+    RemoveVPDKeys();
+  }
+
+  if (!args_.keepimg) {
+    EnsureKernelIsBootable(root_disk_, wipe_info_.active_kernel_partition);
+    WipeDevice(wipe_info_.inactive_root_device);
+    WipeDevice(wipe_info_.inactive_kernel_device);
   }
 
   // Check if we're in developer mode, and if so, create developer mode marker
@@ -938,11 +1112,7 @@ int ClobberState::Run() {
   sync();
 
   LOG(INFO) << "clobber-state has completed";
-
-  // Relocate log file back to stateful partition so that it will be preserved
-  // after a reboot.
-  base::Move(base::FilePath(kClobberLogPath),
-             stateful_.Append("unencrypted/clobber-state.log"));
+  relocate_clobber_state_log.RunAndReset();
 
   // Factory wipe should stop here.
   if (args_.factory_wipe)
@@ -1135,39 +1305,6 @@ bool ClobberState::ClearBiometricSensorEntropy() {
   // Return true here so that we don't report spurious failures on platforms
   // without the bio_wash executable.
   return true;
-}
-
-int ClobberState::RunClobberStateShell() {
-  // The last argument to setenv is 1 to indicate that if the variable already
-  // exists in the environment, it will be overwritten.
-
-  // Command line arguments
-  setenv("FAST_WIPE", args_.fast_wipe ? "fast" : "", 1);
-  setenv("KEEPIMG", args_.keepimg ? "keepimg" : "", 1);
-  setenv("SAFE_WIPE", args_.safe_wipe ? "safe" : "", 1);
-
-  // Information about what devices to wipe and how to wipe them.
-  setenv("IS_MTD", wipe_info_.is_mtd_flash ? "1" : "0", 1);
-
-  setenv("ROOT_DISK", root_disk_.value().c_str(), 1);
-  setenv("STATE_DEV", wipe_info_.stateful_device.value().c_str(), 1);
-  setenv("OTHER_ROOT_DEV", wipe_info_.inactive_root_device.value().c_str(), 1);
-  setenv("OTHER_KERNEL_DEV", wipe_info_.inactive_kernel_device.value().c_str(),
-         1);
-
-  setenv("PARTITION_NUM_ROOT_A", std::to_string(partitions_.root_a).c_str(), 1);
-  setenv("PARTITION_NUM_ROOT_B", std::to_string(partitions_.root_b).c_str(), 1);
-  setenv("PARTITION_NUM_STATE", std::to_string(partitions_.stateful).c_str(),
-         1);
-  setenv("KERNEL_PART_NUM",
-         std::to_string(wipe_info_.active_kernel_partition).c_str(), 1);
-
-  setenv("TTY", terminal_path_.value().c_str(), 1);
-
-  brillo::ProcessImpl proc;
-  proc.AddArg("/sbin/clobber-state.sh");
-  proc.RedirectOutput(kClobberStateShellLogPath);
-  return proc.Run();
 }
 
 int ClobberState::Reboot() {
