@@ -69,4 +69,10 @@ filetrans_pattern_no_target_perm(cros_init_scripts, cros_run, cros_run_avahi_dae
 
 # init/tlsdated.conf
 filetrans_pattern_no_target_perm(cros_init_scripts, cros_run, cros_run_shill, dir, "shill");
-auditallow domain cros_run:dir create;
+
+# init/journald.conf
+filetrans_pattern_no_target_perm(cros_init_scripts, cros_run, cros_run_systemd, dir, "systemd");
+filetrans_pattern_no_target_perm(cros_init_scripts, cros_run_systemd, cros_run_systemd_journal, dir, "journal");
+
+# init/tpm-probe.conf
+filetrans_pattern_no_target_perm(cros_init_scripts, cros_run, cros_run_tcsd, dir, "tcsd");

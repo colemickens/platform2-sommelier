@@ -1,0 +1,4 @@
+type cros_tcsd, chromeos_domain, domain;
+permissive cros_tcsd;
+
+domain_auto_trans(cros_init, cros_tcsd_exec, cros_tcsd);

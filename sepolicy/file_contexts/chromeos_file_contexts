@@ -61,6 +61,7 @@ include(sepolicy/file_contexts/coreutils)
 /usr/sbin/jetstream-update-stats u:object_r:cros_jetstream_update_stats_exec:s0
 /usr/sbin/rsyslogd              u:object_r:cros_rsyslogd_exec:s0
 /usr/sbin/sslh(-fork|-select)?  u:object_r:cros_sslh_exec:s0
+/usr/sbin/tcsd                  u:object_r:cros_tcsd_exec:s0
 /usr/sbin/update_engine         u:object_r:cros_update_engine_exec:s0
 /usr/sbin/wpa_supplicant        u:object_r:cros_wpa_supplicant_exec:s0
 
@@ -204,3 +205,4 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /home/.shadow/[0-9a-z]{40}/mount/root/android-data u:object_r:cros_home_shadow_uid_root_android:s0
 /home/.shadow/[0-9a-z]{40}/mount/root/android-data/cache(/.*)? u:object_r:cros_home_shadow_uid_root_android_cache:s0
 /home/.shadow/[0-9a-z]{40}/mount/root/android-data/data u:object_r:system_data_file:s0
+/home/.shadow/[0-9a-z]{40}/mount/root/chaps(/.*)?   u:object_r:cros_home_shadow_uid_root_chaps:s0

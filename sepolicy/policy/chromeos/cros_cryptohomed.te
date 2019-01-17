@@ -15,6 +15,7 @@ filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid, cros_home_shadow_uid_r
 filetrans_pattern(cros_cryptohomed, cros_home_shadow_uid, cros_home_shadow_uid_user, dir, "user");
 filetrans_pattern_no_target_perm(cros_cryptohomed, cros_home_shadow_uid_user, cros_downloads_file, dir, "Downloads");
 filetrans_pattern_no_target_perm(cros_cryptohomed, cros_home_shadow_uid_user, cros_downloads_file, dir, "MyFiles");
+filetrans_pattern_no_target_perm(cros_cryptohomed, cros_home_shadow_uid_root, cros_home_shadow_uid_root_chaps, dir, "chaps");
 
 dev_only(
 auditallow domain cros_home_shadow_uid_root:dir create;

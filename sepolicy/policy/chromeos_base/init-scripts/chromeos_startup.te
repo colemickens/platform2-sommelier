@@ -34,6 +34,7 @@ type cros_var_log_asan, file_type;
 filetrans_pattern(chromeos_startup, cros_run, chromeos_startup_tmp_file, file);
 filetrans_pattern(chromeos_startup, cros_var_log, chromeos_startup_mount_options_log_file, file, "mount_options.log");
 filetrans_pattern(chromeos_startup, cros_var_log, cros_var_log_asan, dir, "asan");
+filetrans_pattern(chromeos_startup, cros_run_lock, cros_power_override_lock_file, dir, "power_override");
 
 allow chromeos_startup self:capability { chown fsetid linux_immutable sys_resource };
 

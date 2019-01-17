@@ -52,6 +52,7 @@ type cros_session_manager_exec, exec_type, file_type;
 type cros_shill_exec, exec_type, file_type;
 type cros_sshd_exec, exec_type, file_type;
 type cros_sslh_exec, exec_type, file_type;
+type cros_tcsd_exec, exec_type, file_type;
 type cros_tlsdated_exec, exec_type, file_type;
 type cros_udevd_exec, exec_type, file_type;
 type cros_update_engine_exec, exec_type, file_type;
@@ -66,6 +67,7 @@ type cros_home_shadow, file_type;
 type cros_home_shadow_uid, file_type;
 type cros_home_shadow_uid_user, file_type;
 type cros_home_shadow_uid_root, file_type;
+type cros_home_shadow_uid_root_chaps, file_type;
 type cros_home_shadow_uid_root_android, file_type;
 type cros_home_shadow_uid_root_android_cache, file_type;
 type system_data_file, file_type; # this is Android file label.
@@ -144,7 +146,13 @@ type cros_run_lock, file_type;
 type cros_run_power_manager, file_type;
 type cros_run_session_manager, file_type;
 type cros_run_shill, file_type;
+type cros_run_systemd, file_type;
+type cros_run_systemd_journal, file_type;
+type cros_run_tcsd, file_type;
 type cros_run_udev, file_type;
+
+type cros_conntrackd_lock_file, file_type;
+type cros_power_override_lock_file, file_type;
 
 type cros_conntrackd_conf_file, file_type;
 type cros_ld_conf_cache, file_type;
