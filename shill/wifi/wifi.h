@@ -85,7 +85,6 @@
 #include <base/cancelable_callback.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
-#include <metrics/timer.h>
 
 #include "shill/device.h"
 #include "shill/event_dispatcher.h"
@@ -716,7 +715,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   ScanState scan_state_;
   ScanMethod scan_method_;
-  chromeos_metrics::Timer scan_timer_;
 
   // Used to compute the number of bytes received since the link went up.
   uint64_t receive_byte_count_at_connect_;

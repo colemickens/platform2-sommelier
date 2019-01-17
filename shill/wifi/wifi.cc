@@ -2689,23 +2689,11 @@ void WiFi::SetScanState(ScanState new_state,
     is_terminal_state = true;
   }
 
-  base::TimeDelta elapsed_time;
-  if (new_state == kScanScanning || new_state == kScanBackgroundScanning) {
-    if (!scan_timer_.Start()) {
-      LOG(ERROR) << "Scan start unreliable";
-    }
-  } else {
-    if (!scan_timer_.GetElapsedTime(&elapsed_time)) {
-      LOG(ERROR) << "Scan time unreliable";
-    }
-  }
   SLOG(this, log_level) << (reason ? reason : "<unknown>")
                         << " - " << link_name()
                         << ": Scan state: "
                         << ScanStateString(scan_state_, scan_method_)
-                        << " -> " << ScanStateString(new_state, new_method)
-                        << " @ " << elapsed_time.InMillisecondsF()
-                        << " ms into scan.";
+                        << " -> " << ScanStateString(new_state, new_method);
   if (!state_or_method_changed)
     return;
 
