@@ -76,6 +76,7 @@ const CREATE_LXD_CONTAINER_METHOD: &str = "CreateLxdContainer";
 const START_LXD_CONTAINER_METHOD: &str = "StartLxdContainer";
 const GET_LXD_CONTAINER_USERNAME_METHOD: &str = "GetLxdContainerUsername";
 const SET_UP_LXD_CONTAINER_USER_METHOD: &str = "SetUpLxdContainerUser";
+const APP_SEARCH_METHOD: &str = "AppSearch";
 const GET_DEBUG_INFORMATION: &str = "GetDebugInformation";
 const CONTAINER_STARTED_SIGNAL: &str = "ContainerStarted";
 const CONTAINER_SHUTDOWN_SIGNAL: &str = "ContainerShutdown";

@@ -995,6 +995,7 @@ bool Service::Init(
       {kExportLxdContainerMethod, &Service::ExportLxdContainer},
       {kImportLxdContainerMethod, &Service::ImportLxdContainer},
       {kGetDebugInformationMethod, &Service::GetDebugInformation},
+      {kAppSearchMethod, &Service::AppSearch},
   };
 
   for (const auto& iter : kServiceMethods) {
@@ -2133,6 +2134,60 @@ std::unique_ptr<dbus::Response> Service::GetDebugInformation(
         }
       }
     }
+  }
+
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::AppSearch(
+    dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received AppSearch request";
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  AppSearchRequest request;
+  AppSearchResponse response;
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse AppSearchRequest from message";
+    return dbus::ErrorResponse::FromMethodCall(
+        method_call, DBUS_ERROR_FAILED, "Unable to parse AppSearchRequest");
+  }
+
+  VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
+  if (!vm) {
+    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
+    return dbus::ErrorResponse::FromMethodCall(
+        method_call, DBUS_ERROR_FAILED,
+        "Requested VM '" + request.vm_name() + "' does not exist");
+  }
+
+  std::string container_name = request.container_name().empty()
+                                   ? kDefaultContainerName
+                                   : request.container_name();
+  Container* container = vm->GetContainerForName(container_name);
+  if (!container) {
+    LOG(ERROR) << "Requested container does not exist: " << container_name;
+    return dbus::ErrorResponse::FromMethodCall(
+        method_call, DBUS_ERROR_FAILED,
+        "Requested container '" + container_name + "' does not exist");
+  }
+
+  std::vector<std::string> package_names;
+  std::string error_msg;
+
+  if (!container->AppSearch(request.query(), &package_names, &error_msg))
+    return dbus::ErrorResponse::FromMethodCall(method_call, DBUS_ERROR_FAILED,
+                                               error_msg);
+
+  for (auto& package_name : package_names) {
+    AppSearchResponse::AppSearchResult* package = response.add_packages();
+    package->set_package_name(package_name);
   }
 
   writer.AppendProtoAsArrayOfBytes(response);

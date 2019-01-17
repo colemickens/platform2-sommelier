@@ -25,6 +25,7 @@
         'container-rpcs',
       ],
       'sources': [
+        'garcon/app_search.cc',
         'garcon/desktop_file.cc',
         'garcon/host_notifier.cc',
         'garcon/icon_finder.cc',
@@ -274,6 +275,18 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'notificationd/dbus_service_test.cc',
+          ],
+        },
+        {
+          'target_name': 'garcon_app_search_test',
+          'type': 'executable',
+          'dependencies': [
+            'libgarcon',
+            '../common-mk/testrunner.gyp:testrunner',
+          ],
+          'includes': ['../common-mk/common_test.gypi'],
+          'sources': [
+            'garcon/app_search_test.cc',
           ],
         },
       ],

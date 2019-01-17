@@ -257,5 +257,33 @@ Container::UninstallPackageOwningFile(const std::string& desktop_file_id,
   return container_response.status();
 }
 
+bool Container::AppSearch(const std::string& query,
+                          std::vector<std::string>* out_package_names,
+                          std::string* out_error) {
+  CHECK(out_package_names);
+  CHECK(out_error);
+  vm_tools::container::AppSearchRequest container_request;
+  vm_tools::container::AppSearchResponse container_response;
+  container_request.set_query(query);
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+
+  grpc::Status status =
+      garcon_stub_->AppSearch(&ctx, container_request, &container_response);
+  if (!status.ok()) {
+    out_error->assign("Failed AppSearch with query '" + query +
+                      "' in container " + name_ + ": " +
+                      status.error_message());
+    LOG(ERROR) << *out_error;
+    return false;
+  }
+  for (auto& package : container_response.packages())
+    out_package_names->push_back(package.package_name());
+  return true;
+}
+
 }  // namespace cicerone
 }  // namespace vm_tools

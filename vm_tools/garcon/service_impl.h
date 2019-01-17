@@ -9,6 +9,8 @@
 
 #include <base/macros.h>
 #include <grpc++/grpc++.h>
+#include <string>
+#include <vector>
 
 #include "container_guest.grpc.pb.h"  // NOLINT(build/include)
 
@@ -59,8 +61,15 @@ class ServiceImpl final : public vm_tools::container::Garcon::Service {
       const vm_tools::container::GetDebugInformationRequest* request,
       vm_tools::container::GetDebugInformationResponse* response) override;
 
+  grpc::Status AppSearch(
+      grpc::ServerContext* ctx,
+      const vm_tools::container::AppSearchRequest* request,
+      vm_tools::container::AppSearchResponse* response) override;
+
  private:
   PackageKitProxy* package_kit_proxy_;  // Not owned.
+  // Stores the names of packages that match search constraints
+  std::vector<std::string> valid_packages_;
 
   DISALLOW_COPY_AND_ASSIGN(ServiceImpl);
 };

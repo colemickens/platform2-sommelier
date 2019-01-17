@@ -20,9 +20,7 @@
 #include <limits>
 #include <map>
 #include <memory>
-#include <string>
 #include <utility>
-#include <vector>
 
 #include <base/bind.h>
 #include <base/files/file_path.h>
@@ -33,6 +31,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
+#include "vm_tools/garcon/app_search.h"
 #include "vm_tools/garcon/desktop_file.h"
 #include "vm_tools/garcon/host_notifier.h"
 #include "vm_tools/garcon/icon_finder.h"
@@ -50,6 +49,8 @@ constexpr char kWaylandLowDensityDisplayEnv[] = "WAYLAND_DISPLAY_LOW_DENSITY";
 constexpr char kXCursorSizeEnv[] = "XCURSOR_SIZE";
 constexpr char kLowDensityXCursorSizeEnv[] = "XCURSOR_SIZE_LOW_DENSITY";
 constexpr size_t kMaxIconSize = 1048576;  // 1MB, very large for an icon
+constexpr char kDebtagsFilePath[] = "/var/lib/debtags/package-tags";
+constexpr char kInstalledMessage[] = "'install ok installed'";
 
 // Information about any errors that happen in the child process before the exec
 // call.  This is sent back to the parent process via a socket.
@@ -686,6 +687,47 @@ grpc::Status ServiceImpl::GetDebugInformation(
     *debug_information += "\n";
   }
 
+  return grpc::Status::OK;
+}
+
+grpc::Status ServiceImpl::AppSearch(
+    grpc::ServerContext* ctx,
+    const vm_tools::container::AppSearchRequest* request,
+    vm_tools::container::AppSearchResponse* response) {
+  LOG(INFO) << "Received request to search for not installed apps";
+
+  if (request->query().empty())
+    return grpc::Status(grpc::INVALID_ARGUMENT, "missing query");
+
+  std::string error_msg;
+
+  // Sort through and store valid packages from package-tags if it hasn't
+  // already been done.
+  if (valid_packages_.empty()) {
+    if (!ParseDebtags(kDebtagsFilePath, &valid_packages_, &error_msg))
+      return grpc::Status(grpc::FAILED_PRECONDITION, error_msg);
+  }
+
+  std::vector<std::pair<std::string, float>> results =
+      SearchPackages(valid_packages_, request->query());
+
+  // TODO(https://crbug.com/921429): Change checking for installed packages
+  // to use a list that we also update, along with the valid_packages list,
+  // when we call UpdateApplicationList or similar. To be done when feature
+  // is to be released and there is no feature flag.
+
+  // Check that packages are not already installed.
+  for (const std::pair<std::string, float>& package_name : results) {
+    std::string dpkg_out;
+    base::GetAppOutput({"dpkg-query", "--showformat='${Status}'", "--show",
+                        package_name.first},
+                       &dpkg_out);
+    if (dpkg_out != kInstalledMessage) {
+      vm_tools::container::AppSearchResponse::AppSearchResult* package =
+          response->add_packages();
+      package->set_package_name(package_name.first);
+    }
+  }
   return grpc::Status::OK;
 }
 

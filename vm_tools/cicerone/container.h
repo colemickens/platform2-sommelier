@@ -98,6 +98,10 @@ class Container {
   UninstallPackageOwningFile(const std::string& desktop_file_id,
                              std::string* out_error);
 
+  bool AppSearch(const std::string& query,
+                 std::vector<std::string>* out_package_names,
+                 std::string* out_error);
+
  private:
   std::string name_;
   std::string token_;
