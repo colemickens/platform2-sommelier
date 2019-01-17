@@ -19,6 +19,10 @@
 # comes from "sources", and "pkg" comes from the target path relative to
 # |mojo_root|.
 #
+# If you'd like to generate binding source code and headers, but not to
+# create static library, you can use generate_mojom_bindings_gen template,
+# instead.
+#
 # Parameters:
 #   sources
 #       The .mojom file paths.
@@ -36,87 +40,97 @@
 #       Otherwise it generates a thin archive assuming it's used inside the same package only.
 #   use_pic (optional)
 #       If true, generates a position independent code instead of position independent executable.
+#   mojom_bindings_generator (optional)
+#       Path to the mojom_bindings_generator.py script. This is useful if
+#       the script is not yet installed to the system, but the repository
+#       contains it.
+#       If not given, /usr/src/libmojo-${libbase_ver}/mojo/mojom_bindings_generator.py
+#       is used.
 
 import("//common-mk/pkg_config.gni")
 
-template("generate_mojom_bindings") {
-  action_name = target_name + "_gen"
-  forward_variables_from(invoker, [
-    "mojo_extra_args",
-    "mojo_root",
-  ])
-  pkg_config("generate_mojom_bindings_pkg_deps") {
-    pkg_deps = [
-      "libchrome-${libbase_ver}",
-      "libmojo-${libbase_ver}",
-    ]
+# This gn generates header files under ${root_gen_dir}/include.
+_mojo_output_base = "${root_gen_dir}/include"
+
+# Path to the directory which contains mojo template files.
+_mojo_templates_dir = "${root_gen_dir}/templates"
+
+# Thin wrapper to launch mojom_bindings_generator.py.
+_mojom_bindings_generator_wrapper =
+    "${platform2_root}/common-mk/mojom_bindings_generator_wrapper.py"
+
+# Generates C++ mojo bindings source code and headers.
+template("generate_mojom_bindings_gen") {
+  forward_variables_from(invoker,
+                         [
+                           "mojo_extra_args",
+                           "mojo_root",
+                           "mojom_bindings_generator",
+                         ])
+
+  if (defined(mojom_bindings_generator)) {
+    mojom_bindings_generator = rebase_path(mojom_bindings_generator)
+  } else {
+    mojom_bindings_generator = "${sysroot}/usr/src/libmojo-${libbase_ver}/mojo/mojom_bindings_generator.py"
   }
-  mojom_bindings_generator = "${sysroot}/usr/src/libmojo-${libbase_ver}/mojo/mojom_bindings_generator.py"
-  mojom_bindings_generator_wrapper = "${platform2_root}/common-mk/mojom_bindings_generator_wrapper.py"
-  mojo_templates_dir = "${root_gen_dir}/templates"
+
   if (!defined(mojo_extra_args)) {
     mojo_extra_args = []
   }
+
   if (!defined(mojo_root)) {
     mojo_root = "."
   }
   mojo_root = rebase_path(mojo_root)
-  all_dependent_configs = [
-    ":generate_mojom_bindings_pkg_deps",
-  ]
-
-  # This gn generates header files under ${root_gen_dir}/include.
-  mojo_output_base = "${root_gen_dir}/include"
-  config("generate_mojom_bindings_config") {
-    include_dirs = [mojo_output_base]
-  }
-
-  public_configs = [
-    ":generate_mojom_bindings_config",
-  ]
 
   action("mojo_templates_dir") {
     inputs = []
-    outputs = ["${mojo_templates_dir}"]
+    outputs = [
+      _mojo_templates_dir,
+    ]
     print("Creating mojo C++ templates dir")
     script = "//common-mk/file_generator_wrapper.py"
-    args = ["mkdir", "-p", "${mojo_templates_dir}"]
+    args = [
+      "mkdir",
+      "-p",
+      _mojo_templates_dir,
+    ]
   }
 
   action("mojo_templates") {
     inputs = [
-      "${mojom_bindings_generator}",
-      "${mojo_templates_dir}",
+      mojom_bindings_generator,
+      _mojo_templates_dir,
     ]
-    outputs = ["${mojo_templates_dir}/cpp_templates.zip"]
+    outputs = [
+      "${_mojo_templates_dir}/cpp_templates.zip",
+    ]
     print("Generating mojo C++ templates")
-    script = "${mojom_bindings_generator}"
+    script = mojom_bindings_generator
     args = [
       "--use_bundled_pylibs",
-      "precompile", "-o", "${mojo_templates_dir}",
+      "precompile",
+      "-o",
+      _mojo_templates_dir,
     ]
     deps = [
       ":mojo_templates_dir",
     ]
   }
 
-  action_foreach(action_name) {
-    forward_variables_from(invoker, [
-      "sources",
-    ])
+  action_foreach(target_name) {
+    forward_variables_from(invoker, [ "sources" ])
     inputs = [
-      "${mojom_bindings_generator}",
-      "${mojo_templates_dir}/cpp_templates.zip",
-    ]
+               _mojom_bindings_generator_wrapper,
+               mojom_bindings_generator,
+             ] + get_target_outputs(":mojo_templates")
 
-    mojo_include_path = "${mojo_root}"
-    mojo_depth = "${mojo_root}"
     # Generated files are referred using relative path from |mojo_root|,
     # separated from this target's path.
     # for example, if foo_pkg is a child of |mojo_root|,
     # "#include <foo_pkg/mojom/bar.mojom.h>"
     # even when this target itself is under foo_pkg/.
-    mojo_output_dir = mojo_output_base + "/" + rebase_path(".", mojo_root)
+    mojo_output_dir = _mojo_output_base + "/" + rebase_path(".", mojo_root)
     outputs = [
       "${mojo_output_dir}/{{source_target_relative}}-internal.h",
       "${mojo_output_dir}/{{source_target_relative}}-shared.cc",
@@ -125,19 +139,46 @@ template("generate_mojom_bindings") {
       "${mojo_output_dir}/{{source_target_relative}}.h",
     ]
     print("Generating mojo C++ bindings")
-    script = "${mojom_bindings_generator_wrapper}"
+    script = _mojom_bindings_generator_wrapper
     args = [
-      "${mojom_bindings_generator}", "--use_bundled_pylibs",
-      "generate", "{{source}}",
-      "--output_dir", mojo_output_base,
-      "--bytecode_path", "${mojo_templates_dir}",
-      "-I", "${mojo_include_path}",
-      "-d", "${mojo_depth}",
-      "--generators", "c++",
-      "${mojo_extra_args}",
-    ]
+             mojom_bindings_generator,
+             "--use_bundled_pylibs",
+             "generate",
+             "{{source}}",
+             "--output_dir",
+             _mojo_output_base,
+             "--bytecode_path",
+             _mojo_templates_dir,
+             "-I",
+             mojo_root,  # Mojo include path.
+             "-d",
+             mojo_root,  # Mojo depth.
+             "--generators",
+             "c++",
+           ] + mojo_extra_args
     deps = [
       ":mojo_templates",
+    ]
+  }
+}
+
+# Generates a static library for the given mojom files.
+template("generate_mojom_bindings") {
+  target_gen_name = target_name + "_gen"
+  generate_mojom_bindings_gen(target_gen_name) {
+    forward_variables_from(invoker,
+                           [
+                             "mojo_extra_args",
+                             "mojo_root",
+                             "mojom_bindings_generator",
+                             "sources",
+                           ])
+  }
+
+  pkg_config("generate_mojom_bindings_pkg_deps") {
+    pkg_deps = [
+      "libchrome-${libbase_ver}",
+      "libmojo-${libbase_ver}",
     ]
   }
 
@@ -148,9 +189,13 @@ template("generate_mojom_bindings") {
                              "public_deps",
                              "visibility",
                            ])
+    all_dependent_configs = [ ":generate_mojom_bindings_pkg_deps" ]
     if (defined(invoker.all_dependent_configs)) {
       all_dependent_configs += invoker.all_dependent_configs
     }
+
+    include_dirs = [ _mojo_output_base ]
+
     if (defined(invoker.public_configs)) {
       public_configs += invoker.public_configs
     }
@@ -165,12 +210,13 @@ template("generate_mojom_bindings") {
       configs -= [ "//common-mk:use_thin_archive" ]
       configs += [ "//common-mk:nouse_thin_archive" ]
     }
-    sources = get_target_outputs(":${action_name}")
     deps = [
-      ":${action_name}",
+      ":${target_gen_name}",
     ]
     if (defined(invoker.deps)) {
       deps += invoker.deps
     }
+
+    sources = get_target_outputs(":${target_gen_name}")
   }
 }
