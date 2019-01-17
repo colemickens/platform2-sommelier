@@ -58,6 +58,3 @@ chmod 0755 /var/lib/shill
 # Set permissions for /var/lib/shill/metrics
 chown -R shill:shill /var/lib/shill/metrics
 chmod 0755 /var/lib/shill/metrics
-
-# This option is no longer supported.
-rm -f /home/chronos/.disable_shill
