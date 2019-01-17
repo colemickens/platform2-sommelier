@@ -95,12 +95,10 @@ TEST(ContainerListenerImplTest,
             return StringMethodCallHelper(method_call, &unregister_hostname);
           }));
 
-  auto stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
-      grpc::CreateChannel(test_framework.GetContainerListenerTargetAddress(),
-                          grpc::InsecureChannelCredentials()));
-
-  grpc::ClientContext ctx;
-  grpc::Status status = stub->ContainerShutdown(&ctx, request, &response);
+  grpc::ServerContext ctx;
+  grpc::Status status = test_framework.get_service()
+                            .GetContainerListenerImpl()
+                            ->ContainerShutdown(&ctx, &request, &response);
   ASSERT_TRUE(status.ok()) << status.error_message();
 
   EXPECT_EQ(shutdown_result.vm_name(), ServiceTestingHelper::kDefaultVmName);
@@ -145,12 +143,10 @@ TEST(ContainerListenerImplTest,
         return ProtoMethodCallHelper(method_call, &dbus_result);
       }));
 
-  auto stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
-      grpc::CreateChannel(test_framework.GetContainerListenerTargetAddress(),
-                          grpc::InsecureChannelCredentials()));
-
-  grpc::ClientContext ctx;
-  grpc::Status status = stub->UpdateApplicationList(&ctx, request, &response);
+  grpc::ServerContext ctx;
+  grpc::Status status = test_framework.get_service()
+                            .GetContainerListenerImpl()
+                            ->UpdateApplicationList(&ctx, &request, &response);
   ASSERT_TRUE(status.ok()) << status.error_message();
 
   EXPECT_EQ(dbus_result.vm_name(), ServiceTestingHelper::kDefaultVmName);
@@ -387,12 +383,10 @@ TEST(ContainerListenerImplTest,
         return ProtoMethodCallHelper(method_call, &dbus_result);
       }));
 
-  auto stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
-      grpc::CreateChannel(test_framework.GetContainerListenerTargetAddress(),
-                          grpc::InsecureChannelCredentials()));
-
-  grpc::ClientContext ctx;
-  grpc::Status status = stub->UpdateApplicationList(&ctx, request, &response);
+  grpc::ServerContext ctx;
+  grpc::Status status = test_framework.get_service()
+                            .GetContainerListenerImpl()
+                            ->UpdateApplicationList(&ctx, &request, &response);
   ASSERT_TRUE(status.ok()) << status.error_message();
 
   EXPECT_EQ(dbus_result.vm_name(), ServiceTestingHelper::kDefaultVmName);
@@ -426,12 +420,10 @@ TEST(ContainerListenerImplTest, ValidOpenUrlCallShouldProduceDBusMessage) {
         return StringMethodCallHelper(method_call, &resulting_url);
       }));
 
-  auto stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
-      grpc::CreateChannel(test_framework.GetContainerListenerTargetAddress(),
-                          grpc::InsecureChannelCredentials()));
-
-  grpc::ClientContext ctx;
-  grpc::Status status = stub->OpenUrl(&ctx, request, &response);
+  grpc::ServerContext ctx;
+  grpc::Status status =
+      test_framework.get_service().GetContainerListenerImpl()->OpenUrl(
+          &ctx, &request, &response);
   ASSERT_TRUE(status.ok()) << status.error_message();
 
   EXPECT_EQ(resulting_url, kUrl);
@@ -460,13 +452,11 @@ TEST(ContainerListenerImplTest,
         ProtoSignalHelper(signal, &dbus_result);
       }));
 
-  auto stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
-      grpc::CreateChannel(test_framework.GetContainerListenerTargetAddress(),
-                          grpc::InsecureChannelCredentials()));
-
-  grpc::ClientContext ctx;
+  grpc::ServerContext ctx;
   grpc::Status status =
-      stub->InstallLinuxPackageProgress(&ctx, request, &response);
+      test_framework.get_service()
+          .GetContainerListenerImpl()
+          ->InstallLinuxPackageProgress(&ctx, &request, &response);
   ASSERT_TRUE(status.ok()) << status.error_message();
 
   EXPECT_EQ(dbus_result.vm_name(), ServiceTestingHelper::kDefaultVmName);
@@ -503,13 +493,11 @@ TEST(ContainerListenerImplTest,
         ProtoSignalHelper(signal, &dbus_result);
       }));
 
-  auto stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
-      grpc::CreateChannel(test_framework.GetContainerListenerTargetAddress(),
-                          grpc::InsecureChannelCredentials()));
-
-  grpc::ClientContext ctx;
+  grpc::ServerContext ctx;
   grpc::Status status =
-      stub->InstallLinuxPackageProgress(&ctx, request, &response);
+      test_framework.get_service()
+          .GetContainerListenerImpl()
+          ->InstallLinuxPackageProgress(&ctx, &request, &response);
   ASSERT_TRUE(status.ok()) << status.error_message();
 
   EXPECT_EQ(dbus_result.vm_name(), ServiceTestingHelper::kDefaultVmName);
@@ -543,13 +531,11 @@ TEST(ContainerListenerImplTest,
         ProtoSignalHelper(signal, &dbus_result);
       }));
 
-  auto stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
-      grpc::CreateChannel(test_framework.GetContainerListenerTargetAddress(),
-                          grpc::InsecureChannelCredentials()));
-
-  grpc::ClientContext ctx;
+  grpc::ServerContext ctx;
   grpc::Status status =
-      stub->UninstallPackageProgress(&ctx, request, &response);
+      test_framework.get_service()
+          .GetContainerListenerImpl()
+          ->UninstallPackageProgress(&ctx, &request, &response);
   ASSERT_TRUE(status.ok()) << status.error_message();
 
   EXPECT_EQ(dbus_result.vm_name(), ServiceTestingHelper::kDefaultVmName);
@@ -583,13 +569,11 @@ TEST(ContainerListenerImplTest,
         ProtoSignalHelper(signal, &dbus_result);
       }));
 
-  auto stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
-      grpc::CreateChannel(test_framework.GetContainerListenerTargetAddress(),
-                          grpc::InsecureChannelCredentials()));
-
-  grpc::ClientContext ctx;
+  grpc::ServerContext ctx;
   grpc::Status status =
-      stub->UninstallPackageProgress(&ctx, request, &response);
+      test_framework.get_service()
+          .GetContainerListenerImpl()
+          ->UninstallPackageProgress(&ctx, &request, &response);
   ASSERT_TRUE(status.ok()) << status.error_message();
 
   EXPECT_EQ(dbus_result.vm_name(), ServiceTestingHelper::kDefaultVmName);
@@ -627,12 +611,10 @@ TEST(ContainerListenerImplTest, ValidOpenTerminalCallShouldProduceDBusMessage) {
         return ProtoMethodCallHelper(method_call, &dbus_result);
       }));
 
-  auto stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
-      grpc::CreateChannel(test_framework.GetContainerListenerTargetAddress(),
-                          grpc::InsecureChannelCredentials()));
-
-  grpc::ClientContext ctx;
-  grpc::Status status = stub->OpenTerminal(&ctx, request, &response);
+  grpc::ServerContext ctx;
+  grpc::Status status =
+      test_framework.get_service().GetContainerListenerImpl()->OpenTerminal(
+          &ctx, &request, &response);
   ASSERT_TRUE(status.ok()) << status.error_message();
 
   EXPECT_EQ(dbus_result.vm_name(), ServiceTestingHelper::kDefaultVmName);
@@ -672,12 +654,10 @@ TEST(ContainerListenerImplTest,
         return ProtoMethodCallHelper(method_call, &dbus_result);
       }));
 
-  auto stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
-      grpc::CreateChannel(test_framework.GetContainerListenerTargetAddress(),
-                          grpc::InsecureChannelCredentials()));
-
-  grpc::ClientContext ctx;
-  grpc::Status status = stub->UpdateMimeTypes(&ctx, request, &response);
+  grpc::ServerContext ctx;
+  grpc::Status status =
+      test_framework.get_service().GetContainerListenerImpl()->UpdateMimeTypes(
+          &ctx, &request, &response);
   ASSERT_TRUE(status.ok()) << status.error_message();
 
   EXPECT_EQ(dbus_result.vm_name(), ServiceTestingHelper::kDefaultVmName);

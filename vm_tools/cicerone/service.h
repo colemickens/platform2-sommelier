@@ -83,6 +83,10 @@ class Service final : public base::MessageLoopForIO::Watcher {
                                           const std::string& container_name,
                                           const std::string& container_token);
 
+  // Stop Service from starting GRPC servers in a testing environment. Must
+  // be called before calling Service::Init (and therefore Service::Create).
+  static void DisableGrpcForTesting();
+
   // Connect to the Tremplin instance on the VM with the given |cid|.
   void ConnectTremplin(const uint32_t cid,
                        bool* result,
@@ -436,6 +440,10 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   // Handle to the SSH port forwarding process.
   brillo::ProcessImpl ssh_process_;
+
+  // Should Service start GRPC servers for ContainerListener and
+  // TremplinListener Used for testing
+  static bool run_grpc_;
 
   base::WeakPtrFactory<Service> weak_ptr_factory_;
 

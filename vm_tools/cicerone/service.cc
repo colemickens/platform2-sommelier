@@ -275,6 +275,10 @@ std::string TranslateUrlForHost(const std::string& url,
 
 }  // namespace
 
+// Should Service start GRPC servers for ContainerListener and TremplinListener
+// Used for testing
+bool Service::run_grpc_ = true;
+
 std::unique_ptr<Service> Service::Create(
     base::Closure quit_closure,
     const base::Optional<base::FilePath>& unix_socket_path,
@@ -301,11 +305,11 @@ Service::Service(base::Closure quit_closure, scoped_refptr<dbus::Bus> bus)
 }
 
 Service::~Service() {
-  if (grpc_server_container_) {
+  if (grpc_server_container_ && run_grpc_) {
     grpc_server_container_->Shutdown();
   }
 
-  if (grpc_server_tremplin_) {
+  if (grpc_server_tremplin_ && run_grpc_) {
     grpc_server_tremplin_->Shutdown();
   }
 }
@@ -1054,16 +1058,16 @@ bool Service::Init(const base::Optional<base::FilePath>& unix_socket_path) {
   }
 
   // Setup & start the gRPC listener services.
-  if (!SetupListenerService(&grpc_thread_container_, container_listener_.get(),
-                            container_listener_address,
-                            &grpc_server_container_)) {
+  if (run_grpc_ && !SetupListenerService(
+                       &grpc_thread_container_, container_listener_.get(),
+                       container_listener_address, &grpc_server_container_)) {
     LOG(ERROR) << "Failed to setup/startup the container grpc server";
     return false;
   }
 
-  if (!SetupListenerService(&grpc_thread_tremplin_, tremplin_listener_.get(),
-                            tremplin_listener_address,
-                            &grpc_server_tremplin_)) {
+  if (run_grpc_ && !SetupListenerService(
+                       &grpc_thread_tremplin_, tremplin_listener_.get(),
+                       tremplin_listener_address, &grpc_server_tremplin_)) {
     LOG(ERROR) << "Failed to setup/startup the tremplin grpc server";
     return false;
   }
@@ -1227,6 +1231,10 @@ bool Service::CreateContainerWithTokenForTesting(
 
   vm->CreateContainerWithTokenForTesting(container_name, container_token);
   return true;
+}
+
+void Service::DisableGrpcForTesting() {
+  run_grpc_ = false;
 }
 
 std::unique_ptr<dbus::Response> Service::GetContainerToken(

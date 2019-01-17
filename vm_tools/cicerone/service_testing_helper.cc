@@ -268,16 +268,12 @@ void ServiceTestingHelper::PretendDefaultVmStarted() {
   default_container_info.set_ipv4_address(kDefaultAddress);
   tremplin_test_stub_.SetGetContainerInfoResponse(default_container_info);
 
-  std::string tremplin_target_address = GetTremplinListenerTargetAddress();
-  auto tremplin_stub =
-      std::make_unique<vm_tools::tremplin::TremplinListener::Stub>(
-          grpc::CreateChannel(tremplin_target_address,
-                              grpc::InsecureChannelCredentials()));
+  grpc::ServerContext ctx1;
   vm_tools::tremplin::TremplinStartupInfo tremplin_startup_request;
   vm_tools::tremplin::EmptyMessage tremplin_response;
-  grpc::ClientContext ctx1;
-  grpc::Status status = tremplin_stub->TremplinReady(
-      &ctx1, tremplin_startup_request, &tremplin_response);
+  grpc::Status status = service_->GetTremplinListenerImpl()->TremplinReady(
+      &ctx1, &tremplin_startup_request, &tremplin_response);
+
   ASSERT_TRUE(status.ok()) << status.error_message();
 }
 
@@ -315,19 +311,13 @@ void ServiceTestingHelper::PretendDefaultContainerStarted() {
                                      kDefaultContainerToken);
 
   // Mark the container as started.
-  std::string container_target_address = GetContainerListenerTargetAddress();
-  LOG(INFO) << "Connecting to " << container_target_address;
-  auto container_stub =
-      std::make_unique<vm_tools::container::ContainerListener::Stub>(
-          grpc::CreateChannel(container_target_address,
-                              grpc::InsecureChannelCredentials()));
   vm_tools::container::ContainerStartupInfo ready_request;
   ready_request.set_token(kDefaultContainerToken);
   ready_request.set_garcon_port(5555);
   EmptyMessage response;
-  grpc::ClientContext ctx2;
-  grpc::Status status =
-      container_stub->ContainerReady(&ctx2, ready_request, &response);
+  grpc::ServerContext ctx2;
+  grpc::Status status = service_->GetContainerListenerImpl()->ContainerReady(
+      &ctx2, &ready_request, &response);
   ASSERT_TRUE(status.ok()) << status.error_message();
 }
 
@@ -384,6 +374,7 @@ void ServiceTestingHelper::CreateService(base::WaitableEvent* event) {
 
   base::Closure quit_closure = base::Bind(
       &ServiceTestingHelper::IncrementQuitClosure, base::Unretained(this));
+  Service::DisableGrpcForTesting();
   service_ =
       Service::Create(quit_closure, socket_temp_dir_.GetPath(), mock_bus_);
   CHECK(service_);
