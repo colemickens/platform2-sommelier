@@ -560,11 +560,11 @@ int CameraBufferManagerImpl::AllocateGrallocBuffer(size_t width,
   handle->hal_pixel_format = format;
   handle->width = width;
   handle->height = height;
-  size_t num_planes = gbm_bo_get_num_planes(buffer_context->bo);
+  size_t num_planes = gbm_bo_get_plane_count(buffer_context->bo);
   for (size_t i = 0; i < num_planes; ++i) {
     handle->fds[i] = gbm_bo_get_plane_fd(buffer_context->bo, i);
-    handle->strides[i] = gbm_bo_get_plane_stride(buffer_context->bo, i);
-    handle->offsets[i] = gbm_bo_get_plane_offset(buffer_context->bo, i);
+    handle->strides[i] = gbm_bo_get_stride_for_plane(buffer_context->bo, i);
+    handle->offsets[i] = gbm_bo_get_offset(buffer_context->bo, i);
   }
 
   if (num_planes == 1) {

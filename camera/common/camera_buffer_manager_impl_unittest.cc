@@ -58,12 +58,12 @@ static std::function<void*(struct gbm_bo* bo,
                            size_t plane)>
     _gbm_bo_map;
 static std::function<void(struct gbm_bo* bo, void* map_data)> _gbm_bo_unmap;
-static std::function<size_t(struct gbm_bo* bo)> _gbm_bo_get_num_planes;
+static std::function<size_t(struct gbm_bo* bo)> _gbm_bo_get_plane_count;
 static std::function<int(struct gbm_bo* bo, size_t plane)> _gbm_bo_get_plane_fd;
 static std::function<uint32_t(struct gbm_bo* bo, size_t plane)>
-    _gbm_bo_get_plane_offset;
+    _gbm_bo_get_offset;
 static std::function<uint32_t(struct gbm_bo* bo, size_t plane)>
-    _gbm_bo_get_plane_stride;
+    _gbm_bo_get_stride_for_plane;
 static std::function<void(struct gbm_bo* bo)> _gbm_bo_destroy;
 static std::function<void*(
     void* addr, size_t length, int prot, int flags, int fd, off_t offset)>
@@ -116,8 +116,8 @@ struct MockGbm {
       GbmBoUnmap(bo, map_data);
     };
 
-    EXPECT_EQ(_gbm_bo_get_num_planes, nullptr);
-    _gbm_bo_get_num_planes = [this](struct gbm_bo* bo) {
+    EXPECT_EQ(_gbm_bo_get_plane_count, nullptr);
+    _gbm_bo_get_plane_count = [this](struct gbm_bo* bo) {
       return GbmBoGetNumPlanes(bo);
     };
 
@@ -126,13 +126,13 @@ struct MockGbm {
       return GbmBoGetPlaneFd(bo, plane);
     };
 
-    EXPECT_EQ(_gbm_bo_get_plane_offset, nullptr);
-    _gbm_bo_get_plane_offset = [this](struct gbm_bo* bo, size_t plane) {
+    EXPECT_EQ(_gbm_bo_get_offset, nullptr);
+    _gbm_bo_get_offset = [this](struct gbm_bo* bo, size_t plane) {
       return GbmBoGetPlaneOffset(bo, plane);
     };
 
-    EXPECT_EQ(_gbm_bo_get_plane_stride, nullptr);
-    _gbm_bo_get_plane_stride = [this](struct gbm_bo* bo, size_t plane) {
+    EXPECT_EQ(_gbm_bo_get_stride_for_plane, nullptr);
+    _gbm_bo_get_stride_for_plane = [this](struct gbm_bo* bo, size_t plane) {
       return GbmBoGetPlaneStride(bo, plane);
     };
 
@@ -165,10 +165,10 @@ struct MockGbm {
     _gbm_bo_import = nullptr;
     _gbm_bo_map = nullptr;
     _gbm_bo_unmap = nullptr;
-    _gbm_bo_get_num_planes = nullptr;
+    _gbm_bo_get_plane_count = nullptr;
     _gbm_bo_get_plane_fd = nullptr;
-    _gbm_bo_get_plane_offset = nullptr;
-    _gbm_bo_get_plane_stride = nullptr;
+    _gbm_bo_get_offset = nullptr;
+    _gbm_bo_get_stride_for_plane = nullptr;
     _gbm_bo_destroy = nullptr;
     _mmap = nullptr;
     _munmap = nullptr;
@@ -279,20 +279,20 @@ int munmap(void* addr, size_t length) {
   return _munmap(addr, length);
 }
 
-size_t gbm_bo_get_num_planes(struct gbm_bo* bo) {
-  return _gbm_bo_get_num_planes(bo);
+size_t gbm_bo_get_plane_count(struct gbm_bo* bo) {
+  return _gbm_bo_get_plane_count(bo);
 }
 
 int gbm_bo_get_plane_fd(struct gbm_bo* bo, size_t plane) {
   return _gbm_bo_get_plane_fd(bo, plane);
 }
 
-uint32_t gbm_bo_get_plane_offset(struct gbm_bo* bo, size_t plane) {
-  return _gbm_bo_get_plane_offset(bo, plane);
+uint32_t gbm_bo_get_offset(struct gbm_bo* bo, size_t plane) {
+  return _gbm_bo_get_offset(bo, plane);
 }
 
-uint32_t gbm_bo_get_plane_stride(struct gbm_bo* bo, size_t plane) {
-  return _gbm_bo_get_plane_stride(bo, plane);
+uint32_t gbm_bo_get_stride_for_plane(struct gbm_bo* bo, size_t plane) {
+  return _gbm_bo_get_stride_for_plane(bo, plane);
 }
 
 off_t lseek(int fd, off_t offset, int whence) {
