@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/macros.h>
+#include <brillo/brillo_export.h>
 
 namespace brillo {
 class SecureBlob;
@@ -24,7 +25,7 @@ constexpr int kGcmDefaultTagSize = 16;
 // AES GCM default IV size in bytes (96 bits).
 constexpr int kGcmDefaultIVSize = 12;
 
-class TpmCrypto {
+class BRILLO_EXPORT TpmCrypto {
  public:
   virtual ~TpmCrypto() = default;
 

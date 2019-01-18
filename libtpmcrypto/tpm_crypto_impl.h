@@ -10,12 +10,14 @@
 #include <string>
 #include <utility>
 
+#include <brillo/brillo_export.h>
+
 #include "libtpmcrypto/tpm.h"
 #include "libtpmcrypto/tpm_crypto.h"
 
 namespace tpmcrypto {
 
-class TpmCryptoImpl : public TpmCrypto {
+class BRILLO_EXPORT TpmCryptoImpl : public TpmCrypto {
  public:
   using RandBytesFn = std::function<int(uint8_t*, int)>;
 
