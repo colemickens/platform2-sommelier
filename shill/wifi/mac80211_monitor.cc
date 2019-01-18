@@ -1,6 +1,10 @@
 // Copyright 2018 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+//
+// TODO(crbug.com/923524): kill this module when kernel 3.8 / ath9k support is
+// EOL. /sys/kernel/debug/ieee80211/phyX/wake_queues is an out-of-tree kernel
+// feature that was only used to work around buggy drivers.
 
 #include "shill/wifi/mac80211_monitor.h"
 
