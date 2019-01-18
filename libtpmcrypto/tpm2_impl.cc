@@ -73,8 +73,8 @@ bool Tpm2Impl::EnsureInitialized() {
 }
 
 bool Tpm2Impl::CreatePcr0PolicyDigest(std::string* policy_digest) {
-  TPM_RC result = tpm_utility_->GetPolicyDigestForPcrValues(PcrMap({{0, ""}}),
-                                                            policy_digest);
+  TPM_RC result = tpm_utility_->GetPolicyDigestForPcrValues(
+      PcrMap({{0, ""}}), false /* use_auth_value */, policy_digest);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting policy digest: " << GetErrorString(result);
     return false;
