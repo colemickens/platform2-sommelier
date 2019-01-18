@@ -18,10 +18,10 @@ Similarly, if you want Chrome coredumps to be retained, you can `touch
 Crash uploading is disabled on test images.
 You can force them to be uploaded by running:
 ```sh
-# crash_sender -e FORCE_OFFICIAL=1 -e SECONDS_SEND_SPREAD=1
+# crash_sender -e FORCE_OFFICIAL=1 --max_spread_time=0
 ```
 
-The `SECONDS_SEND_SPREAD=0` option is to make `crash_sender` upload right away.
+The `--max_spread_time=0` option is to make `crash_sender` upload right away.
 Otherwise it'll sleep a random amount of time (up to 10 minutes) between
 reports.
 

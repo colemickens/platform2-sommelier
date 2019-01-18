@@ -74,7 +74,9 @@ bool IsValidKey(const std::string& key) {
 
 }  // namespace
 
-void ParseCommandLine(int argc, const char* const* argv) {
+void ParseCommandLine(int argc,
+                      const char* const* argv,
+                      CommandLineFlags* flags) {
   std::map<std::string, std::string> env_vars;
   for (const EnvPair& pair : kEnvironmentVariables) {
     // Honor the existing value if it's already set.
@@ -115,11 +117,20 @@ void ParseCommandLine(int argc, const char* const* argv) {
 
   // Process the remaining flags.
   DEFINE_bool(h, false, "Show this help and exit");
+  DEFINE_int32(max_spread_time, kMaxSpreadTimeInSeconds,
+               "Max time in secs to sleep before sending (0 to send now)");
   brillo::FlagHelper::Init(new_argv.size() - 1, new_argv.data(),
                            "Chromium OS Crash Sender");
   // TODO(satorux): Remove this once -e option is gone.
   if (FLAGS_h)
     ShowUsageAndExit();
+
+  if (FLAGS_max_spread_time < 0) {
+    LOG(ERROR) << "Invalid value for max spread time: "
+               << FLAGS_max_spread_time;
+    exit(EXIT_FAILURE);
+  }
+  flags->max_spread_time = base::TimeDelta::FromSeconds(FLAGS_max_spread_time);
 
   // Set the predefined environment variables.
   for (const auto& it : env_vars)
@@ -469,7 +480,7 @@ bool GetSleepTime(const base::FilePath& meta_file,
 
   const int seconds = (max_spread_time.InSeconds() <= 0
                            ? 0
-                           : base::RandInt(0, max_spread_time.InSeconds() - 1));
+                           : base::RandInt(0, max_spread_time.InSeconds()));
   const base::TimeDelta spread_time = base::TimeDelta::FromSeconds(seconds);
 
   *sleep_time = std::max(spread_time, holdoff_time);
@@ -513,7 +524,7 @@ bool Sender::SendCrashes(const base::FilePath& crash_dir) {
   for (const auto& meta_file : to_send) {
     // This should be checked inside of the loop, since the device can enter
     // guest mode while sending crash reports with an interval up to
-    // SECONDS_SEND_SPREAD between sends.
+    // max_spread_time_ between sends.
     if (metrics_lib_->IsGuestMode()) {
       LOG(INFO) << "Guest mode has been entered. Delaying crash sending";
       return success;

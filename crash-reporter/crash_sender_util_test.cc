@@ -254,19 +254,22 @@ class CrashSenderUtilTest : public testing::Test {
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_MalformedValue) {
   const char* argv[] = {"crash_sender", "-e", "WHATEVER"};
-  EXPECT_DEATH(ParseCommandLine(arraysize(argv), argv),
+  CommandLineFlags flags;
+  EXPECT_DEATH(ParseCommandLine(arraysize(argv), argv, &flags),
                "Malformed value for -e: WHATEVER");
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_UnknownVariable) {
   const char* argv[] = {"crash_sender", "-e", "FOO=123"};
-  EXPECT_DEATH(ParseCommandLine(arraysize(argv), argv),
+  CommandLineFlags flags;
+  EXPECT_DEATH(ParseCommandLine(arraysize(argv), argv, &flags),
                "Unknown variable name: FOO");
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_NoFlags) {
   const char* argv[] = {"crash_sender"};
-  ParseCommandLine(arraysize(argv), argv);
+  CommandLineFlags flags;
+  ParseCommandLine(arraysize(argv), argv, &flags);
   // By default, the value is 0.
   EXPECT_STREQ("0", getenv("FORCE_OFFICIAL"));
 }
@@ -274,20 +277,23 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_NoFlags) {
 TEST_F(CrashSenderUtilTest, ParseCommandLine_HonorExistingValue) {
   setenv("FORCE_OFFICIAL", "1", 1 /* overwrite */);
   const char* argv[] = {"crash_sender"};
-  ParseCommandLine(arraysize(argv), argv);
+  CommandLineFlags flags;
+  ParseCommandLine(arraysize(argv), argv, &flags);
   EXPECT_STREQ("1", getenv("FORCE_OFFICIAL"));
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_OverwriteDefaultValue) {
   const char* argv[] = {"crash_sender", "-e", "FORCE_OFFICIAL=1"};
-  ParseCommandLine(arraysize(argv), argv);
+  CommandLineFlags flags;
+  ParseCommandLine(arraysize(argv), argv, &flags);
   EXPECT_STREQ("1", getenv("FORCE_OFFICIAL"));
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_OverwriteExistingValue) {
   setenv("FORCE_OFFICIAL", "1", 1 /* overwrite */);
   const char* argv[] = {"crash_sender", "-e", "FORCE_OFFICIAL=2"};
-  ParseCommandLine(arraysize(argv), argv);
+  CommandLineFlags flags;
+  ParseCommandLine(arraysize(argv), argv, &flags);
   EXPECT_STREQ("2", getenv("FORCE_OFFICIAL"));
 }
 
@@ -295,8 +301,23 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_Usage) {
   const char* argv[] = {"crash_sender", "-h"};
   // The third parameter is empty because EXPECT_EXIT does not capture stdout
   // where the usage message is written to.
-  EXPECT_EXIT(ParseCommandLine(arraysize(argv), argv),
-              testing::ExitedWithCode(0), "");
+  CommandLineFlags flags;
+  EXPECT_EXIT(ParseCommandLine(arraysize(argv), argv, &flags),
+              testing::ExitedWithCode(EXIT_SUCCESS), "");
+}
+
+TEST_F(CrashSenderUtilTest, ParseCommandLine_InvalidMaxSpreadTime) {
+  const char* argv[] = {"crash_sender", "--max_spread_time=-1"};
+  CommandLineFlags flags;
+  EXPECT_EXIT(ParseCommandLine(arraysize(argv), argv, &flags),
+              testing::ExitedWithCode(EXIT_FAILURE), "Invalid");
+}
+
+TEST_F(CrashSenderUtilTest, ParseCommandLine_ValidMaxSpreadTime) {
+  const char* argv[] = {"crash_sender", "--max_spread_time=0"};
+  CommandLineFlags flags;
+  ParseCommandLine(arraysize(argv), argv, &flags);
+  EXPECT_EQ(base::TimeDelta::FromSeconds(0), flags.max_spread_time);
 }
 
 TEST_F(CrashSenderUtilTest, IsMock) {
@@ -723,7 +744,7 @@ TEST_F(CrashSenderUtilTest, IsBelowRate) {
 
 TEST_F(CrashSenderUtilTest, GetSleepTime) {
   const base::FilePath meta_file = test_dir_.Append("test.meta");
-  base::TimeDelta max_spread_time = base::TimeDelta::FromSeconds(1);
+  base::TimeDelta max_spread_time = base::TimeDelta::FromSeconds(0);
 
   // This should fail since meta_file does not exist.
   base::TimeDelta sleep_time;
@@ -742,15 +763,15 @@ TEST_F(CrashSenderUtilTest, GetSleepTime) {
   ASSERT_TRUE(TouchFileHelper(
       meta_file, now - base::TimeDelta::FromSeconds(kMaxHoldOffTimeInSeconds)));
 
-  // sleep_time should always be 0, since max_spread_time is set to 1.
+  // sleep_time should always be 0, since max_spread_time is set to 0.
   EXPECT_TRUE(GetSleepTime(meta_file, max_spread_time, &sleep_time));
   EXPECT_EQ(0, sleep_time.InSeconds());
 
-  // sleep_time should be in range [0, 10).
+  // sleep_time should be in range [0, 10].
   max_spread_time = base::TimeDelta::FromSeconds(10);
   EXPECT_TRUE(GetSleepTime(meta_file, max_spread_time, &sleep_time));
   EXPECT_LE(0, sleep_time.InSeconds());
-  EXPECT_GT(10, sleep_time.InSeconds());
+  EXPECT_GE(10, sleep_time.InSeconds());
 }
 
 TEST_F(CrashSenderUtilTest, Sender) {

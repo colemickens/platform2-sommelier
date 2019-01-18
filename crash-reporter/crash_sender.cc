@@ -74,23 +74,6 @@ void LockOrExit(const base::File& lock_file) {
   }
 }
 
-// Gets the max spread time via SECONDS_SEND_SPREAD, or exits if it fails.
-//
-// TODO(satorux): Make this a command line option, with callers updated:
-// - debugd/src/crash_sender_tool.cc
-// - logging_CrashSender/logging_CrashSender.py
-base::TimeDelta GetMaxSpreadTimeOrExit() {
-  const char* value = getenv("SECONDS_SEND_SPREAD");
-  // SECONDS_SEND_SPREAD should be set in ParseCommandLine().
-  assert(value);
-  int seconds = 0;
-  if (!base::StringToInt(value, &seconds)) {
-    LOG(ERROR) << "Invalid value in SECONDS_SEND_SPREAD: " << value;
-    exit(EXIT_FAILURE);
-  }
-  return base::TimeDelta::FromSeconds(seconds);
-}
-
 // Runs the main function for the child process.
 int RunChildMain(int argc, char* argv[]) {
   // Ensure only one instance of crash_sender runs at the same time.
@@ -98,7 +81,8 @@ int RunChildMain(int argc, char* argv[]) {
                        base::File::FLAG_OPEN_ALWAYS);
   LockOrExit(lock_file);
 
-  util::ParseCommandLine(argc, argv);
+  util::CommandLineFlags flags;
+  util::ParseCommandLine(argc, argv, &flags);
 
   if (util::ShouldPauseSending()) {
     LOG(INFO) << "Exiting early due to " << paths::kPauseCrashSending;
@@ -120,7 +104,7 @@ int RunChildMain(int argc, char* argv[]) {
   auto metrics_lib = std::make_unique<MetricsLibrary>();
   metrics_lib->Init();
   util::Sender::Options options;
-  options.max_spread_time = GetMaxSpreadTimeOrExit();
+  options.max_spread_time = flags.max_spread_time;
   util::Sender sender(std::move(metrics_lib), options);
   if (!sender.Init()) {
     LOG(ERROR) << "Failed to initialize util::Sender";

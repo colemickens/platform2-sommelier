@@ -23,10 +23,20 @@ constexpr int kMaxCrashRate = 32;
 // Maximum time to wait for ensuring a meta file is complete.
 constexpr int kMaxHoldOffTimeInSeconds = 30;
 
+// Maximum time to sleep before attempting to send a crash report. This value is
+// inclusive as an upper bound, thus 0 means a crash report can be sent
+// immediately.
+constexpr int kMaxSpreadTimeInSeconds = 600;
+
 // Represents a name-value pair for an environment variable.
 struct EnvPair {
   const char* name;
   const char* value;
+};
+
+// Parsed command line flags.
+struct CommandLineFlags {
+  base::TimeDelta max_spread_time;
 };
 
 // Actions returned by ChooseAction().
@@ -51,8 +61,6 @@ constexpr EnvPair kEnvironmentVariables[] = {
     {"MOCK_DEVELOPER_MODE", "0"},
     // Ignore PAUSE_CRASH_SENDING file if set.
     {"OVERRIDE_PAUSE_SENDING", "0"},
-    // Maximum time to sleep between sends.
-    {"SECONDS_SEND_SPREAD", "600"},
 };
 
 // Parses the command line, and handles the command line flags.
@@ -62,7 +70,9 @@ constexpr EnvPair kEnvironmentVariables[] = {
 //
 // On error, the process exits as a failure with an error message for the
 // first-encountered error.
-void ParseCommandLine(int argc, const char* const* argv);
+void ParseCommandLine(int argc,
+                      const char* const* argv,
+                      CommandLineFlags* flags);
 
 // Returns true if mock is enabled.
 bool IsMock();

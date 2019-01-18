@@ -13,7 +13,7 @@ void CrashSenderTool::UploadCrashes() {
   ProcessWithId* p =
       CreateProcess(false /* sandboxed */, true /* access_root_mount_ns */);
   p->AddArg("/sbin/crash_sender");
-  p->AddStringOption("-e", "SECONDS_SEND_SPREAD=1");
+  p->AddArg("--max_spread_time=0");
   p->Run();
 }
 
