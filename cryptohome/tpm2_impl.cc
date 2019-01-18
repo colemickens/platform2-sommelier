@@ -606,7 +606,8 @@ bool Tpm2Impl::SealToPCR0(const brillo::Blob& value,
   std::string policy_digest;
   TPM_RC result =
       trunks->tpm_utility->GetPolicyDigestForPcrValues(
-          std::map<uint32_t, std::string>({{0, ""}}), &policy_digest);
+          std::map<uint32_t, std::string>({{0, ""}}),
+          false /* use_auth_value */, &policy_digest);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting policy digest: " << GetErrorString(result);
     return false;
@@ -788,7 +789,7 @@ bool Tpm2Impl::CreatePCRBoundKey(const std::map<uint32_t, std::string>& pcr_map,
   }
   std::string policy_digest;
   TPM_RC result = trunks->tpm_utility->GetPolicyDigestForPcrValues(
-      pcr_map, &policy_digest);
+      pcr_map, false /* use_auth_value */, &policy_digest);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting policy digest: " << GetErrorString(result);
     return false;

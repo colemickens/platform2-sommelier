@@ -530,8 +530,8 @@ TEST_F(Tpm2Test, SealToPCR0Success) {
   SecureBlob sealed_value;
   std::string policy_digest("digest");
   std::map<uint32_t, std::string> pcr_map;
-  EXPECT_CALL(mock_tpm_utility_, GetPolicyDigestForPcrValues(_, _))
-      .WillOnce(DoAll(SetArgPointee<1>(policy_digest), Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_utility_, GetPolicyDigestForPcrValues(_, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(policy_digest), Return(TPM_RC_SUCCESS)));
   std::string data_to_seal;
   EXPECT_CALL(mock_tpm_utility_, SealData(_, policy_digest, "", _, _))
       .WillOnce(DoAll(SaveArg<0>(&data_to_seal), Return(TPM_RC_SUCCESS)));
@@ -542,7 +542,7 @@ TEST_F(Tpm2Test, SealToPCR0Success) {
 TEST_F(Tpm2Test, SealToPCR0PolicyFailure) {
   SecureBlob value("value");
   SecureBlob sealed_value;
-  EXPECT_CALL(mock_tpm_utility_, GetPolicyDigestForPcrValues(_, _))
+  EXPECT_CALL(mock_tpm_utility_, GetPolicyDigestForPcrValues(_, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_FALSE(tpm_->SealToPCR0(value, &sealed_value));
 }
@@ -660,7 +660,7 @@ TEST_F(Tpm2Test, CreatePCRBoundKeyPolicyFailure) {
   std::string pcr_value("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
-  EXPECT_CALL(mock_tpm_utility_, GetPolicyDigestForPcrValues(_, _))
+  EXPECT_CALL(mock_tpm_utility_, GetPolicyDigestForPcrValues(_, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_FALSE(tpm_->CreatePCRBoundKey(
       std::map<uint32_t, std::string>({{index, pcr_value}}),
