@@ -3187,6 +3187,7 @@ static void sl_print_usage() {
       "  --application-id=ID\t\tForced application ID for X11 clients\n"
       "  --x-display=DISPLAY\t\tX11 display to listen on\n"
       "  --xwayland-path=PATH\t\tPath to Xwayland executable\n"
+      "  --xwayland-gl-driver-path=PATH\tPath to GL drivers for Xwayland\n"
       "  --xwayland-cmd-prefix=PREFIX\tXwayland command line prefix\n"
       "  --no-exit-with-child\t\tKeep process alive after child exists\n"
       "  --no-clipboard-manager\tDisable X11 clipboard manager\n"
