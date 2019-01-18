@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2018 Intel Corporation
+ * Copyright (C) 2014-2019 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -261,6 +261,31 @@ static bool compFun(camera3_stream_t* s1, camera3_stream_t* s2)
     return streamSizeGE(s1, s2);
 }
 
+// 1.sort the steams by resolution from big to small.
+// 2.if it has HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED in one of the output
+// streams, the stream must be one of the first two streams, because the
+// HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED is thought to be output for all request.
+void IPU3CameraHw::sortActiveStreams(std::vector<camera3_stream_t*> &activeStreams)
+{
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
+    std::sort(activeStreams.begin(), activeStreams.end(), compFun);
+
+    const int maxHWSupportStreamNum = 2;
+
+    if ((activeStreams.size() <= maxHWSupportStreamNum) ||
+        (activeStreams[0]->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) ||
+        (activeStreams[1]->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED)) {
+            return;
+    }
+
+    for (size_t i = 2; i < activeStreams.size(); i++) {
+        if (activeStreams[i]->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) {
+            std::swap(activeStreams[1], activeStreams[i]);
+            break;
+        }
+    }
+}
+
 status_t
 IPU3CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
                             uint32_t operation_mode)
@@ -301,7 +326,7 @@ IPU3CameraHw::configStreams(std::vector<camera3_stream_t*> &activeStreams,
     }
 
     // let the mActiveStreams to be from big to small
-    std::sort(mActiveStreams.begin(), mActiveStreams.end(), compFun);
+    sortActiveStreams(mActiveStreams);
 
     return configStreamsPrivate();
 }

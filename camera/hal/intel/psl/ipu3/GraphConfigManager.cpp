@@ -368,6 +368,13 @@ mapVideoStreamToKey(const std::vector<camera3_stream_t*> &videoStreams, bool *ha
         *hasVideoStream = false;
         return OK;
     }
+
+    // store active output number for video pipe
+    // if YUV stream number > 2. we only use the biggest two streams for video pipe
+    if (yuvNum > MAX_GRAPH_SETTING_STREAM) {
+        yuvNum = MAX_GRAPH_SETTING_STREAM;
+    }
+
     if (mForceUseOneNodeInVideoPipe) {
         yuvNum = 1;
     }

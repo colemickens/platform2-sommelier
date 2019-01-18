@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2018 Intel Corporation
+ * Copyright (C) 2014-2019 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -66,7 +66,7 @@ class IPU3CameraHw: public ICameraHw {
     status_t  initStaticMetadata();
     status_t checkStreamSizes(std::vector<camera3_stream_t*> &activeStreams);
     status_t checkStreamRotation(const std::vector<camera3_stream_t*> activeStreams);
-
+    void sortActiveStreams(std::vector<camera3_stream_t*> &activeStreams);
     status_t configStreamsPrivate();
 
  private:  //members
