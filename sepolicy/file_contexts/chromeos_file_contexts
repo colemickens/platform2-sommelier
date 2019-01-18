@@ -176,11 +176,9 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /dev/zero                       u:object_r:zero_device:s0
 /dev/ptmx                       u:object_r:ptmx_device:s0
 
-is_arc_nyc(`
 # Label /dev/bus/usb/NNN/MMM
 # (USB device nodes passed by Chrome / permission broker)
 /dev/bus/usb(/.*)?              u:object_r:usb_device:s0
-')
 
 
 (/usr)?/lib64(/.*)?                    u:object_r:cros_system_file:s0
