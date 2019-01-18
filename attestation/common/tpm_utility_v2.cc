@@ -453,6 +453,7 @@ bool TpmUtilityV2::SealToPCR0(const std::string& data,
   TPM_RC result = trunks_utility_->GetPolicyDigestForPcrValues(
       std::map<uint32_t, std::string>(
           {{0, std::string() /* Use current PCR value */}}),
+      false, /* No authorization session */
       &policy_digest);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Failed to compute policy digest: "
