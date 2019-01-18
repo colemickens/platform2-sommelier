@@ -25,14 +25,19 @@ static auto kModuleLogScope = ScopeLogger::kWiFi;
 static string ObjectID(Mac80211Monitor* m) { return m->link_name(); }
 }
 
-// statics
+namespace {
+
 // At 17-25 bytes per queue, this accommodates 80 queues.
 // ath9k has 4 queues, and WP2 has 16 queues.
-const size_t Mac80211Monitor::kMaxQueueStateSizeBytes = 2048;
-const char Mac80211Monitor::kQueueStatusPathFormat[] =
+const size_t kMaxQueueStateSizeBytes = 2048;
+const char kQueueStatusPathFormat[] =
     "/sys/kernel/debug/ieee80211/%s/queues";
-const char Mac80211Monitor::kWakeQueuesPathFormat[] =
+const char kWakeQueuesPathFormat[] =
     "/sys/kernel/debug/ieee80211/%s/wake_queues";
+
+}  // namespace
+
+// statics
 const time_t Mac80211Monitor::kQueueStatePollIntervalSeconds = 30;
 const time_t Mac80211Monitor::kMinimumTimeBetweenWakesSeconds = 60;
 

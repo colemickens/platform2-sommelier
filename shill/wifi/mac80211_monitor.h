@@ -63,9 +63,6 @@ class Mac80211Monitor {
   FRIEND_TEST(Mac80211MonitorTest, ParseQueueStateSimple);
   FRIEND_TEST(Mac80211MonitorTest, ParseQueueStateStopped);
 
-  static const size_t kMaxQueueStateSizeBytes;
-  static const char kQueueStatusPathFormat[];
-  static const char kWakeQueuesPathFormat[];
   static const time_t kQueueStatePollIntervalSeconds;
   static const time_t kMinimumTimeBetweenWakesSeconds;
 
