@@ -167,13 +167,6 @@ constexpr base::TimeDelta kReadAheadTimeout = base::TimeDelta::FromSeconds(7);
 // The maximum time to wait for /data/media setup.
 constexpr base::TimeDelta kInstalldTimeout = base::TimeDelta::FromSeconds(60);
 
-// The IPV4 address of the container.
-constexpr char kArcContainerIPv4Address[] = "100.115.92.2/30";
-
-// The IPV4 address of the gateway inside the container. This corresponds to the
-// address of "br0".
-constexpr char kArcGatewayIPv4Address[] = "100.115.92.1";
-
 // Property name for fingerprint.
 constexpr char kFingerprintProp[] = "ro.build.fingerprint";
 
@@ -694,9 +687,6 @@ void ArcSetup::SetUpAndroidData() {
     SetUpGmsCoreCache();
     SetUpGservicesCache();
   }
-
-  if (GetSdkVersion() >= AndroidSdkVersion::ANDROID_P)
-    SetUpNetwork();
 }
 
 bool ArcSetup::SetUpPackagesCache() {
@@ -1208,15 +1198,12 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode,
       "androidboot.vm=%d "
       "androidboot.debuggable=%d "
       "androidboot.lcd_density=%d "
-      "androidboot.container_ipv4_address=%s "
-      "androidboot.gateway_ipv4_address=%s "
       "androidboot.native_bridge=%s "
       "androidboot.arc_file_picker=%d "
       "androidboot.chromeos_channel=%s "
       "androidboot.boottime_offset=%" PRId64 "\n" /* in nanoseconds */,
       is_dev_mode, !is_dev_mode, is_inside_vm, is_debuggable, arc_lcd_density,
-      kArcContainerIPv4Address, kArcGatewayIPv4Address, native_bridge.c_str(),
-      arc_file_picker, chromeos_channel.c_str(),
+      native_bridge.c_str(), arc_file_picker, chromeos_channel.c_str(),
       ts.tv_sec * base::Time::kNanosecondsPerSecond + ts.tv_nsec);
 
   EXIT_IF(!WriteToFile(arc_paths_->android_cmdline, 0644, content));
@@ -1432,76 +1419,6 @@ void ArcSetup::SetUpPowerSysfsContext() {
       EXIT_IF(!Chcon(sysfs_batteryinfo_context, Realpath(attr)));
     }
   }
-}
-
-void ArcSetup::SetUpNetwork() {
-  constexpr char kSelinuxContext[] = "u:object_r:system_data_file:s0";
-  constexpr gid_t kMiscGid = 9998 + kShiftGid;
-
-  const base::FilePath data_dir =
-      arc_paths_->android_mutable_source.Append("data");
-  const base::FilePath misc_dir = data_dir.Append("misc");
-  const base::FilePath eth_dir = misc_dir.Append("ethernet");
-  const base::FilePath ipconfig_dest = eth_dir.Append("ipconfig.txt");
-
-  std::string ip_addr(kArcContainerIPv4Address);
-  std::string gateway(kArcGatewayIPv4Address);
-
-  // Get rid of prefix length from ip address.
-  const size_t mask_position = ip_addr.find('/');
-  if (mask_position != std::string::npos)
-    ip_addr.resize(mask_position);
-
-  // Ensure strings aren't too long.
-  EXIT_IF(ip_addr.length() > std::numeric_limits<char>::max());
-  EXIT_IF(gateway.length() > std::numeric_limits<char>::max());
-
-  const char ip_addr_len = ip_addr.length();
-  const char gateway_len = gateway.length();
-
-  EXIT_IF(!InstallDirectory(01771, kSystemUid, kMiscGid, misc_dir));
-  EXIT_IF(!Chcon(kSelinuxContext, misc_dir));
-
-  EXIT_IF(!InstallDirectory(0770, kSystemUid, kSystemGid, eth_dir));
-  EXIT_IF(!Chcon(kSelinuxContext, eth_dir));
-
-  base::File ipconfig(ipconfig_dest,
-                      base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
-  EXIT_IF(!ipconfig.IsValid());
-
-  // The ipconfig.txt file is in network byte order. Since we can reasonably
-  // expect the length of the ip address to be less than the maximum value of a
-  // signed byte (char), we only use one byte for the length, and put it after a
-  // null byte to make a 16 bit interget in network byte order. These null bytes
-  // are at the end of the "first_section" and "second_section" to reduce the
-  // number of write calls.
-  // The file format was reverse engineered from the java class
-  // com.android.server.net.IpConfigStore.
-  // clang-format off
-  constexpr char kFirstSection[] =
-      "\0\0\0\x02\0\x02" "id" "\0\0\0\0"
-      "\0\x0c" "ipAssignment" "\0\x06" "STATIC"
-      "\0\x0b" "linkAddress" "\0";
-  ipconfig.WriteAtCurrentPos(kFirstSection, sizeof(kFirstSection) - 1);
-  ipconfig.WriteAtCurrentPos(&ip_addr_len, sizeof(ip_addr_len));
-  ipconfig.WriteAtCurrentPos(ip_addr.c_str(), ip_addr_len);
-
-  constexpr char kSecondSection[] =
-      "\0\0\0" "\x1e"
-      "\0\x07" "gateway" "\0\0\0\0\0\0\0\x01" "\0";
-  ipconfig.WriteAtCurrentPos(kSecondSection, sizeof(kSecondSection) - 1);
-  ipconfig.WriteAtCurrentPos(&gateway_len, sizeof(gateway_len));
-  ipconfig.WriteAtCurrentPos(gateway.c_str(), gateway_len);
-
-  constexpr char kThirdSection[] =
-      "\0\x03" "dns" "\0\x07" "8.8.8.8"
-      "\0\x03" "dns" "\0\x07" "8.8.4.4"
-      "\0\x03" "eos";
-  ipconfig.WriteAtCurrentPos(kThirdSection, sizeof(kThirdSection) - 1);
-  // clang-format on
-
-  EXIT_IF(!Chcon(kSelinuxContext, ipconfig_dest));
-  EXIT_IF(!Chown(kSystemUid, kSystemGid, ipconfig_dest));
 }
 
 void ArcSetup::MakeMountPointsReadOnly() {
