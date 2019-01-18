@@ -315,8 +315,10 @@ class TpmUtilityForwarder : public TpmUtility {
 
   TPM_RC GetPolicyDigestForPcrValues(
       const std::map<uint32_t, std::string>& pcr_map,
+      bool use_auth_value,
       std::string* policy_digest) override {
     return target_->GetPolicyDigestForPcrValues(pcr_map,
+                                                use_auth_value,
                                                 policy_digest);
   }
 

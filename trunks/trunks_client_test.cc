@@ -305,7 +305,8 @@ bool TrunksClientTest::SealedDataTest() {
   std::string policy_digest;
   TPM_RC result =
       utility->GetPolicyDigestForPcrValues(
-          std::map<uint32_t, std::string>({{pcr_index, ""}}), &policy_digest);
+          std::map<uint32_t, std::string>({{pcr_index, ""}}),
+          true /* use_auth_value */, &policy_digest);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting policy_digest: " << GetErrorString(result);
     return false;
@@ -325,6 +326,12 @@ bool TrunksClientTest::SealedDataTest() {
     LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
     return false;
   }
+  result = policy_session->PolicyAuthValue();
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Error setting session to use auth_value: "
+               << GetErrorString(result);
+    return result;
+  }
   result = policy_session->PolicyPCR(
       std::map<uint32_t, std::string>({{pcr_index, ""}}));
   if (result != TPM_RC_SUCCESS) {
@@ -332,8 +339,16 @@ bool TrunksClientTest::SealedDataTest() {
                << GetErrorString(result);
     return false;
   }
-  policy_session->SetEntityAuthorizationValue(auth_value);
+  // Check fail scenario when no authorization value is given.
   std::string unsealed_data;
+  result = utility->UnsealData(sealed_data, policy_session->GetDelegate(),
+                               &unsealed_data);
+  if (result == TPM_RC_SUCCESS && data_to_seal == unsealed_data) {
+    LOG(ERROR) << "Error: unseal succeeded without authorization.";
+    return false;
+  }
+  // Check success scenario.
+  policy_session->SetEntityAuthorizationValue(auth_value);
   result = utility->UnsealData(sealed_data, policy_session->GetDelegate(),
                                &unsealed_data);
   if (result != TPM_RC_SUCCESS) {
@@ -379,6 +394,7 @@ bool TrunksClientTest::SealedToMultiplePCRDataTest() {
   TPM_RC result =
       utility->GetPolicyDigestForPcrValues(
           std::map<uint32_t, std::string>({{pcr_index1, ""}, {pcr_index2, ""}}),
+          false /* use_auth_value */,
           &policy_digest);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting policy_digest: " << GetErrorString(result);

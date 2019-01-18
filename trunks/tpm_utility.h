@@ -288,9 +288,14 @@ class TRUNKS_EXPORT TpmUtility {
   // This method uses a trial session to compute the |policy_digest| when
   // the policy is bound to a given map of pcr_index -> pcr_value in |pcr_map|.
   // If some values in the map are empty, the method uses the current value of
-  // the pcr for the corresponding indexes.
+  // the pcr for the corresponding indexes. If |use_auth_value| is set to true
+  // then a authorization value will be required when using the digest. In this
+  // case PolicyAuthValue is called on session first, and PolicyPCR is called
+  // after this. Those two calls must be made in the same order when we need to
+  // reveal the secret guarded by the authorization value.
   virtual TPM_RC GetPolicyDigestForPcrValues(
       const std::map<uint32_t, std::string>& pcr_map,
+      bool use_auth_value,
       std::string* policy_digest) = 0;
 
   // This method defines a non-volatile storage area in the TPM, referenced

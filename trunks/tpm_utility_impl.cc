@@ -1243,6 +1243,7 @@ TPM_RC TpmUtilityImpl::StartSession(HmacSession* session) {
 
 TPM_RC TpmUtilityImpl::GetPolicyDigestForPcrValues(
     const std::map<uint32_t, std::string>& pcr_map,
+    bool use_auth_value,
     std::string* policy_digest) {
   CHECK(policy_digest);
   std::unique_ptr<PolicySession> session = factory_.GetTrialSession();
@@ -1271,7 +1272,14 @@ TPM_RC TpmUtilityImpl::GetPolicyDigestForPcrValues(
     }
     pcr_map_with_values[pcr_index] = mutable_pcr_value;
   }
-
+  if (use_auth_value) {
+    result = session->PolicyAuthValue();
+    if (result != TPM_RC_SUCCESS) {
+      LOG(ERROR) << __func__ << ": Error setting session to use auth_value: "
+                 << GetErrorString(result);
+      return result;
+    }
+  }
   result = session->PolicyPCR(pcr_map_with_values);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Error restricting policy to PCR value: "

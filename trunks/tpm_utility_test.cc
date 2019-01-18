@@ -1762,6 +1762,7 @@ TEST_F(TpmUtilityTest, GetPolicyDigestForPcrValuesSuccess) {
   EXPECT_EQ(TPM_RC_SUCCESS,
             utility_.GetPolicyDigestForPcrValues(
                 std::map<uint32_t, std::string>({{index, ""}}),
+                false /* use_auth_value */,
                 &policy_digest));
   EXPECT_EQ(policy_digest, tpm_policy_digest);
   EXPECT_EQ(pcr_value, pcr_map[index]);
@@ -1783,6 +1784,7 @@ TEST_F(TpmUtilityTest, GetPolicyDigestForPcrValuesSuccessWithPcrValue) {
   EXPECT_EQ(TPM_RC_SUCCESS,
             utility_.GetPolicyDigestForPcrValues(
                 std::map<uint32_t, std::string>({{index, pcr_value}}),
+                false /* use_auth_value */,
                 &policy_digest));
   EXPECT_EQ(policy_digest, tpm_policy_digest);
   EXPECT_EQ(pcr_value, pcr_map[index]);
@@ -1822,6 +1824,7 @@ TEST_F(TpmUtilityTest, GetPolicyDigestForPcrValuesSuccessMultiplePcrs) {
                     {{index1, pcr_value1},
                      {index2, pcr_value2},
                      {index3, pcr_value3}}),
+                false /* use_auth_value */,
                 &policy_digest));
   EXPECT_EQ(policy_digest, tpm_policy_digest);
   EXPECT_EQ(pcr_value1, pcr_map[index1]);
@@ -1838,6 +1841,7 @@ TEST_F(TpmUtilityTest, GetPolicyDigestForPcrValuesBadSession) {
   EXPECT_EQ(TPM_RC_FAILURE,
             utility_.GetPolicyDigestForPcrValues(
                 std::map<uint32_t, std::string>({{index, pcr_value}}),
+                false,
                 &policy_digest));
 }
 
@@ -1849,6 +1853,7 @@ TEST_F(TpmUtilityTest, GetPolicyDigestForPcrValuesPcrReadFail) {
   EXPECT_EQ(TPM_RC_FAILURE,
             utility_.GetPolicyDigestForPcrValues(
                 std::map<uint32_t, std::string>({{index, ""}}),
+                false /* use_auth_value */,
                 &policy_digest));
 }
 
@@ -1862,6 +1867,7 @@ TEST_F(TpmUtilityTest, GetPolicyDigestForPcrValuesBadPcr) {
   EXPECT_EQ(TPM_RC_FAILURE,
             utility_.GetPolicyDigestForPcrValues(
                 std::map<uint32_t, std::string>({{index, pcr_value}}),
+                false /* use_auth_value */,
                 &policy_digest));
 }
 
@@ -1874,6 +1880,7 @@ TEST_F(TpmUtilityTest, GetPolicyDigestForPcrValuesBadDigest) {
   EXPECT_EQ(TPM_RC_FAILURE,
             utility_.GetPolicyDigestForPcrValues(
                 std::map<uint32_t, std::string>({{index, pcr_value}}),
+                false /* use_auth_value */,
                 &policy_digest));
 }
 
