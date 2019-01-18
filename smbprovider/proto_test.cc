@@ -134,6 +134,11 @@ TEST_F(SmbProviderProtoTest, IsValidOptionsForValidProtos) {
   PremountOptionsProto premount_proto =
       CreatePremountOptionsProto("smb://testShare/dir1");
   EXPECT_TRUE(IsValidOptions(premount_proto));
+
+  UpdateSharePathOptionsProto update_share_path_proto =
+      CreateUpdateSharePathOptionsProto(1 /* mount_id */,
+                                        "smb://testsahre/dir1");
+  EXPECT_TRUE(IsValidOptions(update_share_path_proto));
 }
 
 // IsValidOptions returns false when options are invalid for invalid protos.
@@ -191,6 +196,9 @@ TEST_F(SmbProviderProtoTest, IsValidOptionsForInValidProtos) {
 
   PremountOptionsProto premount_proto_blank;
   EXPECT_FALSE(IsValidOptions(premount_proto_blank));
+
+  UpdateSharePathOptionsProto update_share_path_proto_blank;
+  EXPECT_FALSE(IsValidOptions(update_share_path_proto_blank));
 }
 
 // IsValidOptions checks offset and length ranges for ReadFileOptionsProto.

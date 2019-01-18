@@ -249,6 +249,15 @@ PremountOptionsProto CreatePremountOptionsProto(const std::string& path) {
   return premount_options;
 }
 
+UpdateSharePathOptionsProto CreateUpdateSharePathOptionsProto(
+    int32_t mount_id, const std::string& share_path) {
+  UpdateSharePathOptionsProto update_share_path_options;
+  update_share_path_options.set_mount_id(mount_id);
+  update_share_path_options.set_path(share_path);
+
+  return update_share_path_options;
+}
+
 ProtoBlob CreateMountOptionsBlob(const std::string& path) {
   return SerializeProtoToBlobAndCheck(
       CreateMountOptionsProto(path, "" /* workgroup */, "" /* username */,
@@ -383,6 +392,12 @@ ProtoBlob CreateUpdateMountCredentialsOptionsBlob(int32_t mount_id,
 
 ProtoBlob CreatePremountOptionsBlob(const std::string& path) {
   return SerializeProtoToBlobAndCheck(CreatePremountOptionsProto(path));
+}
+
+ProtoBlob CreateUpdateSharePathOptionsBlob(int32_t mount_id,
+                                           const std::string& share_path) {
+  return SerializeProtoToBlobAndCheck(
+      CreateUpdateSharePathOptionsProto(mount_id, share_path));
 }
 
 base::ScopedFD WritePasswordToFile(TempFileManager* temp_manager,

@@ -102,6 +102,10 @@ bool IsValidOptions(const UpdateMountCredentialsOptionsProto& options) {
          options.has_username();
 }
 
+bool IsValidOptions(const UpdateSharePathOptionsProto& options) {
+  return options.has_mount_id() && options.has_path();
+}
+
 bool IsValidMountConfig(const MountConfigProto& options) {
   return options.has_enable_ntlm();
 }
@@ -232,6 +236,10 @@ const char* GetMethodName(const UpdateMountCredentialsOptionsProto& unused) {
 
 const char* GetMethodName(const PremountOptionsProto& unused) {
   return kPremountMethod;
+}
+
+const char* GetMethodName(const UpdateSharePathOptionsProto& unused) {
+  return kUpdateSharePathMethod;
 }
 
 template <>
