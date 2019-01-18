@@ -143,6 +143,19 @@ bool MountTracker::GetFullPath(int32_t mount_id,
   return true;
 }
 
+bool MountTracker::GetMountRootPath(int32_t mount_id,
+                                    std::string* mount_root) const {
+  DCHECK_GE(mount_id, 0);
+
+  const auto mount_iter = mounts_.Find(mount_id);
+  if (mount_iter == mounts_.End()) {
+    return false;
+  }
+
+  *mount_root = mount_iter->second.mount_root;
+  return true;
+}
+
 std::string MountTracker::GetRelativePath(int32_t mount_id,
                                           const std::string& full_path) const {
   const auto mount_iter = mounts_.Find(mount_id);
@@ -203,6 +216,20 @@ bool MountTracker::UpdateCredential(int32_t mount_id,
   }
 
   mount_iter->second.credential = std::move(credential);
+  return true;
+}
+
+bool MountTracker::UpdateSharePath(int32_t mount_id,
+                                   const std::string& share_path) {
+  const auto mount_iter = mounts_.Find(mount_id);
+  if (mount_iter == mounts_.End()) {
+    return false;
+  }
+
+  mounted_share_paths_.erase(mount_iter->second.mount_root);
+  mounted_share_paths_.insert(share_path);
+  mount_iter->second.mount_root = share_path;
+
   return true;
 }
 

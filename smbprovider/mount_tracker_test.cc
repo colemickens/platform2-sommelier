@@ -733,4 +733,55 @@ TEST_F(MountTrackerTest, TestUpdateMountCredentialsOnNontExistantMountId) {
   EXPECT_EQ(0, mount_tracker_->MountCount());
 }
 
+TEST_F(MountTrackerTest, TestUpdateSharePath) {
+  int32_t mount_id;
+
+  EXPECT_TRUE(
+      AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id));
+
+  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(kMountRoot));
+
+  const std::string updated_path = "smb://192.168.1.1/test";
+  EXPECT_TRUE(mount_tracker_->UpdateSharePath(mount_id, updated_path));
+
+  // Check that the share path was successfully updated.
+  std::string mount_path;
+  EXPECT_TRUE(mount_tracker_->GetMountRootPath(mount_id, &mount_path));
+  EXPECT_EQ(updated_path, mount_path);
+
+  // Check that the previous share path is no longer stored.
+  EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(kMountRoot));
+  // Check that |updated_path| is stored.
+  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(updated_path));
+}
+
+TEST_F(MountTrackerTest, TestUpdateSharePathDoesNotCreateNewMount) {
+  int32_t mount_id;
+
+  EXPECT_TRUE(
+      AddMount(kMountRoot, kWorkgroup, kUsername, kPassword, &mount_id));
+
+  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(kMountRoot));
+
+  const std::string updated_path = "smb://192.168.1.1/test";
+  EXPECT_TRUE(mount_tracker_->UpdateSharePath(mount_id, updated_path));
+
+  // Check that the previous share path is no longer stored.
+  EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(kMountRoot));
+  // Check that |updated_path| is stored.
+  EXPECT_TRUE(mount_tracker_->IsAlreadyMounted(updated_path));
+
+  EXPECT_EQ(1, mount_tracker_->MountCount());
+}
+
+TEST_F(MountTrackerTest, TestUpdateSharePathFailsOnNonExistingMount) {
+  EXPECT_EQ(0, mount_tracker_->MountCount());
+
+  const std::string updated_path = "smb://192.168.1.1/test";
+  EXPECT_FALSE(
+      mount_tracker_->UpdateSharePath(999 /* mount_id */, updated_path));
+
+  EXPECT_FALSE(mount_tracker_->IsAlreadyMounted(updated_path));
+}
+
 }  // namespace smbprovider

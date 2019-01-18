@@ -75,6 +75,10 @@ class MountTracker {
                    const std::string& entry_path,
                    std::string* full_path) const;
 
+  // Gets the mount root of the mount associated with |mount_id|. Returns false
+  // if |mount_id| does not exist in |mounts_|.
+  bool GetMountRootPath(int32_t mount_id, std::string* mount_root) const;
+
   // Uses the mount root associated with |mount_id| to remove the root path
   // from |full_path| to yield a relative path.
   std::string GetRelativePath(int32_t mount_id,
@@ -96,11 +100,19 @@ class MountTracker {
   bool GetSambaInterface(int32_t mount_id,
                          SambaInterface** samba_interface) const;
 
-  // Gets a pointer to the metadata cache for |mount_id|.
+  // Gets a pointer to the metadata cache for |mount_id|. Returns true if
+  // getting metadata cache succeeds. Returns false if |mount_id| does not
+  // exist in |mounts_|.
   bool GetMetadataCache(int32_t mount_id, MetadataCache** cache) const;
 
-  // Updates the SmbCredential within MountInfo.
+  // Updates the SmbCredential within MountInfo. Returns true if updating mount
+  // credentials succeeds. Returns false if |mount_id| does not exist in
+  // |mounts_|.
   bool UpdateCredential(int32_t mount_id, SmbCredential credential);
+
+  // Updates the share_path of a mount. Returns true if updating a mount's share
+  // path succeeds. Returns false if |mount_id| does not exist in |mounts_|.
+  bool UpdateSharePath(int32_t mount_id, const std::string& share_path);
 
  private:
   // Maintains the state of a single mount. Contains the mount root path and
