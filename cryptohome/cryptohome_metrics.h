@@ -332,6 +332,9 @@ void ReportDircryptoMigrationFailedNoSpaceXattrSizeInBytes(
 void ReportAsyncDbusRequestTotalTime(std::string task_name,
                                      base::TimeDelta running_time);
 
+// Reports the amount of total tasks waiting in the queue of mount thread.
+void ReportParallelTasks(int amount_of_task);
+
 // Initialization helper.
 class ScopedMetricsInitializer {
  public:

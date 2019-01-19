@@ -77,6 +77,24 @@ class MountTaskObserverBridge : public MountTaskObserver {
   CryptohomeEventSource* source_;
 };
 
+// MountThreadObserver
+class MountThreadObserver : public base::MessageLoop::TaskObserver {
+ public:
+  // This method is called when post a task
+  void PostTask();
+
+  // This method is called before processing a task.
+  void WillProcessTask(const base::PendingTask& pending_task) override;
+
+  // This method is called after processing a task.
+  void DidProcessTask(const base::PendingTask& pending_task) override;
+
+  int GetParallelTaskCount() const;
+
+ private:
+  std::atomic<int> parallel_task_count_;
+};
+
 // Service
 // Provides a wrapper for exporting CryptohomeInterface to
 // D-Bus and entering the glib run loop.
@@ -699,6 +717,7 @@ virtual gboolean InstallAttributesIsFirstInstall(gboolean* OUT_first_install,
   std::unique_ptr<Pkcs11Init> default_pkcs11_init_;
   Pkcs11Init* pkcs11_init_;
   bool initialize_tpm_;
+  MountThreadObserver mount_thread_observer_;
   base::Thread mount_thread_;
   guint async_complete_signal_;
   // A completion signal for async calls that return data.
@@ -775,6 +794,10 @@ virtual gboolean InstallAttributesIsFirstInstall(gboolean* OUT_first_install,
   // Unload any pkcs11 tokens _not_ belonging to one of the mounts in |exclude|.
   // This is used to clean up any stale loaded tokens after a cryptohome crash.
   virtual bool UnloadPkcs11Tokens(const std::vector<base::FilePath>& exclude);
+
+  // A wrapper for PostTask to mount_thread_ which also count some metrics
+  virtual void PostTask(const tracked_objects::Location& from_here,
+                        base::OnceClosure task);
 
   // Posts a message back from the mount_thread_ to the main thread to
   // reply to a DBus message.  Only call from mount_thread_-based

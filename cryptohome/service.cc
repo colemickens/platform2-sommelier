@@ -95,6 +95,27 @@ bool KeyHasWrappedAuthorizationSecrets(const Key& k) {
   return false;
 }
 
+void AddTaskObserverToThread(base::Thread* thread,
+                             base::MessageLoop::TaskObserver* task_observer) {
+  // Since MessageLoop::AddTaskObserver need to be executed in the same thread
+  // of that message loop. So we need to wrap it and post as a task.
+
+  scoped_refptr<base::SingleThreadTaskRunner> task_runner =
+      thread->task_runner();
+  if (task_runner == nullptr) {
+    LOG(ERROR) << __func__ << ": The thread doesn't have task runner.";
+    return;
+  }
+
+  task_runner->PostTask(
+      FROM_HERE,
+      base::BindOnce(
+          [](base::MessageLoop::TaskObserver* task_observer) {
+            base::MessageLoop::current()->AddTaskObserver(task_observer);
+          },
+          base::Unretained(task_observer)));
+}
+
 }  // anonymous namespace
 
 const char kPublicMountSaltFilePath[] = "/var/lib/public_mount_salt";
@@ -169,6 +190,22 @@ class DircryptoMigrationProgress : public CryptohomeEventBase {
 
   DISALLOW_COPY_AND_ASSIGN(DircryptoMigrationProgress);
 };
+
+void MountThreadObserver::PostTask() {
+  parallel_task_count_ += 1;
+}
+
+void MountThreadObserver::WillProcessTask(
+    const base::PendingTask& pending_task) {}
+
+void MountThreadObserver::DidProcessTask(
+    const base::PendingTask& pending_task) {
+  parallel_task_count_ -= 1;
+}
+
+int MountThreadObserver::GetParallelTaskCount() const {
+  return parallel_task_count_;
+}
 
 Service::Service()
     : use_tpm_(true),
@@ -306,6 +343,16 @@ CryptohomeErrorCode Service::MountErrorToCryptohomeError(
   default:
     return CRYPTOHOME_ERROR_NOT_SET;
   }
+}
+
+void Service::PostTask(const tracked_objects::Location& from_here,
+                       base::OnceClosure task) {
+  int task_count = mount_thread_observer_.GetParallelTaskCount();
+  if (task_count > 1) {
+    ReportParallelTasks(task_count);
+  }
+  mount_thread_observer_.PostTask();
+  mount_thread_.task_runner()->PostTask(from_here, std::move(task));
 }
 
 void Service::SendReply(DBusGMethodInvocation* context,
@@ -633,6 +680,10 @@ bool Service::Initialize() {
 
   mount_thread_.Start();
 
+  // Add task observer, message_loop is only availible after the thread start.
+  // We can only add observer inside the thread.
+  AddTaskObserverToThread(&mount_thread_, &mount_thread_observer_);
+
   // TODO(wad) Determine if this should only be called if
   //           tpm->IsEnabled() is true.
   if (tpm_ && initialize_tpm_) {
@@ -653,19 +704,18 @@ bool Service::Initialize() {
   last_user_activity_timestamp_time_ = platform_->GetCurrentTime();
 
   // Clean up space on start (once).
-  mount_thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&Service::DoAutoCleanup, base::Unretained(this)));
+  PostTask(FROM_HERE,
+           base::Bind(&Service::DoAutoCleanup, base::Unretained(this)));
 
   // Start scheduling periodic check for low-disk space and cleanup events.
   // Subsequent events are scheduled by the callback itself.
-  mount_thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&Service::LowDiskCallback, base::Unretained(this)));
+  PostTask(FROM_HERE,
+           base::Bind(&Service::LowDiskCallback, base::Unretained(this)));
 
   // Start scheduling periodic TPM alerts upload to UMA. Subsequent events are
   // scheduled by the callback itself.
-  mount_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(&Service::UploadAlertsDataCallback, base::Unretained(this)));
+  PostTask(FROM_HERE, base::Bind(&Service::UploadAlertsDataCallback,
+                                 base::Unretained(this)));
 
   // TODO(keescook,ellyjones) Make this mock-able.
   StatefulRecovery recovery(platform_, this);
@@ -730,8 +780,8 @@ void Service::InitializePkcs11(cryptohome::Mount* mount) {
       new MountTaskPkcs11Init(bridge, mount, NextSequence());
   LOG(INFO) << "Putting a Pkcs11_Initialize on the mount thread.";
   pkcs11_tasks_[pkcs11_init_task->sequence_id()] = pkcs11_init_task.get();
-  mount_thread_.task_runner()->PostTask(FROM_HERE,
-      base::Bind(&MountTaskPkcs11Init::Run, pkcs11_init_task.get()));
+  PostTask(FROM_HERE,
+           base::Bind(&MountTaskPkcs11Init::Run, pkcs11_init_task.get()));
 }
 
 bool Service::SeedUrandom() {
@@ -894,15 +944,14 @@ void Service::OwnershipCallback(bool status, bool took_ownership) {
         scoped_refptr<MountTaskResetTpmContext> mount_task =
             new MountTaskResetTpmContext(NULL, mount_pair.second.get(),
                                          NextSequence());
-        mount_thread_.task_runner()->PostTask(
-            FROM_HERE,
-            base::Bind(&MountTaskResetTpmContext::Run, mount_task.get()));
+        PostTask(FROM_HERE,
+                 base::Bind(&MountTaskResetTpmContext::Run, mount_task.get()));
       }
     }
   }
-  mount_thread_.task_runner()->PostTask(FROM_HERE,
-      base::Bind(&Service::ConfigureOwnedTpm, base::Unretained(this),
-                 status, took_ownership));
+  PostTask(FROM_HERE,
+           base::Bind(&Service::ConfigureOwnedTpm, base::Unretained(this),
+                      status, took_ownership));
 }
 
 void Service::ConfigureOwnedTpm(bool status, bool took_ownership) {
@@ -1019,12 +1068,11 @@ gboolean Service::CheckKeyEx(GArray* account_id,
     request.reset(NULL);
 
   // If PBs don't parse, the validation in the handler will catch it.
-  mount_thread_.task_runner()->PostTask(FROM_HERE,
-      base::Bind(&Service::DoCheckKeyEx, base::Unretained(this),
-                 base::Owned(identifier.release()),
-                 base::Owned(authorization.release()),
-                 base::Owned(request.release()),
-                 base::Unretained(context)));
+  PostTask(FROM_HERE, base::Bind(&Service::DoCheckKeyEx, base::Unretained(this),
+                                 base::Owned(identifier.release()),
+                                 base::Owned(authorization.release()),
+                                 base::Owned(request.release()),
+                                 base::Unretained(context)));
   return TRUE;
 }
 
@@ -1094,12 +1142,12 @@ gboolean Service::RemoveKeyEx(GArray* account_id,
     request.reset(NULL);
 
   // If PBs don't parse, the validation in the handler will catch it.
-  mount_thread_.task_runner()->PostTask(FROM_HERE,
+  PostTask(
+      FROM_HERE,
       base::Bind(&Service::DoRemoveKeyEx, base::Unretained(this),
                  base::Owned(identifier.release()),
                  base::Owned(authorization.release()),
-                 base::Owned(request.release()),
-                 base::Unretained(context)));
+                 base::Owned(request.release()), base::Unretained(context)));
   return TRUE;
 }
 
@@ -1156,12 +1204,11 @@ gboolean Service::ListKeysEx(GArray* account_id,
     request.reset(NULL);
 
   // If PBs don't parse, the validation in the handler will catch it.
-  mount_thread_.task_runner()->PostTask(FROM_HERE,
-      base::Bind(&Service::DoListKeysEx, base::Unretained(this),
-                 base::Owned(identifier.release()),
-                 base::Owned(authorization.release()),
-                 base::Owned(request.release()),
-                 base::Unretained(context)));
+  PostTask(FROM_HERE, base::Bind(&Service::DoListKeysEx, base::Unretained(this),
+                                 base::Owned(identifier.release()),
+                                 base::Owned(authorization.release()),
+                                 base::Owned(request.release()),
+                                 base::Unretained(context)));
   return TRUE;
 }
 
@@ -1236,12 +1283,12 @@ gboolean Service::GetKeyDataEx(GArray* account_id,
   }
 
   // If PBs don't parse, the validation in the handler will catch it.
-  mount_thread_.task_runner()->PostTask(FROM_HERE,
+  PostTask(
+      FROM_HERE,
       base::Bind(&Service::DoGetKeyDataEx, base::Unretained(this),
                  base::Owned(identifier.release()),
                  base::Owned(authorization.release()),
-                 base::Owned(request.release()),
-                 base::Unretained(context)));
+                 base::Owned(request.release()), base::Unretained(context)));
   return TRUE;
 }
 
@@ -1298,12 +1345,12 @@ gboolean Service::MigrateKeyEx(GArray* account_ary,
   }
 
   // If PBs don't parse, the validation in the handler will catch it.
-  mount_thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&Service::DoMigrateKeyEx, base::Unretained(this),
-                            base::Owned(account.release()),
-                            base::Owned(auth_request.release()),
-                            base::Owned(migrate_request.release()),
-                            base::Unretained(context)));
+  PostTask(FROM_HERE,
+           base::Bind(&Service::DoMigrateKeyEx, base::Unretained(this),
+                      base::Owned(account.release()),
+                      base::Owned(auth_request.release()),
+                      base::Owned(migrate_request.release()),
+                      base::Unretained(context)));
 
   return TRUE;
 }
@@ -1393,12 +1440,11 @@ gboolean Service::AddKeyEx(GArray* account_id,
     request.reset(NULL);
 
   // If PBs don't parse, the validation in the handler will catch it.
-  mount_thread_.task_runner()->PostTask(FROM_HERE,
-      base::Bind(&Service::DoAddKeyEx, base::Unretained(this),
-                 base::Owned(identifier.release()),
-                 base::Owned(authorization.release()),
-                 base::Owned(request.release()),
-                 base::Unretained(context)));
+  PostTask(FROM_HERE, base::Bind(&Service::DoAddKeyEx, base::Unretained(this),
+                                 base::Owned(identifier.release()),
+                                 base::Owned(authorization.release()),
+                                 base::Owned(request.release()),
+                                 base::Unretained(context)));
   return TRUE;
 }
 
@@ -1479,12 +1525,12 @@ gboolean Service::UpdateKeyEx(GArray* account_id,
     request.reset(NULL);
 
   // If PBs don't parse, the validation in the handler will catch it.
-  mount_thread_.task_runner()->PostTask(FROM_HERE,
+  PostTask(
+      FROM_HERE,
       base::Bind(&Service::DoUpdateKeyEx, base::Unretained(this),
                  base::Owned(identifier.release()),
                  base::Owned(authorization.release()),
-                 base::Owned(request.release()),
-                 base::Unretained(context)));
+                 base::Owned(request.release()), base::Unretained(context)));
   return TRUE;
 }
 
@@ -1517,10 +1563,9 @@ gboolean Service::RemoveEx(GArray* account_id, DBusGMethodInvocation* context) {
     identifier.reset(NULL);
 
   // If PBs don't parse, the validation in the handler will catch it.
-  mount_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(&Service::DoRemoveEx, base::Unretained(this),
-                 base::Owned(identifier.release()), base::Unretained(context)));
+  PostTask(FROM_HERE, base::Bind(&Service::DoRemoveEx, base::Unretained(this),
+                                 base::Owned(identifier.release()),
+                                 base::Unretained(context)));
 
   return TRUE;
 }
@@ -1539,7 +1584,7 @@ gboolean Service::RenameCryptohome(const GArray* account_id_from,
   }
 
   // If PBs don't parse, the validation in the handler will catch it.
-  mount_thread_.task_runner()->PostTask(
+  PostTask(
       FROM_HERE,
       base::Bind(&Service::DoRenameCryptohome, base::Unretained(this),
                  base::Owned(id_from.release()), base::Owned(id_to.release()),
@@ -1585,11 +1630,10 @@ gboolean Service::GetAccountDiskUsage(const GArray* account_id,
   }
 
   // If PBs don't parse, the validation in the handler will catch it.
-  mount_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(&Service::DoGetAccountDiskUsage, base::Unretained(this),
-                 base::Owned(identifier.release()),
-                 base::Unretained(response)));
+  PostTask(FROM_HERE,
+           base::Bind(&Service::DoGetAccountDiskUsage, base::Unretained(this),
+                      base::Owned(identifier.release()),
+                      base::Unretained(response)));
   return TRUE;
 }
 
@@ -1794,20 +1838,19 @@ gboolean Service::Mount(const gchar *userid,
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
 
-  mount_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(&Service::DoMount, base::Unretained(this),
-                 base::RetainedRef(user_mount), base::ConstRef(credentials),
-                 base::ConstRef(mount_args), base::Unretained(&event),
-                 base::Unretained(&return_code),
-                 base::Unretained(&return_status)));
+  PostTask(FROM_HERE,
+           base::Bind(&Service::DoMount, base::Unretained(this),
+                      base::RetainedRef(user_mount),
+                      base::ConstRef(credentials), base::ConstRef(mount_args),
+                      base::Unretained(&event), base::Unretained(&return_code),
+                      base::Unretained(&return_status)));
 
   event.Wait();
 
   // Update the timestamp for old user detection in the background.
-  mount_thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&Service::DoUpdateTimestamp, base::Unretained(this),
-                            base::RetainedRef(user_mount)));
+  PostTask(FROM_HERE,
+           base::Bind(&Service::DoUpdateTimestamp, base::Unretained(this),
+                      base::RetainedRef(user_mount)));
 
   // We only report successful mounts.
   if (return_status && !return_code)
@@ -2110,12 +2153,11 @@ gboolean Service::MountEx(const GArray *account_id,
     request.reset(NULL);
 
   // If PBs don't parse, the validation in the handler will catch it.
-  mount_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(&Service::DoMountEx, base::Unretained(this),
-                 base::Passed(std::move(identifier)),
-                 base::Passed(std::move(authorization)),
-                 base::Passed(std::move(request)), base::Unretained(context)));
+  PostTask(FROM_HERE, base::Bind(&Service::DoMountEx, base::Unretained(this),
+                                 base::Passed(std::move(identifier)),
+                                 base::Passed(std::move(authorization)),
+                                 base::Passed(std::move(request)),
+                                 base::Unretained(context)));
   return TRUE;
 }
 
@@ -2171,10 +2213,10 @@ gboolean Service::MountGuestEx(GArray* request,
 
   ReportTimerStart(kAsyncGuestMountTimer);
 
-  mount_thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&Service::DoMountGuestEx, base::Unretained(this),
-                            guest_mount, base::Passed(std::move(request_pb)),
-                            base::Unretained(context)));
+  PostTask(FROM_HERE,
+           base::Bind(&Service::DoMountGuestEx, base::Unretained(this),
+                      guest_mount, base::Passed(std::move(request_pb)),
+                      base::Unretained(context)));
   return TRUE;
 }
 
@@ -2459,11 +2501,10 @@ void Service::DoSignBootLockbox(const brillo::Blob& request,
 
 gboolean Service::SignBootLockbox(const GArray* request,
                                   DBusGMethodInvocation* context) {
-  mount_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(&Service::DoSignBootLockbox, base::Unretained(this),
-                 brillo::Blob(request->data, request->data + request->len),
-                 base::Unretained(context)));
+  PostTask(FROM_HERE,
+           base::Bind(&Service::DoSignBootLockbox, base::Unretained(this),
+                      brillo::Blob(request->data, request->data + request->len),
+                      base::Unretained(context)));
   return TRUE;
 }
 
@@ -2486,11 +2527,10 @@ void Service::DoVerifyBootLockbox(const brillo::Blob& request,
 
 gboolean Service::VerifyBootLockbox(const GArray* request,
                                     DBusGMethodInvocation* context) {
-  mount_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(&Service::DoVerifyBootLockbox, base::Unretained(this),
-                 brillo::Blob(request->data, request->data + request->len),
-                 base::Unretained(context)));
+  PostTask(FROM_HERE,
+           base::Bind(&Service::DoVerifyBootLockbox, base::Unretained(this),
+                      brillo::Blob(request->data, request->data + request->len),
+                      base::Unretained(context)));
   return TRUE;
 }
 
@@ -2510,11 +2550,10 @@ void Service::DoFinalizeBootLockbox(const brillo::Blob& request,
 
 gboolean Service::FinalizeBootLockbox(const GArray* request,
                                       DBusGMethodInvocation* context) {
-  mount_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(&Service::DoFinalizeBootLockbox, base::Unretained(this),
-                 brillo::Blob(request->data, request->data + request->len),
-                 base::Unretained(context)));
+  PostTask(FROM_HERE,
+           base::Bind(&Service::DoFinalizeBootLockbox, base::Unretained(this),
+                      brillo::Blob(request->data, request->data + request->len),
+                      base::Unretained(context)));
   return TRUE;
 }
 
@@ -2537,11 +2576,10 @@ void Service::DoGetBootAttribute(const brillo::Blob& request,
 
 gboolean Service::GetBootAttribute(const GArray* request,
                                    DBusGMethodInvocation* context) {
-  mount_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(&Service::DoGetBootAttribute, base::Unretained(this),
-                 brillo::Blob(request->data, request->data + request->len),
-                 base::Unretained(context)));
+  PostTask(FROM_HERE,
+           base::Bind(&Service::DoGetBootAttribute, base::Unretained(this),
+                      brillo::Blob(request->data, request->data + request->len),
+                      base::Unretained(context)));
   return TRUE;
 }
 
@@ -2559,11 +2597,10 @@ void Service::DoSetBootAttribute(const brillo::Blob& request,
 
 gboolean Service::SetBootAttribute(const GArray* request,
                                    DBusGMethodInvocation* context) {
-  mount_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(&Service::DoSetBootAttribute, base::Unretained(this),
-                 brillo::Blob(request->data, request->data + request->len),
-                 base::Unretained(context)));
+  PostTask(FROM_HERE,
+           base::Bind(&Service::DoSetBootAttribute, base::Unretained(this),
+                      brillo::Blob(request->data, request->data + request->len),
+                      base::Unretained(context)));
   return TRUE;
 }
 
@@ -2583,7 +2620,7 @@ void Service::DoFlushAndSignBootAttributes(const brillo::Blob& request,
 
 gboolean Service::FlushAndSignBootAttributes(const GArray* request,
                                              DBusGMethodInvocation* context) {
-  mount_thread_.task_runner()->PostTask(
+  PostTask(
       FROM_HERE,
       base::Bind(&Service::DoFlushAndSignBootAttributes, base::Unretained(this),
                  brillo::Blob(request->data, request->data + request->len),
@@ -2611,11 +2648,10 @@ void Service::DoGetLoginStatus(const brillo::SecureBlob& request,
 
 gboolean Service::GetLoginStatus(const GArray* request,
                                  DBusGMethodInvocation* context) {
-  mount_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(&Service::DoGetLoginStatus, base::Unretained(this),
-                 SecureBlob(request->data, request->data + request->len),
-                 base::Unretained(context)));
+  PostTask(FROM_HERE,
+           base::Bind(&Service::DoGetLoginStatus, base::Unretained(this),
+                      SecureBlob(request->data, request->data + request->len),
+                      base::Unretained(context)));
   return TRUE;
 }
 
@@ -2690,10 +2726,10 @@ void Service::DoGetTpmStatus(const brillo::SecureBlob& request,
 
 gboolean Service::GetTpmStatus(const GArray* request,
                                DBusGMethodInvocation* context) {
-  mount_thread_.task_runner()->PostTask(FROM_HERE,
-      base::Bind(&Service::DoGetTpmStatus, base::Unretained(this),
-                 SecureBlob(request->data, request->data + request->len),
-                 base::Unretained(context)));
+  PostTask(FROM_HERE,
+           base::Bind(&Service::DoGetTpmStatus, base::Unretained(this),
+                      SecureBlob(request->data, request->data + request->len),
+                      base::Unretained(context)));
   return TRUE;
 }
 
@@ -2730,11 +2766,11 @@ void Service::DoGetFirmwareManagementParameters(
 
 gboolean Service::GetFirmwareManagementParameters(const GArray* request,
     DBusGMethodInvocation* context) {
-  mount_thread_.task_runner()->PostTask(FROM_HERE,
-      base::Bind(&Service::DoGetFirmwareManagementParameters,
-                 base::Unretained(this),
-                 SecureBlob(request->data, request->data + request->len),
-                 base::Unretained(context)));
+  PostTask(FROM_HERE,
+           base::Bind(&Service::DoGetFirmwareManagementParameters,
+                      base::Unretained(this),
+                      SecureBlob(request->data, request->data + request->len),
+                      base::Unretained(context)));
   return TRUE;
 }
 
@@ -2778,11 +2814,11 @@ void Service::DoSetFirmwareManagementParameters(
 
 gboolean Service::SetFirmwareManagementParameters(const GArray* request,
                           DBusGMethodInvocation* context) {
-  mount_thread_.task_runner()->PostTask(FROM_HERE,
-      base::Bind(&Service::DoSetFirmwareManagementParameters,
-                 base::Unretained(this),
-                 SecureBlob(request->data, request->data + request->len),
-                 base::Unretained(context)));
+  PostTask(FROM_HERE,
+           base::Bind(&Service::DoSetFirmwareManagementParameters,
+                      base::Unretained(this),
+                      SecureBlob(request->data, request->data + request->len),
+                      base::Unretained(context)));
   return TRUE;
 }
 
@@ -2808,11 +2844,11 @@ void Service::DoRemoveFirmwareManagementParameters(
 
 gboolean Service::RemoveFirmwareManagementParameters(const GArray* request,
                              DBusGMethodInvocation* context) {
-  mount_thread_.task_runner()->PostTask(FROM_HERE,
-      base::Bind(&Service::DoRemoveFirmwareManagementParameters,
-                 base::Unretained(this),
-                 SecureBlob(request->data, request->data + request->len),
-                 base::Unretained(context)));
+  PostTask(FROM_HERE,
+           base::Bind(&Service::DoRemoveFirmwareManagementParameters,
+                      base::Unretained(this),
+                      SecureBlob(request->data, request->data + request->len),
+                      base::Unretained(context)));
   return TRUE;
 }
 
@@ -3104,12 +3140,9 @@ gboolean Service::MigrateToDircrypto(const GArray* account_id,
                                      : MigrationType::FULL;
   // This Dbus method just kicks the migration task on the mount thread,
   // and replies immediately.
-  mount_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(&Service::DoMigrateToDircrypto,
-                 base::Unretained(this),
-                 base::Owned(identifier.release()),
-                 migration_type));
+  PostTask(FROM_HERE,
+           base::Bind(&Service::DoMigrateToDircrypto, base::Unretained(this),
+                      base::Owned(identifier.release()), migration_type));
   return TRUE;
 }
 
@@ -3159,7 +3192,7 @@ gboolean Service::NeedsDircryptoMigration(const GArray* account_id,
 
 gboolean Service::GetSupportedKeyPolicies(const GArray* request,
                                           DBusGMethodInvocation* context) {
-  mount_thread_.task_runner()->PostTask(
+  PostTask(
       FROM_HERE,
       base::Bind(&Service::DoGetSupportedKeyPolicies, base::Unretained(this),
                  std::string(request->data, request->data + request->len),

@@ -59,6 +59,7 @@ constexpr char kCryptohomeLEResultHistogramPrefix[] =
     "Cryptohome.LECredential";
 constexpr char kCryptohomeAsyncDBusRequestsPrefix[] =
     "Cryptohome.AsyncDBusRequest.";
+constexpr char kCryptohomeParallelTasksPrefix[] = "Cryptohome.ParallelTasks";
 constexpr char kCryptohomeLESyncOutcomeHistogramSuffix[] =
     ".SyncOutcome";
 constexpr char kHomedirEncryptionTypeHistogram[] =
@@ -413,6 +414,16 @@ void ReportDircryptoMigrationFailedNoSpaceXattrSizeInBytes(
                        kMin,
                        kMax,
                        kNumBuckets);
+}
+
+void ReportParallelTasks(int amount_of_task) {
+  if (!g_metrics) {
+    return;
+  }
+
+  constexpr int kMin = 1, kMax = 50, kNumBuckets = 50;
+  g_metrics->SendToUMA(kCryptohomeParallelTasksPrefix, amount_of_task, kMin,
+                       kMax, kNumBuckets);
 }
 
 void ReportAsyncDbusRequestTotalTime(std::string task_name,

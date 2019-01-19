@@ -195,9 +195,7 @@ gboolean ServiceMonolithic::AsyncTpmAttestationCreateEnrollRequest(
       observer, attestation_, GetPCAType(pca_type), NextSequence());
   *OUT_async_id = task->sequence_id();
   LogAsyncIdInfo(*OUT_async_id, __func__, base::Time::Now());
-  mount_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(&CreateEnrollRequestTask::Run, task.get()));
+  PostTask(FROM_HERE, base::Bind(&CreateEnrollRequestTask::Run, task.get()));
   return TRUE;
 }
 
@@ -225,9 +223,7 @@ gboolean ServiceMonolithic::AsyncTpmAttestationEnroll(
       observer, attestation_, GetPCAType(pca_type), blob, NextSequence());
   *OUT_async_id = task->sequence_id();
   LogAsyncIdInfo(*OUT_async_id, __func__, base::Time::Now());
-  mount_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(&EnrollTask::Run, task.get()));
+  PostTask(FROM_HERE, base::Bind(&EnrollTask::Run, task.get()));
   return TRUE;
 }
 
@@ -271,9 +267,7 @@ gboolean ServiceMonolithic::AsyncTpmAttestationCreateCertRequest(
                                 NextSequence());
   *OUT_async_id = task->sequence_id();
   LogAsyncIdInfo(*OUT_async_id, __func__, base::Time::Now());
-  mount_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(&CreateCertRequestTask::Run, task.get()));
+  PostTask(FROM_HERE, base::Bind(&CreateCertRequestTask::Run, task.get()));
   return TRUE;
 }
 
@@ -322,9 +316,7 @@ gboolean ServiceMonolithic::AsyncTpmAttestationFinishCertRequest(
                                 NextSequence());
   *OUT_async_id = task->sequence_id();
   LogAsyncIdInfo(*OUT_async_id, __func__, base::Time::Now());
-  mount_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(&FinishCertRequestTask::Run, task.get()));
+  PostTask(FROM_HERE, base::Bind(&FinishCertRequestTask::Run, task.get()));
   return TRUE;
 }
 
@@ -402,9 +394,7 @@ gboolean ServiceMonolithic::TpmAttestationRegisterKey(
                           NextSequence());
   *OUT_async_id = task->sequence_id();
   LogAsyncIdInfo(*OUT_async_id, __func__, base::Time::Now());
-  mount_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(&RegisterKeyTask::Run, task.get()));
+  PostTask(FROM_HERE, base::Bind(&RegisterKeyTask::Run, task.get()));
   return TRUE;
 }
 
@@ -462,9 +452,7 @@ gboolean ServiceMonolithic::TpmAttestationSignEnterpriseVaChallenge(
                             NextSequence());
   *OUT_async_id = task->sequence_id();
   LogAsyncIdInfo(*OUT_async_id, __func__, base::Time::Now());
-  mount_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(&SignChallengeTask::Run, task.get()));
+  PostTask(FROM_HERE, base::Bind(&SignChallengeTask::Run, task.get()));
   return TRUE;
 }
 
@@ -489,9 +477,7 @@ gboolean ServiceMonolithic::TpmAttestationSignSimpleChallenge(
                             NextSequence());
   *OUT_async_id = task->sequence_id();
   LogAsyncIdInfo(*OUT_async_id, __func__, base::Time::Now());
-  mount_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(&SignChallengeTask::Run, task.get()));
+  PostTask(FROM_HERE, base::Bind(&SignChallengeTask::Run, task.get()));
   return TRUE;
 }
 
@@ -600,12 +586,11 @@ void ServiceMonolithic::DoGetEndorsementInfo(const brillo::SecureBlob& request,
 
 gboolean ServiceMonolithic::GetEndorsementInfo(const GArray* request,
                                      DBusGMethodInvocation* context) {
-  mount_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(
-          &ServiceMonolithic::DoGetEndorsementInfo, base::Unretained(this),
-          brillo::SecureBlob(request->data, request->data + request->len),
-          base::Unretained(context)));
+  PostTask(FROM_HERE,
+           base::Bind(
+               &ServiceMonolithic::DoGetEndorsementInfo, base::Unretained(this),
+               brillo::SecureBlob(request->data, request->data + request->len),
+               base::Unretained(context)));
   return TRUE;
 }
 
@@ -696,12 +681,11 @@ void ServiceMonolithic::DoInitializeCastKey(const brillo::SecureBlob& request,
 
 gboolean ServiceMonolithic::InitializeCastKey(const GArray* request,
                                     DBusGMethodInvocation* context) {
-  mount_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(
-          &ServiceMonolithic::DoInitializeCastKey, base::Unretained(this),
-          brillo::SecureBlob(request->data, request->data + request->len),
-          base::Unretained(context)));
+  PostTask(FROM_HERE,
+           base::Bind(
+               &ServiceMonolithic::DoInitializeCastKey, base::Unretained(this),
+               brillo::SecureBlob(request->data, request->data + request->len),
+               base::Unretained(context)));
   return TRUE;
 }
 
