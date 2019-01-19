@@ -275,4 +275,9 @@ bool MountManager::UpdateMountCredential(int32_t mount_id,
   return mount_tracker_->UpdateCredential(mount_id, std::move(credential));
 }
 
+bool MountManager::UpdateSharePath(int32_t mount_id,
+                                   const std::string& share_path) {
+  return mount_tracker_->UpdateSharePath(mount_id, share_path);
+}
+
 }  // namespace smbprovider

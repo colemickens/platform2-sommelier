@@ -110,6 +110,10 @@ class MountManagerTest : public testing::Test {
   }
 
  protected:
+  bool GetRootPath(int32_t mount_id, std::string* mount_path) const {
+    return mounts_->GetFullPath(mount_id, "" /* entry_path */, mount_path);
+  }
+
   std::unique_ptr<MountManager> mounts_;
   TempFileManager temp_files_;
   bool enable_ntlm_ = false;
@@ -812,6 +816,46 @@ TEST_F(MountManagerTest, TestPremountFailsOnExistingMount) {
       kMountRoot, MountConfig(true /* enable_ntlm */), &mount_id2));
   // Check that mount_id2 did not get set on unsuccessful premount.
   EXPECT_EQ(-1, mount_id2);
+}
+
+TEST_F(MountManagerTest, TestUpdateSharePathSucceeds) {
+  int mount_id;
+
+  EXPECT_EQ(0, mounts_->MountCount());
+  EXPECT_TRUE(AddMount(kMountRoot, &mount_id));
+
+  const std::string new_path = "smb://192.168.50.105/testshare";
+  EXPECT_TRUE(mounts_->UpdateSharePath(mount_id, new_path));
+
+  std::string updated_path;
+  EXPECT_TRUE(GetRootPath(mount_id, &updated_path));
+  EXPECT_EQ(new_path, updated_path);
+
+  EXPECT_FALSE(mounts_->IsAlreadyMounted(kMountRoot));
+  EXPECT_TRUE(mounts_->IsAlreadyMounted(new_path));
+}
+
+TEST_F(MountManagerTest, TestUpdateSharePathDoesNotAddANewMount) {
+  int mount_id;
+
+  EXPECT_EQ(0, mounts_->MountCount());
+  EXPECT_TRUE(AddMount(kMountRoot, &mount_id));
+  EXPECT_EQ(1, mounts_->MountCount());
+
+  const std::string new_path = "smb://192.168.50.105/testshare";
+  EXPECT_TRUE(mounts_->UpdateSharePath(mount_id, new_path));
+
+  EXPECT_FALSE(mounts_->IsAlreadyMounted(kMountRoot));
+  EXPECT_TRUE(mounts_->IsAlreadyMounted(new_path));
+  EXPECT_EQ(1, mounts_->MountCount());
+}
+
+TEST_F(MountManagerTest, TestUpdateShareFailsOnNonExistantMount) {
+  EXPECT_EQ(0, mounts_->MountCount());
+
+  const std::string new_path = "smb://192.168.50.105/testshare";
+  EXPECT_FALSE(mounts_->UpdateSharePath(999 /* mount_id */, new_path));
+  EXPECT_FALSE(mounts_->IsAlreadyMounted(kMountRoot));
 }
 
 }  // namespace smbprovider
