@@ -121,8 +121,9 @@ dump_stats_and_exit() {
   start tlsdated
   echo ""
   echo "Finished ${cur} iterations."
-  echo "Suspend_failures: $(( cur -
+  echo "Suspend failures: $(( cur -
                               ($(get_success_count) - initial_successes) ))"
+  echo "Wakealarm errors: ${wakealarm_errors}"
   echo "Firmware log errors: ${firmware_errors}"
 
   if [ "${check_s0ix_errors}" = 1 ]; then
@@ -153,7 +154,7 @@ if [ "${USER}" != root ]; then
 fi
 
 if [ ${FLAGS_backup_rtc} -eq ${FLAGS_TRUE} ] &&
-  [ ! -e /sys/class/rtc/rtc1/wakealarm ]; then
+   [ ! -e /sys/class/rtc/rtc1/wakealarm ]; then
   echo "rtc1 not present, not setting second wakealarm"
   FLAGS_backup_rtc=${FLAGS_FALSE}
 fi
@@ -229,6 +230,7 @@ disable_dark_resume
 stop tlsdated
 
 cur=0
+wakealarm_errors=0
 firmware_errors=0
 s0ix_errors=0
 last_successes=${initial_successes}
@@ -265,6 +267,25 @@ while true; do
     # printf output from above.
     echo " running ${FLAGS_post_resume_command}"
     ${FLAGS_post_resume_command}
+  fi
+
+  # Wakealarm is expected to be cleared after the set wakeup time,
+  # which is the resume time if the device does not resume due to
+  # other sources. Although we always clear the wakealarm file before
+  # setting it, we still report this error if it is not cleared.
+  cur_time="$(cat /sys/class/rtc/rtc0/since_epoch)"
+  main_wakealarm="$(cat /sys/class/rtc/rtc0/wakealarm)"
+  if [ -n "${main_wakealarm}" ] && [ ${main_wakealarm} -lt ${cur_time} ]; then
+    : $(( wakealarm_errors += 1 ))
+    echo "Wakealarm is not cleared (ignoring)."
+  fi
+  if [ ${FLAGS_backup_rtc} -eq ${FLAGS_TRUE} ]; then
+    backup_wakealarm="$(cat /sys/class/rtc/rtc1/wakealarm)"
+    if [ -n "${backup_wakealarm}" ] &&
+       [ ${backup_wakealarm} -lt ${cur_time} ]; then
+      : $(( wakealarm_errors += 1 ))
+      echo "Backup wakealarm is not cleared (ignoring)."
+    fi
   fi
 
   # Look for errors in firmware log.
