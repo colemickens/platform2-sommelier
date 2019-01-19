@@ -667,6 +667,12 @@ virtual gboolean InstallAttributesIsFirstInstall(gboolean* OUT_first_install,
  protected:
   FRIEND_TEST(ServiceTest, NoDeadlocksInInitializeTpmComplete);
 
+  // Meta data for each imcoming dbus requests
+  struct RequestTrackedInfo {
+    std::string name;
+    base::Time start_time;
+  };
+
   bool use_tpm_;
 
   GMainLoop* loop_;
@@ -705,6 +711,8 @@ virtual gboolean InstallAttributesIsFirstInstall(gboolean* OUT_first_install,
   bool reported_pkcs11_init_fail_;
   // Keeps track of whether the device is enterprise-owned.
   bool enterprise_owned_;
+  // Track the metadata of incoming dbus request, used for reporting UMA.
+  std::map<int, RequestTrackedInfo> async_id_tracked_info_;
 
   // Should we skip the ownership taken signal connection. This value shouldn't
   // be true unless it's for testing purposes.
@@ -812,6 +820,14 @@ virtual gboolean InstallAttributesIsFirstInstall(gboolean* OUT_first_install,
   // all members defined for that class will be gone, while mount_thread_
   // will continue running tasks until stopped in ~Service.
   void StopTasks();
+
+  // Store the information for |async_id| which is unique of dbus requests.
+  // |name| and |start_time| will store and report to UMA when this |async_id|
+  // is replied.
+  void LogAsyncIdInfo(int async_id, std::string name, base::Time start_time);
+  // Report the UMA of the running time of |async_id| and cleanup the stored
+  // information.
+  void SendAsyncIdInfoToUma(int async_id, base::Time finished_time);
 
  private:
   FRIEND_TEST(ServiceTest, GetPublicMountPassKey);

@@ -457,6 +457,7 @@ gboolean ServiceDistributed::AsyncTpmAttestationCreateEnrollRequest(
     return FALSE;
   }
   *OUT_async_id = NextSequence();
+  LogAsyncIdInfo(*OUT_async_id, __func__, base::Time::Now());
   attestation::CreateEnrollRequestRequest request;
   request.set_aca_type(aca_type);
   auto callback = base::Bind(
@@ -509,6 +510,7 @@ gboolean ServiceDistributed::AsyncTpmAttestationEnroll(gint pca_type,
     return FALSE;
   }
   *OUT_async_id = NextSequence();
+  LogAsyncIdInfo(*OUT_async_id, __func__, base::Time::Now());
   attestation::FinishEnrollRequest request;
   request.set_aca_type(aca_type);
   request.set_pca_response(pca_response->data, pca_response->len);
@@ -575,6 +577,7 @@ gboolean ServiceDistributed::AsyncTpmAttestationCreateCertRequest(
     return FALSE;
   }
   *OUT_async_id = NextSequence();
+  LogAsyncIdInfo(*OUT_async_id, __func__, base::Time::Now());
   attestation::CreateCertificateRequestRequest request;
   request.set_aca_type(aca_type);
   request.set_certificate_profile(GetProfile(certificate_profile));
@@ -639,6 +642,7 @@ gboolean ServiceDistributed::AsyncTpmAttestationFinishCertRequest(
     GError** error) {
   VLOG(1) << __func__;
   *OUT_async_id = NextSequence();
+  LogAsyncIdInfo(*OUT_async_id, __func__, base::Time::Now());
   attestation::FinishCertificateRequestRequest request;
   request.set_pca_response(pca_response->data, pca_response->len);
   request.set_key_label(key_name);
@@ -775,6 +779,7 @@ gboolean ServiceDistributed::TpmAttestationRegisterKey(
     GError** error) {
   VLOG(1) << __func__;
   *OUT_async_id = NextSequence();
+  LogAsyncIdInfo(*OUT_async_id, __func__, base::Time::Now());
   attestation::RegisterKeyWithChapsTokenRequest request;
   request.set_key_label(key_name);
   if (is_user_specific) {
@@ -829,6 +834,7 @@ gboolean ServiceDistributed::TpmAttestationSignEnterpriseVaChallenge(
     GError** error) {
   VLOG(1) << __func__;
   *OUT_async_id = NextSequence();
+  LogAsyncIdInfo(*OUT_async_id, __func__, base::Time::Now());
   attestation::VAType att_va_type;
   if (!ConvertIntegerToVAType(va_type, &att_va_type, error)) {
     return FALSE;
@@ -868,6 +874,7 @@ gboolean ServiceDistributed::TpmAttestationSignSimpleChallenge(
     GError** error) {
   VLOG(1) << __func__;
   *OUT_async_id = NextSequence();
+  LogAsyncIdInfo(*OUT_async_id, __func__, base::Time::Now());
   attestation::SignSimpleChallengeRequest request;
   request.set_key_label(key_name);
   if (is_user_specific) {

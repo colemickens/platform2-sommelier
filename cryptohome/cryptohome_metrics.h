@@ -5,6 +5,8 @@
 #ifndef CRYPTOHOME_CRYPTOHOME_METRICS_H_
 #define CRYPTOHOME_CRYPTOHOME_METRICS_H_
 
+#include <string>
+
 #include <base/files/file.h>
 
 #include "cryptohome/le_credential_manager.h"
@@ -325,6 +327,10 @@ void ReportDircryptoMigrationFailedNoSpace(int initial_migration_free_space_mb,
 // and the xattr that caused the setxattr call to fail.
 void ReportDircryptoMigrationFailedNoSpaceXattrSizeInBytes(
     int total_xattr_size_bytes);
+
+// Reports the total running time of a dbus request.
+void ReportAsyncDbusRequestTotalTime(std::string task_name,
+                                     base::TimeDelta running_time);
 
 // Initialization helper.
 class ScopedMetricsInitializer {

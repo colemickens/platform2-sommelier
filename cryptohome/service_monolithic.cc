@@ -194,6 +194,7 @@ gboolean ServiceMonolithic::AsyncTpmAttestationCreateEnrollRequest(
   scoped_refptr<CreateEnrollRequestTask> task = new CreateEnrollRequestTask(
       observer, attestation_, GetPCAType(pca_type), NextSequence());
   *OUT_async_id = task->sequence_id();
+  LogAsyncIdInfo(*OUT_async_id, __func__, base::Time::Now());
   mount_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&CreateEnrollRequestTask::Run, task.get()));
@@ -223,6 +224,7 @@ gboolean ServiceMonolithic::AsyncTpmAttestationEnroll(
   scoped_refptr<EnrollTask> task = new EnrollTask(
       observer, attestation_, GetPCAType(pca_type), blob, NextSequence());
   *OUT_async_id = task->sequence_id();
+  LogAsyncIdInfo(*OUT_async_id, __func__, base::Time::Now());
   mount_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&EnrollTask::Run, task.get()));
@@ -268,6 +270,7 @@ gboolean ServiceMonolithic::AsyncTpmAttestationCreateCertRequest(
                                 request_origin,
                                 NextSequence());
   *OUT_async_id = task->sequence_id();
+  LogAsyncIdInfo(*OUT_async_id, __func__, base::Time::Now());
   mount_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&CreateCertRequestTask::Run, task.get()));
@@ -318,6 +321,7 @@ gboolean ServiceMonolithic::AsyncTpmAttestationFinishCertRequest(
                                 key_name,
                                 NextSequence());
   *OUT_async_id = task->sequence_id();
+  LogAsyncIdInfo(*OUT_async_id, __func__, base::Time::Now());
   mount_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&FinishCertRequestTask::Run, task.get()));
@@ -397,6 +401,7 @@ gboolean ServiceMonolithic::TpmAttestationRegisterKey(
                           key_name,
                           NextSequence());
   *OUT_async_id = task->sequence_id();
+  LogAsyncIdInfo(*OUT_async_id, __func__, base::Time::Now());
   mount_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&RegisterKeyTask::Run, task.get()));
@@ -456,6 +461,7 @@ gboolean ServiceMonolithic::TpmAttestationSignEnterpriseVaChallenge(
                             challenge_blob,
                             NextSequence());
   *OUT_async_id = task->sequence_id();
+  LogAsyncIdInfo(*OUT_async_id, __func__, base::Time::Now());
   mount_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&SignChallengeTask::Run, task.get()));
@@ -482,6 +488,7 @@ gboolean ServiceMonolithic::TpmAttestationSignSimpleChallenge(
                             challenge_blob,
                             NextSequence());
   *OUT_async_id = task->sequence_id();
+  LogAsyncIdInfo(*OUT_async_id, __func__, base::Time::Now());
   mount_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::Bind(&SignChallengeTask::Run, task.get()));

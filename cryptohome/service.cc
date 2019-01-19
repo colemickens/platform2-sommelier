@@ -810,6 +810,7 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
       if (!result->return_status()) {
         RemoveMount(result->mount().get());
       }
+      SendAsyncIdInfoToUma(result->sequence_id(), base::Time::Now());
     } else {
       brillo::glib::ScopedArray tmp_array(g_array_new(FALSE, FALSE, 1));
       g_array_append_vals(tmp_array.get(),
@@ -822,6 +823,7 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
                     result->return_status(),
                     tmp_array.get());
       brillo::SecureMemset(tmp_array.get()->data, 0, tmp_array.get()->len);
+      SendAsyncIdInfoToUma(result->sequence_id(), base::Time::Now());
     }
     if (result->pkcs11_init()) {
       LOG(INFO) << "An asynchronous mount request with sequence id: "
@@ -3257,6 +3259,23 @@ void Service::PreMountCallback() {
 
 void Service::PostTaskToEventLoop(base::OnceClosure task) {
   event_source_.AddEvent(std::make_unique<ClosureEvent>(std::move(task)));
+}
+
+void Service::LogAsyncIdInfo(int async_id,
+                             std::string name,
+                             base::Time start_time) {
+  async_id_tracked_info_[async_id] = {name, start_time};
+}
+
+void Service::SendAsyncIdInfoToUma(int async_id, base::Time finished_time) {
+  auto it = async_id_tracked_info_.find(async_id);
+  if (it == async_id_tracked_info_.end()) {
+    LOG(WARNING) << __func__ << ": async_id: " << async_id << " not found.";
+    return;
+  }
+  const RequestTrackedInfo& info = it->second;
+  ReportAsyncDbusRequestTotalTime(info.name, finished_time - info.start_time);
+  async_id_tracked_info_.erase(it);
 }
 
 }  // namespace cryptohome
