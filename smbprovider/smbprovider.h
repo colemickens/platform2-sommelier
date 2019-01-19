@@ -145,6 +145,8 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
                 int32_t* error_code,
                 int32_t* mount_id) override;
 
+  int32_t UpdateSharePath(const ProtoBlob& options_blob) override;
+
   // Register DBus object and interfaces.
   void RegisterAsync(
       const AsyncEventSequencer::CompletionAction& completion_callback);

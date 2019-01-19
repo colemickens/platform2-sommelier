@@ -668,6 +668,22 @@ void SmbProvider::Premount(const ProtoBlob& options_blob,
   }
 }
 
+int32_t SmbProvider::UpdateSharePath(const ProtoBlob& options_blob) {
+  int32_t error_code;
+  UpdateSharePathOptionsProto options;
+
+  const bool success =
+      ParseOptionsProto(options_blob, &options, &error_code) &&
+      mount_manager_->UpdateSharePath(options.mount_id(), options.path());
+
+  if (!success) {
+    LOG(ERROR) << "Failed to update share path of mount id: "
+               << options.mount_id();
+    return static_cast<int32_t>(ERROR_NOT_FOUND);
+  }
+  return static_cast<int32_t>(ERROR_OK);
+}
+
 HostnamesProto SmbProvider::BuildHostnamesProto(
     const std::vector<std::string>& hostnames) const {
   HostnamesProto hostnames_proto;

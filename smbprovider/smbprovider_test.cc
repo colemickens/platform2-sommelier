@@ -295,6 +295,12 @@ class SmbProviderTest : public testing::Test {
     fd->reset(temp_file_manager_.CreateTempFile(data).release());
     EXPECT_LE(1, fd->get());
   }
+
+  bool GetRootPath(int32_t mount_id, std::string* mount_path) const {
+    return mount_manager_->GetFullPath(mount_id, "" /* entry_path */,
+                                       mount_path);
+  }
+
   std::string krb5_conf_path_;
   std::string krb5_ccache_path_;
   base::ScopedTempDir krb_temp_dir_;
@@ -3631,6 +3637,37 @@ TEST_F(SmbProviderTest, TestPremountFailsOnExistingMount) {
   EXPECT_EQ(ERROR_IN_USE, CastError(error_code));
   // Check that a mount_id did not get assigned on a failed premount.
   EXPECT_EQ(-1, mount_id2);
+}
+
+TEST_F(SmbProviderTest, TestUpdateSharePathSucceeds) {
+  EXPECT_EQ(0, mount_manager_->MountCount());
+
+  const int32_t mount_id = PrepareMount();
+
+  EXPECT_EQ(1, mount_manager_->MountCount());
+
+  const std::string new_path = "smb://192.168.1.1/testshare";
+  ProtoBlob blob = CreateUpdateSharePathOptionsBlob(mount_id, new_path);
+
+  EXPECT_EQ(ERROR_OK, smbprovider_->UpdateSharePath(blob));
+
+  std::string updated_path;
+  EXPECT_TRUE(GetRootPath(mount_id, &updated_path));
+  EXPECT_EQ(new_path, updated_path);
+
+  EXPECT_FALSE(mount_manager_->IsAlreadyMounted(GetDefaultMountRoot()));
+  EXPECT_TRUE(mount_manager_->IsAlreadyMounted(new_path));
+}
+
+TEST_F(SmbProviderTest, TestUpdateSharePathFailsOnNonExistantMount) {
+  EXPECT_EQ(0, mount_manager_->MountCount());
+
+  const std::string new_path = "smb://192.168.1.1/testshare";
+  ProtoBlob blob =
+      CreateUpdateSharePathOptionsBlob(999 /* mount_id */, new_path);
+
+  EXPECT_EQ(ERROR_NOT_FOUND, smbprovider_->UpdateSharePath(blob));
+  EXPECT_FALSE(mount_manager_->IsAlreadyMounted(new_path));
 }
 
 }  // namespace smbprovider
