@@ -363,6 +363,24 @@ crypto::ScopedRSA CreateRSAKeyFromObject(const chaps::Object* key_object) {
   return rsa;
 }
 
+// TODO(crbug/916023): Move OpenSSL utility to cross daemon library.
+// Return the length (in bytes) of group order of the EC key |key| or 0 on error
+// which is aligned with OpenSSL design.
+size_t GetGroupOrderLengthFromEcKey(const crypto::ScopedEC_KEY& key) {
+  crypto::ScopedBIGNUM order(BN_new());
+  if (order == nullptr)
+    return 0;
+
+  const EC_GROUP* group = EC_KEY_get0_group(key.get());
+  if (group == nullptr)
+    return 0;
+
+  if (!EC_GROUP_get_order(group, order.get(), nullptr))
+    return 0;
+
+  return BN_num_bytes(order.get());
+}
+
 }  // namespace
 
 namespace chaps {
@@ -1493,10 +1511,16 @@ bool SessionImpl::ECCSign(OperationContext* context) {
     return false;
   }
 
-  // The resulting signature is always of length 2 * nLen.
-  // The first half of the signature is r and the second half is s
-  const string& signature =
-      ConvertFromBIGNUM(sig->r) + ConvertFromBIGNUM(sig->s);
+  // The resulting signature is always of length |2 * nLen|, where nLen is the
+  // maximum size of the EC group. The first half of the signature is r and the
+  // second half is s.
+  int max_length = GetGroupOrderLengthFromEcKey(key);
+  if (max_length <= 0) {
+    LOG(ERROR) << __func__ << ": Get the group order fail.";
+    return false;
+  }
+  const string& signature = ConvertFromBIGNUM(sig->r, max_length) +
+                            ConvertFromBIGNUM(sig->s, max_length);
 
   context->data_ = signature;
   return true;

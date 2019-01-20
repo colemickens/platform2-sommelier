@@ -734,9 +734,15 @@ bool IsIntegralAttribute(CK_ATTRIBUTE_TYPE type) {
 
 // Both PKCS #11 and OpenSSL use big-endian binary representations of big
 // integers.  To convert we can just use the OpenSSL converters.
-string ConvertFromBIGNUM(const BIGNUM* bignum) {
+string ConvertFromBIGNUM(const BIGNUM* bignum, int pad_to_length) {
   string big_integer(BN_num_bytes(bignum), 0);
   BN_bn2bin(bignum, chaps::ConvertStringToByteBuffer(big_integer.data()));
+
+  // It is big-endian, pad zeros at the beginning. Make sure |pad_to_length| is
+  // positive to avoid overflow when comparing with unsigned length.
+  if (pad_to_length >= 0 && pad_to_length > big_integer.size()) {
+    big_integer.insert(0, pad_to_length - big_integer.size(), '\0');
+  }
   return big_integer;
 }
 

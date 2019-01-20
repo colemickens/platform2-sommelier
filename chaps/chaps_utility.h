@@ -303,7 +303,9 @@ inline void ClearVector(std::vector<uint8_t>* vector) {
 //
 
 // Convert OpenSSL BIGNUM |bignum| to string.
-std::string ConvertFromBIGNUM(const BIGNUM* bignum);
+// Padding the result to at least |pad_to_length| bytes long.
+// Return empty string on error.
+std::string ConvertFromBIGNUM(const BIGNUM* bignum, int pad_to_length = 0);
 
 // Convert string |big_integer| back to a new OpenSSL BIGNUM.
 // Caller takes the ownership. Returns nullptr if big_integer is empty.
