@@ -111,3 +111,91 @@ set_defaults("source_set") {
 }
 
 set_default_toolchain("//common-mk/toolchain")
+
+# In Chrome OS, pkg-config is commonly and widely used.
+# It is not natively supported by GN. Instead, here a few special fields are
+# injected to the executable, shared_library and static_library targets
+# to support pkg-config.
+#
+# Args:
+#   pkg_deps(optional): A list of package names to be depend.
+#     A corresponding config is created, and then injected to |configs|.
+#   public_pkg_deps(optional): Similart to pkg_deps, but injected to
+#     |public_configs| instead.
+#   all_dependent_pkg_deps(optional): Similar to pkg_deps, but injected to
+#     |all_dependent_pkg_deps|.
+
+import("//common-mk/pkg_config.gni")
+
+template("_generate_config_rule") {
+  if (defined(invoker.pkg_deps) && invoker.pkg_deps != []) {
+    _pkg_deps_name = "_${target_name}-pkg_deps-config"
+    pkg_config(_pkg_deps_name) {
+      pkg_deps = invoker.pkg_deps
+    }
+  }
+  if (defined(invoker.public_pkg_deps) && invoker.public_pkg_deps != []) {
+    _public_pkg_deps_name = "_${target_name}-public_pkg_deps-config"
+    pkg_config(_public_pkg_deps_name) {
+      pkg_deps = invoker.public_pkg_deps
+    }
+  }
+  if (defined(invoker.all_dependent_pkg_deps) &&
+      invoker.all_dependent_pkg_deps != []) {
+    _all_dependent_pkg_deps_name =
+        "_${target_name}-all_dependent_pkg_deps-config"
+    pkg_config(_all_dependent_pkg_deps_name) {
+      pkg_deps = invoker.all_dependent_pkg_deps
+    }
+  }
+
+  target(invoker.target_type, target_name) {
+    forward_variables_from(invoker,
+                           "*",
+                           [
+                             "all_dependent_pkg_deps",
+                             "pkg_deps",
+                             "public_pkg_deps",
+                             "target_type",
+                           ])
+    if (defined(_pkg_deps_name)) {
+      if (!defined(configs)) {
+        configs = []
+      }
+      configs += [ ":${_pkg_deps_name}" ]
+    }
+    if (defined(_public_pkg_deps_name)) {
+      if (!defined(public_configs)) {
+        public_configs = []
+      }
+      public_configs += [ ":${_public_pkg_deps_name}" ]
+    }
+    if (defined(_all_dependent_pkg_deps_name)) {
+      if (!defined(all_dependent_configs)) {
+        all_dependent_configs = []
+      }
+      all_dependent_configs += [ ":${_all_dependent_pkg_deps_name}" ]
+    }
+  }
+}
+
+template("executable") {
+  _generate_config_rule(target_name) {
+    forward_variables_from(invoker, "*")
+    target_type = "executable"
+  }
+}
+
+template("shared_library") {
+  _generate_config_rule(target_name) {
+    forward_variables_from(invoker, "*")
+    target_type = "shared_library"
+  }
+}
+
+template("static_library") {
+  _generate_config_rule(target_name) {
+    forward_variables_from(invoker, "*")
+    target_type = "static_library"
+  }
+}

@@ -41,28 +41,9 @@ group("all") {
   }
 }
 
-pkg_config("cryptohome_config") {
-  pkg_deps = [
-    "dbus-1",
-    "dbus-glib-1",
-    "glib-2.0",
-    "libbrillo-${libbase_ver}",
-    "libbrillo-glib-${libbase_ver}",
-    "libchrome-${libbase_ver}",
-    "libecryptfs",
-    "libmetrics-${libbase_ver}",
-    "openssl",
-    "protobuf",
-    "vboot_host",
-  ]
-}
-
 # Main programs.
 executable("cryptohome") {
-  configs += [
-    ":cryptohome_config",
-    "libs:target_defaults",
-  ]
+  configs += [ "libs:target_defaults" ]
   sources = [
     "cryptohome.cc",
   ]
@@ -80,17 +61,22 @@ executable("cryptohome") {
     "libs:libcrostpm",
     "libs:libcryptohome",
   ]
-}
-
-pkg_config("cryptohome-path_config") {
   pkg_deps = [
+    "dbus-1",
+    "dbus-glib-1",
+    "glib-2.0",
     "libbrillo-${libbase_ver}",
+    "libbrillo-glib-${libbase_ver}",
     "libchrome-${libbase_ver}",
+    "libecryptfs",
+    "libmetrics-${libbase_ver}",
+    "openssl",
+    "protobuf",
+    "vboot_host",
   ]
 }
 
 executable("cryptohome-path") {
-  configs += [ ":cryptohome-path_config" ]
   sources = [
     "cryptohome-path.cc",
   ]
@@ -98,9 +84,28 @@ executable("cryptohome-path") {
     "libs:libcrostpm",
     "libs:libcryptohome",
   ]
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+  ]
 }
 
-pkg_config("cryptohomed_config") {
+executable("cryptohomed") {
+  configs += [ "libs:target_defaults" ]
+  sources = [
+    "cryptohomed.cc",
+  ]
+  libs = [
+    "chaps",
+    "keyutils",
+    "policy-${libbase_ver}",
+    "pthread",
+    "scrypt",
+  ]
+  deps = [
+    "libs:libcrostpm",
+    "libs:libcryptohome",
+  ]
   pkg_deps = [
     "dbus-1",
     "dbus-glib-1",
@@ -121,43 +126,8 @@ pkg_config("cryptohomed_config") {
   ]
 }
 
-executable("cryptohomed") {
-  configs += [
-    ":cryptohomed_config",
-    "libs:target_defaults",
-  ]
-  sources = [
-    "cryptohomed.cc",
-  ]
-  libs = [
-    "chaps",
-    "keyutils",
-    "policy-${libbase_ver}",
-    "pthread",
-    "scrypt",
-  ]
-  deps = [
-    "libs:libcrostpm",
-    "libs:libcryptohome",
-  ]
-}
-
-pkg_config("lockbox-cache_config") {
-  pkg_deps = [
-    "libbrillo-${libbase_ver}",
-    "libchrome-${libbase_ver}",
-    "libecryptfs",
-    "libmetrics-${libbase_ver}",
-    "openssl",
-    "vboot_host",
-  ]
-}
-
 executable("lockbox-cache") {
-  configs += [
-    ":lockbox-cache_config",
-    "libs:target_defaults",
-  ]
+  configs += [ "libs:target_defaults" ]
   sources = [
     "crc32.c",
     "dircrypto_util.cc",
@@ -174,13 +144,11 @@ executable("lockbox-cache") {
     "libs:cryptohome-proto",
     "libs:libcrostpm",
   ]
-}
-
-pkg_config("mount_encrypted_lib_config") {
   pkg_deps = [
-    "glib-2.0",
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
+    "libecryptfs",
+    "libmetrics-${libbase_ver}",
     "openssl",
     "vboot_host",
   ]
@@ -188,8 +156,6 @@ pkg_config("mount_encrypted_lib_config") {
 
 static_library("mount_encrypted_lib") {
   configs += [
-    ":mount_encrypted_lib_config",
-
     # for USE_TPM2
     "libs:target_defaults",
   ]
@@ -202,21 +168,25 @@ static_library("mount_encrypted_lib") {
   deps = [
     "libs:cryptohome-proto",
   ]
+  pkg_deps = [
+    "glib-2.0",
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "openssl",
+    "vboot_host",
+  ]
 
   if (use.tpm2) {
     sources += [ "mount_encrypted/tpm2.cc" ]
 
     # This selects TPM2 code in vboot_host headers.
     defines += [ "TPM2_MODE=1" ]
-  }
-
-  if (!use.tpm2) {
+  } else {
     sources += [ "mount_encrypted/tpm1.cc" ]
   }
 }
 
 executable("mount-encrypted") {
-  configs += [ ":mount_encrypted_lib_config" ]
   sources = [
     "mount_encrypted.cc",
   ]
@@ -224,9 +194,23 @@ executable("mount-encrypted") {
     ":mount_encrypted_lib",
     "libs:libcrostpm",
   ]
+  pkg_deps = [
+    "glib-2.0",
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "openssl",
+    "vboot_host",
+  ]
 }
 
-pkg_config("tpm-manager_config") {
+executable("tpm-manager") {
+  configs += [ "libs:target_defaults" ]
+  sources = [
+    "tpm_manager.cc",
+  ]
+  deps = [
+    "libs:libcrostpm",
+  ]
   pkg_deps = [
     "glib-2.0",
     "libbrillo-${libbase_ver}",
@@ -237,22 +221,6 @@ pkg_config("tpm-manager_config") {
     "openssl",
     "protobuf",
   ]
-  if (!use.tpm2) {
-    pkg_deps += [ "vboot_host" ]
-  }
-}
-
-executable("tpm-manager") {
-  configs += [
-    ":tpm-manager_config",
-    "libs:target_defaults",
-  ]
-  sources = [
-    "tpm_manager.cc",
-  ]
-  deps = [
-    "libs:libcrostpm",
-  ]
 
   if (use.tpm2) {
     sources += [ "tpm_manager_v2.cc" ]
@@ -261,18 +229,18 @@ executable("tpm-manager") {
       "tpm_manager",
       "attestation",
     ]
-  }
-
-  if (!use.tpm2) {
+  } else {
     sources += [ "tpm_manager_v1.cc" ]
     libs = [
       "chaps",
       "scrypt",
     ]
+    pkg_deps += [ "vboot_host" ]
   }
 }
 
 if (use.cert_provision) {
+  # TODO(hidehiko): Support pkg_deps in proto_library.
   pkg_config("cert_provision-proto_config") {
     pkg_deps = [ "protobuf" ]
   }
@@ -295,17 +263,6 @@ if (use.cert_provision) {
     ]
   }
 
-  pkg_config("cert_provision-static_direct_config") {
-    pkg_deps = [
-      "dbus-glib-1",
-      "libbrillo-${libbase_ver}",
-      "libbrillo-glib-${libbase_ver}",
-      "libchrome-${libbase_ver}",
-      "openssl",
-      "protobuf",
-    ]
-  }
-
   static_library("cert_provision-static") {
     configs += [ ":cert_provision-proto_config" ]
     sources = [
@@ -324,7 +281,14 @@ if (use.cert_provision) {
       "chaps",
       "pthread",
     ]
-    public_configs = [ ":cert_provision-static_direct_config" ]
+    public_pkg_deps = [
+      "dbus-glib-1",
+      "libbrillo-${libbase_ver}",
+      "libbrillo-glib-${libbase_ver}",
+      "libchrome-${libbase_ver}",
+      "openssl",
+      "protobuf",
+    ]
 
     deps = [
       ":cert_provision-proto",
@@ -334,40 +298,24 @@ if (use.cert_provision) {
   }
 
   executable("cert_provision_client") {
-    configs += [ ":cryptohome-path_config" ]
     sources = [
       "cert/cert_provision_client.cc",
     ]
     deps = [
       ":cert_provision",
     ]
+    pkg_deps = [
+      "libbrillo-${libbase_ver}",
+      "libchrome-${libbase_ver}",
+    ]
   }
 }
 
 if (use.test) {
-  pkg_config("cryptohome_testrunner_config") {
-    pkg_deps = [
-      "dbus-1",
-      "dbus-glib-1",
-      "glib-2.0",
-      "libbrillo-${libbase_ver}",
-      "libbrillo-glib-${libbase_ver}",
-      "libbrillo-test-${libbase_ver}",
-      "libchrome-${libbase_ver}",
-      "libchrome-test-${libbase_ver}",
-      "libecryptfs",
-      "libmetrics-${libbase_ver}",
-      "openssl",
-      "protobuf",
-      "vboot_host",
-    ]
-  }
-
   executable("cryptohome_testrunner") {
     configs += [
       "//common-mk:test",
       "libs:target_defaults",
-      ":cryptohome_testrunner_config",
     ]
     sources = [
       "arc_disk_quota_unittest.cc",
@@ -433,10 +381,25 @@ if (use.test) {
     ]
     deps = [
       "libs:bootlockbox-client-headers",
+      "libs:cryptohome-proto",
       "libs:libcrostpm",
       "libs:libcryptohome",
-      "libs:cryptohome-proto",
       "//common-mk/testrunner",
+    ]
+    pkg_deps = [
+      "dbus-1",
+      "dbus-glib-1",
+      "glib-2.0",
+      "libbrillo-${libbase_ver}",
+      "libbrillo-glib-${libbase_ver}",
+      "libbrillo-test-${libbase_ver}",
+      "libchrome-${libbase_ver}",
+      "libchrome-test-${libbase_ver}",
+      "libecryptfs",
+      "libmetrics-${libbase_ver}",
+      "openssl",
+      "protobuf",
+      "vboot_host",
     ]
 
     if (use.tpm2) {
@@ -456,21 +419,10 @@ if (use.test) {
     }
   }
 
-  pkg_config("mount_encrypted_unittests_config") {
-    pkg_deps = [
-      "glib-2.0",
-      "libbrillo-${libbase_ver}",
-      "libbrillo-test-${libbase_ver}",
-      "libchrome-${libbase_ver}",
-      "libchrome-test-${libbase_ver}",
-    ]
-  }
-
   executable("mount_encrypted_unittests") {
     configs += [
       "//common-mk:test",
       "libs:target_defaults",
-      ":mount_encrypted_unittests_config",
     ]
     sources = [
       "mount_encrypted/encryption_key_unittest.cc",
@@ -481,13 +433,27 @@ if (use.test) {
       "libs:libcrostpm",
       "//common-mk/testrunner",
     ]
+    pkg_deps = [
+      "glib-2.0",
+      "libbrillo-${libbase_ver}",
+      "libbrillo-test-${libbase_ver}",
+      "libchrome-${libbase_ver}",
+      "libchrome-test-${libbase_ver}",
+    ]
 
     if (use.tpm2) {
       defines = [ "TPM2_MODE=1" ]
     }
   }
 
-  pkg_config("boot_lockbox_unittests_config") {
+  executable("boot_lockbox_unittests") {
+    configs += [
+      "//common-mk:test",
+      "libs:target_defaults",
+    ]
+    deps = [
+      "//common-mk/testrunner",
+    ]
     pkg_deps = [
       "glib-2.0",
       "libbrillo-${libbase_ver}",
@@ -495,17 +461,6 @@ if (use.test) {
       "libchrome-${libbase_ver}",
       "libchrome-test-${libbase_ver}",
       "openssl",
-    ]
-  }
-
-  executable("boot_lockbox_unittests") {
-    configs += [
-      "//common-mk:test",
-      "libs:target_defaults",
-      ":boot_lockbox_unittests_config",
-    ]
-    deps = [
-      "//common-mk/testrunner",
     ]
 
     if (use.tpm2) {
@@ -535,16 +490,7 @@ if (use.test) {
 }
 
 if (use.tpm2) {
-  pkg_config("bootlockboxtool_config") {
-    pkg_deps = [
-      "libchrome-${libbase_ver}",
-      "libbrillo-${libbase_ver}",
-      "protobuf",
-    ]
-  }
-
   executable("bootlockboxtool") {
-    configs += [ ":bootlockboxtool_config" ]
     defines = [ "USE_TPM2=${use.tpm2}" ]
     deps = [
       "libs:bootlockbox-client-headers",
@@ -555,26 +501,18 @@ if (use.tpm2) {
     sources = [
       "bootlockbox/boot_lockbox_tool.cc",
     ]
-  }
-
-  pkg_config("bootlockboxd_config") {
     pkg_deps = [
-      "libbrillo-${libbase_ver}",
       "libchrome-${libbase_ver}",
-      "libmetrics-${libbase_ver}",
-      "libecryptfs",
-      "openssl",
+      "libbrillo-${libbase_ver}",
       "protobuf",
-      "vboot_host",
     ]
   }
 
   executable("bootlockboxd") {
-    configs += [ ":bootlockboxd_config" ]
     deps = [
-      "libs:libcrostpm",
       "libs:bootlockbox-adaptors",
       "libs:bootlockbox-proto",
+      "libs:libcrostpm",
       "libs:libnvram-boot-lockbox",
     ]
     defines = [ "USE_TPM2=${use.tpm2}" ]
@@ -590,28 +528,31 @@ if (use.tpm2) {
       "bootlockbox/boot_lockbox_service.cc",
       "bootlockbox/boot_lockboxd.cc",
     ]
+    pkg_deps = [
+      "libbrillo-${libbase_ver}",
+      "libchrome-${libbase_ver}",
+      "libmetrics-${libbase_ver}",
+      "libecryptfs",
+      "openssl",
+      "protobuf",
+      "vboot_host",
+    ]
   }
 }
 
 if (use.fuzzer) {
-  pkg_config("cryptohome_cryptolib_rsa_oaep_decrypt_fuzzer_config") {
-    pkg_deps = [
-      "libbrillo-${libbase_ver}",
-      "libchrome-${libbase_ver}",
-      "openssl",
-    ]
-  }
-
   executable("cryptohome_cryptolib_rsa_oaep_decrypt_fuzzer") {
-    configs += [
-      "//common-mk/common_fuzzer",
-      ":cryptohome_cryptolib_rsa_oaep_decrypt_fuzzer_config",
-    ]
+    configs += [ "//common-mk/common_fuzzer" ]
     sources = [
       "fuzzers/cryptolib_rsa_oaep_decrypt_fuzzer.cc",
     ]
     deps = [
       "libs:libcrosplatform",
+    ]
+    pkg_deps = [
+      "libbrillo-${libbase_ver}",
+      "libchrome-${libbase_ver}",
+      "openssl",
     ]
   }
 }
