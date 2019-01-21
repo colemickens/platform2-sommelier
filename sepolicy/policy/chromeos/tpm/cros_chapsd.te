@@ -1,7 +1,5 @@
 type cros_chapsd, domain, chromeos_domain, mlstrustedobject;
 
-#permissive cros_chapsd;
-
 domain_auto_trans(cros_chapsd_sh, cros_chapsd_exec, cros_chapsd);
 allow cros_chapsd cros_chapsd_sh:fd use;
 
@@ -35,6 +33,7 @@ allow cros_chapsd cros_tcsd:unix_stream_socket connectto;
 allow cros_chapsd cros_power_override_lock_file:dir rw_dir_perms;
 allow cros_chapsd cros_power_override_lock_file:file create_file_perms;
 
+allow cros_chapsd kernel:system module_request;
 
 allow cros_chapsd cros_home_shadow_uid_root:dir { getattr search };
 allow cros_chapsd cros_home_root:dir { getattr search };

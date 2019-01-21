@@ -203,3 +203,5 @@ type cros_system_bus_socket, file_type;
 
 # TODO(fqj): temporarily let un-decomposed chromeos domain to write file as tmpfs.
 type_transition {chromeos cros_arc_setup} cros_run:dir tmpfs;
+
+dontaudit rootfs {device sysfs}:filesystem associate;
