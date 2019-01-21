@@ -10,6 +10,7 @@
     'grpc_cpp_plugin': '<!(which grpc_cpp_plugin)',
     'gen_go%': 0,
     'gen_grpc%': 0,
+    'gen_grpc_gmock%': 0,
     'gen_go_grpc%': 0,
     'gen_python%': 0,
   },
@@ -40,7 +41,6 @@
         ['gen_grpc==1', {
           'variables': {
             'out_args': [
-              '--grpc_out=<(cc_dir)',
               '--plugin=protoc-gen-grpc=<(grpc_cpp_plugin)',
               '--cpp_out=<(cc_dir)',
             ],
@@ -50,6 +50,19 @@
             '<(cc_dir)/<(RULE_INPUT_ROOT).grpc.pb.h',
             '<(cc_dir)/<(RULE_INPUT_ROOT).pb.cc',
             '<(cc_dir)/<(RULE_INPUT_ROOT).pb.h',
+          ],
+          'conditions': [
+            ['gen_grpc_gmock==0', {
+              'variables': {
+                'out_args': ['--grpc_out=<(cc_dir)',],
+              },
+            }],
+            ['gen_grpc_gmock==1', {
+              'variables': {
+                'out_args': ['--grpc_out=generate_mock_code=true:<(cc_dir)',],
+              },
+              'outputs': ['<(cc_dir)/<(RULE_INPUT_ROOT)_mock.grpc.pb.h',],
+            }],
           ],
         }],
         ['gen_go_grpc==1', {

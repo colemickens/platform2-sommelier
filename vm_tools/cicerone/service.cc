@@ -1329,10 +1329,11 @@ std::unique_ptr<dbus::Response> Service::NotifyVmStopped(
   return dbus_response;
 }
 
-bool Service::OverrideTremplinAddressOfVmForTesting(
+bool Service::SetTremplinStubOfVmForTesting(
     const std::string& owner_id,
     const std::string& vm_name,
-    const std::string& tremplin_address) {
+    std::unique_ptr<vm_tools::tremplin::Tremplin::StubInterface>
+        mock_tremplin_stub) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
   VirtualMachine* vm = FindVm(owner_id, vm_name);
   if (!vm) {
@@ -1340,7 +1341,7 @@ bool Service::OverrideTremplinAddressOfVmForTesting(
     return false;
   }
 
-  vm->OverrideTremplinAddressForTesting(tremplin_address);
+  vm->SetTremplinStubForTesting(std::move(mock_tremplin_stub));
   return true;
 }
 

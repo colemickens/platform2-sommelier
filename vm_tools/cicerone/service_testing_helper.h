@@ -20,7 +20,6 @@
 #include <dbus/mock_object_proxy.h>
 
 #include "vm_tools/cicerone/service.h"
-#include "vm_tools/cicerone/tremplin_test_stub.h"
 
 namespace vm_tools {
 namespace cicerone {
@@ -103,10 +102,6 @@ class ServiceTestingHelper {
   // set up expectations after calling this function.
   void SetUpPluginVm();
 
-  // Our tremplin stub. The default VM is connected to this after
-  // SetUpDefaultVmAndContainer() runs.
-  TremplinTestStub& get_tremplin_test_stub() { return tremplin_test_stub_; }
-
   // Access to the mocks. We expect tests to set expectations using these
   // functions, so the returned objects are non-const. Ownership is retained by
   // the ServiceTestingHelper.
@@ -145,6 +140,12 @@ class ServiceTestingHelper {
                 const google::protobuf::MessageLite& request,
                 google::protobuf::MessageLite* response);
 
+  void SetTremplinStub(
+      const std::string& owner_id,
+      const std::string& vm_name,
+      std::unique_ptr<vm_tools::tremplin::Tremplin::StubInterface>
+          mock_tremplin_stub);
+
   // Number of times Service's quit closure was called.
   int get_quit_closure_called_count_() const {
     return quit_closure_called_count_;
@@ -174,17 +175,14 @@ class ServiceTestingHelper {
 
   void SetupDBus(MockType mock_type);
 
-  void StartTremplinStub();
-
-  // Callback to actually create & run |tremplin_test_stub_|. Should be called
-  // on |tremplin_stub_thread_|. Signals |event| when up & running.
-  void RunTremplinStubService(base::WaitableEvent* event);
-
-  // Callback function; calls Service::OverrideTremplinAddressOfVmForTesting
-  // to point the VM to GetTremplinStubAddress, and then signals |event|.
-  void OverrideTremplinAddressOnDBusThread(const std::string& owner_id,
-                                           const std::string& vm_name,
-                                           base::WaitableEvent* event);
+  // Callback function; calls Service::SetTremplinStubOfVmForTesting
+  // to point the VM to a mock tremplin stub, and then signals |event|.
+  void SetTremplinStubOnDBusThread(
+      const std::string& owner_id,
+      const std::string& vm_name,
+      std::unique_ptr<vm_tools::tremplin::Tremplin::StubInterface>
+          mock_tremplin_stub,
+      base::WaitableEvent* event);
 
   // Helper for SetUpDefaultVmAndContainer. Handles getting the default VM
   // set up and ready to go (and listening to our stub Tremplin server).
@@ -254,11 +252,6 @@ class ServiceTestingHelper {
   base::Thread dbus_thread_{"DBus Thread"};
   // The task runner on the dbus thread.
   scoped_refptr<base::TaskRunner> dbus_task_runner_;
-
-  // A stub server pretending to be Tremplin, and the thread it runs on.
-  base::Thread tremplin_stub_thread_{"Tremplin Stub Thread"};
-  TremplinTestStub tremplin_test_stub_;
-  std::shared_ptr<grpc::Server> grpc_server_tremplin_;
 
   // This needs to exist for Service to start up & shut down right.
   base::MessageLoop message_loop_;

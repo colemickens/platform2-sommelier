@@ -109,10 +109,12 @@ class VirtualMachine {
 
   bool IsPluginVm() const { return !vsock_cid_; }
 
-  // Call during unit tests to force this class to connect to the Tremplin
-  // server at |tremplin_address| instead of the normal address. Must be called
-  // before ConnectTremplin().
-  void OverrideTremplinAddressForTesting(const std::string& tremplin_address);
+  // Call during unit tests to force this class to use |mock_tremplin_stub|
+  // instead of creating a real tremplin stub by connecting to the GPRC
+  // service. Must be called before ConnectTremplin().
+  void SetTremplinStubForTesting(
+      std::unique_ptr<vm_tools::tremplin::Tremplin::StubInterface>
+          mock_tremplin_stub);
 
   // Connect to the tremplin instance in the VM.
   bool ConnectTremplin();
@@ -248,10 +250,6 @@ class VirtualMachine {
   // zero value cid.
   std::string vm_token_;
 
-  // If set, our |tremplin_stub_| will always attempt to connect to this address
-  // instead of the normal vsock address. For testing only.
-  std::string tremplin_testing_address_;
-
   // Mapping of tokens to containers. The tokens are used to securely
   // identify a container when it connects back to concierge to identify itself.
   std::map<std::string, std::unique_ptr<Container>> containers_;
@@ -264,7 +262,12 @@ class VirtualMachine {
   std::map<std::string, std::unique_ptr<Container>> pending_containers_;
 
   // The stub for the tremplin instance in this VM.
-  std::unique_ptr<vm_tools::tremplin::Tremplin::Stub> tremplin_stub_;
+  std::unique_ptr<vm_tools::tremplin::Tremplin::StubInterface> tremplin_stub_;
+
+  // Set if |tremplin_stub_| is actually a mock object set for testing. In this
+  // case, we don't try to connect to tremplin even if ConnectTremplin is called
+  // for some reason.
+  bool using_mock_tremplin_stub_;
 
   base::WeakPtrFactory<VirtualMachine> weak_ptr_factory_;
 

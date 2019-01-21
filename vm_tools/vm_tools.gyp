@@ -68,6 +68,11 @@
           'protobuf',
         ],
         'deps': ['<@(exported_deps)'],
+        'conditions': [
+          ['USE_test==1 or USE_fuzzer==1', {
+            'gen_grpc_gmock': 1,
+          }],
+        ],
       },
       'all_dependent_settings': {
         'variables': {

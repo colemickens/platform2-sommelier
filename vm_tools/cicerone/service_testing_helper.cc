@@ -14,6 +14,7 @@
 #include "base/strings/string_number_conversions.h"
 #include "vm_tools/cicerone/container_listener_impl.h"
 #include "vm_tools/cicerone/dbus_message_testing_helper.h"
+#include "vm_tools/cicerone/mock_tremplin_stub.h"
 #include "vm_tools/cicerone/tremplin_listener_impl.h"
 #include "vm_tools/common/constants.h"
 
@@ -36,9 +37,11 @@ namespace {
 
 using ::testing::_;
 using ::testing::AnyNumber;
+using ::testing::DoAll;
 using ::testing::Invoke;
 using ::testing::NiceMock;
 using ::testing::Return;
+using ::testing::SetArgPointee;
 
 // Handles callbacks for CallDBus.
 void ExtractProtoFromCall(google::protobuf::MessageLite* response_proto,
@@ -118,7 +121,6 @@ ServiceTestingHelper::DbusCallback::~DbusCallback() = default;
 
 ServiceTestingHelper::ServiceTestingHelper(MockType mock_type) {
   CHECK(socket_temp_dir_.CreateUniqueTempDir());
-  StartTremplinStub();
   quit_closure_called_count_ = 0;
 
   SetupDBus(mock_type);
@@ -145,13 +147,6 @@ ServiceTestingHelper::~ServiceTestingHelper() {
       FROM_HERE, base::Bind(&ServiceTestingHelper::DestroyService,
                             base::Unretained(this), &event)));
 
-  if (grpc_server_tremplin_) {
-    grpc_server_tremplin_->Shutdown();
-  }
-
-  // Both ServiceTestingHelper::DestroyService and
-  // grpc_server_tremplin_->Shutdown() are slow operations, so let them happen
-  // simultaneously
   event.Wait();
 }
 
@@ -246,13 +241,33 @@ std::string ServiceTestingHelper::GetTremplinListenerTargetAddress() const {
              .value();
 }
 
-void ServiceTestingHelper::OverrideTremplinAddressOnDBusThread(
+void ServiceTestingHelper::SetTremplinStubOnDBusThread(
     const std::string& owner_id,
     const std::string& vm_name,
+    std::unique_ptr<vm_tools::tremplin::Tremplin::StubInterface>
+        mock_tremplin_stub,
     base::WaitableEvent* event) {
-  CHECK(service_->OverrideTremplinAddressOfVmForTesting(
-      owner_id, vm_name, GetTremplinStubAddress()));
+  CHECK(dbus_task_runner_->RunsTasksOnCurrentThread());
+  CHECK(service_->SetTremplinStubOfVmForTesting(owner_id, vm_name,
+                                                std::move(mock_tremplin_stub)));
   event->Signal();
+}
+
+void ServiceTestingHelper::SetTremplinStub(
+    const std::string& owner_id,
+    const std::string& vm_name,
+    std::unique_ptr<vm_tools::tremplin::Tremplin::StubInterface>
+        mock_tremplin_stub) {
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
+  CHECK(!dbus_task_runner_->RunsTasksOnCurrentThread());
+  CHECK(dbus_task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&ServiceTestingHelper::SetTremplinStubOnDBusThread,
+                     base::Unretained(this), owner_id, vm_name,
+                     std::move(mock_tremplin_stub), &event)));
+
+  event.Wait();
 }
 
 void ServiceTestingHelper::PretendDefaultVmStarted() {
@@ -264,22 +279,21 @@ void ServiceTestingHelper::PretendDefaultVmStarted() {
 
   CallDBus(kNotifyVmStarted, request, &response);
 
-  // Tell the VM to connect to our Tremplin stub.
-  CHECK(!dbus_task_runner_->RunsTasksOnCurrentThread());
-  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
-                            base::WaitableEvent::InitialState::NOT_SIGNALED);
-  CHECK(dbus_task_runner_->PostTask(
-      FROM_HERE,
-      base::Bind(&ServiceTestingHelper::OverrideTremplinAddressOnDBusThread,
-                 base::Unretained(this), kDefaultOwnerId, kDefaultVmName,
-                 &event)));
-  event.Wait();
+  auto mock_tremplin_stub =
+      std::make_unique<vm_tools::tremplin::MockTremplinStub>();
 
   vm_tools::tremplin::GetContainerInfoResponse default_container_info;
   default_container_info.set_status(
       vm_tools::tremplin::GetContainerInfoResponse::RUNNING);
   default_container_info.set_ipv4_address(kDefaultAddress);
-  tremplin_test_stub_.SetGetContainerInfoResponse(default_container_info);
+  EXPECT_CALL(*(mock_tremplin_stub.get()), GetContainerInfo(_, _, _))
+      .Times(1)
+      .WillOnce(DoAll(SetArgPointee<2>(default_container_info),
+                      Return(grpc::Status::OK)));
+
+  // Tell the VM to use our mock Tremplin stub.
+  SetTremplinStub(kDefaultOwnerId, kDefaultVmName,
+                  std::move(mock_tremplin_stub));
 
   grpc::ServerContext ctx1;
   vm_tools::tremplin::TremplinStartupInfo tremplin_startup_request;
@@ -442,33 +456,6 @@ void ServiceTestingHelper::CreateService(base::WaitableEvent* event) {
 
 std::string ServiceTestingHelper::GetTremplinStubAddress() const {
   return "unix:" + get_service_socket_path().Append("tremplin_stub").value();
-}
-
-void ServiceTestingHelper::StartTremplinStub() {
-  CHECK(tremplin_stub_thread_.Start());
-  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
-                            base::WaitableEvent::InitialState::NOT_SIGNALED);
-  CHECK(tremplin_stub_thread_.task_runner()->PostTask(
-      FROM_HERE, base::Bind(&ServiceTestingHelper::RunTremplinStubService,
-                            base::Unretained(this), &event)));
-  event.Wait();
-}
-
-void ServiceTestingHelper::RunTremplinStubService(base::WaitableEvent* event) {
-  std::string address = GetTremplinStubAddress();
-
-  grpc::ServerBuilder builder;
-  builder.AddListeningPort(address, grpc::InsecureServerCredentials());
-  builder.RegisterService(&tremplin_test_stub_);
-
-  std::shared_ptr<grpc::Server> server(builder.BuildAndStart().release());
-  CHECK(server);
-  LOG(INFO) << "Tremplin stub listening on " << address;
-  grpc_server_tremplin_ = server;
-
-  event->Signal();
-
-  server->Wait();
 }
 
 void ServiceTestingHelper::AssertOnDBusThread() {

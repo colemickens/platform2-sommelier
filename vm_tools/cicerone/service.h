@@ -70,10 +70,11 @@ class Service final : public base::MessageLoopForIO::Watcher {
   // actually at |tremplin_address| instead of the normal vsock address. Must
   // be called after the VM is created but before the corresponding
   // ConnectTremplin is called.
-  bool OverrideTremplinAddressOfVmForTesting(
+  bool SetTremplinStubOfVmForTesting(
       const std::string& owner_id,
       const std::string& vm_name,
-      const std::string& tremplin_address);
+      std::unique_ptr<vm_tools::tremplin::Tremplin::StubInterface>
+          mock_tremplin_stub);
 
   // For testing only. Force the given VM to add a container with the indicated
   // security token. A VM with |owner_id|, |vm_name| must already exist. This is

@@ -41,7 +41,10 @@ constexpr int64_t kLongOperationTimeoutSeconds = 120;
 }  // namespace
 
 VirtualMachine::VirtualMachine(uint32_t cid, std::string vm_token)
-    : vsock_cid_(cid), vm_token_(std::move(vm_token)), weak_ptr_factory_(this) {
+    : vsock_cid_(cid),
+      vm_token_(std::move(vm_token)),
+      using_mock_tremplin_stub_(false),
+      weak_ptr_factory_(this) {
   DCHECK((vsock_cid_ == 0) ^ vm_token_.empty());
   if (IsPluginVm()) {
     // This is a containerless VM, so create one container for this VM that uses
@@ -56,22 +59,23 @@ VirtualMachine::~VirtualMachine() = default;
 bool VirtualMachine::ConnectTremplin() {
   if (IsPluginVm())
     return false;
-  std::string tremplin_address =
-      base::StringPrintf("vsock:%u:%u", vsock_cid_, kTremplinPort);
-  if (!tremplin_testing_address_.empty()) {
-    tremplin_address = tremplin_testing_address_;
+  if (!using_mock_tremplin_stub_) {
+    std::string tremplin_address =
+        base::StringPrintf("vsock:%u:%u", vsock_cid_, kTremplinPort);
+    tremplin_stub_ = std::make_unique<vm_tools::tremplin::Tremplin::Stub>(
+        grpc::CreateChannel(tremplin_address,
+                            grpc::InsecureChannelCredentials()));
   }
-  tremplin_stub_ =
-      std::make_unique<vm_tools::tremplin::Tremplin::Stub>(grpc::CreateChannel(
-          tremplin_address, grpc::InsecureChannelCredentials()));
   return tremplin_stub_ != nullptr;
 }
 
-void VirtualMachine::OverrideTremplinAddressForTesting(
-    const std::string& tremplin_address) {
-  CHECK(!tremplin_stub_)
-      << "Calling OverrideTremplinAddressForTesting too late";
-  tremplin_testing_address_ = tremplin_address;
+void VirtualMachine::SetTremplinStubForTesting(
+    std::unique_ptr<vm_tools::tremplin::Tremplin::StubInterface>
+        mock_tremplin_stub) {
+  CHECK(using_mock_tremplin_stub_ || !tremplin_stub_)
+      << "Calling SetTremplinStubForTesting too late";
+  using_mock_tremplin_stub_ = true;
+  tremplin_stub_ = std::move(mock_tremplin_stub);
 }
 
 bool VirtualMachine::SetTimezone(

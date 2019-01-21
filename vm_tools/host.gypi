@@ -240,10 +240,9 @@
           'sources': [
             'cicerone/dbus_message_testing_helper.cc',
             'cicerone/dbus_message_testing_helper.h',
+            'cicerone/mock_tremplin_stub.h',
             'cicerone/service_testing_helper.cc',
             'cicerone/service_testing_helper.h',
-            'cicerone/tremplin_test_stub.cc',
-            'cicerone/tremplin_test_stub.h',
           ],
         },
       ],
