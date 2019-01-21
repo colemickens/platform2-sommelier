@@ -13,6 +13,7 @@
 
 #include <brillo/secure_blob.h>
 
+#include "key.pb.h"                    // NOLINT(build/include)
 #include "signature_sealed_data.pb.h"  // NOLINT(build/include)
 
 namespace cryptohome {
@@ -21,14 +22,6 @@ namespace cryptohome {
 // Implementations of this interface are exposed by the Tpm class subclasses.
 class SignatureSealingBackend {
  public:
-  // A cryptographic signature algorithm to be used for sealing and unsealing.
-  enum class Algorithm {
-    kRsassaPkcs1V15Sha1,
-    kRsassaPkcs1V15Sha256,
-    kRsassaPkcs1V15Sha384,
-    kRsassaPkcs1V15Sha512,
-  };
-
   // Interface for a session of unsealing the sealed secret.
   // Instances can be obtained via
   // SignatureSealingBackend::CreateUnsealingSession().
@@ -38,12 +31,10 @@ class SignatureSealingBackend {
   // SignatureSealingBackend::CreateUnsealingSession() was called.
   class UnsealingSession {
    public:
-    using Algorithm = SignatureSealingBackend::Algorithm;
-
     virtual ~UnsealingSession() = default;
 
     // Returns the algorithm to be used for signing the challenge value.
-    virtual Algorithm GetChallengeAlgorithm() = 0;
+    virtual ChallengeSignatureAlgorithm GetChallengeAlgorithm() = 0;
 
     // Returns the challenge value to be signed.
     virtual brillo::Blob GetChallengeValue() = 0;
@@ -81,7 +72,7 @@ class SignatureSealingBackend {
   //   sealed_secret_data - The created sealed secret value.
   virtual bool CreateSealedSecret(
       const brillo::Blob& public_key_spki_der,
-      const std::vector<Algorithm>& key_algorithms,
+      const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
       const std::map<uint32_t, brillo::Blob>& pcr_values,
       const brillo::Blob& delegate_blob,
       const brillo::Blob& delegate_secret,
@@ -105,7 +96,7 @@ class SignatureSealingBackend {
   virtual std::unique_ptr<UnsealingSession> CreateUnsealingSession(
       const SignatureSealedData& sealed_secret_data,
       const brillo::Blob& public_key_spki_der,
-      const std::vector<Algorithm>& key_algorithms,
+      const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
       const brillo::Blob& delegate_blob,
       const brillo::Blob& delegate_secret) = 0;
 };

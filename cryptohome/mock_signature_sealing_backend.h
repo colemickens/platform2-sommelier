@@ -26,7 +26,7 @@ class MockSignatureSealingBackend : public SignatureSealingBackend {
 
   MOCK_METHOD6(CreateSealedSecret,
                bool(const brillo::Blob&,
-                    const std::vector<Algorithm>&,
+                    const std::vector<ChallengeSignatureAlgorithm>&,
                     const std::map<uint32_t, brillo::Blob>&,
                     const brillo::Blob&,
                     const brillo::Blob&,
@@ -36,17 +36,18 @@ class MockSignatureSealingBackend : public SignatureSealingBackend {
   std::unique_ptr<UnsealingSession> CreateUnsealingSession(
       const SignatureSealedData& sealed_secret_data,
       const brillo::Blob& public_key_spki_der,
-      const std::vector<Algorithm>& key_algorithms,
+      const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
       const brillo::Blob& delegate_blob,
       const brillo::Blob& delegate_secret) override;
   // Equivalent of CreateUnsealingSession(), but returns result via a raw owned
   // pointer.
-  MOCK_METHOD5(CreateUnsealingSessionImpl,
-               UnsealingSession*(const SignatureSealedData&,
-                                 const brillo::Blob&,
-                                 const std::vector<Algorithm>&,
-                                 const brillo::Blob&,
-                                 const brillo::Blob&));
+  MOCK_METHOD5(
+      CreateUnsealingSessionImpl,
+      UnsealingSession*(const SignatureSealedData&,
+                        const brillo::Blob&,
+                        const std::vector<ChallengeSignatureAlgorithm>&,
+                        const brillo::Blob&,
+                        const brillo::Blob&));
 };
 
 class MockUnsealingSession : public SignatureSealingBackend::UnsealingSession {
@@ -54,7 +55,7 @@ class MockUnsealingSession : public SignatureSealingBackend::UnsealingSession {
   MockUnsealingSession();
   ~MockUnsealingSession() override;
 
-  MOCK_METHOD0(GetChallengeAlgorithm, Algorithm());
+  MOCK_METHOD0(GetChallengeAlgorithm, ChallengeSignatureAlgorithm());
   MOCK_METHOD0(GetChallengeValue, brillo::Blob());
   MOCK_METHOD2(Unseal, bool(const brillo::Blob&, brillo::SecureBlob*));
 };

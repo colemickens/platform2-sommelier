@@ -37,7 +37,7 @@ class SignatureSealingBackendTpm1Impl final : public SignatureSealingBackend {
   // SignatureSealingBackend:
   bool CreateSealedSecret(
       const brillo::Blob& public_key_spki_der,
-      const std::vector<Algorithm>& key_algorithms,
+      const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
       const std::map<uint32_t, brillo::Blob>& /* pcr_values */,
       const brillo::Blob& delegate_blob,
       const brillo::Blob& delegate_secret,
@@ -45,7 +45,7 @@ class SignatureSealingBackendTpm1Impl final : public SignatureSealingBackend {
   std::unique_ptr<UnsealingSession> CreateUnsealingSession(
       const SignatureSealedData& sealed_secret_data,
       const brillo::Blob& public_key_spki_der,
-      const std::vector<Algorithm>& key_algorithms,
+      const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
       const brillo::Blob& delegate_blob,
       const brillo::Blob& delegate_secret) override;
 

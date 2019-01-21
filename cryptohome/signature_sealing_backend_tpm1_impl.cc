@@ -23,6 +23,7 @@
 
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/tpm_impl.h"
+#include "key.pb.h"                    // NOLINT(build/include)
 #include "signature_sealed_data.pb.h"  // NOLINT(build/include)
 
 using brillo::Blob;
@@ -116,7 +117,7 @@ class UnsealingSessionTpm1Impl final
   ~UnsealingSessionTpm1Impl() override;
 
   // UnsealingSession:
-  Algorithm GetChallengeAlgorithm() override;
+  ChallengeSignatureAlgorithm GetChallengeAlgorithm() override;
   Blob GetChallengeValue() override;
   bool Unseal(const Blob& signed_challenge_value,
               SecureBlob* unsealed_value) override;
@@ -1011,9 +1012,8 @@ UnsealingSessionTpm1Impl::UnsealingSessionTpm1Impl(
 
 UnsealingSessionTpm1Impl::~UnsealingSessionTpm1Impl() = default;
 
-SignatureSealingBackend::Algorithm
-UnsealingSessionTpm1Impl::GetChallengeAlgorithm() {
-  return Algorithm::kRsassaPkcs1V15Sha1;
+ChallengeSignatureAlgorithm UnsealingSessionTpm1Impl::GetChallengeAlgorithm() {
+  return CHALLENGE_RSASSA_PKCS1_V1_5_SHA1;
 }
 
 Blob UnsealingSessionTpm1Impl::GetChallengeValue() {
@@ -1113,14 +1113,14 @@ SignatureSealingBackendTpm1Impl::~SignatureSealingBackendTpm1Impl() = default;
 
 bool SignatureSealingBackendTpm1Impl::CreateSealedSecret(
     const Blob& public_key_spki_der,
-    const std::vector<Algorithm>& key_algorithms,
+    const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
     const std::map<uint32_t, Blob>& /* pcr_values */,
     const Blob& delegate_blob,
     const Blob& delegate_secret,
     SignatureSealedData* sealed_secret_data) {
   // Only the |kRsassaPkcs1V15Sha1| algorithm is supported.
   if (std::find(key_algorithms.begin(), key_algorithms.end(),
-                Algorithm::kRsassaPkcs1V15Sha1) == key_algorithms.end()) {
+                CHALLENGE_RSASSA_PKCS1_V1_5_SHA1) == key_algorithms.end()) {
     LOG(ERROR) << "The key doesn't support RSASSA-PKCS1-v1_5 with SHA-1";
     return false;
   }
@@ -1199,7 +1199,7 @@ std::unique_ptr<SignatureSealingBackend::UnsealingSession>
 SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
     const SignatureSealedData& sealed_secret_data,
     const Blob& public_key_spki_der,
-    const std::vector<Algorithm>& key_algorithms,
+    const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
     const Blob& delegate_blob,
     const Blob& delegate_secret) {
   // Validate the parameters.
@@ -1216,7 +1216,7 @@ SignatureSealingBackendTpm1Impl::CreateUnsealingSession(
     return nullptr;
   }
   if (std::find(key_algorithms.begin(), key_algorithms.end(),
-                Algorithm::kRsassaPkcs1V15Sha1) == key_algorithms.end()) {
+                CHALLENGE_RSASSA_PKCS1_V1_5_SHA1) == key_algorithms.end()) {
     LOG(ERROR) << "Failed to choose the algorithm: the key doesn't support "
                   "RSASSA-PKCS1-v1_5 with SHA-1";
     return nullptr;

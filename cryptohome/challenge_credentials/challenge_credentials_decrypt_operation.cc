@@ -23,60 +23,14 @@ using brillo::SecureBlob;
 
 namespace cryptohome {
 
-using SealingAlgorithm = SignatureSealingBackend::Algorithm;
-
 namespace {
 
-// Maps from key challenge signature algoritms to sealing backend algorithm.
-bool GetSealingAlgorithmFromKeyAlgorithm(
-    ChallengeSignatureAlgorithm key_algorithm,
-    SealingAlgorithm* sealing_algorithm) {
-  switch (key_algorithm) {
-    case CHALLENGE_RSASSA_PKCS1_V1_5_SHA1:
-      *sealing_algorithm = SealingAlgorithm::kRsassaPkcs1V15Sha1;
-      return true;
-    case CHALLENGE_RSASSA_PKCS1_V1_5_SHA256:
-      *sealing_algorithm = SealingAlgorithm::kRsassaPkcs1V15Sha256;
-      return true;
-    case CHALLENGE_RSASSA_PKCS1_V1_5_SHA384:
-      *sealing_algorithm = SealingAlgorithm::kRsassaPkcs1V15Sha384;
-      return true;
-    case CHALLENGE_RSASSA_PKCS1_V1_5_SHA512:
-      *sealing_algorithm = SealingAlgorithm::kRsassaPkcs1V15Sha512;
-      return true;
-    default:
-      LOG(ERROR) << "Unknown key algorithm: " << key_algorithm;
-      return false;
-  }
-}
-
-// Maps from sealing challenge signature algoritms to key challenge algorithm.
-ChallengeSignatureAlgorithm KeyAlgorithmFromSealingAlgorithm(
-    SealingAlgorithm sealing_algorithm) {
-  switch (sealing_algorithm) {
-    case SealingAlgorithm::kRsassaPkcs1V15Sha1:
-      return CHALLENGE_RSASSA_PKCS1_V1_5_SHA1;
-    case SealingAlgorithm::kRsassaPkcs1V15Sha256:
-      return CHALLENGE_RSASSA_PKCS1_V1_5_SHA256;
-    case SealingAlgorithm::kRsassaPkcs1V15Sha384:
-      return CHALLENGE_RSASSA_PKCS1_V1_5_SHA384;
-    case SealingAlgorithm::kRsassaPkcs1V15Sha512:
-      return CHALLENGE_RSASSA_PKCS1_V1_5_SHA512;
-  }
-}
-
-// Obtains sealing challenge signature algorithms from the key challenge
-// algorithms.
-std::vector<SealingAlgorithm> GetSealingAlgorithms(
+std::vector<ChallengeSignatureAlgorithm> GetSealingAlgorithms(
     const ChallengePublicKeyInfo& public_key_info) {
-  std::vector<SealingAlgorithm> sealing_algorithms;
+  std::vector<ChallengeSignatureAlgorithm> sealing_algorithms;
   for (int index = 0; index < public_key_info.signature_algorithm_size();
        ++index) {
-    SealingAlgorithm sealing_algorithm;
-    if (GetSealingAlgorithmFromKeyAlgorithm(
-            public_key_info.signature_algorithm(index), &sealing_algorithm)) {
-      sealing_algorithms.push_back(sealing_algorithm);
-    }
+    sealing_algorithms.push_back(public_key_info.signature_algorithm(index));
   }
   return sealing_algorithms;
 }
@@ -170,7 +124,7 @@ bool ChallengeCredentialsDecryptOperation::StartProcessingSealedSecret() {
     LOG(ERROR) << "Missing sealed secret";
     return false;
   }
-  const std::vector<SealingAlgorithm> key_sealing_algorithms =
+  const std::vector<ChallengeSignatureAlgorithm> key_sealing_algorithms =
       GetSealingAlgorithms(public_key_info_);
   unsealing_session_ = signature_sealing_backend_->CreateUnsealingSession(
       keyset_challenge_info_.sealed_secret(),
@@ -183,8 +137,7 @@ bool ChallengeCredentialsDecryptOperation::StartProcessingSealedSecret() {
   MakeKeySignatureChallenge(
       account_id_, BlobFromString(public_key_info_.public_key_spki_der()),
       unsealing_session_->GetChallengeValue(),
-      KeyAlgorithmFromSealingAlgorithm(
-          unsealing_session_->GetChallengeAlgorithm()),
+      unsealing_session_->GetChallengeAlgorithm(),
       base::Bind(
           &ChallengeCredentialsDecryptOperation::OnUnsealingChallengeResponse,
           weak_ptr_factory_.GetWeakPtr()));

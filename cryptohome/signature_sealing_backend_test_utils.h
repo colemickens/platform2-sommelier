@@ -13,6 +13,7 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/signature_sealing_backend.h"
+#include "key.pb.h"  // NOLINT(build/include)
 
 namespace cryptohome {
 
@@ -41,7 +42,7 @@ class SignatureSealedCreationMocker final {
     public_key_spki_der_ = public_key_spki_der;
   }
   void set_key_algorithms(
-      const std::vector<SignatureSealingBackend::Algorithm>& key_algorithms) {
+      const std::vector<ChallengeSignatureAlgorithm>& key_algorithms) {
     key_algorithms_ = key_algorithms;
   }
   void set_pcr_values(const std::map<uint32_t, brillo::Blob>& pcr_values) {
@@ -63,7 +64,7 @@ class SignatureSealedCreationMocker final {
  private:
   MockSignatureSealingBackend* const mock_backend_;
   brillo::Blob public_key_spki_der_;
-  std::vector<SignatureSealingBackend::Algorithm> key_algorithms_;
+  std::vector<ChallengeSignatureAlgorithm> key_algorithms_;
   std::map<uint32_t, brillo::Blob> pcr_values_;
   brillo::Blob delegate_blob_;
   brillo::Blob delegate_secret_;
@@ -90,7 +91,7 @@ class SignatureSealedUnsealingMocker final {
     public_key_spki_der_ = public_key_spki_der;
   }
   void set_key_algorithms(
-      const std::vector<SignatureSealingBackend::Algorithm>& key_algorithms) {
+      const std::vector<ChallengeSignatureAlgorithm>& key_algorithms) {
     key_algorithms_ = key_algorithms;
   }
   void set_delegate_blob(const brillo::Blob& delegate_blob) {
@@ -99,8 +100,7 @@ class SignatureSealedUnsealingMocker final {
   void set_delegate_secret(const brillo::Blob& delegate_secret) {
     delegate_secret_ = delegate_secret;
   }
-  void set_chosen_algorithm(
-      SignatureSealingBackend::Algorithm chosen_algorithm) {
+  void set_chosen_algorithm(ChallengeSignatureAlgorithm chosen_algorithm) {
     chosen_algorithm_ = chosen_algorithm;
   }
   void set_challenge_value(const brillo::Blob& challenge_value) {
@@ -131,11 +131,11 @@ class SignatureSealedUnsealingMocker final {
 
   MockSignatureSealingBackend* const mock_backend_;
   brillo::Blob public_key_spki_der_;
-  std::vector<SignatureSealingBackend::Algorithm> key_algorithms_;
+  std::vector<ChallengeSignatureAlgorithm> key_algorithms_;
   brillo::Blob delegate_blob_;
   brillo::Blob delegate_secret_;
-  SignatureSealingBackend::Algorithm chosen_algorithm_ =
-      SignatureSealingBackend::Algorithm::kRsassaPkcs1V15Sha1;
+  ChallengeSignatureAlgorithm chosen_algorithm_ =
+      CHALLENGE_RSASSA_PKCS1_V1_5_SHA1;
   brillo::Blob challenge_value_;
   brillo::Blob challenge_signature_;
   brillo::Blob unsealed_secret_;

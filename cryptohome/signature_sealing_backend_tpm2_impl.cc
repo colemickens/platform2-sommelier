@@ -10,8 +10,9 @@
 #include <utility>
 
 #include <base/logging.h>
-#include <base/numerics/safe_conversions.h>
 #include <base/memory/ptr_util.h>
+#include <base/numerics/safe_conversions.h>
+#include <base/optional.h>
 #include <base/threading/thread_checker.h>
 #include <brillo/secure_blob.h>
 #include <trunks/error_codes.h>
@@ -23,6 +24,7 @@
 #include <trunks/authorization_delegate.h>
 
 #include "cryptohome/tpm2_impl.h"
+#include "key.pb.h"                    // NOLINT(build/include)
 #include "signature_sealed_data.pb.h"  // NOLINT(build/include)
 
 using brillo::Blob;
@@ -52,7 +54,7 @@ class UnsealingSessionTpm2Impl final
       Tpm2Impl::TrunksClientContext* trunks,
       const Blob& srk_wrapped_secret,
       const Blob& public_key_spki_der,
-      Algorithm algorithm,
+      ChallengeSignatureAlgorithm algorithm,
       TPM_ALG_ID scheme,
       TPM_ALG_ID hash_alg,
       const std::vector<uint32_t>& bound_pcrs,
@@ -61,7 +63,7 @@ class UnsealingSessionTpm2Impl final
   ~UnsealingSessionTpm2Impl() override;
 
   // UnsealingSession:
-  Algorithm GetChallengeAlgorithm() override;
+  ChallengeSignatureAlgorithm GetChallengeAlgorithm() override;
   Blob GetChallengeValue() override;
   bool Unseal(const Blob& signed_challenge_value,
               SecureBlob* unsealed_value) override;
@@ -73,7 +75,7 @@ class UnsealingSessionTpm2Impl final
   Tpm2Impl::TrunksClientContext* const trunks_;
   const Blob srk_wrapped_secret_;
   const Blob public_key_spki_der_;
-  const Algorithm algorithm_;
+  const ChallengeSignatureAlgorithm algorithm_;
   const TPM_ALG_ID scheme_;
   const TPM_ALG_ID hash_alg_;
   const std::vector<uint32_t> bound_pcrs_;
@@ -86,24 +88,23 @@ class UnsealingSessionTpm2Impl final
 
 // Obtains the TPM 2.0 signature scheme and hashing algorithms that correspond
 // to the provided challenge signature algorithm.
-bool GetAlgIdsByAlgorithm(SignatureSealingBackend::Algorithm algorithm,
+bool GetAlgIdsByAlgorithm(ChallengeSignatureAlgorithm algorithm,
                           TPM_ALG_ID* scheme,
                           TPM_ALG_ID* hash_alg) {
-  using Algorithm = SignatureSealingBackend::Algorithm;
   switch (algorithm) {
-    case Algorithm::kRsassaPkcs1V15Sha1:
+    case CHALLENGE_RSASSA_PKCS1_V1_5_SHA1:
       *scheme = trunks::TPM_ALG_RSASSA;
       *hash_alg = trunks::TPM_ALG_SHA1;
       return true;
-    case Algorithm::kRsassaPkcs1V15Sha256:
+    case CHALLENGE_RSASSA_PKCS1_V1_5_SHA256:
       *scheme = trunks::TPM_ALG_RSASSA;
       *hash_alg = trunks::TPM_ALG_SHA256;
       return true;
-    case Algorithm::kRsassaPkcs1V15Sha384:
+    case CHALLENGE_RSASSA_PKCS1_V1_5_SHA384:
       *scheme = trunks::TPM_ALG_RSASSA;
       *hash_alg = trunks::TPM_ALG_SHA384;
       return true;
-    case Algorithm::kRsassaPkcs1V15Sha512:
+    case CHALLENGE_RSASSA_PKCS1_V1_5_SHA512:
       *scheme = trunks::TPM_ALG_RSASSA;
       *hash_alg = trunks::TPM_ALG_SHA512;
       return true;
@@ -117,7 +118,7 @@ UnsealingSessionTpm2Impl::UnsealingSessionTpm2Impl(
     Tpm2Impl::TrunksClientContext* trunks,
     const Blob& srk_wrapped_secret,
     const Blob& public_key_spki_der,
-    Algorithm algorithm,
+    ChallengeSignatureAlgorithm algorithm,
     TPM_ALG_ID scheme,
     TPM_ALG_ID hash_alg,
     const std::vector<uint32_t>& bound_pcrs,
@@ -138,8 +139,7 @@ UnsealingSessionTpm2Impl::~UnsealingSessionTpm2Impl() {
   DCHECK(thread_checker_.CalledOnValidThread());
 }
 
-SignatureSealingBackend::Algorithm
-UnsealingSessionTpm2Impl::GetChallengeAlgorithm() {
+ChallengeSignatureAlgorithm UnsealingSessionTpm2Impl::GetChallengeAlgorithm() {
   DCHECK(thread_checker_.CalledOnValidThread());
   return algorithm_;
 }
@@ -231,7 +231,7 @@ SignatureSealingBackendTpm2Impl::~SignatureSealingBackendTpm2Impl() = default;
 
 bool SignatureSealingBackendTpm2Impl::CreateSealedSecret(
     const Blob& public_key_spki_der,
-    const std::vector<Algorithm>& key_algorithms,
+    const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
     const std::map<uint32_t, Blob>& pcr_values,
     const Blob& /* delegate_blob */,
     const Blob& /* delegate_secret */,
@@ -358,7 +358,7 @@ std::unique_ptr<SignatureSealingBackend::UnsealingSession>
 SignatureSealingBackendTpm2Impl::CreateUnsealingSession(
     const SignatureSealedData& sealed_secret_data,
     const Blob& public_key_spki_der,
-    const std::vector<Algorithm>& key_algorithms,
+    const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
     const Blob& /* delegate_blob */,
     const Blob& /* delegate_secret */) {
   // Validate the parameters.
@@ -387,13 +387,13 @@ SignatureSealingBackendTpm2Impl::CreateUnsealingSession(
   }
   const TPM_ALG_ID hash_alg =
       static_cast<TPM_ALG_ID>(sealed_data_contents.hash_alg());
-  std::unique_ptr<Algorithm> chosen_algorithm;
+  base::Optional<ChallengeSignatureAlgorithm> chosen_algorithm;
   for (auto algorithm : key_algorithms) {
     TPM_ALG_ID current_scheme = TPM_ALG_NULL;
     TPM_ALG_ID current_hash_alg = TPM_ALG_NULL;
     if (GetAlgIdsByAlgorithm(algorithm, &current_scheme, &current_hash_alg) &&
         current_scheme == scheme && current_hash_alg == hash_alg) {
-      chosen_algorithm = std::make_unique<Algorithm>(algorithm);
+      chosen_algorithm = algorithm;
       break;
     }
   }

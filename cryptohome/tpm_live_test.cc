@@ -15,6 +15,7 @@
 
 #include <base/macros.h>
 #include <base/memory/ptr_util.h>
+#include <base/optional.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
 #include <openssl/bn.h>
@@ -522,20 +523,18 @@ bool TpmLiveTest::NvramTest(const SecureBlob& owner_password) {
 namespace {
 
 struct SignatureSealedSecretTestCaseParam {
-  using Algorithm = SignatureSealingBackend::Algorithm;
-
   SignatureSealedSecretTestCaseParam(
       const std::string& test_case_description,
       Tpm* tpm,
       int key_size_bits,
-      const std::vector<Algorithm>& supported_algorithms,
-      std::unique_ptr<Algorithm> expected_algorithm,
+      const std::vector<ChallengeSignatureAlgorithm>& supported_algorithms,
+      base::Optional<ChallengeSignatureAlgorithm> expected_algorithm,
       int openssl_algorithm_nid)
       : test_case_description(test_case_description),
         tpm(tpm),
         key_size_bits(key_size_bits),
         supported_algorithms(supported_algorithms),
-        expected_algorithm(std::move(expected_algorithm)),
+        expected_algorithm(expected_algorithm),
         openssl_algorithm_nid(openssl_algorithm_nid) {}
 
   SignatureSealedSecretTestCaseParam(SignatureSealedSecretTestCaseParam&&) =
@@ -545,36 +544,35 @@ struct SignatureSealedSecretTestCaseParam {
       const std::string& test_case_description,
       Tpm* tpm,
       int key_size_bits,
-      const std::vector<Algorithm>& supported_algorithms,
-      Algorithm expected_algorithm,
+      const std::vector<ChallengeSignatureAlgorithm>& supported_algorithms,
+      ChallengeSignatureAlgorithm expected_algorithm,
       int openssl_algorithm_nid) {
     return SignatureSealedSecretTestCaseParam(
         test_case_description, tpm, key_size_bits, supported_algorithms,
-        base::MakeUnique<Algorithm>(expected_algorithm), openssl_algorithm_nid);
+        expected_algorithm, openssl_algorithm_nid);
   }
 
   static SignatureSealedSecretTestCaseParam MakeFailing(
       const std::string& test_case_description,
       Tpm* tpm,
       int key_size_bits,
-      const std::vector<Algorithm>& supported_algorithms) {
+      const std::vector<ChallengeSignatureAlgorithm>& supported_algorithms) {
     return SignatureSealedSecretTestCaseParam(
         test_case_description, tpm, key_size_bits, supported_algorithms, {}, 0);
   }
 
-  bool expect_success() const { return expected_algorithm.get(); }
+  bool expect_success() const { return expected_algorithm.has_value(); }
 
   std::string test_case_description;
   Tpm* tpm;
   int key_size_bits;
-  std::vector<Algorithm> supported_algorithms;
-  std::unique_ptr<Algorithm> expected_algorithm;
+  std::vector<ChallengeSignatureAlgorithm> supported_algorithms;
+  base::Optional<ChallengeSignatureAlgorithm> expected_algorithm;
   int openssl_algorithm_nid;
 };
 
 class SignatureSealedSecretTestCase final {
  public:
-  using Algorithm = SignatureSealingBackend::Algorithm;
   using UnsealingSession = SignatureSealingBackend::UnsealingSession;
 
   SignatureSealedSecretTestCase(SignatureSealedSecretTestCaseParam param,
@@ -961,10 +959,10 @@ class SignatureSealedSecretTestCase final {
 
   bool CheckUnsealingFailsWithWrongAlgorithm(
       const SignatureSealedData& sealed_secret_data) {
-    const Algorithm wrong_algorithm =
-        *param_.expected_algorithm == Algorithm::kRsassaPkcs1V15Sha1
-            ? Algorithm::kRsassaPkcs1V15Sha256
-            : Algorithm::kRsassaPkcs1V15Sha1;
+    const ChallengeSignatureAlgorithm wrong_algorithm =
+        *param_.expected_algorithm == CHALLENGE_RSASSA_PKCS1_V1_5_SHA1
+            ? CHALLENGE_RSASSA_PKCS1_V1_5_SHA256
+            : CHALLENGE_RSASSA_PKCS1_V1_5_SHA1;
     if (backend()->CreateUnsealingSession(sealed_secret_data, key_spki_der_,
                                           {wrong_algorithm}, delegate_blob_,
                                           delegate_secret_)) {
@@ -1066,7 +1064,6 @@ class SignatureSealedSecretTestCase final {
 }  // namespace
 
 bool TpmLiveTest::SignatureSealedSecretTest(const SecureBlob& owner_password) {
-  using Algorithm = SignatureSealingBackend::Algorithm;
   using TestCaseParam = SignatureSealedSecretTestCaseParam;
   if (!tpm_->GetSignatureSealingBackend()) {
     // Not supported by the Tpm implementation, just skip the test.
@@ -1076,38 +1073,44 @@ bool TpmLiveTest::SignatureSealedSecretTest(const SecureBlob& owner_password) {
   std::vector<TestCaseParam> test_case_params;
   for (int key_size_bits : {1024, 2048}) {
     test_case_params.push_back(TestCaseParam::MakeSuccessful(
-        "SHA-1", tpm_, key_size_bits, {Algorithm::kRsassaPkcs1V15Sha1},
-        Algorithm::kRsassaPkcs1V15Sha1, NID_sha1));
+        "SHA-1", tpm_, key_size_bits, {CHALLENGE_RSASSA_PKCS1_V1_5_SHA1},
+        CHALLENGE_RSASSA_PKCS1_V1_5_SHA1, NID_sha1));
     if (tpm_->GetVersion() == Tpm::TPM_1_2) {
-      test_case_params.push_back(TestCaseParam::MakeFailing(
-          "SHA-256", tpm_, key_size_bits, {Algorithm::kRsassaPkcs1V15Sha256}));
-      test_case_params.push_back(TestCaseParam::MakeFailing(
-          "SHA-384", tpm_, key_size_bits, {Algorithm::kRsassaPkcs1V15Sha384}));
-      test_case_params.push_back(TestCaseParam::MakeFailing(
-          "SHA-512", tpm_, key_size_bits, {Algorithm::kRsassaPkcs1V15Sha512}));
+      test_case_params.push_back(
+          TestCaseParam::MakeFailing("SHA-256", tpm_, key_size_bits,
+                                     {CHALLENGE_RSASSA_PKCS1_V1_5_SHA256}));
+      test_case_params.push_back(
+          TestCaseParam::MakeFailing("SHA-384", tpm_, key_size_bits,
+                                     {CHALLENGE_RSASSA_PKCS1_V1_5_SHA384}));
+      test_case_params.push_back(
+          TestCaseParam::MakeFailing("SHA-512", tpm_, key_size_bits,
+                                     {CHALLENGE_RSASSA_PKCS1_V1_5_SHA512}));
       test_case_params.push_back(TestCaseParam::MakeSuccessful(
           "{SHA-1,SHA-256}", tpm_, key_size_bits,
-          {Algorithm::kRsassaPkcs1V15Sha256, Algorithm::kRsassaPkcs1V15Sha1},
-          Algorithm::kRsassaPkcs1V15Sha1, NID_sha1));
+          {CHALLENGE_RSASSA_PKCS1_V1_5_SHA256,
+           CHALLENGE_RSASSA_PKCS1_V1_5_SHA1},
+          CHALLENGE_RSASSA_PKCS1_V1_5_SHA1, NID_sha1));
     } else {
       test_case_params.push_back(TestCaseParam::MakeSuccessful(
-          "SHA-256", tpm_, key_size_bits, {Algorithm::kRsassaPkcs1V15Sha256},
-          Algorithm::kRsassaPkcs1V15Sha256, NID_sha256));
+          "SHA-256", tpm_, key_size_bits, {CHALLENGE_RSASSA_PKCS1_V1_5_SHA256},
+          CHALLENGE_RSASSA_PKCS1_V1_5_SHA256, NID_sha256));
       test_case_params.push_back(TestCaseParam::MakeSuccessful(
-          "SHA-384", tpm_, key_size_bits, {Algorithm::kRsassaPkcs1V15Sha384},
-          Algorithm::kRsassaPkcs1V15Sha384, NID_sha384));
+          "SHA-384", tpm_, key_size_bits, {CHALLENGE_RSASSA_PKCS1_V1_5_SHA384},
+          CHALLENGE_RSASSA_PKCS1_V1_5_SHA384, NID_sha384));
       test_case_params.push_back(TestCaseParam::MakeSuccessful(
-          "SHA-512", tpm_, key_size_bits, {Algorithm::kRsassaPkcs1V15Sha512},
-          Algorithm::kRsassaPkcs1V15Sha512, NID_sha512));
+          "SHA-512", tpm_, key_size_bits, {CHALLENGE_RSASSA_PKCS1_V1_5_SHA512},
+          CHALLENGE_RSASSA_PKCS1_V1_5_SHA512, NID_sha512));
       test_case_params.push_back(TestCaseParam::MakeSuccessful(
           "{SHA-384,SHA-256,SHA-512}", tpm_, key_size_bits,
-          {Algorithm::kRsassaPkcs1V15Sha384, Algorithm::kRsassaPkcs1V15Sha256,
-           Algorithm::kRsassaPkcs1V15Sha512},
-          Algorithm::kRsassaPkcs1V15Sha384, NID_sha384));
+          {CHALLENGE_RSASSA_PKCS1_V1_5_SHA384,
+           CHALLENGE_RSASSA_PKCS1_V1_5_SHA256,
+           CHALLENGE_RSASSA_PKCS1_V1_5_SHA512},
+          CHALLENGE_RSASSA_PKCS1_V1_5_SHA384, NID_sha384));
       test_case_params.push_back(TestCaseParam::MakeSuccessful(
           "{SHA-1,SHA-256}", tpm_, key_size_bits,
-          {Algorithm::kRsassaPkcs1V15Sha1, Algorithm::kRsassaPkcs1V15Sha256},
-          Algorithm::kRsassaPkcs1V15Sha256, NID_sha256));
+          {CHALLENGE_RSASSA_PKCS1_V1_5_SHA1,
+           CHALLENGE_RSASSA_PKCS1_V1_5_SHA256},
+          CHALLENGE_RSASSA_PKCS1_V1_5_SHA256, NID_sha256));
     }
   }
   for (auto&& test_case_param : test_case_params) {

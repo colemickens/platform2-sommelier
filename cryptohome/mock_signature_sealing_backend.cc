@@ -16,7 +16,7 @@ std::unique_ptr<SignatureSealingBackend::UnsealingSession>
 MockSignatureSealingBackend::CreateUnsealingSession(
     const SignatureSealedData& sealed_secret_data,
     const Blob& public_key_spki_der,
-    const std::vector<Algorithm>& key_algorithms,
+    const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
     const Blob& delegate_blob,
     const Blob& delegate_secret) {
   return std::unique_ptr<UnsealingSession>(CreateUnsealingSessionImpl(
