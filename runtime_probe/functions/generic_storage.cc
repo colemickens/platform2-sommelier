@@ -22,6 +22,9 @@ namespace runtime_probe {
 namespace {
 constexpr auto kStorageDirPath("/sys/class/block/");
 constexpr auto kReadFileMaxSize = 1024;
+// TODO(b/123097249): Remove the following hard-coded constant once
+// authenticated source of storage size to use is determined
+constexpr auto kBytesPerSector = 512;
 
 // DBus related constant to issue dbus call to debugd
 constexpr auto kDebugdMmcMethodName = "Mmc";
@@ -226,11 +229,11 @@ GenericStorageFunction::DataType GenericStorageFunction::Eval() const {
 
   for (const auto& node_path : storage_nodes_path_list) {
     VLOG(1) << "Processnig the node " << node_path.value();
+    base::DictionaryValue node_res{};
+
     const auto dev_path = node_path.Append("device");
     // For NVMe device, "/<node_path>/device/device/.." is expected.
     const auto nvme_dev_path = dev_path.Append("device");
-
-    base::DictionaryValue node_res{};
 
     // dev_path is the paraent directory of nvme_dev_path
     if (!base::PathExists(dev_path)) {
@@ -269,18 +272,31 @@ GenericStorageFunction::DataType GenericStorageFunction::Eval() const {
       continue;
     }
 
+    // Report the absolute path we probe the reported info from
+    node_res.SetString("path", node_path.value());
+
     // Size info
     const auto size_path = node_path.Append("size");
     std::string size_content;
     if (base::ReadFileToStringWithMaxSize(size_path, &size_content,
                                           kReadFileMaxSize)) {
-      node_res.SetString(
-          "sectors", base::TrimWhitespaceASCII(size_content,
-                                               base::TrimPositions::TRIM_ALL));
+      const auto sector_str = base::TrimWhitespaceASCII(
+          size_content, base::TrimPositions::TRIM_ALL);
+      node_res.SetString("sectors", sector_str);
+      int64_t sector_int;
+      if (!base::StringToInt64(sector_str, &sector_int)) {
+        LOG(ERROR) << "Failed to parse recorded sector of" << node_path.value()
+                   << " to integer!";
+        node_res.SetString("size", "-1");
+      } else {
+        node_res.SetString("size",
+                           base::Int64ToString(sector_int * kBytesPerSector));
+      }
     } else {
       VLOG(1) << "Storage device " << node_path.value()
               << " does not specify size";
       node_res.SetString("sectors", "-1");
+      node_res.SetString("size", "-1");
     }
 
     result.emplace_back();
