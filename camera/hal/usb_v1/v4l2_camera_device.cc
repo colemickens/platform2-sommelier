@@ -203,10 +203,13 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
   *buffer_size = fmt.fmt.pix.sizeimage;
   VLOG(1) << "Buffer size: " << *buffer_size;
 
-  ret = SetPowerLineFrequency(power_line_frequency_);
-  if (ret < 0) {
-    LOG(ERROR) << __func__ << ": Set power frequency error";
-    return -EINVAL;
+  // Only set power line frequency when the value is correct.
+  if (power_line_frequency_ != cros::PowerLineFrequency::FREQ_ERROR) {
+    ret = SetPowerLineFrequency(power_line_frequency_);
+    if (ret < 0) {
+      LOG(ERROR) << __func__ << ": Set power frequency error";
+      return -EINVAL;
+    }
   }
 
   v4l2_requestbuffers req_buffers;
