@@ -10,10 +10,18 @@
 
 namespace chromeos_dbus_bindings {
 
+// Note that we'll denote any type that starts with ^ as a protobuf class.
+// For example: "^FrobinateReply" is the protobuf class FrobinateReply.
+// Also note that "^" for DBus type is reserved for implementation use,
+// so we are free to use it.
+#define DBUS_TYPE_CHROMEOS_PROTOBUF ((int)'^')
+constexpr char kProtobufType[] = {DBUS_TYPE_CHROMEOS_PROTOBUF, '\0'};
+
 struct Interface {
   struct Argument {
     Argument(const std::string& name_in,
-             const std::string& type_in) : name(name_in), type(type_in) {}
+             const std::string& type_in)
+          : name(name_in), type(type_in) {}
     std::string name;
     std::string type;
   };

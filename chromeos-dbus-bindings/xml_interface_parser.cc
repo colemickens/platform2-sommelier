@@ -50,6 +50,9 @@ const char XmlInterfaceParser::kMethodKindNormal[] = "normal";
 const char XmlInterfaceParser::kMethodKindAsync[] = "async";
 const char XmlInterfaceParser::kMethodKindRaw[] = "raw";
 
+const char XmlInterfaceParser::kArgumentProtobufClass[] =
+    "org.chromium.DBus.Argument.ProtobufClass";
+
 namespace {
 
 string GetElementPath(const vector<string>& path) {
@@ -181,7 +184,11 @@ void XmlInterfaceParser::OnOpenElement(
     } else if (prev_element == kPropertyTag) {
       // Parse property annotations...
     } else if (prev_element == kArgumentTag) {
-      // Argument annotations are ignored.
+      // Retrieve protobuf type if any.
+      if (name == kArgumentProtobufClass) {
+        CHECK_EQ(last_arg_->type, "ay");
+        last_arg_->type = string(kProtobufType) + value;
+      }
     } else {
       LOG(FATAL) << "Unexpected tag " << element_name
                  << " inside " << prev_element;
@@ -234,6 +241,7 @@ void XmlInterfaceParser::AddMethodArgument(const XmlAttributeMap& attributes) {
     LOG(FATAL) << "Unknown method argument direction " << argument_direction;
   }
   argument_list->push_back(ParseArgument(attributes, element_path_));
+  last_arg_ = &argument_list->back();
 }
 
 void XmlInterfaceParser::AddSignalArgument(const XmlAttributeMap& attributes) {

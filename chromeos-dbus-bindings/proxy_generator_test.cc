@@ -112,6 +112,18 @@ class TestInterfaceProxyInterface {
       const base::Callback<void(brillo::Error*)>& error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
 
+  virtual bool NervousTension(
+      const PageOne& in_page_one,
+      Pushy* out_pushy,
+      brillo::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
+  virtual void NervousTensionAsync(
+      const PageOne& in_page_one,
+      const base::Callback<void(const Pushy& /*pushy*/)>& success_callback,
+      const base::Callback<void(brillo::Error*)>& error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
+
   virtual void RegisterCloserSignalHandler(
       const base::Closure& signal_callback,
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
@@ -301,6 +313,37 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
         "ExperimentNumberSix",
         success_callback,
         error_callback);
+  }
+
+  bool NervousTension(
+      const PageOne& in_page_one,
+      Pushy* out_pushy,
+      brillo::ErrorPtr* error,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
+    auto response = brillo::dbus_utils::CallMethodAndBlockWithTimeout(
+        timeout_ms,
+        dbus_object_proxy_,
+        "org.chromium.TestInterface",
+        "NervousTension",
+        error,
+        in_page_one);
+    return response && brillo::dbus_utils::ExtractMethodCallResults(
+        response.get(), error, out_pushy);
+  }
+
+  void NervousTensionAsync(
+      const PageOne& in_page_one,
+      const base::Callback<void(const Pushy& /*pushy*/)>& success_callback,
+      const base::Callback<void(brillo::Error*)>& error_callback,
+      int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
+    brillo::dbus_utils::CallMethodWithTimeout(
+        timeout_ms,
+        dbus_object_proxy_,
+        "org.chromium.TestInterface",
+        "NervousTension",
+        success_callback,
+        error_callback,
+        in_page_one);
   }
 
  private:
@@ -1636,13 +1679,21 @@ TEST_F(ProxyGeneratorTest, GenerateAdaptors) {
       vector<Interface::Argument>{{"", kDBusTypeBool}},
       vector<Interface::Argument>{});
   interface.methods.emplace_back("ExperimentNumberSix");
+  interface.methods.back().doc_string = "Comment line1\nline2";
+  interface.methods.emplace_back(
+      "NervousTension",
+      vector<Interface::Argument>{
+        {"page_one", string(kProtobufType)+"PageOne"}},
+      vector<Interface::Argument>{
+        {"pushy", string(kProtobufType)+"Pushy"}});
+
+
   interface.signals.emplace_back("Closer");
   interface.signals.emplace_back(
       "TheCurseOfKaZar",
       vector<Interface::Argument>{
           {"", kDBusTypeArryOfStrings},
           {"", kDBusTypeByte}});
-  interface.methods.back().doc_string = "Comment line1\nline2";
   Interface interface2;
   interface2.name = "org.chromium.TestInterface2";
   interface2.methods.emplace_back(

@@ -35,6 +35,9 @@ const char kUnclosedDictInnerSignature[] = "a{a{u}";
 const char kUnexpectedCloseSignature[] = "a}i{";
 const char kUnknownSignature[] = "al";
 
+// Signature for protobuf type
+const char kMyProtobufClassName[] = "MyProtobufClass";
+
 }  // namespace
 
 TEST(DBusSignatureTest, ParseFailures) {
@@ -299,6 +302,22 @@ TEST(DBusSignatureTest, FileDescriptors) {
             type->GetBaseType(Direction::kAppend));
   EXPECT_EQ("std::tuple<int32_t, base::ScopedFD>",
             type->GetBaseType(Direction::kExtract));
+}
+
+TEST(DBusSignatureTest, Protobufs) {
+  DBusSignature signature;
+
+  auto type = signature.Parse(string(kProtobufType)+kMyProtobufClassName);
+  EXPECT_TRUE(type);
+
+  EXPECT_EQ("MyProtobufClass", type->GetBaseType(Direction::kAppend));
+  EXPECT_EQ("MyProtobufClass", type->GetBaseType(Direction::kExtract));
+
+  EXPECT_EQ("const MyProtobufClass&", type->GetInArgType(Receiver::kAdaptor));
+  EXPECT_EQ("const MyProtobufClass&", type->GetInArgType(Receiver::kProxy));
+
+  EXPECT_EQ("MyProtobufClass*", type->GetOutArgType(Receiver::kAdaptor));
+  EXPECT_EQ("MyProtobufClass*", type->GetOutArgType(Receiver::kProxy));
 }
 
 }  // namespace chromeos_dbus_bindings

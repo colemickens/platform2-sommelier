@@ -72,6 +72,8 @@ class XmlInterfaceParser {
   static const char kMethodKindAsync[];
   static const char kMethodKindRaw[];
 
+  static const char kArgumentProtobufClass[];
+
   // Element callbacks on |this| called by HandleElementStart() and
   // HandleElementEnd(), respectively.
   void OnOpenElement(const std::string& element_name,
@@ -127,6 +129,9 @@ class XmlInterfaceParser {
 
   // Tracks where in the element traversal our parse has taken us.
   std::vector<std::string> element_path_;
+
+  // Tracks the last argument that we've seen.
+  Interface::Argument* last_arg_;
 
   DISALLOW_COPY_AND_ASSIGN(XmlInterfaceParser);
 };

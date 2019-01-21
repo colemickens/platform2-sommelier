@@ -35,6 +35,19 @@ const char kGoodInterfaceFileContents[] = R"literal_string(
       <arg name="data" type="ay" direction="out"/>
       <annotation name="org.chromium.DBus.Method.Const" value="true"/>
     </method>
+    <method name="PassMeProtos">
+      <arg name="request" type="ay" direction="in">
+        <annotation
+          name="org.chromium.DBus.Argument.ProtobufClass"
+          value="PassMeProtosRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation
+          name="org.chromium.DBus.Argument.ProtobufClass"
+          value="PassMeProtosReply" />
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+    </method>
     <property name="Capabilities" type="a{sv}" access="read"/>
     <signal name="BSSRemoved">
       <arg name="BSS" type="o"/>
@@ -54,6 +67,11 @@ const char kNameArgument[] = "name";
 const char kDataArgument[] = "data";
 const char kStringType[] = "s";
 const char kArrayByteType[] = "ay";
+const char kPassMeProtosMethod[] = "PassMeProtos";
+const char kRequestArgument[] = "request";
+const char kRequestArgumentProto[] = "PassMeProtosRequest";
+const char kReplyArgument[] = "reply";
+const char kReplyArgumentProto[] = "PassMeProtosReply";
 const char kBssRemovedSignal[] = "BSSRemoved";
 const char kBssArgument[] = "BSS";
 const char kObjectType[] = "o";
@@ -80,7 +98,7 @@ TEST_F(XmlInterfaceParserTest, GoodInputFile) {
 
   EXPECT_EQ(kInterfaceName, interface.name);
   EXPECT_EQ("/org/chromium/Test", interface.path);
-  ASSERT_EQ(2u, interface.methods.size());
+  ASSERT_EQ(3u, interface.methods.size());
   ASSERT_EQ(1u, interface.signals.size());
 
   // <method name="Scan">
@@ -111,6 +129,30 @@ TEST_F(XmlInterfaceParserTest, GoodInputFile) {
   // <arg name="data" type="ay" direction="out"/>
   EXPECT_EQ(kDataArgument, interface.methods[1].output_arguments[0].name);
   EXPECT_EQ(kArrayByteType, interface.methods[1].output_arguments[0].type);
+
+  // <method name="PassMeProtos">
+  EXPECT_EQ(kPassMeProtosMethod, interface.methods[2].name);
+  EXPECT_EQ(Interface::Method::Kind::kAsync, interface.methods[2].kind);
+  EXPECT_FALSE(interface.methods[2].is_const);
+  EXPECT_FALSE(interface.methods[2].include_dbus_message);
+  EXPECT_EQ(1u, interface.methods[2].input_arguments.size());
+  EXPECT_EQ(1u, interface.methods[2].output_arguments.size());
+
+  // <arg name="request" type="ay" direction="in">
+  // <annotation
+  //    name="org.chromium.DBus.Argument.ProtobufClass"
+  //    value="PassMeProtosRequest" />
+  EXPECT_EQ(kRequestArgument, interface.methods[2].input_arguments[0].name);
+  EXPECT_EQ(string(kProtobufType)+string(kRequestArgumentProto),
+            interface.methods[2].input_arguments[0].type);
+
+  // <arg name="reply" type="ay" direction="out">
+  // <annotation
+  //    name="org.chromium.DBus.Argument.ProtobufClass"
+  //    value="PassMeProtosReply" />
+  EXPECT_EQ(kReplyArgument, interface.methods[2].output_arguments[0].name);
+  EXPECT_EQ(string(kProtobufType)+string(kReplyArgumentProto),
+            interface.methods[2].output_arguments[0].type);
 
   // <signal name="BSSRemoved">
   EXPECT_EQ(kBssRemovedSignal, interface.signals[0].name);

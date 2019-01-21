@@ -218,6 +218,26 @@ class Struct : public NonScalar {
   DISALLOW_COPY_AND_ASSIGN(Struct);
 };
 
+class ProtobufClass : public NonScalar {
+ public:
+  explicit ProtobufClass(std::string protobuf_class)
+      : protobuf_class_(protobuf_class) {}
+
+  bool IsValidPropertyType() const override {
+    // Using protobuf class for property is not yet supported.
+    return false;
+  }
+
+  std::string GetBaseType(Direction direction) const override {
+    return protobuf_class_;
+  }
+
+ private:
+  string protobuf_class_;
+
+  DISALLOW_COPY_AND_ASSIGN(ProtobufClass);
+};
+
 }  // namespace
 
 DBusSignature::DBusSignature() = default;
@@ -297,6 +317,9 @@ std::unique_ptr<DBusType> DBusSignature::GetTypenameForSignature(
       break;
     case DBUS_TYPE_VARIANT:
       type = std::make_unique<SimpleNonScalar>(SimpleNonScalar::Type::kVariant);
+      break;
+    case DBUS_TYPE_CHROMEOS_PROTOBUF:
+      type = std::make_unique<ProtobufClass>(string(cur, end));
       break;
     default:
       LOG(ERROR) << "Unexpected token " << *signature;

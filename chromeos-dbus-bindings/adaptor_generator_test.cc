@@ -75,6 +75,10 @@ class TestInterface {
       brillo::ErrorPtr* error,
       int64_t* out_akira,
       std::string* out_2) = 0;
+  virtual bool Takashi(
+      brillo::ErrorPtr* error,
+      const Onishi& in_onishi,
+      Miyako* out_miyako) = 0;
 };
 
 // Interface adaptor for org::chromium::Test.
@@ -102,6 +106,10 @@ class TestAdaptor {
         "Kiyoko",
         base::Unretained(interface_),
         &TestInterface::Kiyoko);
+    itf->AddSimpleMethodHandlerWithError(
+        "Takashi",
+        base::Unretained(interface_),
+        &TestInterface::Takashi);
 
     signal_Update_ = itf->RegisterSignalOfType<SignalUpdateType>("Update");
     signal_Mapping_ = itf->RegisterSignalOfType<SignalMappingType>("Mapping");
@@ -336,6 +344,15 @@ TEST_F(AdaptorGeneratorTest, GenerateAdaptors) {
       vector<Interface::Argument>{
           {"akira", kDBusTypeInt64},
           {"", kDBusTypeString}});
+
+  // Interface methods with protobuf class.
+  interface.methods.emplace_back(
+      "Takashi",
+      vector<Interface::Argument>{
+          {"onishi", string(kProtobufType)+"Onishi"}},
+      vector<Interface::Argument>{
+          {"miyako", string(kProtobufType)+"Miyako"}});
+
   // Signals generate helper methods to send them.
   interface.signals.emplace_back(
       "Update",
