@@ -311,7 +311,8 @@ int MetadataHandler::FillMetadataFromSupportedFormats(
         continue;
       }
       // We filter the resolution which cannot support 30 fps out.
-      if (format == HAL_PIXEL_FORMAT_BLOB || per_format_max_fps == 30) {
+      if (format == HAL_PIXEL_FORMAT_BLOB || per_format_max_fps == 30 ||
+          is_external) {
         stream_configurations.push_back(format);
         stream_configurations.push_back(supported_format.width);
         stream_configurations.push_back(supported_format.height);
