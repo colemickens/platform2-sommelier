@@ -10,7 +10,9 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/values.h>
+#include <pcrecpp.h>
 
 #include "runtime_probe/functions/generic_battery.h"
 #include "runtime_probe/utils/file_utils.h"
@@ -54,6 +56,17 @@ GenericBattery::DataType GenericBattery::Eval() const {
                    << kSysfsExpectedType << "] for " << battery_path.value();
         continue;
       }
+      dict_value.SetString("path", battery_path.value());
+
+      pcrecpp::RE re(R"(BAT(\d+)$)", pcrecpp::RE_Options());
+      int32_t battery_index;
+      if (!re.PartialMatch(battery_path.value(), &battery_index)) {
+        VLOG(1) << "Can't extract index from " << battery_path.value();
+      } else {
+        // The extracted index starts from 0. Shift it to start from 1.
+        dict_value.SetString("index", base::IntToString(battery_index + 1));
+      }
+
       result.push_back(std::move(dict_value));
     }
   }
