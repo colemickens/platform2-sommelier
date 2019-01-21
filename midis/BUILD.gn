@@ -1,0 +1,94 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+import("//common-mk/mojom_bindings_generator.gni")
+
+group("all") {
+  deps = [
+    ":midis",
+  ]
+  if (use.test) {
+    deps += [ ":midis_testrunner" ]
+  }
+  if (use.fuzzer) {
+    deps += [ ":midis_seq_handler_fuzzer" ]
+  }
+}
+
+generate_mojom_bindings("midis_mojo_bindings") {
+  sources = [
+    "mojo/midis.mojom",
+  ]
+}
+
+pkg_config("midis_common_pkg_deps") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "libmojo-${libbase_ver}",
+    "alsa",
+  ]
+}
+
+static_library("midis_common") {
+  deps = [
+    ":midis_mojo_bindings",
+  ]
+  all_dependent_configs = [ ":midis_common_pkg_deps" ]
+  sources = [
+    # Files included from Chrome //src/media/midi checkout.
+    # This directory is placed in platform2 as platform2/media/midi.
+    "../media/midi/message_util.cc",
+    "../media/midi/midi_message_queue.cc",
+    "client.cc",
+    "client_tracker.cc",
+    "device.cc",
+    "device_tracker.cc",
+    "ports.cc",
+    "seq_handler.cc",
+    "subdevice_client_fd_holder.cc",
+  ]
+}
+
+executable("midis") {
+  deps = [
+    ":midis_common",
+  ]
+  libs = [ "dl" ]
+  sources = [
+    "daemon.cc",
+    "main.cc",
+  ]
+}
+
+if (use.test) {
+  executable("midis_testrunner") {
+    configs += [ "//common-mk:test" ]
+    deps = [
+      ":midis_common",
+      "../common-mk/testrunner:testrunner",
+    ]
+    sources = [
+      "tests/client_test.cc",
+      "tests/client_tracker_test.cc",
+      "tests/device_tracker_test.cc",
+      "tests/seq_handler_test.cc",
+      "tests/test_helper.cc",
+    ]
+  }
+}
+
+# Fuzzer target.
+if (use.fuzzer) {
+  executable("midis_seq_handler_fuzzer") {
+    configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
+    deps = [
+      ":midis_common",
+    ]
+    sources = [
+      "seq_handler_fuzzer.cc",
+    ]
+  }
+}
