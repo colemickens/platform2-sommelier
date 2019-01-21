@@ -1,0 +1,41 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+import("//common-mk/mojom_bindings_generator.gni")
+
+group("all") {
+  deps = [
+    ":arc-keymasterd",
+  ]
+}
+
+mojo_output_dir = "${SHARED_INTERMEDIATE_DIR}/include"
+
+# Binary
+pkg_config("arc-keymasterd_pkg_deps") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+  ]
+}
+
+executable("arc-keymasterd") {
+  sources = [
+    "${mojo_output_dir}/mojo/keymaster.mojom.cc",
+    "daemon.cc",
+    "main.cc",
+  ]
+  deps = [
+    ":keymaster_mojo_bindings",
+  ]
+  configs += [ "arc-keymasterd_pkg_deps" ]
+}
+
+# Mojo bindings
+generate_mojom_bindings("keymaster_mojo_bindings") {
+  sources = [
+    "mojo/keymaster.mojom",
+  ]
+}
