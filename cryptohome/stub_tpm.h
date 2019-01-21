@@ -38,6 +38,20 @@ class StubTpm : public Tpm {
                              const std::map<uint32_t, std::string>& pcr_map,
                              SecureBlob* plaintext) override
     { return kTpmRetryFatal; }
+  TpmRetryAction SealToPcrWithAuthorization(
+      TpmKeyHandle key_handle,
+      const SecureBlob& plaintext,
+      const SecureBlob& auth_blob,
+      const std::map<uint32_t, std::string>& pcr_map,
+      SecureBlob* sealed_data) override
+    { return kTpmRetryFatal; }
+  TpmRetryAction UnsealWithAuthorization(
+      TpmKeyHandle key_handle,
+      const SecureBlob& sealed_data,
+      const SecureBlob& auth_blob,
+      const std::map<uint32_t, std::string>& pcr_map,
+      SecureBlob* plaintext) override
+    { return kTpmRetryFatal; }
   TpmRetryAction GetPublicKeyHash(TpmKeyHandle key_handle,
                                   SecureBlob* hash) override
     { return kTpmRetryNone; }

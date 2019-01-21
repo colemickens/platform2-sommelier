@@ -680,6 +680,184 @@ Tpm::TpmRetryAction TpmImpl::DecryptBlob(
   return kTpmRetryNone;
 }
 
+bool TpmImpl::SetAuthValue(TSS_HCONTEXT context_handle,
+                           ScopedTssKey* enc_handle,
+                           TSS_HTPM tpm_handle,
+                           const SecureBlob& auth_blob) {
+  // Create the enc_handle.
+  TSS_RESULT result;
+  if (TPM_ERROR(result = Tspi_Context_CreateObject(context_handle,
+                                                   TSS_OBJECT_TYPE_ENCDATA,
+                                                   TSS_ENCDATA_SEAL,
+                                                   enc_handle->ptr()))) {
+    TPM_LOG(ERROR, result)
+        << "Error calling Tspi_Context_CreateObject";
+    return false;
+  }
+
+  // Get the TPM usage policy object and set the auth_value.
+  TSS_HPOLICY tpm_usage_policy;
+  if (TPM_ERROR(result = Tspi_GetPolicyObject(tpm_handle, TSS_POLICY_USAGE,
+                                              &tpm_usage_policy))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_GetPolicyObject";
+    return false;
+  }
+  if (TPM_ERROR(result = Tspi_Policy_SetSecret(
+                    tpm_usage_policy, TSS_SECRET_MODE_PLAIN,
+                    auth_blob.size(),
+                    const_cast<BYTE*>(auth_blob.data())))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_Policy_SetSecret";
+    return false;
+  }
+
+  if (TPM_ERROR(result = Tspi_Policy_AssignToObject(
+      tpm_usage_policy,
+      *enc_handle))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_Policy_AssignToObject";
+    return false;
+  }
+
+  return true;
+}
+
+Tpm::TpmRetryAction TpmImpl::SealToPcrWithAuthorization(
+    TpmKeyHandle key_handle,
+    const SecureBlob& plaintext,
+    const SecureBlob& auth_blob,
+    const std::map<uint32_t, std::string>& pcr_map,
+    SecureBlob* sealed_data) {
+  ScopedTssContext context_handle;
+  TSS_HTPM tpm_handle;
+  if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
+    LOG(ERROR) << "Failed to connect to the TPM.";
+    return Tpm::kTpmRetryFailNoRetry;
+  }
+  // Load the Storage Root Key.
+  TSS_RESULT result;
+  ScopedTssKey srk_handle(context_handle);
+  if (!LoadSrk(context_handle, srk_handle.ptr(), &result)) {
+    TPM_LOG(INFO, result) << "Failed to load SRK.";
+    return Tpm::kTpmRetryFailNoRetry;
+  }
+
+  // Create a PCRS object.
+  ScopedTssPcrs pcrs_handle(context_handle);
+  if (TPM_ERROR(result = Tspi_Context_CreateObject(context_handle,
+                                                   TSS_OBJECT_TYPE_PCRS,
+                                                   TSS_PCRS_STRUCT_INFO,
+                                                   pcrs_handle.ptr()))) {
+    TPM_LOG(ERROR, result)
+        << "Error calling Tspi_Context_CreateObject";
+    return Tpm::kTpmRetryFailNoRetry;
+  }
+
+  // Process the data from pcr_map.
+  for (const auto& map_pair : pcr_map) {
+    uint32_t pcr_index = map_pair.first;
+    const std::string& digest = map_pair.second;
+    if (digest.empty()) {
+      UINT32 pcr_len = 0;
+      ScopedTssMemory pcr_value(context_handle);
+      if (TPM_ERROR(result = Tspi_TPM_PcrRead(tpm_handle, pcr_index,
+                                              &pcr_len, pcr_value.ptr()))) {
+        TPM_LOG(ERROR, result) << "Could not read PCR value";
+        return ResultToRetryAction(result);
+      }
+      Tspi_PcrComposite_SetPcrValue(
+          pcrs_handle, pcr_index, pcr_len, pcr_value.value());
+    } else {
+      Tspi_PcrComposite_SetPcrValue(
+          pcrs_handle, pcr_index, digest.size(),
+          reinterpret_cast<BYTE*>(const_cast<char*>(digest.data())));
+    }
+  }
+
+  ScopedTssKey enc_handle(context_handle);
+  if (!SetAuthValue(context_handle, &enc_handle, tpm_handle, auth_blob)) {
+    context_handle.reset();
+    return Tpm::kTpmRetryFailNoRetry;
+  }
+
+  // Seal the given value with the SRK.
+  if (TPM_ERROR(result = Tspi_Data_Seal(
+      enc_handle,
+      srk_handle,
+      plaintext.size(),
+      const_cast<BYTE*>(plaintext.data()),
+      pcrs_handle))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_Data_Seal";
+    return Tpm::kTpmRetryFailNoRetry;
+  }
+
+  // Extract the sealed value.
+  ScopedTssMemory enc_data(context_handle);
+  UINT32 enc_data_length = 0;
+  if (TPM_ERROR(result = Tspi_GetAttribData(enc_handle,
+                                            TSS_TSPATTRIB_ENCDATA_BLOB,
+                                            TSS_TSPATTRIB_ENCDATABLOB_BLOB,
+                                            &enc_data_length,
+                                            enc_data.ptr()))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_GetAttribData";
+    return Tpm::kTpmRetryFailNoRetry;
+  }
+  sealed_data->assign(&enc_data.value()[0],
+                      &enc_data.value()[enc_data_length]);
+
+  return kTpmRetryNone;
+}
+
+Tpm::TpmRetryAction TpmImpl::UnsealWithAuthorization(
+    TpmKeyHandle key_handle,
+    const SecureBlob& sealed_data,
+    const SecureBlob& auth_blob,
+    const std::map<uint32_t, std::string>& pcr_map,
+    SecureBlob* plaintext) {
+  ScopedTssContext context_handle;
+  TSS_HTPM tpm_handle;
+  if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
+    LOG(ERROR) << "Failed to connect to the TPM.";
+    return Tpm::kTpmRetryFailNoRetry;
+  }
+  // Load the Storage Root Key.
+  TSS_RESULT result;
+  ScopedTssKey srk_handle(context_handle);
+  if (!LoadSrk(context_handle, srk_handle.ptr(), &result)) {
+    TPM_LOG(INFO, result) << "Failed to load SRK.";
+    return ResultToRetryAction(result);
+  }
+
+  // Create an ENCDATA object with the sealed value.
+  ScopedTssKey enc_handle(context_handle);
+  if (!SetAuthValue(context_handle, &enc_handle, tpm_handle, auth_blob)) {
+    context_handle.reset();
+    return Tpm::kTpmRetryFailNoRetry;
+  }
+
+  if (TPM_ERROR(result = Tspi_SetAttribData(enc_handle,
+      TSS_TSPATTRIB_ENCDATA_BLOB,
+      TSS_TSPATTRIB_ENCDATABLOB_BLOB,
+      sealed_data.size(),
+      const_cast<BYTE*>(sealed_data.data())))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_SetAttribData";
+    return ResultToRetryAction(result);
+  }
+
+  // Unseal using the SRK.
+  ScopedTssMemory dec_data(context_handle);
+  UINT32 dec_data_length = 0;
+  if (TPM_ERROR(result = Tspi_Data_Unseal(enc_handle,
+                                          srk_handle,
+                                          &dec_data_length,
+                                          dec_data.ptr()))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_Data_Unseal";
+    return ResultToRetryAction(result);
+  }
+  plaintext->assign(&dec_data.value()[0], &dec_data.value()[dec_data_length]);
+  brillo::SecureMemset(dec_data.value(), 0, dec_data_length);
+
+  return kTpmRetryNone;
+}
+
 bool TpmImpl::GetPublicKeyBlob(TSS_HCONTEXT context_handle,
                                TSS_HKEY key_handle,
                                SecureBlob* data_out,

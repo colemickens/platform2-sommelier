@@ -51,6 +51,10 @@ class TpmLiveTest {
   // it to encrypt and decrypt.
   bool DecryptionKeyTest();
 
+  // This test checks if we can seal and unseal a blob to a PCR state using
+  // some authorization value.
+  bool SealToPcrWithAuthorizationTest();
+
   // This test verifies that the Nvram subsystem of the TPM is working
   // correctly.
   // This test requires the TPM owner password to be provided via

@@ -34,6 +34,18 @@ class MockTpm : public Tpm {
                      const brillo::SecureBlob&,
                      const std::map<uint32_t, std::string>& pcr_map,
                      brillo::SecureBlob*));
+  MOCK_METHOD5(SealToPcrWithAuthorization,
+      TpmRetryAction(TpmKeyHandle,
+                     const brillo::SecureBlob&,
+                     const brillo::SecureBlob&,
+                     const std::map<uint32_t, std::string>& pcr_map,
+                     brillo::SecureBlob*));
+  MOCK_METHOD5(UnsealWithAuthorization,
+      TpmRetryAction(TpmKeyHandle,
+                     const brillo::SecureBlob&,
+                     const brillo::SecureBlob&,
+                     const std::map<uint32_t, std::string>& pcr_map,
+                     brillo::SecureBlob*));
   MOCK_METHOD2(GetPublicKeyHash, TpmRetryAction(TpmKeyHandle,
                                                 brillo::SecureBlob*));
   MOCK_METHOD1(GetOwnerPassword, bool(brillo::Blob*));

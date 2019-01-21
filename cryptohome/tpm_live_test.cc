@@ -86,6 +86,10 @@ bool TpmLiveTest::RunLiveTests(const SecureBlob& owner_password,
     LOG(ERROR) << "Error running Decryption test.";
     return false;
   }
+  if (!SealToPcrWithAuthorizationTest()) {
+    LOG(ERROR) << "Error running SealToPcrWithAuthorizationTest.";
+    return false;
+  }
   const Tpm::TpmVersion tpm_version = tpm_->GetVersion();
   if ((tpm_version == Tpm::TPM_1_2 && !owner_password.empty()) ||
       (tpm_version == Tpm::TPM_2_0 && tpm2_use_system_owner_password)) {
@@ -384,6 +388,63 @@ bool TpmLiveTest::DecryptionKeyTest() {
     return false;
   }
   LOG(INFO) << "DecryptionKeyTest ended successfully.";
+  return true;
+}
+
+bool TpmLiveTest::SealToPcrWithAuthorizationTest() {
+  LOG(INFO) << "SealToPcrWithAuthorizationTest started";
+  SecureBlob n;
+  SecureBlob p;
+  uint32_t tpm_key_bits = 2048;
+  if (!CryptoLib::CreateRsaKey(tpm_key_bits, &n, &p)) {
+    LOG(ERROR) << "Error creating RSA key.";
+    return false;
+  }
+  SecureBlob wrapped_key;
+  if (!tpm_->WrapRsaKey(n, p, &wrapped_key)) {
+    LOG(ERROR) << "Error wrapping RSA key.";
+    return false;
+  }
+  ScopedKeyHandle handle;
+  if (tpm_->LoadWrappedKey(wrapped_key, &handle) != Tpm::kTpmRetryNone) {
+    LOG(ERROR) << "Error loading key.";
+    return false;
+  }
+
+  uint32_t index1 = 4;
+  uint32_t index2 = 11;
+  std::map<uint32_t, std::string> pcr_map({{index1, ""}, {index2, ""}});
+  SecureBlob plaintext(32, 'a');
+  SecureBlob auth_blob(256, 'b');
+  SecureBlob ciphertext;
+  if (tpm_->SealToPcrWithAuthorization(handle.value(), plaintext, auth_blob,
+                                       pcr_map, &ciphertext) !=
+      Tpm::kTpmRetryNone) {
+    LOG(ERROR) << "Error sealing the blob.";
+    return false;
+  }
+  SecureBlob unsealed_text;
+  if (tpm_->UnsealWithAuthorization(handle.value(), ciphertext, auth_blob,
+                                    pcr_map, &unsealed_text) !=
+      Tpm::kTpmRetryNone) {
+    LOG(ERROR) << "Error unsealing blob.";
+    return false;
+  }
+  if (plaintext != unsealed_text) {
+    LOG(ERROR) << "Unsealed plaintext does not match plaintext.";
+    return false;
+  }
+
+  // Check that unsealing doesn't work with wrong auth_blob.
+  auth_blob.char_data()[255] = 'a';
+  if (tpm_->UnsealWithAuthorization(handle.value(), ciphertext, auth_blob,
+                                    pcr_map, &unsealed_text) ==
+      Tpm::kTpmRetryNone && plaintext == unsealed_text) {
+    LOG(ERROR) << "UnsealWithAuthorization failed to fail.";
+    return false;
+  }
+
+  LOG(INFO) << "SealToPcrWithAuthorizationTest ended successfully.";
   return true;
 }
 

@@ -41,6 +41,18 @@ class TpmImpl : public Tpm {
                              const brillo::SecureBlob& key,
                              const std::map<uint32_t, std::string>& pcr_map,
                              brillo::SecureBlob* plaintext) override;
+  TpmRetryAction SealToPcrWithAuthorization(
+      TpmKeyHandle key_handle,
+      const brillo::SecureBlob& plaintext,
+      const brillo::SecureBlob& auth_blob,
+      const std::map<uint32_t, std::string>& pcr_map,
+      brillo::SecureBlob* sealed_data) override;
+  TpmRetryAction UnsealWithAuthorization(
+      TpmKeyHandle key_handle,
+      const brillo::SecureBlob& sealed_data,
+      const brillo::SecureBlob& auth_blob,
+      const std::map<uint32_t, std::string>& pcr_map,
+      brillo::SecureBlob* plaintext) override;
   TpmRetryAction GetPublicKeyHash(TpmKeyHandle key_handle,
                                   brillo::SecureBlob* hash) override;
   bool GetOwnerPassword(brillo::Blob* owner_password) override;
@@ -334,6 +346,12 @@ class TpmImpl : public Tpm {
       brillo::SecureBlob* ek_public_key,
       TSS_HCONTEXT* context_handle,
       TSS_HTPM* tpm_handle);
+
+  // Assigns the authorization value to object.
+  bool SetAuthValue(TSS_HCONTEXT context_handle,
+                    trousers::ScopedTssKey* enc_handle,
+                    TSS_HTPM tpm_handle,
+                    const brillo::SecureBlob& auth_blob);
 
   // Member variables
   bool initialized_;

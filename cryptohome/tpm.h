@@ -219,6 +219,50 @@ class Tpm {
       const std::map<uint32_t, std::string>& pcr_map,
       brillo::SecureBlob* plaintext) = 0;
 
+  // Seals a data blob to provided PCR data, while assigning a authorization
+  // value derived from provided |auth_blob|. For TPM2.0, |key_handle| is used
+  // to decrypt the |auth_blob|, obtaining the authorization value. For TPM1.2
+  // the |key_handle| is unused. Returns a TpmRetryAction struct.
+  //
+  // Parameters
+  //   key_handle - The loaded TPM key handle.
+  //   plaintext - The data blob to be sealed.
+  //   auth_blob - The blob to be used to derive the authorization value.
+  //   pcr_map - The map of PCR index -> expected value when Unseal will be
+  //             used.
+  //   sealed_data (OUT) - Sealed blob.
+  virtual TpmRetryAction SealToPcrWithAuthorization(
+    TpmKeyHandle key_handle,
+    const brillo::SecureBlob& plaintext,
+    const brillo::SecureBlob& auth_blob,
+    const std::map<uint32_t, std::string>& pcr_map,
+    brillo::SecureBlob* sealed_data) = 0;
+
+  // Unseal a data blob using the provided |auth_blob| to derive the
+  // authorization value. For TPM2.0, |key_handle| is used to decrypt the
+  // |auth_blob|, obtaining the authorization value. Also for TPM2.0, the
+  // session used to unseal is not salted, meaning there's a security risk to
+  // leak the |auth_blob|. That's because it uses one expensive operation in
+  // decrypt to obtain the auth_value, and we can't afford to add a second
+  // operation. This might change in the future if we implement ECC encryption
+  // for salted sessions.
+  // For TPM1.2 the |key_handle| is unused. Returns a TpmRetryAction struct.
+  //
+  // Parameters
+  //   key_handle - The loaded TPM key handle.
+  //   sealed_data - The sealed data.
+  //   auth_blob - The blob used to derive the authorization value.
+  //   pcr_map - The map of PCR index -> value bound to the key. This is used
+  //             only for TPM 2.0. For TPM 1.2 this parameter is ignored, even
+  //             so an empty map can be used.
+  //   plaintext (OUT) - Unsealed blob.
+  virtual TpmRetryAction UnsealWithAuthorization(
+    TpmKeyHandle key_handle,
+    const brillo::SecureBlob& sealed_data,
+    const brillo::SecureBlob& auth_blob,
+    const std::map<uint32_t, std::string>& pcr_map,
+    brillo::SecureBlob* plaintext) = 0;
+
   // Retrieves the sha1sum of the public key component of the RSA key
   virtual TpmRetryAction GetPublicKeyHash(TpmKeyHandle key_handle,
                                           brillo::SecureBlob* hash) = 0;

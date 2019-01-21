@@ -75,6 +75,18 @@ class Tpm2Impl : public Tpm {
                              const brillo::SecureBlob& key,
                              const std::map<uint32_t, std::string>& pcr_map,
                              brillo::SecureBlob* plaintext) override;
+  TpmRetryAction SealToPcrWithAuthorization(
+      TpmKeyHandle key_handle,
+      const brillo::SecureBlob& plaintext,
+      const brillo::SecureBlob& auth_blob,
+      const std::map<uint32_t, std::string>& pcr_map,
+      brillo::SecureBlob* sealed_data) override;
+  TpmRetryAction UnsealWithAuthorization(
+      TpmKeyHandle key_handle,
+      const brillo::SecureBlob& sealed_data,
+      const brillo::SecureBlob& auth_blob,
+      const std::map<uint32_t, std::string>& pcr_map,
+      brillo::SecureBlob* plaintext) override;
   TpmRetryAction GetPublicKeyHash(TpmKeyHandle key_handle,
                                   brillo::SecureBlob* hash) override;
   bool GetOwnerPassword(brillo::Blob* owner_password) override;
@@ -220,6 +232,13 @@ class Tpm2Impl : public Tpm {
   // thread was started and both tpm_owner_ and tpm_nvram_ are valid.
   bool InitializeTpmManagerClients();
   void InitializeClientsOnTpmManagerThread(base::WaitableEvent* completion);
+
+  // Derive the |auth_value| by decrypting the |pass_blob| using |key_handle|
+  // and hashing the result. The input |pass_blob| must have 256 bytes, the
+  // size of cryptohome key modulus.
+  bool GetAuthValue(TpmKeyHandle key_handle,
+                    const brillo::SecureBlob& pass_blob,
+                    std::string* auth_value);
 
   // Posts a task to |tpm_manager_thread_| to send a request to tpm_managerd.
   // |method| will be called on |tpm_manager_thread_|. This function doesn't
