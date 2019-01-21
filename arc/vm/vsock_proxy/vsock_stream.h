@@ -22,13 +22,13 @@ class VSockStream {
   // Returns the raw file descriptor.
   int Get() const { return vsock_fd_.get(); }
 
-  // Reads the message from the socket. Returns Message on success,
-  // otherwise nullopt.
-  base::Optional<arc_proxy::Message> Read();
+  // Reads the message from the socket. Returns true and stores the read
+  // message into |message| on success. Otherwise false.
+  bool Read(arc_proxy::Message* message);
 
   // Writes the serialized |message| to the socket.
   // Returns true iff the whole message is written.
-  bool Write(arc_proxy::Message message);
+  bool Write(const arc_proxy::Message& message);
 
  private:
   base::ScopedFD vsock_fd_;

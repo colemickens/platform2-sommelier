@@ -28,19 +28,19 @@ SocketStream::SocketStream(base::ScopedFD socket_fd, VSockProxy* proxy)
 
 SocketStream::~SocketStream() = default;
 
-base::Optional<arc_proxy::Message> SocketStream::Read() {
+bool SocketStream::Read(arc_proxy::Message* message) {
   char buf[4096];
   std::vector<base::ScopedFD> fds;
   ssize_t size =
       base::UnixDomainSocket::RecvMsg(socket_fd_.get(), buf, sizeof(buf), &fds);
   if (size == -1) {
     PLOG(ERROR) << "Failed to recieve a message";
-    return base::nullopt;
+    return false;
   }
 
   if (size == 0) {
     LOG(ERROR) << "EOF Found";
-    return base::nullopt;
+    return false;
   }
 
   // Validate file descriptor type before registering to VSockProxy.
@@ -50,14 +50,14 @@ base::Optional<arc_proxy::Message> SocketStream::Read() {
     struct stat st;
     if (fstat(fd.get(), &st) == -1) {
       PLOG(ERROR) << "Failed to fstat";
-      return base::nullopt;
+      return false;
     }
 
     if (S_ISFIFO(st.st_mode)) {
       int flags = fcntl(fd.get(), F_GETFL, 0);
       if (flags < 0) {
         PLOG(ERROR) << "Failed to find file status flags";
-        return base::nullopt;
+        return false;
       }
       switch (flags & O_ACCMODE) {
         case O_RDONLY:
@@ -68,7 +68,7 @@ base::Optional<arc_proxy::Message> SocketStream::Read() {
           break;
         default:
           PLOG(ERROR) << "Unsupported access mode: " << (flags & O_ACCMODE);
-          return base::nullopt;
+          return false;
       }
       continue;
     }
@@ -78,25 +78,24 @@ base::Optional<arc_proxy::Message> SocketStream::Read() {
     }
 
     LOG(ERROR) << "Unsupported FD type: " << st.st_mode;
-    return base::nullopt;
+    return false;
   }
   DCHECK_EQ(fds.size(), fd_types.size());
 
   // Build returning message.
-  arc_proxy::Message message;
-  message.set_data(buf, size);
+  message->set_data(buf, size);
   for (size_t i = 0; i < fds.size(); ++i) {
     uint64_t handle = proxy_->RegisterFileDescriptor(
         std::move(fds[i]), fd_types[i], 0 /* generate handle */);
-    auto* transferred_fd = message.add_transferred_fd();
+    auto* transferred_fd = message->add_transferred_fd();
     transferred_fd->set_handle(handle);
     transferred_fd->set_type(fd_types[i]);
   }
 
-  return message;
+  return true;
 }
 
-bool SocketStream::Write(arc_proxy::Message message) {
+bool SocketStream::Write(const arc_proxy::Message& message) {
   // First, create file descriptors for the received message.
   std::vector<base::ScopedFD> transferred_fds;
   transferred_fds.reserve(message.transferred_fd().size());

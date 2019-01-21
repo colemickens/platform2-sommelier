@@ -18,20 +18,19 @@ PipeStream::PipeStream(base::ScopedFD pipe_fd) : pipe_fd_(std::move(pipe_fd)) {}
 
 PipeStream::~PipeStream() = default;
 
-base::Optional<arc_proxy::Message> PipeStream::Read() {
+bool PipeStream::Read(arc_proxy::Message* message) {
   char buf[4096];
   ssize_t size = HANDLE_EINTR(read(pipe_fd_.get(), buf, sizeof(buf)));
   if (size < 0) {
     PLOG(ERROR) << "Failed to read";
-    return base::nullopt;
+    return false;
   }
 
-  arc_proxy::Message message;
-  message.set_data(buf, size);
-  return message;
+  message->set_data(buf, size);
+  return true;
 }
 
-bool PipeStream::Write(arc_proxy::Message message) {
+bool PipeStream::Write(const arc_proxy::Message& message) {
   // WriteFileDescriptor takes care of the short write.
   if (!base::WriteFileDescriptor(pipe_fd_.get(), message.data().data(),
                                  message.data().size())) {

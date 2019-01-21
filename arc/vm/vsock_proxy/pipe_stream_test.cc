@@ -36,10 +36,7 @@ TEST(PipeStreamTest, ReadWrite) {
     ASSERT_TRUE(
         base::WriteFileDescriptor(write_fd.get(), kData, sizeof(kData)));
     write_fd.reset();
-
-    auto read_message = PipeStream(std::move(read_fd)).Read();
-    ASSERT_TRUE(read_message.has_value());
-    message = std::move(read_message).value();
+    ASSERT_TRUE(PipeStream(std::move(read_fd)).Read(&message));
   }
 
   std::string read_data;
@@ -50,7 +47,7 @@ TEST(PipeStreamTest, ReadWrite) {
     base::ScopedFD read_fd;
     base::ScopedFD write_fd;
     std::tie(read_fd, write_fd) = std::move(pipes).value();
-    ASSERT_TRUE(PipeStream(std::move(write_fd)).Write(std::move(message)));
+    ASSERT_TRUE(PipeStream(std::move(write_fd)).Write(message));
     ASSERT_TRUE(base::ReadFromFD(read_fd.get(), &read_data[0], sizeof(kData)));
   }
 

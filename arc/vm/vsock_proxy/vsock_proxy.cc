@@ -83,8 +83,8 @@ void VSockProxy::UnregisterFileDescriptor(int fd) {
 }
 
 void VSockProxy::OnVSockReadReady() {
-  auto message = vsock_.Read();
-  if (!message) {
+  arc_proxy::Message message;
+  if (!vsock_.Read(&message)) {
     // TODO(hidehiko): Support VSOCK close case.
     // Failed to read a message from VSock. Delete everything.
     handle_map_.clear();
@@ -93,9 +93,9 @@ void VSockProxy::OnVSockReadReady() {
     return;
   }
 
-  auto it = handle_map_.find(message->handle());
+  auto it = handle_map_.find(message.handle());
   if (it == handle_map_.end()) {
-    LOG(ERROR) << "Couldn't find handle: handle=" << message->handle();
+    LOG(ERROR) << "Couldn't find handle: handle=" << message.handle();
     return;
   }
 
@@ -105,20 +105,20 @@ void VSockProxy::OnVSockReadReady() {
     return;
   }
 
-  if (message->data().size() == 0) {
+  if (message.data().size() == 0) {
     // At the moment, empty data means that the corresponding file
     // descriptor is closed.
     // TODO(hidehiko,yusukes,keiichiw): Fix the protocol.
-    LOG(INFO) << "Close file descriptor: handle=" << message->handle()
+    LOG(INFO) << "Close file descriptor: handle=" << message.handle()
               << ", fd=" << it->second;
     handle_map_.erase(it);
     fd_map_.erase(fd_it);
     return;
   }
 
-  if (!fd_it->second.stream->Write(std::move(message).value())) {
+  if (!fd_it->second.stream->Write(message)) {
     LOG(ERROR) << "Failed to write to file descriptor. Closing... "
-               << "handle=" << message->handle() << ", fd=" << it->second;
+               << "handle=" << message.handle() << ", fd=" << it->second;
     handle_map_.erase(it);
     fd_map_.erase(fd_it);
   }
@@ -131,8 +131,8 @@ void VSockProxy::OnLocalFileDesciptorReadReady(int fd) {
     return;
   }
 
-  auto message = fd_it->second.stream->Read();
-  if (!message) {
+  arc_proxy::Message message;
+  if (!fd_it->second.stream->Read(&message)) {
     // TODO(hidehiko): Update the log message. It may be intentional close.
     LOG(ERROR) << "Failed to read from file descriptor. Closing... "
                << "handle=" << fd_it->second.handle << ", fd=" << fd_it->first;
@@ -141,11 +141,11 @@ void VSockProxy::OnLocalFileDesciptorReadReady(int fd) {
 
     // Create an empty message, indicating the close.
     // TODO(hidehiko,yusukes,keiichiw): Fix the protocol.
-    message = arc_proxy::Message();
+    message.Clear();
   }
 
-  message->set_handle(fd_it->second.handle);
-  if (!vsock_.Write(std::move(message).value())) {
+  message.set_handle(fd_it->second.handle);
+  if (!vsock_.Write(message)) {
     // Failed to write a message to VSock. Delete everything.
     handle_map_.clear();
     fd_map_.clear();

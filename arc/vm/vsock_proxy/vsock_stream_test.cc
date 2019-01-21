@@ -32,13 +32,13 @@ TEST(VSockStreamTest, ReadWrite) {
     ASSERT_TRUE(stream.Write(arc_proxy::Message(message)));
   }
 
-  auto read_message = VSockStream(std::move(fd2)).Read();
-  ASSERT_TRUE(read_message.has_value());
+  arc_proxy::Message read_message;
+  ASSERT_TRUE(VSockStream(std::move(fd2)).Read(&read_message));
 
-  EXPECT_TRUE(google::protobuf::util::MessageDifferencer::Equals(
-      message, read_message.value()))
+  EXPECT_TRUE(
+      google::protobuf::util::MessageDifferencer::Equals(message, read_message))
       << "expect: " << message.DebugString()
-      << ", actual: " << message.DebugString();
+      << ", actual: " << read_message.DebugString();
 }
 
 }  // namespace

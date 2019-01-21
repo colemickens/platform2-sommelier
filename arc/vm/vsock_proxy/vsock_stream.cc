@@ -18,31 +18,30 @@ VSockStream::VSockStream(base::ScopedFD vsock_fd)
 
 VSockStream::~VSockStream() = default;
 
-base::Optional<arc_proxy::Message> VSockStream::Read() {
+bool VSockStream::Read(arc_proxy::Message* message) {
   // TODO(hidehiko): Use fixed size bit int.
   int size = 0;
   if (!base::ReadFromFD(vsock_fd_.get(), reinterpret_cast<char*>(&size),
                         sizeof(size))) {
     PLOG(ERROR) << "Failed to read message size";
-    return base::nullopt;
+    return false;
   }
   LOG(INFO) << "Reading: " << size;
   std::vector<char> buf(size);
   if (!base::ReadFromFD(vsock_fd_.get(), buf.data(), buf.size())) {
     PLOG(ERROR) << "Failed to read a proto";
-    return base::nullopt;
+    return false;
   }
 
-  arc_proxy::Message message;
-  if (!message.ParseFromArray(buf.data(), buf.size())) {
+  if (!message->ParseFromArray(buf.data(), buf.size())) {
     LOG(ERROR) << "Failed to parse proto message";
-    return base::nullopt;
+    return false;
   }
 
-  return message;
+  return true;
 }
 
-bool VSockStream::Write(arc_proxy::Message message) {
+bool VSockStream::Write(const arc_proxy::Message& message) {
   // TODO(hidehiko): Use fixed size bit int.
   int size = message.ByteSize();
   if (!base::WriteFileDescriptor(

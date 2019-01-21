@@ -26,8 +26,8 @@ class SocketStream : public StreamBase {
   ~SocketStream() override;
 
   // StreamBase overrides:
-  base::Optional<arc_proxy::Message> Read() override;
-  bool Write(arc_proxy::Message message) override;
+  bool Read(arc_proxy::Message* message) override;
+  bool Write(const arc_proxy::Message& message) override;
 
  private:
   base::ScopedFD socket_fd_;
