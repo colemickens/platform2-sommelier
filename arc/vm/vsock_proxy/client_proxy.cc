@@ -165,7 +165,8 @@ void ClientProxy::OnLocalSocketReadReady() {
   LOG(INFO) << "Initial socket connection comes";
   arc_bridge_socket_controller_.reset();
 
-  vsock_proxy_ = std::make_unique<VSockProxy>(ConnectVSock());
+  vsock_proxy_ =
+      std::make_unique<VSockProxy>(VSockProxy::Type::CLIENT, ConnectVSock());
   // 1 is reserved for the initial socket handle.
   constexpr uint64_t kInitialSocketHandle = 1;
   vsock_proxy_->RegisterFileDescriptor(AcceptSocket(arc_bridge_socket_.get()),

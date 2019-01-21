@@ -148,7 +148,8 @@ void ServerProxy::OnVSockReadReady() {
   LOG(INFO) << "Initial socket connection comes";
   vsock_controller_.reset();
 
-  vsock_proxy_ = std::make_unique<VSockProxy>(AcceptSocket(vsock_.get()));
+  vsock_proxy_ = std::make_unique<VSockProxy>(VSockProxy::Type::SERVER,
+                                              AcceptSocket(vsock_.get()));
   // 1 is reserved for the initial socket handle.
   constexpr uint64_t kInitialSocketHandle = 1;
   vsock_proxy_->RegisterFileDescriptor(ConnectArcBridgeSock(),

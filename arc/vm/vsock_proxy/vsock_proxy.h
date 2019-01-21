@@ -26,7 +26,14 @@ class StreamBase;
 // protocol.
 class VSockProxy {
  public:
-  explicit VSockProxy(base::ScopedFD vsock);
+  // Represents whether this proxy is server (host) side one, or client (guest)
+  // side one.
+  enum class Type {
+    SERVER = 1,
+    CLIENT = 2,
+  };
+
+  VSockProxy(Type type, base::ScopedFD vsock);
   ~VSockProxy();
 
   // Registers the |fd| whose type is |fd_type| to watch.
@@ -80,8 +87,10 @@ class VSockProxy {
   // necessary that the handler is unique across guest and host.
   // In host side, the value is started from 2, since 1 is reserved for the
   // /run/chrome/arc_bridge.sock connection.
+  // In guest side, the value is started from 1000000000000000001ULL, which
+  // is an arbitrally huge value, in order to avoid conflict.
   // TODO(hidehiko,yusukes,keiichiw): Fix the protocol.
-  uint64_t next_handle_ = 2ULL;
+  uint64_t next_handle_;
 
   // WeakPtrFactory needs to be declared as the member of the class, so that
   // on destruction, any pending Callbacks bound to WeakPtr are cancelled

@@ -33,8 +33,10 @@ std::unique_ptr<StreamBase> CreateStream(
 
 }  // namespace
 
-VSockProxy::VSockProxy(base::ScopedFD vsock) : vsock_(std::move(vsock)) {
-  // Note: this needs to be initialized after mWeakFactory, which is
+VSockProxy::VSockProxy(Type type, base::ScopedFD vsock)
+    : vsock_(std::move(vsock)),
+      next_handle_(type == Type::SERVER ? 2ULL : 1000000000000000001ULL) {
+  // Note: this needs to be initialized after mWeakFxactory, which is
   // declared after mVSockController in order to destroy it at first.
   vsock_controller_ = base::FileDescriptorWatcher::WatchReadable(
       vsock_.Get(), base::BindRepeating(&VSockProxy::OnVSockReadReady,
