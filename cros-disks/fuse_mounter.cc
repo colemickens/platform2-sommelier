@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/logging.h>
+#include <base/strings/string_util.h>
 
 #include "cros-disks/platform.h"
 #include "cros-disks/sandboxed_process.h"
@@ -19,6 +20,8 @@ namespace {
 
 const mode_t kSourcePathPermissions = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;
 const mode_t kTargetPathPermissions = S_IRWXU | S_IRWXG;
+
+const char kFuseDeviceFile[] = "/dev/fuse";
 
 }  // namespace
 
@@ -98,12 +101,18 @@ MountErrorType FUSEMounter::MountImpl() {
     return MOUNT_ERROR_INTERNAL;
   }
 
-  // FUSE modules need access to /dev/fuse and some need access to
-  // actual block devices.
-  // TODO(crbug.com/920092): Expose only devices that are needed.
-  if (!mount_process.BindMount("/dev", "/dev", true)) {
-    LOG(ERROR) << "Can't bind /dev";
+  // Bind the FUSE device file.
+  if (!mount_process.BindMount(kFuseDeviceFile, kFuseDeviceFile, true)) {
+    LOG(ERROR) << "Unable to bind FUSE device file";
     return MOUNT_ERROR_INTERNAL;
+  }
+
+  // If a block device is being mounted, bind mount it into the sandbox.
+  if (base::StartsWith(source_path(), "/dev/", base::CompareCase::SENSITIVE)) {
+    if (!mount_process.BindMount(source_path(), source_path(), true)) {
+      LOG(ERROR) << "Unable to bind mount device " << source_path();
+      return MOUNT_ERROR_INTERNAL;
+    }
   }
 
   // Mounts are exposed to the rest of the system through this shared mount.

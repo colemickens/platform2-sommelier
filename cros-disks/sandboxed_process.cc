@@ -43,6 +43,9 @@ bool SandboxedProcess::SetUpMinimalMounts() {
     return false;
   minijail_remount_proc_readonly(jail_);
   minijail_mount_tmp(jail_);
+
+  // Create a minimal /dev with a very restricted set of device nodes.
+  minijail_mount_dev(jail_);
   return true;
 }
 
