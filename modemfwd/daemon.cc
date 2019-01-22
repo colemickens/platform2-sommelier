@@ -146,9 +146,17 @@ void Daemon::OnModemAppeared(
   if (!modem)
     return;
 
-  DLOG(INFO) << "Modem appeared with equipment ID \"" << modem->GetEquipmentId()
-             << "\"";
-  modem_flasher_->TryFlash(modem.get());
+  std::string equipment_id = modem->GetEquipmentId();
+  DLOG(INFO) << "Modem appeared with equipment ID \"" << equipment_id << "\"";
+  if (modem_reappear_callbacks_.count(equipment_id) > 0) {
+    modem_reappear_callbacks_[equipment_id].Run();
+    modem_reappear_callbacks_.erase(equipment_id);
+    return;
+  }
+
+  base::Closure cb = modem_flasher_->TryFlash(modem.get());
+  if (!cb.is_null())
+    modem_reappear_callbacks_[equipment_id] = cb;
 }
 
 }  // namespace modemfwd

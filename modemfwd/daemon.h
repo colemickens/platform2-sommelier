@@ -5,6 +5,7 @@
 #ifndef MODEMFWD_DAEMON_H_
 #define MODEMFWD_DAEMON_H_
 
+#include <map>
 #include <memory>
 #include <string>
 
@@ -64,6 +65,8 @@ class Daemon : public brillo::DBusDaemon {
 
   std::unique_ptr<ModemTracker> modem_tracker_;
   std::unique_ptr<ModemFlasher> modem_flasher_;
+
+  std::map<std::string, base::Closure> modem_reappear_callbacks_;
 
   base::WeakPtrFactory<Daemon> weak_ptr_factory_;
 

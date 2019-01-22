@@ -10,6 +10,7 @@
 #include <set>
 #include <string>
 
+#include <base/callback.h>
 #include <base/macros.h>
 
 #include "modemfwd/firmware_directory.h"
@@ -25,7 +26,8 @@ class ModemFlasher {
   ModemFlasher(std::unique_ptr<FirmwareDirectory> firmware_directory,
                std::unique_ptr<Journal> journal);
 
-  void TryFlash(Modem* modem);
+  // Returns a callback that should be executed when the modem reappears.
+  base::Closure TryFlash(Modem* modem);
 
  private:
   std::unique_ptr<FirmwareDirectory> firmware_directory_;

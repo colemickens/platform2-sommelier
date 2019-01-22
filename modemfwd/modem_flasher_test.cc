@@ -475,7 +475,10 @@ TEST_F(ModemFlasherTest, WritesToJournal) {
       .Times(0);
   EXPECT_CALL(*journal_, MarkEndOfFlashingCarrierFirmware(kDeviceId1, _))
       .Times(0);
-  modem_flasher_->TryFlash(modem.get());
+  base::Closure cb = modem_flasher_->TryFlash(modem.get());
+  // The cleanup callback marks the end of flashing the firmware.
+  ASSERT_FALSE(cb.is_null());
+  cb.Run();
 }
 
 TEST_F(ModemFlasherTest, WritesToJournalOnFailure) {
@@ -493,7 +496,9 @@ TEST_F(ModemFlasherTest, WritesToJournalOnFailure) {
       .Times(0);
   EXPECT_CALL(*journal_, MarkEndOfFlashingCarrierFirmware(kDeviceId1, _))
       .Times(0);
-  modem_flasher_->TryFlash(modem.get());
+  // There should be no journal cleanup after the flashing fails.
+  base::Closure cb = modem_flasher_->TryFlash(modem.get());
+  ASSERT_TRUE(cb.is_null());
 }
 
 TEST_F(ModemFlasherTest, WritesCarrierSwitchesToJournal) {
@@ -521,13 +526,16 @@ TEST_F(ModemFlasherTest, WritesCarrierSwitchesToJournal) {
   EXPECT_CALL(*journal_,
               MarkEndOfFlashingCarrierFirmware(kDeviceId1, kCarrier2))
       .Times(1);
-  modem_flasher_->TryFlash(modem.get());
+  base::Closure cb = modem_flasher_->TryFlash(modem.get());
+  ASSERT_FALSE(cb.is_null());
+  cb.Run();
 
   // After the modem reboots, the helper hopefully reports the new carrier.
   SetCarrierFirmwareInfo(modem.get(), kCarrier2, kCarrier2Firmware1Version);
   EXPECT_CALL(*modem, FlashMainFirmware(_)).Times(0);
   EXPECT_CALL(*modem, FlashCarrierFirmware(_)).Times(0);
-  modem_flasher_->TryFlash(modem.get());
+  cb = modem_flasher_->TryFlash(modem.get());
+  ASSERT_TRUE(cb.is_null());
 
   // Suppose we swap the SIM back to the first one. Then we should try to
   // flash the first firmware again.
@@ -546,7 +554,9 @@ TEST_F(ModemFlasherTest, WritesCarrierSwitchesToJournal) {
   EXPECT_CALL(*journal_,
               MarkEndOfFlashingCarrierFirmware(kDeviceId1, kCarrier1))
       .Times(1);
-  modem_flasher_->TryFlash(modem.get());
+  cb = modem_flasher_->TryFlash(modem.get());
+  ASSERT_FALSE(cb.is_null());
+  cb.Run();
 }
 
 }  // namespace modemfwd
