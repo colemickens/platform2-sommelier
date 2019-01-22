@@ -772,7 +772,7 @@ std::unique_ptr<dbus::Response> Service::SharePath(
 
   // Used later to strip out the prefix from the destination so that we return
   // the relative path to the shared target.
-  const size_t prefix_len = dst.value().size();
+  const size_t prefix_len = dst.value().size() + 1;
 
   switch (request.storage_location()) {
     case SharePathRequest::DOWNLOADS:
