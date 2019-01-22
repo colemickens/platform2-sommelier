@@ -343,6 +343,10 @@ properties:
             wallpaper:
               description: Base filename of the default wallpaper to show on this device.
               type: string
+            regulatory-label:
+              description: Base name of the directory containing the regulatory label
+                files to show on this device.
+              type: string
             ui:
               type: object
               properties:

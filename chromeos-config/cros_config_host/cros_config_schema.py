@@ -27,7 +27,8 @@ DEVICES = 'devices'
 PRODUCTS = 'products'
 SKUS = 'skus'
 CONFIG = 'config'
-BRAND_ELEMENTS = ['brand-code', 'firmware-signing', 'wallpaper']
+BRAND_ELEMENTS = ['brand-code', 'firmware-signing', 'wallpaper',
+                  'regulatory-label']
 TEMPLATE_PATTERN = re.compile('{{([^}]*)}}')
 
 EC_OUTPUT_NAME = 'ec_config'

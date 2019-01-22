@@ -305,11 +305,13 @@ chromeos:
       products:
         - $key-id: 'WL1'
           $wallpaper: 'WL1_WALLPAPER'
+          $regulatory-label: 'WL1_LABEL'
           $whitelabel-tag: 'WL1_TAG'
           $brand-code: 'WL1_BRAND_CODE'
           $powerd-prefs: 'WL1_POWERD_PREFS'
         - $key-id: 'WL2'
           $wallpaper: 'WL2_WALLPAPER'
+          $regulatory-label: 'WL2_LABEL'
           $whitelabel-tag: 'WL2_TAG'
           $brand-code: 'WL2_BRAND_CODE'
           $powerd-prefs: 'WL2_POWERD_PREFS'
@@ -321,6 +323,7 @@ chromeos:
             name: '{{$name}}'
             brand-code: '{{$brand-code}}'
             wallpaper: '{{$wallpaper}}'
+            regulatory-label: '{{$regulatory-label}}'
             # THIS WILL CAUSE THE FAILURE
             powerd-prefs: '{{$powerd-prefs}}'
 """
