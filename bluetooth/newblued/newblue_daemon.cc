@@ -120,6 +120,7 @@ bool NewblueDaemon::Init(scoped_refptr<dbus::Bus> bus,
 
   if (is_idle_mode_) {
     LOG(INFO) << "LE splitter not enabled, newblued running in idle mode.";
+    LOG(INFO) << "To enable start /var/lib/bluetooth/newblue with '1'";
     return true;
   }
 
