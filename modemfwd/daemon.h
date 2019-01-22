@@ -62,7 +62,6 @@ class Daemon : public brillo::DBusDaemon {
 
   std::unique_ptr<ModemHelperDirectory> helper_directory_;
 
-  std::unique_ptr<Journal> journal_;
   std::unique_ptr<ModemTracker> modem_tracker_;
   std::unique_ptr<ModemFlasher> modem_flasher_;
 
