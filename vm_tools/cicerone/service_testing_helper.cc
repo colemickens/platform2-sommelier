@@ -434,7 +434,6 @@ void ServiceTestingHelper::SetDbusCallbackNames() {
   dbus_callbacks_[kNotifyVmStarted].method_name = kNotifyVmStartedMethod;
   dbus_callbacks_[kNotifyVmStopped].method_name = kNotifyVmStoppedMethod;
   dbus_callbacks_[kGetContainerToken].method_name = kGetContainerTokenMethod;
-  dbus_callbacks_[kIsContainerRunning].method_name = kIsContainerRunningMethod;
   dbus_callbacks_[kLaunchContainerApplication].method_name =
       kLaunchContainerApplicationMethod;
   dbus_callbacks_[kGetContainerAppIcon].method_name =

@@ -252,10 +252,6 @@ class Service final : public base::MessageLoopForIO::Watcher {
   std::unique_ptr<dbus::Response> GetContainerToken(
       dbus::MethodCall* method_call);
 
-  // Handles a request to check if a container is currently running.
-  std::unique_ptr<dbus::Response> IsContainerRunning(
-      dbus::MethodCall* method_call);
-
   // Handles a request to launch an application in a container.
   std::unique_ptr<dbus::Response> LaunchContainerApplication(
       dbus::MethodCall* method_call);

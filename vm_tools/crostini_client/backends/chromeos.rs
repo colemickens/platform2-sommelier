@@ -66,7 +66,6 @@ const VM_CICERONE_SERVICE_NAME: &str = "org.chromium.VmCicerone";
 const NOTIFY_VM_STARTED_METHOD: &str = "NotifyVmStarted";
 const NOTIFY_VM_STOPPED_METHOD: &str = "NotifyVmStopped";
 const GET_CONTAINER_TOKEN_METHOD: &str = "GetContainerToken";
-const IS_CONTAINER_RUNNING_METHOD: &str = "IsContainerRunning";
 const LAUNCH_CONTAINER_APPLICATION_METHOD: &str = "LaunchContainerApplication";
 const GET_CONTAINER_APP_ICON_METHOD: &str = "GetContainerAppIcon";
 const LAUNCH_VSHD_METHOD: &str = "LaunchVshd";

@@ -126,8 +126,8 @@ class Service final : public base::MessageLoopForIO::Watcher {
   // Helper for starting termina VMs, e.g. starting lxd.
   bool StartTermina(TerminaVm* vm, std::string* failure_reason);
 
-  // Helpers for notifying cicerone of VM started/stopped events, generating
-  // container tokens and querying if a container is running.
+  // Helpers for notifying cicerone of VM started/stopped events and generating
+  // container tokens.
   void NotifyCiceroneOfVmStarted(const std::string& owner_id,
                                  const std::string& vm_name,
                                  uint32_t vsock_cid);

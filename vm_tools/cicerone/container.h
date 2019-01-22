@@ -98,8 +98,6 @@ class Container {
   UninstallPackageOwningFile(const std::string& desktop_file_id,
                              std::string* out_error);
 
-  bool IsRunning();
-
  private:
   std::string name_;
   std::string token_;
@@ -112,10 +110,6 @@ class Container {
 
   // Stub for making RPC requests to the garcon process inside the container.
   std::unique_ptr<vm_tools::container::Garcon::Stub> garcon_stub_;
-
-  // gRPC Channel to the garcon process inside the container, which we can
-  // test for connectedness.
-  std::shared_ptr<grpc::Channel> garcon_channel_;
 
   DISALLOW_COPY_AND_ASSIGN(Container);
 };

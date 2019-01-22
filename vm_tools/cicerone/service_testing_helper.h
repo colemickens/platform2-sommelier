@@ -48,7 +48,6 @@ class ServiceTestingHelper {
     kNotifyVmStarted = 0,
     kNotifyVmStopped,
     kGetContainerToken,
-    kIsContainerRunning,
     kLaunchContainerApplication,
     kGetContainerAppIcon,
     kLaunchVshd,

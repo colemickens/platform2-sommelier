@@ -51,10 +51,8 @@ void Container::set_homedir(const std::string& homedir) {
 }
 
 void Container::ConnectToGarcon(const std::string& addr) {
-  garcon_channel_ =
-      grpc::CreateChannel(addr, grpc::InsecureChannelCredentials());
-  garcon_stub_ =
-      std::make_unique<vm_tools::container::Garcon::Stub>(garcon_channel_);
+  garcon_stub_ = std::make_unique<vm_tools::container::Garcon::Stub>(
+      grpc::CreateChannel(addr, grpc::InsecureChannelCredentials()));
 }
 
 bool Container::LaunchContainerApplication(
@@ -257,13 +255,6 @@ Container::UninstallPackageOwningFile(const std::string& desktop_file_id,
   }
   out_error->assign(container_response.failure_reason());
   return container_response.status();
-}
-
-bool Container::IsRunning() {
-  auto channel_state = garcon_channel_->GetState(true);
-  return channel_state == GRPC_CHANNEL_IDLE ||
-         channel_state == GRPC_CHANNEL_CONNECTING ||
-         channel_state == GRPC_CHANNEL_READY;
 }
 
 }  // namespace cicerone
