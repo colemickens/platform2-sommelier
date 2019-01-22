@@ -481,24 +481,24 @@ status_t ImguUnit::ImguPipe::mapStreamWithDeviceNode(const GraphConfigManager &g
     mStreamListenerMapping.clear();
 
     if (GraphConfig::PIPE_VIDEO == mPipeType) {
-        int videoIdx = (streamNum >= 2) ? 0 : -1;
-        int previewIdx = (streamNum >= 2) ? 1 : 0;
+        int videoIdx = (streamNum >= MAX_OUTPUT_NUM_IN_PIPE) ? 0 : -1;
+        int previewIdx = (streamNum >= MAX_OUTPUT_NUM_IN_PIPE) ? 1 : 0;
         if (gcm.isForceUseOneNodeInVideoPipe()) {
             // when it needs to force to use one node in video pipe
             videoIdx = -1;
             previewIdx = 0;
         }
 
-        IPU3NodeNames listenNode = IMGU_NODE_PREVIEW;
-        mStreamNodeMapping[IMGU_NODE_PREVIEW] = streams[previewIdx];
+        IPU3NodeNames listenNode = IMGU_NODE_VF;
+        mStreamNodeMapping[IMGU_NODE_VF] = streams[previewIdx];
         LOG1("@%s, %d stream %p size preview: %dx%d, format %s", __FUNCTION__,
              previewIdx, streams[previewIdx],
              streams[previewIdx]->width, streams[previewIdx]->height,
              METAID2STR(android_scaler_availableFormats_values,
                         streams[previewIdx]->format));
         if (videoIdx >= 0) {
-            listenNode = IMGU_NODE_VIDEO;
-            mStreamNodeMapping[IMGU_NODE_VIDEO] = streams[videoIdx];
+            listenNode = IMGU_NODE_MAIN;
+            mStreamNodeMapping[IMGU_NODE_MAIN] = streams[videoIdx];
             LOG1("@%s, %d stream %p size video: %dx%d, format %s", __FUNCTION__,
                  videoIdx, streams[videoIdx],
                  streams[videoIdx]->width, streams[videoIdx]->height,
@@ -516,14 +516,14 @@ status_t ImguUnit::ImguPipe::mapStreamWithDeviceNode(const GraphConfigManager &g
             mStreamListenerMapping[listenNode] = std::move(lStreams);
         }
     } else if (GraphConfig::PIPE_STILL == mPipeType) {
-        mStreamNodeMapping[IMGU_NODE_STILL] = streams[0];
+        mStreamNodeMapping[IMGU_NODE_VF] = streams[0];
         LOG1("@%s, blob stream %p size video: %dx%d, format %s", __FUNCTION__,
              streams[0], streams[0]->width, streams[0]->height,
              METAID2STR(android_scaler_availableFormats_values,
                         streams[0]->format));
 
         if (streams.size() == 2) {
-            mStreamListenerMapping.emplace(IMGU_NODE_STILL, std::vector<camera3_stream_t*>(1, streams[1]));
+            mStreamListenerMapping.emplace(IMGU_NODE_VF, std::vector<camera3_stream_t*>(1, streams[1]));
         }
     }
 
@@ -608,8 +608,7 @@ status_t ImguUnit::ImguPipe::createProcessingTasks(std::shared_ptr<GraphConfig> 
             worker = std::make_shared<ParameterWorker>(it.second, mCameraId, mPipeType);
             mFirstWorkers.push_back(worker);
             mPipeConfig.deviceWorkers.push_back(worker); // parameters
-        } else if (it.first == IMGU_NODE_STILL || it.first == IMGU_NODE_VIDEO
-                || it.first == IMGU_NODE_PREVIEW) {
+        } else if (it.first == IMGU_NODE_MAIN || it.first == IMGU_NODE_VF) {
             // only one stream could have the face engine
             FaceEngine* face = nullptr;
             if (preStream && (preStream == mStreamNodeMapping[it.first])) {

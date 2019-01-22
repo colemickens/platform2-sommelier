@@ -30,9 +30,8 @@ enum v4l2_memory getDefaultMemoryType(IPU3NodeNames node)
     case IMGU_NODE_PARAM:
     case IMGU_NODE_STAT:
     case IMGU_NODE_INPUT:
-    case IMGU_NODE_PREVIEW:
-    case IMGU_NODE_STILL:
-    case IMGU_NODE_VIDEO:
+    case IMGU_NODE_MAIN:
+    case IMGU_NODE_VF:
         return V4L2_MEMORY_DMABUF;
     default:
         return V4L2_MEMORY_USERPTR;

@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 GCSS_KEY (IMGU, imgu)
-GCSS_KEY (IMGU_PREVIEW, preview)
-GCSS_KEY (IMGU_VIDEO, video)
-GCSS_KEY (IMGU_STILL, still)
+GCSS_KEY (IMGU_MAIN, main)
+GCSS_KEY (IMGU_VF, vf)
 GCSS_KEY (IMGU_RAW, raw)
 GCSS_KEY (IMGU_IF, if)
 GCSS_KEY (IMGU_BDS, bds)
@@ -28,3 +27,4 @@ GCSS_KEY (CPFF_MODE_HINT, cpff_mode_hint)
 GCSS_KEY (IMGU_PIPE_OUTPUT_ID, pipe_output_id)
 GCSS_KEY (IMGU_STATS, stats)
 GCSS_KEY (IMGU_PARAMETERS, parameters)
+GCSS_KEY (STREAM_TYPE, stream_type)

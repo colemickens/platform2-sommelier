@@ -91,29 +91,16 @@ status_t ParameterWorker::configure(std::shared_ptr<GraphConfig> &config)
     config->getSensorFrameParams(sensorParams);
 
     PipeConfig pipeConfig;
+    if (config->doesNodeExist("imgu:main")) {
+        ret = getPipeConfig(pipeConfig, config, GC_MAIN);
+        CheckError(ret != OK, ret, "Failed to get pipe config main pipe");
 
-    if (config->doesNodeExist("imgu:video")) {
-        ret = getPipeConfig(pipeConfig, config, GC_VIDEO);
-        if (ret != OK) {
-            LOGE("Failed to get pipe config for video pipe");
-            return ret;
-        }
         overrideCPFFMode(&pipeConfig, config);
         fillAicInputParams(sensorParams, pipeConfig, mRuntimeParams);
-    } else if (config->doesNodeExist("imgu:preview")) {
-        ret = getPipeConfig(pipeConfig, config, GC_PREVIEW);
-        if (ret != OK) {
-            LOGE("Failed to get pipe config preview pipe");
-            return ret;
-        }
-        overrideCPFFMode(&pipeConfig, config);
-        fillAicInputParams(sensorParams, pipeConfig, mRuntimeParams);
-    } else if (config->doesNodeExist("imgu:still")) {
-        ret = getPipeConfig(pipeConfig, config, GC_STILL);
-        if (ret != OK) {
-            LOGE("Failed to get pipe config still pipe");
-            return ret;
-        }
+    } else if (config->doesNodeExist("imgu:vf")) {
+        ret = getPipeConfig(pipeConfig, config, GC_VF);
+        CheckError(ret != OK, ret, "Failed to get pipe config vf pipe");
+
         overrideCPFFMode(&pipeConfig, config);
         fillAicInputParams(sensorParams, pipeConfig, mRuntimeParams);
     } else {

@@ -54,6 +54,13 @@ enum PlatformGraphConfigKey {
 class Camera3Request;
 class GraphConfig;
 
+// The csi be output information
+struct CsiBeOutput {
+    int width;
+    int height;
+    int index;
+};
+
 /**
  * Static data for graph settings for given sensor. Used to initialize
  * \class GraphConfigManager.
@@ -193,6 +200,9 @@ private:
     status_t mapStillStreamToKey(const std::vector<camera3_stream_t*> &stillStreams, bool *hasStillStream);
     status_t queryVideoGraphSettings();
     status_t queryStillGraphSettings();
+    status_t getCsiBeOutput(GCSS::GraphConfigNode &queryResult,
+                            std::map<camera3_stream_t*, uid_t> &streamToSinkIdMap,
+                            bool enableStill, CsiBeOutput *output);
 
     status_t matchQueryResultByCsiSetting(int *videoResultIdx, int *stillResultIdx);
 

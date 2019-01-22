@@ -59,9 +59,8 @@ const string imguWithoutPort = "ipu3-imgu ";
 
 const string MEDIACTL_INPUTNAME = " input";
 const string MEDIACTL_PARAMETERNAME = " parameters";
-const string MEDIACTL_VIDEONAME = " output";
-const string MEDIACTL_STILLNAME = " viewfinder";
-const string MEDIACTL_PREVIEWNAME = " viewfinder";
+const string MEDIACTL_MAIN_NAME = " output";
+const string MEDIACTL_VF_NAME = " viewfinder";
 const string MEDIACTL_STATNAME = " 3a stat";
 
 GraphConfig::GraphConfig() :
@@ -1167,7 +1166,7 @@ status_t GraphConfig::getImguMediaCtlData(int32_t cameraId,
     string inputName = imguWithoutPort + imguIndex + MEDIACTL_INPUTNAME;
     string statName = imguWithoutPort + imguIndex + MEDIACTL_STATNAME;
     string parameterName = imguWithoutPort + imguIndex + MEDIACTL_PARAMETERNAME;
-    string outputName = imguWithoutPort + imguIndex + MEDIACTL_VIDEONAME;
+    string outputName = imguWithoutPort + imguIndex + MEDIACTL_MAIN_NAME;
 
     ret = mSettings->getDescendant(GCSS_KEY_IMGU, &imgu);
     if (ret != css_err_none) {
@@ -1229,9 +1228,8 @@ status_t GraphConfig::getImguMediaCtlData(int32_t cameraId,
         else
             return UNKNOWN_ERROR;
 
-        if (mLut[i].uidStr == GC_PREVIEW ||
-            mLut[i].uidStr == GC_STILL ||
-            mLut[i].uidStr == GC_VIDEO) {
+        if (mLut[i].uidStr == GC_MAIN ||
+            mLut[i].uidStr == GC_VF) {
 
             int nodeWidth = 0, nodeHeight = 0;
 
@@ -1301,12 +1299,19 @@ status_t GraphConfig::getImguMediaCtlData(int32_t cameraId,
 
         if (mLut[i].uidStr != GC_INPUT) {
             addLinkParams(kImguName, mLut[i].pad, mLut[i].nodeName, 0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
-            /* the output node of imgu for still pipe should be configured the same as vf node */
-            if (mLut[i].uidStr == GC_STILL) {
-                LOG2("Adding video node: %d %s %s", IMGU_NODE_VIDEO, "video", outputName.c_str());
+            /*
+             * Set main node of imgu to be same with vf node if the
+             * selected graph setting just has only one output
+             */
+            int32_t outputNum = 0;
+            ret = mSettings->getValue(GCSS_KEY_ACTIVE_OUTPUTS, outputNum);
+            CheckError(ret != css_err_none, UNKNOWN_ERROR, "Couldn't get active output from graph config");
+
+            if (outputNum < MAX_OUTPUT_NUM_IN_PIPE) {
+                LOG2("Adding video node: %d %s %s", IMGU_NODE_MAIN, "video", outputName.c_str());
                 addSelectionVideoParams(inputName, cropSelect, mediaCtlConfig);
                 addSelectionVideoParams(inputName, composeSelect, mediaCtlConfig);
-                addImguVideoNode(IMGU_NODE_VIDEO, outputName, mediaCtlConfig);
+                addImguVideoNode(IMGU_NODE_MAIN, outputName, mediaCtlConfig);
                 addFormatParams(outputName, width, height, 1, format, 0, mediaCtlConfig);
                 addLinkParams(kImguName, MEDIACTL_PAD_OUTPUT_NUM, outputName,
                     0, 1, MEDIA_LNK_FL_ENABLED, mediaCtlConfig);
@@ -1337,37 +1342,30 @@ void GraphConfig::setMediaCtlConfig(std::shared_ptr<MediaController> mediaCtl,
 
     // imgu 0 for video pipe, imgu 1 for still pipe
     string imguIndex = enableStill ? "1" : "0";
-    const string stillName = imguWithoutPort + imguIndex + MEDIACTL_STILLNAME;
+    const string mainName = imguWithoutPort + imguIndex + MEDIACTL_MAIN_NAME;
+    const string vfName = imguWithoutPort + imguIndex + MEDIACTL_VF_NAME;
     const string inputName = imguWithoutPort + imguIndex + MEDIACTL_INPUTNAME;
-    const string videoName = imguWithoutPort + imguIndex + MEDIACTL_VIDEONAME;
-    const string previewName = imguWithoutPort + imguIndex + MEDIACTL_PREVIEWNAME;
+    int32_t outputNum = 0;
 
     mLut.clear();
     MediaCtlLut lut;
     lut.ipuNodeName = IMGU_NODE_NULL;
 
-    if (enableStill) {
-        lut.uid = GCSS_KEY_IMGU_STILL;
-        lut.uidStr = GCSS::ItemUID::key2str(lut.uid);
-        lut.pad = MEDIACTL_PAD_VF_NUM;
-        lut.nodeName = stillName;
-        LOG2("save graph setting nodes: %s, pad: %d, nodename: %s", lut.uidStr.c_str(), lut.pad, lut.nodeName.c_str());
-        mLut.push_back(lut);
-    } else {
-        const int mainPad = MEDIACTL_PAD_OUTPUT_NUM;
-        const int secondPad = MEDIACTL_PAD_VF_NUM;
+    int ret = mSettings->getValue(GCSS_KEY_ACTIVE_OUTPUTS, outputNum);
+    CheckError(ret != css_err_none, VOID_VALUE, "Couldn't not get the active output from graph config");
 
-        lut.uid = GCSS_KEY_IMGU_VIDEO;
-        lut.uidStr = GCSS::ItemUID::key2str(lut.uid);
-        lut.pad = mainPad;
-        lut.nodeName = (lut.pad == MEDIACTL_PAD_OUTPUT_NUM) ? videoName : previewName;
-        LOG2("save graph setting nodes: %s, pad: %d, nodename: %s", lut.uidStr.c_str(), lut.pad, lut.nodeName.c_str());
-        mLut.push_back(lut);
+    lut.uid = GCSS_KEY_IMGU_VF;
+    lut.uidStr = GCSS::ItemUID::key2str(lut.uid);
+    lut.pad = MEDIACTL_PAD_VF_NUM;
+    lut.nodeName = vfName;
+    LOG2("save graph setting nodes: %s, pad: %d, nodename: %s", lut.uidStr.c_str(), lut.pad, lut.nodeName.c_str());
+    mLut.push_back(lut);
 
-        lut.uid = GCSS_KEY_IMGU_PREVIEW;
+    if (outputNum >= MAX_OUTPUT_NUM_IN_PIPE) {
+        lut.uid = GCSS_KEY_IMGU_MAIN;
         lut.uidStr = GCSS::ItemUID::key2str(lut.uid);
-        lut.pad = secondPad;
-        lut.nodeName = (lut.pad == MEDIACTL_PAD_OUTPUT_NUM) ? videoName : previewName;
+        lut.pad = MEDIACTL_PAD_OUTPUT_NUM;
+        lut.nodeName = mainName;
         LOG2("save graph setting nodes: %s, pad: %d, nodename: %s", lut.uidStr.c_str(), lut.pad, lut.nodeName.c_str());
         mLut.push_back(lut);
     }
@@ -1380,9 +1378,8 @@ void GraphConfig::setMediaCtlConfig(std::shared_ptr<MediaController> mediaCtl,
     mLut.push_back(lut);
 
     for (auto & it : mLut) {
-         it.ipuNodeName = (it.uid == GCSS_KEY_IMGU_PREVIEW) ? IMGU_NODE_PREVIEW
-                        : (it.uid == GCSS_KEY_IMGU_VIDEO)   ? IMGU_NODE_VIDEO
-                        : (it.uid == GCSS_KEY_IMGU_STILL)   ? IMGU_NODE_STILL
+         it.ipuNodeName = (it.uid == GCSS_KEY_IMGU_MAIN) ? IMGU_NODE_MAIN
+                        : (it.uid == GCSS_KEY_IMGU_VF)   ? IMGU_NODE_VF
                         : (it.uid == GCSS_KEY_INPUT)        ? IMGU_NODE_INPUT
                                                             : IMGU_NODE_NULL;
     }

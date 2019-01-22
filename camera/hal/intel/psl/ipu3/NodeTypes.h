@@ -26,14 +26,13 @@ namespace intel {
  */
 enum IPU3NodeNames {
     IMGU_NODE_NULL =            0,
-    IMGU_NODE_PREVIEW =         1 << 1,
-    IMGU_NODE_VIDEO =           1 << 2,
-    IMGU_NODE_STILL =           1 << 3,
-    IMGU_NODE_RAW =             1 << 4,
-    IMGU_NODE_PARAM =           1 << 5,
-    IMGU_NODE_STAT =            1 << 6,
-    IMGU_NODE_INPUT =           1 << 7,
-    ISYS_NODE_RAW =             1 << 8
+    IMGU_NODE_VF =              1 << 1,
+    IMGU_NODE_MAIN =            1 << 2,
+    IMGU_NODE_RAW =             1 << 3,
+    IMGU_NODE_PARAM =           1 << 4,
+    IMGU_NODE_STAT =            1 << 5,
+    IMGU_NODE_INPUT =           1 << 6,
+    ISYS_NODE_RAW =             1 << 7
 };
 
 enum v4l2_memory getDefaultMemoryType(IPU3NodeNames node);

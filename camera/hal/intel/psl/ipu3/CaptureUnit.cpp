@@ -387,7 +387,7 @@ int CaptureUnit::getActiveIsysNodes(std::shared_ptr<GraphConfig> graphConfig)
         switch(node.first) {
             case ISYS_NODE_RAW:
                 LOG1("ISYS_NODE_RAW");
-                gcNodeName = "csi_be:output";
+                gcNodeName = CSI_BE_OUTPUT;
                 break;
             default:
                 LOGE("Unknown node: %d", node.first);

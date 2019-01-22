@@ -37,12 +37,6 @@ namespace intel {
 const char *GraphConfigManager::DEFAULT_DESCRIPTOR_FILE = "/etc/camera/graph_descriptor.xml";
 const char *GraphConfigManager::DEFAULT_SETTINGS_FILE = "/etc/camera/graph_settings.xml";
 
-// save csi be output resolution settings
-struct csi_be_output_res {
-    int width;
-    int height;
-};
-
 GraphConfigNodes::GraphConfigNodes() :
         mDesc(nullptr),
         mSettings(nullptr)
@@ -89,8 +83,8 @@ void GraphConfigManager::initVideoStreamConfigurations()
 
     // Will map streams in this order
     mVideoStreamKeys.clear();
-    mVideoStreamKeys.push_back(GCSS_KEY_IMGU_VIDEO);
-    mVideoStreamKeys.push_back(GCSS_KEY_IMGU_PREVIEW);
+    mVideoStreamKeys.push_back(GCSS_KEY_IMGU_VF);
+    mVideoStreamKeys.push_back(GCSS_KEY_IMGU_MAIN);
     for (size_t i = 0; i < mVideoStreamKeys.size(); i++) {
         ItemUID w = {mVideoStreamKeys[i], GCSS_KEY_WIDTH};
         ItemUID h = {mVideoStreamKeys[i], GCSS_KEY_HEIGHT};
@@ -107,8 +101,8 @@ void GraphConfigManager::initStillStreamConfigurations()
 
     // Will map streams in this order
     mStillStreamKeys.clear();
-    mStillStreamKeys.push_back(GCSS_KEY_IMGU_STILL);
-    mStillStreamKeys.push_back(GCSS_KEY_IMGU_PREVIEW);
+    mStillStreamKeys.push_back(GCSS_KEY_IMGU_VF);
+    mStillStreamKeys.push_back(GCSS_KEY_IMGU_MAIN);
     for (size_t i = 0; i < mStillStreamKeys.size(); i++) {
         ItemUID w = {mStillStreamKeys[i], GCSS_KEY_WIDTH};
         ItemUID h = {mStillStreamKeys[i], GCSS_KEY_HEIGHT};
@@ -332,22 +326,20 @@ mapVideoStreamToKey(const std::vector<camera3_stream_t*> &videoStreams, bool *ha
     ItemUID streamCount = {GCSS_KEY_ACTIVE_OUTPUTS};
     mQueryVideo[streamCount] = std::to_string(yuvNum);
 
-    // Main output produces full size frames
-    // Secondary output produces small size frames
-    int mainOutputIndex = 0;
-    int secondaryOutputIndex = (yuvNum == 2) ? 1 : -1;
+    // The main output port must >= vf output port.
+    int mainOutputIndex = (yuvNum >= MAX_OUTPUT_NUM_IN_PIPE) ? 0 : -1;
+    int vfOutputIndex = (yuvNum >= MAX_OUTPUT_NUM_IN_PIPE) ? 1 : 0;
 
     // map video stream settings
     ResolutionItem res;
     PlatformGraphConfigKey streamKey;
     handleVideoStream(res, streamKey);
-    handleVideoMap(videoStreams[mainOutputIndex], res, streamKey);
-    if (secondaryOutputIndex >= 0) {
+    handleVideoMap(videoStreams[vfOutputIndex], res, streamKey);
+    if (mainOutputIndex >= 0) {
         handleVideoStream(res, streamKey);
-        handleVideoMap(videoStreams[secondaryOutputIndex], res, streamKey);
+        handleVideoMap(videoStreams[mainOutputIndex], res, streamKey);
     }
-    LOG2("video pipe: mainOutput %p, secondaryOutput %p",
-         videoStreams[mainOutputIndex], videoStreams[secondaryOutputIndex]);
+    LOG2("video pipe: mainOutputIndex %d, vfOutputIndex %d", mainOutputIndex, vfOutputIndex);
 
     *hasVideoStream = true;
 
@@ -403,6 +395,30 @@ status_t GraphConfigManager::queryStillGraphSettings()
     return OK;
 }
 
+status_t GraphConfigManager::getCsiBeOutput(GCSS::GraphConfigNode &queryResult,
+                                            std::map<camera3_stream_t*, uid_t> &streamToSinkIdMap,
+                                            bool enableStill, CsiBeOutput *output)
+{
+    GraphConfigNode result = {};
+    MediaType type = enableStill ? IMGU_STILL : IMGU_VIDEO;
+    std::shared_ptr<GraphConfig> graph = mGraphConfigMap[type];
+    CheckError(graph == nullptr, UNKNOWN_ERROR, "Graph config is nullptr");
+
+    css_err_t ret = mGraphQueryManager->getGraph(&queryResult, &result);
+    if (ret != css_err_none) {
+        LOGE("failed to get the graph config");
+        graph.reset();
+        return UNKNOWN_ERROR;
+    }
+    status_t status = graph->prepare(&result, streamToSinkIdMap);
+    CheckError(status != OK, UNKNOWN_ERROR, "failed to prepare graph config");
+
+    status = graph->graphGetDimensionsByName(CSI_BE_OUTPUT, output->width, output->height);
+    CheckError(status != OK, UNKNOWN_ERROR, "Cannot find <%s> node", CSI_BE_OUTPUT);
+
+    return status;
+}
+
 /**
  * Graph settings of both video pipe and still pipe must have the same cio2 settings,
  * and there might be serveral sets of graph settings for both pipes, need to find the match
@@ -412,75 +428,62 @@ status_t GraphConfigManager::matchQueryResultByCsiSetting(int *videoResultIdx,
                                                            int *stillResultIdx)
 {
     status_t status = NO_ERROR;
-    std::string csiName = "csi_be:output";
-    std::vector<csi_be_output_res> videoCsiOutRes, stillCsiOutRes;
+    std::vector<CsiBeOutput> videoCsiOutput, stillCsiOutput;
     int32_t id = 0;
 
-    LOG2("@%s, find csi be output setting of video pipe, query result: %ld",
-        __func__, mVideoQueryResults.size());
-    for (auto& videoResultIter : mVideoQueryResults) {
-        csi_be_output_res res = {};
-        GraphConfigNode result = {};
-        std::shared_ptr<GraphConfig> videoGc = mGraphConfigMap[IMGU_VIDEO];
-        CheckError(videoGc.get() == nullptr, UNKNOWN_ERROR, "Video graph config is nullptr");
+    LOG2("Find csi be output setting of video pipe, query result: %ld", mVideoQueryResults.size());
+    for (size_t i = 0; i < mVideoQueryResults.size(); i++) {
+        string streamType;
+        CsiBeOutput output = {};
 
-        css_err_t ret = mGraphQueryManager->getGraph(videoResultIter, &result);
-        if (ret != css_err_none) {
-            videoGc.reset();
-            return UNKNOWN_ERROR;
+        CheckError(mVideoQueryResults[i] == nullptr, UNKNOWN_ERROR, "the video query result %zu is nullptr", i);
+        status = getCsiBeOutput(*mVideoQueryResults[i], mVideoStreamToSinkIdMap, false, &output);
+        CheckError(status != OK, UNKNOWN_ERROR, "Couldn't get csi BE output for video pipe");
+
+        mVideoQueryResults[i]->getValue(GCSS_KEY_STREAM_TYPE, streamType);
+        if (streamType.compare("video") && streamType.compare("both")) {
+            continue;
         }
 
-        status = videoGc->prepare(&result, mVideoStreamToSinkIdMap);
-        CheckError(status != OK, UNKNOWN_ERROR, "failed to compare graph config for video pipe");
-
-        status = videoGc->graphGetDimensionsByName(csiName, res.width, res.height);
-        CheckError(status != OK, UNKNOWN_ERROR, "Cannot find <%s> node", csiName.c_str());
-
-        videoResultIter->getValue(GCSS_KEY_KEY, id);
-        LOG2("@%s, setting id: %d, video pipe csi be output width: %d, height: %d",
-            __func__, id, res.width, res.height);
-        videoCsiOutRes.push_back(res);
+        output.index = i;
+        mVideoQueryResults[i]->getValue(GCSS_KEY_KEY, id);
+        LOG2("setting id: %d, video pipe csi be output width: %d, height: %d", id, output.width, output.height);
+        videoCsiOutput.push_back(output);
     }
 
-    LOG2("@%s, find csi be output setting of still pipe, query result: %ld",
-        __func__, mStillQueryResults.size());
-    for (auto& stillResultIter : mStillQueryResults) {
-        csi_be_output_res res = {};
-        GraphConfigNode result = {};
-        std::shared_ptr<GraphConfig> stillGc = mGraphConfigMap[IMGU_STILL];
-        CheckError(stillGc.get() == nullptr, UNKNOWN_ERROR, "Still graph config is nullptr");
+    LOG2("Find csi be output setting of still pipe, query result: %ld", mStillQueryResults.size());
+    for (size_t i = 0; i < mStillQueryResults.size(); i++) {
+        string streamType;
+        CsiBeOutput output = {};
 
-        css_err_t ret = mGraphQueryManager->getGraph(stillResultIter, &result);
-        if (ret != css_err_none) {
-            stillGc.reset();
-            return UNKNOWN_ERROR;
+        CheckError(mStillQueryResults[i] == nullptr, UNKNOWN_ERROR, "the still query result %zu is nullptr", i);
+        status = getCsiBeOutput(*mStillQueryResults[i], mStillStreamToSinkIdMap, true, &output);
+        CheckError(status != OK, UNKNOWN_ERROR, "Couldn't get csi BE output for still pipe");
+
+        mStillQueryResults[i]->getValue(GCSS_KEY_STREAM_TYPE, streamType);
+        if (streamType.compare("still") && streamType.compare("both")) {
+            continue;
         }
 
-        status = stillGc->prepare(&result, mStillStreamToSinkIdMap);
-        CheckError(status != OK, UNKNOWN_ERROR, "failed to compare graph config for still pipe");
-
-        status = stillGc->graphGetDimensionsByName(csiName, res.width, res.height);
-        CheckError(status != OK, UNKNOWN_ERROR, "Cannot find <%s> node", csiName.c_str());
-
-        stillResultIter->getValue(GCSS_KEY_KEY, id);
-        LOG2("@%s, setting id: %d, still pipe csi be output width: %d, height: %d",
-            __func__, id, res.width, res.height);
-        stillCsiOutRes.push_back(res);
+        output.index = i;
+        mStillQueryResults[i]->getValue(GCSS_KEY_KEY, id);
+        LOG2("setting id: %d, still pipe csi be output width: %d, height: %d", id, output.width, output.height);
+        stillCsiOutput.push_back(output);
     }
 
-    if (videoCsiOutRes.empty() || stillCsiOutRes.empty()) {
-        *videoResultIdx = videoCsiOutRes.empty() ? *videoResultIdx : 0;
-        *stillResultIdx = stillCsiOutRes.empty() ? *stillResultIdx : 0;
+    if (videoCsiOutput.empty() || stillCsiOutput.empty()) {
+        *videoResultIdx = videoCsiOutput.empty() ? *videoResultIdx : videoCsiOutput[0].index;
+        *stillResultIdx = stillCsiOutput.empty() ? *stillResultIdx : stillCsiOutput[0].index;
     } else {
         bool matchFound = false;
-        for (size_t i = 0; i < videoCsiOutRes.size(); i++) {
-            for (size_t j = 0; j < stillCsiOutRes.size(); j++) {
-                if (videoCsiOutRes[i].width == stillCsiOutRes[j].width &&
-                    videoCsiOutRes[i].height == stillCsiOutRes[j].height) {
-                    LOG2("@%s, find match csi be resolution, width: %d height: %d",
-                        __func__, videoCsiOutRes[i].width, videoCsiOutRes[i].height);
-                    *videoResultIdx = i;
-                    *stillResultIdx = j;
+        for (size_t i = 0; i < videoCsiOutput.size(); i++) {
+            for (size_t j = 0; j < stillCsiOutput.size(); j++) {
+                if (videoCsiOutput[i].width == stillCsiOutput[j].width &&
+                    videoCsiOutput[i].height == stillCsiOutput[j].height) {
+                    LOG2("Find match csi be resolution, width: %d height: %d",
+                         videoCsiOutput[i].width, videoCsiOutput[i].height);
+                    *videoResultIdx = videoCsiOutput[i].index;
+                    *stillResultIdx = stillCsiOutput[j].index;
                     matchFound = true;
                     break;
                 }
@@ -489,20 +492,18 @@ status_t GraphConfigManager::matchQueryResultByCsiSetting(int *videoResultIdx,
                 break;
         }
 
-        if (*videoResultIdx < 0 && *stillResultIdx < 0) {
-            LOGE("@%s, failed to find match csi be resolution!", __func__);
-            return UNKNOWN_ERROR;
-        }
+        CheckError(*videoResultIdx < 0 && *stillResultIdx < 0,
+                   UNKNOWN_ERROR, "Failed to find match csi be resolution!");
     }
 
     if (*videoResultIdx >= 0) {
         mVideoQueryResults[*videoResultIdx]->getValue(GCSS_KEY_KEY, id);
-        LOG1("@%s, Video graph config settings id %d", __func__, id);
+        LOG1("Video graph config settings id %d", id);
     }
 
     if (*stillResultIdx >= 0) {
         mStillQueryResults[*stillResultIdx]->getValue(GCSS_KEY_KEY, id);
-        LOG1("@%s, Still graph config settings id %d", __func__, id);
+        LOG1("Still graph config settings id %d", id);
     }
 
     return status;

@@ -42,15 +42,17 @@ namespace intel {
 
 class GraphConfigManager;
 
+#define MAX_OUTPUT_NUM_IN_PIPE 2
+#define CSI_BE_OUTPUT "csi_be:output"
+
 const int32_t ACTIVE_ISA_OUTPUT_BUFFER = 2;
 const int32_t MAX_STREAMS = 4; // max number of streams
 const uint32_t MAX_KERNEL_COUNT = 30; // max number of kernels in the kernel list
 // Declare string consts
 const std::string CSI_BE = "ipu3-cio2 ";
 const std::string GC_INPUT = "input";
-const std::string GC_PREVIEW = "preview";
-const std::string GC_VIDEO = "video";
-const std::string GC_STILL = "still";
+const std::string GC_MAIN = "main";
+const std::string GC_VF = "vf";
 const std::string GC_RAW = "raw";
 
 /**
