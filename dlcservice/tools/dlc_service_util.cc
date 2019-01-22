@@ -43,13 +43,16 @@ class DlcServiceUtil {
 
   // Install a list of DLC modules. Returns true if all modules install
   // successfully, false otherwise.
-  bool Install(const std::vector<std::string>& dlc_ids, int* error_ptr) {
+  bool Install(const std::vector<std::string>& dlc_ids,
+               const std::string& omaha_url,
+               int* error_ptr) {
     brillo::ErrorPtr error;
     std::string mount_point;
 
     for (auto& dlc_id : dlc_ids) {
       LOG(INFO) << "Attempting to install DLC module '" << dlc_id << "'.";
-      if (!dlc_service_proxy_->Install(dlc_id, &mount_point, &error)) {
+      if (!dlc_service_proxy_->Install(dlc_id, omaha_url, &mount_point,
+                                       &error)) {
         LOG(ERROR) << "Failed to install '" << dlc_id << "', "
                    << error->GetMessage();
         *error_ptr = EX_SOFTWARE;
@@ -149,6 +152,8 @@ int main(int argc, const char** argv) {
   DEFINE_bool(list, false, "List all installed DLC modules.");
   DEFINE_bool(oneline, false, "Print short module DLC module information.");
   DEFINE_string(dlc_ids, "", "Colon separated list of DLC module ids.");
+  DEFINE_string(omaha_url, "",
+                "Overrides the default Omaha URL in the update_engine.");
   brillo::FlagHelper::Init(argc, argv, "dlcservice_util");
 
   // Enforce mutually exclusive flags. Additional exclusive flags can be added
@@ -173,7 +178,7 @@ int main(int argc, const char** argv) {
       LOG(ERROR) << "Please specify a list of DLC modules to install.";
       return EX_SOFTWARE;
     }
-    if (!client.Install(dlc_id_list, &error)) {
+    if (!client.Install(dlc_id_list, FLAGS_omaha_url, &error)) {
       LOG(ERROR) << "Failed to install DLC modules.";
       return error;
     }

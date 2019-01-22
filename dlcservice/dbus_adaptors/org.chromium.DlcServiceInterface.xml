@@ -16,6 +16,11 @@
         ID of the DLC module.
       </tp:docstring>
     </arg>
+    <arg name="omaha_url" type="s" direction="in">
+      <tp:docstring>
+        Overrides Omaha URL to query for update (empty for default URL).
+      </tp:docstring>
+    </arg>
     <arg name="dlc_root" type="s" direction="out">
       <tp:docstring>
         The path to the DLC content that user needs to access.

@@ -131,6 +131,7 @@ void DlcServiceDBusAdaptor::LoadDlcModuleImages() {
 
 bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
                                     const std::string& id_in,
+                                    const std::string& omaha_url_in,
                                     std::string* dlc_root_out) {
   // TODO(xiaochu): change API to accept a list of DLC module ids.
   // https://crbug.com/905075
@@ -197,6 +198,7 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
 
   // Invokes update_engine to install the DLC module.
   chromeos_update_engine::DlcParameters dlc_parameters;
+  dlc_parameters.set_omaha_url(omaha_url_in);
   chromeos_update_engine::DlcInfo* dlc_info = dlc_parameters.add_dlc_infos();
   dlc_info->set_dlc_id(id_in);
   std::string dlc_request;
