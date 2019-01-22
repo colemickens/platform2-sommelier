@@ -1,6 +1,5 @@
 type cros_rsyslogd, chromeos_domain, domain, mlstrustedobject;
 
-permissive cros_rsyslogd;
 from_minijail_static(cros_rsyslogd, cros_rsyslogd_exec);
 log_writer(cros_rsyslogd);
 cros_net(cros_rsyslogd);
