@@ -26,10 +26,6 @@
 # Parameters:
 #   sources
 #       The .mojom file paths.
-#   configs (optional)
-#       Configs applied to the generated library.
-#   deps (optional)
-#       Deps applied to the generated library.
 #   mojo_extra_args (optional)
 #       Extra additional arguments passed to mojom_bindings_generator.py.
 #   mojo_root (optional)
@@ -46,6 +42,10 @@
 #       contains it.
 #       If not given, /usr/src/libmojo-${libbase_ver}/mojo/mojom_bindings_generator.py
 #       is used.
+#   All flags which can be interpreted by static_library target:
+#       The values are used as if static_library does. Note that some flags
+#       may be modified in order to reflect the parameters described above
+#       and build mojom generated files.
 
 import("//common-mk/pkg_config.gni")
 
@@ -184,10 +184,23 @@ template("generate_mojom_bindings") {
 
   static_library(target_name) {
     forward_variables_from(invoker,
+                           "*",
                            [
-                             "defines",
-                             "public_deps",
-                             "visibility",
+                             # Exclude mojo related inputs.
+                             "mojo_extra_args",
+                             "mojo_root",
+                             "mojom_bindings_generator",
+                             "sources",
+
+                             # Exclude fields, which are manually handled.
+                             "all_dependent_configs",
+                             "configs",
+                             "deps",
+                             "include_dirs",
+
+                             # Additional fields for this rule.
+                             "standalone",
+                             "use_pic",
                            ])
     all_dependent_configs = [ ":generate_mojom_bindings_pkg_deps" ]
     if (defined(invoker.all_dependent_configs)) {
@@ -195,10 +208,10 @@ template("generate_mojom_bindings") {
     }
 
     include_dirs = [ _mojo_output_base ]
-
-    if (defined(invoker.public_configs)) {
-      public_configs += invoker.public_configs
+    if (defined(invoker.include_dirs)) {
+      include_dirs += invoker.include_dirs
     }
+
     if (defined(invoker.configs)) {
       configs += invoker.configs
     }
