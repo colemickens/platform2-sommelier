@@ -295,7 +295,10 @@ message ExportContainerRequest {
   // Name of the container to export.
   string container_name = 1;
 
-  // Path to write the exported container.
+  // Path to write the exported container.  This is a directory which
+  // must have already been shared using seneschal.  It is the path relative
+  // to the VM root mount point (/mnt/shared) as returned in seneschal
+  // SharePathResponse.path.  E.g.: "MyFiles/export".
   string export_path = 2;
 }
 
@@ -318,7 +321,7 @@ message ExportContainerResponse {
   // Current container status.
   Status status = 1;
 
-  // The failure_reason if container info could not be returned.
+  // Details relating to the failure state.
   string failure_reason = 2;
 
 }
@@ -352,6 +355,70 @@ message ContainerExportProgress {
   string failure_reason = 4;
 }
 
+message ImportContainerRequest {
+  // Name of the container to import.
+  string container_name = 1;
+
+  // Path to read the container unified tarball.  This is a file which
+  // must have already been shared using seneschal.  It is the path relative
+  // to the VM root mount point (/mnt/shared) as returned in seneschal
+  // SharePathResponse.path.  E.g.: "MyFiles/export/backup.tar.gz".
+  string import_path = 2;
+}
+
+message ImportContainerResponse {
+  enum Status {
+    // The result is unknown.
+    UNKNOWN = 0;
+
+    // Import is completed.
+    DONE = 1;
+
+    // The container is importing. Further updates will be delievered via
+    // UpdateImportStatus.
+    IMPORTING = 2;
+
+    // One or more steps failed and the container could not be imported.
+    FAILED = 3;
+  }
+
+  // Current container status.
+  Status status = 1;
+
+  // Details relating to the failure state.
+  string failure_reason = 2;
+
+}
+
+// Sent by tremplin to update the host on the import progress of a container.
+message ContainerImportProgress {
+  // Name of the container to import.
+  string container_name = 1;
+
+  enum Status {
+    // The result is unknown.
+    UNKNOWN = 0;
+
+    // Import is completed.
+    DONE = 1;
+
+    // The container is (still) importing.
+    IMPORTING = 2;
+
+    // One or more steps failed and the container could not be imported.
+    FAILED = 3;
+  }
+
+  // Container status.
+  Status status = 2;
+
+  // Overall percentage progress.
+  uint32 progress_percent = 3;
+
+  // Details relating to the failure state.
+  string failure_reason = 4;
+}
+
 // Tremplin service methods.
 service Tremplin {
   rpc CreateContainer(CreateContainerRequest) returns (CreateContainerResponse);
@@ -363,6 +430,7 @@ service Tremplin {
       returns (GetContainerInfoResponse);
   rpc SetTimezone(SetTimezoneRequest) returns (SetTimezoneResponse);
   rpc ExportContainer(ExportContainerRequest) returns (ExportContainerResponse);
+  rpc ImportContainer(ImportContainerRequest) returns (ImportContainerResponse);
 }
 
 // Service that is notified of events from tremplin.
@@ -371,4 +439,5 @@ service TremplinListener {
   rpc UpdateCreateStatus(ContainerCreationProgress) returns (EmptyMessage);
   rpc UpdateStartStatus(ContainerStartProgress) returns (EmptyMessage);
   rpc UpdateExportStatus(ContainerExportProgress) returns (EmptyMessage);
+  rpc UpdateImportStatus(ContainerImportProgress) returns (EmptyMessage);
 }
