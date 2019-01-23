@@ -65,6 +65,13 @@ class VirtualMachine {
     FAILED,
   };
 
+  enum class ExportLxdContainerStatus {
+    UNKNOWN,
+    DONE,
+    EXPORTING,
+    FAILED,
+  };
+
   // Info about the LXD container.
   struct LxdContainerInfo {
     // The IPv4 address of the container in network byte order.
@@ -192,6 +199,12 @@ class VirtualMachine {
   GetLxdContainerInfoStatus GetLxdContainerInfo(
       const std::string& container_name,
       LxdContainerInfo* out_info,
+      std::string* out_error);
+
+  // Exports an LXD container.
+  ExportLxdContainerStatus ExportLxdContainer(
+      const std::string& container_name,
+      const std::string& export_path,
       std::string* out_error);
 
   // Gets a list of all the active container names in this VM.

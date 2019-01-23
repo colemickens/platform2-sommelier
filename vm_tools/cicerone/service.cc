@@ -630,6 +630,35 @@ void Service::ContainerShutdown(const std::string& container_token,
   event->Signal();
 }
 
+void Service::ContainerExportProgress(
+    const uint32_t cid,
+    ExportLxdContainerProgressSignal* progress_signal,
+    bool* result,
+    base::WaitableEvent* event) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  CHECK(progress_signal);
+  CHECK(result);
+  CHECK(event);
+  *result = false;
+  VirtualMachine* vm;
+  std::string owner_id;
+  std::string vm_name;
+
+  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name)) {
+    event->Signal();
+    return;
+  }
+
+  // Send the D-Bus signal out updating progress/completion for the export.
+  dbus::Signal signal(kVmCiceroneInterface, kExportLxdContainerProgressSignal);
+  progress_signal->set_vm_name(vm_name);
+  progress_signal->set_owner_id(owner_id);
+  dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(*progress_signal);
+  exported_object_->SendSignal(&signal);
+  *result = true;
+  event->Signal();
+}
+
 void Service::UpdateApplicationList(const std::string& container_token,
                                     const uint32_t cid,
                                     vm_tools::apps::ApplicationList* app_list,
@@ -918,6 +947,7 @@ bool Service::Init(const base::Optional<base::FilePath>& unix_socket_path) {
       {kSetTimezoneMethod, &Service::SetTimezone},
       {kGetLxdContainerUsernameMethod, &Service::GetLxdContainerUsername},
       {kSetUpLxdContainerUserMethod, &Service::SetUpLxdContainerUser},
+      {kExportLxdContainerMethod, &Service::ExportLxdContainer},
       {kGetDebugInformationMethod, &Service::GetDebugInformation},
   };
 
@@ -1916,6 +1946,51 @@ std::unique_ptr<dbus::Response> Service::SetUpLxdContainerUser(
       break;
   }
   response.set_container_username(username);
+  response.set_failure_reason(error_msg);
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::ExportLxdContainer(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received ExportLxdContainer request";
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  ExportLxdContainerRequest request;
+  ExportLxdContainerResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse ExportLxdContainerRequest from message";
+    response.set_status(ExportLxdContainerResponse::FAILED);
+    response.set_failure_reason(
+        "unable to parse ExportLxdContainerRequest from message");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
+  if (!vm) {
+    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
+    response.set_status(ExportLxdContainerResponse::FAILED);
+    response.set_failure_reason(base::StringPrintf(
+        "requested VM does not exist: %s", request.vm_name().c_str()));
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  std::string error_msg;
+  VirtualMachine::ExportLxdContainerStatus status = vm->ExportLxdContainer(
+      request.container_name(), request.export_path(), &error_msg);
+
+  response.set_status(ExportLxdContainerResponse::UNKNOWN);
+  if (ExportLxdContainerResponse::Status_IsValid(static_cast<int>(status))) {
+    response.set_status(
+      static_cast<ExportLxdContainerResponse::Status>(status));
+  }
   response.set_failure_reason(error_msg);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;

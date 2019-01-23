@@ -50,6 +50,11 @@ class TremplinListenerImpl final
       const vm_tools::tremplin::ContainerStartProgress* request,
       vm_tools::tremplin::EmptyMessage* response) override;
 
+  grpc::Status UpdateExportStatus(
+      grpc::ServerContext* ctx,
+      const vm_tools::tremplin::ContainerExportProgress* request,
+      vm_tools::tremplin::EmptyMessage* response) override;
+
  private:
   uint32_t ExtractCidFromPeerAddress(grpc::ServerContext* ctx);
 
