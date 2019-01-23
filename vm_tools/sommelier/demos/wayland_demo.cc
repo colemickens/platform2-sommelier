@@ -281,7 +281,7 @@ int main(int argc, char* argv[]) {
                                 nullptr);
 
   wl_shell_surface_set_toplevel(data.shell_surface);
-  wl_shell_surface_set_class(data.shell_surface, "wayland_demo");
+  wl_shell_surface_set_class(data.shell_surface, data.title.c_str());
   wl_shell_surface_set_title(data.shell_surface, data.title.c_str());
   data.callback = wl_surface_frame(data.surface);
   struct wl_callback_listener callback_listener = {demo_draw};
