@@ -48,6 +48,7 @@ ppoll: 1
 # Allow PR_SET_NAME from libchrome's base::PlatformThread::SetName()
 prctl: arg0 == 0xf
 read: 1
+readlinkat: 1
 recvmsg: 1
 restart_syscall: 1
 rt_sigaction: 1
