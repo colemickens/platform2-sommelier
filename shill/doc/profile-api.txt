@@ -32,8 +32,8 @@ Device and IPConfig objects go in the global profile (if any).
 This ensures that enable/disable state is maintained between users
 (and reboots); or possibly discarded (e.g. for testing).
 
-Likewise global state like Offline mode and any Country code are stored
-in the global profile (see above).
+Likewise global state like Offline mode is stored in the global profile
+(see above).
 
 
 Profile hierarchy
@@ -122,16 +122,6 @@ Properties	string CheckPortalList [readonly]
 			checking is enabled. This is a comma-separated
 			string; e.g. "wifi,wimax,vpn". To alter this
 			setting set the Manager.CheckPortalList property.
-
-			This setting is recorded only in the
-			default profile as it affects all users and is
-			used pre-login.
-
-		string Country [readonly]
-
-			The current ISO country code for WiFi operation.
-			This property exists only if the country code
-			was set via the Manager.Country property.
 
 			This setting is recorded only in the
 			default profile as it affects all users and is

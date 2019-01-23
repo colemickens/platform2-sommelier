@@ -474,12 +474,6 @@ Properties 	string ActiveProfile [readwrite]
 			of the connected service states, e.g, "portal" or
 			"online".
 
-		string Country [readwrite]
-
-			The ISO 3166 country code.  This may not be defined;
-			it is defined if manually set or if it is discovered
-			through a service such as WiFi, Celluar, or GPS.
-
 		string DefaultService [readonly]
 
 			The current connected service with the default route.

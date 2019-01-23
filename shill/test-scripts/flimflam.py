@@ -419,13 +419,6 @@ class FlimFlam(object):
     def RequestScan(self, technology):
         self.manager.RequestScan(technology)
 
-    def GetCountry(self):
-        properties = self.manager.GetProperties(utf8_strings = True)
-        return properties["Country"]
-
-    def SetCountry(self, country):
-        self.manager.SetProperty("Country", country)
-
     def GetCheckPortalList(self):
         properties = self.manager.GetProperties(utf8_strings = True)
         return properties["CheckPortalList"]

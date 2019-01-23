@@ -1604,15 +1604,15 @@ TEST_F(ManagerTest, SetProperty) {
   }
   {
     Error error;
-    const string country("a_country");
+    const string portal_list("wifi,cellular");
     EXPECT_TRUE(manager()->mutable_store()->SetAnyProperty(
-        kCountryProperty, brillo::Any(country), &error));
+        kCheckPortalListProperty, brillo::Any(portal_list), &error));
   }
   // Attempt to write with value of wrong type should return InvalidArgs.
   {
     Error error;
     EXPECT_FALSE(manager()->mutable_store()->SetAnyProperty(
-        kCountryProperty, PropertyStoreTest::kBoolV, &error));
+        kCheckPortalListProperty, PropertyStoreTest::kBoolV, &error));
     EXPECT_EQ(Error::kInvalidArguments, error.type());
   }
   {

@@ -71,7 +71,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
           jail_vpn_clients(false) {}
     bool offline_mode;
     std::string check_portal_list;
-    std::string country;
     int32_t portal_check_interval_seconds;
     std::string portal_http_url;
     std::string portal_https_url;

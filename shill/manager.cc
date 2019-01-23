@@ -204,7 +204,6 @@ Manager::Manager(ControlInterface* control_interface,
   HelpRegisterConstDerivedStrings(kConnectedTechnologiesProperty,
                                   &Manager::ConnectedTechnologies);
   store_.RegisterConstString(kConnectionStateProperty, &connection_state_);
-  store_.RegisterString(kCountryProperty, &props_.country);
   HelpRegisterDerivedString(kDefaultTechnologyProperty,
                             &Manager::DefaultTechnology,
                             nullptr);

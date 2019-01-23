@@ -74,7 +74,6 @@ DefaultProfile::DefaultProfile(ControlInterface* control,
   store->RegisterConstBool(kArpGatewayProperty, &manager_props.arp_gateway);
   store->RegisterConstString(kCheckPortalListProperty,
                              &manager_props.check_portal_list);
-  store->RegisterConstString(kCountryProperty, &manager_props.country);
   store->RegisterConstString(kIgnoredDNSSearchPathsProperty,
                              &manager_props.ignored_dns_search_paths);
   store->RegisterConstString(kLinkMonitorTechnologiesProperty,

@@ -55,7 +55,6 @@ Profile::Profile(ControlInterface* control_interface,
     adaptor_ = control_interface->CreateProfileAdaptor(this);
 
   // kCheckPortalListProperty: Registered in DefaultProfile
-  // kCountryProperty: Registered in DefaultProfile
   store_.RegisterConstString(kNameProperty, &name_.identifier);
   store_.RegisterConstString(kUserHashProperty, &name_.user_hash);
 
