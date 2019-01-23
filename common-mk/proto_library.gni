@@ -2,6 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# TODO: Fix the visibility on the static_library.
+# gnlint: disable=GnLintVisibilityFlags
+
 # Compile protocol buffers.
 #
 # Paramaeters:
@@ -137,7 +140,10 @@ template("proto_library") {
     }
     if (defined(invoker.standalone) && invoker.standalone) {
       configs -= [ "//common-mk:use_thin_archive" ]
-      configs += [ "//common-mk:nouse_thin_archive" ]
+      configs += [
+        "//common-mk:nouse_thin_archive",
+        "//common-mk:visibility_default",
+      ]
     }
     sources = get_target_outputs(":${action_name}")
     deps = [
