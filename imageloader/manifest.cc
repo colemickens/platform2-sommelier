@@ -69,7 +69,10 @@ bool ParseMetadata(const base::Value* metadata_element,
 }  // namespace
 
 Manifest::Manifest()
-    : manifest_version_(0), fs_type_(FileSystem::kExt4), is_removable_(false) {}
+    : manifest_version_(0),
+      fs_type_(FileSystem::kExt4),
+      preallocated_size_(-1),
+      is_removable_(false) {}
 
 bool Manifest::ParseManifest(const std::string& manifest_raw) {
   // Now deserialize the manifest json and read out the rest of the component.
