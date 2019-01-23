@@ -29,8 +29,11 @@ include(sepolicy/file_contexts/coreutils)
 /bin/sh                         u:object_r:sh_exec:s0
 
 /usr/bin/anomaly_collector      u:object_r:cros_anomaly_collector_exec:s0
+/usr/bin/btdispatch             u:object_r:cros_btdispatch_exec:s0
 /usr/bin/chrt                   u:object_r:cros_chrt_exec:s0
 /usr/bin/cras                   u:object_r:cros_cras_exec:s0
+/usr/bin/cros_camera_algo       u:object_r:cros_camera_algo_exec:s0
+/usr/bin/cros_camera_service    u:object_r:cros_camera_service_exec:s0
 /usr/bin/cros-disks             u:object_r:cros_disks_exec:s0
 /usr/bin/dbus-daemon            u:object_r:cros_dbus_daemon_exec:s0
 /usr/bin/dbus-uuidgen           u:object_r:cros_dbus_uuidgen_exec:s0
@@ -40,7 +43,9 @@ include(sepolicy/file_contexts/coreutils)
 /usr/bin/metrics_client         u:object_r:cros_metrics_client_exec:s0
 /usr/bin/metrics_daemon         u:object_r:cros_metrics_daemon_exec:s0
 /usr/bin/midis                  u:object_r:cros_midis_exec:s0
+/usr/bin/newblued               u:object_r:cros_newblued_exec:s0
 /usr/bin/periodic_scheduler     u:object_r:cros_periodic_scheduler_exec:s0
+/usr/bin/permission_broker      u:object_r:cros_permission_broker_exec:s0
 /usr/bin/powerd                 u:object_r:cros_powerd_exec:s0
 /usr/bin/shill                  u:object_r:cros_shill_exec:s0
 /usr/bin/tlsdated               u:object_r:cros_tlsdated_exec:s0
@@ -48,18 +53,20 @@ include(sepolicy/file_contexts/coreutils)
 /usr/sbin/ModemManager          u:object_r:cros_modem_manager_exec:s0
 /usr/sbin/accelerator-logs      u:object_r:cros_accelerator_logs_exec:s0
 /usr/sbin/apk-cache-cleaner-jailed u:object_r:cros_apk_cache_cleaner_jailed_exec:s0
-/usr/sbin/avahi-daemon          u:object_r:cros_avahi_daemon_exec:s0
+/usr/sbin/arc-oemcrypto         u:object_r:cros_arc_oemcrypto:s0
 /usr/sbin/arc-setup             u:object_r:cros_arc_setup_exec:s0
+/usr/sbin/avahi-daemon          u:object_r:cros_avahi_daemon_exec:s0
 /usr/sbin/bootstat              u:object_r:cros_bootstat_exec:s0
 /usr/sbin/chapsd                u:object_r:cros_chapsd_exec:s0
-/usr/sbin/sshd                  u:object_r:cros_sshd_exec:s0
 /usr/sbin/chromeos-cleanup-logs u:object_r:cros_chromeos_cleanup_logs_exec:s0
 /usr/sbin/chromeos-trim         u:object_r:cros_chromeos_trim_exec:s0
 /usr/sbin/conntrackd            u:object_r:cros_conntrackd_exec:s0
 /usr/sbin/cros-machine-id-regen u:object_r:cros_machine_id_regen_exec:s0
 /usr/sbin/cryptohomed           u:object_r:cros_cryptohomed_exec:s0
 /usr/sbin/jetstream-update-stats u:object_r:cros_jetstream_update_stats_exec:s0
+/usr/sbin/mtpd                  u:object_r:cros_mtpd_exec:s0
 /usr/sbin/rsyslogd              u:object_r:cros_rsyslogd_exec:s0
+/usr/sbin/sshd                  u:object_r:cros_sshd_exec:s0
 /usr/sbin/sslh(-fork|-select)?  u:object_r:cros_sslh_exec:s0
 /usr/sbin/tcsd                  u:object_r:cros_tcsd_exec:s0
 /usr/sbin/update_engine         u:object_r:cros_update_engine_exec:s0

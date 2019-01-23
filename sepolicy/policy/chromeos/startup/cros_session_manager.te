@@ -17,3 +17,5 @@ filetrans_pattern(cros_session_manager, cros_run, cros_run_session_manager, dir,
 
 # rest of /run file created by session manager, e.g. state, user_policy.
 filetrans_pattern(cros_session_manager, cros_run, cros_run_session_manager, dir);
+
+filetrans_pattern_no_target_perm(cros_session_manager, cros_var_log, cros_var_log_chrome, dir, "chrome");
