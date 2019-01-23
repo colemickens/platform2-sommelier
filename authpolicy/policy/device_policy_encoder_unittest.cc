@@ -390,6 +390,8 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
 
   EncodeBoolean(&policy, key::kPluginVmAllowed, kBool);
   EXPECT_EQ(kBool, policy.plugin_vm_allowed().plugin_vm_allowed());
+  EncodeString(&policy, key::kPluginVmLicenseKey, kString);
+  EXPECT_EQ(kString, policy.plugin_vm_license_key().plugin_vm_license_key());
 
   // The encoder of this policy converts ints to
   // DeviceUserPolicyLoopbackProcessingModeProto::Mode enums.

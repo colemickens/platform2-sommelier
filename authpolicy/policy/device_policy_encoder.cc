@@ -595,6 +595,9 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
   EncodeBoolean(key::kPluginVmAllowed, [policy](bool value) {
     policy->mutable_plugin_vm_allowed()->set_plugin_vm_allowed(value);
   });
+  EncodeString(key::kPluginVmLicenseKey, [policy](const std::string& value) {
+    policy->mutable_plugin_vm_license_key()->set_plugin_vm_license_key(value);
+  });
 }
 
 void DevicePolicyEncoder::EncodeBoolean(
