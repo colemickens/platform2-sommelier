@@ -4,29 +4,29 @@ The repository hosts the core Chrome OS platform camera components, including:
 
 - Camera Hardware Abstraction Layers (HALs) of different platforms
 - Common dependencies and libraries needed by the camera HALs
-- [Camera HAL adapter](/hal_adapter) to interface with all the camera clients
+- [Camera HAL adapter](hal_adapter) to interface with all the camera clients
   through Mojo IPC
-- [Camera conformance test suite](/camera3_test) for the camera HALs
+- [Camera conformance test suite](camera3_test) for the camera HALs
 
 [TOC]
 
 ## System Overview
 
-![Chrome OS camera stack](/docs/images/cros_camera_stack.png)
+![Chrome OS camera stack](docs/images/cros_camera_stack.png)
 
 The camera service provider on Chrome OS is a standalone process that can be
 divided into two part:
 
 - **Platform-specific camera HAL** that interfaces with the kernel drivers and
   provide all the camera functions through the [**Android camera HAL v3 APIs**](
-  /android/header_files/include/hardware/libhardware/include/hardware/camera3.h).
+  android/header_files/include/hardware/libhardware/include/hardware/camera3.h).
 - **Camera HAL v3 adapter** that provides Mojo IPC interface for all the clients
   on Chrome OS to access the platform-specific camera HAL.
 
 Currently we have two major camera clients on Chrome OS: _Chrome browser_ and
 _Android container_.  All the clients connect to the camera HAL adapter through
-the [**Camera Module Mojo IPC interface**](/mojo/camera_common.mojom)
-and the [**Camera Device Mojo IPC interface**](/mojo/camera3.mojom)
+the [**Camera Module Mojo IPC interface**](mojo/camera_common.mojom)
+and the [**Camera Device Mojo IPC interface**](mojo/camera3.mojom)
 to access camera functions.  The Mojo IPC interface is very similar to the
 Android camera HAL v3 APIs.
 
@@ -38,7 +38,7 @@ provides the algorithms to control the camera subsystem for capturing high
 quality images.  We isolate the camera 3A library in a separated sandboxed
 process for security consideration. The camera HAL accesses the camera 3A
 library through the [**Camera Algorithm Mojo IPC interface**](
-/mojo/algorithm/camera_algorithm.mojom).
+mojo/algorithm/camera_algorithm.mojom).
 
 ### Encoding / Decoding JPEG images
 
@@ -47,7 +47,7 @@ requests.  On Chrome OS the JPEG codec service, if supported on the platform, is
 provided by the GPU process in Chrome browser.  We provide libraries to handle
 JPEG encoding and decoding: On platform that supports hardware-accelerated
 JPEG encoder/decoder, the JPEG libraries connect to the Chrome GPU process
-through Mojo IPC channels to encode/decode JPEG images; othewise the JPEG
+through Mojo IPC channels to encode/decode JPEG images; otherwise the JPEG
 encoding/decoding is done through software.
 
 ## Adding a New Camera HAL
@@ -58,7 +58,7 @@ The Chrome OS camera HAL are essentially the following shared libraries, plus
 and dependencies required by them:
 
 - `camera_hal.so` that provides the [**camera HAL interface**](
-  /android/header_files/include/hardware/libhardware/include/hardware/camera_common.h).
+  android/header_files/include/hardware/libhardware/include/hardware/camera_common.h).
   This is very similar to a regular Android camera HAL. _(Required)_
 - `libcam_algo.so` that provides the [**camera algorithm interface**](
   include/cros-camera/camera_algorithm.h) for the isolated camera 3A library.
@@ -79,7 +79,7 @@ We provide the following packages that are required to build the camera HAL:
 - `media-libs/cros-camera-libcbm`
 
   A replacement for Android gralloc. The library provides [APIs](
-  include/cros-camera/camera_buffer_mapper.h) to import and map buffer handles
+  include/cros-camera/camera_buffer_manager.h) to import and map buffer handles
   received in capture requests.
 
 - `media-libs/cros-camera-libcamera_client`
@@ -116,9 +116,9 @@ handle some general functions for the camera HAL:
 ### Uploading the Camera HAL Source Code
 
 To add a new camera HAL for a new platform, one needs to upload the source code
-of the camera HAL to the [camera HAL directory](/hal).
+of the camera HAL to the [camera HAL directory](hal).
 
-Examples: [**Intel camera HAL**](/hal/intel), [**USB camera HAL**](/hal/usb).
+Examples: [**Intel camera HAL**](hal/intel), [**USB camera HAL**](hal/usb).
 
 ### Adding ebuild Files
 
