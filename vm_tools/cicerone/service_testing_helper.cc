@@ -452,6 +452,8 @@ void ServiceTestingHelper::SetDbusCallbackNames() {
   dbus_callbacks_[kSetTimezone].method_name = kSetTimezoneMethod;
   dbus_callbacks_[kSetUpLxdContainerUser].method_name =
       kSetUpLxdContainerUserMethod;
+  dbus_callbacks_[kExportLxdContainer].method_name =
+      kExportLxdContainerMethod;
   dbus_callbacks_[kGetDebugInformation].method_name =
       kGetDebugInformationMethod;
 

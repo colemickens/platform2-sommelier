@@ -59,6 +59,7 @@ class ServiceTestingHelper {
     kSetTimezone,
     kGetLxdContainerUsername,
     kSetUpLxdContainerUser,
+    kExportLxdContainer,
     kGetDebugInformation,
 
     kNumDbusCalls
