@@ -808,6 +808,11 @@ status_t OutputFrameWorker::SWPostProcessor::processFrame(
         inputBuf->getOwner()->captureDone(inputBuf, request);
     }
 
+    if (!(mProcessType & PROCESS_ROTATE)) {
+        // the input is in the mPostProcessBufs[0], clear it.
+        mPostProcessBufs.clear();
+    }
+
     return status;
 }
 
