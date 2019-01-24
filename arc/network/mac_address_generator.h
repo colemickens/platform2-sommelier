@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef VM_TOOLS_CONCIERGE_MAC_ADDRESS_GENERATOR_H_
-#define VM_TOOLS_CONCIERGE_MAC_ADDRESS_GENERATOR_H_
+#ifndef ARC_NETWORK_MAC_ADDRESS_GENERATOR_H_
+#define ARC_NETWORK_MAC_ADDRESS_GENERATOR_H_
 
 #include <stdint.h>
 
@@ -12,15 +12,15 @@
 #include <unordered_set>
 
 #include <base/macros.h>
+#include <brillo/brillo_export.h>
 
-namespace vm_tools {
-namespace concierge {
+namespace arc_networkd {
 
 using MacAddress = std::array<uint8_t, 6>;
 
 // Generates locally managed EUI-48 MAC addresses and ensures no collisions
 // with any previously generated addresses by this instance.
-class MacAddressGenerator {
+class BRILLO_EXPORT MacAddressGenerator {
  public:
   MacAddressGenerator() = default;
   ~MacAddressGenerator() = default;
@@ -60,7 +60,6 @@ class MacAddressGenerator {
   DISALLOW_COPY_AND_ASSIGN(MacAddressGenerator);
 };
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace arc_networkd
 
-#endif  // VM_TOOLS_CONCIERGE_MAC_ADDRESS_GENERATOR_H_
+#endif  // ARC_NETWORK_MAC_ADDRESS_GENERATOR_H_

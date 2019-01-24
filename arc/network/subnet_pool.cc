@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "vm_tools/concierge/subnet_pool.h"
+#include "arc/network/subnet_pool.h"
 
 #include <string>
 #include <utility>
@@ -14,8 +14,7 @@
 
 using std::string;
 
-namespace vm_tools {
-namespace concierge {
+namespace arc_networkd {
 
 namespace {
 
@@ -96,5 +95,4 @@ void SubnetPool::ReleaseContainer(size_t index) {
   container_subnets_.reset(index);
 }
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace arc_networkd

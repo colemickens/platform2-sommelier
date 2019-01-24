@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef VM_TOOLS_CONCIERGE_SUBNET_POOL_H_
-#define VM_TOOLS_CONCIERGE_SUBNET_POOL_H_
+#ifndef ARC_NETWORK_SUBNET_POOL_H_
+#define ARC_NETWORK_SUBNET_POOL_H_
 
 #include <stdint.h>
 
@@ -13,15 +13,15 @@
 #include <base/callback.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
+#include <brillo/brillo_export.h>
 
-#include "vm_tools/concierge/subnet.h"
+#include "arc/network/subnet.h"
 
-namespace vm_tools {
-namespace concierge {
+namespace arc_networkd {
 
 // Manages IPv4 subnets that can be assigned to virtual machines and containers.
 // These use non-publicly routable addresses in the range 100.115.92.0/24.
-class SubnetPool {
+class BRILLO_EXPORT SubnetPool {
  public:
   SubnetPool() = default;
   ~SubnetPool();
@@ -51,7 +51,6 @@ class SubnetPool {
   DISALLOW_COPY_AND_ASSIGN(SubnetPool);
 };
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace arc_networkd
 
-#endif  // VM_TOOLS_CONCIERGE_SUBNET_POOL_H_
+#endif  // ARC_NETWORK_SUBNET_POOL_H_

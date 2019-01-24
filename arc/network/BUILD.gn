@@ -9,11 +9,10 @@ group("all") {
   deps = [
     ":arc-networkd",
     ":libarcnetwork",
+    ":libarcnetwork-util",
   ]
   if (use.test) {
-    deps += [
-      ":arc_network_testrunner",
-    ]
+    deps += [ ":arc_network_testrunner" ]
   }
 }
 
@@ -37,6 +36,17 @@ proto_library("protos") {
   ]
 }
 
+util_sources = [
+  "mac_address_generator.cc",
+  "subnet.cc",
+  "subnet_pool.cc",
+]
+
+shared_library("libarcnetwork-util") {
+  configs += [ ":target_defaults" ]
+  sources = util_sources
+}
+
 static_library("libarcnetwork") {
   configs += [ ":target_defaults" ]
   sources = [
@@ -55,9 +65,10 @@ static_library("libarcnetwork") {
     "ndp_handler.cc",
     "neighbor_finder.cc",
     "router_finder.cc",
-    "shill_client.cc",
     "scoped_ns.cc",
+    "shill_client.cc",
   ]
+  sources += util_sources
   deps = [
     ":protos",
   ]
@@ -75,9 +86,7 @@ executable("arc-networkd") {
 
 if (use.test) {
   pkg_config("test_config") {
-    pkg_deps = [
-      "libchrome-test-${libbase_ver}",
-    ]
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
   }
 
   executable("arc_network_testrunner") {
@@ -88,15 +97,18 @@ if (use.test) {
     ]
     sources = [
       "arc_ip_config_test.cc",
-      "device_test.cc",
       "device_manager_test.cc",
+      "device_test.cc",
+      "mac_address_generator_test.cc",
       "minijailed_process_runner_test.cc",
       "shill_client_test.cc",
+      "subnet_pool_test.cc",
+      "subnet_test.cc",
     ]
     defines = [ "UNIT_TEST" ]
     deps = [
-      "//common-mk/testrunner",
       ":libarcnetwork",
+      "//common-mk/testrunner",
     ]
   }
 }

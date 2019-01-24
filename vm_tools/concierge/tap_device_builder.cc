@@ -33,7 +33,7 @@ constexpr int32_t kVnetHeaderSize = 12;
 
 }  // namespace
 
-base::ScopedFD BuildTapDevice(const MacAddress& mac_addr,
+base::ScopedFD BuildTapDevice(const arc_networkd::MacAddress& mac_addr,
                               uint32_t ipv4_addr,
                               uint32_t ipv4_netmask) {
   // Explicitly not opened with close-on-exec because we want this fd to be

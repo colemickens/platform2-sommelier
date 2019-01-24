@@ -13,16 +13,16 @@
 #include <string>
 #include <vector>
 
+#include <arc/network/mac_address_generator.h>
+#include <arc/network/subnet.h>
+#include <arc/network/subnet_pool.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/macros.h>
 #include <base/time/time.h>
 #include <brillo/process.h>
 
-#include "vm_tools/concierge/mac_address_generator.h"
 #include "vm_tools/concierge/seneschal_server_proxy.h"
-#include "vm_tools/concierge/subnet.h"
-#include "vm_tools/concierge/subnet_pool.h"
 #include "vm_tools/concierge/vm_interface.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
 
@@ -58,8 +58,8 @@ class TerminaVm final : public VmInterface {
       base::FilePath kernel,
       base::FilePath rootfs,
       std::vector<Disk> disks,
-      MacAddress mac_addr,
-      std::unique_ptr<Subnet> subnet,
+      arc_networkd::MacAddress mac_addr,
+      std::unique_ptr<arc_networkd::Subnet> subnet,
       uint32_t vsock_cid,
       std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
       base::FilePath runtime_dir,
@@ -96,7 +96,7 @@ class TerminaVm final : public VmInterface {
 
   // Sets the container subnet for this VM to |subnet|. This subnet is intended
   // to be provided to a container runtime as a DHCP pool.
-  void SetContainerSubnet(std::unique_ptr<Subnet> subnet);
+  void SetContainerSubnet(std::unique_ptr<arc_networkd::Subnet> subnet);
 
   // The pid of the child process.
   pid_t pid() { return process_.pid(); }
@@ -163,15 +163,15 @@ class TerminaVm final : public VmInterface {
   void HandleSuspendDone() override;
 
   static std::unique_ptr<TerminaVm> CreateForTesting(
-      MacAddress mac_addr,
-      std::unique_ptr<Subnet> subnet,
+      arc_networkd::MacAddress mac_addr,
+      std::unique_ptr<arc_networkd::Subnet> subnet,
       uint32_t vsock_cid,
       base::FilePath runtime_dir,
       std::unique_ptr<vm_tools::Maitred::Stub> stub);
 
  private:
-  TerminaVm(MacAddress mac_addr,
-            std::unique_ptr<Subnet> subnet,
+  TerminaVm(arc_networkd::MacAddress mac_addr,
+            std::unique_ptr<arc_networkd::Subnet> subnet,
             uint32_t vsock_cid,
             std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
             base::FilePath runtime_dir,
@@ -188,13 +188,13 @@ class TerminaVm final : public VmInterface {
   void set_stub_for_testing(std::unique_ptr<vm_tools::Maitred::Stub> stub);
 
   // EUI-48 mac address for the VM's network interface.
-  MacAddress mac_addr_;
+  arc_networkd::MacAddress mac_addr_;
 
   // The /30 subnet assigned to the VM.
-  std::unique_ptr<Subnet> subnet_;
+  std::unique_ptr<arc_networkd::Subnet> subnet_;
 
   // An optional /28 container subnet.
-  std::unique_ptr<Subnet> container_subnet_;
+  std::unique_ptr<arc_networkd::Subnet> container_subnet_;
 
   // Virtual socket context id to be used when communicating with this VM.
   uint32_t vsock_cid_;
