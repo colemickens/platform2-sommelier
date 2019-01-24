@@ -72,10 +72,16 @@ create a CL.
 This CL will have changes to the ML ebuild, which installs the model(s) into
 rootfs.
 The ebuild is located at
-/chromiumos/overlays/chromiumos-overlay/chromeos-base/ml/ml-9999.ebuild.
+`/chromiumos/overlays/chromiumos-overlay/chromeos-base/ml/ml-9999.ebuild`.
 Simply add your models in the `system_models` variable: they are installed in the
 `src_install()` function in the same file.
 The install location in the ChromeOS system is `/opt/google/chrome/ml_models`.
+
+Then you need to update the Manifest file. In the ebuild path above, run
+`ebuild <ebuild_file> manifest`.
+A new entry for the new model will be added into Manifest file. This is the
+checksum to ensure the model file is downloaded successfully.
+
 See [CL/1125701] (and relative fix in [CL/1140020]) as an example.
 
 ### Step 3. Update ML Service daemon to serve the new model
