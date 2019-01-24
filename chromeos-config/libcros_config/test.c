@@ -2,7 +2,7 @@
 
 static struct config_map all_configs[] = {
     {.platform_name = "Some",
-     .smbios_match_name = "Some",
+     .firmware_name_match = "Some",
      .sku_id = 0,
      .customization_id = "",
      .whitelabel_tag = "",
@@ -12,7 +12,7 @@ static struct config_map all_configs[] = {
               .signature_id = "some"}},
 
     {.platform_name = "Some",
-     .smbios_match_name = "Some",
+     .firmware_name_match = "Some",
      .sku_id = 1,
      .customization_id = "",
      .whitelabel_tag = "",
@@ -22,7 +22,7 @@ static struct config_map all_configs[] = {
               .signature_id = "some"}},
 
     {.platform_name = "Another",
-     .smbios_match_name = "Another",
+     .firmware_name_match = "Another",
      .sku_id = -1,
      .customization_id = "",
      .whitelabel_tag = "",
@@ -32,7 +32,7 @@ static struct config_map all_configs[] = {
               .signature_id = "another"}},
 
     {.platform_name = "SomeCustomization",
-     .smbios_match_name = "SomeCustomization",
+     .firmware_name_match = "SomeCustomization",
      .sku_id = -1,
      .customization_id = "SomeCustomization",
      .whitelabel_tag = "",
@@ -42,7 +42,7 @@ static struct config_map all_configs[] = {
               .signature_id = "some_customization"}},
 
     {.platform_name = "Some",
-     .smbios_match_name = "Some",
+     .firmware_name_match = "Some",
      .sku_id = 8,
      .customization_id = "",
      .whitelabel_tag = "whitelabel1",
@@ -52,7 +52,7 @@ static struct config_map all_configs[] = {
               .signature_id = "whitelabel-whitelabel1"}},
 
     {.platform_name = "Some",
-     .smbios_match_name = "Some",
+     .firmware_name_match = "Some",
      .sku_id = 9,
      .customization_id = "",
      .whitelabel_tag = "whitelabel1",
@@ -62,7 +62,7 @@ static struct config_map all_configs[] = {
               .signature_id = "whitelabel-whitelabel1"}},
 
     {.platform_name = "Some",
-     .smbios_match_name = "Some",
+     .firmware_name_match = "Some",
      .sku_id = 8,
      .customization_id = "",
      .whitelabel_tag = "whitelabel2",
@@ -72,7 +72,7 @@ static struct config_map all_configs[] = {
               .signature_id = "whitelabel-whitelabel2"}},
 
     {.platform_name = "Some",
-     .smbios_match_name = "Some",
+     .firmware_name_match = "Some",
      .sku_id = 9,
      .customization_id = "",
      .whitelabel_tag = "whitelabel2",

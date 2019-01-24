@@ -2,7 +2,7 @@
 
 static struct config_map all_configs[] = {
     {.platform_name = "",
-     .device_tree_compatible_match = "google,some",
+     .firmware_name_match = "google,some",
      .sku_id = -1,
      .customization_id = "",
      .whitelabel_tag = "",
@@ -12,7 +12,7 @@ static struct config_map all_configs[] = {
               .signature_id = "some"}},
 
     {.platform_name = "",
-     .device_tree_compatible_match = "google,whitelabel",
+     .firmware_name_match = "google,whitelabel",
      .sku_id = -1,
      .customization_id = "",
      .whitelabel_tag = "whitelabel1",
@@ -22,7 +22,7 @@ static struct config_map all_configs[] = {
               .signature_id = "whitelabel"}},
 
     {.platform_name = "",
-     .device_tree_compatible_match = "google,whitelabel",
+     .firmware_name_match = "google,whitelabel",
      .sku_id = -1,
      .customization_id = "",
      .whitelabel_tag = "whitelabel2",
@@ -32,7 +32,7 @@ static struct config_map all_configs[] = {
               .signature_id = "whitelabel"}},
 
     {.platform_name = "",
-     .device_tree_compatible_match = "google,whitelabel",
+     .firmware_name_match = "google,whitelabel",
      .sku_id = -1,
      .customization_id = "",
      .whitelabel_tag = "",
@@ -42,7 +42,7 @@ static struct config_map all_configs[] = {
               .signature_id = "whitelabel"}},
 
     {.platform_name = "Another",
-     .device_tree_compatible_match = "google,another",
+     .firmware_name_match = "google,another",
      .sku_id = 8,
      .customization_id = "",
      .whitelabel_tag = "",
@@ -52,7 +52,7 @@ static struct config_map all_configs[] = {
               .signature_id = "another1"}},
 
     {.platform_name = "Another",
-     .device_tree_compatible_match = "google,another",
+     .firmware_name_match = "google,another",
      .sku_id = 9,
      .customization_id = "",
      .whitelabel_tag = "",

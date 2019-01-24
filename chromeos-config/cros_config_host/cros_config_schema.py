@@ -314,19 +314,9 @@ def GenerateMosysCBindings(config):
   Args:
     config: Config (transformed) that is the transform basis.
   """
-  struct_format_x86 = '''
+  struct_format = '''
     {.platform_name = "%s",
-     .smbios_match_name = "%s",
-     .sku_id = %s,
-     .customization_id = "%s",
-     .whitelabel_tag = "%s",
-     .info = {.brand = "%s",
-              .model = "%s",
-              .customization = "%s",
-              .signature_id = "%s"}}'''
-  struct_format_arm = '''
-    {.platform_name = "%s",
-     .device_tree_compatible_match = "%s",
+     .firmware_name_match = "%s",
      .sku_id = %s,
      .customization_id = "%s",
      .whitelabel_tag = "%s",
@@ -347,8 +337,6 @@ def GenerateMosysCBindings(config):
     brand_code = config.get('brand-code', '')
     platform_name = identity.get('platform-name', '')
     sku_id = identity.get('sku-id', -1)
-    device_tree_compatible_match = identity.get(
-        'device-tree-compatible-match', '')
     if _IsLegacyMigration(platform_name):
       # The mosys device-tree impl hard-coded this logic.
       # Since we've already launched without this on new platforms,
@@ -357,28 +345,22 @@ def GenerateMosysCBindings(config):
         customization = ('%s-%s' % (name, customization))
       customization = customization.upper()
 
-    if device_tree_compatible_match:
-      structs.append(
-          struct_format_arm % (platform_name,
-                               device_tree_compatible_match,
-                               sku_id,
-                               customization_id,
-                               whitelabel_tag,
-                               brand_code,
-                               name,
-                               customization,
-                               signature_id))
-    else:
-      structs.append(
-          struct_format_x86 % (platform_name,
-                               identity.get('smbios-name-match', ''),
-                               sku_id,
-                               customization_id,
-                               whitelabel_tag,
-                               brand_code,
-                               name,
-                               customization,
-                               signature_id))
+    # At most one of <device_tree_compatible_match> and <smbios-name-match>
+    # should be set (depends on whether this is for ARM or x86). This is used as
+    #  <firmware_name_match> for mosys.
+    firmware_name_match = identity.get('device-tree-compatible-match',
+                                       identity.get('smbios-name-match', ''))
+    structs.append(
+        struct_format % (platform_name,
+                         firmware_name_match,
+                         sku_id,
+                         customization_id,
+                         whitelabel_tag,
+                         brand_code,
+                         name,
+                         customization,
+                         signature_id))
+
   file_format = '''\
 #include "lib/cros_config_struct.h"
 
