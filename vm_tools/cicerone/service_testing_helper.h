@@ -60,6 +60,7 @@ class ServiceTestingHelper {
     kGetLxdContainerUsername,
     kSetUpLxdContainerUser,
     kExportLxdContainer,
+    kImportLxdContainer,
     kGetDebugInformation,
 
     kNumDbusCalls
