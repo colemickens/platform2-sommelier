@@ -533,14 +533,14 @@ void GetPerfData(LogTool::LogMap* map) {
 
 }  // namespace
 
-void LogTool::CreateConnectivityReport() {
+void LogTool::CreateConnectivityReport(bool wait_for_results) {
   // Perform ConnectivityTrial to report connection state in feedback log.
   auto shill = std::make_unique<org::chromium::flimflam::ManagerProxy>(bus_);
   // Give the connection trial time to test the connection and log the results
   // before collecting the logs for feedback.
   // TODO(silberst): Replace the simple approach of a single timeout with a more
   // coordinated effort.
-  if (shill && shill->CreateConnectivityReport(nullptr))
+  if (shill && shill->CreateConnectivityReport(nullptr) && wait_for_results)
     sleep(kConnectionTesterTimeoutSeconds);
 }
 
@@ -553,7 +553,7 @@ string LogTool::GetLog(const string& name) {
 }
 
 LogTool::LogMap LogTool::GetAllLogs() {
-  CreateConnectivityReport();
+  CreateConnectivityReport(false);
   LogMap result;
   GetLogsFrom(kCommandLogs, &result);
   GetLogsFrom(kExtraLogs, &result);
@@ -563,7 +563,7 @@ LogTool::LogMap LogTool::GetAllLogs() {
 }
 
 LogTool::LogMap LogTool::GetAllDebugLogs() {
-  CreateConnectivityReport();
+  CreateConnectivityReport(true);
   LogMap result;
   GetLogsFrom(kCommandLogs, &result);
   GetLogsFrom(kExtraLogs, &result);
@@ -574,7 +574,7 @@ LogTool::LogMap LogTool::GetAllDebugLogs() {
 }
 
 LogTool::LogMap LogTool::GetFeedbackLogs() {
-  CreateConnectivityReport();
+  CreateConnectivityReport(true);
   LogMap result;
   GetLogsFrom(kCommandLogs, &result);
   for (const auto& key : kCommandLogsExclude) {
@@ -588,7 +588,7 @@ LogTool::LogMap LogTool::GetFeedbackLogs() {
 }
 
 void LogTool::GetBigFeedbackLogs(const base::ScopedFD& fd) {
-  CreateConnectivityReport();
+  CreateConnectivityReport(true);
   LogMap map;
   GetPerfData(&map);
   base::DictionaryValue dictionary;
