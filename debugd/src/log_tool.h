@@ -5,6 +5,7 @@
 #ifndef DEBUGD_SRC_LOG_TOOL_H_
 #define DEBUGD_SRC_LOG_TOOL_H_
 
+#include <sys/types.h>
 #include <map>
 #include <string>
 
@@ -14,6 +15,7 @@
 #include <dbus/bus.h>
 
 #include "debugd/src/anonymizer_tool.h"
+#include "debugd/src/sandboxed_process.h"
 
 namespace debugd {
 
@@ -31,6 +33,45 @@ class LogTool {
 
     // base64-encodes the output.
     kBinary
+  };
+
+  class Log {
+   public:
+    enum LogType { kCommand, kFile };
+
+    static constexpr int64_t kDefaultMaxBytes = 512 * 1024;
+
+    Log(LogType type,
+        std::string name,
+        std::string data,
+        std::string user = SandboxedProcess::kDefaultUser,
+        std::string group = SandboxedProcess::kDefaultGroup,
+        int64_t max_bytes = kDefaultMaxBytes,
+        LogTool::Encoding encoding = LogTool::Encoding::kAutodetect);
+
+    std::string GetName() const;
+    std::string GetLogData() const;
+
+    std::string GetCommandLogData() const;
+    std::string GetFileLogData() const;
+
+    void DisableMinijailForTest();
+
+   private:
+    static uid_t UidForUser(const std::string& name);
+    static gid_t GidForGroup(const std::string& group);
+
+    LogType type_;
+    std::string name_;
+    // For kCommand logs, this is the command to run.
+    // For kFile logs, this is the file path to read.
+    std::string data_;
+    std::string user_;
+    std::string group_;
+    int64_t max_bytes_;  // passed as arg to 'tail -c'
+    LogTool::Encoding encoding_;
+
+    bool minijail_disabled_for_test_ = false;
   };
 
   explicit LogTool(scoped_refptr<dbus::Bus> bus) : bus_(bus) {}
