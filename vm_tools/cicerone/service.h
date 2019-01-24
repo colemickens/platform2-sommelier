@@ -165,6 +165,16 @@ class Service final : public base::MessageLoopForIO::Watcher {
       bool* result,
       base::WaitableEvent* event);
 
+  // Sends a D-Bus signal to inform listeners on update for the progress or
+  // completion of container import. It will use |cid| to resolve the request to
+  // a VM. |progress_signal| should have all related fields set |result| is set
+  // to true on success, false otherwise. Signals |event| when done.
+  void ContainerImportProgress(
+      const uint32_t cid,
+      ImportLxdContainerProgressSignal* progress_signal,
+      bool* result,
+      base::WaitableEvent* event);
+
   // This will send a D-Bus message to Chrome to inform it of the current
   // installed application list for a container. It will use |cid| to
   // resolve the request to a VM and then |container_token| to resolve it to a
@@ -307,6 +317,10 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   // Handles a request to export an LXD container.
   std::unique_ptr<dbus::Response> ExportLxdContainer(
+      dbus::MethodCall* method_call);
+
+  // Handles a request to import an LXD container.
+  std::unique_ptr<dbus::Response> ImportLxdContainer(
       dbus::MethodCall* method_call);
 
   // Handles a request to get debug information.

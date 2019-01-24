@@ -490,5 +490,43 @@ VirtualMachine::ExportLxdContainerStatus VirtualMachine::ExportLxdContainer(
   }
 }
 
+VirtualMachine::ImportLxdContainerStatus VirtualMachine::ImportLxdContainer(
+    const std::string& container_name,
+    const std::string& import_path,
+    std::string* out_error) {
+  DCHECK(out_error);
+  if (!tremplin_stub_) {
+    *out_error = "tremplin is not connected";
+    return VirtualMachine::ImportLxdContainerStatus::FAILED;
+  }
+
+  vm_tools::tremplin::ImportContainerRequest request;
+  vm_tools::tremplin::ImportContainerResponse response;
+
+  request.set_container_name(container_name);
+  request.set_import_path(import_path);
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+
+  grpc::Status status =
+      tremplin_stub_->ImportContainer(&ctx, request, &response);
+  if (!status.ok()) {
+    LOG(ERROR) << "ImportLxdContainer RPC failed: " << status.error_message();
+    out_error->assign(status.error_message());
+    return VirtualMachine::ImportLxdContainerStatus::FAILED;
+  }
+
+  switch (response.status()) {
+    case tremplin::ImportContainerResponse::IMPORTING:
+      return VirtualMachine::ImportLxdContainerStatus::IMPORTING;
+    case tremplin::ImportContainerResponse::FAILED:
+      return VirtualMachine::ImportLxdContainerStatus::FAILED;
+    default:
+      return VirtualMachine::ImportLxdContainerStatus::UNKNOWN;
+  }
+}
 }  // namespace cicerone
 }  // namespace vm_tools
