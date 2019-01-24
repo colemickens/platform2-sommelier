@@ -54,8 +54,8 @@ bool SetPgid() {
 std::unique_ptr<PluginVm> PluginVm::Create(
     uint32_t cpus,
     string params,
-    MacAddress mac_addr,
-    std::unique_ptr<SubnetAddress> ipv4_addr,
+    arc_networkd::MacAddress mac_addr,
+    std::unique_ptr<arc_networkd::SubnetAddress> ipv4_addr,
     uint32_t ipv4_netmask,
     uint32_t ipv4_gateway,
     base::FilePath stateful_dir,
@@ -132,8 +132,8 @@ bool PluginVm::ListUsbDevice(std::vector<UsbDevice>* device) {
   return false;
 }
 
-PluginVm::PluginVm(MacAddress mac_addr,
-                   std::unique_ptr<SubnetAddress> ipv4_addr,
+PluginVm::PluginVm(arc_networkd::MacAddress mac_addr,
+                   std::unique_ptr<arc_networkd::SubnetAddress> ipv4_addr,
                    uint32_t ipv4_netmask,
                    uint32_t ipv4_gateway,
                    base::FilePath runtime_dir)

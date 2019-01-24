@@ -25,6 +25,7 @@
 #include <utility>
 #include <vector>
 
+#include <arc/network/subnet.h>
 #include <base/base64url.h>
 #include <base/bind.h>
 #include <base/bind_helpers.h>
@@ -55,7 +56,6 @@
 #include "vm_tools/concierge/plugin_vm.h"
 #include "vm_tools/concierge/seneschal_server_proxy.h"
 #include "vm_tools/concierge/ssh_keys.h"
-#include "vm_tools/concierge/subnet.h"
 
 using std::string;
 
@@ -396,7 +396,7 @@ Service::Service(base::Closure quit_closure)
       resync_vm_clocks_on_resume_(false),
 #endif
       weak_ptr_factory_(this) {
-  plugin_subnet_ = std::make_unique<Subnet>(
+  plugin_subnet_ = std::make_unique<arc_networkd::Subnet>(
       kPluginBaseAddress, kPluginSubnetPrefix, base::Bind(&DoNothing));
 
   // The first address is the gateway and cannot be used by VMs.
@@ -794,8 +794,8 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   }
 
   // Allocate resources for the VM.
-  MacAddress mac_address = mac_address_generator_.Generate();
-  std::unique_ptr<Subnet> subnet = subnet_pool_.AllocateVM();
+  arc_networkd::MacAddress mac_address = mac_address_generator_.Generate();
+  std::unique_ptr<arc_networkd::Subnet> subnet = subnet_pool_.AllocateVM();
   if (!subnet) {
     LOG(ERROR) << "No available subnets; unable to start VM";
 
@@ -992,17 +992,18 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
   }
 
   // Mark the mac address as in use and make sure it is not already in use.
-  if (request.host_mac_address().size() != sizeof(MacAddress)) {
-    LOG(ERROR) << "Mac address is not exactly " << sizeof(MacAddress)
-               << " bytes";
+  if (request.host_mac_address().size() != sizeof(arc_networkd::MacAddress)) {
+    LOG(ERROR) << "Mac address is not exactly "
+               << sizeof(arc_networkd::MacAddress) << " bytes";
     response.set_failure_reason("Invalid mac address length");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
 
   // Copy over the mac address.
-  MacAddress mac_addr;
-  memcpy(&mac_addr, request.host_mac_address().data(), sizeof(MacAddress));
+  arc_networkd::MacAddress mac_addr;
+  memcpy(&mac_addr, request.host_mac_address().data(),
+         sizeof(arc_networkd::MacAddress));
 
   if (!mac_address_generator_.Insert(mac_addr)) {
     LOG(ERROR) << "Invalid mac address";
@@ -1271,7 +1272,8 @@ bool Service::StartTermina(TerminaVm* vm, string* failure_reason) {
   termina_vms_.push_back(vm);
 
   // Allocate the subnet for lxd's bridge to use.
-  std::unique_ptr<Subnet> container_subnet = subnet_pool_.AllocateContainer();
+  std::unique_ptr<arc_networkd::Subnet> container_subnet =
+      subnet_pool_.AllocateContainer();
   if (!container_subnet) {
     LOG(ERROR) << "Could not allocate container subnet";
     *failure_reason = "could not allocate container subnet";

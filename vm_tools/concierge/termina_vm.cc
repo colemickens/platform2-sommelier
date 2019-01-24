@@ -125,8 +125,8 @@ bool WaitForChild(pid_t child, base::TimeDelta timeout) {
 }  // namespace
 
 TerminaVm::TerminaVm(
-    MacAddress mac_addr,
-    std::unique_ptr<Subnet> subnet,
+    arc_networkd::MacAddress mac_addr,
+    std::unique_ptr<arc_networkd::Subnet> subnet,
     uint32_t vsock_cid,
     std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
     base::FilePath runtime_dir,
@@ -151,8 +151,8 @@ std::unique_ptr<TerminaVm> TerminaVm::Create(
     base::FilePath kernel,
     base::FilePath rootfs,
     std::vector<TerminaVm::Disk> disks,
-    MacAddress mac_addr,
-    std::unique_ptr<Subnet> subnet,
+    arc_networkd::MacAddress mac_addr,
+    std::unique_ptr<arc_networkd::Subnet> subnet,
     uint32_t vsock_cid,
     std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
     base::FilePath runtime_dir,
@@ -542,7 +542,8 @@ bool TerminaVm::SetTime(string* failure_reason) {
   return true;
 }
 
-void TerminaVm::SetContainerSubnet(std::unique_ptr<Subnet> subnet) {
+void TerminaVm::SetContainerSubnet(
+    std::unique_ptr<arc_networkd::Subnet> subnet) {
   container_subnet_ = std::move(subnet);
 }
 
@@ -598,8 +599,8 @@ void TerminaVm::set_stub_for_testing(
 }
 
 std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
-    MacAddress mac_addr,
-    std::unique_ptr<Subnet> subnet,
+    arc_networkd::MacAddress mac_addr,
+    std::unique_ptr<arc_networkd::Subnet> subnet,
     uint32_t vsock_cid,
     base::FilePath runtime_dir,
     std::unique_ptr<vm_tools::Maitred::Stub> stub) {

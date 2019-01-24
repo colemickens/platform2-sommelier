@@ -2,6 +2,7 @@
   'target_defaults': {
     'variables': {
       'deps': [
+        'libarcnetwork-util',
         'libbrillo-<(libbase_ver)',
         'libchrome-<(libbase_ver)',
       ],
@@ -81,7 +82,6 @@
         ],
       },
       'sources': [
-        'concierge/mac_address_generator.cc',
         'concierge/plugin_vm.cc',
         'concierge/power_manager_client.cc',
         'concierge/seneschal_server_proxy.cc',
@@ -89,8 +89,6 @@
         'concierge/shill_client.cc',
         'concierge/ssh_keys.cc',
         'concierge/startup_listener_impl.cc',
-        'concierge/subnet.cc',
-        'concierge/subnet_pool.cc',
         'concierge/tap_device_builder.cc',
         'concierge/termina_vm.cc',
         'concierge/vsock_cid_pool.cc',
@@ -288,10 +286,7 @@
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
-            'concierge/mac_address_generator_test.cc',
             'concierge/power_manager_client_test.cc',
-            'concierge/subnet_pool_test.cc',
-            'concierge/subnet_test.cc',
             'concierge/termina_vm_test.cc',
           ],
         },

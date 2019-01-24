@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "vm_tools/concierge/subnet.h"
+#include "arc/network/subnet.h"
 
 #include <arpa/inet.h>
 
@@ -11,8 +11,7 @@
 #include <base/bind.h>
 #include <base/logging.h>
 
-namespace vm_tools {
-namespace concierge {
+namespace arc_networkd {
 
 SubnetAddress::SubnetAddress(uint32_t addr, base::Closure release_cb)
     : addr_(addr), release_cb_(std::move(release_cb)) {}
@@ -89,5 +88,4 @@ void Subnet::Free(uint32_t offset) {
   addrs_[offset] = false;
 }
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace arc_networkd

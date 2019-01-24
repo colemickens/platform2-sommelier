@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "vm_tools/concierge/subnet.h"
+#include "arc/network/subnet.h"
 
 #include <arpa/inet.h>
 #include <stdint.h>
@@ -13,8 +13,7 @@
 #include <base/bind.h>
 #include <gtest/gtest.h>
 
-namespace vm_tools {
-namespace concierge {
+namespace arc_networkd {
 namespace {
 
 constexpr size_t kContainerBaseAddress = 0x64735cc0;  // 100.115.92.192
@@ -169,5 +168,4 @@ TEST(PluginSubnet, Free) {
   EXPECT_TRUE(subnet.Allocate(kPluginBaseAddress + 1));
 }
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace arc_networkd

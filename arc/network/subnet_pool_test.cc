@@ -15,13 +15,12 @@
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 
-#include "vm_tools/concierge/subnet.h"
-#include "vm_tools/concierge/subnet_pool.h"
+#include "arc/network/subnet.h"
+#include "arc/network/subnet_pool.h"
 
 using std::string;
 
-namespace vm_tools {
-namespace concierge {
+namespace arc_networkd {
 namespace {
 
 // The maximum number of subnets that can be allocated at a given time.
@@ -80,5 +79,4 @@ TEST(SubnetPool, Release) {
   EXPECT_EQ(address, subnet->AddressAtOffset(1));
 }
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace arc_networkd
