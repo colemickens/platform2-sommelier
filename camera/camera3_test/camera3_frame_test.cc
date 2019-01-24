@@ -10,6 +10,8 @@
 
 #include <limits>
 #include <list>
+#include <unordered_map>
+#include <unordered_set>
 
 #include <base/command_line.h>
 #include <base/files/file_util.h>
@@ -552,9 +554,8 @@ class Camera3FlushRequestsTest : public Camera3FrameFixture,
   // number as the key
   std::unordered_map<uint32_t, int32_t> num_capture_result_buffers_;
 
-  // Store number of partial metadatas returned in capture results with frame
-  // number as the key
-  std::unordered_map<uint32_t, int32_t> num_capture_result_partial_metadata_;
+  // Store frame numbers of which all partial results are received
+  std::unordered_set<uint32_t> metadata_complete_frame_numbers_;
 
   // Store the frames numbers that had been notified with
   // CAMERA3_MSG_ERROR_REQUEST.
@@ -580,8 +581,9 @@ void Camera3FlushRequestsTest::ProcessCaptureResult(
   EXPECT_EQ(result->result != nullptr, result->partial_result != 0)
       << "Inconsistent partial metadata";
 
-  if (result->result) {
-    num_capture_result_partial_metadata_[result->frame_number]++;
+  if (result->result && result->partial_result ==
+          cam_device_.GetStaticInfo()->GetPartialResultCount()) {
+    metadata_complete_frame_numbers_.insert(result->frame_number);
   }
 
   num_capture_result_buffers_[result->frame_number] +=
@@ -591,8 +593,8 @@ void Camera3FlushRequestsTest::ProcessCaptureResult(
           kNumberOfConfiguredStreams &&
       (notified_error_requests_.find(result->frame_number) !=
            notified_error_requests_.end() ||
-       num_capture_result_partial_metadata_[result->frame_number] ==
-           cam_device_.GetStaticInfo()->GetPartialResultCount())) {
+       metadata_complete_frame_numbers_.find(result->frame_number) !=
+           metadata_complete_frame_numbers_.end())) {
     num_capture_results_++;
     sem_post(&flush_result_sem_);
   }

@@ -523,8 +523,6 @@ void Camera3DeviceImpl::ProcessCaptureResultOnThread(
               (result->metadata_result != nullptr));
 
   if (result->metadata_result) {
-    EXPECT_KEY_VALUE_GT_I64(result->metadata_result.get(),
-                            ANDROID_SENSOR_TIMESTAMP, 0);
     ProcessPartialResult(result.get());
   }
 
@@ -574,6 +572,7 @@ void Camera3DeviceImpl::ProcessCaptureResultOnThread(
     }
     CameraMetadataUniquePtr final_metadata(
         capture_result_info_map_[result->frame_number].MergePartialMetadata());
+    EXPECT_KEY_VALUE_GT_I64(final_metadata.get(), ANDROID_SENSOR_TIMESTAMP, 0);
     if (!process_result_metadata_output_buffers_cb_.is_null()) {
       process_result_metadata_output_buffers_cb_.Run(result->frame_number,
                                                      std::move(final_metadata),
@@ -710,13 +709,8 @@ void Camera3DeviceImpl::ProcessPartialResult(CaptureResult* result) {
   if (UsePartialResult() && result->metadata_result != nullptr) {
     EXPECT_LE(result->partial_result, static_info_->GetPartialResultCount());
     EXPECT_GE(result->partial_result, 1);
-    camera_metadata_ro_entry_t entry;
-    if (find_camera_metadata_ro_entry(result->metadata_result.get(),
-                                      ANDROID_QUIRKS_PARTIAL_RESULT,
-                                      &entry) == 0) {
-      is_final_partial_result =
-          (entry.data.i32[0] == ANDROID_QUIRKS_PARTIAL_RESULT_FINAL);
-    }
+    is_final_partial_result =
+      (result->partial_result == static_info_->GetPartialResultCount());
   }
 
   // Did we get the (final) result metadata for this capture?
