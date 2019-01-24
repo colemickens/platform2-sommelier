@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//common-mk/generate-dbus-adaptors.gni")
 import("//common-mk/pkg_config.gni")
 
 group("all") {
@@ -22,8 +23,18 @@ pkg_config("target_defaults") {
     "libchrome-${libbase_ver}",
     "openssl",
     "re2",
+    "system_api",
+    "protobuf-lite",
   ]
   libs = [ "qrtr" ]
+}
+
+generate_dbus_adaptors("hermes_adaptors") {
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+  dbus_adaptors_out_dir = "include/hermes/dbus_bindings"
+  sources = [
+    "dbus_bindings/org.chromium.Hermes.xml",
+  ]
 }
 
 static_library("libhermes") {
@@ -31,12 +42,17 @@ static_library("libhermes") {
   sources = [
     "apdu.cc",
     "card_qrtr.cc",
+    "daemon.cc",
+    "dbus_adaptor.cc",
     "executor.cc",
     "qmi_uim.cc",
     "sgp_22.cc",
     "smdp.cc",
     "smds.cc",
     "socket_qrtr.cc",
+  ]
+  deps = [
+    ":hermes_adaptors",
   ]
 }
 
