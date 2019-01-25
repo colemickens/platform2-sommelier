@@ -13,6 +13,7 @@
 #include <gmock/gmock.h>
 
 #include "vm_tools/cicerone/container_listener_impl.h"
+#include "vm_tools/cicerone/mock_tremplin_stub.h"
 #include "vm_tools/cicerone/service.h"
 #include "vm_tools/cicerone/service_testing_helper.h"
 #include "vm_tools/cicerone/tremplin_listener_impl.h"
@@ -24,8 +25,10 @@ namespace {
 
 using ::testing::_;
 using ::testing::AnyNumber;
+using ::testing::DoAll;
 using ::testing::InvokeWithoutArgs;
 using ::testing::Return;
+using ::testing::SetArgPointee;
 using ::vm_tools::cicerone::ContainerListenerImpl;
 using ::vm_tools::cicerone::Service;
 using ::vm_tools::cicerone::ServiceTestingHelper;
@@ -75,38 +78,51 @@ grpc::Status ToStatus(int integer_status_code) {
   return status;
 }
 
-void SetUpTremplinTestStub(
-    const vm_tools::container::ContainerListenerFuzzerSingleAction& action,
-    vm_tools::cicerone::TremplinTestStub* test_stub) {
-  test_stub->SetCreateContainerReturn(
-      ToStatus(action.tremplin_create_container_status()));
-  test_stub->SetCreateContainerResponse(
-      action.tremplin_create_container_response());
-  test_stub->SetStartContainerReturn(
-      ToStatus(action.tremplin_start_container_status()));
-  test_stub->SetStartContainerResponse(
-      action.tremplin_start_container_response());
-  test_stub->SetGetContainerUsernameReturn(
-      ToStatus(action.tremplin_get_container_username_status()));
-  test_stub->SetGetContainerUsernameResponse(
-      action.tremplin_get_container_username_response());
-  test_stub->SetSetUpUserReturn(ToStatus(action.tremplin_set_up_user_status()));
-  test_stub->SetSetUpUserResponse(action.tremplin_set_up_user_response());
-  test_stub->SetGetContainerInfoReturn(
-      ToStatus(action.tremplin_get_container_info_status()));
-  test_stub->SetGetContainerInfoResponse(
-      action.tremplin_get_container_info_response());
-  test_stub->SetSetTimezoneReturn(
-      ToStatus(action.tremplin_set_timezone_status()));
-  test_stub->SetSetTimezoneResponse(action.tremplin_set_timezone_response());
-  test_stub->SetExportContainerReturn(
-      ToStatus(action.tremplin_export_container_status()));
-  test_stub->SetExportContainerResponse(
-      action.tremplin_export_container_response());
-  test_stub->SetImportContainerReturn(
-      ToStatus(action.tremplin_import_container_status()));
-  test_stub->SetImportContainerResponse(
-      action.tremplin_import_container_response());
+std::unique_ptr<vm_tools::tremplin::MockTremplinStub> CreateMockTremplinStub(
+    const vm_tools::container::ContainerListenerFuzzerSingleAction& action) {
+  auto mock_tremplin_stub =
+      std::make_unique<vm_tools::tremplin::MockTremplinStub>();
+
+  EXPECT_CALL(*mock_tremplin_stub, CreateContainer(_, _, _))
+      .Times(AnyNumber())
+      .WillOnce(
+          DoAll(SetArgPointee<2>(action.tremplin_create_container_response()),
+                Return(ToStatus(action.tremplin_create_container_status()))));
+  EXPECT_CALL(*mock_tremplin_stub, StartContainer(_, _, _))
+      .Times(AnyNumber())
+      .WillOnce(
+          DoAll(SetArgPointee<2>(action.tremplin_start_container_response()),
+                Return(ToStatus(action.tremplin_start_container_status()))));
+  EXPECT_CALL(*mock_tremplin_stub, GetContainerUsername(_, _, _))
+      .Times(AnyNumber())
+      .WillOnce(DoAll(
+          SetArgPointee<2>(action.tremplin_get_container_username_response()),
+          Return(ToStatus(action.tremplin_get_container_username_status()))));
+  EXPECT_CALL(*mock_tremplin_stub, SetUpUser(_, _, _))
+      .Times(AnyNumber())
+      .WillOnce(DoAll(SetArgPointee<2>(action.tremplin_set_up_user_response()),
+                      Return(ToStatus(action.tremplin_set_up_user_status()))));
+  EXPECT_CALL(*mock_tremplin_stub, GetContainerInfo(_, _, _))
+      .Times(AnyNumber())
+      .WillOnce(
+          DoAll(SetArgPointee<2>(action.tremplin_get_container_info_response()),
+                Return(ToStatus(action.tremplin_get_container_info_status()))));
+  EXPECT_CALL(*mock_tremplin_stub, SetTimezone(_, _, _))
+      .Times(AnyNumber())
+      .WillOnce(DoAll(SetArgPointee<2>(action.tremplin_set_timezone_response()),
+                      Return(ToStatus(action.tremplin_set_timezone_status()))));
+  EXPECT_CALL(*mock_tremplin_stub, ExportContainer(_, _, _))
+      .Times(AnyNumber())
+      .WillOnce(
+          DoAll(SetArgPointee<2>(action.tremplin_export_container_response()),
+                Return(ToStatus(action.tremplin_export_container_status()))));
+  EXPECT_CALL(*mock_tremplin_stub, ImportContainer(_, _, _))
+      .Times(AnyNumber())
+      .WillOnce(
+          DoAll(SetArgPointee<2>(action.tremplin_import_container_response()),
+                Return(ToStatus(action.tremplin_import_container_status()))));
+
+  return mock_tremplin_stub;
 }
 
 }  // namespace
@@ -141,7 +157,9 @@ DEFINE_PROTO_FUZZER(
     SetUpMockObjectProxy(action,
                          &test_framework.get_mock_concierge_service_proxy());
 
-    SetUpTremplinTestStub(action, &test_framework.get_tremplin_test_stub());
+    test_framework.SetTremplinStub(ServiceTestingHelper::kDefaultOwnerId,
+                                   ServiceTestingHelper::kDefaultVmName,
+                                   CreateMockTremplinStub(action));
 
     grpc::ServerContext context;
     vm_tools::EmptyMessage response;
