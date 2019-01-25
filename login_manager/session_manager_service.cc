@@ -381,7 +381,8 @@ DBusHandlerResult SessionManagerService::FilterMessage(DBusConnection* conn,
     }
     ::dbus_message_unref(got_pid);
     if (!service->IsBrowser(pid)) {
-      LOG(WARNING) << "Sender of RestartJob is no child of mine!";
+      LOG(WARNING) << "Sender of RestartJob (PID " << pid
+                   << ") is no child of mine!";
       DBusMessage* denial = dbus_message_new_error(
           message, DBUS_ERROR_ACCESS_DENIED, "Sender is not browser.");
       if (!denial || !::dbus_connection_send(conn, denial, NULL))

@@ -176,6 +176,7 @@ if (use.test) {
       "server_backed_state_key_generator_test.cc",
       "session_manager_impl_test.cc",
       "session_manager_process_test.cc",
+      "subprocess_test.cc",
       "system_utils_test.cc",
       "user_policy_service_test.cc",
       "validator_utils_test.cc",
