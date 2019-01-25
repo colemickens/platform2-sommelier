@@ -83,6 +83,7 @@
       'sources': [
         'concierge/mac_address_generator.cc',
         'concierge/plugin_vm.cc',
+        'concierge/power_manager_client.cc',
         'concierge/seneschal_server_proxy.cc',
         'concierge/service.cc',
         'concierge/shill_client.cc',
@@ -278,6 +279,9 @@
         {
           'target_name': 'concierge_test',
           'type': 'executable',
+          'variables': {
+            'deps': ['libchrome-test-<(libbase_ver)'],
+          },
           'dependencies': [
             'libconcierge',
             '../common-mk/testrunner.gyp:testrunner',
@@ -285,6 +289,7 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'concierge/mac_address_generator_test.cc',
+            'concierge/power_manager_client_test.cc',
             'concierge/subnet_pool_test.cc',
             'concierge/subnet_test.cc',
             'concierge/termina_vm_test.cc',
