@@ -1464,6 +1464,14 @@ TEST_F(DeviceInfoTechnologyTest, IgnoredVeth) {
   EXPECT_EQ(Technology::kUnknown, GetDeviceTechnology());
 }
 
+TEST_F(DeviceInfoTechnologyTest, IgnoredArcMultinetBridgeDevice) {
+  test_device_name_ = "arc_eth0";
+  // A new uevent file is needed since the device name has changed.
+  CreateInfoFile("uevent", "xxx");
+  // A device with a "arc_" prefix should be ignored.
+  EXPECT_EQ(Technology::kUnknown, GetDeviceTechnology());
+}
+
 TEST_F(DeviceInfoTechnologyTest, IgnoredVm) {
   test_device_name_ = "vmtap0";
   // A new uevent file is needed since the device name has changed.

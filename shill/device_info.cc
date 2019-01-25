@@ -123,6 +123,10 @@ constexpr char kInterfaceType[] = "type";
 // TODO(chromium:899004): Using network device name is a bit fragile. Find
 // other signals to identify these network devices.
 const char* const kIgnoredDeviceNamePrefixes[] = {
+    // TODO(garrick): Workaround for (chromium:917923): 'arc_' is the prefix
+    // used for all ARC++ multinet bridge interface. These should be ignored
+    // for now.
+    "arc_",
     "rmnet_ipa",
     "veth",
     "vm"
@@ -321,6 +325,15 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
     return Technology::kUnknown;
   }
 
+  // Special case for devices which should be ignored.
+  for (const char* prefix : kIgnoredDeviceNamePrefixes) {
+    if (iface_name.find(prefix) == 0) {
+      SLOG(this, 2) << StringPrintf(
+          "%s: device %s should be ignored", __func__, iface_name.c_str());
+      return Technology::kUnknown;
+    }
+  }
+
   // If the "uevent" file contains the string "DEVTYPE=wlan\n" at the
   // start of the file or after a newline, we can safely assume this
   // is a wifi device.
@@ -358,15 +371,6 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
         "%s: device %s is a virtual ethernet device for testing",
         __func__, iface_name.c_str());
     return Technology::kEthernet;
-  }
-
-  // Special case for devices which should be ignored.
-  for (const char* prefix : kIgnoredDeviceNamePrefixes) {
-    if (iface_name.find(prefix) == 0) {
-      SLOG(this, 2) << StringPrintf(
-          "%s: device %s should be ignored", __func__, iface_name.c_str());
-      return Technology::kUnknown;
-    }
   }
 
   FilePath driver_path;
