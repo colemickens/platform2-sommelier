@@ -301,11 +301,7 @@ bool TerminaVm::Shutdown() {
                << status.error_message();
 
   // Try to shut it down via the crosvm socket.
-  brillo::ProcessImpl crosvm;
-  crosvm.AddArg(kCrosvmBin);
-  crosvm.AddArg("stop");
-  crosvm.AddArg(runtime_dir_.GetPath().Append(kCrosvmSocket).value());
-  crosvm.Run();
+  RunCrosvmCommand("stop");
 
   // We can't actually trust the exit codes that crosvm gives us so just see if
   // it exited.
@@ -361,6 +357,18 @@ bool TerminaVm::ConfigureNetwork(const std::vector<string>& nameservers,
   // implement the SetResolvConfig RPC, it's not a failure.
   SetResolvConfig(nameservers, search_domains);
   return true;
+}
+
+void TerminaVm::RunCrosvmCommand(string command) {
+  brillo::ProcessImpl crosvm;
+  crosvm.AddArg(kCrosvmBin);
+  crosvm.AddArg(std::move(command));
+  crosvm.AddArg(runtime_dir_.GetPath().Append(kCrosvmSocket).value());
+
+  // The child process will be reaped via the normal child exit handling
+  // mechanism in service.cc.
+  crosvm.Start();
+  crosvm.Release();
 }
 
 bool TerminaVm::Mount(string source,
@@ -437,6 +445,14 @@ bool TerminaVm::DetachUsbDevice(uint8_t port, UsbControlResponse* response) {
 bool TerminaVm::ListUsbDevice(std::vector<UsbDevice>* device) {
   // Stubbed out pending future patch
   return false;
+}
+
+void TerminaVm::HandleSuspendImminent() {
+  RunCrosvmCommand("suspend");
+}
+
+void TerminaVm::HandleSuspendDone() {
+  RunCrosvmCommand("resume");
 }
 
 bool TerminaVm::Mount9P(uint32_t port, string target) {

@@ -47,6 +47,8 @@ class PluginVm final : public VmInterface {
                        UsbControlResponse* response) override;
   bool DetachUsbDevice(uint8_t port, UsbControlResponse* response) override;
   bool ListUsbDevice(std::vector<UsbDevice>* devices) override;
+  void HandleSuspendImminent() override {}
+  void HandleSuspendDone() override {}
 
  private:
   PluginVm(MacAddress mac_addr,

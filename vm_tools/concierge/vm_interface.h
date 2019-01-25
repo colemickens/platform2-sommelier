@@ -69,6 +69,12 @@ class VmInterface {
 
   // List all usb devices attached to guest.
   virtual bool ListUsbDevice(std::vector<UsbDevice>* devices) = 0;
+
+  // Handle the device going to suspend.
+  virtual void HandleSuspendImminent() = 0;
+
+  // Handle the device resuming from a suspend.
+  virtual void HandleSuspendDone() = 0;
 };
 
 }  // namespace concierge

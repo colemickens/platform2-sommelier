@@ -159,6 +159,8 @@ class TerminaVm final : public VmInterface {
                        UsbControlResponse* response) override;
   bool DetachUsbDevice(uint8_t port, UsbControlResponse* response) override;
   bool ListUsbDevice(std::vector<UsbDevice>* devices) override;
+  void HandleSuspendImminent() override;
+  void HandleSuspendDone() override;
 
   static std::unique_ptr<TerminaVm> CreateForTesting(
       MacAddress mac_addr,
@@ -179,6 +181,9 @@ class TerminaVm final : public VmInterface {
   bool Start(base::FilePath kernel,
              base::FilePath rootfs,
              std::vector<Disk> disks);
+
+  // Runs a crosvm subcommend.
+  void RunCrosvmCommand(std::string command);
 
   void set_stub_for_testing(std::unique_ptr<vm_tools::Maitred::Stub> stub);
 
