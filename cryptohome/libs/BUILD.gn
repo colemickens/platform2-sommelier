@@ -22,13 +22,14 @@ config("target_defaults") {
 # Protobufs.
 action("cryptohome-proto-external") {
   proto_out_dir = target_gen_dir
-  shared_proto_path = "${sysroot}/usr/include/chromeos/dbus/cryptohome"
+  dbus_proto_path = "${sysroot}/usr/include/chromeos/dbus/cryptohome"
+  policy_proto_path = "${sysroot}/usr/include/proto"
   script = "external_proto_generator.py"
   inputs = [
-    "${shared_proto_path}/install_attributes.proto",
-    "${shared_proto_path}/key.proto",
-    "${shared_proto_path}/rpc.proto",
-    "${shared_proto_path}/signed_secret.proto",
+    "${dbus_proto_path}/key.proto",
+    "${dbus_proto_path}/rpc.proto",
+    "${dbus_proto_path}/signed_secret.proto",
+    "${policy_proto_path}/install_attributes.proto",
   ]
   outputs =
       process_file_template(inputs, [ "${proto_out_dir}/{{source_file_part}}" ])
@@ -151,9 +152,7 @@ static_library("libcrosplatform") {
     "secure_erase_file",
   ]
   if (use.selinux) {
-    libs += [
-      "selinux",
-    ]
+    libs += [ "selinux" ]
   }
   all_dependent_configs = [ ":libcrosplatform_dependent_config" ]
 
@@ -393,8 +392,10 @@ if (use.tpm2) {
   }
 
   static_library("libnvram-boot-lockbox-client") {
-    configs += [ ":target_defaults"]
-    sources = [ "../bootlockbox/boot_lockbox_client.cc" ]
+    configs += [ ":target_defaults" ]
+    sources = [
+      "../bootlockbox/boot_lockbox_client.cc",
+    ]
     all_dependent_configs = [ ":libnvram-boot-lockbox_dependent_config" ]
 
     deps = [
@@ -412,10 +413,9 @@ if (use.tpm2) {
     all_dependent_configs = [ ":libnvram-boot-lockbox_dependent_config" ]
 
     deps = [
+      ":bootlockbox-proto",
       ":cryptohome-proto",
       ":libcrosplatform",
-      ":bootlockbox-proto",
     ]
   }
-
 }
