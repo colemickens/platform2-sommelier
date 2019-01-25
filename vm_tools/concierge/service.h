@@ -28,6 +28,7 @@
 #include <grpc++/grpc++.h>
 
 #include "vm_tools/concierge/mac_address_generator.h"
+#include "vm_tools/concierge/power_manager_client.h"
 #include "vm_tools/concierge/shill_client.h"
 #include "vm_tools/concierge/startup_listener_impl.h"
 #include "vm_tools/concierge/subnet.h"
@@ -139,12 +140,14 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   void OnTremplinStartedSignal(dbus::Signal* signal);
 
-  // Called when powerd announces that a resume just happened.
-  void OnSuspendDone(dbus::Signal* signal);
-
   void OnSignalConnected(const std::string& interface_name,
                          const std::string& signal_name,
                          bool is_connected);
+
+  // Called by |power_manager_client_| when the device is about to suspend or
+  // resumed from suspend.
+  void HandleSuspendImminent();
+  void HandleSuspendDone();
 
   using VmMap = std::map<std::pair<std::string, std::string>,
                          std::unique_ptr<VmInterface>>;
@@ -171,7 +174,6 @@ class Service final : public base::MessageLoopForIO::Watcher {
   dbus::ExportedObject* exported_object_;       // Owned by |bus_|.
   dbus::ObjectProxy* cicerone_service_proxy_;   // Owned by |bus_|.
   dbus::ObjectProxy* seneschal_service_proxy_;  // Owned by |bus_|.
-  dbus::ObjectProxy* powerd_proxy_;             // Owned by |bus_|.
 
   // The port number to assign to the next shared directory server.
   uint32_t next_seneschal_server_port_;
@@ -189,6 +191,9 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   // The shill D-Bus client.
   std::unique_ptr<ShillClient> shill_client_;
+
+  // The power manager D-Bus client.
+  std::unique_ptr<PowerManagerClient> power_manager_client_;
 
   // The StartupListener service.
   StartupListenerImpl startup_listener_;
@@ -208,6 +213,16 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   // Signal must be connected before we can call SetTremplinStarted in a VM.
   bool is_tremplin_started_signal_connected_ = false;
+
+  // Indicates that the VMs are currently suspended and may not respond to RPCs.
+  bool vms_suspended_ = false;
+
+  // Indicates that we should update the resolv.conf file in each VM after
+  // resume.  This can happen if we get a ResolvCongigChanged message from shill
+  // before receiving a SuspendDone signal from powerd.  Attempting to update
+  // the resolv.conf file will simply result in a timeout so we should do it
+  // after a resume.
+  bool update_resolv_config_on_resume_ = false;
 
   // Whether we should re-synchronize VM clocks on resume from sleep.
   const bool resync_vm_clocks_on_resume_;

@@ -104,7 +104,8 @@ constexpr char kQcowImageExtension[] = ".qcow2";
 
 // Valid file extensions for disk images
 constexpr const char* kDiskImagePatterns[] = {
-    "*.img", "*.qcow2",
+    "*.img",
+    "*.qcow2",
 };
 
 // Default name to use for a container.
@@ -462,6 +463,13 @@ bool Service::Init() {
   shill_client_->RegisterResolvConfigChangedHandler(base::Bind(
       &Service::OnResolvConfigChanged, weak_ptr_factory_.GetWeakPtr()));
 
+  // Set up the D-Bus client for powerd and register suspend/resume handlers.
+  power_manager_client_ = std::make_unique<PowerManagerClient>(bus_);
+  power_manager_client_->RegisterSuspendDelay(
+      base::Bind(&Service::HandleSuspendImminent,
+                 weak_ptr_factory_.GetWeakPtr()),
+      base::Bind(&Service::HandleSuspendDone, weak_ptr_factory_.GetWeakPtr()));
+
   // Get the D-Bus proxy for communicating with cicerone.
   cicerone_service_proxy_ = bus_->GetObjectProxy(
       vm_tools::cicerone::kVmCiceroneServiceName,
@@ -486,25 +494,6 @@ bool Service::Init() {
     LOG(ERROR) << "Unable to get dbus proxy for "
                << vm_tools::seneschal::kSeneschalServiceName;
     return false;
-  }
-
-  if (resync_vm_clocks_on_resume_) {
-    // Get the D-Bus proxy for listening for power events.
-    powerd_proxy_ = bus_->GetObjectProxy(
-        power_manager::kPowerManagerServiceName,
-        dbus::ObjectPath(power_manager::kPowerManagerServicePath));
-    if (!powerd_proxy_) {
-      LOG(ERROR) << "Unable to get dbus proxy for "
-                 << power_manager::kPowerManagerServiceName;
-      return false;
-    }
-    // Register for resume notifications.
-    powerd_proxy_->ConnectToSignal(
-        power_manager::kPowerManagerInterface,
-        power_manager::kSuspendDoneSignal,
-        base::Bind(&Service::OnSuspendDone, weak_ptr_factory_.GetWeakPtr()),
-        base::Bind(&Service::OnSignalConnected,
-                   weak_ptr_factory_.GetWeakPtr()));
   }
 
   // Setup & start the gRPC listener services.
@@ -1876,6 +1865,14 @@ void Service::OnResolvConfigChanged(std::vector<string> nameservers,
                                     std::vector<string> search_domains) {
   nameservers_ = std::move(nameservers);
   search_domains_ = std::move(search_domains);
+
+  if (vms_suspended_) {
+    // The VMs are currently suspended and will not respond to RPCs.  Instead
+    // update the resolv.conf files after we get a SuspendDone from powerd.
+    update_resolv_config_on_resume_ = true;
+    return;
+  }
+
   for (TerminaVm* termina_vm : termina_vms_) {
     termina_vm->SetResolvConfig(nameservers_, search_domains_);
   }
@@ -1992,16 +1989,40 @@ void Service::OnSignalConnected(const std::string& interface_name,
   }
 }
 
-void Service::OnSuspendDone(dbus::Signal* signal) {
-  SyncVmTimesResponse response = SyncVmTimesInternal();
-  if (response.failures() != 0) {
-    LOG(ERROR) << "Failed to set " << response.failures() << " out of "
-               << response.requests() << " VM clocks:";
-    for (const string& error : response.failure_reason()) {
-      LOG(ERROR) << error;
+void Service::HandleSuspendImminent() {
+  vms_suspended_ = true;
+
+  for (const auto& pair : vms_) {
+    pair.second->HandleSuspendImminent();
+  }
+}
+
+void Service::HandleSuspendDone() {
+  for (const auto& pair : vms_) {
+    pair.second->HandleSuspendDone();
+  }
+  vms_suspended_ = false;
+
+  // Now that all VMs have been woken up, resync the VM clocks if necessary.
+  if (resync_vm_clocks_on_resume_) {
+    SyncVmTimesResponse response = SyncVmTimesInternal();
+    if (response.failures() != 0) {
+      LOG(ERROR) << "Failed to set " << response.failures() << " out of "
+                 << response.requests() << " VM clocks:";
+      for (const string& error : response.failure_reason()) {
+        LOG(ERROR) << error;
+      }
+    } else {
+      LOG(INFO) << "Successfully set " << response.requests() << " VM clocks.";
     }
-  } else {
-    LOG(INFO) << "Successfully set " << response.requests() << " VM clocks.";
+  }
+
+  if (update_resolv_config_on_resume_) {
+    for (TerminaVm* termina_vm : termina_vms_) {
+      termina_vm->SetResolvConfig(nameservers_, search_domains_);
+    }
+
+    update_resolv_config_on_resume_ = false;
   }
 }
 
