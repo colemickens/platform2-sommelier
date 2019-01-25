@@ -16,7 +16,6 @@
 #include "cryptohome/platform.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/tpm_init.h"
-#include "tpm_manager/common/tpm_manager_constants.h"
 
 namespace {
 // This is a exit status returned when nvspace cannot be created.
