@@ -10,6 +10,7 @@
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <brillo/flag_helper.h>
+#include <chromeos/constants/imageloader.h>
 #include <dbus/bus.h>
 #include <libimageloader/manifest.h>
 
@@ -113,7 +114,8 @@ class DlcServiceUtil {
   static bool PrintDlcDetails(const std::string& dlc_id) {
     imageloader::Manifest manifest;
     if (!dlcservice::utils::GetDlcManifest(
-            base::FilePath(dlcservice::kManifestDir), dlc_id, &manifest)) {
+            base::FilePath(imageloader::kDlcManifestRootpath), dlc_id,
+            &manifest)) {
       LOG(ERROR) << "Failed to get DLC module manifest.";
       return false;
     }

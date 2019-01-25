@@ -19,8 +19,6 @@ constexpr char kRootDirectoryInsideDlcModule[] = "root";
 
 namespace dlcservice {
 
-constexpr char kManifestDir[] = "/opt/google/dlc";
-
 namespace utils {
 
 base::FilePath GetDlcModulePath(const base::FilePath& dlc_module_root_path,

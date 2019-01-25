@@ -12,9 +12,6 @@
 
 namespace dlcservice {
 
-// The root dir that stores all available DLC manifests.
-extern const char kManifestDir[];
-
 namespace utils {
 
 // Returns the path to a DLC module.

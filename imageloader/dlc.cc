@@ -7,6 +7,7 @@
 #include <set>
 
 #include <base/files/file_util.h>
+#include <chromeos/constants/imageloader.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "imageloader/component.h"
@@ -16,27 +17,29 @@ namespace imageloader {
 
 namespace {
 
-// The path to DLC root folder in rootfs;
-constexpr char kRootPathRootfs[] = "/opt/google/dlc/";
-// The path to DLC root folder in stateful partition;
-constexpr char kRootPathStateful[] = "/home/chronos/dlc/";
 // The name of the image.
 constexpr char kImageName[] = "dlc.img";
+constexpr char kSlotAName[] = "dlc_a";
+constexpr char kSlotBName[] = "dlc_b";
+constexpr char kManifestFileName[] = "imageloader.json";
+constexpr char kTableFileName[] = "table";
 
 base::FilePath GetManifestPath(const std::string& id) {
-  return base::FilePath(kRootPathRootfs).Append(id).Append("imageloader.json");
+  return base::FilePath(kDlcManifestRootpath)
+      .Append(id)
+      .Append(kManifestFileName);
 }
 
 base::FilePath GetTablePath(const std::string& id) {
-  return base::FilePath(kRootPathRootfs).Append(id).Append("table");
+  return base::FilePath(kDlcManifestRootpath).Append(id).Append(kTableFileName);
 }
 
 base::FilePath GetImagePath(const std::string& id, AOrB a_or_b) {
-  base::FilePath root = base::FilePath(kRootPathStateful).Append(id);
+  base::FilePath root = base::FilePath(kDlcImageRootpath).Append(id);
   if (a_or_b == AOrB::kDlcA) {
-    return root.Append("dlc_a").Append(kImageName);
+    return root.Append(kSlotAName).Append(kImageName);
   } else if (a_or_b == AOrB::kDlcB) {
-    return root.Append("dlc_b").Append(kImageName);
+    return root.Append(kSlotBName).Append(kImageName);
   } else {
     return base::FilePath();
   }

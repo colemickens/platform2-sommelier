@@ -6,17 +6,15 @@
 
 #include <string>
 
+#include <chromeos/constants/imageloader.h>
 #include <chromeos/dbus/service_constants.h>
 #include <sysexits.h>
 
 #include "dlcservice/boot_device.h"
 #include "dlcservice/boot_slot.h"
-#include "dlcservice/utils.h"
 
 namespace dlcservice {
 namespace {
-// The root dir that stores all installed DLC content.
-constexpr char kContentDir[] = "/home/chronos/dlc";
 // Delay for scheduling shutdown event.
 // The delay is between dlcservice process being started and the corresponding
 // D-Bus method call is called. Not delaying the shutdown in |OnInit| will cause
@@ -62,7 +60,8 @@ void DlcService::RegisterDBusObjectsAsync(
       std::make_unique<org::chromium::ImageLoaderInterfaceProxy>(bus_),
       std::make_unique<org::chromium::UpdateEngineInterfaceProxy>(bus_),
       std::make_unique<BootSlot>(std::make_unique<BootDevice>()),
-      base::FilePath(kManifestDir), base::FilePath(kContentDir), this);
+      base::FilePath(imageloader::kDlcManifestRootpath),
+      base::FilePath(imageloader::kDlcImageRootpath), this);
   dbus_adaptor_->RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(
       sequencer->GetHandler("RegisterAsync() failed.", true));
