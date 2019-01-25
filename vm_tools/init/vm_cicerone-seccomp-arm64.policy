@@ -79,3 +79,4 @@ setresuid: 1
 setresgid: 1
 getpid: 1
 prlimit64: arg2 == 0 && arg3 != 0
+unlink: 1

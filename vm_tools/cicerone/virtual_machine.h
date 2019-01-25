@@ -92,11 +92,17 @@ class VirtualMachine {
     std::vector<std::string> failure_reasons;
   };
 
-  explicit VirtualMachine(uint32_t cid);
+  // |cid| is nonzero for termina VMs, |vm_token| is non-empty for plugin VMs.
+  VirtualMachine(uint32_t cid, std::string vm_token);
   ~VirtualMachine();
 
   // The VM's cid.
   uint32_t cid() const { return vsock_cid_; }
+
+  // The VM's token.
+  std::string vm_token() const { return vm_token_; }
+
+  bool IsPluginVm() const { return !vsock_cid_; }
 
   // Call during unit tests to force this class to connect to the Tremplin
   // server at |tremplin_address| instead of the normal address. Must be called
@@ -224,8 +230,13 @@ class VirtualMachine {
   std::vector<std::string> GetContainerNames();
 
  private:
-  // Virtual socket context id to be used when communicating with this VM.
+  // Virtual socket context id to be used when communicating with this VM, only
+  // valid for termina VMs.
   uint32_t vsock_cid_;
+
+  // Token for identifying this VM. Only valid for plugin VMs which will have a
+  // zero value cid.
+  std::string vm_token_;
 
   // If set, our |tremplin_stub_| will always attempt to connect to this address
   // instead of the normal vsock address. For testing only.

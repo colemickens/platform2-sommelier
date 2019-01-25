@@ -33,6 +33,8 @@ using ::testing::Matches;
 using ::testing::UnorderedElementsAreArray;
 using ::testing::Unused;
 
+constexpr char kDefaultPluginVmContainerName[] = "penguin";
+
 // Helper for testing proto-based MethodCalls sent to the dbus. Extracts the
 // proto in from the MethodCall to |protobuf| so that it can be tested further.
 // Returns an empty (but not NULL) dbus::Response.
@@ -110,10 +112,13 @@ TEST(ContainerListenerImplTest,
             ServiceTestingHelper::kDefaultContainerHostname);
 }
 
-TEST(ContainerListenerImplTest,
-     ValidUpdateApplicationListCallShouldProduceDBusMessage) {
+void ValidUpdateApplicationListCallShouldProduceDBusMessageGeneric(
+    bool plugin_vm, const char* container_name) {
   ServiceTestingHelper test_framework;
-  test_framework.SetUpDefaultVmAndContainer();
+  if (plugin_vm)
+    test_framework.SetUpPluginVm();
+  else
+    test_framework.SetUpDefaultVmAndContainer();
   test_framework.ExpectNoDBusMessages();
 
   vm_tools::container::UpdateApplicationListRequest request;
@@ -150,8 +155,7 @@ TEST(ContainerListenerImplTest,
   ASSERT_TRUE(status.ok()) << status.error_message();
 
   EXPECT_EQ(dbus_result.vm_name(), ServiceTestingHelper::kDefaultVmName);
-  EXPECT_EQ(dbus_result.container_name(),
-            ServiceTestingHelper::kDefaultContainerName);
+  EXPECT_EQ(dbus_result.container_name(), container_name);
   EXPECT_EQ(dbus_result.owner_id(), ServiceTestingHelper::kDefaultOwnerId);
   ASSERT_EQ(dbus_result.apps_size(), 1);
   const vm_tools::apps::App& dbus_app = dbus_result.apps(0);
@@ -170,6 +174,18 @@ TEST(ContainerListenerImplTest,
   EXPECT_FALSE(dbus_app.startup_notify());
   EXPECT_EQ(dbus_app.keywords().values_size(), 0);
   EXPECT_EQ(dbus_app.package_id(), "");
+}
+
+TEST(ContainerListenerImplTest,
+     ValidUpdateApplicationListCallShouldProduceDBusMessageForDefaultVm) {
+  ValidUpdateApplicationListCallShouldProduceDBusMessageGeneric(
+      false /* plugin_vm */, ServiceTestingHelper::kDefaultContainerName);
+}
+
+TEST(ContainerListenerImplTest,
+     ValidUpdateApplicationListCallShouldProduceDBusMessageForPluginVm) {
+  ValidUpdateApplicationListCallShouldProduceDBusMessageGeneric(
+      true /* plugin_vm */, kDefaultPluginVmContainerName);
 }
 
 vm_tools::container::Application::LocalizedString MakeLocalizedString(
@@ -359,10 +375,13 @@ void CompareUpdateApplicationListRequestToApplicationList(
   EXPECT_EQ(expected_indexes_seen.size(), actual.apps_size());
 }
 
-TEST(ContainerListenerImplTest,
-     LongerUpdateApplicationListCallShouldProduceDBusMessage) {
+void LongerUpdateApplicationListCallShouldProduceDBusMessageGeneric(
+    bool plugin_vm, const char* container_name) {
   ServiceTestingHelper test_framework;
-  test_framework.SetUpDefaultVmAndContainer();
+  if (plugin_vm)
+    test_framework.SetUpPluginVm();
+  else
+    test_framework.SetUpDefaultVmAndContainer();
   test_framework.ExpectNoDBusMessages();
 
   vm_tools::container::UpdateApplicationListRequest request(
@@ -390,16 +409,30 @@ TEST(ContainerListenerImplTest,
   ASSERT_TRUE(status.ok()) << status.error_message();
 
   EXPECT_EQ(dbus_result.vm_name(), ServiceTestingHelper::kDefaultVmName);
-  EXPECT_EQ(dbus_result.container_name(),
-            ServiceTestingHelper::kDefaultContainerName);
+  EXPECT_EQ(dbus_result.container_name(), container_name);
   EXPECT_EQ(dbus_result.owner_id(), ServiceTestingHelper::kDefaultOwnerId);
 
   CompareUpdateApplicationListRequestToApplicationList(request, dbus_result);
 }
 
-TEST(ContainerListenerImplTest, ValidOpenUrlCallShouldProduceDBusMessage) {
+TEST(ContainerListenerImplTest,
+     LongerUpdateApplicationListCallShouldProduceDBusMessageForDefaultVm) {
+  LongerUpdateApplicationListCallShouldProduceDBusMessageGeneric(
+      false /* plugin_vm */, ServiceTestingHelper::kDefaultContainerName);
+}
+
+TEST(ContainerListenerImplTest,
+     LongerUpdateApplicationListCallShouldProduceDBusMessageForPluginVm) {
+  LongerUpdateApplicationListCallShouldProduceDBusMessageGeneric(
+      true /* plugin_vm */, kDefaultPluginVmContainerName);
+}
+
+void ValidOpenUrlCallShouldProduceDBusMessageGeneric(bool plugin_vm) {
   ServiceTestingHelper test_framework;
-  test_framework.SetUpDefaultVmAndContainer();
+  if (plugin_vm)
+    test_framework.SetUpPluginVm();
+  else
+    test_framework.SetUpDefaultVmAndContainer();
   test_framework.ExpectNoDBusMessages();
 
   vm_tools::container::OpenUrlRequest request;
@@ -427,6 +460,16 @@ TEST(ContainerListenerImplTest, ValidOpenUrlCallShouldProduceDBusMessage) {
   ASSERT_TRUE(status.ok()) << status.error_message();
 
   EXPECT_EQ(resulting_url, kUrl);
+}
+
+TEST(ContainerListenerImplTest,
+     ValidOpenUrlCallShouldProduceDBusMessageForDefaultVm) {
+  ValidOpenUrlCallShouldProduceDBusMessageGeneric(false);
+}
+
+TEST(ContainerListenerImplTest,
+     ValidOpenUrlCallShouldProduceDBusMessageForPluginVm) {
+  ValidOpenUrlCallShouldProduceDBusMessageGeneric(true);
 }
 
 TEST(ContainerListenerImplTest,

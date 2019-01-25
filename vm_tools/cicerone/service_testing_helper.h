@@ -91,6 +91,12 @@ class ServiceTestingHelper {
   // function.
   void SetUpDefaultVmAndContainer();
 
+  // Sets up a plugin VM and so that other calls can succeed. The VM has the vm
+  // name kDefaultVmName, zero-valued cid, owner_id kDefaultOwnerId and vm token
+  // kDefaultContainerToken. NOTE: This calls VerifyAndClearMockExpectations, so
+  // set up expectations after calling this function.
+  void SetUpPluginVm();
+
   // Our tremplin stub. The default VM is connected to this after
   // SetUpDefaultVmAndContainer() runs.
   TremplinTestStub& get_tremplin_test_stub() { return tremplin_test_stub_; }
@@ -177,6 +183,10 @@ class ServiceTestingHelper {
   // Helper for SetUpDefaultVmAndContainer. Handles getting the default VM
   // set up and ready to go (and listening to our stub Tremplin server).
   void PretendDefaultVmStarted();
+
+  // Helper for SetUpPluginVmAndContainer. Handles getting the plugin VM
+  // set up and ready to go.
+  void PretendPluginVmStarted();
 
   // Callback for CreateContainerWithTokenForTesting; calls
   // Service::CreateContainerWithTokenForTesting and then signals |event|.

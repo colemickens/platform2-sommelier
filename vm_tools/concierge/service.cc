@@ -32,6 +32,7 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/guid.h>
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
@@ -68,6 +69,9 @@ constexpr char kRuntimeDir[] = "/run/vm";
 
 // Default path to VM kernel image and rootfs.
 constexpr char kVmDefaultPath[] = "/run/imageloader/cros-termina";
+
+// Path to the root cicerone directory for plugin VM communication.
+constexpr char kCiceroneDir[] = "/run/vm_cicerone/client";
 
 // Name of the VM kernel image.
 constexpr char kVmKernelName[] = "vm_kernel";
@@ -342,6 +346,29 @@ bool GetPluginStatefulDirectory(const string& vm_id,
   }
 
   *path_out = storage_path;
+  return true;
+}
+
+bool CreateCiceroneTokenDir(const string& vm_token,
+                            base::FilePath* cicerone_dir_out) {
+  if (!base::CreateTemporaryDirInDir(base::FilePath(kCiceroneDir), "vm.",
+                                     cicerone_dir_out)) {
+    PLOG(ERROR) << "Unable to create cicerone directory for VM";
+    return false;
+  }
+  // base::CreateTemporaryDirInDir creates a directory with 700 permissions, we
+  // want to change that to be 777. The parent directory has 770 permissions
+  // which gives us the access control for it we want.
+  if (!base::SetPosixFilePermissions(*cicerone_dir_out,
+                                     base::FILE_PERMISSION_MASK)) {
+    PLOG(ERROR) << "Unable to set permissions on cicerone directory for VM";
+    return false;
+  }
+  if (base::WriteFile(cicerone_dir_out->Append("token"), vm_token.c_str(),
+                      vm_token.length()) != vm_token.length()) {
+    PLOG(ERROR) << "Failure writing out cicerone token to file";
+    return false;
+  }
   return true;
 }
 
@@ -877,7 +904,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   }
 
   // Notify cicerone that we have started a VM.
-  NotifyCiceroneOfVmStarted(request.owner_id(), request.name(), vm->cid());
+  NotifyCiceroneOfVmStarted(request.owner_id(), request.name(), vm->cid(), "");
 
   string failure_reason;
   if (request.start_termina() && !StartTermina(vm.get(), &failure_reason)) {
@@ -1026,12 +1053,24 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
     return dbus_response;
   }
 
+  // Generate the token used by cicerone to identify the VM and write it to
+  // a VM specific directory that gets mounted into the VM.
+  std::string vm_token = base::GenerateGUID();
+  base::FilePath cicerone_dir;
+  if (!CreateCiceroneTokenDir(vm_token, &cicerone_dir)) {
+    LOG(ERROR) << "Failed creating token/dir for cicerone-VM communication";
+
+    response.set_failure_reason("Internal error: unable to set cicerone token");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
   // Now start the VM.
-  auto vm =
-      PluginVm::Create(request.cpus(), request.params(), std::move(mac_addr),
-                       std::move(ipv4_addr), plugin_subnet_->Netmask(),
-                       plugin_subnet_->AddressAtOffset(0),
-                       std::move(stateful_dir), std::move(runtime_dir));
+  auto vm = PluginVm::Create(
+      request.cpus(), request.params(), std::move(mac_addr),
+      std::move(ipv4_addr), plugin_subnet_->Netmask(),
+      plugin_subnet_->AddressAtOffset(0), std::move(stateful_dir),
+      std::move(runtime_dir), std::move(cicerone_dir));
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
     response.set_failure_reason("Unable to start VM");
@@ -1062,6 +1101,9 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
   }
   response.set_success(true);
   writer.AppendProtoAsArrayOfBytes(response);
+
+  NotifyCiceroneOfVmStarted(request.owner_id(), request.name(), 0 /* cid */,
+                            std::move(vm_token));
 
   vms_[std::make_pair(request.owner_id(), request.name())] = std::move(vm);
   return dbus_response;
@@ -1880,7 +1922,8 @@ void Service::OnResolvConfigChanged(std::vector<string> nameservers,
 
 void Service::NotifyCiceroneOfVmStarted(const std::string& owner_id,
                                         const std::string& vm_name,
-                                        uint32_t cid) {
+                                        uint32_t cid,
+                                        std::string vm_token) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
   dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
                                vm_tools::cicerone::kNotifyVmStartedMethod);
@@ -1889,6 +1932,7 @@ void Service::NotifyCiceroneOfVmStarted(const std::string& owner_id,
   request.set_owner_id(owner_id);
   request.set_vm_name(vm_name);
   request.set_cid(cid);
+  request.set_vm_token(std::move(vm_token));
   writer.AppendProtoAsArrayOfBytes(request);
   std::unique_ptr<dbus::Response> dbus_response =
       cicerone_service_proxy_->CallMethodAndBlock(

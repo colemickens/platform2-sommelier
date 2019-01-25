@@ -49,10 +49,7 @@ grpc::Status ContainerListenerImpl::ContainerReady(
     const vm_tools::container::ContainerStartupInfo* request,
     vm_tools::EmptyMessage* response) {
   uint32_t cid = ExtractCidFromPeerAddress(ctx);
-  if (cid == 0) {
-    return grpc::Status(grpc::FAILED_PRECONDITION,
-                        "Failed parsing cid for ContainerListener");
-  }
+  // Plugin VMs (i.e. containerless) can call this, so allow a zero value CID.
   bool result = false;
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
@@ -103,10 +100,7 @@ grpc::Status ContainerListenerImpl::UpdateApplicationList(
     const vm_tools::container::UpdateApplicationListRequest* request,
     vm_tools::EmptyMessage* response) {
   uint32_t cid = ExtractCidFromPeerAddress(ctx);
-  if (cid == 0) {
-    return grpc::Status(grpc::FAILED_PRECONDITION,
-                        "Failed parsing cid for ContainerListener");
-  }
+  // Plugin VMs (i.e. containerless) can call this, so allow a zero value CID.
   vm_tools::apps::ApplicationList app_list;
   // vm_name and container_name are set in the UpdateApplicationList call but
   // we need to copy everything else out of the incoming protobuf here.
@@ -178,10 +172,7 @@ grpc::Status ContainerListenerImpl::OpenUrl(
                         "OpenUrl rate limit exceeded, blocking request");
   }
   uint32_t cid = ExtractCidFromPeerAddress(ctx);
-  if (cid == 0) {
-    return grpc::Status(grpc::FAILED_PRECONDITION,
-                        "Failed parsing cid for ContainerListener");
-  }
+  // Plugin VMs (i.e. containerless) can call this, so allow a zero value CID.
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   bool result = false;
@@ -352,7 +343,7 @@ uint32_t ContainerListenerImpl::ExtractCidFromPeerAddress(
     }
   }
   if (sscanf(peer_address.c_str(), "vsock:%" SCNu32, &cid) != 1) {
-    LOG(WARNING) << "Failed to parse peer address " << peer_address;
+    // This is not necessarily a failure if this is a unix socket.
     return 0;
   }
   return cid;

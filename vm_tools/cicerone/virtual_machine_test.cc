@@ -27,77 +27,98 @@ constexpr uint32_t kFakeGarconPort2 = 2345;
 constexpr char kFakeContainerName1[] = "box";
 constexpr char kFakeContainerName2[] = "cube";
 
+constexpr char kVmToken[] = "token";
+
 }  // namespace
 
 // Test fixture for actually testing the VirtualMachine functionality.
 class VirtualMachineTest : public ::testing::Test {
  public:
-  VirtualMachineTest() : vm_(0) {}
+  VirtualMachineTest() : termina_vm_(1, ""), plugin_vm_(0, kVmToken) {}
   ~VirtualMachineTest() override = default;
 
  protected:
   // Actual virtual machine being tested.
-  VirtualMachine vm_;
+  VirtualMachine termina_vm_;
+  VirtualMachine plugin_vm_;
 
   DISALLOW_COPY_AND_ASSIGN(VirtualMachineTest);
 };
 
 TEST_F(VirtualMachineTest, NoContainerToken) {
   // If the token was never generated, then [un]registration should fail.
-  EXPECT_FALSE(
-      vm_.RegisterContainer(base::GenerateGUID(), kFakeGarconPort1, kFakeIp1));
-  EXPECT_FALSE(vm_.UnregisterContainer(base::GenerateGUID()));
+  EXPECT_FALSE(termina_vm_.RegisterContainer(base::GenerateGUID(),
+                                             kFakeGarconPort1, kFakeIp1));
+  EXPECT_FALSE(termina_vm_.UnregisterContainer(base::GenerateGUID()));
 }
 
 TEST_F(VirtualMachineTest, InvalidContainerToken) {
   // If the wrong token is used, then registration should fail.
-  std::string token = vm_.GenerateContainerToken(kFakeContainerName1);
-  EXPECT_FALSE(
-      vm_.RegisterContainer(base::GenerateGUID(), kFakeGarconPort1, kFakeIp1));
+  std::string token = termina_vm_.GenerateContainerToken(kFakeContainerName1);
+  EXPECT_FALSE(termina_vm_.RegisterContainer(base::GenerateGUID(),
+                                             kFakeGarconPort1, kFakeIp1));
   // Invalid token should fail unregister operation.
-  EXPECT_FALSE(vm_.UnregisterContainer(base::GenerateGUID()));
+  EXPECT_FALSE(termina_vm_.UnregisterContainer(base::GenerateGUID()));
 }
 
 TEST_F(VirtualMachineTest, ValidContainerToken) {
   // Valid process for generating a token and then registering it and
   // unregistering it.
-  std::string token = vm_.GenerateContainerToken(kFakeContainerName1);
-  EXPECT_TRUE(vm_.RegisterContainer(token, kFakeGarconPort1, kFakeIp1));
-  EXPECT_EQ(kFakeContainerName1, vm_.GetContainerNameForToken(token));
-  EXPECT_TRUE(vm_.UnregisterContainer(token));
-  EXPECT_EQ("", vm_.GetContainerNameForToken(token));
+  std::string token = termina_vm_.GenerateContainerToken(kFakeContainerName1);
+  EXPECT_TRUE(termina_vm_.RegisterContainer(token, kFakeGarconPort1, kFakeIp1));
+  EXPECT_EQ(kFakeContainerName1, termina_vm_.GetContainerNameForToken(token));
+  EXPECT_TRUE(termina_vm_.UnregisterContainer(token));
+  EXPECT_EQ("", termina_vm_.GetContainerNameForToken(token));
 }
 
 TEST_F(VirtualMachineTest, ReuseContainerToken) {
   // Re-registering the same token is valid and unregistering it should work.
-  std::string token = vm_.GenerateContainerToken(kFakeContainerName1);
-  EXPECT_TRUE(vm_.RegisterContainer(token, kFakeGarconPort1, kFakeIp1));
-  EXPECT_TRUE(vm_.RegisterContainer(token, kFakeGarconPort2, kFakeIp2));
-  EXPECT_EQ(kFakeContainerName1, vm_.GetContainerNameForToken(token));
-  EXPECT_TRUE(vm_.UnregisterContainer(token));
-  EXPECT_EQ("", vm_.GetContainerNameForToken(token));
+  std::string token = termina_vm_.GenerateContainerToken(kFakeContainerName1);
+  EXPECT_TRUE(termina_vm_.RegisterContainer(token, kFakeGarconPort1, kFakeIp1));
+  EXPECT_TRUE(termina_vm_.RegisterContainer(token, kFakeGarconPort2, kFakeIp2));
+  EXPECT_EQ(kFakeContainerName1, termina_vm_.GetContainerNameForToken(token));
+  EXPECT_TRUE(termina_vm_.UnregisterContainer(token));
+  EXPECT_EQ("", termina_vm_.GetContainerNameForToken(token));
 }
 
 TEST_F(VirtualMachineTest, MultipleContainerTokens) {
   // Valid process for generating a token and then registering it from multiple
   // containers and also unregistering them.
-  std::string token1 = vm_.GenerateContainerToken(kFakeContainerName1);
-  EXPECT_TRUE(vm_.RegisterContainer(token1, kFakeGarconPort1, kFakeIp1));
-  std::string token2 = vm_.GenerateContainerToken(kFakeContainerName2);
-  EXPECT_TRUE(vm_.RegisterContainer(token2, kFakeGarconPort2, kFakeIp2));
-  EXPECT_EQ(kFakeContainerName1, vm_.GetContainerNameForToken(token1));
-  EXPECT_EQ(kFakeContainerName2, vm_.GetContainerNameForToken(token2));
+  std::string token1 = termina_vm_.GenerateContainerToken(kFakeContainerName1);
+  EXPECT_TRUE(
+      termina_vm_.RegisterContainer(token1, kFakeGarconPort1, kFakeIp1));
+  std::string token2 = termina_vm_.GenerateContainerToken(kFakeContainerName2);
+  EXPECT_TRUE(
+      termina_vm_.RegisterContainer(token2, kFakeGarconPort2, kFakeIp2));
+  EXPECT_EQ(kFakeContainerName1, termina_vm_.GetContainerNameForToken(token1));
+  EXPECT_EQ(kFakeContainerName2, termina_vm_.GetContainerNameForToken(token2));
 
   // Now unregister the first one.
-  EXPECT_TRUE(vm_.UnregisterContainer(token1));
-  EXPECT_EQ("", vm_.GetContainerNameForToken(token1));
+  EXPECT_TRUE(termina_vm_.UnregisterContainer(token1));
+  EXPECT_EQ("", termina_vm_.GetContainerNameForToken(token1));
 
   // Second one should still be there.
-  EXPECT_EQ(kFakeContainerName2, vm_.GetContainerNameForToken(token2));
+  EXPECT_EQ(kFakeContainerName2, termina_vm_.GetContainerNameForToken(token2));
 
   // No unregister the second one.
-  EXPECT_TRUE(vm_.UnregisterContainer(token2));
-  EXPECT_EQ("", vm_.GetContainerNameForToken(token2));
+  EXPECT_TRUE(termina_vm_.UnregisterContainer(token2));
+  EXPECT_EQ("", termina_vm_.GetContainerNameForToken(token2));
+}
+
+TEST_F(VirtualMachineTest, PluginVmRegisterContainer) {
+  // We should fail registration with an invalid token, and succeed with a valid
+  // token.
+  EXPECT_FALSE(
+      plugin_vm_.RegisterContainer("bad_token", kFakeGarconPort1, kFakeIp1));
+  EXPECT_TRUE(
+      plugin_vm_.RegisterContainer(kVmToken, kFakeGarconPort1, kFakeIp1));
+  // There is no unregistration of plugin VM containers since they are
+  // artificial.
+}
+
+TEST_F(VirtualMachineTest, VerifyVmTypes) {
+  EXPECT_FALSE(termina_vm_.IsPluginVm());
+  EXPECT_TRUE(plugin_vm_.IsPluginVm());
 }
 
 }  // namespace cicerone

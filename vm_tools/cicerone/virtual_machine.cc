@@ -28,6 +28,9 @@ namespace vm_tools {
 namespace cicerone {
 namespace {
 
+// Default name to use for a container.
+constexpr char kDefaultContainerName[] = "penguin";
+
 // How long to wait before timing out on regular RPCs.
 constexpr int64_t kDefaultTimeoutSeconds = 60;
 
@@ -37,12 +40,22 @@ constexpr int64_t kLongOperationTimeoutSeconds = 120;
 
 }  // namespace
 
-VirtualMachine::VirtualMachine(uint32_t cid)
-    : vsock_cid_(cid), weak_ptr_factory_(this) {}
+VirtualMachine::VirtualMachine(uint32_t cid, std::string vm_token)
+    : vsock_cid_(cid), vm_token_(std::move(vm_token)), weak_ptr_factory_(this) {
+  DCHECK((vsock_cid_ == 0) ^ vm_token_.empty());
+  if (IsPluginVm()) {
+    // This is a containerless VM, so create one container for this VM that uses
+    // the same token as the VM itself.
+    pending_containers_[vm_token_] = std::make_unique<Container>(
+        kDefaultContainerName, vm_token_, weak_ptr_factory_.GetWeakPtr());
+  }
+}
 
 VirtualMachine::~VirtualMachine() = default;
 
 bool VirtualMachine::ConnectTremplin() {
+  if (IsPluginVm())
+    return false;
   std::string tremplin_address =
       base::StringPrintf("vsock:%u:%u", vsock_cid_, kTremplinPort);
   if (!tremplin_testing_address_.empty()) {
@@ -125,7 +138,10 @@ bool VirtualMachine::RegisterContainer(const std::string& container_token,
 
   auto iter = containers_.find(container_token);
   std::string garcon_addr;
-  if (garcon_vsock_port != 0) {
+  if (IsPluginVm()) {
+    garcon_addr = base::StringPrintf("unix:///run/vm_cicerone/client/%s.sock",
+                                     container_token.c_str());
+  } else if (garcon_vsock_port != 0) {
     garcon_addr = base::StringPrintf("vsock:%" PRIu32 ":%" PRIu32, vsock_cid_,
                                      garcon_vsock_port);
   } else {

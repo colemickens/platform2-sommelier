@@ -59,11 +59,13 @@ std::unique_ptr<PluginVm> PluginVm::Create(
     uint32_t ipv4_netmask,
     uint32_t ipv4_gateway,
     base::FilePath stateful_dir,
-    base::FilePath runtime_dir) {
+    base::FilePath runtime_dir,
+    base::FilePath cicerone_token_dir) {
   auto vm = base::WrapUnique(
       new PluginVm(std::move(mac_addr), std::move(ipv4_addr), ipv4_netmask,
                    ipv4_gateway, std::move(runtime_dir)));
-  if (!vm->Start(cpus, std::move(params), std::move(stateful_dir))) {
+  if (!vm->Start(cpus, std::move(params), std::move(stateful_dir),
+                 std::move(cicerone_token_dir))) {
     vm.reset();
   }
 
@@ -148,7 +150,8 @@ PluginVm::PluginVm(MacAddress mac_addr,
 
 bool PluginVm::Start(uint32_t cpus,
                      string params,
-                     base::FilePath stateful_dir) {
+                     base::FilePath stateful_dir,
+                     base::FilePath cicerone_token_dir) {
   // Set up the tap device.
   base::ScopedFD tap_fd = BuildTapDevice(mac_addr_, gateway_, netmask_);
   if (!tap_fd.is_valid()) {
@@ -168,6 +171,15 @@ bool PluginVm::Start(uint32_t cpus,
     "--plugin",       kPluginBin,
     "--plugin-mount", base::StringPrintf("%s:/pvm:true",
                                          stateful_dir.value().c_str()),
+    // This is the directory where the cicerone host socket lives. The plugin VM
+    // also creates the guest socket for cicerone in this same directory using
+    // the following <token>.sock as the name.
+    "--plugin-mount",
+    base::StringPrintf("/run/vm_cicerone/client:/cicerone_socket:true"),
+    // This is the directory where the identity token for the plugin VM is
+    // stored.
+    "--plugin-mount", base::StringPrintf("%s:/cicerone_token:false",
+                                         cicerone_token_dir.value().c_str()),
   };
   // clang-format on
 

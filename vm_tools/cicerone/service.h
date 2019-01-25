@@ -43,12 +43,12 @@ class Service final : public base::MessageLoopForIO::Watcher {
   // Creates a new Service instance.  |quit_closure| is posted to the TaskRunner
   // for the current thread when this process receives a SIGTERM. |bus| is a
   // connection to the SYSTEM dbus.
-  // Normally, services are bound to a AF_VSOCK socket. For unit tests, the
-  // services can listen on an AF_UNIX socket by giving |unix_socket_path| a
-  // value.
+  // Normally, services are bound to a AF_VSOCK and AF_UNIX socket. For unit
+  // tests, the services only listen on an AF_UNIX socket by giving
+  // |unix_socket_path_for_testing| a value.
   static std::unique_ptr<Service> Create(
       base::Closure quit_closure,
-      const base::Optional<base::FilePath>& unix_socket_path,
+      const base::Optional<base::FilePath>& unix_socket_path_for_testing,
       scoped_refptr<dbus::Bus> bus);
 
   ~Service() override;
@@ -253,10 +253,10 @@ class Service final : public base::MessageLoopForIO::Watcher {
   explicit Service(base::Closure quit_closure, scoped_refptr<dbus::Bus> bus);
 
   // Initializes the service by exporting our DBus methods, taking ownership of
-  // its name, and starting our gRPC servers. If |unix_socket_path| has a value,
-  // the services are bound to an AF_UNIX socket in that directory instead of
-  // the normal VSOCK socket.
-  bool Init(const base::Optional<base::FilePath>& unix_socket_path);
+  // its name, and starting our gRPC servers. If |unix_socket_path_for_testing|
+  // has a value, the services are bound only to an AF_UNIX socket in that
+  // directory instead of the normal VSOCK and AF_UNIX socket.
+  bool Init(const base::Optional<base::FilePath>& unix_socket_path_for_testing);
 
   // Handles the termination of a child process.
   void HandleChildExit();
@@ -332,13 +332,14 @@ class Service final : public base::MessageLoopForIO::Watcher {
       dbus::MethodCall* method_call);
 
   // Gets the VirtualMachine that corresponds to a container at |cid|
-  // and sets |vm_out| to the VirtualMachine, |owner_id_out| to the owner id of
-  // the VM, and |name_out| to the name of the VM. Returns false if no such
-  // mapping exists.
-  bool GetVirtualMachineForCid(const uint32_t cid,
-                               VirtualMachine** vm_out,
-                               std::string* owner_id_out,
-                               std::string* name_out);
+  // or the |vm_token| for the VM itself and sets |vm_out| to the
+  // VirtualMachine, |owner_id_out| to the owner id of the VM, and |name_out| to
+  // the name of the VM. Returns false if no such mapping exists.
+  bool GetVirtualMachineForCidOrToken(const uint32_t cid,
+                                      const std::string& vm_token,
+                                      VirtualMachine** vm_out,
+                                      std::string* owner_id_out,
+                                      std::string* name_out);
 
   // Starts SSH port forwarding for known ports to the default VM/container.
   // SSH forwarding will not work for other VMs/containers.

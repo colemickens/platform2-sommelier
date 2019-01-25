@@ -61,7 +61,8 @@ void CheckTremplinStartedSignal(dbus::Signal* signal) {
 
 // Check that the signal matches what we expect when we send a ContainerReady
 // message for the default Container.
-void CheckContainerStartedSignal(dbus::Signal* signal) {
+void CheckContainerStartedSignal(dbus::Signal* signal,
+                                 const char* container_name) {
   CHECK_EQ(signal->GetMessageType(), dbus::Message::MESSAGE_SIGNAL);
   CHECK_EQ(signal->GetInterface(), kVmCiceroneInterface);
   CHECK_EQ(signal->GetMember(), kContainerStartedSignal);
@@ -72,7 +73,16 @@ void CheckContainerStartedSignal(dbus::Signal* signal) {
   CHECK(!reader.HasMoreData());
   CHECK_EQ(proto.vm_name(), ServiceTestingHelper::kDefaultVmName);
   CHECK_EQ(proto.owner_id(), ServiceTestingHelper::kDefaultOwnerId);
-  CHECK_EQ(proto.container_name(), ServiceTestingHelper::kDefaultContainerName);
+  CHECK_EQ(proto.container_name(), container_name);
+}
+
+void CheckContainerStartedSignalForDefaultVm(dbus::Signal* signal) {
+  CheckContainerStartedSignal(signal,
+                              ServiceTestingHelper::kDefaultContainerName);
+}
+
+void CheckContainerStartedSignalForPluginVm(dbus::Signal* signal) {
+  CheckContainerStartedSignal(signal, "penguin");
 }
 
 dbus::Response* CheckSetHostnameIpMappingMethod(dbus::MethodCall* method_call,
@@ -277,6 +287,32 @@ void ServiceTestingHelper::PretendDefaultVmStarted() {
   ASSERT_TRUE(status.ok()) << status.error_message();
 }
 
+void ServiceTestingHelper::PretendPluginVmStarted() {
+  NotifyVmStartedRequest request;
+  request.set_vm_name(kDefaultVmName);
+  request.set_owner_id(kDefaultOwnerId);
+  request.set_vm_token(kDefaultContainerToken);
+  EmptyMessage response;
+
+  CallDBus(kNotifyVmStarted, request, &response);
+
+  // Mark the container as started; the VM calls this after it has started up
+  // it's gRPC server to notify us it's ready for communication. Normally this
+  // is done by a container, but we don't have a container in a plugin VM.
+  std::string container_target_address = GetContainerListenerTargetAddress();
+  LOG(INFO) << "Connecting to " << container_target_address;
+  auto container_stub =
+      std::make_unique<vm_tools::container::ContainerListener::Stub>(
+          grpc::CreateChannel(container_target_address,
+                              grpc::InsecureChannelCredentials()));
+  vm_tools::container::ContainerStartupInfo ready_request;
+  ready_request.set_token(kDefaultContainerToken);
+  grpc::ServerContext ctx2;
+  grpc::Status status = service_->GetContainerListenerImpl()->ContainerReady(
+      &ctx2, &ready_request, &response);
+  ASSERT_TRUE(status.ok()) << status.error_message();
+}
+
 void ServiceTestingHelper::CreateContainerWithTokenForTestingOnDBusThread(
     const std::string& owner_id,
     const std::string& vm_name,
@@ -341,7 +377,7 @@ void ServiceTestingHelper::SetUpDefaultVmAndContainer() {
       .WillOnce(Invoke(&CheckTremplinStartedSignal));
   EXPECT_CALL(*mock_exported_object_,
               SendSignal(HasMethodName(kContainerStartedSignal)))
-      .WillOnce(Invoke(&CheckContainerStartedSignal));
+      .WillOnce(Invoke(&CheckContainerStartedSignalForDefaultVm));
   EXPECT_CALL(*mock_crosdns_service_proxy_,
               MockCallMethodAndBlock(
                   HasMethodName(crosdns::kSetHostnameIpMappingMethod), _))
@@ -349,6 +385,25 @@ void ServiceTestingHelper::SetUpDefaultVmAndContainer() {
 
   PretendDefaultVmStarted();
   PretendDefaultContainerStarted();
+
+  VerifyAndClearMockExpectations();
+}
+
+void ServiceTestingHelper::SetUpPluginVm() {
+  CHECK(service_);
+
+  // For plugin VMs, we don't need to set fake addresses since those actually
+  // communicate over AF_UNIX sockets and don't use Tremplin either.
+
+  // We expect the Service to generate a few signals; make sure they matches our
+  // expectations. Even though this is a testing helper, not the actual test,
+  // this is by far the easiest place to unit test the container-startup happy
+  // path.
+  EXPECT_CALL(*mock_exported_object_,
+              SendSignal(HasMethodName(kContainerStartedSignal)))
+      .WillOnce(Invoke(&CheckContainerStartedSignalForPluginVm));
+
+  PretendPluginVmStarted();
 
   VerifyAndClearMockExpectations();
 }

@@ -104,7 +104,7 @@ void HandleSynchronousDBusMethodCall(
 // the pointer to the grpc server in |server_copy| and then signals |event|.
 // It will listen on the address specified in |listener_address|.
 void RunListenerService(grpc::Service* listener,
-                        const std::string& listener_address,
+                        const std::vector<std::string> listener_addresses,
                         base::WaitableEvent* event,
                         std::shared_ptr<grpc::Server>* server_copy) {
   // We are not interested in getting SIGCHLD or SIGTERM on this thread.
@@ -116,11 +116,13 @@ void RunListenerService(grpc::Service* listener,
 
   // Build the grpc server.
   grpc::ServerBuilder builder;
-  builder.AddListeningPort(listener_address, grpc::InsecureServerCredentials());
+  for (auto& addr : listener_addresses)
+    builder.AddListeningPort(addr, grpc::InsecureServerCredentials());
   builder.RegisterService(listener);
 
   std::shared_ptr<grpc::Server> server(builder.BuildAndStart().release());
-  LOG(INFO) << "Server listening on " << listener_address;
+  LOG(INFO) << "Server listening on "
+            << base::JoinString(listener_addresses, ", ");
 
   *server_copy = server;
   event->Signal();
@@ -136,7 +138,7 @@ void RunListenerService(grpc::Service* listener,
 // |server_copy|. Returns true if setup & started successfully, false otherwise.
 bool SetupListenerService(base::Thread* grpc_thread,
                           grpc::Service* listener_impl,
-                          const std::string& listener_address,
+                          const std::vector<std::string>& listener_addresses,
                           std::shared_ptr<grpc::Server>* server_copy) {
   // Start the grpc thread.
   if (!grpc_thread->Start()) {
@@ -148,7 +150,7 @@ bool SetupListenerService(base::Thread* grpc_thread,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
   bool ret = grpc_thread->task_runner()->PostTask(
       FROM_HERE, base::Bind(&RunListenerService, listener_impl,
-                            listener_address, &event, server_copy));
+                            listener_addresses, &event, server_copy));
   if (!ret) {
     LOG(ERROR) << "Failed to post server startup task to grpc thread";
     return false;
@@ -281,12 +283,12 @@ bool Service::run_grpc_ = true;
 
 std::unique_ptr<Service> Service::Create(
     base::Closure quit_closure,
-    const base::Optional<base::FilePath>& unix_socket_path,
+    const base::Optional<base::FilePath>& unix_socket_path_for_testing,
     scoped_refptr<dbus::Bus> bus) {
   auto service =
       base::WrapUnique(new Service(std::move(quit_closure), std::move(bus)));
 
-  if (!service->Init(unix_socket_path)) {
+  if (!service->Init(unix_socket_path_for_testing)) {
     service.reset();
   }
 
@@ -347,7 +349,7 @@ void Service::ConnectTremplin(uint32_t cid,
   VirtualMachine* vm;
   std::string vm_name;
   std::string owner_id;
-  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name)) {
+  if (!GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &vm_name)) {
     event->Signal();
     return;
   }
@@ -384,7 +386,7 @@ void Service::LxdContainerCreated(const uint32_t cid,
   VirtualMachine* vm;
   std::string vm_name;
   std::string owner_id;
-  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name)) {
+  if (!GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &vm_name)) {
     event->Signal();
     return;
   }
@@ -431,7 +433,7 @@ void Service::LxdContainerDownloading(const uint32_t cid,
   VirtualMachine* vm;
   std::string vm_name;
   std::string owner_id;
-  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name)) {
+  if (!GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &vm_name)) {
     event->Signal();
     return;
   }
@@ -462,7 +464,7 @@ void Service::LxdContainerStarting(const uint32_t cid,
   VirtualMachine* vm;
   std::string vm_name;
   std::string owner_id;
-  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name)) {
+  if (!GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &vm_name)) {
     event->Signal();
     return;
   }
@@ -505,7 +507,8 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
   VirtualMachine* vm;
   std::string vm_name;
   std::string owner_id;
-  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name)) {
+  if (!GetVirtualMachineForCidOrToken(cid, container_token, &vm, &owner_id,
+                                      &vm_name)) {
     event->Signal();
     return;
   }
@@ -520,25 +523,27 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
       return;
     }
   }
-  VirtualMachine::LxdContainerInfo info;
-  std::string error;
-  VirtualMachine::GetLxdContainerInfoStatus status =
-      vm->GetLxdContainerInfo(container->name(), &info, &error);
-  if (status != VirtualMachine::GetLxdContainerInfoStatus::RUNNING) {
-    LOG(ERROR) << "Failed to retreive IPv4 address for container: " << error;
-    event->Signal();
-    return;
-  }
-  container->set_ipv4_address(info.ipv4_address);
-
-  // Found the VM with a matching CID, register the IP address for the container
-  // with that VM object.
   std::string string_ip;
-  if (!IPv4AddressToString(info.ipv4_address, &string_ip)) {
-    LOG(ERROR) << "Failed converting IP address to string: "
-               << info.ipv4_address;
-    event->Signal();
-    return;
+  if (!vm->IsPluginVm()) {
+    VirtualMachine::LxdContainerInfo info;
+    std::string error;
+    VirtualMachine::GetLxdContainerInfoStatus status =
+        vm->GetLxdContainerInfo(container->name(), &info, &error);
+    if (status != VirtualMachine::GetLxdContainerInfoStatus::RUNNING) {
+      LOG(ERROR) << "Failed to retreive IPv4 address for container: " << error;
+      event->Signal();
+      return;
+    }
+    container->set_ipv4_address(info.ipv4_address);
+
+    // Found the VM with a matching CID, register the IP address for the
+    // container with that VM object.
+    if (!IPv4AddressToString(info.ipv4_address, &string_ip)) {
+      LOG(ERROR) << "Failed converting IP address to string: "
+                 << info.ipv4_address;
+      event->Signal();
+      return;
+    }
   }
   if (!vm->RegisterContainer(container_token, garcon_vsock_port, string_ip)) {
     LOG(ERROR) << "Invalid container token passed back from VM " << vm_name
@@ -600,7 +605,7 @@ void Service::ContainerShutdown(const std::string& container_token,
   std::string owner_id;
   std::string vm_name;
 
-  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name)) {
+  if (!GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &vm_name)) {
     event->Signal();
     return;
   }
@@ -648,7 +653,7 @@ void Service::ContainerExportProgress(
   std::string owner_id;
   std::string vm_name;
 
-  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name)) {
+  if (!GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &vm_name)) {
     event->Signal();
     return;
   }
@@ -677,7 +682,7 @@ void Service::ContainerImportProgress(
   std::string owner_id;
   std::string vm_name;
 
-  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name)) {
+  if (!GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &vm_name)) {
     event->Signal();
     return;
   }
@@ -705,7 +710,8 @@ void Service::UpdateApplicationList(const std::string& container_token,
   std::string owner_id;
   std::string vm_name;
   VirtualMachine* vm;
-  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name)) {
+  if (!GetVirtualMachineForCidOrToken(cid, container_token, &vm, &owner_id,
+                                      &vm_name)) {
     LOG(ERROR) << "Could not get virtual machine for cid " << cid;
     event->Signal();
     return;
@@ -765,28 +771,33 @@ void Service::OpenUrl(const std::string& container_token,
   std::string owner_id;
   std::string vm_name;
   VirtualMachine* vm;
-  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name)) {
+  if (!GetVirtualMachineForCidOrToken(cid, container_token, &vm, &owner_id,
+                                      &vm_name)) {
     event->Signal();
     return;
   }
-  Container* container = vm->GetContainerForToken(container_token);
-  if (!container) {
-    LOG(ERROR) << "No container found matching token: " << container_token;
-    event->Signal();
-    return;
+  if (!vm->IsPluginVm()) {
+    Container* container = vm->GetContainerForToken(container_token);
+    if (!container) {
+      LOG(ERROR) << "No container found matching token: " << container_token;
+      event->Signal();
+      return;
+    }
+    std::string container_ip_str;
+    if (!IPv4AddressToString(container->ipv4_address(), &container_ip_str)) {
+      LOG(ERROR) << "Failed converting IP address to string: "
+                 << container->ipv4_address();
+      event->Signal();
+      return;
+    }
+    if (container_ip_str == linuxhost_ip_) {
+      container_ip_str = kDefaultContainerHostname;
+    }
+    writer.AppendString(TranslateUrlForHost(url, container_ip_str, owner_id,
+                                            vm_name, *container));
+  } else {
+    writer.AppendString(url);
   }
-  std::string container_ip_str;
-  if (!IPv4AddressToString(container->ipv4_address(), &container_ip_str)) {
-    LOG(ERROR) << "Failed converting IP address to string: "
-               << container->ipv4_address();
-    event->Signal();
-    return;
-  }
-  if (container_ip_str == linuxhost_ip_) {
-    container_ip_str = kDefaultContainerHostname;
-  }
-  writer.AppendString(TranslateUrlForHost(url, container_ip_str, owner_id,
-                                          vm_name, *container));
   std::unique_ptr<dbus::Response> dbus_response =
       url_handler_service_proxy_->CallMethodAndBlock(
           &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
@@ -813,7 +824,7 @@ void Service::InstallLinuxPackageProgress(
   std::string owner_id;
   std::string vm_name;
 
-  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name)) {
+  if (!GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &vm_name)) {
     event->Signal();
     return;
   }
@@ -849,7 +860,7 @@ void Service::UninstallPackageProgress(
   std::string owner_id;
   std::string vm_name;
 
-  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name)) {
+  if (!GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &vm_name)) {
     event->Signal();
     return;
   }
@@ -882,7 +893,7 @@ void Service::OpenTerminal(const std::string& container_token,
   std::string owner_id;
   std::string vm_name;
   VirtualMachine* vm;
-  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name)) {
+  if (!GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &vm_name)) {
     event->Signal();
     return;
   }
@@ -922,7 +933,7 @@ void Service::UpdateMimeTypes(const std::string& container_token,
   std::string owner_id;
   std::string vm_name;
   VirtualMachine* vm;
-  if (!GetVirtualMachineForCid(cid, &vm, &owner_id, &vm_name)) {
+  if (!GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &vm_name)) {
     event->Signal();
     return;
   }
@@ -950,7 +961,8 @@ void Service::UpdateMimeTypes(const std::string& container_token,
   event->Signal();
 }
 
-bool Service::Init(const base::Optional<base::FilePath>& unix_socket_path) {
+bool Service::Init(
+    const base::Optional<base::FilePath>& unix_socket_path_for_testing) {
   if (!bus_->Connect()) {
     LOG(ERROR) << "Failed to connect to system bus";
     return false;
@@ -1040,27 +1052,28 @@ bool Service::Init(const base::Optional<base::FilePath>& unix_socket_path) {
     return false;
   }
 
-  std::string container_listener_address =
-      base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY, vm_tools::kGarconPort);
-  std::string tremplin_listener_address = base::StringPrintf(
-      "vsock:%u:%u", VMADDR_CID_ANY, vm_tools::kTremplinListenerPort);
+  std::vector<std::string> container_listener_addresses = {
+      base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY, vm_tools::kGarconPort),
+      "unix:///run/vm_cicerone/client/host.sock"};
+  std::vector<std::string> tremplin_listener_address = {base::StringPrintf(
+      "vsock:%u:%u", VMADDR_CID_ANY, vm_tools::kTremplinListenerPort)};
 
-  if (unix_socket_path.has_value()) {
-    container_listener_address =
-        "unix:" + unix_socket_path.value()
+  if (unix_socket_path_for_testing.has_value()) {
+    container_listener_addresses = {
+        "unix:" + unix_socket_path_for_testing.value()
                       .Append(base::IntToString(vm_tools::kGarconPort))
-                      .value();
-    tremplin_listener_address =
+                      .value()};
+    tremplin_listener_address = {
         "unix:" +
-        unix_socket_path.value()
+        unix_socket_path_for_testing.value()
             .Append(base::IntToString(vm_tools::kTremplinListenerPort))
-            .value();
+            .value()};
   }
 
   // Setup & start the gRPC listener services.
   if (run_grpc_ && !SetupListenerService(
                        &grpc_thread_container_, container_listener_.get(),
-                       container_listener_address, &grpc_server_container_)) {
+                       container_listener_addresses, &grpc_server_container_)) {
     LOG(ERROR) << "Failed to setup/startup the container grpc server";
     return false;
   }
@@ -1161,8 +1174,10 @@ std::unique_ptr<dbus::Response> Service::NotifyVmStarted(
   }
 
   vms_[std::make_pair(request.owner_id(), std::move(request.vm_name()))] =
-      std::make_unique<VirtualMachine>(request.cid());
-  if (primary_owner_id_.empty() || vms_.empty()) {
+      std::make_unique<VirtualMachine>(request.cid(),
+                                       std::move(request.vm_token()));
+  // Only take this as the primary owner ID if this is not a plugin VM.
+  if (request.cid() != 0 && (primary_owner_id_.empty() || vms_.empty())) {
     primary_owner_id_ = request.owner_id();
   }
   return dbus_response;
@@ -2124,24 +2139,42 @@ std::unique_ptr<dbus::Response> Service::GetDebugInformation(
   return dbus_response;
 }
 
-bool Service::GetVirtualMachineForCid(const uint32_t cid,
-                                      VirtualMachine** vm_out,
-                                      std::string* owner_id_out,
-                                      std::string* name_out) {
+bool Service::GetVirtualMachineForCidOrToken(const uint32_t cid,
+                                             const std::string& vm_token,
+                                             VirtualMachine** vm_out,
+                                             std::string* owner_id_out,
+                                             std::string* name_out) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
   CHECK(vm_out);
   CHECK(owner_id_out);
   CHECK(name_out);
-  for (const auto& vm : vms_) {
-    if (vm.second->cid() != cid) {
-      continue;
+  // If there is a nonzero CID, then we look for a VM based on that. Otherwise
+  // we use the token to find the VM.
+  if (cid) {
+    for (const auto& vm : vms_) {
+      if (vm.second->cid() != cid) {
+        continue;
+      }
+      *owner_id_out = vm.first.first;
+      *name_out = vm.first.second;
+      *vm_out = vm.second.get();
+      DCHECK(!(*vm_out)->IsPluginVm());
+      return true;
     }
-    *owner_id_out = vm.first.first;
-    *name_out = vm.first.second;
-    *vm_out = vm.second.get();
-    return true;
+    return false;
+  } else {
+    for (const auto& vm : vms_) {
+      if (vm.second->vm_token() != vm_token) {
+        continue;
+      }
+      *owner_id_out = vm.first.first;
+      *name_out = vm.first.second;
+      *vm_out = vm.second.get();
+      DCHECK((*vm_out)->IsPluginVm());
+      return true;
+    }
+    return false;
   }
-  return false;
 }
 
 void Service::StartSshForwarding(const std::string& owner_id,

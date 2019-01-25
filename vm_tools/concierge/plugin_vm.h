@@ -33,7 +33,8 @@ class PluginVm final : public VmInterface {
       uint32_t ipv4_netmask,
       uint32_t ipv4_gateway,
       base::FilePath stateful_dir,
-      base::FilePath runtime_dir);
+      base::FilePath runtime_dir,
+      base::FilePath cicerone_token_dir);
   ~PluginVm() override;
 
   // VmInterface overrides.
@@ -56,7 +57,10 @@ class PluginVm final : public VmInterface {
            uint32_t ipv4_netmask,
            uint32_t ipv4_gateway,
            base::FilePath runtime_dir);
-  bool Start(uint32_t cpus, std::string params, base::FilePath stateful_dir);
+  bool Start(uint32_t cpus,
+             std::string params,
+             base::FilePath stateful_dir,
+             base::FilePath cicerone_token_dir);
 
   // Runtime directory for the crosvm instance.
   base::ScopedTempDir runtime_dir_;
