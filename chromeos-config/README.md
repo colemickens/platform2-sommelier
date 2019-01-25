@@ -505,4 +505,4 @@ For instance:
 To test configuration changes on actual devices use the platform.CrosConfig
 Tast test. This will run cros_config tests for unibuilds and mosys
 for all devices.
-See [HOWTO](https://chromium.googlesource.com/chromiumos/platform/tast-tests/+/HEAD/src/chromiumos/tast/local/bundles/cros/platform/cros_config_testing.md).
+See [HOWTO](https://chromium.googlesource.com/chromiumos/platform/tast-tests/+/HEAD/src/chromiumos/tast/local/bundles/cros/platform/cros_config.md).
