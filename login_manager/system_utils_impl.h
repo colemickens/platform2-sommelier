@@ -67,16 +67,17 @@ class SystemUtilsImpl : public SystemUtils {
   bool GetGidAndGroups(uid_t uid,
                        gid_t* out_gid,
                        std::vector<gid_t>* out_groups) override;
-  int SetIDs(uid_t uid, gid_t gid, const std::vector<gid_t>& gids) override;
   bool ReadFileToString(const base::FilePath& path,
                         std::string* str_out) override;
   bool WriteStringToFile(const base::FilePath& path,
                          const std::string& data) override;
-  void CloseSuperfluousFds(
-      const base::InjectiveMultimap& saved_mapping) override;
   bool ChangeBlockedSignals(int how, const std::vector<int>& signals) override;
   bool LaunchAndWait(const std::vector<std::string>& args,
                      int* exit_code_out) override;
+  bool RunInMinijail(const ScopedMinijail& jail,
+                     const std::vector<std::string>& args,
+                     const std::vector<std::string>& env_vars,
+                     pid_t* pchild_pid) override;
 
   void set_base_dir_for_testing(const base::FilePath& base_dir) {
     CHECK(!base_dir.empty());

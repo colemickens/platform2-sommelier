@@ -21,6 +21,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -40,6 +41,8 @@
 #include <brillo/process.h>
 #include <brillo/userdb_utils.h>
 #include <chromeos/dbus/service_constants.h>
+
+#include <libminijail.h>
 
 #include "login_manager/child_job.h"  // For ChildJobInterface exit codes.
 
@@ -390,28 +393,6 @@ bool SystemUtilsImpl::GetGidAndGroups(uid_t uid,
   return true;
 }
 
-// This function will:
-// 1) try to setgid to |gid|
-// 2) try to setgroups to |gids|
-// 3) try to setuid to |uid|
-// 4) try to make a new session, with the current process as leader.
-//
-// Returns 0 on success, the appropriate exit code (defined above) if a
-// call fails.
-int SystemUtilsImpl::SetIDs(uid_t uid,
-                            gid_t gid,
-                            const std::vector<gid_t>& gids) {
-  if (setgroups(gids.size(), gids.data()) == -1)
-    return ChildJobInterface::kCantSetGroups;
-  if (setgid(gid) == -1)
-    return ChildJobInterface::kCantSetGid;
-  if (setuid(uid) == -1)
-    return ChildJobInterface::kCantSetUid;
-  if (setsid() == -1)
-    RAW_LOG(ERROR, "Can't setsid");
-  return 0;
-}
-
 bool SystemUtilsImpl::ReadFileToString(const base::FilePath& path,
                                        std::string* str_out) {
   return base::ReadFileToString(path, str_out);
@@ -445,11 +426,6 @@ bool SystemUtilsImpl::ChangeBlockedSignals(int how,
   return true;
 }
 
-void SystemUtilsImpl::CloseSuperfluousFds(
-    const base::InjectiveMultimap& saved_mapping) {
-  base::CloseSuperfluousFds(saved_mapping);
-}
-
 bool SystemUtilsImpl::LaunchAndWait(const std::vector<std::string>& argv,
                                     int* exit_code_out) {
   DCHECK(!argv.empty());
@@ -472,6 +448,30 @@ bool SystemUtilsImpl::LaunchAndWait(const std::vector<std::string>& argv,
     return false;
   }
   return true;
+}
+
+bool SystemUtilsImpl::RunInMinijail(const ScopedMinijail& jail,
+                                    const std::vector<std::string>& args,
+                                    const std::vector<std::string>& env_vars,
+                                    pid_t* pchild_pid) {
+  auto argv = std::make_unique<char*[]>(args.size() + 1);
+  for (size_t i = 0; i < args.size(); ++i)
+    argv[i] = const_cast<char*>(args[i].c_str());
+  argv[args.size()] = nullptr;
+
+  auto envp = std::make_unique<char*[]>(env_vars.size() + 1);
+  for (size_t i = 0; i < env_vars.size(); ++i)
+    envp[i] = const_cast<char*>(env_vars[i].c_str());
+  envp[env_vars.size()] = nullptr;
+
+  int res = minijail_run_env_pid_pipes_no_preload(
+      jail.get(), argv[0], argv.get(), envp.get(), pchild_pid, nullptr, nullptr,
+      nullptr);
+
+  if (res != 0) {
+    LOG(ERROR) << "Failed to execute '" << args[0] << "'";
+  }
+  return res == 0;
 }
 
 }  // namespace login_manager

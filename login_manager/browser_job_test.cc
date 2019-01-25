@@ -35,6 +35,7 @@ using ::testing::ElementsAre;
 using ::testing::InSequence;
 using ::testing::Mock;
 using ::testing::Return;
+using ::testing::SetArgPointee;
 using ::testing::StrEq;
 
 class BrowserJobTest : public ::testing::Test {
@@ -110,9 +111,12 @@ TEST_F(BrowserJobTest, InitializationTest) {
 }
 
 TEST_F(BrowserJobTest, WaitAndAbort) {
-  pid_t kDummyPid = 4;
-  EXPECT_CALL(utils_, GetGidAndGroups(_, _, _)).WillOnce(Return(true));
-  EXPECT_CALL(utils_, fork()).WillOnce(Return(kDummyPid));
+  const gid_t kDummyGid = 1000;
+  const pid_t kDummyPid = 4;
+  EXPECT_CALL(utils_, GetGidAndGroups(getuid(), _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kDummyGid), Return(true)));
+  EXPECT_CALL(utils_, RunInMinijail(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(kDummyPid), Return(true)));
   EXPECT_CALL(utils_, kill(-kDummyPid, _, SIGABRT)).Times(1);
   EXPECT_CALL(utils_, time(NULL)).WillRepeatedly(Return(0));
   EXPECT_CALL(utils_, ProcessGroupIsGone(kDummyPid, _)).WillOnce(Return(false));
@@ -125,9 +129,12 @@ TEST_F(BrowserJobTest, WaitAndAbort) {
 }
 
 TEST_F(BrowserJobTest, WaitAndAbort_AlreadyGone) {
-  pid_t kDummyPid = 4;
-  EXPECT_CALL(utils_, GetGidAndGroups(_, _, _)).WillOnce(Return(true));
-  EXPECT_CALL(utils_, fork()).WillOnce(Return(kDummyPid));
+  const gid_t kDummyGid = 1000;
+  const pid_t kDummyPid = 4;
+  EXPECT_CALL(utils_, GetGidAndGroups(getuid(), _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kDummyGid), Return(true)));
+  EXPECT_CALL(utils_, RunInMinijail(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(kDummyPid), Return(true)));
   EXPECT_CALL(utils_, time(NULL)).WillRepeatedly(Return(0));
   EXPECT_CALL(utils_, ProcessGroupIsGone(kDummyPid, _)).WillOnce(Return(true));
 
@@ -194,8 +201,12 @@ TEST_F(BrowserJobTest, NullFileCheckerTest) {
 // On the job's first run, it should have a one-time-flag.  That
 // should get cleared and not used again.
 TEST_F(BrowserJobTest, OneTimeBootFlags) {
-  EXPECT_CALL(utils_, GetGidAndGroups(_, _, _)).WillRepeatedly(Return(true));
-  EXPECT_CALL(utils_, fork()).WillRepeatedly(Return(1));
+  const gid_t kDummyGid = 1000;
+  const pid_t kDummyPid = 4;
+  EXPECT_CALL(utils_, GetGidAndGroups(getuid(), _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(kDummyGid), Return(true)));
+  EXPECT_CALL(utils_, RunInMinijail(_, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<3>(kDummyPid), Return(true)));
   EXPECT_CALL(utils_, time(NULL)).WillRepeatedly(Return(0));
 
   EXPECT_CALL(metrics_, HasRecordedChromeExec())
@@ -213,10 +224,13 @@ TEST_F(BrowserJobTest, OneTimeBootFlags) {
 }
 
 TEST_F(BrowserJobTest, RunBrowserTermMessage) {
-  pid_t kDummyPid = 4;
+  const gid_t kDummyGid = 1000;
+  const pid_t kDummyPid = 4;
   int signal = SIGKILL;
-  EXPECT_CALL(utils_, GetGidAndGroups(_, _, _)).WillOnce(Return(true));
-  EXPECT_CALL(utils_, fork()).WillOnce(Return(kDummyPid));
+  EXPECT_CALL(utils_, GetGidAndGroups(getuid(), _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kDummyGid), Return(true)));
+  EXPECT_CALL(utils_, RunInMinijail(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(kDummyPid), Return(true)));
   EXPECT_CALL(utils_, kill(kDummyPid, _, signal)).Times(1);
   EXPECT_CALL(utils_, time(NULL)).WillRepeatedly(Return(0));
 
