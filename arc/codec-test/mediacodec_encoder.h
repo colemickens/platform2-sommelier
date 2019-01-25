@@ -45,8 +45,9 @@ class MediaCodecEncoder {
   // Wrapper of AMediaCodec_stop.
   bool Stop();
 
-  // Status getter methods.
-  size_t NumTotalFrames() const;
+  // Setter and getter method of |num_encoded_frames_|;
+  void set_num_encoded_frames(size_t num_encoded_frames);
+  size_t num_encoded_frames() const;
 
  private:
   MediaCodecEncoder(AMediaCodec* codec,
@@ -78,6 +79,8 @@ class MediaCodecEncoder {
 
   // The target mediacodec encoder.
   AMediaCodec* codec_;
+  // The number of frames to encode.
+  size_t num_encoded_frames_;
   // The input video raw stream file. The file size must be the multiple of
   // |kBufferSize|.
   std::unique_ptr<InputFileStream> input_file_;

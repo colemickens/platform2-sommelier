@@ -7,6 +7,7 @@
 
 #include <getopt.h>
 
+#include <algorithm>
 #include <fstream>
 #include <functional>
 #include <memory>
@@ -37,6 +38,9 @@ const unsigned int kDefaultFramerate = 30;
 const double kDefaultSubsequentFramerateRatio = 0.1;
 // Tolerance factor for how encoded bitrate can differ from requested bitrate.
 const double kBitrateTolerance = 0.1;
+// The minimum number of encoded frames. If the frame number of the input stream
+// is less than this value, then we circularly encode the input stream.
+constexpr size_t kMinNumEncodedFrames = 300;
 
 ArcVideoEncoderTestEnvironment* g_env;
 }  // namespace
@@ -227,6 +231,10 @@ TEST_F(ArcVideoEncoderE2ETest, TestSimpleEncode) {
 }
 
 TEST_F(ArcVideoEncoderE2ETest, TestBitrate) {
+  // Ensure the number of encoded frames is enough for bitrate test case.
+  encoder_->set_num_encoded_frames(
+      std::max(encoder_->num_encoded_frames(), kMinNumEncodedFrames));
+
   // Accumulate the size of the output buffers.
   total_output_buffer_size_ = 0;
   encoder_->SetOutputBufferReadyCb(
@@ -242,7 +250,7 @@ TEST_F(ArcVideoEncoderE2ETest, TestBitrate) {
   EXPECT_TRUE(encoder_->Stop());
 
   double measured_bitrate = CalculateAverageBitrate(
-      encoder_->NumTotalFrames(), g_env->requested_framerate());
+      encoder_->num_encoded_frames(), g_env->requested_framerate());
   EXPECT_NEAR(measured_bitrate, g_env->requested_bitrate(),
               kBitrateTolerance * g_env->requested_bitrate());
 }

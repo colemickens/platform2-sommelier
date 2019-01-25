@@ -82,6 +82,7 @@ MediaCodecEncoder::MediaCodecEncoder(
       kBufferSize(buffer_size),
       kNumTotalFrames(num_total_frames),
       codec_(codec),
+      num_encoded_frames_(num_total_frames),
       input_file_(std::move(input_file)) {}
 
 MediaCodecEncoder::~MediaCodecEncoder() {
@@ -147,7 +148,7 @@ bool MediaCodecEncoder::Encode() {
           return false;
         }
       } else if (index >= 0) {
-        if (input_frame_index_ == kNumTotalFrames) {
+        if (input_frame_index_ == num_encoded_frames_) {
           if (!FeedEOSInputBuffer(index))
             return false;
 
@@ -158,7 +159,6 @@ bool MediaCodecEncoder::Encode() {
             return false;
 
           last_enqueue_input_time = GetNowUs();
-          ++input_frame_index_;
         }
       }
     }
@@ -186,8 +186,12 @@ bool MediaCodecEncoder::Stop() {
   return AMediaCodec_stop(codec_) == AMEDIA_OK;
 }
 
-size_t MediaCodecEncoder::NumTotalFrames() const {
-  return kNumTotalFrames;
+void MediaCodecEncoder::set_num_encoded_frames(size_t num_encoded_frames) {
+  num_encoded_frames_ = num_encoded_frames;
+}
+
+size_t MediaCodecEncoder::num_encoded_frames() const {
+  return num_encoded_frames_;
 }
 
 bool MediaCodecEncoder::FeedInputBuffer(size_t index) {
@@ -201,10 +205,17 @@ bool MediaCodecEncoder::FeedInputBuffer(size_t index) {
           buf, out_size);
     return false;
   }
+
   if (input_file_->Read(reinterpret_cast<char*>(buf), kBufferSize) !=
       kBufferSize) {
     ALOGE("Failed to read buffer from file.");
     return false;
+  }
+
+  // We circularly encode the video stream if the frame number is not enough.
+  ++input_frame_index_;
+  if (input_frame_index_ % kNumTotalFrames == 0) {
+    input_file_->Rewind();
   }
 
   media_status_t status = AMediaCodec_queueInputBuffer(
