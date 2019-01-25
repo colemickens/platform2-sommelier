@@ -34,10 +34,8 @@ class DiagnosticsdMojoService final
       chromeos::diagnosticsd::mojom::DiagnosticsdWebRequestHttpMethod;
   using MojomDiagnosticsdWebRequestStatus =
       chromeos::diagnosticsd::mojom::DiagnosticsdWebRequestStatus;
-  using MojomPerformWebRequestCallback =
-      base::Callback<void(MojomDiagnosticsdWebRequestStatus,
-                          int,
-                          const base::Optional<std::string>&)>;
+  using MojomPerformWebRequestCallback = base::Callback<void(
+      MojomDiagnosticsdWebRequestStatus, int, base::StringPiece)>;
 
   class Delegate {
    public:

@@ -45,6 +45,7 @@ namespace {
 
 constexpr char kHttpsUrl[] = "https://www.google.com";
 constexpr int kHttpStatusOk = 200;
+constexpr char kFakeBody[] = "fake response/request body";
 
 void EmptySendUiMessageToDiagnosticsProcessorCallback(
     mojo::ScopedHandle response_json_message) {}
@@ -95,22 +96,26 @@ class DiagnosticsdMojoServiceTest : public testing::Test {
                          const std::vector<std::string>& headers,
                          const std::string& request_body,
                          MojomDiagnosticsdWebRequestStatus expected_status,
-                         int expected_http_status,
-                         std::string expected_response_body) {
+                         int expected_http_status) {
+    base::RunLoop run_loop;
+    // According to the implementation of MockMojomDiagnosticsdClient
+    // response_body is equal to request_body.
     service_->PerformWebRequest(
         http_method, url, headers, request_body,
         base::Bind(
-            [](MojomDiagnosticsdWebRequestStatus expected_status,
+            [](const base::Closure& quit_closure,
+               MojomDiagnosticsdWebRequestStatus expected_status,
                int expected_http_status, std::string expected_response_body,
                MojomDiagnosticsdWebRequestStatus status, int http_status,
-               const base::Optional<std::string>& response_body) {
+               base::StringPiece response_body) {
               EXPECT_EQ(expected_status, status);
               EXPECT_EQ(expected_http_status, http_status);
-              EXPECT_TRUE(response_body.has_value());
-              EXPECT_EQ(expected_response_body, *response_body);
+              EXPECT_EQ(expected_response_body, response_body);
+              quit_closure.Run();
             },
-            expected_status, expected_http_status, expected_response_body));
-    base::RunLoop().RunUntilIdle();
+            run_loop.QuitClosure(), expected_status, expected_http_status,
+            request_body));
+    run_loop.Run();
   }
 
  private:
@@ -142,11 +147,11 @@ TEST_F(DiagnosticsdMojoServiceTest, PerformWebRequest) {
   EXPECT_CALL(
       *mojo_client(),
       PerformWebRequestImpl(MojomDiagnosticsdWebRequestHttpMethod::kGet,
-                            kHttpsUrl, std::vector<std::string>(), "", _));
-  ASSERT_NO_FATAL_FAILURE(PerformWebRequest(
-      MojomDiagnosticsdWebRequestHttpMethod::kGet, kHttpsUrl,
-      std::vector<std::string>(), "", MojomDiagnosticsdWebRequestStatus::kOk,
-      kHttpStatusOk, ""));
+                            kHttpsUrl, std::vector<std::string>(), kFakeBody));
+  ASSERT_NO_FATAL_FAILURE(
+      PerformWebRequest(MojomDiagnosticsdWebRequestHttpMethod::kGet, kHttpsUrl,
+                        std::vector<std::string>(), kFakeBody,
+                        MojomDiagnosticsdWebRequestStatus::kOk, kHttpStatusOk));
 }
 
 }  // namespace diagnostics

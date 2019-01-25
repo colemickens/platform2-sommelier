@@ -27,9 +27,8 @@ std::unique_ptr<base::SharedMemory> GetReadOnlySharedMemoryFromMojoHandle(
 // converts shared buffer handle into |mojo::ScopedHandle|.
 //
 // Allocated shared memory is read only for another process.
-// |content| must be non-empty string.
 //
-// Returns invalid |mojo::ScopedHandle| if error happened.
+// Returns invalid |mojo::ScopedHandle| if error happened or |content| is empty.
 mojo::ScopedHandle CreateReadOnlySharedMemoryMojoHandle(
     base::StringPiece content);
 

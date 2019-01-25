@@ -10,6 +10,7 @@
 
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
+#include <mojo/public/cpp/system/handle.h>
 
 namespace diagnostics {
 
@@ -32,6 +33,12 @@ class FakeMojoFdGenerator final {
 
   DISALLOW_COPY_AND_ASSIGN(FakeMojoFdGenerator);
 };
+
+// Gets a content of a passed mojo::Handle.
+// Makes an unnecessary copying of data, should be used only for testing.
+//
+// Returns an empty string if |handle| is not valid.
+std::string GetStringFromMojoHandle(mojo::ScopedHandle handle);
 
 }  // namespace diagnostics
 

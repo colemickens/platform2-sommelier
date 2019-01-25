@@ -12,6 +12,7 @@
 #include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/strings/string_piece.h>
 #include <gmock/gmock.h>
 #include <google/protobuf/repeated_field.h>
 #include <gtest/gtest.h>
@@ -208,11 +209,9 @@ class DiagnosticsdGrpcServiceTest : public testing::Test {
                                              string_headers, request_body, _))
           .WillOnce(WithArgs<4>(Invoke(
               [](const base::Callback<void(DelegateWebRequestStatus, int,
-                                           std::unique_ptr<std::string>)>&
-                     callback) {
-                callback.Run(
-                    DelegateWebRequestStatus::kOk, kHttpStatusOk,
-                    std::make_unique<std::string>(kFakeWebResponseBody));
+                                           base::StringPiece)>& callback) {
+                callback.Run(DelegateWebRequestStatus::kOk, kHttpStatusOk,
+                             kFakeWebResponseBody);
               })));
     }
     service()->PerformWebRequest(std::move(request),

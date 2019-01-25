@@ -5,6 +5,7 @@
 #include "diagnostics/diagnosticsd/diagnosticsd_grpc_service.h"
 
 #include <cstdint>
+#include <iterator>
 #include <utility>
 
 #include <base/bind.h>
@@ -19,10 +20,10 @@ namespace diagnostics {
 
 // The total size of "string" and "bytes" fields in one
 // PerformWebRequestParameter must not exceed 1MB.
-const int kMaxPerformWebRequestParameterSizeInBytes = 1024 * 1024;
+const int kMaxPerformWebRequestParameterSizeInBytes = 1000 * 1000;
 
 // The maximum number of header in PerformWebRequestParameter.
-const int kMaxNumberOfHeadersInPerformWebRequestParameter = 1024 * 1024;
+const int kMaxNumberOfHeadersInPerformWebRequestParameter = 1000 * 1000;
 
 namespace {
 
@@ -74,14 +75,13 @@ int64_t CalculateWebRequestParameterSize(
 void ForwardWebGrpcResponse(const PerformWebRequestResponseCallback& callback,
                             DelegateWebRequestStatus status,
                             int http_status,
-                            std::unique_ptr<std::string> response_body) {
+                            base::StringPiece response_body) {
   auto reply = std::make_unique<grpc_api::PerformWebRequestResponse>();
   switch (status) {
     case DelegateWebRequestStatus::kOk:
       reply->set_status(grpc_api::PerformWebRequestResponse::STATUS_OK);
       reply->set_http_status(http_status);
-      if (response_body)
-        reply->set_allocated_response_body(response_body.release());
+      reply->set_response_body(response_body.as_string());
       break;
     case DelegateWebRequestStatus::kNetworkError:
       reply->set_status(
@@ -90,8 +90,7 @@ void ForwardWebGrpcResponse(const PerformWebRequestResponseCallback& callback,
     case DelegateWebRequestStatus::kHttpError:
       reply->set_status(grpc_api::PerformWebRequestResponse::STATUS_HTTP_ERROR);
       reply->set_http_status(http_status);
-      if (response_body)
-        reply->set_allocated_response_body(response_body.release());
+      reply->set_response_body(response_body.as_string());
       break;
     case DelegateWebRequestStatus::kInternalError:
       reply->set_status(
@@ -380,8 +379,9 @@ void DiagnosticsdGrpcService::PerformWebRequest(
   }
   delegate_->PerformWebRequestToBrowser(
       delegate_http_method, parameter->url(),
-      std::vector<std::string>(parameter->headers().begin(),
-                               parameter->headers().end()),
+      std::vector<std::string>(
+          std::make_move_iterator(parameter->mutable_headers()->begin()),
+          std::make_move_iterator(parameter->mutable_headers()->end())),
       parameter->request_body(), base::Bind(&ForwardWebGrpcResponse, callback));
 }
 

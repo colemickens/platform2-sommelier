@@ -193,7 +193,7 @@ message PerformWebRequestResponse {
     STATUS_ERROR_MAX_SIZE_EXCEEDED = 4;
     // Failed to make the web request. This covers such cases when the network
     // is unavailable, or connection attempt failed, or TLS handshake failed,
-    // etc.
+    // or too many pending requests, etc.
     STATUS_NETWORK_ERROR = 5;
     // HTTP request finished with a non-2xx status.
     STATUS_HTTP_ERROR = 6;
@@ -209,8 +209,9 @@ message PerformWebRequestResponse {
   // HTTP status code. This field is set when |status| is |STATUS_OK| or
   // |STATUS_HTTP_ERROR|.
   int32 http_status = 2;
-  // Body of the HTTP response. The length does not exceed 1MB. This field is
-  // set when |status| is |STATUS_OK| or |STATUS_HTTP_ERROR|.
+  // Body of the HTTP response.
+  // The length does not exceed 1MB (1'000'000 bytes). This field is set when
+  // |status| is |STATUS_OK| or |STATUS_HTTP_ERROR|.
   bytes response_body = 3;
 }
 

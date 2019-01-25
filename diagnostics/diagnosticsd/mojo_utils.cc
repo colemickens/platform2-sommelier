@@ -39,7 +39,8 @@ std::unique_ptr<base::SharedMemory> GetReadOnlySharedMemoryFromMojoHandle(
 
 mojo::ScopedHandle CreateReadOnlySharedMemoryMojoHandle(
     base::StringPiece content) {
-  DCHECK(!content.empty());
+  if (content.empty())
+    return mojo::ScopedHandle();
   base::SharedMemory shared_memory;
   base::SharedMemoryCreateOptions options;
   options.size = content.length();

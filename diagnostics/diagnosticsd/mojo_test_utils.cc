@@ -11,9 +11,12 @@
 #include <unistd.h>
 #include <cstdint>
 #include <cstring>
+#include <utility>
 
 #include <base/logging.h>
+#include <base/memory/shared_memory.h>
 #include <base/posix/eintr_wrapper.h>
+#include <diagnostics/diagnosticsd/mojo_utils.h>
 
 namespace diagnostics {
 
@@ -75,6 +78,15 @@ bool FakeMojoFdGenerator::IsDuplicateFd(int another_fd) const {
     return false;
   }
   return own_device_id == another_device_id && own_inode == another_inode;
+}
+
+std::string GetStringFromMojoHandle(mojo::ScopedHandle handle) {
+  if (!handle.is_valid())
+    return "";
+  auto shared_memory = GetReadOnlySharedMemoryFromMojoHandle(std::move(handle));
+  DCHECK(shared_memory);
+  return std::string(static_cast<const char*>(shared_memory->memory()),
+                     shared_memory->mapped_size());
 }
 
 }  // namespace diagnostics

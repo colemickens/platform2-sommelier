@@ -241,7 +241,7 @@ void DiagnosticsdCore::PerformWebRequestToBrowser(
     LOG(WARNING) << "PerformWebRequestToBrowser happens before Mojo connection "
                  << "is established.";
     callback.Run(WebRequestStatus::kInternalError, 0 /* http_status */,
-                 nullptr /* response_body */);
+                 "" /* response_body */);
     return;
   }
 
@@ -251,12 +251,9 @@ void DiagnosticsdCore::PerformWebRequestToBrowser(
       base::Bind(
           [](const PerformWebRequestToBrowserCallback& callback,
              MojomDiagnosticsdWebRequestStatus status, int http_status,
-             const base::Optional<std::string>& response_body) {
-            std::unique_ptr<std::string> response_body_ptr;
-            if (response_body.has_value())
-              response_body_ptr = std::make_unique<std::string>(*response_body);
+             base::StringPiece response_body) {
             callback.Run(ConvertStatusFromMojom(status), http_status,
-                         std::move(response_body_ptr));
+                         response_body);
           },
           callback));
 }

@@ -353,6 +353,7 @@ if (use.test) {
       "diagnosticsd/fake_browser.cc",
       "diagnosticsd/fake_diagnostics_processor.cc",
       "diagnosticsd/file_test_utils.cc",
+      "diagnosticsd/mock_mojom_diagnosticsd_client.cc",
       "diagnosticsd/mojo_test_utils.cc",
       "diagnosticsd/mojo_utils_test.cc",
     ]

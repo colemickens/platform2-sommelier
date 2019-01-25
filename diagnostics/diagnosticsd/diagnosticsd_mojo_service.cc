@@ -34,6 +34,30 @@ void ForwardMojoJsonResponse(
   mojo_response_callback.Run(std::move(response_json_message_handle));
 }
 
+void ForwardMojoWebResponse(
+    const DiagnosticsdMojoService::MojomPerformWebRequestCallback& callback,
+    DiagnosticsdMojoService::MojomDiagnosticsdWebRequestStatus status,
+    int http_status,
+    mojo::ScopedHandle response_body_handle) {
+  if (!response_body_handle.is_valid()) {
+    callback.Run(status, http_status, base::StringPiece());
+    return;
+  }
+  auto shared_memory =
+      GetReadOnlySharedMemoryFromMojoHandle(std::move(response_body_handle));
+  if (!shared_memory) {
+    LOG(ERROR) << "Failed to read data from mojo handle";
+    callback.Run(DiagnosticsdMojoService::MojomDiagnosticsdWebRequestStatus::
+                     kNetworkError,
+                 0, base::StringPiece());
+    return;
+  }
+  callback.Run(
+      status, http_status,
+      base::StringPiece(static_cast<const char*>(shared_memory->memory()),
+                        shared_memory->mapped_size()));
+}
+
 }  // namespace
 
 DiagnosticsdMojoService::DiagnosticsdMojoService(
@@ -82,8 +106,18 @@ void DiagnosticsdMojoService::PerformWebRequest(
     const std::string& request_body,
     const MojomPerformWebRequestCallback& callback) {
   DCHECK(client_ptr_);
-  client_ptr_->PerformWebRequest(http_method, url, headers, request_body,
-                                 callback);
+  mojo::ScopedHandle url_handle = CreateReadOnlySharedMemoryMojoHandle(url);
+  std::vector<mojo::ScopedHandle> header_handles;
+  for (const auto& header : headers) {
+    header_handles.push_back(CreateReadOnlySharedMemoryMojoHandle(header));
+  }
+  mojo::ScopedHandle request_body_handle =
+      CreateReadOnlySharedMemoryMojoHandle(request_body);
+
+  client_ptr_->PerformWebRequest(http_method, std::move(url_handle),
+                                 std::move(header_handles),
+                                 std::move(request_body_handle),
+                                 base::Bind(&ForwardMojoWebResponse, callback));
 }
 
 }  // namespace diagnostics

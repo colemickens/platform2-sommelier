@@ -12,6 +12,7 @@
 
 #include <base/callback.h>
 #include <base/files/file_path.h>
+#include <base/strings/string_piece.h>
 #include <base/macros.h>
 #include <google/protobuf/repeated_field.h>
 
@@ -51,7 +52,7 @@ class DiagnosticsdGrpcService final {
     using PerformWebRequestToBrowserCallback =
         base::Callback<void(WebRequestStatus status,
                             int http_status,
-                            std::unique_ptr<std::string> response_body)>;
+                            base::StringPiece response_body)>;
 
     virtual ~Delegate() = default;
 
