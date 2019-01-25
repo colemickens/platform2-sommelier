@@ -576,11 +576,12 @@ void Service::HandleChildExit() {
     }
 
     if (WIFEXITED(status)) {
-      LOG(INFO) << " Process " << pid << " exited with status "
-                << WEXITSTATUS(status);
+      if (WEXITSTATUS(status) != 0) {
+        LOG(INFO) << "Process " << pid << " exited with status "
+                  << WEXITSTATUS(status);
+      }
     } else if (WIFSIGNALED(status)) {
-      LOG(INFO) << " Process " << pid << " killed by signal "
-                << WTERMSIG(status)
+      LOG(INFO) << "Process " << pid << " killed by signal " << WTERMSIG(status)
                 << (WCOREDUMP(status) ? " (core dumped)" : "");
     } else {
       LOG(WARNING) << "Unknown exit status " << status << " for process "
