@@ -1404,6 +1404,10 @@ int main(int argc, char **argv) {
         && serialized.has_tpm_key()) {
       printf("    TPM_WRAPPED\n");
     }
+    if ((serialized.flags() & cryptohome::SerializedVaultKeyset::PCR_BOUND)
+        && serialized.has_tpm_key() && serialized.has_extended_tpm_key()) {
+      printf("    PCR_BOUND\n");
+    }
     if (serialized.flags()
         & cryptohome::SerializedVaultKeyset::SCRYPT_WRAPPED) {
       printf("    SCRYPT_WRAPPED\n");
@@ -1422,6 +1426,14 @@ int main(int argc, char **argv) {
       serialized.tpm_key().copy(blob.char_data(),
                                 serialized.tpm_key().length(), 0);
       printf("  TPM-Bound (Encrypted) Vault Encryption Key:\n");
+      printf("    %s\n", cryptohome::CryptoLib::BlobToHex(blob).c_str());
+    }
+    if (serialized.has_extended_tpm_key()) {
+      blob.resize(serialized.extended_tpm_key().length());
+      serialized.extended_tpm_key().copy(blob.char_data(),
+                                        serialized.extended_tpm_key().length(),
+                                        0);
+      printf("  TPM-Bound (Encrypted) Vault Encryption Key, PCR extended:\n");
       printf("    %s\n", cryptohome::CryptoLib::BlobToHex(blob).c_str());
     }
     if (serialized.has_tpm_public_key_hash()) {

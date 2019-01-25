@@ -41,7 +41,8 @@ class MockVaultKeyset : public VaultKeyset {
   MOCK_CONST_METHOD0(FNEK_SALT, const brillo::SecureBlob&(void));
 
   MOCK_METHOD1(Load, bool(const base::FilePath&));
-  MOCK_METHOD2(Decrypt, bool(const brillo::SecureBlob&, Crypto::CryptoError*));
+  MOCK_METHOD3(Decrypt, bool(const brillo::SecureBlob&, bool,
+                             Crypto::CryptoError*));
   MOCK_METHOD1(Save, bool(const base::FilePath&));
   MOCK_METHOD2(Encrypt, bool(const brillo::SecureBlob&, const std::string&));
   MOCK_CONST_METHOD0(serialized, const SerializedVaultKeyset&(void));

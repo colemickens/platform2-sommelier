@@ -12,6 +12,7 @@
 
 #include <stdint.h>
 
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -67,10 +68,13 @@ class Crypto {
   //   encrypted_keyset - The blob containing the encrypted keyset
   //   vault_key - The passkey used to decrypt the keyset
   //   crypt_flags (OUT) - Whether the keyset was wrapped by the TPM or scrypt
+  //   is_pcr_extended - Whether the device has transitioned into user-specific
+  //                     modality by extending PCR4 with a user-specific value.
   //   error (OUT) - The specific error code on failure
   //   vault_keyset (OUT) - The decrypted vault keyset on success
   virtual bool DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
                                   const brillo::SecureBlob& vault_key,
+                                  bool is_pcr_extended,
                                   unsigned int* crypt_flags, CryptoError* error,
                                   VaultKeyset* vault_keyset) const;
 
@@ -249,17 +253,16 @@ class Crypto {
   CryptoError TpmErrorToCrypto(Tpm::TpmRetryAction retry_action) const;
 
   bool GenerateEncryptedRawKeyset(const VaultKeyset& vault_keyset,
-                                  const brillo::SecureBlob& kdf_skey,
-                                  const brillo::SecureBlob& vkk_seed,
+                                  const brillo::SecureBlob& vkk_key,
                                   const brillo::SecureBlob& fek_iv,
                                   const brillo::SecureBlob& chaps_iv,
                                   brillo::SecureBlob* cipher_text,
-                                  brillo::SecureBlob* wrapped_chaps_key,
-                                  brillo::SecureBlob* vkk_key) const;
+                                  brillo::SecureBlob* wrapped_chaps_key) const;
 
   bool EncryptTPM(const VaultKeyset& vault_keyset,
                   const brillo::SecureBlob& key,
                   const brillo::SecureBlob& salt,
+                  const std::string& obfuscated_username,
                   SerializedVaultKeyset* serialized) const;
 
   // Encrypt a provided blob using Scrypt encryption.
@@ -287,6 +290,7 @@ class Crypto {
 
   bool DecryptTPM(const SerializedVaultKeyset& serialized,
                   const brillo::SecureBlob& key,
+                  bool is_pcr_extended,
                   CryptoError* error,
                   VaultKeyset* vault_keyset) const;
 
@@ -328,6 +332,37 @@ class Crypto {
   // represents the bitmask of used PCR indexes and the expected digest.
   bool GetValidPCRValues(const std::string& obfuscated_username,
                          ValidPcrCriteria* valid_pcr_criteria) const;
+
+  // Returns the map with expected PCR values for the user.
+  std::map<uint32_t, std::string> GetPcrMap(
+      const std::string& obfuscated_username,
+      bool use_extended_pcr) const;
+
+  // Returns the tpm_key data taken from |serialized|, specifically if the
+  // keyset is PCR_BOUND and |is_pcr_extended| the data is taken from
+  // extended_tpm_key. Otherwise the data from tpm_key is used.
+  brillo::SecureBlob GetTpmKeyFromSerialized(
+      const SerializedVaultKeyset& serialized,
+      bool is_pcr_extended) const;
+
+  // Decrypt the |vault_key| that is not bound to PCR, returning the |vkk_iv|
+  // and |vkk_key|.
+  bool DecryptTpmNotBoundToPcr(const SerializedVaultKeyset& serialized,
+                               const brillo::SecureBlob& vault_key,
+                               const brillo::SecureBlob& tpm_key,
+                               const brillo::SecureBlob& salt,
+                               CryptoError* error,
+                               brillo::SecureBlob* vkk_iv,
+                               brillo::SecureBlob* vkk_key) const;
+
+  // Decrypt the |vault_key| that is bound to PCR, returning the |vkk_iv|
+  // and |vkk_key|.
+  bool DecryptTpmBoundToPcr(const brillo::SecureBlob& vault_key,
+                            const brillo::SecureBlob& tpm_key,
+                            const brillo::SecureBlob& salt,
+                            CryptoError* error,
+                            brillo::SecureBlob* vkk_iv,
+                            brillo::SecureBlob* vkk_key) const;
 
   // If set, the TPM will be used during the encryption of the vault keyset
   bool use_tpm_;

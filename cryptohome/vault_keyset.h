@@ -50,7 +50,7 @@ class VaultKeyset {
 
   virtual bool Load(const base::FilePath& filename);
   // Load must be called first. |crypto_error| may be null.
-  virtual bool Decrypt(const brillo::SecureBlob& key,
+  virtual bool Decrypt(const brillo::SecureBlob& key, bool is_pcr_extended,
                        Crypto::CryptoError* crypto_error);
   // Encrypt must be called first.
   virtual bool Save(const base::FilePath& filename);

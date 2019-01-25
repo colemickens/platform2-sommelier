@@ -234,6 +234,7 @@ bool VaultKeyset::Load(const FilePath& filename) {
 }
 
 bool VaultKeyset::Decrypt(const SecureBlob& key,
+                          bool is_pcr_extended,
                           Crypto::CryptoError* crypto_error) {
   CHECK(crypto_);
 
@@ -246,11 +247,11 @@ bool VaultKeyset::Decrypt(const SecureBlob& key,
   }
 
   Crypto::CryptoError local_crypto_error = Crypto::CE_NONE;
-  bool ok = crypto_->DecryptVaultKeyset(serialized_, key, nullptr,
-                                        &local_crypto_error, this);
+  bool ok = crypto_->DecryptVaultKeyset(serialized_, key, is_pcr_extended,
+                                        nullptr, &local_crypto_error, this);
   if (!ok && local_crypto_error == Crypto::CE_TPM_COMM_ERROR) {
-    ok = crypto_->DecryptVaultKeyset(serialized_, key, nullptr,
-                                     &local_crypto_error, this);
+    ok = crypto_->DecryptVaultKeyset(serialized_, key, is_pcr_extended,
+                                     nullptr, &local_crypto_error, this);
   }
 
   if (!ok && IsLECredential() &&

@@ -220,8 +220,10 @@ TEST_F(CryptoTest, DecryptionTest) {
   new_keyset.Initialize(&platform_, &crypto);
   unsigned int crypt_flags = 0;
   Crypto::CryptoError crypto_error = Crypto::CE_NONE;
-  ASSERT_TRUE(crypto.DecryptVaultKeyset(serialized, key, &crypt_flags,
-                                        &crypto_error, &new_keyset));
+  ASSERT_TRUE(crypto.DecryptVaultKeyset(serialized, key,
+                                        false /* is_pcr_extended */,
+                                        &crypt_flags, &crypto_error,
+                                        &new_keyset));
 
   SecureBlob original_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
@@ -302,8 +304,10 @@ TEST_F(CryptoTest, TpmStepTest) {
   crypto.set_tpm(&tpm);
   crypto.set_use_tpm(true);
 
-  EXPECT_CALL(tpm, EncryptBlob(_, _, _, _));
-  EXPECT_CALL(tpm, DecryptBlob(_, _, _, _, _));
+  SecureBlob vkk_key;
+  EXPECT_CALL(tpm, SealToPcrWithAuthorization(_, _, _, _, _))
+      .Times(2)  // Once for each valid PCR state.
+      .WillRepeatedly(DoAll(SaveArg<1>(&vkk_key), Return(Tpm::kTpmRetryNone)));
   EXPECT_CALL(tpm_init, HasCryptohomeKey())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
@@ -341,12 +345,18 @@ TEST_F(CryptoTest, TpmStepTest) {
   unsigned int crypt_flags = 0;
   Crypto::CryptoError crypto_error = Crypto::CE_NONE;
 
-  // Successful DecryptValutKeyset for tpm-backed keyset should
+  EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<4>(vkk_key),
+                      Return(Tpm::kTpmRetryNone)));
+
+  // Successful DecryptVaultKeyset for tpm-backed keyset should
   // lead to a call to DeclareTpmFirmwareStable().
   EXPECT_CALL(tpm, DeclareTpmFirmwareStable());
 
-  ASSERT_TRUE(crypto.DecryptVaultKeyset(serialized, key, &crypt_flags,
-                                        &crypto_error, &new_keyset));
+  ASSERT_TRUE(crypto.DecryptVaultKeyset(serialized, key,
+                                        false /* is_pcr_extended */,
+                                        &crypt_flags, &crypto_error,
+                                        &new_keyset));
 
   SecureBlob original_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
@@ -363,6 +373,8 @@ TEST_F(CryptoTest, TpmStepTest) {
             (crypt_flags & SerializedVaultKeyset::TPM_WRAPPED));
   EXPECT_EQ(SerializedVaultKeyset::SCRYPT_DERIVED,
             (crypt_flags & SerializedVaultKeyset::SCRYPT_DERIVED));
+  EXPECT_EQ(SerializedVaultKeyset::PCR_BOUND,
+            (crypt_flags & SerializedVaultKeyset::PCR_BOUND));
 }
 
 TEST_F(CryptoTest, TpmDecryptFailureTest) {
@@ -375,7 +387,7 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
   crypto.set_tpm(&tpm);
   crypto.set_use_tpm(true);
 
-  EXPECT_CALL(tpm, EncryptBlob(_, _, _, _));
+  EXPECT_CALL(tpm, SealToPcrWithAuthorization(_, _, _, _, _)).Times(2);
   EXPECT_CALL(tpm_init, HasCryptohomeKey())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
@@ -412,8 +424,8 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
   unsigned int crypt_flags = 0;
   Crypto::CryptoError crypto_error = Crypto::CE_NONE;
 
-  // DecryptBlob operation will fail.
-  EXPECT_CALL(tpm, DecryptBlob(_, _, _, _, _))
+  // UnsealWithAuthorization operation will fail.
+  EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, _, _, _))
       .WillOnce(Return(Tpm::kTpmRetryFatal));
 
   // Unsuccessful DecryptValutKeyset for tpm-backed keyset should not
@@ -421,8 +433,10 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
   EXPECT_CALL(tpm, DeclareTpmFirmwareStable())
       .Times(0);
 
-  ASSERT_FALSE(crypto.DecryptVaultKeyset(serialized, key, &crypt_flags,
-                                         &crypto_error, &new_keyset));
+  ASSERT_FALSE(crypto.DecryptVaultKeyset(serialized, key,
+                                         false /* is_pcr_extended */,
+                                         &crypt_flags, &crypto_error,
+                                         &new_keyset));
   ASSERT_NE(Crypto::CE_NONE, crypto_error);
 }
 
@@ -456,8 +470,10 @@ TEST_F(CryptoTest, ScryptStepTest) {
   new_keyset.Initialize(&platform, &crypto);
   unsigned int crypt_flags = 0;
   Crypto::CryptoError crypto_error = Crypto::CE_NONE;
-  ASSERT_TRUE(crypto.DecryptVaultKeyset(serialized, key, &crypt_flags,
-                                        &crypto_error, &new_keyset));
+  ASSERT_TRUE(crypto.DecryptVaultKeyset(serialized, key,
+                                        false /* is_pcr_extended */,
+                                        &crypt_flags, &crypto_error,
+                                        &new_keyset));
 
   SecureBlob original_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
@@ -479,8 +495,10 @@ TEST_F(CryptoTest, TpmScryptStepTest) {
   crypto.set_tpm(&tpm);
   crypto.set_use_tpm(true);
 
-  EXPECT_CALL(tpm, EncryptBlob(_, _, _, _));
-  EXPECT_CALL(tpm, DecryptBlob(_, _, _, _, _));
+  SecureBlob vkk_key;
+  EXPECT_CALL(tpm, SealToPcrWithAuthorization(_, _, _, _, _))
+      .Times(2)  // Once for each valid PCR state.
+      .WillRepeatedly(DoAll(SaveArg<1>(&vkk_key), Return(Tpm::kTpmRetryNone)));
   SecureBlob blob("public key hash");
   EXPECT_CALL(tpm, GetPublicKeyHash(_, _))
       .Times(2)  // Once on Encrypt and once on Decrypt of Vault.
@@ -517,8 +535,14 @@ TEST_F(CryptoTest, TpmScryptStepTest) {
   // lead to a call to DeclareTpmFirmwareStable().
   EXPECT_CALL(tpm, DeclareTpmFirmwareStable());
 
-  ASSERT_TRUE(crypto.DecryptVaultKeyset(serialized, key, &crypt_flags,
-                                        &crypto_error, &new_keyset));
+  EXPECT_CALL(tpm, UnsealWithAuthorization(_, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<4>(vkk_key),
+                      Return(Tpm::kTpmRetryNone)));
+
+  ASSERT_TRUE(crypto.DecryptVaultKeyset(serialized, key,
+                                        false /* is_pcr_extended */,
+                                        &crypt_flags, &crypto_error,
+                                        &new_keyset));
 
   SecureBlob original_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
@@ -534,6 +558,8 @@ TEST_F(CryptoTest, TpmScryptStepTest) {
             (crypt_flags & SerializedVaultKeyset::TPM_WRAPPED));
   EXPECT_EQ(SerializedVaultKeyset::SCRYPT_DERIVED,
             (crypt_flags & SerializedVaultKeyset::SCRYPT_DERIVED));
+  EXPECT_EQ(SerializedVaultKeyset::PCR_BOUND,
+            (crypt_flags & SerializedVaultKeyset::PCR_BOUND));
 }
 
 TEST_F(CryptoTest, GetSha1FipsTest) {

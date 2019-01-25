@@ -21,6 +21,11 @@ message SerializedVaultKeyset {
     // |signature_challenge_info.public_key_spki_der|. The process of obtaining
     // the KDF passphrase involves signature challenges against this key.
     SIGNATURE_CHALLENGE_PROTECTED = 16;
+    // The keyset is valid only for two possible states of PCR. If this flag is
+    // set, the tpm_key corresponds to the default PCR state while
+    // extended_tpm_key corresponds to the state where PCR is extended by user
+    // specific value.
+    PCR_BOUND = 32;
   }
   required int32 flags = 1;
   required bytes salt = 2;
@@ -119,4 +124,8 @@ message SerializedVaultKeyset {
 
   // Set only when the |SIGNATURE_CHALLENGE_PROTECTED| flag is present.
   optional SignatureChallengeInfo signature_challenge_info = 17;
+
+  // Set if the keyset has PCR_BOUND flag. Represents the encrypted vkk_key for
+  // the case when PCR is extended with user specific value.
+  optional bytes extended_tpm_key = 18;
 }

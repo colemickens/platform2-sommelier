@@ -370,7 +370,10 @@ bool HomeDirs::GetValidKeyset(const Credentials& creds,
     if (creds.key_data().label().empty() &&
         (vk->serialized().flags() & SerializedVaultKeyset::LE_CREDENTIAL))
       continue;
-    if (vk->Decrypt(passkey, &last_crypto_error)) {
+    // Decrypt assuming the PCR is not extended.
+    // TODO(igorcov): When the possibility to extend PCR is implemented, this
+    // needs to be replaced by a flag that will probably come from Chrome.
+    if (vk->Decrypt(passkey, false /* is_pcr_extended */, &last_crypto_error)) {
       if (key_index)
         *key_index = index;
       return true;

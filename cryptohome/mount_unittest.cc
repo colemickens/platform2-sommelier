@@ -117,10 +117,9 @@ ACTION_P(SetEphemeralUsersEnabled, ephemeral_users_enabled) {
 }
 
 // Straight pass through.
-Tpm::TpmRetryAction TpmPassthroughEncrypt(uint32_t _key,
-                                          const SecureBlob &plaintext,
-                                          Unused,
-                                          SecureBlob *ciphertext) {
+Tpm::TpmRetryAction TpmPassthroughSealWithAuthorization(
+    uint32_t _key, const SecureBlob &plaintext, Unused, Unused,
+    SecureBlob *ciphertext) {
   ciphertext->resize(plaintext.size());
   memcpy(ciphertext->data(), plaintext.data(), plaintext.size());
   return Tpm::kTpmRetryNone;
@@ -1149,8 +1148,8 @@ TEST_P(MountTest, GoodReDecryptTest) {
     .WillOnce(Return(true));
 
   // Create the "TPM-wrapped" value by letting it save the plaintext.
-  EXPECT_CALL(tpm_, EncryptBlob(_, _, _, _))
-    .WillRepeatedly(Invoke(TpmPassthroughEncrypt));
+  EXPECT_CALL(tpm_, SealToPcrWithAuthorization(_, _, _, _, _))
+    .WillRepeatedly(Invoke(TpmPassthroughSealWithAuthorization));
   brillo::SecureBlob fake_pub_key("A");
   EXPECT_CALL(tpm_, GetPublicKeyHash(_, _))
     .WillRepeatedly(DoAll(SetArgPointee<1>(fake_pub_key),
@@ -1191,7 +1190,7 @@ TEST_P(MountTest, GoodReDecryptTest) {
   EXPECT_CALL(platform_, ReadFile(user->salt_path, _))
     .WillRepeatedly(DoAll(SetArgPointee<1>(user->user_salt),
                           Return(true)));
-  EXPECT_CALL(tpm_, DecryptBlob(_, _, _, _, _))
+  EXPECT_CALL(tpm_, UnsealWithAuthorization(_, _, _, _, _))
     .WillRepeatedly(Invoke(TpmPassthroughDecrypt));
 
     MockFileEnumerator* files = new MockFileEnumerator();
@@ -1672,8 +1671,6 @@ TEST_P(MountTest, TwoWayKeysetMigrationTest) {
   EXPECT_CALL(tpm_, GetPublicKeyHash(_, _))
     .WillRepeatedly(DoAll(SetArgPointee<1>(fake_pub_key),
                           Return(Tpm::kTpmRetryNone)));
-  EXPECT_CALL(tpm_, EncryptBlob(_, _, _, _))
-    .WillRepeatedly(Invoke(TpmPassthroughEncrypt));
   EXPECT_CALL(tpm_, DecryptBlob(_, _, _, _, _))
     .WillRepeatedly(Invoke(TpmPassthroughDecrypt));
 
@@ -1806,8 +1803,6 @@ TEST_P(MountTest, BothFlagsMigrationTest) {
   EXPECT_CALL(tpm_, GetPublicKeyHash(_, _))
     .WillRepeatedly(DoAll(SetArgPointee<1>(fake_pub_key),
                           Return(Tpm::kTpmRetryNone)));
-  EXPECT_CALL(tpm_, EncryptBlob(_, _, _, _))
-    .WillRepeatedly(Invoke(TpmPassthroughEncrypt));
   EXPECT_CALL(tpm_, DecryptBlob(_, _, _, _, _))
     .WillRepeatedly(Invoke(TpmPassthroughDecrypt));
 
