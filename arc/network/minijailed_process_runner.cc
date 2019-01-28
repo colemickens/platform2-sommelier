@@ -50,6 +50,12 @@ int RunSyncDestroy(const std::vector<std::string>& argv,
   return ran && WIFEXITED(status) ? WEXITSTATUS(status) : -1;
 }
 
+int RunSync(const std::vector<std::string>& argv,
+            brillo::Minijail* mj,
+            bool log_failures) {
+  return RunSyncDestroy(argv, mj, mj->New(), log_failures);
+}
+
 }  // namespace
 
 MinijailedProcessRunner::MinijailedProcessRunner(brillo::Minijail* mj) {
@@ -67,19 +73,24 @@ int MinijailedProcessRunner::Run(const std::vector<std::string>& argv,
 int MinijailedProcessRunner::AddInterfaceToContainer(
     const std::string& host_ifname,
     const std::string& con_ifname,
+    const std::string& con_ipv4,
+    const std::string& con_nmask,
     const std::string& con_pid) {
-  minijail* jail = mj_->New();
-  return RunSyncDestroy({kNsEnterPath, "-t", con_pid, "-n", "--", kIpPath,
-                         "link", "set", host_ifname, "name", con_ifname},
-                        mj_, jail, true);
+  int rc = RunSync({kNsEnterPath, "-t", con_pid, "-n", "--", kIpPath, "link",
+                    "set", host_ifname, "name", con_ifname},
+                   mj_, true);
+  return (rc != 0)
+             ? rc
+             : RunSync({kNsEnterPath, "-t", con_pid, "-n", "--", kIfConfigPath,
+                        con_ifname, con_ipv4, "netmask", con_nmask},
+                       mj_, true);
 }
 
 int MinijailedProcessRunner::WriteSentinelToContainer(
     const std::string& con_pid) {
-  minijail* jail = mj_->New();
-  return RunSyncDestroy({kNsEnterPath, "-t", con_pid, "--mount", "--pid", "--",
-                         kTouchPath, kSentinelFile},
-                        mj_, jail, true);
+  return RunSync({kNsEnterPath, "-t", con_pid, "--mount", "--pid", "--",
+                  kTouchPath, kSentinelFile},
+                 mj_, true);
 }
 
 }  // namespace arc_networkd

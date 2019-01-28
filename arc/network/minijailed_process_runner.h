@@ -34,9 +34,12 @@ class MinijailedProcessRunner {
                   bool log_failures = true);
 
   // Moves interface |host_ifname| into the container designated by |con_pid|
-  // as interfaec |con_ifname|.
+  // as interface |con_ifname| and assigns it's |con_ipv4_addr|. This method
+  // does NOT bring up the interface.
   virtual int AddInterfaceToContainer(const std::string& host_ifname,
                                       const std::string& con_ifname,
+                                      const std::string& con_ipv4,
+                                      const std::string& con_nmask,
                                       const std::string& con_pid);
 
   // Writes out a file that the ARC boot process uses to discover when

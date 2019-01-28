@@ -29,9 +29,13 @@ class FakeProcessRunner : public MinijailedProcessRunner {
 
   int AddInterfaceToContainer(const std::string& host_ifname,
                               const std::string& con_ifname,
+                              const std::string& con_ipv4,
+                              const std::string& con_nmask,
                               const std::string& con_pid) override {
     add_host_ifname_ = host_ifname;
     add_con_ifname_ = con_ifname;
+    add_con_ipv4_ = con_ipv4;
+    add_con_nmask_ = con_nmask;
     add_con_pid_ = con_pid;
     return 0;
   }
@@ -61,9 +65,13 @@ class FakeProcessRunner : public MinijailedProcessRunner {
 
   void VerifyAddInterface(const std::string& host_ifname,
                           const std::string& con_ifname,
+                          const std::string& con_ipv4,
+                          const std::string& con_nmask,
                           const std::string& con_pid) {
     EXPECT_EQ(host_ifname, add_host_ifname_);
     EXPECT_EQ(con_ifname, add_con_ifname_);
+    EXPECT_EQ(con_ipv4, add_con_ipv4_);
+    EXPECT_EQ(con_nmask, add_con_nmask_);
     EXPECT_EQ(con_pid, add_con_pid_);
   }
 
@@ -77,6 +85,8 @@ class FakeProcessRunner : public MinijailedProcessRunner {
   std::vector<std::string> runs_vec_;
   std::string add_host_ifname_;
   std::string add_con_ifname_;
+  std::string add_con_ipv4_;
+  std::string add_con_nmask_;
   std::string add_con_pid_;
   std::string wr_con_pid_;
 
@@ -201,7 +211,8 @@ TEST_F(ArcIpConfigTest, VerifyInitCmds) {
       "/sbin/brctl addif br veth_foo",
       "/bin/ip link set peer_foo netns 12345",
   });
-  runner_->VerifyAddInterface("peer_foo", "arc", "12345");
+  runner_->VerifyAddInterface("peer_foo", "arc", "6.7.8.9", "255.255.255.252",
+                              "12345");
 }
 
 TEST_F(ArcIpConfigTest, VerifyInitCmdsForAndroidDevice) {
@@ -216,7 +227,8 @@ TEST_F(ArcIpConfigTest, VerifyInitCmdsForAndroidDevice) {
       "/sbin/brctl addif arcbr0 veth_android",
       "/bin/ip link set peer_android netns 12345",
   });
-  runner_->VerifyAddInterface("peer_android", "arc0", "12345");
+  runner_->VerifyAddInterface("peer_android", "arc0", "100.115.92.2",
+                              "255.255.255.252", "12345");
   runner_->VerifyWriteSentinel("12345");
 }
 
