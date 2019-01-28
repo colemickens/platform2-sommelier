@@ -72,11 +72,16 @@ std::vector<int32_t> GetJpegAvailableThumbnailSizes(
       continue;
     }
     // Note that we only support to generate thumbnails with (width % 8 == 0)
-    // and (height % 2 == 0) for now, so set width as multiple of 32 is good for
-    // the two common ratios 4:3 and 16:9. When width is 192, the thumbnail
-    // sizes would be 192x144 and 192x108 respectively.
+    // and (height % 2 == 0) for now, so set width as multiple of 48 is good for
+    // the common ratios 4:3, 16:9, and 3:2. When width is 192, the thumbnail
+    // sizes would be 192x144, 192x108, and 192x128 respectively.
     uint32_t thumbnail_width = 192;
     uint32_t thumbnail_height = round(thumbnail_width / aspect_ratio);
+
+    // It's still possible that some resolutions that make thumbnail_height odd,
+    // such as 11:9 (352x288). Ensure it's even by masking out LSB.
+    thumbnail_height &= ~1;
+
     sizes.push_back({thumbnail_width, thumbnail_height});
   }
 
@@ -93,8 +98,9 @@ std::vector<int32_t> GetJpegAvailableThumbnailSizes(
   auto max_format = GetMaximumFormat(supported_formats);
   double aspect_ratio =
       static_cast<double>(max_format.width) / max_format.height;
-  for (uint32_t thumbnail_width = 224; true; thumbnail_width += 32) {
+  for (uint32_t thumbnail_width = 240; true; thumbnail_width += 48) {
     uint32_t thumbnail_height = round(thumbnail_width / aspect_ratio);
+    thumbnail_height &= ~1;
     Size size(thumbnail_width, thumbnail_height);
     if (sizes.back() < size) {
       sizes.push_back(size);
