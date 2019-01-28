@@ -1053,7 +1053,7 @@ class StructureParser(object):
         'MAX_PCR_PROPERTIES', '(MAX_CAP_DATA/sizeof(TPMS_TAGGED_PCR_SELECT))'))
     defines.append(Define(
         'MAX_ECC_CURVES', '(MAX_CAP_DATA/sizeof(TPM_ECC_CURVE))'))
-    defines.append(Define('HASH_COUNT', '4'))
+    defines.append(Define('HASH_COUNT', '5'))
     return types, constants, structs, defines, typemap
 
   def _AddEmptyStruct(self, name, is_union, structs, typemap):

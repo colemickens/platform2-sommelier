@@ -381,7 +381,7 @@ class CommandTransceiver;
 #define MAX_ECC_CURVES (MAX_CAP_DATA / sizeof(trunks::TPM_ECC_CURVE))
 #endif
 #if !defined(HASH_COUNT)
-#define HASH_COUNT 4
+#define HASH_COUNT 5
 #endif
 
 typedef uint8_t UINT8;
