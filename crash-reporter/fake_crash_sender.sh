@@ -8,6 +8,11 @@
 
 set -e
 
+# Emulate a failure, if requested.
+if [ "$FAKE_CRASH_SENDER_SHOULD_FAIL" = "true" ]; then
+  exit 1
+fi
+
 # Print the command line parameters to the output file.
 echo "$1 $2" >> "$FAKE_CRASH_SENDER_OUTPUT"
 

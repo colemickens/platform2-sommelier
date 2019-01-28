@@ -159,6 +159,9 @@ bool GetSleepTime(const base::FilePath& meta_file,
 
 // A helper class for sending crashes. The behaviors can be customized with
 // Options class for unit testing.
+//
+// Crash reports will be sent even when the device is on a mobile data
+// connection (see crbug.com/185110 for discussion).
 class Sender {
  public:
   struct Options {

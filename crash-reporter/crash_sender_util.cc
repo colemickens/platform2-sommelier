@@ -522,6 +522,8 @@ bool Sender::SendCrashes(const base::FilePath& crash_dir) {
 
   bool success = true;
   for (const auto& meta_file : to_send) {
+    LOG(INFO) << "Evaluating crash report: " << meta_file.value();
+
     // This should be checked inside of the loop, since the device can enter
     // guest mode while sending crash reports with an interval up to
     // max_spread_time_ between sends.
@@ -549,8 +551,15 @@ bool Sender::SendCrashes(const base::FilePath& crash_dir) {
     if (!IsMock())
       sleep_function_.Run(sleep_time);
 
-    if (!RequestToSendCrash(meta_file))
+    if (!RequestToSendCrash(meta_file)) {
+      LOG(WARNING) << "Failed to send " << meta_file.value()
+                   << ", not removing; will retry later";
       success = false;
+      continue;
+    }
+    LOG(INFO) << "Successfully sent crash " << meta_file.value()
+              << " and removing.";
+    RemoveReportFiles(meta_file);
   }
   return success;
 }

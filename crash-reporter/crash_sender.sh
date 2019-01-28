@@ -482,29 +482,6 @@ remove_report() {
   rm -f -- "${base}".*
 }
 
-# Send or skip the crash report assosiated with the given meta file.
-# This applies even when we're on a 3G connection (see crosbug.com/3304 for
-# discussion).
-send_or_skip_crash() {
-  meta_path="$1"
-  dir="$(dirname "$meta_path")"
-
-  # For each crash report, first evaluate conditions that might lead to its
-  # removal to honor user choice and to free disk space as soon as possible,
-  # then decide whether it should be sent right now or kept for later sending.
-  lecho "Considering metadata ${meta_path}."
-
-  # Try to upload.
-  if ! send_crash "${meta_path}"; then
-    lecho "Problem sending ${meta_path}, not removing."
-    return 0
-  fi
-
-  # Send was successful, now remove.
-  lecho "Successfully sent crash ${meta_path} and removing."
-  remove_report "${meta_path}"
-}
-
 main () {
   if [ $# -ne 2 ]; then
     lecho "Wrong number of command line flags: $*"
@@ -512,7 +489,7 @@ main () {
   fi
   TMP_DIR="$1"
 
-  send_or_skip_crash $2
+  send_crash $2
 }
 
 main "$@"

@@ -866,6 +866,56 @@ TEST_F(CrashSenderUtilTest, Sender) {
   ASSERT_EQ(2, row.size());
   EXPECT_EQ(sender.temp_dir().value(), row[0]);
   EXPECT_EQ(user2_meta.value(), row[1]);
+
+  // The uploaded crash files should be removed now.
+  EXPECT_FALSE(base::PathExists(system_meta));
+  EXPECT_FALSE(base::PathExists(system_log));
+  EXPECT_FALSE(base::PathExists(user2_meta));
+  EXPECT_FALSE(base::PathExists(user2_log));
+
+  // The followings should be kept since the crash report was not uploaded.
+  EXPECT_TRUE(base::PathExists(user2_meta1));
+  EXPECT_TRUE(base::PathExists(user2_log1));
+}
+
+TEST_F(CrashSenderUtilTest, Sender_Fail) {
+  // Set up the mock sesssion manager client.
+  auto mock =
+      std::make_unique<org::chromium::SessionManagerInterfaceProxyMock>();
+  test_util::SetActiveSessions(mock.get(),
+                               {{"user1", "hash1"}, {"user2", "hash2"}});
+
+  // Create the system crash directory, and crash files in it.
+  const base::FilePath system_dir = paths::Get(paths::kSystemCrashDirectory);
+  ASSERT_TRUE(base::CreateDirectory(system_dir));
+  const base::FilePath system_meta = system_dir.Append("0.0.0.0.meta");
+  const base::FilePath system_log = system_dir.Append("0.0.0.0.log");
+  ASSERT_TRUE(test_util::CreateFile(system_meta,
+                                    "payload=0.0.0.0.log\n"
+                                    "done=1\n"));
+  ASSERT_TRUE(test_util::CreateFile(system_log, ""));
+
+  ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsEnabled));
+
+  // Set up the fake_crash_sender.sh so that it fails.
+  setenv("FAKE_CRASH_SENDER_SHOULD_FAIL", "true", 1 /* overwrite */);
+
+  // Set up the sender.
+  std::vector<base::TimeDelta> sleep_times;
+  Sender::Options options;
+  options.shell_script = base::FilePath("fake_crash_sender.sh");
+  options.proxy = mock.release();
+  options.max_crash_rate = 2;
+  options.sleep_function = base::Bind(&FakeSleep, &sleep_times);
+  Sender sender(std::move(metrics_lib_), options);
+  ASSERT_TRUE(sender.Init());
+
+  // Send crashes.
+  EXPECT_FALSE(sender.SendCrashes(system_dir));
+
+  // The followings should be kept since the crash report was not uploaded.
+  EXPECT_TRUE(base::PathExists(system_meta));
+  EXPECT_TRUE(base::PathExists(system_log));
 }
 
 }  // namespace util
