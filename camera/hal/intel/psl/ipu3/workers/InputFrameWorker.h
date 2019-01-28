@@ -34,6 +34,7 @@ public:
     status_t postRun();
 
 private:
+    void dumpRaw(const cros::V4L2Buffer &v4l2Buf, Camera3Request &request, int lastReqId);
     GraphConfig::PipeType mPipeType;
     int mLastRequestId;
 };

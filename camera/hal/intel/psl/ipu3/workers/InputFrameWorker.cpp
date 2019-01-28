@@ -60,6 +60,53 @@ status_t InputFrameWorker::configure(std::shared_ptr<GraphConfig>& config)
     return OK;
 }
 
+void InputFrameWorker::dumpRaw(const cros::V4L2Buffer &v4l2Buf, Camera3Request &request, int lastReqId)
+{
+    nsecs_t startTime = systemTime();
+    int jpegBufCnt = request.getBufferCountOfFormat(HAL_PIXEL_FORMAT_BLOB);
+    int dumpReqId = request.getId();
+    /* For STILL pipe, the raw buffer may be queued twice in ImguUnit::ImguPipe::processNextRequest.
+     * The lastRawNonScaledBuffer buffer is used for current request,
+     * and rawNonScaledBuffer buffer is used for next request. */
+    if (dumpReqId == lastReqId) dumpReqId = dumpReqId + 1;
+
+    bool dumpRawAll  = LogHelper::isDumpTypeEnable(CAMERA_DUMP_RAW);
+    bool dumpForJpeg = (LogHelper::isDumpTypeEnable(CAMERA_DUMP_RAW_FOR_JPEG) &&
+                       mPipeType == GraphConfig::PIPE_STILL &&
+                       jpegBufCnt > 0);
+    bool dumpForVideoPipe = (LogHelper::isDumpTypeEnable(CAMERA_DUMP_RAW_FOR_VIDEO_PIPE) &&
+                            mPipeType == GraphConfig::PIPE_VIDEO);
+    bool dumpForStillPipe = (LogHelper::isDumpTypeEnable(CAMERA_DUMP_RAW_FOR_STILL_PIPE) &&
+                            mPipeType == GraphConfig::PIPE_STILL);
+
+    if (!dumpRawAll && !dumpForJpeg && !dumpForVideoPipe && !dumpForStillPipe) {
+        return;
+    }
+
+    CheckError((v4l2Buf.Memory() != V4L2_MEMORY_DMABUF), VOID_VALUE,
+               "just support V4L2_MEMORY_DMABUF dump");
+
+    uint32_t size = v4l2Buf.Length(0);
+    int v4l2Buffd = v4l2Buf.Fd(0);
+    void* addr = mmap(nullptr, size, PROT_READ, MAP_SHARED, v4l2Buffd, 0);
+    CheckError((addr == MAP_FAILED), VOID_VALUE, "mmap fails");
+
+    std::string name;
+    if (mPipeType == GraphConfig::PIPE_STILL && jpegBufCnt > 0) {
+        name = "vector_raw_for_jpeg";
+    } else if (mPipeType == GraphConfig::PIPE_VIDEO) {
+        name = "vector_raw_for_video_pipe";
+    } else if (mPipeType == GraphConfig::PIPE_STILL) {
+        name = "vector_raw_for_still_pipe";
+    }
+
+    dumpToFile(addr, size, mFormat.Width(), mFormat.Height(), dumpReqId, name);
+
+    munmap(addr, size);
+    LOG2("dumping raw image to file takes %" PRId64 "ms for request Id %d",
+         (systemTime() - startTime) / 1000000, dumpReqId);
+}
+
 status_t InputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL2, LOG_TAG);
@@ -88,34 +135,12 @@ status_t InputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)
 
     status_t status = mNode->PutFrame(&mBuffers[index]);
 
-    int dumpReqId = request->getId();
-    /* For STILL pipe, the raw buffer may be queued twice in ImguUnit::ImguPipe::processNextRequest.
-     * The lastRawNonScaledBuffer buffer is used for current request,
-     * and rawNonScaledBuffer buffer is used for next request. */
-    if (dumpReqId == mLastRequestId) dumpReqId = dumpReqId + 1;
-
-    mLastRequestId = request->getId();
-
     request->setSeqenceId(rawV4L2Buf->Sequence());
     PERFORMANCE_HAL_ATRACE_PARAM1("seqId", rawV4L2Buf->Sequence());
 
-    if (LogHelper::isDumpTypeEnable(CAMERA_DUMP_RAW) &&
-        LogHelper::isDumpTypeEnable(CAMERA_DUMP_JPEG)) {
-        int jpegBufCnt = request->getBufferCountOfFormat(HAL_PIXEL_FORMAT_BLOB);
-        if (jpegBufCnt > 0 && mPipeType == GraphConfig::PIPE_STILL) {
-            cros::V4L2Buffer* v4l2Buf = &mBuffers[index];
-            if (v4l2Buf->Memory() == V4L2_MEMORY_DMABUF) {
-                uint32_t size = v4l2Buf->Length(0);
-                int fd = v4l2Buf->Fd(0);
-                void* addr = mmap(nullptr, size, PROT_READ, MAP_SHARED, fd, 0);
-                CheckError((addr == MAP_FAILED), BAD_VALUE, "@%s mmap fails", __func__);
-                dumpToFile(addr, size, mFormat.Width(), mFormat.Height(), dumpReqId, "vector_raw_for_jpeg");
-                munmap(addr, size);
-            } else {
-                LOGE("@%s, just support V4L2_MEMORY_DMABUF dump", __FUNCTION__);
-            }
-        }
-    }
+    dumpRaw(mBuffers[index], *request, mLastRequestId);
+
+    mLastRequestId = request->getId();
 
     return status;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2017 Intel Corporation
+ * Copyright (C) 2012-2019 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -93,23 +93,25 @@ enum  {
 // camera.hal.dump
 enum {
 // Dump image related flags
-    CAMERA_DUMP_PREVIEW =         1 << 0, // 1
-    CAMERA_DUMP_VIDEO =           1 << 1, // 2
-    CAMERA_DUMP_SNAPSHOT =        1 << 2, // 4
-    CAMERA_DUMP_JPEG =            1 << 3, // 8
-    CAMERA_DUMP_RAW =             1 << 4, // 16
-    CAMERA_DUMP_RAW_WITHOUT_MKN = (CAMERA_DUMP_RAW | (1 << 7)), // 128 + 16
+    CAMERA_DUMP_PREVIEW =               1 << 0, // 1
+    CAMERA_DUMP_VIDEO =                 1 << 1, // 2
+    CAMERA_DUMP_SNAPSHOT =              1 << 2, // 4
+    CAMERA_DUMP_JPEG =                  1 << 3, // 8
+    CAMERA_DUMP_RAW =                   1 << 4, // 16, dump all raw
+    CAMERA_DUMP_RAW_FOR_JPEG =          1 << 5, // 32, dump raw for if the request has jpeg
+    CAMERA_DUMP_RAW_FOR_VIDEO_PIPE =    1 << 6, // 64, dump raw for video pipe
+    CAMERA_DUMP_RAW_FOR_STILL_PIPE =    1 << 7, // 128, dump raw for still pipe
 
 // Dump parameter related flags
-    CAMERA_DUMP_ISP_PARAM =       1 << 5, // 32
-    CAMERA_DUMP_DVS2 =            1 << 6, // 64
-    CAMERA_DUMP_MEDIA_CTL =       1 << 8, // 256
+    CAMERA_DUMP_ISP_PARAM =       1 << 8,  // 512
+    CAMERA_DUMP_DVS2 =            1 << 9,  // 0x0400
+    CAMERA_DUMP_MEDIA_CTL =       1 << 10, // 0x0800
 
 // Dump for simulation
-    CAMERA_DUMP_MIPI =            1 << 9,  // 0x0200, MIPI data
-    CAMERA_DUMP_V420 =            1 << 10, // 0x0400, preGDC output
-    CAMERA_DUMP_PG =              1 << 11, // 0x0800, PG dump assisted by "libiacss"
-    CAMERA_DUMP_AIQ_STAT =        1 << 12, // 0x01000, rgbs_grid format stats for AIQ use
+    CAMERA_DUMP_MIPI =            1 << 11,  // 0x01000, MIPI data
+    CAMERA_DUMP_V420 =            1 << 12,  // 0x02000, preGDC output
+    CAMERA_DUMP_PG =              1 << 13,  // 0x04000, PG dump assisted by "libiacss"
+    CAMERA_DUMP_AIQ_STAT =        1 << 14,  // 0x08000, rgbs_grid format stats for AIQ use
 };
 
 // camera.hal.perf
