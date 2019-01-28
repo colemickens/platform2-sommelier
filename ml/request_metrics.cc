@@ -18,7 +18,7 @@ void RecordModelSpecificationErrorEvent() {
   MetricsLibrary().SendEnumToUMA(
       "MachineLearningService.LoadModelResult",
       static_cast<int>(LoadModelResult::MODEL_SPEC_ERROR),
-      static_cast<int>(LoadModelResult::kMax) + 1);
+      static_cast<int>(LoadModelResult::kMaxValue) + 1);
 }
 
 }  // namespace ml

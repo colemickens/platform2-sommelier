@@ -93,7 +93,7 @@ void RequestMetrics<RequestEventEnum>::RecordRequestEvent(
     RequestEventEnum event) {
   metrics_library_.SendEnumToUMA(name_base_ + kEventSuffix,
                                  static_cast<int>(event),
-                                 static_cast<int>(RequestEventEnum::kMax));
+                                 static_cast<int>(RequestEventEnum::kMaxValue));
   process_metrics_.reset(nullptr);
 }
 
