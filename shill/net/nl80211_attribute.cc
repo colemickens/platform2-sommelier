@@ -679,6 +679,12 @@ Nl80211AttributeMPathInfo::Nl80211AttributeMPathInfo()
       AttrDataPair(NL80211_MPATH_INFO_DISCOVERY_RETRIES,
                    NestedData(kTypeU8, "NL80211_MPATH_INFO_DISCOVERY_RETRIES",
                               false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_MPATH_INFO_HOP_COUNT,
+                   NestedData(kTypeU8, "NL80211_MPATH_INFO_HOP_COUNT", false)));
+  nested_template_.insert(AttrDataPair(
+      NL80211_MPATH_INFO_PATH_CHANGE,
+      NestedData(kTypeU32, "NL80211_MPATH_INFO_PATH_CHANGE", false)));
 }
 
 const int Nl80211AttributeStaInfo::kName = NL80211_ATTR_STA_INFO;
