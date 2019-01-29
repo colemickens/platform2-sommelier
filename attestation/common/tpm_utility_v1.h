@@ -17,7 +17,7 @@
 #ifndef ATTESTATION_COMMON_TPM_UTILITY_V1_H_
 #define ATTESTATION_COMMON_TPM_UTILITY_V1_H_
 
-#include "attestation/common/tpm_utility.h"
+#include "attestation/common/tpm_utility_common.h"
 
 #include <stdint.h>
 
@@ -30,7 +30,7 @@
 namespace attestation {
 
 // A TpmUtility implementation for TPM v1.2 modules.
-class TpmUtilityV1 : public TpmUtility {
+class TpmUtilityV1 : public TpmUtilityCommon {
  public:
   TpmUtilityV1() = default;
   ~TpmUtilityV1() override;
@@ -38,7 +38,6 @@ class TpmUtilityV1 : public TpmUtility {
   // TpmUtility methods.
   bool Initialize() override;
   TpmVersion GetVersion() override { return TPM_1_2; }
-  bool IsTpmReady() override;
   bool ActivateIdentity(const std::string& delegate_blob,
                         const std::string& delegate_secret,
                         const std::string& identity_key_blob,
@@ -138,7 +137,6 @@ class TpmUtilityV1 : public TpmUtility {
   bool GetRSAPublicKeyFromTpmPublicKey(const std::string& tpm_public_key_object,
                                        std::string* public_key_der);
 
-  bool is_ready_{false};
   trousers::ScopedTssContext context_handle_;
   TSS_HTPM tpm_handle_{0};
   trousers::ScopedTssKey srk_handle_{0};
