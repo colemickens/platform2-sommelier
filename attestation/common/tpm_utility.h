@@ -21,6 +21,7 @@
 
 #include <string>
 
+#include "attestation/common/database.pb.h"
 #include "attestation/common/interface.pb.h"
 
 namespace attestation {
@@ -120,16 +121,6 @@ class TpmUtility {
                     const std::string& data_to_sign,
                     std::string* signature) = 0;
 
-  // Creates a restricted key of |key_type| for |key_usage|.
-  // |public_key_der| is DER encoded which converted from TPM public key object.
-  // |public_key_tpm_format| is a serialized TPMT_PUBLIC.
-  // |private_key_blob| is an opaque blob which only the TPM is able to unwrap.
-  virtual bool CreateRestrictedKey(KeyType key_type,
-                                   KeyUsage key_usage,
-                                   std::string* public_key_der,
-                                   std::string* public_key_tpm_format,
-                                   std::string* private_key_blob) = 0;
-
   // Quotes a PCR specified by |pcr_index|. The |key_blob| must be a restricted
   // signing key. On success returns true and populates:
   //   |quoted_pcr_value| - The value of the register at the time it was quoted.
@@ -174,6 +165,11 @@ class TpmUtility {
   // |ekm|.
   virtual bool GetEndorsementPublicKeyModulus(KeyType key_type,
                                               std::string* ekm) = 0;
+
+  // Creates identity of |key_type| type and stores the output from TPM into
+  // |identity|.
+  virtual bool CreateIdentity(KeyType key_type,
+                              AttestationDatabase::Identity* identity) = 0;
 };
 
 }  // namespace attestation

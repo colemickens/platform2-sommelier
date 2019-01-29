@@ -73,9 +73,6 @@ class MockTpmUtility : public TpmUtility {
                bool(const std::string&, const std::string&, std::string*));
   MOCK_METHOD3(Sign,
                bool(const std::string&, const std::string&, std::string*));
-  MOCK_METHOD5(
-      CreateRestrictedKey,
-      bool(KeyType, KeyUsage, std::string*, std::string*, std::string*));
   MOCK_METHOD5(QuotePCR,
                bool(uint32_t,
                     const std::string&,
@@ -96,6 +93,7 @@ class MockTpmUtility : public TpmUtility {
   MOCK_METHOD2(GetRSAPublicKeyFromTpmPublicKey,
                bool(const std::string&, std::string*));
   MOCK_METHOD0(RemoveOwnerDependency, bool());
+  MOCK_METHOD2(CreateIdentity, bool(KeyType, AttestationDatabase::Identity*));
 };
 
 }  // namespace attestation

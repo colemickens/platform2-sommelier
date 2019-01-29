@@ -1108,4 +1108,19 @@ bool TpmUtilityV2::GetEndorsementPublicKeyModulus(
   return false;
 }
 
+bool TpmUtilityV2::CreateIdentity(KeyType key_type,
+                                  AttestationDatabase::Identity* identity) {
+  IdentityKey* key_pb = identity->mutable_identity_key();
+  IdentityBinding* binding_pb = identity->mutable_identity_binding();
+  if (!CreateRestrictedKey(key_type, KEY_USAGE_SIGN,
+                           key_pb->mutable_identity_public_key_der(),
+                           binding_pb->mutable_identity_public_key_tpm_format(),
+                           key_pb->mutable_identity_key_blob())) {
+    LOG(ERROR) << __func__ << ": Failed to create restricted key.";
+    return false;
+  }
+  binding_pb->set_identity_public_key_der(key_pb->identity_public_key_der());
+  return true;
+}
+
 }  // namespace attestation

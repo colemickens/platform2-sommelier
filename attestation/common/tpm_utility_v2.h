@@ -78,11 +78,6 @@ class TpmUtilityV2 : public TpmUtility {
   bool Sign(const std::string& key_blob,
             const std::string& data_to_sign,
             std::string* signature) override;
-  bool CreateRestrictedKey(KeyType key_type,
-                           KeyUsage key_usage,
-                           std::string* public_key_der,
-                           std::string* public_key_tpm_format,
-                           std::string* private_key_blob) override;
   bool QuotePCR(uint32_t pcr_index,
                 const std::string& key_blob,
                 std::string* quoted_pcr_value,
@@ -100,6 +95,23 @@ class TpmUtilityV2 : public TpmUtility {
   bool RemoveOwnerDependency() override;
   bool GetEndorsementPublicKeyModulus(KeyType key_type,
                                       std::string* ekm) override;
+
+  bool CreateIdentity(KeyType key_type,
+                      AttestationDatabase::Identity* identity) override;
+
+  // Creates a restricted key of |key_type| for |key_usage|.
+  // |public_key_der| is DER encoded which is converted from TPM public key
+  // object. |public_key_tpm_format| is a serialized TPMT_PUBLIC.
+  // |private_key_blob| is an opaque blob which only the TPM is able to unwrap.
+  // Note: Currently the function is still in the public field because of the
+  // legacy unittest code.
+  // TODO(cylai): redesign the interface of this class or move out to a common
+  // TPM2.0 utility.
+  bool CreateRestrictedKey(KeyType key_type,
+                           KeyUsage key_usage,
+                           std::string* public_key_der,
+                           std::string* public_key_tpm_format,
+                           std::string* private_key_blob);
 
  private:
   // Tpm_manager communication thread class that cleans up after stopping.

@@ -1719,51 +1719,39 @@ int AttestationService::CreateIdentity(int identity_features) {
   return CreateIdentity(identity_features, rsa_ek_public_key);
 }
 
-int AttestationService::CreateIdentity(int identity_features,
-                                       const std::string& rsa_ek_public_key) {
+int AttestationService::CreateIdentity(
+    int identity_features, const std::string& rsa_ek_public_key_der) {
   // The identity we're creating will have the next index in identities.
   auto* database_pb = database_->GetMutableProtobuf();
   const int identity = database_pb->identities().size();
   LOG(INFO) << "Attestation: Creating identity " << identity << " with "
             << GetIdentityFeaturesString(identity_features) << ".";
-  // Create an identity key.
-  std::string rsa_identity_public_key_tpm_format;
-  std::string rsa_identity_public_key_der;
-  std::string rsa_identity_key_blob;
-  if (!tpm_utility_->CreateRestrictedKey(
-          KEY_TYPE_RSA, KEY_USAGE_SIGN, &rsa_identity_public_key_der,
-          &rsa_identity_public_key_tpm_format, &rsa_identity_key_blob)) {
-    LOG(ERROR) << "Attestation: Failed to create RSA AIK.";
+  AttestationDatabase::Identity new_identity_pb;
+
+  new_identity_pb.set_features(identity_features);
+  if (identity_features & IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID) {
+    auto* identity_key = new_identity_pb.mutable_identity_key();
+    identity_key->set_enrollment_id(database_pb->enrollment_id());
+  }
+  if (!tpm_utility_->CreateIdentity(KEY_TYPE_RSA, &new_identity_pb)) {
+    LOG(ERROR) << __func__ << " failed to make a new identity.";
     return -1;
   }
-
-  AttestationDatabase::Identity* identity_data =
-      database_pb->mutable_identities()->Add();
-  identity_data->set_features(identity_features);
-
-  IdentityKey* key_pb = identity_data->mutable_identity_key();
-  key_pb->set_identity_public_key_der(rsa_identity_public_key_der);
-  key_pb->set_identity_key_blob(rsa_identity_key_blob);
-  if (identity_features & IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID) {
-    key_pb->set_enrollment_id(database_pb->enrollment_id());
-  }
-  IdentityBinding* binding_pb = identity_data->mutable_identity_binding();
-  binding_pb->set_identity_public_key_der(rsa_identity_public_key_der);
-  binding_pb->set_identity_public_key_tpm_format(
-      rsa_identity_public_key_tpm_format);
+  std::string identity_key_blob_for_quote =
+      new_identity_pb.identity_key().identity_key_blob();
 
   // Quote PCRs and store them in the identity. These quotes are intended to
   // be valid for the lifetime of the identity key so they do not need
   // external data. This only works when firmware ensures that these PCRs
   // will not change unless the TPM owner is cleared.
-  auto* pcr_quote_map = identity_data->mutable_pcr_quotes();
+  auto* pcr_quote_map = new_identity_pb.mutable_pcr_quotes();
 
   for (int pcr = 0; pcr <= kLastPcrToQuote; ++pcr) {
     std::string quoted_pcr_value;
     std::string quoted_data;
     std::string quote;
-    if (tpm_utility_->QuotePCR(pcr, rsa_identity_key_blob, &quoted_pcr_value,
-                              &quoted_data, &quote)) {
+    if (tpm_utility_->QuotePCR(pcr, identity_key_blob_for_quote,
+                               &quoted_pcr_value, &quoted_data, &quote)) {
       Quote quote_pb;
       quote_pb.set_quote(quote);
       quote_pb.set_quoted_data(quoted_data);
@@ -1793,46 +1781,37 @@ int AttestationService::CreateIdentity(int identity_features,
   // quotes above.
 
   for (int i = 0; i < arraysize(kNvramIndexData); ++i) {
-    if (!InsertCertifiedNvramData(identity,
-                                  kNvramIndexData[i].quote_type,
-                                  kNvramIndexData[i].quote_name,
-                                  kNvramIndexData[i].nv_index,
-                                  kNvramIndexData[i].nv_size,
-                                  false /* must_be_present */)) {
-        return -1;
+    if (!InsertCertifiedNvramData(
+            kNvramIndexData[i].quote_type, kNvramIndexData[i].quote_name,
+            kNvramIndexData[i].nv_index, kNvramIndexData[i].nv_size,
+            false /* must_be_present */, &new_identity_pb)) {
+      return -1;
     }
   }
 
   if ((identity_features & IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID) &&
       GetEndorsementKeyType() != KEY_TYPE_RSA) {
-    if (!InsertCertifiedNvramData(identity,
-                                  RSA_PUB_EK_CERT,
-                                  "RSA Public EK Certificate",
-                                  kRSAEndorsementCertificateIndex,
-                                  0,
-                                  true /* must_be_present */)) {
+    if (!InsertCertifiedNvramData(RSA_PUB_EK_CERT, "RSA Public EK Certificate",
+                                  kRSAEndorsementCertificateIndex, 0,
+                                  true /* must_be_present */,
+                                  &new_identity_pb)) {
       return -1;
     }
   }
 
 #endif
-
+  database_pb->add_identities()->CopyFrom(new_identity_pb);
   // Return the index of the newly created identity.
   return database_pb->identities().size() - 1;
 }
 
 bool AttestationService::InsertCertifiedNvramData(
-    int identity,
     NVRAMQuoteType quote_type,
     const char* quote_name,
     uint32_t nv_index,
     int nv_size,
-    bool must_be_present) {
-  auto* database_pb = database_->GetMutableProtobuf();
-  if (database_pb->identities().size() < identity) {
-    LOG(ERROR) << __func__ << ": Identity " << identity << " does not exist.";
-    return false;
-  }
+    bool must_be_present,
+    AttestationDatabase::Identity* identity) {
   if (nv_size <= 0) {
     uint16_t nv_data_size;
     if (!tpm_utility_->GetNVDataSize(nv_index, &nv_data_size)) {
@@ -1843,9 +1822,8 @@ bool AttestationService::InsertCertifiedNvramData(
     nv_size = nv_data_size;
   }
 
-  auto* identity_data = database_pb->mutable_identities()->Mutable(identity);
-  auto identity_key_blob = identity_data->identity_key().identity_key_blob();
-  auto* nv_quote_map = identity_data->mutable_nvram_quotes();
+  auto identity_key_blob = identity->identity_key().identity_key_blob();
+  auto* nv_quote_map = identity->mutable_nvram_quotes();
 
   std::string certified_value;
   std::string signature;

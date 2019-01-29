@@ -1932,7 +1932,7 @@ TEST_P(AttestationServiceTest, PrepareForEnrollmentNoCert) {
 TEST_P(AttestationServiceTest, PrepareForEnrollmentFailAIK) {
   // Start with an empty database.
   mock_database_.GetMutableProtobuf()->Clear();
-  EXPECT_CALL(mock_tpm_utility_, CreateRestrictedKey(_, _, _, _, _))
+  EXPECT_CALL(mock_tpm_utility_, CreateIdentity(_, _))
       .WillRepeatedly(Return(false));
   // Schedule initialization again to make sure it runs after this point.
   CHECK(service_->Initialize());

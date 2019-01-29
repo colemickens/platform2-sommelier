@@ -567,15 +567,6 @@ bool TpmUtilityV1::Sign(const std::string& key_blob,
   return true;
 }
 
-bool TpmUtilityV1::CreateRestrictedKey(KeyType key_type,
-                                       KeyUsage key_usage,
-                                       std::string* public_key_der,
-                                       std::string* public_key_tpm_format,
-                                       std::string* private_key_blob) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  return false;
-}
-
 bool TpmUtilityV1::QuotePCR(uint32_t pcr_index,
                             const std::string& key_blob,
                             std::string* quoted_pcr_value,
@@ -1137,6 +1128,28 @@ bool TpmUtilityV1::GetEndorsementPublicKeyModulus(
     std::string* ekm) {
   LOG(ERROR) << __func__ << ": Not implemented.";
   return false;
+}
+
+bool TpmUtilityV1::CreateIdentity(KeyType key_type,
+                                  AttestationDatabase::Identity* identity) {
+  if (KEY_TYPE_RSA != key_type) {
+    LOG(ERROR) << __func__ << ": Identity key only supports RSA key type.";
+    return false;
+  }
+  // fill the fields in identity
+  auto binding_pb = identity->mutable_identity_binding();
+  auto key_pb = identity->mutable_identity_key();
+  if (!MakeIdentity(key_pb->mutable_identity_public_key_der(),
+                    binding_pb->mutable_identity_public_key_tpm_format(),
+                    key_pb->mutable_identity_key_blob(),
+                    binding_pb->mutable_identity_binding(),
+                    binding_pb->mutable_identity_label(),
+                    binding_pb->mutable_pca_public_key())) {
+    LOG(ERROR) << __func__ << ": Failed to make identity.";
+    return false;
+  }
+  binding_pb->set_identity_public_key_der(key_pb->identity_public_key_der());
+  return true;
 }
 
 bool TpmUtilityV1::MakeIdentity(std::string* identity_public_key_der,

@@ -52,6 +52,22 @@ class UntransformString {
   std::string method_;
 };
 
+// Puts the fake identity key and binding data to |identity| to mock
+// |MockTpmUtility::CreateIdentity|.
+bool SetFakeIdentity(attestation::AttestationDatabase::Identity* identity) {
+  auto identity_binding_pb = identity->mutable_identity_binding();
+  auto identity_key_pb = identity->mutable_identity_key();
+  identity_binding_pb->set_identity_public_key_der("identity_public_key_der");
+  identity_binding_pb->set_identity_public_key_tpm_format(
+      "identity_public_key_tpm_format");
+  identity_binding_pb->set_identity_binding("identity_binding");
+  identity_binding_pb->set_pca_public_key("pca_public_key");
+  identity_binding_pb->set_identity_label("identity_label");
+  identity_key_pb->set_identity_public_key_der("identity_public_key");
+  identity_key_pb->set_identity_key_blob("identity_key_blob");
+  return true;
+}
+
 }  // namespace
 
 namespace attestation {
@@ -79,16 +95,15 @@ MockTpmUtility::MockTpmUtility() {
       .WillByDefault(WithArgs<1, 2>(Invoke(TransformString("Sign"))));
   ON_CALL(*this, GetEndorsementPublicKey(_, _)).WillByDefault(Return(true));
   ON_CALL(*this, GetEndorsementCertificate(_, _)).WillByDefault(Return(true));
-  ON_CALL(*this, CreateRestrictedKey(_, _, _, _, _))
-      .WillByDefault(Return(true));
   ON_CALL(*this, QuotePCR(_, _, _, _, _)).WillByDefault(Return(true));
   ON_CALL(*this, GetNVDataSize(_, _)).WillByDefault(Return(true));
   ON_CALL(*this, CertifyNV(_, _, _, _, _)).WillByDefault(Return(true));
   ON_CALL(*this, ReadPCR(_, _)).WillByDefault(Return(true));
   ON_CALL(*this, GetRSAPublicKeyFromTpmPublicKey(_, _))
       .WillByDefault(Return(true));
-  ON_CALL(*this, RemoveOwnerDependency())
-      .WillByDefault(Return(true));
+  ON_CALL(*this, RemoveOwnerDependency()).WillByDefault(Return(true));
+  ON_CALL(*this, CreateIdentity(_, _))
+      .WillByDefault(WithArgs<1>(Invoke(SetFakeIdentity)));
 }
 
 MockTpmUtility::~MockTpmUtility() {}

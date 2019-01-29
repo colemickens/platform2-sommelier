@@ -511,13 +511,12 @@ class AttestationService : public AttestationInterface {
   // Certify NVRAM data and insert it into the given |identity|. Returns false
   // if data cannot be inserted, or if |must_be_present| is true and the data
   // cannot be certified.
-  bool InsertCertifiedNvramData(
-    int identity,
-    NVRAMQuoteType quote_type,
-    const char* quote_name,
-    uint32_t nv_index,
-    int nv_size,
-    bool must_be_present);
+  bool InsertCertifiedNvramData(NVRAMQuoteType quote_type,
+                                const char* quote_name,
+                                uint32_t nv_index,
+                                int nv_size,
+                                bool must_be_present,
+                                AttestationDatabase::Identity* identity);
 
   // Returns the count of identities in the attestation database.
   virtual int GetIdentitiesCount() const;

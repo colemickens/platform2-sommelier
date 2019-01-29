@@ -70,11 +70,6 @@ class TpmUtilityV1 : public TpmUtilityCommon {
   bool Sign(const std::string& key_blob,
             const std::string& data_to_sign,
             std::string* signature) override;
-  bool CreateRestrictedKey(KeyType key_type,
-                           KeyUsage key_usage,
-                           std::string* public_key_der,
-                           std::string* public_key_tpm_format,
-                           std::string* private_key_blob) override;
   bool QuotePCR(uint32_t pcr_index,
                 const std::string& key_blob,
                 std::string* quoted_pcr_value,
@@ -92,6 +87,9 @@ class TpmUtilityV1 : public TpmUtilityCommon {
   bool RemoveOwnerDependency() override;
   bool GetEndorsementPublicKeyModulus(KeyType key_type,
                                       std::string* ekm) override;
+
+  bool CreateIdentity(KeyType key_type,
+                      AttestationDatabase::Identity* identity) override;
 
  private:
   // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle|
