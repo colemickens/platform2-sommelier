@@ -205,7 +205,11 @@ class TpmUtilityV1 : public TpmUtilityCommon {
                               const std::string& request,
                               std::string* identity_binding);
 
-  trousers::ScopedTssContext context_handle_;
+  // Long-live TSS context in order reduce the overhead of context connection.
+  // Declared as mutable to accomodate |ScopedTSSMemory|'s constructor; inside
+  // |ScopedTSSMemory| this context is only used to read the TSS_HCONTEXT value
+  // and |ScopedTSSMemory| doesn't modify the value inside |context_handle_|.
+  mutable trousers::ScopedTssContext context_handle_;
   TSS_HTPM tpm_handle_{0};
   trousers::ScopedTssKey srk_handle_{0};
 

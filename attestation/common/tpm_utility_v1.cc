@@ -48,6 +48,7 @@ using ScopedByteArray = std::unique_ptr<BYTE, base::FreeDeleter>;
 using ScopedTssEncryptedData = trousers::ScopedTssObject<TSS_HENCDATA>;
 using ScopedTssHash = trousers::ScopedTssObject<TSS_HHASH>;
 
+constexpr unsigned int kDigestSize = sizeof(TPM_DIGEST);
 constexpr unsigned int kDefaultTpmRsaKeyBits = 2048;
 constexpr unsigned int kDefaultTpmRsaKeyFlag = TSS_KEY_SIZE_2048;
 constexpr unsigned int kWellKnownExponent = 65537;
@@ -580,8 +581,70 @@ bool TpmUtilityV1::QuotePCR(uint32_t pcr_index,
                             std::string* quoted_pcr_value,
                             std::string* quoted_data,
                             std::string* quote) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  return false;
+  // Load the Storage Root Key.
+  TSS_RESULT result;
+  if (!SetupSrk()) {
+    LOG(ERROR) << __func__ << ": Failed to setup SRK.";
+    return false;
+  }
+  // Load the AIK (which is wrapped by the SRK).
+  ScopedTssKey identity_key(context_handle_);
+  BYTE* key_blob_ptr = StringAsTSSBuffer(&key_blob);
+  result =
+      Tspi_Context_LoadKeyByBlob(context_handle_, srk_handle_, key_blob.size(),
+                                 key_blob_ptr, identity_key.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << __func__ << ": Failed to load AIK.";
+    return false;
+  }
+
+  // Create a PCRS object and select the index.
+  ScopedTssPcrs pcrs(context_handle_);
+  result = Tspi_Context_CreateObject(context_handle_, TSS_OBJECT_TYPE_PCRS,
+                                     TSS_PCRS_STRUCT_INFO, pcrs.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << __func__ << ": Failed to create PCRS object.";
+    return false;
+  }
+  result = Tspi_PcrComposite_SelectPcrIndex(pcrs, pcr_index);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << __func__ << ": Failed to select PCR.";
+    return false;
+  }
+  // Generate the quote.
+  TSS_VALIDATION validation = {};
+  // it's a difference from |TpmImpl| in |cryptohomed|, which uses OpenSSL to
+  // generate the random number. Here we use well-known string value for
+  // consistency with |TpmUtilityV2|, which doesn't supply any qualifying data
+  // from caller while in TPM 1.2 it's required to have non-empty external data.
+  BYTE well_known_external_data[kDigestSize] = {};
+  validation.ulExternalDataLength = kDigestSize;
+  validation.rgbExternalData = well_known_external_data;
+  result = Tspi_TPM_Quote(tpm_handle_, identity_key, pcrs, &validation);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << __func__ << ": Failed to generate quote.";
+    return false;
+  }
+  ScopedTssMemory scoped_quoted_data(context_handle_, validation.rgbData);
+  ScopedTssMemory scoped_quote(context_handle_, validation.rgbValidationData);
+
+  // Get the PCR value that was quoted.
+  ScopedTssMemory pcr_value_buffer(context_handle_);
+  UINT32 pcr_value_length = 0;
+  result = Tspi_PcrComposite_GetPcrValue(pcrs, pcr_index, &pcr_value_length,
+                                         pcr_value_buffer.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << __func__ << ": Failed to get PCR value.";
+    return false;
+  }
+  *quoted_pcr_value =
+      TSSBufferAsString(pcr_value_buffer.value(), pcr_value_length);
+  // Get the data that was quoted.
+  *quoted_data = TSSBufferAsString(validation.rgbData, validation.ulDataLength);
+  // Get the quote.
+  *quote = TSSBufferAsString(validation.rgbValidationData,
+                             validation.ulValidationDataLength);
+  return true;
 }
 
 bool TpmUtilityV1::IsQuoteForPCR(const std::string& quote,
@@ -591,8 +654,17 @@ bool TpmUtilityV1::IsQuoteForPCR(const std::string& quote,
 }
 
 bool TpmUtilityV1::ReadPCR(uint32_t pcr_index, std::string* pcr_value) const {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  return false;
+  UINT32 pcr_len = 0;
+  ScopedTssMemory pcr_value_buffer(context_handle_);
+  TSS_RESULT result = Tspi_TPM_PcrRead(tpm_handle_, pcr_index, &pcr_len,
+                                       pcr_value_buffer.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "Could not read PCR " << pcr_index << " value";
+    return false;
+  }
+  pcr_value->assign(pcr_value_buffer.value(),
+                    pcr_value_buffer.value() + pcr_len);
+  return true;
 }
 
 bool TpmUtilityV1::GetNVDataSize(uint32_t nv_index, uint16_t* nv_size) const {
