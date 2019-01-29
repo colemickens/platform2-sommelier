@@ -17,6 +17,9 @@
       'dependencies': [
         'jpeg/libjea.gyp:libjea',
       ],
+      'libraries': [
+        '-ljpeg',
+      ],
       'sources': [
         'jpeg_compressor_impl.cc',
       ],
