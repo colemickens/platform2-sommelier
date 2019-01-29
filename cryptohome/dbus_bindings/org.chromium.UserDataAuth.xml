@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!--
+  Copyright 2019 The Chromium OS Authors. All rights reserved.
+  Use of this source code is governed by a BSD-style license that can be
+  found in the LICENSE file.
+-->
+
+<!--
+  The object and interface defined in this file is used with the service name
+  "org.chromium.UserDataAuth"
+
+  This is the new interface for the cryptohome API interface refactor.
+-->
+
+<node name="/org/chromium/Cryptohome"
+      xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+
+</node>
