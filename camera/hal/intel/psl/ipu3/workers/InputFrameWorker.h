@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2018 Intel Corporation.
+ * Copyright (C) 2017-2019 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 #define PSL_IPU3_WORKERS_INPUTFRAMEWORKER_H_
 
 #include "FrameWorker.h"
+#include "Utils.h"
 
 namespace cros {
 namespace intel {
@@ -37,6 +38,8 @@ private:
     void dumpRaw(const cros::V4L2Buffer &v4l2Buf, Camera3Request &request, int lastReqId);
     GraphConfig::PipeType mPipeType;
     int mLastRequestId;
+    size_t mPipelineDepth;
+    std::unique_ptr<CameraDumpAsync> mDumpRawImage;
 };
 
 } /* namespace intel */

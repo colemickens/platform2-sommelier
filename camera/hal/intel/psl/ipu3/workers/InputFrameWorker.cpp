@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2018 Intel Corporation.
+ * Copyright (C) 2016-2019 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@
 
 #include "PerformanceTraces.h"
 #include "NodeTypes.h"
-#include "Utils.h"
 
 namespace cros {
 namespace intel {
@@ -31,7 +30,8 @@ InputFrameWorker::InputFrameWorker(std::shared_ptr<cros::V4L2VideoNode> node,
         /* Keep the same number of buffers as ISYS. */
         FrameWorker(node, cameraId, pipelineDepth + EXTRA_CIO2_BUFFER_NUMBER, "InputFrameWorker"),
         mPipeType(GraphConfig::PIPE_MAX),
-        mLastRequestId(-1)
+        mLastRequestId(-1),
+        mPipelineDepth(pipelineDepth)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     mPollMe = true;
@@ -62,7 +62,6 @@ status_t InputFrameWorker::configure(std::shared_ptr<GraphConfig>& config)
 
 void InputFrameWorker::dumpRaw(const cros::V4L2Buffer &v4l2Buf, Camera3Request &request, int lastReqId)
 {
-    nsecs_t startTime = systemTime();
     int jpegBufCnt = request.getBufferCountOfFormat(HAL_PIXEL_FORMAT_BLOB);
     int dumpReqId = request.getId();
     /* For STILL pipe, the raw buffer may be queued twice in ImguUnit::ImguPipe::processNextRequest.
@@ -88,6 +87,13 @@ void InputFrameWorker::dumpRaw(const cros::V4L2Buffer &v4l2Buf, Camera3Request &
 
     uint32_t size = v4l2Buf.Length(0);
     int v4l2Buffd = v4l2Buf.Fd(0);
+
+    if (mDumpRawImage == nullptr) {
+        std::string streamType = (mPipeType == GraphConfig::PIPE_STILL ? "still" : "video");
+        mDumpRawImage = std::make_unique<CameraDumpAsync>(streamType, mPipelineDepth,
+                                                          mFormat.Width(), mFormat.Height(), size);
+    }
+
     void* addr = mmap(nullptr, size, PROT_READ, MAP_SHARED, v4l2Buffd, 0);
     CheckError((addr == MAP_FAILED), VOID_VALUE, "mmap fails");
 
@@ -100,11 +106,9 @@ void InputFrameWorker::dumpRaw(const cros::V4L2Buffer &v4l2Buf, Camera3Request &
         name = "vector_raw_for_still_pipe";
     }
 
-    dumpToFile(addr, size, mFormat.Width(), mFormat.Height(), dumpReqId, name);
+    mDumpRawImage->dumpImageToFile(addr, size, dumpReqId, name);
 
     munmap(addr, size);
-    LOG2("dumping raw image to file takes %" PRId64 "ms for request Id %d",
-         (systemTime() - startTime) / 1000000, dumpReqId);
 }
 
 status_t InputFrameWorker::prepareRun(std::shared_ptr<DeviceMessage> msg)

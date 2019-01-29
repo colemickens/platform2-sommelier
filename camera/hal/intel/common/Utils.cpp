@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation.
+ * Copyright (C) 2014-2019 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -196,6 +196,85 @@ void dumpToFile(const void* data, int size, int width, int height, int reqId, co
         }
     }
 #endif
+}
+
+CameraDumpAsync::CameraDumpAsync(std::string& pipeType, size_t pipelineDepth,
+                                 int width, int heigt, uint32_t size):
+     mWidth(width),
+     mHeight(heigt),
+     mSize(size),
+     mInitialized(false),
+     mCameraThread("CameraDumpAsync" + pipeType)
+{
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
+
+    std::lock_guard<std::mutex> l(mDumpRawImageLock);
+    for (size_t i = 0; i < pipelineDepth; i++) {
+         std::unique_ptr<char[]> dumpBuf(new char[mSize]);
+         mDumpRawImageQueue.push(std::move(dumpBuf));
+    }
+
+    bool ret = mCameraThread.Start();
+    CheckError(!ret, VOID_VALUE, "Failed to start camera thread");
+
+    mInitialized = true;
+}
+
+CameraDumpAsync::~CameraDumpAsync()
+{
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
+    std::lock_guard<std::mutex> l(mDumpRawImageLock);
+    while (!mDumpRawImageQueue.empty()) {
+        mDumpRawImageQueue.pop();
+    }
+
+    if (mInitialized == false)
+        return;
+
+    mCameraThread.Stop();
+}
+
+void CameraDumpAsync::handleDumpImageToFile(MessageConfig msg)
+{
+    nsecs_t startTime = systemTime();
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
+    dumpToFile(msg.data.get(), msg.size, mWidth, mHeight, msg.reqId, msg.name);
+
+    {
+        std::lock_guard<std::mutex> l(mDumpRawImageLock);
+        mDumpRawImageQueue.push(std::move(msg.data));
+    }
+    LOG2("dumping raw image to file takes %" PRId64 "ms for request Id %d",
+         (systemTime() - startTime) / 1000000, msg.reqId);
+}
+
+void CameraDumpAsync::dumpImageToFile(const void *data, uint32_t size,
+                                      int reqId, const std::string &name)
+{
+    CheckError((mInitialized == false), VOID_VALUE, "Failed to initialize CameraDumpAsync");
+
+    HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
+    std::unique_ptr<char[]> dumpBuf;
+    {
+        std::lock_guard<std::mutex> l(mDumpRawImageLock);
+        CheckError((mDumpRawImageQueue.empty()), VOID_VALUE,
+                   "Request %d failed to get buffer for dumping image", reqId);
+
+        dumpBuf = std::move(mDumpRawImageQueue.front());
+        mDumpRawImageQueue.pop();
+        MEMCPY_S(dumpBuf.get(), mSize, data, size);
+    }
+
+    MessageConfig msg;
+    msg.reqId = reqId;
+    msg.size = std::min(mSize, size);
+    msg.name = name;
+    msg.data = std::move(dumpBuf);
+
+    base::Callback<void()> closure =
+        base::Bind(&CameraDumpAsync::handleDumpImageToFile, base::Unretained(this),
+                   base::Passed(&msg));
+    mCameraThread.PostTaskAsync<void>(FROM_HERE, closure);
 }
 
 } /* namespace intel */

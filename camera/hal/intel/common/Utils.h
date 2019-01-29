@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Intel Corporation.
+ * Copyright (C) 2014-2019 Intel Corporation.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,9 @@
 #ifndef CAMERA3_HAL_UTILS_H
 #define CAMERA3_HAL_UTILS_H
 
+#include <cros-camera/camera_thread.h>
 #include <string>
+#include <utils/Errors.h>
 #include <vector>
 
 namespace cros {
@@ -43,6 +45,37 @@ typedef int64_t nsecs_t;       // nano-seconds
 nsecs_t systemTime();
 
 void dumpToFile(const void* data, int size, int width, int height, int reqId, const std::string& name);
+
+// The class is used to dump file in new thread for not blocking performance
+class CameraDumpAsync
+{
+public:
+    CameraDumpAsync(std::string& pipeType, size_t pipelineDepth, int width, int heigt, uint32_t size);
+    virtual ~CameraDumpAsync();
+    void dumpImageToFile(const void *data, uint32_t size, int reqId, const std::string &name);
+
+    struct MessageConfig {
+        int reqId;
+        uint32_t size;
+        std::string name;
+        std::unique_ptr<char[]> data;
+
+        MessageConfig() :
+            reqId(-1),
+            size(0) {}
+    };
+
+private:
+    void handleDumpImageToFile(MessageConfig msg);
+    int mWidth;
+    int mHeight;
+    uint32_t mSize;
+
+    bool mInitialized;
+    cros::CameraThread mCameraThread;
+    std::mutex mDumpRawImageLock;
+    std::queue<std::unique_ptr<char[]>> mDumpRawImageQueue;
+};
 
 } /* namespace intel */
 } /* namespace cros */
