@@ -16,8 +16,6 @@
 
 #include "attestation/common/tpm_utility_v1.h"
 
-#include <memory>
-
 #include <arpa/inet.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -32,6 +30,10 @@
 #include <trousers/scoped_tss_type.h>
 #include <trousers/trousers.h>
 #include <trousers/tss.h>
+
+#include <cstdint>
+#include <memory>
+#include <vector>
 
 #define TPM_LOG(severity, result)                               \
   LOG(severity) << "TPM error 0x" << std::hex << result << " (" \
@@ -1123,11 +1125,43 @@ bool TpmUtilityV1::RemoveOwnerDependency() {
   return false;
 }
 
-bool TpmUtilityV1::GetEndorsementPublicKeyModulus(
-    KeyType key_type,
-    std::string* ekm) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  return false;
+bool TpmUtilityV1::GetEndorsementPublicKeyModulus(KeyType key_type,
+                                                  std::string* ekm) {
+  if (key_type != KEY_TYPE_RSA) {
+    LOG(ERROR) << __func__ << ": Only RSA supported on TPM1.2.";
+    return false;
+  }
+  std::string ek_public_key;
+  if (!GetEndorsementPublicKey(key_type, &ek_public_key)) {
+    LOG(ERROR) << __func__ << ": Failed to get EK public key.";
+    return false;
+  }
+
+  // Extracts the modulus from the public key.
+  const unsigned char* asn1_ptr =
+      reinterpret_cast<const unsigned char*>(ek_public_key.data());
+  crypto::ScopedRSA public_key(
+      d2i_RSAPublicKey(nullptr, &asn1_ptr, ek_public_key.size()));
+  if (!public_key.get()) {
+    LOG(ERROR) << __func__ << ": Failed to decode public endorsement key.";
+    return false;
+  }
+  int modulus_bytes_length = BN_num_bytes(public_key.get()->n);
+  if (modulus_bytes_length <= 0) {
+    LOG(ERROR) << __func__
+               << ": Failed to get public endorsement key modulus length.";
+    return false;
+  }
+  std::vector<uint8_t> modulus_bytes(modulus_bytes_length);
+  int output_length = BN_bn2bin(public_key.get()->n, modulus_bytes.data());
+  if (output_length != modulus_bytes_length) {
+    LOG(ERROR) << __func__ << ": Bad length returned by BN_bn2bin: got "
+               << output_length << " while it should be "
+               << modulus_bytes_length;
+    return false;
+  }
+  ekm->assign(modulus_bytes.begin(), modulus_bytes.end());
+  return true;
 }
 
 bool TpmUtilityV1::CreateIdentity(KeyType key_type,
