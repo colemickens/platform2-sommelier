@@ -122,8 +122,7 @@ status_t ResultProcessor::handleRegisterRequest(MessageRegisterRequest msg)
 
     reqState->init(msg.request);
     mRequestsInTransit.insert(RequestsInTransitPair(reqState->reqId, reqState));
-    LOG2("@%s camera id %d, Request %d registered", __func__,
-        msg.request->getCameraId(), reqState->reqId);
+    LOG2("<Request %d> camera id %d registered", reqState->reqId, msg.request->getCameraId());
     /**
      * get the number of partial results the request may return, this is not
      *  going to change once the camera is open, so do it only once.
@@ -157,7 +156,7 @@ status_t ResultProcessor::handleShutterDone(MessageShutterDone msg)
     Camera3Request* request = msg.request;
 
     reqId = request->getId();
-    LOG2("%s Request : %d", __func__, reqId);
+    LOG2("%s for <Request %d>", __func__, reqId);
     PERFORMANCE_HAL_ATRACE_PARAM1("reqId", reqId);
 
     RequestState_t *reqState = nullptr;
@@ -205,8 +204,7 @@ void ResultProcessor::returnShutterDone(RequestState_t* reqState)
     shutter.message.shutter.timestamp =reqState->shutterTime;
     mCallbackOps->notify(mCallbackOps, &shutter);
     reqState->isShutterDone = true;
-    LOG2("@%s camera id %d, Request %d shutter done", __func__,
-        reqState->request->getCameraId(), reqState->reqId);
+    LOG2("<Request %d> camera id %d shutter done", reqState->reqId, reqState->request->getCameraId());
 }
 
 status_t ResultProcessor::metadataDone(Camera3Request* request,
@@ -229,7 +227,7 @@ status_t ResultProcessor::handleMetadataDone(MessageMetadataDone msg)
     status_t status = NO_ERROR;
     Camera3Request* request = msg.request;
     int reqId = request->getId();
-    LOG2("%s Request %d", __func__, reqId);
+    LOG2("%s for <Request %d>", __func__, reqId);
     PERFORMANCE_HAL_ATRACE_PARAM1("reqId", reqId);
 
     RequestState_t *reqState = nullptr;
@@ -259,9 +257,8 @@ status_t ResultProcessor::handleMetadataDone(MessageMetadataDone msg)
     }
 
     reqState->pendingPartialResults.emplace_back(request->getSettings());
-    LOG2("@%s camera id %d, Request %d  Metadata arrived %zu/%d", __func__,
-        reqState->request->getCameraId(), reqId,
-        reqState->pendingPartialResults.size(),mPartialResultCount);
+    LOG2("<Request %d> camera id %d Metadata arrived %zu/%d", reqId, reqState->request->getCameraId(),
+         reqState->pendingPartialResults.size(),mPartialResultCount);
 
     if (!reqState->isShutterDone) {
         LOG2("@%s metadata arrived before shutter, storing", __func__);
@@ -302,8 +299,7 @@ status_t ResultProcessor::returnStoredPartials()
 
     while (mRequestsPendingMetaReturn.size() > 0) {
         int reqId = mRequestsPendingMetaReturn.front();
-        LOG2("@%s stored metadata req size:%zu, first reqId:%d", __func__,
-            mRequestsPendingMetaReturn.size(), reqId);
+        LOG2("stored metadata req size:%zu, first reqid:%d", mRequestsPendingMetaReturn.size(), reqId);
         RequestState_t *reqState = nullptr;
 
         if (getRequestsInTransit(&reqState, reqId) == BAD_VALUE) {
@@ -376,8 +372,7 @@ status_t ResultProcessor::handleBufferDone(MessageBufferDone msg)
         return BAD_VALUE;
     }
 
-    LOG2("@%s camera id %d, Request %d buffer received", __func__,
-        reqState->request->getCameraId(), reqId);
+    LOG2("<Request %d> camera id %d buffer received from PSL", reqId, reqState->request->getCameraId());
     reqState->pendingBuffers.emplace_back(buffer);
     if (!reqState->isShutterDone) {
         LOG2("@%s Buffer arrived before shutter req %d, queue it", __func__, reqId);
@@ -431,15 +426,14 @@ void ResultProcessor::returnPendingBuffers(RequestState_t* reqState)
         buf.status = pendingBuf->status();
         buf.stream = pendingBuf->getOwner()->getStream();
         if (buf.stream) {
-            LOG2("@%s Request %d, width: %d, height: %d, fmt: %d", __func__,
-                reqState->reqId, buf.stream->width, buf.stream->height, buf.stream->format);
+            LOG2("<Request %d> width:%d, height:%d, fmt:%d", reqState->reqId, buf.stream->width, buf.stream->height, buf.stream->format);
         }
         buf.buffer = pendingBuf->getBufferHandle();
         pendingBuf->getFence(&buf);
         result.result = nullptr;
         if (request->isInputBuffer(pendingBuf)) {
             result.input_buffer = &buf;
-            LOG2("@%s Request %d return an input buffer", __func__, reqState->reqId);
+            LOG2("<Request %d> return an input buffer", reqState->reqId);
         } else {
             result.output_buffers = &buf;
         }
@@ -447,9 +441,8 @@ void ResultProcessor::returnPendingBuffers(RequestState_t* reqState)
         mCallbackOps->process_capture_result(mCallbackOps, &result);
         pendingBuf->getOwner()->decOutBuffersInHal();
         reqState->buffersReturned += 1;
-        LOG2("@%s camera id %d, Request %d buffer done %d/%d ", __func__,
-            reqState->request->getCameraId(), reqState->reqId,
-            reqState->buffersReturned, reqState->buffersToReturn);
+        LOG2("<Request %d> camera id %d buffer done %d/%d ", reqState->reqId,
+             reqState->request->getCameraId(), reqState->buffersReturned, reqState->buffersToReturn);
     }
 
     reqState->pendingBuffers.clear();
@@ -497,8 +490,7 @@ void ResultProcessor::returnPendingPartials(RequestState_t* reqState)
     settings->unlock(result.result);
 
     reqState->partialResultReturned += 1;
-    LOG2("@%s camera id %d, Request %d result cb done", __func__,
-        reqState->request->getCameraId(), reqState->reqId);
+    LOG2("<Request %d> camera id %d result cb done",reqState->reqId, reqState->request->getCameraId());
     reqState->pendingPartialResults.clear();
 }
 
@@ -541,8 +533,7 @@ status_t ResultProcessor::returnResult(RequestState_t* reqState, int returnIndex
     resultMetadata->unlock(result.result);
 
     reqState->partialResultReturned += 1;
-    LOG2("@%s camera id %d, Request %d result cb done", __func__,
-        reqState->request->getCameraId(), reqState->reqId);
+    LOG2("<Request %d> camera id %d result cb done", reqState->reqId, reqState->request->getCameraId());
     return status;
 }
 
@@ -588,8 +579,7 @@ status_t ResultProcessor::recycleRequest(Camera3Request *req)
 
     mRequestsInTransit.erase(id);
     mRequestThread->returnRequest(req);
-    LOG2("@%s camera id %d, Request %d OUT from ResultProcessor", __func__,
-        reqState->request->getCameraId(), id);
+    LOG2("<Request %d> camera id %d OUT from ResultProcessor",id, reqState->request->getCameraId());
     return status;
 }
 
