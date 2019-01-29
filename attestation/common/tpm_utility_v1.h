@@ -95,14 +95,14 @@ class TpmUtilityV1 : public TpmUtility {
                                       std::string* ekm) override;
 
  private:
-  // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with
-  // its matching TPM object iff the context can be created and a TPM object
-  // exists in the TSS. Returns true on success.
+  // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle|
+  // with its matching TPM object iff the context can be created and a TPM
+  // object exists in the TSS. Returns true on success.
   bool ConnectContext(trousers::ScopedTssContext* context_handle,
                       TSS_HTPM* tpm_handle);
 
-  // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with
-  // its matching TPM object authorized by the given |delegate_blob| and
+  // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle|
+  // with its matching TPM object authorized by the given |delegate_blob| and
   // |delegate_secret|. Returns true on success.
   bool ConnectContextAsDelegate(const std::string& delegate_blob,
                                 const std::string& delegate_secret,

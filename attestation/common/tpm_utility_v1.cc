@@ -639,8 +639,8 @@ bool TpmUtilityV1::LoadSrk(TSS_HCONTEXT context_handle,
     TSS_HPOLICY usage_policy;
     if (TPM_ERROR(result = Tspi_GetPolicyObject(*srk_handle, TSS_POLICY_USAGE,
                                                 &usage_policy))) {
-      TPM_LOG(ERROR, result) << __func__
-                             << ": Error calling Tspi_GetPolicyObject";
+      TPM_LOG(ERROR, result)
+          << __func__ << ": Error calling Tspi_GetPolicyObject";
       return false;
     }
 
@@ -648,8 +648,8 @@ bool TpmUtilityV1::LoadSrk(TSS_HCONTEXT context_handle,
     if (TPM_ERROR(result =
                       Tspi_Policy_SetSecret(usage_policy, TSS_SECRET_MODE_PLAIN,
                                             0, empty_password))) {
-      TPM_LOG(ERROR, result) << __func__
-                             << ": Error calling Tspi_Policy_SetSecret";
+      TPM_LOG(ERROR, result)
+          << __func__ << ": Error calling Tspi_Policy_SetSecret";
       return false;
     }
   }
@@ -690,8 +690,7 @@ bool TpmUtilityV1::GetDataAttribute(TSS_HCONTEXT context,
 }
 
 bool TpmUtilityV1::GetRSAPublicKeyFromTpmPublicKey(
-    const std::string& tpm_public_key_object,
-    std::string* public_key_der) {
+    const std::string& tpm_public_key_object, std::string* public_key_der) {
   // Parse the serialized TPM_PUBKEY.
   UINT64 offset = 0;
   std::string mutable_public_key(tpm_public_key_object);
