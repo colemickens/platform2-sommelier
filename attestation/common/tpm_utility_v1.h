@@ -117,6 +117,30 @@ class TpmUtilityV1 : public TpmUtilityCommon {
   bool SetTpmOwnerAuth(const std::string& owner_password,
                        TSS_HCONTEXT context_handle,
                        TSS_HTPM tpm_handle);
+  // Reads an NVRAM space using the given context.
+  bool ReadNvram(TSS_HCONTEXT context_handle,
+                 TSS_HTPM tpm_handle,
+                 TSS_HPOLICY policy_handle,
+                 uint32_t index,
+                 std::string* blob);
+
+  // Returns if an Nvram space exists using the given context.
+  bool IsNvramDefined(TSS_HCONTEXT context_handle,
+                      TSS_HTPM tpm_handle,
+                      uint32_t index);
+
+  // TODO(cylai): make the return type right or change the definition of return
+  // value.
+  //
+  // Returns the size of the specified NVRAM space.
+  //
+  // Parameters
+  //   context_handle - The context handle for the TPM session
+  //   index - NVRAM Space index
+  // Returns -1 if the index, handle, or space is invalid.
+  unsigned int GetNvramSize(TSS_HCONTEXT context_handle,
+                            TSS_HTPM tpm_handle,
+                            uint32_t index);
 
   // Sets up srk_handle_ if necessary. Returns true iff the SRK is ready.
   bool SetupSrk();

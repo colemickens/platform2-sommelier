@@ -18,6 +18,7 @@
 
 #include <memory>
 
+#include <arpa/inet.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -39,7 +40,7 @@ using trousers::ScopedTssContext;
 using trousers::ScopedTssKey;
 using trousers::ScopedTssMemory;
 using trousers::ScopedTssPcrs;
-
+using trousers::ScopedTssPolicy;
 namespace {
 
 using ScopedByteArray = std::unique_ptr<BYTE, base::FreeDeleter>;
@@ -408,8 +409,78 @@ bool TpmUtilityV1::GetEndorsementPublicKey(KeyType key_type,
 
 bool TpmUtilityV1::GetEndorsementCertificate(KeyType key_type,
                                              std::string* certificate) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  return false;
+  // Connect to the TPM as the owner.
+  ScopedTssContext context_handle;
+  TSS_HTPM tpm_handle;
+  if (!ConnectContextAsOwner(owner_password_, &context_handle, &tpm_handle)) {
+    LOG(ERROR) << __func__ << " Could not connect to the TPM.";
+    return false;
+  }
+
+  // Use the owner secret to authorize reading the blob.
+  ScopedTssPolicy policy_handle(context_handle);
+  TSS_RESULT result;
+  result = Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_POLICY,
+                                     TSS_POLICY_USAGE, policy_handle.ptr());
+  if (TPM_ERROR(result)) {
+    LOG(ERROR) << __func__ << " Could not create policy.";
+    return false;
+  }
+  result = Tspi_Policy_SetSecret(
+      policy_handle, TSS_SECRET_MODE_PLAIN, owner_password_.size(),
+      reinterpret_cast<BYTE*>(
+          const_cast<std::string::value_type*>(owner_password_.data())));
+  if (TPM_ERROR(result)) {
+    LOG(ERROR) << __func__ << " Could not set owner secret.";
+    return false;
+  }
+
+  // Read the EK cert from NVRAM.
+  std::string nvram_value;
+  if (!ReadNvram(context_handle, tpm_handle, policy_handle,
+                 TSS_NV_DEFINED | TPM_NV_INDEX_EKCert, &nvram_value)) {
+    LOG(ERROR) << __func__ << " Failed to read NVRAM.";
+    return false;
+  }
+
+  // Sanity check the contents of the data and extract the X.509 certificate.
+  // We are expecting data in the form of a TCG_PCCLIENT_STORED_CERT with an
+  // embedded TCG_FULL_CERT. Details can be found in the TCG PC Specific
+  // Implementation Specification v1.21 section 7.4.
+  constexpr uint8_t kStoredCertHeader[] = {0x10, 0x01, 0x00};
+  constexpr uint8_t kFullCertHeader[] = {0x10, 0x02};
+  constexpr size_t kTotalHeaderBytes = 7;
+  constexpr size_t kStoredCertHeaderOffset = 0;
+  constexpr size_t kFullCertLengthOffset = 3;
+  constexpr size_t kFullCertHeaderOffset = 5;
+  if (nvram_value.size() < kTotalHeaderBytes) {
+    LOG(ERROR) << "Malformed EK certificate: Bad header.";
+    return false;
+  }
+  if (memcmp(kStoredCertHeader, &nvram_value[kStoredCertHeaderOffset],
+             arraysize(kStoredCertHeader)) != 0) {
+    LOG(ERROR) << "Malformed EK certificate: Bad PCCLIENT_STORED_CERT.";
+    return false;
+  }
+  if (memcmp(kFullCertHeader, &nvram_value[kFullCertHeaderOffset],
+             arraysize(kFullCertHeader)) != 0) {
+    LOG(ERROR) << "Malformed EK certificate: Bad PCCLIENT_FULL_CERT.";
+    return false;
+  }
+  // The size value is represented by two bytes in network order.
+  size_t full_cert_size =
+      (size_t(uint8_t(nvram_value[kFullCertLengthOffset])) << 8) |
+      uint8_t(nvram_value[kFullCertLengthOffset + 1]);
+  if (full_cert_size + kFullCertHeaderOffset > nvram_value.size()) {
+    LOG(ERROR) << "Malformed EK certificate: Bad size.";
+    return false;
+  }
+  // The X.509 certificate follows the header bytes.
+  size_t full_cert_end =
+      kTotalHeaderBytes + full_cert_size - arraysize(kFullCertHeader);
+  certificate->assign(nvram_value.begin() + kTotalHeaderBytes,
+                      nvram_value.begin() + full_cert_end);
+  return true;
 }
 
 bool TpmUtilityV1::Unbind(const std::string& key_blob,
@@ -636,6 +707,124 @@ bool TpmUtilityV1::SetTpmOwnerAuth(const std::string& owner_password,
   }
 
   return true;
+}
+
+bool TpmUtilityV1::ReadNvram(TSS_HCONTEXT context_handle,
+                             TSS_HTPM tpm_handle,
+                             TSS_HPOLICY policy_handle,
+                             uint32_t index,
+                             std::string* blob) {
+  UINT32 size = GetNvramSize(context_handle, tpm_handle, index);
+  if (size == 0) {
+    if (!IsNvramDefined(context_handle, tpm_handle, index)) {
+      LOG(ERROR) << "Cannot read from non-existent NVRAM space.";
+    } else {
+      LOG(ERROR) << "Cannot get nvram size.";
+    }
+    return false;
+  }
+  blob->resize(size);
+
+  // Create an NVRAM store object handle.
+  TSS_RESULT result;
+  trousers::ScopedTssNvStore nv_handle(context_handle);
+  result = Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_NV, 0,
+                                     nv_handle.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "Could not acquire an NVRAM object handle";
+    return false;
+  }
+  result = Tspi_SetAttribUint32(nv_handle, TSS_TSPATTRIB_NV_INDEX, 0, index);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "Could not set index on NVRAM object: " << index;
+    return false;
+  }
+
+  if (policy_handle) {
+    result = Tspi_Policy_AssignToObject(policy_handle, nv_handle);
+    if (TPM_ERROR(result)) {
+      TPM_LOG(ERROR, result) << "Could not set NVRAM object policy.";
+      return false;
+    }
+  }
+
+  // Read from NVRAM in conservatively small chunks. This is a limitation of
+  // the TPM that is left for the application layer to deal with. The maximum
+  // size that is supported here can vary between vendors / models, so we'll
+  // be conservative. FWIW, the Infineon chips seem to handle up to 1024.
+  const UINT32 kMaxDataSize = 128;
+  UINT32 offset = 0;
+  while (offset < size) {
+    UINT32 chunk_size = size - offset;
+    if (chunk_size > kMaxDataSize)
+      chunk_size = kMaxDataSize;
+    trousers::ScopedTssMemory space_data(context_handle);
+    if ((result = Tspi_NV_ReadValue(nv_handle, offset, &chunk_size,
+                                    space_data.ptr()))) {
+      TPM_LOG(ERROR, result) << "Could not read from NVRAM space: " << index;
+      return false;
+    }
+    if (!space_data.value()) {
+      LOG(ERROR) << "No data read from NVRAM space: " << index;
+      return false;
+    }
+    CHECK(offset + chunk_size <= blob->size());
+    // not for TSS APIs but BYTE* is also suitable here.
+    BYTE* buffer = StringAsTSSBuffer(blob) + offset;
+    memcpy(buffer, space_data.value(), chunk_size);
+    offset += chunk_size;
+  }
+  return true;
+}
+
+bool TpmUtilityV1::IsNvramDefined(TSS_HCONTEXT context_handle,
+                                  TSS_HTPM tpm_handle,
+                                  uint32_t index) {
+  TSS_RESULT result;
+  UINT32 nv_list_data_length = 0;
+  trousers::ScopedTssMemory nv_list_data(context_handle);
+  if (TPM_ERROR(result = Tspi_TPM_GetCapability(tpm_handle, TSS_TPMCAP_NV_LIST,
+                                                0, NULL, &nv_list_data_length,
+                                                nv_list_data.ptr()))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_TPM_GetCapability";
+    return false;
+  }
+
+  // Walk the list and check if the index exists.
+  UINT32* nv_list = reinterpret_cast<UINT32*>(nv_list_data.value());
+  UINT32 nv_list_length = nv_list_data_length / sizeof(UINT32);
+  index = htonl(index);  // TPM data is network byte order.
+  for (UINT32 i = 0; i < nv_list_length; ++i) {
+    // TODO(wad) add a NvramList method.
+    if (index == nv_list[i])
+      return true;
+  }
+  return false;
+}
+
+unsigned int TpmUtilityV1::GetNvramSize(TSS_HCONTEXT context_handle,
+                                        TSS_HTPM tpm_handle,
+                                        uint32_t index) {
+  TSS_RESULT result;
+
+  UINT32 nv_index_data_length = 0;
+  trousers::ScopedTssMemory nv_index_data(context_handle);
+  if (TPM_ERROR(result = Tspi_TPM_GetCapability(
+                    tpm_handle, TSS_TPMCAP_NV_INDEX, sizeof(index),
+                    reinterpret_cast<BYTE*>(&index), &nv_index_data_length,
+                    nv_index_data.ptr()))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_TPM_GetCapability";
+    return 0u;
+  }
+  if (nv_index_data_length == 0) {
+    return 0u;
+  }
+  // TPM_NV_DATA_PUBLIC->dataSize is the last element in the struct.
+  // Since packing the struct still doesn't eliminate inconsistencies between
+  // the API and the hardware, this is the safest way to extract the data.
+  uint32_t* nv_data_public = reinterpret_cast<uint32_t*>(
+      nv_index_data.value() + nv_index_data_length - sizeof(UINT32));
+  return htonl(*nv_data_public);
 }
 
 bool TpmUtilityV1::SetupSrk() {
