@@ -89,7 +89,7 @@ sources that are covered and test other wake sources manually.
 Perform the following steps to enable dark resume:
 
 ```sh
-# echo 0 > /usr/share/power_manager/disable_dark_resume
+# echo 0 > /var/lib/power_manager/disable_dark_resume
 # restart powerd
 ```
 ### Disabling Dark Resume
@@ -97,7 +97,7 @@ Perform the following steps to enable dark resume:
 Perform the following steps to disable dark resume:
 
 ```sh
-# echo 1 > /usr/share/power_manager/disable_dark_resume
+# echo 1 > /var/lib/power_manager/disable_dark_resume
 # restart powerd
 ```
 
