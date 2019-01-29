@@ -1290,10 +1290,10 @@ TEST_P(Camera3InvalidBufferTest, FreedBufferHandle) {
   BufferHandleUniquePtr buffer = Camera3TestGralloc::GetInstance()->Allocate(
       default_width_, default_height_, HAL_PIXEL_FORMAT_YCbCr_420_888,
       GRALLOC_USAGE_SW_WRITE_OFTEN | GRALLOC_USAGE_HW_CAMERA_WRITE);
-  buffer_handle_t* handle = buffer.get();
+  ASSERT_NE(nullptr, buffer);
+  buffer_handle_t handle = *buffer.get();
   buffer.reset();
-  ASSERT_NE(nullptr, handle);
-  RunInvalidBufferTest(handle);
+  RunInvalidBufferTest(&handle);
 }
 
 // Test parameters:
