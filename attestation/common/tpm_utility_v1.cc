@@ -49,6 +49,7 @@ using ScopedTssEncryptedData = trousers::ScopedTssObject<TSS_HENCDATA>;
 using ScopedTssHash = trousers::ScopedTssObject<TSS_HHASH>;
 
 constexpr unsigned int kDefaultTpmRsaKeyBits = 2048;
+constexpr unsigned int kDefaultTpmRsaKeyFlag = TSS_KEY_SIZE_2048;
 constexpr unsigned int kWellKnownExponent = 65537;
 constexpr unsigned char kSha256DigestInfo[] = {
     0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01,
@@ -1059,6 +1060,139 @@ bool TpmUtilityV1::GetEndorsementPublicKeyModulus(
     std::string* ekm) {
   LOG(ERROR) << __func__ << ": Not implemented.";
   return false;
+}
+
+bool TpmUtilityV1::MakeIdentity(std::string* identity_public_key_der,
+                                std::string* identity_public_key,
+                                std::string* identity_key_blob,
+                                std::string* identity_binding,
+                                std::string* identity_label,
+                                std::string* pca_public_key) {
+  CHECK(identity_public_key_der && identity_public_key && identity_key_blob &&
+        identity_binding && identity_label && pca_public_key);
+  // Connect to the TPM as the owner.
+  ScopedTssContext context_handle;
+  TSS_HTPM tpm_handle;
+  if (!ConnectContextAsOwner(owner_password_, &context_handle, &tpm_handle)) {
+    LOG(ERROR) << __func__ << " Could not connect to the TPM.";
+    return false;
+  }
+
+  // Load the Storage Root Key.
+  TSS_RESULT result;
+  ScopedTssKey srk_handle(context_handle);
+  if (!LoadSrk(context_handle, &srk_handle)) {
+    LOG(ERROR) << "MakeIdentity: Cannot load SRK.";
+    return false;
+  }
+
+  crypto::ScopedRSA fake_pca_key(
+      RSA_generate_key(kDefaultTpmRsaKeyBits, kWellKnownExponent, NULL, NULL));
+  if (!fake_pca_key.get()) {
+    LOG(ERROR) << "MakeIdentity: Failed to generate local key pair.";
+    return false;
+  }
+  unsigned char modulus_buffer[kDefaultTpmRsaKeyBits / 8];
+  BN_bn2bin(fake_pca_key.get()->n, modulus_buffer);
+
+  // Create a TSS object for the fake PCA public key.
+  ScopedTssKey pca_public_key_object(context_handle);
+  constexpr UINT32 kPcaKeyFlags =
+      kDefaultTpmRsaKeyFlag | TSS_KEY_TYPE_LEGACY | TSS_KEY_MIGRATABLE;
+  result = Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_RSAKEY,
+                                     kPcaKeyFlags, pca_public_key_object.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "MakeIdentity: Cannot create PCA public key.";
+    return false;
+  }
+  result = Tspi_SetAttribData(pca_public_key_object, TSS_TSPATTRIB_RSAKEY_INFO,
+                              TSS_TSPATTRIB_KEYINFO_RSA_MODULUS,
+                              arraysize(modulus_buffer), modulus_buffer);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result)
+        << "MakeIdentity: Cannot set modulus to PCA public key.";
+    return false;
+  }
+  result = Tspi_SetAttribUint32(pca_public_key_object, TSS_TSPATTRIB_KEY_INFO,
+                                TSS_TSPATTRIB_KEYINFO_ENCSCHEME,
+                                TSS_ES_RSAESPKCSV15);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "MakeIdentity: Cannot set encoding scheme "
+                              "attribute to PCA public key.";
+    return false;
+  }
+
+  // Get the fake PCA public key in serialized TPM_PUBKEY form.
+  if (!GetDataAttribute(context_handle, pca_public_key_object,
+                        TSS_TSPATTRIB_KEY_BLOB,
+                        TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY, pca_public_key)) {
+    LOG(ERROR) << __func__ << ": Failed to read public key.";
+    return false;
+  }
+
+  // Construct an arbitrary unicode label.
+  const char* label_text = "ChromeOS_AIK_1BJNAMQDR4RH44F4ET2KPAOMJMO043K1";
+  BYTE* label_ascii =
+      const_cast<BYTE*>(reinterpret_cast<const BYTE*>(label_text));
+  unsigned int label_size = strlen(label_text);
+  ScopedByteArray label(Trspi_Native_To_UNICODE(label_ascii, &label_size));
+  if (!label.get()) {
+    LOG(ERROR) << "MakeIdentity: Failed to create AIK label.";
+    return false;
+  }
+  identity_label->assign(&label.get()[0], &label.get()[label_size]);
+
+  // Initialize a key object to hold the new identity key.
+  ScopedTssKey identity_key(context_handle);
+  constexpr UINT32 kIdentityKeyFlags =
+      kDefaultTpmRsaKeyFlag | TSS_KEY_TYPE_IDENTITY | TSS_KEY_VOLATILE |
+      TSS_KEY_NOT_MIGRATABLE;
+  result = Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_RSAKEY,
+                                     kIdentityKeyFlags, identity_key.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "MakeIdentity: Failed to create key object.";
+    return false;
+  }
+
+  // Create the identity and receive the request intended for the PCA.
+  UINT32 request_length = 0;
+  ScopedTssMemory request(context_handle);
+  result = Tspi_TPM_CollateIdentityRequest(
+      tpm_handle, srk_handle, pca_public_key_object, label_size, label.get(),
+      identity_key, TSS_ALG_3DES, &request_length, request.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "MakeIdentity: Failed to make identity.";
+    return false;
+  }
+
+  // Decrypt and parse the identity request.
+  std::string request_blob(request.value(), request.value() + request_length);
+  if (!DecryptIdentityRequest(fake_pca_key.get(), request_blob,
+                              identity_binding)) {
+    LOG(ERROR) << "MakeIdentity: Failed to decrypt the identity request.";
+    return false;
+  }
+  brillo::SecureMemset(request.value(), 0, request_length);
+
+  // Get the AIK public key.
+  if (!GetDataAttribute(context_handle, identity_key, TSS_TSPATTRIB_KEY_BLOB,
+                        TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY,
+                        identity_public_key)) {
+    LOG(ERROR) << __func__ << ": Failed to read public key.";
+    return false;
+  }
+  if (!GetRSAPublicKeyFromTpmPublicKey(*identity_public_key,
+                                       identity_public_key_der)) {
+    return false;
+  }
+
+  // Get the AIK blob so we can load it later.
+  if (!GetDataAttribute(context_handle, identity_key, TSS_TSPATTRIB_KEY_BLOB,
+                        TSS_TSPATTRIB_KEYBLOB_BLOB, identity_key_blob)) {
+    LOG(ERROR) << __func__ << ": Failed to read key blob.";
+    return false;
+  }
+  return true;
 }
 
 }  // namespace attestation

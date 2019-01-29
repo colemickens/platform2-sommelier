@@ -172,6 +172,26 @@ class TpmUtilityV1 : public TpmUtilityCommon {
   bool GetRSAPublicKeyFromTpmPublicKey(const std::string& tpm_public_key_object,
                                        std::string* public_key_der);
 
+  // Creates an Attestation Identity Key (AIK). This method requires TPM owner
+  // privilege.
+  //
+  // Parameters
+  //   identity_public_key_der - The AIK public key in DER encoded form.
+  //   identity_public_key - The AIK public key in serialized TPM_PUBKEY form.
+  //   identity_key_blob - The AIK key in blob form.
+  //   identity_binding - The EK-AIK binding (i.e. public key signature).
+  //   identity_label - The label used to create the identity binding.
+  //   pca_public_key - The public key of the temporary PCA used to create the
+  //                    identity binding in serialized TPM_PUBKEY form.
+  //
+  // Returns true on success.
+  bool MakeIdentity(std::string* identity_public_key_der,
+                    std::string* identity_public_key,
+                    std::string* identity_key_blob,
+                    std::string* identity_binding,
+                    std::string* identity_label,
+                    std::string* pca_public_key);
+
   // Decrypts and parses an identity request.
   //
   // Parameters
