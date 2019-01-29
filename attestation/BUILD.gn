@@ -78,10 +78,7 @@ pkg_config("common_library_config") {
 }
 
 config("common_library_with_tpm2_config") {
-  libs = [
-    "trunks",
-    "tpm_manager",
-  ]
+  libs = [ "trunks" ]
 }
 
 config("common_library_without_tpm2_config") {
@@ -106,7 +103,10 @@ static_library("common_library") {
     sources += [ "common/tpm_utility_v2.cc" ]
     all_dependent_configs += [ ":common_library_with_tpm2_config" ]
   } else {
-    sources += [ "common/tpm_utility_v1.cc" ]
+    sources += [
+      "common/tpm_utility_common.cc",
+      "common/tpm_utility_v1.cc",
+    ]
     all_dependent_configs += [ ":common_library_without_tpm2_config" ]
   }
 }
@@ -164,7 +164,10 @@ executable("attestation_client") {
 
 # A library for server code.
 config("server_library_config") {
-  libs = [ "chaps" ]
+  libs = [
+    "chaps",
+    "tpm_manager",
+  ]
 }
 
 static_library("server_library") {
