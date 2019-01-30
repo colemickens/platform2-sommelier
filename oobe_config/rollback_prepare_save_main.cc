@@ -34,12 +34,11 @@ int main(int argc, char* argv[]) {
     const bool save_succeeded = oobe_config::PrepareSave(
         base::FilePath(), false /* ignore_permissions_for_testing */);
 
-    if (save_succeeded) {
-      LOG_IF(ERROR, !save_succeeded) << "Rollback prepare save failed.";
+    if (!save_succeeded) {
+      LOG(ERROR) << "Rollback prepare save failed.";
       return 1;
-    } else {
-      return 0;
     }
+    return 0;
   }
 
   // No data was saved because there is no rollback.
