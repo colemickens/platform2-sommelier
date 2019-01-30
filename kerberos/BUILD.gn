@@ -1,0 +1,132 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+group("all") {
+  deps = [
+    ":container-protos",
+    ":dbus_code_generator",
+    ":kerberosd",
+    ":libkerberos",
+  ]
+  if (use.test) {
+    deps += [ ":kerberos_test" ]
+  }
+}
+
+config("target_defaults") {
+  cflags = [
+    "-Wshadow",
+    "-Wextra",
+
+    # -Wextra enables unused parameter warnings, but there are unused parameters.
+    "-Wno-unused-parameter",
+  ]
+}
+
+# D-Bus code generator.
+generate_dbus_adaptors("dbus_code_generator") {
+  new_fd_bindings = true
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+  dbus_adaptors_out_dir = "include/kerberos"
+  sources = [
+    "dbus_bindings/org.chromium.Kerberos.xml",
+  ]
+}
+
+# Container protos.
+proto_library("container-protos") {
+  configs = [ ":target_defaults" ]
+  proto_in_dir = "proto"
+  proto_out_dir = "include/bindings"
+  sources = [
+    "${proto_in_dir}/kerberos_containers.proto",
+  ]
+}
+
+pkg_config("libkerberos_config") {
+  pkg_deps = [
+    "dbus-1",
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+  ]
+}
+
+# Kerberos library (shared between executables and tests).
+static_library("libkerberos") {
+  configs += [
+    ":libkerberos_config",
+    ":target_defaults",
+  ]
+  sources = [
+    "kerberosd_main.cc",
+  ]
+  deps = [
+    ":container-protos",
+    ":dbus_code_generator",
+  ]
+}
+
+pkg_config("kerberosd_config") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "libminijail",
+
+    # system_api depends on protobuf (or protobuf-lite). It must
+    # appear before protobuf or the linker flags won't be in the right
+    # order.
+    "system_api",
+    "protobuf-lite",
+  ]
+}
+
+# Kerberos daemon executable.
+executable("kerberosd") {
+  configs += [
+    ":kerberosd_config",
+    ":target_defaults",
+  ]
+  sources = [
+    "kerberosd_main.cc",
+  ]
+  deps = [
+    ":libkerberos",
+  ]
+}
+
+# Unit tests.
+if (use.test) {
+  pkg_config("kerberos_test_config") {
+    pkg_deps = [
+      "libbrillo-${libbase_ver}",
+      "libchrome-${libbase_ver}",
+      "libchrome-test-${libbase_ver}",
+      "libminijail",
+
+      # system_api depends on protobuf (or protobuf-lite). It must
+      # appear before protobuf or the linker flags won't be in the right
+      # order.
+      "system_api",
+      "protobuf-lite",
+    ]
+  }
+
+  executable("kerberos_test") {
+    configs += [
+      "//common-mk:test",
+      ":kerberos_test_config",
+      ":target_defaults",
+    ]
+    sources = []
+    defines = [ "UNIT_TEST" ]
+    deps = [
+      ":libkerberos",
+      "//common-mk/testrunner",
+    ]
+  }
+}

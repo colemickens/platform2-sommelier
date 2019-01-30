@@ -66,6 +66,7 @@ copies.
 | [init](./init/) | CrOS common startup init scripts and boot time helpers |
 | [installer](./installer/) | CrOS installer utility (for AU/recovery/etc...) |
 | [ippusb_manager](./ippusb_manager/) | "Service" for ipp-over-usb printing |
+| [kerberos](./kerberos/) | Daemon for managing Kerberos tickets |
 | [libbrillo](./libbrillo/) | Common platform utility library |
 | [libchromeos-ui](./libchromeos-ui/) ||
 | [libcontainer](./libcontainer/) ||
