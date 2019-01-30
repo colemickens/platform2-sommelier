@@ -87,6 +87,10 @@ string KeyValueStore::SaveToString() const {
   return data;
 }
 
+void KeyValueStore::Clear() {
+  store_.clear();
+}
+
 bool KeyValueStore::GetString(const string& key, string* value) const {
   const auto key_value = store_.find(TrimKey(key));
   if (key_value == store_.end())

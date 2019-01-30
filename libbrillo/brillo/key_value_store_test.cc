@@ -96,6 +96,26 @@ TEST_F(KeyValueStoreTest, LoadAndReloadTest) {
   }
 }
 
+TEST_F(KeyValueStoreTest, MultipleLoads) {
+  // The internal state is not cleared before loading.
+  EXPECT_TRUE(store_.LoadFromString("A=B\n"));
+  EXPECT_TRUE(store_.LoadFromString("B=C\n"));
+  EXPECT_EQ(2, store_.GetKeys().size());
+}
+
+TEST_F(KeyValueStoreTest, PartialLoad) {
+  // The 2nd line is broken, but the pair from the first line should be kept.
+  EXPECT_FALSE(store_.LoadFromString("A=B\n=\n"));
+  EXPECT_EQ(1, store_.GetKeys().size());
+}
+
+TEST_F(KeyValueStoreTest, Clear) {
+  EXPECT_TRUE(store_.LoadFromString("A=B\n"));
+  EXPECT_EQ(1, store_.GetKeys().size());
+  store_.Clear();
+  EXPECT_EQ(0, store_.GetKeys().size());
+}
+
 TEST_F(KeyValueStoreTest, SimpleBooleanTest) {
   bool result;
   EXPECT_FALSE(store_.GetBoolean("A", &result));
