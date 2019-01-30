@@ -18,7 +18,7 @@ PipeStream::PipeStream(base::ScopedFD pipe_fd) : pipe_fd_(std::move(pipe_fd)) {}
 
 PipeStream::~PipeStream() = default;
 
-bool PipeStream::Read(arc_proxy::Message* message) {
+bool PipeStream::Read(arc_proxy::VSockMessage* message) {
   char buf[4096];
   ssize_t size = HANDLE_EINTR(read(pipe_fd_.get(), buf, sizeof(buf)));
   if (size < 0) {
@@ -26,19 +26,17 @@ bool PipeStream::Read(arc_proxy::Message* message) {
     return false;
   }
 
-  if (size == 0) {
-    LOG(INFO) << "EOF is found";
-    message->Clear();
-  } else {
-    message->set_data(buf, size);
-  }
+  if (size == 0)
+    message->mutable_close();
+  else
+    message->mutable_data()->set_blob(buf, size);
   return true;
 }
 
-bool PipeStream::Write(const arc_proxy::Message& message) {
+bool PipeStream::Write(arc_proxy::Data* data) {
   // WriteFileDescriptor takes care of the short write.
-  if (!base::WriteFileDescriptor(pipe_fd_.get(), message.data().data(),
-                                 message.data().size())) {
+  const auto& blob = data->blob();
+  if (!base::WriteFileDescriptor(pipe_fd_.get(), blob.data(), blob.size())) {
     PLOG(ERROR) << "Failed to write";
     return false;
   }

@@ -23,7 +23,7 @@ namespace {
 TEST(SocketStreamTest, ReadWrite) {
   constexpr char kData[] = "abcdefghijklmnopqrstuvwxyz";
 
-  arc_proxy::Message message;
+  arc_proxy::VSockMessage message;
   {
     auto sockets = CreateSocketPair();
     ASSERT_TRUE(sockets.has_value());
@@ -37,7 +37,8 @@ TEST(SocketStreamTest, ReadWrite) {
         SocketStream(std::move(fd2), nullptr /* vsock_proxy */).Read(&message));
   }
 
-  ASSERT_FALSE(message.data().empty());
+  ASSERT_TRUE(message.has_data());
+  ASSERT_FALSE(message.data().blob().empty());
 
   std::string read_data;
   read_data.resize(sizeof(kData));
@@ -47,8 +48,8 @@ TEST(SocketStreamTest, ReadWrite) {
     base::ScopedFD fd1;
     base::ScopedFD fd2;
     std::tie(fd1, fd2) = std::move(sockets).value();
-    ASSERT_TRUE(
-        SocketStream(std::move(fd1), nullptr /* vsock_proxy */).Write(message));
+    ASSERT_TRUE(SocketStream(std::move(fd1), nullptr /* vsock_proxy */)
+                    .Write(message.mutable_data()));
     std::vector<base::ScopedFD> fds;
     ASSERT_EQ(sizeof(kData),
               base::UnixDomainSocket::RecvMsg(fd2.get(), &read_data[0],
@@ -69,11 +70,10 @@ TEST(SocketStreamTest, Close) {
   std::tie(fd1, fd2) = std::move(sockets).value();
   // Close the write side then, the read message should be empty.
   fd1.reset();
-  arc_proxy::Message message;
+  arc_proxy::VSockMessage message;
   ASSERT_TRUE(
       SocketStream(std::move(fd2), nullptr /* vsock_proxy */).Read(&message));
-  EXPECT_TRUE(message.data().empty());
-  EXPECT_EQ(0, message.transferred_fd_size());
+  EXPECT_TRUE(message.has_close());
 }
 
 }  // namespace

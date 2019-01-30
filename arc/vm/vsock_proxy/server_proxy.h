@@ -7,10 +7,7 @@
 
 #include <memory>
 
-#include <base/files/file_descriptor_watcher_posix.h>
-#include <base/files/scoped_file.h>
 #include <base/macros.h>
-#include <base/memory/weak_ptr.h>
 
 namespace arc {
 
@@ -28,16 +25,7 @@ class ServerProxy {
   void Initialize();
 
  private:
-  // Called when an initial VSOCK connection comes.
-  // Then, accept()s it, connects to /run/chrome/arc_bridge.sock,
-  // and registers it to vsock_proxy_ as an initial socket to be watched.
-  void OnVSockReadReady();
-
   std::unique_ptr<VSockProxy> vsock_proxy_;
-  base::ScopedFD vsock_;
-  std::unique_ptr<base::FileDescriptorWatcher::Controller> vsock_controller_;
-
-  base::WeakPtrFactory<ServerProxy> weak_factory_{this};
 
   DISALLOW_COPY_AND_ASSIGN(ServerProxy);
 };

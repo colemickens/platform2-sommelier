@@ -18,6 +18,10 @@
 #include "arc/vm/vsock_proxy/message.pb.h"
 #include "arc/vm/vsock_proxy/vsock_stream.h"
 
+namespace base {
+class FilePath;
+}
+
 namespace arc {
 
 class StreamBase;
@@ -42,13 +46,20 @@ class VSockProxy {
   // If |handle| is the value corresponding to the file descriptor on
   // messages on VSOCK. If 0 is set, this internally generates the handle.
   // Returns handle or 0 on error.
-  uint64_t RegisterFileDescriptor(base::ScopedFD fd,
-                                  arc_proxy::FileDescriptor::Type fd_type,
-                                  uint64_t handle);
+  int64_t RegisterFileDescriptor(base::ScopedFD fd,
+                                 arc_proxy::FileDescriptor::Type fd_type,
+                                 int64_t handle);
 
   // Unregisters the |fd|. Internally, this destroys the corresponding stream
   // object.
   void UnregisterFileDescriptor(int fd);
+
+  // Requests to connect(2) to a unix domain socket at |path| in the other
+  // side.
+  // |callback| will be called with errno, and the connected handle iff
+  // succeeded.
+  using ConnectCallback = base::OnceCallback<void(int, int64_t)>;
+  void Connect(const base::FilePath& path, ConnectCallback callback);
 
  private:
   // Callback called when VSOCK gets ready to read.
@@ -59,12 +70,16 @@ class VSockProxy {
   // Handlers for each command.
   // TODO(crbug.com/842960): Use pass-by-value when protobuf is upreved enough
   // to support rvalues. (At least, 3.5, or maybe 3.6).
-  void OnClose(arc_proxy::Message* message);
-  void OnData(arc_proxy::Message* message);
+  void OnClose(arc_proxy::Close* close);
+  void OnData(arc_proxy::Data* data);
+  void OnConnectRequest(arc_proxy::ConnectRequest* request);
+  void OnConnectResponse(arc_proxy::ConnectResponse* response);
 
   // Callback called when local file descriptor gets ready to read.
   // Reads Message from |fd|, and forwards to VSOCK file descriptor.
   void OnLocalFileDesciptorReadReady(int fd);
+
+  const Type type_;
 
   VSockStream vsock_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> vsock_controller_;
@@ -75,7 +90,7 @@ class VSockProxy {
   // automatically.
   struct FileDescriptorInfo {
     // 64-bit handle representation in Message proto.
-    uint64_t handle;
+    int64_t handle;
 
     // Stream instane to read/write Message.
     std::unique_ptr<StreamBase> stream;
@@ -87,16 +102,15 @@ class VSockProxy {
   std::map<int, FileDescriptorInfo> fd_map_;
 
   // Map from handle in the Message into a raw file descriptor.
-  std::map<uint64_t, int> handle_map_;
+  std::map<int64_t, int> handle_map_;
 
-  // File descriptor can be created in either side (guest or host), and it is
-  // necessary that the handler is unique across guest and host.
-  // In host side, the value is started from 2, since 1 is reserved for the
-  // /run/chrome/arc_bridge.sock connection.
-  // In guest side, the value is started from 1000000000000000001ULL, which
-  // is an arbitrally huge value, in order to avoid conflict.
-  // TODO(hidehiko,yusukes,keiichiw): Fix the protocol.
-  uint64_t next_handle_;
+  // For handle and cookie generation rules, please find the comment in
+  // message.proto.
+  int64_t next_handle_;
+  int64_t next_cookie_;
+
+  // Map from cookie to its pending callback.
+  std::map<int64_t, ConnectCallback> pending_connect_;
 
   // WeakPtrFactory needs to be declared as the member of the class, so that
   // on destruction, any pending Callbacks bound to WeakPtr are cancelled

@@ -20,8 +20,8 @@ class PipeStream : public StreamBase {
   ~PipeStream() override;
 
   // StreamBase overrides:
-  bool Read(arc_proxy::Message* message) override;
-  bool Write(const arc_proxy::Message& message) override;
+  bool Read(arc_proxy::VSockMessage* message) override;
+  bool Write(arc_proxy::Data* data) override;
 
  private:
   base::ScopedFD pipe_fd_;

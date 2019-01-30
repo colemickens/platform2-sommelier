@@ -30,7 +30,7 @@ SocketStream::SocketStream(base::ScopedFD socket_fd, VSockProxy* proxy)
 
 SocketStream::~SocketStream() = default;
 
-bool SocketStream::Read(arc_proxy::Message* message) {
+bool SocketStream::Read(arc_proxy::VSockMessage* message) {
   char buf[4096];
   std::vector<base::ScopedFD> fds;
   ssize_t size =
@@ -41,9 +41,8 @@ bool SocketStream::Read(arc_proxy::Message* message) {
   }
 
   if (size == 0 && fds.empty()) {
-    LOG(INFO) << "EOF Found";
-    // Set 0 length data to indicate the other side of the FD is closed.
-    message->Clear();
+    LOG(INFO) << "EOF is found.";
+    message->mutable_close();
     return true;
   }
 
@@ -87,23 +86,23 @@ bool SocketStream::Read(arc_proxy::Message* message) {
   DCHECK_EQ(fds.size(), fd_types.size());
 
   // Build returning message.
-  message->set_data(buf, size);
+  auto* data = message->mutable_data();
+  data->set_blob(buf, size);
   for (size_t i = 0; i < fds.size(); ++i) {
-    uint64_t handle = proxy_->RegisterFileDescriptor(
+    int64_t handle = proxy_->RegisterFileDescriptor(
         std::move(fds[i]), fd_types[i], 0 /* generate handle */);
-    auto* transferred_fd = message->add_transferred_fd();
+    auto* transferred_fd = data->add_transferred_fd();
     transferred_fd->set_handle(handle);
     transferred_fd->set_type(fd_types[i]);
   }
-
   return true;
 }
 
-bool SocketStream::Write(const arc_proxy::Message& message) {
+bool SocketStream::Write(arc_proxy::Data* data) {
   // First, create file descriptors for the received message.
   std::vector<base::ScopedFD> transferred_fds;
-  transferred_fds.reserve(message.transferred_fd().size());
-  for (const auto& transferred_fd : message.transferred_fd()) {
+  transferred_fds.reserve(data->transferred_fd().size());
+  for (const auto& transferred_fd : data->transferred_fd()) {
     base::ScopedFD local_fd;
     base::ScopedFD remote_fd;
     switch (transferred_fd.type()) {
@@ -143,8 +142,9 @@ bool SocketStream::Write(const arc_proxy::Message& message) {
   for (const auto& fd : transferred_fds)
     fds.push_back(fd.get());
 
-  if (!base::UnixDomainSocket::SendMsg(socket_fd_.get(), message.data().data(),
-                                       message.data().size(), fds)) {
+  const auto& blob = data->blob();
+  if (!base::UnixDomainSocket::SendMsg(socket_fd_.get(), blob.data(),
+                                       blob.size(), fds)) {
     PLOG(ERROR) << "Failed to send message";
     return false;
   }

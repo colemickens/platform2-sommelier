@@ -24,11 +24,11 @@ class VSockStream {
 
   // Reads the message from the socket. Returns true and stores the read
   // message into |message| on success. Otherwise false.
-  bool Read(arc_proxy::Message* message);
+  bool Read(arc_proxy::VSockMessage* message);
 
   // Writes the serialized |message| to the socket.
   // Returns true iff the whole message is written.
-  bool Write(const arc_proxy::Message& message);
+  bool Write(const arc_proxy::VSockMessage& message);
 
  private:
   base::ScopedFD vsock_fd_;

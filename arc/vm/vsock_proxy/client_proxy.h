@@ -5,6 +5,8 @@
 #ifndef ARC_VM_VSOCK_PROXY_CLIENT_PROXY_H_
 #define ARC_VM_VSOCK_PROXY_CLIENT_PROXY_H_
 
+#include <stdint.h>
+
 #include <memory>
 
 #include <base/files/file_descriptor_watcher_posix.h>
@@ -32,6 +34,9 @@ class ClientProxy {
   // Then, accept()s and registers it to mVSockProxy as an initial socket
   // to be watched.
   void OnLocalSocketReadReady();
+
+  // Called when host-side connect(2) is completed.
+  void OnConnected(int error_code, int64_t handle);
 
   std::unique_ptr<VSockProxy> vsock_proxy_;
   base::ScopedFD arc_bridge_socket_;

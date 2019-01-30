@@ -14,8 +14,7 @@
 
 #include <utility>
 
-#include <base/bind.h>
-#include <base/files/file_path.h>
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 
@@ -25,9 +24,6 @@
 
 namespace arc {
 namespace {
-
-// Path to the socket file for ArcBridgeService in the host.
-constexpr char kHostSocketPath[] = "/run/chrome/arc_bridge.sock";
 
 // Port for VSOCK.
 constexpr unsigned int kVSockPort = 9999;
@@ -68,64 +64,28 @@ ServerProxy::ServerProxy() = default;
 ServerProxy::~ServerProxy() = default;
 
 void ServerProxy::Initialize() {
-  // TODO(hidehiko): Rework on the initial socket creation protocol.
-  // At the moment:
-  // 1) Chrome creates a socket at /run/chrome/arc_bridge.sock (in host).
-  // 2) Starts ARCVM, then start arcbridgeservice in the guest OS.
-  // 3) ClientProxy in arcbridgeservice creates yet another socket at
-  //    /var/run/chrome/arc_bridge.sock (in guest).
-  // 4) ArcBridgeService in arcbridgeservice connects to
-  //    /var/run/chrome/arc_bridge.sock, so
-  //    ClientProxy::onLocalSocketReadReady() is called.
-  // 5) Asynchronously, host side proxy should start, and listens VSOCK.
-  // 6) ClientProxy connects to VSOCK (this is blocking operation.
-  //    Waiting for 5)).
-  // 7) Accepts the /var/run/chrome/arc_bridge.sock connection request
-  //    (in guest). The handle is reserved with "1".
-  // 8) In parallel with 6), host proxy connects to
-  //    /run/chrome/arc_bridge.sock.
-  //
-  // Plan:
-  // The main change is the connection order. Current protocol uses VSOCK
-  // connection as a kind of a message to notify host that there is incoming
-  // connection request to /var/run/chrome/arc_bridge.sock. Instead, in new
-  // protocol, establish VSOCK at the beginning, and send an explicit
-  // connection message when needed.
+  // The connection is established as follows.
   // 1) Chrome creates a socket at /run/chrome/arc_bridge.sock (in host).
   // 2) Start ARCVM, then starts host proxy in host OS.
   // 3) Host proxy prepares VSOCK and listens it.
-  // 4) ClientProxy (this class) in arcbridgeservice connects to VSOCK,
-  //    and initializes VSockProxy.
-  // 5) Creates /var/run/chrome/arc_bridge.sock in guest.
-  // 6) ArcBridgeService in arcbridgeservice connects to the guest
+  // 4) ClientProxy in arcbridgeservice connects to VSOCK, and initializes
+  //    VSockProxy, then creates /var/run/chrome/arc_bridge.sock in guest.
+  // 5) ArcBridgeService in arcbridgeservice connects to the guest
   //    arc_bridge.sock.
-  // 7) VSockProxy is notified, so send a message that a connection comes
-  //    to host via VSOCK.
-  // 8) Host proxy connects to /run/chrome/arc_bridge.sock, then
-  //    ArcBridge connection between ARCVM and host is established.
-  vsock_ = CreateVSock();
+  // 6) VSockProxy in client is notified, so send a message to request connect
+  //    to the /run/chrome/arc_bridge.sock to host via VSOCK.
+  // 7) Host proxy connects as client requested, then returns its corresponding
+  //    handle to client.
+  // 8) Finally, ClientProxy accept(2)s the /var/run/chrome/arc_bridge.sock,
+  //    and register the file descriptor with the returned handle.
+  //    Now ArcBridge connection between ARCVM and host is established.
+  auto vsock = CreateVSock();
   LOG(INFO) << "Start observing VSOCK";
-  vsock_controller_ = base::FileDescriptorWatcher::WatchReadable(
-      vsock_.get(), base::BindRepeating(&ServerProxy::OnVSockReadReady,
-                                        weak_factory_.GetWeakPtr()));
-}
-
-void ServerProxy::OnVSockReadReady() {
+  auto accepted = AcceptSocket(vsock.get());
+  vsock.reset();
   LOG(INFO) << "Initial socket connection comes";
-  vsock_controller_.reset();
-
   vsock_proxy_ = std::make_unique<VSockProxy>(VSockProxy::Type::SERVER,
-                                              AcceptSocket(vsock_.get()));
-
-  auto connect_result =
-      ConnectUnixDomainSocket(base::FilePath(kHostSocketPath));
-  if (connect_result.first != 0)
-    return;
-  // 1 is reserved for the initial socket handle.
-  constexpr uint64_t kInitialSocketHandle = 1;
-  vsock_proxy_->RegisterFileDescriptor(std::move(connect_result.second),
-                                       arc_proxy::FileDescriptor::SOCKET,
-                                       kInitialSocketHandle);
+                                              std::move(accepted));
   LOG(INFO) << "ServerProxy has started to work.";
 }
 

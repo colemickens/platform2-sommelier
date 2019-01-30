@@ -19,11 +19,11 @@ class StreamBase {
 
   // Reads the message from the file descriptor. Returns true on success,
   // and stores the read message in the |message|. Otherwise false.
-  virtual bool Read(arc_proxy::Message* message) = 0;
+  virtual bool Read(arc_proxy::VSockMessage* message) = 0;
 
-  // Writes the serialized |message| to the file descriptor.
+  // Writes the serialized |data| to the file descriptor.
   // Returns true iff the whole message is written.
-  virtual bool Write(const arc_proxy::Message& message) = 0;
+  virtual bool Write(arc_proxy::Data* data) = 0;
 };
 
 }  // namespace arc

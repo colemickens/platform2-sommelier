@@ -28,6 +28,9 @@ namespace {
 // Path to the socket file for ArcBridgeService.
 constexpr char kGuestSocketPath[] = "/var/run/chrome/arc_bridge.sock";
 
+// Path to the socket file for ArcBridgeService in host.
+constexpr char kHostSocketPath[] = "/run/chrome/arc_bridge.sock";
+
 // Port for VSOCK.
 constexpr unsigned int kVSockPort = 9999;
 
@@ -69,41 +72,11 @@ ClientProxy::ClientProxy() = default;
 ClientProxy::~ClientProxy() = default;
 
 void ClientProxy::Initialize() {
-  // TODO(hidehiko): Rework on the initial socket creation protocol.
-  // At the moment:
-  // 1) Chrome creates a socket at /run/chrome/arc_bridge.sock (in host).
-  // 2) Starts ARCVM, then start arcbridgeservice in the guest OS.
-  // 3) ClientProxy in arcbridgeservice creates yet another socket at
-  //    /var/run/chrome/arc_bridge.sock (in guest).
-  // 4) ArcBridgeService in arcbridgeservice connects to
-  //    /var/run/chrome/arc_bridge.sock, so
-  //    ClientProxy::onLocalSocketReadReady() is called.
-  // 5) Asynchronously, host side proxy should start, and listens VSOCK.
-  // 6) ClientProxy connects to VSOCK (this is blocking operation.
-  //    Waiting for 5)).
-  // 7) Accepts the /var/run/chrome/arc_bridge.sock connection request
-  //    (in guest). The handle is reserved with "1".
-  // 8) In parallel with 6), host proxy connects to
-  //    /run/chrome/arc_bridge.sock.
-  //
-  // Plan:
-  // The main change is the connection order. Current protocol uses VSOCK
-  // connection as a kind of a message to notify host that there is incoming
-  // connection request to /var/run/chrome/arc_bridge.sock. Instead, in new
-  // protocol, establish VSOCK at the beginning, and send an explicit
-  // connection message when needed.
-  // 1) Chrome creates a socket at /run/chrome/arc_bridge.sock (in host).
-  // 2) Start ARCVM, then starts host proxy in host OS.
-  // 3) Host proxy prepares VSOCK and listens it.
-  // 4) ClientProxy (this class) in arcbridgeservice connects to VSOCK,
-  //    and initializes VSockProxy.
-  // 5) Creates /var/run/chrome/arc_bridge.sock in guest.
-  // 6) ArcBridgeService in arcbridgeservice connects to the guest
-  //    arc_bridge.sock.
-  // 7) VSockProxy is notified, so send a message that a connection comes
-  //    to host via VSOCK.
-  // 8) Host proxy connects to /run/chrome/arc_bridge.sock, then
-  //    ArcBridge connection between ARCVM and host is established.
+  // For the details of connection procedure, please find the comment in
+  // ServerProxy::Initialize().
+  vsock_proxy_ =
+      std::make_unique<VSockProxy>(VSockProxy::Type::CLIENT, ConnectVSock());
+
   arc_bridge_socket_ = CreateUnixDomainSocket(base::FilePath(kGuestSocketPath));
   LOG(INFO) << "Start observing " << kGuestSocketPath;
   arc_bridge_socket_controller_ = base::FileDescriptorWatcher::WatchReadable(
@@ -115,15 +88,20 @@ void ClientProxy::Initialize() {
 void ClientProxy::OnLocalSocketReadReady() {
   LOG(INFO) << "Initial socket connection comes";
   arc_bridge_socket_controller_.reset();
+  vsock_proxy_->Connect(
+      base::FilePath(kHostSocketPath),
+      base::BindOnce(&ClientProxy::OnConnected, weak_factory_.GetWeakPtr()));
+}
 
-  vsock_proxy_ =
-      std::make_unique<VSockProxy>(VSockProxy::Type::CLIENT, ConnectVSock());
-  // 1 is reserved for the initial socket handle.
-  constexpr uint64_t kInitialSocketHandle = 1;
-  vsock_proxy_->RegisterFileDescriptor(AcceptSocket(arc_bridge_socket_.get()),
-                                       arc_proxy::FileDescriptor::SOCKET,
-                                       kInitialSocketHandle);
-  LOG(INFO) << "ClientProxy has started to work.";
+void ClientProxy::OnConnected(int error_code, int64_t handle) {
+  LOG(INFO) << "Connection in host is done: " << error_code;
+  if (error_code == 0) {
+    vsock_proxy_->RegisterFileDescriptor(AcceptSocket(arc_bridge_socket_.get()),
+                                         arc_proxy::FileDescriptor::SOCKET,
+                                         handle);
+    LOG(INFO) << "ClientProxy has started to work.";
+  }
+  arc_bridge_socket_.reset();
 }
 
 }  // namespace arc

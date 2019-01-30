@@ -22,7 +22,7 @@ namespace {
 TEST(PipeStreamTest, ReadWrite) {
   constexpr char kData[] = "abcdefghijklmnopqrstuvwxyz";
 
-  arc_proxy::Message message;
+  arc_proxy::VSockMessage message;
   {
     auto pipes = CreatePipe();
     ASSERT_TRUE(pipes.has_value());
@@ -43,7 +43,7 @@ TEST(PipeStreamTest, ReadWrite) {
     base::ScopedFD read_fd;
     base::ScopedFD write_fd;
     std::tie(read_fd, write_fd) = std::move(pipes).value();
-    ASSERT_TRUE(PipeStream(std::move(write_fd)).Write(message));
+    ASSERT_TRUE(PipeStream(std::move(write_fd)).Write(message.mutable_data()));
     ASSERT_TRUE(base::ReadFromFD(read_fd.get(), &read_data[0], sizeof(kData)));
   }
 
@@ -58,10 +58,9 @@ TEST(PipeStreamTest, Close) {
   std::tie(read_fd, write_fd) = std::move(pipes).value();
   // Close the write side then, the read message should be empty.
   write_fd.reset();
-  arc_proxy::Message message;
+  arc_proxy::VSockMessage message;
   ASSERT_TRUE(PipeStream(std::move(read_fd)).Read(&message));
-  EXPECT_TRUE(message.data().empty());
-  EXPECT_EQ(0, message.transferred_fd_size());
+  EXPECT_TRUE(message.has_close());
 }
 
 }  // namespace

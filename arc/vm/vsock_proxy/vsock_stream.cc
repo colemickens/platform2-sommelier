@@ -18,14 +18,15 @@ VSockStream::VSockStream(base::ScopedFD vsock_fd)
 
 VSockStream::~VSockStream() = default;
 
-bool VSockStream::Read(arc_proxy::Message* message) {
-  // TODO(hidehiko): Use fixed size bit int.
-  int size = 0;
+bool VSockStream::Read(arc_proxy::VSockMessage* message) {
+  uint64_t size = 0;
   if (!base::ReadFromFD(vsock_fd_.get(), reinterpret_cast<char*>(&size),
                         sizeof(size))) {
     PLOG(ERROR) << "Failed to read message size";
     return false;
   }
+  // TODO(hidehiko): This logging may be too noisy. Remove this when
+  // the system is enough stabilized.
   LOG(INFO) << "Reading: " << size;
   std::vector<char> buf(size);
   if (!base::ReadFromFD(vsock_fd_.get(), buf.data(), buf.size())) {
@@ -41,9 +42,8 @@ bool VSockStream::Read(arc_proxy::Message* message) {
   return true;
 }
 
-bool VSockStream::Write(const arc_proxy::Message& message) {
-  // TODO(hidehiko): Use fixed size bit int.
-  int size = message.ByteSize();
+bool VSockStream::Write(const arc_proxy::VSockMessage& message) {
+  uint64_t size = message.ByteSize();
   if (!base::WriteFileDescriptor(
           vsock_fd_.get(), reinterpret_cast<char*>(&size), sizeof(size))) {
     PLOG(ERROR) << "Failed to write buffer size";

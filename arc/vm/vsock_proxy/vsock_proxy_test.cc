@@ -8,10 +8,13 @@
 #include <utility>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/macros.h>
 #include <base/message_loop/message_loop.h>
+#include <base/optional.h>
 #include <base/posix/unix_domain_socket_linux.h>
 #include <base/run_loop.h>
 #include <gtest/gtest.h>
@@ -42,15 +45,17 @@ class VSockProxyTest : public testing::Test {
     auto client_socket_pair = CreateSocketPair();
     ASSERT_TRUE(client_socket_pair.has_value());
 
-    constexpr uint64_t kHandle = 1;
-    server_->RegisterFileDescriptor(std::move(server_socket_pair->first),
-                                    arc_proxy::FileDescriptor::SOCKET, kHandle);
+    int64_t handle = server_->RegisterFileDescriptor(
+        std::move(server_socket_pair->first), arc_proxy::FileDescriptor::SOCKET,
+        0 /* handle */);
     server_fd_ = std::move(server_socket_pair->second);
 
     client_->RegisterFileDescriptor(std::move(client_socket_pair->first),
-                                    arc_proxy::FileDescriptor::SOCKET, kHandle);
+                                    arc_proxy::FileDescriptor::SOCKET, handle);
     client_fd_ = std::move(client_socket_pair->second);
   }
+
+  VSockProxy* client() { return client_.get(); }
 
   int server_fd() const { return server_fd_.get(); }
   int client_fd() const { return client_fd_.get(); }
@@ -180,6 +185,50 @@ TEST_F(VSockProxyTest, PassSocketFromClient) {
 
   TestDataTransfer(sockpair->first.get(), received_fd.get());
   TestDataTransfer(received_fd.get(), sockpair->first.get());
+}
+
+TEST_F(VSockProxyTest, Connect) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  base::FilePath socket_path = temp_dir.GetPath().Append("test.sock");
+
+  // Create unix domain socket for testing, which is connected by the following
+  // Connect() invocation from client side.
+  auto server_sock = CreateUnixDomainSocket(socket_path);
+
+  // Try to follow the actual initial connection procedure.
+  base::RunLoop run_loop;
+  base::Optional<int> error_code;
+  base::Optional<int64_t> handle;
+  client()->Connect(socket_path, base::BindOnce(
+                                     [](base::RunLoop* run_loop,
+                                        base::Optional<int>* error_code_out,
+                                        base::Optional<int64_t>* handle_out,
+                                        int error_code, int64_t handle) {
+                                       *error_code_out = error_code;
+                                       *handle_out = handle;
+                                       run_loop->Quit();
+                                     },
+                                     &run_loop, &error_code, &handle));
+  run_loop.Run();
+  ASSERT_EQ(0, error_code);
+  ASSERT_TRUE(handle.has_value());
+  // TODO(hidehiko): Remove the cast on next libchrome uprev.
+  ASSERT_TRUE(handle != static_cast<int64_t>(0));
+
+  // Register client side socket.
+  auto client_sock_pair = CreateSocketPair();
+  ASSERT_TRUE(client_sock_pair.has_value());
+  client()->RegisterFileDescriptor(std::move(client_sock_pair->first),
+                                   arc_proxy::FileDescriptor::SOCKET,
+                                   handle.value());
+
+  auto client_fd = std::move(client_sock_pair->second);
+  auto server_fd = AcceptSocket(server_sock.get());
+  ASSERT_TRUE(server_fd.is_valid());
+
+  TestDataTransfer(client_fd.get(), server_fd.get());
+  TestDataTransfer(server_fd.get(), client_fd.get());
 }
 
 }  // namespace

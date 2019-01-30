@@ -24,15 +24,15 @@ TEST(VSockStreamTest, ReadWrite) {
   base::ScopedFD fd2;
   std::tie(fd1, fd2) = std::move(sockpair).value();
 
-  arc_proxy::Message message;
-  message.set_handle(10);
-  message.set_data("abcde");
+  arc_proxy::VSockMessage message;
+  message.mutable_data()->set_handle(10);
+  message.mutable_data()->set_blob("abcde");
   {
     VSockStream stream(std::move(fd1));
-    ASSERT_TRUE(stream.Write(arc_proxy::Message(message)));
+    ASSERT_TRUE(stream.Write(message));
   }
 
-  arc_proxy::Message read_message;
+  arc_proxy::VSockMessage read_message;
   ASSERT_TRUE(VSockStream(std::move(fd2)).Read(&read_message));
 
   EXPECT_TRUE(

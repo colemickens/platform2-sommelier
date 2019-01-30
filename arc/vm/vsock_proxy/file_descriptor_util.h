@@ -5,6 +5,7 @@
 #ifndef ARC_VM_VSOCK_PROXY_FILE_DESCRIPTOR_UTIL_H_
 #define ARC_VM_VSOCK_PROXY_FILE_DESCRIPTOR_UTIL_H_
 
+#include <string>
 #include <utility>
 
 #include <base/optional.h>
