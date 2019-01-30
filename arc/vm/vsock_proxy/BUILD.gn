@@ -6,7 +6,9 @@ import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
 group("all") {
-  deps = [ ":server_proxy" ]
+  deps = [
+    ":server_proxy",
+  ]
   if (use.test) {
     deps += [
       ":client_proxy_lib",
@@ -26,12 +28,16 @@ pkg_config("target_defaults") {
 proto_library("message") {
   proto_in_dir = "."
   proto_out_dir = "include/arc/vm/vsock_proxy"
-  sources = [ "${proto_in_dir}/message.proto" ]
+  sources = [
+    "${proto_in_dir}/message.proto",
+  ]
 }
 
 static_library("vsock_proxy_lib") {
   configs += [ ":target_defaults" ]
-  deps = [ ":message" ]
+  deps = [
+    ":message",
+  ]
   sources = [
     "file_descriptor_util.cc",
     "pipe_stream.cc",
@@ -43,13 +49,20 @@ static_library("vsock_proxy_lib") {
 
 static_library("server_proxy_lib") {
   configs += [ ":target_defaults" ]
-  deps = [ ":vsock_proxy_lib" ]
-  sources = [ "server_proxy.cc" ]
+  deps = [
+    ":vsock_proxy_lib",
+  ]
+  sources = [
+    "server_proxy.cc",
+  ]
 }
 
 executable("server_proxy") {
   configs += [ ":target_defaults" ]
-  deps = [ ":server_proxy_lib" ]
+  deps = [
+    ":server_proxy_lib",
+  ]
+
   # TODO(b/121188898): Consider sharing the code with client implementation.
   sources = [
     "server_proxy_main.cc",
@@ -62,7 +75,9 @@ if (use.test) {
   # Currently, this exercises only that the library is successfully built.
   static_library("client_proxy_lib") {
     configs += [ ":target_defaults" ]
-    deps = [ ":vsock_proxy_lib" ]
+    deps = [
+      ":vsock_proxy_lib",
+    ]
     sources = [
       "client_proxy.cc",
       "client_proxy_service.cc",
@@ -86,8 +101,10 @@ if (use.test) {
       ":vsock_proxy_lib",
       "//common-mk/testrunner",
     ]
+
     # TODO(b/121198129): Add more testing coverage.
     sources = [
+      "file_descriptor_util_test.cc",
       "pipe_stream_test.cc",
       "vsock_stream_test.cc",
     ]

@@ -10,23 +10,24 @@
 #include <unistd.h>
 
 // Needs to be included after sys/socket.h
-#include <linux/un.h>
 #include <linux/vm_sockets.h>
 
 #include <utility>
 
 #include <base/bind.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 
+#include "arc/vm/vsock_proxy/file_descriptor_util.h"
 #include "arc/vm/vsock_proxy/message.pb.h"
 #include "arc/vm/vsock_proxy/vsock_proxy.h"
 
 namespace arc {
 namespace {
 
-// Path to the socket file for ArcBridgeService.
-constexpr char kSocketPath[] = "/run/chrome/arc_bridge.sock";
+// Path to the socket file for ArcBridgeService in the host.
+constexpr char kHostSocketPath[] = "/run/chrome/arc_bridge.sock";
 
 // Port for VSOCK.
 constexpr unsigned int kVSockPort = 9999;
@@ -57,41 +58,6 @@ base::ScopedFD CreateVSock() {
   }
 
   LOG(INFO) << "VSOCK created.";
-  return fd;
-}
-
-base::ScopedFD ConnectArcBridgeSock() {
-  LOG(INFO) << "Connecting to " << kSocketPath;
-
-  base::ScopedFD fd(
-      socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0 /* protocol */));
-  if (!fd.is_valid()) {
-    PLOG(ERROR) << "Failed to create unix domain socket";
-    return {};
-  }
-
-  struct sockaddr_un sa = {};
-  sa.sun_family = AF_UNIX;
-  strncpy(sa.sun_path, kSocketPath, sizeof(sa.sun_path) - 1);
-
-  if (HANDLE_EINTR(connect(fd.get(),
-                           reinterpret_cast<const struct sockaddr*>(&sa),
-                           sizeof(sa))) == -1) {
-    PLOG(ERROR) << "Failed to connect.";
-    return {};
-  }
-
-  LOG(INFO) << "Connected to " << kSocketPath;
-  return fd;
-}
-
-base::ScopedFD AcceptSocket(int raw_fd) {
-  base::ScopedFD fd(
-      HANDLE_EINTR(accept4(raw_fd, nullptr, nullptr, SOCK_CLOEXEC)));
-  if (!fd.is_valid()) {
-    LOG(ERROR) << "Failed to accept() unix domain socket";
-    return {};
-  }
   return fd;
 }
 
@@ -150,9 +116,14 @@ void ServerProxy::OnVSockReadReady() {
 
   vsock_proxy_ = std::make_unique<VSockProxy>(VSockProxy::Type::SERVER,
                                               AcceptSocket(vsock_.get()));
+
+  auto connect_result =
+      ConnectUnixDomainSocket(base::FilePath(kHostSocketPath));
+  if (connect_result.first != 0)
+    return;
   // 1 is reserved for the initial socket handle.
   constexpr uint64_t kInitialSocketHandle = 1;
-  vsock_proxy_->RegisterFileDescriptor(ConnectArcBridgeSock(),
+  vsock_proxy_->RegisterFileDescriptor(std::move(connect_result.second),
                                        arc_proxy::FileDescriptor::SOCKET,
                                        kInitialSocketHandle);
   LOG(INFO) << "ServerProxy has started to work.";

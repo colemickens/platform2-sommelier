@@ -4,23 +4,21 @@
 
 #include "arc/vm/vsock_proxy/client_proxy.h"
 
-#include <errno.h>
-#include <string.h>
 #include <sys/socket.h>
-#include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 
 // Needs to be included after sys/socket.h
-#include <linux/un.h>
 #include <linux/vm_sockets.h>
 
 #include <utility>
 
 #include <base/bind.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 
+#include "arc/vm/vsock_proxy/file_descriptor_util.h"
 #include "arc/vm/vsock_proxy/message.pb.h"
 #include "arc/vm/vsock_proxy/vsock_proxy.h"
 
@@ -28,7 +26,7 @@ namespace arc {
 namespace {
 
 // Path to the socket file for ArcBridgeService.
-constexpr char kSocketPath[] = "/var/run/chrome/arc_bridge.sock";
+constexpr char kGuestSocketPath[] = "/var/run/chrome/arc_bridge.sock";
 
 // Port for VSOCK.
 constexpr unsigned int kVSockPort = 9999;
@@ -62,53 +60,6 @@ base::ScopedFD ConnectVSock() {
     LOG(INFO) << "VSOCK created.";
     return fd;
   }
-}
-
-// Creates a socket at kSocketPath, and starts listening.
-base::ScopedFD CreateArcBridgeSocket() {
-  LOG(INFO) << "Creating " << kSocketPath;
-  base::ScopedFD fd(
-      socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0 /* protocol */));
-  if (!fd.is_valid()) {
-    PLOG(ERROR) << "Failed to create unix domain socket";
-    return {};
-  }
-
-  struct sockaddr_un sa = {};
-  sa.sun_family = AF_UNIX;
-  strncpy(sa.sun_path, kSocketPath, sizeof(sa.sun_path) - 1);
-
-  // Remove stale file first. Ignore the error intentionally.
-  unlink(kSocketPath);
-
-  if (bind(fd.get(), reinterpret_cast<const struct sockaddr*>(&sa),
-           sizeof(sa)) == -1) {
-    PLOG(ERROR) << "Failed to bind a unix domain socket";
-    return {};
-  }
-
-  if (fchmod(fd.get(), 0666) == -1) {
-    PLOG(ERROR) << "Failed to set permission";
-    return {};
-  }
-
-  if (listen(fd.get(), 5 /* backlog */) == -1) {
-    PLOG(ERROR) << "Failed to start listening a socket";
-    return {};
-  }
-
-  LOG(INFO) << kSocketPath << " created.";
-  return fd;
-}
-
-base::ScopedFD AcceptSocket(int raw_fd) {
-  base::ScopedFD fd(
-      HANDLE_EINTR(accept4(raw_fd, nullptr, nullptr, SOCK_CLOEXEC)));
-  if (!fd.is_valid()) {
-    PLOG(ERROR) << "Failed to accept() unix domain socket";
-    return {};
-  }
-  return fd;
 }
 
 }  // namespace
@@ -153,8 +104,8 @@ void ClientProxy::Initialize() {
   //    to host via VSOCK.
   // 8) Host proxy connects to /run/chrome/arc_bridge.sock, then
   //    ArcBridge connection between ARCVM and host is established.
-  arc_bridge_socket_ = CreateArcBridgeSocket();
-  LOG(INFO) << "Start observing " << kSocketPath;
+  arc_bridge_socket_ = CreateUnixDomainSocket(base::FilePath(kGuestSocketPath));
+  LOG(INFO) << "Start observing " << kGuestSocketPath;
   arc_bridge_socket_controller_ = base::FileDescriptorWatcher::WatchReadable(
       arc_bridge_socket_.get(),
       base::BindRepeating(&ClientProxy::OnLocalSocketReadReady,
