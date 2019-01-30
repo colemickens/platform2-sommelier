@@ -104,7 +104,7 @@ void HandleSynchronousDBusMethodCall(
 // the pointer to the grpc server in |server_copy| and then signals |event|.
 // It will listen on the address specified in |listener_address|.
 void RunListenerService(grpc::Service* listener,
-                        const std::vector<std::string> listener_addresses,
+                        const std::vector<std::string>& listener_addresses,
                         base::WaitableEvent* event,
                         std::shared_ptr<grpc::Server>* server_copy) {
   // We are not interested in getting SIGCHLD or SIGTERM on this thread.
