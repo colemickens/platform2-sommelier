@@ -307,15 +307,11 @@ message ExportContainerResponse {
     // The result is unknown.
     UNKNOWN = 0;
 
-    // Export is completed.
-    DONE = 1;
-
-    // The container is exporting. Further updates will be delievered via
-    // UpdateExportStatus.
-    EXPORTING = 2;
+    // The container has started exporting.
+    EXPORTING = 1;
 
     // One or more steps failed and the container could not be exported.
-    FAILED = 3;
+    FAILED = 2;
   }
 
   // Current container status.
@@ -323,7 +319,6 @@ message ExportContainerResponse {
 
   // Details relating to the failure state.
   string failure_reason = 2;
-
 }
 
 // Sent by tremplin to update the host on the export progress of a container.
@@ -338,21 +333,30 @@ message ContainerExportProgress {
     // Export is completed.
     DONE = 1;
 
-    // The container is (still) exporting.
-    EXPORTING = 2;
-
     // One or more steps failed and the container could not be exported.
-    FAILED = 3;
+    FAILED = 2;
+
+    // The container is exporting into a tar file.
+    EXPORTING_TAR = 3;
+
+    // The container tar file is being compressed into an image file.
+    EXPORTING_COMPRESS = 4;
+
+    // The exported image file is being downloaded.
+    EXPORTING_DOWNLOAD = 5;
   }
 
   // Container status.
   Status status = 2;
 
-  // Overall percentage progress.
+  // Percentage progress for the current stage given in status.
   uint32 progress_percent = 3;
 
+  // Speed (bytes per second) for the current stage given in status.
+  uint64 progress_speed = 4;
+
   // Details relating to the failure state.
-  string failure_reason = 4;
+  string failure_reason = 5;
 }
 
 message ImportContainerRequest {
@@ -371,15 +375,12 @@ message ImportContainerResponse {
     // The result is unknown.
     UNKNOWN = 0;
 
-    // Import is completed.
-    DONE = 1;
-
     // The container is importing. Further updates will be delievered via
     // UpdateImportStatus.
-    IMPORTING = 2;
+    IMPORTING = 1;
 
     // One or more steps failed and the container could not be imported.
-    FAILED = 3;
+    FAILED = 2;
   }
 
   // Current container status.
@@ -402,21 +403,27 @@ message ContainerImportProgress {
     // Import is completed.
     DONE = 1;
 
-    // The container is (still) importing.
-    IMPORTING = 2;
-
     // One or more steps failed and the container could not be imported.
-    FAILED = 3;
+    FAILED = 2;
+
+    // The image is being uploaded.
+    IMPORTING_UPLOAD = 3;
+
+    // The image is being unpacked to create a container.
+    IMPORTING_UNPACK = 4;
   }
 
   // Container status.
   Status status = 2;
 
-  // Overall percentage progress.
+  // Percentage progress for the current stage given in status.
   uint32 progress_percent = 3;
 
+  // Speed (bytes per second) for the current stage given in status.
+  uint64 progress_speed = 4;
+
   // Details relating to the failure state.
-  string failure_reason = 4;
+  string failure_reason = 5;
 }
 
 // Tremplin service methods.

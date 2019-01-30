@@ -67,14 +67,12 @@ class VirtualMachine {
 
   enum class ExportLxdContainerStatus {
     UNKNOWN,
-    DONE,
     EXPORTING,
     FAILED,
   };
 
   enum class ImportLxdContainerStatus {
     UNKNOWN,
-    DONE,
     IMPORTING,
     FAILED,
   };

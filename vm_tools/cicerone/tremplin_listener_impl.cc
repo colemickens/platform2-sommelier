@@ -179,6 +179,7 @@ grpc::Status TremplinListenerImpl::UpdateExportStatus(
       static_cast<ExportLxdContainerProgressSignal::Status>(request->status()));
   progress_signal.set_container_name(request->container_name());
   progress_signal.set_progress_percent(request->progress_percent());
+  progress_signal.set_progress_speed(request->progress_speed());
   progress_signal.set_failure_reason(request->failure_reason());
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
@@ -217,6 +218,7 @@ grpc::Status TremplinListenerImpl::UpdateImportStatus(
       static_cast<ImportLxdContainerProgressSignal::Status>(request->status()));
   progress_signal.set_container_name(request->container_name());
   progress_signal.set_progress_percent(request->progress_percent());
+  progress_signal.set_progress_speed(request->progress_speed());
   progress_signal.set_failure_reason(request->failure_reason());
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
