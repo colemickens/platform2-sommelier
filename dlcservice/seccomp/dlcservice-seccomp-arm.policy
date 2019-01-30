@@ -56,3 +56,4 @@ chmod: 1
 lstat64: 1
 unlink: 1
 rmdir: 1
+gettimeofday: 1
