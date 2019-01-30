@@ -68,9 +68,7 @@ int main(int argc, char* argv[]) {
                             0, 0 /* black */, bgcolor);
 
   XClassHint* wmclass_hint = XAllocClassHint();
-  char* class_name = new char[title.length() + 1];
-  snprintf(class_name, title.length(), title.c_str());
-  wmclass_hint->res_name = wmclass_hint->res_class = class_name;
+  wmclass_hint->res_name = wmclass_hint->res_class = strdup(title.c_str());
   XSetClassHint(dpy, win, wmclass_hint);
   XSelectInput(dpy, win, KeyPressMask);
   XMapWindow(dpy, win);
