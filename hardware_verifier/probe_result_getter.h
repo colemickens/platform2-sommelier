@@ -25,9 +25,8 @@ class ProbeResultGetter {
 
   // Gets the |ProbeResult| message from the given file.
   //
-  // If the extension of the file name is ".prototxt", it treats the file format
-  // the protobuf text format.  If the extension is ".protobin", it parses the
-  // file content as a normal protobuf message.
+  // The extension of the file name must be ".prototxt" and the format of the
+  // file content is expected to be protobuf text format.
   //
   // @param file_path: Path to the file thath contains the data.
   //

@@ -42,6 +42,7 @@ static_library("libhardware_verifier") {
   sources = [
     "cli.cc",
     "hw_verification_spec_getter_impl.cc",
+    "probe_result_getter_impl.cc",
   ]
 }
 
@@ -67,6 +68,7 @@ if (use.test) {
     sources = [
       "cli_test.cc",
       "hw_verification_spec_getter_impl_test.cc",
+      "probe_result_getter_impl_test.cc",
     ]
     deps = [
       ":libhardware_verifier",
