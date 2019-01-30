@@ -443,53 +443,66 @@ TEST_F(CrashSenderUtilTest, ChooseAction) {
 
   std::string reason;
 
+  brillo::KeyValueStore metadata;
   // The following files should be sent.
-  EXPECT_EQ(kSend, ChooseAction(good_meta_, metrics_lib_.get(), &reason));
-  EXPECT_EQ(kSend, ChooseAction(absolute_meta_, metrics_lib_.get(), &reason));
+  EXPECT_EQ(kSend,
+            ChooseAction(good_meta_, metrics_lib_.get(), &reason, &metadata));
+  EXPECT_EQ(kSend, ChooseAction(absolute_meta_, metrics_lib_.get(), &reason,
+                                &metadata));
+  // Sanity check that the valid metadata is returned.
+  std::string value;
+  EXPECT_TRUE(metadata.GetString("payload", &value));
 
   // The following files should be ignored.
-  EXPECT_EQ(kIgnore,
-            ChooseAction(new_incomplete_meta_, metrics_lib_.get(), &reason));
+  EXPECT_EQ(kIgnore, ChooseAction(new_incomplete_meta_, metrics_lib_.get(),
+                                  &reason, &metadata));
   EXPECT_THAT(reason, HasSubstr("Recent incomplete metadata"));
 
   // Device coredump should be ignored by default.
-  EXPECT_EQ(kIgnore, ChooseAction(devcore_meta_, metrics_lib_.get(), &reason));
+  EXPECT_EQ(kIgnore, ChooseAction(devcore_meta_, metrics_lib_.get(), &reason,
+                                  &metadata));
   EXPECT_THAT(reason, HasSubstr("Device coredump upload not allowed"));
 
   // Device coredump should be sent, if uploading is allowed.
   CreateDeviceCoredumpUploadAllowedFile();
-  EXPECT_EQ(kSend, ChooseAction(devcore_meta_, metrics_lib_.get(), &reason));
+  EXPECT_EQ(kSend, ChooseAction(devcore_meta_, metrics_lib_.get(), &reason,
+                                &metadata));
 
   // The following files should be removed.
-  EXPECT_EQ(kRemove, ChooseAction(empty_meta_, metrics_lib_.get(), &reason));
+  EXPECT_EQ(kRemove,
+            ChooseAction(empty_meta_, metrics_lib_.get(), &reason, &metadata));
   EXPECT_THAT(reason, HasSubstr("Payload is not found"));
 
-  EXPECT_EQ(kRemove,
-            ChooseAction(corrupted_meta_, metrics_lib_.get(), &reason));
+  EXPECT_EQ(kRemove, ChooseAction(corrupted_meta_, metrics_lib_.get(), &reason,
+                                  &metadata));
   EXPECT_THAT(reason, HasSubstr("Corrupted metadata"));
 
-  EXPECT_EQ(kRemove,
-            ChooseAction(nonexistent_meta_, metrics_lib_.get(), &reason));
+  EXPECT_EQ(kRemove, ChooseAction(nonexistent_meta_, metrics_lib_.get(),
+                                  &reason, &metadata));
   EXPECT_THAT(reason, HasSubstr("Missing payload"));
 
-  EXPECT_EQ(kRemove, ChooseAction(unknown_meta_, metrics_lib_.get(), &reason));
+  EXPECT_EQ(kRemove, ChooseAction(unknown_meta_, metrics_lib_.get(), &reason,
+                                  &metadata));
   EXPECT_THAT(reason, HasSubstr("Unknown kind"));
 
-  EXPECT_EQ(kRemove,
-            ChooseAction(old_incomplete_meta_, metrics_lib_.get(), &reason));
+  EXPECT_EQ(kRemove, ChooseAction(old_incomplete_meta_, metrics_lib_.get(),
+                                  &reason, &metadata));
   EXPECT_THAT(reason, HasSubstr("Removing old incomplete metadata"));
 
   ASSERT_TRUE(SetConditions(kUnofficialBuild, kSignInMode, kMetricsEnabled));
-  EXPECT_EQ(kRemove, ChooseAction(good_meta_, metrics_lib_.get(), &reason));
+  EXPECT_EQ(kRemove,
+            ChooseAction(good_meta_, metrics_lib_.get(), &reason, &metadata));
   EXPECT_THAT(reason, HasSubstr("Not an official OS version"));
 
   ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsDisabled));
-  EXPECT_EQ(kRemove, ChooseAction(good_meta_, metrics_lib_.get(), &reason));
+  EXPECT_EQ(kRemove,
+            ChooseAction(good_meta_, metrics_lib_.get(), &reason, &metadata));
   EXPECT_THAT(reason, HasSubstr("Crash reporting is disabled"));
 
   // Valid crash files should be kept in the guest mode.
   ASSERT_TRUE(SetConditions(kOfficialBuild, kGuestMode, kMetricsDisabled));
-  EXPECT_EQ(kSend, ChooseAction(good_meta_, metrics_lib_.get(), &reason));
+  EXPECT_EQ(kSend,
+            ChooseAction(good_meta_, metrics_lib_.get(), &reason, &metadata));
 }
 
 TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
@@ -500,7 +513,7 @@ TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
   ASSERT_TRUE(CreateDirectory(crash_directory));
   ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
 
-  std::vector<base::FilePath> to_send;
+  std::vector<MetaFile> to_send;
   RemoveAndPickCrashFiles(crash_directory, metrics_lib_.get(), &to_send);
   // Check what files were removed.
   EXPECT_TRUE(base::PathExists(good_meta_));
@@ -516,8 +529,12 @@ TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
   EXPECT_FALSE(base::PathExists(old_incomplete_meta_));
   // Check what files were picked for sending.
   ASSERT_EQ(2, to_send.size());
-  EXPECT_EQ(good_meta_.value(), to_send[0].value());
-  EXPECT_EQ(absolute_meta_.value(), to_send[1].value());
+  EXPECT_EQ(good_meta_.value(), to_send[0].first.value());
+  EXPECT_EQ(absolute_meta_.value(), to_send[1].first.value());
+
+  // Sanity check that the valid metadata is returned.
+  std::string value;
+  EXPECT_TRUE(to_send[0].second->GetString("payload", &value));
 
   // All crash files should be removed for an unofficial build.
   ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
@@ -545,8 +562,8 @@ TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
   // TODO(satorux): This will become zero, once we move the "skip in guest mode"
   // logic to C++.
   ASSERT_EQ(2, to_send.size());
-  EXPECT_EQ(good_meta_.value(), to_send[0].value());
-  EXPECT_EQ(absolute_meta_.value(), to_send[1].value());
+  EXPECT_EQ(good_meta_.value(), to_send[0].first.value());
+  EXPECT_EQ(absolute_meta_.value(), to_send[1].first.value());
 
   // devcore_meta_ should be included in to_send, if uploading of device
   // coredumps is allowed.
@@ -556,7 +573,7 @@ TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
   to_send.clear();
   RemoveAndPickCrashFiles(crash_directory, metrics_lib_.get(), &to_send);
   ASSERT_EQ(3, to_send.size());
-  EXPECT_EQ(devcore_meta_.value(), to_send[2].value());
+  EXPECT_EQ(devcore_meta_.value(), to_send[2].first.value());
 }
 
 TEST_F(CrashSenderUtilTest, RemoveReportFiles) {
@@ -654,14 +671,19 @@ TEST_F(CrashSenderUtilTest, GetKindFromPayloadPath) {
 
 TEST_F(CrashSenderUtilTest, ParseMetadata) {
   brillo::KeyValueStore metadata;
+  std::string value;
   EXPECT_TRUE(ParseMetadata("", &metadata));
   EXPECT_TRUE(ParseMetadata("log=test.log\n", &metadata));
   EXPECT_TRUE(ParseMetadata("#comment\nlog=test.log\n", &metadata));
 
+  EXPECT_TRUE(metadata.GetString("log", &value));
+  // This will clear the previouly parsed data.
+  EXPECT_TRUE(ParseMetadata("payload=test.dmp\n", &metadata));
+  EXPECT_FALSE(metadata.GetString("log", &value));
+
   // Underscores, dashes, and periods should allowed, as Chrome uses them.
   // https://crbug.com/821530.
   EXPECT_TRUE(ParseMetadata("abcABC012_.-=test.log\n", &metadata));
-  std::string value;
   EXPECT_TRUE(metadata.GetString("abcABC012_.-", &value));
   EXPECT_EQ("test.log", value);
 

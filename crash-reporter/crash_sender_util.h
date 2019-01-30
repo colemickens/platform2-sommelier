@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -38,6 +39,10 @@ struct EnvPair {
 struct CommandLineFlags {
   base::TimeDelta max_spread_time;
 };
+
+// Represents a metadata file name, and its parsed metadata.
+typedef std::pair<base::FilePath, std::unique_ptr<brillo::KeyValueStore>>
+    MetaFile;
 
 // Actions returned by ChooseAction().
 enum Action {
@@ -97,10 +102,11 @@ void RemoveOrphanedCrashFiles(const base::FilePath& crash_dir);
 
 // Chooses an action to take for the crash report associated with the given meta
 // file, and reports the reason. |metrics_lib| is used to check if metrics are
-// enabled, etc.
+// enabled, etc. The parsed metadata will be stored in |metadata| for reuse.
 Action ChooseAction(const base::FilePath& meta_file,
                     MetricsLibraryInterface* metrics_lib,
-                    std::string* reason);
+                    std::string* reason,
+                    brillo::KeyValueStore* metadata);
 
 // Removes invalid files in |crash_dir|, that are unknown, corrupted, or invalid
 // in other ways, and picks crash reports that should be sent to the server. The
@@ -108,7 +114,7 @@ Action ChooseAction(const base::FilePath& meta_file,
 // |metrics_lib|.
 void RemoveAndPickCrashFiles(const base::FilePath& crash_dir,
                              MetricsLibraryInterface* metrics_lib,
-                             std::vector<base::FilePath>* to_send);
+                             std::vector<MetaFile>* to_send);
 
 // Removes report files associated with the given meta file.
 // More specifically, if "foo.meta" is given, "foo.*" will be removed.
@@ -129,6 +135,7 @@ std::string GetKindFromPayloadPath(const base::FilePath& payload_path);
 
 // Parses |raw_metadata| into |metadata|. Keys in metadata are validated (keys
 // should consist of expected characters). Returns true on success.
+// The original contents of |metadata| will be lost.
 bool ParseMetadata(const std::string& raw_metadata,
                    brillo::KeyValueStore* metadata);
 

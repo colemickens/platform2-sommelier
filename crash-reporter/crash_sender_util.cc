@@ -211,7 +211,8 @@ void RemoveOrphanedCrashFiles(const base::FilePath& crash_dir) {
 
 Action ChooseAction(const base::FilePath& meta_file,
                     MetricsLibraryInterface* metrics_lib,
-                    std::string* reason) {
+                    std::string* reason,
+                    brillo::KeyValueStore* metadata) {
   if (!IsMock() && !IsOfficialImage()) {
     *reason = "Not an official OS version";
     return kRemove;
@@ -239,13 +240,12 @@ Action ChooseAction(const base::FilePath& meta_file,
     return kIgnore;
   }
 
-  brillo::KeyValueStore metadata;
-  if (!ParseMetadata(raw_metadata, &metadata)) {
+  if (!ParseMetadata(raw_metadata, metadata)) {
     *reason = "Corrupted metadata: " + raw_metadata;
     return kRemove;
   }
 
-  base::FilePath payload_path = GetBaseNameFromMetadata(metadata, "payload");
+  base::FilePath payload_path = GetBaseNameFromMetadata(*metadata, "payload");
   if (payload_path.empty()) {
     *reason = "Payload is not found in the meta data: " + raw_metadata;
     return kRemove;
@@ -267,7 +267,7 @@ Action ChooseAction(const base::FilePath& meta_file,
     return kRemove;
   }
 
-  if (!IsCompleteMetadata(metadata)) {
+  if (!IsCompleteMetadata(*metadata)) {
     base::File::Info info;
     if (!base::GetFileInfo(meta_file, &info)) {
       // Should not happen since it succeeded to read the file.
@@ -297,14 +297,16 @@ Action ChooseAction(const base::FilePath& meta_file,
 
 void RemoveAndPickCrashFiles(const base::FilePath& crash_dir,
                              MetricsLibraryInterface* metrics_lib,
-                             std::vector<base::FilePath>* to_send) {
+                             std::vector<MetaFile>* to_send) {
   std::vector<base::FilePath> meta_files = GetMetaFiles(crash_dir);
 
   for (const auto& meta_file : meta_files) {
     LOG(INFO) << "Checking metadata: " << meta_file.value();
 
     std::string reason;
-    switch (ChooseAction(meta_file, metrics_lib, &reason)) {
+    std::unique_ptr<brillo::KeyValueStore> metadata =
+        std::make_unique<brillo::KeyValueStore>();
+    switch (ChooseAction(meta_file, metrics_lib, &reason, metadata.get())) {
       case kRemove:
         LOG(INFO) << "Removing: " << reason;
         RemoveReportFiles(meta_file);
@@ -313,7 +315,7 @@ void RemoveAndPickCrashFiles(const base::FilePath& crash_dir,
         LOG(INFO) << "Igonoring: " << reason;
         break;
       case kSend:
-        to_send->push_back(meta_file);
+        to_send->push_back(std::make_pair(meta_file, std::move(metadata)));
         break;
       default:
         NOTREACHED();
@@ -387,6 +389,7 @@ std::string GetKindFromPayloadPath(const base::FilePath& payload_path) {
 
 bool ParseMetadata(const std::string& raw_metadata,
                    brillo::KeyValueStore* metadata) {
+  metadata->Clear();
   if (!metadata->LoadFromString(raw_metadata))
     return false;
 
@@ -517,11 +520,12 @@ bool Sender::SendCrashes(const base::FilePath& crash_dir) {
 
   RemoveOrphanedCrashFiles(crash_dir);
 
-  std::vector<base::FilePath> to_send;
+  std::vector<MetaFile> to_send;
   RemoveAndPickCrashFiles(crash_dir, metrics_lib_.get(), &to_send);
 
   bool success = true;
-  for (const auto& meta_file : to_send) {
+  for (const auto& pair : to_send) {
+    const base::FilePath& meta_file = pair.first;
     LOG(INFO) << "Evaluating crash report: " << meta_file.value();
 
     // This should be checked inside of the loop, since the device can enter
