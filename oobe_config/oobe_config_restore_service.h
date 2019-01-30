@@ -9,14 +9,13 @@
 #include <utility>
 #include <vector>
 
+#include "oobe_config/proto_bindings/oobe_config.pb.h"
+
 #include <brillo/dbus/async_event_sequencer.h>
 #include <dbus_adaptors/org.chromium.OobeConfigRestore.h>
 #include <power_manager-client/power_manager/dbus-proxies.h>
 
 namespace oobe_config {
-
-// Used as buffer for serialized protobufs.
-using ProtoBlob = std::vector<uint8_t>;
 
 // Implementation of OobeConfigRestore D-Bus interface.
 class OobeConfigRestoreService
@@ -37,7 +36,7 @@ class OobeConfigRestoreService
   // org::chromium::OobeConfigRestoreInterface
   //   - See org.chromium.OobeConfigRestoreInterface.xml
   void ProcessAndGetOobeAutoConfig(int32_t* error,
-                                   ProtoBlob* oobe_config_blob) override;
+                                   OobeRestoreData* oobe_config_blob) override;
 
  private:
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;

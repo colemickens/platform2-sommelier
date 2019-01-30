@@ -15,18 +15,6 @@ using brillo::dbus_utils::AsyncEventSequencer;
 
 namespace oobe_config {
 
-namespace {
-
-// Serializes |proto| to the byte array |proto_blob|.
-template <typename Proto>
-bool SerializeProtoToBlob(const Proto& proto, ProtoBlob* proto_blob) {
-  DCHECK(proto_blob);
-  proto_blob->resize(proto.ByteSizeLong());
-  return proto.SerializeToArray(proto_blob->data(), proto.ByteSizeLong());
-}
-
-}  // namespace
-
 OobeConfigRestoreService::OobeConfigRestoreService(
     std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
     bool allow_unencrypted,
@@ -45,9 +33,9 @@ void OobeConfigRestoreService::RegisterAsync(
 }
 
 void OobeConfigRestoreService::ProcessAndGetOobeAutoConfig(
-    int32_t* error, ProtoBlob* oobe_config_blob) {
+    int32_t* error, OobeRestoreData* oobe_config_proto) {
   DCHECK(error);
-  DCHECK(oobe_config_blob);
+  DCHECK(oobe_config_proto);
 
   LOG(INFO) << "Chrome requested OOBE config.";
   power_manager_proxy_ = std::make_unique<org::chromium::PowerManagerProxy>(
@@ -79,9 +67,8 @@ void OobeConfigRestoreService::ProcessAndGetOobeAutoConfig(
     }
   }
 
-  OobeRestoreData data_proto;
-  data_proto.set_chrome_config_json(chrome_config_json);
-  *error = SerializeProtoToBlob(data_proto, oobe_config_blob) ? 0 : -1;
+  oobe_config_proto->set_chrome_config_json(chrome_config_json);
+  *error = 0;
 }
 
 }  // namespace oobe_config
