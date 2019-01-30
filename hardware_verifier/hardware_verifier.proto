@@ -1,0 +1,18 @@
+// Copyright 2019 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// The messages in this file comprise the DBus/Protobuf interface for
+// Hardware Verifier.
+
+syntax = "proto3";
+
+option optimize_for = SPEED;
+
+package hardware_verifier;
+
+message HwVerificationSpec {}
+
+message HwVerificationReport {
+  bool is_compliant = 1;
+}

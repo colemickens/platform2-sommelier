@@ -1,0 +1,41 @@
+/* Copyright 2019 The Chromium OS Authors. All rights reserved.
+ * Use of this source code is governed by a BSD-style license that can be
+ * found in the LICENSE file.
+ */
+
+#ifndef HARDWARE_VERIFIER_PROBE_RESULT_GETTER_H_
+#define HARDWARE_VERIFIER_PROBE_RESULT_GETTER_H_
+
+#include <base/files/file_path.h>
+#include <base/optional.h>
+#include <runtime_probe/proto_bindings/runtime_probe.pb.h>
+
+namespace hardware_verifier {
+
+// Interface that provides ways to retrieve |ProbeResult| messages.
+class ProbeResultGetter {
+ public:
+  virtual ~ProbeResultGetter() = default;
+
+  // Gets the |ProbeResult| message by invoking |runtime_probe|.
+  //
+  // @return A |runtime_probe::ProbeResult| message if it succeeds.
+  virtual base::Optional<runtime_probe::ProbeResult> GetFromRuntimeProbe()
+      const = 0;
+
+  // Gets the |ProbeResult| message from the given file.
+  //
+  // If the extension of the file name is ".prototxt", it treats the file format
+  // the protobuf text format.  If the extension is ".protobin", it parses the
+  // file content as a normal protobuf message.
+  //
+  // @param file_path: Path to the file thath contains the data.
+  //
+  // @return A |runtime_probe::ProbeResult| message if it succeeds.
+  virtual base::Optional<runtime_probe::ProbeResult> GetFromFile(
+      const base::FilePath& file_path) const = 0;
+};
+
+}  // namespace hardware_verifier
+
+#endif  // HARDWARE_VERIFIER_PROBE_RESULT_GETTER_H_

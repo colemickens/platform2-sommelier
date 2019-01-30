@@ -58,6 +58,7 @@ copies.
 | [glib-bridge](./glib-bridge/) | library for libchrome-glib message loop interoperation |
 | [goldfishd](./goldfishd/) | Android Emulator Daemon |
 | [hammerd](./hammerd/) | Firmware updater utility for hammer hardware |
+| [hardware_verifier](./hardware_verifier/) | Hardware verifier tool |
 | [hermes](./hermes/) | Chrome OS LPA implementation for eSIM hardware support |
 | [image-burner](./image-burner/) | Daemon for writing disk images (e.g. recovery) to USB sticks & SD cards |
 | [imageloader](./imageloader/) | Daemon for mounting signed disk images |

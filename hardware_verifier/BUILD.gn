@@ -1,0 +1,76 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+group("all") {
+  deps = []
+  if (use.test) {
+    deps += [ ":unittest_runner" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+
+    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # before protobuf here or the linker flags won't be in the right
+    # order.
+    "system_api",
+    "protobuf",
+  ]
+}
+
+proto_library("hardware_verifier-protos") {
+  proto_in_dir = "./"
+  proto_out_dir = "include/hardware_verifier"
+  sources = [
+    "${proto_in_dir}/hardware_verifier.proto",
+  ]
+}
+
+static_library("libhardware_verifier") {
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":hardware_verifier-protos",
+  ]
+  sources = [
+    "cli.cc",
+  ]
+}
+
+if (use.test) {
+  static_library("libhardware_verifier_test") {
+    configs += [ ":target_defaults" ]
+    deps = [
+      ":hardware_verifier-protos",
+    ]
+    sources = [
+      "hw_verification_spec_getter_fake.cc",
+      "probe_result_getter_fake.cc",
+      "verifier_fake.cc",
+    ]
+  }
+
+  executable("unittest_runner") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    sources = [
+      "cli_test.cc",
+    ]
+    deps = [
+      ":libhardware_verifier",
+      ":libhardware_verifier_test",
+      "//common-mk/testrunner",
+    ]
+    data = [
+      "testdata/",
+    ]
+  }
+}
