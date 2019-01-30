@@ -27,7 +27,7 @@ class PluginVm final : public VmInterface {
  public:
   static std::unique_ptr<PluginVm> Create(
       uint32_t cpus,
-      std::string params,
+      std::vector<std::string> params,
       arc_networkd::MacAddress mac_addr,
       std::unique_ptr<arc_networkd::SubnetAddress> ipv4_addr,
       uint32_t ipv4_netmask,
@@ -58,7 +58,7 @@ class PluginVm final : public VmInterface {
            uint32_t ipv4_gateway,
            base::FilePath runtime_dir);
   bool Start(uint32_t cpus,
-             std::string params,
+             std::vector<std::string> params,
              base::FilePath stateful_dir,
              base::FilePath cicerone_token_dir);
 

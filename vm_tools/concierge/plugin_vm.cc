@@ -53,7 +53,7 @@ bool SetPgid() {
 // static
 std::unique_ptr<PluginVm> PluginVm::Create(
     uint32_t cpus,
-    string params,
+    std::vector<string> params,
     arc_networkd::MacAddress mac_addr,
     std::unique_ptr<arc_networkd::SubnetAddress> ipv4_addr,
     uint32_t ipv4_netmask,
@@ -149,7 +149,7 @@ PluginVm::PluginVm(arc_networkd::MacAddress mac_addr,
 }
 
 bool PluginVm::Start(uint32_t cpus,
-                     string params,
+                     std::vector<string> params,
                      base::FilePath stateful_dir,
                      base::FilePath cicerone_token_dir) {
   // Set up the tap device.
@@ -167,7 +167,6 @@ bool PluginVm::Start(uint32_t cpus,
     "--mem",          "2048",  // TODO(b:80150167): memory allocation policy
     "--tap-fd",       std::to_string(tap_fd.get()),
     "--socket",       runtime_dir_.GetPath().Append(kCrosvmSocket).value(),
-    "--params",       std::move(params),
     "--plugin",       kPluginBin,
     "--plugin-mount", base::StringPrintf("%s:/pvm:true",
                                          stateful_dir.value().c_str()),
@@ -182,6 +181,11 @@ bool PluginVm::Start(uint32_t cpus,
                                          cicerone_token_dir.value().c_str()),
   };
   // clang-format on
+
+  for (auto& param : params) {
+    args.emplace_back("--params");
+    args.emplace_back(std::move(param));
+  }
 
   // Put everything into the brillo::ProcessImpl.
   for (string& arg : args) {

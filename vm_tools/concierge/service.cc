@@ -21,6 +21,7 @@
 #include <linux/vm_sockets.h>  // Needs to come after sys/socket.h
 
 #include <algorithm>
+#include <iterator>
 #include <map>
 #include <utility>
 #include <vector>
@@ -1066,9 +1067,14 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
     return dbus_response;
   }
 
+  // Build the plugin params.
+  std::vector<string> params(
+      std::make_move_iterator(request.mutable_params()->begin()),
+      std::make_move_iterator(request.mutable_params()->end()));
+
   // Now start the VM.
   auto vm = PluginVm::Create(
-      request.cpus(), request.params(), std::move(mac_addr),
+      request.cpus(), std::move(params), std::move(mac_addr),
       std::move(ipv4_addr), plugin_subnet_->Netmask(),
       plugin_subnet_->AddressAtOffset(0), std::move(stateful_dir),
       std::move(runtime_dir), std::move(cicerone_dir));

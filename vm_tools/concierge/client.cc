@@ -13,6 +13,7 @@
 #include <utility>
 
 #include <base/at_exit.h>
+#include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/format_macros.h>
@@ -797,7 +798,10 @@ int StartTerminaVm(dbus::ObjectProxy* proxy,
   return LogVmStatus(request.name(), response);
 }
 
-int StartPluginVm(dbus::ObjectProxy* proxy, string name, string cryptohome_id) {
+int StartPluginVm(dbus::ObjectProxy* proxy,
+                  string name,
+                  const std::vector<string>& params,
+                  string cryptohome_id) {
   if (name.empty()) {
     LOG(ERROR) << "--name is required";
     return -1;
@@ -820,6 +824,10 @@ int StartPluginVm(dbus::ObjectProxy* proxy, string name, string cryptohome_id) {
   request.set_host_mac_address(
       reinterpret_cast<const char*>(kPluginVmMacAddress),
       sizeof(kPluginVmMacAddress));
+
+  for (const string& param : params) {
+    request.add_params(param);
+  }
 
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
     LOG(ERROR) << "Failed to encode StartVmRequest protobuf";
@@ -1161,6 +1169,7 @@ int main(int argc, char** argv) {
         std::move(FLAGS_image_type), std::move(FLAGS_extra_disks));
   } else if (FLAGS_start_plugin_vm) {
     return StartPluginVm(proxy, std::move(FLAGS_name),
+                         base::CommandLine::ForCurrentProcess()->GetArgs(),
                          std::move(FLAGS_cryptohome_id));
   } else if (FLAGS_sync_time) {
     return SyncVmTimes(proxy);
