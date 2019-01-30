@@ -69,7 +69,7 @@ TEST_F(PolicyToolTest, DeviceAllowBluetooth) {
   // Verify that "clear DeviceAllowBluetooth" removes the policy override.
   {
     const char* argv[] = {"app_name", "clear", "DeviceAllowBluetooth"};
-    CommandLine cl(4, argv);
+    CommandLine cl(3, argv);
 
     EXPECT_TRUE(policy_tool()->DoCommand(cl.GetArgs()));
     FilePath json_file =
