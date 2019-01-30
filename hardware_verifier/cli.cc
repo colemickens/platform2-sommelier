@@ -15,13 +15,14 @@
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
 #include "hardware_verifier/hardware_verifier.pb.h"
+#include "hardware_verifier/hw_verification_spec_getter_impl.h"
 
 namespace hardware_verifier {
 
 // TODO(yhong): Link to the correct class once they are implemented.
 CLI::CLI()
     : pr_getter_(nullptr),
-      vp_getter_(nullptr),
+      vp_getter_(std::make_unique<HwVerificationSpecGetterImpl>()),
       verifier_(nullptr),
       output_stream_(&std::cout) {}
 

@@ -27,9 +27,10 @@ class HwVerificationSpecGetter {
 
   // Reads the |HwVerificationSpec| message from the given path.
   //
-  // If the file name ends with ".prototxt", this function parses the content
-  // in protobuf text format.  If the file name ends with ".protobin", the
-  // function treats the content as regular protobuf message in binary format.
+  // The given file name must ends with ".prototxt" and the content must be
+  // in protobuf text format.  |hardware_verifier| is not allowed to open
+  // arbitrary hardware verification spec file if |cros_debug| is 0 so
+  // this method does the check and returns |false| in that case.
   //
   // @param file_path: Path to the file that contains the data.
   //

@@ -22,6 +22,7 @@ pkg_config("target_defaults") {
     # order.
     "system_api",
     "protobuf",
+    "vboot_host",
   ]
 }
 
@@ -40,6 +41,7 @@ static_library("libhardware_verifier") {
   ]
   sources = [
     "cli.cc",
+    "hw_verification_spec_getter_impl.cc",
   ]
 }
 
@@ -52,6 +54,7 @@ if (use.test) {
     sources = [
       "hw_verification_spec_getter_fake.cc",
       "probe_result_getter_fake.cc",
+      "test_utils.cc",
       "verifier_fake.cc",
     ]
   }
@@ -63,6 +66,7 @@ if (use.test) {
     ]
     sources = [
       "cli_test.cc",
+      "hw_verification_spec_getter_impl_test.cc",
     ]
     deps = [
       ":libhardware_verifier",
