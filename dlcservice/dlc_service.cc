@@ -46,8 +46,6 @@ int DlcService::OnInit() {
   if (load_installed_) {
     dbus_adaptor_->LoadDlcModuleImages();
   }
-
-  ScheduleShutdown();
   return EX_OK;
 }
 
@@ -65,6 +63,12 @@ void DlcService::RegisterDBusObjectsAsync(
   dbus_adaptor_->RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(
       sequencer->GetHandler("RegisterAsync() failed.", true));
+}
+
+int DlcService::OnEventLoopStarted() {
+  ScheduleShutdown();
+
+  return Daemon::OnEventLoopStarted();
 }
 
 }  // namespace dlcservice
