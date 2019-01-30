@@ -196,13 +196,6 @@ class SmbProvider : public org::chromium::SmbProviderAdaptor,
                         const std::string& mount_root,
                         int32_t* error_code);
 
-  // Tests whether |mount_root| can be reached by attempting to open the
-  // directory. Authentication errors are ignored. Returns true if the errno is
-  // either EPERM, EACCES, or 0 (OK).
-  bool CanReachHost(int32_t mount_id,
-                    const std::string& mount_root,
-                    int32_t* error_code);
-
   // Helper method to get the type of an entry. Returns boolean indicating
   // success. Sets is_directory to true for directory, and false for file.
   // Fails when called on non-file, non-directory.

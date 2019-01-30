@@ -3600,9 +3600,7 @@ TEST_F(SmbProviderTest, TestPremountSucceedsOnEACCES) {
   EXPECT_EQ(1, mount_manager_->MountCount());
 }
 
-// TODO(jimmyxgong): Change test to succeed on ERROR_NOT_FOUND when redoing
-// name resolution is implemented. Bug tracker: crbug.com/922273
-TEST_F(SmbProviderTest, TestPremountFailsOnERRORNOTFOUND) {
+TEST_F(SmbProviderTest, TestPremountSucceedsOnETIMEDOUT) {
   fake_samba_->AddDirectory(GetDefaultServer());
   fake_samba_->AddDirectory(GetDefaultMountRoot());
 
@@ -3617,9 +3615,9 @@ TEST_F(SmbProviderTest, TestPremountFailsOnERRORNOTFOUND) {
   int32_t mount_id;
   smbprovider_->Premount(blob, &error_code, &mount_id);
 
-  EXPECT_EQ(ERROR_NOT_FOUND, CastError(error_code));
-  EXPECT_EQ(0, mount_id);
-  EXPECT_EQ(0, mount_manager_->MountCount());
+  EXPECT_EQ(ERROR_OK, CastError(error_code));
+  EXPECT_GE(mount_id, 0);
+  EXPECT_EQ(1, mount_manager_->MountCount());
 }
 
 TEST_F(SmbProviderTest, TestPremountFailsOnExistingMount) {

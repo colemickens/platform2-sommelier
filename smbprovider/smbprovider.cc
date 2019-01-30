@@ -659,8 +659,7 @@ void SmbProvider::Premount(const ProtoBlob& options_blob,
   MountConfig mount_config = ConvertToMountConfig(options);
 
   const bool success =
-      Premount(options.path(), mount_config, error_code, mount_id) &&
-      CanReachHost(*mount_id, options.path(), error_code);
+      Premount(options.path(), mount_config, error_code, mount_id);
 
   if (!success) {
     LOG(ERROR) << "Failed to premount preconfigured share.";
@@ -853,31 +852,6 @@ bool SmbProvider::CanReadMountRoot(int32_t mount_id,
   }
 
   CloseDirectory(mount_id, dir_id);
-  return true;
-}
-
-bool SmbProvider::CanReachHost(int32_t mount_id,
-                               const std::string& mount_root,
-                               int32_t* error_code) {
-  DCHECK(error_code);
-
-  SambaInterface* samba_interface = GetSambaInterface(mount_id);
-  DCHECK(samba_interface);
-
-  int32_t dir_id = -1;
-  int32_t result = samba_interface->OpenDirectory(mount_root, &dir_id);
-
-  // Allow authentication failures as it shows that the host can be reached.
-  const bool acceptable_result =
-      (result == 0) || (result == EPERM) || (result == EACCES);
-  if (!acceptable_result) {
-    LogAndSetError(kPremountMethod, -1, GetErrorFromErrno(result), error_code);
-    return false;
-  }
-
-  if (result == 0) {
-    CloseDirectory(mount_id, dir_id);
-  }
   return true;
 }
 
