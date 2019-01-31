@@ -59,10 +59,14 @@ bool GetUidGid(const string& user, uid_t* uid, gid_t* gid) {
   }
   passwd user_info{}, *user_infop;
   vector<char> user_name_buf(static_cast<size_t>(user_name_length));
-  if (getpwnam_r(user.c_str(), &user_info, user_name_buf.data(),
-                 static_cast<size_t>(user_name_length), &user_infop)) {
+  getpwnam_r(user.c_str(), &user_info, user_name_buf.data(),
+             static_cast<size_t>(user_name_length), &user_infop);
+  // NOTE: the return value can be ambiguous in the case that the user does
+  // not exist. See "man getpwnam_r" for details.
+  if (user_infop == nullptr) {
     return false;
   }
+
   *uid = user_info.pw_uid;
   *gid = user_info.pw_gid;
   return true;
