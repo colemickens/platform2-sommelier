@@ -239,6 +239,8 @@ Once [crash_sender] is converted to C++, we can re-evaluate improving this.
 See https://crbug.com/275910 for more details.
 ***
 
+### Manually Uploading
+
 At runtime, there are a few different ways one can trigger uploading.
 Since [crash_sender] has internal locking, you don't have to worry about any of
 these methods clobbering or racing with any other crash component.
@@ -251,6 +253,8 @@ Currently we disable crash uploading while in guest mode, but this is only to
 avoid uploading any browser or user crashes saved in the guest's profile.
 We should be able to improve this by still uploading system crashes.
 ***
+
+### Viewing
 
 Once these crashes are uploaded, where do they go you might wonder?
 By default, they're sent to the [Google Crash Server].
