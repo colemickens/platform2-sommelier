@@ -297,6 +297,17 @@ impl Frontend for Vmc {
             return Ok(());
         }
 
+        for &arg in args {
+            match arg {
+                "--" => break,
+                "--help" | "-h" => {
+                    self.print_usage("vmc");
+                    return Ok(());
+                }
+                _ => {}
+            }
+        }
+
         let mut command = Command {
             backend,
             args: &args[2..],
@@ -334,6 +345,8 @@ mod tests {
             &["vmc", "export", "termina", "file name", "removable media"],
             &["vmc", "list"],
             &["vmc", "share", "termina", "my-folder"],
+            &["vmc", "--help"],
+            &["vmc", "-h"],
         ];
 
         const DUMMY_FAILURE_ARGS: &[&[&str]] = &[

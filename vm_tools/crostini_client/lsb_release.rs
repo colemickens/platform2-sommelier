@@ -103,7 +103,7 @@ impl FromStr for LsbRelease {
                     return Err(LsbReleaseError::ParseError {
                         row,
                         message: "missing '=' in row",
-                    })
+                    });
                 }
             }
         }
