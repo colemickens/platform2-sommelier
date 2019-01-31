@@ -5,6 +5,8 @@
 import("//common-mk/pkg_config.gni")
 import("//common-mk/mojom_bindings_generator.gni")
 
+keymaster_src = "../../../aosp/system/keymaster"
+
 group("all") {
   deps = [
     ":arc-keymasterd",
@@ -31,5 +33,75 @@ executable("arc-keymasterd") {
 generate_mojom_bindings("keymaster_mojo_bindings") {
   sources = [
     "mojo/keymaster.mojom",
+  ]
+}
+
+# BoringSSL
+config("boringssl_config") {
+  libs = [
+    "boringcrypto",
+    "pthread",
+  ]
+}
+
+# Keymaster
+config("libkeymaster_config") {
+  include_dirs = [ "${keymaster_src}/include" ]
+  cflags = [
+    "-Wno-defaulted-function-deleted",
+    "-Wno-format-nonliteral",
+  ]
+}
+
+shared_library("libkeymaster") {
+  public_configs = [ ":libkeymaster_config" ]
+  configs += [
+    "//common-mk:visibility_default",
+    ":boringssl_config",
+  ]
+  sources = [
+    "${keymaster_src}/android_keymaster/android_keymaster.cpp",
+    "${keymaster_src}/android_keymaster/android_keymaster_messages.cpp",
+    "${keymaster_src}/android_keymaster/android_keymaster_utils.cpp",
+    "${keymaster_src}/android_keymaster/authorization_set.cpp",
+    "${keymaster_src}/android_keymaster/keymaster_enforcement.cpp",
+    "${keymaster_src}/android_keymaster/keymaster_stl.cpp",
+    "${keymaster_src}/android_keymaster/keymaster_tags.cpp",
+    "${keymaster_src}/android_keymaster/operation.cpp",
+    "${keymaster_src}/android_keymaster/operation_table.cpp",
+    "${keymaster_src}/android_keymaster/serializable.cpp",
+    "${keymaster_src}/key_blob_utils/auth_encrypted_key_blob.cpp",
+    "${keymaster_src}/key_blob_utils/integrity_assured_key_blob.cpp",
+    "${keymaster_src}/key_blob_utils/ocb.c",
+    "${keymaster_src}/key_blob_utils/ocb_utils.cpp",
+    "${keymaster_src}/key_blob_utils/software_keyblobs.cpp",
+    "${keymaster_src}/km_openssl/aes_key.cpp",
+    "${keymaster_src}/km_openssl/aes_operation.cpp",
+    "${keymaster_src}/km_openssl/asymmetric_key.cpp",
+    "${keymaster_src}/km_openssl/asymmetric_key_factory.cpp",
+    "${keymaster_src}/km_openssl/attestation_record.cpp",
+    "${keymaster_src}/km_openssl/block_cipher_operation.cpp",
+    "${keymaster_src}/km_openssl/ckdf.cpp",
+    "${keymaster_src}/km_openssl/ec_key.cpp",
+    "${keymaster_src}/km_openssl/ec_key_factory.cpp",
+    "${keymaster_src}/km_openssl/ecdsa_operation.cpp",
+    "${keymaster_src}/km_openssl/ecies_kem.cpp",
+    "${keymaster_src}/km_openssl/hkdf.cpp",
+    "${keymaster_src}/km_openssl/hmac.cpp",
+    "${keymaster_src}/km_openssl/hmac_key.cpp",
+    "${keymaster_src}/km_openssl/hmac_operation.cpp",
+    "${keymaster_src}/km_openssl/iso18033kdf.cpp",
+    "${keymaster_src}/km_openssl/kdf.cpp",
+    "${keymaster_src}/km_openssl/nist_curve_key_exchange.cpp",
+    "${keymaster_src}/km_openssl/openssl_err.cpp",
+    "${keymaster_src}/km_openssl/openssl_utils.cpp",
+    "${keymaster_src}/km_openssl/rsa_key.cpp",
+    "${keymaster_src}/km_openssl/rsa_key_factory.cpp",
+    "${keymaster_src}/km_openssl/rsa_operation.cpp",
+    "${keymaster_src}/km_openssl/software_random_source.cpp",
+    "${keymaster_src}/km_openssl/symmetric_key.cpp",
+    "${keymaster_src}/km_openssl/triple_des_key.cpp",
+    "${keymaster_src}/km_openssl/triple_des_operation.cpp",
+    "${keymaster_src}/km_openssl/wrapped_key.cpp",
   ]
 }
