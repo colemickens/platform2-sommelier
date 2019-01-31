@@ -44,6 +44,27 @@ config("boringssl_config") {
   ]
 }
 
+# Keymaster context
+shared_library("libarckeymaster_context") {
+  deps = [
+    ":libkeymaster",
+  ]
+  pkg_deps = [ "libchrome-${libbase_ver}" ]
+  configs += [
+    # Needed since the keymaster context doesn't follow CrOS's guidelines.
+    "//common-mk:visibility_default",
+    ":boringssl_config",
+  ]
+  sources = [
+    "${keymaster_src}/android_keymaster/logger.cpp",
+    "${keymaster_src}/contexts/pure_soft_keymaster_context.cpp",
+    "${keymaster_src}/contexts/soft_attestation_cert.cpp",
+    "${keymaster_src}/km_openssl/attestation_utils.cpp",
+    "${keymaster_src}/km_openssl/soft_keymaster_enforcement.cpp",
+    "keymaster_logger.cc",
+  ]
+}
+
 # Keymaster
 config("libkeymaster_config") {
   include_dirs = [ "${keymaster_src}/include" ]
