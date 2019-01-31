@@ -72,6 +72,7 @@ include(sepolicy/file_contexts/coreutils)
 /usr/sbin/update_engine         u:object_r:cros_update_engine_exec:s0
 /usr/sbin/wpa_supplicant        u:object_r:cros_wpa_supplicant_exec:s0
 
+/usr/lib/systemd/systemd-journald u:object_r:cros_journald_exec:s0
 /usr/libexec/bluetooth/bluetoothd u:object_r:cros_bluetoothd_exec:s0
 
 /usr/share/policy(/.*)?         u:object_r:cros_seccomp_policy_file:s0
@@ -148,6 +149,7 @@ include(sepolicy/file_contexts/coreutils)
 /etc/selinux(/.*)?              u:object_r:cros_selinux_config_file:s0
 /etc/sysctl.d(/.*)?             u:object_r:cros_sysctl_conf_file:s0
 /etc/systemd/network(/.*)?      u:object_r:cros_network_conf_file:s0
+/etc/systemd/journald.conf      u:object_r:cros_journal_conf_file:s0
 /etc/udev(/.*)?                 u:object_r:cros_udev_conf_file:s0
 
 # These files are mounted into the mini-container before real /data, /cache are
@@ -176,7 +178,7 @@ has_arc(`
 include(sepolicy/file_contexts/sysfs_contexts)
 
 /dev/console                    u:object_r:console_device:s0
-/dev/logger                     u:object_r:logger_device:s0
+/dev/log                        u:object_r:logger_device:s0
 /dev/null                       u:object_r:null_device:s0
 /dev/random                     u:object_r:random_device:s0
 /dev/shm(/.*)?                  u:object_r:cros_shm:s0

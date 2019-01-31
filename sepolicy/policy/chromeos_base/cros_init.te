@@ -72,7 +72,9 @@ filetrans_pattern_no_target_perm(cros_init_scripts, cros_run, cros_run_shill, di
 
 # init/journald.conf
 filetrans_pattern_no_target_perm(cros_init_scripts, cros_run, cros_run_systemd, dir, "systemd");
-filetrans_pattern_no_target_perm(cros_init_scripts, cros_run_systemd, cros_run_systemd_journal, dir, "journal");
+filetrans_pattern_no_target_perm(cros_init_scripts, cros_run, cros_run_journal, dir, "log");
+filetrans_pattern(cros_init_scripts, cros_run_systemd, cros_run_journal, dir, "journal");
+filetrans_pattern_no_target_perm(cros_init_scripts, device, logger_device, lnk_file, "log");
 
 # init/tpm-probe.conf
 filetrans_pattern_no_target_perm(cros_init_scripts, cros_run, cros_run_tcsd, dir, "tcsd");

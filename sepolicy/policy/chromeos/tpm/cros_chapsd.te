@@ -20,12 +20,6 @@ allow cros_chapsd port:tcp_socket name_connect;
 
 allow cros_chapsd sysfs:file r_file_perms;
 
-allow cros_chapsd cros_run_systemd_journal:sock_file w_file_perms;
-allow cros_chapsd cros_run_systemd_journal:dir r_dir_perms;
-allow cros_chapsd cros_run_systemd:dir r_dir_perms;
-
-allow cros_chapsd minijail:unix_dgram_socket sendto;
-
 allow cros_chapsd cros_run_tcsd:dir r_dir_perms;
 allow cros_chapsd cros_run_tcsd:sock_file write;
 allow cros_chapsd cros_tcsd:unix_stream_socket connectto;

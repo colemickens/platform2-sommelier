@@ -1,0 +1,19 @@
+type cros_journald, chromeos_domain, domain, mlstrustedobject;
+
+permissive cros_journald;
+from_minijail_preload(cros_journald, cros_journald_exec);
+log_writer(cros_journald);
+
+filetrans_pattern(cros_journald, cros_run_journal, logger_device, sock_file, "dev-log");
+
+r_dir_file(cros_journald, cros_journal_conf_file);
+
+allow cros_journald cros_run_journal:dir rw_dir_perms;
+
+allow cros_journald proc_kmsg:file rw_file_perms;
+
+allow cros_journald cros_var_log:dir rw_dir_perms;
+allow cros_journald cros_var_log:file rw_file_perms;
+
+allow cros_journald kernel:system syslog_mod;
+allow cros_journald self:capability2 syslog;

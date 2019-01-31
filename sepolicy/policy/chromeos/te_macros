@@ -40,7 +40,9 @@ allow $1 cros_init_scripts:fd use;
 
 define(`log_writer', `
 allow $1 cros_logger_exec:file { rx_file_perms };
-allow $1 cros_rsyslogd:unix_dgram_socket { sendto };
+allow $1 cros_journald:unix_dgram_socket { sendto };
+allow $1 cros_run_systemd:dir { search };
+allow $1 cros_run_journal:dir { search };
 allow $1 logger_device:sock_file write;
 ')
 
