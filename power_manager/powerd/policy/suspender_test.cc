@@ -48,6 +48,7 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
   void set_suspend_result(SuspendResult result) { suspend_result_ = result; }
   void set_wakeup_count(uint64_t count) { wakeup_count_ = count; }
   void set_clock(Clock* clock) { clock_ = clock; }
+  // TODO(derat): Delete this and use set_suspend_callback instead.
   void set_suspend_advance_time(base::TimeDelta delta) {
     suspend_advance_time_ = delta;
   }
@@ -56,6 +57,9 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
   }
   void set_shutdown_callback(base::Closure callback) {
     shutdown_callback_ = callback;
+  }
+  void set_suspend_callback(base::Closure callback) {
+    suspend_callback_ = callback;
   }
 
   bool suspend_announced() const { return suspend_announced_; }
@@ -108,6 +112,10 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
     suspend_duration_ = duration;
     if (clock_)
       clock_->advance_current_boot_time_for_testing(suspend_advance_time_);
+
+    if (suspend_callback_)
+      suspend_callback_.Run();
+
     return suspend_result_;
   }
 
@@ -166,6 +174,9 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
 
   // Callback to run each time ShutDown*() is called.
   base::Closure shutdown_callback_;
+
+  // Callback to run each time DoSuspend() is called.
+  base::Closure suspend_callback_;
 
   // Arguments passed to last invocation of DoSuspend().
   uint64_t suspend_wakeup_count_ = 0;
@@ -788,8 +799,14 @@ TEST_F(SuspenderTest, DarkResumeCancelBeforeResuspend) {
   // Suspend for 10 seconds.
   const int64_t kSuspendSec = 10;
   dark_resume_.set_action(system::DarkResumeInterface::Action::SUSPEND);
-  dark_resume_.set_in_dark_resume(true);
   dark_resume_.set_suspend_duration(base::TimeDelta::FromSeconds(kSuspendSec));
+
+  // Simulate being in dark resume after each suspend attempt.
+  delegate_.set_suspend_callback(base::Bind(
+      [](system::DarkResumeStub* dark_resume) {
+        dark_resume->set_in_dark_resume(true);
+      },
+      &dark_resume_));
 
   // User activity should trigger the transition to fully resumed.
   suspender_.RequestSuspend(SuspendImminent_Reason_OTHER);
@@ -805,6 +822,10 @@ TEST_F(SuspenderTest, DarkResumeCancelBeforeResuspend) {
   EXPECT_EQ(1, delegate_.num_suspend_attempts());
   EXPECT_TRUE(delegate_.suspend_canceled_while_in_dark_resume());
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
+
+  // Clear dark resume state now that the device is transitioned to State::IDLE.
+  // This mimics real world behavior.
+  dark_resume_.set_in_dark_resume(false);
 
   // Opening the lid should also trigger the transition.
   dbus_wrapper_.ClearSentSignals();
@@ -822,6 +843,10 @@ TEST_F(SuspenderTest, DarkResumeCancelBeforeResuspend) {
   EXPECT_TRUE(delegate_.suspend_canceled_while_in_dark_resume());
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 
+  // Clear dark resume state now that the device is transitioned to State::IDLE.
+  // This mimics real world behavior.
+  dark_resume_.set_in_dark_resume(false);
+
   // Shutting down the system will also trigger the transition so that clients
   // can perform cleanup.
   dbus_wrapper_.ClearSentSignals();
@@ -830,6 +855,7 @@ TEST_F(SuspenderTest, DarkResumeCancelBeforeResuspend) {
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(kSuspend, delegate_.GetActions());
 
+  // Dark resume is true at this point.
   suspender_.HandleShutdown();
   EXPECT_EQ(test_api_.suspend_id(), GetSuspendDoneId(2));
   EXPECT_FALSE(delegate_.suspend_announced());
@@ -838,74 +864,6 @@ TEST_F(SuspenderTest, DarkResumeCancelBeforeResuspend) {
   EXPECT_EQ(1, delegate_.num_suspend_attempts());
   EXPECT_TRUE(delegate_.suspend_canceled_while_in_dark_resume());
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
-}
-
-// Tests that user activity is ignored and that no dbus signals are sent out
-// during dark resume on legacy systems.
-TEST_F(SuspenderTest, DarkResumeOnLegacySystems) {
-  Init();
-
-  // Systems with older kernels cannot safely transition from dark resume to
-  // fully resumed.
-  dark_resume_.set_can_safely_exit_dark_resume(false);
-
-  // Suspend for 10 seconds.
-  const int64_t kSuspendSec = 10;
-  dark_resume_.set_action(system::DarkResumeInterface::Action::SUSPEND);
-  dark_resume_.set_suspend_duration(base::TimeDelta::FromSeconds(kSuspendSec));
-
-  // User activity should be ignored.
-  dark_resume_.set_in_dark_resume(true);
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER);
-  EXPECT_EQ(kPrepare, delegate_.GetActions());
-  dbus_wrapper_.ClearSentSignals();
-  AnnounceReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(kSuspend, delegate_.GetActions());
-  EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
-
-  suspender_.HandleUserActivity();
-  EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
-  EXPECT_TRUE(delegate_.suspend_announced());
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
-  dark_resume_.set_in_dark_resume(false);
-  EXPECT_TRUE(test_api_.TriggerResuspendTimeout());
-  EXPECT_EQ(JoinActions(kSuspend, kUnprepare, NULL), delegate_.GetActions());
-
-  // Opening the lid should also be ignored.
-  dbus_wrapper_.ClearSentSignals();
-  dark_resume_.set_in_dark_resume(true);
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER);
-  EXPECT_EQ(kPrepare, delegate_.GetActions());
-  dbus_wrapper_.ClearSentSignals();
-  AnnounceReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(kSuspend, delegate_.GetActions());
-  EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
-
-  suspender_.HandleLidOpened();
-  EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
-  EXPECT_TRUE(delegate_.suspend_announced());
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
-  dark_resume_.set_in_dark_resume(false);
-  EXPECT_TRUE(test_api_.TriggerResuspendTimeout());
-  EXPECT_EQ(JoinActions(kSuspend, kUnprepare, NULL), delegate_.GetActions());
-
-  // Shutting down the system will not trigger a transition.
-  dbus_wrapper_.ClearSentSignals();
-  dark_resume_.set_in_dark_resume(true);
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER);
-  EXPECT_EQ(kPrepare, delegate_.GetActions());
-  dbus_wrapper_.ClearSentSignals();
-  AnnounceReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(kSuspend, delegate_.GetActions());
-  EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
-
-  suspender_.HandleShutdown();
-  EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
-  EXPECT_TRUE(delegate_.suspend_announced());
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
-  dark_resume_.set_in_dark_resume(false);
-  EXPECT_TRUE(test_api_.TriggerResuspendTimeout());
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
 }
 
 // Test that we re-run the registered dark suspend delays if a resuspend attempt
@@ -919,8 +877,14 @@ TEST_F(SuspenderTest, RerunDarkSuspendDelaysForCanceledSuspend) {
   dark_resume_.set_action(system::DarkResumeInterface::Action::SUSPEND);
   dark_resume_.set_suspend_duration(base::TimeDelta::FromSeconds(kSuspendSec));
 
+  // Simulate being in dark resume after each suspend attempt.
+  delegate_.set_suspend_callback(base::Bind(
+      [](system::DarkResumeStub* dark_resume) {
+        dark_resume->set_in_dark_resume(true);
+      },
+      &dark_resume_));
+
   // Do the initial suspend.
-  dark_resume_.set_in_dark_resume(true);
   suspender_.RequestSuspend(SuspendImminent_Reason_OTHER);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   AnnounceReadyForSuspend(test_api_.suspend_id());
@@ -941,7 +905,9 @@ TEST_F(SuspenderTest, RerunDarkSuspendDelaysForCanceledSuspend) {
   EXPECT_EQ(kSuspend, delegate_.GetActions());
   EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
 
-  // The resuspend attempt is finally sucessful.
+  // The resuspend attempt is finally sucessful. Reset the suspend callback so
+  // that dark resume is not set to true after Suspend() runs.
+  delegate_.set_suspend_callback(base::Closure());
   dark_resume_.set_in_dark_resume(false);
   delegate_.set_suspend_result(Suspender::Delegate::SuspendResult::SUCCESS);
   EXPECT_TRUE(test_api_.TriggerResuspendTimeout());

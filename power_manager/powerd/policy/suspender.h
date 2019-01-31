@@ -236,15 +236,19 @@ class Suspender : public SuspendDelayObserver {
  private:
   // States that Suspender can be in while the event loop is running.
   enum class State {
-    // Nothing suspend-related is going on.
+    // Nothing suspend-related is going on. The device isn't in dark resume in
+    // this state i.e. |dark_resume_->InDarkResume| has to be false.
     IDLE = 0,
     // powerd has announced a new suspend request to other processes and is
     // waiting for clients that have registered suspend delays to report
     // readiness.
-    WAITING_FOR_SUSPEND_DELAYS,
-    // powerd is waiting to resuspend after a failed suspend attempt or after
-    // waking into dark resume.
-    WAITING_TO_RESUSPEND,
+    WAITING_FOR_NORMAL_SUSPEND_DELAYS,
+    // powerd is waiting to resuspend after waking into a dark resume.
+    WAITING_FOR_DARK_SUSPEND_DELAYS,
+    // powerd is waiting to resuspend after a failed suspend attempt from normal
+    // or dark resume i.e.|dark_resume_->InDarkResume()| can be true in thi
+    // state.
+    WAITING_TO_RETRY_SUSPEND,
     // The system is shutting down. Suspend requests are ignored.
     SHUTTING_DOWN,
   };
@@ -288,6 +292,18 @@ class Suspender : public SuspendDelayObserver {
   // Performs actions and updates |state_| in response to |event|.
   void HandleEvent(Event event);
 
+  // Helper method called by HandleEvent when in State::SUSPEND_DELAYS_NORMAL.
+  void HandleEventInWaitingForNormalSuspendDelays(Event event);
+
+  // Helper method called by HandleEvent when in
+  // State::WAITING_FOR_DARK_SUSPEND_DELAYS or State::WAITING_TO_RETRY_SUSPEND.
+  void HandleEventInDarkResumeOrRetrySuspend(Event event);
+
+  // Called by HandleEventInWaitingForNormalSuspendDelays or
+  // HandleEventInDarkResumeOrRetrySuspend to handle Event::USER_ACTIVITY.
+  // Returns new value for |state_|.
+  State HandleUserActivityInSuspend();
+
   // Starts a new suspend request, notifying clients that have registered delays
   // that the system is about to suspend.
   void StartRequest();
@@ -304,7 +320,7 @@ class Suspender : public SuspendDelayObserver {
   State HandleNormalResume(Delegate::SuspendResult result);
   State HandleDarkResume(Delegate::SuspendResult result);
 
-  // Helper method called by HandleNormalResume() and HandleDarkResume() in
+  // Helper method called by HandleNormalResume() or HandleDarkResume() in
   // response to a failed or canceled suspend attempt.
   State HandleUnsuccessfulSuspend(Delegate::SuspendResult result);
 
