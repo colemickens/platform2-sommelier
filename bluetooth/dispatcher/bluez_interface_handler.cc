@@ -66,6 +66,8 @@ BluezDeviceInterfaceHandler::BluezDeviceInterfaceHandler() {
   AddPropertyFactory<bool>(bluetooth_device::kServicesResolvedProperty);
   AddPropertyFactory<std::vector<uint8_t>>(
       bluetooth_device::kAdvertisingDataFlagsProperty);
+  AddPropertyFactory<uint16_t>(bluetooth_device::kMTUProperty);
+  AddPropertyFactory<std::vector<uint8_t>>(bluetooth_device::kEIRProperty);
 
   AddMethodForwarding(bluetooth_device::kConnect);
   AddMethodForwarding(bluetooth_device::kDisconnect);
@@ -150,6 +152,15 @@ BluezAgentManagerInterfaceHandler::BluezAgentManagerInterfaceHandler() {
 BluezProfileManagerInterfaceHandler::BluezProfileManagerInterfaceHandler() {
   AddMethodForwarding(bluetooth_profile_manager::kRegisterProfile);
   AddMethodForwarding(bluetooth_profile_manager::kUnregisterProfile);
+}
+
+ChromiumBluetoothDeviceInterfaceHandler::
+    ChromiumBluetoothDeviceInterfaceHandler() {
+  AddPropertyFactory<bool>(bluetooth_plugin::kSupportsLEServices);
+  AddPropertyFactory<bool>(bluetooth_plugin::kSupportsConnInfo);
+
+  AddMethodForwarding(bluetooth_plugin_device::kGetConnInfo);
+  AddMethodForwarding(bluetooth_plugin_device::kSetLEConnectionParameters);
 }
 
 }  // namespace bluetooth

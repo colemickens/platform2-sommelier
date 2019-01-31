@@ -90,6 +90,8 @@ bool Dispatcher::Init(PassthroughMode mode) {
   interface_handlers
       [bluetooth_profile_manager::kBluetoothProfileManagerInterface] =
           std::make_unique<BluezProfileManagerInterfaceHandler>();
+  interface_handlers[bluetooth_plugin_device::kBluetoothPluginInterface] =
+      std::make_unique<ChromiumBluetoothDeviceInterfaceHandler>();
 
   // Register the interfaces.
   for (auto& kv : interface_handlers) {

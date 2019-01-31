@@ -159,6 +159,15 @@ class BluezProfileManagerInterfaceHandler : public BluezInterfaceHandler {
   DISALLOW_COPY_AND_ASSIGN(BluezProfileManagerInterfaceHandler);
 };
 
+// org.chromium.BluetoothDevice interface.
+class ChromiumBluetoothDeviceInterfaceHandler : public BluezInterfaceHandler {
+ public:
+  ChromiumBluetoothDeviceInterfaceHandler();
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(ChromiumBluetoothDeviceInterfaceHandler);
+};
+
 }  // namespace bluetooth
 
 #endif  // BLUETOOTH_DISPATCHER_BLUEZ_INTERFACE_HANDLER_H_

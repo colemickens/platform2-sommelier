@@ -103,6 +103,7 @@ class DispatcherTest : public ::testing::Test {
         bluetooth_media_transport::kBluetoothMediaTransportInterface,
         bluetooth_agent_manager::kBluetoothAgentManagerInterface,
         bluetooth_profile_manager::kBluetoothProfileManagerInterface,
+        bluetooth_plugin_device::kBluetoothPluginInterface,
     };
 
     // Should listen to BlueZ interfaces.
