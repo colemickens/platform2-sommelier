@@ -1006,5 +1006,19 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
+    <method name="SetSchedulerConfiguration">
+      <tp:docstring>
+        Set the scheduler configuration policy.
+      </tp:docstring>
+      <arg name="policy" type="s" direction="in">
+        Either "conservative" or "performance".
+      </arg>
+      <arg name="result" type="b" direction="out">
+        <tp:docstring>
+          Whether setting the policy was succesful.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
   </interface>
 </node>

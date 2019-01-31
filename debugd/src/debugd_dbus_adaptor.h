@@ -40,6 +40,7 @@
 #include "debugd/src/ping_tool.h"
 #include "debugd/src/restricted_tool_wrapper.h"
 #include "debugd/src/route_tool.h"
+#include "debugd/src/scheduler_configuration_tool.h"
 #include "debugd/src/session_manager_proxy.h"
 #include "debugd/src/shill_scripts_tool.h"
 #include "debugd/src/simple_service_tool.h"
@@ -186,6 +187,9 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
                                    std::string* handle) override;
   bool UpdateAndVerifyFWOnUsbStop(
       brillo::ErrorPtr* error, const std::string& handle) override;
+  bool SetSchedulerConfiguration(brillo::ErrorPtr* error,
+                                 const std::string& policy,
+                                 bool* out) override;
 
  private:
   brillo::dbus_utils::DBusObject dbus_object_;
@@ -213,6 +217,7 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::unique_ptr<PerfTool> perf_tool_;
   std::unique_ptr<PingTool> ping_tool_;
   std::unique_ptr<RouteTool> route_tool_;
+  std::unique_ptr<SchedulerConfigurationTool> scheduler_configuration_tool_;
   std::unique_ptr<ShillScriptsTool> shill_scripts_tool_;
   std::unique_ptr<StorageTool> storage_tool_;
   std::unique_ptr<SwapTool> swap_tool_;

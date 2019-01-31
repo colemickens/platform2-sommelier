@@ -23,6 +23,7 @@ group("all") {
     ":libdebugd",
     ":netif",
     ":network_status",
+    ":scheduler_configuration_helper",
   ]
   if (use.cellular) {
     deps += [ ":modem_status" ]
@@ -105,6 +106,7 @@ static_library("libdebugd") {
     "src/process_with_output.cc",
     "src/route_tool.cc",
     "src/sandboxed_process.cc",
+    "src/scheduler_configuration_tool.cc",
     "src/session_manager_proxy.cc",
     "src/shill_scripts_tool.cc",
     "src/simple_service_tool.cc",
@@ -252,6 +254,14 @@ executable("generate_logs") {
   ]
 }
 
+executable("scheduler_configuration_helper") {
+  configs += [ ":target_defaults" ]
+  sources = [
+    "src/helpers/scheduler_configuration_helper.cc",
+    "src/helpers/scheduler_configuration_utils.cc",
+  ]
+}
+
 if (use.cellular) {
   executable("modem_status") {
     configs += [ ":target_defaults" ]
@@ -296,6 +306,8 @@ if (use.test) {
       "src/dev_mode_no_owner_restriction_test.cc",
       "src/helpers/dev_features_password_utils.cc",
       "src/helpers/dev_features_password_utils_test.cc",
+      "src/helpers/scheduler_configuration_utils.cc",
+      "src/helpers/scheduler_configuration_utils_test.cc",
       "src/log_tool_test.cc",
       "src/process_with_id_test.cc",
       "src/sandboxed_process_test.cc",

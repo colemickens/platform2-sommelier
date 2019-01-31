@@ -75,6 +75,8 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus)
   wifi_power_tool_ = std::make_unique<WifiPowerTool>();
   wimax_status_tool_ = std::make_unique<WiMaxStatusTool>();
   session_manager_proxy_ = std::make_unique<SessionManagerProxy>(bus);
+  scheduler_configuration_tool_ =
+      std::make_unique<SchedulerConfigurationTool>();
   if (dev_features_tool_wrapper_->restriction().InDevMode() &&
       base::PathExists(
       base::FilePath(debugd::kDevFeaturesChromeRemoteDebuggingFlagPath))) {
@@ -523,6 +525,13 @@ bool DebugdDBusAdaptor::UpdateAndVerifyFWOnUsbStart(
 bool DebugdDBusAdaptor::UpdateAndVerifyFWOnUsbStop(brillo::ErrorPtr* error,
                                      const std::string& handle) {
   return verify_ro_tool_->Stop(handle, error);
+}
+
+bool DebugdDBusAdaptor::SetSchedulerConfiguration(brillo::ErrorPtr* error,
+                                                  const std::string& policy,
+                                                  bool* result) {
+  *result = scheduler_configuration_tool_->SetPolicy(policy, error);
+  return *result;
 }
 
 }  // namespace debugd
