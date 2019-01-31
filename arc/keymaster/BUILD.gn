@@ -11,26 +11,20 @@ group("all") {
   ]
 }
 
-mojo_output_dir = "${SHARED_INTERMEDIATE_DIR}/include"
-
 # Binary
-pkg_config("arc-keymasterd_pkg_deps") {
-  pkg_deps = [
-    "libbrillo-${libbase_ver}",
-    "libchrome-${libbase_ver}",
-  ]
-}
-
 executable("arc-keymasterd") {
   sources = [
-    "${mojo_output_dir}/mojo/keymaster.mojom.cc",
     "daemon.cc",
     "main.cc",
   ]
   deps = [
     ":keymaster_mojo_bindings",
   ]
-  configs += [ "arc-keymasterd_pkg_deps" ]
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+    "libmojo-${libbase_ver}",
+  ]
 }
 
 # Mojo bindings
