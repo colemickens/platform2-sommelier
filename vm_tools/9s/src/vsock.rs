@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 /// Support for virtual sockets.
+use fmt;
 use std::io;
 use std::mem::{self, size_of};
 use std::os::raw::{c_int, c_uchar, c_uint, c_ushort};
@@ -36,6 +37,12 @@ struct sockaddr_vm {
 pub struct SocketAddr {
     pub cid: c_uint,
     pub port: c_uint,
+}
+
+impl fmt::Display for SocketAddr {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "{}:{}", self.cid, self.port)
+    }
 }
 
 /// A virtual stream socket.
