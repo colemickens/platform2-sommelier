@@ -197,10 +197,15 @@ bool BurnerImpl::DoBurn(const char* from_path, const char* to_path,
 
 // Derived from cros-disks::ArchiveManager::CanMount().
 bool BurnerImpl::IsSourcePathAllowed(const std::string& source_path) const {
+  // TODO(benchan): Revisit the need to allow .../Downloads once the MyFiles
+  // migration (chromium:873539) is complete.
+  //
   // The following paths are allowed:
   //     /home/chronos/user/Downloads/...<file>
+  //     /home/chronos/user/MyFiles/...<file>
   //     /home/chronos/user/GCache/...<file>
   //     /home/chronos/u-<user-id>/Downloads/...<file>
+  //     /home/chronos/u-<user-id>/MyFiles/...<file>
   //     /home/chronos/u-<user-id>/GCache/...<file>
   //     /media/<dir>/<dir>/...<file>
   //
@@ -208,14 +213,17 @@ bool BurnerImpl::IsSourcePathAllowed(const std::string& source_path) const {
   if (base::FilePath(kUserRootDirectory).IsParent(file_path)) {
     std::vector<std::string> components;
     file_path.StripTrailingSeparators().GetComponents(&components);
-    // The file path of an image file under a user's Downloads or GCache
-    // directory path is split into the following components:
+    // The file path of an image file under a user's Downloads, MyFiles or
+    // GCache directory path is split into the following components:
     //   '/', 'home', 'chronos', 'user', 'Downloads', ..., <file>
+    //   '/', 'home', 'chronos', 'user', 'MyFiles', ..., <file>
     //   '/', 'home', 'chronos', 'user', 'GCache', ..., <file>
     //   '/', 'home', 'chronos', 'u-<userid>', 'Downloads', ..., <file>
+    //   '/', 'home', 'chronos', 'u-<userid>', 'MyFiles', ..., <file>
     //   '/', 'home', 'chronos', 'u-<userid>', 'GCache', ..., <file>
     if (components.size() > 5 && IsUserOrUserHash(components[3]) &&
-        (components[4] == "Downloads" || components[4] == "GCache")) {
+        (components[4] == "Downloads" || components[4] == "MyFiles" ||
+         components[4] == "GCache")) {
       return true;
     }
   }

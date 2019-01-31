@@ -684,8 +684,15 @@ TEST_F(ImageBurnerImplTest, IsSourcePathAllowed) {
       "/media/removable/disk1/dir1/file",
       "/media/removable/test.zip/file",
       "/home/chronos/u-0123456789abcdef0123456789abcdef01234567/Downloads/file",
+      "/home/chronos/u-0123456789abcdef0123456789abcdef01234567/MyFiles/file",
+
+      "/home/chronos/u-0123456789abcdef0123456789abcdef01234567/MyFiles/"
+      "Downloads/file",
+
       "/home/chronos/u-0123456789abcdef0123456789abcdef01234567/GCache/file",
       "/home/chronos/user/Downloads/file",
+      "/home/chronos/user/MyFiles/file",
+      "/home/chronos/user/MyFiles/Downloads/file",
       "/home/chronos/user/GCache/file",
   };
 
