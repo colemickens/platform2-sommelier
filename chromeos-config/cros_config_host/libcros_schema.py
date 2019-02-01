@@ -142,37 +142,64 @@ def ApplyImports(config_file):
   return '\n'.join(all_yaml_files)
 
 
-def ExtractPathsForBuildOnlyFields(yaml_dict):
-  """Finds paths in the cros_config schema that are marked as being build-only.
+# Attributes that are defined as a function of the schema.
+#   build_only_element: Property is only used during build time.
+#   default_value: Default value if no property is present.
+PropertyAttrs = collections.namedtuple(
+    'PropertyAttrs', ['build_only_element', 'default_value'])
 
-  This returns a list of strings that represent the locations in output
-  platform JSON.
+def GetSchemaPropertyAttrs(schema_yaml):
+  """Returns schema defined attributes on a per property basis.
 
   Args:
-    yaml_dict: dict that results from calling yaml.load(..) on a YAML schema.
+    schema_yaml: Source schema that contains the properties.
 
   Returns:
-    List of strings representing paths to fields in platform JSON.
+    Dictionary
+      key - full path to the property in the schema
+      value - PropertyAttrs object with the schema attributes
   """
-  if 'build-only-element' in yaml_dict:
-    if yaml_dict['build-only-element'] is True:
-      return ['']
-  if 'type' in yaml_dict and yaml_dict['type'] == 'array':
-    return ExtractPathsForBuildOnlyFields(yaml_dict['items'])
-  if 'type' in yaml_dict and yaml_dict['type'] == 'object':
-    if 'oneOf' in yaml_dict:
-      result = []
-      for element in yaml_dict['oneOf']:
-        result.extend(ExtractPathsForBuildOnlyFields(element))
-      return result
-    elif 'properties' in yaml_dict:
-      return ExtractPathsForBuildOnlyFields(yaml_dict['properties'])
+  root_path = 'properties/chromeos/properties/configs/items/properties'
+  schema_node = schema_yaml
+  for element in root_path.split('/'):
+    schema_node = schema_node[element]
 
-  found = []
-  for key in yaml_dict:
-    if isinstance(yaml_dict[key], dict):
-      nodes_with_key = ExtractPathsForBuildOnlyFields(yaml_dict[key])
-      for node in nodes_with_key:
-        found.append('/%s%s' % (key, node))
-  found.sort()
-  return found
+  result = collections.OrderedDict()
+  _GetSchemaPropertyAttrs(schema_node, [], result)
+  return result
+
+def _GetSchemaPropertyAttrs(schema_node, path, result):
+  """Recursively extracts property attributes from the schema.
+
+  Args:
+    schema_node: Single node from the schema
+    path: Running path that a given node maps to
+    result: Running collection of results
+  """
+  for key in schema_node:
+    new_path = path + [key]
+    current_node = schema_node[key]
+    if not isinstance(current_node, dict):
+      # Skip over additionalProperties, required fields.
+      continue
+
+    node_type = current_node['type']
+
+
+    build_only = current_node.get('build-only-element', False)
+    default_value = current_node.get('default', None)
+    if build_only or default_value:
+      result['/%s' % '/'.join(new_path)] = PropertyAttrs(
+          build_only, default_value)
+
+    if node_type == 'array':
+      if 'properties' in current_node['items']:
+        _GetSchemaPropertyAttrs(
+            current_node['items']['properties'], new_path, result)
+    elif node_type == 'object':
+      if 'oneOf' in current_node:
+        for element in current_node['oneOf']:
+          _GetSchemaPropertyAttrs(element['properties'], new_path, result)
+      elif 'properties' in current_node:
+        _GetSchemaPropertyAttrs(
+            current_node['properties'], new_path, result)

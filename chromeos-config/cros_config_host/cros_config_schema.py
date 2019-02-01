@@ -734,10 +734,14 @@ def Main(schema,
     schema_contents = schema_stream.read()
     libcros_schema.ValidateConfigSchema(schema_contents, json_transform)
     ValidateConfig(json_transform)
+    schema_attrs = libcros_schema.GetSchemaPropertyAttrs(
+        yaml.load(schema_contents))
+
     if filter_build_details:
-      build_only_elements = [s.replace('/chromeos/configs', '') for s in
-                             libcros_schema.ExtractPathsForBuildOnlyFields(
-                                 yaml.load(schema_contents))]
+      build_only_elements = []
+      for path in schema_attrs:
+        if schema_attrs[path].build_only_element:
+          build_only_elements.append(path)
       json_transform = FilterBuildElements(json_transform, build_only_elements)
   if output:
     with open(output, 'w') as output_stream:
