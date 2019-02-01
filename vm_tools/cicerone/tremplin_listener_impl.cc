@@ -114,6 +114,38 @@ grpc::Status TremplinListenerImpl::UpdateCreateStatus(
   return grpc::Status::OK;
 }
 
+grpc::Status TremplinListenerImpl::UpdateDeletionStatus(
+    grpc::ServerContext* ctx,
+    const vm_tools::tremplin::ContainerDeletionProgress* request,
+    vm_tools::tremplin::EmptyMessage* response) {
+  uint32_t cid = ExtractCidFromPeerAddress(ctx);
+  if (cid == 0) {
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Failed parsing vsock cid for TremplinListener");
+  }
+
+  bool result = false;
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
+
+  task_runner_->PostTask(
+      FROM_HERE,
+      base::Bind(&vm_tools::cicerone::Service::LxdContainerDeleted, service_,
+                 cid, request->container_name(), request->status(),
+                 request->failure_reason(), &result, &event));
+
+  event.Wait();
+  if (!result) {
+    LOG(ERROR)
+        << "Received UpdateDeletionStatus RPC but could not find matching VM: "
+        << ctx->peer();
+    return grpc::Status(grpc::FAILED_PRECONDITION,
+                        "Cannot find VM for TremplinListener");
+  }
+
+  return grpc::Status::OK;
+}
+
 grpc::Status TremplinListenerImpl::UpdateStartStatus(
     grpc::ServerContext* ctx,
     const vm_tools::tremplin::ContainerStartProgress* request,

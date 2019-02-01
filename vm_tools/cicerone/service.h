@@ -129,6 +129,18 @@ class Service final : public base::MessageLoopForIO::Watcher {
                                bool* result,
                                base::WaitableEvent* event);
 
+  // Notifies the service that a VM with |cid| has finished its delete
+  // operation of |container_name| with |status|. |failure_reason| will describe
+  // the failure reason if status != DELETED. Sets |result| to true if the VM
+  // cid is known. Signals |event| when done.
+  void LxdContainerDeleted(
+      const uint32_t cid,
+      std::string container_name,
+      vm_tools::tremplin::ContainerDeletionProgress::Status status,
+      std::string failure_reason,
+      bool* result,
+      base::WaitableEvent* event);
+
   // Notifies the service that a VM with |cid| is starting a container
   // |container_name| with status |status|. |failure_reason| will describe the
   // failure reason if status == FAILED. Sets |result| to true if the VM cid

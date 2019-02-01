@@ -450,6 +450,17 @@ void Service::LxdContainerDownloading(const uint32_t cid,
   event->Signal();
 }
 
+void Service::LxdContainerDeleted(
+    const uint32_t cid,
+    std::string container_name,
+    vm_tools::tremplin::ContainerDeletionProgress::Status status,
+    std::string failure_reason,
+    bool* result,
+    base::WaitableEvent* event) {
+  *result = true;
+  event->Signal();
+}
+
 void Service::LxdContainerStarting(const uint32_t cid,
                                    std::string container_name,
                                    Service::StartStatus status,
