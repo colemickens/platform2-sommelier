@@ -52,9 +52,9 @@ void SuspendManager::Init() {
   power_manager_dbus_proxy_ = bus_->GetObjectProxy(
       power_manager::kPowerManagerServiceName,
       dbus::ObjectPath(power_manager::kPowerManagerServicePath));
-  bluez_dbus_proxy_ =
-      bus_->GetObjectProxy(bluetooth_adapter::kBluetoothAdapterServiceName,
-                           dbus::ObjectPath(kBluetoothAdapterObjectPath));
+  btdispatch_dbus_proxy_ = bus_->GetObjectProxy(
+      bluetooth_object_manager::kBluetoothObjectManagerServiceName,
+      dbus::ObjectPath(kBluetoothAdapterObjectPath));
 
   service_watcher_ =
       std::make_unique<ServiceWatcher>(power_manager_dbus_proxy_);
@@ -113,8 +113,7 @@ void SuspendManager::HandleSuspendImminentSignal(dbus::Signal* signal) {
     LOG(ERROR) << "Unable to parse SuspendImminent signal";
     return;
   }
-
-  InitiatePauseDiscovery(suspend_imminent.suspend_id());
+  HandleSuspendImminent(suspend_imminent.suspend_id());
 }
 
 void SuspendManager::HandleSuspendDoneSignal(dbus::Signal* signal) {
@@ -124,7 +123,7 @@ void SuspendManager::HandleSuspendDoneSignal(dbus::Signal* signal) {
   if (!suspend_delay_id_)
     return;
 
-  InitiateUnpauseDiscovery();
+  HandleSuspendDone();
 }
 
 void SuspendManager::OnSuspendDelayRegistered(dbus::Response* response) {
@@ -140,20 +139,20 @@ void SuspendManager::OnSuspendDelayRegistered(dbus::Response* response) {
   suspend_delay_id_ = reply.delay_id();
 }
 
-void SuspendManager::OnDiscoveryPaused(dbus::Response* response) {
-  VLOG(1) << "Received return of PauseDiscovery from BlueZ";
+void SuspendManager::OnSuspendImminentHandled(dbus::Response* response) {
+  VLOG(1) << "Received return of SuspendImminent from BlueZ and NewBlue";
 
-  is_pause_or_unpause_in_progress_ = false;
+  is_suspend_operation_in_progress_ = false;
 
   if (!suspend_id_) {
     // Looks like SuspendDone arrived before our suspend preparation finished,
     // so here we undo our suspend preparation.
-    InitiateUnpauseDiscovery();
+    HandleSuspendDone();
     return;
   }
 
-  // Bluez's PauseDiscovery has finished, lets power manager know that we are
-  // ready to suspend.
+  // Bluez and NewBlue SuspendImminent has finished, lets power manager know
+  // that we are ready to suspend.
   power_manager::SuspendReadinessInfo suspend_readiness;
   suspend_readiness.set_suspend_id(suspend_id_);
   suspend_readiness.set_delay_id(suspend_delay_id_);
@@ -172,70 +171,65 @@ void SuspendManager::OnDiscoveryPaused(dbus::Response* response) {
       dbus::ObjectProxy::EmptyResponseCallback());
 }
 
-void SuspendManager::OnDiscoveryUnpaused(dbus::Response* response) {
-  VLOG(1) << "Received return of UnpauseDiscovery from BlueZ";
+void SuspendManager::OnSuspendDoneHandled(dbus::Response* response) {
+  VLOG(1) << "Received return of OnSuspendDoneHandled from BlueZ and NewBlue";
 
-  is_pause_or_unpause_in_progress_ = false;
+  is_suspend_operation_in_progress_ = false;
 
   if (suspend_id_) {
     // There was a SuspendImminent signal when we were unpausing discovery.
     // We should do the suspend preparation now.
-    InitiatePauseDiscovery(suspend_id_);
+    HandleSuspendImminent(suspend_id_);
   }
 }
 
-void SuspendManager::InitiatePauseDiscovery(int new_suspend_id) {
+void SuspendManager::HandleSuspendImminent(int new_suspend_id) {
   // Update the current suspend id.
   suspend_id_ = new_suspend_id;
 
-  // PauseDiscovery/UnpauseDiscovery is in progress, just let it finish and
+  // SuspendImminent/SuspendDone is in progress, just let it finish and
   // return early here.
-  // If the in-progress call is PauseDiscovery, when it finishes it will call
+  // If the in-progress call is SuspendImminent, when it finishes it will call
   // power manager HandleSuspendReadiness with the new updated suspend id.
-  // If the in-progress call is UnpauseDiscovery, when it finishes it will
-  // immediately initiate PauseDiscovery again because suspend_id_ is now set.
-  if (is_pause_or_unpause_in_progress_)
+  // If the in-progress call is SuspendDone, when it finishes it will
+  // immediately initiate SuspendImminent again because suspend_id_ is now set.
+  if (is_suspend_operation_in_progress_)
     return;
 
-  is_pause_or_unpause_in_progress_ = true;
-  dbus::MethodCall method_call(bluetooth_adapter::kBluetoothAdapterInterface,
-                               bluetooth_adapter::kPauseDiscovery);
-  dbus::MessageWriter writer(&method_call);
-  // Indicate that this request is related to system suspend/resume.
-  writer.AppendBool(true);
+  is_suspend_operation_in_progress_ = true;
 
-  VLOG(1) << "Calling PauseDiscovery to BlueZ";
-  bluez_dbus_proxy_->CallMethod(&method_call,
-                                dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-                                base::Bind(&SuspendManager::OnDiscoveryPaused,
-                                           weak_ptr_factory_.GetWeakPtr()));
+  dbus::MethodCall method_call(bluetooth_adapter::kBluetoothAdapterInterface,
+                               bluetooth_adapter::kHandleSuspendImminent);
+
+  VLOG(1) << "Calling SuspendImminent to BlueZ and NewBlue";
+  btdispatch_dbus_proxy_->CallMethod(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+      base::Bind(&SuspendManager::OnSuspendImminentHandled,
+                 weak_ptr_factory_.GetWeakPtr()));
 }
 
-void SuspendManager::InitiateUnpauseDiscovery() {
+void SuspendManager::HandleSuspendDone() {
   // Reset suspend_id_ to 0 before initiating the suspend preparation undo.
   // Needed to reflect that we are not in a suspend imminent state anymore.
   suspend_id_ = 0;
 
-  // PauseDiscovery/UnpauseDiscovery is in progress, just let it finish and
+  // SuspendImminent/SuspendDone is in progress, just let it finish and
   // return early here.
-  // If the in-progress call is PauseDiscovery, when it finishes it will not
-  // call HandleSuspendReadiness but will immediately initiate UnpauseDisovery
+  // If the in-progress call is SuspendImminent, when it finishes it will not
+  // call HandleSuspendReadiness but will immediately initiate HandleSuspendDone
   // again because suspend_id_ is not set.
-  if (is_pause_or_unpause_in_progress_)
+  if (is_suspend_operation_in_progress_)
     return;
 
-  is_pause_or_unpause_in_progress_ = true;
+  is_suspend_operation_in_progress_ = true;
   dbus::MethodCall method_call(bluetooth_adapter::kBluetoothAdapterInterface,
-                               bluetooth_adapter::kUnpauseDiscovery);
-  dbus::MessageWriter writer(&method_call);
-  // Indicate that this request is related to system suspend/resume.
-  writer.AppendBool(true);
+                               bluetooth_adapter::kHandleSuspendDone);
 
-  VLOG(1) << "Calling UnpauseDiscovery to BlueZ";
-  bluez_dbus_proxy_->CallMethod(&method_call,
-                                dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-                                base::Bind(&SuspendManager::OnDiscoveryUnpaused,
-                                           weak_ptr_factory_.GetWeakPtr()));
+  VLOG(1) << "Calling HandleSuspendDone to BlueZ and NewBlue";
+  btdispatch_dbus_proxy_->CallMethod(
+      &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+      base::Bind(&SuspendManager::OnSuspendDoneHandled,
+                 weak_ptr_factory_.GetWeakPtr()));
 }
 
 }  // namespace bluetooth

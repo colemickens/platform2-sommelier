@@ -40,15 +40,16 @@ class SuspendManager {
   // Called when power manager's RegisterSuspendDelay method returns.
   void OnSuspendDelayRegistered(dbus::Response* response);
 
-  // Called when bluez's PauseDiscovery/UnpauseDiscovery method returns.
-  void OnDiscoveryPaused(dbus::Response* response);
-  void OnDiscoveryUnpaused(dbus::Response* response);
+  // Called when BlueZ and NewBlue HandleSuspendImminent/
+  // HandleSuspendDone method returns.
+  void OnSuspendImminentHandled(dbus::Response* response);
+  void OnSuspendDoneHandled(dbus::Response* response);
 
-  // Initiates call to bluez PauseDiscovery/UnpauseDiscovery.
-  // These methods may or may not make the call to bluez depending on whether
-  // there is a bluez PauseDiscovery/UnpauseDiscovery call in progress.
-  void InitiatePauseDiscovery(int new_suspend_id);
-  void InitiateUnpauseDiscovery();
+  // Initiates call to BlueZ or NewBlue HandleSuspendImminent/HandleSuspendDone.
+  // These methods may or may not make the call to BlueZ depending on whether
+  // there is a BlueZ HandleSuspendImminent/HandleSuspendDone call in progress.
+  void HandleSuspendImminent(int new_suspend_id);
+  void HandleSuspendDone();
 
   // Keeps the D-Bus connection. Mock/fake D-Bus can be injected through
   // constructor for unit testing without actual D-Bus IPC.
@@ -56,8 +57,8 @@ class SuspendManager {
 
   // Proxy to power manager D-Bus service.
   dbus::ObjectProxy* power_manager_dbus_proxy_ = nullptr;
-  // Proxy to bluez D-Bus service.
-  dbus::ObjectProxy* bluez_dbus_proxy_ = nullptr;
+  // Proxy to dispatcher D-Bus service.
+  dbus::ObjectProxy* btdispatch_dbus_proxy_ = nullptr;
 
   // If non-zero, that means we have registered a delay with power manager and
   // this variable keeps the delay id returned by power manager for later call
@@ -71,11 +72,11 @@ class SuspendManager {
   // TODO(sonnysasaka): Migrate this to base::Optional when it's available.
   int suspend_id_ = 0;
 
-  // True if there is an in-progress bluez PauseDiscovery/UnpauseDiscovery call.
-  // There can't be more than one PauseDiscovery/UnpauseDiscovery bluez call
-  // at a time. This flag is needed to decide whether we can make the bluez call
-  // immediately or "queued" after the in-progress D-Bus call completes.
-  bool is_pause_or_unpause_in_progress_ = false;
+  // True if there is an in-progress BlueZ/NewBlue suspension call.
+  // There can't be more than one call at a time. This flag is needed to
+  // decide whether we can make the call immediately or "queued" after
+  // the in-progress D-Bus call completes.
+  bool is_suspend_operation_in_progress_ = false;
 
   // Watches powerd service availability.
   std::unique_ptr<ServiceWatcher> service_watcher_;
