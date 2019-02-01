@@ -117,5 +117,92 @@ class FilesystemUtilityTests(cros_test_lib.MockTempDirTestCase):
     self.assertEqual(result, exp)
 
 
+def CreateTestData(flag_name, operator, value):
+  """Creates a dictionary for testing simple assignment in a static_library."""
+  # static_library("my_static_library") {
+  #   <flag_name> <operator> [ <value> ]
+  # }
+  #
+  # for example, when flag_name='cflags', operator='+=', value='"-lfoo"',
+  # the result stands for a gn file like this:
+  # static_library("my_static_library") {
+  #   cflags += [ "-lfoo" ]
+  # }
+  if not isinstance(value, list):
+    value = [value]
+  value_list = []
+  for item in value:
+    value_list.append({'type': 'LITERAL', 'value': item})
+  return {
+      'child': [{
+          'child': [{
+              'child': [{
+                  'type': 'LITERAL',
+                  'value': '\"my_static_library\"'
+              }],
+              'type': 'LIST'
+          }, {
+              'child': [{
+                  'child': [{
+                      'type': 'IDENTIFIER',
+                      'value': flag_name
+                  }, {
+                      'child': value_list,
+                      'type': 'LIST'
+                  }],
+                  'type': 'BINARY',
+                  'value': operator
+              }],
+              'type': 'BLOCK'
+          }],
+          'type': 'FUNCTION',
+          'value': 'static_library'
+      }],
+      'type': 'BLOCK'
+  }
+
+
+class GnLintTests(LintTestCase):
+  """Tests of various gn linters."""
+  STUB_DATA = {'type': 'BLOCK'}
+
+  def testGnLintLibFlags(self):
+    """Verify GnLintLibFlags catches bad inputs."""
+
+    self._CheckLinter(gnlint.GnLintLibFlags, [
+        CreateTestData('ldflags', '=', '-lfoo'),
+        CreateTestData('ldflags', '+=', '-lfoo'),
+        CreateTestData('ldflags', '-=', '-lfoo'),
+    ])
+
+  def testGnLintVisibilityFlags(self):
+    """Verify GnLintVisibilityFlags catches bad inputs."""
+    self._CheckLinter(gnlint.GnLintVisibilityFlags, [
+        CreateTestData('cflags', '=', '"-fvisibility"'),
+        CreateTestData('cflags', '+=', '"-fvisibility"'),
+        CreateTestData('cflags', '-=', '"-fvisibility=default"'),
+        CreateTestData('cflags_c', '-=', '"-fvisibility=hidden"'),
+        CreateTestData('cflags_cc', '-=', '"-fvisibility=internal"'),
+    ])
+
+  def testGnLintDefineFlags(self):
+    """Verify GnLintDefineFlags catches bad inputs."""
+    self._CheckLinter(gnlint.GnLintDefineFlags, [
+        CreateTestData('cflags', '=', '"-D_FLAG"'),
+        CreateTestData('cflags', '+=', '"-D_FLAG"'),
+        CreateTestData('cflags', '-=', '"-D_FLAG=1"'),
+        CreateTestData('cflags_c', '=', '"-D_FLAG=0"'),
+        CreateTestData('cflags_cc', '=', '"-D_FLAG=\"something\""'),
+    ])
+
+  def testGnLintCommonTesting(self):
+    """Verify GnLintCommonTesting catches bad inputs."""
+    self._CheckLinter(gnlint.GnLintCommonTesting, [
+        CreateTestData('libs', '=', '"gmock"'),
+        CreateTestData('libs', '=', '"gtest"'),
+        CreateTestData('libs', '=', ['"gmock"', '"gtest"'])
+    ])
+
+
 if __name__ == '__main__':
   cros_test_lib.main(module=__name__)
