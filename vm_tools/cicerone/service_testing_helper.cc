@@ -492,6 +492,7 @@ void ServiceTestingHelper::SetDbusCallbackNames() {
   dbus_callbacks_[kUninstallPackageOwningFile].method_name =
       kUninstallPackageOwningFileMethod;
   dbus_callbacks_[kCreateLxdContainer].method_name = kCreateLxdContainerMethod;
+  dbus_callbacks_[kDeleteLxdContainer].method_name = kDeleteLxdContainerMethod;
   dbus_callbacks_[kStartLxdContainer].method_name = kStartLxdContainerMethod;
   dbus_callbacks_[kGetLxdContainerUsername].method_name =
       kGetLxdContainerUsernameMethod;

@@ -55,6 +55,7 @@ class ServiceTestingHelper {
     kInstallLinuxPackage,
     kUninstallPackageOwningFile,
     kCreateLxdContainer,
+    kDeleteLxdContainer,
     kStartLxdContainer,
     kSetTimezone,
     kGetLxdContainerUsername,

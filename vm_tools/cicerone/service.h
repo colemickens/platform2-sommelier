@@ -316,6 +316,10 @@ class Service final : public base::MessageLoopForIO::Watcher {
   std::unique_ptr<dbus::Response> CreateLxdContainer(
       dbus::MethodCall* method_call);
 
+  // Handles a request to delete an LXD container.
+  std::unique_ptr<dbus::Response> DeleteLxdContainer(
+      dbus::MethodCall* method_call);
+
   // Handles a request to start an LXD container.
   std::unique_ptr<dbus::Response> StartLxdContainer(
       dbus::MethodCall* method_call);

@@ -270,6 +270,53 @@ VirtualMachine::CreateLxdContainerStatus VirtualMachine::CreateLxdContainer(
   return VirtualMachine::CreateLxdContainerStatus::CREATING;
 }
 
+VirtualMachine::DeleteLxdContainerStatus VirtualMachine::DeleteLxdContainer(
+    const std::string& container_name, std::string* out_error) {
+  DCHECK(out_error);
+  if (!tremplin_stub_) {
+    *out_error = "tremplin is not connected";
+    return VirtualMachine::DeleteLxdContainerStatus::FAILED;
+  }
+
+  vm_tools::tremplin::DeleteContainerRequest request;
+  vm_tools::tremplin::DeleteContainerResponse response;
+
+  request.set_container_name(container_name);
+
+  grpc::ClientContext ctx;
+  ctx.set_deadline(gpr_time_add(
+      gpr_now(GPR_CLOCK_MONOTONIC),
+      gpr_time_from_seconds(kDefaultTimeoutSeconds, GPR_TIMESPAN)));
+
+  grpc::Status status =
+      tremplin_stub_->DeleteContainer(&ctx, request, &response);
+  if (!status.ok()) {
+    LOG(ERROR) << "DeleteContainer RPC failed: " << status.error_message();
+    out_error->assign(status.error_message());
+    return VirtualMachine::DeleteLxdContainerStatus::FAILED;
+  }
+
+  switch (response.status()) {
+    case tremplin::DeleteContainerResponse::DELETING:
+      return VirtualMachine::DeleteLxdContainerStatus::DELETING;
+    case tremplin::DeleteContainerResponse::DOES_NOT_EXIST:
+      return VirtualMachine::DeleteLxdContainerStatus::DOES_NOT_EXIST;
+
+    case tremplin::DeleteContainerResponse::UNKNOWN:
+    case tremplin::DeleteContainerResponse::FAILED:
+      LOG(ERROR) << "Failed to delete LXD container: "
+                 << response.failure_reason();
+      out_error->assign(response.failure_reason());
+      return VirtualMachine::DeleteLxdContainerStatus::FAILED;
+
+    default:
+      LOG(ERROR) << "Unknown response received: " << response.status() << " "
+                 << response.failure_reason();
+      out_error->assign(response.failure_reason());
+      return VirtualMachine::DeleteLxdContainerStatus::UNKNOWN;
+  }
+}
+
 VirtualMachine::StartLxdContainerStatus VirtualMachine::StartLxdContainer(
     const std::string& container_name,
     const std::string& container_private_key,

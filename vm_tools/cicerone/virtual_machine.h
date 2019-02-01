@@ -32,6 +32,13 @@ class VirtualMachine {
     FAILED,
   };
 
+  enum class DeleteLxdContainerStatus {
+    UNKNOWN,
+    DELETING,
+    DOES_NOT_EXIST,
+    FAILED,
+  };
+
   enum class StartLxdContainerStatus {
     UNKNOWN,
     STARTING,
@@ -181,6 +188,10 @@ class VirtualMachine {
   CreateLxdContainerStatus CreateLxdContainer(const std::string& container_name,
                                               const std::string& image_server,
                                               const std::string& image_alias,
+                                              std::string* out_error);
+
+  // Deletes and LXD container.
+  DeleteLxdContainerStatus DeleteLxdContainer(const std::string& container_name,
                                               std::string* out_error);
 
   // Starts an LXD container.

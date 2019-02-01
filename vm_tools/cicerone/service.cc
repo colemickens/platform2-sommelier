@@ -457,6 +457,41 @@ void Service::LxdContainerDeleted(
     std::string failure_reason,
     bool* result,
     base::WaitableEvent* event) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  CHECK(!container_name.empty());
+  CHECK(result);
+  CHECK(event);
+  *result = false;
+  VirtualMachine* vm;
+  std::string vm_name;
+  std::string owner_id;
+  if (!GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &vm_name)) {
+    event->Signal();
+    return;
+  }
+
+  dbus::Signal signal(kVmCiceroneInterface, kLxdContainerDeletedSignal);
+  vm_tools::cicerone::LxdContainerDeletedSignal proto;
+  proto.mutable_vm_name()->swap(vm_name);
+  proto.set_container_name(container_name);
+  proto.mutable_owner_id()->swap(owner_id);
+  proto.set_failure_reason(failure_reason);
+  switch (status) {
+    case vm_tools::tremplin::ContainerDeletionProgress::DELETED:
+      proto.set_status(LxdContainerDeletedSignal::DELETED);
+      break;
+    case vm_tools::tremplin::ContainerDeletionProgress::CANCELLED:
+      proto.set_status(LxdContainerDeletedSignal::CANCELLED);
+      break;
+    case vm_tools::tremplin::ContainerDeletionProgress::FAILED:
+      proto.set_status(LxdContainerDeletedSignal::FAILED);
+      break;
+    default:
+      proto.set_status(LxdContainerDeletedSignal::UNKNOWN);
+      break;
+  }
+  dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
+  exported_object_->SendSignal(&signal);
   *result = true;
   event->Signal();
 }
@@ -999,6 +1034,7 @@ bool Service::Init(
       {kInstallLinuxPackageMethod, &Service::InstallLinuxPackage},
       {kUninstallPackageOwningFileMethod, &Service::UninstallPackageOwningFile},
       {kCreateLxdContainerMethod, &Service::CreateLxdContainer},
+      {kDeleteLxdContainerMethod, &Service::DeleteLxdContainer},
       {kStartLxdContainerMethod, &Service::StartLxdContainer},
       {kSetTimezoneMethod, &Service::SetTimezone},
       {kGetLxdContainerUsernameMethod, &Service::GetLxdContainerUsername},
@@ -1751,6 +1787,59 @@ std::unique_ptr<dbus::Response> Service::CreateLxdContainer(
       break;
     case VirtualMachine::CreateLxdContainerStatus::FAILED:
       response.set_status(CreateLxdContainerResponse::FAILED);
+      break;
+  }
+  response.set_failure_reason(error_msg);
+
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::DeleteLxdContainer(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received DeleteLxdContainer request";
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  DeleteLxdContainerRequest request;
+  DeleteLxdContainerResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse DeleteLxdRequest from message";
+    response.set_failure_reason(
+        "unable to parse DeleteLxdRequest from message");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  VirtualMachine* vm = FindVm(request.owner_id(), request.vm_name());
+  if (!vm) {
+    LOG(ERROR) << "Requested VM does not exist:" << request.vm_name();
+    response.set_failure_reason(base::StringPrintf(
+        "requested VM does not exist: %s", request.vm_name().c_str()));
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  std::string error_msg;
+  VirtualMachine::DeleteLxdContainerStatus status =
+      vm->DeleteLxdContainer(request.container_name(), &error_msg);
+
+  switch (status) {
+    case VirtualMachine::DeleteLxdContainerStatus::UNKNOWN:
+      response.set_status(DeleteLxdContainerResponse::UNKNOWN);
+      break;
+    case VirtualMachine::DeleteLxdContainerStatus::DELETING:
+      response.set_status(DeleteLxdContainerResponse::DELETING);
+      break;
+    case VirtualMachine::DeleteLxdContainerStatus::DOES_NOT_EXIST:
+      response.set_status(DeleteLxdContainerResponse::DOES_NOT_EXIST);
+      break;
+    case VirtualMachine::DeleteLxdContainerStatus::FAILED:
+      response.set_status(DeleteLxdContainerResponse::FAILED);
       break;
   }
   response.set_failure_reason(error_msg);
