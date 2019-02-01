@@ -177,26 +177,32 @@ bool KeyFileStore::DeleteKey(const string& group, const string& key) {
   CHECK(key_file_);
   GError* error = nullptr;
   g_key_file_remove_key(key_file_, group.c_str(), key.c_str(), &error);
-  if (error && error->code != G_KEY_FILE_ERROR_KEY_NOT_FOUND) {
-    LOG(ERROR) << "Failed to delete (" << group << ":" << key << "): "
-               << ConvertErrorToMessage(error);
-    return false;
+  if (!error) {
+    return true;
   }
-  g_error_free(error);
-  return true;
+  if (error->code == G_KEY_FILE_ERROR_KEY_NOT_FOUND) {
+    g_error_free(error);
+    return true;
+  }
+  LOG(ERROR) << "Failed to delete (" << group << ":" << key << "): "
+             << ConvertErrorToMessage(error);
+  return false;
 }
 
 bool KeyFileStore::DeleteGroup(const string& group) {
   CHECK(key_file_);
   GError* error = nullptr;
   g_key_file_remove_group(key_file_, group.c_str(), &error);
-  if (error && error->code != G_KEY_FILE_ERROR_GROUP_NOT_FOUND) {
-    LOG(ERROR) << "Failed to delete group " << group << ": "
-               << ConvertErrorToMessage(error);
-    return false;
+  if (!error) {
+    return true;
   }
-  g_error_free(error);
-  return true;
+  if (error->code == G_KEY_FILE_ERROR_GROUP_NOT_FOUND) {
+    g_error_free(error);
+    return true;
+  }
+  LOG(ERROR) << "Failed to delete group " << group << ": "
+             << ConvertErrorToMessage(error);
+  return false;
 }
 
 bool KeyFileStore::SetHeader(const string& header) {
