@@ -49,7 +49,9 @@ class IpHelper : public brillo::Daemon, public base::MessageLoopForIO::Watcher {
 
   // Handle |pending_command_|.
   void HandleCommand();
-  void EnableInbound(const std::string& dev, const std::string& ifname);
+  void EnableInbound(const std::string& dev,
+                     const std::string& ifname,
+                     pid_t pid);
 
   // Helper function to extract raw IPv6 address from a protobuf string.
   const struct in6_addr& ExtractAddr6(const std::string& in);

@@ -67,6 +67,11 @@ void ArcIpConfig::Setup() {
   LOG(INFO) << "Setting up " << ifname_ << " " << config_.br_ifname() << " "
             << config_.arc_ifname();
 
+  self_netns_fd_.reset(open("/proc/self/ns/net", O_RDONLY));
+  if (!self_netns_fd_.is_valid()) {
+    PLOG(FATAL) << "Could not open host netns";
+  }
+
   // Configure the persistent Chrome OS bridge interface with static IP.
   process_runner_->Run({kBrctlPath, "addbr", config_.br_ifname()});
   process_runner_->Run({kIfConfigPath, config_.br_ifname(), config_.br_ipv4(),
@@ -148,7 +153,6 @@ bool ArcIpConfig::Init(pid_t con_netns) {
   if (!con_netns_) {
     LOG(INFO) << "Uninitializing " << con_netns_ << " " << ifname_ << " "
               << config_.br_ifname() << " " << config_.arc_ifname();
-    self_netns_fd_.reset();
     con_netns_fd_.reset();
     return true;
   }
@@ -162,12 +166,6 @@ bool ArcIpConfig::Init(pid_t con_netns) {
     con_netns_fd_.reset(open(filename.c_str(), O_RDONLY));
     if (!con_netns_fd_.is_valid()) {
       PLOG(ERROR) << "Could not open " << filename;
-      return false;
-    }
-
-    self_netns_fd_.reset(open("/proc/self/ns/net", O_RDONLY));
-    if (!self_netns_fd_.is_valid()) {
-      PLOG(ERROR) << "Could not open host netns";
       return false;
     }
   }
@@ -203,7 +201,12 @@ bool ArcIpConfig::ContainerInit() {
     return false;
   }
 
-  PCHECK(setns(con_netns_fd_.get(), CLONE_NEWNET) == 0);
+  if (!con_netns_fd_.is_valid() ||
+      setns(con_netns_fd_.get(), CLONE_NEWNET) != 0) {
+    PLOG(ERROR) << "Cannot enter netns " << con_netns_;
+    return false;
+  }
+
   base::ScopedFD fd(socket(AF_INET, SOCK_DGRAM, IPPROTO_IP));
   PCHECK(setns(self_netns_fd_.get(), CLONE_NEWNET) == 0);
 
@@ -336,7 +339,10 @@ bool ArcIpConfig::Set(const struct in6_addr& address,
   CHECK(ifname_ == kAndroidDevice || ifname_ == lan_ifname);
   ipv6_dev_ifname_ = lan_ifname;
 
-  PCHECK(setns(con_netns_fd_.get(), CLONE_NEWNET) == 0);
+  if (setns(con_netns_fd_.get(), CLONE_NEWNET) != 0) {
+    PLOG(ERROR) << "Cannot set IPv6 address: cannot enter netns " << con_netns_;
+    return false;
+  }
 
   VLOG(1) << "Setting " << *this;
 
@@ -407,24 +413,27 @@ bool ArcIpConfig::Clear() {
   process_runner_->Run({kIpPath, "-6", "route", "del", ipv6_address_full_,
                         "dev", config_.br_ifname()});
 
-  PCHECK(setns(con_netns_fd_.get(), CLONE_NEWNET) == 0);
+  if (con_netns_fd_.is_valid() &&
+      setns(con_netns_fd_.get(), CLONE_NEWNET) == 0) {
+    process_runner_->Run({kIpPath, "-6", "route", "del", "default", "via",
+                          ipv6_router_, "dev", config_.arc_ifname(), "table",
+                          std::to_string(routing_table_id_)});
 
-  process_runner_->Run({kIpPath, "-6", "route", "del", "default", "via",
-                        ipv6_router_, "dev", config_.arc_ifname(), "table",
-                        std::to_string(routing_table_id_)});
+    process_runner_->Run({kIpPath, "-6", "route", "del", ipv6_router_, "dev",
+                          config_.arc_ifname(), "table",
+                          std::to_string(routing_table_id_)});
 
-  process_runner_->Run({kIpPath, "-6", "route", "del", ipv6_router_, "dev",
-                        config_.arc_ifname(), "table",
-                        std::to_string(routing_table_id_)});
+    // This often fails because ARC tries to delete the address on its own
+    // when it is notified that the LAN is down.
 
-  // This often fails because ARC tries to delete the address on its own
-  // when it is notified that the LAN is down.
+    process_runner_->Run({kIpPath, "-6", "addr", "del", ipv6_address_full_,
+                          "dev", config_.arc_ifname()},
+                         false);
 
-  process_runner_->Run({kIpPath, "-6", "addr", "del", ipv6_address_full_, "dev",
-                        config_.arc_ifname()},
-                       false);
-
-  PCHECK(setns(self_netns_fd_.get(), CLONE_NEWNET) == 0);
+    PCHECK(setns(self_netns_fd_.get(), CLONE_NEWNET) == 0);
+  } else {
+    PLOG(ERROR) << "IPv6 cleanup incomplete: cannot enter netns " << con_netns_;
+  }
 
   ipv6_dev_ifname_.clear();
   ipv6_configured_ = false;

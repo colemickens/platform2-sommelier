@@ -93,7 +93,7 @@ bool IpHelper::OnContainerStart(const struct signalfd_siginfo& info) {
   if (info.ssi_code == SI_USER) {
     LOG(INFO) << "Container starting";
     con_pid_ = GetContainerPID();
-    CHECK_GT(con_pid_, 0);
+    CHECK_NE(con_pid_, 0);
 
     // Initialize the container interfaces.
     for (auto& config : arc_ip_configs_) {
@@ -126,7 +126,7 @@ void IpHelper::AddDevice(const std::string& ifname,
   LOG(INFO) << "Adding device " << ifname;
   auto device = std::make_unique<ArcIpConfig>(ifname, config);
   // If the container is already up, then this device needs to be initialized.
-  if (con_pid_ > 0)
+  if (con_pid_ != 0)
     device->Init(con_pid_);
 
   arc_ip_configs_.emplace(ifname, std::move(device));
@@ -199,7 +199,8 @@ void IpHelper::HandleCommand() {
     config->Set(ExtractAddr6(ip.prefix()), static_cast<int>(ip.prefix_len()),
                 ExtractAddr6(ip.router()), ip.lan_ifname());
   } else if (pending_command_.has_enable_inbound_ifname()) {
-    EnableInbound(dev_ifname, pending_command_.enable_inbound_ifname());
+    EnableInbound(dev_ifname, pending_command_.enable_inbound_ifname(),
+                  con_pid_);
   } else if (pending_command_.has_disable_inbound()) {
     config->DisableInbound();
   } else if (pending_command_.has_teardown()) {
@@ -209,25 +210,39 @@ void IpHelper::HandleCommand() {
 }
 
 void IpHelper::EnableInbound(const std::string& dev,
-                             const std::string& ifname) {
+                             const std::string& ifname,
+                             pid_t pid) {
   const auto it = arc_ip_configs_.find(dev);
   if (it == arc_ip_configs_.end()) {
     LOG(WARNING) << "Cannot enable " << dev << " missing";
     return;
   }
+
+  if (!con_pid_ || !pid) {
+    LOG(WARNING) << "Ignoring request to enable " << dev << " on " << ifname
+                 << " - container down.";
+    return;
+  }
+  if (con_pid_ != pid) {
+    LOG(WARNING) << "Ignoring request to enable " << dev << " on " << ifname
+                 << " - container restarted.";
+    return;
+  }
+  if (++con_init_tries_ >= kMaxContainerRetries) {
+    LOG(ERROR) << "Ignoring request to enable " << dev << " on " << ifname
+               << " - container never came up.";
+    return;
+  }
+
   // The container must be fully initialized and its side of the virtual
   // interface must be up before continuing.
   if (it->second->ContainerInit()) {
     it->second->EnableInbound(ifname);
   } else {
-    if (++con_init_tries_ >= kMaxContainerRetries) {
-      LOG(ERROR) << "Container failed to come up";
-      Quit();
-    }
     base::MessageLoopForIO::current()->task_runner()->PostDelayedTask(
         FROM_HERE,
         base::Bind(&IpHelper::EnableInbound, weak_factory_.GetWeakPtr(), dev,
-                   ifname),
+                   ifname, con_pid_),
         base::TimeDelta::FromSeconds(kContainerRetryDelaySeconds));
   }
 }
