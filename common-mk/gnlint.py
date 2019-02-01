@@ -175,7 +175,27 @@ def WalkGn(functor, node):
     WalkGn(functor, n)
 
 
-def ExtractLiteralAssignment(node, target_variable_names):
+def Unquote(string_with_quotes):
+  """Returns the content of a quoted string.
+
+  Args:
+    string_with_quotes: String containing double quote characters at the start
+        and the end.
+
+  Returns:
+    String with the double-quote characters stripped, or the original string
+    if it's not quoted.
+  """
+  if (len(string_with_quotes) < 2 or
+      not string_with_quotes.startswith('"') or
+      not string_with_quotes.endswith('"')):
+    logging.error('Quoted string expected, but found: %s', string_with_quotes)
+    return string_with_quotes
+  return string_with_quotes[1:-1]
+
+
+def ExtractLiteralAssignment(node, target_variable_names,
+                             operators=None):
   """Returns list of literals assigned, added or removed to either variable.
 
   If |node| assigns, adds or removes string literal values by a list to either
@@ -186,12 +206,15 @@ def ExtractLiteralAssignment(node, target_variable_names):
     node: A dict representing a token subtree.
     target_variable_names: List of strings representing variable names to be
         detected for its modification.
+    operators: Optional list of assignment operators to detect. Defaults to
+        ['=', '+=', '-='].
 
   Returns:
     List of strings used with the assignment operators to either variable.
   """
-  ASSIGNMENT = ['=', '+=', '-=']
-  if node.get('type') != 'BINARY' or node.get('value') not in ASSIGNMENT:
+  if operators is None:
+    operators = ['=', '+=', '-=']
+  if node.get('type') != 'BINARY' or node.get('value') not in operators:
     return []
   # Detected pattern is like:
   #    BINARY(=)
@@ -212,8 +235,22 @@ def ExtractLiteralAssignment(node, target_variable_names):
     if element.get('type') != 'LITERAL':
       continue
     # Literal nodes of a string value contains double quotes.
-    literals.append(element.get('value').strip('"'))
+    literals.append(Unquote(element.get('value')))
   return literals
+
+
+def FindAllLiteralAssignments(node, target_variable_names,
+                              operators=None):
+  """Lists all potential literal assignment to variable."""
+  literals = []
+  def CheckNode(node):
+    literals.extend(ExtractLiteralAssignment(
+        node, target_variable_names, operators))
+  WalkGn(CheckNode, node)
+  return literals
+
+
+ANY_CONFIGS = ['configs', 'public_configs', 'all_dependent_configs']
 
 
 def GnLintLibFlags(gndata):
@@ -302,6 +339,105 @@ def GnLintCommonTesting(gndata):
   return issues
 
 
+# Helper functions for GnLintStaticSharedLibMixing.
+def IsFunctionNode(node):
+  """Returns True if the node type is FUNCTION."""
+  if not isinstance(node, dict):
+    logging.warning('Reached non-dict node. Skipping: %s', node)
+    return False
+  return node.get('type') == 'FUNCTION'
+
+
+def GnLintStaticSharedLibMixing(gndata):
+  """Static libs linked into shared libs need special PIC handling.
+
+  Normally static libs are built using PIE because they only get linked into
+  PIEs.  But if someone tries linking the static libs into a shared lib, we
+  need to make sure the code is built using PIC.
+
+  Note: We don't do an inverse check (PIC static libs not used by shared libs)
+  as the static libs might be installed by the ebuild.  Not that we want to
+  encourage that situation, but it is what it is ...
+
+  Args:
+    gndata: A dict representing a token tree of a GN file.
+
+  Returns:
+    List of detected issues.
+  """
+  # Record static_libs that build as PIE, and all the deps of shared_libs.
+  # Afterwards, we'll sanity check all the shared lib deps.
+  pie_static_libs = []
+  shared_lib_deps = {}
+
+  def ProcessFunctionNode(node):
+    """Scans content of a function node and memorize if PIC/PIE."""
+    if not IsFunctionNode(node):
+      return
+    child = node.get('child', [])
+    if len(child) != 2:
+      return
+    # 1st child of FUNCTION node is the name of the function.
+    # We only check for a simple literal node name.
+    # For example:
+    #  FUNCTION(static_library)
+    #   LIST
+    #    LITERAL("my_static_library")
+    #   BLOCK
+    #    BINARY(+=)
+    #     IDENTIFIER(configs)
+    #     LIST
+    #      LITERAL("//common-mk:pic")
+    #    BINARY(-=)
+    #     IDENTIFIER(configs)
+    #     LIST
+    #      LITERAL("//common-mk:pie")
+    name_expression, block = child
+    if len(name_expression.get('child', [])) != 1:
+      return
+    name_literal = name_expression['child'][0]
+    if name_literal.get('type') != 'LITERAL':
+      return
+    name = name_literal.get('value')
+    if name is None:
+      return
+    name = Unquote(name)
+    target_type = node.get('value')
+    if target_type == 'static_library':
+      configs = FindAllLiteralAssignments(block, ANY_CONFIGS, ['+='])
+      removed_configs = FindAllLiteralAssignments(block, ANY_CONFIGS, ['-='])
+      if ('//common-mk:pie' not in removed_configs or
+          '//common-mk:pic' not in configs):
+        pie_static_libs.append(name)
+    elif target_type == 'shared_library':
+      assert name not in shared_lib_deps, 'duplicate target: %s' % name
+      deps = ExtractLiteralAssignment(block.get('child')[0], 'deps')
+      shared_lib_deps[name] = [
+          t.lstrip(':') for t in deps if t.startswith(':')]
+
+  # We build up the full state first rather than check it as we go as gyp
+  # files do not force target ordering.
+  WalkGn(ProcessFunctionNode, gndata)
+
+  # Now with the full state, run the checks.
+  ret = []
+  for pie_lib in pie_static_libs:
+    pie_lib = Unquote(pie_lib)
+    # Pull out all shared libs that depend on static PIE libs.
+    dependency_libs = [
+        shared_lib for shared_lib, deps in shared_lib_deps.items()
+        if pie_lib in deps
+    ]
+    if dependency_libs:
+      ret.append(('static library "%(pie)s" must be compiled as PIC, not PIE, '
+                  'because it is linked into the shared libraries %(pic)s; '
+                  'add this to the "%(pie)s" target to fix:\n'
+                  'configs += [\"//common-mk:pic\"]\n'
+                  'configs -= [\"//common-mk:pie\"]')
+                 % {'pie': pie_lib, 'pic': dependency_libs})
+  return ret
+
+
 # The regex used to find gnlint options in the file.
 # This matches the regex pylint uses.
 OPTIONS_RE = re.compile(r'^\s*#.*\bgnlint:\s*([^\n;]+)', flags=re.MULTILINE)
@@ -361,6 +497,7 @@ _ALL_LINTERS = {
     'GnLintVisibilityFlags': GnLintVisibilityFlags,
     'GnLintDefineFlags': GnLintDefineFlags,
     'GnLintCommonTesting': GnLintCommonTesting,
+    'GnLintStaticSharedLibMixing': GnLintStaticSharedLibMixing,
 }
 
 

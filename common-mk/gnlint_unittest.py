@@ -26,8 +26,8 @@ import gnlint
 class LintTestCase(cros_test_lib.TestCase):
   """Helper for running linters."""
 
-  def _CheckLinter(self, functor, inputs):
-    """Make sure |functor| rejects every input in |inputs|."""
+  def _CheckLinter(self, functor, inputs, is_bad_input=True):
+    """Make sure |functor| rejects or accepts every input in |inputs|."""
     # First run a sanity check.
     ret = functor(self.STUB_DATA)
     self.assertEqual(ret, [])
@@ -35,7 +35,10 @@ class LintTestCase(cros_test_lib.TestCase):
     # Then run through all the bad inputs.
     for x in inputs:
       ret = functor(x)
-      self.assertNotEqual(ret, [])
+      if is_bad_input:
+        self.assertNotEqual(ret, [])
+      else:
+        self.assertEqual(ret, [])
 
 
 class UtilityTests(cros_test_lib.MockTestCase):
@@ -202,6 +205,149 @@ class GnLintTests(LintTestCase):
         CreateTestData('libs', '=', '"gtest"'),
         CreateTestData('libs', '=', ['"gmock"', '"gtest"'])
     ])
+
+  def testGnLintStaticSharedLibMixing(self):
+    """Verify GnLintStaticSharedLibMixing catches bad inputs."""
+    # static_library("static_pie") {
+    #   configs += [ "//common-mk:pie" ]
+    # }
+    # shared_library("shared") {
+    #   deps = [ ":static_pie" ]
+    # }
+    self._CheckLinter(gnlint.GnLintStaticSharedLibMixing, [{
+        'child': [{
+            'child': [{
+                'child': [{
+                    'type': 'LITERAL',
+                    'value': '\"static_pie\"'
+                }],
+                'type': 'LIST'
+            }, {
+                'child': [{
+                    'child': [{
+                        'type': 'IDENTIFIER',
+                        'value': 'configs'
+                    }, {
+                        'child': [{
+                            'type': 'LITERAL',
+                            'value': '\"//common-mk:pie\"'
+                        }],
+                        'type': 'LIST'
+                    }],
+                    'type': 'BINARY',
+                    'value': '+='
+                }],
+                'type': 'BLOCK'
+            }],
+            'type': 'FUNCTION',
+            'value': 'static_library'
+        }, {
+            'child': [{
+                'child': [{
+                    'type': 'LITERAL',
+                    'value': '\"shared\"'
+                }],
+                'type': 'LIST'
+            }, {
+                'child': [{
+                    'child': [{
+                        'type': 'IDENTIFIER',
+                        'value': 'deps'
+                    }, {
+                        'child': [{
+                            'type': 'LITERAL',
+                            'value': '\":static_pie\"'
+                        }],
+                        'type': 'LIST'
+                    }],
+                    'type': 'BINARY',
+                    'value': '='
+                }],
+                'type': 'BLOCK'
+            }],
+            'type': 'FUNCTION',
+            'value': 'shared_library'
+        }],
+        'type': 'BLOCK'
+    }])
+
+    # Negative test case which makes linked library PIC. Should be accepted.
+    # static_library("static_pic") {
+    #   configs += [ "//common-mk:pic" ]
+    #   configs -= [ "//common-mk:pie" ]
+    # }
+    # shared_library("shared") {
+    #   deps = [ ":static_pic" ]
+    # }
+    self._CheckLinter(gnlint.GnLintStaticSharedLibMixing, [{
+        'child': [{
+            'child': [{
+                'child': [{
+                    'type': 'LITERAL',
+                    'value': '\"static_pic\"'
+                }],
+                'type': 'LIST'
+            }, {
+                'child': [{
+                    'child': [{
+                        'type': 'IDENTIFIER',
+                        'value': 'configs'
+                    }, {
+                        'child': [{
+                            'type': 'LITERAL',
+                            'value': '\"//common-mk:pic\"'
+                        }],
+                        'type': 'LIST'
+                    }],
+                    'type': 'BINARY',
+                    'value': '+='
+                }, {
+                    'child': [{
+                        'type': 'IDENTIFIER',
+                        'value': 'configs'
+                    }, {
+                        'child': [{
+                            'type': 'LITERAL',
+                            'value': '\"//common-mk:pie\"'
+                        }],
+                        'type': 'LIST'
+                    }],
+                    'type': 'BINARY',
+                    'value': '-='
+                }],
+                'type': 'BLOCK'
+            }],
+            'type': 'FUNCTION',
+            'value': 'static_library'
+        }, {
+            'child': [{
+                'child': [{
+                    'type': 'LITERAL',
+                    'value': '\"shared\"'
+                }],
+                'type': 'LIST'
+            }, {
+                'child': [{
+                    'child': [{
+                        'type': 'IDENTIFIER',
+                        'value': 'deps'
+                    }, {
+                        'child': [{
+                            'type': 'LITERAL',
+                            'value': '\":static_pic\"'
+                        }],
+                        'type': 'LIST'
+                    }],
+                    'type': 'BINARY',
+                    'value': '='
+                }],
+                'type': 'BLOCK'
+            }],
+            'type': 'FUNCTION',
+            'value': 'shared_library'
+        }],
+        'type': 'BLOCK'
+    }], is_bad_input=False)
 
 
 if __name__ == '__main__':
