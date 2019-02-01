@@ -35,6 +35,7 @@
 #include "vm_tools/garcon/desktop_file.h"
 #include "vm_tools/garcon/host_notifier.h"
 #include "vm_tools/garcon/icon_finder.h"
+#include "vm_tools/garcon/package_kit_proxy.h"
 
 namespace vm_tools {
 namespace garcon {
@@ -555,20 +556,28 @@ grpc::Status ServiceImpl::GetLinuxPackageInfo(
     const vm_tools::container::LinuxPackageInfoRequest* request,
     vm_tools::container::LinuxPackageInfoResponse* response) {
   LOG(INFO) << "Received request to get Linux package info";
-  if (request->file_path().empty()) {
-    return grpc::Status(grpc::INVALID_ARGUMENT, "file_path cannot be empty");
-  }
-
-  base::FilePath file_path(request->file_path());
-  if (!base::PathExists(file_path)) {
-    return grpc::Status(grpc::INVALID_ARGUMENT, "file_path does not exist");
+  if (request->file_path().empty() && request->package_name().empty()) {
+    return grpc::Status(grpc::INVALID_ARGUMENT,
+                        "file_path and package_name cannot both be empty");
   }
 
   std::string error_msg;
   std::shared_ptr<PackageKitProxy::LinuxPackageInfo> pkg_info =
       std::make_shared<PackageKitProxy::LinuxPackageInfo>();
-  response->set_success(
-      package_kit_proxy_->GetLinuxPackageInfo(file_path, pkg_info, &error_msg));
+
+  if (request->file_path().empty()) {
+    response->set_success(
+        package_kit_proxy_->GetLinuxPackageInfoFromPackageName(
+            request->package_name(), pkg_info, &error_msg));
+  } else {
+    base::FilePath file_path(request->file_path());
+    if (!base::PathExists(file_path)) {
+      return grpc::Status(grpc::INVALID_ARGUMENT, "file_path does not exist");
+    }
+    response->set_success(package_kit_proxy_->GetLinuxPackageInfoFromFilePath(
+        file_path, pkg_info, &error_msg));
+  }
+
   if (response->success()) {
     response->set_package_id(std::move(pkg_info->package_id));
     response->set_license(std::move(pkg_info->license));
@@ -587,20 +596,24 @@ grpc::Status ServiceImpl::InstallLinuxPackage(
     const vm_tools::container::InstallLinuxPackageRequest* request,
     vm_tools::container::InstallLinuxPackageResponse* response) {
   LOG(INFO) << "Received request to install Linux package";
-  if (request->file_path().empty()) {
-    return grpc::Status(grpc::INVALID_ARGUMENT, "file_path cannot be empty");
-  }
-
-  base::FilePath file_path(request->file_path());
-  if (!base::PathExists(file_path)) {
-    return grpc::Status(grpc::INVALID_ARGUMENT, "file_path does not exist");
+  if (request->file_path().empty() && request->package_id().empty()) {
+    return grpc::Status(grpc::INVALID_ARGUMENT,
+                        "file_path and package_id cannot both be empty");
   }
 
   std::string error_msg;
-  response->set_status(
-      package_kit_proxy_->InstallLinuxPackage(file_path, &error_msg));
+  if (request->file_path().empty()) {
+    response->set_status(package_kit_proxy_->InstallLinuxPackageFromPackageId(
+        request->package_id(), &error_msg));
+  } else {
+    base::FilePath file_path(request->file_path());
+    if (!base::PathExists(file_path)) {
+      return grpc::Status(grpc::INVALID_ARGUMENT, "file_path does not exist");
+    }
+    response->set_status(package_kit_proxy_->InstallLinuxPackageFromFilePath(
+        file_path, &error_msg));
+  }
   response->set_failure_reason(error_msg);
-
   return grpc::Status::OK;
 }
 

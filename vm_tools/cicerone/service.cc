@@ -1592,9 +1592,10 @@ std::unique_ptr<dbus::Response> Service::GetLinuxPackageInfo(
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
-  if (request.file_path().empty()) {
-    LOG(ERROR) << "Linux file path is not set in request";
-    response.set_failure_reason("Linux file path is not set in request");
+  if (request.file_path().empty() && request.package_name().empty()) {
+    LOG(ERROR) << "Neither a Linux file path or package_id are set in request";
+    response.set_failure_reason(
+        "neither a Linux file path or package_id are set in request");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -1621,8 +1622,9 @@ std::unique_ptr<dbus::Response> Service::GetLinuxPackageInfo(
 
   std::string error_msg;
   Container::LinuxPackageInfo pkg_info;
-  response.set_success(container->GetLinuxPackageInfo(request.file_path(),
-                                                      &pkg_info, &error_msg));
+  response.set_success(container->GetLinuxPackageInfo(
+      request.file_path(), request.package_name(), &pkg_info, &error_msg));
+
   if (response.success()) {
     response.set_package_id(pkg_info.package_id);
     response.set_license(pkg_info.license);
@@ -1657,9 +1659,10 @@ std::unique_ptr<dbus::Response> Service::InstallLinuxPackage(
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
-  if (request.file_path().empty()) {
-    LOG(ERROR) << "Linux file path is not set in request";
-    response.set_failure_reason("Linux file path is not set in request");
+  if (request.file_path().empty() && request.package_id().empty()) {
+    LOG(ERROR) << "Neither a Linux file path or package_id are set in request";
+    response.set_failure_reason(
+        "neither a Linux file path or package_id are set in request");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -1685,7 +1688,8 @@ std::unique_ptr<dbus::Response> Service::InstallLinuxPackage(
 
   std::string error_msg;
   vm_tools::container::InstallLinuxPackageResponse::Status status =
-      container->InstallLinuxPackage(request.file_path(), &error_msg);
+      container->InstallLinuxPackage(request.file_path(), request.package_id(),
+                                     &error_msg);
   response.set_failure_reason(error_msg);
   switch (status) {
     case vm_tools::container::InstallLinuxPackageResponse::STARTED:

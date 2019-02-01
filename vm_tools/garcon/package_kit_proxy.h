@@ -68,9 +68,19 @@ class PackageKitProxy {
   // |file_path| and populates |out_pkg_info| with the details on success.
   // Returns true on success, and false otherwise. On failure, |out_error| will
   // be populated with error details.
-  bool GetLinuxPackageInfo(const base::FilePath& file_path,
-                           std::shared_ptr<LinuxPackageInfo> out_pkg_info,
-                           std::string* out_error);
+  bool GetLinuxPackageInfoFromFilePath(
+      const base::FilePath& file_path,
+      std::shared_ptr<LinuxPackageInfo> out_pkg_info,
+      std::string* out_error);
+
+  // Tries to resolve |package_name| into a package id which is then used to
+  // get more information about the Linux Package and populates |out_pkg_info|
+  // with the details on success. Returns true on success and false otherwise.
+  // On failure, |out_error| will be populated with error details.
+  bool GetLinuxPackageInfoFromPackageName(
+      const std::string& package_name,
+      std::shared_ptr<LinuxPackageInfo> out_pkg_info,
+      std::string* out_error);
 
   // Gets information about the Linux package (if any) which owns the file
   // located at |file_path|. Once the transaction is complete, |callback| will
@@ -92,10 +102,32 @@ class PackageKitProxy {
   void SearchLinuxPackagesForFile(const base::FilePath& file_path,
                                   PackageSearchCallback callback);
 
+  // Tries to resolve the name of a Linux Package |package_name| into its
+  // qualified ID of "name;version;arch;data". Once the transaction is
+  // complete, |callback| will be called. If the name was resolved sucessfully,
+  // |success| and |pkg_found| will be true and |pkg_info| will be filled in
+  // with some package including the package ID. If the package name could not
+  // be resolved, |pkg_found| will be set to false, |pkg_info| will be empty,
+  // but |success| will be true -- this is not an error. On error, |success|
+  // will be false and |error| will be populated with the error details.
+  // Regardless, |callback| will be called only once.
+  //
+  // The returned LinuxPackageInfo will only have package_id and summary filled
+  // in.
+  void ResolvePackageName(const std::string& package_name,
+                          PackageSearchCallback callback);
+
   // Requests that installation of the Linux package located at |file_path| be
   // performed. |out_error| will be set in the case of failure.
-  vm_tools::container::InstallLinuxPackageResponse::Status InstallLinuxPackage(
-      const base::FilePath& file_path, std::string* out_error);
+  vm_tools::container::InstallLinuxPackageResponse::Status
+  InstallLinuxPackageFromFilePath(const base::FilePath& file_path,
+                                  std::string* out_error);
+
+  // Requests that installation of the Linux package with the ID of
+  // |package_id| be performed. |out_error| will be set in the case of failure.
+  vm_tools::container::InstallLinuxPackageResponse::Status
+  InstallLinuxPackageFromPackageId(const std::string& package_id,
+                                   std::string* out_error);
 
   // Kicks off a sequence of requests to uninstall the package owning the
   // file at |file_path|. Returns a status code indicating if the uninstall
@@ -111,12 +143,16 @@ class PackageKitProxy {
   struct PackageInfoTransactionData {
     PackageInfoTransactionData(const base::FilePath& file_path_in,
                                std::shared_ptr<LinuxPackageInfo> pkg_info_in);
+    PackageInfoTransactionData(const std::string& package_id_in,
+                               std::shared_ptr<LinuxPackageInfo> pkg_info_in);
     const base::FilePath file_path;
+    std::string package_id;
     base::WaitableEvent event;
     bool result;
     std::shared_ptr<LinuxPackageInfo> pkg_info;
     std::string error;
   };
+
   class PackageKitDeathObserver {
    public:
     virtual ~PackageKitDeathObserver() {}
@@ -150,11 +186,16 @@ class PackageKitProxy {
   bool Init();
   void GetLinuxPackageInfoOnDBusThread(
       std::shared_ptr<PackageInfoTransactionData> data);
-  void InstallLinuxPackageOnDBusThread(
+  void InstallLinuxPackageFromFilePathOnDBusThread(
       const base::FilePath& file_path,
+      std::unique_ptr<BlockingOperationActiveClearer> clearer);
+  void InstallLinuxPackageFromPackageIdOnDBusThread(
+      const std::string& package_name,
       std::unique_ptr<BlockingOperationActiveClearer> clearer);
   void SearchLinuxPackagesForFileOnDBusThread(const base::FilePath& file_path,
                                               PackageSearchCallback callback);
+  void ResolvePackageNameOnDBusThread(const std::string& package_name,
+                                      PackageSearchCallback callback);
 
   // Callback for ownership change of PackageKit service, used to detect if it
   // crashes while we are waiting on something that doesn't have a timeout.
@@ -173,6 +214,17 @@ class PackageKitProxy {
       std::unique_ptr<BlockingOperationActiveClearer> clearer,
       bool success,
       bool pkg_found,
+      const LinuxPackageInfo& pkg_info,
+      const std::string& error);
+
+  // Callback from ResolvePackageName, used by
+  // GetLinuxPackageInfoFromPackageName. If the package name is resolved into a
+  // package id, this returns details about that package.
+  void GetLinuxPackageInfoFromPackageNameResolvePackageNameCallback(
+      std::shared_ptr<PackageInfoTransactionData> data,
+      std::string* out_error,
+      bool success,
+      bool pkg_resolved,
       const LinuxPackageInfo& pkg_info,
       const std::string& error);
 

@@ -173,12 +173,14 @@ bool Container::GetContainerAppIcon(std::vector<std::string> desktop_file_ids,
 }
 
 bool Container::GetLinuxPackageInfo(const std::string& file_path,
+                                    const std::string& package_name,
                                     LinuxPackageInfo* out_pkg_info,
                                     std::string* out_error) {
   CHECK(out_pkg_info);
   vm_tools::container::LinuxPackageInfoRequest container_request;
   vm_tools::container::LinuxPackageInfoResponse container_response;
   container_request.set_file_path(file_path);
+  container_request.set_package_name(package_name);
 
   grpc::ClientContext ctx;
   ctx.set_deadline(gpr_time_add(
@@ -208,10 +210,12 @@ bool Container::GetLinuxPackageInfo(const std::string& file_path,
 
 vm_tools::container::InstallLinuxPackageResponse::Status
 Container::InstallLinuxPackage(const std::string& file_path,
+                               const std::string& package_id,
                                std::string* out_error) {
   vm_tools::container::InstallLinuxPackageRequest container_request;
   vm_tools::container::InstallLinuxPackageResponse container_response;
   container_request.set_file_path(file_path);
+  container_request.set_package_id(package_id);
 
   grpc::ClientContext ctx;
   ctx.set_deadline(gpr_time_add(

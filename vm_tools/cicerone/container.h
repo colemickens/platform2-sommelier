@@ -89,10 +89,14 @@ class Container {
                            std::vector<Icon>* icons);
 
   bool GetLinuxPackageInfo(const std::string& file_path,
+                           const std::string& package_name,
                            LinuxPackageInfo* out_pkg_info,
                            std::string* out_error);
+
   vm_tools::container::InstallLinuxPackageResponse::Status InstallLinuxPackage(
-      const std::string& file_path, std::string* out_error);
+      const std::string& file_path,
+      const std::string& package_id,
+      std::string* out_error);
 
   vm_tools::container::UninstallPackageOwningFileResponse::Status
   UninstallPackageOwningFile(const std::string& desktop_file_id,
