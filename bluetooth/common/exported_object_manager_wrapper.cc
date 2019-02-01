@@ -50,6 +50,12 @@ ExportedInterface::ExportedInterface(
 
 void ExportedInterface::ExportAsync(
     const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& callback) {
+  for (const auto& kv : exported_properties_) {
+    // Add the properties that were deferred until this interface is ready to be
+    // exported.
+    dbus_object_->FindInterface(interface_name_)
+        ->AddProperty(kv.first, kv.second.get());
+  }
   dbus_object_->ExportInterfaceAsync(interface_name_, callback);
   is_exported_ = true;
 }
@@ -109,8 +115,18 @@ ExportedInterface::EnsureExportedPropertyRegistered(
       property_name, property_factory->CreateExportedProperty());
   brillo::dbus_utils::ExportedPropertyBase* exported_property =
       ret.first->second.get();
-  dbus_object_->FindInterface(interface_name_)
-      ->AddProperty(property_name, exported_property);
+
+  // Defer adding this property to the interface if the interface is not yet
+  // exported. Otherwise PropertiesChanged signals might be emitted and can
+  // cause confusion to clients.
+  if (is_exported_) {
+    dbus_object_->FindInterface(interface_name_)
+        ->AddProperty(property_name, exported_property);
+  } else {
+    VLOG(3) << "Deferring adding property " << property_name
+            << " until interface " << interface_name_ << " is exported";
+  }
+
   return exported_property;
 }
 
@@ -122,7 +138,11 @@ void ExportedInterface::EnsureExportedPropertyUnregistered(
   VLOG(2) << "Removing property " << property_name << " to exported object "
           << object_path_.value() << " on interface " << interface_name_;
 
-  dbus_object_->FindInterface(interface_name_)->RemoveProperty(property_name);
+  // The property has been added to the interface only if the interface has been
+  // exported.
+  if (is_exported_)
+    dbus_object_->FindInterface(interface_name_)->RemoveProperty(property_name);
+
   exported_properties_.erase(property_name);
 }
 

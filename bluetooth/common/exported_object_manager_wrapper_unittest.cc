@@ -204,6 +204,7 @@ TEST_F(ExportedObjectManagerWrapperTest, SyncProperty) {
   property->SetAndBlock(expected_value);
   property->ReplaceValueWithSetValue();
   ASSERT_EQ(expected_value, property->value());
+  interface->ExportAsync(base::Bind([](bool success) {}));
 
   interface->SyncPropertyToExportedProperty(
       kTestPropertyName, property_base.get(), &property_factory);
