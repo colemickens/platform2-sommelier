@@ -1131,17 +1131,9 @@ TEST_F(PowerSupplyTest, DisplayBatteryPercent) {
   UpdateChargeAndCurrent(kShutdownPercent / 100.0, 0.0);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_DOUBLE_EQ(0.0, status.display_battery_percentage);
-
-  UpdateChargeAndCurrent(0.0, 0.0);
-  EXPECT_TRUE(UpdateStatus(&status));
-  EXPECT_DOUBLE_EQ(0.0, status.display_battery_percentage);
-
-  UpdateChargeAndCurrent(-0.1, 0.0);
-  EXPECT_TRUE(UpdateStatus(&status));
-  EXPECT_DOUBLE_EQ(0.0, status.display_battery_percentage);
 }
 
-TEST_F(PowerSupplyTest, IgnoreReadingsDuringFirmwareUpdate) {
+TEST_F(PowerSupplyTest, BadSingleBattery) {
   // Check that reading broken battery data the first time through yields
   // failure but still results in the partially-correct status being recorded.
   // At startup, powerd needs to use what it can get.
@@ -1164,11 +1156,57 @@ TEST_F(PowerSupplyTest, IgnoreReadingsDuringFirmwareUpdate) {
   EXPECT_TRUE(UpdateStatus(&status));
   EXPECT_DOUBLE_EQ(100.0, status.display_battery_percentage);
 
-  // Now check that another invalid reading is completely ignored.
+  // The update should be dropped if we see zero or negative instantaneous or
+  // full charges: http://crbug.com/924869
   UpdateChargeAndCurrent(0.0, 0.0);
-  WriteDoubleValue(battery_dir_, "voltage_min_design", 0.0);
   EXPECT_FALSE(UpdateStatus(&status));
-  EXPECT_DOUBLE_EQ(100.0, status.display_battery_percentage);
+  EXPECT_FALSE(status.battery_below_shutdown_threshold);
+
+  UpdateChargeAndCurrent(-0.1, 0.0);
+  EXPECT_FALSE(UpdateStatus(&status));
+  EXPECT_FALSE(status.battery_below_shutdown_threshold);
+
+  UpdateChargeAndCurrent(0.5, 0.0);
+  WriteDoubleValue(battery_dir_, "charge_full", 0.0);
+  EXPECT_FALSE(UpdateStatus(&status));
+  EXPECT_FALSE(status.battery_below_shutdown_threshold);
+
+  WriteDoubleValue(battery_dir_, "charge_full", -0.1);
+  EXPECT_FALSE(UpdateStatus(&status));
+  EXPECT_FALSE(status.battery_below_shutdown_threshold);
+}
+
+TEST_F(PowerSupplyTest, BadMultipleBatteries) {
+  // Start out with two batteries.
+  WriteDefaultValues(PowerSource::AC);
+  AddSecondBattery(kCharging);
+  prefs_.SetInt64(kMultipleBatteriesPref, 1);
+  Init();
+  PowerStatus status;
+  ASSERT_TRUE(UpdateStatus(&status));
+
+  // We should tolerate one of the batteries having a zero charge.
+  WriteDoubleValue(second_battery_dir_, "charge_now", 0.0);
+  EXPECT_TRUE(UpdateStatus(&status));
+  EXPECT_DOUBLE_EQ(kDefaultCharge, status.battery_charge);
+  EXPECT_DOUBLE_EQ(kDefaultChargeFull + kDefaultSecondChargeFull,
+                   status.battery_charge_full);
+
+  // If the second battery reports a zero full charge, we should treat it as
+  // bogus and exclude it from calculations.
+  WriteDoubleValue(second_battery_dir_, "charge_now", 0.5);
+  WriteDoubleValue(second_battery_dir_, "charge_full", 0.0);
+  EXPECT_TRUE(UpdateStatus(&status));
+  EXPECT_DOUBLE_EQ(kDefaultCharge, status.battery_charge);
+  EXPECT_DOUBLE_EQ(kDefaultChargeFull, status.battery_charge);
+
+  // If both batteries report a zero charge, we should assume that something is
+  // wrong and reject the reading.
+  WriteDoubleValue(battery_dir_, "charge_now", 0.0);
+  WriteDoubleValue(second_battery_dir_, "charge_now", 0.0);
+  WriteDoubleValue(second_battery_dir_, "charge_full",
+                   kDefaultSecondChargeFull);
+  EXPECT_FALSE(UpdateStatus(&status));
 }
 
 TEST_F(PowerSupplyTest, CheckForLowBattery) {
@@ -1187,12 +1225,6 @@ TEST_F(PowerSupplyTest, CheckForLowBattery) {
   UpdateChargeAndCurrent((kShutdownPercent - 1.0) / 100.0, kCurrent);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_TRUE(status.battery_below_shutdown_threshold);
-
-  // If the charge is zero, assume that something is being misreported and
-  // avoid shutting down.
-  UpdateChargeAndCurrent(0.0, kCurrent);
-  ASSERT_TRUE(UpdateStatus(&status));
-  EXPECT_FALSE(status.battery_below_shutdown_threshold);
 
   // Don't shut down when on AC power when the battery's charge isn't observed
   // to be decreasing.
@@ -1873,7 +1905,7 @@ TEST_F(PowerSupplyTest, MultipleBatteriesState) {
   WriteValue(battery_dir_, "status", kDischarging);
   WriteValue(second_battery_dir_, "status", kDischarging);
   WriteDoubleValue(battery_dir_, "current_now", 0.0);
-  UpdateChargeAndCurrentForDir(second_battery_dir_, 0.0, kDefaultSecondCharge);
+  UpdateChargeAndCurrentForDir(second_battery_dir_, kDefaultSecondCharge, 0.0);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC, status.external_power);
   EXPECT_EQ(PowerSupplyProperties_BatteryState_DISCHARGING,

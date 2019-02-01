@@ -377,8 +377,11 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
 
   // Helper method for UpdatePowerStatus() that reads |path|, a directory under
   // |power_supply_path_| corresponding to a battery, and updates |status|.
-  // Returns false if an error is encountered.
-  bool ReadBatteryDirectory(const base::FilePath& path, PowerStatus* status);
+  // Returns false if an error is encountered (including the charge being zero
+  // when |allow_empty| is false).
+  bool ReadBatteryDirectory(const base::FilePath& path,
+                            PowerStatus* status,
+                            bool allow_empty);
 
   // Helper method for ReadBatteryDirectory() that updates |status|'s
   // |battery_percentage|, |display_battery_percentage|, and |battery_state|

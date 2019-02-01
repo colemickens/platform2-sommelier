@@ -668,7 +668,8 @@ bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
     battery_paths.resize(1);
   }
   if (battery_paths.size() == 1) {
-    if (!ReadBatteryDirectory(battery_paths[0], &status))
+    if (!ReadBatteryDirectory(battery_paths[0], &status,
+                              false /* allow_empty */))
       return false;
   } else if (battery_paths.size() > 1) {
     if (!ReadMultipleBatteryDirectories(battery_paths, &status))
@@ -847,7 +848,8 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
 }
 
 bool PowerSupply::ReadBatteryDirectory(const base::FilePath& path,
-                                       PowerStatus* status) {
+                                       PowerStatus* status,
+                                       bool allow_empty) {
   VLOG(1) << "Reading battery status from " << path.value();
   status->battery_path = path.value();
   status->battery_is_present = IsBatteryPresent(path);
@@ -880,10 +882,7 @@ bool PowerSupply::ReadBatteryDirectory(const base::FilePath& path,
     nominal_voltage = ReadScaledDouble(path, "voltage_max_design");
 
   // Nominal voltage is not required to obtain the charge level; if it's
-  // missing, just use |battery_voltage|. Save the fact that it was zero so it
-  // can be used later to detect cases where battery info has been zeroed out
-  // during an in-progress firmware update, though.
-  const bool read_zero_nominal_voltage = nominal_voltage == 0.0;
+  // missing, just use |battery_voltage|.
   if (nominal_voltage <= 0) {
     if (voltage <= 0) {
       // Avoid passing bad time-to-empty estimates to Chrome:
@@ -939,14 +938,11 @@ bool PowerSupply::ReadBatteryDirectory(const base::FilePath& path,
     return false;
   }
 
-  if (charge == 0.0 && read_zero_nominal_voltage) {
-    LOG(WARNING) << "Ignoring reading with zero battery charge and nominal "
-                 << "voltage (firmware update in progress?)";
-    return false;
-  }
-  if (charge_full <= 0.0) {
-    LOG(WARNING) << "Ignoring reading with battery charge of " << charge
-                 << " and battery-full charge of " << charge_full;
+  // Drop bogus readings (sometimes seen during firmware updates) that can
+  // confuse users: https://crbug.com/924869
+  if (charge_full <= 0.0 || charge < 0.0 || (charge == 0.0 && !allow_empty)) {
+    LOG(WARNING) << "Ignoring reading with battery charge " << charge
+                 << " and battery-full charge " << charge_full;
     return false;
   }
 
@@ -999,9 +995,16 @@ bool PowerSupply::ReadMultipleBatteryDirectories(
   DCHECK_GE(paths.size(), 2);
   std::vector<PowerStatus> battery_statuses;
   for (const auto& path : paths) {
-    battery_statuses.push_back(PowerStatus(*status));
-    if (!ReadBatteryDirectory(path, &battery_statuses.back()))
-      return false;
+    PowerStatus battery_status(*status);
+    if (ReadBatteryDirectory(path, &battery_status, true /* allow_empty */))
+      battery_statuses.push_back(battery_status);
+    else
+      LOG(WARNING) << "Ignoring battery at " << path.value();
+  }
+
+  if (battery_statuses.empty()) {
+    LOG(WARNING) << "No functional batteries found";
+    return false;
   }
 
   // Sum data across all directories.
@@ -1028,6 +1031,13 @@ bool PowerSupply::ReadMultipleBatteryDirectories(
     if (s.battery_status_string == kBatteryStatusCharging ||
         s.battery_status_string == kBatteryStatusFull)
       status->battery_status_string = kBatteryStatusCharging;
+  }
+
+  // If all batteries reported being empty, something is likely wrong:
+  // https://crbug.com/924869
+  if (status->battery_charge == 0.0) {
+    LOG(WARNING) << "Ignoring zero summed battery charge";
+    return false;
   }
 
   // Compute percentages and state based on the combined values.
@@ -1108,12 +1118,6 @@ bool PowerSupply::IsBatteryBelowShutdownThreshold(
   if (low_battery_shutdown_time_ == base::TimeDelta() &&
       low_battery_shutdown_percent_ <= kEpsilon)
     return false;
-
-  // TODO(derat): Figure out what's causing http://crosbug.com/38912.
-  if (status.battery_percentage <= kEpsilon) {
-    LOG(WARNING) << "Ignoring probably-bogus zero battery percentage";
-    return false;
-  }
 
   const bool below_threshold =
       (status.battery_time_to_empty > base::TimeDelta() &&
