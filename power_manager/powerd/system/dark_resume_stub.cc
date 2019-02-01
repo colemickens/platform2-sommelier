@@ -8,10 +8,7 @@ namespace power_manager {
 namespace system {
 
 DarkResumeStub::DarkResumeStub()
-    : action_(Action::SUSPEND),
-      in_dark_resume_(false),
-      enabled_(false),
-      can_safely_exit_dark_resume_(true) {}
+    : action_(Action::SUSPEND), in_dark_resume_(false), enabled_(false) {}
 
 DarkResumeStub::~DarkResumeStub() {}
 
@@ -35,10 +32,6 @@ bool DarkResumeStub::InDarkResume() {
 
 bool DarkResumeStub::IsEnabled() {
   return enabled_;
-}
-
-bool DarkResumeStub::CanSafelyExitDarkResume() {
-  return can_safely_exit_dark_resume_;
 }
 
 bool DarkResumeStub::ExitDarkResume() {

@@ -35,7 +35,6 @@ class DarkResume : public DarkResumeInterface {
   void HandleSuccessfulResume() override;
   bool InDarkResume() override;
   bool IsEnabled() override;
-  bool CanSafelyExitDarkResume() override;
   bool ExitDarkResume() override;
 
  private:

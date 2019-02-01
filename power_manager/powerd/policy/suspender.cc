@@ -369,9 +369,7 @@ void Suspender::HandleEventInDarkResumeOrRetrySuspend(Event event) {
       state_ = HandleUserActivityInSuspend();
       break;
     case Event::SHUTDOWN_STARTED:
-      if (!dark_resume_->InDarkResume() ||
-          dark_resume_->CanSafelyExitDarkResume())
-        FinishRequest(false);
+      FinishRequest(false);
       state_ = State::SHUTTING_DOWN;
       break;
     default:
@@ -540,21 +538,10 @@ Suspender::State Suspender::HandleDarkResume(Delegate::SuspendResult result) {
                  << " canceled due to wake event";
   }
 
-  // We don't want to emit a DarkSuspendImminent on devices with older kernels
-  // because they probably don't have the hardware support to do any useful
-  // work in dark resume anyway.
-  if (dark_resume_->CanSafelyExitDarkResume()) {
-    LOG(INFO) << "Notifying registered dark suspend delays about "
-              << dark_suspend_id_;
-    dark_suspend_delay_controller_->PrepareForSuspend(dark_suspend_id_);
-    EmitDarkSuspendImminentSignal();
-  } else {
-    wakeup_count_ = 0;
-    wakeup_count_valid_ = false;
-    ScheduleResuspend(result == Delegate::SuspendResult::SUCCESS
-                          ? base::TimeDelta()
-                          : retry_delay_);
-  }
+  LOG(INFO) << "Notifying registered dark suspend delays about "
+            << dark_suspend_id_;
+  dark_suspend_delay_controller_->PrepareForSuspend(dark_suspend_id_);
+  EmitDarkSuspendImminentSignal();
 
   return State::WAITING_FOR_DARK_SUSPEND_DELAYS;
 }

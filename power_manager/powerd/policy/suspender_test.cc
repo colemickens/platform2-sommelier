@@ -454,10 +454,6 @@ TEST_F(SuspenderTest, ShutDownAfterRepeatedFailures) {
 // if activity that should cancel the current suspend attempt was previously
 // received.
 TEST_F(SuspenderTest, CancelBeforeSuspend) {
-  // This test doesn't exercise the dark resume code. Make sure that resuspend
-  // attempts are still handled correctly on kernels that can't exit dark
-  // resume: http://crbug.com/406512
-  dark_resume_.set_can_safely_exit_dark_resume(false);
   Init();
 
   // User activity should cancel suspending.
@@ -542,7 +538,6 @@ TEST_F(SuspenderTest, CancelAfterSuspend) {
 // a closed lid doesn't abort the suspend attempt (http://crosbug.com/38819).
 TEST_F(SuspenderTest, DontCancelForUserActivityWhileLidClosed) {
   delegate_.set_lid_closed(true);
-  dark_resume_.set_can_safely_exit_dark_resume(false);
   Init();
 
   // Report user activity before powerd_suspend is executed and check that
@@ -569,7 +564,6 @@ TEST_F(SuspenderTest, DontCancelForUserActivityWhileLidClosed) {
   // Report user activity after powerd_suspend fails when the system can safely
   // wake from dark resume and check that the suspend attempt is not aborted.
   delegate_.set_suspend_result(Suspender::Delegate::SuspendResult::CANCELED);
-  dark_resume_.set_can_safely_exit_dark_resume(true);
   suspender_.RequestSuspend(SuspendImminent_Reason_OTHER);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   AnnounceReadyForSuspend(test_api_.suspend_id());

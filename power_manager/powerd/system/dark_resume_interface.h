@@ -51,10 +51,6 @@ class DarkResumeInterface {
   // Returns true if dark resume is enabled on the system.
   virtual bool IsEnabled() = 0;
 
-  // Returns true if the system can properly transition from dark resume to
-  // fully resumed.
-  virtual bool CanSafelyExitDarkResume() = 0;
-
   // Exits dark resume so that the system can transition to fully resumed.
   // Returns true if the transition was successful.
   virtual bool ExitDarkResume() = 0;

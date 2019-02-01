@@ -70,10 +70,6 @@ bool DarkResume::IsEnabled() {
   return enabled_;
 }
 
-bool DarkResume::CanSafelyExitDarkResume() {
-  return true;
-}
-
 bool DarkResume::ExitDarkResume() {
   LOG(INFO) << "Transitioning from dark resume to full resume";
   in_dark_resume_ = false;
