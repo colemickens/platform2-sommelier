@@ -40,9 +40,24 @@ struct CommandLineFlags {
   base::TimeDelta max_spread_time;
 };
 
+// Crash information obtained in ChooseAction().
+struct CrashInfo {
+  brillo::KeyValueStore metadata;
+  base::FilePath payload_file;
+  std::string payload_kind;
+};
+
+// Details of a crash report. Contains more information than CrashInfo, as
+// additional information is extracted at a stage later stage.
+struct CrashDetails {
+  base::FilePath meta_file;
+  base::FilePath payload_file;
+  std::string payload_kind;
+  std::string exec_name;
+};
+
 // Represents a metadata file name, and its parsed metadata.
-typedef std::pair<base::FilePath, std::unique_ptr<brillo::KeyValueStore>>
-    MetaFile;
+typedef std::pair<base::FilePath, std::unique_ptr<CrashInfo>> MetaFile;
 
 // Actions returned by ChooseAction().
 enum Action {
@@ -102,11 +117,11 @@ void RemoveOrphanedCrashFiles(const base::FilePath& crash_dir);
 
 // Chooses an action to take for the crash report associated with the given meta
 // file, and reports the reason. |metrics_lib| is used to check if metrics are
-// enabled, etc. The parsed metadata will be stored in |metadata| for reuse.
+// enabled, etc. The crash information will be stored in |info| for reuse.
 Action ChooseAction(const base::FilePath& meta_file,
                     MetricsLibraryInterface* metrics_lib,
                     std::string* reason,
-                    brillo::KeyValueStore* metadata);
+                    CrashInfo* info);
 
 // Removes invalid files in |crash_dir|, that are unknown, corrupted, or invalid
 // in other ways, and picks crash reports that should be sent to the server. The
@@ -164,6 +179,12 @@ bool GetSleepTime(const base::FilePath& meta_file,
                   const base::TimeDelta& max_spread_time,
                   base::TimeDelta* sleep_time);
 
+// Returns the value for the key from the key-value store, or "undefined", if
+// the key is not found ("undefined" will be used in crash reports where the
+// values are missing).
+std::string GetValueOrUndefined(const brillo::KeyValueStore& store,
+                                const std::string& key);
+
 // A helper class for sending crashes. The behaviors can be customized with
 // Options class for unit testing.
 //
@@ -218,11 +239,9 @@ class Sender {
   const base::FilePath& temp_dir() const { return scoped_temp_dir_.GetPath(); }
 
  private:
-  // Requests the shell script to send a crash report associated with the given
-  // meta file. The shell script may decide not to send, because there is still
-  // some logic in the script for skipping crash files.
-  // TODO(satorux): Move that logic from the shell script to C++.
-  bool RequestToSendCrash(const base::FilePath& meta_file);
+  // Requests the shell script to send a crash report represented with the given
+  // crash details.
+  bool RequestToSendCrash(const CrashDetails& details);
 
   std::unique_ptr<MetricsLibraryInterface> metrics_lib_;
   const base::FilePath shell_script_;

@@ -72,6 +72,13 @@ bool IsValidKey(const std::string& key) {
   return true;
 }
 
+// Converts metadata into CrashInfo.
+void MetadataToCrashInfo(const brillo::KeyValueStore& metadata,
+                         CrashInfo* info) {
+  info->payload_file = GetBaseNameFromMetadata(metadata, "payload");
+  info->payload_kind = GetKindFromPayloadPath(info->payload_file);
+}
+
 }  // namespace
 
 void ParseCommandLine(int argc,
@@ -212,7 +219,7 @@ void RemoveOrphanedCrashFiles(const base::FilePath& crash_dir) {
 Action ChooseAction(const base::FilePath& meta_file,
                     MetricsLibraryInterface* metrics_lib,
                     std::string* reason,
-                    brillo::KeyValueStore* metadata) {
+                    CrashInfo* info) {
   if (!IsMock() && !IsOfficialImage()) {
     *reason = "Not an official OS version";
     return kRemove;
@@ -240,34 +247,34 @@ Action ChooseAction(const base::FilePath& meta_file,
     return kIgnore;
   }
 
-  if (!ParseMetadata(raw_metadata, metadata)) {
+  if (!ParseMetadata(raw_metadata, &info->metadata)) {
     *reason = "Corrupted metadata: " + raw_metadata;
     return kRemove;
   }
 
-  base::FilePath payload_path = GetBaseNameFromMetadata(*metadata, "payload");
-  if (payload_path.empty()) {
+  MetadataToCrashInfo(info->metadata, info);
+
+  if (info->payload_file.empty()) {
     *reason = "Payload is not found in the meta data: " + raw_metadata;
     return kRemove;
   }
 
   // Make it an absolute path.
-  payload_path = meta_file.DirName().Append(payload_path);
+  info->payload_file = meta_file.DirName().Append(info->payload_file);
 
-  if (!base::PathExists(payload_path)) {
+  if (!base::PathExists(info->payload_file)) {
     // TODO(satorux): logging_CrashSender.py expects "Missing payload" in the
     // error message. Revise the autotest once the rewrite to C++ is complete.
-    *reason = "Missing payload: " + payload_path.value();
+    *reason = "Missing payload: " + info->payload_file.value();
     return kRemove;
   }
 
-  const std::string kind = GetKindFromPayloadPath(payload_path);
-  if (!IsKnownKind(kind)) {
-    *reason = "Unknown kind: " + kind;
+  if (!IsKnownKind(info->payload_kind)) {
+    *reason = "Unknown kind: " + info->payload_kind;
     return kRemove;
   }
 
-  if (!IsCompleteMetadata(*metadata)) {
+  if (!IsCompleteMetadata(info->metadata)) {
     base::File::Info info;
     if (!base::GetFileInfo(meta_file, &info)) {
       // Should not happen since it succeeded to read the file.
@@ -287,7 +294,7 @@ Action ChooseAction(const base::FilePath& meta_file,
     }
   }
 
-  if (kind == "devcore" && !IsDeviceCoredumpUploadAllowed()) {
+  if (info->payload_kind == "devcore" && !IsDeviceCoredumpUploadAllowed()) {
     *reason = "Device coredump upload not allowed";
     return kIgnore;
   }
@@ -304,9 +311,8 @@ void RemoveAndPickCrashFiles(const base::FilePath& crash_dir,
     LOG(INFO) << "Checking metadata: " << meta_file.value();
 
     std::string reason;
-    std::unique_ptr<brillo::KeyValueStore> metadata =
-        std::make_unique<brillo::KeyValueStore>();
-    switch (ChooseAction(meta_file, metrics_lib, &reason, metadata.get())) {
+    std::unique_ptr<CrashInfo> info = std::make_unique<CrashInfo>();
+    switch (ChooseAction(meta_file, metrics_lib, &reason, info.get())) {
       case kRemove:
         LOG(INFO) << "Removing: " << reason;
         RemoveReportFiles(meta_file);
@@ -315,7 +321,7 @@ void RemoveAndPickCrashFiles(const base::FilePath& crash_dir,
         LOG(INFO) << "Igonoring: " << reason;
         break;
       case kSend:
-        to_send->push_back(std::make_pair(meta_file, std::move(metadata)));
+        to_send->push_back(std::make_pair(meta_file, std::move(info)));
         break;
       default:
         NOTREACHED();
@@ -491,6 +497,14 @@ bool GetSleepTime(const base::FilePath& meta_file,
   return true;
 }
 
+std::string GetValueOrUndefined(const brillo::KeyValueStore& store,
+                                const std::string& key) {
+  std::string value;
+  if (!store.GetString(key, &value))
+    return "undefined";
+  return value;
+}
+
 Sender::Sender(std::unique_ptr<MetricsLibraryInterface> metrics_lib,
                const Sender::Options& options)
     : metrics_lib_(std::move(metrics_lib)),
@@ -526,6 +540,7 @@ bool Sender::SendCrashes(const base::FilePath& crash_dir) {
   bool success = true;
   for (const auto& pair : to_send) {
     const base::FilePath& meta_file = pair.first;
+    const CrashInfo& info = *pair.second;
     LOG(INFO) << "Evaluating crash report: " << meta_file.value();
 
     // This should be checked inside of the loop, since the device can enter
@@ -555,7 +570,21 @@ bool Sender::SendCrashes(const base::FilePath& crash_dir) {
     if (!IsMock())
       sleep_function_.Run(sleep_time);
 
-    if (!RequestToSendCrash(meta_file)) {
+    // User-specific crash reports become inaccessible if the user signs out
+    // while sleeping, thus we need to check if the metadata is still
+    // accessible.
+    if (!base::PathExists(meta_file)) {
+      LOG(INFO) << "Metadata is no longer accessible: " << meta_file.value();
+      continue;
+    }
+
+    const CrashDetails details = {
+        .meta_file = meta_file,
+        .payload_file = info.payload_file,
+        .payload_kind = info.payload_kind,
+        .exec_name = GetValueOrUndefined(info.metadata, "exec_name"),
+    };
+    if (!RequestToSendCrash(details)) {
       LOG(WARNING) << "Failed to send " << meta_file.value()
                    << ", not removing; will retry later";
       success = false;
@@ -597,14 +626,23 @@ bool Sender::SendUserCrashes() {
   return fully_successful;
 }
 
-bool Sender::RequestToSendCrash(const base::FilePath& meta_file) {
+bool Sender::RequestToSendCrash(const CrashDetails& details) {
   const int child_pid = fork();
   if (child_pid == 0) {
     char* shell_script_path = const_cast<char*>(shell_script_.value().c_str());
     char* temp_dir_path =
         const_cast<char*>(scoped_temp_dir_.GetPath().value().c_str());
-    char* meta_file_path = const_cast<char*>(meta_file.value().c_str());
-    char* shell_argv[] = {shell_script_path, temp_dir_path, meta_file_path,
+    char* meta_file = const_cast<char*>(details.meta_file.value().c_str());
+    char* payload_file =
+        const_cast<char*>(details.payload_file.value().c_str());
+    char* payload_kind = const_cast<char*>(details.payload_kind.c_str());
+    char* exec_name = const_cast<char*>(details.exec_name.c_str());
+    char* shell_argv[] = {shell_script_path,
+                          temp_dir_path,
+                          meta_file,     // $1 in send_crash
+                          payload_file,  // $2 in send_crash
+                          payload_kind,  // $3 in send_crash
+                          exec_name,     // $4 in send_crash
                           nullptr};
     execve(shell_script_path, shell_argv, environ);
     // execve() failed.

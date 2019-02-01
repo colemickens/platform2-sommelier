@@ -252,19 +252,10 @@ get_hardware_class() {
 
 send_crash() {
   local meta_path="$1"
-  local report_payload="$(get_file_path "${meta_path}" "payload")"
+  local report_payload="$2"
+  local kind="$3"
+  local exec_name="$4"
 
-  if [ "${report_payload}" = "undefined" ]; then
-    lecho "Failed reading payload from metadata."
-    return 1
-  elif [ ! -r "${report_payload}" ]; then
-    lecho "Removing report with missing payload."
-    remove_report "${meta_path}"
-    return 1
-  fi
-
-  local kind="$(get_kind "${meta_path}")"
-  local exec_name="$(get_key_value "${meta_path}" "exec_name")"
   local url="${REPORT_UPLOAD_PROD_URL}"
   local chromeos_version="$(get_key_value "${meta_path}" "ver")"
   local board="$(get_board)"
@@ -475,21 +466,15 @@ send_crash() {
   return ${curl_result}
 }
 
-# Remove the given report path.
-# NOTE: Mirrors crash_sender_util.cc:RemoveReportFiles().
-remove_report() {
-  local base="${1%.*}"
-  rm -f -- "${base}".*
-}
-
 main () {
-  if [ $# -ne 2 ]; then
+  if [ $# -ne 5 ]; then
     lecho "Wrong number of command line flags: $*"
     exit 1
   fi
   TMP_DIR="$1"
 
-  send_crash $2
+  shift
+  send_crash "$@"
 }
 
 main "$@"

@@ -14,6 +14,6 @@ if [ "$FAKE_CRASH_SENDER_SHOULD_FAIL" = "true" ]; then
 fi
 
 # Print the command line parameters to the output file.
-echo "$1 $2" >> "$FAKE_CRASH_SENDER_OUTPUT"
+echo "$@" >> "$FAKE_CRASH_SENDER_OUTPUT"
 
 exit 0
