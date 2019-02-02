@@ -36,6 +36,12 @@ std::unique_ptr<ExternalTask> PPPDaemon::Start(
     const PPPDaemon::DeathCallback& death_callback,
     Error* error) {
   std::vector<std::string> arguments;
+
+  // pppd runs under the non-root 'shill' group, so we need to explicitly tell
+  // pppd to allow certain privileged options.
+  arguments.push_back("privgroup");
+  arguments.push_back("shill");
+
   if (options.debug) {
     arguments.push_back("debug");
   }
