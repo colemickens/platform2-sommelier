@@ -45,9 +45,7 @@ void AgentManagerInterfaceHandler::Init() {
       bluetooth_agent_manager::kRequestDefaultAgent, base::Unretained(this),
       &AgentManagerInterfaceHandler::HandleRequestDefaultAgent);
 
-  agent_manager_interface->ExportAsync(
-      base::Bind(&OnInterfaceExported, agent_manager_object_path.value(),
-                 bluetooth_agent_manager::kBluetoothAgentManagerInterface));
+  agent_manager_interface->ExportAndBlock();
 }
 
 void AgentManagerInterfaceHandler::DisplayPasskey(

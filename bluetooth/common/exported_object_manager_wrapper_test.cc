@@ -167,8 +167,8 @@ TEST_F(ExportedObjectManagerWrapperTest, ExportedInterface) {
       .Times(1);
   EXPECT_CALL(*exported_object, Unregister()).Times(1);
   EXPECT_CALL(*exported_object,
-              UnexportMethod(kTestInterfaceName1, kTestMethodName1, _))
-      .Times(1);
+              UnexportMethodAndBlock(kTestInterfaceName1, kTestMethodName1))
+      .WillOnce(Return(true));
   interface->Unexport();
   EXPECT_TRUE(dbus_object->FindInterface(kTestInterfaceName1) == nullptr);
 

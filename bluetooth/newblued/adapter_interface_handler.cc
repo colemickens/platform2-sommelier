@@ -59,9 +59,7 @@ void AdapterInterfaceHandler::Init(
       bluetooth_adapter::kStopDiscovery, base::Unretained(this),
       &AdapterInterfaceHandler::HandleStopDiscovery);
 
-  adapter_interface->ExportAsync(
-      base::Bind(&OnInterfaceExported, adapter_object_path.value(),
-                 bluetooth_adapter::kBluetoothAdapterInterface));
+  adapter_interface->ExportAndBlock();
 }
 
 bool AdapterInterfaceHandler::HandleStartDiscovery(brillo::ErrorPtr* error,

@@ -108,9 +108,7 @@ void AdvertisingManagerInterfaceHandler::Init() {
       bluetooth_advertising_manager::kUnregisterAdvertisement,
       base::Unretained(this),
       &AdvertisingManagerInterfaceHandler::HandleUnregisterAdvertisement);
-  advertising_manager_interface->ExportAsync(base::Bind(
-      OnInterfaceExported, adapter_object_path.value(),
-      bluetooth_advertising_manager::kBluetoothAdvertisingManagerInterface));
+  advertising_manager_interface->ExportAndBlock();
 }
 
 bool AdvertisingManagerInterfaceHandler::HandleRegisterAdvertisement(

@@ -303,7 +303,7 @@ void NewblueDaemon::OnDeviceDiscovered(const Device& device) {
     AddDeviceMethodHandlers(device_interface);
 
     // The "Adapter" property of this device object has to be set before
-    // ExportAsync() below. This is to make sure that as soon as a client
+    // ExportAndBlock() below. This is to make sure that as soon as a client
     // realizes that this object is exported, it can immediately check this
     // property value. This at least satisfies Chrome's behavior which checks
     // whether this device belongs to the adapter it's interested in.
@@ -312,9 +312,7 @@ void NewblueDaemon::OnDeviceDiscovered(const Device& device) {
             bluetooth_device::kAdapterProperty)
         ->SetValue(dbus::ObjectPath(kAdapterObjectPath));
 
-    device_interface->ExportAsync(
-        base::Bind(&OnInterfaceExported, device_path.value(),
-                   bluetooth_device::kBluetoothDeviceInterface));
+    device_interface->ExportAndBlock();
   }
 
   UpdateDeviceProperties(device_interface, device, is_new_device);

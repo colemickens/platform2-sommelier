@@ -174,15 +174,6 @@ class ImpersonationObjectManagerInterfaceTest : public ::testing::Test {
                                         set_property_handler);
   }
 
-  // The mocked dbus::ExportedObject::ExportMethod needs to call its callback.
-  void StubExportMethod(
-      const std::string& interface_name,
-      const std::string& method_name,
-      dbus::ExportedObject::MethodCallCallback method_call_callback,
-      dbus::ExportedObject::OnExportedCallback on_exported_callback) {
-    on_exported_callback.Run(interface_name, method_name, true /* success */);
-  }
-
   void StubHandlePropertiesSet(
       dbus::MethodCall* method_call,
       int timeout_ms,
@@ -219,25 +210,22 @@ class ImpersonationObjectManagerInterfaceTest : public ::testing::Test {
   void ExpectExportPropertiesMethods(
       dbus::MockExportedObject* exported_object,
       dbus::ExportedObject::MethodCallCallback* set_method_handler = nullptr) {
-    EXPECT_CALL(*exported_object, ExportMethod(dbus::kPropertiesInterface,
-                                               dbus::kPropertiesGet, _, _))
-        .WillOnce(Invoke(
-            this, &ImpersonationObjectManagerInterfaceTest::StubExportMethod));
+    EXPECT_CALL(*exported_object,
+                ExportMethodAndBlock(dbus::kPropertiesInterface,
+                                     dbus::kPropertiesGet, _))
+        .WillOnce(Return(true));
 
-    EXPECT_CALL(*exported_object, ExportMethod(dbus::kPropertiesInterface,
-                                               dbus::kPropertiesGetAll, _, _))
-        .WillOnce(Invoke(
-            this, &ImpersonationObjectManagerInterfaceTest::StubExportMethod));
+    EXPECT_CALL(*exported_object,
+                ExportMethodAndBlock(dbus::kPropertiesInterface,
+                                     dbus::kPropertiesGetAll, _))
+        .WillOnce(Return(true));
 
     if (set_method_handler == nullptr)
       set_method_handler = &dummy_method_handler_;
-    EXPECT_CALL(*exported_object, ExportMethod(dbus::kPropertiesInterface,
-                                               dbus::kPropertiesSet, _, _))
-        .WillOnce(DoAll(
-            SaveArg<2>(set_method_handler),
-            Invoke(
-                this,
-                &ImpersonationObjectManagerInterfaceTest::StubExportMethod)));
+    EXPECT_CALL(*exported_object,
+                ExportMethodAndBlock(dbus::kPropertiesInterface,
+                                     dbus::kPropertiesSet, _))
+        .WillOnce(DoAll(SaveArg<2>(set_method_handler), Return(true)));
   }
 
   void TestMethodForwarding(
@@ -349,22 +337,24 @@ class ImpersonationObjectManagerInterfaceTest : public ::testing::Test {
     if (method1_handler == nullptr)
       method1_handler = &dummy_method_handler_;
     EXPECT_CALL(*exported_object,
-                ExportMethod(interface_name, kTestMethodName1, _, _))
-        .WillOnce(DoAll(
-            SaveArg<2>(method1_handler),
-            Invoke(
-                this,
-                &ImpersonationObjectManagerInterfaceTest::StubExportMethod)));
+                ExportMethodAndBlock(interface_name, kTestMethodName1, _))
+        .WillOnce(DoAll(SaveArg<2>(method1_handler), Return(true)));
 
     if (method2_handler == nullptr)
       method2_handler = &dummy_method_handler_;
     EXPECT_CALL(*exported_object,
-                ExportMethod(interface_name, kTestMethodName2, _, _))
-        .WillOnce(DoAll(
-            SaveArg<2>(method2_handler),
-            Invoke(
-                this,
-                &ImpersonationObjectManagerInterfaceTest::StubExportMethod)));
+                ExportMethodAndBlock(interface_name, kTestMethodName2, _))
+        .WillOnce(DoAll(SaveArg<2>(method2_handler), Return(true)));
+  }
+
+  void ExpectUnexportTestMethods(dbus::MockExportedObject* exported_object,
+                                 const std::string& interface_name) {
+    EXPECT_CALL(*exported_object,
+                UnexportMethodAndBlock(interface_name, kTestMethodName1))
+        .WillOnce(Return(true));
+    EXPECT_CALL(*exported_object,
+                UnexportMethodAndBlock(interface_name, kTestMethodName2))
+        .WillOnce(Return(true));
   }
 
   template <typename T>
@@ -484,6 +474,7 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, SingleInterface) {
   EXPECT_CALL(*exported_object_manager_,
               ReleaseInterface(object_path1, kTestInterfaceName1))
       .Times(1);
+  ExpectUnexportTestMethods(exported_object1.get(), kTestInterfaceName1);
   EXPECT_CALL(*exported_object1, Unregister()).Times(1);
   impersonation_om_interface->ObjectRemoved(kTestServiceName1, object_path1,
                                             kTestInterfaceName1);
@@ -493,6 +484,7 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, SingleInterface) {
   EXPECT_CALL(*exported_object_manager_,
               ReleaseInterface(object_path2, kTestInterfaceName1))
       .Times(1);
+  ExpectUnexportTestMethods(exported_object2.get(), kTestInterfaceName1);
   EXPECT_CALL(*exported_object2, Unregister()).Times(1);
   impersonation_om_interface->ObjectRemoved(kTestServiceName1, object_path2,
                                             kTestInterfaceName1);
@@ -520,6 +512,8 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, MultipleInterfaces) {
   SetPropertyHandlerSetupCallback(exported_object_manager_wrapper_.get(),
                                   impersonation_om_interface1.get());
 
+  EXPECT_CALL(*object_manager1_, RegisterInterface(kTestInterfaceName1, _));
+  EXPECT_CALL(*object_manager1_, RegisterInterface(kTestInterfaceName2, _));
   impersonation_om_interface1->RegisterToObjectManager(object_manager1_.get(),
                                                        kTestServiceName1);
   impersonation_om_interface2->RegisterToObjectManager(object_manager1_.get(),
@@ -573,6 +567,7 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, MultipleInterfaces) {
       .Times(1);
   // Exported object shouldn't be unregistered until the last interface is
   // removed.
+  ExpectUnexportTestMethods(exported_object.get(), kTestInterfaceName1);
   EXPECT_CALL(*exported_object, Unregister()).Times(0);
   impersonation_om_interface1->ObjectRemoved(kTestServiceName1, object_path,
                                              kTestInterfaceName1);
@@ -585,6 +580,7 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, MultipleInterfaces) {
       .Times(1);
   // Now that the last interface has been removed, exported object should be
   // unregistered.
+  ExpectUnexportTestMethods(exported_object.get(), kTestInterfaceName2);
   EXPECT_CALL(*exported_object, Unregister()).Times(1);
   impersonation_om_interface2->ObjectRemoved(kTestServiceName1, object_path,
                                              kTestInterfaceName2);
@@ -789,6 +785,7 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, MethodHandler) {
   EXPECT_CALL(*exported_object_manager_,
               ReleaseInterface(object_path1, kTestInterfaceName1))
       .Times(1);
+  ExpectUnexportTestMethods(exported_object1.get(), kTestInterfaceName1);
   EXPECT_CALL(*exported_object1, Unregister()).Times(1);
   impersonation_om_interface->ObjectRemoved(kTestServiceName1, object_path1,
                                             kTestInterfaceName1);
@@ -938,6 +935,7 @@ TEST_F(ImpersonationObjectManagerInterfaceTest, MultiService) {
 
   // The last service removes the object, the corrseponding exported object
   // should be unregistered.
+  ExpectUnexportTestMethods(exported_object1.get(), kTestInterfaceName1);
   EXPECT_CALL(*exported_object1, Unregister()).Times(1);
   impersonation_om_interface->ObjectRemoved(kTestServiceName2, object_path1,
                                             kTestInterfaceName1);
@@ -1060,6 +1058,7 @@ TEST_F(ImpersonationObjectManagerInterfaceTest,
       .Times(1);
   // Service1 removed the object, the corresponding exported object should be
   // unregistered.
+  ExpectUnexportTestMethods(exported_object1.get(), kTestInterfaceName1);
   EXPECT_CALL(*exported_object1, Unregister()).Times(1);
   impersonation_om_interface->ObjectRemoved(kTestServiceName1, object_path1,
                                             kTestInterfaceName1);

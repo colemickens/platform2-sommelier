@@ -14,18 +14,6 @@
 
 #include "bluetooth/dispatcher/dbus_util.h"
 
-namespace {
-
-// Called when an interface of a D-Bus object is exported.
-void OnInterfaceExported(std::string object_path,
-                         std::string interface_name,
-                         bool success) {
-  VLOG(1) << "Completed interface export " << interface_name << " of object "
-          << object_path << ", success = " << success;
-}
-
-}  // namespace
-
 namespace bluetooth {
 
 ImpersonationObjectManagerInterface::ImpersonationObjectManagerInterface(
@@ -112,8 +100,7 @@ void ImpersonationObjectManagerInterface::ObjectAdded(
                    weak_ptr_factory_.GetWeakPtr(), forwarding_rule));
   }
 
-  exported_interface->ExportAsync(
-      base::Bind(&OnInterfaceExported, object_path.value(), interface_name));
+  exported_interface->ExportAndBlock();
 }
 
 void ImpersonationObjectManagerInterface::ObjectRemoved(

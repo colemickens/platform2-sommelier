@@ -80,41 +80,29 @@ class AgentManagerInterfaceHandlerTest : public ::testing::Test {
     // We don't care about property method handlers.
   }
 
-  // The mocked dbus::ExportedObject::ExportMethod needs to call its callback.
-  void StubExportMethod(
-      const std::string& interface_name,
-      const std::string& method_name,
-      dbus::ExportedObject::MethodCallCallback method_call_callback,
-      dbus::ExportedObject::OnExportedCallback on_exported_callback) {
-    on_exported_callback.Run(interface_name, method_name, true /* success */);
-  }
-
   void ExpectAgentManagerMethodsExported(
       dbus::ExportedObject::MethodCallCallback* register_agent_method_handler,
       dbus::ExportedObject::MethodCallCallback* unregister_agent_method_handler,
       dbus::ExportedObject::MethodCallCallback*
           request_default_agent_method_handler) {
-    EXPECT_CALL(
-        *exported_agent_manager_object_,
-        ExportMethod(bluetooth_agent_manager::kBluetoothAgentManagerInterface,
-                     bluetooth_agent_manager::kRegisterAgent, _, _))
-        .WillOnce(DoAll(
-            SaveArg<2>(register_agent_method_handler),
-            Invoke(this, &AgentManagerInterfaceHandlerTest::StubExportMethod)));
-    EXPECT_CALL(
-        *exported_agent_manager_object_,
-        ExportMethod(bluetooth_agent_manager::kBluetoothAgentManagerInterface,
-                     bluetooth_agent_manager::kUnregisterAgent, _, _))
-        .WillOnce(DoAll(
-            SaveArg<2>(unregister_agent_method_handler),
-            Invoke(this, &AgentManagerInterfaceHandlerTest::StubExportMethod)));
-    EXPECT_CALL(
-        *exported_agent_manager_object_,
-        ExportMethod(bluetooth_agent_manager::kBluetoothAgentManagerInterface,
-                     bluetooth_agent_manager::kRequestDefaultAgent, _, _))
-        .WillOnce(DoAll(
-            SaveArg<2>(request_default_agent_method_handler),
-            Invoke(this, &AgentManagerInterfaceHandlerTest::StubExportMethod)));
+    EXPECT_CALL(*exported_agent_manager_object_,
+                ExportMethodAndBlock(
+                    bluetooth_agent_manager::kBluetoothAgentManagerInterface,
+                    bluetooth_agent_manager::kRegisterAgent, _))
+        .WillOnce(
+            DoAll(SaveArg<2>(register_agent_method_handler), Return(true)));
+    EXPECT_CALL(*exported_agent_manager_object_,
+                ExportMethodAndBlock(
+                    bluetooth_agent_manager::kBluetoothAgentManagerInterface,
+                    bluetooth_agent_manager::kUnregisterAgent, _))
+        .WillOnce(
+            DoAll(SaveArg<2>(unregister_agent_method_handler), Return(true)));
+    EXPECT_CALL(*exported_agent_manager_object_,
+                ExportMethodAndBlock(
+                    bluetooth_agent_manager::kBluetoothAgentManagerInterface,
+                    bluetooth_agent_manager::kRequestDefaultAgent, _))
+        .WillOnce(DoAll(SaveArg<2>(request_default_agent_method_handler),
+                        Return(true)));
   }
 
   scoped_refptr<dbus::MockExportedObject> SetupExportedAgentManagerObject() {

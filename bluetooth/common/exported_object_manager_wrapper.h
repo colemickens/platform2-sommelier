@@ -29,10 +29,13 @@ class ExportedInterface {
   // True if already exported.
   bool is_exported() const { return is_exported_; }
 
-  // Exports the interface.
+  // Exports the interface asynchronously.
   void ExportAsync(
       const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
           callback);
+
+  // Exports the interface synchronously.
+  void ExportAndBlock();
 
   // Unexports the interface and all its exported properties.
   void Unexport();
@@ -138,10 +141,13 @@ class ExportedObject {
   // Removes an interface from being exported.
   void RemoveExportedInterface(const std::string& interface_name);
 
-  // Registers the exported object with D-Bus.
+  // Registers the exported object with D-Bus asynchronously.
   void RegisterAsync(
       const brillo::dbus_utils::AsyncEventSequencer::CompletionAction&
           callback);
+
+  // Registers the exported object with D-Bus synchronously.
+  void RegisterAndBlock();
 
  private:
   friend class ExportedObjectManagerWrapper;

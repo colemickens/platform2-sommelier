@@ -20,20 +20,6 @@ void OnExportedObjectManagerRegistered(bool success) {
     LOG(ERROR) << "Failed to export object manager";
 }
 
-// Called when a D-Bus object is exported.
-void OnObjectExported(std::string object_path, bool success) {
-  VLOG(1) << "Completed exported object registration " << object_path
-          << ", success = " << success;
-}
-
-// Called when a D-Bus interface is unexported.
-void OnInterfaceUnexported(std::string interface_name, bool success) {
-  VLOG(1) << "Completed unexporting interface " << interface_name
-          << ", success = " << success;
-  if (!success)
-    LOG(ERROR) << "Failed unexporting interface " << interface_name;
-}
-
 }  // namespace
 
 namespace bluetooth {
@@ -60,6 +46,17 @@ void ExportedInterface::ExportAsync(
   is_exported_ = true;
 }
 
+void ExportedInterface::ExportAndBlock() {
+  for (const auto& kv : exported_properties_) {
+    // Add the properties that were deferred until this interface is ready to be
+    // exported.
+    dbus_object_->FindInterface(interface_name_)
+        ->AddProperty(kv.first, kv.second.get());
+  }
+  dbus_object_->ExportInterfaceAndBlock(interface_name_);
+  is_exported_ = true;
+}
+
 void ExportedInterface::Unexport() {
   std::set<std::string> exported_property_names;
   for (const auto& kv : exported_properties_) {
@@ -72,8 +69,7 @@ void ExportedInterface::Unexport() {
 
   // Unexport before removing the interface to make sure the method handlers are
   // unregistered.
-  dbus_object_->UnexportInterfaceAsync(
-      interface_name_, base::Bind(&OnInterfaceUnexported, interface_name_));
+  dbus_object_->UnexportInterfaceAndBlock(interface_name_);
   dbus_object_->RemoveInterface(interface_name_);
   is_exported_ = false;
 }
@@ -208,6 +204,13 @@ void ExportedObject::RegisterAsync(
   dbus_object_.RegisterAsync(callback);
 }
 
+void ExportedObject::RegisterAndBlock() {
+  CHECK(!is_registered_) << "Object " << object_path_.value()
+                         << " has been registered before";
+  is_registered_ = true;
+  dbus_object_.RegisterAndBlock();
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 ExportedObjectManagerWrapper::ExportedObjectManagerWrapper(
@@ -271,8 +274,7 @@ void ExportedObjectManagerWrapper::EnsureExportedObjectRegistered(
   auto exported_object = std::make_unique<ExportedObject>(
       exported_object_manager_.get(), bus_, object_path,
       property_handler_setup_callback_);
-  exported_object->RegisterAsync(
-      base::Bind(&OnObjectExported, object_path.value()));
+  exported_object->RegisterAndBlock();
   exported_objects_.emplace(object_path.value(), std::move(exported_object));
 }
 
