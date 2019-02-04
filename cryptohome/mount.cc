@@ -805,13 +805,15 @@ bool Mount::MountEphemeralCryptohomeInner(const std::string& username) {
 bool Mount::SetUpEphemeralCryptohome(const FilePath& source_path) {
   CopySkeleton(source_path);
 
-  // Create the Downloads, MyFiles and MyFiles/Downloads directories if they
-  // don't exist so they can be made group accessible when SetupGroupAccess() is
-  // called.
+  // Create the Downloads, MyFiles, MyFiles/Downloads, GCache and GCache/v2
+  // directories if they don't exist so they can be made group accessible when
+  // SetupGroupAccess() is called.
   const FilePath user_files_paths[] = {
       FilePath(source_path).Append(kDownloadsDir),
       FilePath(source_path).Append(kMyFilesDir),
       FilePath(source_path).Append(kMyFilesDir).Append(kDownloadsDir),
+      FilePath(source_path).Append(kGCacheDir),
+      FilePath(source_path).Append(kGCacheDir).Append(kGCacheVersion2Dir),
   };
   for (const auto& path : user_files_paths) {
     if (platform_->DirectoryExists(path))
@@ -1149,12 +1151,12 @@ bool Mount::SetupGroupAccess(const FilePath& home_dir) const {
   //   {home_dir}/Downloads
   //   {home_dir}/MyFiles
   //   {home_dir}/MyFiles/Downloads
-  //   {home_dir}/GCache (only if it exists)
+  //   {home_dir}/GCache
   //   {home_dir}/GCache/v1 (only if it exists)
   //
   // Make the following directories group accessible and writable by other
   // system daemons:
-  //   {home_dir}/GCache/v2 (only if it exists)
+  //   {home_dir}/GCache/v2
   const struct {
     FilePath path;
     bool optional = false;
@@ -1164,9 +1166,9 @@ bool Mount::SetupGroupAccess(const FilePath& home_dir) const {
       {home_dir.Append(kDownloadsDir)},
       {home_dir.Append(kMyFilesDir)},
       {home_dir.Append(kMyFilesDir).Append(kDownloadsDir)},
-      {home_dir.Append(kGCacheDir), true},
+      {home_dir.Append(kGCacheDir)},
       {home_dir.Append(kGCacheDir).Append(kGCacheVersion1Dir), true},
-      {home_dir.Append(kGCacheDir).Append(kGCacheVersion2Dir), true, true},
+      {home_dir.Append(kGCacheDir).Append(kGCacheVersion2Dir), false, true},
   };
 
   constexpr mode_t kDefaultMode = S_IXGRP;

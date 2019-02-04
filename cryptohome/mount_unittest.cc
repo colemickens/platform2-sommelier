@@ -2299,6 +2299,8 @@ TEST_P(EphemeralNoUserSystemTest, CreateMyFilesDownloads) {
   const FilePath downloads_path = base_path.Append("Downloads");
   const FilePath myfiles_path = base_path.Append("MyFiles");
   const FilePath myfiles_downloads_path = myfiles_path.Append("Downloads");
+  const FilePath gcache_path = base_path.Append("GCache");
+  const FilePath gcache_v2_path = base_path.Append("GCache").Append("v2");
   const auto gcache_dirs = Property(
       &FilePath::value, StartsWith(base_path.Append("GCache").value()));
 
@@ -2326,6 +2328,20 @@ TEST_P(EphemeralNoUserSystemTest, CreateMyFilesDownloads) {
                                       chronos_gid_, _))
       .WillOnce(Return(true));
 
+  // Expect GCache and Gcache/v2 to be created with the right user and group.
+  EXPECT_CALL(platform_, DirectoryExists(gcache_path)).WillOnce(Return(false));
+  EXPECT_CALL(platform_, CreateDirectory(gcache_path)).WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+              SetOwnership(gcache_path, chronos_uid_, chronos_gid_, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, DirectoryExists(gcache_v2_path))
+      .WillOnce(Return(false));
+  EXPECT_CALL(platform_, CreateDirectory(gcache_v2_path))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+              SetOwnership(gcache_v2_path, chronos_uid_, chronos_gid_, _))
+      .WillOnce(Return(true));
+
   EXPECT_CALL(platform_, SetOwnership(base_path, chronos_uid_, shared_gid_, _))
       .WillOnce(Return(true));
 
@@ -2351,6 +2367,8 @@ TEST_P(EphemeralNoUserSystemTest, CreateMyFilesDownloadsAlreadyExists) {
   const FilePath downloads_path = base_path.Append("Downloads");
   const FilePath myfiles_path = base_path.Append("MyFiles");
   const FilePath myfiles_downloads_path = myfiles_path.Append("Downloads");
+  const FilePath gcache_path = base_path.Append("GCache");
+  const FilePath gcache_v2_path = base_path.Append("GCache").Append("v2");
   const auto gcache_dirs = Property(
       &FilePath::value, StartsWith(base_path.Append("GCache").value()));
 
@@ -2361,6 +2379,9 @@ TEST_P(EphemeralNoUserSystemTest, CreateMyFilesDownloadsAlreadyExists) {
   EXPECT_CALL(platform_, DirectoryExists(myfiles_path))
       .WillOnce(Return(true));
   EXPECT_CALL(platform_, DirectoryExists(myfiles_downloads_path))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, DirectoryExists(gcache_path)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, DirectoryExists(gcache_v2_path))
       .WillOnce(Return(true));
   EXPECT_CALL(platform_, SetOwnership(base_path, chronos_uid_, shared_gid_, _))
       .WillOnce(Return(true));
