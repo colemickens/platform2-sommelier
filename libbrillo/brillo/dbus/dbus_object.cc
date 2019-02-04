@@ -122,8 +122,8 @@ void DBusInterface::UnexportAsync(
     dbus::ExportedObject* exported_object,
     const dbus::ObjectPath& object_path,
     const AsyncEventSequencer::CompletionAction& completion_callback) {
-  VLOG(1) << "Unexporting D-Bus interface " << interface_name_ << "' for '"
-          << object_path.value() << "'";
+  VLOG(1) << "Unexporting D-Bus interface " << interface_name_ << " for "
+          << object_path.value();
 
   // Release the interface.
   release_interface_cb_.RunAndReset();
@@ -141,6 +141,24 @@ void DBusInterface::UnexportAsync(
   }
 
   sequencer->OnAllTasksCompletedCall({completion_callback});
+}
+
+void DBusInterface::UnexportAndBlock(ExportedObjectManager* object_manager,
+                                     dbus::ExportedObject* exported_object,
+                                     const dbus::ObjectPath& object_path) {
+  VLOG(1) << "Unexporting D-Bus interface " << interface_name_ << " for "
+          << object_path.value();
+
+  // Release the interface.
+  release_interface_cb_.RunAndReset();
+
+  // Unexport all method handlers.
+  for (const auto& pair : handlers_) {
+    std::string method_name = pair.first;
+    VLOG(1) << "Unexporting method: " << interface_name_ << "." << method_name;
+    if (!exported_object->UnexportMethodAndBlock(interface_name_, method_name))
+      LOG(FATAL) << "Failed unexporting " << method_name << " method";
+  }
 }
 
 void DBusInterface::ClaimInterface(
@@ -263,12 +281,23 @@ void DBusObject::ExportInterfaceAsync(
                     object_path_, completion_callback);
 }
 
+void DBusObject::ExportInterfaceAndBlock(const std::string& interface_name) {
+  AddOrGetInterface(interface_name)
+      ->ExportAndBlock(object_manager_.get(), bus_.get(), exported_object_,
+                       object_path_);
+}
+
 void DBusObject::UnexportInterfaceAsync(
     const std::string& interface_name,
     const AsyncEventSequencer::CompletionAction& completion_callback) {
   AddOrGetInterface(interface_name)
       ->UnexportAsync(object_manager_.get(), exported_object_, object_path_,
                       completion_callback);
+}
+
+void DBusObject::UnexportInterfaceAndBlock(const std::string& interface_name) {
+  AddOrGetInterface(interface_name)
+      ->UnexportAndBlock(object_manager_.get(), exported_object_, object_path_);
 }
 
 void DBusObject::RegisterAsync(

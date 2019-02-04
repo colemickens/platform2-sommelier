@@ -491,6 +491,10 @@ class BRILLO_EXPORT DBusInterface final {
       dbus::ExportedObject* exported_object,
       const dbus::ObjectPath& object_path,
       const AsyncEventSequencer::CompletionAction& completion_callback);
+  // Releases the D-Bus interface and unexports all the methods synchronously.
+  BRILLO_PRIVATE void UnexportAndBlock(ExportedObjectManager* object_manager,
+                                       dbus::ExportedObject* exported_object,
+                                       const dbus::ObjectPath& object_path);
 
   BRILLO_PRIVATE void ClaimInterface(
       base::WeakPtr<ExportedObjectManager> object_manager,
@@ -559,6 +563,12 @@ class BRILLO_EXPORT DBusObject {
       const std::string& interface_name,
       const AsyncEventSequencer::CompletionAction& completion_callback);
 
+  // Exports a proxy handler for the interface |interface_name|. If the
+  // interface proxy does not exist yet, it will be automatically created. This
+  // call is synchronous and will block until all methods of the interface are
+  // registered and the interface is claimed.
+  void ExportInterfaceAndBlock(const std::string& interface_name);
+
   // Unexports the interface |interface_name| and unexports all method handlers.
   // In some cases, one may want to export an interface even after it's removed.
   // In that case, they should call this method before removing the interface
@@ -566,6 +576,14 @@ class BRILLO_EXPORT DBusObject {
   void UnexportInterfaceAsync(
       const std::string& interface_name,
       const AsyncEventSequencer::CompletionAction& completion_callback);
+
+  // Unexports the interface |interface_name| and unexports all method handlers.
+  // In some cases, one may want to export an interface even after it's removed.
+  // In that case, they should call this method before removing the interface
+  // to make sure it will start with a clean state of method handlers.
+  // This call is synchronous and will block until the interface is released and
+  // all of its methods of are unregistered.
+  void UnexportInterfaceAndBlock(const std::string& interface_name);
 
   // Registers the object instance with D-Bus. This is an asynchronous call
   // that will call |completion_callback| when the object and all of its

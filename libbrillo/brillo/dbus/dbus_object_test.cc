@@ -349,10 +349,40 @@ TEST_F(DBusObjectTest, TestUnexportInterfaceAsync) {
                                        base::Bind(&OnInterfaceExported));
 }
 
-TEST_F(DBusObjectTest, TestInterfaceExportedLate) {
+TEST_F(DBusObjectTest, TestUnexportInterfaceBlocking) {
+  // Unexport the interface to be tested. It should unexport the methods on that
+  // interface.
+  EXPECT_CALL(*mock_exported_object_,
+              UnexportMethodAndBlock(kTestInterface3, kTestMethod_NoOp))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_exported_object_,
+              UnexportMethodAndBlock(kTestInterface3, kTestMethod_WithMessage))
+      .WillOnce(Return(true));
+  EXPECT_CALL(
+      *mock_exported_object_,
+      UnexportMethodAndBlock(kTestInterface3, kTestMethod_WithMessageAsync))
+      .WillOnce(Return(true));
+  dbus_object_->UnexportInterfaceAndBlock(kTestInterface3);
+}
+
+TEST_F(DBusObjectTest, TestInterfaceExportedLateAsync) {
   // Registers a new interface late.
   dbus_object_->ExportInterfaceAsync(kTestInterface4,
                                      base::Bind(&OnInterfaceExported));
+
+  const std::string sender{":1.2345"};
+  dbus::MethodCall method_call(kTestInterface4, kTestMethod_WithMessage);
+  method_call.SetSerial(123);
+  method_call.SetSender(sender);
+  auto response = testing::CallMethod(*dbus_object_, &method_call);
+  // The response should contain error UnknownMethod rather than
+  // UnknownInterface since the interface has been registered late.
+  EXPECT_EQ(DBUS_ERROR_UNKNOWN_METHOD, response->GetErrorName());
+}
+
+TEST_F(DBusObjectTest, TestInterfaceExportedLateBlocking) {
+  // Registers a new interface late.
+  dbus_object_->ExportInterfaceAndBlock(kTestInterface4);
 
   const std::string sender{":1.2345"};
   dbus::MethodCall method_call(kTestInterface4, kTestMethod_WithMessage);
