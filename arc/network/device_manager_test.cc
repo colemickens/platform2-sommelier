@@ -106,4 +106,17 @@ TEST_F(DeviceManagerTest, CanDisableAndroidDevice) {
   VerifyMsgs({clear_msg, disable_msg});
 }
 
+TEST_F(DeviceManagerTest, DisabllAllDisablesAndroidDevice) {
+  auto mgr = NewManager();
+  capture_msgs_ = true;
+  mgr->DisableAll();
+  IpHelperMessage clear_msg;
+  clear_msg.set_dev_ifname(kAndroidDevice);
+  clear_msg.set_clear_arc_ip(true);
+  IpHelperMessage disable_msg;
+  disable_msg.set_dev_ifname(kAndroidDevice);
+  disable_msg.set_disable_inbound(true);
+  VerifyMsgs({clear_msg, disable_msg});
+}
+
 }  // namespace arc_networkd

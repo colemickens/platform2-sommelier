@@ -36,6 +36,9 @@ class DeviceManager {
   bool Enable(const std::string& name, const std::string& ifname);
   bool Disable(const std::string& name);
 
+  // Disables all devices.
+  void DisableAll();
+
  private:
   // Enables the devices to send messages to the helper process.
   const Device::MessageSink msg_sink_;

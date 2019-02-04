@@ -92,6 +92,8 @@ bool Manager::OnContainerStart(const struct signalfd_siginfo& info) {
 bool Manager::OnContainerStop(const struct signalfd_siginfo& info) {
   if (info.ssi_code == SI_USER) {
     shill_client_->UnregisterDefaultInterfaceChangedHandler();
+    if (device_mgr_)
+      device_mgr_->DisableAll();
   }
 
   // Stay registered.

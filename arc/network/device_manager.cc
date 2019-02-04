@@ -62,4 +62,10 @@ bool DeviceManager::Disable(const std::string& name) {
   return Enable(name, "");
 }
 
+void DeviceManager::DisableAll() {
+  for (const auto& d : devices_) {
+    Disable(d.first);
+  }
+}
+
 }  // namespace arc_networkd
