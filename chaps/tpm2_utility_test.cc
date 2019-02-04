@@ -449,7 +449,7 @@ TEST_F(TPM2UtilityTest, GetRSAPublicKeyFail) {
   EXPECT_FALSE(utility.GetRSAPublicKey(key_handle, &exponent, &modulus));
 }
 
-TEST_F(TPM2UtilityTest, WrapKeySuccess) {
+TEST_F(TPM2UtilityTest, WrapRSAKeySuccess) {
   TPM2UtilityImpl utility(factory_.get());
   std::string exponent("\x01\x00\x01", 3);
   std::string modulus(2048, 'a');
@@ -460,16 +460,11 @@ TEST_F(TPM2UtilityTest, WrapKeySuccess) {
   EXPECT_CALL(mock_tpm_utility_,
               ImportRSAKey(_, modulus, _, prime_factor, _, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_TRUE(utility.WrapKey(1,
-                              exponent,
-                              modulus,
-                              prime_factor,
-                              auth_data,
-                              &key_blob,
-                              &key_handle));
+  EXPECT_TRUE(utility.WrapRSAKey(1, exponent, modulus, prime_factor, auth_data,
+                                 &key_blob, &key_handle));
 }
 
-TEST_F(TPM2UtilityTest, WrapKeyWrongExponent) {
+TEST_F(TPM2UtilityTest, WrapRSAKeyWrongExponent) {
   TPM2UtilityImpl utility(factory_.get());
   std::string exponent(10, 'a');
   std::string modulus(2048, 'a');
@@ -477,16 +472,11 @@ TEST_F(TPM2UtilityTest, WrapKeyWrongExponent) {
   SecureBlob auth_data;
   std::string key_blob;
   int key_handle;
-  EXPECT_FALSE(utility.WrapKey(1,
-                               exponent,
-                               modulus,
-                               prime_factor,
-                               auth_data,
-                               &key_blob,
-                               &key_handle));
+  EXPECT_FALSE(utility.WrapRSAKey(1, exponent, modulus, prime_factor, auth_data,
+                                  &key_blob, &key_handle));
 }
 
-TEST_F(TPM2UtilityTest, WrapKeyImportFail) {
+TEST_F(TPM2UtilityTest, WrapRSAKeyImportFail) {
   TPM2UtilityImpl utility(factory_.get());
   std::string exponent("\x01\x00\x01", 3);
   std::string modulus(2048, 'a');
@@ -496,16 +486,11 @@ TEST_F(TPM2UtilityTest, WrapKeyImportFail) {
   int key_handle;
   EXPECT_CALL(mock_tpm_utility_, ImportRSAKey(_, _, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(utility.WrapKey(1,
-                               exponent,
-                               modulus,
-                               prime_factor,
-                               auth_data,
-                               &key_blob,
-                               &key_handle));
+  EXPECT_FALSE(utility.WrapRSAKey(1, exponent, modulus, prime_factor, auth_data,
+                                  &key_blob, &key_handle));
 }
 
-TEST_F(TPM2UtilityTest, WrapKeyLoadFail) {
+TEST_F(TPM2UtilityTest, WrapRSAKeyLoadFail) {
   TPM2UtilityImpl utility(factory_.get());
   std::string exponent("\x01\x00\x01", 3);
   std::string modulus(2048, 'a');
@@ -517,13 +502,8 @@ TEST_F(TPM2UtilityTest, WrapKeyLoadFail) {
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_tpm_utility_, LoadKey(key_blob, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(utility.WrapKey(1,
-                               exponent,
-                               modulus,
-                               prime_factor,
-                               auth_data,
-                               &key_blob,
-                               &key_handle));
+  EXPECT_FALSE(utility.WrapRSAKey(1, exponent, modulus, prime_factor, auth_data,
+                                  &key_blob, &key_handle));
 }
 
 TEST_F(TPM2UtilityTest, LoadKeySuccess) {

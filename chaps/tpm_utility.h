@@ -130,17 +130,17 @@ class TPMUtility {
   //   key_handle - A handle to the new key. This will be valid until keys are
   //                unloaded for the given slot.
   // Returns true on success.
-  virtual bool WrapKey(int slot,
-                       const std::string& public_exponent,
-                       const std::string& modulus,
-                       const std::string& prime_factor,
-                       const brillo::SecureBlob& auth_data,
-                       std::string* key_blob,
-                       int* key_handle) = 0;
+  virtual bool WrapRSAKey(int slot,
+                          const std::string& public_exponent,
+                          const std::string& modulus,
+                          const std::string& prime_factor,
+                          const brillo::SecureBlob& auth_data,
+                          std::string* key_blob,
+                          int* key_handle) = 0;
 
   // Loads a key by blob into the TPM.
   //   slot - The slot associated with this key.
-  //   key_blob - The key blob as provided by GenerateKey or WrapKey.
+  //   key_blob - The key blob as provided by GenerateKey or WrapRSAKey.
   //   auth_data - Authorization data for the key.
   //   key_handle - A handle to the loaded key. This will be valid until keys
   //                are unloaded for the given slot.
@@ -152,7 +152,7 @@ class TPMUtility {
 
   // Loads a key by blob into the TPM that has a parent key that is not the SRK.
   //   slot - The slot associated with this key.
-  //   key_blob - The key blob as provided by GenerateKey or WrapKey.
+  //   key_blob - The key blob as provided by GenerateKey or WrapRSAKey.
   //   auth_data - Authorization data for the key.
   //   parent_key_handle - The key handle of the parent key.
   //   key_handle - A handle to the loaded key. This will be valid until keys
@@ -171,7 +171,7 @@ class TPMUtility {
   // Performs a 'bind' operation using the TSS_ES_RSAESPKCSV15 scheme. This
   // effectively performs PKCS #1 v1.5 RSA encryption (using PKCS #1 'type 2'
   // padding).
-  //   key_handle - The key handle, as provided by LoadKey, WrapKey, or
+  //   key_handle - The key handle, as provided by LoadKey, WrapRSAKey, or
   //                GenerateKey.
   //   input - Data to be encrypted. The length of this data must not exceed
   //           'N - 11' where N is the length in bytes of the RSA key modulus.
@@ -185,7 +185,7 @@ class TPMUtility {
   // Performs a 'unbind' operation using the TSS_ES_RSAESPKCSV15 scheme. This
   // effectively performs PKCS #1 v1.5 RSA decryption (using PKCS #1 'type 2'
   // padding).
-  //   key_handle - The key handle, as provided by LoadKey, WrapKey or
+  //   key_handle - The key handle, as provided by LoadKey, WrapRSAKey or
   //                GenerateKey.
   //   input - Data to be encrypted. The length of this data must not exceed
   //           'N - 11' where N is the length in bytes of the RSA key modulus.
@@ -197,7 +197,7 @@ class TPMUtility {
                       std::string* output) = 0;
 
   // Generates a digital signature using the TSS_SS_RSASSAPKCS1V15_DER scheme.
-  //   key_handle - The key handle, as provided by LoadKey, WrapKey or
+  //   key_handle - The key handle, as provided by LoadKey, WrapRSAKey or
   //                GenerateKey.
   //   input - Must be a DER encoding of the DigestInfo value (see
   //           PKCS #1 v.2.1: 9.2).
@@ -209,7 +209,7 @@ class TPMUtility {
                     std::string* signature) = 0;
 
   // Verifies a digital signature using the TSS_SS_RSASSAPKCS1V15_DER scheme.
-  //   key_handle - The key handle, as provided by LoadKey, WrapKey, or
+  //   key_handle - The key handle, as provided by LoadKey, WrapRSAKey, or
   //                GenerateKey.
   //   input - Must be a DER encoding of the DigestInfo value (see
   //           PKCS #1 v.2.1: 9.2).

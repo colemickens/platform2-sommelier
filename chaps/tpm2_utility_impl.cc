@@ -561,13 +561,13 @@ bool TPM2UtilityImpl::GetECCPublicKey(int key_handle, std::string* ec_point) {
   return true;
 }
 
-bool TPM2UtilityImpl::WrapKey(int slot,
-                              const std::string& public_exponent,
-                              const std::string& modulus,
-                              const std::string& prime_factor,
-                              const SecureBlob& auth_data,
-                              std::string* key_blob,
-                              int* key_handle) {
+bool TPM2UtilityImpl::WrapRSAKey(int slot,
+                                 const std::string& public_exponent,
+                                 const std::string& modulus,
+                                 const std::string& prime_factor,
+                                 const SecureBlob& auth_data,
+                                 std::string* key_blob,
+                                 int* key_handle) {
   AutoLock lock(lock_);
   if (public_exponent.size() > 4) {
     LOG(ERROR) << "Incorrectly formatted public_exponent.";

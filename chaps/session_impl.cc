@@ -1638,12 +1638,12 @@ CK_RV SessionImpl::WrapRSAPrivateKey(Object* object) {
   string key_blob;
   int tpm_key_handle = 0;
   // TODO(menghuan): Use Software key but report and have an auto-rewrapping
-  // when WrapKey() fail
-  if (!tpm_utility_->WrapKey(slot_id_,
-                             object->GetAttributeString(CKA_PUBLIC_EXPONENT),
-                             object->GetAttributeString(CKA_MODULUS), prime,
-                             SecureBlob(auth_data.begin(), auth_data.end()),
-                             &key_blob, &tpm_key_handle))
+  // when WrapRSAKey() fail
+  if (!tpm_utility_->WrapRSAKey(slot_id_,
+                                object->GetAttributeString(CKA_PUBLIC_EXPONENT),
+                                object->GetAttributeString(CKA_MODULUS), prime,
+                                SecureBlob(auth_data.begin(), auth_data.end()),
+                                &key_blob, &tpm_key_handle))
     return CKR_FUNCTION_FAILED;
   object->SetAttributeString(kAuthDataAttribute, auth_data);
   object->SetAttributeString(kKeyBlobAttribute, key_blob);

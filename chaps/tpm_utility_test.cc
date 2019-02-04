@@ -75,7 +75,7 @@ class TestTPMUtility: public ::testing::Test {
     RSA* key = RSA_generate_key(size_, BN_get_word(e), NULL, NULL);
     string n = ConvertFromBIGNUM(key->n);
     string p = ConvertFromBIGNUM(key->p);
-    bool result = tpm_->WrapKey(0, e_, n, p, auth_, &blob_, &key_);
+    bool result = tpm_->WrapRSAKey(0, e_, n, p, auth_, &blob_, &key_);
     RSA_free(key);
     BN_free(e);
     return result;
@@ -137,8 +137,8 @@ TEST_F(TestTPMUtility, WrappedKey) {
   EXPECT_TRUE(tpm_->LoadKey(0, blob_, auth_, &key_));
   TestKey();
   // Test with some unexpected parameters.
-  EXPECT_FALSE(tpm_->WrapKey(0, e_, "invalid_n", "invalid_p", auth_,
-                            &blob_, &key_));
+  EXPECT_FALSE(
+      tpm_->WrapRSAKey(0, e_, "invalid_n", "invalid_p", auth_, &blob_, &key_));
   tpm_->UnloadKeysForSlot(0);
 }
 

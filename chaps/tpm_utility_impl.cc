@@ -490,14 +490,14 @@ bool TPMUtilityImpl::GetECCPublicKey(int key_handle,
   return false;
 }
 
-bool TPMUtilityImpl::WrapKey(int slot,
-                             const string& public_exponent,
-                             const string& modulus,
-                             const string& prime_factor,
-                             const SecureBlob& auth_data,
-                             string* key_blob,
-                             int* key_handle) {
-  VLOG(1) << "TPMUtilityImpl::WrapKey enter";
+bool TPMUtilityImpl::WrapRSAKey(int slot,
+                                const string& public_exponent,
+                                const string& modulus,
+                                const string& prime_factor,
+                                const SecureBlob& auth_data,
+                                string* key_blob,
+                                int* key_handle) {
+  VLOG(1) << "TPMUtilityImpl::WrapRSAKey enter";
   AutoLock lock(lock_);
   if (!InitSRK())
     return false;
@@ -565,7 +565,7 @@ bool TPMUtilityImpl::WrapKey(int slot,
   if (!GetKeyBlob(key, key_blob))
     return false;
   *key_handle = CreateHandle(slot, key.release(), *key_blob, auth_data);
-  VLOG(1) << "TPMUtilityImpl::WrapKey success";
+  VLOG(1) << "TPMUtilityImpl::WrapRSAKey success";
   return true;
 }
 

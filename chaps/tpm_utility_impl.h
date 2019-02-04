@@ -58,13 +58,13 @@ class TPMUtilityImpl : public TPMUtility {
                       std::string* key_blob,
                       int* key_handle) override;
   bool GetECCPublicKey(int key_handle, std::string* public_point) override;
-  bool WrapKey(int slot,
-               const std::string& public_exponent,
-               const std::string& modulus,
-               const std::string& prime_factor,
-               const brillo::SecureBlob& auth_data,
-               std::string* key_blob,
-               int* key_handle) override;
+  bool WrapRSAKey(int slot,
+                  const std::string& public_exponent,
+                  const std::string& modulus,
+                  const std::string& prime_factor,
+                  const brillo::SecureBlob& auth_data,
+                  std::string* key_blob,
+                  int* key_handle) override;
   bool LoadKey(int slot,
                const std::string& key_blob,
                const brillo::SecureBlob& auth_data,

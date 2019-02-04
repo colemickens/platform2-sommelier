@@ -47,13 +47,14 @@ class TPMUtilityMock : public TPMUtility {
   MOCK_METHOD5(GenerateECCKey,
                bool(int, int, const brillo::SecureBlob&, std::string*, int*));
   MOCK_METHOD2(GetECCPublicKey, bool(int, std::string*));
-  MOCK_METHOD7(WrapKey, bool(int,
-                             const std::string&,
-                             const std::string&,
-                             const std::string&,
-                             const brillo::SecureBlob&,
-                             std::string*,
-                             int*));
+  MOCK_METHOD7(WrapRSAKey,
+               bool(int,
+                    const std::string&,
+                    const std::string&,
+                    const std::string&,
+                    const brillo::SecureBlob&,
+                    std::string*,
+                    int*));
   MOCK_METHOD4(LoadKey, bool(int,
                              const std::string&,
                              const brillo::SecureBlob&,
