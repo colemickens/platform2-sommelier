@@ -252,6 +252,19 @@ class TpmUtilityForwarder : public TpmUtility {
                                  prime_factor, password, delegate, key_blob);
   }
 
+  TPM_RC ImportECCKey(AsymmetricKeyUsage key_type,
+                      TPMI_ECC_CURVE curve_id,
+                      const std::string& public_point_x,
+                      const std::string& public_point_y,
+                      const std::string& private_value,
+                      const std::string& password,
+                      AuthorizationDelegate* delegate,
+                      std::string* key_blob) override {
+    return target_->ImportECCKey(key_type, curve_id, public_point_x,
+                                 public_point_y, private_value, password,
+                                 delegate, key_blob);
+  }
+
   TPM_RC CreateRSAKeyPair(AsymmetricKeyUsage key_type,
                           int modulus_bits,
                           uint32_t public_exponent,

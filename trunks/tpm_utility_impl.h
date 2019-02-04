@@ -97,6 +97,14 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                       const std::string& password,
                       AuthorizationDelegate* delegate,
                       std::string* key_blob) override;
+  TPM_RC ImportECCKey(AsymmetricKeyUsage key_type,
+                      TPMI_ECC_CURVE curve_id,
+                      const std::string& public_point_x,
+                      const std::string& public_point_y,
+                      const std::string& private_value,
+                      const std::string& password,
+                      AuthorizationDelegate* delegate,
+                      std::string* key_blob) override;
   TPM_RC CreateRSAKeyPair(AsymmetricKeyUsage key_type,
                           int modulus_bits,
                           uint32_t public_exponent,
@@ -296,6 +304,22 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                             AuthorizationDelegate* delegate,
                             std::string* key_blob,
                             std::string* creation_blob);
+
+  // Shared inner logic of key importing regardless of key algorithm.
+  // |key_type| is type of key usage. Eg. signing key, decrption key, etc
+  // |public_area| contains algorithm-specific public-area metadata.
+  // |in_sensitive| contains algorithm-specific private-area metadata.
+  // |password| is the authorization value for the imported key.
+  // |delegate| is an AuthorizationDelegate used to authorize the SRK which is
+  // the parent of created key.
+  // If the out argument |key_blob| is not null, it is populated with
+  // the imported key, which can then be loaded into the TPM.
+  TPM_RC ImportKeyInner(AsymmetricKeyUsage key_type,
+                        TPMT_PUBLIC public_area,
+                        TPMT_SENSITIVE in_sensitive,
+                        const std::string& password,
+                        AuthorizationDelegate* delegate,
+                        std::string* key_blob);
 
   // Sets TPM |hierarchy| authorization to |password| using |authorization|.
   TPM_RC SetHierarchyAuthorization(TPMI_RH_HIERARCHY_AUTH hierarchy,

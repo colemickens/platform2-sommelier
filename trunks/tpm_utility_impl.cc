@@ -823,6 +823,46 @@ TPM_RC TpmUtilityImpl::ImportRSAKey(AsymmetricKeyUsage key_type,
                                     const std::string& password,
                                     AuthorizationDelegate* delegate,
                                     std::string* key_blob) {
+  TPMT_PUBLIC public_area = CreateDefaultPublicArea(TPM_ALG_RSA);
+  public_area.parameters.rsa_detail.key_bits = modulus.size() * 8;
+  public_area.parameters.rsa_detail.exponent = public_exponent;
+  public_area.unique.rsa = Make_TPM2B_PUBLIC_KEY_RSA(modulus);
+
+  TPMT_SENSITIVE in_sensitive;
+  in_sensitive.sensitive_type = TPM_ALG_RSA;
+  in_sensitive.sensitive.rsa = Make_TPM2B_PRIVATE_KEY_RSA(prime_factor);
+
+  return ImportKeyInner(key_type, public_area, in_sensitive, password, delegate,
+                        key_blob);
+}
+
+TPM_RC TpmUtilityImpl::ImportECCKey(AsymmetricKeyUsage key_type,
+                                    TPMI_ECC_CURVE curve_id,
+                                    const std::string& public_point_x,
+                                    const std::string& public_point_y,
+                                    const std::string& private_value,
+                                    const std::string& password,
+                                    AuthorizationDelegate* delegate,
+                                    std::string* key_blob) {
+  TPMT_PUBLIC public_area = CreateDefaultPublicArea(TPM_ALG_ECC);
+  public_area.parameters.ecc_detail.curve_id = curve_id;
+  public_area.unique.ecc.x = Make_TPM2B_ECC_PARAMETER(public_point_x);
+  public_area.unique.ecc.y = Make_TPM2B_ECC_PARAMETER(public_point_y);
+
+  TPMT_SENSITIVE in_sensitive;
+  in_sensitive.sensitive_type = TPM_ALG_ECC;
+  in_sensitive.sensitive.ecc = Make_TPM2B_ECC_PARAMETER(private_value);
+
+  return ImportKeyInner(key_type, public_area, in_sensitive, password, delegate,
+                        key_blob);
+}
+
+TPM_RC TpmUtilityImpl::ImportKeyInner(AsymmetricKeyUsage key_type,
+                                      TPMT_PUBLIC public_area,
+                                      TPMT_SENSITIVE in_sensitive,
+                                      const std::string& password,
+                                      AuthorizationDelegate* delegate,
+                                      std::string* key_blob) {
   TPM_RC result;
   if (delegate == nullptr) {
     result = SAPI_RC_INVALID_SESSIONS;
@@ -831,14 +871,15 @@ TPM_RC TpmUtilityImpl::ImportRSAKey(AsymmetricKeyUsage key_type,
                << GetErrorString(result);
     return result;
   }
+
   std::string parent_name;
   result = GetKeyName(kStorageRootKey, &parent_name);
   if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << __func__ << ": Error getting Key name for RSA-SRK: "
+    LOG(ERROR) << __func__ << ": Error getting Key name for SRK: "
                << GetErrorString(result);
     return result;
   }
-  TPMT_PUBLIC public_area = CreateDefaultPublicArea(TPM_ALG_RSA);
+
   public_area.object_attributes = kUserWithAuth | kNoDA;
   switch (key_type) {
     case AsymmetricKeyUsage::kDecryptKey:
@@ -851,24 +892,23 @@ TPM_RC TpmUtilityImpl::ImportRSAKey(AsymmetricKeyUsage key_type,
       public_area.object_attributes |= (kSign | kDecrypt);
       break;
   }
-  public_area.parameters.rsa_detail.key_bits = modulus.size() * 8;
-  public_area.parameters.rsa_detail.exponent = public_exponent;
-  public_area.unique.rsa = Make_TPM2B_PUBLIC_KEY_RSA(modulus);
-  TPM2B_DATA encryption_key;
-  encryption_key.size = kAesKeySize;
-  CHECK_EQ(RAND_bytes(encryption_key.buffer, encryption_key.size), 1)
-      << "Error generating a cryptographically random Aes Key.";
-  TPM2B_PUBLIC public_data = Make_TPM2B_PUBLIC(public_area);
+
   TPM2B_ENCRYPTED_SECRET in_sym_seed = Make_TPM2B_ENCRYPTED_SECRET("");
+
   TPMT_SYM_DEF_OBJECT symmetric_alg;
   symmetric_alg.algorithm = TPM_ALG_AES;
   symmetric_alg.key_bits.aes = kAesKeySize * 8;
   symmetric_alg.mode.aes = TPM_ALG_CFB;
-  TPMT_SENSITIVE in_sensitive;
-  in_sensitive.sensitive_type = TPM_ALG_RSA;
+
   in_sensitive.auth_value = Make_TPM2B_DIGEST(password);
   in_sensitive.seed_value = Make_TPM2B_DIGEST("");
-  in_sensitive.sensitive.rsa = Make_TPM2B_PRIVATE_KEY_RSA(prime_factor);
+
+  TPM2B_PUBLIC public_data = Make_TPM2B_PUBLIC(public_area);
+
+  TPM2B_DATA encryption_key;
+  encryption_key.size = kAesKeySize;
+  CHECK_EQ(RAND_bytes(encryption_key.buffer, encryption_key.size), 1)
+      << "Error generating a cryptographically random AES Key.";
   TPM2B_PRIVATE private_data;
   result = EncryptPrivateData(in_sensitive, public_area, &private_data,
                               &encryption_key);
@@ -877,16 +917,18 @@ TPM_RC TpmUtilityImpl::ImportRSAKey(AsymmetricKeyUsage key_type,
                << GetErrorString(result);
     return result;
   }
+
   TPM2B_PRIVATE tpm_private_data;
   tpm_private_data.size = 0;
   result = factory_.GetTpm()->ImportSync(
-      kStorageRootKey, parent_name, encryption_key, public_data,
-      private_data, in_sym_seed, symmetric_alg, &tpm_private_data, delegate);
+      kStorageRootKey, parent_name, encryption_key, public_data, private_data,
+      in_sym_seed, symmetric_alg, &tpm_private_data, delegate);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__
                << ": Error importing key: " << GetErrorString(result);
     return result;
   }
+
   if (key_blob) {
     if (!factory_.GetBlobParser()->SerializeKeyBlob(
             public_data, tpm_private_data, key_blob)) {

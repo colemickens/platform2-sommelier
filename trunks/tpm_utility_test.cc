@@ -136,6 +136,40 @@ class TpmUtilityTest : public testing::Test {
     }
   }
 
+  void DecryptTPM_SENSITIVE(TPM2B_DATA encryption_key,
+                            TPM2B_PUBLIC public_data,
+                            TPM2B_PRIVATE private_data,
+                            TPM2B_SENSITIVE* sensitive_data) {
+    EXPECT_NE(sensitive_data, nullptr);
+
+    EXPECT_EQ(encryption_key.size, kAesKeySize);
+    AES_KEY key;
+    AES_set_encrypt_key(encryption_key.buffer, kAesKeySize * 8, &key);
+    unsigned char iv[MAX_AES_BLOCK_SIZE_BYTES] = {0};
+    int iv_in = 0;
+    std::string unencrypted_private(private_data.size, 0);
+    AES_cfb128_encrypt(
+        reinterpret_cast<const unsigned char*>(private_data.buffer),
+        reinterpret_cast<unsigned char*>(
+            base::string_as_array(&unencrypted_private)),
+        private_data.size, &key, iv, &iv_in, AES_DECRYPT);
+    TPM2B_DIGEST inner_integrity;
+    EXPECT_EQ(TPM_RC_SUCCESS, Parse_TPM2B_DIGEST(&unencrypted_private,
+                                                 &inner_integrity, nullptr));
+    std::string object_name;
+    EXPECT_EQ(TPM_RC_SUCCESS,
+              ComputeKeyName(public_data.public_area, &object_name));
+    std::string integrity_value =
+        crypto::SHA256HashString(unencrypted_private + object_name);
+    EXPECT_EQ(integrity_value.size(), inner_integrity.size);
+    EXPECT_EQ(0, memcmp(inner_integrity.buffer, integrity_value.data(),
+                        inner_integrity.size));
+
+    EXPECT_EQ(TPM_RC_SUCCESS, Parse_TPM2B_SENSITIVE(&unencrypted_private,
+                                                    sensitive_data, nullptr));
+    EXPECT_TRUE(unencrypted_private.empty());
+  }
+
   void SetExistingPCRSExpectation(bool has_sha1_pcrs, bool has_sha256_pcrs) {
     TPMS_CAPABILITY_DATA capability_data = {};
     TPML_PCR_SELECTION& pcrs = capability_data.data.assigned_pcr;
@@ -1182,6 +1216,7 @@ TEST_F(TpmUtilityTest, ImportRSAKeySuccess) {
       utility_.ImportRSAKey(TpmUtility::AsymmetricKeyUsage::kDecryptKey,
                             modulus, public_exponent, prime_factor, password,
                             &mock_authorization_delegate_, &key_blob));
+
   // Validate that the public area was properly constructed.
   EXPECT_EQ(public_data.public_area.parameters.rsa_detail.key_bits,
             modulus.size() * 8);
@@ -1190,33 +1225,12 @@ TEST_F(TpmUtilityTest, ImportRSAKeySuccess) {
   EXPECT_EQ(public_data.public_area.unique.rsa.size, modulus.size());
   EXPECT_EQ(0, memcmp(public_data.public_area.unique.rsa.buffer, modulus.data(),
                       modulus.size()));
+
   // Validate the private struct construction.
-  EXPECT_EQ(kAesKeySize, encryption_key.size);
-  AES_KEY key;
-  AES_set_encrypt_key(encryption_key.buffer, kAesKeySize * 8, &key);
-  unsigned char iv[MAX_AES_BLOCK_SIZE_BYTES] = {0};
-  int iv_in = 0;
-  std::string unencrypted_private(private_data.size, 0);
-  AES_cfb128_encrypt(
-      reinterpret_cast<const unsigned char*>(private_data.buffer),
-      reinterpret_cast<unsigned char*>(
-          base::string_as_array(&unencrypted_private)),
-      private_data.size, &key, iv, &iv_in, AES_DECRYPT);
-  TPM2B_DIGEST inner_integrity;
-  EXPECT_EQ(TPM_RC_SUCCESS, Parse_TPM2B_DIGEST(&unencrypted_private,
-                                               &inner_integrity, nullptr));
-  std::string object_name;
-  EXPECT_EQ(TPM_RC_SUCCESS,
-            ComputeKeyName(public_data.public_area, &object_name));
-  std::string integrity_value =
-      crypto::SHA256HashString(unencrypted_private + object_name);
-  EXPECT_EQ(integrity_value.size(), inner_integrity.size);
-  EXPECT_EQ(0, memcmp(inner_integrity.buffer, integrity_value.data(),
-                      inner_integrity.size));
   TPM2B_SENSITIVE sensitive_data;
-  EXPECT_EQ(TPM_RC_SUCCESS, Parse_TPM2B_SENSITIVE(&unencrypted_private,
-                                                  &sensitive_data, nullptr));
-  EXPECT_TRUE(unencrypted_private.empty());
+  DecryptTPM_SENSITIVE(encryption_key, public_data, private_data,
+                       &sensitive_data);
+
   EXPECT_EQ(sensitive_data.sensitive_area.auth_value.size, password.size());
   EXPECT_EQ(0, memcmp(sensitive_data.sensitive_area.auth_value.buffer,
                       password.data(), password.size()));
@@ -1275,6 +1289,58 @@ TEST_F(TpmUtilityTest, ImportRSAKeyParserFail) {
             utility_.ImportRSAKey(TpmUtility::AsymmetricKeyUsage::kDecryptKey,
                                   modulus, 0x10001, prime_factor, password,
                                   &mock_authorization_delegate_, &key_blob));
+}
+
+TEST_F(TpmUtilityTest, ImportEccKeySuccess) {
+  TPM2B_DATA encryption_key;
+  TPM2B_PUBLIC public_data;
+  TPM2B_PRIVATE private_data;
+  EXPECT_CALL(mock_tpm_, ImportSync(_, _, _, _, _, _, _, _, _))
+      .WillOnce(DoAll(SaveArg<2>(&encryption_key), SaveArg<3>(&public_data),
+                      SaveArg<4>(&private_data), Return(TPM_RC_SUCCESS)));
+
+  constexpr TPMI_ECC_CURVE curve_id = TPM_ECC_NIST_P256;
+  const std::string public_point_x("public_point_x");
+  const std::string public_point_y("public_point_y");
+  const std::string private_value("private");
+  const std::string password("password");
+  std::string key_blob;
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility_.ImportECCKey(TpmUtility::AsymmetricKeyUsage::kDecryptKey,
+                                  curve_id, public_point_x, public_point_y,
+                                  private_value, password,
+                                  &mock_authorization_delegate_, &key_blob));
+
+  // Validate that the public area was properly constructed.
+  EXPECT_EQ(public_data.public_area.type, TPM_ALG_ECC);
+  EXPECT_EQ(public_data.public_area.parameters.ecc_detail.curve_id, curve_id);
+  EXPECT_EQ(public_data.public_area.parameters.ecc_detail.kdf.scheme,
+            TPM_ALG_NULL);
+  EXPECT_EQ(public_data.public_area.parameters.ecc_detail.scheme.scheme,
+            TPM_ALG_NULL);
+  EXPECT_EQ(public_data.public_area.unique.ecc.x.size, public_point_x.size());
+  EXPECT_EQ(memcmp(public_data.public_area.unique.ecc.x.buffer,
+                   public_point_x.data(), public_point_x.size()),
+            0);
+  EXPECT_EQ(public_data.public_area.unique.ecc.y.size, public_point_y.size());
+  EXPECT_EQ(memcmp(public_data.public_area.unique.ecc.y.buffer,
+                   public_point_y.data(), public_point_y.size()),
+            0);
+
+  // Validate the private struct construction.
+  TPM2B_SENSITIVE sensitive_data;
+  DecryptTPM_SENSITIVE(encryption_key, public_data, private_data,
+                       &sensitive_data);
+
+  EXPECT_EQ(sensitive_data.sensitive_area.auth_value.size, password.size());
+  EXPECT_EQ(memcmp(sensitive_data.sensitive_area.auth_value.buffer,
+                   password.data(), password.size()),
+            0);
+  EXPECT_EQ(sensitive_data.sensitive_area.sensitive.ecc.size,
+            private_value.size());
+  EXPECT_EQ(memcmp(sensitive_data.sensitive_area.sensitive.ecc.buffer,
+                   private_value.data(), private_value.size()),
+            0);
 }
 
 TEST_F(TpmUtilityTest, CreateRSAKeyPairSuccess) {

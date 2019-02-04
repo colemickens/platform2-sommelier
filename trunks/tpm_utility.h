@@ -214,6 +214,22 @@ class TRUNKS_EXPORT TpmUtility {
                               AuthorizationDelegate* delegate,
                               std::string* key_blob) = 0;
 
+  // This method imports an external ECC key of |key_type| into the TPM.
+  // |public_point_x| and |public_point_y| are the coordinates of the public key
+  // point on the curve |curve_id|. |private_value| is the private key.
+  // |public_point_x|, |public_point_y|, and |private_value| are interpreted as
+  // raw bytes in big-endian. |password| is the authorization value for the
+  // imported key. If the out argument |key_blob| is not null, it is populated
+  // with the imported key, which can then be loaded into the TPM.
+  virtual TPM_RC ImportECCKey(AsymmetricKeyUsage key_type,
+                              TPMI_ECC_CURVE curve_id,
+                              const std::string& public_point_x,
+                              const std::string& public_point_y,
+                              const std::string& private_value,
+                              const std::string& password,
+                              AuthorizationDelegate* delegate,
+                              std::string* key_blob) = 0;
+
   // This method uses the TPM to generates an RSA key of type |key_type|.
   // |modulus_bits| is used to specify the size of the modulus, and
   // |public_exponent| specifies the exponent of the key. After this function
