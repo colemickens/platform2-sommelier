@@ -1132,7 +1132,7 @@ TEST_F(OpenVPNDriverTest, FailService) {
 TEST_F(OpenVPNDriverTest, Cleanup) {
   // Ensure no crash.
   driver_->Cleanup(Service::kStateIdle,
-                   Service::kFailureUnknown,
+                   Service::kFailureNone,
                    Service::kErrorDetailsNone);
 
   const int kPID = 123456;

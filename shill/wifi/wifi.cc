@@ -1403,7 +1403,7 @@ void WiFi::EAPEventTask(const string& status, const string& parameter) {
                << " with no current service.";
     return;
   }
-  Service::ConnectFailure failure = Service::kFailureUnknown;
+  Service::ConnectFailure failure = Service::kFailureNone;
   eap_state_handler_->ParseStatus(status, parameter, &failure);
   if (failure == Service::kFailurePinMissing) {
     // wpa_supplicant can sometimes forget the PIN on disconnect from the AP.
@@ -1416,10 +1416,10 @@ void WiFi::EAPEventTask(const string& status, const string& parameter) {
       LOG(INFO) << "Re-supplying PIN parameter to wpa_supplicant.";
       supplicant_interface_proxy_->NetworkReply(
           rpcid, WPASupplicant::kEAPRequestedParameterPIN, pin);
-      failure = Service::kFailureUnknown;
+      failure = Service::kFailureNone;
     }
   }
-  if (failure != Service::kFailureUnknown) {
+  if (failure != Service::kFailureNone) {
     // Avoid a reporting failure twice by resetting EAP state handler early.
     eap_state_handler_->Reset();
     Error unused_error;

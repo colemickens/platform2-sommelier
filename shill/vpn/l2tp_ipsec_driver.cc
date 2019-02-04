@@ -167,7 +167,7 @@ string L2TPIPSecDriver::GetProviderType() const {
 }
 
 void L2TPIPSecDriver::IdleService() {
-  Cleanup(Service::kStateIdle, Service::kFailureUnknown);
+  Cleanup(Service::kStateIdle, Service::kFailureNone);
 }
 
 void L2TPIPSecDriver::FailService(Service::ConnectFailure failure) {

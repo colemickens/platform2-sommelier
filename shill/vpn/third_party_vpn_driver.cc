@@ -88,7 +88,7 @@ ThirdPartyVpnDriver::ThirdPartyVpnDriver(ControlInterface* control,
 }
 
 ThirdPartyVpnDriver::~ThirdPartyVpnDriver() {
-  Cleanup(Service::kStateIdle, Service::kFailureUnknown,
+  Cleanup(Service::kStateIdle, Service::kFailureNone,
           Service::kErrorDetailsNone);
 }
 
@@ -146,7 +146,7 @@ void ThirdPartyVpnDriver::UpdateConnectionState(
   }
   if (service_ && connection_state == Service::kStateFailure) {
     service_->SetState(connection_state);
-    Cleanup(Service::kStateFailure, Service::kFailureUnknown,
+    Cleanup(Service::kStateFailure, Service::kFailureNone,
             Service::kErrorDetailsNone);
   } else if (!service_ || connection_state != Service::kStateOnline) {
     // We expect "failure" and "connected" messages from the client, but we
@@ -528,7 +528,7 @@ void ThirdPartyVpnDriver::Disconnect() {
   SLOG(this, 2) << __func__;
   CHECK(adaptor_interface_);
   if (active_client_ == this) {
-    Cleanup(Service::kStateIdle, Service::kFailureUnknown,
+    Cleanup(Service::kStateIdle, Service::kFailureNone,
             Service::kErrorDetailsNone);
   }
 }

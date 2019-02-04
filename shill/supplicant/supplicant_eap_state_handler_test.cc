@@ -19,7 +19,7 @@ namespace shill {
 
 class SupplicantEAPStateHandlerTest : public testing::Test {
  public:
-  SupplicantEAPStateHandlerTest() : failure_(Service::kFailureUnknown) {}
+  SupplicantEAPStateHandlerTest() : failure_(Service::kFailureNone) {}
   virtual ~SupplicantEAPStateHandlerTest() {}
 
  protected:
@@ -47,7 +47,7 @@ TEST_F(SupplicantEAPStateHandlerTest, AuthenticationStarting) {
   StartEAP();
   EXPECT_TRUE(handler_.is_eap_in_progress());
   EXPECT_EQ("", GetTLSError());
-  EXPECT_EQ(Service::kFailureUnknown, failure_);
+  EXPECT_EQ(Service::kFailureNone, failure_);
 }
 
 TEST_F(SupplicantEAPStateHandlerTest, AcceptedMethod) {
@@ -59,7 +59,7 @@ TEST_F(SupplicantEAPStateHandlerTest, AcceptedMethod) {
       WPASupplicant::kEAPStatusAcceptProposedMethod, kEAPMethod, &failure_));
   EXPECT_TRUE(handler_.is_eap_in_progress());
   EXPECT_EQ("", GetTLSError());
-  EXPECT_EQ(Service::kFailureUnknown, failure_);
+  EXPECT_EQ(Service::kFailureNone, failure_);
 }
 
 TEST_F(SupplicantEAPStateHandlerTest, SuccessfulCompletion) {
@@ -71,7 +71,7 @@ TEST_F(SupplicantEAPStateHandlerTest, SuccessfulCompletion) {
                                    &failure_));
   EXPECT_FALSE(handler_.is_eap_in_progress());
   EXPECT_EQ("", GetTLSError());
-  EXPECT_EQ(Service::kFailureUnknown, failure_);
+  EXPECT_EQ(Service::kFailureNone, failure_);
 }
 
 TEST_F(SupplicantEAPStateHandlerTest, EAPFailureGeneric) {
@@ -95,7 +95,7 @@ TEST_F(SupplicantEAPStateHandlerTest, EAPFailureLocalTLSIndication) {
                                     &failure_));
   EXPECT_TRUE(handler_.is_eap_in_progress());
   EXPECT_EQ(WPASupplicant::kEAPStatusLocalTLSAlert, GetTLSError());
-  EXPECT_EQ(Service::kFailureUnknown, failure_);
+  EXPECT_EQ(Service::kFailureNone, failure_);
 
   // An EAP failure with a previous TLS indication yields a specific failure.
   EXPECT_FALSE(handler_.ParseStatus(WPASupplicant::kEAPStatusCompletion,
@@ -112,7 +112,7 @@ TEST_F(SupplicantEAPStateHandlerTest, EAPFailureRemoteTLSIndication) {
                                     &failure_));
   EXPECT_TRUE(handler_.is_eap_in_progress());
   EXPECT_EQ(WPASupplicant::kEAPStatusRemoteTLSAlert, GetTLSError());
-  EXPECT_EQ(Service::kFailureUnknown, failure_);
+  EXPECT_EQ(Service::kFailureNone, failure_);
 
   // An EAP failure with a previous TLS indication yields a specific failure.
   EXPECT_FALSE(handler_.ParseStatus(WPASupplicant::kEAPStatusCompletion,
@@ -136,7 +136,7 @@ TEST_F(SupplicantEAPStateHandlerTest, BadRemoteCertificateVerification) {
   // Although we reported an error, this shouldn't mean failure.
   EXPECT_TRUE(handler_.is_eap_in_progress());
   EXPECT_EQ("", GetTLSError());
-  EXPECT_EQ(Service::kFailureUnknown, failure_);
+  EXPECT_EQ(Service::kFailureNone, failure_);
 }
 
 TEST_F(SupplicantEAPStateHandlerTest, ParameterNeeded) {

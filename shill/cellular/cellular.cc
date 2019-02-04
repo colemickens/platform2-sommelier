@@ -1055,7 +1055,7 @@ bool Cellular::DisconnectCleanup() {
   bool succeeded = false;
   if (state_ == kStateConnected || state_ == kStateLinked) {
     SetState(kStateRegistered);
-    SetServiceFailureSilent(Service::kFailureUnknown);
+    SetServiceFailureSilent(Service::kFailureNone);
     DestroyIPConfig();
     succeeded = true;
   }

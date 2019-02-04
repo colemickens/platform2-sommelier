@@ -1735,6 +1735,9 @@ void Metrics::NotifyUserInitiatedConnectionFailureReason(
     const string& name, const Service::ConnectFailure failure) {
   UserInitiatedConnectionFailureReason reason;
   switch (failure) {
+    case Service::kFailureNone:
+      reason = kUserInitiatedConnectionFailureReasonNone;
+      break;
     case Service::kFailureBadPassphrase:
       reason = kUserInitiatedConnectionFailureReasonBadPassphrase;
       break;
@@ -2079,9 +2082,8 @@ void Metrics::SendServiceFailure(const Service& service) {
   // they will need to be mapped as well. Otherwise, the compiler will
   // complain.
   switch (service.failure()) {
-    case Service::kFailureUnknown:
-    case Service::kFailureMax:
-      error = kNetworkServiceErrorUnknown;
+    case Service::kFailureNone:
+      error = kNetworkServiceErrorNone;
       break;
     case Service::kFailureAAA:
       error = kNetworkServiceErrorAAA;
@@ -2142,6 +2144,10 @@ void Metrics::SendServiceFailure(const Service& service) {
       break;
     case Service::kFailurePinMissing:
       error = kNetworkServiceErrorPinMissing;
+      break;
+    case Service::kFailureUnknown:
+    case Service::kFailureMax:
+      error = kNetworkServiceErrorUnknown;
       break;
   }
 

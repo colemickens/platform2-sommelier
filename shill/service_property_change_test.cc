@@ -78,15 +78,15 @@ void TestCommonPropertyChanges(ServiceRefPtr service,
   service->SetErrorDetails("some garbage");
   Mock::VerifyAndClearExpectations(adaptor);
 
-  EXPECT_EQ(Service::kFailureUnknown, service->failure());
-  EXPECT_EQ(Service::ConnectFailureToString(Service::kFailureUnknown),
+  EXPECT_EQ(Service::kFailureNone, service->failure());
+  EXPECT_EQ(Service::ConnectFailureToString(Service::kFailureNone),
             service->error());
   EXPECT_CALL(*adaptor, EmitStringChanged(kStateProperty, _));
   EXPECT_CALL(*adaptor, EmitStringChanged(kErrorProperty, _));
   service->SetFailure(Service::kFailureAAA);
   Mock::VerifyAndClearExpectations(adaptor);
 
-  EXPECT_NE(Service::ConnectFailureToString(Service::kFailureUnknown),
+  EXPECT_NE(Service::ConnectFailureToString(Service::kFailureNone),
             service->error());
   EXPECT_CALL(*adaptor, EmitStringChanged(kStateProperty, _));
   EXPECT_CALL(*adaptor, EmitStringChanged(kErrorDetailsProperty, _));
@@ -94,7 +94,7 @@ void TestCommonPropertyChanges(ServiceRefPtr service,
   service->SetState(Service::kStateConnected);
   Mock::VerifyAndClearExpectations(adaptor);
 
-  EXPECT_EQ(Service::ConnectFailureToString(Service::kFailureUnknown),
+  EXPECT_EQ(Service::ConnectFailureToString(Service::kFailureNone),
             service->error());
   EXPECT_CALL(*adaptor, EmitStringChanged(kStateProperty, _));
   EXPECT_CALL(*adaptor, EmitStringChanged(kErrorProperty, _));

@@ -434,7 +434,6 @@ class Metrics {
   };
 
   enum UserInitiatedConnectionFailureReason {
-    kUserInitiatedConnectionFailureReasonUnknown = 0,
     kUserInitiatedConnectionFailureReasonBadPassphrase = 1,
     kUserInitiatedConnectionFailureReasonBadWEPKey = 2,
     kUserInitiatedConnectionFailureReasonConnect = 3,
@@ -445,6 +444,8 @@ class Metrics {
     kUserInitiatedConnectionFailureReasonEAPRemoteTLS = 8,
     kUserInitiatedConnectionFailureReasonOutOfRange = 9,
     kUserInitiatedConnectionFailureReasonPinMissing = 10,
+    kUserInitiatedConnectionFailureReasonUnknown = 11,
+    kUserInitiatedConnectionFailureReasonNone = 12,
     kUserInitiatedConnectionFailureReasonMax
   };
 
@@ -496,7 +497,7 @@ class Metrics {
   };
 
   enum NetworkServiceError {
-    kNetworkServiceErrorUnknown = 0,
+    kNetworkServiceErrorNone = 0,
     kNetworkServiceErrorAAA = 1,
     kNetworkServiceErrorActivation = 2,
     kNetworkServiceErrorBadPassphrase = 3,
@@ -517,6 +518,7 @@ class Metrics {
     kNetworkServiceErrorOutOfRange = 18,
     kNetworkServiceErrorPPPAuth = 19,
     kNetworkServiceErrorPinMissing = 20,
+    kNetworkServiceErrorUnknown = 21,
     kNetworkServiceErrorMax
   };
 

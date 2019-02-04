@@ -762,10 +762,10 @@ TEST_F(ServiceTest, Unload) {
 TEST_F(ServiceTest, State) {
   EXPECT_EQ(Service::kStateIdle, service_->state());
   EXPECT_EQ(Service::kStateIdle, GetPreviousState());
-  EXPECT_EQ(Service::kFailureUnknown, service_->failure());
-  const string unknown_error(
-      Service::ConnectFailureToString(Service::kFailureUnknown));
-  EXPECT_EQ(unknown_error, service_->error());
+  EXPECT_EQ(Service::kFailureNone, service_->failure());
+  const string no_error(
+      Service::ConnectFailureToString(Service::kFailureNone));
+  EXPECT_EQ(no_error, service_->error());
 
   EXPECT_CALL(*GetAdaptor(),
               EmitStringChanged(kStateProperty, _)).Times(6);
@@ -778,7 +778,7 @@ TEST_F(ServiceTest, State) {
   service_->SetState(Service::kStateConnected);
   EXPECT_EQ(Service::kStateConnected, service_->state());
   EXPECT_EQ(Service::kStateIdle, GetPreviousState());
-  EXPECT_EQ(Service::kFailureUnknown, service_->failure());
+  EXPECT_EQ(Service::kFailureNone, service_->failure());
   EXPECT_TRUE(service_->has_ever_connected_);
 
   EXPECT_CALL(mock_manager_, UpdateService(IsRefPtrTo(service_)));
@@ -797,7 +797,7 @@ TEST_F(ServiceTest, State) {
   service_->SetState(Service::kStateConnected);
   EXPECT_FALSE(service_->IsFailed());
   EXPECT_EQ(service_->failed_time_, 0);
-  EXPECT_EQ(unknown_error, service_->error());
+  EXPECT_EQ(no_error, service_->error());
   EXPECT_EQ(out_of_range_error, service_->previous_error_);
   EXPECT_GT(service_->previous_error_serial_number_, 0);
 
@@ -863,7 +863,7 @@ TEST_F(ServiceTest, StateResetAfterFailure) {
   Error error;
   service_->Connect(&error, "in test");
   EXPECT_EQ(Service::kStateIdle, service_->state());
-  EXPECT_EQ(Service::kFailureUnknown, service_->failure());
+  EXPECT_EQ(Service::kFailureNone, service_->failure());
 
   service_->SetState(Service::kStateConnected);
   service_->Connect(&error, "in test");
