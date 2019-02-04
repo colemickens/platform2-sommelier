@@ -32,9 +32,11 @@
 #include <base/files/file_util.h>
 #include <base/location.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
@@ -52,14 +54,28 @@ constexpr char kRuntimeDir[] = "/run/seneschal";
 // The chronos uid and gid.  These are used for file system access.
 constexpr uid_t kChronosUid = 1000;
 constexpr gid_t kChronosGid = 1000;
+
 // Access to android files requires android-everybody gid.
-constexpr gid_t kSupplementaryGroups[] = {665357};
+constexpr gid_t kAndroidEverybodyGid = 665357;
+constexpr gid_t kSupplementaryGroups[] = {kAndroidEverybodyGid};
 
 // The gid of the chronos-access group.
 constexpr gid_t kChronosAccessGid = 1001;
 
 // The uid used for authenticating with DBus.
 constexpr uid_t kDbusAuthUid = 20115;
+
+// The crosvm uid and gid.
+constexpr uid_t kCrosvmUid = 299;
+constexpr gid_t kCrosvmGid = 299;
+
+// Gids on the 9P server side that should be mapped to crosvm on the
+// client side so that crosvm can access the shared data.
+constexpr gid_t k9pMappedGids[] = {
+    kChronosGid,
+    kChronosAccessGid,
+    kAndroidEverybodyGid,
+};
 
 // How long we should wait for a server process to exit.
 constexpr base::TimeDelta kServerExitTimeout = base::TimeDelta::FromSeconds(2);
@@ -455,6 +471,7 @@ std::unique_ptr<dbus::Response> Service::StartServer(
 
   // Get the listening address and any extra command line options.
   std::vector<string> args = {kServerPath, "-r", kServerRoot};
+  base::ScopedFD listen_fd;
   bool valid_address = false;
   switch (request.listen_address_case()) {
     case StartServerRequest::kVsock: {
@@ -471,9 +488,38 @@ std::unique_ptr<dbus::Response> Service::StartServer(
       valid_address = true;
       break;
     }
+    case StartServerRequest::kFd: {
+      if (!reader.PopFileDescriptor(&listen_fd)) {
+        LOG(ERROR) << "No fd found in incoming message";
+        break;
+      }
+
+      // Clear close-on-exec as this FD needs to be passed to 9s.
+      int flags = fcntl(listen_fd.get(), F_GETFD);
+      if (flags == -1) {
+        PLOG(ERROR) << "Failed to get flags for passed fd";
+        break;
+      }
+      if (fcntl(listen_fd.get(), F_SETFD, flags & ~FD_CLOEXEC) == -1) {
+        PLOG(ERROR) << "Failed to clear close-on-exec flag for fd";
+        break;
+      }
+
+      args.emplace_back(base::StringPrintf("unix-fd:%d", listen_fd.get()));
+
+      args.emplace_back("--uid_map");
+      args.emplace_back(base::StringPrintf("%u:%u", kChronosUid, kCrosvmUid));
+
+      for (auto gid : k9pMappedGids) {
+        args.emplace_back("--gid_map");
+        args.emplace_back(base::StringPrintf("%u:%u", gid, kCrosvmGid));
+      }
+
+      valid_address = true;
+      break;
+    }
     case StartServerRequest::kUnixAddr:
     case StartServerRequest::kNet:
-    case StartServerRequest::kFd:
       LOG(ERROR) << "Listen address not implemented: "
                  << request.listen_address_case();
       break;
@@ -504,13 +550,16 @@ std::unique_ptr<dbus::Response> Service::StartServer(
     bool writable;
   } bind_mounts[] = {
       {
-          .src = "/proc", .writable = false,
+          .src = "/proc",
+          .writable = false,
       },
       {
-          .src = "/dev/null", .writable = true,
+          .src = "/dev/null",
+          .writable = true,
       },
       {
-          .src = "/dev/log", .writable = true,
+          .src = "/dev/log",
+          .writable = true,
       },
   };
   for (const auto& bind_mount : bind_mounts) {
@@ -776,9 +825,7 @@ std::unique_ptr<dbus::Response> Service::SharePath(
 
   switch (request.storage_location()) {
     case SharePathRequest::DOWNLOADS:
-      src = base::FilePath("/home/user/")
-                .Append(owner_id)
-                .Append("Downloads");
+      src = base::FilePath("/home/user/").Append(owner_id).Append("Downloads");
       dst = dst.Append("MyFiles").Append("Downloads");
       break;
     case SharePathRequest::DRIVEFS_MY_DRIVE:
