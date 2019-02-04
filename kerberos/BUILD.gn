@@ -63,7 +63,8 @@ static_library("libkerberos") {
     ":target_defaults",
   ]
   sources = [
-    "kerberosd_main.cc",
+    "kerberos_adaptor.cc",
+    "kerberos_daemon.cc",
   ]
   deps = [
     ":container-protos",

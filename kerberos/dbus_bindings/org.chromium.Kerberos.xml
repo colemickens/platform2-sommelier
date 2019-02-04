@@ -3,5 +3,16 @@
 <node name="/org/chromium/Kerberos"
       xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.Kerberos">
+    <method name="Test">
+      <tp:docstring>
+        Interface must be non-empty to prevent unused variable compile errors.
+      </tp:docstring>
+      <arg name="test" type="b" direction="in">
+        <tp:docstring>
+          Test.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
   </interface>
 </node>
