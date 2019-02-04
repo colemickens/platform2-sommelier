@@ -366,6 +366,10 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
     base::DeleteFile(data_dir.Append("Local State"), false);
   }
 
+  // Disable logging redirection on test images to make debugging easier.
+  if (builder->is_test_build())
+    builder->AddArg("--disable-logging-redirect");
+
   if (builder->UseFlagIsSet("cfm_enabled_device")) {
     if (IsEnrolledChromeboxForMeetings()) {
       // Chromebox For Meetings devices need to start with this flag till
