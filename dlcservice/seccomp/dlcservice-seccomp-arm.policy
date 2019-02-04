@@ -20,7 +20,6 @@ exit_group: 1
 rt_sigreturn: 1
 wait4: 1
 pipe: 1
-set_tls: 1
 setpgid: 1
 uname: 1
 clone: 1
@@ -57,3 +56,4 @@ lstat64: 1
 unlink: 1
 rmdir: 1
 gettimeofday: 1
+ARM_set_tls: 1
