@@ -122,7 +122,8 @@ VmState SystemUtilsImpl::GetVmState() {
 }
 
 int SystemUtilsImpl::kill(pid_t pid, uid_t owner, int signal) {
-  LOG(INFO) << "Sending " << signal << " to " << pid << " as " << owner;
+  LOG(INFO) << "Sending signal " << signal << " to PID " << pid << " as UID "
+            << owner;
   uid_t uid, euid, suid;
   getresuid(&uid, &euid, &suid);
   if (setresuid(owner, owner, -1)) {
