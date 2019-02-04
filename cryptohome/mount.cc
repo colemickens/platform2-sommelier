@@ -1275,18 +1275,16 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
   // method).
   // In the table below: X = true, - = false, * = any value
   //
-  //                 1   2   3   4   5   6   7   8   9  10  11  12  13  14  15
-  // should_tpm      -   -   -   X   X   X   X   X   X   X   X   -   -   -   *
+  //                 1   2   3   4   5   6   7   8
+  // should_tpm      X   X   X   X   -   -   -   *
   //
-  // should_scrypt   -   -   -   -   -   -   -   X   X   X   X   X   X   X   *
+  // tpm_wrapped     -   X   X   -   -   X   -   X
   //
-  // tpm_wrapped     -   X   -   -   X   X   -   -   X   X   -   -   X   -   X
+  // scrypt_wrapped  -   -   -   X   -   -   X   X
   //
-  // scrypt_wrapped  -   -   X   -   -   -   X   -   -   -   X   -   -   X   X
+  // scrypt_derived  *   X   -   *   *   *   *   *
   //
-  // scrypt_derived  *   *   *   *   X   -   *   *   X   -   *   *   *   *   *
-  //
-  // migrate         N   Y   Y   Y   N   Y   Y   Y   N   Y   Y   Y   Y   N   Y
+  // migrate         Y   N   Y   Y   Y   Y   N   Y
   //
   // If the vault keyset represents an LE credential, we should not re-encrypt
   // it at all (that is unnecessary).
@@ -1301,7 +1299,6 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
                      crypto_->is_cryptohome_key_loaded());
   bool is_le_credential =
       (crypt_flags & SerializedVaultKeyset::LE_CREDENTIAL) != 0;
-  bool should_scrypt = true;
   do {
     // If the keyset was TPM-wrapped, but there was no public key hash,
     // always re-save.  Otherwise, check the table.
@@ -1310,13 +1307,11 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
         break;
       if (tpm_wrapped && should_tpm && !scrypt_wrapped) {
         if (scrypt_derived)
-          break;  // 5, 9
+          break;  // 2
         LOG(INFO) << "Migrating to deriving AES keys using scrypt.";
       }
-      if (scrypt_wrapped && should_scrypt && !should_tpm && !tpm_wrapped)
-        break;  // 14
-      if (!tpm_wrapped && !scrypt_wrapped && !should_tpm && !should_scrypt)
-        break;  // 1
+      if (scrypt_wrapped && !should_tpm && !tpm_wrapped)
+        break;  // 7
     }
     // This is not considered a fatal error.  Re-saving with the desired
     // protection is ideal, but not required.
