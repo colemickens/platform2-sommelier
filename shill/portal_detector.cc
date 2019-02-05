@@ -181,9 +181,11 @@ void PortalDetector::StartTrialTask() {
                             https_request_error_callback);
   if (https_result != HttpRequest::kResultInProgress) {
     Result trial_result = GetPortalResultForRequestResult(https_result);
-    LOG(ERROR) << StringPrintf("HTTPS probe start failed phase==%s, status==%s",
-                               PhaseToString(trial_result.phase).c_str(),
-                               StatusToString(trial_result.status).c_str());
+    LOG(ERROR) << connection_->interface_name()
+               << StringPrintf(
+                      " HTTPS probe start failed phase==%s, status==%s",
+                      PhaseToString(trial_result.phase).c_str(),
+                      StatusToString(trial_result.status).c_str());
   }
   is_active_ = true;
 
@@ -220,7 +222,7 @@ void PortalDetector::CleanupTrial() {
 }
 
 void PortalDetector::TimeoutTrialTask() {
-  LOG(ERROR) << "Trial request timed out";
+  LOG(ERROR) << connection_->interface_name() << " Trial request timed out";
   CompleteTrial(Result(Phase::kUnknown, Status::kTimeout));
 }
 
@@ -276,12 +278,14 @@ void PortalDetector::HttpsRequestSuccessCallback(
   if (status_code == brillo::http::status_code::NoContent) {
     // HTTPS probe success, probably no portal
     https_result_ = std::make_unique<Result>(Phase::kContent, Status::kSuccess);
-    LOG(INFO) << "HTTPS probe succeeded, probably no portal.";
+    LOG(INFO) << connection_->interface_name()
+              << " HTTPS probe succeeded, probably no portal.";
   } else {
     // HTTPS probe didn't get 204, inconclusive
     https_result_ = std::make_unique<Result>(Phase::kContent, Status::kFailure);
-    LOG(ERROR) << "HTTPS probe returned with status code " << status_code
-              << ". Portal detection inconclusive.";
+    LOG(ERROR) << connection_->interface_name()
+               << " HTTPS probe returned with status code " << status_code
+               << ". Portal detection inconclusive.";
   }
   CompleteRequest();
 }
@@ -295,7 +299,8 @@ void PortalDetector::HttpRequestErrorCallback(HttpRequest::Result result) {
 void PortalDetector::HttpsRequestErrorCallback(HttpRequest::Result result) {
   https_result_ =
       std::make_unique<Result>(GetPortalResultForRequestResult(result));
-  LOG(INFO) << "HTTPS probe failed with phase=="
+  LOG(INFO) << connection_->interface_name()
+            << " HTTPS probe failed with phase=="
             << PortalDetector::PhaseToString(https_result_.get()->phase)
             << ", status=="
             << PortalDetector::StatusToString(https_result_.get()->status);
@@ -322,12 +327,14 @@ void PortalDetector::CompleteAttempt(PortalDetector::Result trial_result) {
     failures_in_content_phase_++;
   }
 
-  LOG(INFO) << StringPrintf(
-      "Portal detection completed attempt %d with "
-      "phase==%s, status==%s, failures in content==%d",
-      attempt_count_, PortalDetector::PhaseToString(trial_result.phase).c_str(),
-      PortalDetector::StatusToString(trial_result.status).c_str(),
-      failures_in_content_phase_);
+  LOG(INFO) << connection_->interface_name()
+            << StringPrintf(
+                   " Portal detection completed attempt %d with "
+                   "phase==%s, status==%s, failures in content==%d",
+                   attempt_count_,
+                   PortalDetector::PhaseToString(trial_result.phase).c_str(),
+                   PortalDetector::StatusToString(trial_result.status).c_str(),
+                   failures_in_content_phase_);
 
   if (single_trial_ || trial_result.status == Status::kSuccess ||
       attempt_count_ >= kMaxRequestAttempts ||
