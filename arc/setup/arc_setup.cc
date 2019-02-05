@@ -105,13 +105,19 @@ constexpr char kFakeMmapRndCompatBits[] = "/run/arc/fake_mmap_rnd_compat_bits";
 constexpr char kHostSideDalvikCacheDirectoryInContainer[] =
     "/var/run/arc/dalvik-cache";
 constexpr char kHostDownloadsDirectory[] = "/home/chronos/user/Downloads";
-constexpr char kMediaDestDirectory[] = "/run/arc/media/removable";
-constexpr char kMediaDestDefaultDirectory[] =
-    "/run/arc/media/removable-default";
-constexpr char kMediaDestReadDirectory[] = "/run/arc/media/removable-read";
-constexpr char kMediaDestWriteDirectory[] = "/run/arc/media/removable-write";
 constexpr char kMediaMountDirectory[] = "/run/arc/media";
+constexpr char kMediaMyFilesDirectory[] = "/run/arc/media/MyFiles";
+constexpr char kMediaMyFilesDefaultDirectory[] =
+    "/run/arc/media/MyFiles-default";
+constexpr char kMediaMyFilesReadDirectory[] = "/run/arc/media/MyFiles-read";
+constexpr char kMediaMyFilesWriteDirectory[] = "/run/arc/media/MyFiles-write";
 constexpr char kMediaProfileFile[] = "media_profiles.xml";
+constexpr char kMediaRemovableDirectory[] = "/run/arc/media/removable";
+constexpr char kMediaRemovableDefaultDirectory[] =
+    "/run/arc/media/removable-default";
+constexpr char kMediaRemovableReadDirectory[] = "/run/arc/media/removable-read";
+constexpr char kMediaRemovableWriteDirectory[] =
+    "/run/arc/media/removable-write";
 constexpr char kObbMountDirectory[] = "/run/arc/obb";
 constexpr char kObbRootfsDirectory[] =
     "/opt/google/containers/arc-obb-mounter/mountpoints/container-root";
@@ -507,12 +513,21 @@ struct ArcPaths {
   const base::FilePath fake_mmap_rnd_compat_bits{kFakeMmapRndCompatBits};
   const base::FilePath host_side_dalvik_cache_directory_in_container{
       kHostSideDalvikCacheDirectoryInContainer};
-  const base::FilePath media_dest_directory{kMediaDestDirectory};
-  const base::FilePath media_dest_default_directory{kMediaDestDefaultDirectory};
-  const base::FilePath media_dest_read_directory{kMediaDestReadDirectory};
-  const base::FilePath media_dest_write_directory{kMediaDestWriteDirectory};
   const base::FilePath media_mount_directory{kMediaMountDirectory};
+  const base::FilePath media_myfiles_directory{kMediaMyFilesDirectory};
+  const base::FilePath media_myfiles_default_directory{
+      kMediaMyFilesDefaultDirectory};
+  const base::FilePath media_myfiles_read_directory{kMediaMyFilesReadDirectory};
+  const base::FilePath media_myfiles_write_directory{
+      kMediaMyFilesWriteDirectory};
   const base::FilePath media_profile_file{kMediaProfileFile};
+  const base::FilePath media_removable_directory{kMediaRemovableDirectory};
+  const base::FilePath media_removable_default_directory{
+      kMediaRemovableDefaultDirectory};
+  const base::FilePath media_removable_read_directory{
+      kMediaRemovableReadDirectory};
+  const base::FilePath media_removable_write_directory{
+      kMediaRemovableWriteDirectory};
   const base::FilePath obb_mount_directory{kObbMountDirectory};
   const base::FilePath obb_rootfs_directory{kObbRootfsDirectory};
   const base::FilePath oem_mount_directory{kOemMountDirectory};
@@ -1284,7 +1299,7 @@ void ArcSetup::MountDemoApps(const base::FilePath& demo_apps_image,
                                    MS_RDONLY | MS_NODEV));
 }
 
-void ArcSetup::SetUpMountPointForRemovableMedia() {
+void ArcSetup::SetUpMountPointsForMedia() {
   EXIT_IF(!arc_mounter_->UmountIfExists(arc_paths_->media_mount_directory));
   EXIT_IF(!InstallDirectory(0755, kRootUid, kSystemGid,
                             arc_paths_->media_mount_directory));
@@ -1295,8 +1310,9 @@ void ArcSetup::SetUpMountPointForRemovableMedia() {
                                "tmpfs", MS_NOSUID | MS_NODEV | MS_NOEXEC,
                                media_mount_options.c_str()));
   EXIT_IF(!arc_mounter_->SharedMount(arc_paths_->media_mount_directory));
-  for (auto* directory : {"removable", "removable-default", "removable-read",
-                          "removable-write"}) {
+  for (auto* directory :
+       {"removable", "removable-default", "removable-read", "removable-write",
+        "MyFiles", "MyFiles-default", "MyFiles-read", "MyFiles-write"}) {
     EXIT_IF(
         !InstallDirectory(0755, kMediaUid, kMediaGid,
                           arc_paths_->media_mount_directory.Append(directory)));
@@ -1317,12 +1333,20 @@ void ArcSetup::SetUpMountPointForAdbd() {
 }
 
 void ArcSetup::CleanUpStaleMountPoints() {
-  EXIT_IF(!arc_mounter_->UmountIfExists(arc_paths_->media_dest_directory));
+  EXIT_IF(!arc_mounter_->UmountIfExists(arc_paths_->media_myfiles_directory));
+  EXIT_IF(!arc_mounter_->UmountIfExists(
+      arc_paths_->media_myfiles_default_directory));
   EXIT_IF(
-      !arc_mounter_->UmountIfExists(arc_paths_->media_dest_default_directory));
-  EXIT_IF(!arc_mounter_->UmountIfExists(arc_paths_->media_dest_read_directory));
+      !arc_mounter_->UmountIfExists(arc_paths_->media_myfiles_read_directory));
   EXIT_IF(
-      !arc_mounter_->UmountIfExists(arc_paths_->media_dest_write_directory));
+      !arc_mounter_->UmountIfExists(arc_paths_->media_myfiles_write_directory));
+  EXIT_IF(!arc_mounter_->UmountIfExists(arc_paths_->media_removable_directory));
+  EXIT_IF(!arc_mounter_->UmountIfExists(
+      arc_paths_->media_removable_default_directory));
+  EXIT_IF(!arc_mounter_->UmountIfExists(
+      arc_paths_->media_removable_read_directory));
+  EXIT_IF(!arc_mounter_->UmountIfExists(
+      arc_paths_->media_removable_write_directory));
 }
 
 void ArcSetup::SetUpSharedMountPoints() {
@@ -1591,15 +1615,24 @@ void ArcSetup::UnmountOnStop() {
   IGNORE_ERRORS(arc_mounter_->LoopUmountIfExists(
       arc_paths_->shared_mount_directory.Append("demo_apps")));
   IGNORE_ERRORS(arc_mounter_->UmountIfExists(arc_paths_->adbd_mount_directory));
-  IGNORE_ERRORS(arc_mounter_->UmountIfExists(arc_paths_->media_dest_directory));
-  IGNORE_ERRORS(
-      arc_mounter_->UmountIfExists(arc_paths_->media_dest_default_directory));
-  IGNORE_ERRORS(
-      arc_mounter_->UmountIfExists(arc_paths_->media_dest_read_directory));
-  IGNORE_ERRORS(
-      arc_mounter_->UmountIfExists(arc_paths_->media_dest_write_directory));
   IGNORE_ERRORS(
       arc_mounter_->UmountIfExists(arc_paths_->media_mount_directory));
+  IGNORE_ERRORS(
+      arc_mounter_->UmountIfExists(arc_paths_->media_myfiles_directory));
+  IGNORE_ERRORS(arc_mounter_->UmountIfExists(
+      arc_paths_->media_myfiles_default_directory));
+  IGNORE_ERRORS(
+      arc_mounter_->UmountIfExists(arc_paths_->media_myfiles_read_directory));
+  IGNORE_ERRORS(
+      arc_mounter_->UmountIfExists(arc_paths_->media_myfiles_write_directory));
+  IGNORE_ERRORS(
+      arc_mounter_->UmountIfExists(arc_paths_->media_removable_directory));
+  IGNORE_ERRORS(arc_mounter_->UmountIfExists(
+      arc_paths_->media_removable_default_directory));
+  IGNORE_ERRORS(
+      arc_mounter_->UmountIfExists(arc_paths_->media_removable_read_directory));
+  IGNORE_ERRORS(arc_mounter_->UmountIfExists(
+      arc_paths_->media_removable_write_directory));
   IGNORE_ERRORS(arc_mounter_->Umount(arc_paths_->sdcard_mount_directory));
   IGNORE_ERRORS(
       arc_mounter_->UmountIfExists(arc_paths_->shared_mount_directory));
@@ -2016,7 +2049,7 @@ void ArcSetup::OnSetup() {
   CreateAndroidCmdlineFile(is_dev_mode, is_inside_vm, is_debuggable);
   CreateFakeProcfsFiles();
   SetUpMountPointForDebugFilesystem(is_dev_mode);
-  SetUpMountPointForRemovableMedia();
+  SetUpMountPointsForMedia();
   SetUpMountPointForAdbd();
   CleanUpStaleMountPoints();
   RestoreContext();

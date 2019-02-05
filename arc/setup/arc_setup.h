@@ -186,8 +186,8 @@ class ArcSetup {
   // |arc_paths.debugfs_directory|/tracing.
   void SetUpMountPointForDebugFilesystem(bool is_dev_mode);
 
-  // Sets up a mount point for arc-removable-media.
-  void SetUpMountPointForRemovableMedia();
+  // Sets up media mount points such as arc-removable-media and arc-myfiles.
+  void SetUpMountPointsForMedia();
 
   // Sets up a mount point for arc-adbd.
   void SetUpMountPointForAdbd();
