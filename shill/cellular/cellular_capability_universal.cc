@@ -57,7 +57,6 @@ const char CellularCapabilityUniversal::kConnectPassword[] = "password";
 const char CellularCapabilityUniversal::kConnectAllowedAuth[] = "allowed-auth";
 const char CellularCapabilityUniversal::kConnectAllowRoaming[] =
     "allow-roaming";
-const char CellularCapabilityUniversal::kConnectIpType[] = "ip-type";
 const int64_t CellularCapabilityUniversal::kEnterPinTimeoutMilliseconds = 20000;
 const int64_t
 CellularCapabilityUniversal::kRegistrationDroppedUpdateTimeoutMilliseconds =
@@ -668,15 +667,6 @@ void CellularCapabilityUniversal::FillConnectPropertyMap(
   properties->SetBool(kConnectAllowRoaming,
                       cellular()->IsRoamingAllowedOrRequired());
 
-  // Rely on ModemManager to set up a default for us if IPv6 is not
-  // supported; otherwise request it directly.
-  if (cellular()->IsIPv6Allowed()) {
-    if (supported_ip_families_ & MM_BEARER_IP_FAMILY_IPV4V6)
-      properties->SetUint(kConnectIpType, MM_BEARER_IP_FAMILY_IPV4V6);
-    else if (supported_ip_families_ & MM_BEARER_IP_FAMILY_IPV6)
-      properties->SetUint(kConnectIpType, MM_BEARER_IP_FAMILY_IPV6);
-  }
-
   if (!apn_try_list_.empty()) {
     // Leave the APN at the front of the list, so that it can be recorded
     // if the connect attempt succeeds.
@@ -1281,12 +1271,6 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
 
   // au: MM_MODEM_PROPERTY_SUPPORTEDBANDS,
   // au: MM_MODEM_PROPERTY_BANDS
-
-  if (properties.Contains(MM_MODEM_PROPERTY_SUPPORTEDIPFAMILIES)) {
-    OnSupportedIpFamiliesChanged(
-      properties.Get(MM_MODEM_PROPERTY_SUPPORTEDIPFAMILIES)
-          .Get<SupportedIpFamilies>());
-  }
 }
 
 void CellularCapabilityUniversal::OnPropertiesChanged(
@@ -1441,11 +1425,6 @@ void CellularCapabilityUniversal::OnSupportedModesChanged(
 void CellularCapabilityUniversal::OnCurrentModesChanged(
     const ModemModes& current_modes) {
   current_modes_ = current_modes;
-}
-
-void CellularCapabilityUniversal::OnSupportedIpFamiliesChanged(
-    SupportedIpFamilies supported_ip_families) {
-  supported_ip_families_ = supported_ip_families;
 }
 
 void CellularCapabilityUniversal::OnBearersChanged(

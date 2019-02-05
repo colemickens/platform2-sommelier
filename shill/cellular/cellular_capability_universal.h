@@ -43,7 +43,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   using SignalQuality = std::tuple<uint32_t, bool>;
   using ModesData = std::tuple<uint32_t, uint32_t>;
   using SupportedModes = std::vector<ModesData>;
-  using SupportedIpFamilies = uint32_t;
   using PcoList = std::vector<std::tuple<uint32_t, bool, std::vector<uint8_t>>>;
 
   // Constants used in connect method call.  Make available to test matchers.
@@ -55,7 +54,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   static const char kConnectPassword[];
   static const char kConnectAllowedAuth[];
   static const char kConnectAllowRoaming[];
-  static const char kConnectIpType[];
 
   CellularCapabilityUniversal(Cellular* cellular, ModemInfo* modem_info);
   ~CellularCapabilityUniversal() override;
@@ -304,7 +302,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   void OnAccessTechnologiesChanged(uint32_t access_technologies);
   void OnSupportedModesChanged(const std::vector<ModemModes>& supported_modes);
   void OnCurrentModesChanged(const ModemModes& current_modes);
-  void OnSupportedIpFamiliesChanged(SupportedIpFamilies supported_ip_families);
   void OnBearersChanged(const RpcIdentifiers& bearers);
   void OnLockRetriesChanged(const LockRetryData& lock_retries);
   void OnLockTypeChanged(MMModemLock unlock_required);
@@ -404,7 +401,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   std::unique_ptr<CellularBearer> active_bearer_;
   RpcIdentifiers bearer_paths_;
   bool reset_done_;
-  SupportedIpFamilies supported_ip_families_;
 
   // If the modem is not in a state to be enabled when StartModem is called,
   // enabling is deferred using this callback.
