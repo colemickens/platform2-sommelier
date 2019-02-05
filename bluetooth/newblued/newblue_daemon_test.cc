@@ -120,6 +120,47 @@ class NewblueDaemonTest : public ::testing::Test {
         .Times(1);
   }
 
+  // Expects that the methods on org.bluez.AdvertisingManager1 interface are
+  // exported.
+  void ExpectAdvertisingManagerMethodsExported(
+      scoped_refptr<dbus::MockExportedObject> exported_object) {
+    EXPECT_CALL(
+        *exported_object,
+        ExportMethod(bluetooth_advertising_manager::
+                         kBluetoothAdvertisingManagerInterface,
+                     bluetooth_advertising_manager::kRegisterAdvertisement, _,
+                     _))
+        .Times(1);
+    EXPECT_CALL(
+        *exported_object,
+        ExportMethod(bluetooth_advertising_manager::
+                         kBluetoothAdvertisingManagerInterface,
+                     bluetooth_advertising_manager::kUnregisterAdvertisement, _,
+                     _))
+        .Times(1);
+  }
+
+  // Expects that the methods on org.bluez.AgentManager1 interface are
+  // exported.
+  void ExpectAgentManagerMethodsExported(
+      scoped_refptr<dbus::MockExportedObject> exported_object) {
+    EXPECT_CALL(
+        *exported_object,
+        ExportMethod(bluetooth_agent_manager::kBluetoothAgentManagerInterface,
+                     bluetooth_agent_manager::kRegisterAgent, _, _))
+        .Times(1);
+    EXPECT_CALL(
+        *exported_object,
+        ExportMethod(bluetooth_agent_manager::kBluetoothAgentManagerInterface,
+                     bluetooth_agent_manager::kUnregisterAgent, _, _))
+        .Times(1);
+    EXPECT_CALL(
+        *exported_object,
+        ExportMethod(bluetooth_agent_manager::kBluetoothAgentManagerInterface,
+                     bluetooth_agent_manager::kRequestDefaultAgent, _, _))
+        .Times(1);
+  }
+
   scoped_refptr<dbus::MockExportedObject> SetupExportedRootObject() {
     dbus::ObjectPath root_path(
         newblue_object_manager::kNewblueObjectManagerServicePath);
@@ -204,20 +245,6 @@ class NewblueDaemonTest : public ::testing::Test {
   void TestAdapterBringUp(
       scoped_refptr<dbus::MockExportedObject> exported_adapter_object,
       MethodHandlerMap adapter_method_handlers) {
-    // Some properties are expected to be exported on the adapter object.
-    EXPECT_CALL(
-        *exported_adapter_object,
-        ExportMethod(dbus::kPropertiesInterface, dbus::kPropertiesGetAll, _, _))
-        .Times(AnyNumber());
-    EXPECT_CALL(
-        *exported_adapter_object,
-        ExportMethod(dbus::kPropertiesInterface, dbus::kPropertiesGet, _, _))
-        .Times(AnyNumber());
-    EXPECT_CALL(
-        *exported_adapter_object,
-        ExportMethod(dbus::kPropertiesInterface, dbus::kPropertiesSet, _, _))
-        .Times(AnyNumber());
-
     // org.bluez.Adapter1 methods
     EXPECT_CALL(*exported_adapter_object,
                 ExportMethod(bluetooth_adapter::kBluetoothAdapterInterface,
@@ -280,12 +307,12 @@ TEST_F(NewblueDaemonTest, InitSuccessAndBringUp) {
       SetupExportedRootObject();
   scoped_refptr<dbus::MockExportedObject> exported_agent_manager_object =
       SetupExportedAgentManagerObject();
-
-  dbus::ObjectPath adapter_object_path(kAdapterObjectPath);
   scoped_refptr<dbus::MockExportedObject> exported_adapter_object =
-      new dbus::MockExportedObject(bus_.get(), adapter_object_path);
-  EXPECT_CALL(*bus_, GetExportedObject(adapter_object_path))
-      .WillOnce(Return(exported_adapter_object.get()));
+      SetupExportedAdapterObject();
+  ExpectPropertiesMethodsExported(exported_adapter_object);
+  ExpectAdvertisingManagerMethodsExported(exported_adapter_object);
+  ExpectPropertiesMethodsExported(exported_agent_manager_object);
+  ExpectAgentManagerMethodsExported(exported_agent_manager_object);
 
   TestInit(exported_root_object);
 
@@ -304,12 +331,12 @@ TEST_F(NewblueDaemonTest, DiscoveryAPI) {
       SetupExportedRootObject();
   scoped_refptr<dbus::MockExportedObject> exported_agent_manager_object =
       SetupExportedAgentManagerObject();
-
-  dbus::ObjectPath adapter_object_path(kAdapterObjectPath);
   scoped_refptr<dbus::MockExportedObject> exported_adapter_object =
-      new dbus::MockExportedObject(bus_.get(), adapter_object_path);
-  EXPECT_CALL(*bus_, GetExportedObject(adapter_object_path))
-      .WillOnce(Return(exported_adapter_object.get()));
+      SetupExportedAdapterObject();
+  ExpectPropertiesMethodsExported(exported_adapter_object);
+  ExpectAdvertisingManagerMethodsExported(exported_adapter_object);
+  ExpectPropertiesMethodsExported(exported_agent_manager_object);
+  ExpectAgentManagerMethodsExported(exported_agent_manager_object);
 
   TestInit(exported_root_object);
 
@@ -412,13 +439,6 @@ TEST_F(NewblueDaemonTest, DiscoveryAPI) {
 }
 
 TEST_F(NewblueDaemonTest, IdleMode) {
-  scoped_refptr<dbus::MockExportedObject> exported_root_object =
-      SetupExportedRootObject();
-  scoped_refptr<dbus::MockExportedObject> exported_agent_manager_object =
-      SetupExportedAgentManagerObject();
-  scoped_refptr<dbus::MockExportedObject> exported_adapter_object =
-      SetupExportedAdapterObject();
-
   auto libnewblue = std::make_unique<MockLibNewblue>();
   libnewblue_ = libnewblue.get();
   auto newblue = std::make_unique<MockNewblue>(std::move(libnewblue));
@@ -426,9 +446,8 @@ TEST_F(NewblueDaemonTest, IdleMode) {
   newblue_daemon_ = std::make_unique<NewblueDaemon>(std::move(newblue),
                                                     true /* is_idle_mode */);
 
-  ExpectTestInit(exported_root_object);
-  EXPECT_CALL(*newblue_, Init()).WillOnce(Return(true));
   // In idle mode, the daemon shouldn't try to bring up the LE stack.
+  EXPECT_CALL(*newblue_, Init()).Times(0);
   EXPECT_CALL(*newblue_, ListenReadyForUp(_)).Times(0);
   EXPECT_TRUE(newblue_daemon_->Init(
       bus_, nullptr /* no need to access the delegator */));

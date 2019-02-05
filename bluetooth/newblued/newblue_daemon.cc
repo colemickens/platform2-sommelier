@@ -88,6 +88,12 @@ bool NewblueDaemon::Init(scoped_refptr<dbus::Bus> bus,
                << newblue_object_manager::kNewblueObjectManagerServiceName;
   }
 
+  if (is_idle_mode_) {
+    LOG(INFO) << "LE splitter not enabled, newblued running in idle mode.";
+    LOG(INFO) << "To enable, run 'newblue enable' in crosh and reboot.";
+    return true;
+  }
+
   auto exported_object_manager =
       std::make_unique<brillo::dbus_utils::ExportedObjectManager>(
           bus_, dbus::ObjectPath(
@@ -117,12 +123,6 @@ bool NewblueDaemon::Init(scoped_refptr<dbus::Bus> bus,
           bus_, exported_object_manager_wrapper_.get());
   agent_manager_interface_handler_->Init();
   newblue_->RegisterPairingAgent(agent_manager_interface_handler_.get());
-
-  if (is_idle_mode_) {
-    LOG(INFO) << "LE splitter not enabled, newblued running in idle mode.";
-    LOG(INFO) << "To enable start /var/lib/bluetooth/newblue with '1'";
-    return true;
-  }
 
   if (!newblue_->ListenReadyForUp(base::Bind(&NewblueDaemon::OnHciReadyForUp,
                                              base::Unretained(this)))) {
