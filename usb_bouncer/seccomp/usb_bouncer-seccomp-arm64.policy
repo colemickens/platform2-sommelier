@@ -6,6 +6,7 @@ clock_getres: 1
 close: 1
 connect: 1
 creat: 1
+exit: 1
 exit_group: 1
 fchmod: arg1 == 0600
 fcntl: 1
@@ -23,6 +24,8 @@ openat: 1
 ppoll: 1
 read: 1
 recvmsg: 1
+restart_syscall: 1
+rt_sigreturn: 1
 sendmsg: 1
 sendto: 1
 # For connecting to session_manager over dbus.
