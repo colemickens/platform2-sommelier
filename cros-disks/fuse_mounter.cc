@@ -82,9 +82,8 @@ MountErrorType FUSEMounter::MountImpl() {
   mount_process.SetNoNewPrivileges();
   // TODO(crbug.com/866377): Run FUSE fully deprivileged.
   // Currently SYS_ADMIN is needed to perform mount()/umount() calls from
-  // libfuse and SYS_CHROOT is needed to call pivot_root() from minijail.
-  mount_process.SetCapabilities(CAP_TO_MASK(CAP_SYS_ADMIN) |
-                                CAP_TO_MASK(CAP_SYS_CHROOT));
+  // libfuse.
+  mount_process.SetCapabilities(CAP_TO_MASK(CAP_SYS_ADMIN));
 
   // The FUSE mount program is put under a new mount namespace, so mounts
   // inside that namespace don't normally propagate out except when a mount is
