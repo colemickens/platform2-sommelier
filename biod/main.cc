@@ -69,6 +69,10 @@ int main(int argc, char* argv[]) {
   logging_settings.log_file = log_file.value().c_str();
   logging_settings.lock_log = logging::DONT_LOCK_LOG_FILE;
   logging::InitLogging(logging_settings);
+  logging::SetLogItems(true,    // process ID
+                       true,    // thread ID
+                       true,    // timestamp
+                       false);  // tickcount
   LOG(INFO) << "vcsid " << VCSID;
 
   base::MessageLoopForIO message_loop;

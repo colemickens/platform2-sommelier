@@ -116,6 +116,10 @@ int main(int argc, char* argv[]) {
   logging_settings.log_file = log_file.value().c_str();
   logging_settings.lock_log = logging::DONT_LOCK_LOG_FILE;
   logging_settings.delete_old = logging::DELETE_OLD_LOG_FILE;
+  logging::SetLogItems(true,    // process ID
+                       true,    // thread ID
+                       true,    // timestamp
+                       false);  // tickcount
   logging::InitLogging(logging_settings);
 
   // The first thing we do is read the buffer, and delete the file.
