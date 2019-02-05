@@ -314,6 +314,13 @@ crypto::ScopedEC_KEY CreateECCPublicKeyFromObject(const Object* key_object) {
   if (key_ptr == nullptr)
     return nullptr;
   CHECK_EQ(key_ptr, key.get());
+
+  if (!EC_KEY_check_key(key.get())) {
+    LOG(ERROR) << __func__
+               << ": Bad key created from object. OpenSSL key check fail.";
+    return nullptr;
+  }
+
   return key;
 }
 
@@ -331,6 +338,22 @@ crypto::ScopedEC_KEY CreateECCPrivateKeyFromObject(const Object* key_object) {
 
   if (!EC_KEY_set_private_key(key.get(), d.get()))
     return nullptr;
+
+  // OpenSSL will not set public key field. Need to manually compute.
+  const EC_GROUP* group = EC_KEY_get0_group(key.get());
+  if (group == nullptr)
+    return nullptr;
+
+  crypto::ScopedEC_POINT pub_key(EC_POINT_new(group));
+  EC_POINT_mul(group, pub_key.get(), d.get(), nullptr, nullptr, nullptr);
+  if (!EC_KEY_set_public_key(key.get(), pub_key.get()))
+    return nullptr;
+
+  if (!EC_KEY_check_key(key.get())) {
+    LOG(ERROR) << __func__
+               << ": Bad key created from object. OpenSSL key check fail.";
+    return nullptr;
+  }
 
   return key;
 }
