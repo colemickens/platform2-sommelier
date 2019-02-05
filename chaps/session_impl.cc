@@ -1712,6 +1712,53 @@ CK_RV SessionImpl::WrapRSAPrivateKey(Object* object) {
   return CKR_OK;
 }
 
+CK_RV SessionImpl::WrapECCPrivateKey(Object* object) {
+  if (!object->IsAttributePresent(CKA_EC_PARAMS) ||
+      !object->IsAttributePresent(CKA_VALUE)) {
+    return CKR_TEMPLATE_INCOMPLETE;
+  }
+
+  // Get OpenSSL NID
+  crypto::ScopedEC_Key key = CreateECCPrivateKeyFromObject(object);
+  const EC_GROUP* group = EC_KEY_get0_group(key.get());
+  if (group == nullptr) {
+    return CKR_FUNCTION_FAILED;
+  }
+  int curve_nid = EC_GROUP_get_curve_name(group);
+
+  // If TPM doesn't support, fall back to software.
+  if (!tpm_utility_->IsECCurveSupported(curve_nid)) {
+    return CKR_OK;
+  }
+
+  // Get public key value
+  crypto::ScopedBIGNUM x(BN_new()), y(BN_new());
+  const EC_POINT* ec_point = EC_KEY_get0_public_key(key.get());
+  if (ec_point == nullptr) {
+    return CKR_FUNCTION_FAILED;
+  }
+  if (!EC_POINT_get_affine_coordinates_GF2m(group, ec_point, x.get(), y.get(),
+                                            nullptr)) {
+    return CKR_FUNCTION_FAILED;
+  }
+
+  string auth_data = GenerateRandomSoftware(kDefaultAuthDataBytes);
+  string key_blob;
+  int tpm_key_handle = 0;
+  if (!tpm_utility_->WrapECCKey(slot_id_, curve_nid, ConvertFromBIGNUM(x.get()),
+                                ConvertFromBIGNUM(y.get()),
+                                object->GetAttributeString(CKA_VALUE),
+                                SecureBlob(auth_data.begin(), auth_data.end()),
+                                &key_blob, &tpm_key_handle)) {
+    return CKR_FUNCTION_FAILED;
+  }
+  object->SetAttributeString(kAuthDataAttribute, auth_data);
+  object->SetAttributeString(kKeyBlobAttribute, key_blob);
+
+  object->RemoveAttribute(CKA_VALUE);
+  return CKR_OK;
+}
+
 CK_RV SessionImpl::WrapPrivateKey(Object* object) {
   if (!tpm_utility_->IsTPMAvailable() ||
       object->GetObjectClass() != CKO_PRIVATE_KEY ||
@@ -1722,6 +1769,8 @@ CK_RV SessionImpl::WrapPrivateKey(Object* object) {
   int key_type = object->GetAttributeInt(CKA_KEY_TYPE, 0);
   if (key_type == CKK_RSA) {
     return WrapRSAPrivateKey(object);
+  } else if (key_type == CKK_EC) {
+    return WrapECCPrivateKey(object);
   } else {
     // If TPM doesn't support, fall back to software.
     LOG(WARNING) << __func__ << ": Key type " << key_type

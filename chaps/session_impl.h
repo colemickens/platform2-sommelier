@@ -216,6 +216,7 @@ class SessionImpl : public Session {
   // the private key can only be accessed by the TPM.
   CK_RV WrapPrivateKey(Object* object);
   CK_RV WrapRSAPrivateKey(Object* object);
+  CK_RV WrapECCPrivateKey(Object* object);
 
   ChapsFactory* factory_;
   std::vector<int> find_results_;

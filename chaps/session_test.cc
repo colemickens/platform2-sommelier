@@ -84,7 +84,7 @@ void ConfigureTPMUtility(chaps::TPMUtilityMock* tpm) {
   EXPECT_CALL(*tpm, GenerateRandom(_, _)).WillRepeatedly(Invoke(FakeRandom));
 }
 
-string bn2bin(BIGNUM* bn) {
+string bn2bin(const BIGNUM* bn) {
   string bin;
   bin.resize(BN_num_bytes(bn));
   bin.resize(BN_bn2bin(bn, chaps::ConvertStringToByteBuffer(bin.data())));
@@ -1142,6 +1142,96 @@ TEST_F(TestSession, ImportRSAWithNoTPM) {
   EXPECT_TRUE(object->IsAttributePresent(CKA_EXPONENT_2));
   EXPECT_TRUE(object->IsAttributePresent(CKA_COEFFICIENT));
   RSA_free(rsa);
+}
+
+TEST_F(TestSession, ImportECCWithTPM) {
+  EXPECT_CALL(tpm_, IsECCurveSupported(NID_X9_62_prime256v1))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(tpm_, WrapECCKey(_, _, _, _, _, _, _, _)).WillOnce(Return(true));
+
+  crypto::ScopedEC_KEY key(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
+  ASSERT_NE(key, nullptr);
+  // Focus GetECParametersAsString() dump OID to CKA_EC_PARAMS
+  EC_KEY_set_asn1_flag(key.get(), OPENSSL_EC_NAMED_CURVE);
+  ASSERT_TRUE(EC_KEY_generate_key(key.get()));
+
+  CK_OBJECT_CLASS priv_class = CKO_PRIVATE_KEY;
+  CK_KEY_TYPE key_type = CKK_EC;
+  CK_BBOOL false_value = CK_FALSE;
+  CK_BBOOL true_value = CK_TRUE;
+  string id = "test_id";
+  string label = "test_label";
+  string ec_params = GetECParametersAsString(key);
+  string private_value = bn2bin(EC_KEY_get0_private_key(key.get()));
+
+  CK_ATTRIBUTE private_attributes[] = {
+      {CKA_CLASS, &priv_class, sizeof(priv_class)},
+      {CKA_KEY_TYPE, &key_type, sizeof(key_type)},
+      {CKA_DECRYPT, &true_value, sizeof(true_value)},
+      {CKA_SIGN, &true_value, sizeof(true_value)},
+      {CKA_UNWRAP, &false_value, sizeof(false_value)},
+      {CKA_SENSITIVE, &true_value, sizeof(true_value)},
+      {CKA_TOKEN, &true_value, sizeof(true_value)},
+      {CKA_PRIVATE, &true_value, sizeof(true_value)},
+      {CKA_ID, base::string_as_array(&id), id.length()},
+      {CKA_LABEL, base::string_as_array(&label), label.length()},
+      {CKA_EC_PARAMS, base::string_as_array(&ec_params), ec_params.length()},
+      {CKA_VALUE, base::string_as_array(&private_value),
+       private_value.length()},
+  };
+
+  int handle = 0;
+  ASSERT_EQ(CKR_OK,
+            session_->CreateObject(private_attributes,
+                                   arraysize(private_attributes), &handle));
+
+  // There are a few sensitive attributes that MUST be removed.
+  const Object* object = NULL;
+  ASSERT_TRUE(session_->GetObject(handle, &object));
+  EXPECT_FALSE(object->IsAttributePresent(CKA_VALUE));
+}
+
+TEST_F(TestSession, ImportECCWithNoTPM) {
+  EXPECT_CALL(tpm_, IsTPMAvailable()).WillRepeatedly(Return(false));
+
+  crypto::ScopedEC_KEY key(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
+  ASSERT_NE(key, nullptr);
+  ASSERT_TRUE(EC_KEY_generate_key(key.get()));
+
+  CK_OBJECT_CLASS priv_class = CKO_PRIVATE_KEY;
+  CK_KEY_TYPE key_type = CKK_EC;
+  CK_BBOOL false_value = CK_FALSE;
+  CK_BBOOL true_value = CK_TRUE;
+  string id = "test_id";
+  string label = "test_label";
+  string ec_params = GetECParametersAsString(key);
+  string private_value = bn2bin(EC_KEY_get0_private_key(key.get()));
+
+  CK_ATTRIBUTE private_attributes[] = {
+      {CKA_CLASS, &priv_class, sizeof(priv_class)},
+      {CKA_KEY_TYPE, &key_type, sizeof(key_type)},
+      {CKA_DECRYPT, &true_value, sizeof(true_value)},
+      {CKA_SIGN, &true_value, sizeof(true_value)},
+      {CKA_UNWRAP, &false_value, sizeof(false_value)},
+      {CKA_SENSITIVE, &true_value, sizeof(true_value)},
+      {CKA_TOKEN, &true_value, sizeof(true_value)},
+      {CKA_PRIVATE, &true_value, sizeof(true_value)},
+      {CKA_ID, base::string_as_array(&id), id.length()},
+      {CKA_LABEL, base::string_as_array(&label), label.length()},
+      {CKA_EC_PARAMS, base::string_as_array(&ec_params), ec_params.length()},
+      {CKA_VALUE, base::string_as_array(&private_value),
+       private_value.length()},
+  };
+
+  int handle = 0;
+  ASSERT_EQ(CKR_OK,
+            session_->CreateObject(private_attributes,
+                                   arraysize(private_attributes), &handle));
+
+  // For a software key, the sensitive attributes should still exist.
+  const Object* object = NULL;
+  ASSERT_TRUE(session_->GetObject(handle, &object));
+  EXPECT_TRUE(object->IsAttributePresent(CKA_VALUE));
 }
 
 TEST_F(TestSession, CreateObjectsNoPrivate) {
