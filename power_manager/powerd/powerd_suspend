@@ -207,7 +207,7 @@ ec_power_modem() {
 #       setting the event mask, e.g., the Mode Change event.
 #       Refer to the following file for the list of bluetooth controllers.
 #       src/platform2/power_manager/udev/gen_autosuspend_rules.py
-BT_MASK_WHITELIST="8087:* 0cf3:e300 04ca:301a"
+BT_MASK_WHITELIST="8087:*"
 
 # Check if bt_vendor:bt_product is in the white list.
 in_bt_mask_whitelist() {
