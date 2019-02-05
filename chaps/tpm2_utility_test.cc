@@ -508,6 +508,55 @@ TEST_F(TPM2UtilityTest, WrapRSAKeyLoadFail) {
                                   &key_blob, &key_handle));
 }
 
+TEST_F(TPM2UtilityTest, WrapECCKeySuccess) {
+  TPM2UtilityImpl utility(factory_.get());
+  const std::string public_point_x("public_point_x");
+  const std::string public_point_y("public_point_y");
+  const std::string private_value("private_value");
+  const SecureBlob auth_data;
+  std::string key_blob;
+  int key_handle;
+  EXPECT_CALL(mock_tpm_utility_,
+              ImportECCKey(_, trunks::TPM_ECC_NIST_P256, public_point_x,
+                           public_point_y, private_value, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_TRUE(utility.WrapECCKey(1, NID_X9_62_prime256v1, public_point_x,
+                                 public_point_y, private_value, auth_data,
+                                 &key_blob, &key_handle));
+}
+
+TEST_F(TPM2UtilityTest, WrapECCKeyImportFail) {
+  TPM2UtilityImpl utility(factory_.get());
+  const std::string public_point_x;
+  const std::string public_point_y;
+  const std::string private_value;
+  const SecureBlob auth_data;
+  std::string key_blob;
+  int key_handle;
+  EXPECT_CALL(mock_tpm_utility_, ImportECCKey(_, _, _, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_FALSE(utility.WrapECCKey(1, NID_X9_62_prime256v1, public_point_x,
+                                  public_point_y, private_value, auth_data,
+                                  &key_blob, &key_handle));
+}
+
+TEST_F(TPM2UtilityTest, WrapECCKeyLoadFail) {
+  TPM2UtilityImpl utility(factory_.get());
+  const std::string public_point_x;
+  const std::string public_point_y;
+  const std::string private_value;
+  const SecureBlob auth_data;
+  std::string key_blob;
+  int key_handle;
+  EXPECT_CALL(mock_tpm_utility_, ImportECCKey(_, _, _, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_tpm_utility_, LoadKey(key_blob, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_FALSE(utility.WrapECCKey(1, NID_X9_62_prime256v1, public_point_x,
+                                  public_point_y, private_value, auth_data,
+                                  &key_blob, &key_handle));
+}
+
 TEST_F(TPM2UtilityTest, LoadKeySuccess) {
   TPM2UtilityImpl utility(factory_.get());
   std::string key_blob;

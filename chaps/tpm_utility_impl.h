@@ -65,6 +65,14 @@ class TPMUtilityImpl : public TPMUtility {
                   const brillo::SecureBlob& auth_data,
                   std::string* key_blob,
                   int* key_handle) override;
+  bool WrapECCKey(int slot,
+                  int curve_nid,
+                  const std::string& public_point_x,
+                  const std::string& public_point_y,
+                  const std::string& private_value,
+                  const brillo::SecureBlob& auth_data,
+                  std::string* key_blob,
+                  int* key_handle) override;
   bool LoadKey(int slot,
                const std::string& key_blob,
                const brillo::SecureBlob& auth_data,

@@ -596,6 +596,39 @@ bool TPM2UtilityImpl::WrapRSAKey(int slot,
   return true;
 }
 
+bool TPM2UtilityImpl::WrapECCKey(int slot,
+                                 int curve_nid,
+                                 const std::string& public_point_x,
+                                 const std::string& public_point_y,
+                                 const std::string& private_value,
+                                 const brillo::SecureBlob& auth_data,
+                                 std::string* key_blob,
+                                 int* key_handle) {
+  AutoLock lock(lock_);
+
+  ScopedSession session_scope(factory_, &session_);
+  if (!session_) {
+    return false;
+  }
+
+  session_->SetEntityAuthorizationValue("");  // SRK Authorization Value.
+  TPM_RC result = trunks_tpm_utility_->ImportECCKey(
+      trunks::TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey,
+      ConvertNIDToTrunksCurveID(curve_nid), public_point_x, public_point_y,
+      private_value, auth_data.to_string(), session_->GetDelegate(), key_blob);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error importing ECC key to TPM: "
+               << trunks::GetErrorString(result);
+    return false;
+  }
+
+  if (!LoadKeyWithParentInternal(slot, *key_blob, auth_data, kStorageRootKey,
+                                 key_handle)) {
+    return false;
+  }
+  return true;
+}
+
 bool TPM2UtilityImpl::LoadKey(int slot,
                               const std::string& key_blob,
                               const SecureBlob& auth_data,

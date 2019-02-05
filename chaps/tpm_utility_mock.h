@@ -55,6 +55,15 @@ class TPMUtilityMock : public TPMUtility {
                     const brillo::SecureBlob&,
                     std::string*,
                     int*));
+  MOCK_METHOD8(WrapECCKey,
+               bool(int,
+                    int,
+                    const std::string&,
+                    const std::string&,
+                    const std::string&,
+                    const brillo::SecureBlob&,
+                    std::string*,
+                    int*));
   MOCK_METHOD4(LoadKey, bool(int,
                              const std::string&,
                              const brillo::SecureBlob&,

@@ -569,6 +569,18 @@ bool TPMUtilityImpl::WrapRSAKey(int slot,
   return true;
 }
 
+bool TPMUtilityImpl::WrapECCKey(int slot,
+                                int curve_nid,
+                                const std::string& public_point_x,
+                                const std::string& public_point_y,
+                                const std::string& private_value,
+                                const brillo::SecureBlob& auth_data,
+                                std::string* key_blob,
+                                int* key_handle) {
+  LOG(ERROR) << __func__ << "TPM 1.2 doesn't support ECC.";
+  return false;
+}
+
 bool TPMUtilityImpl::LoadKey(int slot,
                              const string& key_blob,
                              const SecureBlob& auth_data,

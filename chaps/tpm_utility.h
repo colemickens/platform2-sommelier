@@ -140,6 +140,28 @@ class TPMUtility {
                           std::string* key_blob,
                           int* key_handle) = 0;
 
+  // Wraps an RSA key pair with the SRK.
+  //   slot - The slot associated with this key.
+  //   curve_nid - The OpenSSL NID of the ECC curve.
+  //   public_point_x - The x coordinate of ECC public key point on the curve.
+  //   public_point_y - The y coordinate of ECC public key point on the curve.
+  //   private_value - The ECC private key value.
+  //   auth_data - Authorization data which will be associated with the new key.
+  //   key_blob - Will be populated with the wrapped key blob as provided by the
+  //              TPM. This should be saved so the key can be loaded again
+  //              in the future.
+  //   key_handle - A handle to the new key. This will be valid until keys are
+  //                unloaded for the given slot.
+  // Returns true on success.
+  virtual bool WrapECCKey(int slot,
+                          int curve_nid,
+                          const std::string& public_point_x,
+                          const std::string& public_point_y,
+                          const std::string& private_value,
+                          const brillo::SecureBlob& auth_data,
+                          std::string* key_blob,
+                          int* key_handle) = 0;
+
   // Loads a key by blob into the TPM.
   //   slot - The slot associated with this key.
   //   key_blob - The key blob as provided by GenerateKey or WrapRSAKey.
