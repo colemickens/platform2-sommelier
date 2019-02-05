@@ -21,10 +21,10 @@ namespace {
 void PrintUsage() {
   printf(R"(Usage:
   help - prints this help message.
-  cleanup - removes stale whitelist entries.
+  cleanup - removes stale allow-list entries.
   genrules - writes the generated rules configuration and to stdout.
   udev (add|remove) <devpath> - handles a udev device event.
-  userlogin - add current entries to user whitelist.
+  userlogin - add current entries to user allow-list.
 )");
 }
 

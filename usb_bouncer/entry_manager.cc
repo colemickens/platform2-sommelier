@@ -76,8 +76,8 @@ bool EntryManager::GarbageCollect() {
 }
 
 std::string EntryManager::GenerateRules() const {
-  // Include user specific whitelist rules first so that they take precedence
-  // over any blacklist rules.
+  // Include user specific allow-list rules first so that they take precedence
+  // over any block-list rules.
   std::string result = "";
   if (user_entries_) {
     for (const auto& rule : UniqueRules(user_entries_->entries())) {
@@ -129,7 +129,7 @@ bool EntryManager::HandleUdev(UdevAction action, const std::string& devpath) {
     case UdevAction::kAdd: {
       std::string rule = rule_from_devpath_(devpath);
       if (!ValidateRule(rule)) {
-        LOG(ERROR) << "Unable convert devpath to USBGuard whitelist rule.";
+        LOG(ERROR) << "Unable convert devpath to USBGuard allow-list rule.";
         return false;
       }
 
@@ -161,7 +161,7 @@ bool EntryManager::HandleUdev(UdevAction action, const std::string& devpath) {
     }
     case UdevAction::kRemove: {
       // We only remove entries from the global db here because it represents
-      // whitelist rules for the current state of the system. These entries
+      // allow-list rules for the current state of the system. These entries
       // cannot be generated on-the-fly because of mode switching devices, and
       // are not removed from the user db because the user db represents devices
       // that have been used some time by a user that should be trusted.

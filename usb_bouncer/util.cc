@@ -64,7 +64,7 @@ class UsbguardDeviceManagerHooksImpl : public usbguard::DeviceManagerHooks {
 
     // If usbguard-daemon is running when a device is connected, it might have
     // blocked the particular device in which case this will be a block rule.
-    // For the purpose of whitelisting, this needs to be an Allow rule.
+    // For the purpose of allow-listing, this needs to be an Allow rule.
     lastRule_.setTarget(usbguard::Rule::Target::Allow);
   }
 
@@ -145,7 +145,7 @@ std::string Hash(const google::protobuf::RepeatedPtrField<std::string>& rules) {
     SHA256_Update(&ctx, rule.data(), rule.size());
     if (!first) {
       // Add a end of line to delimit rules for the mode switching case when
-      // more than one white-listing rule is needed for a single device.
+      // more than one allow-listing rule is needed for a single device.
       SHA256_Update(&ctx, "\n", 1);
     } else {
       first = false;

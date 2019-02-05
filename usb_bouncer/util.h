@@ -43,8 +43,8 @@ std::unique_ptr<RuleDB> GetDBFromPath(const base::FilePath& parent_dir,
 
 // Invokes usbguard to get a rule corresponding to |devpath|. Note that
 // |devpath| isn't actually a valid path until you prepend "/sys". This matches
-// the behavior of udev. The return value is a whitelist rule from usbguard with
-// the port specific fields removed.
+// the behavior of udev. The return value is a allow-list rule from usbguard
+// with the port specific fields removed.
 std::string GetRuleFromDevPath(const std::string& devpath);
 
 // Returns false if rule is not a valid rule.
@@ -57,8 +57,8 @@ base::FilePath GetUserDBDir();
 
 // Returns true if the lock screen is being shown. On a D-Bus failure true is
 // returned because that is the safer failure state. This may result in some
-// devices not being added to a user's white-list, but that is safer than a
-// malicious device being added to the white-list while at the lock-screen.
+// devices not being added to a user's allow-list, but that is safer than a
+// malicious device being added to the allow-list while at the lock-screen.
 bool IsLockscreenShown();
 
 std::string StripLeadingPathSeparators(const std::string& path);
@@ -66,7 +66,7 @@ std::string StripLeadingPathSeparators(const std::string& path);
 // Returns a set of all the rules present in |entries|. This serves as a
 // filtering step prior to generating the rules configuration for
 // usbguard-daemon so that there aren't duplicate rules. The rules are
-// deduplicated by string value ignoring any metadata like the time last used.
+// de-duplicated by string value ignoring any metadata like the time last used.
 std::unordered_set<std::string> UniqueRules(const EntryMap& entries);
 
 bool WriteProtoToPath(const base::FilePath& db_path,

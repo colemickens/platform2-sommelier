@@ -24,7 +24,7 @@ using DevpathToRuleCallback =
 constexpr char kDefaultGlobalDir[] = "run/usb_bouncer/";
 constexpr char kUsbguardPolicyDir[] = "etc/usbguard/rules.d";
 
-// Keep track of white-list rules needed for trusted USB devices for
+// Keep track of allow-list rules needed for trusted USB devices for
 // usbguard-daemon. Specifically maintains lists of:
 //   1) Rules representing the currently connected devices
 //   2) Optionally, Rules for USB devices that were present while the primary
@@ -53,9 +53,9 @@ class EntryManager {
   // given |devpath|. Note that |devpath| isn't a valid path unitl "/sys" is
   // prepended to be consistent with udev.
   // For |action|:
-  //   kAdd: whitelist entries are added to the global DB and to
+  //   kAdd: allow-list entries are added to the global DB and to
   //       the user DB if it is available.
-  //   kRemove: whitelist entries in the global DB are moved to the trash map
+  //   kRemove: allow-list entries in the global DB are moved to the trash map
   //       incase a device uses mode switching, so each mode can be added to a
   //       single entry in the database.
   bool HandleUdev(UdevAction action, const std::string& devpath);
