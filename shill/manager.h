@@ -814,8 +814,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Task for periodically checking various device status.
   base::CancelableClosure device_status_check_task_;
 
-  // TODO(petkov): Currently this handles both terminate and suspend
-  // actions. Rename all relevant identifiers to capture this.
+  // Actions to take when shill is terminating.
   HookTable termination_actions_;
 
   // Is a suspend delay currently registered with the power manager?
