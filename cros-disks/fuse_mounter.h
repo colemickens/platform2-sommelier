@@ -5,8 +5,12 @@
 #ifndef CROS_DISKS_FUSE_MOUNTER_H_
 #define CROS_DISKS_FUSE_MOUNTER_H_
 
+#include <sys/types.h>
+
 #include <string>
 #include <vector>
+
+#include <base/files/file.h>
 
 #include "cros-disks/mounter.h"
 
@@ -26,7 +30,8 @@ class FUSEMounter : public Mounter {
               const std::string& mount_user,
               const std::string& seccomp_policy,
               const std::vector<std::string>& accessible_paths,
-              bool permit_network_access);
+              bool permit_network_access,
+              bool unprivileged_mount = false);
 
  protected:
   // Mounts a device file using the FUSE mount program at |mount_program_path_|.
@@ -50,6 +55,20 @@ class FUSEMounter : public Mounter {
 
   // Whether to leave network access to the mount program.
   const bool permit_network_access_;
+
+  // Whether to run the fuse program deprivileged.
+  // TODO(crbug.com/866377): Remove when all fuse programs can run without
+  // privileges.
+  const bool unprivileged_mount_;
+
+ private:
+  // Returns an opened FUSE device file.
+  base::File OpenFuseDeviceFile() const;
+
+  // Mount a FUSE device for unprivileged FUSE mounts.
+  bool MountFuseDevice(const base::File& fuse_file,
+                       uid_t mount_user_id,
+                       gid_t mount_group_id) const;
 };
 
 }  // namespace cros_disks

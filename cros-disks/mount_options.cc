@@ -189,4 +189,8 @@ void MountOptions::EnforceOption(const string& option) {
   enforced_options_.push_back(option);
 }
 
+bool MountOptions::HasOption(const std::string& option) const {
+  return base::ContainsValue(options_, option);
+}
+
 }  // namespace cros_disks

@@ -69,6 +69,9 @@ class MountOptions {
   // Converts the mount options into a comma-separated string.
   std::string ToString() const;
 
+  // Returns true if |option| has been set.
+  bool HasOption(const std::string& option) const;
+
  private:
   // Whitelisted mount options.
   std::vector<std::string> whitelist_exact_;

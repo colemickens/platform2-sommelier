@@ -278,4 +278,17 @@ TEST_F(MountOptionsTest, ToMountFlagsAndData) {
   EXPECT_EQ(expected_data, flags_and_data.second);
 }
 
+TEST_F(MountOptionsTest, HasOption) {
+  mount_options_.WhitelistOption(MountOptions::kOptionNoSymFollow);
+
+  std::vector<std::string> options = {MountOptions::kOptionNoSymFollow};
+  mount_options_.Initialize(options, false, "", "");
+
+  EXPECT_TRUE(mount_options_.HasOption(MountOptions::kOptionNoSymFollow));
+  EXPECT_FALSE(mount_options_.HasOption(MountOptions::kOptionBind));
+
+  // Enforced option
+  EXPECT_TRUE(mount_options_.HasOption(MountOptions::kOptionNoDev));
+}
+
 }  // namespace cros_disks
