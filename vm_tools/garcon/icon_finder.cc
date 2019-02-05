@@ -23,6 +23,8 @@ constexpr char kXdgDataDirsEnvVar[] = "XDG_DATA_DIRS";
 constexpr char kXdgDataDirsDefault[] = "/usr/share/";
 constexpr char kDefaultPixmapsDir[] = "/usr/share/pixmaps/";
 const char* const kThemeDirs[] = {"gnome", "hicolor"};
+const int kDefaultIconSizeDirs[] = {128, 96, 64, 48, 32};
+constexpr char kDefaultIconSubdir[] = "apps";
 
 // Returns a vector of directory paths under which an index.theme file is
 // located.
@@ -54,7 +56,20 @@ std::vector<base::FilePath> GetPathsForIcons(const base::FilePath& icon_dir,
   if (icon_index_file) {
     return icon_index_file->GetPathsForSizeAndScale(icon_size, scale);
   } else {
-    return {};
+    // Index files aren't always present, so do our best to try to find
+    // something that'll work.
+    std::vector<base::FilePath> retval;
+    retval.emplace_back(
+        icon_dir.Append(base::StringPrintf("%dx%d", icon_size, icon_size))
+            .Append(kDefaultIconSubdir));
+    for (auto curr_size : kDefaultIconSizeDirs) {
+      if (curr_size != icon_size) {
+        retval.emplace_back(
+            icon_dir.Append(base::StringPrintf("%dx%d", curr_size, curr_size))
+                .Append(kDefaultIconSubdir));
+      }
+    }
+    return retval;
   }
 }
 

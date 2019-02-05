@@ -85,10 +85,16 @@ TEST_F(IconFinderTest, DefaultDirs) {
            base::FilePath("/usr/share/icons/hicolor")});
 }
 
-// This test verifies that empty vector is returned when index.theme file is
-// missing.
+// This test verifies that we get a default list of dirs when the index.theme
+// file is missing.
 TEST_F(IconFinderTest, NoIndexThemeNoDir) {
-  std::vector<base::FilePath> expected_dirs = {};
+  std::vector<base::FilePath> expected_dirs = {
+      icon_theme_dir().Append("48x48").Append("apps"),
+      icon_theme_dir().Append("128x128").Append("apps"),
+      icon_theme_dir().Append("96x96").Append("apps"),
+      icon_theme_dir().Append("64x64").Append("apps"),
+      icon_theme_dir().Append("32x32").Append("apps"),
+  };
   EXPECT_TRUE(GetPathsForIcons(icon_theme_dir(), 48, 1) == expected_dirs);
 }
 
