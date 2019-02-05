@@ -525,10 +525,11 @@ bool Service::Init() {
   }
 
   // Setup & start the gRPC listener services.
-  if (!SetupListenerService(&grpc_thread_vm_, &startup_listener_,
-                            base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY,
-                                               vm_tools::kStartupListenerPort),
-                            &grpc_server_vm_)) {
+  if (!SetupListenerService(
+          &grpc_thread_vm_, &startup_listener_,
+          base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY,
+                             vm_tools::kDefaultStartupListenerPort),
+          &grpc_server_vm_)) {
     LOG(ERROR) << "Failed to setup/startup the VM grpc server";
     return false;
   }

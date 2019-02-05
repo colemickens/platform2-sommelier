@@ -12,7 +12,7 @@ constexpr int kGarconPort = 8889;
 constexpr int kTremplinPort = 8890;
 constexpr int kVshPort = 9001;
 
-constexpr int kStartupListenerPort = 7777;
+constexpr int kDefaultStartupListenerPort = 7777;
 constexpr int kTremplinListenerPort = 7778;
 
 // All ports above this value are reserved for seneschal servers.

@@ -18,10 +18,14 @@
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/files/scoped_file.h>
+#include <base/files/file.h>
+#include <base/files/file_util.h>
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <base/threading/thread.h>
 #include <grpcpp/grpcpp.h>
 
@@ -40,6 +44,13 @@ constexpr char kDevKmsg[] = "/dev/kmsg";
 
 // Prefix inserted before every log message.
 constexpr char kLogPrefix[] = "maitred: ";
+
+// Path to kernel cmdline file.
+constexpr char kKernelCmdFile[] = "/proc/cmdline";
+
+// Kernel Command line parameter
+constexpr char kMaitredPortParam[] = "maitred.listen_port=";
+constexpr char kMaitredPortParamFmt[] = "maitred.listen_port=%d";
 
 // File descriptor that points to /dev/kmsg.  Needs to be a global variable
 // because logging::LogMessageHandlerFunction is just a function pointer so we
@@ -187,11 +198,39 @@ int main(int argc, char** argv) {
 
   LOG(INFO) << "Server listening on port " << vm_tools::kMaitredPort;
 
+  // Check for kenel parameter to set startup listener port.
+  int startup_port = vm_tools::kDefaultStartupListenerPort;
+  std::string kernel_parameters;
+  if (base::ReadFileToString(base::FilePath(kKernelCmdFile),
+                             &kernel_parameters)) {
+    std::vector<base::StringPiece> params = base::SplitStringPiece(
+        kernel_parameters, " ", base::WhitespaceHandling::TRIM_WHITESPACE,
+        base::SplitResult::SPLIT_WANT_NONEMPTY);
+
+    for (auto& p : params) {
+      if (!base::StartsWith(p, kMaitredPortParam,
+                            base::CompareCase::SENSITIVE)) {
+        continue;
+      }
+
+      int read_port;
+      if (sscanf(p.as_string().c_str(), kMaitredPortParamFmt, &read_port) !=
+          1) {
+        continue;
+      }
+
+      startup_port = read_port;
+      break;
+    }
+  }
+
+  LOG(INFO) << "Using startup listener port: " << startup_port;
+
   // Notify the host system that we are ready.
-  vm_tools::StartupListener::Stub stub(
-      grpc::CreateChannel(base::StringPrintf("vsock:%u:%u", VMADDR_CID_HOST,
-                                             vm_tools::kStartupListenerPort),
-                          grpc::InsecureChannelCredentials()));
+  vm_tools::StartupListener::Stub stub(grpc::CreateChannel(
+      base::StringPrintf("vsock:%u:%u", VMADDR_CID_HOST, startup_port),
+      grpc::InsecureChannelCredentials()));
+
   grpc::ClientContext ctx;
   vm_tools::EmptyMessage empty;
   grpc::Status status = stub.VmReady(&ctx, empty, &empty);

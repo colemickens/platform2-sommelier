@@ -20,6 +20,9 @@ namespace {
 // The path to the file where we store the next cid to be used.
 const char kNextCidPath[] = "/run/vm/next_cid";
 
+// The max value for a VM cid
+constexpr int kCidMaxValue = 8192;
+
 // Acquires a file lock on an fd and drops the lock when it goes out of scope.
 class FileLock final {
  public:
@@ -96,6 +99,11 @@ uint32_t VsockCidPool::Allocate() {
   }
 
   uint32_t next_cid = cid + 1;
+  if (next_cid >= kCidMaxValue) {
+    PLOG(ERROR) << "Next cid is greater than upper limit: " << next_cid;
+    return 0;
+  }
+
   ret = HANDLE_EINTR(write(lock->file().get(), &next_cid, sizeof(next_cid)));
   if (ret != sizeof(next_cid)) {
     PLOG(ERROR) << "Failed to write next cid to " << kNextCidPath;
