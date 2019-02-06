@@ -51,6 +51,7 @@ _IUSE = [
     'json_store',
     'kvm_host',
     'metrics_uploader',
+    'mojo',
     'msan',
     'mtd',
     'opengles',
