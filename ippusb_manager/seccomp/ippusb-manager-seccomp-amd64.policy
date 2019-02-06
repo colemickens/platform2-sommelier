@@ -26,14 +26,18 @@ getegid: 1
 geteuid: 1
 getgid: 1
 getpid: 1
+# Filter arg2 to disallow GRND_RANDOM (2).
+getrandom: arg2 in 0xfffffffd
 getresgid: 1
 getresuid: 1
 getrlimit: 1
 getsockname: 1
+gettid: 1
 getuid: 1
 ioctl: 1
 listen: 1
 lseek: 1
+lstat: 1
 madvise: 1
 mmap: arg2 in 0xfffffffb || arg2 in 0xfffffffd
 mount: 1
@@ -46,6 +50,7 @@ pipe: 1
 poll: 1
 prctl: 1
 read: 1
+readlinkat: 1
 recvfrom: 1
 recvmsg: 1
 restart_syscall: 1

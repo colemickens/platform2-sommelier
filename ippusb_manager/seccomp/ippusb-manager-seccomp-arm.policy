@@ -22,16 +22,21 @@ fcntl64: 1
 fstat64: 1
 futex: 1
 getdents: 1
+getdents64: 1
 getegid32: 1
 geteuid32: 1
 getgid32: 1
+# Filter arg2 to disallow GRND_RANDOM (2).
+getrandom: arg2 in 0xfffffffd
 getresgid32: 1
 getresuid32: 1
 getsockname: 1
+gettid: 1
 gettimeofday: 1
 getuid32: 1
 ioctl: 1
 listen: 1
+lstat64: 1
 madvise: 1
 mmap2: arg2 in 0xfffffffb || arg2 in 0xfffffffd
 mount: 1
@@ -44,6 +49,7 @@ pipe: 1
 poll: 1
 prctl: 1
 read: 1
+readlinkat: 1
 recv: 1
 recvmsg: 1
 restart_syscall: 1
