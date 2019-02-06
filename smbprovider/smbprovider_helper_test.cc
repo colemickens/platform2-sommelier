@@ -110,6 +110,38 @@ TEST_F(SmbProviderHelperTest, GetErrorFromErrno) {
   EXPECT_EQ(ERROR_FAILED, GetErrorFromErrno(ESPIPE));
 }
 
+// Errors should be returned correctly.
+TEST_F(SmbProviderHelperTest, GetErrorFromErrnoForReadDir) {
+  EXPECT_EQ(ERROR_ACCESS_DENIED, GetErrorFromErrnoForReadDir(EPERM));
+  EXPECT_EQ(ERROR_ACCESS_DENIED, GetErrorFromErrnoForReadDir(EACCES));
+
+  EXPECT_EQ(ERROR_NOT_FOUND, GetErrorFromErrnoForReadDir(EBADF));
+  EXPECT_EQ(ERROR_NOT_FOUND, GetErrorFromErrnoForReadDir(ENODEV));
+  EXPECT_EQ(ERROR_NOT_FOUND, GetErrorFromErrnoForReadDir(ENOENT));
+  EXPECT_EQ(ERROR_NOT_FOUND, GetErrorFromErrnoForReadDir(ETIMEDOUT));
+  // EINVAL is returned when Samba attempts to parse a hostname
+  // (eg. \\qnap\testshare).
+  EXPECT_EQ(ERROR_NOT_FOUND, GetErrorFromErrnoForReadDir(EINVAL));
+
+  EXPECT_EQ(ERROR_TOO_MANY_OPENED, GetErrorFromErrnoForReadDir(EMFILE));
+  EXPECT_EQ(ERROR_TOO_MANY_OPENED, GetErrorFromErrnoForReadDir(ENFILE));
+
+  EXPECT_EQ(ERROR_NOT_A_DIRECTORY, GetErrorFromErrnoForReadDir(ENOTDIR));
+
+  EXPECT_EQ(ERROR_NOT_A_FILE, GetErrorFromErrnoForReadDir(EISDIR));
+
+  EXPECT_EQ(ERROR_NOT_EMPTY, GetErrorFromErrnoForReadDir(ENOTEMPTY));
+
+  EXPECT_EQ(ERROR_EXISTS, GetErrorFromErrnoForReadDir(EEXIST));
+
+  EXPECT_EQ(ERROR_SMB1_UNSUPPORTED, GetErrorFromErrnoForReadDir(ECONNABORTED));
+
+  // Errors without an explicit mapping get mapped
+  // to ERROR_FAILED.
+  EXPECT_EQ(ERROR_FAILED, GetErrorFromErrnoForReadDir(ENOSPC));
+  EXPECT_EQ(ERROR_FAILED, GetErrorFromErrnoForReadDir(ESPIPE));
+}
+
 // IsDirectory should only return true on directory stats.
 TEST_F(SmbProviderHelperTest, IsDirectory) {
   struct stat dir_info;

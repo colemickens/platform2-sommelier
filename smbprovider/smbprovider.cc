@@ -1535,7 +1535,7 @@ ErrorType SmbProvider::StartReadDirectory(
     return ERROR_OK;
   }
 
-  return GetErrorFromErrno(read_dir_result);
+  return GetErrorFromErrnoForReadDir(read_dir_result);
 }
 
 ErrorType SmbProvider::ContinueReadDirectory(int32_t read_dir_token,

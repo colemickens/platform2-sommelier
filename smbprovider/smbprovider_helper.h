@@ -40,6 +40,10 @@ bool IsFileOrDir(uint32_t smbc_type);
 // Maps errno to ErrorType.
 ErrorType GetErrorFromErrno(int32_t error_code);
 
+// Maps errno to ErrorType. This is a copy function of GetErrorFromErrno with
+// a change on mapping EINVAL to ERROR_NOT_FOUND.
+ErrorType GetErrorFromErrnoForReadDir(int32_t error_code);
+
 // Helper method to determine whether a stat struct represents a Directory.
 bool IsDirectory(const struct stat& stat_info);
 

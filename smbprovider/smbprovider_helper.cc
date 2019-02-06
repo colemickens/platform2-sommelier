@@ -87,6 +87,17 @@ ErrorType GetErrorFromErrno(int32_t error_code) {
   return error;
 }
 
+// EINVAL is returned when Samba is unable to parse a hostname
+// (eg. \\qnap\testshare). This problem is rooted in Samba, a proper fix would
+// be to patch the Samba library.
+ErrorType GetErrorFromErrnoForReadDir(int32_t error_code) {
+  if (error_code == EINVAL) {
+    return ERROR_NOT_FOUND;
+  }
+
+  return GetErrorFromErrno(error_code);
+}
+
 bool IsDirectory(const struct stat& stat_info) {
   return S_ISDIR(stat_info.st_mode);
 }
