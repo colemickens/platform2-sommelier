@@ -49,6 +49,7 @@ template("proto_library") {
                              # which must be explicitly specified.
                              "deps",
                              "public_deps",
+                             "sources",
                            ])
 
     cc_dir = "${root_gen_dir}/${proto_out_dir}"
@@ -72,7 +73,6 @@ template("proto_library") {
     if (!defined(gen_grpc)) {
       gen_grpc = false
     }
-    sources = invoker.sources
 
     script = "//common-mk/file_generator_wrapper.py"
     args = [ "protoc" ]
@@ -166,12 +166,17 @@ template("proto_library") {
 #       The proto file paths.
 template("goproto_library") {
   action(target_name) {
+    forward_variables_from(invoker,
+                           [
+                             "proto_out_dir",
+                             "sources",
+                           ])
+
     # For go, it is necessary to generate the code in one command line,
     # otherwise file descriptor var name will conflict.
     # cf) https://github.com/golang/protobuf/issues/109
 
     proto_in_dir = rebase_path(invoker.proto_in_dir)
-    proto_out_dir = invoker.proto_out_dir
 
     # Build protoc command line to run.
     script = "//common-mk/file_generator_wrapper.py"
@@ -184,7 +189,7 @@ template("goproto_library") {
       "--go_out",
       "${root_gen_dir}/${proto_out_dir}",
     ]
-    foreach(source, invoker.sources) {
+    foreach(source, sources) {
       args += [ rebase_path(source) ]
     }
 
