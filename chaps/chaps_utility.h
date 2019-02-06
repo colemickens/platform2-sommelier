@@ -27,6 +27,8 @@ enum class DigestAlgorithm {
   SHA256 = 2,
   SHA384 = 3,
   SHA512 = 4,
+  // Should be put the last if it is not in kDigestAlgorithmEncoding
+  NoDigest
 };
 
 // These strings are the DER encodings of the DigestInfo values for the

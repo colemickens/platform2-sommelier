@@ -39,39 +39,29 @@ using trunks::TrunksFactory;
 namespace {
 
 constexpr struct {
-  trunks::TPM_ALG_ID id;
-  chaps::DigestAlgorithm alg;
-} kSupportedDigestAlgorithms[] = {
-  { trunks::TPM_ALG_SHA1,   chaps::DigestAlgorithm::SHA1 },
-  { trunks::TPM_ALG_SHA256, chaps::DigestAlgorithm::SHA256 },
-  { trunks::TPM_ALG_SHA384, chaps::DigestAlgorithm::SHA384 },
-  { trunks::TPM_ALG_SHA512, chaps::DigestAlgorithm::SHA512 },
-};
-
-constexpr struct {
   trunks::TPM_ALG_ID trunks_id;
   int openssl_nid;
 } kSupportedECCurveAlgorithms[] = {
     {trunks::TPM_ECC_NIST_P256, NID_X9_62_prime256v1},
 };
 
-// Extract the algorithm ID and the digest from PKCS1-v1_5 DigestInfo.
-// See RFC-3447, section 9.2.
-void ParseDigestInfo(const std::string& digest_info,
-                     std::string* digest,
-                     trunks::TPM_ALG_ID* digest_alg) {
-  for (size_t i = 0; i < arraysize(kSupportedDigestAlgorithms); ++i) {
-    std::string encoding =
-      GetDigestAlgorithmEncoding(kSupportedDigestAlgorithms[i].alg);
-    if (!digest_info.compare(0, encoding.size(), encoding)) {
-      *digest = digest_info.substr(encoding.size());
-      *digest_alg = kSupportedDigestAlgorithms[i].id;
-      return;
-    }
+trunks::TPM_ALG_ID GetDigestAlgorithmToTrunksAlgId(
+    chaps::DigestAlgorithm digest_alg) {
+  switch (digest_alg) {
+    case chaps::DigestAlgorithm::SHA1:
+      return trunks::TPM_ALG_SHA1;
+    case chaps::DigestAlgorithm::SHA256:
+      return trunks::TPM_ALG_SHA256;
+    case chaps::DigestAlgorithm::SHA384:
+      return trunks::TPM_ALG_SHA384;
+    case chaps::DigestAlgorithm::SHA512:
+      return trunks::TPM_ALG_SHA512;
+
+    // Unknown algorithm - use "padding-only" signing scheme.
+    case chaps::DigestAlgorithm::MD5:
+    case chaps::DigestAlgorithm::NoDigest:
+      return trunks::TPM_ALG_NULL;
   }
-  // Unknown algorithm - use "padding-only" signing scheme.
-  *digest = digest_info;
-  *digest_alg = trunks::TPM_ALG_NULL;
 }
 
 uint32_t GetIntegerExponent(const std::string& public_exponent) {
@@ -687,6 +677,7 @@ bool TPM2UtilityImpl::Unbind(int key_handle,
 }
 
 bool TPM2UtilityImpl::Sign(int key_handle,
+                           DigestAlgorithm digest_algorithm,
                            const std::string& input,
                            std::string* signature) {
   AutoLock Lock(lock_);
@@ -704,36 +695,32 @@ bool TPM2UtilityImpl::Sign(int key_handle,
                << trunks::GetErrorString(result);
     return false;
   }
-  // If decryption is allowed for the key, do padding in software (the
-  // session layer already prepared the DigestInfo by prepending the algorithm
-  // ID) and perform raw RSA on TPM by sending Decrypt command with NULL scheme.
-  // Otherwise, strip the algorithm ID already prepended by the session level,
-  // send Sign command to the TPM with the original unencoded digest, and let
+
+  // If decryption is allowed for the key, do padding in software.
+  //    We need to prepare the DigestInfo by prepending the algorithm and
+  //    perform raw RSA on TPM by sending Decrypt command with NULL scheme.
+  // Otherwise, send Sign command to the TPM with the original digest, and let
   // TPM handle padding and encoding on its side.
+  //
   // This is done to work with TPMs that don't support all required hashing
   // algorithms, and for which the Decrypt attribute is set for signing keys.
   if (public_area.object_attributes & trunks::kDecrypt) {
-    std::string padded_input;
-    if (!AddPKCS1Padding(input, public_area.unique.rsa.size, &padded_input)) {
+    std::string data_to_sign =
+        GetDigestAlgorithmEncoding(digest_algorithm) + input;
+    std::string padded_data;
+    if (!AddPKCS1Padding(data_to_sign, public_area.unique.rsa.size,
+                         &padded_data)) {
       return false;
     }
-    result = trunks_tpm_utility_->AsymmetricDecrypt(key_handle,
-                                                    trunks::TPM_ALG_NULL,
-                                                    trunks::TPM_ALG_NULL,
-                                                    padded_input,
-                                                    session_->GetDelegate(),
-                                                    signature);
+    result = trunks_tpm_utility_->AsymmetricDecrypt(
+        key_handle, trunks::TPM_ALG_NULL, trunks::TPM_ALG_NULL, padded_data,
+        session_->GetDelegate(), signature);
   } else {
-    std::string digest;
-    trunks::TPM_ALG_ID digest_alg;
-    ParseDigestInfo(input, &digest, &digest_alg);
-    result = trunks_tpm_utility_->Sign(key_handle,
-                                       trunks::TPM_ALG_RSASSA,
-                                       digest_alg,
-                                       digest,
-                                       false /* don't generate hash */,
-                                       session_->GetDelegate(),
-                                       signature);
+    trunks::TPM_ALG_ID digest_alg_id =
+        GetDigestAlgorithmToTrunksAlgId(digest_algorithm);
+    result = trunks_tpm_utility_->Sign(
+        key_handle, trunks::TPM_ALG_RSASSA, digest_alg_id, input,
+        false /* don't generate hash */, session_->GetDelegate(), signature);
   }
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error performing sign operation: "

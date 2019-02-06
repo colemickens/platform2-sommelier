@@ -66,7 +66,7 @@ class TestTPMUtility: public ::testing::Test {
     EXPECT_TRUE(tpm_->Unbind(key_, encrypted, &input2));
     EXPECT_TRUE(input == input2);
     string signature;
-    EXPECT_TRUE(tpm_->Sign(key_, input, &signature));
+    EXPECT_TRUE(tpm_->Sign(key_, DigestAlgorithm::NoDigest, input, &signature));
   }
 
   bool InjectKey() {
@@ -160,7 +160,7 @@ TEST_F(TestTPMUtility, BadKeyHandle) {
   EXPECT_FALSE(tpm_->GetRSAPublicKey(key, &e, &n));
   string in, out;
   EXPECT_FALSE(tpm_->Unbind(key, in, &out));
-  EXPECT_FALSE(tpm_->Sign(key, in, &out));
+  EXPECT_FALSE(tpm_->Sign(key, DigestAlgorithm::NoDigest, in, &out));
 }
 
 TEST_F(TestTPMUtility, BadInput) {

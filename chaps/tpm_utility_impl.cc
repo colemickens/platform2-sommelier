@@ -674,14 +674,19 @@ bool TPMUtilityImpl::Unbind(int key_handle,
 }
 
 bool TPMUtilityImpl::Sign(int key_handle,
+                          DigestAlgorithm digest_algorithm,
                           const string& input,
                           string* signature) {
   VLOG(1) << "TPMUtilityImpl::Sign enter";
   AutoLock lock(lock_);
+  // Using the TSS_SS_RSASSAPKCS1V15_DER scheme, we need to manually
+  // insert the hash OID.
+  std::string data_to_sign =
+      GetDigestAlgorithmEncoding(digest_algorithm) + input;
   if (!InitSRK())
     return false;
   TSSHash hash(tsp_context_);
-  if (!hash.Create(input))
+  if (!hash.Create(data_to_sign))
     return false;
   UINT32 length = 0;
   BYTE* buffer = NULL;

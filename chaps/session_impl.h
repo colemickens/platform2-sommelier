@@ -176,7 +176,6 @@ class SessionImpl : public Session {
                              Object* private_object);
 
   std::string GenerateRandomSoftware(int num_bytes);
-  std::string GetDERDigestInfo(CK_MECHANISM_TYPE mechanism);
   // Provides operation output and handles the buffer-too-small case.
   // The output data must be in context->data_.
   // required_out_length - In: The maximum number of bytes that can be received.

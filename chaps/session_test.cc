@@ -578,7 +578,7 @@ TEST_F(TestSession, RSAEncrypt) {
 }
 
 // Test RSA PKCS #1 sign / verify.
-TEST_F(TestSession, RSASign) {
+TEST_F(TestSession, RsaSign) {
   const Object* pub = NULL;
   const Object* priv = NULL;
   GenerateRSAKeyPair(true, 1024, &pub, &priv);

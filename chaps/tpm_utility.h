@@ -9,6 +9,8 @@
 
 #include <brillo/secure_blob.h>
 
+#include "chaps/chaps_utility.h"
+
 namespace chaps {
 
 // TPMUtility is a high-level interface to TPM services. In practice, only a
@@ -196,15 +198,17 @@ class TPMUtility {
                       const std::string& input,
                       std::string* output) = 0;
 
-  // Generates a digital signature using the TSS_SS_RSASSAPKCS1V15_DER scheme.
+  // Generates a digital signature.
   //   key_handle - The key handle, as provided by LoadKey, WrapRSAKey or
   //                GenerateKey.
-  //   input - Must be a DER encoding of the DigestInfo value (see
-  //           PKCS #1 v.2.1: 9.2).
+  //   input - The raw data we want to sign. For RSASSA, the DER encoding of the
+  //           DigestInfo value (see PKCS #1 v.2.1: 9.2) will be added
+  //           internally.
   //   signature - Receives the generated signature. The signature length will
   //               always match the length of the RSA key modulus.
   // Returns true on success.
   virtual bool Sign(int key_handle,
+                    DigestAlgorithm digest_algorithm,
                     const std::string& input,
                     std::string* signature) = 0;
 
