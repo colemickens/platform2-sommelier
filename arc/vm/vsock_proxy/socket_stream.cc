@@ -23,7 +23,9 @@ namespace arc {
 
 SocketStream::SocketStream(base::ScopedFD socket_fd, VSockProxy* proxy)
     : socket_fd_(std::move(socket_fd)), proxy_(proxy) {
-  DCHECK(proxy);
+  // TODO(hidehiko): Re-enable DCHECK on production.
+  // Currently nullptr for proxy is allowed for unit testing purpose.
+  // DCHECK(proxy);
 }
 
 SocketStream::~SocketStream() = default;
@@ -38,9 +40,11 @@ bool SocketStream::Read(arc_proxy::Message* message) {
     return false;
   }
 
-  if (size == 0) {
-    LOG(ERROR) << "EOF Found";
-    return false;
+  if (size == 0 && fds.empty()) {
+    LOG(INFO) << "EOF Found";
+    // Set 0 length data to indicate the other side of the FD is closed.
+    message->Clear();
+    return true;
   }
 
   // Validate file descriptor type before registering to VSockProxy.

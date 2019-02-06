@@ -4,9 +4,6 @@
 
 #include "arc/vm/vsock_proxy/pipe_stream.h"
 
-#include <fcntl.h>
-#include <unistd.h>
-
 #include <string>
 #include <tuple>
 #include <utility>
@@ -15,7 +12,6 @@
 #include <base/files/scoped_file.h>
 #include <base/optional.h>
 #include <gtest/gtest.h>
-#include <google/protobuf/util/message_differencer.h>
 
 #include "arc/vm/vsock_proxy/file_descriptor_util.h"
 #include "arc/vm/vsock_proxy/message.pb.h"
@@ -52,6 +48,20 @@ TEST(PipeStreamTest, ReadWrite) {
   }
 
   EXPECT_EQ(std::string(kData, sizeof(kData)), read_data);
+}
+
+TEST(PipeStreamTest, Close) {
+  auto pipes = CreatePipe();
+  ASSERT_TRUE(pipes.has_value());
+  base::ScopedFD read_fd;
+  base::ScopedFD write_fd;
+  std::tie(read_fd, write_fd) = std::move(pipes).value();
+  // Close the write side then, the read message should be empty.
+  write_fd.reset();
+  arc_proxy::Message message;
+  ASSERT_TRUE(PipeStream(std::move(read_fd)).Read(&message));
+  EXPECT_TRUE(message.data().empty());
+  EXPECT_EQ(0, message.transferred_fd_size());
 }
 
 }  // namespace

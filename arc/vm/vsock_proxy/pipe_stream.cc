@@ -26,7 +26,12 @@ bool PipeStream::Read(arc_proxy::Message* message) {
     return false;
   }
 
-  message->set_data(buf, size);
+  if (size == 0) {
+    LOG(INFO) << "EOF is found";
+    message->Clear();
+  } else {
+    message->set_data(buf, size);
+  }
   return true;
 }
 

@@ -56,6 +56,12 @@ class VSockProxy {
   // corresponding local file descriptor.
   void OnVSockReadReady();
 
+  // Handlers for each command.
+  // TODO(crbug.com/842960): Use pass-by-value when protobuf is upreved enough
+  // to support rvalues. (At least, 3.5, or maybe 3.6).
+  void OnClose(arc_proxy::Message* message);
+  void OnData(arc_proxy::Message* message);
+
   // Callback called when local file descriptor gets ready to read.
   // Reads Message from |fd|, and forwards to VSOCK file descriptor.
   void OnLocalFileDesciptorReadReady(int fd);

@@ -106,6 +106,7 @@ if (use.test) {
     sources = [
       "file_descriptor_util_test.cc",
       "pipe_stream_test.cc",
+      "socket_stream_test.cc",
       "vsock_stream_test.cc",
     ]
   }
