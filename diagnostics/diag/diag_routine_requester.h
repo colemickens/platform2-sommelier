@@ -34,8 +34,7 @@ class DiagRoutineRequester final {
   void Connect(const std::string& target_uri);
 
   // Returns a list of routines that the platform is capable of running.
-  std::vector<grpc_api::GetAvailableRoutinesResponse::Routine>
-  GetAvailableRoutines();
+  std::vector<grpc_api::DiagnosticRoutine> GetAvailableRoutines();
 
  private:
   // Gracefully shut down the DiagAsyncGrpcClientAdapter.

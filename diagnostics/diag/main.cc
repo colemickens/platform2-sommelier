@@ -31,8 +31,8 @@ int main(int argc, char** argv) {
 
   routine_requester.Connect(kDiagnosticsdGrpcUri);
 
-  std::vector<diagnostics::grpc_api::GetAvailableRoutinesResponse::Routine>
-      available_routines = routine_requester.GetAvailableRoutines();
+  std::vector<diagnostics::grpc_api::DiagnosticRoutine> available_routines =
+      routine_requester.GetAvailableRoutines();
 
   if (available_routines.empty()) {
     std::cout << "Failed to retrieve available routines." << std::endl;

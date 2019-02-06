@@ -13,6 +13,7 @@ group("all") {
     ":diagnostics_processor",
     ":diagnosticsd",
     ":telem",
+    ":urandom",
   ]
   if (use.test) {
     deps += [
@@ -20,6 +21,7 @@ group("all") {
       ":libdiag_test",
       ":libgrpc_async_adapter_test",
       ":libtelem_test",
+      ":routine_test",
     ]
   }
 }
@@ -83,6 +85,23 @@ generate_mojom_bindings("diagnostics_mojo_bindings") {
   public_configs = [ ":diagnostics_mojo_bindings_pkg_deps" ]
   sources = [
     "mojo/diagnosticsd.mojom",
+  ]
+}
+
+# Library that provides the diagnostic routine interface.
+pkg_config("libdiag_routine_pkg_deps") {
+  pkg_deps = [ "libchrome-${libbase_ver}" ]
+}
+
+static_library("libdiag_routine") {
+  deps = [
+    ":diagnostics_grpc_protos",
+  ]
+  all_dependent_configs = [ ":libdiag_routine_pkg_deps" ]
+  sources = [
+    "routines/battery/battery.cc",
+    "routines/diag_process_adapter_impl.cc",
+    "routines/urandom/urandom.cc",
   ]
 }
 
@@ -206,6 +225,21 @@ executable("diag") {
   configs += [ ":diag_pkg_deps" ]
   sources = [
     "diag/main.cc",
+  ]
+}
+
+# The urandom tool executable.
+pkg_config("urandom_pkg_deps") {
+  pkg_deps = [
+    "libbrillo-${libbase_ver}",
+    "libchrome-${libbase_ver}",
+  ]
+}
+
+executable("urandom") {
+  configs += [ ":urandom_pkg_deps" ]
+  sources = [
+    "routines/urandom/main.cc",
   ]
 }
 
@@ -389,6 +423,29 @@ if (use.test) {
     sources = [
       "telem/telem_cache_test.cc",
       "telem/telem_connection_test.cc",
+    ]
+  }
+
+  pkg_config("routine_test_pkg_deps") {
+    pkg_deps = [
+      "libchrome-${libbase_ver}",
+      "libchrome-test-${libbase_ver}",
+    ]
+  }
+
+  executable("routine_test") {
+    configs += [
+      "//common-mk:test",
+      ":routine_test_pkg_deps",
+    ]
+    deps = [
+      ":libdiag_routine",
+      "../common-mk/testrunner:testrunner",
+    ]
+    sources = [
+      "diagnosticsd/file_test_utils.cc",
+      "routines/battery/battery_test.cc",
+      "routines/urandom/urandom_test.cc",
     ]
   }
 }

@@ -52,7 +52,7 @@ void DiagRoutineRequester::ShutdownClient() {
   loop.Run();
 }
 
-std::vector<grpc_api::GetAvailableRoutinesResponse::Routine>
+std::vector<grpc_api::DiagnosticRoutine>
 DiagRoutineRequester::GetAvailableRoutines() {
   grpc_api::GetAvailableRoutinesRequest request;
   std::unique_ptr<grpc_api::GetAvailableRoutinesResponse> response;
@@ -67,11 +67,10 @@ DiagRoutineRequester::GetAvailableRoutines() {
 
   if (!response) {
     LOG(ERROR) << "No GetAvailableRoutinesResponse received.";
-    return std::vector<grpc_api::GetAvailableRoutinesResponse::Routine>();
+    return std::vector<grpc_api::DiagnosticRoutine>();
   }
 
-  std::vector<grpc_api::GetAvailableRoutinesResponse::Routine>
-      available_routines;
+  std::vector<grpc_api::DiagnosticRoutine> available_routines;
   for (int i = 0; i < response->routines_size(); i++)
     available_routines.push_back(response->routines(i));
 

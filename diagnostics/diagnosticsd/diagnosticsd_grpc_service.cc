@@ -391,8 +391,8 @@ void DiagnosticsdGrpcService::GetAvailableRoutines(
   DCHECK(request);
   auto reply = std::make_unique<grpc_api::GetAvailableRoutinesResponse>();
 
-  reply->add_routines(grpc_api::GetAvailableRoutinesResponse::BATTERY);
-  reply->add_routines(grpc_api::GetAvailableRoutinesResponse::BATTERY_SYSFS);
+  reply->add_routines(grpc_api::ROUTINE_BATTERY);
+  reply->add_routines(grpc_api::ROUTINE_BATTERY_SYSFS);
   callback.Run(std::move(reply));
 }
 

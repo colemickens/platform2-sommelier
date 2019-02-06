@@ -28,10 +28,8 @@ namespace {
 using GetAvailableRoutinesCallback = base::Callback<void(
     std::unique_ptr<grpc_api::GetAvailableRoutinesResponse> response)>;
 
-constexpr grpc_api::GetAvailableRoutinesResponse::Routine
-    kFakeAvailableRoutines[] = {
-        grpc_api::GetAvailableRoutinesResponse::BATTERY,
-        grpc_api::GetAvailableRoutinesResponse::BATTERY_SYSFS};
+constexpr grpc_api::DiagnosticRoutine kFakeAvailableRoutines[] = {
+    grpc_api::ROUTINE_BATTERY, grpc_api::ROUTINE_BATTERY_SYSFS};
 
 class MockDiagAsyncGrpcClientAdapter : public DiagAsyncGrpcClientAdapter {
  public:
@@ -66,8 +64,7 @@ class DiagRoutineRequesterTest : public ::testing::Test {
   // Sets the MockDiagAsyncGrpcClientAdapter to run the next callback with a
   // fake routine list as its GetAvailableRoutinesResponse.
   void SetAvailableRoutinesResponse(
-      const grpc_api::GetAvailableRoutinesResponse::Routine
-          available_routines[],
+      const grpc_api::DiagnosticRoutine available_routines[],
       const int num_routines) {
     EXPECT_CALL(mock_adapter_, GetAvailableRoutines(_, _))
         .WillRepeatedly(
