@@ -46,6 +46,7 @@ using brillo::BlobToString;
 using brillo::SecureBlob;
 using testing::_;
 using testing::DoAll;
+using testing::InSequence;
 using testing::Invoke;
 using testing::NiceMock;
 using testing::Return;
@@ -1479,7 +1480,8 @@ class Tpm2RsaSignatureSecretSealingTest
 }  // namespace
 
 TEST_P(Tpm2RsaSignatureSecretSealingTest, Seal) {
-  const std::string kTrialPolicyDigest("fake trial digest");
+  const std::string kTrialPcrPolicyDigest(SHA256_DIGEST_LENGTH, '\1');
+  const std::string kTrialPolicyDigest(SHA256_DIGEST_LENGTH, '\2');
   std::map<uint32_t, Blob> pcr_values;
   for (uint32_t pcr_index : kPcrIndexes)
     pcr_values[pcr_index] = BlobFromString("fake PCR");
@@ -1492,20 +1494,25 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Seal) {
       .WillOnce(DoAll(SetArgPointee<6>(kKeyHandle), Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_utility_, GetKeyName(kKeyHandle, _))
       .WillOnce(DoAll(SetArgPointee<1>(kKeyName), Return(TPM_RC_SUCCESS)));
-  EXPECT_CALL(mock_trial_session_,
-              PolicyPCR(_))
-      .WillOnce(Return(TPM_RC_SUCCESS));
   trunks::TPMT_SIGNATURE tpmt_signature;
   memset(&tpmt_signature, 0, sizeof(trunks::TPMT_SIGNATURE));
-  EXPECT_CALL(
-      mock_trial_session_,
-      PolicySigned(kKeyHandle, kKeyName, std::string() /* nonce */,
-                   std::string() /* cp_hash */, std::string() /* policy_ref */,
-                   0 /* expiration */, _, _))
-      .WillOnce(DoAll(SaveArg<6>(&tpmt_signature), Return(TPM_RC_SUCCESS)));
-  EXPECT_CALL(mock_trial_session_, GetDigest(_))
-      .WillOnce(
-          DoAll(SetArgPointee<0>(kTrialPolicyDigest), Return(TPM_RC_SUCCESS)));
+  {
+    InSequence s;
+    EXPECT_CALL(mock_trial_session_, PolicyPCR(_))
+        .WillOnce(Return(TPM_RC_SUCCESS));
+    EXPECT_CALL(mock_trial_session_, GetDigest(_))
+        .WillOnce(DoAll(SetArgPointee<0>(kTrialPcrPolicyDigest),
+                        Return(TPM_RC_SUCCESS)));
+    EXPECT_CALL(
+        mock_trial_session_,
+        PolicySigned(kKeyHandle, kKeyName, std::string() /* nonce */,
+                     std::string() /* cp_hash */,
+                     std::string() /* policy_ref */, 0 /* expiration */, _, _))
+        .WillOnce(DoAll(SaveArg<6>(&tpmt_signature), Return(TPM_RC_SUCCESS)));
+    EXPECT_CALL(mock_trial_session_, GetDigest(_))
+        .WillOnce(DoAll(SetArgPointee<0>(kTrialPolicyDigest),
+                        Return(TPM_RC_SUCCESS)));
+  }
   EXPECT_CALL(mock_tpm_utility_, GenerateRandom(kSecretValue.size(), _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kSecretValue), Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_utility_,
@@ -1516,7 +1523,7 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Seal) {
   // Trigger the secret creation.
   SignatureSealedData sealed_data;
   EXPECT_TRUE(signature_sealing_backend()->CreateSealedSecret(
-      key_spki_der_, supported_algorithms(), pcr_values,
+      key_spki_der_, supported_algorithms(), {pcr_values},
       Blob() /* delegate_blob */, Blob() /* delegate_secret */, &sealed_data));
   ASSERT_TRUE(sealed_data.has_tpm2_policy_signed_data());
   const SignatureSealedData_Tpm2PolicySignedData& sealed_data_contents =
@@ -1539,6 +1546,7 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Unseal) {
                                     (std::string(4, '\0') /* expiration */));
   const std::string kSignatureValue("fake signature");
   const std::string kPolicyDigest("fake digest");
+  const std::string kPcrValue("fake PCR");
 
   SignatureSealedData sealed_data;
   SignatureSealedData_Tpm2PolicySignedData* const sealed_data_contents =
@@ -1547,14 +1555,31 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Unseal) {
   sealed_data_contents->set_srk_wrapped_secret(kSealedSecretValue);
   sealed_data_contents->set_scheme(chosen_scheme());
   sealed_data_contents->set_hash_alg(chosen_hash_alg());
-  for (uint32_t pcr_index : kPcrIndexes)
-    sealed_data_contents->add_bound_pcr(pcr_index);
+  SignatureSealedData_Tpm2PcrRestriction* const pcr_restriction =
+      sealed_data_contents->add_pcr_restrictions();
+  for (uint32_t pcr_index : kPcrIndexes) {
+    SignatureSealedData_PcrValue* const pcr_values_item =
+        pcr_restriction->add_pcr_values();
+    pcr_values_item->set_pcr_index(pcr_index);
+    pcr_values_item->set_pcr_value(kPcrValue);
+  }
+  pcr_restriction->set_policy_digest(std::string(SHA256_DIGEST_LENGTH, '\1'));
 
   // Set up mock expectations for the challenge generation.
+  for (uint32_t pcr_index : kPcrIndexes) {
+    EXPECT_CALL(mock_tpm_utility_, ReadPCR(pcr_index, _))
+        .WillOnce(DoAll(SetArgPointee<1>(kPcrValue), Return(TPM_RC_SUCCESS)));
+  }
   EXPECT_CALL(mock_policy_session_, GetDelegate())
       .WillRepeatedly(Return(&mock_authorization_delegate_));
   EXPECT_CALL(mock_authorization_delegate_, GetTpmNonce(_))
       .WillOnce(DoAll(SetArgPointee<0>(kTpmNonce), Return(true)));
+  std::map<uint32_t, std::string> pcr_map;
+  for (int pcr_index : kPcrIndexes) {
+    pcr_map.emplace(pcr_index, std::string());
+  }
+  EXPECT_CALL(mock_policy_session_, PolicyPCR(pcr_map))
+      .WillOnce(Return(TPM_RC_SUCCESS));
 
   // Trigger the challenge generation.
   std::unique_ptr<SignatureSealingBackend::UnsealingSession> unsealing_session(
@@ -1574,12 +1599,6 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Unseal) {
       .WillOnce(DoAll(SetArgPointee<6>(kKeyHandle), Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_utility_, GetKeyName(kKeyHandle, _))
       .WillOnce(DoAll(SetArgPointee<1>(kKeyName), Return(TPM_RC_SUCCESS)));
-  std::map<uint32_t, std::string> pcr_map;
-  for (int pcr_index : kPcrIndexes) {
-    pcr_map.emplace(pcr_index, std::string());
-  }
-  EXPECT_CALL(mock_policy_session_, PolicyPCR(pcr_map))
-      .WillOnce(Return(TPM_RC_SUCCESS));
   trunks::TPMT_SIGNATURE tpmt_signature;
   memset(&tpmt_signature, 0, sizeof(trunks::TPMT_SIGNATURE));
   EXPECT_CALL(

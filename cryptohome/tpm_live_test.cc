@@ -813,9 +813,10 @@ class SignatureSealedSecretTestCase final {
       LOG(ERROR) << "Error reading PCR values";
       return false;
     }
-    if (!backend()->CreateSealedSecret(
-            key_spki_der_, param_.supported_algorithms, pcr_values,
-            delegate_blob_, delegate_secret_, sealed_secret_data)) {
+    if (!backend()->CreateSealedSecret(key_spki_der_,
+                                       param_.supported_algorithms,
+                                       {pcr_values, pcr_values}, delegate_blob_,
+                                       delegate_secret_, sealed_secret_data)) {
       LOG(ERROR) << "Error creating signature-sealed secret";
       return false;
     }
@@ -830,7 +831,7 @@ class SignatureSealedSecretTestCase final {
     }
     SignatureSealedData sealed_secret_data;
     if (backend()->CreateSealedSecret(
-            key_spki_der_, param_.supported_algorithms, pcr_values,
+            key_spki_der_, param_.supported_algorithms, {pcr_values},
             delegate_blob_, delegate_secret_, &sealed_secret_data)) {
       LOG(ERROR) << "Error: secret creation completed unexpectedly";
       return false;
@@ -1004,8 +1005,10 @@ class SignatureSealedSecretTestCase final {
                                           param_.supported_algorithms,
                                           delegate_blob_, delegate_secret_));
     if (!unsealing_session) {
-      LOG(ERROR) << "Error starting the unsealing session";
-      return false;
+      // Unsealing expectedly failed, so the test is passed. (Whether it fails
+      // here or below after Unseal() depends on the specific
+      // SignatureSealingBackend implementation.)
+      return true;
     }
     Blob challenge_signature;
     if (!SignWithKey(unsealing_session->GetChallengeValue(),

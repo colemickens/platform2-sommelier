@@ -9,6 +9,22 @@ package cryptohome;
 // Container for the signature-sealed data, including the additional non-secret
 // information required for unsealing.
 message SignatureSealedData {
+  // Index and value of a TPM Platform Configuration Register (PCR).
+  message PcrValue {
+    optional uint32 pcr_index = 1;
+    optional bytes pcr_value = 2;
+  }
+
+  // Information about a single set of PCR restrictions for TPM 2.0.
+  message Tpm2PcrRestriction {
+    // List of PCR values that must be all satisfied for this restriction.
+    repeated PcrValue pcr_values = 1;
+
+    // TPM policy digest for the TPM2_PolicyPCR command executed with the PCR
+    // values specified by |pcr_values|.
+    optional bytes policy_digest = 2;
+  }
+
   // Data for the TPM 2.0 method based on the "TPM2_PolicySigned" feature.
   message Tpm2PolicySignedData {
     // DER-encoded blob of the X.509 Subject Public Key Info of the key that
@@ -25,10 +41,12 @@ message SignatureSealedData {
     // unsealing.
     optional int32 hash_alg = 4;
 
-    // Indexes of Platform Configuration Registers that should be used for
-    // constructing the TPM policy for unsealing. Note that the order of items
-    // is relevant.
-    repeated uint32 bound_pcr = 5;
+    // Multiple alternative sets of PCR restrictions that are applied to the
+    // wrapped secret. For unsealing, it's enough to satisfy only one of those
+    // restrictions.
+    // Note that the order of items here is important: it defines the order of
+    // arguments when building the TPM policy digest.
+    repeated Tpm2PcrRestriction pcr_restrictions = 5;
   }
 
   // Data for the TPM 1.2 method based on the "Certified Migratable Key"

@@ -65,15 +65,19 @@ class SignatureSealingBackend {
   //                    Listed in the order of preference (starting from the
   //                    most preferred); however, the implementation is
   //                    permitted to ignore this order.
-  //   pcr_values - Mapping from PCR indexes to their values, to which the
-  //                created secret should be bound.
+  //   pcr_restrictions - The list of PCR value sets. The created secret will be
+  //                      bound in a way that unsealing is possible iff at least
+  //                      one of these sets is satisfied. Each PCR value set
+  //                      must be non-empty; pass empty list of sets in order to
+  //                      have no PCR binding. Implementation may impose
+  //                      constraint on the maximum allowed number of sets.
   //   delegate_blob - The blob for the owner delegation.
   //   delegate_secret - The delegate secret for the delegate blob.
   //   sealed_secret_data - The created sealed secret value.
   virtual bool CreateSealedSecret(
       const brillo::Blob& public_key_spki_der,
       const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
-      const std::map<uint32_t, brillo::Blob>& pcr_values,
+      const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions,
       const brillo::Blob& delegate_blob,
       const brillo::Blob& delegate_secret,
       SignatureSealedData* sealed_secret_data) = 0;

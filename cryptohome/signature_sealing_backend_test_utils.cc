@@ -50,7 +50,7 @@ void SignatureSealedCreationMocker::SetUpSuccessfulMock() {
   EXPECT_CALL(
       *mock_backend_,
       CreateSealedSecret(SecureBlob(public_key_spki_der_), key_algorithms_,
-                         pcr_values_, SecureBlob(delegate_blob_),
+                         pcr_restrictions_, SecureBlob(delegate_blob_),
                          SecureBlob(delegate_secret_), _))
       .WillOnce(DoAll(SetArgPointee<5>(sealed_data_to_return), Return(true)));
 }
@@ -59,7 +59,7 @@ void SignatureSealedCreationMocker::SetUpFailingMock() {
   EXPECT_CALL(
       *mock_backend_,
       CreateSealedSecret(SecureBlob(public_key_spki_der_), key_algorithms_,
-                         pcr_values_, SecureBlob(delegate_blob_),
+                         pcr_restrictions_, SecureBlob(delegate_blob_),
                          SecureBlob(delegate_secret_), _))
       .WillOnce(Return(false));
 }

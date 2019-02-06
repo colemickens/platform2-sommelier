@@ -20,6 +20,11 @@ class Tpm2Impl;
 
 // Implementation of signature-sealing operations for TPM 2.0. Based on the
 // TPM2_PolicySigned functionality.
+//
+// Notes on implementation:
+// * |delegate_blob| and |delegate_secret| parameters are ignored;
+// * Size of the |pcr_restrictions| parameter for CreateSealedSecret() should
+//   not exceed 8.
 class SignatureSealingBackendTpm2Impl final : public SignatureSealingBackend {
  public:
   explicit SignatureSealingBackendTpm2Impl(Tpm2Impl* tpm);
@@ -29,7 +34,7 @@ class SignatureSealingBackendTpm2Impl final : public SignatureSealingBackend {
   bool CreateSealedSecret(
       const brillo::Blob& public_key_spki_der,
       const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
-      const std::map<uint32_t, brillo::Blob>& pcr_values,
+      const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions,
       const brillo::Blob& /* delegate_blob */,
       const brillo::Blob& /* delegate_secret */,
       SignatureSealedData* sealed_secret_data) override;
