@@ -814,13 +814,17 @@ TEST_F(TpmUtilityTest, AsymmetricDecryptSchemeForward) {
 
 TEST_F(TpmUtilityTest, SignSuccess) {
   TPM_HANDLE key_handle;
-  std::string password("password");
+  std::string password;
   std::string digest(32, 'a');
+  constexpr char kSignatureOutput[] = "hi";
+
   TPMT_SIGNATURE signature_out;
-  signature_out.signature.rsassa.sig.size = 2;
-  signature_out.signature.rsassa.sig.buffer[0] = 'h';
-  signature_out.signature.rsassa.sig.buffer[1] = 'i';
-  std::string signature;
+  signature_out.signature.rsassa.sig =
+      Make_TPM2B_PUBLIC_KEY_RSA(kSignatureOutput);
+  EXPECT_CALL(mock_tpm_, SignSync(key_handle, _, _, _, _, _,
+                                  &mock_authorization_delegate_))
+      .WillOnce(DoAll(SetArgPointee<5>(signature_out), Return(TPM_RC_SUCCESS)));
+
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kSign;
@@ -829,14 +833,13 @@ TEST_F(TpmUtilityTest, SignSuccess) {
   EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
       .WillRepeatedly(
           DoAll(SetArgPointee<2>(public_area), Return(TPM_RC_SUCCESS)));
-  EXPECT_CALL(mock_tpm_, SignSync(key_handle, _, _, _, _, _,
-                                  &mock_authorization_delegate_))
-      .WillOnce(DoAll(SetArgPointee<5>(signature_out), Return(TPM_RC_SUCCESS)));
+
+  std::string signature;
   EXPECT_EQ(TPM_RC_SUCCESS,
             utility_.Sign(key_handle, TPM_ALG_RSASSA, TPM_ALG_SHA256, digest,
                           true /* generate_hash */,
                           &mock_authorization_delegate_, &signature));
-  EXPECT_EQ(0, signature.compare("hi"));
+  EXPECT_EQ(signature, kSignatureOutput);
 }
 
 TEST_F(TpmUtilityTest, SignFail) {
@@ -860,7 +863,7 @@ TEST_F(TpmUtilityTest, SignFail) {
                           &mock_authorization_delegate_, &signature));
 }
 
-TEST_F(TpmUtilityTest, SignBadParams1) {
+TEST_F(TpmUtilityTest, SignBadWithRestrictedKey) {
   TPM_HANDLE key_handle;
   std::string password;
   std::string digest(32, 'a');
@@ -872,7 +875,7 @@ TEST_F(TpmUtilityTest, SignBadParams1) {
       .WillRepeatedly(
           DoAll(SetArgPointee<2>(public_area), Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(SAPI_RC_BAD_PARAMETER,
-            utility_.Sign(key_handle, TPM_ALG_RSAPSS, TPM_ALG_NULL, digest,
+            utility_.Sign(key_handle, TPM_ALG_RSASSA, TPM_ALG_SHA256, digest,
                           true /* generate_hash */,
                           &mock_authorization_delegate_, &signature));
 }
@@ -883,12 +886,11 @@ TEST_F(TpmUtilityTest, SignBadAuthorizationSession) {
   std::string digest(32, 'a');
   std::string signature;
   EXPECT_EQ(SAPI_RC_INVALID_SESSIONS,
-            utility_.Sign(key_handle, TPM_ALG_RSAPSS, TPM_ALG_NULL, digest,
-                          true /* generate_hash */,
-                          nullptr, &signature));
+            utility_.Sign(key_handle, TPM_ALG_RSASSA, TPM_ALG_SHA256, digest,
+                          true /* generate_hash */, nullptr, &signature));
 }
 
-TEST_F(TpmUtilityTest, SignBadParams2) {
+TEST_F(TpmUtilityTest, SignBadWithNonSigningKey) {
   TPM_HANDLE key_handle;
   std::string password;
   std::string digest(32, 'a');
@@ -900,12 +902,12 @@ TEST_F(TpmUtilityTest, SignBadParams2) {
       .WillRepeatedly(
           DoAll(SetArgPointee<2>(public_area), Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(SAPI_RC_BAD_PARAMETER,
-            utility_.Sign(key_handle, TPM_ALG_RSAPSS, TPM_ALG_NULL, digest,
+            utility_.Sign(key_handle, TPM_ALG_RSASSA, TPM_ALG_SHA256, digest,
                           true /* generate_hash */,
                           &mock_authorization_delegate_, &signature));
 }
 
-TEST_F(TpmUtilityTest, SignBadParams3) {
+TEST_F(TpmUtilityTest, SignBadSchemeTypeNotMatchedWithKeyType) {
   TPM_HANDLE key_handle;
   std::string password;
   std::string digest(32, 'a');
@@ -917,12 +919,12 @@ TEST_F(TpmUtilityTest, SignBadParams3) {
       .WillRepeatedly(
           DoAll(SetArgPointee<2>(public_area), Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(SAPI_RC_BAD_PARAMETER,
-            utility_.Sign(key_handle, TPM_ALG_RSAPSS, TPM_ALG_NULL, digest,
+            utility_.Sign(key_handle, TPM_ALG_RSASSA, TPM_ALG_SHA256, digest,
                           true /* generate_hash */,
                           &mock_authorization_delegate_, &signature));
 }
 
-TEST_F(TpmUtilityTest, SignBadParams4) {
+TEST_F(TpmUtilityTest, SignBadWithBadKeyHandle) {
   TPM_HANDLE key_handle;
   std::string password;
   std::string digest(32, 'a');
@@ -934,12 +936,12 @@ TEST_F(TpmUtilityTest, SignBadParams4) {
       .WillRepeatedly(
           DoAll(SetArgPointee<2>(public_area), Return(TPM_RC_FAILURE)));
   EXPECT_EQ(TPM_RC_FAILURE,
-            utility_.Sign(key_handle, TPM_ALG_RSAPSS, TPM_ALG_NULL, digest,
+            utility_.Sign(key_handle, TPM_ALG_RSASSA, TPM_ALG_SHA256, digest,
                           true /* generate_hash */,
                           &mock_authorization_delegate_, &signature));
 }
 
-TEST_F(TpmUtilityTest, SignBadParams5) {
+TEST_F(TpmUtilityTest, SignBadSigningSchemeType) {
   TPM_HANDLE key_handle = 0;
   std::string password;
   std::string digest(32, 'a');
