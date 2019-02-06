@@ -7,6 +7,8 @@
 
 #include <memory>
 
+#include "diagnostics/dpsl/public/export.h"
+
 namespace diagnostics {
 
 class DpslRpcHandler;
@@ -27,7 +29,7 @@ class DpslThreadContext;
 // PRECONDITIONS:
 // 1. An instance of DpslThreadContext must exist on the current thread during
 //    the whole lifetime of this object.
-class DpslRpcServer {
+class DPSL_EXPORT DpslRpcServer {
  public:
   // Specifies predefined options for the URI on which the started gRPC server
   // should be listening.

@@ -46,7 +46,7 @@ namespace diagnostics {
 // would block the thread from running other jobs, like serving subsequent
 // incoming requests. Therefore it's advisable to offload time-consuming
 // operations onto background threads.
-class DpslRpcHandler {
+class DPSL_EXPORT DpslRpcHandler {
  public:
   // Request-specific callback types. These callbacks are passed by DPSL and
   // should be used by the implementation to return method results.

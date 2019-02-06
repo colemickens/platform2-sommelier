@@ -7,6 +7,8 @@
 
 #include <memory>
 
+#include "diagnostics/dpsl/public/export.h"
+
 namespace diagnostics {
 
 // Interface of the class that performs the process-wide DPSL initialization and
@@ -24,7 +26,7 @@ namespace diagnostics {
 //
 // NOTE ON LIFETIME: At most one instance of this class must be created during
 // the whole lifetime of the current process.
-class DpslGlobalContext {
+class DPSL_EXPORT DpslGlobalContext {
  public:
   // Factory method that returns an instance of the real implementation of this
   // interface.
