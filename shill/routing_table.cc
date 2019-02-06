@@ -540,7 +540,7 @@ bool RoutingTable::FlushCache() {
 bool RoutingTable::RequestRouteToHost(const IPAddress& address,
                                       int interface_index,
                                       int tag,
-                                      const Query::Callback& callback,
+                                      const QueryCallback& callback,
                                       uint8_t table_id) {
   // Make sure we don't get a cached response that is no longer valid.
   FlushCache();

@@ -130,18 +130,18 @@ class RoutingTableTest : public Test {
       CHECK(false);
     }
 
-    const RoutingTable::Query::Callback& mocked_callback() const {
+    const RoutingTable::QueryCallback& mocked_callback() const {
       return mocked_callback_;
     }
 
-    const RoutingTable::Query::Callback& unreached_callback() const {
+    const RoutingTable::QueryCallback& unreached_callback() const {
       return unreached_callback_;
     }
 
    private:
     base::WeakPtrFactory<QueryCallbackTarget> weak_ptr_factory_;
-    const RoutingTable::Query::Callback mocked_callback_;
-    const RoutingTable::Query::Callback unreached_callback_;
+    const RoutingTable::QueryCallback mocked_callback_;
+    const RoutingTable::QueryCallback unreached_callback_;
   };
 
   std::unique_ptr<RoutingTable> routing_table_;
@@ -790,7 +790,7 @@ TEST_F(RoutingTableTest, RequestHostRoute) {
       routing_table_->RequestRouteToHost(destination_address,
                                          kTestDeviceIndex0,
                                          kTestRouteTag,
-                                         RoutingTable::Query::Callback(),
+                                         RoutingTable::QueryCallback(),
                                          kTestTableId));
 
   IPAddress gateway_address(IPAddress::kFamilyIPv4);
@@ -860,7 +860,7 @@ TEST_F(RoutingTableTest, RequestHostRouteWithoutGateway) {
       routing_table_->RequestRouteToHost(destination_address,
                                          kTestDeviceIndex0,
                                          kTestRouteTag,
-                                         RoutingTable::Query::Callback(),
+                                         RoutingTable::QueryCallback(),
                                          kTestTableId));
 
   // Don't specify a gateway address.

@@ -31,30 +31,9 @@ struct RoutingTableEntry;
 // default route for an interface or modifying its metric (priority).
 class RoutingTable {
  public:
-  using RouteTableEntryVector = std::vector<RoutingTableEntry>;
-  using RouteTables = std::unordered_map<int, RouteTableEntryVector>;
-  using PolicyTableEntryVector = std::vector<RoutingPolicyEntry>;
-  using PolicyTables = std::unordered_map<int, PolicyTableEntryVector>;
-
-  struct Query {
-    // Callback::Run(interface_index, entry)
-    using Callback = base::Callback<void(int, const RoutingTableEntry&)>;
-
-    Query() : sequence(0), tag(0), table_id(0) {}
-    Query(uint32_t sequence_in,
-          int tag_in,
-          Callback callback_in,
-          uint8_t table_id_in)
-        : sequence(sequence_in),
-          tag(tag_in),
-          callback(callback_in),
-          table_id(table_id_in) {}
-
-    uint32_t sequence;
-    int tag;
-    Callback callback;
-    uint8_t table_id;
-  };
+  // Callback for RequestRouteToHost completion.
+  using QueryCallback = base::Callback<void(int interface_index,
+                                            const RoutingTableEntry& entry)>;
 
   virtual ~RoutingTable();
 
@@ -134,7 +113,7 @@ class RoutingTable {
   virtual bool RequestRouteToHost(const IPAddress& destination,
                                   int interface_index,
                                   int tag,
-                                  const Query::Callback& callback,
+                                  const QueryCallback& callback,
                                   uint8_t table_id);
 
   // Allocates a per-device routing table, and returns the ID.  If no
@@ -150,6 +129,28 @@ class RoutingTable {
  private:
   friend base::LazyInstanceTraitsBase<RoutingTable>;
   friend class RoutingTableTest;
+
+  using RouteTableEntryVector = std::vector<RoutingTableEntry>;
+  using RouteTables = std::unordered_map<int, RouteTableEntryVector>;
+  using PolicyTableEntryVector = std::vector<RoutingPolicyEntry>;
+  using PolicyTables = std::unordered_map<int, PolicyTableEntryVector>;
+
+  struct Query {
+    Query() : sequence(0), tag(0), table_id(0) {}
+    Query(uint32_t sequence_in,
+          int tag_in,
+          QueryCallback callback_in,
+          uint8_t table_id_in)
+        : sequence(sequence_in),
+          tag(tag_in),
+          callback(callback_in),
+          table_id(table_id_in) {}
+
+    uint32_t sequence;
+    int tag;
+    QueryCallback callback;
+    uint8_t table_id;
+  };
 
   static bool ParseRoutingTableMessage(const RTNLMessage& message,
                                        int* interface_index,

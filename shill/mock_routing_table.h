@@ -47,7 +47,7 @@ class MockRoutingTable : public RoutingTable {
   MOCK_METHOD5(RequestRouteToHost, bool(const IPAddress& addresss,
                                         int interface_index,
                                         int tag,
-                                        const Query::Callback& callback,
+                                        const QueryCallback& callback,
                                         uint8_t table));
 
   MOCK_METHOD0(AllocTableId, unsigned char());
