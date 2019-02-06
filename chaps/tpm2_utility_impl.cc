@@ -743,36 +743,6 @@ bool TPM2UtilityImpl::Sign(int key_handle,
   return true;
 }
 
-bool TPM2UtilityImpl::Verify(int key_handle,
-                             const std::string& input,
-                             const std::string& signature) {
-  std::string digest = base::SHA1HashString(input);
-  crypto::ScopedRSA rsa(RSA_new());
-  std::string modulus;
-  std::string exponent;
-  if (!GetRSAPublicKey(key_handle, &exponent, &modulus)) {
-    return false;
-  }
-  rsa.get()->n = BN_bin2bn(
-      reinterpret_cast<const unsigned char*>(modulus.data()),
-      modulus.size(),
-      nullptr);
-  rsa.get()->e = BN_bin2bn(
-      reinterpret_cast<const unsigned char*>(exponent.data()),
-      exponent.size(),
-      nullptr);
-  if (RSA_verify(NID_sha1,
-                 reinterpret_cast<const unsigned char*>(digest.data()),
-                 digest.size(),
-                 reinterpret_cast<const unsigned char*>(signature.data()),
-                 signature.size(),
-                 rsa.get()) != 1) {
-    LOG(ERROR) << "Signature was incorrect.";
-    return false;
-  }
-  return true;
-}
-
 bool TPM2UtilityImpl::IsSRKReady() {
   return IsTPMAvailable() && Init();
 }

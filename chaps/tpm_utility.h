@@ -208,17 +208,6 @@ class TPMUtility {
                     const std::string& input,
                     std::string* signature) = 0;
 
-  // Verifies a digital signature using the TSS_SS_RSASSAPKCS1V15_DER scheme.
-  //   key_handle - The key handle, as provided by LoadKey, WrapRSAKey, or
-  //                GenerateKey.
-  //   input - Must be a DER encoding of the DigestInfo value (see
-  //           PKCS #1 v.2.1: 9.2).
-  //   signature - The digital signature to be verified.
-  // Returns true if the signature is valid.
-  virtual bool Verify(int key_handle,
-                      const std::string& input,
-                      const std::string& signature) = 0;
-
   // Returns true iff the Storage Root Key is initialized and ready.  The SRK is
   // expected to not be ready until ownership of the TPM has been taken.
   virtual bool IsSRKReady() = 0;

@@ -102,9 +102,6 @@ class TPM2UtilityImpl : public TPMUtility {
   bool Sign(int key_handle,
             const std::string& input,
             std::string* signature) override;
-  bool Verify(int key_handle,
-              const std::string& input,
-              const std::string& signature) override;
   bool IsSRKReady() override;
 
  private:

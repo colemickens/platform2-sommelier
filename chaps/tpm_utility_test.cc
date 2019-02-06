@@ -67,7 +67,6 @@ class TestTPMUtility: public ::testing::Test {
     EXPECT_TRUE(input == input2);
     string signature;
     EXPECT_TRUE(tpm_->Sign(key_, input, &signature));
-    EXPECT_TRUE(tpm_->Verify(key_, input, signature));
   }
 
   bool InjectKey() {

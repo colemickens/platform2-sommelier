@@ -706,29 +706,6 @@ bool TPMUtilityImpl::Sign(int key_handle,
   return true;
 }
 
-bool TPMUtilityImpl::Verify(int key_handle,
-                            const string& input,
-                            const string& signature) {
-  VLOG(1) << "TPMUtilityImpl::Verify enter";
-  AutoLock lock(lock_);
-  if (!InitSRK())
-    return false;
-  TSSHash hash(tsp_context_);
-  if (!hash.Create(input))
-    return false;
-  TSS_RESULT result = Tspi_Hash_VerifySignature(
-      hash,
-      GetTssHandle(key_handle),
-      signature.length(),
-      ConvertStringToByteBuffer(signature.data()));
-  if (result != TSS_SUCCESS) {
-    LOG(ERROR) << "Tspi_Hash_VerifySignature - " << ResultToString(result);
-    return false;
-  }
-  VLOG(1) << "TPMUtilityImpl::Verify success";
-  return true;
-}
-
 bool TPMUtilityImpl::IsSRKReady() {
   VLOG(1) << "TPMUtilityImpl::IsSRKReady";
   AutoLock lock(lock_);

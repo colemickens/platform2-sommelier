@@ -84,9 +84,6 @@ class TPMUtilityImpl : public TPMUtility {
   bool Sign(int key_handle,
             const std::string& input,
             std::string* signature) override;
-  bool Verify(int key_handle,
-              const std::string& input,
-              const std::string& signature) override;
   bool IsSRKReady() override;
   // Stringifies TSS error codes.
   static std::string ResultToString(TSS_RESULT result);
