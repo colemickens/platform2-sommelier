@@ -1,0 +1,151 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/mojom_bindings_generator.gni")
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+group("all") {
+  deps = [
+    ":mps_main",
+    ":rtanalytics_main",
+  ]
+  if (use.test) {
+    deps += [ ":media_perception_service_test" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [ "protobuf" ]
+}
+
+proto_library("media_perception_protos") {
+  proto_in_dir = "proto/"
+  proto_out_dir = "include/media_perception"
+  sources = [
+    "${proto_in_dir}/common.proto",
+    "${proto_in_dir}/device_management.proto",
+    "${proto_in_dir}/frame_perception.proto",
+    "${proto_in_dir}/hotword_detection.proto",
+    "${proto_in_dir}/media_perception_mojom.proto",
+    "${proto_in_dir}/pipeline.proto",
+    "${proto_in_dir}/presence_perception.proto",
+  ]
+}
+
+generate_mojom_bindings("media_perception_mojo_bindings") {
+  sources = [
+    "mojom/color_space.mojom",
+    "mojom/common.mojom",
+    "mojom/constants.mojom",
+    "mojom/device.mojom",
+    "mojom/device_factory.mojom",
+    "mojom/device_management.mojom",
+    "mojom/frame_perception.mojom",
+    "mojom/geometry.mojom",
+    "mojom/hotword_detection.mojom",
+    "mojom/image_capture.mojom",
+    "mojom/mailbox.mojom",
+    "mojom/mailbox_holder.mojom",
+    "mojom/media_perception.mojom",
+    "mojom/media_perception_service.mojom",
+    "mojom/pipeline.mojom",
+    "mojom/presence_perception.mojom",
+    "mojom/producer.mojom",
+    "mojom/receiver.mojom",
+    "mojom/scoped_access_permission.mojom",
+    "mojom/shared_memory.mojom",
+    "mojom/sync_token.mojom",
+    "mojom/time.mojom",
+    "mojom/values.mojom",
+    "mojom/video_capture_types.mojom",
+    "mojom/virtual_device.mojom",
+  ]
+}
+
+static_library("media_perception_service_lib") {
+  all_dependent_pkg_deps = [
+    "libchrome-${libbase_ver}",
+    "libbrillo-${libbase_ver}",
+    "libmojo-${libbase_ver}",
+  ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":media_perception_mojo_bindings",
+    ":media_perception_protos",
+  ]
+  sources = [
+    "audio_receiver.cc",
+    "chrome_audio_service_client_impl.cc",
+    "cras_client_impl.cc",
+    "cros_dbus_service.cc",
+    "media_perception_controller_impl.cc",
+    "media_perception_impl.cc",
+    "media_perception_service_impl.cc",
+    "mojo_connector.cc",
+    "producer_impl.cc",
+    "proto_mojom_conversion.cc",
+    "receiver_impl.cc",
+    "shared_memory_provider.cc",
+    "video_capture_service_client_impl.cc",
+  ]
+  pkg_deps = [
+    "libcras",
+    "dbus-1",
+  ]
+}
+
+executable("rtanalytics_main") {
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":media_perception_service_lib",
+  ]
+  sources = [
+    "main.cc",
+  ]
+  libs = [
+    "rtanalytics",
+    "dl",
+  ]
+
+  # librtanalytics.so is imported to the build directory by mri_package ebuild.
+  lib_dirs = [ root_build_dir ]
+}
+
+executable("mps_main") {
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":media_perception_service_lib",
+  ]
+  sources = [
+    "mps_main.cc",
+  ]
+  libs = [
+    "rtanalytics",
+    "dl",
+  ]
+
+  # librtanalytics.so is imported to the build directory by mri_package ebuild.
+  lib_dirs = [ root_build_dir ]
+}
+
+if (use.test) {
+  executable("media_perception_service_test") {
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [
+      ":media_perception_service_lib",
+    ]
+    sources = [
+      "fake_chrome_audio_service_client.cc",
+      "fake_rtanalytics.cc",
+      "fake_video_capture_service_client.cc",
+      "media_perception_impl_test.cc",
+      "proto_mojom_conversion_test.cc",
+      "testrunner.cc",
+    ]
+  }
+}
