@@ -466,6 +466,21 @@ grpc::Status ServiceImpl::StartTermina(grpc::ServerContext* ctx,
                                             strerror(saved_errno));
   }
 
+  // Resize the stateful filesystem to fill the block device in case
+  // the size was increased while the VM wasn't booted.
+  if (!init_->Spawn({"btrfs", "filesystem", "resize", "max", "/mnt/stateful"},
+                    kLxdEnv, false /*respawn*/, false /*use_console*/,
+                    true /*wait_for_exit*/, &launch_info)) {
+    return grpc::Status(grpc::INTERNAL, "failed to spawn btrfs resize");
+  }
+  // btrfs resize operation should not fail, but if it does, attempt to
+  // continue anyway.
+  if (launch_info.status != Init::ProcessStatus::EXITED) {
+    PLOG(ERROR) << "btrfs resize did not complete";
+  } else if (launch_info.code != 0) {
+    PLOG(ERROR) << "btrfs resize returned non-zero";
+  }
+
   if (!init_->Spawn({"lxd", "--group", "lxd", "--syslog"}, kLxdEnv,
                     true /*respawn*/, false /*use_console*/,
                     false /*wait_for_exit*/, &launch_info)) {
