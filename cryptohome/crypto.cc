@@ -522,7 +522,7 @@ bool Crypto::DecryptTpmBoundToPcr(const SecureBlob& vault_key,
   if (!DeriveSecretsSCrypt(vault_key, salt, { &pass_blob, vkk_iv })) {
     return false;
   }
-  std::map<uint32_t, std::string> pcr_map({{kTpmArcPCR, ""}});
+  std::map<uint32_t, std::string> pcr_map({{kTpmSingleUserPCR, ""}});
   Tpm::TpmRetryAction retry_action =
       tpm_->UnsealWithAuthorization(tpm_init_->GetCryptohomeKey(), tpm_key,
                                     pass_blob, pcr_map, vkk_key);
@@ -1467,13 +1467,13 @@ bool Crypto::GetValidPCRValues(
 
   ValidPcrValue default_pcr_value;
   memset(default_pcr_value.bitmask, 0, 2);
-  default_pcr_value.bitmask[kTpmArcPCR / 8] = 1u << kTpmArcPCR;
+  default_pcr_value.bitmask[kTpmSingleUserPCR / 8] = 1u << kTpmSingleUserPCR;
   default_pcr_value.digest = default_digest;
   valid_pcr_criteria->push_back(default_pcr_value);
 
   ValidPcrValue extended_pcr_value;
   memset(extended_pcr_value.bitmask, 0, 2);
-  extended_pcr_value.bitmask[kTpmArcPCR / 8] = 1u << kTpmArcPCR;
+  extended_pcr_value.bitmask[kTpmSingleUserPCR / 8] = 1u << kTpmSingleUserPCR;
   extended_pcr_value.digest = extended_digest;
   valid_pcr_criteria->push_back(extended_pcr_value);
 
@@ -1485,14 +1485,11 @@ std::map<uint32_t, std::string> Crypto::GetPcrMap(
     bool use_extended_pcr) const {
   std::map<uint32_t, std::string> pcr_map;
   if (use_extended_pcr) {
-    // TODO(igorcov): Rename the kTpmArcPCR constant into something that will
-    // make it clear that it's the PCR that locks the device to a single user
-    // login, irespective if it's because of ARC or not.
-    pcr_map[kTpmArcPCR] =
+    pcr_map[kTpmSingleUserPCR] =
         GetHashDescription(tpm_).GetPcrAfterExtendingUsername(
             SecureBlob(obfuscated_username)).to_string();
   } else {
-    pcr_map[kTpmArcPCR] = std::string(GetHashDescription(tpm_).size, 0);
+    pcr_map[kTpmSingleUserPCR] = std::string(GetHashDescription(tpm_).size, 0);
   }
   return pcr_map;
 }

@@ -15,6 +15,7 @@
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/fake_le_credential_backend.h"
 #include "cryptohome/le_credential_manager.h"
+#include "cryptohome/tpm.h"
 
 namespace {
 
@@ -194,7 +195,7 @@ TEST_F(LECredentialManagerUnitTest, CheckPcrAuth) {
   std::map<uint32_t, uint32_t> stub_delay_sched;
   ValidPcrCriteria valid_pcr_criteria;
   ValidPcrValue value;
-  value.bitmask[0] = 1 << 4 /* kTpmArcPCR index */;
+  value.bitmask[0] = 1 << cryptohome::kTpmSingleUserPCR;
   value.bitmask[1] = 0;
   value.digest = "digest";
   valid_pcr_criteria.push_back(value);
