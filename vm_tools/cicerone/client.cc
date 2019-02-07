@@ -288,19 +288,17 @@ int SetTimezone(dbus::ObjectProxy* proxy, const string& timezone_name) {
     return -1;
   }
 
+  LOG(INFO) << "Successfully set timezone for " << response.successes()
+            << " containers to " << timezone_name;
+
   int failure_count = response.failure_reasons_size();
   if (failure_count != 0) {
-    LOG(ERROR) << "Failed to set timezone for " << failure_count
-               << " containers";
+    LOG(ERROR) << "Received " << failure_count << " failures:";
     for (int i = 0; i < failure_count; i++) {
-      LOG(ERROR) << "SetTimezone failure reason: "
-                 << response.failure_reasons(i);
+      LOG(ERROR) << response.failure_reasons(i);
     }
     return -1;
   }
-
-  LOG(INFO) << "Successfully set timezone for " << response.successes()
-            << " containers to " << timezone_name;
   return 0;
 }
 
