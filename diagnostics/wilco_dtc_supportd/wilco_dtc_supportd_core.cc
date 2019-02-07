@@ -145,7 +145,12 @@ bool WilcoDtcSupportdCore::Start() {
       wilco_dtc_grpc_clients_.back().get();
 
   // Start EC event service.
-  return ec_event_service_.Start();
+  if (!ec_event_service_.Start()) {
+    LOG(WARNING)
+        << "Failed to start EC event service. EC events will be ignored.";
+  }
+
+  return true;
 }
 
 void WilcoDtcSupportdCore::ShutDown(const base::Closure& on_shutdown) {
