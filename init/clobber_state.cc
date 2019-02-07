@@ -59,7 +59,10 @@ base::FilePath GetRootDevice(bool strip_partition) {
   }
 }
 
-void CgptFindShowFunctionNoOp(struct CgptFindParams*, char*, int, GptEntry*) {}
+void CgptFindShowFunctionNoOp(struct CgptFindParams*,
+                              const char*,
+                              int,
+                              GptEntry*) {}
 
 int GetPartitionNumber(const base::FilePath& drive_name,
                        const std::string& partition_label) {
