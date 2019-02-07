@@ -22,7 +22,6 @@
 
 #include "bluetooth/common/util.h"
 #include "bluetooth/newblued/mock_libnewblue.h"
-#include "bluetooth/newblued/mock_newblue.h"
 
 using ::testing::_;
 using ::testing::AnyNumber;
@@ -39,6 +38,8 @@ constexpr int kTestSerial = 10;
 constexpr char kTestDeviceAddress[] = "06:05:04:03:02:01";
 constexpr char kTestDeviceObjectPath[] =
     "/org/bluez/hci0/dev_06_05_04_03_02_01";
+
+constexpr uniq_t kTestDiscoveryId = 7;
 
 void SaveResponse(std::unique_ptr<dbus::Response>* saved_response,
                   std::unique_ptr<dbus::Response> response) {
@@ -59,8 +60,7 @@ class NewblueDaemonTest : public ::testing::Test {
     EXPECT_CALL(*bus_, AssertOnOriginThread()).Times(AnyNumber());
     auto libnewblue = std::make_unique<MockLibNewblue>();
     libnewblue_ = libnewblue.get();
-    auto newblue = std::make_unique<MockNewblue>(std::move(libnewblue));
-    newblue_ = newblue.get();
+    auto newblue = std::make_unique<Newblue>(std::move(libnewblue));
     newblue_daemon_ = std::make_unique<NewblueDaemon>(std::move(newblue),
                                                       false /* is_idle_mode */);
     SetupBluezObjectProxy();
@@ -246,8 +246,7 @@ class NewblueDaemonTest : public ::testing::Test {
   void TestInit(scoped_refptr<dbus::MockExportedObject> exported_root_object) {
     ExpectTestInit(exported_root_object);
 
-    EXPECT_CALL(*newblue_, Init()).WillOnce(Return(true));
-    EXPECT_CALL(*newblue_, ListenReadyForUp(_)).WillOnce(Return(true));
+    EXPECT_CALL(*libnewblue_, HciUp(_, _, _)).WillOnce(Return(true));
     EXPECT_TRUE(newblue_daemon_->Init(
         bus_, nullptr /* no need to access the delegator */));
   }
@@ -274,7 +273,16 @@ class NewblueDaemonTest : public ::testing::Test {
                                         bluetooth_adapter::kStopDiscovery)),
             Return(true)));
 
-    EXPECT_CALL(*newblue_, BringUp()).WillOnce(Return(true));
+    EXPECT_CALL(*libnewblue_, HciIsUp()).WillOnce(Return(true));
+    EXPECT_CALL(*libnewblue_, L2cInit()).WillOnce(Return(0));
+    EXPECT_CALL(*libnewblue_, AttInit()).WillOnce(Return(true));
+    EXPECT_CALL(*libnewblue_, GattProfileInit()).WillOnce(Return(true));
+    EXPECT_CALL(*libnewblue_, GattBuiltinInit()).WillOnce(Return(true));
+    EXPECT_CALL(*libnewblue_, SmInit()).WillOnce(Return(true));
+    EXPECT_CALL(*libnewblue_, SmRegisterPasskeyDisplayObserver(_, _))
+        .WillOnce(Return(true));
+    EXPECT_CALL(*libnewblue_, SmRegisterPairStateObserver(_, _))
+        .WillOnce(Return(true));
     newblue_daemon_->OnHciReadyForUp();
   }
 
@@ -283,7 +291,6 @@ class NewblueDaemonTest : public ::testing::Test {
   scoped_refptr<dbus::MockObjectProxy> bluez_object_proxy_;
   scoped_refptr<dbus::MockObjectManager> bluez_object_manager_;
   std::unique_ptr<NewblueDaemon> newblue_daemon_;
-  MockNewblue* newblue_;
   MockLibNewblue* libnewblue_;
   dbus::ExportedObject::MethodCallCallback dummy_method_handler_;
 };
@@ -300,16 +307,9 @@ TEST_F(NewblueDaemonTest, InitFailed) {
   ExpectPropertiesMethodsExportedSync(exported_agent_manager_object);
   ExpectAgentManagerMethodsExported(exported_agent_manager_object);
 
-  // Newblue::Init() fails
   ExpectTestInit(exported_root_object);
-  EXPECT_CALL(*newblue_, Init()).WillOnce(Return(false));
-  EXPECT_FALSE(newblue_daemon_->Init(
-      bus_, nullptr /* no need to access the delegator */));
 
-  // Newblue::ListenReadyForUp() fails
-  ExpectTestInit(exported_root_object);
-  EXPECT_CALL(*newblue_, Init()).WillOnce(Return(true));
-  EXPECT_CALL(*newblue_, ListenReadyForUp(_)).WillOnce(Return(false));
+  EXPECT_CALL(*libnewblue_, HciUp(_, _, _)).WillOnce(Return(false));
   EXPECT_FALSE(newblue_daemon_->Init(
       bus_, nullptr /* no need to access the delegator */));
 
@@ -378,16 +378,22 @@ TEST_F(NewblueDaemonTest, DiscoveryAPI) {
   start_discovery_method_call.SetSerial(kTestSerial);
   std::unique_ptr<dbus::Response> start_discovery_response;
   Newblue::DeviceDiscoveredCallback on_device_discovered;
-  EXPECT_CALL(*newblue_, StartDiscovery(_))
-      .WillOnce(DoAll(SaveArg<0>(&on_device_discovered), Return(true)));
+  hciDeviceDiscoveredLeCbk inquiry_response_callback;
+  void* inquiry_response_callback_data;
+  EXPECT_CALL(*libnewblue_, HciDiscoverLeStart(_, _, /* active */ true,
+                                               /* use_random_addr */ false))
+      .WillOnce(DoAll(SaveArg<0>(&inquiry_response_callback),
+                      SaveArg<1>(&inquiry_response_callback_data),
+                      Return(kTestDiscoveryId)));
   start_discovery_handler.Run(
       &start_discovery_method_call,
       base::Bind(&SaveResponse, &start_discovery_response));
   EXPECT_EQ("", start_discovery_response->GetErrorName());
-  ASSERT_FALSE(on_device_discovered.is_null());
+  ASSERT_NE(nullptr, inquiry_response_callback);
+  ASSERT_NE(nullptr, inquiry_response_callback_data);
   // StartDiscovery again by the same client, it should return D-Bus error and
   // should not affect NewBlue discovery state.
-  EXPECT_CALL(*newblue_, StartDiscovery(_)).Times(0);
+  EXPECT_CALL(*libnewblue_, HciDiscoverLeStart(_, _, _, _)).Times(0);
   start_discovery_handler.Run(
       &start_discovery_method_call,
       base::Bind(&SaveResponse, &start_discovery_response));
@@ -397,7 +403,7 @@ TEST_F(NewblueDaemonTest, DiscoveryAPI) {
   // should not affect NewBlue discovery state since it has already been
   // started.
   start_discovery_method_call.SetSender(kTestSender2);
-  EXPECT_CALL(*newblue_, StartDiscovery(_)).Times(0);
+  EXPECT_CALL(*libnewblue_, HciDiscoverLeStart(_, _, _, _)).Times(0);
   start_discovery_handler.Run(
       &start_discovery_method_call,
       base::Bind(&SaveResponse, &start_discovery_response));
@@ -411,8 +417,14 @@ TEST_F(NewblueDaemonTest, DiscoveryAPI) {
       .WillOnce(Return(exported_device_object.get()));
   ExpectDeviceMethodsExported(exported_device_object);
   ExpectPropertiesMethodsExportedSync(exported_device_object);
-  Device device(kTestDeviceAddress);
-  on_device_discovered.Run(device);
+  struct bt_addr address;
+  ConvertToBtAddr(false, kTestDeviceAddress, &address);
+  inquiry_response_callback(inquiry_response_callback_data, &address,
+                            /* rssi */ -101, HCI_ADV_TYPE_SCAN_RSP,
+                            /* eir */ {},
+                            /* eir_len*/ 0);
+  // Trigger the queued inquiry_response_callback task.
+  base::RunLoop().RunUntilIdle();
 
   // StopDiscovery by the first client, it should return D-Bus success and
   // should not affect NewBlue discovery state since there is still another
@@ -424,14 +436,14 @@ TEST_F(NewblueDaemonTest, DiscoveryAPI) {
   stop_discovery_method_call.SetSender(kTestSender);
   stop_discovery_method_call.SetSerial(kTestSerial);
   std::unique_ptr<dbus::Response> stop_discovery_response;
-  EXPECT_CALL(*newblue_, StopDiscovery()).Times(0);
+  EXPECT_CALL(*libnewblue_, HciDiscoverLeStop(_)).Times(0);
   stop_discovery_handler.Run(
       &stop_discovery_method_call,
       base::Bind(&SaveResponse, &stop_discovery_response));
   EXPECT_EQ("", stop_discovery_response->GetErrorName());
   // StopDiscovery again by the same client, it should return D-Bus error, and
   // should not affect the NewBlue discovery state.
-  EXPECT_CALL(*newblue_, StopDiscovery()).Times(0);
+  EXPECT_CALL(*libnewblue_, HciDiscoverLeStop(_)).Times(0);
   stop_discovery_handler.Run(
       &stop_discovery_method_call,
       base::Bind(&SaveResponse, &stop_discovery_response));
@@ -441,7 +453,8 @@ TEST_F(NewblueDaemonTest, DiscoveryAPI) {
   // should trigger NewBlue's StopDiscovery since there is no more client having
   // a discovery session.
   stop_discovery_method_call.SetSender(kTestSender2);
-  EXPECT_CALL(*newblue_, StopDiscovery()).WillOnce(Return(true));
+  EXPECT_CALL(*libnewblue_, HciDiscoverLeStop(kTestDiscoveryId))
+      .WillOnce(Return(true));
   stop_discovery_handler.Run(
       &stop_discovery_method_call,
       base::Bind(&SaveResponse, &stop_discovery_response));
@@ -455,16 +468,20 @@ TEST_F(NewblueDaemonTest, DiscoveryAPI) {
 }
 
 TEST_F(NewblueDaemonTest, IdleMode) {
+  EXPECT_CALL(*bus_,
+              RequestOwnershipAndBlock(
+                  newblue_object_manager::kNewblueObjectManagerServiceName,
+                  dbus::Bus::REQUIRE_PRIMARY))
+      .WillOnce(Return(true));
+
   auto libnewblue = std::make_unique<MockLibNewblue>();
   libnewblue_ = libnewblue.get();
-  auto newblue = std::make_unique<MockNewblue>(std::move(libnewblue));
-  newblue_ = newblue.get();
+  auto newblue = std::make_unique<Newblue>(std::move(libnewblue));
   newblue_daemon_ = std::make_unique<NewblueDaemon>(std::move(newblue),
                                                     true /* is_idle_mode */);
 
   // In idle mode, the daemon shouldn't try to bring up the LE stack.
-  EXPECT_CALL(*newblue_, Init()).Times(0);
-  EXPECT_CALL(*newblue_, ListenReadyForUp(_)).Times(0);
+  EXPECT_CALL(*libnewblue_, HciUp(_, _, _)).Times(0);
   EXPECT_TRUE(newblue_daemon_->Init(
       bus_, nullptr /* no need to access the delegator */));
 
