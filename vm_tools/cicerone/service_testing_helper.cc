@@ -499,12 +499,8 @@ void ServiceTestingHelper::SetDbusCallbackNames() {
   dbus_callbacks_[kSetTimezone].method_name = kSetTimezoneMethod;
   dbus_callbacks_[kSetUpLxdContainerUser].method_name =
       kSetUpLxdContainerUserMethod;
-  dbus_callbacks_[kInstallLinuxPackageFromApt].method_name =
-      kInstallLinuxPackageFromAptMethod;
   dbus_callbacks_[kAppSearch].method_name =
       kAppSearchMethod;
-  dbus_callbacks_[kGetLinuxPackageInfoFromApt].method_name =
-      kGetLinuxPackageInfoFromAptMethod;
   dbus_callbacks_[kExportLxdContainer].method_name =
       kExportLxdContainerMethod;
   dbus_callbacks_[kImportLxdContainer].method_name =
