@@ -326,6 +326,9 @@ enum DiagnosticRoutineStatus {
   ROUTINE_STATUS_FAILED = 4;   // Routine completed and failed.
   ROUTINE_STATUS_ERROR = 5;  // An error prevented the routine from completing.
   ROUTINE_STATUS_CANCELLED = 6;  // Routine was cancelled before completion.
+  ROUTINE_STATUS_FAILED_TO_START = 7;  // Routine could not be created.
+  ROUTINE_STATUS_REMOVED =
+      8;  // Routine has been removed and is no longer valid.
 }
 
 // Enumeration of each of the messages a diagnostics routine can pass back.
@@ -393,7 +396,8 @@ message GetRoutineUpdateRequest {
     RESUME = 2;
     CANCEL = 3;
     GET_STATUS = 4;
-    STOP = 5;
+    REMOVE = 5;  // All routines which started successfully must be removed,
+                 // otherwise they will persist on the system.
   }
 
   // Must be distinct from |COMMAND_UNSET|.

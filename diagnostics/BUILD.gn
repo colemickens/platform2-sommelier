@@ -148,6 +148,7 @@ static_library("libwilco_dtc_supportd") {
     ":diagnostics_grpc_protos",
     ":diagnostics_mojo_bindings",
     ":libconstants",
+    ":libdiag_routine",
     ":libgrpc_async_adapter",
   ]
   all_dependent_configs = [ ":libwilco_dtc_supportd_pkg_deps" ]
@@ -159,6 +160,8 @@ static_library("libwilco_dtc_supportd") {
     "wilco_dtc_supportd/diagnosticsd_ec_event_service.cc",
     "wilco_dtc_supportd/diagnosticsd_grpc_service.cc",
     "wilco_dtc_supportd/diagnosticsd_mojo_service.cc",
+    "wilco_dtc_supportd/diagnosticsd_routine_factory_impl.cc",
+    "wilco_dtc_supportd/diagnosticsd_routine_service.cc",
     "wilco_dtc_supportd/ec_constants.cc",
     "wilco_dtc_supportd/json_utils.cc",
     "wilco_dtc_supportd/mojo_utils.cc",
@@ -375,9 +378,11 @@ if (use.test) {
       "wilco_dtc_supportd/diagnosticsd_ec_event_service_test.cc",
       "wilco_dtc_supportd/diagnosticsd_grpc_service_test.cc",
       "wilco_dtc_supportd/diagnosticsd_mojo_service_test.cc",
+      "wilco_dtc_supportd/diagnosticsd_routine_service_test.cc",
       "wilco_dtc_supportd/ec_constants_test.cc",
       "wilco_dtc_supportd/fake_browser.cc",
       "wilco_dtc_supportd/fake_diagnostics_processor.cc",
+      "wilco_dtc_supportd/fake_diagnosticsd_routine_factory.cc",
       "wilco_dtc_supportd/file_test_utils.cc",
       "wilco_dtc_supportd/mock_mojom_diagnosticsd_client.cc",
       "wilco_dtc_supportd/mojo_test_utils.cc",

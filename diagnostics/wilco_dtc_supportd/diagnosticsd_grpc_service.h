@@ -53,6 +53,16 @@ class DiagnosticsdGrpcService final {
         base::Callback<void(WebRequestStatus status,
                             int http_status,
                             base::StringPiece response_body)>;
+    using GetAvailableRoutinesToServiceCallback = base::Callback<void(
+        const std::vector<grpc_api::DiagnosticRoutine>& routines)>;
+    using RunRoutineToServiceCallback = base::Callback<void(
+        int uuid, grpc_api::DiagnosticRoutineStatus status)>;
+    using GetRoutineUpdateRequestToServiceCallback =
+        base::Callback<void(int uuid,
+                            grpc_api::DiagnosticRoutineStatus status,
+                            int progress_percent,
+                            grpc_api::DiagnosticRoutineUserMessage user_message,
+                            const std::string& output)>;
 
     virtual ~Delegate() = default;
 
@@ -67,6 +77,33 @@ class DiagnosticsdGrpcService final {
         const std::vector<std::string>& headers,
         const std::string& request_body,
         const PerformWebRequestToBrowserCallback& callback) = 0;
+    // Called when gRPC |GetAvailableRoutines| was called.
+    //
+    // Calls diagnosticsd daemon routine function |GetAvailableRoutines|
+    // method and passes all fields of |GetAvailableRoutinesRequest| to
+    // determine which routines are available on the platform. The result
+    // of the call is returned via |callback|.
+    virtual void GetAvailableRoutinesToService(
+        const GetAvailableRoutinesToServiceCallback& callback) = 0;
+    // Called when gRPC |RunRoutine| was called.
+    //
+    // Calls diagnosticsd daemon routine function |RunRoutine| method and passes
+    // all fields of |RunRoutineRequest| to ask the platform to run a
+    // diagnostic routine. The result of the call is returned via |callback|.
+    virtual void RunRoutineToService(
+        const grpc_api::RunRoutineRequest& request,
+        const RunRoutineToServiceCallback& callback) = 0;
+    // Called when gRPC |GetRoutineUpdate| was called.
+    //
+    // Calls diagnosticsd daemon routine function |GetRoutineUpdate|
+    // method and passes all fields of |GetRoutineUpdateRequest| to
+    // control or get the status of an existing diagnostic routine. The result
+    // of the call is returned via |callback|.
+    virtual void GetRoutineUpdateRequestToService(
+        int uuid,
+        grpc_api::GetRoutineUpdateRequest::Command command,
+        bool include_output,
+        const GetRoutineUpdateRequestToServiceCallback& callback) = 0;
   };
 
   using SendMessageToUiCallback =
@@ -83,6 +120,10 @@ class DiagnosticsdGrpcService final {
       std::unique_ptr<grpc_api::PerformWebRequestResponse>)>;
   using GetAvailableRoutinesCallback = base::Callback<void(
       std::unique_ptr<grpc_api::GetAvailableRoutinesResponse>)>;
+  using RunRoutineCallback =
+      base::Callback<void(std::unique_ptr<grpc_api::RunRoutineResponse>)>;
+  using GetRoutineUpdateCallback =
+      base::Callback<void(std::unique_ptr<grpc_api::GetRoutineUpdateResponse>)>;
 
   explicit DiagnosticsdGrpcService(Delegate* delegate);
   ~DiagnosticsdGrpcService();
@@ -110,6 +151,11 @@ class DiagnosticsdGrpcService final {
   void GetAvailableRoutines(
       std::unique_ptr<grpc_api::GetAvailableRoutinesRequest> request,
       const GetAvailableRoutinesCallback& callback);
+  void RunRoutine(std::unique_ptr<grpc_api::RunRoutineRequest> request,
+                  const RunRoutineCallback& callback);
+  void GetRoutineUpdate(
+      std::unique_ptr<grpc_api::GetRoutineUpdateRequest> request,
+      const GetRoutineUpdateCallback& callback);
 
  private:
   // Constructs and, if successful, appends the dump of the specified file (with

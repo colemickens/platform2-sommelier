@@ -106,6 +106,14 @@ bool DiagnosticsdCore::Start() {
       &grpc_api::Diagnosticsd::AsyncService::RequestGetAvailableRoutines,
       base::Bind(&DiagnosticsdGrpcService::GetAvailableRoutines,
                  base::Unretained(&grpc_service_)));
+  grpc_server_.RegisterHandler(
+      &grpc_api::Diagnosticsd::AsyncService::RequestRunRoutine,
+      base::Bind(&DiagnosticsdGrpcService::RunRoutine,
+                 base::Unretained(&grpc_service_)));
+  grpc_server_.RegisterHandler(
+      &grpc_api::Diagnosticsd::AsyncService::RequestGetRoutineUpdate,
+      base::Bind(&DiagnosticsdGrpcService::GetRoutineUpdate,
+                 base::Unretained(&grpc_service_)));
 
   // Start the gRPC server that listens for incoming gRPC requests.
   VLOG(1) << "Starting gRPC server";
@@ -305,6 +313,25 @@ void DiagnosticsdCore::SendGrpcEcEventToDiagnosticsProcessor(
                      "called on diagnostics_processor";
         }));
   }
+}
+
+void DiagnosticsdCore::GetAvailableRoutinesToService(
+    const GetAvailableRoutinesToServiceCallback& callback) {
+  routine_service_.GetAvailableRoutines(callback);
+}
+
+void DiagnosticsdCore::RunRoutineToService(
+    const grpc_api::RunRoutineRequest& request,
+    const RunRoutineToServiceCallback& callback) {
+  routine_service_.RunRoutine(request, callback);
+}
+
+void DiagnosticsdCore::GetRoutineUpdateRequestToService(
+    int uuid,
+    grpc_api::GetRoutineUpdateRequest::Command command,
+    bool include_output,
+    const GetRoutineUpdateRequestToServiceCallback& callback) {
+  routine_service_.GetRoutineUpdate(uuid, command, include_output, callback);
 }
 
 void DiagnosticsdCore::SendGrpcUiMessageToDiagnosticsProcessor(

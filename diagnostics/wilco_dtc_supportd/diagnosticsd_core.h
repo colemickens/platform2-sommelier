@@ -26,6 +26,7 @@
 #include "diagnostics/wilco_dtc_supportd/diagnosticsd_ec_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/diagnosticsd_grpc_service.h"
 #include "diagnostics/wilco_dtc_supportd/diagnosticsd_mojo_service.h"
+#include "diagnostics/wilco_dtc_supportd/diagnosticsd_routine_service.h"
 
 #include "diagnostics_processor.grpc.pb.h"  // NOLINT(build/include)
 #include "diagnosticsd.grpc.pb.h"           // NOLINT(build/include)
@@ -135,6 +136,16 @@ class DiagnosticsdCore final
       const std::vector<std::string>& headers,
       const std::string& request_body,
       const PerformWebRequestToBrowserCallback& callback) override;
+  void GetAvailableRoutinesToService(
+      const GetAvailableRoutinesToServiceCallback& callback) override;
+  void RunRoutineToService(
+      const grpc_api::RunRoutineRequest& request,
+      const RunRoutineToServiceCallback& callback) override;
+  void GetRoutineUpdateRequestToService(
+      int uuid,
+      grpc_api::GetRoutineUpdateRequest::Command command,
+      bool include_output,
+      const GetRoutineUpdateRequestToServiceCallback& callback) override;
 
   // DiagnosticsdMojoService::Delegate overrides:
   void SendGrpcUiMessageToDiagnosticsProcessor(
@@ -205,6 +216,12 @@ class DiagnosticsdCore final
 
   // EcEvent-related members:
   DiagnosticsdEcEventService ec_event_service_{this /* delegate */};
+
+  // Diagnostic routine-related members:
+
+  // Implementation of the diagnostic routine interface exposed by the
+  // diagnosticsd daemon.
+  DiagnosticsdRoutineService routine_service_;
 
   DISALLOW_COPY_AND_ASSIGN(DiagnosticsdCore);
 };

@@ -33,6 +33,11 @@ using DelegateWebRequestStatus =
     DiagnosticsdGrpcService::Delegate::WebRequestStatus;
 using DelegateWebRequestHttpMethod =
     DiagnosticsdGrpcService::Delegate::WebRequestHttpMethod;
+using GetAvailableRoutinesCallback =
+    DiagnosticsdGrpcService::GetAvailableRoutinesCallback;
+using RunRoutineCallback = DiagnosticsdGrpcService::RunRoutineCallback;
+using GetRoutineUpdateCallback =
+    DiagnosticsdGrpcService::GetRoutineUpdateCallback;
 
 // Https prefix expected to be a prefix of URL in PerformWebRequestParameter.
 constexpr char kHttpsPrefix[] = "https://";
@@ -123,6 +128,44 @@ bool GetDelegateWebRequestHttpMethod(
                  << static_cast<int>(http_method);
       return false;
   }
+}
+
+// Forwards and wraps available routines into a gRPC response.
+void ForwardGetAvailableRoutinesResponse(
+    const GetAvailableRoutinesCallback& callback,
+    const std::vector<grpc_api::DiagnosticRoutine>& routines) {
+  auto reply = std::make_unique<grpc_api::GetAvailableRoutinesResponse>();
+  for (auto routine : routines)
+    reply->add_routines(routine);
+  callback.Run(std::move(reply));
+}
+
+// Forwards and wraps the result of a RunRoutine command into a gRPC response.
+void ForwardRunRoutineResponse(const RunRoutineCallback& callback,
+                               int uuid,
+                               grpc_api::DiagnosticRoutineStatus status) {
+  auto reply = std::make_unique<grpc_api::RunRoutineResponse>();
+  reply->set_uuid(uuid);
+  reply->set_status(status);
+  callback.Run(std::move(reply));
+}
+
+// Forwards and wraps the results of a GetRoutineUpdate command into a gRPC
+// response.
+void ForwardGetRoutineUpdateResponse(
+    const GetRoutineUpdateCallback& callback,
+    int uuid,
+    grpc_api::DiagnosticRoutineStatus status,
+    int progress_percent,
+    grpc_api::DiagnosticRoutineUserMessage user_message,
+    const std::string& output) {
+  auto reply = std::make_unique<grpc_api::GetRoutineUpdateResponse>();
+  reply->set_uuid(uuid);
+  reply->set_status(status);
+  reply->set_progress_percent(progress_percent);
+  reply->set_user_message(user_message);
+  reply->set_output(output);
+  callback.Run(std::move(reply));
 }
 
 // Converts gRPC GetEcPropertyRequest::Property to property path.
@@ -389,11 +432,71 @@ void DiagnosticsdGrpcService::GetAvailableRoutines(
     std::unique_ptr<grpc_api::GetAvailableRoutinesRequest> request,
     const GetAvailableRoutinesCallback& callback) {
   DCHECK(request);
-  auto reply = std::make_unique<grpc_api::GetAvailableRoutinesResponse>();
+  delegate_->GetAvailableRoutinesToService(
+      base::Bind(&ForwardGetAvailableRoutinesResponse, callback));
+}
 
-  reply->add_routines(grpc_api::ROUTINE_BATTERY);
-  reply->add_routines(grpc_api::ROUTINE_BATTERY_SYSFS);
-  callback.Run(std::move(reply));
+void DiagnosticsdGrpcService::RunRoutine(
+    std::unique_ptr<grpc_api::RunRoutineRequest> request,
+    const RunRoutineCallback& callback) {
+  DCHECK(request);
+
+  // Make sure the RunRoutineRequest is superficially valid.
+  switch (request->routine()) {
+    case grpc_api::ROUTINE_BATTERY:
+      if (!request->has_battery_params()) {
+        LOG(ERROR) << "RunRoutineRequest with routine type BATTERY has no "
+                      "battery parameters.";
+        ForwardRunRoutineResponse(callback, 0 /* uuid */,
+                                  grpc_api::ROUTINE_STATUS_FAILED_TO_START);
+        return;
+      }
+      break;
+    case grpc_api::ROUTINE_BATTERY_SYSFS:
+      // TODO(pmoy@chromium.org): Add check once the BATTERY_SYSFS parameters
+      // have been defined.
+      NOTIMPLEMENTED();
+    case grpc_api::ROUTINE_BAD_BLOCKS:
+      // TODO(pmoy@chromium.org): Add check once the BAD_BLOCKS parameters have
+      // been defined.
+      NOTIMPLEMENTED();
+    case grpc_api::ROUTINE_URANDOM:
+      if (!request->has_urandom_params()) {
+        LOG(ERROR) << "RunRoutineRequest with routine type URANDOM has no "
+                      "urandom parameters.";
+        ForwardRunRoutineResponse(callback, 0 /* uuid */,
+                                  grpc_api::ROUTINE_STATUS_FAILED_TO_START);
+        return;
+      }
+      break;
+    default:
+      LOG(ERROR) << "RunRoutineRequest routine type invalid or unset.";
+      ForwardRunRoutineResponse(callback, 0 /* uuid */,
+                                grpc_api::ROUTINE_STATUS_FAILED_TO_START);
+      return;
+  }
+
+  delegate_->RunRoutineToService(
+      *request, base::Bind(&ForwardRunRoutineResponse, callback));
+}
+
+void DiagnosticsdGrpcService::GetRoutineUpdate(
+    std::unique_ptr<grpc_api::GetRoutineUpdateRequest> request,
+    const GetRoutineUpdateCallback& callback) {
+  DCHECK(request);
+
+  if (request->command() == grpc_api::GetRoutineUpdateRequest::COMMAND_UNSET) {
+    std::string output =
+        request->include_output() ? "No command specified." : "";
+    ForwardGetRoutineUpdateResponse(
+        callback, request->uuid(), grpc_api::ROUTINE_STATUS_ERROR,
+        0 /* progress_percent */, grpc_api::ROUTINE_USER_MESSAGE_UNSET, output);
+    return;
+  }
+
+  delegate_->GetRoutineUpdateRequestToService(
+      request->uuid(), request->command(), request->include_output(),
+      base::Bind(&ForwardGetRoutineUpdateResponse, callback));
 }
 
 void DiagnosticsdGrpcService::AddFileDump(
