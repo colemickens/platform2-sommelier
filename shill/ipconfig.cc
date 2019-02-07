@@ -52,7 +52,9 @@ IPConfig::IPConfig(ControlInterface* control_interface,
     : device_name_(device_name),
       type_(type),
       serial_(global_serial_++),
-      adaptor_(control_interface->CreateIPConfigAdaptor(this)) {
+      adaptor_(control_interface->CreateIPConfigAdaptor(this)),
+      current_lease_expiration_time_({kDefaultLeaseExpirationTime, 0}),
+      time_(Time::GetInstance()) {
   store_.RegisterConstString(kAddressProperty, &properties_.address);
   store_.RegisterConstString(kBroadcastProperty,
                              &properties_.broadcast_address);
@@ -79,8 +81,6 @@ IPConfig::IPConfig(ControlInterface* control_interface,
                              &properties_.lease_duration_seconds);
   store_.RegisterConstByteArray(kiSNSOptionDataProperty,
                                 &properties_.isns_option_data);
-  time_ = Time::GetInstance();
-  current_lease_expiration_time_ = {kDefaultLeaseExpirationTime, 0};
   SLOG(this, 2) << __func__ << " device: " << device_name_;
 }
 
