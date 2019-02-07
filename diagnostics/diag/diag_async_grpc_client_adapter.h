@@ -39,6 +39,19 @@ class DiagAsyncGrpcClientAdapter {
       base::Callback<void(
           std::unique_ptr<grpc_api::GetAvailableRoutinesResponse> response)>
           callback) = 0;
+
+  // Request that a particular diagnostic routine be run on the platform.
+  virtual void RunRoutine(
+      const grpc_api::RunRoutineRequest& request,
+      base::Callback<void(std::unique_ptr<grpc_api::RunRoutineResponse>)>
+          callback) = 0;
+
+  // Get the status of an existing diagnostic routine, or send a command to an
+  // existing diagnostic routine.
+  virtual void GetRoutineUpdate(
+      const grpc_api::GetRoutineUpdateRequest& request,
+      base::Callback<void(std::unique_ptr<grpc_api::GetRoutineUpdateResponse>)>
+          callback) = 0;
 };
 
 }  // namespace diagnostics

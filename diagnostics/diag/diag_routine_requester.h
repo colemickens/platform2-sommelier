@@ -13,6 +13,7 @@
 
 #include "diagnostics/diag/diag_async_grpc_client_adapter.h"
 #include "diagnostics/diag/diag_async_grpc_client_adapter_impl.h"
+#include "diagnosticsd.pb.h"  // NOLINT(build/include)
 
 namespace diagnostics {
 
@@ -35,6 +36,16 @@ class DiagRoutineRequester final {
 
   // Returns a list of routines that the platform is capable of running.
   std::vector<grpc_api::DiagnosticRoutine> GetAvailableRoutines();
+
+  // Request that a diagnostic routine be run on the platform.
+  std::unique_ptr<grpc_api::RunRoutineResponse> RunRoutine(
+      const grpc_api::RunRoutineRequest& request);
+
+  // Get the status of an existing test, or send an existing test a command.
+  std::unique_ptr<grpc_api::GetRoutineUpdateResponse> GetRoutineUpdate(
+      int uuid,
+      grpc_api::GetRoutineUpdateRequest::Command command,
+      bool include_output);
 
  private:
   // Gracefully shut down the DiagAsyncGrpcClientAdapter.

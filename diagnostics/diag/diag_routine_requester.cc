@@ -10,8 +10,6 @@
 #include <base/logging.h>
 #include <base/run_loop.h>
 
-#include "diagnosticsd.pb.h"  // NOLINT(build/include)
-
 namespace diagnostics {
 
 namespace {
@@ -46,12 +44,6 @@ void DiagRoutineRequester::Connect(const std::string& target_uri) {
   client_impl_->Connect(target_uri);
 }
 
-void DiagRoutineRequester::ShutdownClient() {
-  base::RunLoop loop;
-  client_impl_->Shutdown(loop.QuitClosure());
-  loop.Run();
-}
-
 std::vector<grpc_api::DiagnosticRoutine>
 DiagRoutineRequester::GetAvailableRoutines() {
   grpc_api::GetAvailableRoutinesRequest request;
@@ -75,6 +67,55 @@ DiagRoutineRequester::GetAvailableRoutines() {
     available_routines.push_back(response->routines(i));
 
   return available_routines;
+}
+
+std::unique_ptr<grpc_api::RunRoutineResponse> DiagRoutineRequester::RunRoutine(
+    const grpc_api::RunRoutineRequest& request) {
+  std::unique_ptr<grpc_api::RunRoutineResponse> response;
+  base::RunLoop run_loop;
+
+  client_impl_->RunRoutine(
+      request, base::Bind(&OnRpcResponseReceived<grpc_api::RunRoutineResponse>,
+                          base::Unretained(&response), run_loop.QuitClosure()));
+  VLOG(0) << "Sent RunRoutineRequest.";
+  run_loop.Run();
+
+  if (!response)
+    LOG(ERROR) << "No RunRoutineResponse received.";
+
+  return response;
+}
+
+std::unique_ptr<grpc_api::GetRoutineUpdateResponse>
+DiagRoutineRequester::GetRoutineUpdate(
+    int uuid,
+    grpc_api::GetRoutineUpdateRequest::Command command,
+    bool include_output) {
+  grpc_api::GetRoutineUpdateRequest request;
+  request.set_uuid(uuid);
+  request.set_command(command);
+  request.set_include_output(include_output);
+  std::unique_ptr<grpc_api::GetRoutineUpdateResponse> response;
+  base::RunLoop run_loop;
+
+  client_impl_->GetRoutineUpdate(
+      request,
+      base::Bind(&OnRpcResponseReceived<grpc_api::GetRoutineUpdateResponse>,
+                 base::Unretained(&response), run_loop.QuitClosure()));
+  VLOG(0) << "Sent GetRoutineUpdateRequest.";
+  run_loop.Run();
+
+  if (!response) {
+    LOG(ERROR) << "No GetRoutineUpdateResponse received.";
+  }
+
+  return response;
+}
+
+void DiagRoutineRequester::ShutdownClient() {
+  base::RunLoop loop;
+  client_impl_->Shutdown(loop.QuitClosure());
+  loop.Run();
 }
 
 }  // namespace diagnostics

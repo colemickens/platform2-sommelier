@@ -42,4 +42,20 @@ void DiagAsyncGrpcClientAdapterImpl::GetAvailableRoutines(
                    request, callback);
 }
 
+void DiagAsyncGrpcClientAdapterImpl::RunRoutine(
+    const grpc_api::RunRoutineRequest& request,
+    base::Callback<void(std::unique_ptr<grpc_api::RunRoutineResponse>)>
+        callback) {
+  client_->CallRpc(&grpc_api::Diagnosticsd::Stub::AsyncRunRoutine, request,
+                   callback);
+}
+
+void DiagAsyncGrpcClientAdapterImpl::GetRoutineUpdate(
+    const grpc_api::GetRoutineUpdateRequest& request,
+    base::Callback<void(std::unique_ptr<grpc_api::GetRoutineUpdateResponse>)>
+        callback) {
+  client_->CallRpc(&grpc_api::Diagnosticsd::Stub::AsyncGetRoutineUpdate,
+                   request, callback);
+}
+
 }  // namespace diagnostics

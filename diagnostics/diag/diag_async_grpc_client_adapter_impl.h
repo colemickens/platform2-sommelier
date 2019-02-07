@@ -29,6 +29,14 @@ class DiagAsyncGrpcClientAdapterImpl final : public DiagAsyncGrpcClientAdapter {
       base::Callback<void(
           std::unique_ptr<grpc_api::GetAvailableRoutinesResponse> response)>
           callback) override;
+  void RunRoutine(
+      const grpc_api::RunRoutineRequest& request,
+      base::Callback<void(std::unique_ptr<grpc_api::RunRoutineResponse>)>
+          callback) override;
+  void GetRoutineUpdate(
+      const grpc_api::GetRoutineUpdateRequest& request,
+      base::Callback<void(std::unique_ptr<grpc_api::GetRoutineUpdateResponse>)>
+          callback) override;
 
  private:
   std::unique_ptr<AsyncGrpcClient<grpc_api::Diagnosticsd>> client_;

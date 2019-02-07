@@ -13,6 +13,9 @@ namespace diagnostics {
 // controlled by the platform.
 class DiagnosticRoutine {
  public:
+  // Note that the instance of this object may be destroyed before the routine
+  // is finished - the implementation must ensure that the destructor
+  // terminates all background processes in that case.
   virtual ~DiagnosticRoutine() = default;
 
   // Starts the diagnostic routine. This function should only be called a
