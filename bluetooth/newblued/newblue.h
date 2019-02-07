@@ -55,57 +55,29 @@ enum class PairState : uint8_t {
   FAILED,
 };
 
-// Structure representing a discovered device.
-struct Device {
-  Device();
-  explicit Device(const std::string& address);
-
-  // MAC address (in format XX:XX:XX:XX:XX:XX).
-  std::string address;
-  // Whether the MAC address is a random address.
-  bool is_random_address;
-
-  // [mandatory] Whether the device is paired.
-  Property<bool> paired;
-  // [mandatory] Whether the device is connected.
-  Property<bool> connected;
-  // [mandatory] Whether the device is in the white list.
-  Property<bool> trusted;
-  // [mandatory] Whether the device is in the black list.
-  Property<bool> blocked;
-  // [mandatory] Whether the services provided by the device has been resolved.
-  Property<bool> services_resolved;
-
-  // [mandatory] A readable and writable alias given to the device.
-  Property<std::string> alias;
-  // Actual alias provided by the user.
-  std::string internal_alias;
-  // [optional] A readable name of the device.
-  Property<std::string> name;
-
-  // [optional] Transmission power level of the advertisement packet
-  Property<int16_t> tx_power;
-  // [optional] RSSI of last received inquiry response.
-  Property<int16_t> rssi;
-
-  // [optional] Class of the device.
-  Property<uint32_t> eir_class;
-  // [optional] External appearance of the device.
-  Property<uint16_t> appearance;
-  // [optional] Icon type of the device based on the value of |appearance|.
-  Property<std::string> icon;
-
-  // [optional] Advertising flags.
-  Property<std::vector<uint8_t>> flags;
-  // [optional] Service UUIDs of 16-bit 32-bit and 128-bit.
-  Property<std::set<Uuid>> service_uuids;
-  // [optional] Service data associated with UUIDs.
-  Property<std::map<Uuid, std::vector<uint8_t>>> service_data;
-
-  // [optional] Manufacturer identifier with the extra manufacturer data
-  Property<std::map<uint16_t, std::vector<uint8_t>>> manufacturer;
-
-  DISALLOW_COPY_AND_ASSIGN(Device);
+// These are based on the pairing errors defined in newblue/sm.h.
+enum class PairError : uint8_t {
+  NONE,
+  ALREADY_PAIRED,
+  IN_PROGRESS,
+  INVALID_PAIR_REQ,
+  PASSKEY_FAILED,
+  OOB_NOT_AVAILABLE,
+  AUTH_REQ_INFEASIBLE,
+  CONF_VALUE_MISMATCHED,
+  PAIRING_NOT_SUPPORTED,
+  ENCR_KEY_SIZE,
+  REPEATED_ATTEMPT,
+  INVALID_PARAM,
+  MEMORY,
+  L2C_CONN,
+  NO_SUCH_DEVICE,
+  UNEXPECTED_SM_CMD,
+  SEND_SM_CMD,
+  ENCR_CONN,
+  UNEXPECTED_L2C_EVT,
+  STALLED,
+  UNKNOWN
 };
 
 // Agent to receive pairing user interaction events.
@@ -123,13 +95,17 @@ class PairingAgent {
 // event handling model that is compatible with libchrome's main loop.
 class Newblue {
  public:
-  using DeviceDiscoveredCallback = base::Callback<void(const Device&)>;
+  using DeviceDiscoveredCallback =
+      base::Callback<void(const std::string& address,
+                          uint8_t address_type,
+                          int8_t rssi,
+                          uint8_t reply_type,
+                          const std::vector<uint8_t>& eir)>;
+
   // dbus_error_code refers to namespace bluetooth_device
   // chromeos/dbus/service_constants.h.
-  using PairStateChangedCallback =
-      base::Callback<void(const Device& device,
-                          PairState pair_state,
-                          const std::string& dbus_error)>;
+  using PairStateChangedCallback = base::Callback<void(
+      const std::string& address, PairState pair_state, PairError pair_error)>;
 
   explicit Newblue(std::unique_ptr<LibNewblue> libnewblue);
 
@@ -166,29 +142,29 @@ class Newblue {
   // Stops LE scanning.
   virtual bool StopDiscovery();
 
-  // Updates EIR data of |device|.
-  static void UpdateEir(Device* device, const std::vector<uint8_t>& eir);
-
   // Registers as an observer of pairing states of devices.
   virtual UniqueId RegisterAsPairObserver(PairStateChangedCallback callback);
   // Unregisters as an observer of pairing states.
   virtual void UnregisterAsPairObserver(UniqueId observer_id);
 
   // Performs LE pairing.
-  virtual bool Pair(const std::string& device_address);
+  virtual bool Pair(const std::string& device_address,
+                    bool is_random_address,
+                    smPairSecurityRequirements security_requirement);
   // Cancels LE pairing.
-  virtual bool CancelPair(const std::string& device_address);
+  virtual bool CancelPair(const std::string& device_address,
+                          bool is_random_address);
 
  private:
   // Posts task to the thread which created this Newblue object.
-  // libnewblue callbacks should always post task using this method rather than
-  // doing any processing in the callback's thread.
+  // libnewblue callbacks should always post task using this method rather
+  // than doing any processing in the callback's thread.
   bool PostTask(const tracked_objects::Location& from_here,
                 const base::Closure& task);
 
-  // Called by NewBlue when it's ready to bring up the stack. This is called on
-  // one of NewBlue's threads, so we shouldn't do anything on this thread other
-  // than posting the task to our mainloop thread.
+  // Called by NewBlue when it's ready to bring up the stack. This is called
+  // on one of NewBlue's threads, so we shouldn't do anything on this thread
+  // other than posting the task to our mainloop thread.
   static void OnStackReadyForUpThunk(void* data);
   // Triggers the callback registered via ListenReadyForUp().
   void OnStackReadyForUp();
@@ -206,24 +182,6 @@ class Newblue {
                          uint8_t reply_type,
                          const std::vector<uint8_t>& eir);
 
-  // Updates the service UUIDs based on data of EirTypes including
-  // UUID16_INCOMPLETE, UUID16_COMPLETE, UUID32_INCOMPLETE, UUID32_COMPLETE,
-  // UUID128_INCOMPLETE and UUID128_COMPLETE.
-  static void UpdateServiceUuids(std::set<Uuid>* service_uuids,
-                                 uint8_t uuid_size,
-                                 const uint8_t* data,
-                                 uint8_t data_len);
-  // Updates the service data based on data of EirTypes including SVC_DATA16,
-  // SVC_DATA32 and SVC_DATA128.
-  static void UpdateServiceData(
-      std::map<Uuid, std::vector<uint8_t>>* service_data,
-      uint8_t uuid_size,
-      const uint8_t* data,
-      uint8_t data_len);
-
-  // Resets the update status of device properties.
-  void ClearPropertiesUpdated(Device* device);
-
   static void PairStateCallbackThunk(void* data,
                                      const void* pair_state_change,
                                      uniq_t observer_id);
@@ -237,16 +195,6 @@ class Newblue {
   void PasskeyDisplayObserverCallback(struct smPasskeyDisplay passkey_display,
                                       uniq_t observer_id);
 
-  // Determines the security requirements based on the appearance of a device.
-  // Returns true if determined. The default security requirements
-  // (bond:true MITM:false) are used.
-  struct smPairSecurityRequirements DetermineSecurityRequirements(
-      const Device& device);
-
-  // Finds a device from |discovered_devices_| with the given |device_address|.
-  // Returns nullptr if no such device is found.
-  Device* FindDevice(const std::string& device_address);
-
   std::unique_ptr<LibNewblue> libnewblue_;
 
   scoped_refptr<base::SingleThreadTaskRunner> origin_task_runner_;
@@ -255,15 +203,14 @@ class Newblue {
 
   DeviceDiscoveredCallback device_discovered_callback_;
   uniq_t discovery_handle_ = 0;
-  std::map<std::string, std::unique_ptr<Device>> discovered_devices_;
 
   uniq_t passkey_display_observer_id_ = 0;
 
   PairingAgent* pairing_agent_ = nullptr;
 
   // Handle from security manager of being a central pairing observer. We are
-  // responsible of receiving pairing state changed events and informing clients
-  // whoever registered as pairing observers.
+  // responsible of receiving pairing state changed events and informing
+  // clients whoever registered as pairing observers.
   uniq_t pair_state_handle_;
   // Contains pairs of <observer ID, callback>. Clients who registered for the
   // pairing update can expect to be notified via callback provided in
