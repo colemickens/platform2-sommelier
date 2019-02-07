@@ -13,9 +13,6 @@
 #include <utility>
 #include <vector>
 
-#include <arc/network/mac_address_generator.h>
-#include <arc/network/subnet.h>
-#include <arc/network/subnet_pool.h>
 #include <base/callback.h>
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
@@ -30,9 +27,12 @@
 #include <dbus/message.h>
 #include <grpc++/grpc++.h>
 
+#include "vm_tools/concierge/mac_address_generator.h"
 #include "vm_tools/concierge/power_manager_client.h"
 #include "vm_tools/concierge/shill_client.h"
 #include "vm_tools/concierge/startup_listener_impl.h"
+#include "vm_tools/concierge/subnet.h"
+#include "vm_tools/concierge/subnet_pool.h"
 #include "vm_tools/concierge/termina_vm.h"
 #include "vm_tools/concierge/vm_interface.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
@@ -158,8 +158,8 @@ class Service final : public base::MessageLoopForIO::Watcher {
   VmMap::iterator FindVm(std::string owner_id, std::string vm_name);
 
   // Resource allocators for VMs.
-  arc_networkd::MacAddressGenerator mac_address_generator_;
-  arc_networkd::SubnetPool subnet_pool_;
+  MacAddressGenerator mac_address_generator_;
+  SubnetPool subnet_pool_;
   VsockCidPool vsock_cid_pool_;
 
   // Current DNS resolution config.
@@ -180,8 +180,8 @@ class Service final : public base::MessageLoopForIO::Watcher {
   uint32_t next_seneschal_server_port_;
 
   // The subnet for plugin VMs.
-  std::unique_ptr<arc_networkd::Subnet> plugin_subnet_;
-  std::unique_ptr<arc_networkd::SubnetAddress> plugin_gateway_;
+  std::unique_ptr<Subnet> plugin_subnet_;
+  std::unique_ptr<SubnetAddress> plugin_gateway_;
 
   // Active VMs keyed by (owner_id, vm_name).
   VmMap vms_;

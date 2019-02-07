@@ -14,9 +14,6 @@
 #include <utility>
 #include <vector>
 
-#include <arc/network/mac_address_generator.h>
-#include <arc/network/subnet.h>
-#include <arc/network/subnet_pool.h>
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/callback.h>
@@ -37,6 +34,9 @@
 #include <grpc++/grpc++.h>
 #include <gtest/gtest.h>
 
+#include "vm_tools/concierge/mac_address_generator.h"
+#include "vm_tools/concierge/subnet.h"
+#include "vm_tools/concierge/subnet_pool.h"
 #include "vm_tools/concierge/vsock_cid_pool.h"
 
 #include "vm_guest.grpc.pb.h"  // NOLINT(build/include)
@@ -133,8 +133,8 @@ class TerminaVmTest : public ::testing::Test {
   base::ScopedTempDir temp_dir_;
 
   // Resource allocators for the VM.
-  arc_networkd::MacAddressGenerator mac_address_generator_;
-  arc_networkd::SubnetPool subnet_pool_;
+  MacAddressGenerator mac_address_generator_;
+  SubnetPool subnet_pool_;
   VsockCidPool vsock_cid_pool_;
 
   // Addresses assigned to the VM.
@@ -369,9 +369,9 @@ void TerminaVmTest::SetUp() {
   ASSERT_TRUE(stub);
 
   // Allocate resources for the VM.
-  arc_networkd::MacAddress mac_addr = mac_address_generator_.Generate();
+  MacAddress mac_addr = mac_address_generator_.Generate();
   uint32_t vsock_cid = vsock_cid_pool_.Allocate();
-  std::unique_ptr<arc_networkd::Subnet> subnet = subnet_pool_.AllocateVM();
+  std::unique_ptr<Subnet> subnet = subnet_pool_.AllocateVM();
 
   ASSERT_TRUE(subnet);
 

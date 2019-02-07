@@ -7,16 +7,17 @@
 
 #include <stdint.h>
 
-#include <arc/network/mac_address_generator.h>
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
+
+#include "vm_tools/concierge/mac_address_generator.h"
 
 namespace vm_tools {
 namespace concierge {
 
 // Builds and configures a tap device.  If the returned ScopedFD is valid then
 // the device has been properly configured.
-base::ScopedFD BuildTapDevice(const arc_networkd::MacAddress& mac_addr,
+base::ScopedFD BuildTapDevice(const MacAddress& mac_addr,
                               uint32_t ipv4_addr,
                               uint32_t ipv4_netmask);
 

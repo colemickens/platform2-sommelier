@@ -9,9 +9,10 @@
 
 #include <gtest/gtest.h>
 
-#include "arc/network/mac_address_generator.h"
+#include "vm_tools/concierge/mac_address_generator.h"
 
-namespace arc_networkd {
+namespace vm_tools {
+namespace concierge {
 namespace {
 // The standard library sadly does not provide a hash function for std::array.
 // So implement one here for MacAddress based off boost::hash_combine.
@@ -89,4 +90,5 @@ TEST(MacAddressGenerator, Multicast) {
   EXPECT_FALSE(generator.Insert(addr));
 }
 
-}  // namespace arc_networkd
+}  // namespace concierge
+}  // namespace vm_tools

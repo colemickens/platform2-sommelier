@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "arc/network/mac_address_generator.h"
+#include "vm_tools/concierge/mac_address_generator.h"
 
 #include <base/rand_util.h>
 
-namespace arc_networkd {
+namespace vm_tools {
+namespace concierge {
 
 MacAddress MacAddressGenerator::Generate() {
   MacAddress addr;
@@ -41,4 +42,5 @@ bool MacAddressGenerator::Insert(const MacAddress& addr) {
   return true;
 }
 
-}  // namespace arc_networkd
+}  // namespace concierge
+}  // namespace vm_tools

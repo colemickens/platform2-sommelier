@@ -11,13 +11,13 @@
 #include <string>
 #include <vector>
 
-#include <arc/network/mac_address_generator.h>
-#include <arc/network/subnet.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/macros.h>
 #include <brillo/process.h>
 
+#include "vm_tools/concierge/mac_address_generator.h"
+#include "vm_tools/concierge/subnet.h"
 #include "vm_tools/concierge/vm_interface.h"
 
 namespace vm_tools {
@@ -28,8 +28,8 @@ class PluginVm final : public VmInterface {
   static std::unique_ptr<PluginVm> Create(
       uint32_t cpus,
       std::string params,
-      arc_networkd::MacAddress mac_addr,
-      std::unique_ptr<arc_networkd::SubnetAddress> ipv4_addr,
+      MacAddress mac_addr,
+      std::unique_ptr<SubnetAddress> ipv4_addr,
       uint32_t ipv4_netmask,
       uint32_t ipv4_gateway,
       base::FilePath stateful_dir,
@@ -52,8 +52,8 @@ class PluginVm final : public VmInterface {
   void HandleSuspendDone() override {}
 
  private:
-  PluginVm(arc_networkd::MacAddress mac_addr,
-           std::unique_ptr<arc_networkd::SubnetAddress> ipv4_addr,
+  PluginVm(MacAddress mac_addr,
+           std::unique_ptr<SubnetAddress> ipv4_addr,
            uint32_t ipv4_netmask,
            uint32_t ipv4_gateway,
            base::FilePath runtime_dir);
@@ -69,8 +69,8 @@ class PluginVm final : public VmInterface {
   brillo::ProcessImpl process_;
 
   // Network configuration.
-  arc_networkd::MacAddress mac_addr_;
-  std::unique_ptr<arc_networkd::SubnetAddress> ipv4_addr_;
+  MacAddress mac_addr_;
+  std::unique_ptr<SubnetAddress> ipv4_addr_;
   uint32_t netmask_;
   uint32_t gateway_;
 

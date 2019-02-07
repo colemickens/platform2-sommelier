@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef ARC_NETWORK_SUBNET_H_
-#define ARC_NETWORK_SUBNET_H_
+#ifndef VM_TOOLS_CONCIERGE_SUBNET_H_
+#define VM_TOOLS_CONCIERGE_SUBNET_H_
 
 #include <stdint.h>
 
@@ -13,13 +13,13 @@
 #include <base/callback.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
-#include <brillo/brillo_export.h>
 
-namespace arc_networkd {
+namespace vm_tools {
+namespace concierge {
 
 // Represents an allocated address inside a subnet.  The address is freed when
 // this object is destroyed.
-class BRILLO_EXPORT SubnetAddress {
+class SubnetAddress {
  public:
   SubnetAddress(uint32_t addr, base::Closure release_cb);
   ~SubnetAddress();
@@ -38,7 +38,7 @@ class BRILLO_EXPORT SubnetAddress {
 };
 
 // Represents an allocated subnet.
-class BRILLO_EXPORT Subnet {
+class Subnet {
  public:
   // Creates a new Subnet with the given network id and prefix.  |release_cb|
   // runs in the destructor of this class and can be used to free other
@@ -87,6 +87,7 @@ class BRILLO_EXPORT Subnet {
   DISALLOW_COPY_AND_ASSIGN(Subnet);
 };
 
-}  // namespace arc_networkd
+}  // namespace concierge
+}  // namespace vm_tools
 
-#endif  // ARC_NETWORK_SUBNET_H_
+#endif  // VM_TOOLS_CONCIERGE_SUBNET_H_
