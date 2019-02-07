@@ -318,7 +318,7 @@ bool Mount::AddEcryptfsAuthToken(const VaultKeyset& vault_keyset,
   // Add the File Encryption key (FEK) from the vault keyset.  This is the key
   // that is used to encrypt the file contents when it is persisted to the lower
   // filesystem by eCryptfs.
-  *key_signature = CryptoLib::BlobToHex(vault_keyset.fek_sig());
+  *key_signature = CryptoLib::SecureBlobToHex(vault_keyset.fek_sig());
   if (!platform_->AddEcryptfsAuthToken(
         vault_keyset.fek(), *key_signature,
         vault_keyset.fek_salt())) {
@@ -329,7 +329,7 @@ bool Mount::AddEcryptfsAuthToken(const VaultKeyset& vault_keyset,
   // Add the File Name Encryption Key (FNEK) from the vault keyset.  This is the
   // key that is used to encrypt the file name when it is persisted to the lower
   // filesystem by eCryptfs.
-  *filename_key_signature = CryptoLib::BlobToHex(vault_keyset.fnek_sig());
+  *filename_key_signature = CryptoLib::SecureBlobToHex(vault_keyset.fnek_sig());
   if (!platform_->AddEcryptfsAuthToken(
         vault_keyset.fnek(), *filename_key_signature,
         vault_keyset.fnek_salt())) {
