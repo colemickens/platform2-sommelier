@@ -1362,20 +1362,54 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
     return dbus_response;
   }
 
+  bool disk_exists = false;
+  uint64_t current_size = 0;
+  uint64_t current_usage = 0;
+
+  struct stat st;
+  if (stat(disk_path.value().c_str(), &st) == 0) {
+    disk_exists = true;
+    current_size = st.st_size;
+    current_usage = st.st_blocks * 512ull;
+  }
+
   uint64_t disk_size;
   if (request.disk_size()) {
     disk_size = request.disk_size();
   } else {
     // If no disk size was specified, use 90% of free space.
+    // Free space is calculated as if the disk image did not consume any space.
     uint64_t free_space =
         base::SysInfo::AmountOfFreeDiskSpace(base::FilePath("/home"));
+    free_space += current_usage;
     disk_size = ((free_space * 9) / 10) & kDiskSizeMask;
 
     if (disk_size < kMinimumDiskSize)
       disk_size = kMinimumDiskSize;
   }
 
-  if (base::PathExists(disk_path)) {
+  if (disk_exists) {
+    LOG(INFO) << "Found existing disk at " << disk_path.value()
+              << " with current size " << current_size << " and usage "
+              << current_usage;
+
+    // Automatically extend existing disk images if disk_size was not specified.
+    if (request.disk_size() == 0) {
+      if (disk_size > current_size) {
+        LOG(INFO) << "Expanding disk image from " << current_size << " to "
+                  << disk_size;
+        if (expand_disk_image(disk_path.value().c_str(), disk_size) != 0) {
+          // If expanding the disk failed, continue with a warning.
+          // Currently, raw images can be resized, and qcow2 images cannot.
+          LOG(WARNING) << "Failed to expand disk image " << disk_path.value();
+        }
+      } else {
+        LOG(INFO) << "Current size " << current_size
+                  << " is already at least requested size " << disk_size
+                  << " - not expanding";
+      }
+    }
+
     response.set_status(DISK_STATUS_EXISTS);
     response.set_disk_path(disk_path.value());
     writer.AppendProtoAsArrayOfBytes(response);
