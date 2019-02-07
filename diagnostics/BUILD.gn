@@ -9,16 +9,16 @@ import("//common-mk/proto_library.gni")
 group("all") {
   deps = [
     ":diag",
-    ":diagnosticsd",
-    ":diagnostics_processor",
     ":diagnostics_dpsl_demo_single_thread",
+    ":diagnostics_processor",
+    ":diagnosticsd",
     ":telem",
   ]
   if (use.test) {
     deps += [
+      ":diagnosticsd_test",
       ":libdiag_test",
       ":libgrpc_async_adapter_test",
-      ":diagnosticsd_test",
       ":libtelem_test",
     ]
   }
@@ -36,9 +36,7 @@ proto_library("diagnostics_grpc_protos") {
   proto_in_dir = "grpc"
   proto_out_dir = "include"
   gen_grpc = true
-  all_dependent_configs = [
-    ":diagnostics_grpc_protos_exported_pkg_deps",
-  ]
+  all_dependent_configs = [ ":diagnostics_grpc_protos_exported_pkg_deps" ]
   sources = [
     "${proto_in_dir}/diagnostics_processor.proto",
     "${proto_in_dir}/diagnosticsd.proto",
@@ -54,12 +52,8 @@ pkg_config("libgrpc_async_adapter_exported_pkg_deps") {
 }
 
 static_library("libgrpc_async_adapter") {
-  all_dependent_configs = [
-    ":libgrpc_async_adapter_exported_pkg_deps",
-  ]
-  libs = [
-    "gpr",
-  ]
+  all_dependent_configs = [ ":libgrpc_async_adapter_exported_pkg_deps" ]
+  libs = [ "gpr" ]
   sources = [
     "grpc_async_adapter/async_grpc_client.cc",
     "grpc_async_adapter/async_grpc_server.cc",
@@ -77,10 +71,10 @@ pkg_config("diagnostics_mojo_bindings_pkg_deps") {
 }
 
 generate_mojom_bindings("diagnostics_mojo_bindings") {
-  public_configs = [
-    ":diagnostics_mojo_bindings_pkg_deps",
+  public_configs = [ ":diagnostics_mojo_bindings_pkg_deps" ]
+  sources = [
+    "mojo/diagnosticsd.mojom",
   ]
-  sources = ["mojo/diagnosticsd.mojom"]
 }
 
 # Library that provides core functionality for the diag tool.
@@ -96,9 +90,7 @@ static_library("libdiag") {
     ":diagnostics_grpc_protos",
     ":libgrpc_async_adapter",
   ]
-  all_dependent_configs = [
-    ":libdiag_pkg_deps",
-  ]
+  all_dependent_configs = [ ":libdiag_pkg_deps" ]
   sources = [
     "diag/diag_async_grpc_client_adapter_impl.cc",
     "diag/diag_routine_requester.cc",
@@ -122,9 +114,7 @@ static_library("libdiagnosticsd") {
     ":diagnostics_mojo_bindings",
     ":libgrpc_async_adapter",
   ]
-  all_dependent_configs = [
-    ":libdiagnosticsd_pkg_deps",
-  ]
+  all_dependent_configs = [ ":libdiagnosticsd_pkg_deps" ]
   sources = [
     "diagnosticsd/diagnosticsd_core.cc",
     "diagnosticsd/diagnosticsd_core_delegate_impl.cc",
@@ -153,9 +143,7 @@ static_library("libdpsl") {
     ":diagnostics_grpc_protos",
     ":libgrpc_async_adapter",
   ]
-  configs += [
-    ":libdpsl_pkg_deps",
-  ]
+  configs += [ ":libdpsl_pkg_deps" ]
   sources = [
     "dpsl/internal/dpsl_global_context_impl.cc",
     "dpsl/internal/dpsl_requester_impl.cc",
@@ -178,9 +166,7 @@ static_library("libtelem") {
     ":diagnostics_grpc_protos",
     ":libgrpc_async_adapter",
   ]
-  all_dependent_configs = [
-    ":libtelem_pkg_deps",
-  ]
+  all_dependent_configs = [ ":libtelem_pkg_deps" ]
   sources = [
     "telem/async_grpc_client_adapter_impl.cc",
     "telem/telem_cache.cc",
@@ -200,9 +186,7 @@ executable("diag") {
   deps = [
     ":libdiag",
   ]
-  configs += [
-    ":diag_pkg_deps",
-  ]
+  configs += [ ":diag_pkg_deps" ]
   sources = [
     "diag/main.cc",
   ]
@@ -210,9 +194,7 @@ executable("diag") {
 
 # The diagnosticsd daemon executable.
 pkg_config("diagnosticsd_pkg_deps") {
-  pkg_deps = [
-    "libbrillo-${libbase_ver}",
-  ]
+  pkg_deps = [ "libbrillo-${libbase_ver}" ]
 }
 
 executable("diagnosticsd") {
@@ -226,15 +208,11 @@ executable("diagnosticsd") {
 
 # The diagnostics_processor daemon executable.
 pkg_config("diagnostics_processor_pkg_deps") {
-  pkg_deps = [
-    "libbrillo-${libbase_ver}",
-  ]
+  pkg_deps = [ "libbrillo-${libbase_ver}" ]
 }
 
 executable("diagnostics_processor") {
-  configs += [
-    ":diagnostics_processor_pkg_deps",
-  ]
+  configs += [ ":diagnostics_processor_pkg_deps" ]
   deps = [
     ":libgrpc_async_adapter",
   ]
@@ -265,9 +243,7 @@ executable("telem") {
   deps = [
     ":libtelem",
   ]
-  configs += [
-    ":telem_pkg_deps",
-  ]
+  configs += [ ":telem_pkg_deps" ]
   sources = [
     "telem/main.cc",
   ]
@@ -291,9 +267,7 @@ if (use.test) {
     ]
   }
   static_library("libgrpc_async_adapter_test_rpcs") {
-    all_dependent_configs = [
-      ":libgrpc_async_adapter_test_rpcs_pkg_deps",
-    ]
+    all_dependent_configs = [ ":libgrpc_async_adapter_test_rpcs_pkg_deps" ]
     deps = [
       ":libgrpc_async_adapter_test_rpcs_protolib",
     ]
@@ -313,18 +287,16 @@ if (use.test) {
       ":libgrpc_async_adapter_test_pkg_deps",
     ]
     deps = [
-      "../common-mk/testrunner:testrunner",
       ":libgrpc_async_adapter",
       ":libgrpc_async_adapter_test_rpcs",
+      "../common-mk/testrunner:testrunner",
     ]
     sources = [
       "grpc_async_adapter/async_grpc_client_server_test.cc",
       "grpc_async_adapter/async_grpc_server_test.cc",
       "grpc_async_adapter/grpc_completion_queue_dispatcher_test.cc",
     ]
-    libs = [
-      "gpr",
-    ]
+    libs = [ "gpr" ]
   }
 
   pkg_config("diagnosticsd_test_pkg_deps") {
@@ -340,8 +312,8 @@ if (use.test) {
       "//common-mk:test",
     ]
     deps = [
-      "../common-mk/testrunner:testrunner",
       ":libdiagnosticsd",
+      "../common-mk/testrunner:testrunner",
     ]
     sources = [
       "diagnosticsd/diagnosticsd_core_test.cc",
@@ -372,8 +344,8 @@ if (use.test) {
       ":libdiag_test_pkg_deps",
     ]
     deps = [
-      "../common-mk/testrunner:testrunner",
       ":libdiag",
+      "../common-mk/testrunner:testrunner",
     ]
     sources = [
       "diag/diag_routine_requester_test.cc",
@@ -393,8 +365,8 @@ if (use.test) {
       ":libtelem_test_pkg_deps",
     ]
     deps = [
-      "../common-mk/testrunner:testrunner",
       ":libtelem",
+      "../common-mk/testrunner:testrunner",
     ]
     sources = [
       "telem/telem_cache_test.cc",
