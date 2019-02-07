@@ -103,7 +103,6 @@ std::unique_ptr<FUSEMounter> SshfsHelper::CreateMounter(
   mount_options.WhitelistOptionPrefix(kOptionUserKnownHostsFile);
   mount_options.WhitelistOptionPrefix(kOptionHostName);
   mount_options.WhitelistOptionPrefix(kOptionPort);
-  mount_options.WhitelistOption(MountOptions::kOptionNoSymFollow);
   mount_options.Initialize(opts, true, base::IntToString(files_uid),
                            base::IntToString(files_gid));
 
