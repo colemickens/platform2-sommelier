@@ -60,11 +60,18 @@ static void sl_data_transfer_destroy(struct sl_data_transfer* transfer) {
 
 static int sl_handle_data_transfer_read(int fd, uint32_t mask, void* data) {
   struct sl_data_transfer* transfer = (struct sl_data_transfer*)data;
-
   if ((mask & WL_EVENT_READABLE) == 0) {
     assert(mask & (WL_EVENT_HANGUP | WL_EVENT_ERROR));
-    wl_event_source_remove(transfer->read_event_source);
-    transfer->read_event_source = NULL;
+    // If there's a HANGUP, that doesn't mean we are done reading data, so don't
+    // close the event source in that case unless the buffer is empty (it only
+    // means that the peer has closed its end and is finished writing data). If
+    // the buffer is empty that means we requested a read (this happens from the
+    // sl_handle_data_transfer_write call) but there's nothing readable left in
+    // the buffer so the READABLE bit wasn't set.
+    if ((mask & WL_EVENT_ERROR) || !transfer->bytes_left) {
+      wl_event_source_remove(transfer->read_event_source);
+      transfer->read_event_source = NULL;
+    }
     return 0;
   }
 
@@ -74,6 +81,8 @@ static int sl_handle_data_transfer_read(int fd, uint32_t mask, void* data) {
       read(transfer->read_fd, transfer->data, sizeof(transfer->data));
   if (transfer->bytes_left) {
     transfer->offset = 0;
+    // There may still be data to read from the event source, but we have no
+    // room in our buffer so don't mark it as readable.
     wl_event_source_fd_update(transfer->read_event_source, 0);
     wl_event_source_fd_update(transfer->write_event_source, WL_EVENT_WRITABLE);
   } else {
@@ -109,6 +118,8 @@ static int sl_handle_data_transfer_write(int fd, uint32_t mask, void* data) {
   if (!transfer->bytes_left) {
     wl_event_source_fd_update(transfer->write_event_source, 0);
     if (transfer->read_event_source) {
+      // There may be more data to read from the source, so mark it as readable
+      // again now that we've consumed the buffer.
       wl_event_source_fd_update(transfer->read_event_source, WL_EVENT_READABLE);
     } else {
       sl_data_transfer_destroy(transfer);
