@@ -13,6 +13,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/callback.h>
@@ -65,6 +66,8 @@ namespace diagnostics {
 const char kDiagnosticsdGrpcUriTemplate[] = "unix:%s/test_diagnosticsd_socket";
 const char kDiagnosticsProcessorGrpcUriTemplate[] =
     "unix:%s/test_diagnostics_processor_socket";
+const char kUiMessageReceiverDiagnosticsProcessorGrpcUriTemplate[] =
+    "unix:%s/test_ui_message_receiver_diagnostics_processor_socket";
 
 using MojomDiagnosticsdService =
     chromeos::diagnosticsd::mojom::DiagnosticsdService;
@@ -121,13 +124,19 @@ class DiagnosticsdCoreTest : public testing::Test {
 
     diagnosticsd_grpc_uri_ = base::StringPrintf(
         kDiagnosticsdGrpcUriTemplate, temp_dir_.GetPath().value().c_str());
+    ui_message_receiver_diagnostics_processor_grpc_uri_ = base::StringPrintf(
+        kUiMessageReceiverDiagnosticsProcessorGrpcUriTemplate,
+        temp_dir_.GetPath().value().c_str());
+
     diagnostics_processor_grpc_uri_ =
         base::StringPrintf(kDiagnosticsProcessorGrpcUriTemplate,
                            temp_dir_.GetPath().value().c_str());
 
-    core_ = std::make_unique<DiagnosticsdCore>(diagnosticsd_grpc_uri_,
-                                               diagnostics_processor_grpc_uri_,
-                                               &core_delegate_);
+    core_ = std::make_unique<DiagnosticsdCore>(
+        diagnosticsd_grpc_uri_,
+        ui_message_receiver_diagnostics_processor_grpc_uri_,
+        std::vector<std::string>{diagnostics_processor_grpc_uri_},
+        &core_delegate_);
     core_->set_root_dir_for_testing(temp_dir_.GetPath());
 
     SetUpEcEventService();
@@ -204,6 +213,12 @@ class DiagnosticsdCoreTest : public testing::Test {
   const std::string& diagnosticsd_grpc_uri() const {
     DCHECK(!diagnosticsd_grpc_uri_.empty());
     return diagnosticsd_grpc_uri_;
+  }
+
+  const std::string& ui_message_receiver_diagnostics_processor_grpc_uri()
+      const {
+    DCHECK(!ui_message_receiver_diagnostics_processor_grpc_uri_.empty());
+    return ui_message_receiver_diagnostics_processor_grpc_uri_;
   }
 
   const std::string& diagnostics_processor_grpc_uri() const {
@@ -286,6 +301,9 @@ class DiagnosticsdCoreTest : public testing::Test {
   // gRPC URI on which the tested "Diagnosticsd" gRPC service (owned by
   // DiagnosticsdCore) is listening.
   std::string diagnosticsd_grpc_uri_;
+  // gRPC URI on which the fake "DiagnosticsProcessor" gRPC service (owned by
+  // FakeDiagnosticsProcessor) is listening, eligible to receive UI messages.
+  std::string ui_message_receiver_diagnostics_processor_grpc_uri_;
   // gRPC URI on which the fake "DiagnosticsProcessor" gRPC service (owned by
   // FakeDiagnosticsProcessor) is listening.
   std::string diagnostics_processor_grpc_uri_;
@@ -399,11 +417,21 @@ class BootstrappedDiagnosticsdCoreTest : public DiagnosticsdCoreTest {
 
     fake_diagnostics_processor_ = std::make_unique<FakeDiagnosticsProcessor>(
         diagnostics_processor_grpc_uri(), diagnosticsd_grpc_uri());
+
+    fake_ui_message_receiver_diagnostics_processor_ =
+        std::make_unique<FakeDiagnosticsProcessor>(
+            ui_message_receiver_diagnostics_processor_grpc_uri(),
+            diagnosticsd_grpc_uri());
   }
 
   void TearDown() override {
     fake_diagnostics_processor_.reset();
+    fake_ui_message_receiver_diagnostics_processor_.reset();
     DiagnosticsdCoreTest::TearDown();
+  }
+
+  FakeDiagnosticsProcessor* fake_ui_message_receiver_diagnostics_processor() {
+    return fake_ui_message_receiver_diagnostics_processor_.get();
   }
 
   FakeDiagnosticsProcessor* fake_diagnostics_processor() {
@@ -442,12 +470,15 @@ class BootstrappedDiagnosticsdCoreTest : public DiagnosticsdCoreTest {
   }
 
  private:
+  std::unique_ptr<FakeDiagnosticsProcessor>
+      fake_ui_message_receiver_diagnostics_processor_;
   std::unique_ptr<FakeDiagnosticsProcessor> fake_diagnostics_processor_;
 };
 
 }  // namespace
 
-// Test that diagnostics processor will receive message from browser.
+// Test that the UI message receiver diagnostics processor will receive message
+// from browser.
 TEST_F(BootstrappedDiagnosticsdCoreTest,
        SendGrpcUiMessageToDiagnosticsProcessor) {
   const std::string json_message = "{\"some_key\": \"some_value\"}";
@@ -456,10 +487,17 @@ TEST_F(BootstrappedDiagnosticsdCoreTest,
   base::RunLoop run_loop_diagnostics_processor;
   base::RunLoop run_loop_fake_browser;
 
-  fake_diagnostics_processor()->set_handle_message_from_ui_callback(
-      run_loop_diagnostics_processor.QuitClosure());
-  fake_diagnostics_processor()
+  fake_ui_message_receiver_diagnostics_processor()
+      ->set_handle_message_from_ui_callback(
+          run_loop_diagnostics_processor.QuitClosure());
+  fake_ui_message_receiver_diagnostics_processor()
       ->set_handle_message_from_ui_json_message_response(response_json_message);
+  fake_diagnostics_processor()->set_handle_message_from_ui_callback(
+      base::Bind([]() {
+        // The diagnostics processor not eligible to receive messages from UI
+        // must not receive them.
+        FAIL();
+      }));
 
   auto callback = fake_browser_valid_handle_callback(
       run_loop_fake_browser.QuitClosure(), response_json_message);
@@ -468,12 +506,12 @@ TEST_F(BootstrappedDiagnosticsdCoreTest,
 
   run_loop_diagnostics_processor.Run();
   run_loop_fake_browser.Run();
-  EXPECT_EQ(json_message, fake_diagnostics_processor()
+  EXPECT_EQ(json_message, fake_ui_message_receiver_diagnostics_processor()
                               ->handle_message_from_ui_actual_json_message());
 }
 
-// Test that diagnostics processor will not receive message from browser
-// if JSON message is invalid.
+// Test that the UI message receiver diagnostics processor will not receive
+// message from browser if JSON message is invalid.
 TEST_F(BootstrappedDiagnosticsdCoreTest,
        SendGrpcUiMessageToDiagnosticsProcessorInvalidJSON) {
   const std::string json_message = "{'some_key': 'some_value'}";
@@ -492,12 +530,13 @@ TEST_F(BootstrappedDiagnosticsdCoreTest,
   // such a bug.
   base::RunLoop().RunUntilIdle();
 
-  EXPECT_FALSE(fake_diagnostics_processor()
+  EXPECT_FALSE(fake_ui_message_receiver_diagnostics_processor()
                    ->handle_message_from_ui_actual_json_message()
                    .has_value());
 }
 
-// Test that diagnostics processor will receive message from browser.
+// Test that the UI message receiver diagnostics processor will receive message
+// from browser.
 TEST_F(BootstrappedDiagnosticsdCoreTest,
        SendGrpcUiMessageToDiagnosticsProcessorInvalidResponseJSON) {
   const std::string json_message = "{\"some_key\": \"some_value\"}";
@@ -506,9 +545,10 @@ TEST_F(BootstrappedDiagnosticsdCoreTest,
   base::RunLoop run_loop_diagnostics_processor;
   base::RunLoop run_loop_fake_browser;
 
-  fake_diagnostics_processor()->set_handle_message_from_ui_callback(
-      run_loop_diagnostics_processor.QuitClosure());
-  fake_diagnostics_processor()
+  fake_ui_message_receiver_diagnostics_processor()
+      ->set_handle_message_from_ui_callback(
+          run_loop_diagnostics_processor.QuitClosure());
+  fake_ui_message_receiver_diagnostics_processor()
       ->set_handle_message_from_ui_json_message_response(response_json_message);
 
   auto callback =
@@ -518,7 +558,7 @@ TEST_F(BootstrappedDiagnosticsdCoreTest,
 
   run_loop_diagnostics_processor.Run();
   run_loop_fake_browser.Run();
-  EXPECT_EQ(json_message, fake_diagnostics_processor()
+  EXPECT_EQ(json_message, fake_ui_message_receiver_diagnostics_processor()
                               ->handle_message_from_ui_actual_json_message());
 }
 
@@ -630,6 +670,10 @@ TEST_F(BootstrappedDiagnosticsdCoreTest, PerformWebRequestToBrowser) {
 
 namespace {
 
+// Fake types to be used to emulate EC events.
+const uint16_t kFakeEcEventType1 = 0xabcd;
+const uint16_t kFakeEcEventType2 = 0x1234;
+
 // Tests for EC event service.
 class EcEventServiceBootstrappedDiagnosticsdCoreTest
     : public BootstrappedDiagnosticsdCoreTest {
@@ -638,11 +682,14 @@ class EcEventServiceBootstrappedDiagnosticsdCoreTest
     WriteEcEventToSysfsFile(GetEcEvent(size, type));
   }
 
-  void ExpectFakeProcessorEcEventCalled(uint16_t expected_size, uint16_t type) {
+  void ExpectFakeProcessorEcEventCalled(
+      FakeDiagnosticsProcessor* fake_diagnostics_processor,
+      uint16_t expected_size,
+      uint16_t type) {
     const std::string payload = GetPayload(
         expected_size * sizeof(DiagnosticsdEcEventService::EcEvent::data[0]));
     base::RunLoop run_loop;
-    fake_diagnostics_processor()->set_handle_ec_event_request_callback(
+    fake_diagnostics_processor->set_handle_ec_event_request_callback(
         base::BindRepeating(
             [](const base::Closure& callback, int32_t expected_type,
                const std::string& expected_payload, int32_t type,
@@ -678,30 +725,45 @@ class EcEventServiceBootstrappedDiagnosticsdCoreTest
 // processor gRPC is called by diagnostics deamon.
 TEST_F(EcEventServiceBootstrappedDiagnosticsdCoreTest,
        SendGrpcEcEventToDiagnosticsProcessorSize0) {
-  EmulateEcEvent(0, 0x0123);
-  ExpectFakeProcessorEcEventCalled(0, 0x0123);
+  EmulateEcEvent(0, kFakeEcEventType1);
+  ExpectFakeProcessorEcEventCalled(fake_diagnostics_processor(), 0,
+                                   kFakeEcEventType1);
+  ExpectFakeProcessorEcEventCalled(
+      fake_ui_message_receiver_diagnostics_processor(), 0, kFakeEcEventType1);
 }
 
 TEST_F(EcEventServiceBootstrappedDiagnosticsdCoreTest,
        SendGrpcEcEventToDiagnosticsProcessorSize5) {
-  EmulateEcEvent(5, 0x89ab);
-  ExpectFakeProcessorEcEventCalled(5, 0x89ab);
+  EmulateEcEvent(5, kFakeEcEventType1);
+  ExpectFakeProcessorEcEventCalled(fake_diagnostics_processor(), 5,
+                                   kFakeEcEventType1);
+  ExpectFakeProcessorEcEventCalled(
+      fake_ui_message_receiver_diagnostics_processor(), 5, kFakeEcEventType1);
 }
 
 TEST_F(EcEventServiceBootstrappedDiagnosticsdCoreTest,
        SendGrpcEcEventToDiagnosticsProcessorSize6) {
-  EmulateEcEvent(6, 0xcdef);
-  ExpectFakeProcessorEcEventCalled(6, 0xcdef);
+  EmulateEcEvent(6, kFakeEcEventType1);
+  ExpectFakeProcessorEcEventCalled(fake_diagnostics_processor(), 6,
+                                   kFakeEcEventType1);
+  ExpectFakeProcessorEcEventCalled(
+      fake_ui_message_receiver_diagnostics_processor(), 6, kFakeEcEventType1);
 }
 
 // Test that the method |HandleEcNotification()| exposed by diagnostics
 // processor gRPC is called by diagnostics deamon multiple times.
 TEST_F(EcEventServiceBootstrappedDiagnosticsdCoreTest,
        SendGrpcEcEventToDiagnosticsProcessorMultipleEvents) {
-  EmulateEcEvent(3, 0x1234);
-  EmulateEcEvent(4, 0xabcd);
-  ExpectFakeProcessorEcEventCalled(3, 0x1234);
-  ExpectFakeProcessorEcEventCalled(4, 0xabcd);
+  EmulateEcEvent(3, kFakeEcEventType1);
+  EmulateEcEvent(4, kFakeEcEventType2);
+  ExpectFakeProcessorEcEventCalled(fake_diagnostics_processor(), 3,
+                                   kFakeEcEventType1);
+  ExpectFakeProcessorEcEventCalled(fake_diagnostics_processor(), 4,
+                                   kFakeEcEventType2);
+  ExpectFakeProcessorEcEventCalled(
+      fake_ui_message_receiver_diagnostics_processor(), 3, kFakeEcEventType1);
+  ExpectFakeProcessorEcEventCalled(
+      fake_ui_message_receiver_diagnostics_processor(), 4, kFakeEcEventType2);
 }
 
 // Test that the method |HandleEcNotification()| exposed by diagnostics
@@ -709,8 +771,11 @@ TEST_F(EcEventServiceBootstrappedDiagnosticsdCoreTest,
 // exceeds allocated data array.
 TEST_F(EcEventServiceBootstrappedDiagnosticsdCoreTest,
        SendGrpcEcEventToDiagnosticsProcessorInvalidSize) {
-  EmulateEcEvent(7, 0xabcd);
-  ExpectFakeProcessorEcEventCalled(6, 0xabcd);
+  EmulateEcEvent(7, kFakeEcEventType1);
+  ExpectFakeProcessorEcEventCalled(fake_diagnostics_processor(), 6,
+                                   kFakeEcEventType1);
+  ExpectFakeProcessorEcEventCalled(
+      fake_ui_message_receiver_diagnostics_processor(), 6, kFakeEcEventType1);
 }
 
 }  // namespace diagnostics

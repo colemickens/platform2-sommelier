@@ -13,23 +13,16 @@
 #include <dbus/diagnosticsd/dbus-constants.h>
 #include <mojo/edk/embedder/embedder.h>
 
+#include "diagnostics/constants/grpc_constants.h"
 #include "diagnostics/diagnosticsd/bind_utils.h"
 
 namespace diagnostics {
 
-// URI on which the gRPC interface exposed by the diagnosticsd daemon is
-// listening.
-constexpr char kDiagnosticsdGrpcUri[] =
-    "unix:/run/diagnostics/grpc_sockets/diagnosticsd_socket";
-// URI which is used for making requests to the gRPC interface exposed by the
-// diagnostics_processor daemon.
-constexpr char kDiagnosticsProcessorGrpcUri[] =
-    "unix:/run/diagnostics/grpc_sockets/diagnostics_processor_socket";
-
 DiagnosticsdDaemon::DiagnosticsdDaemon()
     : DBusServiceDaemon(kDiagnosticsdServiceName /* service_name */),
       diagnosticsd_core_(kDiagnosticsdGrpcUri,
-                         kDiagnosticsProcessorGrpcUri,
+                         kUiMessageReceiverDiagnosticsProcessorGrpcUri,
+                         {kDiagnosticsProcessorGrpcUri},
                          &diagnosticsd_core_delegate_impl_) {}
 
 DiagnosticsdDaemon::~DiagnosticsdDaemon() = default;

@@ -61,11 +61,14 @@ DiagnosticsdCore::WebRequestStatus ConvertStatusFromMojom(
 
 DiagnosticsdCore::DiagnosticsdCore(
     const std::string& grpc_service_uri,
-    const std::string& diagnostics_processor_grpc_uri,
+    const std::string& ui_message_receiver_diagnostics_processor_grpc_uri,
+    const std::vector<std::string>& diagnostics_processor_grpc_uris,
     Delegate* delegate)
     : delegate_(delegate),
       grpc_service_uri_(grpc_service_uri),
-      diagnostics_processor_grpc_uri_(diagnostics_processor_grpc_uri),
+      ui_message_receiver_diagnostics_processor_grpc_uri_(
+          ui_message_receiver_diagnostics_processor_grpc_uri),
+      diagnostics_processor_grpc_uris_(diagnostics_processor_grpc_uris),
       grpc_server_(base::ThreadTaskRunnerHandle::Get(), grpc_service_uri_) {
   DCHECK(delegate);
 }
@@ -114,24 +117,40 @@ bool DiagnosticsdCore::Start() {
   VLOG(0) << "Successfully started gRPC server listening on "
           << grpc_service_uri_;
 
-  // Start the gRPC client that talks to the diagnostics_processor daemon.
-  diagnostics_processor_grpc_client_ =
+  // Start the gRPC clients that talk to the diagnostics_processor daemon.
+  for (const auto& uri : diagnostics_processor_grpc_uris_) {
+    diagnostics_processor_grpc_clients_.push_back(
+        std::make_unique<AsyncGrpcClient<grpc_api::DiagnosticsProcessor>>(
+            base::ThreadTaskRunnerHandle::Get(), uri));
+    VLOG(0) << "Created gRPC diagnostics_processor client on " << uri;
+  }
+
+  // Start the gRPC client that is allowed to receive UI messages as a normal
+  // gRPC client that talks to the diagnostics_processor daemon.
+  diagnostics_processor_grpc_clients_.push_back(
       std::make_unique<AsyncGrpcClient<grpc_api::DiagnosticsProcessor>>(
-          base::ThreadTaskRunnerHandle::Get(), diagnostics_processor_grpc_uri_);
+          base::ThreadTaskRunnerHandle::Get(),
+          ui_message_receiver_diagnostics_processor_grpc_uri_));
   VLOG(0) << "Created gRPC diagnostics_processor client on "
-          << diagnostics_processor_grpc_uri_;
+          << ui_message_receiver_diagnostics_processor_grpc_uri_;
+  ui_message_receiver_diagnostics_processor_grpc_client_ =
+      diagnostics_processor_grpc_clients_.back().get();
 
   // Start EC event service.
   return ec_event_service_.Start();
 }
 
 void DiagnosticsdCore::ShutDown(const base::Closure& on_shutdown) {
-  VLOG(1) << "Tearing down gRPC server, gRPC diagnostics_processor client and "
+  VLOG(1) << "Tearing down gRPC server, gRPC diagnostics_processor clients and "
              "EC event service";
-  const base::Closure barrier_closure = BarrierClosure(3, on_shutdown);
+  const base::Closure barrier_closure = BarrierClosure(
+      diagnostics_processor_grpc_clients_.size() + 2, on_shutdown);
   ec_event_service_.Shutdown(barrier_closure);
   grpc_server_.Shutdown(barrier_closure);
-  diagnostics_processor_grpc_client_->Shutdown(barrier_closure);
+  for (const auto& client : diagnostics_processor_grpc_clients_) {
+    client->Shutdown(barrier_closure);
+  }
+  ui_message_receiver_diagnostics_processor_grpc_client_ = nullptr;
 }
 
 void DiagnosticsdCore::RegisterDBusObjectsAsync(
@@ -270,19 +289,22 @@ void DiagnosticsdCore::SendGrpcEcEventToDiagnosticsProcessor(
 
   request.set_payload(ec_event.data, data_size);
 
-  diagnostics_processor_grpc_client_->CallRpc(
-      &grpc_api::DiagnosticsProcessor::Stub::AsyncHandleEcNotification, request,
-      base::Bind([](std::unique_ptr<grpc_api::HandleEcNotificationResponse>
-                        response) {
-        if (!response) {
-          LOG(ERROR)
-              << "Failed to call HandleEcNotificationRequest gRPC method on "
-                 "diagnostics_processor: response message is nullptr";
-          return;
-        }
-        VLOG(1) << "gRPC method HandleEcNotificationRequest was successfully"
-                   "called on diagnostics_processor";
-      }));
+  for (auto& client : diagnostics_processor_grpc_clients_) {
+    client->CallRpc(
+        &grpc_api::DiagnosticsProcessor::Stub::AsyncHandleEcNotification,
+        request,
+        base::Bind([](std::unique_ptr<grpc_api::HandleEcNotificationResponse>
+                          response) {
+          if (!response) {
+            LOG(ERROR)
+                << "Failed to call HandleEcNotificationRequest gRPC method on "
+                   "diagnostics_processor: response message is nullptr";
+            return;
+          }
+          VLOG(1) << "gRPC method HandleEcNotificationRequest was successfully"
+                     "called on diagnostics_processor";
+        }));
+  }
 }
 
 void DiagnosticsdCore::SendGrpcUiMessageToDiagnosticsProcessor(
@@ -290,11 +312,18 @@ void DiagnosticsdCore::SendGrpcUiMessageToDiagnosticsProcessor(
     const SendGrpcUiMessageToDiagnosticsProcessorCallback& callback) {
   VLOG(1) << "DiagnosticsdCore::SendGrpcMessageToDiagnosticsdProcessor";
 
+  if (!ui_message_receiver_diagnostics_processor_grpc_client_) {
+    VLOG(1) << "The UI message is discarded since the recipient has been shut "
+            << "down.";
+    callback.Run(std::string() /* response_json_message */);
+    return;
+  }
+
   grpc_api::HandleMessageFromUiRequest request;
   request.set_json_message(json_message.data() ? json_message.data() : "",
                            json_message.length());
 
-  diagnostics_processor_grpc_client_->CallRpc(
+  ui_message_receiver_diagnostics_processor_grpc_client_->CallRpc(
       &grpc_api::DiagnosticsProcessor::Stub::AsyncHandleMessageFromUi, request,
       base::Bind(
           [](const SendGrpcUiMessageToDiagnosticsProcessorCallback& callback,

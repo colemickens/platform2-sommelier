@@ -106,6 +106,12 @@ static_library("libdiag") {
   ]
 }
 
+static_library("libconstants") {
+  sources = [
+    "constants/grpc_constants.cc",
+  ]
+}
+
 # Library that provides core functionality for the diagnosticsd daemon.
 pkg_config("libdiagnosticsd_pkg_deps") {
   pkg_deps = [
@@ -121,6 +127,7 @@ static_library("libdiagnosticsd") {
   deps = [
     ":diagnostics_grpc_protos",
     ":diagnostics_mojo_bindings",
+    ":libconstants",
     ":libgrpc_async_adapter",
   ]
   all_dependent_configs = [ ":libdiagnosticsd_pkg_deps" ]
@@ -150,6 +157,7 @@ pkg_config("libdpsl_pkg_deps") {
 shared_library("libdpsl") {
   deps = [
     ":diagnostics_grpc_protos",
+    ":libconstants",
     ":libgrpc_async_adapter",
   ]
   configs += [ ":libdpsl_pkg_deps" ]

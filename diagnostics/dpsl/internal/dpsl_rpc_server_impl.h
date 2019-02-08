@@ -26,7 +26,8 @@ class DpslRpcHandler;
 class DpslRpcServerImpl final : public DpslRpcServer {
  public:
   DpslRpcServerImpl(DpslRpcHandler* rpc_handler,
-                    const std::string& server_grpc_uri);
+                    GrpcServerUri grpc_server_uri,
+                    const std::string& grpc_server_uri_string);
   ~DpslRpcServerImpl() override;
 
   // Starts the gRPC server. Returns whether the startup succeeded.
@@ -46,6 +47,13 @@ class DpslRpcServerImpl final : public DpslRpcServer {
   void HandleEcNotification(
       std::unique_ptr<grpc_api::HandleEcNotificationRequest> request,
       const HandleEcNotificationCallback& callback);
+
+  // The method corresponding to the HandleMessageFromUi method of the
+  // "DiagnosticsProcessor" gRPC interface and returning back a nullptr
+  // response.
+  void HandleMessageFromUiStub(
+      std::unique_ptr<grpc_api::HandleMessageFromUiRequest> request,
+      const HandleMessageFromUiCallback& callback);
 
   // Unowned.
   DpslRpcHandler* const rpc_handler_;

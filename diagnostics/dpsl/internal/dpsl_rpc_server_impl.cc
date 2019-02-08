@@ -14,6 +14,7 @@
 #include <base/run_loop.h>
 #include <base/threading/thread_task_runner_handle.h>
 
+#include "diagnostics/constants/grpc_constants.h"
 #include "diagnostics/dpsl/internal/callback_utils.h"
 #include "diagnostics/dpsl/public/dpsl_rpc_handler.h"
 #include "diagnostics/dpsl/public/dpsl_thread_context.h"
@@ -22,16 +23,14 @@ namespace diagnostics {
 
 namespace {
 
-// Predefined paths on which the DiagnosticsProcessor gRPC server started by
-// DPSL may be listening:
-constexpr char kDiagnosticsProcessorLocalDomainSocketGrpcUri[] =
-    "unix:/run/diagnostics/grpc_sockets/diagnostics_processor_socket";
 
 std::string GetDiagnosticsProcessorGrpcUri(
     DpslRpcServer::GrpcServerUri grpc_server_uri) {
   switch (grpc_server_uri) {
     case DpslRpcServer::GrpcServerUri::kLocalDomainSocket:
-      return kDiagnosticsProcessorLocalDomainSocketGrpcUri;
+      return kDiagnosticsProcessorGrpcUri;
+    case DpslRpcServer::GrpcServerUri::kUiMessageReceiverDomainSocket:
+      return kUiMessageReceiverDiagnosticsProcessorGrpcUri;
   }
   NOTREACHED() << "Unexpected GrpcServerUri: "
                << static_cast<int>(grpc_server_uri);
@@ -41,14 +40,24 @@ std::string GetDiagnosticsProcessorGrpcUri(
 }  // namespace
 
 DpslRpcServerImpl::DpslRpcServerImpl(DpslRpcHandler* rpc_handler,
-                                     const std::string& server_grpc_uri)
+                                     GrpcServerUri grpc_server_uri,
+                                     const std::string& grpc_server_uri_string)
     : rpc_handler_(rpc_handler),
-      async_grpc_server_(base::ThreadTaskRunnerHandle::Get(), server_grpc_uri) {
+      async_grpc_server_(base::ThreadTaskRunnerHandle::Get(),
+                         grpc_server_uri_string) {
   DCHECK(rpc_handler_);
+  auto handle_message_from_ui_handler =
+      &DpslRpcServerImpl::HandleMessageFromUiStub;
+  switch (grpc_server_uri) {
+    case GrpcServerUri::kLocalDomainSocket:
+      break;
+    case GrpcServerUri::kUiMessageReceiverDomainSocket:
+      handle_message_from_ui_handler = &DpslRpcServerImpl::HandleMessageFromUi;
+      break;
+  }
   async_grpc_server_.RegisterHandler(
       &grpc_api::DiagnosticsProcessor::AsyncService::RequestHandleMessageFromUi,
-      base::Bind(&DpslRpcServerImpl::HandleMessageFromUi,
-                 base::Unretained(this)));
+      base::Bind(handle_message_from_ui_handler, base::Unretained(this)));
 }
 
 DpslRpcServerImpl::~DpslRpcServerImpl() {
@@ -76,6 +85,14 @@ void DpslRpcServerImpl::HandleMessageFromUi(
           MakeOriginTaskRunnerPostingCallback(FROM_HERE, callback)));
 }
 
+void DpslRpcServerImpl::HandleMessageFromUiStub(
+    std::unique_ptr<grpc_api::HandleMessageFromUiRequest> request,
+    const HandleMessageFromUiCallback& callback) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+
+  callback.Run(nullptr /* response */);
+}
+
 void DpslRpcServerImpl::HandleEcNotification(
     std::unique_ptr<grpc_api::HandleEcNotificationRequest> request,
     const HandleEcNotificationCallback& callback) {
@@ -97,7 +114,8 @@ std::unique_ptr<DpslRpcServer> DpslRpcServer::Create(
   CHECK(thread_context->BelongsToCurrentThread());
 
   auto dpsl_rpc_server_impl = std::make_unique<DpslRpcServerImpl>(
-      rpc_handler, GetDiagnosticsProcessorGrpcUri(grpc_server_uri));
+      rpc_handler, grpc_server_uri,
+      GetDiagnosticsProcessorGrpcUri(grpc_server_uri));
   if (!dpsl_rpc_server_impl->Init())
     return nullptr;
   return dpsl_rpc_server_impl;

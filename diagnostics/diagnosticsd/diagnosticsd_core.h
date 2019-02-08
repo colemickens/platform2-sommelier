@@ -67,11 +67,20 @@ class DiagnosticsdCore final
 
   // |grpc_service_uri| is the URI on which the gRPC interface exposed by the
   // diagnosticsd daemon will be listening.
-  // |diagnostics_processor_grpc_uri| is the URI which is used for making
-  // requests to the gRPC interface exposed by the diagnostics_processor daemon.
-  DiagnosticsdCore(const std::string& grpc_service_uri,
-                   const std::string& diagnostics_processor_grpc_uri,
-                   Delegate* delegate);
+  // |ui_message_receiver_diagnostics_processor_grpc_uri| is the URI which is
+  // used for making requests to the gRPC interface exposed by the
+  // diagnostics_processor daemon which is explicitly eligible to receive
+  // messages from UI extension (hosted by browser), no other gRPC client
+  // recieves messages from UI extension.
+  // |diagnostics_processor_grpc_uris| is the list of URI's which are used for
+  // making requests to the gRPC interface exposed by the diagnostics_processor
+  // daemons. Should not contain the URI equal to
+  // |ui_message_receiver_diagnostics_processor_grpc_uri|.
+  DiagnosticsdCore(
+      const std::string& grpc_service_uri,
+      const std::string& ui_message_receiver_diagnostics_processor_grpc_uri,
+      const std::vector<std::string>& diagnostics_processor_grpc_uris,
+      Delegate* delegate);
   ~DiagnosticsdCore() override;
 
   // Overrides the file system root directory for file operations in tests.
@@ -144,18 +153,26 @@ class DiagnosticsdCore final
 
   // gRPC URI on which the |grpc_server_| is listening for incoming requests.
   const std::string grpc_service_uri_;
-  // gRPC URI which is used by |diagnostics_processor_grpc_client_| for
-  // accessing the gRPC interface exposed by the diagnostics_processor daemon.
-  const std::string diagnostics_processor_grpc_uri_;
+  // gRPC URI which is used by
+  // |ui_message_receiver_diagnostics_processor_grpc_client_| for sending UI
+  // messages and EC notifications over the gRPC interface.
+  const std::string ui_message_receiver_diagnostics_processor_grpc_uri_;
+  // gRPC URIs which are used by |diagnostics_processor_grpc_clients_| for
+  // accessing the gRPC interface exposed by the diagnostics_processor daemons.
+  const std::vector<std::string> diagnostics_processor_grpc_uris_;
   // Implementation of the gRPC interface exposed by the diagnosticsd daemon.
   DiagnosticsdGrpcService grpc_service_{this /* delegate */};
   // Connects |grpc_service_| with the gRPC server that listens for incoming
   // requests.
   AsyncGrpcServer<grpc_api::Diagnosticsd::AsyncService> grpc_server_;
-  // Allows to make outgoing requests to the gRPC interface exposed by the
-  // diagnostics_processor daemon.
-  std::unique_ptr<AsyncGrpcClient<grpc_api::DiagnosticsProcessor>>
-      diagnostics_processor_grpc_client_;
+  // Allows to make outgoing requests to the gRPC interfaces exposed by the
+  // diagnostics_processor daemons.
+  std::vector<std::unique_ptr<AsyncGrpcClient<grpc_api::DiagnosticsProcessor>>>
+      diagnostics_processor_grpc_clients_;
+  // The pre-defined gRPC client that is allowed to respond to UI messages.
+  // Owned by |diagnostics_processor_grpc_clients_|.
+  AsyncGrpcClient<grpc_api::DiagnosticsProcessor>*
+      ui_message_receiver_diagnostics_processor_grpc_client_;
 
   // D-Bus-related members:
 

@@ -39,6 +39,13 @@ class DPSL_EXPORT DpslRpcServer {
     // Only one server with this URI may run at a time; breaking this
     // requirement will lead to unspecified behavior.
     kLocalDomainSocket = 0,
+    // A Unix domain socket at the predefined constant path. This option is
+    // available only when running OUTSIDE a VM. A server is eligible to
+    // receive EC notifications and messages from UI extension (hosted by
+    // browser). No other server is eligible to receive UI messages.
+    // Only one server with this URI may run at a time; breaking this
+    // requirement will lead to unspecified behavior.
+    kUiMessageReceiverDomainSocket = 1,
   };
 
   // Factory method that returns an instance of the real implementation of this
