@@ -94,20 +94,29 @@ void RoutingTable::Stop() {
 
 bool RoutingTable::AddRoute(int interface_index,
                             const RoutingTableEntry& entry) {
-  SLOG(this, 2) << __func__ << ": "
-                << "destination " << entry.dst.ToString()
-                << " index " << interface_index
-                << " gateway " << entry.gateway.ToString()
-                << " metric " << entry.metric;
-
   CHECK(!entry.from_rtnl);
-  if (!ApplyRoute(interface_index,
-                  entry,
-                  RTNLMessage::kModeAdd,
-                  NLM_F_CREATE | NLM_F_EXCL)) {
+  if (!AddRouteToKernelTable(interface_index, entry)) {
     return false;
   }
   tables_[interface_index].push_back(entry);
+  return true;
+}
+
+bool RoutingTable::RemoveRoute(int interface_index,
+                               const RoutingTableEntry& entry) {
+  if (!RemoveRouteFromKernelTable(interface_index, entry)) {
+    return false;
+  }
+  RouteTableEntryVector& table = tables_[interface_index];
+  for (auto nent = table.begin(); nent != table.end(); ++nent) {
+    if (nent->Equals(entry)) {
+      table.erase(nent);
+      return true;
+    }
+  }
+  SLOG(this, 1) << "Successfully removed routing entry but could not find the "
+                << "corresponding entry in shill's representation of the "
+                << "routing table.";
   return true;
 }
 
@@ -181,11 +190,10 @@ bool RoutingTable::SetDefaultRoute(int interface_index,
       }
       return true;
     } else {
-      // TODO(quiche): Update internal state as well?
-      ApplyRoute(interface_index,
-                 *old_entry,
-                 RTNLMessage::kModeDelete,
-                 0);
+      if (!RemoveRoute(interface_index, *old_entry)) {
+        LOG(WARNING) << "Failed to remove old default route for interface "
+                     << interface_index;
+      }
     }
   }
 
@@ -259,7 +267,7 @@ void RoutingTable::FlushRoutes(int interface_index) {
   }
 
   for (const auto& nent : table->second) {
-    ApplyRoute(interface_index, nent, RTNLMessage::kModeDelete, 0);
+    RemoveRouteFromKernelTable(interface_index, nent);
   }
   table->second.clear();
 }
@@ -270,7 +278,7 @@ void RoutingTable::FlushRoutesWithTag(int tag) {
   for (auto& table : tables_) {
     for (auto nent = table.second.begin(); nent != table.second.end();) {
       if (nent->tag == tag) {
-        ApplyRoute(table.first, *nent, RTNLMessage::kModeDelete, 0);
+        RemoveRouteFromKernelTable(table.first, *nent);
         nent = table.second.erase(nent);
       } else {
         ++nent;
@@ -299,6 +307,29 @@ void RoutingTable::SetDefaultMetric(int interface_index, uint32_t metric) {
       entry->metric != metric) {
     ReplaceMetric(interface_index, entry, metric);
   }
+}
+
+bool RoutingTable::AddRouteToKernelTable(int interface_index,
+                                         const RoutingTableEntry& entry) {
+  SLOG(this, 2) << __func__ << ": "
+                << "destination " << entry.dst.ToString()
+                << " index " << interface_index
+                << " gateway " << entry.gateway.ToString()
+                << " metric " << entry.metric;
+
+  return ApplyRoute(interface_index, entry, RTNLMessage::kModeAdd,
+                    NLM_F_CREATE | NLM_F_EXCL);
+}
+
+bool RoutingTable::RemoveRouteFromKernelTable(int interface_index,
+                                              const RoutingTableEntry& entry) {
+  SLOG(this, 2) << __func__ << ": "
+                << "destination " << entry.dst.ToString()
+                << " index " << interface_index
+                << " gateway " << entry.gateway.ToString()
+                << " metric " << entry.metric;
+
+  return ApplyRoute(interface_index, entry, RTNLMessage::kModeDelete, 0);
 }
 
 // static
@@ -515,7 +546,7 @@ void RoutingTable::ReplaceMetric(uint32_t interface_index,
   ApplyRoute(interface_index, new_entry, RTNLMessage::kModeAdd,
              NLM_F_CREATE | NLM_F_REPLACE);
   // Then delete the route at the old metric.
-  ApplyRoute(interface_index, *entry, RTNLMessage::kModeDelete, 0);
+  RemoveRouteFromKernelTable(interface_index, *entry);
   // Now, update our routing table (via |*entry|) from |new_entry|.
   *entry = new_entry;
 }
@@ -831,7 +862,7 @@ unsigned char RoutingTable::AllocTableId() {
     for (auto& table : tables_) {
       for (auto nent = table.second.begin(); nent != table.second.end();) {
         if (nent->table == table_id) {
-          ApplyRoute(table.first, *nent, RTNLMessage::kModeDelete, 0);
+          RemoveRouteFromKernelTable(table.first, *nent);
           nent = table.second.erase(nent);
         } else {
           ++nent;

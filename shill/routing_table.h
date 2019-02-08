@@ -44,6 +44,8 @@ class RoutingTable {
 
   // Add an entry to the routing table.
   virtual bool AddRoute(int interface_index, const RoutingTableEntry& entry);
+  // Remove an entry from the routing table.
+  virtual bool RemoveRoute(int interface_index, const RoutingTableEntry& entry);
 
   // Add an entry to the routing rule table.
   virtual bool AddRule(int interface_index, const RoutingPolicyEntry& entry);
@@ -155,6 +157,16 @@ class RoutingTable {
   static bool ParseRoutingTableMessage(const RTNLMessage& message,
                                        int* interface_index,
                                        RoutingTableEntry* entry);
+
+  // Add an entry to the kernel routing table without modifying the internal
+  // routing-table bookkeeping.
+  bool AddRouteToKernelTable(int interface_index,
+                             const RoutingTableEntry& entry);
+  // Remove an entry to the kernel routing table without modifying the internal
+  // routing-table bookkeeping.
+  bool RemoveRouteFromKernelTable(int interface_index,
+                                  const RoutingTableEntry& entry);
+
   void RouteMsgHandler(const RTNLMessage& msg);
   bool ApplyRoute(uint32_t interface_index,
                   const RoutingTableEntry& entry,
