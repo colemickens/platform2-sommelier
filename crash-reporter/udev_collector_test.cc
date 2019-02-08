@@ -40,8 +40,6 @@ const char kDevCoredumpDataContents[] = "coredump";
 // Content for failing device's uevent file.
 const char kFailingDeviceUeventContents[] = "DRIVER=iwlwifi\n";
 
-void CountCrash() {}
-
 bool s_consent_given = true;
 
 bool IsMetrics() {
@@ -102,7 +100,7 @@ class UdevCollectorTest : public ::testing::Test {
 
     EXPECT_CALL(collector_, SetUpDBus()).WillRepeatedly(testing::Return());
 
-    collector_.Initialize(CountCrash, IsMetrics);
+    collector_.Initialize(IsMetrics);
 
     ASSERT_TRUE(temp_dir_generator_.CreateUniqueTempDir());
 

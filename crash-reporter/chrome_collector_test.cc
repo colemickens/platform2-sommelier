@@ -34,8 +34,6 @@ const char kCrashFormatWithFile[] =
     "some_file\"; filename=\"foo.txt\":15:12345\n789\n12345"
     "value3:2:ok";
 
-void CountCrash() {}
-
 bool s_allow_crash = false;
 
 bool IsMetrics() {
@@ -63,7 +61,7 @@ class ChromeCollectorTest : public ::testing::Test {
   void SetUp() override {
     EXPECT_CALL(collector_, SetUpDBus()).WillRepeatedly(testing::Return());
 
-    collector_.Initialize(CountCrash, IsMetrics);
+    collector_.Initialize(IsMetrics);
     brillo::ClearLog();
   }
 };

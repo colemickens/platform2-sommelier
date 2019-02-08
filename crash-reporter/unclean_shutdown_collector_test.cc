@@ -22,12 +22,7 @@ using ::brillo::FindLog;
 
 namespace {
 
-int s_crashes = 0;
 bool s_metrics = true;
-
-void CountCrash() {
-  ++s_crashes;
-}
 
 bool IsMetrics() {
   return s_metrics;
@@ -42,11 +37,9 @@ class UncleanShutdownCollectorMock : public UncleanShutdownCollector {
 
 class UncleanShutdownCollectorTest : public ::testing::Test {
   void SetUp() {
-    s_crashes = 0;
-
     EXPECT_CALL(collector_, SetUpDBus()).WillRepeatedly(testing::Return());
 
-    collector_.Initialize(CountCrash, IsMetrics);
+    collector_.Initialize(IsMetrics);
 
     ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
     test_dir_ = scoped_temp_dir_.GetPath();
@@ -93,13 +86,11 @@ TEST_F(UncleanShutdownCollectorTest, CollectTrue) {
   ASSERT_TRUE(base::PathExists(test_unclean_));
   ASSERT_TRUE(collector_.Collect());
   ASSERT_FALSE(base::PathExists(test_unclean_));
-  ASSERT_EQ(1, s_crashes);
   ASSERT_TRUE(FindLog("Last shutdown was not clean"));
 }
 
 TEST_F(UncleanShutdownCollectorTest, CollectFalse) {
   ASSERT_FALSE(collector_.Collect());
-  ASSERT_EQ(0, s_crashes);
 }
 
 TEST_F(UncleanShutdownCollectorTest, CollectDeadBatterySuspended) {
@@ -109,7 +100,6 @@ TEST_F(UncleanShutdownCollectorTest, CollectDeadBatterySuspended) {
   ASSERT_FALSE(collector_.Collect());
   ASSERT_FALSE(base::PathExists(test_unclean_));
   ASSERT_FALSE(base::PathExists(collector_.powerd_suspended_file_));
-  ASSERT_EQ(0, s_crashes);
   ASSERT_TRUE(FindLog("Unclean shutdown occurred while suspended."));
 }
 

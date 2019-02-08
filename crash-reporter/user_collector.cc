@@ -52,7 +52,6 @@ UserCollector::UserCollector()
       core2md_failure_(false) {}
 
 void UserCollector::Initialize(
-    UserCollector::CountCrashFunction count_crash_function,
     const std::string& our_path,
     UserCollector::IsFeedbackAllowedFunction is_feedback_allowed_function,
     bool generate_diagnostics,
@@ -60,9 +59,9 @@ void UserCollector::Initialize(
     bool directory_failure,
     const std::string& filter_in,
     FilterOutFunction filter_out) {
-  UserCollectorBase::Initialize(
-      count_crash_function, is_feedback_allowed_function, generate_diagnostics,
-      directory_failure, filter_in);
+  UserCollectorBase::Initialize(is_feedback_allowed_function,
+                                generate_diagnostics, directory_failure,
+                                filter_in);
   our_path_ = our_path;
   core2md_failure_ = core2md_failure;
   filter_out_ = std::move(filter_out);

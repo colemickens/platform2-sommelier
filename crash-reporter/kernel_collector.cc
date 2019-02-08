@@ -683,8 +683,6 @@ bool KernelCollector::HandleCrash(const std::string& kernel_dump,
             << "kernel (signature " << signature << ") (" << reason << ")";
 
   if (feedback) {
-    count_crash_function_();
-
     if (!GetCreatedCrashDirectoryByEuid(kRootUid, &root_crash_directory,
                                         nullptr)) {
       return true;

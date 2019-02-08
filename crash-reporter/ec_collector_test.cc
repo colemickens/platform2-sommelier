@@ -18,12 +18,6 @@ namespace {
 const char kECPanicInfo[] = "panicinfo";
 const char kDevCoredumpDirectory[] = "cros_ec";
 
-int s_crashes = 0;
-
-void CountCrash() {
-  ++s_crashes;
-}
-
 bool s_consent_given = true;
 
 bool IsMetrics() {
@@ -69,7 +63,7 @@ class ECCollectorTest : public ::testing::Test {
 
     EXPECT_CALL(collector_, SetUpDBus()).WillRepeatedly(testing::Return());
 
-    collector_.Initialize(CountCrash, IsMetrics);
+    collector_.Initialize(IsMetrics);
 
     ASSERT_TRUE(temp_dir_generator_.CreateUniqueTempDir());
 
@@ -87,26 +81,22 @@ TEST_F(ECCollectorTest, TestNoConsent) {
   PreparePanicInfo(true, false);
   ASSERT_TRUE(collector_.Collect());
   ASSERT_TRUE(FindLog("(ignoring - no consent)"));
-  ASSERT_EQ(0, s_crashes);
 }
 
 TEST_F(ECCollectorTest, TestNoCrash) {
   PreparePanicInfo(false, false);
   ASSERT_FALSE(collector_.Collect());
-  ASSERT_EQ(0, s_crashes);
 }
 
 TEST_F(ECCollectorTest, TestStale) {
   PreparePanicInfo(true, true);
   ASSERT_FALSE(collector_.Collect());
   ASSERT_TRUE(FindLog("Old EC crash"));
-  ASSERT_EQ(0, s_crashes);
 }
 
 TEST_F(ECCollectorTest, TestGood) {
   PreparePanicInfo(true, false);
   ASSERT_TRUE(collector_.Collect());
   ASSERT_TRUE(FindLog("(handling)"));
-  ASSERT_EQ(1, s_crashes);
   /* TODO(drinkcat): Test crash file content */
 }

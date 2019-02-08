@@ -29,8 +29,6 @@ bool IsMetrics() {
   return s_metrics;
 }
 
-void CountCrash() {}
-
 // Returns true if at least one file in this directory matches the pattern.
 bool DirectoryHasFileWithPattern(const FilePath& directory,
                                  const std::string& pattern) {
@@ -53,7 +51,7 @@ class KernelWarningCollectorTest : public ::testing::Test {
 
     EXPECT_CALL(collector_, SetUpDBus()).WillRepeatedly(testing::Return());
 
-    collector_.Initialize(CountCrash, IsMetrics);
+    collector_.Initialize(IsMetrics);
     ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
     test_path_ = scoped_temp_dir_.GetPath().Append(kTestFilename);
     collector_.warning_report_path_ = test_path_.value();

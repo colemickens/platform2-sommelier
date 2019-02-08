@@ -208,12 +208,8 @@ CrashCollector::~CrashCollector() {
 }
 
 void CrashCollector::Initialize(
-    CrashCollector::CountCrashFunction count_crash_function,
     CrashCollector::IsFeedbackAllowedFunction is_feedback_allowed_function) {
-  CHECK(count_crash_function);
   CHECK(is_feedback_allowed_function);
-
-  count_crash_function_ = count_crash_function;
   is_feedback_allowed_function_ = is_feedback_allowed_function;
 }
 

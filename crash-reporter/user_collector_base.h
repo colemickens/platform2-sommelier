@@ -18,8 +18,7 @@ class UserCollectorBase : public CrashCollector {
  public:
   UserCollectorBase(const char* tag, bool force_user_crash_dir);
 
-  void Initialize(CountCrashFunction count_crash,
-                  IsFeedbackAllowedFunction is_metrics_allowed,
+  void Initialize(IsFeedbackAllowedFunction is_metrics_allowed,
                   bool generate_diagnostics,
                   bool directory_failure,
                   const std::string& filter_in);

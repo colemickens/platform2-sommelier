@@ -40,8 +40,6 @@ bool IsMetrics() {
   return s_metrics;
 }
 
-void CountCrash() {}
-
 // Returns true if at least one file in this directory matches the pattern.
 // found_file_path is not assigned if found_file_path is nullptr.
 // Only the first found path is stored into found_file_path.
@@ -69,7 +67,7 @@ class SELinuxViolationCollectorTest : public ::testing::Test {
 
     EXPECT_CALL(collector_, SetUpDBus()).WillRepeatedly(testing::Return());
 
-    collector_.Initialize(CountCrash, IsMetrics);
+    collector_.Initialize(IsMetrics);
     ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
     test_path_ = scoped_temp_dir_.GetPath().Append(kTestFilename);
     collector_.set_violation_report_path_for_testing(test_path_);

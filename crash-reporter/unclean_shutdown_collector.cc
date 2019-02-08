@@ -64,9 +64,6 @@ bool UncleanShutdownCollector::Collect() {
   }
   DeleteUncleanShutdownFiles();
 
-  if (is_feedback_allowed_function_()) {
-    count_crash_function_();
-  }
   return true;
 }
 

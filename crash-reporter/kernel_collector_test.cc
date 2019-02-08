@@ -23,12 +23,7 @@ using brillo::GetLog;
 namespace {
 
 const int kMaxEfiParts = 100;
-int s_crashes = 0;
 bool s_metrics = false;
-
-void CountCrash() {
-  ++s_crashes;
-}
 
 bool IsMetrics() {
   return s_metrics;
@@ -61,12 +56,11 @@ class KernelCollectorTest : public ::testing::Test {
 
  private:
   void SetUp() override {
-    s_crashes = 0;
     s_metrics = true;
 
     EXPECT_CALL(collector_, SetUpDBus()).WillRepeatedly(testing::Return());
 
-    collector_.Initialize(CountCrash, IsMetrics);
+    collector_.Initialize(IsMetrics);
     ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
     test_kcrash_ = scoped_temp_dir_.GetPath().Append("kcrash");
     ASSERT_TRUE(base::CreateDirectory(test_kcrash_));
@@ -256,7 +250,6 @@ TEST_F(KernelCollectorTest, EnableMissingKernel) {
   ASSERT_FALSE(collector_.Enable());
   ASSERT_FALSE(collector_.is_enabled());
   ASSERT_TRUE(FindLog("Kernel does not support crash dumping"));
-  ASSERT_EQ(s_crashes, 0);
 }
 
 TEST_F(KernelCollectorTest, EnableOK) {
@@ -265,13 +258,11 @@ TEST_F(KernelCollectorTest, EnableOK) {
   ASSERT_TRUE(collector_.Enable());
   ASSERT_TRUE(collector_.is_enabled());
   ASSERT_TRUE(FindLog("Enabling kernel crash handling"));
-  ASSERT_EQ(s_crashes, 0);
 }
 
 TEST_F(KernelCollectorTest, CollectPreservedFileMissing) {
   ASSERT_FALSE(collector_.Collect());
   ASSERT_FALSE(FindLog("Stored kcrash to "));
-  ASSERT_EQ(0, s_crashes);
 }
 
 TEST_F(KernelCollectorTest, CollectBadDirectory) {
@@ -280,13 +271,11 @@ TEST_F(KernelCollectorTest, CollectBadDirectory) {
   ASSERT_TRUE(FindLog("Unable to create crash directory"))
       << "Did not find expected error string in log: {\n"
       << GetLog() << "}";
-  ASSERT_EQ(1, s_crashes);
 }
 
 void KernelCollectorTest::SetUpSuccessfulCollect() {
   collector_.set_crash_directory_for_test(test_crash_directory());
   ASSERT_TRUE(test_util::CreateFile(kcrash_file(), "====1.1\nsomething"));
-  ASSERT_EQ(0, s_crashes);
 }
 
 void KernelCollectorTest::SetUpSuccessfulWatchdog(const FilePath& path) {
@@ -304,7 +293,6 @@ TEST_F(KernelCollectorTest, CollectOptedOut) {
   s_metrics = false;
   ASSERT_TRUE(collector_.Collect());
   ASSERT_TRUE(FindLog("(ignoring - no consent)"));
-  ASSERT_EQ(0, s_crashes);
 }
 
 void KernelCollectorTest::WatchdogOptedOutHelper(const FilePath& path) {
@@ -312,7 +300,6 @@ void KernelCollectorTest::WatchdogOptedOutHelper(const FilePath& path) {
   s_metrics = false;
   ASSERT_TRUE(collector_.Collect());
   ASSERT_TRUE(FindLog("(ignoring - no consent)"));
-  ASSERT_EQ(0, s_crashes);
 }
 
 TEST_F(KernelCollectorTest, WatchdogOptedOut) {
@@ -330,7 +317,6 @@ TEST_F(KernelCollectorTest, CollectOK) {
       "BIOS Messages"
       "\n\ncoreboot-dc417eb Tue Nov 2 bootblock starting...\n"));
   ASSERT_TRUE(collector_.Collect());
-  ASSERT_EQ(1, s_crashes);
   ASSERT_TRUE(FindLog("(handling)"));
   static const char kNamePrefix[] = "Stored kcrash to ";
   std::string log = brillo::GetLog();
@@ -370,7 +356,6 @@ TEST_F(KernelCollectorTest, CollectOK) {
 void KernelCollectorTest::WatchdogOKHelper(const FilePath& path) {
   SetUpSuccessfulWatchdog(path);
   ASSERT_TRUE(collector_.Collect());
-  ASSERT_EQ(1, s_crashes);
   ASSERT_TRUE(FindLog("(handling)"));
   ASSERT_TRUE(FindLog("kernel-(WATCHDOG)-I can haz"));
 }
@@ -383,7 +368,6 @@ TEST_F(KernelCollectorTest, BiosCrashArmOK) {
       "PANIC in EL3 at x30 = 0x00003698"
       "\n\ncoreboot-dc417eb Tue Nov 2 bootblock starting...\n"));
   ASSERT_TRUE(collector_.Collect());
-  ASSERT_EQ(1, s_crashes);
   ASSERT_TRUE(FindLog("(handling)"));
   ASSERT_TRUE(FindLog("bios-(PANIC)-0x00003698"));
 }
@@ -401,7 +385,6 @@ void KernelCollectorTest::WatchdogOnlyLastBootHelper(const FilePath& path) {
   SetUpSuccessfulWatchdog(path);
   ASSERT_TRUE(test_util::CreateFile(eventlog_file(), next));
   ASSERT_FALSE(collector_.Collect());
-  ASSERT_EQ(0, s_crashes);
 }
 
 TEST_F(KernelCollectorTest, WatchdogOnlyLastBoot) {

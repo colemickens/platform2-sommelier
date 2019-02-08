@@ -139,8 +139,6 @@ bool BERTCollector::Collect() {
     return false;
   }
 
-  count_crash_function_();
-
   // Create meta file with bert dump info.
   WriteCrashMetaData(
       GetCrashPath(root_crash_directory, dump_basename, "meta"),

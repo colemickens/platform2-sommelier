@@ -20,7 +20,6 @@
 // User crash collector.
 class CrashCollector {
  public:
-  typedef void (*CountCrashFunction)();
   typedef bool (*IsFeedbackAllowedFunction)();
 
   CrashCollector();
@@ -51,9 +50,8 @@ class CrashCollector {
   }
 
   // Initialize the crash collector for detection of crashes, given a
-  // crash counting function, and metrics collection enabled oracle.
-  void Initialize(CountCrashFunction count_crash,
-                  IsFeedbackAllowedFunction is_metrics_allowed);
+  // metrics collection enabled oracle.
+  void Initialize(IsFeedbackAllowedFunction is_metrics_allowed);
 
   // Initialize the system crash paths.
   static bool InitializeSystemCrashDirectories();
@@ -223,7 +221,6 @@ class CrashCollector {
   // is returned.
   base::FilePath GzipFile(const base::FilePath& path);
 
-  CountCrashFunction count_crash_function_;
   IsFeedbackAllowedFunction is_feedback_allowed_function_;
   std::string extra_metadata_;
   base::FilePath forced_crash_directory_;

@@ -24,7 +24,6 @@ using brillo::FindLog;
 
 namespace {
 
-int s_crashes = 0;
 bool s_metrics = false;
 
 const char kFilePath[] = "/my/path";
@@ -33,10 +32,6 @@ const char kFilePath[] = "/my/path";
 const char kChromeIgnoreMsg[] =
     "ignoring call by kernel - chrome crash; "
     "waiting for chrome to call us directly";
-
-void CountCrash() {
-  ++s_crashes;
-}
 
 bool IsMetrics() {
   return s_metrics;
@@ -52,8 +47,6 @@ class UserCollectorMock : public UserCollector {
 
 class UserCollectorTest : public ::testing::Test {
   void SetUp() {
-    s_crashes = 0;
-
     EXPECT_CALL(collector_, SetUpDBus()).WillRepeatedly(testing::Return());
 
     const std::vector<std::string> default_command_line = {"test_command",
@@ -65,8 +58,8 @@ class UserCollectorTest : public ::testing::Test {
     test_dir_ = scoped_temp_dir_.GetPath();
 
     const pid_t pid = getpid();
-    collector_.Initialize(CountCrash, kFilePath, IsMetrics, false, false, false,
-                          "", [pid](pid_t p) { return p == pid + 1; });
+    collector_.Initialize(kFilePath, IsMetrics, false, false, false, "",
+                          [pid](pid_t p) { return p == pid + 1; });
     // Setup paths for output files.
     test_core_pattern_file_ = test_dir_.Append("core_pattern");
     collector_.set_core_pattern_file(test_core_pattern_file_.value());
@@ -102,14 +95,12 @@ TEST_F(UserCollectorTest, EnableOK) {
   ASSERT_TRUE(collector_.Enable());
   ExpectFileEquals("|/my/path --user=%P:%s:%u:%g:%e", test_core_pattern_file_);
   ExpectFileEquals("4", test_core_pipe_limit_file_);
-  ASSERT_EQ(s_crashes, 0);
   EXPECT_TRUE(FindLog("Enabling user crash handling"));
 }
 
 TEST_F(UserCollectorTest, EnableNoPatternFileAccess) {
   collector_.set_core_pattern_file("/does_not_exist");
   ASSERT_FALSE(collector_.Enable());
-  ASSERT_EQ(s_crashes, 0);
   EXPECT_TRUE(FindLog("Enabling user crash handling"));
   EXPECT_TRUE(FindLog("Unable to write /does_not_exist"));
 }
@@ -117,7 +108,6 @@ TEST_F(UserCollectorTest, EnableNoPatternFileAccess) {
 TEST_F(UserCollectorTest, EnableNoPipeLimitFileAccess) {
   collector_.set_core_pipe_limit_file("/does_not_exist");
   ASSERT_FALSE(collector_.Enable());
-  ASSERT_EQ(s_crashes, 0);
   // Core pattern should not be written if we cannot access the pipe limit
   // or otherwise we may set a pattern that results in infinite recursion.
   ASSERT_FALSE(base::PathExists(test_core_pattern_file_));
@@ -128,14 +118,12 @@ TEST_F(UserCollectorTest, EnableNoPipeLimitFileAccess) {
 TEST_F(UserCollectorTest, DisableOK) {
   ASSERT_TRUE(collector_.Disable());
   ExpectFileEquals("core", test_core_pattern_file_);
-  ASSERT_EQ(s_crashes, 0);
   EXPECT_TRUE(FindLog("Disabling user crash handling"));
 }
 
 TEST_F(UserCollectorTest, DisableNoFileAccess) {
   collector_.set_core_pattern_file("/does_not_exist");
   ASSERT_FALSE(collector_.Disable());
-  ASSERT_EQ(s_crashes, 0);
   EXPECT_TRUE(FindLog("Disabling user crash handling"));
   EXPECT_TRUE(FindLog("Unable to write /does_not_exist"));
 }
@@ -264,14 +252,12 @@ TEST_F(UserCollectorTest, HandleCrashWithoutConsent) {
   s_metrics = false;
   collector_.HandleCrash("20:10:1000:1000:ignored", "foobar");
   EXPECT_TRUE(FindLog("Received crash notification for foobar[20] sig 10"));
-  ASSERT_EQ(s_crashes, 0);
 }
 
 TEST_F(UserCollectorTest, HandleNonChromeCrashWithConsent) {
   s_metrics = true;
   collector_.HandleCrash("5:2:1000:1000:ignored", "chromeos-wm");
   EXPECT_TRUE(FindLog("Received crash notification for chromeos-wm[5] sig 2"));
-  ASSERT_EQ(s_crashes, 1);
 }
 
 TEST_F(UserCollectorTest, HandleChromeCrashWithConsent) {
@@ -279,7 +265,6 @@ TEST_F(UserCollectorTest, HandleChromeCrashWithConsent) {
   collector_.HandleCrash("5:2:1000:1000:ignored", "chrome");
   EXPECT_TRUE(FindLog("Received crash notification for chrome[5] sig 2"));
   EXPECT_TRUE(FindLog(kChromeIgnoreMsg));
-  ASSERT_EQ(s_crashes, 0);
 }
 
 TEST_F(UserCollectorTest, HandleSuppliedChromeCrashWithConsent) {
@@ -288,7 +273,6 @@ TEST_F(UserCollectorTest, HandleSuppliedChromeCrashWithConsent) {
   EXPECT_TRUE(
       FindLog("Received crash notification for supplied_chrome[0] sig 2"));
   EXPECT_TRUE(FindLog(kChromeIgnoreMsg));
-  ASSERT_EQ(s_crashes, 0);
 }
 
 TEST_F(UserCollectorTest, GetProcessPath) {

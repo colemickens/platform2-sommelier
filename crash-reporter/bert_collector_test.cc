@@ -20,12 +20,6 @@ namespace {
 
 constexpr char kACPITableDirectory[] = "sys/firmware/acpi/tables";
 
-int s_crashes = 0;
-
-void CountCrash() {
-  ++s_crashes;
-}
-
 bool s_consent_given = true;
 
 bool IsMetrics() {
@@ -75,7 +69,7 @@ class BERTCollectorTest : public ::testing::Test {
 
     EXPECT_CALL(collector_, SetUpDBus()).WillRepeatedly(testing::Return());
 
-    collector_.Initialize(CountCrash, IsMetrics);
+    collector_.Initialize(IsMetrics);
     ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
     FilePath test_dir_ = scoped_temp_dir_.GetPath();
 
@@ -86,7 +80,6 @@ class BERTCollectorTest : public ::testing::Test {
 
 TEST_F(BERTCollectorTest, TestNoBERTData) {
   ASSERT_FALSE(collector_.Collect());
-  ASSERT_EQ(0, s_crashes);
 }
 
 TEST_F(BERTCollectorTest, TestNoConsent) {
@@ -94,7 +87,6 @@ TEST_F(BERTCollectorTest, TestNoConsent) {
   PrepareBertDataTest(false);
   ASSERT_TRUE(collector_.Collect());
   ASSERT_TRUE(FindLog("(ignoring - no consent)"));
-  ASSERT_EQ(0, s_crashes);
 }
 
 TEST_F(BERTCollectorTest, TestBadBERTData) {
@@ -102,7 +94,6 @@ TEST_F(BERTCollectorTest, TestBadBERTData) {
   ASSERT_FALSE(collector_.Collect());
   ASSERT_TRUE(FindLog("(handling)"));
   ASSERT_TRUE(FindLog("Bad data in BERT table"));
-  ASSERT_EQ(0, s_crashes);
 }
 
 TEST_F(BERTCollectorTest, TestGoodBERTData) {
@@ -110,5 +101,4 @@ TEST_F(BERTCollectorTest, TestGoodBERTData) {
   ASSERT_TRUE(collector_.Collect());
   ASSERT_TRUE(FindLog("(handling)"));
   ASSERT_TRUE(FindLog("Stored BERT dump"));
-  ASSERT_EQ(1, s_crashes);
 }

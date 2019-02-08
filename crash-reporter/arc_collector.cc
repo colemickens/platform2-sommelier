@@ -183,8 +183,6 @@ bool ArcCollector::HandleJavaCrash(const std::string& crash_type,
   message << " for " << exec;
   LogCrash(message.str(), reason);
 
-  count_crash_function_();
-
   bool out_of_capacity = false;
   if (!CreateReportForJavaCrash(crash_type, device, board, cpu_abi, map,
                                 exception_info, stream.str(),

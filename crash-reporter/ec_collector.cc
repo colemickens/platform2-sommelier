@@ -68,8 +68,6 @@ bool ECCollector::Collect() {
   LOG(INFO) << "Received crash notification from EC (" << reason << ")";
 
   if (feedback) {
-    count_crash_function_();
-
     if (!GetCreatedCrashDirectoryByEuid(0, &root_crash_directory, nullptr)) {
       return true;
     }

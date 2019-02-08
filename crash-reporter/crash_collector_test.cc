@@ -24,10 +24,6 @@ using ::testing::Return;
 
 namespace {
 
-void CountCrash() {
-  ADD_FAILURE();
-}
-
 bool IsMetrics() {
   ADD_FAILURE();
   return false;
@@ -40,7 +36,7 @@ class CrashCollectorTest : public ::testing::Test {
   void SetUp() {
     EXPECT_CALL(collector_, SetUpDBus()).WillRepeatedly(Return());
 
-    collector_.Initialize(CountCrash, IsMetrics);
+    collector_.Initialize(IsMetrics);
 
     ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
     test_dir_ = scoped_temp_dir_.GetPath();
@@ -57,7 +53,6 @@ class CrashCollectorTest : public ::testing::Test {
 };
 
 TEST_F(CrashCollectorTest, Initialize) {
-  ASSERT_TRUE(CountCrash == collector_.count_crash_function_);
   ASSERT_TRUE(IsMetrics == collector_.is_feedback_allowed_function_);
 }
 

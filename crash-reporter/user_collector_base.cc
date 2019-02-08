@@ -65,13 +65,11 @@ UserCollectorBase::UserCollectorBase(const char* tag, bool force_user_crash_dir)
     : CrashCollector(force_user_crash_dir), tag_(tag) {}
 
 void UserCollectorBase::Initialize(
-    CountCrashFunction count_crash_function,
     IsFeedbackAllowedFunction is_feedback_allowed_function,
     bool generate_diagnostics,
     bool directory_failure,
     const std::string& filter_in) {
-  CrashCollector::Initialize(count_crash_function,
-                             is_feedback_allowed_function);
+  CrashCollector::Initialize(is_feedback_allowed_function);
   initialized_ = true;
   generate_diagnostics_ = generate_diagnostics;
   directory_failure_ = directory_failure;
@@ -127,7 +125,6 @@ bool UserCollectorBase::HandleCrash(const std::string& crash_attributes,
   LogCrash(message, reason);
 
   if (dump) {
-    count_crash_function_();
     AccounceUserCrash();
 
     AddExtraMetadata(exec, pid);

@@ -31,8 +31,6 @@ bool IsMetrics() {
   return s_metrics;
 }
 
-void CountCrash() {}
-
 }  // namespace
 
 class ServiceFailureCollectorMock : public ServiceFailureCollector {
@@ -46,7 +44,7 @@ class ServiceFailureCollectorTest : public ::testing::Test {
 
     EXPECT_CALL(collector_, SetUpDBus()).WillRepeatedly(testing::Return());
 
-    collector_.Initialize(CountCrash, IsMetrics);
+    collector_.Initialize(IsMetrics);
     ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
     test_path_ = scoped_temp_dir_.GetPath().Append(kTestFilename);
     collector_.failure_report_path_ = test_path_.value();

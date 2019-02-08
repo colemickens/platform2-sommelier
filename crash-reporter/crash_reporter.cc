@@ -37,20 +37,6 @@ namespace {
 const char kKernelCrashDetected[] = "/run/kernel-crash-detected";
 const char kUncleanShutdownDetected[] = "/run/unclean-shutdown-detected";
 
-// Enumeration of kinds of crashes to be used in the CrashCounter histogram.
-enum CrashKinds {
-  kCrashKindUncleanShutdown = 1,
-  kCrashKindUser = 2,
-  kCrashKindKernel = 3,
-  kCrashKindUdev = 4,
-  kCrashKindKernelWarning = 5,
-  kCrashKindEC = 6,
-  kCrashKindServiceFailure = 7,
-  kCrashKindSELinuxViolation = 8,
-  kCrashKindBERT = 9,
-  kCrashKindMax
-};
-
 MetricsLibrary s_metrics_lib;
 
 bool IsFeedbackAllowed() {
@@ -59,53 +45,6 @@ bool IsFeedbackAllowed() {
 
 bool TouchFile(const FilePath& file_path) {
   return base::WriteFile(file_path, "", 0) == 0;
-}
-
-void SendCrashMetrics(CrashKinds type, const char* name) {
-  // TODO(ddavenport): Remove this stub and the rest of the code around
-  // Logging.CrashCounter once we're certain no one is using it (crbug/754850).
-}
-
-void CountECCrash() {
-  SendCrashMetrics(kCrashKindEC, "ec");
-}
-
-void CountBERTCrash() {
-  SendCrashMetrics(kCrashKindBERT, "bert");
-}
-
-void CountKernelCrash() {
-  SendCrashMetrics(kCrashKindKernel, "kernel");
-}
-
-void CountUdevCrash() {
-  SendCrashMetrics(kCrashKindUdev, "udevcrash");
-}
-
-void CountKernelWarning() {
-  SendCrashMetrics(kCrashKindKernelWarning, "kernel-warning");
-}
-
-void CountServiceFailure() {
-  SendCrashMetrics(kCrashKindServiceFailure, "service-failure");
-}
-
-void CountSELinuxViolation() {
-  SendCrashMetrics(kCrashKindSELinuxViolation, "selinux-violation");
-}
-
-void CountUncleanShutdown() {
-  SendCrashMetrics(kCrashKindUncleanShutdown, "uncleanshutdown");
-}
-
-void CountUserCrash() {
-  SendCrashMetrics(kCrashKindUser, "user");
-}
-
-void CountChromeCrash() {
-  // For now, consider chrome crashes the same as user crashes for reporting
-  // purposes.
-  CountUserCrash();
 }
 
 int Initialize(UserCollector* user_collector, UdevCollector* udev_collector) {
@@ -387,16 +326,16 @@ int main(int argc, char* argv[]) {
   EnterSandbox(FLAGS_init || FLAGS_clean_shutdown);
 
   KernelCollector kernel_collector;
-  kernel_collector.Initialize(CountKernelCrash, IsFeedbackAllowed);
+  kernel_collector.Initialize(IsFeedbackAllowed);
   ECCollector ec_collector;
-  ec_collector.Initialize(CountECCrash, IsFeedbackAllowed);
+  ec_collector.Initialize(IsFeedbackAllowed);
   BERTCollector bert_collector;
-  bert_collector.Initialize(CountBERTCrash, IsFeedbackAllowed);
+  bert_collector.Initialize(IsFeedbackAllowed);
   UserCollector user_collector;
   UserCollector::FilterOutFunction filter_out = [](pid_t) { return false; };
 #if USE_CHEETS
   ArcCollector arc_collector;
-  arc_collector.Initialize(CountUserCrash, IsFeedbackAllowed,
+  arc_collector.Initialize(IsFeedbackAllowed,
                            true,  // generate_diagnostics
                            FLAGS_directory_failure, FLAGS_filter_in);
   // Filter out ARC processes.
@@ -404,27 +343,25 @@ int main(int argc, char* argv[]) {
     filter_out = std::bind(&ArcCollector::IsArcProcess, &arc_collector,
                            std::placeholders::_1);
 #endif
-  user_collector.Initialize(CountUserCrash, my_path.value(), IsFeedbackAllowed,
+  user_collector.Initialize(my_path.value(), IsFeedbackAllowed,
                             true,  // generate_diagnostics
                             FLAGS_core2md_failure, FLAGS_directory_failure,
                             FLAGS_filter_in, std::move(filter_out));
   UncleanShutdownCollector unclean_shutdown_collector;
-  unclean_shutdown_collector.Initialize(CountUncleanShutdown,
-                                        IsFeedbackAllowed);
+  unclean_shutdown_collector.Initialize(IsFeedbackAllowed);
   UdevCollector udev_collector;
-  udev_collector.Initialize(CountUdevCrash, IsFeedbackAllowed);
+  udev_collector.Initialize(IsFeedbackAllowed);
   ChromeCollector chrome_collector;
-  chrome_collector.Initialize(CountChromeCrash, IsFeedbackAllowed);
+  chrome_collector.Initialize(IsFeedbackAllowed);
 
   KernelWarningCollector kernel_warning_collector;
-  kernel_warning_collector.Initialize(CountKernelWarning, IsFeedbackAllowed);
+  kernel_warning_collector.Initialize(IsFeedbackAllowed);
 
   ServiceFailureCollector service_failure_collector;
-  service_failure_collector.Initialize(CountServiceFailure, IsFeedbackAllowed);
+  service_failure_collector.Initialize(IsFeedbackAllowed);
 
   SELinuxViolationCollector selinux_violation_collector;
-  selinux_violation_collector.Initialize(CountSELinuxViolation,
-                                         IsFeedbackAllowed);
+  selinux_violation_collector.Initialize(IsFeedbackAllowed);
 
   if (FLAGS_init) {
     return Initialize(&user_collector, &udev_collector);
