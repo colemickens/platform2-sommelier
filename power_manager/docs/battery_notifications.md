@@ -12,8 +12,9 @@ remaining-time estimate in the system tray.
 The "time-to-empty" estimate that powerd sends to Chrome is actually the
 estimated time until powerd will shut down the system automatically, which
 happens (by default) three minutes before the battery will be completely empty.
-See powerd's [PowerSupply] class and the [Power Supplies] document for more
-details.
+This time interval is specified via powerd's `low_battery_shutdown_time_s`
+preference. See powerd's [PowerSupply] class and the [Power Supplies] document
+for more details.
 
 ## Notifying the User
 
@@ -58,8 +59,13 @@ Several powerd preference files can be used to configure powerd's estimates:
 -   `battery_stabilized_after_resume_ms`: delay after resuming from sleep
 
 powerd previously used an exponential moving average, but the resulting code was
-difficult to reason about or write tests for and the estimates were even noisier
-(as a result of decreasing the weighting of older samples).
+difficult to reason about or write tests for, and the estimates were even
+noisier (as a result of decreasing the weighting of older samples).
+
+Battery time estimates currently fluctuate wildly (sometimes by an hour or more
+between updates) when the power load is also changing dramatically. This
+behavior can be reduced by increasing the values in the above prefs, but doing
+so makes the estimates slower to adjust when the load has actually changed.
 
 [PowerSupplyProperties]: https://chromium.googlesource.com/chromiumos/platform/system_api/+/master/dbus/power_manager/power_supply_properties.proto
 [PowerSupply]: https://chromium.googlesource.com/chromiumos/platform2/+/master/power_manager/powerd/system/power_supply.h
