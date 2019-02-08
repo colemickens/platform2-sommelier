@@ -41,29 +41,29 @@ bool BertCheckTable(const struct acpi_table_bert& bert_table) {
 // Read BERT table and data files.
 // BERT stores data in little endian, and we assume the CPU endian is
 // also little endian.
-bool BertRead(struct acpi_table_bert& bert_table,
-              std::string& bert_table_contents,
-              std::string& bert_data_contents,
-              const FilePath bert_table_path,
-              const FilePath bert_data_path) {
+bool BertRead(const FilePath& bert_table_path,
+              const FilePath& bert_data_path,
+              struct acpi_table_bert* bert_table,
+              std::string* bert_table_contents,
+              std::string* bert_data_contents) {
   // Read BERT table file.
   if (!base::ReadFileToStringWithMaxSize(bert_table_path,
-                                         &bert_table_contents,
+                                         bert_table_contents,
                                          sizeof(struct acpi_table_bert))) {
     PLOG(ERROR) << "BERT table file read failed";
     return false;
   }
-  memcpy(&bert_table, bert_table_contents.data(), sizeof(bert_table));
+  memcpy(bert_table, bert_table_contents->data(), sizeof(*bert_table));
 
-  if (!BertCheckTable(bert_table)) {
+  if (!BertCheckTable(*bert_table)) {
     LOG(ERROR) << "Bad data in BERT table";
     return false;
   }
 
   // Read BERT data file.
   if (!base::ReadFileToStringWithMaxSize(bert_data_path,
-                                         &bert_data_contents,
-                                         bert_table.region_length)) {
+                                         bert_data_contents,
+                                         bert_table->region_length)) {
     PLOG(ERROR) << "BERT data file read failed";
     return false;
   }
@@ -108,9 +108,10 @@ bool BERTCollector::Collect() {
   std::string bert_data_contents;
   struct acpi_table_bert bert_table;
   // Read BERT table and BERT data information.
-  if (!BertRead(bert_table, bert_table_contents, bert_data_contents,
-                bert_table_path, bert_data_path))
+  if (!BertRead(bert_table_path, bert_data_path, &bert_table,
+                &bert_table_contents, &bert_data_contents)) {
     return false;
+  }
 
   // Dump BERT table and BERT data into single bertdump file.
   if (!GetCreatedCrashDirectoryByEuid(kRootUid,
