@@ -1504,7 +1504,7 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
   base::FilePath disk_path;
   if (!GetDiskPathFromName(request.disk_path(), request.cryptohome_id(),
                            request.storage_location(),
-                           false, /* create_parent_dir */
+                           true, /* create_parent_dir */
                            &disk_path)) {
     response.set_status(DISK_STATUS_FAILED);
     response.set_failure_reason("Failed to delete vm image");
