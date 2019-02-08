@@ -6,6 +6,7 @@
 #define SHILL_ROUTING_TABLE_H_
 
 #include <deque>
+#include <map>
 #include <memory>
 #include <unordered_map>
 #include <vector>
@@ -119,9 +120,13 @@ class RoutingTable {
                                   const QueryCallback& callback,
                                   uint8_t table_id);
 
-  // Allocates a per-device routing table, and returns the ID.  If no
-  // IDs are available, returns 0.
+  // Allocates a routing table, and returns the ID.  If no IDs are available,
+  // returns 0.
   virtual uint8_t AllocTableId();
+  // Sets a table as the per-device table for the specified index. |table_id|
+  // must not already be used as the per device table of a different interface,
+  // and the interface may not already have a different per device table.
+  virtual void SetPerDeviceTable(int interface_index, uint8_t table_id);
   // Frees routing table |id| that was obtained from AllocTableId().
   virtual void FreeTableId(uint8_t id);
 
@@ -188,6 +193,8 @@ class RoutingTable {
 
   RouteTables tables_;
   PolicyTables policy_tables_;
+  // Map of interface index -> id of per-device routing table.
+  std::map<int, uint8_t> per_device_tables_;
 
   std::unique_ptr<RTNLListener> route_listener_;
   std::deque<Query> route_queries_;

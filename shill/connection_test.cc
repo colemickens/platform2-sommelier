@@ -351,6 +351,7 @@ TEST_F(ConnectionTest, AddConfigUserTrafficOnly) {
   EXPECT_CALL(routing_table_, FreeTableId(RT_TABLE_MAIN));
   EXPECT_CALL(routing_table_, AllocTableId()).WillOnce(Return(table_id));
   EXPECT_CALL(routing_table_, FlushRules(kTestDeviceInterfaceIndex0));
+  EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   EXPECT_CALL(
       routing_table_,
       AddRule(kTestDeviceInterfaceIndex0,
@@ -759,6 +760,7 @@ TEST_F(ConnectionTest, BlackholeIPv6) {
   EXPECT_CALL(routing_table_, FlushRules(_));
   EXPECT_CALL(routing_table_, AddRule(_, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(routing_table_, ConfigureRoutes(_, _, _, _));
+  EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   EXPECT_CALL(routing_table_,
               CreateBlackholeRoute(kTestDeviceInterfaceIndex0,
                                    IPAddress::kFamilyIPv6,

@@ -25,6 +25,7 @@
 #include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 
 #include "shill/ipconfig.h"
@@ -150,7 +151,17 @@ void RoutingTable::Stop() {
 
 bool RoutingTable::AddRoute(int interface_index,
                             const RoutingTableEntry& entry) {
-  CHECK(!entry.from_rtnl);
+  // Normal routes (i.e. not blackhole or unreachable) should be sent to a
+  // the interface's per-device table, if there is one.
+  auto iter = per_device_tables_.find(interface_index);
+  if (iter != per_device_tables_.end() && entry.table != iter->second &&
+      entry.type != RTN_BLACKHOLE && entry.type != RTN_UNREACHABLE) {
+    LOG(ERROR) << "Can't add route to table " << entry.table
+               << " when the interface's per-device table is "
+               << iter->second;
+    return false;
+  }
+
   if (!AddRouteToKernelTable(interface_index, entry)) {
     return false;
   }
@@ -240,7 +251,8 @@ bool RoutingTable::SetDefaultRoute(int interface_index,
   if (GetDefaultRouteInternal(interface_index,
                               gateway_address.family(),
                               &old_entry)) {
-    if (old_entry->gateway.Equals(gateway_address)) {
+    if (old_entry->gateway.Equals(gateway_address) &&
+        old_entry->table == table_id) {
       if (old_entry->metric != metric) {
         ReplaceMetric(interface_index, old_entry, metric);
       }
@@ -448,6 +460,24 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
     return;
   }
 
+  uint8_t target_table = RT_TABLE_MAIN;
+  auto per_device_iter = per_device_tables_.find(interface_index);
+  if (per_device_iter != per_device_tables_.end()) {
+    target_table = per_device_iter->second;
+  }
+  // Routes that make it here are either:
+  //   * Default routes of protocol RTPROT_RA (most notably, kernel-created IPv6
+  //      default routes in response to receiving IPv6 RAs).
+  //   * Routes of protocol RTPROT_BOOT, which includes default routes created
+  //      by the kernel when an interface comes up and routes created by `ip
+  //      route` that do not explicitly specify a different protocol.
+  //
+  // Thus a different service could create routes that are "hidden" from Shill
+  // by using a different protocol value (anything greater than RTPROT_STATIC
+  // would be appropriate), while routes created with protocol RTPROT_BOOT will
+  // be tracked by Shill. In the future, each service could use a unique
+  // protocol value, such that Shill would be able to determine which service
+  // created a particular route.
   RouteTableEntryVector& table = tables_[interface_index];
   for (auto nent = table.begin(); nent != table.end(); ++nent)  {
     if (nent->dst.Equals(entry.dst) &&
@@ -456,23 +486,41 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
         nent->scope == entry.scope &&
         nent->metric == entry.metric &&
         nent->type == entry.type) {
-      if (message.mode() == RTNLMessage::kModeDelete) {
+      if (message.mode() == RTNLMessage::kModeDelete &&
+          entry.table == nent->table) {
         table.erase(nent);
       } else if (message.mode() == RTNLMessage::kModeAdd) {
         nent->from_rtnl = true;
+        if (nent->table != entry.table && entry.table == RT_TABLE_MAIN) {
+          // Kernel added a routing entry that we have in a per-device table,
+          // but placed the entry in the main routing table.
+          RemoveRouteFromKernelTable(interface_index, entry);
+        }
       }
       return;
     }
   }
 
-  if (message.mode() == RTNLMessage::kModeAdd) {
-    SLOG(this, 2) << __func__ << " adding"
-                  << " destination " << entry.dst.ToString()
-                  << " index " << interface_index
-                  << " gateway " << entry.gateway.ToString()
-                  << " metric " << entry.metric;
-    table.push_back(entry);
+  if (message.mode() != RTNLMessage::kModeAdd) {
+    return;
   }
+
+  SLOG(this, 2) << __func__ << " adding"
+                << " destination " << entry.dst.ToString()
+                << " index " << interface_index
+                << " gateway " << entry.gateway.ToString()
+                << " metric " << entry.metric;
+  // When using a per-device routing table, we do not want entries for that
+  // interface to be added to the default routing table. Thus we remove the
+  // added route here and re-add it to the per-device routing table.
+  if (target_table != RT_TABLE_MAIN && entry.table != target_table) {
+    RoutingTableEntry oldEntry(entry);
+    entry.table = target_table;
+    ApplyRoute(interface_index, entry, RTNLMessage::kModeAdd,
+               NLM_F_CREATE | NLM_F_REPLACE);
+    RemoveRouteFromKernelTable(interface_index, oldEntry);
+  }
+  table.push_back(entry);
 }
 
 bool RoutingTable::ApplyRoute(uint32_t interface_index,
@@ -856,12 +904,46 @@ uint8_t RoutingTable::AllocTableId() {
   }
 }
 
+void RoutingTable::SetPerDeviceTable(int interface_index, uint8_t table_id) {
+  DCHECK(table_id != RT_TABLE_MAIN && table_id != RT_TABLE_LOCAL &&
+         table_id != RT_TABLE_DEFAULT);
+
+  for (const auto& pair : per_device_tables_) {
+    if (pair.second != table_id) {
+      continue;
+    }
+
+    CHECK(pair.first == interface_index);
+    CHECK(pair.second == table_id);
+    return;
+  }
+
+  per_device_tables_[interface_index] = table_id;
+  // Move existing entries for this interface to the per-device table.
+  for (auto& nent : tables_[interface_index]) {
+    if (nent.table == RT_TABLE_LOCAL || nent.table == table_id) {
+      continue;
+    }
+
+    RoutingTableEntry new_entry = nent;
+    new_entry.table = table_id;
+    AddRoute(interface_index, new_entry);
+    RemoveRoute(interface_index, nent);
+  }
+  FlushCache();
+}
+
 void RoutingTable::FreeTableId(uint8_t id) {
   if (id == RT_TABLE_MAIN) {
     return;
   }
   CHECK(id > RT_TABLE_UNSPEC && id < RT_TABLE_DEFAULT);
   available_table_ids_.push_back(id);
+  // Remove per-device table entry if any.
+  base::EraseIf(per_device_tables_,
+                [id](std::pair<int, uint8_t> interface_table) {
+                  return interface_table.second == id;
+                });
 }
 
 }  // namespace shill

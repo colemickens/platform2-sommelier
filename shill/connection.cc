@@ -183,7 +183,13 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
     routing_table_->FreeTableId(table_id_);
     table_id_ = routing_table_->AllocTableId();
     CHECK(table_id_);
+    routing_table_->SetPerDeviceTable(interface_index_, table_id_);
   } else {
+    if (table_id_ != RT_TABLE_MAIN) {
+      // |table_id_| is RT_TABLE_MAIN by default. If it is anything other than
+      // that, we must have allocated a table id.
+      routing_table_->FreeTableId(table_id_);
+    }
     table_id_ = RT_TABLE_MAIN;
   }
 
