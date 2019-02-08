@@ -67,9 +67,9 @@ int main(int argc, char* argv[]) {
 
   if (FLAGS_policy != kConservativeScheduler &&
       FLAGS_policy != kPerformanceScheduler) {
-    LOG(ERROR) << "Usage: " << argv[0] << " --policy=["
-               << kConservativeScheduler << "|" << kPerformanceScheduler << "]";
-    return 1;
+    LOG(INFO) << "Unknown policy \"" << FLAGS_policy << "\", defaulting to "
+              << kConservativeScheduler;
+    FLAGS_policy = kConservativeScheduler;
   }
 
   // The CPU control files must be opened as root.

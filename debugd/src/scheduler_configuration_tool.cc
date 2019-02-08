@@ -76,12 +76,6 @@ bool SchedulerConfigurationTool::SetPolicy(const std::string& policy,
     return false;
   }
 
-  if (policy != debugd::scheduler_configuration::kPerformanceScheduler &&
-      policy != debugd::scheduler_configuration::kConservativeScheduler) {
-    DEBUGD_ADD_ERROR(error, kErrorPath, "Invalid policy");
-    return false;
-  }
-
   int exit_status;
   bool result = RunHelper("scheduler_configuration_helper",
                           ProcessWithOutput::ArgList{"--policy=" + policy},
