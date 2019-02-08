@@ -26,11 +26,35 @@ namespace {
 const char kCollectionErrorSignature[] = "crash_reporter-user-collection";
 const char kStatePrefix[] = "State:\t";
 const char kUptimeField[] = "ptime";
+const char kUserCrashSignal[] = "org.chromium.CrashReporter.UserCrash";
 
 #if USE_DIRENCRYPTION
 // Name of the session keyring.
 const char kDircrypt[] = "dircrypt";
 #endif  // USE_DIRENCRYPTION
+
+void AccounceUserCrash() {
+  std::string command = StringPrintf(
+      "/usr/bin/dbus-send --type=signal --system / \"%s\" &", kUserCrashSignal);
+  // Announce through D-Bus whenever a user crash happens. This is
+  // used by the metrics daemon to log active use time between
+  // crashes.
+  //
+  // This could be done more efficiently by explicit fork/exec or
+  // using a dbus library directly. However, this should run
+  // relatively rarely and longer term we may need to implement a
+  // better way to do this that doesn't rely on D-Bus.
+  //
+  // We run in the background in case dbus daemon itself is crashed
+  // and not responding.  This allows us to not block and potentially
+  // deadlock on a dbus-daemon crash.  If dbus-daemon crashes without
+  // restarting, each crash will fork off a lot of dbus-send
+  // processes.  Such a system is in a unusable state and will need
+  // to be restarted anyway.
+
+  int status = system(command.c_str());
+  LOG_IF(WARNING, status != 0) << "dbus-send running failed";
+}
 
 }  // namespace
 
@@ -104,6 +128,7 @@ bool UserCollectorBase::HandleCrash(const std::string& crash_attributes,
 
   if (dump) {
     count_crash_function_();
+    AccounceUserCrash();
 
     AddExtraMetadata(exec, pid);
 
