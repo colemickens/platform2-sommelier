@@ -6,13 +6,11 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
-    ":u2fd",
     ":g2ftool",
+    ":u2fd",
   ]
   if (use.test) {
-    deps += [
-      ":g2f_client_test",
-    ]
+    deps += [ ":g2f_client_test" ]
   }
 }
 
@@ -59,7 +57,7 @@ static_library("libg2fclient") {
 }
 
 if (use.test) {
-   pkg_config("g2f_client_test_config") {
+  pkg_config("g2f_client_test_config") {
     pkg_deps = [
       "libbrillo-${libbase_ver}",
       "libchrome-${libbase_ver}",
