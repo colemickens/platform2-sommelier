@@ -18,6 +18,11 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
+  ]
+}
+
+pkg_config("u2fd_config") {
+  pkg_deps = [
     "libpower_manager-client",
     "libtrunks",
     "system_api",
@@ -25,7 +30,10 @@ pkg_config("target_defaults") {
 }
 
 executable("u2fd") {
-  configs += [ ":target_defaults" ]
+  configs += [
+    ":target_defaults",
+    ":u2fd_config",
+  ]
   sources = [
     "main.cc",
     "tpm_vendor_cmd.cc",
@@ -58,19 +66,13 @@ static_library("libg2fclient") {
 
 if (use.test) {
   pkg_config("g2f_client_test_config") {
-    pkg_deps = [
-      "libbrillo-${libbase_ver}",
-      "libchrome-${libbase_ver}",
-      "libpower_manager-client",
-      "libtrunks",
-      "system_api",
-      "libchrome-test-${libbase_ver}",
-    ]
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
   }
 
   executable("g2f_client_test") {
     configs += [
       "//common-mk:test",
+      ":target_defaults",
       ":g2f_client_test_config",
     ]
     sources = [
