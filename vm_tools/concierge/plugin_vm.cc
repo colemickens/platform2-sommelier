@@ -27,8 +27,11 @@ namespace {
 // Path to the crosvm binary.
 constexpr char kCrosvmBin[] = "/usr/bin/crosvm";
 
-// Path to the plugin binary.
-constexpr char kPluginBin[] = "/usr/bin/pvm";
+// Path to the plugin binaries and other assets.
+constexpr char kPluginBinDir[] = "/opt/pita/";
+
+// Name of the plugin VM binary.
+constexpr char kPluginBinName[] = "pvm";
 
 // Name of the control socket used for controlling crosvm.
 constexpr char kCrosvmSocket[] = "crosvm.sock";
@@ -167,7 +170,11 @@ bool PluginVm::Start(uint32_t cpus,
     "--mem",          "2048",  // TODO(b:80150167): memory allocation policy
     "--tap-fd",       std::to_string(tap_fd.get()),
     "--socket",       runtime_dir_.GetPath().Append(kCrosvmSocket).value(),
-    "--plugin",       kPluginBin,
+    "--plugin",       base::FilePath(kPluginBinDir)
+                          .Append(kPluginBinName)
+                          .value(),
+    "--plugin-mount", base::StringPrintf("%s:%s:false",
+                                         kPluginBinDir, kPluginBinDir),
     "--plugin-mount", base::StringPrintf("%s:/pvm:true",
                                          stateful_dir.value().c_str()),
     // This is the directory where the cicerone host socket lives. The plugin VM
