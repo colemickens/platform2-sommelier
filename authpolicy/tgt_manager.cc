@@ -64,13 +64,6 @@ const char kKrb5ConfData[] =
     // Prune weak ciphers from the above list. With current settings it’s a
     // no-op, but still.
     "\tallow_weak_crypto = false\n"
-    // This flag allows a client to pass a proxy to a server to perform a
-    // remote request on its behalf. (see
-    // https://tools.ietf.org/html/rfc4120#section-2.5)
-    "\tproxiable = true\n"
-    // This flag allows for authentication forwarding without requiring the user
-    // to enter a password again.
-    "\tforwardable = true\n"
     // Default is 300 seconds, but we might add a policy for that in the future.
     "\tclockskew = 300\n"
     // Required for password change.
