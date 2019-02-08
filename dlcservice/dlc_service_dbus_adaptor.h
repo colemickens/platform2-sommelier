@@ -10,6 +10,8 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/memory/weak_ptr.h>
+#include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <imageloader/dbus-proxies.h>
 #include <update_engine/dbus-proxies.h>
 
@@ -42,8 +44,7 @@ class DlcServiceDBusAdaptor
   // org::chromium::DlServiceInterfaceInterface overrides:
   bool Install(brillo::ErrorPtr* err,
                const std::string& id_in,
-               const std::string& omaha_url_in,
-               std::string* dlc_root_out) override;
+               const std::string& omaha_url_in) override;
   bool Uninstall(brillo::ErrorPtr* err, const std::string& id_in) override;
   bool GetInstalled(brillo::ErrorPtr* err,
                     std::string* dlc_module_list_out) override;
@@ -58,11 +59,23 @@ class DlcServiceDBusAdaptor
   // granted.
   std::string ScanDlcModulePackage(const std::string& id);
 
-  // Waits for Update Engine to be idle.
-  bool WaitForUpdateEngineIdle();
-
   // Checks if Update Engine is in a state among |status_list|.
   bool CheckForUpdateEngineStatus(const std::vector<std::string>& status_list);
+
+  // Send |OnInstalled| D-Bus signal.
+  void SendOnInstalledSignal(const InstallResult& install_result);
+
+  // Called on receiving update_engine's |StatusUpdate| signal.
+  void OnStatusUpdateSignal(int64_t last_checked_time,
+                            double progress,
+                            const std::string& current_operation,
+                            const std::string& new_version,
+                            int64_t new_size);
+
+  // Called on being connected to update_engine's |StatusUpdate| signal.
+  void OnStatusUpdateSignalConnected(const std::string& interface_name,
+                                     const std::string& signal_name,
+                                     bool success);
 
   std::unique_ptr<org::chromium::ImageLoaderInterfaceProxyInterface>
       image_loader_proxy_;
@@ -72,6 +85,14 @@ class DlcServiceDBusAdaptor
 
   base::FilePath manifest_dir_;
   base::FilePath content_dir_;
+
+  // ID of the DLC module being installed. Empty means no DLC module is being
+  // installed.
+  std::string dlc_id_being_installed_;
+
+  std::string current_boot_slot_name_;
+
+  base::WeakPtrFactory<DlcServiceDBusAdaptor> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(DlcServiceDBusAdaptor);
 };

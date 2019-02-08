@@ -33,12 +33,18 @@ void DlcService::RegisterDBusObjectsAsync(
   dbus_object_ = std::make_unique<brillo::dbus_utils::DBusObject>(
       nullptr, bus_,
       org::chromium::DlcServiceInterfaceAdaptor::GetObjectPath());
+
+  bus_for_proxies_ = dbus_connection_for_proxies_.Connect();
+  CHECK(bus_for_proxies_);
   dbus_adaptor_ = std::make_unique<dlcservice::DlcServiceDBusAdaptor>(
-      std::make_unique<org::chromium::ImageLoaderInterfaceProxy>(bus_),
-      std::make_unique<org::chromium::UpdateEngineInterfaceProxy>(bus_),
+      std::make_unique<org::chromium::ImageLoaderInterfaceProxy>(
+          bus_for_proxies_),
+      std::make_unique<org::chromium::UpdateEngineInterfaceProxy>(
+          bus_for_proxies_),
       std::make_unique<BootSlot>(std::make_unique<BootDevice>()),
       base::FilePath(imageloader::kDlcManifestRootpath),
       base::FilePath(imageloader::kDlcImageRootpath));
+
   dbus_adaptor_->RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(
       sequencer->GetHandler("RegisterAsync() failed.", true));

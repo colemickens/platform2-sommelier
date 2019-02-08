@@ -21,11 +21,6 @@
         Overrides Omaha URL to query for update (empty for default URL).
       </tp:docstring>
     </arg>
-    <arg name="dlc_root" type="s" direction="out">
-      <tp:docstring>
-        The path to the DLC content that user needs to access.
-      </tp:docstring>
-    </arg>
   </method>
   <method name="Uninstall">
     <tp:docstring>
@@ -49,5 +44,14 @@
       </tp:docstring>
     </arg>
   </method>
+  <signal name="OnInstalled">
+    <arg type="s" name="on_installed_signal">
+      <tp:docstring>
+        A serialized protobuf (OnInstalledSignal,
+        src/platform2/system_api/dbus/dlcservice/dlcservice.proto) of install
+        operation result.
+      </tp:docstring>
+    </arg>
+  </signal>
 </interface>
 </node>

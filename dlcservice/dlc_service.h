@@ -10,6 +10,7 @@
 
 #include <base/cancelable_callback.h>
 #include <brillo/daemons/dbus_daemon.h>
+#include <brillo/dbus/dbus_connection.h>
 
 #include "dlcservice/dlc_service_dbus_adaptor.h"
 
@@ -29,6 +30,10 @@ class DlcService : public brillo::DBusServiceDaemon {
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   std::unique_ptr<dlcservice::DlcServiceDBusAdaptor> dbus_adaptor_;
+  // Use a separate bus (D-Bus connection) for proxies to avoid missing signal
+  // messages. See https://crbug.com/965232
+  scoped_refptr<dbus::Bus> bus_for_proxies_;
+  brillo::DBusConnection dbus_connection_for_proxies_;
 
   DISALLOW_COPY_AND_ASSIGN(DlcService);
 };

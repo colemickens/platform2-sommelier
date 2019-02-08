@@ -10,10 +10,11 @@
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
+#include <base/message_loop/message_loop.h>
 #include <brillo/errors/error.h>
 #include <brillo/errors/error_codes.h>
 #include <chromeos/dbus/service_constants.h>
-#include <dlcservice/proto_bindings/dlcservice.pb.h>
+#include <dbus/dlcservice/dbus-constants.h>
 #include <update_engine/dbus-constants.h>
 
 #include "dlcservice/boot_slot.h"
@@ -71,11 +72,6 @@ void LogAndSetError(brillo::ErrorPtr* err, const std::string& msg) {
   LOG(ERROR) << msg;
 }
 
-// The time interval we check for update_engine's progress.
-constexpr base::TimeDelta kCheckInterval = base::TimeDelta::FromSeconds(1);
-// The retry times to get update_engine's progress before giving up.
-constexpr int kRetryCount = 10;
-
 }  // namespace
 
 DlcServiceDBusAdaptor::DlcServiceDBusAdaptor(
@@ -91,23 +87,32 @@ DlcServiceDBusAdaptor::DlcServiceDBusAdaptor(
       update_engine_proxy_(std::move(update_engine_proxy)),
       boot_slot_(std::move(boot_slot)),
       manifest_dir_(manifest_dir),
-      content_dir_(content_dir) {}
+      content_dir_(content_dir),
+      weak_ptr_factory_(this) {
+  // Get current boot slot.
+  std::string boot_disk_name;
+  int num_slots = -1;
+  int current_boot_slot = -1;
+  if (!boot_slot_->GetCurrentSlot(&boot_disk_name, &num_slots,
+                                  &current_boot_slot))
+    LOG(FATAL) << "Can not get current boot slot.";
+
+  current_boot_slot_name_ = current_boot_slot == 0 ? imageloader::kSlotNameA
+                                                   : imageloader::kSlotNameB;
+
+  // Register D-Bus signal callbacks.
+  update_engine_proxy_->RegisterStatusUpdateSignalHandler(
+      base::Bind(&DlcServiceDBusAdaptor::OnStatusUpdateSignal,
+                 weak_ptr_factory_.GetWeakPtr()),
+      base::Bind(&DlcServiceDBusAdaptor::OnStatusUpdateSignalConnected,
+                 weak_ptr_factory_.GetWeakPtr()));
+}
 
 DlcServiceDBusAdaptor::~DlcServiceDBusAdaptor() {}
 
 void DlcServiceDBusAdaptor::LoadDlcModuleImages() {
   // Initialize supported DLC module id list.
   std::vector<std::string> dlc_module_ids = ScanDlcModules();
-
-  std::string boot_disk_name;
-  int num_slots = -1;
-  int current_slot = -1;
-  if (!boot_slot_->GetCurrentSlot(&boot_disk_name, &num_slots, &current_slot)) {
-    LOG(ERROR) << "Can not get current boot slot.";
-    return;
-  }
-  std::string current_slot_name =
-      current_slot == 0 ? imageloader::kSlotNameA : imageloader::kSlotNameB;
 
   // Load all installed DLC modules.
   for (const auto& dlc_module_id : dlc_module_ids) {
@@ -119,8 +124,8 @@ void DlcServiceDBusAdaptor::LoadDlcModuleImages() {
       continue;
     // Mount the installed DLC image.
     std::string path;
-    image_loader_proxy_->LoadDlcImage(dlc_module_id, package, current_slot_name,
-                                      &path, nullptr);
+    image_loader_proxy_->LoadDlcImage(dlc_module_id, package,
+                                      current_boot_slot_name_, &path, nullptr);
     if (path.empty()) {
       LOG(ERROR) << "DLC image " << dlc_module_id << "/" << package
                  << " is corrupted.";
@@ -133,8 +138,7 @@ void DlcServiceDBusAdaptor::LoadDlcModuleImages() {
 
 bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
                                     const std::string& id_in,
-                                    const std::string& omaha_url_in,
-                                    std::string* dlc_root_out) {
+                                    const std::string& omaha_url_in) {
   // TODO(xiaochu): change API to accept a list of DLC module ids.
   // https://crbug.com/905075
   // Initialize supported DLC module id list.
@@ -187,7 +191,7 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
   }
   int64_t image_size = manifest.preallocated_size();
   if (image_size <= 0) {
-    LogAndSetError(err, "Preallocated size  in manifest is illegal.");
+    LogAndSetError(err, "Preallocated size in manifest is illegal.");
     return false;
   }
 
@@ -228,42 +232,7 @@ bool DlcServiceDBusAdaptor::Install(brillo::ErrorPtr* err,
     return false;
   }
 
-  // TODO(xiaochu): make the API asynchronous.
-  // https://crbug.com/905071
-  // Code below this point should be moved to a callback (triggered after
-  // update_engine finishes install) and the function returns true immediately
-  // to unblock the caller. Currently, we make the assumption that a DLC install
-  // completes in 10 seconds which is more than enough for downloading (reading)
-  // a local file on DUT.
-  if (!WaitForUpdateEngineIdle()) {
-    LogAndSetError(err, "Failed waiting for update_engine to become idle");
-    return false;
-  }
-
-  // Mount the installed DLC module image.
-  std::string boot_disk_name;
-  int num_slots = -1;
-  int current_slot = -1;
-  if (!boot_slot_->GetCurrentSlot(&boot_disk_name, &num_slots, &current_slot)) {
-    LogAndSetError(err, "Can not get current boot slot.");
-    return false;
-  }
-  std::string current_slot_name =
-      current_slot == 0 ? imageloader::kSlotNameA : imageloader::kSlotNameB;
-
-  std::string mount_point;
-  if (!image_loader_proxy_->LoadDlcImage(id_in, package, current_slot_name,
-                                         &mount_point, nullptr)) {
-    LogAndSetError(err, "Imageloader is not available.");
-    return false;
-  }
-  if (mount_point.empty()) {
-    LogAndSetError(err, "Imageloader LoadDlcImage failed.");
-    return false;
-  }
-
-  *dlc_root_out =
-      utils::GetDlcRootInModulePath(base::FilePath(mount_point)).value();
+  dlc_id_being_installed_ = id_in;
 
   return true;
 }
@@ -354,16 +323,6 @@ std::string DlcServiceDBusAdaptor::ScanDlcModulePackage(const std::string& id) {
   return utils::ScanDirectory(manifest_dir_.Append(id))[0];
 }
 
-bool DlcServiceDBusAdaptor::WaitForUpdateEngineIdle() {
-  for (int i = 0; i < kRetryCount; i++) {
-    if (CheckForUpdateEngineStatus({update_engine::kUpdateStatusIdle})) {
-      return true;
-    }
-    base::PlatformThread::Sleep(kCheckInterval);
-  }
-  return false;
-}
-
 bool DlcServiceDBusAdaptor::CheckForUpdateEngineStatus(
     const std::vector<std::string>& status_list) {
   int64_t last_checked_time = 0;
@@ -384,6 +343,74 @@ bool DlcServiceDBusAdaptor::CheckForUpdateEngineStatus(
     return false;
   }
   return true;
+}
+
+void DlcServiceDBusAdaptor::SendOnInstalledSignal(
+    const InstallResult& install_result) {
+  std::string output;
+  if (!install_result.SerializeToString(&output)) {
+    LOG(ERROR) << "Failed to serialize InstallResult protobuf.";
+  }
+  org::chromium::DlcServiceInterfaceAdaptor::SendOnInstalledSignal(output);
+}
+
+void DlcServiceDBusAdaptor::OnStatusUpdateSignal(
+    int64_t last_checked_time,
+    double progress,
+    const std::string& current_operation,
+    const std::string& new_version,
+    int64_t new_size) {
+  // This signal is for DLC install only when have DLC modules being installed.
+  if (dlc_id_being_installed_.empty())
+    return;
+  // Install is complete when we receive kUpdateStatusIdle signal.
+  if (current_operation != update_engine::kUpdateStatusIdle)
+    return;
+
+  // At this point, update_engine finished installation of the requested DLC
+  // module (failure or success).
+  std::string dlc_id = dlc_id_being_installed_;
+  dlc_id_being_installed_.clear();
+
+  InstallResult install_result;
+  install_result.set_success(false);
+  install_result.set_dlc_id(dlc_id);
+
+  std::string package = ScanDlcModulePackage(dlc_id);
+
+  // Mount the installed DLC module image.
+  std::string mount_point;
+  if (!image_loader_proxy_->LoadDlcImage(
+          dlc_id, package, current_boot_slot_name_, &mount_point, nullptr)) {
+    LOG(ERROR) << "Imageloader is not available.";
+    install_result.set_error_code(
+        static_cast<int>(OnInstalledSignalErrorCode::kImageLoaderReturnsFalse));
+    SendOnInstalledSignal(install_result);
+    return;
+  }
+  if (mount_point.empty()) {
+    LOG(ERROR) << "Imageloader LoadDlcImage failed.";
+    install_result.set_error_code(
+        static_cast<int>(OnInstalledSignalErrorCode::kMountFailure));
+    SendOnInstalledSignal(install_result);
+    return;
+  }
+
+  install_result.set_success(true);
+  install_result.set_error_code(
+      static_cast<int>(OnInstalledSignalErrorCode::kNone));
+  install_result.set_dlc_root(
+      utils::GetDlcRootInModulePath(base::FilePath(mount_point)).value());
+  SendOnInstalledSignal(install_result);
+}
+
+void DlcServiceDBusAdaptor::OnStatusUpdateSignalConnected(
+    const std::string& interface_name,
+    const std::string& signal_name,
+    bool success) {
+  if (!success) {
+    LOG(ERROR) << "Failed to connect to update_engine's StatusUpdate signal.";
+  }
 }
 
 }  // namespace dlcservice

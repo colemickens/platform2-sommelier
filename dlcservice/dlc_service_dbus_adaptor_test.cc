@@ -7,6 +7,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/run_loop.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <gtest/gtest.h>
 #include <imageloader/dbus-proxy-mocks.h>
@@ -114,6 +115,8 @@ class DlcServiceDBusAdaptorTest : public testing::Test {
   org::chromium::UpdateEngineInterfaceProxyMock* mock_update_engine_proxy_ptr_;
   std::unique_ptr<DlcServiceDBusAdaptor> dlc_service_dbus_adaptor_;
 
+  base::MessageLoop message_loop_;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(DlcServiceDBusAdaptorTest);
 };
@@ -183,12 +186,9 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallTest) {
       AttemptInstall(ProtoHasUrl(omaha_url_default), testing::_, testing::_))
       .Times(1);
 
-  std::string dlc_root_path;
-  EXPECT_TRUE(dlc_service_dbus_adaptor_->Install(
-      nullptr, kSecondDlc, omaha_url_default, &dlc_root_path));
-  EXPECT_EQ(dlc_root_path,
-            utils::GetDlcRootInModulePath(base::FilePath(mount_path_expected))
-                .value());
+  EXPECT_TRUE(dlc_service_dbus_adaptor_->Install(nullptr, kSecondDlc,
+                                                 omaha_url_default));
+  base::RunLoop().RunUntilIdle();
 
   constexpr int expected_permissions = 0755;
   int permissions;
@@ -222,9 +222,8 @@ TEST_F(DlcServiceDBusAdaptorTest, InstallUrlTest) {
       AttemptInstall(ProtoHasUrl(omaha_url_override), testing::_, testing::_))
       .Times(1);
 
-  std::string dlc_root_path;
-  dlc_service_dbus_adaptor_->Install(nullptr, kSecondDlc, omaha_url_override,
-                                     &dlc_root_path);
+  dlc_service_dbus_adaptor_->Install(nullptr, kSecondDlc, omaha_url_override);
+  base::RunLoop().RunUntilIdle();
 }
 
 }  // namespace dlcservice
