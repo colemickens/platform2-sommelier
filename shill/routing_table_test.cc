@@ -184,7 +184,6 @@ MATCHER_P2(IsBlackholeRoutingPacket, family, metric, "") {
       status.protocol == RTPROT_BOOT &&
       status.scope == RT_SCOPE_UNIVERSE &&
       status.type == RTN_BLACKHOLE &&
-      !arg->HasAttribute(RTA_DST) &&
       !arg->HasAttribute(RTA_SRC) &&
       !arg->HasAttribute(RTA_GATEWAY) &&
       arg->GetAttribute(RTA_PRIORITY).ConvertToCPUUInt32(&priority) &&
@@ -1029,7 +1028,8 @@ TEST_F(RoutingTableTest, CreateBlackholeRoute) {
               SendMessage(IsBlackholeRoutingPacket(IPAddress::kFamilyIPv6,
                                                    kMetric)))
       .Times(1);
-  EXPECT_TRUE(routing_table_->CreateBlackholeRoute(IPAddress::kFamilyIPv6,
+  EXPECT_TRUE(routing_table_->CreateBlackholeRoute(kTestDeviceIndex0,
+                                                   IPAddress::kFamilyIPv6,
                                                    kMetric,
                                                    kTestTableId));
 }

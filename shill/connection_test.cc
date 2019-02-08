@@ -801,7 +801,8 @@ TEST_F(ConnectionTest, BlackholeIPv6) {
   EXPECT_CALL(routing_table_, AddRule(_, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(routing_table_, ConfigureRoutes(_, _, _, _));
   EXPECT_CALL(routing_table_,
-              CreateBlackholeRoute(IPAddress::kFamilyIPv6,
+              CreateBlackholeRoute(kTestDeviceInterfaceIndex0,
+                                   IPAddress::kFamilyIPv6,
                                    Connection::kDefaultMetric,
                                    table_id))
       .WillOnce(Return(true));

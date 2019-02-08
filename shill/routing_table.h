@@ -73,7 +73,8 @@ class RoutingTable {
 
   // Create a blackhole route for a given IP family.  Returns true
   // on successfully sending the route request, false otherwise.
-  virtual bool CreateBlackholeRoute(IPAddress::Family family,
+  virtual bool CreateBlackholeRoute(int interface_index,
+                                    IPAddress::Family family,
                                     uint32_t metric,
                                     uint8_t table_id);
 
