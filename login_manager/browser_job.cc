@@ -50,6 +50,7 @@ constexpr char kVmoduleFlag[] = "--vmodule=";
 constexpr char kEnableFeaturesFlag[] = "--enable-features=";
 constexpr char kDisableFeaturesFlag[] = "--disable-features=";
 constexpr char kEnableBlinkFeaturesFlag[] = "--enable-blink-features=";
+constexpr char kDisableBlinkFeaturesFlag[] = "--disable-blink-features=";
 constexpr char kSafeModeFlag[] = "--safe-mode";
 
 // Erases all occurrences of |arg| within |args|. Returns true if any entries
@@ -272,21 +273,27 @@ std::vector<std::string> BrowserJob::ExportArgv() const {
                      extra_one_time_arguments_.end());
   }
 
-  // Chrome doesn't support repeated switches. Merge switches containing
-  // comma-separated values that may be supplied via multiple sources (e.g.
-  // chrome_setup.cc, chrome://flags, Telemetry).
+  // Chrome doesn't support repeated switches in most cases. Merge switches
+  // containing comma-separated values that may be supplied via multiple sources
+  // (e.g. chrome_setup.cc, chrome://flags, Telemetry).
   //
   // --enable-features and --disable-features may be placed within sentinel
   // values (--flag-switches-begin/end, --policy-switches-begin/end). To
   // preserve those positions, keep the existing flags while also appending
   // merged versions at the end of the command line. Chrome will use the final,
   // merged flags: https://crbug.com/767266
+  //
+  // Chrome merges --enable-blink-features and --disable-blink-features for
+  // renderer processes (see content::FeaturesFromSwitch()), but we still merge
+  // the values here to produce shorter command lines.
   MergeSwitches(&to_return, kVmoduleFlag, ",", false /* keep_existing */);
   MergeSwitches(&to_return, kEnableFeaturesFlag, ",", true /* keep_existing */);
   MergeSwitches(&to_return, kDisableFeaturesFlag, ",",
                 true /* keep_existing */);
   MergeSwitches(&to_return, kEnableBlinkFeaturesFlag, ",",
-                true /* keep_existing */);
+                false /* keep_existing */);
+  MergeSwitches(&to_return, kDisableBlinkFeaturesFlag, ",",
+                false /* keep_existing */);
 
   return to_return;
 }

@@ -409,27 +409,56 @@ TEST_F(BrowserJobTest, CombineFeatureArgs) {
   constexpr const char kCombinedEnable[] =
       "--enable-features=1a,1b,2a,2b,3a,3b";
 
-  constexpr const char kDisable1[] = "--disable-features=1c,1d";
-  constexpr const char kDisable2[] = "--disable-features=2c,2d";
-  constexpr const char kDisable3[] = "--disable-features=3c,3d";
+  constexpr const char kDisable1[] = "--disable-features=4a,4b";
+  constexpr const char kDisable2[] = "--disable-features=5a,5b";
+  constexpr const char kDisable3[] = "--disable-features=6a,6b";
   constexpr const char kCombinedDisable[] =
-      "--disable-features=1c,1d,2c,2d,3c,3d";
+      "--disable-features=4a,4b,5a,5b,6a,6b";
+
+  constexpr const char kBlinkEnable1[] = "--enable-blink-features=7a,7b";
+  constexpr const char kBlinkEnable2[] = "--enable-blink-features=8a,8b";
+  constexpr const char kBlinkEnable3[] = "--enable-blink-features=9a,9b";
+  constexpr const char kCombinedBlinkEnable[] =
+      "--enable-blink-features=7a,7b,8a,8b,9a,9b";
+
+  constexpr const char kBlinkDisable1[] = "--disable-blink-features=10a,10b";
+  constexpr const char kBlinkDisable2[] = "--disable-blink-features=11a,11b";
+  constexpr const char kBlinkDisable3[] = "--disable-blink-features=12a,12b";
+  constexpr const char kCombinedBlinkDisable[] =
+      "--disable-blink-features=10a,10b,11a,11b,12a,12b";
 
   const std::vector<std::string> kArgv = {
-      kEnable1,  kDisable1, kArg1,    kEnable2,
-      kDisable2, kArg2,     kEnable3, kDisable3,
+      kEnable1, kDisable1, kBlinkEnable1, kBlinkDisable1, kArg1,
+      kEnable2, kDisable2, kBlinkEnable2, kBlinkDisable2, kArg2,
+      kEnable3, kDisable3, kBlinkEnable3, kBlinkDisable3,
   };
-
-  // All the --enable-features and --disable-features values should be merged
-  // into args at the end of the command line, but the original args should be
-  // preserved: https://crbug.com/767266
   BrowserJob job(kArgv, env_, &checker_, &metrics_, &utils_,
                  BrowserJob::Config{false},
                  std::make_unique<login_manager::Subprocess>(1, &utils_));
-  EXPECT_THAT(
-      job.ExportArgv(),
-      ElementsAre(kEnable1, kDisable1, kArg1, kEnable2, kDisable2, kArg2,
-                  kEnable3, kDisable3, kCombinedEnable, kCombinedDisable));
+
+  // --enable-features and --disable-features should be merged into args at the
+  // end of the command line, but the original args should be preserved:
+  // https://crbug.com/767266
+  //
+  // --enable-blink-features and --disable-blink-features should also be merged,
+  // but the original args don't need to be preserved in that case (since
+  // sentinel args aren't placed around them).
+  const std::vector<std::string> kExpected = {
+      kEnable1,
+      kDisable1,
+      kArg1,
+      kEnable2,
+      kDisable2,
+      kArg2,
+      kEnable3,
+      kDisable3,
+      kCombinedEnable,
+      kCombinedDisable,
+      kCombinedBlinkEnable,
+      kCombinedBlinkDisable,
+  };
+  EXPECT_EQ(base::JoinString(job.ExportArgv(), " "),
+            base::JoinString(kExpected, " "));
 }
 
 }  // namespace login_manager

@@ -49,7 +49,9 @@ class ChromiumCommandBuilder {
   // to containing lists of comma-separated values.
   static const char kVmoduleFlag[];
   static const char kEnableFeaturesFlag[];
+  static const char kDisableFeaturesFlag[];
   static const char kEnableBlinkFeaturesFlag[];
+  static const char kDisableBlinkFeaturesFlag[];
 
   ChromiumCommandBuilder();
   ~ChromiumCommandBuilder();
@@ -133,11 +135,15 @@ class ChromiumCommandBuilder {
   // Prepends |pattern| to the --vmodule flag in |arguments_|.
   void AddVmodulePattern(const std::string& pattern);
 
-  // Appends |feature_name| to the --enable-features flag in |arguments_|.
+  // Appends |feature_name| to the --enable-features or --disable-features flag
+  // in |arguments_|.
   void AddFeatureEnableOverride(const std::string& feature_name);
+  void AddFeatureDisableOverride(const std::string& feature_name);
 
-  // Appends |feature_name| to the --enable-blink-features flag in |arguments_|.
+  // Appends |feature_name| to the --enable-blink-features or
+  // --disable-blink-features flag in |arguments_|.
   void AddBlinkFeatureEnableOverride(const std::string& feature_name);
+  void AddBlinkFeatureDisableOverride(const std::string& feature_name);
 
  private:
   // Converts absolute path |path| into a base::FilePath, rooting it under
@@ -149,13 +155,10 @@ class ChromiumCommandBuilder {
 
   // Adds an entry to a flag containing a list of values. For example, for a
   // flag like "--my-list=foo,bar", |flag_name| would be "my-list",
-  // |entry_separator| would be ",", and |new_entry| would be "foo" or "bar".
-  // |flag_argument_index|'s memory holds the flag's position within
-  // |arguments_| or -1 if the flag is not yet set. If |prepend| is true,
-  // |new_entry| will be prepended before existing values; otherwise it will be
-  // appended after them.
-  void AddListFlagEntry(int* flag_argument_index,
-                        const std::string& flag_name,
+  // |entry_separator| would be ",", and |new_entry| would be "foo" or "bar". If
+  // |prepend| is true, |new_entry| will be prepended before existing values;
+  // otherwise it will be appended after them.
+  void AddListFlagEntry(const std::string& flag_name,
                         const std::string& entry_separator,
                         const std::string& new_entry,
                         bool prepend);
@@ -204,11 +207,10 @@ class ChromiumCommandBuilder {
   // Command-line arguments that the caller should pass to the executable.
   StringVector arguments_;
 
-  // Index in |arguments_| of the --vmodule, --enable-features, and
-  // --enable-blink-features flags. -1 if the flags haven't been set.
-  int vmodule_argument_index_ = -1;
-  int enable_features_argument_index_ = -1;
-  int enable_blink_features_argument_index_ = -1;
+  // Index in |arguments_| of list-based flags (e.g. --vmodule,
+  // --enable-features), keyed by base flag name (e.g. "vmodule",
+  // "enable-features"). Flags that have not been set are not included.
+  std::map<std::string, int> list_argument_indexes_;
 
   DISALLOW_COPY_AND_ASSIGN(ChromiumCommandBuilder);
 };

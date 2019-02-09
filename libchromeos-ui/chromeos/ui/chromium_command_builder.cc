@@ -79,19 +79,6 @@ std::vector<std::string> SplitFlagValues(const std::string& full) {
                            base::SPLIT_WANT_NONEMPTY);
 }
 
-// Updates |argument_index_to_update|, a arguments's position in |arguments_|,
-// in response to the argument at position |deleted_argument_index| being
-// removed. If the index-to-update is beyond the deleted index, it'll be
-// decremented; if it is itself being deleted, it'll be set to -1.
-void UpdateArgumentIndexForDeletion(int* argument_index_to_update,
-                                    int deleted_argument_index) {
-  DCHECK(argument_index_to_update);
-  if (*argument_index_to_update > deleted_argument_index)
-    (*argument_index_to_update)--;
-  else if (*argument_index_to_update == deleted_argument_index)
-    *argument_index_to_update = -1;
-}
-
 // Returns true if |lsb_data| has a field called "CHROMEOS_RELEASE_TRACK",
 // and its value starts with "test".
 bool IsTestBuild(const std::string& lsb_data) {
@@ -127,8 +114,11 @@ const char ChromiumCommandBuilder::kPepperPluginsPath[] =
     "/opt/google/chrome/pepper";
 const char ChromiumCommandBuilder::kVmoduleFlag[] = "vmodule";
 const char ChromiumCommandBuilder::kEnableFeaturesFlag[] = "enable-features";
+const char ChromiumCommandBuilder::kDisableFeaturesFlag[] = "disable-features";
 const char ChromiumCommandBuilder::kEnableBlinkFeaturesFlag[] =
     "enable-blink-features";
+const char ChromiumCommandBuilder::kDisableBlinkFeaturesFlag[] =
+    "disable-blink-features";
 
 ChromiumCommandBuilder::ChromiumCommandBuilder() = default;
 
@@ -312,9 +302,15 @@ bool ChromiumCommandBuilder::ApplyUserConfig(
                name == std::string("--") + kEnableFeaturesFlag) {
       for (const auto& feature : SplitFlagValues(value))
         AddFeatureEnableOverride(feature);
+    } else if (name == std::string("--") + kDisableFeaturesFlag) {
+      for (const auto& feature : SplitFlagValues(value))
+        AddFeatureDisableOverride(feature);
     } else if (name == std::string("--") + kEnableBlinkFeaturesFlag) {
       for (const auto& feature : SplitFlagValues(value))
         AddBlinkFeatureEnableOverride(feature);
+    } else if (name == std::string("--") + kDisableBlinkFeaturesFlag) {
+      for (const auto& feature : SplitFlagValues(value))
+        AddBlinkFeatureDisableOverride(feature);
     } else if (IsEnvironmentVariableName(name)) {
       AddEnvVar(name, value);
     } else if (!HasPrefix(line, disallowed_prefixes)) {
@@ -343,20 +339,14 @@ std::string ChromiumCommandBuilder::ReadEnvVar(const std::string& name) const {
 void ChromiumCommandBuilder::AddArg(const std::string& arg) {
   // Check that we're not trying to add multiple copies of list-value flags
   // (since they wouldn't be handled correctly by Chrome).
-  DCHECK(vmodule_argument_index_ < 0 ||
-         !base::StartsWith(arg, base::StringPrintf("--%s=", kVmoduleFlag),
-                           base::CompareCase::SENSITIVE))
-      << "Must use AddVModulePattern() for " << arg;
-  DCHECK(enable_features_argument_index_ < 0 ||
-         !base::StartsWith(arg,
-                           base::StringPrintf("--%s=", kEnableFeaturesFlag),
-                           base::CompareCase::SENSITIVE))
-      << "Must use AddFeatureEnableOverride() for " << arg;
-  DCHECK(enable_blink_features_argument_index_ < 0 ||
-         !base::StartsWith(
-             arg, base::StringPrintf("--%s=", kEnableBlinkFeaturesFlag),
-             base::CompareCase::SENSITIVE))
-      << "Must use AddBlinkFeatureEnableOverride() for " << arg;
+  if (DCHECK_IS_ON()) {
+    for (const auto& it : list_argument_indexes_) {
+      DCHECK(!base::StartsWith(arg,
+                               base::StringPrintf("--%s=", it.first.c_str()),
+                               base::CompareCase::SENSITIVE))
+          << "Must use Add*Pattern() for " << arg;
+    }
+  }
 
   arguments_.push_back(arg);
 }
@@ -365,20 +355,29 @@ void ChromiumCommandBuilder::AddVmodulePattern(const std::string& pattern) {
   // Chrome's code for handling --vmodule applies the first matching pattern.
   // Prepend patterns here so that more-specific later patterns will override
   // more-general earlier ones.
-  AddListFlagEntry(&vmodule_argument_index_, kVmoduleFlag, ",", pattern,
-                   true /* prepend */);
+  AddListFlagEntry(kVmoduleFlag, ",", pattern, true /* prepend */);
 }
 
 void ChromiumCommandBuilder::AddFeatureEnableOverride(
     const std::string& feature_name) {
-  AddListFlagEntry(&enable_features_argument_index_, kEnableFeaturesFlag, ",",
-                   feature_name, false /* prepend */);
+  AddListFlagEntry(kEnableFeaturesFlag, ",", feature_name, false /* prepend */);
+}
+
+void ChromiumCommandBuilder::AddFeatureDisableOverride(
+    const std::string& feature_name) {
+  AddListFlagEntry(kDisableFeaturesFlag, ",", feature_name,
+                   false /* prepend */);
 }
 
 void ChromiumCommandBuilder::AddBlinkFeatureEnableOverride(
     const std::string& feature_name) {
-  AddListFlagEntry(&enable_blink_features_argument_index_,
-                   kEnableBlinkFeaturesFlag, ",", feature_name,
+  AddListFlagEntry(kEnableBlinkFeaturesFlag, ",", feature_name,
+                   false /* prepend */);
+}
+
+void ChromiumCommandBuilder::AddBlinkFeatureDisableOverride(
+    const std::string& feature_name) {
+  AddListFlagEntry(kDisableBlinkFeaturesFlag, ",", feature_name,
                    false /* prepend */);
 }
 
@@ -389,47 +388,57 @@ base::FilePath ChromiumCommandBuilder::GetPath(const std::string& path) const {
 void ChromiumCommandBuilder::DeleteArgsWithPrefix(const std::string& prefix) {
   size_t num_copied = 0;
   for (size_t src_index = 0; src_index < arguments_.size(); ++src_index) {
-    if (arguments_[src_index].find(prefix) == 0) {
-      // Drop the argument by not copying it and shift saved indexes if
-      // needed.
-      UpdateArgumentIndexForDeletion(&vmodule_argument_index_,
-                                     static_cast<int>(src_index));
-      UpdateArgumentIndexForDeletion(&enable_features_argument_index_,
-                                     static_cast<int>(src_index));
-      UpdateArgumentIndexForDeletion(&enable_blink_features_argument_index_,
-                                     static_cast<int>(src_index));
-    } else {
+    // Preserve arguments that don't have the prefix.
+    if (arguments_[src_index].find(prefix) != 0) {
       arguments_[num_copied] = arguments_[src_index];
       num_copied++;
+      continue;
+    }
+
+    // Drop the argument by not copying it.
+
+    // Shift saved indexes if needed.
+    auto list_it = list_argument_indexes_.begin();
+    while (list_it != list_argument_indexes_.end()) {
+      if (list_it->second == src_index) {
+        // If the list argument itself was deleted, then remove it from the map.
+        list_argument_indexes_.erase(list_it++);
+      } else {
+        // Otherwise, decrement the index if it was after the deleted arg.
+        if (list_it->second > src_index)
+          list_it->second--;
+        ++list_it;
+      }
     }
   }
   arguments_.resize(num_copied);
 }
 
 void ChromiumCommandBuilder::AddListFlagEntry(
-    int* flag_argument_index,
     const std::string& flag_name,
     const std::string& entry_separator,
     const std::string& new_entry,
     bool prepend) {
-  DCHECK(flag_argument_index);
   if (new_entry.empty())
     return;
 
   const std::string flag_prefix =
       base::StringPrintf("--%s=", flag_name.c_str());
 
-  if (*flag_argument_index < 0) {
+  const auto& it = list_argument_indexes_.find(flag_name);
+  const int index = (it != list_argument_indexes_.end()) ? it->second : -1;
+
+  if (index < 0) {
     AddArg(flag_prefix + new_entry);
-    *flag_argument_index = arguments_.size() - 1;
+    list_argument_indexes_[flag_name] = arguments_.size() - 1;
   } else if (prepend) {
-    const std::string old = arguments_[*flag_argument_index];
+    const std::string old = arguments_[index];
     DCHECK_EQ(old.substr(0, flag_prefix.size()), flag_prefix);
-    arguments_[*flag_argument_index] =
+    arguments_[index] =
         flag_prefix + new_entry + entry_separator +
         old.substr(flag_prefix.size(), old.size() - flag_prefix.size());
   } else {
-    arguments_[*flag_argument_index] += entry_separator + new_entry;
+    arguments_[index] += entry_separator + new_entry;
   }
 }
 

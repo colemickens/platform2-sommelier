@@ -189,8 +189,12 @@ TEST_F(ChromiumCommandBuilderTest, ValueListFlags) {
        &ChromiumCommandBuilder::AddVmodulePattern, false},
       {ChromiumCommandBuilder::kEnableFeaturesFlag,
        &ChromiumCommandBuilder::AddFeatureEnableOverride, true},
+      {ChromiumCommandBuilder::kDisableFeaturesFlag,
+       &ChromiumCommandBuilder::AddFeatureDisableOverride, true},
       {ChromiumCommandBuilder::kEnableBlinkFeaturesFlag,
        &ChromiumCommandBuilder::AddBlinkFeatureEnableOverride, true},
+      {ChromiumCommandBuilder::kDisableBlinkFeaturesFlag,
+       &ChromiumCommandBuilder::AddBlinkFeatureDisableOverride, true},
   };
 
   for (const auto& tc : kTestCases) {
