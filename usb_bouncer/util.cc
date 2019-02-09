@@ -184,6 +184,22 @@ std::string GetRuleFromDevPath(const std::string& devpath) {
   return hooks.getLastRule();
 }
 
+bool IncludeRuleAtLockscreen(const std::string& rule) {
+  if (rule.empty()) {
+    return false;
+  }
+
+  const usbguard::Rule filter_rule = usbguard::Rule::fromString(
+      "block with-interface one-of { 05:*:* 06:*:* 07:*:* 08:*:* }");
+  usbguard::Rule parsed_rule = usbguard::Rule::fromString(rule);
+
+  if (!parsed_rule) {
+    return false;
+  }
+
+  return !filter_rule.appliesTo(parsed_rule);
+}
+
 bool ValidateRule(const std::string& rule) {
   if (rule.empty()) {
     return false;

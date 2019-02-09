@@ -76,19 +76,25 @@ bool EntryManager::GarbageCollect() {
 }
 
 std::string EntryManager::GenerateRules() const {
+  // The currently connected devices are allow-listed without filtering.
+  std::unordered_set<std::string> rules =
+      UniqueRules(global_entries_->entries());
+
+  // Include user specific allow-listing rules.
+  if (user_entries_) {
+    for (const auto& rule : UniqueRules(user_entries_->entries())) {
+      if (IncludeRuleAtLockscreen(rule)) {
+        rules.insert(rule);
+      }
+    }
+  }
+
   // Include user specific allow-list rules first so that they take precedence
   // over any block-list rules.
   std::string result = "";
-  if (user_entries_) {
-    for (const auto& rule : UniqueRules(user_entries_->entries())) {
-      result.append(rule);
-      result.append("\n");
-    }
-  } else {
-    for (const auto& rule : UniqueRules(global_entries_->entries())) {
-      result.append(rule);
-      result.append("\n");
-    }
+  for (const auto& rule : rules) {
+    result.append(rule);
+    result.append("\n");
   }
 
   // Include base set of rules in sorted order.

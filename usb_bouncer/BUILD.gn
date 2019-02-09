@@ -10,14 +10,10 @@ group("all") {
     ":usb_bouncer",
   ]
   if (use.test) {
-    deps += [
-      ":run_tests",
-    ]
+    deps += [ ":run_tests" ]
   }
   if (use.fuzzer) {
-    deps += [
-      ":usb_bouncer_fuzzer",
-    ]
+    deps += [ ":usb_bouncer_fuzzer" ]
   }
 }
 
@@ -36,7 +32,9 @@ pkg_config("target_defaults") {
 proto_library("usb_bouncer_protos") {
   proto_in_dir = "."
   proto_out_dir = "include/usb_bouncer"
-  sources = ["${proto_in_dir}/usb_bouncer.proto"]
+  sources = [
+    "${proto_in_dir}/usb_bouncer.proto",
+  ]
 }
 
 static_library("usb_bouncer_common") {
@@ -52,7 +50,7 @@ static_library("usb_bouncer_common") {
 }
 
 pkg_config("usb_bouncer_pkg_deps") {
-  pkg_deps = ["libbrillo-${libbase_ver}"]
+  pkg_deps = [ "libbrillo-${libbase_ver}" ]
 }
 
 executable("usb_bouncer") {
@@ -70,7 +68,10 @@ executable("usb_bouncer") {
 
 if (use.test) {
   pkg_config("run_tests_pkg_deps") {
-    pkg_deps = ["libbrillo-${libbase_ver}", "libcrypto"]
+    pkg_deps = [
+      "libbrillo-${libbase_ver}",
+      "libcrypto",
+    ]
   }
   executable("run_tests") {
     configs += [
@@ -85,13 +86,14 @@ if (use.test) {
     sources = [
       "entry_manager_test.cc",
       "entry_manager_test_util.cc",
+      "util_test.cc",
     ]
   }
 }
 
 if (use.fuzzer) {
   pkg_config("usb_bouncer_fuzzer_pkg_deps") {
-    pkg_deps = ["libprotobuf-mutator"]
+    pkg_deps = [ "libprotobuf-mutator" ]
   }
 
   executable("usb_bouncer_fuzzer") {
@@ -109,4 +111,3 @@ if (use.fuzzer) {
     ]
   }
 }
-

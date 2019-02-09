@@ -47,6 +47,12 @@ std::unique_ptr<RuleDB> GetDBFromPath(const base::FilePath& parent_dir,
 // with the port specific fields removed.
 std::string GetRuleFromDevPath(const std::string& devpath);
 
+// Returns false for rules that should not be included in the allow-list at the
+// lock screen. The basic idea is to exclude devices whose function cannot be
+// performed if they are first plugged in at the lock screen. Some examples
+// include printers, scanners, and USB storage devices.
+bool IncludeRuleAtLockscreen(const std::string& rule);
+
 // Returns false if rule is not a valid rule.
 bool ValidateRule(const std::string& rule);
 
