@@ -154,6 +154,14 @@ constexpr struct {
     },
     {
         .source = "cgroup",
+        .target = "/sys/fs/cgroup/blkio",
+        .fstype = "cgroup",
+        .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
+        .data = "blkio",
+        .failure_is_fatal = false,
+    },
+    {
+        .source = "cgroup",
         .target = "/sys/fs/cgroup/cpu,cpuacct",
         .fstype = "cgroup",
         .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
@@ -162,10 +170,10 @@ constexpr struct {
     },
     {
         .source = "cgroup",
-        .target = "/sys/fs/cgroup/freezer",
+        .target = "/sys/fs/cgroup/cpuset",
         .fstype = "cgroup",
         .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
-        .data = "freezer",
+        .data = "cpuset",
         .failure_is_fatal = true,
     },
     {
@@ -178,26 +186,18 @@ constexpr struct {
     },
     {
         .source = "cgroup",
-        .target = "/sys/fs/cgroup/net_cls,net_prio",
+        .target = "/sys/fs/cgroup/freezer",
         .fstype = "cgroup",
         .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
-        .data = "net_cls",
-        .failure_is_fatal = false,
-    },
-    {
-        .source = "cgroup",
-        .target = "/sys/fs/cgroup/cpuset",
-        .fstype = "cgroup",
-        .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
-        .data = "cpuset",
+        .data = "freezer",
         .failure_is_fatal = true,
     },
     {
         .source = "cgroup",
-        .target = "/sys/fs/cgroup/blkio",
+        .target = "/sys/fs/cgroup/hugetlb",
         .fstype = "cgroup",
         .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
-        .data = "blkio",
+        .data = "hugetlb",
         .failure_is_fatal = false,
     },
     {
@@ -206,6 +206,22 @@ constexpr struct {
         .fstype = "cgroup",
         .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
         .data = "memory",
+        .failure_is_fatal = false,
+    },
+    {
+        .source = "cgroup",
+        .target = "/sys/fs/cgroup/net_cls,net_prio",
+        .fstype = "cgroup",
+        .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
+        .data = "net_cls,net_prio",
+        .failure_is_fatal = false,
+    },
+    {
+        .source = "cgroup",
+        .target = "/sys/fs/cgroup/perf_event",
+        .fstype = "cgroup",
+        .flags = MS_NOSUID | MS_NODEV | MS_NOEXEC,
+        .data = "perf_event",
         .failure_is_fatal = false,
     },
     {
@@ -232,7 +248,8 @@ constexpr struct {
   const char* target;
 } symlinks[] = {
     {
-        .source = "/sys/fs/cgroup/cpu,cpuacct", .target = "/sys/fs/cgroup/cpu",
+        .source = "/sys/fs/cgroup/cpu,cpuacct",
+        .target = "/sys/fs/cgroup/cpu",
     },
     {
         .source = "/sys/fs/cgroup/cpu,cpuacct",
@@ -241,6 +258,10 @@ constexpr struct {
     {
         .source = "/sys/fs/cgroup/net_cls,net_prio",
         .target = "/sys/fs/cgroup/net_cls",
+    },
+    {
+        .source = "/sys/fs/cgroup/net_cls,net_prio",
+        .target = "/sys/fs/cgroup/net_prio",
     },
 };
 
