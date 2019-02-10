@@ -276,6 +276,39 @@ bool detect_video_acc_enc_vp8(void) {
   return false;
 }
 
+
+/* Helper function for detect_video_acc_enc_vp9.
+ * Determine given |fd| is a VAAPI device supports VP9 encoding, i.e. it
+ * supports one of VP9 profile, has encoding entry point, and input YUV420
+ * formats.
+ */
+static bool is_vaapi_enc_vp9_device(int fd) {
+#ifdef HAS_VAAPI
+#if VA_CHECK_VERSION(0, 37, 1)
+  VAProfile va_profiles[] = {
+    VAProfileVP9Profile0,
+    VAProfileNone
+  };
+  if (is_vaapi_support_formats(fd, va_profiles, VAEntrypointEncSlice,
+        VA_RT_FORMAT_YUV420))
+    return true;
+#endif
+#endif
+  return false;
+}
+
+/* Determines "hw_video_acc_enc_vp9" label. That is, either the VAAPI device
+ * supports one of VP9 profile, has encoding entry point, and input YUV420
+ * formats.
+ */
+bool detect_video_acc_enc_vp9(void) {
+  if (is_any_device(kDRMDevicePattern, is_vaapi_enc_vp9_device))
+    return true;
+
+  return false;
+}
+
+
 /* Helper function for detect_jpeg_acc_dec.
  * Determine given |fd| is a VAAPI device supports JPEG decoding, i.e. it
  * supports JPEG profile, has decoding entry point, and output YUV420

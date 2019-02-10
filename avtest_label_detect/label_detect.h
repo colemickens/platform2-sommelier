@@ -48,6 +48,7 @@ extern bool detect_video_acc_vp9(void);
 extern bool detect_video_acc_vp9_2(void);
 extern bool detect_video_acc_enc_h264(void);
 extern bool detect_video_acc_enc_vp8(void);
+extern bool detect_video_acc_enc_vp9(void);
 extern bool detect_jpeg_acc_dec(void);
 extern bool detect_jpeg_acc_enc(void);
 bool detect_4k_device_h264(void);
