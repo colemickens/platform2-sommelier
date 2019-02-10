@@ -57,3 +57,4 @@ unlink: 1
 rmdir: 1
 gettimeofday: 1
 ARM_set_tls: 1
+socket: arg0 == AF_UNIX
