@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2018 Intel Corporation
+ * Copyright (C) 2013-2019 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -84,14 +84,12 @@ private:  /* types  and constants */
      **/
     typedef struct  {
         int reqId;
-        int nextReqId;
         Camera3Request *request;
 
         /**
          * Shutter control variables
          */
         bool isShutterDone;     /*!> from AAL to client */
-        bool shutterReceived;   /*!> from PSL to AAL */
         int64_t shutterTime;
         /**
          * Metadata result control variables
@@ -111,9 +109,7 @@ private:  /* types  and constants */
             pendingBuffers.clear();
             pendingPartialResults.clear();
             reqId = req->getId();
-            nextReqId = reqId + 1;
             shutterTime = 0;
-            shutterReceived = false;
             isShutterDone = false;
             partialResultReturned = 0;
             buffersReturned = 0;
@@ -172,7 +168,6 @@ private:  /* members */
     std::map<int, RequestState_t*> mRequestsInTransit;
     typedef std::pair<int, RequestState_t*> RequestsInTransitPair;
     unsigned int mPartialResultCount;
-    int mNextRequestId;     /*!> used to ensure shutter callbacks are sequential*/
     /*!> Sorted List of request id's that have metadata ready for return.
          The metadata for that request id should be present in the mRequestInTransit vector. */
     std::list<int> mRequestsPendingMetaReturn;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2018 Intel Corporation
+ * Copyright (C) 2014-2019 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,8 +30,7 @@ ResultProcessor::ResultProcessor(RequestThread * aReqThread,
     mRequestThread(aReqThread),
     mCameraThread("ResultProcessor"),
     mCallbackOps(cbOps),
-    mPartialResultCount(0),
-    mNextRequestId(0)
+    mPartialResultCount(0)
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
     mReqStatePool.init(MAX_REQUEST_IN_TRANSIT);
@@ -168,12 +167,6 @@ status_t ResultProcessor::handleShutterDone(MessageShutterDone msg)
     }
 
     reqState->shutterTime = msg.time;
-    if (mNextRequestId != reqId) {
-        LOGW("shutter done received ahead of time, expecting %d got %d Or discontinuities requests received.",
-                mNextRequestId, reqId);
-        reqState->shutterReceived = true;
-    }
-
     returnShutterDone(reqState);
 
     if (!reqState->pendingBuffers.empty()) {
@@ -212,7 +205,6 @@ void ResultProcessor::returnShutterDone(RequestState_t* reqState)
     shutter.message.shutter.timestamp =reqState->shutterTime;
     mCallbackOps->notify(mCallbackOps, &shutter);
     reqState->isShutterDone = true;
-    mNextRequestId = reqState->nextReqId;
     LOG2("@%s camera id %d, Request %d shutter done", __func__,
         reqState->request->getCameraId(), reqState->reqId);
 }
