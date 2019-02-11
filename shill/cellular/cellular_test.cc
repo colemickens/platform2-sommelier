@@ -16,6 +16,16 @@
 #include <base/stl_util.h>
 #include <chromeos/dbus/service_constants.h>
 
+extern "C" {
+// A struct member in pppd.h has the name 'class'.
+#define class class_num
+// pppd.h defines a bool type.
+#define bool pppd_bool_t
+#include <pppd/pppd.h>
+#undef bool
+#undef class
+}
+
 #include "shill/cellular/cellular_bearer.h"
 #include "shill/cellular/cellular_capability_cdma.h"
 #include "shill/cellular/cellular_capability_classic.h"
@@ -1691,10 +1701,10 @@ TEST_P(CellularTest, Notify) {
   Mock::VerifyAndClearExpectations(ppp_device.get());
   Mock::VerifyAndClearExpectations(ppp_device2.get());
 
-  // Disconnect should report unknown failure, since we had a
-  // Notify(kPPPReasonAuthenticated, ...).
-  EXPECT_CALL(*ppp_device2, SetServiceFailure(Service::kFailureUnknown));
-  device_->Notify(kPPPReasonDisconnect, kEmptyArgs);
+  // Disconnect should report no failure, since we had a
+  // Notify(kPPPReasonAuthenticated, ...) and got no error from pppd.
+  EXPECT_CALL(*ppp_device2, SetServiceFailure(Service::kFailureNone));
+  device_->OnPPPDied(kPID, EXIT_OK);
   EXPECT_EQ(nullptr, device_->ppp_task_);
 
   // |Cellular::ppp_task_| is destroyed on the task loop. Must dispatch once to
@@ -1717,7 +1727,7 @@ TEST_P(CellularTest, PPPConnectionFailedBeforeAuth) {
 
   ExpectDisconnectCapabilityUniversal();
   EXPECT_CALL(*service, SetFailure(Service::kFailureUnknown));
-  device_->Notify(kPPPReasonDisconnect, kEmptyArgs);
+  device_->OnPPPDied(kPID, EXIT_FATAL_ERROR);
   EXPECT_EQ(nullptr, device_->ppp_task_);
   VerifyDisconnect();
 
@@ -1740,9 +1750,11 @@ TEST_P(CellularTest, PPPConnectionFailedDuringAuth) {
   StartPPP(kPID);
 
   ExpectDisconnectCapabilityUniversal();
+  // Even if pppd gives a generic error, if we know that the failure occurred
+  // during authentication, we will consider it an auth error.
   EXPECT_CALL(*service, SetFailure(Service::kFailurePPPAuth));
   device_->Notify(kPPPReasonAuthenticating, kEmptyArgs);
-  device_->Notify(kPPPReasonDisconnect, kEmptyArgs);
+  device_->OnPPPDied(kPID, EXIT_FATAL_ERROR);
   EXPECT_EQ(nullptr, device_->ppp_task_);
   VerifyDisconnect();
 
@@ -1769,7 +1781,34 @@ TEST_P(CellularTest, PPPConnectionFailedAfterAuth) {
   ExpectDisconnectCapabilityUniversal();
   device_->Notify(kPPPReasonAuthenticating, kEmptyArgs);
   device_->Notify(kPPPReasonAuthenticated, kEmptyArgs);
-  device_->Notify(kPPPReasonDisconnect, kEmptyArgs);
+  device_->OnPPPDied(kPID, EXIT_FATAL_ERROR);
+  EXPECT_EQ(nullptr, device_->ppp_task_);
+  VerifyDisconnect();
+
+  // |Cellular::ppp_task_| is destroyed on the task loop. Must dispatch once to
+  // cleanup.
+  dispatcher_.DispatchPendingEvents();
+}
+
+TEST_P(CellularTest, PPPConnectionFailedAfterConnect) {
+  if (!IsCellularTypeUnderTestOneOf({Cellular::kTypeUniversal})) {
+    return;
+  }
+
+  // Test that we properly set Service state in the case where pppd fails after
+  // connecting (as opposed to the Notify test, where pppd disconnects normally
+  // after connecting).
+  const int kPID = 52;
+  const map<string, string> kEmptyArgs;
+  MockCellularService* service = SetMockService();
+  StartPPP(kPID);
+
+  EXPECT_CALL(*service, SetFailure(Service::kFailureUnknown));
+  ExpectDisconnectCapabilityUniversal();
+  device_->Notify(kPPPReasonAuthenticating, kEmptyArgs);
+  device_->Notify(kPPPReasonAuthenticated, kEmptyArgs);
+  device_->Notify(kPPPReasonConnect, kEmptyArgs);
+  device_->OnPPPDied(kPID, EXIT_FATAL_ERROR);
   EXPECT_EQ(nullptr, device_->ppp_task_);
   VerifyDisconnect();
 

@@ -384,6 +384,7 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, PPPConnectionFailedAfterAuth);
   FRIEND_TEST(CellularTest, PPPConnectionFailedBeforeAuth);
   FRIEND_TEST(CellularTest, PPPConnectionFailedDuringAuth);
+  FRIEND_TEST(CellularTest, PPPConnectionFailedAfterConnect);
   FRIEND_TEST(CellularTest, ScanAsynchronousFailure);
   FRIEND_TEST(CellularTest, ScanImmediateFailure);
   FRIEND_TEST(CellularTest, ScanSuccess);
@@ -476,7 +477,6 @@ class Cellular : public Device,
   void OnPPPAuthenticated();
   void OnPPPAuthenticating();
   void OnPPPConnected(const std::map<std::string, std::string>& params);
-  void OnPPPDisconnected();
 
   void UpdateScanning();
 

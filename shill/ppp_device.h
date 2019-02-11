@@ -51,6 +51,8 @@ class PPPDevice : public VirtualDevice {
   IPConfig::Properties ParseIPConfiguration(
       const std::map<std::string, std::string>& configuration);
 
+  static Service::ConnectFailure ExitStatusToFailure(int exit);
+
 #ifndef DISABLE_DHCPV6
   // Start a DHCPv6 configuration client for this device.  The generic
   // file name (based on the device name) will be used for the acquired

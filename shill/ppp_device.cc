@@ -7,6 +7,16 @@
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 
+extern "C" {
+// A struct member in pppd.h has the name 'class'.
+#define class class_num
+// pppd.h defines a bool type.
+#define bool pppd_bool_t
+#include <pppd/pppd.h>
+#undef bool
+#undef class
+}
+
 #include "shill/logging.h"
 #include "shill/metrics.h"
 #include "shill/technology.h"
@@ -99,6 +109,18 @@ IPConfig::Properties PPPDevice::ParseIPConfiguration(
     properties.gateway = properties.peer_address;
   }
   return properties;
+}
+
+// static
+Service::ConnectFailure PPPDevice::ExitStatusToFailure(int exit) {
+  switch (exit) {
+    case EXIT_OK:
+      return Service::kFailureNone;
+    case EXIT_PEER_AUTH_FAILED:
+      return Service::kFailurePPPAuth;
+    default:
+      return Service::kFailureUnknown;
+  }
 }
 
 }  // namespace shill

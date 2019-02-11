@@ -1099,6 +1099,7 @@ void Cellular::StartPPP(const string& serial_device) {
   options.no_detach = true;
   options.no_default_route = true;
   options.use_peer_dns = true;
+  options.max_fail = 1;
 
   is_ppp_authenticating_ = false;
 
@@ -1149,7 +1150,7 @@ void Cellular::Notify(const string& reason,
   } else if (reason == kPPPReasonConnect) {
     OnPPPConnected(dict);
   } else if (reason == kPPPReasonDisconnect) {
-    OnPPPDisconnected();
+    // Ignore; we get disconnect information when pppd exits.
   } else {
     NOTREACHED();
   }
@@ -1200,23 +1201,17 @@ void Cellular::OnPPPConnected(const map<string, string>& params) {
   ppp_device_->UpdateIPConfigFromPPP(params, kBlackholeIPv6);
 }
 
-void Cellular::OnPPPDisconnected() {
-  SLOG(PPP, this, 2) << __func__;
+void Cellular::OnPPPDied(pid_t pid, int exit) {
+  LOG(INFO) << __func__ << " on " << link_name();
   // DestroyLater, rather than while on stack.
   ppp_task_.release()->DestroyLater(modem_info_->dispatcher());
   if (is_ppp_authenticating_) {
     SetServiceFailure(Service::kFailurePPPAuth);
   } else {
-    // TODO(quiche): Don't set failure if we disconnected intentionally.
-    SetServiceFailure(Service::kFailureUnknown);
+    SetServiceFailure(PPPDevice::ExitStatusToFailure(exit));
   }
   Error error;
   Disconnect(&error, __func__);
-}
-
-void Cellular::OnPPPDied(pid_t pid, int exit) {
-  LOG(INFO) << __func__ << " on " << link_name();
-  OnPPPDisconnected();
 }
 
 void Cellular::UpdateScanning() {
