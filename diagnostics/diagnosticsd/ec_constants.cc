@@ -28,16 +28,12 @@ const int64_t kEcRunCommandPayloadMaxSize = 32;
 // will be ready.
 const char kEcRunCommandFilePath[] = "raw";
 
-// EC event sysfs file path.
-//
-// Prefix is equal to kEcDriverSysfsPath, but this constant will be changed to
-// "/sys/class/chromeos/wilco_ec/event" in very near future.
-const char kEcEventSysfsPath[] = "sys/bus/platform/devices/GOOG000C:00/event";
+// EC event file path.
+const char kEcEventFilePath[] = "dev/wilco_event";
 
-// The driver is expected to populate the |kEcEventSysfsPath| file with
-// high-priority data, therefore this constant holds the specific flag for use
-// with poll().
-const int16_t kEcEventPollEvents = POLLPRI;
+// The driver is expected to populate the |kEcEventFilePath| file, therefore
+// this constant holds the specific flag for use with poll().
+const int16_t kEcEventFilePollEvents = POLLIN;
 
 // Please keep in sync list of properties with
 // "//third_party/kernel/drivers/platform/chrome/wilco_ec_properties.h"

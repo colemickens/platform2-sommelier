@@ -83,9 +83,6 @@ class EcEventMonitoringThreadDelegate final
       if (HANDLE_EINTR(read(fds[0].fd, &ec_event, sizeof(ec_event))) > 0) {
         foreground_task_runner_->PostTask(
             FROM_HERE, base::BindOnce(on_event_available_callback_, ec_event));
-        if (lseek(fds[0].fd, 0, SEEK_SET) == -1) {
-          VPLOG(2) << "Unable to lseek event file";
-        }
       }
     }
 
@@ -124,7 +121,7 @@ bool DiagnosticsdEcEventService::Start() {
   DCHECK(sequence_checker_.CalledOnValidSequence());
   DCHECK(!monitoring_thread_);
 
-  auto event_file_path = root_dir_.Append(kEcEventSysfsPath);
+  auto event_file_path = root_dir_.Append(kEcEventFilePath);
   event_fd_.reset(HANDLE_EINTR(
       open(event_file_path.value().c_str(), O_RDONLY | O_NONBLOCK)));
   if (!event_fd_.is_valid()) {

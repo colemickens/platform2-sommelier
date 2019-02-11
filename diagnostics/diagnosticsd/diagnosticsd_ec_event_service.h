@@ -110,7 +110,7 @@ class DiagnosticsdEcEventService final {
   // EC event |event_fd_| and |event_fd_events_| are using for |poll()|
   // function in |monitoring_thread_|. Both can be overridden in tests.
   base::ScopedFD event_fd_;
-  int16_t event_fd_events_ = kEcEventPollEvents;
+  int16_t event_fd_events_ = kEcEventFilePollEvents;
 
   // Shutdown event fd. It is used to stop |poll()| immediately and shutdown
   // |monitoring_thread_|.

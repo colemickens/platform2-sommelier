@@ -199,7 +199,7 @@ class DiagnosticsdCoreTest : public testing::Test {
         }));
   }
 
-  void WriteEcEventToSysfsFile(
+  void WriteEcEventToEcEventFile(
       const DiagnosticsdEcEventService::EcEvent& ec_event) const {
     ASSERT_EQ(write(ec_event_service_fd_.get(), &ec_event, sizeof(ec_event)),
               sizeof(ec_event));
@@ -274,11 +274,11 @@ class DiagnosticsdCoreTest : public testing::Test {
     EXPECT_CALL(*diagnosticsd_dbus_object_, Unregister());
   }
 
-  // Creates FIFO to emulates the EC event service sysfs event file.
+  // Creates FIFO to emulates the EC event file used by EC event service.
   void SetUpEcEventService() {
     core_->set_ec_event_service_fd_events_for_testing(POLLIN);
-    ASSERT_TRUE(base::CreateDirectory(ec_event_sysfs_file_path().DirName()));
-    ASSERT_EQ(mkfifo(ec_event_sysfs_file_path().value().c_str(), 0600), 0);
+    ASSERT_TRUE(base::CreateDirectory(ec_event_file_path().DirName()));
+    ASSERT_EQ(mkfifo(ec_event_file_path().value().c_str(), 0600), 0);
   }
 
   // Setups |ec_event_service_fd_| FIFO file descriptor. Must be called only
@@ -286,12 +286,12 @@ class DiagnosticsdCoreTest : public testing::Test {
   void SetUpEcEventServiceFifoWriteEnd() {
     ASSERT_FALSE(ec_event_service_fd_.is_valid());
     ec_event_service_fd_.reset(
-        open(ec_event_sysfs_file_path().value().c_str(), O_WRONLY));
+        open(ec_event_file_path().value().c_str(), O_WRONLY));
     ASSERT_TRUE(ec_event_service_fd_.is_valid());
   }
 
-  base::FilePath ec_event_sysfs_file_path() const {
-    return temp_dir_.GetPath().Append(kEcEventSysfsPath);
+  base::FilePath ec_event_file_path() const {
+    return temp_dir_.GetPath().Append(kEcEventFilePath);
   }
 
   base::MessageLoop message_loop_;
@@ -318,7 +318,7 @@ class DiagnosticsdCoreTest : public testing::Test {
   mojo::InterfacePtr<MojomDiagnosticsdServiceFactory>
       mojo_service_factory_interface_ptr_;
 
-  // Write end of FIFO that emulates EC sysfs event file. EC event service
+  // Write end of FIFO that emulates EC event file. EC event service
   // operates with read end of FIFO as with usual file.
   // Must be initialized only after |DiagnosticsdCore::Start()| call.
   base::ScopedFD ec_event_service_fd_;
@@ -679,7 +679,7 @@ class EcEventServiceBootstrappedDiagnosticsdCoreTest
     : public BootstrappedDiagnosticsdCoreTest {
  protected:
   void EmulateEcEvent(uint16_t size, uint16_t type) const {
-    WriteEcEventToSysfsFile(GetEcEvent(size, type));
+    WriteEcEventToEcEventFile(GetEcEvent(size, type));
   }
 
   void ExpectFakeProcessorEcEventCalled(
