@@ -5,9 +5,11 @@
 #ifndef SHILL_ROUTING_TABLE_ENTRY_H_
 #define SHILL_ROUTING_TABLE_ENTRY_H_
 
-#include <linux/rtnetlink.h>
-
+#include <iostream>
 #include <string>
+
+#include <base/strings/stringprintf.h>
+#include <linux/rtnetlink.h>
 
 #include "shill/net/ip_address.h"
 
@@ -120,6 +122,48 @@ struct RoutingTableEntry {
             table == b.table &&
             type == b.type &&
             tag == b.tag);
+  }
+
+  // Print out an entry in a format similar to that of ip route.
+  friend std::ostream& operator<<(std::ostream& os,
+                                  const RoutingTableEntry& entry) {
+    std::string dest_address =
+      entry.dst.IsDefault() ? "default" : entry.dst.ToString();
+    const char *dest_prefix;
+    switch (entry.type) {
+      case RTN_LOCAL:
+        dest_prefix = "local ";
+        break;
+      case RTN_BROADCAST:
+        dest_prefix = "broadcast ";
+        break;
+      case RTN_BLACKHOLE:
+        dest_prefix = "blackhole";
+        dest_address = "";  // Don't print the address.
+        break;
+      case RTN_UNREACHABLE:
+        dest_prefix = "unreachable";
+        dest_address = "";  // Don't print the address.
+        break;
+      default:
+        dest_prefix = "";
+        break;
+    }
+    std::string gateway;
+    if (!entry.gateway.IsDefault()) {
+      gateway = " via " + entry.gateway.ToString();
+    }
+    std::string src;
+    if (!entry.src.IsDefault()) {
+      src = " src " + entry.src.ToString();
+    }
+
+    os << base::StringPrintf(
+      "%s%s%s metric %d %s table %d%s",
+      dest_prefix, dest_address.c_str(), gateway.c_str(), entry.metric,
+      IPAddress::GetAddressFamilyName(entry.dst.family()).c_str(),
+      static_cast<int>(entry.table), src.c_str());
+    return os;
   }
 
   IPAddress dst;

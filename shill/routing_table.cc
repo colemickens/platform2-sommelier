@@ -311,11 +311,8 @@ void RoutingTable::SetDefaultMetric(int interface_index, uint32_t metric) {
 
 bool RoutingTable::AddRouteToKernelTable(int interface_index,
                                          const RoutingTableEntry& entry) {
-  SLOG(this, 2) << __func__ << ": "
-                << "destination " << entry.dst.ToString()
-                << " index " << interface_index
-                << " gateway " << entry.gateway.ToString()
-                << " metric " << entry.metric;
+  SLOG(this, 2) << __func__ << ": " << " index " << interface_index << " "
+                << entry;
 
   return ApplyRoute(interface_index, entry, RTNLMessage::kModeAdd,
                     NLM_F_CREATE | NLM_F_EXCL);
@@ -323,11 +320,8 @@ bool RoutingTable::AddRouteToKernelTable(int interface_index,
 
 bool RoutingTable::RemoveRouteFromKernelTable(int interface_index,
                                               const RoutingTableEntry& entry) {
-  SLOG(this, 2) << __func__ << ": "
-                << "destination " << entry.dst.ToString()
-                << " index " << interface_index
-                << " gateway " << entry.gateway.ToString()
-                << " metric " << entry.metric;
+  SLOG(this, 2) << __func__ << ": " << " index " << interface_index << " "
+                << entry;
 
   return ApplyRoute(interface_index, entry, RTNLMessage::kModeDelete, 0);
 }
