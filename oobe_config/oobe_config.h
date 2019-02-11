@@ -70,6 +70,7 @@ class OobeConfig {
   bool CheckThirdStage() const;
 
   bool ShouldSaveRollbackData() const;
+  bool DeleteRollbackSaveFlagFile() const;
 
  private:
   // Returns the file path of |file_path| which includes the prefix if set.

@@ -336,4 +336,9 @@ bool OobeConfig::ShouldSaveRollbackData() const {
   return FileExists(kRollbackSaveMarkerFile);
 }
 
+bool OobeConfig::DeleteRollbackSaveFlagFile() const {
+  return base::DeleteFile(
+      GetPrefixedFilePath(kRollbackSaveMarkerFile), false);
+}
+
 }  // namespace oobe_config
