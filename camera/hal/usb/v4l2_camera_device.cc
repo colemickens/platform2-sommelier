@@ -103,7 +103,7 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
                                float frame_rate,
                                bool constant_frame_rate,
                                std::vector<base::ScopedFD>* fds,
-                               uint32_t* buffer_size) {
+                               std::vector<uint32_t>* buffer_sizes) {
   base::AutoLock l(lock_);
   if (!device_fd_.is_valid()) {
     LOGF(ERROR) << "Device is not opened";
@@ -178,8 +178,6 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
     LOGF(ERROR) << "Unsupported frame rate " << frame_rate;
     return -EINVAL;
   }
-  *buffer_size = fmt.fmt.pix.sizeimage;
-  VLOGF(1) << "Buffer size: " << *buffer_size;
 
   // Only set power line frequency when the value is correct.
   if (device_info_.power_line_frequency != PowerLineFrequency::FREQ_ERROR) {
@@ -232,6 +230,8 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
       PLOGF(ERROR) << "QBUF (" << i << ") fails";
       return -errno;
     }
+
+    buffer_sizes->push_back(buffer.length);
   }
 
   v4l2_buf_type capture_type = V4L2_BUF_TYPE_VIDEO_CAPTURE;

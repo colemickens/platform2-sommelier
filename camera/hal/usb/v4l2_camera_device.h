@@ -39,7 +39,7 @@ class V4L2CameraDevice {
   // Enable camera device stream. Setup captured frame with |width|x|height|
   // resolution, |pixel_format|, |frame_rate|, and whether we want
   // |constant_frame_rate|. Get frame buffer file descriptors |fds| and
-  // |buffer_size|. |buffer_size| is the size allocated for each buffer. The
+  // |buffer_sizes|. |buffer_sizes| are the sizes allocated for each buffer. The
   // ownership of |fds| are transferred to the caller and |fds| should be closed
   // when done. Caller can memory map |fds| and should unmap when done. Return 0
   // if device supports the format.  Otherwise, return -|errno|. This function
@@ -50,7 +50,7 @@ class V4L2CameraDevice {
                float frame_rate,
                bool constant_frame_rate,
                std::vector<base::ScopedFD>* fds,
-               uint32_t* buffer_size);
+               std::vector<uint32_t>* buffer_sizes);
 
   // Disable camera device stream. Return 0 if device disables stream
   // successfully. Otherwise, return -|errno|. This function is a no-op if the

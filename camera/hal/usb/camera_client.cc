@@ -745,18 +745,18 @@ int CameraClient::RequestHandler::StreamOnImpl(Size stream_on_resolution,
                          << constant_frame_rate;
 
   std::vector<base::ScopedFD> fds;
-  uint32_t buffer_size;
+  std::vector<uint32_t> buffer_sizes;
   ret = device_->StreamOn(format->width, format->height, format->fourcc,
-                          max_fps, constant_frame_rate, &fds, &buffer_size);
+                          max_fps, constant_frame_rate, &fds, &buffer_sizes);
   if (ret) {
     LOGFID(ERROR, device_id_) << "StreamOn failed: " << strerror(-ret);
     return ret;
   }
 
   for (size_t i = 0; i < fds.size(); i++) {
-    std::unique_ptr<V4L2FrameBuffer> frame(
-        new V4L2FrameBuffer(std::move(fds[i]), buffer_size, format->width,
-                            format->height, format->fourcc));
+    auto frame = std::make_unique<V4L2FrameBuffer>(
+        std::move(fds[i]), buffer_sizes[i], format->width, format->height,
+        format->fourcc);
     ret = frame->Map();
     if (ret) {
       return -errno;
