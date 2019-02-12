@@ -286,6 +286,8 @@ std::string GetPowerStatusBatteryDebugString(const PowerStatus& status) {
                   " until full";
         if (status.is_calculating_battery_time)
           output += " (calculating)";
+      } else {
+        output += ", no estimate due to low averaged current";
       }
       break;
     case PowerSupplyProperties_BatteryState_DISCHARGING:
@@ -300,6 +302,8 @@ std::string GetPowerStatusBatteryDebugString(const PowerStatus& status) {
               " (%s until shutdown)",
               util::TimeDeltaToString(status.battery_time_to_shutdown).c_str());
         }
+      } else {
+        output += ", no estimate due to low averaged current";
       }
       break;
     case PowerSupplyProperties_BatteryState_NOT_PRESENT:
