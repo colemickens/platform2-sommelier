@@ -49,6 +49,7 @@ constexpr char kLoopbackName[] = "lo";
 
 constexpr char kHostIpPath[] = "/run/host_ip";
 
+const std::vector<string> kDefaultNameservers = {"8.8.8.8", "8.8.4.4"};
 constexpr char kResolvConfOptions[] =
     "options single-request timeout:1 attempts:5\n";
 constexpr char kResolvConfPath[] = "/run/resolv.conf";
@@ -187,10 +188,9 @@ ServiceImpl::ServiceImpl(std::unique_ptr<vm_tools::maitred::Init> init)
     : init_(std::move(init)) {}
 
 bool ServiceImpl::Init() {
-  std::vector<string> default_nameservers{"8.8.8.8", "8.8.4.4"};
   string error;
 
-  return WriteResolvConf(std::move(default_nameservers), {}, &error);
+  return WriteResolvConf(kDefaultNameservers, {}, &error);
 }
 
 grpc::Status ServiceImpl::ConfigureNetwork(grpc::ServerContext* ctx,
@@ -545,6 +545,11 @@ grpc::Status ServiceImpl::SetResolvConfig(grpc::ServerContext* ctx,
 
   std::vector<string> nameservers(resolv_config.nameservers().begin(),
                                   resolv_config.nameservers().end());
+  if (nameservers.empty()) {
+    LOG(WARNING) << "Host sent empty nameservers list; using default";
+    nameservers = kDefaultNameservers;
+  }
+
   std::vector<string> search_domains(resolv_config.search_domains().begin(),
                                      resolv_config.search_domains().end());
   string error;
