@@ -29,8 +29,7 @@ rt_sigreturn: 1
 sendmsg: 1
 sendto: 1
 # For connecting to session_manager over dbus.
-# arg0 == AF_UNIX && arg1 == SOCK_STREAM|SOCK_CLOEXEC
-socket: arg0 == AF_UNIX && arg1 == 0x80001 && arg2 == 0
+socket: arg0 == AF_UNIX && arg1 == SOCK_STREAM|SOCK_CLOEXEC && arg2 == 0 || arg0 == AF_UNIX && arg1 == SOCK_DGRAM|SOCK_CLOEXEC && arg2 == 0
 stat64: 1
 umask: 1
 write: 1
