@@ -87,16 +87,16 @@ void SharedFrameBuffer::SetFourcc(uint32_t fourcc) {
   }
 }
 
-int SharedFrameBuffer::SetDataSize(size_t size) {
-  if (size > buffer_size_) {
+int SharedFrameBuffer::SetDataSize(size_t data_size) {
+  if (data_size > buffer_size_) {
     shm_buffer_.reset(new base::SharedMemory);
-    if (!shm_buffer_->CreateAndMapAnonymous(size)) {
+    if (!shm_buffer_->CreateAndMapAnonymous(data_size)) {
       LOGF(ERROR) << "Created Shared Memory Fail";
       return -ENOMEM;
     }
-    buffer_size_ = size;
+    buffer_size_ = data_size;
   }
-  data_size_ = size;
+  data_size_ = data_size;
   SetData();
   return 0;
 }

@@ -71,7 +71,7 @@ class CameraClient {
 
   // Camera v3 Device Operations (see <hardware/camera3.h>)
   int Initialize(const camera3_callback_ops_t* callback_ops);
-  int ConfigureStreams(camera3_stream_configuration_t* stream_list);
+  int ConfigureStreams(camera3_stream_configuration_t* stream_config);
   // |type| is camera3_request_template_t in camera3.h.
   const camera_metadata_t* ConstructDefaultRequestSettings(int type);
   int ProcessCaptureRequest(camera3_capture_request_t* request);
