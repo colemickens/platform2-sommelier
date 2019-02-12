@@ -236,8 +236,6 @@ Manager::Manager(ControlInterface* control_interface,
   HelpRegisterDerivedString(kPortalFallbackUrlsStringProperty,
                             &Manager::GetPortalFallbackUrlsString,
                             &Manager::SetPortalFallbackUrlsString);
-  store_.RegisterInt32(kPortalCheckIntervalProperty,
-                       &props_.portal_check_interval_seconds);
   HelpRegisterConstDerivedRpcIdentifiers(kProfilesProperty,
                                          &Manager::EnumerateProfiles);
   HelpRegisterDerivedString(kProhibitedTechnologiesProperty,

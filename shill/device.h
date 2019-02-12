@@ -366,7 +366,9 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
   FRIEND_TEST(CellularTest, ModemStateChangeDisable);
   FRIEND_TEST(CellularTest, UseNoArpGateway);
+  FRIEND_TEST(DevicePortalDetectionTest, PortalIntervalIsZero);
   FRIEND_TEST(DevicePortalDetectionTest, RequestStartConnectivityTest);
+  FRIEND_TEST(DevicePortalDetectionTest, RestartPortalDetection);
   FRIEND_TEST(DeviceTest, AcquireIPConfigWithoutSelectedService);
   FRIEND_TEST(DeviceTest, AcquireIPConfigWithSelectedService);
   FRIEND_TEST(DeviceTest, AvailableIPConfigs);
@@ -842,6 +844,8 @@ class Device : public base::RefCounted<Device> {
   // This includes all failure/timeout attempts and the final successful
   // attempt.
   int portal_attempts_to_online_;
+
+  int portal_check_interval_seconds_;
 
   // Keep track of the offset between the interface-reported byte counters
   // and our persisted value.

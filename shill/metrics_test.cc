@@ -412,7 +412,7 @@ TEST_F(MetricsTest, Disconnect) {
 
 TEST_F(MetricsTest, PortalDetectionResultToEnum) {
   PortalDetector::Result result(PortalDetector::Phase::kDNS,
-                                PortalDetector::Status::kFailure, 0, true);
+                                PortalDetector::Status::kFailure, 0);
 
   EXPECT_EQ(Metrics::kPortalResultDNSFailure,
             Metrics::PortalDetectionResultToEnum(result));
@@ -1409,21 +1409,21 @@ using MetricsDeathTest = MetricsTest;
 
 TEST_F(MetricsDeathTest, PortalDetectionResultToEnumDNSSuccess) {
   PortalDetector::Result result(PortalDetector::Phase::kDNS,
-                                PortalDetector::Status::kSuccess, 0, true);
+                                PortalDetector::Status::kSuccess, 0);
   EXPECT_DEATH(Metrics::PortalDetectionResultToEnum(result),
                "Final result status 1 is not allowed in the DNS phase");
 }
 
 TEST_F(MetricsDeathTest, PortalDetectionResultToEnumConnectionSuccess) {
   PortalDetector::Result result(PortalDetector::Phase::kConnection,
-                                PortalDetector::Status::kSuccess, 0, true);
+                                PortalDetector::Status::kSuccess, 0);
   EXPECT_DEATH(Metrics::PortalDetectionResultToEnum(result),
                "Final result status 1 is not allowed in the Connection phase");
 }
 
 TEST_F(MetricsDeathTest, PortalDetectionResultToEnumHTTPSuccess) {
   PortalDetector::Result result(PortalDetector::Phase::kHTTP,
-                                PortalDetector::Status::kSuccess, 0, true);
+                                PortalDetector::Status::kSuccess, 0);
   EXPECT_DEATH(Metrics::PortalDetectionResultToEnum(result),
                "Final result status 1 is not allowed in the HTTP phase");
 }

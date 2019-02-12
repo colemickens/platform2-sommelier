@@ -52,9 +52,6 @@ const char DefaultProfile::kStorageNoAutoConnectTechnologies[] =
 // static
 const char DefaultProfile::kStorageOfflineMode[] = "OfflineMode";
 // static
-const char DefaultProfile::kStoragePortalCheckInterval[] =
-    "PortalCheckInterval";
-// static
 const char DefaultProfile::kStorageProhibitedTechnologies[] =
     "ProhibitedTechnologies";
 
@@ -81,8 +78,6 @@ DefaultProfile::DefaultProfile(ControlInterface* control,
   store->RegisterConstString(kNoAutoConnectTechnologiesProperty,
                              &manager_props.no_auto_connect_technologies);
   store->RegisterConstBool(kOfflineModeProperty, &manager_props.offline_mode);
-  store->RegisterConstInt32(kPortalCheckIntervalProperty,
-                            &manager_props.portal_check_interval_seconds);
   store->RegisterConstString(kProhibitedTechnologiesProperty,
                              &manager_props.prohibited_technologies);
   set_persistent_profile_path(
@@ -132,14 +127,6 @@ void DefaultProfile::LoadManagerProperties(Manager::Properties* manager_props,
   manager_props->portal_fallback_http_urls =
       PortalDetector::kDefaultFallbackHttpUrls;
 
-  std::string check_interval;
-  if (!storage()->GetString(kStorageId, kStoragePortalCheckInterval,
-                            &check_interval) ||
-      !base::StringToInt(check_interval,
-                         &manager_props->portal_check_interval_seconds)) {
-    manager_props->portal_check_interval_seconds =
-        PortalDetector::kDefaultCheckIntervalSeconds;
-  }
   if (!storage()->GetString(kStorageId,
                             kStorageProhibitedTechnologies,
                             &manager_props->prohibited_technologies)) {
@@ -182,9 +169,6 @@ bool DefaultProfile::Save() {
   storage()->SetString(kStorageId,
                        kStorageNoAutoConnectTechnologies,
                        props_.no_auto_connect_technologies);
-  storage()->SetString(kStorageId,
-                       kStoragePortalCheckInterval,
-                       base::IntToString(props_.portal_check_interval_seconds));
   storage()->SetString(kStorageId,
                        kStorageProhibitedTechnologies,
                        props_.prohibited_technologies);

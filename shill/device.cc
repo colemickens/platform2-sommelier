@@ -123,6 +123,7 @@ Device::Device(ControlInterface* control_interface,
       adaptor_(control_interface->CreateDeviceAdaptor(this)),
       technology_(technology),
       portal_attempts_to_online_(0),
+      portal_check_interval_seconds_(0),
       receive_byte_offset_(0),
       transmit_byte_offset_(0),
       dhcp_provider_(DHCPProvider::GetInstance()),
@@ -1376,6 +1377,8 @@ bool Device::StartPortalDetection() {
     return false;
   }
 
+  portal_check_interval_seconds_ = PortalDetector::kInitialCheckIntervalSeconds;
+
   SLOG(this, 2) << "Device " << link_name()
                 << ": Portal detection has started.";
   return true;
@@ -1384,6 +1387,7 @@ bool Device::StartPortalDetection() {
 void Device::StopPortalDetection() {
   SLOG(this, 2) << "Device " << link_name()
                 << ": Portal detection stopping.";
+  portal_check_interval_seconds_ = 0;
   portal_detector_.reset();
 }
 
@@ -1422,7 +1426,7 @@ bool Device::StartConnectivityTest() {
   connection_tester_.reset(new PortalDetector(
       connection_, dispatcher_, metrics(),
       Bind(&Device::ConnectionTesterCallback, weak_ptr_factory_.GetWeakPtr())));
-  connection_tester_->StartSingleTrial(PortalDetector::Properties());
+  connection_tester_->StartAfterDelay(PortalDetector::Properties(), 0);
   return true;
 }
 
@@ -1683,40 +1687,36 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
   }
 
   if (state == Service::kStatePortal && connection_->IsDefault() &&
-      manager_->GetPortalCheckInterval() != 0) {
+      portal_check_interval_seconds_ != 0) {
     CHECK(portal_detector_.get());
     PortalDetector::Properties props = manager_->GetPortalCheckProperties();
-    if (!portal_detector_->StartAfterDelay(
-            props, manager_->GetPortalCheckInterval())) {
+    int start_delay =
+        portal_detector_->AdjustStartDelay(portal_check_interval_seconds_);
+    if (!portal_detector_->StartAfterDelay(props, start_delay)) {
       LOG(ERROR) << "Device " << link_name()
                  << ": Portal detection failed to restart: likely bad URL: "
                  << props.http_url_string << " or " << props.https_url_string;
       SetServiceState(Service::kStateOnline);
-      portal_detector_.reset();
+      StopPortalDetection();
       return;
     }
+    portal_check_interval_seconds_ =
+        std::min(portal_check_interval_seconds_ * 2,
+                 PortalDetector::kMaxPortalCheckIntervalSeconds);
     SLOG(this, 2) << "Device " << link_name()
                   << ": Portal detection retrying.";
   } else {
     SLOG(this, 2) << "Device " << link_name()
                   << ": Portal will not retry.";
-    portal_detector_.reset();
+    StopPortalDetection();
   }
 
   SetServiceState(state);
 }
 
 void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
-  if (!result.final) {
-    SLOG(this, 2) << "Device " << link_name() << ": Received non-final status: "
-                  << PortalDetector::StatusToString(result.status);
-    return;
-  }
-
-  SLOG(this, 2) << "Device " << link_name() << ": Received final status: "
+  SLOG(this, 2) << "Device " << link_name() << ": Received status: "
                 << PortalDetector::StatusToString(result.status);
-
-  portal_attempts_to_online_ += result.num_attempts;
 
   int portal_status = Metrics::PortalDetectionResultToEnum(result);
   metrics()->SendEnumToUMA(
@@ -1731,8 +1731,7 @@ void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
     metrics()->SendToUMA(
         metrics()->GetFullMetricName(
             Metrics::kMetricPortalAttemptsToOnlineSuffix, technology()),
-        portal_attempts_to_online_,
-        Metrics::kMetricPortalAttemptsToOnlineMin,
+        result.num_attempts, Metrics::kMetricPortalAttemptsToOnlineMin,
         Metrics::kMetricPortalAttemptsToOnlineMax,
         Metrics::kMetricPortalAttemptsToOnlineNumBuckets);
   } else {
@@ -1743,14 +1742,6 @@ void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
           PortalDetector::StatusToString(result.status));
     }
     SetServiceConnectedState(Service::kStatePortal);
-
-    metrics()->SendToUMA(
-        metrics()->GetFullMetricName(
-            Metrics::kMetricPortalAttemptsSuffix, technology()),
-        result.num_attempts,
-        Metrics::kMetricPortalAttemptsMin,
-        Metrics::kMetricPortalAttemptsMax,
-        Metrics::kMetricPortalAttemptsNumBuckets);
 
     StartConnectionDiagnosticsAfterPortalDetection(result);
 

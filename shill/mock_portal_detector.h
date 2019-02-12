@@ -23,6 +23,7 @@ class MockPortalDetector : public PortalDetector {
                bool(const PortalDetector::Properties&, int delay_seconds));
   MOCK_METHOD0(Stop, void());
   MOCK_METHOD0(IsInProgress, bool());
+  MOCK_METHOD1(AdjustStartDelay, int(int delay));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockPortalDetector);

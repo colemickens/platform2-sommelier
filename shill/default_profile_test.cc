@@ -141,10 +141,6 @@ TEST_F(DefaultProfileTest, Save) {
               SetString(DefaultProfile::kStorageId,
                         DefaultProfile::kStorageProhibitedTechnologies, ""))
       .WillOnce(Return(true));
-  EXPECT_CALL(*storage,
-              SetString(DefaultProfile::kStorageId,
-                        DefaultProfile::kStoragePortalCheckInterval, "0"))
-      .WillOnce(Return(true));
   EXPECT_CALL(*storage, Flush()).WillOnce(Return(true));
 
   EXPECT_CALL(*device_, Save(storage.get())).Times(0);
@@ -193,10 +189,6 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
               GetString(DefaultProfile::kStorageId,
                         DefaultProfile::kStorageProhibitedTechnologies, _))
       .WillOnce(Return(false));
-  EXPECT_CALL(*storage,
-              GetString(DefaultProfile::kStorageId,
-                        DefaultProfile::kStoragePortalCheckInterval, _))
-      .WillOnce(Return(false));
   auto dhcp_props = std::make_unique<MockDhcpProperties>();
   EXPECT_CALL(*dhcp_props, Load(_, DefaultProfile::kStorageId));
   manager()->dhcp_properties_ = std::move(dhcp_props);
@@ -218,8 +210,6 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
   EXPECT_EQ(PortalDetector::kDefaultHttpsUrl, manager_props.portal_https_url);
   EXPECT_EQ(PortalDetector::kDefaultFallbackHttpUrls,
             manager_props.portal_fallback_http_urls);
-  EXPECT_EQ(PortalDetector::kDefaultCheckIntervalSeconds,
-            manager_props.portal_check_interval_seconds);
   EXPECT_EQ("", manager_props.prohibited_technologies);
 }
 
@@ -256,13 +246,6 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
                         DefaultProfile::kStorageNoAutoConnectTechnologies, _))
       .WillOnce(
           DoAll(SetArgPointee<2>(no_auto_connect_technologies), Return(true)));
-  const string portal_check_interval_string("10");
-  const int portal_check_interval_int = 10;
-  EXPECT_CALL(*storage,
-              GetString(DefaultProfile::kStorageId,
-                        DefaultProfile::kStoragePortalCheckInterval, _))
-      .WillOnce(
-          DoAll(SetArgPointee<2>(portal_check_interval_string), Return(true)));
   const string prohibited_technologies("vpn,wimax");
   EXPECT_CALL(*storage,
               GetString(DefaultProfile::kStorageId,
@@ -285,8 +268,6 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
             manager_props.link_monitor_technologies);
   EXPECT_EQ(no_auto_connect_technologies,
             manager_props.no_auto_connect_technologies);
-  EXPECT_EQ(portal_check_interval_int,
-            manager_props.portal_check_interval_seconds);
   EXPECT_EQ(prohibited_technologies, manager_props.prohibited_technologies);
 }
 

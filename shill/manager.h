@@ -65,14 +65,12 @@ class Manager : public base::SupportsWeakPtr<Manager> {
    public:
     Properties()
         : offline_mode(false),
-          portal_check_interval_seconds(0),
           arp_gateway(true),
           connection_id_salt(0),
           minimum_mtu(IPConfig::kUndefinedMTU),
           jail_vpn_clients(false) {}
     bool offline_mode;
     std::string check_portal_list;
-    int32_t portal_check_interval_seconds;
     std::string portal_http_url;
     std::string portal_https_url;
     std::vector<std::string> portal_fallback_http_urls;
@@ -347,9 +345,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // changed.
   void RefreshConnectionState();
 
-  virtual int GetPortalCheckInterval() const {
-    return props_.portal_check_interval_seconds;
-  }
   virtual const std::string& GetPortalCheckHttpUrl() const {
     return props_.portal_http_url;
   }

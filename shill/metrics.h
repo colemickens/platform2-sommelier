@@ -683,15 +683,6 @@ class Metrics {
   static const int  kSuspendDurationMax;
   static const int  kSuspendDurationNumBuckets;
 
-
-  // The number of portal detections attempted for each pass.
-  // This includes both failure/timeout attempts and successful attempt
-  // (if any).
-  static const char kMetricPortalAttemptsSuffix[];
-  static const int kMetricPortalAttemptsMax;
-  static const int kMetricPortalAttemptsMin;
-  static const int kMetricPortalAttemptsNumBuckets;
-
   // The total number of portal detections attempted between the Connected
   // state and the Online state.  This includes both failure/timeout attempts
   // and the final successful attempt.

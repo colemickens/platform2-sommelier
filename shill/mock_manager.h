@@ -85,7 +85,6 @@ class MockManager : public Manager {
   MOCK_CONST_METHOD0(GetPortalCheckHttpsUrl, const std::string&());
   MOCK_CONST_METHOD0(GetPortalCheckFallbackHttpUrls,
                      const std::vector<std::string>&());
-  MOCK_CONST_METHOD0(GetPortalCheckInterval, int());
   MOCK_METHOD0(IsSuspending, bool());
   MOCK_CONST_METHOD1(GetEnabledDeviceWithTechnology,
                      DeviceRefPtr(Technology::Identifier technology));

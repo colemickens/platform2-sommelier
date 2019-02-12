@@ -84,35 +84,26 @@ class PortalDetector {
 
   struct Result {
     Result()
-        : phase(Phase::kUnknown),
-          status(Status::kFailure),
-          num_attempts(0),
-          final(false) {}
+        : phase(Phase::kUnknown), status(Status::kFailure), num_attempts(0) {}
     Result(Phase phase, Status status)
-        : phase(phase), status(status), num_attempts(0), final(false) {}
-    Result(Phase phase, Status status, int num_attempts, int final)
-        : phase(phase),
-          status(status),
-          num_attempts(num_attempts),
-          final(final) {}
+        : phase(phase), status(status), num_attempts(0) {}
+    Result(Phase phase, Status status, int num_attempts)
+        : phase(phase), status(status), num_attempts(num_attempts) {}
 
     Phase phase;
     Status status;
 
     // Total number of connectivity trials attempted.
     // This includes failure, timeout and successful attempts.
-    // This only valid when |final| is true.
     int num_attempts;
-    bool final;
   };
 
   static const char kDefaultHttpUrl[];
   static const char kDefaultHttpsUrl[];
   static const std::vector<std::string> kDefaultFallbackHttpUrls;
-  static const int kDefaultCheckIntervalSeconds;
+  static const int kInitialCheckIntervalSeconds;
+  static const int kMaxPortalCheckIntervalSeconds;
   static const char kDefaultCheckPortalList[];
-  // Maximum number of times the PortalDetector will attempt a connection.
-  static const int kMaxRequestAttempts;
 
   PortalDetector(
       ConnectionRefPtr connection,
@@ -138,33 +129,27 @@ class PortalDetector {
   // Status::kFailure.
   static Result GetPortalResultForRequestResult(HttpRequest::Result result);
 
-  // Start a portal detection test.  Returns true if |url_string| correctly
-  // parses as a URL.  Returns false (and does not start) if the |url_string|
-  // fails to parse.
+  // Start a portal detection test.  Returns true if |props.http_url_string| and
+  // |props.https_url_string| correctly parse as URLs.  Returns false (and does
+  // not start) if they fail to parse.
   //
   // As each attempt completes the callback handed to the constructor will
-  // be called.  The PortalDetector will try up to kMaxRequestAttempts times
-  // to successfully retrieve the URL.  If the attempt is successful or
-  // this is the last attempt, the "final" flag in the Result structure will
-  // be true, otherwise it will be false, and the PortalDetector will
-  // schedule the next attempt.
+  // be called.
   virtual bool StartAfterDelay(const Properties& props, int delay_seconds);
-
-  // Do exactly one trial instead of up to kMaxRequestAttempts.
-  virtual bool StartSingleTrial(const Properties& props);
 
   // End the current portal detection process if one exists, and do not call
   // the callback.
   virtual void Stop();
 
-  // Returns whether portal request is "in progress": whether the
-  // trial is in the progress of making attempts.  Returns true if
-  // attempts are in progress, false otherwise.  Notably, this function
-  // returns false during the period of time between calling "Start" or
-  // "StartAfterDelay" and the actual start of the first attempt. In the case
-  // where multiple attempts may be tried, IsInProgress will return true after
-  // the first attempt has actively started testing the connection.
+  // Returns whether portal request is "in progress".
   virtual bool IsInProgress();
+
+  // Method used to adjust the start delay in the event of a retry.
+  // Calculates the elapsed time between the most recent attempt and the point
+  // the retry is scheduled.  Adjusts the delay to the difference between
+  // |delay| and the elapsed time so that the retry starts |delay| seconds after
+  // the previous attempt.
+  virtual int AdjustStartDelay(int init_delay_seconds);
 
  private:
   friend class PortalDetectorTest;
@@ -186,35 +171,23 @@ class PortalDetector {
   FRIEND_TEST(PortalDetectorTest, InvalidURL);
   FRIEND_TEST(PortalDetectorTest, IsActive);
 
-  // Minimum time between attempts to connect to server.
-  static const int kMinTimeBetweenAttemptsSeconds;
   // Time to wait for request to complete.
   static const int kRequestTimeoutSeconds;
-  // Maximum number of failures in content phase before we stop attempting
-  // connections.
-  static const int kMaxFailuresInContentPhase;
 
   // Internal method to update the start time of the next event.  This is used
-  // to keep attempts spaced by at least kMinTimeBetweenAttemptsSeconds in the
-  // event of a retry.
+  // to keep attempts spaced by the right duration in the event of a retry.
   void UpdateAttemptTime(int delay_seconds);
 
-  // Internal method used to adjust the start delay in the event of a retry.
-  // Calculates the elapsed time between the most recent attempt and the point
-  // the retry is scheduled.  Adds an additional delay to meet the
-  // kMinTimeBetweenAttemptsSeconds requirement.
-  int AdjustStartDelay(int init_delay_seconds);
-
   // Called after each trial to return |result| after attempting to determine
-  // connectivitiy status.
+  // connectivity status.
   void CompleteAttempt(Result result);
 
   // Start a trial with the supplied delay in ms.
   void StartTrialAfterDelay(int start_delay_milliseconds);
 
-  // Start a trial with the supplied URL and starting delay (ms).
-  // Returns true if |url_string| correctly parses as a URL.  Returns false (and
-  // does not start) if the |url_string| fails to parse.
+  // Start a portal detection test.  Returns true if |props.http_url_string| and
+  // |props.https_url_string| correctly parse as URLs.  Returns false (and does
+  // not start) if they fail to parse.
   //
   // After a trial completes, the callback supplied in the constructor is
   // called.
@@ -246,35 +219,24 @@ class PortalDetector {
   void CompleteTrial(Result result);
 
   // Internal method used to cancel the timeout timer and stop an active
-  // HttpRequest.  If |reset_request| is true, this method resets the underlying
-  // HttpRequest object.
+  // HttpRequest.
   void CleanupTrial();
 
   // Callback used to cancel the underlying HttpRequest in the event of a
   // timeout.
   void TimeoutTrialTask();
 
-  // After a trial completes, the calling class may call Retry on the trial.
-  // This allows the underlying HttpRequest object to be reused.  The URL is not
-  // reparsed and the original URL supplied in the Start command is used.  The
-  // |start_delay| is the time (ms) to wait before starting the trial.  Retry
-  // returns true if the underlying HttpRequest is still available.  If the
-  // HttpRequest was reset or never created, Retry will return false.
-  virtual bool Retry(int start_delay_milliseconds);
-
   // Method to return if the connection is being actively tested.
   virtual bool IsActive();
 
   int attempt_count_;
   struct timeval attempt_start_time_;
-  bool single_trial_;
   ConnectionRefPtr connection_;
   EventDispatcher* dispatcher_;
   Metrics* metrics_;
   base::WeakPtrFactory<PortalDetector> weak_ptr_factory_;
   base::Callback<void(const Result&)> portal_result_callback_;
   Time* time_;
-  int failures_in_content_phase_;
   int trial_timeout_seconds_;
   std::unique_ptr<HttpRequest> http_request_;
   std::unique_ptr<HttpRequest> https_request_;

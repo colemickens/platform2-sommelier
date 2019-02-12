@@ -4328,8 +4328,6 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
   EXPECT_EQ(PortalDetector::kDefaultHttpsUrl, manager->props_.portal_https_url);
   EXPECT_EQ(PortalDetector::kDefaultFallbackHttpUrls,
             manager->props_.portal_fallback_http_urls);
-  EXPECT_EQ(PortalDetector::kDefaultCheckIntervalSeconds,
-            manager->props_.portal_check_interval_seconds);
 
   // Change one of the settings.
   static const string kCustomCheckPortalList = "fiber0";

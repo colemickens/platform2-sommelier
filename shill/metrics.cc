@@ -168,13 +168,6 @@ const int Metrics::kTimerHistogramMillisecondsMax = 45 * 1000;
 const int Metrics::kTimerHistogramMillisecondsMin = 1;
 const int Metrics::kTimerHistogramNumBuckets = 50;
 
-const char Metrics::kMetricPortalAttemptsSuffix[] = "PortalAttempts";
-const int Metrics::kMetricPortalAttemptsMax =
-    PortalDetector::kMaxRequestAttempts;
-const int Metrics::kMetricPortalAttemptsMin = 1;
-const int Metrics::kMetricPortalAttemptsNumBuckets =
-    Metrics::kMetricPortalAttemptsMax;
-
 const char Metrics::kMetricPortalAttemptsToOnlineSuffix[] =
     "PortalAttemptsToOnline";
 const int Metrics::kMetricPortalAttemptsToOnlineMax = 100;
@@ -692,7 +685,6 @@ Metrics::EapInnerProtocol Metrics::EapInnerProtocolStringToEnum(
 // static
 Metrics::PortalResult Metrics::PortalDetectionResultToEnum(
       const PortalDetector::Result& portal_result) {
-  DCHECK(portal_result.final);
   PortalResult retval = kPortalResultUnknown;
   // The only time we should end a successful portal detection is when we're
   // in the Content phase.  If we end with kStatusSuccess in any other phase,
