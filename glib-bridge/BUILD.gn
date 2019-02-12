@@ -24,6 +24,12 @@ static_library("libglib_bridge") {
     "gthread-2.0",
     "libchrome-${libbase_ver}",
   ]
+  configs += [
+    "//common-mk:nouse_thin_archive",
+  ]
+  configs -= [
+    "//common-mk:use_thin_archive",
+  ]
 }
 
 if (use.test) {
