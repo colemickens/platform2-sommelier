@@ -859,7 +859,8 @@ TEST_F(TpmUtilityTest, SignEcdsaSuccess) {
   public_area.public_area.type = TPM_ALG_ECC;
   public_area.public_area.object_attributes = kSign;
   public_area.public_area.auth_policy.size = 0;
-  public_area.public_area.unique.rsa.size = 0;
+  public_area.public_area.unique.ecc.x.size = 0;
+  public_area.public_area.unique.ecc.y.size = 0;
   EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
       .WillRepeatedly(
           DoAll(SetArgPointee<2>(public_area), Return(TPM_RC_SUCCESS)));
