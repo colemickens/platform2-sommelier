@@ -11,9 +11,229 @@
   "org.chromium.UserDataAuth"
 
   This is the new interface for the cryptohome API interface refactor.
+
+  The protobufs specified in this file can be found in:
+  platform2/system_api/dbus/cryptohome/UserDataAuth.proto
+-->
+
+<!--
+TODO(b/126307305): We'll need to add documentations of what each methods in this file
+do.
 -->
 
 <node name="/org/chromium/Cryptohome"
       xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+
+
+  <interface name="org.chromium.UserDataAuthInterface">
+    <method name="IsMounted">
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::IsMountedRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::IsMountedReply" />
+      </arg>
+    </method>
+
+    <method name="Unmount">
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::UnmountRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::UnmountReply" />
+      </arg>
+    </method>
+
+    <method name="Mount">
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::MountRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::MountReply" />
+      </arg>
+    </method>
+
+    <method name="Remove">
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::RemoveRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::RemoveReply" />
+      </arg>
+    </method>
+
+    <method name="Rename">
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::RenameRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::RenameReply" />
+      </arg>
+    </method>
+
+    <method name="ListKeys">
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::ListKeysRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::ListKeysReply" />
+      </arg>
+    </method>
+
+    <method name="GetKeyData">
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::GetKeyDataRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::GetKeyDataReply" />
+      </arg>
+    </method>
+
+    <method name="CheckKey">
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::CheckKeyRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::CheckKeyReply" />
+      </arg>
+    </method>
+
+    <method name="AddKey">
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::AddKeyRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::AddKeyReply" />
+      </arg>
+    </method>
+
+    <method name="UpdateKey">
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::UpdateKeyRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::UpdateKeyReply" />
+      </arg>
+    </method>
+
+    <method name="RemoveKey">
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::RemoveKeyRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::RemoveKeyReply" />
+      </arg>
+    </method>
+
+    <method name="MigrateKey">
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::MigrateKeyRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::MigrateKeyReply" />
+      </arg>
+    </method>
+
+    <method name="MigrateToDircrypto">
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::MigrateToDircryptoRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::MigrateToDircryptoReply" />
+      </arg>
+    </method>
+
+    <method name="NeedsDircryptoMigration">
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::NeedsDircryptoMigrationRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::NeedsDircryptoMigrationReply" />
+      </arg>
+    </method>
+
+    <method name="GetSupportedKeyPolicies">
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::GetSupportedKeyPoliciesRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::GetSupportedKeyPoliciesReply" />
+      </arg>
+    </method>
+
+    <method name="GetDiskFeatures">
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::GetDiskFeaturesRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::GetDiskFeaturesReply" />
+      </arg>
+    </method>
+
+    <method name="GetAccountDiskUsage">
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::GetAccountDiskUsageRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::GetAccountDiskUsageReply" />
+      </arg>
+    </method>
+
+    <method name="GetCurrentSpaceForUid">
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::GetCurrentSpaceForUidRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::GetCurrentSpaceForUidReply" />
+      </arg>
+    </method>
+
+    <method name="GetCurrentSpaceForGid">
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::GetCurrentSpaceForGidRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::GetCurrentSpaceForGidReply" />
+      </arg>
+    </method>
+  </interface>
 
 </node>
