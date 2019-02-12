@@ -78,3 +78,5 @@ epoll_wait: 1
 getpid: 1
 readlink: 1
 readlinkat: 1
+lstat64: 1
+getdents64: 1
