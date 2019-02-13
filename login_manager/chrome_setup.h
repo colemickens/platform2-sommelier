@@ -32,6 +32,12 @@ namespace login_manager {
 // Property name of the wallpaper setting in CrosConfig.
 extern const char kWallpaperProperty[];
 
+// The absolute path to the directory of the regulatory label files.
+extern const char kRegulatoryLabelBasePath[];
+
+// Property name of the per-model regulatory label directory in CrosConfig.
+extern const char kRegulatoryLabelProperty[];
+
 // Path to get the power button position info from cros_config.
 extern const char kPowerButtonPositionPath[];
 
@@ -69,6 +75,12 @@ void SetUpWallpaperFlags(
     chromeos::ui::ChromiumCommandBuilder* builder,
     brillo::CrosConfigInterface* cros_config,
     base::Callback<bool(const base::FilePath&)> path_exists);
+
+// Add "--regulatory-label-dir" flag to specify the regulatory label directory
+// containing per-region sub-directories, if the model-specific
+// regulatory-label read from |cros_config| is non-null.
+void SetUpRegulatoryLabelFlag(chromeos::ui::ChromiumCommandBuilder* builder,
+                              brillo::CrosConfigInterface* cros_config);
 
 // Add "--ash-power-button-position" flag with value in JSON format read from
 // |cros_config|.

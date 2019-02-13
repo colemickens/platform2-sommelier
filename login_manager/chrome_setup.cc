@@ -38,6 +38,10 @@ namespace login_manager {
 
 const char kWallpaperProperty[] = "wallpaper";
 
+const char kRegulatoryLabelBasePath[] =
+    "/usr/share/chromeos-assets/regulatory_labels";
+const char kRegulatoryLabelProperty[] = "regulatory-label";
+
 const char kPowerButtonPositionPath[] = "/ui/power-button";
 const char kPowerButtonEdgeField[] = "edge";
 const char kPowerButtonPositionField[] = "position";
@@ -450,6 +454,8 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   builder->AddFeatureEnableOverride("MyFilesVolume");
 
   SetUpPowerButtonPositionFlag(builder, cros_config);
+
+  SetUpRegulatoryLabelFlag(builder, cros_config);
 }
 
 // Adds enterprise-related flags to the command line.
@@ -520,6 +526,17 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
 }
 
 }  // namespace
+
+void SetUpRegulatoryLabelFlag(ChromiumCommandBuilder* builder,
+                              brillo::CrosConfigInterface* cros_config) {
+  std::string subdir;
+  if (cros_config &&
+      cros_config->GetString("/", kRegulatoryLabelProperty, &subdir)) {
+    builder->AddArg(base::StringPrintf("--regulatory-label-dir=%s/%s",
+                                       kRegulatoryLabelBasePath,
+                                       subdir.c_str()));
+  }
+}
 
 void SetUpWallpaperFlags(
     ChromiumCommandBuilder* builder,

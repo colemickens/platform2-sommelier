@@ -178,4 +178,16 @@ TEST_F(ChromeSetupTest, TestPowerButtonPosition) {
   EXPECT_EQ(json_position_info, GetFlag(argv, "--ash-power-button-position"));
 }
 
+TEST_F(ChromeSetupTest, TestRegulatoryLabel) {
+  login_manager::SetUpRegulatoryLabelFlag(&builder_, &cros_config_);
+  std::vector<std::string> argv = builder_.arguments();
+  ASSERT_EQ(0, argv.size());
+
+  cros_config_.SetString("/", login_manager::kRegulatoryLabelProperty, kModel);
+  login_manager::SetUpRegulatoryLabelFlag(&builder_, &cros_config_);
+  argv = builder_.arguments();
+  EXPECT_EQ(
+      base::StringPrintf("%s/%s", kRegulatoryLabelBasePath, kModel.c_str()),
+      GetFlag(argv, "--regulatory-label-dir"));
+}
 }  // namespace login_manager
