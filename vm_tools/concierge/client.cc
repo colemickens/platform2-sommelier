@@ -48,7 +48,6 @@ constexpr char kImageTypeQcow2[] = "qcow2";
 constexpr char kImageTypeRaw[] = "raw";
 constexpr char kImageTypeAuto[] = "auto";
 constexpr int64_t kMinimumDiskSize = 1ll * 1024 * 1024 * 1024;  // 1 GiB
-constexpr int64_t kDiskSizeMask = ~511ll;  // Round to disk block size.
 constexpr char kRemovableMediaRoot[] = "/media/removable";
 constexpr char kStorageCryptohomeRoot[] = "cryptohome-root";
 constexpr char kStorageCryptohomeDownloads[] = "cryptohome-downloads";
@@ -398,9 +397,6 @@ int CreateDiskImage(dbus::ObjectProxy* proxy,
   } else if (disk_path.empty()) {
     LOG(ERROR) << "Disk path cannot be empty";
     return -1;
-  } else if (disk_size == 0) {
-    LOG(ERROR) << "Disk size cannot be 0";
-    return -1;
   }
 
   LOG(INFO) << "Creating disk image";
@@ -718,12 +714,7 @@ int StartTerminaVm(dbus::ObjectProxy* proxy,
   request.set_start_termina(true);
 
   if (!cryptohome_id.empty()) {
-    int64_t disk_size =
-        base::SysInfo::AmountOfFreeDiskSpace(base::FilePath("/home"));
-    disk_size = ((disk_size * 9) / 10) & kDiskSizeMask;
-
-    if (disk_size < kMinimumDiskSize)
-      disk_size = kMinimumDiskSize;
+    uint64_t disk_size = 0;  // Let concierge choose the disk size.
 
     string disk_path;
     if (CreateDiskImage(proxy, cryptohome_id, name, disk_size, image_type,

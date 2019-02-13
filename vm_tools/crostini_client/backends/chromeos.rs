@@ -21,7 +21,6 @@ use lsb_release::{LsbRelease, ReleaseChannel};
 use proto::system_api::cicerone_service::{self, *};
 use proto::system_api::seneschal_service::*;
 use proto::system_api::service::*;
-use unsafe_misc::get_free_disk_space;
 
 const IMAGE_TYPE_QCOW2: &str = "qcow2";
 const QCOW_IMAGE_EXTENSION: &str = ".qcow2";
@@ -104,7 +103,6 @@ enum ChromeOSError {
     FailedComponentUpdater(String),
     FailedCreateContainer(CreateLxdContainerResponse_Status, String),
     FailedCreateContainerSignal(LxdContainerCreatedSignal_Status, String),
-    FailedGetFreeDiskSpace(i32),
     FailedGetVmInfo,
     FailedListDiskImages(String),
     FailedMetricsSend { exit_code: Option<i32> },
@@ -141,7 +139,6 @@ impl fmt::Display for ChromeOSError {
             FailedStartContainerSignal(s, reason) => {
                 write!(f, "failed to start container: `{:?}`: {}", s, reason)
             }
-            FailedGetFreeDiskSpace(e) => write!(f, "failed to get free disk space: {}", e),
             FailedGetVmInfo => write!(f, "failed to get vm info"),
             FailedSetupContainerUser(s, reason) => {
                 write!(f, "failed to setup container user: `{:?}`: {}", s, reason)
@@ -290,12 +287,10 @@ impl ChromeOS {
         &mut self,
         vm_name: &str,
         user_id_hash: &str,
-        disk_size: u64,
     ) -> Result<String, Box<Error>> {
         let mut request = CreateDiskImageRequest::new();
         request.disk_path = vm_name.to_owned();
         request.cryptohome_id = user_id_hash.to_owned();
-        request.disk_size = disk_size;
         request.image_type = DiskImageType::DISK_IMAGE_AUTO;
         request.storage_location = StorageLocation::STORAGE_CRYPTOHOME_ROOT;
 
@@ -728,9 +723,7 @@ impl Backend for ChromeOS {
             }
         }
         self.start_concierge()?;
-        let free_size = get_free_disk_space(CRYPTOHOME_ROOT).map_err(FailedGetFreeDiskSpace)?;
-        let disk_size = (free_size.saturating_mul(9) / 10) & DISK_SIZE_MASK;
-        let disk_image_path = self.create_disk_image(name, user_id_hash, disk_size)?;
+        let disk_image_path = self.create_disk_image(name, user_id_hash)?;
         self.start_vm_with_disk(name, user_id_hash, enable_gpu, disk_image_path)
     }
 

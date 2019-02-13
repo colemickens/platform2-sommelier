@@ -130,6 +130,9 @@ const std::map<string, string> kLxdEnv = {
 constexpr size_t kPluginBaseAddress = 0x64735c80;  // 100.115.92.128
 constexpr size_t kPluginSubnetPrefix = 28;
 
+constexpr uint64_t kMinimumDiskSize = 1ll * 1024 * 1024 * 1024;  // 1 GiB
+constexpr uint64_t kDiskSizeMask = ~511ll;  // Round to disk block size.
+
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is created
 // and sent.
@@ -1359,6 +1362,19 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
     return dbus_response;
   }
 
+  uint64_t disk_size;
+  if (request.disk_size()) {
+    disk_size = request.disk_size();
+  } else {
+    // If no disk size was specified, use 90% of free space.
+    uint64_t free_space =
+        base::SysInfo::AmountOfFreeDiskSpace(base::FilePath("/home"));
+    disk_size = ((free_space * 9) / 10) & kDiskSizeMask;
+
+    if (disk_size < kMinimumDiskSize)
+      disk_size = kMinimumDiskSize;
+  }
+
   if (base::PathExists(disk_path)) {
     response.set_status(DISK_STATUS_EXISTS);
     response.set_disk_path(disk_path.value());
@@ -1370,7 +1386,7 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
   if (request.image_type() == DISK_IMAGE_RAW ||
       request.image_type() == DISK_IMAGE_AUTO) {
     LOG(INFO) << "Creating raw disk at: " << disk_path.value() << " size "
-              << request.disk_size();
+              << disk_size;
     base::ScopedFD fd(
         open(disk_path.value().c_str(), O_CREAT | O_NONBLOCK | O_WRONLY, 0600));
     if (!fd.is_valid()) {
@@ -1382,7 +1398,7 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
       return dbus_response;
     }
 
-    int ret = ftruncate(fd.get(), request.disk_size());
+    int ret = ftruncate(fd.get(), disk_size);
     if (ret != 0) {
       PLOG(ERROR) << "Failed to truncate raw disk";
       unlink(disk_path.value().c_str());
@@ -1404,7 +1420,7 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
     }
 
     ret = fallocate(fd.get(), FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE, 0,
-                    request.disk_size());
+                    disk_size);
     if (ret == 0) {
       LOG(INFO) << "fallocate(FALLOC_FL_PUNCH_HOLE) is supported";
       response.set_status(DISK_STATUS_CREATED);
@@ -1432,9 +1448,8 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
   }
 
   LOG(INFO) << "Creating qcow2 disk at: " << disk_path.value() << " size "
-            << request.disk_size();
-  int ret =
-      create_qcow_with_size(disk_path.value().c_str(), request.disk_size());
+            << disk_size;
+  int ret = create_qcow_with_size(disk_path.value().c_str(), disk_size);
   if (ret != 0) {
     LOG(ERROR) << "Failed to create qcow2 disk image: " << strerror(ret);
     response.set_status(DISK_STATUS_FAILED);
