@@ -46,6 +46,7 @@ void EnterSandbox() {
   minijail_namespace_vfs(jail.get());
   minijail_bind(jail.get(), "/", "/", 0);
   minijail_bind(jail.get(), "/proc", "/proc", 0);
+  minijail_bind(jail.get(), "/dev/log", "/dev/log", 0);
   minijail_mount_dev(jail.get());
   minijail_remount_proc_readonly(jail.get());
   minijail_enter_pivot_root(jail.get(), "/var/empty");
