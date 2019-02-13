@@ -615,31 +615,9 @@ int MetadataHandler::FillMetadataFromDeviceInfo(
   UPDATE(ANDROID_LENS_INFO_FOCUS_DISTANCE_CALIBRATION,
          &focus_distance_calibration, 1);
 
-  std::vector<uint8_t> ae_antibanding_modes;
-  uint8_t ae_antibanding_mode;
-  if (device_info.power_line_frequency == PowerLineFrequency::FREQ_AUTO) {
-    ae_antibanding_modes.push_back(ANDROID_CONTROL_AE_ANTIBANDING_MODE_AUTO);
-    ae_antibanding_mode = ANDROID_CONTROL_AE_ANTIBANDING_MODE_AUTO;
-  } else if (is_external && device_info.power_line_frequency ==
-                                PowerLineFrequency::FREQ_ERROR) {
-    ae_antibanding_modes.push_back(ANDROID_CONTROL_AE_ANTIBANDING_MODE_OFF);
-    ae_antibanding_mode = ANDROID_CONTROL_AE_ANTIBANDING_MODE_OFF;
-  } else {
-    ae_antibanding_modes.push_back(ANDROID_CONTROL_AE_ANTIBANDING_MODE_50HZ);
-    ae_antibanding_modes.push_back(ANDROID_CONTROL_AE_ANTIBANDING_MODE_60HZ);
-    if (device_info.power_line_frequency == PowerLineFrequency::FREQ_50HZ) {
-      ae_antibanding_mode = ANDROID_CONTROL_AE_ANTIBANDING_MODE_50HZ;
-    } else if (device_info.power_line_frequency ==
-               PowerLineFrequency::FREQ_60HZ) {
-      ae_antibanding_mode = ANDROID_CONTROL_AE_ANTIBANDING_MODE_60HZ;
-    } else {
-      LOGF(ERROR) << "Invalid power line frequency setting: "
-                  << static_cast<int>(device_info.power_line_frequency);
-      return -EINVAL;
-    }
-  }
-  UPDATE(ANDROID_CONTROL_AE_AVAILABLE_ANTIBANDING_MODES,
-         ae_antibanding_modes.data(), ae_antibanding_modes.size());
+  uint8_t ae_antibanding_mode = ANDROID_CONTROL_AE_ANTIBANDING_MODE_AUTO;
+  UPDATE(ANDROID_CONTROL_AE_AVAILABLE_ANTIBANDING_MODES, &ae_antibanding_mode,
+         1);
   UPDATE(ANDROID_CONTROL_AE_ANTIBANDING_MODE, &ae_antibanding_mode, 1);
 
   return 0;
