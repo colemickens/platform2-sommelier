@@ -822,6 +822,7 @@ void Daemon::InitDBus() {
       {kRequestSuspendMethod, &Daemon::HandleRequestSuspendMethod},
       {kHandleVideoActivityMethod, &Daemon::HandleVideoActivityMethod},
       {kHandleUserActivityMethod, &Daemon::HandleUserActivityMethod},
+      {kHandleWakeNotificationMethod, &Daemon::HandleWakeNotificationMethod},
       {kSetIsProjectingMethod, &Daemon::HandleSetIsProjectingMethod},
       {kSetPolicyMethod, &Daemon::HandleSetPolicyMethod},
       {kSetBacklightsForcedOffMethod,
@@ -1061,6 +1062,15 @@ std::unique_ptr<dbus::Response> Daemon::HandleUserActivityMethod(
   state_controller_->HandleUserActivity();
   for (auto controller : all_backlight_controllers_)
     controller->HandleUserActivity(type);
+  return std::unique_ptr<dbus::Response>();
+}
+
+std::unique_ptr<dbus::Response> Daemon::HandleWakeNotificationMethod(
+    dbus::MethodCall* method_call) {
+  suspender_->HandleWakeNotification();
+  state_controller_->HandleWakeNotification();
+  for (auto controller : all_backlight_controllers_)
+    controller->HandleWakeNotification();
   return std::unique_ptr<dbus::Response>();
 }
 

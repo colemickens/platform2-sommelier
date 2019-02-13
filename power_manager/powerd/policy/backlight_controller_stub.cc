@@ -24,6 +24,7 @@ void BacklightControllerStub::ResetStats() {
   tablet_mode_changes_.clear();
   policy_changes_.clear();
   display_service_starts_ = 0;
+  wake_notification_reports_ = 0;
 }
 
 void BacklightControllerStub::NotifyObservers(
@@ -67,6 +68,10 @@ void BacklightControllerStub::HandleUserActivity(UserActivityType type) {
 
 void BacklightControllerStub::HandleVideoActivity(bool is_fullscreen) {
   video_activity_reports_.push_back(is_fullscreen);
+}
+
+void BacklightControllerStub::HandleWakeNotification() {
+  wake_notification_reports_++;
 }
 
 void BacklightControllerStub::HandleHoverStateChange(bool hovering) {

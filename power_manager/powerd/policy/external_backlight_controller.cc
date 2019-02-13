@@ -98,6 +98,8 @@ void ExternalBacklightController::HandleTabletModeChange(TabletMode mode) {}
 
 void ExternalBacklightController::HandleUserActivity(UserActivityType type) {}
 
+void ExternalBacklightController::HandleWakeNotification() {}
+
 void ExternalBacklightController::HandlePolicyChange(
     const PowerManagementPolicy& policy) {}
 

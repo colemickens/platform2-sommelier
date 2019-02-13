@@ -217,10 +217,10 @@ class Suspender : public SuspendDelayObserver {
   void RequestSuspendWithExternalWakeupCount(SuspendImminent::Reason reason,
                                              uint64_t wakeup_count);
 
-  // Handles the lid being opened, user activity, or the system shutting down,
-  // any of which may abort an in-progress suspend attempt.
+  // Handles events that may abort in-progress suspend attempts.
   void HandleLidOpened();
   void HandleUserActivity();
+  void HandleWakeNotification();
   void HandleShutdown();
 
   // Handles the D-Bus name |name| becoming owned by |new_owner| instead of
@@ -266,7 +266,12 @@ class Suspender : public SuspendDelayObserver {
     READY_TO_RESUSPEND,
     // The system is shutting down.
     SHUTDOWN_STARTED,
+    // A notification was created or updated.
+    WAKE_NOTIFICATION,
   };
+
+  // Converts |event| to a string.
+  static std::string EventToString(Event event);
 
   // Called by Init() to export suspend-related D-Bus methods on
   // |dbus_wrapper_|.
@@ -300,9 +305,9 @@ class Suspender : public SuspendDelayObserver {
   void HandleEventInDarkResumeOrRetrySuspend(Event event);
 
   // Called by HandleEventInWaitingForNormalSuspendDelays or
-  // HandleEventInDarkResumeOrRetrySuspend to handle Event::USER_ACTIVITY.
-  // Returns new value for |state_|.
-  State HandleUserActivityInSuspend();
+  // HandleEventInDarkResumeOrRetrySuspend to handle Event::USER_ACTIVITY or
+  // Event::WAKE_NOTIFICATION. Returns new value for |state_|.
+  State HandleWakeEventInSuspend(Event event);
 
   // Starts a new suspend request, notifying clients that have registered delays
   // that the system is about to suspend.

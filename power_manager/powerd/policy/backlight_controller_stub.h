@@ -50,6 +50,7 @@ class BacklightControllerStub : public policy::BacklightController {
     return policy_changes_;
   }
   int display_service_starts() const { return display_service_starts_; }
+  int wake_notification_reports() const { return wake_notification_reports_; }
   bool dimmed() const { return dimmed_; }
   bool off() const { return off_; }
   bool suspended() const { return suspended_; }
@@ -76,6 +77,7 @@ class BacklightControllerStub : public policy::BacklightController {
   void HandlePowerButtonPress() override;
   void HandleUserActivity(UserActivityType type) override;
   void HandleVideoActivity(bool is_fullscreen) override;
+  void HandleWakeNotification() override;
   void HandleHoverStateChange(bool hovering) override;
   void HandleTabletModeChange(TabletMode mode) override;
   void HandlePolicyChange(const PowerManagementPolicy& policy) override;
@@ -111,6 +113,7 @@ class BacklightControllerStub : public policy::BacklightController {
   std::vector<TabletMode> tablet_mode_changes_;
   std::vector<PowerManagementPolicy> policy_changes_;
   int display_service_starts_ = 0;
+  int wake_notification_reports_ = 0;
 
   bool dimmed_ = false;
   bool off_ = false;

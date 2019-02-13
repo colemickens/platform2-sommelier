@@ -645,6 +645,15 @@ TEST_F(InternalBacklightControllerTest, ForceBacklightOnForUserActivity) {
   controller_->HandlePowerButtonPress();
   EXPECT_EQ(kMinVisibleLevel, backlight_.current_level());
 
+  // Same for a wake notification.
+  test::CallSetScreenBrightness(
+      dbus_wrapper_.get(), 0.0,
+      SetBacklightBrightnessRequest_Transition_INSTANT,
+      SetBacklightBrightnessRequest_Cause_USER_REQUEST);
+  ASSERT_EQ(0, backlight_.current_level());
+  controller_->HandleWakeNotification();
+  EXPECT_EQ(kMinVisibleLevel, backlight_.current_level());
+
   // Ditto for most user activity.
   test::CallSetScreenBrightness(
       dbus_wrapper_.get(), 0.0,
@@ -690,6 +699,8 @@ TEST_F(InternalBacklightControllerTest, ForceBacklightOnForUserActivity) {
   EXPECT_EQ(0, backlight_.current_level());
   controller_->HandleUserActivity(USER_ACTIVITY_OTHER);
   EXPECT_EQ(0, backlight_.current_level());
+  controller_->HandleWakeNotification();
+  EXPECT_EQ(0, backlight_.current_level());
 
   // The backlight should be turned on after exiting presentation mode.
   controller_->HandleDisplayModeChange(DisplayMode::NORMAL);
@@ -708,6 +719,7 @@ TEST_F(InternalBacklightControllerTest, ForceBacklightOnForUserActivity) {
   controller_->HandleSessionStateChange(SessionState::STARTED);
   controller_->HandlePowerButtonPress();
   controller_->HandleUserActivity(USER_ACTIVITY_OTHER);
+  controller_->HandleWakeNotification();
   EXPECT_EQ(0, backlight_.current_level());
 }
 
@@ -864,6 +876,8 @@ TEST_F(InternalBacklightControllerTest, BrightnessPolicy) {
   controller_->HandleSessionStateChange(SessionState::STARTED);
   controller_->HandlePowerButtonPress();
   controller_->HandleUserActivity(USER_ACTIVITY_OTHER);
+  controller_->HandleWakeNotification();
+  EXPECT_EQ(0, backlight_.current_level());
 
   // After sending an empty policy, user activity should increase the
   // brightness from 0%.
@@ -871,6 +885,18 @@ TEST_F(InternalBacklightControllerTest, BrightnessPolicy) {
   controller_->HandlePolicyChange(policy);
   EXPECT_EQ(0, backlight_.current_level());
   controller_->HandleUserActivity(USER_ACTIVITY_OTHER);
+  EXPECT_GT(backlight_.current_level(), 0);
+
+  // Set the brightness to 0% and send an empty policy again. This time check
+  // that a wake notification should increase the brightness from 0%.
+  policy.Clear();
+  policy.set_battery_brightness_percent(0.0);
+  controller_->HandlePolicyChange(policy);
+  EXPECT_EQ(0, backlight_.current_level());
+  policy.Clear();
+  controller_->HandlePolicyChange(policy);
+  EXPECT_EQ(0, backlight_.current_level());
+  controller_->HandleWakeNotification();
   EXPECT_GT(backlight_.current_level(), 0);
 
   // After a policy sets the brightness to 0%, the brightness keys should still

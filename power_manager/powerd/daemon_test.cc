@@ -502,6 +502,13 @@ TEST_F(DaemonTest, NotifyMembersAboutEvents) {
                                         "newer");
   EXPECT_EQ(2, internal_backlight_controller_->display_service_starts());
   EXPECT_EQ(2, keyboard_backlight_controller_->display_service_starts());
+
+  // Wake notification events.
+  dbus::MethodCall wake_notification_call(kPowerManagerInterface,
+                                          kHandleWakeNotificationMethod);
+  ASSERT_TRUE(
+      dbus_wrapper_->CallExportedMethodSync(&wake_notification_call).get());
+  ASSERT_EQ(1, internal_backlight_controller_->wake_notification_reports());
 }
 
 TEST_F(DaemonTest, DontReportTabletModeChangeFromInit) {

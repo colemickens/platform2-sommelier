@@ -51,6 +51,7 @@ class ExternalBacklightController : public BacklightController,
   void HandlePowerButtonPress() override;
   void HandleUserActivity(UserActivityType type) override;
   void HandleVideoActivity(bool is_fullscreen) override;
+  void HandleWakeNotification() override;
   void HandleHoverStateChange(bool hovering) override;
   void HandleTabletModeChange(TabletMode mode) override;
   void HandlePolicyChange(const PowerManagementPolicy& policy) override;

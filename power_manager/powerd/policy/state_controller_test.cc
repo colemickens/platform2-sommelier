@@ -453,6 +453,18 @@ TEST_F(StateControllerTest, BasicDelays) {
   EXPECT_EQ(GetScreenIdleStateChangedString(false, false).c_str(),
             GetDBusSignals(SignalType::ALL));
 
+  // The screen should be dimmed after the configured interval and then undimmed
+  // in response to wake notification.
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
+  EXPECT_EQ(JoinActions(kScreenDim, nullptr), delegate_.GetActions());
+  EXPECT_EQ(GetScreenIdleStateChangedString(true, false).c_str(),
+            GetDBusSignals(SignalType::ALL));
+
+  controller_.HandleWakeNotification();
+  EXPECT_EQ(kScreenUndim, delegate_.GetActions());
+  EXPECT_EQ(GetScreenIdleStateChangedString(false, false).c_str(),
+            GetDBusSignals(SignalType::ALL));
+
   // The system should eventually suspend if the user is inactive.
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
@@ -921,6 +933,13 @@ TEST_F(StateControllerTest, RequireUsbInputDeviceToSuspend) {
   ASSERT_TRUE(TriggerDefaultAcTimeouts());
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kSuspendIdle, NULL),
             delegate_.GetActions());
+
+  // Check the same scenario with a wake notification event.
+  controller_.HandleWakeNotification();
+  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
+  ASSERT_TRUE(TriggerDefaultAcTimeouts());
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kSuspendIdle, NULL),
+            delegate_.GetActions());
 }
 
 // Tests that suspend is deferred before OOBE is completed.
@@ -936,6 +955,17 @@ TEST_F(StateControllerTest, DontSuspendBeforeOobeCompleted) {
   // Report user activity and mark OOBE as done.  The system should suspend
   // this time.
   controller_.HandleUserActivity();
+  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
+  delegate_.set_oobe_completed(true);
+  ASSERT_TRUE(TriggerDefaultAcTimeouts());
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kSuspendIdle, NULL),
+            delegate_.GetActions());
+
+  // Set OOBE to be incomplete again and send a wake notification. This should
+  // turn on the display. Now set OOBE to be complete and trigger default
+  // timeouts, this should result in system suspend.
+  delegate_.set_oobe_completed(false);
+  controller_.HandleWakeNotification();
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
   delegate_.set_oobe_completed(true);
   ASSERT_TRUE(TriggerDefaultAcTimeouts());
@@ -970,6 +1000,13 @@ TEST_F(StateControllerTest, DisableIdleSuspend) {
   policy.set_ac_idle_action(PowerManagementPolicy_Action_SHUT_DOWN);
   controller_.HandlePolicyChange(policy);
   controller_.HandleSessionStateChange(SessionState::STOPPED);
+  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
+  ASSERT_TRUE(TriggerDefaultAcTimeouts());
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
+
+  // Sending a wake notification should turn the screen on. Triggering default
+  // timeouts should not suspend the device due to idle suspend being disabled.
+  controller_.HandleWakeNotification();
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
   ASSERT_TRUE(TriggerDefaultAcTimeouts());
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
@@ -1101,6 +1138,13 @@ TEST_F(StateControllerTest, AvoidSuspendForHeadphoneJack) {
 
   // With headphones connected, we shouldn't suspend.
   delegate_.set_headphone_jack_plugged(true);
+  ASSERT_TRUE(TriggerDefaultAcTimeouts());
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
+
+  // A wake notification should turn the screen on but a timeout still shouldn't
+  // suspend the device.
+  controller_.HandleWakeNotification();
+  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
   ASSERT_TRUE(TriggerDefaultAcTimeouts());
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
 
@@ -1383,8 +1427,8 @@ TEST_F(StateControllerTest, IdleWarnings) {
 }
 
 // Tests that wake locks reported via policy messages defer actions
-// appropriately.
-TEST_F(StateControllerTest, WakeLocks) {
+// appropriately. Use HandleUserActivity to turn the screen on.
+TEST_F(StateControllerTest, WakeLocksWithUserActivity) {
   Init();
 
   const base::TimeDelta kDimDelay = base::TimeDelta::FromSeconds(60);
@@ -1435,8 +1479,8 @@ TEST_F(StateControllerTest, WakeLocks) {
   controller_.HandleUserActivity();
   EXPECT_EQ(kScreenUndim, delegate_.GetActions());
 
-  // Now try the same thing with a full-brightness wake lock. No actions should
-  // be scheduled.
+  // Now try the same thing with a full-brightness wake lock. No actions
+  // should be scheduled.
   policy.set_screen_wake_lock(true);
   policy.set_dim_wake_lock(false);
   policy.set_system_wake_lock(false);
@@ -1455,6 +1499,38 @@ TEST_F(StateControllerTest, WakeLocks) {
   EXPECT_EQ(kScreenLock, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleDelay));
   EXPECT_EQ(kSuspendIdle, delegate_.GetActions());
+}
+
+// Tests that wake locks reported via policy messages defer actions
+// appropriately. Use HandleWakeNotification to turn the screen on.
+TEST_F(StateControllerTest, WakeLocksWithWakeNotification) {
+  Init();
+
+  // Set a system wake lock and check that the system turns off the display.
+  // Sending a wake notification should undim and turn on the screen.
+  PowerManagementPolicy policy;
+  policy.set_system_wake_lock(true);
+  controller_.HandlePolicyChange(policy);
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
+  EXPECT_EQ(kScreenOff, delegate_.GetActions());
+  EXPECT_TRUE(test_api_.action_timer_time().is_null());
+  controller_.HandleWakeNotification();
+  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, nullptr),
+            delegate_.GetActions());
+
+  // Change the wake lock to be a dim wake lock. Check that the screen dims and
+  // doesn't turn off. Sending a wake notification should undim the screen.
+  policy.set_system_wake_lock(false);
+  policy.set_dim_wake_lock(true);
+  controller_.HandlePolicyChange(policy);
+  ResetLastStepDelay();
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+  EXPECT_TRUE(test_api_.action_timer_time().is_null());
+  controller_.HandleWakeNotification();
+  EXPECT_EQ(kScreenUndim, delegate_.GetActions());
 }
 
 // Tests that the system avoids suspending on lid-closed when an external
@@ -1670,9 +1746,9 @@ TEST_F(StateControllerTest, TimeOutIfInitialPolicyNotReceived) {
   EXPECT_EQ(kSuspendLidClosed, delegate_.GetActions());
 }
 
-// Tests that user activity is ignored while the lid is closed.  Spurious
-// events can apparently be reported as a result of the user closing the
-// lid (http://crbug.com/221228).
+// Tests that user activity is ignored while the lid is closed. Spurious events
+// can apparently be reported as a result of the user closing the lid
+// (http://crbug.com/221228).
 TEST_F(StateControllerTest, IgnoreUserActivityWhileLidClosed) {
   Init();
 
@@ -1704,6 +1780,44 @@ TEST_F(StateControllerTest, IgnoreUserActivityWhileLidClosed) {
   controller_.HandleLidStateChange(LidState::CLOSED);
   EXPECT_EQ(kDocked, delegate_.GetActions());
   controller_.HandleUserActivity();
+  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
+}
+
+// Tests that a wake notification is ignored while the lid is closed. Spurious
+// events can apparently be reported as a result of the user closing the
+// lid (http://crbug.com/221228).
+TEST_F(StateControllerTest, IgnoreWakeNotificationWhileLidClosed) {
+  Init();
+
+  // Wait for the screen to be dimmed and turned off.
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
+
+  // A wake notification received while the lid is closed should be ignored.
+  delegate_.set_lid_state(LidState::CLOSED);
+  controller_.HandleLidStateChange(LidState::CLOSED);
+  EXPECT_EQ(kSuspendLidClosed, delegate_.GetActions());
+  controller_.HandleWakeNotification();
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+
+  // Resume and go through the same sequence as before, but this time while
+  // presenting so that docked mode will be used.
+  delegate_.set_lid_state(LidState::OPEN);
+  controller_.HandleResume();
+  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
+  controller_.HandleLidStateChange(LidState::OPEN);
+  controller_.HandleDisplayModeChange(DisplayMode::PRESENTATION);
+  ResetLastStepDelay();
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
+
+  // A wake notification while docked should turn the screen back on and undim
+  // it.
+  controller_.HandleLidStateChange(LidState::CLOSED);
+  EXPECT_EQ(kDocked, delegate_.GetActions());
+  controller_.HandleWakeNotification();
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
 }
 

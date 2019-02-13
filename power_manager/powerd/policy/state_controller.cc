@@ -517,6 +517,20 @@ void StateController::HandleVideoActivity() {
   UpdateState();
 }
 
+void StateController::HandleWakeNotification() {
+  CHECK(initialized_);
+
+  // Ignore user activity reported while the lid is closed unless we're in
+  // docked mode.
+  if (lid_state_ == LidState::CLOSED && !in_docked_mode()) {
+    LOG(INFO) << "Ignoring wake notification while lid is closed";
+    return;
+  }
+
+  last_wake_notification_time_ = clock_->GetCurrentTime();
+  UpdateState();
+}
+
 void StateController::HandleAudioStateChange(bool active) {
   CHECK(initialized_);
   audio_activity_->SetActive(active, clock_->GetCurrentTime());
@@ -709,6 +723,7 @@ base::TimeTicks StateController::GetLastActivityTimeForIdle(
     last_time = std::max(last_time, last_video_activity_time_);
   if (emit_screen_dim_imminent_)
     last_time = std::max(last_time, last_defer_screen_dim_time_);
+  last_time = std::max(last_time, last_wake_notification_time_);
 
   // All types of wake locks defer the idle action.
   last_time = std::max(last_time, screen_wake_lock_->GetLastActiveTime(now));
@@ -726,6 +741,7 @@ base::TimeTicks StateController::GetLastActivityTimeForScreenDim(
     last_time = std::max(last_time, last_video_activity_time_);
   if (emit_screen_dim_imminent_)
     last_time = std::max(last_time, last_defer_screen_dim_time_);
+  last_time = std::max(last_time, last_wake_notification_time_);
 
   // Only full-brightness wake locks keep the screen from dimming.
   last_time = std::max(last_time, screen_wake_lock_->GetLastActiveTime(now));

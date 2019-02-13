@@ -207,6 +207,8 @@ class Daemon : public policy::InputEventHandler::Delegate,
       dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandleUserActivityMethod(
       dbus::MethodCall* method_call);
+  std::unique_ptr<dbus::Response> HandleWakeNotificationMethod(
+      dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandleSetIsProjectingMethod(
       dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandleSetPolicyMethod(

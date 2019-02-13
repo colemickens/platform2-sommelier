@@ -319,6 +319,14 @@ void InternalBacklightController::HandleUserActivity(UserActivityType type) {
 
 void InternalBacklightController::HandleVideoActivity(bool is_fullscreen) {}
 
+void InternalBacklightController::HandleWakeNotification() {
+  // Increase the brightness of the display, even though the user might have set
+  // it to zero, as this notification is waking up the device to get the user's
+  // attention.
+  EnsureUserBrightnessIsNonzero(
+      BacklightBrightnessChange_Cause_WAKE_NOTIFICATION);
+}
+
 void InternalBacklightController::HandleHoverStateChange(bool hovering) {}
 
 void InternalBacklightController::HandleTabletModeChange(TabletMode mode) {}

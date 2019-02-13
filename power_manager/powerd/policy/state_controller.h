@@ -179,6 +179,7 @@ class StateController : public PrefsObserver {
   // Handles notification of different types of activity.
   void HandleUserActivity();
   void HandleVideoActivity();
+  void HandleWakeNotification();
 
   // Handles audio activity starting or stopping.
   void HandleAudioStateChange(bool active);
@@ -461,9 +462,11 @@ class StateController : public PrefsObserver {
   // http://crbug.com/462428), or 0 if disabled.
   int tpm_dictionary_attack_suspend_threshold_ = 0;
 
-  // Time of the last report of user or video activity.
+  // Time of the last report of user activity, video activity or wake
+  // notification.
   base::TimeTicks last_user_activity_time_;
   base::TimeTicks last_video_activity_time_;
+  base::TimeTicks last_wake_notification_time_;
 
   // Time of the last DeferScreenDim D-Bus method call.
   base::TimeTicks last_defer_screen_dim_time_;

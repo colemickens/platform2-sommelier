@@ -67,6 +67,10 @@ class BacklightController {
   // video is ongoing.
   virtual void HandleVideoActivity(bool is_fullscreen) = 0;
 
+  // Handles a wake notification i.e. a notification that might wake up the
+  // system from dark resume to full resume.
+  virtual void HandleWakeNotification() = 0;
+
   // Handles the user's hands moving to or away from the touchpad or keyboard.
   virtual void HandleHoverStateChange(bool hovering) = 0;
 

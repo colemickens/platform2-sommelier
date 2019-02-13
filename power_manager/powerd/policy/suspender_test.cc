@@ -489,6 +489,21 @@ TEST_F(SuspenderTest, CancelBeforeSuspend) {
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
 
+  // A wake notification should also cancel.
+  dbus_wrapper_.ClearSentSignals();
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER);
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  EXPECT_EQ(test_api_.suspend_id(), GetSuspendImminentId(0));
+  suspender_.HandleWakeNotification();
+  EXPECT_EQ(test_api_.suspend_id(), GetSuspendDoneId(1));
+  EXPECT_EQ(kUnprepare, delegate_.GetActions());
+  EXPECT_FALSE(delegate_.suspend_was_successful());
+  EXPECT_EQ(0, delegate_.num_suspend_attempts());
+  EXPECT_FALSE(delegate_.suspend_canceled_while_in_dark_resume());
+  AnnounceReadyForSuspend(test_api_.suspend_id());
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
+
   // The request should also be canceled if the system starts shutting down.
   dbus_wrapper_.ClearSentSignals();
   suspender_.RequestSuspend(SuspendImminent_Reason_OTHER);
@@ -509,8 +524,8 @@ TEST_F(SuspenderTest, CancelBeforeSuspend) {
   EXPECT_EQ(kNoActions, delegate_.GetActions());
 }
 
-// Tests that a suspend-canceling action after a failed suspend attempt
-// should remove the retry timeout.
+// Tests that a suspend-canceling action (user activity) after a failed suspend
+// attempt should remove the retry timeout.
 TEST_F(SuspenderTest, CancelAfterSuspend) {
   Init();
   delegate_.set_suspend_result(Suspender::Delegate::SuspendResult::FAILURE);
@@ -829,6 +844,26 @@ TEST_F(SuspenderTest, DarkResumeCancelBeforeResuspend) {
   EXPECT_EQ(kSuspend, delegate_.GetActions());
 
   suspender_.HandleLidOpened();
+  EXPECT_EQ(test_api_.suspend_id(), GetSuspendDoneId(2));
+  EXPECT_FALSE(delegate_.suspend_announced());
+  EXPECT_EQ(kUnprepare, delegate_.GetActions());
+  EXPECT_FALSE(delegate_.suspend_was_successful());
+  EXPECT_EQ(1, delegate_.num_suspend_attempts());
+  EXPECT_TRUE(delegate_.suspend_canceled_while_in_dark_resume());
+  EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
+
+  // Clear dark resume state now that the device is transitioned to State::IDLE.
+  // This mimics real world behavior.
+  dark_resume_.set_in_dark_resume(false);
+
+  // A wake notification should also trigger the transition.
+  dbus_wrapper_.ClearSentSignals();
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER);
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  AnnounceReadyForSuspend(test_api_.suspend_id());
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
+
+  suspender_.HandleWakeNotification();
   EXPECT_EQ(test_api_.suspend_id(), GetSuspendDoneId(2));
   EXPECT_FALSE(delegate_.suspend_announced());
   EXPECT_EQ(kUnprepare, delegate_.GetActions());
