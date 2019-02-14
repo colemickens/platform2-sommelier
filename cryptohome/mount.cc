@@ -591,15 +591,6 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     // (encrypted) contents of vault_path into vault_path/user, create
     // vault_path/root.
     MigrateToUserHome(vault_path);
-
-    FilePath dest = mount_args.to_migrate_from_ecryptfs ?
-        GetUserTemporaryMountDirectory(obfuscated_username) : mount_point_;
-    if (!RememberMount(vault_path, dest, "ecryptfs", ecryptfs_options)) {
-      LOG(ERROR) << "Cryptohome mount failed";
-      UnmountAll();
-      *mount_error = MOUNT_ERROR_FATAL;
-      return false;
-    }
   }
   if (should_mount_dircrypto) {
     if (!platform_->SetDirCryptoKey(mount_point_, vault_keyset.fek_sig())) {
@@ -628,6 +619,19 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
 
   const FilePath user_home = GetMountedUserHomePath(obfuscated_username);
   const FilePath root_home = GetMountedRootHomePath(obfuscated_username);
+
+  // b/115997660: Mount eCryptFs after creating the tracked subdirectories.
+  if (should_mount_ecryptfs) {
+    FilePath dest = mount_args.to_migrate_from_ecryptfs ?
+        GetUserTemporaryMountDirectory(obfuscated_username) : mount_point_;
+    if (!RememberMount(vault_path, dest, "ecryptfs", ecryptfs_options)) {
+      LOG(ERROR) << "Cryptohome mount failed";
+      UnmountAll();
+      *mount_error = MOUNT_ERROR_FATAL;
+      return false;
+    }
+  }
+
   if (created)
     CopySkeleton(user_home);
 
