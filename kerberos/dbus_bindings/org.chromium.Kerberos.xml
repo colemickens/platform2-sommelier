@@ -3,15 +3,82 @@
 <node name="/org/chromium/Kerberos"
       xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.Kerberos">
-    <method name="Test">
+    <method name="AddAccount">
       <tp:docstring>
-        Interface must be non-empty to prevent unused variable compile errors.
+        Adds a Kerberos account to the list of accounts.
       </tp:docstring>
-      <arg name="test" type="b" direction="in">
+      <arg name="request" type="ay" direction="in">
         <tp:docstring>
-          Test.
+          Serialized AddAccountRequest message.
         </tp:docstring>
       </arg>
+      <arg name="response" type="ay" direction="out">
+        <tp:docstring>
+          Serialized AddAccountResponse message.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+
+    <method name="RemoveAccount">
+      <tp:docstring>
+        Removes a Kerberos account from the list of accounts.
+      </tp:docstring>
+      <arg name="request" type="ay" direction="in">
+        <tp:docstring>
+          Serialized RemoveAccountRequest message.
+        </tp:docstring>
+      </arg>
+      <arg name="response" type="ay" direction="out">
+        <tp:docstring>
+          Serialized RemoveAccountResponse message.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+
+    <method name="AcquireKerberosTgt">
+      <tp:docstring>
+        Acquires a Kerberos ticket-granting-ticket from the Key Distribution
+        Center (KDC).
+      </tp:docstring>
+      <arg name="request" type="ay" direction="in">
+        <tp:docstring>
+          Serialized AcquireKerberosTgtRequest message.
+        </tp:docstring>
+      </arg>
+      <arg name="password_fd" type="h" direction="in">
+        <tp:docstring>
+          File descriptor to the password.
+        </tp:docstring>
+      </arg>
+      <arg name="response" type="ay" direction="out">
+        <tp:docstring>
+          Serialized AcquireKerberosTgtResponse message.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+
+    <method name="GetKerberosFiles">
+      <tp:docstring>
+         Gets the Kerberos credential cache (krb5cc) and configuration
+         (krb5.conf) files for a given account. Returns ERROR_NONE and a blob
+         with empty files if the account does not exist or has no credential
+         cache. Returns ERROR_LOCAL_IO if the krb5cc file exists, but any file
+         could not be read.
+      </tp:docstring>
+      <arg name="request" type="ay" direction="in">
+        <tp:docstring>
+          Serialized GetKerberosFilesRequest message.
+        </tp:docstring>
+      </arg>
+      <arg name="response" type="ay" direction="out">
+        <tp:docstring>
+          Serialized GetKerberosFilesResponse message.
+        </tp:docstring>
+      </arg>
+      -->
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
   </interface>

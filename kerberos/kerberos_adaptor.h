@@ -6,10 +6,12 @@
 #define KERBEROS_KERBEROS_ADAPTOR_H_
 
 #include <memory>
+#include <vector>
 
 #include <base/macros.h>
 #include <brillo/dbus/async_event_sequencer.h>
 
+#include "kerberos/account_manager.h"
 #include "kerberos/org.chromium.Kerberos.h"
 
 namespace brillo {
@@ -34,10 +36,22 @@ class KerberosAdaptor : public org::chromium::KerberosAdaptor,
           completion_callback);
 
   // org::chromium::KerberosInterface: (see org.chromium.Kerberos.xml).
-  void Test(bool test) override;
+  std::vector<uint8_t> AddAccount(
+      const std::vector<uint8_t>& request_blob) override;
+
+  std::vector<uint8_t> RemoveAccount(
+      const std::vector<uint8_t>& request_blob) override;
+
+  std::vector<uint8_t> AcquireKerberosTgt(
+      const std::vector<uint8_t>& request_blob,
+      const base::ScopedFD& password_fd) override;
+
+  std::vector<uint8_t> GetKerberosFiles(
+      const std::vector<uint8_t>& request_blob) override;
 
  private:
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
+  AccountManager manager_;
 
   DISALLOW_COPY_AND_ASSIGN(KerberosAdaptor);
 };
