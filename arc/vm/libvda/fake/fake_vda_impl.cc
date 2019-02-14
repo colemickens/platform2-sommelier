@@ -1,0 +1,125 @@
+// Copyright 2019 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "arc/vm/libvda/fake/fake_vda_impl.h"
+
+#include <base/logging.h>
+#include <base/macros.h>
+
+namespace arc {
+namespace {
+
+constexpr vda_input_format_t kInputFormats[] = {{.profile = VP8PROFILE_MIN,
+                                                 .min_width = 1,
+                                                 .min_height = 1,
+                                                 .max_width = 1920,
+                                                 .max_height = 1080},
+                                                {.profile = VP9PROFILE_PROFILE0,
+                                                 .min_width = 1,
+                                                 .min_height = 1,
+                                                 .max_width = 1920,
+                                                 .max_height = 1080},
+                                                {.profile = H264PROFILE_MAIN,
+                                                 .min_width = 1,
+                                                 .min_height = 1,
+                                                 .max_width = 1920,
+                                                 .max_height = 1080}};
+
+constexpr vda_pixel_format_t kOutputFormats[] = {YV12, NV12};
+
+// A fake decode session context which will propagate fake PICTURE_READY events
+// in response to decode events.
+// TODO(alexlau): Consider supporting testing of vda_use_output_buffer and
+//                dispatching additional events, with working bitstream and
+//                picture ids.
+class FakeContext : public VdaContext {
+ public:
+  FakeContext();
+
+  // VdaContext overrides.
+  vda_result_t Decode(int32_t bitstream_id,
+                      int fd,
+                      uint32_t offset,
+                      uint32_t bytes_used) override;
+  vda_result_t SetOutputBufferCount(size_t num_output_buffers) override;
+  vda_result_t UseOutputBuffer(int32_t picture_buffer_id,
+                               vda_pixel_format_t format,
+                               int fd,
+                               size_t num_planes,
+                               video_frame_plane_t* planes) override;
+  vda_result_t Reset() override;
+  vda_result_t Flush() override;
+};
+
+FakeContext::FakeContext() = default;
+
+vda_result_t FakeContext::Decode(int32_t bitstream_id,
+                                 int fd,
+                                 uint32_t offset,
+                                 uint32_t bytes_used) {
+  LOG(INFO) << "FakeContext::Decode called with bitstream id=" << bitstream_id
+            << " fd=" << fd << " offset=" << offset
+            << " bytes_used=" << bytes_used;
+  DispatchPictureReady(1 /* picture_buffer_id */, bitstream_id,
+                       0 /* crop_left */, 0 /* crop_top */, 0 /* crop_right */,
+                       0 /* crop_bottom */);
+  return SUCCESS;
+}
+
+vda_result_t FakeContext::SetOutputBufferCount(size_t num_output_buffers) {
+  LOG(INFO)
+      << "FakeContext::SetOutputBufferCount called with num_output_buffers "
+      << num_output_buffers;
+  return SUCCESS;
+}
+
+vda_result_t FakeContext::UseOutputBuffer(int32_t picture_buffer_id,
+                                          vda_pixel_format_t format,
+                                          int fd,
+                                          size_t num_planes,
+                                          video_frame_plane_t* planes) {
+  LOG(INFO) << "FakeContext::UseOutputBuffer called with picture_buffer_id="
+            << picture_buffer_id << " format=" << format << " fd=" << fd
+            << " num_planes=" << num_planes;
+  return SUCCESS;
+}
+
+vda_result FakeContext::Reset() {
+  LOG(INFO) << "FakeContext::Reset called";
+  DispatchResetResponse(SUCCESS);
+  return SUCCESS;
+}
+
+vda_result FakeContext::Flush() {
+  LOG(INFO) << "FakeContext::Flush called";
+  DispatchFlushResponse(SUCCESS);
+  return SUCCESS;
+}
+
+}  // namespace
+
+FakeVdaImpl::FakeVdaImpl() {
+  LOG(INFO) << "Creating new fake implementation.";
+  capabilities_.num_input_formats = arraysize(kInputFormats);
+  capabilities_.input_formats = kInputFormats;
+  capabilities_.num_output_formats = arraysize(kOutputFormats);
+  capabilities_.output_formats = kOutputFormats;
+}
+
+VdaContext* FakeVdaImpl::InitDecodeSession(vda_profile_t profile) {
+  LOG(INFO) << "FakeVdaImpl::InitDecodeSession called with profile=" << profile;
+  return new FakeContext();
+}
+
+void FakeVdaImpl::CloseDecodeSession(VdaContext* context) {
+  LOG(INFO) << "FakeVdaImpl::CloseDecodeSession";
+  delete context;
+}
+
+// static
+FakeVdaImpl* FakeVdaImpl::Create() {
+  return new FakeVdaImpl();
+}
+
+}  // namespace arc

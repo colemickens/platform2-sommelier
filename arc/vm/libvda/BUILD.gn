@@ -1,0 +1,97 @@
+# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/deps.gni")
+import("//common-mk/pkg_config.gni")
+import("//common-mk/mojom_bindings_generator.gni")
+
+group("all") {
+  deps = [
+    ":libvda",
+    ":libvda_pc",
+  ]
+
+  if (use.test) {
+    deps += [ ":libvda_unittest" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "dbus-1",
+    "libchrome-${libbase_ver}",
+    "libmojo-${libbase_ver}",
+    "system_api",
+  ]
+}
+
+generate_mojom_bindings("video_mojo_bindings") {
+  mojo_root = "${platform2_root}"
+  use_pic = true
+  pkg_deps = [
+    "libchrome-${libbase_ver}",
+    "libmojo-${libbase_ver}",
+  ]
+  sources = [
+    "gpu/mojom/gfx.mojom",
+    "gpu/mojom/video.mojom",
+    "gpu/mojom/video_common.mojom",
+    "gpu/mojom/video_decode_accelerator.mojom",
+    "gpu/mojom/video_encode_accelerator.mojom",
+    "gpu/mojom/video_protected_buffer_allocator.mojom",
+  ]
+}
+
+source_set("libvda_source_set") {
+  configs += [
+    ":target_defaults",
+    "//common-mk:pic",
+  ]
+  deps = [
+    ":video_mojo_bindings",
+  ]
+  sources = [
+    "fake/fake_vda_impl.cc",
+    "gpu/gpu_vda_impl.cc",
+    "wrapper.cc",
+  ]
+}
+
+shared_library("libvda") {
+  output_name = "libvda"
+  deps = [
+    ":libvda_source_set",
+  ]
+  sources = [
+    "at_exit_util.cc",
+  ]
+}
+
+generate_pkg_config("libvda_pc") {
+  deps = [
+    ":libvda",
+  ]
+  output_name = "libvda"
+  description = "CrOS VDA Connection Library"
+  version = "0.1"
+  libs = [ "-lvda" ]
+  requires_private = [
+    "libchrome-${libbase_ver}",
+    "libmojo-${libbase_ver}",
+  ]
+}
+
+if (use.test) {
+  executable("libvda_unittest") {
+    configs += [ "//common-mk:test" ]
+    deps = [
+      ":libvda_source_set",
+      "//common-mk/testrunner",
+    ]
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+    sources = [
+      "libvda_unittest.cc",
+    ]
+  }
+}

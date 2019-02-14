@@ -4,6 +4,7 @@
 
 group("all") {
   deps = [
+    "libvda:all",
     "vsock_proxy:all",
   ]
 }
