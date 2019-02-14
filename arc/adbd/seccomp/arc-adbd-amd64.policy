@@ -59,3 +59,7 @@ finit_module: 1
 ioctl: arg0 == 0 && arg1 == TCGETS
 getpid: 1
 prlimit64: arg2 == 0 && arg3 != 0
+
+# For syslog /dev/log
+socket: arg0 == AF_UNIX
+connect: 1
