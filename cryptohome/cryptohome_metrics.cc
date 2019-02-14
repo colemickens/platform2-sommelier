@@ -320,7 +320,7 @@ void ReportDircryptoMigrationTotalByteCountInMb(int total_byte_count_mb) {
   if (!g_metrics) {
     return;
   }
-  constexpr int kMin = 0, kMax = 1024 * 1024, kNumBuckets = 50;
+  constexpr int kMin = 1, kMax = 1024 * 1024, kNumBuckets = 50;
   g_metrics->SendToUMA(
       kCryptohomeDircryptoMigrationTotalByteCountInMbHistogram,
       total_byte_count_mb, kMin, kMax, kNumBuckets);
@@ -330,7 +330,7 @@ void ReportDircryptoMigrationTotalFileCount(int total_file_count) {
   if (!g_metrics) {
     return;
   }
-  constexpr int kMin = 0, kMax = 100000000, kNumBuckets = 50;
+  constexpr int kMin = 1, kMax = 100000000, kNumBuckets = 50;
   g_metrics->SendToUMA(
       kCryptohomeDircryptoMigrationTotalFileCountHistogram, total_file_count,
       kMin, kMax, kNumBuckets);
@@ -394,7 +394,7 @@ void ReportDircryptoMigrationFailedNoSpace(int initial_migration_free_space_mb,
   if (!g_metrics) {
     return;
   }
-  constexpr int kMin = 0, kMax = 1024 * 1024, kNumBuckets = 50;
+  constexpr int kMin = 1, kMax = 1024 * 1024, kNumBuckets = 50;
   g_metrics->SendToUMA(kDircryptoMigrationInitialFreeSpaceInMbHistogram,
                        initial_migration_free_space_mb,
                        kMin,
@@ -412,7 +412,7 @@ void ReportDircryptoMigrationFailedNoSpaceXattrSizeInBytes(
   if (!g_metrics) {
     return;
   }
-  constexpr int kMin = 0, kMax = 1024 * 1024, kNumBuckets = 50;
+  constexpr int kMin = 1, kMax = 1024 * 1024, kNumBuckets = 50;
   g_metrics->SendToUMA(kDircryptoMigrationNoSpaceXattrSizeInBytesHistogram,
                        total_xattr_size_bytes,
                        kMin,
