@@ -203,7 +203,7 @@ fn join_path<P: AsRef<Path>, R: AsRef<Path>>(
 }
 
 // TODO(b/124272076): remove mapping support once crosvm plugin implements 9p client.
-pub type ServerIdMap<T: Clone + Ord> = BTreeMap<T, T>;
+pub type ServerIdMap<T> = BTreeMap<T, T>;
 pub type ServerUidMap = ServerIdMap<libc::uid_t>;
 pub type ServerGidMap = ServerIdMap<libc::gid_t>;
 
