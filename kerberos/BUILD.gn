@@ -63,6 +63,7 @@ static_library("libkerberos") {
     ":target_defaults",
   ]
   sources = [
+    "account_manager.cc",
     "kerberos_adaptor.cc",
     "kerberos_daemon.cc",
   ]
