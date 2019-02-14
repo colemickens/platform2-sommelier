@@ -48,6 +48,7 @@ fi
 CONTAINER_CGROUP_DIR=/sys/fs/cgroup/cpu/session_manager_containers
 if [ -d $CONTAINER_CGROUP_DIR ]; then
   echo "32" > ${CONTAINER_CGROUP_DIR}/cpu.shares
+  echo "-1" > ${CONTAINER_CGROUP_DIR}/cpu.cfs_quota_us
 fi
 
 if crossystem "cros_debug?1"; then
