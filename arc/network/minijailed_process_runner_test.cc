@@ -73,7 +73,26 @@ TEST_F(MinijailProcessRunnerTest, AddInterfaceToContainer) {
   EXPECT_CALL(mj_, RunSyncAndDestroy(
                        _, IsProcessArgs("/usr/bin/nsenter", args_ifconfig), _));
   runner_.AddInterfaceToContainer("foo", "bar", "1.1.1.1", "255.255.255.0",
-                                  "12345");
+                                  true, "12345");
+}
+
+TEST_F(MinijailProcessRunnerTest, AddInterfaceToContainerNoMulticast) {
+  const std::vector<std::string> args_ip = {
+      "-t", "12345", "-n", "--", "/bin/ip", "link", "set", "foo", "name", "bar",
+  };
+  const std::vector<std::string> args_ifconfig = {
+      "-t",        "12345",         "-n",
+      "--",        "/bin/ifconfig", "bar",
+      "1.1.1.1",   "netmask",       "255.255.255.0",
+      "-multicast"};
+  EXPECT_CALL(mj_, New()).Times(2);
+  EXPECT_CALL(mj_, DropRoot(_, _, _)).Times(0);
+  EXPECT_CALL(
+      mj_, RunSyncAndDestroy(_, IsProcessArgs("/usr/bin/nsenter", args_ip), _));
+  EXPECT_CALL(mj_, RunSyncAndDestroy(
+                       _, IsProcessArgs("/usr/bin/nsenter", args_ifconfig), _));
+  runner_.AddInterfaceToContainer("foo", "bar", "1.1.1.1", "255.255.255.0",
+                                  false, "12345");
 }
 
 TEST_F(MinijailProcessRunnerTest, WriteSentinelToContainer) {

@@ -31,11 +31,13 @@ class FakeProcessRunner : public MinijailedProcessRunner {
                               const std::string& con_ifname,
                               const std::string& con_ipv4,
                               const std::string& con_nmask,
+                              bool enable_multicast,
                               const std::string& con_pid) override {
     add_host_ifname_ = host_ifname;
     add_con_ifname_ = con_ifname;
     add_con_ipv4_ = con_ipv4;
     add_con_nmask_ = con_nmask;
+    add_enable_multicast_ = enable_multicast;
     add_con_pid_ = con_pid;
     return 0;
   }
@@ -67,11 +69,13 @@ class FakeProcessRunner : public MinijailedProcessRunner {
                           const std::string& con_ifname,
                           const std::string& con_ipv4,
                           const std::string& con_nmask,
+                          bool enable_multicast,
                           const std::string& con_pid) {
     EXPECT_EQ(host_ifname, add_host_ifname_);
     EXPECT_EQ(con_ifname, add_con_ifname_);
     EXPECT_EQ(con_ipv4, add_con_ipv4_);
     EXPECT_EQ(con_nmask, add_con_nmask_);
+    EXPECT_EQ(enable_multicast, add_enable_multicast_);
     EXPECT_EQ(con_pid, add_con_pid_);
   }
 
@@ -87,6 +91,7 @@ class FakeProcessRunner : public MinijailedProcessRunner {
   std::string add_con_ifname_;
   std::string add_con_ipv4_;
   std::string add_con_nmask_;
+  bool add_enable_multicast_;
   std::string add_con_pid_;
   std::string wr_con_pid_;
 
@@ -108,6 +113,7 @@ class ArcIpConfigTest : public testing::Test {
     android_dc_.set_arc_ifname("arc0");
     android_dc_.set_arc_ipv4("100.115.92.2");
     android_dc_.set_mac_addr("00:FF:AA:00:00:56");
+    android_dc_.set_fwd_multicast(true);
     fpr_ = std::make_unique<FakeProcessRunner>();
     runner_ = fpr_.get();
     runner_->Capture(false);
@@ -212,7 +218,7 @@ TEST_F(ArcIpConfigTest, VerifyInitCmds) {
       "/bin/ip link set peer_foo netns 12345",
   });
   runner_->VerifyAddInterface("peer_foo", "arc", "6.7.8.9", "255.255.255.252",
-                              "12345");
+                              false, "12345");
 }
 
 TEST_F(ArcIpConfigTest, VerifyInitCmdsForAndroidDevice) {
@@ -228,7 +234,7 @@ TEST_F(ArcIpConfigTest, VerifyInitCmdsForAndroidDevice) {
       "/bin/ip link set peer_android netns 12345",
   });
   runner_->VerifyAddInterface("peer_android", "arc0", "100.115.92.2",
-                              "255.255.255.252", "12345");
+                              "255.255.255.252", true, "12345");
   runner_->VerifyWriteSentinel("12345");
 }
 

@@ -172,8 +172,9 @@ bool ArcIpConfig::Init(pid_t con_netns) {
   // https://elixir.bootlin.com/linux/v4.14/source/net/core/net_namespace.c#L234
 
   process_runner_->Run({kIpPath, "link", "set", peer, "netns", pid});
-  process_runner_->AddInterfaceToContainer(
-      peer, config_.arc_ifname(), config_.arc_ipv4(), kDefaultNetmask, pid);
+  process_runner_->AddInterfaceToContainer(peer, config_.arc_ifname(),
+                                           config_.arc_ipv4(), kDefaultNetmask,
+                                           config_.fwd_multicast(), pid);
 
   // Signal the container that the network device is ready.
   // This is only applicable for arc0.

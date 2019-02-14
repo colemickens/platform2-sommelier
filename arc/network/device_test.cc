@@ -78,7 +78,7 @@ TEST_F(DeviceTest, ConfigForEth0) {
   EXPECT_EQ(config.arc_ifname(), "eth0");
   EXPECT_EQ(config.arc_ipv4(), "100.115.92.10");
   EXPECT_EQ(config.mac_addr(), "00:FF:AA:00:00:5d");
-  EXPECT_TRUE(config.fwd_multicast());
+  EXPECT_FALSE(config.fwd_multicast());
   EXPECT_FALSE(config.find_ipv6_routes());
 }
 
@@ -91,7 +91,7 @@ TEST_F(DeviceTest, ConfigForWlan0) {
   EXPECT_EQ(config.arc_ifname(), "wlan0");
   EXPECT_EQ(config.arc_ipv4(), "100.115.92.14");
   EXPECT_EQ(config.mac_addr(), "00:FF:AA:00:00:61");
-  EXPECT_TRUE(config.fwd_multicast());
+  EXPECT_FALSE(config.fwd_multicast());
   EXPECT_FALSE(config.find_ipv6_routes());
 }
 

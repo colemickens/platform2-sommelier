@@ -89,13 +89,15 @@ std::unique_ptr<Device> Device::ForInterface(const std::string& ifname,
     config.set_br_ifname("arcbr0");
     config.set_arc_ifname("arc0");
     config.set_find_ipv6_routes(true);
+    // TODO(garrick): Enable only for Ethernet and Wifi.
+    config.set_fwd_multicast(true);
   } else {
     config.set_br_ifname(base::StringPrintf("arc_%s", ifname.c_str()));
     config.set_arc_ifname(ifname);
     config.set_find_ipv6_routes(false);
+    // TODO(garrick): Enable only for Ethernet and Wifi.
+    config.set_fwd_multicast(false);
   }
-  // TODO(garrick): Enable only for Ethernet and Wifi.
-  config.set_fwd_multicast(true);
   return std::make_unique<Device>(ifname, config, msg_sink);
 }
 

@@ -75,15 +75,21 @@ int MinijailedProcessRunner::AddInterfaceToContainer(
     const std::string& con_ifname,
     const std::string& con_ipv4,
     const std::string& con_nmask,
+    bool enable_multicast,
     const std::string& con_pid) {
   int rc = RunSync({kNsEnterPath, "-t", con_pid, "-n", "--", kIpPath, "link",
                     "set", host_ifname, "name", con_ifname},
                    mj_, true);
-  return (rc != 0)
-             ? rc
-             : RunSync({kNsEnterPath, "-t", con_pid, "-n", "--", kIfConfigPath,
-                        con_ifname, con_ipv4, "netmask", con_nmask},
-                       mj_, true);
+  if (rc != 0)
+    return rc;
+
+  std::vector<std::string> args = {
+      kNsEnterPath,  "-t",       con_pid,  "-n",      "--",
+      kIfConfigPath, con_ifname, con_ipv4, "netmask", con_nmask};
+  if (!enable_multicast)
+    args.emplace_back("-multicast");
+
+  return RunSync(args, mj_, true);
 }
 
 int MinijailedProcessRunner::WriteSentinelToContainer(

@@ -40,6 +40,7 @@ class MinijailedProcessRunner {
                                       const std::string& con_ifname,
                                       const std::string& con_ipv4,
                                       const std::string& con_nmask,
+                                      bool enable_multicast,
                                       const std::string& con_pid);
 
   // Writes out a file that the ARC boot process uses to discover when
