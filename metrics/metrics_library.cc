@@ -38,7 +38,7 @@ const int kCrosEventHistogramMax = 100;
 // The index of the event is sent in the message, so please do not
 // reorder the names.
 //
-// Note: All updates here must also update Chrome's histogram.xml database.
+// Note: All updates here must also update Chrome's enums.xml database.
 // Please see this document for more details:
 // https://chromium.googlesource.com/chromium/src/+/master/tools/metrics/histograms/
 //
