@@ -120,6 +120,7 @@ class MockManager : public Manager {
   MOCK_METHOD0(OnDeviceClaimerVanished, void());
   MOCK_METHOD0(GetDeviceInterfaceNames, std::vector<std::string>());
   MOCK_CONST_METHOD0(GetFTEnabled, bool());
+  MOCK_CONST_METHOD0(ActiveProfile, const ProfileRefPtr&());
 
   // Getter and setter for a mocked device info instance.
   DeviceInfo* mock_device_info() { return mock_device_info_; }

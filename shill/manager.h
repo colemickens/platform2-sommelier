@@ -126,7 +126,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual void Stop();
   bool running() const { return running_; }
 
-  const ProfileRefPtr& ActiveProfile() const;
+  virtual const ProfileRefPtr& ActiveProfile() const;
   bool IsActiveProfile(const ProfileRefPtr& profile) const;
   bool MoveServiceToProfile(const ServiceRefPtr& to_move,
                             const ProfileRefPtr& destination);
@@ -178,6 +178,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
       const KeyValueStore& args,
       Error* error);
   ServiceRefPtr FindMatchingService(const KeyValueStore& args, Error* error);
+
+  // Returns the first service of type |Technology::kEthernet| found in
+  // |services_|, or nullptr if no such service is found.
+  ServiceRefPtr GetFirstEthernetService();
 
   // Retrieve geolocation data from the Manager.
   std::map<std::string, std::vector<GeolocationInfo>>

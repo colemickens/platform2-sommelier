@@ -33,6 +33,23 @@ constexpr char kAutoConnNoCarrier[] = "no carrier";
 
 }  // namespace
 
+constexpr char EthernetService::kDefaultEthernetDeviceIdentifier[];
+
+EthernetService::EthernetService(ControlInterface* control_interface,
+                                 EventDispatcher* dispatcher,
+                                 Metrics* metrics,
+                                 Manager* manager,
+                                 const string& storage_id)
+    : EthernetService(control_interface,
+                      dispatcher,
+                      metrics,
+                      manager,
+                      Technology::kEthernet,
+                      nullptr) {
+  storage_id_ = storage_id;
+  SetUp();
+}
+
 EthernetService::EthernetService(ControlInterface* control_interface,
                                  EventDispatcher* dispatcher,
                                  Metrics* metrics,
@@ -40,16 +57,7 @@ EthernetService::EthernetService(ControlInterface* control_interface,
                                  base::WeakPtr<Ethernet> ethernet)
     : EthernetService(control_interface, dispatcher, metrics, manager,
                       Technology::kEthernet, ethernet) {
-  SetConnectable(true);
-  SetAutoConnect(true);
-  set_friendly_name("Ethernet");
-  SetStrength(kStrengthMax);
-
-  // Now that |this| is a fully constructed EthernetService, synchronize
-  // observers with our current state, and emit the appropriate change
-  // notifications. (Initial observer state may have been set in our base
-  // class.)
-  NotifyIfVisibilityChanged();
+  SetUp();
 }
 
 EthernetService::EthernetService(ControlInterface* control_interface,
@@ -63,28 +71,47 @@ EthernetService::EthernetService(ControlInterface* control_interface,
 
 EthernetService::~EthernetService() { }
 
+void EthernetService::SetUp() {
+  SetConnectable(true);
+  SetAutoConnect(true);
+  set_friendly_name("Ethernet");
+  SetStrength(kStrengthMax);
+
+  // Now that |this| is a fully constructed EthernetService, synchronize
+  // observers with our current state, and emit the appropriate change
+  // notifications. (Initial observer state may have been set in our base
+  // class.)
+  NotifyIfVisibilityChanged();
+}
+
 void EthernetService::Connect(Error* error, const char* reason) {
   Service::Connect(error, reason);
-  CHECK(ethernet_);
-  ethernet_->ConnectTo(this);
+  if (ethernet_) {
+    ethernet_->ConnectTo(this);
+  }
 }
 
 void EthernetService::Disconnect(Error* error, const char* reason) {
   Service::Disconnect(error, reason);
-  CHECK(ethernet_);
-  ethernet_->DisconnectFrom(this);
+  if (ethernet_) {
+    ethernet_->DisconnectFrom(this);
+  }
 }
 
-std::string EthernetService::GetDeviceRpcId(Error* /*error*/) const {
-  CHECK(ethernet_);
+string EthernetService::GetDeviceRpcId(Error* error) const {
+  if (!ethernet_) {
+    error->Populate(Error::kNotFound, "Not associated with a device");
+    return control_interface()->NullRPCIdentifier();
+  }
   return ethernet_->GetRpcIdentifier();
 }
 
 string EthernetService::GetStorageIdentifier() const {
-  CHECK(ethernet_);
-  return base::StringPrintf(
-      "%s_%s", Technology::NameFromIdentifier(technology()).c_str(),
-      ethernet_->address().c_str());
+  return ethernet_ ? base::StringPrintf(
+                         "%s_%s",
+                         Technology::NameFromIdentifier(technology()).c_str(),
+                         ethernet_->address().c_str())
+                   : storage_id_;
 }
 
 bool EthernetService::IsAutoConnectByDefault() const {
@@ -107,16 +134,14 @@ void EthernetService::Remove(Error* error) {
 }
 
 bool EthernetService::IsVisible() const {
-  CHECK(ethernet_);
-  return ethernet_->link_up();
+  return ethernet_ && ethernet_->link_up();
 }
 
 bool EthernetService::IsAutoConnectable(const char** reason) const {
   if (!Service::IsAutoConnectable(reason)) {
     return false;
   }
-  CHECK(ethernet_);
-  if (!ethernet_->link_up()) {
+  if (!ethernet_ || !ethernet_->link_up()) {
     *reason = kAutoConnNoCarrier;
     return false;
   }
@@ -128,9 +153,9 @@ void EthernetService::OnVisibilityChanged() {
 }
 
 string EthernetService::GetTethering(Error* /*error*/) const {
-  CHECK(ethernet_);
-  return ethernet_->IsConnectedViaTether() ? kTetheringConfirmedState :
-      kTetheringNotDetectedState;
+  return ethernet_ && ethernet_->IsConnectedViaTether()
+             ? kTetheringConfirmedState
+             : kTetheringNotDetectedState;
 }
 
 }  // namespace shill

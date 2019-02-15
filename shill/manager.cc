@@ -2528,6 +2528,15 @@ ServiceRefPtr Manager::FindMatchingService(const KeyValueStore& args,
   return nullptr;
 }
 
+ServiceRefPtr Manager::GetFirstEthernetService() {
+  for (const auto& service : services_) {
+    if (service->technology() == Technology::kEthernet) {
+      return service;
+    }
+  }
+  return nullptr;
+}
+
 map<string, vector<GeolocationInfo>> Manager::GetNetworksForGeolocation()
     const {
   map<string, vector<GeolocationInfo>> geolocation_infos;

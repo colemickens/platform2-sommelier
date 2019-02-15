@@ -24,6 +24,13 @@ class Metrics;
 
 class EthernetService : public Service {
  public:
+  static constexpr char kDefaultEthernetDeviceIdentifier[] = "ethernet_any";
+
+  EthernetService(ControlInterface* control_interface,
+                  EventDispatcher* dispatcher,
+                  Metrics* metrics,
+                  Manager* manager,
+                  const std::string& storage_id);
   EthernetService(ControlInterface* control_interface,
                   EventDispatcher* dispatcher,
                   Metrics* metrics,
@@ -61,6 +68,8 @@ class EthernetService : public Service {
                   Technology::Identifier technology,
                   base::WeakPtr<Ethernet> ethernet);
 
+  void SetUp();
+
   Ethernet* ethernet() const { return ethernet_.get(); }
   std::string GetTethering(Error* error) const override;
 
@@ -69,6 +78,7 @@ class EthernetService : public Service {
 
   std::string GetDeviceRpcId(Error* error) const override;
 
+  std::string storage_id_;
   base::WeakPtr<Ethernet> ethernet_;
   DISALLOW_COPY_AND_ASSIGN(EthernetService);
 };
