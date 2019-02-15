@@ -197,7 +197,7 @@ CecDeviceImpl::State CecDeviceImpl::UpdateState(
     logical_address_ = ffs(event.log_addr_mask) - 1;
   }
 
-  VLOG(1) << base::StringPrintf(
+  LOG(INFO) << base::StringPrintf(
       "%s: state update, physical address: 0x%x logical address: 0x%x",
       device_path_.value().c_str(), static_cast<uint32_t>(physical_address_),
       static_cast<uint32_t>(logical_address_));
