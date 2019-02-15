@@ -25,6 +25,7 @@ class AcpiWakeupHelperInterface;
 class AmbientLightSensorInterface;
 class AudioClientInterface;
 class BacklightInterface;
+class ChargeControllerHelperInterface;
 class DarkResumeInterface;
 class DBusWrapperInterface;
 class DisplayPowerSetterInterface;
@@ -136,6 +137,9 @@ class DaemonDelegate {
                         const std::vector<base::FilePath>& files) = 0;
 
   virtual std::unique_ptr<MetricsSenderInterface> CreateMetricsSender() = 0;
+
+  virtual std::unique_ptr<system::ChargeControllerHelperInterface>
+  CreateChargeControllerHelper() = 0;
 
   // Returns the process's PID.
   virtual pid_t GetPid() = 0;

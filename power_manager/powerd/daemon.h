@@ -21,6 +21,7 @@
 
 #include "power_manager/common/prefs_observer.h"
 #include "power_manager/powerd/policy/cellular_controller.h"
+#include "power_manager/powerd/policy/charge_controller.h"
 #include "power_manager/powerd/policy/input_event_handler.h"
 #include "power_manager/powerd/policy/sar_handler.h"
 #include "power_manager/powerd/policy/suspender.h"
@@ -62,6 +63,7 @@ class AmbientLightSensorInterface;
 class ArcTimerManager;
 class AudioClientInterface;
 class BacklightInterface;
+class ChargeControllerHelperInterface;
 class DarkResumeInterface;
 class DisplayPowerSetterInterface;
 class DisplayWatcherInterface;
@@ -284,6 +286,10 @@ class Daemon : public policy::InputEventHandler::Delegate,
   std::unique_ptr<policy::CellularController> cellular_controller_;
 
   std::unique_ptr<metrics::MetricsCollector> metrics_collector_;
+
+  std::unique_ptr<system::ChargeControllerHelperInterface>
+      charge_controller_helper_;
+  std::unique_ptr<policy::ChargeController> charge_controller_;
 
   // Object that manages all operations related to timers in the ARC instance.
   std::unique_ptr<system::ArcTimerManager> arc_timer_manager_;

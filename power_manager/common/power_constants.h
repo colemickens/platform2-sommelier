@@ -180,6 +180,10 @@ extern const char kNumSessionsOnCurrentChargePref[];
 // If true, the device has an ambient light sensor.
 extern const char kHasAmbientLightSensorPref[];
 
+// If true, the device has a charge controller responsible for handling
+// power policies.
+extern const char kHasChargeControllerPref[];
+
 // If true, the device has a keyboard backlight.
 extern const char kHasKeyboardBacklightPref[];
 

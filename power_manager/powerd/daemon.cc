@@ -43,6 +43,8 @@
 #include "power_manager/powerd/system/arc_timer_manager.h"
 #include "power_manager/powerd/system/audio_client_interface.h"
 #include "power_manager/powerd/system/backlight_interface.h"
+#include "power_manager/powerd/system/charge_controller_helper.h"
+#include "power_manager/powerd/system/charge_controller_helper_interface.h"
 #include "power_manager/powerd/system/dark_resume_interface.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/display/display_power_setter.h"
@@ -403,6 +405,12 @@ void Daemon::Init() {
                      cellular_controller_.get());
 
   arc_timer_manager_->Init(dbus_wrapper_.get());
+
+  if (BoolPrefIsTrue(kHasChargeControllerPref)) {
+    charge_controller_helper_ = delegate_->CreateChargeControllerHelper();
+    charge_controller_ = std::make_unique<policy::ChargeController>(),
+    charge_controller_->Init(charge_controller_helper_.get());
+  }
 
   // Asynchronously undo the previous force-lid-open request to the EC (if there
   // was one).
@@ -1106,6 +1114,11 @@ std::unique_ptr<dbus::Response> Daemon::HandleSetPolicyMethod(
   LOG(INFO) << "Received updated external policy: "
             << policy::StateController::GetPolicyDebugString(policy);
   state_controller_->HandlePolicyChange(policy);
+
+  if (charge_controller_) {
+    charge_controller_->HandlePolicyChange(policy);
+  }
+
   for (auto controller : all_backlight_controllers_)
     controller->HandlePolicyChange(policy);
   return std::unique_ptr<dbus::Response>();

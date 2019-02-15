@@ -72,6 +72,7 @@ const char kIgnoreExternalPolicyPref[] = "ignore_external_policy";
 const char kAllowDockedModePref[] = "allow_docked_mode";
 const char kNumSessionsOnCurrentChargePref[] = "num_sessions_on_current_charge";
 const char kHasAmbientLightSensorPref[] = "has_ambient_light_sensor";
+const char kHasChargeControllerPref[] = "has_charge_controller";
 const char kHasKeyboardBacklightPref[] = "has_keyboard_backlight";
 const char kExternalDisplayOnlyPref[] = "external_display_only";
 const char kLegacyPowerButtonPref[] = "legacy_power_button";

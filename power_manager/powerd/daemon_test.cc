@@ -29,6 +29,7 @@
 #include "power_manager/powerd/system/ambient_light_sensor_stub.h"
 #include "power_manager/powerd/system/audio_client_stub.h"
 #include "power_manager/powerd/system/backlight_stub.h"
+#include "power_manager/powerd/system/charge_controller_helper_stub.h"
 #include "power_manager/powerd/system/dark_resume_stub.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/powerd/system/display/display_power_setter_stub.h"
@@ -73,6 +74,8 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
         passed_audio_client_(new system::AudioClientStub()),
         passed_lockfile_checker_(new system::LockfileCheckerStub()),
         passed_metrics_sender_(new MetricsSenderStub()),
+        passed_charge_controller_helper_(
+            new system::ChargeControllerHelperStub()),
         prefs_(passed_prefs_.get()),
         dbus_wrapper_(passed_dbus_wrapper_.get()),
         udev_(passed_udev_.get()),
@@ -274,6 +277,11 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   std::unique_ptr<MetricsSenderInterface> CreateMetricsSender() override {
     return std::move(passed_metrics_sender_);
   }
+  std::unique_ptr<system::ChargeControllerHelperInterface>
+  CreateChargeControllerHelper() override {
+    return std::move(passed_charge_controller_helper_);
+  }
+
   pid_t GetPid() override { return pid_; }
   void Launch(const std::string& command) override {
     async_commands_.push_back(command);
@@ -335,6 +343,8 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   std::unique_ptr<system::AudioClientStub> passed_audio_client_;
   std::unique_ptr<system::LockfileCheckerStub> passed_lockfile_checker_;
   std::unique_ptr<MetricsSenderStub> passed_metrics_sender_;
+  std::unique_ptr<system::ChargeControllerHelperInterface>
+      passed_charge_controller_helper_;
 
   // Pointers to objects originally stored in |passed_*| members. These allow
   // continued access by tests even after the corresponding Create* method has
