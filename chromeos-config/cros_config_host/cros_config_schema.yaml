@@ -411,8 +411,14 @@ properties:
                 has-base-gyroscope:
                   description: Is there a gyroscope in the base of the device.
                   type: boolean
+                has-base-magnetometer:
+                  description: Is there a magnetometer in the base of the device.
+                  type: boolean
                 has-fingerprint-sensor:
                   description: Is there a fingerprint sensor on the device.
+                  type: boolean
+                has-touchscreen:
+                  description: Does the device have a touchscreen.
                   type: boolean
               additionalProperties: false
           additionalProperties: false

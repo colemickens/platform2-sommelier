@@ -350,6 +350,8 @@ chromeos:
               has-lid-accelerometer: false
               has-fingerprint-sensor: false
               is-lid-convertible: false
+              has-base-magnetometer: false
+              has-touchscreen: true
 """
     try:
       cros_config_schema.ValidateConfig(
@@ -375,6 +377,8 @@ chromeos:
               has-lid-accelerometer: true
               has-fingerprint-sensor: true
               is-lid-convertible: false
+              has-base-magnetometer: true
+              has-touchscreen: false
 """
     cros_config_schema.ValidateConfig(
         cros_config_schema.TransformConfig(config))
