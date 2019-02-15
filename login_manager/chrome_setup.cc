@@ -414,8 +414,6 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
     builder->AddArg("--enable-natural-scroll-default");
   if (!builder->UseFlagIsSet("legacy_keyboard"))
     builder->AddArg("--has-chromeos-keyboard");
-  if (builder->UseFlagIsSet("has_diamond_key"))
-    builder->AddArg("--has-chromeos-diamond-key");
   if (builder->UseFlagIsSet("legacy_power_button"))
     builder->AddArg("--aura-legacy-power-button");
   if (builder->UseFlagIsSet("touchview"))
