@@ -53,6 +53,7 @@ pkg_config("libkerberos_config") {
     "dbus-1",
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
+    "mit-krb5",
   ]
 }
 
@@ -67,6 +68,7 @@ static_library("libkerberos") {
     "error_strings.cc",
     "kerberos_adaptor.cc",
     "kerberos_daemon.cc",
+    "krb5_interface.cc",
     "platform_helper.cc",
   ]
   deps = [
