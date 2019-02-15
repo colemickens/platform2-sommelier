@@ -44,3 +44,5 @@ permissive chromeos_startup_restorecon;
 execute_file_follow_link(chromeos_startup, cros_restorecon_exec);
 domain_auto_trans(chromeos_startup, cros_restorecon_exec, chromeos_startup_restorecon);
 allow chromeos_startup_restorecon chromeos_startup:fd use;
+
+filetrans_pattern(chromeos_startup, cros_var_lib, cros_tz_data_file, dir, "timezone");

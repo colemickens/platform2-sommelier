@@ -214,3 +214,11 @@ type cros_system_bus_socket, file_type;
 type_transition {chromeos cros_arc_setup} cros_run:dir tmpfs;
 
 dontaudit rootfs {device sysfs}:filesystem associate;
+
+# /var files creation
+filetrans_pattern_no_target_perm(chromeos_domain, cros_var, cros_var_lib, dir, "lib");
+filetrans_pattern_no_target_perm(chromeos_domain, cros_var, cros_var_cache, dir, "cache");
+filetrans_pattern_no_target_perm(chromeos_domain, cros_var, cros_var_empty, dir, "empty");
+filetrans_pattern_no_target_perm(chromeos_domain, cros_var, cros_var_log, dir, "log");
+filetrans_pattern_no_target_perm(chromeos_domain, cros_var, cros_var_spool, dir, "spool");
+
