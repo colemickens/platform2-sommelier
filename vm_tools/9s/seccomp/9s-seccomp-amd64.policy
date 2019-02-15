@@ -62,3 +62,4 @@ mremap: 1
 rename: 1
 newfstatat: 1
 sendto: 1
+recvfrom: 1
