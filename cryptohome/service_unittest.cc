@@ -390,6 +390,7 @@ TEST_F(ServiceTestNotInitialized, CheckAutoCleanupCallback) {
 
   const int period_ms = 1;
 
+  // This will cause the low disk space callback to be called every ms
   service_.set_low_disk_notification_period_ms(period_ms);
   service_.Initialize();
 
@@ -405,6 +406,14 @@ TEST_F(ServiceTestNotInitialized, CheckAutoCleanupCallback) {
     }
     PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(period_ms));
   }
+
+  // Currently low disk space callback runs every 1 ms. If that test callback
+  // runs before we finish test teardown but after platform_ object is cleared,
+  // then we'll get error. Therefore, we need to set test callback interval
+  // back to 1 minute, so we will not have any race condition.
+  service_.set_low_disk_notification_period_ms(60 * 1000);
+  // Wait for the change to take effect.
+  PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(period_ms * 5));
 
   // Cleanup invokable lambdas so they don't capture this test variables anymore
   Mock::VerifyAndClear(&homedirs_);
