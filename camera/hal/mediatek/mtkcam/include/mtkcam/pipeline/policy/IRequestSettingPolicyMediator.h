@@ -1,0 +1,62 @@
+/*
+ * Copyright (C) 2019 MediaTek Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef CAMERA_HAL_MEDIATEK_MTKCAM_INCLUDE_MTKCAM_PIPELINE_POLICY_IREQUESTSETTINGPOLICYMEDIATOR_H_
+#define CAMERA_HAL_MEDIATEK_MTKCAM_INCLUDE_MTKCAM_PIPELINE_POLICY_IREQUESTSETTINGPOLICYMEDIATOR_H_
+//
+#include "IPipelineSettingPolicy.h"
+
+/******************************************************************************
+ *
+ ******************************************************************************/
+namespace NSCam {
+namespace v3 {
+namespace pipeline {
+namespace policy {
+namespace pipelinesetting {
+
+/**
+ *
+ */
+class IRequestSettingPolicyMediator {
+ public:
+  virtual ~IRequestSettingPolicyMediator() = default;
+
+  /**
+   * The policy is in charge of reporting its requirement at the request stage.
+   *
+   * @param[out] out:
+   *  Callers must ensure it's a non-nullptr.
+   *
+   * @param[in] in:
+   *  Callers must promise its content. The callee is not allowed to modify it.
+   *
+   * @return
+   *      0 indicates success; otherwise failure.
+   */
+  virtual auto evaluateRequest(RequestOutputParams* out,
+                               RequestInputParams const& in) -> int = 0;
+};
+
+/******************************************************************************
+ *
+ ******************************************************************************/
+};      // namespace pipelinesetting
+};      // namespace policy
+};      // namespace pipeline
+};      // namespace v3
+};      // namespace NSCam
+#endif  // CAMERA_HAL_MEDIATEK_MTKCAM_INCLUDE_MTKCAM_PIPELINE_POLICY_IREQUESTSETTINGPOLICYMEDIATOR_H_
