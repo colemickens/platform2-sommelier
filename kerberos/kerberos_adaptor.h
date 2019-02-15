@@ -6,6 +6,7 @@
 #define KERBEROS_KERBEROS_ADAPTOR_H_
 
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <base/macros.h>
@@ -46,6 +47,11 @@ class KerberosAdaptor : public org::chromium::KerberosAdaptor,
   ByteArray GetKerberosFiles(const ByteArray& request_blob) override;
 
  private:
+  // Gets triggered by when the Kerberos credential cache or the configuration
+  // file changes of the given principal. Triggers the KerberosFilesChanged
+  // signal.
+  void OnKerberosFilesChanged(const std::string& principal_name);
+
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   AccountManager manager_;
 

@@ -95,8 +95,20 @@
           Serialized GetKerberosFilesResponse message.
         </tp:docstring>
       </arg>
-      -->
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+
+    <signal name="KerberosFilesChanged">
+      <tp:docstring>
+        Signal emitted if either the Kerberos credential cache (krb5cc) or
+        configuration (krb5.conf) files change for the account that corresponds
+        to |principal_name|.
+      </tp:docstring>
+      <arg name="principal_name" type="s">
+        <tp:docstring>
+          Principal name (user@REALM.COM) that identifies the account.
+        </tp:docstring>
+      </arg>
+    </signal>
   </interface>
 </node>

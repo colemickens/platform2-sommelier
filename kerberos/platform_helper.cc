@@ -5,9 +5,8 @@
 #include "kerberos/platform_helper.h"
 
 #include <unistd.h>
-#include <string>
-
 #include <algorithm>
+#include <string>
 
 #include <base/files/file_util.h>
 #include <base/optional.h>

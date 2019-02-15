@@ -5,7 +5,7 @@
 #include <base/logging.h>
 #include <brillo/syslog_logging.h>
 
-#include <kerberos/kerberos_daemon.h>
+#include "kerberos/kerberos_daemon.h"
 
 int main(int /* argc */, char* /* argv */[]) {
   brillo::OpenLog("kerberosd", true /* log_pid */);

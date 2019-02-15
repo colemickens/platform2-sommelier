@@ -48,9 +48,13 @@ WARN_UNUSED_RESULT ErrorType ReadFile(const base::FilePath& path,
 
 }  // namespace
 
-AccountManager::AccountManager(const base::FilePath& storage_dir)
+AccountManager::AccountManager(
+    base::FilePath storage_dir,
+    KerberosFilesChangedCallback kerberos_files_changed)
     // TODO(https://crbug.com/951740): Make |krb5_| overridable for testing.
-    : storage_dir_(storage_dir), krb5_(std::make_unique<Krb5Interface>()) {}
+    : storage_dir_(std::move(storage_dir)),
+      kerberos_files_changed_(std::move(kerberos_files_changed)),
+      krb5_(std::make_unique<Krb5Interface>()) {}
 
 AccountManager::~AccountManager() = default;
 
@@ -76,6 +80,8 @@ ErrorType AccountManager::RemoveAccount(const std::string& principal_name) {
   base::DeleteFile(data->krb5conf_path, false /* recursive */);
   base::DeleteFile(data->krb5cc_path, false /* recursive */);
   accounts_.erase(it);
+
+  TriggerKerberosFilesChanged(principal_name);
   return ERROR_NONE;
 }
 
@@ -92,6 +98,7 @@ ErrorType AccountManager::SetConfig(const std::string& principal_name,
     return ERROR_LOCAL_IO;
   }
 
+  TriggerKerberosFilesChanged(principal_name);
   return ERROR_NONE;
 }
 
@@ -101,8 +108,13 @@ ErrorType AccountManager::AcquireTgt(const std::string& principal_name,
   if (!data)
     return ERROR_UNKNOWN_PRINCIPAL_NAME;
 
-  return krb5_->AcquireTgt(principal_name, password, data->krb5cc_path,
-                           data->krb5conf_path);
+  ErrorType error = krb5_->AcquireTgt(principal_name, password,
+                                      data->krb5cc_path, data->krb5conf_path);
+
+  // Assume the ticket changed if AcquireTgt() was successful.
+  if (error == ERROR_NONE)
+    TriggerKerberosFilesChanged(principal_name);
+  return error;
 }
 
 ErrorType AccountManager::GetKerberosFiles(const std::string& principal_name,
@@ -131,6 +143,12 @@ ErrorType AccountManager::GetKerberosFiles(const std::string& principal_name,
   files->mutable_krb5cc()->assign(krb5cc.begin(), krb5cc.end());
   files->mutable_krb5conf()->assign(krb5conf.begin(), krb5conf.end());
   return ERROR_NONE;
+}
+
+void AccountManager::TriggerKerberosFilesChanged(
+    const std::string& principal_name) {
+  if (!kerberos_files_changed_.is_null())
+    kerberos_files_changed_.Run(principal_name);
 }
 
 base::Optional<AccountManager::AccountData> AccountManager::GetAccountData(

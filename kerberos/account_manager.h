@@ -9,6 +9,7 @@
 #include <string>
 #include <unordered_map>
 
+#include <base/callback.h>
 #include <base/compiler_specific.h>
 #include <base/files/file_path.h>
 #include <base/macros.h>
@@ -24,8 +25,16 @@ class Krb5Interface;
 // (user@REALM.COM).
 class AccountManager {
  public:
-  // |storage_dir_| is the path where configs and credential caches are stored.
-  explicit AccountManager(const base::FilePath& storage_dir_);
+  using KerberosFilesChangedCallback =
+      base::RepeatingCallback<void(const std::string& principal_name)>;
+
+  // |storage_dir| is the path where configs and credential caches are stored.
+  // |kerberos_files_changed| is a callback that gets called when either the
+  // Kerberos credential cache or the configuration file changes for a specific
+  // account. Use in combination with GetKerberosFiles() to get the latest
+  // files.
+  explicit AccountManager(base::FilePath storage_dir,
+                          KerberosFilesChangedCallback kerberos_files_changed);
   ~AccountManager();
 
   // Adds an account keyed by |principal_name| (user@REALM.COM) to the list of
@@ -60,8 +69,15 @@ class AccountManager {
   // Directory where account data is stored.
   const base::FilePath storage_dir_;
 
+  // Gets called when the Kerberos configuration or credential cache changes for
+  // a specific account.
+  const KerberosFilesChangedCallback kerberos_files_changed_;
+
   // Interface for Kerberos methods (may be overridden for tests).
   const std::unique_ptr<Krb5Interface> krb5_;
+
+  // Calls |kerberos_files_changed_| if set.
+  void TriggerKerberosFilesChanged(const std::string& principal_name);
 
   struct AccountData {
     // File path for the Kerberos configuration.

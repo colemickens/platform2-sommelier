@@ -4,13 +4,13 @@
 
 #include "kerberos/kerberos_adaptor.h"
 
+#include <string>
+#include <utility>
+
 #include <base/compiler_specific.h>
 #include <base/files/file_util.h>
 #include <base/optional.h>
 #include <brillo/dbus/dbus_object.h>
-
-#include <string>
-#include <utility>
 
 #include "kerberos/error_strings.h"
 #include "kerberos/platform_helper.h"
@@ -60,7 +60,9 @@ KerberosAdaptor::KerberosAdaptor(
       dbus_object_(std::move(dbus_object)),
       // TODO(https://crbug.com/951718): Figure out user hash and set storage
       // dir to daemon store folder.
-      manager_(base::FilePath("/tmp/kerberosd")) {
+      manager_(base::FilePath("/tmp/kerberosd"),
+               base::BindRepeating(&KerberosAdaptor::OnKerberosFilesChanged,
+                                   base::Unretained(this))) {
   base::CreateDirectory(base::FilePath("/tmp/kerberosd"));
 }
 
@@ -158,6 +160,12 @@ std::vector<uint8_t> KerberosAdaptor::GetKerberosFiles(
   PrintResult(__FUNCTION__, error);
   response.set_error(error);
   return SerializeProto(response);
+}
+
+void KerberosAdaptor::OnKerberosFilesChanged(
+    const std::string& principal_name) {
+  LOG(INFO) << "Firing signal UserKerberosFilesChanged";
+  SendKerberosFilesChangedSignal(principal_name);
 }
 
 }  // namespace kerberos
