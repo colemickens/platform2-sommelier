@@ -551,7 +551,7 @@ mount --make-shared -n -t tmpfs -o nodev,noexec,nosuid media /media
 # relabel need only be started if SELinux policy updates.
 if [ -f /sys/fs/selinux/enforce ]; then
   chattr -i /var/empty || :
-  restorecon -R -D /var /var/*
+  restorecon -R -D /var
   restorecon -R /sys
   # We cannot do recursive for .shadow since userdata is encrypted (including
   # file names) before user logs-in. Restoring context for it may mislabel files
