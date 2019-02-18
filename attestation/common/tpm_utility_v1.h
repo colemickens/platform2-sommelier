@@ -90,8 +90,6 @@ class TpmUtilityV1 : public TpmUtility {
                  std::string* quoted_data,
                  std::string* quote) override;
   bool ReadPCR(uint32_t pcr_index, std::string* pcr_value) const override;
-  bool GetRSAPublicKeyFromTpmPublicKey(const std::string& tpm_public_key_object,
-                                       std::string* public_key_der) override;
   bool RemoveOwnerDependency() override;
   bool GetEndorsementPublicKeyModulus(KeyType key_type,
                                       std::string* ekm) override;
@@ -134,6 +132,11 @@ class TpmUtilityV1 : public TpmUtility {
                         TSS_FLAG flag,
                         TSS_FLAG sub_flag,
                         std::string* data);
+
+  // Convert a |tpm_public_key_object|, that is, a serialized TPM_PUBKEY for
+  // TPM 1.2, to a DER encoded PKCS #1
+  bool GetRSAPublicKeyFromTpmPublicKey(const std::string& tpm_public_key_object,
+                                       std::string* public_key_der);
 
   bool is_ready_{false};
   trousers::ScopedTssContext context_handle_;

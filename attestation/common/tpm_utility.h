@@ -164,13 +164,6 @@ class TpmUtility {
                          std::string* quoted_data,
                          std::string* quote) = 0;
 
-  // Convert a |tpm_public_key_object|, that is, a serialized TPM_PUBKEY for
-  // TPM 1.2 or serialized TPMT_PUBLIC for TPM 2.0, to a DER encoded PKCS #1
-  // RSAPublicKey.
-  virtual bool GetRSAPublicKeyFromTpmPublicKey(
-      const std::string& tpm_public_key_object,
-      std::string* public_key_der) = 0;
-
   // Signals to remove Attestation dependency on owner password.
   // Returns true if the dependency was removed this time, or it already has
   // been removed earlier; false otherwise.

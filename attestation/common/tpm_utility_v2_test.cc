@@ -516,18 +516,6 @@ TEST_F(TpmUtilityTest, ReadPCRFail) {
   EXPECT_EQ("", value);
 }
 
-TEST_F(TpmUtilityTest, GetRSAPublicKeyFromTpmPublicKey) {
-  std::string public_key;
-  GetValidPublicKey(&public_key);
-  std::string der;
-  EXPECT_TRUE(tpm_utility_->GetRSAPublicKeyFromTpmPublicKey(public_key, &der));
-}
-
-TEST_F(TpmUtilityTest, GetRSAPublicKeyFromTpmPublicKeyBadKey) {
-  std::string der;
-  EXPECT_FALSE(tpm_utility_->GetRSAPublicKeyFromTpmPublicKey("bad_key", &der));
-}
-
 TEST_F(TpmUtilityTest, RemoveOwnerDependency) {
   EXPECT_TRUE(tpm_utility_->RemoveOwnerDependency());
   EXPECT_EQ(tpm_manager::kTpmOwnerDependency_Attestation,

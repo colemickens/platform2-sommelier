@@ -98,8 +98,6 @@ class TpmUtilityV2 : public TpmUtility {
                  const std::string& key_blob,
                  std::string* quoted_data,
                  std::string* quote) override;
-  bool GetRSAPublicKeyFromTpmPublicKey(const std::string& tpm_public_key_object,
-                                       std::string* public_key_der) override;
   bool RemoveOwnerDependency() override;
   bool GetEndorsementPublicKeyModulus(KeyType key_type,
                                       std::string* ekm) override;
@@ -164,6 +162,11 @@ class TpmUtilityV2 : public TpmUtility {
   // Gets the specified endorsement key. Returns true on success and provides
   // the |key_handle|.
   bool GetEndorsementKey(KeyType key_type, trunks::TPM_HANDLE* key_handle);
+
+  // Convert a |tpm_public_key_object|, that is, a serialized TPMT_PUBLIC for
+  // TPM 2.0, to a DER encoded PKCS #1 RSAPublicKey.
+  bool GetRSAPublicKeyFromTpmPublicKey(const std::string& tpm_public_key_object,
+                                       std::string* public_key_der);
 
   bool is_ready_{false};
   std::string endorsement_password_;
