@@ -752,8 +752,9 @@ TEST_F(EcEventServiceBootstrappedDiagnosticsdCoreTest,
 
 // Test that the method |HandleEcNotification()| exposed by diagnostics
 // processor gRPC is called by diagnostics deamon multiple times.
+// TODO(b/124598866): Disabled due to flakiness.
 TEST_F(EcEventServiceBootstrappedDiagnosticsdCoreTest,
-       SendGrpcEcEventToDiagnosticsProcessorMultipleEvents) {
+       DISABLED_SendGrpcEcEventToDiagnosticsProcessorMultipleEvents) {
   EmulateEcEvent(3, kFakeEcEventType1);
   EmulateEcEvent(4, kFakeEcEventType2);
   ExpectFakeProcessorEcEventCalled(fake_diagnostics_processor(), 3,
