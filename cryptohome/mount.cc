@@ -1282,20 +1282,24 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
   // method).
   // In the table below: X = true, - = false, * = any value
   //
-  //                 1   2   3   4   5   6   7   8
-  // should_tpm      X   X   X   X   -   -   -   *
+  //                 1   2   3   4   5   6   7   8   9
+  // should_tpm      X   X   X   X   -   -   -   *   X
   //
-  // tpm_wrapped     -   X   X   -   -   X   -   X
+  // pcr_bound       -   X   *   -   -   *   -   *   -
   //
-  // scrypt_wrapped  -   -   -   X   -   -   X   X
+  // tpm_wrapped     -   X   X   -   -   X   -   X   *
   //
-  // scrypt_derived  *   X   -   *   *   *   *   *
+  // scrypt_wrapped  -   -   -   X   -   -   X   X   *
   //
-  // migrate         Y   N   Y   Y   Y   Y   N   Y
+  // scrypt_derived  *   X   -   *   *   *   *   *   *
+  //
+  // migrate         Y   N   Y   Y   Y   Y   N   Y   Y
   //
   // If the vault keyset represents an LE credential, we should not re-encrypt
   // it at all (that is unnecessary).
   const unsigned crypt_flags = serialized->flags();
+  bool pcr_bound =
+      (crypt_flags & SerializedVaultKeyset::PCR_BOUND) != 0;
   bool tpm_wrapped =
       (crypt_flags & SerializedVaultKeyset::TPM_WRAPPED) != 0;
   bool scrypt_wrapped =
@@ -1312,14 +1316,16 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
     if (serialized->has_tpm_public_key_hash() || is_le_credential) {
       if (is_le_credential && !crypto_->NeedsPcrBinding(serialized->le_label()))
         break;
-      if (tpm_wrapped && should_tpm && !scrypt_wrapped) {
-        if (scrypt_derived)
-          break;  // 2
-        LOG(INFO) << "Migrating to deriving AES keys using scrypt.";
+      if (pcr_bound && tpm_wrapped && should_tpm && scrypt_derived &&
+          !scrypt_wrapped) {
+        break;  // 2
       }
       if (scrypt_wrapped && !should_tpm && !tpm_wrapped)
         break;  // 7
     }
+    LOG(INFO) << "Migrating keyset " << *index << ": should_tpm=" << should_tpm
+              << ", has_hash=" << serialized->has_tpm_public_key_hash()
+              << ", flags=" << crypt_flags;
     // This is not considered a fatal error.  Re-saving with the desired
     // protection is ideal, but not required.
     SerializedVaultKeyset new_serialized;

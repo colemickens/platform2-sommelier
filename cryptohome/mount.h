@@ -864,6 +864,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   FRIEND_TEST(MountTest, MountCryptohomeLECredentialsMigrationFails);
   FRIEND_TEST(MountTest, UserActivityTimestampUpdated);
   FRIEND_TEST(MountTest, GoodReDecryptTest);
+  FRIEND_TEST(MountTest, TpmWrappedToPcrBoundMigrationTest);
   FRIEND_TEST(MountTest, MountCryptohomeNoChange);
   FRIEND_TEST(MountTest, CheckChapsDirectoryMigration);
   FRIEND_TEST(MountTest, TwoWayKeysetMigrationTest);

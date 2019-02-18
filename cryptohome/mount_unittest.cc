@@ -1178,6 +1178,8 @@ TEST_P(MountTest, GoodReDecryptTest) {
   EXPECT_TRUE(serialized_tpm.ParseFromArray(migrated_keyset.data(),
                                             migrated_keyset.size()));
   // Did it migrate?
+  EXPECT_EQ(SerializedVaultKeyset::PCR_BOUND,
+            (serialized_tpm.flags() & SerializedVaultKeyset::PCR_BOUND));
   EXPECT_EQ(SerializedVaultKeyset::TPM_WRAPPED,
             (serialized_tpm.flags() & SerializedVaultKeyset::TPM_WRAPPED));
   EXPECT_EQ(0, (serialized.flags() & SerializedVaultKeyset::SCRYPT_WRAPPED));
@@ -1213,6 +1215,98 @@ TEST_P(MountTest, GoodReDecryptTest) {
   }
 
   ASSERT_TRUE(homedirs_.AreCredentialsValid(up));
+}
+
+TEST_P(MountTest, TpmWrappedToPcrBoundMigrationTest) {
+  InsertTestUsers(&kDefaultUsers[6], 1);
+  // Create a Mount instance that points to a good shadow root, test that it
+  // properly re-authenticates against the first key.
+  mount_->set_use_tpm(true);
+  crypto_.set_use_tpm(true);
+
+  TestUser *user = &helper_.users[0];
+  UsernamePasskey up(user->username, user->passkey);
+
+  EXPECT_CALL(tpm_init_, HasCryptohomeKey())
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(tpm_init_, SetupTpm(true))
+    .WillOnce(Return(true));
+  crypto_.Init(&tpm_init_);
+
+  EXPECT_CALL(tpm_, IsEnabled())
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(tpm_, IsOwned())
+    .WillRepeatedly(Return(true));
+
+  EXPECT_TRUE(DoMountInit());
+
+  // Load the pre-generated keyset
+  FilePath key_path = mount_->GetUserLegacyKeyFileForUser(
+      up.GetObfuscatedUsername(helper_.system_salt), 0);
+  EXPECT_GT(key_path.value().size(), 0u);
+  cryptohome::SerializedVaultKeyset serialized;
+  EXPECT_TRUE(serialized.ParseFromArray(user->credentials.data(),
+                                        user->credentials.size()));
+  serialized.set_flags(SerializedVaultKeyset::TPM_WRAPPED |
+                       SerializedVaultKeyset::SCRYPT_DERIVED);
+
+  // Call DecryptVaultKeyset first, allowing migration to a PCR-bound keyset.
+  VaultKeyset vault_keyset;
+  vault_keyset.Initialize(&platform_, mount_->crypto());
+  MountError error = MOUNT_ERROR_NONE;
+  // Inject the pre-generated, TPM-wrapped keyset.
+  EXPECT_CALL(platform_, FileExists(user->keyset_path))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, ReadFile(user->keyset_path, _))
+    .WillRepeatedly(DoAll(SetArgPointee<1>(user->credentials),
+                          Return(true)));
+  EXPECT_CALL(platform_, FileExists(user->salt_path))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, ReadFile(user->salt_path, _))
+    .WillRepeatedly(DoAll(SetArgPointee<1>(user->user_salt),
+                          Return(true)));
+
+  EXPECT_CALL(platform_,
+      Move(user->keyset_path, user->keyset_path.AddExtension("bak")))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_,
+      Move(user->salt_path, user->salt_path.AddExtension("bak")))
+    .WillOnce(Return(true));
+
+  //
+  // Create the "TPM-wrapped" value by letting it save the plaintext.
+  EXPECT_CALL(tpm_, SealToPcrWithAuthorization(_, _, _, _, _))
+    .WillRepeatedly(Invoke(TpmPassthroughSealWithAuthorization));
+  brillo::SecureBlob fake_pub_key("A");
+  EXPECT_CALL(tpm_, GetPublicKeyHash(_, _))
+    .WillRepeatedly(DoAll(SetArgPointee<1>(fake_pub_key),
+                          Return(Tpm::kTpmRetryNone)));
+
+  brillo::Blob migrated_keyset;
+  EXPECT_CALL(platform_,
+              WriteFileAtomicDurable(user->keyset_path, _, _))
+    .WillOnce(DoAll(SaveArg<1>(&migrated_keyset), Return(true)));
+  int key_index = 0;
+
+  user->InjectKeyset(&platform_, true);
+
+  EXPECT_TRUE(mount_->DecryptVaultKeyset(up, &vault_keyset, &serialized,
+                                         &key_index, &error));
+  ASSERT_EQ(error, MOUNT_ERROR_NONE);
+  ASSERT_NE(migrated_keyset.size(), 0);
+
+  cryptohome::SerializedVaultKeyset serialized_tpm;
+  EXPECT_TRUE(serialized_tpm.ParseFromArray(migrated_keyset.data(),
+                                            migrated_keyset.size()));
+  // Did it migrate?
+  EXPECT_EQ(SerializedVaultKeyset::PCR_BOUND,
+            (serialized_tpm.flags() & SerializedVaultKeyset::PCR_BOUND));
+  EXPECT_EQ(SerializedVaultKeyset::TPM_WRAPPED,
+            (serialized_tpm.flags() & SerializedVaultKeyset::TPM_WRAPPED));
+  EXPECT_EQ(0, (serialized.flags() & SerializedVaultKeyset::SCRYPT_WRAPPED));
+  // Does it use scrypt for key derivation?
+  EXPECT_EQ(SerializedVaultKeyset::SCRYPT_DERIVED,
+            (serialized_tpm.flags() & SerializedVaultKeyset::SCRYPT_DERIVED));
 }
 
 TEST_P(MountTest, MountCryptohome) {
