@@ -73,7 +73,7 @@ bool SELinuxViolationCollector::Collect() {
     reason = "no user consent";
     feedback = false;
   } else if (ShouldDropThisReport()) {
-    reason = "dropped sample";
+    reason = "ignoring - only 0.1% reports are collected on release images";
     feedback = false;
   }
   LOG(INFO) << "Processing selinux violation: " << reason;
