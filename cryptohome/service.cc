@@ -2691,6 +2691,8 @@ gboolean Service::FinalizeBootLockbox(const GArray* request,
 
 void Service::DoGetBootAttribute(const brillo::Blob& request,
                                  DBusGMethodInvocation* context) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kGetBootAttribute);
+
   GetBootAttributeRequest request_pb;
   if (!request_pb.ParseFromArray(request.data(), request.size())) {
     SendInvalidArgsReply(context, "Bad GetBootAttributeRequest");
@@ -2717,6 +2719,8 @@ gboolean Service::GetBootAttribute(const GArray* request,
 
 void Service::DoSetBootAttribute(const brillo::Blob& request,
                                  DBusGMethodInvocation* context) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kSetBootAttribute);
+
   SetBootAttributeRequest request_pb;
   if (!request_pb.ParseFromArray(request.data(), request.size())) {
     SendInvalidArgsReply(context, "Bad SetBootAttributeRequest");
@@ -2738,6 +2742,8 @@ gboolean Service::SetBootAttribute(const GArray* request,
 
 void Service::DoFlushAndSignBootAttributes(const brillo::Blob& request,
                                            DBusGMethodInvocation* context) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kFlushAndSignBootAttributes);
+
   FlushAndSignBootAttributesRequest request_pb;
   if (!request_pb.ParseFromArray(request.data(), request.size())) {
     SendInvalidArgsReply(context, "Bad FlushAndSignBootAttributesRequest");

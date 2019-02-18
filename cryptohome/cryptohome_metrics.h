@@ -202,6 +202,9 @@ enum class DiskCleanupProgress {
 // https://uma.googleplex.com/histograms/?histograms=Platform.Cryptohome.DeprecatedApiCalled
 enum class DeprecatedApiEvent {
   kInitializeCastKey = 0,
+  kGetBootAttribute,
+  kSetBootAttribute,
+  kFlushAndSignBootAttributes,
   kMaxValue,
 };
 
