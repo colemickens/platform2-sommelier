@@ -35,11 +35,38 @@ constexpr char kStorageComputers[] = "computers";
 constexpr char kStorageRemovable[] = "removable";
 constexpr char kStoragePlayFiles[] = "playfiles";
 
-int StartServer(dbus::ObjectProxy* proxy,
-                const vm_tools::seneschal::StartServerRequest& request) {
+int StartServer(dbus::ObjectProxy* proxy, uint64_t port, uint64_t accept_cid) {
+  if (port == 0) {
+    LOG(ERROR) << "--port is required";
+    return EXIT_FAILURE;
+  }
+
+  if (port > static_cast<uint64_t>(std::numeric_limits<uint32_t>::max())) {
+    LOG(ERROR) << "--port value is too large; maximum value allowed is "
+               << std::numeric_limits<uint32_t>::max();
+    return EXIT_FAILURE;
+  }
+
+  if (accept_cid < 3) {
+    LOG(ERROR) << "invalid value for --accept_cid: " << accept_cid;
+    return EXIT_FAILURE;
+  }
+  if (accept_cid >
+      static_cast<uint64_t>(std::numeric_limits<uint32_t>::max())) {
+    LOG(ERROR) << "--accept_cid value is too large; maximum value allowed is "
+               << std::numeric_limits<uint32_t>::max();
+    return EXIT_FAILURE;
+  }
+
+  LOG(INFO) << "Starting server";
+
   dbus::MethodCall method_call(vm_tools::seneschal::kSeneschalInterface,
                                vm_tools::seneschal::kStartServerMethod);
   dbus::MessageWriter writer(&method_call);
+
+  vm_tools::seneschal::StartServerRequest request;
+  request.mutable_vsock()->set_port(static_cast<uint32_t>(port));
+  request.mutable_vsock()->set_accept_cid(static_cast<uint32_t>(accept_cid));
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
     LOG(ERROR) << "Failed to encode StartServerRequest protobuf";
     return EXIT_FAILURE;
@@ -66,49 +93,6 @@ int StartServer(dbus::ObjectProxy* proxy,
 
   LOG(INFO) << "Started server with handle: " << response.handle();
   return EXIT_SUCCESS;
-}
-
-int StartServerUnix(dbus::ObjectProxy* proxy, const string& socket_name) {
-  LOG(INFO) << "Starting server (unix domain socket transport)";
-
-  vm_tools::seneschal::StartServerRequest request;
-  request.mutable_unix_addr()->set_path(socket_name);
-
-  return StartServer(proxy, request);
-}
-
-int StartServerVsock(dbus::ObjectProxy* proxy,
-                     uint64_t port,
-                     uint64_t accept_cid) {
-  if (port == 0) {
-    LOG(ERROR) << "--port is required";
-    return EXIT_FAILURE;
-  }
-
-  if (port > static_cast<uint64_t>(std::numeric_limits<uint32_t>::max())) {
-    LOG(ERROR) << "--port value is too large; maximum value allowed is "
-               << std::numeric_limits<uint32_t>::max();
-    return EXIT_FAILURE;
-  }
-
-  if (accept_cid < 3) {
-    LOG(ERROR) << "invalid value for --accept_cid: " << accept_cid;
-    return EXIT_FAILURE;
-  }
-  if (accept_cid >
-      static_cast<uint64_t>(std::numeric_limits<uint32_t>::max())) {
-    LOG(ERROR) << "--accept_cid value is too large; maximum value allowed is "
-               << std::numeric_limits<uint32_t>::max();
-    return EXIT_FAILURE;
-  }
-
-  LOG(INFO) << "Starting server (vsock transport)";
-
-  vm_tools::seneschal::StartServerRequest request;
-  request.mutable_vsock()->set_port(static_cast<uint32_t>(port));
-  request.mutable_vsock()->set_accept_cid(static_cast<uint32_t>(accept_cid));
-
-  return StartServer(proxy, request);
 }
 
 int StopServer(dbus::ObjectProxy* proxy, uint64_t handle) {
@@ -403,8 +387,6 @@ int main(int argc, char** argv) {
   DEFINE_uint64(
       accept_cid, 0,
       "The vsock context id from which the server should accept connections");
-  DEFINE_string(socket_name, "",
-                "Unix domain socket on which the server should listen");
   DEFINE_string(path, "", "Path to share with a running server");
   DEFINE_bool(writable, false, "Whether the shared path should be writable");
 
@@ -438,17 +420,7 @@ int main(int argc, char** argv) {
   }
 
   if (FLAGS_start) {
-    if (!FLAGS_socket_name.empty() &&
-        (FLAGS_port != 0 || FLAGS_accept_cid != 0)) {
-      LOG(ERROR)
-          << "--port and --accept_cid are not compatible with --socket_name";
-      return EXIT_FAILURE;
-    }
-    if (!FLAGS_socket_name.empty()) {
-      return StartServerUnix(proxy, FLAGS_socket_name);
-    } else {
-      return StartServerVsock(proxy, FLAGS_port, FLAGS_accept_cid);
-    }
+    return StartServer(proxy, FLAGS_port, FLAGS_accept_cid);
   } else if (FLAGS_stop) {
     return StopServer(proxy, FLAGS_handle);
   } else if (FLAGS_share_path || FLAGS_unshare_path) {

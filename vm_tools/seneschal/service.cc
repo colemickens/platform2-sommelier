@@ -35,7 +35,6 @@
 #include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
-#include <base/strings/stringprintf.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
@@ -50,40 +49,17 @@ namespace {
 // Path to the runtime directory where we will create server jails.
 constexpr char kRuntimeDir[] = "/run/seneschal";
 
-// Path to the directory where we will create unix domain sockets
-// for clients to connect.
-constexpr char kClientDir[] = "/run/seneschal/9p-client";
-
 // The chronos uid and gid.  These are used for file system access.
 constexpr uid_t kChronosUid = 1000;
 constexpr gid_t kChronosGid = 1000;
-
-constexpr gid_t kSeneschalClientGid = 417;
-constexpr gid_t kAndroidEverybodyGid = 665357;
-constexpr gid_t kSupplementaryGroups[] = {
-    // seneschal-client gid is needed to change ownership of 9P socket.
-    kSeneschalClientGid,
-    // Access to android files requires android-everybody gid.
-    kAndroidEverybodyGid,
-};
+// Access to android files requires android-everybody gid.
+constexpr gid_t kSupplementaryGroups[] = {665357};
 
 // The gid of the chronos-access group.
 constexpr gid_t kChronosAccessGid = 1001;
 
 // The uid used for authenticating with DBus.
 constexpr uid_t kDbusAuthUid = 20115;
-
-// The crosvm uid and gid.
-constexpr uid_t kCrosvmUid = 299;
-constexpr gid_t kCrosvmGid = 299;
-
-// Gids on the 9P server side that should be mapped to crosvm on the
-// client side so that crosvm can access the shared data.
-constexpr gid_t k9pMappedGids[] = {
-    kChronosGid,
-    kChronosAccessGid,
-    kAndroidEverybodyGid,
-};
 
 // How long we should wait for a server process to exit.
 constexpr base::TimeDelta kServerExitTimeout = base::TimeDelta::FromSeconds(2);
@@ -495,37 +471,7 @@ std::unique_ptr<dbus::Response> Service::StartServer(
       valid_address = true;
       break;
     }
-    case StartServerRequest::kUnixAddr: {
-      const UnixAddress& addr = request.unix_addr();
-      base::FilePath path(addr.path());
-      if (path.empty()) {
-        LOG(ERROR) << "Unix address must not be empty";
-        break;
-      }
-
-      if (path.IsAbsolute() || path.ReferencesParent() ||
-          !path.DirName().empty() || path.BaseName().value() == ".") {
-        LOG(ERROR) << "Unix address must be socket name without path ('"
-                   << path.value() << "')";
-        break;
-      }
-
-      args.emplace_back("--socket_gid");
-      args.emplace_back(std::to_string(kSeneschalClientGid));
-      args.emplace_back(string("unix:") +
-                        base::FilePath(kClientDir).Append(path).value());
-
-      args.emplace_back("--uid_map");
-      args.emplace_back(base::StringPrintf("%u:%u", kChronosUid, kCrosvmUid));
-
-      for (auto gid : k9pMappedGids) {
-        args.emplace_back("--gid_map");
-        args.emplace_back(base::StringPrintf("%u:%u", gid, kCrosvmGid));
-      }
-
-      valid_address = true;
-      break;
-    }
+    case StartServerRequest::kUnixAddr:
     case StartServerRequest::kNet:
     case StartServerRequest::kFd:
       LOG(ERROR) << "Listen address not implemented: "
@@ -558,20 +504,13 @@ std::unique_ptr<dbus::Response> Service::StartServer(
     bool writable;
   } bind_mounts[] = {
       {
-          .src = "/proc",
-          .writable = false,
+          .src = "/proc", .writable = false,
       },
       {
-          .src = "/dev/null",
-          .writable = true,
+          .src = "/dev/null", .writable = true,
       },
       {
-          .src = "/dev/log",
-          .writable = true,
-      },
-      {
-          .src = kClientDir,
-          .writable = true,
+          .src = "/dev/log", .writable = true,
       },
   };
   for (const auto& bind_mount : bind_mounts) {
