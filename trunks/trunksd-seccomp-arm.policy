@@ -78,6 +78,7 @@ prctl: return 1
 gettid: 1
 set_tid_address: 1
 tgkill: 1
+sched_yield: 1
 
 rt_sigprocmask: 1
 signalfd4: 1
