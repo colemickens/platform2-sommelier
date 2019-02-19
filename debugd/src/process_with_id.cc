@@ -4,6 +4,9 @@
 
 #include "debugd/src/process_with_id.h"
 
+#include <string>
+#include <vector>
+
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
 
@@ -15,12 +18,16 @@ constexpr int kNumRandomBytesInId = 16;
 
 }  // namespace
 
-bool ProcessWithId::Init() {
-  if (SandboxedProcess::Init()) {
+bool ProcessWithId::Init(const std::vector<std::string>& minijail_extra_args) {
+  if (SandboxedProcess::Init(minijail_extra_args)) {
     GenerateId();
     return true;
   }
   return false;
+}
+
+bool ProcessWithId::Init() {
+  return ProcessWithId::Init({});
 }
 
 void ProcessWithId::GenerateId() {

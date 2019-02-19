@@ -6,6 +6,7 @@
 #define DEBUGD_SRC_PROCESS_WITH_ID_H_
 
 #include <string>
+#include <vector>
 
 #include "debugd/src/sandboxed_process.h"
 
@@ -21,6 +22,7 @@ class ProcessWithId : public SandboxedProcess {
   ~ProcessWithId() override = default;
 
   bool Init() override;
+  bool Init(const std::vector<std::string>& minijail_extra_args) override;
 
   const std::string& id() const { return id_; }
 

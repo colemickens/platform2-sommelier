@@ -10,6 +10,9 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#include <string>
+#include <vector>
+
 #include <base/strings/stringprintf.h>
 
 namespace debugd {
@@ -70,7 +73,8 @@ bool SandboxedProcess::GetHelperPath(const std::string& relative_path,
   return true;
 }
 
-bool SandboxedProcess::Init() {
+bool SandboxedProcess::Init(
+    const std::vector<std::string>& minijail_extra_args) {
   if (sandboxing_ && (user_.empty() || group_.empty())) {
       // Cannot sandbox without user/group.
       return false;
@@ -117,9 +121,16 @@ bool SandboxedProcess::Init() {
     AddArg("-n");
   }
 
+  for (const auto& arg : minijail_extra_args)
+    AddArg(arg);
+
   AddArg("--");
 
   return true;
+}
+
+bool SandboxedProcess::Init() {
+  return Init({});
 }
 
 void SandboxedProcess::DisableSandbox() {

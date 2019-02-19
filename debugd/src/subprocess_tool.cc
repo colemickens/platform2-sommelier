@@ -5,7 +5,9 @@
 #include "debugd/src/subprocess_tool.h"
 
 #include <memory>
+#include <string>
 #include <utility>
+#include <vector>
 
 #include <base/stl_util.h>
 
@@ -19,8 +21,10 @@ const char kErrorNoSuchProcess[] = "org.chromium.debugd.error.NoSuchProcess";
 
 }  // namespace
 
-ProcessWithId* SubprocessTool::CreateProcess(bool sandboxed,
-                                             bool access_root_mount_ns) {
+ProcessWithId* SubprocessTool::CreateProcess(
+    bool sandboxed,
+    bool access_root_mount_ns,
+    const std::vector<std::string>& minijail_extra_args) {
   auto process = std::make_unique<ProcessWithId>();
   if (!sandboxed)
     process->DisableSandbox();
@@ -28,7 +32,7 @@ ProcessWithId* SubprocessTool::CreateProcess(bool sandboxed,
   if (access_root_mount_ns)
     process->AllowAccessRootMountNamespace();
 
-  if (!process->Init())
+  if (!process->Init(minijail_extra_args))
     return nullptr;
 
   ProcessWithId* process_ptr = process.get();
@@ -36,6 +40,11 @@ ProcessWithId* SubprocessTool::CreateProcess(bool sandboxed,
     return process_ptr;
 
   return nullptr;
+}
+
+ProcessWithId* SubprocessTool::CreateProcess(bool sandboxed,
+                                             bool access_root_mount_ns) {
+  return CreateProcess(sandboxed, access_root_mount_ns, {});
 }
 
 bool SubprocessTool::RecordProcess(std::unique_ptr<ProcessWithId> process) {

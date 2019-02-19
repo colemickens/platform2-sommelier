@@ -24,6 +24,7 @@ class SandboxedProcess : public brillo::ProcessImpl {
                             std::string* full_path);
 
   virtual bool Init();
+  virtual bool Init(const std::vector<std::string>& minijail_extra_args);
 
   // Disable the default sandboxing for this process.
   virtual void DisableSandbox();
