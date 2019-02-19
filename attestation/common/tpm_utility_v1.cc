@@ -364,18 +364,37 @@ bool TpmUtilityV1::GetEndorsementPublicKey(KeyType key_type,
   if (key_type != KEY_TYPE_RSA) {
     return false;
   }
+  ScopedTssContext context_handle;
+  TSS_HTPM tpm_handle;
+  bool is_ready = IsTpmReady();
+  if (is_ready) {
+    if (!ConnectContextAsOwner(owner_password_, &context_handle, &tpm_handle)) {
+      LOG(ERROR) << __func__ << ": Could not connect to the TPM as owner.";
+      return false;
+    }
+  } else {
+    if (!ConnectContextAsUser(&context_handle, &tpm_handle)) {
+      LOG(ERROR) << __func__ << ": Could not connect to the TPM as user.";
+      return false;
+    }
+  }
+
   // Get a handle to the EK public key.
-  ScopedTssKey ek_public_key_object(context_handle_);
-  TSS_RESULT result = Tspi_TPM_GetPubEndorsementKey(tpm_handle_, false, nullptr,
-                                                    ek_public_key_object.ptr());
+  ScopedTssKey ek_public_key_object(context_handle);
+  TSS_RESULT result = Tspi_TPM_GetPubEndorsementKey(
+      tpm_handle, is_ready, nullptr, ek_public_key_object.ptr());
   if (TPM_ERROR(result)) {
+    if (!is_ready && IsTpmReady()) {
+      LOG(INFO) << " ownership taken during retrieval of EK. Retry.";
+      return GetEndorsementPublicKey(key_type, public_key_der);
+    }
     TPM_LOG(ERROR, result) << __func__ << ": Failed to get key.";
     return false;
   }
   // Get the public key in TPM_PUBKEY form.
   std::string ek_public_key_blob;
   if (!GetDataAttribute(
-          context_handle_, ek_public_key_object, TSS_TSPATTRIB_KEY_BLOB,
+          context_handle, ek_public_key_object, TSS_TSPATTRIB_KEY_BLOB,
           TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY, &ek_public_key_blob)) {
     LOG(ERROR) << __func__ << ": Failed to read public key.";
     return false;
