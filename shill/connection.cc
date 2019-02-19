@@ -289,9 +289,13 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
     routing_table_->FreeTableId(blackhole_table_id_);
     blackhole_table_id_ = RT_TABLE_UNSPEC;
   }
+
+  blackholed_uids_ = properties.blackholed_uids;
   blackholed_addrs_ = properties.blackholed_addrs;
-  if (!properties.blackholed_uids.empty() || blackholed_addrs_) {
-    blackholed_uids_ = properties.blackholed_uids;
+  bool has_blackholed_addrs =
+      blackholed_addrs_ && !blackholed_addrs_->IsEmpty();
+
+  if (!blackholed_uids_.empty() || has_blackholed_addrs) {
     blackhole_table_id_ = routing_table_->AllocTableId();
     CHECK(blackhole_table_id_);
     routing_table_->CreateBlackholeRoute(interface_index_,
