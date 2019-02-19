@@ -80,7 +80,14 @@ bool SchedulerConfigurationTool::SetPolicy(const std::string& policy,
   bool result = RunHelper("scheduler_configuration_helper",
                           ProcessWithOutput::ArgList{"--policy=" + policy},
                           &exit_status, error);
-  return result && (exit_status == 0);
+
+  bool status = result && (exit_status == 0);
+  if (!status) {
+    DEBUGD_ADD_ERROR(error, kErrorPath,
+                     "scheduler_configuration_helper failed");
+  }
+
+  return status;
 }
 
 }  // namespace debugd
