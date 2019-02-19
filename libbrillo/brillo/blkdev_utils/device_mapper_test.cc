@@ -26,7 +26,7 @@ TEST(DevmapperTableTest, CryptCreateParametersTest) {
   base::FilePath device("/some/random/filepath");
 
   SecureBlob secret;
-  base::HexStringToBytes("0123456789ABCDEF", &secret);
+  SecureBlob::HexStringToSecureBlob("0123456789ABCDEF", &secret);
 
   SecureBlob crypt_parameters = DevmapperTable::CryptCreateParameters(
       "aes-cbc-essiv:sha256", secret, 0, device, 0, true);
@@ -46,7 +46,7 @@ TEST(DevmapperTableTest, CryptCreateTableFromSecureBlobTest) {
   base::FilePath device("/some/random/filepath");
 
   SecureBlob secret;
-  base::HexStringToBytes("0123456789ABCDEF", &secret);
+  SecureBlob::HexStringToSecureBlob("0123456789ABCDEF", &secret);
 
   SecureBlob crypt_parameters = DevmapperTable::CryptCreateParameters(
       "aes-cbc-essiv:sha256", secret, 0, device, 0, true);
@@ -66,7 +66,7 @@ TEST(DevmapperTableTest, CryptCreateTableFromSecureBlobTest) {
 
 TEST(DevmapperTableTest, CryptGetKeyTest) {
   SecureBlob secret;
-  base::HexStringToBytes("0123456789ABCDEF", &secret);
+  SecureBlob::HexStringToSecureBlob("0123456789ABCDEF", &secret);
   SecureBlob crypt_table_str(
       "0 100 crypt aes-cbc-essiv:sha256 "
       "0123456789ABCDEF 0 /some/random/filepath 0 1 "
@@ -80,7 +80,7 @@ TEST(DevmapperTableTest, CryptGetKeyTest) {
 
 TEST(DevmapperTableTest, MalformedCryptTableTest) {
   SecureBlob secret;
-  base::HexStringToBytes("0123456789ABCDEF", &secret);
+  SecureBlob::HexStringToSecureBlob("0123456789ABCDEF", &secret);
   // Pass malformed crypt table string.
   SecureBlob crypt_table_str(
       "0 100 crypt ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -116,7 +116,7 @@ TEST(DevmapperTableTest, GetterTest) {
 
 TEST(DevmapperTest, FakeTaskConformance) {
   SecureBlob secret;
-  base::HexStringToBytes("0123456789ABCDEF", &secret);
+  SecureBlob::HexStringToSecureBlob("0123456789ABCDEF", &secret);
   SecureBlob crypt_table_str(
       "0 100 crypt aes-cbc-essiv:sha256 "
       "0123456789ABCDEF 0 /some/random/filepath 0 1 "
