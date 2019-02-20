@@ -55,6 +55,16 @@ const int kConnectionTesterTimeoutSeconds = 5;
 
 // Default running perf for 2 seconds.
 constexpr const int kPerfDurationSecs = 2;
+// TODO(chinglinyu) Remove after crbug/934702 is fixed.
+// The following description is added to 'perf-data' as a temporary solution
+// before the update of feedback disclosure to users is done in crbug/934702.
+constexpr const char kPerfDataDescription[] =
+    "perf-data contains performance profiling information about how much time "
+    "the system spends on various activities (program execution stack traces). "
+    "This might reveal some information about what system features and "
+    "resources are being used. The full detail of perf-data can be found in "
+    "the PerfDataProto protocol buffer message type in the chromium source "
+    "repository.\n";
 
 #define CMD_KERNEL_MODULE_PARAMS(module_name) \
     "cd /sys/module/" #module_name "/parameters 2>/dev/null && grep -sH ^ *"
@@ -464,6 +474,7 @@ void GetPerfData(LogTool::LogMap* map) {
   std::string perf_data_str(reinterpret_cast<const char*>(perf_data_xz.data()),
                             perf_data_xz.size());
   (*map)["perf-data"] =
+      std::string(kPerfDataDescription) +
       LogTool::EnsureUTF8String(perf_data_str, LogTool::Encoding::kBinary);
 }
 
