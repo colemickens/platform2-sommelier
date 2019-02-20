@@ -37,9 +37,7 @@ proto_library("tpm_encrypted_data_proto") {
 }
 
 shared_library("libtpmcrypto") {
-  configs += [
-    ":target_defaults",
-  ]
+  configs += [ ":target_defaults" ]
   sources = [
     "tpm_crypto_impl.cc",
     "tpm_proto_utils.cc",
@@ -52,17 +50,14 @@ shared_library("libtpmcrypto") {
     libs = [ "trunks" ]
   }
   if (!use.tpm2) {
-    sources += [ "tpm1_impl.cc"]
+    sources += [ "tpm1_impl.cc" ]
     libs = [ "tspi" ]
   }
-
 }
 
 if (use.test) {
   pkg_config("test_config") {
-    pkg_deps = [
-      "libchrome-test-${libbase_ver}",
-    ]
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
   }
 
   executable("tpmcrypto_test") {
@@ -81,7 +76,7 @@ if (use.test) {
       libs = [ "trunks" ]
     }
     if (!use.tpm2) {
-      sources += [ "tpm1_impl.cc"]
+      sources += [ "tpm1_impl.cc" ]
       libs = [ "tspi" ]
     }
     deps = [

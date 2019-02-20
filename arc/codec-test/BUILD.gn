@@ -22,13 +22,30 @@ pkg_config("dep_libs") {
 config("arc_gtest") {
   gtest_config = getenv("GTEST_CONFIG")
   lib_dirs = exec_script("//common-mk/args_generator_wrapper.py",
-                             [ gtest_config, "--libdir"], "list lines")
+                         [
+                           gtest_config,
+                           "--libdir",
+                         ],
+                         "list lines")
   libs = exec_script("//common-mk/arg_prefix_filter_wrapper.py",
-                     [ "--prefix=-l", gtest_config, "--libs"], "list lines")
+                     [
+                       "--prefix=-l",
+                       gtest_config,
+                       "--libs",
+                     ],
+                     "list lines")
   include_dirs = exec_script("//common-mk/args_generator_wrapper.py",
-                             [ gtest_config, "--includedir"], "list lines")
+                             [
+                               gtest_config,
+                               "--includedir",
+                             ],
+                             "list lines")
   cflags_cc = exec_script("//common-mk/args_generator_wrapper.py",
-                          [ gtest_config, "--cxxflags"], "list lines")
+                          [
+                            gtest_config,
+                            "--cxxflags",
+                          ],
+                          "list lines")
 }
 
 executable("arcvideoencoder_test") {

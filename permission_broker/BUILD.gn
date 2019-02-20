@@ -10,14 +10,10 @@ group("all") {
     ":permission_broker",
   ]
   if (use.test) {
-    deps += [
-      ":permission_broker_test",
-    ]
+    deps += [ ":permission_broker_test" ]
   }
   if (use.fuzzer) {
-    deps += [
-      ":firewall_fuzzer",
-    ]
+    deps += [ ":firewall_fuzzer" ]
   }
 }
 
@@ -50,10 +46,10 @@ generate_dbus_adaptors("permission_broker_adaptors") {
 
 static_library("libpermission_broker") {
   configs += [ ":target_defaults" ]
-  deps = [":permission_broker_adaptors"]
-  libs = [
-    "policy-${libbase_ver}",
+  deps = [
+    ":permission_broker_adaptors",
   ]
+  libs = [ "policy-${libbase_ver}" ]
   sources = [
     "allow_group_tty_device_rule.cc",
     "allow_hidraw_device_rule.cc",
@@ -80,16 +76,18 @@ static_library("libpermission_broker") {
     "usb_subsystem_udev_rule.cc",
   ]
   if (use.containers) {
-    deps += [
-      "../container_utils:libdevice_jail",
-    ]
+    deps += [ "../container_utils:libdevice_jail" ]
   }
 }
 
 executable("permission_broker") {
-  configs += [":target_defaults"]
-  deps = [":libpermission_broker"]
-  sources = ["permission_broker_main.cc"]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":libpermission_broker",
+  ]
+  sources = [
+    "permission_broker_main.cc",
+  ]
 }
 
 if (use.test) {
@@ -132,9 +130,7 @@ if (use.test) {
 # Fuzzer target.
 if (use.fuzzer) {
   pkg_config("firewall_fuzzer_config") {
-    pkg_deps = [
-      "libchrome-test-${libbase_ver}",
-    ]
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
   }
   executable("firewall_fuzzer") {
     configs += [

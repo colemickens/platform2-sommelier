@@ -7,12 +7,10 @@ import("//common-mk/pkg_config.gni")
 group("all") {
   deps = [
     ":arc-setup",
-    ":generate_squashfs"
+    ":generate_squashfs",
   ]
   if (use.test) {
-    deps += [
-      ":arc-setup_testrunner",
-    ]
+    deps += [ ":arc-setup_testrunner" ]
   }
 }
 
@@ -26,6 +24,7 @@ pkg_config("target_defaults_pkg_deps") {
     "libmetrics-${libbase_ver}",
     "libminijail",
     "libselinux",
+
     # system_api depends on protobuf (or protobuf-lite). It must appear
     # before protobuf here or the linker flags won"t be in the right
     # order.
@@ -36,9 +35,7 @@ pkg_config("target_defaults_pkg_deps") {
 
 config("target_defaults") {
   configs = [ ":target_defaults_pkg_deps" ]
-  defines = [
-    "OS_CHROMEOS",
-  ]
+  defines = [ "OS_CHROMEOS" ]
 }
 
 static_library("libarc_setup") {
@@ -53,23 +50,19 @@ static_library("libarc_setup") {
   ]
   defines = []
   if (defined(use.houdini) && use.houdini) {
-    defines += [
-      "USE_HOUDINI=1",
-    ]
+    defines += [ "USE_HOUDINI=1" ]
   }
   if (defined(use.ndk_translation) && use.ndk_translation) {
-    defines += [
-      "USE_NDK_TRANSLATION=1",
-    ]
+    defines += [ "USE_NDK_TRANSLATION=1" ]
   }
-  libs = [
-    "bootstat",
-  ]
+  libs = [ "bootstat" ]
 }
 
 executable("arc-setup") {
   configs += [ ":target_defaults" ]
-  sources = ["main.cc"]
+  sources = [
+    "main.cc",
+  ]
   deps = [
     ":libarc_setup",
   ]
@@ -82,12 +75,16 @@ action("mkdir_squashfs_source_dir") {
   ]
   script = "//common-mk/file_generator_wrapper.py"
   args = [
-    "mkdir", "-p", "${root_gen_dir}/squashfs_source_dir",
+    "mkdir",
+    "-p",
+    "${root_gen_dir}/squashfs_source_dir",
   ]
 }
 
 action("generate_squashfs") {
-  deps = [ ":mkdir_squashfs_source_dir" ]
+  deps = [
+    ":mkdir_squashfs_source_dir",
+  ]
   inputs = [
     "${root_gen_dir}/squashfs_source_dir",
   ]
@@ -103,18 +100,24 @@ action("generate_squashfs") {
     "-info",
     "-all-root",
     "-noappend",
-    "-comp", "lzo",
-    "-b", "4K",
+    "-comp",
+    "lzo",
+    "-b",
+    "4K",
+
     # Create rootfs and necessary dev nodes for art container.
     # ashmem minor number is dynamic determined and will be bind
     # mounted.
-    "-p", "/dev d 700 0 0",
-    "-p", "/dev/ashmem c 666 root root 1 3",
-    "-p", "/dev/random c 666 root root 1 8",
-    "-p", "/dev/urandom c 666 root root 1 9",
+    "-p",
+    "/dev d 700 0 0",
+    "-p",
+    "/dev/ashmem c 666 root root 1 3",
+    "-p",
+    "/dev/random c 666 root root 1 8",
+    "-p",
+    "/dev/urandom c 666 root root 1 9",
   ]
 }
-
 
 if (use.test) {
   pkg_config("arc-setup_testrunner_pkg_deps") {
@@ -133,6 +136,7 @@ if (use.test) {
       ":libarc_setup",
       "../../common-mk/testrunner:testrunner",
     ]
+
     # TODO(xzhou): Move boot_lockbox_client.cc and
     # priv_code_verifier.cc back to libarc_setup.
     sources = [

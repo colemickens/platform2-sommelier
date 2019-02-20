@@ -10,8 +10,9 @@ template("pkg_config") {
     forward_variables_from(invoker, "*")
     assert(defined(pkg_deps), "pkg_deps must be set")
 
-    _pkg_config_result = exec_script(
-        "//common-mk/pkg-config_wrapper.py", [ pkg_config ] + pkg_deps, "json")
+    _pkg_config_result = exec_script("//common-mk/pkg-config_wrapper.py",
+                                     [ pkg_config ] + pkg_deps,
+                                     "json")
 
     if (_pkg_config_result.cflags != []) {
       if (!defined(cflags)) {
@@ -79,7 +80,9 @@ template("generate_pkg_config") {
     if (!defined(output_name)) {
       output_name = name
     }
-    outputs = [ "${target_out_dir}/${output_name}.pc" ]
+    outputs = [
+      "${target_out_dir}/${output_name}.pc",
+    ]
 
     script = "//common-mk/generate-pc.py"
     args = [ "--output" ] + outputs + [ "--name=" + name ]

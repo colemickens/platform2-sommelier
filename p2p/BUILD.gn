@@ -270,9 +270,7 @@ if (use.test) {
 # Fuzzer only.
 if (use.fuzzer) {
   pkg_config("p2p_http_server_fuzzer_config") {
-    pkg_deps = [
-      "libchrome-test-${libbase_ver}",
-    ]
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
   }
 
   # p2p-http-server fuzzer

@@ -10,7 +10,7 @@ group("all") {
     ":mist",
   ]
   if (use.test) {
-    deps += [":mist_testrunner"]
+    deps += [ ":mist_testrunner" ]
   }
 }
 
@@ -35,8 +35,10 @@ proto_library("mist-protos") {
 }
 
 static_library("libmist") {
-  configs += [":target_defaults"]
-  deps = [":mist-protos"]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":mist-protos",
+  ]
   sources = [
     "config_loader.cc",
     "context.cc",
@@ -68,8 +70,10 @@ static_library("libmist") {
 }
 
 executable("mist") {
-  configs += [":target_defaults"]
-  deps = [":libmist"]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":libmist",
+  ]
   sources = [
     "main.cc",
   ]
@@ -77,9 +81,7 @@ executable("mist") {
 
 if (use.test) {
   pkg_config("mist_testrunner_config") {
-    pkg_deps = [
-      "libchrome-test-${libbase_ver}",
-    ]
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
   }
   executable("mist_testrunner") {
     configs += [
@@ -87,8 +89,8 @@ if (use.test) {
       ":target_defaults",
     ]
     deps = [
-      "//common-mk/testrunner:testrunner",
       ":libmist",
+      "//common-mk/testrunner:testrunner",
     ]
     sources = [
       "config_loader_test.cc",
@@ -107,4 +109,3 @@ if (use.test) {
     ]
   }
 }
-

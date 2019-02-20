@@ -188,7 +188,9 @@ shared_library("libshill-net-${libbase_ver}") {
     "-Wno-unused-variable",
     "-Wno-unused-function",
   ]
-  deps = [ ":${target_name}_deps" ]
+  deps = [
+    ":${target_name}_deps",
+  ]
 }
 
 pkg_config("libshill_config") {
@@ -598,9 +600,7 @@ if (use.cellular || use.vpn || use.pppoe) {
 
 if (use.fuzzer) {
   pkg_config("fuzzed_data_config") {
-    pkg_deps = [
-      "libchrome-test-${libbase_ver}",
-    ]
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
   }
   executable("cellular_pco_fuzzer") {
     configs += [

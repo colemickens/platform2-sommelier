@@ -7,21 +7,19 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
-    ":trunks",
     ":pinweaver_client",
+    ":trunks",
     ":trunks_client",
     ":trunks_send",
     ":trunksd",
   ]
   if (use.test) {
-    deps += [
-      ":trunks_testrunner",
-    ]
+    deps += [ ":trunks_testrunner" ]
   }
   if (use.fuzzer) {
     deps += [
-      ":trunks_key_blob_fuzzer",
       ":trunks_creation_blob_fuzzer",
+      ":trunks_key_blob_fuzzer",
       ":trunks_resource_manager_fuzzer",
     ]
   }
@@ -39,9 +37,7 @@ pkg_config("target_default_pkg_deps") {
 config("target_defaults") {
   configs = [ ":target_default_pkg_deps" ]
   if (use.tpm2_simulator) {
-    defines = [
-      "USE_SIMULATOR=1",
-    ]
+    defines = [ "USE_SIMULATOR=1" ]
   }
 }
 
@@ -51,6 +47,7 @@ proto_library("interface_proto") {
   sources = [
     "${proto_in_dir}/interface.proto",
   ]
+
   # Use -fPIC so this code can be linked into a shared library.
   use_pic = true
 }
@@ -61,14 +58,13 @@ proto_library("pinweaver_proto") {
   sources = [
     "${proto_in_dir}/pinweaver.proto",
   ]
+
   # Use -fPIC so this code can be linked into a shared library.
   use_pic = true
 }
 
 shared_library("trunks") {
-  configs += [
-    ":target_defaults"
-  ]
+  configs += [ ":target_defaults" ]
   sources = [
     "background_command_transceiver.cc",
     "blob_parser.cc",
@@ -96,12 +92,8 @@ shared_library("trunks") {
       "ftdi/support.c",
       "trunks_ftdi_spi.cc",
     ]
-    libs = [
-      "ftdi1",
-    ]
-    defines = [
-      "SPI_OVER_FTDI=1",
-    ]
+    libs = [ "ftdi1" ]
+    defines = [ "SPI_OVER_FTDI=1" ]
   }
 }
 
@@ -111,8 +103,8 @@ executable("pinweaver_client") {
     "pinweaver_client.cc",
   ]
   deps = [
-    ":trunks",
     ":pinweaver_proto",
+    ":trunks",
   ]
 }
 
@@ -138,21 +130,15 @@ executable("trunks_send") {
 }
 
 pkg_config("trunksd_lib_config") {
-  pkg_deps = [
-    "libpower_manager-client",
-  ]
+  pkg_deps = [ "libpower_manager-client" ]
 }
 
 config("trunksd_lib_all_dependent_configs") {
-  libs = [
-    "system_api-power_manager-protos",
-  ]
+  libs = [ "system_api-power_manager-protos" ]
 }
 
 pkg_config("trunksd_lib_all_dependent_pkg_deps") {
-  pkg_deps = [
-    "libpower_manager-client",
-  ]
+  pkg_deps = [ "libpower_manager-client" ]
 }
 
 static_library("trunksd_lib") {
@@ -178,9 +164,7 @@ static_library("trunksd_lib") {
 }
 
 pkg_config("trunksd_pkg_deps") {
-  pkg_deps = [
-    "libminijail",
-  ]
+  pkg_deps = [ "libminijail" ]
 }
 
 executable("trunksd") {
@@ -197,14 +181,10 @@ executable("trunksd") {
     ":trunksd_lib",
   ]
   if (use.ftdi_tpm) {
-    defines = [
-      "SPI_OVER_FTDI=1",
-    ]
+    defines = [ "SPI_OVER_FTDI=1" ]
   }
   if (use.tpm2_simulator) {
-    libs = [
-      "tpm2",
-    ]
+    libs = [ "tpm2" ]
   }
 }
 
@@ -230,9 +210,7 @@ static_library("trunks_test") {
 
 if (use.test) {
   pkg_config("trunks_testrunner_pkg_deps") {
-    pkg_deps = [
-      "libpower_manager-client-test",
-    ]
+    pkg_deps = [ "libpower_manager-client-test" ]
   }
   executable("trunks_testrunner") {
     configs += [
@@ -294,9 +272,7 @@ if (use.fuzzer) {
   }
 
   pkg_config("trunks_resource_manager_fuzzer_pkg_deps") {
-    pkg_deps = [
-      "libchrome-test-${libbase_ver}",  # For FuzzedDataProvider
-    ]
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]  # For FuzzedDataProvider
   }
 
   executable("trunks_resource_manager_fuzzer") {

@@ -54,12 +54,14 @@ action("cloud_policy_proto_generator") {
     "${policy_resources_dir}/VERSION",
     "${policy_resources_dir}/policy_templates.json",
   ]
-  outputs = ["${proto_out_dir}/cloud_policy.proto"]
+  outputs = [
+    "${proto_out_dir}/cloud_policy.proto",
+  ]
   args = [
     "--cloud-policy-protobuf=${proto_out_dir}/cloud_policy.proto",
     "${policy_resources_dir}/VERSION",
     "${OS}",
-    "1",         # chromeos-flag
+    "1",  # chromeos-flag
     "${policy_resources_dir}/policy_templates.json",
   ]
 }
@@ -72,6 +74,7 @@ proto_library("policy-protos") {
     "${proto_in_dir}/chrome_extension_policy.proto",
     "${proto_in_dir}/device_management_backend.proto",
   ]
+
   # policy-protos.a is used by a shared_libary object: https://crbug.com/715795
   # Build it with '-fPIC' instead of '-fPIE'.
   configs = [ "//common-mk:pic" ]
@@ -79,6 +82,7 @@ proto_library("policy-protos") {
 
 goproto_library("policy-goprotos") {
   proto_in_dir = "${sysroot}/usr/share/protofiles"
+
   # Package name needs to match with the one declared in .proto files.
   proto_out_dir = "go/src/chromiumos/policy/enterprise_management"
   sources = [
@@ -105,6 +109,7 @@ proto_library("install_attributes-proto") {
   sources = [
     "${proto_in_dir}/install_attributes.proto",
   ]
+
   # install_attributes-proto.a is used by a shared_libary.
   # Build it with '-fPIC' instead of '-fPIE'.
   configs = [ "//common-mk:pic" ]

@@ -20,9 +20,7 @@ pkg_config("target_default_deps") {
 }
 
 config("target_defaults") {
-  configs = [
-    ":target_default_deps"
-  ]
+  configs = [ ":target_default_deps" ]
 }
 
 pkg_config("mount_extension_image_config") {
@@ -72,9 +70,7 @@ executable("device_jail_fs") {
 }
 
 pkg_config("device_jail_utility_config") {
-  pkg_deps = [
-    "libbrillo-${libbase_ver}",
-  ]
+  pkg_deps = [ "libbrillo-${libbase_ver}" ]
 }
 
 executable("device_jail_utility") {
@@ -101,9 +97,7 @@ pkg_config("libdevice_jail_exported_deps") {
 }
 
 static_library("libdevice_jail") {
-  public_configs = [
-    ":libdevice_jail_exported_deps",
-  ]
+  public_configs = [ ":libdevice_jail_exported_deps" ]
   sources = [
     "device_jail_control.cc",
     "device_jail_control.h",

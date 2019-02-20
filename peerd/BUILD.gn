@@ -11,7 +11,7 @@ group("all") {
     ":peerd",
   ]
   if (use.test) {
-    deps += [":peerd_testrunner"]
+    deps += [ ":peerd_testrunner" ]
   }
 }
 
@@ -35,7 +35,9 @@ generate_dbus_adaptors("peerd_common_dbus_adaptors") {
 
 static_library("peerd_common") {
   configs += [ ":target_defaults" ]
-  deps = [":peerd_common_dbus_adaptors"]
+  deps = [
+    ":peerd_common_dbus_adaptors",
+  ]
   sources = [
     "avahi_client.cc",
     "avahi_service_discoverer.cc",
@@ -82,9 +84,9 @@ generate_dbus_proxies("generate-peerd-proxies") {
 executable("peerd") {
   configs += [ ":target_defaults" ]
   deps = [
-    ":peerd_common",
     ":generate-avahi-proxies",
     ":generate-peerd-proxies",
+    ":peerd_common",
   ]
   sources = [
     "main.cc",
@@ -93,9 +95,7 @@ executable("peerd") {
 
 if (use.test) {
   pkg_config("peerd_testrunner_config") {
-    pkg_deps = [
-      "libchrome-test-${libbase_ver}",
-    ]
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
   }
   executable("peerd_testrunner") {
     configs += [
@@ -104,9 +104,9 @@ if (use.test) {
       ":target_defaults",
     ]
     deps = [
-      ":peerd_common",
       ":generate-avahi-proxies",
       ":generate-peerd-proxies",
+      ":peerd_common",
       "//common-mk/testrunner:testrunner",
     ]
     sources = [

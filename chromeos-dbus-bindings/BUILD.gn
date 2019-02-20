@@ -9,9 +9,7 @@ group("all") {
     ":generate-chromeos-dbus-bindings",
   ]
   if (use.test) {
-    deps += [
-      ":chromeos_dbus_bindings_unittest",
-    ]
+    deps += [ ":chromeos_dbus_bindings_unittest" ]
   }
 }
 
@@ -35,15 +33,11 @@ config("target_defaults") {
 }
 
 pkg_config("libchromeos-dbus-bindings_config") {
-  pkg_deps = [
-    "dbus-1",
-  ]
+  pkg_deps = [ "dbus-1" ]
 }
 
 pkg_config("libchromeos-dbus-bindings_config_export") {
-  pkg_deps = [
-    "expat",
-  ]
+  pkg_deps = [ "expat" ]
 }
 
 static_library("libchromeos-dbus-bindings") {
@@ -51,9 +45,7 @@ static_library("libchromeos-dbus-bindings") {
     ":target_defaults",
     ":libchromeos-dbus-bindings_config",
   ]
-  all_dependent_configs = [
-    ":libchromeos-dbus-bindings_config_export",
-  ]
+  all_dependent_configs = [ ":libchromeos-dbus-bindings_config_export" ]
   sources = [
     "adaptor_generator.cc",
     "dbus_signature.cc",
@@ -67,9 +59,7 @@ static_library("libchromeos-dbus-bindings") {
 }
 
 executable("generate-chromeos-dbus-bindings") {
-  configs += [
-    ":target_defaults",
-  ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":libchromeos-dbus-bindings",
   ]

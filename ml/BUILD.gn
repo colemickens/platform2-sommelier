@@ -10,9 +10,7 @@ group("all") {
     ":ml_service",
   ]
   if (use.test) {
-    deps += [
-      ":ml_service_test",
-    ]
+    deps += [ ":ml_service_test" ]
   }
 }
 
@@ -44,9 +42,7 @@ static_library("ml_common") {
   deps = [
     ":ml_mojo_bindings",
   ]
-  all_dependent_configs = [
-    ":ml_common_pkg_deps",
-  ]
+  all_dependent_configs = [ ":ml_common_pkg_deps" ]
   sources = [
     "daemon.cc",
     "graph_executor_impl.cc",
@@ -59,20 +55,24 @@ static_library("ml_common") {
 }
 
 executable("ml_service") {
-  deps = [":ml_common"]
-  sources = ["main.cc"]
+  deps = [
+    ":ml_common",
+  ]
+  sources = [
+    "main.cc",
+  ]
 }
 
 if (use.test) {
   executable("ml_service_test") {
-    configs += [
-      "//common-mk:test",
-    ]
+    configs += [ "//common-mk:test" ]
     include_dirs = [
       "${sysroot}/usr/include/tensorflow",
       "${sysroot}/usr/include/tensorflow/third_party/flatbuffers",
     ]
-    deps = [":ml_common"]
+    deps = [
+      ":ml_common",
+    ]
     sources = [
       "graph_executor_impl_test.cc",
       "machine_learning_service_impl_test.cc",
@@ -82,4 +82,3 @@ if (use.test) {
     ]
   }
 }
-

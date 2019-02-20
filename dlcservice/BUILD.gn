@@ -27,6 +27,7 @@ pkg_config("target_defaults") {
     "libimageloader-client",
     "libimageloader-manifest",
     "libupdate_engine-client",
+
     # system_api depends on protobuf (or protobuf-lite). It must appear
     # before protobuf here or the linker flags won't be in the right
     # order.
@@ -45,7 +46,7 @@ generate_dbus_adaptors("dlcservice_adaptors") {
 
 static_library("libdlcservice") {
   configs += [ ":target_defaults" ]
-  libs = ["rootdev",]
+  libs = [ "rootdev" ]
   sources = [
     "boot_device.cc",
     "boot_device.h",
@@ -74,9 +75,7 @@ executable("dlcservice") {
 }
 
 pkg_config("dlcservice_util_config") {
-  pkg_deps = [
-    "libdlcservice-client",
-  ]
+  pkg_deps = [ "libdlcservice-client" ]
 }
 
 executable("dlcservice_util") {
@@ -122,9 +121,7 @@ if (use.test) {
 
 if (use.fuzzer) {
   pkg_config("dlcservice_fuzzer_config") {
-    pkg_deps = [
-      "libchrome-test-${libbase_ver}",
-    ]
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
   }
   executable("dlcservice_boot_slot_fuzzer") {
     configs += [

@@ -9,16 +9,12 @@ group("all") {
     ":apk-cache-cleaner",
   ]
   if (use.test) {
-    deps += [
-      ":apk-cache-cleaner_testrunner"
-    ]
+    deps += [ ":apk-cache-cleaner_testrunner" ]
   }
 }
 
 pkg_config("libapk-cache-cleaner_config") {
-  pkg_deps = [
-    "libchrome-${libbase_ver}",
-  ]
+  pkg_deps = [ "libchrome-${libbase_ver}" ]
 }
 
 static_library("libapk-cache-cleaner") {
@@ -58,8 +54,8 @@ if (use.test) {
       ":apk-cache-cleaner_testrunner_config",
     ]
     deps = [
-      "//common-mk/testrunner:testrunner",
       ":libapk-cache-cleaner",
+      "//common-mk/testrunner:testrunner",
     ]
     sources = [
       "cache_cleaner_test.cc",

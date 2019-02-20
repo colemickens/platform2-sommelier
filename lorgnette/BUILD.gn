@@ -10,9 +10,7 @@ group("all") {
     ":lorgnette",
   ]
   if (use.test) {
-    deps += [
-      ":lorgnette_unittest",
-    ]
+    deps += [ ":lorgnette_unittest" ]
   }
 }
 
@@ -26,13 +24,9 @@ pkg_config("target_defaults_deps") {
 }
 
 config("target_defaults") {
-  cflags_c = [
-    "-Wextra",
-  ]
-  cflags_cc = [
-    "-Woverloaded-virtual",
-  ]
-  configs = [":target_defaults_deps"]
+  cflags_c = [ "-Wextra" ]
+  cflags_cc = [ "-Woverloaded-virtual" ]
+  configs = [ ":target_defaults_deps" ]
 }
 
 generate_dbus_adaptors("lorgnette-adaptors") {
@@ -44,18 +38,12 @@ generate_dbus_adaptors("lorgnette-adaptors") {
 }
 
 pkg_config("liblorgnette_config") {
-  pkg_deps = [
-    "libpermission_broker-client",
-  ]
+  pkg_deps = [ "libpermission_broker-client" ]
 }
 
 static_library("liblorgnette") {
-  all_dependent_configs = [
-    ":liblorgnette_config",
-  ]
-  configs += [
-    ":target_defaults",
-  ]
+  all_dependent_configs = [ ":liblorgnette_config" ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":lorgnette-adaptors",
   ]
@@ -68,10 +56,10 @@ static_library("liblorgnette") {
 }
 
 executable("lorgnette") {
-  configs +=  [
-    ":target_defaults",
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":liblorgnette",
   ]
-  deps = [":liblorgnette"]
   sources = [
     "main.cc",
   ]
@@ -79,7 +67,7 @@ executable("lorgnette") {
 
 if (use.test) {
   executable("lorgnette_unittest") {
-    configs +=  [
+    configs += [
       "//common-mk:test",
       ":target_defaults",
     ]

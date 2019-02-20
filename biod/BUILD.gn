@@ -13,10 +13,10 @@ group("all") {
     ":libbiod",
   ]
   if (use.test) {
-    deps += [ ":biod_test_runner", ]
+    deps += [ ":biod_test_runner" ]
   }
   if (use.fuzzer) {
-    deps += [ ":biod_storage_fuzzer", ]
+    deps += [ ":biod_storage_fuzzer" ]
   }
 }
 
@@ -40,8 +40,8 @@ static_library("libbiod") {
     "biod_metrics.cc",
     "biod_storage.cc",
     "biometrics_daemon.cc",
-    "cros_fp_device.cc",
     "cros_fp_biometrics_manager.cc",
+    "cros_fp_device.cc",
     "scoped_umask.cc",
     "uinput_device.cc",
   ]
@@ -116,7 +116,7 @@ if (use.fuzzer) {
       ":target_defaults",
     ]
     sources = [
-      "biod_storage_fuzzer.cc"
+      "biod_storage_fuzzer.cc",
     ]
     deps = [
       ":libbiod",

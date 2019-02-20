@@ -3,4 +3,5 @@
 # found in the LICENSE file.
 
 # Do nothing.
-group("all") {}
+group("all") {
+}

@@ -12,13 +12,9 @@ group("all") {
     ":libwimax_manager-client-headers",
   ]
   if (use.gdmwimax) {
-    deps += [
-      ":wimax-manager",
-    ]
+    deps += [ ":wimax-manager" ]
     if (use.test) {
-      deps += [
-        ":wimax_manager_testrunner",
-      ]
+      deps += [ ":wimax_manager_testrunner" ]
     }
   }
 }
@@ -30,6 +26,7 @@ pkg_config("target_defaults") {
     "gthread-2.0",
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
+
     # system_api depends on protobuf (or protobuf-lite). It must appear
     # before protobuf here or the linker flags won"t be in the right
     # order.
@@ -46,8 +43,8 @@ genxml2cpp("wimax_manager-proxies") {
   sources = [
     # TODO(zqiu): use libpower_manger-client instead of using
     # PowerManager xml file directly.
-    "../power_manager/dbus_bindings/org.chromium.PowerManager.xml",
     "${xml2cpp_in_dir}/org.freedesktop.DBus.xml",
+    "../power_manager/dbus_bindings/org.chromium.PowerManager.xml",
   ]
 }
 
@@ -88,14 +85,15 @@ if (use.gdmwimax) {
 
   static_library("libwimax_manager") {
     configs += [ ":target_defaults" ]
+
     # wimax_manager uses try/catch to interact with dbus-c++.
     if (!enable_exceptions) {
       configs -= [ "//common-mk:no_exceptions" ]
     }
     deps = [
       ":wimax_manager-adaptors",
-      ":wimax_manager-proxies",
       ":wimax_manager-protos",
+      ":wimax_manager-proxies",
     ]
     libs = [
       "gdmwimax",
@@ -126,11 +124,14 @@ if (use.gdmwimax) {
 
   executable("wimax-manager") {
     configs += [ ":target_defaults" ]
+
     # wimax_manager uses try/catch to interact with dbus-c++.
     if (!enable_exceptions) {
       configs -= [ "//common-mk:no_exceptions" ]
     }
-    deps = [":libwimax_manager"]
+    deps = [
+      ":libwimax_manager",
+    ]
     sources = [
       "main.cc",
     ]
@@ -142,6 +143,7 @@ if (use.gdmwimax) {
         "//common-mk:test",
         ":target_defaults",
       ]
+
       # wimax_manager uses try/catch to interact with dbus-c++.
       if (!enable_exceptions) {
         configs -= [ "//common-mk:no_exceptions" ]

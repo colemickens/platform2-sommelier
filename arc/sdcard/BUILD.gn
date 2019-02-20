@@ -15,7 +15,9 @@ action("mkdir_squashfs_source_dir") {
   ]
   script = "//common-mk/file_generator_wrapper.py"
   args = [
-    "mkdir", "-p", "${root_gen_dir}/squashfs_source_dir",
+    "mkdir",
+    "-p",
+    "${root_gen_dir}/squashfs_source_dir",
   ]
 }
 
@@ -35,18 +37,30 @@ action("generate_squashfs") {
     "-info",
     "-all-root",
     "-noappend",
-    "-comp", "lzo",
-    "-b", "4K",
-    "-p", "/data d 700 0 0",
-    "-p", "/dev d 700 0 0",
-    "-p", "/dev/fuse c 666 root root 10 229",
-    "-p", "/mnt d 700 0 0",
-    "-p", "/mnt/runtime d 700 0 0",
-    "-p", "/proc d 700 0 0",
-    "-p", "/system d 700 0 0",
-    "-p", "/system/bin d 700 0 0",
-    "-p", "/system/bin/sdcard f 640 0 0 echo -n",
-    "-p", "/Downloads d 700 0 0",
+    "-comp",
+    "lzo",
+    "-b",
+    "4K",
+    "-p",
+    "/data d 700 0 0",
+    "-p",
+    "/dev d 700 0 0",
+    "-p",
+    "/dev/fuse c 666 root root 10 229",
+    "-p",
+    "/mnt d 700 0 0",
+    "-p",
+    "/mnt/runtime d 700 0 0",
+    "-p",
+    "/proc d 700 0 0",
+    "-p",
+    "/system d 700 0 0",
+    "-p",
+    "/system/bin d 700 0 0",
+    "-p",
+    "/system/bin/sdcard f 640 0 0 echo -n",
+    "-p",
+    "/Downloads d 700 0 0",
   ]
   deps = [
     ":mkdir_squashfs_source_dir",

@@ -117,8 +117,8 @@ if (use.test) {
       "clobber_state_unittest.cc",
     ]
     deps = [
-      "//common-mk/testrunner",
       ":libcrossystem",
+      "//common-mk/testrunner",
     ]
   }
 
@@ -132,8 +132,8 @@ if (use.test) {
       "file_attrs_cleaner_test.cc",
     ]
     deps = [
-      "//common-mk/testrunner",
       ":file_attrs_cleaner_lib",
+      "//common-mk/testrunner",
     ]
   }
 
@@ -147,8 +147,8 @@ if (use.test) {
       "usermode-helper_test.cc",
     ]
     deps = [
-      "//common-mk/testrunner",
       ":usermode-helper_lib",
+      "//common-mk/testrunner",
     ]
   }
 }

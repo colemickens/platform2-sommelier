@@ -21,9 +21,7 @@ config("no_exceptions") {
   cflags_c = _cflags_no_exceptions
 }
 
-_gcc_cflags = [
-  "-Wno-psabi",
-]
+_gcc_cflags = [ "-Wno-psabi" ]
 
 config("gcc_cflags_c") {
   cflags_c = _gcc_cflags
@@ -165,10 +163,16 @@ if (use.test || use.fuzzer) {
     # cf) BaseInitLoggingImpl definition in
     #     aosp/external/libchrome/base/logging.h
     ldflags += exec_script("//common-mk/args_generator_wrapper.py",
-                           [ "gtest-config", "--libs" ],
+                           [
+                             "gtest-config",
+                             "--libs",
+                           ],
                            "list lines")
     ldflags += exec_script("//common-mk/args_generator_wrapper.py",
-                           [ "gmock-config", "--libs" ],
+                           [
+                             "gmock-config",
+                             "--libs",
+                           ],
                            "list lines")
   }
 }

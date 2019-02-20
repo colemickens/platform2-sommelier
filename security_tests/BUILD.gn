@@ -3,15 +3,21 @@
 # found in the LICENSE file.
 
 executable("security.MinijailSeccomp.fail") {
-  sources = [ "security.MinijailSeccomp.fail.c" ]
+  sources = [
+    "security.MinijailSeccomp.fail.c",
+  ]
 }
 
 executable("security.MinijailSeccomp.ok") {
-  sources = [ "security.MinijailSeccomp.ok.c" ]
+  sources = [
+    "security.MinijailSeccomp.ok.c",
+  ]
 }
 
 executable("security.MinijailSeccomp.open") {
-  sources = [ "security.MinijailSeccomp.open.c" ]
+  sources = [
+    "security.MinijailSeccomp.open.c",
+  ]
 }
 
 group("all") {

@@ -6,13 +6,11 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
-    ":runtime_probe",
     ":libruntime_probe",
+    ":runtime_probe",
   ]
   if (use.test) {
-    deps += [
-      ":unittest_runner"
-    ]
+    deps += [ ":unittest_runner" ]
   }
 }
 
@@ -22,6 +20,7 @@ pkg_config("target_defaults") {
     "libchrome-${libbase_ver}",
     "libcros_config",
     "libpcrecpp",
+
     # system_api depends on protobuf (or protobuf-lite). It must appear
     # before protobuf here or the linker flags won't be in the right
     # order.
@@ -32,13 +31,10 @@ pkg_config("target_defaults") {
 }
 
 static_library("libruntime_probe") {
-  configs += [
-    ":target_defaults",
-  ]
+  configs += [ ":target_defaults" ]
   sources = [
     "component_category.cc",
     "daemon.cc",
-    "probe_result_checker.cc",
     "functions/all_functions.cc",
     "functions/ectool_i2cread.cc",
     "functions/generic_battery.cc",
@@ -48,6 +44,7 @@ static_library("libruntime_probe") {
     "probe_config.cc",
     "probe_function.cc",
     "probe_function_argument.cc",
+    "probe_result_checker.cc",
     "probe_statement.cc",
     "utils/config_utils.cc",
     "utils/file_utils.cc",

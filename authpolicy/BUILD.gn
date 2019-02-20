@@ -32,12 +32,13 @@ group("all") {
 }
 
 config("target_defaults") {
-   cflags = [
-     "-Wshadow",
-     "-Wextra",
-     # -Wextra enables unused parameter warnings, but there are unused parameters.
-     "-Wno-unused-parameter",
-   ]
+  cflags = [
+    "-Wshadow",
+    "-Wextra",
+
+    # -Wextra enables unused parameter warnings, but there are unused parameters.
+    "-Wno-unused-parameter",
+  ]
 }
 
 # D-Bus code generator.
@@ -80,7 +81,7 @@ action("policy_code_generator") {
     "--cros-policy-constants-source=${out_dir}/policy_constants.cc",
     "${policy_resources_dir}/VERSION",
     "${OS}",
-    "1",         # chromeos-flag
+    "1",  # chromeos-flag
     "${policy_resources_dir}/policy_templates.json",
   ]
 }
@@ -199,6 +200,7 @@ if (use.test) {
       "libmetrics-${libbase_ver}",
       "libminijail",
       "libpcrecpp",
+
       # system_api depends on protobuf (or protobuf-lite). It must
       # appear before protobuf or the linker flags won't be in the right
       # order.

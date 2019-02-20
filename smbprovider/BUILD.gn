@@ -10,14 +10,10 @@ group("all") {
     ":smbproviderd",
   ]
   if (use.test) {
-    deps += [
-      ":smbprovider_test",
-    ]
+    deps += [ ":smbprovider_test" ]
   }
   if (use.fuzzer) {
-    deps += [
-      ":netbios_packet_fuzzer",
-    ]
+    deps += [ ":netbios_packet_fuzzer" ]
   }
 }
 
@@ -27,6 +23,7 @@ pkg_config("target_defaults") {
     "libchrome-${libbase_ver}",
     "libpasswordprovider",
     "smbclient",
+
     # system_api depends on protobuf (or protobuf-lite). It must
     # appear before protobuf or the linker flags won"t be in the right
     # order.
@@ -110,9 +107,7 @@ executable("smbproviderd") {
 # Unit tests.
 if (use.test) {
   pkg_config("smbprovider_test_config") {
-    pkg_deps = [
-      "libchrome-test-${libbase_ver}",
-    ]
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
   }
   executable("smbprovider_test") {
     configs += [
@@ -120,8 +115,8 @@ if (use.test) {
       ":target_defaults",
     ]
     deps = [
-      "//common-mk/testrunner:testrunner",
       ":libsmbprovider",
+      "//common-mk/testrunner:testrunner",
     ]
     sources = [
       "fake_kerberos_artifact_client.cc",

@@ -7,8 +7,8 @@ import("//common-mk/pkg_config.gni")
 group("all") {
   deps = [
     ":cros_installer",
-    ":evwaitkey",
     ":cros_oobe_crypto",
+    ":evwaitkey",
   ]
   if (use.mtd) {
     deps += [ ":nand_partition" ]
@@ -23,12 +23,8 @@ pkg_config("target_defaults") {
     "libbrillo-${libbase_ver}",
     "vboot_host",
   ]
-  include_dirs = [
-    "${sysroot}/usr/include/verity",
-  ]
-  libs = [
-    "dm-bht",
-  ]
+  include_dirs = [ "${sysroot}/usr/include/verity" ]
+  libs = [ "dm-bht" ]
 }
 
 static_library("libcros_installer") {
@@ -45,9 +41,7 @@ static_library("libcros_installer") {
 }
 
 pkg_config("cros_installer_config") {
-  pkg_deps = [
-    "libchrome-${libbase_ver}",
-  ]
+  pkg_deps = [ "libchrome-${libbase_ver}" ]
 }
 
 executable("cros_installer") {
@@ -55,7 +49,9 @@ executable("cros_installer") {
     ":cros_installer_config",
     ":target_defaults",
   ]
-  deps = [":libcros_installer"]
+  deps = [
+    ":libcros_installer",
+  ]
   sources = [
     "cros_installer_main.cc",
   ]
@@ -69,9 +65,7 @@ executable("evwaitkey") {
 }
 
 pkg_config("cros_oobe_crypto_config") {
-  pkg_deps = [
-    "libcrypto",
-  ]
+  pkg_deps = [ "libcrypto" ]
 }
 
 executable("cros_oobe_crypto") {
@@ -93,7 +87,9 @@ if (use.mtd) {
       ":nand_partition_config",
       ":target_defaults",
     ]
-    deps = [":libcros_installer"]
+    deps = [
+      ":libcros_installer",
+    ]
     sources = [
       "nand_partition.cc",
       "nand_partition_main.cc",

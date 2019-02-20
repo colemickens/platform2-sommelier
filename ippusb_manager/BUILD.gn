@@ -60,9 +60,7 @@ if (use.test) {
 
 if (use.fuzzer) {
   pkg_config("ippusb_manager_usb_fuzzer_config") {
-    pkg_deps = [
-      "libchrome-test-${libbase_ver}",
-    ]
+    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
   }
 
   executable("ippusb_manager_usb_fuzzer") {
@@ -72,8 +70,8 @@ if (use.fuzzer) {
       ":target_defaults",
     ]
     sources = [
-      "usb.cc",
       "fuzzers/ippusb_manager_usb_fuzzer.cc",
+      "usb.cc",
     ]
   }
 }

@@ -7,14 +7,12 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
-    ":feedback_daemon",
     ":feedback_client",
+    ":feedback_daemon",
     ":feedback_proto",
   ]
   if (use.test) {
-    deps += [
-      ":feedback_daemon_test",
-    ]
+    deps += [ ":feedback_daemon_test" ]
   }
 }
 
@@ -26,19 +24,15 @@ pkg_config("target_defaults") {
 }
 
 pkg_config("libfeedback_daemon_config") {
-  pkg_deps = [
-    "protobuf-lite",
-  ]
+  pkg_deps = [ "protobuf-lite" ]
 }
 
 static_library("libfeedback_daemon") {
-  all_dependent_configs = [
-    ":libfeedback_daemon_config"
+  all_dependent_configs = [ ":libfeedback_daemon_config" ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":feedback_proto",
   ]
-  configs += [
-    ":target_defaults",
-  ]
-  deps = [":feedback_proto"]
   sources = [
     "components/feedback/feedback_report.cc",
     "components/feedback/feedback_uploader.cc",
@@ -46,45 +40,39 @@ static_library("libfeedback_daemon") {
     "feedback_uploader_http.cc",
     "feedback_util.cc",
   ]
-  include_dirs = ["."]
+  include_dirs = [ "." ]
 }
 
 executable("feedback_daemon") {
-  configs += [
-    ":target_defaults",
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":libfeedback_daemon",
   ]
-  deps = [":libfeedback_daemon"]
   sources = [
     "feedback_daemon.cc",
   ]
 }
 
 pkg_config("libfeedback_client_config") {
-  pkg_deps = [
-    "protobuf-lite"
-  ]
+  pkg_deps = [ "protobuf-lite" ]
 }
 
 static_library("libfeedback_client") {
-  all_dependent_configs = [
-    ":libfeedback_client_config"
+  all_dependent_configs = [ ":libfeedback_client_config" ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":feedback_proto",
   ]
-  configs += [
-    ":target_defaults",
-  ]
-  deps = [":feedback_proto"]
   sources = [
     "components/feedback/feedback_common.cc",
     "feedback_service_interface.cc",
     "feedback_util.cc",
   ]
-  include_dirs = ["."]
+  include_dirs = [ "." ]
 }
 
 executable("feedback_client") {
-  configs += [
-    ":target_defaults",
-  ]
+  configs += [ ":target_defaults" ]
   deps = [
     ":libfeedback_client",
     ":libfeedback_daemon",
