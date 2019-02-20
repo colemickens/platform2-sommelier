@@ -12,6 +12,7 @@
 #include <base/run_loop.h>
 #include <base/threading/thread_task_runner_handle.h>
 
+#include "diagnostics/constants/grpc_constants.h"
 #include "diagnostics/dpsl/internal/callback_utils.h"
 #include "diagnostics/dpsl/public/dpsl_thread_context.h"
 
@@ -21,16 +22,11 @@ namespace diagnostics {
 
 namespace {
 
-// Predefined paths which the Diagnosticsd gRPC client started by DPSL may be
-// using:
-constexpr char kDiagnosticsdLocalDomainSocketGrpcUri[] =
-    "unix:/run/diagnostics/grpc_sockets/diagnosticsd_socket";
-
-std::string GetDiagnosticsdGrpcUri(
+std::string GetWilcoDtcSupportdGrpcUri(
     DpslRequester::GrpcClientUri grpc_client_uri) {
   switch (grpc_client_uri) {
     case DpslRequester::GrpcClientUri::kLocalDomainSocket:
-      return kDiagnosticsdLocalDomainSocketGrpcUri;
+      return kWilcoDtcSupportdGrpcUri;
   }
   NOTREACHED() << "Unexpected GrpcClientUri: "
                << static_cast<int>(grpc_client_uri);
@@ -131,7 +127,7 @@ std::unique_ptr<DpslRequester> DpslRequester::Create(
   CHECK(thread_context->BelongsToCurrentThread());
 
   return std::make_unique<DpslRequesterImpl>(
-      GetDiagnosticsdGrpcUri(grpc_client_uri));
+      GetWilcoDtcSupportdGrpcUri(grpc_client_uri));
 }
 
 }  // namespace diagnostics

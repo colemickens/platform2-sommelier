@@ -3,25 +3,25 @@
 This implements daemons and libraries providing device telemetry and
 diagnostics.
 
-## diagnosticsd
+## wilco_dtc_supportd
 
-The daemon that collects telemetry information and exposes APIs that
-allow to access it. This daemon also acts as a proxy to the more heavily
-isolated `diagnostics_processor` daemon.
+The daemon that collects telemetry information and exposes APIs that allow to
+access it. This daemon also acts as a proxy to the more heavily isolated
+`wilco_dtc` daemon (Wilco DTC - wilco diagnostics and telemetry controller).
 
-## diagnostics_processor
+## wilco_dtc
 
 This daemon will process the telemetry information provided by the
-`diagnosticsd` daemon. Exposes an API that allows to obtain the output
-of the telemetry processing.
+`wilco_dtc_supportd` daemon. Exposes an API that allows to obtain the output of
+the telemetry processing.
 
-## APIs between diagnosticsd and browser
+## APIs between wilco_dtc_supportd and browser
 
-The bidirectional API between `diagnosticsd` and the browser is based on
+The bidirectional API between `wilco_dtc_supportd` and the browser is based on
 Mojo. The bootstrapping of the Mojo connection is performed via D-Bus -
 specifically, by the browser calling the BootstrapMojoConnection method.
 
-## APIs between diagnosticsd and diagnostics_processor
+## APIs between wilco_dtc_supportd and wilco_dtc
 
-The bidirectional API between `diagnosticsd` and `diagnostics_processor`
-is based on gRPC running over Unix domain sockets.
+The bidirectional API between `wilco_dtc_supportd` and `wilco_dtc` is based on
+gRPC running over Unix domain sockets.

@@ -28,9 +28,9 @@ std::string GetDiagnosticsProcessorGrpcUri(
     DpslRpcServer::GrpcServerUri grpc_server_uri) {
   switch (grpc_server_uri) {
     case DpslRpcServer::GrpcServerUri::kLocalDomainSocket:
-      return kDiagnosticsProcessorGrpcUri;
+      return kWilcoDtcGrpcUri;
     case DpslRpcServer::GrpcServerUri::kUiMessageReceiverDomainSocket:
-      return kUiMessageReceiverDiagnosticsProcessorGrpcUri;
+      return kUiMessageReceiverWilcoDtcGrpcUri;
   }
   NOTREACHED() << "Unexpected GrpcServerUri: "
                << static_cast<int>(grpc_server_uri);

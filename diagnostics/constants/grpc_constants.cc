@@ -6,19 +6,19 @@
 
 namespace diagnostics {
 
-// URI on which the gRPC interface exposed by the diagnosticsd daemon is
+// URI on which the gRPC interface exposed by the wilco_dtc_supportd daemon is
 // listening.
-const char kDiagnosticsdGrpcUri[] =
-    "unix:/run/diagnostics/grpc_sockets/diagnosticsd_socket";
+const char kWilcoDtcSupportdGrpcUri[] =
+    "unix:/run/wilco_dtc/grpc_sockets/wilco_dtc_supportd_socket";
 
 // URI which is used for making requests to the gRPC interface exposed by the
-// diagnostics_processor daemons. Not eligible to receive UI messages.
-const char kDiagnosticsProcessorGrpcUri[] =
-    "unix:/run/diagnostics/grpc_sockets/diagnostics_processor_socket";
+// wilco_dtc daemons. Not eligible to receive UI messages.
+const char kWilcoDtcGrpcUri[] =
+    "unix:/run/wilco_dtc/grpc_sockets/wilco_dtc_socket";
 
 // URI which is used for making requests to the gRPC interface exposed by the
-// diagnostics_processor daemons. Eligible to receive UI messages.
-const char kUiMessageReceiverDiagnosticsProcessorGrpcUri[] =
-    "unix:/run/diagnostics/grpc_sockets/ui_message_receiver_socket";
+// wilco_dtc daemons. Eligible to receive UI messages.
+const char kUiMessageReceiverWilcoDtcGrpcUri[] =
+    "unix:/run/wilco_dtc/grpc_sockets/ui_message_receiver_socket";
 
 }  // namespace diagnostics

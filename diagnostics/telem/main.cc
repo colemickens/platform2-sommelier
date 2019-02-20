@@ -15,6 +15,7 @@
 #include <base/values.h>
 #include <brillo/flag_helper.h>
 
+#include "diagnostics/constants/grpc_constants.h"
 #include "diagnostics/telem/telem_connection.h"
 #include "diagnostics/telem/telemetry_group_enum.h"
 #include "diagnostics/telem/telemetry_item_enum.h"
@@ -28,13 +29,6 @@ bool DisplayTelemetryItem(const base::Value& telem_item);
 bool DisplayOptionalTelemetryItem(
     const std::string& item_name,
     const base::Optional<base::Value>& telem_item);
-
-// URI on which the gRPC interface exposed by the diagnosticsd daemon is
-// listening. This is the same URI that the diagnosticsd daemon uses to
-// communicate with the diagnostics_processor, so this tool should not
-// be used when diagnostics_processor is running.
-constexpr char kDiagnosticsdGrpcUri[] =
-    "unix:/run/diagnostics/grpc_sockets/diagnosticsd_socket";
 
 struct {
   const char* switch_name;
@@ -160,7 +154,7 @@ int main(int argc, char** argv) {
 
   diagnostics::TelemConnection telem_connection;
 
-  telem_connection.Connect(kDiagnosticsdGrpcUri);
+  telem_connection.Connect(diagnostics::kWilcoDtcSupportdGrpcUri);
 
   // Make sure at least one item or group is specified.
   if (FLAGS_item == "" && FLAGS_group == "") {

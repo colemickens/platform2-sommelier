@@ -9,14 +9,9 @@
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
 
+#include "diagnostics/constants/grpc_constants.h"
 #include "diagnostics/diag/diag_routine_requester.h"
 
-namespace {
-// URI on which the gRPC interface exposed by the diagnosticsd daemon is
-// listening.
-constexpr char kDiagnosticsdGrpcUri[] =
-    "unix:/run/diagnostics/grpc_sockets/diagnosticsd_socket";
-}  // namespace
 
 // 'diag' command-line tool:
 //
@@ -29,7 +24,7 @@ int main(int argc, char** argv) {
 
   diagnostics::DiagRoutineRequester routine_requester;
 
-  routine_requester.Connect(kDiagnosticsdGrpcUri);
+  routine_requester.Connect(diagnostics::kWilcoDtcSupportdGrpcUri);
 
   std::vector<diagnostics::grpc_api::DiagnosticRoutine> available_routines =
       routine_requester.GetAvailableRoutines();

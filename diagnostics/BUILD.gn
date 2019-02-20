@@ -10,18 +10,18 @@ group("all") {
   deps = [
     ":diag",
     ":diagnostics_dpsl_demo_single_thread",
-    ":diagnostics_processor",
-    ":diagnosticsd",
     ":telem",
     ":urandom",
+    ":wilco_dtc",
+    ":wilco_dtc_supportd",
   ]
   if (use.test) {
     deps += [
-      ":diagnosticsd_test",
       ":libdiag_test",
       ":libgrpc_async_adapter_test",
       ":libtelem_test",
       ":routine_test",
+      ":wilco_dtc_supportd_test",
     ]
   }
 }
@@ -116,6 +116,7 @@ pkg_config("libdiag_pkg_deps") {
 static_library("libdiag") {
   deps = [
     ":diagnostics_grpc_protos",
+    ":libconstants",
     ":libgrpc_async_adapter",
   ]
   all_dependent_configs = [ ":libdiag_pkg_deps" ]
@@ -131,8 +132,8 @@ static_library("libconstants") {
   ]
 }
 
-# Library that provides core functionality for the diagnosticsd daemon.
-pkg_config("libdiagnosticsd_pkg_deps") {
+# Library that provides core functionality for the wilco_dtc_supportd daemon.
+pkg_config("libwilco_dtc_supportd_pkg_deps") {
   pkg_deps = [
     "dbus-1",
     "libbrillo-${libbase_ver}",
@@ -142,25 +143,25 @@ pkg_config("libdiagnosticsd_pkg_deps") {
   ]
 }
 
-static_library("libdiagnosticsd") {
+static_library("libwilco_dtc_supportd") {
   deps = [
     ":diagnostics_grpc_protos",
     ":diagnostics_mojo_bindings",
     ":libconstants",
     ":libgrpc_async_adapter",
   ]
-  all_dependent_configs = [ ":libdiagnosticsd_pkg_deps" ]
+  all_dependent_configs = [ ":libwilco_dtc_supportd_pkg_deps" ]
   sources = [
-    "diagnosticsd/diagnosticsd_core.cc",
-    "diagnosticsd/diagnosticsd_core_delegate_impl.cc",
-    "diagnosticsd/diagnosticsd_daemon.cc",
-    "diagnosticsd/diagnosticsd_dbus_service.cc",
-    "diagnosticsd/diagnosticsd_ec_event_service.cc",
-    "diagnosticsd/diagnosticsd_grpc_service.cc",
-    "diagnosticsd/diagnosticsd_mojo_service.cc",
-    "diagnosticsd/ec_constants.cc",
-    "diagnosticsd/json_utils.cc",
-    "diagnosticsd/mojo_utils.cc",
+    "wilco_dtc_supportd/diagnosticsd_core.cc",
+    "wilco_dtc_supportd/diagnosticsd_core_delegate_impl.cc",
+    "wilco_dtc_supportd/diagnosticsd_daemon.cc",
+    "wilco_dtc_supportd/diagnosticsd_dbus_service.cc",
+    "wilco_dtc_supportd/diagnosticsd_ec_event_service.cc",
+    "wilco_dtc_supportd/diagnosticsd_grpc_service.cc",
+    "wilco_dtc_supportd/diagnosticsd_mojo_service.cc",
+    "wilco_dtc_supportd/ec_constants.cc",
+    "wilco_dtc_supportd/json_utils.cc",
+    "wilco_dtc_supportd/mojo_utils.cc",
   ]
 }
 
@@ -200,6 +201,7 @@ pkg_config("libtelem_pkg_deps") {
 static_library("libtelem") {
   deps = [
     ":diagnostics_grpc_protos",
+    ":libconstants",
     ":libgrpc_async_adapter",
   ]
   all_dependent_configs = [ ":libtelem_pkg_deps" ]
@@ -243,32 +245,32 @@ executable("urandom") {
   ]
 }
 
-# The diagnosticsd daemon executable.
-pkg_config("diagnosticsd_pkg_deps") {
+# The wilco_dtc_supportd daemon executable.
+pkg_config("wilco_dtc_supportd_pkg_deps") {
   pkg_deps = [ "libbrillo-${libbase_ver}" ]
 }
 
-executable("diagnosticsd") {
+executable("wilco_dtc_supportd") {
   deps = [
-    ":libdiagnosticsd",
+    ":libwilco_dtc_supportd",
   ]
   sources = [
-    "diagnosticsd/main.cc",
+    "wilco_dtc_supportd/main.cc",
   ]
 }
 
-# The diagnostics_processor daemon executable.
-pkg_config("diagnostics_processor_pkg_deps") {
+# The wilco_dtc daemon executable.
+pkg_config("wilco_dtc_pkg_deps") {
   pkg_deps = [ "libbrillo-${libbase_ver}" ]
 }
 
-executable("diagnostics_processor") {
-  configs += [ ":diagnostics_processor_pkg_deps" ]
+executable("wilco_dtc") {
+  configs += [ ":wilco_dtc_pkg_deps" ]
   deps = [
     ":libgrpc_async_adapter",
   ]
   sources = [
-    "diagnostics_processor/main.cc",
+    "wilco_dtc/main.cc",
   ]
 }
 
@@ -351,35 +353,35 @@ if (use.test) {
     libs = [ "gpr" ]
   }
 
-  pkg_config("diagnosticsd_test_pkg_deps") {
+  pkg_config("wilco_dtc_supportd_test_pkg_deps") {
     pkg_deps = [
       "libchrome-${libbase_ver}",
       "libchrome-test-${libbase_ver}",
     ]
   }
 
-  executable("diagnosticsd_test") {
+  executable("wilco_dtc_supportd_test") {
     configs += [
-      ":diagnosticsd_test_pkg_deps",
+      ":wilco_dtc_supportd_test_pkg_deps",
       "//common-mk:test",
     ]
     deps = [
-      ":libdiagnosticsd",
+      ":libwilco_dtc_supportd",
       "../common-mk/testrunner:testrunner",
     ]
     sources = [
-      "diagnosticsd/diagnosticsd_core_test.cc",
-      "diagnosticsd/diagnosticsd_dbus_service_test.cc",
-      "diagnosticsd/diagnosticsd_ec_event_service_test.cc",
-      "diagnosticsd/diagnosticsd_grpc_service_test.cc",
-      "diagnosticsd/diagnosticsd_mojo_service_test.cc",
-      "diagnosticsd/ec_constants_test.cc",
-      "diagnosticsd/fake_browser.cc",
-      "diagnosticsd/fake_diagnostics_processor.cc",
-      "diagnosticsd/file_test_utils.cc",
-      "diagnosticsd/mock_mojom_diagnosticsd_client.cc",
-      "diagnosticsd/mojo_test_utils.cc",
-      "diagnosticsd/mojo_utils_test.cc",
+      "wilco_dtc_supportd/diagnosticsd_core_test.cc",
+      "wilco_dtc_supportd/diagnosticsd_dbus_service_test.cc",
+      "wilco_dtc_supportd/diagnosticsd_ec_event_service_test.cc",
+      "wilco_dtc_supportd/diagnosticsd_grpc_service_test.cc",
+      "wilco_dtc_supportd/diagnosticsd_mojo_service_test.cc",
+      "wilco_dtc_supportd/ec_constants_test.cc",
+      "wilco_dtc_supportd/fake_browser.cc",
+      "wilco_dtc_supportd/fake_diagnostics_processor.cc",
+      "wilco_dtc_supportd/file_test_utils.cc",
+      "wilco_dtc_supportd/mock_mojom_diagnosticsd_client.cc",
+      "wilco_dtc_supportd/mojo_test_utils.cc",
+      "wilco_dtc_supportd/mojo_utils_test.cc",
     ]
   }
 
@@ -443,9 +445,9 @@ if (use.test) {
       "../common-mk/testrunner:testrunner",
     ]
     sources = [
-      "diagnosticsd/file_test_utils.cc",
       "routines/battery/battery_test.cc",
       "routines/urandom/urandom_test.cc",
+      "wilco_dtc_supportd/file_test_utils.cc",
     ]
   }
 }

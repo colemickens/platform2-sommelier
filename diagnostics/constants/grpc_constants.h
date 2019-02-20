@@ -7,9 +7,9 @@
 
 namespace diagnostics {
 
-extern const char kDiagnosticsdGrpcUri[];
-extern const char kDiagnosticsProcessorGrpcUri[];
-extern const char kUiMessageReceiverDiagnosticsProcessorGrpcUri[];
+extern const char kWilcoDtcSupportdGrpcUri[];
+extern const char kWilcoDtcGrpcUri[];
+extern const char kUiMessageReceiverWilcoDtcGrpcUri[];
 
 }  // namespace diagnostics
 
