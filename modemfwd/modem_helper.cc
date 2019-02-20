@@ -25,6 +25,34 @@ namespace {
 constexpr char kPowerOverrideLockFilePath[] =
     "/run/lock/power_override/modemfwd.lock";
 
+constexpr char kModemfwdLogDirectory[] = "/var/log/modemfwd";
+
+bool RunHelperProcessWithLogs(const HelperInfo& helper_info,
+                              const std::string& argument) {
+  brillo::ProcessImpl helper;
+  helper.AddArg(helper_info.executable_path.value());
+  helper.AddArg("--" + argument);
+  for (const std::string& extra_argument : helper_info.extra_arguments) {
+    helper.AddArg(extra_argument);
+  }
+
+  base::Time::Exploded time;
+  base::Time::Now().LocalExplode(&time);
+  const std::string output_log_file = base::StringPrintf(
+      "%s/helper_log.%4u%02u%02u-%02u%02u%02u%03u", kModemfwdLogDirectory,
+      time.year, time.month, time.day_of_month, time.hour, time.minute,
+      time.second, time.millisecond);
+  helper.RedirectOutput(output_log_file);
+
+  int exit_code = helper.Run();
+  if (exit_code != 0) {
+    LOG(ERROR) << "Failed to perform \"" << argument << "\" on the modem";
+    return false;
+  }
+
+  return true;
+}
+
 bool RunHelperProcess(const HelperInfo& helper_info,
                       const std::string& argument,
                       std::string* output) {
@@ -149,10 +177,9 @@ class ModemHelperImpl : public ModemHelper {
     if (!flash_mode)
       return false;
 
-    return RunHelperProcess(helper_info_,
-                            base::StringPrintf("%s=%s", kFlashMainFirmware,
-                                               path_to_fw.value().c_str()),
-                            nullptr);
+    return RunHelperProcessWithLogs(
+        helper_info_, base::StringPrintf("%s=%s", kFlashMainFirmware,
+                                         path_to_fw.value().c_str()));
   }
 
   bool FlashCarrierFirmware(const base::FilePath& path_to_fw) override {
@@ -160,10 +187,9 @@ class ModemHelperImpl : public ModemHelper {
     if (!flash_mode)
       return false;
 
-    return RunHelperProcess(helper_info_,
-                            base::StringPrintf("%s=%s", kFlashCarrierFirmware,
-                                               path_to_fw.value().c_str()),
-                            nullptr);
+    return RunHelperProcessWithLogs(
+        helper_info_, base::StringPrintf("%s=%s", kFlashCarrierFirmware,
+                                         path_to_fw.value().c_str()));
   }
 
  private:
