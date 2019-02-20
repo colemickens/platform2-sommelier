@@ -10,7 +10,7 @@
 #include "modemfwd/daemon.h"
 
 int main(int argc, char** argv) {
-  DEFINE_string(journal_file, "/run/modemfwd/journal",
+  DEFINE_string(journal_file, "/var/cache/modemfwd/journal",
                 "File to read the old journal from and write the new one to");
   DEFINE_string(helper_directory, "/opt/google/modemfwd-helpers",
                 "Directory to load modem-specific helpers from");
