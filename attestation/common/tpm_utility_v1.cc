@@ -56,6 +56,10 @@ BYTE* StringAsTSSBuffer(std::string* s) {
   return reinterpret_cast<BYTE*>(base::string_as_array(s));
 }
 
+BYTE* StringAsTSSBuffer(const std::string* s) {
+  return StringAsTSSBuffer(const_cast<std::string*>(s));
+}
+
 std::string TSSBufferAsString(const BYTE* buffer, size_t length) {
   return std::string(reinterpret_cast<const char*>(buffer), length);
 }
@@ -71,7 +75,7 @@ bool TpmUtilityV1::Initialize() {
     LOG(ERROR) << __func__ << ": Cannot initialize TpmUtilityCommon.";
     return false;
   }
-  if (!ConnectContext(&context_handle_, &tpm_handle_)) {
+  if (!ConnectContextAsUser(&context_handle_, &tpm_handle_)) {
     LOG(ERROR) << __func__ << ": Failed to connect to the TPM.";
     return false;
   }
@@ -510,7 +514,8 @@ bool TpmUtilityV1::CertifyNV(uint32_t nv_index,
   return false;
 }
 
-bool TpmUtilityV1::ConnectContext(ScopedTssContext* context, TSS_HTPM* tpm) {
+bool TpmUtilityV1::ConnectContextAsUser(ScopedTssContext* context,
+                                        TSS_HTPM* tpm) {
   *tpm = 0;
   TSS_RESULT result;
   if (TPM_ERROR(result = Tspi_Context_Create(context->ptr()))) {
@@ -529,13 +534,36 @@ bool TpmUtilityV1::ConnectContext(ScopedTssContext* context, TSS_HTPM* tpm) {
   }
   return true;
 }
+bool TpmUtilityV1::ConnectContextAsOwner(const std::string& owner_password,
+                                         trousers::ScopedTssContext* context,
+                                         TSS_HTPM* tpm) {
+  *tpm = 0;
+  if (owner_password.size() == 0) {
+    LOG(ERROR) << __func__ << ": requires an owner password";
+    return false;
+  }
+
+  if (!ConnectContextAsUser(context, tpm)) {
+    LOG(ERROR) << __func__ << ": Could not open the TPM";
+    return false;
+  }
+
+  if (!SetTpmOwnerAuth(owner_password, context->context(), *tpm)) {
+    LOG(ERROR) << __func__ << ": failed to authorize as the owner";
+    Tspi_Context_Close(*context);
+    context->reset();
+    *tpm = 0;
+    return false;
+  }
+  return true;
+}
 
 bool TpmUtilityV1::ConnectContextAsDelegate(const std::string& delegate_blob,
                                             const std::string& delegate_secret,
                                             ScopedTssContext* context,
                                             TSS_HTPM* tpm) {
   *tpm = 0;
-  if (!ConnectContext(context, tpm)) {
+  if (!ConnectContextAsUser(context, tpm)) {
     return false;
   }
   TSS_RESULT result;
@@ -564,6 +592,27 @@ bool TpmUtilityV1::ConnectContextAsDelegate(const std::string& delegate_blob,
     TPM_LOG(ERROR, result) << __func__ << ": Error calling Tspi_SetAttribData";
     return false;
   }
+  return true;
+}
+
+bool TpmUtilityV1::SetTpmOwnerAuth(const std::string& owner_password,
+                                   TSS_HCONTEXT context_handle,
+                                   TSS_HTPM tpm_handle) {
+  TSS_RESULT result;
+  TSS_HPOLICY tpm_usage_policy;
+  if (TPM_ERROR(result = Tspi_GetPolicyObject(tpm_handle, TSS_POLICY_USAGE,
+                                              &tpm_usage_policy))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_GetPolicyObject";
+    return false;
+  }
+  BYTE* owner_password_buffer = StringAsTSSBuffer(&owner_password);
+  if (TPM_ERROR(result = Tspi_Policy_SetSecret(
+                    tpm_usage_policy, TSS_SECRET_MODE_PLAIN,
+                    owner_password.size(), owner_password_buffer))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_Policy_SetSecret";
+    return false;
+  }
+
   return true;
 }
 

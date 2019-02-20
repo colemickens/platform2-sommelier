@@ -97,8 +97,15 @@ class TpmUtilityV1 : public TpmUtilityCommon {
   // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle|
   // with its matching TPM object iff the context can be created and a TPM
   // object exists in the TSS. Returns true on success.
-  bool ConnectContext(trousers::ScopedTssContext* context_handle,
-                      TSS_HTPM* tpm_handle);
+  bool ConnectContextAsUser(trousers::ScopedTssContext* context_handle,
+                            TSS_HTPM* tpm_handle);
+
+  // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with
+  // its matching TPM object iff the owner password is available and
+  // authorization is successfully acquired.
+  bool ConnectContextAsOwner(const std::string& owner_password,
+                             trousers::ScopedTssContext* context_handle,
+                             TSS_HTPM* tpm_handle);
 
   // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle|
   // with its matching TPM object authorized by the given |delegate_blob| and
@@ -107,6 +114,11 @@ class TpmUtilityV1 : public TpmUtilityCommon {
                                 const std::string& delegate_secret,
                                 trousers::ScopedTssContext* context,
                                 TSS_HTPM* tpm);
+
+  // Set owner auth value to |tpm_handle|.
+  bool SetTpmOwnerAuth(const std::string& owner_password,
+                       TSS_HCONTEXT context_handle,
+                       TSS_HTPM tpm_handle);
 
   // Sets up srk_handle_ if necessary. Returns true iff the SRK is ready.
   bool SetupSrk();
@@ -140,6 +152,7 @@ class TpmUtilityV1 : public TpmUtilityCommon {
   trousers::ScopedTssContext context_handle_;
   TSS_HTPM tpm_handle_{0};
   trousers::ScopedTssKey srk_handle_{0};
+  std::string owner_password_;
 
   DISALLOW_COPY_AND_ASSIGN(TpmUtilityV1);
 };
