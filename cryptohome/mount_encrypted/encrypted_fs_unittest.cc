@@ -45,14 +45,14 @@ class EncryptedFsTest : public ::testing::Test {
     // Setup paths to check.
     brillo::SecureBlob digest = cryptohome::CryptoLib::Sha256(
         brillo::SecureBlob(tmpdir_.GetPath().value()));
-    std::string hex = cryptohome::CryptoLib::BlobToHex(digest);
+    std::string hex = cryptohome::CryptoLib::SecureBlobToHex(digest);
     dmcrypt_name_ = "encstateful_" + hex.substr(0, 16);
     dmcrypt_device_ = base::FilePath(
         base::StringPrintf("/dev/mapper/%s", dmcrypt_name_.c_str()));
     mount_point_ = tmpdir_.GetPath().Append("mnt/stateful_partition/encrypted");
 
     // Set encryption key.
-    base::HexStringToBytes("0123456789ABCDEF", &secret_);
+    brillo::SecureBlob::HexStringToSecureBlob("0123456789ABCDEF", &secret_);
   }
 
   MockPlatform platform_;

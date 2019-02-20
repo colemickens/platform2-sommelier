@@ -238,7 +238,7 @@ EncryptedFs::EncryptedFs(const base::FilePath& mount_root,
   if (!mount_root.empty()) {
     brillo::SecureBlob digest =
         cryptohome::CryptoLib::Sha256(brillo::SecureBlob(mount_root.value()));
-    std::string hex = cryptohome::CryptoLib::BlobToHex(digest);
+    std::string hex = cryptohome::CryptoLib::SecureBlobToHex(digest);
     dmcrypt_name_ += "_" + hex.substr(0, 16);
     rootdir_ = mount_root;
   }
