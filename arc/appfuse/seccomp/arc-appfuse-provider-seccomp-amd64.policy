@@ -54,6 +54,7 @@ lseek: 1
 getsockname: 1
 clock_getres: 1
 clock_gettime: 1
+gettimeofday: 1
 getresgid: 1
 ioctl: arg1 == TCGETS
 exit_group: 1
