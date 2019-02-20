@@ -24,6 +24,7 @@
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
 #include <base/stl_util.h>
+#include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
 #include <openssl/rsa.h>
@@ -47,11 +48,11 @@ using ScopedByteArray = std::unique_ptr<BYTE, base::FreeDeleter>;
 using ScopedTssEncryptedData = trousers::ScopedTssObject<TSS_HENCDATA>;
 using ScopedTssHash = trousers::ScopedTssObject<TSS_HHASH>;
 
-const unsigned int kWellKnownExponent = 65537;
-const unsigned char kSha256DigestInfo[] = {
+constexpr unsigned int kDefaultTpmRsaKeyBits = 2048;
+constexpr unsigned int kWellKnownExponent = 65537;
+constexpr unsigned char kSha256DigestInfo[] = {
     0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01,
     0x65, 0x03, 0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20};
-
 
 BYTE* StringAsTSSBuffer(std::string* s) {
   return reinterpret_cast<BYTE*>(base::string_as_array(s));
@@ -925,6 +926,77 @@ bool TpmUtilityV1::GetDataAttribute(TSS_HCONTEXT context,
     return false;
   }
   data->assign(TSSBufferAsString(buffer.value(), length));
+  return true;
+}
+
+bool TpmUtilityV1::DecryptIdentityRequest(RSA* pca_key,
+                                          const std::string& request,
+                                          std::string* identity_binding) {
+  // Parse the serialized TPM_IDENTITY_REQ structure.
+  UINT64 offset = 0;
+  BYTE* buffer = reinterpret_cast<BYTE*>(
+      const_cast<typename std::string::value_type*>(request.data()));
+  TPM_IDENTITY_REQ request_parsed;
+  TSS_RESULT result =
+      Trspi_UnloadBlob_IDENTITY_REQ(&offset, buffer, &request_parsed);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "Failed to parse identity request.";
+    return false;
+  }
+  ScopedByteArray scoped_asym_blob(request_parsed.asymBlob);
+  ScopedByteArray scoped_sym_blob(request_parsed.symBlob);
+
+  // Decrypt the symmetric key.
+  unsigned char key_buffer[kDefaultTpmRsaKeyBits / 8];
+  int key_length =
+      RSA_private_decrypt(request_parsed.asymSize, request_parsed.asymBlob,
+                          key_buffer, pca_key, RSA_PKCS1_PADDING);
+  if (key_length == -1) {
+    LOG(ERROR) << "Failed to decrypt identity request key.";
+    return false;
+  }
+  TPM_SYMMETRIC_KEY symmetric_key;
+  offset = 0;
+  result = Trspi_UnloadBlob_SYMMETRIC_KEY(&offset, key_buffer, &symmetric_key);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "Failed to parse symmetric key.";
+    return false;
+  }
+  ScopedByteArray scoped_sym_key(symmetric_key.data);
+
+  // Decrypt the request with the symmetric key.
+  brillo::SecureBlob proof_serial;
+  proof_serial.resize(request_parsed.symSize);
+  UINT32 proof_serial_length = proof_serial.size();
+  result = Trspi_SymDecrypt(symmetric_key.algId, TPM_ES_SYM_CBC_PKCS5PAD,
+                            symmetric_key.data, NULL, request_parsed.symBlob,
+                            request_parsed.symSize, proof_serial.data(),
+                            &proof_serial_length);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "Failed to decrypt identity request.";
+    return false;
+  }
+
+  // Parse the serialized TPM_IDENTITY_PROOF structure.
+  TPM_IDENTITY_PROOF proof;
+  offset = 0;
+  result =
+      Trspi_UnloadBlob_IDENTITY_PROOF(&offset, proof_serial.data(), &proof);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "Failed to parse identity proof.";
+    return false;
+  }
+  ScopedByteArray scoped_label(proof.labelArea);
+  ScopedByteArray scoped_binding(proof.identityBinding);
+  ScopedByteArray scoped_endorsement(proof.endorsementCredential);
+  ScopedByteArray scoped_platform(proof.platformCredential);
+  ScopedByteArray scoped_conformance(proof.conformanceCredential);
+  ScopedByteArray scoped_key(proof.identityKey.pubKey.key);
+  ScopedByteArray scoped_parms(proof.identityKey.algorithmParms.parms);
+
+  identity_binding->assign(&proof.identityBinding[0],
+                           &proof.identityBinding[proof.identityBindingSize]);
+  brillo::SecureMemset(proof.identityBinding, 0, proof.identityBindingSize);
   return true;
 }
 

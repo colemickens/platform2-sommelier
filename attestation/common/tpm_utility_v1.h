@@ -24,6 +24,7 @@
 #include <string>
 
 #include <base/macros.h>
+#include <openssl/rsa.h>
 #include <trousers/scoped_tss_type.h>
 #include <trousers/tss.h>
 
@@ -170,6 +171,18 @@ class TpmUtilityV1 : public TpmUtilityCommon {
   // TPM 1.2, to a DER encoded PKCS #1
   bool GetRSAPublicKeyFromTpmPublicKey(const std::string& tpm_public_key_object,
                                        std::string* public_key_der);
+
+  // Decrypts and parses an identity request.
+  //
+  // Parameters
+  //   pca_key - The private key of the Privacy CA.
+  //   request - The identity request data.
+  //   identityBinding - The EK-AIK binding (i.e. public key signature).
+  //
+  // Returns true on success.
+  bool DecryptIdentityRequest(RSA* pca_key,
+                              const std::string& request,
+                              std::string* identity_binding);
 
   trousers::ScopedTssContext context_handle_;
   TSS_HTPM tpm_handle_{0};
