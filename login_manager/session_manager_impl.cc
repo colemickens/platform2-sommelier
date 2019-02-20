@@ -598,9 +598,9 @@ bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
 
   // Check if this user already started a session.
   if (user_sessions_.count(actual_account_id) > 0) {
-    constexpr char kMessage[] = "Provided user id already started a session.";
-    LOG(ERROR) << kMessage;
-    *error = CreateError(dbus_error::kSessionExists, kMessage);
+    *error =
+        CREATE_ERROR_AND_LOG(dbus_error::kSessionExists,
+                             "Provided user id already started a session.");
     return false;
   }
 
@@ -828,17 +828,16 @@ void SessionManagerImpl::HandleSupervisedUserCreationFinished() {
 
 bool SessionManagerImpl::LockScreen(brillo::ErrorPtr* error) {
   if (!session_started_) {
-    constexpr char kMessage[] =
-        "Attempt to lock screen outside of user session.";
-    LOG(WARNING) << kMessage;
-    *error = CreateError(dbus_error::kSessionDoesNotExist, kMessage);
+    *error = CREATE_WARNING_AND_LOG(
+        dbus_error::kSessionDoesNotExist,
+        "Attempt to lock screen outside of user session.");
     return false;
   }
   // If all sessions are incognito, then locking is not allowed.
   if (AllSessionsAreIncognito()) {
-    constexpr char kMessage[] = "Attempt to lock screen during Guest session.";
-    LOG(WARNING) << kMessage;
-    *error = CreateError(dbus_error::kSessionExists, kMessage);
+    *error =
+        CREATE_WARNING_AND_LOG(dbus_error::kSessionExists,
+                               "Attempt to lock screen during Guest session.");
     return false;
   }
   if (!screen_locked_) {
@@ -881,9 +880,8 @@ bool SessionManagerImpl::RestartJob(brillo::ErrorPtr* error,
   }
 
   if (!manager_->IsBrowser(ucred.pid)) {
-    constexpr char kMessage[] = "Provided pid is unknown.";
-    LOG(ERROR) << kMessage;
-    *error = CreateError(dbus_error::kUnknownPid, kMessage);
+    *error = CREATE_ERROR_AND_LOG(dbus_error::kUnknownPid,
+                                  "Provided pid is unknown.");
     return false;
   }
 
@@ -900,9 +898,8 @@ bool SessionManagerImpl::RestartJob(brillo::ErrorPtr* error,
 
 bool SessionManagerImpl::StartDeviceWipe(brillo::ErrorPtr* error) {
   if (system_->Exists(base::FilePath(kLoggedInFlag))) {
-    constexpr char kMessage[] = "A user has already logged in this boot.";
-    LOG(ERROR) << kMessage;
-    *error = CreateError(dbus_error::kSessionExists, kMessage);
+    *error = CREATE_ERROR_AND_LOG(dbus_error::kSessionExists,
+                                  "A user has already logged in this boot.");
     return false;
   }
 
@@ -923,17 +920,15 @@ bool SessionManagerImpl::StartTPMFirmwareUpdate(
   if (update_mode != kTPMFirmwareUpdateModeFirstBoot &&
       update_mode != kTPMFirmwareUpdateModePreserveStateful &&
       update_mode != kTPMFirmwareUpdateModeCleanup) {
-    constexpr char kMessage[] = "Bad update mode.";
-    LOG(ERROR) << kMessage;
-    *error = CreateError(dbus_error::kInvalidParameter, kMessage);
+    *error =
+        CREATE_ERROR_AND_LOG(dbus_error::kInvalidParameter, "Bad update mode.");
     return false;
   }
 
   // Verify that we haven't seen a user log in since boot.
   if (system_->Exists(base::FilePath(kLoggedInFlag))) {
-    constexpr char kMessage[] = "A user has already logged in since boot.";
-    LOG(ERROR) << kMessage;
-    *error = CreateError(dbus_error::kSessionExists, kMessage);
+    *error = CREATE_ERROR_AND_LOG(dbus_error::kSessionExists,
+                                  "A user has already logged in since boot.");
     return false;
   }
 
@@ -953,18 +948,16 @@ bool SessionManagerImpl::StartTPMFirmwareUpdate(
   }
 
   if (!available) {
-    constexpr char kMessage[] = "No update available.";
-    LOG(ERROR) << kMessage;
-    *error = CreateError(dbus_error::kNotAvailable, kMessage);
+    *error =
+        CREATE_ERROR_AND_LOG(dbus_error::kNotAvailable, "No update available.");
     return false;
   }
 
   // Put the update request into place.
   if (!system_->AtomicFileWrite(
           base::FilePath(kTPMFirmwareUpdateRequestFlagFile), update_mode)) {
-    constexpr char kMessage[] = "Failed to persist update request.";
-    LOG(ERROR) << kMessage;
-    *error = CreateError(dbus_error::kNotAvailable, kMessage);
+    *error = CREATE_ERROR_AND_LOG(dbus_error::kNotAvailable,
+                                  "Failed to persist update request.");
     return false;
   }
 
@@ -975,17 +968,15 @@ bool SessionManagerImpl::StartTPMFirmwareUpdate(
     // This flag file indicates that encrypted stateful should be preserved.
     if (!system_->AtomicFileWrite(
             base::FilePath(kStatefulPreservationRequestFile), update_mode)) {
-      constexpr char kMessage[] = "Failed to request stateful preservation.";
-      LOG(ERROR) << kMessage;
-      *error = CreateError(dbus_error::kNotAvailable, kMessage);
+      *error = CREATE_ERROR_AND_LOG(dbus_error::kNotAvailable,
+                                    "Failed to request stateful preservation.");
       return false;
     }
 
     if (crossystem_->VbSetSystemPropertyInt(Crossystem::kClearTpmOwnerRequest,
                                             1) != 0) {
-      constexpr char kMessage[] = "Failed to request TPM clear.";
-      LOG(ERROR) << kMessage;
-      *error = CreateError(dbus_error::kNotAvailable, kMessage);
+      *error = CREATE_ERROR_AND_LOG(dbus_error::kNotAvailable,
+                                    "Failed to request TPM clear.");
       return false;
     }
 
@@ -1174,9 +1165,8 @@ bool SessionManagerImpl::UpgradeArcContainer(
 
   pid_t pid = 0;
   if (!android_container_->GetContainerPID(&pid)) {
-    constexpr char kMessage[] = "Failed to find mini-container for upgrade.";
-    LOG(ERROR) << kMessage;
-    *error = CreateError(dbus_error::kArcContainerNotFound, kMessage);
+    *error = CREATE_ERROR_AND_LOG(dbus_error::kArcContainerNotFound,
+                                  "Failed to find mini-container for upgrade.");
     return false;
   }
   LOG(INFO) << "Android container is running with PID " << pid;
@@ -1191,9 +1181,8 @@ bool SessionManagerImpl::UpgradeArcContainer(
   // needed under /home. We first check it.
   if (system_->AmountOfFreeDiskSpace(base::FilePath(kArcDiskCheckPath)) <
       kArcCriticalDiskFreeBytes) {
-    constexpr char kMessage[] = "Low free disk under /home";
-    LOG(ERROR) << kMessage;
-    *error = CreateError(dbus_error::kLowFreeDisk, kMessage);
+    *error = CREATE_ERROR_AND_LOG(dbus_error::kLowFreeDisk,
+                                  "Low free disk under /home");
     StopArcInstanceInternal(ArcContainerStopReason::LOW_DISK_SPACE);
     ignore_result(scoped_runner.Release());
     return false;
@@ -1209,9 +1198,8 @@ bool SessionManagerImpl::UpgradeArcContainer(
     // (stateful) container is sent to session_manager before the actual
     // user's session has started. Do not remove the |account_id| check to
     // prevent such a container from starting on login screen.
-    constexpr char kMessage[] = "Provided user ID does not have a session.";
-    LOG(ERROR) << kMessage;
-    *error = CreateError(dbus_error::kSessionDoesNotExist, kMessage);
+    *error = CREATE_ERROR_AND_LOG(dbus_error::kSessionDoesNotExist,
+                                  "Provided user ID does not have a session.");
     return false;
   }
 
@@ -1220,9 +1208,8 @@ bool SessionManagerImpl::UpgradeArcContainer(
   if (!init_controller_->TriggerImpulse(
           kContinueArcBootImpulse, env_vars,
           InitDaemonController::TriggerMode::SYNC)) {
-    constexpr char kMessage[] = "Emitting continue-arc-boot impulse failed.";
-    LOG(ERROR) << kMessage;
-    *error = CreateError(dbus_error::kEmitFailed, kMessage);
+    *error = CREATE_ERROR_AND_LOG(dbus_error::kEmitFailed,
+                                  "Emitting continue-arc-boot impulse failed.");
     return false;
   }
 
@@ -1239,9 +1226,8 @@ bool SessionManagerImpl::UpgradeArcContainer(
 bool SessionManagerImpl::StopArcInstance(brillo::ErrorPtr* error) {
 #if USE_CHEETS
   if (!StopArcInstanceInternal(ArcContainerStopReason::USER_REQUEST)) {
-    constexpr char kMessage[] = "Error getting Android container pid.";
-    LOG(ERROR) << kMessage;
-    *error = CreateError(dbus_error::kContainerShutdownFail, kMessage);
+    *error = CREATE_ERROR_AND_LOG(dbus_error::kContainerShutdownFail,
+                                  "Error getting Android container pid.");
     return false;
   }
 
@@ -1264,16 +1250,15 @@ bool SessionManagerImpl::SetArcCpuRestriction(brillo::ErrorPtr* error,
       shares_out = std::to_string(kCpuSharesBackground);
       break;
     default:
-      constexpr char kMessage[] = "Invalid CPU restriction state specified.";
-      LOG(ERROR) << kMessage;
-      *error = CreateError(dbus_error::kArcCpuCgroupFail, kMessage);
+      *error = CREATE_ERROR_AND_LOG(dbus_error::kArcCpuCgroupFail,
+                                    "Invalid CPU restriction state specified.");
       return false;
   }
   if (base::WriteFile(base::FilePath(kCpuSharesFile), shares_out.c_str(),
                       shares_out.length()) != shares_out.length()) {
-    constexpr char kMessage[] = "Error updating Android container's cgroups.";
-    LOG(ERROR) << kMessage;
-    *error = CreateError(dbus_error::kArcCpuCgroupFail, kMessage);
+    *error =
+        CREATE_ERROR_AND_LOG(dbus_error::kArcCpuCgroupFail,
+                             "Error updating Android container's cgroups.");
     return false;
   }
   return true;
@@ -1375,10 +1360,9 @@ bool SessionManagerImpl::NormalizeAccountId(const std::string& account_id,
 
   // TODO(alemate): adjust this error message after ChromeOS will stop using
   // email as cryptohome identifier.
-  constexpr char kMessage[] =
-      "Provided email address is not valid.  ASCII only.";
-  LOG(ERROR) << kMessage;
-  *error_out = CreateError(dbus_error::kInvalidAccount, kMessage);
+  *error_out =
+      CREATE_ERROR_AND_LOG(dbus_error::kInvalidAccount,
+                           "Provided email address is not valid.  ASCII only.");
   DCHECK(actual_account_id_out->empty());
   return false;
 }
@@ -1422,9 +1406,8 @@ brillo::ErrorPtr SessionManagerImpl::VerifyUnsignedPolicyStore() {
   const std::string& mode = install_attributes_reader_->GetAttribute(
       InstallAttributesReader::kAttrMode);
   if (mode != InstallAttributesReader::kDeviceModeEnterpriseAD) {
-    constexpr char kMessage[] = "Device mode doesn't permit unsigned policy.";
-    LOG(ERROR) << kMessage;
-    return CreateError(dbus_error::kPolicySignatureRequired, kMessage);
+    return CREATE_ERROR_AND_LOG(dbus_error::kPolicySignatureRequired,
+                                "Device mode doesn't permit unsigned policy.");
   }
 
   return nullptr;
@@ -1567,9 +1550,8 @@ std::string SessionManagerImpl::StartArcContainer(
     // manually for cleanup.
     init_controller_->TriggerImpulse(kStopArcInstanceImpulse, {},
                                      InitDaemonController::TriggerMode::SYNC);
-    constexpr char kMessage[] = "Starting Android container failed.";
-    LOG(ERROR) << kMessage;
-    *error_out = CreateError(dbus_error::kContainerStartupFail, kMessage);
+    *error_out = CREATE_ERROR_AND_LOG(dbus_error::kContainerStartupFail,
+                                      "Starting Android container failed.");
     return std::string();
   }
 

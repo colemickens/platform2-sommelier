@@ -78,9 +78,8 @@ bool PolicyService::Store(const PolicyNamespace& ns,
   em::PolicyFetchResponse policy;
   if (!policy.ParseFromArray(policy_blob.data(), policy_blob.size()) ||
       !policy.has_policy_data()) {
-    constexpr char kMessage[] = "Unable to parse policy protobuf.";
-    LOG(ERROR) << kMessage;
-    completion.Run(CreateError(dbus_error::kSigDecodeFail, kMessage));
+    completion.Run(CREATE_ERROR_AND_LOG(dbus_error::kSigDecodeFail,
+                                        "Unable to parse policy protobuf."));
     return false;
   }
 
@@ -237,9 +236,8 @@ bool PolicyService::StorePolicy(const PolicyNamespace& ns,
     }
 
     if (!installed) {
-      constexpr char kMessage[] = "Failed to install policy key!";
-      LOG(ERROR) << kMessage;
-      completion.Run(CreateError(dbus_error::kPubkeySetIllegal, kMessage));
+      completion.Run(CREATE_ERROR_AND_LOG(dbus_error::kPubkeySetIllegal,
+                                          "Failed to install policy key!"));
       return false;
     }
 
@@ -250,9 +248,8 @@ bool PolicyService::StorePolicy(const PolicyNamespace& ns,
   // Validate signature on policy and persist to disk.
   if (!key()->Verify(StringToBlob(policy.policy_data()),
                      StringToBlob(policy.policy_data_signature()))) {
-    constexpr char kMessage[] = "Signature could not be verified.";
-    LOG(ERROR) << kMessage;
-    completion.Run(CreateError(dbus_error::kVerifyFail, kMessage));
+    completion.Run(CREATE_ERROR_AND_LOG(dbus_error::kVerifyFail,
+                                        "Signature could not be verified."));
     return false;
   }
 
