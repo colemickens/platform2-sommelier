@@ -56,8 +56,8 @@ class DeviceTest : public testing::Test {
 
 }  // namespace
 
-TEST_F(DeviceTest, ConfigForAndroid) {
-  auto dev = NewDevice(kAndroidDevice);
+TEST_F(DeviceTest, ConfigForLegacyAndroid) {
+  auto dev = NewDevice(kAndroidLegacyDevice);
   ASSERT_NE(dev, nullptr);
   auto& config = dev->config();
   EXPECT_EQ(config.br_ifname(), "arcbr0");
@@ -67,6 +67,19 @@ TEST_F(DeviceTest, ConfigForAndroid) {
   EXPECT_EQ(config.mac_addr(), "00:FF:AA:00:00:55");
   EXPECT_TRUE(config.fwd_multicast());
   EXPECT_TRUE(config.find_ipv6_routes());
+}
+
+TEST_F(DeviceTest, ConfigForAndroid) {
+  auto dev = NewDevice(kAndroidDevice);
+  ASSERT_NE(dev, nullptr);
+  auto& config = dev->config();
+  EXPECT_EQ(config.br_ifname(), "arcbr0");
+  EXPECT_EQ(config.br_ipv4(), "100.115.92.1");
+  EXPECT_EQ(config.arc_ifname(), "arc0");
+  EXPECT_EQ(config.arc_ipv4(), "100.115.92.2");
+  EXPECT_EQ(config.mac_addr(), "00:FF:AA:00:00:55");
+  EXPECT_FALSE(config.fwd_multicast());
+  EXPECT_FALSE(config.find_ipv6_routes());
 }
 
 TEST_F(DeviceTest, ConfigForEth0) {
@@ -121,18 +134,25 @@ TEST_F(DeviceTest, DtorSendsTeardown) {
   VerifyMsgs({msg});
 }
 
-TEST_F(DeviceTest, EnableSendsMessage) {
-  auto dev = NewDevice(kAndroidDevice, false, false);
+TEST_F(DeviceTest, EnableSendsMessageForLegacyAndroid) {
+  auto dev = NewDevice(kAndroidLegacyDevice, false, false);
   capture_msgs_ = true;
   dev->Enable("eth0");
   IpHelperMessage enable_msg;
-  enable_msg.set_dev_ifname(kAndroidDevice);
+  enable_msg.set_dev_ifname(kAndroidLegacyDevice);
   enable_msg.set_enable_inbound_ifname("eth0");
   VerifyMsgs({enable_msg});
 }
 
-TEST_F(DeviceTest, DisableAndroidDeviceSendsTwoMessages) {
+TEST_F(DeviceTest, EnableDoesNothingForNonLegacyAndroid) {
   auto dev = NewDevice(kAndroidDevice, false, false);
+  capture_msgs_ = true;
+  dev->Enable("eth0");
+  VerifyMsgs({});
+}
+
+TEST_F(DeviceTest, DisableLegacyAndroidDeviceSendsTwoMessages) {
+  auto dev = NewDevice(kAndroidLegacyDevice, false, false);
   capture_msgs_ = true;
   // HACK(garrick): We have to turn off IPv6 route finding during testing
   // to avoid an unrelated crash but the Android device does have IPv6
@@ -142,20 +162,27 @@ TEST_F(DeviceTest, DisableAndroidDeviceSendsTwoMessages) {
   const_cast<DeviceConfig*>(&dev->config())->set_find_ipv6_routes(true);
   dev->Disable();
   IpHelperMessage clear_msg;
-  clear_msg.set_dev_ifname(kAndroidDevice);
+  clear_msg.set_dev_ifname(kAndroidLegacyDevice);
   clear_msg.set_clear_arc_ip(true);
   IpHelperMessage disable_msg;
-  disable_msg.set_dev_ifname(kAndroidDevice);
+  disable_msg.set_dev_ifname(kAndroidLegacyDevice);
   disable_msg.set_disable_inbound(true);
   VerifyMsgs({clear_msg, disable_msg});
 }
 
-TEST_F(DeviceTest, ClearMessageNotSentIfIPv6RouteFindingIsOff) {
+TEST_F(DeviceTest, DisableDoesNothingForNonLegacyAndroid) {
   auto dev = NewDevice(kAndroidDevice, false, false);
   capture_msgs_ = true;
   dev->Disable();
+  VerifyMsgs({});
+}
+
+TEST_F(DeviceTest, ClearMessageNotSentIfIPv6RouteFindingIsOff) {
+  auto dev = NewDevice(kAndroidLegacyDevice, false, false);
+  capture_msgs_ = true;
+  dev->Disable();
   IpHelperMessage disable_msg;
-  disable_msg.set_dev_ifname(kAndroidDevice);
+  disable_msg.set_dev_ifname(kAndroidLegacyDevice);
   disable_msg.set_disable_inbound(true);
   VerifyMsgs({disable_msg});
 }

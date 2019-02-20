@@ -78,8 +78,11 @@ void ArcIpConfig::Setup() {
                         config_.br_ifname(), "-j", "MARK", "--set-mark", "1",
                         "-w"});
 
-  // The legacy ARC device is configured differently.
-  if (ifname_ == kAndroidDevice) {
+  // The legacy Android device is configured to support container traffic
+  // coming from the default (shill) interface but this isn't necessary in
+  // the mutli-net case where this interface is really just preserving the
+  // known address mapping for the arc0 interface.
+  if (ifname_ == kAndroidLegacyDevice) {
     // Sanity check.
     CHECK_EQ("arcbr0", config_.br_ifname());
     CHECK_EQ("arc0", config_.arc_ifname());
@@ -103,8 +106,21 @@ void ArcIpConfig::Setup() {
 
     process_runner_->Run({kIpTablesPath, "-t", "filter", "-A", "FORWARD", "-o",
                           config_.br_ifname(), "-j", "ACCEPT", "-w"});
-  } else {
-    // TODO(garrick): Add iptables for host devices.
+  } else if (ifname_ != kAndroidDevice) {
+    // Direct ingress IP traffic to existing sockets.
+    process_runner_->Run({kIpTablesPath, "-t", "nat", "-A", "PREROUTING", "-i",
+                          ifname_, "-m", "socket", "--nowildcard", "-j",
+                          "ACCEPT", "-w"});
+    // Direct ingress TCP & UDP traffic to ARC interface for new connections.
+    process_runner_->Run({kIpTablesPath, "-t", "nat", "-A", "PREROUTING", "-i",
+                          ifname_, "-p", "tcp", "-j", "DNAT",
+                          "--to-destination", config_.arc_ipv4(), "-w"});
+    process_runner_->Run({kIpTablesPath, "-t", "nat", "-A", "PREROUTING", "-i",
+                          ifname_, "-p", "udp", "-j", "DNAT",
+                          "--to-destination", config_.arc_ipv4(), "-w"});
+    // TODO(garrick): Verify this is still needed.
+    process_runner_->Run({kIpTablesPath, "-t", "filter", "-A", "FORWARD", "-o",
+                          config_.br_ifname(), "-j", "ACCEPT", "-w"});
   }
 }
 
@@ -114,7 +130,7 @@ void ArcIpConfig::Teardown() {
   Clear();
   DisableInbound();
 
-  if (ifname_ == kAndroidDevice) {
+  if (ifname_ == kAndroidLegacyDevice) {
     process_runner_->Run({kIpTablesPath, "-t", "filter", "-D", "FORWARD", "-o",
                           config_.br_ifname(), "-j", "ACCEPT", "-w"});
 
@@ -130,8 +146,19 @@ void ArcIpConfig::Teardown() {
 
     process_runner_->Run({kIpTablesPath, "-t", "nat", "-F", "dnat_arc", "-w"});
     process_runner_->Run({kIpTablesPath, "-t", "nat", "-X", "dnat_arc", "-w"});
-  } else {
-    // TODO(garrick): Undo
+  } else if (ifname_ != kAndroidDevice) {
+    process_runner_->Run({kIpTablesPath, "-t", "filter", "-D", "FORWARD", "-o",
+                          config_.br_ifname(), "-j", "ACCEPT", "-w"});
+
+    process_runner_->Run({kIpTablesPath, "-t", "nat", "-D", "PREROUTING", "-i",
+                          ifname_, "-p", "udp", "-j", "DNAT",
+                          "--to-destination", config_.arc_ipv4(), "-w"});
+    process_runner_->Run({kIpTablesPath, "-t", "nat", "-D", "PREROUTING", "-i",
+                          ifname_, "-p", "tcp", "-j", "DNAT",
+                          "--to-destination", config_.arc_ipv4(), "-w"});
+    process_runner_->Run({kIpTablesPath, "-t", "nat", "-D", "PREROUTING", "-i",
+                          ifname_, "-m", "socket", "--nowildcard", "-j",
+                          "ACCEPT", "-w"});
   }
 
   process_runner_->Run({kIpTablesPath, "-t", "mangle", "-D", "PREROUTING", "-i",
@@ -178,7 +205,7 @@ bool ArcIpConfig::Init(pid_t con_netns) {
 
   // Signal the container that the network device is ready.
   // This is only applicable for arc0.
-  if (ifname_ == kAndroidDevice) {
+  if (ifname_ == kAndroidDevice || ifname_ == kAndroidLegacyDevice) {
     process_runner_->WriteSentinelToContainer(pid);
   }
   return true;
@@ -300,7 +327,7 @@ bool ArcIpConfig::Set(const struct in6_addr& address,
 
   // This is needed to support the single network legacy case.
   // If this isn't the legacy device, then ensure the interface is the same.
-  CHECK(ifname_ == kAndroidDevice || ifname_ == lan_ifname);
+  CHECK(ifname_ == kAndroidLegacyDevice || ifname_ == lan_ifname);
   ipv6_dev_ifname_ = lan_ifname;
 
   {
@@ -402,6 +429,12 @@ bool ArcIpConfig::Clear() {
 }
 
 void ArcIpConfig::EnableInbound(const std::string& lan_ifname) {
+  if (ifname_ != kAndroidLegacyDevice) {
+    LOG(ERROR) << "Enabling inbound traffic on non-legacy device is unexpected "
+                  "and not supported";
+    return;
+  }
+
   if (!if_up_) {
     LOG(INFO) << "Enable inbound for " << ifname_ << " ["
               << config_.arc_ifname() << "]"
@@ -412,22 +445,25 @@ void ArcIpConfig::EnableInbound(const std::string& lan_ifname) {
 
   DisableInbound();
 
-  // TODO(garrick): This only applies for arc0 for now. Clean this up.
-  if (ifname_ == kAndroidDevice) {
-    LOG(INFO) << "Enabling inbound for " << ifname_ << " ["
-              << config_.arc_ifname() << "]"
-              << " on " << lan_ifname;
+  LOG(INFO) << "Enabling inbound for " << ifname_ << " ["
+            << config_.arc_ifname() << "]"
+            << " on " << lan_ifname;
 
-    CHECK_EQ(process_runner_->Run({kIpTablesPath, "-t", "nat", "-A", "try_arc",
-                                   "-i", lan_ifname, "-j", "dnat_arc", "-w"}),
-             0);
-  }
+  CHECK_EQ(process_runner_->Run({kIpTablesPath, "-t", "nat", "-A", "try_arc",
+                                 "-i", lan_ifname, "-j", "dnat_arc", "-w"}),
+           0);
 
   inbound_configured_ = true;
   DCHECK(pending_inbound_ifname_.empty());
 }
 
 void ArcIpConfig::DisableInbound() {
+  if (ifname_ != kAndroidLegacyDevice) {
+    LOG(ERROR) << "Disabling inbound traffic on non-legacy device is "
+                  "unexpected and not supported";
+    return;
+  }
+
   if (!pending_inbound_ifname_.empty()) {
     LOG(INFO) << "Clearing pending inbound request for " << ifname_ << " ["
               << config_.arc_ifname() << "] ";
@@ -437,16 +473,12 @@ void ArcIpConfig::DisableInbound() {
   if (!inbound_configured_)
     return;
 
-  // TODO(garrick): This only applies for arc0 for now. Clean this up.
-  if (ifname_ == kAndroidDevice) {
-    LOG(INFO) << "Disabling inbound for " << ifname_ << " ["
-              << config_.arc_ifname() << "] ";
+  LOG(INFO) << "Disabling inbound for " << ifname_ << " ["
+            << config_.arc_ifname() << "] ";
 
-    CHECK_EQ(process_runner_->Run(
-                 {kIpTablesPath, "-t", "nat", "-F", "try_arc", "-w"}),
-             0);
-  }
-
+  CHECK_EQ(
+      process_runner_->Run({kIpTablesPath, "-t", "nat", "-F", "try_arc", "-w"}),
+      0);
   inbound_configured_ = false;
 }
 

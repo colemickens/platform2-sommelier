@@ -19,8 +19,8 @@ namespace arc_networkd {
 // presentation in the container.
 class DeviceManager {
  public:
-  // The legacy Android device is initialized in the constructor.
-  explicit DeviceManager(const Device::MessageSink& msg_sink);
+  DeviceManager(const Device::MessageSink& msg_sink,
+                const std::string& arc_device);
   ~DeviceManager();
 
   // Provides the list of devices the manager should track.
@@ -31,13 +31,10 @@ class DeviceManager {
   // added.
   bool Add(const std::string& name);
 
-  // Enable/disable device traffic. This is only applicable for the legacy
-  // Android device. Returns false is the device is unknown.
-  bool Enable(const std::string& name, const std::string& ifname);
-  bool Disable(const std::string& name);
-
-  // Disables all devices.
-  void DisableAll();
+  // Enable/disable traffic to the legacy Android device.
+  // These calls do nothing if multinetworking is enabled.
+  bool Enable(const std::string& ifname);
+  bool Disable();
 
  private:
   // Enables the devices to send messages to the helper process.

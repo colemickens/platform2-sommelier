@@ -16,7 +16,10 @@
 
 namespace arc_networkd {
 
-const char kAndroidDevice[] = "android";
+// These are used to identify which ARC++ data path should be used when setting
+// up the Android device.
+const char kAndroidDevice[] = "arc0";
+const char kAndroidLegacyDevice[] = "android";
 
 namespace {
 
@@ -35,12 +38,12 @@ bool AssignAddr(const std::string& ifname, DeviceConfig* config) {
   // To make this easier for now, hardcode the interfaces to support;
   // maps device names to the subnet base address (used in kIPv4AddrFmt).
   // Note that the .4/30 subnet is skipped since it is in use elsewhere.
+  // Note that only one Android interface is intended to be used.
   // TODO(garrick): Generalize and support arbitrary interfaces.
-  static const std::map<std::string, int> cur_ifaces = {{kAndroidDevice, 0},
-                                                        {"eth0", 8},
-                                                        {"wlan0", 12},
-                                                        {"wwan0", 16},
-                                                        {"rmnet0", 20}};
+  static const std::map<std::string, int> cur_ifaces = {
+      {kAndroidDevice, 0}, {kAndroidLegacyDevice, 0},
+      {"eth0", 8},         {"wlan0", 12},
+      {"wwan0", 16},       {"rmnet0", 20}};
   const auto it = cur_ifaces.find(ifname);
   if (it == cur_ifaces.end())
     return false;
@@ -85,39 +88,44 @@ std::unique_ptr<Device> Device::ForInterface(const std::string& ifname,
   if (!AssignAddr(ifname, &config))
     return nullptr;
 
-  if (ifname == kAndroidDevice) {
+  // TODO(garrick): Multicast forwarding should be only on for Ethernet and
+  // Wifi.
+  if (ifname == kAndroidLegacyDevice) {
     config.set_br_ifname("arcbr0");
     config.set_arc_ifname("arc0");
     config.set_find_ipv6_routes(true);
-    // TODO(garrick): Enable only for Ethernet and Wifi.
     config.set_fwd_multicast(true);
   } else {
-    config.set_br_ifname(base::StringPrintf("arc_%s", ifname.c_str()));
+    if (ifname == kAndroidDevice)
+      config.set_br_ifname("arcbr0");
+    else
+      config.set_br_ifname(base::StringPrintf("arc_%s", ifname.c_str()));
+
     config.set_arc_ifname(ifname);
     config.set_find_ipv6_routes(false);
-    // TODO(garrick): Enable only for Ethernet and Wifi.
     config.set_fwd_multicast(false);
   }
   return std::make_unique<Device>(ifname, config, msg_sink);
 }
 
 void Device::Enable(const std::string& ifname) {
+  if (ifname.empty())
+    return;
+
   LOG(INFO) << "Enabling device " << ifname_;
-  if (!ifname.empty()) {
-    CHECK_EQ(ifname_, kAndroidDevice);
+
+  // If operating in legacy single network mode, enable inbound traffic to ARC
+  // from the interface.
+  if (ifname_ == kAndroidLegacyDevice) {
     LOG(INFO) << "Binding interface " << ifname << " to device " << ifname_;
     legacy_lan_ifname_ = ifname;
-  } else {
-    legacy_lan_ifname_ = ifname_;
-  }
 
-  LOG(INFO) << "Enabling services for " << ifname_;
-  // Enable inbound traffic.
-  if (!msg_sink_.is_null()) {
-    IpHelperMessage msg;
-    msg.set_dev_ifname(ifname_);
-    msg.set_enable_inbound_ifname(legacy_lan_ifname_);
-    msg_sink_.Run(msg);
+    if (!msg_sink_.is_null()) {
+      IpHelperMessage msg;
+      msg.set_dev_ifname(ifname_);
+      msg.set_enable_inbound_ifname(legacy_lan_ifname_);
+      msg_sink_.Run(msg);
+    }
   }
 
   // TODO(garrick): Revisit multicast forwarding when NAT rules are enabled
@@ -142,15 +150,16 @@ void Device::Enable(const std::string& ifname) {
 }
 
 void Device::Disable() {
-  LOG(INFO) << "Disabling services for " << ifname_;
+  LOG(INFO) << "Disabling device " << ifname_;
 
   neighbor_finder_.reset();
   router_finder_.reset();
   ssdp_forwarder_.reset();
   mdns_forwarder_.reset();
-  legacy_lan_ifname_.clear();
 
-  if (msg_sink_.is_null())
+  // The rest of this function clears state applicable only when operating in
+  // legacy single network mode.
+  if (msg_sink_.is_null() || ifname_ != kAndroidLegacyDevice)
     return;
 
   // Clear IPv6 info, if necessary.
@@ -163,6 +172,10 @@ void Device::Disable() {
 
   // Disable inbound traffic.
   {
+    LOG(INFO) << "Unbinding interface " << legacy_lan_ifname_ << " from device "
+              << ifname_;
+    legacy_lan_ifname_.clear();
+
     IpHelperMessage msg;
     msg.set_dev_ifname(ifname_);
     msg.set_disable_inbound(true);

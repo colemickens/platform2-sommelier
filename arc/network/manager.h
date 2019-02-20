@@ -24,7 +24,7 @@ namespace arc_networkd {
 // Main class that runs the mainloop and responds to LAN interface changes.
 class Manager final : public brillo::DBusDaemon {
  public:
-  explicit Manager(std::unique_ptr<HelperProcess> ip_helper);
+  Manager(std::unique_ptr<HelperProcess> ip_helper, bool enable_multinet);
 
  protected:
   int OnInit() override;
@@ -60,12 +60,11 @@ class Manager final : public brillo::DBusDaemon {
 
   friend std::ostream& operator<<(std::ostream& stream, const Manager& manager);
 
-  // Persistent objects.
+  bool enable_multinet_;
   brillo::ProcessReaper process_reaper_;
   std::unique_ptr<ShillClient> shill_client_;
   std::unique_ptr<HelperProcess> ip_helper_;
   std::unique_ptr<DeviceManager> device_mgr_;
-
   base::WeakPtrFactory<Manager> weak_factory_{this};
 };
 

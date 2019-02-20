@@ -113,19 +113,29 @@ class ArcIpConfigTest : public testing::Test {
     android_dc_.set_arc_ifname("arc0");
     android_dc_.set_arc_ipv4("100.115.92.2");
     android_dc_.set_mac_addr("00:FF:AA:00:00:56");
-    android_dc_.set_fwd_multicast(true);
+    legacy_android_dc_.set_br_ifname("arcbr0");
+    legacy_android_dc_.set_br_ipv4("100.115.92.1");
+    legacy_android_dc_.set_arc_ifname("arc0");
+    legacy_android_dc_.set_arc_ipv4("100.115.92.2");
+    legacy_android_dc_.set_mac_addr("00:FF:AA:00:00:56");
+    legacy_android_dc_.set_fwd_multicast(true);
     fpr_ = std::make_unique<FakeProcessRunner>();
     runner_ = fpr_.get();
     runner_->Capture(false);
   }
 
   std::unique_ptr<ArcIpConfig> Config() {
-    return std::make_unique<ArcIpConfig>("foo", dc_, std::move(fpr_));
+    return std::make_unique<ArcIpConfig>("eth0", dc_, std::move(fpr_));
   }
 
   std::unique_ptr<ArcIpConfig> AndroidConfig() {
-    return std::make_unique<ArcIpConfig>("android", android_dc_,
+    return std::make_unique<ArcIpConfig>(kAndroidDevice, android_dc_,
                                          std::move(fpr_));
+  }
+
+  std::unique_ptr<ArcIpConfig> LegacyAndroidConfig() {
+    return std::make_unique<ArcIpConfig>(kAndroidLegacyDevice,
+                                         legacy_android_dc_, std::move(fpr_));
   }
 
  protected:
@@ -134,6 +144,7 @@ class ArcIpConfigTest : public testing::Test {
  private:
   DeviceConfig dc_;
   DeviceConfig android_dc_;
+  DeviceConfig legacy_android_dc_;
   std::unique_ptr<FakeProcessRunner> fpr_;
   std::vector<std::string> runs_;
 };
@@ -145,7 +156,15 @@ TEST_F(ArcIpConfigTest, VerifySetupCmds) {
   runner_->VerifyRuns(
       {"/sbin/brctl addbr br",
        "/bin/ifconfig br 1.2.3.4 netmask 255.255.255.252 up",
-       "/sbin/iptables -t mangle -A PREROUTING -i br -j MARK --set-mark 1 -w"});
+       "/sbin/iptables -t mangle -A PREROUTING -i br -j MARK --set-mark 1 -w",
+       "/sbin/iptables -t nat -A PREROUTING -i eth0 -m socket --nowildcard -j "
+       "ACCEPT "
+       "-w",
+       "/sbin/iptables -t nat -A PREROUTING -i eth0 -p tcp -j DNAT "
+       "--to-destination 6.7.8.9 -w",
+       "/sbin/iptables -t nat -A PREROUTING -i eth0 -p udp -j DNAT "
+       "--to-destination 6.7.8.9 -w",
+       "/sbin/iptables -t filter -A FORWARD -o br -j ACCEPT -w"});
 }
 
 TEST_F(ArcIpConfigTest, VerifyTeardownCmds) {
@@ -156,7 +175,15 @@ TEST_F(ArcIpConfigTest, VerifyTeardownCmds) {
     runner_->Capture(true, &runs);
   }
   FakeProcessRunner::VerifyRuns(
-      {"/sbin/iptables -t mangle -D PREROUTING -i br -j MARK --set-mark 1 -w",
+      {"/sbin/iptables -t filter -D FORWARD -o br -j ACCEPT -w",
+       "/sbin/iptables -t nat -D PREROUTING -i eth0 -p udp -j DNAT "
+       "--to-destination 6.7.8.9 -w",
+       "/sbin/iptables -t nat -D PREROUTING -i eth0 -p tcp -j DNAT "
+       "--to-destination 6.7.8.9 -w",
+       "/sbin/iptables -t nat -D PREROUTING -i eth0 -m socket --nowildcard "
+       "-j ACCEPT -w",
+       "/sbin/iptables -t mangle -D PREROUTING -i br -j MARK --set-mark 1 "
+       "-w",
        "/bin/ifconfig br down", "/sbin/brctl delbr br"},
       runs);
 }
@@ -164,6 +191,16 @@ TEST_F(ArcIpConfigTest, VerifyTeardownCmds) {
 TEST_F(ArcIpConfigTest, VerifySetupCmdsForAndroidDevice) {
   runner_->Capture(true);
   auto cfg = AndroidConfig();
+  runner_->VerifyRuns(
+      {"/sbin/brctl addbr arcbr0",
+       "/bin/ifconfig arcbr0 100.115.92.1 netmask 255.255.255.252 up",
+       "/sbin/iptables -t mangle -A PREROUTING -i arcbr0 -j MARK --set-mark 1 "
+       "-w"});
+}
+
+TEST_F(ArcIpConfigTest, VerifySetupCmdsForLegacyAndroidDevice) {
+  runner_->Capture(true);
+  auto cfg = LegacyAndroidConfig();
   runner_->VerifyRuns(
       {"/sbin/brctl addbr arcbr0",
        "/bin/ifconfig arcbr0 100.115.92.1 netmask 255.255.255.252 up",
@@ -188,15 +225,6 @@ TEST_F(ArcIpConfigTest, VerifyTeardownCmdsForAndroidDevice) {
   }
   FakeProcessRunner::VerifyRuns(
       {
-          "/sbin/iptables -t filter -D FORWARD -o arcbr0 -j ACCEPT -w",
-          "/sbin/iptables -t nat -D PREROUTING -p udp -j try_arc -w",
-          "/sbin/iptables -t nat -D PREROUTING -p tcp -j try_arc -w",
-          "/sbin/iptables -t nat -D PREROUTING -m socket --nowildcard -j "
-          "ACCEPT -w",
-          "/sbin/iptables -t nat -F try_arc -w",
-          "/sbin/iptables -t nat -X try_arc -w",
-          "/sbin/iptables -t nat -F dnat_arc -w",
-          "/sbin/iptables -t nat -X dnat_arc -w",
           "/sbin/iptables -t mangle -D PREROUTING -i arcbr0 -j MARK --set-mark "
           "1 -w",
           "/bin/ifconfig arcbr0 down",
@@ -205,24 +233,63 @@ TEST_F(ArcIpConfigTest, VerifyTeardownCmdsForAndroidDevice) {
       runs);
 }
 
+TEST_F(ArcIpConfigTest, VerifyTeardownCmdsForLegacyAndroidDevice) {
+  std::vector<std::string> runs;
+  {
+    auto cfg = LegacyAndroidConfig();
+    runner_->Capture(true, &runs);
+  }
+  FakeProcessRunner::VerifyRuns(
+      {"/sbin/iptables -t filter -D FORWARD -o arcbr0 -j ACCEPT -w",
+       "/sbin/iptables -t nat -D PREROUTING -p udp -j try_arc -w",
+       "/sbin/iptables -t nat -D PREROUTING -p tcp -j try_arc -w",
+       "/sbin/iptables -t nat -D PREROUTING -m socket --nowildcard -j "
+       "ACCEPT -w",
+       "/sbin/iptables -t nat -F try_arc -w",
+       "/sbin/iptables -t nat -X try_arc -w",
+       "/sbin/iptables -t nat -F dnat_arc -w",
+       "/sbin/iptables -t nat -X dnat_arc -w",
+       "/sbin/iptables -t mangle -D PREROUTING -i arcbr0 -j MARK --set-mark "
+       "1 -w",
+       "/bin/ifconfig arcbr0 down", "/sbin/brctl delbr arcbr0"},
+      runs);
+}
+
 TEST_F(ArcIpConfigTest, VerifyInitCmds) {
   auto cfg = Config();
   runner_->Capture(true);
   cfg->Init(12345);
   runner_->VerifyRuns({
-      "/bin/ip link delete veth_foo",
-      "/bin/ip link add veth_foo type veth peer name peer_foo",
-      "/bin/ifconfig veth_foo up",
-      "/bin/ip link set dev peer_foo addr 00:11:22:33:44:55 down",
-      "/sbin/brctl addif br veth_foo",
-      "/bin/ip link set peer_foo netns 12345",
+      "/bin/ip link delete veth_eth0",
+      "/bin/ip link add veth_eth0 type veth peer name peer_eth0",
+      "/bin/ifconfig veth_eth0 up",
+      "/bin/ip link set dev peer_eth0 addr 00:11:22:33:44:55 down",
+      "/sbin/brctl addif br veth_eth0",
+      "/bin/ip link set peer_eth0 netns 12345",
   });
-  runner_->VerifyAddInterface("peer_foo", "arc", "6.7.8.9", "255.255.255.252",
+  runner_->VerifyAddInterface("peer_eth0", "arc", "6.7.8.9", "255.255.255.252",
                               false, "12345");
 }
 
 TEST_F(ArcIpConfigTest, VerifyInitCmdsForAndroidDevice) {
   auto cfg = AndroidConfig();
+  runner_->Capture(true);
+  cfg->Init(12345);
+  runner_->VerifyRuns({
+      "/bin/ip link delete veth_arc0",
+      "/bin/ip link add veth_arc0 type veth peer name peer_arc0",
+      "/bin/ifconfig veth_arc0 up",
+      "/bin/ip link set dev peer_arc0 addr 00:FF:AA:00:00:56 down",
+      "/sbin/brctl addif arcbr0 veth_arc0",
+      "/bin/ip link set peer_arc0 netns 12345",
+  });
+  runner_->VerifyAddInterface("peer_arc0", "arc0", "100.115.92.2",
+                              "255.255.255.252", false, "12345");
+  runner_->VerifyWriteSentinel("12345");
+}
+
+TEST_F(ArcIpConfigTest, VerifyInitCmdsForLegacyAndroidDevice) {
+  auto cfg = LegacyAndroidConfig();
   runner_->Capture(true);
   cfg->Init(12345);
   runner_->VerifyRuns({
@@ -246,7 +313,7 @@ TEST_F(ArcIpConfigTest, VerifyUninitDoesNotDownLink) {
 }
 
 TEST_F(ArcIpConfigTest, VerifyContainerReadySendsEnableIfPending) {
-  auto cfg = AndroidConfig();
+  auto cfg = LegacyAndroidConfig();
   runner_->Capture(true);
   cfg->EnableInbound("eth0");
   cfg->ContainerReady(true);
@@ -255,7 +322,16 @@ TEST_F(ArcIpConfigTest, VerifyContainerReadySendsEnableIfPending) {
   });
 }
 
-TEST_F(ArcIpConfigTest, VerifyContainerReadyOnlyEnablesAndroidDevice) {
+TEST_F(ArcIpConfigTest,
+       VerifyContainerReadyDoesNotEnableMultinetAndroidDevice) {
+  auto cfg = AndroidConfig();
+  runner_->Capture(true);
+  cfg->EnableInbound("eth0");
+  cfg->ContainerReady(true);
+  runner_->VerifyRuns({});
+}
+
+TEST_F(ArcIpConfigTest, VerifyContainerReadyDoesNotEnableRegularDevice) {
   auto cfg = Config();
   runner_->Capture(true);
   cfg->EnableInbound("eth0");
@@ -264,7 +340,7 @@ TEST_F(ArcIpConfigTest, VerifyContainerReadyOnlyEnablesAndroidDevice) {
 }
 
 TEST_F(ArcIpConfigTest, VerifyContainerReadySendsEnableOnlyOnce) {
-  auto cfg = AndroidConfig();
+  auto cfg = LegacyAndroidConfig();
   runner_->Capture(true);
   cfg->EnableInbound("eth0");
   cfg->ContainerReady(true);
@@ -276,21 +352,21 @@ TEST_F(ArcIpConfigTest, VerifyContainerReadySendsEnableOnlyOnce) {
 }
 
 TEST_F(ArcIpConfigTest, VerifyContainerReadySendsNothingByDefault) {
-  auto cfg = AndroidConfig();
+  auto cfg = LegacyAndroidConfig();
   runner_->Capture(true);
   cfg->ContainerReady(true);
   runner_->VerifyRuns({});
 }
 
 TEST_F(ArcIpConfigTest, VerifyEnableInboundOnlySendsIfContainerReady) {
-  auto cfg = AndroidConfig();
+  auto cfg = LegacyAndroidConfig();
   runner_->Capture(true);
   cfg->EnableInbound("eth0");
   runner_->VerifyRuns({});
 }
 
 TEST_F(ArcIpConfigTest, VerifyMultipleEnableInboundOnlySendsLast) {
-  auto cfg = AndroidConfig();
+  auto cfg = LegacyAndroidConfig();
   runner_->Capture(true);
   cfg->EnableInbound("eth0");
   cfg->EnableInbound("wlan0");
@@ -301,7 +377,7 @@ TEST_F(ArcIpConfigTest, VerifyMultipleEnableInboundOnlySendsLast) {
 }
 
 TEST_F(ArcIpConfigTest, VerifyEnableInboundDisablesFirst) {
-  auto cfg = AndroidConfig();
+  auto cfg = LegacyAndroidConfig();
   cfg->ContainerReady(true);
   cfg->EnableInbound("eth0");
   runner_->Capture(true);
@@ -313,7 +389,7 @@ TEST_F(ArcIpConfigTest, VerifyEnableInboundDisablesFirst) {
 }
 
 TEST_F(ArcIpConfigTest, VerifyDisableInboundCmds) {
-  auto cfg = AndroidConfig();
+  auto cfg = LegacyAndroidConfig();
   // Must be enabled first.
   cfg->ContainerReady(true);
   cfg->EnableInbound("eth0");
@@ -324,15 +400,35 @@ TEST_F(ArcIpConfigTest, VerifyDisableInboundCmds) {
   });
 }
 
-TEST_F(ArcIpConfigTest, DisableDisabledDoesNothing) {
+TEST_F(ArcIpConfigTest, VerifyDisableInboundDoesNothingOnNonLegacyAndroid) {
   auto cfg = AndroidConfig();
+  // Must be enabled first.
+  cfg->ContainerReady(true);
+  cfg->EnableInbound("eth0");
+  runner_->Capture(true);
+  cfg->DisableInbound();
+  runner_->VerifyRuns({});
+}
+
+TEST_F(ArcIpConfigTest, VerifyDisableInboundDoesNothingOnRegularDevice) {
+  auto cfg = Config();
+  // Must be enabled first.
+  cfg->ContainerReady(true);
+  cfg->EnableInbound("eth0");
+  runner_->Capture(true);
+  cfg->DisableInbound();
+  runner_->VerifyRuns({});
+}
+
+TEST_F(ArcIpConfigTest, DisableDisabledDoesNothing) {
+  auto cfg = LegacyAndroidConfig();
   runner_->Capture(true);
   cfg->DisableInbound();
   runner_->VerifyRuns({});
 }
 
 TEST_F(ArcIpConfigTest, VerifyEnableDisableClearsPendingInbound) {
-  auto cfg = AndroidConfig();
+  auto cfg = LegacyAndroidConfig();
   runner_->Capture(true);
   cfg->EnableInbound("eth0");
   cfg->DisableInbound();

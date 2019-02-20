@@ -20,14 +20,15 @@
 
 namespace {
 
-const char kUnprivilegedUser[] = "arc-networkd";
 const uint64_t kManagerCapMask = CAP_TO_MASK(CAP_NET_RAW);
+const char kUnprivilegedUser[] = "arc-networkd";
 
 }  // namespace
 
 namespace arc_networkd {
 
-Manager::Manager(std::unique_ptr<HelperProcess> ip_helper) {
+Manager::Manager(std::unique_ptr<HelperProcess> ip_helper, bool enable_multinet)
+    : enable_multinet_(enable_multinet) {
   ip_helper_ = std::move(ip_helper);
 }
 
@@ -70,13 +71,16 @@ int Manager::OnInit() {
 
 void Manager::InitialSetup() {
   shill_client_ = std::make_unique<ShillClient>(std::move(bus_));
-  shill_client_->RegisterDevicesChangedHandler(
-      base::Bind(&Manager::OnDevicesChanged, weak_factory_.GetWeakPtr()));
-
   device_mgr_ = std::make_unique<DeviceManager>(
-      base::Bind(&Manager::SendMessage, weak_factory_.GetWeakPtr()));
-  shill_client_->ScanDevices(
-      base::Bind(&Manager::OnDevicesChanged, weak_factory_.GetWeakPtr()));
+      base::Bind(&Manager::SendMessage, weak_factory_.GetWeakPtr()),
+      enable_multinet_ ? kAndroidDevice : kAndroidLegacyDevice);
+
+  if (enable_multinet_) {
+    shill_client_->RegisterDevicesChangedHandler(
+        base::Bind(&Manager::OnDevicesChanged, weak_factory_.GetWeakPtr()));
+    shill_client_->ScanDevices(
+        base::Bind(&Manager::OnDevicesChanged, weak_factory_.GetWeakPtr()));
+  }
 }
 
 bool Manager::OnContainerStart(const struct signalfd_siginfo& info) {
@@ -93,7 +97,7 @@ bool Manager::OnContainerStop(const struct signalfd_siginfo& info) {
   if (info.ssi_code == SI_USER) {
     shill_client_->UnregisterDefaultInterfaceChangedHandler();
     if (device_mgr_)
-      device_mgr_->DisableAll();
+      device_mgr_->Disable();
   }
 
   // Stay registered.
@@ -103,7 +107,7 @@ bool Manager::OnContainerStop(const struct signalfd_siginfo& info) {
 void Manager::OnDefaultInterfaceChanged(const std::string& ifname) {
   LOG(INFO) << "Default interface changed to " << ifname;
   if (device_mgr_)
-    device_mgr_->Enable(kAndroidDevice, ifname);
+    device_mgr_->Enable(ifname);
 }
 
 void Manager::OnDevicesChanged(const std::set<std::string>& devices) {

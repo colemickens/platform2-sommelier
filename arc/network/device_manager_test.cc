@@ -16,8 +16,15 @@ class DeviceManagerTest : public testing::Test {
  protected:
   void SetUp() override {
     capture_msgs_ = false;
+    enable_multinet_ = true;
 
     auto dev = Device::ForInterface(
+        kAndroidLegacyDevice,
+        base::Bind(&DeviceManagerTest::RecvMsg, base::Unretained(this)));
+    legacy_android_announce_msg_.set_dev_ifname(kAndroidLegacyDevice);
+    *legacy_android_announce_msg_.mutable_dev_config() = dev->config();
+
+    dev = Device::ForInterface(
         kAndroidDevice,
         base::Bind(&DeviceManagerTest::RecvMsg, base::Unretained(this)));
     android_announce_msg_.set_dev_ifname(kAndroidDevice);
@@ -26,7 +33,8 @@ class DeviceManagerTest : public testing::Test {
 
   std::unique_ptr<DeviceManager> NewManager() {
     return std::make_unique<DeviceManager>(
-        base::Bind(&DeviceManagerTest::RecvMsg, base::Unretained(this)));
+        base::Bind(&DeviceManagerTest::RecvMsg, base::Unretained(this)),
+        enable_multinet_ ? kAndroidDevice : kAndroidLegacyDevice);
   }
 
   void VerifyMsgs(const std::vector<IpHelperMessage>& expected) {
@@ -39,7 +47,9 @@ class DeviceManagerTest : public testing::Test {
   void ClearMsgs() { msgs_recv_.clear(); }
 
   bool capture_msgs_;
+  bool enable_multinet_;
   IpHelperMessage android_announce_msg_;
+  IpHelperMessage legacy_android_announce_msg_;
 
  private:
   void RecvMsg(const IpHelperMessage& msg) {
@@ -58,6 +68,13 @@ TEST_F(DeviceManagerTest, CtorAddsAndroidDevice) {
   VerifyMsgs({android_announce_msg_});
 }
 
+TEST_F(DeviceManagerTest, CtorAddsLegacyAndroidDevice_MultinetDisabled) {
+  capture_msgs_ = true;
+  enable_multinet_ = false;
+  auto mgr = NewManager();
+  VerifyMsgs({legacy_android_announce_msg_});
+}
+
 TEST_F(DeviceManagerTest, AddNewDevices) {
   auto mgr = NewManager();
   EXPECT_TRUE(mgr->Add("eth0"));
@@ -66,6 +83,12 @@ TEST_F(DeviceManagerTest, AddNewDevices) {
 TEST_F(DeviceManagerTest, CannotAddExistingDevice) {
   auto mgr = NewManager();
   EXPECT_FALSE(mgr->Add(kAndroidDevice));
+}
+
+TEST_F(DeviceManagerTest, CannotAddExistingDevice_MultinetDisabled) {
+  enable_multinet_ = false;
+  auto mgr = NewManager();
+  EXPECT_FALSE(mgr->Add(kAndroidLegacyDevice));
 }
 
 TEST_F(DeviceManagerTest, ResetAddsNewDevices) {
@@ -83,38 +106,16 @@ TEST_F(DeviceManagerTest, ResetRemovesExistingDevices) {
   EXPECT_FALSE(mgr->Add("wlan0"));
 }
 
-TEST_F(DeviceManagerTest, CannotEnableNonAndroidDevice) {
-  auto mgr = NewManager();
-  EXPECT_FALSE(mgr->Enable("eth0", "eth0"));
-}
-
-TEST_F(DeviceManagerTest, CannotDisableNonAndroidDevice) {
-  auto mgr = NewManager();
-  EXPECT_FALSE(mgr->Disable("eth0"));
-}
-
-TEST_F(DeviceManagerTest, CanDisableAndroidDevice) {
+TEST_F(DeviceManagerTest, CanDisableAndroidDevice_MultinetDisabled) {
+  enable_multinet_ = false;
   auto mgr = NewManager();
   capture_msgs_ = true;
-  EXPECT_TRUE(mgr->Disable(kAndroidDevice));
+  EXPECT_TRUE(mgr->Disable());
   IpHelperMessage clear_msg;
-  clear_msg.set_dev_ifname(kAndroidDevice);
+  clear_msg.set_dev_ifname(kAndroidLegacyDevice);
   clear_msg.set_clear_arc_ip(true);
   IpHelperMessage disable_msg;
-  disable_msg.set_dev_ifname(kAndroidDevice);
-  disable_msg.set_disable_inbound(true);
-  VerifyMsgs({clear_msg, disable_msg});
-}
-
-TEST_F(DeviceManagerTest, DisabllAllDisablesAndroidDevice) {
-  auto mgr = NewManager();
-  capture_msgs_ = true;
-  mgr->DisableAll();
-  IpHelperMessage clear_msg;
-  clear_msg.set_dev_ifname(kAndroidDevice);
-  clear_msg.set_clear_arc_ip(true);
-  IpHelperMessage disable_msg;
-  disable_msg.set_dev_ifname(kAndroidDevice);
+  disable_msg.set_dev_ifname(kAndroidLegacyDevice);
   disable_msg.set_disable_inbound(true);
   VerifyMsgs({clear_msg, disable_msg});
 }

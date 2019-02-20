@@ -22,7 +22,10 @@
 
 namespace arc_networkd {
 
+// Reserved name for the Android device.
 extern const char kAndroidDevice[];
+// Reserved name for the Android device for legacy single network configs.
+extern const char kAndroidLegacyDevice[];
 
 // Encapsulates a physical (e.g. eth0) or proxy (e.g. arc) network device and
 // its configuration spec (interfaces, addresses) on the host and in the
@@ -67,7 +70,7 @@ class Device {
   const DeviceConfig config_;
   const MessageSink msg_sink_;
 
-  // Only used for "android" device; points to the interface currently
+  // Only used for the legacy Android device; points to the interface currently
   // used by the container.
   std::string legacy_lan_ifname_;
 

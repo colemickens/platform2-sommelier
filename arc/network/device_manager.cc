@@ -8,9 +8,10 @@
 
 namespace arc_networkd {
 
-DeviceManager::DeviceManager(const Device::MessageSink& msg_sink)
+DeviceManager::DeviceManager(const Device::MessageSink& msg_sink,
+                             const std::string& arc_device)
     : msg_sink_(msg_sink) {
-  Add(kAndroidDevice);
+  Add(arc_device);
 }
 
 DeviceManager::~DeviceManager() {}
@@ -18,7 +19,8 @@ DeviceManager::~DeviceManager() {}
 size_t DeviceManager::Reset(const std::set<std::string>& devices) {
   for (auto it = devices_.begin(); it != devices_.end();) {
     const std::string& name = it->first;
-    if (name != kAndroidDevice && devices.find(name) == devices.end()) {
+    if (name != kAndroidDevice && name != kAndroidLegacyDevice &&
+        devices.find(name) == devices.end()) {
       LOG(INFO) << "Removing device " << name;
       it = devices_.erase(it);
     } else {
@@ -44,12 +46,8 @@ bool DeviceManager::Add(const std::string& name) {
   return true;
 }
 
-bool DeviceManager::Enable(const std::string& name, const std::string& ifname) {
-  // This is only applicable to the legacy 'android' interface.
-  if (name != kAndroidDevice)
-    return false;
-
-  const auto it = devices_.find(kAndroidDevice);
+bool DeviceManager::Enable(const std::string& ifname) {
+  const auto it = devices_.find(kAndroidLegacyDevice);
   if (it != devices_.end()) {
     it->second->Disable();
     if (!ifname.empty())
@@ -58,14 +56,8 @@ bool DeviceManager::Enable(const std::string& name, const std::string& ifname) {
   return true;
 }
 
-bool DeviceManager::Disable(const std::string& name) {
-  return Enable(name, "");
-}
-
-void DeviceManager::DisableAll() {
-  for (const auto& d : devices_) {
-    Disable(d.first);
-  }
+bool DeviceManager::Disable() {
+  return Enable("");
 }
 
 }  // namespace arc_networkd
