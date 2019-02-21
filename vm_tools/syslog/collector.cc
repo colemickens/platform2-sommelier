@@ -66,7 +66,7 @@ constexpr char kDevLog[] = "/dev/log";
 constexpr unsigned int kLogCollectorPort = 9999;
 
 // Path to the standard empty directory where we will jail the daemon.
-constexpr char kVarEmpty[] = "/var/empty";
+constexpr char kPivotRoot[] = "/mnt/empty";
 
 // Name for the "syslog" user and group.
 constexpr char kSyslog[] = "syslog";
@@ -220,7 +220,7 @@ bool Collector::Init() {
 
   // Pivot into an empty directory where we have no permissions.
   minijail_namespace_vfs(jail.get());
-  minijail_enter_pivot_root(jail.get(), kVarEmpty);
+  minijail_enter_pivot_root(jail.get(), kPivotRoot);
 
   minijail_enter(jail.get());
 

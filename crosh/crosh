@@ -990,9 +990,9 @@ HELP_top='
 '
 cmd_top() (
   # -s is "secure" mode, which disables kill, renice, and change display/sleep
-  # interval.  Set HOME to /var/empty to make sure we don't parse any files in
+  # interval.  Set HOME to /mnt/empty to make sure we don't parse any files in
   # the stateful partition.  https://crbug.com/677934
-  HOME="/var/empty" top -s
+  HOME="/mnt/empty" top -s
 )
 
 USAGE_modem='<command> [args...]'

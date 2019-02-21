@@ -64,7 +64,7 @@ bool SandboxedProcess::Mount(const std::string& src,
 }
 
 bool SandboxedProcess::EnterPivotRoot() {
-  return minijail_enter_pivot_root(jail_, "/var/empty") == 0;
+  return minijail_enter_pivot_root(jail_, "/mnt/empty") == 0;
 }
 
 void SandboxedProcess::NewNetworkNamespace() {

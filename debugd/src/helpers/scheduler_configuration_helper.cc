@@ -49,7 +49,7 @@ void EnterSandbox() {
   minijail_bind(jail.get(), "/dev/log", "/dev/log", 0);
   minijail_mount_dev(jail.get());
   minijail_remount_proc_readonly(jail.get());
-  minijail_enter_pivot_root(jail.get(), "/var/empty");
+  minijail_enter_pivot_root(jail.get(), "/mnt/empty");
   minijail_bind(jail.get(), "/sys", "/sys", 1);
   minijail_enter(jail.get());
 }

@@ -29,7 +29,7 @@ void enter_vfs_namespace() {
 
   // Create a minimalistic mount namespace with just the bare minimum required.
   minijail_namespace_vfs(j.get());
-  if (minijail_enter_pivot_root(j.get(), "/var/empty"))
+  if (minijail_enter_pivot_root(j.get(), "/mnt/empty"))
     LOG(FATAL) << "minijail_enter_pivot_root() failed";
   if (minijail_bind(j.get(), "/", "/", 0))
     LOG(FATAL) << "minijail_bind(\"/\") failed";
