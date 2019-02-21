@@ -723,8 +723,9 @@ class EcEventServiceBootstrappedDiagnosticsdCoreTest
 
 // Test that the method |HandleEcNotification()| exposed by diagnostics
 // processor gRPC is called by diagnostics deamon.
+// TODO(b/124598866): Disabled due to flakiness.
 TEST_F(EcEventServiceBootstrappedDiagnosticsdCoreTest,
-       SendGrpcEcEventToDiagnosticsProcessorSize0) {
+       DISABLED_SendGrpcEcEventToDiagnosticsProcessorSize0) {
   EmulateEcEvent(0, kFakeEcEventType1);
   ExpectFakeProcessorEcEventCalled(fake_diagnostics_processor(), 0,
                                    kFakeEcEventType1);
@@ -732,8 +733,9 @@ TEST_F(EcEventServiceBootstrappedDiagnosticsdCoreTest,
       fake_ui_message_receiver_diagnostics_processor(), 0, kFakeEcEventType1);
 }
 
+// TODO(b/124598866): Disabled due to flakiness.
 TEST_F(EcEventServiceBootstrappedDiagnosticsdCoreTest,
-       SendGrpcEcEventToDiagnosticsProcessorSize5) {
+       DISABLED_SendGrpcEcEventToDiagnosticsProcessorSize5) {
   EmulateEcEvent(5, kFakeEcEventType1);
   ExpectFakeProcessorEcEventCalled(fake_diagnostics_processor(), 5,
                                    kFakeEcEventType1);
@@ -741,8 +743,9 @@ TEST_F(EcEventServiceBootstrappedDiagnosticsdCoreTest,
       fake_ui_message_receiver_diagnostics_processor(), 5, kFakeEcEventType1);
 }
 
+// TODO(b/124598866): Disabled due to flakiness.
 TEST_F(EcEventServiceBootstrappedDiagnosticsdCoreTest,
-       SendGrpcEcEventToDiagnosticsProcessorSize6) {
+       DISABLED_SendGrpcEcEventToDiagnosticsProcessorSize6) {
   EmulateEcEvent(6, kFakeEcEventType1);
   ExpectFakeProcessorEcEventCalled(fake_diagnostics_processor(), 6,
                                    kFakeEcEventType1);
@@ -770,8 +773,9 @@ TEST_F(EcEventServiceBootstrappedDiagnosticsdCoreTest,
 // Test that the method |HandleEcNotification()| exposed by diagnostics
 // processor gRPC is called by diagnostics deamon even when |ec_event.size|
 // exceeds allocated data array.
+// TODO(b/124598866): Disabled due to flakiness.
 TEST_F(EcEventServiceBootstrappedDiagnosticsdCoreTest,
-       SendGrpcEcEventToDiagnosticsProcessorInvalidSize) {
+       DISABLED_SendGrpcEcEventToDiagnosticsProcessorInvalidSize) {
   EmulateEcEvent(7, kFakeEcEventType1);
   ExpectFakeProcessorEcEventCalled(fake_diagnostics_processor(), 6,
                                    kFakeEcEventType1);
