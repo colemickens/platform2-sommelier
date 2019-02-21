@@ -16,6 +16,7 @@ config("target_defaults") {
     "USE_PINWEAVER=${use.pinweaver}",
     "USE_SELINUX=${use.selinux}",
     "USE_TPM2=${use.tpm2}",
+    "USE_CRYPTOHOME_USERDATAAUTH_INTERFACE=${use.cryptohome_userdataauth_interface}",
   ]
 }
 
@@ -28,6 +29,7 @@ action("cryptohome-proto-external") {
   inputs = [
     "${dbus_proto_path}/key.proto",
     "${dbus_proto_path}/rpc.proto",
+    "${dbus_proto_path}/UserDataAuth.proto",
     "${dbus_proto_path}/signed_secret.proto",
     "${policy_proto_path}/install_attributes.proto",
   ]
@@ -228,6 +230,14 @@ static_library("libcrostpm") {
   }
 }
 
+generate_dbus_adaptors("userdataauth_adaptors") {
+  dbus_adaptors_out_dir = "include/dbus_adaptors"
+  dbus_service_config = "../dbus_bindings/dbus-service-config-UserDataAuth.json"
+  sources = [
+    "../dbus_bindings/org.chromium.UserDataAuth.xml",
+  ]
+}
+
 pkg_config("libcryptohome_dependent_config") {
   pkg_deps = [
     "dbus-glib-1",
@@ -269,6 +279,7 @@ static_library("libcryptohome") {
     "../persistent_lookup_table.cc",
     "../service.cc",
     "../service_monolithic.cc",
+    "../service_userdataauth.cc",
     "../sign_in_hash_tree.cc",
     "../stateful_recovery.cc",
     "../user_oldest_activity_timestamp_cache.cc",
@@ -292,6 +303,7 @@ static_library("libcryptohome") {
     ":cryptohome-proto",
     ":libcrosplatform",
     ":libcrostpm",
+    ":userdataauth_adaptors",
   ]
 
   if (use.tpm2) {

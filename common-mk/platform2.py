@@ -38,6 +38,7 @@ _IUSE = [
     'coverage',
     'cros_host',
     'crypto',
+    'cryptohome_userdataauth_interface',
     'dbus',
     'device_mapper',
     'dhcpv6',

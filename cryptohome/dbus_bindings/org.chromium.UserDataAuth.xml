@@ -27,6 +27,8 @@ do.
 
   <interface name="org.chromium.UserDataAuthInterface">
     <method name="IsMounted">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="user_data_auth::IsMountedRequest" />
@@ -38,6 +40,8 @@ do.
     </method>
 
     <method name="Unmount">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="user_data_auth::UnmountRequest" />
@@ -49,6 +53,8 @@ do.
     </method>
 
     <method name="Mount">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="user_data_auth::MountRequest" />
@@ -60,6 +66,8 @@ do.
     </method>
 
     <method name="Remove">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="user_data_auth::RemoveRequest" />
@@ -71,6 +79,8 @@ do.
     </method>
 
     <method name="Rename">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="user_data_auth::RenameRequest" />
@@ -82,6 +92,8 @@ do.
     </method>
 
     <method name="ListKeys">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="user_data_auth::ListKeysRequest" />
@@ -93,6 +105,8 @@ do.
     </method>
 
     <method name="GetKeyData">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="user_data_auth::GetKeyDataRequest" />
@@ -104,6 +118,8 @@ do.
     </method>
 
     <method name="CheckKey">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="user_data_auth::CheckKeyRequest" />
@@ -115,6 +131,8 @@ do.
     </method>
 
     <method name="AddKey">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="user_data_auth::AddKeyRequest" />
@@ -126,6 +144,8 @@ do.
     </method>
 
     <method name="UpdateKey">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="user_data_auth::UpdateKeyRequest" />
@@ -137,6 +157,8 @@ do.
     </method>
 
     <method name="RemoveKey">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="user_data_auth::RemoveKeyRequest" />
@@ -148,6 +170,8 @@ do.
     </method>
 
     <method name="MigrateKey">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="user_data_auth::MigrateKeyRequest" />
@@ -159,6 +183,8 @@ do.
     </method>
 
     <method name="MigrateToDircrypto">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="user_data_auth::MigrateToDircryptoRequest" />
@@ -170,6 +196,8 @@ do.
     </method>
 
     <method name="NeedsDircryptoMigration">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="user_data_auth::NeedsDircryptoMigrationRequest" />
@@ -181,6 +209,8 @@ do.
     </method>
 
     <method name="GetSupportedKeyPolicies">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="user_data_auth::GetSupportedKeyPoliciesRequest" />
@@ -192,6 +222,8 @@ do.
     </method>
 
     <method name="GetDiskFeatures">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="user_data_auth::GetDiskFeaturesRequest" />
@@ -203,6 +235,8 @@ do.
     </method>
 
     <method name="GetAccountDiskUsage">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="user_data_auth::GetAccountDiskUsageRequest" />
@@ -214,6 +248,8 @@ do.
     </method>
 
     <method name="GetCurrentSpaceForUid">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="user_data_auth::GetCurrentSpaceForUidRequest" />
@@ -225,6 +261,8 @@ do.
     </method>
 
     <method name="GetCurrentSpaceForGid">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="user_data_auth::GetCurrentSpaceForGidRequest" />
