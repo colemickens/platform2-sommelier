@@ -7,6 +7,7 @@
 #include "hal_adapter/camera_hal_adapter.h"
 
 #include <algorithm>
+#include <iomanip>
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -506,7 +507,8 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
     if (m->init) {
       int ret = m->init();
       if (ret != 0) {
-        LOGF(ERROR) << "Failed to init camera module " << m->common.name;
+        LOGF(ERROR) << "Failed to init camera module "
+                    << std::quoted(m->common.name);
         callback.Run(false);
         return;
       }
@@ -521,7 +523,8 @@ void CameraHalAdapter::StartOnThread(base::Callback<void(bool)> callback) {
     camera_module_t* m = camera_modules_[module_id];
 
     int n = m->get_number_of_cameras();
-    LOGF(INFO) << "Camera module " << module_id << " has " << n << " cameras";
+    LOGF(INFO) << "Camera module " << std::quoted(m->common.name) << " has "
+               << n << " built-in camera(s)";
 
     auto aux = std::make_unique<CameraModuleCallbacksAux>();
     aux->camera_device_status_change = camera_device_status_change;
