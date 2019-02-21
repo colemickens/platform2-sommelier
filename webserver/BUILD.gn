@@ -176,11 +176,9 @@ if (use.test) {
       "//common-mk:test",
       ":target_defaults",
     ]
-    sources = [
-      "libwebserv/libwebserv_testrunner.cc",
-    ]
     deps = [
       ":libwebserv_common",
+      "//common-mk/testrunner",
     ]
   }
 
