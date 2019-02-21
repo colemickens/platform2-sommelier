@@ -43,7 +43,7 @@ void DropPrivileges() {
   minijail_namespace_pids(j.get());
   minijail_namespace_uts(j.get());
   minijail_namespace_vfs(j.get());
-  if (minijail_enter_pivot_root(j.get(), "/var/empty") != 0) {
+  if (minijail_enter_pivot_root(j.get(), "/mnt/empty") != 0) {
     PLOG(FATAL) << "minijail_enter_pivot_root() failed.";
   }
   if (minijail_bind(j.get(), "/", "/", 0 /*writable*/)) {
