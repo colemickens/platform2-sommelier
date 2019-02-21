@@ -38,7 +38,7 @@ TEST_F(StateMachineTest, BasicOneFingerTest) {
   // Test to confirm that a single, well behaived finger is understood as it
   // arrives, moves, then leaves.
   MtStateMachine sm;
-  std::map<int, struct MtFinger> snapshot;
+  std::unordered_map<int, struct MtFinger> snapshot;
 
   // The snapshot should start empty.  Confirm this before starting.
   EXPECT_TRUE(snapshot.empty());
@@ -99,7 +99,7 @@ TEST_F(StateMachineTest, BasicTwoFingerTest) {
   // This is a test to confirm that a two well behaived fingers are understood
   // as they arrive, move, then finally leave.
   MtStateMachine sm;
-  std::map<int, struct MtFinger> snapshot;
+  std::unordered_map<int, struct MtFinger> snapshot;
 
   // The snapshot should start empty.  Confirm this before starting.
   EXPECT_TRUE(snapshot.empty());
@@ -204,7 +204,7 @@ TEST_F(StateMachineTest, RepeatedUpdateTest) {
   // unexpected behavior, but it is observed occasionally in the field with
   // poorly written touch firmware.
   MtStateMachine sm;
-  std::map<int, struct MtFinger> snapshot;
+  std::unordered_map<int, struct MtFinger> snapshot;
 
   // Set up a finger with valid values in the state machine, but send two
   // different pressure values before the SYN and confirm that only the
@@ -230,7 +230,7 @@ TEST_F(StateMachineTest, DeltaCompressionTest) {
   // the same value for something the kernel will delta-compress that event
   // away entirely.  This state machine needs to handle this case.
   MtStateMachine sm;
-  std::map<int, struct MtFinger> snapshot;
+  std::unordered_map<int, struct MtFinger> snapshot;
 
   // Set up a finger with valid values in the state machine and issue a SYN.
   sm.AddEvent(CreateInputEvent(EV_ABS, ABS_MT_SLOT, kTestSlot1), &snapshot);
@@ -266,7 +266,7 @@ TEST_F(StateMachineTest, BadTrackingIdTest) {
   // Even if a finger has valid data, a bad tracking ID should indicate that
   // it's not a valid finger and should never be included in a snapshot.
   MtStateMachine sm;
-  std::map<int, struct MtFinger> snapshot;
+  std::unordered_map<int, struct MtFinger> snapshot;
 
   // Set up a finger with valid values for everything but the tracking ID
   // in the state machine and issue a SYN.
