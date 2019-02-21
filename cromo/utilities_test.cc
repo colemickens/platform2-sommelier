@@ -316,9 +316,3 @@ TEST(Utilities, Ucs2Utf8RoundTrip) {
                   ucs2_out.size()));
   }
 }
-
-int main(int argc, char* argv[]) {
-  testing::InitGoogleTest(&argc, argv);
-
-  return RUN_ALL_TESTS();
-}

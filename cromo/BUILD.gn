@@ -127,6 +127,7 @@ if (use.test) {
     configs -= [ "//common-mk:no_exceptions" ]
     deps = [
       ":libcromo",
+      "//common-mk/testrunner",
     ]
     sources = [
       "carrier.cc",
@@ -142,6 +143,7 @@ if (use.test) {
     configs -= [ "//common-mk:no_exceptions" ]
     deps = [
       ":libcromo",
+      "//common-mk/testrunner",
     ]
     sources = [
       "utilities_test.cc",
@@ -156,6 +158,7 @@ if (use.test) {
     configs -= [ "//common-mk:no_exceptions" ]
     deps = [
       ":libcromo",
+      "//common-mk/testrunner",
     ]
     sources = [
       "sms_message_test.cc",
@@ -170,6 +173,7 @@ if (use.test) {
     configs -= [ "//common-mk:no_exceptions" ]
     deps = [
       ":libcromo",
+      "//common-mk/testrunner",
     ]
     sources = [
       "sms_cache_test.cc",
