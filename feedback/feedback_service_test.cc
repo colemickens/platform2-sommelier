@@ -156,11 +156,3 @@ TEST_F(FeedbackServiceTest, UploadFailure) {
 }
 
 }  // namespace feedback
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  // Some libchrome calls need this.
-  base::AtExitManager at_exit_manager;
-
-  return RUN_ALL_TESTS();
-}

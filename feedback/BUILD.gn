@@ -106,6 +106,7 @@ if (use.test) {
     deps = [
       ":libfeedback_client",
       ":libfeedback_daemon",
+      "//common-mk/testrunner",
     ]
     sources = [
       "feedback_service_test.cc",
