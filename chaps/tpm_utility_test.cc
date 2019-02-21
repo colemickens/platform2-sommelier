@@ -176,8 +176,3 @@ TEST_F(TestTPMUtility, BadInput) {
 }
 
 }  // namespace chaps
-
-int main(int argc, char** argv) {
-  ::testing::InitGoogleMock(&argc, argv);
-  return RUN_ALL_TESTS();
-}

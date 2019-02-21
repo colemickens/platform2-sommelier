@@ -788,10 +788,3 @@ TEST_F(TestP11PublicSession, Random) {
 }
 
 }  // namespace chaps
-
-int main(int argc, char** argv) {
-  base::AtExitManager at_exit;
-  base::CommandLine::Init(argc, argv);
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}

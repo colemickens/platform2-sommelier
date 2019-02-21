@@ -351,8 +351,3 @@ INSTANTIATE_TEST_CASE_P(RandomizedTests,
                         TestImporterWithModifier,
                         Values(RandomizeFile, RandomizeObjectAttributes));
 }  // namespace chaps
-
-int main(int argc, char** argv) {
-  ::testing::InitGoogleMock(&argc, argv);
-  return RUN_ALL_TESTS();
-}

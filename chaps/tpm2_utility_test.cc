@@ -923,8 +923,3 @@ TEST_F(TPM2UtilityTest, GetECCPublicKeyFail) {
 }
 
 }  // namespace chaps
-
-int main(int argc, char** argv) {
-  ::testing::InitGoogleMock(&argc, argv);
-  return RUN_ALL_TESTS();
-}

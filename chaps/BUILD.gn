@@ -213,6 +213,7 @@ if (use.test) {
     ]
     deps = [
       ":libchaps_static",
+      "//common-mk/testrunner",
     ]
   }
 
@@ -228,6 +229,7 @@ if (use.test) {
     deps = [
       ":libchaps_static",
       ":libchaps_test",
+      "//common-mk/testrunner",
     ]
   }
 
@@ -259,6 +261,7 @@ if (use.test) {
     deps = [
       ":libchaps_static",
       ":libchaps_test",
+      "//common-mk/testrunner",
     ]
   }
 
@@ -289,6 +292,7 @@ if (use.test) {
     deps = [
       ":libchaps_static",
       ":libchaps_test",
+      "//common-mk/testrunner",
     ]
   }
 
@@ -310,6 +314,7 @@ if (use.test) {
     deps = [
       ":libchaps_static",
       ":libchaps_test",
+      "//common-mk/testrunner",
     ]
   }
 
@@ -325,6 +330,7 @@ if (use.test) {
     deps = [
       ":libchaps_static",
       ":libchaps_test",
+      "//common-mk/testrunner",
     ]
   }
 
@@ -364,6 +370,7 @@ if (use.test) {
     deps = [
       ":libchaps_static",
       ":libchaps_test",
+      "//common-mk/testrunner",
     ]
   }
 
@@ -381,6 +388,7 @@ if (use.test) {
     deps = [
       ":libchaps_static",
       ":libchaps_test",
+      "//common-mk/testrunner",
     ]
   }
 
@@ -401,6 +409,7 @@ if (use.test) {
     libs = [ "dl" ]
     deps = [
       ":libchaps_static",
+      "//common-mk/testrunner",
     ]
   }
 
@@ -415,6 +424,7 @@ if (use.test) {
     deps = [
       ":libchaps_static",
       ":libchaps_test",
+      "//common-mk/testrunner",
     ]
 
     if (use.tpm2) {
@@ -448,6 +458,7 @@ if (use.test) {
       deps = [
         ":libchaps_static",
         ":libchaps_test",
+        "//common-mk/testrunner",
       ]
     }
   }
