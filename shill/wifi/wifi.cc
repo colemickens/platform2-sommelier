@@ -796,6 +796,12 @@ void WiFi::AssocStatusChanged(const int32_t new_assoc_status) {
                 << " supplicant updated AssocStatusCode to "
                 << new_assoc_status << " (was "
                 << supplicant_assoc_status_ << ")";
+  if (supplicant_auth_status_ != IEEE_80211::kStatusCodeSuccessful) {
+    LOG(WARNING) << "Supplicant authentication status is set to "
+                 << supplicant_auth_status_
+                 << " despite getting a new association status.";
+    supplicant_auth_status_ = IEEE_80211::kStatusCodeSuccessful;
+  }
   supplicant_assoc_status_ = new_assoc_status;
 }
 
@@ -804,6 +810,12 @@ void WiFi::AuthStatusChanged(const int32_t new_auth_status) {
                 << " supplicant updated AuthStatusCode to "
                 << new_auth_status << " (was "
                 << supplicant_auth_status_ << ")";
+  if (supplicant_assoc_status_ != IEEE_80211::kStatusCodeSuccessful) {
+    LOG(WARNING) << "Supplicant association status is set to "
+                 << supplicant_assoc_status_
+                 << " despite getting a new authentication status.";
+    supplicant_assoc_status_ = IEEE_80211::kStatusCodeSuccessful;
+  }
   supplicant_auth_status_ = new_auth_status;
 }
 
@@ -1001,6 +1013,11 @@ void WiFi::ServiceDisconnected(WiFiServiceRefPtr affected_service) {
   if (!affected_service->IsInFailState() &&
       !affected_service->explicitly_disconnected() &&
       !affected_service->expecting_disconnect()) {
+    // Check auth/assoc status codes and send metric if a status code indicates
+    // failure (otherwise logs and UMA will only contain status code failures
+    // caused by a pending connection timeout).
+    Service::ConnectFailure failure_from_status = ExamineStatusCodes();
+
     // Determine disconnect failure reason.
     Service::ConnectFailure failure;
     int32_t disconnect_reason = abs(supplicant_disconnect_reason_);
@@ -1032,7 +1049,11 @@ void WiFi::ServiceDisconnected(WiFiServiceRefPtr affected_service) {
           failure = Service::kFailureEAPAuthentication;
           break;
         default:
-          failure = Service::kFailureUnknown;
+          // If we don't have a failure type to set given the disconnect reason,
+          // see if assoc/auth status codes can lead to an informative failure
+          // reason. Will be kFailureUnknown if that isn't the case.
+          failure = failure_from_status;
+          break;
       }
     }
     affected_service->SetFailure(failure);
@@ -1043,6 +1064,40 @@ void WiFi::ServiceDisconnected(WiFiServiceRefPtr affected_service) {
   // Set service state back to idle, so this service can be used for
   // future connections.
   affected_service->SetState(Service::kStateIdle);
+}
+
+Service::ConnectFailure WiFi::ExamineStatusCodes() const {
+  bool is_auth_error =
+      supplicant_auth_status_ != IEEE_80211::kStatusCodeSuccessful;
+  bool is_assoc_error =
+      supplicant_assoc_status_ != IEEE_80211::kStatusCodeSuccessful;
+  DCHECK(!(is_auth_error && is_assoc_error));
+  if (!is_auth_error && !is_assoc_error) {
+    return Service::kFailureUnknown;
+  }
+
+  int32_t status = supplicant_auth_status_;
+  std::string error_name = "Authentication";
+  std::string metric_name = Metrics::kMetricWiFiAuthFailureType;
+  Service::ConnectFailure proposed_failure = Service::kFailureNotAuthenticated;
+  if (is_assoc_error) {
+    status = supplicant_assoc_status_;
+    error_name = "Association";
+    metric_name = Metrics::kMetricWiFiAssocFailureType;
+    proposed_failure = Service::kFailureNotAssociated;
+  }
+
+  LOG(INFO) << "WiFi Device " << link_name() << ": " << error_name
+            << " error " << status << " ("
+            << IEEE_80211::StatusToString(
+              static_cast<IEEE_80211::WiFiStatusCode>(status))
+            << ")";
+  metrics()->SendEnumToUMA(metric_name, status, IEEE_80211::kStatusCodeMax);
+
+  if (status == IEEE_80211::kStatusCodeMaxSta) {
+    proposed_failure = Service::kFailureTooManySTAs;
+  }
+  return proposed_failure;
 }
 
 // We use the term "Roam" loosely. In particular, we include the case
@@ -2365,8 +2420,13 @@ void WiFi::PendingTimeoutHandler() {
   SetScanState(kScanFoundNothing, scan_method_, __func__);
   WiFiServiceRefPtr pending_service = pending_service_;
 
-  Service::ConnectFailure failure = Service::kFailureUnknown;
-  if (pending_service_ &&
+  SLOG(this, 4) << "Supplicant authentication status: "
+                << supplicant_auth_status_;
+  SLOG(this, 4) << "Supplicant association status: "
+                << supplicant_assoc_status_;
+
+  Service::ConnectFailure failure = ExamineStatusCodes();
+  if (failure == Service::kFailureUnknown && pending_service_ &&
       pending_service_->SignalLevel() <= disconnect_threshold_dbm_ &&
       pending_service_->SignalLevel() != kDefaultDisconnectDbm) {
     failure = Service::kFailureOutOfRange;

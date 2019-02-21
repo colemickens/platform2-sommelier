@@ -408,6 +408,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // and failure is not already set. Then set the state of the service back
   // to idle, so it can be used for future connections.
   void ServiceDisconnected(WiFiServiceRefPtr service);
+  // Log and send to UMA any auth/assoc status code indicating a failure.
+  // Returns inferred type of failure, which is useful in cases where we don't
+  // have a disconnect reason from supplicant.
+  Service::ConnectFailure ExamineStatusCodes() const;
   void HandleRoam(const std::string& new_bssid);
   void BSSAddedTask(const std::string& BSS,
                     const KeyValueStore& properties);

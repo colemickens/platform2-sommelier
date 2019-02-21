@@ -740,6 +740,10 @@ class Metrics {
   static const char kMetricLinkClientDisconnectType[];
   static const char kMetricLinkApDisconnectType[];
 
+  // 802.11 Status Codes for auth/assoc failures
+  static const char kMetricWiFiAssocFailureType[];
+  static const char kMetricWiFiAuthFailureType[];
+
   // Roam time for FT and non-FT key management suites.
   static const char kMetricWifiRoamTimePrefix[];
   static const int kMetricWifiRoamTimeMillisecondsMax;

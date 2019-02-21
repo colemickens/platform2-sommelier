@@ -315,6 +315,10 @@ const char Metrics::kMetricLinkClientDisconnectType[] =
     "Network.Shill.WiFi.ClientDisconnectType";
 const char Metrics::kMetricLinkApDisconnectType[] =
     "Network.Shill.WiFi.ApDisconnectType";
+const char Metrics::kMetricWiFiAssocFailureType[] =
+    "Network.Shill.WiFi.AssocFailureType";
+const char Metrics::kMetricWiFiAuthFailureType[] =
+    "Network.Shill.WiFi.AuthFailureType";
 
 // static
 const char Metrics::kMetricWifiRoamTimePrefix[] = "Network.Shill.WiFi.RoamTime";
