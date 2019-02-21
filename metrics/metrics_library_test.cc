@@ -250,8 +250,3 @@ TEST_F(CMetricsLibraryTest, AreMetricsEnabledFalse) {
 TEST_F(CMetricsLibraryTest, AreMetricsEnabledTrue) {
   EXPECT_TRUE(CMetricsLibraryAreMetricsEnabled(lib_));
 }
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}

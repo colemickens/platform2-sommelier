@@ -446,8 +446,3 @@ TEST_F(TimerReporterTest, InvalidReport) {
 }
 
 }  // namespace chromeos_metrics
-
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}
