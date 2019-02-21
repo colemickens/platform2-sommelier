@@ -18,13 +18,14 @@ use libc::gid_t;
 
 use std::ffi::{CStr, CString};
 use std::fmt;
-use std::fs::remove_file;
+use std::fs::{remove_file, File};
 use std::io::{self, BufReader, BufWriter};
 use std::net;
 use std::num::ParseIntError;
 use std::os::raw::c_uint;
 use std::os::unix::fs::FileTypeExt;
 use std::os::unix::fs::PermissionsExt;
+use std::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use std::os::unix::net::{SocketAddr, UnixListener};
 use std::path::{Path, PathBuf};
 use std::result;
@@ -40,9 +41,10 @@ const DEFAULT_BUFFER_SIZE: usize = 8192;
 // Address family identifiers.
 const VSOCK: &'static str = "vsock:";
 const UNIX: &'static str = "unix:";
+const UNIX_FD: &'static str = "unix-fd:";
 
 // Usage for this program.
-const USAGE: &'static str = "9s [options] {vsock:<port>|unix:<path>|<ip>:<port>}";
+const USAGE: &'static str = "9s [options] {vsock:<port>|unix:<path>|unix-fd:<fd>|<ip>:<port>}";
 
 // Program name.
 const IDENT: &'static [u8] = b"9s\0";
@@ -50,15 +52,18 @@ const IDENT: &'static [u8] = b"9s\0";
 enum ListenAddress {
     Net(net::SocketAddr),
     Unix(String),
+    UnixFd(RawFd),
     Vsock(c_uint),
 }
 
 #[derive(Debug)]
 enum ParseAddressError {
     MissingUnixPath,
+    MissingUnixFd,
     MissingVsockPort,
     Net(net::AddrParseError),
     Unix(string::ParseError),
+    UnixFd(ParseIntError),
     Vsock(ParseIntError),
 }
 
@@ -66,9 +71,11 @@ impl fmt::Display for ParseAddressError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             &ParseAddressError::MissingUnixPath => write!(f, "missing unix path"),
+            &ParseAddressError::MissingUnixFd => write!(f, "missing unix file descriptor"),
             &ParseAddressError::MissingVsockPort => write!(f, "missing vsock port number"),
             &ParseAddressError::Net(ref e) => e.fmt(f),
             &ParseAddressError::Unix(ref e) => write!(f, "invalid unix path: {}", e),
+            &ParseAddressError::UnixFd(ref e) => write!(f, "invalid file descriptor: {}", e),
             &ParseAddressError::Vsock(ref e) => write!(f, "invalid vsock port number: {}", e),
         }
     }
@@ -93,6 +100,16 @@ impl FromStr for ListenAddress {
                 ))
             } else {
                 Err(ParseAddressError::MissingUnixPath)
+            }
+        } else if s.starts_with(UNIX_FD) {
+            if s.len() > UNIX_FD.len() {
+                Ok(ListenAddress::UnixFd(
+                    s[UNIX_FD.len()..]
+                        .parse()
+                        .map_err(ParseAddressError::UnixFd)?,
+                ))
+            } else {
+                Err(ParseAddressError::MissingUnixFd)
             }
         } else {
             Ok(ListenAddress::Net(
@@ -242,7 +259,17 @@ fn adjust_socket_ownership(path: &Path, gid: gid_t) -> io::Result<()> {
     Ok(())
 }
 
-fn run_unix_server(
+fn run_unix_server(server_params: Arc<ServerParams>, listener: UnixListener) -> io::Result<()> {
+    loop {
+        let (stream, peer) = listener.accept()?;
+        let peer = UnixSocketAddr(peer);
+
+        info!("accepted connection from {}", peer);
+        spawn_server_thread(&server_params, stream.try_clone()?, stream, peer);
+    }
+}
+
+fn run_unix_server_with_path(
     server_params: Arc<ServerParams>,
     path: &Path,
     socket_gid: Option<gid_t>,
@@ -252,7 +279,7 @@ fn run_unix_server(
         if !metadata.file_type().is_socket() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
-                "Requested socked path points to existing non-socket object",
+                "Requested socket path points to existing non-socket object",
             ));
         }
         remove_file(path)?;
@@ -264,13 +291,30 @@ fn run_unix_server(
         adjust_socket_ownership(path, gid)?;
     }
 
-    loop {
-        let (stream, peer) = listener.accept()?;
-        let peer = UnixSocketAddr(peer);
+    run_unix_server(server_params, listener)
+}
 
-        info!("accepted connection from {}", peer);
-        spawn_server_thread(&server_params, stream.try_clone()?, stream, peer);
+fn run_unix_server_with_fd(server_params: Arc<ServerParams>, fd: RawFd) -> io::Result<()> {
+    // This is safe as we are using our very own file descriptor.
+    let file = unsafe { File::from_raw_fd(fd) };
+    let metadata = file.metadata()?;
+    if !metadata.file_type().is_socket() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "Supplied file descriptor is not a socket",
+        ));
     }
+
+    // This is safe as because we have validated that we are dealing with a socket and
+    // we are checking the result.
+    let ret = unsafe { libc::listen(file.as_raw_fd(), 128) };
+    if ret < 0 {
+        return Err(io::Error::last_os_error());
+    }
+
+    // This is safe because we are dealing with listening socket.
+    let listener = unsafe { UnixListener::from_raw_fd(file.into_raw_fd()) };
+    run_unix_server(server_params, listener)
 }
 
 fn add_id_mapping<T: Clone + FromStr + Ord>(s: &str, map: &mut p9::ServerIdMap<T>) -> Result<()> {
@@ -380,10 +424,23 @@ fn main() -> Result<()> {
             if !path.is_absolute() {
                 return Err(Error::SocketPathNotAbsolute(path.to_owned()));
             }
+
             let socket_gid = matches
                 .opt_get::<gid_t>("socket_gid")
                 .map_err(Error::SocketGid)?;
-            run_unix_server(server_params, path, socket_gid).map_err(Error::IO)?;
+
+            run_unix_server_with_path(server_params, path, socket_gid).map_err(Error::IO)?;
+        }
+        ListenAddress::UnixFd(fd) => {
+            // Try duplicating the fd to verify that it is a valid file descriptor. It will also
+            // ensure that we will not accidentally close file descriptor used by something else.
+            // Safe because this doesn't modify any memory and we check the return value.
+            let fd = unsafe { libc::fcntl(fd, libc::F_DUPFD_CLOEXEC, 0) };
+            if fd < 0 {
+                return Err(Error::IO(io::Error::last_os_error()));
+            }
+
+            run_unix_server_with_fd(server_params, fd).map_err(Error::IO)?;
         }
     }
 
