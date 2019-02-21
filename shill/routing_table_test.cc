@@ -184,6 +184,7 @@ MATCHER_P2(IsBlackholeRoutingPacket, family, metric, "") {
       status.protocol == RTPROT_BOOT &&
       status.scope == RT_SCOPE_UNIVERSE &&
       status.type == RTN_BLACKHOLE &&
+      !arg->HasAttribute(RTA_DST) &&
       !arg->HasAttribute(RTA_SRC) &&
       !arg->HasAttribute(RTA_GATEWAY) &&
       arg->GetAttribute(RTA_PRIORITY).ConvertToCPUUInt32(&priority) &&

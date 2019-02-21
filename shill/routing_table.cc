@@ -502,7 +502,9 @@ bool RoutingTable::ApplyRoute(uint32_t interface_index,
       entry.type,
       0));
 
-  message.SetAttribute(RTA_DST, entry.dst.address());
+  if (entry.type != RTN_BLACKHOLE) {
+    message.SetAttribute(RTA_DST, entry.dst.address());
+  }
   if (!entry.src.IsDefault()) {
     message.SetAttribute(RTA_SRC, entry.src.address());
   }
