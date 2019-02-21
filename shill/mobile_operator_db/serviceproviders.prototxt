@@ -4218,6 +4218,7 @@ mno {
     }
     mccmnc : "20820"
     mccmnc : "20821"
+    mccmnc : "20888"
     mobile_apn {
       apn : "a2bouygtel.com"
       localized_name {
