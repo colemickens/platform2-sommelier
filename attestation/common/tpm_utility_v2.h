@@ -163,11 +163,6 @@ class TpmUtilityV2 : public TpmUtility {
   // the |key_handle|.
   bool GetEndorsementKey(KeyType key_type, trunks::TPM_HANDLE* key_handle);
 
-  // Convert a |tpm_public_key_object|, that is, a serialized TPMT_PUBLIC for
-  // TPM 2.0, to a DER encoded PKCS #1 RSAPublicKey.
-  bool GetRSAPublicKeyFromTpmPublicKey(const std::string& tpm_public_key_object,
-                                       std::string* public_key_der);
-
   bool is_ready_{false};
   std::string endorsement_password_;
   std::string owner_password_;

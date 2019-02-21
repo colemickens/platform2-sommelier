@@ -42,7 +42,7 @@ const unsigned int kWellKnownExponent = 65537;
 const uint32_t kRSAEndorsementCertificateIndex = 0xC00000;
 const uint32_t kECCEndorsementCertificateIndex = 0xC00001;
 
-crypto::ScopedRSA CreateRSAFromRawModulus(uint8_t* modulus_buffer,
+crypto::ScopedRSA CreateRSAFromRawModulus(const uint8_t* modulus_buffer,
                                           size_t modulus_size) {
   crypto::ScopedRSA rsa(RSA_new());
   if (!rsa.get())
@@ -55,6 +55,41 @@ crypto::ScopedRSA CreateRSAFromRawModulus(uint8_t* modulus_buffer,
   if (!rsa->n)
     return crypto::ScopedRSA();
   return rsa;
+}
+
+// Convert TPMT_PUBLIC TPM public area |public_area| of RSA key to a OpenSSL RSA
+// key.
+crypto::ScopedRSA GetRSAPublicKeyFromTpmPublicArea(
+    const trunks::TPMT_PUBLIC& public_area) {
+  crypto::ScopedRSA key = CreateRSAFromRawModulus(public_area.unique.rsa.buffer,
+                                                  public_area.unique.rsa.size);
+  if (key == nullptr) {
+    LOG(ERROR) << __func__ << ": Failed to decode public key.";
+    return nullptr;
+  }
+  return key;
+}
+
+template <typename OpenSSLType,
+          int (*openssl_func)(const OpenSSLType*, unsigned char**)>
+std::string OpenSSLObjectToString(const OpenSSLType* type) {
+  if (type == nullptr) {
+    return nullptr;
+  }
+
+  unsigned char* openssl_buffer = nullptr;
+
+  int size = openssl_func(type, &openssl_buffer);
+  if (size < 0) {
+    return std::string();
+  }
+
+  crypto::ScopedOpenSSLBytes scoped_buffer(openssl_buffer);
+  return std::string(reinterpret_cast<char*>(openssl_buffer), size);
+}
+
+std::string RsaPublicKeyToString(const crypto::ScopedRSA& key) {
+  return OpenSSLObjectToString<RSA, i2d_RSAPublicKey>(key.get());
 }
 
 // An authorization delegate to manage multiple authorization sessions for a
@@ -404,8 +439,9 @@ bool TpmUtilityV2::CreateCertifiedKey(KeyType key_type,
                << trunks::GetErrorString(result);
     return false;
   }
-  if (!GetRSAPublicKeyFromTpmPublicKey(*public_key_tpm_format,
-                                       public_key_der)) {
+  *public_key_der =
+      RsaPublicKeyToString(GetRSAPublicKeyFromTpmPublicArea(public_area));
+  if (public_key_der->empty()) {
     LOG(ERROR) << __func__ << ": Failed to convert public key.";
     return false;
   }
@@ -514,14 +550,9 @@ bool TpmUtilityV2::GetEndorsementPublicKey(KeyType key_type,
                << trunks::GetErrorString(result);
     return false;
   }
-  std::string public_key_tpm_format;
-  result = trunks::Serialize_TPMT_PUBLIC(public_area, &public_key_tpm_format);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << __func__ << ": Failed to serialize EK public key: "
-               << trunks::GetErrorString(result);
-    return false;
-  }
-  if (!GetRSAPublicKeyFromTpmPublicKey(public_key_tpm_format, public_key_der)) {
+  *public_key_der =
+      RsaPublicKeyToString(GetRSAPublicKeyFromTpmPublicArea(public_area));
+  if (public_key_der->empty()) {
     LOG(ERROR) << __func__ << ": Failed to convert EK public key.";
     return false;
   }
@@ -633,12 +664,13 @@ bool TpmUtilityV2::CreateRestrictedKey(KeyType key_type,
   result = trunks::Serialize_TPMT_PUBLIC(public_info.public_area,
                                          public_key_tpm_format);
   if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << __func__ << ": Failed to serialize public key: "
+    LOG(ERROR) << __func__ << ": Failed to serialize key public area: "
                << trunks::GetErrorString(result);
     return false;
   }
-  if (!GetRSAPublicKeyFromTpmPublicKey(*public_key_tpm_format,
-                                       public_key_der)) {
+  *public_key_der = RsaPublicKeyToString(
+      GetRSAPublicKeyFromTpmPublicArea(public_info.public_area));
+  if (public_key_der->empty()) {
     LOG(ERROR) << __func__ << ": Failed to convert public key to DER encoded";
     return false;
   }
@@ -826,37 +858,6 @@ bool TpmUtilityV2::CertifyNV(uint32_t nv_index,
 
   *quoted_data = StringFrom_TPM2B_ATTEST(quoted_struct);
   *quote = StringFrom_TPM2B_PUBLIC_KEY_RSA(signature.signature.rsassa.sig);
-  return true;
-}
-
-
-bool TpmUtilityV2::GetRSAPublicKeyFromTpmPublicKey(
-    const std::string& tpm_public_key_object,
-    std::string* public_key_der) {
-  std::string buffer = tpm_public_key_object;
-  trunks::TPMT_PUBLIC parsed_public_object;
-  TPM_RC result =
-      trunks::Parse_TPMT_PUBLIC(&buffer, &parsed_public_object, nullptr);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << __func__ << ": Failed to parse public key: "
-               << trunks::GetErrorString(result);
-    return false;
-  }
-  crypto::ScopedRSA rsa =
-      CreateRSAFromRawModulus(parsed_public_object.unique.rsa.buffer,
-                              parsed_public_object.unique.rsa.size);
-  if (!rsa.get()) {
-    LOG(ERROR) << __func__ << ": Failed to decode public key.";
-    return false;
-  }
-  unsigned char* openssl_buffer = NULL;
-  int length = i2d_RSAPublicKey(rsa.get(), &openssl_buffer);
-  if (length <= 0) {
-    LOG(ERROR) << __func__ << ": Failed to encode public key.";
-    return false;
-  }
-  crypto::ScopedOpenSSLBytes scoped_buffer(openssl_buffer);
-  public_key_der->assign(reinterpret_cast<char*>(openssl_buffer), length);
   return true;
 }
 
