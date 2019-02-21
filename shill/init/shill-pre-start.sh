@@ -37,13 +37,6 @@ chown -R dhcp:dhcp /run/dhcpcd
 chown root:shill /proc/net/ip_conntrack
 chmod g+r /proc/net/ip_conntrack
 
-# Use flimflam's default profile if shill doesn't have one.
-if [ ! -f /var/cache/shill/default.profile -a \
-       -f /var/cache/flimflam/default.profile ]; then
-  mv /var/cache/flimflam/default.profile /var/cache/shill/default.profile
-  chmod a+r /var/cache/shill/default.profile
-fi
-
 # Create private directory for data which needs to persists across sessions.
 mkdir -p /var/lib/shill
 
