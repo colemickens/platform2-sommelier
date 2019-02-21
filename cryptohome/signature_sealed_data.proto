@@ -49,6 +49,17 @@ message SignatureSealedData {
     repeated Tpm2PcrRestriction pcr_restrictions = 5;
   }
 
+  // TPM 1.2 data that is bound to the specific set of PCRs.
+  message Tpm12PcrBoundItem {
+    // Set of PCRs to which the secret blob is bound.
+    repeated PcrValue pcr_values = 1;
+
+    // The secret blob, which is bound to the PCR values specified by
+    // |pcr_values| and with the AuthData value that is stored encrypted in
+    // |cmk_wrapped_auth_data|.
+    optional bytes bound_secret = 2;
+  }
+
   // Data for the TPM 1.2 method based on the "Certified Migratable Key"
   // functionality.
   message Tpm12CertifiedMigratableKeyData {
@@ -62,6 +73,15 @@ message SignatureSealedData {
 
     // The TPM_PUBKEY blob of the Certified Migratable Key.
     optional bytes cmk_pubkey = 3;
+
+    // The AuthData blob encrypted by the CMK using the RSAES-OAEP MGF1
+    // algorithm.
+    optional bytes cmk_wrapped_auth_data = 4;
+
+    // Multiple alternative representations of the secret data, where each
+    // representation is bound to its specific set of PCRs and to the AuthData
+    // value that is stored encrypted in |cmk_wrapped_auth_data|.
+    repeated Tpm12PcrBoundItem pcr_bound_items = 5;
   }
 
   // The union containing the data depending on the sealing method.

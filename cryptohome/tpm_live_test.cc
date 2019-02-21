@@ -19,14 +19,13 @@
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
 #include <openssl/bn.h>
+#include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/signature_sealing_backend.h"
-
-#include <openssl/err.h>
 
 #if !USE_TPM2
 #include <trousers/scoped_tss_type.h>
@@ -678,7 +677,7 @@ class SignatureSealedSecretTestCase final {
   }
 
  private:
-  static constexpr uint32_t kPcrIndexToExtend = 16;  // The Debug PCR.
+  static constexpr uint32_t kPcrIndexToExtend = 15;
   const std::set<uint32_t> kPcrIndexes{0, kPcrIndexToExtend};
   static constexpr uint8_t kDelegateFamilyLabel = 100;
   static constexpr uint8_t kDelegateLabel = 101;

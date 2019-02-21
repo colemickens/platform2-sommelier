@@ -25,10 +25,6 @@ class TpmImpl;
 // playing the role of the sealed secret. The CMK is of 2048-bit size.
 //
 // Only the |kRsassaPkcs1V15Sha1| algorithm is supported by this implementation.
-//
-// The PCR binding isn't directly supported by this class, and the corresponding
-// parameters are ignored. PCR-binding of the secret can be achieved by
-// providing the delegate which is itself bound to required PCRs.
 class SignatureSealingBackendTpm1Impl final : public SignatureSealingBackend {
  public:
   explicit SignatureSealingBackendTpm1Impl(TpmImpl* tpm);
@@ -38,8 +34,7 @@ class SignatureSealingBackendTpm1Impl final : public SignatureSealingBackend {
   bool CreateSealedSecret(
       const brillo::Blob& public_key_spki_der,
       const std::vector<ChallengeSignatureAlgorithm>& key_algorithms,
-      const std::vector<
-          std::map<uint32_t, brillo::Blob>>& /* pcr_restrictions */,
+      const std::vector<std::map<uint32_t, brillo::Blob>>& pcr_restrictions,
       const brillo::Blob& delegate_blob,
       const brillo::Blob& delegate_secret,
       SignatureSealedData* sealed_secret_data) override;
