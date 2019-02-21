@@ -67,6 +67,9 @@ if (use.test) {
       "statemachine/eventkey.cc",
       "statemachine/eventkey_test.cc",
     ]
+    deps = [
+      "//common-mk/testrunner",
+    ]
   }
 
   executable("slot_test") {
@@ -78,6 +81,9 @@ if (use.test) {
       "statemachine/eventkey.cc",
       "statemachine/slot.cc",
       "statemachine/slot_test.cc",
+    ]
+    deps = [
+      "//common-mk/testrunner",
     ]
   }
 
@@ -92,6 +98,9 @@ if (use.test) {
       "statemachine/statemachine.cc",
       "statemachine/statemachine_test.cc",
     ]
+    deps = [
+      "//common-mk/testrunner",
+    ]
   }
 
   executable("evdevsource_test") {
@@ -103,6 +112,9 @@ if (use.test) {
       "evdevsource.cc",
       "evdevsource_test.cc",
     ]
+    deps = [
+      "//common-mk/testrunner",
+    ]
   }
 
   executable("uinputdevice_test") {
@@ -113,6 +125,9 @@ if (use.test) {
     sources = [
       "uinputdevice.cc",
       "uinputdevice_test.cc",
+    ]
+    deps = [
+      "//common-mk/testrunner",
     ]
   }
 }
