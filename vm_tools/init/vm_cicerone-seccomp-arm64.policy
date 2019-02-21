@@ -83,3 +83,4 @@ unlink: 1
 readlink: 1
 readlinkat: 1
 lstat: 1
+getcpu: 1

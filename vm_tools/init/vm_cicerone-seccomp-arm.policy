@@ -90,3 +90,4 @@ unlink: 1
 readlink: 1
 readlinkat: 1
 lstat64: 1
+getcpu: 1
