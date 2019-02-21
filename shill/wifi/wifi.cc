@@ -10,7 +10,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <limits>
 #include <map>
 #include <memory>
 #include <set>
@@ -108,6 +107,8 @@ const time_t kRescanIntervalSeconds = 1;
 const int kPendingTimeoutSeconds = 15;
 const int kMaxRetryCreateInterfaceAttempts = 6;
 const int kRetryCreateInterfaceIntervalSeconds = 10;
+const int16_t kDefaultDisconnectDbm = 0;
+const int16_t kDefaultDisconnectThresholdDbm = -75;
 
 bool IsPrintableAsciiChar(char c) {
   return (c >= ' ' && c <= '~');
@@ -139,6 +140,8 @@ WiFi::WiFi(ControlInterface* control_interface,
       supplicant_assoc_status_(IEEE_80211::kStatusCodeSuccessful),
       supplicant_auth_status_(IEEE_80211::kStatusCodeSuccessful),
       supplicant_disconnect_reason_(kDefaultDisconnectReason),
+      disconnect_signal_dbm_(kDefaultDisconnectDbm),
+      disconnect_threshold_dbm_(kDefaultDisconnectThresholdDbm),
       supplicant_auth_mode_(WPASupplicant::kAuthModeUnknown),
       need_bss_flush_(false),
       resumed_at_((struct timeval){0}),
@@ -546,7 +549,10 @@ void WiFi::DisconnectFrom(WiFiService* service) {
     // Since wpa_supplicant has not yet set CurrentBSS, we can't depend
     // on this to drive the service state back to idle.  Do that here.
     // Update service state for pending service.
+    disconnect_signal_dbm_ = pending_service_->SignalLevel();
     ServiceDisconnected(pending_service_);
+  } else if (service) {
+    disconnect_signal_dbm_ = service->SignalLevel();
   }
 
   SetPendingService(nullptr);
@@ -804,6 +810,24 @@ void WiFi::AuthStatusChanged(const int32_t new_auth_status) {
 void WiFi::CurrentBSSChanged(const string& new_bss) {
   SLOG(this, 3) << "WiFi " << link_name() << " CurrentBSS "
                 << supplicant_bss_ << " -> " << new_bss;
+
+  // Store signal strength of BSS when disconnecting.
+  if (supplicant_bss_ != WPASupplicant::kCurrentBSSNull &&
+      new_bss == WPASupplicant::kCurrentBSSNull) {
+    const WiFiEndpointConstRefPtr endpoint(GetCurrentEndpoint());
+    if (endpoint == nullptr) {
+      LOG(ERROR) << "Can't get endpoint for current supplicant BSS "
+                 << supplicant_bss_;
+      // Default to value that will not imply out of range error in
+      // ServiceDisconnected or PendingTimeoutHandler.
+      disconnect_signal_dbm_ = kDefaultDisconnectDbm;
+    } else {
+      disconnect_signal_dbm_ = endpoint->signal_strength();
+      LOG(INFO) << "Current BSS signal strength at disconnect: "
+                << disconnect_signal_dbm_;
+    }
+  }
+
   supplicant_bss_ = new_bss;
   has_already_completed_ = false;
   is_roaming_in_progress_ = false;
@@ -866,13 +890,19 @@ void WiFi::DisconnectReasonChanged(const int32_t new_disconnect_reason) {
   if (new_disconnect_reason == kDefaultDisconnectReason) {
     SLOG(this, 3) << "WiFi clearing DisconnectReason for " << link_name();
   } else {
-    string update;
+    std::string update;
     if (supplicant_disconnect_reason_ != kDefaultDisconnectReason) {
-      update = StringPrintf(" (was %d)", supplicant_disconnect_reason_);
+      update = StringPrintf(" from %d", supplicant_disconnect_reason_);
     }
-    LOG(INFO) << "WiFi " << link_name()
-              << " supplicant updated DisconnectReason to "
-              << new_disconnect_reason << update;
+    std::string new_disconnect_description = IEEE_80211::ReasonToString(
+        static_cast<IEEE_80211::WiFiReasonCode>(new_disconnect_reason));
+    if (!new_disconnect_reason) {
+      new_disconnect_description = "Success";
+    }
+    LOG(INFO) << StringPrintf(
+        "WiFi %s supplicant updated DisconnectReason%s to %d (%s)",
+        link_name().c_str(), update.c_str(), new_disconnect_reason,
+        new_disconnect_description.c_str());
   }
   supplicant_disconnect_reason_ = new_disconnect_reason;
 }
@@ -932,7 +962,7 @@ void WiFi::HandleDisconnect() {
   }
 
   metrics()->NotifySignalAtDisconnect(*affected_service,
-                                      affected_service->SignalLevel());
+                                      disconnect_signal_dbm_);
   affected_service->NotifyCurrentEndpoint(nullptr);
   metrics()->NotifyServiceDisconnect(*affected_service);
 
@@ -973,19 +1003,41 @@ void WiFi::ServiceDisconnected(WiFiServiceRefPtr affected_service) {
       !affected_service->expecting_disconnect()) {
     // Determine disconnect failure reason.
     Service::ConnectFailure failure;
+    int32_t disconnect_reason = abs(supplicant_disconnect_reason_);
     if (SuspectCredentials(affected_service, &failure)) {
-      // If we suspect bad credentials, set failure, to trigger an error
-      // mole in Chrome.
-      affected_service->SetFailure(failure);
-      LOG(ERROR) << "Connection failure is due to suspect credentials: "
-                 << "returning "
-                 << Service::ConnectFailureToString(failure);
+      // If we've reached here, |SuspectCredentials| has already set
+      // |failure| to the appropriate value.
+    } else if ((disconnect_reason == IEEE_80211::kReasonCodeInactivity ||
+                disconnect_reason == IEEE_80211::kReasonCodeSenderHasLeft) &&
+               disconnect_signal_dbm_ <= disconnect_threshold_dbm_ &&
+               disconnect_signal_dbm_ != kDefaultDisconnectDbm) {
+      // Disconnected due to service being out of range.
+      failure = Service::kFailureOutOfRange;
     } else {
-      // Disconnected due to inability to connect to service, most likely
-      // due to roaming out of range.
-      LOG(ERROR) << "Disconnected due to inability to connect to the service.";
-      affected_service->SetFailure(Service::kFailureOutOfRange);
+      // Disconnected for some other reason.
+      // Map IEEE error codes to shill error codes.
+      switch (disconnect_reason) {
+        case IEEE_80211::kReasonCodeNonAuthenticated:
+        case IEEE_80211::kReasonCodeReassociationNotAuthenticated:
+        case IEEE_80211::kReasonCodePreviousAuthenticationInvalid:
+          failure = Service::kFailureNotAuthenticated;
+          break;
+        case IEEE_80211::kReasonCodeNonAssociated:
+          failure = Service::kFailureNotAssociated;
+          break;
+        case IEEE_80211::kReasonCodeTooManySTAs:
+          failure = Service::kFailureTooManySTAs;
+          break;
+        case IEEE_80211::kReasonCode8021XAuth:
+          failure = Service::kFailureEAPAuthentication;
+          break;
+        default:
+          failure = Service::kFailureUnknown;
+      }
     }
+    affected_service->SetFailure(failure);
+    LOG(ERROR) << "Disconnected due to reason: "
+               << Service::ConnectFailureToString(failure);
   }
 
   // Set service state back to idle, so this service can be used for
@@ -2312,8 +2364,14 @@ void WiFi::PendingTimeoutHandler() {
   CHECK(pending_service_);
   SetScanState(kScanFoundNothing, scan_method_, __func__);
   WiFiServiceRefPtr pending_service = pending_service_;
-  pending_service_->DisconnectWithFailure(
-      Service::kFailureOutOfRange, &unused_error, __func__);
+
+  Service::ConnectFailure failure = Service::kFailureUnknown;
+  if (pending_service_ &&
+      pending_service_->SignalLevel() <= disconnect_threshold_dbm_ &&
+      pending_service_->SignalLevel() != kDefaultDisconnectDbm) {
+    failure = Service::kFailureOutOfRange;
+  }
+  pending_service_->DisconnectWithFailure(failure, &unused_error, __func__);
 
   // A hidden service may have no endpoints, since wpa_supplicant
   // failed to attain a CurrentBSS.  If so, the service has no

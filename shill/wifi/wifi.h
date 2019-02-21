@@ -437,6 +437,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // problem is detected.
   bool SuspectCredentials(WiFiServiceRefPtr service,
                           Service::ConnectFailure* failure) const;
+
   void HelpRegisterDerivedInt32(
       PropertyStore* store,
       const std::string& name,
@@ -648,6 +649,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   int32_t supplicant_assoc_status_;
   int32_t supplicant_auth_status_;
   int32_t supplicant_disconnect_reason_;
+  int16_t disconnect_signal_dbm_;
+  int16_t disconnect_threshold_dbm_;
+
   // The auth mode of the last successful connection.
   std::string supplicant_auth_mode_;
   std::string phy_name_;

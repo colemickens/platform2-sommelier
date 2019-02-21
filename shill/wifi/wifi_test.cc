@@ -1954,8 +1954,26 @@ TEST_F(WiFiMainTest, DisconnectPendingServiceWithFailure) {
       SetupConnectingService("", nullptr, nullptr));
   EXPECT_TRUE(GetPendingService() == service.get());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
+  EXPECT_CALL(*service, SetFailure(Service::kFailureUnknown));
+  EXPECT_CALL(*service, SetState(Service::kStateIdle)).Times(AtLeast(1));
+  InitiateDisconnect(service);
+  Mock::VerifyAndClearExpectations(service.get());
+  EXPECT_EQ(nullptr, GetPendingService());;
+}
+
+TEST_F(WiFiMainTest, DisconnectPendingServiceWithOutOfRange) {
+  StartWiFi();
+
+  // Initiate connection with weak signal
+  MockWiFiServiceRefPtr service;
+  MakeNewEndpointAndService(-90, 0, kNetworkModeAdHoc, nullptr, &service);
+  InitiateConnect(service);
+
+  EXPECT_TRUE(GetPendingService() == service.get());
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
   EXPECT_CALL(*service, SetFailure(Service::kFailureOutOfRange));
   EXPECT_CALL(*service, SetState(Service::kStateIdle)).Times(AtLeast(1));
+  ReportDisconnectReasonChanged(-IEEE_80211::kReasonCodeInactivity);
   InitiateDisconnect(service);
   Mock::VerifyAndClearExpectations(service.get());
   EXPECT_EQ(nullptr, GetPendingService());;
@@ -2037,8 +2055,49 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWithFailure) {
 
   EXPECT_CALL(*eap_state_handler_, Reset());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveNetwork(kPath)).Times(0);
+  EXPECT_CALL(*service, SetFailure(Service::kFailureUnknown));
+  EXPECT_CALL(*service, SetState(Service::kStateIdle)).Times(AtLeast(1));
+  ReportCurrentBSSChanged(WPASupplicant::kCurrentBSSNull);
+  EXPECT_EQ(nullptr, GetCurrentService().get());
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+}
+
+TEST_F(WiFiMainTest, DisconnectCurrentServiceWithOutOfRange) {
+  StartWiFi();
+
+  // Setup connection with weak signal
+  string kPath("/fake/path");
+  MockWiFiServiceRefPtr service;
+  string bss_path(MakeNewEndpointAndService(
+      -80, 0, kNetworkModeAdHoc, nullptr, &service));
+  EXPECT_CALL(*service, GetSupplicantConfigurationParameters());
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), AddNetwork(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kPath), Return(true)));
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(),
+              SetHT40Enable(kPath, true));
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), SelectNetwork(kPath));
+  InitiateConnect(service);
+  ReportCurrentBSSChanged(bss_path);
+  ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
+
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
+  InitiateDisconnect(service);
+
+  // |current_service_| should not change until supplicant reports
+  // a BSS change.
+  EXPECT_EQ(service, GetCurrentService());
+
+  // Expect that the entry associated with this network will be disabled.
+  auto network_proxy = std::make_unique<MockSupplicantNetworkProxy>();
+  EXPECT_CALL(*network_proxy, SetEnabled(false)).WillOnce(Return(true));
+  EXPECT_CALL(*control_interface(), CreateSupplicantNetworkProxy(kPath))
+      .WillOnce(Return(ByMove(std::move(network_proxy))));
+
+  EXPECT_CALL(*eap_state_handler_, Reset());
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveNetwork(kPath)).Times(0);
   EXPECT_CALL(*service, SetFailure(Service::kFailureOutOfRange));
   EXPECT_CALL(*service, SetState(Service::kStateIdle)).Times(AtLeast(1));
+  ReportDisconnectReasonChanged(-IEEE_80211::kReasonCodeInactivity);
   ReportCurrentBSSChanged(WPASupplicant::kCurrentBSSNull);
   EXPECT_EQ(nullptr, GetCurrentService().get());
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
@@ -2529,12 +2588,13 @@ TEST_F(WiFiMainTest, DisconnectReasonUpdated) {
   EXPECT_CALL(*adaptor_, EmitBoolChanged(kPoweredProperty, _))
       .Times(AnyNumber());
   EXPECT_EQ(GetSupplicantDisconnectReason(), WiFi::kDefaultDisconnectReason);
-  EXPECT_CALL(log,
-              Log(logging::LOG_INFO, _, EndsWith(" DisconnectReason to 4")));
+  EXPECT_CALL(log, Log(logging::LOG_INFO, _, EndsWith(
+              " DisconnectReason to 4 (Disassociated due to inactivity)")));
   ReportDisconnectReasonChanged(test_reason);
   EXPECT_EQ(GetSupplicantDisconnectReason(), test_reason);
   EXPECT_CALL(log,
-              Log(logging::LOG_INFO, _, EndsWith("Reason to 0 (was 4)")));
+              Log(logging::LOG_INFO, _, EndsWith(
+                    "Reason from 4 to 0 (Success)")));
   ReportDisconnectReasonChanged(test_reason_second);
   EXPECT_EQ(GetSupplicantDisconnectReason(), test_reason_second);
 }
