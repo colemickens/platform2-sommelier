@@ -33,6 +33,7 @@ _IUSE = [
     'cert_provision',
     'cfm_enabled_device',
     'cheets',
+    'chromeless_tty',
     'chromeos_dbus',
     'containers',
     'coverage',

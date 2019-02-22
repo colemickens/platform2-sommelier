@@ -451,7 +451,7 @@ send_crash() {
       product_name=$(echo "${product_name}" | sed 's/Chrome/Chromium/')
     fi
     local silent="$(get_key_value "${meta_path}" "silent")"
-    if [ "${silent}" != "true" ]; then
+    if [ "${IS_CHROMELESS_TTY}" != "true" ] && [ "${silent}" != "true" ]; then
       printf '%s,%s,%s\n' \
         "${timestamp}" "${id}" "${product_name}" >> "${CHROME_CRASH_LOG}"
     fi

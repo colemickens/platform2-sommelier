@@ -113,6 +113,7 @@ executable("crash_sender") {
     "crash_sender.cc",
     "crash_sender_util.cc",
   ]
+  defines = [ "USE_CHROMELESS_TTY=${use.chromeless_tty}" ]
   deps = [
     ":libcrash",
   ]
@@ -228,6 +229,7 @@ if (use.test) {
       "user_collector_test.cc",
       "util_test.cc",
     ]
+    defines = [ "USE_CHROMELESS_TTY=${use.chromeless_tty}" ]
     deps = [
       ":libcrash",
       ":libcrash_reporter",

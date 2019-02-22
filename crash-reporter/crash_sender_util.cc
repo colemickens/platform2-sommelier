@@ -644,6 +644,9 @@ bool Sender::RequestToSendCrash(const CrashDetails& details) {
                           payload_kind,  // $3 in send_crash
                           exec_name,     // $4 in send_crash
                           nullptr};
+
+    setenv("IS_CHROMELESS_TTY", USE_CHROMELESS_TTY ? "true" : "false",
+           1 /* overwrite */);
     execve(shell_script_path, shell_argv, environ);
     // execve() failed.
     exit(EXIT_FAILURE);
