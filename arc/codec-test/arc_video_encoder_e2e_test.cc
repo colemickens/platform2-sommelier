@@ -47,10 +47,25 @@ ArcVideoEncoderTestEnvironment* g_env;
 
 class ArcVideoEncoderTestEnvironment : public testing::Environment {
  public:
-  explicit ArcVideoEncoderTestEnvironment(const std::string& data)
-      : test_stream_data_(data) {}
+  explicit ArcVideoEncoderTestEnvironment(const std::string& data,
+                                          const std::string& output_log_path)
+      : test_stream_data_(data), output_log_path_(output_log_path) {}
 
-  void SetUp() override { ParseTestStreamData(); }
+  void SetUp() override {
+    ParseTestStreamData();
+    if (!output_log_path_.empty()) {
+      log_file_.open(output_log_path_);
+      if (!log_file_.is_open()) {
+        ALOGW("Failed to open file: %s", output_log_path_.c_str());
+      }
+    }
+  }
+
+  void TearDown() override {
+    if (log_file_.is_open()) {
+      log_file_.close();
+    }
+  }
 
   // The syntax of test stream is:
   // "input_file_path:width:height:profile:output_file_path:requested_bitrate
@@ -146,8 +161,19 @@ class ArcVideoEncoderTestEnvironment : public testing::Environment {
     return requested_subsequent_framerate_;
   }
 
+  void LogToFile(const std::string& log) {
+    if (log_file_.is_open()) {
+      log_file_ << log << std::endl;
+    } else {
+      ALOGW("Try to log \"%s\" to file but log file is not open.\n",
+            log.c_str());
+    }
+  }
+
  private:
   std::string test_stream_data_;
+  std::string output_log_path_;
+  std::ofstream log_file_;
 
   Size visible_size_;
   std::string input_file_path_;
@@ -181,9 +207,16 @@ class ArcVideoEncoderE2ETest : public testing::Test {
                                          g_env->visible_size());
     ASSERT_TRUE(encoder_);
     encoder_->Rewind();
+
+    ASSERT_TRUE(encoder_->Configure(
+          static_cast<int32_t>(g_env->requested_bitrate()),
+          static_cast<int32_t>(g_env->requested_framerate())));
+    ASSERT_TRUE(encoder_->Start());
   }
 
   void TearDown() override {
+    EXPECT_TRUE(encoder_->Stop());
+
     output_file_.close();
     encoder_.reset();
   }
@@ -222,12 +255,7 @@ TEST_F(ArcVideoEncoderE2ETest, TestSimpleEncode) {
                   std::placeholders::_1, std::placeholders::_2));
   }
 
-  ASSERT_TRUE(
-      encoder_->Configure(static_cast<int32_t>(g_env->requested_bitrate()),
-                          static_cast<int32_t>(g_env->requested_framerate())));
-  ASSERT_TRUE(encoder_->Start());
   EXPECT_TRUE(encoder_->Encode());
-  EXPECT_TRUE(encoder_->Stop());
 }
 
 TEST_F(ArcVideoEncoderE2ETest, TestBitrate) {
@@ -242,12 +270,7 @@ TEST_F(ArcVideoEncoderE2ETest, TestBitrate) {
                 std::placeholders::_1, std::placeholders::_2));
 
   // TODO(akahuang): Verify bitrate switch at the middle of stream.
-  ASSERT_TRUE(
-      encoder_->Configure(static_cast<int32_t>(g_env->requested_bitrate()),
-                          static_cast<int32_t>(g_env->requested_framerate())));
-  ASSERT_TRUE(encoder_->Start());
   EXPECT_TRUE(encoder_->Encode());
-  EXPECT_TRUE(encoder_->Stop());
 
   double measured_bitrate = CalculateAverageBitrate(
       encoder_->num_encoded_frames(), g_env->requested_framerate());
@@ -255,12 +278,26 @@ TEST_F(ArcVideoEncoderE2ETest, TestBitrate) {
               kBitrateTolerance * g_env->requested_bitrate());
 }
 
+TEST_F(ArcVideoEncoderE2ETest, PerfFPS) {
+  int64_t start_time = GetNowUs();
+  EXPECT_TRUE(encoder_->Encode());
+  int64_t end_time = GetNowUs();
+
+  double measured_fps =
+      1000000.0 * encoder_->num_encoded_frames() / (end_time - start_time);
+  std::ostringstream ss;
+  ss << "Measured encoder FPS: " << measured_fps;
+  g_env->LogToFile(ss.str());
+}
+
 }  // namespace android
 
-bool GetOption(int argc, char** argv, std::string* test_stream_data) {
-  const char* const optstring = "t:";
+bool GetOption(int argc, char** argv, std::string* test_stream_data,
+               std::string* output_log_path) {
+  const char* const optstring = "to:";
   static const struct option opts[] = {
       {"test_stream_data", required_argument, nullptr, 't'},
+      {"output_log_path", required_argument, nullptr, 'o'},
       {nullptr, 0, nullptr, 0},
   };
 
@@ -269,6 +306,9 @@ bool GetOption(int argc, char** argv, std::string* test_stream_data) {
     switch (opt) {
       case 't':
         *test_stream_data = optarg;
+        break;
+      case 'o':
+        *output_log_path = optarg;
         break;
       default:
         ALOGW("Unknown option: getopt_long() returned code 0x%x.", opt);
@@ -285,12 +325,14 @@ bool GetOption(int argc, char** argv, std::string* test_stream_data) {
 
 int main(int argc, char** argv) {
   std::string test_stream_data;
-  if (!GetOption(argc, argv, &test_stream_data))
+  std::string output_log_path;
+  if (!GetOption(argc, argv, &test_stream_data, &output_log_path))
     return EXIT_FAILURE;
 
   android::g_env = reinterpret_cast<android::ArcVideoEncoderTestEnvironment*>(
       testing::AddGlobalTestEnvironment(
-          new android::ArcVideoEncoderTestEnvironment(test_stream_data)));
+          new android::ArcVideoEncoderTestEnvironment(test_stream_data,
+                                                      output_log_path)));
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
