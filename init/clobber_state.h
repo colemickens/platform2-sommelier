@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file.h>
 #include <base/files/file_path.h>
 
 #include "init/crossystem.h"
@@ -84,14 +85,15 @@ class ClobberState {
   static bool WipeMTDDevice(const base::FilePath& device_path,
                             const PartitionNumbers& partitions);
 
-  // Wipe |device_path|, writing a progress indicator to |progress_tty_path|.
+  // Wipe |device_path|, writing a progress indicator to |progress_tty|.
+  // |progress_tty| must be a valid base::File.
   //
   // If |fast| is true, wipe |device_path| using a less-thorough but much faster
   // wipe. Not all blocks are guaranteed to be overwritten, so this should be
   // reserved for situations when there is no concern of data leakage.
   // A progress indicator will not be displayed if |fast| mode is enabled.
   static bool WipeBlockDevice(const base::FilePath& device_path,
-                              const base::FilePath& progress_tty_path,
+                              const base::File& progress_tty,
                               bool fast);
 
   ClobberState(const Arguments& args, std::unique_ptr<CrosSystem> cros_system);
@@ -169,7 +171,8 @@ class ClobberState {
   base::FilePath root_disk_;
   DeviceWipeInfo wipe_info_;
 
-  // Path to use for writing to TTY.
+  // File for writing progress to TTY.
+  base::File terminal_;
   base::FilePath terminal_path_;
 };
 

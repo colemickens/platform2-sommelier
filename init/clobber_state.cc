@@ -599,7 +599,7 @@ bool ClobberState::WipeMTDDevice(
 
 // static
 bool ClobberState::WipeBlockDevice(const base::FilePath& device_path,
-                                   const base::FilePath& progress_tty_path,
+                                   const base::File& progress_tty,
                                    bool fast) {
   const int write_block_size = 4 * 1024 * 1024;
   int64_t to_write = 0;
@@ -637,18 +637,6 @@ bool ClobberState::WipeBlockDevice(const base::FilePath& device_path,
   // Don't display progress in fast mode since it runs so quickly.
   bool display_progress =
       !fast && base::PathExists(base::FilePath("/usr/bin/pv"));
-  base::File tty;
-  if (display_progress) {
-    tty = base::File(progress_tty_path,
-                     base::File::FLAG_OPEN | base::File::FLAG_WRITE);
-    if (tty.IsValid()) {
-      MakeTTYRaw(tty);
-    } else {
-      LOG(WARNING) << "Opening output TTY failed";
-      display_progress = false;
-    }
-  }
-
   brillo::ProcessImpl pv;
   if (display_progress) {
     pv.AddArg("/usr/bin/pv");
@@ -660,7 +648,7 @@ bool ClobberState::WipeBlockDevice(const base::FilePath& device_path,
     pv.AddStringOption(
         "--watchfd",
         base::StringPrintf("%d:%d", getpid(), device.GetPlatformFile()));
-    pv.BindFd(tty.GetPlatformFile(), STDERR_FILENO);
+    pv.BindFd(progress_tty.GetPlatformFile(), STDERR_FILENO);
 
     if (!pv.Start()) {
       LOG(WARNING) << "Starting pv failed";
@@ -710,13 +698,18 @@ ClobberState::ClobberState(const Arguments& args,
   } else {
     terminal_path_ = base::FilePath("/dev/tty1");
   }
-  base::File terminal(terminal_path_,
-                      base::File::FLAG_OPEN | base::File::FLAG_WRITE);
-  if (!terminal.IsValid()) {
-    LOG(ERROR) << "Could not open terminal " << terminal_path_.value();
-  } else {
-    MakeTTYRaw(terminal);
+  terminal_ = base::File(terminal_path_,
+                         base::File::FLAG_OPEN | base::File::FLAG_WRITE);
+
+  if (!terminal_.IsValid()) {
+    PLOG(WARNING) << "Could not open terminal " << terminal_path_.value()
+                  << " falling back to /dev/null";
+    terminal_path_ = base::FilePath("/dev/null");
+    terminal_ = base::File(terminal_path_,
+                           base::File::FLAG_OPEN | base::File::FLAG_WRITE);
   }
+
+  MakeTTYRaw(terminal_);
 }
 
 std::vector<base::FilePath> ClobberState::GetPreservedFilesList() {
@@ -1081,17 +1074,10 @@ bool ClobberState::WipeKeysets() {
 }
 
 void ClobberState::ForceDelay() {
-  base::File terminal(terminal_path_,
-                      base::File::FLAG_OPEN | base::File::FLAG_WRITE);
-  if (!terminal.IsValid()) {
-    LOG(ERROR) << "Opening terminal for delay countdown failed";
-  }
-
-  MakeTTYRaw(terminal);
   for (int delay = 300; delay >= 0; delay--) {
     std::string count =
         base::StringPrintf("%2d:%02d\r", delay / 60, delay % 60);
-    terminal.WriteAtCurrentPos(count.c_str(), count.size());
+    terminal_.WriteAtCurrentPos(count.c_str(), count.size());
     sleep(1);
   }
 }
@@ -1112,7 +1098,7 @@ bool ClobberState::WipeDevice(const base::FilePath& device_path) {
   if (wipe_info_.is_mtd_flash) {
     return WipeMTDDevice(device_path, partitions_);
   } else {
-    return WipeBlockDevice(device_path, terminal_path_, args_.fast_wipe);
+    return WipeBlockDevice(device_path, terminal_, args_.fast_wipe);
   }
 }
 

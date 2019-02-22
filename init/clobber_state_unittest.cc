@@ -1144,8 +1144,9 @@ TEST_F(GetDevicesToWipeTest, SDA) {
 TEST(WipeBlockDevice, Nonexistent) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath tty = temp_dir.GetPath().Append("tty");
-  WriteFile(tty, "");
+  base::FilePath tty_path = temp_dir.GetPath().Append("tty");
+  base::File tty(tty_path, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
+  ASSERT_TRUE(tty.IsValid());
 
   base::FilePath file_system_path = temp_dir.GetPath().Append("fs");
   EXPECT_FALSE(ClobberState::WipeBlockDevice(file_system_path, tty, false));
@@ -1155,8 +1156,9 @@ TEST(WipeBlockDevice, Nonexistent) {
 TEST(WipeBlockDevice, Fast) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath tty = temp_dir.GetPath().Append("tty");
-  WriteFile(tty, "");
+  base::FilePath tty_path = temp_dir.GetPath().Append("tty");
+  base::File tty(tty_path, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
+  ASSERT_TRUE(tty.IsValid());
 
   base::FilePath device_path = temp_dir.GetPath().Append("device");
   base::File device(device_path,
@@ -1203,8 +1205,8 @@ TEST(WipeBlockDevice, Fast) {
 TEST(WipeBlockDevice, Slow) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath tty = temp_dir.GetPath().Append("tty");
-  WriteFile(tty, "");
+  base::FilePath tty_path = temp_dir.GetPath().Append("tty");
+  base::File tty(tty_path, base::File::FLAG_CREATE | base::File::FLAG_WRITE);
 
   base::FilePath file_system_path = temp_dir.GetPath().Append("fs");
   base::File file_system(file_system_path,
