@@ -51,6 +51,7 @@ copies.
 | [cryptohome](./cryptohome/) | Daemon and tools for managing encrypted /home and /var directories |
 | [cups_proxy](./cups_proxy/) | Daemon for proxying CUPS printing request |
 | [debugd](./debugd/) | Centralized debug daemon for random tools |
+| [dev-install](./dev-install/) | Tools & settings for managing the developer environment on the device |
 | [diagnostics](./diagnostics/) | Device telemetry and diagnostics daemons |
 | [disk_updater](./disk_updater/) | Utility for updating root disk firmware (e.g. SSDs and eMMC) |
 | [dlcservice](./dlcservice/) | Downloadable Content (DLC) Service daemon |

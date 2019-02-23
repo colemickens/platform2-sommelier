@@ -1,0 +1,5 @@
+set noparent
+
+include chromiumos/chromite:OWNERS.build
+
+# COMPONENT: Infra>ChromeOS>Build>Platform
