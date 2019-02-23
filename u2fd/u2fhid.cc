@@ -8,11 +8,17 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/sys_byteorder.h>
 #include <base/timer/timer.h>
+#include <openssl/bn.h>
+#include <openssl/ecdsa.h>
+#include <trunks/cr50_headers/u2f.h>
 
+#include "u2fd/u2f_adpu.h"
 #include "u2fd/u2fhid.h"
+#include "u2fd/util.h"
 
 namespace {
 
@@ -51,6 +57,11 @@ constexpr uint8_t kU2fReportDesc[] = {
     0x91, 0x02,       /*  Output (Data, Var, Abs), Usage */
     0xC0              /* End Collection */
 };
+
+// Vendor Command Return Codes.
+constexpr uint32_t kVendorCmdRcSuccess = 0x000;
+constexpr uint32_t kVendorCmdRcNotAllowed = 0x507;
+constexpr uint32_t kVendorCmdRcPasswordRequired = 0x50a;
 
 }  // namespace
 
@@ -194,11 +205,23 @@ struct U2fHid::Transaction {
 
 U2fHid::U2fHid(std::unique_ptr<HidInterface> hid,
                const std::string& vendor_sysinfo,
-               const TransmitApduCallback& transmit_func,
-               const IgnoreButtonCallback& ignore_func)
+               const bool g2f_mode,
+               const bool user_secrets,
+               const TpmAdpuCallback& adpu_fn,
+               const TpmGenerateCallback& generate_fn,
+               const TpmSignCallback& sign_fn,
+               const TpmAttestCallback& attest_fn,
+               const TpmG2fCertCallback& g2f_cert_fn,
+               const IgnoreButtonCallback& ignore_fn)
     : hid_(std::move(hid)),
-      transmit_apdu_(transmit_func),
-      ignore_button_(ignore_func),
+      g2f_mode_(g2f_mode),
+      user_secrets_(user_secrets),
+      transmit_apdu_(adpu_fn),
+      tpm_generate_(generate_fn),
+      tpm_sign_(sign_fn),
+      tpm_attest_(attest_fn),
+      tpm_g2f_cert_(g2f_cert_fn),
+      ignore_button_(ignore_fn),
       free_cid_(1),
       locked_cid_(0),
       vendor_sysinfo_(vendor_sysinfo) {
@@ -216,18 +239,16 @@ bool U2fHid::Init() {
 }
 
 bool U2fHid::GetU2fVersion(std::string* version_out) {
-  std::string ping(8, 0);
-  std::string ver;
+  U2fCommandAdpu version_msg =
+      U2fCommandAdpu::CreateForU2fIns(U2fIns::kU2fVersion);
+  std::string version_resp_raw;
 
-  // build the APDU for the command U2F_VERSION:
-  // CLA INS P1  P2  Le
-  // 00  03  00  00  00
-  ping[1] = 0x03;
-  int rc = transmit_apdu_.Run(ping, &ver);
+  int rc = transmit_apdu_.Run(version_msg.ToString(), &version_resp_raw);
 
   if (!rc) {
     // remove the 16-bit status code at the end
-    *version_out = ver.substr(0, ver.length() - sizeof(uint16_t));
+    *version_out = version_resp_raw.substr(
+        0, version_resp_raw.length() - sizeof(uint16_t));
     VLOG(1) << "version " << *version_out;
 
     if (*version_out != kSupportedU2fVersion) {
@@ -276,27 +297,51 @@ void U2fHid::ReturnResponse(const std::string& resp) {
   } while (offset);
 }
 
-void U2fHid::ScanApdu(const std::string& payload) {
-  if (payload.size() < 5)  // Unknown APDU format
-    return;
+void U2fHid::ReturnFailureResponse(uint16_t sw) {
+  std::string resp;
+  U2fResponseAdpu resp_adpu;
+  resp_adpu.SetStatus(sw);
+  resp_adpu.ToString(&resp);
 
+  ReturnResponse(resp);
+}
+
+void U2fHid::IgnorePowerButton() {
   // Duration of the user presence persistence on the firmware side
   const base::TimeDelta kPresenceTimeout = base::TimeDelta::FromSeconds(10);
 
-  // ISO7816-4:2005 APDU format: CLA INS P1 P2 [request data]
-  char cla = payload[0];
-  char ins = payload[1];
-  char control = payload[4];
-  constexpr char kU2fRegister = 1;         // U2F_REGISTER command code
-  constexpr char kU2fAuthenticate = 2;     // U2F_AUTHENTICATE command code
-  constexpr char kU2fAuthCheckOnly = 0x7;  // U2F_AUTH_CHECK_ONLY flags
+  brillo::ErrorPtr err;
+  // Mask the next power button press for the UI
+  ignore_button_.Run(kPresenceTimeout.ToInternalValue(), &err, -1);
+}
 
-  // Has the client requested the user physical presence ?
-  if (cla == 0 && (ins == kU2fRegister ||
-                   (ins == kU2fAuthenticate && control != kU2fAuthCheckOnly))) {
-    brillo::ErrorPtr err;
-    // Mask the next power button press for the UI
-    ignore_button_.Run(kPresenceTimeout.ToInternalValue(), &err, -1);
+void U2fHid::MaybeIgnorePowerButton(const std::string& payload) {
+  bool ignore = false;
+
+  // The previous code assumes that U2F_REGISTER requests always require
+  // physical presence, and this is the behavior described in the spec. However,
+  // cr50 only requires physical presence for U2F_REGISTER (in both old and new
+  // implementations) if the P1 value has the first bit set. Whether this bit is
+  // set or not is not described in the spec.
+  // TODO(louiscollard): Check if the above behavior is correct and update if
+  // not.
+
+  // All U2F_REGISTER requests require physical presence.
+  // U2F_AUTHENTICATE requests may require physical presence.
+  base::Optional<U2fCommandAdpu> adpu =
+      U2fCommandAdpu::ParseFromString(payload);
+  if (adpu.has_value()) {
+    if (adpu->Ins() == U2fIns::kU2fRegister) {
+      ignore = true;
+    } else if (adpu->Ins() == U2fIns::kU2fAuthenticate) {
+      base::Optional<U2fAuthenticateRequestAdpu> auth_adpu =
+          U2fAuthenticateRequestAdpu::FromCommandAdpu(*adpu);
+      ignore = auth_adpu.has_value() && auth_adpu->IsAuthenticateCheckOnly();
+    }
+  }
+
+  if (ignore) {
+    IgnorePowerButton();
   }
 }
 
@@ -393,8 +438,296 @@ int U2fHid::CmdSysInfo(std::string* resp) {
 }
 
 int U2fHid::CmdMsg(std::string* resp) {
-  ScanApdu(transaction_->payload);
+  if (user_secrets_) {
+    return ProcessMsg(resp);
+  } else {
+    return ForwardMsg(resp);
+  }
+}
+
+int U2fHid::ForwardMsg(std::string* resp) {
+  MaybeIgnorePowerButton(transaction_->payload);
   return transmit_apdu_.Run(transaction_->payload, resp);
+}
+
+int U2fHid::ProcessMsg(std::string* resp) {
+  U2fIns ins = U2fIns::kInsInvalid;
+
+  base::Optional<U2fCommandAdpu> adpu =
+      U2fCommandAdpu::ParseFromString(transaction_->payload);
+  if (adpu.has_value()) {
+    ins = adpu->Ins();
+  }
+
+  // TODO(louiscollard): Check expected response length is large enough.
+
+  switch (adpu->Ins()) {
+    case U2fIns::kU2fRegister: {
+      base::Optional<U2fRegisterRequestAdpu> reg_adpu =
+          U2fRegisterRequestAdpu::FromCommandAdpu(*adpu);
+      if (reg_adpu.has_value()) {
+        return ProcessU2fRegister(*reg_adpu, resp);
+      }
+      break;  // Handle error.
+    }
+    case U2fIns::kU2fAuthenticate: {
+      base::Optional<U2fAuthenticateRequestAdpu> auth_adpu =
+          U2fAuthenticateRequestAdpu::FromCommandAdpu(*adpu);
+      if (auth_adpu.has_value()) {
+        return ProcessU2fAuthenticate(*auth_adpu, resp);
+      }
+      break;  // Handle error.
+    }
+    case U2fIns::kU2fVersion: {
+      U2fResponseAdpu response;
+      response.AppendString(kSupportedU2fVersion);
+      response.SetStatus(U2F_SW_NO_ERROR);
+      response.ToString(resp);
+      return 0;
+    }
+    default:
+      break;  // Handled below.
+  }
+
+  ReturnError(U2fHidError::kInvalidCmd, transaction_->cid, true);
+  return -EINVAL;
+}
+
+namespace {
+
+// Builds data to be signed as part of a U2F_REGISTER response, as defined by
+// the "U2F Raw Message Formats" specification.
+std::vector<uint8_t> BuildU2fRegisterResponseSignedData(
+    const std::vector<uint8_t>& app_id,
+    const std::vector<uint8_t>& challenge,
+    const std::vector<uint8_t>& pub_key,
+    const std::vector<uint8_t>& key_handle) {
+  std::vector<uint8_t> signed_data;
+  signed_data.push_back('\0');  // reserved byte
+  util::AppendToVector(app_id, &signed_data);
+  util::AppendToVector(challenge, &signed_data);
+  util::AppendToVector(key_handle, &signed_data);
+  util::AppendToVector(pub_key, &signed_data);
+  return signed_data;
+}
+
+}  // namespace
+
+int U2fHid::ProcessU2fRegister(U2fRegisterRequestAdpu request,
+                               std::string* resp) {
+  std::vector<uint8_t> pub_key;
+  std::vector<uint8_t> key_handle;
+
+  IgnorePowerButton();
+
+  if (DoU2fGenerate(request.GetAppId(), &pub_key, &key_handle) !=
+      kVendorCmdRcSuccess) {
+    return -EINVAL;
+  }
+
+  std::vector<uint8_t> data_to_sign = BuildU2fRegisterResponseSignedData(
+      request.GetAppId(), request.GetChallenge(), pub_key, key_handle);
+
+  std::vector<uint8_t> attestation_cert;
+  std::vector<uint8_t> signature;
+
+  if (g2f_mode_ && request.UseG2fAttestation()) {
+    attestation_cert = GetG2fCert();
+    if (DoG2fAttest(data_to_sign, U2F_ATTEST_FORMAT_REG_RESP, &signature) !=
+        kVendorCmdRcSuccess) {
+      return -EINVAL;
+    }
+  } else {
+    // TODO(louiscollard): Sign using SW-generated cert.
+  }
+
+  // Prepare response, as specified by "U2F Raw Message Formats".
+  U2fResponseAdpu register_resp;
+  register_resp.AppendByte(5 /* U2F_VER_2 */);
+  register_resp.AppendBytes(pub_key);
+  register_resp.AppendByte(key_handle.size());
+  register_resp.AppendBytes(key_handle);
+  register_resp.AppendBytes(attestation_cert);
+  register_resp.AppendBytes(signature);
+  register_resp.SetStatus(U2F_SW_NO_ERROR);
+  register_resp.ToString(resp);
+
+  return 0;
+}
+
+namespace {
+
+// A success response to a U2F_AUTHENTICATE request includes a signature over
+// the following data, in this format.
+std::vector<uint8_t> BuildU2fAuthenticateResponseSignedData(
+    const std::vector<uint8_t>& app_id,
+    const std::vector<uint8_t>& challenge,
+    const std::vector<uint8_t>& counter) {
+  std::vector<uint8_t> to_sign;
+  util::AppendToVector(app_id, &to_sign);
+  to_sign.push_back(0x01 /* User Presence Verified */);
+  util::AppendToVector(counter, &to_sign);
+  util::AppendToVector(challenge, &to_sign);
+  return to_sign;
+}
+
+}  // namespace
+
+int U2fHid::ProcessU2fAuthenticate(U2fAuthenticateRequestAdpu request,
+                                   std::string* resp) {
+  if (!request.IsAuthenticateCheckOnly()) {
+    IgnorePowerButton();
+  }
+
+  std::vector<uint8_t> to_sign = BuildU2fAuthenticateResponseSignedData(
+      request.GetAppId(), request.GetChallenge(), GetCounter());
+
+  std::vector<uint8_t> signature;
+  if (DoU2fSign(request.GetAppId(), request.GetKeyHandle(),
+                util::Sha256(to_sign), &signature)) {
+    return -EINVAL;
+  }
+
+  // Prepare response, as specified by "U2F Raw Message Formats".
+  U2fResponseAdpu auth_resp;
+  auth_resp.AppendByte(1 /* U2F_VER_2 */);
+  auth_resp.AppendBytes(GetCounter());
+  auth_resp.AppendBytes(signature);
+  auth_resp.SetStatus(U2F_SW_NO_ERROR);
+  auth_resp.ToString(resp);
+
+  return 0;
+}
+
+int U2fHid::DoU2fGenerate(const std::vector<uint8_t>& app_id,
+                          std::vector<uint8_t>* pub_key,
+                          std::vector<uint8_t>* key_handle) {
+  U2F_GENERATE_REQ generate_req = {
+      .flags = U2F_AUTH_FLAG_TUP  // Require user presence
+  };
+  util::VectorToObject(app_id, &generate_req.appId);
+  util::VectorToObject(GetUserSecret(), &generate_req.userSecret);
+
+  U2F_GENERATE_RESP generate_resp = {};
+  uint32_t generate_status = tpm_generate_.Run(generate_req, &generate_resp);
+
+  if (generate_status != kVendorCmdRcSuccess) {
+    VLOG(3) << "U2F_GENERATE failed, status: " << std::hex << generate_status;
+    if (generate_status == kVendorCmdRcNotAllowed) {
+      // We could not assert physical presence.
+      ReturnFailureResponse(U2F_SW_CONDITIONS_NOT_SATISFIED);
+    } else {
+      // We sent an invalid request (u2fd programming error),
+      // or internal cr50 error.
+      ReturnError(U2fHidError::kOther, transaction_->cid, true);
+    }
+    return -EINVAL;
+  }
+
+  util::AppendToVector(generate_resp.pubKey, pub_key);
+  util::AppendToVector(generate_resp.keyHandle, key_handle);
+
+  return 0;
+}
+
+int U2fHid::DoU2fSign(const std::vector<uint8_t>& app_id,
+                      const std::vector<uint8_t>& key_handle,
+                      const std::vector<uint8_t>& hash,
+                      std::vector<uint8_t>* signature_out) {
+  U2F_SIGN_REQ sign_req = {
+      // TODO(louiscollard): Copy G2F_CONSUME to flags.
+  };
+  util::VectorToObject(app_id, sign_req.appId);
+  util::VectorToObject(GetUserSecret(), sign_req.userSecret);
+  util::VectorToObject(key_handle, sign_req.keyHandle);
+  util::VectorToObject(hash, sign_req.hash);
+
+  U2F_SIGN_RESP sign_resp = {};
+  uint32_t sign_status = tpm_sign_.Run(sign_req, &sign_resp);
+
+  if (sign_status != kVendorCmdRcSuccess) {
+    VLOG(3) << "U2F_SIGN failed, status: " << std::hex << sign_status;
+    if (sign_status == kVendorCmdRcPasswordRequired) {
+      // We have specified an invalid key handle.
+      ReturnFailureResponse(U2F_SW_WRONG_DATA);
+    } else if (sign_status == kVendorCmdRcNotAllowed) {
+      // Could not assert user presence.
+      ReturnFailureResponse(U2F_SW_CONDITIONS_NOT_SATISFIED);
+    } else {
+      // We sent an invalid request (u2fd programming error),
+      // or internal cr50 error.
+      ReturnError(U2fHidError::kOther, transaction_->cid, true);
+    }
+    return -EINVAL;
+  }
+
+  base::Optional<std::vector<uint8_t>> signature =
+      util::SignatureToDerBytes(sign_resp.sig_r, sign_resp.sig_s);
+
+  if (!signature.has_value()) {
+    ReturnError(U2fHidError::kOther, transaction_->cid, true);
+    return -EINVAL;
+  }
+
+  *signature_out = *signature;
+
+  return 0;
+}
+
+int U2fHid::DoG2fAttest(const std::vector<uint8_t>& data,
+                        uint8_t format,
+                        std::vector<uint8_t>* signature_out) {
+  U2F_ATTEST_REQ attest_req = {.format = format,
+                               .dataLen = static_cast<uint8_t>(data.size())};
+  util::VectorToObject(GetUserSecret(), attest_req.userSecret);
+  // Only a programming error can cause this CHECK to fail.
+  CHECK_LE(data.size(), sizeof(attest_req.data));
+  util::VectorToObject(data, attest_req.data);
+
+  U2F_ATTEST_RESP attest_resp = {};
+  uint32_t attest_status = tpm_attest_.Run(attest_req, &attest_resp);
+
+  if (attest_status != kVendorCmdRcSuccess) {
+    LOG(ERROR) << "U2F_ATTEST failed, status: " << std::hex << attest_status;
+    // We are attesting to a key handle that we just created, so if
+    // attestation fails we have hit some internal error.
+    ReturnError(U2fHidError::kOther, transaction_->cid, true);
+    return -EINVAL;
+  }
+
+  base::Optional<std::vector<uint8_t>> signature =
+      util::SignatureToDerBytes(attest_resp.sig_r, attest_resp.sig_s);
+
+  if (!signature.has_value()) {
+    LOG(ERROR) << "DER encoding of U2F_ATTEST signature failed.";
+    ReturnError(U2fHidError::kOther, transaction_->cid, true);
+    return -EINVAL;
+  }
+
+  *signature_out = *signature;
+
+  return 0;
+}
+
+const std::vector<uint8_t>& U2fHid::GetG2fCert() {
+  static std::vector<uint8_t> cert = [this]() {
+    std::string cert_str;
+    std::vector<uint8_t> cert_tmp;
+
+    uint32_t get_cert_status = tpm_g2f_cert_.Run(&cert_str);
+
+    if (get_cert_status != kVendorCmdRcSuccess) {
+      // TODO(louiscollard): Retry?
+      LOG(ERROR) << "Failed to retrieve G2F certificate, status: " << std::hex
+                 << get_cert_status;
+    } else {
+      // TODO(louiscollard): Remove padding.
+      util::AppendToVector(cert_str, &cert_tmp);
+    }
+
+    return cert_tmp;
+  }();
+  return cert;
 }
 
 void U2fHid::ExecuteCmd() {

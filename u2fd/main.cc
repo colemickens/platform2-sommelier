@@ -91,8 +91,14 @@ const char* U2fModeToString(U2fMode mode) {
 
 class U2fDaemon : public brillo::Daemon {
  public:
-  U2fDaemon(U2fMode mode, uint32_t vendor_id, uint32_t product_id)
-      : u2f_mode_(mode), vendor_id_(vendor_id), product_id_(product_id) {}
+  U2fDaemon(U2fMode mode,
+            bool user_keys,
+            uint32_t vendor_id,
+            uint32_t product_id)
+      : u2f_mode_(mode),
+        user_keys_(user_keys),
+        vendor_id_(vendor_id),
+        product_id_(product_id) {}
 
  private:
   int OnInit() override {
@@ -129,10 +135,18 @@ class U2fDaemon : public brillo::Daemon {
     pm_proxy_ = std::make_unique<org::chromium::PowerManagerProxy>(bus_.get());
 
     u2fhid_ = std::make_unique<u2f::U2fHid>(
-        std::make_unique<u2f::UHidDevice>(
-            vendor_id_, product_id_, kDeviceName, "u2fd-tpm-cr50"),
-        vendor_sysinfo,
+        std::make_unique<u2f::UHidDevice>(vendor_id_, product_id_, kDeviceName,
+                                          "u2fd-tpm-cr50"),
+        vendor_sysinfo, u2f_mode_ == U2fMode::kU2fExtended, user_keys_,
         base::Bind(&u2f::TpmVendorCommandProxy::SendU2fApdu,
+                   base::Unretained(&tpm_proxy_)),
+        base::Bind(&u2f::TpmVendorCommandProxy::SendU2fGenerate,
+                   base::Unretained(&tpm_proxy_)),
+        base::Bind(&u2f::TpmVendorCommandProxy::SendU2fSign,
+                   base::Unretained(&tpm_proxy_)),
+        base::Bind(&u2f::TpmVendorCommandProxy::SendU2fAttest,
+                   base::Unretained(&tpm_proxy_)),
+        base::Bind(&u2f::TpmVendorCommandProxy::GetG2fCertificate,
                    base::Unretained(&tpm_proxy_)),
         base::Bind(
             &org::chromium::PowerManagerProxy::IgnoreNextPowerButtonPress,
@@ -142,6 +156,7 @@ class U2fDaemon : public brillo::Daemon {
   }
 
   U2fMode u2f_mode_;
+  bool user_keys_;
   uint32_t vendor_id_;
   uint32_t product_id_;
   u2f::TpmVendorCommandProxy tpm_proxy_;
@@ -163,6 +178,7 @@ int main(int argc, char* argv[]) {
   DEFINE_int32(vendor_id, u2f::kDefaultVendorId,
                "Vendor ID for the HID device");
   DEFINE_bool(verbose, false, "verbose logging");
+  DEFINE_bool(user_keys, false, "Whether to use user-specific keys");
 
   brillo::FlagHelper::Init(argc, argv, "u2fd, U2FHID emulation daemon.");
 
@@ -183,7 +199,7 @@ int main(int argc, char* argv[]) {
     return EX_OK;
   }
 
-  U2fDaemon daemon(mode, FLAGS_vendor_id, FLAGS_product_id);
+  U2fDaemon daemon(mode, FLAGS_user_keys, FLAGS_vendor_id, FLAGS_product_id);
   int rc = daemon.Run();
 
   return rc == EX_UNAVAILABLE ? EX_OK : rc;

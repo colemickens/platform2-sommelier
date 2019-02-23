@@ -36,8 +36,8 @@ class U2fCommandAdpu::Parser {
     if (ParseHeader() && ParseLc() && ParseBody() && ParseLe()) {
       return adpu_;
     } else {
-      LOG(WARNING) << "Failed to parse ADPU: "
-                   << base::HexEncode(adpu_raw_.data(), adpu_raw_.size());
+      VLOG(2) << "Failed to parse ADPU: "
+              << base::HexEncode(adpu_raw_.data(), adpu_raw_.size());
       return base::nullopt;
     }
   }
