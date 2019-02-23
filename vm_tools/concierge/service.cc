@@ -326,28 +326,37 @@ bool GetDiskPathFromName(
   return true;
 }
 
-bool GetPluginStatefulDirectory(const string& vm_id,
-                                const string& cryptohome_id,
-                                base::FilePath* path_out) {
+bool GetPluginDirectory(const base::FilePath& prefix,
+                        const string& vm_id,
+                        base::FilePath* path_out) {
   string dirname;
   base::Base64UrlEncode(vm_id, base::Base64UrlEncodePolicy::INCLUDE_PADDING,
                         &dirname);
 
-  base::FilePath storage_path = base::FilePath(kCryptohomeRoot)
-                                    .Append(cryptohome_id)
-                                    .Append("pvm")
-                                    .Append(dirname);
-  if (!base::DirectoryExists(storage_path)) {
+  base::FilePath path = prefix.Append(dirname);
+  if (!base::DirectoryExists(path)) {
     base::File::Error dir_error;
-    if (!base::CreateDirectoryAndGetError(storage_path, &dir_error)) {
-      LOG(ERROR) << "Failed to create stateful pvm directory in /home/root: "
+    if (!base::CreateDirectoryAndGetError(path, &dir_error)) {
+      LOG(ERROR) << "Failed to create plugin directory " << path.value() << ": "
                  << base::File::ErrorToString(dir_error);
       return false;
     }
   }
 
-  *path_out = storage_path;
+  *path_out = path;
   return true;
+}
+
+bool GetPluginStatefulDirectory(const string& vm_id,
+                                const string& cryptohome_id,
+                                base::FilePath* path_out) {
+  return GetPluginDirectory(
+      base::FilePath(kCryptohomeRoot).Append(cryptohome_id).Append("pvm"),
+      vm_id, path_out);
+}
+
+bool GetPluginRuntimeDirectory(const string& vm_id, base::FilePath* path_out) {
+  return GetPluginDirectory(base::FilePath("/run/pvm"), vm_id, path_out);
 }
 
 bool CreateCiceroneTokenDir(const string& vm_token,
@@ -1046,12 +1055,10 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
 
   // Create the runtime directory.
   base::FilePath runtime_dir;
-  if (!base::CreateTemporaryDirInDir(base::FilePath(kRuntimeDir), "vm.",
-                                     &runtime_dir)) {
-    PLOG(ERROR) << "Unable to create runtime directory for VM";
+  if (!GetPluginRuntimeDirectory(request.name(), &runtime_dir)) {
+    LOG(ERROR) << "Unable to create runtime directory for VM";
 
-    response.set_failure_reason(
-        "Internal error: unable to create runtime directory");
+    response.set_failure_reason("Unable to create runtime directory");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }

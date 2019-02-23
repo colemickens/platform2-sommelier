@@ -33,6 +33,12 @@ constexpr char kPluginBinDir[] = "/opt/pita/";
 // Name of the plugin VM binary.
 constexpr char kPluginBinName[] = "pvm";
 
+// Name of the runtime directory inside the jail.
+constexpr char kRuntimeDir[] = "/run/pvm";
+
+// Name of the stateful directory inside the jail.
+constexpr char kStatefulDir[] = "/pvm";
+
 // How long to wait before timing out on child process exits.
 constexpr base::TimeDelta kChildExitTimeout = base::TimeDelta::FromSeconds(10);
 
@@ -169,30 +175,44 @@ bool PluginVm::Start(uint32_t cpus,
     "--plugin",       base::FilePath(kPluginBinDir)
                           .Append(kPluginBinName)
                           .value(),
-    "--plugin-mount", base::StringPrintf("%s:%s:false",
-                                         kPluginBinDir, kPluginBinDir),
-    "--plugin-mount", base::StringPrintf("%s:/pvm:true",
-                                         stateful_dir.value().c_str()),
-    // This is the directory where the cicerone host socket lives. The plugin VM
-    // also creates the guest socket for cicerone in this same directory using
-    // the following <token>.sock as the name.
-    "--plugin-mount",
-    base::StringPrintf("/run/vm_cicerone/client:/cicerone_socket:true"),
-    // This is the directory where the identity token for the plugin VM is
-    // stored.
-    "--plugin-mount", base::StringPrintf("%s:/cicerone_token:false",
-                                         cicerone_token_dir.value().c_str()),
   };
   // clang-format on
 
-  for (auto& param : params) {
-    args.emplace_back("--params");
-    args.emplace_back(std::move(param));
-  }
+  std::vector<string> bind_mounts = {
+      base::StringPrintf("%s:%s:false", kPluginBinDir, kPluginBinDir),
+      // This is directory where the VM image resides.
+      base::StringPrintf("%s:%s:true", stateful_dir.value().c_str(),
+                         kStatefulDir),
+      // This is directory where control socket, 9p socket, and other axillary
+      // runtime data lives.
+      base::StringPrintf("%s:%s:true", runtime_dir_.GetPath().value().c_str(),
+                         kRuntimeDir),
+      // This is the directory where the cicerone host socket lives. The plugin
+      // VM also creates the guest socket for cicerone in this same directory
+      // using the following <token>.sock as the name.
+      base::StringPrintf("/run/vm_cicerone/client:%s:true",
+                         base::FilePath(kRuntimeDir)
+                             .Append("cicerone_socket")
+                             .value()
+                             .c_str()),
+      // This is the directory where the identity token for the plugin VM is
+      // stored.
+      base::StringPrintf(
+          "%s:%s:false", cicerone_token_dir.value().c_str(),
+          base::FilePath(kRuntimeDir).Append("cicerone_token").value().c_str()),
+  };
 
   // Put everything into the brillo::ProcessImpl.
-  for (string& arg : args) {
+  for (auto& arg : args) {
     process_.AddArg(std::move(arg));
+  }
+  for (auto& mount : bind_mounts) {
+    process_.AddArg("--plugin-mount");
+    process_.AddArg(std::move(mount));
+  }
+  for (auto& param : params) {
+    process_.AddArg("--params");
+    process_.AddArg(std::move(param));
   }
 
   // Change the process group before exec so that crosvm sending SIGKILL to the
