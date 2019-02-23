@@ -31,7 +31,7 @@
 namespace cryptohome {
 
 extern const char* kDBusErrorReplyEventType;
-extern const char* kDBusReplyEventType;
+extern const char* kDBusBlobReplyEventType;
 
 struct GErrorDeleter {
   inline void operator()(void* ptr) const {
@@ -58,14 +58,12 @@ class DBusErrorReply : public CryptohomeEventBase {
   std::unique_ptr<GError, GErrorDeleter> error_;
 };
 
-class DBusReply : public CryptohomeEventBase {
+class DBusBlobReply : public CryptohomeEventBase {
  public:
   // Ownership is taken for both pointers.
-  DBusReply(DBusGMethodInvocation* context, std::string* reply);
-  virtual ~DBusReply() { }
-  virtual const char* GetEventName() const {
-    return kDBusReplyEventType;
-  }
+  DBusBlobReply(DBusGMethodInvocation* context, std::string* reply);
+  virtual ~DBusBlobReply() {}
+  virtual const char* GetEventName() const { return kDBusBlobReplyEventType; }
   virtual void Run() {
     brillo::glib::ScopedArray tmp_array(g_array_new(FALSE, FALSE, 1));
     g_array_append_vals(tmp_array.get(),

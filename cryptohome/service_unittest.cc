@@ -82,10 +82,10 @@ class FakeEventSourceSink : public CryptohomeEventSourceSink {
 
   void NotifyEvent(CryptohomeEventBase* event) override {
     const std::string event_name = event->GetEventName();
-    if (event_name == kDBusReplyEventType) {
+    if (event_name == kDBusBlobReplyEventType) {
       EXPECT_FALSE(reply_);
       EXPECT_FALSE(error_reply_);
-      auto* dbus_reply = static_cast<const DBusReply*>(event);
+      auto* dbus_reply = static_cast<const DBusBlobReply*>(event);
       BaseReply parsed_reply;
       EXPECT_TRUE(parsed_reply.ParseFromString(dbus_reply->reply()));
       reply_ = std::make_unique<BaseReply>(parsed_reply);

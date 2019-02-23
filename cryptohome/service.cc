@@ -309,11 +309,11 @@ CryptohomeErrorCode Service::MountErrorToCryptohomeError(
 
 void Service::SendReply(DBusGMethodInvocation* context,
                         const BaseReply& reply) {
-  // DBusReply will take ownership of the |reply_str|.
+  // DBusBlobReply will take ownership of the |reply_str|.
   std::unique_ptr<std::string> reply_str(new std::string);
   reply.SerializeToString(reply_str.get());
   event_source_.AddEvent(
-      std::make_unique<DBusReply>(context, reply_str.release()));
+      std::make_unique<DBusBlobReply>(context, reply_str.release()));
 }
 
 void Service::SendDBusErrorReply(DBusGMethodInvocation* context,
@@ -860,8 +860,8 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
   } else if (!strcmp(event->GetEventName(), kDBusErrorReplyEventType)) {
     DBusErrorReply* result = static_cast<DBusErrorReply*>(event);
     result->Run();
-  } else if (!strcmp(event->GetEventName(), kDBusReplyEventType)) {
-    DBusReply* result = static_cast<DBusReply*>(event);
+  } else if (!strcmp(event->GetEventName(), kDBusBlobReplyEventType)) {
+    DBusBlobReply* result = static_cast<DBusBlobReply*>(event);
     result->Run();
   } else if (!strcmp(event->GetEventName(),
                      kDircryptoMigrationProgressEventType)) {
