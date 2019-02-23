@@ -32,9 +32,6 @@ namespace login_manager {
 // Property name of the wallpaper setting in CrosConfig.
 extern const char kWallpaperProperty[];
 
-// The absolute path to the directory of the regulatory label files.
-extern const char kRegulatoryLabelBasePath[];
-
 // Property name of the per-model regulatory label directory in CrosConfig.
 extern const char kRegulatoryLabelProperty[];
 

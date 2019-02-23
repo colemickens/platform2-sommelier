@@ -38,8 +38,6 @@ namespace login_manager {
 
 const char kWallpaperProperty[] = "wallpaper";
 
-const char kRegulatoryLabelBasePath[] =
-    "/usr/share/chromeos-assets/regulatory_labels";
 const char kRegulatoryLabelProperty[] = "regulatory-label";
 
 const char kPowerButtonPositionPath[] = "/ui/power-button";
@@ -530,9 +528,7 @@ void SetUpRegulatoryLabelFlag(ChromiumCommandBuilder* builder,
   std::string subdir;
   if (cros_config &&
       cros_config->GetString("/", kRegulatoryLabelProperty, &subdir)) {
-    builder->AddArg(base::StringPrintf("--regulatory-label-dir=%s/%s",
-                                       kRegulatoryLabelBasePath,
-                                       subdir.c_str()));
+    builder->AddArg("--regulatory-label-dir=" + subdir);
   }
 }
 

@@ -186,8 +186,6 @@ TEST_F(ChromeSetupTest, TestRegulatoryLabel) {
   cros_config_.SetString("/", login_manager::kRegulatoryLabelProperty, kModel);
   login_manager::SetUpRegulatoryLabelFlag(&builder_, &cros_config_);
   argv = builder_.arguments();
-  EXPECT_EQ(
-      base::StringPrintf("%s/%s", kRegulatoryLabelBasePath, kModel.c_str()),
-      GetFlag(argv, "--regulatory-label-dir"));
+  EXPECT_EQ(kModel, GetFlag(argv, "--regulatory-label-dir"));
 }
 }  // namespace login_manager
