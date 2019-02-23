@@ -46,6 +46,7 @@
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/dbus_transition.h"
 #include "cryptohome/firmware_management_parameters.h"
+#include "cryptohome/glib_transition.h"
 #include "cryptohome/install_attributes.h"
 #include "cryptohome/interface.h"
 #include "cryptohome/mount.h"
@@ -721,6 +722,7 @@ void Service::InitializePkcs11(cryptohome::Mount* mount) {
   // MountTaskPkcs11_Init would set it in the service thread via NotifyEvent().
   ReportTimerStart(kPkcs11InitTimer);
   mount->set_pkcs11_state(cryptohome::Mount::kIsBeingInitialized);
+
   MountTaskObserverBridge* bridge =
       new MountTaskObserverBridge(mount, &event_source_);
   scoped_refptr<MountTaskPkcs11Init> pkcs11_init_task =
@@ -868,6 +870,9 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
                   0 /* signal detail (not used) */,
                   static_cast<int32_t>(progress->status()),
                   progress->current_bytes(), progress->total_bytes());
+  } else if (!strcmp(event->GetEventName(), kClosureEventType)) {
+    ClosureEvent* closure_event = static_cast<ClosureEvent*>(event);
+    closure_event->Run();
   }
 }
 
@@ -3245,6 +3250,10 @@ void Service::PreMountCallback() {
     LOG(WARNING) << "Failed to finalize nvram lockbox.";
   }
 #endif  // USE_TMP2
+}
+
+void Service::PostTaskToEventLoop(base::OnceClosure task) {
+  event_source_.AddEvent(std::make_unique<ClosureEvent>(std::move(task)));
 }
 
 }  // namespace cryptohome

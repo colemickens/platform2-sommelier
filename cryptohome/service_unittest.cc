@@ -32,6 +32,7 @@
 #include "cryptohome/bootlockbox/mock_boot_attributes.h"
 #include "cryptohome/bootlockbox/mock_boot_lockbox.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/glib_transition.h"
 #include "cryptohome/interface.h"
 #include "cryptohome/make_tests.h"
 #include "cryptohome/mock_arc_disk_quota.h"
@@ -94,6 +95,9 @@ class FakeEventSourceSink : public CryptohomeEventSourceSink {
       auto* dbus_error_reply = static_cast<const DBusErrorReply*>(event);
       error_reply_ =
           std::make_unique<std::string>(dbus_error_reply->error().message);
+    } else if (event_name == kClosureEventType) {
+      ClosureEvent* closure_event = static_cast<ClosureEvent*>(event);
+      closure_event->Run();
     }
   }
 
@@ -1748,6 +1752,24 @@ TEST_F(ServiceTestNotInitialized, GetCurrentSpaceForGid) {
   gint64 cur_space;
   EXPECT_TRUE(service_.GetCurrentSpaceForGid(10, &cur_space, &res_err));
   EXPECT_EQ(20, cur_space);
+}
+
+TEST_F(ServiceTest, PostTaskToEventLoop) {
+  // In this test, we take the IsQuotaSupported() function to test
+  // if PostTaskToEventLoop() actually causes the posted OnceClosure
+  // to run.
+  EXPECT_CALL(arc_disk_quota_, IsQuotaSupported()).WillOnce(Return(true));
+
+  service_.PostTaskToEventLoop(base::BindOnce([] (Service *service) {
+    GError* res_err;
+    gboolean quota_supported;
+    EXPECT_TRUE(service->IsQuotaSupported(&quota_supported, &res_err));
+    EXPECT_EQ(TRUE, quota_supported);
+  }, base::Unretained(&service_)));
+
+  DispatchEvents();
+
+  PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(20));
 }
 
 }  // namespace cryptohome

@@ -663,6 +663,7 @@ virtual gboolean InstallAttributesIsFirstInstall(gboolean* OUT_first_install,
                                          gint64* OUT_cur_space,
                                          GError** error);
 
+  void PostTaskToEventLoop(base::OnceClosure task);
  protected:
   FRIEND_TEST(ServiceTest, NoDeadlocksInInitializeTpmComplete);
 
