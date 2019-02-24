@@ -33,9 +33,6 @@ constexpr char kPluginBinDir[] = "/opt/pita/";
 // Name of the plugin VM binary.
 constexpr char kPluginBinName[] = "pvm";
 
-// Name of the control socket used for controlling crosvm.
-constexpr char kCrosvmSocket[] = "crosvm.sock";
-
 // How long to wait before timing out on child process exits.
 constexpr base::TimeDelta kChildExitTimeout = base::TimeDelta::FromSeconds(10);
 
@@ -167,9 +164,7 @@ bool PluginVm::Start(uint32_t cpus,
   std::vector<string> args = {
     kCrosvmBin,       "run",
     "--cpus",         std::to_string(cpus),
-    "--mem",          "2048",  // TODO(b:80150167): memory allocation policy
     "--tap-fd",       std::to_string(tap_fd.get()),
-    "--socket",       runtime_dir_.GetPath().Append(kCrosvmSocket).value(),
     "--plugin",       base::FilePath(kPluginBinDir)
                           .Append(kPluginBinName)
                           .value(),
