@@ -4,6 +4,8 @@
 
 #include "dev-install/dev_install.h"
 
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include <iostream>
@@ -11,6 +13,8 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_enumerator.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <vboot/crossystem.h>
 
@@ -21,6 +25,9 @@ namespace {
 // The legacy dev_install shell script to be migrated here.
 constexpr char kDevInstallScript[] = "/usr/share/dev-install/main.sh";
 
+// The root path that we install our dev packages into.
+constexpr char kUsrLocal[] = "/usr/local";
+
 }  // namespace
 
 DevInstall::DevInstall()
@@ -28,6 +35,7 @@ DevInstall::DevInstall()
       uninstall_(false),
       yes_(false),
       only_bootstrap_(false),
+      state_dir_(kUsrLocal),
       binhost_(""),
       binhost_version_("") {}
 
@@ -41,6 +49,7 @@ DevInstall::DevInstall(const std::string& binhost,
       uninstall_(uninstall),
       yes_(yes),
       only_bootstrap_(only_bootstrap),
+      state_dir_(kUsrLocal),
       binhost_(binhost),
       binhost_version_(binhost_version) {}
 
@@ -60,6 +69,44 @@ bool DevInstall::PromptUser(std::istream& input, const std::string& prompt) {
     return (buffer == "y" || buffer == "y\n");
   }
   return false;
+}
+
+// We have a custom DeletePath helper because we don't want to descend across
+// mount points, and no base:: helper supports that.
+bool DevInstall::DeletePath(const struct stat& base_stat,
+                            const base::FilePath& dir) {
+  base::FileEnumerator iter(dir, true,
+                            base::FileEnumerator::FILES |
+                                base::FileEnumerator::DIRECTORIES |
+                                base::FileEnumerator::SHOW_SYM_LINKS);
+  for (base::FilePath current = iter.Next(); !current.empty();
+       current = iter.Next()) {
+    const auto& info(iter.GetInfo());
+    if (info.IsDirectory()) {
+      // Abort if the dir is mounted.
+      if (base_stat.st_dev != info.stat().st_dev) {
+        LOG(ERROR) << "directory is mounted: " << current.value();
+        return false;
+      }
+
+      // Clear the contents of this directory.
+      if (!DeletePath(base_stat, current))
+        return false;
+
+      // Clear this directory itself.
+      if (rmdir(current.value().c_str())) {
+        PLOG(ERROR) << "deleting failed: " << current.value();
+        return false;
+      }
+    } else {
+      if (unlink(current.value().c_str())) {
+        PLOG(ERROR) << "deleting failed: " << current.value();
+        return false;
+      }
+    }
+  }
+
+  return true;
 }
 
 int DevInstall::Exec(const std::vector<const char*>& argv) {

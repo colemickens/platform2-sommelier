@@ -10,6 +10,9 @@
 #include <sstream>
 #include <string>
 
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -91,6 +94,68 @@ TEST_F(PromptUserTest, No) {
 TEST_F(PromptUserTest, Yes) {
   std::stringstream stream("y\n");
   EXPECT_TRUE(dev_install_.PromptUser(stream, ""));
+}
+
+namespace {
+
+class DeletePathTest : public ::testing::Test {
+ public:
+  void SetUp() override {
+    ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
+    test_dir_ = scoped_temp_dir_.GetPath();
+    dev_install_.SetStateDirForTest(test_dir_);
+  }
+
+ protected:
+  DevInstall dev_install_;
+  base::FilePath test_dir_;
+  base::ScopedTempDir scoped_temp_dir_;
+};
+
+}  // namespace
+
+// Check missing dir.
+TEST_F(DeletePathTest, Missing) {
+  struct stat st = {};
+  EXPECT_TRUE(dev_install_.DeletePath(st, test_dir_.Append("foo")));
+}
+
+// Check deleting dir contents leaves the dir alone.
+TEST_F(DeletePathTest, Empty) {
+  struct stat st = {};
+  EXPECT_TRUE(dev_install_.DeletePath(st, test_dir_));
+  EXPECT_TRUE(base::PathExists(test_dir_));
+}
+
+// Check mounted deletion.
+TEST_F(DeletePathTest, Mounted) {
+  struct stat st = {};
+  const base::FilePath subdir = test_dir_.Append("subdir");
+  EXPECT_TRUE(base::CreateDirectory(subdir));
+  EXPECT_FALSE(dev_install_.DeletePath(st, test_dir_));
+  EXPECT_TRUE(base::PathExists(subdir));
+}
+
+// Check recursive deletion.
+TEST_F(DeletePathTest, Works) {
+  struct stat st;
+  EXPECT_EQ(0, stat(test_dir_.value().c_str(), &st));
+
+  EXPECT_EQ(3, base::WriteFile(test_dir_.Append("file"), "123", 3));
+  EXPECT_EQ(0, symlink("x", test_dir_.Append("broken-sym").value().c_str()));
+  EXPECT_EQ(0, symlink("file", test_dir_.Append("file-sym").value().c_str()));
+  EXPECT_EQ(0, symlink(".", test_dir_.Append("dir-sym").value().c_str()));
+  EXPECT_EQ(0, symlink("subdir", test_dir_.Append("dir-sym2").value().c_str()));
+  const base::FilePath subdir = test_dir_.Append("subdir");
+  EXPECT_TRUE(base::CreateDirectory(subdir));
+  EXPECT_EQ(3, base::WriteFile(subdir.Append("file"), "123", 3));
+  const base::FilePath subsubdir = test_dir_.Append("subdir");
+  EXPECT_TRUE(base::CreateDirectory(subsubdir));
+  EXPECT_EQ(3, base::WriteFile(subsubdir.Append("file"), "123", 3));
+
+  EXPECT_TRUE(dev_install_.DeletePath(st, test_dir_));
+  EXPECT_TRUE(base::PathExists(test_dir_));
+  EXPECT_EQ(0, rmdir(test_dir_.value().c_str()));
 }
 
 }  // namespace dev_install

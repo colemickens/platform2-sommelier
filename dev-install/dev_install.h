@@ -5,10 +5,13 @@
 #ifndef DEV_INSTALL_DEV_INSTALL_H_
 #define DEV_INSTALL_DEV_INSTALL_H_
 
+#include <sys/stat.h>
+
 #include <istream>
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/macros.h>
 
 namespace dev_install {
@@ -35,14 +38,20 @@ class DevInstall {
   // Prompts the user.
   virtual bool PromptUser(std::istream& input, const std::string& prompt);
 
+  // Delete a path recursively on the same mount point.
+  virtual bool DeletePath(const struct stat& base_stat,
+                          const base::FilePath& dir);
+
   // Unittest helpers.
   void SetYesForTest(bool yes) { yes_ = yes; }
+  void SetStateDirForTest(const base::FilePath& dir) { state_dir_ = dir; }
 
  private:
   bool reinstall_;
   bool uninstall_;
   bool yes_;
   bool only_bootstrap_;
+  base::FilePath state_dir_;
   std::string binhost_;
   std::string binhost_version_;
 
