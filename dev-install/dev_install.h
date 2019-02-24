@@ -5,6 +5,7 @@
 #ifndef DEV_INSTALL_DEV_INSTALL_H_
 #define DEV_INSTALL_DEV_INSTALL_H_
 
+#include <istream>
 #include <string>
 #include <vector>
 
@@ -30,6 +31,12 @@ class DevInstall {
 
   // Whether the system is currently in dev mode.
   virtual bool IsDevMode() const;
+
+  // Prompts the user.
+  virtual bool PromptUser(std::istream& input, const std::string& prompt);
+
+  // Unittest helpers.
+  void SetYesForTest(bool yes) { yes_ = yes; }
 
  private:
   bool reinstall_;

@@ -6,6 +6,8 @@
 
 #include <unistd.h>
 
+#include <iostream>
+#include <istream>
 #include <string>
 #include <vector>
 
@@ -45,6 +47,19 @@ DevInstall::DevInstall(const std::string& binhost,
 bool DevInstall::IsDevMode() const {
   int value = ::VbGetSystemPropertyInt("cros_debug");
   return value == 1;
+}
+
+bool DevInstall::PromptUser(std::istream& input, const std::string& prompt) {
+  if (yes_)
+    return true;
+
+  std::cout << prompt << "? (y/N) " << std::flush;
+
+  std::string buffer;
+  if (std::getline(input, buffer)) {
+    return (buffer == "y" || buffer == "y\n");
+  }
+  return false;
 }
 
 int DevInstall::Exec(const std::vector<const char*>& argv) {
