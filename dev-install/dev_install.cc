@@ -15,6 +15,7 @@
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <vboot/crossystem.h>
 
@@ -27,6 +28,9 @@ constexpr char kDevInstallScript[] = "/usr/share/dev-install/main.sh";
 
 // The root path that we install our dev packages into.
 constexpr char kUsrLocal[] = "/usr/local";
+
+// The Portage profile path as a subdir under the various roots.
+constexpr char kPortageProfileSubdir[] = "etc/portage";
 
 }  // namespace
 
@@ -109,6 +113,32 @@ bool DevInstall::DeletePath(const struct stat& base_stat,
   return true;
 }
 
+bool DevInstall::ClearStateDir(const base::FilePath& dir) {
+  LOG(INFO) << "To clean up, we will run:\n  rm -rf /usr/local/\n"
+            << "Any content you have stored in there will be deleted.";
+  if (!PromptUser(std::cin, "Remove all installed packages now")) {
+    LOG(INFO) << "Operation cancelled.";
+    return false;
+  }
+
+  // Normally we'd use base::DeleteFile, but we don't want to traverse mounts.
+  struct stat base_stat;
+  if (stat(dir.value().c_str(), &base_stat)) {
+    if (errno == ENOENT)
+      return true;
+
+    PLOG(ERROR) << "Could not access " << dir.value();
+    return false;
+  }
+
+  bool success = DeletePath(base_stat, dir);
+  if (success)
+    LOG(INFO) << "Removed all installed packages.";
+  else
+    LOG(ERROR) << "Deleting " << dir.value() << " failed";
+  return success;
+}
+
 int DevInstall::Exec(const std::vector<const char*>& argv) {
   execv(kDevInstallScript, const_cast<char* const*>(argv.data()));
   PLOG(ERROR) << kDevInstallScript << " failed";
@@ -122,6 +152,25 @@ int DevInstall::Run() {
     return 2;
   }
 
+  // Handle reinstall & uninstall operations.
+  if (reinstall_ || uninstall_) {
+    if (!ClearStateDir(state_dir_))
+      return 1;
+    if (uninstall_)
+      return 0;
+
+    LOG(INFO) << "Reinstalling dev state";
+  }
+
+  // See if the system has been initialized already.
+  const base::FilePath state_dir(state_dir_);
+  const base::FilePath profile = state_dir.Append(kPortageProfileSubdir);
+  if (base::DirectoryExists(profile)) {
+    LOG(ERROR) << "Directory " << profile.value() << " exists.";
+    LOG(ERROR) << "Did you mean dev_install --reinstall?";
+    return 4;
+  }
+
   std::vector<const char*> argv{kDevInstallScript};
 
   if (!binhost_.empty()) {
@@ -133,12 +182,6 @@ int DevInstall::Run() {
     argv.push_back("--binhost_version");
     argv.push_back(binhost_version_.c_str());
   }
-
-  if (reinstall_)
-    argv.push_back("--reinstall");
-
-  if (uninstall_)
-    argv.push_back("--uninstall");
 
   if (yes_)
     argv.push_back("--yes");

@@ -31,6 +31,7 @@ class DevInstallMock : public DevInstall {
               PromptUser,
               (std::istream&, const std::string&),
               (override));
+  MOCK_METHOD(bool, ClearStateDir, (const base::FilePath&), (override));
 };
 
 class DevInstallTest : public ::testing::Test {
@@ -38,6 +39,9 @@ class DevInstallTest : public ::testing::Test {
   void SetUp() override {
     // Set the default to dev mode enabled.  Most tests want that.
     ON_CALL(dev_install_, IsDevMode()).WillByDefault(Return(true));
+
+    // Most tests should run with a path that doesn't exist.
+    dev_install_.SetStateDirForTest(base::FilePath("/.path-does-not-exist"));
   }
 
  protected:
@@ -55,8 +59,40 @@ TEST_F(DevInstallTest, Run) {
 // Systems not in dev mode should abort.
 TEST_F(DevInstallTest, NonDevMode) {
   EXPECT_CALL(dev_install_, IsDevMode()).WillOnce(Return(false));
+  EXPECT_CALL(dev_install_, ClearStateDir(_)).Times(0);
   EXPECT_CALL(dev_install_, Exec(_)).Times(0);
   EXPECT_EQ(2, dev_install_.Run());
+}
+
+// Check system has been initialized.
+TEST_F(DevInstallTest, AlreadyInitialized) {
+  dev_install_.SetStateDirForTest(base::FilePath("/"));
+  EXPECT_CALL(dev_install_, Exec(_)).Times(0);
+  ASSERT_EQ(4, dev_install_.Run());
+}
+
+// Check --reinstall passed.
+TEST_F(DevInstallTest, RunReinstallWorked) {
+  dev_install_.SetReinstallForTest(true);
+  EXPECT_CALL(dev_install_, ClearStateDir(_)).WillOnce(Return(true));
+  EXPECT_CALL(dev_install_, Exec(_)).WillOnce(Return(1234));
+  ASSERT_EQ(1234, dev_install_.Run());
+}
+
+// Check when --reinstall is requested but clearing fails.
+TEST_F(DevInstallTest, RunReinstallFails) {
+  dev_install_.SetReinstallForTest(true);
+  EXPECT_CALL(dev_install_, ClearStateDir(_)).WillOnce(Return(false));
+  EXPECT_CALL(dev_install_, Exec(_)).Times(0);
+  ASSERT_EQ(1, dev_install_.Run());
+}
+
+// Check --uninstall passed.
+TEST_F(DevInstallTest, RunUninstall) {
+  dev_install_.SetUninstallForTest(true);
+  EXPECT_CALL(dev_install_, ClearStateDir(_)).WillOnce(Return(true));
+  EXPECT_CALL(dev_install_, Exec(_)).Times(0);
+  ASSERT_EQ(0, dev_install_.Run());
 }
 
 namespace {
@@ -159,6 +195,64 @@ TEST_F(DeletePathTest, Works) {
   EXPECT_TRUE(dev_install_.DeletePath(st, test_dir_));
   EXPECT_TRUE(base::PathExists(test_dir_));
   EXPECT_EQ(0, rmdir(test_dir_.value().c_str()));
+}
+
+namespace {
+
+// We could mock out DeletePath, but it's easy to lightly validate it.
+class ClearStateDirMock : public DevInstall {
+ public:
+  MOCK_METHOD(bool,
+              PromptUser,
+              (std::istream&, const std::string&),
+              (override));
+};
+
+class ClearStateDirTest : public ::testing::Test {
+ public:
+  void SetUp() {
+    ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
+    test_dir_ = scoped_temp_dir_.GetPath();
+  }
+
+ protected:
+  ClearStateDirMock dev_install_;
+  base::FilePath test_dir_;
+  base::ScopedTempDir scoped_temp_dir_;
+};
+
+}  // namespace
+
+// Check user rejecting things.
+TEST_F(ClearStateDirTest, Cancel) {
+  EXPECT_CALL(dev_install_, PromptUser(_, _)).WillOnce(Return(false));
+  const base::FilePath subdir = test_dir_.Append("subdir");
+  ASSERT_TRUE(base::CreateDirectory(subdir));
+  ASSERT_FALSE(dev_install_.ClearStateDir(test_dir_));
+  ASSERT_TRUE(base::PathExists(subdir));
+}
+
+// Check missing dir is handled.
+TEST_F(ClearStateDirTest, Missing) {
+  EXPECT_CALL(dev_install_, PromptUser(_, _)).WillOnce(Return(true));
+  ASSERT_TRUE(dev_install_.ClearStateDir(test_dir_.Append("subdir")));
+  ASSERT_TRUE(base::PathExists(test_dir_));
+}
+
+// Check empty dir is handled.
+TEST_F(ClearStateDirTest, Empty) {
+  EXPECT_CALL(dev_install_, PromptUser(_, _)).WillOnce(Return(true));
+  ASSERT_TRUE(dev_install_.ClearStateDir(test_dir_));
+  ASSERT_TRUE(base::PathExists(test_dir_));
+}
+
+// Check dir with contents is cleared.
+TEST_F(ClearStateDirTest, Works) {
+  EXPECT_CALL(dev_install_, PromptUser(_, _)).WillOnce(Return(true));
+  const base::FilePath subdir = test_dir_.Append("subdir");
+  ASSERT_TRUE(base::CreateDirectory(subdir));
+  ASSERT_TRUE(dev_install_.ClearStateDir(test_dir_));
+  ASSERT_FALSE(base::PathExists(subdir));
 }
 
 }  // namespace dev_install

@@ -42,6 +42,11 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
+  if (FLAGS_uninstall && FLAGS_reinstall) {
+    LOG(ERROR) << "--reinstall & --uninstall may not be used together";
+    return EXIT_FAILURE;
+  }
+
   if (getuid() != 0) {
     LOG(ERROR) << argv[0] << " must be run as root";
     return EXIT_FAILURE;

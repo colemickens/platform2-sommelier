@@ -42,7 +42,12 @@ class DevInstall {
   virtual bool DeletePath(const struct stat& base_stat,
                           const base::FilePath& dir);
 
+  // Clear the /usr/local state.
+  virtual bool ClearStateDir(const base::FilePath& dir);
+
   // Unittest helpers.
+  void SetReinstallForTest(bool reinstall) { reinstall_ = reinstall; }
+  void SetUninstallForTest(bool uninstall) { uninstall_ = uninstall; }
   void SetYesForTest(bool yes) { yes_ = yes; }
   void SetStateDirForTest(const base::FilePath& dir) { state_dir_ = dir; }
 
