@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <vboot/crossystem.h>
 
 namespace dev_install {
 
@@ -41,6 +42,11 @@ DevInstall::DevInstall(const std::string& binhost,
       binhost_(binhost),
       binhost_version_(binhost_version) {}
 
+bool DevInstall::IsDevMode() const {
+  int value = ::VbGetSystemPropertyInt("cros_debug");
+  return value == 1;
+}
+
 int DevInstall::Exec(const std::vector<const char*>& argv) {
   execv(kDevInstallScript, const_cast<char* const*>(argv.data()));
   PLOG(ERROR) << kDevInstallScript << " failed";
@@ -48,6 +54,12 @@ int DevInstall::Exec(const std::vector<const char*>& argv) {
 }
 
 int DevInstall::Run() {
+  // Only run if dev mode is enabled.
+  if (!IsDevMode()) {
+    LOG(ERROR) << "Chrome OS is not in developer mode";
+    return 2;
+  }
+
   std::vector<const char*> argv{kDevInstallScript};
 
   if (!binhost_.empty()) {

@@ -28,6 +28,9 @@ class DevInstall {
   // Exec the helper script.  Mostly for mocking.
   virtual int Exec(const std::vector<const char*>& argv);
 
+  // Whether the system is currently in dev mode.
+  virtual bool IsDevMode() const;
+
  private:
   bool reinstall_;
   bool uninstall_;
