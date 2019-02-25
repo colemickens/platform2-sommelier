@@ -318,13 +318,13 @@ JsonStore::JsonStore(const base::FilePath& path)
   CHECK(!path_.empty());
 }
 
-bool JsonStore::IsNonEmpty() const {
+bool JsonStore::IsEmpty() const {
   int64_t file_size = 0;
-  return base::GetFileSize(path_, &file_size) && file_size != 0;
+  return !base::GetFileSize(path_, &file_size) || file_size <= 0;
 }
 
 bool JsonStore::Open() {
-  if (!IsNonEmpty()) {
+  if (IsEmpty()) {
     LOG(INFO) << "Creating a new key file at |" << path_.value() << "|.";
     return true;
   }

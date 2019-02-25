@@ -22,7 +22,7 @@ class MockStore : public StoreInterface {
   MockStore();
   ~MockStore() override;
 
-  MOCK_CONST_METHOD0(IsNonEmpty, bool());
+  MOCK_CONST_METHOD0(IsEmpty, bool());
   MOCK_METHOD0(Open, bool());
   MOCK_METHOD0(Close, bool());
   MOCK_METHOD0(Flush, bool());

@@ -73,7 +73,7 @@ void KeyFileStoreTest::WriteKeyFile(string data) {
 TEST_F(KeyFileStoreTest, OpenClose) {
   EXPECT_FALSE(store_->key_file_);
 
-  EXPECT_FALSE(store_->IsNonEmpty());
+  EXPECT_TRUE(store_->IsEmpty());
   ASSERT_TRUE(store_->Open());
   EXPECT_TRUE(store_->key_file_);
   EXPECT_EQ(1, store_->crypto_.cryptos_.size());
@@ -111,12 +111,12 @@ TEST_F(KeyFileStoreTest, OpenFail) {
 
 TEST_F(KeyFileStoreTest, MarkAsCorrupted) {
   EXPECT_FALSE(store_->MarkAsCorrupted());
-  EXPECT_FALSE(store_->IsNonEmpty());
+  EXPECT_TRUE(store_->IsEmpty());
   WriteKeyFile("garbage\n");
-  EXPECT_TRUE(store_->IsNonEmpty());
+  EXPECT_FALSE(store_->IsEmpty());
   EXPECT_TRUE(base::PathExists(test_file_));
   EXPECT_TRUE(store_->MarkAsCorrupted());
-  EXPECT_FALSE(store_->IsNonEmpty());
+  EXPECT_TRUE(store_->IsEmpty());
   EXPECT_FALSE(base::PathExists(test_file_));
   EXPECT_TRUE(base::PathExists(FilePath(test_file_.value() + ".corrupted")));
 }
@@ -129,7 +129,7 @@ TEST_F(KeyFileStoreTest, GetGroups) {
                                   "[%s]\n"
                                   "[%s]\n",
                                   kGroupA, kGroupB, kGroupC));
-  EXPECT_TRUE(store_->IsNonEmpty());
+  EXPECT_FALSE(store_->IsEmpty());
   ASSERT_TRUE(store_->Open());
   set<string> groups = store_->GetGroups();
   EXPECT_EQ(3, groups.size());
@@ -157,7 +157,7 @@ TEST_F(KeyFileStoreTest, GetGroupsWithKey) {
                                   kGroupA, kKeyA, kValue,
                                   kGroupB, kKeyA, kValue, kKeyB, kValue,
                                   kGroupC, kKeyB, kValue));
-  EXPECT_TRUE(store_->IsNonEmpty());
+  EXPECT_FALSE(store_->IsEmpty());
   ASSERT_TRUE(store_->Open());
   set<string> groups_a = store_->GetGroupsWithKey(kKeyA);
   EXPECT_EQ(2, groups_a.size());
@@ -696,14 +696,14 @@ TEST_F(KeyFileStoreTest, Flush) {
 TEST_F(KeyFileStoreTest, EmptyFile) {
   ASSERT_TRUE(store_->Open());
   ASSERT_TRUE(store_->Close());
-  EXPECT_FALSE(store_->IsNonEmpty());
+  EXPECT_TRUE(store_->IsEmpty());
 }
 
 TEST_F(KeyFileStoreTest, SetHeader) {
   ASSERT_TRUE(store_->Open());
   ASSERT_TRUE(store_->SetHeader("this is a test"));
   ASSERT_TRUE(store_->Close());
-  EXPECT_TRUE(store_->IsNonEmpty());
+  EXPECT_FALSE(store_->IsEmpty());
   ASSERT_TRUE(store_->Open());
 }
 

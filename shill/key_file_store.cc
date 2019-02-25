@@ -62,16 +62,16 @@ void KeyFileStore::ReleaseKeyFile() {
   }
 }
 
-bool KeyFileStore::IsNonEmpty() const {
+bool KeyFileStore::IsEmpty() const {
   int64_t file_size = 0;
-  return base::GetFileSize(path_, &file_size) && file_size != 0;
+  return !base::GetFileSize(path_, &file_size) || file_size <= 0;
 }
 
 bool KeyFileStore::Open() {
   CHECK(!key_file_);
   crypto_.Init();
   key_file_ = g_key_file_new();
-  if (!IsNonEmpty()) {
+  if (IsEmpty()) {
     LOG(INFO) << "Creating a new key file at " << path_.value();
     return true;
   }

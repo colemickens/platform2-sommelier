@@ -92,7 +92,7 @@ bool PendingActivationStore::InitStorage(const FilePath& storage_path) {
   }
   FilePath path = storage_path.Append(kStorageFileName);
   std::unique_ptr<StoreInterface> storage = CreateStore(path);
-  bool already_exists = storage->IsNonEmpty();
+  bool already_exists = !storage->IsEmpty();
   if (!storage->Open()) {
     LOG(ERROR) << "Failed to open file at '" << path.AsUTF8Unsafe()  << "'";
     if (already_exists)

@@ -21,8 +21,8 @@ class StoreInterface {
  public:
   virtual ~StoreInterface() {}
 
-  // Returns true if the store exists and is non-empty.
-  virtual bool IsNonEmpty() const = 0;
+  // Returns true if the store doesn't exist or is empty.
+  virtual bool IsEmpty() const = 0;
 
   // Opens the store. Returns true on success. The effects of
   // re-opening an open store are undefined. The effects of calling a

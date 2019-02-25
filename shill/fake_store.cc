@@ -44,11 +44,11 @@ bool DoesGroupContainProperties(
 
 FakeStore::FakeStore() {}
 
-bool FakeStore::IsNonEmpty() const {
+bool FakeStore::IsEmpty() const {
   // For now, the choice for return value is arbitrary. Revisit if we
   // find tests depend on this behaving correctly. (i.e., if any tests
   // require this to return true after a Close().)
-  return false;
+  return true;
 }
 
 bool FakeStore::Open() {

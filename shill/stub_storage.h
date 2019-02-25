@@ -18,7 +18,7 @@ class StubStorage : public StoreInterface {
  public:
   ~StubStorage() override {}
 
-  bool IsNonEmpty() const override { return false; }
+  bool IsEmpty() const override { return true; }
   bool Open() override { return false; }
   bool Close() override { return false; }
   bool Flush() override { return false; }

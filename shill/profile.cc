@@ -92,7 +92,7 @@ bool Profile::InitStorage(InitStorageOption storage_option, Error* error) {
   CHECK(!persistent_profile_path_.empty());
   std::unique_ptr<StoreInterface> storage =
       CreateStore(persistent_profile_path_);
-  bool already_exists = storage->IsNonEmpty();
+  bool already_exists = !storage->IsEmpty();
   if (!already_exists && storage_option != kCreateNew &&
       storage_option != kCreateOrOpenExisting) {
     Error::PopulateAndLog(

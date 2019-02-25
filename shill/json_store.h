@@ -26,7 +26,7 @@ class JsonStore : public StoreInterface {
   // automatically Flush() before destruction.
 
   // Inherited from StoreInterface.
-  bool IsNonEmpty() const override;
+  bool IsEmpty() const override;
   bool Open() override;
   bool Close() override;
   bool Flush() override;

@@ -27,7 +27,7 @@ class KeyFileStore : public StoreInterface {
   ~KeyFileStore() override;
 
   // Inherited from StoreInterface.
-  bool IsNonEmpty() const override;
+  bool IsEmpty() const override;
   bool Open() override;
   bool Close() override;
   bool Flush() override;

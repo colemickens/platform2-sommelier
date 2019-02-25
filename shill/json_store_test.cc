@@ -907,7 +907,7 @@ TEST_F(JsonStoreTest, OpenClearsExistingInMemoryGroups) {
 
 // File operations: Close() basic functionality.
 TEST_F(JsonStoreTest, ClosePersistsData) {
-  ASSERT_FALSE(store_->IsNonEmpty());
+  ASSERT_TRUE(store_->IsEmpty());
   ASSERT_TRUE(store_->Close());
 
   // Verify that the file actually got written with the right name.
@@ -923,7 +923,7 @@ TEST_F(JsonStoreTest, ClosePersistsData) {
 
 // File operations: Flush() basics.
 TEST_F(JsonStoreTest, FlushCreatesPersistentStore) {
-  ASSERT_FALSE(store_->IsNonEmpty());
+  ASSERT_TRUE(store_->IsEmpty());
   ASSERT_TRUE(store_->Flush());
 
   // Verify that the file actually got written with the right name.
@@ -1091,11 +1091,11 @@ TEST_F(JsonStoreTest, MarkAsCorruptedFailsWhenStoreHasNotBeenPersisted) {
 
 TEST_F(JsonStoreTest, MarkAsCorruptedMovesCorruptStore) {
   store_->Flush();
-  ASSERT_TRUE(store_->IsNonEmpty());
+  ASSERT_FALSE(store_->IsEmpty());
   ASSERT_TRUE(base::PathExists(test_file_));
 
   EXPECT_TRUE(store_->MarkAsCorrupted());
-  EXPECT_FALSE(store_->IsNonEmpty());
+  EXPECT_TRUE(store_->IsEmpty());
   EXPECT_FALSE(base::PathExists(test_file_));
   EXPECT_TRUE(base::PathExists(FilePath(test_file_.value() + ".corrupted")));
 }
