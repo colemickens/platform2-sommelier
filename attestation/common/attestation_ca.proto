@@ -166,6 +166,9 @@ message AttestationEnrollmentRequest {
   optional bytes enterprise_enrollment_nonce = 5;
   // The device TPM version.
   optional TpmVersion tpm_version = 6;
+  // An encrypted quote of the RSA EK cert, in X.509 form, if the endorsement
+  // credential is not RSA.
+  optional EncryptedData encrypted_rsa_endorsement_quote = 7;
 }
 
 enum ResponseStatus {

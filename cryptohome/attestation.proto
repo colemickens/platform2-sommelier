@@ -95,7 +95,7 @@ enum TpmVersion {
 message AttestationEnrollmentRequest {
   // Fields reserved because they were added to platform2/attestation.
   reserved 7;
-  reserved "nvram_quotes";
+  reserved "encrypted_rsa_endorsement_quote";
   // The EK cert, in X.509 form, encrypted using the server's public key with
   // the following parameters:
   //   Key encryption: RSA-OAEP with no custom parameters.
