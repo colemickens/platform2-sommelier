@@ -80,7 +80,10 @@ bool CheckBind(Platform* platform, const BindMount& bind) {
   return true;
 }
 
-// Spawns a filesystem resizing process
+// TODO(sarthakkukreti): Evaulate resizing: it is a no-op on new encrypted
+// stateful setups and would slow down boot once for legacy devices on update,
+// as long as we do not iteratively resize.
+// Spawns a filesystem resizing process and waits for it to finish.
 void SpawnResizer(Platform* platform,
                   const base::FilePath& device,
                   uint64_t blocks,
@@ -100,17 +103,18 @@ void SpawnResizer(Platform* platform,
   LOG(INFO) << "Resizing started in " << kResizeStepSeconds << " second steps.";
 
   do {
-    sleep(kResizeStepSeconds);
     blocks += kExt4ResizeBlocks;
 
     if (blocks > blocks_max)
       blocks = blocks_max;
 
-    // Run the resizing daemon
+    // Run the resizing function. For a fresh setup, the resize should be
+    // a no-op, the only case where this might be slow is legacy devices which
+    // have a smaller encrypted stateful partition.
     platform->ResizeFilesystem(device, blocks);
   } while (blocks < blocks_max);
 
-  LOG(INFO) << "Resizing daemon launched.";
+  LOG(INFO) << "Resizing done.";
   return;
 }
 
