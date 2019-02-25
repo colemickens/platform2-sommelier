@@ -61,6 +61,23 @@ base::Optional<std::vector<uint8_t>> SignatureToDerBytes(const uint8_t* r,
 // Returns the SHA-256 of the specified data.
 std::vector<uint8_t> Sha256(const std::vector<uint8_t>& data);
 
+// Creates a new EC key to use for U2F attestation.
+crypto::ScopedEC_KEY CreateAttestationKey();
+
+// Signs data using attestion_key, and returns the DER-encoded signature,
+// or base::nullopt on error.
+base::Optional<std::vector<uint8_t>> AttestToData(
+    const std::vector<uint8_t>& data, EC_KEY* attestation_key);
+
+// Returns an X509 certificate for the specified attestation_key, to be included
+// in a U2F register response, or base::nullopt on error.
+base::Optional<std::vector<uint8_t>> CreateAttestationCertificate(
+    EC_KEY* attestation_key);
+
+// Parses the specified certificate and re-serializes it to the same vector,
+// removing any padding that was present.
+bool RemoveCertificatePadding(std::vector<uint8_t>* cert);
+
 }  // namespace util
 }  // namespace u2f
 

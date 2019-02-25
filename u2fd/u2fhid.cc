@@ -511,6 +511,30 @@ std::vector<uint8_t> BuildU2fRegisterResponseSignedData(
   return signed_data;
 }
 
+bool DoSoftwareAttest(const std::vector<uint8_t>& data_to_sign,
+                      std::vector<uint8_t>* attestation_cert,
+                      std::vector<uint8_t>* signature) {
+  crypto::ScopedEC_KEY attestation_key = util::CreateAttestationKey();
+  if (!attestation_key) {
+    return false;
+  }
+
+  base::Optional<std::vector<uint8_t>> cert_result =
+      util::CreateAttestationCertificate(attestation_key.get());
+  base::Optional<std::vector<uint8_t>> attest_result =
+      util::AttestToData(data_to_sign, attestation_key.get());
+
+  if (!cert_result.has_value() || !attest_result.has_value()) {
+    // These functions are never expected to fail.
+    LOG(ERROR) << "U2F software attestation failed.";
+    return false;
+  }
+
+  *attestation_cert = std::move(*cert_result);
+  *signature = std::move(*attest_result);
+  return true;
+}
+
 }  // namespace
 
 int U2fHid::ProcessU2fRegister(U2fRegisterRequestAdpu request,
@@ -538,7 +562,10 @@ int U2fHid::ProcessU2fRegister(U2fRegisterRequestAdpu request,
       return -EINVAL;
     }
   } else {
-    // TODO(louiscollard): Sign using SW-generated cert.
+    if (!DoSoftwareAttest(data_to_sign, &attestation_cert, &signature)) {
+      ReturnError(U2fHidError::kOther, transaction_->cid, true);
+      return -EINVAL;
+    }
   }
 
   // Prepare response, as specified by "U2F Raw Message Formats".
@@ -715,14 +742,14 @@ const std::vector<uint8_t>& U2fHid::GetG2fCert() {
     std::vector<uint8_t> cert_tmp;
 
     uint32_t get_cert_status = tpm_g2f_cert_.Run(&cert_str);
+    util::AppendToVector(cert_str, &cert_tmp);
 
-    if (get_cert_status != kVendorCmdRcSuccess) {
+    if (get_cert_status != kVendorCmdRcSuccess ||
+        !util::RemoveCertificatePadding(&cert_tmp)) {
       // TODO(louiscollard): Retry?
       LOG(ERROR) << "Failed to retrieve G2F certificate, status: " << std::hex
                  << get_cert_status;
-    } else {
-      // TODO(louiscollard): Remove padding.
-      util::AppendToVector(cert_str, &cert_tmp);
+      cert_tmp.clear();
     }
 
     return cert_tmp;
