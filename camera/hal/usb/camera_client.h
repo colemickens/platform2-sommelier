@@ -190,6 +190,9 @@ class CameraClient {
     // Handle aborted request when flush is called.
     void HandleAbortedRequest(camera3_capture_result_t* capture_result);
 
+    // Check whether we should drop frames when frame is out of date.
+    bool IsVideoRecording(const android::CameraMetadata& metadata);
+
     // Check whether we should enable constant frame rate according to metadata.
     bool ShouldEnableConstantFrameRate(const android::CameraMetadata& metadata);
 
@@ -253,6 +256,9 @@ class CameraClient {
     // ownership.
     MetadataHandler* metadata_handler_;
 
+    // The frame rate for stream on.
+    float stream_on_fps_;
+
     // The current resolution for stream on.
     Size stream_on_resolution_;
 
@@ -269,8 +275,11 @@ class CameraClient {
     // Current using buffer id for |input_buffers_|.
     int current_v4l2_buffer_id_;
 
-    // Current buffer timestamp.
-    uint64_t current_v4l2_buffer_timestamp_;
+    // Current buffer timestamp in v4l2 buffer.
+    uint64_t current_buffer_timestamp_in_v4l2_;
+
+    // Current buffer timestamp in user space.
+    uint64_t current_buffer_timestamp_in_user_;
 
     // Used to notify that flush is called from framework.
     bool flush_started_;
@@ -280,6 +289,8 @@ class CameraClient {
 
     // Used to enable crop, rotate, and scale capability for portriat preview.
     int crop_rotate_scale_degrees_;
+
+    bool is_video_recording_;
 
     // Used to guard |flush_started_|.
     base::Lock flush_lock_;

@@ -7,6 +7,8 @@
 #ifndef CAMERA_HAL_USB_V4L2_CAMERA_DEVICE_H_
 #define CAMERA_HAL_USB_V4L2_CAMERA_DEVICE_H_
 
+#include <time.h>
+
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -58,14 +60,16 @@ class V4L2CameraDevice {
   int StreamOff();
 
   // Get next frame buffer from device. Device returns the corresponding buffer
-  // with |buffer_id|, |data_size| bytes and its |timestamp| in nanoseconds.
+  // with |buffer_id|, |data_size| bytes and its v4l2 timestamp |v4l2_ts| and
+  // userspace timestamp |user_ts| in nanoseconds.
   // |data_size| is how many bytes used in the buffer for this frame. Return 0
   // if device gets the buffer successfully. Otherwise, return -|errno|. Return
   // -EAGAIN immediately if next frame buffer is not ready. This function should
   // be called after StreamOn().
   int GetNextFrameBuffer(uint32_t* buffer_id,
                          uint32_t* data_size,
-                         uint64_t* timestamp);
+                         uint64_t* v4l2_ts,
+                         uint64_t* user_ts);
 
   // Return |buffer_id| buffer to device. Return 0 if the buffer is returned
   // successfully. Otherwise, return -|errno|. This function should be called
@@ -94,6 +98,9 @@ class V4L2CameraDevice {
   // This is for suspend/resume feature. USB camera will be enumerated after
   // device resumed. But camera device may not be ready immediately.
   static int RetryDeviceOpen(const std::string& device_path, int flags);
+
+  // Get clock type in UVC driver to report the same time base in user space.
+  static clockid_t GetUvcClock();
 
   // Set power frequency supported from device.
   int SetPowerLineFrequency(PowerLineFrequency setting);

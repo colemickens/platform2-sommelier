@@ -284,7 +284,8 @@ int V4L2CameraDevice::StreamOff() {
 
 int V4L2CameraDevice::GetNextFrameBuffer(uint32_t* buffer_id,
                                          uint32_t* data_size,
-                                         uint64_t* timestamp) {
+                                         uint64_t* v4l2_ts,
+                                         uint64_t* user_ts) {
   base::AutoLock l(lock_);
   if (!device_fd_.is_valid()) {
     LOGF(ERROR) << "Device is not opened";
@@ -316,7 +317,15 @@ int V4L2CameraDevice::GetNextFrameBuffer(uint32_t* buffer_id,
   *data_size = buffer.bytesused;
 
   struct timeval tv = buffer.timestamp;
-  *timestamp = tv.tv_sec * 1'000'000'000LL + tv.tv_usec * 1000;
+  *v4l2_ts = tv.tv_sec * 1'000'000'000LL + tv.tv_usec * 1000;
+
+  struct timespec ts;
+  if (clock_gettime(GetUvcClock(), &ts) < 0) {
+    LOGF(ERROR) << "Get clock time fails";
+    return -errno;
+  }
+
+  *user_ts = ts.tv_sec * 1'000'000'000LL + ts.tv_nsec;
 
   buffers_at_client_[buffer.index] = true;
 
@@ -490,6 +499,26 @@ int V4L2CameraDevice::RetryDeviceOpen(const std::string& device_path,
   }
   PLOGF(ERROR) << "Failed to open " << device_path;
   return -1;
+}
+
+// static
+clockid_t V4L2CameraDevice::GetUvcClock() {
+  static const clockid_t kUvcClock = [] {
+    const base::FilePath kClockPath("/sys/module/uvcvideo/parameters/clock");
+    std::string clock;
+    if (base::ReadFileToString(kClockPath, &clock)) {
+      if (clock.find("REALTIME") != std::string::npos) {
+        return CLOCK_REALTIME;
+      } else if (clock.find("BOOTTIME") != std::string::npos) {
+        return CLOCK_BOOTTIME;
+      } else {
+        return CLOCK_MONOTONIC;
+      }
+    }
+    // Use UVC default clock.
+    return CLOCK_MONOTONIC;
+  }();
+  return kUvcClock;
 }
 
 // static

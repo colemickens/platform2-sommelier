@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/posix/safe_strerror.h>
 #include <sync/sync.h>
 #include <system/camera_metadata.h>
 
@@ -65,7 +66,7 @@ int CameraClient::OpenDevice() {
 
   int ret = device_->Connect(device_info_.device_path);
   if (ret) {
-    LOGFID(ERROR, id_) << "Connect failed: " << strerror(-ret);
+    LOGFID(ERROR, id_) << "Connect failed: " << base::safe_strerror(-ret);
     return ret;
   }
 
@@ -512,10 +513,14 @@ CameraClient::RequestHandler::RequestHandler(
       callback_ops_(callback_ops),
       task_runner_(task_runner),
       metadata_handler_(metadata_handler),
+      stream_on_fps_(0.0),
       stream_on_resolution_(0, 0),
       default_resolution_(0, 0),
       current_v4l2_buffer_id_(-1),
-      flush_started_(false) {
+      current_buffer_timestamp_in_v4l2_(0),
+      current_buffer_timestamp_in_user_(0),
+      flush_started_(false),
+      is_video_recording_(false) {
   SupportedFormats supported_formats =
       device_->GetDeviceSupportedFormats(device_info_.device_path);
   qualified_formats_ = GetQualifiedFormats(supported_formats);
@@ -587,6 +592,7 @@ void CameraClient::RequestHandler::HandleRequest(
   bool constant_frame_rate = ShouldEnableConstantFrameRate(*metadata);
   VLOGFID(1, device_id_) << "constant_frame_rate " << std::boolalpha
                          << constant_frame_rate;
+  is_video_recording_ = IsVideoRecording(*metadata);
 
   bool stream_resolution_reconfigure = false;
   Size new_resolution = stream_on_resolution_;
@@ -673,7 +679,7 @@ void CameraClient::RequestHandler::HandleRequest(
 
   NotifyShutter(capture_result.frame_number);
   ret = metadata_handler_->PostHandleRequest(
-      capture_result.frame_number, current_v4l2_buffer_timestamp_, metadata);
+      capture_result.frame_number, current_buffer_timestamp_in_v4l2_, metadata);
   if (ret) {
     LOGFID(WARNING, device_id_)
         << "Update metadata in PostHandleRequest failed";
@@ -749,7 +755,8 @@ int CameraClient::RequestHandler::StreamOnImpl(Size stream_on_resolution,
   ret = device_->StreamOn(format->width, format->height, format->fourcc,
                           max_fps, constant_frame_rate, &fds, &buffer_sizes);
   if (ret) {
-    LOGFID(ERROR, device_id_) << "StreamOn failed: " << strerror(-ret);
+    LOGFID(ERROR, device_id_)
+        << "StreamOn failed: " << base::safe_strerror(-ret);
     return ret;
   }
 
@@ -770,6 +777,9 @@ int CameraClient::RequestHandler::StreamOnImpl(Size stream_on_resolution,
   stream_on_resolution_ = stream_on_resolution;
   constant_frame_rate_ = constant_frame_rate;
   use_native_sensor_ratio_ = use_native_sensor_ratio;
+  stream_on_fps_ = max_fps;
+  current_buffer_timestamp_in_v4l2_ = 0;
+  current_buffer_timestamp_in_user_ = 0;
   SkipFramesAfterStreamOn(device_info_.frames_to_skip_after_streamon);
 
   // Reset test pattern.
@@ -782,7 +792,8 @@ int CameraClient::RequestHandler::StreamOffImpl() {
   input_buffers_.clear();
   int ret = device_->StreamOff();
   if (ret) {
-    LOGFID(ERROR, device_id_) << "StreamOff failed: " << strerror(-ret);
+    LOGFID(ERROR, device_id_)
+        << "StreamOff failed: " << base::safe_strerror(-ret);
   }
   stream_on_resolution_.width = stream_on_resolution_.height = 0;
   return ret;
@@ -800,6 +811,20 @@ void CameraClient::RequestHandler::HandleAbortedRequest(
   }
   NotifyRequestError(capture_result->frame_number);
   callback_ops_->process_capture_result(callback_ops_, capture_result);
+}
+
+bool CameraClient::RequestHandler::IsVideoRecording(
+    const android::CameraMetadata& metadata) {
+  if (metadata.exists(ANDROID_CONTROL_CAPTURE_INTENT)) {
+    camera_metadata_ro_entry entry =
+        metadata.find(ANDROID_CONTROL_CAPTURE_INTENT);
+    switch (entry.data.u8[0]) {
+      case ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_RECORD:
+      case ANDROID_CONTROL_CAPTURE_INTENT_VIDEO_SNAPSHOT:
+        return true;
+    }
+  }
+  return false;
 }
 
 bool CameraClient::RequestHandler::ShouldEnableConstantFrameRate(
@@ -916,9 +941,14 @@ int CameraClient::RequestHandler::WriteStreamBuffer(
 void CameraClient::RequestHandler::SkipFramesAfterStreamOn(int num_frames) {
   for (size_t i = 0; i < num_frames; i++) {
     uint32_t buffer_id, data_size;
-    uint64_t timestamp;
-    device_->GetNextFrameBuffer(&buffer_id, &data_size, &timestamp);
-    device_->ReuseFrameBuffer(buffer_id);
+    uint64_t v4l2_ts, user_ts;
+    int ret =
+        device_->GetNextFrameBuffer(&buffer_id, &data_size, &v4l2_ts, &user_ts);
+    if (!ret) {
+      current_buffer_timestamp_in_v4l2_ = v4l2_ts;
+      current_buffer_timestamp_in_user_ = user_ts;
+      device_->ReuseFrameBuffer(buffer_id);
+    }
   }
 }
 
@@ -972,7 +1002,7 @@ void CameraClient::RequestHandler::NotifyShutter(uint32_t frame_number) {
   memset(&m, 0, sizeof(m));
   m.type = CAMERA3_MSG_SHUTTER;
   m.message.shutter.frame_number = frame_number;
-  m.message.shutter.timestamp = current_v4l2_buffer_timestamp_;
+  m.message.shutter.timestamp = current_buffer_timestamp_in_v4l2_;
   callback_ops_->notify(callback_ops_, &m);
 }
 
@@ -989,16 +1019,51 @@ void CameraClient::RequestHandler::NotifyRequestError(uint32_t frame_number) {
 
 int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode) {
   DCHECK(task_runner_->BelongsToCurrentThread());
-  uint32_t buffer_id, data_size;
-  uint64_t timestamp;
-  // If device_->GetNextFrameBuffer returns error, the buffer is still in driver
-  // side. Therefore we don't need to enqueue the buffer.
-  int ret = device_->GetNextFrameBuffer(&buffer_id, &data_size, &timestamp);
-  if (ret) {
-    LOGFID(ERROR, device_id_)
-        << "GetNextFrameBuffer failed: " << strerror(-ret);
-    return ret;
-  }
+  int ret;
+  uint32_t buffer_id = 0, data_size = 0;
+  uint64_t v4l2_ts, user_ts;
+  uint64_t delta_user_ts = 0, delta_v4l2_ts = 0;
+  // If frame duration between user space and v4l2 buffer shifts 20%,
+  // we should return next frame.
+  const uint64_t allowed_shift_frame_duration_ns =
+      (1'000'000'000LL / stream_on_fps_) * 0.2;
+
+  // Some requests take a long time and cause several frames are buffered in
+  // V4L2 buffers in UVC driver. It causes user can get several frames during
+  // one frame duration when user send capture requests seamlessly. We should
+  // drop out-of-date frames to pass testResultTimestamps CTS test.
+  // See b/119635561 for detail.
+  do {
+    if (delta_user_ts > 0) {
+      device_->ReuseFrameBuffer(buffer_id);
+      if (ret) {
+        LOGFID(ERROR, device_id_)
+            << "ReuseFrameBuffer failed: " << base::safe_strerror(-ret)
+            << " for input buffer id: " << buffer_id;
+        return ret;
+      }
+    }
+    // If device_->GetNextFrameBuffer returns error, the buffer is still in
+    // driver side. Therefore we don't need to enqueue the buffer.
+    ret =
+        device_->GetNextFrameBuffer(&buffer_id, &data_size, &v4l2_ts, &user_ts);
+    if (ret) {
+      LOGFID(ERROR, device_id_)
+          << "GetNextFrameBuffer failed: " << base::safe_strerror(-ret);
+      return ret;
+    }
+    // If this is the first frame after stream on, just use it.
+    if (current_buffer_timestamp_in_v4l2_ == 0) {
+      break;
+    }
+
+    delta_user_ts = user_ts - current_buffer_timestamp_in_user_;
+    delta_v4l2_ts = v4l2_ts - current_buffer_timestamp_in_v4l2_;
+  } while (allowed_shift_frame_duration_ns + delta_v4l2_ts < delta_user_ts &&
+           !is_video_recording_);
+  current_buffer_timestamp_in_user_ = user_ts;
+  current_buffer_timestamp_in_v4l2_ = v4l2_ts;
+
   // after this part, we got a buffer from V4L2 device,
   // so we need to return the buffer back if any error happens.
   current_v4l2_buffer_id_ = buffer_id;
@@ -1010,8 +1075,6 @@ int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode) {
     EnqueueV4L2Buffer();
     return ret;
   }
-
-  current_v4l2_buffer_timestamp_ = timestamp;
 
   if (!test_pattern_->SetTestPatternMode(pattern_mode)) {
     EnqueueV4L2Buffer();
@@ -1046,7 +1109,7 @@ int CameraClient::RequestHandler::EnqueueV4L2Buffer() {
   int ret = device_->ReuseFrameBuffer(current_v4l2_buffer_id_);
   if (ret) {
     LOGFID(ERROR, device_id_)
-        << "ReuseFrameBuffer failed: " << strerror(-ret)
+        << "ReuseFrameBuffer failed: " << base::safe_strerror(-ret)
         << " for input buffer id: " << current_v4l2_buffer_id_;
   }
   current_v4l2_buffer_id_ = -1;
