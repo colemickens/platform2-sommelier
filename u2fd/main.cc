@@ -22,6 +22,7 @@
 #include "u2fd/tpm_vendor_cmd.h"
 #include "u2fd/u2fhid.h"
 #include "u2fd/uhid_device.h"
+#include "u2fd/user_state.h"
 
 #ifndef VCSID
 #define VCSID "<unknown>"
@@ -150,7 +151,8 @@ class U2fDaemon : public brillo::Daemon {
                    base::Unretained(&tpm_proxy_)),
         base::Bind(
             &org::chromium::PowerManagerProxy::IgnoreNextPowerButtonPress,
-            base::Unretained(pm_proxy_.get())));
+            base::Unretained(pm_proxy_.get())),
+        std::make_unique<u2f::UserState>(bus_));
 
     return u2fhid_->Init() ? EX_OK : EX_PROTOCOL;
   }

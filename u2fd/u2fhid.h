@@ -15,6 +15,7 @@
 
 #include "u2fd/hid_interface.h"
 #include "u2fd/u2f_adpu.h"
+#include "u2fd/user_state.h"
 
 namespace u2f {
 
@@ -102,7 +103,8 @@ class U2fHid {
          const TpmSignCallback& sign_fn,
          const TpmAttestCallback& attest_fn,
          const TpmG2fCertCallback& g2f_cert_fn,
-         const IgnoreButtonCallback& ignore_button_func);
+         const IgnoreButtonCallback& ignore_button_func,
+         std::unique_ptr<UserState> user_state);
   ~U2fHid();
   bool Init();
 
@@ -195,20 +197,6 @@ class U2fHid {
   // Returns the cr50 individual attestation certificate.
   const std::vector<uint8_t>& GetG2fCert();
 
-  // U2F local state functions.
-  //////
-
-  // Returns the user secret for the current user.
-  const std::vector<uint8_t> GetUserSecret() {
-    // TODO(louiscollard): Implement.
-    return std::vector<uint8_t>(32);
-  }
-
-  // Returns the current global counter value.
-  std::vector<uint8_t> GetCounter() {
-    // TODO(louiscollard): Implement.
-    return {0, 0, 0, 0};
-  }
 
   std::unique_ptr<HidInterface> hid_;
   const bool g2f_mode_;
@@ -222,6 +210,7 @@ class U2fHid {
   uint32_t free_cid_;
   uint32_t locked_cid_;
   base::OneShotTimer lock_timeout_;
+  std::unique_ptr<UserState> user_state_;
 
   std::string vendor_sysinfo_;
 

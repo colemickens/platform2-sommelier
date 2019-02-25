@@ -18,6 +18,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo-${libbase_ver}",
     "libchrome-${libbase_ver}",
+    "libsession_manager-client",
   ]
 }
 
@@ -41,6 +42,7 @@ executable("u2fd") {
     "u2f_adpu.cc",
     "u2fhid.cc",
     "uhid_device.cc",
+    "user_state.cc",
     "util.cc",
   ]
   libs = [ "policy-${libbase_ver}" ]

@@ -18,6 +18,7 @@
 
 #include "u2fd/u2f_adpu.h"
 #include "u2fd/u2fhid.h"
+#include "u2fd/user_state.h"
 #include "u2fd/util.h"
 
 namespace {
@@ -212,7 +213,8 @@ U2fHid::U2fHid(std::unique_ptr<HidInterface> hid,
                const TpmSignCallback& sign_fn,
                const TpmAttestCallback& attest_fn,
                const TpmG2fCertCallback& g2f_cert_fn,
-               const IgnoreButtonCallback& ignore_fn)
+               const IgnoreButtonCallback& ignore_fn,
+               std::unique_ptr<UserState> user_state)
     : hid_(std::move(hid)),
       g2f_mode_(g2f_mode),
       user_secrets_(user_secrets),
@@ -224,6 +226,7 @@ U2fHid::U2fHid(std::unique_ptr<HidInterface> hid,
       ignore_button_(ignore_fn),
       free_cid_(1),
       locked_cid_(0),
+      user_state_(std::move(user_state)),
       vendor_sysinfo_(vendor_sysinfo) {
   transaction_ = std::make_unique<Transaction>();
   hid_->SetOutputReportHandler(
@@ -606,8 +609,16 @@ int U2fHid::ProcessU2fAuthenticate(U2fAuthenticateRequestAdpu request,
     IgnorePowerButton();
   }
 
+  // This will increment the counter even if this request ends up failing due to
+  // lack of presence of an invalid keyhandle.
+  // TODO(louiscollard): Check this is ok.
+  base::Optional<std::vector<uint8_t>> counter = user_state_->GetCounter();
+  if (!counter.has_value()) {
+    return -EINVAL;
+  }
+
   std::vector<uint8_t> to_sign = BuildU2fAuthenticateResponseSignedData(
-      request.GetAppId(), request.GetChallenge(), GetCounter());
+      request.GetAppId(), request.GetChallenge(), *counter);
 
   std::vector<uint8_t> signature;
   if (DoU2fSign(request.GetAppId(), request.GetKeyHandle(),
@@ -618,7 +629,7 @@ int U2fHid::ProcessU2fAuthenticate(U2fAuthenticateRequestAdpu request,
   // Prepare response, as specified by "U2F Raw Message Formats".
   U2fResponseAdpu auth_resp;
   auth_resp.AppendByte(1 /* U2F_VER_2 */);
-  auth_resp.AppendBytes(GetCounter());
+  auth_resp.AppendBytes(*counter);
   auth_resp.AppendBytes(signature);
   auth_resp.SetStatus(U2F_SW_NO_ERROR);
   auth_resp.ToString(resp);
@@ -629,11 +640,17 @@ int U2fHid::ProcessU2fAuthenticate(U2fAuthenticateRequestAdpu request,
 int U2fHid::DoU2fGenerate(const std::vector<uint8_t>& app_id,
                           std::vector<uint8_t>* pub_key,
                           std::vector<uint8_t>* key_handle) {
+  base::Optional<brillo::SecureBlob> user_secret = user_state_->GetUserSecret();
+  if (!user_secret.has_value()) {
+    ReturnError(U2fHidError::kOther, transaction_->cid, true);
+    return -EINVAL;
+  }
+
   U2F_GENERATE_REQ generate_req = {
       .flags = U2F_AUTH_FLAG_TUP  // Require user presence
   };
   util::VectorToObject(app_id, &generate_req.appId);
-  util::VectorToObject(GetUserSecret(), &generate_req.userSecret);
+  util::VectorToObject(*user_secret, &generate_req.userSecret);
 
   U2F_GENERATE_RESP generate_resp = {};
   uint32_t generate_status = tpm_generate_.Run(generate_req, &generate_resp);
@@ -661,11 +678,17 @@ int U2fHid::DoU2fSign(const std::vector<uint8_t>& app_id,
                       const std::vector<uint8_t>& key_handle,
                       const std::vector<uint8_t>& hash,
                       std::vector<uint8_t>* signature_out) {
+  base::Optional<brillo::SecureBlob> user_secret = user_state_->GetUserSecret();
+  if (!user_secret.has_value()) {
+    ReturnError(U2fHidError::kOther, transaction_->cid, true);
+    return -EINVAL;
+  }
+
   U2F_SIGN_REQ sign_req = {
       // TODO(louiscollard): Copy G2F_CONSUME to flags.
   };
   util::VectorToObject(app_id, sign_req.appId);
-  util::VectorToObject(GetUserSecret(), sign_req.userSecret);
+  util::VectorToObject(*user_secret, sign_req.userSecret);
   util::VectorToObject(key_handle, sign_req.keyHandle);
   util::VectorToObject(hash, sign_req.hash);
 
@@ -704,9 +727,15 @@ int U2fHid::DoU2fSign(const std::vector<uint8_t>& app_id,
 int U2fHid::DoG2fAttest(const std::vector<uint8_t>& data,
                         uint8_t format,
                         std::vector<uint8_t>* signature_out) {
+  base::Optional<brillo::SecureBlob> user_secret = user_state_->GetUserSecret();
+  if (!user_secret.has_value()) {
+    ReturnError(U2fHidError::kOther, transaction_->cid, true);
+    return -EINVAL;
+  }
+
   U2F_ATTEST_REQ attest_req = {.format = format,
                                .dataLen = static_cast<uint8_t>(data.size())};
-  util::VectorToObject(GetUserSecret(), attest_req.userSecret);
+  util::VectorToObject(*user_secret, attest_req.userSecret);
   // Only a programming error can cause this CHECK to fail.
   CHECK_LE(data.size(), sizeof(attest_req.data));
   util::VectorToObject(data, attest_req.data);
