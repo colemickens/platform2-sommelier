@@ -4,6 +4,7 @@
 
 #include "arc/codec-test/common.h"
 
+#include <strings.h>
 #include <time.h>
 
 #include <algorithm>
@@ -42,6 +43,16 @@ size_t InputFileStream::Read(char* buffer, size_t size) {
   return file_.gcount();
 }
 
+VideoCodecType VideoCodecProfileToType(VideoCodecProfile profile) {
+  if (profile >= H264PROFILE_MIN && profile <= H264PROFILE_MAX)
+    return VideoCodecType::H264;
+  if (profile >= VP8PROFILE_MIN && profile <= VP8PROFILE_MAX)
+    return VideoCodecType::VP8;
+  if (profile >= VP9PROFILE_MIN && profile <= VP9PROFILE_MAX)
+    return VideoCodecType::VP9;
+  return VideoCodecType::UNKNOWN;
+}
+
 std::vector<std::string> SplitString(const std::string& src, char delim) {
   std::stringstream ss(src);
   std::string item;
@@ -58,6 +69,19 @@ int64_t GetNowUs() {
   clock_gettime(CLOCK_MONOTONIC, &t);
   int64_t nsecs = static_cast<int64_t>(t.tv_sec) * 1000000000LL + t.tv_nsec;
   return nsecs / 1000ll;
+}
+
+const char* GetMimeType(VideoCodecType type) {
+  switch (type) {
+    case VideoCodecType::H264:
+      return "video/avc";
+    case VideoCodecType::VP8:
+      return "video/x-vnd.on2.vp8";
+    case VideoCodecType::VP9:
+      return "video/x-vnd.on2.vp9";
+    default:  // unknown type
+      return nullptr;
+  }
 }
 
 }  // namespace android

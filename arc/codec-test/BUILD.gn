@@ -6,6 +6,7 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
+    ":arcvideodecoder_test",
     ":arcvideoencoder_test",
   ]
 }
@@ -64,5 +65,19 @@ executable("arcvideoencoder_test") {
     "arc_video_encoder_e2e_test.cc",
     "common.cc",
     "mediacodec_encoder.cc",
+  ]
+}
+
+executable("arcvideodecoder_test") {
+  configs += [
+    ":arc_gtest",
+    ":dep_libs",
+  ]
+
+  sources = [
+    "arc_video_decoder_e2e_test.cc",
+    "common.cc",
+    "encoded_data_helper.cc",
+    "mediacodec_decoder.cc",
   ]
 }
