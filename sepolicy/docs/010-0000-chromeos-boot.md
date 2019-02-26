@@ -5,6 +5,9 @@ SELinux has no presence until init (upstart) loads the policy, for example, in
 the bootloader. This section will not discuss the stage before initially loading
 the policy.
 
+Please note: *SELinux is only enabled on ARC-enabled boards, or amd64-generic
+based boards.*
+
 1. init loads the selinux policy based on configs in /etc/selinuc/config, and
    mounts the selinuxfs to /sys/fs/selinux. init will be assigned with initial
    contexts (kernel).

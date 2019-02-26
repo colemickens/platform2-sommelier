@@ -67,7 +67,7 @@ section.
         and etc auto-inherits label from its parent.
 
 
-### Reference
+For more details, it can be referred from
 
 [Security Context](https://selinuxproject.org/page/NB_SC)
 
