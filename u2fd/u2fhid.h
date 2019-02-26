@@ -72,7 +72,7 @@ class U2fHid {
   // Callback to send the raw U2F APDU in |req| and get the corresponding
   // response APDU in |resp|.
   using TransmitApduCallback =
-      base::Callback<int(const std::string& req, std::string* resp)>;
+      base::Callback<uint32_t(const std::string& req, std::string* resp)>;
   // Callback to disable the power button for |in_timeout_internal| when using
   // it as physical presence for U2F.
   using IgnoreButtonCallback = base::Callback<bool(

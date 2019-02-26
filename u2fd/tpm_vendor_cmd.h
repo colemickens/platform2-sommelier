@@ -8,8 +8,8 @@
 #include <string>
 
 #include <base/macros.h>
-
-#include "trunks/trunks_dbus_proxy.h"
+#include <trunks/cr50_headers/u2f.h>
+#include <trunks/trunks_dbus_proxy.h>
 
 namespace u2f {
 
@@ -27,6 +27,8 @@ namespace u2f {
 const uint32_t kVendorRcErr = 0x00000500;
 // Command not implemented on the firmware side.
 const uint32_t kVendorRcNoSuchCommand = kVendorRcErr | 0x7f;
+// Response was invalid (TPM response code was not available).
+const uint32_t kVendorRcInvalidResponse = 0xffffffff;
 
 // TpmVendorCommandProxy sends vendor commands to the TPM security chip
 // by using the D-Bus connection to the trunksd daemon which communicates
@@ -36,23 +38,50 @@ class TpmVendorCommandProxy : public trunks::TrunksDBusProxy {
   TpmVendorCommandProxy();
   ~TpmVendorCommandProxy() override;
 
-  // Sends the VENDOR_CC_U2F_APDU command to the TPM with |req| as the
-  // ISO7816-4:2005 APDU data and writes in |resp| sent back by the TPM.
-  // Returns the TPM response code.
-  int SendU2fApdu(const std::string& req, std::string* resp_out);
-
   // Sets the operating mode of the U2F feature in the TPM.
   // Returns the TPM response code.
-  int SetU2fVendorMode(uint8_t mode);
+  uint32_t SetU2fVendorMode(uint8_t mode);
 
   // Reads the TPM firmware U2F protocol implementation in |version|
   // by sending a U2F_VERSION APDU encapsulated in a TPM vendor commands.
   // Returns the TPM response code.
-  int GetU2fVersion(std::string* version_out);
+  uint32_t GetU2fVersion(std::string* version_out);
 
   // Queries the TPM firmware if it has vendor system information available
   // for the U2F feature and returns it in |sysinfo_out| if it does.
   void GetVendorSysInfo(std::string* sysinfo_out);
+
+  // Sends the VENDOR_CC_U2F_APDU command to the TPM with |req| as the
+  // ISO7816-4:2005 APDU data and writes in |resp| sent back by the TPM.
+  // Returns the TPM response code.
+  uint32_t SendU2fApdu(const std::string& req, std::string* resp_out);
+
+  // Sends the VENDOR_CC_U2F_GENERATE command to cr50, and populates
+  // resp_out with the reply.
+  // Returns the TPM response code, or kVendorRcInvalidResponse if the
+  // response was invalid.
+  uint32_t SendU2fGenerate(const U2F_GENERATE_REQ& req,
+                           U2F_GENERATE_RESP* resp_out);
+
+  // Sends the VENDOR_CC_U2F_SIGN command to cr50, and populates
+  // resp_out with the reply.
+  // Returns the TPM response code, or kVendorRcInvalidResponse if the
+  // response was invalid.
+  uint32_t SendU2fSign(const U2F_SIGN_REQ& req, U2F_SIGN_RESP* resp_out);
+
+  // Sends the VENDOR_CC_U2F_ATTEST command to cr50, and populates
+  // resp_out with the reply.
+  // Returns the TPM response code, or kVendorRcInvalidResponse if the
+  // response was invalid.
+  uint32_t SendU2fAttest(const U2F_ATTEST_REQ& req, U2F_ATTEST_RESP* resp_out);
+
+  // Retrieves the G2F certificate from vNVRAM in cr50 and writes it to
+  // cert_out. Note that the certificate read from vNVRAM may include
+  // several '0' bytes of padding at the end of the buffer. The length
+  // of the certificate can be determined by parsing it.
+  // Returns the TPM response code, or kVendorRcInvalidResponse if the
+  // response was invalid.
+  uint32_t GetG2fCertificate(std::string* cert_out);
 
  private:
   // Sends the TPM command with vendor-specific command code |cc| and the
@@ -61,6 +90,16 @@ class TpmVendorCommandProxy : public trunks::TrunksDBusProxy {
   uint32_t VendorCommand(uint16_t cc,
                          const std::string& input,
                          std::string* output);
+
+  // Sends the TPM command with vendor-specific command code |cc| and the
+  // payload in |input|, get the reply in |output|. Returns the TPM response
+  // code, or kVendorRcInvalidResponse if the response code was
+  // TPM_RC_SUCCESS but the response was the wrong length for the specified
+  // output type.
+  template <typename Request, typename Response>
+  uint32_t VendorCommandStruct(uint16_t cc,
+                               const Request& input,
+                               Response* output);
 
   // Retrieve and record in the log the individual attestation certificate.
   void LogIndividualCertificate();

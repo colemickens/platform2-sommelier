@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <array>
+
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
@@ -31,7 +33,11 @@ const uint32_t kTpmCcVendorBit = 0x20000000;
 const uint32_t kTpmCcVendorCr50 = 0x0000;
 
 // Cr50 vendor-specific subcommand codes. 16 bits available.
+// TODO(louiscollard): Replace this with constants from cr50 header.
 const uint16_t kVendorCcU2fApdu = 27;
+const uint16_t kVendorCcU2fGenerate = 44;
+const uint16_t kVendorCcU2fSign = 45;
+const uint16_t kVendorCcU2fAttest = 46;
 
 }  // namespace
 
@@ -83,117 +89,42 @@ uint32_t TpmVendorCommandProxy::VendorCommand(uint16_t cc,
   return header.code;
 }
 
-int TpmVendorCommandProxy::SendU2fApdu(const std::string& req,
-                                       std::string* resp_out) {
-  return VendorCommand(kVendorCcU2fApdu, req, resp_out);
+namespace {
+
+template <typename Request>
+std::string RequestToString(const Request& req) {
+  return std::string(reinterpret_cast<const char*>(&req), sizeof(req));
 }
 
-int TpmVendorCommandProxy::GetU2fVersion(std::string* version_out) {
-  std::string ping(8, 0);
-  std::string ver;
-
-  // build the command U2F_VERSION:
-  // CLA INS P1  P2  Le
-  // 00  03  00  00  00
-  ping[1] = 0x03;
-  int rc = SendU2fApdu(ping, &ver);
-
-  if (!rc) {
-    // remove the 16-bit status code at the end
-    *version_out = ver.substr(0, ver.length() - sizeof(uint16_t));
-    VLOG(1) << "version " << *version_out;
-  }
-
-  return rc;
+template <>
+std::string RequestToString(const U2F_ATTEST_REQ& req) {
+  return std::string(reinterpret_cast<const char*>(&req), 2 + req.dataLen);
 }
 
-void TpmVendorCommandProxy::LogIndividualCertificate() {
-  //  ISO7816-4:2005 APDU header size.
-  constexpr uint8_t kApduHeaderSize = 5;
-  // U2F_REGISTER command instruction index.
-  constexpr uint8_t kCmdU2fRegister = 0x01;
-  // U2F_REGISTER flag in the APDU P1 field.
-  constexpr uint8_t kG2fAttest = 0x80;
-  // U2F_REGISTER payload is the nonce and appid (usually 2x SHA-256 = 64B).
-  constexpr uint8_t kRegisterPayloadSize = 2 * 32;
-  // ECDSA P256 uses 256-bit integers.
-  constexpr size_t kP256NBytes = 256 / 8;
-  // ASN.1 DER constants we are using for certificate parsing.
-  constexpr uint8_t kAsn1ClassStructured = 0x20;
-  constexpr uint8_t kAsn1TagSequence = 0x10;
-  constexpr uint8_t kAsn1LengthLong = 0x80;
-  // Size of the Type and Length prefix for a Sequence with a 2-byte size.
-  constexpr size_t kAsn1SequenceTagSize = 2 + sizeof(uint16_t);
+}  // namespace
 
-  // build the U2F_REGISTER command:
-  // CLA INS P1  P2  Lc  Payload
-  // 00  01  80  00  00  (dummy) nonce and appid
-  std::string cmd(kApduHeaderSize + kRegisterPayloadSize, 0);
-  cmd[1] = kCmdU2fRegister;
-  cmd[2] = kG2fAttest;
-  cmd[4] = kRegisterPayloadSize;
+template <typename Request, typename Response>
+uint32_t TpmVendorCommandProxy::VendorCommandStruct(uint16_t cc,
+                                                    const Request& input,
+                                                    Response* output) {
+  std::string output_str;
+  uint32_t resp_code = VendorCommand(cc, RequestToString(input), &output_str);
 
-  std::string resp;
-  if (SendU2fApdu(cmd, &resp) != 0) {
-    VLOG(1) << "Cannot retrieve individual attestation certificate";
-    return;
+  if (resp_code == 0) {
+    if (output_str.size() == sizeof(*output)) {
+      memcpy(output, output_str.data(), sizeof(*output));
+    } else {
+      LOG(ERROR) << "Invalid response size for successful vendor command, "
+                 << "expected: " << sizeof(*output)
+                 << ", actual: " << output_str.size();
+      return kVendorRcInvalidResponse;
+    }
   }
 
-  // The response is:
-  // A reserved byte [1 byte], which for legacy reasons has the value 0x05.
-  // A user public key [65 bytes]. This is the (uncompressed) x,y-representation
-  //                               of a curve point on the P-256 elliptic curve.
-  // A key handle length byte [1 byte], which specifies the length of the key
-  //                                    handle (see below).
-  //                                    The value is unsigned (range 0-255).
-  // A key handle [length, see previous field]. This a handle that
-  //                                    allows the U2F token to identify the
-  //                                    generated key pair. U2F tokens may wrap
-  //                                    the generated private key and the
-  //                                    application id it was generated for,
-  //                                    and output that as the key handle.
-  // An attestation certificate [variable length]. This is a certificate in
-  //                                    X.509 DER format.
-  // A signature. This is a ECDSA signature (on P-256).
-  const int pkey_offset = 1;
-  const size_t pkey_size = 1 + 2 * kP256NBytes;
-  const int handle_len_offset = pkey_offset + pkey_size;
-  const int handle_offset = handle_len_offset + 1;
-
-  // Validate the length up to the certificate prefix.
-  if (resp.size() < handle_offset)
-    return;
-  uint8_t handle_len = resp[handle_len_offset];
-  const int cert_offset = handle_offset + handle_len;
-  if (resp.size() < cert_offset + kAsn1SequenceTagSize)
-    return;
-
-  // parse the first tag of the certificate ASN.1 data to know its length.
-  std::string cert_seq_tag = resp.substr(cert_offset, kAsn1SequenceTagSize);
-
-  // Should be a Constructed Sequence ASN.1 tag else all bets are off,
-  // with the size taking 2 bytes (the certificate size is somewhere between
-  // 256B and 2KB).
-  if ((static_cast<uint8_t>(cert_seq_tag[0]) !=
-       (kAsn1ClassStructured | kAsn1TagSequence)) ||
-      (static_cast<uint8_t>(cert_seq_tag[1]) !=
-       (kAsn1LengthLong | sizeof(uint16_t)))) {
-    VLOG(1) << "Cannot parse certificate";
-    return;
-  }
-
-  uint16_t length_tag;
-  memcpy(&length_tag, cert_seq_tag.c_str() + 2, sizeof(length_tag));
-  size_t cert_size = base::NetToHost16(length_tag) + cert_seq_tag.size();
-  // Validate the length of the certificate.
-  if (resp.size() < cert_offset + cert_size)
-    return;
-
-  VLOG(1) << "Certificate: "
-          << base::HexEncode(resp.data() + cert_offset, cert_size);
+  return resp_code;
 }
 
-int TpmVendorCommandProxy::SetU2fVendorMode(uint8_t mode) {
+uint32_t TpmVendorCommandProxy::SetU2fVendorMode(uint8_t mode) {
   std::string vendor_mode(5, 0);
   std::string rmode;
   const uint8_t kCmdU2fVendorMode = 0xbf;
@@ -214,6 +145,25 @@ int TpmVendorCommandProxy::SetU2fVendorMode(uint8_t mode) {
     // record the individual attestation certificate if the extension is on.
     if (rmode[0] == kU2fExtended && VLOG_IS_ON(1))
       LogIndividualCertificate();
+  }
+
+  return rc;
+}
+
+uint32_t TpmVendorCommandProxy::GetU2fVersion(std::string* version_out) {
+  std::string ping(8, 0);
+  std::string ver;
+
+  // build the command U2F_VERSION:
+  // CLA INS P1  P2  Le
+  // 00  03  00  00  00
+  ping[1] = 0x03;
+  int rc = SendU2fApdu(ping, &ver);
+
+  if (!rc) {
+    // remove the 16-bit status code at the end
+    *version_out = ver.substr(0, ver.length() - sizeof(uint16_t));
+    VLOG(1) << "version " << *version_out;
   }
 
   return rc;
@@ -258,6 +208,93 @@ void TpmVendorCommandProxy::GetVendorSysInfo(std::string* sysinfo_out) {
       info_blob.substr(kG2fSysInfoVersionOffset, kG2fSysInfoVersionLen));
   sysinfo[kVendorSysInfoFwEpochOffset] = kVendorFwEpoch;
   *sysinfo_out = sysinfo;
+}
+
+uint32_t TpmVendorCommandProxy::SendU2fApdu(const std::string& req,
+                                            std::string* resp_out) {
+  return VendorCommand(kVendorCcU2fApdu, req, resp_out);
+}
+
+uint32_t TpmVendorCommandProxy::SendU2fGenerate(const U2F_GENERATE_REQ& req,
+                                                U2F_GENERATE_RESP* resp_out) {
+  return VendorCommandStruct(kVendorCcU2fGenerate, req, resp_out);
+}
+
+uint32_t TpmVendorCommandProxy::SendU2fSign(const U2F_SIGN_REQ& req,
+                                            U2F_SIGN_RESP* resp_out) {
+  return VendorCommandStruct(kVendorCcU2fSign, req, resp_out);
+}
+
+uint32_t TpmVendorCommandProxy::SendU2fAttest(const U2F_ATTEST_REQ& req,
+                                              U2F_ATTEST_RESP* resp_out) {
+  return VendorCommandStruct(kVendorCcU2fAttest, req, resp_out);
+}
+
+uint32_t TpmVendorCommandProxy::GetG2fCertificate(std::string* cert_out) {
+  constexpr std::array<uint8_t, 0x23> kCertRequest{
+      0x80, 0x02,                    // TPM_ST_SESSIONS
+      0x00, 0x00, 0x00, 0x23,        // size
+      0x00, 0x00, 0x01, 0x4e,        // TPM_CC_NV_READ
+      0x01, 0x3f, 0xff, 0x02,        // authHandle : TPMI_RH_NV_AUTH
+      0x01, 0x3f, 0xff, 0x02,        // nvIndex    : TPMI_RH_NV_INDEX
+      0x00, 0x00, 0x00, 0x09,        // authorizationSize : UINT32
+      0x40, 0x00, 0x00, 0x09,        // sessionHandle : empty password
+      0x00, 0x00, 0x00, 0x00, 0x00,  // nonce, sessionAttributes, hmac
+      0x01, 0x3b,                    // nvSize   : UINT16
+      0x00, 0x00                     // nvOffset : UINT16
+  };
+
+  constexpr std::array<uint8_t, 16> kExpectedCertResponseHeader{
+      0x80, 0x02,              // TPM_ST_SESSIONS
+      0x00, 0x00, 0x01, 0x50,  // responseSize
+      0x00, 0x00, 0x00, 0x00,  // responseCode : TPM_RC_SUCCESS
+      0x00, 0x00, 0x01, 0x3d,  // parameterSize
+      0x01, 0x3b,              // TPM2B_MAX_NV_BUFFER : size
+  };
+
+  constexpr int kCertSize = 0x013b;
+  constexpr int kTpmResponseHeaderSize = 10;
+  constexpr int kExpectedCertResponseSize = 0x0150;
+
+  std::string req(kCertRequest.begin(), kCertRequest.end());
+
+  VLOG(2) << "Out(" << req.size()
+          << "): " << base::HexEncode(req.data(), req.size());
+
+  std::string resp = SendCommandAndWait(req);
+
+  VLOG(2) << "In(" << resp.size()
+          << "):  " << base::HexEncode(resp.data(), resp.size());
+
+  if (resp.size() < kTpmResponseHeaderSize) {
+    return kVendorRcInvalidResponse;
+  }
+
+  // TODO(louiscollard): This, in a less horrible way.
+  if (resp.size() != kExpectedCertResponseSize ||
+      resp.compare(0, 16,
+                   std::string(kExpectedCertResponseHeader.begin(),
+                               kExpectedCertResponseHeader.end())) != 0) {
+    return base::NetToHost32(
+        *reinterpret_cast<const uint32_t*>(&resp.data()[6]));
+  }
+
+  *cert_out = resp.substr(kExpectedCertResponseHeader.size(), kCertSize);
+
+  return 0;
+}
+
+void TpmVendorCommandProxy::LogIndividualCertificate() {
+  std::string cert;
+
+  uint32_t cert_status = GetG2fCertificate(&cert);
+
+  if (cert_status) {
+    VLOG(1) << "Failed to retrieve G2F certificate: " << std::hex
+            << cert_status;
+  } else {
+    VLOG(1) << "Certificate: " << base::HexEncode(cert.data(), cert.size());
+  }
 }
 
 }  // namespace u2f
