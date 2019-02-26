@@ -218,6 +218,9 @@ enum CertificateProfile {
 
 // The certificate request to be sent to the attestation server.
 message AttestationCertificateRequest {
+  // Fields reserved because they were added to platform2/attestation.
+  reserved 15;
+  reserved "nvram_quotes";
   // The AIK cert in X.509 format.
   optional bytes identity_credential = 1;
   // A certified public key in TPM_PUBKEY.
