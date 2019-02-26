@@ -59,6 +59,8 @@ constexpr char kCryptohomeLEResultHistogramPrefix[] =
     "Cryptohome.LECredential";
 constexpr char kCryptohomeAsyncDBusRequestsPrefix[] =
     "Cryptohome.AsyncDBusRequest.";
+constexpr char kCryptohomeAsyncDBusRequestsInqueueTimePrefix[] =
+    "Cryptohome.AsyncDBusRequest.Inqueue.";
 constexpr char kCryptohomeParallelTasksPrefix[] = "Cryptohome.ParallelTasks";
 constexpr char kCryptohomeLESyncOutcomeHistogramSuffix[] =
     ".SyncOutcome";
@@ -432,10 +434,23 @@ void ReportAsyncDbusRequestTotalTime(std::string task_name,
     return;
   }
 
-  // 3 min as maximum
+  // 3 mins as maximum
   constexpr int kMin = 1, kMax = 3 * 60 * 1000, kNumBuckets = 50;
   g_metrics->SendToUMA(kCryptohomeAsyncDBusRequestsPrefix + task_name,
                        running_time.InMilliseconds(), kMin, kMax, kNumBuckets);
+}
+
+void ReportAsyncDbusRequestInqueueTime(std::string task_name,
+                                       tracked_objects::Duration running_time) {
+  if (!g_metrics) {
+    return;
+  }
+
+  // 3 mins as maximum, 3 secs of interval
+  constexpr int kMin = 1, kMax = 3 * 60 * 1000, kNumBuckets = 3 * 20;
+  g_metrics->SendToUMA(
+      kCryptohomeAsyncDBusRequestsInqueueTimePrefix + task_name,
+      running_time.InMilliseconds(), kMin, kMax, kNumBuckets);
 }
 
 }  // namespace cryptohome

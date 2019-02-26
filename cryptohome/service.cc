@@ -196,7 +196,14 @@ void MountThreadObserver::PostTask() {
 }
 
 void MountThreadObserver::WillProcessTask(
-    const base::PendingTask& pending_task) {}
+    const base::PendingTask& pending_task) {
+  // Task name will be equal to the task handler name
+  std::string task_name = pending_task.posted_from.function_name();
+
+  ReportAsyncDbusRequestInqueueTime(
+      task_name,
+      tracked_objects::TrackedTime::Now() - pending_task.time_posted);
+}
 
 void MountThreadObserver::DidProcessTask(
     const base::PendingTask& pending_task) {

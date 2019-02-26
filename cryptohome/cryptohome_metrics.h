@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/files/file.h>
+#include <base/profiler/tracked_time.h>
 
 #include "cryptohome/le_credential_manager.h"
 #include "cryptohome/migration_type.h"
@@ -331,6 +332,10 @@ void ReportDircryptoMigrationFailedNoSpaceXattrSizeInBytes(
 // Reports the total running time of a dbus request.
 void ReportAsyncDbusRequestTotalTime(std::string task_name,
                                      base::TimeDelta running_time);
+
+// Reports the total in-queue time of mount thread of a dbus request
+void ReportAsyncDbusRequestInqueueTime(std::string task_name,
+                                       tracked_objects::Duration running_time);
 
 // Reports the amount of total tasks waiting in the queue of mount thread.
 void ReportParallelTasks(int amount_of_task);
