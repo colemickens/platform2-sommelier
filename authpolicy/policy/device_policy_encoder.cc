@@ -227,6 +227,12 @@ void DevicePolicyEncoder::EncodeLoginPolicies(
         for (const std::string& value : values)
           list->add_login_screen_auto_select_certificate_rules(value);
       });
+
+  EncodeInteger(key::kDeviceRebootOnUserSignout, [policy](int value) {
+    policy->mutable_device_reboot_on_user_signout()->set_reboot_on_signout_mode(
+        static_cast<em::DeviceRebootOnUserSignoutProto_RebootOnSignoutMode>(
+            value));
+  });
 }
 
 void DevicePolicyEncoder::EncodeNetworkPolicies(
@@ -597,6 +603,11 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
   });
   EncodeString(key::kPluginVmLicenseKey, [policy](const std::string& value) {
     policy->mutable_plugin_vm_license_key()->set_plugin_vm_license_key(value);
+  });
+
+  EncodeBoolean(key::kDeviceWilcoDtcAllowed, [policy](bool value) {
+    policy->mutable_device_wilco_dtc_allowed()->set_device_wilco_dtc_allowed(
+        value);
   });
 }
 

@@ -131,6 +131,10 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
       ToVector(policy.device_login_screen_auto_select_certificate_for_urls()
                    .login_screen_auto_select_certificate_rules()));
 
+  EncodeInteger(&policy, key::kDeviceRebootOnUserSignout,
+                em::DeviceRebootOnUserSignoutProto_RebootOnSignoutMode_ALWAYS);
+  EXPECT_EQ(em::DeviceRebootOnUserSignoutProto_RebootOnSignoutMode_ALWAYS,
+            policy.device_reboot_on_user_signout().reboot_on_signout_mode());
   //
   // Network policies.
   //
@@ -392,6 +396,10 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EXPECT_EQ(kBool, policy.plugin_vm_allowed().plugin_vm_allowed());
   EncodeString(&policy, key::kPluginVmLicenseKey, kString);
   EXPECT_EQ(kString, policy.plugin_vm_license_key().plugin_vm_license_key());
+
+  EncodeBoolean(&policy, key::kDeviceWilcoDtcAllowed, kBool);
+  EXPECT_EQ(kBool,
+            policy.device_wilco_dtc_allowed().device_wilco_dtc_allowed());
 
   // The encoder of this policy converts ints to
   // DeviceUserPolicyLoopbackProcessingModeProto::Mode enums.
