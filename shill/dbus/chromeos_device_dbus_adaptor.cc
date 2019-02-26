@@ -96,8 +96,8 @@ void ChromeosDeviceDBusAdaptor::EmitStringsChanged(const string& name,
 void ChromeosDeviceDBusAdaptor::EmitKeyValueStoreChanged(
     const string& name, const KeyValueStore& value) {
   SLOG(this, 2) << __func__ << ": " << name;
-  brillo::VariantDictionary dict;
-  KeyValueStore::ConvertToVariantDictionary(value, &dict);
+  brillo::VariantDictionary dict =
+      KeyValueStore::ConvertToVariantDictionary(value);
   SendPropertyChangedSignal(name, brillo::Any(dict));
 }
 

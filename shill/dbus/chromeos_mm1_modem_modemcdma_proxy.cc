@@ -59,8 +59,8 @@ void ChromeosModemModemCdmaProxy::ActivateManual(
     const ResultCallback& callback,
     int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
-  brillo::VariantDictionary properties_dict;
-  KeyValueStore::ConvertToVariantDictionary(properties, &properties_dict);
+  brillo::VariantDictionary properties_dict =
+      KeyValueStore::ConvertToVariantDictionary(properties);
   proxy_->ActivateManualAsync(
       properties_dict,
       base::Bind(&ChromeosModemModemCdmaProxy::OnOperationSuccess,
@@ -82,8 +82,8 @@ void ChromeosModemModemCdmaProxy::ActivationStateChanged(
   if (activation_state_callback_.is_null()) {
     return;
   }
-  KeyValueStore status_store;
-  KeyValueStore::ConvertFromVariantDictionary(status_changes, &status_store);
+  KeyValueStore status_store =
+      KeyValueStore::ConvertFromVariantDictionary(status_changes);
   activation_state_callback_.Run(activation_state,
                                  activation_error,
                                  status_store);

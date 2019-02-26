@@ -77,8 +77,8 @@ void ChromeosModemModem3gppProxy::OnScanSuccess(
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   std::vector<KeyValueStore> result_stores;
   for (const auto& result : results) {
-    KeyValueStore result_store;
-    KeyValueStore::ConvertFromVariantDictionary(result, &result_store);
+    KeyValueStore result_store =
+        KeyValueStore::ConvertFromVariantDictionary(result);
     result_stores.push_back(result_store);
   }
   callback.Run(result_stores, Error());

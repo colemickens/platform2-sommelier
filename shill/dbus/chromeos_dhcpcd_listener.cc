@@ -154,9 +154,8 @@ void ChromeosDHCPCDListener::EventSignal(
     return;
   }
   config->InitProxy(sender);
-  KeyValueStore configuration_store;
-  KeyValueStore::ConvertFromVariantDictionary(configuration,
-                                              &configuration_store);
+  KeyValueStore configuration_store =
+      KeyValueStore::ConvertFromVariantDictionary(configuration);
   config->ProcessEventSignal(reason, configuration_store);
 }
 

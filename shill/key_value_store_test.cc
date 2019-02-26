@@ -693,8 +693,8 @@ TEST_F(KeyValueStoreTest, ConvertToVariantDictionary) {
   nested_store.SetInt(kNestedInt32Key, kNestedInt32Value);
   SetOneOfEachType(&store, nested_store);
 
-  brillo::VariantDictionary dict;
-  KeyValueStore::ConvertToVariantDictionary(store, &dict);
+  brillo::VariantDictionary dict =
+      KeyValueStore::ConvertToVariantDictionary(store);
   EXPECT_EQ(21, dict.size());
   EXPECT_EQ(kStringValue, dict[kStringKey].Get<string>());
   map<string, string> stringmap_value =
@@ -752,8 +752,8 @@ TEST_F(KeyValueStoreTest, ConvertFromVariantDictionary) {
   nested_dict[kNestedInt32Key] = brillo::Any(kNestedInt32Value);
   dict[kKeyValueStoreKey] = brillo::Any(nested_dict);
 
-  KeyValueStore store;
-  KeyValueStore::ConvertFromVariantDictionary(dict, &store);
+  KeyValueStore store =
+      KeyValueStore::ConvertFromVariantDictionary(dict);
   EXPECT_TRUE(store.ContainsString(kStringKey));
   EXPECT_EQ(kStringValue, store.GetString(kStringKey));
   EXPECT_TRUE(store.ContainsStringmap(kStringmapKey));
@@ -806,8 +806,8 @@ TEST_F(KeyValueStoreTest, ConvertPathsToRpcIdentifiers) {
   vector<dbus::ObjectPath> paths;
   paths.push_back(dbus::ObjectPath(kRpcIdentifier1));
   paths.push_back(dbus::ObjectPath(kRpcIdentifier2));
-  vector<string> actual_rpc_identifiers;
-  KeyValueStore::ConvertPathsToRpcIdentifiers(paths, &actual_rpc_identifiers);
+  vector<string> actual_rpc_identifiers =
+      KeyValueStore::ConvertPathsToRpcIdentifiers(paths);
   vector<string> expected_rpc_identifiers;
   expected_rpc_identifiers.push_back(kRpcIdentifier1);
   expected_rpc_identifiers.push_back(kRpcIdentifier2);

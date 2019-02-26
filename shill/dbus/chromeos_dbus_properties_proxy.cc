@@ -48,9 +48,8 @@ KeyValueStore ChromeosDBusPropertiesProxy::GetAll(
                << ": " << error->GetCode() << " " << error->GetMessage();
     return KeyValueStore();
   }
-  KeyValueStore properties_store;
-  KeyValueStore::ConvertFromVariantDictionary(properties_dict,
-                                              &properties_store);
+  KeyValueStore properties_store =
+      KeyValueStore::ConvertFromVariantDictionary(properties_dict);
   return properties_store;
 }
 
@@ -72,8 +71,8 @@ void ChromeosDBusPropertiesProxy::MmPropertiesChanged(
     const string& interface,
     const brillo::VariantDictionary& properties) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << "(" << interface << ")";
-  KeyValueStore properties_store;
-  KeyValueStore::ConvertFromVariantDictionary(properties, &properties_store);
+  KeyValueStore properties_store =
+      KeyValueStore::ConvertFromVariantDictionary(properties);
   mm_properties_changed_callback_.Run(interface, properties_store);
 }
 
@@ -82,9 +81,8 @@ void ChromeosDBusPropertiesProxy::PropertiesChanged(
     const brillo::VariantDictionary& changed_properties,
     const vector<string>& invalidated_properties) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << "(" << interface << ")";
-  KeyValueStore properties_store;
-  KeyValueStore::ConvertFromVariantDictionary(changed_properties,
-                                              &properties_store);
+  KeyValueStore properties_store =
+      KeyValueStore::ConvertFromVariantDictionary(changed_properties);
   properties_changed_callback_.Run(
       interface, properties_store, invalidated_properties);
 }

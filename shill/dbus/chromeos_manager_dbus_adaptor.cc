@@ -257,9 +257,9 @@ bool ChromeosManagerDBusAdaptor::GetService(
     dbus::ObjectPath* service_path) {
   SLOG(this, 2) << __func__;
   ServiceRefPtr service;
-  KeyValueStore args_store;
   Error e;
-  KeyValueStore::ConvertFromVariantDictionary(args, &args_store);
+  KeyValueStore args_store =
+      KeyValueStore::ConvertFromVariantDictionary(args);
   service = manager_->GetService(args_store, &e);
   if (e.ToChromeosError(error)) {
     return false;
@@ -274,8 +274,8 @@ bool ChromeosManagerDBusAdaptor::ConfigureService(
     dbus::ObjectPath* service_path) {
   SLOG(this, 2) << __func__;
   ServiceRefPtr service;
-  KeyValueStore args_store;
-  KeyValueStore::ConvertFromVariantDictionary(args, &args_store);
+  KeyValueStore args_store =
+      KeyValueStore::ConvertFromVariantDictionary(args);
   Error configure_error;
   service = manager_->ConfigureService(args_store, &configure_error);
   if (configure_error.ToChromeosError(error)) {
@@ -292,8 +292,8 @@ bool ChromeosManagerDBusAdaptor::ConfigureServiceForProfile(
     dbus::ObjectPath* service_path) {
   SLOG(this, 2) << __func__;
   ServiceRefPtr service;
-  KeyValueStore args_store;
-  KeyValueStore::ConvertFromVariantDictionary(args, &args_store);
+  KeyValueStore args_store =
+      KeyValueStore::ConvertFromVariantDictionary(args);
   Error configure_error;
   service = manager_->ConfigureServiceForProfile(
       profile_rpcid.value(), args_store, &configure_error);
@@ -310,8 +310,8 @@ bool ChromeosManagerDBusAdaptor::FindMatchingService(
     const brillo::VariantDictionary& args,
     dbus::ObjectPath* service_path) {  // NOLINT
   SLOG(this, 2) << __func__;
-  KeyValueStore args_store;
-  KeyValueStore::ConvertFromVariantDictionary(args, &args_store);
+  KeyValueStore args_store =
+      KeyValueStore::ConvertFromVariantDictionary(args);
 
   Error find_error;
   ServiceRefPtr service =

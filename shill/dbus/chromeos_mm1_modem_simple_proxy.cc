@@ -34,8 +34,8 @@ void ChromeosModemSimpleProxy::Connect(
     const RpcIdentifierCallback& callback,
     int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
-  brillo::VariantDictionary properties_dict;
-  KeyValueStore::ConvertToVariantDictionary(properties, &properties_dict);
+  brillo::VariantDictionary properties_dict =
+      KeyValueStore::ConvertToVariantDictionary(properties);
   proxy_->ConnectAsync(properties_dict,
                        base::Bind(&ChromeosModemSimpleProxy::OnConnectSuccess,
                                   weak_factory_.GetWeakPtr(),
@@ -108,8 +108,8 @@ void ChromeosModemSimpleProxy::OnGetStatusSuccess(
     const KeyValueStoreCallback& callback,
     const brillo::VariantDictionary& status) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
-  KeyValueStore status_store;
-  KeyValueStore::ConvertFromVariantDictionary(status, &status_store);
+  KeyValueStore status_store =
+      KeyValueStore::ConvertFromVariantDictionary(status);
   callback.Run(status_store, Error());
 }
 

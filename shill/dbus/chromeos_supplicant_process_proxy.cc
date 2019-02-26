@@ -109,8 +109,8 @@ bool ChromeosSupplicantProcessProxy::CreateInterface(
     LOG(ERROR) << "Supplicant process not present";
     return false;
   }
-  brillo::VariantDictionary dict;
-  KeyValueStore::ConvertToVariantDictionary(args, &dict);
+  brillo::VariantDictionary dict =
+      KeyValueStore::ConvertToVariantDictionary(args);
   dbus::ObjectPath path;
   brillo::ErrorPtr error;
   if (!supplicant_proxy_->CreateInterface(dict, &path, &error)) {

@@ -121,8 +121,8 @@ bool ChromeosServiceDBusAdaptor::SetProperty(
 bool ChromeosServiceDBusAdaptor::SetProperties(
     brillo::ErrorPtr* error, const brillo::VariantDictionary& args) {
   SLOG(this, 2) << __func__;
-  KeyValueStore args_store;
-  KeyValueStore::ConvertFromVariantDictionary(args, &args_store);
+  KeyValueStore args_store =
+      KeyValueStore::ConvertFromVariantDictionary(args);
   Error configure_error;
   service_->Configure(args_store, &configure_error);
   return !configure_error.ToChromeosError(error);

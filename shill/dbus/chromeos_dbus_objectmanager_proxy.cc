@@ -155,8 +155,8 @@ void ChromeosDBusObjectManagerProxy::ConvertDBusInterfaceProperties(
     const DBusInterfaceToProperties& dbus_interface_to_properties,
     InterfaceToProperties* interface_to_properties) {
   for (const auto& interface : dbus_interface_to_properties) {
-    KeyValueStore properties;
-    KeyValueStore::ConvertFromVariantDictionary(interface.second, &properties);
+    KeyValueStore properties =
+        KeyValueStore::ConvertFromVariantDictionary(interface.second);
     interface_to_properties->emplace(interface.first, properties);
   }
 }

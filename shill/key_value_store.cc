@@ -242,9 +242,8 @@ vector<string> KeyValueStore::GetRpcIdentifiers(const string& name) const {
   CHECK(it != properties_.end() &&
         it->second.IsTypeCompatible<vector<dbus::ObjectPath>>())
       << "for rpc identifier property " << name;
-  RpcIdentifiers ids;
-  KeyValueStore::ConvertPathsToRpcIdentifiers(
-      it->second.Get<vector<dbus::ObjectPath>>(), &ids);
+  RpcIdentifiers ids = KeyValueStore::ConvertPathsToRpcIdentifiers(
+      it->second.Get<vector<dbus::ObjectPath>>());
   return ids;
 }
 
@@ -447,45 +446,49 @@ string KeyValueStore::LookupString(const string& name,
 }
 
 // static.
-void KeyValueStore::ConvertToVariantDictionary(
-    const KeyValueStore& in_store, brillo::VariantDictionary* out_dict) {
+brillo::VariantDictionary KeyValueStore::ConvertToVariantDictionary(
+    const KeyValueStore& in_store) {
+  brillo::VariantDictionary out_dict;
   for (const auto& key_value_pair : in_store.properties_) {
     if (key_value_pair.second.IsTypeCompatible<KeyValueStore>()) {
       // Special handling for nested KeyValueStore (convert it to
       // nested brillo::VariantDictionary).
-      brillo::VariantDictionary dict;
-      ConvertToVariantDictionary(
-          key_value_pair.second.Get<KeyValueStore>(), &dict);
-      out_dict->emplace(key_value_pair.first, dict);
+      brillo::VariantDictionary dict = ConvertToVariantDictionary(
+          key_value_pair.second.Get<KeyValueStore>());
+      out_dict.emplace(key_value_pair.first, dict);
     } else {
-      out_dict->insert(key_value_pair);
+      out_dict.insert(key_value_pair);
     }
   }
+  return out_dict;
 }
 
 // static.
-void KeyValueStore::ConvertFromVariantDictionary(
-    const brillo::VariantDictionary& in_dict, KeyValueStore* out_store) {
+KeyValueStore KeyValueStore::ConvertFromVariantDictionary(
+    const brillo::VariantDictionary& in_dict) {
+  KeyValueStore out_store;
   for (const auto& key_value_pair : in_dict) {
     if (key_value_pair.second.IsTypeCompatible<brillo::VariantDictionary>()) {
       // Special handling for nested brillo::VariantDictionary (convert it to
       // nested KeyValueStore).
-      KeyValueStore store;
-      ConvertFromVariantDictionary(
-          key_value_pair.second.Get<brillo::VariantDictionary>(), &store);
-      out_store->properties_.emplace(key_value_pair.first, store);
+      KeyValueStore store = ConvertFromVariantDictionary(
+          key_value_pair.second.Get<brillo::VariantDictionary>());
+      out_store.properties_.emplace(key_value_pair.first, store);
     } else {
-      out_store->properties_.insert(key_value_pair);
+      out_store.properties_.insert(key_value_pair);
     }
   }
+  return out_store;
 }
 
 // static.
-void KeyValueStore::ConvertPathsToRpcIdentifiers(
-  const vector<dbus::ObjectPath>& paths, vector<string>* rpc_identifiers) {
+std::vector<string> KeyValueStore::ConvertPathsToRpcIdentifiers(
+  const vector<dbus::ObjectPath>& paths) {
+  std::vector<string> rpc_identifiers;
   for (const auto& path : paths) {
-    rpc_identifiers->push_back(path.value());
+    rpc_identifiers.push_back(path.value());
   }
+  return rpc_identifiers;
 }
 
 }  // namespace shill

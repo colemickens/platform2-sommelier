@@ -74,8 +74,8 @@ vector<string> ChromeosModemManagerProxy::EnumerateDevices() {
                << " " << error->GetMessage();
     return vector<string>();
   }
-  vector<string> device_rpcids;
-  KeyValueStore::ConvertPathsToRpcIdentifiers(device_paths, &device_rpcids);
+  vector<string> device_rpcids =
+      KeyValueStore::ConvertPathsToRpcIdentifiers(device_paths);
   return device_rpcids;
 }
 

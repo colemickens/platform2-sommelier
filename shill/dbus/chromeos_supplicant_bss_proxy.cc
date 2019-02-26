@@ -46,8 +46,8 @@ ChromeosSupplicantBSSProxy::~ChromeosSupplicantBSSProxy() {
 void ChromeosSupplicantBSSProxy::PropertiesChanged(
     const brillo::VariantDictionary& properties) {
   SLOG(&bss_proxy_->GetObjectPath(), 2) << __func__;
-  KeyValueStore store;
-  KeyValueStore::ConvertFromVariantDictionary(properties, &store);
+  KeyValueStore store =
+      KeyValueStore::ConvertFromVariantDictionary(properties);
   wifi_endpoint_->PropertiesChanged(store);
 }
 

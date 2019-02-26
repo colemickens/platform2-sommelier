@@ -98,9 +98,8 @@ RpcIdentifiers ChromeosWiMaxManagerProxy::Devices(Error* error) {
     LOG(ERROR) << "Failed to get Devices";
     return RpcIdentifiers();
   }
-  RpcIdentifiers rpc_devices;
-  KeyValueStore::ConvertPathsToRpcIdentifiers(properties_->devices.value(),
-                                              &rpc_devices);
+  RpcIdentifiers rpc_devices =
+      KeyValueStore::ConvertPathsToRpcIdentifiers(properties_->devices.value());
   return rpc_devices;
 }
 
@@ -150,8 +149,8 @@ void ChromeosWiMaxManagerProxy::DevicesChanged(
   if (devices_changed_callback_.is_null()) {
     return;
   }
-  RpcIdentifiers rpc_devices;
-  KeyValueStore::ConvertPathsToRpcIdentifiers(devices, &rpc_devices);
+  RpcIdentifiers rpc_devices =
+      KeyValueStore::ConvertPathsToRpcIdentifiers(devices);
   devices_changed_callback_.Run(rpc_devices);
 }
 

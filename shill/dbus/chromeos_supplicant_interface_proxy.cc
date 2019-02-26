@@ -131,8 +131,8 @@ ChromeosSupplicantInterfaceProxy::~ChromeosSupplicantInterfaceProxy() {
 bool ChromeosSupplicantInterfaceProxy::AddNetwork(const KeyValueStore& args,
                                                   string* network) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
-  brillo::VariantDictionary dict;
-  KeyValueStore::ConvertToVariantDictionary(args, &dict);
+  brillo::VariantDictionary dict =
+      KeyValueStore::ConvertToVariantDictionary(args);
   dbus::ObjectPath path;
   brillo::ErrorPtr error;
   if (!interface_proxy_->AddNetwork(dict, &path, &error)) {
@@ -286,8 +286,8 @@ bool ChromeosSupplicantInterfaceProxy::RemoveNetwork(const string& network) {
 
 bool ChromeosSupplicantInterfaceProxy::Scan(const KeyValueStore& args) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
-  brillo::VariantDictionary dict;
-  KeyValueStore::ConvertToVariantDictionary(args, &dict);
+  brillo::VariantDictionary dict =
+      KeyValueStore::ConvertToVariantDictionary(args);
   brillo::ErrorPtr error;
   if (!interface_proxy_->Scan(dict, &error)) {
     LOG(ERROR) << "Failed to scan: "
@@ -462,16 +462,16 @@ void ChromeosSupplicantInterfaceProxy::BSSAdded(
     const dbus::ObjectPath& BSS,
     const brillo::VariantDictionary& properties) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
-  KeyValueStore store;
-  KeyValueStore::ConvertFromVariantDictionary(properties, &store);
+  KeyValueStore store =
+      KeyValueStore::ConvertFromVariantDictionary(properties);
   delegate_->BSSAdded(BSS.value(), store);
 }
 
 void ChromeosSupplicantInterfaceProxy::Certification(
     const brillo::VariantDictionary& properties) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
-  KeyValueStore store;
-  KeyValueStore::ConvertFromVariantDictionary(properties, &store);
+  KeyValueStore store =
+      KeyValueStore::ConvertFromVariantDictionary(properties);
   delegate_->Certification(store);
 }
 
@@ -510,8 +510,8 @@ void ChromeosSupplicantInterfaceProxy::NetworkSelected(
 void ChromeosSupplicantInterfaceProxy::PropertiesChanged(
     const brillo::VariantDictionary& properties) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
-  KeyValueStore store;
-  KeyValueStore::ConvertFromVariantDictionary(properties, &store);
+  KeyValueStore store =
+      KeyValueStore::ConvertFromVariantDictionary(properties);
   delegate_->PropertiesChanged(store);
 }
 

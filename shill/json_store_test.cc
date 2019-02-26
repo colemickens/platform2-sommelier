@@ -455,9 +455,8 @@ TEST_F(JsonStoreTest, GetGroupsWithPropertiesChecksValuesForBoolIntAndString) {
   store_->SetInt("group_a", "knob_3", 1);
 
   {
-    KeyValueStore correct_properties;
-    KeyValueStore::ConvertFromVariantDictionary(
-        exact_matcher, &correct_properties);
+    KeyValueStore correct_properties =
+        KeyValueStore::ConvertFromVariantDictionary(exact_matcher);
     EXPECT_EQ(set<string>({"group_a"}),
               store_->GetGroupsWithProperties(correct_properties));
   }
@@ -471,10 +470,9 @@ TEST_F(JsonStoreTest, GetGroupsWithPropertiesChecksValuesForBoolIntAndString) {
     const auto& match_key = match_key_and_value.first;
     const auto& match_value = match_key_and_value.second;
     brillo::VariantDictionary bad_matcher_dict(exact_matcher);
-    KeyValueStore bad_properties;
     bad_matcher_dict[match_key] = match_value;
-    KeyValueStore::ConvertFromVariantDictionary(
-        bad_matcher_dict, &bad_properties);
+    KeyValueStore bad_properties =
+        KeyValueStore::ConvertFromVariantDictionary(bad_matcher_dict);
     EXPECT_EQ(set<string>(), store_->GetGroupsWithProperties(bad_properties))
         << "Failing match key: " << match_key;
   }

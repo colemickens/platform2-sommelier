@@ -131,9 +131,8 @@ void ChromeosModemCdmaProxy::ActivationStateChanged(
   if (activation_state_callback_.is_null()) {
     return;
   }
-  KeyValueStore status_changes_store;
-  KeyValueStore::ConvertFromVariantDictionary(status_changes,
-                                              &status_changes_store);
+  KeyValueStore status_changes_store =
+      KeyValueStore::ConvertFromVariantDictionary(status_changes);
   activation_state_callback_.Run(activation_state,
                                  activation_error,
                                  status_changes_store);

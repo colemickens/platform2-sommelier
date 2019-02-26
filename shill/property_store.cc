@@ -88,9 +88,8 @@ bool PropertyStore::SetAnyProperty(const string& name,
   } else if (value.IsTypeCompatible<uint64_t>()) {
     ret = SetUint64Property(name, value.Get<uint64_t>(), error);
   } else if (value.IsTypeCompatible<brillo::VariantDictionary>()) {
-    KeyValueStore store;
-    KeyValueStore::ConvertFromVariantDictionary(
-        value.Get<brillo::VariantDictionary>(), &store);
+    KeyValueStore store = KeyValueStore::ConvertFromVariantDictionary(
+        value.Get<brillo::VariantDictionary>());
     ret = SetKeyValueStoreProperty(name, store, error);
   } else {
     NOTREACHED() << " unknown type: " << value.GetUndecoratedTypeName();
@@ -215,8 +214,8 @@ bool PropertyStore::GetProperties(brillo::VariantDictionary* out,
     ReadablePropertyConstIterator<KeyValueStore> it =
         GetKeyValueStorePropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      brillo::VariantDictionary dict;
-      KeyValueStore::ConvertToVariantDictionary(it.value(), &dict);
+      brillo::VariantDictionary dict =
+          KeyValueStore::ConvertToVariantDictionary(it.value());
       out->insert(std::make_pair(it.Key(), dict));
     }
   }

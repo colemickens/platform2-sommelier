@@ -183,9 +183,8 @@ string ChromeosWiMaxDeviceProxy::Name(Error* /*error*/) {
 
 RpcIdentifiers ChromeosWiMaxDeviceProxy::Networks(Error* /*error*/) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
-  RpcIdentifiers rpc_networks;
-  KeyValueStore::ConvertPathsToRpcIdentifiers(properties_->networks.value(),
-                                              &rpc_networks);
+  RpcIdentifiers rpc_networks = KeyValueStore::ConvertPathsToRpcIdentifiers(
+      properties_->networks.value());
   return rpc_networks;
 }
 
@@ -212,8 +211,8 @@ void ChromeosWiMaxDeviceProxy::NetworksChanged(
   if (networks_changed_callback_.is_null()) {
     return;
   }
-  RpcIdentifiers rpc_networks;
-  KeyValueStore::ConvertPathsToRpcIdentifiers(networks, &rpc_networks);
+  RpcIdentifiers rpc_networks =
+      KeyValueStore::ConvertPathsToRpcIdentifiers(networks);
   networks_changed_callback_.Run(rpc_networks);
 }
 

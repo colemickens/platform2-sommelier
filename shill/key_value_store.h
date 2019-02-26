@@ -134,14 +134,13 @@ class KeyValueStore {
   // Since we already use brillo::VariantDictionary for storing key value
   // pairs, all conversions will be trivial except nested KeyValueStore and
   // nested brillo::VariantDictionary.
-  static void ConvertToVariantDictionary(const KeyValueStore& in_store,
-                                         brillo::VariantDictionary* out_dict);
-  static void ConvertFromVariantDictionary(
-      const brillo::VariantDictionary& in_dict, KeyValueStore* out_store);
+  static brillo::VariantDictionary ConvertToVariantDictionary(
+      const KeyValueStore& in_store);
+  static KeyValueStore ConvertFromVariantDictionary(
+      const brillo::VariantDictionary& in_dict);
 
-  static void ConvertPathsToRpcIdentifiers(
-      const std::vector<dbus::ObjectPath>& paths,
-      std::vector<std::string>* rpc_identifiers);
+  static std::vector<std::string> ConvertPathsToRpcIdentifiers(
+      const std::vector<dbus::ObjectPath>& paths);
 
  private:
   brillo::VariantDictionary properties_;

@@ -59,8 +59,8 @@ void ChromeosModemProxy::CreateBearer(
     const RpcIdentifierCallback& callback,
     int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
-  brillo::VariantDictionary properties_dict;
-  KeyValueStore::ConvertToVariantDictionary(properties, &properties_dict);
+  brillo::VariantDictionary properties_dict =
+      KeyValueStore::ConvertToVariantDictionary(properties);
   proxy_->CreateBearerAsync(
       properties_dict,
       base::Bind(&ChromeosModemProxy::OnCreateBearerSuccess,
