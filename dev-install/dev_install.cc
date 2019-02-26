@@ -139,6 +139,61 @@ bool DevInstall::ClearStateDir(const base::FilePath& dir) {
   return success;
 }
 
+bool DevInstall::InitializeStateDir(const base::FilePath& dir) {
+  // Create this loop so uncompressed files in /usr/local/usr/ will be reachable
+  // through /usr/local/.
+  // Note: /usr/local is mount-binded onto the /mnt/stateful_partition/dev_mode
+  // during chromeos_startup during boot for machines in dev_mode.
+  const base::FilePath usr = dir.Append("usr");
+  if (!base::PathExists(usr)) {
+    // Create /usr/local/usr -> . symlink.
+    if (!base::CreateSymbolicLink(base::FilePath("."), usr)) {
+      PLOG(ERROR) << "Creating " << usr.value() << " failed";
+      return false;
+    }
+  }
+
+  const base::FilePath local = usr.Append("local");
+  if (!base::PathExists(local)) {
+    // Create /usr/local/usr/local -> . symlink.
+    if (!base::CreateSymbolicLink(base::FilePath("."), local)) {
+      PLOG(ERROR) << "Creating " << local.value() << " failed";
+      return false;
+    }
+  }
+
+  // Set up symlinks for etc/{group,passwd}, so that packages can look up users
+  // and groups correctly.
+  const base::FilePath etc = usr.Append("etc");
+  if (!base::PathExists(etc)) {
+    if (!base::CreateDirectory(etc) ||
+        !base::SetPosixFilePermissions(etc, 0755)) {
+      PLOG(ERROR) << "Creating " << etc.value() << " failed";
+      return false;
+    }
+  }
+
+  // Create /usr/local/etc/group -> /etc/group symlink.
+  const base::FilePath group = etc.Append("group");
+  if (!base::PathExists(group)) {
+    if (!base::CreateSymbolicLink(base::FilePath("/etc/group"), group)) {
+      PLOG(ERROR) << "Creating " << group.value() << " failed";
+      return false;
+    }
+  }
+
+  // Create /usr/local/etc/passwd -> /etc/passwd symlink.
+  const base::FilePath passwd = etc.Append("passwd");
+  if (!base::PathExists(passwd)) {
+    if (!base::CreateSymbolicLink(base::FilePath("/etc/passwd"), passwd)) {
+      PLOG(ERROR) << "Creating " << passwd.value() << " failed";
+      return false;
+    }
+  }
+
+  return true;
+}
+
 int DevInstall::Exec(const std::vector<const char*>& argv) {
   execv(kDevInstallScript, const_cast<char* const*>(argv.data()));
   PLOG(ERROR) << kDevInstallScript << " failed";
@@ -170,6 +225,10 @@ int DevInstall::Run() {
     LOG(ERROR) << "Did you mean dev_install --reinstall?";
     return 4;
   }
+
+  // Initialize the base set of paths before we install any packages.
+  if (!InitializeStateDir(state_dir_))
+    return 5;
 
   std::vector<const char*> argv{kDevInstallScript};
 

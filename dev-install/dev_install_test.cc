@@ -32,6 +32,10 @@ class DevInstallMock : public DevInstall {
               (std::istream&, const std::string&),
               (override));
   MOCK_METHOD(bool, ClearStateDir, (const base::FilePath&), (override));
+  MOCK_METHOD(bool,
+              InitializeStateDir,
+              (const base::FilePath& dir),
+              (override));
 };
 
 class DevInstallTest : public ::testing::Test {
@@ -39,6 +43,9 @@ class DevInstallTest : public ::testing::Test {
   void SetUp() override {
     // Set the default to dev mode enabled.  Most tests want that.
     ON_CALL(dev_install_, IsDevMode()).WillByDefault(Return(true));
+
+    // Ignore stateful setup for most tests.
+    ON_CALL(dev_install_, InitializeStateDir(_)).WillByDefault(Return(true));
 
     // Most tests should run with a path that doesn't exist.
     dev_install_.SetStateDirForTest(base::FilePath("/.path-does-not-exist"));
@@ -93,6 +100,13 @@ TEST_F(DevInstallTest, RunUninstall) {
   EXPECT_CALL(dev_install_, ClearStateDir(_)).WillOnce(Return(true));
   EXPECT_CALL(dev_install_, Exec(_)).Times(0);
   ASSERT_EQ(0, dev_install_.Run());
+}
+
+// Stateful setup failures.
+TEST_F(DevInstallTest, StatefulSetupFailure) {
+  EXPECT_CALL(dev_install_, InitializeStateDir(_)).WillOnce(Return(false));
+  EXPECT_CALL(dev_install_, Exec(_)).Times(0);
+  ASSERT_EQ(5, dev_install_.Run());
 }
 
 namespace {
@@ -253,6 +267,47 @@ TEST_F(ClearStateDirTest, Works) {
   ASSERT_TRUE(base::CreateDirectory(subdir));
   ASSERT_TRUE(dev_install_.ClearStateDir(test_dir_));
   ASSERT_FALSE(base::PathExists(subdir));
+}
+
+namespace {
+
+class InitializeStateDirTest : public ::testing::Test {
+ public:
+  void SetUp() {
+    ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
+    test_dir_ = scoped_temp_dir_.GetPath();
+  }
+
+ protected:
+  DevInstall dev_install_;
+  base::FilePath test_dir_;
+  base::ScopedTempDir scoped_temp_dir_;
+};
+
+}  // namespace
+
+// Check stateful is set up correctly.
+TEST_F(InitializeStateDirTest, Works) {
+  // Make sure we fully set things up.
+  ASSERT_TRUE(dev_install_.InitializeStateDir(test_dir_));
+  ASSERT_TRUE(base::IsLink(test_dir_.Append("usr")));
+  ASSERT_TRUE(base::IsLink(test_dir_.Append("local")));
+  ASSERT_TRUE(base::IsLink(test_dir_.Append("local")));
+  const base::FilePath etc = test_dir_.Append("etc");
+  ASSERT_TRUE(base::PathExists(etc));
+  ASSERT_TRUE(base::IsLink(etc.Append("passwd")));
+  ASSERT_TRUE(base::IsLink(etc.Append("group")));
+
+  // Calling a second time should be fine.
+  ASSERT_TRUE(dev_install_.InitializeStateDir(test_dir_));
+}
+
+// Check we handle errors gracefully.
+TEST_F(InitializeStateDirTest, Fails) {
+  // Create a broken /etc symlink.
+  ASSERT_TRUE(
+      base::CreateSymbolicLink(base::FilePath("foo"), test_dir_.Append("etc")));
+  ASSERT_FALSE(dev_install_.InitializeStateDir(test_dir_));
 }
 
 }  // namespace dev_install
