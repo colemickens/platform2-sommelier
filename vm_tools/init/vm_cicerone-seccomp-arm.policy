@@ -55,7 +55,7 @@ setpriority: 1
 ugetrlimit: 1
 signalfd4: 1
 listen: 1
-ioctl: arg1 == TCGETS || arg1 == TCSETSF
+ioctl: arg1 == TCGETS || arg1 == TCSETSF || arg1 == FIONREAD
 madvise: 1
 shutdown: 1
 gettimeofday: 1
@@ -91,3 +91,6 @@ readlink: 1
 readlinkat: 1
 lstat64: 1
 getcpu: 1
+inotify_init: 1
+inotify_add_watch: 1
+inotify_rm_watch: 1

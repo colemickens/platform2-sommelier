@@ -12,6 +12,7 @@
 
 #include <base/callback.h>
 #include <base/files/file_path.h>
+#include <base/files/file_path_watcher.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
@@ -400,6 +401,10 @@ class Service final : public base::MessageLoopForIO::Watcher {
   void OnCrosDnsNameOwnerChanged(const std::string& old_owner,
                                  const std::string& new_owner);
 
+  // Callback for when the localtime file is changed so that we can update
+  // the timezone for containers.
+  void OnLocaltimeFileChanged(const base::FilePath& path, bool error);
+
   // Gets a VirtualMachine pointer to the registered VM with corresponding
   // |owner_id| and |vm_name|. Returns a nullptr if not found.
   VirtualMachine* FindVm(const std::string& owner_id,
@@ -460,6 +465,9 @@ class Service final : public base::MessageLoopForIO::Watcher {
 
   // Handle to the SSH port forwarding process.
   brillo::ProcessImpl ssh_process_;
+
+  // Watcher to monitor changes to the system timezone file.
+  base::FilePathWatcher localtime_watcher_;
 
   // Should Service start GRPC servers for ContainerListener and
   // TremplinListener Used for testing

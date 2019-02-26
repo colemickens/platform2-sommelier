@@ -20,6 +20,7 @@
 #include <base/bind_helpers.h>
 #include <base/callback.h>
 #include <base/files/file_path.h>
+#include <base/files/file_path_watcher.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
@@ -74,6 +75,9 @@ constexpr char kSshIdentityFilename[] = "private_key";
 
 // SSH known_hosts file name.
 constexpr char kSshKnownHostsFilename[] = "known_hosts";
+
+// Path of system timezone file.
+constexpr char kLocaltimePath[] = "/etc/localtime";
 
 // TCP ports to statically forward to the container over SSH.
 const uint16_t kStaticForwardPorts[] = {
@@ -278,10 +282,12 @@ std::string TranslateUrlForHost(const std::string& url,
 
 void SetTimezoneForContainer(VirtualMachine* vm,
                              const std::string& container_name) {
-  base::FilePath localtime("/etc/localtime");
   base::FilePath system_timezone;
-  if (!base::NormalizeFilePath(localtime, &system_timezone))
+  if (!base::NormalizeFilePath(base::FilePath(kLocaltimePath),
+                               &system_timezone)) {
     LOG(ERROR) << "Getting system timezone failed";
+    return;
+  }
 
   std::string posix_tz_string;
   if (!TzifParser::GetPosixTimezone(system_timezone, &posix_tz_string)) {
@@ -1203,6 +1209,13 @@ bool Service::Init(
     PLOG(ERROR) << "Failed to block signals via sigprocmask";
     return false;
   }
+
+  // Setup file path watcher to monitor for changes to kLocaltimePath. If the
+  // file at kLocaltimePath is a symlink, the callback will be called when the
+  // target of that symlink changes.
+  localtime_watcher_.Watch(base::FilePath(kLocaltimePath), false,
+                           base::BindRepeating(&Service::OnLocaltimeFileChanged,
+                                               weak_ptr_factory_.GetWeakPtr()));
 
   return true;
 }
@@ -2616,6 +2629,49 @@ void Service::OnCrosDnsNameOwnerChanged(const std::string& old_owner,
     // Re-register everything in our map.
     for (auto& pair : hostname_mappings_) {
       RegisterHostname(pair.first, pair.second);
+    }
+  }
+}
+
+void Service::OnLocaltimeFileChanged(const base::FilePath& path, bool error) {
+  LOG(INFO) << "System timezone changed, updating container timezones";
+
+  base::FilePath system_timezone;
+  if (!base::NormalizeFilePath(base::FilePath(kLocaltimePath),
+                               &system_timezone)) {
+    LOG(ERROR) << "Getting system timezone failed";
+    return;
+  }
+
+  std::string posix_tz_string;
+  if (!TzifParser::GetPosixTimezone(system_timezone, &posix_tz_string)) {
+    LOG(WARNING) << "Reading POSIX TZ string failed for timezone file "
+                 << system_timezone.value();
+    posix_tz_string = "";
+  }
+
+  base::FilePath zoneinfo("/usr/share/zoneinfo");
+  base::FilePath system_timezone_name;
+  if (!zoneinfo.AppendRelativePath(system_timezone, &system_timezone_name)) {
+    LOG(ERROR) << "Could not get name of timezone " << system_timezone.value();
+    return;
+  }
+
+  for (const auto& vm : vms_) {
+    const std::string& vm_name = vm.first.second;
+    std::vector<std::string> container_names = vm.second->GetContainerNames();
+    VirtualMachine::SetTimezoneResults results;
+    std::string error_msg;
+    bool success =
+        vm.second->SetTimezone(system_timezone_name.value(), posix_tz_string,
+                               container_names, &results, &error_msg);
+    if (success) {
+      for (int i = 0; i < results.failure_reasons.size(); i++) {
+        LOG(ERROR) << "VM " << vm_name << ": " << results.failure_reasons[i];
+      }
+    } else {
+      LOG(ERROR) << "Setting timezone failed entirely for VM " << vm_name
+                 << ": " << error_msg;
     }
   }
 }
