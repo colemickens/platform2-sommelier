@@ -88,30 +88,25 @@ class ChallengeCredentialsHelper final {
   // challenge request(s) against the specified key.
   //
   // |public_key_info| describes the cryptographic key.
-  // |salt| is the vault keyset's randomly generated salt.
   // The result is reported via |callback|.
   void GenerateNew(const std::string& account_id,
                    const ChallengePublicKeyInfo& public_key_info,
-                   const brillo::Blob& salt,
                    std::unique_ptr<KeyChallengeService> key_challenge_service,
                    const GenerateNewCallback& callback);
 
   // Builds credentials for the given user, based on the encrypted
-  // (challenge-protected) representation of the previously created secrets
-  // and the user's salt. The referred cryptographic key should be the same as
-  // the one used for the secrets generation via GenerateNew(); although a
-  // difference in the key's supported algorithms may be tolerated in some
-  // cases. This operation involves making challenge request(s) against the
-  // key.
+  // (challenge-protected) representation of the previously created secrets. The
+  // referred cryptographic key should be the same as the one used for the
+  // secrets generation via GenerateNew(); although a difference in the key's
+  // supported algorithms may be tolerated in some cases. This operation
+  // involves making challenge request(s) against the key.
   //
   // |public_key_info| describes the cryptographic key.
-  // |salt| is the vault keyset's salt.
   // |keyset_challenge_info| is the encrypted representation of secrets as
   // created via GenerateNew().
   // The result is reported via |callback|.
   void Decrypt(const std::string& account_id,
                const ChallengePublicKeyInfo& public_key_info,
-               const brillo::Blob& salt,
                const KeysetSignatureChallengeInfo& keyset_challenge_info,
                std::unique_ptr<KeyChallengeService> key_challenge_service,
                const DecryptCallback& callback);

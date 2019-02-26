@@ -46,10 +46,9 @@ class ChallengeCredentialsDecryptOperation
   // |key_challenge_service| is a non-owned pointer which must outlive the
   // created instance.
   // |public_key_info| describes the cryptographic key.
-  // |salt| is the vault keyset's salt.
   // |keyset_challenge_info| contains the encrypted representation of secrets.
   // |salt_signature| is an optional parameter which, when set, should contain a
-  // signature of |salt|.
+  // signature of the salt.
   // The result is reported via |completion_callback|.
   ChallengeCredentialsDecryptOperation(
       KeyChallengeService* key_challenge_service,
@@ -58,7 +57,6 @@ class ChallengeCredentialsDecryptOperation
       const brillo::Blob& delegate_secret,
       const std::string& account_id,
       const ChallengePublicKeyInfo& public_key_info,
-      const brillo::Blob& salt,
       const KeysetSignatureChallengeInfo& keyset_challenge_info,
       std::unique_ptr<brillo::Blob> salt_signature,
       const CompletionCallback& completion_callback);
@@ -98,7 +96,6 @@ class ChallengeCredentialsDecryptOperation
   const brillo::Blob delegate_secret_;
   const std::string account_id_;
   const ChallengePublicKeyInfo public_key_info_;
-  const brillo::Blob salt_;
   const KeysetSignatureChallengeInfo keyset_challenge_info_;
   std::unique_ptr<brillo::Blob> salt_signature_;
   CompletionCallback completion_callback_;

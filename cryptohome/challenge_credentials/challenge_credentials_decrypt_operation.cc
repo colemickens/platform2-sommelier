@@ -44,7 +44,6 @@ ChallengeCredentialsDecryptOperation::ChallengeCredentialsDecryptOperation(
     const Blob& delegate_secret,
     const std::string& account_id,
     const ChallengePublicKeyInfo& public_key_info,
-    const Blob& salt,
     const KeysetSignatureChallengeInfo& keyset_challenge_info,
     std::unique_ptr<brillo::Blob> salt_signature,
     const CompletionCallback& completion_callback)
@@ -54,7 +53,6 @@ ChallengeCredentialsDecryptOperation::ChallengeCredentialsDecryptOperation(
       delegate_secret_(delegate_secret),
       account_id_(account_id),
       public_key_info_(public_key_info),
-      salt_(salt),
       keyset_challenge_info_(keyset_challenge_info),
       salt_signature_(std::move(salt_signature)),
       completion_callback_(completion_callback),
@@ -107,13 +105,18 @@ bool ChallengeCredentialsDecryptOperation::StartProcessing() {
 }
 
 bool ChallengeCredentialsDecryptOperation::StartProcessingSalt() {
+  if (!keyset_challenge_info_.has_salt()) {
+    LOG(ERROR) << "Missing salt";
+    return false;
+  }
   if (!keyset_challenge_info_.has_salt_signature_algorithm()) {
     LOG(ERROR) << "Missing signature algorithm for salt";
     return false;
   }
   MakeKeySignatureChallenge(
       account_id_, BlobFromString(public_key_info_.public_key_spki_der()),
-      salt_, keyset_challenge_info_.salt_signature_algorithm(),
+      BlobFromString(keyset_challenge_info_.salt()),
+      keyset_challenge_info_.salt_signature_algorithm(),
       base::Bind(&ChallengeCredentialsDecryptOperation::OnSaltChallengeResponse,
                  weak_ptr_factory_.GetWeakPtr()));
   return true;

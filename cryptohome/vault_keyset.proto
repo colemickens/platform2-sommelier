@@ -115,11 +115,12 @@ message SerializedVaultKeyset {
     // the specified key. This secret data is one of the sources for building
     // the KDF passphrase.
     optional SignatureSealedData sealed_secret = 2;
-    // Signature algorithm to be used for signing the salt; the resulting
-    // signature is another source for building the KDF passphrase.
+    // Salt whose signature is another source for building the KDF passphrase.
+    optional bytes salt = 3;
+    // Signature algorithm to be used for signing |salt|.
     // NOTE: the signature algorithm has to be deterministic (that is, always
     // produce the same output for the same input).
-    optional ChallengeSignatureAlgorithm salt_signature_algorithm = 3;
+    optional ChallengeSignatureAlgorithm salt_signature_algorithm = 4;
   }
 
   // Set only when the |SIGNATURE_CHALLENGE_PROTECTED| flag is present.

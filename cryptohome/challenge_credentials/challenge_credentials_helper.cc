@@ -35,24 +35,22 @@ ChallengeCredentialsHelper::~ChallengeCredentialsHelper() {
 void ChallengeCredentialsHelper::GenerateNew(
     const std::string& account_id,
     const ChallengePublicKeyInfo& public_key_info,
-    const Blob& salt,
     std::unique_ptr<KeyChallengeService> key_challenge_service,
     const GenerateNewCallback& callback) {
   DCHECK(thread_checker_.CalledOnValidThread());
   DCHECK(!callback.is_null());
   CancelRunningOperation();
   DCHECK(!key_challenge_service_);
-  // TODO(emaxx, https://crbug.com/842791): This should request signature of
-  // |salt|, create a sealed secret, start unsealing session for unsealing it,
-  // request signature of its challenge, complete unsealing, generate
-  // credentials from the salt signature and the unsealed secret.
+  // TODO(emaxx, https://crbug.com/842791): This should generate a salt, request
+  // its signature, create a sealed secret, start unsealing session for
+  // unsealing it, request signature of its challenge, complete unsealing,
+  // generate credentials from the salt signature and the unsealed secret.
   NOTIMPLEMENTED() << "ChallengeCredentialsHelper::GenerateNew";
 }
 
 void ChallengeCredentialsHelper::Decrypt(
     const std::string& account_id,
     const ChallengePublicKeyInfo& public_key_info,
-    const Blob& salt,
     const KeysetSignatureChallengeInfo& keyset_challenge_info,
     std::unique_ptr<KeyChallengeService> key_challenge_service,
     const DecryptCallback& callback) {
@@ -63,7 +61,7 @@ void ChallengeCredentialsHelper::Decrypt(
   key_challenge_service_ = std::move(key_challenge_service);
   operation_ = std::make_unique<ChallengeCredentialsDecryptOperation>(
       key_challenge_service_.get(), tpm_, delegate_blob_, delegate_secret_,
-      account_id, public_key_info, salt, keyset_challenge_info,
+      account_id, public_key_info, keyset_challenge_info,
       nullptr /* salt_signature */,
       base::Bind(&ChallengeCredentialsHelper::OnDecryptCompleted,
                  base::Unretained(this), callback));

@@ -54,12 +54,14 @@ ChallengePublicKeyInfo MakePublicKeyInfo(
 
 KeysetSignatureChallengeInfo MakeFakeKeysetChallengeInfo(
     const Blob& public_key_spki_der,
+    const Blob& salt,
     ChallengeSignatureAlgorithm salt_challenge_algorithm) {
   KeysetSignatureChallengeInfo keyset_challenge_info;
   keyset_challenge_info.set_public_key_spki_der(
       BlobToString(public_key_spki_der));
   *keyset_challenge_info.mutable_sealed_secret() =
       MakeFakeSignatureSealedData(public_key_spki_der);
+  keyset_challenge_info.set_salt(BlobToString(salt));
   keyset_challenge_info.set_salt_signature_algorithm(salt_challenge_algorithm);
   return keyset_challenge_info;
 }
@@ -89,12 +91,11 @@ class ChallengeCredentialsDecryptOperationTestBase : public testing::Test {
     const ChallengePublicKeyInfo public_key_info =
         MakePublicKeyInfo(kPublicKeySpkiDer, key_algorithms);
     const KeysetSignatureChallengeInfo keyset_challenge_info =
-        MakeFakeKeysetChallengeInfo(kPublicKeySpkiDer,
+        MakeFakeKeysetChallengeInfo(kPublicKeySpkiDer, kSalt,
                                     salt_challenge_algorithm);
     operation_ = std::make_unique<ChallengeCredentialsDecryptOperation>(
         &challenge_service_, &tpm_, kDelegateBlob, kDelegateSecret, kUserEmail,
-        public_key_info, kSalt, keyset_challenge_info,
-        std::move(salt_signature),
+        public_key_info, keyset_challenge_info, std::move(salt_signature),
         MakeChallengeCredentialsDecryptResultWriter(&operation_result_));
   }
 
@@ -209,9 +210,9 @@ class ChallengeCredentialsDecryptOperationTestBase : public testing::Test {
   // SignatureSealingBackend methods and to be used for challenge requests made
   // via KeyChallengeService.
   const Blob kPublicKeySpkiDer{{3, 3, 3}};
-  // Fake salt value. It's supplied to the operation constructor. Then it's
-  // verified to be used as the challenge value for one of requests made via
-  // KeyChallengeService.
+  // Fake salt value. It's supplied to the operation as a field of the
+  // |keyset_challenge_info| parameter. Then it's verified to be used as the
+  // challenge value for one of requests made via KeyChallengeService.
   const Blob kSalt{{4, 4, 4}};
 
   // Constants which are injected as fake data into intermediate steps of the
