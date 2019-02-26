@@ -114,7 +114,7 @@ This reads the set of packages defined by the dev-install package
 all of them to the `gs://chromeos-dev-installer` bucket.
 
 That bucket uses the layout
-`gs://chromeos-dev-installer/board/${BOARD}/canary-${MILESTONE}-${OS_VERSION}/`.
+`gs://chromeos-dev-installer/board/${BOARD}/${OS_VERSION}/`.
 
 For local developer builds, the full URI is written to `CHROMEOS_DEVSERVER` in
 the [lsb-release] file and used by the `dev-install` command at runtime.

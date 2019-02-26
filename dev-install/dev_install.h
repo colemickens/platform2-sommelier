@@ -48,11 +48,17 @@ class DevInstall {
   // Initialize the /usr/local state.
   virtual bool InitializeStateDir(const base::FilePath& dir);
 
+  // Load any runtime state we'll use later on.
+  bool LoadRuntimeSettings(const base::FilePath& lsb_release);
+
   // Unittest helpers.
   void SetReinstallForTest(bool reinstall) { reinstall_ = reinstall; }
   void SetUninstallForTest(bool uninstall) { uninstall_ = uninstall; }
   void SetYesForTest(bool yes) { yes_ = yes; }
   void SetStateDirForTest(const base::FilePath& dir) { state_dir_ = dir; }
+  std::string GetDevserverUrlForTest() { return devserver_url_; }
+  std::string GetBoardForTest() { return board_; }
+  std::string GetBinhostVersionForTest() { return binhost_version_; }
 
  private:
   bool reinstall_;
@@ -62,6 +68,10 @@ class DevInstall {
   base::FilePath state_dir_;
   std::string binhost_;
   std::string binhost_version_;
+  // The URL to the devserver for local developer builds.
+  std::string devserver_url_;
+  // The active board for calculating default binhost.
+  std::string board_;
 
   DISALLOW_COPY_AND_ASSIGN(DevInstall);
 };

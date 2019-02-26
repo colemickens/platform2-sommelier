@@ -17,6 +17,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <brillo/key_value_store.h>
 #include <vboot/crossystem.h>
 
 namespace dev_install {
@@ -31,6 +32,18 @@ constexpr char kUsrLocal[] = "/usr/local";
 
 // The Portage profile path as a subdir under the various roots.
 constexpr char kPortageProfileSubdir[] = "etc/portage";
+
+// Path to lsb-release file.
+constexpr char kLsbReleasePath[] = "/etc/lsb-release";
+
+// The devserer URL for this developer build.
+constexpr char kLsbChromeosDevserver[] = "CHROMEOS_DEVSERVER";
+
+// The current OS version.
+constexpr char kLsbChromeosReleaseVersion[] = "CHROMEOS_RELEASE_VERSION";
+
+// Setting for the board name.
+constexpr char kLsbChromeosReleaseBoard[] = "CHROMEOS_RELEASE_BOARD";
 
 }  // namespace
 
@@ -194,6 +207,32 @@ bool DevInstall::InitializeStateDir(const base::FilePath& dir) {
   return true;
 }
 
+bool DevInstall::LoadRuntimeSettings(const base::FilePath& lsb_release) {
+  brillo::KeyValueStore store;
+  if (!store.Load(lsb_release)) {
+    PLOG(WARNING) << "Could not read " << kLsbReleasePath;
+    return true;
+  }
+
+  if (!store.GetString(kLsbChromeosDevserver, &devserver_url_))
+    devserver_url_.clear();
+
+  if (store.GetString(kLsbChromeosReleaseBoard, &board_)) {
+    size_t pos = board_.find("-signed-");
+    if (pos != std::string::npos)
+      board_.erase(pos);
+  } else {
+    board_.clear();
+  }
+
+  // If --binhost_version wasn't specified, calculate it.
+  if (binhost_version_.empty()) {
+    store.GetString(kLsbChromeosReleaseVersion, &binhost_version_);
+  }
+
+  return true;
+}
+
 int DevInstall::Exec(const std::vector<const char*>& argv) {
   execv(kDevInstallScript, const_cast<char* const*>(argv.data()));
   PLOG(ERROR) << kDevInstallScript << " failed";
@@ -229,6 +268,10 @@ int DevInstall::Run() {
   // Initialize the base set of paths before we install any packages.
   if (!InitializeStateDir(state_dir_))
     return 5;
+
+  // Load the settings from the active device.
+  if (!LoadRuntimeSettings(base::FilePath(kLsbReleasePath)))
+    return 6;
 
   std::vector<const char*> argv{kDevInstallScript};
 

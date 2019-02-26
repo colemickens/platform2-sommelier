@@ -310,4 +310,51 @@ TEST_F(InitializeStateDirTest, Fails) {
   ASSERT_FALSE(dev_install_.InitializeStateDir(test_dir_));
 }
 
+namespace {
+
+class LoadRuntimeSettingsTest : public ::testing::Test {
+ public:
+  void SetUp() {
+    ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
+    test_dir_ = scoped_temp_dir_.GetPath();
+  }
+
+ protected:
+  DevInstall dev_install_;
+  base::FilePath test_dir_;
+  base::ScopedTempDir scoped_temp_dir_;
+};
+
+}  // namespace
+
+// Check loading state works.
+TEST_F(LoadRuntimeSettingsTest, Works) {
+  const base::FilePath lsb_release = test_dir_.Append("lsb-release");
+  std::string data{
+      "CHROMEOS_DEVSERVER=https://foo\n"
+      "CHROMEOS_RELEASE_BOARD=betty\n"
+      "CHROMEOS_RELEASE_CHROME_MILESTONE=79\n"
+      "CHROMEOS_RELEASE_VERSION=100.10.1\n"};
+  ASSERT_EQ(base::WriteFile(lsb_release, data.c_str(), data.size()),
+            data.size());
+  ASSERT_TRUE(dev_install_.LoadRuntimeSettings(lsb_release));
+  ASSERT_EQ(dev_install_.GetDevserverUrlForTest(), "https://foo");
+  ASSERT_EQ(dev_install_.GetBoardForTest(), "betty");
+  ASSERT_EQ(dev_install_.GetBinhostVersionForTest(), "100.10.1");
+}
+
+// Check loading empty state works.
+TEST_F(LoadRuntimeSettingsTest, Empty) {
+  const base::FilePath lsb_release = test_dir_.Append("lsb-release");
+  std::string data{""};
+  ASSERT_EQ(base::WriteFile(lsb_release, data.c_str(), data.size()),
+            data.size());
+  ASSERT_TRUE(dev_install_.LoadRuntimeSettings(lsb_release));
+}
+
+// Check loading state doesn't abort with missing file.
+TEST_F(LoadRuntimeSettingsTest, Missing) {
+  ASSERT_TRUE(dev_install_.LoadRuntimeSettings(test_dir_.Append("asdf")));
+}
+
 }  // namespace dev_install
