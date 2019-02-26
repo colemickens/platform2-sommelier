@@ -25,6 +25,7 @@ pkg_config("u2fd_config") {
   pkg_deps = [
     "libpower_manager-client",
     "libtrunks",
+    "openssl",
     "system_api",
   ]
 }
@@ -39,6 +40,7 @@ executable("u2fd") {
     "tpm_vendor_cmd.cc",
     "u2fhid.cc",
     "uhid_device.cc",
+    "util.cc",
   ]
   libs = [ "policy-${libbase_ver}" ]
   deps = [
