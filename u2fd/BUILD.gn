@@ -38,6 +38,7 @@ executable("u2fd") {
   sources = [
     "main.cc",
     "tpm_vendor_cmd.cc",
+    "u2f_adpu.cc",
     "u2fhid.cc",
     "uhid_device.cc",
     "util.cc",
