@@ -14,8 +14,10 @@
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/no_destructor.h>
+#include <base/stl_util.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
+#include <base/sys_info.h>
 
 #include "camera3_test/camera3_perf_log.h"
 #include "camera3_test/camera3_test_data_forwarder.h"
@@ -1327,6 +1329,17 @@ bool InitializeTest(int* argc, char*** argv, void** cam_hal_handle) {
     // Skip 3A algorithm sandbox IPC tests for USB HAL
     AddGtestFilterNegativePattern("*Camera3AlgoSandboxIPCErrorTest*");
   }
+
+  const std::vector<std::string> kIgnoreSensorOrientationTestBoards = {
+      "nocturne",
+      "scarlet",
+  };
+  std::string board = base::SysInfo::GetLsbReleaseBoard();
+  if (base::ContainsValue(kIgnoreSensorOrientationTestBoards, board)) {
+    VLOG(1) << "Ignore SensorOrientationTest on " << board;
+    AddGtestFilterNegativePattern("*SensorOrientationTest/*");
+  }
+
   return true;
 }
 
