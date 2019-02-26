@@ -68,23 +68,4 @@ void MountTaskResetTpmContext::Run() {
   MountTask::Notify();
 }
 
-MountTaskPkcs11Init::MountTaskPkcs11Init(MountTaskObserver* observer,
-                                         Mount* mount,
-                                         int sequence_id)
-    : MountTask(observer, mount, sequence_id),
-      pkcs11_init_result_(new MountTaskResult(kPkcs11InitResultEventType)) {
-  set_result(pkcs11_init_result_.get());
-}
-
-void MountTaskPkcs11Init::Run() {
-  if (!IsCanceled() && mount_) {
-    // This will send an insertion event to the Chaps daemon with appropriate
-    // authorization data.
-    if (mount_->IsMounted())
-      mount_->InsertPkcs11Token();
-    result()->set_return_status(1);
-  }
-  MountTask::Notify();
-}
-
 }  // namespace cryptohome

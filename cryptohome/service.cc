@@ -754,6 +754,28 @@ void Service::InitializeInstallAttributes() {
   DetectEnterpriseOwnership();
 }
 
+void Service::DoInitializePkcs11(cryptohome::Mount* mount) {
+  bool still_mounted = false;
+  {
+    base::AutoLock _lock(mounts_lock_);
+    for (const auto& mount_pair : mounts_) {
+      if (mount_pair.second.get() == mount) {
+        still_mounted = true;
+      }
+    }
+  }
+  if (!still_mounted) {
+    LOG(INFO) << "PKCS#11 initialization cancelled";
+    return;
+  }
+  if (mount->IsMounted() &&
+      mount->pkcs11_state() == cryptohome::Mount::kIsBeingInitialized) {
+    mount->InsertPkcs11Token();
+  }
+  LOG(INFO) << "PKCS#11 initialization succeeded.";
+  mount->set_pkcs11_state(cryptohome::Mount::kIsInitialized);
+}
+
 void Service::InitializePkcs11(cryptohome::Mount* mount) {
   if (!mount) {
     LOG(ERROR) << "InitializePkcs11 called with NULL mount!";
@@ -781,14 +803,10 @@ void Service::InitializePkcs11(cryptohome::Mount* mount) {
   ReportTimerStart(kPkcs11InitTimer);
   mount->set_pkcs11_state(cryptohome::Mount::kIsBeingInitialized);
 
-  MountTaskObserverBridge* bridge =
-      new MountTaskObserverBridge(mount, &event_source_);
-  scoped_refptr<MountTaskPkcs11Init> pkcs11_init_task =
-      new MountTaskPkcs11Init(bridge, mount, NextSequence());
-  LOG(INFO) << "Putting a Pkcs11_Initialize on the mount thread.";
-  pkcs11_tasks_[pkcs11_init_task->sequence_id()] = pkcs11_init_task.get();
-  PostTask(FROM_HERE,
-           base::Bind(&MountTaskPkcs11Init::Run, pkcs11_init_task.get()));
+  mount_thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&Service::DoInitializePkcs11, base::Unretained(this),
+                     base::Unretained(mount)));
 }
 
 bool Service::SeedUrandom() {
@@ -905,18 +923,6 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
     g_signal_emit(cryptohome_, tpm_init_signal_, 0, tpm_init_->IsTpmReady(),
                   tpm_init_->IsTpmEnabled(), result->get_took_ownership());
     // TODO(wad) should we package up a InstallAttributes status here too?
-  } else if (!strcmp(event->GetEventName(), kPkcs11InitResultEventType)) {
-    LOG(INFO) << "A Pkcs11_Init event got finished.";
-    MountTaskResult* result = static_cast<MountTaskResult*>(event);
-    // Drop the reference since the work is done.
-    pkcs11_tasks_.erase(result->sequence_id());
-    if (result->return_status()) {
-      LOG(INFO) << "PKCS#11 initialization succeeded.";
-      result->mount()->set_pkcs11_state(cryptohome::Mount::kIsInitialized);
-      return;
-    }
-    LOG(ERROR) << "PKCS#11 initialization failed.";
-    result->mount()->set_pkcs11_state(cryptohome::Mount::kIsFailed);
   } else if (!strcmp(event->GetEventName(), kDBusErrorReplyEventType)) {
     DBusErrorReply* result = static_cast<DBusErrorReply*>(event);
     result->Run();
@@ -3060,15 +3066,6 @@ bool Service::RemoveAllMounts(bool unmount) {
     scoped_refptr<cryptohome::Mount> mount = it->second;
     if (unmount && mount->IsMounted()) {
       if (mount->pkcs11_state() == cryptohome::Mount::kIsBeingInitialized) {
-        // Walk the open tasks.
-        for (const auto& pkcs11_task_pair : pkcs11_tasks_) {
-          scoped_refptr<MountTaskPkcs11Init> task = pkcs11_task_pair.second;
-          if (task->mount().get() == mount.get()) {
-            task->Cancel();
-            LOG(INFO) << "Cancelling PKCS#11 Init on unmount.";
-            break;
-          }
-        }
         // Reset the state.
         mount->set_pkcs11_state(cryptohome::Mount::kUninitialized);
         // And also reset the global failure reported state.

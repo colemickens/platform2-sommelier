@@ -113,6 +113,7 @@ class Service : public brillo::dbus::AbstractDbusService,
   virtual bool SeedUrandom();
   virtual void InitializeInstallAttributes();
   virtual void InitializePkcs11(cryptohome::Mount* mount);
+  virtual void DoInitializePkcs11(cryptohome::Mount* mount);
   virtual bool Reset();
 
   // Used internally during registration to set the
@@ -905,8 +906,6 @@ virtual gboolean InstallAttributesIsFirstInstall(gboolean* OUT_first_install,
   std::unique_ptr<cryptohome::MountFactory> default_mount_factory_;
   cryptohome::MountFactory* mount_factory_;
 
-  typedef std::map<int, scoped_refptr<MountTaskPkcs11Init>> Pkcs11TaskMap;
-  Pkcs11TaskMap pkcs11_tasks_;
   std::unique_ptr<HomeDirs> default_homedirs_;
   HomeDirs* homedirs_;
   std::unique_ptr<ArcDiskQuota> default_arc_disk_quota_;

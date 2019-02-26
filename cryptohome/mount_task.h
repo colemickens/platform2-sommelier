@@ -302,21 +302,6 @@ class MountTaskResetTpmContext : public MountTask {
   DISALLOW_COPY_AND_ASSIGN(MountTaskResetTpmContext);
 };
 
-// Implements asynchronous initialization of Pkcs11.
-class MountTaskPkcs11Init : public MountTask {
- public:
-  MountTaskPkcs11Init(MountTaskObserver* observer,
-                      Mount* mount,
-                      int sequence_id);
-  virtual ~MountTaskPkcs11Init() { }
-
-  virtual void Run();
-
- private:
-  std::unique_ptr<MountTaskResult> pkcs11_init_result_;
-  DISALLOW_COPY_AND_ASSIGN(MountTaskPkcs11Init);
-};
-
 }  // namespace cryptohome
 
 #endif  // CRYPTOHOME_MOUNT_TASK_H_
