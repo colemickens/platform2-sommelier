@@ -24,6 +24,7 @@
 #include <base/time/time.h>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
+#include <chromeos/constants/cryptohome.h>
 #include <gtest/gtest.h>
 #include <policy/libpolicy.h>
 #include <policy/mock_device_policy.h>
@@ -298,6 +299,8 @@ class MountTest
 
     EXPECT_CALL(platform_, CreateDirectory(_))
       .WillRepeatedly(Return(true));
+    EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
+      .WillRepeatedly(Return(false));
 
     le_cred_manager_ =
         new cryptohome::MockLECredentialManager(&le_cred_backend_, kImageDir);
@@ -377,6 +380,8 @@ class MountTest
                                    "ecryptfs", kDefaultMountFlags, _))
           .WillOnce(Return(true));
     }
+    EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
+      .WillRepeatedly(Return(false));
     EXPECT_CALL(platform_, CreateDirectory(user.vault_mount_path))
         .WillRepeatedly(Return(true));
     EXPECT_CALL(platform_,
@@ -676,6 +681,8 @@ TEST_P(MountTest, MountCryptohomeNoPrivileges) {
   EXPECT_CALL(platform_,
               CreateDirectory(mount_->GetNewUserPath(user->username)))
     .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
+    .WillRepeatedly(Return(false));
 
   EXPECT_CALL(platform_, RestoreSELinuxContexts(_, _)).Times(0);
 
@@ -709,6 +716,8 @@ TEST_P(MountTest, MountCryptohomeHasPrivileges) {
   ExpectCryptohomeMount(*user);
   EXPECT_CALL(platform_, ClearUserKeyring())
     .WillOnce(Return(true));
+  EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
+    .WillRepeatedly(Return(false));
 
   // user exists, so there'll be no skel copy after.
 
@@ -1064,6 +1073,8 @@ TEST_P(MountTest, CreateCryptohomeTest) {
   }
   EXPECT_CALL(platform_, CreateDirectory(user->base_path))
     .WillOnce(Return(true));
+  EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
+    .WillRepeatedly(Return(false));
   brillo::Blob creds;
   EXPECT_CALL(platform_,
               WriteFileAtomicDurable(user->keyset_path, _, _))
@@ -1165,6 +1176,8 @@ TEST_P(MountTest, GoodReDecryptTest) {
   EXPECT_CALL(platform_,
               WriteFileAtomicDurable(user->keyset_path, _, _))
     .WillOnce(DoAll(SaveArg<1>(&migrated_keyset), Return(true)));
+  EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
+    .WillRepeatedly(Return(false));
   int key_index = 0;
 
   user->InjectKeyset(&platform_, true);
@@ -1214,6 +1227,8 @@ TEST_P(MountTest, GoodReDecryptTest) {
       .WillOnce(Return(FilePath()));
   }
 
+  EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
+    .WillRepeatedly(Return(false));
   ASSERT_TRUE(homedirs_.AreCredentialsValid(up));
 }
 
@@ -1286,6 +1301,8 @@ TEST_P(MountTest, TpmWrappedToPcrBoundMigrationTest) {
   EXPECT_CALL(platform_,
               WriteFileAtomicDurable(user->keyset_path, _, _))
     .WillOnce(DoAll(SaveArg<1>(&migrated_keyset), Return(true)));
+  EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
+    .WillRepeatedly(Return(false));
   int key_index = 0;
 
   user->InjectKeyset(&platform_, true);
@@ -1327,6 +1344,8 @@ TEST_P(MountTest, MountCryptohome) {
   ExpectCryptohomeMount(*user);
   EXPECT_CALL(platform_, ClearUserKeyring())
     .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
+    .WillRepeatedly(Return(false));
 
   // user exists, so there'll be no skel copy after.
 
@@ -1339,6 +1358,8 @@ TEST_P(MountTest, MountCryptohomeChapsKey) {
   // and doesn't regenerate it.
   EXPECT_CALL(platform_, DirectoryExists(kImageDir))
     .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
+    .WillRepeatedly(Return(false));
   EXPECT_TRUE(DoMountInit());
 
   InsertTestUsers(&kDefaultUsers[0], 1);
@@ -1384,6 +1405,8 @@ TEST_P(MountTest, MountCryptohomeNoChapsKey) {
   // if it isn't present in the vault.
   EXPECT_CALL(platform_, DirectoryExists(kImageDir))
     .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
+    .WillRepeatedly(Return(false));
   EXPECT_TRUE(DoMountInit());
 
   InsertTestUsers(&kDefaultUsers[0], 1);
@@ -1447,6 +1470,8 @@ TEST_P(MountTest, MountCryptohomeLECredentials) {
   InitializeLECredential();
   EXPECT_CALL(*le_cred_manager_, NeedsPcrBinding(_))
     .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
+    .WillRepeatedly(Return(false));
 
   VaultKeyset pin_vault_keyset;
   pin_vault_keyset.Initialize(&platform_, mount_->crypto());
@@ -1466,6 +1491,8 @@ TEST_P(MountTest, MountCryptohomeLECredentialsMigrate) {
   InitializeLECredential();
   EXPECT_CALL(*le_cred_manager_, NeedsPcrBinding(_))
     .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
+    .WillRepeatedly(Return(false));
 
   brillo::Blob creds;
   EXPECT_CALL(platform_, FileExists(_))
@@ -1504,6 +1531,8 @@ TEST_P(MountTest, MountCryptohomeLECredentialsMigrationFails) {
   EXPECT_CALL(platform_, FileExists(_)).WillRepeatedly(Return(false));
   EXPECT_CALL(*le_cred_manager_, NeedsPcrBinding(_))
     .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
+    .WillRepeatedly(Return(false));
 
   EXPECT_CALL(platform_, FileExists(_))
     .WillRepeatedly(Return(false));
@@ -1534,6 +1563,8 @@ TEST_P(MountTest, MountCryptohomeNoChange) {
   // Checks that cryptohome doesn't by default re-save the cryptohome on mount.
   EXPECT_CALL(platform_, DirectoryExists(kImageDir))
     .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
+    .WillRepeatedly(Return(false));
   EXPECT_TRUE(DoMountInit());
 
   InsertTestUsers(&kDefaultUsers[11], 1);
@@ -1578,6 +1609,8 @@ TEST_P(MountTest, MountCryptohomeNoCreate) {
   // being told to do so.
   EXPECT_CALL(platform_, DirectoryExists(kImageDir))
     .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
+    .WillRepeatedly(Return(false));
   EXPECT_TRUE(DoMountInit());
 
   // Test user at index 12 hasn't been created
@@ -1611,6 +1644,8 @@ TEST_P(MountTest, MountCryptohomeNoCreate) {
 
   // Not legacy
   EXPECT_CALL(platform_, FileExists(user->image_path))
+    .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
     .WillRepeatedly(Return(false));
 
   EXPECT_CALL(platform_, GetFileEnumerator(kSkelDir, _, _))
@@ -1815,6 +1850,8 @@ TEST_P(MountTest, TwoWayKeysetMigrationTest) {
   EXPECT_CALL(platform_,
       Move(user->salt_path, user->salt_path.AddExtension("bak")))
     .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
+    .WillRepeatedly(Return(false));
 
   // Capture the migrated keysets when written to file
   brillo::Blob migrated_keyset;
@@ -1950,6 +1987,8 @@ TEST_P(MountTest, BothFlagsMigrationTest) {
   EXPECT_CALL(platform_,
       Move(user->salt_path, user->salt_path.AddExtension("bak")))
     .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
+    .WillRepeatedly(Return(false));
 
   // Capture the migrated keysets when written to file
   brillo::Blob migrated_keyset;
@@ -2114,6 +2153,8 @@ TEST_P(MountTest, MountCryptohomePreviousMigrationIncomplete) {
     .WillRepeatedly(Return(false));
   EXPECT_CALL(platform_, CreateDirectory(_))
     .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
+    .WillRepeatedly(Return(false));
 
   // Mock the situation that both types of data directory exists.
   EXPECT_CALL(platform_,
@@ -2177,6 +2218,8 @@ TEST_P(MountTest, MountCryptohomeToMigrateFromEcryptfs) {
   EXPECT_CALL(platform_,
               CreateDirectory(mount_->GetNewUserPath(user->username)))
     .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
+    .WillRepeatedly(Return(false));
 
   MountError error = MOUNT_ERROR_NONE;
   Mount::MountArgs mount_args = GetDefaultMountArgs();
@@ -2194,6 +2237,8 @@ TEST_P(MountTest, MountCryptohomeShadowOnly) {
   InsertTestUsers(&kDefaultUsers[10], 1);
   EXPECT_CALL(platform_, DirectoryExists(kImageDir))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
+      .WillRepeatedly(Return(false));
   EXPECT_TRUE(DoMountInit());
 
   TestUser* user = &helper_.users[0];
@@ -2217,6 +2262,8 @@ TEST_P(MountTest, MountCryptohomeForceDircrypto) {
   // Checks that the force-dircrypto flag correctly rejects to mount ecryptfs.
   EXPECT_CALL(platform_, DirectoryExists(kImageDir))
     .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
+    .WillRepeatedly(Return(false));
   EXPECT_TRUE(DoMountInit());
 
   // Prepare a dummy user and a key.

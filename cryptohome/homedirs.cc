@@ -370,10 +370,9 @@ bool HomeDirs::GetValidKeyset(const Credentials& creds,
     if (creds.key_data().label().empty() &&
         (vk->serialized().flags() & SerializedVaultKeyset::LE_CREDENTIAL))
       continue;
-    // Decrypt assuming the PCR is not extended.
-    // TODO(igorcov): When the possibility to extend PCR is implemented, this
-    // needs to be replaced by a flag that will probably come from Chrome.
-    if (vk->Decrypt(passkey, false /* is_pcr_extended */, &last_crypto_error)) {
+    bool is_pcr_extended =
+        platform_->FileExists(base::FilePath(kLockedToSingleUserFile));
+    if (vk->Decrypt(passkey, is_pcr_extended, &last_crypto_error)) {
       if (key_index)
         *key_index = index;
       return true;
@@ -423,6 +422,10 @@ bool HomeDirs::GetValidKeyset(const Credentials& creds,
   if (error)
     *error = local_error;
   return false;
+}
+
+bool HomeDirs::SetLockedToSingleUser() const {
+  return platform_->TouchFileDurable(base::FilePath(kLockedToSingleUserFile));
 }
 
 bool HomeDirs::Exists(const std::string& obfuscated_username) const {

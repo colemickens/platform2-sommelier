@@ -250,6 +250,11 @@ class HomeDirs {
   // directory.
   virtual int32_t GetUnmountedAndroidDataCount();
 
+  // Marks that the device got locked to be able to use only data of a single
+  // user until reboot. Internally touches a file in temporary storage marking
+  // that PCR was extended.
+  virtual bool SetLockedToSingleUser() const;
+
   // Accessors. Mostly used for unit testing. These do not take ownership of
   // passed-in pointers.
   // TODO(wad) Should this update default_crypto_.set_platform()?

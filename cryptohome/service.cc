@@ -3453,6 +3453,7 @@ gboolean Service::LockToSingleUserMountUntilReboot(
 void Service::DoLockToSingleUserMountUntilReboot(
     const std::string& obfuscated_username,
     DBusGMethodInvocation* context) {
+  homedirs_->SetLockedToSingleUser();
   brillo::Blob pcr_value;
   BaseReply reply;
   LockToSingleUserMountUntilRebootReply* reply_extension =

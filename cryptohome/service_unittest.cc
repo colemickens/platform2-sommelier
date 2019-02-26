@@ -296,6 +296,8 @@ TEST_F(ServiceTestNotInitialized, CheckAsyncTestCredentials) {
   user->InjectUserPaths(&platform_, 1000, 1000, 1001, 0, false);
   EXPECT_CALL(platform_, DirectoryExists(user->base_path))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
+      .WillRepeatedly(Return(false));
 
   SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(user->password,

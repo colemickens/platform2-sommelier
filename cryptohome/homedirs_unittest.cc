@@ -1407,6 +1407,8 @@ TEST_P(FreeDiskSpaceTest, DontCleanUpMountedUser) {
   EXPECT_CALL(timestamp_cache_, RemoveOldestUser())
     .WillOnce(Return((homedir_paths_[0])));
 
+  EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
+    .WillRepeatedly(Return(false));
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
     .WillRepeatedly(
         DoAll(SetArgPointee<2>(homedir_paths_),
@@ -1464,6 +1466,8 @@ TEST_P(HomeDirsTest, GoodDecryptTest) {
   set_policy(false, "", false, "");
 
   test_helper_.users[1].InjectKeyset(&platform_);
+  EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
+      .WillRepeatedly(Return(false));
   SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(test_helper_.users[1].password,
                                         system_salt, &passkey);
@@ -1482,7 +1486,8 @@ TEST_P(HomeDirsTest, BadDecryptTest) {
   set_policy(false, "", false, "");
 
   test_helper_.users[4].InjectKeyset(&platform_);
-
+  EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
+      .WillRepeatedly(Return(false));
   SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey("bogus", system_salt, &passkey);
   UsernamePasskey up(test_helper_.users[4].username, passkey);
@@ -1570,6 +1575,8 @@ class KeysetManagementTest : public HomeDirsTest {
     keyset_paths_.push_back(test_helper_.users[1].keyset_path);
     keys_.push_back(test_helper_.users[1].passkey);
 
+    EXPECT_CALL(platform_, FileExists(base::FilePath(kLockedToSingleUserFile)))
+      .WillRepeatedly(Return(false));
     EXPECT_CALL(platform_, GetFileEnumerator(
         test_helper_.users[1].base_path, false, _))
       .WillRepeatedly(
