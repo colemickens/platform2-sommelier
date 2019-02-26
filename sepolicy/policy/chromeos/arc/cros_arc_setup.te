@@ -11,4 +11,4 @@ filetrans_pattern(cros_arc_setup, cros_home_shadow_uid_root, cros_home_shadow_ui
 filetrans_pattern_no_target_perm(cros_arc_setup, cros_home_shadow_uid_root_android, cros_home_shadow_uid_root_android_cache, dir, "cache");
 filetrans_pattern_no_target_perm(cros_arc_setup, cros_home_shadow_uid_root_android, system_data_file, dir, "data");
 
-auditallow { domain -chromeos } cros_arc_setup:fd use;
+auditallow { domain -chromeos -kernel } cros_arc_setup:fd use;
