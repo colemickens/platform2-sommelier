@@ -45,6 +45,10 @@ constexpr char kLsbChromeosReleaseVersion[] = "CHROMEOS_RELEASE_VERSION";
 // Setting for the board name.
 constexpr char kLsbChromeosReleaseBoard[] = "CHROMEOS_RELEASE_BOARD";
 
+// The base URL of the repository holding our portage prebuilt binpkgs.
+constexpr char kDefaultBinhostPrefix[] =
+    "https://commondatastorage.googleapis.com/chromeos-dev-installer/board";
+
 }  // namespace
 
 DevInstall::DevInstall()
@@ -233,6 +237,22 @@ bool DevInstall::LoadRuntimeSettings(const base::FilePath& lsb_release) {
   return true;
 }
 
+void DevInstall::InitializeBinhost() {
+  if (!binhost_.empty())
+    return;
+
+  if (!devserver_url_.empty()) {
+    LOG(INFO) << "Devserver URL set to: " << devserver_url_;
+    if (PromptUser(std::cin, "Use it as the binhost")) {
+      binhost_ = devserver_url_ + "/static/pkgroot/" + board_ + "/packages";
+      return;
+    }
+  }
+
+  binhost_ = std::string(kDefaultBinhostPrefix) + "/" + board_ + "/" +
+             binhost_version_ + "/packages";
+}
+
 int DevInstall::Exec(const std::vector<const char*>& argv) {
   execv(kDevInstallScript, const_cast<char* const*>(argv.data()));
   PLOG(ERROR) << kDevInstallScript << " failed";
@@ -273,16 +293,16 @@ int DevInstall::Run() {
   if (!LoadRuntimeSettings(base::FilePath(kLsbReleasePath)))
     return 6;
 
+  // Parses flags to return the binhost or if none set, use the default binhost
+  // set up from installation.
+  InitializeBinhost();
+  LOG(INFO) << "Using binhost: " << binhost_;
+
   std::vector<const char*> argv{kDevInstallScript};
 
   if (!binhost_.empty()) {
     argv.push_back("--binhost");
     argv.push_back(binhost_.c_str());
-  }
-
-  if (!binhost_version_.empty()) {
-    argv.push_back("--binhost_version");
-    argv.push_back(binhost_version_.c_str());
   }
 
   if (yes_)

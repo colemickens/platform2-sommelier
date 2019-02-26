@@ -51,6 +51,9 @@ class DevInstall {
   // Load any runtime state we'll use later on.
   bool LoadRuntimeSettings(const base::FilePath& lsb_release);
 
+  // Initialize binhost_ setting from other settings.
+  void InitializeBinhost();
+
   // Unittest helpers.
   void SetReinstallForTest(bool reinstall) { reinstall_ = reinstall; }
   void SetUninstallForTest(bool uninstall) { uninstall_ = uninstall; }
