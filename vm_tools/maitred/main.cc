@@ -17,16 +17,19 @@
 #include <base/at_exit.h>
 #include <base/bind.h>
 #include <base/bind_helpers.h>
-#include <base/files/scoped_file.h>
 #include <base/files/file.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <base/threading/thread.h>
+#include <google/protobuf/message.h>
+#include <google/protobuf/text_format.h>
 #include <grpcpp/grpcpp.h>
 
 #include "vm_tools/common/constants.h"
@@ -47,6 +50,9 @@ constexpr char kLogPrefix[] = "maitred: ";
 
 // Path to kernel cmdline file.
 constexpr char kKernelCmdFile[] = "/proc/cmdline";
+
+// Path to folder of .textproto files to start on init.
+constexpr char kMaitredInitPath[] = "/etc/maitred/";
 
 // Kernel Command line parameter
 constexpr char kMaitredPortParam[] = "maitred.listen_port=";
@@ -145,6 +151,64 @@ int main(int argc, char** argv) {
   if (strcmp(program_invocation_short_name, "init") == 0) {
     init = vm_tools::maitred::Init::Create();
     CHECK(init);
+
+    // Check for startup applications in the maitred init folder.
+    base::FileEnumerator file_enum(base::FilePath(kMaitredInitPath), true,
+                                   base::FileEnumerator::FILES);
+
+    for (base::FilePath file = file_enum.Next(); !file.empty();
+         file = file_enum.Next()) {
+      std::string contents;
+      if (!base::ReadFileToString(file, &contents)) {
+        LOG(ERROR) << "Unable to read file " << file.value();
+        continue;
+      }
+
+      vm_tools::LaunchProcessRequest req;
+      if (!google::protobuf::TextFormat::ParseFromString(contents, &req)) {
+        LOG(ERROR) << "Unable to parse proto file: " << file.value();
+        continue;
+      }
+
+      if (req.argv_size() <= 0) {
+        LOG(ERROR) << "No argv in proto file " << file.value();
+        continue;
+      }
+
+      std::vector<std::string> argv(req.argv().begin(), req.argv().end());
+      std::string process_name = argv[0];
+      std::map<string, string> env;
+      for (const auto& pair : req.env()) {
+        env[pair.first] = pair.second;
+      }
+
+      vm_tools::maitred::Init::ProcessLaunchInfo launch_info;
+      if (!init->Spawn(std::move(argv), std::move(env), req.respawn(),
+                       req.use_console(), req.wait_for_exit(), &launch_info)) {
+        LOG(ERROR) << "Unable to spawn process: " << process_name;
+        continue;
+      }
+
+      switch (launch_info.status) {
+        case vm_tools::maitred::Init::ProcessStatus::LAUNCHED:
+          LOG(INFO) << "Successfully launched process: " << process_name;
+          break;
+        case vm_tools::maitred::Init::ProcessStatus::EXITED:
+          LOG(INFO) << "Process " << process_name << " exited with status "
+                    << launch_info.code;
+          break;
+        case vm_tools::maitred::Init::ProcessStatus::SIGNALED:
+          LOG(INFO) << "Process " << process_name << " killed by signal "
+                    << launch_info.code;
+          break;
+        case vm_tools::maitred::Init::ProcessStatus::FAILED:
+          LOG(ERROR) << "Failed to launch process: " << process_name;
+          break;
+        case vm_tools::maitred::Init::ProcessStatus::UNKNOWN:
+          LOG(WARNING) << "Unknown process status" << process_name;
+          break;
+      }
+    }
   }
 
   // Build the server.
