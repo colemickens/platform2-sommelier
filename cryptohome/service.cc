@@ -863,6 +863,9 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
   } else if (!strcmp(event->GetEventName(), kDBusBlobReplyEventType)) {
     DBusBlobReply* result = static_cast<DBusBlobReply*>(event);
     result->Run();
+  } else if (!strcmp(event->GetEventName(), kDBusReplyEventType)) {
+    DBusReply* result = static_cast<DBusReply*>(event);
+    result->Run();
   } else if (!strcmp(event->GetEventName(),
                      kDircryptoMigrationProgressEventType)) {
     auto* progress = static_cast<DircryptoMigrationProgress*>(event);

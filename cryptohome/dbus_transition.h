@@ -23,7 +23,9 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
+#include <base/bind.h>
 #include <brillo/glib/dbus.h>
 
 #include "cryptohome/cryptohome_event_source.h"
@@ -32,6 +34,7 @@ namespace cryptohome {
 
 extern const char* kDBusErrorReplyEventType;
 extern const char* kDBusBlobReplyEventType;
+extern const char* kDBusReplyEventType;
 
 struct GErrorDeleter {
   inline void operator()(void* ptr) const {
@@ -77,6 +80,46 @@ class DBusBlobReply : public CryptohomeEventBase {
   // If this event is not serviced, the memory will be leaked.
   DBusGMethodInvocation* context_;
   std::unique_ptr<std::string> reply_;
+};
+
+// This class will allow glib-dbus method calls to be asynchronous.
+// Note that this is only a temporary solution until glib-dbus is retired.
+class DBusReply : public CryptohomeEventBase {
+ public:
+  template <typename... Params>
+  DBusReply(base::OnceCallback<void(Params...)> cleanup_callback,
+            DBusGMethodInvocation* context,
+            Params... params) {
+    cleanup_callback_ = base::BindOnce(std::move(cleanup_callback), params...);
+    send_reply_ = base::BindOnce(
+        [](DBusGMethodInvocation* context_to_send, Params... params_to_send) {
+          dbus_g_method_return(context_to_send, params_to_send...);
+        },
+        context, params...);
+  }
+
+  // No output argument version
+  explicit DBusReply(DBusGMethodInvocation* context) {
+    cleanup_callback_ = base::BindOnce(base::DoNothing);
+    send_reply_ = base::BindOnce(
+        [](DBusGMethodInvocation* context_to_send) {
+          dbus_g_method_return(context_to_send);
+        },
+        context);
+  }
+
+  virtual ~DBusReply() {}
+
+  virtual const char* GetEventName() const { return kDBusReplyEventType; }
+
+  virtual void Run() {
+    std::move(send_reply_).Run();
+    std::move(cleanup_callback_).Run();
+  }
+
+ private:
+  base::OnceClosure cleanup_callback_;
+  base::OnceClosure send_reply_;
 };
 
 }  // namespace cryptohome

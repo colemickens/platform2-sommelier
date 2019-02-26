@@ -12,6 +12,7 @@ namespace cryptohome {
 
 const char* kDBusErrorReplyEventType = "DBusErrorReply";
 const char* kDBusBlobReplyEventType = "DBusBlobReply";
+const char* kDBusReplyEventType = "DBusReply";
 
 DBusBlobReply::DBusBlobReply(DBusGMethodInvocation* context, std::string* reply)
     : context_(context), reply_(reply) {}
