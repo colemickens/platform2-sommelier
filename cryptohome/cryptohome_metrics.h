@@ -191,6 +191,20 @@ enum class DiskCleanupProgress {
   kNumBuckets
 };
 
+// Add new deprecated function event here.
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+// Note: All updates here must also update Chrome's enums.xml database.
+// Please see this document for more details:
+// https://chromium.googlesource.com/chromium/src/+/master/tools/metrics/histograms/
+//
+// You can view them live here:
+// https://uma.googleplex.com/histograms/?histograms=Platform.Cryptohome.DeprecatedApiCalled
+enum class DeprecatedApiEvent {
+  kInitializeCastKey = 0,
+  kMaxValue,
+};
+
 // Cros events emitted by cryptohome.
 const char kAttestationOriginSpecificIdentifiersExhausted[] =
     "Attestation.OriginSpecificExhausted";
@@ -339,6 +353,11 @@ void ReportAsyncDbusRequestInqueueTime(std::string task_name,
 
 // Reports the amount of total tasks waiting in the queue of mount thread.
 void ReportParallelTasks(int amount_of_task);
+
+// Reports when a deprecated function that is exposed on the DBus is called.
+// This is used to determine which deprecated function is truly dead code,
+// and removing it will not trigger side effects.
+void ReportDeprecatedApiCalled(DeprecatedApiEvent event);
 
 // Initialization helper.
 class ScopedMetricsInitializer {

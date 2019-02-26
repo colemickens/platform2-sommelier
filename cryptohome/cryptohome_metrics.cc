@@ -101,6 +101,9 @@ const TimerHistogramParams kTimerHistogramParams[cryptohome::kNumTimerTypes] = {
      2 * 60 * 1000, 50}
 };
 
+constexpr char kCryptohomeDeprecatedApiHistogramName[] =
+    "Cryptohome.DeprecatedApiCalled";
+
 MetricsLibrary* g_metrics = NULL;
 chromeos_metrics::TimerReporter* g_timers[cryptohome::kNumTimerTypes] = {NULL};
 
@@ -451,6 +454,17 @@ void ReportAsyncDbusRequestInqueueTime(std::string task_name,
   g_metrics->SendToUMA(
       kCryptohomeAsyncDBusRequestsInqueueTimePrefix + task_name,
       running_time.InMilliseconds(), kMin, kMax, kNumBuckets);
+}
+
+void ReportDeprecatedApiCalled(DeprecatedApiEvent event) {
+  if (!g_metrics) {
+    return;
+  }
+
+  constexpr auto max_event = static_cast<int>(DeprecatedApiEvent::kMaxValue);
+  g_metrics->SendEnumToUMA(kCryptohomeDeprecatedApiHistogramName,
+                           static_cast<int>(event),
+                           static_cast<int>(max_event));
 }
 
 }  // namespace cryptohome

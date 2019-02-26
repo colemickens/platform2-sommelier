@@ -599,6 +599,8 @@ void ServiceMonolithic::DoInitializeCastKey(const brillo::SecureBlob& request,
   const char kCastCertificateOrigin[] = "CAST";
   const char kCastKeyLabel[] = "CERTIFIED_CAST_KEY";
 
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kInitializeCastKey);
+
   LOG(INFO) << "Initializing Cast Key";
   InitializeCastKeyRequest request_pb;
   if (!request_pb.ParseFromArray(request.data(), request.size())) {

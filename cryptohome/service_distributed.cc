@@ -1064,6 +1064,7 @@ gboolean ServiceDistributed::GetEndorsementInfo(
 void ServiceDistributed::DoInitializeCastKey(
     const brillo::SecureBlob& request_array,
     DBusGMethodInvocation* context) {
+  ReportDeprecatedApiCalled(DeprecatedApiEvent::kInitializeCastKey);
   VLOG(1) << __func__;
   cryptohome::InitializeCastKeyRequest request_in;
   if (!request_in.ParseFromArray(request_array.data(), request_array.size())) {
