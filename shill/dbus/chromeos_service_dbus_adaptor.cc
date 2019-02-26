@@ -194,8 +194,7 @@ bool ChromeosServiceDBusAdaptor::GetLoadableProfileEntries(
   map<string, string> profile_entry_strings =
       service_->GetLoadableProfileEntries();
   for (const auto& entry : profile_entry_strings) {
-    entries->insert(
-        std::make_pair(dbus::ObjectPath(entry.first), entry.second));
+    (*entries)[dbus::ObjectPath(entry.first)] = entry.second;
   }
   return true;
 }

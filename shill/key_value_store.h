@@ -87,9 +87,9 @@ class KeyValueStore {
   const std::vector<uint32_t>& GetUint32s(const std::string& name) const;
   const brillo::Any& Get(const std::string& name) const;
 
-  // TODO(zqiu): remove type specific set functions and add a generic set
-  // function instead.  This way, we don't need to add new functions every
-  // time we need to support a new type.
+  // TODO(crbug.com/936111): remove type specific set functions and add a
+  // generic set function instead.  This way, we don't need to add new functions
+  // every time we need to support a new type.
   void SetBool(const std::string& name, bool value);
   void SetBools(const std::string& name, const std::vector<bool>& value);
   void SetByteArrays(const std::string& name,

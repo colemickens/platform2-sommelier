@@ -132,9 +132,8 @@ void IcmpSession::TransmitEchoRequestTask() {
     return;
   }
   if (icmp_->TransmitEchoRequest(echo_id_, current_sequence_number_)) {
-    seq_num_to_sent_recv_time_.emplace(
-        current_sequence_number_,
-        std::make_pair(tick_clock_->NowTicks(), base::TimeTicks()));
+    seq_num_to_sent_recv_time_[current_sequence_number_] =
+        std::make_pair(tick_clock_->NowTicks(), base::TimeTicks());
   }
   ++current_sequence_number_;
   // If we fail to transmit the echo request, fall through instead of returning,

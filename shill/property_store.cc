@@ -113,28 +113,26 @@ bool PropertyStore::GetProperties(brillo::VariantDictionary* out,
   {
     ReadablePropertyConstIterator<bool> it = GetBoolPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      out->insert(std::make_pair(it.Key(), brillo::Any(it.value())));
+      (*out)[it.Key()] = brillo::Any(it.value());
     }
   }
   {
     ReadablePropertyConstIterator<int16_t> it = GetInt16PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      out->insert(std::make_pair(it.Key(), brillo::Any(it.value())));
+      (*out)[it.Key()] = brillo::Any(it.value());
     }
   }
   {
     ReadablePropertyConstIterator<int32_t> it = GetInt32PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      out->insert(std::make_pair(it.Key(), brillo::Any(it.value())));
+      (*out)[it.Key()] = brillo::Any(it.value());
     }
   }
   {
     ReadablePropertyConstIterator<RpcIdentifier> it =
         GetRpcIdentifierPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      out->insert(
-          std::make_pair(it.Key(),
-                         brillo::Any(dbus::ObjectPath(it.value()))));
+      (*out)[it.Key()] = brillo::Any(dbus::ObjectPath(it.value()));
     }
   }
   {
@@ -145,69 +143,68 @@ bool PropertyStore::GetProperties(brillo::VariantDictionary* out,
       for (const auto& path : it.value()) {
         rpc_identifiers_as_paths.push_back(dbus::ObjectPath(path));
       }
-      out->insert(
-          std::make_pair(it.Key(), brillo::Any(rpc_identifiers_as_paths)));
+      (*out)[it.Key()] = brillo::Any(rpc_identifiers_as_paths);
     }
   }
   {
     ReadablePropertyConstIterator<string> it = GetStringPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      out->insert(std::make_pair(it.Key(), brillo::Any(it.value())));
+      (*out)[it.Key()] = brillo::Any(it.value());
     }
   }
   {
     ReadablePropertyConstIterator<Stringmap> it = GetStringmapPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      out->insert(std::make_pair(it.Key(), brillo::Any(it.value())));
+      (*out)[it.Key()] = brillo::Any(it.value());
     }
   }
   {
     ReadablePropertyConstIterator<Stringmaps> it =
         GetStringmapsPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      out->insert(std::make_pair(it.Key(), brillo::Any(it.value())));
+      (*out)[it.Key()] = brillo::Any(it.value());
     }
   }
   {
     ReadablePropertyConstIterator<Strings> it = GetStringsPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      out->insert(std::make_pair(it.Key(), brillo::Any(it.value())));
+      (*out)[it.Key()] = brillo::Any(it.value());
     }
   }
   {
     ReadablePropertyConstIterator<uint8_t> it = GetUint8PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      out->insert(std::make_pair(it.Key(), brillo::Any(it.value())));
+      (*out)[it.Key()] = brillo::Any(it.value());
     }
   }
   {
     ReadablePropertyConstIterator<ByteArray> it = GetByteArrayPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      out->insert(std::make_pair(it.Key(), brillo::Any(it.value())));
+      (*out)[it.Key()] = brillo::Any(it.value());
     }
   }
   {
     ReadablePropertyConstIterator<uint16_t> it = GetUint16PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      out->insert(std::make_pair(it.Key(), brillo::Any(it.value())));
+      (*out)[it.Key()] = brillo::Any(it.value());
     }
   }
   {
     ReadablePropertyConstIterator<Uint16s> it = GetUint16sPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      out->insert(std::make_pair(it.Key(), brillo::Any(it.value())));
+      (*out)[it.Key()] = brillo::Any(it.value());
     }
   }
   {
     ReadablePropertyConstIterator<uint32_t> it = GetUint32PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      out->insert(std::make_pair(it.Key(), brillo::Any(it.value())));
+      (*out)[it.Key()] = brillo::Any(it.value());
     }
   }
   {
     ReadablePropertyConstIterator<uint64_t> it = GetUint64PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      out->insert(std::make_pair(it.Key(), brillo::Any(it.value())));
+      (*out)[it.Key()] = brillo::Any(it.value());
     }
   }
   {
@@ -216,7 +213,7 @@ bool PropertyStore::GetProperties(brillo::VariantDictionary* out,
     for ( ; !it.AtEnd(); it.Advance()) {
       brillo::VariantDictionary dict =
           KeyValueStore::ConvertToVariantDictionary(it.value());
-      out->insert(std::make_pair(it.Key(), dict));
+      (*out)[it.Key()] = dict;
     }
   }
 

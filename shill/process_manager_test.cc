@@ -46,13 +46,13 @@ class ProcessManagerTest : public testing::Test {
   }
 
   void AddWatchedProcess(pid_t pid, const Callback<void(int)>& callback) {
-    process_manager_->watched_processes_.emplace(pid, callback);
+    process_manager_->watched_processes_[pid] = std::move(callback);
   }
 
   void AddTerminateProcess(pid_t pid,
                            std::unique_ptr<CancelableClosure> timeout_handler) {
-    process_manager_->pending_termination_processes_.emplace(
-        pid, std::move(timeout_handler));
+    process_manager_->pending_termination_processes_[pid] =
+        std::move(timeout_handler);
   }
 
   void AssertEmptyWatchedProcesses() {

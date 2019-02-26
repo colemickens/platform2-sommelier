@@ -78,7 +78,7 @@ class HookTable {
         : start_callback(start_callback),
           started(false),
           completed(false) {}
-    const base::Closure start_callback;
+    base::Closure start_callback;
     bool started;
     bool completed;
   };

@@ -34,7 +34,12 @@ HookTable::HookTable(EventDispatcher* event_dispatcher)
 void HookTable::Add(const string& name, const Closure& start_callback) {
   SLOG(this, 2) << __func__ << ": " << name;
   Remove(name);
-  hook_table_.emplace(name, HookAction(start_callback));
+  auto iter = hook_table_.find(name);
+  if (iter != hook_table_.end()) {
+    iter->second = HookAction(start_callback);
+  } else {
+    hook_table_.emplace(name, HookAction(start_callback));
+  }
 }
 
 HookTable::~HookTable() {

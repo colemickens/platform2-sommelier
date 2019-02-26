@@ -113,7 +113,7 @@ pid_t ProcessManager::StartProcess(
   // child process will not get killed on destruction of |process| object.
   process->Release();
 
-  watched_processes_.emplace(pid, exit_callback);
+  watched_processes_[pid] = std::move(exit_callback);
   return pid;
 }
 
@@ -174,7 +174,7 @@ pid_t ProcessManager::StartProcessInMinijailWithPipes(
                  weak_factory_.GetWeakPtr(),
                  pid)));
 
-  watched_processes_.emplace(pid, exit_callback);
+  watched_processes_[pid] = std::move(exit_callback);
   return pid;
 }
 
@@ -365,7 +365,7 @@ bool ProcessManager::TerminateProcess(pid_t pid, bool kill_signal) {
                  kill_signal));
   dispatcher_->PostDelayedTask(FROM_HERE, termination_callback->callback(),
                                kTerminationTimeoutSeconds * 1000);
-  pending_termination_processes_.emplace(pid, std::move(termination_callback));
+  pending_termination_processes_[pid] = std::move(termination_callback);
   return true;
 }
 
