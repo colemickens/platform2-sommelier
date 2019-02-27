@@ -62,6 +62,10 @@ class BRILLO_EXPORT Transport : public http::Transport {
 
   void SetLocalIpAddress(const std::string& ip_address) override;
 
+  void UseDefaultCertificate() override;
+
+  void UseCustomCertificate(Certificate cert) override;
+
   void ResolveHostToIp(const std::string& host,
                        uint16_t port,
                        const std::string& ip_address) override;
@@ -138,6 +142,7 @@ class BRILLO_EXPORT Transport : public http::Transport {
   // The connection timeout for the requests made.
   base::TimeDelta connection_timeout_;
   std::string ip_address_;
+  base::FilePath certificate_path_;
   curl_slist* host_list_{nullptr};
 
   base::WeakPtrFactory<Transport> weak_ptr_factory_for_timer_{this};

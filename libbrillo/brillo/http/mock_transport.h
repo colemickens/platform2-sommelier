@@ -34,6 +34,8 @@ class MockTransport : public Transport {
   MOCK_METHOD1(CancelRequest, bool(RequestID));
   MOCK_METHOD1(SetDefaultTimeout, void(base::TimeDelta));
   MOCK_METHOD1(SetLocalIpAddress, void(const std::string&));
+  MOCK_METHOD0(UseDefaultCertificate, void());
+  MOCK_METHOD1(UseCustomCertificate, void(Certificate));
   MOCK_METHOD3(ResolveHostToIp,
                void(const std::string&, uint16_t, const std::string&));
 

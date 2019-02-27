@@ -44,6 +44,20 @@ using ErrorCallback = base::Callback<void(RequestID, const brillo::Error*)>;
 ///////////////////////////////////////////////////////////////////////////////
 class BRILLO_EXPORT Transport : public std::enable_shared_from_this<Transport> {
  public:
+  enum class Certificate {
+    // Default certificate; only allows communication with Google services.
+    kDefault,
+    // Certificates for communicating only with production SM-DP+ and SM-DS
+    // servers.
+    kHermesProd,
+    // Certificates for communicating only with test SM-DP+ and SM-DS servers.
+    kHermesTest,
+    // The NSS certificate store, which the curl command-line tool and libcurl
+    // library use by default. This set of certificates does not restrict
+    // secure communication to only Google services.
+    kNss,
+  };
+
   Transport() = default;
   virtual ~Transport() = default;
 
@@ -89,6 +103,20 @@ class BRILLO_EXPORT Transport : public std::enable_shared_from_this<Transport> {
   // Set the local IP address of requests
   virtual void SetLocalIpAddress(const std::string& ip_address) = 0;
 
+  // Use the default CA certificate for certificate verification. This
+  // means that clients are only allowed to communicate with Google services.
+  virtual void UseDefaultCertificate() {}
+
+  // Set the CA certificate to use for certificate verification.
+  //
+  // This call can allow a client to securly communicate with a different subset
+  // of services than it can otherwise. However, setting a custom certificate
+  // should be done only when necessary, and should be done with careful control
+  // over the certificates that are contained in the relevant path. See
+  // https://chromium.googlesource.com/chromiumos/docs/+/master/ca_certs.md for
+  // more information on certificates in Chrome OS.
+  virtual void UseCustomCertificate(Transport::Certificate cert) {}
+
   // Appends host entry to DNS cache. curl can only do HTTPS request to a custom
   // IP if it resolves an HTTPS hostname to that IP. This is useful in
   // forcing a particular mapping for an HTTPS host. See CURLOPT_RESOLVE for
@@ -110,6 +138,8 @@ class BRILLO_EXPORT Transport : public std::enable_shared_from_this<Transport> {
  protected:
   // Clears the forced DNS mappings created by ResolveHostToIp.
   virtual void ClearHost() {}
+
+  static base::FilePath CertificateToPath(Certificate cert);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Transport);

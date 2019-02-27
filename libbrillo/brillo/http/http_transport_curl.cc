@@ -7,23 +7,13 @@
 #include <limits>
 
 #include <base/bind.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/http/http_connection_curl.h>
 #include <brillo/http/http_request.h>
 #include <brillo/strings/string_utils.h>
-
-namespace {
-
-const char kCACertificatePath[] =
-#ifdef __ANDROID__
-    "/system/etc/security/cacerts_google";
-#else
-    "/usr/share/chromeos-ca-certificates";
-#endif
-
-}  // namespace
 
 namespace brillo {
 namespace http {
@@ -102,12 +92,14 @@ struct Transport::AsyncRequestData {
 Transport::Transport(const std::shared_ptr<CurlInterface>& curl_interface)
     : curl_interface_{curl_interface} {
   VLOG(2) << "curl::Transport created";
+  UseDefaultCertificate();
 }
 
 Transport::Transport(const std::shared_ptr<CurlInterface>& curl_interface,
                      const std::string& proxy)
     : curl_interface_{curl_interface}, proxy_{proxy} {
   VLOG(2) << "curl::Transport created with proxy " << proxy;
+  UseDefaultCertificate();
 }
 
 Transport::~Transport() {
@@ -141,8 +133,9 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
     code = curl_interface_->EasySetOptPtr(curl_handle, CURLOPT_CAINFO, nullptr);
   }
   if (code == CURLE_OK) {
+    CHECK(base::PathExists(certificate_path_));
     code = curl_interface_->EasySetOptStr(curl_handle, CURLOPT_CAPATH,
-                                          kCACertificatePath);
+                                          certificate_path_.value());
   }
   if (code == CURLE_OK) {
     code =
@@ -283,6 +276,15 @@ void Transport::SetDefaultTimeout(base::TimeDelta timeout) {
 
 void Transport::SetLocalIpAddress(const std::string& ip_address) {
   ip_address_ = "host!" + ip_address;
+}
+
+void Transport::UseDefaultCertificate() {
+  UseCustomCertificate(Certificate::kDefault);
+}
+
+void Transport::UseCustomCertificate(Transport::Certificate cert) {
+  certificate_path_ = CertificateToPath(cert);
+  CHECK(base::PathExists(certificate_path_));
 }
 
 void Transport::ResolveHostToIp(const std::string& host,
