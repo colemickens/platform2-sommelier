@@ -47,24 +47,11 @@ ArcVideoEncoderTestEnvironment* g_env;
 
 class ArcVideoEncoderTestEnvironment : public testing::Environment {
  public:
-  explicit ArcVideoEncoderTestEnvironment(const std::string& data,
-                                          const std::string& output_log_path)
-      : test_stream_data_(data), output_log_path_(output_log_path) {}
+  explicit ArcVideoEncoderTestEnvironment(const std::string& data)
+      : test_stream_data_(data) {}
 
   void SetUp() override {
     ParseTestStreamData();
-    if (!output_log_path_.empty()) {
-      log_file_.open(output_log_path_);
-      if (!log_file_.is_open()) {
-        ALOGW("Failed to open file: %s", output_log_path_.c_str());
-      }
-    }
-  }
-
-  void TearDown() override {
-    if (log_file_.is_open()) {
-      log_file_.close();
-    }
   }
 
   // The syntax of test stream is:
@@ -105,7 +92,7 @@ class ArcVideoEncoderTestEnvironment : public testing::Environment {
     if (fields.size() >= 4 && !fields[3].empty()) {
       int profile = stoi(fields[3]);
       if (profile != 1)
-        ALOGW("Only H264PROFILE_MAIN(1) is supported.");
+        printf("[WARN] Only H264PROFILE_MAIN(1) is supported.\n");
     }
 
     if (fields.size() >= 5 && !fields[4].empty()) {
@@ -145,7 +132,7 @@ class ArcVideoEncoderTestEnvironment : public testing::Environment {
     if (fields.size() >= 10 && !fields[9].empty()) {
       int format = std::stoi(fields[9]);
       if (format != 1 /* PIXEL_FORMAT_I420 */)
-        ALOGW("Only I420 is suppported.");
+        printf("[WARN] Only I420 is suppported.\n");
     }
   }
 
@@ -161,19 +148,8 @@ class ArcVideoEncoderTestEnvironment : public testing::Environment {
     return requested_subsequent_framerate_;
   }
 
-  void LogToFile(const std::string& log) {
-    if (log_file_.is_open()) {
-      log_file_ << log << std::endl;
-    } else {
-      ALOGW("Try to log \"%s\" to file but log file is not open.\n",
-            log.c_str());
-    }
-  }
-
  private:
   std::string test_stream_data_;
-  std::string output_log_path_;
-  std::ofstream log_file_;
 
   Size visible_size_;
   std::string input_file_path_;
@@ -192,7 +168,7 @@ class ArcVideoEncoderE2ETest : public testing::Test {
     if (output_file_.is_open()) {
       output_file_.write(reinterpret_cast<const char*>(data), size);
       if (output_file_.fail()) {
-        ALOGE("Failed to write encoded buffer into file.");
+        printf("[ERR] Failed to write encoded buffer into file.\n");
       }
     }
   }
@@ -227,7 +203,8 @@ class ArcVideoEncoderE2ETest : public testing::Test {
 
     output_file_.open(g_env->output_file_path(), std::ofstream::binary);
     if (!output_file_.is_open()) {
-      ALOGE("Failed to open file: %s", g_env->output_file_path().c_str());
+      printf("[ERR] Failed to open file: %s\n",
+             g_env->output_file_path().c_str());
       return false;
     }
     return true;
@@ -285,19 +262,15 @@ TEST_F(ArcVideoEncoderE2ETest, PerfFPS) {
 
   double measured_fps =
       1000000.0 * encoder_->num_encoded_frames() / (end_time - start_time);
-  std::ostringstream ss;
-  ss << "Measured encoder FPS: " << measured_fps;
-  g_env->LogToFile(ss.str());
+  printf("Measured encoder FPS: %.4f\n", measured_fps);
 }
 
 }  // namespace android
 
-bool GetOption(int argc, char** argv, std::string* test_stream_data,
-               std::string* output_log_path) {
+bool GetOption(int argc, char** argv, std::string* test_stream_data) {
   const char* const optstring = "to:";
   static const struct option opts[] = {
       {"test_stream_data", required_argument, nullptr, 't'},
-      {"output_log_path", required_argument, nullptr, 'o'},
       {nullptr, 0, nullptr, 0},
   };
 
@@ -307,17 +280,15 @@ bool GetOption(int argc, char** argv, std::string* test_stream_data,
       case 't':
         *test_stream_data = optarg;
         break;
-      case 'o':
-        *output_log_path = optarg;
-        break;
       default:
-        ALOGW("Unknown option: getopt_long() returned code 0x%x.", opt);
+        printf("[WARN] Unknown option: getopt_long() returned code 0x%x.\n",
+               opt);
         break;
     }
   }
 
   if (test_stream_data->empty()) {
-    ALOGE("Please assign test stream data by --test_stream_data");
+    printf("[ERR] Please assign test stream data by --test_stream_data\n");
     return false;
   }
   return true;
@@ -325,14 +296,12 @@ bool GetOption(int argc, char** argv, std::string* test_stream_data,
 
 int main(int argc, char** argv) {
   std::string test_stream_data;
-  std::string output_log_path;
-  if (!GetOption(argc, argv, &test_stream_data, &output_log_path))
+  if (!GetOption(argc, argv, &test_stream_data))
     return EXIT_FAILURE;
 
   android::g_env = reinterpret_cast<android::ArcVideoEncoderTestEnvironment*>(
       testing::AddGlobalTestEnvironment(
-          new android::ArcVideoEncoderTestEnvironment(test_stream_data,
-                                                      output_log_path)));
+          new android::ArcVideoEncoderTestEnvironment(test_stream_data)));
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
