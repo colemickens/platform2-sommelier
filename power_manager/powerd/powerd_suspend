@@ -200,98 +200,34 @@ ec_power_modem() {
   fi
 }
 
-# Define the white list of the bt_vendor:bt_product that allow to set event
-# mask where bt_vendor:* means all products of the vendor are allowed.
-# TODO: change the whitelist to blacklist after verifying all existing
-#       controllers. Only a small portion of controllers do not support
-#       setting the event mask, e.g., the Mode Change event.
-#       Refer to the following file for the list of bluetooth controllers.
-#       src/platform2/power_manager/udev/gen_autosuspend_rules.py
-BT_MASK_WHITELIST="8087:*"
-
-# Check if bt_vendor:bt_product is in the white list.
-in_bt_mask_whitelist() {
-  local vendor="$1"
-  local product="$2"
-  [ "${BT_MASK_WHITELIST#*${vendor}:\*}" != "${BT_MASK_WHITELIST}" -o \
-    "${BT_MASK_WHITELIST#*${vendor}:${product}}" != "${BT_MASK_WHITELIST}" ]
-}
-
 to_hex() {
   echo "obase=16; $(($1))" | bc
 }
 
-# Enable or disable some Bluetooth events based on the "enable" or
-# "disable" argument.
-# Different Bluetooth devices and the Bluetooth controllers of
-# different vendors may send different events to the host during
-# system suspension which would wake up the system spuriously.
-# Disabling the events on suspension would help prevent the system
-# from waking up spuriously.
-# Refer to Bluetooth Spec 4.2 Vol 2 Part E 7.3.1 Set Event Mask Command
-# about the event mask values.
-bt_hci_events_ctrl() {
+
+# Exit Sniff mode for all ACL connections.
+#
+# This workaround is to make sure BlueZ stack and the controller are aligned
+# on connections state after resume, since the 'sniff mode change' event could
+# have been masked out while the system was is suspend mode
+bt_exit_sniff() {
   local file
   for file in /sys/class/bluetooth/hci[0-9]; do
     local hcidev="$(basename "${file}")"
-    local bt_vendor=""
-    local retval=""
-    local usb_path="$(readlink ${file})"
-    usb_path="/sys/class/bluetooth/${usb_path%/bluetooth/*}/.."
-    bt_vendor="$(cat "${usb_path}"/idVendor)"
-    bt_product="$(cat "${usb_path}"/idProduct)"
+    # The command of "hcitool con" shows something like
+    # Connections:
+    #    > ACL 04:52:C7:83:95:10 handle 256 state 1 lm MASTER AUTH ENCRYPT
+    #    > ACL 04:52:C7:C3:65:B5 handle 512 state 1 lm MASTER AUTH ENCRYPT
 
-    # Don't do anything for controllers not in BT_MASK_WHITELIST.
-    # Some of them may not support it well (See http://crbug.com/803272)
-    if ! in_bt_mask_whitelist "${bt_vendor}" "${bt_product}"; then
-      log_msg "Skipping $1 BT HCI events on" "${bt_vendor}:${bt_product}"
-      continue
-    fi
-    if [ "$1" = "disable" ]; then
-      log_msg "Disabling some Bluetooth HCI events before suspend"
-      # Events turned off during system suspension:
-      #   Mode Change Event:        0x0000000000080000
-      #   Sniff Subrating Event:    0x0000200000000000
-      #   Max Slots Change Event:   0x0000000004000000
-      # Note:
-      #   a. We have to be careful when disabling mask values to avoid
-      #      the system from going out of sync with the controller on resume.
-      #      - Mode Change Event and Sniff Subrating Event: these states will be
-      #        synced again after the host sends Exit Sniff mode command below.
-      #      - Max Slots Change Event: kernel does not care this event at all.
-      #   b. The following mask values are coded in Little Endian order.
-      # TODO: fix the terrible scary hack using hcitool.
-      #       - Should recover the original mask values instead of all on
-      #         after resume.
-      #       - It should be implemented in Bluetooth stack and be called by
-      #         dbus.
-      timeout -k 2 2 hcitool -i "${hcidev}" cmd 03 01 ff ff f7 fb ff df ff ff
-    elif [ "$1" = "enable" ]; then
-      log_msg "Enabling Bluetooth HCI events after resume"
-      timeout -k 2 2 hcitool -i "${hcidev}" cmd 03 01 ff ff ff ff ff ff ff ff
-
-      # Exit Sniff mode for all ACL connections.
-      # The command of "hcitool con" shows something like
-      #   Connections:
-      #       > ACL 04:52:C7:83:95:10 handle 256 state 1 lm MASTER AUTH ENCRYPT
-      #       > ACL 04:52:C7:C3:65:B5 handle 512 state 1 lm MASTER AUTH ENCRYPT
-      handles="$(echo "$(hcitool con)" | awk '/ACL/ {print $5}')"
-      for handle in $handles; do
-        lo_byte="$(to_hex $((handle % 256)))"
-        hi_byte="$(to_hex $((handle / 256)))"
-        log_msg "Exiting Sniff mode for connection handle ${lo_byte} ${hi_byte}"
-        timeout -k 2 2 hcitool -i "${hcidev}" cmd 02 04 "${lo_byte}" \
-            "${hi_byte}"
-      done
-    fi
-    retval=$?
-    # retval = 124/137 indicates timedout, please refer to timeout man page
-    if [ ${retval} -eq 137 ] || [ ${retval} -eq 124 ]; then
-      log_msg "hcitool command timed out (Killed)"
-    elif [ ${retval} -ne 0 ]; then
-      log_msg "hcitool failed with exit status ${retval}"
-    fi
-  done
+    handles="$(echo "$(hcitool con)" | awk '/ACL/ {print $5}')"
+    for handle in $handles; do
+      lo_byte="$(to_hex $((handle % 256)))"
+      hi_byte="$(to_hex $((handle / 256)))"
+      log_msg "Exiting Sniff mode for connection handle ${lo_byte} ${hi_byte}"
+      timeout -k 2 2 hcitool -i "${hcidev}" cmd 02 04 "${lo_byte}" \
+          "${hi_byte}"
+     done
+   done
 }
 
 # Writes the wakeup count that was passed to this script to
@@ -436,9 +372,6 @@ else
     ec_power_modem off
   fi
 
-  # Disable undesired events in the Bluetooth event mask.
-  bt_hci_events_ctrl "disable"
-
   # Compact memory if it is fragmented.
   try_compact_memory
 
@@ -522,8 +455,7 @@ else
     ec_power_modem on
   fi
 
-  # Enable all events in the Bluetooth event mask.
-  bt_hci_events_ctrl "enable"
+  bt_exit_sniff
 fi
 
 send_uma_result "${result}"
