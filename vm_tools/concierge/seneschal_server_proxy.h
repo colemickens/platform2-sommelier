@@ -10,7 +10,9 @@
 #include <memory>
 
 #include <base/macros.h>
+#include <base/files/scoped_file.h>
 #include <dbus/object_proxy.h>
+#include <seneschal/proto_bindings/seneschal_service.pb.h>
 
 namespace vm_tools {
 namespace concierge {
@@ -20,8 +22,10 @@ class SeneschalServerProxy final {
  public:
   // Ask the seneschal service to start a new 9P server.  Callers must ensure
   // that the |seneschal_proxy| object outlives this object.
-  static std::unique_ptr<SeneschalServerProxy> Create(
+  static std::unique_ptr<SeneschalServerProxy> CreateVsockProxy(
       dbus::ObjectProxy* seneschal_proxy, uint32_t port, uint32_t accept_cid);
+  static std::unique_ptr<SeneschalServerProxy> CreateFdProxy(
+      dbus::ObjectProxy* seneschal_proxy, const base::ScopedFD& socket_fd);
 
   ~SeneschalServerProxy();
 
@@ -29,6 +33,9 @@ class SeneschalServerProxy final {
 
  private:
   SeneschalServerProxy(dbus::ObjectProxy* seneschal_proxy, uint32_t handle);
+
+  static std::unique_ptr<SeneschalServerProxy> SeneschalCreateProxy(
+      dbus::ObjectProxy* seneschal_proxy, dbus::MethodCall* method_call);
 
   // Proxy to the seneschal service.  Not owned.
   dbus::ObjectProxy* seneschal_proxy_;

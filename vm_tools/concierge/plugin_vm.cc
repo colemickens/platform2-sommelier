@@ -78,10 +78,12 @@ std::unique_ptr<PluginVm> PluginVm::Create(
     uint32_t ipv4_gateway,
     base::FilePath stateful_dir,
     base::FilePath root_dir,
-    base::FilePath runtime_dir) {
+    base::FilePath runtime_dir,
+    std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy) {
   auto vm = base::WrapUnique(
       new PluginVm(std::move(mac_addr), std::move(ipv4_addr), ipv4_netmask,
-                   ipv4_gateway, std::move(root_dir), std::move(runtime_dir)));
+                   ipv4_gateway, std::move(seneschal_server_proxy),
+                   std::move(root_dir), std::move(runtime_dir)));
   if (!vm->Start(cpus, std::move(params), std::move(stateful_dir))) {
     vm.reset();
   }
@@ -125,7 +127,7 @@ VmInterface::Info PluginVm::GetInfo() {
       .ipv4_address = ipv4_addr_->Address(),
       .pid = process_.pid(),
       .cid = 0,
-      .seneschal_server_handle = 0,
+      .seneschal_server_handle = seneschal_server_handle(),
       .status = VmInterface::Status::RUNNING,
   };
 
@@ -217,12 +219,14 @@ PluginVm::PluginVm(arc_networkd::MacAddress mac_addr,
                    std::unique_ptr<arc_networkd::SubnetAddress> ipv4_addr,
                    uint32_t ipv4_netmask,
                    uint32_t ipv4_gateway,
+                   std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
                    base::FilePath root_dir,
                    base::FilePath runtime_dir)
     : mac_addr_(std::move(mac_addr)),
       ipv4_addr_(std::move(ipv4_addr)),
       netmask_(ipv4_netmask),
-      gateway_(ipv4_gateway) {
+      gateway_(ipv4_gateway),
+      seneschal_server_proxy_(std::move(seneschal_server_proxy)) {
   CHECK(ipv4_addr_);
   CHECK(base::DirectoryExists(root_dir));
   CHECK(base::DirectoryExists(runtime_dir));

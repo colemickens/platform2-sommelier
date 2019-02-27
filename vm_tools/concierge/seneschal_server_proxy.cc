@@ -13,23 +13,12 @@ namespace vm_tools {
 namespace concierge {
 
 // static
-std::unique_ptr<SeneschalServerProxy> SeneschalServerProxy::Create(
-    dbus::ObjectProxy* seneschal_proxy, uint32_t port, uint32_t accept_cid) {
-  dbus::MethodCall method_call(vm_tools::seneschal::kSeneschalInterface,
-                               vm_tools::seneschal::kStartServerMethod);
-  dbus::MessageWriter writer(&method_call);
-
-  vm_tools::seneschal::StartServerRequest request;
-  request.mutable_vsock()->set_port(port);
-  request.mutable_vsock()->set_accept_cid(accept_cid);
-  if (!writer.AppendProtoAsArrayOfBytes(request)) {
-    LOG(ERROR) << "Failed to encode StartServerRequest protobuf";
-    return nullptr;
-  }
-
+std::unique_ptr<SeneschalServerProxy>
+SeneschalServerProxy::SeneschalCreateProxy(dbus::ObjectProxy* seneschal_proxy,
+                                           dbus::MethodCall* method_call) {
   std::unique_ptr<dbus::Response> dbus_response =
       seneschal_proxy->CallMethodAndBlock(
-          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+          method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to send StartServer message to seneschal service";
     return nullptr;
@@ -49,6 +38,43 @@ std::unique_ptr<SeneschalServerProxy> SeneschalServerProxy::Create(
 
   return std::unique_ptr<SeneschalServerProxy>(
       new SeneschalServerProxy(seneschal_proxy, response.handle()));
+}
+
+// static
+std::unique_ptr<SeneschalServerProxy> SeneschalServerProxy::CreateVsockProxy(
+    dbus::ObjectProxy* seneschal_proxy, uint32_t port, uint32_t accept_cid) {
+  dbus::MethodCall method_call(vm_tools::seneschal::kSeneschalInterface,
+                               vm_tools::seneschal::kStartServerMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  vm_tools::seneschal::StartServerRequest request;
+  request.mutable_vsock()->set_port(port);
+  request.mutable_vsock()->set_accept_cid(accept_cid);
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode StartServerRequest protobuf";
+    return nullptr;
+  }
+
+  return SeneschalCreateProxy(seneschal_proxy, &method_call);
+}
+
+// static
+std::unique_ptr<SeneschalServerProxy> SeneschalServerProxy::CreateFdProxy(
+    dbus::ObjectProxy* seneschal_proxy, const base::ScopedFD& socket_fd) {
+  dbus::MethodCall method_call(vm_tools::seneschal::kSeneschalInterface,
+                               vm_tools::seneschal::kStartServerMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  vm_tools::seneschal::StartServerRequest request;
+  request.mutable_fd();
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode StartServerRequest protobuf";
+    return nullptr;
+  }
+
+  writer.AppendFileDescriptor(socket_fd.get());
+
+  return SeneschalCreateProxy(seneschal_proxy, &method_call);
 }
 
 SeneschalServerProxy::SeneschalServerProxy(dbus::ObjectProxy* seneschal_proxy,

@@ -17,6 +17,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/un.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -392,6 +393,52 @@ bool CreatePluginRootHierarchy(const base::FilePath& root_path) {
   }
 
   return true;
+}
+
+bool GetPlugin9PSocketPath(const string& vm_id, base::FilePath* path_out) {
+  base::FilePath runtime_dir;
+  if (!GetPluginDirectory(base::FilePath("/run/pvm"), vm_id, &runtime_dir)) {
+    LOG(ERROR) << "Unable to get runtime directory for 9P socket";
+    return false;
+  }
+
+  *path_out = runtime_dir.Append("9p.sock");
+  return true;
+}
+
+base::ScopedFD Create9PUnixSocket(const base::FilePath& path) {
+  base::ScopedFD fd(socket(AF_UNIX, SOCK_STREAM, 0));
+  if (!fd.is_valid()) {
+    PLOG(ERROR) << "Failed to create AF_UNIX socket";
+    return base::ScopedFD();
+  }
+
+  struct sockaddr_un sa;
+
+  if (path.value().length() >= sizeof(sa.sun_path)) {
+    LOG(ERROR) << "Path is too long for a UNIX socket: " << path.value();
+    return base::ScopedFD();
+  }
+
+  memset(&sa, 0, sizeof(sa));
+  sa.sun_family = AF_UNIX;
+  // The memset above took care of NUL terminating, and we already verified
+  // the length before that.
+  memcpy(sa.sun_path, path.value().data(), path.value().length());
+
+  // Delete any old socket instances.
+  if (PathExists(path) && !DeleteFile(path, false)) {
+    PLOG(ERROR) << "failed to delete " << path.value();
+    return base::ScopedFD();
+  }
+
+  // Bind the socket.
+  if (bind(fd.get(), reinterpret_cast<const sockaddr*>(&sa), sizeof(sa)) < 0) {
+    PLOG(ERROR) << "failed to bind " << path.value();
+    return base::ScopedFD();
+  }
+
+  return fd;
 }
 
 void DoNothing() {}
@@ -843,8 +890,8 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   }
   uint32_t seneschal_server_port = next_seneschal_server_port_++;
   std::unique_ptr<SeneschalServerProxy> server_proxy =
-      SeneschalServerProxy::Create(seneschal_service_proxy_,
-                                   seneschal_server_port, vsock_cid);
+      SeneschalServerProxy::CreateVsockProxy(seneschal_service_proxy_,
+                                             seneschal_server_port, vsock_cid);
   if (!server_proxy) {
     LOG(ERROR) << "Unable to start shared directory server";
 
@@ -1120,6 +1167,32 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
     return dbus_response;
   }
 
+  base::FilePath p9_socket_path;
+  if (!GetPlugin9PSocketPath(request.name(), &p9_socket_path)) {
+    response.set_failure_reason("Internal error: unable to get 9P directory");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  base::ScopedFD p9_socket = Create9PUnixSocket(p9_socket_path);
+  if (!p9_socket.is_valid()) {
+    LOG(ERROR) << "Failed creating 9P socket for file sharing";
+
+    response.set_failure_reason("Internal error: unable to create 9P socket");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy =
+      SeneschalServerProxy::CreateFdProxy(seneschal_service_proxy_, p9_socket);
+  if (!seneschal_server_proxy) {
+    LOG(ERROR) << "Unable to start shared directory server";
+
+    response.set_failure_reason("Unable to start shared directory server");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
   // Build the plugin params.
   std::vector<string> params(
       std::make_move_iterator(request.mutable_params()->begin()),
@@ -1130,7 +1203,7 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
       request.cpus(), std::move(params), std::move(mac_addr),
       std::move(ipv4_addr), plugin_subnet_->Netmask(),
       plugin_subnet_->AddressAtOffset(0), std::move(stateful_dir),
-      root_dir.Take(), runtime_dir.Take());
+      root_dir.Take(), runtime_dir.Take(), std::move(seneschal_server_proxy));
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
     response.set_failure_reason("Unable to start VM");

@@ -18,6 +18,7 @@
 #include <base/macros.h>
 #include <brillo/process.h>
 
+#include "vm_tools/concierge/seneschal_server_proxy.h"
 #include "vm_tools/concierge/vm_interface.h"
 
 namespace vm_tools {
@@ -34,7 +35,8 @@ class PluginVm final : public VmInterface {
       uint32_t ipv4_gateway,
       base::FilePath stateful_dir,
       base::FilePath root_dir,
-      base::FilePath runtime_dir);
+      base::FilePath runtime_dir,
+      std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy);
   ~PluginVm() override;
 
   // VmInterface overrides.
@@ -57,11 +59,23 @@ class PluginVm final : public VmInterface {
                               const std::vector<std::string>& nameservers,
                               const std::vector<std::string>& search_domains);
 
+  // The 9p server managed by seneschal that provides access to shared files for
+  // this VM.  Returns 0 if there is no seneschal server associated with this
+  // VM.
+  uint32_t seneschal_server_handle() const {
+    if (seneschal_server_proxy_) {
+      return seneschal_server_proxy_->handle();
+    }
+
+    return 0;
+  }
+
  private:
   PluginVm(arc_networkd::MacAddress mac_addr,
            std::unique_ptr<arc_networkd::SubnetAddress> ipv4_addr,
            uint32_t ipv4_netmask,
            uint32_t ipv4_gateway,
+           std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
            base::FilePath root_dir,
            base::FilePath runtime_dir);
   bool Start(uint32_t cpus,
@@ -84,6 +98,9 @@ class PluginVm final : public VmInterface {
   std::unique_ptr<arc_networkd::SubnetAddress> ipv4_addr_;
   uint32_t netmask_;
   uint32_t gateway_;
+
+  // Proxy to the server providing shared directory access for this VM.
+  std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(PluginVm);
 };
