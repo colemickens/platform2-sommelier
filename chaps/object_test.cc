@@ -22,7 +22,7 @@ using ::testing::SetArgPointee;
 namespace chaps {
 
 // Test fixture for an initialized ObjectImpl instance.
-class TestObject: public ::testing::Test {
+class TestObject : public ::testing::Test {
  public:
   TestObject() {
     scoped_policy_.reset(CreatePolicy());
@@ -50,7 +50,7 @@ class TestObject: public ::testing::Test {
     return policy_;
   }
   ChapsFactoryMock factory_;
-  ObjectPolicyMock* policy_;  // The policy in use (if any).
+  ObjectPolicyMock* policy_;       // The policy in use (if any).
   ObjectPolicyMock* next_policy_;  // The policy to be used next.
   // Owns next_policy_ until used.
   std::unique_ptr<ObjectPolicyMock> scoped_policy_;
@@ -149,10 +149,9 @@ TEST_F(TestObject, FinalizeNewObject) {
   EXPECT_CALL(*next_policy_, IsModifyAllowed(1, "test"))
       .WillRepeatedly(Return(false));
   CK_OBJECT_CLASS classval = CKO_PUBLIC_KEY;
-  CK_ATTRIBUTE attr[] = {
-    {CKA_CLASS, &classval, sizeof(classval)},
-    {1, const_cast<char*>("test"), 4},
-    {2, const_cast<char*>("test2"), 5}};
+  CK_ATTRIBUTE attr[] = {{CKA_CLASS, &classval, sizeof(classval)},
+                         {1, const_cast<char*>("test"), 4},
+                         {2, const_cast<char*>("test2"), 5}};
   object_->SetAttributes(attr, 3);
   EXPECT_EQ(CKR_ATTRIBUTE_READ_ONLY, object_->FinalizeNewObject());
   // Finalize before object is complete.
@@ -161,8 +160,7 @@ TEST_F(TestObject, FinalizeNewObject) {
   EXPECT_CALL(*next_policy_, IsObjectComplete())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
-  CK_ATTRIBUTE attr2[] = {
-    {1, const_cast<char*>("test3"), 5}};
+  CK_ATTRIBUTE attr2[] = {{1, const_cast<char*>("test3"), 5}};
   object_->SetAttributes(attr2, 1);
   EXPECT_EQ(CKR_TEMPLATE_INCOMPLETE, object_->FinalizeNewObject());
   EXPECT_EQ(CKR_OK, object_->FinalizeNewObject());

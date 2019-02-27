@@ -27,9 +27,7 @@ class ObjectStoreFake : public ObjectStore {
     internal_blobs_[blob_id] = blob;
     return true;
   }
-  bool SetEncryptionKey(const brillo::SecureBlob& key) override {
-    return true;
-  }
+  bool SetEncryptionKey(const brillo::SecureBlob& key) override { return true; }
   bool InsertObjectBlob(const ObjectBlob& blob, int* handle) override {
     *handle = ++last_handle_;
     object_blobs_[*handle] = blob;

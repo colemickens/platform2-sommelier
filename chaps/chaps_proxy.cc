@@ -23,10 +23,10 @@
 #include "pkcs11/cryptoki.h"
 
 using base::AutoLock;
+using brillo::SecureBlob;
+using brillo::dbus_utils::ExtractMethodCallResults;
 using std::string;
 using std::vector;
-using brillo::dbus_utils::ExtractMethodCallResults;
-using brillo::SecureBlob;
 
 namespace {
 
@@ -123,8 +123,8 @@ bool ChapsProxyImpl::LoadToken(const SecureBlob& isolate_credential,
                                uint64_t* slot_id) {
   bool result = false;
   std::unique_ptr<dbus::Response> resp =
-      proxy_->CallMethod(kLoadTokenMethod, AsVector(isolate_credential),
-                         path, AsVector(auth_data), label);
+      proxy_->CallMethod(kLoadTokenMethod, AsVector(isolate_credential), path,
+                         AsVector(auth_data), label);
   return resp &&
          ExtractMethodCallResults(resp.get(), nullptr, slot_id, &result) &&
          result;

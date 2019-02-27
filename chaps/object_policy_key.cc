@@ -16,10 +16,10 @@ namespace chaps {
 // read-only.modify - True if attribute cannot be set with C_SetAttributeValue.
 // required - True if attribute is required for a valid object.
 static const AttributePolicy kKeyPolicies[] = {
-  {CKA_KEY_TYPE, false, {false, false, true}, true},
-  {CKA_LOCAL, false, {true, true, true}, false},
-  {CKA_KEY_GEN_MECHANISM, false, {true, true, true}, false},
-  {CKA_ALLOWED_MECHANISMS, false, {false, false, true}, false},
+    {CKA_KEY_TYPE, false, {false, false, true}, true},
+    {CKA_LOCAL, false, {true, true, true}, false},
+    {CKA_KEY_GEN_MECHANISM, false, {true, true, true}, false},
+    {CKA_ALLOWED_MECHANISMS, false, {false, false, true}, false},
 };
 
 ObjectPolicyKey::ObjectPolicyKey() {
@@ -30,11 +30,7 @@ ObjectPolicyKey::~ObjectPolicyKey() {}
 
 void ObjectPolicyKey::SetDefaultAttributes() {
   ObjectPolicyCommon::SetDefaultAttributes();
-  CK_ATTRIBUTE_TYPE empty[] = {
-    CKA_ID,
-    CKA_START_DATE,
-    CKA_END_DATE
-  };
+  CK_ATTRIBUTE_TYPE empty[] = {CKA_ID, CKA_START_DATE, CKA_END_DATE};
   for (size_t i = 0; i < arraysize(empty); ++i) {
     if (!object_->IsAttributePresent(empty[i]))
       object_->SetAttributeString(empty[i], "");

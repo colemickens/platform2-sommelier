@@ -26,8 +26,8 @@ using base::AutoLock;
 using base::AutoUnlock;
 using brillo::SecureBlob;
 using std::map;
-using std::string;
 using std::shared_ptr;
+using std::string;
 using std::vector;
 using Result = chaps::ObjectPool::Result;
 
@@ -171,9 +171,9 @@ Result ObjectPoolImpl::Find(const Object* search_template,
   // If we're looking for private objects we need to wait until private objects
   // have been loaded.
   if (((search_template->IsAttributePresent(CKA_PRIVATE) &&
-      search_template->IsPrivate()) ||
-      (search_template->IsAttributePresent(CKA_CLASS) &&
-      search_template->GetObjectClass() == CKO_PRIVATE_KEY)) &&
+        search_template->IsPrivate()) ||
+       (search_template->IsAttributePresent(CKA_CLASS) &&
+        search_template->GetObjectClass() == CKO_PRIVATE_KEY)) &&
       !is_private_loaded_)
     return Result::WaitForPrivateObjects;
   for (ObjectSet::iterator it = objects_.begin(); it != objects_.end(); ++it) {

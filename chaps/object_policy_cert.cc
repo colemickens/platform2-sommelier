@@ -18,20 +18,19 @@ namespace chaps {
 // read-only.modify - True if attribute cannot be set with C_SetAttributeValue.
 // required - True if attribute is required for a valid object.
 static const AttributePolicy kCertPolicies[] = {
-  {CKA_CERTIFICATE_TYPE, false, {false, false, true}, true},
-  {CKA_TRUSTED, false, {true, true, true}, false},
-  {CKA_CERTIFICATE_CATEGORY, false, {false, false, true}, false},
-  {CKA_CHECK_VALUE, false, {false, false, true}, false},
-  {CKA_START_DATE, false, {false, false, true}, false},
-  {CKA_END_DATE, false, {false, false, true}, false},
-  {CKA_SUBJECT, false, {false, false, true}, false},
-  {CKA_VALUE, false, {false, false, true}, true},
-  {CKA_URL, false, {false, false, true}, false},
-  {CKA_HASH_OF_SUBJECT_PUBLIC_KEY, false, {false, false, true}, false},
-  {CKA_HASH_OF_ISSUER_PUBLIC_KEY, false, {false, false, true}, false},
-  {CKA_JAVA_MIDP_SECURITY_DOMAIN, false, {false, false, true}, false},
-  {CKA_OWNER, false, {false, false, true}, false}
-};
+    {CKA_CERTIFICATE_TYPE, false, {false, false, true}, true},
+    {CKA_TRUSTED, false, {true, true, true}, false},
+    {CKA_CERTIFICATE_CATEGORY, false, {false, false, true}, false},
+    {CKA_CHECK_VALUE, false, {false, false, true}, false},
+    {CKA_START_DATE, false, {false, false, true}, false},
+    {CKA_END_DATE, false, {false, false, true}, false},
+    {CKA_SUBJECT, false, {false, false, true}, false},
+    {CKA_VALUE, false, {false, false, true}, true},
+    {CKA_URL, false, {false, false, true}, false},
+    {CKA_HASH_OF_SUBJECT_PUBLIC_KEY, false, {false, false, true}, false},
+    {CKA_HASH_OF_ISSUER_PUBLIC_KEY, false, {false, false, true}, false},
+    {CKA_JAVA_MIDP_SECURITY_DOMAIN, false, {false, false, true}, false},
+    {CKA_OWNER, false, {false, false, true}, false}};
 
 ObjectPolicyCert::ObjectPolicyCert() {
   AddPolicies(kCertPolicies, arraysize(kCertPolicies));
@@ -82,14 +81,12 @@ void ObjectPolicyCert::SetDefaultAttributes() {
     CK_CERTIFICATE_TYPE type =
         object_->GetAttributeInt(CKA_CERTIFICATE_TYPE, 0);
     if (type == CKC_X_509) {
-      CK_ATTRIBUTE_TYPE empty[] = {
-        CKA_ID,
-        CKA_ISSUER,
-        CKA_SERIAL_NUMBER,
-        CKA_URL,
-        CKA_HASH_OF_SUBJECT_PUBLIC_KEY,
-        CKA_HASH_OF_ISSUER_PUBLIC_KEY
-      };
+      CK_ATTRIBUTE_TYPE empty[] = {CKA_ID,
+                                   CKA_ISSUER,
+                                   CKA_SERIAL_NUMBER,
+                                   CKA_URL,
+                                   CKA_HASH_OF_SUBJECT_PUBLIC_KEY,
+                                   CKA_HASH_OF_ISSUER_PUBLIC_KEY};
       for (size_t i = 0; i < arraysize(empty); ++i) {
         if (!object_->IsAttributePresent(empty[i]))
           object_->SetAttributeString(empty[i], "");
@@ -97,22 +94,16 @@ void ObjectPolicyCert::SetDefaultAttributes() {
       if (!object_->IsAttributePresent(CKA_JAVA_MIDP_SECURITY_DOMAIN))
         object_->SetAttributeInt(CKA_JAVA_MIDP_SECURITY_DOMAIN, 0);
     } else if (type == CKC_WTLS) {
-      CK_ATTRIBUTE_TYPE empty[] = {
-        CKA_ISSUER,
-        CKA_URL,
-        CKA_HASH_OF_SUBJECT_PUBLIC_KEY,
-        CKA_HASH_OF_ISSUER_PUBLIC_KEY
-      };
+      CK_ATTRIBUTE_TYPE empty[] = {CKA_ISSUER, CKA_URL,
+                                   CKA_HASH_OF_SUBJECT_PUBLIC_KEY,
+                                   CKA_HASH_OF_ISSUER_PUBLIC_KEY};
       for (size_t i = 0; i < arraysize(empty); ++i) {
         if (!object_->IsAttributePresent(empty[i]))
           object_->SetAttributeString(empty[i], "");
       }
     } else if (type == CKC_X_509_ATTR_CERT) {
-      CK_ATTRIBUTE_TYPE empty[] = {
-        CKA_AC_ISSUER,
-        CKA_SERIAL_NUMBER,
-        CKA_ATTR_TYPES
-      };
+      CK_ATTRIBUTE_TYPE empty[] = {CKA_AC_ISSUER, CKA_SERIAL_NUMBER,
+                                   CKA_ATTR_TYPES};
       for (size_t i = 0; i < arraysize(empty); ++i) {
         if (!object_->IsAttributePresent(empty[i]))
           object_->SetAttributeString(empty[i], "");

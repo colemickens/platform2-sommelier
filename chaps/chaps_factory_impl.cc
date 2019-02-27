@@ -32,22 +32,16 @@ Session* ChapsFactoryImpl::CreateSession(int slot_id,
                                          TPMUtility* tpm_utility,
                                          HandleGenerator* handle_generator,
                                          bool is_read_only) {
-  return new SessionImpl(slot_id,
-                         token_object_pool,
-                         tpm_utility,
-                         this,
-                         handle_generator,
-                         is_read_only);
+  return new SessionImpl(slot_id, token_object_pool, tpm_utility, this,
+                         handle_generator, is_read_only);
 }
 
 ObjectPool* ChapsFactoryImpl::CreateObjectPool(
     HandleGenerator* handle_generator,
     ObjectStore* object_store,
     ObjectImporter* object_importer) {
-  std::unique_ptr<ObjectPoolImpl> pool(new ObjectPoolImpl(this,
-                                                     handle_generator,
-                                                     object_store,
-                                                     object_importer));
+  std::unique_ptr<ObjectPoolImpl> pool(new ObjectPoolImpl(
+      this, handle_generator, object_store, object_importer));
   CHECK(pool.get());
   if (!pool->Init())
     return NULL;
@@ -88,9 +82,7 @@ ObjectPolicy* ChapsFactoryImpl::CreateObjectPolicy(CK_OBJECT_CLASS type) {
 }
 
 ObjectImporter* ChapsFactoryImpl::CreateObjectImporter(
-    int slot_id,
-    const FilePath& path,
-    TPMUtility* tpm_utility) {
+    int slot_id, const FilePath& path, TPMUtility* tpm_utility) {
   if (!tpm_utility->IsTPMAvailable()) {
     return NULL;
   }

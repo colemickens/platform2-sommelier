@@ -35,7 +35,7 @@ using ::testing::SetArgPointee;
 
 namespace chaps {
 
-class TestTPMUtility: public ::testing::Test {
+class TestTPMUtility : public ::testing::Test {
  public:
   TestTPMUtility() {
 #if USE_TPM2

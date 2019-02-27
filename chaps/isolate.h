@@ -41,15 +41,13 @@ class IsolateCredentialManager {
 
   // Get the isolate credential for the given user name, returning true if it
   // exists.
-  virtual bool GetUserIsolateCredential(
-      const std::string& user,
-      brillo::SecureBlob* isolate_credential);
+  virtual bool GetUserIsolateCredential(const std::string& user,
+                                        brillo::SecureBlob* isolate_credential);
 
   // Save the isolate credential such that it can be retrieved with
   // GetUserIsolateCredential. Return true on success and false on failure.
   virtual bool SaveIsolateCredential(
-      const std::string& user,
-      const brillo::SecureBlob& isolate_credential);
+      const std::string& user, const brillo::SecureBlob& isolate_credential);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(IsolateCredentialManager);
@@ -58,4 +56,3 @@ class IsolateCredentialManager {
 }  // namespace chaps
 
 #endif  // CHAPS_ISOLATE_H_
-

@@ -22,7 +22,7 @@ using ::testing::SetArgPointee;
 namespace chaps {
 
 // Test fixture for an initialized ObjectImpl instance.
-class TestObjectPolicy: public ::testing::Test {
+class TestObjectPolicy : public ::testing::Test {
  public:
   TestObjectPolicy() {
     object_.SetupFake();
@@ -165,19 +165,17 @@ TEST_F(TestObjectPolicy, LatchingAttributes) {
           // if we don't know how it was generated.
           EXPECT_FALSE(object_.GetAttributeBool(CKA_ALWAYS_SENSITIVE, true));
           EXPECT_FALSE(object_.GetAttributeBool(CKA_NEVER_EXTRACTABLE, true));
-          EXPECT_EQ(static_cast<int>(CK_UNAVAILABLE_INFORMATION),
-                    object_.GetAttributeInt(CKA_KEY_GEN_MECHANISM,
-                                            CKM_DES3_KEY_GEN));
+          EXPECT_EQ(
+              static_cast<int>(CK_UNAVAILABLE_INFORMATION),
+              object_.GetAttributeInt(CKA_KEY_GEN_MECHANISM, CKM_DES3_KEY_GEN));
         } else {
           EXPECT_EQ(sensitive,
-                    object_.GetAttributeBool(CKA_ALWAYS_SENSITIVE,
-                                             !sensitive));
-          EXPECT_EQ(!extractable,
-                    object_.GetAttributeBool(CKA_NEVER_EXTRACTABLE,
-                                             extractable));
-          EXPECT_EQ(CKM_DES3_KEY_GEN,
-                    object_.GetAttributeInt(CKA_KEY_GEN_MECHANISM,
-                                            CKM_AES_KEY_GEN));
+                    object_.GetAttributeBool(CKA_ALWAYS_SENSITIVE, !sensitive));
+          EXPECT_EQ(!extractable, object_.GetAttributeBool(
+                                      CKA_NEVER_EXTRACTABLE, extractable));
+          EXPECT_EQ(
+              CKM_DES3_KEY_GEN,
+              object_.GetAttributeInt(CKA_KEY_GEN_MECHANISM, CKM_AES_KEY_GEN));
         }
       }
     }

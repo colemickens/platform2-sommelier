@@ -23,8 +23,8 @@ class EXPORT_SPEC Attributes {
   // deallocation will be performed when the object destructs.
   Attributes(CK_ATTRIBUTE_PTR attributes, CK_ULONG num_attributes);
   virtual ~Attributes();
-  CK_ATTRIBUTE_PTR attributes() const {return attributes_;}
-  CK_ULONG num_attributes() const {return num_attributes_;}
+  CK_ATTRIBUTE_PTR attributes() const { return attributes_; }
+  CK_ULONG num_attributes() const { return num_attributes_; }
   // This method serializes the current array of attributes.
   virtual bool Serialize(std::vector<uint8_t>* serialized_attributes) const;
   // This method parses a serialized array of attributes into a new CK_ATTRIBUTE

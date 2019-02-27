@@ -43,9 +43,8 @@ ScopedBus::~ScopedBus() {
     base::WaitableEvent completion_event(
         base::WaitableEvent::ResetPolicy::AUTOMATIC,
         base::WaitableEvent::InitialState::NOT_SIGNALED);
-    task_runner_->PostTask(
-        FROM_HERE,
-        base::Bind(&ShutdownBusOnTaskRunner, bus_, &completion_event));
+    task_runner_->PostTask(FROM_HERE, base::Bind(&ShutdownBusOnTaskRunner, bus_,
+                                                 &completion_event));
     completion_event.Wait();
   }
 }

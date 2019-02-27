@@ -17,16 +17,12 @@ class ObjectPolicyMock : public ObjectPolicy {
  public:
   ObjectPolicyMock();
   ~ObjectPolicyMock() override;
-  MOCK_METHOD1(Init,
-      void(Object* object));
-  MOCK_METHOD1(IsReadAllowed,
-      bool(CK_ATTRIBUTE_TYPE type));
+  MOCK_METHOD1(Init, void(Object* object));
+  MOCK_METHOD1(IsReadAllowed, bool(CK_ATTRIBUTE_TYPE type));
   MOCK_METHOD2(IsModifyAllowed,
-      bool(CK_ATTRIBUTE_TYPE type, const std::string& value));
-  MOCK_METHOD0(IsObjectComplete,
-      bool());
-  MOCK_METHOD0(SetDefaultAttributes,
-      void());
+               bool(CK_ATTRIBUTE_TYPE type, const std::string& value));
+  MOCK_METHOD0(IsObjectComplete, bool());
+  MOCK_METHOD0(SetDefaultAttributes, void());
 };
 
 }  // namespace chaps

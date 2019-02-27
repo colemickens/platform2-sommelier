@@ -20,9 +20,9 @@
 #include "chaps/isolate_login_client_mock.h"
 #include "chaps/pam_helper_mock.h"
 
+using brillo::SecureBlob;
 using std::string;
 using std::vector;
-using brillo::SecureBlob;
 using ::testing::_;
 using ::testing::DoAll;
 using ::testing::Eq;
@@ -47,27 +47,20 @@ class TestPamModule : public ::testing::Test {
     EXPECT_CALL(pam_helper_mock_, GetPamUser(_, _))
         .WillRepeatedly(DoAll(SetArgPointee<1>(user_), Return(true)));
     EXPECT_CALL(pam_helper_mock_, GetPamPassword(_, false, _))
-        .WillRepeatedly(DoAll(SetArgPointee<2>(password_new_),
-                              Return(true)));
+        .WillRepeatedly(DoAll(SetArgPointee<2>(password_new_), Return(true)));
     EXPECT_CALL(pam_helper_mock_, GetPamPassword(_, true, _))
-        .WillRepeatedly(DoAll(SetArgPointee<2>(password_old_),
-                              Return(true)));
+        .WillRepeatedly(DoAll(SetArgPointee<2>(password_old_), Return(true)));
     EXPECT_CALL(pam_helper_mock_, SaveUserAndPassword(_, user_, password_new_))
         .WillRepeatedly(Return(true));
-    EXPECT_CALL(pam_helper_mock_,
-                RetrieveUserAndPassword(_, _, _))
+    EXPECT_CALL(pam_helper_mock_, RetrieveUserAndPassword(_, _, _))
         .WillRepeatedly(DoAll(SetArgPointee<1>(user_),
-                              SetArgPointee<2>(password_new_),
-                              Return(true)));
+                              SetArgPointee<2>(password_new_), Return(true)));
     EXPECT_CALL(pam_helper_mock_, PutEnvironmentVariable(_, _, _))
         .WillRepeatedly(Return(true));
     EXPECT_CALL(pam_helper_mock_, GetEnvironmentVariable(_, _, _))
-        .WillRepeatedly(DoAll(SetArgPointee<2>(string("1")),
-                              Return(true)));
+        .WillRepeatedly(DoAll(SetArgPointee<2>(string("1")), Return(true)));
   }
-  void TearDown() {
-    DisableMock();
-  }
+  void TearDown() { DisableMock(); }
   string user_;
   SecureBlob password_old_;
   SecureBlob password_new_;
@@ -93,30 +86,29 @@ TEST_F(TestPamModule, TestPamOpenWithoutAuthenticate) {
 TEST_F(TestPamModule, TestPamOpenWithoutDifferentUser) {
   EXPECT_CALL(pam_helper_mock_, GetPamUser(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(user_), Return(true)))
-      .WillRepeatedly(DoAll(SetArgPointee<1>(string("user_2")),
-                            Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(string("user_2")), Return(true)));
 
   EXPECT_EQ(PAM_SUCCESS, pam_sm_authenticate(NULL, 0, 0, NULL));
   EXPECT_EQ(PAM_IGNORE, pam_sm_open_session(NULL, 0, 0, NULL));
 }
 
 TEST_F(TestPamModule, TestPamCloseSuccess) {
-  EXPECT_CALL(login_client_mock_, LogoutUser(user_))
-      .WillOnce(Return(true));
+  EXPECT_CALL(login_client_mock_, LogoutUser(user_)).WillOnce(Return(true));
 
   EXPECT_EQ(PAM_SUCCESS, pam_sm_close_session(NULL, 0, 0, NULL));
 }
 
 TEST_F(TestPamModule, TestPamChangeAuthSuccess) {
-  EXPECT_CALL(login_client_mock_, ChangeUserAuth(user_, password_old_,
-                                                 password_new_))
+  EXPECT_CALL(login_client_mock_,
+              ChangeUserAuth(user_, password_old_, password_new_))
       .WillOnce(Return(true));
 
   EXPECT_EQ(PAM_SUCCESS, pam_sm_chauthtok(NULL, PAM_UPDATE_AUTHTOK, 0, NULL));
 }
 
 TEST_F(TestPamModule, TestPamChangeAuthPrelimCheck) {
-  EXPECT_EQ(PAM_IGNORE,
+  EXPECT_EQ(
+      PAM_IGNORE,
       pam_sm_chauthtok(NULL, PAM_PRELIM_CHECK | PAM_UPDATE_AUTHTOK, 0, NULL));
   EXPECT_EQ(PAM_IGNORE, pam_sm_chauthtok(NULL, 0, 0, NULL));
 }
@@ -124,8 +116,7 @@ TEST_F(TestPamModule, TestPamChangeAuthPrelimCheck) {
 TEST_F(TestPamModule, TestPamChangeAuthFail) {
   EXPECT_CALL(pam_helper_mock_, GetPamPassword(_, true, _))
       .WillOnce(Return(false))
-      .WillRepeatedly(DoAll(SetArgPointee<2>(password_old_),
-                            Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<2>(password_old_), Return(true)));
   EXPECT_CALL(pam_helper_mock_, GetPamPassword(_, false, _))
       .WillOnce(Return(false));
 

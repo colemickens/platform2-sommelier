@@ -29,9 +29,7 @@ TEST(TestScopedBus, SameThread) {
   ScopedBus bus((dbus::Bus::Options()));
   scoped_refptr<dbus::Bus> bus_ptr = bus.get();
 
-  {
-    ScopedBus bus2(std::move(bus));
-  }
+  { ScopedBus bus2(std::move(bus)); }
 
   EXPECT_TRUE(bus_ptr->shutdown_completed());
 }
@@ -47,15 +45,12 @@ TEST(TestScopedBus, DifferentThread) {
       base::WaitableEvent::ResetPolicy::AUTOMATIC,
       base::WaitableEvent::InitialState::NOT_SIGNALED);
   bus_thread.task_runner()->PostTask(
-      FROM_HERE,
-      base::Bind(&CreateScopedBus, &completion_event, &bus));
+      FROM_HERE, base::Bind(&CreateScopedBus, &completion_event, &bus));
   completion_event.Wait();
 
   scoped_refptr<dbus::Bus> bus_ptr = bus.get();
 
-  {
-    ScopedBus bus2(std::move(bus));
-  }
+  { ScopedBus bus2(std::move(bus)); }
 
   EXPECT_TRUE(bus_ptr->shutdown_completed());
 }

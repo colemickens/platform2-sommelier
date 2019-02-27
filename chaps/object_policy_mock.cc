@@ -9,4 +9,4 @@ namespace chaps {
 ObjectPolicyMock::ObjectPolicyMock() {}
 ObjectPolicyMock::~ObjectPolicyMock() {}
 
-}
+}  // namespace chaps

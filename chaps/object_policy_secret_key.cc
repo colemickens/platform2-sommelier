@@ -18,14 +18,13 @@ namespace chaps {
 // read-only.modify - True if attribute cannot be set with C_SetAttributeValue.
 // required - True if attribute is required for a valid object.
 static const AttributePolicy kSecretKeyPolicies[] = {
-  {CKA_ALWAYS_SENSITIVE, false, {true, true, true}, false},
-  {CKA_NEVER_EXTRACTABLE, false, {true, true, true}, false},
-  {CKA_WRAP_TEMPLATE, false, {false, false, true}, false},
-  {CKA_UNWRAP_TEMPLATE, false, {false, false, true}, false},
-  {CKA_CHECK_VALUE, false, {false, false, true}, false},
-  {CKA_TRUSTED, false, {true, true, true}, false},
-  {CKA_VALUE, true, {false, false, true}, true}
-};
+    {CKA_ALWAYS_SENSITIVE, false, {true, true, true}, false},
+    {CKA_NEVER_EXTRACTABLE, false, {true, true, true}, false},
+    {CKA_WRAP_TEMPLATE, false, {false, false, true}, false},
+    {CKA_UNWRAP_TEMPLATE, false, {false, false, true}, false},
+    {CKA_CHECK_VALUE, false, {false, false, true}, false},
+    {CKA_TRUSTED, false, {true, true, true}, false},
+    {CKA_VALUE, true, {false, false, true}, true}};
 
 ObjectPolicySecretKey::ObjectPolicySecretKey() {
   AddPolicies(kSecretKeyPolicies, arraysize(kSecretKeyPolicies));

@@ -61,8 +61,7 @@ class SlotManagerImpl : public SlotManager,
                     int slot_id,
                     CK_TOKEN_INFO* token_info) const override;
   const MechanismMap* GetMechanismInfo(
-                    const brillo::SecureBlob& isolate_credential,
-                    int slot_id) const override;
+      const brillo::SecureBlob& isolate_credential, int slot_id) const override;
   int OpenSession(const brillo::SecureBlob& isolate_credential,
                   int slot_id,
                   bool is_read_only) override;
@@ -71,7 +70,8 @@ class SlotManagerImpl : public SlotManager,
   void CloseAllSessions(const brillo::SecureBlob& isolate_credential,
                         int slot_id) override;
   bool GetSession(const brillo::SecureBlob& isolate_credential,
-                  int session_id, Session** session) const override;
+                  int session_id,
+                  Session** session) const override;
 
   // TokenManagerInterface methods.
   bool OpenIsolate(brillo::SecureBlob* isolate_credential,

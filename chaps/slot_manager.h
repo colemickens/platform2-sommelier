@@ -39,23 +39,25 @@ class SlotManager {
   virtual bool IsTokenPresent(const brillo::SecureBlob& isolate_credential,
                               int slot_id) const = 0;
   virtual void GetSlotInfo(const brillo::SecureBlob& isolate_credential,
-                           int slot_id, CK_SLOT_INFO* slot_info) const = 0;
+                           int slot_id,
+                           CK_SLOT_INFO* slot_info) const = 0;
   virtual void GetTokenInfo(const brillo::SecureBlob& isolate_credential,
-                            int slot_id, CK_TOKEN_INFO* token_info) const = 0;
+                            int slot_id,
+                            CK_TOKEN_INFO* token_info) const = 0;
   virtual const MechanismMap* GetMechanismInfo(
       const brillo::SecureBlob& isolate_credential, int slot_id) const = 0;
   // Opens a new session with the token in the given slot. A token must be
   // present. A new and unique session identifier is returned.
-  virtual int OpenSession(
-      const brillo::SecureBlob& isolate_credential,
-      int slot_id,
-      bool is_read_only) = 0;
+  virtual int OpenSession(const brillo::SecureBlob& isolate_credential,
+                          int slot_id,
+                          bool is_read_only) = 0;
   virtual bool CloseSession(const brillo::SecureBlob& isolate_credential,
-      int session_id) = 0;
+                            int session_id) = 0;
   virtual void CloseAllSessions(const brillo::SecureBlob& isolate_credential,
-      int slot_id) = 0;
+                                int slot_id) = 0;
   virtual bool GetSession(const brillo::SecureBlob& isolate_credential,
-      int session_id, Session** session) const = 0;
+                          int session_id,
+                          Session** session) const = 0;
 };
 
 }  // namespace chaps

@@ -9,4 +9,4 @@ namespace chaps {
 SlotManagerMock::SlotManagerMock() {}
 SlotManagerMock::~SlotManagerMock() {}
 
-}
+}  // namespace chaps

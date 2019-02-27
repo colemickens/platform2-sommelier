@@ -43,22 +43,16 @@ class ObjectStoreImpl : public ObjectStore {
   bool LoadPrivateObjectBlobs(std::map<int, ObjectBlob>* blobs) override;
 
  private:
-  enum BlobType {
-    kInternal,
-    kPrivate,
-    kPublic
-  };
+  enum BlobType { kInternal, kPrivate, kPublic };
 
   // Loads all object of a given type.
   bool LoadObjectBlobs(BlobType type, std::map<int, ObjectBlob>* blobs);
 
   // Encrypts an object blob with a random IV and appends an HMAC.
-  bool Encrypt(const ObjectBlob& plain_text,
-               ObjectBlob* cipher_text);
+  bool Encrypt(const ObjectBlob& plain_text, ObjectBlob* cipher_text);
 
   // Verifies and decrypts an object blob.
-  bool Decrypt(const ObjectBlob& cipher_text,
-               ObjectBlob* plain_text);
+  bool Decrypt(const ObjectBlob& cipher_text, ObjectBlob* plain_text);
 
   // Computes an HMAC and appends it to the given input.
   std::string AppendHMAC(const std::string& input,

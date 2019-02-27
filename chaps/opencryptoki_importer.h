@@ -114,4 +114,3 @@ class OpencryptokiImporter : public ObjectImporter {
 }  // namespace chaps
 
 #endif  // CHAPS_OPENCRYPTOKI_IMPORTER_H_
-

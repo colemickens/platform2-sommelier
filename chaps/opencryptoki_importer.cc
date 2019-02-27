@@ -85,7 +85,7 @@ bool OpencryptokiImporter::ImportObjects(ObjectPool* object_pool) {
   for (size_t i = 0; i < object_files.size(); ++i) {
     string object_file_content;
     if (!base::ReadFileToString(object_path.Append(object_files[i]),
-                                     &object_file_content)) {
+                                &object_file_content)) {
       LOG(WARNING) << "Failed to read object file: " << object_files[i];
       continue;
     }
@@ -102,8 +102,7 @@ bool OpencryptokiImporter::ImportObjects(ObjectPool* object_pool) {
     }
     AttributeMap attributes;
     if (!UnflattenObject(flat_object, object_files[i], false, &attributes)) {
-      LOG(WARNING) << "Failed to parse object attributes: "
-                   << object_files[i];
+      LOG(WARNING) << "Failed to parse object attributes: " << object_files[i];
       continue;
     }
     if (!ProcessInternalObject(attributes, object_pool)) {
@@ -233,9 +232,8 @@ bool OpencryptokiImporter::UnflattenObject(const string& object_data,
   return true;
 }
 
-bool OpencryptokiImporter::ProcessInternalObject(
-    const AttributeMap& attributes,
-    ObjectPool* object_pool) {
+bool OpencryptokiImporter::ProcessInternalObject(const AttributeMap& attributes,
+                                                 ObjectPool* object_pool) {
   const CK_ATTRIBUTE_TYPE kOpencryptokiHidden = CKA_VENDOR_DEFINED + 0x01000000;
   const CK_ATTRIBUTE_TYPE kOpencryptokiOpaque = CKA_VENDOR_DEFINED + 1;
   const char kPrivateRootKeyID[] = "PRIVATE ROOT KEY";
@@ -306,12 +304,9 @@ bool OpencryptokiImporter::LoadKeyHierarchy(bool load_private) {
   if (!tpm_->LoadKey(slot_, root_blob, SecureBlob(), &root_key))
     return false;
   // Load the leaf key.
-  SecureBlob leaf_auth_data = Sha1(SecureBlob(std::begin(kDefaultAuthData),
-                                              std::end(kDefaultAuthData)));
-  if (!tpm_->LoadKeyWithParent(slot_,
-                               leaf_blob,
-                               leaf_auth_data,
-                               root_key,
+  SecureBlob leaf_auth_data = Sha1(
+      SecureBlob(std::begin(kDefaultAuthData), std::end(kDefaultAuthData)));
+  if (!tpm_->LoadKeyWithParent(slot_, leaf_blob, leaf_auth_data, root_key,
                                &leaf_key))
     return false;
   return true;
@@ -343,10 +338,7 @@ bool OpencryptokiImporter::DecryptObject(const SecureBlob& key,
   const char kOpencryptokiIV[] = ")#%&!*)^!()$&!&N";
   const size_t kSha1OutputBytes = 20;
   string decrypted;
-  if (!RunCipher(false,
-                 key,
-                 kOpencryptokiIV,
-                 encrypted_object_data,
+  if (!RunCipher(false, key, kOpencryptokiIV, encrypted_object_data,
                  &decrypted))
     return false;
   // The data is formatted as follows:
@@ -427,8 +419,7 @@ bool OpencryptokiImporter::CreateObjectInstance(const AttributeMap& attributes,
                                                 Object** object) {
   *object = factory_->CreateObject();
   for (AttributeMap::const_iterator it = attributes.begin();
-       it != attributes.end();
-       ++it) {
+       it != attributes.end(); ++it) {
     (*object)->SetAttributeString(it->first, it->second);
   }
   CK_RV result = (*object)->FinalizeNewObject();
@@ -461,8 +452,7 @@ bool OpencryptokiImporter::DecryptPendingObjects() {
       return false;
     }
     for (map<string, string>::iterator iter = encrypted_objects_.begin();
-         iter != encrypted_objects_.end();
-         ++iter) {
+         iter != encrypted_objects_.end(); ++iter) {
       string flat_object;
       if (!DecryptObject(master_key, iter->second, &flat_object)) {
         LOG(WARNING) << "Failed to decrypt an encrypted object: "

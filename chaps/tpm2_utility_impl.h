@@ -22,7 +22,6 @@
 #include <trunks/trunks_factory.h>
 #include <trunks/trunks_factory_impl.h>
 
-
 // TODO(http://crbug.com/473843, http://crosbug.com/p/59754): restore using
 // one global session when session handles virtualization is supported by
 // trunks.

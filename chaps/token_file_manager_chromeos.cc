@@ -16,20 +16,19 @@
 
 #include "chaps/chaps_utility.h"
 
-using std::string;
 using base::FilePath;
 using brillo::SecureBlob;
+using std::string;
 
 namespace chaps {
 
 TokenFileManager::TokenFileManager(uid_t chapsd_uid, gid_t chapsd_gid)
-    : chapsd_uid_(chapsd_uid),
-      chapsd_gid_(chapsd_gid) {
+    : chapsd_uid_(chapsd_uid), chapsd_gid_(chapsd_gid) {
   ignore_result(chapsd_uid_);
   ignore_result(chapsd_gid_);
 }
 
-TokenFileManager::~TokenFileManager() { }
+TokenFileManager::~TokenFileManager() {}
 
 bool TokenFileManager::GetUserTokenPath(const string& user,
                                         FilePath* token_path) {

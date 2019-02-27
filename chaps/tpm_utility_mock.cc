@@ -9,4 +9,4 @@ namespace chaps {
 TPMUtilityMock::TPMUtilityMock() {}
 TPMUtilityMock::~TPMUtilityMock() {}
 
-}
+}  // namespace chaps

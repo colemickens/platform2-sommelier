@@ -22,8 +22,8 @@
 #include "chaps/token_manager_client.h"
 
 using base::FilePath;
-using chaps::IsolateCredentialManager;
 using brillo::SecureBlob;
+using chaps::IsolateCredentialManager;
 using std::string;
 using std::vector;
 
@@ -33,15 +33,18 @@ void PrintHelp() {
   printf("Usage: chaps_client COMMAND [ARGUMENTS]\n");
   printf("Commands:\n");
   printf("  --ping : Checks that the Chaps daemon is available.\n");
-  printf("  --load --path=<path> --auth=<auth> [--label=<label>]"
-         " : Loads the token at the given path.\n");
+  printf(
+      "  --load --path=<path> --auth=<auth> [--label=<label>]"
+      " : Loads the token at the given path.\n");
   printf("  --unload --path=<path> : Unloads the token at the given path.\n");
-  printf("  --change_auth --path=<path> --auth=<old_auth> --new_auth=<new_auth>"
-         " : Changes authorization data for the token at the given path.\n");
-  printf("  --set_log_level=<level> : Sets the chapsd logging level.\n"
-         "    Levels: \n      2 - Errors Only\n      1 - Warnings and Errors\n"
-         "      0 - Normal\n     -1 - Verbose (Logs PKCS #11 calls.)\n"
-         "     -2 - More Verbose (Logs PKCS #11 calls and arguments.)\n");
+  printf(
+      "  --change_auth --path=<path> --auth=<old_auth> --new_auth=<new_auth>"
+      " : Changes authorization data for the token at the given path.\n");
+  printf(
+      "  --set_log_level=<level> : Sets the chapsd logging level.\n"
+      "    Levels: \n      2 - Errors Only\n      1 - Warnings and Errors\n"
+      "      0 - Normal\n     -1 - Verbose (Logs PKCS #11 calls.)\n"
+      "     -2 - More Verbose (Logs PKCS #11 calls and arguments.)\n");
   printf("  --list : Lists all loaded token paths.\n");
 }
 
@@ -51,8 +54,7 @@ void Ping() {
     exit(-1);
   vector<uint64_t> slot_list;
   uint32_t result = proxy->GetSlotList(
-      IsolateCredentialManager::GetDefaultIsolateCredential(),
-      true,
+      IsolateCredentialManager::GetDefaultIsolateCredential(), true,
       &slot_list);
   if (result != 0) {
     LOG(ERROR) << "Chaps is available but failed to provide a token list.";
@@ -66,9 +68,7 @@ void LoadToken(const string& path, const string& auth, const string& label) {
   chaps::TokenManagerClient client;
   int slot_id = -1;
   client.LoadToken(IsolateCredentialManager::GetDefaultIsolateCredential(),
-                   FilePath(path),
-                   SecureBlob(auth.begin(), auth.end()),
-                   label,
+                   FilePath(path), SecureBlob(auth.begin(), auth.end()), label,
                    &slot_id);
   LOG(INFO) << "LoadToken: " << path << " - slot = " << slot_id;
 }
@@ -86,10 +86,9 @@ void ChangeAuthData(const string& path,
                     const string& auth_old,
                     const string& auth_new) {
   chaps::TokenManagerClient client;
-  client.ChangeTokenAuthData(
-      FilePath(path),
-      SecureBlob(auth_old.begin(), auth_old.end()),
-      SecureBlob(auth_new.begin(), auth_new.end()));
+  client.ChangeTokenAuthData(FilePath(path),
+                             SecureBlob(auth_old.begin(), auth_old.end()),
+                             SecureBlob(auth_new.begin(), auth_new.end()));
   LOG(INFO) << "Sent Event: Change Authorization Data: " << path;
 }
 
@@ -107,8 +106,7 @@ void ListTokens() {
     exit(-1);
   vector<uint64_t> slot_list;
   uint32_t result = proxy->GetSlotList(
-      IsolateCredentialManager::GetDefaultIsolateCredential(),
-      true,
+      IsolateCredentialManager::GetDefaultIsolateCredential(), true,
       &slot_list);
   if (result != 0)
     exit(-1);
@@ -117,9 +115,8 @@ void ListTokens() {
     int slot = slot_list[i];
     FilePath path;
     if (client.GetTokenPath(
-        IsolateCredentialManager::GetDefaultIsolateCredential(),
-        slot,
-        &path)) {
+            IsolateCredentialManager::GetDefaultIsolateCredential(), slot,
+            &path)) {
       LOG(INFO) << "Slot " << slot << ": " << path.value();
     } else {
       LOG(INFO) << "Slot " << slot << ": Empty";
@@ -136,14 +133,11 @@ int main(int argc, char** argv) {
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
 
   bool ping = cl->HasSwitch("ping");
-  bool load = (cl->HasSwitch("load") &&
-               cl->HasSwitch("path") &&
-               cl->HasSwitch("auth"));
+  bool load =
+      (cl->HasSwitch("load") && cl->HasSwitch("path") && cl->HasSwitch("auth"));
   bool unload = cl->HasSwitch("unload") && cl->HasSwitch("path");
-  bool change_auth = (cl->HasSwitch("change_auth") &&
-                      cl->HasSwitch("path") &&
-                      cl->HasSwitch("auth") &&
-                      cl->HasSwitch("new_auth"));
+  bool change_auth = (cl->HasSwitch("change_auth") && cl->HasSwitch("path") &&
+                      cl->HasSwitch("auth") && cl->HasSwitch("new_auth"));
   bool set_log_level = cl->HasSwitch("set_log_level");
   bool list = cl->HasSwitch("list");
   if (ping + load + unload + change_auth + set_log_level + list != 1) {
@@ -156,8 +150,7 @@ int main(int argc, char** argv) {
     string label = "Default Token";
     if (cl->HasSwitch("label"))
       label = cl->GetSwitchValueASCII("label");
-    LoadToken(cl->GetSwitchValueASCII("path"),
-              cl->GetSwitchValueASCII("auth"),
+    LoadToken(cl->GetSwitchValueASCII("path"), cl->GetSwitchValueASCII("auth"),
               label);
   } else if (change_auth) {
     ChangeAuthData(cl->GetSwitchValueASCII("path"),

@@ -24,19 +24,18 @@ class SlotManagerMock : public SlotManager {
 
   MOCK_METHOD0(GetSlotCount, int());
   MOCK_CONST_METHOD2(IsTokenPresent, bool(const brillo::SecureBlob&, int));
-  MOCK_CONST_METHOD2(IsTokenAccessible, bool(const brillo::SecureBlob&,
-                                             int));
-  MOCK_CONST_METHOD3(GetSlotInfo, void(const brillo::SecureBlob&, int,
-                                       CK_SLOT_INFO*));
-  MOCK_CONST_METHOD3(GetTokenInfo, void(const brillo::SecureBlob&, int,
-                                        CK_TOKEN_INFO*));
-  MOCK_CONST_METHOD2(GetMechanismInfo, MechanismMap* (
-      const brillo::SecureBlob&, int));
+  MOCK_CONST_METHOD2(IsTokenAccessible, bool(const brillo::SecureBlob&, int));
+  MOCK_CONST_METHOD3(GetSlotInfo,
+                     void(const brillo::SecureBlob&, int, CK_SLOT_INFO*));
+  MOCK_CONST_METHOD3(GetTokenInfo,
+                     void(const brillo::SecureBlob&, int, CK_TOKEN_INFO*));
+  MOCK_CONST_METHOD2(GetMechanismInfo,
+                     MechanismMap*(const brillo::SecureBlob&, int));
   MOCK_METHOD3(OpenSession, int(const brillo::SecureBlob&, int, bool));
   MOCK_METHOD2(CloseSession, bool(const brillo::SecureBlob&, int));
   MOCK_METHOD2(CloseAllSessions, void(const brillo::SecureBlob&, int));
-  MOCK_CONST_METHOD3(GetSession, bool(const brillo::SecureBlob&, int,
-                                      Session**));
+  MOCK_CONST_METHOD3(GetSession,
+                     bool(const brillo::SecureBlob&, int, Session**));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SlotManagerMock);

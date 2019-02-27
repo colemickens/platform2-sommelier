@@ -24,8 +24,8 @@
 #include "chaps/token_file_manager.h"
 #include "chaps/token_manager_client.h"
 
-using std::string;
 using brillo::SecureBlob;
+using std::string;
 
 #define PAM_EXPORT_SPEC EXPORT_SPEC PAM_EXTERN
 
@@ -81,10 +81,12 @@ static bool Init() {
   return true;
 }
 
-PAM_EXPORT_SPEC int pam_sm_authenticate(pam_handle_t* pam_handle, int flags,
-                                        int argc, const char** argv) {
-  logging::SetMinLogLevel((flags & PAM_SILENT) ?
-                          logging::LOG_FATAL : logging::LOG_INFO);
+PAM_EXPORT_SPEC int pam_sm_authenticate(pam_handle_t* pam_handle,
+                                        int flags,
+                                        int argc,
+                                        const char** argv) {
+  logging::SetMinLogLevel((flags & PAM_SILENT) ? logging::LOG_FATAL
+                                               : logging::LOG_INFO);
 
   if (!Init())
     return PAM_SERVICE_ERR;
@@ -103,10 +105,12 @@ PAM_EXPORT_SPEC int pam_sm_authenticate(pam_handle_t* pam_handle, int flags,
   return PAM_SUCCESS;
 }
 
-PAM_EXPORT_SPEC int pam_sm_open_session(pam_handle_t* pam_handle, int flags,
-                                        int argc, const char** argv) {
-  logging::SetMinLogLevel((flags & PAM_SILENT) ?
-                          logging::LOG_FATAL : logging::LOG_INFO);
+PAM_EXPORT_SPEC int pam_sm_open_session(pam_handle_t* pam_handle,
+                                        int flags,
+                                        int argc,
+                                        const char** argv) {
+  logging::SetMinLogLevel((flags & PAM_SILENT) ? logging::LOG_FATAL
+                                               : logging::LOG_INFO);
   if (!Init())
     return PAM_SERVICE_ERR;
 
@@ -131,21 +135,23 @@ PAM_EXPORT_SPEC int pam_sm_open_session(pam_handle_t* pam_handle, int flags,
   if (!g_login_client->LoginUser(saved_user, saved_password))
     return PAM_SERVICE_ERR;
 
-  if (!g_pam_helper->PutEnvironmentVariable(
-           pam_handle, kLogoutOnCloseSessionEnvName, "1"))
+  if (!g_pam_helper->PutEnvironmentVariable(pam_handle,
+                                            kLogoutOnCloseSessionEnvName, "1"))
     return PAM_SERVICE_ERR;
 
   return PAM_SUCCESS;
 }
 
-PAM_EXPORT_SPEC int pam_sm_close_session(pam_handle_t* pam_handle, int flags,
-                                         int argc, const char** argv) {
+PAM_EXPORT_SPEC int pam_sm_close_session(pam_handle_t* pam_handle,
+                                         int flags,
+                                         int argc,
+                                         const char** argv) {
   if (!Init())
     return PAM_SERVICE_ERR;
 
   string close_session_env;
   if (!g_pam_helper->GetEnvironmentVariable(
-           pam_handle, kLogoutOnCloseSessionEnvName, &close_session_env) ||
+          pam_handle, kLogoutOnCloseSessionEnvName, &close_session_env) ||
       close_session_env.compare("1") != 0) {
     // We never logged user in, so don't log them out here.
     return PAM_IGNORE;
@@ -161,8 +167,10 @@ PAM_EXPORT_SPEC int pam_sm_close_session(pam_handle_t* pam_handle, int flags,
   return PAM_SUCCESS;
 }
 
-PAM_EXPORT_SPEC int pam_sm_chauthtok(pam_handle_t* pam_handle, int flags,
-                                     int argc, const char** argv) {
+PAM_EXPORT_SPEC int pam_sm_chauthtok(pam_handle_t* pam_handle,
+                                     int flags,
+                                     int argc,
+                                     const char** argv) {
   if (!Init())
     return PAM_SERVICE_ERR;
 
@@ -187,12 +195,16 @@ PAM_EXPORT_SPEC int pam_sm_chauthtok(pam_handle_t* pam_handle, int flags,
   return PAM_SUCCESS;
 }
 
-PAM_EXPORT_SPEC int pam_sm_setcred(pam_handle_t* pam_handle, int flags,
-                                   int argc, const char** argv) {
+PAM_EXPORT_SPEC int pam_sm_setcred(pam_handle_t* pam_handle,
+                                   int flags,
+                                   int argc,
+                                   const char** argv) {
   return PAM_IGNORE;
 }
 
-PAM_EXPORT_SPEC int pam_sm_acct_mgmt(pam_handle_t* pam_handle, int flags,
-                                     int argc, const char** argv) {
+PAM_EXPORT_SPEC int pam_sm_acct_mgmt(pam_handle_t* pam_handle,
+                                     int flags,
+                                     int argc,
+                                     const char** argv) {
   return PAM_IGNORE;
 }

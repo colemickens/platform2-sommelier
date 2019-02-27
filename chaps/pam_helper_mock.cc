@@ -11,7 +11,7 @@
 
 // Create PAM stubs to keep the linker happy when building the tests.
 
-int pam_get_user(pam_handle_t *pamh, const char** user, const char* prompt) {
+int pam_get_user(pam_handle_t* pamh, const char** user, const char* prompt) {
   NOTREACHED();
   return 0;
 }
@@ -26,18 +26,19 @@ const char* pam_strerror(pam_handle_t* pamh, int errnum) {
   return NULL;
 }
 
-int pam_set_data(
-    pam_handle_t* pamh,
-    const char* module_data_name,
-    void* data,
-    void (*cleanup)(pam_handle_t* pamh, void* data, int error_status)) {
+int pam_set_data(pam_handle_t* pamh,
+                 const char* module_data_name,
+                 void* data,
+                 void (*cleanup)(pam_handle_t* pamh,
+                                 void* data,
+                                 int error_status)) {
   NOTREACHED();
   return 0;
 }
 
-int pam_get_data(const pam_handle_t *pamh,
-                 const char *module_data_name,
-                 const void **data) {
+int pam_get_data(const pam_handle_t* pamh,
+                 const char* module_data_name,
+                 const void** data) {
   NOTREACHED();
   return 0;
 }

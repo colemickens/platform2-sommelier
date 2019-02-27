@@ -44,8 +44,7 @@ class ObjectStore {
   // InsertObjectBlob, DeleteObjectBlob, ...) can proceed successfully.
   virtual bool SetEncryptionKey(const brillo::SecureBlob& key) = 0;
   // Inserts a new blob.
-  virtual bool InsertObjectBlob(const ObjectBlob& blob,
-                                int* blob_id) = 0;
+  virtual bool InsertObjectBlob(const ObjectBlob& blob, int* blob_id) = 0;
   // Deletes an existing object blob.
   virtual bool DeleteObjectBlob(int blob_id) = 0;
   // Deletes all object blobs.

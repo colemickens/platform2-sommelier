@@ -9,4 +9,4 @@ namespace chaps {
 ChapsFactoryMock::ChapsFactoryMock() {}
 ChapsFactoryMock::~ChapsFactoryMock() {}
 
-}
+}  // namespace chaps

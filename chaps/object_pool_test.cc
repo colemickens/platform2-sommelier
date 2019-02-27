@@ -85,10 +85,8 @@ class TestObjectPool : public ::testing::Test {
 
   // Initialize and load private objects.
   void PreparePools() {
-    EXPECT_CALL(*store_, SetEncryptionKey(_))
-        .WillRepeatedly(Return(true));
-    EXPECT_CALL(*store_, LoadPublicObjectBlobs(_))
-        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*store_, SetEncryptionKey(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(*store_, LoadPublicObjectBlobs(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(*store_, LoadPrivateObjectBlobs(_))
         .WillRepeatedly(Return(true));
     EXPECT_CALL(*store_, GetInternalBlob(_, _)).WillRepeatedly(Return(false));
@@ -140,12 +138,12 @@ TEST_F(TestObjectPool, Init) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*store_, LoadPublicObjectBlobs(_))
       .WillOnce(Return(false))
-      .WillRepeatedly(DoAll(SetArgPointee<0>(persistent_objects),
-                            Return(true)));
+      .WillRepeatedly(
+          DoAll(SetArgPointee<0>(persistent_objects), Return(true)));
   EXPECT_CALL(*store_, LoadPrivateObjectBlobs(_))
       .WillOnce(Return(false))
-      .WillRepeatedly(DoAll(SetArgPointee<0>(persistent_objects),
-                            Return(true)));
+      .WillRepeatedly(
+          DoAll(SetArgPointee<0>(persistent_objects), Return(true)));
   EXPECT_CALL(*importer_, ImportObjects(pool_.get()))
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
@@ -183,10 +181,8 @@ TEST_F(TestObjectPool, StorePassThrough) {
   EXPECT_CALL(*store_, SetInternalBlob(1, s))
       .WillOnce(Return(false))
       .WillOnce(Return(true));
-  EXPECT_CALL(*store_, LoadPublicObjectBlobs(_))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*store_, LoadPrivateObjectBlobs(_))
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*store_, LoadPublicObjectBlobs(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*store_, LoadPrivateObjectBlobs(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(*store_, SetEncryptionKey(blob))
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));

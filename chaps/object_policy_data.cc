@@ -16,9 +16,9 @@ namespace chaps {
 // read-only.modify - True if attribute cannot be set with C_SetAttributeValue.
 // required - True if attribute is required for a valid object.
 static const AttributePolicy kDataPolicies[] = {
-  {CKA_APPLICATION, false, {false, false, true}, false},
-  {CKA_OBJECT_ID, false, {false, false, true}, false},
-  {CKA_VALUE, false, {false, false, true}, false},
+    {CKA_APPLICATION, false, {false, false, true}, false},
+    {CKA_OBJECT_ID, false, {false, false, true}, false},
+    {CKA_VALUE, false, {false, false, true}, false},
 };
 
 ObjectPolicyData::ObjectPolicyData() {

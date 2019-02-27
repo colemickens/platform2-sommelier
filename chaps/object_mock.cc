@@ -9,4 +9,4 @@ namespace chaps {
 ObjectMock::ObjectMock() {}
 ObjectMock::~ObjectMock() {}
 
-}
+}  // namespace chaps

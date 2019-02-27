@@ -26,4 +26,4 @@ TokenInfo TokenInfoToProto(const CK_TOKEN_INFO* info);
 
 }  // namespace chaps
 
-#endif   // CHAPS_PROTO_CONVERSION_H_
+#endif  // CHAPS_PROTO_CONVERSION_H_

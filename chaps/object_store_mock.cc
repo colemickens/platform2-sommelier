@@ -9,4 +9,4 @@ namespace chaps {
 ObjectStoreMock::ObjectStoreMock() {}
 ObjectStoreMock::~ObjectStoreMock() {}
 
-}
+}  // namespace chaps

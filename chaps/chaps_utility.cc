@@ -59,15 +59,15 @@ const CK_ATTRIBUTE_TYPE kLegacyAttribute = CKA_VENDOR_DEFINED + 3;
 
 // Some NSS-specific constants (from NSS' pkcs11n.h).
 #define NSSCK_VENDOR_NSS 0x4E534350
-#define CKA_NSS (CKA_VENDOR_DEFINED|NSSCK_VENDOR_NSS)
-#define CKA_NSS_URL                (CKA_NSS +  1)
-#define CKA_NSS_EMAIL              (CKA_NSS +  2)
-#define CKA_NSS_SMIME_INFO         (CKA_NSS +  3)
-#define CKA_NSS_SMIME_TIMESTAMP    (CKA_NSS +  4)
-#define CKA_NSS_PKCS8_SALT         (CKA_NSS +  5)
-#define CKA_NSS_PASSWORD_CHECK     (CKA_NSS +  6)
-#define CKA_NSS_EXPIRES            (CKA_NSS +  7)
-#define CKA_NSS_KRL                (CKA_NSS +  8)
+#define CKA_NSS (CKA_VENDOR_DEFINED | NSSCK_VENDOR_NSS)
+#define CKA_NSS_URL (CKA_NSS + 1)
+#define CKA_NSS_EMAIL (CKA_NSS + 2)
+#define CKA_NSS_SMIME_INFO (CKA_NSS + 3)
+#define CKA_NSS_SMIME_TIMESTAMP (CKA_NSS + 4)
+#define CKA_NSS_PKCS8_SALT (CKA_NSS + 5)
+#define CKA_NSS_PASSWORD_CHECK (CKA_NSS + 6)
+#define CKA_NSS_EXPIRES (CKA_NSS + 7)
+#define CKA_NSS_KRL (CKA_NSS + 8)
 
 // This value is defined in the latest PKCS#11 header, but we are on an older
 // version, thus we leave it here temporarily.
@@ -542,8 +542,7 @@ string PrintAttributes(const vector<uint8_t>& serialized,
           ss << "=<invalid>";
         } else if (attribute.pValue) {
           uint8_t* buf = reinterpret_cast<uint8_t*>(attribute.pValue);
-          vector<uint8_t> value(&buf[0],
-                                &buf[attribute.ulValueLen]);
+          vector<uint8_t> value(&buf[0], &buf[attribute.ulValueLen]);
           ss << "=" << ValueToString(attribute.type, value);
         } else {
           ss << " length=" << attribute.ulValueLen;
@@ -609,10 +608,8 @@ std::string HmacSha512(const std::string& input,
                        const brillo::SecureBlob& key) {
   const int kSha512OutputSize = 64;
   unsigned char mac[kSha512OutputSize];
-  HMAC(EVP_sha512(),
-       key.data(), key.size(),
-       ConvertStringToByteBuffer(input.data()), input.length(),
-       mac, NULL);
+  HMAC(EVP_sha512(), key.data(), key.size(),
+       ConvertStringToByteBuffer(input.data()), input.length(), mac, NULL);
   return ConvertByteBufferToString(mac, kSha512OutputSize);
 }
 
@@ -627,12 +624,8 @@ bool RunCipherInternal(bool is_encrypt,
   CHECK(iv.size() == kAESBlockSizeBytes);
   EVP_CIPHER_CTX cipher_context;
   EVP_CIPHER_CTX_init(&cipher_context);
-  if (!EVP_CipherInit_ex(&cipher_context,
-                         EVP_aes_256_cbc(),
-                         NULL,
-                         key.data(),
-                         ConvertStringToByteBuffer(iv.data()),
-                         is_encrypt)) {
+  if (!EVP_CipherInit_ex(&cipher_context, EVP_aes_256_cbc(), NULL, key.data(),
+                         ConvertStringToByteBuffer(iv.data()), is_encrypt)) {
     LOG(ERROR) << "EVP_CipherInit_ex failed: " << GetOpenSSLError();
     return false;
   }
@@ -646,11 +639,9 @@ bool RunCipherInternal(bool is_encrypt,
   int output_length = 0;
   unsigned char* output_bytes = ConvertStringToByteBuffer(output->data());
   unsigned char* input_bytes = ConvertStringToByteBuffer(input.data());
-  if (!EVP_CipherUpdate(&cipher_context,
-                        output_bytes,
+  if (!EVP_CipherUpdate(&cipher_context, output_bytes,
                         &output_length,  // Will be set to actual output length.
-                        input_bytes,
-                        input.length())) {
+                        input_bytes, input.length())) {
     LOG(ERROR) << "EVP_CipherUpdate failed: " << GetOpenSSLError();
     return false;
   }
@@ -658,8 +649,7 @@ bool RunCipherInternal(bool is_encrypt,
   // kAESBlockSizeBytes bytes left in the output buffer.
   CHECK(output_length <= static_cast<int>(input.length()));
   int output_length2 = 0;
-  if (!EVP_CipherFinal_ex(&cipher_context,
-                          output_bytes + output_length,
+  if (!EVP_CipherFinal_ex(&cipher_context, output_bytes + output_length,
                           &output_length2)) {
     LOG(ERROR) << "EVP_CipherFinal_ex failed: " << GetOpenSSLError();
     return false;
@@ -683,8 +673,8 @@ bool RunCipher(bool is_encrypt,
   if (is_encrypt) {
     // Generate a new random IV.
     random_iv.resize(kIVSizeBytes);
-    if (1 != RAND_bytes(ConvertStringToByteBuffer(random_iv.data()),
-                        kIVSizeBytes)) {
+    if (1 !=
+        RAND_bytes(ConvertStringToByteBuffer(random_iv.data()), kIVSizeBytes)) {
       LOG(ERROR) << "RAND_bytes failed: " << GetOpenSSLError();
       return false;
     }

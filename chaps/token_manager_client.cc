@@ -12,8 +12,8 @@
 
 using base::FilePath;
 using brillo::SecureBlob;
-using std::vector;
 using std::string;
+using std::vector;
 
 namespace chaps {
 
@@ -49,7 +49,7 @@ bool TokenManagerClient::GetTokenList(const SecureBlob& isolate_credential,
 }
 
 bool TokenManagerClient::OpenIsolate(SecureBlob* isolate_credential,
-                                   bool* new_isolate_created) {
+                                     bool* new_isolate_created) {
   if (!Connect()) {
     LOG(ERROR) << __func__ << ": Failed to connect to the Chaps daemon.";
     return false;
@@ -74,11 +74,9 @@ bool TokenManagerClient::LoadToken(const SecureBlob& isolate_credential,
     LOG(ERROR) << __func__ << ": Failed to connect to the Chaps daemon.";
     return false;
   }
-  bool result = proxy_->LoadToken(isolate_credential,
-                                  path.value(),
-                                  auth_data,
-                                  label,
-                                  PreservedValue<int, uint64_t>(slot_id));
+  bool result =
+      proxy_->LoadToken(isolate_credential, path.value(), auth_data, label,
+                        PreservedValue<int, uint64_t>(slot_id));
   return result;
 }
 

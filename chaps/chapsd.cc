@@ -90,8 +90,7 @@ void InitAsync(WaitableEvent* started_event,
     LOG(FATAL) << "Slot initialization failed.";
 }
 
-void SetProcessUserAndGroup(const char* user_name,
-                            const char* group_name) {
+void SetProcessUserAndGroup(const char* user_name, const char* group_name) {
   // Make the umask more restrictive: u + rwx, g + rx.
   umask(0027);
 
@@ -141,9 +140,8 @@ class Daemon : public brillo::DBusServiceDaemon {
  protected:
   int OnInit() override {
 #if USE_TPM2
-    CHECK(tpm_background_thread_.StartWithOptions(
-        base::Thread::Options(base::MessageLoop::TYPE_IO,
-                              0 /* use default stack size */)));
+    CHECK(tpm_background_thread_.StartWithOptions(base::Thread::Options(
+        base::MessageLoop::TYPE_IO, 0 /* use default stack size */)));
     tpm_.reset(new TPM2UtilityImpl(tpm_background_thread_.task_runner()));
 #else
     // Instantiate a TPM1.2 Utility.
@@ -153,8 +151,7 @@ class Daemon : public brillo::DBusServiceDaemon {
     factory_.reset(new ChapsFactoryImpl);
     system_shutdown_blocker_.reset(
         new SystemShutdownBlocker(base::ThreadTaskRunnerHandle::Get()));
-    slot_manager_.reset(new SlotManagerImpl(factory_.get(),
-                                            tpm_.get(),
+    slot_manager_.reset(new SlotManagerImpl(factory_.get(), tpm_.get(),
                                             auto_load_system_token_,
                                             system_shutdown_blocker_.get()));
     service_.reset(new ChapsServiceImpl(slot_manager_.get()));
@@ -164,13 +161,11 @@ class Daemon : public brillo::DBusServiceDaemon {
     // initialized.
     WaitableEvent init_started(WaitableEvent::ResetPolicy::MANUAL,
                                WaitableEvent::InitialState::NOT_SIGNALED);
-    CHECK(async_init_thread_.StartWithOptions(
-        base::Thread::Options(base::MessageLoop::TYPE_IO,
-                              0 /* use default stack size */)));
+    CHECK(async_init_thread_.StartWithOptions(base::Thread::Options(
+        base::MessageLoop::TYPE_IO, 0 /* use default stack size */)));
     async_init_thread_.task_runner()->PostTask(
-        FROM_HERE,
-        base::Bind(&InitAsync,
-                   &init_started, &lock_, tpm_.get(), slot_manager_.get()));
+        FROM_HERE, base::Bind(&InitAsync, &init_started, &lock_, tpm_.get(),
+                              slot_manager_.get()));
     // We're not finished with initialization until the initialization thread
     // has had a chance to acquire the lock.
     init_started.Wait();
@@ -243,14 +238,14 @@ int main(int argc, char** argv) {
     // Read persistent file for log level if no command line verbositity level
     // is specified.
     std::string log_level;
-    bool success = base::ReadFileToString(FilePath(kPersistentLogLevelPath),
-                                          &log_level);
+    bool success =
+        base::ReadFileToString(FilePath(kPersistentLogLevelPath), &log_level);
     if (success) {
       int log_level_int;
       if (base::StringToInt(log_level, &log_level_int))
         logging::SetMinLogLevel(log_level_int);
-      int delete_success = base::DeleteFile(FilePath(kPersistentLogLevelPath),
-                                            false);
+      int delete_success =
+          base::DeleteFile(FilePath(kPersistentLogLevelPath), false);
       VLOG_IF(2, !delete_success) << "Failed to delete log level file.";
     }
   }
@@ -264,8 +259,7 @@ int main(int argc, char** argv) {
     srk_auth_data = cl->GetSwitchValueASCII("srk_password");
   } else if (cl->HasSwitch("srk_zeros")) {
     int zero_count = 0;
-    if (base::StringToInt(cl->GetSwitchValueASCII("srk_zeros"),
-                          &zero_count)) {
+    if (base::StringToInt(cl->GetSwitchValueASCII("srk_zeros"), &zero_count)) {
       srk_auth_data = string(zero_count, 0);
     } else {
       LOG(WARNING) << "Invalid value for srk_zeros: using empty string.";

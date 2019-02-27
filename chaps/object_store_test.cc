@@ -35,8 +35,7 @@ class TestObjectStoreEncryption : public ::testing::Test {
     return blob;
   }
   bool Equals(const ObjectBlob& blob1, const ObjectBlob& blob2) {
-    return (blob1.is_private == blob2.is_private &&
-            blob1.blob == blob2.blob);
+    return (blob1.is_private == blob2.is_private && blob1.blob == blob2.blob);
   }
 };
 
@@ -85,7 +84,7 @@ TEST_F(TestObjectStoreEncryption, Encryption) {
   EXPECT_FALSE(store.Decrypt(blob, &decrypted1));
   // Test corrupted IV.
   ObjectBlob encrypted_ok = encrypted1;
-  encrypted1.blob[encrypted1.blob.size()-1]++;
+  encrypted1.blob[encrypted1.blob.size() - 1]++;
   EXPECT_FALSE(store.Decrypt(encrypted1, &decrypted1));
   // Test corrupted cipher text.
   encrypted1 = encrypted_ok;
@@ -93,7 +92,7 @@ TEST_F(TestObjectStoreEncryption, Encryption) {
   EXPECT_FALSE(store.Decrypt(encrypted1, &decrypted1));
   // Test corrupted hmac.
   encrypted1 = encrypted_ok;
-  encrypted1.blob[encrypted1.blob.size()-17]++;
+  encrypted1.blob[encrypted1.blob.size() - 17]++;
   EXPECT_FALSE(store.Decrypt(encrypted1, &decrypted1));
   // Test public blob.
   ObjectBlob public_blob = {blob.blob, false};

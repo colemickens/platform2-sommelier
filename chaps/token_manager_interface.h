@@ -69,10 +69,9 @@ class TokenManagerInterface {
   //  path - The path to the token directory.
   //  old_auth_data - The current authorization data.
   //  new_auth_data - The new authorization data.
-  virtual void ChangeTokenAuthData(
-      const base::FilePath& path,
-      const brillo::SecureBlob& old_auth_data,
-      const brillo::SecureBlob& new_auth_data) = 0;
+  virtual void ChangeTokenAuthData(const base::FilePath& path,
+                                   const brillo::SecureBlob& old_auth_data,
+                                   const brillo::SecureBlob& new_auth_data) = 0;
 
   // Provides the token path associated with the given slot.  Returns true on
   // success.  Returns false if the slot does not exist in the given isolate or

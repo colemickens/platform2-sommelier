@@ -23,8 +23,7 @@ class PamHelper {
   // Gets the name of the user that is logging in for the current PAM session.
   //  pam_handle: The PAM handle associated with the current session.
   //  user: Returns the name of the user.
-  virtual bool GetPamUser(pam_handle_t* pam_handle,
-                          std::string* user);
+  virtual bool GetPamUser(pam_handle_t* pam_handle, std::string* user);
 
   // Gets the password provided by the user to authenticate their current PAM
   // session.

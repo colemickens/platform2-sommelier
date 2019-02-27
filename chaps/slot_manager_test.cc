@@ -53,17 +53,16 @@ SecureBlob MakeBlob(const char* auth_data_str) {
 ObjectPool* CreateObjectPoolMock() {
   ObjectPoolMock* object_pool = new ObjectPoolMock();
   EXPECT_CALL(*object_pool, GetInternalBlob(kEncryptedAuthKey, _))
-      .WillRepeatedly(DoAll(SetArgPointee<1>(string("auth_key_blob")),
-                            Return(true)));
-  EXPECT_CALL(*object_pool, GetInternalBlob(kEncryptedMasterKey, _))
       .WillRepeatedly(
-          DoAll(SetArgPointee<1>(string("encrypted_master_key")),
-                Return(true)));
+          DoAll(SetArgPointee<1>(string("auth_key_blob")), Return(true)));
+  EXPECT_CALL(*object_pool, GetInternalBlob(kEncryptedMasterKey, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(string("encrypted_master_key")),
+                            Return(true)));
   EXPECT_CALL(*object_pool, GetInternalBlob(kImportedTracker, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(string()), Return(false)));
   EXPECT_CALL(*object_pool, GetInternalBlob(kAuthDataHash, _))
-      .WillRepeatedly(DoAll(SetArgPointee<1>(string("\x01\xCE")),
-                Return(true)));
+      .WillRepeatedly(
+          DoAll(SetArgPointee<1>(string("\x01\xCE")), Return(true)));
   EXPECT_CALL(*object_pool,
               SetInternalBlob(kEncryptedAuthKey, string("auth_key_blob")))
       .WillRepeatedly(Return(true));
@@ -77,8 +76,7 @@ ObjectPool* CreateObjectPoolMock() {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*object_pool, SetInternalBlob(kAuthDataHash, _))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*object_pool, SetEncryptionKey(_))
-      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*object_pool, SetEncryptionKey(_)).WillRepeatedly(Return(true));
   return object_pool;
 }
 
@@ -86,35 +84,27 @@ ObjectPool* CreateObjectPoolMock() {
 void ConfigureTPMUtility(TPMUtilityMock* tpm) {
   EXPECT_CALL(*tpm, Init()).WillRepeatedly(Return(true));
   EXPECT_CALL(*tpm, UnloadKeysForSlot(_)).Times(AnyNumber());
-  EXPECT_CALL(*tpm, Authenticate(_,
-                                 Sha1(MakeBlob(kAuthData)),
-                                 string("auth_key_blob"),
-                                 string("encrypted_master_key"),
-                                 _))
-      .WillRepeatedly(DoAll(SetArgPointee<4>(MakeBlob("master_key")),
-                            Return(true)));
-  EXPECT_CALL(*tpm, ChangeAuthData(_,
-                                   Sha1(MakeBlob(kAuthData)),
-                                   Sha1(MakeBlob(kNewAuthData)),
-                                   string("auth_key_blob"),
-                                   _))
+  EXPECT_CALL(
+      *tpm, Authenticate(_, Sha1(MakeBlob(kAuthData)), string("auth_key_blob"),
+                         string("encrypted_master_key"), _))
       .WillRepeatedly(
-          DoAll(SetArgPointee<4>(string("new_auth_key_blob")),
-                Return(true)));
+          DoAll(SetArgPointee<4>(MakeBlob("master_key")), Return(true)));
+  EXPECT_CALL(*tpm, ChangeAuthData(_, Sha1(MakeBlob(kAuthData)),
+                                   Sha1(MakeBlob(kNewAuthData)),
+                                   string("auth_key_blob"), _))
+      .WillRepeatedly(
+          DoAll(SetArgPointee<4>(string("new_auth_key_blob")), Return(true)));
   EXPECT_CALL(*tpm, GenerateRandom(_, _))
-      .WillRepeatedly(DoAll(SetArgPointee<1>(string("master_key")),
-                            Return(true)));
+      .WillRepeatedly(
+          DoAll(SetArgPointee<1>(string("master_key")), Return(true)));
   string exponent(kDefaultPubExp, kDefaultPubExpSize);
   EXPECT_CALL(*tpm,
               GenerateRSAKey(1, 2048, exponent, MakeBlob(kAuthData), _, _))
       .WillRepeatedly(DoAll(SetArgPointee<4>(string("auth_key_blob")),
                             SetArgPointee<5>(1), Return(true)));
-  EXPECT_CALL(*tpm, Bind(1,
-                         string("master_key"),
-                         _))
-      .WillRepeatedly(
-          DoAll(SetArgPointee<2>(string("encrypted_master_key")),
-                Return(true)));
+  EXPECT_CALL(*tpm, Bind(1, string("master_key"), _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(string("encrypted_master_key")),
+                            Return(true)));
   EXPECT_CALL(*tpm, IsSRKReady()).WillRepeatedly(Return(true));
   EXPECT_CALL(*tpm, IsTPMAvailable()).WillRepeatedly(Return(true));
 }
@@ -127,7 +117,7 @@ Session* CreateNewSession() {
 }  // namespace
 
 // A test fixture for an initialized SlotManagerImpl instance.
-class TestSlotManager: public ::testing::Test {
+class TestSlotManager : public ::testing::Test {
  public:
   TestSlotManager() {
     EXPECT_CALL(factory_, CreateSession(_, _, _, _, _))
@@ -155,9 +145,7 @@ class TestSlotManager: public ::testing::Test {
   int InsertToken() {
     int slot_id = 0;
     slot_manager_->LoadToken(ic_, FilePath("/var/lib/chaps"),
-                             MakeBlob(kAuthData),
-                             kTokenLabel,
-                             &slot_id);
+                             MakeBlob(kAuthData), kTokenLabel, &slot_id);
     return slot_id;
   }
 #endif
@@ -236,8 +224,7 @@ TEST(DeathTest, OutOfMemoryInit) {
   EXPECT_CALL(factory, CreateObjectPool(_, _, _))
       .WillRepeatedly(Return(null_pool));
   ObjectStore* null_store = NULL;
-  EXPECT_CALL(factory, CreateObjectStore(_))
-      .WillRepeatedly(Return(null_store));
+  EXPECT_CALL(factory, CreateObjectStore(_)).WillRepeatedly(Return(null_store));
   ObjectImporter* null_importer = NULL;
   EXPECT_CALL(factory, CreateObjectImporter(_, _, _))
       .WillRepeatedly(Return(null_importer));
@@ -246,9 +233,7 @@ TEST(DeathTest, OutOfMemoryInit) {
   int slot_id;
   EXPECT_DEATH_IF_SUPPORTED(
       sm.LoadToken(IsolateCredentialManager::GetDefaultIsolateCredential(),
-                   FilePath("/var/lib/chaps"),
-                   MakeBlob(kAuthData),
-                   kTokenLabel,
+                   FilePath("/var/lib/chaps"), MakeBlob(kAuthData), kTokenLabel,
                    &slot_id),
       "Check failed");
 }
@@ -297,28 +282,19 @@ TEST_F(TestSlotManager, TestSessions) {
 TEST_F(TestSlotManager, TestLoadTokenEvents) {
   InsertToken();
   int slot_id;
-  EXPECT_TRUE(slot_manager_->LoadToken(ic_,
-                                       FilePath("some_path"),
-                                       MakeBlob(kAuthData),
-                                       kTokenLabel,
-                                       &slot_id));
+  EXPECT_TRUE(slot_manager_->LoadToken(
+      ic_, FilePath("some_path"), MakeBlob(kAuthData), kTokenLabel, &slot_id));
   EXPECT_TRUE(slot_manager_->IsTokenPresent(ic_, 1));
   // Load token with an existing path - should not result in a new slot.
   int slot_id2;
-  EXPECT_TRUE(slot_manager_->LoadToken(ic_,
-                                       FilePath("some_path"),
-                                       MakeBlob(kAuthData),
-                                       kTokenLabel,
-                                       &slot_id2));
+  EXPECT_TRUE(slot_manager_->LoadToken(
+      ic_, FilePath("some_path"), MakeBlob(kAuthData), kTokenLabel, &slot_id2));
   EXPECT_EQ(slot_id, slot_id2);
-  EXPECT_TRUE(slot_manager_->LoadToken(ic_,
-                                       FilePath("another_path"),
-                                       MakeBlob(kAuthData),
-                                       kTokenLabel,
+  EXPECT_TRUE(slot_manager_->LoadToken(ic_, FilePath("another_path"),
+                                       MakeBlob(kAuthData), kTokenLabel,
                                        &slot_id));
   EXPECT_TRUE(slot_manager_->IsTokenPresent(ic_, 2));
-  slot_manager_->ChangeTokenAuthData(FilePath("some_path"),
-                                     MakeBlob(kAuthData),
+  slot_manager_->ChangeTokenAuthData(FilePath("some_path"), MakeBlob(kAuthData),
                                      MakeBlob(kNewAuthData));
   slot_manager_->ChangeTokenAuthData(FilePath("yet_another_path"),
                                      MakeBlob(kAuthData),
@@ -328,10 +304,8 @@ TEST_F(TestSlotManager, TestLoadTokenEvents) {
   slot_manager_->UnloadToken(ic_, FilePath("some_path"));
   EXPECT_FALSE(slot_manager_->IsTokenAccessible(ic_, 1));
   EXPECT_TRUE(slot_manager_->IsTokenPresent(ic_, 2));
-  EXPECT_TRUE(slot_manager_->LoadToken(ic_,
-                                       FilePath("one_more_path"),
-                                       MakeBlob(kAuthData),
-                                       kTokenLabel,
+  EXPECT_TRUE(slot_manager_->LoadToken(ic_, FilePath("one_more_path"),
+                                       MakeBlob(kAuthData), kTokenLabel,
                                        &slot_id));
   EXPECT_TRUE(slot_manager_->IsTokenPresent(ic_, 1));
   slot_manager_->UnloadToken(ic_, FilePath("another_path"));
@@ -346,9 +320,8 @@ TEST_F(TestSlotManager, ManyLoadToken) {
                              kTokenLabel, &slot_id);
     slot_manager_->ChangeTokenAuthData(FilePath(path), MakeBlob(kAuthData),
                                        MakeBlob(kNewAuthData));
-    slot_manager_->ChangeTokenAuthData(FilePath(path + "_"),
-                                       MakeBlob(kAuthData),
-                                       MakeBlob(kNewAuthData));
+    slot_manager_->ChangeTokenAuthData(
+        FilePath(path + "_"), MakeBlob(kAuthData), MakeBlob(kNewAuthData));
   }
   for (int i = 0; i < 100; ++i) {
     string path = base::StringPrintf("test%d", i);
@@ -412,10 +385,8 @@ TEST_F(TestSlotManager, TestCloseIsolateUnloadToken) {
   EXPECT_TRUE(new_isolate_created);
   EXPECT_FALSE(slot_manager_->IsTokenAccessible(isolate, 0));
   int slot_id;
-  EXPECT_TRUE(slot_manager_->LoadToken(isolate,
-                                       FilePath("some_path"),
-                                       MakeBlob(kAuthData),
-                                       kTokenLabel,
+  EXPECT_TRUE(slot_manager_->LoadToken(isolate, FilePath("some_path"),
+                                       MakeBlob(kAuthData), kTokenLabel,
                                        &slot_id));
   EXPECT_TRUE(slot_manager_->IsTokenPresent(isolate, 0));
   // Token should be unloaded by CloseIsolate call.
@@ -440,19 +411,15 @@ TEST_F(TestSlotManager_DeathTest, TestIsolateTokens) {
   int slot_id;
   ASSERT_TRUE(slot_manager_->OpenIsolate(&new_isolate_0, &new_isolate_created));
   ASSERT_TRUE(new_isolate_created);
-  ASSERT_TRUE(slot_manager_->LoadToken(new_isolate_0,
-                                       FilePath("new_isolate"),
-                                       MakeBlob(kAuthData),
-                                       kTokenLabel,
+  ASSERT_TRUE(slot_manager_->LoadToken(new_isolate_0, FilePath("new_isolate"),
+                                       MakeBlob(kAuthData), kTokenLabel,
                                        &slot_id));
 
   ASSERT_TRUE(slot_manager_->OpenIsolate(&new_isolate_1, &new_isolate_created));
   ASSERT_TRUE(new_isolate_created);
-  ASSERT_TRUE(slot_manager_->LoadToken(new_isolate_1,
-                                       FilePath("another_new_isolate"),
-                                       MakeBlob(kAuthData),
-                                       kTokenLabel,
-                                       &slot_id));
+  ASSERT_TRUE(
+      slot_manager_->LoadToken(new_isolate_1, FilePath("another_new_isolate"),
+                               MakeBlob(kAuthData), kTokenLabel, &slot_id));
   // Ensure tokens are only accessible with the valid isolate cred.
   ASSERT_TRUE(slot_manager_->IsTokenAccessible(new_isolate_0, 0));
   ASSERT_TRUE(slot_manager_->IsTokenAccessible(new_isolate_1, 1));
@@ -462,26 +429,25 @@ TEST_F(TestSlotManager_DeathTest, TestIsolateTokens) {
   ASSERT_FALSE(slot_manager_->IsTokenAccessible(defaultIsolate, 1));
 
   // Check all public methods perform isolate checks.
+  EXPECT_DEATH_IF_SUPPORTED(slot_manager_->IsTokenPresent(new_isolate_0, 1),
+                            "Check failed");
   EXPECT_DEATH_IF_SUPPORTED(
-      slot_manager_->IsTokenPresent(new_isolate_0, 1), "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(
-      slot_manager_->GetSlotInfo(new_isolate_0, 1, &slot_info),
-      "Check failed");
+      slot_manager_->GetSlotInfo(new_isolate_0, 1, &slot_info), "Check failed");
   EXPECT_DEATH_IF_SUPPORTED(
       slot_manager_->GetTokenInfo(new_isolate_0, 1, &token_info),
       "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(
-      slot_manager_->GetMechanismInfo(new_isolate_0, 1), "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(
-      slot_manager_->OpenSession(new_isolate_0, 1, false), "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(slot_manager_->GetMechanismInfo(new_isolate_0, 1),
+                            "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(slot_manager_->OpenSession(new_isolate_0, 1, false),
+                            "Check failed");
   int slot_1_session = slot_manager_->OpenSession(new_isolate_1, 1, false);
   EXPECT_TRUE(
       slot_manager_->GetSession(new_isolate_1, slot_1_session, &session));
   EXPECT_FALSE(
       slot_manager_->GetSession(new_isolate_0, slot_1_session, &session));
   EXPECT_FALSE(slot_manager_->CloseSession(new_isolate_0, slot_1_session));
-  EXPECT_DEATH_IF_SUPPORTED(
-      slot_manager_->CloseAllSessions(new_isolate_0, 1), "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(slot_manager_->CloseAllSessions(new_isolate_0, 1),
+                            "Check failed");
 }
 
 TEST_F(TestSlotManager, SRKNotReady) {
@@ -492,9 +458,8 @@ TEST_F(TestSlotManager, SRKNotReady) {
   EXPECT_FALSE(slot_manager_->IsTokenAccessible(ic_, 0));
   EXPECT_FALSE(slot_manager_->IsTokenAccessible(ic_, 1));
   int slot_id = 0;
-  EXPECT_FALSE(slot_manager_->LoadToken(ic_, FilePath("test_token"),
-                                        MakeBlob(kAuthData), kTokenLabel,
-                                        &slot_id));
+  EXPECT_FALSE(slot_manager_->LoadToken(
+      ic_, FilePath("test_token"), MakeBlob(kAuthData), kTokenLabel, &slot_id));
   EXPECT_FALSE(slot_manager_->IsTokenAccessible(ic_, 0));
   EXPECT_FALSE(slot_manager_->IsTokenAccessible(ic_, 1));
 }
@@ -506,9 +471,8 @@ TEST_F(TestSlotManager, DelayedSRKInit) {
 
   EXPECT_CALL(tpm_, IsSRKReady()).WillRepeatedly(Return(true));
   int slot_id = 0;
-  EXPECT_TRUE(slot_manager_->LoadToken(ic_, FilePath("test_token"),
-                                       MakeBlob(kAuthData), kTokenLabel,
-                                       &slot_id));
+  EXPECT_TRUE(slot_manager_->LoadToken(
+      ic_, FilePath("test_token"), MakeBlob(kAuthData), kTokenLabel, &slot_id));
 }
 #endif
 
@@ -524,8 +488,8 @@ class SoftwareOnlyTest : public TestSlotManager {
   void SetUp() override {
     // Use our own ObjectPoolFactory.
     EXPECT_CALL(factory_, CreateObjectPool(_, _, _))
-        .WillRepeatedly(InvokeWithoutArgs(
-            this, &SoftwareOnlyTest::ObjectPoolFactory));
+        .WillRepeatedly(
+            InvokeWithoutArgs(this, &SoftwareOnlyTest::ObjectPoolFactory));
     EXPECT_CALL(no_tpm_, IsTPMAvailable()).WillRepeatedly(Return(false));
     slot_manager_.reset(
         new SlotManagerImpl(&factory_, &no_tpm_, false, nullptr));
@@ -556,9 +520,8 @@ class SoftwareOnlyTest : public TestSlotManager {
     // the crypto.
     pool_blobs_.clear();
     int slot_id = 0;
-    ASSERT_TRUE(slot_manager_->LoadToken(ic_, kTestTokenPath,
-                                         MakeBlob(kAuthData), kTokenLabel,
-                                         &slot_id));
+    ASSERT_TRUE(slot_manager_->LoadToken(
+        ic_, kTestTokenPath, MakeBlob(kAuthData), kTokenLabel, &slot_id));
     slot_manager_->UnloadToken(ic_, kTestTokenPath);
     set_encryption_key_num_calls_ = 0;
     delete_all_num_calls_ = 0;
@@ -586,8 +549,8 @@ class SoftwareOnlyTest : public TestSlotManager {
 
   ObjectPool::Result FakeDeleteAll() {
     delete_all_num_calls_++;
-    return pool_write_result_ ?
-        ObjectPool::Result::Success : ObjectPool::Result::Failure;
+    return pool_write_result_ ? ObjectPool::Result::Success
+                              : ObjectPool::Result::Failure;
   }
 
  protected:
@@ -659,9 +622,8 @@ TEST_F(SoftwareOnlyTest, CorruptMasterKey) {
 TEST_F(SoftwareOnlyTest, CreateNewWriteFailure) {
   pool_write_result_ = false;
   int slot_id = 0;
-  EXPECT_FALSE(slot_manager_->LoadToken(ic_, kTestTokenPath,
-                                        MakeBlob(kAuthData), kTokenLabel,
-                                        &slot_id));
+  EXPECT_FALSE(slot_manager_->LoadToken(
+      ic_, kTestTokenPath, MakeBlob(kAuthData), kTokenLabel, &slot_id));
   EXPECT_FALSE(slot_manager_->IsTokenAccessible(ic_, slot_id));
 }
 
@@ -669,9 +631,8 @@ TEST_F(SoftwareOnlyTest, LoadExistingWriteFailure) {
   InitializeObjectPoolBlobs();
   pool_write_result_ = false;
   int slot_id = 0;
-  EXPECT_FALSE(slot_manager_->LoadToken(ic_, kTestTokenPath,
-                                        MakeBlob(kAuthData), kTokenLabel,
-                                        &slot_id));
+  EXPECT_FALSE(slot_manager_->LoadToken(
+      ic_, kTestTokenPath, MakeBlob(kAuthData), kTokenLabel, &slot_id));
   EXPECT_FALSE(slot_manager_->IsTokenAccessible(ic_, slot_id));
   EXPECT_EQ(1, set_encryption_key_num_calls_);
 }
@@ -687,8 +648,7 @@ TEST_F(SoftwareOnlyTest, Unload) {
 
 TEST_F(SoftwareOnlyTest, ChangeAuth) {
   InitializeObjectPoolBlobs();
-  slot_manager_->ChangeTokenAuthData(kTestTokenPath,
-                                     MakeBlob(kAuthData),
+  slot_manager_->ChangeTokenAuthData(kTestTokenPath, MakeBlob(kAuthData),
                                      MakeBlob("new"));
   int slot_id = 0;
   EXPECT_TRUE(slot_manager_->LoadToken(ic_, kTestTokenPath, MakeBlob("new"),
@@ -701,8 +661,7 @@ TEST_F(SoftwareOnlyTest, ChangeAuthWhileLoaded) {
   int slot_id = 0;
   EXPECT_TRUE(slot_manager_->LoadToken(ic_, kTestTokenPath, MakeBlob(kAuthData),
                                        kTokenLabel, &slot_id));
-  slot_manager_->ChangeTokenAuthData(kTestTokenPath,
-                                     MakeBlob(kAuthData),
+  slot_manager_->ChangeTokenAuthData(kTestTokenPath, MakeBlob(kAuthData),
                                      MakeBlob("new"));
   slot_manager_->UnloadToken(ic_, kTestTokenPath);
   EXPECT_TRUE(slot_manager_->LoadToken(ic_, kTestTokenPath, MakeBlob("new"),
@@ -711,8 +670,7 @@ TEST_F(SoftwareOnlyTest, ChangeAuthWhileLoaded) {
 }
 
 TEST_F(SoftwareOnlyTest, ChangeAuthBeforeInit) {
-  slot_manager_->ChangeTokenAuthData(kTestTokenPath,
-                                     MakeBlob(kAuthData),
+  slot_manager_->ChangeTokenAuthData(kTestTokenPath, MakeBlob(kAuthData),
                                      MakeBlob("new"));
   // At this point we expect the token to still not exist.
   int slot_id = 0;
@@ -723,8 +681,7 @@ TEST_F(SoftwareOnlyTest, ChangeAuthBeforeInit) {
 
 TEST_F(SoftwareOnlyTest, ChangeAuthWithBadOldAuth) {
   InitializeObjectPoolBlobs();
-  slot_manager_->ChangeTokenAuthData(kTestTokenPath,
-                                     MakeBlob("bad"),
+  slot_manager_->ChangeTokenAuthData(kTestTokenPath, MakeBlob("bad"),
                                      MakeBlob("new"));
   int slot_id = 0;
   EXPECT_TRUE(slot_manager_->LoadToken(ic_, kTestTokenPath, MakeBlob(kAuthData),
@@ -735,8 +692,7 @@ TEST_F(SoftwareOnlyTest, ChangeAuthWithBadOldAuth) {
 TEST_F(SoftwareOnlyTest, ChangeAuthWithCorruptMasterKey) {
   InitializeObjectPoolBlobs();
   pool_blobs_[kEncryptedMasterKey] = "bad";
-  slot_manager_->ChangeTokenAuthData(kTestTokenPath,
-                                     MakeBlob(kAuthData),
+  slot_manager_->ChangeTokenAuthData(kTestTokenPath, MakeBlob(kAuthData),
                                      MakeBlob("new"));
   EXPECT_EQ("bad", pool_blobs_[kEncryptedMasterKey]);
 }
@@ -744,8 +700,7 @@ TEST_F(SoftwareOnlyTest, ChangeAuthWithCorruptMasterKey) {
 TEST_F(SoftwareOnlyTest, ChangeAuthWithWriteErrors) {
   InitializeObjectPoolBlobs();
   pool_write_result_ = false;
-  slot_manager_->ChangeTokenAuthData(kTestTokenPath,
-                                     MakeBlob(kAuthData),
+  slot_manager_->ChangeTokenAuthData(kTestTokenPath, MakeBlob(kAuthData),
                                      MakeBlob("new"));
   pool_write_result_ = true;
   int slot_id = 0;

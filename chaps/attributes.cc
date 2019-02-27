@@ -19,9 +19,7 @@ using std::vector;
 namespace chaps {
 
 Attributes::Attributes()
-    : attributes_(NULL),
-      num_attributes_(0),
-      is_free_required_(false) {}
+    : attributes_(NULL), num_attributes_(0), is_free_required_(false) {}
 
 Attributes::Attributes(CK_ATTRIBUTE_PTR attributes, CK_ULONG num_attributes)
     : attributes_(attributes),
@@ -34,8 +32,7 @@ Attributes::~Attributes() {
 
 bool Attributes::Serialize(vector<uint8_t>* serialized_attributes) const {
   string tmp;
-  if (!SerializeInternal(attributes_,
-                         num_attributes_,
+  if (!SerializeInternal(attributes_, num_attributes_,
                          true,  // Allow nesting.
                          &tmp))
     return false;
@@ -47,8 +44,7 @@ bool Attributes::Parse(const vector<uint8_t>& serialized_attributes) {
   Free();
   bool success = ParseInternal(ConvertByteVectorToString(serialized_attributes),
                                true,  // Allow nesting.
-                               &attributes_,
-                               &num_attributes_);
+                               &attributes_, &num_attributes_);
   is_free_required_ = success;
   return success;
 }
@@ -56,8 +52,7 @@ bool Attributes::Parse(const vector<uint8_t>& serialized_attributes) {
 bool Attributes::ParseAndFill(const vector<uint8_t>& serialized_attributes) {
   return ParseAndFillInternal(ConvertByteVectorToString(serialized_attributes),
                               true,  // Allow nesting.
-                              attributes_,
-                              num_attributes_);
+                              attributes_, num_attributes_);
 }
 
 bool Attributes::IsAttributeNested(CK_ATTRIBUTE_TYPE type) {
@@ -66,8 +61,7 @@ bool Attributes::IsAttributeNested(CK_ATTRIBUTE_TYPE type) {
 
 void Attributes::FreeAttributes(CK_ATTRIBUTE_PTR attributes,
                                 CK_ULONG num_attributes) {
-  FreeAttributesInternal(attributes,
-                         num_attributes,
+  FreeAttributesInternal(attributes, num_attributes,
                          true);  // Allow nesting.
 }
 
@@ -114,8 +108,7 @@ bool Attributes::SerializeInternal(CK_ATTRIBUTE_PTR attributes,
     CK_ULONG num_inner_attributes =
         attributes[i].ulValueLen / sizeof(CK_ATTRIBUTE);
     string inner_serialized;
-    if (!SerializeInternal(inner_attributes,
-                           num_inner_attributes,
+    if (!SerializeInternal(inner_attributes, num_inner_attributes,
                            false,  // Do not allow nesting.
                            &inner_serialized))
       return false;
@@ -150,8 +143,7 @@ bool Attributes::ParseInternal(const string& serialized,
       attribute_array[i].ulValueLen = attribute.value().length();
       attribute_array[i].pValue = new CK_BYTE[attribute.length()];
       CHECK(attribute_array[i].pValue);
-      memcpy(attribute_array[i].pValue,
-             attribute.value().data(),
+      memcpy(attribute_array[i].pValue, attribute.value().data(),
              attribute.value().length());
       continue;
     }
@@ -164,8 +156,7 @@ bool Attributes::ParseInternal(const string& serialized,
     CK_ULONG num_inner_attributes = 0;
     if (!ParseInternal(attribute.value(),
                        false,  // Do not allow nesting.
-                       &inner_attribute_list,
-                       &num_inner_attributes)) {
+                       &inner_attribute_list, &num_inner_attributes)) {
       LOG(ERROR) << "Nested parse failed.";
       return false;
     }
@@ -219,8 +210,7 @@ bool Attributes::ParseAndFillInternal(const string& serialized,
         return false;
       }
       attributes[i].ulValueLen = attribute.value().length();
-      memcpy(attributes[i].pValue,
-             attribute.value().data(),
+      memcpy(attributes[i].pValue, attribute.value().data(),
              attribute.value().length());
       continue;
     }
@@ -235,8 +225,7 @@ bool Attributes::ParseAndFillInternal(const string& serialized,
         attributes[i].ulValueLen / sizeof(CK_ATTRIBUTE);
     if (!ParseAndFillInternal(attribute.value(),
                               false,  // Do not allow nesting.
-                              inner_attribute_list,
-                              num_inner_attributes)) {
+                              inner_attribute_list, num_inner_attributes)) {
       LOG(ERROR) << "Nested parse failed.";
       return false;
     }
@@ -254,7 +243,7 @@ void Attributes::FreeAttributesInternal(CK_ATTRIBUTE_PTR attributes,
     if (!IsAttributeNested(attributes[i].type)) {
       // This was allocated as a CK_BYTE array, delete the same way.
       CK_BYTE_PTR value = reinterpret_cast<CK_BYTE_PTR>(attributes[i].pValue);
-      delete [] value;
+      delete[] value;
       continue;
     }
     // If nesting is not allowed, then the array is malformed and we won't
@@ -267,11 +256,10 @@ void Attributes::FreeAttributesInternal(CK_ATTRIBUTE_PTR attributes,
         reinterpret_cast<CK_ATTRIBUTE_PTR>(attributes[i].pValue);
     CK_ULONG num_inner_attributes =
         attributes[i].ulValueLen / sizeof(CK_ATTRIBUTE);
-    FreeAttributesInternal(inner_attribute_list,
-                           num_inner_attributes,
+    FreeAttributesInternal(inner_attribute_list, num_inner_attributes,
                            false);  // Do not allow nesting.
   }
-  delete [] attributes;
+  delete[] attributes;
 }
 
 // Convert int to CK_ULONG preserving -1.  Unfortunately, PKCS #11 uses -1 as a

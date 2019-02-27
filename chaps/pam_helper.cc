@@ -16,9 +16,9 @@
 
 #include "chaps/chaps_utility.h"
 
+using brillo::SecureBlob;
 using std::string;
 using std::vector;
-using brillo::SecureBlob;
 
 namespace chaps {
 
@@ -27,15 +27,15 @@ namespace {
 const char* kUserKey = "chaps_user_key";
 const char* kPasswordKey = "chaps_password_key";
 
-static void FreeUser(pam_handle_t *pam_handle, void *data,
-                     int error_status) {
+static void FreeUser(pam_handle_t* pam_handle, void* data, int error_status) {
   if (data != NULL) {
     string* user = reinterpret_cast<string*>(data);
     delete user;
   }
 }
 
-static void FreePassword(pam_handle_t *pam_handle, void *data,
+static void FreePassword(pam_handle_t* pam_handle,
+                         void* data,
                          int error_status) {
   if (data != NULL) {
     SecureBlob* password = reinterpret_cast<SecureBlob*>(data);
@@ -46,7 +46,7 @@ static void FreePassword(pam_handle_t *pam_handle, void *data,
 
 }  // namespace
 
-PamHelper::~PamHelper() { }
+PamHelper::~PamHelper() {}
 
 bool PamHelper::GetPamUser(pam_handle_t* pam_handle, string* user) {
   const char* user_raw;
@@ -74,7 +74,7 @@ bool PamHelper::GetPamPassword(pam_handle_t* pam_handle,
   pam_item_type = old_password ? PAM_OLDAUTHTOK : PAM_AUTHTOK;
 
   result = pam_get_item(pam_handle, pam_item_type,
-                        reinterpret_cast<const void **>(&data_raw));
+                        reinterpret_cast<const void**>(&data_raw));
   if (result != PAM_SUCCESS || data_raw == NULL) {
     // TODO(rmcilroy): Prompt for password if possible.
     LOG(WARNING) << "Could not get pam password: "

@@ -67,8 +67,7 @@ MechanismInfo MechanismInfoToProto(const CK_MECHANISM_INFO* info) {
   return proto;
 }
 
-bool ProtoToSessionInfo(const SessionInfo& proto,
-                        CK_SESSION_INFO* out_info) {
+bool ProtoToSessionInfo(const SessionInfo& proto, CK_SESSION_INFO* out_info) {
   DCHECK(out_info);
   if (!proto.has_slot_id() || !proto.has_state() || !proto.has_flags() ||
       !proto.has_device_error())

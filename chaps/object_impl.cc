@@ -17,10 +17,8 @@ using std::string;
 
 namespace chaps {
 
-ObjectImpl::ObjectImpl(ChapsFactory* factory) : factory_(factory),
-                                                stage_(kCreate),
-                                                handle_(0),
-                                                store_id_(0) {}
+ObjectImpl::ObjectImpl(ChapsFactory* factory)
+    : factory_(factory), stage_(kCreate), handle_(0), store_id_(0) {}
 ObjectImpl::~ObjectImpl() {}
 
 ObjectStage ObjectImpl::GetStage() const {
@@ -159,10 +157,14 @@ CK_ULONG ObjectImpl::GetAttributeInt(CK_ATTRIBUTE_TYPE type,
   if (it == attributes_.end())
     return default_value;
   switch (it->second.length()) {
-    case 1: return ExtractFromByteString<uint8_t>(it->second);
-    case 2: return ExtractFromByteString<uint16_t>(it->second);
-    case 4: return ExtractFromByteString<uint32_t>(it->second);
-    case 8: return ExtractFromByteString<uint64_t>(it->second);
+    case 1:
+      return ExtractFromByteString<uint8_t>(it->second);
+    case 2:
+      return ExtractFromByteString<uint16_t>(it->second);
+    case 4:
+      return ExtractFromByteString<uint32_t>(it->second);
+    case 8:
+      return ExtractFromByteString<uint64_t>(it->second);
     default:
       LOG(WARNING) << "GetAttributeInt: invalid length: "
                    << it->second.length();
@@ -171,8 +173,8 @@ CK_ULONG ObjectImpl::GetAttributeInt(CK_ATTRIBUTE_TYPE type,
 }
 
 void ObjectImpl::SetAttributeInt(CK_ATTRIBUTE_TYPE type, CK_ULONG value) {
-  attributes_[type] = string(reinterpret_cast<const char*>(&value),
-                             sizeof(value));
+  attributes_[type] =
+      string(reinterpret_cast<const char*>(&value), sizeof(value));
 }
 
 string ObjectImpl::GetAttributeString(CK_ATTRIBUTE_TYPE type) const {

@@ -20,25 +20,25 @@ namespace chaps {
 // read-only.modify - True if attribute cannot be set with C_SetAttributeValue.
 // required - True if attribute is required for a valid object.
 static const AttributePolicy kPrivateKeyPolicies[] = {
-  {CKA_ALWAYS_SENSITIVE, false, {true, true, true}, false},
-  {CKA_NEVER_EXTRACTABLE, false, {true, true, true}, false},
-  {CKA_UNWRAP_TEMPLATE, false, {false, false, true}, false},
-  {CKA_ALWAYS_AUTHENTICATE, false, {false, false, true}, false},
-  // RSA-specific attributes.
-  {CKA_MODULUS, false, {false, false, true}, false},
-  {CKA_PUBLIC_EXPONENT, false, {false, false, true}, false},
-  {CKA_PRIVATE_EXPONENT, true, {false, false, true}, false},
-  {CKA_PRIME_1, true, {false, false, true}, false},
-  {CKA_PRIME_2, true, {false, false, true}, false},
-  {CKA_EXPONENT_1, true, {false, false, true}, false},
-  {CKA_EXPONENT_2, true, {false, false, true}, false},
-  {CKA_COEFFICIENT, true, {false, false, true}, false},
-  // ECC-specific attributes.
-  {CKA_EC_PARAMS, false, {false, false, true}, false},
-  {CKA_VALUE, false, {false, false, true}, false},
-  // TPM backed key attributes.
-  {kKeyBlobAttribute, true, {false, true, true}, false},
-  {kAuthDataAttribute, true, {false, true, true}, false},
+    {CKA_ALWAYS_SENSITIVE, false, {true, true, true}, false},
+    {CKA_NEVER_EXTRACTABLE, false, {true, true, true}, false},
+    {CKA_UNWRAP_TEMPLATE, false, {false, false, true}, false},
+    {CKA_ALWAYS_AUTHENTICATE, false, {false, false, true}, false},
+    // RSA-specific attributes.
+    {CKA_MODULUS, false, {false, false, true}, false},
+    {CKA_PUBLIC_EXPONENT, false, {false, false, true}, false},
+    {CKA_PRIVATE_EXPONENT, true, {false, false, true}, false},
+    {CKA_PRIME_1, true, {false, false, true}, false},
+    {CKA_PRIME_2, true, {false, false, true}, false},
+    {CKA_EXPONENT_1, true, {false, false, true}, false},
+    {CKA_EXPONENT_2, true, {false, false, true}, false},
+    {CKA_COEFFICIENT, true, {false, false, true}, false},
+    // ECC-specific attributes.
+    {CKA_EC_PARAMS, false, {false, false, true}, false},
+    {CKA_VALUE, false, {false, false, true}, false},
+    // TPM backed key attributes.
+    {kKeyBlobAttribute, true, {false, true, true}, false},
+    {kAuthDataAttribute, true, {false, true, true}, false},
 };
 
 ObjectPolicyPrivateKey::ObjectPolicyPrivateKey() {

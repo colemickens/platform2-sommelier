@@ -20,14 +20,15 @@ namespace chaps {
 
 class TokenFileManagerMock : public TokenFileManager {
  public:
-  TokenFileManagerMock() : TokenFileManager(-1, -1) { }
+  TokenFileManagerMock() : TokenFileManager(-1, -1) {}
 
   MOCK_METHOD2(GetUserTokenPath, bool(const std::string&, base::FilePath*));
   MOCK_METHOD1(CreateUserTokenDirectory, bool(const base::FilePath&));
   MOCK_METHOD1(CheckUserTokenPermissions, bool(const base::FilePath&));
-  MOCK_METHOD3(SaltAuthData, bool(const base::FilePath&,
-                                  const brillo::SecureBlob&,
-                                  brillo::SecureBlob*));
+  MOCK_METHOD3(SaltAuthData,
+               bool(const base::FilePath&,
+                    const brillo::SecureBlob&,
+                    brillo::SecureBlob*));
 };
 
 }  // namespace chaps

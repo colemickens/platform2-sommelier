@@ -152,19 +152,18 @@ class ScopedSession {
  public:
 #ifndef CHAPS_TPM2_USE_PER_OP_SESSIONS
   ScopedSession(trunks::TrunksFactory* factory,
-      std::unique_ptr<trunks::HmacSession> *session) {}
+                std::unique_ptr<trunks::HmacSession>* session) {}
 #else
   ScopedSession(trunks::TrunksFactory* factory,
-      std::unique_ptr<trunks::HmacSession> *session) {
+                std::unique_ptr<trunks::HmacSession>* session) {
     target_session_ = session;
     if (*target_session_) {
       LOG(ERROR) << "Concurrent sessions";
     }
     std::unique_ptr<trunks::HmacSession> new_session =
-      factory->GetHmacSession();
-    TPM_RC result =
-      new_session->StartUnboundSession(false /* salted */,
-                                       false /* enable_encryption */);
+        factory->GetHmacSession();
+    TPM_RC result = new_session->StartUnboundSession(
+        false /* salted */, false /* enable_encryption */);
     if (result != TPM_RC_SUCCESS) {
       LOG(ERROR) << "Error starting an AuthorizationSession: "
                  << trunks::GetErrorString(result);
@@ -176,18 +175,15 @@ class ScopedSession {
       *target_session_ = std::move(new_session);
     }
   }
-  ~ScopedSession() {
-    *target_session_ = nullptr;
-  }
+  ~ScopedSession() { *target_session_ = nullptr; }
 
  private:
-  std::unique_ptr<trunks::HmacSession> *target_session_;
+  std::unique_ptr<trunks::HmacSession>* target_session_;
 #endif
 };
 
 TPM2UtilityImpl::TPM2UtilityImpl()
-    : default_factory_(
-        new trunks::TrunksFactoryImpl()),
+    : default_factory_(new trunks::TrunksFactoryImpl()),
       factory_(default_factory_.get()) {
   if (!default_factory_->Initialize()) {
     LOG(ERROR) << "Unable to initialize trunks.";
@@ -201,8 +197,8 @@ TPM2UtilityImpl::TPM2UtilityImpl()
 
 TPM2UtilityImpl::TPM2UtilityImpl(
     const scoped_refptr<base::SingleThreadTaskRunner>& task_runner)
-        : task_runner_(task_runner),
-          default_trunks_proxy_(new trunks::TrunksDBusProxy) {
+    : task_runner_(task_runner),
+      default_trunks_proxy_(new trunks::TrunksDBusProxy) {
   task_runner->PostNonNestableTask(
       FROM_HERE, base::Bind(&InitTransceiver,
                             base::Unretained(default_trunks_proxy_.get()),
@@ -211,9 +207,8 @@ TPM2UtilityImpl::TPM2UtilityImpl(
   // ChapsTPMUtility --> TrunksFactory --> BackgroundCommandTransceiver -->
   // TrunksProxy
   default_background_transceiver_.reset(
-      new trunks::BackgroundCommandTransceiver(
-          default_trunks_proxy_.get(),
-          task_runner));
+      new trunks::BackgroundCommandTransceiver(default_trunks_proxy_.get(),
+                                               task_runner));
   default_factory_.reset(
       new trunks::TrunksFactoryImpl(default_background_transceiver_.get()));
   CHECK(default_factory_->Initialize());
@@ -229,7 +224,8 @@ TPM2UtilityImpl::TPM2UtilityImpl(TrunksFactory* factory)
 #ifndef CHAPS_TPM2_USE_PER_OP_SESSIONS
       session_(factory_->GetHmacSession()),
 #endif
-      trunks_tpm_utility_(factory_->GetTpmUtility()) {}
+      trunks_tpm_utility_(factory_->GetTpmUtility()) {
+}
 
 TPM2UtilityImpl::~TPM2UtilityImpl() {
   for (const auto& it : slot_handles_) {
@@ -251,8 +247,7 @@ TPM2UtilityImpl::~TPM2UtilityImpl() {
     // specialization after the uprev
     task_runner_->PostNonNestableTask(
         FROM_HERE,
-        base::Bind(&TermTransceiver,
-                   base::Passed(&default_trunks_proxy_)));
+        base::Bind(&TermTransceiver, base::Passed(&default_trunks_proxy_)));
   }
 }
 
@@ -369,9 +364,7 @@ bool TPM2UtilityImpl::ChangeAuthData(int slot_id,
   }
   session_->SetEntityAuthorizationValue(old_auth_data.to_string());
   TPM_RC result = trunks_tpm_utility_->ChangeKeyAuthorizationData(
-      key_handle,
-      new_auth_data.to_string(),
-      session_->GetDelegate(),
+      key_handle, new_auth_data.to_string(), session_->GetDelegate(),
       new_auth_key_blob);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error changing authorization data: "
@@ -391,9 +384,8 @@ bool TPM2UtilityImpl::ChangeAuthData(int slot_id,
 
 bool TPM2UtilityImpl::GenerateRandom(int num_bytes, std::string* random_data) {
   AutoLock lock(lock_);
-  TPM_RC result = trunks_tpm_utility_->GenerateRandom(num_bytes,
-                                                      nullptr,
-                                                      random_data);
+  TPM_RC result =
+      trunks_tpm_utility_->GenerateRandom(num_bytes, nullptr, random_data);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error generating random data from the TPM: "
                << trunks::GetErrorString(result);
@@ -438,23 +430,19 @@ bool TPM2UtilityImpl::GenerateRSAKey(int slot,
   }
   session_->SetEntityAuthorizationValue("");  // SRK Authorization Value.
   TPM_RC result = trunks_tpm_utility_->CreateRSAKeyPair(
-      trunks::TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey,
-      modulus_bits,
-      GetIntegerExponent(public_exponent),
-      auth_data.to_string(),
-      "",  // Policy Digest
-      false,  // use_only_policy_authorization
+      trunks::TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey, modulus_bits,
+      GetIntegerExponent(public_exponent), auth_data.to_string(),
+      "",                       // Policy Digest
+      false,                    // use_only_policy_authorization
       std::vector<uint32_t>(),  // creation_pcr_indexes
-      session_->GetDelegate(),
-      key_blob,
-      nullptr);
+      session_->GetDelegate(), key_blob, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating RSA key pair: "
                << trunks::GetErrorString(result);
     return false;
   }
-  if (!LoadKeyWithParentInternal(slot, *key_blob, auth_data,
-                                 kStorageRootKey, key_handle)) {
+  if (!LoadKeyWithParentInternal(slot, *key_blob, auth_data, kStorageRootKey,
+                                 key_handle)) {
     return false;
   }
   return true;
@@ -465,8 +453,8 @@ bool TPM2UtilityImpl::GetRSAPublicKey(int key_handle,
                                       std::string* modulus) {
   AutoLock lock(lock_);
   trunks::TPMT_PUBLIC public_data;
-  TPM_RC result = trunks_tpm_utility_->GetKeyPublicArea(key_handle,
-                                                        &public_data);
+  TPM_RC result =
+      trunks_tpm_utility_->GetKeyPublicArea(key_handle, &public_data);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting key public data: " << result;
     return false;
@@ -577,20 +565,16 @@ bool TPM2UtilityImpl::WrapRSAKey(int slot,
   }
   session_->SetEntityAuthorizationValue("");  // SRK Authorization Value.
   TPM_RC result = trunks_tpm_utility_->ImportRSAKey(
-      trunks::TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey,
-      modulus,
-      GetIntegerExponent(public_exponent),
-      prime_factor,
-      auth_data.to_string(),
-      session_->GetDelegate(),
-      key_blob);
+      trunks::TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey, modulus,
+      GetIntegerExponent(public_exponent), prime_factor, auth_data.to_string(),
+      session_->GetDelegate(), key_blob);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error importing RSA key to TPM: "
                << trunks::GetErrorString(result);
     return false;
   }
-  if (!LoadKeyWithParentInternal(slot, *key_blob, auth_data,
-                                 kStorageRootKey, key_handle)) {
+  if (!LoadKeyWithParentInternal(slot, *key_blob, auth_data, kStorageRootKey,
+                                 key_handle)) {
     return false;
   }
   return true;
@@ -634,10 +618,7 @@ bool TPM2UtilityImpl::LoadKey(int slot,
                               const SecureBlob& auth_data,
                               int* key_handle) {
   AutoLock lock(lock_);
-  return LoadKeyWithParentInternal(slot,
-                                   key_blob,
-                                   auth_data,
-                                   kStorageRootKey,
+  return LoadKeyWithParentInternal(slot, key_blob, auth_data, kStorageRootKey,
                                    key_handle);
 }
 
@@ -647,10 +628,7 @@ bool TPM2UtilityImpl::LoadKeyWithParent(int slot,
                                         int parent_key_handle,
                                         int* key_handle) {
   AutoLock lock(lock_);
-  return LoadKeyWithParentInternal(slot,
-                                   key_blob,
-                                   auth_data,
-                                   parent_key_handle,
+  return LoadKeyWithParentInternal(slot, key_blob, auth_data, parent_key_handle,
                                    key_handle);
 }
 
@@ -679,22 +657,18 @@ bool TPM2UtilityImpl::Bind(int key_handle,
     return false;
   }
   crypto::ScopedRSA rsa(RSA_new());
-  rsa.get()->n = BN_bin2bn(
-      reinterpret_cast<const unsigned char*>(modulus.data()),
-      modulus.size(),
-      nullptr);
-  rsa.get()->e = BN_bin2bn(
-      reinterpret_cast<const unsigned char*>(exponent.data()),
-      exponent.size(),
-      nullptr);
+  rsa.get()->n =
+      BN_bin2bn(reinterpret_cast<const unsigned char*>(modulus.data()),
+                modulus.size(), nullptr);
+  rsa.get()->e =
+      BN_bin2bn(reinterpret_cast<const unsigned char*>(exponent.data()),
+                exponent.size(), nullptr);
   // RSA encrypt output should be size of the modulus.
   output->resize(modulus.size());
   int rsa_result = RSA_public_encrypt(
-      input.size(),
-      reinterpret_cast<const unsigned char*>(input.data()),
+      input.size(), reinterpret_cast<const unsigned char*>(input.data()),
       reinterpret_cast<unsigned char*>(base::string_as_array(output)),
-      rsa.get(),
-      RSA_PKCS1_PADDING);
+      rsa.get(), RSA_PKCS1_PADDING);
   if (rsa_result == -1) {
     LOG(ERROR) << "Error performing RSA_public_encrypt.";
     return false;
@@ -721,8 +695,8 @@ bool TPM2UtilityImpl::Sign(int key_handle,
   }
   session_->SetEntityAuthorizationValue(auth_data);
   trunks::TPMT_PUBLIC public_area;
-  TPM_RC result = trunks_tpm_utility_->GetKeyPublicArea(key_handle,
-                                                        &public_area);
+  TPM_RC result =
+      trunks_tpm_utility_->GetKeyPublicArea(key_handle, &public_area);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting key public data: "
                << trunks::GetErrorString(result);
@@ -816,8 +790,7 @@ bool TPM2UtilityImpl::LoadKeyWithParentInternal(int slot,
   }
   session_->SetEntityAuthorizationValue("");  // SRK Authorization Value.
   TPM_RC result = trunks_tpm_utility_->LoadKey(
-      key_blob,
-      session_->GetDelegate(),
+      key_blob, session_->GetDelegate(),
       reinterpret_cast<trunks::TPM_HANDLE*>(key_handle));
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error loading key into TPM: "
@@ -846,8 +819,8 @@ bool TPM2UtilityImpl::UnbindInternal(int key_handle,
                                      const std::string& input,
                                      std::string* output) {
   trunks::TPMT_PUBLIC public_data;
-  TPM_RC result = trunks_tpm_utility_->GetKeyPublicArea(key_handle,
-                                                        &public_data);
+  TPM_RC result =
+      trunks_tpm_utility_->GetKeyPublicArea(key_handle, &public_data);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting key public data: " << result;
     LOG_IF(FATAL, result == trunks::SAPI_RC_NO_CONNECTION)
@@ -865,12 +838,9 @@ bool TPM2UtilityImpl::UnbindInternal(int key_handle,
     return false;
   }
   session_->SetEntityAuthorizationValue(auth_data);
-  result = trunks_tpm_utility_->AsymmetricDecrypt(key_handle,
-                                                  trunks::TPM_ALG_RSAES,
-                                                  trunks::TPM_ALG_SHA1,
-                                                  input,
-                                                  session_->GetDelegate(),
-                                                  output);
+  result = trunks_tpm_utility_->AsymmetricDecrypt(
+      key_handle, trunks::TPM_ALG_RSAES, trunks::TPM_ALG_SHA1, input,
+      session_->GetDelegate(), output);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error performing unbind operation: "
                << trunks::GetErrorString(result);

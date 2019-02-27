@@ -46,10 +46,9 @@ class ObjectPoolMock : public ObjectPool {
     ON_CALL(*this, Find(testing::_, testing::_))
         .WillByDefault(testing::Invoke(this, &ObjectPoolMock::FakeFind));
     ON_CALL(*this, FindByHandle(testing::_, testing::_))
-        .WillByDefault(testing::Invoke(this,
-                                       &ObjectPoolMock::FakeFindByHandle));
-    ON_CALL(*this, IsPrivateLoaded())
-        .WillByDefault(testing::Return(true));
+        .WillByDefault(
+            testing::Invoke(this, &ObjectPoolMock::FakeFindByHandle));
+    ON_CALL(*this, IsPrivateLoaded()).WillByDefault(testing::Return(true));
   }
 
  private:

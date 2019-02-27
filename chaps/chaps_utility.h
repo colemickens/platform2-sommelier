@@ -37,25 +37,24 @@ const struct {
   const char* encoding;
   size_t encoding_len;
 } kDigestAlgorithmEncoding[] = {
-  { /* MD5 = 0 */
-    "\x30\x20\x30\x0c\x06\x08\x2a\x86\x48\x86\xf7\x0d\x02\x05\x05\x00\x04"
-    "\x10",
-    18 },
-  { /* SHA1 = 1 */
-    "\x30\x21\x30\x09\x06\x05\x2b\x0e\x03\x02\x1a\x05\x00\x04\x14",
-    15 },
-  { /* SHA256 = 2 */
-    "\x30\x31\x30\x0d\x06\x09\x60\x86\x48\x01\x65\x03\x04\x02\x01\x05\x00\x04"
-    "\x20",
-    19 },
-  { /* SHA384 = 3 */
-    "\x30\x41\x30\x0d\x06\x09\x60\x86\x48\x01\x65\x03\x04\x02\x02\x05\x00\x04"
-    "\x30",
-    19 },
-  { /* SHA512 = 4 */
-    "\x30\x51\x30\x0d\x06\x09\x60\x86\x48\x01\x65\x03\x04\x02\x03\x05\x00\x04"
-    "\x40",
-    19 },
+    {/* MD5 = 0 */
+     "\x30\x20\x30\x0c\x06\x08\x2a\x86\x48\x86\xf7\x0d\x02\x05\x05\x00\x04"
+     "\x10",
+     18},
+    {/* SHA1 = 1 */
+     "\x30\x21\x30\x09\x06\x05\x2b\x0e\x03\x02\x1a\x05\x00\x04\x14", 15},
+    {/* SHA256 = 2 */
+     "\x30\x31\x30\x0d\x06\x09\x60\x86\x48\x01\x65\x03\x04\x02\x01\x05\x00\x04"
+     "\x20",
+     19},
+    {/* SHA384 = 3 */
+     "\x30\x41\x30\x0d\x06\x09\x60\x86\x48\x01\x65\x03\x04\x02\x02\x05\x00\x04"
+     "\x30",
+     19},
+    {/* SHA512 = 4 */
+     "\x30\x51\x30\x0d\x06\x09\x60\x86\x48\x01\x65\x03\x04\x02\x03\x05\x00\x04"
+     "\x40",
+     19},
 };
 
 // Get the algorithm ID for DigestInfo structure
@@ -123,25 +122,31 @@ std::string PrintIntVector(const std::vector<T>& v) {
 }
 
 // This macro logs the current function name and the CK_RV value provided.
-#define LOG_CK_RV(value) LOG(ERROR) << __func__ << " - " << \
-    chaps::CK_RVToString(value);
+#define LOG_CK_RV(value) \
+  LOG(ERROR) << __func__ << " - " << chaps::CK_RVToString(value);
 
 // This macro is a conditional version of LOG_CK_RV which will log only if the
 // value is not CKR_OK.
-#define LOG_CK_RV_ERR(value) LOG_IF(ERROR, ((value) != CKR_OK)) << __func__ << \
-    " - " << chaps::CK_RVToString(value);
+#define LOG_CK_RV_ERR(value)         \
+  LOG_IF(ERROR, ((value) != CKR_OK)) \
+      << __func__ << " - " << chaps::CK_RVToString(value);
 
 // This macro logs and returns the given CK_RV value.
-#define LOG_CK_RV_AND_RETURN(value) {LOG_CK_RV(value); return (value);}
+#define LOG_CK_RV_AND_RETURN(value) \
+  {                                 \
+    LOG_CK_RV(value);               \
+    return (value);                 \
+  }
 
 // This macro logs and returns the given CK_RV value if the given condition is
 // true.
-#define LOG_CK_RV_AND_RETURN_IF(condition, value) if (condition) \
-    LOG_CK_RV_AND_RETURN(value)
+#define LOG_CK_RV_AND_RETURN_IF(condition, value) \
+  if (condition)                                  \
+  LOG_CK_RV_AND_RETURN(value)
 
 // This macro logs and returns the given CK_RV value if the value is not CKR_OK.
 #define LOG_CK_RV_AND_RETURN_IF_ERR(value) \
-    LOG_CK_RV_AND_RETURN_IF((value) != CKR_OK, value)
+  LOG_CK_RV_AND_RETURN_IF((value) != CKR_OK, value)
 
 // This function constructs a string object from a CK_UTF8CHAR array.  The array
 // does not need to be NULL-terminated. If buffer is NULL, an empty string will
@@ -219,13 +224,10 @@ class PreservedValue {
     preserved_ = value;
     temp_ = static_cast<TempType>(*value);
   }
-  ~PreservedValue() {
-    *preserved_ = static_cast<PreservedType>(temp_);
-  }
+  ~PreservedValue() { *preserved_ = static_cast<PreservedType>(temp_); }
   // Allow an implicit cast to a pointer to the temporary value.
-  operator TempType*() {
-    return &temp_;
-  }
+  operator TempType*() { return &temp_; }
+
  private:
   PreservedType* preserved_;
   TempType temp_;
@@ -241,13 +243,10 @@ class PreservedByteVector {
     preserved_ = value;
     temp_ = ConvertByteVectorToString(*value);
   }
-  ~PreservedByteVector() {
-    *preserved_ = ConvertByteStringToVector(temp_);
-  }
+  ~PreservedByteVector() { *preserved_ = ConvertByteStringToVector(temp_); }
   // Allow an implicit cast to a string pointer.
-  operator std::string*() {
-    return &temp_;
-  }
+  operator std::string*() { return &temp_; }
+
  private:
   std::vector<uint8_t>* preserved_;
   std::string temp_;
@@ -275,8 +274,7 @@ class ScopedOpenSSL {
 std::string GetOpenSSLError();
 
 // Computes a message authentication code using HMAC and SHA-512.
-std::string HmacSha512(const std::string& input,
-                       const brillo::SecureBlob& key);
+std::string HmacSha512(const std::string& input, const brillo::SecureBlob& key);
 
 // Performs AES-256 encryption / decryption in CBC mode with PKCS padding. If
 // 'iv' is left empty, a random IV will be generated and appended to the cipher-

@@ -24,12 +24,11 @@ namespace chaps {
 // read-only.modify - True if attribute cannot be set with C_SetAttributeValue.
 // required - True if attribute is required for a valid object.
 static const AttributePolicy kCommonPolicies[] = {
-  {CKA_CLASS, false, {false, true, true}, true},
-  {CKA_TOKEN, false, {false, true, true}, false},
-  {CKA_PRIVATE, false, {false, false, true}, false},
-  {CKA_MODIFIABLE, false, {false, false, true}, false},
-  {CKA_LABEL, false, {false, false, false}, false}
-};
+    {CKA_CLASS, false, {false, true, true}, true},
+    {CKA_TOKEN, false, {false, true, true}, false},
+    {CKA_PRIVATE, false, {false, false, true}, false},
+    {CKA_MODIFIABLE, false, {false, false, true}, false},
+    {CKA_LABEL, false, {false, false, false}, false}};
 
 ObjectPolicyCommon::ObjectPolicyCommon() : object_(NULL) {
   AddPolicies(kCommonPolicies, arraysize(kCommonPolicies));
@@ -66,8 +65,8 @@ bool ObjectPolicyCommon::IsModifyAllowed(CK_ATTRIBUTE_TYPE type,
       return false;
     }
   }
-  if (type == CKA_SENSITIVE ||  // Read-only when true.
-      type == CKA_EXTRACTABLE ||  // Read-only when false.
+  if (type == CKA_SENSITIVE ||          // Read-only when true.
+      type == CKA_EXTRACTABLE ||        // Read-only when false.
       type == CKA_WRAP_WITH_TRUSTED) {  // Read-only when true.
     bool new_value = (value[0] != 0);
     bool readonly_value = (type != CKA_EXTRACTABLE);

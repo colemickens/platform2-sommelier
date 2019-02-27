@@ -58,11 +58,8 @@ void CreateObjectProxyOnTaskRunner(
     return;
   }
 
-  proxy->WaitForServiceToBeAvailable(
-      base::Bind(&OnServiceAvailable,
-                 callback,
-                 base::Passed(std::move(bus)),
-                 proxy));
+  proxy->WaitForServiceToBeAvailable(base::Bind(
+      &OnServiceAvailable, callback, base::Passed(std::move(bus)), proxy));
 }
 
 }  // namespace
@@ -102,9 +99,7 @@ ProxyWrapperConstructionTask::ConstructProxyWrapper(
 }
 
 void ProxyWrapperConstructionTask::SetObjectProxyCallback(
-    bool success,
-    ScopedBus bus,
-    dbus::ObjectProxy* object_proxy) {
+    bool success, ScopedBus bus, dbus::ObjectProxy* object_proxy) {
   success_ = success;
   bus_ = std::move(bus);
   object_proxy_ = object_proxy;

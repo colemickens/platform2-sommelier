@@ -95,7 +95,8 @@ static CK_RV HandlePKCS11Output(CK_RV result,
 using ChapsOperation = std::function<CK_RV(void)>;
 static CK_RV PerformNonBlocking(ChapsOperation op) {
   CK_RV result;
-  base::TimeTicks deadline = base::TimeTicks::Now() +
+  base::TimeTicks deadline =
+      base::TimeTicks::Now() +
       base::TimeDelta::FromMilliseconds(g_retry_timeout_ms);
   do {
     result = op();
@@ -149,10 +150,10 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
         reinterpret_cast<CK_C_INITIALIZE_ARGS_PTR>(pInitArgs);
     LOG_CK_RV_AND_RETURN_IF(args->pReserved, CKR_ARGUMENTS_BAD);
     // If one of the following is NULL, they all must be NULL.
-    if ((!args->CreateMutex || !args->DestroyMutex ||
-         !args->LockMutex || !args->UnlockMutex) &&
-        (args->CreateMutex || args->DestroyMutex ||
-         args->LockMutex || args->UnlockMutex)) {
+    if ((!args->CreateMutex || !args->DestroyMutex || !args->LockMutex ||
+         !args->UnlockMutex) &&
+        (args->CreateMutex || args->DestroyMutex || args->LockMutex ||
+         args->UnlockMutex)) {
       LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
     }
     // We require OS locking.
@@ -198,8 +199,7 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo) {
   LOG_CK_RV_AND_RETURN_IF(!pInfo, CKR_ARGUMENTS_BAD);
   pInfo->cryptokiVersion.major = CRYPTOKI_VERSION_MAJOR;
   pInfo->cryptokiVersion.minor = CRYPTOKI_VERSION_MINOR;
-  chaps::CopyStringToCharBuffer("Chromium OS",
-                                pInfo->manufacturerID,
+  chaps::CopyStringToCharBuffer("Chromium OS", pInfo->manufacturerID,
                                 arraysize(pInfo->manufacturerID));
   pInfo->flags = 0;
   chaps::CopyStringToCharBuffer("Chaps Client Library",
@@ -216,10 +216,10 @@ CK_RV C_GetFunctionList(CK_FUNCTION_LIST_PTR_PTR ppFunctionList) {
   LOG_CK_RV_AND_RETURN_IF(!ppFunctionList, CKR_ARGUMENTS_BAD);
   static CK_VERSION version = {2, 20};
   static CK_FUNCTION_LIST functionList = {
-    version,
-    // Let pkcs11f.h populate the function pointers in order.
+      version,
+  // Let pkcs11f.h populate the function pointers in order.
 #define CK_PKCS11_FUNCTION_INFO(func) &func,
-    // We want only the function names, not the arguments.
+  // We want only the function names, not the arguments.
 #undef CK_NEED_ARG_LIST
 #include "pkcs11/pkcs11f.h"
 #undef CK_PKCS11_FUNCTION_INFO
@@ -237,8 +237,8 @@ CK_RV C_GetSlotList(CK_BBOOL tokenPresent,
   LOG_CK_RV_AND_RETURN_IF(!pulCount, CKR_ARGUMENTS_BAD);
   vector<uint64_t> slot_list;
   CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->GetSlotList(*g_user_isolate,
-                                (tokenPresent != CK_FALSE), &slot_list);
+    return g_proxy->GetSlotList(*g_user_isolate, (tokenPresent != CK_FALSE),
+                                &slot_list);
   });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   size_t max_copy = static_cast<size_t>(*pulCount);
@@ -313,8 +313,7 @@ CK_RV C_GetMechanismList(CK_SLOT_ID slotID,
   LOG_CK_RV_AND_RETURN_IF(!pulCount, CKR_ARGUMENTS_BAD);
   vector<uint64_t> mechanism_list;
   CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->GetMechanismList(*g_user_isolate,
-                                     slotID, &mechanism_list);
+    return g_proxy->GetMechanismList(*g_user_isolate, slotID, &mechanism_list);
   });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   // Copy the mechanism list to caller-supplied memory.
@@ -339,9 +338,7 @@ CK_RV C_GetMechanismInfo(CK_SLOT_ID slotID,
   LOG_CK_RV_AND_RETURN_IF(!pInfo, CKR_ARGUMENTS_BAD);
   chaps::MechanismInfo mechanism_info;
   CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->GetMechanismInfo(*g_user_isolate,
-                                     slotID,
-                                     type,
+    return g_proxy->GetMechanismInfo(*g_user_isolate, slotID, type,
                                      &mechanism_info);
   });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
@@ -377,9 +374,8 @@ CK_RV C_InitPIN(CK_SESSION_HANDLE hSession,
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   string pin = chaps::ConvertCharBufferToString(pPin, ulPinLen);
   string* pin_ptr = (!pPin) ? NULL : &pin;
-  CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->InitPIN(*g_user_isolate, hSession, pin_ptr);
-  });
+  CK_RV result = PerformNonBlocking(
+      [&] { return g_proxy->InitPIN(*g_user_isolate, hSession, pin_ptr); });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
@@ -397,8 +393,7 @@ CK_RV C_SetPIN(CK_SESSION_HANDLE hSession,
   string new_pin = chaps::ConvertCharBufferToString(pNewPin, ulNewLen);
   string* new_pin_ptr = (!pNewPin) ? NULL : &new_pin;
   CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->SetPIN(*g_user_isolate, hSession, old_pin_ptr,
-                           new_pin_ptr);
+    return g_proxy->SetPIN(*g_user_isolate, hSession, old_pin_ptr, new_pin_ptr);
   });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
@@ -428,9 +423,8 @@ CK_RV C_OpenSession(CK_SLOT_ID slotID,
 // PKCS #11 v2.20 section 11.6 page 118.
 CK_RV C_CloseSession(CK_SESSION_HANDLE hSession) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->CloseSession(*g_user_isolate, hSession);
-  });
+  CK_RV result = PerformNonBlocking(
+      [&] { return g_proxy->CloseSession(*g_user_isolate, hSession); });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
@@ -439,9 +433,8 @@ CK_RV C_CloseSession(CK_SESSION_HANDLE hSession) {
 // PKCS #11 v2.20 section 11.6 page 120.
 CK_RV C_CloseAllSessions(CK_SLOT_ID slotID) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->CloseAllSessions(*g_user_isolate, slotID);
-  });
+  CK_RV result = PerformNonBlocking(
+      [&] { return g_proxy->CloseAllSessions(*g_user_isolate, slotID); });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
@@ -453,9 +446,7 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession, CK_SESSION_INFO_PTR pInfo) {
   LOG_CK_RV_AND_RETURN_IF(!pInfo, CKR_ARGUMENTS_BAD);
   chaps::SessionInfo session_info;
   CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->GetSessionInfo(*g_user_isolate,
-                                   hSession,
-                                   &session_info);
+    return g_proxy->GetSessionInfo(*g_user_isolate, hSession, &session_info);
   });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   LOG_CK_RV_AND_RETURN_IF(!chaps::ProtoToSessionInfo(session_info, pInfo),
@@ -499,13 +490,10 @@ CK_RV C_SetOperationState(CK_SESSION_HANDLE hSession,
   LOG_CK_RV_AND_RETURN_IF(!pOperationState, CKR_ARGUMENTS_BAD);
 
   vector<uint8_t> operation_state =
-      chaps::ConvertByteBufferToVector(pOperationState,
-                                              ulOperationStateLen);
+      chaps::ConvertByteBufferToVector(pOperationState, ulOperationStateLen);
   CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->SetOperationState(*g_user_isolate,
-                                      hSession,
-                                      operation_state,
-                                      hEncryptionKey,
+    return g_proxy->SetOperationState(*g_user_isolate, hSession,
+                                      operation_state, hEncryptionKey,
                                       hAuthenticationKey);
   });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
@@ -532,9 +520,8 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,
 // PKCS #11 v2.20 section 11.6 page 127.
 CK_RV C_Logout(CK_SESSION_HANDLE hSession) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->Logout(*g_user_isolate, hSession);
-  });
+  CK_RV result = PerformNonBlocking(
+      [&] { return g_proxy->Logout(*g_user_isolate, hSession); });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
@@ -553,11 +540,9 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession,
   if (!attributes.Serialize(&serialized_attributes))
     LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
   CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->CreateObject(
-        *g_user_isolate,
-        hSession,
-        serialized_attributes,
-        chaps::PreservedCK_ULONG(phObject));
+    return g_proxy->CreateObject(*g_user_isolate, hSession,
+                                 serialized_attributes,
+                                 chaps::PreservedCK_ULONG(phObject));
   });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
@@ -578,12 +563,9 @@ CK_RV C_CopyObject(CK_SESSION_HANDLE hSession,
   if (!attributes.Serialize(&serialized_attributes))
     LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
   CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->CopyObject(
-        *g_user_isolate,
-        hSession,
-        hObject,
-        serialized_attributes,
-        chaps::PreservedCK_ULONG(phNewObject));
+    return g_proxy->CopyObject(*g_user_isolate, hSession, hObject,
+                               serialized_attributes,
+                               chaps::PreservedCK_ULONG(phNewObject));
   });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
@@ -608,9 +590,7 @@ CK_RV C_GetObjectSize(CK_SESSION_HANDLE hSession,
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pulSize, CKR_ARGUMENTS_BAD);
   CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->GetObjectSize(*g_user_isolate,
-                                  hSession,
-                                  hObject,
+    return g_proxy->GetObjectSize(*g_user_isolate, hSession, hObject,
                                   chaps::PreservedCK_ULONG(pulSize));
   });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
@@ -631,18 +611,14 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,
     LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
   vector<uint8_t> serialized_attributes_out;
   CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->GetAttributeValue(*g_user_isolate,
-                                      hSession,
-                                      hObject,
+    return g_proxy->GetAttributeValue(*g_user_isolate, hSession, hObject,
                                       serialized_attributes_in,
                                       &serialized_attributes_out);
   });
   // There are a few errors that can be returned while information about one or
   // more attributes has been provided.  We need to continue in these cases.
-  if (result != CKR_OK &&
-      result != CKR_ATTRIBUTE_TYPE_INVALID &&
-      result != CKR_ATTRIBUTE_SENSITIVE &&
-      result != CKR_BUFFER_TOO_SMALL)
+  if (result != CKR_OK && result != CKR_ATTRIBUTE_TYPE_INVALID &&
+      result != CKR_ATTRIBUTE_SENSITIVE && result != CKR_BUFFER_TOO_SMALL)
     LOG_CK_RV_AND_RETURN(result);
   // Chapsd ensures the value is serialized correctly; we can assert.
   CHECK(attributes.ParseAndFill(serialized_attributes_out));
@@ -662,9 +638,7 @@ CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession,
   if (!attributes.Serialize(&serialized_attributes))
     LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
   CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->SetAttributeValue(*g_user_isolate,
-                                      hSession,
-                                      hObject,
+    return g_proxy->SetAttributeValue(*g_user_isolate, hSession, hObject,
                                       serialized_attributes);
   });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
@@ -700,8 +674,8 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE hSession,
   LOG_CK_RV_AND_RETURN_IF(!phObject || !pulObjectCount, CKR_ARGUMENTS_BAD);
   vector<uint64_t> object_list;
   CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->FindObjects(*g_user_isolate, hSession,
-                                ulMaxObjectCount, &object_list);
+    return g_proxy->FindObjects(*g_user_isolate, hSession, ulMaxObjectCount,
+                                &object_list);
   });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   LOG_CK_RV_AND_RETURN_IF(object_list.size() > ulMaxObjectCount,
@@ -717,9 +691,8 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE hSession,
 // PKCS #11 v2.20 section 11.7 page 138.
 CK_RV C_FindObjectsFinal(CK_SESSION_HANDLE hSession) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->FindObjectsFinal(*g_user_isolate, hSession);
-  });
+  CK_RV result = PerformNonBlocking(
+      [&] { return g_proxy->FindObjectsFinal(*g_user_isolate, hSession); });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
@@ -733,9 +706,7 @@ CK_RV C_EncryptInit(CK_SESSION_HANDLE hSession,
   LOG_CK_RV_AND_RETURN_IF(!pMechanism, CKR_ARGUMENTS_BAD);
   CK_RV result = PerformNonBlocking([&] {
     return g_proxy->EncryptInit(
-        *g_user_isolate,
-        hSession,
-        pMechanism->mechanism,
+        *g_user_isolate, hSession, pMechanism->mechanism,
         chaps::ConvertByteBufferToVector(
             reinterpret_cast<CK_BYTE_PTR>(pMechanism->pParameter),
             pMechanism->ulParameterLen),
@@ -762,18 +733,11 @@ CK_RV C_Encrypt(CK_SESSION_HANDLE hSession,
   uint64_t max_out_length =
       pEncryptedData ? static_cast<uint64_t>(*pulEncryptedDataLen) : 0;
   CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->Encrypt(*g_user_isolate,
-                            hSession,
-                            chaps::ConvertByteBufferToVector(pData,
-                                                             ulDataLen),
-                            max_out_length,
-                            &data_out_length,
-                            &data_out);
+    return g_proxy->Encrypt(*g_user_isolate, hSession,
+                            chaps::ConvertByteBufferToVector(pData, ulDataLen),
+                            max_out_length, &data_out_length, &data_out);
   });
-  result = HandlePKCS11Output(result,
-                              data_out,
-                              data_out_length,
-                              pEncryptedData,
+  result = HandlePKCS11Output(result, data_out, data_out_length, pEncryptedData,
                               pulEncryptedDataLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
@@ -797,17 +761,11 @@ CK_RV C_EncryptUpdate(CK_SESSION_HANDLE hSession,
       pEncryptedPart ? static_cast<uint64_t>(*pulEncryptedPartLen) : 0;
   CK_RV result = PerformNonBlocking([&] {
     return g_proxy->EncryptUpdate(
-        *g_user_isolate,
-        hSession,
-        chaps::ConvertByteBufferToVector(pPart, ulPartLen),
-        max_out_length,
-        &data_out_length,
-        &data_out);
+        *g_user_isolate, hSession,
+        chaps::ConvertByteBufferToVector(pPart, ulPartLen), max_out_length,
+        &data_out_length, &data_out);
   });
-  result = HandlePKCS11Output(result,
-                              data_out,
-                              data_out_length,
-                              pEncryptedPart,
+  result = HandlePKCS11Output(result, data_out, data_out_length, pEncryptedPart,
                               pulEncryptedPartLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
@@ -828,17 +786,11 @@ CK_RV C_EncryptFinal(CK_SESSION_HANDLE hSession,
   uint64_t max_out_length =
       pLastEncryptedPart ? static_cast<uint64_t>(*pulLastEncryptedPartLen) : 0;
   CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->EncryptFinal(*g_user_isolate,
-                                 hSession,
-                                 max_out_length,
-                                 &data_out_length,
-                                 &data_out);
+    return g_proxy->EncryptFinal(*g_user_isolate, hSession, max_out_length,
+                                 &data_out_length, &data_out);
   });
-  result = HandlePKCS11Output(result,
-                              data_out,
-                              data_out_length,
-                              pLastEncryptedPart,
-                              pulLastEncryptedPartLen);
+  result = HandlePKCS11Output(result, data_out, data_out_length,
+                              pLastEncryptedPart, pulLastEncryptedPartLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
@@ -852,9 +804,7 @@ CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession,
   LOG_CK_RV_AND_RETURN_IF(!pMechanism, CKR_ARGUMENTS_BAD);
   CK_RV result = PerformNonBlocking([&] {
     return g_proxy->DecryptInit(
-        *g_user_isolate,
-        hSession,
-        pMechanism->mechanism,
+        *g_user_isolate, hSession, pMechanism->mechanism,
         chaps::ConvertByteBufferToVector(
             reinterpret_cast<CK_BYTE_PTR>(pMechanism->pParameter),
             pMechanism->ulParameterLen),
@@ -880,20 +830,13 @@ CK_RV C_Decrypt(CK_SESSION_HANDLE hSession,
   uint64_t data_out_length;
   uint64_t max_out_length = pData ? static_cast<uint64_t>(*pulDataLen) : 0;
   CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->Decrypt(*g_user_isolate,
-                            hSession,
-                            chaps::ConvertByteBufferToVector(
-                                pEncryptedData,
-                                ulEncryptedDataLen),
-                            max_out_length,
-                            &data_out_length,
-                            &data_out);
+    return g_proxy->Decrypt(
+        *g_user_isolate, hSession,
+        chaps::ConvertByteBufferToVector(pEncryptedData, ulEncryptedDataLen),
+        max_out_length, &data_out_length, &data_out);
   });
-  result = HandlePKCS11Output(result,
-                              data_out,
-                              data_out_length,
-                              pData,
-                              pulDataLen);
+  result =
+      HandlePKCS11Output(result, data_out, data_out_length, pData, pulDataLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
@@ -914,20 +857,13 @@ CK_RV C_DecryptUpdate(CK_SESSION_HANDLE hSession,
   uint64_t data_out_length;
   uint64_t max_out_length = pPart ? static_cast<uint64_t>(*pulPartLen) : 0;
   CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->DecryptUpdate(*g_user_isolate,
-                                  hSession,
-                                  chaps::ConvertByteBufferToVector(
-                                      pEncryptedPart,
-                                      ulEncryptedPartLen),
-                                  max_out_length,
-                                  &data_out_length,
-                                  &data_out);
+    return g_proxy->DecryptUpdate(
+        *g_user_isolate, hSession,
+        chaps::ConvertByteBufferToVector(pEncryptedPart, ulEncryptedPartLen),
+        max_out_length, &data_out_length, &data_out);
   });
-  result = HandlePKCS11Output(result,
-                              data_out,
-                              data_out_length,
-                              pPart,
-                              pulPartLen);
+  result =
+      HandlePKCS11Output(result, data_out, data_out_length, pPart, pulPartLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
@@ -947,16 +883,10 @@ CK_RV C_DecryptFinal(CK_SESSION_HANDLE hSession,
   uint64_t max_out_length =
       pLastPart ? static_cast<uint64_t>(*pulLastPartLen) : 0;
   CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->DecryptFinal(*g_user_isolate,
-                                 hSession,
-                                 max_out_length,
-                                 &data_out_length,
-                                 &data_out);
+    return g_proxy->DecryptFinal(*g_user_isolate, hSession, max_out_length,
+                                 &data_out_length, &data_out);
   });
-  result = HandlePKCS11Output(result,
-                              data_out,
-                              data_out_length,
-                              pLastPart,
+  result = HandlePKCS11Output(result, data_out, data_out_length, pLastPart,
                               pulLastPartLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
@@ -964,17 +894,14 @@ CK_RV C_DecryptFinal(CK_SESSION_HANDLE hSession,
 }
 
 // PKCS #11 v2.20 section 11.10 page 148.
-CK_RV C_DigestInit(CK_SESSION_HANDLE hSession,
-                   CK_MECHANISM_PTR pMechanism) {
+CK_RV C_DigestInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pMechanism, CKR_ARGUMENTS_BAD);
   vector<uint8_t> parameter = chaps::ConvertByteBufferToVector(
       reinterpret_cast<CK_BYTE_PTR>(pMechanism->pParameter),
       pMechanism->ulParameterLen);
   CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->DigestInit(*g_user_isolate,
-                               hSession,
-                               pMechanism->mechanism,
+    return g_proxy->DigestInit(*g_user_isolate, hSession, pMechanism->mechanism,
                                parameter);
   });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
@@ -997,18 +924,11 @@ CK_RV C_Digest(CK_SESSION_HANDLE hSession,
   uint64_t data_out_length;
   uint64_t max_out_length = pDigest ? static_cast<uint64_t>(*pulDigestLen) : 0;
   CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->Digest(*g_user_isolate,
-                           hSession,
-                           chaps::ConvertByteBufferToVector(pData,
-                                                            ulDataLen),
-                           max_out_length,
-                           &data_out_length,
-                           &data_out);
+    return g_proxy->Digest(*g_user_isolate, hSession,
+                           chaps::ConvertByteBufferToVector(pData, ulDataLen),
+                           max_out_length, &data_out_length, &data_out);
   });
-  result = HandlePKCS11Output(result,
-                              data_out,
-                              data_out_length,
-                              pDigest,
+  result = HandlePKCS11Output(result, data_out, data_out_length, pDigest,
                               pulDigestLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
@@ -1026,8 +946,7 @@ CK_RV C_DigestUpdate(CK_SESSION_HANDLE hSession,
   }
   CK_RV result = PerformNonBlocking([&] {
     return g_proxy->DigestUpdate(
-        *g_user_isolate,
-        hSession,
+        *g_user_isolate, hSession,
         chaps::ConvertByteBufferToVector(pPart, ulPartLen));
   });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
@@ -1038,9 +957,8 @@ CK_RV C_DigestUpdate(CK_SESSION_HANDLE hSession,
 // PKCS #11 v2.20 section 11.10 page 150.
 CK_RV C_DigestKey(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hKey) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->DigestKey(*g_user_isolate, hSession, hKey);
-  });
+  CK_RV result = PerformNonBlocking(
+      [&] { return g_proxy->DigestKey(*g_user_isolate, hSession, hKey); });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
@@ -1059,16 +977,10 @@ CK_RV C_DigestFinal(CK_SESSION_HANDLE hSession,
   uint64_t data_out_length;
   uint64_t max_out_length = pDigest ? static_cast<uint64_t>(*pulDigestLen) : 0;
   CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->DigestFinal(*g_user_isolate,
-                                hSession,
-                                max_out_length,
-                                &data_out_length,
-                                &data_out);
+    return g_proxy->DigestFinal(*g_user_isolate, hSession, max_out_length,
+                                &data_out_length, &data_out);
   });
-  result = HandlePKCS11Output(result,
-                              data_out,
-                              data_out_length,
-                              pDigest,
+  result = HandlePKCS11Output(result, data_out, data_out_length, pDigest,
                               pulDigestLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
@@ -1085,11 +997,8 @@ CK_RV C_SignInit(CK_SESSION_HANDLE hSession,
       reinterpret_cast<CK_BYTE_PTR>(pMechanism->pParameter),
       pMechanism->ulParameterLen);
   CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->SignInit(*g_user_isolate,
-                             hSession,
-                             pMechanism->mechanism,
-                             parameter,
-                             hKey);
+    return g_proxy->SignInit(*g_user_isolate, hSession, pMechanism->mechanism,
+                             parameter, hKey);
   });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
@@ -1112,18 +1021,11 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession,
   uint64_t max_out_length =
       pSignature ? static_cast<uint64_t>(*pulSignatureLen) : 0;
   CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->Sign(*g_user_isolate,
-                         hSession,
-                         chaps::ConvertByteBufferToVector(pData,
-                                                          ulDataLen),
-                         max_out_length,
-                         &data_out_length,
-                         &data_out);
+    return g_proxy->Sign(*g_user_isolate, hSession,
+                         chaps::ConvertByteBufferToVector(pData, ulDataLen),
+                         max_out_length, &data_out_length, &data_out);
   });
-  result = HandlePKCS11Output(result,
-                              data_out,
-                              data_out_length,
-                              pSignature,
+  result = HandlePKCS11Output(result, data_out, data_out_length, pSignature,
                               pulSignatureLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
@@ -1140,10 +1042,9 @@ CK_RV C_SignUpdate(CK_SESSION_HANDLE hSession,
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
   }
   CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->SignUpdate(*g_user_isolate,
-                               hSession,
-                               chaps::ConvertByteBufferToVector(pPart,
-                                                                ulPartLen));
+    return g_proxy->SignUpdate(
+        *g_user_isolate, hSession,
+        chaps::ConvertByteBufferToVector(pPart, ulPartLen));
   });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
@@ -1164,16 +1065,10 @@ CK_RV C_SignFinal(CK_SESSION_HANDLE hSession,
   uint64_t max_out_length =
       pSignature ? static_cast<uint64_t>(*pulSignatureLen) : 0;
   CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->SignFinal(*g_user_isolate,
-                              hSession,
-                              max_out_length,
-                              &data_out_length,
-                              &data_out);
+    return g_proxy->SignFinal(*g_user_isolate, hSession, max_out_length,
+                              &data_out_length, &data_out);
   });
-  result = HandlePKCS11Output(result,
-                              data_out,
-                              data_out_length,
-                              pSignature,
+  result = HandlePKCS11Output(result, data_out, data_out_length, pSignature,
                               pulSignatureLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
@@ -1190,11 +1085,8 @@ CK_RV C_SignRecoverInit(CK_SESSION_HANDLE hSession,
       reinterpret_cast<CK_BYTE_PTR>(pMechanism->pParameter),
       pMechanism->ulParameterLen);
   CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->SignRecoverInit(*g_user_isolate,
-                                    hSession,
-                                    pMechanism->mechanism,
-                                    parameter,
-                                    hKey);
+    return g_proxy->SignRecoverInit(*g_user_isolate, hSession,
+                                    pMechanism->mechanism, parameter, hKey);
   });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
@@ -1215,18 +1107,12 @@ CK_RV C_SignRecover(CK_SESSION_HANDLE hSession,
   uint64_t max_out_length =
       pSignature ? static_cast<uint64_t>(*pulSignatureLen) : 0;
   CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->SignRecover(*g_user_isolate,
-                                hSession,
-                                chaps::ConvertByteBufferToVector(pData,
-                                                                 ulDataLen),
-                                max_out_length,
-                                &data_out_length,
-                                &data_out);
+    return g_proxy->SignRecover(
+        *g_user_isolate, hSession,
+        chaps::ConvertByteBufferToVector(pData, ulDataLen), max_out_length,
+        &data_out_length, &data_out);
   });
-  result = HandlePKCS11Output(result,
-                              data_out,
-                              data_out_length,
-                              pSignature,
+  result = HandlePKCS11Output(result, data_out, data_out_length, pSignature,
                               pulSignatureLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
@@ -1243,11 +1129,8 @@ CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession,
       reinterpret_cast<CK_BYTE_PTR>(pMechanism->pParameter),
       pMechanism->ulParameterLen);
   CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->VerifyInit(*g_user_isolate,
-                               hSession,
-                               pMechanism->mechanism,
-                               parameter,
-                               hKey);
+    return g_proxy->VerifyInit(*g_user_isolate, hSession, pMechanism->mechanism,
+                               parameter, hKey);
   });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
@@ -1267,8 +1150,7 @@ CK_RV C_Verify(CK_SESSION_HANDLE hSession,
   }
   CK_RV result = PerformNonBlocking([&] {
     return g_proxy->Verify(
-        *g_user_isolate,
-        hSession,
+        *g_user_isolate, hSession,
         chaps::ConvertByteBufferToVector(pData, ulDataLen),
         chaps::ConvertByteBufferToVector(pSignature, ulSignatureLen));
   });
@@ -1288,8 +1170,7 @@ CK_RV C_VerifyUpdate(CK_SESSION_HANDLE hSession,
   }
   CK_RV result = PerformNonBlocking([&] {
     return g_proxy->VerifyUpdate(
-        *g_user_isolate,
-        hSession,
+        *g_user_isolate, hSession,
         chaps::ConvertByteBufferToVector(pPart, ulPartLen));
   });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
@@ -1308,8 +1189,7 @@ CK_RV C_VerifyFinal(CK_SESSION_HANDLE hSession,
   }
   CK_RV result = PerformNonBlocking([&] {
     return g_proxy->VerifyFinal(
-        *g_user_isolate,
-        hSession,
+        *g_user_isolate, hSession,
         chaps::ConvertByteBufferToVector(pSignature, ulSignatureLen));
   });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
@@ -1327,12 +1207,8 @@ CK_RV C_VerifyRecoverInit(CK_SESSION_HANDLE hSession,
       reinterpret_cast<CK_BYTE_PTR>(pMechanism->pParameter),
       pMechanism->ulParameterLen);
   CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->VerifyRecoverInit(
-        *g_user_isolate,
-        hSession,
-        pMechanism->mechanism,
-        parameter,
-        hKey);
+    return g_proxy->VerifyRecoverInit(*g_user_isolate, hSession,
+                                      pMechanism->mechanism, parameter, hKey);
   });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
@@ -1353,18 +1229,12 @@ CK_RV C_VerifyRecover(CK_SESSION_HANDLE hSession,
   uint64_t max_out_length = pData ? static_cast<uint64_t>(*pulDataLen) : 0;
   CK_RV result = PerformNonBlocking([&] {
     return g_proxy->VerifyRecover(
-        *g_user_isolate,
-        hSession,
+        *g_user_isolate, hSession,
         chaps::ConvertByteBufferToVector(pSignature, ulSignatureLen),
-        max_out_length,
-        &data_out_length,
-        &data_out);
+        max_out_length, &data_out_length, &data_out);
   });
-  result = HandlePKCS11Output(result,
-                              data_out,
-                              data_out_length,
-                              pData,
-                              pulDataLen);
+  result =
+      HandlePKCS11Output(result, data_out, data_out_length, pData, pulDataLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
@@ -1384,17 +1254,11 @@ CK_RV C_DigestEncryptUpdate(CK_SESSION_HANDLE hSession,
       pEncryptedPart ? static_cast<uint64_t>(*pulEncryptedPartLen) : 0;
   CK_RV result = PerformNonBlocking([&] {
     return g_proxy->DigestEncryptUpdate(
-        *g_user_isolate,
-        hSession,
-        chaps::ConvertByteBufferToVector(pPart, ulPartLen),
-        max_out_length,
-        &data_out_length,
-        &data_out);
+        *g_user_isolate, hSession,
+        chaps::ConvertByteBufferToVector(pPart, ulPartLen), max_out_length,
+        &data_out_length, &data_out);
   });
-  result = HandlePKCS11Output(result,
-                              data_out,
-                              data_out_length,
-                              pEncryptedPart,
+  result = HandlePKCS11Output(result, data_out, data_out_length, pEncryptedPart,
                               pulEncryptedPartLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
@@ -1414,18 +1278,12 @@ CK_RV C_DecryptDigestUpdate(CK_SESSION_HANDLE hSession,
   uint64_t max_out_length = pPart ? static_cast<uint64_t>(*pulPartLen) : 0;
   CK_RV result = PerformNonBlocking([&] {
     return g_proxy->DecryptDigestUpdate(
-        *g_user_isolate,
-        hSession,
+        *g_user_isolate, hSession,
         chaps::ConvertByteBufferToVector(pEncryptedPart, ulEncryptedPartLen),
-        max_out_length,
-        &data_out_length,
-        &data_out);
+        max_out_length, &data_out_length, &data_out);
   });
-  result = HandlePKCS11Output(result,
-                              data_out,
-                              data_out_length,
-                              pPart,
-                              pulPartLen);
+  result =
+      HandlePKCS11Output(result, data_out, data_out_length, pPart, pulPartLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
@@ -1445,17 +1303,11 @@ CK_RV C_SignEncryptUpdate(CK_SESSION_HANDLE hSession,
       pEncryptedPart ? static_cast<uint64_t>(*pulEncryptedPartLen) : 0;
   CK_RV result = PerformNonBlocking([&] {
     return g_proxy->SignEncryptUpdate(
-        *g_user_isolate,
-        hSession,
-        chaps::ConvertByteBufferToVector(pPart, ulPartLen),
-        max_out_length,
-        &data_out_length,
-        &data_out);
+        *g_user_isolate, hSession,
+        chaps::ConvertByteBufferToVector(pPart, ulPartLen), max_out_length,
+        &data_out_length, &data_out);
   });
-  result = HandlePKCS11Output(result,
-                              data_out,
-                              data_out_length,
-                              pEncryptedPart,
+  result = HandlePKCS11Output(result, data_out, data_out_length, pEncryptedPart,
                               pulEncryptedPartLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
@@ -1475,18 +1327,12 @@ CK_RV C_DecryptVerifyUpdate(CK_SESSION_HANDLE hSession,
   uint64_t max_out_length = pPart ? static_cast<uint64_t>(*pulPartLen) : 0;
   CK_RV result = PerformNonBlocking([&] {
     return g_proxy->DecryptVerifyUpdate(
-        *g_user_isolate,
-        hSession,
+        *g_user_isolate, hSession,
         chaps::ConvertByteBufferToVector(pEncryptedPart, ulEncryptedPartLen),
-        max_out_length,
-        &data_out_length,
-        &data_out);
+        max_out_length, &data_out_length, &data_out);
   });
-  result = HandlePKCS11Output(result,
-                              data_out,
-                              data_out_length,
-                              pPart,
-                              pulPartLen);
+  result =
+      HandlePKCS11Output(result, data_out, data_out_length, pPart, pulPartLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
@@ -1507,14 +1353,11 @@ CK_RV C_GenerateKey(CK_SESSION_HANDLE hSession,
     LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
   CK_RV result = PerformNonBlocking([&] {
     return g_proxy->GenerateKey(
-        *g_user_isolate,
-        hSession,
-        pMechanism->mechanism,
+        *g_user_isolate, hSession, pMechanism->mechanism,
         chaps::ConvertByteBufferToVector(
             reinterpret_cast<CK_BYTE_PTR>(pMechanism->pParameter),
             pMechanism->ulParameterLen),
-        serialized,
-        chaps::PreservedCK_ULONG(phKey));
+        serialized, chaps::PreservedCK_ULONG(phKey));
   });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
@@ -1531,11 +1374,9 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession,
                         CK_OBJECT_HANDLE_PTR phPublicKey,
                         CK_OBJECT_HANDLE_PTR phPrivateKey) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  if (!pMechanism ||
-      (!pPublicKeyTemplate && ulPublicKeyAttributeCount > 0) ||
+  if (!pMechanism || (!pPublicKeyTemplate && ulPublicKeyAttributeCount > 0) ||
       (!pPrivateKeyTemplate && ulPrivateKeyAttributeCount > 0) ||
-      !phPublicKey ||
-      !phPrivateKey)
+      !phPublicKey || !phPrivateKey)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
   chaps::Attributes public_attributes(pPublicKeyTemplate,
                                       ulPublicKeyAttributeCount);
@@ -1547,14 +1388,11 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession,
     LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
   CK_RV result = PerformNonBlocking([&] {
     return g_proxy->GenerateKeyPair(
-        *g_user_isolate,
-        hSession,
-        pMechanism->mechanism,
+        *g_user_isolate, hSession, pMechanism->mechanism,
         chaps::ConvertByteBufferToVector(
             reinterpret_cast<CK_BYTE_PTR>(pMechanism->pParameter),
             pMechanism->ulParameterLen),
-        public_serialized,
-        private_serialized,
+        public_serialized, private_serialized,
         chaps::PreservedCK_ULONG(phPublicKey),
         chaps::PreservedCK_ULONG(phPrivateKey));
   });
@@ -1579,22 +1417,13 @@ CK_RV C_WrapKey(CK_SESSION_HANDLE hSession,
       pWrappedKey ? static_cast<uint64_t>(*pulWrappedKeyLen) : 0;
   CK_RV result = PerformNonBlocking([&] {
     return g_proxy->WrapKey(
-        *g_user_isolate,
-        hSession,
-        pMechanism->mechanism,
+        *g_user_isolate, hSession, pMechanism->mechanism,
         chaps::ConvertByteBufferToVector(
             reinterpret_cast<CK_BYTE_PTR>(pMechanism->pParameter),
             pMechanism->ulParameterLen),
-        hWrappingKey,
-        hKey,
-        max_out_length,
-        &data_out_length,
-        &data_out);
+        hWrappingKey, hKey, max_out_length, &data_out_length, &data_out);
   });
-  result = HandlePKCS11Output(result,
-                              data_out,
-                              data_out_length,
-                              pWrappedKey,
+  result = HandlePKCS11Output(result, data_out, data_out_length, pWrappedKey,
                               pulWrappedKeyLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
@@ -1619,16 +1448,13 @@ CK_RV C_UnwrapKey(CK_SESSION_HANDLE hSession,
     LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
   CK_RV result = PerformNonBlocking([&] {
     return g_proxy->UnwrapKey(
-        *g_user_isolate,
-        hSession,
-        pMechanism->mechanism,
+        *g_user_isolate, hSession, pMechanism->mechanism,
         chaps::ConvertByteBufferToVector(
             reinterpret_cast<CK_BYTE_PTR>(pMechanism->pParameter),
             pMechanism->ulParameterLen),
         hUnwrappingKey,
         chaps::ConvertByteBufferToVector(pWrappedKey, ulWrappedKeyLen),
-        serialized,
-        chaps::PreservedCK_ULONG(phKey));
+        serialized, chaps::PreservedCK_ULONG(phKey));
   });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
@@ -1651,15 +1477,11 @@ CK_RV C_DeriveKey(CK_SESSION_HANDLE hSession,
     LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
   CK_RV result = PerformNonBlocking([&] {
     return g_proxy->DeriveKey(
-        *g_user_isolate,
-        hSession,
-        pMechanism->mechanism,
+        *g_user_isolate, hSession, pMechanism->mechanism,
         chaps::ConvertByteBufferToVector(
             reinterpret_cast<CK_BYTE_PTR>(pMechanism->pParameter),
             pMechanism->ulParameterLen),
-        hBaseKey,
-        serialized,
-        chaps::PreservedCK_ULONG(phKey));
+        hBaseKey, serialized, chaps::PreservedCK_ULONG(phKey));
   });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   VLOG(1) << __func__ << " - CKR_OK";
@@ -1675,8 +1497,7 @@ CK_RV C_SeedRandom(CK_SESSION_HANDLE hSession,
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
   CK_RV result = PerformNonBlocking([&] {
     return g_proxy->SeedRandom(
-        *g_user_isolate,
-        hSession,
+        *g_user_isolate, hSession,
         chaps::ConvertByteBufferToVector(pSeed, ulSeedLen));
   });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
@@ -1693,8 +1514,8 @@ CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession,
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
   vector<uint8_t> data_out;
   CK_RV result = PerformNonBlocking([&] {
-    return g_proxy->GenerateRandom(*g_user_isolate, hSession,
-                                   ulRandomLen, &data_out);
+    return g_proxy->GenerateRandom(*g_user_isolate, hSession, ulRandomLen,
+                                   &data_out);
   });
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   LOG_CK_RV_AND_RETURN_IF(data_out.size() != ulRandomLen, CKR_GENERAL_ERROR);

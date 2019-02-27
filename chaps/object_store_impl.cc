@@ -119,10 +119,10 @@ const int ObjectStoreImpl::kHMACSizeBytes = 64;
 const char ObjectStoreImpl::kDatabaseDirectory[] = "database";
 const char ObjectStoreImpl::kCorruptDatabaseDirectory[] = "database_corrupt";
 const char ObjectStoreImpl::kObfuscationKey[] = {
-    '\x6f', '\xaa', '\x0a', '\xb6', '\x10', '\xc0', '\xa6', '\xe4', '\x07',
-    '\x8b', '\x05', '\x1c', '\xd2', '\x8b', '\xac', '\x2d', '\xba', '\x5e',
-    '\x14', '\x9c', '\xae', '\x57', '\xfb', '\x04', '\x13', '\x92', '\xc0',
-    '\x84', '\x2a', '\xea', '\xf6', '\xfb'};
+    '\x6f', '\xaa', '\x0a', '\xb6', '\x10', '\xc0', '\xa6', '\xe4',
+    '\x07', '\x8b', '\x05', '\x1c', '\xd2', '\x8b', '\xac', '\x2d',
+    '\xba', '\x5e', '\x14', '\x9c', '\xae', '\x57', '\xfb', '\x04',
+    '\x13', '\x92', '\xc0', '\x84', '\x2a', '\xea', '\xf6', '\xfb'};
 const int ObjectStoreImpl::kBlobVersion = 1;
 
 ObjectStoreImpl::ObjectStoreImpl() {}
@@ -161,9 +161,8 @@ bool ObjectStoreImpl::Init(const FilePath& database_path) {
   // cause of disappearing system token certificates is found.
   LogDatabaseDirectoryStats(database_name);
   leveldb::DB* db = NULL;
-  leveldb::Status status = leveldb::DB::Open(options,
-                                             database_name.value(),
-                                             &db);
+  leveldb::Status status =
+      leveldb::DB::Open(options, database_name.value(), &db);
   if (!status.ok()) {
     LOG(ERROR) << "Failed to open database: " << status.ToString();
     metrics.SendUMAEvent("Chaps.DatabaseCorrupted");
@@ -241,8 +240,7 @@ bool ObjectStoreImpl::SetEncryptionKey(const SecureBlob& key) {
   return true;
 }
 
-bool ObjectStoreImpl::InsertObjectBlob(const ObjectBlob& blob,
-                                       int* handle) {
+bool ObjectStoreImpl::InsertObjectBlob(const ObjectBlob& blob, int* handle) {
   if (blob.is_private && key_.empty()) {
     LOG(ERROR) << "The store encryption key has not been initialized.";
     return false;
@@ -269,8 +267,8 @@ bool ObjectStoreImpl::DeleteObjectBlob(int handle) {
 
 bool ObjectStoreImpl::DeleteAllObjectBlobs() {
   vector<string> blobs_to_delete;
-  std::unique_ptr<leveldb::Iterator>
-      it(db_->NewIterator(leveldb::ReadOptions()));
+  std::unique_ptr<leveldb::Iterator> it(
+      db_->NewIterator(leveldb::ReadOptions()));
   for (it->SeekToFirst(); it->Valid(); it->Next()) {
     BlobType type;
     int id = 0;
@@ -321,8 +319,8 @@ bool ObjectStoreImpl::LoadPrivateObjectBlobs(map<int, ObjectBlob>* blobs) {
 
 bool ObjectStoreImpl::LoadObjectBlobs(BlobType type,
                                       map<int, ObjectBlob>* blobs) {
-  std::unique_ptr<leveldb::Iterator>
-      it(db_->NewIterator(leveldb::ReadOptions()));
+  std::unique_ptr<leveldb::Iterator> it(
+      db_->NewIterator(leveldb::ReadOptions()));
   for (it->SeekToFirst(); it->Valid(); it->Next()) {
     BlobType it_type;
     int id = 0;
@@ -372,9 +370,7 @@ bool ObjectStoreImpl::Decrypt(const ObjectBlob& cipher_text,
                              std::end(kObfuscationKey));
   SecureBlob& key = cipher_text.is_private ? key_ : obfuscation_key;
   string cipher_text_no_hmac;
-  if (!VerifyAndStripHMAC(cipher_text.blob,
-                          key,
-                          &cipher_text_no_hmac))
+  if (!VerifyAndStripHMAC(cipher_text.blob, key, &cipher_text_no_hmac))
     return false;
   // Check and strip the version header.
   int version = static_cast<int>(cipher_text_no_hmac[0]);
@@ -383,10 +379,7 @@ bool ObjectStoreImpl::Decrypt(const ObjectBlob& cipher_text,
     return false;
   }
   cipher_text_no_hmac = cipher_text_no_hmac.substr(1);
-  return RunCipher(false,
-                   key,
-                   string(),
-                   cipher_text_no_hmac,
+  return RunCipher(false, key, string(), cipher_text_no_hmac,
                    &plain_text->blob);
 }
 
@@ -405,9 +398,8 @@ bool ObjectStoreImpl::VerifyAndStripHMAC(const string& input,
   string hmac = input.substr(input.size() - kHMACSizeBytes);
   string computed_hmac = HmacSha512(*stripped, key);
   if ((hmac.size() != computed_hmac.size()) ||
-      (0 != brillo::SecureMemcmp(hmac.data(),
-                                   computed_hmac.data(),
-                                   hmac.size()))) {
+      (0 !=
+       brillo::SecureMemcmp(hmac.data(), computed_hmac.data(), hmac.size()))) {
     LOG(ERROR) << "Failed to verify blob integrity.";
     return false;
   }

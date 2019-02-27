@@ -15,4 +15,4 @@ ObjectPoolMock::~ObjectPoolMock() {
   }
 }
 
-}
+}  // namespace chaps

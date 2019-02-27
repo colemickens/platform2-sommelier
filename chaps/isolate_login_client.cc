@@ -30,9 +30,9 @@ IsolateLoginClient::IsolateLoginClient(
     TokenManagerClient* token_manager)
     : isolate_manager_(isolate_manager),
       file_manager_(file_manager),
-      token_manager_(token_manager) { }
+      token_manager_(token_manager) {}
 
-IsolateLoginClient::~IsolateLoginClient() { }
+IsolateLoginClient::~IsolateLoginClient() {}
 
 bool IsolateLoginClient::LoginUser(const string& user,
                                    const SecureBlob& auth_data) {
@@ -51,8 +51,7 @@ bool IsolateLoginClient::LoginUser(const string& user,
     LOG(INFO) << "Created new isolate for user " << user;
     // A new isolate was created, save the isolate credential passed back.
     if (!isolate_manager_->SaveIsolateCredential(user, isolate_credential)) {
-      LOG(ERROR) << "Failed to write new isolate credential for users "
-                 << user;
+      LOG(ERROR) << "Failed to write new isolate credential for users " << user;
       return false;
     }
   }
@@ -75,11 +74,8 @@ bool IsolateLoginClient::LoginUser(const string& user,
     return false;
   }
   int slot_id;
-  if (!token_manager_->LoadToken(isolate_credential,
-                                 token_path,
-                                 salted_auth_data,
-                                 user,
-                                 &slot_id)) {
+  if (!token_manager_->LoadToken(isolate_credential, token_path,
+                                 salted_auth_data, user, &slot_id)) {
     return false;
   }
   return true;
@@ -90,8 +86,7 @@ bool IsolateLoginClient::LogoutUser(const string& user) {
   SecureBlob isolate_credential;
 
   if (!isolate_manager_->GetUserIsolateCredential(user, &isolate_credential)) {
-    LOG(ERROR) << "Could not find isolate credential to logout "
-               << user;
+    LOG(ERROR) << "Could not find isolate credential to logout " << user;
     return false;
   }
   token_manager_->CloseIsolate(isolate_credential);
@@ -125,8 +120,7 @@ bool IsolateLoginClient::ChangeUserAuth(const string& user,
     return false;
   }
 
-  token_manager_->ChangeTokenAuthData(token_path,
-                                      salted_old_auth_data,
+  token_manager_->ChangeTokenAuthData(token_path, salted_old_auth_data,
                                       salted_new_auth_data);
 
   return true;

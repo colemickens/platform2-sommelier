@@ -18,10 +18,10 @@ namespace chaps {
 class IsolateCredentialManagerMock : public IsolateCredentialManager {
  public:
   MOCK_METHOD1(GetCurrentUserIsolateCredential, bool(brillo::SecureBlob*));
-  MOCK_METHOD2(GetUserIsolateCredential, bool(const std::string&,
-                                              brillo::SecureBlob*));
-  MOCK_METHOD2(SaveIsolateCredential, bool(const std::string&,
-                                           const brillo::SecureBlob&));
+  MOCK_METHOD2(GetUserIsolateCredential,
+               bool(const std::string&, brillo::SecureBlob*));
+  MOCK_METHOD2(SaveIsolateCredential,
+               bool(const std::string&, const brillo::SecureBlob&));
 };
 
 }  // namespace chaps

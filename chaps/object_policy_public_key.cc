@@ -17,14 +17,14 @@ namespace chaps {
 // read-only.modify - True if attribute cannot be set with C_SetAttributeValue.
 // required - True if attribute is required for a valid object.
 static const AttributePolicy kPublicKeyPolicies[] = {
-  {CKA_TRUSTED, false, {true, true, true}, false},
-  {CKA_WRAP_TEMPLATE, false, {false, false, true}, false},
-  // RSA-specific attributes.
-  {CKA_MODULUS, false, {false, false, true}, false},
-  {CKA_PUBLIC_EXPONENT, false, {false, false, true}, false},
-  // ECC-specific attributes.
-  {CKA_EC_PARAMS, false, {false, false, true}, false},
-  {CKA_EC_POINT, false, {false, false, true}, false},
+    {CKA_TRUSTED, false, {true, true, true}, false},
+    {CKA_WRAP_TEMPLATE, false, {false, false, true}, false},
+    // RSA-specific attributes.
+    {CKA_MODULUS, false, {false, false, true}, false},
+    {CKA_PUBLIC_EXPONENT, false, {false, false, true}, false},
+    // ECC-specific attributes.
+    {CKA_EC_PARAMS, false, {false, false, true}, false},
+    {CKA_EC_POINT, false, {false, false, true}, false},
 };
 
 ObjectPolicyPublicKey::ObjectPolicyPublicKey() {
@@ -61,12 +61,7 @@ bool ObjectPolicyPublicKey::IsObjectComplete() {
 void ObjectPolicyPublicKey::SetDefaultAttributes() {
   ObjectPolicyKey::SetDefaultAttributes();
   CK_ATTRIBUTE_TYPE false_values[] = {
-    CKA_ENCRYPT,
-    CKA_VERIFY,
-    CKA_VERIFY_RECOVER,
-    CKA_WRAP,
-    CKA_TRUSTED
-  };
+      CKA_ENCRYPT, CKA_VERIFY, CKA_VERIFY_RECOVER, CKA_WRAP, CKA_TRUSTED};
   for (size_t i = 0; i < arraysize(false_values); ++i) {
     if (!object_->IsAttributePresent(false_values[i]))
       object_->SetAttributeBool(false_values[i], false);

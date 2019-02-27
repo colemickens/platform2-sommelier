@@ -32,8 +32,8 @@ using base::AutoLock;
 using base::FilePath;
 using brillo::SecureBlob;
 using std::map;
-using std::string;
 using std::shared_ptr;
+using std::string;
 using std::vector;
 
 namespace chaps {
@@ -63,9 +63,9 @@ constexpr char kAuthKeyMacInput[] = "arbitrary";
 constexpr char kTokenReinitializedFlagFilePath[] =
     "/var/lib/chaps/debug_token_reinitialized";
 
-constexpr CK_FLAGS kCommonECParameters = CKF_EC_F_P | CKF_EC_F_2M |
-                                     CKF_EC_NAMEDCURVE | CKF_EC_ECPARAMETERS |
-                                     CKF_EC_UNCOMPRESS;
+constexpr CK_FLAGS kCommonECParameters =
+    CKF_EC_F_P | CKF_EC_F_2M | CKF_EC_NAMEDCURVE | CKF_EC_ECPARAMETERS |
+    CKF_EC_UNCOMPRESS;
 
 constexpr struct MechanismInfo {
   CK_MECHANISM_TYPE type;
@@ -149,8 +149,7 @@ bool SanityCheckAuthData(const string& auth_data_hash,
 void CreateTokenReinitializedFlagFile(const FilePath& token_path) {
   const FilePath flag_file_path(kTokenReinitializedFlagFilePath);
   const std::string& token_path_value = token_path.value();
-  base::WriteFile(flag_file_path,
-                  token_path_value.c_str(),
+  base::WriteFile(flag_file_path, token_path_value.c_str(),
                   static_cast<int>(token_path_value.length()));
 }
 
@@ -166,23 +165,22 @@ void LogTokenReinitializedFromFlagFile() {
 
   std::string reinitialized_token_path;
   if (!base::ReadFileToStringWithMaxSize(flag_file_path,
-                                         &reinitialized_token_path,
-                                         4096)) {
+                                         &reinitialized_token_path, 4096)) {
     PLOG(ERROR) << "Could not read flag file " << flag_file_path.value();
     return;
   }
   base::File::Info flag_file_info;
   if (!base::GetFileInfo(flag_file_path, &flag_file_info)) {
-    PLOG(ERROR) << "Could not get info for flag file " <<
-                flag_file_path.value();
+    PLOG(ERROR) << "Could not get info for flag file "
+                << flag_file_path.value();
     return;
   }
   if (!base::DeleteFile(flag_file_path, false /* recursive */)) {
     PLOG(ERROR) << "Could not delete flag file " << flag_file_path.value();
   }
-  LOG(WARNING) << "Flag file with timestamp " << flag_file_info.last_modified <<
-               " indicated that token " << reinitialized_token_path <<
-               " has been reinitialized.";
+  LOG(WARNING) << "Flag file with timestamp " << flag_file_info.last_modified
+               << " indicated that token " << reinitialized_token_path
+               << " has been reinitialized.";
 }
 
 // Performs expensive tasks required to initialize a token.
@@ -219,15 +217,12 @@ class TokenTermThread : public base::PlatformThread::Delegate {
  public:
   // This class will not take ownership of any pointers.
   TokenTermThread(int slot_id, TPMUtility* tpm_utility)
-      : slot_id_(slot_id),
-        tpm_utility_(tpm_utility) {}
+      : slot_id_(slot_id), tpm_utility_(tpm_utility) {}
 
   ~TokenTermThread() override {}
 
   // PlatformThread::Delegate interface.
-  void ThreadMain() override {
-    tpm_utility_->UnloadKeysForSlot(slot_id_);
-  }
+  void ThreadMain() override { tpm_utility_->UnloadKeysForSlot(slot_id_); }
 
  private:
   int slot_id_;
@@ -236,13 +231,12 @@ class TokenTermThread : public base::PlatformThread::Delegate {
   DISALLOW_COPY_AND_ASSIGN(TokenTermThread);
 };
 
-TokenInitThread::TokenInitThread(
-    int slot_id,
-    FilePath path,
-    const SecureBlob& auth_data,
-    TPMUtility* tpm_utility,
-    ObjectPool* object_pool,
-    SystemShutdownBlocker* system_shutdown_blocker)
+TokenInitThread::TokenInitThread(int slot_id,
+                                 FilePath path,
+                                 const SecureBlob& auth_data,
+                                 TPMUtility* tpm_utility,
+                                 ObjectPool* object_pool,
+                                 SystemShutdownBlocker* system_shutdown_blocker)
     : slot_id_(slot_id),
       path_(path),
       auth_data_(auth_data),
@@ -259,8 +253,7 @@ void TokenInitThread::ThreadMain() {
   if (system_shutdown_blocker_) {
     auto unblock_closure =
         base::Bind(&SystemShutdownBlocker::Unblock,
-                   base::Unretained(system_shutdown_blocker_),
-                   slot_id_);
+                   base::Unretained(system_shutdown_blocker_), slot_id_);
     scoped_closure_runner =
         std::make_unique<base::ScopedClosureRunner>(unblock_closure);
     system_shutdown_blocker_->Block(
@@ -287,11 +280,8 @@ void TokenInitThread::ThreadMain() {
     // saved hash.
     object_pool_->GetInternalBlob(kAuthDataHash, &saved_auth_data_hash);
     if (!SanityCheckAuthData(auth_data_hash, saved_auth_data_hash) ||
-        !tpm_utility_->Authenticate(slot_id_,
-                                    Sha1(auth_data_),
-                                    auth_key_blob,
-                                    encrypted_master_key,
-                                    &master_key)) {
+        !tpm_utility_->Authenticate(slot_id_, Sha1(auth_data_), auth_key_blob,
+                                    encrypted_master_key, &master_key)) {
       LOG(ERROR) << "Authentication failed for token at " << path_.value()
                  << ", reinitializing token.";
       CreateTokenReinitializedFlagFile(path_);
@@ -334,8 +324,7 @@ bool TokenInitThread::InitializeKeyHierarchy(SecureBlob* master_key) {
     return false;
   }
   string encrypted_master_key;
-  if (!tpm_utility_->Bind(auth_key_handle,
-                          master_key_str,
+  if (!tpm_utility_->Bind(auth_key_handle, master_key_str,
                           &encrypted_master_key)) {
     LOG(ERROR) << "Failed to bind user encryption key.";
     return false;
@@ -352,11 +341,10 @@ bool TokenInitThread::InitializeKeyHierarchy(SecureBlob* master_key) {
 
 }  // namespace
 
-SlotManagerImpl::SlotManagerImpl(
-    ChapsFactory* factory,
-    TPMUtility* tpm_utility,
-    bool auto_load_system_token,
-    SystemShutdownBlocker* system_shutdown_blocker)
+SlotManagerImpl::SlotManagerImpl(ChapsFactory* factory,
+                                 TPMUtility* tpm_utility,
+                                 bool auto_load_system_token,
+                                 SystemShutdownBlocker* system_shutdown_blocker)
     : factory_(factory),
       last_handle_(0),
       tpm_utility_(tpm_utility),
@@ -401,8 +389,8 @@ SlotManagerImpl::~SlotManagerImpl() {
 bool SlotManagerImpl::Init() {
   LogTokenReinitializedFromFlagFile();
   // If the SRK is ready we expect the rest of the init work to succeed.
-  bool expect_success = tpm_utility_->IsTPMAvailable() &&
-                        tpm_utility_->IsSRKReady();
+  bool expect_success =
+      tpm_utility_->IsTPMAvailable() && tpm_utility_->IsSRKReady();
   if (!InitStage2() && expect_success)
     return false;
 
@@ -428,11 +416,9 @@ bool SlotManagerImpl::InitStage2() {
       // Setup the system token.
       int system_slot_id = 0;
       if (!LoadTokenInternal(
-               IsolateCredentialManager::GetDefaultIsolateCredential(),
-               FilePath(kSystemTokenPath),
-               SecureBlob(kSystemTokenAuthData),
-               kSystemTokenLabel,
-               &system_slot_id)) {
+              IsolateCredentialManager::GetDefaultIsolateCredential(),
+              FilePath(kSystemTokenPath), SecureBlob(kSystemTokenAuthData),
+              kSystemTokenLabel, &system_slot_id)) {
         LOG(ERROR) << "Failed to load the system token.";
         return false;
       }
@@ -453,7 +439,7 @@ int SlotManagerImpl::GetSlotCount() {
 bool SlotManagerImpl::IsTokenAccessible(const SecureBlob& isolate_credential,
                                         int slot_id) const {
   map<SecureBlob, Isolate>::const_iterator isolate_iter =
-    isolate_map_.find(isolate_credential);
+      isolate_map_.find(isolate_credential);
   if (isolate_iter == isolate_map_.end()) {
     return false;
   }
@@ -468,7 +454,8 @@ bool SlotManagerImpl::IsTokenPresent(const SecureBlob& isolate_credential,
 }
 
 void SlotManagerImpl::GetSlotInfo(const SecureBlob& isolate_credential,
-                                  int slot_id, CK_SLOT_INFO* slot_info) const {
+                                  int slot_id,
+                                  CK_SLOT_INFO* slot_info) const {
   CHECK(slot_info);
   CHECK_LT(static_cast<size_t>(slot_id), slot_list_.size());
   CHECK(IsTokenAccessible(isolate_credential, slot_id));
@@ -497,16 +484,14 @@ const MechanismMap* SlotManagerImpl::GetMechanismInfo(
 }
 
 int SlotManagerImpl::OpenSession(const SecureBlob& isolate_credential,
-                                 int slot_id, bool is_read_only) {
+                                 int slot_id,
+                                 bool is_read_only) {
   CHECK_LT(static_cast<size_t>(slot_id), slot_list_.size());
   CHECK(IsTokenAccessible(isolate_credential, slot_id));
   CHECK(IsTokenPresent(slot_id));
 
   shared_ptr<Session> session(factory_->CreateSession(
-      slot_id,
-      slot_list_[slot_id].token_object_pool.get(),
-      tpm_utility_,
-      this,
+      slot_id, slot_list_[slot_id].token_object_pool.get(), tpm_utility_, this,
       is_read_only));
   CHECK(session.get());
   int session_id = CreateHandle();
@@ -536,15 +521,15 @@ void SlotManagerImpl::CloseAllSessions(const SecureBlob& isolate_credential,
 
   for (map<int, shared_ptr<Session>>::iterator iter =
            slot_list_[slot_id].sessions.begin();
-       iter != slot_list_[slot_id].sessions.end();
-       ++iter) {
+       iter != slot_list_[slot_id].sessions.end(); ++iter) {
     session_slot_map_.erase(iter->first);
   }
   slot_list_[slot_id].sessions.clear();
 }
 
 bool SlotManagerImpl::GetSession(const SecureBlob& isolate_credential,
-                                 int session_id, Session** session) const {
+                                 int session_id,
+                                 Session** session) const {
   CHECK(session);
 
   // Lookup which slot this session belongs to.
@@ -658,12 +643,9 @@ bool SlotManagerImpl::LoadTokenInternal(const SecureBlob& isolate_credential,
   }
   // Setup the object pool.
   *slot_id = FindEmptySlot();
-  shared_ptr<ObjectPool> object_pool(
-      factory_->CreateObjectPool(this,
-                                 factory_->CreateObjectStore(path),
-                                 factory_->CreateObjectImporter(*slot_id,
-                                                                path,
-                                                                tpm_utility_)));
+  shared_ptr<ObjectPool> object_pool(factory_->CreateObjectPool(
+      this, factory_->CreateObjectStore(path),
+      factory_->CreateObjectImporter(*slot_id, path, tpm_utility_)));
   CHECK(object_pool.get());
 
   // Wait for the termination of a previous token.
@@ -676,14 +658,9 @@ bool SlotManagerImpl::LoadTokenInternal(const SecureBlob& isolate_credential,
     // objects are responsive but queries for private objects will be waiting
     // for the master key to be ready.
     slot_list_[*slot_id].worker_thread.reset(
-        new TokenInitThread(*slot_id,
-                            path,
-                            auth_data,
-                            tpm_utility_,
-                            object_pool.get(),
-                            system_shutdown_blocker_));
-    base::PlatformThread::Create(0,
-                                 slot_list_[*slot_id].worker_thread.get(),
+        new TokenInitThread(*slot_id, path, auth_data, tpm_utility_,
+                            object_pool.get(), system_shutdown_blocker_));
+    base::PlatformThread::Create(0, slot_list_[*slot_id].worker_thread.get(),
                                  &slot_list_[*slot_id].worker_thread_handle);
   } else {
     // Load a software-only token.
@@ -697,8 +674,7 @@ bool SlotManagerImpl::LoadTokenInternal(const SecureBlob& isolate_credential,
   slot_list_[*slot_id].token_object_pool = object_pool;
   slot_list_[*slot_id].slot_info.flags |= CKF_TOKEN_PRESENT;
   path_slot_map_[path] = *slot_id;
-  CopyStringToCharBuffer(label,
-                         slot_list_[*slot_id].token_info.label,
+  CopyStringToCharBuffer(label, slot_list_[*slot_id].token_info.label,
                          arraysize(slot_list_[*slot_id].token_info.label));
 
   // Insert slot into the isolate.
@@ -710,10 +686,10 @@ bool SlotManagerImpl::LoadTokenInternal(const SecureBlob& isolate_credential,
 
 bool SlotManagerImpl::LoadSoftwareToken(const SecureBlob& auth_data,
                                         ObjectPool* object_pool) {
-  SecureBlob auth_key_encrypt = Sha256(
-      SecureBlob::Combine(auth_data, SecureBlob(kKeyPurposeEncrypt)));
-  SecureBlob auth_key_mac = Sha256(
-      SecureBlob::Combine(auth_data, SecureBlob(kKeyPurposeMac)));
+  SecureBlob auth_key_encrypt =
+      Sha256(SecureBlob::Combine(auth_data, SecureBlob(kKeyPurposeEncrypt)));
+  SecureBlob auth_key_mac =
+      Sha256(SecureBlob::Combine(auth_data, SecureBlob(kKeyPurposeMac)));
   string encrypted_master_key;
   string saved_mac;
   if (!object_pool->GetInternalBlob(kEncryptedMasterKey,
@@ -732,8 +708,7 @@ bool SlotManagerImpl::LoadSoftwareToken(const SecureBlob& auth_data,
   if (!RunCipher(false,  // Decrypt.
                  auth_key_encrypt,
                  std::string(),  // Use a random IV.
-                 encrypted_master_key,
-                 &master_key_str)) {
+                 encrypted_master_key, &master_key_str)) {
     LOG(ERROR) << "Failed to decrypt master key, reinitializing token.";
     if (object_pool->DeleteAll() != ObjectPool::Result::Success)
       LOG(WARNING) << "Failed to delete all existing objects.";
@@ -756,24 +731,22 @@ bool SlotManagerImpl::InitializeSoftwareToken(const SecureBlob& auth_data,
     LOG(ERROR) << "RAND_bytes failed: " << GetOpenSSLError();
     return false;
   }
-  SecureBlob auth_key_encrypt = Sha256(
-      SecureBlob::Combine(auth_data, SecureBlob(kKeyPurposeEncrypt)));
+  SecureBlob auth_key_encrypt =
+      Sha256(SecureBlob::Combine(auth_data, SecureBlob(kKeyPurposeEncrypt)));
   string encrypted_master_key;
   if (!RunCipher(true,  // Encrypt.
                  auth_key_encrypt,
                  std::string(),  // Use a random IV.
-                 master_key.to_string(),
-                 &encrypted_master_key)) {
+                 master_key.to_string(), &encrypted_master_key)) {
     LOG(ERROR) << "Failed to encrypt new master key.";
     return false;
   }
-  SecureBlob auth_key_mac = Sha256(
-      SecureBlob::Combine(auth_data, SecureBlob(kKeyPurposeMac)));
+  SecureBlob auth_key_mac =
+      Sha256(SecureBlob::Combine(auth_data, SecureBlob(kKeyPurposeMac)));
   if (!object_pool->SetInternalBlob(kEncryptedMasterKey,
                                     encrypted_master_key) ||
-      !object_pool->SetInternalBlob(kAuthDataHash,
-                                    HmacSha512(kAuthKeyMacInput,
-                                               auth_key_mac))) {
+      !object_pool->SetInternalBlob(
+          kAuthDataHash, HmacSha512(kAuthKeyMacInput, auth_key_mac))) {
     LOG(ERROR) << "Failed to write new master key blobs.";
     return false;
   }
@@ -809,10 +782,9 @@ void SlotManagerImpl::UnloadToken(const SecureBlob& isolate_credential,
 
   if (tpm_utility_->IsTPMAvailable()) {
     // Spawn a thread to handle the TPM-related work.
-    slot_list_[slot_id].worker_thread.reset(new TokenTermThread(slot_id,
-                                                                tpm_utility_));
-    base::PlatformThread::Create(0,
-                                 slot_list_[slot_id].worker_thread.get(),
+    slot_list_[slot_id].worker_thread.reset(
+        new TokenTermThread(slot_id, tpm_utility_));
+    base::PlatformThread::Create(0, slot_list_[slot_id].worker_thread.get(),
                                  &slot_list_[slot_id].worker_thread_handle);
   }
   CloseAllSessions(isolate_credential, slot_id);
@@ -840,9 +812,8 @@ void SlotManagerImpl::ChangeTokenAuthData(const FilePath& path,
   int slot_id = 0;
   bool unload = false;
   if (path_slot_map_.find(path) == path_slot_map_.end()) {
-    object_pool = factory_->CreateObjectPool(this,
-                                             factory_->CreateObjectStore(path),
-                                             NULL);
+    object_pool = factory_->CreateObjectPool(
+        this, factory_->CreateObjectStore(path), NULL);
     scoped_object_pool.reset(object_pool);
     slot_id = FindEmptySlot();
     unload = true;
@@ -864,10 +835,8 @@ void SlotManagerImpl::ChangeTokenAuthData(const FilePath& path,
     string new_auth_key_blob;
     if (!object_pool->GetInternalBlob(kEncryptedAuthKey, &auth_key_blob)) {
       LOG(INFO) << "Token not initialized; ignoring change auth data event.";
-    } else if (!tpm_utility_->ChangeAuthData(slot_id,
-                                             Sha1(old_auth_data),
-                                             Sha1(new_auth_data),
-                                             auth_key_blob,
+    } else if (!tpm_utility_->ChangeAuthData(slot_id, Sha1(old_auth_data),
+                                             Sha1(new_auth_data), auth_key_blob,
                                              &new_auth_key_blob)) {
       LOG(ERROR) << "Failed to change auth data for token at " << path.value();
     } else if (!object_pool->SetInternalBlob(kEncryptedAuthKey,
@@ -892,8 +861,8 @@ void SlotManagerImpl::ChangeTokenAuthData(const FilePath& path,
       return;
     }
     // Check if old_auth_data is valid.
-    SecureBlob old_auth_key_mac = Sha256(
-        SecureBlob::Combine(old_auth_data, SecureBlob(kKeyPurposeMac)));
+    SecureBlob old_auth_key_mac =
+        Sha256(SecureBlob::Combine(old_auth_data, SecureBlob(kKeyPurposeMac)));
     if (HmacSha512(kAuthKeyMacInput, old_auth_key_mac) != saved_mac) {
       LOG(ERROR) << "Old authorization data is not correct.";
       return;
@@ -905,8 +874,7 @@ void SlotManagerImpl::ChangeTokenAuthData(const FilePath& path,
     if (!RunCipher(false,  // Decrypt.
                    old_auth_key_encrypt,
                    std::string(),  // Use a random IV.
-                   encrypted_master_key,
-                   &master_key)) {
+                   encrypted_master_key, &master_key)) {
       LOG(ERROR) << "Failed to decrypt master key with old auth data.";
       return;
     }
@@ -916,20 +884,18 @@ void SlotManagerImpl::ChangeTokenAuthData(const FilePath& path,
     if (!RunCipher(true,  // Encrypt.
                    new_auth_key_encrypt,
                    std::string(),  // Use a random IV.
-                   master_key,
-                   &encrypted_master_key)) {
+                   master_key, &encrypted_master_key)) {
       LOG(ERROR) << "Failed to encrypt master key with new auth data.";
       return;
     }
     ClearString(&master_key);
     // Write out the new blobs.
-    SecureBlob new_auth_key_mac = Sha256(
-        SecureBlob::Combine(new_auth_data, SecureBlob(kKeyPurposeMac)));
+    SecureBlob new_auth_key_mac =
+        Sha256(SecureBlob::Combine(new_auth_data, SecureBlob(kKeyPurposeMac)));
     if (!object_pool->SetInternalBlob(kEncryptedMasterKey,
                                       encrypted_master_key) ||
-        !object_pool->SetInternalBlob(kAuthDataHash,
-                                      HmacSha512(kAuthKeyMacInput,
-                                                 new_auth_key_mac))) {
+        !object_pool->SetInternalBlob(
+            kAuthDataHash, HmacSha512(kAuthKeyMacInput, new_auth_key_mac))) {
       LOG(ERROR) << "Failed to write new master key blobs.";
       return;
     }
@@ -950,7 +916,7 @@ bool SlotManagerImpl::IsTokenPresent(int slot_id) const {
   CHECK_LT(static_cast<size_t>(slot_id), slot_list_.size());
 
   return ((slot_list_[slot_id].slot_info.flags & CKF_TOKEN_PRESENT) ==
-      CKF_TOKEN_PRESENT);
+          CKF_TOKEN_PRESENT);
 }
 
 int SlotManagerImpl::CreateHandle() {
@@ -963,33 +929,25 @@ int SlotManagerImpl::CreateHandle() {
 void SlotManagerImpl::GetDefaultInfo(CK_SLOT_INFO* slot_info,
                                      CK_TOKEN_INFO* token_info) {
   memset(slot_info, 0, sizeof(CK_SLOT_INFO));
-  CopyStringToCharBuffer(kSlotDescription,
-                         slot_info->slotDescription,
+  CopyStringToCharBuffer(kSlotDescription, slot_info->slotDescription,
                          arraysize(slot_info->slotDescription));
-  CopyStringToCharBuffer(kManufacturerID,
-                         slot_info->manufacturerID,
+  CopyStringToCharBuffer(kManufacturerID, slot_info->manufacturerID,
                          arraysize(slot_info->manufacturerID));
   slot_info->flags = CKF_HW_SLOT | CKF_REMOVABLE_DEVICE;
   slot_info->hardwareVersion = kDefaultVersion;
   slot_info->firmwareVersion = kDefaultVersion;
 
   memset(token_info, 0, sizeof(CK_TOKEN_INFO));
-  CopyStringToCharBuffer(kTokenLabel,
-                         token_info->label,
+  CopyStringToCharBuffer(kTokenLabel, token_info->label,
                          arraysize(token_info->label));
-  CopyStringToCharBuffer(kManufacturerID,
-                         token_info->manufacturerID,
+  CopyStringToCharBuffer(kManufacturerID, token_info->manufacturerID,
                          arraysize(token_info->manufacturerID));
-  CopyStringToCharBuffer(kTokenModel,
-                         token_info->model,
+  CopyStringToCharBuffer(kTokenModel, token_info->model,
                          arraysize(token_info->model));
-  CopyStringToCharBuffer(kTokenSerialNumber,
-                         token_info->serialNumber,
+  CopyStringToCharBuffer(kTokenSerialNumber, token_info->serialNumber,
                          arraysize(token_info->serialNumber));
-  token_info->flags = CKF_RNG |
-                      CKF_USER_PIN_INITIALIZED |
-                      CKF_PROTECTED_AUTHENTICATION_PATH |
-                      CKF_TOKEN_INITIALIZED;
+  token_info->flags = CKF_RNG | CKF_USER_PIN_INITIALIZED |
+                      CKF_PROTECTED_AUTHENTICATION_PATH | CKF_TOKEN_INITIALIZED;
   token_info->ulMaxSessionCount = CK_EFFECTIVELY_INFINITE;
   token_info->ulSessionCount = CK_UNAVAILABLE_INFORMATION;
   token_info->ulMaxRwSessionCount = CK_EFFECTIVELY_INFINITE;

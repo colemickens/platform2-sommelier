@@ -15,9 +15,9 @@
 #include <base/files/file_util.h>
 #include <brillo/secure_blob.h>
 
-using std::string;
 using base::FilePath;
 using brillo::SecureBlob;
+using std::string;
 
 namespace chaps {
 
@@ -27,9 +27,9 @@ const char kIsolateFilePath[] = "/var/lib/chaps/isolates/";
 
 }  // namespace
 
-IsolateCredentialManager::IsolateCredentialManager() { }
+IsolateCredentialManager::IsolateCredentialManager() {}
 
-IsolateCredentialManager::~IsolateCredentialManager() { }
+IsolateCredentialManager::~IsolateCredentialManager() {}
 
 bool IsolateCredentialManager::GetCurrentUserIsolateCredential(
     SecureBlob* isolate_credential) {
@@ -51,16 +51,14 @@ bool IsolateCredentialManager::GetCurrentUserIsolateCredential(
 }
 
 bool IsolateCredentialManager::GetUserIsolateCredential(
-    const string& user,
-    SecureBlob* isolate_credential) {
+    const string& user, SecureBlob* isolate_credential) {
   CHECK(isolate_credential);
 
   string credential_string;
   const FilePath credential_file = FilePath(kIsolateFilePath).Append(user);
   if (!base::PathExists(credential_file) ||
       !base::ReadFileToString(credential_file, &credential_string)) {
-    LOG(INFO) << "Failed to find or read isolate credential for user "
-              << user;
+    LOG(INFO) << "Failed to find or read isolate credential for user " << user;
     return false;
   }
   const SecureBlob new_isolate_credential(credential_string);
@@ -74,8 +72,7 @@ bool IsolateCredentialManager::GetUserIsolateCredential(
 }
 
 bool IsolateCredentialManager::SaveIsolateCredential(
-    const string& user,
-    const SecureBlob& isolate_credential) {
+    const string& user, const SecureBlob& isolate_credential) {
   CHECK_EQ(kIsolateCredentialBytes, isolate_credential.size());
 
   // Look up user information.
@@ -92,10 +89,10 @@ bool IsolateCredentialManager::SaveIsolateCredential(
 
   // Write the isolate credential file.
   const FilePath isolate_cred_file = FilePath(kIsolateFilePath).Append(user);
-  int bytes_written = base::WriteFile(
-      isolate_cred_file,
-      reinterpret_cast<const char *>(isolate_credential.data()),
-      kIsolateCredentialBytes);
+  int bytes_written =
+      base::WriteFile(isolate_cred_file,
+                      reinterpret_cast<const char*>(isolate_credential.data()),
+                      kIsolateCredentialBytes);
   if (bytes_written != static_cast<int>(kIsolateCredentialBytes)) {
     LOG(ERROR) << "Failed to create isolate file for user " << user;
     return false;

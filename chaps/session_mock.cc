@@ -9,4 +9,4 @@ namespace chaps {
 SessionMock::SessionMock() {}
 SessionMock::~SessionMock() {}
 
-}
+}  // namespace chaps

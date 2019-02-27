@@ -21,9 +21,9 @@
 
 #include "chaps/chaps_utility.h"
 
-using std::string;
 using base::FilePath;
 using brillo::SecureBlob;
+using std::string;
 
 namespace chaps {
 
@@ -42,10 +42,9 @@ const size_t kSaltedKeyBytes = 32;
 }  // namespace
 
 TokenFileManager::TokenFileManager(uid_t chapsd_uid, gid_t chapsd_gid)
-    : chapsd_uid_(chapsd_uid),
-      chapsd_gid_(chapsd_gid) { }
+    : chapsd_uid_(chapsd_uid), chapsd_gid_(chapsd_gid) {}
 
-TokenFileManager::~TokenFileManager() { }
+TokenFileManager::~TokenFileManager() {}
 
 bool TokenFileManager::GetUserTokenPath(const string& user,
                                         FilePath* token_path) {
@@ -80,8 +79,8 @@ bool TokenFileManager::CreateUserTokenDirectory(const FilePath& token_path) {
   // Create random salt file.
   string salt_string;
   salt_string.resize(kSaltBytes);
-  if (1 != RAND_bytes(ConvertStringToByteBuffer(salt_string.data()),
-                      kSaltBytes)) {
+  if (1 !=
+      RAND_bytes(ConvertStringToByteBuffer(salt_string.data()), kSaltBytes)) {
     LOG(ERROR) << "Failed to generate random salt for token directory "
                << token_path.value();
     return false;
@@ -142,14 +141,9 @@ bool TokenFileManager::SaltAuthData(const FilePath& token_path,
   }
 
   SecureBlob out_key(kSaltedKeyBytes);
-  if (1 != PKCS5_PBKDF2_HMAC(auth_data.char_data(),
-                             auth_data.size(),
-                             salt.data(),
-                             kSaltBytes,
-                             kSaltIterations,
-                             EVP_sha512(),
-                             kSaltedKeyBytes,
-                             out_key.data())) {
+  if (1 != PKCS5_PBKDF2_HMAC(auth_data.char_data(), auth_data.size(),
+                             salt.data(), kSaltBytes, kSaltIterations,
+                             EVP_sha512(), kSaltedKeyBytes, out_key.data())) {
     LOG(ERROR) << "Could not salt authorization data.";
     return false;
   }

@@ -18,17 +18,16 @@ namespace chaps {
 
 class IsolateLoginClientMock : public IsolateLoginClient {
  public:
-  IsolateLoginClientMock() : IsolateLoginClient(NULL, NULL, NULL) { }
+  IsolateLoginClientMock() : IsolateLoginClient(NULL, NULL, NULL) {}
 
-  MOCK_METHOD2(LoginUser, bool(const std::string&,
-                               const brillo::SecureBlob&));
+  MOCK_METHOD2(LoginUser, bool(const std::string&, const brillo::SecureBlob&));
   MOCK_METHOD1(LogoutUser, bool(const std::string&));
-  MOCK_METHOD3(ChangeUserAuth, bool(const std::string&,
-                                    const brillo::SecureBlob&,
-                                    const brillo::SecureBlob&));
+  MOCK_METHOD3(ChangeUserAuth,
+               bool(const std::string&,
+                    const brillo::SecureBlob&,
+                    const brillo::SecureBlob&));
 };
 
 }  // namespace chaps
 
 #endif  // CHAPS_ISOLATE_LOGIN_CLIENT_MOCK_H_
-

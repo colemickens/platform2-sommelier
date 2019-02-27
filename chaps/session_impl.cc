@@ -1254,9 +1254,10 @@ bool SessionImpl::GenerateRSAKeyPairTPM(int modulus_bits,
   string auth_data = GenerateRandomSoftware(kDefaultAuthDataBytes);
   string key_blob;
   int tpm_key_handle;
-  if (!tpm_utility_->GenerateRSAKey(slot_id_, modulus_bits, public_exponent,
-                                 SecureBlob(auth_data.begin(), auth_data.end()),
-                                 &key_blob, &tpm_key_handle))
+  if (!tpm_utility_->GenerateRSAKey(
+          slot_id_, modulus_bits, public_exponent,
+          SecureBlob(auth_data.begin(), auth_data.end()), &key_blob,
+          &tpm_key_handle))
     return false;
 
   // Get public key information from TPM
@@ -1611,9 +1612,8 @@ bool SessionImpl::ECCSignSoftware(const std::string& input,
 
   // We don't use ECDSA_sign here since the output format of PKCS#11 is
   // different from OpenSSL's.
-  crypto::ScopedECDSA_SIG sig(
-      ECDSA_do_sign(ConvertStringToByteBuffer(input.data()),
-                    input.size(), key.get()));
+  crypto::ScopedECDSA_SIG sig(ECDSA_do_sign(
+      ConvertStringToByteBuffer(input.data()), input.size(), key.get()));
   if (sig == nullptr) {
     LOG(ERROR) << __func__ << ": ECDSA failed: " << GetOpenSSLError();
     return false;

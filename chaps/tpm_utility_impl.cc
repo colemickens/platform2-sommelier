@@ -22,15 +22,15 @@
 
 using base::AutoLock;
 using brillo::SecureBlob;
-using trousers::ScopedTssContext;
-using trousers::ScopedTssKey;
-using trousers::ScopedTssObject;
-using trousers::ScopedTssPolicy;
 using std::hex;
 using std::map;
 using std::set;
 using std::string;
 using std::stringstream;
+using trousers::ScopedTssContext;
+using trousers::ScopedTssKey;
+using trousers::ScopedTssObject;
+using trousers::ScopedTssPolicy;
 
 namespace chaps {
 
@@ -42,10 +42,8 @@ class TSSEncryptedData {
   explicit TSSEncryptedData(TSS_HCONTEXT context)
       : context_(context), handle_(context) {}
   bool Create() {
-    TSS_RESULT result = Tspi_Context_CreateObject(context_,
-                                                  TSS_OBJECT_TYPE_ENCDATA,
-                                                  TSS_ENCDATA_BIND,
-                                                  handle_.ptr());
+    TSS_RESULT result = Tspi_Context_CreateObject(
+        context_, TSS_OBJECT_TYPE_ENCDATA, TSS_ENCDATA_BIND, handle_.ptr());
     if (result != TSS_SUCCESS) {
       LOG(ERROR) << "Tspi_Context_CreateObject - "
                  << TPMUtilityImpl::ResultToString(result);
@@ -56,11 +54,9 @@ class TSSEncryptedData {
   bool GetData(string* data) {
     UINT32 length = 0;
     BYTE* buffer = NULL;
-    TSS_RESULT result = Tspi_GetAttribData(handle_,
-                                           TSS_TSPATTRIB_ENCDATA_BLOB,
-                                           TSS_TSPATTRIB_ENCDATABLOB_BLOB,
-                                           &length,
-                                           &buffer);
+    TSS_RESULT result =
+        Tspi_GetAttribData(handle_, TSS_TSPATTRIB_ENCDATA_BLOB,
+                           TSS_TSPATTRIB_ENCDATABLOB_BLOB, &length, &buffer);
     if (result != TSS_SUCCESS) {
       LOG(ERROR) << "Tspi_GetAttribData(ENCDATA_BLOB) - "
                  << TPMUtilityImpl::ResultToString(result);
@@ -72,11 +68,8 @@ class TSSEncryptedData {
   }
   bool SetData(const string& data) {
     TSS_RESULT result = Tspi_SetAttribData(
-        handle_,
-        TSS_TSPATTRIB_ENCDATA_BLOB,
-        TSS_TSPATTRIB_ENCDATABLOB_BLOB,
-        data.length(),
-        ConvertStringToByteBuffer(data.data()));
+        handle_, TSS_TSPATTRIB_ENCDATA_BLOB, TSS_TSPATTRIB_ENCDATABLOB_BLOB,
+        data.length(), ConvertStringToByteBuffer(data.data()));
     if (result != TSS_SUCCESS) {
       LOG(ERROR) << "Tspi_SetAttribData(ENCDATA_BLOB) - "
                  << TPMUtilityImpl::ResultToString(result);
@@ -84,9 +77,7 @@ class TSSEncryptedData {
     }
     return true;
   }
-  operator TSS_HENCDATA() {
-    return handle_;
-  }
+  operator TSS_HENCDATA() { return handle_; }
 
  private:
   TSS_HCONTEXT context_;
@@ -102,17 +93,14 @@ class TSSHash {
   explicit TSSHash(TSS_HCONTEXT context)
       : context_(context), handle_(context) {}
   bool Create(const string& value) {
-    TSS_RESULT result = Tspi_Context_CreateObject(context_,
-                                                  TSS_OBJECT_TYPE_HASH,
-                                                  TSS_HASH_OTHER,
-                                                  handle_.ptr());
+    TSS_RESULT result = Tspi_Context_CreateObject(
+        context_, TSS_OBJECT_TYPE_HASH, TSS_HASH_OTHER, handle_.ptr());
     if (result != TSS_SUCCESS) {
       LOG(ERROR) << "Tspi_Context_CreateObject - "
                  << TPMUtilityImpl::ResultToString(result);
       return false;
     }
-    result = Tspi_Hash_SetHashValue(handle_,
-                                    value.length(),
+    result = Tspi_Hash_SetHashValue(handle_, value.length(),
                                     ConvertStringToByteBuffer(value.data()));
     if (result != TSS_SUCCESS) {
       LOG(ERROR) << "Tspi_Hash_SetHashValue - "
@@ -121,9 +109,7 @@ class TSSHash {
     }
     return true;
   }
-  operator TSS_HHASH() {
-    return handle_;
-  }
+  operator TSS_HHASH() { return handle_; }
 
  private:
   TSS_HCONTEXT context_;
@@ -192,7 +178,7 @@ bool TPMUtilityImpl::Init() {
     LOG(ERROR) << "Tspi_Context_GetTpmObject - " << ResultToString(result);
     return false;
   }
-  BYTE *random_bytes = NULL;
+  BYTE* random_bytes = NULL;
   result = Tspi_TPM_GetRandom(tpm, 4, &random_bytes);
   if (result != TSS_SUCCESS) {
     LOG(ERROR) << "Tspi_TPM_GetRandom - " << ResultToString(result);
@@ -220,8 +206,7 @@ bool TPMUtilityImpl::IsTPMAvailable() {
   string file_content;
   if ((base::ReadFileToString(kMiscEnabledFile, &file_content) ||
        base::ReadFileToString(kTpmEnabledFile, &file_content)) &&
-      !file_content.empty() &&
-      file_content[0] == '1') {
+      !file_content.empty() && file_content[0] == '1') {
     is_enabled_ = true;
   }
   is_enabled_ready_ = true;
@@ -237,10 +222,8 @@ bool TPMUtilityImpl::InitSRK() {
   // Load the SRK and assign it a usage policy with authorization data.
   TSS_RESULT result = TSS_SUCCESS;
   TSS_UUID uuid = TSS_UUID_SRK;
-  result = Tspi_Context_LoadKeyByUUID(tsp_context_,
-                                      TSS_PS_TYPE_SYSTEM,
-                                      uuid,
-                                      &srk_);
+  result =
+      Tspi_Context_LoadKeyByUUID(tsp_context_, TSS_PS_TYPE_SYSTEM, uuid, &srk_);
   if (result != TSS_SUCCESS) {
     if (result == (TSS_LAYER_TCS | TSS_E_PS_KEY_NOTFOUND)) {
       LOG(WARNING) << "SRK does not exist - this is normal when the TPM is not "
@@ -251,10 +234,8 @@ bool TPMUtilityImpl::InitSRK() {
     return false;
   }
   ScopedTssPolicy srk_policy(tsp_context_);
-  result = Tspi_Context_CreateObject(tsp_context_,
-                                     TSS_OBJECT_TYPE_POLICY,
-                                     TSS_POLICY_USAGE,
-                                     srk_policy.ptr());
+  result = Tspi_Context_CreateObject(tsp_context_, TSS_OBJECT_TYPE_POLICY,
+                                     TSS_POLICY_USAGE, srk_policy.ptr());
   if (result != TSS_SUCCESS) {
     LOG(ERROR) << "Tspi_Context_CreateObject - " << ResultToString(result);
     return false;
@@ -267,8 +248,8 @@ bool TPMUtilityImpl::InitSRK() {
     // compatibility with other tools that use this value.
     result = Tspi_Policy_SetSecret(
         srk_policy,
-        srk_auth_data_ == string(20, 0) ? TSS_SECRET_MODE_SHA1 :
-                                          TSS_SECRET_MODE_PLAIN,
+        srk_auth_data_ == string(20, 0) ? TSS_SECRET_MODE_SHA1
+                                        : TSS_SECRET_MODE_PLAIN,
         srk_auth_data_.length(),
         ConvertStringToByteBuffer(srk_auth_data_.data()));
   }
@@ -323,18 +304,15 @@ bool TPMUtilityImpl::ChangeAuthData(int slot_id,
   AutoLock lock(lock_);
   TSS_RESULT result = TSS_SUCCESS;
   ScopedTssPolicy policy(tsp_context_);
-  result = Tspi_Context_CreateObject(tsp_context_,
-                                     TSS_OBJECT_TYPE_POLICY,
-                                     TSS_POLICY_USAGE,
-                                     policy.ptr());
+  result = Tspi_Context_CreateObject(tsp_context_, TSS_OBJECT_TYPE_POLICY,
+                                     TSS_POLICY_USAGE, policy.ptr());
   if (result != TSS_SUCCESS) {
     LOG(ERROR) << "Tspi_Context_CreateObject - " << ResultToString(result);
     return false;
   }
-  result = Tspi_Policy_SetSecret(policy,
-                                 TSS_SECRET_MODE_SHA1,
-                                 new_auth_data.size(),
-                                 const_cast<BYTE*>(new_auth_data.data()));
+  result =
+      Tspi_Policy_SetSecret(policy, TSS_SECRET_MODE_SHA1, new_auth_data.size(),
+                            const_cast<BYTE*>(new_auth_data.data()));
   if (result != TSS_SUCCESS) {
     LOG(ERROR) << "Tspi_Policy_SetSecret - " << ResultToString(result);
     return false;
@@ -357,7 +335,7 @@ bool TPMUtilityImpl::GenerateRandom(int num_bytes, string* random_data) {
     return false;
   TSS_RESULT result = TSS_SUCCESS;
   TSS_HTPM tpm;
-  BYTE *random_bytes = NULL;
+  BYTE* random_bytes = NULL;
   result = Tspi_Context_GetTpmObject(tsp_context_, &tpm);
   if (result != TSS_SUCCESS) {
     LOG(ERROR) << "Tspi_Context_GetTpmObject - " << ResultToString(result);
@@ -386,8 +364,7 @@ bool TPMUtilityImpl::StirRandom(const string& entropy_data) {
     LOG(ERROR) << "Tspi_Context_GetTpmObject - " << ResultToString(result);
     return false;
   }
-  result = Tspi_TPM_StirRandom(tpm,
-                               entropy_data.length(),
+  result = Tspi_TPM_StirRandom(tpm, entropy_data.length(),
                                ConvertStringToByteBuffer(entropy_data.data()));
   if (result != TSS_SUCCESS) {
     LOG(ERROR) << "Tspi_TPM_StirRandom - " << ResultToString(result);
@@ -409,10 +386,8 @@ bool TPMUtilityImpl::GenerateRSAKey(int slot,
     return false;
   TSS_RESULT result = TSS_SUCCESS;
   ScopedTssKey key(tsp_context_);
-  result = Tspi_Context_CreateObject(tsp_context_,
-                                     TSS_OBJECT_TYPE_RSAKEY,
-                                     GetKeyFlags(modulus_bits),
-                                     key.ptr());
+  result = Tspi_Context_CreateObject(tsp_context_, TSS_OBJECT_TYPE_RSAKEY,
+                                     GetKeyFlags(modulus_bits), key.ptr());
   if (result != TSS_SUCCESS) {
     LOG(ERROR) << "Tspi_Context_CreateObject - " << ResultToString(result);
     return false;
@@ -421,9 +396,7 @@ bool TPMUtilityImpl::GenerateRSAKey(int slot,
     LOG(WARNING) << "Non-Default Public Exponent: "
                  << PrintIntVector(ConvertByteStringToVector(public_exponent));
     result = Tspi_SetAttribData(
-        key,
-        TSS_TSPATTRIB_RSAKEY_INFO,
-        TSS_TSPATTRIB_KEYINFO_RSA_EXPONENT,
+        key, TSS_TSPATTRIB_RSAKEY_INFO, TSS_TSPATTRIB_KEYINFO_RSA_EXPONENT,
         public_exponent.length(),
         ConvertStringToByteBuffer(public_exponent.data()));
     if (result != TSS_SUCCESS) {
@@ -457,15 +430,11 @@ bool TPMUtilityImpl::GetRSAPublicKey(int key_handle,
   AutoLock lock(lock_);
   if (!InitSRK())
     return false;
-  if (!GetKeyAttributeData(GetTssHandle(key_handle),
-                           TSS_TSPATTRIB_RSAKEY_INFO,
-                           TSS_TSPATTRIB_KEYINFO_RSA_EXPONENT,
-                           public_exponent))
+  if (!GetKeyAttributeData(GetTssHandle(key_handle), TSS_TSPATTRIB_RSAKEY_INFO,
+                           TSS_TSPATTRIB_KEYINFO_RSA_EXPONENT, public_exponent))
     return false;
-  if (!GetKeyAttributeData(GetTssHandle(key_handle),
-                           TSS_TSPATTRIB_RSAKEY_INFO,
-                           TSS_TSPATTRIB_KEYINFO_RSA_MODULUS,
-                           modulus))
+  if (!GetKeyAttributeData(GetTssHandle(key_handle), TSS_TSPATTRIB_RSAKEY_INFO,
+                           TSS_TSPATTRIB_KEYINFO_RSA_MODULUS, modulus))
     return false;
   VLOG(1) << "TPMUtilityImpl::GetRSAPublicKey success";
   return true;
@@ -504,11 +473,9 @@ bool TPMUtilityImpl::WrapRSAKey(int slot,
   if (!GetSRKPublicKey())
     return false;
   ScopedTssKey key(tsp_context_);
-  TSS_RESULT result = Tspi_Context_CreateObject(
-      tsp_context_,
-      TSS_OBJECT_TYPE_RSAKEY,
-      GetKeyFlags(modulus.length() * 8),
-      key.ptr());
+  TSS_RESULT result =
+      Tspi_Context_CreateObject(tsp_context_, TSS_OBJECT_TYPE_RSAKEY,
+                                GetKeyFlags(modulus.length() * 8), key.ptr());
   if (result != TSS_SUCCESS) {
     LOG(ERROR) << "Tspi_Context_CreateObject - " << ResultToString(result);
     return false;
@@ -517,9 +484,7 @@ bool TPMUtilityImpl::WrapRSAKey(int slot,
     LOG(WARNING) << "Non-Default Public Exponent: "
                  << PrintIntVector(ConvertByteStringToVector(public_exponent));
     result = Tspi_SetAttribData(
-        key,
-        TSS_TSPATTRIB_RSAKEY_INFO,
-        TSS_TSPATTRIB_KEYINFO_RSA_EXPONENT,
+        key, TSS_TSPATTRIB_RSAKEY_INFO, TSS_TSPATTRIB_KEYINFO_RSA_EXPONENT,
         public_exponent.length(),
         ConvertStringToByteBuffer(public_exponent.data()));
     if (result != TSS_SUCCESS) {
@@ -527,11 +492,9 @@ bool TPMUtilityImpl::WrapRSAKey(int slot,
       return false;
     }
   }
-  result = Tspi_SetAttribData(key,
-                              TSS_TSPATTRIB_RSAKEY_INFO,
-                              TSS_TSPATTRIB_KEYINFO_RSA_MODULUS,
-                              modulus.length(),
-                              ConvertStringToByteBuffer(modulus.data()));
+  result = Tspi_SetAttribData(
+      key, TSS_TSPATTRIB_RSAKEY_INFO, TSS_TSPATTRIB_KEYINFO_RSA_MODULUS,
+      modulus.length(), ConvertStringToByteBuffer(modulus.data()));
   if (result != TSS_SUCCESS) {
     LOG(ERROR) << "Tspi_SetAttribData(MODULUS) - " << ResultToString(result);
     return false;
@@ -541,11 +504,9 @@ bool TPMUtilityImpl::WrapRSAKey(int slot,
   // modulus) the entire private key can be derived. The small size allows the
   // key to be wrapped in a single operation by another key of the same size.
   // See TPM_STORE_ASYMKEY in TPM Main Part 2 v1.2 r116 section 10.6 page 92.
-  result = Tspi_SetAttribData(key,
-                              TSS_TSPATTRIB_KEY_BLOB,
-                              TSS_TSPATTRIB_KEYBLOB_PRIVATE_KEY,
-                              prime_factor.length(),
-                              ConvertStringToByteBuffer(prime_factor.data()));
+  result = Tspi_SetAttribData(
+      key, TSS_TSPATTRIB_KEY_BLOB, TSS_TSPATTRIB_KEYBLOB_PRIVATE_KEY,
+      prime_factor.length(), ConvertStringToByteBuffer(prime_factor.data()));
   if (result != TSS_SUCCESS) {
     LOG(ERROR) << "Tspi_SetAttribData(FACTOR) - " << ResultToString(result);
     return false;
@@ -625,9 +586,7 @@ void TPMUtilityImpl::UnloadKeysForSlot(int slot) {
   VLOG(1) << "TPMUtilityImpl::UnloadKeysForSlot success";
 }
 
-bool TPMUtilityImpl::Bind(int key_handle,
-                          const string& input,
-                          string* output) {
+bool TPMUtilityImpl::Bind(int key_handle, const string& input, string* output) {
   VLOG(1) << "TPMUtilityImpl::Bind enter";
   AutoLock lock(lock_);
   if (!InitSRK())
@@ -635,10 +594,9 @@ bool TPMUtilityImpl::Bind(int key_handle,
   TSSEncryptedData encrypted(tsp_context_);
   if (!encrypted.Create())
     return false;
-  TSS_RESULT result = Tspi_Data_Bind(encrypted,
-                                     GetTssHandle(key_handle),
-                                     input.length(),
-                                     ConvertStringToByteBuffer(input.data()));
+  TSS_RESULT result =
+      Tspi_Data_Bind(encrypted, GetTssHandle(key_handle), input.length(),
+                     ConvertStringToByteBuffer(input.data()));
   if (result != TSS_SUCCESS) {
     LOG(ERROR) << "Tspi_Data_Bind - " << ResultToString(result);
     return false;
@@ -663,8 +621,8 @@ bool TPMUtilityImpl::Unbind(int key_handle,
     return false;
   UINT32 length = 0;
   BYTE* buffer = NULL;
-  TSS_RESULT result = Tspi_Data_Unbind(encrypted, GetTssHandle(key_handle),
-                                       &length, &buffer);
+  TSS_RESULT result =
+      Tspi_Data_Unbind(encrypted, GetTssHandle(key_handle), &length, &buffer);
   if (result == (TSS_LAYER_TCS | TCS_E_KM_LOADFAILED)) {
     // On some TPMs, the TCS layer will fail to reload a key that has been
     // evicted. If this occurs, we can attempt to reload the key manually and
@@ -672,8 +630,8 @@ bool TPMUtilityImpl::Unbind(int key_handle,
     LOG(WARNING) << "TCS load failure: attempting to reload key.";
     if (!ReloadKey(key_handle))
       return false;
-    result = Tspi_Data_Unbind(encrypted, GetTssHandle(key_handle), &length,
-                              &buffer);
+    result =
+        Tspi_Data_Unbind(encrypted, GetTssHandle(key_handle), &length, &buffer);
   }
   if (result != TSS_SUCCESS) {
     LOG(ERROR) << "Tspi_Data_Unbind - " << ResultToString(result);
@@ -702,8 +660,8 @@ bool TPMUtilityImpl::Sign(int key_handle,
     return false;
   UINT32 length = 0;
   BYTE* buffer = NULL;
-  TSS_RESULT result = Tspi_Hash_Sign(hash, GetTssHandle(key_handle), &length,
-                                     &buffer);
+  TSS_RESULT result =
+      Tspi_Hash_Sign(hash, GetTssHandle(key_handle), &length, &buffer);
   if (result == (TSS_LAYER_TCS | TCS_E_KM_LOADFAILED)) {
     // On some TPMs, the TCS layer will fail to reload a key that has been
     // evicted. If this occurs, we can attempt to reload the key manually and
@@ -748,10 +706,8 @@ bool TPMUtilityImpl::CreateKeyPolicy(TSS_HKEY key,
                                      const SecureBlob& auth_data,
                                      bool auth_only) {
   ScopedTssPolicy policy(tsp_context_);
-  TSS_RESULT result = Tspi_Context_CreateObject(tsp_context_,
-                                                TSS_OBJECT_TYPE_POLICY,
-                                                TSS_POLICY_USAGE,
-                                                policy.ptr());
+  TSS_RESULT result = Tspi_Context_CreateObject(
+      tsp_context_, TSS_OBJECT_TYPE_POLICY, TSS_POLICY_USAGE, policy.ptr());
   if (result != TSS_SUCCESS) {
     LOG(ERROR) << "Tspi_Context_CreateObject - " << ResultToString(result);
     return false;
@@ -759,18 +715,16 @@ bool TPMUtilityImpl::CreateKeyPolicy(TSS_HKEY key,
   if (auth_data.empty()) {
     result = Tspi_Policy_SetSecret(policy, TSS_SECRET_MODE_NONE, 0, NULL);
   } else {
-    result = Tspi_Policy_SetSecret(policy,
-                                   TSS_SECRET_MODE_SHA1,
-                                   auth_data.size(),
-                                   const_cast<BYTE*>(auth_data.data()));
+    result =
+        Tspi_Policy_SetSecret(policy, TSS_SECRET_MODE_SHA1, auth_data.size(),
+                              const_cast<BYTE*>(auth_data.data()));
   }
   if (result != TSS_SUCCESS) {
     LOG(ERROR) << "Tspi_Policy_SetSecret - " << ResultToString(result);
     return false;
   }
   if (!auth_only) {
-    result = Tspi_SetAttribUint32(key,
-                                  TSS_TSPATTRIB_KEY_INFO,
+    result = Tspi_SetAttribUint32(key, TSS_TSPATTRIB_KEY_INFO,
                                   TSS_TSPATTRIB_KEYINFO_ENCSCHEME,
                                   TSS_ES_RSAESPKCSV15);
     if (result != TSS_SUCCESS) {
@@ -778,8 +732,7 @@ bool TPMUtilityImpl::CreateKeyPolicy(TSS_HKEY key,
                  << ResultToString(result);
       return false;
     }
-    result = Tspi_SetAttribUint32(key,
-                                  TSS_TSPATTRIB_KEY_INFO,
+    result = Tspi_SetAttribUint32(key, TSS_TSPATTRIB_KEY_INFO,
                                   TSS_TSPATTRIB_KEYINFO_SIGSCHEME,
                                   TSS_SS_RSASSAPKCS1V15_DER);
     if (result != TSS_SUCCESS) {
@@ -788,10 +741,9 @@ bool TPMUtilityImpl::CreateKeyPolicy(TSS_HKEY key,
       return false;
     }
     ScopedTssPolicy migration_policy(tsp_context_);
-    result = Tspi_Context_CreateObject(tsp_context_,
-                                       TSS_OBJECT_TYPE_POLICY,
-                                       TSS_POLICY_MIGRATION,
-                                       migration_policy.ptr());
+    result =
+        Tspi_Context_CreateObject(tsp_context_, TSS_OBJECT_TYPE_POLICY,
+                                  TSS_POLICY_MIGRATION, migration_policy.ptr());
     if (result != TSS_SUCCESS) {
       LOG(ERROR) << "Tspi_SetAttribUint(SIGSCHEME) - "
                  << ResultToString(result);
@@ -802,10 +754,8 @@ bool TPMUtilityImpl::CreateKeyPolicy(TSS_HKEY key,
     const int kSha1OutputBytes = 20;
     unsigned char discard[kSha1OutputBytes];
     RAND_bytes(discard, kSha1OutputBytes);
-    result = Tspi_Policy_SetSecret(migration_policy,
-                                   TSS_SECRET_MODE_SHA1,
-                                   kSha1OutputBytes,
-                                   discard);
+    result = Tspi_Policy_SetSecret(migration_policy, TSS_SECRET_MODE_SHA1,
+                                   kSha1OutputBytes, discard);
     brillo::SecureMemset(discard, 0, kSha1OutputBytes);
     if (result != TSS_SUCCESS) {
       LOG(ERROR) << "Tspi_Policy_SetSecret - " << ResultToString(result);
@@ -843,19 +793,16 @@ bool TPMUtilityImpl::GetKeyAttributeData(TSS_HKEY key,
 }
 
 bool TPMUtilityImpl::GetKeyBlob(TSS_HKEY key, string* blob) {
-  return GetKeyAttributeData(key,
-                             TSS_TSPATTRIB_KEY_BLOB,
-                             TSS_TSPATTRIB_KEYBLOB_BLOB,
-                             blob);
+  return GetKeyAttributeData(key, TSS_TSPATTRIB_KEY_BLOB,
+                             TSS_TSPATTRIB_KEYBLOB_BLOB, blob);
 }
 
 TSS_FLAG TPMUtilityImpl::GetKeyFlags(int modulus_bits) {
   // We want the keys we create / wrap to be capable of signing and binding.
   // This means we need to use the 'legacy' key type. Keys of this type are
   // migratable by definition. See TCG Architecture Overview 1.4: 4.2.7.2.
-  TSS_FLAG flags = TSS_KEY_TYPE_LEGACY |
-                   TSS_KEY_AUTHORIZATION |
-                   TSS_KEY_MIGRATABLE;
+  TSS_FLAG flags =
+      TSS_KEY_TYPE_LEGACY | TSS_KEY_AUTHORIZATION | TSS_KEY_MIGRATABLE;
   if (modulus_bits == TSS_KEY_SIZEVAL_512BIT) {
     flags |= TSS_KEY_SIZE_512;
   } else if (modulus_bits == TSS_KEY_SIZEVAL_1024BIT) {
@@ -880,7 +827,7 @@ bool TPMUtilityImpl::GetSRKPublicKey() {
   // to do this again.
   if (!srk_public_loaded_) {
     UINT32 length = 0;
-    BYTE *buffer = NULL;
+    BYTE* buffer = NULL;
     TSS_RESULT result = Tspi_Key_GetPubKey(srk_, &length, &buffer);
     if (result != TSS_SUCCESS) {
       if (result == TPM_E_INVALID_KEYHANDLE) {
@@ -922,11 +869,8 @@ bool TPMUtilityImpl::LoadKeyInternal(TSS_HKEY parent,
                                      const SecureBlob& auth_data,
                                      TSS_HKEY* key) {
   TSS_RESULT result = Tspi_Context_LoadKeyByBlob(
-      tsp_context_,
-      parent,
-      key_blob.length(),
-      ConvertStringToByteBuffer(key_blob.data()),
-      key);
+      tsp_context_, parent, key_blob.length(),
+      ConvertStringToByteBuffer(key_blob.data()), key);
   if (result != TSS_SUCCESS) {
     LOG(ERROR) << "Tspi_Context_LoadKeyByBlob - " << ResultToString(result);
     return false;
@@ -947,10 +891,9 @@ bool TPMUtilityImpl::LoadKeyInternal(TSS_HKEY parent,
       return false;
     }
   } else {
-    result = Tspi_Policy_SetSecret(policy,
-                                   TSS_SECRET_MODE_SHA1,
-                                   auth_data.size(),
-                                   const_cast<BYTE*>(auth_data.data()));
+    result =
+        Tspi_Policy_SetSecret(policy, TSS_SECRET_MODE_SHA1, auth_data.size(),
+                              const_cast<BYTE*>(auth_data.data()));
     if (result != TSS_SUCCESS) {
       LOG(ERROR) << "Tspi_Policy_SetSecret - " << ResultToString(result);
       return false;
@@ -983,195 +926,369 @@ string TPMUtilityImpl::ResultToString(TSS_RESULT result) {
   TSS_RESULT code = ERROR_CODE(result);
   if (layer == TSS_LAYER_TPM) {
     switch (code) {
-      case TPM_E_AUTHFAIL: return "TPM_E_AUTHFAIL";
-      case TPM_E_BADINDEX: return "TPM_E_BADINDEX";
-      case TPM_E_BAD_PARAMETER: return "TPM_E_BAD_PARAMETER";
-      case TPM_E_AUDITFAILURE: return "TPM_E_AUDITFAILURE";
-      case TPM_E_CLEAR_DISABLED: return "TPM_E_CLEAR_DISABLED";
-      case TPM_E_DEACTIVATED: return "TPM_E_DEACTIVATED";
-      case TPM_E_DISABLED: return "TPM_E_DISABLED";
-      case TPM_E_DISABLED_CMD: return "TPM_E_DISABLED_CMD";
-      case TPM_E_FAIL: return "TPM_E_FAIL";
-      case TPM_E_BAD_ORDINAL: return "TPM_E_BAD_ORDINAL";
-      case TPM_E_INSTALL_DISABLED: return "TPM_E_INSTALL_DISABLED";
-      case TPM_E_INVALID_KEYHANDLE: return "TPM_E_INVALID_KEYHANDLE";
-      case TPM_E_KEYNOTFOUND: return "TPM_E_KEYNOTFOUND";
-      case TPM_E_INAPPROPRIATE_ENC: return "TPM_E_INAPPROPRIATE_ENC";
-      case TPM_E_MIGRATEFAIL: return "TPM_E_MIGRATEFAIL";
-      case TPM_E_INVALID_PCR_INFO: return "TPM_E_INVALID_PCR_INFO";
-      case TPM_E_NOSPACE: return "TPM_E_NOSPACE";
-      case TPM_E_NOSRK: return "TPM_E_NOSRK";
-      case TPM_E_NOTSEALED_BLOB: return "TPM_E_NOTSEALED_BLOB";
-      case TPM_E_OWNER_SET: return "TPM_E_OWNER_SET";
-      case TPM_E_RESOURCES: return "TPM_E_RESOURCES";
-      case TPM_E_SHORTRANDOM: return "TPM_E_SHORTRANDOM";
-      case TPM_E_SIZE: return "TPM_E_SIZE";
-      case TPM_E_WRONGPCRVAL: return "TPM_E_WRONGPCRVAL";
-      case TPM_E_BAD_PARAM_SIZE: return "TPM_E_BAD_PARAM_SIZE";
-      case TPM_E_SHA_THREAD: return "TPM_E_SHA_THREAD";
-      case TPM_E_SHA_ERROR: return "TPM_E_SHA_ERROR";
-      case TPM_E_FAILEDSELFTEST: return "TPM_E_FAILEDSELFTEST";
-      case TPM_E_AUTH2FAIL: return "TPM_E_AUTH2FAIL";
-      case TPM_E_BADTAG: return "TPM_E_BADTAG";
-      case TPM_E_IOERROR: return "TPM_E_IOERROR";
-      case TPM_E_ENCRYPT_ERROR: return "TPM_E_ENCRYPT_ERROR";
-      case TPM_E_DECRYPT_ERROR: return "TPM_E_DECRYPT_ERROR";
-      case TPM_E_INVALID_AUTHHANDLE: return "TPM_E_INVALID_AUTHHANDLE";
-      case TPM_E_NO_ENDORSEMENT: return "TPM_E_NO_ENDORSEMENT";
-      case TPM_E_INVALID_KEYUSAGE: return "TPM_E_INVALID_KEYUSAGE";
-      case TPM_E_WRONG_ENTITYTYPE: return "TPM_E_WRONG_ENTITYTYPE";
-      case TPM_E_INVALID_POSTINIT: return "TPM_E_INVALID_POSTINIT";
-      case TPM_E_INAPPROPRIATE_SIG: return "TPM_E_INAPPROPRIATE_SIG";
-      case TPM_E_BAD_KEY_PROPERTY: return "TPM_E_BAD_KEY_PROPERTY";
-      case TPM_E_BAD_MIGRATION: return "TPM_E_BAD_MIGRATION";
-      case TPM_E_BAD_SCHEME: return "TPM_E_BAD_SCHEME";
-      case TPM_E_BAD_DATASIZE: return "TPM_E_BAD_DATASIZE";
-      case TPM_E_BAD_MODE: return "TPM_E_BAD_MODE";
-      case TPM_E_BAD_PRESENCE: return "TPM_E_BAD_PRESENCE";
-      case TPM_E_BAD_VERSION: return "TPM_E_BAD_VERSION";
-      case TPM_E_NO_WRAP_TRANSPORT: return "TPM_E_NO_WRAP_TRANSPORT";
-      case TPM_E_AUDITFAIL_UNSUCCESSFUL: return "TPM_E_AUDITFAIL_UNSUCCESSFUL";
-      case TPM_E_AUDITFAIL_SUCCESSFUL: return "TPM_E_AUDITFAIL_SUCCESSFUL";
-      case TPM_E_NOTRESETABLE: return "TPM_E_NOTRESETABLE";
-      case TPM_E_NOTLOCAL: return "TPM_E_NOTLOCAL";
-      case TPM_E_BAD_TYPE: return "TPM_E_BAD_TYPE";
-      case TPM_E_INVALID_RESOURCE: return "TPM_E_INVALID_RESOURCE";
-      case TPM_E_NOTFIPS: return "TPM_E_NOTFIPS";
-      case TPM_E_INVALID_FAMILY: return "TPM_E_INVALID_FAMILY";
-      case TPM_E_NO_NV_PERMISSION: return "TPM_E_NO_NV_PERMISSION";
-      case TPM_E_REQUIRES_SIGN: return "TPM_E_REQUIRES_SIGN";
-      case TPM_E_KEY_NOTSUPPORTED: return "TPM_E_KEY_NOTSUPPORTED";
-      case TPM_E_AUTH_CONFLICT: return "TPM_E_AUTH_CONFLICT";
-      case TPM_E_AREA_LOCKED: return "TPM_E_AREA_LOCKED";
-      case TPM_E_BAD_LOCALITY: return "TPM_E_BAD_LOCALITY";
-      case TPM_E_READ_ONLY: return "TPM_E_READ_ONLY";
-      case TPM_E_PER_NOWRITE: return "TPM_E_PER_NOWRITE";
-      case TPM_E_FAMILYCOUNT: return "TPM_E_FAMILYCOUNT";
-      case TPM_E_WRITE_LOCKED: return "TPM_E_WRITE_LOCKED";
-      case TPM_E_BAD_ATTRIBUTES: return "TPM_E_BAD_ATTRIBUTES";
-      case TPM_E_INVALID_STRUCTURE: return "TPM_E_INVALID_STRUCTURE";
-      case TPM_E_KEY_OWNER_CONTROL: return "TPM_E_KEY_OWNER_CONTROL";
-      case TPM_E_BAD_COUNTER: return "TPM_E_BAD_COUNTER";
-      case TPM_E_NOT_FULLWRITE: return "TPM_E_NOT_FULLWRITE";
-      case TPM_E_CONTEXT_GAP: return "TPM_E_CONTEXT_GAP";
-      case TPM_E_MAXNVWRITES: return "TPM_E_MAXNVWRITES";
-      case TPM_E_NOOPERATOR: return "TPM_E_NOOPERATOR";
-      case TPM_E_RESOURCEMISSING: return "TPM_E_RESOURCEMISSING";
-      case TPM_E_DELEGATE_LOCK: return "TPM_E_DELEGATE_LOCK";
-      case TPM_E_DELEGATE_FAMILY: return "TPM_E_DELEGATE_FAMILY";
-      case TPM_E_DELEGATE_ADMIN: return "TPM_E_DELEGATE_ADMIN";
-      case TPM_E_TRANSPORT_NOTEXCLUSIVE: return "TPM_E_TRANSPORT_NOTEXCLUSIVE";
-      case TPM_E_OWNER_CONTROL: return "TPM_E_OWNER_CONTROL";
-      case TPM_E_DAA_RESOURCES: return "TPM_E_DAA_RESOURCES";
-      case TPM_E_DAA_INPUT_DATA0: return "TPM_E_DAA_INPUT_DATA0";
-      case TPM_E_DAA_INPUT_DATA1: return "TPM_E_DAA_INPUT_DATA1";
-      case TPM_E_DAA_ISSUER_SETTINGS: return "TPM_E_DAA_ISSUER_SETTINGS";
-      case TPM_E_DAA_TPM_SETTINGS: return "TPM_E_DAA_TPM_SETTINGS";
-      case TPM_E_DAA_STAGE: return "TPM_E_DAA_STAGE";
-      case TPM_E_DAA_ISSUER_VALIDITY: return "TPM_E_DAA_ISSUER_VALIDITY";
-      case TPM_E_DAA_WRONG_W: return "TPM_E_DAA_WRONG_W";
-      case TPM_E_BAD_HANDLE: return "TPM_E_BAD_HANDLE";
-      case TPM_E_BAD_DELEGATE: return "TPM_E_BAD_DELEGATE";
-      case TPM_E_BADCONTEXT: return "TPM_E_BADCONTEXT";
-      case TPM_E_TOOMANYCONTEXTS: return "TPM_E_TOOMANYCONTEXTS";
-      case TPM_E_MA_TICKET_SIGNATURE: return "TPM_E_MA_TICKET_SIGNATURE";
-      case TPM_E_MA_DESTINATION: return "TPM_E_MA_DESTINATION";
-      case TPM_E_MA_SOURCE: return "TPM_E_MA_SOURCE";
-      case TPM_E_MA_AUTHORITY: return "TPM_E_MA_AUTHORITY";
-      case TPM_E_PERMANENTEK: return "TPM_E_PERMANENTEK";
-      case TPM_E_BAD_SIGNATURE: return "TPM_E_BAD_SIGNATURE";
-      case TPM_E_NOCONTEXTSPACE: return "TPM_E_NOCONTEXTSPACE";
-      case TPM_E_RETRY: return "TPM_E_RETRY";
-      case TPM_E_NEEDS_SELFTEST: return "TPM_E_NEEDS_SELFTEST";
-      case TPM_E_DOING_SELFTEST: return "TPM_E_DOING_SELFTEST";
-      case TPM_E_DEFEND_LOCK_RUNNING: return "TPM_E_DEFEND_LOCK_RUNNING";
+      case TPM_E_AUTHFAIL:
+        return "TPM_E_AUTHFAIL";
+      case TPM_E_BADINDEX:
+        return "TPM_E_BADINDEX";
+      case TPM_E_BAD_PARAMETER:
+        return "TPM_E_BAD_PARAMETER";
+      case TPM_E_AUDITFAILURE:
+        return "TPM_E_AUDITFAILURE";
+      case TPM_E_CLEAR_DISABLED:
+        return "TPM_E_CLEAR_DISABLED";
+      case TPM_E_DEACTIVATED:
+        return "TPM_E_DEACTIVATED";
+      case TPM_E_DISABLED:
+        return "TPM_E_DISABLED";
+      case TPM_E_DISABLED_CMD:
+        return "TPM_E_DISABLED_CMD";
+      case TPM_E_FAIL:
+        return "TPM_E_FAIL";
+      case TPM_E_BAD_ORDINAL:
+        return "TPM_E_BAD_ORDINAL";
+      case TPM_E_INSTALL_DISABLED:
+        return "TPM_E_INSTALL_DISABLED";
+      case TPM_E_INVALID_KEYHANDLE:
+        return "TPM_E_INVALID_KEYHANDLE";
+      case TPM_E_KEYNOTFOUND:
+        return "TPM_E_KEYNOTFOUND";
+      case TPM_E_INAPPROPRIATE_ENC:
+        return "TPM_E_INAPPROPRIATE_ENC";
+      case TPM_E_MIGRATEFAIL:
+        return "TPM_E_MIGRATEFAIL";
+      case TPM_E_INVALID_PCR_INFO:
+        return "TPM_E_INVALID_PCR_INFO";
+      case TPM_E_NOSPACE:
+        return "TPM_E_NOSPACE";
+      case TPM_E_NOSRK:
+        return "TPM_E_NOSRK";
+      case TPM_E_NOTSEALED_BLOB:
+        return "TPM_E_NOTSEALED_BLOB";
+      case TPM_E_OWNER_SET:
+        return "TPM_E_OWNER_SET";
+      case TPM_E_RESOURCES:
+        return "TPM_E_RESOURCES";
+      case TPM_E_SHORTRANDOM:
+        return "TPM_E_SHORTRANDOM";
+      case TPM_E_SIZE:
+        return "TPM_E_SIZE";
+      case TPM_E_WRONGPCRVAL:
+        return "TPM_E_WRONGPCRVAL";
+      case TPM_E_BAD_PARAM_SIZE:
+        return "TPM_E_BAD_PARAM_SIZE";
+      case TPM_E_SHA_THREAD:
+        return "TPM_E_SHA_THREAD";
+      case TPM_E_SHA_ERROR:
+        return "TPM_E_SHA_ERROR";
+      case TPM_E_FAILEDSELFTEST:
+        return "TPM_E_FAILEDSELFTEST";
+      case TPM_E_AUTH2FAIL:
+        return "TPM_E_AUTH2FAIL";
+      case TPM_E_BADTAG:
+        return "TPM_E_BADTAG";
+      case TPM_E_IOERROR:
+        return "TPM_E_IOERROR";
+      case TPM_E_ENCRYPT_ERROR:
+        return "TPM_E_ENCRYPT_ERROR";
+      case TPM_E_DECRYPT_ERROR:
+        return "TPM_E_DECRYPT_ERROR";
+      case TPM_E_INVALID_AUTHHANDLE:
+        return "TPM_E_INVALID_AUTHHANDLE";
+      case TPM_E_NO_ENDORSEMENT:
+        return "TPM_E_NO_ENDORSEMENT";
+      case TPM_E_INVALID_KEYUSAGE:
+        return "TPM_E_INVALID_KEYUSAGE";
+      case TPM_E_WRONG_ENTITYTYPE:
+        return "TPM_E_WRONG_ENTITYTYPE";
+      case TPM_E_INVALID_POSTINIT:
+        return "TPM_E_INVALID_POSTINIT";
+      case TPM_E_INAPPROPRIATE_SIG:
+        return "TPM_E_INAPPROPRIATE_SIG";
+      case TPM_E_BAD_KEY_PROPERTY:
+        return "TPM_E_BAD_KEY_PROPERTY";
+      case TPM_E_BAD_MIGRATION:
+        return "TPM_E_BAD_MIGRATION";
+      case TPM_E_BAD_SCHEME:
+        return "TPM_E_BAD_SCHEME";
+      case TPM_E_BAD_DATASIZE:
+        return "TPM_E_BAD_DATASIZE";
+      case TPM_E_BAD_MODE:
+        return "TPM_E_BAD_MODE";
+      case TPM_E_BAD_PRESENCE:
+        return "TPM_E_BAD_PRESENCE";
+      case TPM_E_BAD_VERSION:
+        return "TPM_E_BAD_VERSION";
+      case TPM_E_NO_WRAP_TRANSPORT:
+        return "TPM_E_NO_WRAP_TRANSPORT";
+      case TPM_E_AUDITFAIL_UNSUCCESSFUL:
+        return "TPM_E_AUDITFAIL_UNSUCCESSFUL";
+      case TPM_E_AUDITFAIL_SUCCESSFUL:
+        return "TPM_E_AUDITFAIL_SUCCESSFUL";
+      case TPM_E_NOTRESETABLE:
+        return "TPM_E_NOTRESETABLE";
+      case TPM_E_NOTLOCAL:
+        return "TPM_E_NOTLOCAL";
+      case TPM_E_BAD_TYPE:
+        return "TPM_E_BAD_TYPE";
+      case TPM_E_INVALID_RESOURCE:
+        return "TPM_E_INVALID_RESOURCE";
+      case TPM_E_NOTFIPS:
+        return "TPM_E_NOTFIPS";
+      case TPM_E_INVALID_FAMILY:
+        return "TPM_E_INVALID_FAMILY";
+      case TPM_E_NO_NV_PERMISSION:
+        return "TPM_E_NO_NV_PERMISSION";
+      case TPM_E_REQUIRES_SIGN:
+        return "TPM_E_REQUIRES_SIGN";
+      case TPM_E_KEY_NOTSUPPORTED:
+        return "TPM_E_KEY_NOTSUPPORTED";
+      case TPM_E_AUTH_CONFLICT:
+        return "TPM_E_AUTH_CONFLICT";
+      case TPM_E_AREA_LOCKED:
+        return "TPM_E_AREA_LOCKED";
+      case TPM_E_BAD_LOCALITY:
+        return "TPM_E_BAD_LOCALITY";
+      case TPM_E_READ_ONLY:
+        return "TPM_E_READ_ONLY";
+      case TPM_E_PER_NOWRITE:
+        return "TPM_E_PER_NOWRITE";
+      case TPM_E_FAMILYCOUNT:
+        return "TPM_E_FAMILYCOUNT";
+      case TPM_E_WRITE_LOCKED:
+        return "TPM_E_WRITE_LOCKED";
+      case TPM_E_BAD_ATTRIBUTES:
+        return "TPM_E_BAD_ATTRIBUTES";
+      case TPM_E_INVALID_STRUCTURE:
+        return "TPM_E_INVALID_STRUCTURE";
+      case TPM_E_KEY_OWNER_CONTROL:
+        return "TPM_E_KEY_OWNER_CONTROL";
+      case TPM_E_BAD_COUNTER:
+        return "TPM_E_BAD_COUNTER";
+      case TPM_E_NOT_FULLWRITE:
+        return "TPM_E_NOT_FULLWRITE";
+      case TPM_E_CONTEXT_GAP:
+        return "TPM_E_CONTEXT_GAP";
+      case TPM_E_MAXNVWRITES:
+        return "TPM_E_MAXNVWRITES";
+      case TPM_E_NOOPERATOR:
+        return "TPM_E_NOOPERATOR";
+      case TPM_E_RESOURCEMISSING:
+        return "TPM_E_RESOURCEMISSING";
+      case TPM_E_DELEGATE_LOCK:
+        return "TPM_E_DELEGATE_LOCK";
+      case TPM_E_DELEGATE_FAMILY:
+        return "TPM_E_DELEGATE_FAMILY";
+      case TPM_E_DELEGATE_ADMIN:
+        return "TPM_E_DELEGATE_ADMIN";
+      case TPM_E_TRANSPORT_NOTEXCLUSIVE:
+        return "TPM_E_TRANSPORT_NOTEXCLUSIVE";
+      case TPM_E_OWNER_CONTROL:
+        return "TPM_E_OWNER_CONTROL";
+      case TPM_E_DAA_RESOURCES:
+        return "TPM_E_DAA_RESOURCES";
+      case TPM_E_DAA_INPUT_DATA0:
+        return "TPM_E_DAA_INPUT_DATA0";
+      case TPM_E_DAA_INPUT_DATA1:
+        return "TPM_E_DAA_INPUT_DATA1";
+      case TPM_E_DAA_ISSUER_SETTINGS:
+        return "TPM_E_DAA_ISSUER_SETTINGS";
+      case TPM_E_DAA_TPM_SETTINGS:
+        return "TPM_E_DAA_TPM_SETTINGS";
+      case TPM_E_DAA_STAGE:
+        return "TPM_E_DAA_STAGE";
+      case TPM_E_DAA_ISSUER_VALIDITY:
+        return "TPM_E_DAA_ISSUER_VALIDITY";
+      case TPM_E_DAA_WRONG_W:
+        return "TPM_E_DAA_WRONG_W";
+      case TPM_E_BAD_HANDLE:
+        return "TPM_E_BAD_HANDLE";
+      case TPM_E_BAD_DELEGATE:
+        return "TPM_E_BAD_DELEGATE";
+      case TPM_E_BADCONTEXT:
+        return "TPM_E_BADCONTEXT";
+      case TPM_E_TOOMANYCONTEXTS:
+        return "TPM_E_TOOMANYCONTEXTS";
+      case TPM_E_MA_TICKET_SIGNATURE:
+        return "TPM_E_MA_TICKET_SIGNATURE";
+      case TPM_E_MA_DESTINATION:
+        return "TPM_E_MA_DESTINATION";
+      case TPM_E_MA_SOURCE:
+        return "TPM_E_MA_SOURCE";
+      case TPM_E_MA_AUTHORITY:
+        return "TPM_E_MA_AUTHORITY";
+      case TPM_E_PERMANENTEK:
+        return "TPM_E_PERMANENTEK";
+      case TPM_E_BAD_SIGNATURE:
+        return "TPM_E_BAD_SIGNATURE";
+      case TPM_E_NOCONTEXTSPACE:
+        return "TPM_E_NOCONTEXTSPACE";
+      case TPM_E_RETRY:
+        return "TPM_E_RETRY";
+      case TPM_E_NEEDS_SELFTEST:
+        return "TPM_E_NEEDS_SELFTEST";
+      case TPM_E_DOING_SELFTEST:
+        return "TPM_E_DOING_SELFTEST";
+      case TPM_E_DEFEND_LOCK_RUNNING:
+        return "TPM_E_DEFEND_LOCK_RUNNING";
     }
   } else if (layer == TSS_LAYER_TDDL) {
     switch (code) {
-      case TDDL_E_FAIL: return "TDDL_E_FAIL";
-      case TDDL_E_TIMEOUT: return "TDDL_E_TIMEOUT";
-      case TDDL_E_ALREADY_OPENED: return "TDDL_E_ALREADY_OPENED";
-      case TDDL_E_ALREADY_CLOSED: return "TDDL_E_ALREADY_CLOSED";
-      case TDDL_E_INSUFFICIENT_BUFFER: return "TDDL_E_INSUFFICIENT_BUFFER";
-      case TDDL_E_COMMAND_COMPLETED: return "TDDL_E_COMMAND_COMPLETED";
-      case TDDL_E_COMMAND_ABORTED: return "TDDL_E_COMMAND_ABORTED";
-      case TDDL_E_IOERROR: return "TDDL_E_IOERROR";
-      case TDDL_E_BADTAG: return "TDDL_E_BADTAG";
-      case TDDL_E_COMPONENT_NOT_FOUND: return "TDDL_E_COMPONENT_NOT_FOUND";
+      case TDDL_E_FAIL:
+        return "TDDL_E_FAIL";
+      case TDDL_E_TIMEOUT:
+        return "TDDL_E_TIMEOUT";
+      case TDDL_E_ALREADY_OPENED:
+        return "TDDL_E_ALREADY_OPENED";
+      case TDDL_E_ALREADY_CLOSED:
+        return "TDDL_E_ALREADY_CLOSED";
+      case TDDL_E_INSUFFICIENT_BUFFER:
+        return "TDDL_E_INSUFFICIENT_BUFFER";
+      case TDDL_E_COMMAND_COMPLETED:
+        return "TDDL_E_COMMAND_COMPLETED";
+      case TDDL_E_COMMAND_ABORTED:
+        return "TDDL_E_COMMAND_ABORTED";
+      case TDDL_E_IOERROR:
+        return "TDDL_E_IOERROR";
+      case TDDL_E_BADTAG:
+        return "TDDL_E_BADTAG";
+      case TDDL_E_COMPONENT_NOT_FOUND:
+        return "TDDL_E_COMPONENT_NOT_FOUND";
     }
   } else if (layer == TSS_LAYER_TCS) {
     switch (code) {
-      case TCS_E_INVALID_CONTEXTHANDLE: return "TCS_E_INVALID_CONTEXTHANDLE";
-      case TCS_E_INVALID_KEYHANDLE: return "TCS_E_INVALID_KEYHANDLE";
-      case TCS_E_INVALID_AUTHHANDLE: return "TCS_E_INVALID_AUTHHANDLE";
-      case TCS_E_INVALID_AUTHSESSION: return "TCS_E_INVALID_AUTHSESSION";
-      case TCS_E_INVALID_KEY: return "TCS_E_INVALID_KEY";
-      case TCS_E_KEY_MISMATCH: return "TCS_E_KEY_MISMATCH";
-      case TCS_E_KM_LOADFAILED: return "TCS_E_KM_LOADFAILED";
-      case TCS_E_KEY_CONTEXT_RELOAD: return "TCS_E_KEY_CONTEXT_RELOAD";
-      case TCS_E_BAD_INDEX: return "TCS_E_BAD_INDEX";
-      case TCS_E_KEY_ALREADY_REGISTERED: return "TCS_E_KEY_ALREADY_REGISTERED";
-      case TCS_E_BAD_PARAMETER: return "TCS_E_BAD_PARAMETER";
-      case TCS_E_OUTOFMEMORY: return "TCS_E_OUTOFMEMORY";
-      case TCS_E_NOTIMPL: return "TCS_E_NOTIMPL";
-      case TCS_E_INTERNAL_ERROR: return "TCS_E_INTERNAL_ERROR";
+      case TCS_E_INVALID_CONTEXTHANDLE:
+        return "TCS_E_INVALID_CONTEXTHANDLE";
+      case TCS_E_INVALID_KEYHANDLE:
+        return "TCS_E_INVALID_KEYHANDLE";
+      case TCS_E_INVALID_AUTHHANDLE:
+        return "TCS_E_INVALID_AUTHHANDLE";
+      case TCS_E_INVALID_AUTHSESSION:
+        return "TCS_E_INVALID_AUTHSESSION";
+      case TCS_E_INVALID_KEY:
+        return "TCS_E_INVALID_KEY";
+      case TCS_E_KEY_MISMATCH:
+        return "TCS_E_KEY_MISMATCH";
+      case TCS_E_KM_LOADFAILED:
+        return "TCS_E_KM_LOADFAILED";
+      case TCS_E_KEY_CONTEXT_RELOAD:
+        return "TCS_E_KEY_CONTEXT_RELOAD";
+      case TCS_E_BAD_INDEX:
+        return "TCS_E_BAD_INDEX";
+      case TCS_E_KEY_ALREADY_REGISTERED:
+        return "TCS_E_KEY_ALREADY_REGISTERED";
+      case TCS_E_BAD_PARAMETER:
+        return "TCS_E_BAD_PARAMETER";
+      case TCS_E_OUTOFMEMORY:
+        return "TCS_E_OUTOFMEMORY";
+      case TCS_E_NOTIMPL:
+        return "TCS_E_NOTIMPL";
+      case TCS_E_INTERNAL_ERROR:
+        return "TCS_E_INTERNAL_ERROR";
     }
   } else if (layer == TSS_LAYER_TSP) {
     switch (code) {
-      case TSS_E_FAIL: return "TSS_E_FAIL";
-      case TSS_E_BAD_PARAMETER: return "TSS_E_BAD_PARAMETER";
-      case TSS_E_INTERNAL_ERROR: return "TSS_E_INTERNAL_ERROR";
-      case TSS_E_OUTOFMEMORY: return "TSS_E_OUTOFMEMORY";
-      case TSS_E_NOTIMPL: return "TSS_E_NOTIMPL";
-      case TSS_E_KEY_ALREADY_REGISTERED: return "TSS_E_KEY_ALREADY_REGISTERED";
-      case TSS_E_TPM_UNEXPECTED: return "TSS_E_TPM_UNEXPECTED";
-      case TSS_E_COMM_FAILURE: return "TSS_E_COMM_FAILURE";
-      case TSS_E_TIMEOUT: return "TSS_E_TIMEOUT";
+      case TSS_E_FAIL:
+        return "TSS_E_FAIL";
+      case TSS_E_BAD_PARAMETER:
+        return "TSS_E_BAD_PARAMETER";
+      case TSS_E_INTERNAL_ERROR:
+        return "TSS_E_INTERNAL_ERROR";
+      case TSS_E_OUTOFMEMORY:
+        return "TSS_E_OUTOFMEMORY";
+      case TSS_E_NOTIMPL:
+        return "TSS_E_NOTIMPL";
+      case TSS_E_KEY_ALREADY_REGISTERED:
+        return "TSS_E_KEY_ALREADY_REGISTERED";
+      case TSS_E_TPM_UNEXPECTED:
+        return "TSS_E_TPM_UNEXPECTED";
+      case TSS_E_COMM_FAILURE:
+        return "TSS_E_COMM_FAILURE";
+      case TSS_E_TIMEOUT:
+        return "TSS_E_TIMEOUT";
       case TSS_E_TPM_UNSUPPORTED_FEATURE:
         return "TSS_E_TPM_UNSUPPORTED_FEATURE";
-      case TSS_E_CANCELED: return "TSS_E_CANCELED";
-      case TSS_E_PS_KEY_NOTFOUND: return "TSS_E_PS_KEY_NOTFOUND";
-      case TSS_E_PS_KEY_EXISTS: return "TSS_E_PS_KEY_EXISTS";
-      case TSS_E_PS_BAD_KEY_STATE: return "TSS_E_PS_BAD_KEY_STATE";
-      case TSS_E_INVALID_OBJECT_TYPE: return "TSS_E_INVALID_OBJECT_TYPE";
-      case TSS_E_NO_CONNECTION: return "TSS_E_NO_CONNECTION";
-      case TSS_E_CONNECTION_FAILED: return "TSS_E_CONNECTION_FAILED";
-      case TSS_E_CONNECTION_BROKEN: return "TSS_E_CONNECTION_BROKEN";
-      case TSS_E_HASH_INVALID_ALG: return "TSS_E_HASH_INVALID_ALG";
-      case TSS_E_HASH_INVALID_LENGTH: return "TSS_E_HASH_INVALID_LENGTH";
-      case TSS_E_HASH_NO_DATA: return "TSS_E_HASH_NO_DATA";
-      case TSS_E_INVALID_ATTRIB_FLAG: return "TSS_E_INVALID_ATTRIB_FLAG";
-      case TSS_E_INVALID_ATTRIB_SUBFLAG: return "TSS_E_INVALID_ATTRIB_SUBFLAG";
-      case TSS_E_INVALID_ATTRIB_DATA: return "TSS_E_INVALID_ATTRIB_DATA";
+      case TSS_E_CANCELED:
+        return "TSS_E_CANCELED";
+      case TSS_E_PS_KEY_NOTFOUND:
+        return "TSS_E_PS_KEY_NOTFOUND";
+      case TSS_E_PS_KEY_EXISTS:
+        return "TSS_E_PS_KEY_EXISTS";
+      case TSS_E_PS_BAD_KEY_STATE:
+        return "TSS_E_PS_BAD_KEY_STATE";
+      case TSS_E_INVALID_OBJECT_TYPE:
+        return "TSS_E_INVALID_OBJECT_TYPE";
+      case TSS_E_NO_CONNECTION:
+        return "TSS_E_NO_CONNECTION";
+      case TSS_E_CONNECTION_FAILED:
+        return "TSS_E_CONNECTION_FAILED";
+      case TSS_E_CONNECTION_BROKEN:
+        return "TSS_E_CONNECTION_BROKEN";
+      case TSS_E_HASH_INVALID_ALG:
+        return "TSS_E_HASH_INVALID_ALG";
+      case TSS_E_HASH_INVALID_LENGTH:
+        return "TSS_E_HASH_INVALID_LENGTH";
+      case TSS_E_HASH_NO_DATA:
+        return "TSS_E_HASH_NO_DATA";
+      case TSS_E_INVALID_ATTRIB_FLAG:
+        return "TSS_E_INVALID_ATTRIB_FLAG";
+      case TSS_E_INVALID_ATTRIB_SUBFLAG:
+        return "TSS_E_INVALID_ATTRIB_SUBFLAG";
+      case TSS_E_INVALID_ATTRIB_DATA:
+        return "TSS_E_INVALID_ATTRIB_DATA";
       case TSS_E_INVALID_OBJECT_INITFLAG:
         return "TSS_E_INVALID_OBJECT_INITFLAG";
-      case TSS_E_NO_PCRS_SET: return "TSS_E_NO_PCRS_SET";
-      case TSS_E_KEY_NOT_LOADED: return "TSS_E_KEY_NOT_LOADED";
-      case TSS_E_KEY_NOT_SET: return "TSS_E_KEY_NOT_SET";
-      case TSS_E_VALIDATION_FAILED: return "TSS_E_VALIDATION_FAILED";
-      case TSS_E_TSP_AUTHREQUIRED: return "TSS_E_TSP_AUTHREQUIRED";
-      case TSS_E_TSP_AUTH2REQUIRED: return "TSS_E_TSP_AUTH2REQUIRED";
-      case TSS_E_TSP_AUTHFAIL: return "TSS_E_TSP_AUTHFAIL";
-      case TSS_E_TSP_AUTH2FAIL: return "TSS_E_TSP_AUTH2FAIL";
+      case TSS_E_NO_PCRS_SET:
+        return "TSS_E_NO_PCRS_SET";
+      case TSS_E_KEY_NOT_LOADED:
+        return "TSS_E_KEY_NOT_LOADED";
+      case TSS_E_KEY_NOT_SET:
+        return "TSS_E_KEY_NOT_SET";
+      case TSS_E_VALIDATION_FAILED:
+        return "TSS_E_VALIDATION_FAILED";
+      case TSS_E_TSP_AUTHREQUIRED:
+        return "TSS_E_TSP_AUTHREQUIRED";
+      case TSS_E_TSP_AUTH2REQUIRED:
+        return "TSS_E_TSP_AUTH2REQUIRED";
+      case TSS_E_TSP_AUTHFAIL:
+        return "TSS_E_TSP_AUTHFAIL";
+      case TSS_E_TSP_AUTH2FAIL:
+        return "TSS_E_TSP_AUTH2FAIL";
       case TSS_E_KEY_NO_MIGRATION_POLICY:
         return "TSS_E_KEY_NO_MIGRATION_POLICY";
-      case TSS_E_POLICY_NO_SECRET: return "TSS_E_POLICY_NO_SECRET";
-      case TSS_E_INVALID_OBJ_ACCESS: return "TSS_E_INVALID_OBJ_ACCESS";
-      case TSS_E_INVALID_ENCSCHEME: return "TSS_E_INVALID_ENCSCHEME";
-      case TSS_E_INVALID_SIGSCHEME: return "TSS_E_INVALID_SIGSCHEME";
-      case TSS_E_ENC_INVALID_LENGTH: return "TSS_E_ENC_INVALID_LENGTH";
-      case TSS_E_ENC_NO_DATA: return "TSS_E_ENC_NO_DATA";
-      case TSS_E_ENC_INVALID_TYPE: return "TSS_E_ENC_INVALID_TYPE";
-      case TSS_E_INVALID_KEYUSAGE: return "TSS_E_INVALID_KEYUSAGE";
-      case TSS_E_VERIFICATION_FAILED: return "TSS_E_VERIFICATION_FAILED";
-      case TSS_E_HASH_NO_IDENTIFIER: return "TSS_E_HASH_NO_IDENTIFIER";
-      case TSS_E_INVALID_HANDLE: return "TSS_E_INVALID_HANDLE";
-      case TSS_E_SILENT_CONTEXT: return "TSS_E_SILENT_CONTEXT";
-      case TSS_E_EK_CHECKSUM: return "TSS_E_EK_CHECKSUM";
-      case TSS_E_DELEGATION_NOTSET: return "TSS_E_DELEGATION_NOTSET";
-      case TSS_E_DELFAMILY_NOTFOUND: return "TSS_E_DELFAMILY_NOTFOUND";
-      case TSS_E_DELFAMILY_ROWEXISTS: return "TSS_E_DELFAMILY_ROWEXISTS";
-      case TSS_E_VERSION_MISMATCH: return "TSS_E_VERSION_MISMATCH";
+      case TSS_E_POLICY_NO_SECRET:
+        return "TSS_E_POLICY_NO_SECRET";
+      case TSS_E_INVALID_OBJ_ACCESS:
+        return "TSS_E_INVALID_OBJ_ACCESS";
+      case TSS_E_INVALID_ENCSCHEME:
+        return "TSS_E_INVALID_ENCSCHEME";
+      case TSS_E_INVALID_SIGSCHEME:
+        return "TSS_E_INVALID_SIGSCHEME";
+      case TSS_E_ENC_INVALID_LENGTH:
+        return "TSS_E_ENC_INVALID_LENGTH";
+      case TSS_E_ENC_NO_DATA:
+        return "TSS_E_ENC_NO_DATA";
+      case TSS_E_ENC_INVALID_TYPE:
+        return "TSS_E_ENC_INVALID_TYPE";
+      case TSS_E_INVALID_KEYUSAGE:
+        return "TSS_E_INVALID_KEYUSAGE";
+      case TSS_E_VERIFICATION_FAILED:
+        return "TSS_E_VERIFICATION_FAILED";
+      case TSS_E_HASH_NO_IDENTIFIER:
+        return "TSS_E_HASH_NO_IDENTIFIER";
+      case TSS_E_INVALID_HANDLE:
+        return "TSS_E_INVALID_HANDLE";
+      case TSS_E_SILENT_CONTEXT:
+        return "TSS_E_SILENT_CONTEXT";
+      case TSS_E_EK_CHECKSUM:
+        return "TSS_E_EK_CHECKSUM";
+      case TSS_E_DELEGATION_NOTSET:
+        return "TSS_E_DELEGATION_NOTSET";
+      case TSS_E_DELFAMILY_NOTFOUND:
+        return "TSS_E_DELFAMILY_NOTFOUND";
+      case TSS_E_DELFAMILY_ROWEXISTS:
+        return "TSS_E_DELFAMILY_ROWEXISTS";
+      case TSS_E_VERSION_MISMATCH:
+        return "TSS_E_VERSION_MISMATCH";
       case TSS_E_DAA_AR_DECRYPTION_ERROR:
         return "TSS_E_DAA_AR_DECRYPTION_ERROR";
       case TSS_E_DAA_AUTHENTICATION_ERROR:
@@ -1182,17 +1299,28 @@ string TPMUtilityImpl::ResultToString(TSS_RESULT result) {
         return "TSS_E_DAA_CREDENTIAL_PROOF_ERROR";
       case TSS_E_DAA_CREDENTIAL_REQUEST_PROOF_ERROR:
         return "TSS_E_DAA_CREDENTIAL_REQUEST_PROOF_ERROR";
-      case TSS_E_DAA_ISSUER_KEY_ERROR: return "TSS_E_DAA_ISSUER_KEY_ERROR";
-      case TSS_E_DAA_PSEUDONYM_ERROR: return "TSS_E_DAA_PSEUDONYM_ERROR";
-      case TSS_E_INVALID_RESOURCE: return "TSS_E_INVALID_RESOURCE";
-      case TSS_E_NV_AREA_EXIST: return "TSS_E_NV_AREA_EXIST";
-      case TSS_E_NV_AREA_NOT_EXIST: return "TSS_E_NV_AREA_NOT_EXIST";
-      case TSS_E_TSP_TRANS_AUTHFAIL: return "TSS_E_TSP_TRANS_AUTHFAIL";
-      case TSS_E_TSP_TRANS_AUTHREQUIRED: return "TSS_E_TSP_TRANS_AUTHREQUIRED";
-      case TSS_E_TSP_TRANS_NOTEXCLUSIVE: return "TSS_E_TSP_TRANS_NOTEXCLUSIVE";
-      case TSS_E_TSP_TRANS_FAIL: return "TSS_E_TSP_TRANS_FAIL";
-      case TSS_E_TSP_TRANS_NO_PUBKEY: return "TSS_E_TSP_TRANS_NO_PUBKEY";
-      case TSS_E_NO_ACTIVE_COUNTER: return "TSS_E_NO_ACTIVE_COUNTER";
+      case TSS_E_DAA_ISSUER_KEY_ERROR:
+        return "TSS_E_DAA_ISSUER_KEY_ERROR";
+      case TSS_E_DAA_PSEUDONYM_ERROR:
+        return "TSS_E_DAA_PSEUDONYM_ERROR";
+      case TSS_E_INVALID_RESOURCE:
+        return "TSS_E_INVALID_RESOURCE";
+      case TSS_E_NV_AREA_EXIST:
+        return "TSS_E_NV_AREA_EXIST";
+      case TSS_E_NV_AREA_NOT_EXIST:
+        return "TSS_E_NV_AREA_NOT_EXIST";
+      case TSS_E_TSP_TRANS_AUTHFAIL:
+        return "TSS_E_TSP_TRANS_AUTHFAIL";
+      case TSS_E_TSP_TRANS_AUTHREQUIRED:
+        return "TSS_E_TSP_TRANS_AUTHREQUIRED";
+      case TSS_E_TSP_TRANS_NOTEXCLUSIVE:
+        return "TSS_E_TSP_TRANS_NOTEXCLUSIVE";
+      case TSS_E_TSP_TRANS_FAIL:
+        return "TSS_E_TSP_TRANS_FAIL";
+      case TSS_E_TSP_TRANS_NO_PUBKEY:
+        return "TSS_E_TSP_TRANS_NO_PUBKEY";
+      case TSS_E_NO_ACTIVE_COUNTER:
+        return "TSS_E_NO_ACTIVE_COUNTER";
     }
   }
   // Unknown value, just give the hex numeric value.

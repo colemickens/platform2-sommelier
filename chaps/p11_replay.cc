@@ -73,8 +73,7 @@ CK_SLOT_ID Initialize() {
 // Opens a session on the given slot.
 CK_SESSION_HANDLE OpenSession(CK_SLOT_ID slot) {
   CK_SESSION_HANDLE session = CK_INVALID_HANDLE;
-  CK_RV result = C_OpenSession(slot,
-                               CKF_SERIAL_SESSION | CKF_RW_SESSION,
+  CK_RV result = C_OpenSession(slot, CKF_SERIAL_SESSION | CKF_RW_SESSION,
                                NULL,  // Ignore callbacks.
                                NULL,  // Ignore callbacks.
                                &session);
@@ -95,7 +94,7 @@ CK_SESSION_HANDLE Login(CK_SLOT_ID slot,
   bool try_again = true;
   while (try_again) {
     try_again = false;
-    result = C_Login(session, CKU_USER, (CK_UTF8CHAR_PTR)"111111", 6);
+    result = C_Login(session, CKU_USER, (CK_UTF8CHAR_PTR) "111111", 6);
     LOG(INFO) << "C_Login: " << chaps::CK_RVToString(result);
     if (result != CKR_OK && result != CKR_USER_ALREADY_LOGGED_IN)
       exit(-1);
@@ -145,9 +144,9 @@ void Find(CK_SESSION_HANDLE session,
 void Sign(CK_SESSION_HANDLE session, const string& label) {
   CK_OBJECT_CLASS class_value = CKO_PRIVATE_KEY;
   CK_ATTRIBUTE attributes[] = {
-    {CKA_CLASS, &class_value, sizeof(class_value)},
-    {CKA_ID, const_cast<char*>(kKeyID), strlen(kKeyID)},
-    {CKA_LABEL, const_cast<char*>(label.c_str()), label.length()},
+      {CKA_CLASS, &class_value, sizeof(class_value)},
+      {CKA_ID, const_cast<char*>(kKeyID), strlen(kKeyID)},
+      {CKA_LABEL, const_cast<char*>(label.c_str()), label.length()},
   };
   vector<CK_OBJECT_HANDLE> objects;
   Find(session, attributes, arraysize(attributes), &objects);
@@ -168,9 +167,7 @@ void Sign(CK_SESSION_HANDLE session, const string& label) {
   CK_BYTE data[200] = {0};
   CK_BYTE signature[2048] = {0};
   CK_ULONG signature_length = arraysize(signature);
-  result = C_Sign(session,
-                  data, arraysize(data),
-                  signature, &signature_length);
+  result = C_Sign(session, data, arraysize(data), signature, &signature_length);
   LOG(INFO) << "C_Sign: " << chaps::CK_RVToString(result);
   if (result != CKR_OK)
     exit(-1);
@@ -190,36 +187,32 @@ void GenerateKeyPair(CK_SESSION_HANDLE session,
   CK_BBOOL false_value = CK_FALSE;
   CK_BBOOL true_value = CK_TRUE;
   CK_ATTRIBUTE public_attributes[] = {
-    {CKA_ENCRYPT, &true_value, sizeof(true_value)},
-    {CKA_VERIFY, &true_value, sizeof(true_value)},
-    {CKA_WRAP, &false_value, sizeof(false_value)},
-    {CKA_TOKEN, &true_value, sizeof(true_value)},
-    {CKA_PRIVATE, &false_value, sizeof(false_value)},
-    {CKA_MODULUS_BITS, &bits, sizeof(bits)},
-    {CKA_PUBLIC_EXPONENT, e, sizeof(e)},
-    {CKA_ID, const_cast<char*>(kKeyID), strlen(kKeyID)},
-    {CKA_LABEL, const_cast<char*>(label.c_str()), label.length()},
+      {CKA_ENCRYPT, &true_value, sizeof(true_value)},
+      {CKA_VERIFY, &true_value, sizeof(true_value)},
+      {CKA_WRAP, &false_value, sizeof(false_value)},
+      {CKA_TOKEN, &true_value, sizeof(true_value)},
+      {CKA_PRIVATE, &false_value, sizeof(false_value)},
+      {CKA_MODULUS_BITS, &bits, sizeof(bits)},
+      {CKA_PUBLIC_EXPONENT, e, sizeof(e)},
+      {CKA_ID, const_cast<char*>(kKeyID), strlen(kKeyID)},
+      {CKA_LABEL, const_cast<char*>(label.c_str()), label.length()},
   };
   CK_ATTRIBUTE private_attributes[] = {
-    {CKA_DECRYPT, &true_value, sizeof(true_value)},
-    {CKA_SIGN, &true_value, sizeof(true_value)},
-    {CKA_UNWRAP, &false_value, sizeof(false_value)},
-    {CKA_SENSITIVE, &true_value, sizeof(true_value)},
-    {CKA_TOKEN, &true_value, sizeof(true_value)},
-    {CKA_PRIVATE, &true_value, sizeof(true_value)},
-    {CKA_ID, const_cast<char*>(kKeyID), strlen(kKeyID)},
-    {CKA_LABEL, const_cast<char*>(label.c_str()), label.length()},
+      {CKA_DECRYPT, &true_value, sizeof(true_value)},
+      {CKA_SIGN, &true_value, sizeof(true_value)},
+      {CKA_UNWRAP, &false_value, sizeof(false_value)},
+      {CKA_SENSITIVE, &true_value, sizeof(true_value)},
+      {CKA_TOKEN, &true_value, sizeof(true_value)},
+      {CKA_PRIVATE, &true_value, sizeof(true_value)},
+      {CKA_ID, const_cast<char*>(kKeyID), strlen(kKeyID)},
+      {CKA_LABEL, const_cast<char*>(label.c_str()), label.length()},
   };
   CK_OBJECT_HANDLE public_key_handle = 0;
   CK_OBJECT_HANDLE private_key_handle = 0;
-  CK_RV result = C_GenerateKeyPair(session,
-                                   &mechanism,
-                                   public_attributes,
-                                   arraysize(public_attributes),
-                                   private_attributes,
-                                   arraysize(private_attributes),
-                                   &public_key_handle,
-                                   &private_key_handle);
+  CK_RV result = C_GenerateKeyPair(
+      session, &mechanism, public_attributes, arraysize(public_attributes),
+      private_attributes, arraysize(private_attributes), &public_key_handle,
+      &private_key_handle);
   LOG(INFO) << "C_GenerateKeyPair: " << chaps::CK_RVToString(result);
   if (result != CKR_OK)
     exit(-1);
@@ -289,8 +282,7 @@ string ecpoint2bin(EC_KEY* key) {
 
   // Put OCT_STRING to ASN1_OCTET_STRING
   ScopedASN1_OCTET_STRING os(ASN1_OCTET_STRING_new());
-  ASN1_OCTET_STRING_set(os.get(),
-                        ConvertStringToByteBuffer(oct_string.data()),
+  ASN1_OCTET_STRING_set(os.get(), ConvertStringToByteBuffer(oct_string.data()),
                         oct_string.size());
 
   // DER encode ASN1_OCTET_STRING
@@ -319,30 +311,29 @@ void CreateRSAPrivateKey(CK_SESSION_HANDLE session,
   string iqmp = bn2bin(rsa->iqmp);
 
   CK_ATTRIBUTE private_attributes[] = {
-    {CKA_CLASS, &priv_class, sizeof(priv_class) },
-    {CKA_KEY_TYPE, &key_type, sizeof(key_type) },
-    {CKA_DECRYPT, &true_value, sizeof(true_value) },
-    {CKA_SIGN, &true_value, sizeof(true_value) },
-    {CKA_UNWRAP, &false_value, sizeof(false_value) },
-    {CKA_SENSITIVE, &true_value, sizeof(true_value) },
-    {CKA_TOKEN, &true_value, sizeof(true_value) },
-    {CKA_PRIVATE, &true_value, sizeof(true_value) },
-    {CKA_ID, const_cast<uint8_t*>(object_id.data()), object_id.size() },
-    {CKA_LABEL, const_cast<char*>(label.c_str()), label.length()},
-    {CKA_MODULUS, const_cast<char*>(n.c_str()), n.length() },
-    {CKA_PUBLIC_EXPONENT, const_cast<char*>(e.c_str()), e.length() },
-    {CKA_PRIVATE_EXPONENT, const_cast<char*>(d.c_str()), d.length() },
-    {CKA_PRIME_1, const_cast<char*>(p.c_str()), p.length() },
-    {CKA_PRIME_2, const_cast<char*>(q.c_str()), q.length() },
-    {CKA_EXPONENT_1, const_cast<char*>(dmp1.c_str()), dmp1.length() },
-    {CKA_EXPONENT_2, const_cast<char*>(dmq1.c_str()), dmq1.length() },
-    {CKA_COEFFICIENT, const_cast<char*>(iqmp.c_str()), iqmp.length() },
+      {CKA_CLASS, &priv_class, sizeof(priv_class)},
+      {CKA_KEY_TYPE, &key_type, sizeof(key_type)},
+      {CKA_DECRYPT, &true_value, sizeof(true_value)},
+      {CKA_SIGN, &true_value, sizeof(true_value)},
+      {CKA_UNWRAP, &false_value, sizeof(false_value)},
+      {CKA_SENSITIVE, &true_value, sizeof(true_value)},
+      {CKA_TOKEN, &true_value, sizeof(true_value)},
+      {CKA_PRIVATE, &true_value, sizeof(true_value)},
+      {CKA_ID, const_cast<uint8_t*>(object_id.data()), object_id.size()},
+      {CKA_LABEL, const_cast<char*>(label.c_str()), label.length()},
+      {CKA_MODULUS, const_cast<char*>(n.c_str()), n.length()},
+      {CKA_PUBLIC_EXPONENT, const_cast<char*>(e.c_str()), e.length()},
+      {CKA_PRIVATE_EXPONENT, const_cast<char*>(d.c_str()), d.length()},
+      {CKA_PRIME_1, const_cast<char*>(p.c_str()), p.length()},
+      {CKA_PRIME_2, const_cast<char*>(q.c_str()), q.length()},
+      {CKA_EXPONENT_1, const_cast<char*>(dmp1.c_str()), dmp1.length()},
+      {CKA_EXPONENT_2, const_cast<char*>(dmq1.c_str()), dmq1.length()},
+      {CKA_COEFFICIENT, const_cast<char*>(iqmp.c_str()), iqmp.length()},
   };
   CK_OBJECT_HANDLE private_key_handle = 0;
-  CK_RV result = C_CreateObject(session,
-                                private_attributes,
-                                arraysize(private_attributes),
-                                &private_key_handle);
+  CK_RV result =
+      C_CreateObject(session, private_attributes, arraysize(private_attributes),
+                     &private_key_handle);
   LOG(INFO) << "C_CreateObject: " << chaps::CK_RVToString(result);
   if (result != CKR_OK) {
     exit(-1);
@@ -362,24 +353,23 @@ void CreateRSAPublicKey(CK_SESSION_HANDLE session,
   string n = bn2bin(rsa->n);
   string e = bn2bin(rsa->e);
   CK_ATTRIBUTE public_attributes[] = {
-    {CKA_CLASS, &pub_class, sizeof(pub_class) },
-    {CKA_KEY_TYPE, &key_type, sizeof(key_type) },
-    {CKA_ENCRYPT, &true_value, sizeof(true_value) },
-    {CKA_VERIFY, &true_value, sizeof(true_value) },
-    {CKA_WRAP, &false_value, sizeof(false_value) },
-    {CKA_TOKEN, &true_value, sizeof(true_value) },
-    {CKA_PRIVATE, &false_value, sizeof(false_value) },
-    {CKA_ID, const_cast<uint8_t*>(object_id.data()), object_id.size() },
-    {CKA_LABEL, const_cast<char*>(label.c_str()), label.length()},
-    {CKA_MODULUS_BITS, &bits, sizeof(bits) },
-    {CKA_MODULUS, const_cast<char*>(n.c_str()), n.length() },
-    {CKA_PUBLIC_EXPONENT, const_cast<char*>(e.c_str()), e.length() },
+      {CKA_CLASS, &pub_class, sizeof(pub_class)},
+      {CKA_KEY_TYPE, &key_type, sizeof(key_type)},
+      {CKA_ENCRYPT, &true_value, sizeof(true_value)},
+      {CKA_VERIFY, &true_value, sizeof(true_value)},
+      {CKA_WRAP, &false_value, sizeof(false_value)},
+      {CKA_TOKEN, &true_value, sizeof(true_value)},
+      {CKA_PRIVATE, &false_value, sizeof(false_value)},
+      {CKA_ID, const_cast<uint8_t*>(object_id.data()), object_id.size()},
+      {CKA_LABEL, const_cast<char*>(label.c_str()), label.length()},
+      {CKA_MODULUS_BITS, &bits, sizeof(bits)},
+      {CKA_MODULUS, const_cast<char*>(n.c_str()), n.length()},
+      {CKA_PUBLIC_EXPONENT, const_cast<char*>(e.c_str()), e.length()},
   };
   CK_OBJECT_HANDLE public_key_handle = 0;
-  CK_RV result = C_CreateObject(session,
-                                public_attributes,
-                                arraysize(public_attributes),
-                                &public_key_handle);
+  CK_RV result =
+      C_CreateObject(session, public_attributes, arraysize(public_attributes),
+                     &public_key_handle);
   LOG(INFO) << "C_CreateObject: " << chaps::CK_RVToString(result);
   if (result != CKR_OK)
     exit(-1);
@@ -469,21 +459,19 @@ void CreateCertificate(CK_SESSION_HANDLE session,
   CK_CERTIFICATE_TYPE cert_type = CKC_X_509;
   CK_BBOOL is_true = CK_TRUE;
   CK_ATTRIBUTE attributes[] = {
-    {CKA_CLASS, &clazz, sizeof(clazz) },
-    {CKA_CERTIFICATE_TYPE, &cert_type, sizeof(cert_type) },
-    {CKA_TOKEN, &is_true, sizeof(is_true) },
-    {CKA_VALUE, const_cast<char*>(value.c_str()), value.length() },
-    {CKA_ID, const_cast<uint8_t*>(object_id.data()), object_id.size() },
-    {CKA_SUBJECT, const_cast<char*>(subject.c_str()), subject.length()},
-    {CKA_ISSUER, const_cast<char*>(issuer.c_str()), issuer.length() },
-    {CKA_SERIAL_NUMBER, const_cast<char*>(serial.c_str()), serial.length() },
-    {CKA_LABEL, const_cast<char*>(label.c_str()), label.length()},
+      {CKA_CLASS, &clazz, sizeof(clazz)},
+      {CKA_CERTIFICATE_TYPE, &cert_type, sizeof(cert_type)},
+      {CKA_TOKEN, &is_true, sizeof(is_true)},
+      {CKA_VALUE, const_cast<char*>(value.c_str()), value.length()},
+      {CKA_ID, const_cast<uint8_t*>(object_id.data()), object_id.size()},
+      {CKA_SUBJECT, const_cast<char*>(subject.c_str()), subject.length()},
+      {CKA_ISSUER, const_cast<char*>(issuer.c_str()), issuer.length()},
+      {CKA_SERIAL_NUMBER, const_cast<char*>(serial.c_str()), serial.length()},
+      {CKA_LABEL, const_cast<char*>(label.c_str()), label.length()},
   };
   CK_OBJECT_HANDLE handle = 0;
-  CK_RV result = C_CreateObject(session,
-                                attributes,
-                                arraysize(attributes),
-                                &handle);
+  CK_RV result =
+      C_CreateObject(session, attributes, arraysize(attributes), &handle);
   LOG(INFO) << "C_CreateObject: " << chaps::CK_RVToString(result);
   if (result != CKR_OK)
     exit(-1);
@@ -678,9 +666,8 @@ void InjectRSAKeyPair(CK_SESSION_HANDLE session,
 void DeleteAllTestKeys(CK_SESSION_HANDLE session) {
   CK_OBJECT_CLASS class_value = CKO_PRIVATE_KEY;
   CK_ATTRIBUTE attributes[] = {
-    {CKA_CLASS, &class_value, sizeof(class_value)},
-    {CKA_ID, const_cast<char*>(kKeyID), strlen(kKeyID)}
-  };
+      {CKA_CLASS, &class_value, sizeof(class_value)},
+      {CKA_ID, const_cast<char*>(kKeyID), strlen(kKeyID)}};
   vector<CK_OBJECT_HANDLE> objects;
   Find(session, attributes, arraysize(attributes), &objects);
   class_value = CKO_PUBLIC_KEY;
@@ -710,25 +697,31 @@ void PrintHelp() {
   printf("Usage: p11_replay [--slot=<slot>] [COMMAND]\n");
   printf("Commands:\n");
   printf("  --cleanup : Deletes all test keys.\n");
-  printf("  --generate [--label=<key_label> --key_size=<size_in_bits>]"
-         " : Generates a key pair suitable for replay tests.\n");
-  printf("  --generate_delete : Generates a key pair and deletes it. This is "
-         "useful for comparing key generation on different TPM models.\n");
-  printf("  --import --path=<path to file> --type=<cert, privkey, pubkey>"
-         " --id=<token id str>"
-         " : Reads an object into the token.  Accepts DER formatted X.509"
-         " certificates and DER formatted PKCS#1 or PKCS#8 private keys.\n");
-  printf("  --inject [--label=<key_label> --key_size=<size_in_bits>]"
-         " : Locally generates a key pair suitable for replay tests and injects"
-         " it into the token.\n");
+  printf(
+      "  --generate [--label=<key_label> --key_size=<size_in_bits>]"
+      " : Generates a key pair suitable for replay tests.\n");
+  printf(
+      "  --generate_delete : Generates a key pair and deletes it. This is "
+      "useful for comparing key generation on different TPM models.\n");
+  printf(
+      "  --import --path=<path to file> --type=<cert, privkey, pubkey>"
+      " --id=<token id str>"
+      " : Reads an object into the token.  Accepts DER formatted X.509"
+      " certificates and DER formatted PKCS#1 or PKCS#8 private keys.\n");
+  printf(
+      "  --inject [--label=<key_label> --key_size=<size_in_bits>]"
+      " : Locally generates a key pair suitable for replay tests and injects"
+      " it into the token.\n");
   printf("  --list_objects : Lists all token objects.\n");
   printf("  --list_tokens: Lists token info for each loaded token.\n");
   printf("  --logout : Logs out once all other commands have finished.\n");
-  printf("  --replay_vpn [--label=<key_label>]"
-         " : Replays a L2TP/IPSEC VPN negotiation.\n");
-  printf("  --replay_wifi [--label=<key_label>]"
-         " : Replays a EAP-TLS Wifi negotiation. This is the default command if"
-         " no command is specified.\n");
+  printf(
+      "  --replay_vpn [--label=<key_label>]"
+      " : Replays a L2TP/IPSEC VPN negotiation.\n");
+  printf(
+      "  --replay_wifi [--label=<key_label>]"
+      " : Replays a EAP-TLS Wifi negotiation. This is the default command if"
+      " no command is specified.\n");
 }
 
 void PrintTicks(base::TimeTicks* start_ticks) {
@@ -820,10 +813,8 @@ int main(int argc, char** argv) {
   bool logout = cl->HasSwitch("logout");
   bool cleanup = cl->HasSwitch("cleanup");
   bool list_objects = cl->HasSwitch("list_objects");
-  bool import = cl->HasSwitch("import") &&
-      cl->HasSwitch("path") &&
-      cl->HasSwitch("type") &&
-      cl->HasSwitch("id");
+  bool import = cl->HasSwitch("import") && cl->HasSwitch("path") &&
+                cl->HasSwitch("type") && cl->HasSwitch("id");
   bool digest_test = cl->HasSwitch("digest_test");
   bool list_tokens = cl->HasSwitch("list_tokens");
   if (!generate && !generate_delete && !vpn && !wifi && !logout && !cleanup &&

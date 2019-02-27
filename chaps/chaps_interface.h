@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-
 #ifndef CHAPS_CHAPS_INTERFACE_H_
 #define CHAPS_CHAPS_INTERFACE_H_
 
@@ -64,7 +63,8 @@ class ChapsInterface {
                              const std::vector<uint8_t>& label) = 0;
   // PKCS #11 v2.20 section 11.5 page 115.
   virtual uint32_t InitPIN(const brillo::SecureBlob& isolate_credential,
-                           uint64_t session_id, const std::string* pin) = 0;
+                           uint64_t session_id,
+                           const std::string* pin) = 0;
   // PKCS #11 v2.20 section 11.5 page 116.
   virtual uint32_t SetPIN(const brillo::SecureBlob& isolate_credential,
                           uint64_t session_id,
@@ -72,20 +72,19 @@ class ChapsInterface {
                           const std::string* new_pin) = 0;
   // PKCS #11 v2.20 section 11.6 page 117.
   virtual uint32_t OpenSession(const brillo::SecureBlob& isolate_credential,
-                               uint64_t slot_id, uint64_t flags,
+                               uint64_t slot_id,
+                               uint64_t flags,
                                uint64_t* session) = 0;
   // PKCS #11 v2.20 section 11.6 page 118.
   virtual uint32_t CloseSession(const brillo::SecureBlob& isolate_credential,
                                 uint64_t session) = 0;
   // PKCS #11 v2.20 section 11.6 page 120.
   virtual uint32_t CloseAllSessions(
-      const brillo::SecureBlob& isolate_credential,
-      uint64_t slot_id) = 0;
+      const brillo::SecureBlob& isolate_credential, uint64_t slot_id) = 0;
   // PKCS #11 v2.20 section 11.6 page 120.
-  virtual uint32_t GetSessionInfo(
-      const brillo::SecureBlob& isolate_credential,
-      uint64_t session_id,
-      SessionInfo* session_info) = 0;
+  virtual uint32_t GetSessionInfo(const brillo::SecureBlob& isolate_credential,
+                                  uint64_t session_id,
+                                  SessionInfo* session_info) = 0;
   // PKCS #11 v2.20 section 11.6 page 121.
   virtual uint32_t GetOperationState(
       const brillo::SecureBlob& isolate_credential,
@@ -140,10 +139,9 @@ class ChapsInterface {
       uint64_t object_handle,
       const std::vector<uint8_t>& attributes) = 0;
   // PKCS #11 v2.20 section 11.7 page 136.
-  virtual uint32_t FindObjectsInit(
-      const brillo::SecureBlob& isolate_credential,
-      uint64_t session_id,
-      const std::vector<uint8_t>& attributes) = 0;
+  virtual uint32_t FindObjectsInit(const brillo::SecureBlob& isolate_credential,
+                                   uint64_t session_id,
+                                   const std::vector<uint8_t>& attributes) = 0;
   // PKCS #11 v2.20 section 11.7 page 137.
   virtual uint32_t FindObjects(const brillo::SecureBlob& isolate_credential,
                                uint64_t session_id,
@@ -151,8 +149,7 @@ class ChapsInterface {
                                std::vector<uint64_t>* object_list) = 0;
   // PKCS #11 v2.20 section 11.7 page 138.
   virtual uint32_t FindObjectsFinal(
-      const brillo::SecureBlob& isolate_credential,
-      uint64_t session_id) = 0;
+      const brillo::SecureBlob& isolate_credential, uint64_t session_id) = 0;
   // PKCS #11 v2.20 section 11.8 page 139.
   virtual uint32_t EncryptInit(const brillo::SecureBlob& isolate_credential,
                                uint64_t session_id,
@@ -273,8 +270,8 @@ class ChapsInterface {
                           uint64_t session_id) = 0;
   // PKCS #11 v2.20 section 11.11 page 155.
   virtual uint32_t SignRecoverInit(
-     const brillo::SecureBlob& isolate_credential,
-     uint64_t session_id,
+      const brillo::SecureBlob& isolate_credential,
+      uint64_t session_id,
       uint64_t mechanism_type,
       const std::vector<uint8_t>& mechanism_parameter,
       uint64_t key_handle) = 0;
@@ -403,11 +400,10 @@ class ChapsInterface {
                               uint64_t session_id,
                               const std::vector<uint8_t>& seed) = 0;
   // PKCS #11 v2.20 section 11.15 page 184.
-  virtual uint32_t GenerateRandom(
-      const brillo::SecureBlob& isolate_credential,
-      uint64_t session_id,
-      uint64_t num_bytes,
-      std::vector<uint8_t>* random_data) = 0;
+  virtual uint32_t GenerateRandom(const brillo::SecureBlob& isolate_credential,
+                                  uint64_t session_id,
+                                  uint64_t num_bytes,
+                                  std::vector<uint8_t>* random_data) = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ChapsInterface);
