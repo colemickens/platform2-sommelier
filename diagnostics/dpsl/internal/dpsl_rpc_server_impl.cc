@@ -58,6 +58,12 @@ DpslRpcServerImpl::DpslRpcServerImpl(DpslRpcHandler* rpc_handler,
   async_grpc_server_.RegisterHandler(
       &grpc_api::DiagnosticsProcessor::AsyncService::RequestHandleMessageFromUi,
       base::Bind(handle_message_from_ui_handler, base::Unretained(this)));
+
+  async_grpc_server_.RegisterHandler(
+      &grpc_api::DiagnosticsProcessor::AsyncService::
+          RequestHandleEcNotification,
+      base::Bind(&DpslRpcServerImpl::HandleEcNotification,
+                 base::Unretained(this)));
 }
 
 DpslRpcServerImpl::~DpslRpcServerImpl() {
