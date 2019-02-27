@@ -13,7 +13,14 @@
 #include <memory>
 #include <set>
 
+#include <base/bind.h>
+#include <base/callback.h>
+#include <base/message_loop/message_loop.h>
 #include <base/memory/ptr_util.h>
+#include <base/memory/ref_counted.h>
+#include <base/run_loop.h>
+#include <base/single_thread_task_runner.h>
+#include <base/threading/thread_task_runner_handle.h>
 #include <crypto/scoped_openssl_types.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -48,6 +55,7 @@ using testing::_;
 using testing::DoAll;
 using testing::InSequence;
 using testing::Invoke;
+using testing::InvokeWithoutArgs;
 using testing::NiceMock;
 using testing::Return;
 using testing::SaveArg;
@@ -337,13 +345,25 @@ TEST_F(Tpm2Test, GetDictionaryAttackInfoError) {
 }
 
 TEST_F(Tpm2Test, ResetDictionaryAttackMitigation) {
+  base::MessageLoop message_loop;
+  base::RunLoop run_loop;
+  const auto run_loop_quit_closure = base::Bind(
+      [](base::Closure main_thread_quit_closure,
+         scoped_refptr<base::SingleThreadTaskRunner> main_thread_task_runner) {
+        main_thread_task_runner->PostTask(FROM_HERE, main_thread_quit_closure);
+      },
+      run_loop.QuitClosure(), base::ThreadTaskRunnerHandle::Get());
+
   const tpm_manager::ResetDictionaryAttackLockRequest expected_request;
   EXPECT_CALL(mock_tpm_owner_,
-          ResetDictionaryAttackLock(ProtobufEquals(expected_request), _))
-      .Times(1);
+              ResetDictionaryAttackLock(ProtobufEquals(expected_request), _))
+      .WillOnce(InvokeWithoutArgs([&]() { run_loop_quit_closure.Run(); }));
 
   const brillo::Blob unused;
   EXPECT_TRUE(tpm_->ResetDictionaryAttackMitigation(unused, unused));
+
+  // Wait till the mock ResetDictionaryAttackLock gets called.
+  run_loop.Run();
 }
 
 TEST_F(Tpm2Test, GetRandomDataSuccess) {
