@@ -305,6 +305,7 @@ std::string ExpectedSkipPackagesCacheSetupFlagValue(bool enabled) {
 std::string ExpectedCopyPackagesCacheFlagValue(bool enabled) {
   return base::StringPrintf("COPY_PACKAGES_CACHE=%d", enabled);
 }
+
 #endif  // USE_CHEETS
 
 }  // namespace
@@ -883,6 +884,18 @@ class SessionManagerPackagesCacheTest
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SessionManagerPackagesCacheTest);
+};
+
+class SessionManagerPlayStoreAutoUpdateTest
+    : public SessionManagerImplTest,
+      public testing::WithParamInterface<
+          StartArcMiniContainerRequest_PlayStoreAutoUpdate> {
+ public:
+  SessionManagerPlayStoreAutoUpdateTest() = default;
+  ~SessionManagerPlayStoreAutoUpdateTest() override = default;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(SessionManagerPlayStoreAutoUpdateTest);
 };
 
 const pid_t SessionManagerImplTest::kDummyPid = 4;
@@ -2225,6 +2238,51 @@ INSTANTIATE_TEST_CASE_P(
         {UpgradeArcContainerRequest_PackageCacheMode_DEFAULT,
          UpgradeArcContainerRequest_PackageCacheMode_COPY_ON_INIT,
          UpgradeArcContainerRequest_PackageCacheMode_SKIP_SETUP_COPY_ON_INIT}));
+
+TEST_P(SessionManagerPlayStoreAutoUpdateTest, PlayStoreAutoUpdate) {
+  ExpectAndRunStartSession(kSaneEmail);
+
+  StartArcMiniContainerRequest request;
+  request.set_play_store_auto_update(GetParam());
+
+  std::vector<std::string> expectations{
+      "CHROMEOS_DEV_MODE=0", "CHROMEOS_INSIDE_VM=0",
+      "NATIVE_BRIDGE_EXPERIMENT=0", "ARC_FILE_PICKER_EXPERIMENT=0"};
+
+  switch (GetParam()) {
+    case StartArcMiniContainerRequest_PlayStoreAutoUpdate_AUTO_UPDATE_DEFAULT:
+      break;
+    case StartArcMiniContainerRequest_PlayStoreAutoUpdate_AUTO_UPDATE_ON:
+      expectations.emplace_back("PLAY_STORE_AUTO_UPDATE=1");
+      break;
+    case StartArcMiniContainerRequest_PlayStoreAutoUpdate_AUTO_UPDATE_OFF:
+      expectations.emplace_back("PLAY_STORE_AUTO_UPDATE=0");
+      break;
+    default:
+      NOTREACHED();
+  }
+
+  // First, start ARC for login screen.
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulseInternal(
+                  SessionManagerImpl::kStartArcInstanceImpulse, expectations,
+                  InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(WithoutArgs(Invoke(CreateEmptyResponse)));
+
+  brillo::ErrorPtr error;
+  std::string container_instance_id;
+  EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request),
+                                           &container_instance_id));
+  EXPECT_FALSE(container_instance_id.empty());
+}
+
+INSTANTIATE_TEST_CASE_P(
+    ,
+    SessionManagerPlayStoreAutoUpdateTest,
+    ::testing::ValuesIn(
+        {StartArcMiniContainerRequest_PlayStoreAutoUpdate_AUTO_UPDATE_DEFAULT,
+         StartArcMiniContainerRequest_PlayStoreAutoUpdate_AUTO_UPDATE_ON,
+         StartArcMiniContainerRequest_PlayStoreAutoUpdate_AUTO_UPDATE_OFF}));
 
 TEST_F(SessionManagerImplTest, UpgradeArcContainerForDemoSession) {
   ExpectAndRunStartSession(kSaneEmail);

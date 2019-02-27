@@ -565,6 +565,20 @@ ArcSetup::ArcSetup(Mode mode, const base::FilePath& config_json)
 
 ArcSetup::~ArcSetup() = default;
 
+// static
+std::string ArcSetup::GetPlayStoreAutoUpdateParam(
+    PlayStoreAutoUpdate play_store_auto_update) {
+  switch (play_store_auto_update) {
+    case PlayStoreAutoUpdate::kDefault:
+      return std::string();
+    case PlayStoreAutoUpdate::kOn:
+    case PlayStoreAutoUpdate::kOff:
+      return base::StringPrintf(
+          "androidboot.play_store_auto_update=%d ",
+          play_store_auto_update == PlayStoreAutoUpdate::kOn);
+  }
+}
+
 void ArcSetup::DeleteExecutableFilesInData(
     bool should_delete_data_dalvik_cache_directory,
     bool should_delete_data_app_executables) {
@@ -1157,9 +1171,11 @@ bool ArcSetup::InstallLinksToHostSideCode() {
   return result;
 }
 
-void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode,
-                                        bool is_inside_vm,
-                                        bool is_debuggable) {
+void ArcSetup::CreateAndroidCmdlineFile(
+    bool is_dev_mode,
+    bool is_inside_vm,
+    bool is_debuggable,
+    PlayStoreAutoUpdate play_store_auto_update) {
   const base::FilePath lsb_release_file_path("/etc/lsb-release");
   LOG(INFO) << "Developer mode is " << is_dev_mode;
   LOG(INFO) << "Inside VM is " << is_inside_vm;
@@ -1216,9 +1232,11 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode,
       "androidboot.native_bridge=%s "
       "androidboot.arc_file_picker=%d "
       "androidboot.chromeos_channel=%s "
+      "%s" /* Play Store auto-update mode */
       "androidboot.boottime_offset=%" PRId64 "\n" /* in nanoseconds */,
       is_dev_mode, !is_dev_mode, is_inside_vm, is_debuggable, arc_lcd_density,
       native_bridge.c_str(), arc_file_picker, chromeos_channel.c_str(),
+      GetPlayStoreAutoUpdateParam(play_store_auto_update).c_str(),
       ts.tv_sec * base::Time::kNanosecondsPerSecond + ts.tv_nsec);
 
   EXIT_IF(!WriteToFile(arc_paths_->android_cmdline, 0644, content));
@@ -2041,12 +2059,25 @@ void ArcSetup::OnSetup() {
         !MkdirRecursively(arc_paths_->art_dalvik_cache_directory.Append(isa)));
   }
 
+  PlayStoreAutoUpdate play_store_auto_update;
+  bool play_store_auto_update_on;
+  // PLAY_AUTO_UPDATE forces Play Store auto-update feature to on or off. If not
+  // set, its state is left unchanged.
+  if (config_.GetBool("PLAY_STORE_AUTO_UPDATE", &play_store_auto_update_on)) {
+    play_store_auto_update = play_store_auto_update_on
+                                 ? PlayStoreAutoUpdate::kOn
+                                 : PlayStoreAutoUpdate::kOff;
+  } else {
+    play_store_auto_update = PlayStoreAutoUpdate::kDefault;
+  }
+
   SetUpSharedMountPoints();
   CreateContainerFilesAndDirectories();
   ApplyPerBoardConfigurations();
   SetUpSharedTmpfsForExternalStorage();
   SetUpFilesystemForObbMounter();
-  CreateAndroidCmdlineFile(is_dev_mode, is_inside_vm, is_debuggable);
+  CreateAndroidCmdlineFile(is_dev_mode, is_inside_vm, is_debuggable,
+                           play_store_auto_update);
   CreateFakeProcfsFiles();
   SetUpMountPointForDebugFilesystem(is_dev_mode);
   SetUpMountPointsForMedia();
@@ -2317,5 +2348,4 @@ void ArcSetup::MountOnOnetimeSetupForTesting() {
 void ArcSetup::UnmountOnOnetimeStopForTesting() {
   UnmountOnOnetimeStop();
 }
-
 }  // namespace arc

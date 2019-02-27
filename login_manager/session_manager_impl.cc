@@ -1129,6 +1129,20 @@ bool SessionManagerImpl::StartArcMiniContainer(
         base::StringPrintf("ARC_LCD_DENSITY=%d", request.lcd_density()));
   }
 
+  switch (request.play_store_auto_update()) {
+    case StartArcMiniContainerRequest_PlayStoreAutoUpdate_AUTO_UPDATE_DEFAULT:
+      break;
+    case StartArcMiniContainerRequest_PlayStoreAutoUpdate_AUTO_UPDATE_ON:
+      env_vars.emplace_back("PLAY_STORE_AUTO_UPDATE=1");
+      break;
+    case StartArcMiniContainerRequest_PlayStoreAutoUpdate_AUTO_UPDATE_OFF:
+      env_vars.emplace_back("PLAY_STORE_AUTO_UPDATE=0");
+      break;
+    default:
+      NOTREACHED() << "Unhandled play store auto-update mode: "
+                   << request.play_store_auto_update() << ".";
+  }
+
   std::string container_instance_id = StartArcContainer(env_vars, error);
   if (container_instance_id.empty()) {
     DCHECK(*error);

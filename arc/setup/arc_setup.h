@@ -96,6 +96,12 @@ class ArcSetup {
   void UnmountOnOnetimeStopForTesting();
 
  private:
+  enum class PlayStoreAutoUpdate { kDefault, kOn, kOff };
+
+  // Converts |PlayStoreAutoUpdate| to Android string param.
+  static std::string GetPlayStoreAutoUpdateParam(
+      PlayStoreAutoUpdate play_store_auto_update);
+
   // Clears executables /data/app/*/oat and /data/dalvik-cache.
   void DeleteExecutableFilesInData(
       bool should_delete_data_dalvik_cache_directory,
@@ -177,7 +183,8 @@ class ArcSetup {
   // Provides some fake kernel command line arguments that are needed.
   void CreateAndroidCmdlineFile(bool is_dev_mode,
                                 bool is_inside_vm,
-                                bool is_debuggable);
+                                bool is_debuggable,
+                                PlayStoreAutoUpdate play_store_auto_update);
 
   // Create fake procfs entries expected by android.
   void CreateFakeProcfsFiles();
