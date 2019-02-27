@@ -18,7 +18,8 @@ namespace concierge {
 // the device has been properly configured.
 base::ScopedFD BuildTapDevice(const arc_networkd::MacAddress& mac_addr,
                               uint32_t ipv4_addr,
-                              uint32_t ipv4_netmask);
+                              uint32_t ipv4_netmask,
+                              bool vnet_hdr);
 
 }  //  namespace concierge
 }  //  namespace vm_tools

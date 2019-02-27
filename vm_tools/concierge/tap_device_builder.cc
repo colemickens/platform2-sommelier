@@ -35,7 +35,8 @@ constexpr int32_t kVnetHeaderSize = 12;
 
 base::ScopedFD BuildTapDevice(const arc_networkd::MacAddress& mac_addr,
                               uint32_t ipv4_addr,
-                              uint32_t ipv4_netmask) {
+                              uint32_t ipv4_netmask,
+                              bool vnet_hdr) {
   // Explicitly not opened with close-on-exec because we want this fd to be
   // inherited by the child process.
   base::ScopedFD dev(open(kTunDev, O_RDWR | O_NONBLOCK));
@@ -49,7 +50,11 @@ base::ScopedFD BuildTapDevice(const arc_networkd::MacAddress& mac_addr,
   struct ifreq ifr;
   memset(&ifr, 0, sizeof(ifr));
   strncpy(ifr.ifr_name, kInterfaceNameFormat, sizeof(ifr.ifr_name));
-  ifr.ifr_flags = IFF_TAP | IFF_NO_PI | IFF_VNET_HDR;
+  ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
+
+  if (vnet_hdr) {
+    ifr.ifr_flags |= IFF_VNET_HDR;
+  }
 
   // This will overwrite the ifr_name field with the actual name of the
   // interface.
@@ -94,18 +99,22 @@ base::ScopedFD BuildTapDevice(const arc_networkd::MacAddress& mac_addr,
     return base::ScopedFD();
   }
 
-  // Set the vnet header size.
-  if (ioctl(dev.get(), TUNSETVNETHDRSZ, &kVnetHeaderSize) != 0) {
-    PLOG(ERROR) << "Failed to set vnet header size for vmtap interface";
-    return base::ScopedFD();
-  }
+  // The vnet header size and offloading flags only need to be set if we are
+  // actually using the vnet_hdr feature.
+  if (vnet_hdr) {
+    // Set the vnet header size.
+    if (ioctl(dev.get(), TUNSETVNETHDRSZ, &kVnetHeaderSize) != 0) {
+      PLOG(ERROR) << "Failed to set vnet header size for vmtap interface";
+      return base::ScopedFD();
+    }
 
-  // Set the offload flags.  These must match the virtio features advertised by
-  // the net device in crosvm.
-  if (ioctl(dev.get(), TUNSETOFFLOAD,
-            TUN_F_CSUM | TUN_F_UFO | TUN_F_TSO4 | TUN_F_TSO6) != 0) {
-    PLOG(ERROR) << "Failed to set offload for vmtap interface";
-    return base::ScopedFD();
+    // Set the offload flags.  These must match the virtio features advertised
+    // by the net device in crosvm.
+    if (ioctl(dev.get(), TUNSETOFFLOAD,
+              TUN_F_CSUM | TUN_F_UFO | TUN_F_TSO4 | TUN_F_TSO6) != 0) {
+      PLOG(ERROR) << "Failed to set offload for vmtap interface";
+      return base::ScopedFD();
+    }
   }
 
   // Finally, enable the device.

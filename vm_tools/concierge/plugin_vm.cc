@@ -153,7 +153,8 @@ bool PluginVm::Start(uint32_t cpus,
                      base::FilePath stateful_dir,
                      base::FilePath cicerone_token_dir) {
   // Set up the tap device.
-  base::ScopedFD tap_fd = BuildTapDevice(mac_addr_, gateway_, netmask_);
+  base::ScopedFD tap_fd =
+      BuildTapDevice(mac_addr_, gateway_, netmask_, false /*vnet_hdr*/);
   if (!tap_fd.is_valid()) {
     LOG(ERROR) << "Unable to build and configure TAP device";
     return false;

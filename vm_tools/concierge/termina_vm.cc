@@ -173,7 +173,7 @@ bool TerminaVm::Start(base::FilePath kernel,
                       std::vector<TerminaVm::Disk> disks) {
   // Set up the tap device.
   base::ScopedFD tap_fd =
-      BuildTapDevice(mac_addr_, GatewayAddress(), Netmask());
+      BuildTapDevice(mac_addr_, GatewayAddress(), Netmask(), true /*vnet_hdr*/);
   if (!tap_fd.is_valid()) {
     LOG(ERROR) << "Unable to build and configure TAP device";
     return false;
