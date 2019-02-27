@@ -50,7 +50,7 @@ uname: 1
 prctl: arg0 == PR_SET_NAME
 clock_getres: 1
 access: 1
-set_tls: 1
+ARM_set_tls: 1
 setpriority: 1
 _llseek: 1
 set_tid_address: 1
