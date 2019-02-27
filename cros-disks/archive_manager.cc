@@ -189,12 +189,6 @@ void ArchiveManager::RegisterDefaultFileExtensions() {
   // or installed by user) using the chrome.fileSystemProvider API. Thus, zip,
   // tar, and gzip/bzip2 compressed tar formats are no longer supported here.
 
-  // avfs based zip support is used if user enables --disable-new-zip-unpacker
-  // flag.
-  // TODO(yawano): Remove this when we remove --disable-new-zip-unpacker flag
-  // (see chromium:778116).
-  RegisterFileExtension("zip", "#uzip");
-
   // rar is still supported until there is a replacement using a built-in
   // extension.
   RegisterFileExtension("rar", "#urar");
