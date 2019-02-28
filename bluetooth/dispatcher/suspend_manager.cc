@@ -78,10 +78,12 @@ void SuspendManager::Init() {
 
 void SuspendManager::HandlePowerManagerAvailableOrRestarted(bool available) {
   if (!available) {
-    // Power manager is dead, resets this to 0 to mark that we don't currently
-    // have a delay id registered.
-    suspend_delay_id_ = 0;
     LOG(INFO) << "Power manager becomes not available";
+    // Power manager is dead, undo suspend to make sure we're not stack in
+    // suspend mode forever, and reset delay id to 0 to mark that we aren't
+    // currently registered
+    suspend_delay_id_ = 0;
+    HandleSuspendDone();
     return;
   }
 

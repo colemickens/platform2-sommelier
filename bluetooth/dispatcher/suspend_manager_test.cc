@@ -386,6 +386,12 @@ TEST_F(SuspendManagerTest, PowerManagerNameOwnerChanged) {
   // Trigger suspend done signal.
   EmitSuspendDoneSignal(kSuspendId);
 
+  // Bluez HandleSuspendDone should be called after power manager is down
+  expected_bluez_method_call_ =
+      std::make_unique<std::string>(bluetooth_adapter::kHandleSuspendDone);
+  EXPECT_CALL(*bluez_proxy_, CallMethod(_, _, _))
+      .WillOnce(Invoke(this, &SuspendManagerTest::StubBluezCallMethod));
+
   // Simulate power manager losing name owner. The subsequent SuspendImminent
   // signal should be ignored before power manager is alive again.
   TriggerPowerManagerNameOwnerChanged(":1.234", "");
