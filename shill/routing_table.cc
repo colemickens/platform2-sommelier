@@ -48,18 +48,73 @@ static string ObjectID(RoutingTable* r) { return "(routing_table)"; }
 }
 
 namespace {
+
 base::LazyInstance<RoutingTable>::DestructorAtExit g_routing_table =
     LAZY_INSTANCE_INITIALIZER;
+
 // These don't have named constants in the system header files, but they
 // are documented in ip-rule(8) and hardcoded in net/ipv4/fib_rules.c.
 const uint32_t kRulePriorityLocal = 0;
 const uint32_t kRulePriorityMain = 32766;
-}  // namespace
 
-// static
-const char RoutingTable::kRouteFlushPath4[] = "/proc/sys/net/ipv4/route/flush";
-// static
-const char RoutingTable::kRouteFlushPath6[] = "/proc/sys/net/ipv6/route/flush";
+const char kRouteFlushPath4[] = "/proc/sys/net/ipv4/route/flush";
+const char kRouteFlushPath6[] = "/proc/sys/net/ipv6/route/flush";
+
+bool ParseRoutingTableMessage(const RTNLMessage& message,
+                              int* interface_index,
+                              RoutingTableEntry* entry) {
+  if (message.type() != RTNLMessage::kTypeRoute ||
+      message.family() == IPAddress::kFamilyUnknown ||
+      !message.HasAttribute(RTA_OIF)) {
+    return false;
+  }
+
+  const RTNLMessage::RouteStatus& route_status = message.route_status();
+
+  if (route_status.type != RTN_UNICAST) {
+    return false;
+  }
+
+  uint32_t interface_index_u32 = 0;
+  if (!message.GetAttribute(RTA_OIF).ConvertToCPUUInt32(&interface_index_u32)) {
+    return false;
+  }
+  *interface_index = interface_index_u32;
+
+  uint32_t metric = 0;
+  if (message.HasAttribute(RTA_PRIORITY)) {
+    message.GetAttribute(RTA_PRIORITY).ConvertToCPUUInt32(&metric);
+  }
+
+  IPAddress default_addr(message.family());
+  default_addr.SetAddressToDefault();
+
+  ByteString dst_bytes(default_addr.address());
+  if (message.HasAttribute(RTA_DST)) {
+    dst_bytes = message.GetAttribute(RTA_DST);
+  }
+  ByteString src_bytes(default_addr.address());
+  if (message.HasAttribute(RTA_SRC)) {
+    src_bytes = message.GetAttribute(RTA_SRC);
+  }
+  ByteString gateway_bytes(default_addr.address());
+  if (message.HasAttribute(RTA_GATEWAY)) {
+    gateway_bytes = message.GetAttribute(RTA_GATEWAY);
+  }
+
+  entry->dst = IPAddress(message.family(), dst_bytes, route_status.dst_prefix);
+  entry->src = IPAddress(message.family(), src_bytes, route_status.src_prefix);
+  entry->gateway = IPAddress(message.family(), gateway_bytes);
+  entry->metric = metric;
+  entry->scope = route_status.scope;
+  entry->from_rtnl = true;
+  entry->table = route_status.table;
+  entry->type = route_status.type;
+
+  return true;
+}
+
+}  // namespace
 
 RoutingTable::RoutingTable() : rtnl_handler_(RTNLHandler::GetInstance()) {
   SLOG(this, 2) << __func__;
@@ -324,61 +379,6 @@ bool RoutingTable::RemoveRouteFromKernelTable(int interface_index,
                 << entry;
 
   return ApplyRoute(interface_index, entry, RTNLMessage::kModeDelete, 0);
-}
-
-// static
-bool RoutingTable::ParseRoutingTableMessage(const RTNLMessage& message,
-                                            int* interface_index,
-                                            RoutingTableEntry* entry) {
-  if (message.type() != RTNLMessage::kTypeRoute ||
-      message.family() == IPAddress::kFamilyUnknown ||
-      !message.HasAttribute(RTA_OIF)) {
-    return false;
-  }
-
-  const RTNLMessage::RouteStatus& route_status = message.route_status();
-
-  if (route_status.type != RTN_UNICAST) {
-    return false;
-  }
-
-  uint32_t interface_index_u32 = 0;
-  if (!message.GetAttribute(RTA_OIF).ConvertToCPUUInt32(&interface_index_u32)) {
-    return false;
-  }
-  *interface_index = interface_index_u32;
-
-  uint32_t metric = 0;
-  if (message.HasAttribute(RTA_PRIORITY)) {
-    message.GetAttribute(RTA_PRIORITY).ConvertToCPUUInt32(&metric);
-  }
-
-  IPAddress default_addr(message.family());
-  default_addr.SetAddressToDefault();
-
-  ByteString dst_bytes(default_addr.address());
-  if (message.HasAttribute(RTA_DST)) {
-    dst_bytes = message.GetAttribute(RTA_DST);
-  }
-  ByteString src_bytes(default_addr.address());
-  if (message.HasAttribute(RTA_SRC)) {
-    src_bytes = message.GetAttribute(RTA_SRC);
-  }
-  ByteString gateway_bytes(default_addr.address());
-  if (message.HasAttribute(RTA_GATEWAY)) {
-    gateway_bytes = message.GetAttribute(RTA_GATEWAY);
-  }
-
-  entry->dst = IPAddress(message.family(), dst_bytes, route_status.dst_prefix);
-  entry->src = IPAddress(message.family(), src_bytes, route_status.src_prefix);
-  entry->gateway = IPAddress(message.family(), gateway_bytes);
-  entry->metric = metric;
-  entry->scope = route_status.scope;
-  entry->from_rtnl = true;
-  entry->table = route_status.table;
-  entry->type = route_status.type;
-
-  return true;
 }
 
 void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {

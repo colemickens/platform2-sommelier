@@ -155,10 +155,6 @@ class RoutingTable {
     uint8_t table_id;
   };
 
-  static bool ParseRoutingTableMessage(const RTNLMessage& message,
-                                       int* interface_index,
-                                       RoutingTableEntry* entry);
-
   // Add an entry to the kernel routing table without modifying the internal
   // routing-table bookkeeping.
   bool AddRouteToKernelTable(int interface_index,
@@ -182,9 +178,6 @@ class RoutingTable {
   void ReplaceMetric(uint32_t interface_index,
                      RoutingTableEntry* entry,
                      uint32_t metric);
-
-  static const char kRouteFlushPath4[];
-  static const char kRouteFlushPath6[];
 
   bool ApplyRule(uint32_t interface_index,
                  const RoutingPolicyEntry& entry,
