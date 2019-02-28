@@ -12,8 +12,7 @@ namespace {
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   Nl80211Frame frame(ByteString(data, size));
-  std::string output;
-  frame.ToString(&output);
+  std::string output = frame.ToString();
 
   return 0;
 }

@@ -68,7 +68,7 @@ class SHILL_EXPORT Nl80211Frame {
   };
 
   explicit Nl80211Frame(const ByteString& init);
-  bool ToString(std::string* output) const;
+  std::string ToString() const;
   bool IsEqual(const Nl80211Frame& other) const;
   uint16_t reason() const { return reason_; }
   uint16_t status() const { return status_; }

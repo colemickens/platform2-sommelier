@@ -135,50 +135,45 @@ Nl80211Frame::Nl80211Frame(const ByteString& raw_frame)
   }
 }
 
-bool Nl80211Frame::ToString(string* output) const {
-  if (!output) {
-    LOG(ERROR) << "NULL |output|";
-    return false;
-  }
-
+std::string Nl80211Frame::ToString() const {
   if (frame_.IsEmpty()) {
-    output->append(" [no frame]");
-    return true;
+    return "[no frame]";
   }
 
+  std::string output;
   if (frame_.GetLength() < sizeof(IEEE_80211::ieee80211_frame().hdr)) {
-    output->append(" [invalid frame: ");
+    output.append("[invalid frame: ");
   } else {
-    StringAppendF(output, " %s -> %s", mac_from_.c_str(), mac_to_.c_str());
+    StringAppendF(&output, "%s -> %s", mac_from_.c_str(), mac_to_.c_str());
 
     switch (frame_type_) {
       case kAssocResponseFrameType:
-        StringAppendF(output, "; AssocResponse status: %u: %s", status_,
+        StringAppendF(&output, "; AssocResponse status: %u: %s", status_,
                       IEEE_80211::StatusToString(
                           static_cast<IEEE_80211::WiFiStatusCode>(status_))
                           .c_str());
         break;
       case kReassocResponseFrameType:
-        StringAppendF(output, "; ReassocResponse status: %u: %s", status_,
+        StringAppendF(&output, "; ReassocResponse status: %u: %s", status_,
                       IEEE_80211::StatusToString(
                           static_cast<IEEE_80211::WiFiStatusCode>(status_))
                           .c_str());
         break;
       case kAuthFrameType:
-        StringAppendF(output, "; Auth status: %u: %s", status_,
+        StringAppendF(&output, "; Auth status: %u: %s", status_,
                       IEEE_80211::StatusToString(
                           static_cast<IEEE_80211::WiFiStatusCode>(status_))
                           .c_str());
         break;
 
       case kDisassocFrameType:
-        StringAppendF(output, "; Disassoc reason %u: %s", reason_,
+        StringAppendF(&output, "; Disassoc reason %u: %s", reason_,
                       IEEE_80211::ReasonToString(
                           static_cast<IEEE_80211::WiFiReasonCode>(reason_))
                           .c_str());
         break;
       case kDeauthFrameType:
-        StringAppendF(output, "; Deauth reason %u: %s", reason_,
+        StringAppendF(&output, "; Deauth reason %u: %s", reason_,
                       IEEE_80211::ReasonToString(
                           static_cast<IEEE_80211::WiFiReasonCode>(reason_))
                           .c_str());
@@ -187,16 +182,16 @@ bool Nl80211Frame::ToString(string* output) const {
       default:
         break;
     }
-    output->append(" [frame: ");
+    output.append(" [frame: ");
   }
 
   const unsigned char* frame = frame_.GetConstData();
   for (size_t i = 0; i < frame_.GetLength(); ++i) {
-    StringAppendF(output, "%02x, ", frame[i]);
+    StringAppendF(&output, "%02x, ", frame[i]);
   }
-  output->append("]");
+  output.append("]");
 
-  return true;
+  return output;
 }
 
 bool Nl80211Frame::IsEqual(const Nl80211Frame& other) const {

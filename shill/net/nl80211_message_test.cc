@@ -32,44 +32,31 @@ const unsigned char kDeauthenticateFrame[] = {
     0x0e, 0x77, 0xe8, 0x7f, 0xc0, 0x0e, 0x02, 0x00,
 };
 
-TEST(Nl80211FrameTest, ToStringWithNullArgument) {
-  Nl80211Frame frame(
-      ByteString(kAuthenticateFrame, sizeof(kAuthenticateFrame)));
-  EXPECT_FALSE(frame.ToString(nullptr));
-  EXPECT_EQ(frame.frame_type(), Nl80211Frame::kAuthFrameType);
-  EXPECT_EQ(frame.status(), 0);
-}
-
 TEST(Nl80211FrameTest, EmptyFrameToString) {
   Nl80211Frame frame(ByteString{});
-  std::string output;
-  EXPECT_TRUE(frame.ToString(&output));
+  EXPECT_EQ(frame.ToString(), "[no frame]");
   EXPECT_EQ(frame.frame_type(), Nl80211Frame::kIllegalFrameType);
 }
 
 TEST(Nl80211FrameTest, ToStringWithStatus) {
   Nl80211Frame frame(
       ByteString(kAuthenticateFrame, sizeof(kAuthenticateFrame)));
-  std::string output;
-  EXPECT_TRUE(frame.ToString(&output));
   std::string expected_output =
-      " 48:5d:60:77:2d:cf -> c0:3f:0e:77:e8:7f; Auth status: 0: Successful "
+      "48:5d:60:77:2d:cf -> c0:3f:0e:77:e8:7f; Auth status: 0: Successful "
       "[frame: b0, 00, 3a, 01, 48, 5d, 60, 77, 2d, cf, c0, 3f, 0e, 77, e8, 7f, "
       "c0, 3f, 0e, 77, e8, 7f, 30, 07, 00, 00, 02, 00, 00, 00, ]";
-  EXPECT_EQ(output, expected_output);
+  EXPECT_EQ(frame.ToString(), expected_output);
 }
 
 TEST(Nl80211FrameTest, ToStringWithReason) {
   Nl80211Frame frame(
       ByteString(kDeauthenticateFrame, sizeof(kDeauthenticateFrame)));
-  std::string output;
-  EXPECT_TRUE(frame.ToString(&output));
   std::string expected_output =
-      " ff:ff:ff:ff:ff:ff -> c0:3f:0e:77:e8:7f; Deauth reason 2: Previous "
+      "ff:ff:ff:ff:ff:ff -> c0:3f:0e:77:e8:7f; Deauth reason 2: Previous "
       "authentication no longer valid [frame: c0, 00, 00, 00, ff, ff, ff, ff, "
       "ff, ff, c0, 3f, 0e, 77, e8, 7f, c0, 3f, 0e, 77, e8, 7f, c0, 0e, 02, 00, "
       "]";
-  EXPECT_EQ(output, expected_output);
+  EXPECT_EQ(frame.ToString(), expected_output);
   EXPECT_EQ(frame.frame_type(), Nl80211Frame::kDeauthFrameType);
   EXPECT_EQ(frame.reason(), 2);
 }
