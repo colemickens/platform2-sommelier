@@ -539,8 +539,6 @@ void ChromiumCommandBuilder::SetUpPepperPlugins() {
 }
 
 void ChromiumCommandBuilder::AddUiFlags() {
-  AddArg("--ui-prioritize-in-gpu-process");
-
   if (UseFlagIsSet("opengles"))
     AddArg("--use-gl=egl");
 
