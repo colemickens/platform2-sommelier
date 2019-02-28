@@ -27,6 +27,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <chromeos/dbus/service_constants.h>
@@ -851,6 +852,13 @@ void Service::OpenUrl(const std::string& container_token,
   CHECK(result);
   CHECK(event);
   *result = false;
+
+  if (!base::IsStringUTF8(url)) {
+    LOG(WARNING) << "Ignoring non-UTF8 URL";
+    event->Signal();
+    return;
+  }
+
   dbus::MethodCall method_call(chromeos::kUrlHandlerServiceInterface,
                                chromeos::kUrlHandlerServiceOpenUrlMethod);
   dbus::MessageWriter writer(&method_call);
