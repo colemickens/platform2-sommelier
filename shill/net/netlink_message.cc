@@ -269,7 +269,7 @@ void UnknownMessage::Print(int header_log_level,
 
   string output = StringPrintf("%d bytes:", total_bytes);
   for (int i = 0; i < total_bytes; ++i) {
-    StringAppendF(&output, " 0x%02x", const_data[i]);
+    StringAppendF(&output, " %02x", const_data[i]);
   }
   SLOG(this, header_log_level) << output;
 }

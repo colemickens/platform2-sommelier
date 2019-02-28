@@ -984,7 +984,7 @@ bool NetlinkRawAttribute::ToString(string* output) const {
 
   *output = StringPrintf("%d bytes:", total_bytes);
   for (int i = 0; i < total_bytes; ++i) {
-    StringAppendF(output, " 0x%02x", const_data[i]);
+    StringAppendF(output, " %02x", const_data[i]);
   }
   return true;
 }
