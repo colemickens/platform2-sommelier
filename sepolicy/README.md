@@ -26,5 +26,9 @@ SELinux policy for Chrome OS lives here.
     valid monotlithic policy.
 - `|- file_contexts` file labels on system image, stateful partition, devtmpfs,
  sysfs live here.
-- `|- shared` shared macros live here.
-- `\- docs` docs live here.
+- `\- shared` shared macros live here.
+
+## Docs
+
+Docs are located at
+[chromiumos/docs/selinux.md](https://chromium.googlesource.com/chromiumos/docs/+/master/selinux.md)
