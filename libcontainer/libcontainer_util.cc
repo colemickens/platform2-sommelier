@@ -263,14 +263,14 @@ bool HookState::WaitForHookAndRun(const std::vector<HookCallback>& callbacks,
     return false;
   }
   reached_pipe_.Wait();
-  base::ScopedClosureRunner teardown(
-      base::Bind(&WaitablePipe::Signal, base::Unretained(&ready_pipe_)));
 
   for (auto& callback : callbacks) {
     bool success = callback.Run(container_pid);
     if (!success)
       return false;
   }
+
+  ready_pipe_.Signal();
   return true;
 }
 
