@@ -536,29 +536,6 @@ class SHILL_EXPORT GetMeshProxyPathMessage : public Nl80211Message {
   DISALLOW_COPY_AND_ASSIGN(GetMeshProxyPathMessage);
 };
 
-// Nl80211MessageDataCollector - this class is used to collect data to be
-// used for unit tests.  It is only invoked in this case.
-
-class Nl80211MessageDataCollector {
- public:
-  static Nl80211MessageDataCollector* GetInstance();
-
-  void CollectDebugData(
-      const Nl80211Message& message, const NetlinkPacket& packet);
-
- protected:
-  Nl80211MessageDataCollector();
-
- private:
-  friend class base::NoDestructor<Nl80211MessageDataCollector>;
-
-  // In order to limit the output from this class, I keep track of types I
-  // haven't yet printed.
-  std::map<uint8_t, bool> need_to_print;
-
-  DISALLOW_COPY_AND_ASSIGN(Nl80211MessageDataCollector);
-};
-
 }  // namespace shill
 
 #endif  // SHILL_NET_NL80211_MESSAGE_H_
