@@ -16,7 +16,6 @@
 #include "shill/net/netlink_message.h"
 #include "shill/net/shill_export.h"
 
-struct nlattr;
 namespace shill {
 
 class AttributeList;

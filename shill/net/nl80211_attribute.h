@@ -12,8 +12,6 @@
 #include "shill/net/netlink_attribute.h"
 #include "shill/net/netlink_message.h"
 
-struct nlattr;
-
 namespace shill {
 
 // U8.

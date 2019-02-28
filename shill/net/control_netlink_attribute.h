@@ -9,8 +9,6 @@
 
 #include "shill/net/netlink_attribute.h"
 
-struct nlattr;
-
 namespace shill {
 
 // Control.

@@ -16,8 +16,6 @@
 #include "shill/net/byte_string.h"
 #include "shill/net/netlink_message.h"
 
-struct nlattr;
-
 namespace shill {
 
 // NetlinkAttribute is an abstract base class that describes an attribute in a
