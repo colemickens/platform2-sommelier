@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 brk: 1
 clock_getres: 1
+clock_gettime: 1
 close: 1
 connect: 1
 creat: 1

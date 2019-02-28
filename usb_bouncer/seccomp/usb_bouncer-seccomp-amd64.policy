@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 brk: 1
 clock_getres: 1
+clock_gettime: 1
 close: 1
 connect: 1
 creat: 1
@@ -18,6 +19,7 @@ getresgid: 1
 getresuid: 1
 getsockname: 1
 gettid: 1
+gettimeofday: 1
 getuid: 1
 lstat: 1
 openat: 1
