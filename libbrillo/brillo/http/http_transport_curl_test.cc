@@ -33,6 +33,8 @@ class HttpCurlTransportTest : public testing::Test {
     transport_ = std::make_shared<Transport>(curl_api_);
     handle_ = reinterpret_cast<CURL*>(100);  // Mock handle value.
     EXPECT_CALL(*curl_api_, EasyInit()).WillOnce(Return(handle_));
+    EXPECT_CALL(*curl_api_, EasySetOptPtr(handle_, CURLOPT_CAINFO, _))
+        .WillOnce(Return(CURLE_OK));
     EXPECT_CALL(*curl_api_, EasySetOptStr(handle_, CURLOPT_CAPATH, _))
         .WillOnce(Return(CURLE_OK));
     EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_SSL_VERIFYPEER, 1))
@@ -197,6 +199,8 @@ class HttpCurlTransportAsyncTest : public testing::Test {
     curl_api_ = std::make_shared<MockCurlInterface>();
     transport_ = std::make_shared<Transport>(curl_api_);
     EXPECT_CALL(*curl_api_, EasyInit()).WillOnce(Return(handle_));
+    EXPECT_CALL(*curl_api_, EasySetOptPtr(handle_, CURLOPT_CAINFO, _))
+        .WillOnce(Return(CURLE_OK));
     EXPECT_CALL(*curl_api_, EasySetOptStr(handle_, CURLOPT_CAPATH, _))
         .WillOnce(Return(CURLE_OK));
     EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_SSL_VERIFYPEER, 1))

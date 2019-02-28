@@ -20,7 +20,7 @@ const char kCACertificatePath[] =
 #ifdef __ANDROID__
     "/system/etc/security/cacerts_google";
 #else
-    "/usr/share/brillo-ca-certificates";
+    "/usr/share/chromeos-ca-certificates";
 #endif
 
 }  // namespace
@@ -135,6 +135,11 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
   VLOG(1) << "Sending a " << method << " request to " << url;
   CURLcode code = curl_interface_->EasySetOptStr(curl_handle, CURLOPT_URL, url);
 
+  if (code == CURLE_OK) {
+    // CURLOPT_CAINFO is a string, but CurlApi::EasySetOptStr will never pass
+    // curl_easy_setopt a null pointer, so we use EasySetOptPtr instead.
+    code = curl_interface_->EasySetOptPtr(curl_handle, CURLOPT_CAINFO, nullptr);
+  }
   if (code == CURLE_OK) {
     code = curl_interface_->EasySetOptStr(curl_handle, CURLOPT_CAPATH,
                                           kCACertificatePath);

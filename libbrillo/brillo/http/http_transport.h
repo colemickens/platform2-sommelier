@@ -38,7 +38,9 @@ using ErrorCallback = base::Callback<void(RequestID, const brillo::Error*)>;
 ///////////////////////////////////////////////////////////////////////////////
 // Transport is a base class for specific implementation of HTTP communication.
 // This class (and its underlying implementation) is used by http::Request and
-// http::Response classes to provide HTTP functionality to the clients.
+// http::Response classes to provide HTTP functionality to the clients. By
+// default, this interface will use CA certificates that only allow secure
+// (HTTPS) communication with Google services.
 ///////////////////////////////////////////////////////////////////////////////
 class BRILLO_EXPORT Transport : public std::enable_shared_from_this<Transport> {
  public:
