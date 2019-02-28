@@ -18,6 +18,7 @@
 namespace arc {
 
 // VdaContext is the decode session context created by VdaImpl.
+// Implementations should be able to handle method invocations on any thread.
 class VdaContext {
  public:
   VdaContext();
@@ -26,7 +27,7 @@ class VdaContext {
   // Decodes the frame pointed to by |fd|. |offset| and |bytes_used|
   // is the buffer offset and the size of the frame.
   virtual vda_result_t Decode(int32_t bitstream_id,
-                              int fd,
+                              base::ScopedFD fd,
                               uint32_t offset,
                               uint32_t bytes_used) = 0;
 
@@ -38,7 +39,7 @@ class VdaContext {
   // to an array of |num_planes| objects.
   virtual vda_result_t UseOutputBuffer(int32_t picture_buffer_id,
                                        vda_pixel_format_t format,
-                                       int fd,
+                                       base::ScopedFD fd,
                                        size_t num_planes,
                                        video_frame_plane_t* planes) = 0;
   // Requests to reset the decode session, clearing all pending decodes.

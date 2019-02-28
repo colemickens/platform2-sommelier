@@ -4,15 +4,20 @@
 
 #include "arc/vm/libvda/gpu/gpu_vda_impl.h"
 
+#include <fcntl.h>
+
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/callback.h>
 #include <base/files/file_util.h>
 #include <base/memory/ref_counted.h>
+#include <base/posix/eintr_wrapper.h>
 #include <base/single_thread_task_runner.h>
 #include <base/synchronization/waitable_event.h>
 #include <chromeos/dbus/service_constants.h>
@@ -22,10 +27,22 @@
 #include <dbus/object_proxy.h>
 #include <mojo/edk/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/binding.h>
+#include <mojo/public/cpp/system/platform_handle.h>
 #include <sys/eventfd.h>
+
+#include "arc/vm/libvda/gbm_util.h"
 
 namespace arc {
 namespace {
+
+// TODO(alexlau): Query for this instead of hard coding.
+constexpr vda_input_format_t kInputFormats[] = {
+    {VP8PROFILE_MIN /* profile */, 2 /* min_width */, 2 /* min_height */,
+     1920 /* max_width */, 1080 /* max_height */},
+    {VP9PROFILE_PROFILE0 /* profile */, 2 /* min_width */, 2 /* min_height */,
+     1920 /* max_width */, 1080 /* max_height */},
+    {H264PROFILE_MAIN /* profile */, 2 /* min_width */, 2 /* min_height */,
+     1920 /* max_width */, 1080 /* max_height */}};
 
 // Minimum required version of VideoAcceleratorFactory interface.
 // Set to 6 which is when CreateDecodeAccelerator was introduced.
@@ -79,30 +96,163 @@ inline vda_result_t ConvertResult(
   }
 }
 
+inline arc::mojom::HalPixelFormat ConvertPixelFormatToHalPixelFormat(
+    vda_pixel_format_t format) {
+  switch (format) {
+    case YV12:
+      return arc::mojom::HalPixelFormat::HAL_PIXEL_FORMAT_YV12;
+    case NV12:
+      return arc::mojom::HalPixelFormat::HAL_PIXEL_FORMAT_NV12;
+    default:
+      NOTREACHED();
+  }
+}
+
+inline arc::mojom::VideoCodecProfile ConvertVdaProfileToMojoProfile(
+    vda_profile_t profile) {
+  switch (profile) {
+    case H264PROFILE_MIN:
+      return arc::mojom::VideoCodecProfile::H264PROFILE_MIN;
+    case H264PROFILE_MAIN:
+      return arc::mojom::VideoCodecProfile::H264PROFILE_MAIN;
+    case H264PROFILE_EXTENDED:
+      return arc::mojom::VideoCodecProfile::H264PROFILE_EXTENDED;
+    case H264PROFILE_HIGH:
+      return arc::mojom::VideoCodecProfile::H264PROFILE_HIGH;
+    case H264PROFILE_HIGH10PROFILE:
+      return arc::mojom::VideoCodecProfile::H264PROFILE_HIGH10PROFILE;
+    case H264PROFILE_HIGH422PROFILE:
+      return arc::mojom::VideoCodecProfile::H264PROFILE_HIGH422PROFILE;
+    case H264PROFILE_HIGH444PREDICTIVEPROFILE:
+      return arc::mojom::VideoCodecProfile::
+          H264PROFILE_HIGH444PREDICTIVEPROFILE;
+    case H264PROFILE_SCALABLEBASELINE:
+      return arc::mojom::VideoCodecProfile::H264PROFILE_SCALABLEBASELINE;
+    case H264PROFILE_SCALABLEHIGH:
+      return arc::mojom::VideoCodecProfile::H264PROFILE_SCALABLEHIGH;
+    case H264PROFILE_STEREOHIGH:
+      return arc::mojom::VideoCodecProfile::H264PROFILE_STEREOHIGH;
+    case H264PROFILE_MULTIVIEWHIGH:
+      return arc::mojom::VideoCodecProfile::H264PROFILE_MULTIVIEWHIGH;
+    case VP8PROFILE_MIN:
+      return arc::mojom::VideoCodecProfile::VP8PROFILE_MIN;
+    case VP9PROFILE_MIN:
+      return arc::mojom::VideoCodecProfile::VP9PROFILE_MIN;
+    case VP9PROFILE_PROFILE1:
+      return arc::mojom::VideoCodecProfile::VP9PROFILE_PROFILE1;
+    case VP9PROFILE_PROFILE2:
+      return arc::mojom::VideoCodecProfile::VP9PROFILE_PROFILE2;
+    case VP9PROFILE_PROFILE3:
+      return arc::mojom::VideoCodecProfile::VP9PROFILE_PROFILE3;
+    case HEVCPROFILE_MIN:
+      return arc::mojom::VideoCodecProfile::HEVCPROFILE_MIN;
+    case HEVCPROFILE_MAIN10:
+      return arc::mojom::VideoCodecProfile::HEVCPROFILE_MAIN10;
+    case HEVCPROFILE_MAIN_STILL_PICTURE:
+      return arc::mojom::VideoCodecProfile::HEVCPROFILE_MAIN_STILL_PICTURE;
+    case DOLBYVISION_PROFILE0:
+      return arc::mojom::VideoCodecProfile::DOLBYVISION_PROFILE0;
+    case DOLBYVISION_PROFILE4:
+      return arc::mojom::VideoCodecProfile::DOLBYVISION_PROFILE4;
+    case DOLBYVISION_PROFILE5:
+      return arc::mojom::VideoCodecProfile::DOLBYVISION_PROFILE5;
+    case DOLBYVISION_PROFILE7:
+      return arc::mojom::VideoCodecProfile::DOLBYVISION_PROFILE7;
+    case THEORAPROFILE_MIN:
+      return arc::mojom::VideoCodecProfile::THEORAPROFILE_MIN;
+    case AV1PROFILE_PROFILE_MAIN:
+      return arc::mojom::VideoCodecProfile::AV1PROFILE_PROFILE_MAIN;
+    case AV1PROFILE_PROFILE_HIGH:
+      return arc::mojom::VideoCodecProfile::AV1PROFILE_PROFILE_HIGH;
+    case AV1PROFILE_PROFILE_PRO:
+      return arc::mojom::VideoCodecProfile::AV1PROFILE_PROFILE_PRO;
+    default:
+      return arc::mojom::VideoCodecProfile::VIDEO_CODEC_PROFILE_UNKNOWN;
+  }
+}
+
+std::vector<vda_pixel_format_t> GetOutputPixelFormats() {
+  // TODO(alexlau): don't hardcode this path, see
+  // http://cs/chromeos_public/src/platform/minigbm/cros_gralloc/cros_gralloc_driver.cc?l=29&rcl=cc35e699f36cce0f0b3a130b0d6ce4e2a393b373
+  base::ScopedFD fd(HANDLE_EINTR(open("/dev/dri/renderD128", O_RDWR)));
+  if (!fd.is_valid()) {
+    LOG(ERROR) << "Could not open vgem.";
+    return {};
+  }
+
+  arc::ScopedGbmDevicePtr device(gbm_create_device(fd.get()));
+  if (!device.get()) {
+    LOG(ERROR) << "Could not create gbm device.";
+    return {};
+  }
+
+  std::vector<vda_pixel_format_t> formats;
+  constexpr vda_pixel_format_t pixel_formats[] = {YV12, NV12};
+  for (vda_pixel_format_t pixel_format : pixel_formats) {
+    uint32_t gbm_format = ConvertPixelFormatToGbmFormat(pixel_format);
+    if (gbm_format == 0u)
+      continue;
+    if (!gbm_device_is_format_supported(
+            device.get(), gbm_format,
+            GBM_BO_USE_TEXTURING | GBM_BO_USE_HW_VIDEO_DECODER)) {
+      DLOG(INFO) << "Not supported: " << pixel_format;
+      continue;
+    }
+    formats.push_back(pixel_format);
+  }
+  return formats;
+}
+
+bool CheckValidOutputFormat(vda_pixel_format_t format, size_t num_planes) {
+  switch (format) {
+    case NV12:
+      if (num_planes != 2) {
+        LOG(ERROR) << "Invalid number of planes for NV12 format, expected 2 "
+                      "but received "
+                   << num_planes;
+        return false;
+      }
+      break;
+    case YV12:
+      if (num_planes != 3) {
+        LOG(ERROR) << "Invalid number of planes for YV12 format, expected 3 "
+                      "but received "
+                   << num_planes;
+        return false;
+      }
+      break;
+    default:
+      LOG(WARNING) << "Unexpected format: " << format;
+      return false;
+  }
+  return true;
+}
+
 // GpuVdaContext is the GPU decode session context created by GpuVdaImpl which
 // handles all mojo VideoDecodeClient invocations and callbacks.
 class GpuVdaContext : public VdaContext, arc::mojom::VideoDecodeClient {
  public:
+  // Create a new GpuVdaContext. Must be called on |ipc_task_runner|.
   GpuVdaContext(
-      const scoped_refptr<base::SingleThreadTaskRunner>& ipc_task_runner,
+      const scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner,
       arc::mojom::VideoDecodeAcceleratorPtr vda_ptr);
   ~GpuVdaContext();
 
   using InitializeCallback = base::OnceCallback<void(vda_result_t)>;
 
   // Initializes the VDA context object. When complete, callback is called with
-  // the result.
-  void Initialize(InitializeCallback callback);
+  // the result. Must be called on |ipc_task_runner_|.
+  void Initialize(vda_profile_t profile, InitializeCallback callback);
 
   // VdaContext overrides.
   vda_result_t Decode(int32_t bitstream_id,
-                      int fd,
+                      base::ScopedFD fd,
                       uint32_t offset,
                       uint32_t bytes_used) override;
   vda_result_t SetOutputBufferCount(size_t num_output_buffers) override;
   vda_result_t UseOutputBuffer(int32_t picture_buffer_id,
                                vda_pixel_format_t format,
-                               int fd,
+                               base::ScopedFD fd,
                                size_t num_planes,
                                video_frame_plane_t* planes) override;
   vda_result_t Reset() override;
@@ -116,12 +266,46 @@ class GpuVdaContext : public VdaContext, arc::mojom::VideoDecodeClient {
   void NotifyEndOfBitstreamBuffer(int32_t bitstream_id) override;
 
  private:
+  // Callback invoked when VideoDecodeAcceleratorPtr::Initialize completes.
   void OnInitialized(InitializeCallback callback,
                      arc::mojom::VideoDecodeAccelerator::Result result);
+
+  // Callback for VideoDecodeAcceleratorPtr connection errors.
   void OnVdaError(uint32_t custom_reason, const std::string& description);
+
+  // Callback for VideoDecodeClientPtr connection errors.
   void OnVdaClientError(uint32_t custom_reason, const std::string& description);
-  // Looks up a bitstream ID and returns the associated FD.
-  int GetFdFromBitstreamId(int32_t bitstream_id);
+
+  // Callback invoked when VideoDecodeAcceleratorPtr::Reset completes.
+  void OnResetDone(arc::mojom::VideoDecodeAccelerator::Result result);
+
+  // Callback invoked when VideoDecodeAcceleratorPtr::Flush completes.
+  void OnFlushDone(arc::mojom::VideoDecodeAccelerator::Result result);
+
+  // Executes a decode. Called on |ipc_task_runner_|.
+  void DecodeOnIpcThread(int32_t bitstream_id,
+                         base::ScopedFD fd,
+                         uint32_t offset,
+                         uint32_t bytes_used);
+
+  // Handles a SetOutputBuffer request by invoking a VideoDecodeAccelerator mojo
+  // function. Called on |ipc_task_runner_|.
+  void SetOutputBufferCountOnIpcThread(size_t num_output_buffers);
+
+  // Handles a UseOutputBuffer request by invoking a VideoDecodeAccelerator mojo
+  // function. Called on |ipc_task_runner_|.
+  void UseOutputBufferOnIpcThread(int32_t picture_buffer_id,
+                                  vda_pixel_format_t format,
+                                  base::ScopedFD fd,
+                                  std::vector<video_frame_plane_t> planes);
+
+  // Handles a Reset request by invoking a VideoDecodeAccelerator mojo function.
+  // Called on |ipc_task_runner_|.
+  void ResetOnIpcThread();
+
+  // Handles a SetOutputBuffer request by invoking a VideoDecodeAccelerator mojo
+  // function. Called on |ipc_task_runner_|.
+  void FlushOnIpcThread();
 
   scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner_;
   // TODO(alexlau): Use THREAD_CHECKER macro after libchrome uprev
@@ -129,39 +313,45 @@ class GpuVdaContext : public VdaContext, arc::mojom::VideoDecodeClient {
   base::ThreadChecker ipc_thread_checker_;
   arc::mojom::VideoDecodeAcceleratorPtr vda_ptr_;
   mojo::Binding<arc::mojom::VideoDecodeClient> binding_;
+
+  std::set<int32_t> decoding_bitstream_ids_;
+
+  DISALLOW_COPY_AND_ASSIGN(GpuVdaContext);
 };
 
 GpuVdaContext::GpuVdaContext(
-    const scoped_refptr<base::SingleThreadTaskRunner>& ipc_task_runner,
+    const scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner,
     arc::mojom::VideoDecodeAcceleratorPtr vda_ptr)
-    : ipc_task_runner_(ipc_task_runner),
+    : ipc_task_runner_(std::move(ipc_task_runner)),
       vda_ptr_(std::move(vda_ptr)),
       binding_(this) {
   // Since ipc_thread_checker_ binds to whichever thread it's created on, check
   // that we're on the correct thread first using BelongsToCurrentThread.
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   vda_ptr_.set_connection_error_with_reason_handler(
-      base::Bind(&GpuVdaContext::OnVdaError, base::Unretained(this)));
+      base::BindRepeating(&GpuVdaContext::OnVdaError, base::Unretained(this)));
 
   DLOG(INFO) << "Created new GPU context";
 }
 
-void GpuVdaContext::Initialize(InitializeCallback callback) {
+void GpuVdaContext::Initialize(vda_profile_t profile,
+                               InitializeCallback callback) {
   DCHECK(ipc_thread_checker_.CalledOnValidThread());
   arc::mojom::VideoDecodeClientPtr client_ptr;
   binding_.Bind(mojo::MakeRequest(&client_ptr));
-  binding_.set_connection_error_with_reason_handler(
-      base::Bind(&GpuVdaContext::OnVdaClientError, base::Unretained(this)));
+  binding_.set_connection_error_with_reason_handler(base::BindRepeating(
+      &GpuVdaContext::OnVdaClientError, base::Unretained(this)));
 
   arc::mojom::VideoDecodeAcceleratorConfigPtr config =
       arc::mojom::VideoDecodeAcceleratorConfig::New();
+  // TODO(alexlau): Think about how to specify secure mode dynamically.
   config->secure_mode = false;
-  config->profile = arc::mojom::VideoCodecProfile::H264PROFILE_MAIN;
+  config->profile = ConvertVdaProfileToMojoProfile(profile);
 
   vda_ptr_->Initialize(
       std::move(config), std::move(client_ptr),
-      base::Bind(&GpuVdaContext::OnInitialized, base::Unretained(this),
-                 base::Passed(std::move(callback))));
+      base::BindRepeating(&GpuVdaContext::OnInitialized, base::Unretained(this),
+                          base::Passed(std::move(callback))));
 }
 
 void GpuVdaContext::OnInitialized(
@@ -190,47 +380,129 @@ void GpuVdaContext::OnVdaClientError(uint32_t custom_reason,
 }
 
 vda_result_t GpuVdaContext::Decode(int32_t bitstream_id,
-                                   int fd,
+                                   base::ScopedFD fd,
                                    uint32_t offset,
                                    uint32_t bytes_used) {
-  // TODO(alexlau): Implement this.
-  DLOG(INFO) << "TODO: GpuVdaContext::Decode";
-  NOTIMPLEMENTED();
-  return PLATFORM_FAILURE;
+  ipc_task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&GpuVdaContext::DecodeOnIpcThread, base::Unretained(this),
+                     bitstream_id, std::move(fd), offset, bytes_used));
+  return SUCCESS;
 }
 
 vda_result_t GpuVdaContext::SetOutputBufferCount(size_t num_output_buffers) {
-  // TODO(alexlau): Implement this.
-  DLOG(INFO) << "TODO: GpuVdaContext::SetOutputBufferCount";
-  NOTIMPLEMENTED();
-  return PLATFORM_FAILURE;
+  ipc_task_runner_->PostTask(
+      FROM_HERE, base::BindOnce(&GpuVdaContext::SetOutputBufferCountOnIpcThread,
+                                base::Unretained(this), num_output_buffers));
+  return SUCCESS;
+}
+
+void GpuVdaContext::SetOutputBufferCountOnIpcThread(size_t num_output_buffers) {
+  vda_ptr_->AssignPictureBuffers(num_output_buffers);
+}
+
+void GpuVdaContext::DecodeOnIpcThread(int32_t bitstream_id,
+                                      base::ScopedFD fd,
+                                      uint32_t offset,
+                                      uint32_t bytes_used) {
+  DCHECK(ipc_thread_checker_.CalledOnValidThread());
+
+  mojo::ScopedHandle handle_fd = mojo::WrapPlatformFile(fd.release());
+  if (!handle_fd.is_valid()) {
+    LOG(ERROR) << "Invalid bitstream handle.";
+    return;
+  }
+
+  decoding_bitstream_ids_.insert(bitstream_id);
+
+  arc::mojom::BitstreamBufferPtr buf = arc::mojom::BitstreamBuffer::New();
+  buf->bitstream_id = bitstream_id;
+  buf->handle_fd = std::move(handle_fd);
+  buf->offset = offset;
+  buf->bytes_used = bytes_used;
+
+  vda_ptr_->Decode(std::move(buf));
 }
 
 vda_result_t GpuVdaContext::UseOutputBuffer(int32_t picture_buffer_id,
                                             vda_pixel_format_t format,
-                                            int fd,
+                                            base::ScopedFD fd,
                                             size_t num_planes,
                                             video_frame_plane_t* planes) {
-  // TODO(alexlau): Implement this.
-  DLOG(INFO) << "TODO: GpuVdaContext::UseOutputBuffer";
-  NOTIMPLEMENTED();
-  return PLATFORM_FAILURE;
+  if (!CheckValidOutputFormat(format, num_planes))
+    return INVALID_ARGUMENT;
+
+  // Move semantics don't seem to work with mojo pointers so copy the
+  // video_frame_plane_t objects and handle in the ipc thread. This allows
+  // |planes| ownership to be retained by the user.
+  std::vector<video_frame_plane_t> planes_vector(planes, planes + num_planes);
+  ipc_task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&GpuVdaContext::UseOutputBufferOnIpcThread,
+                     base::Unretained(this), picture_buffer_id, format,
+                     std::move(fd), std::move(planes_vector)));
+  return SUCCESS;
+}
+
+void GpuVdaContext::UseOutputBufferOnIpcThread(
+    int32_t picture_buffer_id,
+    vda_pixel_format_t format,
+    base::ScopedFD fd,
+    std::vector<video_frame_plane_t> planes) {
+  mojo::ScopedHandle handle_fd = mojo::WrapPlatformFile(fd.release());
+  if (!handle_fd.is_valid()) {
+    LOG(ERROR) << "Invalid output buffer handle.";
+    return;
+  }
+
+  std::vector<arc::mojom::VideoFramePlanePtr> mojo_planes;
+  for (const auto& plane : planes) {
+    arc::mojom::VideoFramePlanePtr mojo_plane =
+        arc::mojom::VideoFramePlane::New();
+    mojo_plane->offset = plane.offset;
+    mojo_plane->stride = plane.stride;
+    mojo_planes.push_back(std::move(mojo_plane));
+  }
+
+  vda_ptr_->ImportBufferForPicture(
+      picture_buffer_id, ConvertPixelFormatToHalPixelFormat(format),
+      std::move(handle_fd), std::move(mojo_planes));
 }
 
 vda_result GpuVdaContext::Reset() {
-  // TODO(alexlau): Implement this.
-  DLOG(INFO) << "TODO: GpuVdaContext::Reset";
-  NOTIMPLEMENTED();
-  DispatchResetResponse(PLATFORM_FAILURE);
-  return PLATFORM_FAILURE;
+  ipc_task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&GpuVdaContext::ResetOnIpcThread, base::Unretained(this)));
+  return SUCCESS;
+}
+
+void GpuVdaContext::ResetOnIpcThread() {
+  DCHECK(ipc_thread_checker_.CalledOnValidThread());
+  vda_ptr_->Reset(
+      base::BindRepeating(&GpuVdaContext::OnResetDone, base::Unretained(this)));
+}
+
+void GpuVdaContext::OnResetDone(
+    arc::mojom::VideoDecodeAccelerator::Result result) {
+  DispatchResetResponse(ConvertResult(result));
 }
 
 vda_result GpuVdaContext::Flush() {
-  // TODO(alexlau): Implement this.
-  DLOG(INFO) << "TODO: GpuVdaContext::Flush";
-  NOTIMPLEMENTED();
-  DispatchFlushResponse(PLATFORM_FAILURE);
-  return PLATFORM_FAILURE;
+  ipc_task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&GpuVdaContext::FlushOnIpcThread, base::Unretained(this)));
+  return SUCCESS;
+}
+
+void GpuVdaContext::FlushOnIpcThread() {
+  DCHECK(ipc_thread_checker_.CalledOnValidThread());
+  vda_ptr_->Flush(
+      base::BindRepeating(&GpuVdaContext::OnFlushDone, base::Unretained(this)));
+}
+
+void GpuVdaContext::OnFlushDone(
+    arc::mojom::VideoDecodeAccelerator::Result result) {
+  DispatchFlushResponse(ConvertResult(result));
 }
 
 // VideoDecodeClient implementation function.
@@ -261,7 +533,13 @@ void GpuVdaContext::NotifyError(
 // VideoDecodeClient implementation function.
 void GpuVdaContext::NotifyEndOfBitstreamBuffer(int32_t bitstream_id) {
   DCHECK(ipc_thread_checker_.CalledOnValidThread());
+
   DispatchNotifyEndOfBitstreamBuffer(bitstream_id);
+
+  if (decoding_bitstream_ids_.erase(bitstream_id) == 0) {
+    LOG(ERROR) << "Could not find bitstream id: " << bitstream_id;
+    return;
+  }
 }
 
 }  // namespace
@@ -296,18 +574,33 @@ GpuVdaImpl::~GpuVdaImpl() {
   RunTaskOnThread(
       ipc_thread_.task_runner(),
       base::BindOnce(&GpuVdaImpl::CleanupOnIpcThread, base::Unretained(this)));
-  mojo::edk::ShutdownIPCSupport(base::Bind(&base::DoNothing));
+  mojo::edk::ShutdownIPCSupport(base::BindRepeating(&base::DoNothing));
 
   CHECK_EQ(active_impl, this);
   active_impl = nullptr;
 }
 
+bool GpuVdaImpl::PopulateCapabilities() {
+  capabilities_.num_input_formats = arraysize(kInputFormats);
+  capabilities_.input_formats = kInputFormats;
+
+  output_formats_ = GetOutputPixelFormats();
+  if (output_formats_.empty())
+    return false;
+
+  capabilities_.num_output_formats = output_formats_.size();
+  capabilities_.output_formats = output_formats_.data();
+  return true;
+}
+
 bool GpuVdaImpl::Initialize() {
+  if (!PopulateCapabilities())
+    return false;
+
   bool init_success = false;
   RunTaskOnThread(ipc_thread_.task_runner(),
-                  base::Bind(&GpuVdaImpl::InitializeOnIpcThread,
-                             base::Unretained(this), &init_success));
-  // TODO(alexlau): Populate capabilities_.
+                  base::BindOnce(&GpuVdaImpl::InitializeOnIpcThread,
+                                 base::Unretained(this), &init_success));
   return init_success;
 }
 
@@ -378,8 +671,8 @@ void GpuVdaImpl::InitializeOnIpcThread(bool* init_success) {
       interface_ptr_info(std::move(scoped_message_pipe_handle),
                          kRequiredVideoAcceleratorFactoryMojoVersion);
   vda_factory_ptr_ = mojo::MakeProxy(std::move(interface_ptr_info));
-  vda_factory_ptr_.set_connection_error_with_reason_handler(
-      base::Bind(&GpuVdaImpl::OnVdaFactoryError, base::Unretained(this)));
+  vda_factory_ptr_.set_connection_error_with_reason_handler(base::BindRepeating(
+      &GpuVdaImpl::OnVdaFactoryError, base::Unretained(this)));
 
   *init_success = true;
 }
@@ -424,10 +717,12 @@ void GpuVdaImpl::InitDecodeSessionOnIpcThread(
   std::unique_ptr<GpuVdaContext> context = std::make_unique<GpuVdaContext>(
       ipc_thread_.task_runner(), std::move(vda_ptr));
   GpuVdaContext* context_ptr = context.get();
-  context_ptr->Initialize(base::Bind(
-      &GpuVdaImpl::InitDecodeSessionAfterContextInitializedOnIpcThread,
-      base::Unretained(this), init_complete_event, out_context,
-      base::Passed(std::move(context))));
+  context_ptr->Initialize(
+      profile,
+      base::BindRepeating(
+          &GpuVdaImpl::InitDecodeSessionAfterContextInitializedOnIpcThread,
+          base::Unretained(this), init_complete_event, out_context,
+          base::Passed(std::move(context))));
 }
 
 void GpuVdaImpl::InitDecodeSessionAfterContextInitializedOnIpcThread(

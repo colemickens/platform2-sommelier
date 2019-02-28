@@ -176,8 +176,8 @@ vda_result_t vda_decode(void* ctx,
                         int fd,
                         uint32_t offset,
                         uint32_t bytes_used) {
-  return static_cast<arc::VdaContext*>(ctx)->Decode(bitstream_id, fd, offset,
-                                                    bytes_used);
+  return static_cast<arc::VdaContext*>(ctx)->Decode(
+      bitstream_id, base::ScopedFD(fd), offset, bytes_used);
 }
 
 vda_result_t vda_set_output_buffer_count(void* ctx, size_t num_output_buffers) {
@@ -192,7 +192,7 @@ vda_result_t vda_use_output_buffer(void* ctx,
                                    size_t num_planes,
                                    video_frame_plane_t* planes) {
   return static_cast<arc::VdaContext*>(ctx)->UseOutputBuffer(
-      picture_buffer_id, format, fd, num_planes, planes);
+      picture_buffer_id, format, base::ScopedFD(fd), num_planes, planes);
 }
 
 vda_result vda_reset(void* ctx) {

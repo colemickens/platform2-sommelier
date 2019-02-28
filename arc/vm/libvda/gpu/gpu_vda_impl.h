@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/threading/thread.h>
 #include <base/threading/thread_checker.h>
@@ -41,6 +42,7 @@ class GpuVdaImpl : public VdaImpl {
   static GpuVdaImpl* Create();
 
  private:
+  bool PopulateCapabilities();
   bool Initialize();
   void InitializeOnIpcThread(bool* init_success);
   void InitDecodeSessionOnIpcThread(vda_profile_t profile,
@@ -56,6 +58,7 @@ class GpuVdaImpl : public VdaImpl {
   void OnVdaFactoryError(uint32_t custom_reason,
                          const std::string& description);
 
+  std::vector<vda_pixel_format_t> output_formats_;
   base::Thread ipc_thread_;
   // TODO(alexlau): Use THREAD_CHECKER macro after libchrome uprev
   // (crbug.com/909719).

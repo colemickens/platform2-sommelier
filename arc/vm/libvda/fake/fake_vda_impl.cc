@@ -4,6 +4,7 @@
 
 #include "arc/vm/libvda/fake/fake_vda_impl.h"
 
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/macros.h>
 
@@ -39,13 +40,13 @@ class FakeContext : public VdaContext {
 
   // VdaContext overrides.
   vda_result_t Decode(int32_t bitstream_id,
-                      int fd,
+                      base::ScopedFD fd,
                       uint32_t offset,
                       uint32_t bytes_used) override;
   vda_result_t SetOutputBufferCount(size_t num_output_buffers) override;
   vda_result_t UseOutputBuffer(int32_t picture_buffer_id,
                                vda_pixel_format_t format,
-                               int fd,
+                               base::ScopedFD fd,
                                size_t num_planes,
                                video_frame_plane_t* planes) override;
   vda_result_t Reset() override;
@@ -55,15 +56,17 @@ class FakeContext : public VdaContext {
 FakeContext::FakeContext() = default;
 
 vda_result_t FakeContext::Decode(int32_t bitstream_id,
-                                 int fd,
+                                 base::ScopedFD fd,
                                  uint32_t offset,
                                  uint32_t bytes_used) {
   LOG(INFO) << "FakeContext::Decode called with bitstream id=" << bitstream_id
-            << " fd=" << fd << " offset=" << offset
+            << " fd=" << fd.get() << " offset=" << offset
             << " bytes_used=" << bytes_used;
+
   DispatchPictureReady(1 /* picture_buffer_id */, bitstream_id,
                        0 /* crop_left */, 0 /* crop_top */, 0 /* crop_right */,
                        0 /* crop_bottom */);
+
   return SUCCESS;
 }
 
@@ -76,12 +79,13 @@ vda_result_t FakeContext::SetOutputBufferCount(size_t num_output_buffers) {
 
 vda_result_t FakeContext::UseOutputBuffer(int32_t picture_buffer_id,
                                           vda_pixel_format_t format,
-                                          int fd,
+                                          base::ScopedFD fd,
                                           size_t num_planes,
                                           video_frame_plane_t* planes) {
   LOG(INFO) << "FakeContext::UseOutputBuffer called with picture_buffer_id="
-            << picture_buffer_id << " format=" << format << " fd=" << fd
+            << picture_buffer_id << " format=" << format << " fd=" << fd.get()
             << " num_planes=" << num_planes;
+
   return SUCCESS;
 }
 

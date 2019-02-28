@@ -3,8 +3,8 @@
 # found in the LICENSE file.
 
 import("//common-mk/deps.gni")
-import("//common-mk/pkg_config.gni")
 import("//common-mk/mojom_bindings_generator.gni")
+import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
@@ -13,8 +13,9 @@ group("all") {
   ]
 
   if (use.test) {
-    deps += [ ":libvda_unittest" ]
+    deps += [ ":libvda_fake_unittest" ]
   }
+  deps += [ ":libvda_gpu_unittest" ]
 }
 
 pkg_config("target_defaults") {
@@ -53,6 +54,7 @@ source_set("libvda_source_set") {
   ]
   sources = [
     "fake/fake_vda_impl.cc",
+    "gbm_util.cc",
     "gpu/gpu_vda_impl.cc",
     "wrapper.cc",
   ]
@@ -60,6 +62,7 @@ source_set("libvda_source_set") {
 
 shared_library("libvda") {
   output_name = "libvda"
+  pkg_deps = [ "gbm" ]
   deps = [
     ":libvda_source_set",
   ]
@@ -83,15 +86,45 @@ generate_pkg_config("libvda_pc") {
 }
 
 if (use.test) {
-  executable("libvda_unittest") {
+  # Unit tests for the fake VDA impl.
+  executable("libvda_fake_unittest") {
     configs += [ "//common-mk:test" ]
     deps = [
       ":libvda_source_set",
       "//common-mk/testrunner",
     ]
-    pkg_deps = [ "libchrome-test-${libbase_ver}" ]
+    pkg_deps = [
+      "libchrome-test-${libbase_ver}",
+      "gbm",
+    ]
     sources = [
-      "libvda_unittest.cc",
+      "libvda_fake_unittest.cc",
+      "test/libvda_unittest_common.cc",
     ]
   }
+}
+
+# Unit tests for the GPU VDA impl, to be executed by tast tests.
+executable("libvda_gpu_unittest") {
+  # Need to define UNIT_TEST for ShadowingAtExitManager.
+  defines = [ "UNIT_TEST" ]
+  ldflags = [ "-pthread" ]
+  libs = [
+    "gmock",
+    "gtest",
+    "pthread",
+  ]
+  deps = [
+    ":libvda_source_set",
+  ]
+  pkg_deps = [
+    "libchrome-test-${libbase_ver}",
+    "gbm",
+  ]
+  sources = [
+    "libvda_gpu_unittest.cc",
+    "test/decode_event_thread.cc",
+    "test/encoded_data_helper.cc",
+    "test/libvda_unittest_common.cc",
+  ]
 }
