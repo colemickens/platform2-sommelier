@@ -15,6 +15,9 @@
 #include <base/macros.h>
 #include <brillo/secure_blob.h>
 
+#include "key.pb.h"           // NOLINT(build/include)
+#include "vault_keyset.pb.h"  // NOLINT(build/include)
+
 namespace cryptohome {
 
 class UsernamePasskey : public Credentials {
@@ -26,13 +29,18 @@ class UsernamePasskey : public Credentials {
 
   ~UsernamePasskey();
 
-  void Assign(const Credentials& rhs);
+  void Assign(const UsernamePasskey& rhs);
 
   void set_key_data(const KeyData& data);
+  void set_challenge_credentials_keyset_info(
+      const SerializedVaultKeyset_SignatureChallengeInfo&
+          challenge_credentials_keyset_info);
 
   // Overridden from cryptohome::Credentials
   std::string username() const;
   const KeyData& key_data() const;
+  const SerializedVaultKeyset_SignatureChallengeInfo&
+  challenge_credentials_keyset_info() const;
   std::string GetObfuscatedUsername(
       const brillo::SecureBlob &system_salt) const;
   void GetPasskey(brillo::SecureBlob* passkey) const;
@@ -40,6 +48,8 @@ class UsernamePasskey : public Credentials {
  private:
   std::string username_;
   KeyData key_data_;
+  SerializedVaultKeyset_SignatureChallengeInfo
+      challenge_credentials_keyset_info_;
   brillo::SecureBlob passkey_;
 
   DISALLOW_COPY_AND_ASSIGN(UsernamePasskey);

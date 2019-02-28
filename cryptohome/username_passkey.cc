@@ -22,20 +22,32 @@ UsernamePasskey::UsernamePasskey(const char *username,
 UsernamePasskey::~UsernamePasskey() {
 }
 
-void UsernamePasskey::Assign(const Credentials& rhs) {
+void UsernamePasskey::Assign(const UsernamePasskey& rhs) {
   username_.assign(rhs.username());
   key_data_ = rhs.key_data();
   SecureBlob passkey;
   rhs.GetPasskey(&passkey);
   passkey_.swap(passkey);
+  challenge_credentials_keyset_info_ = rhs.challenge_credentials_keyset_info_;
 }
 
 void UsernamePasskey::set_key_data(const KeyData& data) {
   key_data_ = data;
 }
 
+void UsernamePasskey::set_challenge_credentials_keyset_info(
+    const SerializedVaultKeyset_SignatureChallengeInfo&
+        challenge_credentials_keyset_info) {
+  challenge_credentials_keyset_info_ = challenge_credentials_keyset_info;
+}
+
 const KeyData& UsernamePasskey::key_data() const {
   return key_data_;
+}
+
+const SerializedVaultKeyset_SignatureChallengeInfo&
+UsernamePasskey::challenge_credentials_keyset_info() const {
+  return challenge_credentials_keyset_info_;
 }
 
 std::string UsernamePasskey::username() const {

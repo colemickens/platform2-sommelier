@@ -49,12 +49,11 @@ class ChallengeCredentialsHelper final {
   //
   // If the operation succeeds, |username_passkey| will contain the freshly
   // generated credentials that should be used for encrypting the new vault
-  // keyset, and |keyset_challenge_info| will be the data to be stored in the
-  // created vault keyset. If the operation fails, both arguments will be null.
+  // keyset, with the challenge_credentials_keyset_info() field containing the
+  // data to be stored in the created vault keyset.
+  // If the operation fails, the argument will be null.
   using GenerateNewCallback = base::Callback<void(
-      std::unique_ptr<UsernamePasskey> /* username_passkey */,
-      std::unique_ptr<KeysetSignatureChallengeInfo>
-      /* keyset_challenge_info */)>;
+      std::unique_ptr<UsernamePasskey> /* username_passkey */)>;
 
   // This callback reports result of a Decrypt() call.
   //

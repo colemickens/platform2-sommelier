@@ -41,6 +41,8 @@ void VerifySuccessfulChallengeCredentialsDecryptResult(
   SecureBlob passkey;
   result.username_passkey->GetPasskey(&passkey);
   EXPECT_EQ(expected_passkey, passkey);
+  EXPECT_EQ(KeyData::KEY_TYPE_CHALLENGE_RESPONSE,
+            result.username_passkey->key_data().type());
 }
 
 void VerifyFailedChallengeCredentialsDecryptResult(

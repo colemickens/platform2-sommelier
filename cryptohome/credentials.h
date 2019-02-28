@@ -13,6 +13,7 @@
 #include <brillo/secure_blob.h>
 
 #include "key.pb.h"  // NOLINT(build/include)
+#include "vault_keyset.pb.h"  // NOLINT(build/include)
 
 namespace cryptohome {
 
@@ -42,6 +43,12 @@ class Credentials {
 
   // Returns the associated KeyData for the passkey, if defined.
   virtual const KeyData& key_data() const = 0;
+
+  // Returns the associated SerializedVaultKeyset_SignatureChallengeInfo for the
+  // passkey, if defined. Used only for freshly generated challenge-protected
+  // credentials (see ChallengeCredentialsHelper::GenerateNew()).
+  virtual const SerializedVaultKeyset_SignatureChallengeInfo&
+  challenge_credentials_keyset_info() const = 0;
 };
 
 }  // namespace cryptohome

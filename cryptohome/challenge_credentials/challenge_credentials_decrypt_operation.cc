@@ -185,6 +185,9 @@ void ChallengeCredentialsDecryptOperation::ProceedIfChallengesDone() {
     return;
   auto username_passkey = std::make_unique<UsernamePasskey>(account_id_.c_str(),
                                                             ConstructPasskey());
+  KeyData key_data;
+  key_data.set_type(KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
+  username_passkey->set_key_data(key_data);
   Complete(&completion_callback_, std::move(username_passkey));
   // |this| can be already destroyed at this point.
 }
