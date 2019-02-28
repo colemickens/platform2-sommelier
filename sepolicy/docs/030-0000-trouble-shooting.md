@@ -28,12 +28,12 @@ There're three approaches to identify an potential SELinux problem.
   only mean this access it not allowed by policy, but SELinux is still allowing
   it because the domain is not enforced.
 
-2. A quick command could test whether your program works by putting the whole
+1. A quick command could test whether your program works by putting the whole
 system permissive. By executing `setenforce 0` as root in developer mode, you
 can put the whole system permissive. You'll be able to test if your program
 comes to work.
 
-3. If you program is a daemon process which fails so early before you can have a
+1. If you program is a daemon process which fails so early before you can have a
 console access, you could change the SELinux config file located at
 `/etc/selinux/config` to
 ```
@@ -109,4 +109,180 @@ SELinux](https://wiki.centos.org/HowTos/SELinux#head-02c04b0b030dd3c3d58bb7acbbc
 
 ### How to debug your SELinux policy
 
-TODO
+#### Analyzing audit logs
+
+The most important and fundamental way to debug your policy is to read the audit
+log.
+
+In the previous audit log example, we know it's "`cat`" process in
+`cros_ssh_session` domain was denied to read file "`messages`" in device `dm-0`
+labelled as `cros_syslog`.
+
+There're the main things to look at in the audit logs.
+
+- Actor
+  - Which process, pid / name;
+  - The context of the actor (scontext);
+
+- Actee / Target
+  - Which target?
+  - Which class. process, file, sock_file, port, etc?
+
+By looking at the log, the main thinkabout would be"
+
+- Is the actor and target at the correct context? No? => Fix the context.
+  - File label:
+    - In system image: add the context to
+      `platform2/sepolicy/file_contexts/chromeos_file_contexts`, and
+      `platform2/sepolicy/sepolicy/chromeos/file.te`.
+    - In stateful partition:
+      - (Recommended and Easiest) Introduce a new file type in
+        `.../sepolicy/chromeos/file.te`, and use `filetrans_pattern` macro to
+        allow auto assigning labels upon file creation.
+      - Introduce a new file type in `.../sepolicy/chromeos/file.te`, and modify
+        the program to set correct creation label.
+        [setfscreatecon(3)](https://manpages.ubuntu.com/manpages/bionic/en/man3/setfscreatecon.3.html)
+  - Process domain: fix the executable file label, and use `domain_auto_trans`
+    macros if possible.
+  - Port context, etc: you're probably already an advanced SELinux policy writer
+    if you met this point. You can refer to [SELinux Project
+    Wiki](https://selinuxproject.org/), for example
+    [portcon](https://selinuxproject.org/page/NetworkStatements#portcon)
+- Is the action really needed? No? => Fix the program to eliminate the action.
+
+  Examples of mostly unneeded actions:
+  - relabelfrom/relabelto: only some startup script should need this.
+  - capability dac_override: in most cases, it could be avoided by reordering
+    chown / actual read-write.
+  - mount/mounton: except for some startup script, or programs using libminijail.
+    This should be avoided. For programs using minijail0 wrapper, `-T static`
+    mode is strongly recommended to leave all the high privileged permissions to
+    minijail.
+
+#### Inspecting the runtime state
+
+- File labels: `ls -Z file` or `ls -Zd directory`
+- Process domains: `ps -Z`, `ps auxZ`, `ps -Zp <PID>`
+- Current domain: `id -Z`
+- Run in a different domain: `runcon <context> <program> <args...>` for example,
+  `runcon u:r:cros_init:s0 id -Z`. The transition from current domain to new
+  domain must be allowed to let this work. Currently, either `cros_ssh_session`
+  or `frecon` is running permissive, it should always work if you're executing
+  in the console, or via ssh.
+
+#### Update the policy
+
+After understanding why the denials occurred by reading the log, policy may need
+updating to fix the problem.
+
+##### Locate the policy
+
+In general, Chrome OS policy lives in `sepolicy` directory in
+`chromiumos/platform2` project, which is `src/platform2/sepolicy` in the repo
+tree checkout.
+
+A quick grep on the scontext will locate the where it is defined, and most of
+its policies.
+
+For example, if we want to change `cros_ssh_session`:
+
+```
+$ grep cros_ssh_session . -R
+./policy/chromeos/dev/cros_ssh_session.te:type cros_ssh_session, domain, chromeos_domain;
+./policy/chromeos/dev/cros_ssh_session.te:permissive cros_ssh_session;
+./policy/chromeos/dev/cros_ssh_session.te:typeattribute cros_ssh_session netdomain;
+./policy/chromeos/dev/cros_sshd.te:domain_auto_trans(cros_sshd, sh_exec, cros_ssh_session);
+./policy/chromeos/file.te:filetrans_pattern(cros_ssh_session, cros_etc, cros_ld_conf_cache, file, "ld.so.cache~");
+./policy/chromeos/log-and-errors/cros_crash.te:-cros_ssh_session
+```
+
+We can see it's defined in `cros_ssh_session.te`, which means most of our
+changes should live in that file.
+
+##### Searching the compiled policy file
+
+`sesearch` is an excellent tool to search inside a compiled policy. You can use
+this tool to search what is allowed, what denials are not logged, what grants
+are logged, and type transitions, etc.
+
+on Debian-based systems (or gLinux), `sudo apt install setools` will install
+this tool.
+
+You can search a policy file, say, `policy.30`, in following examples:
+
+```
+# Search all allow rule with scontext to be cros_ssh_session or attributes
+cros_ssh_session attributes to, tcontext to be cros_sshd or attributes cros_sshd
+attributes to with class to be process
+$ sesearch policy.30 -A -s cros_ssh_session -t cros_sshd -c process
+# Search all type transitions with scontext to be exactly minijail
+$ sesearch policy.30 -T -s minijail -ds
+```
+
+`man sesearch` will provide all the options to search `allow`, `auditallow`,
+`dontaudit`, `allowxperm`, etc, with filters on scontext, tcontext, class,
+permissions.
+
+##### Put domain to permissive
+
+Sometimes, during debugging, you may not to want to put the system permissive.
+You can put only one domain permissive.
+
+1. Locate the policy file as above.
+
+1. Simply add `permissive <domain type>`, for example, `permissive
+cros_ssh_session` will put `cros_ssh_session` to permissive.
+
+This will only put the given domain to permissive, and everything with the
+permissive actor domain (scontext) will not actually being denied.
+
+But please note, some operation may indicate other permission at runtime. For
+example, file creation will check
+`{ associate } scontext=file_type tcontext=fs_type class=filesystem `, these kind of
+denials may occur. If you saw similiar denials please reach kroot@ or fqj@,
+we'll fix it.
+
+##### Writing policy fix
+
+1. Identify whether labebling files is needed. If yes, label the files either in
+   file_contexts or via type_transition.
+
+1. Fix the program or add `dontaudit` rule to prevent from spamming logs if it
+   shouldn't be allowed.
+
+1. Write allow rule or allowxperm rule based on denials seen, and the behavior
+   analysis of the program.
+
+   1. for one-time program-specific permission requests, simply `allow[xperm]
+      scontext tcontext:class perms [args for allowxperm];`
+      `scontext`, `tcontext`, and `perms` can be plural in format like `{ a b c
+      }`
+
+   1. for permission requests that may apply to other programs, create an
+      attribute and attribute current domain to it. And write corresponding
+      rules for that attribute.
+
+   1. use m4 macros wisely, we have many useful macros like `r_file_perms`,
+      `rw_file_perms`, `create_file_perms`, `filetrans_pattern`, and
+      `domain_auto_trans`.
+
+For more details in writing policy, please refer to previous sections about
+writing policies.
+
+#### Useful build flags for debug
+
+1. `USE="selinux_develop"`: log permissive denials and make sure log is almost
+   not suppressed by printk limit.
+
+1. `USE="selinux_experimental"`: build with SELinux mode in permissive by
+   default. This is equivlant to manually changing `SELINUX=permissive` in
+   `/etc/selinux/config`
+
+1. `USE="selinux_audit_all"`: remove all the `dontaudit` rule before compiling
+   to the final monolithic policy. There're some should-be-denied access with
+   `dontaudit` rules, so denials don't spam the log. But you may want to see
+   them sometimes during development or debugging process.
+
+For Googlers, there's a nice introduction presentation slides how debugging
+SELinux policies to refer to though it's for Android, at
+[go/sepolicy-debug](https://goto.google.com/sepolicy-debug)

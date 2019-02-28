@@ -12,11 +12,11 @@ based boards.*
    mounts the selinuxfs to /sys/fs/selinux. init will be assigned with initial
    contexts (kernel).
 
-2. init re-execs itself, to trigger type_transition `type_transition kernel
+1. init re-execs itself, to trigger type_transition `type_transition kernel
    chromeos_init_exec:process cros_init`, which will auto-transits init into
    cros_init domain.
 
-3. init starting up service. init will startup services, and kernel will
+1. init starting up service. init will startup services, and kernel will
    auto-transits based on defined type transition rules. See next section for
    details.
 
