@@ -2,7 +2,7 @@
   'target_defaults': {
     'variables': {
       'deps': [
-        'libchrome-<(libbase_ver)'
+        'libchrome-<(libbase_ver)',
       ],
     },
     'include_dirs': [
@@ -73,8 +73,8 @@
         'brillo/mime_utils.cc',
         'brillo/osrelease_reader.cc',
         'brillo/process.cc',
-        'brillo/process_reaper.cc',
         'brillo/process_information.cc',
+        'brillo/process_reaper.cc',
         'brillo/secure_blob.cc',
         'brillo/strings/string_utils.cc',
         'brillo/syslog_logging.cc',
@@ -112,11 +112,13 @@
       ],
       'conditions': [
         ['USE_device_mapper == 1', {
-          'variables': { 'deps': ['devmapper'] },
+          'variables': {
+            'deps': ['devmapper'],
+          },
           'sources': [
             'brillo/blkdev_utils/device_mapper.cc',
             'brillo/blkdev_utils/device_mapper_task.cc',
-          ]
+          ],
         }],
       ],
     },
@@ -208,7 +210,7 @@
         ['USE_device_mapper == 1', {
           'sources': [
             'brillo/blkdev_utils/device_mapper_fake.cc',
-          ]
+          ],
         }],
       ],
     },
@@ -307,9 +309,9 @@
       'sources': [
         'policy/device_policy.cc',
         'policy/device_policy_impl.cc',
+        'policy/libpolicy.cc',
         'policy/policy_util.cc',
         'policy/resilient_policy_util.cc',
-        'policy/libpolicy.cc',
       ],
     },
     {
@@ -391,6 +393,30 @@
                 '-lgcov',
               ],
             }],
+            ['USE_dbus == 1', {
+              'sources': [
+                '<(proto_in_dir)/test.proto',
+                'brillo/any_internal_impl_test.cc',
+                'brillo/any_test.cc',
+                'brillo/dbus/async_event_sequencer_test.cc',
+                'brillo/dbus/data_serialization_test.cc',
+                'brillo/dbus/dbus_method_invoker_test.cc',
+                'brillo/dbus/dbus_object_test.cc',
+                'brillo/dbus/dbus_param_reader_test.cc',
+                'brillo/dbus/dbus_param_writer_test.cc',
+                'brillo/dbus/dbus_signal_handler_test.cc',
+                'brillo/dbus/exported_object_manager_test.cc',
+                'brillo/dbus/exported_property_set_test.cc',
+                'brillo/http/http_proxy_test.cc',
+                'brillo/type_name_undecorate_test.cc',
+                'brillo/variant_dictionary_test.cc',
+              ],
+            }],
+            ['USE_device_mapper == 1', {
+              'sources': [
+                'brillo/blkdev_utils/device_mapper_test.cc',
+              ],
+            }],
           ],
           'sources': [
             'brillo/asynchronous_signal_handler_test.cc',
@@ -432,32 +458,6 @@
             'brillo/value_conversion_test.cc',
             'testrunner.cc',
           ],
-          'conditions': [
-            ['USE_dbus == 1', {
-              'sources': [
-                'brillo/any_test.cc',
-                'brillo/any_internal_impl_test.cc',
-                'brillo/dbus/async_event_sequencer_test.cc',
-                'brillo/dbus/data_serialization_test.cc',
-                'brillo/dbus/dbus_method_invoker_test.cc',
-                'brillo/dbus/dbus_object_test.cc',
-                'brillo/dbus/dbus_param_reader_test.cc',
-                'brillo/dbus/dbus_param_writer_test.cc',
-                'brillo/dbus/dbus_signal_handler_test.cc',
-                'brillo/dbus/exported_object_manager_test.cc',
-                'brillo/dbus/exported_property_set_test.cc',
-                'brillo/http/http_proxy_test.cc',
-                'brillo/type_name_undecorate_test.cc',
-                'brillo/variant_dictionary_test.cc',
-                '<(proto_in_dir)/test.proto',
-              ],
-            }],
-            ['USE_device_mapper == 1', {
-              'sources': [
-                'brillo/blkdev_utils/device_mapper_test.cc',
-              ]
-            }],
-          ],
         },
         {
           'target_name': 'libinstallattributes-<(libbase_ver)_tests',
@@ -470,7 +470,7 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'install_attributes/tests/libinstallattributes_test.cc',
-          ]
+          ],
         },
         {
           'target_name': 'libpolicy-<(libbase_ver)_tests',
@@ -489,7 +489,7 @@
             'policy/tests/libpolicy_test.cc',
             'policy/tests/policy_util_test.cc',
             'policy/tests/resilient_policy_util_test.cc',
-          ]
+          ],
         },
       ],
     }],
