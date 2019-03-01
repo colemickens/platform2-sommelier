@@ -45,13 +45,13 @@ static std::string ObjectID(const RTNLHandler* obj) {
 }
 }  // namespace Logging
 
-const int RTNLHandler::kRequestLink = 1;
-const int RTNLHandler::kRequestAddr = 2;
-const int RTNLHandler::kRequestRoute = 4;
-const int RTNLHandler::kRequestRule = 8;
-const int RTNLHandler::kRequestRdnss = 16;
-const int RTNLHandler::kRequestNeighbor = 32;
-const int RTNLHandler::kRequestBridgeNeighbor = 64;
+const uint32_t RTNLHandler::kRequestLink = 1;
+const uint32_t RTNLHandler::kRequestAddr = 2;
+const uint32_t RTNLHandler::kRequestRoute = 4;
+const uint32_t RTNLHandler::kRequestRule = 8;
+const uint32_t RTNLHandler::kRequestRdnss = 16;
+const uint32_t RTNLHandler::kRequestNeighbor = 32;
+const uint32_t RTNLHandler::kRequestBridgeNeighbor = 64;
 const int RTNLHandler::kErrorWindowSize = 16;
 
 namespace {
@@ -191,7 +191,7 @@ void RTNLHandler::SetInterfaceMac(int interface_index,
   CHECK(SendMessage(&msg));
 }
 
-void RTNLHandler::RequestDump(int request_flags) {
+void RTNLHandler::RequestDump(uint32_t request_flags) {
   if (rtnl_socket_ == Sockets::kInvalidFileDescriptor) {
     LOG(ERROR) << __func__ << " called while not started.  "
         "Assuming we are in unit tests.";
@@ -215,7 +215,7 @@ void RTNLHandler::DispatchEvent(int type, const RTNLMessage& msg) {
 }
 
 void RTNLHandler::NextRequest(uint32_t seq) {
-  int flag = 0;
+  uint32_t flag = 0;
   RTNLMessage::Type type;
 
   SLOG(this, 2) << base::StringPrintf("RTNLHandler nextrequest %d %d 0x%x", seq,

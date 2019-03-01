@@ -36,13 +36,13 @@ class Sockets;
 class SHILL_EXPORT RTNLHandler {
  public:
   // Request mask.
-  static const int kRequestLink;
-  static const int kRequestAddr;
-  static const int kRequestRoute;
-  static const int kRequestRule;
-  static const int kRequestRdnss;
-  static const int kRequestNeighbor;
-  static const int kRequestBridgeNeighbor;
+  static const uint32_t kRequestLink;
+  static const uint32_t kRequestAddr;
+  static const uint32_t kRequestRoute;
+  static const uint32_t kRequestRule;
+  static const uint32_t kRequestRdnss;
+  static const uint32_t kRequestNeighbor;
+  static const uint32_t kRequestBridgeNeighbor;
 
   using ErrorMask = std::set<int>;
 
@@ -98,7 +98,7 @@ class SHILL_EXPORT RTNLHandler {
   // exhaustively dumped via RTNL.  As results arrive from the kernel
   // they will be broadcast to all listeners.  The possible values
   // (multiple can be ORred together) are below.
-  virtual void RequestDump(int request_flags);
+  virtual void RequestDump(uint32_t request_flags);
 
   // Returns the index of interface |interface_name|, or -1 if unable to
   // determine the index.
