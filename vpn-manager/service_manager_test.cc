@@ -173,8 +173,3 @@ TEST_F(ServiceManagerTest, GetLocalAddressFromRemote) {
 }
 
 }  // namespace vpn_manager
-
-int main(int argc, char** argv) {
-  SetUpTests(&argc, argv, true);
-  return RUN_ALL_TESTS();
-}

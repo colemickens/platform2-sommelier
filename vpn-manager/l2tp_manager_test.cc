@@ -235,8 +235,3 @@ TEST_F(L2tpManagerTest, PollNothingIfRunning) {
 }
 
 }  // namespace vpn_manager
-
-int main(int argc, char** argv) {
-  SetUpTests(&argc, argv, true);
-  return RUN_ALL_TESTS();
-}

@@ -10,12 +10,7 @@ group("all") {
     ":libl2tpipsec_vpn",
   ]
   if (use.test) {
-    deps += [
-      ":daemon_test",
-      ":ipsec_manager_test",
-      ":l2tp_manager_test",
-      ":service_manager_test",
-    ]
+    deps += [ ":vpn_manager_test" ]
   }
 }
 
@@ -55,7 +50,7 @@ executable("l2tpipsec_vpn") {
 }
 
 if (use.test) {
-  executable("daemon_test") {
+  executable("vpn_manager_test") {
     configs += [
       # //common-mk:test should be at the top. crbug.com/887845
       # TODO(crbug.com/887845): Remove this note after library order issue is resolved.
@@ -64,45 +59,10 @@ if (use.test) {
     ]
     sources = [
       "daemon_test.cc",
-    ]
-    deps = [
-      ":libl2tpipsec_vpn",
-    ]
-  }
-
-  executable("ipsec_manager_test") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
-    sources = [
       "ipsec_manager_test.cc",
-    ]
-    deps = [
-      ":libl2tpipsec_vpn",
-    ]
-  }
-
-  executable("l2tp_manager_test") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
-    sources = [
       "l2tp_manager_test.cc",
-    ]
-    deps = [
-      ":libl2tpipsec_vpn",
-    ]
-  }
-
-  executable("service_manager_test") {
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
-    sources = [
       "service_manager_test.cc",
+      "testrunner.cc",
     ]
     deps = [
       ":libl2tpipsec_vpn",
