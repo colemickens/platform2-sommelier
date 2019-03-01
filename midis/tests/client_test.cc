@@ -51,10 +51,8 @@ TEST_F(ClientTest, ListDevices) {
   arc::mojom::MidisClientPtr ptr;
   client.BindClientPtr(&ptr);
 
-  auto client_class =
-      new Client(&tracker, 0, base::Bind([](uint32_t client_id) {}),
-                 mojo::MakeRequest(&server), std::move(ptr));
-  ASSERT_NE(client_class, nullptr);
+  Client client_class(&tracker, 0, base::Bind([](uint32_t client_id) {}),
+                      mojo::MakeRequest(&server), std::move(ptr));
 
   // Check that initially there are no devices listed.
   int64_t num_devices = -1;
