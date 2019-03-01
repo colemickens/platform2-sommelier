@@ -21,6 +21,7 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
+#include <base/strings/stringprintf.h>
 
 #include "shill/logging.h"
 #include "shill/net/io_handler.h"
@@ -192,8 +193,8 @@ void RTNLHandler::RequestDump(int request_flags) {
 
   request_flags_ |= request_flags;
 
-  SLOG(this, 2) << "RTNLHandler got request to dump " << std::showbase
-                << std::hex << request_flags << std::dec << std::noshowbase;
+  SLOG(this, 2) << base::StringPrintf("RTNLHandler got request to dump 0x%x",
+                                      request_flags);
 
   if (!in_request_) {
     NextRequest(last_dump_sequence_);
@@ -210,9 +211,8 @@ void RTNLHandler::NextRequest(uint32_t seq) {
   int flag = 0;
   RTNLMessage::Type type;
 
-  SLOG(this, 2) << "RTNLHandler nextrequest " << seq << " "
-                << last_dump_sequence_ << std::showbase << std::hex << " "
-                << request_flags_ << std::dec << std::noshowbase;
+  SLOG(this, 2) << base::StringPrintf("RTNLHandler nextrequest %d %d 0x%x", seq,
+                                      last_dump_sequence_, request_flags_);
 
   if (seq != last_dump_sequence_)
     return;

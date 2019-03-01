@@ -693,11 +693,10 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage& msg) {
 
   bool new_device = !base::ContainsKey(infos_, dev_index) ||
                     infos_[dev_index].has_addresses_only;
-  SLOG(this, 2) << __func__ << "(index=" << dev_index
-                << std::showbase << std::hex
-                << ", flags=" << flags << ", change=" << change << ")"
-                << std::dec << std::noshowbase
-                << ", new_device=" << new_device;
+  SLOG(this, 2) << __func__
+                << base::StringPrintf(
+                       "(index=%d, flags=0x%x, change=0x%x), new_device=%d",
+                       dev_index, flags, change, new_device);
   infos_[dev_index].has_addresses_only = false;
   infos_[dev_index].flags = flags;
 
@@ -755,10 +754,11 @@ void DeviceInfo::DelLinkMsgHandler(const RTNLMessage& msg) {
 
   DCHECK(msg.type() == RTNLMessage::kTypeLink &&
          msg.mode() == RTNLMessage::kModeDelete);
-  SLOG(this, 2) << __func__ << "(index=" << msg.interface_index()
-                << std::showbase << std::hex
-                  << ", flags=" << msg.link_status().flags
-                  << ", change=" << msg.link_status().change << ")";
+  SLOG(this, 2) << __func__
+                << base::StringPrintf("(index=%d, flags=0x%x, change=0x%x)",
+                                      msg.interface_index(),
+                                      msg.link_status().flags,
+                                      msg.link_status().change);
   RemoveInfo(msg.interface_index());
 }
 

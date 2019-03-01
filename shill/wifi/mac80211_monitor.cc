@@ -139,10 +139,9 @@ void Mac80211Monitor::WakeQueuesIfNeeded() {
   SLOG(this, 2) << __func__ << " stuck_flags=" << stuck_flags;
   if (!(stuck_flags & kStopFlagPowerSave)) {
     if (stuck_flags) {
-      LOG(INFO) << "Skipping wake: stuck_flags is "
-                << std::showbase << std::hex << stuck_flags
-                << " (require " << kStopFlagPowerSave << " to wake)."
-                << std::dec << std::noshowbase;
+      LOG(INFO) << base::StringPrintf(
+          "Skipping wake: stuck_flags is 0x%x (require 0x%x to wake)",
+          stuck_flags, kStopFlagPowerSave);
     }
     return;
   }

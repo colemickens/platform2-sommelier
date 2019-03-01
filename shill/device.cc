@@ -202,10 +202,8 @@ void Device::Initialize() {
 }
 
 void Device::LinkEvent(unsigned flags, unsigned change) {
-  SLOG(this, 2) << "Device " << link_name_
-                << std::showbase << std::hex
-                << " flags " << flags << " changed " << change
-                << std::dec << std::noshowbase;
+  SLOG(this, 2) << base::StringPrintf("Device %s flags 0x%x changed 0x%x",
+                                      link_name_.c_str(), flags, change);
 }
 
 void Device::Scan(Error* error, const string& reason) {
