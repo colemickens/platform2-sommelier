@@ -76,8 +76,3 @@ TEST(InstallAttributesTest, NoProgressionFromEmptyToManaged) {
   ASSERT_TRUE(reader.IsLocked());
   ASSERT_EQ(std::string(), reader.GetAttribute("enterprise.mode"));
 }
-
-int main(int argc, char* argv[]) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}

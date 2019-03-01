@@ -464,6 +464,7 @@
           'type': 'executable',
           'dependencies': [
             '../common-mk/external_dependencies.gyp:install_attributes-proto',
+            '../common-mk/testrunner.gyp:testrunner',
             'libinstallattributes-<(libbase_ver)',
           ],
           'includes': ['../common-mk/common_test.gypi'],
@@ -477,6 +478,7 @@
           'dependencies': [
             '../common-mk/external_dependencies.gyp:install_attributes-proto',
             '../common-mk/external_dependencies.gyp:policy-protos',
+            '../common-mk/testrunner.gyp:testrunner',
             'libinstallattributes-<(libbase_ver)',
             'libpolicy-<(libbase_ver)',
           ],
