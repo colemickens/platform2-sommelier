@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#ifndef IMAGELOADER_TEST_UTILITIES_H_
+#define IMAGELOADER_TEST_UTILITIES_H_
+
 #include <stdint.h>
 
 #include <list>
@@ -62,3 +65,5 @@ base::FilePath GetNonDictMetadataComponentPath();
 void GetFilesInDir(const base::FilePath& dir, std::list<std::string>* files);
 
 }  // namespace imageloader
+
+#endif  // IMAGELOADER_TEST_UTILITIES_H_
