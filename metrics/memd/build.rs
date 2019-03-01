@@ -9,6 +9,8 @@ use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 
+use protoc_rust::Customize;
+
 fn main() {
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
     let proto_root = match env::var("SYSROOT") {
@@ -23,6 +25,9 @@ fn main() {
         out_dir: out_dir.as_os_str().to_str().unwrap(),
         input: &[&proto_file.as_os_str().to_str().unwrap()],
         includes: &[&proto_dir.as_os_str().to_str().unwrap()],
+        customize: Customize {
+            ..Default::default()
+        },
     })
     .expect("protoc");
 

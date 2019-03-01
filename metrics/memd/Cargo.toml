@@ -7,10 +7,10 @@ build = "build.rs"
 [dependencies]
 chrono = "~0.4.2"
 dbus = "~0.6.1"
-env_logger = { version = "~0.5.10", default-features = false }
+env_logger = { version = "^0.6", default-features = false }
 libc = "~0.2.40"
 log = "~0.4.1"
-protobuf = "~1.4.3"
+protobuf = "^2.3"
 syslog = "~4.0.0"
 tempdir = "~0.3.5"
 time = "~0.1.40"
@@ -21,6 +21,6 @@ lto = true
 panic = 'abort'
 
 [build-dependencies]
-protoc-rust = "~1.4.3"
+protoc-rust = "^2.3"
 
 [workspace]
