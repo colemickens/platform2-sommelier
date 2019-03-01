@@ -46,6 +46,10 @@ service Diagnosticsd {
   // Requests an update on a particular diagnostics routine's status.
   rpc GetRoutineUpdate(GetRoutineUpdateRequest)
       returns (GetRoutineUpdateResponse) {}
+
+  // Retrieves the configuration data.
+  rpc GetConfigurationData(GetConfigurationDataRequest)
+      returns (GetConfigurationDataResponse) {}
 }
 
 // Parameters for the SendMessageToUi RPC.
@@ -415,4 +419,14 @@ message GetRoutineUpdateResponse {
   // Accumulated output from the routine, e.g. logs. Output is not
   // flushed when returned.
   string output = 5;
+}
+
+// Parameters for the GetConfigurationData RPC. The message is currently empty.
+message GetConfigurationDataRequest {}
+
+// Return value for GetConfigurationData RPC.
+message GetConfigurationDataResponse {
+  // Configuration data. The length does not exeed 1MB (1'000'000 bytes).
+  // If there is no pre-loaded configuration data, the string is empty.
+  string json_configuration_data = 1;
 }

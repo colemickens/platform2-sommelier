@@ -18,6 +18,17 @@ service DiagnosticsProcessor {
   // Called when the diagnosticsd daemon received EC event.
   rpc HandleEcNotification(HandleEcNotificationRequest)
       returns (HandleEcNotificationResponse) {}
+
+  // Called when the diagnosticsd daemon received new configuration data blob,
+  // this happens when the device policy, passing this configuration data blob,
+  // gets updated.
+  // It is only a notification that the configuration data has been changed.
+  // The GetConfigurationData needs to be called to retrieve the actual
+  // configuration data.
+  // NOTE: calling the GetConfigurationData on every startup is highly
+  // recommended to retrieve the up-to-date configuration data.
+  rpc ConfigurationDataChanged(ConfigurationDataChangedRequest)
+      returns (ConfigurationDataChangedResponse) {}
 }
 
 // Parameters for the HandleMessageFromUi RPC.
@@ -54,3 +65,9 @@ message HandleEcNotificationRequest {
 
 // Return value of the HandleEcNotification RPC.
 message HandleEcNotificationResponse {}
+
+// Parameters for the ConfigurationDataChanged RPC.
+message ConfigurationDataChangedRequest {}
+
+// Return value of the ConfigurationDataChanged RPC.
+message ConfigurationDataChangedResponse {}
