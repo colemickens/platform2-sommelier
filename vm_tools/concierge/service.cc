@@ -6,10 +6,12 @@
 
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <linux/capability.h>
 #include <net/route.h>
 #include <signal.h>
 #include <stdint.h>
 #include <sys/mount.h>
+#include <sys/prctl.h>
 #include <sys/sendfile.h>
 #include <sys/signalfd.h>
 #include <sys/socket.h>
@@ -529,6 +531,13 @@ bool Service::Init() {
   sigemptyset(&mask);
   sigaddset(&mask, SIGCHLD);
   sigaddset(&mask, SIGTERM);
+
+  // Add CAP_SETGID to the list of ambient capabilities to allow crosvm
+  // establish proper gid map in its plugin jail.
+  if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, CAP_SETGID, 0, 0)) {
+    PLOG(ERROR) << "Failed to add CAP_SETGID to the ambient capabilities";
+    return false;
+  }
 
   signal_fd_.reset(signalfd(-1, &mask, SFD_NONBLOCK | SFD_CLOEXEC));
   if (!signal_fd_.is_valid()) {
