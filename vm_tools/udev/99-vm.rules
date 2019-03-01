@@ -2,6 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Make sure that crosvm has access to the VM-related nodes in /dev.
-KERNEL=="kvm", GROUP="crosvm", MODE="0660"
-KERNEL=="vhost-vsock", GROUP="crosvm", MODE="0660"
+# Make sure that crosvm and sysvm have access to the VM-related nodes in /dev.
+KERNEL=="kvm", GROUP="virtaccess", MODE="0660"
+KERNEL=="vhost-vsock", GROUP="virtaccess", MODE="0660"
