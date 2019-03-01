@@ -24,6 +24,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
+#include <base/no_destructor.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -92,6 +93,10 @@ const uint16_t kStaticForwardPorts[] = {
     8888,  // ipython/jupyter
     9005,  // Firebase login
 };
+
+// Path to the unix domain socket Concierge listens on for connections
+// from Plugin VMs.
+constexpr char kHostDomainSocket[] = "/run/vm_cicerone/client/host.sock";
 
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is created
@@ -322,6 +327,37 @@ void SetTimezoneForContainer(VirtualMachine* vm,
     }
   }
 }
+
+class CiceroneGrpcCallbacks final : public grpc::Server::GlobalCallbacks {
+ public:
+  static void Register() {
+    static base::NoDestructor<CiceroneGrpcCallbacks> callbacks;
+  }
+  void PreSynchronousRequest(grpc::ServerContext* context) override {}
+  void PostSynchronousRequest(grpc::ServerContext* context) override {}
+  void AddPort(grpc::Server* server,
+               const grpc::string& addr,
+               grpc::ServerCredentials* creds,
+               int port) override {
+    if (addr == string("unix://") + kHostDomainSocket) {
+      if (!SetPosixFilePermissions(base::FilePath(kHostDomainSocket), 0777)) {
+        PLOG(WARNING) << "Failed to adjust permissions on host.sock";
+      }
+    }
+  }
+
+ private:
+  friend class base::NoDestructor<CiceroneGrpcCallbacks>;
+
+  CiceroneGrpcCallbacks() {
+    // Note that GRPC library requires global callbacks installed once in
+    // application lifetime. Because CiceroneGrpcCallbacks is a singleton,
+    // it will be created at most once, thus satisfying GRPC requirement.
+    grpc::Server::SetGlobalCallbacks(this);
+  }
+
+  DISALLOW_COPY_AND_ASSIGN(CiceroneGrpcCallbacks);
+};
 
 }  // namespace
 
@@ -1159,7 +1195,7 @@ bool Service::Init(
 
   std::vector<std::string> container_listener_addresses = {
       base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY, vm_tools::kGarconPort),
-      "unix:///run/vm_cicerone/client/host.sock"};
+      base::StringPrintf("unix://%s", kHostDomainSocket)};
   std::vector<std::string> tremplin_listener_address = {base::StringPrintf(
       "vsock:%u:%u", VMADDR_CID_ANY, vm_tools::kTremplinListenerPort)};
 
@@ -1175,21 +1211,28 @@ bool Service::Init(
             .value()};
   }
 
-  // Setup & start the gRPC listener services.
-  if (run_grpc_ && !SetupListenerService(
-                       &grpc_thread_container_, container_listener_.get(),
-                       container_listener_addresses, &grpc_server_container_)) {
-    LOG(ERROR) << "Failed to setup/startup the container grpc server";
-    return false;
-  }
+  if (run_grpc_) {
+    // Install our own callbacks to catch "AddPort" action and update
+    // permissions on unix domain sockets.
+    CiceroneGrpcCallbacks::Register();
 
-  if (run_grpc_ && !SetupListenerService(
-                       &grpc_thread_tremplin_, tremplin_listener_.get(),
-                       tremplin_listener_address, &grpc_server_tremplin_)) {
-    LOG(ERROR) << "Failed to setup/startup the tremplin grpc server";
-    return false;
+    // Setup & start the gRPC listener services.
+    if (!SetupListenerService(
+            &grpc_thread_container_, container_listener_.get(),
+            container_listener_addresses, &grpc_server_container_)) {
+      LOG(ERROR) << "Failed to setup/startup the container grpc server";
+      return false;
+    }
+
+    if (!SetupListenerService(&grpc_thread_tremplin_, tremplin_listener_.get(),
+                              tremplin_listener_address,
+                              &grpc_server_tremplin_)) {
+      LOG(ERROR) << "Failed to setup/startup the tremplin grpc server";
+      return false;
+    }
+
+    LOG(INFO) << "Started tremplin grpc server";
   }
-  LOG(INFO) << "Started tremplin grpc server";
 
   // Set up the signalfd for receiving SIGCHLD and SIGTERM.
   sigset_t mask;
@@ -2215,7 +2258,7 @@ std::unique_ptr<dbus::Response> Service::ExportLxdContainer(
   response.set_status(ExportLxdContainerResponse::UNKNOWN);
   if (ExportLxdContainerResponse::Status_IsValid(static_cast<int>(status))) {
     response.set_status(
-      static_cast<ExportLxdContainerResponse::Status>(status));
+        static_cast<ExportLxdContainerResponse::Status>(status));
   }
   response.set_failure_reason(error_msg);
   writer.AppendProtoAsArrayOfBytes(response);
@@ -2260,7 +2303,7 @@ std::unique_ptr<dbus::Response> Service::ImportLxdContainer(
   response.set_status(ImportLxdContainerResponse::UNKNOWN);
   if (ImportLxdContainerResponse::Status_IsValid(static_cast<int>(status))) {
     response.set_status(
-      static_cast<ImportLxdContainerResponse::Status>(status));
+        static_cast<ImportLxdContainerResponse::Status>(status));
   }
   response.set_failure_reason(error_msg);
   writer.AppendProtoAsArrayOfBytes(response);
