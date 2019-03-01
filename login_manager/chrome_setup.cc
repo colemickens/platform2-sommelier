@@ -517,6 +517,11 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   builder->AddVmodulePattern("*/feedback_private/*=1");
   builder->AddVmodulePattern("*/feedback_uploader*=1");
 
+  // TODO(burunduk): Remove after investigation of not-installed forced
+  // extensions in https://crbug.com/904600 and https://crbug.com/917700.
+  builder->AddVmodulePattern("extension_downloader=2");
+  builder->AddVmodulePattern("*/forced_extensions/installation_tracker*=2");
+
   if (builder->UseFlagIsSet("cheets"))
     builder->AddVmodulePattern("*arc/*=1");
 }
