@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2017 Intel Corporation
+ * Copyright (C) 2013-2019 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,6 +49,7 @@ public:
     static std::string getSensorMediaDevice();
     static std::string getImguMediaDevice();
     bool isFaceAeEnabled(int cameraId) const;
+    int readNvmDataFromDevice(int cameraId);
 
 public:
     std::vector<camera_metadata_t*> mStaticMeta;
@@ -155,7 +156,6 @@ private:
                            int64_t *metadataCache);
 
     const char *skipWhiteSpace(const char *src);
-    int readNvmData();
     int getIsysNodeNameAsValue(const char* isysNodeName);
     uint8_t selectAfMode(const camera_metadata_t *staticMeta, int reqTemplate);
 

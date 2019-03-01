@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2018 Intel Corporation
+ * Copyright (C) 2014-2019 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,14 +34,14 @@ IPU3CameraCapInfo::IPU3CameraCapInfo(SensorType type):
     mMaxNvmDataSize(0),
     mNvmDirectory(""),
     mSensorName(""),
-    mNvmData({nullptr,0}),
     mTestPatternBayerFormat(""),
     mAgMultiplier(0),
     mAgMaxRatio(0),
     mSMIAm0(0),
     mSMIAm1(0),
     mSMIAc0(0),
-    mSMIAc1(0)
+    mSMIAc1(0),
+    mNvmData({nullptr,0})
 {
     CLEAR(mFov);
 }
@@ -59,6 +59,13 @@ const IPU3CameraCapInfo *getIPU3CameraCapInfo(int cameraId)
         cameraId = 0;
     }
     return (IPU3CameraCapInfo *)(PlatformData::getCameraCapInfo(cameraId));
+}
+
+void IPU3CameraCapInfo::setNvmData(std::unique_ptr<char[]>& data, unsigned int dataSize)
+{
+    mNvmDataBuf = std::move(data);
+    mNvmData.data = mNvmDataBuf.get();
+    mNvmData.size = dataSize;
 }
 
 int IPU3CameraCapInfo::getSensorTestPatternMode(int mode) const

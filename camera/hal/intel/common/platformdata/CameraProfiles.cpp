@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2017 Intel Corporation
+ * Copyright (C) 2013-2019 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -119,8 +119,6 @@ CameraProfiles::~CameraProfiles()
     while (!mCaps.empty()) {
         IPU3CameraCapInfo* info = static_cast<IPU3CameraCapInfo*>(mCaps.front());
         mCaps.erase(mCaps.begin());
-        ::operator delete(info->mNvmData.data);
-        info->mNvmData.data = nullptr;
         delete info;
     }
 
@@ -1545,7 +1543,6 @@ void CameraProfiles::handleSensorInfo(const char *name, const char **atts)
         info->mMaxNvmDataSize = atoi(atts[1]);
     } else if (strcmp(name, "nvmDirectory") == 0) {
         info->mNvmDirectory = atts[1];
-        readNvmData();
     } else if (strcmp(name, "testPattern.bayerFormat") == 0) {
         info->mTestPatternBayerFormat = atts[1];
     } else if (strcmp(name, "sensor.testPatternMap") == 0) {
@@ -1670,34 +1667,27 @@ void CameraProfiles::handleMediaCtlElements(const char *name, const char **atts)
  * production line, and at runtime read by the driver and written into sysfs.
  * The data is in the format in which the module manufacturer has provided it in.
  */
-int CameraProfiles::readNvmData()
+int CameraProfiles::readNvmDataFromDevice(int cameraId)
 {
     LOG1("@%s", __FUNCTION__);
-    int nvmDataSize = 0;
-    std::string sensorName;
-    std::string nvmDirectory;
-    ia_binary_data nvmData;
-    FILE *nvmFile;
-    std::string nvmDataPath(NVM_DATA_PATH);
 
-    IPU3CameraCapInfo *info = static_cast<IPU3CameraCapInfo*>(mCaps[mXmlSensorIndex]);
-    if (info == nullptr) {
-        LOGE("Could not get Camera capability info");
-        return UNKNOWN_ERROR;
+    IPU3CameraCapInfo *info = static_cast<IPU3CameraCapInfo*>(mCaps[cameraId]);
+    CheckError(!info, UNKNOWN_ERROR, "Could not get Camera capability info");
+
+    // if the nvm data have been read from the device, skip to read it again.
+    if (info->isNvmDataValid()) {
+        return OK;
     }
 
-    sensorName = info->getSensorName();
-    nvmDirectory = info->getNvmDirectory();
-    nvmDataSize = info->getMaxNvmDataSize();
-
+    std::string sensorName = info->getSensorName();
+    std::string nvmDirectory = info->getNvmDirectory();
     if (nvmDirectory.length() == 0) {
         LOGW("NVM dirctory from config is null");
         return UNKNOWN_ERROR;
     }
 
-    nvmData.size = 0;
-    nvmData.data = nullptr;
     // check separator of path name
+    std::string nvmDataPath(NVM_DATA_PATH);
     if (nvmDataPath.back() != '/')
         nvmDataPath.append("/");
 
@@ -1709,31 +1699,26 @@ int CameraProfiles::readNvmData()
     nvmDataPath.append("eeprom");
     LOG1("NVM data for %s is located in %s", sensorName.c_str(), nvmDataPath.c_str());
 
-    nvmFile = fopen(nvmDataPath.c_str(), "rb");
-    if (!nvmFile) {
-        LOGE("Failed to open NVM file: %s", nvmDataPath.c_str());
-        return UNKNOWN_ERROR;
-    }
+    FILE *nvmFile = fopen(nvmDataPath.c_str(), "rb");
+    CheckError(!nvmFile, UNKNOWN_ERROR, "Failed to open NVM file: %s", nvmDataPath.c_str());
 
     fseek(nvmFile, 0, SEEK_END);
-    nvmData.size = ftell(nvmFile);
+    int maxNvmDataSize = info->getMaxNvmDataSize();
+    unsigned int nvmDataSize = ftell(nvmFile);
+    if (maxNvmDataSize > 0) {
+        nvmDataSize = MIN(maxNvmDataSize, nvmDataSize);
+    }
     fseek(nvmFile, 0, SEEK_SET);
 
-    if (nvmDataSize > 0)
-        nvmData.size = MIN(nvmDataSize, nvmData.size);
+    std::unique_ptr<char[]> nvmData(new char[nvmDataSize]);
 
-    nvmData.data = ::operator new(nvmData.size);
-
-    LOG1("NVM data size: %d bytes", nvmData.size);
-    int ret = fread(nvmData.data, nvmData.size, 1, nvmFile);
-    if (ret == 0) {
-        LOGE("Cannot read nvm data");
-        ::operator delete(nvmData.data);
-        fclose(nvmFile);
-        return UNKNOWN_ERROR;
-    }
+    LOG1("NVM data size: %d bytes", nvmDataSize);
+    int ret = fread(nvmData.get(), nvmDataSize, 1, nvmFile);
     fclose(nvmFile);
-    info->mNvmData = nvmData;
+    CheckError(ret == 0, UNKNOWN_ERROR, "Cannot read nvm data");
+
+    info->setNvmData(nvmData, nvmDataSize);
+
     return OK;
 }
 

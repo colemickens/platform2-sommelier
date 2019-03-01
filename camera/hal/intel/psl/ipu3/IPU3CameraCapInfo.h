@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2018 Intel Corporation
+ * Copyright (C) 2014-2019 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,20 +33,22 @@ public:
     IPU3CameraCapInfo(SensorType type);
     ~IPU3CameraCapInfo();
     virtual int sensorType(void) const { return mSensorType; }
-    bool exposureSyncEnabled(void) const { return mExposureSync; };
-    bool digiGainOnSensor(void) const { return mDigiGainOnSensor; };
-    bool gainExposureCompEnabled(void) const { return mGainExposureComp; };
-    int gainLag(void) const { return mGainLag; };
-    int exposureLag(void) const { return mExposureLag; };
-    const float* fov(void) const { return mFov; };
-    int getCITMaxMargin(void) const { return mCITMaxMargin; };
+    bool exposureSyncEnabled(void) const { return mExposureSync; }
+    bool digiGainOnSensor(void) const { return mDigiGainOnSensor; }
+    bool gainExposureCompEnabled(void) const { return mGainExposureComp; }
+    int gainLag(void) const { return mGainLag; }
+    int exposureLag(void) const { return mExposureLag; }
+    const float* fov(void) const { return mFov; }
+    int getCITMaxMargin(void) const { return mCITMaxMargin; }
     bool getSupportIsoMap(void) const { return mSupportIsoMap; }
-    const int getMaxNvmDataSize(void) const { return mMaxNvmDataSize; };
-    const char* getNvmDirectory(void) const { return mNvmDirectory.c_str(); };
-    const char* getSensorName(void) const { return mSensorName.c_str(); };
-    const ia_binary_data getNvmData(void) const { return mNvmData; };
-    const std::string& getGraphSettingsFile(void) const { return mGraphSettingsFile; };
-    const std::string getTestPatternBayerFormat(void) const { return mTestPatternBayerFormat; };
+    const int getMaxNvmDataSize(void) const { return mMaxNvmDataSize; }
+    const string getNvmDirectory(void) const { return mNvmDirectory; }
+    const char* getSensorName(void) const { return mSensorName.c_str(); }
+    const ia_binary_data getNvmData(void) const { return mNvmData; }
+    void setNvmData(std::unique_ptr<char[]>& data, unsigned int dataSize);
+    bool isNvmDataValid() { return mNvmDataBuf.get() ? true : false; }
+    const std::string& getGraphSettingsFile(void) const { return mGraphSettingsFile; }
+    const std::string getTestPatternBayerFormat(void) const { return mTestPatternBayerFormat; }
     int getSensorTestPatternMode(int mode) const;
 
     const std::string getMediaCtlEntityName(std::string type) const;
@@ -66,7 +68,7 @@ public:
     int mMaxNvmDataSize;
     std::string mNvmDirectory;
     std::string mSensorName;
-    ia_binary_data mNvmData;
+
     std::string mGraphSettingsFile;
     std::string mTestPatternBayerFormat;
     std::unordered_map<int, int> mTestPatternMap; /* key: Android standard test pattern mode
@@ -88,6 +90,9 @@ public:
 private:
     friend class CameraProfiles;
     std::vector<MediaCtlElement> mMediaCtlElements;
+
+    ia_binary_data mNvmData;
+    std::unique_ptr<char[]> mNvmDataBuf;
 };
 
 const IPU3CameraCapInfo * getIPU3CameraCapInfo(int cameraId);

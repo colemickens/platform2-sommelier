@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2018 Intel Corporation
+ * Copyright (C) 2013-2019 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -365,6 +365,9 @@ public:
     static void saveAiqdData(int cameraId, const ia_binary_data& data);
 
     static bool isFaceAeEnabled(int cameraId);
+
+    static int readNvmDataFromDevice(int cameraId);
+
 private:
     static void initAiqdInfo(int cameraIdx);
     static unsigned int getAiqdFileSize(std::string fileName);

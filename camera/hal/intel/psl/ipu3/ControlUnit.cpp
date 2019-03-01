@@ -66,10 +66,6 @@ status_t
 ControlUnit::init()
 {
     HAL_TRACE_CALL(CAMERA_DEBUG_LOG_LEVEL1, LOG_TAG);
-    status_t status = OK;
-    const char *sensorName = nullptr;
-    ia_binary_data nvmData = {nullptr, 0};
-    LensHw *lensController;
 
     if (!mCameraThread.Start()) {
         LOGE("Camera thread failed to start");
@@ -77,29 +73,16 @@ ControlUnit::init()
     }
 
     const IPU3CameraCapInfo *cap = getIPU3CameraCapInfo(mCameraId);
-    if (!cap) {
-        LOGE("Not enough information for getting NVM data");
-    } else {
-        sensorName = cap->getSensorName();
-    }
+    CheckError(!cap, UNKNOWN_ERROR, "Not enough information for getting NVM data");
+    CheckError(cap->sensorType() != SENSOR_TYPE_RAW, UNKNOWN_ERROR, "SoC camera 3A control missing");
 
-    if (!cap || cap->sensorType() == SENSOR_TYPE_RAW) {
-        m3aWrapper = new Intel3aPlus(mCameraId);
-    } else {
-        LOGE("SoC camera 3A control missing");
-        return UNKNOWN_ERROR;
-    }
-
+    m3aWrapper = new Intel3aPlus(mCameraId);
     m3aWrapper->enableAiqdDataSave(true);
-    if (cap)
-        nvmData = cap->mNvmData;
-    if (m3aWrapper->initAIQ(MAX_STATISTICS_WIDTH,
-                            MAX_STATISTICS_HEIGHT,
-                            nvmData,
-                            sensorName) != NO_ERROR) {
-        LOGE("Error initializing 3A control");
-        return UNKNOWN_ERROR;
-    }
+    status_t status = m3aWrapper->initAIQ(MAX_STATISTICS_WIDTH,
+                                          MAX_STATISTICS_HEIGHT,
+                                          cap->getNvmData(),
+                                          cap->getSensorName());
+    CheckError(status != NO_ERROR, UNKNOWN_ERROR, "Error initializing 3A control");
 
     mSettingsProcessor = new SettingsProcessor(mCameraId, m3aWrapper, mStreamCfgProv);
     mSettingsProcessor->init();
@@ -120,22 +103,18 @@ ControlUnit::init()
     /*
      * Retrieve the Lens Controller interface from Capture Unit
      */
-    lensController = mCaptureUnit->getLensControlInterface();
+    LensHw *lensController = mCaptureUnit->getLensControlInterface();
 
     mSettingsHistory.clear();
 
     /* Set ISO map support */
-    bool supportIsoMap = false;
-    if (cap)
-        supportIsoMap = cap->getSupportIsoMap();
+    bool supportIsoMap = cap->getSupportIsoMap();
     m3aWrapper->setSupportIsoMap(supportIsoMap);
 
     m3ARunner = new AAARunner(mCameraId, m3aWrapper, mSettingsProcessor, lensController);
 
     /* Set digi gain support */
-    bool supportDigiGain = false;
-    if (cap)
-        supportDigiGain = cap->digiGainOnSensor();
+    bool supportDigiGain = cap->digiGainOnSensor();
     status = m3ARunner->init(supportDigiGain);
 
     status = allocateLscResults();
