@@ -26,16 +26,21 @@ class EthernetService : public Service {
  public:
   static constexpr char kDefaultEthernetDeviceIdentifier[] = "ethernet_any";
 
+  struct Properties {
+   public:
+    explicit Properties(const std::string& storage_id)
+        : storage_id_(storage_id) {}
+    explicit Properties(base::WeakPtr<Ethernet> ethernet)
+        : ethernet_(ethernet) {}
+    std::string storage_id_;
+    base::WeakPtr<Ethernet> ethernet_;
+  };
+
   EthernetService(ControlInterface* control_interface,
                   EventDispatcher* dispatcher,
                   Metrics* metrics,
                   Manager* manager,
-                  const std::string& storage_id);
-  EthernetService(ControlInterface* control_interface,
-                  EventDispatcher* dispatcher,
-                  Metrics* metrics,
-                  Manager* manager,
-                  base::WeakPtr<Ethernet> ethernet);
+                  const Properties& props);
   ~EthernetService() override;
 
   // Inherited from Service.
@@ -71,11 +76,11 @@ class EthernetService : public Service {
                   Metrics* metrics,
                   Manager* manager,
                   Technology::Identifier technology,
-                  base::WeakPtr<Ethernet> ethernet);
+                  const Properties& props);
 
   void SetUp();
 
-  Ethernet* ethernet() const { return ethernet_.get(); }
+  Ethernet* ethernet() const { return props_.ethernet_.get(); }
   std::string GetTethering(Error* error) const override;
 
  private:
@@ -83,8 +88,7 @@ class EthernetService : public Service {
 
   std::string GetDeviceRpcId(Error* error) const override;
 
-  std::string storage_id_;
-  base::WeakPtr<Ethernet> ethernet_;
+  Properties props_;
   DISALLOW_COPY_AND_ASSIGN(EthernetService);
 };
 

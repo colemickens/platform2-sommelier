@@ -76,7 +76,7 @@ EthernetServiceRefPtr EthernetProvider::CreateService(
     base::WeakPtr<Ethernet> ethernet) {
   SLOG(this, 2) << __func__;
   return new EthernetService(control_interface_, dispatcher_, metrics_,
-                             manager_, ethernet);
+                             manager_, EthernetService::Properties(ethernet));
 }
 
 bool EthernetProvider::LoadGenericEthernetService() {
@@ -92,9 +92,10 @@ void EthernetProvider::Start() {
   // static IP configurations across Ethernet services.
   if (!service_) {
     const ProfileRefPtr profile = manager_->ActiveProfile();
-    service_ =
-        new EthernetService(control_interface_, dispatcher_, metrics_, manager_,
-                            EthernetService::kDefaultEthernetDeviceIdentifier);
+    service_ = new EthernetService(
+        control_interface_, dispatcher_, metrics_, manager_,
+        EthernetService::Properties(
+            EthernetService::kDefaultEthernetDeviceIdentifier));
     if (!profile->ConfigureService(service_)) {
       profile->AdoptService(service_);
     }

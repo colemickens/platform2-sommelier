@@ -41,24 +41,13 @@ EthernetService::EthernetService(ControlInterface* control_interface,
                                  EventDispatcher* dispatcher,
                                  Metrics* metrics,
                                  Manager* manager,
-                                 const string& storage_id)
+                                 const Properties& props)
     : EthernetService(control_interface,
                       dispatcher,
                       metrics,
                       manager,
                       Technology::kEthernet,
-                      nullptr) {
-  storage_id_ = storage_id;
-  SetUp();
-}
-
-EthernetService::EthernetService(ControlInterface* control_interface,
-                                 EventDispatcher* dispatcher,
-                                 Metrics* metrics,
-                                 Manager* manager,
-                                 base::WeakPtr<Ethernet> ethernet)
-    : EthernetService(control_interface, dispatcher, metrics, manager,
-                      Technology::kEthernet, ethernet) {
+                      props) {
   SetUp();
 }
 
@@ -67,9 +56,9 @@ EthernetService::EthernetService(ControlInterface* control_interface,
                                  Metrics* metrics,
                                  Manager* manager,
                                  Technology::Identifier technology,
-                                 base::WeakPtr<Ethernet> ethernet)
-  : Service(control_interface, dispatcher, metrics, manager, technology),
-    ethernet_(ethernet) {}
+                                 const Properties& props)
+    : Service(control_interface, dispatcher, metrics, manager, technology),
+      props_(props) {}
 
 EthernetService::~EthernetService() { }
 
@@ -88,32 +77,33 @@ void EthernetService::SetUp() {
 
 void EthernetService::Connect(Error* error, const char* reason) {
   Service::Connect(error, reason);
-  if (ethernet_) {
-    ethernet_->ConnectTo(this);
+  if (props_.ethernet_) {
+    props_.ethernet_->ConnectTo(this);
   }
 }
 
 void EthernetService::Disconnect(Error* error, const char* reason) {
   Service::Disconnect(error, reason);
-  if (ethernet_) {
-    ethernet_->DisconnectFrom(this);
+  if (props_.ethernet_) {
+    props_.ethernet_->DisconnectFrom(this);
   }
 }
 
 string EthernetService::GetDeviceRpcId(Error* error) const {
-  if (!ethernet_) {
+  if (!props_.ethernet_) {
     error->Populate(Error::kNotFound, "Not associated with a device");
     return control_interface()->NullRPCIdentifier();
   }
-  return ethernet_->GetRpcIdentifier();
+  return props_.ethernet_->GetRpcIdentifier();
 }
 
 string EthernetService::GetStorageIdentifier() const {
-  return ethernet_ ? base::StringPrintf(
-                         "%s_%s",
-                         Technology::NameFromIdentifier(technology()).c_str(),
-                         ethernet_->address().c_str())
-                   : storage_id_;
+  return props_.ethernet_
+             ? base::StringPrintf(
+                   "%s_%s",
+                   Technology::NameFromIdentifier(technology()).c_str(),
+                   props_.ethernet_->address().c_str())
+             : props_.storage_id_;
 }
 
 bool EthernetService::IsAutoConnectByDefault() const {
@@ -136,14 +126,14 @@ void EthernetService::Remove(Error* error) {
 }
 
 bool EthernetService::IsVisible() const {
-  return ethernet_ && ethernet_->link_up();
+  return props_.ethernet_ && props_.ethernet_->link_up();
 }
 
 bool EthernetService::IsAutoConnectable(const char** reason) const {
   if (!Service::IsAutoConnectable(reason)) {
     return false;
   }
-  if (!ethernet_ || !ethernet_->link_up()) {
+  if (!props_.ethernet_ || !props_.ethernet_->link_up()) {
     *reason = kAutoConnNoCarrier;
     return false;
   }
@@ -178,7 +168,7 @@ void EthernetService::OnVisibilityChanged() {
 }
 
 string EthernetService::GetTethering(Error* /*error*/) const {
-  return ethernet_ && ethernet_->IsConnectedViaTether()
+  return props_.ethernet_ && props_.ethernet_->IsConnectedViaTether()
              ? kTetheringConfirmedState
              : kTetheringNotDetectedState;
 }

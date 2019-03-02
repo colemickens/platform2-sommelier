@@ -12,8 +12,8 @@ namespace shill {
 MockEthernetService::MockEthernetService(ControlInterface* control_interface,
                                          Metrics* metrics,
                                          base::WeakPtr<Ethernet> ethernet)
-    : EthernetService(control_interface, nullptr, metrics, nullptr,
-                      ethernet) {}
+    : EthernetService(
+          control_interface, nullptr, metrics, nullptr, Properties(ethernet)) {}
 
 MockEthernetService::~MockEthernetService() {}
 
