@@ -36,13 +36,13 @@ class Sockets;
 class SHILL_EXPORT RTNLHandler {
  public:
   // Request mask.
-  static const int kRequestLink = 1;
-  static const int kRequestAddr = 2;
-  static const int kRequestRoute = 4;
-  static const int kRequestRule = 8;
-  static const int kRequestRdnss = 16;
-  static const int kRequestNeighbor = 32;
-  static const int kRequestBridgeNeighbor = 64;
+  static const int kRequestLink;
+  static const int kRequestAddr;
+  static const int kRequestRoute;
+  static const int kRequestRule;
+  static const int kRequestRdnss;
+  static const int kRequestNeighbor;
+  static const int kRequestBridgeNeighbor;
 
   using ErrorMask = std::set<int>;
 

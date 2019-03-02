@@ -26,14 +26,6 @@
 
 #include "arc/network/scoped_ns.h"
 
-// Declare shill::RTNLHandler::kRequestLink to avoid a linker error
-// (https://crbug.com/936147).
-// This is needed for pre-C++17 code where static const members may need
-// a definition in object files and depending on compiler options,
-// the defintion in class header may not make it to the object file.
-// static
-const int shill::RTNLHandler::kRequestLink;
-
 namespace {
 
 const char kContainerPIDPath[] =

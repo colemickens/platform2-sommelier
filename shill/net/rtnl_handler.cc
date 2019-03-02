@@ -45,6 +45,13 @@ static std::string ObjectID(const RTNLHandler* obj) {
 }
 }  // namespace Logging
 
+const int RTNLHandler::kRequestLink = 1;
+const int RTNLHandler::kRequestAddr = 2;
+const int RTNLHandler::kRequestRoute = 4;
+const int RTNLHandler::kRequestRule = 8;
+const int RTNLHandler::kRequestRdnss = 16;
+const int RTNLHandler::kRequestNeighbor = 32;
+const int RTNLHandler::kRequestBridgeNeighbor = 64;
 const int RTNLHandler::kErrorWindowSize = 16;
 
 namespace {
