@@ -71,9 +71,6 @@ constexpr char kRuntimeDir[] = "/run/vm";
 // Default path to VM kernel image and rootfs.
 constexpr char kVmDefaultPath[] = "/run/imageloader/cros-termina";
 
-// Path to the root cicerone directory for plugin VM communication.
-constexpr char kCiceroneDir[] = "/run/vm_cicerone/client";
-
 // Name of the VM kernel image.
 constexpr char kVmKernelName[] = "vm_kernel";
 
@@ -357,29 +354,6 @@ bool GetPluginStatefulDirectory(const string& vm_id,
 
 bool GetPluginRuntimeDirectory(const string& vm_id, base::FilePath* path_out) {
   return GetPluginDirectory(base::FilePath("/run/pvm"), vm_id, path_out);
-}
-
-bool CreateCiceroneTokenDir(const string& vm_token,
-                            base::FilePath* cicerone_dir_out) {
-  if (!base::CreateTemporaryDirInDir(base::FilePath(kCiceroneDir), "vm.",
-                                     cicerone_dir_out)) {
-    PLOG(ERROR) << "Unable to create cicerone directory for VM";
-    return false;
-  }
-  // base::CreateTemporaryDirInDir creates a directory with 700 permissions, we
-  // want to change that to be 777. The parent directory has 770 permissions
-  // which gives us the access control for it we want.
-  if (!base::SetPosixFilePermissions(*cicerone_dir_out,
-                                     base::FILE_PERMISSION_MASK)) {
-    PLOG(ERROR) << "Unable to set permissions on cicerone directory for VM";
-    return false;
-  }
-  if (base::WriteFile(cicerone_dir_out->Append("token"), vm_token.c_str(),
-                      vm_token.length()) != vm_token.length()) {
-    PLOG(ERROR) << "Failure writing out cicerone token to file";
-    return false;
-  }
-  return true;
 }
 
 void DoNothing() {}
@@ -1065,12 +1039,13 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
 
   // Generate the token used by cicerone to identify the VM and write it to
   // a VM specific directory that gets mounted into the VM.
-  std::string vm_token = base::GenerateGUID();
-  base::FilePath cicerone_dir;
-  if (!CreateCiceroneTokenDir(vm_token, &cicerone_dir)) {
-    LOG(ERROR) << "Failed creating token/dir for cicerone-VM communication";
 
-    response.set_failure_reason("Internal error: unable to set cicerone token");
+  std::string vm_token = base::GenerateGUID();
+  if (base::WriteFile(runtime_dir.Append("cicerone.token"), vm_token.c_str(),
+                      vm_token.length()) != vm_token.length()) {
+    PLOG(ERROR) << "Failure writing out cicerone token to file";
+
+    response.set_failure_reason("Unable to set cicerone token");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -1081,11 +1056,11 @@ std::unique_ptr<dbus::Response> Service::StartPluginVm(
       std::make_move_iterator(request.mutable_params()->end()));
 
   // Now start the VM.
-  auto vm = PluginVm::Create(
-      request.cpus(), std::move(params), std::move(mac_addr),
-      std::move(ipv4_addr), plugin_subnet_->Netmask(),
-      plugin_subnet_->AddressAtOffset(0), std::move(stateful_dir),
-      std::move(runtime_dir), std::move(cicerone_dir));
+  auto vm =
+      PluginVm::Create(request.cpus(), std::move(params), std::move(mac_addr),
+                       std::move(ipv4_addr), plugin_subnet_->Netmask(),
+                       plugin_subnet_->AddressAtOffset(0),
+                       std::move(stateful_dir), std::move(runtime_dir));
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
     response.set_failure_reason("Unable to start VM");

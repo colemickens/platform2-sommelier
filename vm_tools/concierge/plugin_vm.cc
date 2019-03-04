@@ -65,13 +65,11 @@ std::unique_ptr<PluginVm> PluginVm::Create(
     uint32_t ipv4_netmask,
     uint32_t ipv4_gateway,
     base::FilePath stateful_dir,
-    base::FilePath runtime_dir,
-    base::FilePath cicerone_token_dir) {
+    base::FilePath runtime_dir) {
   auto vm = base::WrapUnique(
       new PluginVm(std::move(mac_addr), std::move(ipv4_addr), ipv4_netmask,
                    ipv4_gateway, std::move(runtime_dir)));
-  if (!vm->Start(cpus, std::move(params), std::move(stateful_dir),
-                 std::move(cicerone_token_dir))) {
+  if (!vm->Start(cpus, std::move(params), std::move(stateful_dir))) {
     vm.reset();
   }
 
@@ -156,8 +154,7 @@ PluginVm::PluginVm(arc_networkd::MacAddress mac_addr,
 
 bool PluginVm::Start(uint32_t cpus,
                      std::vector<string> params,
-                     base::FilePath stateful_dir,
-                     base::FilePath cicerone_token_dir) {
+                     base::FilePath stateful_dir) {
   // Set up the tap device.
   base::ScopedFD tap_fd =
       BuildTapDevice(mac_addr_, gateway_, netmask_, false /*vnet_hdr*/);
@@ -189,17 +186,13 @@ bool PluginVm::Start(uint32_t cpus,
                          kRuntimeDir),
       // This is the directory where the cicerone host socket lives. The plugin
       // VM also creates the guest socket for cicerone in this same directory
-      // using the following <token>.sock as the name.
+      // using the following <token>.sock as the name. The token resides in
+      // the VM runtime directory with name cicerone.token.
       base::StringPrintf("/run/vm_cicerone/client:%s:true",
                          base::FilePath(kRuntimeDir)
                              .Append("cicerone_socket")
                              .value()
                              .c_str()),
-      // This is the directory where the identity token for the plugin VM is
-      // stored.
-      base::StringPrintf(
-          "%s:%s:false", cicerone_token_dir.value().c_str(),
-          base::FilePath(kRuntimeDir).Append("cicerone_token").value().c_str()),
   };
 
   // Put everything into the brillo::ProcessImpl.
