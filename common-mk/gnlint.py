@@ -450,6 +450,72 @@ LintSettings = collections.namedtuple('LintSettings', (
     'issues',
 ))
 
+# The regex used to find unit test source files having wrong suffix.
+UNITTEST_SOURCE_RE = re.compile(r'_unittest\.(cc|c|h)$')
+
+
+def GnLintSourceFileNames(gndata):
+  """Enforce various filename conventions."""
+
+  ret = []
+  def CheckNode(node):
+    sources = ExtractLiteralAssignment(node, ['sources'])
+    for path in sources:
+      # Enforce xxx_test.cc naming.
+      if UNITTEST_SOURCE_RE.search(path):
+        ret.append('%s: rename unittest file to "%s"' %
+                   (path, path.replace('_unittest', '_test')))
+
+  WalkGn(CheckNode, gndata)
+  return ret
+
+
+# It's not easy to auto-discover pkg-config files as we don't require a chroot
+# or a fully installed sysroot to run this linter.  Plus, there's no clean way
+# to correlate -lfoo names with pkg-config .pc file names.  List the packages
+# that we tend to use in platform2 projects.
+KNOWN_PC_FILES = {
+    'blkid': 'blkid',
+    'cap': 'libcap',
+    'crypto': 'libcrypto',
+    'dbus-1': 'dbus-1',
+    'dbus-c++-1': 'dbus-c++-1',
+    'dbus-glib-1': 'dbus-glib-1',
+    'expat': 'expat',
+    'fuse': 'fuse',
+    'glib-2.0': 'glib-2.0',
+    'gobject-2.0': 'gobject-2.0',
+    'gthread-2.0': 'gthread-2.0',
+    'minijail': 'libminijail',
+    'pcre': 'libpcre',
+    'pcrecpp': 'libpcrecpp',
+    'pcreposix': 'libpcreposix',
+    'protobuf': 'protobuf',
+    'protobuf-lite': 'protobuf-lite',
+    'ssl': 'libssl',
+    'udev': 'libudev',
+    'usb-1.0': 'libusb-1.0',
+    'uuid': 'uuid',
+    'vboot_host': 'vboot_host',
+    'z': 'zlib',
+}
+KNOWN_PC_LIBS = frozenset(KNOWN_PC_FILES.keys())
+
+
+def GnLintPkgConfigs(gndata):
+  """Use pkg-config files for known libs instead of adding to libs."""
+  ret = []
+  def CheckNode(node):
+    # detect addition to libraries.
+    # ldflags is already detected as errors by GnLintLibFlags.
+    for v in KNOWN_PC_LIBS & set(ExtractLiteralAssignment(node, ['libs'])):
+      ret.append(('use pkg-config instead: delete "%s" from "libs" and add '
+                  '"%s" to either "pkg_deps", "public_pkg_deps", or '
+                  '"all_dependent_pkg_deps"') % (v, KNOWN_PC_FILES[v]))
+
+  WalkGn(CheckNode, gndata)
+  return ret
+
 
 def ParseOptions(options, name=None):
   """Parse out the linter settings from |options|.
@@ -498,6 +564,8 @@ _ALL_LINTERS = {
     'GnLintDefineFlags': GnLintDefineFlags,
     'GnLintCommonTesting': GnLintCommonTesting,
     'GnLintStaticSharedLibMixing': GnLintStaticSharedLibMixing,
+    'GnLintSourceFileNames': GnLintSourceFileNames,
+    'GnLintPkgConfigs': GnLintPkgConfigs,
 }
 
 

@@ -349,6 +349,22 @@ class GnLintTests(LintTestCase):
         'type': 'BLOCK'
     }], is_bad_input=False)
 
+  def testGnLintSourceFileNames(self):
+    """Verify GnLintSourceFileNames catches bad inputs."""
+    self._CheckLinter(gnlint.GnLintSourceFileNames, [
+        CreateTestData("sources", "=", "foo_unittest.c"),
+        CreateTestData("sources", "=", "foo_unittest.cc"),
+        CreateTestData("sources", "=", "foo_unittest.h"),
+    ])
+
+
+  def testGnLintPkgConfigs(self):
+    """Verify GnLintPkgConfigs catches bad inputs."""
+    self._CheckLinter(gnlint.GnLintPkgConfigs, [
+        CreateTestData("libs", "=", "z"),
+        CreateTestData("libs", "=", "ssl"),
+    ])
+
 
 if __name__ == '__main__':
   cros_test_lib.main(module=__name__)
