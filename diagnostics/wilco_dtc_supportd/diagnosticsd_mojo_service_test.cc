@@ -14,6 +14,7 @@
 #include <base/strings/string_piece.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <mojo/edk/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/binding.h>
 #include <mojo/public/cpp/bindings/interface_ptr.h>
 #include <mojo/public/cpp/system/buffer.h>
@@ -63,6 +64,8 @@ class MockDiagnosticsdMojoServiceDelegate
 class DiagnosticsdMojoServiceTest : public testing::Test {
  protected:
   DiagnosticsdMojoServiceTest() {
+    mojo::edk::Init();
+
     // Obtain Mojo interface pointer that talks to |mojo_client_| - the
     // connection between them will be maintained by |mojo_client_binding_|.
     MojomDiagnosticsdClientPtr mojo_client_interface_ptr;

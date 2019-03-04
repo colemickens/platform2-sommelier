@@ -4,17 +4,28 @@
 
 #include "diagnostics/wilco_dtc_supportd/mojo_utils.h"
 
+#include <memory>
 #include <utility>
 
+#include <base/memory/shared_memory.h>
 #include <base/strings/string_piece.h>
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <mojo/edk/embedder/embedder.h>
 #include <mojo/public/cpp/system/handle.h>
 
 namespace diagnostics {
 
-TEST(MojoUtils, CreateMojoHandleAndRetrieveContent) {
-  base::StringPiece content("{\"key\": \"value\"}");
+namespace {
+
+class MojoUtilsTest : public testing::Test {
+ protected:
+  MojoUtilsTest() { mojo::edk::Init(); }
+};
+
+}  // namespace
+
+TEST_F(MojoUtilsTest, CreateMojoHandleAndRetrieveContent) {
+  const base::StringPiece content("{\"key\": \"value\"}");
 
   mojo::ScopedHandle handle = CreateReadOnlySharedMemoryMojoHandle(content);
   EXPECT_TRUE(handle.is_valid());
