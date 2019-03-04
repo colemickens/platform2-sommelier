@@ -23,6 +23,13 @@ int main(int argc, char* argv[]) {
   }
   brillo::InitLog(log_flags);
 
+  const bool kOptionPID = true;
+  const bool kOptionTID = true;
+  const bool kOptionTimestamp = true;
+  const bool kOptionTickcount = true;
+  logging::SetLogItems(kOptionPID, kOptionTID, kOptionTimestamp,
+                       kOptionTickcount);
+
   // ArcCameraServiceProvider.Start() waits connection from container forever.
   // Once provider accepted a connection, it forks a child process and returns
   // the fd. ArcCameraService uses this fd to communicate with container.
