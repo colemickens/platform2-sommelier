@@ -31,6 +31,8 @@ class BRILLO_EXPORT DBusMethodResponseBase {
  public:
   DBusMethodResponseBase(::dbus::MethodCall* method_call,
                          ResponseSender sender);
+  DBusMethodResponseBase(DBusMethodResponseBase&& other) = default;
+  DBusMethodResponseBase& operator=(DBusMethodResponseBase&& other) = default;
   virtual ~DBusMethodResponseBase();
 
   // Sends an error response. Marshals the |error| object over D-Bus.
@@ -39,14 +41,14 @@ class BRILLO_EXPORT DBusMethodResponseBase {
   // For error is from other domains, the full error information (domain, error
   // code, error message) is encoded into the D-Bus error message and returned
   // to the caller as "org.freedesktop.DBus.Failed".
-  void ReplyWithError(const brillo::Error* error);
+  virtual void ReplyWithError(const brillo::Error* error);
 
   // Constructs brillo::Error object from the parameters specified and send
   // the error information over D-Bus using the method above.
-  void ReplyWithError(const tracked_objects::Location& location,
-                      const std::string& error_domain,
-                      const std::string& error_code,
-                      const std::string& error_message);
+  virtual void ReplyWithError(const tracked_objects::Location& location,
+                              const std::string& error_domain,
+                              const std::string& error_code,
+                              const std::string& error_message);
 
   // Sends a raw D-Bus response message.
   void SendRawResponse(std::unique_ptr<::dbus::Response> response);
@@ -71,8 +73,6 @@ class BRILLO_EXPORT DBusMethodResponseBase {
   // the method call response has been sent to ensure we can't possibly try
   // to send a response again somehow.
   ::dbus::MethodCall* method_call_;
-
-  DISALLOW_COPY_AND_ASSIGN(DBusMethodResponseBase);
 };
 
 // DBusMethodResponse is an explicitly-typed version of DBusMethodResponse.
@@ -86,7 +86,7 @@ class DBusMethodResponse : public DBusMethodResponseBase {
 
   // Sends the a successful response. |return_values| can contain a list
   // of return values to be sent to the caller.
-  inline void Return(const Types&... return_values) {
+  virtual void Return(const Types&... return_values) {
     CheckCanSendResponse();
     auto response = CreateCustomResponse();
     ::dbus::MessageWriter writer(response.get());
